@@ -115,7 +115,7 @@ function finalizeSprint(){
   const streakDays=updateStreak().days;
   recordLessonStats(sprintPerLesson);
   const medalInfo=recordRun('sprint',sprintScore,sprintAnswered,SPRINT_MS);
-  const goalRes=updateGoal({mode:'sprint',sprint:true});
+  const goalRes=updateGoal({mode:'sprint',sprint:true,isRecord:medalInfo.isRecord});
   const newTrophies=evaluateTrophies();
   const celeb=[];
   if(medalInfo.isRecord) celeb.push({icon:'🎉',text:'Nouveau record de sprint !'});

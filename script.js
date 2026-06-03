@@ -494,45 +494,76 @@ function buildPrintableDOM(){
   return coverHTML()+fichesPagesHTML(fiches)+bilanHTML(1)+bilanHTML(2);
 }
 
-function goHome(){
+/* ---------- Routing par hash ----------
+   Chaque vue a un hash (#accueil, #lecons, #complet, #express, #lecon-N).
+   Les déclencheurs ci-dessous ne font que CHANGER le hash : c'est ce qui
+   crée une entrée dans l'historique du navigateur. Le rendu réel est piloté
+   par route(), branché sur l'événement hashchange — donc Précédent/Suivant
+   du navigateur passent d'une vue à l'autre au lieu de quitter la page.
+   On utilise le hash (et non history.pushState) pour rester compatible avec
+   l'ouverture du fichier en local (file://). */
+
+// Déclencheurs (liés à l'UI)
+function goHome(){ location.hash='accueil'; }
+function showLessons(){ location.hash='lecons'; }
+function startComplet(){ location.hash='complet'; }
+function startExpress(){ location.hash='express'; }
+function startLecon(num){ if(LESSONS.find(l=>l.num===num)) location.hash='lecon-'+num; }
+
+function route(){
+  const h=(location.hash||'').replace(/^#/,'');
+  if(h==='complet') runComplet();
+  else if(h==='express') runExpress();
+  else if(h==='lecons') showLessonsView();
+  else if(h.startsWith('lecon-')){
+    const n=Number(h.slice(6));
+    if(LESSONS.find(l=>l.num===n)) runLecon(n); else showHomeView();
+  }
+  else showHomeView(); // '' ou #accueil
+}
+
+// Remet l'UI dans l'état « hors session » (commun à l'accueil et au sélecteur)
+function resetSessionUI(){
   resetChrono();
   currentMode=null; currentLessonNum=null;
-  document.getElementById('home').style.display='';
-  document.getElementById('lessons').style.display='none';
   document.getElementById('sheets').innerHTML='';
   const sc=document.getElementById('score'); sc.classList.add('hidden'); sc.textContent='';
   document.getElementById('btnVerify').disabled=true;
   const old=document.getElementById('resultBanner'); if(old) old.remove();
+}
+
+// Rendus des vues (sans toucher à l'historique)
+function showHomeView(){
+  resetSessionUI();
+  document.getElementById('home').style.display='';
+  document.getElementById('lessons').style.display='none';
   renderHomeStats();
   window.scrollTo({top:0,behavior:'smooth'});
 }
-
-/* Écran de sélection d'une leçon */
-function showLessons(){
+function showLessonsView(){
+  resetSessionUI();
   document.getElementById('home').style.display='none';
   renderLessons();
   document.getElementById('lessons').style.display='';
   window.scrollTo({top:0,behavior:'smooth'});
 }
-
-function startComplet(){
+function runComplet(){
   currentMode='complet';
   inputCounter=0;
-  const fiches=buildFiches();
   // À l'écran : pas de page de garde ni de bilans, juste les 15 fiches.
-  document.getElementById('sheets').innerHTML=fichesPagesHTML(fiches);
+  document.getElementById('sheets').innerHTML=fichesPagesHTML(buildFiches());
   afterStart();
 }
-function startExpress(){
+function runExpress(){
   currentMode='express';
   inputCounter=0;
   // À l'écran : un seul bilan express.
   document.getElementById('sheets').innerHTML=bilanHTML(1);
   afterStart();
 }
-function startLecon(num){
+function runLecon(num){
   const lesson=LESSONS.find(l=>l.num===num);
-  if(!lesson) return;
+  if(!lesson){ showHomeView(); return; }
   currentMode='lecon'; currentLessonNum=num;
   inputCounter=0;
   document.getElementById('sheets').innerHTML=`<div class="page">${lesson.build()}<p class="foot">Calcul mental CE2</p></div>`;
@@ -699,7 +730,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(btn) startLecon(Number(btn.dataset.num));
   });
 
-  // Au chargement : zone vide (accueil affiché) + stats de gamification.
-  document.getElementById('sheets').innerHTML='';
-  renderHomeStats();
+  // Précédent/Suivant du navigateur → on rejoue la vue correspondante
+  window.addEventListener('hashchange',route);
+  // Au chargement : on affiche la vue désignée par le hash (accueil par défaut)
+  route();
 });

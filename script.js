@@ -28,10 +28,14 @@ let inputCounter=0;
 // Mémorise les items {text, answer} de la session courante, par id de champ,
 // pour pouvoir reconstruire « mes erreurs » lors d'une révision.
 let sessionItems={};
+// Numéro de la leçon en cours de génération (pour taguer les champs et
+// agréger les stats par leçon, y compris dans les bilans). null = non rattaché.
+let renderLesson=null;
 function renderItem(it,extra=''){
   const id='a'+(inputCounter++);
   sessionItems[id]=it;
-  const field=`<input class="ans ${extra}" id="${id}" data-answer="${it.answer}" inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
+  const ln=renderLesson!=null?` data-lesson="${renderLesson}"`:'';
+  const field=`<input class="ans ${extra}" id="${id}" data-answer="${it.answer}"${ln} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
   return escapeHTML(it.text).replace('@',field);
 }
 function gridHTML(items,cols){
@@ -124,12 +128,13 @@ const LESSONS=[
        const free=()=>`<input class="ans-free" inputmode="numeric" autocomplete="off">`;
        const finalId='a'+(inputCounter++);
        sessionItems[finalId]={text:`${a} × ${b} = @`,answer:a*b};
-       const finalField=`<input class="ans" id="${finalId}" data-answer="${a*b}" inputmode="numeric" autocomplete="off"><span class="mark" data-for="${finalId}"></span>`;
+       const ln=renderLesson!=null?` data-lesson="${renderLesson}"`:'';
+       const finalField=`<input class="ans" id="${finalId}" data-answer="${a*b}"${ln} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${finalId}"></span>`;
        return `<div class="op">${a} × ${b} = (${free()} × ${free()}) + (${free()} × ${free()}) = ${free()} + ${free()} = ${finalField}</div>`;
      }).join('');
      return ficheHTML(this.num,this.title,this.sub,this.consigne,`<div class="deco">${lines}</div>`);}},
 ];
-function buildFiches(){return LESSONS.map(l=>l.build());}
+function buildFiches(){return LESSONS.map(l=>{renderLesson=l.num;const html=l.build();renderLesson=null;return html;});}
 
 /* ============================================================
    Bilans express
@@ -166,7 +171,7 @@ function bilanBlocks(nbQ){
 /* numero = libellé ; le bloc temps total est print-only */
 function bilanHTML(numero){
   const blocks=bilanBlocks(3);
-  const cells=blocks.map(b=>{const ops=b.ops.map(o=>`<div class="bop">${renderItem(o)}</div>`).join('');return `<div class="bloc"><span class="blab">M${b.num}.</span> <span class="btheme">${b.theme}</span>${ops}</div>`;}).join('');
+  const cells=blocks.map(b=>{renderLesson=b.num;const ops=b.ops.map(o=>`<div class="bop">${renderItem(o)}</div>`).join('');renderLesson=null;return `<div class="bloc"><span class="blab">M${b.num}.</span> <span class="btheme">${b.theme}</span>${ops}</div>`;}).join('');
   return `<div class="page">
     <p class="bilan-title">Bilan express ${numero} — toutes les leçons</p>
     <p class="bilan-sub">3 calculs par leçon · objectif : environ 20 minutes.
@@ -309,6 +314,25 @@ function recordLessonResult(num,perfect){
   return {count:stars[num]||0, newStar: perfect && !had};
 }
 function starsEarned(){const s=loadStars();return LESSONS.filter(l=>(s[l.num]||0)>0).length;}
+
+/* Stats de réussite par leçon (agrégées sur tous les contextes : leçon seule,
+   bilan complet, bilan express). Sert à repérer les thèmes à retravailler. */
+const LESSON_STATS_KEY='cm_ce2_lessonStats';
+function loadLessonStats(){try{return JSON.parse(localStorage.getItem(LESSON_STATS_KEY))||{};}catch(e){return {};}}
+function recordLessonStats(perLesson){
+  const s=loadLessonStats();
+  for(const num in perLesson){
+    const {ok,total}=perLesson[num];
+    if(!total) continue;
+    const e=s[num]||{attempts:0,correct:0,questions:0,bestPct:0,lastPct:0};
+    e.attempts++; e.correct+=ok; e.questions+=total;
+    const pct=Math.round(ok/total*100);
+    e.bestPct=Math.max(e.bestPct,pct); e.lastPct=pct;
+    s[num]=e;
+  }
+  try{localStorage.setItem(LESSON_STATS_KEY,JSON.stringify(s));}catch(e){}
+}
+const lessonAvgPct=e=>e&&e.questions?Math.round(e.correct/e.questions*100):null;
 
 /* ---------- Objectif du jour ---------- */
 const GOAL_KEY='cm_ce2_goal';
@@ -463,9 +487,13 @@ function renderBadges(){
     <div class="badge-grid">${cells}</div>`;
 }
 
-/* Liste des 15 leçons avec leurs étoiles (écran « une leçon à la fois ») */
+/* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
+const pctColor=p=>p<50?'#c62828':(p<75?'#ef6c00':'#2e7d32');
+
+/* Liste des 15 leçons avec étoiles + taux de réussite (écran « une leçon à la fois ») */
 function renderLessons(){
   const stars=loadStars();
+  const lstats=loadLessonStats();
   const list=document.getElementById('lessonList');
   if(list){
     list.innerHTML=LESSONS.map(l=>{
@@ -473,14 +501,30 @@ function renderLessons(){
       const badge=c>0
         ?`<span class="lz-star" title="${c} sans-faute${c>1?'s':''}">⭐${c>1?`<small>×${c}</small>`:''}</span>`
         :`<span class="lz-star empty" title="Pas encore réussie sans faute">☆</span>`;
+      const avg=lessonAvgPct(lstats[l.num]);
+      let stat;
+      if(avg==null){
+        stat=`<span class="lz-stat lz-stat-empty">Pas encore travaillée</span>`;
+      }else{
+        const col=pctColor(avg);
+        const flag=avg<70?`<span class="lz-flag">à revoir</span>`:'';
+        stat=`<span class="lz-stat">
+          <span class="lz-bar"><span class="lz-bar-fill" style="width:${avg}%;background:${col}"></span></span>
+          <span class="lz-pct" style="color:${col}">${avg}%</span>${flag}</span>`;
+      }
       return `<button class="lesson-item" data-num="${l.num}">
         <span class="lz-num">${l.num}</span>
-        <span class="lz-title">${l.title}</span>
+        <span class="lz-main"><span class="lz-title">${l.title}</span>${stat}</span>
         ${badge}</button>`;
     }).join('');
   }
   const sum=document.getElementById('starsSummary');
-  if(sum){const n=starsEarned();sum.textContent=`⭐ ${n} / ${LESSONS.length} leçons réussies sans faute`;}
+  if(sum){
+    const n=starsEarned();
+    const weak=LESSONS.filter(l=>{const a=lessonAvgPct(lstats[l.num]);return a!=null&&a<70;}).map(l=>l.num);
+    sum.innerHTML=`⭐ ${n} / ${LESSONS.length} leçons réussies sans faute`
+      +(weak.length?` · <span class="weak-hint">à revoir : leçons ${weak.join(', ')}</span>`:'');
+  }
 }
 
 /* ============================================================
@@ -581,7 +625,8 @@ function runLecon(num){
   if(!lesson){ showHomeView(); return; }
   currentMode='lecon'; currentLessonNum=num;
   inputCounter=0; sessionItems={};
-  document.getElementById('sheets').innerHTML=`<div class="page">${lesson.build()}<p class="foot">Calcul mental CE2</p></div>`;
+  renderLesson=num; const fiche=lesson.build(); renderLesson=null;
+  document.getElementById('sheets').innerHTML=`<div class="page">${fiche}<p class="foot">Calcul mental CE2</p></div>`;
   afterStart();
 }
 /* Révision : on rejoue uniquement les items ratés (aucun enregistrement). */
@@ -616,15 +661,18 @@ function verify(){
   const inputs=document.querySelectorAll('#sheets input.ans');
   let total=0,ok=0,vides=0;
   const errors=[]; // items non réussis (faux OU non remplis) pour la révision
+  const perLesson={}; // num -> {ok, total} pour les stats par leçon
   inputs.forEach(inp=>{
     const mark=document.querySelector(`.mark[data-for="${inp.id}"]`);
     inp.classList.remove('correct','wrong');
     if(mark){mark.className='mark';mark.textContent='';}
     const it=sessionItems[inp.id];
+    const ln=inp.dataset.lesson;
+    const bucket=ln!=null?(perLesson[ln]||(perLesson[ln]={ok:0,total:0})):null;
     const raw=inp.value.trim().replace(',','.');
     if(raw===''){vides++; if(it) errors.push(it); return;}
-    total++;
-    if(Number(raw)===Number(inp.dataset.answer)){ok++;inp.classList.add('correct');if(mark){mark.className='mark correct';mark.textContent='✓';}}
+    total++; if(bucket) bucket.total++;
+    if(Number(raw)===Number(inp.dataset.answer)){ok++;if(bucket)bucket.ok++;inp.classList.add('correct');if(mark){mark.className='mark correct';mark.textContent='✓';}}
     else{
       inp.classList.add('wrong');
       // On révèle la bonne réponse à côté de l'erreur.
@@ -640,6 +688,7 @@ function verify(){
   if(currentMode && currentMode!=='revision' && !sessionRecorded && inputs.length>0){
     sessionRecorded=true;
     streakDays=updateStreak().days;
+    recordLessonStats(perLesson);
     let perfect=false;
     if(currentMode==='lecon'){
       perfect = ok===inputs.length; // toutes les réponses justes

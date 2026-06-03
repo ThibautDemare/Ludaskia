@@ -48,67 +48,83 @@ function ficheHTML(num,titre,sous,consigne,inner){
 }
 
 /* ============================================================
-   Les 15 fiches
+   Les 15 leçons — chaque entrée est constructible isolément,
+   ce qui permet de jouer une leçon seule OU le bilan complet.
+   build() régénère des items frais à chaque appel.
    ============================================================ */
-function buildFiches(){
-  const F=[];
-  let items=uniqueComm(()=>{let a=rnd(2,9),b=rnd(2,9);[a,b]=[Math.min(a,b),Math.max(a,b)];return add(a,b);},12);
-  F.push(ficheHTML(1,"Les tables d'addition","Additionner deux nombres de 1 à 9.","Calcule chaque addition.",gridHTML(items,4)));
+const LESSONS=[
+  {num:1,title:"Les tables d'addition",sub:"Additionner deux nombres de 1 à 9.",consigne:"Calcule chaque addition.",
+   build(){const items=uniqueComm(()=>{let a=rnd(2,9),b=rnd(2,9);[a,b]=[Math.min(a,b),Math.max(a,b)];return add(a,b);},12);
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,4));}},
 
-  const pool10=[];for(let a=1;a<=9;a++)pool10.push(comp(a,10));
-  const pool100=[10,20,30,40,50,60,70,80,90].map(a=>comp(a,100));
-  items=sample([...sample(pool10,6),...sample(pool100,6)],12);
-  F.push(ficheHTML(2,"Les compléments","Trouver le nombre qui complète à 10 ou à 100.","Complète chaque égalité.",gridHTML(items,3)));
+  {num:2,title:"Les compléments",sub:"Trouver le nombre qui complète à 10 ou à 100.",consigne:"Complète chaque égalité.",
+   build(){const pool10=[];for(let a=1;a<=9;a++)pool10.push(comp(a,10));
+     const pool100=[10,20,30,40,50,60,70,80,90].map(a=>comp(a,100));
+     const items=sample([...sample(pool10,6),...sample(pool100,6)],12);
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,3));}},
 
-  items=sample([...Array(39).keys()].map(i=>i+1),12).map(dbl);
-  F.push(ficheHTML(3,"Les doubles","Le double, c'est deux fois le nombre.","Écris le double.",gridHTML(items,3)));
+  {num:3,title:"Les doubles",sub:"Le double, c'est deux fois le nombre.",consigne:"Écris le double.",
+   build(){const items=sample([...Array(39).keys()].map(i=>i+1),12).map(dbl);
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,3));}},
 
-  items=sample([2,4,6,8,10,12,14,16,18,20,30,40,50,60,80,100],12).map(half);
-  F.push(ficheHTML(4,"Les moitiés","La moitié, c'est le nombre partagé en deux.","Écris la moitié.",gridHTML(items,3)));
+  {num:4,title:"Les moitiés",sub:"La moitié, c'est le nombre partagé en deux.",consigne:"Écris la moitié.",
+   build(){const items=sample([2,4,6,8,10,12,14,16,18,20,30,40,50,60,80,100],12).map(half);
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,3));}},
 
-  items=uniqueExact(()=>add(rnd(20,70),choice([8,9,18,19,28,29])),12);
-  F.push(ficheHTML(5,"Ajouter 9, 19, 29 / 8, 18, 28","Astuce : +9 = +10 puis -1 · +8 = +10 puis -2.","Calcule en utilisant l'astuce.",gridHTML(items,4)));
+  {num:5,title:"Ajouter 9, 19, 29 / 8, 18, 28",sub:"Astuce : +9 = +10 puis -1 · +8 = +10 puis -2.",consigne:"Calcule en utilisant l'astuce.",
+   build(){const items=uniqueExact(()=>add(rnd(20,70),choice([8,9,18,19,28,29])),12);
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,4));}},
 
-  items=uniqueExact(()=>sub(rnd(40,90),choice([9,19,29,39])),8).concat(uniqueExact(()=>sub(rnd(11,20),rnd(2,8)),4));
-  F.push(ficheHTML(6,"Soustraire 9, 19, 29, 39 et un petit nombre","Astuce : -9 = -10 puis +1.","Calcule chaque soustraction.",gridHTML(items,4)));
+  {num:6,title:"Soustraire 9, 19, 29, 39 et un petit nombre",sub:"Astuce : -9 = -10 puis +1.",consigne:"Calcule chaque soustraction.",
+   build(){const items=uniqueExact(()=>sub(rnd(40,90),choice([9,19,29,39])),8).concat(uniqueExact(()=>sub(rnd(11,20),rnd(2,8)),4));
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,4));}},
 
-  items=uniqueComm(()=>{let a=rnd(2,9),b=rnd(2,9);[a,b]=[Math.min(a,b),Math.max(a,b)];return mul(a,b);},12);
-  F.push(ficheHTML(7,"Les tables de multiplication","Tables de 2 à 9.","Calcule chaque produit.",gridHTML(items,4)));
+  {num:7,title:"Les tables de multiplication",sub:"Tables de 2 à 9.",consigne:"Calcule chaque produit.",
+   build(){const items=uniqueComm(()=>{let a=rnd(2,9),b=rnd(2,9);[a,b]=[Math.min(a,b),Math.max(a,b)];return mul(a,b);},12);
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,4));}},
 
-  items=sample([24,36,48,52,64,28,46,82,38,56,74,98,66,84],12).map(half);
-  F.push(ficheHTML(8,"La moitié d'un nombre pair","Je sépare les dizaines et les unités si besoin.","Écris la moitié.",gridHTML(items,3)));
+  {num:8,title:"La moitié d'un nombre pair",sub:"Je sépare les dizaines et les unités si besoin.",consigne:"Écris la moitié.",
+   build(){const items=sample([24,36,48,52,64,28,46,82,38,56,74,98,66,84],12).map(half);
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,3));}},
 
-  items=sample([2,3,4,5,6,7,8,9,10,11,12],11).map(a=>mul(a,25));
-  F.push(ficheHTML(9,"Les multiples de 25","25, 50, 75, 100... de 25 en 25.","Calcule.",gridHTML(items,3)));
+  {num:9,title:"Les multiples de 25",sub:"25, 50, 75, 100... de 25 en 25.",consigne:"Calcule.",
+   build(){const items=sample([2,3,4,5,6,7,8,9,10,11,12],11).map(a=>mul(a,25));
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,3));}},
 
-  const fac=[[2,30],[3,20],[4,15],[5,12],[6,10],[12,5],[15,4],[20,3],[10,6],[30,2],[60,1],[1,60]];
-  items=sample(fac,12).map(([a])=>facteur(a,60));
-  F.push(ficheHTML(10,"Décompositions multiplicatives de 60","Quel nombre multiplié donne 60 ?","Complète.",gridHTML(items,3)));
+  {num:10,title:"Décompositions multiplicatives de 60",sub:"Quel nombre multiplié donne 60 ?",consigne:"Complète.",
+   build(){const fac=[[2,30],[3,20],[4,15],[5,12],[6,10],[12,5],[15,4],[20,3],[10,6],[30,2],[60,1],[1,60]];
+     const items=sample(fac,12).map(([a])=>facteur(a,60));
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,3));}},
 
-  items=uniqueExact(()=>{const a=rnd(120,500),op=choice(['+','-']),b=choice([10,20,30,40,50]);return op==='+'?add(a,b):sub(a,b);},6)
-    .concat(uniqueExact(()=>{const a=rnd(150,600),op=choice(['+','-']),b=choice([100,200,300]);return op==='+'?add(a,b):sub(a,b);},6));
-  F.push(ficheHTML(11,"Ajouter, soustraire des dizaines et des centaines","J'ajoute ou je retire des paquets entiers.","Calcule.",gridHTML(items,3)));
+  {num:11,title:"Ajouter, soustraire des dizaines et des centaines",sub:"J'ajoute ou je retire des paquets entiers.",consigne:"Calcule.",
+   build(){const items=uniqueExact(()=>{const a=rnd(120,500),op=choice(['+','-']),b=choice([10,20,30,40,50]);return op==='+'?add(a,b):sub(a,b);},6)
+       .concat(uniqueExact(()=>{const a=rnd(150,600),op=choice(['+','-']),b=choice([100,200,300]);return op==='+'?add(a,b):sub(a,b);},6));
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,3));}},
 
-  items=sample([...Array(98).keys()].map(i=>i+2),6).map(a=>mul(a,10)).concat(sample([...Array(39).keys()].map(i=>i+2),6).map(a=>mul(a,100)));
-  F.push(ficheHTML(12,"Multiplier par 10, par 100","×10 j'ajoute un zéro · ×100 j'ajoute deux zéros.","Calcule.",gridHTML(items,3)));
+  {num:12,title:"Multiplier par 10, par 100",sub:"×10 j'ajoute un zéro · ×100 j'ajoute deux zéros.",consigne:"Calcule.",
+   build(){const items=sample([...Array(98).keys()].map(i=>i+2),6).map(a=>mul(a,10)).concat(sample([...Array(39).keys()].map(i=>i+2),6).map(a=>mul(a,100)));
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,3));}},
 
-  items=sample([...Array(23).keys()].map(i=>i+3).filter(x=>x!==8),6).map(a=>mul(a,4)).concat(sample([...Array(13).keys()].map(i=>i+3).filter(x=>x!==4),6).map(a=>mul(a,8)));
-  F.push(ficheHTML(13,"Multiplier par 4, par 8","×4 = double du double · ×8 = double du double du double.","Calcule.",gridHTML(items,3)));
+  {num:13,title:"Multiplier par 4, par 8",sub:"×4 = double du double · ×8 = double du double du double.",consigne:"Calcule.",
+   build(){const items=sample([...Array(23).keys()].map(i=>i+3).filter(x=>x!==8),6).map(a=>mul(a,4)).concat(sample([...Array(13).keys()].map(i=>i+3).filter(x=>x!==4),6).map(a=>mul(a,8)));
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,3));}},
 
-  items=uniqueComm(()=>mul(rnd(2,12),choice([20,30,40])),12);
-  F.push(ficheHTML(14,"Multiplier par 20, 30, 40","Astuce : je multiplie par le chiffre, puis par 10.","Calcule.",gridHTML(items,3)));
+  {num:14,title:"Multiplier par 20, 30, 40",sub:"Astuce : je multiplie par le chiffre, puis par 10.",consigne:"Calcule.",
+   build(){const items=uniqueComm(()=>mul(rnd(2,12),choice([20,30,40])),12);
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,3));}},
 
-  const seen=new Set();const d=[];
-  while(d.length<6){const a=rnd(3,8),b=choice([12,13,14,15,16,21,23,24]);const k=a+'x'+b;if(!seen.has(k)){seen.add(k);d.push([a,b]);}}
-  const lines=d.map(([a,b])=>{
-    const free=()=>`<input class="ans-free" inputmode="numeric" autocomplete="off">`;
-    const finalId='a'+(inputCounter++);
-    const finalField=`<input class="ans" id="${finalId}" data-answer="${a*b}" inputmode="numeric" autocomplete="off"><span class="mark" data-for="${finalId}"></span>`;
-    return `<div class="op">${a} × ${b} = (${free()} × ${free()}) + (${free()} × ${free()}) = ${free()} + ${free()} = ${finalField}</div>`;
-  }).join('');
-  F.push(ficheHTML(15,"Décomposer pour calculer une multiplication","Ex : 6 × 14 = (6×10) + (6×4) = 60 + 24 = 84.","Décompose puis calcule. Écris les étapes.",`<div class="deco">${lines}</div>`));
-  return F;
-}
+  {num:15,title:"Décomposer pour calculer une multiplication",sub:"Ex : 6 × 14 = (6×10) + (6×4) = 60 + 24 = 84.",consigne:"Décompose puis calcule. Écris les étapes.",
+   build(){const seen=new Set();const d=[];
+     while(d.length<6){const a=rnd(3,8),b=choice([12,13,14,15,16,21,23,24]);const k=a+'x'+b;if(!seen.has(k)){seen.add(k);d.push([a,b]);}}
+     const lines=d.map(([a,b])=>{
+       const free=()=>`<input class="ans-free" inputmode="numeric" autocomplete="off">`;
+       const finalId='a'+(inputCounter++);
+       const finalField=`<input class="ans" id="${finalId}" data-answer="${a*b}" inputmode="numeric" autocomplete="off"><span class="mark" data-for="${finalId}"></span>`;
+       return `<div class="op">${a} × ${b} = (${free()} × ${free()}) + (${free()} × ${free()}) = ${free()} + ${free()} = ${finalField}</div>`;
+     }).join('');
+     return ficheHTML(this.num,this.title,this.sub,this.consigne,`<div class="deco">${lines}</div>`);}},
+];
+function buildFiches(){return LESSONS.map(l=>l.build());}
 
 /* ============================================================
    Bilans express
@@ -275,6 +291,19 @@ function confetti(){
   setTimeout(()=>layer.remove(),4200);
 }
 
+/* Étoiles par leçon : une étoile dès le premier sans-faute sur la leçon */
+const STARS_KEY='cm_ce2_stars';
+function loadStars(){try{return JSON.parse(localStorage.getItem(STARS_KEY))||{};}catch(e){return {};}}
+function saveStars(s){try{localStorage.setItem(STARS_KEY,JSON.stringify(s));}catch(e){}}
+function recordLessonResult(num,perfect){
+  const stars=loadStars();
+  const had=(stars[num]||0)>0;
+  if(perfect) stars[num]=(stars[num]||0)+1;
+  saveStars(stars);
+  return {count:stars[num]||0, newStar: perfect && !had};
+}
+function starsEarned(){const s=loadStars();return LESSONS.filter(l=>(s[l.num]||0)>0).length;}
+
 /* Rendu des statistiques sur l'écran d'accueil */
 function fillCardRecord(elId,mode){
   const el=document.getElementById(elId);if(!el)return;
@@ -308,14 +337,37 @@ function renderHomeStats(){
   }
   fillCardRecord('recComplet','complet');
   fillCardRecord('recExpress','express');
+  const recL=document.getElementById('recLecon');
+  if(recL){const n=starsEarned();recL.innerHTML=`⭐ <strong>${n}/${LESSONS.length}</strong> leçon${n>1?'s':''} réussie${n>1?'s':''} sans faute`;}
   const boards=document.getElementById('boards');
   if(boards) boards.innerHTML=boardHTML('complet','Bilan complet')+boardHTML('express','Bilan express');
+}
+
+/* Liste des 15 leçons avec leurs étoiles (écran « une leçon à la fois ») */
+function renderLessons(){
+  const stars=loadStars();
+  const list=document.getElementById('lessonList');
+  if(list){
+    list.innerHTML=LESSONS.map(l=>{
+      const c=stars[l.num]||0;
+      const badge=c>0
+        ?`<span class="lz-star" title="${c} sans-faute${c>1?'s':''}">⭐${c>1?`<small>×${c}</small>`:''}</span>`
+        :`<span class="lz-star empty" title="Pas encore réussie sans faute">☆</span>`;
+      return `<button class="lesson-item" data-num="${l.num}">
+        <span class="lz-num">${l.num}</span>
+        <span class="lz-title">${l.title}</span>
+        ${badge}</button>`;
+    }).join('');
+  }
+  const sum=document.getElementById('starsSummary');
+  if(sum){const n=starsEarned();sum.textContent=`⭐ ${n} / ${LESSONS.length} leçons réussies sans faute`;}
 }
 
 /* ============================================================
    Navigation : accueil / sessions
    ============================================================ */
-let currentMode=null; // 'complet' | 'express' | null
+let currentMode=null; // 'complet' | 'express' | 'lecon' | null
+let currentLessonNum=null; // numéro de leçon quand currentMode === 'lecon'
 let sessionRecorded=false; // l'essai en cours a-t-il déjà été enregistré ?
 
 // Construit le contenu COMPLET pour l'impression (toujours présent dans le DOM).
@@ -329,13 +381,22 @@ function buildPrintableDOM(){
 
 function goHome(){
   resetChrono();
-  currentMode=null;
+  currentMode=null; currentLessonNum=null;
   document.getElementById('home').style.display='';
+  document.getElementById('lessons').style.display='none';
   document.getElementById('sheets').innerHTML='';
   const sc=document.getElementById('score'); sc.classList.add('hidden'); sc.textContent='';
   document.getElementById('btnVerify').disabled=true;
   const old=document.getElementById('resultBanner'); if(old) old.remove();
   renderHomeStats();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* Écran de sélection d'une leçon */
+function showLessons(){
+  document.getElementById('home').style.display='none';
+  renderLessons();
+  document.getElementById('lessons').style.display='';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -354,9 +415,18 @@ function startExpress(){
   document.getElementById('sheets').innerHTML=bilanHTML(1);
   afterStart();
 }
+function startLecon(num){
+  const lesson=LESSONS.find(l=>l.num===num);
+  if(!lesson) return;
+  currentMode='lecon'; currentLessonNum=num;
+  inputCounter=0;
+  document.getElementById('sheets').innerHTML=`<div class="page">${lesson.build()}<p class="foot">Calcul mental CE2</p></div>`;
+  afterStart();
+}
 function afterStart(){
   sessionRecorded=false;
   document.getElementById('home').style.display='none';
+  document.getElementById('lessons').style.display='none';
   const sc=document.getElementById('score'); sc.classList.add('hidden'); sc.textContent='';
   document.getElementById('btnVerify').disabled=false;
   startChrono();
@@ -380,13 +450,22 @@ function verify(){
     if(Number(raw)===Number(inp.dataset.answer)){ok++;inp.classList.add('correct');if(mark){mark.className='mark correct';mark.textContent='✓';}}
     else{inp.classList.add('wrong');if(mark){mark.className='mark wrong';mark.textContent='✗';}}
   });
-  // Enregistrement de l'essai (une seule fois par session) + médaille / record
-  let medalInfo=null, streakDays=0;
+  // Enregistrement de l'essai (une seule fois par session)
+  // → bilan complet/express : classement + médaille
+  // → leçon seule : étoile si sans-faute
+  let medalInfo=null, starInfo=null, streakDays=0;
   if(currentMode && !sessionRecorded && inputs.length>0){
     sessionRecorded=true;
     streakDays=updateStreak().days;
-    medalInfo=recordRun(currentMode,ok,inputs.length,ms);
-    if(medalInfo.isRecord) confetti();
+    if(currentMode==='lecon'){
+      const perfect = ok===inputs.length; // toutes les réponses justes
+      const res=recordLessonResult(currentLessonNum,perfect);
+      starInfo={perfect, newStar:res.newStar, count:res.count};
+      if(res.newStar) confetti();
+    }else{
+      medalInfo=recordRun(currentMode,ok,inputs.length,ms);
+      if(medalInfo.isRecord) confetti();
+    }
   }
 
   // Bandeau résultat en tête de la zone
@@ -407,6 +486,16 @@ function verify(){
     if(medalInfo.total<3) rk+=` Encore ${3-medalInfo.total} pour décrocher une médaille !`;
     if(streakDays>=2) rk+=` · 🔥 ${streakDays} jours d'affilée`;
     html+=`<div class="rb-rank">${rk}</div>`;
+  }
+  if(starInfo){
+    if(starInfo.perfect){
+      html+=`<div class="rb-medal"><span class="rb-medal-ico">⭐</span><span class="rb-medal-txt">${starInfo.newStar?'Étoile gagnée !':'Encore sans faute !'}</span></div>`;
+    }
+    let msg = starInfo.perfect
+      ? `Leçon réussie sans faute${starInfo.count>1?` (${starInfo.count}×)`:''}. Bravo !`
+      : `Il faut un sans-faute pour décrocher l'étoile de cette leçon. Réessaie ⭐`;
+    if(streakDays>=2) msg+=` · 🔥 ${streakDays} jours d'affilée`;
+    html+=`<div class="rb-rank">${msg}</div>`;
   }
   banner.innerHTML=html;
   const sheets=document.getElementById('sheets');
@@ -474,7 +563,15 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('btnPrint').addEventListener('click',printAll);
   document.getElementById('cardComplet').addEventListener('click',startComplet);
   document.getElementById('cardExpress').addEventListener('click',startExpress);
+  document.getElementById('cardLecon').addEventListener('click',showLessons);
+  document.getElementById('backHome').addEventListener('click',goHome);
   document.getElementById('printLink').addEventListener('click',printAll);
+
+  // Sélection d'une leçon dans la liste (délégation)
+  document.getElementById('lessonList').addEventListener('click',e=>{
+    const btn=e.target.closest('.lesson-item');
+    if(btn) startLecon(Number(btn.dataset.num));
+  });
 
   // Au chargement : zone vide (accueil affiché) + stats de gamification.
   document.getElementById('sheets').innerHTML='';

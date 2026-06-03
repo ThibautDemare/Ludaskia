@@ -147,6 +147,20 @@ body{font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#ee
 .rb-record{font-family:system-ui,sans-serif;font-size:15px;font-weight:800;color:#b26a00;}
 .rb-rank{font-family:system-ui,sans-serif;font-size:13px;color:var(--grey);width:100%;}
 
+/* Liste des leçons (écran « une leçon à la fois ») */
+.lesson-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+  gap:12px;text-align:left;margin-top:14px;}
+.lesson-item{display:flex;align-items:center;gap:10px;width:100%;font:inherit;cursor:pointer;
+  background:var(--paper);border:2px solid transparent;border-radius:12px;padding:12px 14px;
+  box-shadow:0 4px 14px rgba(0,0,0,.08);transition:transform .12s ease,border-color .15s ease,box-shadow .15s ease;}
+.lesson-item:hover{transform:translateY(-2px);border-color:var(--blue);box-shadow:0 8px 20px rgba(0,0,0,.16);}
+.lz-num{flex:0 0 auto;width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;
+  font-family:system-ui,sans-serif;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.lz-title{flex:1;font-family:system-ui,sans-serif;font-size:14px;color:var(--ink);}
+.lz-star{font-size:18px;white-space:nowrap;}
+.lz-star.empty{opacity:.3;}
+.lz-star small{font-size:11px;font-family:system-ui,sans-serif;}
+
 /* Confettis (déclenchés à un nouveau record) */
 .confetti-layer{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;}
 .confetti{position:absolute;top:-12vh;width:9px;height:14px;border-radius:2px;

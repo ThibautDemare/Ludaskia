@@ -1,0 +1,15 @@
+/* Variables globales + styles de base */
+:root{
+  --blue:#336CBF;--blue-dark:#2a5aa0;--blue-soft:#E9EFF8;
+  --ink:#1a1a1a;--grey:#545454;--muted:#9aa1ac;
+  --paper:#ffffff;--ok:#2e7d32;--ko:#c62828;
+  --warn:#b26a00;--warn-bg:#fff3d6;--warn-bd:#ffd54f;
+  --ui:system-ui,sans-serif; /* police de l'interface (chrome), distincte du serif des feuilles */
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#eef1f5;}
+
+/* Visibilité écran / impression (le détail print est dans print.css) */
+.print-only{display:none;}        /* caché à l'écran, montré à l'impression */
+/* .screen-only : montré à l'écran, caché à l'impression */

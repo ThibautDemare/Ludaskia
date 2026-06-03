@@ -1,0 +1,29 @@
+/* Modale de récompense + confettis */
+.modal-overlay{position:fixed;inset:0;z-index:10000;background:rgba(20,30,50,.55);
+  display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{position:relative;background:var(--paper);border-radius:18px;max-width:420px;width:100%;
+  padding:30px 28px 26px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.35);
+  font-family:var(--ui);animation:modal-pop .25s ease;}
+@keyframes modal-pop{0%{transform:scale(.85);opacity:0;}100%{transform:scale(1);opacity:1;}}
+.modal-close{position:absolute;top:10px;right:14px;border:0;background:transparent;font-size:26px;
+  line-height:1;color:var(--muted);cursor:pointer;}
+.modal-close:hover{color:var(--ink);}
+.modal-emoji{font-size:48px;line-height:1;}
+.modal-title{color:var(--blue);font-size:24px;margin:8px 0 16px;}
+.modal-list{list-style:none;margin:0 0 22px;padding:0;text-align:left;display:flex;flex-direction:column;gap:10px;}
+.modal-list li{display:flex;align-items:center;gap:12px;background:var(--blue-soft);border-radius:10px;
+  padding:10px 14px;font-size:15px;font-weight:600;color:var(--ink);}
+.modal-li-ico{font-size:24px;line-height:1;}
+.modal-ok{font:inherit;font-weight:800;font-size:15px;border:0;border-radius:10px;cursor:pointer;
+  background:var(--blue);color:#fff;padding:11px 28px;transition:box-shadow .15s ease,transform .08s ease;}
+.modal-ok:hover{box-shadow:0 4px 12px rgba(0,0,0,.25);}
+.modal-ok:active{transform:translateY(1px);}
+
+/* Confettis (déclenchés via la modale de récompense) */
+.confetti-layer{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;}
+.confetti{position:absolute;top:-12vh;width:9px;height:14px;border-radius:2px;
+  animation:confetti-fall linear forwards;}
+@keyframes confetti-fall{
+  0%{transform:translateY(-12vh) rotate(0);opacity:1;}
+  100%{transform:translateY(112vh) rotate(720deg);opacity:.9;}
+}

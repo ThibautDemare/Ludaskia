@@ -1,0 +1,15 @@
+/* Mise en page d'impression (PDF papier à remplir au crayon) */
+@page{size:A4;margin:14mm;}
+@media print{
+  body{background:#fff;}
+  .toolbar,.home,.result-banner,.streak,.goal,.boards,#badges,.confetti-layer,.modal-overlay{display:none!important;}
+  .screen-only{display:none!important;}
+  .print-only{display:block!important;}
+  .sheets{margin:0;padding:0;max-width:none;}
+  .page{box-shadow:none;border-radius:0;margin:0;padding:0;page-break-after:always;}
+  .page:last-child{page-break-after:auto;}
+  .ans,.ans-free{border:0;border-bottom:1px solid #333!important;color:transparent!important;
+    background:transparent!important;-webkit-text-fill-color:transparent;font-weight:400!important;}
+  .ans.correct,.ans.wrong{border-bottom:1px solid #333!important;}
+  .mark{display:none!important;}
+}

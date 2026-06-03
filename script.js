@@ -174,7 +174,7 @@ function bilanHTML(numero){
   const cells=blocks.map(b=>{renderLesson=b.num;const ops=b.ops.map(o=>`<div class="bop">${renderItem(o)}</div>`).join('');renderLesson=null;return `<div class="bloc"><span class="blab">M${b.num}.</span> <span class="btheme">${b.theme}</span>${ops}</div>`;}).join('');
   return `<div class="page">
     <p class="bilan-title">Bilan express ${numero} — toutes les leçons</p>
-    <p class="bilan-sub">3 calculs par leçon · objectif : environ 20 minutes.
+    <p class="bilan-sub">3 calculs par leçon · objectif : environ 15 minutes.
        <span class="print-only">Prénom : __________   Date : ________</span></p>
     <p class="bilan-temps print-only">Temps total : ______ min</p>
     <div class="bilan-grid">${cells}</div>
@@ -301,6 +301,16 @@ function confetti(){
   document.body.appendChild(layer);
   setTimeout(()=>layer.remove(),4200);
 }
+
+/* Modale de récompense : annonce explicitement ce qui vient d'être gagné. */
+function showCelebration(items){
+  if(!items||!items.length) return;
+  const list=document.getElementById('celebrateList');
+  if(list) list.innerHTML=items.map(i=>`<li><span class="modal-li-ico">${i.icon}</span> ${i.text}</li>`).join('');
+  const ov=document.getElementById('celebrate'); if(ov) ov.style.display='';
+  confetti();
+}
+function hideCelebration(){ const ov=document.getElementById('celebrate'); if(ov) ov.style.display='none'; }
 
 /* Étoiles par leçon : une étoile dès le premier sans-faute sur la leçon */
 const STARS_KEY='cm_ce2_stars';
@@ -581,19 +591,29 @@ function route(){
   else showHomeView(); // '' ou #accueil
 }
 
+/* Visibilité des boutons de la barre :
+   - Vérifier : seulement pendant un exercice
+   - Accueil : partout sauf sur l'accueil lui-même */
+function setToolbar({verify,home}){
+  const v=document.getElementById('btnVerify');
+  const h=document.getElementById('btnHome');
+  v.style.display=verify?'':'none'; v.disabled=!verify;
+  h.style.display=home?'':'none';
+}
+
 // Remet l'UI dans l'état « hors session » (commun à l'accueil et au sélecteur)
 function resetSessionUI(){
   resetChrono();
   currentMode=null; currentLessonNum=null;
   document.getElementById('sheets').innerHTML='';
   const sc=document.getElementById('score'); sc.classList.add('hidden'); sc.textContent='';
-  document.getElementById('btnVerify').disabled=true;
   const old=document.getElementById('resultBanner'); if(old) old.remove();
 }
 
 // Rendus des vues (sans toucher à l'historique)
 function showHomeView(){
   resetSessionUI();
+  setToolbar({verify:false,home:false}); // accueil : ni Vérifier ni Accueil
   document.getElementById('home').style.display='';
   document.getElementById('lessons').style.display='none';
   renderHomeStats();
@@ -601,6 +621,7 @@ function showHomeView(){
 }
 function showLessonsView(){
   resetSessionUI();
+  setToolbar({verify:false,home:true}); // sélecteur : Accueil visible, pas Vérifier
   document.getElementById('home').style.display='none';
   renderLessons();
   document.getElementById('lessons').style.display='';
@@ -645,7 +666,7 @@ function afterStart(){
   document.getElementById('home').style.display='none';
   document.getElementById('lessons').style.display='none';
   const sc=document.getElementById('score'); sc.classList.add('hidden'); sc.textContent='';
-  document.getElementById('btnVerify').disabled=false;
+  setToolbar({verify:true,home:true}); // en exercice : Vérifier + Accueil visibles
   startChrono();
   window.scrollTo({top:0,behavior:'smooth'});
   // Confort de saisie : on place le curseur sur le premier calcul.
@@ -681,11 +702,16 @@ function verify(){
     }
   });
   lastErrors=errors;
+  // Un exercice ne « compte » que si au moins 60 % des calculs ont une réponse.
+  const recordable = currentMode && currentMode!=='revision';
+  const enough = inputs.length>0 && total>=inputs.length*0.6;
+  const notEnough = recordable && !enough && !sessionRecorded;
   // Enregistrement de l'essai (une seule fois par session)
   // → bilan complet/express : classement + médaille
   // → leçon seule : étoile si sans-faute
   let medalInfo=null, starInfo=null, streakDays=0, goalRes=null, newBadges=[];
-  if(currentMode && currentMode!=='revision' && !sessionRecorded && inputs.length>0){
+  const celeb=[]; // récompenses à annoncer dans la modale
+  if(recordable && enough && !sessionRecorded){
     sessionRecorded=true;
     streakDays=updateStreak().days;
     recordLessonStats(perLesson);
@@ -700,8 +726,11 @@ function verify(){
     // Objectif du jour + badges (évalués après l'enregistrement de l'essai)
     goalRes=updateGoal({mode:currentMode, newStar:!!(starInfo&&starInfo.newStar), perfect, isRecord:!!(medalInfo&&medalInfo.isRecord)});
     newBadges=evaluateBadges();
-    // Une seule pluie de confettis si quelque chose est à fêter
-    if((medalInfo&&medalInfo.isRecord)||(starInfo&&starInfo.newStar)||goalRes.justDone||newBadges.length) confetti();
+    // Liste des récompenses obtenues (sert à la modale + confettis)
+    if(medalInfo&&medalInfo.isRecord) celeb.push({icon:'🎉',text:'Nouveau record !'});
+    if(starInfo&&starInfo.newStar) celeb.push({icon:'⭐',text:'Étoile gagnée pour cette leçon !'});
+    newBadges.forEach(b=>celeb.push({icon:b.icon,text:`Nouveau badge : ${b.title}`}));
+    if(goalRes&&goalRes.justDone) celeb.push({icon:'🎯',text:'Objectif du jour réussi !'});
   }
 
   // Bandeau résultat en tête de la zone
@@ -712,6 +741,9 @@ function verify(){
   let html=`<span class="rb-big">${ok}/${total}</span>
     <span class="rb-sub">bonnes réponses (${note}%)${vides>0?` · ${vides} non remplie${vides>1?'s':''}`:''}<br>
     Temps : <strong>${fmt(ms)}</strong></span>`;
+  if(notEnough){
+    html+=`<div class="rb-warn">⚠️ Réponds à au moins 60 % des calculs pour valider ton temps et gagner des récompenses.</div>`;
+  }
   if(medalInfo){
     if(medalInfo.medal){
       const M={1:['🥇',"Médaille d'or"],2:['🥈',"Médaille d'argent"],3:['🥉','Médaille de bronze']}[medalInfo.medal];
@@ -748,6 +780,8 @@ function verify(){
   if(redo) redo.addEventListener('click',startRevision);
   const sheets=document.getElementById('sheets');
   sheets.parentNode.insertBefore(banner,sheets);
+  // Récompenses : modale explicite (+ confettis) pour qu'on sache ce qu'on a gagné
+  if(celeb.length) showCelebration(celeb);
   // petit rappel dans la barre
   const sc=document.getElementById('score'); sc.classList.remove('hidden');
   sc.textContent= total>0 ? `${ok}/${total} · ${fmt(ms)}` : `Aucune réponse · ${fmt(ms)}`;
@@ -837,6 +871,12 @@ document.addEventListener('DOMContentLoaded',()=>{
     const btn=e.target.closest('.lesson-item');
     if(btn) startLecon(Number(btn.dataset.num));
   });
+
+  // Modale de récompense : fermeture (bouton, croix, fond, Échap)
+  document.getElementById('celebrateOk').addEventListener('click',hideCelebration);
+  document.getElementById('celebrateClose').addEventListener('click',hideCelebration);
+  document.getElementById('celebrate').addEventListener('click',e=>{ if(e.target.id==='celebrate') hideCelebration(); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') hideCelebration(); });
 
   // Précédent/Suivant du navigateur → on rejoue la vue correspondante
   window.addEventListener('hashchange',route);

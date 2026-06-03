@@ -12,8 +12,8 @@
   <h1>Calcul mental CE2</h1>
   <span class="chrono hidden" id="chrono">00:00</span>
   <span class="score hidden" id="score"></span>
-  <button class="btn-accent" id="btnVerify" disabled>✓ Vérifier</button>
-  <button class="btn-primary" id="btnHome">🏠 Accueil</button>
+  <button class="btn-accent" id="btnVerify" style="display:none">✓ Vérifier</button>
+  <button class="btn-primary" id="btnHome" style="display:none">🏠 Accueil</button>
   <button class="btn-ghost" id="btnPrint">🖨 Imprimer / PDF</button>
 </div>
 
@@ -34,7 +34,7 @@
     <div class="card" id="cardExpress">
       <div class="ico">⏱️</div>
       <h2>Bilan express</h2>
-      <p>Trois calculs par leçon sur une seule feuille. Faisable en une vingtaine de minutes.</p>
+      <p>Trois calculs par leçon sur une seule feuille. Faisable en une quinzaine de minutes.</p>
       <div class="card-record" id="recExpress"></div>
       <span class="go">Commencer →</span>
     </div>
@@ -62,6 +62,17 @@
 
 <!-- Zone des exercices -->
 <div class="sheets" id="sheets"></div>
+
+<!-- Modale de récompense (badge, record, étoile, objectif…) -->
+<div class="modal-overlay" id="celebrate" style="display:none">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="celebrateTitle">
+    <button class="modal-close" id="celebrateClose" aria-label="Fermer">×</button>
+    <div class="modal-emoji">🎉</div>
+    <h2 class="modal-title" id="celebrateTitle">Bravo !</h2>
+    <ul class="modal-list" id="celebrateList"></ul>
+    <button class="modal-ok" id="celebrateOk">Super !</button>
+  </div>
+</div>
 
 <script src="script.js"></script>
 </body>

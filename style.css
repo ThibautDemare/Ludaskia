@@ -199,6 +199,31 @@ body{font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#ee
 .lz-star small{font-size:11px;font-family:system-ui,sans-serif;}
 .weak-hint{color:#c62828;font-weight:700;}
 
+/* Note d'avertissement dans le bandeau (seuil de 60 %) */
+.rb-warn{font-family:system-ui,sans-serif;font-size:13.5px;font-weight:700;color:#b26a00;
+  background:#fff3d6;border:1px solid #ffd54f;border-radius:10px;padding:8px 14px;width:100%;}
+
+/* Modale de récompense */
+.modal-overlay{position:fixed;inset:0;z-index:10000;background:rgba(20,30,50,.55);
+  display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{position:relative;background:var(--paper);border-radius:18px;max-width:420px;width:100%;
+  padding:30px 28px 26px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.35);
+  font-family:system-ui,sans-serif;animation:modal-pop .25s ease;}
+@keyframes modal-pop{0%{transform:scale(.85);opacity:0;}100%{transform:scale(1);opacity:1;}}
+.modal-close{position:absolute;top:10px;right:14px;border:0;background:transparent;font-size:26px;
+  line-height:1;color:#9aa1ac;cursor:pointer;}
+.modal-close:hover{color:var(--ink);}
+.modal-emoji{font-size:48px;line-height:1;}
+.modal-title{color:var(--blue);font-size:24px;margin:8px 0 16px;}
+.modal-list{list-style:none;margin:0 0 22px;padding:0;text-align:left;display:flex;flex-direction:column;gap:10px;}
+.modal-list li{display:flex;align-items:center;gap:12px;background:var(--blue-soft);border-radius:10px;
+  padding:10px 14px;font-size:15px;font-weight:600;color:var(--ink);}
+.modal-li-ico{font-size:24px;line-height:1;}
+.modal-ok{font:inherit;font-weight:800;font-size:15px;border:0;border-radius:10px;cursor:pointer;
+  background:var(--blue);color:#fff;padding:11px 28px;transition:box-shadow .15s ease,transform .08s ease;}
+.modal-ok:hover{box-shadow:0 4px 12px rgba(0,0,0,.25);}
+.modal-ok:active{transform:translateY(1px);}
+
 /* Confettis (déclenchés à un nouveau record) */
 .confetti-layer{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;}
 .confetti{position:absolute;top:-12vh;width:9px;height:14px;border-radius:2px;
@@ -211,7 +236,7 @@ body{font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#ee
 @page{size:A4;margin:14mm;}
 @media print{
   body{background:#fff;}
-  .toolbar,.home,.result-banner,.streak,.goal,.boards,#badges,.confetti-layer{display:none!important;}
+  .toolbar,.home,.result-banner,.streak,.goal,.boards,#badges,.confetti-layer,.modal-overlay{display:none!important;}
   .screen-only{display:none!important;}
   .print-only{display:block!important;}
   .sheets{margin:0;padding:0;max-width:none;}

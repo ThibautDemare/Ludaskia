@@ -25,8 +25,12 @@ function comp(a,total){return {text:`${a} + @ = ${total}`,answer:total-a};}
 function facteur(a,total){return {text:`${a} × @ = ${total}`,answer:total/a};}
 
 let inputCounter=0;
+// Mémorise les items {text, answer} de la session courante, par id de champ,
+// pour pouvoir reconstruire « mes erreurs » lors d'une révision.
+let sessionItems={};
 function renderItem(it,extra=''){
   const id='a'+(inputCounter++);
+  sessionItems[id]=it;
   const field=`<input class="ans ${extra}" id="${id}" data-answer="${it.answer}" inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
   return escapeHTML(it.text).replace('@',field);
 }
@@ -119,6 +123,7 @@ const LESSONS=[
      const lines=d.map(([a,b])=>{
        const free=()=>`<input class="ans-free" inputmode="numeric" autocomplete="off">`;
        const finalId='a'+(inputCounter++);
+       sessionItems[finalId]={text:`${a} × ${b} = @`,answer:a*b};
        const finalField=`<input class="ans" id="${finalId}" data-answer="${a*b}" inputmode="numeric" autocomplete="off"><span class="mark" data-for="${finalId}"></span>`;
        return `<div class="op">${a} × ${b} = (${free()} × ${free()}) + (${free()} × ${free()}) = ${free()} + ${free()} = ${finalField}</div>`;
      }).join('');
@@ -481,9 +486,11 @@ function renderLessons(){
 /* ============================================================
    Navigation : accueil / sessions
    ============================================================ */
-let currentMode=null; // 'complet' | 'express' | 'lecon' | null
+let currentMode=null; // 'complet' | 'express' | 'lecon' | 'revision' | null
 let currentLessonNum=null; // numéro de leçon quand currentMode === 'lecon'
 let sessionRecorded=false; // l'essai en cours a-t-il déjà été enregistré ?
+let lastErrors=[]; // items {text, answer} non réussis lors de la dernière vérification
+let pendingRevision=[]; // items à réviser, transmis à la vue #revision
 
 // Construit le contenu COMPLET pour l'impression (toujours présent dans le DOM).
 // En interactif on n'affiche qu'une partie via masquage, mais pour rester simple
@@ -509,12 +516,20 @@ function showLessons(){ location.hash='lecons'; }
 function startComplet(){ location.hash='complet'; }
 function startExpress(){ location.hash='express'; }
 function startLecon(num){ if(LESSONS.find(l=>l.num===num)) location.hash='lecon-'+num; }
+function startRevision(){
+  if(!lastErrors.length) return;
+  pendingRevision=lastErrors.slice();
+  // Déjà sur #revision : réassigner le hash ne déclencherait pas hashchange.
+  if(location.hash==='#revision') runRevision(pendingRevision);
+  else location.hash='revision';
+}
 
 function route(){
   const h=(location.hash||'').replace(/^#/,'');
   if(h==='complet') runComplet();
   else if(h==='express') runExpress();
   else if(h==='lecons') showLessonsView();
+  else if(h==='revision'){ if(pendingRevision.length) runRevision(pendingRevision); else showHomeView(); }
   else if(h.startsWith('lecon-')){
     const n=Number(h.slice(6));
     if(LESSONS.find(l=>l.num===n)) runLecon(n); else showHomeView();
@@ -549,14 +564,14 @@ function showLessonsView(){
 }
 function runComplet(){
   currentMode='complet';
-  inputCounter=0;
+  inputCounter=0; sessionItems={};
   // À l'écran : pas de page de garde ni de bilans, juste les 15 fiches.
   document.getElementById('sheets').innerHTML=fichesPagesHTML(buildFiches());
   afterStart();
 }
 function runExpress(){
   currentMode='express';
-  inputCounter=0;
+  inputCounter=0; sessionItems={};
   // À l'écran : un seul bilan express.
   document.getElementById('sheets').innerHTML=bilanHTML(1);
   afterStart();
@@ -565,8 +580,19 @@ function runLecon(num){
   const lesson=LESSONS.find(l=>l.num===num);
   if(!lesson){ showHomeView(); return; }
   currentMode='lecon'; currentLessonNum=num;
-  inputCounter=0;
+  inputCounter=0; sessionItems={};
   document.getElementById('sheets').innerHTML=`<div class="page">${lesson.build()}<p class="foot">Calcul mental CE2</p></div>`;
+  afterStart();
+}
+/* Révision : on rejoue uniquement les items ratés (aucun enregistrement). */
+function runRevision(items){
+  currentMode='revision'; currentLessonNum=null;
+  inputCounter=0; sessionItems={};
+  const grid=`<div class="grid c3">${items.map(it=>`<div class="op">${renderItem(it)}</div>`).join('')}</div>`;
+  document.getElementById('sheets').innerHTML=`<div class="page">
+    <p class="fiche-title">Révision — tes erreurs</p>
+    <p class="fiche-sub">Reprends les calculs que tu n'avais pas réussis.</p>
+    ${grid}<p class="foot">Calcul mental CE2</p></div>`;
   afterStart();
 }
 function afterStart(){
@@ -577,6 +603,9 @@ function afterStart(){
   document.getElementById('btnVerify').disabled=false;
   startChrono();
   window.scrollTo({top:0,behavior:'smooth'});
+  // Confort de saisie : on place le curseur sur le premier calcul.
+  const first=document.querySelector('#sheets input');
+  if(first) first.focus({preventScroll:true});
 }
 
 /* ============================================================
@@ -586,21 +615,29 @@ function verify(){
   const ms=stopChrono();
   const inputs=document.querySelectorAll('#sheets input.ans');
   let total=0,ok=0,vides=0;
+  const errors=[]; // items non réussis (faux OU non remplis) pour la révision
   inputs.forEach(inp=>{
     const mark=document.querySelector(`.mark[data-for="${inp.id}"]`);
     inp.classList.remove('correct','wrong');
     if(mark){mark.className='mark';mark.textContent='';}
+    const it=sessionItems[inp.id];
     const raw=inp.value.trim().replace(',','.');
-    if(raw===''){vides++;return;}
+    if(raw===''){vides++; if(it) errors.push(it); return;}
     total++;
     if(Number(raw)===Number(inp.dataset.answer)){ok++;inp.classList.add('correct');if(mark){mark.className='mark correct';mark.textContent='✓';}}
-    else{inp.classList.add('wrong');if(mark){mark.className='mark wrong';mark.textContent='✗';}}
+    else{
+      inp.classList.add('wrong');
+      // On révèle la bonne réponse à côté de l'erreur.
+      if(mark){mark.className='mark wrong';mark.innerHTML=`✗ <span class="sol">→ ${inp.dataset.answer}</span>`;}
+      if(it) errors.push(it);
+    }
   });
+  lastErrors=errors;
   // Enregistrement de l'essai (une seule fois par session)
   // → bilan complet/express : classement + médaille
   // → leçon seule : étoile si sans-faute
   let medalInfo=null, starInfo=null, streakDays=0, goalRes=null, newBadges=[];
-  if(currentMode && !sessionRecorded && inputs.length>0){
+  if(currentMode && currentMode!=='revision' && !sessionRecorded && inputs.length>0){
     sessionRecorded=true;
     streakDays=updateStreak().days;
     let perfect=false;
@@ -654,7 +691,12 @@ function verify(){
     if(goalRes.justDone) html+=`<div class="rb-goal">🎯 Objectif du jour réussi : ${goalRes.goal.label}</div>`;
     else if(!goalRes.goal.done) html+=`<div class="rb-goal">🎯 Objectif du jour : ${goalRes.goal.label} (${goalRes.goal.progress}/${goalRes.goal.target})</div>`;
   }
+  if(lastErrors.length){
+    html+=`<button class="rb-redo" id="btnRedo">↻ Réviser mes erreurs (${lastErrors.length})</button>`;
+  }
   banner.innerHTML=html;
+  const redo=banner.querySelector('#btnRedo');
+  if(redo) redo.addEventListener('click',startRevision);
   const sheets=document.getElementById('sheets');
   sheets.parentNode.insertBefore(banner,sheets);
   // petit rappel dans la barre
@@ -672,6 +714,18 @@ document.addEventListener('input',e=>{
     const mark=document.querySelector(`.mark[data-for="${e.target.id}"]`);
     if(mark){mark.className='mark';mark.textContent='';}
   }
+});
+
+// Confort de saisie : Entrée passe au champ suivant ; sur le dernier, on vérifie.
+document.addEventListener('keydown',e=>{
+  const t=e.target;
+  if(e.key!=='Enter'||t.tagName!=='INPUT') return;
+  if(!t.classList.contains('ans')&&!t.classList.contains('ans-free')) return;
+  e.preventDefault();
+  const all=[...document.querySelectorAll('#sheets input.ans, #sheets input.ans-free')];
+  const i=all.indexOf(t);
+  if(i>-1 && i<all.length-1) all[i+1].focus();
+  else verify(); // dernier champ
 });
 
 /* ============================================================
@@ -693,7 +747,8 @@ window.addEventListener('beforeprint',()=>{
   printSnapshot={
     sheets:sheets.innerHTML,
     homeDisplay:document.getElementById('home').style.display,
-    banner: document.getElementById('resultBanner') ? document.getElementById('resultBanner').outerHTML : null
+    banner: document.getElementById('resultBanner') ? document.getElementById('resultBanner').outerHTML : null,
+    items: sessionItems // la version imprimable régénère des items : on garde ceux de la session
   };
   const banner=document.getElementById('resultBanner'); if(banner) banner.remove();
   sheets.innerHTML=buildPrintableDOM();
@@ -702,10 +757,14 @@ window.addEventListener('afterprint',()=>{
   const sheets=document.getElementById('sheets');
   if(printSnapshot){
     sheets.innerHTML=printSnapshot.sheets;
+    sessionItems=printSnapshot.items;
     document.getElementById('home').style.display=printSnapshot.homeDisplay;
     if(printSnapshot.banner){
       const tmp=document.createElement('div'); tmp.innerHTML=printSnapshot.banner;
-      sheets.parentNode.insertBefore(tmp.firstChild,sheets);
+      const restored=tmp.firstChild;
+      sheets.parentNode.insertBefore(restored,sheets);
+      const redo=restored.querySelector&&restored.querySelector('#btnRedo');
+      if(redo) redo.addEventListener('click',startRevision); // le listener est perdu via outerHTML
     }
     printSnapshot=null;
   }

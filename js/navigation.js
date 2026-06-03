@@ -21,6 +21,11 @@ function showLessons(){ location.hash='lecons'; }
 function startComplet(){ location.hash='complet'; }
 function startExpress(){ location.hash='express'; }
 function startLecon(num){ if(LESSONS.find(l=>l.num===num)) location.hash='lecon-'+num; }
+function startSprint(){
+  // Déjà sur #sprint (bouton « Recommencer ») : on relance directement.
+  if(location.hash==='#sprint') runSprint();
+  else location.hash='sprint';
+}
 function startRevision(){
   if(!lastErrors.length) return;
   pendingRevision=lastErrors.slice();
@@ -33,6 +38,7 @@ function route(){
   const h=(location.hash||'').replace(/^#/,'');
   if(h==='complet') runComplet();
   else if(h==='express') runExpress();
+  else if(h==='sprint') runSprint();
   else if(h==='lecons') showLessonsView();
   else if(h==='revision'){ if(pendingRevision.length) runRevision(pendingRevision); else showHomeView(); }
   else if(h.startsWith('lecon-')){
@@ -55,6 +61,7 @@ function setToolbar({verify,home}){
 // Remet l'UI dans l'état « hors session » (commun à l'accueil et au sélecteur)
 function resetSessionUI(){
   resetChrono();
+  sprintCleanup(); // stoppe un éventuel sprint en cours (compte à rebours)
   currentMode=null; currentLessonNum=null;
   document.getElementById('sheets').innerHTML='';
   const sc=document.getElementById('score'); sc.classList.add('hidden'); sc.textContent='';

@@ -12,6 +12,25 @@ function fillCardRecord(elId,mode){
   if(!runs.length){el.innerHTML=`<span class="muted">Aucun essai — à toi de jouer !</span>`;return;}
   el.innerHTML=`🏅 Ton record : <strong>${fmtRecord([...runs].sort(cmpRun)[0])}</strong>`;
 }
+/* Record de sprint (compté en nombre de bonnes réponses) */
+function fillSprintRecord(elId){
+  const el=document.getElementById(elId);if(!el)return;
+  const runs=loadRuns('sprint');
+  if(!runs.length){el.innerHTML=`<span class="muted">Aucun sprint — à toi de jouer !</span>`;return;}
+  el.innerHTML=`🏅 Record : <strong>${[...runs].sort(cmpRun)[0].ok} bonnes réponses</strong>`;
+}
+function sprintBoardHTML(){
+  const runs=loadRuns('sprint');
+  if(!runs.length) return '';
+  const medals=['🥇','🥈','🥉'];
+  const top=[...runs].sort(cmpRun).slice(0,3);
+  const lis=top.map((r,i)=>`<li>${medals[i]} <strong>${r.ok}</strong> bonnes <span class="lb-mut">(${r.ok}/${r.count})</span></li>`).join('');
+  return `<div class="lb">
+    <h3>Sprint 5 min</h3>
+    <ol class="podium">${lis}</ol>
+    <p class="lb-count">${runs.length} sprint${runs.length>1?'s':''}</p>
+  </div>`;
+}
 /* Panneau de classement d'un mode (podium top-3 + progression) */
 function boardHTML(mode,label){
   const runs=loadRuns(mode);
@@ -41,11 +60,12 @@ function renderHomeStats(){
   fillCardRecord('recExpress','express');
   const recL=document.getElementById('recLecon');
   if(recL){const n=starsEarned();recL.innerHTML=`⭐ <strong>${n}/${LESSONS.length}</strong> leçon${n>1?'s':''} réussie${n>1?'s':''} sans faute`;}
+  fillSprintRecord('recSprint');
   const boards=document.getElementById('boards');
-  if(boards) boards.innerHTML=boardHTML('complet','Bilan complet')+boardHTML('express','Bilan express');
+  if(boards) boards.innerHTML=boardHTML('complet','Bilan complet')+boardHTML('express','Bilan express')+sprintBoardHTML();
   renderGoal();
-  evaluateBadges(); // rattrape d'éventuels badges acquis (sans célébration ici)
-  renderBadges();
+  evaluateTrophies(); // rattrape d'éventuels trophées acquis (sans célébration ici)
+  renderTrophies();
 }
 
 /* Objectif du jour */
@@ -61,19 +81,19 @@ function renderGoal(){
   }
 }
 
-/* Vitrine des badges */
-function renderBadges(){
-  const el=document.getElementById('badges');if(!el)return;
-  const have=new Set(loadBadges());
-  const cells=BADGES.map(b=>{
-    const on=have.has(b.id);
-    return `<div class="badge ${on?'on':'off'}">
-      <span class="badge-ico">${on?b.icon:'🔒'}</span>
-      <span class="badge-title">${b.title}</span>
-      <span class="badge-desc">${b.desc}</span></div>`;
+/* Vitrine des trophées */
+function renderTrophies(){
+  const el=document.getElementById('trophies');if(!el)return;
+  const have=new Set(loadTrophies());
+  const cells=TROPHIES.map(t=>{
+    const on=have.has(t.id);
+    return `<div class="trophy ${on?'on':'off'}">
+      <span class="trophy-ico">${on?t.icon:'🔒'}</span>
+      <span class="trophy-title">${t.title}</span>
+      <span class="trophy-desc">${t.desc}</span></div>`;
   }).join('');
-  el.innerHTML=`<h3 class="badges-h">Mes badges <span class="badges-count">${have.size}/${BADGES.length}</span></h3>
-    <div class="badge-grid">${cells}</div>`;
+  el.innerHTML=`<h3 class="trophies-h">Mes trophées <span class="trophies-count">${have.size}/${TROPHIES.length}</span></h3>
+    <div class="trophy-grid">${cells}</div>`;
 }
 
 /* Liste des 15 leçons avec étoiles + taux de réussite */
@@ -84,7 +104,7 @@ function renderLessons(){
   if(list){
     list.innerHTML=LESSONS.map(l=>{
       const c=stars[l.num]||0;
-      const badge=c>0
+      const starBadge=c>0
         ?`<span class="lz-star" title="${c} sans-faute${c>1?'s':''}">⭐${c>1?`<small>×${c}</small>`:''}</span>`
         :`<span class="lz-star empty" title="Pas encore réussie sans faute">☆</span>`;
       const avg=lessonAvgPct(lstats[l.num]);
@@ -101,7 +121,7 @@ function renderLessons(){
       return `<button class="lesson-item" data-num="${l.num}">
         <span class="lz-num">${l.num}</span>
         <span class="lz-main"><span class="lz-title">${l.title}</span>${stat}</span>
-        ${badge}</button>`;
+        ${starBadge}</button>`;
     }).join('');
   }
   const sum=document.getElementById('starsSummary');

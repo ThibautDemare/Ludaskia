@@ -2,7 +2,7 @@
 @page{size:A4;margin:14mm;}
 @media print{
   body{background:#fff;}
-  .toolbar,.home,.result-banner,.streak,.goal,.boards,#badges,.confetti-layer,.modal-overlay{display:none!important;}
+  .toolbar,.home,.result-banner,.streak,.goal,.boards,#trophies,.confetti-layer,.modal-overlay{display:none!important;}
   .screen-only{display:none!important;}
   .print-only{display:block!important;}
   .sheets{margin:0;padding:0;max-width:none;}

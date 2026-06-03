@@ -13,7 +13,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ORDER = ['utils','storage','chrono','items','lessons','progress',
-               'rewards','effects','render','navigation','session','main'];
+               'rewards','effects','render','navigation','sprint','session','main'];
 const JS_DIR = path.join(__dirname, '..', 'js');
 
 // Symboles exposés aux tests (ajouter ici au besoin).
@@ -23,7 +23,7 @@ const API = ['rnd','choice','sample','commKey','uniqueComm','uniqueExact','escap
   'RUNS_KEY','loadRuns','cmpRun','runPct','fmtRecord','recordRun',
   'STREAK_KEY','todayStr','daysBetween','getStreak','updateStreak','streakSuffix',
   'STARS_KEY','recordLessonResult','starsEarned','LESSON_STATS_KEY','loadLessonStats','recordLessonStats','lessonAvgPct',
-  'GOAL_KEY','GOALS_DONE_KEY','getGoalsDone','getGoal','updateGoal','BADGES_KEY','BADGES','loadBadges','gSnapshot','evaluateBadges',
+  'GOAL_KEY','GOALS_DONE_KEY','getGoalsDone','getGoal','updateGoal','TROPHIES_KEY','TROPHIES','loadTrophies','gSnapshot','evaluateTrophies',
   'sparkline','pctColor'];
 
 const SOURCE = ORDER.map(f => fs.readFileSync(path.join(JS_DIR, f + '.js'), 'utf8')).join('\n')
@@ -135,17 +135,33 @@ test('updateGoal : progression, justDone et compteur', () => { const {api}=fresh
   eq(api.getGoalsDone(),1);
   eq(api.updateGoal({mode:'express'}).justDone,false); }); // déjà fait
 
-console.log('Badges');
-test('evaluateBadges débloque selon les stats, sans doublon', () => { const {api}=freshEnv();
-  eq(api.evaluateBadges().length,0);
+console.log('Trophées');
+test('evaluateTrophies débloque selon les stats, sans doublon', () => { const {api}=freshEnv();
+  eq(api.evaluateTrophies().length,0);
   api.recordRun('express',45,45,400000); // 1 bilan, 100%, express<8min
-  const ids=api.evaluateBadges().map(b=>b.id);
+  const ids=api.evaluateTrophies().map(t=>t.id);
   ok(ids.includes('first')); ok(ids.includes('carton')); ok(ids.includes('eclair'));
-  eq(api.evaluateBadges().length,0); }); // rien de nouveau au 2e passage
+  eq(api.evaluateTrophies().length,0); }); // rien de nouveau au 2e passage
 test('gSnapshot reflète étoiles et série', () => { const {api}=freshEnv();
   for(let n=1;n<=5;n++) api.recordLessonResult(n,true);
   eq(api.gSnapshot().stars,5);
-  ok(api.evaluateBadges().map(b=>b.id).includes('stars5')); });
+  ok(api.evaluateTrophies().map(t=>t.id).includes('stars5')); });
+test('trophées à paliers compilés (metric/n → test)', () => { const {api}=freshEnv();
+  const def=api.TROPHIES.find(t=>t.id==='stars5');
+  ok(typeof def.test==='function'); ok(def.test({stars:5})); ok(!def.test({stars:4})); });
+test('migration depuis l’ancienne clé cm_ce2_badges', () => { const {api}=freshEnv();
+  api.lsSet('cm_ce2_badges',['first']);
+  ok(api.loadTrophies().includes('first')); }); // lue en secours
+
+console.log('Sprint');
+test('un sprint compte dans gSnapshot.sprints + trophée sprint1', () => { const {api}=freshEnv();
+  api.recordRun('sprint',12,15,300000);
+  eq(api.gSnapshot().sprints,1);
+  ok(api.evaluateTrophies().map(t=>t.id).includes('sprint1')); });
+test('objectif sprint validé en terminant un sprint', () => { const {api}=freshEnv();
+  api.lsSet(api.GOAL_KEY,{date:api.todayStr(),type:'sprint',target:1,label:'x',progress:0,done:false});
+  eq(api.updateGoal({mode:'complet'}).justDone,false);
+  eq(api.updateGoal({mode:'sprint',sprint:true}).justDone,true); });
 
 /* ---------- bilan ---------- */
 console.log(`\n${passed} réussis, ${failed} échoués\n`);

@@ -35,7 +35,7 @@ function verify(){
   // Enregistrement de l'essai (une seule fois par session)
   // → bilan complet/express : classement + médaille
   // → leçon seule : étoile si sans-faute
-  let medalInfo=null, starInfo=null, streakDays=0, goalRes=null, newBadges=[];
+  let medalInfo=null, starInfo=null, streakDays=0, goalRes=null, newTrophies=[];
   const celeb=[]; // récompenses à annoncer dans la modale
   if(recordable && enough && !sessionRecorded){
     sessionRecorded=true;
@@ -49,13 +49,13 @@ function verify(){
     }else{
       medalInfo=recordRun(currentMode,ok,inputs.length,ms);
     }
-    // Objectif du jour + badges (évalués après l'enregistrement de l'essai)
+    // Objectif du jour + trophées (évalués après l'enregistrement de l'essai)
     goalRes=updateGoal({mode:currentMode, newStar:!!(starInfo&&starInfo.newStar), perfect, isRecord:!!(medalInfo&&medalInfo.isRecord)});
-    newBadges=evaluateBadges();
+    newTrophies=evaluateTrophies();
     // Liste des récompenses obtenues (sert à la modale + confettis)
     if(medalInfo&&medalInfo.isRecord) celeb.push({icon:'🎉',text:'Nouveau record !'});
     if(starInfo&&starInfo.newStar) celeb.push({icon:'⭐',text:'Étoile gagnée pour cette leçon !'});
-    newBadges.forEach(b=>celeb.push({icon:b.icon,text:`Nouveau badge : ${b.title}`}));
+    newTrophies.forEach(t=>celeb.push({icon:t.icon,text:`Nouveau trophée : ${t.title}`}));
     if(goalRes&&goalRes.justDone) celeb.push({icon:'🎯',text:'Objectif du jour réussi !'});
   }
 
@@ -91,8 +91,8 @@ function verify(){
     msg+=streakSuffix(streakDays);
     html+=`<div class="rb-rank">${msg}</div>`;
   }
-  if(newBadges.length){
-    html+=`<div class="rb-badges">🏅 Nouveau badge : ${newBadges.map(b=>`${b.icon} ${b.title}`).join(' · ')} !</div>`;
+  if(newTrophies.length){
+    html+=`<div class="rb-trophies">🏆 Nouveau trophée : ${newTrophies.map(t=>`${t.icon} ${t.title}`).join(' · ')} !</div>`;
   }
   if(goalRes){
     if(goalRes.justDone) html+=`<div class="rb-goal">🎯 Objectif du jour réussi : ${goalRes.goal.label}</div>`;

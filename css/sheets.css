@@ -68,7 +68,7 @@
 .rb-medal .rb-medal-txt{font-size:16px;font-weight:800;color:var(--blue);}
 .rb-record{font-family:var(--ui);font-size:15px;font-weight:800;color:var(--warn);}
 .rb-rank{font-family:var(--ui);font-size:13px;color:var(--grey);width:100%;}
-.rb-badges{font-family:var(--ui);font-size:14px;font-weight:800;color:var(--warn);width:100%;}
+.rb-trophies{font-family:var(--ui);font-size:14px;font-weight:800;color:var(--warn);width:100%;}
 .rb-goal{font-family:var(--ui);font-size:13px;font-weight:700;color:#1b5e20;width:100%;}
 .rb-warn{font-family:var(--ui);font-size:13.5px;font-weight:700;color:var(--warn);
   background:var(--warn-bg);border:1px solid var(--warn-bd);border-radius:10px;padding:8px 14px;width:100%;}

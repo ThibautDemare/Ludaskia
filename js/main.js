@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('cardComplet').addEventListener('click',startComplet);
   document.getElementById('cardExpress').addEventListener('click',startExpress);
   document.getElementById('cardLecon').addEventListener('click',showLessons);
+  document.getElementById('cardSprint').addEventListener('click',startSprint);
   document.getElementById('backHome').addEventListener('click',goHome);
   document.getElementById('printLink').addEventListener('click',printAll);
 

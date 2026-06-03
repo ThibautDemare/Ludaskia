@@ -238,13 +238,14 @@ const fmtRecord=r=>`${r.ok}/${r.count} · ${fmt(r.ms)}`;
 /* Série de jours consécutifs */
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function daysBetween(a,b){return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
-function getStreak(){try{return JSON.parse(localStorage.getItem(STREAK_KEY))||{days:0,last:null};}catch(e){return {days:0,last:null};}}
+function getStreak(){try{return JSON.parse(localStorage.getItem(STREAK_KEY))||{days:0,last:null,max:0};}catch(e){return {days:0,last:null,max:0};}}
 function updateStreak(){
   const today=todayStr();let s=getStreak();
-  if(!s.last){s={days:1,last:today};}
+  if(!s.last){s={days:1,last:today,max:1};}
   else{const d=daysBetween(s.last,today);
     if(d===1){s.days++;s.last=today;}
     else if(d!==0){s.days=1;s.last=today;}}
+  s.max=Math.max(s.max||0,s.days); // record de série, jamais reperdu
   try{localStorage.setItem(STREAK_KEY,JSON.stringify(s));}catch(e){}
   return s;
 }
@@ -304,6 +305,89 @@ function recordLessonResult(num,perfect){
 }
 function starsEarned(){const s=loadStars();return LESSONS.filter(l=>(s[l.num]||0)>0).length;}
 
+/* ---------- Objectif du jour ---------- */
+const GOAL_KEY='cm_ce2_goal';
+const GOALS_DONE_KEY='cm_ce2_goalsDone';
+const GOAL_TYPES=[
+  {type:'express',       target:1, label:'Termine 1 bilan express.'},
+  {type:'star',          target:1, label:'Gagne 1 nouvelle étoile.'},
+  {type:'perfectLesson', target:1, label:'Réussis 1 leçon sans faute.'},
+  {type:'record',        target:1, label:'Bats un de tes records.'},
+  {type:'sessions',      target:3, label:"Fais 3 entraînements aujourd'hui."},
+];
+function getGoalsDone(){const v=parseInt(localStorage.getItem(GOALS_DONE_KEY)||'0',10);return isNaN(v)?0:v;}
+function getGoal(){
+  const today=todayStr();let goal=null;
+  try{goal=JSON.parse(localStorage.getItem(GOAL_KEY));}catch(e){}
+  if(!goal||goal.date!==today){ // nouvel objectif tiré une fois par jour
+    const def=GOAL_TYPES[Math.floor(Math.random()*GOAL_TYPES.length)];
+    goal={date:today,type:def.type,target:def.target,label:def.label,progress:0,done:false};
+    try{localStorage.setItem(GOAL_KEY,JSON.stringify(goal));}catch(e){}
+  }
+  return goal;
+}
+/* Met à jour l'objectif selon l'événement de la session. Renvoie {goal, justDone}. */
+function updateGoal(ev){
+  const goal=getGoal();
+  if(goal.done) return {goal,justDone:false};
+  let inc=0;
+  switch(goal.type){
+    case 'express':       if(ev.mode==='express') inc=1; break;
+    case 'star':          if(ev.newStar) inc=1; break;
+    case 'perfectLesson': if(ev.mode==='lecon'&&ev.perfect) inc=1; break;
+    case 'record':        if(ev.isRecord) inc=1; break;
+    case 'sessions':      inc=1; break; // chaque entraînement compte
+  }
+  if(inc>0){
+    goal.progress=Math.min(goal.target,goal.progress+inc);
+    if(goal.progress>=goal.target) goal.done=true;
+    try{localStorage.setItem(GOAL_KEY,JSON.stringify(goal));}catch(e){}
+  }
+  const justDone=goal.done; // on n'arrive ici que si l'objectif n'était pas encore atteint
+  if(justDone){try{localStorage.setItem(GOALS_DONE_KEY,String(getGoalsDone()+1));}catch(e){}}
+  return {goal,justDone};
+}
+
+/* ---------- Badges (succès cumulatifs, persistants une fois gagnés) ---------- */
+const BADGES_KEY='cm_ce2_badges';
+const BADGES=[
+  {id:'first',    icon:'🎉',title:'Premier pas',       desc:'Terminer un premier bilan.',         test:g=>g.totalRuns>=1},
+  {id:'streak3',  icon:'🔥',title:'Sérieux',           desc:'Une série de 3 jours.',              test:g=>g.maxStreak>=3},
+  {id:'streak7',  icon:'🔥',title:'En feu',            desc:'Une série de 7 jours.',              test:g=>g.maxStreak>=7},
+  {id:'stars5',   icon:'⭐',title:'Étoile montante',    desc:'5 leçons réussies sans faute.',      test:g=>g.stars>=5},
+  {id:'stars10',  icon:'🌟',title:"Chasseur d'étoiles", desc:'10 leçons réussies sans faute.',     test:g=>g.stars>=10},
+  {id:'stars15',  icon:'🏆',title:'Sans faute partout', desc:'Les 15 leçons étoilées.',            test:g=>g.stars>=15},
+  {id:'trained10',icon:'💪',title:'Entraîné',          desc:'10 bilans terminés.',                test:g=>g.totalRuns>=10},
+  {id:'eclair',   icon:'⚡',title:'Éclair',            desc:'Un bilan express en moins de 8 min.', test:g=>g.bestExpressMs<=480000},
+  {id:'carton',   icon:'💯',title:'Carton plein',      desc:'Un bilan réussi à 100 %.',           test:g=>g.perfectBilan},
+  {id:'champion', icon:'🥇',title:'Champion',          desc:"Décrocher une médaille d'or.",        test:g=>g.gold},
+  {id:'goal1',    icon:'🎯',title:'Premier défi',      desc:'Réussir un objectif du jour.',       test:g=>g.goalsDone>=1},
+  {id:'goal7',    icon:'🎯',title:'Persévérant',       desc:'Réussir 7 objectifs du jour.',       test:g=>g.goalsDone>=7},
+  {id:'goal30',   icon:'🏅',title:'Maître des défis',   desc:'Réussir 30 objectifs du jour.',      test:g=>g.goalsDone>=30},
+];
+function loadBadges(){try{return JSON.parse(localStorage.getItem(BADGES_KEY))||[];}catch(e){return [];}}
+/* Instantané des stats servant aux conditions de badges */
+function gSnapshot(){
+  const rc=loadRuns('complet'),re=loadRuns('express'),all=[...rc,...re];
+  const s=getStreak();
+  return {
+    totalRuns:all.length,
+    stars:starsEarned(),
+    maxStreak:s.max||s.days||0,
+    bestExpressMs:re.length?Math.min(...re.map(r=>r.ms)):Infinity,
+    perfectBilan:all.some(r=>r.count>0&&r.ok===r.count),
+    gold:rc.length>=3||re.length>=3, // un podium d'or existe dès 3 essais dans un mode
+    goalsDone:getGoalsDone(),
+  };
+}
+/* Débloque les badges nouvellement atteints ; renvoie les nouveaux. */
+function evaluateBadges(){
+  const g=gSnapshot();const set=new Set(loadBadges());const newly=[];
+  BADGES.forEach(b=>{if(!set.has(b.id)&&b.test(g)){set.add(b.id);newly.push(b);}});
+  if(newly.length){try{localStorage.setItem(BADGES_KEY,JSON.stringify([...set]));}catch(e){}}
+  return newly;
+}
+
 /* Rendu des statistiques sur l'écran d'accueil */
 function fillCardRecord(elId,mode){
   const el=document.getElementById(elId);if(!el)return;
@@ -341,6 +425,37 @@ function renderHomeStats(){
   if(recL){const n=starsEarned();recL.innerHTML=`⭐ <strong>${n}/${LESSONS.length}</strong> leçon${n>1?'s':''} réussie${n>1?'s':''} sans faute`;}
   const boards=document.getElementById('boards');
   if(boards) boards.innerHTML=boardHTML('complet','Bilan complet')+boardHTML('express','Bilan express');
+  renderGoal();
+  evaluateBadges(); // rattrape d'éventuels badges acquis (sans célébration ici)
+  renderBadges();
+}
+
+/* Objectif du jour */
+function renderGoal(){
+  const el=document.getElementById('goal');if(!el)return;
+  const g=getGoal();
+  if(g.done){
+    el.className='goal done';
+    el.innerHTML=`🎯 Objectif du jour réussi ! <span class="goal-lab">${g.label}</span> ✓`;
+  }else{
+    el.className='goal';
+    el.innerHTML=`🎯 Objectif du jour : <span class="goal-lab">${g.label}</span> <span class="goal-prog">(${g.progress}/${g.target})</span>`;
+  }
+}
+
+/* Vitrine des badges */
+function renderBadges(){
+  const el=document.getElementById('badges');if(!el)return;
+  const have=new Set(loadBadges());
+  const cells=BADGES.map(b=>{
+    const on=have.has(b.id);
+    return `<div class="badge ${on?'on':'off'}">
+      <span class="badge-ico">${on?b.icon:'🔒'}</span>
+      <span class="badge-title">${b.title}</span>
+      <span class="badge-desc">${b.desc}</span></div>`;
+  }).join('');
+  el.innerHTML=`<h3 class="badges-h">Mes badges <span class="badges-count">${have.size}/${BADGES.length}</span></h3>
+    <div class="badge-grid">${cells}</div>`;
 }
 
 /* Liste des 15 leçons avec leurs étoiles (écran « une leçon à la fois ») */
@@ -453,19 +568,23 @@ function verify(){
   // Enregistrement de l'essai (une seule fois par session)
   // → bilan complet/express : classement + médaille
   // → leçon seule : étoile si sans-faute
-  let medalInfo=null, starInfo=null, streakDays=0;
+  let medalInfo=null, starInfo=null, streakDays=0, goalRes=null, newBadges=[];
   if(currentMode && !sessionRecorded && inputs.length>0){
     sessionRecorded=true;
     streakDays=updateStreak().days;
+    let perfect=false;
     if(currentMode==='lecon'){
-      const perfect = ok===inputs.length; // toutes les réponses justes
+      perfect = ok===inputs.length; // toutes les réponses justes
       const res=recordLessonResult(currentLessonNum,perfect);
       starInfo={perfect, newStar:res.newStar, count:res.count};
-      if(res.newStar) confetti();
     }else{
       medalInfo=recordRun(currentMode,ok,inputs.length,ms);
-      if(medalInfo.isRecord) confetti();
     }
+    // Objectif du jour + badges (évalués après l'enregistrement de l'essai)
+    goalRes=updateGoal({mode:currentMode, newStar:!!(starInfo&&starInfo.newStar), perfect, isRecord:!!(medalInfo&&medalInfo.isRecord)});
+    newBadges=evaluateBadges();
+    // Une seule pluie de confettis si quelque chose est à fêter
+    if((medalInfo&&medalInfo.isRecord)||(starInfo&&starInfo.newStar)||goalRes.justDone||newBadges.length) confetti();
   }
 
   // Bandeau résultat en tête de la zone
@@ -496,6 +615,13 @@ function verify(){
       : `Il faut un sans-faute pour décrocher l'étoile de cette leçon. Réessaie ⭐`;
     if(streakDays>=2) msg+=` · 🔥 ${streakDays} jours d'affilée`;
     html+=`<div class="rb-rank">${msg}</div>`;
+  }
+  if(newBadges.length){
+    html+=`<div class="rb-badges">🏅 Nouveau badge : ${newBadges.map(b=>`${b.icon} ${b.title}`).join(' · ')} !</div>`;
+  }
+  if(goalRes){
+    if(goalRes.justDone) html+=`<div class="rb-goal">🎯 Objectif du jour réussi : ${goalRes.goal.label}</div>`;
+    else if(!goalRes.goal.done) html+=`<div class="rb-goal">🎯 Objectif du jour : ${goalRes.goal.label} (${goalRes.goal.progress}/${goalRes.goal.target})</div>`;
   }
   banner.innerHTML=html;
   const sheets=document.getElementById('sheets');

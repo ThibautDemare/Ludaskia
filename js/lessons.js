@@ -49,7 +49,8 @@ const LESSONS=[
 
   {num:11,title:"Ajouter, soustraire des dizaines et des centaines",sub:"J'ajoute ou je retire des paquets entiers.",consigne:"Calcule.",
    build(){const items=uniqueExact(()=>{const a=rnd(120,500),op=choice(['+','-']),b=choice([10,20,30,40,50]);return op==='+'?add(a,b):sub(a,b);},6)
-       .concat(uniqueExact(()=>{const a=rnd(150,600),op=choice(['+','-']),b=choice([100,200,300]);return op==='+'?add(a,b):sub(a,b);},6));
+       // Soustraction : le premier nombre doit rester ≥ au second (pas de résultat négatif au CE2).
+       .concat(uniqueExact(()=>{const b=choice([100,200,300]),op=choice(['+','-']);const a=op==='-'?rnd(b+20,640):rnd(150,600);return op==='+'?add(a,b):sub(a,b);},6));
      return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,3));}},
 
   {num:12,title:"Multiplier par 10, par 100",sub:"×10 j'ajoute un zéro · ×100 j'ajoute deux zéros.",consigne:"Calcule.",
@@ -94,7 +95,7 @@ function bilanQ(k){
     case 8: return half(choice([24,36,48,52,64,28,46,82,56,74,66,84]));
     case 9: return mul(rnd(2,12),25);
     case 10:return facteur(choice([2,3,4,5,6,10,12,15,20,30]),60);
-    case 11:{const a=rnd(120,500),op=choice(['+','-']),b=choice([10,20,30,40,100,200,300]);return op==='+'?add(a,b):sub(a,b);}
+    case 11:{const b=choice([10,20,30,40,100,200,300]),op=choice(['+','-']);const a=op==='-'?rnd(b+20,600):rnd(120,500);return op==='+'?add(a,b):sub(a,b);}
     case 12:return mul(rnd(2,40),choice([10,100]));
     case 13:return mul(rnd(3,15),choice([4,8]));
     case 14:return mul(rnd(2,12),choice([20,30,40]));

@@ -9,6 +9,9 @@
    - un sprint ne compte que s'il va au bout des 5 minutes
    ============================================================ */
 const SPRINT_MS=300000; // 5 minutes
+// Le sprint tire parmi les 15 leçons. La leçon 15 (« décomposer ») affiche
+// ses étapes intermédiaires (brouillon non corrigé) comme sur les fiches.
+const SPRINT_LESSONS=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
 
 let sprintActive=false, sprintPaused=false;
 let sprintRemaining=SPRINT_MS, sprintLastTick=0;
@@ -61,16 +64,28 @@ function sprintUpdateScore(){
 // Génère et affiche la prochaine question (en évitant un doublon immédiat).
 function sprintNext(){
   let q,key,guard=0;
-  do{ const k=rnd(1,15); q=bilanQ(k); q._lesson=k; key=commKey(q.text); guard++; }
+  do{ const k=choice(SPRINT_LESSONS); q=bilanQ(k); q._lesson=k; key=commKey(q.text); guard++; }
   while(key===sprintLastKey && guard<25);
   sprintLastKey=key; sprintCurrent=q;
   const stage=document.getElementById('sprintStage'); if(!stage) return;
+  const deco=q._lesson===15?' deco':'';
   stage.innerHTML=`
-    <div class="sprint-q">${escapeHTML(q.text).replace('@','<input id="sprintInput" class="sprint-input" inputmode="numeric" autocomplete="off">')}</div>
+    <div class="sprint-theme">${THEMES[q._lesson]}</div>
+    <div class="sprint-q${deco}">${sprintQuestionBody(q)}</div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintValidate">Valider</button></div>`;
   const val=document.getElementById('sprintValidate'); if(val) val.addEventListener('click',sprintSubmit);
-  const inp=document.getElementById('sprintInput');
-  if(inp){ inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sprintSubmit(); } }); inp.focus(); }
+  // Entrée valide depuis n'importe quel champ (utile pour la leçon 15 et ses étapes).
+  stage.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sprintSubmit(); } });
+  const first=stage.querySelector('input'); if(first) first.focus();
+}
+// Corps de la question : champ unique, sauf leçon 15 où l'on affiche la
+// décomposition avec des champs de brouillon (non corrigés) + le champ final.
+function sprintQuestionBody(q){
+  const main='<input id="sprintInput" class="sprint-input" inputmode="numeric" autocomplete="off">';
+  if(q._lesson!==15) return escapeHTML(q.text).replace('@',main);
+  const m=q.text.match(/(\d+)\s*×\s*(\d+)/); const a=+m[1], b=+m[2];
+  const free='<input class="sprint-free" inputmode="numeric" autocomplete="off">';
+  return `${a} × ${b} = (${free} × ${free}) + (${free} × ${free}) = ${free} + ${free} = ${main}`;
 }
 
 function sprintSubmit(){
@@ -96,6 +111,7 @@ function sprintShowCorrection(ans){
   sprintPaused=true;
   const stage=document.getElementById('sprintStage'); if(!stage) return;
   stage.innerHTML=`
+    <div class="sprint-theme">${THEMES[sprintCurrent._lesson]}</div>
     <div class="sprint-q wrong">${escapeHTML(sprintCurrent.text).replace('@','<span class="sprint-sol">'+ans+'</span>')}</div>
     <div class="sprint-correction">La bonne réponse était <strong>${ans}</strong>. Prends le temps de la lire.</div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintContinue">Continuer ▶</button></div>`;

@@ -24,7 +24,7 @@ const API = ['rnd','choice','sample','commKey','uniqueComm','uniqueExact','escap
   'STREAK_KEY','todayStr','daysBetween','getStreak','updateStreak','streakSuffix',
   'STARS_KEY','recordLessonResult','starsEarned','LESSON_STATS_KEY','loadLessonStats','recordLessonStats','lessonAvgPct',
   'GOAL_KEY','GOALS_DONE_KEY','getGoalsDone','getGoal','updateGoal','TROPHIES_KEY','TROPHIES','loadTrophies','gSnapshot','evaluateTrophies',
-  'sparkline','pctColor'];
+  'sparkline','pctColor','SPRINT_LESSONS','sprintQuestionBody'];
 
 const SOURCE = ORDER.map(f => fs.readFileSync(path.join(JS_DIR, f + '.js'), 'utf8')).join('\n')
   + `\n;globalThis.__api = { ${API.join(',')} };`;
@@ -90,6 +90,8 @@ test('bilan express : 45 champs tagués (3 par leçon)', () => { const {api}=fre
   eq([...h.matchAll(/data-lesson="7"/g)].length,3); });
 test('bilanQ renvoie un item valide pour chaque leçon', () => { const {api}=freshEnv();
   for(let k=1;k<=15;k++){const q=api.bilanQ(k);ok(q&&typeof q.text==='string'&&Number.isFinite(q.answer),'leçon '+k);} });
+test('aucun résultat négatif (hors-programme CE2)', () => { const {api}=freshEnv();
+  for(let k=1;k<=15;k++) for(let i=0;i<300;i++){ const q=api.bilanQ(k); ok(q.answer>=0,`leçon ${k} → ${q.answer}`); } });
 
 console.log('Records & classement');
 test('cmpRun : score puis temps', () => { const {api}=freshEnv();
@@ -162,6 +164,14 @@ test('objectif sprint validé en terminant un sprint', () => { const {api}=fresh
   api.lsSet(api.GOAL_KEY,{date:api.todayStr(),type:'sprint',target:1,label:'x',progress:0,done:false});
   eq(api.updateGoal({mode:'complet'}).justDone,false);
   eq(api.updateGoal({mode:'sprint',sprint:true}).justDone,true); });
+test('le sprint couvre les 15 leçons (15 incluse, avec étapes)', () => { const {api}=freshEnv();
+  ok(api.SPRINT_LESSONS.includes(15)); eq(api.SPRINT_LESSONS.length,15); });
+test('sprint leçon 15 : étapes intermédiaires + champ final', () => { const {api}=freshEnv();
+  const body15=api.sprintQuestionBody({text:'6 × 14 = @',answer:84,_lesson:15});
+  eq((body15.match(/sprint-free/g)||[]).length,6); // 6 champs de brouillon
+  eq((body15.match(/id="sprintInput"/g)||[]).length,1); // 1 champ final corrigé
+  const body7=api.sprintQuestionBody({text:'6 × 7 = @',answer:42,_lesson:7});
+  ok(!body7.includes('sprint-free')); ok(body7.includes('id="sprintInput"')); });
 
 /* ---------- bilan ---------- */
 console.log(`\n${passed} réussis, ${failed} échoués\n`);

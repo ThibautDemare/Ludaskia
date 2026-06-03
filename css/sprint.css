@@ -8,12 +8,22 @@
 
 .sprint-stage{background:var(--paper);border-radius:16px;padding:40px 26px;box-shadow:0 6px 22px rgba(0,0,0,.12);
   min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;}
+.sprint-theme{font-family:var(--ui);font-size:13px;font-weight:700;letter-spacing:.3px;
+  text-transform:uppercase;color:var(--blue);background:var(--blue-soft);
+  border-radius:999px;padding:4px 14px;}
 .sprint-q{font-family:Georgia,"Times New Roman",serif;font-size:30px;color:var(--ink);
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;}
 .sprint-q.wrong{color:var(--ko);}
 .sprint-input{font:inherit;font-family:Georgia,"Times New Roman",serif;font-size:30px;width:120px;text-align:center;
   border:0;border-bottom:3px solid var(--blue);background:var(--blue-soft);border-radius:6px 6px 0 0;padding:2px 6px;color:var(--ink);}
 .sprint-input:focus{outline:none;}
+/* Champ de brouillon (étapes de la leçon 15) : saisissable mais non corrigé */
+.sprint-free{font:inherit;font-family:Georgia,"Times New Roman",serif;font-size:20px;width:52px;text-align:center;
+  border:0;border-bottom:2px solid #999;background:transparent;padding:1px 3px;color:var(--ink);}
+.sprint-free:focus{outline:none;border-bottom-color:var(--blue);background:var(--blue-soft);}
+/* Leçon 15 « décomposer » : ligne plus longue → on réduit un peu */
+.sprint-q.deco{font-size:21px;line-height:2.2;}
+.sprint-q.deco .sprint-input{font-size:21px;width:84px;}
 .sprint-sol{color:var(--ok);font-weight:700;}
 .sprint-correction{font-size:16px;color:var(--grey);}
 .sprint-correction strong{color:var(--ok);}

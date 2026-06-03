@@ -203,9 +203,120 @@ function resetChrono(){
 }
 
 /* ============================================================
+   Gamification : records, médailles, série, progression
+   (tout est conservé dans le localStorage du navigateur)
+   ============================================================ */
+const RUNS_KEY=m=>`cm_ce2_runs_${m}`;
+const STREAK_KEY='cm_ce2_streak';
+const MAX_RUNS=50; // on ne garde que les 50 derniers essais par mode
+
+function loadRuns(mode){try{return JSON.parse(localStorage.getItem(RUNS_KEY(mode)))||[];}catch(e){return [];}}
+function saveRuns(mode,runs){try{localStorage.setItem(RUNS_KEY(mode),JSON.stringify(runs));}catch(e){}}
+
+/* Classement « score puis temps » : plus de bonnes réponses d'abord,
+   le chrono départage à égalité (le plus rapide gagne). */
+function cmpRun(a,b){return b.ok!==a.ok ? b.ok-a.ok : a.ms-b.ms;}
+const runPct=r=>r.count?Math.round(r.ok/r.count*100):0;
+const fmtRecord=r=>`${r.ok}/${r.count} · ${fmt(r.ms)}`;
+
+/* Série de jours consécutifs */
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function daysBetween(a,b){return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
+function getStreak(){try{return JSON.parse(localStorage.getItem(STREAK_KEY))||{days:0,last:null};}catch(e){return {days:0,last:null};}}
+function updateStreak(){
+  const today=todayStr();let s=getStreak();
+  if(!s.last){s={days:1,last:today};}
+  else{const d=daysBetween(s.last,today);
+    if(d===1){s.days++;s.last=today;}
+    else if(d!==0){s.days=1;s.last=today;}}
+  try{localStorage.setItem(STREAK_KEY,JSON.stringify(s));}catch(e){}
+  return s;
+}
+
+/* Enregistre l'essai courant et calcule médaille / rang / record */
+function recordRun(mode,ok,count,ms){
+  const run={ts:Date.now(),ok,count,ms};
+  const runs=loadRuns(mode);
+  const previous=[...runs];
+  runs.push(run);
+  if(runs.length>MAX_RUNS) runs.splice(0,runs.length-MAX_RUNS);
+  saveRuns(mode,runs);
+  const rank=[...runs].sort(cmpRun).indexOf(run)+1;
+  const isRecord=previous.length>0 && cmpRun(run,[...previous].sort(cmpRun)[0])<0;
+  const medal=(runs.length>=3 && rank<=3) ? rank : 0; // 1=or, 2=argent, 3=bronze
+  return {rank,total:runs.length,medal,isRecord};
+}
+
+/* Mini-courbe SVG de la progression (score % au fil des essais) */
+function sparkline(vals,w=260,h=46){
+  if(vals.length<2) return '';
+  const pad=4, iw=w-2*pad, ih=h-2*pad;
+  const x=i=>pad+(i/(vals.length-1))*iw;
+  const y=v=>pad+ih-(v/100)*ih;
+  const pts=vals.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const dots=vals.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.5" fill="var(--blue)"/>`).join('');
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Progression des scores">
+    <polyline fill="none" stroke="var(--blue)" stroke-width="2" points="${pts}"/>${dots}</svg>`;
+}
+
+/* Petite pluie de confettis (nouveau record) */
+function confetti(){
+  const colors=['#336CBF','#ffd54f','#2e7d32','#c62828','#00acc1','#ff8f00'];
+  const layer=document.createElement('div');layer.className='confetti-layer';
+  for(let i=0;i<90;i++){
+    const c=document.createElement('span');c.className='confetti';
+    c.style.left=(Math.random()*100).toFixed(1)+'vw';
+    c.style.background=colors[i%colors.length];
+    c.style.animationDelay=(Math.random()*0.6).toFixed(2)+'s';
+    c.style.animationDuration=(2+Math.random()*1.6).toFixed(2)+'s';
+    layer.appendChild(c);
+  }
+  document.body.appendChild(layer);
+  setTimeout(()=>layer.remove(),4200);
+}
+
+/* Rendu des statistiques sur l'écran d'accueil */
+function fillCardRecord(elId,mode){
+  const el=document.getElementById(elId);if(!el)return;
+  const runs=loadRuns(mode);
+  if(!runs.length){el.innerHTML=`<span class="muted">Aucun essai — à toi de jouer !</span>`;return;}
+  el.innerHTML=`🏅 Ton record : <strong>${fmtRecord([...runs].sort(cmpRun)[0])}</strong>`;
+}
+function boardHTML(mode,label){
+  const runs=loadRuns(mode);
+  if(!runs.length) return '';
+  const medals=['🥇','🥈','🥉'];
+  const top=[...runs].sort(cmpRun).slice(0,3);
+  const lis=top.map((r,i)=>`<li>${medals[i]} <strong>${r.ok}/${r.count}</strong> · ${fmt(r.ms)}</li>`).join('');
+  const reste=3-runs.length;
+  const note=reste>0?`<p class="lb-note">Encore ${reste} essai${reste>1?'s':''} pour débloquer les médailles.</p>`:'';
+  const spark=runs.length>=2?`<div class="spark-wrap"><span class="spark-lab">Progression (score %)</span>${sparkline(runs.map(runPct))}</div>`:'';
+  return `<div class="lb">
+    <h3>${label}</h3>
+    <ol class="podium">${lis}</ol>
+    ${note}${spark}
+    <p class="lb-count">${runs.length} essai${runs.length>1?'s':''} enregistré${runs.length>1?'s':''}</p>
+  </div>`;
+}
+function renderHomeStats(){
+  const s=getStreak();
+  const streakEl=document.getElementById('streak');
+  if(streakEl){
+    if(s.days>=2){streakEl.textContent=`🔥 Série : ${s.days} jours d'affilée !`;streakEl.style.display='';}
+    else if(s.days===1){streakEl.textContent=`🔥 Série lancée — reviens demain pour la prolonger !`;streakEl.style.display='';}
+    else{streakEl.style.display='none';}
+  }
+  fillCardRecord('recComplet','complet');
+  fillCardRecord('recExpress','express');
+  const boards=document.getElementById('boards');
+  if(boards) boards.innerHTML=boardHTML('complet','Bilan complet')+boardHTML('express','Bilan express');
+}
+
+/* ============================================================
    Navigation : accueil / sessions
    ============================================================ */
 let currentMode=null; // 'complet' | 'express' | null
+let sessionRecorded=false; // l'essai en cours a-t-il déjà été enregistré ?
 
 // Construit le contenu COMPLET pour l'impression (toujours présent dans le DOM).
 // En interactif on n'affiche qu'une partie via masquage, mais pour rester simple
@@ -223,6 +334,8 @@ function goHome(){
   document.getElementById('sheets').innerHTML='';
   const sc=document.getElementById('score'); sc.classList.add('hidden'); sc.textContent='';
   document.getElementById('btnVerify').disabled=true;
+  const old=document.getElementById('resultBanner'); if(old) old.remove();
+  renderHomeStats();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -242,6 +355,7 @@ function startExpress(){
   afterStart();
 }
 function afterStart(){
+  sessionRecorded=false;
   document.getElementById('home').style.display='none';
   const sc=document.getElementById('score'); sc.classList.add('hidden'); sc.textContent='';
   document.getElementById('btnVerify').disabled=false;
@@ -266,14 +380,35 @@ function verify(){
     if(Number(raw)===Number(inp.dataset.answer)){ok++;inp.classList.add('correct');if(mark){mark.className='mark correct';mark.textContent='✓';}}
     else{inp.classList.add('wrong');if(mark){mark.className='mark wrong';mark.textContent='✗';}}
   });
+  // Enregistrement de l'essai (une seule fois par session) + médaille / record
+  let medalInfo=null, streakDays=0;
+  if(currentMode && !sessionRecorded && inputs.length>0){
+    sessionRecorded=true;
+    streakDays=updateStreak().days;
+    medalInfo=recordRun(currentMode,ok,inputs.length,ms);
+    if(medalInfo.isRecord) confetti();
+  }
+
   // Bandeau résultat en tête de la zone
   const old=document.getElementById('resultBanner'); if(old) old.remove();
   const banner=document.createElement('div');
   banner.className='result-banner screen-only'; banner.id='resultBanner';
   const note = total>0 ? Math.round(ok/total*100) : 0;
-  banner.innerHTML=`<span class="rb-big">${ok}/${total}</span>
+  let html=`<span class="rb-big">${ok}/${total}</span>
     <span class="rb-sub">bonnes réponses (${note}%)${vides>0?` · ${vides} non remplie${vides>1?'s':''}`:''}<br>
     Temps : <strong>${fmt(ms)}</strong></span>`;
+  if(medalInfo){
+    if(medalInfo.medal){
+      const M={1:['🥇',"Médaille d'or"],2:['🥈',"Médaille d'argent"],3:['🥉','Médaille de bronze']}[medalInfo.medal];
+      html+=`<div class="rb-medal"><span class="rb-medal-ico">${M[0]}</span><span class="rb-medal-txt">${M[1]} !</span></div>`;
+    }
+    if(medalInfo.isRecord) html+=`<div class="rb-record">🎉 Nouveau record !</div>`;
+    let rk=`C'est ton ${medalInfo.rank}<sup>${medalInfo.rank===1?'er':'e'}</sup> meilleur essai sur ${medalInfo.total}.`;
+    if(medalInfo.total<3) rk+=` Encore ${3-medalInfo.total} pour décrocher une médaille !`;
+    if(streakDays>=2) rk+=` · 🔥 ${streakDays} jours d'affilée`;
+    html+=`<div class="rb-rank">${rk}</div>`;
+  }
+  banner.innerHTML=html;
   const sheets=document.getElementById('sheets');
   sheets.parentNode.insertBefore(banner,sheets);
   // petit rappel dans la barre
@@ -341,6 +476,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('cardExpress').addEventListener('click',startExpress);
   document.getElementById('printLink').addEventListener('click',printAll);
 
-  // Au chargement : zone vide (accueil affiché).
+  // Au chargement : zone vide (accueil affiché) + stats de gamification.
   document.getElementById('sheets').innerHTML='';
+  renderHomeStats();
 });

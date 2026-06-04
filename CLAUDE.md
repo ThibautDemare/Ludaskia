@@ -129,6 +129,8 @@ Clés par profil : `ludaskia_runs_{complet,express,sprint}`, `ludaskia_streak`,
 - **UI et commentaires en français.**
 - Toujours passer par `lsGet/lsSet` pour le stockage (jamais `localStorage`
   directement, sauf accès bruts dédiés dans `storage.js`).
+- **Process de contribution : voir `CONTRIBUTING.md`** (branche → PR → rebase-merge,
+  Conventional Commits en anglais, `main` protégée).
 - **Commits : ne pas ajouter d'attribution Claude / `Co-Authored-By` / « Generated
   with Claude Code ».**
 

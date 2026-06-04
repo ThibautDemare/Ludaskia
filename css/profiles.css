@@ -1,12 +1,15 @@
-/* Barre de profils sur l'accueil */
-.profile-bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin-bottom:18px;}
-.profile-chip{font:inherit;font-family:var(--ui);font-size:14px;font-weight:700;cursor:pointer;
-  border:1px solid #d4dbe6;background:#fff;color:var(--grey);border-radius:999px;padding:6px 14px;
-  transition:border-color .15s ease,box-shadow .15s ease,color .15s ease;}
-.profile-chip:hover{border-color:var(--blue);color:var(--blue);}
-.profile-chip.active{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 3px 8px rgba(51,108,191,.3);}
-.profile-manage{font:inherit;font-family:var(--ui);font-size:13px;cursor:pointer;border:0;background:transparent;
-  color:var(--blue);text-decoration:underline;padding:6px 8px;}
+/* Liste déroulante de profils (ancrée sous le bouton de la barre d'outils) */
+.profile-dd{position:relative;display:inline-flex;}
+.profile-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:50;min-width:190px;
+  background:var(--paper);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);
+  padding:6px;display:flex;flex-direction:column;gap:2px;}
+.profile-menu[hidden]{display:none;}
+.pm-item{font:inherit;font-family:var(--ui);font-size:14px;font-weight:600;text-align:left;cursor:pointer;
+  border:0;background:transparent;color:var(--ink);border-radius:8px;padding:9px 12px;display:flex;align-items:center;gap:8px;}
+.pm-item:hover{background:var(--blue-soft);}
+.pm-item.active{color:var(--blue);font-weight:800;}
+.pm-check{margin-left:auto;color:var(--blue);}
+.pm-manage{border-top:1px solid #eef1f5;border-radius:0 0 8px 8px;margin-top:2px;color:var(--blue);font-weight:700;}
 
 /* Écran de gestion des profils */
 .profile-list{display:flex;flex-direction:column;gap:12px;text-align:left;margin-top:14px;}

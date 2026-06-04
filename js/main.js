@@ -1,3 +1,8 @@
+/* ---------- Liste déroulante de profils (barre d'outils) ---------- */
+function openProfileMenu(){ const el=document.getElementById('profileMenu'); if(!el) return; renderProfileMenu(); el.hidden=false; }
+function closeProfileMenu(){ const el=document.getElementById('profileMenu'); if(el) el.hidden=true; }
+function toggleProfileMenu(){ const el=document.getElementById('profileMenu'); if(!el) return; el.hidden?openProfileMenu():closeProfileMenu(); }
+
 /* ============================================================
    Initialisation : câblage des événements au chargement
    ============================================================ */
@@ -13,12 +18,18 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('backHomeProfils').addEventListener('click',goHome);
   document.getElementById('printLink').addEventListener('click',printAll);
 
-  // Barre de profils (accueil) : bascule de profil + accès à la gestion
-  document.getElementById('profileBar').addEventListener('click',e=>{
-    const chip=e.target.closest('.profile-chip');
-    if(chip){ setActiveProfile(chip.dataset.pid); showHomeView(); return; } // déjà sur l'accueil → re-rendu direct
-    if(e.target.closest('#profileManage')) showProfiles();
+  // Bouton profil de la barre : ouvre/ferme la liste déroulante
+  document.getElementById('toolbarProfile').addEventListener('click',e=>{ e.stopPropagation(); toggleProfileMenu(); });
+  // Menu déroulant : bascule de profil (clic = profil actif) ou accès à la gestion
+  document.getElementById('profileMenu').addEventListener('click',e=>{
+    const btn=e.target.closest('button'); if(!btn) return;
+    closeProfileMenu();
+    if(btn.id==='pmManage'){ showProfiles(); return; }
+    if(btn.dataset.pid){ setActiveProfile(btn.dataset.pid); route(); } // re-rendu de la vue courante avec le nouveau profil
   });
+  // Clic en dehors → ferme le menu
+  document.addEventListener('click',e=>{ if(!e.target.closest('#profileDD')) closeProfileMenu(); });
+
   // Écran de gestion des profils (délégation)
   document.getElementById('profileList').addEventListener('click',e=>{
     const btn=e.target.closest('button'); if(!btn) return;
@@ -44,7 +55,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('celebrateOk').addEventListener('click',hideCelebration);
   document.getElementById('celebrateClose').addEventListener('click',hideCelebration);
   document.getElementById('celebrate').addEventListener('click',e=>{ if(e.target.id==='celebrate') hideCelebration(); });
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape') hideCelebration(); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ hideCelebration(); closeProfileMenu(); } });
 
   // Précédent/Suivant du navigateur → on rejoue la vue correspondante
   window.addEventListener('hashchange',route);

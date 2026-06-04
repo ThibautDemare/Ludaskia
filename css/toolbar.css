@@ -11,6 +11,10 @@
 .btn-accent:hover{box-shadow:0 3px 8px rgba(0,0,0,.25);}
 .btn-ghost{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.5)!important;}
 .btn-ghost:hover{background:rgba(255,255,255,.26);}
+/* Indicateur de profil (ouvre la gestion des profils) */
+.btn-profile{background:rgba(255,255,255,.16);color:#fff;display:inline-flex;align-items:center;gap:6px;}
+.btn-profile:hover{background:rgba(255,255,255,.28);}
+.btn-profile-caret{opacity:.8;font-size:11px;}
 .toolbar button:active{transform:translateY(1px);}
 .toolbar button[disabled]{background:#c7cdd6!important;color:#8a8f99!important;
   border-color:transparent!important;box-shadow:none!important;cursor:default;}

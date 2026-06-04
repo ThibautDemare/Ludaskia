@@ -19,6 +19,10 @@
 
 <div class="toolbar">
   <h1>Calcul mental CE2</h1>
+  <div class="profile-dd" id="profileDD">
+    <button class="btn-profile" id="toolbarProfile" style="display:none" title="Changer / gérer les profils"></button>
+    <div class="profile-menu" id="profileMenu" hidden></div>
+  </div>
   <span class="chrono hidden" id="chrono">00:00</span>
   <span class="score hidden" id="score"></span>
   <button class="btn-accent" id="btnVerify" style="display:none">✓ Vérifier</button>
@@ -28,7 +32,6 @@
 
 <!-- Écran d'accueil (interactif) -->
 <div class="home screen-only" id="home">
-  <div class="profile-bar" id="profileBar"></div>
   <div class="big">Calcul mental — CE2</div>
   <div class="tagline">Entraînement chronométré · 15 leçons</div>
   <div class="objectives" id="objectives"></div>

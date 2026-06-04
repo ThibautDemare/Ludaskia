@@ -5,12 +5,18 @@
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
 const pctColor=p=>p<50?'#c62828':(p<75?'#ef6c00':'#2e7d32');
 
-/* Barre de profils sur l'accueil : un chip par profil (clic = bascule) + Gérer */
-function renderProfileBar(){
-  const el=document.getElementById('profileBar'); if(!el) return;
+/* Bouton de profil dans la barre d'outils (libellé = profil actif) */
+function renderToolbarProfile(){
+  const el=document.getElementById('toolbarProfile'); if(!el) return;
+  const p=activeProfile(); if(!p) return;
+  el.innerHTML=`${p.emoji} ${escapeHTML(p.name)} <span class="btn-profile-caret">▾</span>`;
+}
+/* Menu déroulant : liste des profils (clic = bascule) + accès à la gestion */
+function renderProfileMenu(){
+  const el=document.getElementById('profileMenu'); if(!el) return;
   const m=loadProfilesMeta(); if(!m) return;
-  const chips=m.list.map(p=>`<button class="profile-chip${p.id===m.active?' active':''}" data-pid="${p.id}">${p.emoji} ${escapeHTML(p.name)}</button>`).join('');
-  el.innerHTML=`${chips}<button class="profile-manage" id="profileManage">⚙️ Gérer</button>`;
+  el.innerHTML=m.list.map(p=>`<button class="pm-item${p.id===m.active?' active':''}" data-pid="${p.id}">${p.emoji} ${escapeHTML(p.name)}${p.id===m.active?' <span class="pm-check">✓</span>':''}</button>`).join('')
+    +`<button class="pm-item pm-manage" id="pmManage">⚙️ Gérer les profils</button>`;
 }
 /* Écran de gestion des profils */
 function renderProfiles(){
@@ -31,6 +37,7 @@ function renderProfiles(){
       </span>
     </div>`).join('')
     +`<button class="profile-add" id="profileAdd">＋ Nouveau profil</button>`;
+  renderToolbarProfile(); // garde le bouton de la barre synchronisé
 }
 
 /* Record perso affiché sur une carte de l'accueil */
@@ -77,7 +84,6 @@ function boardHTML(mode,label){
   </div>`;
 }
 function renderHomeStats(){
-  renderProfileBar();
   fillCardRecord('recComplet','complet');
   fillCardRecord('recExpress','express');
   const recL=document.getElementById('recLecon');

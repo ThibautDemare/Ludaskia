@@ -52,12 +52,16 @@ function route(){
 
 /* Visibilité des boutons de la barre :
    - Vérifier : seulement pendant un exercice
-   - Accueil : partout sauf sur l'accueil lui-même */
-function setToolbar({verify,home}){
+   - Accueil : partout sauf sur l'accueil lui-même
+   - Profil : sur les écrans « menu » (pas pendant un exercice) */
+function setToolbar({verify,home,profile}){
   const v=document.getElementById('btnVerify');
   const h=document.getElementById('btnHome');
+  const p=document.getElementById('toolbarProfile');
   v.style.display=verify?'':'none'; v.disabled=!verify;
   h.style.display=home?'':'none';
+  if(p){ p.style.display=profile?'':'none'; if(profile) renderToolbarProfile(); }
+  closeProfileMenu(); // tout changement de vue referme le menu déroulant
 }
 
 // Remet l'UI dans l'état « hors session » (commun à l'accueil et au sélecteur)
@@ -78,7 +82,7 @@ function hideMenus(){
 // Rendus des vues (sans toucher à l'historique)
 function showHomeView(){
   resetSessionUI();
-  setToolbar({verify:false,home:false}); // accueil : ni Vérifier ni Accueil
+  setToolbar({verify:false,home:false,profile:true}); // accueil : profil visible, ni Vérifier ni Accueil
   hideMenus();
   document.getElementById('home').style.display='';
   renderHomeStats();
@@ -86,7 +90,7 @@ function showHomeView(){
 }
 function showLessonsView(){
   resetSessionUI();
-  setToolbar({verify:false,home:true}); // sélecteur : Accueil visible, pas Vérifier
+  setToolbar({verify:false,home:true,profile:true}); // sélecteur : Accueil + profil
   hideMenus();
   renderLessons();
   document.getElementById('lessons').style.display='';
@@ -94,7 +98,7 @@ function showLessonsView(){
 }
 function showProfilesView(){
   resetSessionUI();
-  setToolbar({verify:false,home:true});
+  setToolbar({verify:false,home:true,profile:true});
   hideMenus();
   renderProfiles();
   document.getElementById('profils').style.display='';
@@ -138,7 +142,7 @@ function afterStart(){
   sessionRecorded=false;
   hideMenus();
   const sc=document.getElementById('score'); sc.classList.add('hidden'); sc.textContent='';
-  setToolbar({verify:true,home:true}); // en exercice : Vérifier + Accueil visibles
+  setToolbar({verify:true,home:true,profile:false}); // en exercice : pas de bouton profil
   startChrono();
   window.scrollTo({top:0,behavior:'smooth'});
   // Confort de saisie : on place le curseur sur le premier calcul.

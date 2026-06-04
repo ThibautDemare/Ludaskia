@@ -4,7 +4,7 @@
    automatiquement préfixées par le profil actif (sauf la clé méta des
    profils), ce qui isole la progression de chaque enfant.
    ============================================================ */
-const PROFILES_KEY='cm_ce2_profiles'; // clé globale (jamais préfixée)
+const PROFILES_KEY='ludaskia_profiles'; // clé globale (jamais préfixée)
 let activePrefix=''; // préfixe du profil actif ('' = profil hérité / par défaut)
 function setActivePrefix(p){ activePrefix=p||''; }
 function realKey(key){ return key===PROFILES_KEY?key:activePrefix+key; }
@@ -23,4 +23,4 @@ function lsKeysRaw(){ const o=[]; try{for(let i=0;i<localStorage.length;i++) o.p
 function lsRemoveRaw(realK){ try{localStorage.removeItem(realK);}catch(e){} }
 function lsSetRaw(realK,rawValue){ try{localStorage.setItem(realK,rawValue);}catch(e){} }
 /* Toutes les clés de l'appli (tous profils confondus) */
-function appKeys(){ return lsKeysRaw().filter(k=>k.includes('cm_ce2_')); }
+function appKeys(){ return lsKeysRaw().filter(k=>k.includes('ludaskia_')); }

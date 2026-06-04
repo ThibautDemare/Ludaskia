@@ -1,6 +1,6 @@
 /* ============================================================
-   Tests du module « Calcul mental CE2 » (sans dépendance).
-   Lancer :  node exercices/tests/run.js
+   Tests du module « Ludaskia » (sans dépendance).
+   Lancer :  node tests/run.js
    ------------------------------------------------------------
    Les fichiers js/ sont des scripts classiques partageant la
    portée globale. On les charge dans un contexte vm avec des
@@ -155,7 +155,7 @@ test('updateGoal : progression, justDone et compteur', () => { const {api}=fresh
 console.log('Objectifs de régularité');
 test('countSince compte les essais d’une période', () => { const {api}=freshEnv();
   const now=Date.now();
-  api.lsSet('cm_ce2_runs_sprint',[{ts:now,ok:1,count:1,ms:1},{ts:now-40*86400000,ok:1,count:1,ms:1}]);
+  api.lsSet('ludaskia_runs_sprint',[{ts:now,ok:1,count:1,ms:1},{ts:now-40*86400000,ok:1,count:1,ms:1}]);
   eq(api.countSince('sprint',now-7*86400000),1); // un seul dans les 7 derniers jours
   ok(api.startOfWeek()<=now && api.startOfMonth()<=now); });
 test('REGULARITY : 3 sprints/semaine, 2 express/mois, 1 complet/mois', () => { const {api}=freshEnv();
@@ -188,9 +188,6 @@ test('trophées de volume cumulé', () => { const {api}=freshEnv();
 test('trophées à paliers compilés (metric/n → test)', () => { const {api}=freshEnv();
   const def=api.TROPHIES.find(t=>t.id==='stars5');
   ok(typeof def.test==='function'); ok(def.test({stars:5})); ok(!def.test({stars:4})); });
-test('migration depuis l’ancienne clé cm_ce2_badges', () => { const {api}=freshEnv();
-  api.lsSet('cm_ce2_badges',['first']);
-  ok(api.loadTrophies().includes('first')); }); // lue en secours
 
 console.log('Sprint');
 test('un sprint compte dans gSnapshot.sprints + trophée sprint1', () => { const {api}=freshEnv();
@@ -240,7 +237,7 @@ test('supprimer un profil (mais pas le dernier)', () => { const {api}=freshEnv()
   ok(!api.deleteProfile(api.activeProfile().uuid)); }); // on garde au moins un profil
 
 console.log('Sauvegarde (export / import par profil)');
-const BK=ps=>({app:'calcul-mental-ce2',version:2,profiles:ps});
+const BK=ps=>({app:'ludaskia',version:2,profiles:ps});
 test('exporter un profil', () => { const {api}=freshEnv();
   const u=api.activeProfile().uuid;
   api.recordRun('sprint',5,5,300000);
@@ -250,17 +247,17 @@ test('exporter un profil', () => { const {api}=freshEnv();
 test('importer un profil inconnu → ajouté', () => { const {api}=freshEnv();
   const before=api.listProfiles().length;
   const res=api.importProfiles(BK([{uuid:'X',name:'Lou',emoji:'🦄',updatedAt:1000,
-    data:{'cm_ce2_runs_sprint':JSON.stringify([{ts:1,ok:3,count:3,ms:300000}])}}]));
+    data:{'ludaskia_runs_sprint':JSON.stringify([{ts:1,ok:3,count:3,ms:300000}])}}]));
   eq(res.added,1); eq(api.listProfiles().length,before+1);
   api.setActiveProfile('X'); eq(api.loadRuns('sprint').length,1); });
 test('import : écrase si plus récent, ignore si plus ancien (par UUID)', () => { const {api}=freshEnv();
-  api.importProfiles(BK([{uuid:'X',name:'Lou',emoji:'🦄',updatedAt:1000,data:{'cm_ce2_stars':JSON.stringify({1:1})}}]));
-  let res=api.importProfiles(BK([{uuid:'X',name:'Vieux',updatedAt:500,data:{'cm_ce2_stars':JSON.stringify({1:1,2:1,3:1})}}]));
+  api.importProfiles(BK([{uuid:'X',name:'Lou',emoji:'🦄',updatedAt:1000,data:{'ludaskia_stars':JSON.stringify({1:1})}}]));
+  let res=api.importProfiles(BK([{uuid:'X',name:'Vieux',updatedAt:500,data:{'ludaskia_stars':JSON.stringify({1:1,2:1,3:1})}}]));
   eq(res.skipped,1); api.setActiveProfile('X'); eq(api.starsEarned(),1); // inchangé (local plus récent)
-  res=api.importProfiles(BK([{uuid:'X',name:'Neuf',updatedAt:2000,data:{'cm_ce2_stars':JSON.stringify({1:1,2:1,3:1})}}]));
+  res=api.importProfiles(BK([{uuid:'X',name:'Neuf',updatedAt:2000,data:{'ludaskia_stars':JSON.stringify({1:1,2:1,3:1})}}]));
   eq(res.updated,1); api.setActiveProfile('X'); eq(api.starsEarned(),3); }); // écrasé
 test('importProfiles rejette un format invalide', () => { const {api}=freshEnv();
-  ok(!api.importProfiles(null)); ok(!api.importProfiles({app:'autre'})); ok(!api.importProfiles({app:'calcul-mental-ce2'})); });
+  ok(!api.importProfiles(null)); ok(!api.importProfiles({app:'autre'})); ok(!api.importProfiles({app:'ludaskia'})); });
 
 /* ---------- bilan ---------- */
 console.log(`\n${passed} réussis, ${failed} échoués\n`);

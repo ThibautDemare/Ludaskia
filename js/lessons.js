@@ -121,7 +121,7 @@ function bilanHTML(numero){
        <span class="print-only">Prénom : __________   Date : ________</span></p>
     <p class="bilan-temps print-only">Temps total : ______ min</p>
     <div class="bilan-grid">${cells}</div>
-    <p class="foot">Calcul mental CE2</p>
+    <p class="foot">Ludaskia</p>
   </div>`;
 }
 
@@ -130,7 +130,7 @@ function bilanHTML(numero){
    ============================================================ */
 function coverHTML(){
   return `<div class="page cover print-only">
-    <div class="big">Calcul mental — CE2</div>
+    <div class="big">Ludaskia</div>
     <div class="tagline">Fiches d'entraînement en autonomie · 15 ateliers</div>
     <div class="idbox"><div>Prénom : ______________________</div><div>Date : ______________________</div></div>
     <p class="consigne">Comment faire ? Je calcule de tête le plus vite possible, puis j'écris le résultat.
@@ -140,7 +140,7 @@ function coverHTML(){
 function fichesPagesHTML(fiches){
   const perPage=3;const pages=[];
   for(let i=0;i<fiches.length;i+=perPage){
-    pages.push(`<div class="page">${fiches.slice(i,i+perPage).join('')}<p class="foot">Calcul mental CE2</p></div>`);
+    pages.push(`<div class="page">${fiches.slice(i,i+perPage).join('')}<p class="foot">Ludaskia</p></div>`);
   }
   return pages.join('');
 }

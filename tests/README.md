@@ -1,9 +1,9 @@
-# Tests — Calcul mental CE2
+# Tests — Ludaskia
 
 Tests de la logique (génération, persistance, récompenses), sans dépendance.
 
 ```bash
-node exercices/tests/run.js
+node tests/run.js
 ```
 
 Sortie : liste des cas (✓/✗) puis un bilan ; le code de sortie vaut `1` si un test échoue

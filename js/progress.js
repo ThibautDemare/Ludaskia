@@ -4,7 +4,7 @@
    ============================================================ */
 
 /* ---------- Records de bilans (classement) ---------- */
-const RUNS_KEY=m=>`cm_ce2_runs_${m}`;
+const RUNS_KEY=m=>`ludaskia_runs_${m}`;
 const MAX_RUNS=50; // on ne garde que les 50 derniers essais par mode
 function loadRuns(mode){return lsGet(RUNS_KEY(mode),[]);}
 function saveRuns(mode,runs){lsSet(RUNS_KEY(mode),runs);}
@@ -37,7 +37,7 @@ function recordRun(mode,ok,count,ms){
 }
 
 /* ---------- Série de jours consécutifs ---------- */
-const STREAK_KEY='cm_ce2_streak';
+const STREAK_KEY='ludaskia_streak';
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function daysBetween(a,b){return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
 function getStreak(){return lsGet(STREAK_KEY,{days:0,last:null,max:0});}
@@ -55,7 +55,7 @@ function updateStreak(){
 const streakSuffix=days=>days>=2?` · 🔥 ${days} jours d'affilée`:'';
 
 /* ---------- Étoiles par leçon (1 dès le premier sans-faute) ---------- */
-const STARS_KEY='cm_ce2_stars';
+const STARS_KEY='ludaskia_stars';
 function loadStars(){return lsGet(STARS_KEY,{});}
 function saveStars(s){lsSet(STARS_KEY,s);}
 function recordLessonResult(num,perfect){
@@ -70,7 +70,7 @@ function starsEarned(){const s=loadStars();return LESSONS.filter(l=>(s[l.num]||0
 /* ---------- Stats de réussite par leçon ----------
    Agrégées sur tous les contextes (leçon seule, bilan complet, express).
    Sert à repérer les thèmes à retravailler. */
-const LESSON_STATS_KEY='cm_ce2_lessonStats';
+const LESSON_STATS_KEY='ludaskia_lessonStats';
 function loadLessonStats(){return lsGet(LESSON_STATS_KEY,{});}
 function recordLessonStats(perLesson){
   const s=loadLessonStats();

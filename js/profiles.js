@@ -7,7 +7,7 @@
    Aucune migration : en prod on part d'un profil vierge.
    ============================================================ */
 const PROFILE_EMOJIS=['🐧','🦊','🐼','🐯','🦁','🐸','🐙','🦉','🐝','🦄','🐱','🐶'];
-const EXPORT_APP='calcul-mental-ce2';
+const EXPORT_APP='ludaskia';
 
 function genUuid(){
   try{ return crypto.randomUUID(); }
@@ -66,7 +66,7 @@ function cycleProfileEmoji(uuid){
 }
 // Efface les données d'un profil (clés sous son préfixe), sauf la méta.
 function clearProfileData(prefix){
-  lsKeysRaw().filter(k=>k!==PROFILES_KEY && k.startsWith(prefix+'cm_ce2_')).forEach(lsRemoveRaw);
+  lsKeysRaw().filter(k=>k!==PROFILES_KEY && k.startsWith(prefix+'ludaskia_')).forEach(lsRemoveRaw);
 }
 function resetProfile(uuid){
   const m=loadProfilesMeta(); const p=m&&m.list.find(x=>x.uuid===uuid); if(!p) return;

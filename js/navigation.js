@@ -124,7 +124,7 @@ function runLecon(num){
   currentMode='lecon'; currentLessonNum=num;
   inputCounter=0; sessionItems={};
   renderLesson=num; const fiche=lesson.build(); renderLesson=null;
-  document.getElementById('sheets').innerHTML=`<div class="page">${fiche}<p class="foot">Calcul mental CE2</p></div>`;
+  document.getElementById('sheets').innerHTML=`<div class="page">${fiche}<p class="foot">Ludaskia</p></div>`;
   afterStart();
 }
 /* Révision : on rejoue uniquement les items ratés (aucun enregistrement). */
@@ -135,7 +135,7 @@ function runRevision(items){
   document.getElementById('sheets').innerHTML=`<div class="page">
     <p class="fiche-title">Révision — tes erreurs</p>
     <p class="fiche-sub">Reprends les calculs que tu n'avais pas réussis.</p>
-    ${grid}<p class="foot">Calcul mental CE2</p></div>`;
+    ${grid}<p class="foot">Ludaskia</p></div>`;
   afterStart();
 }
 function afterStart(){

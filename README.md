@@ -4,6 +4,8 @@
 légère (HTML/CSS/JS, sans installation) pour s'exercer en autonomie — pensée
 au départ pour le **CE2**.
 
+👉 **[Jouer en ligne](https://thibautdemare.github.io/Ludaskia/)**
+
 ## Ce qu'on peut faire
 - **Bilan complet** — les 15 leçons, une douzaine de calculs chacune.
 - **Bilan express** — 3 calculs par leçon, en ~15 minutes.

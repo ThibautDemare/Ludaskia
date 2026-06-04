@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     const d=new Date().toISOString().slice(0,10);
     const slug=s=>(s||'profil').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
     const name=uuids.length===1?slug(payload.profiles[0].name):`${uuids.length}-profils`;
-    downloadJSON(`calcul-mental-${name}-${d}.json`,payload);
+    downloadJSON(`ludaskia-${name}-${d}.json`,payload);
   });
   // Import : fusion par UUID (écrase si plus récent, ajoute si inconnu)
   document.getElementById('btnImport').addEventListener('click',()=>document.getElementById('importFile').click());

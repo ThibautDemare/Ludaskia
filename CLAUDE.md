@@ -78,10 +78,10 @@ erreurs, n'enregistre rien).
 
 ## Données (localStorage)
 Tout passe par `lsGet/lsSet`. Les clés sont **préfixées par le profil actif**
-(`<uuid>/cm_ce2_…`) sauf la méta globale `cm_ce2_profiles`.
-Clés par profil : `cm_ce2_runs_{complet,express,sprint}`, `cm_ce2_streak`,
-`cm_ce2_stars`, `cm_ce2_lessonStats`, `cm_ce2_goal`, `cm_ce2_goalsDone`,
-`cm_ce2_trophies`.
+(`<uuid>/ludaskia_…`) sauf la méta globale `ludaskia_profiles`.
+Clés par profil : `ludaskia_runs_{complet,express,sprint}`, `ludaskia_streak`,
+`ludaskia_stars`, `ludaskia_lessonStats`, `ludaskia_goal`, `ludaskia_goalsDone`,
+`ludaskia_trophies`.
 
 ## Profils
 - Chaque profil a un **UUID stable** (id inter-appareils) et un **`updatedAt`**

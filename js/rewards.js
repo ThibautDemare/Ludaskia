@@ -8,8 +8,8 @@
    est gérée par les objectifs de régularité. Chaque défi déclare une condition
    de disponibilité — on ne propose jamais un défi impossible (ex. remédiation
    s'il n'y a aucune leçon à revoir, ou « bats ton record » sans record). */
-const GOAL_KEY='cm_ce2_goal';
-const GOALS_DONE_KEY='cm_ce2_goalsDone';
+const GOAL_KEY='ludaskia_goal';
+const GOALS_DONE_KEY='ludaskia_goalsDone';
 const WEAK_PCT=70; // en dessous : leçon « à revoir »
 
 // Leçons actuellement « à revoir » (taux de réussite < 70 %).
@@ -78,8 +78,7 @@ function updateGoal(ev){
    Un trophée peut être défini par un seuil sur une métrique de gSnapshot
    ({metric, n} → test g[metric] >= n) ou par un test explicite (booléens, etc.).
    tiers() fabrique une famille de trophées à paliers réutilisable. */
-const TROPHIES_KEY='cm_ce2_trophies';
-const TROPHIES_KEY_OLD='cm_ce2_badges'; // ancienne clé : lue en secours puis migrée
+const TROPHIES_KEY='ludaskia_trophies';
 
 function tiers(prefix,icon,metric,levels){
   // levels : [{n, title, desc}]
@@ -124,9 +123,7 @@ const TROPHIES=[
 TROPHIES.forEach(t=>{ if(!t.test && t.metric) t.test=g=>g[t.metric]>=t.n; });
 
 function loadTrophies(){
-  const v=lsGet(TROPHIES_KEY,null);
-  if(v!=null) return v;
-  return lsGet(TROPHIES_KEY_OLD,[]); // migration douce depuis l'ancienne clé
+  return lsGet(TROPHIES_KEY,[]);
 }
 /* Instantané des stats servant aux conditions de trophées */
 function gSnapshot(){

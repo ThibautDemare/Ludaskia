@@ -21,7 +21,7 @@ const API = ['rnd','choice','sample','commKey','uniqueComm','uniqueExact','escap
   'lsGet','lsSet','add','sub','mul','dbl','half','comp','facteur','renderItem','renderLesson',
   'LESSONS','buildFiches','THEMES','bilanQ','bilanBlocks','bilanHTML','buildPrintableDOM',
   'RUNS_KEY','loadRuns','cmpRun','runPct','fmtRecord','recordRun','startOfWeek','startOfMonth','countSince','REGULARITY',
-  'STREAK_KEY','todayStr','daysBetween','getStreak','updateStreak','streakSuffix','GOAL_TYPES',
+  'STREAK_KEY','todayStr','daysBetween','getStreak','updateStreak','streakSuffix','CHALLENGES','challengeContext','weakLessons',
   'STARS_KEY','recordLessonResult','starsEarned','LESSON_STATS_KEY','loadLessonStats','recordLessonStats','lessonAvgPct',
   'GOAL_KEY','GOALS_DONE_KEY','getGoalsDone','getGoal','updateGoal','TROPHIES_KEY','TROPHIES','loadTrophies','gSnapshot','evaluateTrophies',
   'sparkline','pctColor','SPRINT_LESSONS','sprintQuestionBody'];
@@ -130,9 +130,17 @@ test('recordLessonStats : agrégation + moyenne', () => { const {api}=freshEnv()
 console.log('Défi du jour (qualité)');
 test('getGoal en crée un pour aujourd’hui', () => { const {api}=freshEnv();
   const g=api.getGoal(); eq(g.date,api.todayStr()); eq(g.done,false); });
-test('le défi du jour ne pioche que des défis de qualité', () => { const {api}=freshEnv();
-  const types=api.GOAL_TYPES.map(g=>g.type).sort();
-  ok(JSON.stringify(types)===JSON.stringify(['perfectLesson','record','star']),'types='+types); });
+test('remédiation proposée seulement s’il y a une leçon à revoir', () => { const {api}=freshEnv();
+  const avail=()=>api.CHALLENGES.filter(c=>c.avail(api.challengeContext())).map(c=>c.type);
+  ok(!avail().includes('remediation'),'pas de leçon faible → pas de remédiation');
+  api.recordLessonStats({6:{ok:2,total:12}}); // 17 % → leçon à revoir
+  ok(api.weakLessons().includes(6));
+  ok(avail().includes('remediation'),'leçon faible → remédiation possible'); });
+test('défis « se dépasser » indisponibles sans record à battre', () => { const {api}=freshEnv();
+  const avail=()=>api.CHALLENGES.filter(c=>c.avail(api.challengeContext())).map(c=>c.type);
+  ok(!avail().includes('beatSprint')&&!avail().includes('beatExpress'));
+  api.recordRun('sprint',5,8,300000);
+  ok(avail().includes('beatSprint')); });
 test('updateGoal : progression, justDone et compteur', () => { const {api}=freshEnv();
   api.lsSet(api.GOAL_KEY,{date:api.todayStr(),type:'record',target:1,label:'x',progress:0,done:false});
   eq(api.updateGoal({mode:'express'}).justDone,false); // pas de record → pas d'avancée
@@ -163,6 +171,16 @@ test('gSnapshot reflète étoiles et série', () => { const {api}=freshEnv();
   for(let n=1;n<=5;n++) api.recordLessonResult(n,true);
   eq(api.gSnapshot().stars,5);
   ok(api.evaluateTrophies().map(t=>t.id).includes('stars5')); });
+test('trophée « Tout au vert » : 15 leçons ≥ 70 %', () => { const {api}=freshEnv();
+  for(let n=1;n<=14;n++) api.recordLessonStats({[n]:{ok:10,total:10}});
+  ok(!api.gSnapshot().allGreen); // 1 leçon manquante
+  api.recordLessonStats({15:{ok:10,total:10}});
+  ok(api.gSnapshot().allGreen);
+  ok(api.evaluateTrophies().map(t=>t.id).includes('allgreen')); });
+test('trophées de volume cumulé', () => { const {api}=freshEnv();
+  api.recordLessonStats({1:{ok:60,total:120}}); // 120 calculs résolus
+  eq(api.gSnapshot().totalAnswered,120);
+  ok(api.evaluateTrophies().map(t=>t.id).includes('vol100')); });
 test('trophées à paliers compilés (metric/n → test)', () => { const {api}=freshEnv();
   const def=api.TROPHIES.find(t=>t.id==='stars5');
   ok(typeof def.test==='function'); ok(def.test({stars:5})); ok(!def.test({stars:4})); });

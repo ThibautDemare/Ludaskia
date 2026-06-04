@@ -50,7 +50,9 @@ function verify(){
       medalInfo=recordRun(currentMode,ok,inputs.length,ms);
     }
     // Objectif du jour + trophées (évalués après l'enregistrement de l'essai)
-    goalRes=updateGoal({mode:currentMode, newStar:!!(starInfo&&starInfo.newStar), perfect, isRecord:!!(medalInfo&&medalInfo.isRecord)});
+    goalRes=updateGoal({mode:currentMode, newStar:!!(starInfo&&starInfo.newStar), perfect,
+      isRecord:!!(medalInfo&&medalInfo.isRecord),
+      lessonNum:currentLessonNum, lessonPct:Math.round(ok/inputs.length*100)});
     newTrophies=evaluateTrophies();
     // Liste des récompenses obtenues (sert à la modale + confettis)
     if(medalInfo&&medalInfo.isRecord) celeb.push({icon:'🎉',text:'Nouveau record !'});

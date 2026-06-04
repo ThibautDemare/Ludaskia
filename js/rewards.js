@@ -4,44 +4,72 @@
    ============================================================ */
 
 /* ---------- Défi du jour ----------
-   Recentré « qualité » : la cadence (sprints/express/complet) est gérée par
-   les objectifs de régularité ; le défi du jour vise un dépassement ponctuel. */
+   Recentré « qualité / dépassement » : la cadence (sprints/express/complet)
+   est gérée par les objectifs de régularité. Chaque défi déclare une condition
+   de disponibilité — on ne propose jamais un défi impossible (ex. remédiation
+   s'il n'y a aucune leçon à revoir, ou « bats ton record » sans record). */
 const GOAL_KEY='cm_ce2_goal';
 const GOALS_DONE_KEY='cm_ce2_goalsDone';
-const GOAL_TYPES=[
-  {type:'star',          target:1, label:'Gagne 1 nouvelle étoile.'},
-  {type:'perfectLesson', target:1, label:'Réussis 1 leçon sans faute.'},
-  {type:'record',        target:1, label:'Bats un de tes records.'},
+const WEAK_PCT=70; // en dessous : leçon « à revoir »
+
+// Leçons actuellement « à revoir » (taux de réussite < 70 %).
+function weakLessons(){
+  const stats=loadLessonStats();
+  return LESSONS.filter(l=>{const a=lessonAvgPct(stats[l.num]);return a!=null&&a<WEAK_PCT;}).map(l=>l.num);
+}
+function challengeContext(){
+  return {
+    weak:weakLessons(),
+    starsLeft:starsEarned()<LESSONS.length,
+    hasSprint:loadRuns('sprint').length>0,
+    hasExpress:loadRuns('express').length>0,
+  };
+}
+// Défis disponibles selon le contexte. build() fabrique le défi concret.
+const CHALLENGES=[
+  {type:'star',          avail:c=>c.starsLeft, build:()=>({type:'star',label:'Gagne 1 nouvelle étoile.'})},
+  {type:'perfectLesson', avail:()=>true,       build:()=>({type:'perfectLesson',label:'Réussis 1 leçon sans faute.'})},
+  {type:'beatSprint',    avail:c=>c.hasSprint, build:()=>({type:'beatSprint',label:'Bats ton record de sprint !'})},
+  {type:'beatExpress',   avail:c=>c.hasExpress,build:()=>({type:'beatExpress',label:'Bats ton record au bilan express !'})},
+  {type:'remediation',   avail:c=>c.weak.length>0, build:c=>{const num=choice(c.weak);const l=LESSONS.find(x=>x.num===num);
+     return {type:'remediation',lesson:num,label:`Retravaille « ${l.title} » et réussis-la à 80 %.`};}},
 ];
+
 function getGoalsDone(){const v=lsGet(GOALS_DONE_KEY,0);return typeof v==='number'?v:0;}
 function getGoal(){
   const today=todayStr();let goal=lsGet(GOAL_KEY,null);
-  if(!goal||goal.date!==today){ // nouvel objectif tiré une fois par jour
-    const def=GOAL_TYPES[Math.floor(Math.random()*GOAL_TYPES.length)];
-    goal={date:today,type:def.type,target:def.target,label:def.label,progress:0,done:false};
+  if(!goal||goal.date!==today){ // nouveau défi tiré une fois par jour, parmi les défis possibles
+    const c=challengeContext();
+    const pool=CHALLENGES.filter(ch=>ch.avail(c));
+    const def=pool[Math.floor(Math.random()*pool.length)].build(c);
+    goal={date:today,target:1,progress:0,done:false,...def};
     lsSet(GOAL_KEY,goal);
   }
   return goal;
 }
-/* Met à jour l'objectif selon l'événement de la session. Renvoie {goal, justDone}. */
+/* Met à jour le défi selon l'événement de la session. Renvoie {goal, justDone}. */
 function updateGoal(ev){
   const goal=getGoal();
   if(goal.done) return {goal,justDone:false};
   let inc=0;
   switch(goal.type){
-    case 'express':       if(ev.mode==='express') inc=1; break;
     case 'star':          if(ev.newStar) inc=1; break;
     case 'perfectLesson': if(ev.mode==='lecon'&&ev.perfect) inc=1; break;
+    case 'beatSprint':    if(ev.mode==='sprint'&&ev.isRecord) inc=1; break;
+    case 'beatExpress':   if(ev.mode==='express'&&ev.isRecord) inc=1; break;
+    case 'remediation':   if(ev.mode==='lecon'&&ev.lessonNum===goal.lesson&&ev.lessonPct>=80) inc=1; break;
+    // types hérités d'anciennes versions (défi déjà stocké pour aujourd'hui)
     case 'record':        if(ev.isRecord) inc=1; break;
+    case 'express':       if(ev.mode==='express') inc=1; break;
     case 'sprint':        if(ev.sprint) inc=1; break;
-    case 'sessions':      inc=1; break; // chaque entraînement compte
+    case 'sessions':      inc=1; break;
   }
   if(inc>0){
     goal.progress=Math.min(goal.target,goal.progress+inc);
     if(goal.progress>=goal.target) goal.done=true;
     lsSet(GOAL_KEY,goal);
   }
-  const justDone=goal.done; // on n'arrive ici que si l'objectif n'était pas encore atteint
+  const justDone=goal.done; // on n'arrive ici que si le défi n'était pas encore atteint
   if(justDone) lsSet(GOALS_DONE_KEY,getGoalsDone()+1);
   return {goal,justDone};
 }
@@ -72,6 +100,13 @@ const TROPHIES=[
   {id:'eclair',   icon:'⚡',title:'Éclair',       desc:'Un bilan express en moins de 8 min.', test:g=>g.bestExpressMs<=480000},
   {id:'carton',   icon:'💯',title:'Carton plein', desc:'Un bilan réussi à 100 %.', test:g=>g.perfectBilan},
   {id:'champion', icon:'🥇',title:'Champion',     desc:"Décrocher une médaille d'or.", test:g=>g.gold},
+  {id:'allgreen', icon:'🌿',title:'Tout au vert', desc:'Toutes les leçons à 70 % ou plus.', test:g=>g.allGreen},
+  ...tiers('vol','🧮','totalAnswered',[
+    {n:100,  title:'100 calculs',  desc:'100 calculs résolus.'},
+    {n:500,  title:'500 calculs',  desc:'500 calculs résolus.'},
+    {n:1000, title:'1000 calculs', desc:'1000 calculs résolus.'},
+    {n:5000, title:'5000 calculs', desc:'5000 calculs résolus.'},
+  ]),
   ...tiers('sprint','🏃','sprints',[
     {n:1,   title:'Sprinter',             desc:'Terminer un sprint de 5 min.'},
     {n:5,   title:'Sprinter aguerri',     desc:'5 sprints terminés.'},
@@ -97,6 +132,8 @@ function loadTrophies(){
 function gSnapshot(){
   const rc=loadRuns('complet'),re=loadRuns('express'),all=[...rc,...re];
   const s=getStreak();
+  const stats=loadLessonStats();
+  let totalAnswered=0; for(const k in stats) totalAnswered+=stats[k].questions||0;
   return {
     totalRuns:all.length,
     stars:starsEarned(),
@@ -106,6 +143,8 @@ function gSnapshot(){
     gold:rc.length>=3||re.length>=3, // un podium d'or existe dès 3 essais dans un mode
     goalsDone:getGoalsDone(),
     sprints:loadRuns('sprint').length,
+    totalAnswered, // total de calculs résolus (tous modes enregistrés)
+    allGreen:LESSONS.every(l=>{const a=lessonAvgPct(stats[l.num]);return a!=null&&a>=70;}), // aucune leçon à revoir
   };
 }
 /* Débloque les trophées nouvellement atteints ; renvoie les nouveaux. */

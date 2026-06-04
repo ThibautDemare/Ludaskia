@@ -26,8 +26,7 @@ function runSprint(){
   sprintActive=true; sprintPaused=false;
   sprintRemaining=SPRINT_MS; sprintScore=0; sprintAnswered=0;
   sprintPerLesson={}; sprintLastKey=''; sprintCurrent=null;
-  document.getElementById('home').style.display='none';
-  document.getElementById('lessons').style.display='none';
+  hideMenus();
   setToolbar({verify:false,home:true}); // pas de Vérifier (validation auto par question)
   resetChrono();                          // le sprint a son propre compte à rebours
   document.getElementById('sheets').innerHTML=`

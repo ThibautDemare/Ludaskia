@@ -10,7 +10,29 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('cardLecon').addEventListener('click',showLessons);
   document.getElementById('cardSprint').addEventListener('click',startSprint);
   document.getElementById('backHome').addEventListener('click',goHome);
+  document.getElementById('backHomeProfils').addEventListener('click',goHome);
   document.getElementById('printLink').addEventListener('click',printAll);
+
+  // Barre de profils (accueil) : bascule de profil + accès à la gestion
+  document.getElementById('profileBar').addEventListener('click',e=>{
+    const chip=e.target.closest('.profile-chip');
+    if(chip){ setActiveProfile(chip.dataset.pid); showHomeView(); return; } // déjà sur l'accueil → re-rendu direct
+    if(e.target.closest('#profileManage')) showProfiles();
+  });
+  // Écran de gestion des profils (délégation)
+  document.getElementById('profileList').addEventListener('click',e=>{
+    const btn=e.target.closest('button'); if(!btn) return;
+    if(btn.id==='profileAdd'){ const n=prompt('Prénom du nouveau profil :'); if(n&&n.trim()){ addProfile(n.trim()); renderProfiles(); } return; }
+    const row=e.target.closest('.profile-row'); if(!row) return;
+    const id=row.dataset.pid;
+    switch(btn.dataset.act){
+      case 'pick':   setActiveProfile(id); goHome(); break;
+      case 'rename': { const n=prompt('Nouveau prénom :'); if(n&&n.trim()){ renameProfile(id,n.trim()); renderProfiles(); } break; }
+      case 'emoji':  cycleProfileEmoji(id); renderProfiles(); break;
+      case 'reset':  if(confirm('Réinitialiser toute la progression de ce profil ? (irréversible)')){ resetProfile(id); renderProfiles(); } break;
+      case 'delete': if(confirm('Supprimer ce profil et toute sa progression ?')){ deleteProfile(id); renderProfiles(); } break;
+    }
+  });
 
   // Sélection d'une leçon dans la liste (délégation)
   document.getElementById('lessonList').addEventListener('click',e=>{

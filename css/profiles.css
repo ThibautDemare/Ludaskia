@@ -1,0 +1,28 @@
+/* Barre de profils sur l'accueil */
+.profile-bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin-bottom:18px;}
+.profile-chip{font:inherit;font-family:var(--ui);font-size:14px;font-weight:700;cursor:pointer;
+  border:1px solid #d4dbe6;background:#fff;color:var(--grey);border-radius:999px;padding:6px 14px;
+  transition:border-color .15s ease,box-shadow .15s ease,color .15s ease;}
+.profile-chip:hover{border-color:var(--blue);color:var(--blue);}
+.profile-chip.active{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 3px 8px rgba(51,108,191,.3);}
+.profile-manage{font:inherit;font-family:var(--ui);font-size:13px;cursor:pointer;border:0;background:transparent;
+  color:var(--blue);text-decoration:underline;padding:6px 8px;}
+
+/* Écran de gestion des profils */
+.profile-list{display:flex;flex-direction:column;gap:12px;text-align:left;margin-top:14px;}
+.profile-row{display:flex;align-items:center;gap:10px;background:var(--paper);border:2px solid transparent;
+  border-radius:12px;padding:10px 12px;box-shadow:0 4px 14px rgba(0,0,0,.08);font-family:var(--ui);}
+.profile-row.active{border-color:var(--blue);}
+.profile-pick{flex:1;display:flex;align-items:center;gap:10px;min-width:0;font:inherit;font-family:var(--ui);
+  cursor:pointer;border:0;background:transparent;text-align:left;padding:4px;}
+.profile-emoji{font-size:26px;line-height:1;flex:0 0 auto;}
+.profile-name{font-size:16px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.profile-tag{font-size:11px;font-weight:700;color:#fff;background:var(--blue);border-radius:999px;padding:2px 8px;}
+.profile-tools{display:flex;gap:4px;flex:0 0 auto;}
+.profile-tools button{font-size:16px;cursor:pointer;border:0;background:transparent;border-radius:8px;padding:6px 8px;
+  transition:background .15s ease;}
+.profile-tools button:hover{background:#eef1f5;}
+.profile-tools button[disabled]{opacity:.3;cursor:default;}
+.profile-add{font:inherit;font-family:var(--ui);font-size:15px;font-weight:700;cursor:pointer;color:var(--blue);
+  background:var(--blue-soft);border:0;border-radius:12px;padding:12px;margin-top:4px;}
+.profile-add:hover{box-shadow:0 3px 8px rgba(0,0,0,.12);}

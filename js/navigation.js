@@ -18,6 +18,7 @@ let pendingRevision=[]; // items à réviser, transmis à la vue #revision
 // Déclencheurs (liés à l'UI)
 function goHome(){ location.hash='accueil'; }
 function showLessons(){ location.hash='lecons'; }
+function showProfiles(){ location.hash='profils'; }
 function startComplet(){ location.hash='complet'; }
 function startExpress(){ location.hash='express'; }
 function startLecon(num){ if(LESSONS.find(l=>l.num===num)) location.hash='lecon-'+num; }
@@ -40,6 +41,7 @@ function route(){
   else if(h==='express') runExpress();
   else if(h==='sprint') runSprint();
   else if(h==='lecons') showLessonsView();
+  else if(h==='profils') showProfilesView();
   else if(h==='revision'){ if(pendingRevision.length) runRevision(pendingRevision); else showHomeView(); }
   else if(h.startsWith('lecon-')){
     const n=Number(h.slice(6));
@@ -68,21 +70,34 @@ function resetSessionUI(){
   const old=document.getElementById('resultBanner'); if(old) old.remove();
 }
 
+// Masque les écrans « menu » (accueil, sélecteur de leçons, profils)
+function hideMenus(){
+  ['home','lessons','profils'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+}
+
 // Rendus des vues (sans toucher à l'historique)
 function showHomeView(){
   resetSessionUI();
   setToolbar({verify:false,home:false}); // accueil : ni Vérifier ni Accueil
+  hideMenus();
   document.getElementById('home').style.display='';
-  document.getElementById('lessons').style.display='none';
   renderHomeStats();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function showLessonsView(){
   resetSessionUI();
   setToolbar({verify:false,home:true}); // sélecteur : Accueil visible, pas Vérifier
-  document.getElementById('home').style.display='none';
+  hideMenus();
   renderLessons();
   document.getElementById('lessons').style.display='';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function showProfilesView(){
+  resetSessionUI();
+  setToolbar({verify:false,home:true});
+  hideMenus();
+  renderProfiles();
+  document.getElementById('profils').style.display='';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function runComplet(){
@@ -121,8 +136,7 @@ function runRevision(items){
 }
 function afterStart(){
   sessionRecorded=false;
-  document.getElementById('home').style.display='none';
-  document.getElementById('lessons').style.display='none';
+  hideMenus();
   const sc=document.getElementById('score'); sc.classList.add('hidden'); sc.textContent='';
   setToolbar({verify:true,home:true}); // en exercice : Vérifier + Accueil visibles
   startChrono();

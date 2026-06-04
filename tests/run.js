@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const ORDER = ['utils','storage','chrono','items','lessons','progress',
+const ORDER = ['utils','storage','profiles','chrono','items','lessons','progress',
                'rewards','effects','render','navigation','sprint','session','main'];
 const JS_DIR = path.join(__dirname, '..', 'js');
 
@@ -24,7 +24,8 @@ const API = ['rnd','choice','sample','commKey','uniqueComm','uniqueExact','escap
   'STREAK_KEY','todayStr','daysBetween','getStreak','updateStreak','streakSuffix','CHALLENGES','challengeContext','weakLessons',
   'STARS_KEY','recordLessonResult','starsEarned','LESSON_STATS_KEY','loadLessonStats','recordLessonStats','lessonAvgPct',
   'GOAL_KEY','GOALS_DONE_KEY','getGoalsDone','getGoal','updateGoal','TROPHIES_KEY','TROPHIES','loadTrophies','gSnapshot','evaluateTrophies',
-  'sparkline','pctColor','SPRINT_LESSONS','sprintQuestionBody'];
+  'sparkline','pctColor','SPRINT_LESSONS','sprintQuestionBody',
+  'loadProfilesMeta','listProfiles','activeProfile','setActiveProfile','addProfile','renameProfile','resetProfile','deleteProfile'];
 
 const SOURCE = ORDER.map(f => fs.readFileSync(path.join(JS_DIR, f + '.js'), 'utf8')).join('\n')
   + `\n;globalThis.__api = { ${API.join(',')} };`;
@@ -37,8 +38,10 @@ function freshEnv(){
   const ctx = {
     Math, Date, JSON, String, Number, Array, Object, Set, Map, parseInt, parseFloat, isNaN, Infinity, console,
     setInterval:()=>0, clearInterval(){}, setTimeout:()=>0,
-    localStorage:{ getItem:k=>k in store?store[k]:null, setItem:(k,v)=>{store[k]=String(v);},
-                   removeItem:k=>{delete store[k];}, clear:()=>{Object.keys(store).forEach(k=>delete store[k]);} },
+    localStorage:(()=>{const ls={getItem:k=>k in store?store[k]:null, setItem:(k,v)=>{store[k]=String(v);},
+                   removeItem:k=>{delete store[k];}, clear:()=>{Object.keys(store).forEach(k=>delete store[k]);},
+                   key:i=>{const ks=Object.keys(store);return i<ks.length?ks[i]:null;}};
+                   Object.defineProperty(ls,'length',{get:()=>Object.keys(store).length});return ls;})(),
     document:{ addEventListener(){}, getElementById(){return null;}, querySelector(){return null;},
                querySelectorAll(){return [];}, createElement(){return noopEl;} },
     window:{ addEventListener(){} },
@@ -205,6 +208,30 @@ test('sprint leçon 15 : étapes intermédiaires + champ final', () => { const {
   eq((body15.match(/id="sprintInput"/g)||[]).length,1); // 1 champ final corrigé
   const body7=api.sprintQuestionBody({text:'6 × 7 = @',answer:42,_lesson:7});
   ok(!body7.includes('sprint-free')); ok(body7.includes('id="sprintInput"')); });
+
+console.log('Profils');
+test('profil par défaut créé au 1er lancement', () => { const {api}=freshEnv();
+  const m=api.loadProfilesMeta(); eq(m.list.length,1); eq(m.active,'p1'); eq(api.activeProfile().name,'Profil 1'); });
+test('progression isolée par profil', () => { const {api}=freshEnv();
+  api.recordRun('sprint',5,5,300000);          // profil par défaut
+  const tom=api.addProfile('Tom','🦊');         // bascule sur Tom (vierge)
+  eq(api.loadRuns('sprint').length,0);
+  api.recordRun('sprint',3,3,300000);
+  eq(api.loadRuns('sprint').length,1);
+  api.setActiveProfile('p1');                   // retour au défaut
+  eq(api.loadRuns('sprint').length,1);          // intact
+  api.setActiveProfile(tom.id);
+  eq(api.loadRuns('sprint').length,1); });      // Tom intact aussi
+test('réinitialiser un profil efface sa progression', () => { const {api}=freshEnv();
+  api.recordRun('express',40,45,400000);
+  for(let n=1;n<=3;n++) api.recordLessonResult(n,true);
+  api.resetProfile('p1');
+  eq(api.loadRuns('express').length,0); eq(api.starsEarned(),0); });
+test('supprimer un profil (mais pas le dernier)', () => { const {api}=freshEnv();
+  const tom=api.addProfile('Tom');
+  eq(api.listProfiles().length,2);
+  ok(api.deleteProfile(tom.id)); eq(api.listProfiles().length,1);
+  ok(!api.deleteProfile('p1')); }); // on garde au moins un profil
 
 /* ---------- bilan ---------- */
 console.log(`\n${passed} réussis, ${failed} échoués\n`);

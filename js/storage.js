@@ -1,11 +1,21 @@
 /* ============================================================
    Accès localStorage centralisé (lecture/écriture JSON tolérantes)
-   Toute la persistance du projet passe par ces deux helpers.
+   Toute la persistance du projet passe par ces helpers. Les clés sont
+   automatiquement préfixées par le profil actif (sauf la clé méta des
+   profils), ce qui isole la progression de chaque enfant.
    ============================================================ */
+const PROFILES_KEY='cm_ce2_profiles'; // clé globale (jamais préfixée)
+let activePrefix=''; // préfixe du profil actif ('' = profil hérité / par défaut)
+function setActivePrefix(p){ activePrefix=p||''; }
+function realKey(key){ return key===PROFILES_KEY?key:activePrefix+key; }
+
 function lsGet(key,fallback){
-  try{const v=localStorage.getItem(key);return v==null?fallback:JSON.parse(v);}
+  try{const v=localStorage.getItem(realKey(key));return v==null?fallback:JSON.parse(v);}
   catch(e){return fallback;}
 }
 function lsSet(key,value){
-  try{localStorage.setItem(key,JSON.stringify(value));}catch(e){}
+  try{localStorage.setItem(realKey(key),JSON.stringify(value));}catch(e){}
 }
+/* Accès bas niveau aux clés réelles (pour réinitialiser/supprimer un profil) */
+function lsKeysRaw(){ const o=[]; try{for(let i=0;i<localStorage.length;i++) o.push(localStorage.key(i));}catch(e){} return o; }
+function lsRemoveRaw(realK){ try{localStorage.removeItem(realK);}catch(e){} }

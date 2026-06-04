@@ -5,6 +5,34 @@
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
 const pctColor=p=>p<50?'#c62828':(p<75?'#ef6c00':'#2e7d32');
 
+/* Barre de profils sur l'accueil : un chip par profil (clic = bascule) + Gérer */
+function renderProfileBar(){
+  const el=document.getElementById('profileBar'); if(!el) return;
+  const m=loadProfilesMeta(); if(!m) return;
+  const chips=m.list.map(p=>`<button class="profile-chip${p.id===m.active?' active':''}" data-pid="${p.id}">${p.emoji} ${escapeHTML(p.name)}</button>`).join('');
+  el.innerHTML=`${chips}<button class="profile-manage" id="profileManage">⚙️ Gérer</button>`;
+}
+/* Écran de gestion des profils */
+function renderProfiles(){
+  const el=document.getElementById('profileList'); if(!el) return;
+  const m=loadProfilesMeta(); if(!m) return;
+  el.innerHTML=m.list.map(p=>`
+    <div class="profile-row${p.id===m.active?' active':''}" data-pid="${p.id}">
+      <button class="profile-pick" data-act="pick" title="Choisir ce profil">
+        <span class="profile-emoji">${p.emoji}</span>
+        <span class="profile-name">${escapeHTML(p.name)}</span>
+        ${p.id===m.active?'<span class="profile-tag">actif</span>':''}
+      </button>
+      <span class="profile-tools">
+        <button data-act="emoji" title="Changer l'avatar">🎨</button>
+        <button data-act="rename" title="Renommer">✏️</button>
+        <button data-act="reset" title="Réinitialiser la progression">♻️</button>
+        <button data-act="delete" title="Supprimer le profil"${m.list.length<=1?' disabled':''}>🗑️</button>
+      </span>
+    </div>`).join('')
+    +`<button class="profile-add" id="profileAdd">＋ Nouveau profil</button>`;
+}
+
 /* Record perso affiché sur une carte de l'accueil */
 function fillCardRecord(elId,mode){
   const el=document.getElementById(elId);if(!el)return;
@@ -49,6 +77,7 @@ function boardHTML(mode,label){
   </div>`;
 }
 function renderHomeStats(){
+  renderProfileBar();
   fillCardRecord('recComplet','complet');
   fillCardRecord('recExpress','express');
   const recL=document.getElementById('recLecon');

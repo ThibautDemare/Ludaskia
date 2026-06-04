@@ -49,35 +49,53 @@ function boardHTML(mode,label){
   </div>`;
 }
 function renderHomeStats(){
-  const s=getStreak();
-  const streakEl=document.getElementById('streak');
-  if(streakEl){
-    if(s.days>=2){streakEl.textContent=`🔥 Série : ${s.days} jours d'affilée !`;streakEl.style.display='';}
-    else if(s.days===1){streakEl.textContent=`🔥 Série lancée — reviens demain pour la prolonger !`;streakEl.style.display='';}
-    else{streakEl.style.display='none';}
-  }
   fillCardRecord('recComplet','complet');
   fillCardRecord('recExpress','express');
   const recL=document.getElementById('recLecon');
   if(recL){const n=starsEarned();recL.innerHTML=`⭐ <strong>${n}/${LESSONS.length}</strong> leçon${n>1?'s':''} réussie${n>1?'s':''} sans faute`;}
   fillSprintRecord('recSprint');
-  const boards=document.getElementById('boards');
-  if(boards) boards.innerHTML=boardHTML('complet','Bilan complet')+boardHTML('express','Bilan express')+sprintBoardHTML();
+  renderObjectives();
   renderGoal();
+  const boards=document.getElementById('boards');
+  if(boards) boards.innerHTML=sprintBoardHTML()+boardHTML('express','Bilan express')+boardHTML('complet','Bilan complet');
   evaluateTrophies(); // rattrape d'éventuels trophées acquis (sans célébration ici)
   renderTrophies();
 }
 
-/* Objectif du jour */
+/* Objectifs de régularité (cadence saine, périodes calendaires).
+   La pratique espacée prime : on encourage à revenir, sans pression quotidienne. */
+const REGULARITY=[
+  {mode:'sprint',  icon:'🏃', label:'Sprints',       target:3, period:'week'},
+  {mode:'express', icon:'⏱️', label:'Bilan express', target:2, period:'month'},
+  {mode:'complet', icon:'📚', label:'Bilan complet',  target:1, period:'month'},
+];
+const PERIOD_LABEL={week:'cette semaine', month:'ce mois-ci'};
+function renderObjectives(){
+  const el=document.getElementById('objectives');if(!el)return;
+  const rows=REGULARITY.map(o=>{
+    const since=o.period==='week'?startOfWeek():startOfMonth();
+    const n=countSince(o.mode,since);
+    const done=n>=o.target;
+    return `<div class="obj ${done?'done':''}">
+      <span class="obj-ico">${o.icon}</span>
+      <span class="obj-lab">${o.label}</span>
+      <span class="obj-prog">${Math.min(n,o.target)}/${o.target} <span class="obj-per">${PERIOD_LABEL[o.period]}</span></span>
+      <span class="obj-check">${done?'✓':''}</span>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<h3 class="obj-h">Mes objectifs</h3>${rows}`;
+}
+
+/* Défi du jour (qualité : étoile / leçon sans faute / battre un record) */
 function renderGoal(){
   const el=document.getElementById('goal');if(!el)return;
   const g=getGoal();
   if(g.done){
     el.className='goal done';
-    el.innerHTML=`🎯 Objectif du jour réussi ! <span class="goal-lab">${g.label}</span> ✓`;
+    el.innerHTML=`🎯 Défi du jour réussi ! <span class="goal-lab">${g.label}</span> ✓`;
   }else{
     el.className='goal';
-    el.innerHTML=`🎯 Objectif du jour : <span class="goal-lab">${g.label}</span> <span class="goal-prog">(${g.progress}/${g.target})</span>`;
+    el.innerHTML=`🎯 Défi du jour : <span class="goal-lab">${g.label}</span> <span class="goal-prog">(${g.progress}/${g.target})</span>`;
   }
 }
 

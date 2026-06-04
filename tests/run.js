@@ -20,8 +20,8 @@ const JS_DIR = path.join(__dirname, '..', 'js');
 const API = ['rnd','choice','sample','commKey','uniqueComm','uniqueExact','escapeHTML','fmt',
   'lsGet','lsSet','add','sub','mul','dbl','half','comp','facteur','renderItem','renderLesson',
   'LESSONS','buildFiches','THEMES','bilanQ','bilanBlocks','bilanHTML','buildPrintableDOM',
-  'RUNS_KEY','loadRuns','cmpRun','runPct','fmtRecord','recordRun',
-  'STREAK_KEY','todayStr','daysBetween','getStreak','updateStreak','streakSuffix',
+  'RUNS_KEY','loadRuns','cmpRun','runPct','fmtRecord','recordRun','startOfWeek','startOfMonth','countSince','REGULARITY',
+  'STREAK_KEY','todayStr','daysBetween','getStreak','updateStreak','streakSuffix','GOAL_TYPES',
   'STARS_KEY','recordLessonResult','starsEarned','LESSON_STATS_KEY','loadLessonStats','recordLessonStats','lessonAvgPct',
   'GOAL_KEY','GOALS_DONE_KEY','getGoalsDone','getGoal','updateGoal','TROPHIES_KEY','TROPHIES','loadTrophies','gSnapshot','evaluateTrophies',
   'sparkline','pctColor','SPRINT_LESSONS','sprintQuestionBody'];
@@ -127,15 +127,30 @@ test('recordLessonStats : agrégation + moyenne', () => { const {api}=freshEnv()
   const e=api.loadLessonStats()[7]; eq(e.attempts,2); eq(e.correct,22); eq(e.questions,24); eq(e.bestPct,100);
   eq(api.lessonAvgPct(e),92); });
 
-console.log('Objectif du jour');
+console.log('Défi du jour (qualité)');
 test('getGoal en crée un pour aujourd’hui', () => { const {api}=freshEnv();
   const g=api.getGoal(); eq(g.date,api.todayStr()); eq(g.done,false); });
+test('le défi du jour ne pioche que des défis de qualité', () => { const {api}=freshEnv();
+  const types=api.GOAL_TYPES.map(g=>g.type).sort();
+  ok(JSON.stringify(types)===JSON.stringify(['perfectLesson','record','star']),'types='+types); });
 test('updateGoal : progression, justDone et compteur', () => { const {api}=freshEnv();
-  api.lsSet(api.GOAL_KEY,{date:api.todayStr(),type:'express',target:1,label:'x',progress:0,done:false});
-  eq(api.updateGoal({mode:'complet'}).justDone,false); // autre mode → pas d'avancée
-  const r=api.updateGoal({mode:'express'}); eq(r.justDone,true);
+  api.lsSet(api.GOAL_KEY,{date:api.todayStr(),type:'record',target:1,label:'x',progress:0,done:false});
+  eq(api.updateGoal({mode:'express'}).justDone,false); // pas de record → pas d'avancée
+  const r=api.updateGoal({isRecord:true}); eq(r.justDone,true);
   eq(api.getGoalsDone(),1);
-  eq(api.updateGoal({mode:'express'}).justDone,false); }); // déjà fait
+  eq(api.updateGoal({isRecord:true}).justDone,false); }); // déjà fait
+
+console.log('Objectifs de régularité');
+test('countSince compte les essais d’une période', () => { const {api}=freshEnv();
+  const now=Date.now();
+  api.lsSet('cm_ce2_runs_sprint',[{ts:now,ok:1,count:1,ms:1},{ts:now-40*86400000,ok:1,count:1,ms:1}]);
+  eq(api.countSince('sprint',now-7*86400000),1); // un seul dans les 7 derniers jours
+  ok(api.startOfWeek()<=now && api.startOfMonth()<=now); });
+test('REGULARITY : 3 sprints/semaine, 2 express/mois, 1 complet/mois', () => { const {api}=freshEnv();
+  const byMode=Object.fromEntries(api.REGULARITY.map(o=>[o.mode,o]));
+  eq(byMode.sprint.target,3); eq(byMode.sprint.period,'week');
+  eq(byMode.express.target,2); eq(byMode.express.period,'month');
+  eq(byMode.complet.target,1); eq(byMode.complet.period,'month'); });
 
 console.log('Trophées');
 test('evaluateTrophies débloque selon les stats, sans doublon', () => { const {api}=freshEnv();

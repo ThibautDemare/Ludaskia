@@ -9,6 +9,13 @@ const MAX_RUNS=50; // on ne garde que les 50 derniers essais par mode
 function loadRuns(mode){return lsGet(RUNS_KEY(mode),[]);}
 function saveRuns(mode,runs){lsSet(RUNS_KEY(mode),runs);}
 
+/* Bornes de période calendaire (pour les objectifs de régularité) */
+function startOfWeek(){ const d=new Date(); const day=(d.getDay()+6)%7; // lundi = 0
+  d.setHours(0,0,0,0); d.setDate(d.getDate()-day); return d.getTime(); }
+function startOfMonth(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1).getTime(); }
+/* Nombre d'essais d'un mode depuis un instant donné */
+function countSince(mode,since){ return loadRuns(mode).filter(r=>r.ts>=since).length; }
+
 /* Classement « score puis temps » : plus de bonnes réponses d'abord,
    le chrono départage à égalité (le plus rapide gagne). */
 function cmpRun(a,b){return b.ok!==a.ok ? b.ok-a.ok : a.ms-b.ms;}

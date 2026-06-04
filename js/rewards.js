@@ -3,16 +3,15 @@
    (les podiums des classements, eux, donnent des « médailles »)
    ============================================================ */
 
-/* ---------- Objectif du jour ---------- */
+/* ---------- Défi du jour ----------
+   Recentré « qualité » : la cadence (sprints/express/complet) est gérée par
+   les objectifs de régularité ; le défi du jour vise un dépassement ponctuel. */
 const GOAL_KEY='cm_ce2_goal';
 const GOALS_DONE_KEY='cm_ce2_goalsDone';
 const GOAL_TYPES=[
-  {type:'express',       target:1, label:'Termine 1 bilan express.'},
   {type:'star',          target:1, label:'Gagne 1 nouvelle étoile.'},
   {type:'perfectLesson', target:1, label:'Réussis 1 leçon sans faute.'},
   {type:'record',        target:1, label:'Bats un de tes records.'},
-  {type:'sprint',        target:1, label:'Termine un sprint de 5 min.'},
-  {type:'sessions',      target:3, label:"Fais 3 entraînements aujourd'hui."},
 ];
 function getGoalsDone(){const v=lsGet(GOALS_DONE_KEY,0);return typeof v==='number'?v:0;}
 function getGoal(){

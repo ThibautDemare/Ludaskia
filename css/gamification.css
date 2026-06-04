@@ -1,9 +1,17 @@
 /* Tableau de bord de l'accueil : série, records, classements, objectif, trophées */
 
-/* Série de jours (streak) */
-.streak{display:inline-block;margin:-30px 0 32px;font-family:var(--ui);
-  font-size:14px;font-weight:700;color:var(--warn);background:var(--warn-bg);
-  border:1px solid var(--warn-bd);border-radius:999px;padding:6px 16px;}
+/* Objectifs de régularité (cadence hebdo/mensuelle) */
+.objectives{max-width:430px;margin:0 auto 22px;background:var(--paper);border-radius:14px;
+  padding:16px 20px;box-shadow:0 4px 14px rgba(0,0,0,.08);font-family:var(--ui);text-align:left;}
+.obj-h{color:var(--blue);font-size:15px;margin:0 0 10px;text-align:center;}
+.obj{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #eef1f5;}
+.obj:last-child{border-bottom:0;}
+.obj-ico{font-size:20px;flex:0 0 auto;}
+.obj-lab{flex:1;font-size:14px;color:var(--ink);}
+.obj-prog{font-size:13px;font-weight:700;color:var(--grey);white-space:nowrap;}
+.obj-per{font-weight:400;color:var(--muted);}
+.obj-check{flex:0 0 auto;width:16px;color:var(--ok);font-weight:800;}
+.obj.done .obj-lab,.obj.done .obj-prog{color:var(--ok);}
 
 /* Record affiché sur chaque carte */
 .card-record{font-family:var(--ui);font-size:13px;color:var(--grey);margin:0 0 16px;}

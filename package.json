@@ -1,0 +1,12 @@
+{
+  "name": "ludaskia",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Entraînement au calcul mental (CE2), ludique et chronométré.",
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

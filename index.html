@@ -85,6 +85,12 @@
   <div class="big">Profils</div>
   <div class="tagline">Chaque profil garde sa propre progression.</div>
   <div class="profile-list" id="profileList"></div>
+  <div class="profile-backup">
+    <button class="profile-backup-btn" id="btnExport">📤 Exporter les profils cochés</button>
+    <button class="profile-backup-btn" id="btnImport">📥 Importer une sauvegarde</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </div>
+  <div class="backup-hint">Coche les profils à exporter (sauvegarde / transfert vers un autre appareil). À l'import, un profil déjà présent n'est remplacé que si la sauvegarde est plus récente.</div>
   <div class="printlink"><a id="backHomeProfils">← Retour à l'accueil</a></div>
 </div>
 

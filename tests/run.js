@@ -25,7 +25,8 @@ const API = ['rnd','choice','sample','commKey','uniqueComm','uniqueExact','escap
   'STARS_KEY','recordLessonResult','starsEarned','LESSON_STATS_KEY','loadLessonStats','recordLessonStats','lessonAvgPct',
   'GOAL_KEY','GOALS_DONE_KEY','getGoalsDone','getGoal','updateGoal','TROPHIES_KEY','TROPHIES','loadTrophies','gSnapshot','evaluateTrophies',
   'sparkline','pctColor','SPRINT_LESSONS','sprintQuestionBody',
-  'loadProfilesMeta','listProfiles','activeProfile','setActiveProfile','addProfile','renameProfile','resetProfile','deleteProfile'];
+  'loadProfilesMeta','listProfiles','activeProfile','setActiveProfile','addProfile','renameProfile','resetProfile','deleteProfile',
+  'exportProfiles','importProfiles'];
 
 const SOURCE = ORDER.map(f => fs.readFileSync(path.join(JS_DIR, f + '.js'), 'utf8')).join('\n')
   + `\n;globalThis.__api = { ${API.join(',')} };`;
@@ -210,28 +211,56 @@ test('sprint leçon 15 : étapes intermédiaires + champ final', () => { const {
   ok(!body7.includes('sprint-free')); ok(body7.includes('id="sprintInput"')); });
 
 console.log('Profils');
-test('profil par défaut créé au 1er lancement', () => { const {api}=freshEnv();
-  const m=api.loadProfilesMeta(); eq(m.list.length,1); eq(m.active,'p1'); eq(api.activeProfile().name,'Profil 1'); });
+test('profil par défaut créé au 1er lancement (avec UUID)', () => { const {api}=freshEnv();
+  const m=api.loadProfilesMeta(); eq(m.list.length,1);
+  eq(m.active,m.list[0].uuid); ok(m.list[0].uuid); eq(api.activeProfile().name,'Profil 1'); });
 test('progression isolée par profil', () => { const {api}=freshEnv();
+  const p1=api.activeProfile().uuid;
   api.recordRun('sprint',5,5,300000);          // profil par défaut
   const tom=api.addProfile('Tom','🦊');         // bascule sur Tom (vierge)
   eq(api.loadRuns('sprint').length,0);
   api.recordRun('sprint',3,3,300000);
   eq(api.loadRuns('sprint').length,1);
-  api.setActiveProfile('p1');                   // retour au défaut
+  api.setActiveProfile(p1);                     // retour au défaut
   eq(api.loadRuns('sprint').length,1);          // intact
-  api.setActiveProfile(tom.id);
+  api.setActiveProfile(tom.uuid);
   eq(api.loadRuns('sprint').length,1); });      // Tom intact aussi
+test('updatedAt bumpé à l’écriture de données', () => { const {api}=freshEnv();
+  api.recordRun('sprint',1,1,300000);
+  ok(Number.isFinite(api.activeProfile().updatedAt)); });
 test('réinitialiser un profil efface sa progression', () => { const {api}=freshEnv();
   api.recordRun('express',40,45,400000);
   for(let n=1;n<=3;n++) api.recordLessonResult(n,true);
-  api.resetProfile('p1');
+  api.resetProfile(api.activeProfile().uuid);
   eq(api.loadRuns('express').length,0); eq(api.starsEarned(),0); });
 test('supprimer un profil (mais pas le dernier)', () => { const {api}=freshEnv();
   const tom=api.addProfile('Tom');
   eq(api.listProfiles().length,2);
-  ok(api.deleteProfile(tom.id)); eq(api.listProfiles().length,1);
-  ok(!api.deleteProfile('p1')); }); // on garde au moins un profil
+  ok(api.deleteProfile(tom.uuid)); eq(api.listProfiles().length,1);
+  ok(!api.deleteProfile(api.activeProfile().uuid)); }); // on garde au moins un profil
+
+console.log('Sauvegarde (export / import par profil)');
+const BK=ps=>({app:'calcul-mental-ce2',version:2,profiles:ps});
+test('exporter un profil', () => { const {api}=freshEnv();
+  const u=api.activeProfile().uuid;
+  api.recordRun('sprint',5,5,300000);
+  const payload=api.exportProfiles([u]);
+  eq(payload.profiles.length,1); eq(payload.profiles[0].uuid,u);
+  ok(Object.keys(payload.profiles[0].data).some(k=>k.includes('runs_sprint'))); });
+test('importer un profil inconnu → ajouté', () => { const {api}=freshEnv();
+  const before=api.listProfiles().length;
+  const res=api.importProfiles(BK([{uuid:'X',name:'Lou',emoji:'🦄',updatedAt:1000,
+    data:{'cm_ce2_runs_sprint':JSON.stringify([{ts:1,ok:3,count:3,ms:300000}])}}]));
+  eq(res.added,1); eq(api.listProfiles().length,before+1);
+  api.setActiveProfile('X'); eq(api.loadRuns('sprint').length,1); });
+test('import : écrase si plus récent, ignore si plus ancien (par UUID)', () => { const {api}=freshEnv();
+  api.importProfiles(BK([{uuid:'X',name:'Lou',emoji:'🦄',updatedAt:1000,data:{'cm_ce2_stars':JSON.stringify({1:1})}}]));
+  let res=api.importProfiles(BK([{uuid:'X',name:'Vieux',updatedAt:500,data:{'cm_ce2_stars':JSON.stringify({1:1,2:1,3:1})}}]));
+  eq(res.skipped,1); api.setActiveProfile('X'); eq(api.starsEarned(),1); // inchangé (local plus récent)
+  res=api.importProfiles(BK([{uuid:'X',name:'Neuf',updatedAt:2000,data:{'cm_ce2_stars':JSON.stringify({1:1,2:1,3:1})}}]));
+  eq(res.updated,1); api.setActiveProfile('X'); eq(api.starsEarned(),3); }); // écrasé
+test('importProfiles rejette un format invalide', () => { const {api}=freshEnv();
+  ok(!api.importProfiles(null)); ok(!api.importProfiles({app:'autre'})); ok(!api.importProfiles({app:'calcul-mental-ce2'})); });
 
 /* ---------- bilan ---------- */
 console.log(`\n${passed} réussis, ${failed} échoués\n`);

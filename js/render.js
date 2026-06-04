@@ -15,7 +15,7 @@ function renderToolbarProfile(){
 function renderProfileMenu(){
   const el=document.getElementById('profileMenu'); if(!el) return;
   const m=loadProfilesMeta(); if(!m) return;
-  el.innerHTML=m.list.map(p=>`<button class="pm-item${p.id===m.active?' active':''}" data-pid="${p.id}">${p.emoji} ${escapeHTML(p.name)}${p.id===m.active?' <span class="pm-check">✓</span>':''}</button>`).join('')
+  el.innerHTML=m.list.map(p=>`<button class="pm-item${p.uuid===m.active?' active':''}" data-uuid="${p.uuid}">${p.emoji} ${escapeHTML(p.name)}${p.uuid===m.active?' <span class="pm-check">✓</span>':''}</button>`).join('')
     +`<button class="pm-item pm-manage" id="pmManage">⚙️ Gérer les profils</button>`;
 }
 /* Écran de gestion des profils */
@@ -23,11 +23,12 @@ function renderProfiles(){
   const el=document.getElementById('profileList'); if(!el) return;
   const m=loadProfilesMeta(); if(!m) return;
   el.innerHTML=m.list.map(p=>`
-    <div class="profile-row${p.id===m.active?' active':''}" data-pid="${p.id}">
+    <div class="profile-row${p.uuid===m.active?' active':''}" data-uuid="${p.uuid}">
+      <input type="checkbox" class="profile-check" data-uuid="${p.uuid}" checked title="Inclure dans l'export">
       <button class="profile-pick" data-act="pick" title="Choisir ce profil">
         <span class="profile-emoji">${p.emoji}</span>
         <span class="profile-name">${escapeHTML(p.name)}</span>
-        ${p.id===m.active?'<span class="profile-tag">actif</span>':''}
+        ${p.uuid===m.active?'<span class="profile-tag">actif</span>':''}
       </button>
       <span class="profile-tools">
         <button data-act="emoji" title="Changer l'avatar">🎨</button>

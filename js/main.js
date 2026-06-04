@@ -1,3 +1,12 @@
+/* ---------- Téléchargement d'un objet en fichier JSON ---------- */
+function downloadJSON(filename,obj){
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
 /* ---------- Liste déroulante de profils (barre d'outils) ---------- */
 function openProfileMenu(){ const el=document.getElementById('profileMenu'); if(!el) return; renderProfileMenu(); el.hidden=false; }
 function closeProfileMenu(){ const el=document.getElementById('profileMenu'); if(el) el.hidden=true; }
@@ -25,7 +34,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     const btn=e.target.closest('button'); if(!btn) return;
     closeProfileMenu();
     if(btn.id==='pmManage'){ showProfiles(); return; }
-    if(btn.dataset.pid){ setActiveProfile(btn.dataset.pid); route(); } // re-rendu de la vue courante avec le nouveau profil
+    if(btn.dataset.uuid){ setActiveProfile(btn.dataset.uuid); route(); } // re-rendu de la vue courante avec le nouveau profil
   });
   // Clic en dehors → ferme le menu
   document.addEventListener('click',e=>{ if(!e.target.closest('#profileDD')) closeProfileMenu(); });
@@ -35,14 +44,45 @@ document.addEventListener('DOMContentLoaded',()=>{
     const btn=e.target.closest('button'); if(!btn) return;
     if(btn.id==='profileAdd'){ const n=prompt('Prénom du nouveau profil :'); if(n&&n.trim()){ addProfile(n.trim()); renderProfiles(); } return; }
     const row=e.target.closest('.profile-row'); if(!row) return;
-    const id=row.dataset.pid;
+    const uuid=row.dataset.uuid;
     switch(btn.dataset.act){
-      case 'pick':   setActiveProfile(id); goHome(); break;
-      case 'rename': { const n=prompt('Nouveau prénom :'); if(n&&n.trim()){ renameProfile(id,n.trim()); renderProfiles(); } break; }
-      case 'emoji':  cycleProfileEmoji(id); renderProfiles(); break;
-      case 'reset':  if(confirm('Réinitialiser toute la progression de ce profil ? (irréversible)')){ resetProfile(id); renderProfiles(); } break;
-      case 'delete': if(confirm('Supprimer ce profil et toute sa progression ?')){ deleteProfile(id); renderProfiles(); } break;
+      case 'pick':   setActiveProfile(uuid); goHome(); break;
+      case 'rename': { const n=prompt('Nouveau prénom :'); if(n&&n.trim()){ renameProfile(uuid,n.trim()); renderProfiles(); } break; }
+      case 'emoji':  cycleProfileEmoji(uuid); renderProfiles(); break;
+      case 'reset':  if(confirm('Réinitialiser toute la progression de ce profil ? (irréversible)')){ resetProfile(uuid); renderProfiles(); } break;
+      case 'delete': if(confirm('Supprimer ce profil et toute sa progression ?')){ deleteProfile(uuid); renderProfiles(); } break;
     }
+  });
+
+  // Export : profils cochés → fichier JSON
+  document.getElementById('btnExport').addEventListener('click',()=>{
+    const uuids=[...document.querySelectorAll('#profileList .profile-check:checked')].map(c=>c.dataset.uuid);
+    if(!uuids.length){ alert('Coche au moins un profil à exporter.'); return; }
+    const payload=exportProfiles(uuids);
+    const d=new Date().toISOString().slice(0,10);
+    const slug=s=>(s||'profil').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    const name=uuids.length===1?slug(payload.profiles[0].name):`${uuids.length}-profils`;
+    downloadJSON(`calcul-mental-${name}-${d}.json`,payload);
+  });
+  // Import : fusion par UUID (écrase si plus récent, ajoute si inconnu)
+  document.getElementById('btnImport').addEventListener('click',()=>document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change',e=>{
+    const file=e.target.files&&e.target.files[0];
+    e.target.value=''; // autorise un futur ré-import du même fichier
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      let payload=null; try{payload=JSON.parse(reader.result);}catch(err){}
+      const res=payload&&importProfiles(payload);
+      if(!res){ alert('Fichier de sauvegarde non reconnu.'); return; }
+      const parts=[];
+      if(res.added) parts.push(`${res.added} ajouté${res.added>1?'s':''}`);
+      if(res.updated) parts.push(`${res.updated} mis à jour`);
+      if(res.skipped) parts.push(`${res.skipped} ignoré${res.skipped>1?'s':''} (déjà à jour)`);
+      alert('Import terminé : '+(parts.join(', ')||'aucun profil')+'.');
+      renderProfiles();
+    };
+    reader.readAsText(file);
   });
 
   // Sélection d'une leçon dans la liste (délégation)

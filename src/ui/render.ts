@@ -1,25 +1,32 @@
 /* ============================================================
    Rendu de l'écran d'accueil et du sélecteur de leçons
    ============================================================ */
+import { escapeHTML, fmt } from '../core/utils';
+import { activeProfile, loadProfilesMeta } from '../core/profiles';
+import { LESSONS } from '../core/lessons';
+import { loadRuns, cmpRun, runPct, fmtRecord, starsEarned, loadStars,
+  loadLessonStats, lessonAvgPct, startOfWeek, startOfMonth, countSince } from '../core/progress';
+import { getGoal, evaluateTrophies, loadTrophies, TROPHIES } from '../core/rewards';
+import { sparkline } from './effects';
 
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
-const pctColor=p=>p<50?'#c62828':(p<75?'#ef6c00':'#2e7d32');
+export const pctColor=p=>p<50?'#c62828':(p<75?'#ef6c00':'#2e7d32');
 
 /* Bouton de profil dans la barre d'outils (libellé = profil actif) */
-function renderToolbarProfile(){
+export function renderToolbarProfile(){
   const el=document.getElementById('toolbarProfile'); if(!el) return;
   const p=activeProfile(); if(!p) return;
   el.innerHTML=`${p.emoji} ${escapeHTML(p.name)} <span class="btn-profile-caret">▾</span>`;
 }
 /* Menu déroulant : liste des profils (clic = bascule) + accès à la gestion */
-function renderProfileMenu(){
+export function renderProfileMenu(){
   const el=document.getElementById('profileMenu'); if(!el) return;
   const m=loadProfilesMeta(); if(!m) return;
   el.innerHTML=m.list.map(p=>`<button class="pm-item${p.uuid===m.active?' active':''}" data-uuid="${p.uuid}">${p.emoji} ${escapeHTML(p.name)}${p.uuid===m.active?' <span class="pm-check">✓</span>':''}</button>`).join('')
     +`<button class="pm-item pm-manage" id="pmManage">⚙️ Gérer les profils</button>`;
 }
 /* Écran de gestion des profils */
-function renderProfiles(){
+export function renderProfiles(){
   const el=document.getElementById('profileList'); if(!el) return;
   const m=loadProfilesMeta(); if(!m) return;
   el.innerHTML=m.list.map(p=>`
@@ -55,7 +62,7 @@ function fillSprintRecord(elId){
   if(!runs.length){el.innerHTML=`<span class="muted">Aucun sprint — à toi de jouer !</span>`;return;}
   el.innerHTML=`🏅 Record : <strong>${[...runs].sort(cmpRun)[0].ok} bonnes réponses</strong>`;
 }
-function sprintBoardHTML(){
+export function sprintBoardHTML(){
   const runs=loadRuns('sprint');
   if(!runs.length) return '';
   const medals=['🥇','🥈','🥉'];
@@ -68,7 +75,7 @@ function sprintBoardHTML(){
   </div>`;
 }
 /* Panneau de classement d'un mode (podium top-3 + progression) */
-function boardHTML(mode,label){
+export function boardHTML(mode,label){
   const runs=loadRuns(mode);
   if(!runs.length) return '';
   const medals=['🥇','🥈','🥉'];
@@ -84,7 +91,7 @@ function boardHTML(mode,label){
     <p class="lb-count">${runs.length} essai${runs.length>1?'s':''} enregistré${runs.length>1?'s':''}</p>
   </div>`;
 }
-function renderHomeStats(){
+export function renderHomeStats(){
   fillCardRecord('recComplet','complet');
   fillCardRecord('recExpress','express');
   const recL=document.getElementById('recLecon');
@@ -100,13 +107,13 @@ function renderHomeStats(){
 
 /* Objectifs de régularité (cadence saine, périodes calendaires).
    La pratique espacée prime : on encourage à revenir, sans pression quotidienne. */
-const REGULARITY=[
+export const REGULARITY=[
   {mode:'sprint',  icon:'🏃', label:'Sprints',       target:3, period:'week'},
   {mode:'express', icon:'⏱️', label:'Bilan express', target:2, period:'month'},
   {mode:'complet', icon:'📚', label:'Bilan complet',  target:1, period:'month'},
 ];
 const PERIOD_LABEL={week:'cette semaine', month:'ce mois-ci'};
-function renderObjectives(){
+export function renderObjectives(){
   const el=document.getElementById('objectives');if(!el)return;
   const rows=REGULARITY.map(o=>{
     const since=o.period==='week'?startOfWeek():startOfMonth();
@@ -123,7 +130,7 @@ function renderObjectives(){
 }
 
 /* Défi du jour (qualité : étoile / leçon sans faute / battre un record) */
-function renderGoal(){
+export function renderGoal(){
   const el=document.getElementById('goal');if(!el)return;
   const g=getGoal();
   if(g.done){
@@ -136,7 +143,7 @@ function renderGoal(){
 }
 
 /* Vitrine des trophées */
-function renderTrophies(){
+export function renderTrophies(){
   const el=document.getElementById('trophies');if(!el)return;
   const have=new Set(loadTrophies());
   const cells=TROPHIES.map(t=>{
@@ -151,7 +158,7 @@ function renderTrophies(){
 }
 
 /* Liste des 15 leçons avec étoiles + taux de réussite */
-function renderLessons(){
+export function renderLessons(){
   const stars=loadStars();
   const lstats=loadLessonStats();
   const list=document.getElementById('lessonList');

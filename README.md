@@ -27,17 +27,29 @@ sa propre progression. La progression d'un profil peut être **exportée** dans 
 fichier puis **réimportée** (sauvegarde ou transfert vers un autre appareil).
 
 ## Utilisation
-Aucune installation : ouvrir `index.html` dans un navigateur (double-clic, ou via
-n'importe quel serveur statique). Toute la progression est enregistrée
-**localement** dans le navigateur (rien n'est envoyé sur un serveur).
+Le plus simple : [jouer en ligne](https://thibautdemare.github.io/Ludaskia/).
+Toute la progression est enregistrée **localement** dans le navigateur (rien
+n'est envoyé sur un serveur).
 
 ## Pour les développeurs
-- **Vanilla** : HTML/CSS/JS, **aucune dépendance, aucun build**.
-- Tests (Node, sans dépendance) :
+- **Stack** : HTML/CSS + **TypeScript**, bundle par **Vite** (modules ES).
+- Installer les dépendances :
 
-      node tests/run.js
+      npm install
 
-- Détails d'architecture et conventions dans `CLAUDE.md`.
+- Serveur de développement (rechargement à chaud) :
+
+      npm run dev
+
+- Tests (Vitest) :
+
+      npm test
+
+- Build de production (vers `dist/`) :
+
+      npm run build
+
+- Détails d'architecture et conventions dans `CLAUDE.md` et `CONTRIBUTING.md`.
 
 ## Feuille de route
 Le format se prête bien aux **automatismes** : au-delà du calcul mental, le

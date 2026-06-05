@@ -1,16 +1,28 @@
 /* ============================================================
    Déroulé d'une session : vérification, saisie clavier, impression
    ============================================================ */
+import { fmt } from '../core/utils';
+import { getSessionItems, setSessionItems } from '../core/items';
+import { buildPrintableDOM } from '../core/lessons';
+import { updateStreak, recordLessonStats, recordLessonResult, recordRun, streakSuffix } from '../core/progress';
+import { updateGoal, evaluateTrophies } from '../core/rewards';
+import { stopChrono } from './chrono';
+import { showCelebration } from './effects';
+import { getCurrentMode, getCurrentLessonNum, getSessionRecorded, setSessionRecorded,
+  setLastErrors, getLastErrors, startRevision } from './navigation';
 
 /* ---------- Vérification (arrête le chrono) ---------- */
-function verify(){
+export function verify(){
   const ms=stopChrono();
   const inputs=document.querySelectorAll('#sheets input.ans');
+  const sessionItems=getSessionItems();
+  const currentMode=getCurrentMode();
+  const currentLessonNum=getCurrentLessonNum();
   let total=0,ok=0,vides=0;
   const errors=[]; // items non réussis (faux OU non remplis) pour la révision
   const perLesson={}; // num -> {ok, total} pour les stats par leçon
-  inputs.forEach(inp=>{
-    const mark=document.querySelector(`.mark[data-for="${inp.id}"]`);
+  inputs.forEach((inp:any)=>{
+    const mark:any=document.querySelector(`.mark[data-for="${inp.id}"]`);
     inp.classList.remove('correct','wrong');
     if(mark){mark.className='mark';mark.textContent='';}
     const it=sessionItems[inp.id];
@@ -27,18 +39,19 @@ function verify(){
       if(it) errors.push(it);
     }
   });
-  lastErrors=errors;
+  setLastErrors(errors);
+  const lastErrors=getLastErrors();
   // Un exercice ne « compte » que si au moins 60 % des calculs ont une réponse.
   const recordable = currentMode && currentMode!=='revision';
   const enough = inputs.length>0 && total>=inputs.length*0.6;
-  const notEnough = recordable && !enough && !sessionRecorded;
+  const notEnough = recordable && !enough && !getSessionRecorded();
   // Enregistrement de l'essai (une seule fois par session)
   // → bilan complet/express : classement + médaille
   // → leçon seule : étoile si sans-faute
   let medalInfo=null, starInfo=null, streakDays=0, goalRes=null, newTrophies=[];
   const celeb=[]; // récompenses à annoncer dans la modale
-  if(recordable && enough && !sessionRecorded){
-    sessionRecorded=true;
+  if(recordable && enough && !getSessionRecorded()){
+    setSessionRecorded(true);
     streakDays=updateStreak().days;
     recordLessonStats(perLesson);
     let perfect=false;
@@ -120,20 +133,20 @@ function verify(){
 
 /* ---------- Saisie ---------- */
 // Modifier un champ efface son marquage
-document.addEventListener('input',e=>{
+document.addEventListener('input',(e:any)=>{
   if(e.target.classList&&e.target.classList.contains('ans')){
     e.target.classList.remove('correct','wrong');
-    const mark=document.querySelector(`.mark[data-for="${e.target.id}"]`);
+    const mark:any=document.querySelector(`.mark[data-for="${e.target.id}"]`);
     if(mark){mark.className='mark';mark.textContent='';}
   }
 });
 // Confort de saisie : Entrée passe au champ suivant ; sur le dernier, on vérifie.
-document.addEventListener('keydown',e=>{
+document.addEventListener('keydown',(e:any)=>{
   const t=e.target;
   if(e.key!=='Enter'||t.tagName!=='INPUT') return;
   if(!t.classList.contains('ans')&&!t.classList.contains('ans-free')) return;
   e.preventDefault();
-  const all=[...document.querySelectorAll('#sheets input.ans, #sheets input.ans-free')];
+  const all:any[]=[...document.querySelectorAll('#sheets input.ans, #sheets input.ans-free')];
   const i=all.indexOf(t);
   if(i>-1 && i<all.length-1) all[i+1].focus();
   else verify(); // dernier champ
@@ -142,7 +155,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- Impression ----------
    On injecte TOUJOURS la version complète, on imprime, puis on
    restaure l'écran courant (gère aussi le Ctrl+P natif). */
-function printAll(){ window.print(); }
+export function printAll(){ window.print(); }
 
 let printSnapshot=null;
 window.addEventListener('beforeprint',()=>{
@@ -151,7 +164,7 @@ window.addEventListener('beforeprint',()=>{
     sheets:sheets.innerHTML,
     homeDisplay:document.getElementById('home').style.display,
     banner: document.getElementById('resultBanner') ? document.getElementById('resultBanner').outerHTML : null,
-    items: sessionItems // la version imprimable régénère des items : on garde ceux de la session
+    items: getSessionItems() // la version imprimable régénère des items : on garde ceux de la session
   };
   const banner=document.getElementById('resultBanner'); if(banner) banner.remove();
   sheets.innerHTML=buildPrintableDOM();
@@ -160,11 +173,11 @@ window.addEventListener('afterprint',()=>{
   const sheets=document.getElementById('sheets');
   if(printSnapshot){
     sheets.innerHTML=printSnapshot.sheets;
-    sessionItems=printSnapshot.items;
+    setSessionItems(printSnapshot.items);
     document.getElementById('home').style.display=printSnapshot.homeDisplay;
     if(printSnapshot.banner){
       const tmp=document.createElement('div'); tmp.innerHTML=printSnapshot.banner;
-      const restored=tmp.firstChild;
+      const restored:any=tmp.firstChild;
       sheets.parentNode.insertBefore(restored,sheets);
       const redo=restored.querySelector&&restored.querySelector('#btnRedo');
       if(redo) redo.addEventListener('click',startRevision); // le listener est perdu via outerHTML

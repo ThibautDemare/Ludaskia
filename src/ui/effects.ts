@@ -3,13 +3,13 @@
    ============================================================ */
 
 /* Mini-courbe SVG de la progression (score % au fil des essais) */
-export function sparkline(vals, w = 260, h = 46) {
+export function sparkline(vals: number[], w = 260, h = 46) {
   if (vals.length < 2) return '';
   const pad = 4,
     iw = w - 2 * pad,
     ih = h - 2 * pad;
-  const x = (i) => pad + (i / (vals.length - 1)) * iw;
-  const y = (v) => pad + ih - (v / 100) * ih;
+  const x = (i: number) => pad + (i / (vals.length - 1)) * iw;
+  const y = (v: number) => pad + ih - (v / 100) * ih;
   const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   const dots = vals
     .map(
@@ -40,7 +40,7 @@ export function confetti() {
 }
 
 /* Modale de récompense : annonce explicitement ce qui vient d'être gagné. */
-export function showCelebration(items) {
+export function showCelebration(items: { icon: string; text: string }[]) {
   if (!items || !items.length) return;
   const list = document.getElementById('celebrateList');
   if (list)

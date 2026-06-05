@@ -1,9 +1,11 @@
 /* ============================================================
    Utilitaires : aléatoire, déduplication, échappement, temps
    ============================================================ */
-export const rnd = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-export const choice = (a) => a[Math.floor(Math.random() * a.length)];
-export function sample(arr, n) {
+import type { Item } from './items';
+
+export const rnd = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+export const choice = <T>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
+export function sample<T>(arr: T[], n: number): T[] {
   const c = [...arr];
   for (let i = c.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -11,7 +13,7 @@ export function sample(arr, n) {
   }
   return c.slice(0, n);
 }
-export const commKey = (op) => {
+export const commKey = (op: string) => {
   const m = op.match(/(\d+)\s*([+×])\s*(\d+)/);
   if (m) {
     const a = +m[1],
@@ -21,9 +23,9 @@ export const commKey = (op) => {
   }
   return op;
 };
-export function uniqueComm(gen, n, mt = 10000) {
-  const k = [],
-    o = [];
+export function uniqueComm(gen: () => Item, n: number, mt = 10000): Item[] {
+  const k: string[] = [],
+    o: Item[] = [];
   let t = 0;
   while (o.length < n && t < mt) {
     const it = gen();
@@ -36,9 +38,9 @@ export function uniqueComm(gen, n, mt = 10000) {
   }
   return o;
 }
-export function uniqueExact(gen, n, mt = 10000) {
-  const k = [],
-    o = [];
+export function uniqueExact(gen: () => Item, n: number, mt = 10000): Item[] {
+  const k: string[] = [],
+    o: Item[] = [];
   let t = 0;
   while (o.length < n && t < mt) {
     const it = gen();
@@ -50,10 +52,10 @@ export function uniqueExact(gen, n, mt = 10000) {
   }
   return o;
 }
-export const escapeHTML = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+export const escapeHTML = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
 /* Formatage mm:ss d'une durée en millisecondes */
-export function fmt(ms) {
+export function fmt(ms: number) {
   const s = Math.floor(ms / 1000),
     m = Math.floor(s / 60),
     r = s % 60;

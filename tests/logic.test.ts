@@ -199,7 +199,7 @@ beforeEach(() => {
 });
 
 // Décale une date 'YYYY-MM-DD' de delta jours (pour simuler hier/avant-hier).
-function shiftDay(_api, dStr, delta) {
+function shiftDay(_api: any, dStr: string, delta: number) {
   const d = new Date(dStr + 'T00:00:00');
   d.setDate(d.getDate() + delta);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -264,7 +264,7 @@ describe('Leçons & bilans', () => {
   test('aucun résultat négatif (hors-programme CE2)', () => {
     for (let k = 1; k <= 15; k++)
       for (let i = 0; i < 300; i++) {
-        const q = api.bilanQ(k);
+        const q = api.bilanQ(k)!;
         expect(q.answer >= 0).toBe(true);
       }
   });
@@ -276,7 +276,7 @@ describe('Records & classement', () => {
       { ok: 18, ms: 400 },
       { ok: 18, ms: 300 },
       { ok: 20, ms: 999 },
-    ].sort(api.cmpRun);
+    ].sort(api.cmpRun as any);
     expect(arr[0].ok).toBe(20);
     expect(arr[1].ms).toBe(300);
   });
@@ -435,10 +435,10 @@ describe('Trophées', () => {
     ).toBe(true);
   });
   test('trophées à paliers compilés (metric/n → test)', () => {
-    const def = api.TROPHIES.find((t) => t.id === 'stars5');
+    const def = api.TROPHIES.find((t) => t.id === 'stars5')!;
     expect(typeof def.test === 'function').toBe(true);
-    expect(def.test({ stars: 5 })).toBe(true);
-    expect(def.test({ stars: 4 })).toBe(false);
+    expect(def.test!({ stars: 5 })).toBe(true);
+    expect(def.test!({ stars: 4 })).toBe(false);
   });
 });
 
@@ -481,7 +481,7 @@ describe('Sprint', () => {
 
 describe('Profils', () => {
   test('profil par défaut créé au 1er lancement (avec UUID)', () => {
-    const m = api.loadProfilesMeta();
+    const m = api.loadProfilesMeta()!;
     expect(m.list.length).toBe(1);
     expect(m.active).toBe(m.list[0].uuid);
     expect(!!m.list[0].uuid).toBe(true);
@@ -520,11 +520,11 @@ describe('Profils', () => {
 });
 
 describe('Sauvegarde (export / import par profil)', () => {
-  const BK = (ps) => ({ app: 'ludaskia', version: 2, profiles: ps });
+  const BK = (ps: any) => ({ app: 'ludaskia', version: 2, profiles: ps });
   test('exporter un profil', () => {
     const u = api.activeProfile().uuid;
     api.recordRun('sprint', 5, 5, 300000);
-    const payload = api.exportProfiles([u]);
+    const payload = api.exportProfiles([u])!;
     expect(payload.profiles.length).toBe(1);
     expect(payload.profiles[0].uuid).toBe(u);
     expect(Object.keys(payload.profiles[0].data).some((k) => k.includes('runs_sprint'))).toBe(true);
@@ -542,7 +542,7 @@ describe('Sauvegarde (export / import par profil)', () => {
         },
       ]),
     );
-    expect(res.added).toBe(1);
+    expect(res!.added).toBe(1);
     expect(api.listProfiles().length).toBe(before + 1);
     api.setActiveProfile('X');
     expect(api.loadRuns('sprint').length).toBe(1);
@@ -569,7 +569,7 @@ describe('Sauvegarde (export / import par profil)', () => {
         },
       ]),
     );
-    expect(res.skipped).toBe(1);
+    expect(res!.skipped).toBe(1);
     api.setActiveProfile('X');
     expect(api.starsEarned()).toBe(1); // inchangé (local plus récent)
     res = api.importProfiles(
@@ -582,7 +582,7 @@ describe('Sauvegarde (export / import par profil)', () => {
         },
       ]),
     );
-    expect(res.updated).toBe(1);
+    expect(res!.updated).toBe(1);
     api.setActiveProfile('X');
     expect(api.starsEarned()).toBe(3);
   }); // écrasé

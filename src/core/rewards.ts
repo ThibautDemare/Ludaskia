@@ -40,7 +40,18 @@ export function challengeContext() {
   };
 }
 // Défis disponibles selon le contexte. build() fabrique le défi concret.
-export const CHALLENGES = [
+interface ChallengeContext {
+  weak: number[];
+  starsLeft: boolean;
+  hasSprint: boolean;
+  hasExpress: boolean;
+}
+interface Challenge {
+  type: string;
+  avail: (c: ChallengeContext) => boolean;
+  build: (c: ChallengeContext) => { type: string; label: string; lesson?: number };
+}
+export const CHALLENGES: Challenge[] = [
   {
     type: 'star',
     avail: (c) => c.starsLeft,
@@ -70,7 +81,7 @@ export const CHALLENGES = [
       return {
         type: 'remediation',
         lesson: num,
-        label: `Retravaille « ${l.title} » et réussis-la à 80 %.`,
+        label: `Retravaille « ${l!.title} » et réussis-la à 80 %.`,
       };
     },
   },
@@ -94,7 +105,7 @@ export function getGoal() {
   return goal;
 }
 /* Met à jour le défi selon l'événement de la session. Renvoie {goal, justDone}. */
-export function updateGoal(ev) {
+export function updateGoal(ev: any) {
   const goal = getGoal();
   if (goal.done) return { goal, justDone: false };
   let inc = 0;
@@ -144,7 +155,21 @@ export function updateGoal(ev) {
    tiers() fabrique une famille de trophées à paliers réutilisable. */
 export const TROPHIES_KEY = 'ludaskia_trophies';
 
-export function tiers(prefix, icon, metric, levels) {
+export interface Trophy {
+  id: string;
+  icon: string;
+  title: string;
+  desc: string;
+  metric?: string;
+  n?: number;
+  test?: (g: any) => boolean;
+}
+export function tiers(
+  prefix: string,
+  icon: string,
+  metric: string,
+  levels: { n: number; title: string; desc: string }[],
+): Trophy[] {
   // levels : [{n, title, desc}]
   return levels.map((l) => ({
     id: prefix + l.n,
@@ -155,7 +180,7 @@ export function tiers(prefix, icon, metric, levels) {
     n: l.n,
   }));
 }
-export const TROPHIES = [
+export const TROPHIES: Trophy[] = [
   {
     id: 'first',
     icon: '🎉',
@@ -186,28 +211,28 @@ export const TROPHIES = [
     icon: '⚡',
     title: 'Éclair',
     desc: 'Un bilan express en moins de 8 min.',
-    test: (g) => g.bestExpressMs <= 480000,
+    test: (g: any) => g.bestExpressMs <= 480000,
   },
   {
     id: 'carton',
     icon: '💯',
     title: 'Carton plein',
     desc: 'Un bilan réussi à 100 %.',
-    test: (g) => g.perfectBilan,
+    test: (g: any) => g.perfectBilan,
   },
   {
     id: 'champion',
     icon: '🥇',
     title: 'Champion',
     desc: "Décrocher une médaille d'or.",
-    test: (g) => g.gold,
+    test: (g: any) => g.gold,
   },
   {
     id: 'allgreen',
     icon: '🌿',
     title: 'Tout au vert',
     desc: 'Toutes les leçons à 70 % ou plus.',
-    test: (g) => g.allGreen,
+    test: (g: any) => g.allGreen,
   },
   ...tiers('vol', '🧮', 'totalAnswered', [
     { n: 100, title: '100 calculs', desc: '100 calculs résolus.' },
@@ -230,7 +255,7 @@ export const TROPHIES = [
 ];
 // Compile le raccourci {metric, n} en fonction test.
 TROPHIES.forEach((t) => {
-  if (!t.test && t.metric) t.test = (g) => g[t.metric] >= t.n;
+  if (!t.test && t.metric) t.test = (g: any) => g[t.metric!] >= t.n!;
 });
 
 export function loadTrophies() {
@@ -264,10 +289,10 @@ export function gSnapshot() {
 /* Débloque les trophées nouvellement atteints ; renvoie les nouveaux. */
 export function evaluateTrophies() {
   const g = gSnapshot();
-  const set = new Set(loadTrophies());
-  const newly = [];
+  const set = new Set<string>(loadTrophies());
+  const newly: Trophy[] = [];
   TROPHIES.forEach((t) => {
-    if (!set.has(t.id) && t.test(g)) {
+    if (!set.has(t.id) && t.test!(g)) {
       set.add(t.id);
       newly.push(t);
     }

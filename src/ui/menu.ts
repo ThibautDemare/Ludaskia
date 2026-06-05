@@ -21,5 +21,6 @@ export function closeProfileMenu() {
 export function toggleProfileMenu() {
   const el = document.getElementById('profileMenu');
   if (!el) return;
-  el.hidden ? openProfileMenu() : closeProfileMenu();
+  if (el.hidden) openProfileMenu();
+  else closeProfileMenu();
 }

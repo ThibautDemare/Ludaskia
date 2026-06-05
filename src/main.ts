@@ -42,7 +42,7 @@ import { hideCelebration } from './ui/effects';
 import { closeProfileMenu, toggleProfileMenu } from './ui/menu';
 
 /* ---------- Téléchargement d'un objet en fichier JSON ---------- */
-function downloadJSON(filename, obj) {
+function downloadJSON(filename: string, obj: any) {
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -58,24 +58,24 @@ function downloadJSON(filename, obj) {
    Initialisation : câblage des événements au chargement
    ============================================================ */
 function wireDOM() {
-  document.getElementById('btnVerify').addEventListener('click', verify);
-  document.getElementById('btnHome').addEventListener('click', goHome);
-  document.getElementById('btnPrint').addEventListener('click', printAll);
-  document.getElementById('cardComplet').addEventListener('click', startComplet);
-  document.getElementById('cardExpress').addEventListener('click', startExpress);
-  document.getElementById('cardLecon').addEventListener('click', showLessons);
-  document.getElementById('cardSprint').addEventListener('click', startSprint);
-  document.getElementById('backHome').addEventListener('click', goHome);
-  document.getElementById('backHomeProfils').addEventListener('click', goHome);
-  document.getElementById('printLink').addEventListener('click', printAll);
+  document.getElementById('btnVerify')!.addEventListener('click', verify);
+  document.getElementById('btnHome')!.addEventListener('click', goHome);
+  document.getElementById('btnPrint')!.addEventListener('click', printAll);
+  document.getElementById('cardComplet')!.addEventListener('click', startComplet);
+  document.getElementById('cardExpress')!.addEventListener('click', startExpress);
+  document.getElementById('cardLecon')!.addEventListener('click', showLessons);
+  document.getElementById('cardSprint')!.addEventListener('click', startSprint);
+  document.getElementById('backHome')!.addEventListener('click', goHome);
+  document.getElementById('backHomeProfils')!.addEventListener('click', goHome);
+  document.getElementById('printLink')!.addEventListener('click', printAll);
 
   // Bouton profil de la barre : ouvre/ferme la liste déroulante
-  document.getElementById('toolbarProfile').addEventListener('click', (e) => {
+  document.getElementById('toolbarProfile')!.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleProfileMenu();
   });
   // Menu déroulant : bascule de profil (clic = profil actif) ou accès à la gestion
-  document.getElementById('profileMenu').addEventListener('click', (e: any) => {
+  document.getElementById('profileMenu')!.addEventListener('click', (e: any) => {
     const btn = e.target.closest('button');
     if (!btn) return;
     closeProfileMenu();
@@ -94,7 +94,7 @@ function wireDOM() {
   });
 
   // Écran de gestion des profils (délégation)
-  document.getElementById('profileList').addEventListener('click', (e: any) => {
+  document.getElementById('profileList')!.addEventListener('click', (e: any) => {
     const btn = e.target.closest('button');
     if (!btn) return;
     if (btn.id === 'profileAdd') {
@@ -141,7 +141,7 @@ function wireDOM() {
   });
 
   // Export : profils cochés → fichier JSON
-  document.getElementById('btnExport').addEventListener('click', () => {
+  document.getElementById('btnExport')!.addEventListener('click', () => {
     const uuids = [...document.querySelectorAll('#profileList .profile-check:checked')].map(
       (c: any) => c.dataset.uuid,
     );
@@ -149,9 +149,9 @@ function wireDOM() {
       alert('Coche au moins un profil à exporter.');
       return;
     }
-    const payload = exportProfiles(uuids);
+    const payload = exportProfiles(uuids)!;
     const d = new Date().toISOString().slice(0, 10);
-    const slug = (s) =>
+    const slug = (s: string) =>
       (s || 'profil')
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -161,9 +161,11 @@ function wireDOM() {
   });
   // Import : fusion par UUID (écrase si plus récent, ajoute si inconnu)
   document
-    .getElementById('btnImport')
-    .addEventListener('click', () => document.getElementById('importFile').click());
-  document.getElementById('importFile').addEventListener('change', (e: any) => {
+    .getElementById('btnImport')!
+    .addEventListener('click', () =>
+      (document.getElementById('importFile') as HTMLInputElement).click(),
+    );
+  document.getElementById('importFile')!.addEventListener('change', (e: any) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = ''; // autorise un futur ré-import du même fichier
     if (!file) return;
@@ -178,7 +180,7 @@ function wireDOM() {
         alert('Fichier de sauvegarde non reconnu.');
         return;
       }
-      const parts = [];
+      const parts: string[] = [];
       if (res.added) parts.push(`${res.added} ajouté${res.added > 1 ? 's' : ''}`);
       if (res.updated) parts.push(`${res.updated} mis à jour`);
       if (res.skipped)
@@ -190,15 +192,15 @@ function wireDOM() {
   });
 
   // Sélection d'une leçon dans la liste (délégation)
-  document.getElementById('lessonList').addEventListener('click', (e: any) => {
+  document.getElementById('lessonList')!.addEventListener('click', (e: any) => {
     const btn = e.target.closest('.lesson-item');
     if (btn) startLecon(Number(btn.dataset.num));
   });
 
   // Modale de récompense : fermeture (bouton, croix, fond, Échap)
-  document.getElementById('celebrateOk').addEventListener('click', hideCelebration);
-  document.getElementById('celebrateClose').addEventListener('click', hideCelebration);
-  document.getElementById('celebrate').addEventListener('click', (e: any) => {
+  document.getElementById('celebrateOk')!.addEventListener('click', hideCelebration);
+  document.getElementById('celebrateClose')!.addEventListener('click', hideCelebration);
+  document.getElementById('celebrate')!.addEventListener('click', (e: any) => {
     if (e.target.id === 'celebrate') hideCelebration();
   });
   document.addEventListener('keydown', (e: any) => {

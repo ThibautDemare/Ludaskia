@@ -3,6 +3,8 @@
    ============================================================ */
 import { fmt } from '../core/utils';
 import { getSessionItems, setSessionItems } from '../core/items';
+import type { Item } from '../core/items';
+import type { Trophy } from '../core/rewards';
 import { buildPrintableDOM } from '../core/lessons';
 import {
   updateStreak,
@@ -34,8 +36,8 @@ export function verify() {
   let total = 0,
     ok = 0,
     vides = 0;
-  const errors = []; // items non réussis (faux OU non remplis) pour la révision
-  const perLesson = {}; // num -> {ok, total} pour les stats par leçon
+  const errors: Item[] = []; // items non réussis (faux OU non remplis) pour la révision
+  const perLesson: Record<string, { ok: number; total: number }> = {}; // num -> {ok, total} pour les stats par leçon
   inputs.forEach((inp: any) => {
     const mark: any = document.querySelector(`.mark[data-for="${inp.id}"]`);
     inp.classList.remove('correct', 'wrong');
@@ -81,12 +83,12 @@ export function verify() {
   // Enregistrement de l'essai (une seule fois par session)
   // → bilan complet/express : classement + médaille
   // → leçon seule : étoile si sans-faute
-  let medalInfo = null,
-    starInfo = null,
+  let medalInfo: any = null,
+    starInfo: any = null,
     streakDays = 0,
-    goalRes = null,
-    newTrophies = [];
-  const celeb = []; // récompenses à annoncer dans la modale
+    goalRes: any = null,
+    newTrophies: Trophy[] = [];
+  const celeb: { icon: string; text: string }[] = []; // récompenses à annoncer dans la modale
   if (recordable && enough && !getSessionRecorded()) {
     setSessionRecorded(true);
     streakDays = updateStreak().days;
@@ -94,7 +96,7 @@ export function verify() {
     let perfect = false;
     if (currentMode === 'lecon') {
       perfect = ok === inputs.length; // toutes les réponses justes
-      const res = recordLessonResult(currentLessonNum, perfect);
+      const res = recordLessonResult(currentLessonNum!, perfect);
       starInfo = { perfect, newStar: res.newStar, count: res.count };
     } else {
       medalInfo = recordRun(currentMode, ok, inputs.length, ms);
@@ -132,11 +134,13 @@ export function verify() {
   }
   if (medalInfo) {
     if (medalInfo.medal) {
-      const M = {
-        1: ['🥇', "Médaille d'or"],
-        2: ['🥈', "Médaille d'argent"],
-        3: ['🥉', 'Médaille de bronze'],
-      }[medalInfo.medal];
+      const M = (
+        {
+          1: ['🥇', "Médaille d'or"],
+          2: ['🥈', "Médaille d'argent"],
+          3: ['🥉', 'Médaille de bronze'],
+        } as Record<number, string[]>
+      )[medalInfo.medal];
       html += `<div class="rb-medal"><span class="rb-medal-ico">${M[0]}</span><span class="rb-medal-txt">${M[1]} !</span></div>`;
     }
     if (medalInfo.isRecord) html += `<div class="rb-record">🎉 Nouveau record !</div>`;
@@ -170,12 +174,12 @@ export function verify() {
   banner.innerHTML = html;
   const redo = banner.querySelector('#btnRedo');
   if (redo) redo.addEventListener('click', startRevision);
-  const sheets = document.getElementById('sheets');
-  sheets.parentNode.insertBefore(banner, sheets);
+  const sheets = document.getElementById('sheets')!;
+  sheets.parentNode!.insertBefore(banner, sheets);
   // Récompenses : modale explicite (+ confettis) pour qu'on sache ce qu'on a gagné
   if (celeb.length) showCelebration(celeb);
   // petit rappel dans la barre
-  const sc = document.getElementById('score');
+  const sc = document.getElementById('score')!;
   sc.classList.remove('hidden');
   sc.textContent = total > 0 ? `${ok}/${total} · ${fmt(ms)}` : `Aucune réponse · ${fmt(ms)}`;
   const firstWrong = document.querySelector('#sheets input.ans.wrong');
@@ -214,14 +218,14 @@ export function printAll() {
   window.print();
 }
 
-let printSnapshot = null;
+let printSnapshot: any = null;
 window.addEventListener('beforeprint', () => {
-  const sheets = document.getElementById('sheets');
+  const sheets = document.getElementById('sheets')!;
   printSnapshot = {
     sheets: sheets.innerHTML,
-    homeDisplay: document.getElementById('home').style.display,
+    homeDisplay: document.getElementById('home')!.style.display,
     banner: document.getElementById('resultBanner')
-      ? document.getElementById('resultBanner').outerHTML
+      ? document.getElementById('resultBanner')!.outerHTML
       : null,
     items: getSessionItems(), // la version imprimable régénère des items : on garde ceux de la session
   };
@@ -230,16 +234,16 @@ window.addEventListener('beforeprint', () => {
   sheets.innerHTML = buildPrintableDOM();
 });
 window.addEventListener('afterprint', () => {
-  const sheets = document.getElementById('sheets');
+  const sheets = document.getElementById('sheets')!;
   if (printSnapshot) {
     sheets.innerHTML = printSnapshot.sheets;
     setSessionItems(printSnapshot.items);
-    document.getElementById('home').style.display = printSnapshot.homeDisplay;
+    document.getElementById('home')!.style.display = printSnapshot.homeDisplay;
     if (printSnapshot.banner) {
       const tmp = document.createElement('div');
       tmp.innerHTML = printSnapshot.banner;
       const restored: any = tmp.firstChild;
-      sheets.parentNode.insertBefore(restored, sheets);
+      sheets.parentNode!.insertBefore(restored, sheets);
       const redo = restored.querySelector && restored.querySelector('#btnRedo');
       if (redo) redo.addEventListener('click', startRevision); // le listener est perdu via outerHTML
     }

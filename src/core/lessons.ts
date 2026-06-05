@@ -22,6 +22,7 @@ import {
   nextInputId,
   getSessionItems,
 } from './items';
+import type { Item } from './items';
 
 export const LESSONS = [
   {
@@ -294,7 +295,7 @@ export function buildFiches() {
 /* ============================================================
    Bilans express (3 calculs par leçon)
    ============================================================ */
-export const THEMES = {
+export const THEMES: Record<number, string> = {
   1: "Table d'addition",
   2: 'Complément à 10/100',
   3: 'Doubles',
@@ -311,7 +312,7 @@ export const THEMES = {
   14: '× 20, 30, 40',
   15: 'Décomposer',
 };
-export function bilanQ(k) {
+export function bilanQ(k: number): Item | undefined {
   switch (k) {
     case 1: {
       let a = rnd(2, 9),
@@ -359,14 +360,14 @@ export function bilanQ(k) {
       return mul(rnd(3, 8), choice([12, 13, 14, 15, 16, 21, 23, 24]));
   }
 }
-export function bilanBlocks(nbQ) {
-  const blocks = [];
+export function bilanBlocks(nbQ: number) {
+  const blocks: { num: number; theme: string; ops: Item[] }[] = [];
   for (let num = 1; num <= 15; num++) {
-    const k = [],
-      ops = [];
+    const k: string[] = [],
+      ops: Item[] = [];
     let t = 0;
     while (ops.length < nbQ && t < 300) {
-      const o = bilanQ(num),
+      const o = bilanQ(num)!,
         key = commKey(o.text);
       if (!k.includes(key)) {
         k.push(key);
@@ -379,7 +380,7 @@ export function bilanBlocks(nbQ) {
   return blocks;
 }
 /* numero = libellé ; le bloc temps total est print-only */
-export function bilanHTML(numero) {
+export function bilanHTML(numero: number) {
   const blocks = bilanBlocks(3);
   const cells = blocks
     .map((b) => {
@@ -411,7 +412,7 @@ export function coverHTML() {
       Si je bloque, je passe au suivant et j'y reviens à la fin. Bon entraînement !</p>
   </div>`;
 }
-export function fichesPagesHTML(fiches) {
+export function fichesPagesHTML(fiches: string[]) {
   const perPage = 3;
   const pages = [];
   for (let i = 0; i < fiches.length; i += perPage) {

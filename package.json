@@ -8,13 +8,16 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
     "happy-dom": "^20.10.1",
+    "prettier": "^3.8.3",
     "sass": "^1.100.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",

@@ -1,46 +1,200 @@
 /* Mode Sprint 5 min : HUD (chrono + score) et grande question centrée */
-.sprint{max-width:600px;margin:40px auto;padding:0 16px;text-align:center;font-family:var(--ui);}
-.sprint-hud{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:12px;}
-.sprint-time{font-family:'Courier New',monospace;font-size:34px;font-weight:700;color:var(--blue);
-  background:#fff;border-radius:12px;padding:8px 20px;box-shadow:0 4px 14px rgba(0,0,0,.10);letter-spacing:1px;}
-.sprint-time.low{color:var(--ko);}
-.sprint-score{font-size:16px;font-weight:700;color:var(--grey);}
+.sprint {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 0 16px;
+  text-align: center;
+  font-family: var(--ui);
+}
+.sprint-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 12px;
+}
+.sprint-time {
+  font-family: 'Courier New', monospace;
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--blue);
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  letter-spacing: 1px;
+}
+.sprint-time.low {
+  color: var(--ko);
+}
+.sprint-score {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--grey);
+}
 
-.sprint-stage{background:var(--paper);border-radius:16px;padding:40px 26px;box-shadow:0 6px 22px rgba(0,0,0,.12);
-  min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;}
-.sprint-theme{font-family:var(--ui);font-size:13px;font-weight:700;letter-spacing:.3px;
-  text-transform:uppercase;color:var(--blue);background:var(--blue-soft);
-  border-radius:999px;padding:4px 14px;}
-.sprint-q{font-family:Georgia,"Times New Roman",serif;font-size:30px;color:var(--ink);
-  display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;}
-.sprint-q.wrong{color:var(--ko);}
-.sprint-input{font:inherit;font-family:Georgia,"Times New Roman",serif;font-size:30px;width:120px;text-align:center;
-  border:0;border-bottom:3px solid var(--blue);background:var(--blue-soft);border-radius:6px 6px 0 0;padding:2px 6px;color:var(--ink);}
-.sprint-input:focus{outline:none;}
+.sprint-stage {
+  background: var(--paper);
+  border-radius: 16px;
+  padding: 40px 26px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+.sprint-theme {
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--blue);
+  background: var(--blue-soft);
+  border-radius: 999px;
+  padding: 4px 14px;
+}
+.sprint-q {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 30px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.sprint-q.wrong {
+  color: var(--ko);
+}
+.sprint-input {
+  font: inherit;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 30px;
+  width: 120px;
+  text-align: center;
+  border: 0;
+  border-bottom: 3px solid var(--blue);
+  background: var(--blue-soft);
+  border-radius: 6px 6px 0 0;
+  padding: 2px 6px;
+  color: var(--ink);
+}
+.sprint-input:focus {
+  outline: none;
+}
 /* Champ de brouillon (étapes de la leçon 15) : saisissable mais non corrigé */
-.sprint-free{font:inherit;font-family:Georgia,"Times New Roman",serif;font-size:20px;width:52px;text-align:center;
-  border:0;border-bottom:2px solid #999;background:transparent;padding:1px 3px;color:var(--ink);}
-.sprint-free:focus{outline:none;border-bottom-color:var(--blue);background:var(--blue-soft);}
+.sprint-free {
+  font: inherit;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px;
+  width: 52px;
+  text-align: center;
+  border: 0;
+  border-bottom: 2px solid #999;
+  background: transparent;
+  padding: 1px 3px;
+  color: var(--ink);
+}
+.sprint-free:focus {
+  outline: none;
+  border-bottom-color: var(--blue);
+  background: var(--blue-soft);
+}
 /* Leçon 15 « décomposer » : ligne plus longue → on réduit un peu */
-.sprint-q.deco{font-size:21px;line-height:2.2;}
-.sprint-q.deco .sprint-input{font-size:21px;width:84px;}
-.sprint-sol{color:var(--ok);font-weight:700;}
-.sprint-correction{font-size:16px;color:var(--grey);}
-.sprint-correction strong{color:var(--ok);}
+.sprint-q.deco {
+  font-size: 21px;
+  line-height: 2.2;
+}
+.sprint-q.deco .sprint-input {
+  font-size: 21px;
+  width: 84px;
+}
+.sprint-sol {
+  color: var(--ok);
+  font-weight: 700;
+}
+.sprint-correction {
+  font-size: 16px;
+  color: var(--grey);
+}
+.sprint-correction strong {
+  color: var(--ok);
+}
 
-.sprint-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
-.sprint-btn{font:inherit;font-family:var(--ui);font-size:17px;font-weight:700;border:0;border-radius:10px;cursor:pointer;
-  background:var(--blue);color:#fff;padding:12px 28px;transition:box-shadow .15s ease,transform .08s ease;}
-.sprint-btn:hover{box-shadow:0 4px 12px rgba(0,0,0,.25);}
-.sprint-btn:active{transform:translateY(1px);}
-.sprint-btn.ghost{background:#e7ebf1;color:var(--blue);}
+.sprint-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.sprint-btn {
+  font: inherit;
+  font-family: var(--ui);
+  font-size: 17px;
+  font-weight: 700;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--blue);
+  color: #fff;
+  padding: 12px 28px;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.08s ease;
+}
+.sprint-btn:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.sprint-btn:active {
+  transform: translateY(1px);
+}
+.sprint-btn.ghost {
+  background: #e7ebf1;
+  color: var(--blue);
+}
 
-.sprint-check{font-size:80px;color:var(--ok);animation:sprint-pop .3s ease;}
-@keyframes sprint-pop{0%{transform:scale(.4);opacity:0;}100%{transform:scale(1);opacity:1;}}
+.sprint-check {
+  font-size: 80px;
+  color: var(--ok);
+  animation: sprint-pop 0.3s ease;
+}
+@keyframes sprint-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
 
 /* Écran de fin de sprint */
-.sprint-done{display:flex;flex-direction:column;align-items:center;gap:6px;}
-.sprint-done-big{font-size:64px;font-weight:800;color:var(--blue);line-height:1;}
-.sprint-done-lab{font-size:18px;font-weight:700;color:var(--ink);}
-.sprint-done-sub{font-size:14px;color:var(--grey);margin-bottom:6px;}
-.sprint-done .sprint-actions{margin-top:14px;}
+.sprint-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.sprint-done-big {
+  font-size: 64px;
+  font-weight: 800;
+  color: var(--blue);
+  line-height: 1;
+}
+.sprint-done-lab {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.sprint-done-sub {
+  font-size: 14px;
+  color: var(--grey);
+  margin-bottom: 6px;
+}
+.sprint-done .sprint-actions {
+  margin-top: 14px;
+}

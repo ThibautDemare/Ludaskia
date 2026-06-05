@@ -1,103 +1,121 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ludaskia — entraînement au calcul mental</title>
-</head>
-<body>
-
-<div class="toolbar">
-  <h1>Ludaskia</h1>
-  <div class="profile-dd" id="profileDD">
-    <button class="btn-profile" id="toolbarProfile" style="display:none" title="Changer / gérer les profils"></button>
-    <div class="profile-menu" id="profileMenu" hidden></div>
-  </div>
-  <span class="chrono hidden" id="chrono">00:00</span>
-  <span class="score hidden" id="score"></span>
-  <button class="btn-accent" id="btnVerify" style="display:none">✓ Vérifier</button>
-  <button class="btn-primary" id="btnHome" style="display:none">🏠 Accueil</button>
-  <button class="btn-ghost" id="btnPrint">🖨 Imprimer / PDF</button>
-</div>
-
-<!-- Écran d'accueil (interactif) -->
-<div class="home screen-only" id="home">
-  <div class="big">Ludaskia</div>
-  <div class="tagline">Entraînement chronométré · 15 leçons</div>
-  <div class="objectives" id="objectives"></div>
-  <div class="goal" id="goal"></div>
-  <div class="cards">
-    <div class="card" id="cardSprint">
-      <div class="ico">🏃</div>
-      <h2>Sprint 5 min</h2>
-      <p>En 5 minutes, enchaîne les calculs au hasard et fais le plus de bonnes réponses possibles !</p>
-      <div class="card-record" id="recSprint"></div>
-      <span class="go">C'est parti →</span>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ludaskia — entraînement au calcul mental</title>
+  </head>
+  <body>
+    <div class="toolbar">
+      <h1>Ludaskia</h1>
+      <div class="profile-dd" id="profileDD">
+        <button
+          class="btn-profile"
+          id="toolbarProfile"
+          style="display: none"
+          title="Changer / gérer les profils"
+        ></button>
+        <div class="profile-menu" id="profileMenu" hidden></div>
+      </div>
+      <span class="chrono hidden" id="chrono">00:00</span>
+      <span class="score hidden" id="score"></span>
+      <button class="btn-accent" id="btnVerify" style="display: none">✓ Vérifier</button>
+      <button class="btn-primary" id="btnHome" style="display: none">🏠 Accueil</button>
+      <button class="btn-ghost" id="btnPrint">🖨 Imprimer / PDF</button>
     </div>
-    <div class="card" id="cardLecon">
-      <div class="ico">📖</div>
-      <h2>Une leçon à la fois</h2>
-      <p>Choisis un seul thème et vise le sans-faute pour décrocher son étoile.</p>
-      <div class="card-record" id="recLecon"></div>
-      <span class="go">Choisir →</span>
+
+    <!-- Écran d'accueil (interactif) -->
+    <div class="home screen-only" id="home">
+      <div class="big">Ludaskia</div>
+      <div class="tagline">Entraînement chronométré · 15 leçons</div>
+      <div class="objectives" id="objectives"></div>
+      <div class="goal" id="goal"></div>
+      <div class="cards">
+        <div class="card" id="cardSprint">
+          <div class="ico">🏃</div>
+          <h2>Sprint 5 min</h2>
+          <p>
+            En 5 minutes, enchaîne les calculs au hasard et fais le plus de bonnes réponses
+            possibles !
+          </p>
+          <div class="card-record" id="recSprint"></div>
+          <span class="go">C'est parti →</span>
+        </div>
+        <div class="card" id="cardLecon">
+          <div class="ico">📖</div>
+          <h2>Une leçon à la fois</h2>
+          <p>Choisis un seul thème et vise le sans-faute pour décrocher son étoile.</p>
+          <div class="card-record" id="recLecon"></div>
+          <span class="go">Choisir →</span>
+        </div>
+        <div class="card" id="cardExpress">
+          <div class="ico">⏱️</div>
+          <h2>Bilan express</h2>
+          <p>
+            Trois calculs par leçon sur une seule feuille. Faisable en une quinzaine de minutes.
+          </p>
+          <div class="card-record" id="recExpress"></div>
+          <span class="go">Commencer →</span>
+        </div>
+        <div class="card" id="cardComplet">
+          <div class="ico">📚</div>
+          <h2>Bilan complet</h2>
+          <p>
+            Les 15 fiches d'entraînement, une douzaine de calculs chacune. Pour travailler toutes
+            les leçons à fond.
+          </p>
+          <div class="card-record" id="recComplet"></div>
+          <span class="go">Commencer →</span>
+        </div>
+      </div>
+      <div class="boards" id="boards"></div>
+      <div id="trophies"></div>
+      <div class="printlink">
+        Besoin d'une feuille papier à remplir au crayon ?
+        <a id="printLink">Imprimer la version PDF complète</a> (page de garde, 15 fiches et 2
+        bilans).
+      </div>
     </div>
-    <div class="card" id="cardExpress">
-      <div class="ico">⏱️</div>
-      <h2>Bilan express</h2>
-      <p>Trois calculs par leçon sur une seule feuille. Faisable en une quinzaine de minutes.</p>
-      <div class="card-record" id="recExpress"></div>
-      <span class="go">Commencer →</span>
+
+    <!-- Écran de sélection d'une leçon -->
+    <div class="home screen-only" id="lessons" style="display: none">
+      <div class="big">Choisis une leçon</div>
+      <div class="tagline" id="starsSummary"></div>
+      <div class="lesson-list" id="lessonList"></div>
+      <div class="printlink"><a id="backHome">← Retour à l'accueil</a></div>
     </div>
-    <div class="card" id="cardComplet">
-      <div class="ico">📚</div>
-      <h2>Bilan complet</h2>
-      <p>Les 15 fiches d'entraînement, une douzaine de calculs chacune. Pour travailler toutes les leçons à fond.</p>
-      <div class="card-record" id="recComplet"></div>
-      <span class="go">Commencer →</span>
+
+    <!-- Écran de gestion des profils -->
+    <div class="home screen-only" id="profils" style="display: none">
+      <div class="big">Profils</div>
+      <div class="tagline">Chaque profil garde sa propre progression.</div>
+      <div class="profile-list" id="profileList"></div>
+      <div class="profile-backup">
+        <button class="profile-backup-btn" id="btnExport">📤 Exporter les profils cochés</button>
+        <button class="profile-backup-btn" id="btnImport">📥 Importer une sauvegarde</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden />
+      </div>
+      <div class="backup-hint">
+        Coche les profils à exporter (sauvegarde / transfert vers un autre appareil). À l'import, un
+        profil déjà présent n'est remplacé que si la sauvegarde est plus récente.
+      </div>
+      <div class="printlink"><a id="backHomeProfils">← Retour à l'accueil</a></div>
     </div>
-  </div>
-  <div class="boards" id="boards"></div>
-  <div id="trophies"></div>
-  <div class="printlink">Besoin d'une feuille papier à remplir au crayon ?
-    <a id="printLink">Imprimer la version PDF complète</a> (page de garde, 15 fiches et 2 bilans).</div>
-</div>
 
-<!-- Écran de sélection d'une leçon -->
-<div class="home screen-only" id="lessons" style="display:none">
-  <div class="big">Choisis une leçon</div>
-  <div class="tagline" id="starsSummary"></div>
-  <div class="lesson-list" id="lessonList"></div>
-  <div class="printlink"><a id="backHome">← Retour à l'accueil</a></div>
-</div>
+    <!-- Zone des exercices -->
+    <div class="sheets" id="sheets"></div>
 
-<!-- Écran de gestion des profils -->
-<div class="home screen-only" id="profils" style="display:none">
-  <div class="big">Profils</div>
-  <div class="tagline">Chaque profil garde sa propre progression.</div>
-  <div class="profile-list" id="profileList"></div>
-  <div class="profile-backup">
-    <button class="profile-backup-btn" id="btnExport">📤 Exporter les profils cochés</button>
-    <button class="profile-backup-btn" id="btnImport">📥 Importer une sauvegarde</button>
-    <input type="file" id="importFile" accept="application/json,.json" hidden>
-  </div>
-  <div class="backup-hint">Coche les profils à exporter (sauvegarde / transfert vers un autre appareil). À l'import, un profil déjà présent n'est remplacé que si la sauvegarde est plus récente.</div>
-  <div class="printlink"><a id="backHomeProfils">← Retour à l'accueil</a></div>
-</div>
+    <!-- Modale de récompense (trophée, record, étoile, objectif…) -->
+    <div class="modal-overlay" id="celebrate" style="display: none">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="celebrateTitle">
+        <button class="modal-close" id="celebrateClose" aria-label="Fermer">×</button>
+        <div class="modal-emoji">🎉</div>
+        <h2 class="modal-title" id="celebrateTitle">Bravo !</h2>
+        <ul class="modal-list" id="celebrateList"></ul>
+        <button class="modal-ok" id="celebrateOk">Super !</button>
+      </div>
+    </div>
 
-<!-- Zone des exercices -->
-<div class="sheets" id="sheets"></div>
-
-<!-- Modale de récompense (trophée, record, étoile, objectif…) -->
-<div class="modal-overlay" id="celebrate" style="display:none">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="celebrateTitle">
-    <button class="modal-close" id="celebrateClose" aria-label="Fermer">×</button>
-    <div class="modal-emoji">🎉</div>
-    <h2 class="modal-title" id="celebrateTitle">Bravo !</h2>
-    <ul class="modal-list" id="celebrateList"></ul>
-    <button class="modal-ok" id="celebrateOk">Super !</button>
-  </div>
-</div>
-
-<script type="module" src="/src/main.ts"></script>
-</body>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>

@@ -2,16 +2,16 @@
    Point d'entrée (ES modules) : import des styles, initialisation
    dans l'ordre (hook d'écriture → profils → câblage DOM → route).
    ============================================================ */
-import './styles/base.css';
-import './styles/toolbar.css';
-import './styles/home.css';
-import './styles/sheets.css';
-import './styles/gamification.css';
-import './styles/lessons.css';
-import './styles/profiles.css';
-import './styles/sprint.css';
-import './styles/modal.css';
-import './styles/print.css';
+import './styles/base.scss';
+import './styles/toolbar.scss';
+import './styles/home.scss';
+import './styles/sheets.scss';
+import './styles/gamification.scss';
+import './styles/lessons.scss';
+import './styles/profiles.scss';
+import './styles/sprint.scss';
+import './styles/modal.scss';
+import './styles/print.scss';
 
 import { setOnDataWrite } from './core/storage';
 import { initProfiles, touchActiveProfile, addProfile, renameProfile, cycleProfileEmoji,

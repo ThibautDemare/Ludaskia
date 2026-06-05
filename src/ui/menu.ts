@@ -8,6 +8,18 @@
    ============================================================ */
 import { renderProfileMenu } from './render';
 
-export function openProfileMenu(){ const el=document.getElementById('profileMenu'); if(!el) return; renderProfileMenu(); el.hidden=false; }
-export function closeProfileMenu(){ const el=document.getElementById('profileMenu'); if(el) el.hidden=true; }
-export function toggleProfileMenu(){ const el=document.getElementById('profileMenu'); if(!el) return; el.hidden?openProfileMenu():closeProfileMenu(); }
+export function openProfileMenu() {
+  const el = document.getElementById('profileMenu');
+  if (!el) return;
+  renderProfileMenu();
+  el.hidden = false;
+}
+export function closeProfileMenu() {
+  const el = document.getElementById('profileMenu');
+  if (el) el.hidden = true;
+}
+export function toggleProfileMenu() {
+  const el = document.getElementById('profileMenu');
+  if (!el) return;
+  el.hidden ? openProfileMenu() : closeProfileMenu();
+}

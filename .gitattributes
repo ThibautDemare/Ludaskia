@@ -1,0 +1,4 @@
+# Normalise les fins de ligne : LF dans le dépôt, natif dans le working tree
+# (CRLF sous Windows, LF sous Linux). Garde des diffs propres et une CI Linux
+# cohérente sans imposer LF aux éditeurs Windows.
+* text=auto

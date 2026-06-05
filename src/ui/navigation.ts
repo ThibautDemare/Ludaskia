@@ -11,35 +11,36 @@
    ============================================================ */
 import { LESSONS, fichesPagesHTML, buildFiches, bilanHTML } from '../core/lessons';
 import { setInputCounter, setSessionItems, setRenderLesson, renderItem } from '../core/items';
+import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
 import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
 import { runSprint, sprintCleanup } from './sprint';
 import { closeProfileMenu } from './menu';
 
 // État de session partagé (réassigné depuis sprint.ts / session.ts) : accesseurs dédiés.
-let currentMode = null; // 'complet' | 'express' | 'lecon' | 'revision' | null
+let currentMode: string | null = null; // 'complet' | 'express' | 'lecon' | 'revision' | null
 export const getCurrentMode = () => currentMode;
-export const setCurrentMode = (v) => {
+export const setCurrentMode = (v: string | null) => {
   currentMode = v;
 };
-let currentLessonNum = null; // numéro de leçon quand currentMode === 'lecon'
+let currentLessonNum: number | null = null; // numéro de leçon quand currentMode === 'lecon'
 export const getCurrentLessonNum = () => currentLessonNum;
-export const setCurrentLessonNum = (v) => {
+export const setCurrentLessonNum = (v: number | null) => {
   currentLessonNum = v;
 };
 let sessionRecorded = false; // l'essai en cours a-t-il déjà été enregistré ?
 export const getSessionRecorded = () => sessionRecorded;
-export const setSessionRecorded = (v) => {
+export const setSessionRecorded = (v: boolean) => {
   sessionRecorded = v;
 };
-let lastErrors = []; // items {text, answer} non réussis lors de la dernière vérification
+let lastErrors: Item[] = []; // items {text, answer} non réussis lors de la dernière vérification
 export const getLastErrors = () => lastErrors;
-export const setLastErrors = (v) => {
+export const setLastErrors = (v: Item[]) => {
   lastErrors = v;
 };
-let pendingRevision = []; // items à réviser, transmis à la vue #revision
+let pendingRevision: Item[] = []; // items à réviser, transmis à la vue #revision
 export const getPendingRevision = () => pendingRevision;
-export const setPendingRevision = (v) => {
+export const setPendingRevision = (v: Item[]) => {
   pendingRevision = v;
 };
 
@@ -59,7 +60,7 @@ export function startComplet() {
 export function startExpress() {
   location.hash = 'express';
 }
-export function startLecon(num) {
+export function startLecon(num: number) {
   if (LESSONS.find((l) => l.num === num)) location.hash = 'lecon-' + num;
 }
 export function startSprint() {
@@ -96,9 +97,17 @@ export function route() {
    - Vérifier : seulement pendant un exercice
    - Accueil : partout sauf sur l'accueil lui-même
    - Profil : sur les écrans « menu » (pas pendant un exercice) */
-export function setToolbar({ verify, home, profile }) {
-  const v: any = document.getElementById('btnVerify');
-  const h = document.getElementById('btnHome');
+export function setToolbar({
+  verify,
+  home,
+  profile,
+}: {
+  verify: boolean;
+  home: boolean;
+  profile: boolean;
+}) {
+  const v = document.getElementById('btnVerify') as HTMLButtonElement;
+  const h = document.getElementById('btnHome')!;
   const p = document.getElementById('toolbarProfile');
   v.style.display = verify ? '' : 'none';
   v.disabled = !verify;
@@ -116,8 +125,8 @@ function resetSessionUI() {
   sprintCleanup(); // stoppe un éventuel sprint en cours (compte à rebours)
   currentMode = null;
   currentLessonNum = null;
-  document.getElementById('sheets').innerHTML = '';
-  const sc = document.getElementById('score');
+  document.getElementById('sheets')!.innerHTML = '';
+  const sc = document.getElementById('score')!;
   sc.classList.add('hidden');
   sc.textContent = '';
   const old = document.getElementById('resultBanner');
@@ -137,7 +146,7 @@ export function showHomeView() {
   resetSessionUI();
   setToolbar({ verify: false, home: false, profile: true }); // accueil : profil visible, ni Vérifier ni Accueil
   hideMenus();
-  document.getElementById('home').style.display = '';
+  document.getElementById('home')!.style.display = '';
   renderHomeStats();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -146,7 +155,7 @@ export function showLessonsView() {
   setToolbar({ verify: false, home: true, profile: true }); // sélecteur : Accueil + profil
   hideMenus();
   renderLessons();
-  document.getElementById('lessons').style.display = '';
+  document.getElementById('lessons')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showProfilesView() {
@@ -154,7 +163,7 @@ export function showProfilesView() {
   setToolbar({ verify: false, home: true, profile: true });
   hideMenus();
   renderProfiles();
-  document.getElementById('profils').style.display = '';
+  document.getElementById('profils')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function runComplet() {
@@ -162,7 +171,7 @@ export function runComplet() {
   setInputCounter(0);
   setSessionItems({});
   // À l'écran : pas de page de garde ni de bilans, juste les 15 fiches.
-  document.getElementById('sheets').innerHTML = fichesPagesHTML(buildFiches());
+  document.getElementById('sheets')!.innerHTML = fichesPagesHTML(buildFiches());
   afterStart();
 }
 export function runExpress() {
@@ -170,10 +179,10 @@ export function runExpress() {
   setInputCounter(0);
   setSessionItems({});
   // À l'écran : un seul bilan express.
-  document.getElementById('sheets').innerHTML = bilanHTML(1);
+  document.getElementById('sheets')!.innerHTML = bilanHTML(1);
   afterStart();
 }
-export function runLecon(num) {
+export function runLecon(num: number) {
   const lesson = LESSONS.find((l) => l.num === num);
   if (!lesson) {
     showHomeView();
@@ -186,18 +195,18 @@ export function runLecon(num) {
   setRenderLesson(num);
   const fiche = lesson.build();
   setRenderLesson(null);
-  document.getElementById('sheets').innerHTML =
+  document.getElementById('sheets')!.innerHTML =
     `<div class="page">${fiche}<p class="foot">Ludaskia</p></div>`;
   afterStart();
 }
 /* Révision : on rejoue uniquement les items ratés (aucun enregistrement). */
-export function runRevision(items) {
+export function runRevision(items: Item[]) {
   currentMode = 'revision';
   currentLessonNum = null;
   setInputCounter(0);
   setSessionItems({});
   const grid = `<div class="grid c3">${items.map((it) => `<div class="op">${renderItem(it)}</div>`).join('')}</div>`;
-  document.getElementById('sheets').innerHTML = `<div class="page">
+  document.getElementById('sheets')!.innerHTML = `<div class="page">
     <p class="fiche-title">Révision — tes erreurs</p>
     <p class="fiche-sub">Reprends les calculs que tu n'avais pas réussis.</p>
     ${grid}<p class="foot">Ludaskia</p></div>`;
@@ -206,13 +215,13 @@ export function runRevision(items) {
 export function afterStart() {
   sessionRecorded = false;
   hideMenus();
-  const sc = document.getElementById('score');
+  const sc = document.getElementById('score')!;
   sc.classList.add('hidden');
   sc.textContent = '';
   setToolbar({ verify: true, home: true, profile: false }); // en exercice : pas de bouton profil
   startChrono();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   // Confort de saisie : on place le curseur sur le premier calcul.
-  const first: any = document.querySelector('#sheets input');
+  const first = document.querySelector('#sheets input') as HTMLInputElement | null;
   if (first) first.focus({ preventScroll: true });
 }

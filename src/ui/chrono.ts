@@ -3,23 +3,23 @@
    ============================================================ */
 import { fmt } from '../core/utils';
 
-let timer = null,
+let timer: ReturnType<typeof setInterval> | null = null,
   startTs = 0,
   elapsedMs = 0,
   running = false;
 // Le mode sprint réutilise/réassigne le même handle d'intervalle : accesseurs dédiés.
 export const getTimer = () => timer;
-export const setTimer = (v) => {
+export const setTimer = (v: ReturnType<typeof setInterval> | null) => {
   timer = v;
 };
 export function startChrono() {
   elapsedMs = 0;
   startTs = Date.now();
   running = true;
-  const el = document.getElementById('chrono');
+  const el = document.getElementById('chrono')!;
   el.classList.remove('hidden');
   el.textContent = '00:00';
-  clearInterval(timer);
+  if (timer) clearInterval(timer);
   timer = setInterval(() => {
     if (running) {
       el.textContent = fmt(Date.now() - startTs);
@@ -30,15 +30,15 @@ export function stopChrono() {
   if (!running) return elapsedMs;
   running = false;
   elapsedMs = Date.now() - startTs;
-  clearInterval(timer);
-  document.getElementById('chrono').textContent = fmt(elapsedMs);
+  if (timer) clearInterval(timer);
+  document.getElementById('chrono')!.textContent = fmt(elapsedMs);
   return elapsedMs;
 }
 export function resetChrono() {
   running = false;
-  clearInterval(timer);
+  if (timer) clearInterval(timer);
   elapsedMs = 0;
-  const el = document.getElementById('chrono');
+  const el = document.getElementById('chrono')!;
   el.classList.add('hidden');
   el.textContent = '00:00';
 }

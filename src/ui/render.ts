@@ -21,7 +21,7 @@ import { getGoal, evaluateTrophies, loadTrophies, TROPHIES } from '../core/rewar
 import { sparkline } from './effects';
 
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
-export const pctColor = (p) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
+export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
 
 /* Bouton de profil dans la barre d'outils (libellé = profil actif) */
 export function renderToolbarProfile() {
@@ -75,7 +75,7 @@ export function renderProfiles() {
 }
 
 /* Record perso affiché sur une carte de l'accueil */
-function fillCardRecord(elId, mode) {
+function fillCardRecord(elId: string, mode: string) {
   const el = document.getElementById(elId);
   if (!el) return;
   const runs = loadRuns(mode);
@@ -86,7 +86,7 @@ function fillCardRecord(elId, mode) {
   el.innerHTML = `🏅 Ton record : <strong>${fmtRecord([...runs].sort(cmpRun)[0])}</strong>`;
 }
 /* Record de sprint (compté en nombre de bonnes réponses) */
-function fillSprintRecord(elId) {
+function fillSprintRecord(elId: string) {
   const el = document.getElementById(elId);
   if (!el) return;
   const runs = loadRuns('sprint');
@@ -114,7 +114,7 @@ export function sprintBoardHTML() {
   </div>`;
 }
 /* Panneau de classement d'un mode (podium top-3 + progression) */
-export function boardHTML(mode, label) {
+export function boardHTML(mode: string, label: string) {
   const runs = loadRuns(mode);
   if (!runs.length) return '';
   const medals = ['🥇', '🥈', '🥉'];
@@ -166,7 +166,7 @@ export const REGULARITY = [
   { mode: 'express', icon: '⏱️', label: 'Bilan express', target: 2, period: 'month' },
   { mode: 'complet', icon: '📚', label: 'Bilan complet', target: 1, period: 'month' },
 ];
-const PERIOD_LABEL = { week: 'cette semaine', month: 'ce mois-ci' };
+const PERIOD_LABEL: Record<string, string> = { week: 'cette semaine', month: 'ce mois-ci' };
 export function renderObjectives() {
   const el = document.getElementById('objectives');
   if (!el) return;

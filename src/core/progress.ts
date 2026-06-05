@@ -7,12 +7,18 @@ import { lsGet, lsSet } from './storage';
 import { LESSONS } from './lessons';
 
 /* ---------- Records de bilans (classement) ---------- */
-export const RUNS_KEY = (m) => `ludaskia_runs_${m}`;
+export interface Run {
+  ts: number;
+  ok: number;
+  count: number;
+  ms: number;
+}
+export const RUNS_KEY = (m: string) => `ludaskia_runs_${m}`;
 const MAX_RUNS = 50; // on ne garde que les 50 derniers essais par mode
-export function loadRuns(mode) {
+export function loadRuns(mode: string): Run[] {
   return lsGet(RUNS_KEY(mode), []);
 }
-function saveRuns(mode, runs) {
+function saveRuns(mode: string, runs: Run[]) {
   lsSet(RUNS_KEY(mode), runs);
 }
 
@@ -29,20 +35,20 @@ export function startOfMonth() {
   return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
 }
 /* Nombre d'essais d'un mode depuis un instant donné */
-export function countSince(mode, since) {
+export function countSince(mode: string, since: number) {
   return loadRuns(mode).filter((r) => r.ts >= since).length;
 }
 
 /* Classement « score puis temps » : plus de bonnes réponses d'abord,
    le chrono départage à égalité (le plus rapide gagne). */
-export function cmpRun(a, b) {
+export function cmpRun(a: Run, b: Run) {
   return b.ok !== a.ok ? b.ok - a.ok : a.ms - b.ms;
 }
-export const runPct = (r) => (r.count ? Math.round((r.ok / r.count) * 100) : 0);
-export const fmtRecord = (r) => `${r.ok}/${r.count} · ${fmt(r.ms)}`;
+export const runPct = (r: Run) => (r.count ? Math.round((r.ok / r.count) * 100) : 0);
+export const fmtRecord = (r: Run) => `${r.ok}/${r.count} · ${fmt(r.ms)}`;
 
 /* Enregistre l'essai courant et calcule médaille / rang / record */
-export function recordRun(mode, ok, count, ms) {
+export function recordRun(mode: string, ok: number, count: number, ms: number) {
   const run = { ts: Date.now(), ok, count, ms };
   const runs = loadRuns(mode);
   const previous = [...runs];
@@ -67,7 +73,7 @@ export function todayStr() {
     String(d.getDate()).padStart(2, '0')
   );
 }
-export function daysBetween(a, b) {
+export function daysBetween(a: string, b: string) {
   return Math.round(
     (new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000,
   );
@@ -95,17 +101,17 @@ export function updateStreak() {
   return s;
 }
 /* Suffixe « · 🔥 N jours d'affilée » (vide si série < 2) */
-export const streakSuffix = (days) => (days >= 2 ? ` · 🔥 ${days} jours d'affilée` : '');
+export const streakSuffix = (days: number) => (days >= 2 ? ` · 🔥 ${days} jours d'affilée` : '');
 
 /* ---------- Étoiles par leçon (1 dès le premier sans-faute) ---------- */
 export const STARS_KEY = 'ludaskia_stars';
 function loadStars() {
   return lsGet(STARS_KEY, {});
 }
-function saveStars(s) {
+function saveStars(s: Record<string, number>) {
   lsSet(STARS_KEY, s);
 }
-export function recordLessonResult(num, perfect) {
+export function recordLessonResult(num: number, perfect: boolean) {
   const stars = loadStars();
   const had = (stars[num] || 0) > 0;
   if (perfect) stars[num] = (stars[num] || 0) + 1;
@@ -125,7 +131,7 @@ export const LESSON_STATS_KEY = 'ludaskia_lessonStats';
 export function loadLessonStats() {
   return lsGet(LESSON_STATS_KEY, {});
 }
-export function recordLessonStats(perLesson) {
+export function recordLessonStats(perLesson: Record<string, { ok: number; total: number }>) {
   const s = loadLessonStats();
   for (const num in perLesson) {
     const { ok, total } = perLesson[num];
@@ -141,5 +147,5 @@ export function recordLessonStats(perLesson) {
   }
   lsSet(LESSON_STATS_KEY, s);
 }
-export const lessonAvgPct = (e) =>
+export const lessonAvgPct = (e: any) =>
   e && e.questions ? Math.round((e.correct / e.questions) * 100) : null;

@@ -8,10 +8,18 @@
    - validation sur Entrée OU bouton « Valider »
    - un sprint ne compte que s'il va au bout des 5 minutes
    ============================================================ */
+import { choice, commKey, escapeHTML, fmt } from '../core/utils';
+import { bilanQ, THEMES } from '../core/lessons';
+import { updateStreak, recordLessonStats, recordRun, streakSuffix } from '../core/progress';
+import { updateGoal, evaluateTrophies } from '../core/rewards';
+import { getTimer, setTimer, resetChrono } from './chrono';
+import { showCelebration } from './effects';
+import { setCurrentMode, setCurrentLessonNum, hideMenus, setToolbar, startSprint, goHome } from './navigation';
+
 const SPRINT_MS=300000; // 5 minutes
 // Le sprint tire parmi les 15 leçons. La leçon 15 (« décomposer ») affiche
 // ses étapes intermédiaires (brouillon non corrigé) comme sur les fiches.
-const SPRINT_LESSONS=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+export const SPRINT_LESSONS=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
 
 let sprintActive=false, sprintPaused=false;
 let sprintRemaining=SPRINT_MS, sprintLastTick=0;
@@ -19,10 +27,10 @@ let sprintScore=0, sprintAnswered=0;
 let sprintPerLesson={}, sprintLastKey='', sprintCurrent=null;
 
 // Stoppe proprement un sprint en cours (appelé en quittant la vue).
-function sprintCleanup(){ sprintActive=false; sprintPaused=false; }
+export function sprintCleanup(){ sprintActive=false; sprintPaused=false; }
 
-function runSprint(){
-  currentMode='sprint'; currentLessonNum=null;
+export function runSprint(){
+  setCurrentMode('sprint'); setCurrentLessonNum(null);
   sprintActive=true; sprintPaused=false;
   sprintRemaining=SPRINT_MS; sprintScore=0; sprintAnswered=0;
   sprintPerLesson={}; sprintLastKey=''; sprintCurrent=null;
@@ -39,7 +47,7 @@ function runSprint(){
     </div>`;
   sprintRenderTime();
   sprintLastTick=Date.now();
-  clearInterval(timer); timer=setInterval(sprintTick,250);
+  clearInterval(getTimer()); setTimer(setInterval(sprintTick,250));
   sprintNext();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -79,7 +87,7 @@ function sprintNext(){
 }
 // Corps de la question : champ unique, sauf leçon 15 où l'on affiche la
 // décomposition avec des champs de brouillon (non corrigés) + le champ final.
-function sprintQuestionBody(q){
+export function sprintQuestionBody(q){
   const main='<input id="sprintInput" class="sprint-input" inputmode="numeric" autocomplete="off">';
   if(q._lesson!==15) return escapeHTML(q.text).replace('@',main);
   const m=q.text.match(/(\d+)\s*×\s*(\d+)/); const a=+m[1], b=+m[2];
@@ -89,7 +97,7 @@ function sprintQuestionBody(q){
 
 function sprintSubmit(){
   if(!sprintActive||sprintPaused) return;
-  const inp=document.getElementById('sprintInput'); if(!inp) return;
+  const inp:any=document.getElementById('sprintInput'); if(!inp) return;
   const raw=(inp.value||'').trim().replace(',','.');
   if(raw===''){ inp.focus(); return; } // pas de validation à vide
   sprintAnswered++;
@@ -125,7 +133,7 @@ function sprintContinue(){
 
 function finalizeSprint(){
   if(!sprintActive) return;
-  sprintActive=false; sprintPaused=false; clearInterval(timer);
+  sprintActive=false; sprintPaused=false; clearInterval(getTimer());
   // Un sprint compte car il est allé au bout du temps : on enregistre tout.
   const streakDays=updateStreak().days;
   recordLessonStats(sprintPerLesson);

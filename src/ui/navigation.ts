@@ -9,25 +9,43 @@
    lieu de quitter la page. On utilise le hash (et non
    history.pushState) pour rester compatible avec file://.
    ============================================================ */
+import { LESSONS, fichesPagesHTML, buildFiches, bilanHTML } from '../core/lessons';
+import { setInputCounter, setSessionItems, setRenderLesson, renderItem } from '../core/items';
+import { startChrono, resetChrono } from './chrono';
+import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
+import { runSprint, sprintCleanup } from './sprint';
+import { closeProfileMenu } from './menu';
+
+// État de session partagé (réassigné depuis sprint.ts / session.ts) : accesseurs dédiés.
 let currentMode=null; // 'complet' | 'express' | 'lecon' | 'revision' | null
+export const getCurrentMode=()=>currentMode;
+export const setCurrentMode=v=>{ currentMode=v; };
 let currentLessonNum=null; // numéro de leçon quand currentMode === 'lecon'
+export const getCurrentLessonNum=()=>currentLessonNum;
+export const setCurrentLessonNum=v=>{ currentLessonNum=v; };
 let sessionRecorded=false; // l'essai en cours a-t-il déjà été enregistré ?
+export const getSessionRecorded=()=>sessionRecorded;
+export const setSessionRecorded=v=>{ sessionRecorded=v; };
 let lastErrors=[]; // items {text, answer} non réussis lors de la dernière vérification
+export const getLastErrors=()=>lastErrors;
+export const setLastErrors=v=>{ lastErrors=v; };
 let pendingRevision=[]; // items à réviser, transmis à la vue #revision
+export const getPendingRevision=()=>pendingRevision;
+export const setPendingRevision=v=>{ pendingRevision=v; };
 
 // Déclencheurs (liés à l'UI)
-function goHome(){ location.hash='accueil'; }
-function showLessons(){ location.hash='lecons'; }
-function showProfiles(){ location.hash='profils'; }
-function startComplet(){ location.hash='complet'; }
-function startExpress(){ location.hash='express'; }
-function startLecon(num){ if(LESSONS.find(l=>l.num===num)) location.hash='lecon-'+num; }
-function startSprint(){
+export function goHome(){ location.hash='accueil'; }
+export function showLessons(){ location.hash='lecons'; }
+export function showProfiles(){ location.hash='profils'; }
+export function startComplet(){ location.hash='complet'; }
+export function startExpress(){ location.hash='express'; }
+export function startLecon(num){ if(LESSONS.find(l=>l.num===num)) location.hash='lecon-'+num; }
+export function startSprint(){
   // Déjà sur #sprint (bouton « Recommencer ») : on relance directement.
   if(location.hash==='#sprint') runSprint();
   else location.hash='sprint';
 }
-function startRevision(){
+export function startRevision(){
   if(!lastErrors.length) return;
   pendingRevision=lastErrors.slice();
   // Déjà sur #revision : réassigner le hash ne déclencherait pas hashchange.
@@ -35,7 +53,7 @@ function startRevision(){
   else location.hash='revision';
 }
 
-function route(){
+export function route(){
   const h=(location.hash||'').replace(/^#/,'');
   if(h==='complet') runComplet();
   else if(h==='express') runExpress();
@@ -54,8 +72,8 @@ function route(){
    - Vérifier : seulement pendant un exercice
    - Accueil : partout sauf sur l'accueil lui-même
    - Profil : sur les écrans « menu » (pas pendant un exercice) */
-function setToolbar({verify,home,profile}){
-  const v=document.getElementById('btnVerify');
+export function setToolbar({verify,home,profile}){
+  const v:any=document.getElementById('btnVerify');
   const h=document.getElementById('btnHome');
   const p=document.getElementById('toolbarProfile');
   v.style.display=verify?'':'none'; v.disabled=!verify;
@@ -75,12 +93,12 @@ function resetSessionUI(){
 }
 
 // Masque les écrans « menu » (accueil, sélecteur de leçons, profils)
-function hideMenus(){
+export function hideMenus(){
   ['home','lessons','profils'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
 }
 
 // Rendus des vues (sans toucher à l'historique)
-function showHomeView(){
+export function showHomeView(){
   resetSessionUI();
   setToolbar({verify:false,home:false,profile:true}); // accueil : profil visible, ni Vérifier ni Accueil
   hideMenus();
@@ -88,7 +106,7 @@ function showHomeView(){
   renderHomeStats();
   window.scrollTo({top:0,behavior:'smooth'});
 }
-function showLessonsView(){
+export function showLessonsView(){
   resetSessionUI();
   setToolbar({verify:false,home:true,profile:true}); // sélecteur : Accueil + profil
   hideMenus();
@@ -96,7 +114,7 @@ function showLessonsView(){
   document.getElementById('lessons').style.display='';
   window.scrollTo({top:0,behavior:'smooth'});
 }
-function showProfilesView(){
+export function showProfilesView(){
   resetSessionUI();
   setToolbar({verify:false,home:true,profile:true});
   hideMenus();
@@ -104,33 +122,33 @@ function showProfilesView(){
   document.getElementById('profils').style.display='';
   window.scrollTo({top:0,behavior:'smooth'});
 }
-function runComplet(){
+export function runComplet(){
   currentMode='complet';
-  inputCounter=0; sessionItems={};
+  setInputCounter(0); setSessionItems({});
   // À l'écran : pas de page de garde ni de bilans, juste les 15 fiches.
   document.getElementById('sheets').innerHTML=fichesPagesHTML(buildFiches());
   afterStart();
 }
-function runExpress(){
+export function runExpress(){
   currentMode='express';
-  inputCounter=0; sessionItems={};
+  setInputCounter(0); setSessionItems({});
   // À l'écran : un seul bilan express.
   document.getElementById('sheets').innerHTML=bilanHTML(1);
   afterStart();
 }
-function runLecon(num){
+export function runLecon(num){
   const lesson=LESSONS.find(l=>l.num===num);
   if(!lesson){ showHomeView(); return; }
   currentMode='lecon'; currentLessonNum=num;
-  inputCounter=0; sessionItems={};
-  renderLesson=num; const fiche=lesson.build(); renderLesson=null;
+  setInputCounter(0); setSessionItems({});
+  setRenderLesson(num); const fiche=lesson.build(); setRenderLesson(null);
   document.getElementById('sheets').innerHTML=`<div class="page">${fiche}<p class="foot">Ludaskia</p></div>`;
   afterStart();
 }
 /* Révision : on rejoue uniquement les items ratés (aucun enregistrement). */
-function runRevision(items){
+export function runRevision(items){
   currentMode='revision'; currentLessonNum=null;
-  inputCounter=0; sessionItems={};
+  setInputCounter(0); setSessionItems({});
   const grid=`<div class="grid c3">${items.map(it=>`<div class="op">${renderItem(it)}</div>`).join('')}</div>`;
   document.getElementById('sheets').innerHTML=`<div class="page">
     <p class="fiche-title">Révision — tes erreurs</p>
@@ -138,7 +156,7 @@ function runRevision(items){
     ${grid}<p class="foot">Ludaskia</p></div>`;
   afterStart();
 }
-function afterStart(){
+export function afterStart(){
   sessionRecorded=false;
   hideMenus();
   const sc=document.getElementById('score'); sc.classList.add('hidden'); sc.textContent='';
@@ -146,6 +164,6 @@ function afterStart(){
   startChrono();
   window.scrollTo({top:0,behavior:'smooth'});
   // Confort de saisie : on place le curseur sur le premier calcul.
-  const first=document.querySelector('#sheets input');
+  const first:any=document.querySelector('#sheets input');
   if(first) first.focus({preventScroll:true});
 }

@@ -2,22 +2,26 @@
    Récompenses : objectif du jour + trophées cumulatifs
    (les podiums des classements, eux, donnent des « médailles »)
    ============================================================ */
+import { choice } from './utils';
+import { lsGet, lsSet } from './storage';
+import { LESSONS } from './lessons';
+import { loadRuns, getStreak, loadLessonStats, lessonAvgPct, starsEarned, todayStr } from './progress';
 
 /* ---------- Défi du jour ----------
    Recentré « qualité / dépassement » : la cadence (sprints/express/complet)
    est gérée par les objectifs de régularité. Chaque défi déclare une condition
    de disponibilité — on ne propose jamais un défi impossible (ex. remédiation
    s'il n'y a aucune leçon à revoir, ou « bats ton record » sans record). */
-const GOAL_KEY='ludaskia_goal';
-const GOALS_DONE_KEY='ludaskia_goalsDone';
+export const GOAL_KEY='ludaskia_goal';
+export const GOALS_DONE_KEY='ludaskia_goalsDone';
 const WEAK_PCT=70; // en dessous : leçon « à revoir »
 
 // Leçons actuellement « à revoir » (taux de réussite < 70 %).
-function weakLessons(){
+export function weakLessons(){
   const stats=loadLessonStats();
   return LESSONS.filter(l=>{const a=lessonAvgPct(stats[l.num]);return a!=null&&a<WEAK_PCT;}).map(l=>l.num);
 }
-function challengeContext(){
+export function challengeContext(){
   return {
     weak:weakLessons(),
     starsLeft:starsEarned()<LESSONS.length,
@@ -26,7 +30,7 @@ function challengeContext(){
   };
 }
 // Défis disponibles selon le contexte. build() fabrique le défi concret.
-const CHALLENGES=[
+export const CHALLENGES=[
   {type:'star',          avail:c=>c.starsLeft, build:()=>({type:'star',label:'Gagne 1 nouvelle étoile.'})},
   {type:'perfectLesson', avail:()=>true,       build:()=>({type:'perfectLesson',label:'Réussis 1 leçon sans faute.'})},
   {type:'beatSprint',    avail:c=>c.hasSprint, build:()=>({type:'beatSprint',label:'Bats ton record de sprint !'})},
@@ -35,8 +39,8 @@ const CHALLENGES=[
      return {type:'remediation',lesson:num,label:`Retravaille « ${l.title} » et réussis-la à 80 %.`};}},
 ];
 
-function getGoalsDone(){const v=lsGet(GOALS_DONE_KEY,0);return typeof v==='number'?v:0;}
-function getGoal(){
+export function getGoalsDone(){const v=lsGet(GOALS_DONE_KEY,0);return typeof v==='number'?v:0;}
+export function getGoal(){
   const today=todayStr();let goal=lsGet(GOAL_KEY,null);
   if(!goal||goal.date!==today){ // nouveau défi tiré une fois par jour, parmi les défis possibles
     const c=challengeContext();
@@ -48,7 +52,7 @@ function getGoal(){
   return goal;
 }
 /* Met à jour le défi selon l'événement de la session. Renvoie {goal, justDone}. */
-function updateGoal(ev){
+export function updateGoal(ev){
   const goal=getGoal();
   if(goal.done) return {goal,justDone:false};
   let inc=0;
@@ -78,13 +82,13 @@ function updateGoal(ev){
    Un trophée peut être défini par un seuil sur une métrique de gSnapshot
    ({metric, n} → test g[metric] >= n) ou par un test explicite (booléens, etc.).
    tiers() fabrique une famille de trophées à paliers réutilisable. */
-const TROPHIES_KEY='ludaskia_trophies';
+export const TROPHIES_KEY='ludaskia_trophies';
 
-function tiers(prefix,icon,metric,levels){
+export function tiers(prefix,icon,metric,levels){
   // levels : [{n, title, desc}]
   return levels.map(l=>({id:prefix+l.n,icon,title:l.title,desc:l.desc,metric,n:l.n}));
 }
-const TROPHIES=[
+export const TROPHIES=[
   {id:'first',    icon:'🎉',title:'Premier pas',  desc:'Terminer un premier bilan.', metric:'totalRuns',n:1},
   ...tiers('streak','🔥','maxStreak',[
     {n:3, title:'Sérieux', desc:'Une série de 3 jours.'},
@@ -122,11 +126,11 @@ const TROPHIES=[
 // Compile le raccourci {metric, n} en fonction test.
 TROPHIES.forEach(t=>{ if(!t.test && t.metric) t.test=g=>g[t.metric]>=t.n; });
 
-function loadTrophies(){
+export function loadTrophies(){
   return lsGet(TROPHIES_KEY,[]);
 }
 /* Instantané des stats servant aux conditions de trophées */
-function gSnapshot(){
+export function gSnapshot(){
   const rc=loadRuns('complet'),re=loadRuns('express'),all=[...rc,...re];
   const s=getStreak();
   const stats=loadLessonStats();
@@ -145,7 +149,7 @@ function gSnapshot(){
   };
 }
 /* Débloque les trophées nouvellement atteints ; renvoie les nouveaux. */
-function evaluateTrophies(){
+export function evaluateTrophies(){
   const g=gSnapshot();const set=new Set(loadTrophies());const newly=[];
   TROPHIES.forEach(t=>{if(!set.has(t.id)&&t.test(g)){set.add(t.id);newly.push(t);}});
   if(newly.length) lsSet(TROPHIES_KEY,[...set]);

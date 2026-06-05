@@ -3,7 +3,12 @@
    ce qui permet de jouer une leçon seule OU le bilan complet.
    build() régénère des items frais à chaque appel.
    ============================================================ */
-const LESSONS=[
+import { rnd, choice, sample, commKey } from './utils';
+import { uniqueComm, uniqueExact } from './utils';
+import { add, sub, mul, dbl, half, comp, facteur, renderItem, gridHTML, ficheHTML,
+  lessonAttr, setRenderLesson, setInputCounter, nextInputId, getSessionItems } from './items';
+
+export const LESSONS=[
   {num:1,title:"Les tables d'addition",sub:"Additionner deux nombres de 1 à 9.",consigne:"Calcule chaque addition.",
    build(){const items=uniqueComm(()=>{let a=rnd(2,9),b=rnd(2,9);[a,b]=[Math.min(a,b),Math.max(a,b)];return add(a,b);},12);
      return ficheHTML(this.num,this.title,this.sub,this.consigne,gridHTML(items,4));}},
@@ -70,20 +75,20 @@ const LESSONS=[
      while(d.length<6){const a=rnd(3,8),b=choice([12,13,14,15,16,21,23,24]);const k=a+'x'+b;if(!seen.has(k)){seen.add(k);d.push([a,b]);}}
      const lines=d.map(([a,b])=>{
        const free=()=>`<input class="ans-free" inputmode="numeric" autocomplete="off">`;
-       const finalId='a'+(inputCounter++);
-       sessionItems[finalId]={text:`${a} × ${b} = @`,answer:a*b};
+       const finalId=nextInputId();
+       getSessionItems()[finalId]={text:`${a} × ${b} = @`,answer:a*b};
        const finalField=`<input class="ans" id="${finalId}" data-answer="${a*b}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${finalId}"></span>`;
        return `<div class="op">${a} × ${b} = (${free()} × ${free()}) + (${free()} × ${free()}) = ${free()} + ${free()} = ${finalField}</div>`;
      }).join('');
      return ficheHTML(this.num,this.title,this.sub,this.consigne,`<div class="deco">${lines}</div>`);}},
 ];
-function buildFiches(){return LESSONS.map(l=>{renderLesson=l.num;const html=l.build();renderLesson=null;return html;});}
+export function buildFiches(){return LESSONS.map(l=>{setRenderLesson(l.num);const html=l.build();setRenderLesson(null);return html;});}
 
 /* ============================================================
    Bilans express (3 calculs par leçon)
    ============================================================ */
-const THEMES={1:"Table d'addition",2:"Complément à 10/100",3:"Doubles",4:"Moitiés",5:"Ajouter 9, 19...",6:"Soustraire 9, 19...",7:"Table de ×",8:"Moitié (pair)",9:"Multiples de 25",10:"Décompo. de 60",11:"Dizaines/centaines",12:"× 10, × 100",13:"× 4, × 8",14:"× 20, 30, 40",15:"Décomposer"};
-function bilanQ(k){
+export const THEMES={1:"Table d'addition",2:"Complément à 10/100",3:"Doubles",4:"Moitiés",5:"Ajouter 9, 19...",6:"Soustraire 9, 19...",7:"Table de ×",8:"Moitié (pair)",9:"Multiples de 25",10:"Décompo. de 60",11:"Dizaines/centaines",12:"× 10, × 100",13:"× 4, × 8",14:"× 20, 30, 40",15:"Décomposer"};
+export function bilanQ(k){
   switch(k){
     case 1:{let a=rnd(2,9),b=rnd(2,9);[a,b]=[Math.min(a,b),Math.max(a,b)];return add(a,b);}
     case 2: return Math.random()<0.5?comp(rnd(1,9),10):comp(choice([10,20,30,40,60,70,80,90]),100);
@@ -102,7 +107,7 @@ function bilanQ(k){
     case 15:return mul(rnd(3,8),choice([12,13,14,15,16,21,23,24]));
   }
 }
-function bilanBlocks(nbQ){
+export function bilanBlocks(nbQ){
   const blocks=[];
   for(let num=1;num<=15;num++){
     const k=[],ops=[];let t=0;
@@ -112,9 +117,9 @@ function bilanBlocks(nbQ){
   return blocks;
 }
 /* numero = libellé ; le bloc temps total est print-only */
-function bilanHTML(numero){
+export function bilanHTML(numero){
   const blocks=bilanBlocks(3);
-  const cells=blocks.map(b=>{renderLesson=b.num;const ops=b.ops.map(o=>`<div class="bop">${renderItem(o)}</div>`).join('');renderLesson=null;return `<div class="bloc"><span class="blab">M${b.num}.</span> <span class="btheme">${b.theme}</span>${ops}</div>`;}).join('');
+  const cells=blocks.map(b=>{setRenderLesson(b.num);const ops=b.ops.map(o=>`<div class="bop">${renderItem(o)}</div>`).join('');setRenderLesson(null);return `<div class="bloc"><span class="blab">M${b.num}.</span> <span class="btheme">${b.theme}</span>${ops}</div>`;}).join('');
   return `<div class="page">
     <p class="bilan-title">Bilan express ${numero} — toutes les leçons</p>
     <p class="bilan-sub">3 calculs par leçon · objectif : environ 15 minutes.
@@ -128,7 +133,7 @@ function bilanHTML(numero){
 /* ============================================================
    Page de garde + pagination (impression)
    ============================================================ */
-function coverHTML(){
+export function coverHTML(){
   return `<div class="page cover print-only">
     <div class="big">Ludaskia</div>
     <div class="tagline">Fiches d'entraînement en autonomie · 15 ateliers</div>
@@ -137,7 +142,7 @@ function coverHTML(){
       Si je bloque, je passe au suivant et j'y reviens à la fin. Bon entraînement !</p>
   </div>`;
 }
-function fichesPagesHTML(fiches){
+export function fichesPagesHTML(fiches){
   const perPage=3;const pages=[];
   for(let i=0;i<fiches.length;i+=perPage){
     pages.push(`<div class="page">${fiches.slice(i,i+perPage).join('')}<p class="foot">Ludaskia</p></div>`);
@@ -145,8 +150,8 @@ function fichesPagesHTML(fiches){
   return pages.join('');
 }
 /* Contenu COMPLET pour l'impression : garde, 15 fiches, 2 bilans. */
-function buildPrintableDOM(){
-  inputCounter=0;
+export function buildPrintableDOM(){
+  setInputCounter(0);
   const fiches=buildFiches();
   return coverHTML()+fichesPagesHTML(fiches)+bilanHTML(1)+bilanHTML(2);
 }

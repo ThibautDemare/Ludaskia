@@ -6,14 +6,17 @@
    - export/import par profil avec fusion par UUID + recence.
    Aucune migration : en prod on part d'un profil vierge.
    ============================================================ */
-const PROFILE_EMOJIS=['🐧','🦊','🐼','🐯','🦁','🐸','🐙','🦉','🐝','🦄','🐱','🐶'];
-const EXPORT_APP='ludaskia';
+import { choice } from './utils';
+import { PROFILES_KEY, lsGet, lsSet, lsKeysRaw, lsRemoveRaw, lsSetRaw, appKeys, setActivePrefix } from './storage';
+
+export const PROFILE_EMOJIS=['🐧','🦊','🐼','🐯','🦁','🐸','🐙','🦉','🐝','🦄','🐱','🐶'];
+export const EXPORT_APP='ludaskia';
 
 function genUuid(){
   try{ return crypto.randomUUID(); }
   catch(e){ return 'u'+Date.now().toString(36)+Math.floor(Math.random()*1e9).toString(36); }
 }
-function loadProfilesMeta(){ return lsGet(PROFILES_KEY,null); }
+export function loadProfilesMeta(){ return lsGet(PROFILES_KEY,null); }
 function saveProfilesMeta(m){ lsSet(PROFILES_KEY,m); } // PROFILES_KEY n'est pas préfixé et ne déclenche pas le bump
 function profilePrefix(p){ return p.uuid+'/'; }
 
@@ -22,7 +25,7 @@ function applyActive(m){
   m.active=p.uuid;
   setActivePrefix(profilePrefix(p));
 }
-function initProfiles(){
+export function initProfiles(){
   let m=loadProfilesMeta();
   if(!m||!Array.isArray(m.list)||!m.list.length){
     const p={uuid:genUuid(),name:'Profil 1',emoji:PROFILE_EMOJIS[0],updatedAt:Date.now()};
@@ -32,22 +35,22 @@ function initProfiles(){
   applyActive(m);
   return m;
 }
-// Marque le profil actif comme modifié (appelé par storage.js après chaque écriture de données).
-function touchActiveProfile(){
+// Marque le profil actif comme modifié (appelé par storage.ts après chaque écriture de données).
+export function touchActiveProfile(){
   const m=loadProfilesMeta(); if(!m) return;
   const p=m.list.find(x=>x.uuid===m.active); if(!p) return;
   p.updatedAt=Date.now();
   saveProfilesMeta(m);
 }
 
-function listProfiles(){ const m=loadProfilesMeta()||initProfiles(); return m.list; }
-function activeProfile(){ const m=loadProfilesMeta()||initProfiles(); return m.list.find(x=>x.uuid===m.active)||m.list[0]; }
+export function listProfiles(){ const m=loadProfilesMeta()||initProfiles(); return m.list; }
+export function activeProfile(){ const m=loadProfilesMeta()||initProfiles(); return m.list.find(x=>x.uuid===m.active)||m.list[0]; }
 
-function setActiveProfile(uuid){
+export function setActiveProfile(uuid){
   const m=loadProfilesMeta(); if(!m||!m.list.some(x=>x.uuid===uuid)) return;
   m.active=uuid; saveProfilesMeta(m); applyActive(m);
 }
-function addProfile(name,emoji){
+export function addProfile(name,emoji?){
   const m=loadProfilesMeta()||initProfiles();
   const used=new Set(m.list.map(p=>p.emoji));
   const e=emoji||PROFILE_EMOJIS.find(x=>!used.has(x))||choice(PROFILE_EMOJIS);
@@ -55,11 +58,11 @@ function addProfile(name,emoji){
   m.list.push(p); m.active=p.uuid; saveProfilesMeta(m); applyActive(m);
   return p;
 }
-function renameProfile(uuid,name){
+export function renameProfile(uuid,name){
   const m=loadProfilesMeta(); const p=m&&m.list.find(x=>x.uuid===uuid);
   if(p&&name){ p.name=name; p.updatedAt=Date.now(); saveProfilesMeta(m); }
 }
-function cycleProfileEmoji(uuid){
+export function cycleProfileEmoji(uuid){
   const m=loadProfilesMeta(); const p=m&&m.list.find(x=>x.uuid===uuid); if(!p) return;
   const i=PROFILE_EMOJIS.indexOf(p.emoji);
   p.emoji=PROFILE_EMOJIS[(i+1)%PROFILE_EMOJIS.length]; p.updatedAt=Date.now(); saveProfilesMeta(m);
@@ -68,12 +71,12 @@ function cycleProfileEmoji(uuid){
 function clearProfileData(prefix){
   lsKeysRaw().filter(k=>k!==PROFILES_KEY && k.startsWith(prefix+'ludaskia_')).forEach(lsRemoveRaw);
 }
-function resetProfile(uuid){
+export function resetProfile(uuid){
   const m=loadProfilesMeta(); const p=m&&m.list.find(x=>x.uuid===uuid); if(!p) return;
   clearProfileData(profilePrefix(p));
   p.updatedAt=Date.now(); saveProfilesMeta(m);
 }
-function deleteProfile(uuid){
+export function deleteProfile(uuid){
   const m=loadProfilesMeta(); if(!m||m.list.length<=1) return false; // on garde toujours au moins 1 profil
   const p=m.list.find(x=>x.uuid===uuid); if(!p) return false;
   clearProfileData(profilePrefix(p));
@@ -93,7 +96,7 @@ function profileDataRelative(p){
 function writeProfileData(prefix,data){ Object.keys(data).forEach(rel=>lsSetRaw(prefix+rel,String(data[rel]))); }
 
 // Exporte les profils désignés (par UUID).
-function exportProfiles(uuids){
+export function exportProfiles(uuids){
   const m=loadProfilesMeta(); if(!m) return null;
   const list=m.list.filter(p=>uuids.includes(p.uuid));
   return {app:EXPORT_APP,version:2,exportedAt:new Date().toISOString(),
@@ -101,7 +104,7 @@ function exportProfiles(uuids){
 }
 // Fusionne une sauvegarde : par UUID, écrase si plus récent, ajoute si inconnu.
 // Renvoie {added, updated, skipped} ou null si format invalide.
-function importProfiles(payload){
+export function importProfiles(payload){
   if(!payload||payload.app!==EXPORT_APP||!Array.isArray(payload.profiles)) return null;
   const m=loadProfilesMeta()||initProfiles();
   let added=0,updated=0,skipped=0;
@@ -124,6 +127,3 @@ function importProfiles(payload){
   saveProfilesMeta(m); applyActive(m);
   return {added,updated,skipped};
 }
-
-onDataWrite=touchActiveProfile; // branche le bump d'updatedAt sur les écritures de données
-initProfiles();                 // au chargement, avant tout rendu

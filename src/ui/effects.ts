@@ -3,7 +3,7 @@
    ============================================================ */
 
 /* Mini-courbe SVG de la progression (score % au fil des essais) */
-function sparkline(vals,w=260,h=46){
+export function sparkline(vals,w=260,h=46){
   if(vals.length<2) return '';
   const pad=4, iw=w-2*pad, ih=h-2*pad;
   const x=i=>pad+(i/(vals.length-1))*iw;
@@ -15,7 +15,7 @@ function sparkline(vals,w=260,h=46){
 }
 
 /* Petite pluie de confettis */
-function confetti(){
+export function confetti(){
   const colors=['#336CBF','#ffd54f','#2e7d32','#c62828','#00acc1','#ff8f00'];
   const layer=document.createElement('div');layer.className='confetti-layer';
   for(let i=0;i<90;i++){
@@ -31,11 +31,11 @@ function confetti(){
 }
 
 /* Modale de récompense : annonce explicitement ce qui vient d'être gagné. */
-function showCelebration(items){
+export function showCelebration(items){
   if(!items||!items.length) return;
   const list=document.getElementById('celebrateList');
   if(list) list.innerHTML=items.map(i=>`<li><span class="modal-li-ico">${i.icon}</span> ${i.text}</li>`).join('');
   const ov=document.getElementById('celebrate'); if(ov) ov.style.display='';
   confetti();
 }
-function hideCelebration(){ const ov=document.getElementById('celebrate'); if(ov) ov.style.display='none'; }
+export function hideCelebration(){ const ov=document.getElementById('celebrate'); if(ov) ov.style.display='none'; }

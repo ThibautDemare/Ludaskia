@@ -1,6 +1,6 @@
 name: Déploiement GitHub Pages
 
-# Publie le site statique (HTML/CSS/JS vanilla, sans build) à chaque push sur main.
+# Construit le site (Vite) puis le publie à chaque push sur main.
 on:
   push:
     branches: [main]
@@ -27,13 +27,25 @@ jobs:
       - name: Récupérer le dépôt
         uses: actions/checkout@v4
 
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Construire le site
+        run: npm run build
+
       - name: Configurer Pages
         uses: actions/configure-pages@v5
 
-      - name: Téléverser l'artefact (racine du dépôt)
+      - name: Téléverser l'artefact (dossier dist)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
 
       - name: Déployer vers GitHub Pages
         id: deployment

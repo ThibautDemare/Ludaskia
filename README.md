@@ -55,7 +55,8 @@ n'est envoyé sur un serveur).
 
       npm run build
 
-- Détails d'architecture et conventions dans `CLAUDE.md` et `CONTRIBUTING.md`.
+- Architecture dans `docs/ARCHITECTURE.md`, conventions et process dans
+  `CLAUDE.md` / `CONTRIBUTING.md`.
 
 ## Feuille de route
 Le format se prête bien aux **automatismes** : au-delà du calcul mental, le

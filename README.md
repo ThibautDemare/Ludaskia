@@ -6,6 +6,12 @@ au départ pour le **CE2**.
 
 👉 **[Jouer en ligne](https://thibautdemare.github.io/Ludaskia/)**
 
+## D'où vient le nom ?
+*Ludaskia* est un mot-valise inspiré du latin *ludus* / *ludere* (jeu, jouer) et
+du grec *áskēsis* (exercice, entraînement) — soit, librement, « **s'exercer en
+s'amusant** ». Clin d'œil au passage : en latin, *ludus* désignait aussi l'école
+élémentaire, là où l'on apprenait à lire, écrire et compter.
+
 ## Ce qu'on peut faire
 - **Bilan complet** — les 15 leçons, une douzaine de calculs chacune.
 - **Bilan express** — 3 calculs par leçon, en ~15 minutes.

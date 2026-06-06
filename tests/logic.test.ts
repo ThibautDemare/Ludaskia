@@ -92,7 +92,8 @@ import {
   evaluateTrophies,
 } from '../src/core/rewards';
 import { REGULARITY } from '../src/ui/render';
-import { SPRINT_LESSONS, sprintQuestionBody } from '../src/ui/sprint';
+import { sprintQuestionBody } from '../src/ui/sprint';
+import { getAllLessons } from '../src/core/catalog';
 import {
   loadProfilesMeta,
   listProfiles,
@@ -171,7 +172,6 @@ const api = {
   loadTrophies,
   gSnapshot,
   evaluateTrophies,
-  SPRINT_LESSONS,
   sprintQuestionBody,
   loadProfilesMeta,
   listProfiles,
@@ -247,13 +247,13 @@ describe('Leçons & bilans', () => {
   test('buildFiches produit 15 fiches couvrant les 15 leçons', () => {
     const html = api.buildFiches();
     expect(html.length).toBe(15);
-    const seen = new Set([...html.join('').matchAll(/data-lesson="(\d+)"/g)].map((m) => +m[1]));
+    const seen = new Set([...html.join('').matchAll(/data-lesson="([^"]+)"/g)].map((m) => m[1]));
     expect(seen.size).toBe(15);
   });
   test('bilan express : 45 champs tagués (3 par leçon)', () => {
     const h = api.bilanHTML(1);
     expect([...h.matchAll(/data-lesson=/g)].length).toBe(45);
-    expect([...h.matchAll(/data-lesson="7"/g)].length).toBe(3);
+    expect([...h.matchAll(/data-lesson="math-tables-multiplication"/g)].length).toBe(3);
   });
   test('bilanQ renvoie un item valide pour chaque leçon', () => {
     for (let k = 1; k <= 15; k++) {
@@ -316,15 +316,15 @@ describe('Série de jours', () => {
 
 describe('Étoiles & stats par leçon', () => {
   test('recordLessonResult : étoile au 1er sans-faute', () => {
-    expect(api.recordLessonResult(3, true).newStar).toBe(true);
-    expect(api.recordLessonResult(3, true).newStar).toBe(false);
-    expect(api.recordLessonResult(5, false).count).toBe(0);
+    expect(api.recordLessonResult('math-doubles', true).newStar).toBe(true);
+    expect(api.recordLessonResult('math-doubles', true).newStar).toBe(false);
+    expect(api.recordLessonResult('math-ajouter-9-19-29', false).count).toBe(0);
     expect(api.starsEarned()).toBe(1);
   });
   test('recordLessonStats : agrégation + moyenne', () => {
-    api.recordLessonStats({ 7: { ok: 10, total: 12 } });
-    api.recordLessonStats({ 7: { ok: 12, total: 12 } });
-    const e = api.loadLessonStats()[7];
+    api.recordLessonStats({ 'math-tables-multiplication': { ok: 10, total: 12 } });
+    api.recordLessonStats({ 'math-tables-multiplication': { ok: 12, total: 12 } });
+    const e = api.loadLessonStats()['math-tables-multiplication'];
     expect(e.attempts).toBe(2);
     expect(e.correct).toBe(22);
     expect(e.questions).toBe(24);
@@ -343,8 +343,8 @@ describe('Défi du jour (qualité)', () => {
     const avail = () =>
       api.CHALLENGES.filter((c) => c.avail(api.challengeContext())).map((c) => c.type);
     expect(avail().includes('remediation')).toBe(false);
-    api.recordLessonStats({ 6: { ok: 2, total: 12 } }); // 17 % → leçon à revoir
-    expect(api.weakLessons().includes(6)).toBe(true);
+    api.recordLessonStats({ 'math-soustraire-9-19-29': { ok: 2, total: 12 } }); // 17 % → leçon à revoir
+    expect(api.weakLessons().includes('math-soustraire-9-19-29')).toBe(true);
     expect(avail().includes('remediation')).toBe(true);
   });
   test('défis « se dépasser » indisponibles sans record à battre', () => {
@@ -403,7 +403,8 @@ describe('Trophées', () => {
     expect(api.evaluateTrophies().length).toBe(0);
   }); // rien de nouveau au 2e passage
   test('gSnapshot reflète étoiles et série', () => {
-    for (let n = 1; n <= 5; n++) api.recordLessonResult(n, true);
+    const ids = getAllLessons().slice(0, 5).map((l) => l.id);
+    for (const id of ids) api.recordLessonResult(id, true);
     expect(api.gSnapshot().stars).toBe(5);
     expect(
       api
@@ -413,9 +414,10 @@ describe('Trophées', () => {
     ).toBe(true);
   });
   test('trophée « Tout au vert » : 15 leçons ≥ 70 %', () => {
-    for (let n = 1; n <= 14; n++) api.recordLessonStats({ [n]: { ok: 10, total: 10 } });
+    const allIds = getAllLessons().map((l) => l.id);
+    for (const id of allIds.slice(0, 14)) api.recordLessonStats({ [id]: { ok: 10, total: 10 } });
     expect(api.gSnapshot().allGreen).toBe(false); // 1 leçon manquante
-    api.recordLessonStats({ 15: { ok: 10, total: 10 } });
+    api.recordLessonStats({ [allIds[14]]: { ok: 10, total: 10 } });
     expect(api.gSnapshot().allGreen).toBe(true);
     expect(
       api
@@ -425,7 +427,7 @@ describe('Trophées', () => {
     ).toBe(true);
   });
   test('trophées de volume cumulé', () => {
-    api.recordLessonStats({ 1: { ok: 60, total: 120 } }); // 120 calculs résolus
+    api.recordLessonStats({ 'math-tables-addition': { ok: 60, total: 120 } }); // 120 calculs résolus
     expect(api.gSnapshot().totalAnswered).toBe(120);
     expect(
       api
@@ -465,15 +467,16 @@ describe('Sprint', () => {
     expect(api.updateGoal({ mode: 'complet' }).justDone).toBe(false);
     expect(api.updateGoal({ mode: 'sprint', sprint: true }).justDone).toBe(true);
   });
-  test('le sprint couvre les 15 leçons (15 incluse, avec étapes)', () => {
-    expect(api.SPRINT_LESSONS.includes(15)).toBe(true);
-    expect(api.SPRINT_LESSONS.length).toBe(15);
+  test('le catalogue couvre les 15 leçons (décomposer incluse)', () => {
+    const lessons = getAllLessons();
+    expect(lessons.some((l) => l.id === 'math-decomposer-multiplication')).toBe(true);
+    expect(lessons.length).toBe(15);
   });
   test('sprint leçon 15 : étapes intermédiaires + champ final', () => {
-    const body15 = api.sprintQuestionBody({ text: '6 × 14 = @', answer: 84, _lesson: 15 });
+    const body15 = api.sprintQuestionBody({ text: '6 × 14 = @', answer: 84, _lesson: 'math-decomposer-multiplication' });
     expect((body15.match(/sprint-free/g) || []).length).toBe(6); // 6 champs de brouillon
     expect((body15.match(/id="sprintInput"/g) || []).length).toBe(1); // 1 champ final corrigé
-    const body7 = api.sprintQuestionBody({ text: '6 × 7 = @', answer: 42, _lesson: 7 });
+    const body7 = api.sprintQuestionBody({ text: '6 × 7 = @', answer: 42, _lesson: 'math-tables-multiplication' });
     expect(body7.includes('sprint-free')).toBe(false);
     expect(body7.includes('id="sprintInput"')).toBe(true);
   });
@@ -505,7 +508,8 @@ describe('Profils', () => {
   });
   test('réinitialiser un profil efface sa progression', () => {
     api.recordRun('express', 40, 45, 400000);
-    for (let n = 1; n <= 3; n++) api.recordLessonResult(n, true);
+    const ids3 = getAllLessons().slice(0, 3).map((l) => l.id);
+    for (const id of ids3) api.recordLessonResult(id, true);
     api.resetProfile(api.activeProfile().uuid);
     expect(api.loadRuns('express').length).toBe(0);
     expect(api.starsEarned()).toBe(0);
@@ -555,7 +559,7 @@ describe('Sauvegarde (export / import par profil)', () => {
           name: 'Lou',
           emoji: '🦄',
           updatedAt: 1000,
-          data: { ludaskia_stars: JSON.stringify({ 1: 1 }) },
+          data: { ludaskia_stars: JSON.stringify({ 'math-tables-addition': 1 }) },
         },
       ]),
     );
@@ -565,7 +569,7 @@ describe('Sauvegarde (export / import par profil)', () => {
           uuid: 'X',
           name: 'Vieux',
           updatedAt: 500,
-          data: { ludaskia_stars: JSON.stringify({ 1: 1, 2: 1, 3: 1 }) },
+          data: { ludaskia_stars: JSON.stringify({ 'math-tables-addition': 1, 'math-complements': 1, 'math-doubles': 1 }) },
         },
       ]),
     );
@@ -578,7 +582,7 @@ describe('Sauvegarde (export / import par profil)', () => {
           uuid: 'X',
           name: 'Neuf',
           updatedAt: 2000,
-          data: { ludaskia_stars: JSON.stringify({ 1: 1, 2: 1, 3: 1 }) },
+          data: { ludaskia_stars: JSON.stringify({ 'math-tables-addition': 1, 'math-complements': 1, 'math-doubles': 1 }) },
         },
       ]),
     );

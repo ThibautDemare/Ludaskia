@@ -4,7 +4,7 @@
    ============================================================ */
 import { fmt } from './utils';
 import { lsGet, lsSet } from './storage';
-import { LESSONS } from './lessons';
+import { getAllLessons } from './catalog';
 
 /* ---------- Records de bilans (classement) ---------- */
 export interface Run {
@@ -111,16 +111,16 @@ function loadStars() {
 function saveStars(s: Record<string, number>) {
   lsSet(STARS_KEY, s);
 }
-export function recordLessonResult(num: number, perfect: boolean) {
+export function recordLessonResult(lessonId: string, perfect: boolean) {
   const stars = loadStars();
-  const had = (stars[num] || 0) > 0;
-  if (perfect) stars[num] = (stars[num] || 0) + 1;
+  const had = (stars[lessonId] || 0) > 0;
+  if (perfect) stars[lessonId] = (stars[lessonId] || 0) + 1;
   saveStars(stars);
-  return { count: stars[num] || 0, newStar: perfect && !had };
+  return { count: stars[lessonId] || 0, newStar: perfect && !had };
 }
 export function starsEarned() {
   const s = loadStars();
-  return LESSONS.filter((l) => (s[l.num] || 0) > 0).length;
+  return getAllLessons().filter((l) => (s[l.id] || 0) > 0).length;
 }
 export { loadStars };
 
@@ -149,3 +149,13 @@ export function recordLessonStats(perLesson: Record<string, { ok: number; total:
 }
 export const lessonAvgPct = (e: any) =>
   e && e.questions ? Math.round((e.correct / e.questions) * 100) : null;
+
+/* ---------- XP global (1 point par bonne réponse, tous modes) ---------- */
+export const XP_KEY = 'ludaskia_xp';
+export function getXP(): number {
+  return lsGet(XP_KEY, 0);
+}
+export function addXP(n: number) {
+  if (n <= 0) return;
+  lsSet(XP_KEY, getXP() + n);
+}

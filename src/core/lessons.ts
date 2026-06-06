@@ -27,6 +27,7 @@ import type { Item } from './items';
 export const LESSONS = [
   {
     num: 1,
+    id: 'math-tables-addition',
     title: "Les tables d'addition",
     sub: 'Additionner deux nombres de 1 à 9.',
     consigne: 'Calcule chaque addition.',
@@ -43,6 +44,7 @@ export const LESSONS = [
 
   {
     num: 2,
+    id: 'math-complements',
     title: 'Les compléments',
     sub: 'Trouver le nombre qui complète à 10 ou à 100.',
     consigne: 'Complète chaque égalité.',
@@ -57,6 +59,7 @@ export const LESSONS = [
 
   {
     num: 3,
+    id: 'math-doubles',
     title: 'Les doubles',
     sub: "Le double, c'est deux fois le nombre.",
     consigne: 'Écris le double.',
@@ -71,6 +74,7 @@ export const LESSONS = [
 
   {
     num: 4,
+    id: 'math-moities',
     title: 'Les moitiés',
     sub: "La moitié, c'est le nombre partagé en deux.",
     consigne: 'Écris la moitié.',
@@ -84,6 +88,7 @@ export const LESSONS = [
 
   {
     num: 5,
+    id: 'math-ajouter-9-19-29',
     title: 'Ajouter 9, 19, 29 / 8, 18, 28',
     sub: 'Astuce : +9 = +10 puis -1 · +8 = +10 puis -2.',
     consigne: "Calcule en utilisant l'astuce.",
@@ -95,6 +100,7 @@ export const LESSONS = [
 
   {
     num: 6,
+    id: 'math-soustraire-9-19-29',
     title: 'Soustraire 9, 19, 29, 39 et un petit nombre',
     sub: 'Astuce : -9 = -10 puis +1.',
     consigne: 'Calcule chaque soustraction.',
@@ -108,6 +114,7 @@ export const LESSONS = [
 
   {
     num: 7,
+    id: 'math-tables-multiplication',
     title: 'Les tables de multiplication',
     sub: 'Tables de 2 à 9.',
     consigne: 'Calcule chaque produit.',
@@ -124,6 +131,7 @@ export const LESSONS = [
 
   {
     num: 8,
+    id: 'math-moitie-pair',
     title: "La moitié d'un nombre pair",
     sub: 'Je sépare les dizaines et les unités si besoin.',
     consigne: 'Écris la moitié.',
@@ -135,6 +143,7 @@ export const LESSONS = [
 
   {
     num: 9,
+    id: 'math-multiples-25',
     title: 'Les multiples de 25',
     sub: '25, 50, 75, 100... de 25 en 25.',
     consigne: 'Calcule.',
@@ -146,6 +155,7 @@ export const LESSONS = [
 
   {
     num: 10,
+    id: 'math-decompo-60',
     title: 'Décompositions multiplicatives de 60',
     sub: 'Quel nombre multiplié donne 60 ?',
     consigne: 'Complète.',
@@ -171,6 +181,7 @@ export const LESSONS = [
 
   {
     num: 11,
+    id: 'math-dizaines-centaines',
     title: 'Ajouter, soustraire des dizaines et des centaines',
     sub: "J'ajoute ou je retire des paquets entiers.",
     consigne: 'Calcule.',
@@ -196,6 +207,7 @@ export const LESSONS = [
 
   {
     num: 12,
+    id: 'math-multiplier-10-100',
     title: 'Multiplier par 10, par 100',
     sub: "×10 j'ajoute un zéro · ×100 j'ajoute deux zéros.",
     consigne: 'Calcule.',
@@ -217,6 +229,7 @@ export const LESSONS = [
 
   {
     num: 13,
+    id: 'math-multiplier-4-8',
     title: 'Multiplier par 4, par 8',
     sub: '×4 = double du double · ×8 = double du double du double.',
     consigne: 'Calcule.',
@@ -238,6 +251,7 @@ export const LESSONS = [
 
   {
     num: 14,
+    id: 'math-multiplier-20-30-40',
     title: 'Multiplier par 20, 30, 40',
     sub: 'Astuce : je multiplie par le chiffre, puis par 10.',
     consigne: 'Calcule.',
@@ -249,6 +263,7 @@ export const LESSONS = [
 
   {
     num: 15,
+    id: 'math-decomposer-multiplication',
     title: 'Décomposer pour calculer une multiplication',
     sub: 'Ex : 6 × 14 = (6×10) + (6×4) = 60 + 24 = 84.',
     consigne: 'Décompose puis calcule. Écris les étapes.',
@@ -285,7 +300,7 @@ export const LESSONS = [
 ];
 export function buildFiches() {
   return LESSONS.map((l) => {
-    setRenderLesson(l.num);
+    setRenderLesson(l.id);
     const html = l.build();
     setRenderLesson(null);
     return html;
@@ -361,13 +376,13 @@ export function bilanQ(k: number): Item | undefined {
   }
 }
 export function bilanBlocks(nbQ: number) {
-  const blocks: { num: number; theme: string; ops: Item[] }[] = [];
-  for (let num = 1; num <= 15; num++) {
+  const blocks: { num: number; id: string; theme: string; ops: Item[] }[] = [];
+  for (const lesson of LESSONS) {
     const k: string[] = [],
       ops: Item[] = [];
     let t = 0;
     while (ops.length < nbQ && t < 300) {
-      const o = bilanQ(num)!,
+      const o = bilanQ(lesson.num)!,
         key = commKey(o.text);
       if (!k.includes(key)) {
         k.push(key);
@@ -375,7 +390,7 @@ export function bilanBlocks(nbQ: number) {
       }
       t++;
     }
-    blocks.push({ num, theme: THEMES[num], ops });
+    blocks.push({ num: lesson.num, id: lesson.id, theme: THEMES[lesson.num], ops });
   }
   return blocks;
 }
@@ -384,7 +399,7 @@ export function bilanHTML(numero: number) {
   const blocks = bilanBlocks(3);
   const cells = blocks
     .map((b) => {
-      setRenderLesson(b.num);
+      setRenderLesson(b.id);
       const ops = b.ops.map((o) => `<div class="bop">${renderItem(o)}</div>`).join('');
       setRenderLesson(null);
       return `<div class="bloc"><span class="blab">M${b.num}.</span> <span class="btheme">${b.theme}</span>${ops}</div>`;

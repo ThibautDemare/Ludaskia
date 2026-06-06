@@ -4,7 +4,7 @@
    ============================================================ */
 import { choice } from './utils';
 import { lsGet, lsSet } from './storage';
-import { LESSONS } from './lessons';
+import { getAllLessons } from './catalog';
 import {
   loadRuns,
   getStreak,
@@ -24,24 +24,26 @@ export const GOALS_DONE_KEY = 'ludaskia_goalsDone';
 const WEAK_PCT = 70; // en dessous : leçon « à revoir »
 
 // Leçons actuellement « à revoir » (taux de réussite < 70 %).
-export function weakLessons() {
+export function weakLessons(): string[] {
   const stats = loadLessonStats();
-  return LESSONS.filter((l) => {
-    const a = lessonAvgPct(stats[l.num]);
-    return a != null && a < WEAK_PCT;
-  }).map((l) => l.num);
+  return getAllLessons()
+    .filter((l) => {
+      const a = lessonAvgPct(stats[l.id]);
+      return a != null && a < WEAK_PCT;
+    })
+    .map((l) => l.id);
 }
 export function challengeContext() {
   return {
     weak: weakLessons(),
-    starsLeft: starsEarned() < LESSONS.length,
+    starsLeft: starsEarned() < getAllLessons().length,
     hasSprint: loadRuns('sprint').length > 0,
     hasExpress: loadRuns('express').length > 0,
   };
 }
 // Défis disponibles selon le contexte. build() fabrique le défi concret.
 interface ChallengeContext {
-  weak: number[];
+  weak: string[];
   starsLeft: boolean;
   hasSprint: boolean;
   hasExpress: boolean;
@@ -49,7 +51,7 @@ interface ChallengeContext {
 interface Challenge {
   type: string;
   avail: (c: ChallengeContext) => boolean;
-  build: (c: ChallengeContext) => { type: string; label: string; lesson?: number };
+  build: (c: ChallengeContext) => { type: string; label: string; lesson?: string };
 }
 export const CHALLENGES: Challenge[] = [
   {
@@ -76,12 +78,12 @@ export const CHALLENGES: Challenge[] = [
     type: 'remediation',
     avail: (c) => c.weak.length > 0,
     build: (c) => {
-      const num = choice(c.weak);
-      const l = LESSONS.find((x) => x.num === num);
+      const id = choice(c.weak);
+      const l = getAllLessons().find((x) => x.id === id);
       return {
         type: 'remediation',
-        lesson: num,
-        label: `Retravaille « ${l!.title} » et réussis-la à 80 %.`,
+        lesson: id,
+        label: `Retravaille « ${l!.label} » et réussis-la à 80 %.`,
       };
     },
   },
@@ -123,7 +125,7 @@ export function updateGoal(ev: any) {
       if (ev.mode === 'express' && ev.isRecord) inc = 1;
       break;
     case 'remediation':
-      if (ev.mode === 'lecon' && ev.lessonNum === goal.lesson && ev.lessonPct >= 80) inc = 1;
+      if (ev.mode === 'lecon' && ev.lessonId === goal.lesson && ev.lessonPct >= 80) inc = 1;
       break;
     // types hérités d'anciennes versions (défi déjà stocké pour aujourd'hui)
     case 'record':
@@ -280,8 +282,8 @@ export function gSnapshot() {
     goalsDone: getGoalsDone(),
     sprints: loadRuns('sprint').length,
     totalAnswered, // total de calculs résolus (tous modes enregistrés)
-    allGreen: LESSONS.every((l) => {
-      const a = lessonAvgPct(stats[l.num]);
+    allGreen: getAllLessons().every((l) => {
+      const a = lessonAvgPct(stats[l.id]);
       return a != null && a >= 70;
     }), // aucune leçon à revoir
   };

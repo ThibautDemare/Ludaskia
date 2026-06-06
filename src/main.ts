@@ -194,7 +194,7 @@ function wireDOM() {
   // Sélection d'une leçon dans la liste (délégation)
   document.getElementById('lessonList')!.addEventListener('click', (e: any) => {
     const btn = e.target.closest('.lesson-item');
-    if (btn) startLecon(Number(btn.dataset.num));
+    if (btn && btn.dataset.id) startLecon(btn.dataset.id);
   });
 
   // Modale de récompense : fermeture (bouton, croix, fond, Échap)

@@ -4,6 +4,7 @@
 import { escapeHTML, fmt } from '../core/utils';
 import { activeProfile, loadProfilesMeta } from '../core/profiles';
 import { LESSONS } from '../core/lessons';
+import { getAllLessons } from '../core/catalog';
 import {
   loadRuns,
   cmpRun,
@@ -144,7 +145,8 @@ export function renderHomeStats() {
   const recL = document.getElementById('recLecon');
   if (recL) {
     const n = starsEarned();
-    recL.innerHTML = `⭐ <strong>${n}/${LESSONS.length}</strong> leçon${n > 1 ? 's' : ''} réussie${n > 1 ? 's' : ''} sans faute`;
+    const total = getAllLessons().length;
+    recL.innerHTML = `⭐ <strong>${n}/${total}</strong> leçon${n > 1 ? 's' : ''} réussie${n > 1 ? 's' : ''} sans faute`;
   }
   fillSprintRecord('recSprint');
   renderObjectives();
@@ -221,12 +223,12 @@ export function renderLessons() {
   const list = document.getElementById('lessonList');
   if (list) {
     list.innerHTML = LESSONS.map((l) => {
-      const c = stars[l.num] || 0;
+      const c = stars[l.id] || 0;
       const starBadge =
         c > 0
           ? `<span class="lz-star" title="${c} sans-faute${c > 1 ? 's' : ''}">⭐${c > 1 ? `<small>×${c}</small>` : ''}</span>`
           : `<span class="lz-star empty" title="Pas encore réussie sans faute">☆</span>`;
-      const avg = lessonAvgPct(lstats[l.num]);
+      const avg = lessonAvgPct(lstats[l.id]);
       let stat;
       if (avg == null) {
         stat = `<span class="lz-stat lz-stat-empty">Pas encore travaillée</span>`;
@@ -237,7 +239,7 @@ export function renderLessons() {
           <span class="lz-bar"><span class="lz-bar-fill" style="width:${avg}%;background:${col}"></span></span>
           <span class="lz-pct" style="color:${col}">${avg}%</span>${flag}</span>`;
       }
-      return `<button class="lesson-item" data-num="${l.num}">
+      return `<button class="lesson-item" data-id="${l.id}">
         <span class="lz-num">${l.num}</span>
         <span class="lz-main"><span class="lz-title">${l.title}</span>${stat}</span>
         ${starBadge}</button>`;
@@ -246,12 +248,13 @@ export function renderLessons() {
   const sum = document.getElementById('starsSummary');
   if (sum) {
     const n = starsEarned();
+    const total = getAllLessons().length;
     const weak = LESSONS.filter((l) => {
-      const a = lessonAvgPct(lstats[l.num]);
+      const a = lessonAvgPct(lstats[l.id]);
       return a != null && a < 70;
     }).map((l) => l.num);
     sum.innerHTML =
-      `⭐ ${n} / ${LESSONS.length} leçons réussies sans faute` +
+      `⭐ ${n} / ${total} leçons réussies sans faute` +
       (weak.length ? ` · <span class="weak-hint">à revoir : leçons ${weak.join(', ')}</span>` : '');
   }
 }

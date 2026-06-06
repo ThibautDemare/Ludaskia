@@ -20,6 +20,7 @@ import {
 } from '../core/progress';
 import { getGoal, evaluateTrophies, loadTrophies, TROPHIES } from '../core/rewards';
 import { sparkline } from './effects';
+import { renderFavoris } from './bilan';
 
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
 export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
@@ -159,6 +160,7 @@ export function renderHomeStats() {
       boardHTML('complet', 'Bilan complet');
   evaluateTrophies(); // rattrape d'éventuels trophées acquis (sans célébration ici)
   renderTrophies();
+  renderFavoris(document.getElementById('favoris'));
 }
 
 /* Objectifs de régularité (cadence saine, périodes calendaires).

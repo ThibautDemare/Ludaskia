@@ -67,7 +67,17 @@
           <div class="card-record" id="recComplet"></div>
           <span class="go">Commencer →</span>
         </div>
+        <div class="card" id="cardBilanCustom">
+          <div class="ico">🎛️</div>
+          <h2>Bilan personnalisé</h2>
+          <p>
+            Choisis les leçons et le nombre de questions. Sauvegarde tes configurations préférées
+            comme favoris.
+          </p>
+          <span class="go">Configurer →</span>
+        </div>
       </div>
+      <div id="favoris"></div>
       <div class="boards" id="boards"></div>
       <div id="trophies"></div>
       <div class="printlink">
@@ -100,6 +110,14 @@
         profil déjà présent n'est remplacé que si la sauvegarde est plus récente.
       </div>
       <div class="printlink"><a id="backHomeProfils">← Retour à l'accueil</a></div>
+    </div>
+
+    <!-- Écran de configuration du bilan personnalisé -->
+    <div class="home screen-only" id="bilan-custom" style="display: none">
+      <div class="big">Bilan personnalisé</div>
+      <div class="tagline">Choisis les leçons et le nombre de questions.</div>
+      <div id="bilanCustomContent"></div>
+      <div class="printlink"><a id="backHomeBilanCustom">← Retour à l'accueil</a></div>
     </div>
 
     <!-- Zone des exercices -->

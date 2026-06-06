@@ -16,6 +16,7 @@ import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
 import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
 import { runSprint, sprintCleanup } from './sprint';
+import { renderBilanConfigScreen } from './bilan';
 import { closeProfileMenu } from './menu';
 
 // État de session partagé (réassigné depuis sprint.ts / session.ts) : accesseurs dédiés.
@@ -69,6 +70,9 @@ export function startSprint() {
   if (location.hash === '#sprint') runSprint();
   else location.hash = 'sprint';
 }
+export function startBilanCustom() {
+  location.hash = 'bilan-custom';
+}
 export function startRevision() {
   if (!lastErrors.length) return;
   pendingRevision = lastErrors.slice();
@@ -82,6 +86,7 @@ export function route() {
   if (h === 'complet') runComplet();
   else if (h === 'express') runExpress();
   else if (h === 'sprint') runSprint();
+  else if (h === 'bilan-custom') showBilanCustomView();
   else if (h === 'lecons') showLessonsView();
   else if (h === 'profils') showProfilesView();
   else if (h === 'revision') {
@@ -134,9 +139,9 @@ function resetSessionUI() {
   if (old) old.remove();
 }
 
-// Masque les écrans « menu » (accueil, sélecteur de leçons, profils)
+// Masque les écrans « menu » (accueil, sélecteur de leçons, profils, bilan-custom)
 export function hideMenus() {
-  ['home', 'lessons', 'profils'].forEach((id) => {
+  ['home', 'lessons', 'profils', 'bilan-custom'].forEach((id) => {
     const e = document.getElementById(id);
     if (e) e.style.display = 'none';
   });
@@ -165,6 +170,14 @@ export function showProfilesView() {
   hideMenus();
   renderProfiles();
   document.getElementById('profils')!.style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+export function showBilanCustomView() {
+  resetSessionUI();
+  setToolbar({ verify: false, home: true, profile: true });
+  hideMenus();
+  renderBilanConfigScreen(document.getElementById('bilanCustomContent')!);
+  document.getElementById('bilan-custom')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function runComplet() {

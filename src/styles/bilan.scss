@@ -1,0 +1,248 @@
+/* Bilan personnalisé — configurateur et favoris */
+
+/* ---- Formulaire de configuration ---- */
+.bilan-config {
+  text-align: left;
+  max-width: 620px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+.bc-section-title {
+  font-family: var(--ui);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--blue);
+  margin: 24px 0 10px;
+}
+.bc-top-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.bc-action-btn {
+  font: inherit;
+  font-family: var(--ui);
+  font-size: 13px;
+  padding: 5px 13px;
+  border: 1.5px solid var(--blue);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--blue);
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+.bc-action-btn:hover {
+  background: var(--blue);
+  color: #fff;
+}
+.bc-category {
+  margin-bottom: 14px;
+}
+.bc-cat-label {
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--grey);
+  margin-bottom: 8px;
+}
+.bc-lessons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 7px;
+}
+.bc-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  background: var(--paper);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  font-family: var(--ui);
+  font-size: 13.5px;
+  color: var(--ink);
+  user-select: none;
+}
+.bc-item input[type='checkbox'] {
+  accent-color: var(--blue);
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.bc-nbq {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.bc-nbq-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  background: var(--paper);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  font-family: var(--ui);
+  font-size: 14px;
+  user-select: none;
+}
+.bc-nbq-item input[type='radio'] {
+  accent-color: var(--blue);
+}
+.bc-save-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.bc-label-input {
+  flex: 1;
+  min-width: 180px;
+  font: inherit;
+  font-family: var(--ui);
+  font-size: 14px;
+  padding: 8px 12px;
+  border: 1.5px solid #dde1e9;
+  border-radius: 8px;
+  outline: none;
+}
+.bc-label-input:focus {
+  border-color: var(--blue);
+}
+.bc-btns {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+.bc-btn {
+  font: inherit;
+  font-family: var(--ui);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 11px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    transform 0.1s;
+}
+.bc-btn:active {
+  transform: scale(0.97);
+}
+.bc-btn-run {
+  background: var(--blue);
+  color: #fff;
+  border: none;
+}
+.bc-btn-run:hover {
+  background: #1a3fa5;
+}
+.bc-btn-save {
+  background: transparent;
+  color: var(--blue);
+  border: 2px solid var(--blue);
+}
+.bc-btn-save:hover {
+  background: var(--blue);
+  color: #fff;
+}
+.bc-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.bc-err {
+  font-family: var(--ui);
+  font-size: 13px;
+  color: var(--ko, #c62828);
+  margin-top: 10px;
+  min-height: 20px;
+}
+
+/* ---- Section favoris (accueil) ---- */
+.favoris {
+  max-width: 760px;
+  margin: 28px auto 0;
+  text-align: left;
+  padding: 0 20px;
+}
+.favoris-title {
+  font-family: var(--ui);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--blue);
+  margin: 0 0 12px;
+}
+.favori-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.favori-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--paper);
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+.favori-info {
+  flex: 1;
+  min-width: 0;
+}
+.favori-name {
+  font-family: var(--ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.favori-meta {
+  font-family: var(--ui);
+  font-size: 12.5px;
+  color: var(--grey);
+  margin-top: 2px;
+}
+.favori-btns {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.favori-btn {
+  font: inherit;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+.favori-btn-run {
+  background: var(--blue);
+  color: #fff;
+  border: none;
+}
+.favori-btn-run:hover {
+  background: #1a3fa5;
+}
+.favori-btn-del {
+  background: transparent;
+  color: var(--ko, #c62828);
+  border: 1.5px solid var(--ko, #c62828);
+}
+.favori-btn-del:hover {
+  background: var(--ko, #c62828);
+  color: #fff;
+}

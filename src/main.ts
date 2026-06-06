@@ -12,6 +12,7 @@ import './styles/profiles.scss';
 import './styles/sprint.scss';
 import './styles/modal.scss';
 import './styles/print.scss';
+import './styles/bilan.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -35,6 +36,7 @@ import {
   startComplet,
   startExpress,
   startSprint,
+  startBilanCustom,
   startLecon,
 } from './ui/navigation';
 import { verify, printAll } from './ui/session';
@@ -65,7 +67,9 @@ function wireDOM() {
   document.getElementById('cardExpress')!.addEventListener('click', startExpress);
   document.getElementById('cardLecon')!.addEventListener('click', showLessons);
   document.getElementById('cardSprint')!.addEventListener('click', startSprint);
+  document.getElementById('cardBilanCustom')!.addEventListener('click', startBilanCustom);
   document.getElementById('backHome')!.addEventListener('click', goHome);
+  document.getElementById('backHomeBilanCustom')!.addEventListener('click', goHome);
   document.getElementById('backHomeProfils')!.addEventListener('click', goHome);
   document.getElementById('printLink')!.addEventListener('click', printAll);
 

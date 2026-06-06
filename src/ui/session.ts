@@ -12,13 +12,14 @@ import {
   recordLessonResult,
   recordRun,
   streakSuffix,
+  addXP,
 } from '../core/progress';
 import { updateGoal, evaluateTrophies } from '../core/rewards';
 import { stopChrono } from './chrono';
 import { showCelebration } from './effects';
 import {
   getCurrentMode,
-  getCurrentLessonNum,
+  getCurrentLessonId,
   getSessionRecorded,
   setSessionRecorded,
   setLastErrors,
@@ -32,7 +33,7 @@ export function verify() {
   const inputs = document.querySelectorAll('#sheets input.ans');
   const sessionItems = getSessionItems();
   const currentMode = getCurrentMode();
-  const currentLessonNum = getCurrentLessonNum();
+  const currentLessonId = getCurrentLessonId();
   let total = 0,
     ok = 0,
     vides = 0;
@@ -93,10 +94,11 @@ export function verify() {
     setSessionRecorded(true);
     streakDays = updateStreak().days;
     recordLessonStats(perLesson);
+    addXP(ok);
     let perfect = false;
     if (currentMode === 'lecon') {
       perfect = ok === inputs.length; // toutes les réponses justes
-      const res = recordLessonResult(currentLessonNum!, perfect);
+      const res = recordLessonResult(currentLessonId!, perfect);
       starInfo = { perfect, newStar: res.newStar, count: res.count };
     } else {
       medalInfo = recordRun(currentMode, ok, inputs.length, ms);
@@ -107,7 +109,7 @@ export function verify() {
       newStar: !!(starInfo && starInfo.newStar),
       perfect,
       isRecord: !!(medalInfo && medalInfo.isRecord),
-      lessonNum: currentLessonNum,
+      lessonId: currentLessonId,
       lessonPct: Math.round((ok / inputs.length) * 100),
     });
     newTrophies = evaluateTrophies();

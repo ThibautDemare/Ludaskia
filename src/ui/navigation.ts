@@ -10,6 +10,7 @@
    history.pushState) pour rester compatible avec file://.
    ============================================================ */
 import { LESSONS, fichesPagesHTML, buildFiches, bilanHTML } from '../core/lessons';
+import { getAllLessons } from '../core/catalog';
 import { setInputCounter, setSessionItems, setRenderLesson, renderItem } from '../core/items';
 import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
@@ -23,10 +24,10 @@ export const getCurrentMode = () => currentMode;
 export const setCurrentMode = (v: string | null) => {
   currentMode = v;
 };
-let currentLessonNum: number | null = null; // numéro de leçon quand currentMode === 'lecon'
-export const getCurrentLessonNum = () => currentLessonNum;
-export const setCurrentLessonNum = (v: number | null) => {
-  currentLessonNum = v;
+let currentLessonId: string | null = null; // ID de leçon quand currentMode === 'lecon'
+export const getCurrentLessonId = () => currentLessonId;
+export const setCurrentLessonId = (v: string | null) => {
+  currentLessonId = v;
 };
 let sessionRecorded = false; // l'essai en cours a-t-il déjà été enregistré ?
 export const getSessionRecorded = () => sessionRecorded;
@@ -60,8 +61,8 @@ export function startComplet() {
 export function startExpress() {
   location.hash = 'express';
 }
-export function startLecon(num: number) {
-  if (LESSONS.find((l) => l.num === num)) location.hash = 'lecon-' + num;
+export function startLecon(id: string) {
+  if (getAllLessons().find((l) => l.id === id)) location.hash = 'lecon-' + id;
 }
 export function startSprint() {
   // Déjà sur #sprint (bouton « Recommencer ») : on relance directement.
@@ -87,8 +88,8 @@ export function route() {
     if (pendingRevision.length) runRevision(pendingRevision);
     else showHomeView();
   } else if (h.startsWith('lecon-')) {
-    const n = Number(h.slice(6));
-    if (LESSONS.find((l) => l.num === n)) runLecon(n);
+    const id = h.slice(6);
+    if (getAllLessons().find((l) => l.id === id)) runLecon(id);
     else showHomeView();
   } else showHomeView(); // '' ou #accueil
 }
@@ -124,7 +125,7 @@ function resetSessionUI() {
   resetChrono();
   sprintCleanup(); // stoppe un éventuel sprint en cours (compte à rebours)
   currentMode = null;
-  currentLessonNum = null;
+  currentLessonId = null;
   document.getElementById('sheets')!.innerHTML = '';
   const sc = document.getElementById('score')!;
   sc.classList.add('hidden');
@@ -182,17 +183,17 @@ export function runExpress() {
   document.getElementById('sheets')!.innerHTML = bilanHTML(1);
   afterStart();
 }
-export function runLecon(num: number) {
-  const lesson = LESSONS.find((l) => l.num === num);
+export function runLecon(id: string) {
+  const lesson = LESSONS.find((l) => l.id === id);
   if (!lesson) {
     showHomeView();
     return;
   }
   currentMode = 'lecon';
-  currentLessonNum = num;
+  currentLessonId = id;
   setInputCounter(0);
   setSessionItems({});
-  setRenderLesson(num);
+  setRenderLesson(id);
   const fiche = lesson.build();
   setRenderLesson(null);
   document.getElementById('sheets')!.innerHTML =
@@ -202,7 +203,7 @@ export function runLecon(num: number) {
 /* Révision : on rejoue uniquement les items ratés (aucun enregistrement). */
 export function runRevision(items: Item[]) {
   currentMode = 'revision';
-  currentLessonNum = null;
+  currentLessonId = null;
   setInputCounter(0);
   setSessionItems({});
   const grid = `<div class="grid c3">${items.map((it) => `<div class="op">${renderItem(it)}</div>`).join('')}</div>`;

@@ -9,15 +9,17 @@
    - un sprint ne compte que s'il va au bout des 5 minutes
    ============================================================ */
 import { choice, commKey, escapeHTML, fmt } from '../core/utils';
-import { bilanQ, THEMES } from '../core/lessons';
+import { bilanQ } from '../core/lessons';
+import { getAllLessons, MATH_LESSON_NUM } from '../core/catalog';
+import type { LessonDef } from '../core/catalog';
 import type { Item } from '../core/items';
-import { updateStreak, recordLessonStats, recordRun, streakSuffix } from '../core/progress';
+import { updateStreak, recordLessonStats, recordRun, streakSuffix, addXP } from '../core/progress';
 import { updateGoal, evaluateTrophies } from '../core/rewards';
 import { getTimer, setTimer, resetChrono } from './chrono';
 import { showCelebration } from './effects';
 import {
   setCurrentMode,
-  setCurrentLessonNum,
+  setCurrentLessonId,
   hideMenus,
   setToolbar,
   startSprint,
@@ -25,9 +27,7 @@ import {
 } from './navigation';
 
 const SPRINT_MS = 300000; // 5 minutes
-// Le sprint tire parmi les 15 leçons. La leçon 15 (« décomposer ») affiche
-// ses étapes intermédiaires (brouillon non corrigé) comme sur les fiches.
-export const SPRINT_LESSONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+let sprintLessonDefs: LessonDef[] = [];
 
 let sprintActive = false,
   sprintPaused = false;
@@ -37,7 +37,8 @@ let sprintScore = 0,
   sprintAnswered = 0;
 let sprintPerLesson: Record<string, { ok: number; total: number }> = {},
   sprintLastKey = '',
-  sprintCurrent: Item | null = null;
+  sprintCurrent: Item | null = null,
+  sprintCurrentDef: LessonDef | null = null;
 
 // Stoppe proprement un sprint en cours (appelé en quittant la vue).
 export function sprintCleanup() {
@@ -47,7 +48,8 @@ export function sprintCleanup() {
 
 export function runSprint() {
   setCurrentMode('sprint');
-  setCurrentLessonNum(null);
+  setCurrentLessonId(null);
+  sprintLessonDefs = getAllLessons();
   sprintActive = true;
   sprintPaused = false;
   sprintRemaining = SPRINT_MS;
@@ -56,6 +58,7 @@ export function runSprint() {
   sprintPerLesson = {};
   sprintLastKey = '';
   sprintCurrent = null;
+  sprintCurrentDef = null;
   hideMenus();
   setToolbar({ verify: false, home: true, profile: false }); // pas de Vérifier (validation auto par question)
   resetChrono(); // le sprint a son propre compte à rebours
@@ -104,22 +107,25 @@ function sprintUpdateScore() {
 // Génère et affiche la prochaine question (en évitant un doublon immédiat).
 function sprintNext() {
   let q: Item,
+    def: LessonDef,
     key: string,
     guard = 0;
   do {
-    const k = choice(SPRINT_LESSONS);
-    q = bilanQ(k)!;
-    q._lesson = k;
+    def = choice(sprintLessonDefs);
+    const num = MATH_LESSON_NUM[def.id];
+    q = bilanQ(num)!;
+    q._lesson = def.id;
     key = commKey(q.text);
     guard++;
   } while (key === sprintLastKey && guard < 25);
   sprintLastKey = key;
   sprintCurrent = q;
+  sprintCurrentDef = def!;
   const stage = document.getElementById('sprintStage');
   if (!stage) return;
-  const deco = q._lesson === 15 ? ' deco' : '';
+  const deco = def!.id === 'math-decomposer-multiplication' ? ' deco' : '';
   stage.innerHTML = `
-    <div class="sprint-theme">${THEMES[q._lesson!]}</div>
+    <div class="sprint-theme">${def!.label}</div>
     <div class="sprint-q${deco}">${sprintQuestionBody(q)}</div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintValidate">Valider</button></div>`;
   const val = document.getElementById('sprintValidate');
@@ -139,7 +145,7 @@ function sprintNext() {
 export function sprintQuestionBody(q: Item) {
   const main =
     '<input id="sprintInput" class="sprint-input" inputmode="numeric" autocomplete="off">';
-  if (q._lesson !== 15) return escapeHTML(q.text).replace('@', main);
+  if (q._lesson !== 'math-decomposer-multiplication') return escapeHTML(q.text).replace('@', main);
   const m = q.text.match(/(\d+)\s*×\s*(\d+)/)!;
   const a = +m[1],
     b = +m[2];
@@ -157,12 +163,13 @@ function sprintSubmit() {
     return;
   } // pas de validation à vide
   sprintAnswered++;
-  const ln = sprintCurrent!._lesson!;
-  const b = sprintPerLesson[ln] || (sprintPerLesson[ln] = { ok: 0, total: 0 });
+  const lessonId = sprintCurrent!._lesson!;
+  const b = sprintPerLesson[lessonId] || (sprintPerLesson[lessonId] = { ok: 0, total: 0 });
   b.total++;
-  if (Number(raw) === Number(sprintCurrent!.answer)) {
+  if (sprintCurrentDef!.exerciseType.check({ type: 'text', question: sprintCurrent!.text, answer: String(sprintCurrent!.answer) }, raw)) {
     sprintScore++;
     b.ok++;
+    addXP(1);
     sprintUpdateScore();
     const stage = document.getElementById('sprintStage');
     if (stage) stage.innerHTML = `<div class="sprint-check">✓</div>`; // petite animation
@@ -180,7 +187,7 @@ function sprintShowCorrection(ans: number) {
   const stage = document.getElementById('sprintStage');
   if (!stage) return;
   stage.innerHTML = `
-    <div class="sprint-theme">${THEMES[sprintCurrent!._lesson!]}</div>
+    <div class="sprint-theme">${sprintCurrentDef?.label ?? ''}</div>
     <div class="sprint-q wrong">${escapeHTML(sprintCurrent!.text).replace('@', '<span class="sprint-sol">' + ans + '</span>')}</div>
     <div class="sprint-correction">La bonne réponse était <strong>${ans}</strong>. Prends le temps de la lire.</div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintContinue">Continuer ▶</button></div>`;

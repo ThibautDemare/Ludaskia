@@ -7,7 +7,7 @@ import { escapeHTML } from './utils';
 export interface Item {
   text: string;
   answer: number;
-  _lesson?: number;
+  _lesson?: string;
 }
 
 export function add(a: number, b: number): Item {
@@ -49,9 +49,9 @@ export const setSessionItems = (v: Record<string, Item>) => {
 };
 // Numéro de la leçon en cours de génération (pour taguer les champs et
 // agréger les stats par leçon, y compris dans les bilans). null = non rattaché.
-let renderLesson: number | null = null;
+let renderLesson: string | null = null;
 export const getRenderLesson = () => renderLesson;
-export const setRenderLesson = (v: number | null) => {
+export const setRenderLesson = (v: string | null) => {
   renderLesson = v;
 };
 // Attribut data-lesson, ou rien si on ne rattache pas le champ à une leçon.

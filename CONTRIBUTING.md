@@ -26,6 +26,30 @@ Issue → branche → Pull Request → CI verte → **rebase-merge**.
 6. **Merge** — **rebase uniquement** (squash et merge-commit sont désactivés au
    niveau du dépôt). La branche est supprimée automatiquement après le merge.
 
+## Labels et milestones
+
+### Labels
+
+| Label | Usage |
+|-------|-------|
+| `bug` | Quelque chose ne fonctionne pas |
+| `enhancement` | Nouvelle fonctionnalité ou amélioration |
+| `refacto` | Restructuration sans nouvelle fonctionnalité visible |
+| `architecture` | Changement structurel fondateur |
+| `content` | Ajout de données ou d'exercices |
+| `gamification` | Trophées, XP, objectifs, récompenses |
+| `documentation` | Documentation |
+
+Appliquer le(s) label(s) le(s) plus précis à chaque issue et PR.
+
+### Milestones
+
+Un **milestone** regroupe les issues d'un même chantier et affiche la progression
+(issues fermées / total). Il peut porter une date limite optionnelle.
+
+Créer un milestone pour tout chantier qui implique ≥ 3 issues liées. Les petits
+correctifs isolés n'en ont pas besoin.
+
 ## Convention de messages de commit
 
 Format [Conventional Commits](https://www.conventionalcommits.org/) :

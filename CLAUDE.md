@@ -16,6 +16,18 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
 - Avant de pousser : `npm run typecheck`, `npm run lint`, `npm test`.
 - Build de prod : `npm run build` (→ `dist/`).
 
+## Workflow Git/GitHub (sessions agent)
+- `main` est **protégée** : **jamais** de commit/push direct dessus. Toute
+  modification passe par une **branche + PR** ; la CI doit être verte ; merge en
+  **rebase**.
+- Piloter via le CLI **`gh`** (installé et authentifié) : branches, PR, issues.
+- **Une PR par changement**, liée à son issue le cas échéant (`Closes #N`) ;
+  attendre la CI verte puis rebase-merge. **Ne pas merger sans le feu vert du
+  mainteneur.**
+- Le mainteneur peut travailler **en parallèle** dans une autre session :
+  `git fetch` + vérifier l'état (local vs distant) **avant de pusher**.
+- Détails : `CONTRIBUTING.md`.
+
 ## Conventions
 - **Code, UI, commentaires, docs et issues : en français.** Messages de commit/PR :
   en **anglais** (Conventional Commits — voir `CONTRIBUTING.md`).

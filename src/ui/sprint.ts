@@ -166,7 +166,12 @@ function sprintSubmit() {
   const lessonId = sprintCurrent!._lesson!;
   const b = sprintPerLesson[lessonId] || (sprintPerLesson[lessonId] = { ok: 0, total: 0 });
   b.total++;
-  if (sprintCurrentDef!.exerciseType.check({ type: 'text', question: sprintCurrent!.text, answer: String(sprintCurrent!.answer) }, raw)) {
+  if (
+    sprintCurrentDef!.exerciseType.check(
+      { type: 'text', question: sprintCurrent!.text, answer: String(sprintCurrent!.answer) },
+      raw,
+    )
+  ) {
     sprintScore++;
     b.ok++;
     addXP(1);

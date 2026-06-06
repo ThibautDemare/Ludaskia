@@ -403,7 +403,9 @@ describe('Trophées', () => {
     expect(api.evaluateTrophies().length).toBe(0);
   }); // rien de nouveau au 2e passage
   test('gSnapshot reflète étoiles et série', () => {
-    const ids = getAllLessons().slice(0, 5).map((l) => l.id);
+    const ids = getAllLessons()
+      .slice(0, 5)
+      .map((l) => l.id);
     for (const id of ids) api.recordLessonResult(id, true);
     expect(api.gSnapshot().stars).toBe(5);
     expect(
@@ -473,10 +475,18 @@ describe('Sprint', () => {
     expect(lessons.length).toBe(15);
   });
   test('sprint leçon 15 : étapes intermédiaires + champ final', () => {
-    const body15 = api.sprintQuestionBody({ text: '6 × 14 = @', answer: 84, _lesson: 'math-decomposer-multiplication' });
+    const body15 = api.sprintQuestionBody({
+      text: '6 × 14 = @',
+      answer: 84,
+      _lesson: 'math-decomposer-multiplication',
+    });
     expect((body15.match(/sprint-free/g) || []).length).toBe(6); // 6 champs de brouillon
     expect((body15.match(/id="sprintInput"/g) || []).length).toBe(1); // 1 champ final corrigé
-    const body7 = api.sprintQuestionBody({ text: '6 × 7 = @', answer: 42, _lesson: 'math-tables-multiplication' });
+    const body7 = api.sprintQuestionBody({
+      text: '6 × 7 = @',
+      answer: 42,
+      _lesson: 'math-tables-multiplication',
+    });
     expect(body7.includes('sprint-free')).toBe(false);
     expect(body7.includes('id="sprintInput"')).toBe(true);
   });
@@ -508,7 +518,9 @@ describe('Profils', () => {
   });
   test('réinitialiser un profil efface sa progression', () => {
     api.recordRun('express', 40, 45, 400000);
-    const ids3 = getAllLessons().slice(0, 3).map((l) => l.id);
+    const ids3 = getAllLessons()
+      .slice(0, 3)
+      .map((l) => l.id);
     for (const id of ids3) api.recordLessonResult(id, true);
     api.resetProfile(api.activeProfile().uuid);
     expect(api.loadRuns('express').length).toBe(0);
@@ -569,7 +581,13 @@ describe('Sauvegarde (export / import par profil)', () => {
           uuid: 'X',
           name: 'Vieux',
           updatedAt: 500,
-          data: { ludaskia_stars: JSON.stringify({ 'math-tables-addition': 1, 'math-complements': 1, 'math-doubles': 1 }) },
+          data: {
+            ludaskia_stars: JSON.stringify({
+              'math-tables-addition': 1,
+              'math-complements': 1,
+              'math-doubles': 1,
+            }),
+          },
         },
       ]),
     );
@@ -582,7 +600,13 @@ describe('Sauvegarde (export / import par profil)', () => {
           uuid: 'X',
           name: 'Neuf',
           updatedAt: 2000,
-          data: { ludaskia_stars: JSON.stringify({ 'math-tables-addition': 1, 'math-complements': 1, 'math-doubles': 1 }) },
+          data: {
+            ludaskia_stars: JSON.stringify({
+              'math-tables-addition': 1,
+              'math-complements': 1,
+              'math-doubles': 1,
+            }),
+          },
         },
       ]),
     );

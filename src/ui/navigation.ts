@@ -15,7 +15,7 @@ import { setInputCounter, setSessionItems, setRenderLesson, renderItem } from '.
 import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
 import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
-import { runSprint, sprintCleanup } from './sprint';
+import { runSprint, sprintCleanup, renderSprintConfigScreen } from './sprint';
 import { renderBilanConfigScreen } from './bilan';
 import { closeProfileMenu } from './menu';
 
@@ -66,9 +66,7 @@ export function startLecon(id: string) {
   if (getAllLessons().find((l) => l.id === id)) location.hash = 'lecon-' + id;
 }
 export function startSprint() {
-  // Déjà sur #sprint (bouton « Recommencer ») : on relance directement.
-  if (location.hash === '#sprint') runSprint();
-  else location.hash = 'sprint';
+  location.hash = 'sprint-config';
 }
 export function startBilanCustom() {
   location.hash = 'bilan-custom';
@@ -85,6 +83,7 @@ export function route() {
   const h = (location.hash || '').replace(/^#/, '');
   if (h === 'complet') runComplet();
   else if (h === 'express') runExpress();
+  else if (h === 'sprint-config') showSprintConfigView();
   else if (h === 'sprint') runSprint();
   else if (h === 'bilan-custom') showBilanCustomView();
   else if (h === 'lecons') showLessonsView();
@@ -139,9 +138,9 @@ function resetSessionUI() {
   if (old) old.remove();
 }
 
-// Masque les écrans « menu » (accueil, sélecteur de leçons, profils, bilan-custom)
+// Masque les écrans « menu » (accueil, sélecteur de leçons, profils, bilan-custom, sprint-config)
 export function hideMenus() {
-  ['home', 'lessons', 'profils', 'bilan-custom'].forEach((id) => {
+  ['home', 'lessons', 'profils', 'bilan-custom', 'sprint-config'].forEach((id) => {
     const e = document.getElementById(id);
     if (e) e.style.display = 'none';
   });
@@ -170,6 +169,14 @@ export function showProfilesView() {
   hideMenus();
   renderProfiles();
   document.getElementById('profils')!.style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+export function showSprintConfigView() {
+  resetSessionUI();
+  setToolbar({ verify: false, home: true, profile: true });
+  hideMenus();
+  renderSprintConfigScreen(document.getElementById('sprintConfigContent')!);
+  document.getElementById('sprint-config')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showBilanCustomView() {

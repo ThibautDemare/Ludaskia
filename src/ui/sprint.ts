@@ -10,7 +10,14 @@
    ============================================================ */
 import { choice, commKey, escapeHTML, fmt } from '../core/utils';
 import { bilanQ } from '../core/lessons';
-import { getAllLessons, MATH_LESSON_NUM } from '../core/catalog';
+import {
+  getAllLessons,
+  getLessonsBySubject,
+  getLessonsByCategory,
+  MATH_LESSON_NUM,
+  SUBJECTS,
+  CATEGORIES,
+} from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import type { Item } from '../core/items';
 import { updateStreak, recordLessonStats, recordRun, streakSuffix, addXP } from '../core/progress';
@@ -27,6 +34,82 @@ import {
 } from './navigation';
 
 const SPRINT_MS = 300000; // 5 minutes
+
+/* ---------- Filtre du sprint ---------- */
+
+type SprintFilter =
+  | { type: 'all' }
+  | { type: 'subject'; id: string }
+  | { type: 'category'; id: string };
+
+let sprintFilter: SprintFilter = { type: 'all' };
+
+function lessonsForFilter(f: SprintFilter): LessonDef[] {
+  if (f.type === 'subject') return getLessonsBySubject(f.id);
+  if (f.type === 'category') return getLessonsByCategory(f.id);
+  return getAllLessons();
+}
+
+function filterLabel(f: SprintFilter): string {
+  if (f.type === 'all') return '';
+  if (f.type === 'subject') return SUBJECTS.find((s) => s.id === f.id)?.label ?? f.id;
+  return CATEGORIES.find((c) => c.id === f.id)?.label ?? f.id;
+}
+
+function parseFilter(value: string): SprintFilter {
+  if (value.startsWith('subject:')) return { type: 'subject', id: value.slice(8) };
+  if (value.startsWith('category:')) return { type: 'category', id: value.slice(9) };
+  return { type: 'all' };
+}
+
+/* ---------- Écran de configuration du sprint ---------- */
+
+export function renderSprintConfigScreen(el: HTMLElement): void {
+  const allLessons = getAllLessons();
+  const totalN = allLessons.length;
+
+  const currentValue =
+    sprintFilter.type === 'all'
+      ? 'all'
+      : sprintFilter.type === 'subject'
+        ? `subject:${sprintFilter.id}`
+        : `category:${sprintFilter.id}`;
+
+  const opt = (value: string, label: string, n: number, indent = false) => {
+    const checked = currentValue === value ? 'checked' : '';
+    const cls = `sc-option${indent ? ' sc-option-indent' : ''}`;
+    return `<label class="${cls}">
+      <input type="radio" name="scFilter" class="sc-radio" value="${value}" ${checked}>
+      <span>${escapeHTML(label)} <span class="sc-count">${n} leçon${n > 1 ? 's' : ''}</span></span>
+    </label>`;
+  };
+
+  const subjectOptions = SUBJECTS.flatMap((subj) => {
+    const subjLessons = getLessonsBySubject(subj.id);
+    if (!subjLessons.length) return [];
+    const catOptions = CATEGORIES.filter((c) => c.subject === subj.id).flatMap((cat) => {
+      const n = getLessonsByCategory(cat.id).length;
+      return n ? [opt(`category:${cat.id}`, cat.label, n, true)] : [];
+    });
+    return [opt(`subject:${subj.id}`, subj.label, subjLessons.length), ...catOptions];
+  }).join('');
+
+  el.innerHTML = `<div class="sprint-config">
+    <div class="sc-section-title">Filtre</div>
+    <div class="sc-options">
+      ${opt('all', 'Toutes les matières', totalN)}
+      ${subjectOptions}
+    </div>
+    <button id="scLaunch" class="sprint-btn">Lancer ▶</button>
+  </div>`;
+
+  el.querySelector('#scLaunch')!.addEventListener('click', () => {
+    const selected = el.querySelector<HTMLInputElement>('.sc-radio:checked');
+    sprintFilter = parseFilter(selected ? selected.value : 'all');
+    location.hash = 'sprint';
+  });
+}
+
 let sprintLessonDefs: LessonDef[] = [];
 
 let sprintActive = false,
@@ -49,7 +132,7 @@ export function sprintCleanup() {
 export function runSprint() {
   setCurrentMode('sprint');
   setCurrentLessonId(null);
-  sprintLessonDefs = getAllLessons();
+  sprintLessonDefs = lessonsForFilter(sprintFilter);
   sprintActive = true;
   sprintPaused = false;
   sprintRemaining = SPRINT_MS;
@@ -62,10 +145,12 @@ export function runSprint() {
   hideMenus();
   setToolbar({ verify: false, home: true, profile: false }); // pas de Vérifier (validation auto par question)
   resetChrono(); // le sprint a son propre compte à rebours
+  const badge = filterLabel(sprintFilter);
   document.getElementById('sheets')!.innerHTML = `
     <div class="sprint">
       <div class="sprint-hud">
         <span class="sprint-time" id="sprintTime">05:00</span>
+        ${badge ? `<span class="sprint-filter-badge">${escapeHTML(badge)}</span>` : ''}
         <span class="sprint-score" id="sprintScore">0 bonne réponse</span>
       </div>
       <div class="sprint-stage" id="sprintStage"></div>

@@ -70,6 +70,7 @@ function wireDOM() {
   document.getElementById('cardBilanCustom')!.addEventListener('click', startBilanCustom);
   document.getElementById('backHome')!.addEventListener('click', goHome);
   document.getElementById('backHomeBilanCustom')!.addEventListener('click', goHome);
+  document.getElementById('backHomeSprintConfig')!.addEventListener('click', goHome);
   document.getElementById('backHomeProfils')!.addEventListener('click', goHome);
   document.getElementById('printLink')!.addEventListener('click', printAll);
 

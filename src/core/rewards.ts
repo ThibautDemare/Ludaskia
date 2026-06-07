@@ -4,11 +4,12 @@
    ============================================================ */
 import { choice } from './utils';
 import { lsGet, lsSet } from './storage';
-import { getAllLessons } from './catalog';
+import { getAllLessons, SUBJECTS, CATEGORIES } from './catalog';
 import {
   loadRuns,
   getStreak,
   loadLessonStats,
+  loadStars,
   lessonAvgPct,
   starsEarned,
   todayStr,
@@ -255,6 +256,37 @@ export const TROPHIES: Trophy[] = [
     { n: 30, title: 'Maître des défis', desc: 'Réussir 30 objectifs du jour.' },
   ]),
 ];
+/* ---------- Trophées par matière et par catégorie ----------
+   Générés depuis le catalogue : chaque matière a des paliers de
+   bonnes réponses cumulées, chaque catégorie des paliers de leçons
+   étoilées. S'étendent automatiquement quand on ajoute des matières. */
+const SUBJECT_LEVELS = [50, 200]; // bonnes réponses cumulées dans la matière
+const CATEGORY_LEVELS = [3, 8]; // leçons étoilées (sans-faute) dans la catégorie
+
+function subjectTrophies(): Trophy[] {
+  return SUBJECTS.flatMap((s) =>
+    SUBJECT_LEVELS.map((n) => ({
+      id: `subj-${s.id}-${n}`,
+      icon: '📗',
+      title: `${n} bonnes réponses en ${s.label}`,
+      desc: `Cumuler ${n} bonnes réponses en ${s.label}.`,
+      test: (g: any) => (g.subjectCorrect[s.id] || 0) >= n,
+    })),
+  );
+}
+function categoryTrophies(): Trophy[] {
+  return CATEGORIES.flatMap((c) =>
+    CATEGORY_LEVELS.map((n) => ({
+      id: `cat-${c.id}-${n}`,
+      icon: '🏷️',
+      title: `${n} leçons étoilées — ${c.label}`,
+      desc: `Décrocher l'étoile de ${n} leçons de ${c.label}.`,
+      test: (g: any) => (g.categoryStars[c.id] || 0) >= n,
+    })),
+  );
+}
+TROPHIES.push(...subjectTrophies(), ...categoryTrophies());
+
 // Compile le raccourci {metric, n} en fonction test.
 TROPHIES.forEach((t) => {
   if (!t.test && t.metric) t.test = (g: any) => g[t.metric!] >= t.n!;
@@ -272,6 +304,21 @@ export function gSnapshot() {
   const stats = loadLessonStats();
   let totalAnswered = 0;
   for (const k in stats) totalAnswered += stats[k].questions || 0;
+  // Agrégats par matière et par catégorie (bonnes réponses cumulées + leçons étoilées).
+  const starsMap = loadStars();
+  const subjectCorrect: Record<string, number> = {};
+  const categoryCorrect: Record<string, number> = {};
+  const subjectStars: Record<string, number> = {};
+  const categoryStars: Record<string, number> = {};
+  for (const l of getAllLessons()) {
+    const correct = (stats[l.id] && stats[l.id].correct) || 0;
+    subjectCorrect[l.subject] = (subjectCorrect[l.subject] || 0) + correct;
+    categoryCorrect[l.category] = (categoryCorrect[l.category] || 0) + correct;
+    if ((starsMap[l.id] || 0) > 0) {
+      subjectStars[l.subject] = (subjectStars[l.subject] || 0) + 1;
+      categoryStars[l.category] = (categoryStars[l.category] || 0) + 1;
+    }
+  }
   return {
     totalRuns: all.length,
     stars: starsEarned(),
@@ -286,6 +333,10 @@ export function gSnapshot() {
       const a = lessonAvgPct(stats[l.id]);
       return a != null && a >= 70;
     }), // aucune leçon à revoir
+    subjectCorrect, // bonnes réponses cumulées par matière
+    categoryCorrect, // bonnes réponses cumulées par catégorie
+    subjectStars, // leçons étoilées par matière
+    categoryStars, // leçons étoilées par catégorie
   };
 }
 /* Débloque les trophées nouvellement atteints ; renvoie les nouveaux. */

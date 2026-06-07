@@ -18,6 +18,7 @@ import {
   startOfMonth,
   countSince,
   getXP,
+  progressionNiveau,
 } from '../core/progress';
 import { getGoal, evaluateTrophies, loadTrophies, TROPHIES } from '../core/rewards';
 import { sparkline } from './effects';
@@ -26,10 +27,19 @@ import { renderFavoris } from './bilan';
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
 export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
 
-/* Bouton de profil dans la barre d'outils (libellé = profil actif) + badge XP */
+/* Bouton de profil dans la barre d'outils (libellé = profil actif) + badge de niveau */
 export function renderToolbarProfile() {
   const xpEl = document.getElementById('xpBadge');
-  if (xpEl) xpEl.innerHTML = `✨ <strong>${getXP()}</strong> XP`;
+  if (xpEl) {
+    const xp = getXP();
+    const pr = progressionNiveau(xp);
+    xpEl.title = pr.max
+      ? `Niveau maximum atteint ! (${xp} XP)`
+      : `${pr.xpDansNiveau} / ${pr.xpRequisPalier} XP vers le niveau ${pr.niveau + 1} (${xp} XP au total)`;
+    xpEl.innerHTML =
+      `<span class="lvl-num">⭐ Niveau ${pr.niveau}</span>` +
+      `<span class="lvl-bar"><span class="lvl-bar-fill" style="width:${pr.pct}%"></span></span>`;
+  }
   const el = document.getElementById('toolbarProfile');
   if (!el) return;
   const p = activeProfile();

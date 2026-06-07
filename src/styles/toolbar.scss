@@ -54,21 +54,40 @@
 .btn-ghost:hover {
   background: rgba(255, 255, 255, 0.26);
 }
-/* Badge d'XP dans la barre (à gauche du profil) */
+/* Badge de niveau dans la barre (à gauche du profil) : niveau + barre de progression */
 .toolbar-xp {
   display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 92px;
   font-family: var(--ui);
-  font-size: 14px;
-  font-weight: 700;
   color: #5b4500;
   background: linear-gradient(135deg, #ffd54f, #ffb300);
-  padding: 7px 14px;
-  border-radius: 999px;
+  padding: 6px 14px;
+  border-radius: 14px;
 }
-.toolbar-xp strong {
-  font-size: 15px;
+.lvl-num {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+.lvl-bar {
+  position: relative;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(91, 69, 0, 0.22);
+  overflow: hidden;
+}
+.lvl-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: 999px;
+  background: #5b4500;
+  transition: width 0.3s ease;
 }
 
 /* Indicateur de profil (ouvre la gestion des profils) */

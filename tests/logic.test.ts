@@ -78,6 +78,11 @@ import {
   XP_KEY,
   getXP,
   addXP,
+  NIVEAU_MAX,
+  xpVersSuivant,
+  xpPourNiveau,
+  niveauDepuisXP,
+  progressionNiveau,
 } from '../src/core/progress';
 import {
   CHALLENGES,
@@ -175,6 +180,11 @@ const api = {
   XP_KEY,
   getXP,
   addXP,
+  NIVEAU_MAX,
+  xpVersSuivant,
+  xpPourNiveau,
+  niveauDepuisXP,
+  progressionNiveau,
   GOAL_KEY,
   GOALS_DONE_KEY,
   getGoalsDone,
@@ -469,6 +479,41 @@ describe('XP & gamification multi-matières', () => {
     api.addXP(0);
     api.addXP(-4);
     expect(api.getXP()).toBe(5);
+  });
+  test('Niveaux : coût du palier et XP cumulée par niveau', () => {
+    // xpVersSuivant(L) = round(0,9 × L^1.5)
+    expect([1, 2, 3, 4, 5].map(api.xpVersSuivant)).toEqual([1, 3, 5, 7, 10]);
+    // xpPourNiveau = cumul des paliers ; niveau 1 ⇒ 0 XP.
+    expect(api.xpPourNiveau(1)).toBe(0);
+    expect([2, 3, 4, 5, 6].map(api.xpPourNiveau)).toEqual([1, 4, 9, 16, 26]);
+    // Le coût est strictement croissant (« de plus en plus dur »).
+    expect(api.xpVersSuivant(60)).toBeGreaterThan(api.xpVersSuivant(10));
+  });
+  test('Niveaux : niveau dérivé de l’XP, plafonné à NIVEAU_MAX', () => {
+    expect(api.niveauDepuisXP(0)).toBe(1);
+    expect(api.niveauDepuisXP(1)).toBe(2); // 1 XP suffit pour le 1er palier
+    expect(api.niveauDepuisXP(3)).toBe(2); // pas encore le palier suivant (4 XP)
+    expect(api.niveauDepuisXP(4)).toBe(3);
+    // Cohérence avec xpPourNiveau : l’XP juste sous un palier ne fait pas monter.
+    const xp50 = api.xpPourNiveau(50);
+    expect(api.niveauDepuisXP(xp50)).toBe(50);
+    expect(api.niveauDepuisXP(xp50 - 1)).toBe(49);
+    // Plafond : au-delà de l’XP du niveau max, on reste au niveau max.
+    expect(api.niveauDepuisXP(api.xpPourNiveau(api.NIVEAU_MAX))).toBe(api.NIVEAU_MAX);
+    expect(api.niveauDepuisXP(10_000_000)).toBe(api.NIVEAU_MAX);
+  });
+  test('Niveaux : progressionNiveau (barre)', () => {
+    // Pile sur un palier ⇒ niveau monté, barre à 0 %.
+    const p = api.progressionNiveau(api.xpPourNiveau(3));
+    expect(p.niveau).toBe(3);
+    expect(p.xpDansNiveau).toBe(0);
+    expect(p.xpRequisPalier).toBe(api.xpVersSuivant(3));
+    expect(p.pct).toBe(0);
+    expect(p.max).toBe(false);
+    // Niveau max ⇒ barre pleine et figée.
+    const pm = api.progressionNiveau(api.xpPourNiveau(api.NIVEAU_MAX));
+    expect(pm.max).toBe(true);
+    expect(pm.pct).toBe(100);
   });
   test('gSnapshot agrège bonnes réponses et étoiles par matière/catégorie', () => {
     api.recordLessonStats({ 'math-tables-addition': { ok: 30, total: 30 } });

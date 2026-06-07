@@ -95,8 +95,10 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
 - **`progress.ts`** — records de bilans (`recordRun`, `cmpRun` « score puis
   temps »), série (`updateStreak`, `streakSuffix`), étoiles
   (`recordLessonResult`, `starsEarned`), stats par leçon (`recordLessonStats`,
-  `lessonAvgPct`), **XP global** (`getXP`/`addXP`, `ludaskia_xp`), périodes
-  calendaires (`startOfWeek/Month`, `countSince`).
+  `lessonAvgPct`), **XP global** (`getXP`/`addXP`, `ludaskia_xp`) et **niveaux
+  dérivés** (`niveauDepuisXP`, `progressionNiveau`, `xpVersSuivant`,
+  `xpPourNiveau`, `NIVEAU_MAX`), périodes calendaires (`startOfWeek/Month`,
+  `countSince`).
 - **`rewards.ts`** — défi du jour contextuel (`CHALLENGES`, `getGoal`,
   `updateGoal`) et trophées (`TROPHIES`, `tiers()`, `evaluateTrophies`,
   `gSnapshot`), dont des groupes **par matière** et **par catégorie** générés
@@ -105,9 +107,10 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
 ### `src/ui/`
 - **`chrono.ts`** — chronomètre croissant de la barre (sessions).
 - **`effects.ts`** — `sparkline` (SVG), `confetti`, modale `showCelebration`.
-- **`render.ts`** — rendus accueil/sélecteur/profils (`renderHomeStats` dont
-  badge **XP** et favoris, `renderObjectives`, `renderGoal`, `renderTrophies`,
-  `renderLessons` + `lessonCardHTML` réutilisable, `renderToolbarProfile`,
+- **`render.ts`** — rendus accueil/sélecteur/profils (`renderHomeStats` et
+  favoris, badge **niveau + barre** dans `renderToolbarProfile`,
+  `renderObjectives`, `renderGoal`, `renderTrophies`,
+  `renderLessons` + `lessonCardHTML` réutilisable,
   `renderProfileMenu`, `renderProfiles`, `boardHTML`/`sprintBoardHTML`,
   `pctColor`, config `REGULARITY`).
 - **`catalog-nav.ts`** — navigation **Matière → Catégorie → Leçons**
@@ -209,8 +212,13 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   et **par catégorie** (`subjectCorrect/Stars`, `categoryCorrect/Stars`) ; des
   groupes de trophées par matière/catégorie sont **générés depuis le catalogue**
   (ils s'étendent automatiquement avec les nouvelles matières).
-- **XP** : 1 point par bonne réponse, tous modes confondus (`addXP`), affiché en
-  badge sur l'accueil. Base d'un futur système de niveaux.
+- **XP & niveaux** : 1 point d'XP par bonne réponse, tous modes confondus
+  (`addXP`). L'XP totale (`ludaskia_xp`) reste l'unique source de vérité ; le
+  **niveau (1 → 100)** en est *dérivé* par fonction pure (`niveauDepuisXP`),
+  donc aucune migration. Courbe « de plus en plus dure » : coût d'un palier
+  `round(0,9 × L^1.5)` (`xpVersSuivant`), soit ~35 500 XP pour le niveau 100.
+  Affiché dans la barre d'outils en **badge niveau + barre de progression**
+  (`progressionNiveau`) ; l'XP brute n'apparaît plus qu'en infobulle.
 - **Règle des 60 %** : un bilan/leçon ne « compte » (temps, record, étoile,
   objectif, trophée) que si ≥ 60 % des calculs ont une réponse. Le sprint compte
   s'il va au bout des 5 minutes.

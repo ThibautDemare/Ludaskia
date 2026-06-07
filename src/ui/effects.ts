@@ -1,6 +1,7 @@
 /* ============================================================
    Effets visuels : courbe de progression, confettis, modale
    ============================================================ */
+import { getXP, progressionNiveau, NIVEAU_MAX } from '../core/progress';
 
 /* Mini-courbe SVG de la progression (score % au fil des essais) */
 export function sparkline(vals: number[], w = 260, h = 46) {
@@ -54,4 +55,36 @@ export function showCelebration(items: { icon: string; text: string }[]) {
 export function hideCelebration() {
   const ov = document.getElementById('celebrate');
   if (ov) ov.style.display = 'none';
+}
+
+/* Modale dédiée au passage de niveau : médaillon doré animé + rayons.
+   `then` (optionnel) est rejoué à la fermeture → permet d'enchaîner sur la
+   modale de récompense générique s'il y a d'autres gains. */
+let levelUpThen: (() => void) | null = null;
+export function showLevelUp(niveau: number, then?: () => void) {
+  const ov = document.getElementById('levelup');
+  if (!ov) {
+    if (then) then(); // pas de modale dans le DOM : on n'avale pas les autres récompenses
+    return;
+  }
+  const num = document.getElementById('levelupNum');
+  if (num) num.textContent = String(niveau);
+  const sub = document.getElementById('levelupNext');
+  if (sub) {
+    const pr = progressionNiveau(getXP());
+    sub.textContent =
+      niveau >= NIVEAU_MAX
+        ? '🏆 Niveau maximum atteint !'
+        : `Plus que ${pr.xpRequisPalier - pr.xpDansNiveau} XP avant le niveau ${niveau + 1}`;
+  }
+  levelUpThen = then ?? null;
+  ov.style.display = '';
+  confetti();
+}
+export function hideLevelUp() {
+  const ov = document.getElementById('levelup');
+  if (ov) ov.style.display = 'none';
+  const then = levelUpThen;
+  levelUpThen = null;
+  if (then) then();
 }

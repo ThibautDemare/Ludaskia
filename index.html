@@ -175,6 +175,24 @@
       </div>
     </div>
 
+    <!-- Modale dédiée : passage de niveau (médaillon doré animé) -->
+    <div class="modal-overlay" id="levelup" style="display: none">
+      <div class="levelup-card" role="dialog" aria-modal="true" aria-labelledby="levelupTitle">
+        <button class="modal-close" id="levelupClose" aria-label="Fermer">×</button>
+        <div class="levelup-stage">
+          <div class="levelup-rays"></div>
+          <div class="levelup-medal">
+            <span class="levelup-medal-label">NIVEAU</span>
+            <span class="levelup-medal-num" id="levelupNum">2</span>
+          </div>
+        </div>
+        <p class="levelup-kicker">Niveau supérieur&nbsp;!</p>
+        <h2 class="levelup-title" id="levelupTitle">Bravo, tu montes d'un niveau&nbsp;!</h2>
+        <p class="levelup-next" id="levelupNext"></p>
+        <button class="modal-ok levelup-ok" id="levelupOk">Continuer</button>
+      </div>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -43,7 +43,7 @@ import {
   startLecon,
 } from './ui/navigation';
 import { verify, printAll } from './ui/session';
-import { hideCelebration } from './ui/effects';
+import { hideCelebration, hideLevelUp } from './ui/effects';
 import { closeProfileMenu, toggleProfileMenu } from './ui/menu';
 
 /* ---------- Téléchargement d'un objet en fichier JSON ---------- */
@@ -219,9 +219,19 @@ function wireDOM() {
   document.getElementById('celebrate')!.addEventListener('click', (e: any) => {
     if (e.target.id === 'celebrate') hideCelebration();
   });
+
+  // Modale de passage de niveau : mêmes fermetures (la fermeture enchaîne
+  // éventuellement sur la modale de récompense, cf. showLevelUp).
+  document.getElementById('levelupOk')!.addEventListener('click', hideLevelUp);
+  document.getElementById('levelupClose')!.addEventListener('click', hideLevelUp);
+  document.getElementById('levelup')!.addEventListener('click', (e: any) => {
+    if (e.target.id === 'levelup') hideLevelUp();
+  });
+
   document.addEventListener('keydown', (e: any) => {
     if (e.key === 'Escape') {
       hideCelebration();
+      hideLevelUp();
       closeProfileMenu();
     }
   });

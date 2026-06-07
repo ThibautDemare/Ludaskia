@@ -6,7 +6,8 @@
 import { getAllLessons, CATEGORIES, SUBJECTS } from '../core/catalog';
 import type { BilanConfig } from '../core/catalog';
 import { loadBilans, saveBilan, deleteBilan } from '../core/bilans';
-import { bilanBlocksForIds, buildFichesForIds, fichesPagesHTML, THEMES } from '../core/lessons';
+import { fichesPagesHTML } from '../core/lessons';
+import { bilanBlocksForIds, buildFichesForIds } from '../core/build';
 import { setInputCounter, setSessionItems, setRenderLesson, renderItem } from '../core/items';
 import { escapeHTML } from '../core/utils';
 import { setCurrentMode, setCurrentLessonId, afterStart } from './navigation';
@@ -20,13 +21,13 @@ function bilanCustomExpressHTML(config: BilanConfig): string {
       setRenderLesson(b.id);
       const ops = b.ops.map((o) => `<div class="bop">${renderItem(o)}</div>`).join('');
       setRenderLesson(null);
-      return `<div class="bloc"><span class="blab">M${b.num}.</span> <span class="btheme">${THEMES[b.num]}</span>${ops}</div>`;
+      return `<div class="bloc"><span class="btheme">${escapeHTML(b.theme)}</span>${ops}</div>`;
     })
     .join('');
   const nbq = config.questionsPerLesson as number;
   return `<div class="page">
     <p class="bilan-title">${escapeHTML(config.label)}</p>
-    <p class="bilan-sub">${nbq} calcul${nbq > 1 ? 's' : ''} par leçon · ${config.lessonIds.length} leçon${config.lessonIds.length > 1 ? 's' : ''}</p>
+    <p class="bilan-sub">${nbq} question${nbq > 1 ? 's' : ''} par leçon · ${config.lessonIds.length} leçon${config.lessonIds.length > 1 ? 's' : ''}</p>
     <div class="bilan-grid">${cells}</div>
     <p class="foot">Ludaskia</p>
   </div>`;

@@ -9,9 +9,10 @@
    lieu de quitter la page. On utilise le hash (et non
    history.pushState) pour rester compatible avec file://.
    ============================================================ */
-import { LESSONS, fichesPagesHTML, buildFiches, bilanHTML } from '../core/lessons';
-import { getAllLessons } from '../core/catalog';
-import { setInputCounter, setSessionItems, setRenderLesson, renderItem } from '../core/items';
+import { fichesPagesHTML, buildFiches, bilanHTML } from '../core/lessons';
+import { getAllLessons, getLessonById } from '../core/catalog';
+import { buildLessonFiche } from '../core/build';
+import { setInputCounter, setSessionItems, renderItem } from '../core/items';
 import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
 import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
@@ -269,8 +270,7 @@ export function runExpress() {
   afterStart();
 }
 export function runLecon(id: string) {
-  const lesson = LESSONS.find((l) => l.id === id);
-  if (!lesson) {
+  if (!getLessonById(id)) {
     showHomeView();
     return;
   }
@@ -278,9 +278,7 @@ export function runLecon(id: string) {
   currentLessonId = id;
   setInputCounter(0);
   setSessionItems({});
-  setRenderLesson(id);
-  const fiche = lesson.build();
-  setRenderLesson(null);
+  const fiche = buildLessonFiche(id); // aiguille math (rendu riche) / autres matières (texte)
   document.getElementById('sheets')!.innerHTML =
     `<div class="page">${fiche}<p class="foot">Ludaskia</p></div>`;
   afterStart();

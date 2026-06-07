@@ -1,0 +1,43 @@
+/* Exercices texte (français) : champ de saisie large + liste de conjugaison */
+
+/* Champ texte corrigé (conjugaison, etc.) : plus large, aligné à gauche,
+   police lisible, sans correction automatique du clavier. */
+.ans-text {
+  width: 140px;
+  text-align: left;
+  font-size: 15px;
+  font-family: var(--ui);
+}
+
+/* Liste verticale d'items de conjugaison (vue leçon / fiche français) */
+.conj-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.conj-op {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  border-bottom: 1px solid #eef1f5;
+}
+.conj-op:last-child {
+  border-bottom: 0;
+}
+
+/* Bloc bilan : champ texte un peu plus compact */
+.bloc .bop .ans-text {
+  width: 110px;
+  font-size: 13px;
+}
+
+/* Sprint : champ texte (réponses de conjugaison) */
+.sprint-input-text {
+  width: 220px;
+  text-align: center;
+  font-family: var(--ui);
+  font-size: 24px;
+}

@@ -394,36 +394,9 @@ export function bilanBlocks(nbQ: number) {
   }
   return blocks;
 }
-/* Génère des blocs de questions pour un sous-ensemble de leçons (bilan personnalisé). */
-export function bilanBlocksForIds(lessonIds: string[], nbQ: number) {
-  const blocks: { num: number; id: string; theme: string; ops: Item[] }[] = [];
-  for (const lesson of LESSONS) {
-    if (!lessonIds.includes(lesson.id)) continue;
-    const k: string[] = [],
-      ops: Item[] = [];
-    let t = 0;
-    while (ops.length < nbQ && t < 300) {
-      const o = bilanQ(lesson.num)!,
-        key = commKey(o.text);
-      if (!k.includes(key)) {
-        k.push(key);
-        ops.push(o);
-      }
-      t++;
-    }
-    blocks.push({ num: lesson.num, id: lesson.id, theme: THEMES[lesson.num], ops });
-  }
-  return blocks;
-}
-/* Construit les fiches complètes pour un sous-ensemble de leçons (bilan complet personnalisé). */
-export function buildFichesForIds(lessonIds: string[]) {
-  return LESSONS.filter((l) => lessonIds.includes(l.id)).map((l) => {
-    setRenderLesson(l.id);
-    const html = l.build();
-    setRenderLesson(null);
-    return html;
-  });
-}
+/* Les bilans personnalisés multi-matières (sélection libre de leçons) sont
+   construits par src/core/build.ts (bilanBlocksForIds / buildFichesForIds),
+   qui aiguille math vs autres matières. */
 /* numero = libellé ; le bloc temps total est print-only */
 export function bilanHTML(numero: number) {
   const blocks = bilanBlocks(3);

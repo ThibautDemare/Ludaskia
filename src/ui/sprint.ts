@@ -9,16 +9,16 @@
    - un sprint ne compte que s'il va au bout des 5 minutes
    ============================================================ */
 import { choice, commKey, escapeHTML, fmt } from '../core/utils';
-import { bilanQ } from '../core/lessons';
 import {
   getAllLessons,
   getLessonsBySubject,
   getLessonsByCategory,
-  MATH_LESSON_NUM,
+  genLessonItem,
   SUBJECTS,
   CATEGORIES,
 } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
+import { checkItemAnswer } from '../core/items';
 import type { Item } from '../core/items';
 import { updateStreak, recordLessonStats, recordRun, streakSuffix, addXP } from '../core/progress';
 import { updateGoal, evaluateTrophies } from '../core/rewards';
@@ -204,9 +204,7 @@ function sprintNext() {
     guard = 0;
   do {
     def = choice(sprintLessonDefs);
-    const num = MATH_LESSON_NUM[def.id];
-    q = bilanQ(num)!;
-    q._lesson = def.id;
+    q = genLessonItem(def); // aiguille math (bilanQ) / autres matières (texte) ; pose _lesson
     key = commKey(q.text);
     guard++;
   } while (key === sprintLastKey && guard < 25);
@@ -236,7 +234,9 @@ function sprintNext() {
 // décomposition avec des champs de brouillon (non corrigés) + le champ final.
 export function sprintQuestionBody(q: Item) {
   const main =
-    '<input id="sprintInput" class="sprint-input" inputmode="numeric" autocomplete="off">';
+    q.kind === 'text'
+      ? '<input id="sprintInput" class="sprint-input sprint-input-text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">'
+      : '<input id="sprintInput" class="sprint-input" inputmode="numeric" autocomplete="off">';
   if (q._lesson !== 'math-decomposer-multiplication') return escapeHTML(q.text).replace('@', main);
   const m = q.text.match(/(\d+)\s*×\s*(\d+)/)!;
   const a = +m[1],
@@ -249,7 +249,7 @@ function sprintSubmit() {
   if (!sprintActive || sprintPaused) return;
   const inp = document.getElementById('sprintInput') as HTMLInputElement | null;
   if (!inp) return;
-  const raw = (inp.value || '').trim().replace(',', '.');
+  const raw = (inp.value || '').trim();
   if (raw === '') {
     inp.focus();
     return;
@@ -258,12 +258,7 @@ function sprintSubmit() {
   const lessonId = sprintCurrent!._lesson!;
   const b = sprintPerLesson[lessonId] || (sprintPerLesson[lessonId] = { ok: 0, total: 0 });
   b.total++;
-  if (
-    sprintCurrentDef!.exerciseType.check(
-      { type: 'text', question: sprintCurrent!.text, answer: String(sprintCurrent!.answer) },
-      raw,
-    )
-  ) {
+  if (checkItemAnswer(sprintCurrent!, raw)) {
     sprintScore++;
     b.ok++;
     addXP(1);
@@ -279,14 +274,15 @@ function sprintSubmit() {
 }
 
 // Mauvaise réponse : on révèle la solution et on met le chrono en pause.
-function sprintShowCorrection(ans: number) {
+function sprintShowCorrection(ans: number | string) {
   sprintPaused = true;
   const stage = document.getElementById('sprintStage');
   if (!stage) return;
+  const sol = escapeHTML(String(ans));
   stage.innerHTML = `
     <div class="sprint-theme">${sprintCurrentDef?.label ?? ''}</div>
-    <div class="sprint-q wrong">${escapeHTML(sprintCurrent!.text).replace('@', '<span class="sprint-sol">' + ans + '</span>')}</div>
-    <div class="sprint-correction">La bonne réponse était <strong>${ans}</strong>. Prends le temps de la lire.</div>
+    <div class="sprint-q wrong">${escapeHTML(sprintCurrent!.text).replace('@', '<span class="sprint-sol">' + sol + '</span>')}</div>
+    <div class="sprint-correction">La bonne réponse était <strong>${sol}</strong>. Prends le temps de la lire.</div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintContinue">Continuer ▶</button></div>`;
   const c = document.getElementById('sprintContinue');
   if (c) {
@@ -333,7 +329,7 @@ function renderSprintResults(medalInfo: any, streakDays: number) {
     <div class="sprint-done">
       <div class="sprint-done-big">${sprintScore}</div>
       <div class="sprint-done-lab">bonne${sprintScore > 1 ? 's' : ''} réponse${sprintScore > 1 ? 's' : ''} en 5 min</div>
-      <div class="sprint-done-sub">${sprintAnswered} calcul${sprintAnswered > 1 ? 's' : ''} tenté${sprintAnswered > 1 ? 's' : ''} · ${acc}% de réussite</div>
+      <div class="sprint-done-sub">${sprintAnswered} question${sprintAnswered > 1 ? 's' : ''} tentée${sprintAnswered > 1 ? 's' : ''} · ${acc}% de réussite</div>
       ${extra}
       <div class="sprint-actions">
         <button class="sprint-btn" id="sprintAgain">↻ Recommencer</button>

@@ -5,11 +5,17 @@
 > des décisions vit dans les commits, les PR et les issues — pas ici.
 
 ## Vue d'ensemble
-Mini-application web d'entraînement au **calcul mental** (niveau CE2) : génération
-de calculs aléatoires, correction instantanée, chronomètre, et une couche de
-gamification (records, médailles, trophées, objectifs) avec gestion de profils.
-100 % **côté client** (aucun serveur) ; la progression est stockée en
-`localStorage`.
+Mini-application web d'entraînement **multi-matières** (niveau CE2) : aujourd'hui
+**calcul mental** (maths) et **conjugaison** (français). Génération aléatoire
+d'exercices, correction instantanée, chronomètre, et une couche de gamification
+(records, médailles, trophées, objectifs, XP) avec gestion de profils. 100 %
+**côté client** (aucun serveur) ; la progression est stockée en `localStorage`.
+
+Le contenu est organisé en hiérarchie **Matière → Catégorie → Leçon**
+(`src/core/catalog.ts`). Chaque leçon porte un **`ExerciseType`**
+(`src/core/exercise.ts`) qui encapsule la **génération** et la **vérification**
+d'un exercice — c'est ce qui rend le moteur agnostique de la matière. Le document
+de conception initial est `docs/design-multi-subject.md`.
 
 ## Stack & outillage
 - **TypeScript** (`strict`) en **modules ES**, bundlé par **Vite**.
@@ -42,8 +48,17 @@ src/
   main.ts        # point d'entrée : styles + bootstrap ordonné + câblage DOM
   core/          # logique pure (aucun accès DOM au chargement)
   ui/            # rendu et interactions DOM
+  data/          # contenus statiques par matière (ex. francais/conjugaison.ts)
   styles/        # *.scss (importés depuis main.ts)
 ```
+
+### `src/data/`
+Contenus statiques en TypeScript (`as const`-friendly), une arborescence par
+matière. Ex. **`francais/conjugaison.ts`** : tables de verbes (être, avoir, 1er
+groupe *aimer*, 2e groupe *finir*, aller, faire) au **présent** et **futur**,
+fabrique `conjugationType(verbId, tense)` (un `ExerciseType`) et descripteurs
+`CONJ_LESSONS` (une leçon par verbe × temps). Dossier `francais` sans cédille
+pour des chemins d'import ASCII portables ; le libellé affiché reste « Français ».
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
@@ -55,38 +70,64 @@ src/
 - **`profiles.ts`** — profils (UUID, préfixe, `updatedAt`), `initProfiles`,
   export/import. ⚠️ Plus d'effet de bord au chargement : `initProfiles()` et le
   branchement du hook sont appelés par `main.ts`.
-- **`items.ts`** — fabriques d'items `{text, answer}` (`add/sub/mul/dbl/half/
-  comp/facteur`), `renderItem`, `gridHTML`, `ficheHTML`, `lessonAttr()` (tag
-  `data-lesson`). État de module exposé via accesseurs (voir plus bas).
-- **`lessons.ts`** — `LESSONS` (15 leçons constructibles isolément),
-  `buildFiches`, `THEMES`, `bilanQ`/`bilanHTML` (bilan express), `coverHTML`,
-  `fichesPagesHTML`, `buildPrintableDOM`.
+- **`items.ts`** — item de rendu `{text, answer, answers?, kind?}` (`@` = champ).
+  Fabriques math (`add/sub/mul/dbl/half/comp/facteur`), `renderItem` (champ
+  numérique ou **texte** selon `kind`), `checkItemAnswer` (correction numérique
+  **ou** texte NFC stricte), `gridHTML`, `ficheHTML`/`ficheHTMLGeneric`,
+  `lessonAttr()`. État de module exposé via accesseurs (voir plus bas).
+- **`exercise.ts`** — abstraction d'exercice : type `Exercise`
+  (`text` | `qcm`), interface **`ExerciseType`** (`generate()` / `check()`), et
+  `checkAnswer` (normalisation trim + NFC ; **accents et apostrophes exigés**).
+- **`catalog.ts`** — hiérarchie `SUBJECTS` / `CATEGORIES` / `LessonDef`
+  (`id, label, subject, category, level, exerciseType`), helpers
+  `getAllLessons/getLessonById/getLessonsBySubject/getLessonsByCategory`,
+  `MATH_LESSON_NUM` (pont id→`bilanQ`), et **`genLessonItem(lesson)`** qui produit
+  un `Item` pour n'importe quelle matière (maths → `bilanQ` ; texte → `generate()`).
+- **`lessons.ts`** — contenu **maths** : `LESSONS` (15 leçons constructibles
+  isolément), `buildFiches`, `THEMES`, `bilanQ`/`bilanHTML` (bilan express maths
+  global), `coverHTML`, `fichesPagesHTML`, `buildPrintableDOM`.
+- **`build.ts`** — construction **générique multi-matières** : `genItems`,
+  `buildLessonFiche` (aiguille maths riche / autres matières en liste texte),
+  `bilanBlocksForIds`, `buildFichesForIds` (bilans personnalisés).
+- **`bilans.ts`** — persistance des `BilanConfig` favoris (`ludaskia_bilans`).
 - **`progress.ts`** — records de bilans (`recordRun`, `cmpRun` « score puis
   temps »), série (`updateStreak`, `streakSuffix`), étoiles
   (`recordLessonResult`, `starsEarned`), stats par leçon (`recordLessonStats`,
-  `lessonAvgPct`), périodes calendaires (`startOfWeek/Month`, `countSince`).
+  `lessonAvgPct`), **XP global** (`getXP`/`addXP`, `ludaskia_xp`), périodes
+  calendaires (`startOfWeek/Month`, `countSince`).
 - **`rewards.ts`** — défi du jour contextuel (`CHALLENGES`, `getGoal`,
   `updateGoal`) et trophées (`TROPHIES`, `tiers()`, `evaluateTrophies`,
-  `gSnapshot`).
+  `gSnapshot`), dont des groupes **par matière** et **par catégorie** générés
+  depuis le catalogue.
 
 ### `src/ui/`
 - **`chrono.ts`** — chronomètre croissant de la barre (sessions).
 - **`effects.ts`** — `sparkline` (SVG), `confetti`, modale `showCelebration`.
-- **`render.ts`** — rendus accueil/sélecteur/profils (`renderHomeStats`,
-  `renderObjectives`, `renderGoal`, `renderTrophies`, `renderLessons`,
-  `renderToolbarProfile`, `renderProfileMenu`, `renderProfiles`,
-  `boardHTML`/`sprintBoardHTML`, `pctColor`, config `REGULARITY`).
+- **`render.ts`** — rendus accueil/sélecteur/profils (`renderHomeStats` dont
+  badge **XP** et favoris, `renderObjectives`, `renderGoal`, `renderTrophies`,
+  `renderLessons` + `lessonCardHTML` réutilisable, `renderToolbarProfile`,
+  `renderProfileMenu`, `renderProfiles`, `boardHTML`/`sprintBoardHTML`,
+  `pctColor`, config `REGULARITY`).
+- **`catalog-nav.ts`** — navigation **Matière → Catégorie → Leçons**
+  (`renderSubjects`, `renderCategories`, `renderCategorie`) ; l'écran d'une
+  catégorie donne accès au bilan express/complet et au sprint de la catégorie.
+- **`bilan.ts`** — **bilan personnalisé** : configurateur (choix des leçons et du
+  nombre de questions), favoris (`renderFavoris`), exécution (`runBilanConfig`).
 - **`navigation.ts`** — routing par hash (`route`), vues (`showHomeView`,
-  `showLessonsView`, `showProfilesView`, `runComplet/Express/Lecon/Revision`),
-  `setToolbar`, `afterStart`, état de session.
-- **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une).
+  `showMatieresView`/`showMatiereView`/`showCategorieView`,
+  `showSprintConfigView`, `showBilanCustomView`, `showProfilesView`,
+  `runComplet/Express/Lecon/Revision`), `setToolbar`, `afterStart`, état de
+  session.
+- **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
+  **filtrable** (toutes matières / une matière / une catégorie) via un écran de
+  configuration ; correction par `checkItemAnswer` (numérique ou texte).
 - **`session.ts`** — `verify` (correction + enregistrement), saisie clavier,
   impression (`beforeprint`/`afterprint`).
 - **`menu.ts`** — liste déroulante de profils (`open/close/toggleProfileMenu`),
   extrait pour éviter un cycle `main ↔ navigation`.
 
 ### `src/main.ts` (entrée)
-Importe les 10 feuilles SCSS, puis initialise **dans cet ordre** :
+Importe les feuilles SCSS, puis initialise **dans cet ordre** :
 1. `setOnDataWrite(touchActiveProfile)` (hook de bump `updatedAt`),
 2. `initProfiles()`,
 3. câblage du DOM + `route()` initiale — exécuté immédiatement si le DOM est
@@ -102,26 +143,42 @@ accesseur/mutateur, **comportement identique** :
 - `items.ts` : `get/setInputCounter` (+ `nextInputId`), `get/setSessionItems`,
   `get/setRenderLesson` ;
 - `chrono.ts` : `get/setTimer` (le handle d'intervalle est réutilisé par le sprint) ;
-- `navigation.ts` : `get/set` pour `currentMode`, `currentLessonNum`,
+- `navigation.ts` : `get/set` pour `currentMode`, `currentLessonId`,
   `sessionRecorded`, `lastErrors`, `pendingRevision`.
 
 ## Modes & navigation
 Vues routées **par hash** (le Précédent/Suivant du navigateur fonctionne, et un
 hébergement statique sous sous-chemin `/Ludaskia/` ne nécessite aucune config de
-fallback SPA) : `#accueil` · `#lecons` · `#profils` · `#complet` · `#express` ·
-`#lecon-<n>` · `#sprint` · `#revision`. Les déclencheurs changent juste le hash ;
-`route()` (sur `hashchange`) rend la vue.
+fallback SPA) : `#accueil` · `#matieres` · `#matiere-<id>` · `#categorie-<id>` ·
+`#lecon-<id>` · `#sprint-config` · `#sprint` · `#bilan-custom` · `#complet` ·
+`#express` · `#profils` · `#revision` (`#lecons`, ancien sélecteur plat, reste
+routable mais n'est plus lié). Les identifiants de leçon sont des **chaînes**
+(`math-tables-addition`, `fr-conj-etre-present`…). Les déclencheurs changent juste
+le hash ; `route()` (sur `hashchange`) rend la vue.
 
-Modes d'exercice : **bilan complet** (15 fiches), **bilan express** (3 calculs ×
-15 leçons), **une leçon à la fois**, **sprint 5 min**, **révision** (rejoue les
-erreurs, n'enregistre rien).
+Modes d'exercice : **une leçon à la fois** (atteinte via Matière → Catégorie),
+**bilan express/complet** (maths global depuis l'accueil, ou par catégorie),
+**bilan personnalisé** (sélection libre + favoris), **sprint 5 min** (filtrable),
+**révision** (rejoue les erreurs, n'enregistre rien).
+
+### Pipeline multi-matières
+Le cœur du moteur est agnostique de la matière. Une `LessonDef` porte un
+`ExerciseType` ; `genLessonItem(lesson)` (catalog) produit un `Item` de rendu —
+pour les maths via le générateur numérique existant (`bilanQ`), pour les autres
+matières en convertissant l'`Exercise` texte. `build.ts` assemble fiches et
+bilans à partir de là (les leçons de calcul gardent leur rendu riche : grilles,
+décomposition). La **correction** est routée par `checkItemAnswer` selon le type
+de l'item : comparaison numérique (virgule tolérée) ou comparaison de chaîne
+**trim + NFC stricte** (accents et apostrophes exigés). `verify()` (session) et
+le sprint passent tous deux par ce point.
 
 ## Données (`localStorage`)
 Tout passe par `lsGet/lsSet`. Les clés sont **préfixées par le profil actif**
 (`<uuid>/ludaskia_…`) sauf la méta globale `ludaskia_profiles`. Clés par profil :
 `ludaskia_runs_{complet,express,sprint}`, `ludaskia_streak`, `ludaskia_stars`,
 `ludaskia_lessonStats`, `ludaskia_goal`, `ludaskia_goalsDone`,
-`ludaskia_trophies`.
+`ludaskia_trophies`, `ludaskia_xp`, `ludaskia_bilans` (configs de bilans favoris).
+Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
 
 ## Profils
 - Chaque profil a un **UUID stable** (id inter-appareils) et un **`updatedAt`**
@@ -146,7 +203,12 @@ Tout passe par `lsGet/lsSet`. Les clés sont **préfixées par le profil actif**
   (one-shot, jamais reperdus) ; pas d'affichage anxiogène.
 - Trophées à paliers via `tiers(prefix, icon, metric, levels)` ; un trophée se
   déclare par `{metric, n}` (compilé en test `g[metric] >= n`) ou un `test`
-  explicite. `gSnapshot()` fournit les métriques.
+  explicite. `gSnapshot()` fournit les métriques, dont des agrégats **par matière**
+  et **par catégorie** (`subjectCorrect/Stars`, `categoryCorrect/Stars`) ; des
+  groupes de trophées par matière/catégorie sont **générés depuis le catalogue**
+  (ils s'étendent automatiquement avec les nouvelles matières).
+- **XP** : 1 point par bonne réponse, tous modes confondus (`addXP`), affiché en
+  badge sur l'accueil. Base d'un futur système de niveaux.
 - **Règle des 60 %** : un bilan/leçon ne « compte » (temps, record, étoile,
   objectif, trophée) que si ≥ 60 % des calculs ont une réponse. Le sprint compte
   s'il va au bout des 5 minutes.
@@ -171,13 +233,15 @@ de l'ancien runner : `localStorage.clear()`, rebranchement du hook
 - `.github/workflows/pages.yml` : `npm ci` → `npm run build` → publication de
   `dist/` sur GitHub Pages à chaque push `main`.
 
-## Piste d'évolution (réflexion, non implémentée)
-Étendre à d'autres **niveaux** et **matières**, en gardant le format « question
-courte → réponse vérifiable ». Bon filtre : **automatisme/mémorisation**.
-Candidats : conjugaison, maths étendus (conversions d'unités, CP→collège), verbes
-irréguliers anglais ; puis orthographe et mémorisation (capitales/dates) via un
-**mode QCM**. Généralisations moteur nécessaires : réponses **texte normalisées**
-(+ variantes), **mode QCM**, hiérarchie **matière → niveau → leçons**
-(aujourd'hui `LESSONS` est plat), générateurs par compétence. Profils, sprint,
-trophées, objectifs et stats sont **agnostiques de la matière** et se réutilisent
-tels quels.
+## Piste d'évolution
+La hiérarchie **Matière → Catégorie → Leçon**, les réponses **texte normalisées**
+(+ variantes) et la gamification **agnostique de la matière** sont désormais en
+place. Restent à explorer, en gardant le format « question courte → réponse
+vérifiable » (filtre : **automatisme/mémorisation**) :
+- **mode QCM** (`Exercise` de type `qcm` déjà prévu dans `exercise.ts`) pour
+  l'orthographe et la mémorisation (capitales/dates) ;
+- d'autres contenus : maths étendus (conversions d'unités), verbes irréguliers
+  anglais, temps de conjugaison supplémentaires (imparfait, passé composé) ;
+- **filtrage par niveau scolaire** (chaque `LessonDef` porte déjà un `level`) ;
+- bilans express/complet « globaux » couvrant toutes les matières (aujourd'hui
+  les cartes d'accueil restent maths ; les bilans par catégorie couvrent le reste).

@@ -96,7 +96,14 @@ import {
 } from '../src/core/rewards';
 import { REGULARITY } from '../src/ui/render';
 import { sprintQuestionBody } from '../src/ui/sprint';
-import { getAllLessons } from '../src/core/catalog';
+import {
+  getAllLessons,
+  getLessonsBySubject,
+  genLessonItem,
+  getLessonById,
+} from '../src/core/catalog';
+import { checkItemAnswer } from '../src/core/items';
+import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
 import {
   loadProfilesMeta,
   listProfiles,
@@ -271,7 +278,7 @@ describe('Leçons & bilans', () => {
     for (let k = 1; k <= 15; k++)
       for (let i = 0; i < 300; i++) {
         const q = api.bilanQ(k)!;
-        expect(q.answer >= 0).toBe(true);
+        expect(Number(q.answer) >= 0).toBe(true);
       }
   });
 });
@@ -421,11 +428,12 @@ describe('Trophées', () => {
         .includes('stars5'),
     ).toBe(true);
   });
-  test('trophée « Tout au vert » : 15 leçons ≥ 70 %', () => {
+  test('trophée « Tout au vert » : toutes les leçons ≥ 70 %', () => {
     const allIds = getAllLessons().map((l) => l.id);
-    for (const id of allIds.slice(0, 14)) api.recordLessonStats({ [id]: { ok: 10, total: 10 } });
+    for (const id of allIds.slice(0, allIds.length - 1))
+      api.recordLessonStats({ [id]: { ok: 10, total: 10 } });
     expect(api.gSnapshot().allGreen).toBe(false); // 1 leçon manquante
-    api.recordLessonStats({ [allIds[14]]: { ok: 10, total: 10 } });
+    api.recordLessonStats({ [allIds[allIds.length - 1]]: { ok: 10, total: 10 } });
     expect(api.gSnapshot().allGreen).toBe(true);
     expect(
       api
@@ -522,10 +530,10 @@ describe('Sprint', () => {
     expect(api.updateGoal({ mode: 'complet' }).justDone).toBe(false);
     expect(api.updateGoal({ mode: 'sprint', sprint: true }).justDone).toBe(true);
   });
-  test('le catalogue couvre les 15 leçons (décomposer incluse)', () => {
-    const lessons = getAllLessons();
-    expect(lessons.some((l) => l.id === 'math-decomposer-multiplication')).toBe(true);
-    expect(lessons.length).toBe(15);
+  test('le catalogue couvre les 15 leçons de maths (décomposer incluse)', () => {
+    const mathLessons = getAllLessons().filter((l) => l.subject === 'math');
+    expect(mathLessons.some((l) => l.id === 'math-decomposer-multiplication')).toBe(true);
+    expect(mathLessons.length).toBe(15);
   });
   test('sprint leçon 15 : étapes intermédiaires + champ final', () => {
     const body15 = api.sprintQuestionBody({
@@ -542,6 +550,56 @@ describe('Sprint', () => {
     });
     expect(body7.includes('sprint-free')).toBe(false);
     expect(body7.includes('id="sprintInput"')).toBe(true);
+  });
+});
+
+describe('Français — Conjugaison', () => {
+  test('conjugationType.generate produit un exercice texte avec champ et bonne réponse', () => {
+    const t = conjugationType('etre', 'present');
+    const formes = VERBS.find((v) => v.id === 'etre')!.forms.present;
+    for (let i = 0; i < 50; i++) {
+      const ex = t.generate();
+      expect(ex.type).toBe('text');
+      expect(ex.question.includes('@')).toBe(true);
+      expect(formes.includes(ex.answer as string)).toBe(true);
+    }
+  });
+  test('vérification stricte : accent et forme exacte exigés', () => {
+    const t = conjugationType('etre', 'present');
+    const ex = { type: 'text' as const, question: 'être · présent — vous @', answer: 'êtes' };
+    expect(t.check(ex, 'êtes')).toBe(true);
+    expect(t.check(ex, ' êtes ')).toBe(true); // trim toléré
+    expect(t.check(ex, 'etes')).toBe(false); // accent manquant
+    expect(t.check(ex, 'est')).toBe(false); // mauvaise forme
+  });
+  test('futur simple : aller → j’irai (élision affichée, forme « irai »)', () => {
+    const t = conjugationType('aller', 'futur');
+    const ex = { type: 'text' as const, question: 'aller · futur — j’@', answer: 'irai' };
+    expect(t.check(ex, 'irai')).toBe(true);
+    expect(t.check(ex, 'irais')).toBe(false);
+  });
+  test('catalogue : 12 leçons de conjugaison (6 verbes × 2 temps)', () => {
+    const fr = getLessonsBySubject('francais');
+    expect(fr.length).toBe(CONJ_LESSONS.length);
+    expect(fr.length).toBe(12);
+    expect(fr.every((l) => l.category === 'fr-conjugaison')).toBe(true);
+    expect(fr.some((l) => l.id === 'fr-conj-etre-present')).toBe(true);
+    expect(fr.some((l) => l.id === 'fr-conj-aller-futur')).toBe(true);
+  });
+  test('genLessonItem : item texte pour le français, numérique pour les maths', () => {
+    const frItem = genLessonItem(getLessonById('fr-conj-etre-present')!);
+    expect(frItem.kind).toBe('text');
+    expect(typeof frItem.answer).toBe('string');
+    expect(frItem._lesson).toBe('fr-conj-etre-present');
+    const mathItem = genLessonItem(getLessonById('math-tables-addition')!);
+    expect(mathItem.kind).not.toBe('text');
+    expect(typeof mathItem.answer).toBe('number');
+  });
+  test('checkItemAnswer route selon le type (texte NFC vs numérique)', () => {
+    expect(checkItemAnswer({ text: 'x', answer: 'êtes', kind: 'text' }, 'êtes')).toBe(true);
+    expect(checkItemAnswer({ text: 'x', answer: 'êtes', kind: 'text' }, 'etes')).toBe(false);
+    expect(checkItemAnswer({ text: 'x', answer: 12 }, '12')).toBe(true);
+    expect(checkItemAnswer({ text: 'x', answer: 12 }, '13')).toBe(false);
   });
 });
 

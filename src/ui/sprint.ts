@@ -62,6 +62,13 @@ function parseFilter(value: string): SprintFilter {
   return { type: 'all' };
 }
 
+/* Lance un sprint filtré sur une catégorie (depuis l'écran de catégorie),
+   sans passer par l'écran de configuration. */
+export function startCategorySprint(categoryId: string): void {
+  sprintFilter = { type: 'category', id: categoryId };
+  location.hash = 'sprint';
+}
+
 /* ---------- Écran de configuration du sprint ---------- */
 
 export function renderSprintConfigScreen(el: HTMLElement): void {

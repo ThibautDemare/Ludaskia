@@ -17,6 +17,8 @@ import { startChrono, resetChrono } from './chrono';
 import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
 import { runSprint, sprintCleanup, renderSprintConfigScreen } from './sprint';
 import { renderBilanConfigScreen } from './bilan';
+import { renderSubjects, renderCategories, renderCategorie } from './catalog-nav';
+import { SUBJECTS, CATEGORIES } from '../core/catalog';
 import { closeProfileMenu } from './menu';
 
 // État de session partagé (réassigné depuis sprint.ts / session.ts) : accesseurs dédiés.
@@ -53,6 +55,15 @@ export function goHome() {
 export function showLessons() {
   location.hash = 'lecons';
 }
+export function startMatieres() {
+  location.hash = 'matieres';
+}
+export function goCategories(subjectId: string) {
+  location.hash = 'matiere-' + subjectId;
+}
+export function goCategorie(categoryId: string) {
+  location.hash = 'categorie-' + categoryId;
+}
 export function showProfiles() {
   location.hash = 'profils';
 }
@@ -86,11 +97,20 @@ export function route() {
   else if (h === 'sprint-config') showSprintConfigView();
   else if (h === 'sprint') runSprint();
   else if (h === 'bilan-custom') showBilanCustomView();
+  else if (h === 'matieres') showMatieresView();
   else if (h === 'lecons') showLessonsView();
   else if (h === 'profils') showProfilesView();
   else if (h === 'revision') {
     if (pendingRevision.length) runRevision(pendingRevision);
     else showHomeView();
+  } else if (h.startsWith('matiere-')) {
+    const id = h.slice(8);
+    if (SUBJECTS.find((s) => s.id === id)) showMatiereView(id);
+    else showMatieresView();
+  } else if (h.startsWith('categorie-')) {
+    const id = h.slice(10);
+    if (CATEGORIES.find((c) => c.id === id)) showCategorieView(id);
+    else showMatieresView();
   } else if (h.startsWith('lecon-')) {
     const id = h.slice(6);
     if (getAllLessons().find((l) => l.id === id)) runLecon(id);
@@ -138,9 +158,18 @@ function resetSessionUI() {
   if (old) old.remove();
 }
 
-// Masque les écrans « menu » (accueil, sélecteur de leçons, profils, bilan-custom, sprint-config)
+// Masque les écrans « menu » (accueil, sélecteurs, profils, bilan/sprint, matières)
 export function hideMenus() {
-  ['home', 'lessons', 'profils', 'bilan-custom', 'sprint-config'].forEach((id) => {
+  [
+    'home',
+    'lessons',
+    'profils',
+    'bilan-custom',
+    'sprint-config',
+    'matieres',
+    'categories',
+    'categorie',
+  ].forEach((id) => {
     const e = document.getElementById(id);
     if (e) e.style.display = 'none';
   });
@@ -169,6 +198,42 @@ export function showProfilesView() {
   hideMenus();
   renderProfiles();
   document.getElementById('profils')!.style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+export function showMatieresView() {
+  resetSessionUI();
+  setToolbar({ verify: false, home: true, profile: true });
+  hideMenus();
+  renderSubjects(document.getElementById('matieresContent')!);
+  document.getElementById('matieres')!.style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+export function showMatiereView(subjectId: string) {
+  resetSessionUI();
+  setToolbar({ verify: false, home: true, profile: true });
+  hideMenus();
+  renderCategories(
+    document.getElementById('categoriesContent')!,
+    subjectId,
+    document.getElementById('categoriesTitle')!,
+  );
+  document.getElementById('categories')!.style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+export function showCategorieView(categoryId: string) {
+  resetSessionUI();
+  setToolbar({ verify: false, home: true, profile: true });
+  hideMenus();
+  renderCategorie(
+    document.getElementById('categorieContent')!,
+    categoryId,
+    document.getElementById('categorieTitle')!,
+  );
+  // Lien « Retour » dynamique vers la matière parente.
+  const cat = CATEGORIES.find((c) => c.id === categoryId);
+  const back = document.getElementById('backCategorie') as HTMLAnchorElement | null;
+  if (back && cat) back.dataset.subject = cat.subject;
+  document.getElementById('categorie')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showSprintConfigView() {

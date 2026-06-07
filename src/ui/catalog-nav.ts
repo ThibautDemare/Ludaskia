@@ -15,7 +15,7 @@ import { runBilanConfig } from './bilan';
 import { startLecon, goCategories, goCategorie } from './navigation';
 
 /* Icône par matière (fallback générique). */
-const SUBJECT_ICON: Record<string, string> = { math: '🔢' };
+const SUBJECT_ICON: Record<string, string> = { math: '🔢', francais: '📚' };
 const subjectIcon = (id: string) => SUBJECT_ICON[id] ?? '📘';
 
 /* ---------- Écran : liste des matières ---------- */

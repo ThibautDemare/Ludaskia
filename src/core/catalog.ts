@@ -5,7 +5,9 @@
    génération et la vérification d'un exercice.
    ============================================================ */
 import type { ExerciseType, Exercise } from './exercise';
+import type { Item } from './items';
 import { bilanQ } from './lessons';
+import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 
 /* ---------- Types ---------- */
 
@@ -80,10 +82,14 @@ export const MATH_LESSON_NUM: Record<string, number> = {
 
 /* ---------- Sujets et catégories ---------- */
 
-export const SUBJECTS: Subject[] = [{ id: 'math', label: 'Mathématiques' }];
+export const SUBJECTS: Subject[] = [
+  { id: 'math', label: 'Mathématiques' },
+  { id: 'francais', label: 'Français' },
+];
 
 export const CATEGORIES: Category[] = [
   { id: 'math-calcul', label: 'Calcul mental', subject: 'math' },
+  { id: 'fr-conjugaison', label: 'Conjugaison', subject: 'francais' },
 ];
 
 /* ---------- Catalogue des leçons math ---------- */
@@ -211,12 +217,43 @@ const MATH_LESSONS: LessonDef[] = [
   },
 ];
 
+/* ---------- Catalogue des leçons français (conjugaison) ---------- */
+
+const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
+  id: d.id,
+  label: d.label,
+  subject: 'francais',
+  category: 'fr-conjugaison',
+  level: d.level,
+  exerciseType: conjugationType(d.verbId, d.tense),
+}));
+
 /* ---------- Registre global ---------- */
 
-const ALL_LESSONS: LessonDef[] = [...MATH_LESSONS];
+const ALL_LESSONS: LessonDef[] = [...MATH_LESSONS, ...FRENCH_LESSONS];
 
 export function getAllLessons(): LessonDef[] {
   return ALL_LESSONS;
+}
+
+/* Génère un Item prêt à rendre pour n'importe quelle leçon du catalogue.
+   - math : on réutilise le générateur numérique existant (bilanQ)
+   - autres matières : on convertit l'Exercise produit par l'ExerciseType
+     en Item « texte » (corrigé par comparaison de chaîne). */
+export function genLessonItem(lesson: LessonDef): Item {
+  if (lesson.subject === 'math') {
+    const item = bilanQ(MATH_LESSON_NUM[lesson.id])!;
+    item._lesson = lesson.id;
+    return item;
+  }
+  const ex = lesson.exerciseType.generate();
+  return {
+    text: ex.question,
+    answer: ex.answer,
+    answers: ex.type === 'text' ? ex.answers : undefined,
+    kind: 'text',
+    _lesson: lesson.id,
+  };
 }
 
 export function getLessonById(id: string): LessonDef | undefined {

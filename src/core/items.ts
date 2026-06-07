@@ -6,8 +6,23 @@ import { escapeHTML } from './utils';
 
 export interface Item {
   text: string;
-  answer: number;
+  answer: number | string;
+  answers?: string[]; // formes équivalentes acceptées (exercices texte)
+  kind?: 'num' | 'text'; // 'num' par défaut (calcul) ; 'text' = saisie libre corrigée par chaîne
   _lesson?: string;
+}
+
+/* Vérifie la réponse saisie pour un item, selon son type.
+   - texte : trim + NFC, accents/apostrophes exigés (formes alternatives via answers)
+   - calcul : comparaison numérique (virgule tolérée comme séparateur décimal) */
+export function checkItemAnswer(it: Item, raw: string): boolean {
+  if (it.kind === 'text') {
+    const norm = (s: string) => s.trim().normalize('NFC');
+    const v = norm(raw);
+    if (v === norm(String(it.answer))) return true;
+    return (it.answers ?? []).some((a) => norm(a) === v);
+  }
+  return Number(raw.replace(',', '.')) === Number(it.answer);
 }
 
 export function add(a: number, b: number): Item {
@@ -60,7 +75,12 @@ export const lessonAttr = () => (renderLesson != null ? ` data-lesson="${renderL
 export function renderItem(it: Item, extra = '') {
   const id = nextInputId();
   sessionItems[id] = it;
-  const field = `<input class="ans ${extra}" id="${id}" data-answer="${it.answer}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
+  // Réponse exposée pour la révélation après correction (échappée pour les attributs).
+  const ansAttr = String(it.answer).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  const field =
+    it.kind === 'text'
+      ? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><span class="mark" data-for="${id}"></span>`
+      : `<input class="ans ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
   return escapeHTML(it.text).replace('@', field);
 }
 export function gridHTML(items: Item[], cols: number) {
@@ -81,6 +101,19 @@ export function ficheHTML(
       <span class="temps print-only">Temps : ______ min</span>
     </div>
     <p class="fiche-sub">${sous}</p>
+    <p class="consigne-line">${consigne}</p>
+    ${inner}
+  </div>`;
+}
+/* En-tête de fiche générique (sans préfixe « MENTAL ») pour les matières
+   autres que le calcul mental. */
+export function ficheHTMLGeneric(titre: string, sous: string, consigne: string, inner: string) {
+  return `<div class="fiche">
+    <div class="fiche-head">
+      <p class="fiche-title">${titre}</p>
+      <span class="temps print-only">Temps : ______ min</span>
+    </div>
+    ${sous ? `<p class="fiche-sub">${sous}</p>` : ''}
     <p class="consigne-line">${consigne}</p>
     ${inner}
   </div>`;

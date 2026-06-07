@@ -2,7 +2,7 @@
    Déroulé d'une session : vérification, saisie clavier, impression
    ============================================================ */
 import { fmt } from '../core/utils';
-import { getSessionItems, setSessionItems } from '../core/items';
+import { getSessionItems, setSessionItems, checkItemAnswer } from '../core/items';
 import type { Item } from '../core/items';
 import type { Trophy } from '../core/rewards';
 import { buildPrintableDOM } from '../core/lessons';
@@ -49,7 +49,7 @@ export function verify() {
     const it = sessionItems[inp.id];
     const ln = inp.dataset.lesson;
     const bucket = ln != null ? perLesson[ln] || (perLesson[ln] = { ok: 0, total: 0 }) : null;
-    const raw = inp.value.trim().replace(',', '.');
+    const raw = inp.value.trim();
     if (raw === '') {
       vides++;
       if (it) errors.push(it);
@@ -57,7 +57,12 @@ export function verify() {
     }
     total++;
     if (bucket) bucket.total++;
-    if (Number(raw) === Number(inp.dataset.answer)) {
+    // Correction selon le type d'item (texte vs calcul) ; repli numérique si l'item
+    // n'est pas en session (sécurité).
+    const correct = it
+      ? checkItemAnswer(it, raw)
+      : Number(raw.replace(',', '.')) === Number(inp.dataset.answer);
+    if (correct) {
       ok++;
       if (bucket) bucket.ok++;
       inp.classList.add('correct');

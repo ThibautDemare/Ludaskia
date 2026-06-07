@@ -14,6 +14,7 @@ import './styles/modal.scss';
 import './styles/print.scss';
 import './styles/bilan.scss';
 import './styles/catalog.scss';
+import './styles/francais.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {

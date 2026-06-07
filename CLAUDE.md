@@ -21,6 +21,13 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
   modification passe par une **branche + PR** ; la CI doit être verte ; merge en
   **rebase**.
 - Piloter via le CLI **`gh`** (installé et authentifié) : branches, PR, issues.
+  - **`gh` n'est PAS dans le `PATH`.** L'appeler par son chemin complet, **depuis
+    PowerShell** (l'outil Bash ne le voit pas) :
+    `& "C:\Program Files\GitHub CLI\gh.exe" <commande>`.
+  - Pour un `--body`/`--title` multi-ligne (issues, PR, en **français** avec
+    accents), utiliser un **here-string PowerShell** `@'...'@` (le `'@` final
+    collé à la colonne 0) et passer la variable : `& $gh issue create --body $body`.
+    Penser à doubler les apostrophes (`d''XP`) dans un here-string simple-quote.
 - **Une PR par changement**, liée à son issue le cas échéant (`Closes #N`) ;
   attendre la CI verte puis rebase-merge. **Ne pas merger sans le feu vert du
   mainteneur.**

@@ -54,8 +54,10 @@ src/
 
 ### `src/data/`
 Contenus statiques en TypeScript (`as const`-friendly), une arborescence par
-matière. Ex. **`francais/conjugaison.ts`** : tables de verbes (être, avoir, 1er
-groupe *aimer*, 2e groupe *finir*, aller, faire) au **présent** et **futur**,
+matière. Ex. **`francais/conjugaison.ts`** : tables de 13 verbes (être, avoir,
+1er groupe *aimer*, 2e groupe *finir*, aller, faire, venir, voir, dire, pouvoir,
+vouloir, prendre, naître) aux 4 temps **présent**, **futur**, **imparfait** et
+**passé composé** (les formes du passé composé incluent l'auxiliaire conjugué),
 fabrique `conjugationType(verbId, tense)` (un `ExerciseType`) et descripteurs
 `CONJ_LESSONS` (une leçon par verbe × temps). Dossier `francais` sans cédille
 pour des chemins d'import ASCII portables ; le libellé affiché reste « Français ».
@@ -241,7 +243,7 @@ vérifiable » (filtre : **automatisme/mémorisation**) :
 - **mode QCM** (`Exercise` de type `qcm` déjà prévu dans `exercise.ts`) pour
   l'orthographe et la mémorisation (capitales/dates) ;
 - d'autres contenus : maths étendus (conversions d'unités), verbes irréguliers
-  anglais, temps de conjugaison supplémentaires (imparfait, passé composé) ;
+  anglais ;
 - **filtrage par niveau scolaire** (chaque `LessonDef` porte déjà un `level`) ;
 - bilans express/complet « globaux » couvrant toutes les matières (aujourd'hui
   les cartes d'accueil restent maths ; les bilans par catégorie couvrent le reste).

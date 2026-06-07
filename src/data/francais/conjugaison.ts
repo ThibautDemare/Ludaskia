@@ -3,6 +3,10 @@
    ------------------------------------------------------------
    Chaque verbe porte ses formes pour les temps couverts, dans
    l'ordre des personnes : je, tu, il, nous, vous, ils.
+   Temps couverts : présent, futur, imparfait, passé composé.
+   Pour le passé composé, la forme stockée inclut l'auxiliaire
+   conjugué (ex. « ai aimé », « suis allé ») ; l'accord des verbes
+   en « être » suit le masculin (singulier / pluriel).
    La génération tire une personne au hasard ; la vérification est
    stricte (trim + NFC) : accents et apostrophes exigés.
    NB : dossier `francais` sans cédille pour des chemins d'import
@@ -13,7 +17,7 @@ import { checkAnswer } from '../../core/exercise';
 import { rnd } from '../../core/utils';
 import type { SchoolLevel } from '../../core/catalog';
 
-export type Tense = 'present' | 'futur';
+export type Tense = 'present' | 'futur' | 'imparfait' | 'passe_compose';
 
 export interface VerbDef {
   id: string;
@@ -21,9 +25,9 @@ export interface VerbDef {
   forms: Record<Tense, [string, string, string, string, string, string]>;
 }
 
-/* Verbes couverts (périmètre minimal CE2) : auxiliaires, 1er et 2e
-   groupe (modèles aimer / finir), et deux verbes du 3e groupe
-   fréquents (aller, faire). */
+/* Verbes couverts (CE2) : auxiliaires, 1er et 2e groupe (modèles
+   aimer / finir) et verbes fréquents du 3e groupe. Les formes du
+   passé composé incluent l'auxiliaire conjugué. */
 export const VERBS: VerbDef[] = [
   {
     id: 'etre',
@@ -31,6 +35,8 @@ export const VERBS: VerbDef[] = [
     forms: {
       present: ['suis', 'es', 'est', 'sommes', 'êtes', 'sont'],
       futur: ['serai', 'seras', 'sera', 'serons', 'serez', 'seront'],
+      imparfait: ['étais', 'étais', 'était', 'étions', 'étiez', 'étaient'],
+      passe_compose: ['ai été', 'as été', 'a été', 'avons été', 'avez été', 'ont été'],
     },
   },
   {
@@ -39,6 +45,8 @@ export const VERBS: VerbDef[] = [
     forms: {
       present: ['ai', 'as', 'a', 'avons', 'avez', 'ont'],
       futur: ['aurai', 'auras', 'aura', 'aurons', 'aurez', 'auront'],
+      imparfait: ['avais', 'avais', 'avait', 'avions', 'aviez', 'avaient'],
+      passe_compose: ['ai eu', 'as eu', 'a eu', 'avons eu', 'avez eu', 'ont eu'],
     },
   },
   {
@@ -47,6 +55,8 @@ export const VERBS: VerbDef[] = [
     forms: {
       present: ['aime', 'aimes', 'aime', 'aimons', 'aimez', 'aiment'],
       futur: ['aimerai', 'aimeras', 'aimera', 'aimerons', 'aimerez', 'aimeront'],
+      imparfait: ['aimais', 'aimais', 'aimait', 'aimions', 'aimiez', 'aimaient'],
+      passe_compose: ['ai aimé', 'as aimé', 'a aimé', 'avons aimé', 'avez aimé', 'ont aimé'],
     },
   },
   {
@@ -55,6 +65,8 @@ export const VERBS: VerbDef[] = [
     forms: {
       present: ['finis', 'finis', 'finit', 'finissons', 'finissez', 'finissent'],
       futur: ['finirai', 'finiras', 'finira', 'finirons', 'finirez', 'finiront'],
+      imparfait: ['finissais', 'finissais', 'finissait', 'finissions', 'finissiez', 'finissaient'],
+      passe_compose: ['ai fini', 'as fini', 'a fini', 'avons fini', 'avez fini', 'ont fini'],
     },
   },
   {
@@ -63,6 +75,15 @@ export const VERBS: VerbDef[] = [
     forms: {
       present: ['vais', 'vas', 'va', 'allons', 'allez', 'vont'],
       futur: ['irai', 'iras', 'ira', 'irons', 'irez', 'iront'],
+      imparfait: ['allais', 'allais', 'allait', 'allions', 'alliez', 'allaient'],
+      passe_compose: [
+        'suis allé',
+        'es allé',
+        'est allé',
+        'sommes allés',
+        'êtes allés',
+        'sont allés',
+      ],
     },
   },
   {
@@ -71,11 +92,108 @@ export const VERBS: VerbDef[] = [
     forms: {
       present: ['fais', 'fais', 'fait', 'faisons', 'faites', 'font'],
       futur: ['ferai', 'feras', 'fera', 'ferons', 'ferez', 'feront'],
+      imparfait: ['faisais', 'faisais', 'faisait', 'faisions', 'faisiez', 'faisaient'],
+      passe_compose: ['ai fait', 'as fait', 'a fait', 'avons fait', 'avez fait', 'ont fait'],
+    },
+  },
+  {
+    id: 'venir',
+    infinitif: 'venir',
+    forms: {
+      present: ['viens', 'viens', 'vient', 'venons', 'venez', 'viennent'],
+      futur: ['viendrai', 'viendras', 'viendra', 'viendrons', 'viendrez', 'viendront'],
+      imparfait: ['venais', 'venais', 'venait', 'venions', 'veniez', 'venaient'],
+      passe_compose: [
+        'suis venu',
+        'es venu',
+        'est venu',
+        'sommes venus',
+        'êtes venus',
+        'sont venus',
+      ],
+    },
+  },
+  {
+    id: 'voir',
+    infinitif: 'voir',
+    forms: {
+      present: ['vois', 'vois', 'voit', 'voyons', 'voyez', 'voient'],
+      futur: ['verrai', 'verras', 'verra', 'verrons', 'verrez', 'verront'],
+      imparfait: ['voyais', 'voyais', 'voyait', 'voyions', 'voyiez', 'voyaient'],
+      passe_compose: ['ai vu', 'as vu', 'a vu', 'avons vu', 'avez vu', 'ont vu'],
+    },
+  },
+  {
+    id: 'dire',
+    infinitif: 'dire',
+    forms: {
+      present: ['dis', 'dis', 'dit', 'disons', 'dites', 'disent'],
+      futur: ['dirai', 'diras', 'dira', 'dirons', 'direz', 'diront'],
+      imparfait: ['disais', 'disais', 'disait', 'disions', 'disiez', 'disaient'],
+      passe_compose: ['ai dit', 'as dit', 'a dit', 'avons dit', 'avez dit', 'ont dit'],
+    },
+  },
+  {
+    id: 'pouvoir',
+    infinitif: 'pouvoir',
+    forms: {
+      present: ['peux', 'peux', 'peut', 'pouvons', 'pouvez', 'peuvent'],
+      futur: ['pourrai', 'pourras', 'pourra', 'pourrons', 'pourrez', 'pourront'],
+      imparfait: ['pouvais', 'pouvais', 'pouvait', 'pouvions', 'pouviez', 'pouvaient'],
+      passe_compose: ['ai pu', 'as pu', 'a pu', 'avons pu', 'avez pu', 'ont pu'],
+    },
+  },
+  {
+    id: 'vouloir',
+    infinitif: 'vouloir',
+    forms: {
+      present: ['veux', 'veux', 'veut', 'voulons', 'voulez', 'veulent'],
+      futur: ['voudrai', 'voudras', 'voudra', 'voudrons', 'voudrez', 'voudront'],
+      imparfait: ['voulais', 'voulais', 'voulait', 'voulions', 'vouliez', 'voulaient'],
+      passe_compose: ['ai voulu', 'as voulu', 'a voulu', 'avons voulu', 'avez voulu', 'ont voulu'],
+    },
+  },
+  {
+    id: 'prendre',
+    infinitif: 'prendre',
+    forms: {
+      present: ['prends', 'prends', 'prend', 'prenons', 'prenez', 'prennent'],
+      futur: ['prendrai', 'prendras', 'prendra', 'prendrons', 'prendrez', 'prendront'],
+      imparfait: ['prenais', 'prenais', 'prenait', 'prenions', 'preniez', 'prenaient'],
+      passe_compose: ['ai pris', 'as pris', 'a pris', 'avons pris', 'avez pris', 'ont pris'],
+    },
+  },
+  {
+    id: 'naitre',
+    infinitif: 'naître',
+    forms: {
+      present: ['nais', 'nais', 'naît', 'naissons', 'naissez', 'naissent'],
+      futur: ['naîtrai', 'naîtras', 'naîtra', 'naîtrons', 'naîtrez', 'naîtront'],
+      imparfait: ['naissais', 'naissais', 'naissait', 'naissions', 'naissiez', 'naissaient'],
+      passe_compose: ['suis né', 'es né', 'est né', 'sommes nés', 'êtes nés', 'sont nés'],
     },
   },
 ];
 
-const TENSE_LABEL: Record<Tense, string> = { present: 'présent', futur: 'futur' };
+const TENSE_LABEL: Record<Tense, string> = {
+  present: 'présent',
+  futur: 'futur',
+  imparfait: 'imparfait',
+  passe_compose: 'passé composé',
+};
+
+/* Connecteur grammatical pour les libellés de leçons : « au présent »
+   mais « à l'imparfait ». */
+const TENSE_PHRASE: Record<Tense, string> = {
+  present: 'au présent',
+  futur: 'au futur',
+  imparfait: "à l'imparfait",
+  passe_compose: 'au passé composé',
+};
+
+/* Liste ordonnée des temps couverts (sert à la génération des leçons). */
+export const TENSES: Tense[] = ['present', 'futur', 'imparfait', 'passe_compose'];
+
 const PRONOUNS = ['je', 'tu', 'il', 'nous', 'vous', 'ils'];
 
 /* Pronom affiché : élision « je » → « j' » devant une voyelle ou un h muet
@@ -123,12 +241,19 @@ const LESSON_LABEL: Record<string, string> = {
   finir: 'Verbes du 2e groupe (finir)',
   aller: 'Aller',
   faire: 'Faire',
+  venir: 'Venir',
+  voir: 'Voir',
+  dire: 'Dire',
+  pouvoir: 'Pouvoir',
+  vouloir: 'Vouloir',
+  prendre: 'Prendre',
+  naitre: 'Naître',
 };
 
 export const CONJ_LESSONS: ConjLessonDesc[] = VERBS.flatMap((v) =>
-  (['present', 'futur'] as Tense[]).map((tense) => ({
+  TENSES.map((tense) => ({
     id: `fr-conj-${v.id}-${tense}`,
-    label: `${LESSON_LABEL[v.id]} au ${TENSE_LABEL[tense]}`,
+    label: `${LESSON_LABEL[v.id]} ${TENSE_PHRASE[tense]}`,
     verbId: v.id,
     tense,
     level: 'ce2' as SchoolLevel,

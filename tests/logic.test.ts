@@ -578,13 +578,36 @@ describe('Français — Conjugaison', () => {
     expect(t.check(ex, 'irai')).toBe(true);
     expect(t.check(ex, 'irais')).toBe(false);
   });
-  test('catalogue : 12 leçons de conjugaison (6 verbes × 2 temps)', () => {
+  test('intégrité des données : chaque verbe couvre les 4 temps × 6 personnes', () => {
+    const tenses = ['present', 'futur', 'imparfait', 'passe_compose'] as const;
+    for (const v of VERBS) {
+      for (const tense of tenses) {
+        const formes = v.forms[tense];
+        expect(formes, `${v.id}/${tense}`).toBeDefined();
+        expect(formes.length).toBe(6);
+        expect(formes.every((f) => f.trim().length > 0)).toBe(true);
+      }
+    }
+  });
+  test('passé composé : verbe en « être » accordé (aller → nous sommes allés)', () => {
+    const t = conjugationType('aller', 'passe_compose');
+    const ex = {
+      type: 'text' as const,
+      question: 'aller · passé composé — nous @',
+      answer: 'sommes allés',
+    };
+    expect(t.check(ex, 'sommes allés')).toBe(true);
+    expect(t.check(ex, 'sommes allé')).toBe(false); // accord pluriel manquant
+  });
+  test('catalogue : 52 leçons de conjugaison (13 verbes × 4 temps)', () => {
     const fr = getLessonsBySubject('francais');
     expect(fr.length).toBe(CONJ_LESSONS.length);
-    expect(fr.length).toBe(12);
+    expect(fr.length).toBe(52);
     expect(fr.every((l) => l.category === 'fr-conjugaison')).toBe(true);
     expect(fr.some((l) => l.id === 'fr-conj-etre-present')).toBe(true);
     expect(fr.some((l) => l.id === 'fr-conj-aller-futur')).toBe(true);
+    expect(fr.some((l) => l.id === 'fr-conj-venir-imparfait')).toBe(true);
+    expect(fr.some((l) => l.id === 'fr-conj-prendre-passe_compose')).toBe(true);
   });
   test('genLessonItem : item texte pour le français, numérique pour les maths', () => {
     const frItem = genLessonItem(getLessonById('fr-conj-etre-present')!);

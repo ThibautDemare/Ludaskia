@@ -135,9 +135,12 @@ export function setToolbar({
   const v = document.getElementById('btnVerify') as HTMLButtonElement;
   const h = document.getElementById('btnHome')!;
   const p = document.getElementById('toolbarProfile');
+  const xp = document.getElementById('xpBadge');
   v.style.display = verify ? '' : 'none';
   v.disabled = !verify;
   h.style.display = home ? '' : 'none';
+  // Le badge XP suit la visibilité du profil (écrans « menu », pas en exercice).
+  if (xp) xp.style.display = profile ? '' : 'none';
   if (p) {
     p.style.display = profile ? '' : 'none';
     if (profile) renderToolbarProfile();

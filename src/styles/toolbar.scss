@@ -54,6 +54,23 @@
 .btn-ghost:hover {
   background: rgba(255, 255, 255, 0.26);
 }
+/* Badge d'XP dans la barre (à gauche du profil) */
+.toolbar-xp {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 700;
+  color: #5b4500;
+  background: linear-gradient(135deg, #ffd54f, #ffb300);
+  padding: 7px 14px;
+  border-radius: 999px;
+}
+.toolbar-xp strong {
+  font-size: 15px;
+}
+
 /* Indicateur de profil (ouvre la gestion des profils) */
 .btn-profile {
   background: rgba(255, 255, 255, 0.16);

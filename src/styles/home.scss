@@ -17,6 +17,52 @@
   font-size: 16px;
   margin-bottom: 42px;
 }
+/* Accueil large : deux colonnes (progression à gauche · actions à droite) */
+.home-wide {
+  max-width: 1180px;
+}
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 430px) 1fr;
+  gap: 28px;
+  align-items: start;
+  text-align: left;
+  margin-top: 10px;
+}
+.home-col {
+  min-width: 0;
+}
+/* Dans la grille, les panneaux remplissent leur colonne (plus de centrage). */
+.home-grid .objectives,
+.home-grid .goal,
+.home-grid .boards {
+  max-width: none;
+  margin: 0 0 16px;
+}
+.home-grid .goal {
+  display: block;
+}
+.home-grid .boards {
+  flex-direction: column;
+  margin-top: 0;
+}
+.home-grid .lb {
+  max-width: none;
+}
+.home-grid #trophies {
+  margin-top: 4px;
+}
+.home-grid #favoris {
+  margin: 0 0 18px;
+}
+/* En dessous d'un certain seuil, on repasse en une seule colonne. */
+@media (max-width: 920px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
 .cards {
   display: flex;
   gap: 24px;

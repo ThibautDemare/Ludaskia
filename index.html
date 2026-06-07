@@ -8,6 +8,7 @@
   <body>
     <div class="toolbar">
       <h1>Ludaskia</h1>
+      <span class="toolbar-xp" id="xpBadge" style="display: none"></span>
       <div class="profile-dd" id="profileDD">
         <button
           class="btn-profile"
@@ -25,62 +26,69 @@
     </div>
 
     <!-- Écran d'accueil (interactif) -->
-    <div class="home screen-only" id="home">
+    <div class="home screen-only home-wide" id="home">
       <div class="big">Ludaskia</div>
       <div class="tagline">Entraînement chronométré · maths et français</div>
-      <div class="xp-badge" id="xpBadge"></div>
-      <div class="objectives" id="objectives"></div>
-      <div class="goal" id="goal"></div>
-      <div class="cards">
-        <div class="card" id="cardSprint">
-          <div class="ico">🏃</div>
-          <h2>Sprint 5 min</h2>
-          <p>
-            En 5 minutes, enchaîne les calculs au hasard et fais le plus de bonnes réponses
-            possibles !
-          </p>
-          <div class="card-record" id="recSprint"></div>
-          <span class="go">C'est parti →</span>
+      <div class="home-grid">
+        <!-- Colonne gauche : progression (défi, objectifs, classements, trophées) -->
+        <div class="home-col home-col-left">
+          <div class="goal" id="goal"></div>
+          <div class="objectives" id="objectives"></div>
+          <div class="boards" id="boards"></div>
+          <div id="trophies"></div>
         </div>
-        <div class="card" id="cardLecon">
-          <div class="ico">📖</div>
-          <h2>Une leçon à la fois</h2>
-          <p>Choisis un seul thème et vise le sans-faute pour décrocher son étoile.</p>
-          <div class="card-record" id="recLecon"></div>
-          <span class="go">Choisir →</span>
-        </div>
-        <div class="card" id="cardExpress">
-          <div class="ico">⏱️</div>
-          <h2>Bilan express</h2>
-          <p>
-            Trois calculs par leçon sur une seule feuille. Faisable en une quinzaine de minutes.
-          </p>
-          <div class="card-record" id="recExpress"></div>
-          <span class="go">Commencer →</span>
-        </div>
-        <div class="card" id="cardComplet">
-          <div class="ico">📚</div>
-          <h2>Bilan complet</h2>
-          <p>
-            Les 15 fiches d'entraînement, une douzaine de calculs chacune. Pour travailler toutes
-            les leçons à fond.
-          </p>
-          <div class="card-record" id="recComplet"></div>
-          <span class="go">Commencer →</span>
-        </div>
-        <div class="card" id="cardBilanCustom">
-          <div class="ico">🎛️</div>
-          <h2>Bilan personnalisé</h2>
-          <p>
-            Choisis les leçons et le nombre de questions. Sauvegarde tes configurations préférées
-            comme favoris.
-          </p>
-          <span class="go">Configurer →</span>
+        <!-- Colonne droite : accès aux modes + favoris -->
+        <div class="home-col home-col-right">
+          <div class="cards">
+            <div class="card" id="cardSprint">
+              <div class="ico">🏃</div>
+              <h2>Sprint 5 min</h2>
+              <p>
+                En 5 minutes, enchaîne les calculs au hasard et fais le plus de bonnes réponses
+                possibles !
+              </p>
+              <div class="card-record" id="recSprint"></div>
+              <span class="go">C'est parti →</span>
+            </div>
+            <div class="card" id="cardLecon">
+              <div class="ico">📖</div>
+              <h2>Une leçon à la fois</h2>
+              <p>Choisis un seul thème et vise le sans-faute pour décrocher son étoile.</p>
+              <div class="card-record" id="recLecon"></div>
+              <span class="go">Choisir →</span>
+            </div>
+            <div class="card" id="cardExpress">
+              <div class="ico">⏱️</div>
+              <h2>Bilan express</h2>
+              <p>
+                Trois calculs par leçon sur une seule feuille. Faisable en une quinzaine de minutes.
+              </p>
+              <div class="card-record" id="recExpress"></div>
+              <span class="go">Commencer →</span>
+            </div>
+            <div class="card" id="cardComplet">
+              <div class="ico">📚</div>
+              <h2>Bilan complet</h2>
+              <p>
+                Les 15 fiches d'entraînement, une douzaine de calculs chacune. Pour travailler
+                toutes les leçons à fond.
+              </p>
+              <div class="card-record" id="recComplet"></div>
+              <span class="go">Commencer →</span>
+            </div>
+            <div class="card" id="cardBilanCustom">
+              <div class="ico">🎛️</div>
+              <h2>Bilan personnalisé</h2>
+              <p>
+                Choisis les leçons et le nombre de questions. Sauvegarde tes configurations
+                préférées comme favoris.
+              </p>
+              <span class="go">Configurer →</span>
+            </div>
+          </div>
+          <div id="favoris"></div>
         </div>
       </div>
-      <div id="favoris"></div>
-      <div class="boards" id="boards"></div>
-      <div id="trophies"></div>
       <div class="printlink">
         Besoin d'une feuille papier à remplir au crayon ?
         <a id="printLink">Imprimer la version PDF complète</a> (page de garde, 15 fiches et 2

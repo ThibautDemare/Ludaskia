@@ -26,8 +26,10 @@ import { renderFavoris } from './bilan';
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
 export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
 
-/* Bouton de profil dans la barre d'outils (libellé = profil actif) */
+/* Bouton de profil dans la barre d'outils (libellé = profil actif) + badge XP */
 export function renderToolbarProfile() {
+  const xpEl = document.getElementById('xpBadge');
+  if (xpEl) xpEl.innerHTML = `✨ <strong>${getXP()}</strong> XP`;
   const el = document.getElementById('toolbarProfile');
   if (!el) return;
   const p = activeProfile();
@@ -142,8 +144,7 @@ export function boardHTML(mode: string, label: string) {
   </div>`;
 }
 export function renderHomeStats() {
-  const xp = document.getElementById('xpBadge');
-  if (xp) xp.innerHTML = `✨ <strong>${getXP()}</strong> XP`;
+  // Le badge XP vit désormais dans la barre d'outils (renderToolbarProfile).
   fillCardRecord('recComplet', 'complet');
   fillCardRecord('recExpress', 'express');
   const recL = document.getElementById('recLecon');

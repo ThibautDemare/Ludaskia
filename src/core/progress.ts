@@ -159,3 +159,56 @@ export function addXP(n: number) {
   if (n <= 0) return;
   lsSet(XP_KEY, getXP() + n);
 }
+
+/* ---------- Niveaux dérivés de l'XP (1 → NIVEAU_MAX) ----------
+   On n'affiche pas l'XP brute mais un niveau. L'XP totale (XP_KEY)
+   reste l'unique source de vérité : le niveau en est *dérivé* par une
+   fonction pure (aucune migration, testable sans DOM).
+
+   Courbe « de plus en plus dure » : le coût pour passer du niveau L au
+   niveau L+1 croît en puissance 1.5 →
+     xpVersSuivant(L) = round(XP_COEFF × L^1.5)
+   Avec XP_COEFF = 0,9, atteindre le niveau 100 demande ~35 500 XP
+   (objectif « Long »). Premiers niveaux quasi instantanés, derniers
+   niveaux = vrai marathon. Un seul coefficient à régler pour recalibrer. */
+export const NIVEAU_MAX = 100;
+const XP_COEFF = 0.9;
+
+// Coût en XP pour passer du niveau `niveau` au niveau suivant.
+export function xpVersSuivant(niveau: number): number {
+  return Math.round(XP_COEFF * Math.pow(niveau, 1.5));
+}
+
+// XP cumulée nécessaire pour *atteindre* `niveau` (niveau 1 ⇒ 0 XP).
+export function xpPourNiveau(niveau: number): number {
+  let total = 0;
+  for (let l = 1; l < niveau; l++) total += xpVersSuivant(l);
+  return total;
+}
+
+// Niveau courant déduit de l'XP totale, plafonné à NIVEAU_MAX.
+export function niveauDepuisXP(xp: number): number {
+  let niveau = 1;
+  while (niveau < NIVEAU_MAX && xp >= xpPourNiveau(niveau + 1)) niveau++;
+  return niveau;
+}
+
+export interface ProgressionNiveau {
+  niveau: number; // niveau courant (1 à NIVEAU_MAX)
+  xpDansNiveau: number; // XP déjà acquise dans le niveau courant
+  xpRequisPalier: number; // XP nécessaire pour finir le niveau courant (0 au max)
+  pct: number; // progression du palier en cours, 0 à 100
+  max: boolean; // niveau maximum atteint
+}
+
+// Détail de progression pour l'affichage (badge + barre).
+export function progressionNiveau(xp: number): ProgressionNiveau {
+  const niveau = niveauDepuisXP(xp);
+  if (niveau >= NIVEAU_MAX) {
+    return { niveau: NIVEAU_MAX, xpDansNiveau: 0, xpRequisPalier: 0, pct: 100, max: true };
+  }
+  const xpRequisPalier = xpVersSuivant(niveau);
+  const xpDansNiveau = xp - xpPourNiveau(niveau);
+  const pct = Math.min(100, Math.round((xpDansNiveau / xpRequisPalier) * 100));
+  return { niveau, xpDansNiveau, xpRequisPalier, pct, max: false };
+}

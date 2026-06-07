@@ -218,34 +218,42 @@ export function renderTrophies() {
     <div class="trophy-grid">${cells}</div>`;
 }
 
+/* Carte d'une leçon (étoile + taux de réussite). Réutilisée par le sélecteur
+   de leçons et par l'écran d'une catégorie (navigation multi-matières). */
+export function lessonCardHTML(
+  l: { id: string; num: number | string; title: string },
+  stars: Record<string, number>,
+  lstats: Record<string, any>,
+) {
+  const c = stars[l.id] || 0;
+  const starBadge =
+    c > 0
+      ? `<span class="lz-star" title="${c} sans-faute${c > 1 ? 's' : ''}">⭐${c > 1 ? `<small>×${c}</small>` : ''}</span>`
+      : `<span class="lz-star empty" title="Pas encore réussie sans faute">☆</span>`;
+  const avg = lessonAvgPct(lstats[l.id]);
+  let stat;
+  if (avg == null) {
+    stat = `<span class="lz-stat lz-stat-empty">Pas encore travaillée</span>`;
+  } else {
+    const col = pctColor(avg);
+    const flag = avg < 70 ? `<span class="lz-flag">à revoir</span>` : '';
+    stat = `<span class="lz-stat">
+      <span class="lz-bar"><span class="lz-bar-fill" style="width:${avg}%;background:${col}"></span></span>
+      <span class="lz-pct" style="color:${col}">${avg}%</span>${flag}</span>`;
+  }
+  return `<button class="lesson-item" data-id="${l.id}">
+    <span class="lz-num">${l.num}</span>
+    <span class="lz-main"><span class="lz-title">${l.title}</span>${stat}</span>
+    ${starBadge}</button>`;
+}
+
 /* Liste des 15 leçons avec étoiles + taux de réussite */
 export function renderLessons() {
   const stars = loadStars();
   const lstats = loadLessonStats();
   const list = document.getElementById('lessonList');
   if (list) {
-    list.innerHTML = LESSONS.map((l) => {
-      const c = stars[l.id] || 0;
-      const starBadge =
-        c > 0
-          ? `<span class="lz-star" title="${c} sans-faute${c > 1 ? 's' : ''}">⭐${c > 1 ? `<small>×${c}</small>` : ''}</span>`
-          : `<span class="lz-star empty" title="Pas encore réussie sans faute">☆</span>`;
-      const avg = lessonAvgPct(lstats[l.id]);
-      let stat;
-      if (avg == null) {
-        stat = `<span class="lz-stat lz-stat-empty">Pas encore travaillée</span>`;
-      } else {
-        const col = pctColor(avg);
-        const flag = avg < 70 ? `<span class="lz-flag">à revoir</span>` : '';
-        stat = `<span class="lz-stat">
-          <span class="lz-bar"><span class="lz-bar-fill" style="width:${avg}%;background:${col}"></span></span>
-          <span class="lz-pct" style="color:${col}">${avg}%</span>${flag}</span>`;
-      }
-      return `<button class="lesson-item" data-id="${l.id}">
-        <span class="lz-num">${l.num}</span>
-        <span class="lz-main"><span class="lz-title">${l.title}</span>${stat}</span>
-        ${starBadge}</button>`;
-    }).join('');
+    list.innerHTML = LESSONS.map((l) => lessonCardHTML(l, stars, lstats)).join('');
   }
   const sum = document.getElementById('starsSummary');
   if (sum) {

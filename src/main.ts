@@ -13,6 +13,7 @@ import './styles/sprint.scss';
 import './styles/modal.scss';
 import './styles/print.scss';
 import './styles/bilan.scss';
+import './styles/catalog.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -31,12 +32,13 @@ import { renderProfiles } from './ui/render';
 import {
   route,
   goHome,
-  showLessons,
   showProfiles,
   startComplet,
   startExpress,
   startSprint,
   startBilanCustom,
+  startMatieres,
+  goCategories,
   startLecon,
 } from './ui/navigation';
 import { verify, printAll } from './ui/session';
@@ -65,12 +67,20 @@ function wireDOM() {
   document.getElementById('btnPrint')!.addEventListener('click', printAll);
   document.getElementById('cardComplet')!.addEventListener('click', startComplet);
   document.getElementById('cardExpress')!.addEventListener('click', startExpress);
-  document.getElementById('cardLecon')!.addEventListener('click', showLessons);
+  document.getElementById('cardLecon')!.addEventListener('click', startMatieres);
   document.getElementById('cardSprint')!.addEventListener('click', startSprint);
   document.getElementById('cardBilanCustom')!.addEventListener('click', startBilanCustom);
   document.getElementById('backHome')!.addEventListener('click', goHome);
   document.getElementById('backHomeBilanCustom')!.addEventListener('click', goHome);
   document.getElementById('backHomeSprintConfig')!.addEventListener('click', goHome);
+  // Navigation multi-matières : retours en arrière
+  document.getElementById('backHomeMatieres')!.addEventListener('click', goHome);
+  document.getElementById('backMatieres')!.addEventListener('click', startMatieres);
+  document.getElementById('backCategorie')!.addEventListener('click', (e: any) => {
+    const subject = e.currentTarget.dataset.subject;
+    if (subject) goCategories(subject);
+    else startMatieres();
+  });
   document.getElementById('backHomeProfils')!.addEventListener('click', goHome);
   document.getElementById('printLink')!.addEventListener('click', printAll);
 

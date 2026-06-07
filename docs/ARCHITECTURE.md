@@ -106,7 +106,10 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
 
 ### `src/ui/`
 - **`chrono.ts`** — chronomètre croissant de la barre (sessions).
-- **`effects.ts`** — `sparkline` (SVG), `confetti`, modale `showCelebration`.
+- **`effects.ts`** — `sparkline` (SVG), `confetti`, modale `showCelebration`, et
+  modale dédiée **passage de niveau** `showLevelUp`/`hideLevelUp` (médaillon doré
+  animé ; un `then` optionnel enchaîne sur `showCelebration` s'il y a d'autres
+  gains).
 - **`render.ts`** — rendus accueil/sélecteur/profils (`renderHomeStats` et
   favoris, badge **niveau + barre** dans `renderToolbarProfile`,
   `renderObjectives`, `renderGoal`, `renderTrophies`,

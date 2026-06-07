@@ -13,10 +13,12 @@ import {
   recordRun,
   streakSuffix,
   addXP,
+  getXP,
+  niveauDepuisXP,
 } from '../core/progress';
 import { updateGoal, evaluateTrophies } from '../core/rewards';
 import { stopChrono } from './chrono';
-import { showCelebration } from './effects';
+import { showCelebration, showLevelUp } from './effects';
 import {
   getCurrentMode,
   getCurrentLessonId,
@@ -93,13 +95,17 @@ export function verify() {
     starInfo: any = null,
     streakDays = 0,
     goalRes: any = null,
+    niveauGagne = 0, // > 0 si on vient d'atteindre un nouveau niveau
     newTrophies: Trophy[] = [];
   const celeb: { icon: string; text: string }[] = []; // récompenses à annoncer dans la modale
   if (recordable && enough && !getSessionRecorded()) {
     setSessionRecorded(true);
     streakDays = updateStreak().days;
     recordLessonStats(perLesson);
+    const niveauAvant = niveauDepuisXP(getXP());
     addXP(ok);
+    niveauGagne = niveauDepuisXP(getXP()); // niveau courant après gain (comparé plus bas)
+    niveauGagne = niveauGagne > niveauAvant ? niveauGagne : 0;
     let perfect = false;
     if (currentMode === 'lecon') {
       perfect = ok === inputs.length; // toutes les réponses justes
@@ -119,6 +125,7 @@ export function verify() {
     });
     newTrophies = evaluateTrophies();
     // Liste des récompenses obtenues (sert à la modale + confettis)
+    // Le passage de niveau a sa propre modale dédiée (voir plus bas).
     if (medalInfo && medalInfo.isRecord) celeb.push({ icon: '🎉', text: 'Nouveau record !' });
     if (starInfo && starInfo.newStar)
       celeb.push({ icon: '⭐', text: 'Étoile gagnée pour cette leçon !' });
@@ -183,8 +190,12 @@ export function verify() {
   if (redo) redo.addEventListener('click', startRevision);
   const sheets = document.getElementById('sheets')!;
   sheets.parentNode!.insertBefore(banner, sheets);
-  // Récompenses : modale explicite (+ confettis) pour qu'on sache ce qu'on a gagné
-  if (celeb.length) showCelebration(celeb);
+  // Récompenses : modale explicite (+ confettis) pour qu'on sache ce qu'on a gagné.
+  // Le passage de niveau a sa modale dédiée ; s'il y a aussi d'autres récompenses,
+  // on les enchaîne à la fermeture de la modale de niveau.
+  if (niveauGagne)
+    showLevelUp(niveauGagne, celeb.length ? () => showCelebration(celeb) : undefined);
+  else if (celeb.length) showCelebration(celeb);
   // petit rappel dans la barre
   const sc = document.getElementById('score')!;
   sc.classList.remove('hidden');

@@ -20,10 +20,18 @@ import {
 import type { LessonDef } from '../core/catalog';
 import { checkItemAnswer } from '../core/items';
 import type { Item } from '../core/items';
-import { updateStreak, recordLessonStats, recordRun, streakSuffix, addXP } from '../core/progress';
+import {
+  updateStreak,
+  recordLessonStats,
+  recordRun,
+  streakSuffix,
+  addXP,
+  getXP,
+  niveauDepuisXP,
+} from '../core/progress';
 import { updateGoal, evaluateTrophies } from '../core/rewards';
 import { getTimer, setTimer, resetChrono } from './chrono';
-import { showCelebration } from './effects';
+import { showCelebration, showLevelUp } from './effects';
 import {
   setCurrentMode,
   setCurrentLessonId,
@@ -124,7 +132,8 @@ let sprintActive = false,
 let sprintRemaining = SPRINT_MS,
   sprintLastTick = 0;
 let sprintScore = 0,
-  sprintAnswered = 0;
+  sprintAnswered = 0,
+  sprintNiveauDepart = 1; // niveau au lancement du sprint (pour détecter une montée)
 let sprintPerLesson: Record<string, { ok: number; total: number }> = {},
   sprintLastKey = '',
   sprintCurrent: Item | null = null,
@@ -145,6 +154,7 @@ export function runSprint() {
   sprintRemaining = SPRINT_MS;
   sprintScore = 0;
   sprintAnswered = 0;
+  sprintNiveauDepart = niveauDepuisXP(getXP());
   sprintPerLesson = {};
   sprintLastKey = '';
   sprintCurrent = null;
@@ -313,7 +323,11 @@ function finalizeSprint() {
   newTrophies.forEach((t) => celeb.push({ icon: t.icon, text: `Nouveau trophée : ${t.title}` }));
   if (goalRes.justDone) celeb.push({ icon: '🎯', text: 'Objectif du jour réussi !' });
   renderSprintResults(medalInfo, streakDays);
-  if (celeb.length) showCelebration(celeb);
+  // Passage de niveau pendant le sprint → modale dédiée, puis enchaînement.
+  const niveauApres = niveauDepuisXP(getXP());
+  if (niveauApres > sprintNiveauDepart)
+    showLevelUp(niveauApres, celeb.length ? () => showCelebration(celeb) : undefined);
+  else if (celeb.length) showCelebration(celeb);
 }
 
 function renderSprintResults(medalInfo: any, streakDays: number) {

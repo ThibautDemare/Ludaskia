@@ -1,4 +1,15 @@
 /* Variables globales + styles de base */
+
+/* Police d'interface auto-hébergée (Nunito variable, latin) — servie depuis le
+   repo, jamais via un CDN. Vite réécrit l'URL (hash + base /Ludaskia/). */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 200 1000; /* fichier variable : toute la plage de graisses */
+  font-display: swap;
+  src: url('../fonts/nunito-variable.woff2') format('woff2');
+}
+
 :root {
   --blue: #336cbf;
   --blue-dark: #2a5aa0;
@@ -12,7 +23,9 @@
   --warn: #b26a00;
   --warn-bg: #fff3d6;
   --warn-bd: #ffd54f;
-  --ui: system-ui, sans-serif; /* police de l'interface (chrome), distincte du serif des feuilles */
+  --ui:
+    'Nunito', system-ui, sans-serif; /* police de l'interface (chrome), distincte du serif des feuilles */
+  --serif: Georgia, 'Times New Roman', serif; /* feuilles d'exercices : effet « papier » */
 }
 * {
   box-sizing: border-box;
@@ -23,7 +36,7 @@ body {
   padding: 0;
 }
 body {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--ui); /* interface en Nunito ; les feuilles repassent en serif (voir .sheets) */
   color: var(--ink);
   background: #eef1f5;
 }

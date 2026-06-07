@@ -17,6 +17,7 @@ import {
   startOfWeek,
   startOfMonth,
   countSince,
+  getXP,
 } from '../core/progress';
 import { getGoal, evaluateTrophies, loadTrophies, TROPHIES } from '../core/rewards';
 import { sparkline } from './effects';
@@ -141,6 +142,8 @@ export function boardHTML(mode: string, label: string) {
   </div>`;
 }
 export function renderHomeStats() {
+  const xp = document.getElementById('xpBadge');
+  if (xp) xp.innerHTML = `✨ <strong>${getXP()}</strong> XP`;
   fillCardRecord('recComplet', 'complet');
   fillCardRecord('recExpress', 'express');
   const recL = document.getElementById('recLecon');

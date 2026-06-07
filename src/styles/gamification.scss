@@ -1,5 +1,25 @@
 /* Tableau de bord de l'accueil : série, records, classements, objectif, trophées */
 
+/* Compteur d'XP global (1 point par bonne réponse, toutes matières) */
+.xp-badge {
+  display: inline-block;
+  margin: 0 auto 26px;
+  background: linear-gradient(135deg, #ffb300, #ff7043);
+  color: #fff;
+  font-family: var(--ui);
+  font-size: 17px;
+  font-weight: 700;
+  padding: 8px 22px;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(255, 112, 67, 0.35);
+}
+.xp-badge strong {
+  font-size: 20px;
+}
+.xp-badge:empty {
+  display: none;
+}
+
 /* Objectifs de régularité (cadence hebdo/mensuelle) */
 .objectives {
   max-width: 430px;

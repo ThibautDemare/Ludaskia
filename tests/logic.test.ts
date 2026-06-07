@@ -75,6 +75,9 @@ import {
   loadLessonStats,
   recordLessonStats,
   lessonAvgPct,
+  XP_KEY,
+  getXP,
+  addXP,
 } from '../src/core/progress';
 import {
   CHALLENGES,
@@ -162,6 +165,9 @@ const api = {
   loadLessonStats,
   recordLessonStats,
   lessonAvgPct,
+  XP_KEY,
+  getXP,
+  addXP,
   GOAL_KEY,
   GOALS_DONE_KEY,
   getGoalsDone,
@@ -443,6 +449,53 @@ describe('Trophées', () => {
     expect(typeof def.test === 'function').toBe(true);
     expect(def.test!({ stars: 5 })).toBe(true);
     expect(def.test!({ stars: 4 })).toBe(false);
+  });
+});
+
+describe('XP & gamification multi-matières', () => {
+  test('XP : 0 au départ, addXP cumule, addXP(≤0) ignoré', () => {
+    expect(api.getXP()).toBe(0);
+    api.addXP(3);
+    api.addXP(2);
+    expect(api.getXP()).toBe(5);
+    api.addXP(0);
+    api.addXP(-4);
+    expect(api.getXP()).toBe(5);
+  });
+  test('gSnapshot agrège bonnes réponses et étoiles par matière/catégorie', () => {
+    api.recordLessonStats({ 'math-tables-addition': { ok: 30, total: 30 } });
+    api.recordLessonStats({ 'math-doubles': { ok: 20, total: 20 } });
+    const g = api.gSnapshot();
+    expect(g.subjectCorrect.math).toBe(50);
+    expect(g.categoryCorrect['math-calcul']).toBe(50);
+    api.recordLessonResult('math-tables-addition', true);
+    api.recordLessonResult('math-doubles', true);
+    const g2 = api.gSnapshot();
+    expect(g2.subjectStars.math).toBe(2);
+    expect(g2.categoryStars['math-calcul']).toBe(2);
+  });
+  test('trophée par matière débloqué à 50 bonnes réponses', () => {
+    api.recordLessonStats({ 'math-tables-multiplication': { ok: 50, total: 60 } });
+    expect(api.gSnapshot().subjectCorrect.math).toBe(50);
+    expect(
+      api
+        .evaluateTrophies()
+        .map((t) => t.id)
+        .includes('subj-math-50'),
+    ).toBe(true);
+  });
+  test('trophée par catégorie débloqué à 3 leçons étoilées', () => {
+    const ids = getAllLessons()
+      .slice(0, 3)
+      .map((l) => l.id);
+    for (const id of ids) api.recordLessonResult(id, true);
+    expect(api.gSnapshot().categoryStars['math-calcul']).toBe(3);
+    expect(
+      api
+        .evaluateTrophies()
+        .map((t) => t.id)
+        .includes('cat-math-calcul-3'),
+    ).toBe(true);
   });
 });
 

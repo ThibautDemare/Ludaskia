@@ -1,8 +1,8 @@
 # Ludaskia
 
-**Entraînement au calcul mental, ludique et chronométré.** Application web
+**Entraînement aux automatismes, ludique et chronométré.** Application web
 légère (HTML/CSS/JS, sans installation) pour s'exercer en autonomie — pensée
-au départ pour le **CE2**.
+au départ pour le **CE2**, en **maths** comme en **français**.
 
 👉 **[Jouer en ligne](https://thibautdemare.github.io/Ludaskia/)**
 
@@ -12,18 +12,38 @@ du grec *áskēsis* (exercice, entraînement) — soit, librement, « **s'exerce
 s'amusant** ». Clin d'œil au passage : en latin, *ludus* désignait aussi l'école
 élémentaire, là où l'on apprenait à lire, écrire et compter.
 
+## Les matières
+Les exercices sont rangés par **matière → catégorie → leçon** :
+
+- **Mathématiques — Calcul mental** : 15 leçons (tables d'addition et de
+  multiplication, compléments, doubles et moitiés, multiples, décompositions,
+  multiplier par 10/100…).
+- **Français — Conjugaison** : 13 verbes fréquents (auxiliaires, 1er et 2e
+  groupes, verbes du 3e groupe) à conjuguer au **présent**, **futur**,
+  **imparfait** et **passé composé**.
+
+Le moteur de jeu est **agnostique de la matière** : ajouter un nouveau thème
+réutilise toute la mécanique d'entraînement et de progression.
+
 ## Ce qu'on peut faire
-- **Bilan complet** — les 15 leçons, une douzaine de calculs chacune.
-- **Bilan express** — 3 calculs par leçon, en ~15 minutes.
+- **Bilan complet** — toutes les leçons d'une catégorie, plusieurs questions
+  chacune.
+- **Bilan express** — quelques questions par leçon, pour un tour rapide.
+- **Bilan personnalisé** — choisir ses matières / catégories / leçons et le
+  nombre de questions, puis **enregistrer ses bilans favoris**.
 - **Une leçon à la fois** — cibler un thème et viser le sans-faute.
-- **Sprint 5 min** — enchaîner un maximum de bonnes réponses, calculs tirés au
-  hasard, à la volée.
-- **Réviser mes erreurs** — rejouer uniquement les calculs ratés.
-- **Imprimer / PDF** — une version papier (page de garde, 15 fiches, 2 bilans).
+- **Sprint 5 min** — enchaîner un maximum de bonnes réponses, questions tirées
+  au hasard à la volée, **filtrable par matière et par catégorie**.
+- **Réviser mes erreurs** — rejouer uniquement les questions ratées.
+- **Imprimer / PDF** — une version papier des fiches et bilans.
 
 ## Motivation & suivi
+- **Compteur d'XP** — chaque bonne réponse rapporte des points, tous modes
+  confondus.
 - **Objectifs de régularité** (hebdo/mensuels) et **défi du jour**.
-- **Médailles** de classement, **trophées** à débloquer, **records** personnels.
+- **Médailles** de classement, **records** personnels, **étoiles** par leçon
+  réussie sans faute.
+- **Trophées à débloquer**, dont des séries **par matière** et **par catégorie**.
 - **Statistiques par leçon** pour repérer les thèmes à retravailler.
 - **Correction immédiate** : la bonne réponse est affichée en cas d'erreur.
 
@@ -38,7 +58,8 @@ Toute la progression est enregistrée **localement** dans le navigateur (rien
 n'est envoyé sur un serveur).
 
 ## Pour les développeurs
-- **Stack** : HTML/CSS + **TypeScript**, bundle par **Vite** (modules ES).
+- **Stack** : HTML/CSS + **TypeScript**, bundle par **Vite** (modules ES),
+  tests **Vitest**.
 - Installer les dépendances :
 
       npm install
@@ -59,10 +80,11 @@ n'est envoyé sur un serveur).
   `CLAUDE.md` / `CONTRIBUTING.md`.
 
 ## Feuille de route
-Le format se prête bien aux **automatismes** : au-delà du calcul mental, le
-projet vise d'autres **niveaux** et d'autres **matières** (conjugaison,
-vocabulaire/langues, repères histoire-géo…), en réutilisant le même moteur de
-jeu et de progression.
+Le format se prête bien aux **automatismes**. Au-delà du calcul mental et de la
+conjugaison déjà en place, le projet vise d'autres **matières** (vocabulaire /
+orthographe, repères histoire-géo…) et d'autres **niveaux scolaires**, en
+réutilisant le même moteur de jeu et de progression. Côté motivation, la
+gamification continue de s'enrichir (progression, récompenses).
 
 ## Licence
 À définir.

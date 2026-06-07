@@ -3,6 +3,10 @@
   max-width: 210mm;
   margin: 24px auto;
   padding: 0 10px;
+  /* Effet « cahier » : les feuilles (écran + PDF) restent en serif, alors que
+     le reste de l'interface est en Nunito. Les sous-éléments « chrome »
+     (.temps, .bilan-sub, .foot, .result-banner…) forcent var(--ui). */
+  font-family: var(--serif);
 }
 .page {
   background: var(--paper);

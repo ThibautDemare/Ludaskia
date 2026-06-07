@@ -57,7 +57,7 @@
   padding: 4px 14px;
 }
 .sprint-q {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--serif);
   font-size: 30px;
   color: var(--ink);
   display: flex;
@@ -71,7 +71,7 @@
 }
 .sprint-input {
   font: inherit;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--serif);
   font-size: 30px;
   width: 120px;
   text-align: center;
@@ -88,7 +88,7 @@
 /* Champ de brouillon (étapes de la leçon 15) : saisissable mais non corrigé */
 .sprint-free {
   font: inherit;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--serif);
   font-size: 20px;
   width: 52px;
   text-align: center;

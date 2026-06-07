@@ -19,12 +19,12 @@
 }
 /* Accueil large : deux colonnes (progression à gauche · actions à droite) */
 .home-wide {
-  max-width: 1180px;
+  max-width: 1480px;
 }
 .home-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 430px) 1fr;
-  gap: 28px;
+  grid-template-columns: minmax(340px, 460px) 1fr;
+  gap: 36px;
   align-items: start;
   text-align: left;
   margin-top: 10px;
@@ -55,11 +55,16 @@
 .home-grid #favoris {
   margin: 0 0 18px;
 }
-/* En dessous d'un certain seuil, on repasse en une seule colonne. */
+/* En dessous d'un certain seuil, on repasse en une seule colonne. Sur mobile,
+   on remonte les cartes d'accès (sprint, leçon, bilans) AVANT la progression et
+   les trophées : l'enfant accède d'abord aux exercices. */
 @media (max-width: 920px) {
   .home-grid {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+  .home-col-right {
+    order: -1;
   }
 }
 

@@ -247,8 +247,9 @@ export function genLessonItem(lesson: LessonDef): Item {
     return item;
   }
   const ex = lesson.exerciseType.generate();
+  const question = ex.type === 'text' || ex.type === 'qcm' ? ex.question : '';
   return {
-    text: ex.question,
+    text: question,
     answer: ex.answer,
     answers: ex.type === 'text' ? ex.answers : undefined,
     kind: 'text',

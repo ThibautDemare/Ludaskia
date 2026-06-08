@@ -605,8 +605,10 @@ describe('Français — Conjugaison', () => {
     for (let i = 0; i < 50; i++) {
       const ex = t.generate();
       expect(ex.type).toBe('text');
-      expect(ex.question.includes('@')).toBe(true);
-      expect(formes.includes(ex.answer as string)).toBe(true);
+      if (ex.type === 'text') {
+        expect(ex.question.includes('@')).toBe(true);
+        expect(formes.includes(ex.answer)).toBe(true);
+      }
     }
   });
   test('vérification stricte : accent et forme exacte exigés', () => {

@@ -15,12 +15,19 @@ import {
 import { LESSONS } from '../core/lessons';
 import { loadStars, loadLessonStats } from '../core/progress';
 import { loadOrtho } from '../core/orthographe/store';
-import { listOrthoLecons } from '../core/orthographe/lessons';
+import { listOrthoLecons, type LeconOrthoRef } from '../core/orthographe/lessons';
 import { escapeHTML } from '../core/utils';
 import { lessonCardHTML } from './render';
 import { startCategorySprint } from './sprint';
 import { runBilanConfig } from './bilan';
-import { startLecon, goCategories, goCategorie, startOrthoLecon, goOrthoNew } from './navigation';
+import {
+  startLecon,
+  goCategories,
+  goCategorie,
+  startOrthoLecon,
+  goOrthoNew,
+  goOrthoEdit,
+} from './navigation';
 
 /* Icône par matière (fallback générique). */
 const SUBJECT_ICON: Record<string, string> = { math: '🔢', francais: '📚' };
@@ -134,17 +141,18 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 function renderOrthoCategorie(el: HTMLElement): void {
   const lecons = listOrthoLecons(loadOrtho());
   const icon = (src: string) => (src === 'predefini' ? '📘' : '📝');
-  const cards = lecons
-    .map(
-      (l) => `<button class="nav-card" data-ortho="${l.id}">
+  const card = (l: LeconOrthoRef) => {
+    const main = `<button class="nav-card" data-ortho="${l.id}">
         <div class="nav-ico">${icon(l.source)}</div>
         <div class="nav-card-title">${escapeHTML(l.label)}</div>
         <div class="nav-card-sub">${l.nbMots} mot${l.nbMots > 1 ? 's' : ''}</div>
-      </button>`,
-    )
-    .join('');
-  el.innerHTML = `<div class="nav-cards">
-    ${cards}
+      </button>`;
+    if (l.source !== 'liste') return main;
+    // Liste du parent : bouton « modifier » par-dessus la carte.
+    return `<div class="nav-card-group">${main}<button class="nav-card-edit" data-ortho-edit="${l.id}" aria-label="Modifier la liste" title="Modifier">✎</button></div>`;
+  };
+  el.innerHTML = `<div class="nav-cards ortho-cards">
+    ${lecons.map(card).join('')}
     <button class="nav-card nav-card-add" data-ortho-new="1">
       <div class="nav-ico">➕</div>
       <div class="nav-card-title">Ajouter une liste</div>
@@ -153,6 +161,9 @@ function renderOrthoCategorie(el: HTMLElement): void {
   </div>`;
   el.querySelectorAll<HTMLButtonElement>('[data-ortho]').forEach((btn) => {
     btn.addEventListener('click', () => startOrthoLecon(btn.dataset.ortho!));
+  });
+  el.querySelectorAll<HTMLButtonElement>('[data-ortho-edit]').forEach((btn) => {
+    btn.addEventListener('click', () => goOrthoEdit(btn.dataset.orthoEdit!));
   });
   el.querySelector<HTMLButtonElement>('[data-ortho-new]')!.addEventListener('click', () =>
     goOrthoNew(),

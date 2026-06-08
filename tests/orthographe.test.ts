@@ -12,7 +12,9 @@ import {
   saveOrtho,
   addOrGetMot,
   createListe,
+  updateListe,
   deleteListe,
+  getListe,
   motsDeListe,
   ajouterMots,
   formeNormalisee,
@@ -111,6 +113,29 @@ describe('orthographe — store', () => {
     expect(reloaded.listes).toHaveLength(1);
     expect(reloaded.listes[0].label).toBe('Semaine 1');
     expect(Object.keys(reloaded.banque)).toHaveLength(1);
+  });
+
+  test('updateListe : modifie label/date et reconstruit les mots', () => {
+    const s = emptyOrthoState();
+    const liste = createListe(s, 'Avant', [{ mot: 'chat' }, { mot: 'chien' }]);
+    const r = updateListe(s, liste.id, 'Après', [{ mot: 'chat' }, { mot: 'cheval' }], '2026-06-12');
+    expect(r).not.toBeNull();
+    const maj = getListe(s, liste.id)!;
+    expect(maj.label).toBe('Après');
+    expect(maj.dateControle).toBe('2026-06-12');
+    expect(motsDeListe(s, maj).map((m) => m.mot)).toEqual(['chat', 'cheval']);
+  });
+
+  test('updateListe : id inconnu -> null', () => {
+    const s = emptyOrthoState();
+    expect(updateListe(s, 'inconnu', 'L', [{ mot: 'a' }])).toBeNull();
+  });
+
+  test('addOrGetMot : met à jour commeDans sur un mot existant', () => {
+    const s = emptyOrthoState();
+    const a = addOrGetMot(s, { mot: 'vers', commeDans: 'phrase 1' });
+    addOrGetMot(s, { mot: 'vers', commeDans: 'phrase 2' });
+    expect(s.banque[a.id].commeDans).toBe('phrase 2');
   });
 });
 

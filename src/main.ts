@@ -15,6 +15,7 @@ import './styles/print.scss';
 import './styles/bilan.scss';
 import './styles/catalog.scss';
 import './styles/francais.scss';
+import './styles/orthographe.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -40,8 +41,10 @@ import {
   startBilanCustom,
   startMatieres,
   goCategories,
+  goCategorie,
   startLecon,
 } from './ui/navigation';
+import { ORTHO_CATEGORY_ID } from './core/catalog';
 import { verify, printAll } from './ui/session';
 import { hideCelebration, hideLevelUp } from './ui/effects';
 import { closeProfileMenu, toggleProfileMenu } from './ui/menu';
@@ -82,6 +85,9 @@ function wireDOM() {
     if (subject) goCategories(subject);
     else startMatieres();
   });
+  document
+    .getElementById('backOrthoListe')!
+    .addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
   document.getElementById('backHomeProfils')!.addEventListener('click', goHome);
   document.getElementById('printLink')!.addEventListener('click', printAll);
 

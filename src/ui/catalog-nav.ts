@@ -158,10 +158,14 @@ function renderOrthoCategorie(el: HTMLElement): void {
     }
     return mots;
   };
-  const apercu = (l: LeconOrthoRef) =>
-    l.mots.length
-      ? `<div class="ortho-apercu" aria-hidden="true">${l.mots.map(escapeHTML).join(' · ')}</div>`
-      : '';
+  const apercu = (l: LeconOrthoRef) => {
+    if (!l.mots.length) return '';
+    // Listes du parent : tri alphabétique (saisie dans un ordre quelconque).
+    // Leçons de base : on garde l'ordre d'origine (les nombres restent numériques).
+    const mots =
+      l.source === 'liste' ? [...l.mots].sort((a, b) => a.localeCompare(b, 'fr')) : l.mots;
+    return `<div class="ortho-apercu" aria-hidden="true">${mots.map(escapeHTML).join(' · ')}</div>`;
+  };
   const baseCard = (l: LeconOrthoRef) => `<button class="nav-card" data-ortho="${l.id}">
       <div class="nav-ico">📘</div>
       <div class="nav-card-title">${escapeHTML(l.label)}</div>

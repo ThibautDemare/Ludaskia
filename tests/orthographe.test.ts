@@ -19,6 +19,16 @@ import {
 import { checkAnswer } from '../src/core/exercise';
 import { genExerciseOrtho, orthoType } from '../src/core/orthographe/exercise';
 import { ORTHO_PREDEF } from '../src/data/francais/orthographe';
+import { MODES_ORTHO } from '../src/core/orthographe/types';
+import {
+  statutMot,
+  prochaineActivite,
+  prochainModeAValider,
+  modesRequis,
+  validerMode,
+  marquerAtelierFait,
+  listeEtoilee,
+} from '../src/core/orthographe/runner';
 
 beforeEach(() => {
   localStorage.clear();
@@ -160,5 +170,63 @@ describe('orthographe — leçons prédéfinies', () => {
     expect(ids).toHaveLength(lecon.mots.length);
     expect(Object.keys(s.banque)).toHaveLength(lecon.mots.length);
     expect(s.banque[ids[0]].origine).toBe('predefini');
+  });
+});
+
+describe('orthographe — runner (logique pure)', () => {
+  test('mot neuf : statut nouveau, activité = atelier', () => {
+    const s = emptyOrthoState();
+    const m = addOrGetMot(s, { mot: 'chat' });
+    expect(statutMot(m, true)).toBe('nouveau');
+    expect(prochaineActivite(m, true)).toBe('atelier');
+  });
+
+  test("après l'atelier, la séquence est tuiles -> motCache -> dictee", () => {
+    const s = emptyOrthoState();
+    const m = addOrGetMot(s, { mot: 'chat' });
+    marquerAtelierFait(m);
+    expect(statutMot(m, true)).toBe('enCours');
+    expect(prochaineActivite(m, true)).toBe('tuiles');
+    validerMode(m, 'tuiles');
+    expect(prochaineActivite(m, true)).toBe('motCache');
+    validerMode(m, 'motCache');
+    expect(prochaineActivite(m, true)).toBe('dictee');
+    validerMode(m, 'dictee');
+    expect(statutMot(m, true)).toBe('maitrise');
+  });
+
+  test('sans TTS : la dictée n est pas requise', () => {
+    const s = emptyOrthoState();
+    const m = addOrGetMot(s, { mot: 'chat' });
+    marquerAtelierFait(m);
+    validerMode(m, 'tuiles');
+    validerMode(m, 'motCache');
+    expect(modesRequis(false)).toEqual(['tuiles', 'motCache']);
+    expect(prochainModeAValider(m, false)).toBeNull();
+    expect(statutMot(m, false)).toBe('maitrise');
+  });
+
+  test("mot maîtrisé : activité = un mode (jamais l'atelier)", () => {
+    const s = emptyOrthoState();
+    const m = addOrGetMot(s, { mot: 'chat' });
+    marquerAtelierFait(m);
+    MODES_ORTHO.forEach((md) => validerMode(m, md));
+    const act = prochaineActivite(m, true);
+    expect(act).not.toBe('atelier');
+    expect(MODES_ORTHO).toContain(act);
+  });
+
+  test('étoile de liste quand tous les mots sont maîtrisés', () => {
+    const s = emptyOrthoState();
+    const liste = createListe(s, 'L', [{ mot: 'chat' }, { mot: 'chien' }]);
+    const mots = motsDeListe(s, liste);
+    expect(listeEtoilee(mots, false)).toBe(false);
+    mots.forEach((m) => {
+      marquerAtelierFait(m);
+      validerMode(m, 'tuiles');
+      validerMode(m, 'motCache');
+    });
+    expect(listeEtoilee(mots, false)).toBe(true);
+    expect(listeEtoilee(mots, true)).toBe(false); // dictée requise mais non validée
   });
 });

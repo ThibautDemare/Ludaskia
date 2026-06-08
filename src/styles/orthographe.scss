@@ -9,12 +9,35 @@
   padding: 2rem 1rem;
 }
 
-/* Carte « liste du parent » : la carte d'action + un bouton « modifier ». */
+/* Deux colonnes : mots de base | mes listes. */
+.ortho-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+  margin-top: 14px;
+}
+.ortho-col-title {
+  font-family: var(--ui);
+  font-size: 1.05rem;
+  color: var(--grey);
+  margin: 0;
+  text-align: center;
+}
+@media (max-width: 720px) {
+  .ortho-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Carte « liste du parent » : la carte d'action + un bouton « modifier ».
+   display:flex pour que la carte remplisse la même hauteur que les autres. */
 .nav-card-group {
   position: relative;
+  display: flex;
 }
 .nav-card-group .nav-card {
-  width: 100%;
+  flex: 1;
 }
 .nav-card-edit {
   position: absolute;

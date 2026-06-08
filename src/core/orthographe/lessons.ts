@@ -16,6 +16,8 @@ export interface LeconOrthoRef {
   label: string;
   source: SourceLecon;
   nbMots: number;
+  dateControle?: string; // listes du parent : pour le tri par échéance
+  createdAt?: number;
 }
 
 /** Liste unifiée des leçons d'orthographe : prédéfinies puis listes du profil. */
@@ -31,6 +33,8 @@ export function listOrthoLecons(state: OrthoState): LeconOrthoRef[] {
     label: l.label,
     source: 'liste',
     nbMots: l.motIds.length,
+    dateControle: l.dateControle,
+    createdAt: l.createdAt,
   }));
   return [...predef, ...listes];
 }

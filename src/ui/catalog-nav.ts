@@ -140,24 +140,54 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
    carte « + Ajouter une liste ». Pas de bilan/sprint (modes propres au runner). */
 function renderOrthoCategorie(el: HTMLElement): void {
   const lecons = listOrthoLecons(loadOrtho());
-  const icon = (src: string) => (src === 'predefini' ? '📘' : '📝');
-  const card = (l: LeconOrthoRef) => {
-    const main = `<button class="nav-card" data-ortho="${l.id}">
-        <div class="nav-ico">${icon(l.source)}</div>
-        <div class="nav-card-title">${escapeHTML(l.label)}</div>
-        <div class="nav-card-sub">${l.nbMots} mot${l.nbMots > 1 ? 's' : ''}</div>
-      </button>`;
-    if (l.source !== 'liste') return main;
-    // Liste du parent : bouton « modifier » par-dessus la carte.
-    return `<div class="nav-card-group">${main}<button class="nav-card-edit" data-ortho-edit="${l.id}" aria-label="Modifier la liste" title="Modifier">✎</button></div>`;
+  const predef = lecons.filter((l) => l.source === 'predefini');
+  // Listes du parent triées par date de contrôle décroissante (sans date en dernier).
+  const listes = lecons
+    .filter((l) => l.source === 'liste')
+    .sort(
+      (a, b) =>
+        (b.dateControle ?? '').localeCompare(a.dateControle ?? '') ||
+        (b.createdAt ?? 0) - (a.createdAt ?? 0),
+    );
+
+  const sub = (l: LeconOrthoRef) => {
+    const mots = `${l.nbMots} mot${l.nbMots > 1 ? 's' : ''}`;
+    if (l.source === 'liste' && l.dateControle) {
+      const [, m, d] = l.dateControle.split('-');
+      return `${mots} · 📅 ${d}/${m}`;
+    }
+    return mots;
   };
-  el.innerHTML = `<div class="nav-cards ortho-cards">
-    ${lecons.map(card).join('')}
-    <button class="nav-card nav-card-add" data-ortho-new="1">
-      <div class="nav-ico">➕</div>
-      <div class="nav-card-title">Ajouter une liste</div>
-      <div class="nav-card-sub">les mots de la semaine</div>
-    </button>
+  const baseCard = (l: LeconOrthoRef) => `<button class="nav-card" data-ortho="${l.id}">
+      <div class="nav-ico">📘</div>
+      <div class="nav-card-title">${escapeHTML(l.label)}</div>
+      <div class="nav-card-sub">${sub(l)}</div>
+    </button>`;
+  const listCard = (l: LeconOrthoRef) => `<div class="nav-card-group">
+      <button class="nav-card" data-ortho="${l.id}">
+        <div class="nav-ico">📝</div>
+        <div class="nav-card-title">${escapeHTML(l.label)}</div>
+        <div class="nav-card-sub">${sub(l)}</div>
+      </button>
+      <button class="nav-card-edit" data-ortho-edit="${l.id}" aria-label="Modifier la liste" title="Modifier">✎</button>
+    </div>`;
+
+  el.innerHTML = `<div class="ortho-cols">
+    <section class="ortho-col">
+      <h3 class="ortho-col-title">📘 Mots de base</h3>
+      <div class="nav-cards ortho-cards">${predef.map(baseCard).join('')}</div>
+    </section>
+    <section class="ortho-col">
+      <h3 class="ortho-col-title">📝 Mes listes</h3>
+      <div class="nav-cards ortho-cards">
+        ${listes.map(listCard).join('')}
+        <button class="nav-card nav-card-add" data-ortho-new="1">
+          <div class="nav-ico">➕</div>
+          <div class="nav-card-title">Ajouter une liste</div>
+          <div class="nav-card-sub">les mots de la semaine</div>
+        </button>
+      </div>
+    </section>
   </div>`;
   el.querySelectorAll<HTMLButtonElement>('[data-ortho]').forEach((btn) => {
     btn.addEventListener('click', () => startOrthoLecon(btn.dataset.ortho!));

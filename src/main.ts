@@ -48,6 +48,7 @@ import { ORTHO_CATEGORY_ID } from './core/catalog';
 import { verify, printAll } from './ui/session';
 import { hideCelebration, hideLevelUp } from './ui/effects';
 import { closeProfileMenu, toggleProfileMenu } from './ui/menu';
+import { initTts } from './ui/tts';
 
 /* ---------- Téléchargement d'un objet en fichier JSON ---------- */
 function downloadJSON(filename: string, obj: any) {
@@ -251,6 +252,7 @@ function wireDOM() {
 // (1) hook d'écriture → (2) profils → (3) câblage DOM + route initiale.
 setOnDataWrite(touchActiveProfile);
 initProfiles();
+initTts(); // précharge les voix de synthèse (dictée best-effort)
 // Les scripts type="module" sont différés : si le DOM est déjà prêt, on câble
 // immédiatement, sinon on attend DOMContentLoaded (parité avec l'ancien main.js).
 if (document.readyState !== 'loading') wireDOM();

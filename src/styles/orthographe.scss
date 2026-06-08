@@ -1,0 +1,115 @@
+/* ============================================================
+   Mode Orthographe : cartes de listes, formulaire de liste, placeholders.
+   ============================================================ */
+
+.ortho-placeholder {
+  font-family: var(--ui);
+  color: var(--muted);
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+/* Carte « liste du parent » : la carte d'action + un bouton « modifier ». */
+.nav-card-group {
+  position: relative;
+}
+.nav-card-group .nav-card {
+  width: 100%;
+}
+.nav-card-edit {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+}
+.nav-card-edit:hover {
+  background: #fff;
+}
+
+/* Formulaire de création/édition d'une liste. */
+.ortho-form {
+  font-family: var(--ui);
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: left;
+}
+.ortho-field {
+  display: block;
+  margin: 0 0 0.75rem;
+}
+.ortho-field > span {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.ortho-field input {
+  width: 100%;
+  padding: 0.5rem;
+  font: inherit;
+  border: 1px solid var(--muted);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+.ortho-rows-head,
+.ortho-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 32px;
+  gap: 0.5rem;
+  align-items: center;
+}
+.ortho-rows-head {
+  font-weight: 600;
+  margin: 0.5rem 0 0.25rem;
+}
+.ortho-row {
+  margin-bottom: 0.4rem;
+}
+.ortho-row input {
+  width: 100%;
+  padding: 0.5rem;
+  font: inherit;
+  border: 1px solid var(--muted);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+.ortho-row-del {
+  border: 0;
+  background: transparent;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ortho-row-del:hover {
+  color: var(--ko);
+}
+.ortho-hint {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0.5rem 0;
+}
+.ortho-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+.ortho-del {
+  border: 0;
+  background: transparent;
+  color: var(--ko);
+  font: inherit;
+  cursor: pointer;
+}
+.ortho-del:hover {
+  text-decoration: underline;
+}

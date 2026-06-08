@@ -22,6 +22,7 @@ import { renderSubjects, renderCategories, renderCategorie } from './catalog-nav
 import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
 import { loadOrtho } from '../core/orthographe/store';
 import { listOrthoLecons } from '../core/orthographe/lessons';
+import { renderOrthoListeForm } from './ortho-liste';
 import { closeProfileMenu } from './menu';
 
 // État de session partagé (réassigné depuis sprint.ts / session.ts) : accesseurs dédiés.
@@ -72,6 +73,9 @@ export function startOrthoLecon(id: string) {
 }
 export function goOrthoNew() {
   location.hash = 'ortho-new';
+}
+export function goOrthoEdit(id: string) {
+  location.hash = 'ortho-edit-' + id;
 }
 export function showProfiles() {
   location.hash = 'profils';
@@ -126,6 +130,8 @@ export function route() {
     else showHomeView();
   } else if (h === 'ortho-new') {
     showOrthoNewView();
+  } else if (h.startsWith('ortho-edit-')) {
+    showOrthoEditView(h.slice('ortho-edit-'.length));
   } else if (h.startsWith('ortho-')) {
     showOrthoRunView(h.slice(6));
   } else showHomeView(); // '' ou #accueil
@@ -185,6 +191,7 @@ export function hideMenus() {
     'matieres',
     'categories',
     'categorie',
+    'ortho-liste',
   ].forEach((id) => {
     const e = document.getElementById(id);
     if (e) e.style.display = 'none';
@@ -266,8 +273,25 @@ function showOrthoPlaceholder(title: string, message: string) {
   document.getElementById('categorie')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+function showOrthoListeView(listeId: string | null, title: string) {
+  resetSessionUI();
+  setToolbar({ verify: false, home: true, profile: true });
+  hideMenus();
+  document.getElementById('orthoListeTitle')!.textContent = title;
+  renderOrthoListeForm(document.getElementById('orthoListeContent')!, listeId);
+  document.getElementById('ortho-liste')!.style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 function showOrthoNewView() {
-  showOrthoPlaceholder('Nouvelle liste', 'Création de liste — bientôt disponible.');
+  showOrthoListeView(null, 'Nouvelle liste');
+}
+function showOrthoEditView(id: string) {
+  const lecon = listOrthoLecons(loadOrtho()).find((l) => l.id === id && l.source === 'liste');
+  if (!lecon) {
+    goCategorie(ORTHO_CATEGORY_ID);
+    return;
+  }
+  showOrthoListeView(id, lecon.label);
 }
 function showOrthoRunView(id: string) {
   const lecon = listOrthoLecons(loadOrtho()).find((l) => l.id === id);

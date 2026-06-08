@@ -57,15 +57,16 @@ export function addOrGetMot(
   const existingId = state.motIdParForme[forme];
   const existing = existingId ? state.banque[existingId] : undefined;
   if (existing) {
-    if (input.commeDans && !existing.commeDans) existing.commeDans = input.commeDans;
-    if (input.homophone && !existing.homophone) existing.homophone = true;
+    // « comme dans »/homophone fournis : on applique (l'édition la plus récente gagne).
+    if (input.commeDans !== undefined) existing.commeDans = input.commeDans.trim() || undefined;
+    if (input.homophone !== undefined) existing.homophone = input.homophone || undefined;
     return existing;
   }
   const m: MotOrtho = {
     id: genId(),
     mot,
-    commeDans: input.commeDans,
-    homophone: input.homophone,
+    commeDans: input.commeDans?.trim() || undefined,
+    homophone: input.homophone || undefined,
     entourage: [],
     atelierFait: false,
     validation: { motCache: false, tuiles: false, dictee: false },
@@ -108,6 +109,24 @@ export function createListe(
     updatedAt: now,
   };
   state.listes.push(liste);
+  return liste;
+}
+
+/** Met à jour une liste existante (label, date, mots). Reconstruit motIds depuis
+    les mots fournis (dédup) ; renvoie la liste, ou null si introuvable. */
+export function updateListe(
+  state: OrthoState,
+  id: string,
+  label: string,
+  mots: MotInput[],
+  dateControle?: string,
+): ListeOrtho | null {
+  const liste = state.listes.find((l) => l.id === id);
+  if (!liste) return null;
+  liste.label = label;
+  liste.dateControle = dateControle;
+  liste.motIds = ajouterMots(state, mots, 'liste');
+  liste.updatedAt = Date.now();
   return liste;
 }
 

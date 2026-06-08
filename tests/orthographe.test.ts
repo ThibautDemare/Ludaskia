@@ -29,6 +29,7 @@ import {
   marquerAtelierFait,
   listeEtoilee,
 } from '../src/core/orthographe/runner';
+import { listOrthoLecons, motsDeLecon } from '../src/core/orthographe/lessons';
 
 beforeEach(() => {
   localStorage.clear();
@@ -228,5 +229,43 @@ describe('orthographe — runner (logique pure)', () => {
     });
     expect(listeEtoilee(mots, false)).toBe(true);
     expect(listeEtoilee(mots, true)).toBe(false); // dictée requise mais non validée
+  });
+});
+
+describe('orthographe — leçons (prédéfinies + listes)', () => {
+  test('listOrthoLecons : prédéfinies seules sur profil vierge', () => {
+    const s = emptyOrthoState();
+    const lecons = listOrthoLecons(s);
+    expect(lecons).toHaveLength(ORTHO_PREDEF.length);
+    expect(lecons.every((l) => l.source === 'predefini')).toBe(true);
+  });
+
+  test('listOrthoLecons : ajoute les listes du profil', () => {
+    const s = emptyOrthoState();
+    createListe(s, 'Semaine 1', [{ mot: 'chat' }, { mot: 'chien' }]);
+    const lecons = listOrthoLecons(s);
+    expect(lecons).toHaveLength(ORTHO_PREDEF.length + 1);
+    const liste = lecons.find((l) => l.source === 'liste')!;
+    expect(liste.label).toBe('Semaine 1');
+    expect(liste.nbMots).toBe(2);
+  });
+
+  test('motsDeLecon : leçon prédéfinie matérialisée dans la banque', () => {
+    const s = emptyOrthoState();
+    const lecon = ORTHO_PREDEF[0];
+    const mots = motsDeLecon(s, lecon.id);
+    expect(mots).toHaveLength(lecon.mots.length);
+    expect(Object.keys(s.banque)).toHaveLength(lecon.mots.length);
+  });
+
+  test('motsDeLecon : liste du profil', () => {
+    const s = emptyOrthoState();
+    const liste = createListe(s, 'L', [{ mot: 'maison' }]);
+    expect(motsDeLecon(s, liste.id).map((m) => m.mot)).toEqual(['maison']);
+  });
+
+  test('motsDeLecon : id inconnu -> liste vide', () => {
+    const s = emptyOrthoState();
+    expect(motsDeLecon(s, 'inconnu')).toEqual([]);
   });
 });

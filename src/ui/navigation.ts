@@ -23,6 +23,7 @@ import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
 import { loadOrtho } from '../core/orthographe/store';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { renderOrthoListeForm } from './ortho-liste';
+import { startOrthoRun } from './ortho-runner';
 import { closeProfileMenu } from './menu';
 
 // État de session partagé (réassigné depuis sprint.ts / session.ts) : accesseurs dédiés.
@@ -259,20 +260,6 @@ export function showCategorieView(categoryId: string) {
   document.getElementById('categorie')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-/* Placeholders Orthographe (écrans définitifs : création en 5b, runner en 5c).
-   On réutilise l'écran #categorie pour afficher un message en attendant. */
-function showOrthoPlaceholder(title: string, message: string) {
-  resetSessionUI();
-  setToolbar({ verify: false, home: true, profile: true });
-  hideMenus();
-  document.getElementById('categorieTitle')!.textContent = title;
-  document.getElementById('categorieContent')!.innerHTML =
-    `<p class="ortho-placeholder">${message}</p>`;
-  const back = document.getElementById('backCategorie') as HTMLAnchorElement | null;
-  if (back) back.dataset.subject = 'francais';
-  document.getElementById('categorie')!.style.display = '';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
 function showOrthoListeView(listeId: string | null, title: string) {
   resetSessionUI();
   setToolbar({ verify: false, home: true, profile: true });
@@ -294,12 +281,15 @@ function showOrthoEditView(id: string) {
   showOrthoListeView(id, lecon.label);
 }
 function showOrthoRunView(id: string) {
-  const lecon = listOrthoLecons(loadOrtho()).find((l) => l.id === id);
-  if (!lecon) {
+  if (!listOrthoLecons(loadOrtho()).some((l) => l.id === id)) {
     goCategorie(ORTHO_CATEGORY_ID);
     return;
   }
-  showOrthoPlaceholder(lecon.label, 'Entraînement — bientôt disponible.');
+  resetSessionUI();
+  setToolbar({ verify: false, home: true, profile: false });
+  hideMenus();
+  startOrthoRun(id);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showSprintConfigView() {
   resetSessionUI();

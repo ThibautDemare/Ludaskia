@@ -158,16 +158,22 @@ function renderOrthoCategorie(el: HTMLElement): void {
     }
     return mots;
   };
+  const apercu = (l: LeconOrthoRef) =>
+    l.mots.length
+      ? `<div class="ortho-apercu" aria-hidden="true">${l.mots.map(escapeHTML).join(' · ')}</div>`
+      : '';
   const baseCard = (l: LeconOrthoRef) => `<button class="nav-card" data-ortho="${l.id}">
       <div class="nav-ico">📘</div>
       <div class="nav-card-title">${escapeHTML(l.label)}</div>
       <div class="nav-card-sub">${sub(l)}</div>
+      ${apercu(l)}
     </button>`;
   const listCard = (l: LeconOrthoRef) => `<div class="nav-card-group">
       <button class="nav-card" data-ortho="${l.id}">
         <div class="nav-ico">📝</div>
         <div class="nav-card-title">${escapeHTML(l.label)}</div>
         <div class="nav-card-sub">${sub(l)}</div>
+        ${apercu(l)}
       </button>
       <button class="nav-card-edit" data-ortho-edit="${l.id}" aria-label="Modifier la liste" title="Modifier">✎</button>
     </div>`;

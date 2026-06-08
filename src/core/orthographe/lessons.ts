@@ -16,6 +16,7 @@ export interface LeconOrthoRef {
   label: string;
   source: SourceLecon;
   nbMots: number;
+  mots: string[]; // aperçu des mots (pour la prévisualisation)
   dateControle?: string; // listes du parent : pour le tri par échéance
   createdAt?: number;
 }
@@ -27,12 +28,14 @@ export function listOrthoLecons(state: OrthoState): LeconOrthoRef[] {
     label: l.label,
     source: 'predefini',
     nbMots: l.mots.length,
+    mots: l.mots.map((mi) => mi.mot),
   }));
   const listes: LeconOrthoRef[] = state.listes.map((l) => ({
     id: l.id,
     label: l.label,
     source: 'liste',
     nbMots: l.motIds.length,
+    mots: motsDeListe(state, l).map((m) => m.mot),
     dateControle: l.dateControle,
     createdAt: l.createdAt,
   }));

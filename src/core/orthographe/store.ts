@@ -77,6 +77,19 @@ export function addOrGetMot(
   return m;
 }
 
+/** Matérialise des mots dans la banque (dédup par forme normalisée) et renvoie
+    leurs ids (dédupliqués). Sert aux listes du parent ET aux leçons prédéfinies. */
+export function ajouterMots(
+  state: OrthoState,
+  mots: MotInput[],
+  origine: 'liste' | 'predefini' = 'liste',
+): string[] {
+  const ids = mots
+    .filter((mi) => mi.mot.trim() !== '')
+    .map((mi) => addOrGetMot(state, mi, origine).id);
+  return [...new Set(ids)]; // un même mot deux fois ne compte qu'une fois
+}
+
 /** Crée une liste à partir de mots saisis (dédup gérée dans la banque ET dans la liste).
     Mute l'état ; l'appelant sauvegarde via saveOrtho(). */
 export function createListe(
@@ -86,14 +99,11 @@ export function createListe(
   dateControle?: string,
 ): ListeOrtho {
   const now = Date.now();
-  const motIds = mots
-    .filter((mi) => mi.mot.trim() !== '')
-    .map((mi) => addOrGetMot(state, mi, 'liste').id);
   const liste: ListeOrtho = {
     id: genId(),
     label,
     dateControle,
-    motIds: [...new Set(motIds)], // un même mot saisi deux fois ne compte qu'une fois
+    motIds: ajouterMots(state, mots, 'liste'),
     createdAt: now,
     updatedAt: now,
   };

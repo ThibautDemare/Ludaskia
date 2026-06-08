@@ -14,9 +14,11 @@ import {
   createListe,
   deleteListe,
   motsDeListe,
+  ajouterMots,
 } from '../src/core/orthographe/store';
 import { checkAnswer } from '../src/core/exercise';
 import { genExerciseOrtho, orthoType } from '../src/core/orthographe/exercise';
+import { ORTHO_PREDEF } from '../src/data/francais/orthographe';
 
 beforeEach(() => {
   localStorage.clear();
@@ -138,5 +140,25 @@ describe("orthographe — génération d'exercice", () => {
     expect(t.modes).toEqual(['motCache', 'tuiles', 'dictee']);
     expect(t.generate('tuiles').type).toBe('tuiles');
     expect(t.generate().type).toBe('motCache');
+  });
+});
+
+describe('orthographe — leçons prédéfinies', () => {
+  test('ORTHO_PREDEF : ids préfixés, libellés et mots présents', () => {
+    expect(ORTHO_PREDEF.length).toBeGreaterThan(0);
+    for (const l of ORTHO_PREDEF) {
+      expect(l.id).toMatch(/^fr-ortho-/);
+      expect(l.label.length).toBeGreaterThan(0);
+      expect(l.mots.length).toBeGreaterThan(0);
+    }
+  });
+
+  test('matérialisation : les mots prédéfinis entrent dans la banque', () => {
+    const s = emptyOrthoState();
+    const lecon = ORTHO_PREDEF[0];
+    const ids = ajouterMots(s, lecon.mots, 'predefini');
+    expect(ids).toHaveLength(lecon.mots.length);
+    expect(Object.keys(s.banque)).toHaveLength(lecon.mots.length);
+    expect(s.banque[ids[0]].origine).toBe('predefini');
   });
 });

@@ -180,12 +180,12 @@ function renderOrthoCategorie(el: HTMLElement): void {
     <section class="ortho-col">
       <h3 class="ortho-col-title">📝 Mes listes</h3>
       <div class="nav-cards ortho-cards">
-        ${listes.map(listCard).join('')}
         <button class="nav-card nav-card-add" data-ortho-new="1">
           <div class="nav-ico">➕</div>
           <div class="nav-card-title">Ajouter une liste</div>
           <div class="nav-card-sub">les mots de la semaine</div>
         </button>
+        ${listes.map(listCard).join('')}
       </div>
     </section>
   </div>`;

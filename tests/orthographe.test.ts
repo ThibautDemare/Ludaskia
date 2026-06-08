@@ -34,6 +34,7 @@ import {
 } from '../src/core/orthographe/runner';
 import { listOrthoLecons, motsDeLecon } from '../src/core/orthographe/lessons';
 import { diffCorrect } from '../src/core/orthographe/diff';
+import { gSnapshot, evaluateTrophies, loadTrophies } from '../src/core/rewards';
 
 beforeEach(() => {
   localStorage.clear();
@@ -337,5 +338,33 @@ describe('orthographe — diff de correction', () => {
     const d = diffCorrect('gran', 'grand');
     expect(d[d.length - 1]).toBe(true);
     expect(d.slice(0, -1)).toEqual([false, false, false, false]);
+  });
+});
+
+describe('orthographe — récompenses', () => {
+  test('gSnapshot expose les métriques orthographe', () => {
+    const s = emptyOrthoState();
+    const liste = createListe(s, 'L', [{ mot: 'chat' }, { mot: 'chien' }]);
+    const m = motsDeListe(s, liste);
+    marquerAtelierFait(m[0]);
+    validerMode(m[0], 'motCache');
+    validerMode(m[0], 'tuiles');
+    saveOrtho(s);
+    const g = gSnapshot();
+    expect(g.orthoMotsAtelier).toBe(1);
+    expect(g.orthoMotsMaitrises).toBe(1);
+    expect(g.orthoListesMaitrisees).toBe(0); // le 2e mot n'est pas maîtrisé
+  });
+
+  test('le trophée « première liste » se débloque quand une liste est maîtrisée', () => {
+    const s = emptyOrthoState();
+    const liste = createListe(s, 'L', [{ mot: 'chat' }]);
+    const m = motsDeListe(s, liste);
+    validerMode(m[0], 'motCache');
+    validerMode(m[0], 'tuiles');
+    saveOrtho(s);
+    const newly = evaluateTrophies();
+    expect(newly.some((t) => t.id === 'orthoListes1')).toBe(true);
+    expect(loadTrophies()).toContain('orthoListes1');
   });
 });

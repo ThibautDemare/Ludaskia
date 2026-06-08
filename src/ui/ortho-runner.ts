@@ -21,9 +21,12 @@ import {
 } from '../core/orthographe/runner';
 import type { MotOrtho, OrthoState } from '../core/orthographe/types';
 import { diffCorrect } from '../core/orthographe/diff';
+import { addXP, getXP, niveauDepuisXP } from '../core/progress';
+import { evaluateTrophies } from '../core/rewards';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 import { goCategorie } from './navigation';
 import { renderAtelier } from './ortho-atelier';
+import { showCelebration, showLevelUp } from './effects';
 import { dicteeDisponible, dicter } from './tts';
 
 const ACCENTS = ['é', 'è', 'ê', 'à', 'â', 'ç', 'ô', 'î', 'ï', 'û', 'ù', 'œ', '-', "'"];
@@ -32,6 +35,7 @@ let st: OrthoState;
 let mots: MotOrtho[];
 let idx = 0;
 let dispoDictee = false;
+let niveauAvant = 0;
 
 function sheets(): HTMLElement {
   return document.getElementById('sheets')!;
@@ -43,6 +47,7 @@ export function startOrthoRun(lessonId: string): void {
   saveOrtho(st); // persiste la matérialisation des mots prédéfinis
   dispoDictee = dicteeDisponible();
   idx = 0;
+  niveauAvant = niveauDepuisXP(getXP());
   if (!mots.length) {
     goCategorie(ORTHO_CATEGORY_ID);
     return;
@@ -120,6 +125,7 @@ function renderMotCache(word: MotOrtho): void {
     if (checkAnswer(ex, input.value)) {
       validerMode(word, 'motCache');
       saveOrtho(st);
+      gagnerXp(word);
       (sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
       input.readOnly = true;
       reussite(fb);
@@ -178,6 +184,7 @@ function renderDictee(word: MotOrtho): void {
     if (checkAnswer(ex, input.value)) {
       validerMode(word, 'dictee');
       saveOrtho(st);
+      gagnerXp(word);
       (sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
       input.readOnly = true;
       reussite(fb);
@@ -262,6 +269,7 @@ function renderTuiles(word: MotOrtho): void {
       if (checkAnswer(ex, built)) {
         validerMode(word, 'tuiles');
         saveOrtho(st);
+        gagnerXp(word);
         (sheets().querySelector('#btnVerifTuiles') as HTMLButtonElement).disabled = true;
         reussite(fb);
       } else {
@@ -283,6 +291,18 @@ function renderBilan(): void {
   sheets()
     .querySelector('#btnBilanRetour')!
     .addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
+
+  // Récompenses : trophées éventuels + montée de niveau, avec modale + confettis.
+  const newTrophies = evaluateTrophies();
+  const celeb = [
+    { icon: '🌟', text: 'Liste prête, bravo !' },
+    ...newTrophies.map((t) => ({ icon: t.icon, text: `Trophée : ${t.title}` })),
+  ];
+  const niveauApres = niveauDepuisXP(getXP());
+  const niveauGagne = niveauApres > niveauAvant ? niveauApres : 0;
+  niveauAvant = niveauApres;
+  if (niveauGagne) showLevelUp(niveauGagne, () => showCelebration(celeb));
+  else showCelebration(celeb);
 }
 
 /* ---------- Helpers ---------- */
@@ -297,6 +317,14 @@ function boutonContinuer(fb: HTMLElement): void {
   b.textContent = 'Continuer →';
   b.addEventListener('click', renderNext);
   fb.appendChild(b);
+}
+
+/** +1 XP la première fois qu'un mot est réussi (une seule fois par mot). */
+function gagnerXp(word: MotOrtho): void {
+  if (word.xpGagne) return;
+  word.xpGagne = true;
+  addXP(1);
+  saveOrtho(st);
 }
 
 function renderAccentKb(container: HTMLElement, input: HTMLInputElement): void {

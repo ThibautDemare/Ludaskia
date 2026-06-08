@@ -30,12 +30,14 @@ import { showCelebration, showLevelUp } from './effects';
 import { dicteeDisponible, dicter } from './tts';
 
 const ACCENTS = ['é', 'è', 'ê', 'à', 'â', 'ç', 'ô', 'î', 'ï', 'û', 'ù', 'œ', '-', "'"];
+const SEANCE_MAX = 8; // activités par séance avant de proposer une pause (rythme CE2)
 
 let st: OrthoState;
 let mots: MotOrtho[];
 let idx = 0;
 let dispoDictee = false;
 let niveauAvant = 0;
+let actes = 0;
 
 function sheets(): HTMLElement {
   return document.getElementById('sheets')!;
@@ -48,6 +50,7 @@ export function startOrthoRun(lessonId: string): void {
   dispoDictee = dicteeDisponible();
   idx = 0;
   niveauAvant = niveauDepuisXP(getXP());
+  actes = 0;
   if (!mots.length) {
     goCategorie(ORTHO_CATEGORY_ID);
     return;
@@ -74,6 +77,11 @@ function renderNext(): void {
     renderBilan();
     return;
   }
+  if (actes >= SEANCE_MAX) {
+    renderPause();
+    return;
+  }
+  actes++;
   const act = prochaineActivite(word, dispoDictee);
   if (act === 'atelier') {
     renderAtelier(sheets(), word, {
@@ -125,14 +133,14 @@ function renderMotCache(word: MotOrtho): void {
     if (checkAnswer(ex, input.value)) {
       validerMode(word, 'motCache');
       saveOrtho(st);
-      gagnerXp(word);
+      const gain = gagnerXp(word);
       (sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
       input.readOnly = true;
-      reussite(fb);
+      reussite(fb, gain);
     } else {
       essais++;
       if (essais < 2) {
-        fb.innerHTML = `<span class="fb-ko">Presque ! Le mot s'écrit : <b>${escapeHTML(word.mot)}</b>. Réessaie.</span>`;
+        fb.innerHTML = `<span class="fb-ko">Presque ! Regarde bien et réessaie.</span>`;
         input.value = '';
         input.focus();
       } else {
@@ -184,10 +192,10 @@ function renderDictee(word: MotOrtho): void {
     if (checkAnswer(ex, input.value)) {
       validerMode(word, 'dictee');
       saveOrtho(st);
-      gagnerXp(word);
+      const gain = gagnerXp(word);
       (sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
       input.readOnly = true;
-      reussite(fb);
+      reussite(fb, gain);
     } else {
       essais++;
       if (essais < 2) {
@@ -224,6 +232,7 @@ function renderTuiles(word: MotOrtho): void {
   sheets().innerHTML = `
     <div class="page ortho-run">
       <p class="ortho-run-consigne">Remets les lettres dans le bon ordre.</p>
+      ${dispoDictee ? '<div><button class="btn-primary ortho-ecouter" id="btnEcouterTuiles">🔊 Écouter le mot</button></div>' : ''}
       <div class="tuiles-construction" id="construction"></div>
       <div class="tuiles-bac" id="bac"></div>
       <button class="btn-primary" id="btnVerifTuiles">✓ Vérifier</button>
@@ -232,6 +241,11 @@ function renderTuiles(word: MotOrtho): void {
   const construction = sheets().querySelector('#construction') as HTMLElement;
   const bac = sheets().querySelector('#bac') as HTMLElement;
   const fb = sheets().querySelector('#fb') as HTMLElement;
+  if (dispoDictee) {
+    sheets()
+      .querySelector('#btnEcouterTuiles')!
+      .addEventListener('click', () => dicter(word.mot, word.commeDans));
+  }
 
   function redraw(): void {
     bac.innerHTML = lettres
@@ -269,9 +283,9 @@ function renderTuiles(word: MotOrtho): void {
       if (checkAnswer(ex, built)) {
         validerMode(word, 'tuiles');
         saveOrtho(st);
-        gagnerXp(word);
+        const gain = gagnerXp(word);
         (sheets().querySelector('#btnVerifTuiles') as HTMLButtonElement).disabled = true;
-        reussite(fb);
+        reussite(fb, gain);
       } else {
         fb.innerHTML = `<span class="fb-ko">Pas tout à fait, réessaie.</span>`;
       }
@@ -305,9 +319,33 @@ function renderBilan(): void {
   else showCelebration(celeb);
 }
 
+/* ---------- Pause de séance (rythme adapté à un CE2) ---------- */
+function renderPause(): void {
+  sheets().innerHTML = `
+    <div class="page ortho-run ortho-bilan">
+      <div class="ortho-bilan-emoji">👏</div>
+      <h2>Bonne séance !</h2>
+      <p>Tu as bien travaillé. Tu peux continuer encore un peu ou revenir une autre fois.</p>
+      <div class="ortho-pause-actions">
+        <button class="btn-primary" id="btnContinuerSeance">Continuer encore un peu</button>
+        <button class="atelier-undo" id="btnStopSeance">Revenir une autre fois</button>
+      </div>
+    </div>`;
+  const b = sheets().querySelector('#btnContinuerSeance') as HTMLButtonElement;
+  b.addEventListener('click', () => {
+    actes = 0;
+    renderNext();
+  });
+  sheets()
+    .querySelector('#btnStopSeance')!
+    .addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
+  b.focus();
+}
+
 /* ---------- Helpers ---------- */
-function reussite(fb: HTMLElement): void {
-  fb.innerHTML = `<span class="fb-ok">Bravo ! 🎉</span> `;
+function reussite(fb: HTMLElement, xpGagne = false): void {
+  const xp = xpGagne ? ' <span class="fb-xp">+1 XP</span>' : '';
+  fb.innerHTML = `<span class="fb-ok">Bravo ! 🎉</span>${xp} `;
   boutonContinuer(fb);
 }
 
@@ -317,14 +355,17 @@ function boutonContinuer(fb: HTMLElement): void {
   b.textContent = 'Continuer →';
   b.addEventListener('click', renderNext);
   fb.appendChild(b);
+  b.focus(); // la touche Entrée enchaîne sur la suite
 }
 
-/** +1 XP la première fois qu'un mot est réussi (une seule fois par mot). */
-function gagnerXp(word: MotOrtho): void {
-  if (word.xpGagne) return;
+/** +1 XP la première fois qu'un mot est réussi (une seule fois par mot).
+    Renvoie true si l'XP vient d'être accordé. */
+function gagnerXp(word: MotOrtho): boolean {
+  if (word.xpGagne) return false;
   word.xpGagne = true;
   addXP(1);
   saveOrtho(st);
+  return true;
 }
 
 function renderAccentKb(container: HTMLElement, input: HTMLInputElement): void {

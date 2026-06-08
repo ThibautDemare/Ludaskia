@@ -148,12 +148,14 @@
   margin: 0.75rem 0;
 }
 .accent-key {
-  min-width: 38px;
-  height: 42px;
+  min-width: 40px;
+  height: 44px;
   font-size: 1.2rem;
-  border: 1px solid var(--muted);
-  border-radius: 8px;
-  background: #fff;
+  font-family: var(--ui);
+  border: 0;
+  border-radius: 10px;
+  background: var(--blue-soft);
+  color: var(--blue);
   cursor: pointer;
 }
 .accent-key:hover {
@@ -187,12 +189,18 @@
   background: #fff;
   cursor: pointer;
 }
+.tuile:hover {
+  background: var(--blue-soft);
+}
 .tuile-used {
   visibility: hidden;
 }
 .tuile-pose {
   background: var(--blue);
   color: #fff;
+}
+.tuile-pose:hover {
+  background: var(--blue-dark);
 }
 .ortho-feedback {
   margin-top: 1rem;
@@ -219,19 +227,23 @@
   margin: 1.5rem auto;
 }
 .atelier-mot {
-  font-size: 2.6rem;
+  font-size: 2.8rem;
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   white-space: nowrap;
+  touch-action: none; /* le glissé surligne, il ne fait pas défiler la page */
+  user-select: none;
 }
 .atelier-lettre {
   display: inline-block;
-  padding: 0 2px;
-  cursor: pointer;
+  padding: 0 3px;
+  border-radius: 6px;
+}
+.atelier-espace {
+  width: 0.6em; /* espace inter-mot bien marqué (ex. « afin de ») */
 }
 .atelier-lettre.sel {
-  background: rgb(0 0 0 / 8%);
-  border-radius: 4px;
+  background: var(--blue-soft); /* surlignage en cours */
 }
 .atelier-lettre[data-diff] {
   text-decoration: underline wavy var(--warn);
@@ -244,23 +256,75 @@
   overflow: visible;
   pointer-events: none;
 }
-.atelier-rect {
-  pointer-events: all;
-  cursor: pointer;
-}
 .atelier-actions {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  margin: 0.5rem 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
 }
-.atelier-hint {
-  font-size: 0.9rem;
-  color: var(--muted);
+.atelier-undo {
+  font: inherit;
+  font-family: var(--ui);
+  font-size: 0.95rem;
+  color: var(--blue);
+  background: var(--blue-soft);
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.atelier-undo:hover {
+  background: #dbe6f6;
 }
 .atelier-done {
   margin-top: 0.75rem;
+}
+
+/* Boutons des écrans orthographe : pleins et modernes.
+   (Hors barre d'outils, .btn-primary n'a aucune forme propre.) */
+.ortho-run .btn-primary,
+.ortho-form .btn-primary {
+  font: inherit;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #fff;
+  background: var(--blue);
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 22px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.08s ease,
+    box-shadow 0.15s ease;
+}
+.ortho-run .btn-primary:hover,
+.ortho-form .btn-primary:hover {
+  background: var(--blue-dark);
+  box-shadow: 0 3px 8px rgb(0 0 0 / 18%);
+}
+.ortho-run .btn-primary:active,
+.ortho-form .btn-primary:active {
+  transform: translateY(1px);
+}
+.ortho-run .btn-primary:disabled,
+.ortho-form .btn-primary:disabled {
+  background: var(--muted);
+  box-shadow: none;
+  cursor: default;
+}
+.fb-xp {
+  color: var(--warn);
+  font-weight: 700;
+}
+.ortho-pause-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
 }
 
 .ortho-ecouter {

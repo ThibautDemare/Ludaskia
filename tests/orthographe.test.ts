@@ -15,6 +15,8 @@ import {
   deleteListe,
   motsDeListe,
 } from '../src/core/orthographe/store';
+import { checkAnswer } from '../src/core/exercise';
+import { genExerciseOrtho, orthoType } from '../src/core/orthographe/exercise';
 
 beforeEach(() => {
   localStorage.clear();
@@ -95,5 +97,46 @@ describe('orthographe — store', () => {
     expect(reloaded.listes).toHaveLength(1);
     expect(reloaded.listes[0].label).toBe('Semaine 1');
     expect(Object.keys(reloaded.banque)).toHaveLength(1);
+  });
+});
+
+describe("orthographe — génération d'exercice", () => {
+  test('motCache : affiche/masque, vérification texte stricte (accent exigé)', () => {
+    const s = emptyOrthoState();
+    const mot = addOrGetMot(s, { mot: 'château' });
+    const ex = genExerciseOrtho(mot, 'motCache');
+    expect(ex.type).toBe('motCache');
+    expect(checkAnswer(ex, 'château')).toBe(true);
+    expect(checkAnswer(ex, 'chateau')).toBe(false);
+  });
+
+  test('dictee : embarque commeDans', () => {
+    const s = emptyOrthoState();
+    const mot = addOrGetMot(s, { mot: 'vers', commeDans: 'je vais vers la maison' });
+    const ex = genExerciseOrtho(mot, 'dictee');
+    expect(ex.type).toBe('dictee');
+    if (ex.type === 'dictee') expect(ex.commeDans).toBe('je vais vers la maison');
+    expect(checkAnswer(ex, 'vers')).toBe(true);
+  });
+
+  test('tuiles : permutation des lettres exactes du mot', () => {
+    const s = emptyOrthoState();
+    const mot = addOrGetMot(s, { mot: 'chien' });
+    const ex = genExerciseOrtho(mot, 'tuiles');
+    expect(ex.type).toBe('tuiles');
+    if (ex.type === 'tuiles') {
+      expect([...ex.lettres].sort()).toEqual([...'chien'].sort());
+      expect(ex.lettres).toHaveLength(5);
+    }
+    expect(checkAnswer(ex, 'chien')).toBe(true);
+  });
+
+  test('orthoType est mode-aware (defaut motCache)', () => {
+    const s = emptyOrthoState();
+    const mot = addOrGetMot(s, { mot: 'fleur' });
+    const t = orthoType(mot);
+    expect(t.modes).toEqual(['motCache', 'tuiles', 'dictee']);
+    expect(t.generate('tuiles').type).toBe('tuiles');
+    expect(t.generate().type).toBe('motCache');
   });
 });

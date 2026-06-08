@@ -133,10 +133,10 @@ function renderMotCache(word: MotOrtho): void {
     if (checkAnswer(ex, input.value)) {
       validerMode(word, 'motCache');
       saveOrtho(st);
-      const gain = gagnerXp(word);
+      addXP(1);
       (sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
       input.readOnly = true;
-      reussite(fb, gain);
+      reussite(fb, true);
     } else {
       essais++;
       if (essais < 2) {
@@ -192,10 +192,10 @@ function renderDictee(word: MotOrtho): void {
     if (checkAnswer(ex, input.value)) {
       validerMode(word, 'dictee');
       saveOrtho(st);
-      const gain = gagnerXp(word);
+      addXP(1);
       (sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
       input.readOnly = true;
-      reussite(fb, gain);
+      reussite(fb, true);
     } else {
       essais++;
       if (essais < 2) {
@@ -283,9 +283,9 @@ function renderTuiles(word: MotOrtho): void {
       if (checkAnswer(ex, built)) {
         validerMode(word, 'tuiles');
         saveOrtho(st);
-        const gain = gagnerXp(word);
+        addXP(1);
         (sheets().querySelector('#btnVerifTuiles') as HTMLButtonElement).disabled = true;
-        reussite(fb, gain);
+        reussite(fb, true);
       } else {
         fb.innerHTML = `<span class="fb-ko">Pas tout à fait, réessaie.</span>`;
       }
@@ -356,16 +356,6 @@ function boutonContinuer(fb: HTMLElement): void {
   b.addEventListener('click', renderNext);
   fb.appendChild(b);
   b.focus(); // la touche Entrée enchaîne sur la suite
-}
-
-/** +1 XP la première fois qu'un mot est réussi (une seule fois par mot).
-    Renvoie true si l'XP vient d'être accordé. */
-function gagnerXp(word: MotOrtho): boolean {
-  if (word.xpGagne) return false;
-  word.xpGagne = true;
-  addXP(1);
-  saveOrtho(st);
-  return true;
 }
 
 function renderAccentKb(container: HTMLElement, input: HTMLInputElement): void {

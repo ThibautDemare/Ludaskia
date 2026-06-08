@@ -257,6 +257,10 @@ export function showCategorieView(categoryId: string) {
   const cat = CATEGORIES.find((c) => c.id === categoryId);
   const back = document.getElementById('backCategorie') as HTMLAnchorElement | null;
   if (back && cat) back.dataset.subject = cat.subject;
+  // L'orthographe (deux colonnes + sous-colonnes) profite de toute la largeur.
+  document
+    .getElementById('categorie')!
+    .classList.toggle('categorie-ortho', categoryId === ORTHO_CATEGORY_ID);
   document.getElementById('categorie')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }

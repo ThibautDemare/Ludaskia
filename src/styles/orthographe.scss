@@ -9,7 +9,13 @@
   padding: 2rem 1rem;
 }
 
-/* Deux colonnes : mots de base | mes listes. */
+/* Catégorie Orthographe : on profite de la largeur sur desktop. */
+.home.categorie-ortho {
+  width: 92%;
+  max-width: 1600px;
+}
+
+/* Deux colonnes : mots de base | mes listes (chacune avec ses sous-colonnes). */
 .ortho-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -15,6 +15,7 @@ import {
   deleteListe,
   motsDeListe,
   ajouterMots,
+  formeNormalisee,
 } from '../src/core/orthographe/store';
 import { checkAnswer } from '../src/core/exercise';
 import { genExerciseOrtho, orthoType } from '../src/core/orthographe/exercise';
@@ -171,6 +172,11 @@ describe('orthographe — leçons prédéfinies', () => {
     expect(ids).toHaveLength(lecon.mots.length);
     expect(Object.keys(s.banque)).toHaveLength(lecon.mots.length);
     expect(s.banque[ids[0]].origine).toBe('predefini');
+  });
+
+  test('ORTHO_PREDEF : aucun doublon de mot (forme normalisée) sur tout le jeu', () => {
+    const formes = ORTHO_PREDEF.flatMap((l) => l.mots.map((mi) => formeNormalisee(mi.mot)));
+    expect(new Set(formes).size).toBe(formes.length);
   });
 });
 

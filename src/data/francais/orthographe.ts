@@ -1,67 +1,289 @@
 /* ============================================================
    Données statiques des leçons d'orthographe prédéfinies (CE2).
-   Mots invariables et mots irréguliers, découpés en leçons courtes
-   et numérotées (pour éviter les listes-fleuves). Proposés en
-   complément des listes saisies par le parent.
+   Mots invariables et nombres en lettres, découpés en leçons courtes
+   et numérotées. Proposés en complément des listes du parent.
    ------------------------------------------------------------
-   NB : jeu de départ volontairement court ; une liste complète
-   sera fournie ultérieurement. Apostrophe droite (') = celle tapée
-   au clavier (la vérification est stricte, trim + NFC).
+   Conventions : mots en MINUSCULES (on les écrit ainsi dans une
+   phrase ; la vérification est stricte, trim + NFC). Apostrophe
+   DROITE (') = celle tapée au clavier.
    ============================================================ */
 import type { SchoolLevel } from '../../core/catalog';
 import type { MotInput } from '../../core/orthographe/types';
 
 export interface LeconOrthoPredef {
-  id: string; // ex. 'fr-ortho-invariables-1'
+  id: string;
   label: string;
   niveau: SchoolLevel;
   mots: MotInput[];
 }
+
+/** Raccourci : liste de mots -> MotInput[]. */
+const m = (...mots: string[]): MotInput[] => mots.map((mot) => ({ mot }));
 
 export const ORTHO_PREDEF: LeconOrthoPredef[] = [
   {
     id: 'fr-ortho-invariables-1',
     label: 'Mots invariables (1)',
     niveau: 'ce2',
-    mots: [
-      { mot: "aujourd'hui" },
-      { mot: 'beaucoup' },
-      { mot: 'toujours' },
-      { mot: 'longtemps' },
-      { mot: 'pendant' },
-      { mot: 'maintenant' },
-      { mot: 'parfois' },
-      { mot: 'bientôt' },
-    ],
+    mots: m(
+      'afin de',
+      'ailleurs',
+      'ainsi',
+      'alors',
+      'après',
+      'assez',
+      'à travers',
+      "aujourd'hui",
+      'auparavant',
+      'auprès',
+      'aussi',
+      'aussitôt',
+    ),
   },
   {
     id: 'fr-ortho-invariables-2',
     label: 'Mots invariables (2)',
     niveau: 'ce2',
-    mots: [
-      { mot: 'quelquefois' },
-      { mot: 'tellement' },
-      { mot: 'autrefois' },
-      { mot: 'presque' },
-      { mot: 'ensemble' },
-      { mot: 'autour' },
-      { mot: 'plusieurs' },
-      { mot: 'malgré' },
-    ],
+    mots: m(
+      'autant',
+      'autour',
+      'autre',
+      'autrefois',
+      'autrement',
+      'avant',
+      'avec',
+      'beaucoup',
+      'bien',
+      'bientôt',
+      'car',
+      'cependant',
+    ),
   },
   {
-    id: 'fr-ortho-irreguliers-1',
-    label: 'Mots irréguliers (1)',
+    id: 'fr-ortho-invariables-3',
+    label: 'Mots invariables (3)',
     niveau: 'ce2',
-    mots: [
-      { mot: 'femme' },
-      { mot: 'monsieur' },
-      { mot: 'fille' },
-      { mot: 'temps' },
-      { mot: 'automne' },
-      { mot: 'sept' },
-      { mot: 'doigt' },
-      { mot: 'clé' },
-    ],
+    mots: m(
+      'certes',
+      "c'est-à-dire",
+      'chaque',
+      'chez',
+      'combien',
+      'comme',
+      'comment',
+      'contre',
+      "d'abord",
+      "d'accord",
+      "d'ailleurs",
+      'dans',
+    ),
+  },
+  {
+    id: 'fr-ortho-invariables-4',
+    label: 'Mots invariables (4)',
+    niveau: 'ce2',
+    mots: m(
+      'davantage',
+      'debout',
+      'dedans',
+      'dehors',
+      'déjà',
+      'demain',
+      'depuis',
+      'derrière',
+      'dès',
+      'désormais',
+      'dessous',
+      'devant',
+    ),
+  },
+  {
+    id: 'fr-ortho-invariables-5',
+    label: 'Mots invariables (5)',
+    niveau: 'ce2',
+    mots: m(
+      'donc',
+      'dont',
+      'dorénavant',
+      'durant',
+      'en vain',
+      'encore',
+      'enfin',
+      'ensuite',
+      'entre',
+      'envers',
+      'exprès',
+      'guère',
+    ),
+  },
+  {
+    id: 'fr-ortho-invariables-6',
+    label: 'Mots invariables (6)',
+    niveau: 'ce2',
+    mots: m(
+      'hélas',
+      'hier',
+      'hors',
+      'ici',
+      'jadis',
+      'jamais',
+      "jusqu'à",
+      'jusque',
+      'là-bas',
+      'la plupart',
+      'loin',
+      'longtemps',
+    ),
+  },
+  {
+    id: 'fr-ortho-invariables-7',
+    label: 'Mots invariables (7)',
+    niveau: 'ce2',
+    mots: m(
+      'lorsque',
+      'maintenant',
+      'mais',
+      'malgré',
+      'mieux',
+      'moins',
+      'naguère',
+      'néanmoins',
+      'nonobstant',
+      'or',
+      'où',
+      'parce que',
+    ),
+  },
+  {
+    id: 'fr-ortho-invariables-8',
+    label: 'Mots invariables (8)',
+    niveau: 'ce2',
+    mots: m(
+      'parfois',
+      'parmi',
+      'partout',
+      'pas',
+      'pendant',
+      'peut-être',
+      'plus',
+      'plusieurs',
+      'plutôt',
+      'pour',
+      'pourquoi',
+      'pourtant',
+    ),
+  },
+  {
+    id: 'fr-ortho-invariables-9',
+    label: 'Mots invariables (9)',
+    niveau: 'ce2',
+    mots: m(
+      'pourvu que',
+      'près',
+      'presque',
+      'puis',
+      'puisque',
+      'quand',
+      'quelquefois',
+      'quoi',
+      'quoique',
+      'rien',
+      'sans',
+      'sauf',
+    ),
+  },
+  {
+    id: 'fr-ortho-invariables-10',
+    label: 'Mots invariables (10)',
+    niveau: 'ce2',
+    mots: m(
+      'selon',
+      'seulement',
+      'sinon',
+      'sitôt',
+      'soudain',
+      'sous',
+      'souvent',
+      'suivant',
+      'sur',
+      'surtout',
+      'tandis que',
+      'tant',
+    ),
+  },
+  {
+    id: 'fr-ortho-invariables-11',
+    label: 'Mots invariables (11)',
+    niveau: 'ce2',
+    mots: m(
+      'tant pis',
+      'tantôt',
+      'tard',
+      'tellement',
+      'tôt',
+      'toujours',
+      'tout à coup',
+      'toutefois',
+      'très',
+      'trop',
+      'vers',
+      'via',
+    ),
+  },
+  {
+    id: 'fr-ortho-invariables-12',
+    label: 'Mots invariables (12)',
+    niveau: 'ce2',
+    mots: m('voici', 'voilà', 'volontiers', 'vraiment', 'vite', 'vu'),
+  },
+  {
+    id: 'fr-ortho-nombres-1',
+    label: 'Les nombres (0 à 10)',
+    niveau: 'ce2',
+    mots: m('zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix'),
+  },
+  {
+    id: 'fr-ortho-nombres-2',
+    label: 'Les nombres (11 à 20)',
+    niveau: 'ce2',
+    mots: m(
+      'onze',
+      'douze',
+      'treize',
+      'quatorze',
+      'quinze',
+      'seize',
+      'dix-sept',
+      'dix-huit',
+      'dix-neuf',
+      'vingt',
+    ),
+  },
+  {
+    id: 'fr-ortho-nombres-3',
+    label: 'Les nombres (les dizaines)',
+    niveau: 'ce2',
+    mots: m(
+      'trente',
+      'quarante',
+      'cinquante',
+      'soixante',
+      'soixante-dix',
+      'quatre-vingts',
+      'quatre-vingt-dix',
+    ),
+  },
+  {
+    id: 'fr-ortho-nombres-4',
+    label: 'Les nombres (centaines et mille)',
+    niveau: 'ce2',
+    mots: m(
+      'cent',
+      'deux-cents',
+      'trois-cents',
+      'trois-cent-cinquante-deux',
+      'quatre-cents',
+      'mille',
+    ),
   },
 ];

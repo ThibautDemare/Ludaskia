@@ -19,7 +19,9 @@ import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } 
 import { runSprint, sprintCleanup, renderSprintConfigScreen } from './sprint';
 import { renderBilanConfigScreen } from './bilan';
 import { renderSubjects, renderCategories, renderCategorie } from './catalog-nav';
-import { SUBJECTS, CATEGORIES } from '../core/catalog';
+import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
+import { loadOrtho } from '../core/orthographe/store';
+import { listOrthoLecons } from '../core/orthographe/lessons';
 import { closeProfileMenu } from './menu';
 
 // État de session partagé (réassigné depuis sprint.ts / session.ts) : accesseurs dédiés.
@@ -64,6 +66,12 @@ export function goCategories(subjectId: string) {
 }
 export function goCategorie(categoryId: string) {
   location.hash = 'categorie-' + categoryId;
+}
+export function startOrthoLecon(id: string) {
+  location.hash = 'ortho-' + id;
+}
+export function goOrthoNew() {
+  location.hash = 'ortho-new';
 }
 export function showProfiles() {
   location.hash = 'profils';
@@ -116,6 +124,10 @@ export function route() {
     const id = h.slice(6);
     if (getAllLessons().find((l) => l.id === id)) runLecon(id);
     else showHomeView();
+  } else if (h === 'ortho-new') {
+    showOrthoNewView();
+  } else if (h.startsWith('ortho-')) {
+    showOrthoRunView(h.slice(6));
   } else showHomeView(); // '' ou #accueil
 }
 
@@ -239,6 +251,31 @@ export function showCategorieView(categoryId: string) {
   if (back && cat) back.dataset.subject = cat.subject;
   document.getElementById('categorie')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* Placeholders Orthographe (écrans définitifs : création en 5b, runner en 5c).
+   On réutilise l'écran #categorie pour afficher un message en attendant. */
+function showOrthoPlaceholder(title: string, message: string) {
+  resetSessionUI();
+  setToolbar({ verify: false, home: true, profile: true });
+  hideMenus();
+  document.getElementById('categorieTitle')!.textContent = title;
+  document.getElementById('categorieContent')!.innerHTML =
+    `<p class="ortho-placeholder">${message}</p>`;
+  const back = document.getElementById('backCategorie') as HTMLAnchorElement | null;
+  if (back) back.dataset.subject = 'francais';
+  document.getElementById('categorie')!.style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function showOrthoNewView() {
+  showOrthoPlaceholder('Nouvelle liste', 'Création de liste — bientôt disponible.');
+}
+function showOrthoRunView(id: string) {
+  const lecon = listOrthoLecons(loadOrtho()).find((l) => l.id === id);
+  if (!lecon) {
+    goCategorie(ORTHO_CATEGORY_ID);
+    return;
+  }
+  showOrthoPlaceholder(lecon.label, 'Entraînement — bientôt disponible.');
 }
 export function showSprintConfigView() {
   resetSessionUI();

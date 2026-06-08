@@ -87,9 +87,14 @@ export const SUBJECTS: Subject[] = [
   { id: 'francais', label: 'Français' },
 ];
 
+/* Catégorie d'orthographe : ses « leçons » sont dynamiques (leçons prédéfinies +
+   listes du profil) et ne passent pas par le pipeline LessonDef/generate. */
+export const ORTHO_CATEGORY_ID = 'fr-orthographe';
+
 export const CATEGORIES: Category[] = [
   { id: 'math-calcul', label: 'Calcul mental', subject: 'math' },
   { id: 'fr-conjugaison', label: 'Conjugaison', subject: 'francais' },
+  { id: ORTHO_CATEGORY_ID, label: 'Orthographe', subject: 'francais' },
 ];
 
 /* ---------- Catalogue des leçons math ---------- */

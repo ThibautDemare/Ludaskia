@@ -5,14 +5,22 @@
      #matiere-<id>        → catégories d'une matière
      #categorie-<id>      → leçons d'une catégorie + accès bilan/sprint
    ============================================================ */
-import { SUBJECTS, CATEGORIES, getLessonsBySubject, getLessonsByCategory } from '../core/catalog';
+import {
+  SUBJECTS,
+  CATEGORIES,
+  ORTHO_CATEGORY_ID,
+  getLessonsBySubject,
+  getLessonsByCategory,
+} from '../core/catalog';
 import { LESSONS } from '../core/lessons';
 import { loadStars, loadLessonStats } from '../core/progress';
+import { loadOrtho } from '../core/orthographe/store';
+import { listOrthoLecons } from '../core/orthographe/lessons';
 import { escapeHTML } from '../core/utils';
 import { lessonCardHTML } from './render';
 import { startCategorySprint } from './sprint';
 import { runBilanConfig } from './bilan';
-import { startLecon, goCategories, goCategorie } from './navigation';
+import { startLecon, goCategories, goCategorie, startOrthoLecon, goOrthoNew } from './navigation';
 
 /* Icône par matière (fallback générique). */
 const SUBJECT_ICON: Record<string, string> = { math: '🔢', francais: '📚' };
@@ -43,7 +51,10 @@ export function renderCategories(el: HTMLElement, subjectId: string, titleEl: HT
   el.innerHTML = `<div class="nav-cards">
     ${cats
       .map((c) => {
-        const n = getLessonsByCategory(c.id).length;
+        const n =
+          c.id === ORTHO_CATEGORY_ID
+            ? listOrthoLecons(loadOrtho()).length
+            : getLessonsByCategory(c.id).length;
         return `<button class="nav-card" data-category="${c.id}">
           <div class="nav-card-title">${escapeHTML(c.label)}</div>
           <div class="nav-card-sub">${n} leçon${n > 1 ? 's' : ''}</div>
@@ -60,6 +71,11 @@ export function renderCategories(el: HTMLElement, subjectId: string, titleEl: HT
 export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HTMLElement): void {
   const category = CATEGORIES.find((c) => c.id === categoryId);
   if (titleEl && category) titleEl.textContent = category.label;
+
+  if (categoryId === ORTHO_CATEGORY_ID) {
+    renderOrthoCategorie(el);
+    return;
+  }
 
   const lessonDefs = getLessonsByCategory(categoryId);
   const lessonIds = lessonDefs.map((l) => l.id);
@@ -110,4 +126,35 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
   el.querySelector('[data-act="sprint"]')!.addEventListener('click', () => {
     startCategorySprint(categoryId);
   });
+}
+
+/* ---------- Écran : catégorie Orthographe ----------
+   Leçons prédéfinies (invariables/irréguliers) + listes du profil, plus une
+   carte « + Ajouter une liste ». Pas de bilan/sprint (modes propres au runner). */
+function renderOrthoCategorie(el: HTMLElement): void {
+  const lecons = listOrthoLecons(loadOrtho());
+  const icon = (src: string) => (src === 'predefini' ? '📘' : '📝');
+  const cards = lecons
+    .map(
+      (l) => `<button class="nav-card" data-ortho="${l.id}">
+        <div class="nav-ico">${icon(l.source)}</div>
+        <div class="nav-card-title">${escapeHTML(l.label)}</div>
+        <div class="nav-card-sub">${l.nbMots} mot${l.nbMots > 1 ? 's' : ''}</div>
+      </button>`,
+    )
+    .join('');
+  el.innerHTML = `<div class="nav-cards">
+    ${cards}
+    <button class="nav-card nav-card-add" data-ortho-new="1">
+      <div class="nav-ico">➕</div>
+      <div class="nav-card-title">Ajouter une liste</div>
+      <div class="nav-card-sub">les mots de la semaine</div>
+    </button>
+  </div>`;
+  el.querySelectorAll<HTMLButtonElement>('[data-ortho]').forEach((btn) => {
+    btn.addEventListener('click', () => startOrthoLecon(btn.dataset.ortho!));
+  });
+  el.querySelector<HTMLButtonElement>('[data-ortho-new]')!.addEventListener('click', () =>
+    goOrthoNew(),
+  );
 }

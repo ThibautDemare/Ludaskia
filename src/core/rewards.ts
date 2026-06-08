@@ -14,6 +14,8 @@ import {
   starsEarned,
   todayStr,
 } from './progress';
+import { loadOrtho } from './orthographe/store';
+import type { MotOrtho } from './orthographe/types';
 
 /* ---------- Défi du jour ----------
    Recentré « qualité / dépassement » : la cadence (sprints/express/complet)
@@ -255,6 +257,24 @@ export const TROPHIES: Trophy[] = [
     { n: 7, title: 'Persévérant', desc: 'Réussir 7 objectifs du jour.' },
     { n: 30, title: 'Maître des défis', desc: 'Réussir 30 objectifs du jour.' },
   ]),
+  // Orthographe
+  ...tiers('orthoMots', '📖', 'orthoMotsMaitrises', [
+    { n: 10, title: 'Collectionneur de mots', desc: '10 mots maîtrisés en orthographe.' },
+    { n: 50, title: 'Collectionneur aguerri', desc: '50 mots maîtrisés en orthographe.' },
+    { n: 100, title: 'Grand collectionneur', desc: '100 mots maîtrisés en orthographe.' },
+    { n: 200, title: 'Maître des mots', desc: '200 mots maîtrisés en orthographe.' },
+  ]),
+  ...tiers('orthoListes', '⭐', 'orthoListesMaitrisees', [
+    { n: 1, title: 'Première liste', desc: 'Maîtriser une liste de mots.' },
+    { n: 5, title: 'Listes maîtrisées', desc: 'Maîtriser 5 listes de mots.' },
+    { n: 10, title: 'Listes maîtrisées (10)', desc: 'Maîtriser 10 listes de mots.' },
+    { n: 20, title: 'Listes maîtrisées (20)', desc: 'Maîtriser 20 listes de mots.' },
+  ]),
+  ...tiers('orthoAtelier', '🔍', 'orthoMotsAtelier', [
+    { n: 10, title: 'Chasseur de pièges', desc: "Travailler 10 mots à l'atelier." },
+    { n: 50, title: 'Chasseur de pièges (50)', desc: "Travailler 50 mots à l'atelier." },
+    { n: 100, title: 'Chasseur de pièges (100)', desc: "Travailler 100 mots à l'atelier." },
+  ]),
 ];
 /* ---------- Trophées par matière et par catégorie ----------
    Générés depuis le catalogue : chaque matière a des paliers de
@@ -319,6 +339,20 @@ export function gSnapshot() {
       categoryStars[l.category] = (categoryStars[l.category] || 0) + 1;
     }
   }
+  // Métriques du mode Orthographe (indépendantes du TTS : motCache + tuiles).
+  const ortho = loadOrtho();
+  const motsBanque = Object.values(ortho.banque);
+  const estMaitriseOrtho = (m: MotOrtho) => m.validation.motCache && m.validation.tuiles;
+  const orthoMotsMaitrises = motsBanque.filter(estMaitriseOrtho).length;
+  const orthoMotsAtelier = motsBanque.filter((m) => m.atelierFait).length;
+  const orthoListesMaitrisees = ortho.listes.filter(
+    (l) =>
+      l.motIds.length > 0 &&
+      l.motIds.every((id) => {
+        const m = ortho.banque[id];
+        return !!m && estMaitriseOrtho(m);
+      }),
+  ).length;
   return {
     totalRuns: all.length,
     stars: starsEarned(),
@@ -337,6 +371,9 @@ export function gSnapshot() {
     categoryCorrect, // bonnes réponses cumulées par catégorie
     subjectStars, // leçons étoilées par matière
     categoryStars, // leçons étoilées par catégorie
+    orthoMotsMaitrises, // mots d'orthographe maîtrisés (motCache + tuiles)
+    orthoMotsAtelier, // mots travaillés à l'atelier
+    orthoListesMaitrisees, // listes entièrement maîtrisées
   };
 }
 /* Débloque les trophées nouvellement atteints ; renvoie les nouveaux. */

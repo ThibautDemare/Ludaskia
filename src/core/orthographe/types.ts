@@ -38,6 +38,7 @@ export interface MotOrtho {
   validation: Record<ModeOrtho, boolean>; // pour l'étoile de liste
   revision: EtatRevision;
   origine: 'liste' | 'predefini';
+  xpGagne?: boolean; // XP déjà accordé pour ce mot (une fois par mot)
 }
 
 /** Une liste = une leçon dynamique, créée par le parent. */

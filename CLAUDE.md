@@ -31,6 +31,19 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
 - **Une PR par changement**, liée à son issue le cas échéant (`Closes #N`) ;
   attendre la CI verte puis rebase-merge. **Ne pas merger sans le feu vert du
   mainteneur.**
+- **Labels obligatoires à la création d'une issue.** Toujours étiqueter, avec
+  **au moins un label de type** + **exactement une priorité** + **exactement un
+  effort**. Vérifier les labels réels du dépôt via `gh label list`.
+  - **Type** (un ou plusieurs) : `bug` (dysfonctionnement, « ça ne marche pas »),
+    `enhancement` (nouvelle fonctionnalité), `polish` (existant fonctionnel à
+    peaufiner : sous-optimal, obsolète, à mettre à jour), `refacto`
+    (restructuration sans nouveauté visible), `architecture` (changements
+    structurels fondateurs), `content` (ajout de données/exercices),
+    `gamification` (trophées, XP, objectifs, récompenses), `documentation`.
+  - **Priorité** (un seul) : `priority: high` / `priority: medium` / `priority: low`.
+  - **Effort** (un seul) : `effort: low` / `effort: medium` / `effort: high`.
+  - Génériques GitHub disponibles au besoin : `duplicate`, `question`,
+    `good first issue`, `help wanted`, `invalid`, `wontfix`.
 - Le mainteneur peut travailler **en parallèle** dans une autre session :
   `git fetch` + vérifier l'état (local vs distant) **avant de pusher**.
 - Détails : `CONTRIBUTING.md`.

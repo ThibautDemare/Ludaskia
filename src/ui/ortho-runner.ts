@@ -24,7 +24,7 @@ import { diffCorrect } from '../core/orthographe/diff';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 import { goCategorie } from './navigation';
 import { renderAtelier } from './ortho-atelier';
-import { dicteeDisponible } from './tts';
+import { dicteeDisponible, dicter } from './tts';
 
 const ACCENTS = ['é', 'è', 'ê', 'à', 'â', 'ç', 'ô', 'î', 'ï', 'û', 'ù', 'œ', '-', "'"];
 
@@ -79,7 +79,8 @@ function renderNext(): void {
       },
     });
   } else if (act === 'tuiles') renderTuiles(word);
-  else renderMotCache(word); // motCache (la dictée n'est pas proposée en v1)
+  else if (act === 'dictee') renderDictee(word);
+  else renderMotCache(word);
 }
 
 /* ---------- Affiche / masque ---------- */
@@ -138,6 +139,64 @@ function renderMotCache(word: MotOrtho): void {
           },
           diff,
           consigne: "Regarde où tu t'es trompé, puis entoure le piège.",
+        });
+      }
+    }
+  };
+  sheets().querySelector('#btnVerifMot')!.addEventListener('click', verifier);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') verifier();
+  });
+}
+
+/* ---------- Dictée (TTS) ---------- */
+function renderDictee(word: MotOrtho): void {
+  const ex = genExerciseOrtho(word, 'dictee');
+  let essais = 0;
+  sheets().innerHTML = `
+    <div class="page ortho-run">
+      <p class="ortho-run-consigne">Écoute le mot, puis écris-le.</p>
+      <button class="btn-primary ortho-ecouter" id="btnEcouter">🔊 Écouter</button>
+      <div class="ortho-saisie">
+        <input class="ortho-input" id="orthoInput" type="text" inputmode="text"
+               autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+               aria-label="Écris le mot" />
+        <div class="accent-kb" id="accentKb"></div>
+        <button class="btn-primary" id="btnVerifMot">✓ Vérifier</button>
+      </div>
+      <div class="ortho-feedback" id="fb"></div>
+    </div>`;
+  const input = sheets().querySelector('#orthoInput') as HTMLInputElement;
+  const fb = sheets().querySelector('#fb') as HTMLElement;
+  renderAccentKb(sheets().querySelector('#accentKb') as HTMLElement, input);
+
+  const ecouter = () => dicter(word.mot, word.commeDans);
+  sheets().querySelector('#btnEcouter')!.addEventListener('click', ecouter);
+  ecouter(); // tentative de lecture auto (peut être bloquée tant qu'il n'y a pas eu de geste)
+
+  const verifier = () => {
+    if (checkAnswer(ex, input.value)) {
+      validerMode(word, 'dictee');
+      saveOrtho(st);
+      (sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
+      input.readOnly = true;
+      reussite(fb);
+    } else {
+      essais++;
+      if (essais < 2) {
+        fb.innerHTML = `<span class="fb-ko">Presque ! Réécoute et réessaie.</span>`;
+        input.value = '';
+        input.focus();
+        ecouter();
+      } else {
+        const diff = diffCorrect(input.value, word.mot);
+        renderAtelier(sheets(), word, {
+          onDone: () => {
+            saveOrtho(st);
+            renderNext();
+          },
+          diff,
+          consigne: "Regarde le mot et où tu t'es trompé, puis entoure le piège.",
         });
       }
     }

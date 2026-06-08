@@ -211,3 +211,54 @@
 .ortho-bilan-emoji {
   font-size: 3rem;
 }
+
+/* Atelier du mot (entourer les pièges, SVG) */
+.atelier-stage {
+  position: relative;
+  display: inline-block;
+  margin: 1.5rem auto;
+}
+.atelier-mot {
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  white-space: nowrap;
+}
+.atelier-lettre {
+  display: inline-block;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.atelier-lettre.sel {
+  background: rgb(0 0 0 / 8%);
+  border-radius: 4px;
+}
+.atelier-lettre[data-diff] {
+  text-decoration: underline wavy var(--warn);
+  text-decoration-thickness: 2px;
+}
+.atelier-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.atelier-rect {
+  pointer-events: all;
+  cursor: pointer;
+}
+.atelier-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+}
+.atelier-hint {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.atelier-done {
+  margin-top: 0.75rem;
+}

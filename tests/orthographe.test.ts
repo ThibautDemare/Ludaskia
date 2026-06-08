@@ -33,6 +33,7 @@ import {
   listeEtoilee,
 } from '../src/core/orthographe/runner';
 import { listOrthoLecons, motsDeLecon } from '../src/core/orthographe/lessons';
+import { diffCorrect } from '../src/core/orthographe/diff';
 
 beforeEach(() => {
   localStorage.clear();
@@ -298,5 +299,43 @@ describe('orthographe — leçons (prédéfinies + listes)', () => {
   test('motsDeLecon : id inconnu -> liste vide', () => {
     const s = emptyOrthoState();
     expect(motsDeLecon(s, 'inconnu')).toEqual([]);
+  });
+});
+
+describe('orthographe — diff de correction', () => {
+  test('saisie correcte -> aucune lettre marquée', () => {
+    expect(diffCorrect('château', 'château')).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+
+  test('accent oublié -> seule la lettre accentuée est marquée', () => {
+    // « chateau » vs « château » : le â (index 2) est marqué.
+    expect(diffCorrect('chateau', 'château')).toEqual([
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+
+  test('saisie vide -> toutes les lettres marquées', () => {
+    expect(diffCorrect('', 'chat')).toEqual([true, true, true, true]);
+  });
+
+  test('lettre finale muette oubliée -> dernière lettre marquée', () => {
+    // « gran » vs « grand » : le d final est marqué.
+    const d = diffCorrect('gran', 'grand');
+    expect(d[d.length - 1]).toBe(true);
+    expect(d.slice(0, -1)).toEqual([false, false, false, false]);
   });
 });

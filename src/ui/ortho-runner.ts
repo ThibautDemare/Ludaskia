@@ -20,8 +20,10 @@ import {
   validerMode,
 } from '../core/orthographe/runner';
 import type { MotOrtho, OrthoState } from '../core/orthographe/types';
+import { diffCorrect } from '../core/orthographe/diff';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 import { goCategorie } from './navigation';
+import { renderAtelier } from './ortho-atelier';
 import { dicteeDisponible } from './tts';
 
 const ACCENTS = ['é', 'è', 'ê', 'à', 'â', 'ç', 'ô', 'î', 'ï', 'û', 'ù', 'œ', '-', "'"];
@@ -68,27 +70,16 @@ function renderNext(): void {
     return;
   }
   const act = prochaineActivite(word, dispoDictee);
-  if (act === 'atelier') renderAtelier(word);
-  else if (act === 'tuiles') renderTuiles(word);
-  else renderMotCache(word); // motCache (la dictée n'est pas proposée en v1)
-}
-
-/* ---------- Atelier (version légère) ---------- */
-function renderAtelier(word: MotOrtho): void {
-  sheets().innerHTML = `
-    <div class="page ortho-run">
-      <p class="ortho-run-consigne">Regarde bien ce mot et repère les pièges (les endroits où on pourrait se tromper).</p>
-      <div class="ortho-mot-affiche">${escapeHTML(word.mot)}</div>
-      <p class="ortho-hint">L'atelier pour entourer les pièges arrive bientôt.</p>
-      <button class="btn-primary" id="btnAtelierOk">J'ai bien regardé →</button>
-    </div>`;
-  sheets()
-    .querySelector('#btnAtelierOk')!
-    .addEventListener('click', () => {
-      marquerAtelierFait(word);
-      saveOrtho(st);
-      renderNext();
+  if (act === 'atelier') {
+    renderAtelier(sheets(), word, {
+      onDone: () => {
+        marquerAtelierFait(word);
+        saveOrtho(st);
+        renderNext();
+      },
     });
+  } else if (act === 'tuiles') renderTuiles(word);
+  else renderMotCache(word); // motCache (la dictée n'est pas proposée en v1)
 }
 
 /* ---------- Affiche / masque ---------- */
@@ -138,10 +129,16 @@ function renderMotCache(word: MotOrtho): void {
         input.value = '';
         input.focus();
       } else {
-        fb.innerHTML = `<span class="fb-ko">Le mot s'écrit : <b>${escapeHTML(word.mot)}</b>.</span>`;
-        (sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
-        input.readOnly = true;
-        boutonContinuer(fb);
+        // 2e erreur : on bascule sur l'atelier de correction (diff sur le mot).
+        const diff = diffCorrect(input.value, word.mot);
+        renderAtelier(sheets(), word, {
+          onDone: () => {
+            saveOrtho(st);
+            renderNext();
+          },
+          diff,
+          consigne: "Regarde où tu t'es trompé, puis entoure le piège.",
+        });
       }
     }
   };

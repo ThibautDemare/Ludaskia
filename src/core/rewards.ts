@@ -200,9 +200,19 @@ export const TROPHIES: Trophy[] = [
   ]),
   ...tiers('stars', '⭐', 'stars', [
     { n: 5, title: 'Étoile montante', desc: '5 leçons réussies sans faute.' },
-    { n: 10, title: "Chasseur d'étoiles", desc: '10 leçons réussies sans faute.' },
-    { n: 15, title: 'Sans faute partout', desc: 'Les 15 leçons étoilées.' },
+    { n: 15, title: "Chasseur d'étoiles", desc: '15 leçons réussies sans faute.' },
+    { n: 30, title: 'Pluie d’étoiles', desc: '30 leçons réussies sans faute.' },
   ]),
+  {
+    // Seuil dynamique : « toutes les leçons étoilées », dérivé du catalogue
+    // (s'étend automatiquement quand on ajoute des leçons), au lieu d'une
+    // constante codée en dur — il y a aujourd'hui bien plus de 15 leçons.
+    id: 'starsAll',
+    icon: '🌟',
+    title: 'Sans faute partout',
+    desc: 'Décrocher l’étoile de toutes les leçons.',
+    test: (g: any) => g.totalLessons > 0 && g.stars >= g.totalLessons,
+  },
   {
     id: 'trained10',
     icon: '💪',
@@ -356,6 +366,7 @@ export function gSnapshot() {
   return {
     totalRuns: all.length,
     stars: starsEarned(),
+    totalLessons: getAllLessons().length, // total de leçons du catalogue (seuil du trophée « partout »)
     maxStreak: s.max || s.days || 0,
     bestExpressMs: re.length ? Math.min(...re.map((r) => r.ms)) : Infinity,
     perfectBilan: all.some((r) => r.count > 0 && r.ok === r.count),

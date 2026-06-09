@@ -2,7 +2,7 @@
    Rendu de l'écran d'accueil et du sélecteur de leçons
    ============================================================ */
 import { escapeHTML, fmt } from '../core/utils';
-import { activeProfile, loadProfilesMeta } from '../core/profiles';
+import { activeProfile, loadProfilesMeta, PROFILE_EMOJIS } from '../core/profiles';
 import { LESSONS } from '../core/lessons';
 import { getAllLessons } from '../core/catalog';
 import {
@@ -60,12 +60,34 @@ export function renderProfileMenu() {
       )
       .join('') + `<button class="pm-item pm-manage" id="pmManage">⚙️ Gérer les profils</button>`;
 }
+/* Profil dont la palette d'avatars est ouverte (null = aucune). Géré ici car
+   l'écran de gestion se re-rend entièrement via renderProfiles(). */
+let emojiPickerFor: string | null = null;
+// Ouvre la palette d'un profil (ou la referme si on reclique le même). Renvoie
+// le nouvel état ouvert pour permettre à l'appelant de re-rendre.
+export function toggleEmojiPicker(uuid: string) {
+  emojiPickerFor = emojiPickerFor === uuid ? null : uuid;
+}
+export function closeEmojiPicker() {
+  emojiPickerFor = null;
+}
+/* Palette d'avatars : grille des émojis disponibles, le courant marqué. */
+function emojiPaletteHTML(current: string) {
+  const opts = PROFILE_EMOJIS.map(
+    (e) =>
+      `<button class="emoji-opt${e === current ? ' current' : ''}" data-act="set-emoji" data-emoji="${e}"${
+        e === current ? ' aria-current="true"' : ''
+      } title="${e === current ? 'Avatar actuel' : 'Choisir cet avatar'}">${e}</button>`,
+  ).join('');
+  return `<div class="emoji-palette" role="listbox" aria-label="Choisir un avatar">${opts}</div>`;
+}
 /* Écran de gestion des profils */
 export function renderProfiles() {
   const el = document.getElementById('profileList');
   if (!el) return;
   const m = loadProfilesMeta();
   if (!m) return;
+  if (emojiPickerFor && !m.list.some((p) => p.uuid === emojiPickerFor)) emojiPickerFor = null;
   el.innerHTML =
     m.list
       .map(
@@ -78,11 +100,12 @@ export function renderProfiles() {
         ${p.uuid === m.active ? '<span class="profile-tag">actif</span>' : ''}
       </button>
       <span class="profile-tools">
-        <button data-act="emoji" title="Changer l'avatar">🎨</button>
+        <button data-act="emoji" title="Changer l'avatar"${p.uuid === emojiPickerFor ? ' aria-expanded="true"' : ''}>🎨</button>
         <button data-act="rename" title="Renommer">✏️</button>
         <button data-act="reset" title="Réinitialiser la progression">♻️</button>
         <button data-act="delete" title="Supprimer le profil"${m.list.length <= 1 ? ' disabled' : ''}>🗑️</button>
       </span>
+      ${p.uuid === emojiPickerFor ? emojiPaletteHTML(p.emoji) : ''}
     </div>`,
       )
       .join('') + `<button class="profile-add" id="profileAdd">＋ Nouveau profil</button>`;

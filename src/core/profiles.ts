@@ -133,12 +133,14 @@ export function renameProfile(uuid: string, name: string) {
     saveProfilesMeta(m);
   }
 }
-export function cycleProfileEmoji(uuid: string) {
+// Affecte directement l'avatar choisi dans la palette (no-op si l'émoji est
+// inconnu du catalogue PROFILE_EMOJIS).
+export function setProfileEmoji(uuid: string, emoji: string) {
+  if (!PROFILE_EMOJIS.includes(emoji)) return;
   const m = loadProfilesMeta();
   const p = m && m.list.find((x) => x.uuid === uuid);
-  if (!p) return;
-  const i = PROFILE_EMOJIS.indexOf(p.emoji);
-  p.emoji = PROFILE_EMOJIS[(i + 1) % PROFILE_EMOJIS.length];
+  if (!p || p.emoji === emoji) return;
+  p.emoji = emoji;
   p.updatedAt = Date.now();
   saveProfilesMeta(m);
 }

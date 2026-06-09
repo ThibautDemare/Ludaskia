@@ -66,6 +66,7 @@
 .profile-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap; /* la palette d'avatars passe sur une nouvelle ligne */
   gap: 10px;
   background: var(--paper);
   border: 2px solid transparent;
@@ -138,6 +139,41 @@
 }
 .profile-tools button[disabled] {
   opacity: 0.3;
+  cursor: default;
+}
+.profile-tools button[aria-expanded='true'] {
+  background: var(--blue-soft);
+}
+
+/* Palette d'avatars (sélecteur d'émojis ouvert sous la ligne de profil) */
+.emoji-palette {
+  flex-basis: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  gap: 6px;
+  margin-top: 4px;
+  padding: 10px;
+  background: var(--blue-soft);
+  border-radius: 10px;
+}
+.emoji-opt {
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  border: 2px solid transparent;
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 0;
+  transition:
+    transform 0.08s ease,
+    border-color 0.15s ease;
+}
+.emoji-opt:hover {
+  transform: scale(1.1);
+}
+.emoji-opt.current {
+  border-color: var(--blue);
+  background: #fff;
   cursor: default;
 }
 .profile-add {

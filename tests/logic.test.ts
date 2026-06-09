@@ -116,12 +116,14 @@ import {
   setActiveProfile,
   addProfile,
   renameProfile,
+  setProfileEmoji,
   resetProfile,
   deleteProfile,
   exportProfiles,
   importProfiles,
   touchActiveProfile,
   initProfiles,
+  PROFILE_EMOJIS,
 } from '../src/core/profiles';
 
 // API agrégée (parité avec l'ancien globalThis.__api), pour conserver le style `api.x`.
@@ -204,6 +206,8 @@ const api = {
   renameProfile,
   resetProfile,
   deleteProfile,
+  setProfileEmoji,
+  PROFILE_EMOJIS,
   exportProfiles,
   importProfiles,
 };
@@ -726,6 +730,15 @@ describe('Profils', () => {
     api.resetProfile(api.activeProfile().uuid);
     expect(api.loadRuns('express').length).toBe(0);
     expect(api.starsEarned()).toBe(0);
+  });
+  test('setProfileEmoji : choix direct d’un avatar valide, ignore l’inconnu (#32)', () => {
+    const u = api.activeProfile().uuid;
+    const cible = api.PROFILE_EMOJIS.find((e) => e !== api.activeProfile().emoji)!;
+    api.setProfileEmoji(u, cible);
+    expect(api.activeProfile().emoji).toBe(cible);
+    // Émoji hors catalogue → no-op (l'avatar reste inchangé).
+    api.setProfileEmoji(u, '💥');
+    expect(api.activeProfile().emoji).toBe(cible);
   });
   test('supprimer un profil (mais pas le dernier)', () => {
     const tom = api.addProfile('Tom');

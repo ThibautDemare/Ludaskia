@@ -111,6 +111,12 @@ import { checkItemAnswer } from '../src/core/items';
 import { genItems } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
 import {
+  EXPRESS_CAP,
+  expressQuestionsPerLesson,
+  expressWeight,
+  sampleExpressLessons,
+} from '../src/core/bilan-express';
+import {
   loadProfilesMeta,
   listProfiles,
   activeProfile,
@@ -750,6 +756,49 @@ describe('Français — Conjugaison', () => {
     const type = conjugationType('etre', 'present');
     expect(type.generate().type).toBe('text');
     expect(type.generate('saisie').type).toBe('text');
+  });
+});
+
+describe('Bilan express borné (issue #35)', () => {
+  test('questions par leçon : ≤ 3, et 1 quand il y a beaucoup de leçons', () => {
+    expect(expressQuestionsPerLesson(1)).toBe(3);
+    expect(expressQuestionsPerLesson(6)).toBe(3); // 20/6 = 3
+    expect(expressQuestionsPerLesson(7)).toBe(2); // 20/7 = 2
+    expect(expressQuestionsPerLesson(10)).toBe(2);
+    expect(expressQuestionsPerLesson(15)).toBe(1); // calcul mental
+    expect(expressQuestionsPerLesson(20)).toBe(1);
+    expect(expressQuestionsPerLesson(52)).toBe(1); // conjugaison
+    expect(expressQuestionsPerLesson(0)).toBe(0);
+  });
+  test('total de questions borné autour du plafond', () => {
+    for (const n of [1, 4, 6, 7, 10, 15, 20, 52]) {
+      const lessons = Array.from({ length: n }, (_, i) => `l${i}`);
+      const selected = sampleExpressLessons(lessons);
+      const total = selected.length * expressQuestionsPerLesson(n);
+      expect(total).toBeLessThanOrEqual(EXPRESS_CAP);
+    }
+  });
+  test('poids : leçon fragile prioritaire, leçon récente dépriorisée', () => {
+    expect(expressWeight(null, false)).toBe(3); // jamais vue
+    expect(expressWeight(40, false)).toBe(4); // faible
+    expect(expressWeight(70, false)).toBe(2); // moyenne
+    expect(expressWeight(95, false)).toBe(1); // solide
+    expect(expressWeight(40, true)).toBe(2); // faible mais déjà tirée
+    expect(expressWeight(95, true)).toBe(1); // plancher à 1
+  });
+  test('échantillonnage : au plus `cap` leçons, distinctes, issues de l’ensemble', () => {
+    const lessons = Array.from({ length: 52 }, (_, i) => `l${i}`);
+    for (let run = 0; run < 30; run++) {
+      const selected = sampleExpressLessons(lessons);
+      expect(selected.length).toBe(EXPRESS_CAP);
+      expect(new Set(selected).size).toBe(selected.length); // distinctes
+      expect(selected.every((id) => lessons.includes(id))).toBe(true);
+    }
+  });
+  test('pas d’échantillonnage en deçà du plafond : toutes les leçons', () => {
+    const lessons = Array.from({ length: 15 }, (_, i) => `l${i}`);
+    const selected = sampleExpressLessons(lessons);
+    expect(selected.sort()).toEqual(lessons.sort());
   });
 });
 

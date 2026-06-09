@@ -20,6 +20,7 @@ import { escapeHTML } from '../core/utils';
 import { lessonCardHTML } from './render';
 import { startCategorySprint } from './sprint';
 import { runBilanConfig } from './bilan';
+import { buildExpressConfig } from '../core/bilan-express';
 import {
   startLecon,
   goCategories,
@@ -28,6 +29,10 @@ import {
   goOrthoNew,
   goOrthoEdit,
 } from './navigation';
+
+/* Dernier tirage d'express par catégorie (rotation : on évite de
+   refaire tomber le même échantillon de leçons d'un express à l'autre). */
+const lastExpressByCat: Record<string, string[]> = {};
 
 /* Icône par matière (fallback générique). */
 const SUBJECT_ICON: Record<string, string> = { math: '🔢', francais: '📚' };
@@ -101,7 +106,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 
   el.innerHTML = `
     <div class="cat-actions">
-      <button class="cat-action" data-act="express">⏱️ Bilan express<small>3 questions / leçon</small></button>
+      <button class="cat-action" data-act="express">⏱️ Bilan express<small>rapide · ~20 questions</small></button>
       <button class="cat-action" data-act="complet">📚 Bilan complet<small>toutes les questions</small></button>
       <button class="cat-action" data-act="sprint">🏃 Sprint 5 min<small>cette catégorie</small></button>
     </div>
@@ -115,12 +120,14 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 
   // Bilans et sprint de la catégorie
   el.querySelector('[data-act="express"]')!.addEventListener('click', () => {
-    runBilanConfig({
-      id: '',
-      label: `Bilan express — ${category?.label ?? ''}`,
+    // Express borné + échantillonné (cf. #35), avec rotation par catégorie.
+    const config = buildExpressConfig(
+      `Bilan express — ${category?.label ?? ''}`,
       lessonIds,
-      questionsPerLesson: 3,
-    });
+      lastExpressByCat[categoryId],
+    );
+    lastExpressByCat[categoryId] = config.lessonIds;
+    runBilanConfig(config);
   });
   el.querySelector('[data-act="complet"]')!.addEventListener('click', () => {
     runBilanConfig({

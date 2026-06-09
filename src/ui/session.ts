@@ -89,10 +89,9 @@ export function verify() {
   const enough = inputs.length > 0 && total >= inputs.length * 0.6;
   const notEnough = recordable && !enough && !getSessionRecorded();
   // Enregistrement de l'essai (une seule fois par session)
-  // → bilan complet/express : classement + médaille
+  // → bilan complet/express : enregistré (régularité, trophées) mais non classé
   // → leçon seule : étoile si sans-faute
-  let medalInfo: any = null,
-    starInfo: any = null,
+  let starInfo: any = null,
     streakDays = 0,
     goalRes: any = null,
     niveauGagne = 0, // > 0 si on vient d'atteindre un nouveau niveau
@@ -112,21 +111,23 @@ export function verify() {
       const res = recordLessonResult(currentLessonId!, perfect);
       starInfo = { perfect, newStar: res.newStar, count: res.count };
     } else {
-      medalInfo = recordRun(currentMode, ok, inputs.length, ms);
+      // Bilan (express/complet) : on enregistre l'essai — il compte pour les
+      // objectifs de régularité et les trophées cumulatifs — mais SANS
+      // classement ni médaille. Les leçons d'un bilan varient à chaque fois :
+      // un « record » comparable n'aurait pas de sens (#35). medalInfo reste nul.
+      recordRun(currentMode, ok, inputs.length, ms);
     }
     // Objectif du jour + trophées (évalués après l'enregistrement de l'essai)
     goalRes = updateGoal({
       mode: currentMode,
       newStar: !!(starInfo && starInfo.newStar),
       perfect,
-      isRecord: !!(medalInfo && medalInfo.isRecord),
       lessonId: currentLessonId,
       lessonPct: Math.round((ok / inputs.length) * 100),
     });
     newTrophies = evaluateTrophies();
     // Liste des récompenses obtenues (sert à la modale + confettis)
     // Le passage de niveau a sa propre modale dédiée (voir plus bas).
-    if (medalInfo && medalInfo.isRecord) celeb.push({ icon: '🎉', text: 'Nouveau record !' });
     if (starInfo && starInfo.newStar)
       celeb.push({ icon: '⭐', text: 'Étoile gagnée pour cette leçon !' });
     newTrophies.forEach((t) => celeb.push({ icon: t.icon, text: `Nouveau trophée : ${t.title}` }));
@@ -145,23 +146,6 @@ export function verify() {
     Temps : <strong>${fmt(ms)}</strong></span>`;
   if (notEnough) {
     html += `<div class="rb-warn">⚠️ Réponds à au moins 60 % des calculs pour valider ton temps et gagner des récompenses.</div>`;
-  }
-  if (medalInfo) {
-    if (medalInfo.medal) {
-      const M = (
-        {
-          1: ['🥇', "Médaille d'or"],
-          2: ['🥈', "Médaille d'argent"],
-          3: ['🥉', 'Médaille de bronze'],
-        } as Record<number, string[]>
-      )[medalInfo.medal];
-      html += `<div class="rb-medal"><span class="rb-medal-ico">${M[0]}</span><span class="rb-medal-txt">${M[1]} !</span></div>`;
-    }
-    if (medalInfo.isRecord) html += `<div class="rb-record">🎉 Nouveau record !</div>`;
-    let rk = `C'est ton ${medalInfo.rank}<sup>${medalInfo.rank === 1 ? 'er' : 'e'}</sup> meilleur essai sur ${medalInfo.total}.`;
-    if (medalInfo.total < 3) rk += ` Encore ${3 - medalInfo.total} pour décrocher une médaille !`;
-    rk += streakSuffix(streakDays);
-    html += `<div class="rb-rank">${rk}</div>`;
   }
   if (starInfo) {
     if (starInfo.perfect) {

@@ -9,7 +9,6 @@
    lieu de quitter la page. On utilise le hash (et non
    history.pushState) pour rester compatible avec file://.
    ============================================================ */
-import { fichesPagesHTML, buildFiches, bilanHTML } from '../core/lessons';
 import { getAllLessons, getLessonById } from '../core/catalog';
 import { buildLessonFiche } from '../core/build';
 import { setInputCounter, setSessionItems, renderItem } from '../core/items';
@@ -81,12 +80,6 @@ export function goOrthoEdit(id: string) {
 export function showProfiles() {
   location.hash = 'profils';
 }
-export function startComplet() {
-  location.hash = 'complet';
-}
-export function startExpress() {
-  location.hash = 'express';
-}
 export function startLecon(id: string) {
   if (getAllLessons().find((l) => l.id === id)) location.hash = 'lecon-' + id;
 }
@@ -109,9 +102,7 @@ export function startRevision() {
 
 export function route() {
   const h = (location.hash || '').replace(/^#/, '');
-  if (h === 'complet') runComplet();
-  else if (h === 'express') runExpress();
-  else if (h === 'sprint-config') showSprintConfigView();
+  if (h === 'sprint-config') showSprintConfigView();
   else if (h === 'sprint') runSprint();
   else if (h === 'bilan-custom') showBilanCustomView();
   else if (h.startsWith('bilan-cat-')) {
@@ -317,22 +308,6 @@ export function showBilanCustomView(categoryId?: string) {
   renderBilanConfigScreen(document.getElementById('bilanCustomContent')!, categoryId);
   document.getElementById('bilan-custom')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-export function runComplet() {
-  currentMode = 'complet';
-  setInputCounter(0);
-  setSessionItems({});
-  // À l'écran : pas de page de garde ni de bilans, juste les 15 fiches.
-  document.getElementById('sheets')!.innerHTML = fichesPagesHTML(buildFiches());
-  afterStart();
-}
-export function runExpress() {
-  currentMode = 'express';
-  setInputCounter(0);
-  setSessionItems({});
-  // À l'écran : un seul bilan express.
-  document.getElementById('sheets')!.innerHTML = bilanHTML(1);
-  afterStart();
 }
 export function runLecon(id: string) {
   if (!getLessonById(id)) {

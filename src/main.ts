@@ -35,8 +35,6 @@ import {
   route,
   goHome,
   showProfiles,
-  startComplet,
-  startExpress,
   startSprint,
   startBilanCustom,
   startMatieres,
@@ -70,8 +68,6 @@ function wireDOM() {
   document.getElementById('btnVerify')!.addEventListener('click', verify);
   document.getElementById('btnHome')!.addEventListener('click', goHome);
   document.getElementById('btnPrint')!.addEventListener('click', printAll);
-  document.getElementById('cardComplet')!.addEventListener('click', startComplet);
-  document.getElementById('cardExpress')!.addEventListener('click', startExpress);
   document.getElementById('cardLecon')!.addEventListener('click', startMatieres);
   document.getElementById('cardSprint')!.addEventListener('click', startSprint);
   document.getElementById('cardBilanCustom')!.addEventListener('click', startBilanCustom);

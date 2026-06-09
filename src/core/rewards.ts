@@ -41,7 +41,6 @@ export function challengeContext() {
     weak: weakLessons(),
     starsLeft: starsEarned() < getAllLessons().length,
     hasSprint: loadRuns('sprint').length > 0,
-    hasExpress: loadRuns('express').length > 0,
   };
 }
 // Défis disponibles selon le contexte. build() fabrique le défi concret.
@@ -49,7 +48,6 @@ interface ChallengeContext {
   weak: string[];
   starsLeft: boolean;
   hasSprint: boolean;
-  hasExpress: boolean;
 }
 interface Challenge {
   type: string;
@@ -71,11 +69,6 @@ export const CHALLENGES: Challenge[] = [
     type: 'beatSprint',
     avail: (c) => c.hasSprint,
     build: () => ({ type: 'beatSprint', label: 'Bats ton record de sprint !' }),
-  },
-  {
-    type: 'beatExpress',
-    avail: (c) => c.hasExpress,
-    build: () => ({ type: 'beatExpress', label: 'Bats ton record au bilan express !' }),
   },
   {
     type: 'remediation',
@@ -123,9 +116,6 @@ export function updateGoal(ev: any) {
       break;
     case 'beatSprint':
       if (ev.mode === 'sprint' && ev.isRecord) inc = 1;
-      break;
-    case 'beatExpress':
-      if (ev.mode === 'express' && ev.isRecord) inc = 1;
       break;
     case 'remediation':
       if (ev.mode === 'lecon' && ev.lessonId === goal.lesson && ev.lessonPct >= 80) inc = 1;

@@ -170,16 +170,18 @@ accesseur/mutateur, **comportement identique** :
 Vues routées **par hash** (le Précédent/Suivant du navigateur fonctionne, et un
 hébergement statique sous sous-chemin `/Ludaskia/` ne nécessite aucune config de
 fallback SPA) : `#accueil` · `#matieres` · `#matiere-<id>` · `#categorie-<id>` ·
-`#lecon-<id>` · `#sprint-config` · `#sprint` · `#bilan-custom` · `#complet` ·
-`#express` · `#profils` · `#revision` (`#lecons`, ancien sélecteur plat, reste
+`#lecon-<id>` · `#sprint-config` · `#sprint` · `#bilan-custom` · `#bilan-cat-<id>` ·
+`#profils` · `#revision` (`#lecons`, ancien sélecteur plat, reste
 routable mais n'est plus lié). Les identifiants de leçon sont des **chaînes**
 (`math-tables-addition`, `fr-conj-etre-present`…). Les déclencheurs changent juste
 le hash ; `route()` (sur `hashchange`) rend la vue.
 
 Modes d'exercice : **une leçon à la fois** (atteinte via Matière → Catégorie),
-**bilan express/complet** (maths global depuis l'accueil, ou par catégorie),
-**bilan personnalisé** (sélection libre + favoris), **sprint 5 min** (filtrable),
-**révision** (rejoue les erreurs, n'enregistre rien).
+**bilan express/complet** (au niveau d'une catégorie ; l'express est borné),
+**bilan personnalisé** (sélection libre, ou scopé à une catégorie, + favoris),
+**sprint 5 min** (filtrable, multi-matières), **révision** (rejoue les erreurs,
+n'enregistre rien). L'accueil ne propose plus de cartes express/complet : on y
+accède par Matière → Catégorie.
 
 ### Pipeline multi-matières
 Le cœur du moteur est agnostique de la matière. Une `LessonDef` porte un
@@ -212,10 +214,14 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
 - Pas de migration de données prévue (on part de profils vierges).
 
 ## Gamification (pédagogie : régularité espacée, pas de pression quotidienne)
-- **Médailles** = podiums des classements (🥇🥈🥉). **Trophées** = collection de
-  succès cumulatifs.
+- **Médailles** = podiums des classements (🥇🥈🥉), réservés au **sprint** (seul
+  ensemble stable, donc comparable). Les **bilans** (express/complet) ne sont
+  **pas classés** — leurs leçons varient d'un essai à l'autre — mais restent
+  enregistrés (régularité + trophées cumulatifs). **Trophées** = succès cumulatifs.
 - **Objectifs de régularité** (panneau d'accueil, périodes calendaires) :
-  3 sprints/semaine, 2 bilans express/mois, 1 bilan complet/mois.
+  3 sprints/semaine, 2 bilans express/mois, 1 bilan complet/mois. Les bilans de
+  catégorie et personnalisés y comptent (mode déduit du nombre de questions :
+  « toutes » → complet, sinon express).
 - **Défi du jour** contextuel et « qualité » : jamais un défi impossible
   (remédiation seulement s'il existe une leçon < 70 % ; « bats ton record »
   seulement s'il y a un record).
@@ -272,5 +278,6 @@ vérifiable » (filtre : **automatisme/mémorisation**) :
 - d'autres contenus : maths étendus (conversions d'unités), verbes irréguliers
   anglais ;
 - **filtrage par niveau scolaire** (chaque `LessonDef` porte déjà un `level`) ;
-- bilans express/complet « globaux » couvrant toutes les matières (aujourd'hui
-  les cartes d'accueil restent maths ; les bilans par catégorie couvrent le reste).
+- **impression PDF contextuelle** multi-matières (#40) et **mode Révision**
+  d'accueil à répétition espacée (#45) — suite du chantier « refonte accueil
+  & bilans ».

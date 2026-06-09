@@ -46,7 +46,10 @@ export function runBilanConfig(config: BilanConfig): void {
     html = bilanCustomExpressHTML(config);
   }
   document.getElementById('sheets')!.innerHTML = html;
-  setCurrentMode('bilan');
+  // Un bilan compte pour les objectifs de régularité : « complet » quand toutes
+  // les questions sont demandées, « express » sinon (#35). Ces essais ne sont
+  // pas classés (cf. session.ts) car les leçons varient d'un bilan à l'autre.
+  setCurrentMode(config.questionsPerLesson === 'all' ? 'complet' : 'express');
   setCurrentLessonId(null);
   afterStart();
 }

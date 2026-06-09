@@ -9,7 +9,6 @@ import {
   loadRuns,
   cmpRun,
   runPct,
-  fmtRecord,
   starsEarned,
   loadStars,
   loadLessonStats,
@@ -112,17 +111,6 @@ export function renderProfiles() {
   renderToolbarProfile(); // garde le bouton de la barre synchronisé
 }
 
-/* Record perso affiché sur une carte de l'accueil */
-function fillCardRecord(elId: string, mode: string) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  const runs = loadRuns(mode);
-  if (!runs.length) {
-    el.innerHTML = `<span class="muted">Aucun essai — à toi de jouer !</span>`;
-    return;
-  }
-  el.innerHTML = `🏅 Ton record : <strong>${fmtRecord([...runs].sort(cmpRun)[0])}</strong>`;
-}
 /* Record de sprint (compté en nombre de bonnes réponses) */
 function fillSprintRecord(elId: string) {
   const el = document.getElementById(elId);
@@ -178,8 +166,6 @@ export function boardHTML(mode: string, label: string) {
 }
 export function renderHomeStats() {
   // Le badge XP vit désormais dans la barre d'outils (renderToolbarProfile).
-  fillCardRecord('recComplet', 'complet');
-  fillCardRecord('recExpress', 'express');
   const recL = document.getElementById('recLecon');
   if (recL) {
     const n = starsEarned();
@@ -190,11 +176,9 @@ export function renderHomeStats() {
   renderObjectives();
   renderGoal();
   const boards = document.getElementById('boards');
-  if (boards)
-    boards.innerHTML =
-      sprintBoardHTML() +
-      boardHTML('express', 'Bilan express') +
-      boardHTML('complet', 'Bilan complet');
+  // Seul le sprint a un classement comparable (ensemble stable). Les bilans
+  // express/complet varient d'un essai à l'autre → pas de podium (#35).
+  if (boards) boards.innerHTML = sprintBoardHTML();
   evaluateTrophies(); // rattrape d'éventuels trophées acquis (sans célébration ici)
   renderTrophies();
   renderFavoris(document.getElementById('favoris'));

@@ -23,14 +23,14 @@ import {
   touchActiveProfile,
   addProfile,
   renameProfile,
-  cycleProfileEmoji,
+  setProfileEmoji,
   resetProfile,
   deleteProfile,
   setActiveProfile,
   exportProfiles,
   importProfiles,
 } from './core/profiles';
-import { renderProfiles } from './ui/render';
+import { renderProfiles, toggleEmojiPicker, closeEmojiPicker } from './ui/render';
 import {
   route,
   goHome,
@@ -131,6 +131,8 @@ function wireDOM() {
     const row = e.target.closest('.profile-row');
     if (!row) return;
     const uuid = row.dataset.uuid;
+    // Toute action autre que l'ouverture/choix d'avatar referme la palette.
+    if (btn.dataset.act !== 'emoji' && btn.dataset.act !== 'set-emoji') closeEmojiPicker();
     switch (btn.dataset.act) {
       case 'pick':
         setActiveProfile(uuid);
@@ -145,7 +147,12 @@ function wireDOM() {
         break;
       }
       case 'emoji':
-        cycleProfileEmoji(uuid);
+        toggleEmojiPicker(uuid); // ouvre/replie la palette d'avatars
+        renderProfiles();
+        break;
+      case 'set-emoji':
+        setProfileEmoji(uuid, btn.dataset.emoji);
+        closeEmojiPicker();
         renderProfiles();
         break;
       case 'reset':

@@ -713,6 +713,44 @@ describe('Français — Conjugaison', () => {
     expect(items.length).toBe(4);
     expect(new Set(items.map((it) => it.text)).size).toBe(4);
   });
+  test('mode QCM : 4 choix distincts, bonne réponse incluse, toutes formes réelles (issue #53)', () => {
+    const tenses = ['present', 'futur', 'imparfait', 'passe_compose'] as const;
+    const allForms = (verbId: string) => {
+      const v = VERBS.find((x) => x.id === verbId)!;
+      return new Set(tenses.flatMap((t) => v.forms[t]));
+    };
+    for (const verbId of ['etre', 'aimer', 'aller', 'prendre']) {
+      const formsSet = allForms(verbId);
+      for (const tense of tenses) {
+        const type = conjugationType(verbId, tense);
+        for (let i = 0; i < 30; i++) {
+          const ex = type.generate('qcm');
+          expect(ex.type).toBe('qcm');
+          if (ex.type === 'qcm') {
+            expect(ex.choices.length).toBe(4);
+            expect(new Set(ex.choices).size).toBe(4); // distincts
+            expect(ex.choices.includes(ex.answer)).toBe(true); // bonne réponse présente
+            expect(ex.choices.every((c) => formsSet.has(c))).toBe(true); // jamais de faute
+            expect(ex.question.includes('@')).toBe(true);
+          }
+        }
+      }
+    }
+  });
+  test('mode QCM : check accepte la bonne forme, refuse une autre proposition', () => {
+    const type = conjugationType('etre', 'imparfait');
+    const ex = type.generate('qcm');
+    if (ex.type === 'qcm') {
+      expect(type.check(ex, ex.answer)).toBe(true);
+      const wrong = ex.choices.find((c) => c !== ex.answer)!;
+      expect(type.check(ex, wrong)).toBe(false);
+    }
+  });
+  test('rétrocompatibilité : sans mode (ou « saisie ») → exercice texte', () => {
+    const type = conjugationType('etre', 'present');
+    expect(type.generate().type).toBe('text');
+    expect(type.generate('saisie').type).toBe('text');
+  });
 });
 
 describe('Profils', () => {

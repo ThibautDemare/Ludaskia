@@ -58,7 +58,10 @@ matière. Ex. **`francais/conjugaison.ts`** : tables de 13 verbes (être, avoir,
 1er groupe *aimer*, 2e groupe *finir*, aller, faire, venir, voir, dire, pouvoir,
 vouloir, prendre, naître) aux 4 temps **présent**, **futur**, **imparfait** et
 **passé composé** (les formes du passé composé incluent l'auxiliaire conjugué),
-fabrique `conjugationType(verbId, tense)` (un `ExerciseType`) et descripteurs
+fabrique `conjugationType(verbId, tense)` (un `ExerciseType` à deux modes :
+`saisie` par défaut — l'enfant écrit la forme — et `qcm` — choix entre plusieurs
+formes, **distracteurs dérivés du paradigme** du verbe, toutes de **vraies formes
+correctement orthographiées**, jamais une faute affichée) et descripteurs
 `CONJ_LESSONS` (une leçon par verbe × temps). Dossier `francais` sans cédille
 pour des chemins d'import ASCII portables ; le libellé affiché reste « Français ».
 
@@ -253,8 +256,10 @@ La hiérarchie **Matière → Catégorie → Leçon**, les réponses **texte nor
 (+ variantes) et la gamification **agnostique de la matière** sont désormais en
 place. Restent à explorer, en gardant le format « question courte → réponse
 vérifiable » (filtre : **automatisme/mémorisation**) :
-- **mode QCM** (`Exercise` de type `qcm` déjà prévu dans `exercise.ts`) pour
-  l'orthographe et la mémorisation (capitales/dates) ;
+- **mode QCM** : désormais disponible en **conjugaison** (`conjugationType`,
+  mode `qcm` — utilisé en sprint, distracteurs dérivés du paradigme) ; piste pour
+  la mémorisation (capitales/dates). *Écarté pour l'orthographe* (risque d'ancrage
+  de la faute) ;
 - d'autres contenus : maths étendus (conversions d'unités), verbes irréguliers
   anglais ;
 - **filtrage par niveau scolaire** (chaque `LessonDef` porte déjà un `level`) ;

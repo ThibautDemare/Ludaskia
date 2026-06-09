@@ -468,6 +468,22 @@ describe('Trophées', () => {
     expect(def.test!({ stars: 5 })).toBe(true);
     expect(def.test!({ stars: 4 })).toBe(false);
   });
+  test('trophée « Sans faute partout » : seuil dynamique = nb réel de leçons (#39)', () => {
+    const def = api.TROPHIES.find((t) => t.id === 'starsAll')!;
+    expect(typeof def.test === 'function').toBe(true);
+    // Le seuil suit le nombre total de leçons (auto-extensible) : il ne se
+    // déclenche pas avant que TOUTES les leçons soient étoilées.
+    expect(def.test!({ stars: 5, totalLessons: 5 })).toBe(true);
+    expect(def.test!({ stars: 4, totalLessons: 5 })).toBe(false);
+    // Ajout de leçons ⇒ le même nombre d'étoiles ne suffit plus.
+    expect(def.test!({ stars: 67, totalLessons: 67 })).toBe(true);
+    expect(def.test!({ stars: 15, totalLessons: 67 })).toBe(false);
+    // Garde-fou : aucun déclenchement à 0 leçon.
+    expect(def.test!({ stars: 0, totalLessons: 0 })).toBe(false);
+  });
+  test('gSnapshot expose totalLessons (= catalogue)', () => {
+    expect(api.gSnapshot().totalLessons).toBe(getAllLessons().length);
+  });
 });
 
 describe('XP & gamification multi-matières', () => {

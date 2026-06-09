@@ -112,6 +112,18 @@ Filtrable à trois niveaux :
 - **Par matière** — toutes les leçons d'une matière
 - **Par catégorie** — toutes les leçons d'une catégorie
 
+Le sprint global mêle **maths + conjugaison** (l'orthographe, dynamique, n'est
+pas dans `getAllLessons()` et reste donc hors sprint). Ce mélange se justifie par
+l'**entraînement entrelacé** (*interleaving*, maintien des acquis variés) — **pas**
+par une « plasticité neuronale » (mythe du *brain-training* à cet âge). Pour rester
+sain sous chrono (cf. issue #54) :
+- **conjugaison en QCM** : un clic suffit, là où la frappe au clavier (accents,
+  apostrophes) pénaliserait la vitesse. Les choix sont de vraies formes du verbe
+  (mode `qcm` de `conjugationType`), jamais une faute affichée ;
+- **matière signalée** sur chaque question (pastille couleur + icône) ;
+- **mini-séries de 2-3 questions** d'une même matière avant d'en changer, pour
+  limiter le coût de bascule entre disciplines.
+
 ---
 
 ## Gamification

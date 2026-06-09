@@ -108,6 +108,7 @@ import {
   getLessonById,
 } from '../src/core/catalog';
 import { checkItemAnswer } from '../src/core/items';
+import { genItems } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
 import {
   loadProfilesMeta,
@@ -694,6 +695,23 @@ describe('Français — Conjugaison', () => {
     expect(checkItemAnswer({ text: 'x', answer: 'êtes', kind: 'text' }, 'etes')).toBe(false);
     expect(checkItemAnswer({ text: 'x', answer: 12 }, '12')).toBe(true);
     expect(checkItemAnswer({ text: 'x', answer: 12 }, '13')).toBe(false);
+  });
+  test('genItems : pas de doublon dans une leçon de conjugaison (issue #36)', () => {
+    const lesson = getLessonById('fr-conj-etre-present')!;
+    // On demande plus de questions qu'il n'existe de variantes (6 personnes).
+    for (let run = 0; run < 50; run++) {
+      const items = genItems(lesson, 8);
+      const texts = items.map((it) => it.text);
+      // Aucun item répété à l'identique…
+      expect(new Set(texts).size).toBe(texts.length);
+      // …et on plafonne au nombre de personnes plutôt que de compléter par des doublons.
+      expect(items.length).toBe(6);
+    }
+  });
+  test('genItems : renvoie exactement n items distincts quand n ≤ variantes', () => {
+    const items = genItems(getLessonById('fr-conj-aller-futur')!, 4);
+    expect(items.length).toBe(4);
+    expect(new Set(items.map((it) => it.text)).size).toBe(4);
   });
 });
 

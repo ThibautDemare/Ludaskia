@@ -12,22 +12,26 @@ import { setRenderLesson, renderItem, ficheHTMLGeneric } from './items';
 import type { Item } from './items';
 import { commKey } from './utils';
 
-/* Génère n items distincts pour une leçon (dédup par texte ; complète
-   avec des doublons si la leçon offre moins de n variantes). */
+/* Génère jusqu'à n items distincts pour une leçon (dédup par texte).
+   Si la leçon offre moins de n variantes (ex. une conjugaison = 6 personnes),
+   on renvoie la série plus courte SANS doublon : une question répétée à
+   l'identique n'a aucune valeur pédagogique. On s'arrête après une longue
+   série de tirages sans nouveauté (la pioche est aléatoire). */
 export function genItems(lesson: LessonDef, n: number): Item[] {
   const items: Item[] = [];
   const seen = new Set<string>();
-  let guard = 0;
-  while (items.length < n && guard < n * 30) {
+  let misses = 0;
+  while (items.length < n && misses < 80) {
     const it = genLessonItem(lesson);
     const key = commKey(it.text);
-    if (!seen.has(key)) {
-      seen.add(key);
-      items.push(it);
+    if (seen.has(key)) {
+      misses++;
+      continue;
     }
-    guard++;
+    seen.add(key);
+    items.push(it);
+    misses = 0;
   }
-  while (items.length < n) items.push(genLessonItem(lesson)); // peu de variantes → on complète
   return items;
 }
 

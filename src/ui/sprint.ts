@@ -135,9 +135,15 @@ let sprintScore = 0,
   sprintAnswered = 0,
   sprintNiveauDepart = 1; // niveau au lancement du sprint (pour détecter une montée)
 let sprintPerLesson: Record<string, { ok: number; total: number }> = {},
-  sprintLastKey = '',
+  sprintRecentKeys: string[] = [],
   sprintCurrent: Item | null = null,
   sprintCurrentDef: LessonDef | null = null;
+
+// Combien d'items récents on s'interdit de répéter. Fenêtre volontairement
+// modeste : sur un filtre réduit à une seule leçon (6 variantes en conjugaison),
+// elle laisse toujours des candidats valides — et le garde-fou de sprintNext
+// accepte de toute façon un item si la pioche n'en trouve pas d'autre.
+const SPRINT_RECENT = 4;
 
 // Stoppe proprement un sprint en cours (appelé en quittant la vue).
 export function sprintCleanup() {
@@ -156,7 +162,7 @@ export function runSprint() {
   sprintAnswered = 0;
   sprintNiveauDepart = niveauDepuisXP(getXP());
   sprintPerLesson = {};
-  sprintLastKey = '';
+  sprintRecentKeys = [];
   sprintCurrent = null;
   sprintCurrentDef = null;
   hideMenus();
@@ -206,7 +212,8 @@ function sprintUpdateScore() {
     el.textContent = `${sprintScore} bonne${sprintScore > 1 ? 's' : ''} réponse${sprintScore > 1 ? 's' : ''}`;
 }
 
-// Génère et affiche la prochaine question (en évitant un doublon immédiat).
+// Génère et affiche la prochaine question (en évitant de répéter l'un des
+// derniers items via une mémoire glissante).
 function sprintNext() {
   let q: Item,
     def: LessonDef,
@@ -217,8 +224,9 @@ function sprintNext() {
     q = genLessonItem(def); // aiguille math (bilanQ) / autres matières (texte) ; pose _lesson
     key = commKey(q.text);
     guard++;
-  } while (key === sprintLastKey && guard < 25);
-  sprintLastKey = key;
+  } while (sprintRecentKeys.includes(key) && guard < 25);
+  sprintRecentKeys.push(key);
+  if (sprintRecentKeys.length > SPRINT_RECENT) sprintRecentKeys.shift();
   sprintCurrent = q;
   sprintCurrentDef = def!;
   const stage = document.getElementById('sprintStage');

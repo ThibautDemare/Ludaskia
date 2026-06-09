@@ -55,4 +55,13 @@
   .mark {
     display: none !important;
   }
+  /* Les grilles sont adaptatives à l'écran ; on rétablit un nombre de colonnes
+     fixe sur le papier pour garder la mise en page A4 prévue. */
+  .grid.c3,
+  .bilan-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .grid.c4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }

@@ -92,11 +92,13 @@
   display: grid;
   gap: 14px 18px;
 }
+/* Colonnes adaptatives à l'écran (3 → 2 → 1 selon la largeur) ; nombre fixe
+   restauré à l'impression (voir print.scss) pour conserver la mise en page A4. */
 .grid.c3 {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 .grid.c4 {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
 }
 .op {
   font-size: 14px;
@@ -202,7 +204,7 @@
 }
 .bilan-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px 16px;
 }
 .bloc .blab {

@@ -3,8 +3,8 @@
    Suit le même pattern que sprint.ts (dépendance circulaire
    volontaire avec navigation.ts — valide en ES modules).
    ============================================================ */
-import { getAllLessons, CATEGORIES, SUBJECTS } from '../core/catalog';
-import type { BilanConfig } from '../core/catalog';
+import { getAllLessons, getLessonsByCategory, CATEGORIES, SUBJECTS } from '../core/catalog';
+import type { BilanConfig, LessonDef } from '../core/catalog';
 import { loadBilans, saveBilan, deleteBilan } from '../core/bilans';
 import { fichesPagesHTML } from '../core/lessons';
 import { bilanBlocksForIds, buildFichesForIds } from '../core/build';
@@ -74,81 +74,119 @@ function genId(): string {
 
 /* ---------- Écran de configuration ---------- */
 
-export function renderBilanConfigScreen(el: HTMLElement): void {
-  const lessons = getAllLessons();
+/* Liste de cases à cocher (toute la tuile est cliquable) pour un ensemble de leçons. */
+function lessonChecks(lessons: LessonDef[]): string {
+  return lessons
+    .map(
+      (l) =>
+        `<label class="bc-item">
+          <input type="checkbox" class="bc-lesson-check" value="${l.id}" checked>
+          <span>${escapeHTML(l.label)}</span>
+        </label>`,
+    )
+    .join('');
+}
 
-  // Grouper les leçons par sujet > catégorie
-  const subjectBlocks = SUBJECTS.map((subj) => {
-    const cats = CATEGORIES.filter((c) => c.subject === subj.id);
-    const catBlocks = cats
-      .map((cat) => {
-        const catLessons = lessons.filter((l) => l.subject === subj.id && l.category === cat.id);
-        if (!catLessons.length) return '';
-        const items = catLessons
-          .map(
-            (l) =>
-              `<label class="bc-item">
-                <input type="checkbox" class="bc-lesson-check" value="${l.id}" checked>
-                <span>${escapeHTML(l.label)}</span>
-              </label>`,
-          )
-          .join('');
-        return `<div class="bc-category">
-          <div class="bc-cat-label">${escapeHTML(cat.label)}</div>
-          <div class="bc-lessons-grid">${items}</div>
-        </div>`;
-      })
-      .join('');
-    return catBlocks
-      ? `<div class="bc-subject">
-          <div class="bc-section-title">${escapeHTML(subj.label)}</div>
-          ${catBlocks}
-        </div>`
-      : '';
-  }).join('');
+/* Écran de composition d'un bilan.
+   - global (categoryId absent) : leçons groupées par matière > catégorie ;
+   - scopé à une catégorie : liste à plat de ses leçons (entrée « Je choisis
+     mes leçons » depuis l'écran de catégorie).
+   Pensé tablette/mobile (cf. avis UX enfant) : grosses cibles tactiles, une
+   action principale « C'est parti », sauvegarde repliée pour le parent. */
+export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): void {
+  const category = categoryId ? CATEGORIES.find((c) => c.id === categoryId) : null;
+  const scoped = !!category;
+
+  let lessonsMarkup: string;
+  if (scoped) {
+    lessonsMarkup = `<div class="bc-lessons-grid">${lessonChecks(getLessonsByCategory(category!.id))}</div>`;
+  } else {
+    const lessons = getAllLessons();
+    lessonsMarkup = SUBJECTS.map((subj) => {
+      const catBlocks = CATEGORIES.filter((c) => c.subject === subj.id)
+        .map((cat) => {
+          const catLessons = lessons.filter((l) => l.subject === subj.id && l.category === cat.id);
+          if (!catLessons.length) return '';
+          return `<div class="bc-category">
+            <div class="bc-cat-label">${escapeHTML(cat.label)}</div>
+            <div class="bc-lessons-grid">${lessonChecks(catLessons)}</div>
+          </div>`;
+        })
+        .join('');
+      return catBlocks
+        ? `<div class="bc-subject"><div class="bc-section-title">${escapeHTML(subj.label)}</div>${catBlocks}</div>`
+        : '';
+    }).join('');
+  }
+
+  // Défaut : « Moyen » sur un écran scopé (révision pour de vrai), « Rapide » sinon.
+  const defaultNbq = scoped ? '5' : '3';
+  const nbqItem = (value: string, icon: string, intent: string, num: string) =>
+    `<label class="bc-nbq-item">
+      <input type="radio" name="bcNbq" class="bc-nbq-radio" value="${value}"${value === defaultNbq ? ' checked' : ''}>
+      <span>${icon} ${intent}${num ? ` <span class="bc-nbq-num">${num}</span>` : ''}</span>
+    </label>`;
+
+  const today = new Date();
+  const defaultName = scoped
+    ? `${category!.label} ${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}`
+    : '';
+  const runLabel = scoped ? `Bilan — ${category!.label}` : 'Bilan personnalisé';
 
   el.innerHTML = `
     <div class="bilan-config" id="bilanConfigForm">
+      ${scoped ? `<p class="bc-scope">Catégorie : <strong>${escapeHTML(category!.label)}</strong></p>` : ''}
       <div class="bc-section-title">Leçons à inclure</div>
       <div class="bc-top-actions">
-        <button class="bc-action-btn" id="bcSelectAll">Tout cocher</button>
-        <button class="bc-action-btn" id="bcSelectNone">Tout décocher</button>
+        <button class="bc-action-btn" id="bcSelectAll">✓ Tout choisir</button>
+        <button class="bc-action-btn" id="bcSelectNone">✗ Tout enlever</button>
       </div>
-      ${subjectBlocks}
+      ${lessonsMarkup}
 
       <div class="bc-section-title">Questions par leçon</div>
       <div class="bc-nbq">
-        <label class="bc-nbq-item"><input type="radio" name="bcNbq" class="bc-nbq-radio" value="3" checked> 3 (express)</label>
-        <label class="bc-nbq-item"><input type="radio" name="bcNbq" class="bc-nbq-radio" value="5"> 5</label>
-        <label class="bc-nbq-item"><input type="radio" name="bcNbq" class="bc-nbq-radio" value="10"> 10</label>
-        <label class="bc-nbq-item"><input type="radio" name="bcNbq" class="bc-nbq-radio" value="all"> Toutes (complet)</label>
+        ${nbqItem('3', '🐢', 'Rapide', '3')}
+        ${nbqItem('5', '🚶', 'Moyen', '5')}
+        ${nbqItem('10', '🏃', 'Costaud', '10')}
+        ${nbqItem('all', '🎯', 'Tout', '')}
       </div>
 
-      <div class="bc-section-title">Sauvegarder comme favori <span style="font-weight:400;color:var(--grey)">(optionnel)</span></div>
-      <div class="bc-save-row">
-        <input id="bcLabel" class="bc-label-input" type="text" placeholder="Ex : Révision semaine 5" maxlength="60">
-        <button id="bcSaveRun" class="bc-btn bc-btn-save">Sauvegarder et lancer</button>
+      <div class="bc-run-row">
+        <button id="bcRun" class="bc-btn bc-btn-run">▶ C'est parti !</button>
+        <span class="bc-count" id="bcCount"></span>
       </div>
 
-      <div class="bc-btns">
-        <button id="bcRun" class="bc-btn bc-btn-run">Lancer</button>
-      </div>
+      <details class="bc-save">
+        <summary>💾 Garder ce bilan pour plus tard</summary>
+        <div class="bc-save-row">
+          <input id="bcLabel" class="bc-label-input" type="text" placeholder="Nom du bilan" maxlength="60" value="${escapeHTML(defaultName)}">
+          <button id="bcSaveRun" class="bc-btn bc-btn-save">Enregistrer et lancer</button>
+        </div>
+      </details>
       <div class="bc-err" id="bcErr"></div>
     </div>`;
 
   const form = el.querySelector<HTMLElement>('#bilanConfigForm')!;
   const errEl = el.querySelector<HTMLElement>('#bcErr')!;
+  const countEl = el.querySelector<HTMLElement>('#bcCount')!;
 
-  el.querySelector('#bcSelectAll')!.addEventListener('click', () => {
+  const updateCount = () => {
+    const n = form.querySelectorAll<HTMLInputElement>('.bc-lesson-check:checked').length;
+    countEl.textContent = n
+      ? `${n} leçon${n > 1 ? 's' : ''} choisie${n > 1 ? 's' : ''}`
+      : 'Aucune leçon choisie';
+  };
+  updateCount();
+  form.addEventListener('change', updateCount);
+
+  const setAll = (checked: boolean) => {
     form
       .querySelectorAll<HTMLInputElement>('.bc-lesson-check')
-      .forEach((cb) => (cb.checked = true));
-  });
-  el.querySelector('#bcSelectNone')!.addEventListener('click', () => {
-    form
-      .querySelectorAll<HTMLInputElement>('.bc-lesson-check')
-      .forEach((cb) => (cb.checked = false));
-  });
+      .forEach((cb) => (cb.checked = checked));
+    updateCount();
+  };
+  el.querySelector('#bcSelectAll')!.addEventListener('click', () => setAll(true));
+  el.querySelector('#bcSelectNone')!.addEventListener('click', () => setAll(false));
 
   el.querySelector('#bcRun')!.addEventListener('click', () => {
     const config = readFormConfig(form);
@@ -157,6 +195,7 @@ export function renderBilanConfigScreen(el: HTMLElement): void {
       return;
     }
     errEl.textContent = '';
+    config.label = runLabel;
     runBilanConfig(config);
   });
 

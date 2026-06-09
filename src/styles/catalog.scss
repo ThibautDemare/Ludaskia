@@ -68,6 +68,7 @@
   border: 0;
   border-radius: 10px;
   padding: 12px 20px;
+  min-height: 48px;
   transition:
     background 0.12s,
     transform 0.08s;
@@ -80,6 +81,20 @@
 }
 .cat-action small {
   font-weight: 400;
-  font-size: 11.5px;
+  font-size: 12px;
   opacity: 0.85;
+}
+/* 4e action « ouvre un réglage » (composer un bilan) : style secondaire,
+   contour, pour la distinguer des 3 actions « 1 tap = ça démarre ». */
+.cat-action-secondary {
+  background: transparent;
+  color: var(--blue);
+  border: 2px solid var(--blue);
+}
+.cat-action-secondary:hover {
+  background: var(--blue);
+  color: #fff;
+}
+.cat-action-secondary small {
+  opacity: 1;
 }

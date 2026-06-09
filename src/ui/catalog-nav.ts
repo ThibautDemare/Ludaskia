@@ -25,6 +25,7 @@ import {
   startLecon,
   goCategories,
   goCategorie,
+  goCategorieBilan,
   startOrthoLecon,
   goOrthoNew,
   goOrthoEdit,
@@ -109,6 +110,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
       <button class="cat-action" data-act="express">⏱️ Bilan express<small>rapide · ~20 questions</small></button>
       <button class="cat-action" data-act="complet">📚 Bilan complet<small>toutes les questions</small></button>
       <button class="cat-action" data-act="sprint">🏃 Sprint 5 min<small>cette catégorie</small></button>
+      <button class="cat-action cat-action-secondary" data-act="custom">🎚️ Je choisis mes leçons<small>coche les leçons que tu veux</small></button>
     </div>
     <div class="lesson-list" id="catLessonList">${cards}</div>`;
 
@@ -139,6 +141,9 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
   });
   el.querySelector('[data-act="sprint"]')!.addEventListener('click', () => {
     startCategorySprint(categoryId);
+  });
+  el.querySelector('[data-act="custom"]')!.addEventListener('click', () => {
+    goCategorieBilan(categoryId);
   });
 }
 

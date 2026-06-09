@@ -127,9 +127,12 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   `pctColor`, config `REGULARITY`).
 - **`catalog-nav.ts`** — navigation **Matière → Catégorie → Leçons**
   (`renderSubjects`, `renderCategories`, `renderCategorie`) ; l'écran d'une
-  catégorie donne accès au bilan express/complet et au sprint de la catégorie.
-- **`bilan.ts`** — **bilan personnalisé** : configurateur (choix des leçons et du
-  nombre de questions), favoris (`renderFavoris`), exécution (`runBilanConfig`).
+  catégorie donne accès au bilan express (borné) / complet, au sprint, et à
+  « Je choisis mes leçons » (bilan sur mesure scopé à la catégorie).
+- **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, categoryId?)`
+  (global, ou scopé à une catégorie via `#bilan-cat-<id>` — liste à plat,
+  pensée tablette), choix du nombre de questions par intention, favoris
+  (`renderFavoris`), exécution (`runBilanConfig`).
 - **`navigation.ts`** — routing par hash (`route`), vues (`showHomeView`,
   `showMatieresView`/`showMatiereView`/`showCategorieView`,
   `showSprintConfigView`, `showBilanCustomView`, `showProfilesView`,

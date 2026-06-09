@@ -414,7 +414,7 @@ export function bilanHTML(numero: number) {
        <span class="print-only">Prénom : __________   Date : ________</span></p>
     <p class="bilan-temps print-only">Temps total : ______ min</p>
     <div class="bilan-grid">${cells}</div>
-    <p class="foot">Ludaskia</p>
+    <p class="foot print-only">Ludaskia</p>
   </div>`;
 }
 
@@ -435,7 +435,7 @@ export function fichesPagesHTML(fiches: string[]) {
   const pages = [];
   for (let i = 0; i < fiches.length; i += perPage) {
     pages.push(
-      `<div class="page">${fiches.slice(i, i + perPage).join('')}<p class="foot">Ludaskia</p></div>`,
+      `<div class="page">${fiches.slice(i, i + perPage).join('')}<p class="foot print-only">Ludaskia</p></div>`,
     );
   }
   return pages.join('');

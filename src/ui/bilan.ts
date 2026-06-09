@@ -29,7 +29,7 @@ function bilanCustomExpressHTML(config: BilanConfig): string {
     <p class="bilan-title">${escapeHTML(config.label)}</p>
     <p class="bilan-sub">${nbq} question${nbq > 1 ? 's' : ''} par leçon · ${config.lessonIds.length} leçon${config.lessonIds.length > 1 ? 's' : ''}</p>
     <div class="bilan-grid">${cells}</div>
-    <p class="foot">Ludaskia</p>
+    <p class="foot print-only">Ludaskia</p>
   </div>`;
 }
 

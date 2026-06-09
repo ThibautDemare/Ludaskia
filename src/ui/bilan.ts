@@ -163,8 +163,9 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
         <summary>💾 Garder ce bilan pour plus tard</summary>
         <div class="bc-save-row">
           <input id="bcLabel" class="bc-label-input" type="text" placeholder="Nom du bilan" maxlength="60" value="${escapeHTML(defaultName)}">
-          <button id="bcSaveRun" class="bc-btn bc-btn-save">Enregistrer et lancer</button>
+          <button id="bcSave" class="bc-btn bc-btn-save">💾 Enregistrer</button>
         </div>
+        <div class="bc-saved" id="bcSaved" role="status"></div>
       </details>
       <div class="bc-err" id="bcErr"></div>
     </div>`;
@@ -172,6 +173,7 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
   const form = el.querySelector<HTMLElement>('#bilanConfigForm')!;
   const errEl = el.querySelector<HTMLElement>('#bcErr')!;
   const countEl = el.querySelector<HTMLElement>('#bcCount')!;
+  const savedEl = el.querySelector<HTMLElement>('#bcSaved')!;
 
   const updateCount = () => {
     const n = form.querySelectorAll<HTMLInputElement>('.bc-lesson-check:checked').length;
@@ -202,10 +204,14 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
     runBilanConfig(config);
   });
 
-  el.querySelector('#bcSaveRun')!.addEventListener('click', () => {
+  // Enregistrer un favori SANS le lancer (#55) : on confirme sur place ; le
+  // favori apparaît dans « Mes bilans favoris » sur l'accueil. Pour le lancer,
+  // « C'est parti ! » reste disponible (en deux gestes : enregistrer puis lancer).
+  el.querySelector('#bcSave')!.addEventListener('click', () => {
+    savedEl.textContent = '';
     const label = el.querySelector<HTMLInputElement>('#bcLabel')!.value.trim();
     if (!label) {
-      errEl.textContent = 'Entre un nom pour sauvegarder le bilan.';
+      errEl.textContent = 'Entre un nom pour enregistrer le bilan.';
       return;
     }
     const config = readFormConfig(form);
@@ -217,7 +223,7 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
     config.label = label;
     config.id = genId();
     saveBilan(config);
-    runBilanConfig(config);
+    savedEl.textContent = `✓ « ${label} » enregistré — tu le retrouveras dans tes favoris.`;
   });
 }
 

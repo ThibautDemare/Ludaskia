@@ -249,6 +249,14 @@
 .bc-save[open] > summary {
   margin-bottom: 8px;
 }
+.bc-saved {
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ok);
+  margin-top: 8px;
+  min-height: 18px;
+}
 
 /* ---- Section favoris (accueil) ---- */
 .favoris {

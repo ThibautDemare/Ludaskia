@@ -64,4 +64,17 @@
   .grid.c4 {
     grid-template-columns: repeat(4, 1fr);
   }
+  /* Bilan contenant des réponses texte (conjugaison) : 2 colonnes max, pas la
+     grille dense des maths (les formes conjuguées sont longues). */
+  .bilan-grid:has(.ans-text) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  /* Conjugaison : lignes aérées (accents/apostrophes) et champ de réponse long
+     sur une ligne de base. La question rappelle déjà le pronom + l'infinitif. */
+  .conj-list {
+    line-height: 2.6;
+  }
+  .conj-op .ans-text {
+    min-width: 150px;
+  }
 }

@@ -6,6 +6,7 @@ import { getSessionItems, setSessionItems, checkItemAnswer } from '../core/items
 import type { Item } from '../core/items';
 import type { Trophy } from '../core/rewards';
 import { buildPrintableDOM } from '../core/lessons';
+import type { PrintScope } from '../core/lessons';
 import {
   updateStreak,
   recordLessonStats,
@@ -213,42 +214,49 @@ document.addEventListener('keydown', (e: any) => {
   else verify(); // dernier champ
 });
 
-/* ---------- Impression ----------
-   On injecte TOUJOURS la version complète, on imprime, puis on
-   restaure l'écran courant (gère aussi le Ctrl+P natif). */
+/* ---------- Impression (issue #40) ----------
+   Deux chemins :
+   - A (printAll) : imprimer l'écran courant tel quel. Les champs de réponse
+     sont vidés par le CSS print (.ans/.ans-free en transparent) → version
+     vierge sans rien réécrire. Sert au bouton 🖨 de la barre pendant un exercice.
+   - B (printScope) : imprimer un PDF contextuel SANS lancer l'interactif. On
+     pose un périmètre, beforeprint injecte buildPrintableDOM(scope) dans #sheets
+     (le CSS masque l'écran de menu), afterprint restaure. */
+let pendingPrintScope: PrintScope | null = null;
+export function printScope(scope: PrintScope) {
+  pendingPrintScope = scope;
+  window.print();
+}
 export function printAll() {
   window.print();
 }
 
 let printSnapshot: any = null;
 window.addEventListener('beforeprint', () => {
+  if (!pendingPrintScope) return; // chemin A : on n'altère pas #sheets
   const sheets = document.getElementById('sheets')!;
+  const banner = document.getElementById('resultBanner');
   printSnapshot = {
     sheets: sheets.innerHTML,
-    homeDisplay: document.getElementById('home')!.style.display,
-    banner: document.getElementById('resultBanner')
-      ? document.getElementById('resultBanner')!.outerHTML
-      : null,
-    items: getSessionItems(), // la version imprimable régénère des items : on garde ceux de la session
+    items: getSessionItems(), // buildPrintableDOM régénère des items : on garde ceux de la session
+    banner: banner ? banner.outerHTML : null,
   };
-  const banner = document.getElementById('resultBanner');
   if (banner) banner.remove();
-  sheets.innerHTML = buildPrintableDOM();
+  sheets.innerHTML = buildPrintableDOM(pendingPrintScope);
 });
 window.addEventListener('afterprint', () => {
+  pendingPrintScope = null;
+  if (!printSnapshot) return;
   const sheets = document.getElementById('sheets')!;
-  if (printSnapshot) {
-    sheets.innerHTML = printSnapshot.sheets;
-    setSessionItems(printSnapshot.items);
-    document.getElementById('home')!.style.display = printSnapshot.homeDisplay;
-    if (printSnapshot.banner) {
-      const tmp = document.createElement('div');
-      tmp.innerHTML = printSnapshot.banner;
-      const restored: any = tmp.firstChild;
-      sheets.parentNode!.insertBefore(restored, sheets);
-      const redo = restored.querySelector && restored.querySelector('#btnRedo');
-      if (redo) redo.addEventListener('click', startRevision); // le listener est perdu via outerHTML
-    }
-    printSnapshot = null;
+  sheets.innerHTML = printSnapshot.sheets;
+  setSessionItems(printSnapshot.items);
+  if (printSnapshot.banner) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = printSnapshot.banner;
+    const restored: any = tmp.firstChild;
+    sheets.parentNode!.insertBefore(restored, sheets);
+    const redo = restored.querySelector && restored.querySelector('#btnRedo');
+    if (redo) redo.addEventListener('click', startRevision); // le listener est perdu via outerHTML
   }
+  printSnapshot = null;
 });

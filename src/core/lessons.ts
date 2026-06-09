@@ -3,7 +3,7 @@
    ce qui permet de jouer une leçon seule OU le bilan complet.
    build() régénère des items frais à chaque appel.
    ============================================================ */
-import { rnd, choice, sample, commKey } from './utils';
+import { rnd, choice, sample, commKey, escapeHTML } from './utils';
 import { uniqueComm, uniqueExact } from './utils';
 import {
   add,
@@ -23,6 +23,9 @@ import {
   getSessionItems,
 } from './items';
 import type { Item } from './items';
+// Import « tardif » (utilisé seulement dans des corps de fonction) du pipeline
+// générique : dépendance circulaire build ↔ lessons sans effet de bord au chargement.
+import { buildLessonFiche, bilanBlocksForIds } from './build';
 
 export const LESSONS = [
   {
@@ -418,18 +421,9 @@ export function bilanHTML(numero: number) {
   </div>`;
 }
 
-/* ============================================================
-   Page de garde + pagination (impression)
-   ============================================================ */
-export function coverHTML() {
-  return `<div class="page cover print-only">
-    <div class="big">Ludaskia</div>
-    <div class="tagline">Fiches d'entraînement en autonomie · 15 ateliers</div>
-    <div class="idbox"><div>Prénom : ______________________</div><div>Date : ______________________</div></div>
-    <p class="consigne">Comment faire ? Je calcule de tête le plus vite possible, puis j'écris le résultat.
-      Si je bloque, je passe au suivant et j'y reviens à la fin. Bon entraînement !</p>
-  </div>`;
-}
+/* Pagination « écran » d'un ensemble de fiches (3 par bloc), utilisée par le
+   bilan personnalisé interactif. L'impression a sa propre pagination
+   (fichesPagesForIds, 2 par A4). */
 export function fichesPagesHTML(fiches: string[]) {
   const perPage = 3;
   const pages = [];
@@ -440,9 +434,100 @@ export function fichesPagesHTML(fiches: string[]) {
   }
   return pages.join('');
 }
-/* Contenu COMPLET pour l'impression : garde, 15 fiches, 2 bilans. */
-export function buildPrintableDOM() {
+
+/* ============================================================
+   Impression CONTEXTUELLE (issue #40)
+   Un PrintScope décrit quoi imprimer ; buildPrintableDOM s'appuie sur le
+   pipeline générique (buildLessonFiche / bilanBlocksForIds), donc TOUTES les
+   matières (maths + conjugaison), pas seulement le calcul mental.
+   ============================================================ */
+export interface PrintScope {
+  title: string; // titre de la page de garde
+  lessonIds: string[]; // leçons à imprimer (toutes matières)
+  kind: 'fiches' | 'bilan'; // entraînement vs évaluation
+  nbQ?: number; // questions par leçon pour un bilan (défaut 3)
+}
+
+// Au-delà de ce volume, on prévient (gros PDF) et on suggère l'impression par catégorie.
+const PRINT_PAGES_WARN = 20;
+// Leçons à lignes longues : elles occupent leur propre page à l'impression.
+const LONG_FICHE_LESSONS = new Set(['math-decompo-60', 'math-decomposer-multiplication']);
+
+/* Page de garde dynamique : titre du périmètre, nombre réel de fiches/leçons,
+   consigne générique (« je prends le temps qu'il me faut »). Pas de « 15
+   ateliers » ni « je calcule de tête » codés en dur. */
+export function coverHTML(scope: PrintScope): string {
+  const n = scope.lessonIds.length;
+  const sousTitre =
+    scope.kind === 'bilan'
+      ? `Bilan · ${n} leçon${n > 1 ? 's' : ''}`
+      : `Fiches d'entraînement · ${n} fiche${n > 1 ? 's' : ''}`;
+  const warn =
+    n >= PRINT_PAGES_WARN
+      ? `<p class="cover-warn">Beaucoup de pages : tu peux aussi imprimer une catégorie à la fois.</p>`
+      : '';
+  return `<div class="page cover print-only">
+    <div class="big">Ludaskia</div>
+    <div class="tagline">${escapeHTML(scope.title)}</div>
+    <div class="cover-sub">${sousTitre}</div>
+    <div class="idbox"><div>Prénom : ______________________</div><div>Date : ______________________</div></div>
+    <p class="consigne">Je prends le temps qu'il me faut. Si je bloque, je passe et j'y reviens à la fin. Bon travail !</p>
+    ${warn}
+  </div>`;
+}
+
+/* Fiches paginées pour l'impression : 2 par A4, les leçons « longues » seules. */
+function fichesPagesForIds(lessonIds: string[]): string {
+  const pages: string[] = [];
+  let cur: string[] = [];
+  const flush = () => {
+    if (cur.length) {
+      pages.push(`<div class="page">${cur.join('')}<p class="foot print-only">Ludaskia</p></div>`);
+      cur = [];
+    }
+  };
+  for (const id of lessonIds) {
+    const fiche = buildLessonFiche(id);
+    if (LONG_FICHE_LESSONS.has(id)) {
+      flush();
+      pages.push(`<div class="page">${fiche}<p class="foot print-only">Ludaskia</p></div>`);
+      continue;
+    }
+    cur.push(fiche);
+    if (cur.length >= 2) flush();
+  }
+  flush();
+  return pages.join('');
+}
+
+/* Bilan imprimable multi-matières : nbQ questions par leçon, mise en page grille. */
+function bilanPrintHTML(scope: PrintScope): string {
+  const nbQ = scope.nbQ ?? 3;
+  const blocks = bilanBlocksForIds(scope.lessonIds, nbQ);
+  const cells = blocks
+    .map((b) => {
+      setRenderLesson(b.id);
+      const ops = b.ops.map((o) => `<div class="bop">${renderItem(o)}</div>`).join('');
+      setRenderLesson(null);
+      return `<div class="bloc"><span class="btheme">${escapeHTML(b.theme)}</span>${ops}</div>`;
+    })
+    .join('');
+  return `<div class="page">
+    <p class="bilan-title">${escapeHTML(scope.title)}</p>
+    <p class="bilan-sub">${nbQ} question${nbQ > 1 ? 's' : ''} par leçon · ${blocks.length} leçon${blocks.length > 1 ? 's' : ''}
+       <span class="print-only">Prénom : __________   Date : ________</span></p>
+    <div class="bilan-grid">${cells}</div>
+    <p class="foot print-only">Ludaskia</p>
+  </div>`;
+}
+
+/* Document imprimable pour un périmètre donné. Page de garde dynamique, sauf
+   pour une fiche d'une seule leçon. Jamais de bilan récap collé aux fiches :
+   « fiches » et « bilan » sont deux documents distincts (kind). */
+export function buildPrintableDOM(scope: PrintScope): string {
   setInputCounter(0);
-  const fiches = buildFiches();
-  return coverHTML() + fichesPagesHTML(fiches) + bilanHTML(1) + bilanHTML(2);
+  const single = scope.lessonIds.length === 1;
+  const cover = single ? '' : coverHTML(scope);
+  const body = scope.kind === 'bilan' ? bilanPrintHTML(scope) : fichesPagesForIds(scope.lessonIds);
+  return cover + body;
 }

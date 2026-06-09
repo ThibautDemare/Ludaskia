@@ -11,6 +11,7 @@ import { bilanBlocksForIds, buildFichesForIds } from '../core/build';
 import { setInputCounter, setSessionItems, setRenderLesson, renderItem } from '../core/items';
 import { escapeHTML } from '../core/utils';
 import { setCurrentMode, setCurrentLessonId, afterStart } from './navigation';
+import { printScope } from './session';
 
 /* ---------- Génération de bilan express personnalisé ---------- */
 
@@ -156,6 +157,7 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 
       <div class="bc-run-row">
         <button id="bcRun" class="bc-btn bc-btn-run">▶ C'est parti !</button>
+        <button id="bcPrint" class="bc-btn bc-btn-print" title="Imprimer ce bilan à remplir au crayon">🖨 Imprimer</button>
         <span class="bc-count" id="bcCount"></span>
       </div>
 
@@ -202,6 +204,25 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
     errEl.textContent = '';
     config.label = runLabel;
     runBilanConfig(config);
+  });
+
+  // Chemin B (#40) : imprimer le bilan tel que configuré, sans le lancer.
+  // « Toutes » → fiches d'entraînement ; un nombre → bilan (grille de N questions).
+  el.querySelector('#bcPrint')!.addEventListener('click', () => {
+    savedEl.textContent = '';
+    const config = readFormConfig(form);
+    if (!config) {
+      errEl.textContent = 'Coche au moins une leçon.';
+      return;
+    }
+    errEl.textContent = '';
+    const isAll = config.questionsPerLesson === 'all';
+    printScope({
+      title: runLabel,
+      lessonIds: config.lessonIds,
+      kind: isAll ? 'fiches' : 'bilan',
+      nbQ: isAll ? undefined : (config.questionsPerLesson as number),
+    });
   });
 
   // Enregistrer un favori SANS le lancer (#55) : on confirme sur place ; le

@@ -144,18 +144,22 @@ export function setToolbar({
   verify,
   home,
   profile,
+  print = false,
 }: {
   verify: boolean;
   home: boolean;
   profile: boolean;
+  print?: boolean; // 🖨 « imprimer l'écran courant » : seulement en exercice (#40)
 }) {
   const v = document.getElementById('btnVerify') as HTMLButtonElement;
   const h = document.getElementById('btnHome')!;
+  const pr = document.getElementById('btnPrint');
   const p = document.getElementById('toolbarProfile');
   const xp = document.getElementById('xpBadge');
   v.style.display = verify ? '' : 'none';
   v.disabled = !verify;
   h.style.display = home ? '' : 'none';
+  if (pr) pr.style.display = print ? '' : 'none';
   // Le badge XP suit la visibilité du profil (écrans « menu », pas en exercice).
   if (xp) xp.style.display = profile ? '' : 'none';
   if (p) {
@@ -342,7 +346,7 @@ export function afterStart() {
   const sc = document.getElementById('score')!;
   sc.classList.add('hidden');
   sc.textContent = '';
-  setToolbar({ verify: true, home: true, profile: false }); // en exercice : pas de bouton profil
+  setToolbar({ verify: true, home: true, profile: false, print: true }); // exercice : pas de profil, 🖨 dispo
   startChrono();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   // Confort de saisie : on place le curseur sur le premier calcul.

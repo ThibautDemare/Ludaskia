@@ -20,6 +20,7 @@ import { escapeHTML } from '../core/utils';
 import { lessonCardHTML } from './render';
 import { startCategorySprint } from './sprint';
 import { runBilanConfig } from './bilan';
+import { printScope } from './session';
 import { buildExpressConfig } from '../core/bilan-express';
 import {
   startLecon,
@@ -97,11 +98,12 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 
   // On réutilise les cartes riches (numéro, titre, étoile, %) à partir des
   // entrées LESSONS correspondantes ; fallback minimal si absente.
+  // Chaque leçon : carte riche + un 🖨 pour imprimer sa fiche (sans la lancer).
   const cards = lessonDefs
     .map((def, i) => {
       const rich = LESSONS.find((l) => l.id === def.id);
       const entry = rich ?? { id: def.id, num: i + 1, title: def.label };
-      return lessonCardHTML(entry, stars, lstats);
+      return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(def.label)}">🖨</button></div>`;
     })
     .join('');
 
@@ -111,12 +113,20 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
       <button class="cat-action" data-act="complet">📚 Bilan complet<small>toutes les questions</small></button>
       <button class="cat-action" data-act="sprint">🏃 Sprint 5 min<small>cette catégorie</small></button>
       <button class="cat-action cat-action-secondary" data-act="custom">🎚️ Je choisis mes leçons<small>coche les leçons que tu veux</small></button>
+      <button class="cat-action cat-action-secondary" data-act="print">🖨 Imprimer les fiches<small>toute la catégorie</small></button>
     </div>
     <div class="lesson-list" id="catLessonList">${cards}</div>`;
 
-  // Clic sur une leçon (délégation)
+  // Délégation : 🖨 d'une leçon (impression, chemin B) ou clic sur la carte (lancer).
   el.querySelector('#catLessonList')!.addEventListener('click', (e: Event) => {
-    const btn = (e.target as HTMLElement).closest('.lesson-item') as HTMLElement | null;
+    const target = e.target as HTMLElement;
+    const printBtn = target.closest('.lz-print') as HTMLElement | null;
+    if (printBtn && printBtn.dataset.print) {
+      const def = lessonDefs.find((l) => l.id === printBtn.dataset.print);
+      printScope({ title: def?.label ?? '', lessonIds: [printBtn.dataset.print], kind: 'fiches' });
+      return;
+    }
+    const btn = target.closest('.lesson-item') as HTMLElement | null;
     if (btn && btn.dataset.id) startLecon(btn.dataset.id);
   });
 
@@ -141,6 +151,9 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
   });
   el.querySelector('[data-act="sprint"]')!.addEventListener('click', () => {
     startCategorySprint(categoryId);
+  });
+  el.querySelector('[data-act="print"]')!.addEventListener('click', () => {
+    printScope({ title: `Fiches — ${category?.label ?? ''}`, lessonIds, kind: 'fiches' });
   });
   el.querySelector('[data-act="custom"]')!.addEventListener('click', () => {
     goCategorieBilan(categoryId);

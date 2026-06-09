@@ -89,8 +89,10 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   `MATH_LESSON_NUM` (pont id→`bilanQ`), et **`genLessonItem(lesson)`** qui produit
   un `Item` pour n'importe quelle matière (maths → `bilanQ` ; texte → `generate()`).
 - **`lessons.ts`** — contenu **maths** : `LESSONS` (15 leçons constructibles
-  isolément), `buildFiches`, `THEMES`, `bilanQ`/`bilanHTML` (bilan express maths
-  global), `coverHTML`, `fichesPagesHTML`, `buildPrintableDOM`.
+  isolément), `bilanQ` (générateur réutilisé par le catalogue). Côté impression :
+  `PrintScope` + **`buildPrintableDOM(scope)`** (contextuel, **multi-matières** via
+  `buildLessonFiche`/`bilanBlocksForIds`), `coverHTML(scope)` (garde dynamique),
+  pagination 2 fiches/A4. (`buildFiches`/`bilanHTML` historiques conservés.)
 - **`build.ts`** — construction **générique multi-matières** : `genItems`,
   `buildLessonFiche` (aiguille maths riche / autres matières en liste texte),
   `bilanBlocksForIds`, `buildFichesForIds` (bilans personnalisés).
@@ -142,7 +144,10 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   **filtrable** (toutes matières / une matière / une catégorie) via un écran de
   configuration ; correction par `checkItemAnswer` (numérique ou texte).
 - **`session.ts`** — `verify` (correction + enregistrement), saisie clavier,
-  impression (`beforeprint`/`afterprint`).
+  impression contextuelle (#40) : **chemin A** `printAll()` imprime l'écran courant
+  vierge (le CSS print met `.ans` en transparent) ; **chemin B** `printScope(scope)`
+  pose un périmètre que `beforeprint` rend via `buildPrintableDOM(scope)`. Le 🖨 de
+  la barre n'apparaît qu'en exercice (drapeau `print` de `setToolbar`).
 - **`menu.ts`** — liste déroulante de profils (`open/close/toggleProfileMenu`),
   extrait pour éviter un cycle `main ↔ navigation`.
 
@@ -278,6 +283,7 @@ vérifiable » (filtre : **automatisme/mémorisation**) :
 - d'autres contenus : maths étendus (conversions d'unités), verbes irréguliers
   anglais ;
 - **filtrage par niveau scolaire** (chaque `LessonDef` porte déjà un `level`) ;
-- **impression PDF contextuelle** multi-matières (#40) et **mode Révision**
-  d'accueil à répétition espacée (#45) — suite du chantier « refonte accueil
-  & bilans ».
+- **mode Révision** d'accueil à répétition espacée (#45) — dernière brique du
+  chantier « refonte accueil & bilans ».
+- **corrigé imprimable** (page réponses) et **accessibilité/dys** de l'impression
+  (police, contraste) — hors périmètre de #40, à explorer.

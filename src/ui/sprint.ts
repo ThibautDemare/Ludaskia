@@ -8,7 +8,7 @@
    - validation sur Entrée OU bouton « Valider »
    - un sprint ne compte que s'il va au bout des 5 minutes
    ============================================================ */
-import { choice, commKey, escapeHTML, fmt } from '../core/utils';
+import { choice, commKey, escapeHTML, fmt, rnd } from '../core/utils';
 import {
   getAllLessons,
   getLessonsBySubject,
@@ -138,6 +138,10 @@ let sprintPerLesson: Record<string, { ok: number; total: number }> = {},
   sprintRecentKeys: string[] = [],
   sprintCurrent: Item | null = null,
   sprintCurrentDef: LessonDef | null = null;
+// Mini-séries : on garde la même matière 2-3 questions avant d'en changer,
+// pour limiter le coût de bascule entre disciplines (cf. issue #54).
+let sprintSeriesSubject: string | null = null,
+  sprintSeriesLeft = 0;
 
 // Combien d'items récents on s'interdit de répéter. Fenêtre volontairement
 // modeste : sur un filtre réduit à une seule leçon (6 variantes en conjugaison),
@@ -165,6 +169,8 @@ export function runSprint() {
   sprintRecentKeys = [];
   sprintCurrent = null;
   sprintCurrentDef = null;
+  sprintSeriesSubject = null;
+  sprintSeriesLeft = 0;
   hideMenus();
   setToolbar({ verify: false, home: true, profile: false }); // pas de Vérifier (validation auto par question)
   resetChrono(); // le sprint a son propre compte à rebours
@@ -212,41 +218,108 @@ function sprintUpdateScore() {
     el.textContent = `${sprintScore} bonne${sprintScore > 1 ? 's' : ''} réponse${sprintScore > 1 ? 's' : ''}`;
 }
 
+// Icône + libellé court par matière, pour signaler la matière de chaque
+// question (cf. issue #54 : lisible instantanément par un enfant de CE2).
+const SPRINT_SUBJECT_META: Record<string, { icon: string; label: string }> = {
+  math: { icon: '🔢', label: 'Maths' },
+  francais: { icon: '✏️', label: 'Français' },
+};
+function subjectTag(subject: string): string {
+  const meta = SPRINT_SUBJECT_META[subject] ?? {
+    icon: '📘',
+    label: SUBJECTS.find((s) => s.id === subject)?.label ?? subject,
+  };
+  return `<span class="sprint-subject sprint-subject-${subject}">${meta.icon} ${escapeHTML(meta.label)}</span>`;
+}
+
+// Choisit la prochaine leçon en gardant la même matière sur une mini-série de
+// 2-3 questions, puis en changeant de matière si plusieurs sont disponibles.
+function pickSprintDef(): LessonDef {
+  const subjects = [...new Set(sprintLessonDefs.map((d) => d.subject))];
+  if (
+    sprintSeriesLeft <= 0 ||
+    sprintSeriesSubject === null ||
+    !subjects.includes(sprintSeriesSubject)
+  ) {
+    const others = subjects.filter((s) => s !== sprintSeriesSubject);
+    sprintSeriesSubject = choice(others.length ? others : subjects);
+    sprintSeriesLeft = rnd(2, 3);
+  }
+  sprintSeriesLeft--;
+  return choice(sprintLessonDefs.filter((d) => d.subject === sprintSeriesSubject));
+}
+
 // Génère et affiche la prochaine question (en évitant de répéter l'un des
-// derniers items via une mémoire glissante).
+// derniers items via une mémoire glissante). Les leçons dont l'ExerciseType
+// propose un mode 'qcm' (conjugaison) sont posées en QCM : sous chrono, la
+// frappe au clavier pénaliserait la vitesse (cf. issue #54).
 function sprintNext() {
   let q: Item,
     def: LessonDef,
+    choices: string[] | null,
     key: string,
     guard = 0;
   do {
-    def = choice(sprintLessonDefs);
-    q = genLessonItem(def); // aiguille math (bilanQ) / autres matières (texte) ; pose _lesson
+    def = pickSprintDef();
+    if (def.exerciseType.modes?.includes('qcm')) {
+      const ex = def.exerciseType.generate('qcm');
+      q = {
+        text: ex.type === 'qcm' ? ex.question : '',
+        answer: ex.answer,
+        kind: 'text',
+        _lesson: def.id,
+      };
+      choices = ex.type === 'qcm' ? ex.choices : null;
+    } else {
+      q = genLessonItem(def); // aiguille math (bilanQ) ; pose _lesson
+      choices = null;
+    }
     key = commKey(q.text);
     guard++;
   } while (sprintRecentKeys.includes(key) && guard < 25);
   sprintRecentKeys.push(key);
   if (sprintRecentKeys.length > SPRINT_RECENT) sprintRecentKeys.shift();
   sprintCurrent = q;
-  sprintCurrentDef = def!;
+  sprintCurrentDef = def;
   const stage = document.getElementById('sprintStage');
   if (!stage) return;
-  const deco = def!.id === 'math-decomposer-multiplication' ? ' deco' : '';
+  if (choices) renderSprintQcm(stage, def, q, choices);
+  else renderSprintTyped(stage, def, q);
+}
+
+// Entrée valide la saisie (utile pour la leçon 15 et ses étapes). Fonction
+// nommée : addEventListener déduplique, pas d'accumulation de listeners.
+function onSprintEnter(e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    sprintSubmit();
+  }
+}
+
+// Question à saisir (maths) : champ + bouton Valider.
+function renderSprintTyped(stage: HTMLElement, def: LessonDef, q: Item) {
+  const deco = def.id === 'math-decomposer-multiplication' ? ' deco' : '';
   stage.innerHTML = `
-    <div class="sprint-theme">${def!.label}</div>
+    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(def.label)}</span></div>
     <div class="sprint-q${deco}">${sprintQuestionBody(q)}</div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintValidate">Valider</button></div>`;
-  const val = document.getElementById('sprintValidate');
-  if (val) val.addEventListener('click', sprintSubmit);
-  // Entrée valide depuis n'importe quel champ (utile pour la leçon 15 et ses étapes).
-  stage.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      sprintSubmit();
-    }
+  document.getElementById('sprintValidate')?.addEventListener('click', sprintSubmit);
+  stage.addEventListener('keydown', onSprintEnter);
+  stage.querySelector('input')?.focus();
+}
+
+// Question à choix (conjugaison) : un clic sur une proposition vaut réponse.
+function renderSprintQcm(stage: HTMLElement, def: LessonDef, q: Item, choices: string[]) {
+  const question = escapeHTML(q.text).replace('@', '<span class="sprint-blank">?</span>');
+  stage.innerHTML = `
+    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(def.label)}</span></div>
+    <div class="sprint-q sprint-q-qcm">${question}</div>
+    <div class="sprint-choices">
+      ${choices.map((c, i) => `<button class="sprint-choice" data-i="${i}">${escapeHTML(c)}</button>`).join('')}
+    </div>`;
+  stage.querySelectorAll<HTMLButtonElement>('.sprint-choice').forEach((btn) => {
+    btn.addEventListener('click', () => sprintAnswer(choices[Number(btn.dataset.i)]));
   });
-  const first = stage.querySelector('input');
-  if (first) first.focus();
 }
 // Corps de la question : champ unique, sauf leçon 15 où l'on affiche la
 // décomposition avec des champs de brouillon (non corrigés) + le champ final.
@@ -263,20 +336,16 @@ export function sprintQuestionBody(q: Item) {
   return `${a} × ${b} = (${free} × ${free}) + (${free} × ${free}) = ${free} + ${free} = ${main}`;
 }
 
-function sprintSubmit() {
+// Cœur de la validation, commun à la saisie (maths) et au QCM (conjugaison).
+function sprintAnswer(raw: string) {
   if (!sprintActive || sprintPaused) return;
-  const inp = document.getElementById('sprintInput') as HTMLInputElement | null;
-  if (!inp) return;
-  const raw = (inp.value || '').trim();
-  if (raw === '') {
-    inp.focus();
-    return;
-  } // pas de validation à vide
+  const val = (raw || '').trim();
+  if (val === '') return; // pas de validation à vide
   sprintAnswered++;
   const lessonId = sprintCurrent!._lesson!;
   const b = sprintPerLesson[lessonId] || (sprintPerLesson[lessonId] = { ok: 0, total: 0 });
   b.total++;
-  if (checkItemAnswer(sprintCurrent!, raw)) {
+  if (checkItemAnswer(sprintCurrent!, val)) {
     sprintScore++;
     b.ok++;
     addXP(1);
@@ -291,6 +360,16 @@ function sprintSubmit() {
   }
 }
 
+function sprintSubmit() {
+  const inp = document.getElementById('sprintInput') as HTMLInputElement | null;
+  if (!inp) return;
+  if (inp.value.trim() === '') {
+    inp.focus(); // garde le focus plutôt que de valider à vide
+    return;
+  }
+  sprintAnswer(inp.value);
+}
+
 // Mauvaise réponse : on révèle la solution et on met le chrono en pause.
 function sprintShowCorrection(ans: number | string) {
   sprintPaused = true;
@@ -298,7 +377,7 @@ function sprintShowCorrection(ans: number | string) {
   if (!stage) return;
   const sol = escapeHTML(String(ans));
   stage.innerHTML = `
-    <div class="sprint-theme">${sprintCurrentDef?.label ?? ''}</div>
+    <div class="sprint-theme">${sprintCurrentDef ? subjectTag(sprintCurrentDef.subject) : ''}<span class="sprint-lesson">${escapeHTML(sprintCurrentDef?.label ?? '')}</span></div>
     <div class="sprint-q wrong">${escapeHTML(sprintCurrent!.text).replace('@', '<span class="sprint-sol">' + sol + '</span>')}</div>
     <div class="sprint-correction">La bonne réponse était <strong>${sol}</strong>. Prends le temps de la lire.</div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintContinue">Continuer ▶</button></div>`;

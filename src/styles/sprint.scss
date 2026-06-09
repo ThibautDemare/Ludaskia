@@ -46,15 +46,36 @@
   gap: 22px;
 }
 .sprint-theme {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+/* Pastille de matière (signale d'un coup d'œil maths vs français) */
+.sprint-subject {
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  border-radius: 999px;
+  padding: 4px 14px;
+}
+.sprint-subject-math {
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+.sprint-subject-francais {
+  color: var(--ok);
+  background: #e4f1ea;
+}
+.sprint-lesson {
   font-family: var(--ui);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.3px;
   text-transform: uppercase;
-  color: var(--blue);
-  background: var(--blue-soft);
-  border-radius: 999px;
-  padding: 4px 14px;
+  color: var(--grey);
 }
 .sprint-q {
   font-family: var(--serif);
@@ -68,6 +89,43 @@
 }
 .sprint-q.wrong {
   color: var(--ko);
+}
+/* QCM (conjugaison en sprint) : emplacement vide + propositions cliquables.
+   Gros boutons tactiles (≥ 56 px) pour un doigt d'enfant sur tablette/mobile. */
+.sprint-blank {
+  display: inline-block;
+  min-width: 60px;
+  border-bottom: 3px solid var(--blue);
+  color: var(--muted);
+}
+.sprint-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+.sprint-choice {
+  font-family: var(--serif);
+  font-size: 24px;
+  color: var(--ink);
+  background: #fff;
+  border: 2px solid var(--blue-soft);
+  border-radius: 12px;
+  padding: 14px 26px;
+  min-width: 110px;
+  min-height: 56px;
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.08s ease;
+}
+.sprint-choice:hover {
+  border-color: var(--blue);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+.sprint-choice:active {
+  transform: translateY(1px);
 }
 .sprint-input {
   font: inherit;

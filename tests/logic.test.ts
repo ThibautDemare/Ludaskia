@@ -481,19 +481,23 @@ describe('XP & gamification multi-matières', () => {
     expect(api.getXP()).toBe(5);
   });
   test('Niveaux : coût du palier et XP cumulée par niveau', () => {
-    // xpVersSuivant(L) = round(0,9 × L^1.5)
-    expect([1, 2, 3, 4, 5].map(api.xpVersSuivant)).toEqual([1, 3, 5, 7, 10]);
+    // xpVersSuivant(L) = round(12 × L^0,89) : palier 1→2 = 12 XP, donc une leçon
+    // isolée (~10 bonnes réponses) fait gagner au plus 1 niveau en début de jeu.
+    expect([1, 2, 3, 4, 5].map(api.xpVersSuivant)).toEqual([12, 22, 32, 41, 50]);
     // xpPourNiveau = cumul des paliers ; niveau 1 ⇒ 0 XP.
     expect(api.xpPourNiveau(1)).toBe(0);
-    expect([2, 3, 4, 5, 6].map(api.xpPourNiveau)).toEqual([1, 4, 9, 16, 26]);
+    expect([2, 3, 4, 5, 6].map(api.xpPourNiveau)).toEqual([12, 34, 66, 107, 157]);
     // Le coût est strictement croissant (« de plus en plus dur »).
     expect(api.xpVersSuivant(60)).toBeGreaterThan(api.xpVersSuivant(10));
+    // Une leçon isolée (~10 XP) fait gagner au plus 1 niveau au démarrage (#38).
+    expect(api.niveauDepuisXP(10)).toBeLessThanOrEqual(2);
   });
   test('Niveaux : niveau dérivé de l’XP, plafonné à NIVEAU_MAX', () => {
     expect(api.niveauDepuisXP(0)).toBe(1);
-    expect(api.niveauDepuisXP(1)).toBe(2); // 1 XP suffit pour le 1er palier
-    expect(api.niveauDepuisXP(3)).toBe(2); // pas encore le palier suivant (4 XP)
-    expect(api.niveauDepuisXP(4)).toBe(3);
+    expect(api.niveauDepuisXP(11)).toBe(1); // pas encore le 1er palier (12 XP)
+    expect(api.niveauDepuisXP(12)).toBe(2);
+    expect(api.niveauDepuisXP(33)).toBe(2); // pas encore le palier suivant (34 XP)
+    expect(api.niveauDepuisXP(34)).toBe(3);
     // Cohérence avec xpPourNiveau : l’XP juste sous un palier ne fait pas monter.
     const xp50 = api.xpPourNiveau(50);
     expect(api.niveauDepuisXP(xp50)).toBe(50);

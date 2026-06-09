@@ -166,17 +166,24 @@ export function addXP(n: number) {
    fonction pure (aucune migration, testable sans DOM).
 
    Courbe « de plus en plus dure » : le coût pour passer du niveau L au
-   niveau L+1 croît en puissance 1.5 →
-     xpVersSuivant(L) = round(XP_COEFF × L^1.5)
-   Avec XP_COEFF = 0,9, atteindre le niveau 100 demande ~35 500 XP
-   (objectif « Long »). Premiers niveaux quasi instantanés, derniers
-   niveaux = vrai marathon. Un seul coefficient à régler pour recalibrer. */
+   niveau L+1 croît en puissance →
+     xpVersSuivant(L) = round(XP_COEFF × L^XP_EXPOSANT)
+   Calibrage (validé avec un avis pédagogique CE2, 1 XP = 1 bonne réponse) :
+     - palier 1→2 = 12 XP : une leçon isolée (~10 bonnes réponses) fait gagner
+       *au plus 1 niveau* en début de jeu (vs ~3 niveaux auparavant) ;
+     - niveau 10 ≈ 445 XP (~1-2 semaines), niveau 50 ≈ 10 100 XP (~quelques
+       mois), niveau 100 ≈ 37 900 XP (horizon « plusieurs mois », atteignable) ;
+     - exposant < 1.5 : la courbe ralentit mais le dernier palier (99→100)
+       reste ~717 XP — franchissable en quelques sessions, pas un mur.
+   Deux constantes à régler pour recalibrer (coefficient = générosité globale,
+   exposant = vitesse à laquelle les paliers se durcissent). */
 export const NIVEAU_MAX = 100;
-const XP_COEFF = 0.9;
+const XP_COEFF = 12;
+const XP_EXPOSANT = 0.89;
 
 // Coût en XP pour passer du niveau `niveau` au niveau suivant.
 export function xpVersSuivant(niveau: number): number {
-  return Math.round(XP_COEFF * Math.pow(niveau, 1.5));
+  return Math.round(XP_COEFF * Math.pow(niveau, XP_EXPOSANT));
 }
 
 // XP cumulée nécessaire pour *atteindre* `niveau` (niveau 1 ⇒ 0 XP).

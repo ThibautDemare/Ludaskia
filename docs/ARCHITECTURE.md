@@ -219,7 +219,9 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   (`addXP`). L'XP totale (`ludaskia_xp`) reste l'unique source de vérité ; le
   **niveau (1 → 100)** en est *dérivé* par fonction pure (`niveauDepuisXP`),
   donc aucune migration. Courbe « de plus en plus dure » : coût d'un palier
-  `round(0,9 × L^1.5)` (`xpVersSuivant`), soit ~35 500 XP pour le niveau 100.
+  `round(12 × L^0,89)` (`xpVersSuivant`), calibrée (avis pédagogique CE2) pour
+  qu'une leçon isolée fasse gagner au plus 1 niveau au début ; ~37 900 XP pour
+  le niveau 100, dernier palier ~717 XP (pas un mur).
   Affiché dans la barre d'outils en **badge niveau + barre de progression**
   (`progressionNiveau`) ; l'XP brute n'apparaît plus qu'en infobulle.
 - **Règle des 60 %** : un bilan/leçon ne « compte » (temps, record, étoile,

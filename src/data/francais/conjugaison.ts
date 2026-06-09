@@ -12,9 +12,9 @@
    NB : dossier `francais` sans cédille pour des chemins d'import
    ASCII portables ; le libellé affiché reste « Français ».
    ============================================================ */
-import type { Exercise, ExerciseType } from '../../core/exercise';
+import type { Exercise, ExerciseType, ExerciseMode } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
-import { rnd } from '../../core/utils';
+import { rnd, sample } from '../../core/utils';
 import type { SchoolLevel } from '../../core/catalog';
 
 export type Tense = 'present' | 'futur' | 'imparfait' | 'passe_compose';
@@ -207,19 +207,63 @@ export function getVerb(verbId: string): VerbDef | undefined {
   return VERBS.find((v) => v.id === verbId);
 }
 
+/* Modes de réponse d'un exercice de conjugaison :
+   - 'saisie' : l'enfant écrit la forme (production, mode par défaut) ;
+   - 'qcm'    : l'enfant choisit parmi plusieurs formes (reconnaissance,
+                utilisé en sprint où la frappe pénaliserait la vitesse). */
+export type ConjMode = 'saisie' | 'qcm';
+export const CONJ_MODES: readonly ConjMode[] = ['saisie', 'qcm'];
+
+/* Nombre total de propositions d'un QCM (1 bonne réponse + distracteurs). */
+const QCM_CHOICES = 4;
+
+/* Distracteurs d'un QCM de conjugaison, dérivés du paradigme du verbe.
+   Toutes les propositions sont de VRAIES formes correctement orthographiées
+   (jamais une faute affichée), par ordre de pertinence pédagogique :
+     1. autres personnes au même temps  → teste l'accord de la personne ;
+     2. même personne aux autres temps   → teste la reconnaissance du temps ;
+     3. repli : n'importe quelle autre forme du verbe.
+   Déduplication par forme (NFC ; ex. « je/tu étais » sont identiques) ;
+   la bonne réponse est exclue des distracteurs. */
+function qcmDistractors(verb: VerbDef, tense: Tense, person: number, correct: string): string[] {
+  const norm = (s: string) => s.normalize('NFC');
+  const seen = new Set<string>([norm(correct)]);
+  const picked: string[] = [];
+  const addAll = (formes: string[]) => {
+    for (const f of sample(formes, formes.length)) {
+      const n = norm(f);
+      if (!seen.has(n)) {
+        seen.add(n);
+        picked.push(f);
+      }
+    }
+  };
+  addAll(verb.forms[tense].filter((_, i) => i !== person)); // 1.
+  addAll(TENSES.filter((t) => t !== tense).map((t) => verb.forms[t][person])); // 2.
+  addAll(TENSES.flatMap((t) => verb.forms[t])); // 3.
+  return picked.slice(0, QCM_CHOICES - 1);
+}
+
 /* Fabrique un ExerciseType pour un verbe à un temps donné. */
 export function conjugationType(verbId: string, tense: Tense): ExerciseType {
   const verb = getVerb(verbId)!;
   return {
-    generate(): Exercise {
+    modes: [...CONJ_MODES],
+    generate(mode?: ExerciseMode): Exercise {
       const person = rnd(0, 5);
       const form = verb.forms[tense][person];
       const pron = displayPronoun(person, form);
-      return {
-        type: 'text',
-        question: `${verb.infinitif} · ${TENSE_LABEL[tense]} — ${pron}@`,
-        answer: form,
-      };
+      const question = `${verb.infinitif} · ${TENSE_LABEL[tense]} — ${pron}@`;
+      if (mode === 'qcm') {
+        const distractors = qcmDistractors(verb, tense, person, form);
+        return {
+          type: 'qcm',
+          question,
+          answer: form,
+          choices: sample([form, ...distractors], QCM_CHOICES),
+        };
+      }
+      return { type: 'text', question, answer: form };
     },
     check: (exercise, input) => checkAnswer(exercise, input),
   };

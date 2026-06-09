@@ -94,6 +94,12 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
 - **`build.ts`** — construction **générique multi-matières** : `genItems`,
   `buildLessonFiche` (aiguille maths riche / autres matières en liste texte),
   `bilanBlocksForIds`, `buildFichesForIds` (bilans personnalisés).
+- **`bilan-express.ts`** — express **borné** (~20 q, cible ~10 min CE2) :
+  `expressQuestionsPerLesson` (≤ 3, 1 quand il y a beaucoup de leçons),
+  `sampleExpressLessons` (tirage **pondéré** — leçons fragiles/jamais vues
+  prioritaires — et **tournant** — évite le tirage précédent), et
+  `buildExpressConfig` qui en fait un `BilanConfig`. Branché sur l'express de
+  catégorie ; le bilan personnalisé reste explicite (non borné).
 - **`bilans.ts`** — persistance des `BilanConfig` favoris (`ludaskia_bilans`).
 - **`progress.ts`** — records de bilans (`recordRun`, `cmpRun` « score puis
   temps »), série (`updateStreak`, `streakSuffix`), étoiles

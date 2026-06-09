@@ -23,7 +23,8 @@
   font: inherit;
   font-family: var(--ui);
   font-size: 13px;
-  padding: 5px 13px;
+  min-height: 40px;
+  padding: 9px 16px;
   border: 1.5px solid var(--blue);
   border-radius: 6px;
   background: transparent;
@@ -49,29 +50,52 @@
   color: var(--grey);
   margin-bottom: 8px;
 }
+/* Mobile-first : une colonne (grandes cibles), grille seulement sur grand écran. */
 .bc-lessons-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 7px;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+@media (min-width: 640px) {
+  .bc-lessons-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
 }
 .bc-item {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 12px;
+  gap: 10px;
+  min-height: 48px; /* cible tactile confortable pour un doigt d'enfant */
+  padding: 12px 14px;
   background: var(--paper);
-  border-radius: 8px;
+  border: 2px solid transparent; /* réservé pour l'état coché → pas de reflow */
+  border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   cursor: pointer;
   font-family: var(--ui);
-  font-size: 13.5px;
+  font-size: 14.5px;
   color: var(--ink);
   user-select: none;
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    transform 0.06s;
+}
+.bc-item:has(:checked) {
+  background: var(--blue-soft);
+  border-color: var(--blue);
+}
+.bc-item:active {
+  transform: scale(0.98);
+}
+.bc-item:focus-within {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 .bc-item input[type='checkbox'] {
   accent-color: var(--blue);
-  width: 15px;
-  height: 15px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
 }
 .bc-nbq {
@@ -82,18 +106,31 @@
 .bc-nbq-item {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 14px;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 16px;
   background: var(--paper);
-  border-radius: 8px;
+  border: 2px solid transparent;
+  border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   cursor: pointer;
   font-family: var(--ui);
   font-size: 14px;
   user-select: none;
 }
+.bc-nbq-item:has(:checked) {
+  background: var(--blue-soft);
+  border-color: var(--blue);
+}
 .bc-nbq-item input[type='radio'] {
   accent-color: var(--blue);
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.bc-nbq-num {
+  font-weight: 700;
+  color: var(--blue);
 }
 .bc-save-row {
   display: flex;
@@ -140,6 +177,8 @@
   background: var(--blue);
   color: #fff;
   border: none;
+  min-height: 52px;
+  font-size: 17px;
 }
 .bc-btn-run:hover {
   background: #1a3fa5;
@@ -163,6 +202,52 @@
   color: var(--ko, #c62828);
   margin-top: 10px;
   min-height: 20px;
+}
+
+/* Périmètre (écran scopé à une catégorie) */
+.bc-scope {
+  font-family: var(--ui);
+  font-size: 14px;
+  color: var(--grey);
+  margin: 0 0 6px;
+}
+.bc-scope strong {
+  color: var(--blue);
+}
+
+/* Ligne d'action principale + compteur de leçons choisies */
+.bc-run-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+.bc-count {
+  font-family: var(--ui);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--grey);
+}
+
+/* Sauvegarde repliée (geste « parent », discret pour l'enfant) */
+.bc-save {
+  margin-top: 16px;
+}
+.bc-save > summary {
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blue);
+  cursor: pointer;
+  padding: 10px 0;
+  list-style: none;
+}
+.bc-save > summary::-webkit-details-marker {
+  display: none;
+}
+.bc-save[open] > summary {
+  margin-bottom: 8px;
 }
 
 /* ---- Section favoris (accueil) ---- */

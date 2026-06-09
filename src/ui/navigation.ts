@@ -96,6 +96,9 @@ export function startSprint() {
 export function startBilanCustom() {
   location.hash = 'bilan-custom';
 }
+export function goCategorieBilan(categoryId: string) {
+  location.hash = 'bilan-cat-' + categoryId;
+}
 export function startRevision() {
   if (!lastErrors.length) return;
   pendingRevision = lastErrors.slice();
@@ -111,7 +114,11 @@ export function route() {
   else if (h === 'sprint-config') showSprintConfigView();
   else if (h === 'sprint') runSprint();
   else if (h === 'bilan-custom') showBilanCustomView();
-  else if (h === 'matieres') showMatieresView();
+  else if (h.startsWith('bilan-cat-')) {
+    const id = h.slice('bilan-cat-'.length);
+    if (id !== ORTHO_CATEGORY_ID && CATEGORIES.find((c) => c.id === id)) showBilanCustomView(id);
+    else showMatieresView();
+  } else if (h === 'matieres') showMatieresView();
   else if (h === 'lecons') showLessonsView();
   else if (h === 'profils') showProfilesView();
   else if (h === 'revision') {
@@ -303,11 +310,11 @@ export function showSprintConfigView() {
   document.getElementById('sprint-config')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-export function showBilanCustomView() {
+export function showBilanCustomView(categoryId?: string) {
   resetSessionUI();
   setToolbar({ verify: false, home: true, profile: true });
   hideMenus();
-  renderBilanConfigScreen(document.getElementById('bilanCustomContent')!);
+  renderBilanConfigScreen(document.getElementById('bilanCustomContent')!, categoryId);
   document.getElementById('bilan-custom')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }

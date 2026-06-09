@@ -6,6 +6,34 @@
   text-align: left;
   margin-top: 14px;
 }
+/* Rangée « carte + 🖨 » sur l'écran de catégorie (impression d'une fiche). */
+.lesson-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.lesson-row .lesson-item {
+  flex: 1;
+  min-width: 0;
+}
+.lz-print {
+  flex: 0 0 auto;
+  width: 46px;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--blue);
+  background: var(--paper);
+  border: 2px solid var(--blue-soft);
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  transition:
+    border-color 0.15s ease,
+    background 0.12s ease;
+}
+.lz-print:hover {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
 .lesson-item {
   display: flex;
   align-items: center;

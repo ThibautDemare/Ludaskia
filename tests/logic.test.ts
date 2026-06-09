@@ -802,6 +802,37 @@ describe('Bilan express borné (issue #35)', () => {
   });
 });
 
+describe('Impression contextuelle (issue #40)', () => {
+  test('fiches multi-matières : couvre maths ET conjugaison, avec page de garde', () => {
+    const html = api.buildPrintableDOM({
+      title: 'Test',
+      lessonIds: ['math-tables-addition', 'fr-conj-etre-present'],
+      kind: 'fiches',
+    });
+    expect(html.includes('class="page cover')).toBe(true); // garde dès 2 leçons
+    expect(html.includes('ans-text')).toBe(true); // champ texte (conjugaison)
+    expect(html.includes('class="ans ')).toBe(true); // champ numérique (maths)
+  });
+  test('une seule leçon : pas de page de garde', () => {
+    const html = api.buildPrintableDOM({
+      title: 'x',
+      lessonIds: ['math-doubles'],
+      kind: 'fiches',
+    });
+    expect(html.includes('class="page cover')).toBe(false);
+  });
+  test('bilan : grille de bilan, titre repris, multi-matières', () => {
+    const html = api.buildPrintableDOM({
+      title: 'Bilan test',
+      lessonIds: ['fr-conj-aller-futur', 'math-doubles'],
+      kind: 'bilan',
+      nbQ: 2,
+    });
+    expect(html.includes('bilan-grid')).toBe(true);
+    expect(html.includes('Bilan test')).toBe(true);
+  });
+});
+
 describe('Profils', () => {
   test('profil par défaut créé au 1er lancement (avec UUID)', () => {
     const m = api.loadProfilesMeta()!;

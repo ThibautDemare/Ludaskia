@@ -86,7 +86,6 @@ function wireDOM() {
     .getElementById('backOrthoListe')!
     .addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
   document.getElementById('backHomeProfils')!.addEventListener('click', goHome);
-  document.getElementById('printLink')!.addEventListener('click', printAll);
 
   // Bouton profil de la barre : ouvre/ferme la liste déroulante
   document.getElementById('toolbarProfile')!.addEventListener('click', (e) => {

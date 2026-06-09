@@ -30,7 +30,18 @@
   color: var(--grey);
   font-style: italic;
   font-size: 14px;
-  margin-bottom: 30px;
+  margin-bottom: 8px;
+}
+.cover .cover-sub {
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 24px;
+}
+.cover .cover-warn {
+  color: var(--warn, #b26a00);
+  font-size: 13px;
+  margin-top: 18px;
 }
 .idbox {
   display: flex;

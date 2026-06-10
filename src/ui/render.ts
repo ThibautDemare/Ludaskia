@@ -27,6 +27,7 @@ import { loadOrtho } from '../core/orthographe/store';
 import { getGoal, evaluateTrophies } from '../core/rewards';
 import { sparkline } from './effects';
 import { renderFavoris } from './bilan';
+import { renderReprises } from './resume';
 import { renderRewardNav, mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
@@ -213,6 +214,7 @@ export function boardHTML(mode: string, label: string) {
 export function renderHomeStats() {
   // Le badge XP vit dans la barre d'outils ; la carte progression sur l'accueil.
   renderProgression();
+  renderReprises(document.getElementById('reprises')); // « À continuer » (#63)
   const recL = document.getElementById('recLecon');
   if (recL) {
     const n = starsEarned();

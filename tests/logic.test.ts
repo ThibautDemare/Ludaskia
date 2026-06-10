@@ -164,6 +164,22 @@ import {
   initProfiles,
   PROFILE_EMOJIS,
 } from '../src/core/profiles';
+import {
+  RESUME_KEY,
+  RESUME_VERSION,
+  RESUME_TTL_MS,
+  RESUME_MAX_STORED,
+  leconKey,
+  bilanCategoryKey,
+  bilanCustomKey,
+  loadResumes,
+  getResume,
+  hasResume,
+  upsertResume,
+  removeResume,
+  clearResumes,
+  type ResumeSnapshot,
+} from '../src/core/resume';
 
 // API agrégée (parité avec l'ancien globalThis.__api), pour conserver le style `api.x`.
 const api = {
@@ -1282,5 +1298,109 @@ describe('Sauvegarde (export / import par profil)', () => {
     expect(!api.importProfiles(null)).toBe(true);
     expect(!api.importProfiles({ app: 'autre' })).toBe(true);
     expect(!api.importProfiles({ app: 'ludaskia' })).toBe(true);
+  });
+});
+
+describe("Reprise d'exercice en cours (#63)", () => {
+  // Fabrique un instantané minimal valide.
+  function snap(over: Partial<ResumeSnapshot> = {}): ResumeSnapshot {
+    return {
+      key: 'lecon-x',
+      version: RESUME_VERSION,
+      savedAt: 1000,
+      mode: 'lecon',
+      label: 'Leçon X',
+      icon: '📖',
+      categoryId: null,
+      relaunch: { type: 'lecon', lessonId: 'x' },
+      sheetsHTML: '<div></div>',
+      items: {},
+      answers: {},
+      activeId: null,
+      elapsedMs: 5000,
+      total: 10,
+      answered: 4,
+      ...over,
+    };
+  }
+
+  test("clés stables par identité d'exercice", () => {
+    expect(leconKey('math-doubles')).toBe('lecon-math-doubles');
+    expect(bilanCategoryKey('express', 'math-calc')).toBe('bilan-express-math-calc');
+    expect(bilanCategoryKey('complet', 'math-calc')).toBe('bilan-complet-math-calc');
+    expect(bilanCustomKey()).toBe('bilan-custom');
+    expect(bilanCustomKey('math-calc')).toBe('bilan-custom-math-calc');
+  });
+
+  test('upsert + load : aller-retour', () => {
+    upsertResume(snap({ savedAt: 2000 }));
+    const list = loadResumes(3000);
+    expect(list.length).toBe(1);
+    expect(list[0].label).toBe('Leçon X');
+    expect(getResume('lecon-x', 3000)!.answered).toBe(4);
+    expect(hasResume('lecon-x', 3000)).toBe(true);
+    expect(hasResume('absent', 3000)).toBe(false);
+  });
+
+  test('une reprise par clé : relancer écrase', () => {
+    upsertResume(snap({ savedAt: 1000, answered: 2 }));
+    upsertResume(snap({ savedAt: 2000, answered: 7 }));
+    const list = loadResumes(3000);
+    expect(list.length).toBe(1);
+    expect(list[0].answered).toBe(7);
+  });
+
+  test('plusieurs clés coexistent, triées par date décroissante', () => {
+    upsertResume(snap({ key: 'a', savedAt: 1000 }));
+    upsertResume(snap({ key: 'b', savedAt: 3000 }));
+    upsertResume(snap({ key: 'c', savedAt: 2000 }));
+    expect(loadResumes(4000).map((s) => s.key)).toEqual(['b', 'c', 'a']);
+  });
+
+  test('expiration silencieuse au-delà du TTL', () => {
+    upsertResume(snap({ key: 'old', savedAt: 1000 }));
+    upsertResume(snap({ key: 'new', savedAt: 1000 + RESUME_TTL_MS }));
+    // « maintenant » = old + TTL + 1 → old a expiré, new tout juste vivant.
+    const now = 1000 + RESUME_TTL_MS + 1;
+    const list = loadResumes(now);
+    expect(list.map((s) => s.key)).toEqual(['new']);
+    // La purge a réécrit le stockage (old retiré pour de bon).
+    expect(api.lsGet(RESUME_KEY, []).length).toBe(1);
+  });
+
+  test('plafond de stockage respecté (les plus récents gardés)', () => {
+    for (let i = 0; i < RESUME_MAX_STORED + 5; i++) {
+      upsertResume(snap({ key: 'k' + i, savedAt: 1000 + i }));
+    }
+    const list = loadResumes(1000 + RESUME_MAX_STORED + 10);
+    expect(list.length).toBe(RESUME_MAX_STORED);
+    expect(list[0].key).toBe('k' + (RESUME_MAX_STORED + 4)); // le plus récent
+  });
+
+  test('removeResume retire une clé, clearResumes vide tout', () => {
+    upsertResume(snap({ key: 'a', savedAt: 1000 }));
+    upsertResume(snap({ key: 'b', savedAt: 2000 }));
+    removeResume('a');
+    expect(loadResumes(3000).map((s) => s.key)).toEqual(['b']);
+    clearResumes();
+    expect(loadResumes(3000).length).toBe(0);
+  });
+
+  test("entrées invalides ou d'une autre version ignorées proprement", () => {
+    api.lsSet(RESUME_KEY, [
+      snap({ key: 'ok', savedAt: 2000 }),
+      { ...snap({ key: 'oldver' }), version: 999 }, // mauvaise version
+      { key: 'broken' }, // structure incomplète
+      null,
+    ]);
+    const list = loadResumes(3000);
+    expect(list.map((s) => s.key)).toEqual(['ok']);
+  });
+
+  test("isolation par profil : une reprise ne fuit pas d'un profil à l'autre", () => {
+    upsertResume(snap({ key: 'a', savedAt: 1000 }));
+    const autre = api.addProfile('Autre');
+    api.setActiveProfile(autre.uuid);
+    expect(loadResumes(3000).length).toBe(0);
   });
 });

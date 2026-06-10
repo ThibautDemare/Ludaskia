@@ -104,6 +104,16 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   `buildExpressConfig` qui en fait un `BilanConfig`. Branché sur l'express de
   catégorie ; le bilan personnalisé reste explicite (non borné).
 - **`bilans.ts`** — persistance des `BilanConfig` favoris (`ludaskia_bilans`).
+- **`resume.ts`** — **reprise d'un exercice en cours** (#63), brique **pure** :
+  stockage par profil (`ludaskia_resume`) d'instantanés d'exercices **grille**
+  (leçon, bilans express/complet/personnalisé) — `loadResumes/getResume/upsert/
+  remove/clear`, **clés stables** par identité d'exercice (`leconKey`,
+  `bilanCategoryKey`, `bilanCustomKey` ; relancer écrase), **validation
+  versionnée** (un instantané d'une autre version ou mal formé est ignoré
+  proprement), **expiration silencieuse** (`RESUME_TTL_MS`, 7 j) et **plafond**
+  de stockage (`RESUME_MAX_STORED`). `now` passé en paramètre (testable sans
+  horloge). Sprint et révision espacée **hors périmètre** (le sprint est un défi
+  borné ; la révision est déjà persistée item par item, comme l'orthographe).
 - **`revision.ts`** — **révision espacée** (#45), brique **pure** : escalier
   d'intervalles CE2 (`etatNeuf`, `avancerEtat`, `estDu`/`estAcquis` ; `now` passé
   en paramètre). État `EtatRevision` partagé par les mots d'orthographe et les
@@ -132,7 +142,18 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   (`recompensesNiveau`, `recompensesEntre` qui agrège un saut de plusieurs niveaux).
 
 ### `src/ui/`
-- **`chrono.ts`** — chronomètre croissant de la barre (sessions).
+- **`chrono.ts`** — chronomètre croissant de la barre (sessions). `startChrono`
+  accepte un temps initial + un drapeau de visibilité (reprise : on continue de
+  mesurer **sans afficher** un compteur déjà avancé), `getElapsed()` expose le
+  temps actif courant (capture d'une reprise).
+- **`resume.ts`** — **couche UI de la reprise** (#63) : `captureResume` (lit
+  `#sheets` + chrono et sauvegarde l'exercice en cours quand on le quitte),
+  `restoreResume` (réinjecte l'instantané **sans régénérer** les calculs, chrono
+  repris masqué), `renderReprises` (section **« À continuer »** : barre de
+  progression visuelle, **« Continuer »** mis en avant, **« Effacer »** discret
+  + confirmation), `maybeRelaunch` (à la relance d'un exercice déjà commencé :
+  modale **« Continuer / Recommencer »**), et le **contexte de reprise** posé au
+  lancement (`setResumeCtx`) / nettoyé à la fin (`finishResume`).
 - **`effects.ts`** — `sparkline` (SVG), `confetti`, modale `showCelebration`, et
   modale dédiée **passage de niveau** `showLevelUp`/`hideLevelUp` (médaillon doré
   animé ; un `then` optionnel enchaîne sur `showCelebration` s'il y a d'autres
@@ -218,6 +239,17 @@ express/complet : on y accède par Matière → Catégorie. Le **mode Révision*
 — mots d'orthographe **et** leçons maths/conjugaison — **regroupés par catégorie**,
 un élément à la fois, sans chrono ni record.
 
+**Reprise d'un exercice en cours (#63).** Les exercices **grille** (leçon, bilans
+express/complet/personnalisé) sont **sauvegardés automatiquement** quand on les
+quitte (navigation, onglet masqué/fermé, saisie débouncée) et reproposés sur
+l'**accueil** (sous la progression) et l'**écran de catégorie** dans une section
+**« À continuer »**. Reprendre restaure l'état **exact** (calculs posés, réponses,
+temps actif) sans régénérer ; le **chrono repris est masqué** et un exercice repris
+**ne compte pas pour le temps**. Une reprise est **propre au profil**, **unique par
+identité d'exercice** (relancer demande « Continuer / Recommencer »), et **expire**
+en silence après 7 j. Le **sprint** et la **révision espacée** sont hors périmètre
+(on **confirme** avant de quitter ces modes, faute de reprise).
+
 ### Pipeline multi-matières
 Le cœur du moteur est agnostique de la matière. Une `LessonDef` porte un
 `ExerciseType` ; `genLessonItem(lesson)` (catalog) produit un `Item` de rendu —
@@ -236,8 +268,9 @@ Tout passe par `lsGet/lsSet`. Les clés sont **préfixées par le profil actif**
 `ludaskia_runs_{complet,express,sprint}`, `ludaskia_streak`, `ludaskia_stars`,
 `ludaskia_lessonStats`, `ludaskia_lessonRevision` (état SR par leçon),
 `ludaskia_goal`, `ludaskia_goalsDone`, `ludaskia_trophies`, `ludaskia_xp`,
-`ludaskia_bilans` (configs de bilans favoris). L'état SR des **mots** d'orthographe
-vit dans `ludaskia_ortho` (`MotOrtho.revision`).
+`ludaskia_bilans` (configs de bilans favoris), `ludaskia_resume` (exercices
+grille **en cours**, repris ou abandonnés — #63). L'état SR des **mots**
+d'orthographe vit dans `ludaskia_ortho` (`MotOrtho.revision`).
 Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
 
 ## Profils

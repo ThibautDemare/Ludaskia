@@ -12,6 +12,8 @@ import { setInputCounter, setSessionItems, setRenderLesson, renderItem } from '.
 import { escapeHTML } from '../core/utils';
 import { setCurrentMode, setCurrentLessonId, afterStart } from './navigation';
 import { printScope } from './session';
+import { bilanCategoryKey, bilanCustomKey } from '../core/resume';
+import { setResumeCtx, clearResumeCtx, maybeRelaunch, type ResumeCtx } from './resume';
 
 /* ---------- Génération de bilan express personnalisé ---------- */
 
@@ -36,7 +38,7 @@ function bilanCustomExpressHTML(config: BilanConfig): string {
 
 /* ---------- Exécution d'un BilanConfig ---------- */
 
-export function runBilanConfig(config: BilanConfig): void {
+export function runBilanConfig(config: BilanConfig, ctx?: ResumeCtx | null): void {
   if (!config.lessonIds.length) return;
   setInputCounter(0);
   setSessionItems({});
@@ -52,7 +54,52 @@ export function runBilanConfig(config: BilanConfig): void {
   // pas classés (cf. session.ts) car les leçons varient d'un bilan à l'autre.
   setCurrentMode(config.questionsPerLesson === 'all' ? 'complet' : 'express');
   setCurrentLessonId(null);
+  // Contexte de reprise (#63) : ce bilan devient « l'exercice en cours ».
+  if (ctx) setResumeCtx(ctx);
+  else clearResumeCtx();
   afterStart();
+}
+
+/* Lance un bilan en gérant la reprise : si le même bilan était commencé, on
+   propose « Continuer / Recommencer » ; sinon on le lance neuf (#63). */
+export function startBilan(config: BilanConfig, ctx: ResumeCtx): void {
+  maybeRelaunch(ctx.key, ctx.label, () => runBilanConfig(config, ctx));
+}
+
+/* Fabriques de contexte de reprise selon le type de bilan. */
+export function categoryBilanCtx(
+  mode: 'express' | 'complet',
+  categoryId: string,
+  config: BilanConfig,
+): ResumeCtx {
+  return {
+    key: bilanCategoryKey(mode, categoryId),
+    mode,
+    label: config.label,
+    icon: mode === 'complet' ? '📚' : '⏱️',
+    categoryId,
+    relaunch: { type: 'bilan', config },
+  };
+}
+function customBilanCtx(config: BilanConfig, categoryId: string | null): ResumeCtx {
+  return {
+    key: bilanCustomKey(categoryId),
+    mode: 'custom',
+    label: config.label,
+    icon: '🎚️',
+    categoryId,
+    relaunch: { type: 'bilan', config },
+  };
+}
+function favoriBilanCtx(config: BilanConfig): ResumeCtx {
+  return {
+    key: `bilan-favori-${config.id}`,
+    mode: 'custom',
+    label: config.label,
+    icon: '⭐',
+    categoryId: null,
+    relaunch: { type: 'bilan', config },
+  };
 }
 
 /* ---------- Lecture du formulaire ---------- */
@@ -203,7 +250,7 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
     }
     errEl.textContent = '';
     config.label = runLabel;
-    runBilanConfig(config);
+    startBilan(config, customBilanCtx(config, categoryId ?? null));
   });
 
   // Chemin B (#40) : imprimer le bilan tel que configuré, sans le lancer.
@@ -281,7 +328,7 @@ export function renderFavoris(el: HTMLElement | null): void {
   el.querySelectorAll<HTMLButtonElement>('[data-run]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const config = loadBilans().find((b) => b.id === btn.dataset.run);
-      if (config) runBilanConfig(config);
+      if (config) startBilan(config, favoriBilanCtx(config));
     });
   });
   el.querySelectorAll<HTMLButtonElement>('[data-del]').forEach((btn) => {

@@ -26,6 +26,13 @@ let items: RevItem[] = [];
 let idx = 0;
 let score = 0;
 let ortho: OrthoState;
+let active = false; // une révision est-elle EN COURS ? (garde-fou de sortie, #63)
+
+// Exposé pour le garde-fou de sortie ; remis à zéro en quittant la vue.
+export const isRevisionRunning = () => active;
+export const revisionCleanup = () => {
+  active = false;
+};
 
 export function runRevisionEspacee(): void {
   setCurrentMode('revision'); // non enregistré comme un bilan (pas de record)
@@ -66,6 +73,7 @@ export function runRevisionEspacee(): void {
   }
   idx = 0;
   score = 0;
+  active = false;
   const sheets = document.getElementById('sheets')!;
   if (!items.length) {
     sheets.innerHTML = `<div class="revision"><div class="rev-done">
@@ -77,6 +85,7 @@ export function runRevisionEspacee(): void {
     document.getElementById('revHome')!.addEventListener('click', goHome);
     return;
   }
+  active = true; // révision réellement en cours (au moins un élément à réviser)
   sheets.innerHTML = `<div class="revision">
     <div class="rev-hud">
       <span class="rev-prog" id="revProg"></span>
@@ -199,6 +208,7 @@ function next() {
 }
 
 function renderDone() {
+  active = false; // terminée : plus rien à perdre, pas de confirmation de sortie
   const stage = document.getElementById('revStage')!;
   if (!stage) return;
   document.querySelector('.rev-hud')?.remove();

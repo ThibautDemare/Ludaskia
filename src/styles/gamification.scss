@@ -90,6 +90,10 @@
     animation: none;
   }
 }
+/* Réglage in-app « Réduire les animations » (en plus du média système) */
+html.anim-reduced .mascotte {
+  animation: none;
+}
 .progress-rang-ico {
   font-size: 22px;
 }

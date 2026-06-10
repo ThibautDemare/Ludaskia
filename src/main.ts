@@ -3,6 +3,7 @@
    dans l'ordre (hook d'écriture → profils → câblage DOM → route).
    ============================================================ */
 import './styles/base.scss';
+import './styles/themes.scss';
 import './styles/toolbar.scss';
 import './styles/home.scss';
 import './styles/sheets.scss';
@@ -32,6 +33,12 @@ import {
   importProfiles,
 } from './core/profiles';
 import { renderProfiles, toggleEmojiPicker, closeEmojiPicker } from './ui/render';
+import {
+  applyPreferences,
+  renderPreferences,
+  setTheme,
+  setAnimationsReduites,
+} from './ui/preferences';
 import {
   route,
   goHome,
@@ -122,6 +129,8 @@ function wireDOM() {
       const n = prompt('Prénom du nouveau profil :');
       if (n && n.trim()) {
         addProfile(n.trim());
+        applyPreferences(); // nouveau profil actif → son thème (défaut)
+        renderPreferences();
         renderProfiles();
       }
       return;
@@ -140,6 +149,7 @@ function wireDOM() {
         const n = prompt('Nouveau prénom :');
         if (n && n.trim()) {
           renameProfile(uuid, n.trim());
+          renderPreferences(); // le nom peut être celui du profil actif
           renderProfiles();
         }
         break;
@@ -156,12 +166,16 @@ function wireDOM() {
       case 'reset':
         if (confirm('Réinitialiser toute la progression de ce profil ? (irréversible)')) {
           resetProfile(uuid);
+          applyPreferences(); // l'XP repart à 0 → thème éventuellement réinitialisé
+          renderPreferences();
           renderProfiles();
         }
         break;
       case 'delete':
         if (confirm('Supprimer ce profil et toute sa progression ?')) {
           deleteProfile(uuid);
+          applyPreferences(); // l'actif peut avoir changé → son thème
+          renderPreferences();
           renderProfiles();
         }
         break;
@@ -214,9 +228,27 @@ function wireDOM() {
       if (res.skipped)
         parts.push(`${res.skipped} ignoré${res.skipped > 1 ? 's' : ''} (déjà à jour)`);
       alert('Import terminé : ' + (parts.join(', ') || 'aucun profil') + '.');
+      applyPreferences(); // l'import peut changer le profil actif → son thème
+      renderPreferences();
       renderProfiles();
     };
     reader.readAsText(file);
+  });
+
+  // Écran Profils : préférences du profil actif (thème de couleur + animations)
+  const prefs = document.getElementById('preferences')!;
+  prefs.addEventListener('click', (e: any) => {
+    const btn = e.target.closest('[data-act="set-theme"]');
+    if (!btn) return;
+    setTheme(btn.dataset.theme);
+    applyPreferences();
+    renderPreferences();
+  });
+  prefs.addEventListener('change', (e: any) => {
+    if (e.target.id === 'prefAnim') {
+      setAnimationsReduites(e.target.checked);
+      applyPreferences();
+    }
   });
 
   // Sélection d'une leçon dans la liste (délégation)
@@ -257,6 +289,7 @@ function wireDOM() {
 // (1) hook d'écriture → (2) profils → (3) câblage DOM + route initiale.
 setOnDataWrite(touchActiveProfile);
 initProfiles();
+applyPreferences(); // thème + animations du profil actif, dès avant le 1er rendu
 initTts(); // précharge les voix de synthèse (dictée best-effort)
 // Les scripts type="module" sont différés : si le DOM est déjà prêt, on câble
 // immédiatement, sinon on attend DOMContentLoaded (parité avec l'ancien main.js).

@@ -126,9 +126,9 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   forme porte une catégorie `oeuf|oisillon|oiseau` qui pilote l'animation), **avatars
   « forêt »** débloqués par palier (`AVATARS_FORET`, `niveauRequisAvatar`,
   `avatarsForetDebloques` — gamme forêt seule ; la combinaison avec les 12 de base se
-  fait dans `profiles.ts` pour éviter un cycle), et récompenses de palier
+  fait dans `profiles.ts` pour éviter un cycle), **thèmes de couleur** (`THEMES`,
+  `themesDebloques` — tous clairs, débloqués par palier), et récompenses de palier
   (`recompensesNiveau`, `recompensesEntre` qui agrège un saut de plusieurs niveaux).
-  Thèmes à venir.
 
 ### `src/ui/`
 - **`chrono.ts`** — chronomètre croissant de la barre (sessions).
@@ -165,6 +165,11 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   la barre n'apparaît qu'en exercice (drapeau `print` de `setToolbar`).
 - **`menu.ts`** — liste déroulante de profils (`open/close/toggleProfileMenu`),
   extrait pour éviter un cycle `main ↔ navigation`.
+- **`preferences.ts`** — préférences cosmétiques **par profil** (issue #28) : thème de
+  couleur (`getTheme`/`setTheme`, gating par niveau) et réduction des animations
+  (`animationsReduites`/`setAnimationsReduites`). `applyPreferences()` pose
+  `<html data-theme>` + la classe `anim-reduced` (appelé dans `route()` → couvre bootstrap
+  et bascules de profil) ; `renderPreferences()` rend le bloc de l'écran Profils.
 
 ### `src/main.ts` (entrée)
 Importe les feuilles SCSS, puis initialise **dans cet ordre** :
@@ -279,7 +284,12 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   « forêt »** se débloquent aussi par palier : dans le sélecteur d'avatar (écran Profils),
   les non-débloqués sont grisés « 🔒 Niv X », jaugés au niveau du **profil édité**
   (`getXPFor`) ; `setProfileEmoji` refuse un avatar verrouillé et `resetProfile` rend un
-  avatar forêt si l'XP repart à zéro. Thèmes de couleur débloquables à suivre.
+  avatar forêt si l'XP repart à zéro. Des **thèmes de couleur** (tous clairs) se
+  débloquent aussi par palier : choisis dans le bloc « Préférences » de l'écran Profils
+  (verrouillés grisés), stockés par profil (`ludaskia_theme`), appliqués via
+  `<html data-theme>` ; un thème non débloqué retombe sur le défaut. Le même bloc offre
+  un réglage **« Réduire les animations »** (`ludaskia_anim`, classe `anim-reduced`), en
+  complément de `prefers-reduced-motion`.
 - **Règle des 60 %** : un bilan/leçon ne « compte » (temps, record, étoile,
   objectif, trophée) que si ≥ 60 % des calculs ont une réponse. Le sprint compte
   s'il va au bout des 5 minutes.

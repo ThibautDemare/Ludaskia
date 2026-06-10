@@ -23,16 +23,9 @@ import type { EtatRevision } from './orthographe/types';
 
 const JOUR = 86_400_000;
 /* Délai avant re-test selon le palier ATTEINT (index = palier). */
-export const REVISION_INTERVALLES = [
-  1 * JOUR,
-  3 * JOUR,
-  7 * JOUR,
-  16 * JOUR,
-  35 * JOUR,
-  75 * JOUR,
-];
+export const REVISION_INTERVALLES = [1 * JOUR, 3 * JOUR, 7 * JOUR, 16 * JOUR, 35 * JOUR, 75 * JOUR];
 /* Palier « acquis » : sort de la rotation active (gardé pour la fierté). */
-export const PALIER_ACQUIS = REVISION_INTERVALLES.length; // 4
+export const PALIER_ACQUIS = REVISION_INTERVALLES.length; // 6
 /* Plafond d'éléments dus proposés en une session (par-dessus rien d'autre). */
 export const REVISION_PLAFOND = 12;
 

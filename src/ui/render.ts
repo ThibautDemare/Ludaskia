@@ -18,7 +18,10 @@ import {
   countSince,
   getXP,
   progressionNiveau,
+  loadLessonRevisions,
 } from '../core/progress';
+import { countDue } from '../core/revision-select';
+import { loadOrtho } from '../core/orthographe/store';
 import { getGoal, evaluateTrophies, loadTrophies, TROPHIES } from '../core/rewards';
 import { sparkline } from './effects';
 import { renderFavoris } from './bilan';
@@ -122,6 +125,15 @@ function fillSprintRecord(elId: string) {
   }
   el.innerHTML = `🏅 Record : <strong>${[...runs].sort(cmpRun)[0].ok} bonnes réponses</strong>`;
 }
+/* Nombre d'éléments dus en révision espacée (carte d'accueil) */
+function fillRevisionRecord(elId: string) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const n = countDue(loadOrtho(), loadLessonRevisions(), Date.now());
+  el.innerHTML = n
+    ? `🔁 <strong>${n}</strong> à réviser`
+    : `<span class="muted">Rien à réviser pour l'instant 👍</span>`;
+}
 export function sprintBoardHTML() {
   const runs = loadRuns('sprint');
   if (!runs.length) return '';
@@ -173,6 +185,7 @@ export function renderHomeStats() {
     recL.innerHTML = `⭐ <strong>${n}/${total}</strong> leçon${n > 1 ? 's' : ''} réussie${n > 1 ? 's' : ''} sans faute`;
   }
   fillSprintRecord('recSprint');
+  fillRevisionRecord('recRevision');
   renderObjectives();
   renderGoal();
   const boards = document.getElementById('boards');

@@ -10,6 +10,7 @@ import './styles/gamification.scss';
 import './styles/lessons.scss';
 import './styles/profiles.scss';
 import './styles/sprint.scss';
+import './styles/revision.scss';
 import './styles/modal.scss';
 import './styles/print.scss';
 import './styles/bilan.scss';
@@ -37,6 +38,7 @@ import {
   showProfiles,
   startSprint,
   startBilanCustom,
+  startRevisionEspacee,
   startMatieres,
   goCategories,
   goCategorie,
@@ -70,6 +72,7 @@ function wireDOM() {
   document.getElementById('btnPrint')!.addEventListener('click', printAll);
   document.getElementById('cardLecon')!.addEventListener('click', startMatieres);
   document.getElementById('cardSprint')!.addEventListener('click', startSprint);
+  document.getElementById('cardRevision')!.addEventListener('click', startRevisionEspacee);
   document.getElementById('cardBilanCustom')!.addEventListener('click', startBilanCustom);
   document.getElementById('backHome')!.addEventListener('click', goHome);
   document.getElementById('backHomeBilanCustom')!.addEventListener('click', goHome);

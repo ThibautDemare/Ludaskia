@@ -103,6 +103,12 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   `buildExpressConfig` qui en fait un `BilanConfig`. Branché sur l'express de
   catégorie ; le bilan personnalisé reste explicite (non borné).
 - **`bilans.ts`** — persistance des `BilanConfig` favoris (`ludaskia_bilans`).
+- **`revision.ts`** — **révision espacée** (#45), brique **pure** : escalier
+  d'intervalles CE2 (`etatNeuf`, `avancerEtat`, `estDu`/`estAcquis` ; `now` passé
+  en paramètre). État `EtatRevision` partagé par les mots d'orthographe et les
+  leçons maths/conjugaison.
+- **`revision-select.ts`** — sélection des éléments **dus** (mots + leçons),
+  **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`).
 - **`progress.ts`** — records de bilans (`recordRun`, `cmpRun` « score puis
   temps »), série (`updateStreak`, `streakSuffix`), étoiles
   (`recordLessonResult`, `starsEarned`), stats par leçon (`recordLessonStats`,
@@ -176,7 +182,7 @@ Vues routées **par hash** (le Précédent/Suivant du navigateur fonctionne, et 
 hébergement statique sous sous-chemin `/Ludaskia/` ne nécessite aucune config de
 fallback SPA) : `#accueil` · `#matieres` · `#matiere-<id>` · `#categorie-<id>` ·
 `#lecon-<id>` · `#sprint-config` · `#sprint` · `#bilan-custom` · `#bilan-cat-<id>` ·
-`#profils` · `#revision` (`#lecons`, ancien sélecteur plat, reste
+`#revision-espacee` · `#profils` · `#revision` (`#lecons`, ancien sélecteur plat, reste
 routable mais n'est plus lié). Les identifiants de leçon sont des **chaînes**
 (`math-tables-addition`, `fr-conj-etre-present`…). Les déclencheurs changent juste
 le hash ; `route()` (sur `hashchange`) rend la vue.
@@ -184,9 +190,12 @@ le hash ; `route()` (sur `hashchange`) rend la vue.
 Modes d'exercice : **une leçon à la fois** (atteinte via Matière → Catégorie),
 **bilan express/complet** (au niveau d'une catégorie ; l'express est borné),
 **bilan personnalisé** (sélection libre, ou scopé à une catégorie, + favoris),
-**sprint 5 min** (filtrable, multi-matières), **révision** (rejoue les erreurs,
-n'enregistre rien). L'accueil ne propose plus de cartes express/complet : on y
-accède par Matière → Catégorie.
+**sprint 5 min** (filtrable, multi-matières), **révision des erreurs** (rejoue les
+erreurs d'une session, n'enregistre rien). L'accueil ne propose plus de cartes
+express/complet : on y accède par Matière → Catégorie. Le **mode Révision**
+(accueil, `#revision-espacee`) rejoue les éléments **dus** par répétition espacée
+— mots d'orthographe **et** leçons maths/conjugaison — **regroupés par catégorie**,
+un élément à la fois, sans chrono ni record.
 
 ### Pipeline multi-matières
 Le cœur du moteur est agnostique de la matière. Une `LessonDef` porte un
@@ -203,8 +212,10 @@ le sprint passent tous deux par ce point.
 Tout passe par `lsGet/lsSet`. Les clés sont **préfixées par le profil actif**
 (`<uuid>/ludaskia_…`) sauf la méta globale `ludaskia_profiles`. Clés par profil :
 `ludaskia_runs_{complet,express,sprint}`, `ludaskia_streak`, `ludaskia_stars`,
-`ludaskia_lessonStats`, `ludaskia_goal`, `ludaskia_goalsDone`,
-`ludaskia_trophies`, `ludaskia_xp`, `ludaskia_bilans` (configs de bilans favoris).
+`ludaskia_lessonStats`, `ludaskia_lessonRevision` (état SR par leçon),
+`ludaskia_goal`, `ludaskia_goalsDone`, `ludaskia_trophies`, `ludaskia_xp`,
+`ludaskia_bilans` (configs de bilans favoris). L'état SR des **mots** d'orthographe
+vit dans `ludaskia_ortho` (`MotOrtho.revision`).
 Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
 
 ## Profils
@@ -283,7 +294,7 @@ vérifiable » (filtre : **automatisme/mémorisation**) :
 - d'autres contenus : maths étendus (conversions d'unités), verbes irréguliers
   anglais ;
 - **filtrage par niveau scolaire** (chaque `LessonDef` porte déjà un `level`) ;
-- **mode Révision** d'accueil à répétition espacée (#45) — dernière brique du
-  chantier « refonte accueil & bilans ».
+- **affiner** la révision espacée : réglage de l'escalier d'intervalles, et
+  généralisation (la brique `revision.ts` est déjà agnostique du type d'élément).
 - **corrigé imprimable** (page réponses) et **accessibilité/dys** de l'impression
   (police, contraste) — hors périmètre de #40, à explorer.

@@ -68,13 +68,15 @@ describe('orthographe — store', () => {
     expect(s.banque[a.id].homophone).toBe(true);
   });
 
-  test('un nouveau mot initialise validation/atelier/révision à zéro', () => {
+  test('un nouveau mot initialise validation/atelier à zéro et entre en révision', () => {
     const s = emptyOrthoState();
     const m = addOrGetMot(s, { mot: 'fleur' });
     expect(m.validation).toEqual({ motCache: false, tuiles: false, dictee: false });
     expect(m.atelierFait).toBe(false);
     expect(m.revision.palier).toBe(0);
-    expect(m.revision.prochaineRevision).toBeNull();
+    // Entrée en rotation de révision espacée dès l'ajout (#45) : 1er re-test à venir.
+    expect(typeof m.revision.prochaineRevision).toBe('number');
+    expect(m.revision.prochaineRevision!).toBeGreaterThan(Date.now());
   });
 
   test('createListe référence des ids dédupliqués et alimente la banque', () => {

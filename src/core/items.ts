@@ -2,7 +2,7 @@
    Items {text, answer}  (@ = emplacement du champ de réponse)
    et fabrique de champs / grilles / fiches.
    ============================================================ */
-import { escapeHTML } from './utils';
+import { escapeHTML, normalizeText } from './utils';
 
 export interface Item {
   text: string;
@@ -13,14 +13,14 @@ export interface Item {
 }
 
 /* Vérifie la réponse saisie pour un item, selon son type.
-   - texte : trim + NFC, accents/apostrophes exigés (formes alternatives via answers)
+   - texte : normalizeText (trim + espaces internes réduits + NFC), accents/apostrophes
+     exigés (formes alternatives via answers)
    - calcul : comparaison numérique (virgule tolérée comme séparateur décimal) */
 export function checkItemAnswer(it: Item, raw: string): boolean {
   if (it.kind === 'text') {
-    const norm = (s: string) => s.trim().normalize('NFC');
-    const v = norm(raw);
-    if (v === norm(String(it.answer))) return true;
-    return (it.answers ?? []).some((a) => norm(a) === v);
+    const v = normalizeText(raw);
+    if (v === normalizeText(String(it.answer))) return true;
+    return (it.answers ?? []).some((a) => normalizeText(a) === v);
   }
   return Number(raw.replace(',', '.')) === Number(it.answer);
 }

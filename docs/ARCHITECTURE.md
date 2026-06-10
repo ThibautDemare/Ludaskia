@@ -67,7 +67,8 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
-  (`uniqueComm/Exact`, `commKey`), `escapeHTML`, `fmt` (mm:ss).
+  (`uniqueComm/Exact`, `commKey`), `escapeHTML`, `fmt` (mm:ss), et `normalizeText`
+  (normalisation **partagée** des réponses texte : trim + espaces internes réduits + NFC).
 - **`storage.ts`** — `lsGet/lsSet` (clés préfixées par profil), accès bruts
   (`lsKeysRaw/lsRemoveRaw/lsSetRaw`, `appKeys`), `setActivePrefix`, constante
   `PROFILES_KEY`, et `setOnDataWrite(fn)` (hook appelé après chaque écriture de
@@ -78,11 +79,11 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
 - **`items.ts`** — item de rendu `{text, answer, answers?, kind?}` (`@` = champ).
   Fabriques math (`add/sub/mul/dbl/half/comp/facteur`), `renderItem` (champ
   numérique ou **texte** selon `kind`), `checkItemAnswer` (correction numérique
-  **ou** texte NFC stricte), `gridHTML`, `ficheHTML`/`ficheHTMLGeneric`,
+  **ou** texte via `normalizeText`), `gridHTML`, `ficheHTML`/`ficheHTMLGeneric`,
   `lessonAttr()`. État de module exposé via accesseurs (voir plus bas).
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
   (`text` | `qcm`), interface **`ExerciseType`** (`generate()` / `check()`), et
-  `checkAnswer` (normalisation trim + NFC ; **accents et apostrophes exigés**).
+  `checkAnswer` (normalisation partagée `normalizeText` ; **accents et apostrophes exigés**).
 - **`catalog.ts`** — hiérarchie `SUBJECTS` / `CATEGORIES` / `LessonDef`
   (`id, label, subject, category, level, exerciseType`), helpers
   `getAllLessons/getLessonById/getLessonsBySubject/getLessonsByCategory`,
@@ -225,7 +226,8 @@ matières en convertissant l'`Exercise` texte. `build.ts` assemble fiches et
 bilans à partir de là (les leçons de calcul gardent leur rendu riche : grilles,
 décomposition). La **correction** est routée par `checkItemAnswer` selon le type
 de l'item : comparaison numérique (virgule tolérée) ou comparaison de chaîne
-**trim + NFC stricte** (accents et apostrophes exigés). `verify()` (session) et
+**normalisée** (`normalizeText` : trim + espaces internes réduits + NFC ; accents et
+apostrophes exigés). `verify()` (session) et
 le sprint passent tous deux par ce point.
 
 ## Données (`localStorage`)

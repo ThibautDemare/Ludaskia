@@ -2,6 +2,7 @@
    Abstraction d'exercice : type générique + interface de génération/vérification.
    Utilisé par tous les types d'exercices (math, conjugaison, QCM, orthographe…).
    ============================================================ */
+import { normalizeText } from './utils';
 
 export type Exercise =
   | { type: 'text'; question: string; answer: string; answers?: string[] }
@@ -22,14 +23,14 @@ export interface ExerciseType {
 }
 
 /* Vérification générique pour les exercices texte (hors math).
-   Normalisation : trim + NFC uniquement. Accents et apostrophes exigés.
-   Couvre tous les types : comparaison à `answer` (+ variantes `answers` pour 'text'). */
+   Normalisation partagée (`normalizeText`) : trim + espaces internes réduits + NFC.
+   Accents et apostrophes exigés. Couvre tous les types : comparaison à `answer`
+   (+ variantes `answers` pour 'text'). */
 export function checkAnswer(exercise: Exercise, input: string): boolean {
-  const norm = (s: string) => s.trim().normalize('NFC');
-  const normalized = norm(input);
-  if (normalized === norm(exercise.answer)) return true;
+  const normalized = normalizeText(input);
+  if (normalized === normalizeText(exercise.answer)) return true;
   if (exercise.type === 'text') {
-    return (exercise.answers ?? []).some((a) => norm(a) === normalized);
+    return (exercise.answers ?? []).some((a) => normalizeText(a) === normalized);
   }
   return false;
 }

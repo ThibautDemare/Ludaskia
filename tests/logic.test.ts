@@ -28,6 +28,7 @@ import {
   uniqueExact,
   escapeHTML,
   fmt,
+  normalizeText,
 } from '../src/core/utils';
 import { lsGet, lsSet, setOnDataWrite } from '../src/core/storage';
 import {
@@ -108,6 +109,7 @@ import {
   getLessonById,
 } from '../src/core/catalog';
 import { checkItemAnswer } from '../src/core/items';
+import { checkAnswer } from '../src/core/exercise';
 import { genItems } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
 import {
@@ -911,6 +913,35 @@ describe('Français — Conjugaison', () => {
     expect(checkItemAnswer({ text: 'x', answer: 'êtes', kind: 'text' }, 'etes')).toBe(false);
     expect(checkItemAnswer({ text: 'x', answer: 12 }, '12')).toBe(true);
     expect(checkItemAnswer({ text: 'x', answer: 12 }, '13')).toBe(false);
+  });
+  test('normalizeText réduit les espaces internes et de bord (issue #66)', () => {
+    expect(normalizeText('a  mangé')).toBe('a mangé'); // double espace interne
+    expect(normalizeText('  a   mangé  ')).toBe('a mangé'); // bords + espaces multiples
+    expect(normalizeText('a\tmangé')).toBe('a mangé'); // tabulation
+  });
+  test('checkItemAnswer (conjugaison) : double espace acceptée (issue #66)', () => {
+    const it = { text: 'x', answer: 'a mangé', kind: 'text' as const };
+    expect(checkItemAnswer(it, 'a  mangé')).toBe(true); // deux espaces
+    expect(checkItemAnswer(it, ' a mangé ')).toBe(true); // espaces de bord
+    expect(checkItemAnswer(it, 'a mangé')).toBe(true); // exact
+    // Les formes alternatives bénéficient aussi de la normalisation.
+    const alt = {
+      text: 'x',
+      answer: 'se sont lavés',
+      answers: ['se sont lavées'],
+      kind: 'text' as const,
+    };
+    expect(checkItemAnswer(alt, 'se  sont  lavées')).toBe(true);
+    // L'accent reste exigé (pas un effet de bord du fix).
+    expect(checkItemAnswer(it, 'a mange')).toBe(false);
+  });
+  test('checkAnswer (orthographe/texte) : double espace acceptée (issue #66)', () => {
+    const ex = { type: 'text' as const, question: 'q', answer: 'tout à coup' };
+    expect(checkAnswer(ex, 'tout  à  coup')).toBe(true);
+    expect(checkAnswer(ex, ' tout à coup ')).toBe(true);
+    // Type non-text (dictée) : même normalisation des espaces.
+    const dictee = { type: 'dictee' as const, answer: 'il a dit' };
+    expect(checkAnswer(dictee, 'il  a  dit')).toBe(true);
   });
   test('genItems : pas de doublon dans une leçon de conjugaison (issue #36)', () => {
     const lesson = getLessonById('fr-conj-etre-present')!;

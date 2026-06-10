@@ -310,9 +310,9 @@ Chaque PR = une branche + une PR liée à #28, CI verte, rebase-merge. Tests Vit
 des fonctions pures à chaque PR touchant `core/`. Mettre à jour `docs/ARCHITECTURE.md`
 (section Gamification + liste `src/core/`).
 
-**Avancement** : Phase 1 ✅ (PR #71) · Phase 2 ✅ (PR #72) · Phase 3 découpée en 3a/3b/3c
-(en cours) · Phase 4 à venir. La phase 3 s'est révélée trop grosse pour une seule PR →
-découpée en **3a avatars**, **3b thèmes (+ réglage animations)**, **3c modales**.
+**Avancement** : Phase 1 ✅ (PR #71) · Phase 2 ✅ (PR #72) · Phase 3a ✅ (PR #73) ·
+Phase 3b ✅ · 3c en attente · Phase 4 à venir. La phase 3 s'est révélée trop grosse pour
+une seule PR → découpée en **3a avatars**, **3b thèmes (+ réglage animations)**, **3c modales**.
 
 ### Phase 1 — Rangs / titres (léger, gros effet) ✅ fait (PR #71)
 **But :** afficher le rang textuel du niveau.
@@ -354,7 +354,7 @@ découpée en **3a avatars**, **3b thèmes (+ réglage animations)**, **3c modal
 - Tests : `niveauRequisAvatar`/`avatarsForetDebloques` ; refus d'un avatar verrouillé ;
   reset qui rend l'avatar forêt mais garde un avatar de base.
 
-#### Phase 3b — Thèmes de couleur (+ réglage « Animations réduites »)
+#### Phase 3b — Thèmes de couleur (+ réglage « Animations réduites ») ✅ fait
 - `core/unlocks.ts` : `THEMES` + `themesDebloques`.
 - **Thèmes** (cf. §3.5 palettes, §4.4) — **tous clairs, pas de refactor de tokens** :
   palettes sous `:root[data-theme="foret|automne|lagon|fruit-rouge"]` (nouveau

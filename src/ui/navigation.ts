@@ -25,6 +25,7 @@ import { listOrthoLecons } from '../core/orthographe/lessons';
 import { renderOrthoListeForm } from './ortho-liste';
 import { startOrthoRun } from './ortho-runner';
 import { closeProfileMenu } from './menu';
+import { applyPreferences, renderPreferences } from './preferences';
 
 // État de session partagé (réassigné depuis sprint.ts / session.ts) : accesseurs dédiés.
 let currentMode: string | null = null; // 'complet' | 'express' | 'lecon' | 'revision' | null
@@ -105,6 +106,9 @@ export function startRevision() {
 }
 
 export function route() {
+  // Applique le thème + le réglage d'animations du profil actif (couvre le
+  // bootstrap et chaque bascule de profil, qui passent toutes par route()).
+  applyPreferences();
   const h = (location.hash || '').replace(/^#/, '');
   if (h === 'sprint-config') showSprintConfigView();
   else if (h === 'sprint') runSprint();
@@ -227,6 +231,7 @@ export function showProfilesView() {
   resetSessionUI();
   setToolbar({ verify: false, home: true, profile: true });
   hideMenus();
+  renderPreferences();
   renderProfiles();
   document.getElementById('profils')!.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });

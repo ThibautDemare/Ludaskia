@@ -237,6 +237,12 @@
     animation: none;
   }
 }
+/* Réglage in-app « Réduire les animations » (en plus du média système) */
+html.anim-reduced .levelup-rays,
+html.anim-reduced .levelup-medal,
+html.anim-reduced .levelup-unlock--mascotte .levelup-unlock-ico {
+  animation: none;
+}
 
 /* Confettis (déclenchés via la modale de récompense) */
 .confetti-layer {

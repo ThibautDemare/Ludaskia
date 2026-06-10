@@ -99,6 +99,28 @@ export function avatarsForetDebloques(niveau: number): string[] {
   return AVATARS_FORET.filter((a) => niveau >= a.niveau).map((a) => a.emoji);
 }
 
+/* ---------- Thèmes de couleur débloqués par palier ----------
+   Tous CLAIRS (avis UX + pédagogue) : un thème ne réécrit que l'accent, le soft,
+   le fond de page et l'encre — voir styles/themes.scss. `defaut` (niv 1) est
+   toujours disponible. Gamme répartie sur la roue, sans teinte gender-codée. */
+export interface Theme {
+  id: string;
+  label: string;
+  icone: string;
+  niveau: number;
+}
+export const THEMES: Theme[] = [
+  { id: 'defaut', label: 'Classique', icone: '🔵', niveau: 1 },
+  { id: 'foret', label: 'Forêt', icone: '🌲', niveau: 20 },
+  { id: 'automne', label: 'Automne', icone: '🍂', niveau: 40 },
+  { id: 'lagon', label: 'Lagon', icone: '🌊', niveau: 70 },
+  { id: 'fruit-rouge', label: 'Fruit rouge', icone: '🍓', niveau: 95 },
+];
+// Ids des thèmes débloqués à ce niveau (le défaut est toujours inclus).
+export function themesDebloques(niveau: number): string[] {
+  return THEMES.filter((t) => niveau >= t.niveau).map((t) => t.id);
+}
+
 /* ---------- Récompenses débloquées à un palier ---------- */
 export type TypeRecompense = 'rang' | 'mascotte' | 'avatar' | 'theme';
 export interface Recompense {
@@ -118,6 +140,9 @@ export function recompensesNiveau(niveau: number): Recompense[] {
   if (masc) out.push({ type: 'mascotte', icone: masc.emoji, texte: 'Ton compagnon grandit !' });
   const avatar = AVATARS_FORET.find((a) => a.niveau === niveau);
   if (avatar) out.push({ type: 'avatar', icone: avatar.emoji, texte: 'Nouvel avatar débloqué !' });
+  const theme = THEMES.find((t) => t.niveau === niveau && t.niveau > 1);
+  if (theme)
+    out.push({ type: 'theme', icone: theme.icone, texte: `Nouveau thème : ${theme.label}` });
   return out;
 }
 

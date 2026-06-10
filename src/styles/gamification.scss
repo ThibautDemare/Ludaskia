@@ -23,6 +23,73 @@
   font-weight: 800;
   color: var(--blue);
 }
+/* Mascotte évolutive : animée seulement ici (écran de contemplation).
+   Entrée jouée une fois, puis boucle de repos douce selon la forme.
+   transform/opacity uniquement ; coupée sous prefers-reduced-motion. */
+.mascotte {
+  display: inline-block;
+  font-size: 42px;
+  line-height: 1;
+  transform-origin: center bottom;
+}
+.mascotte--oeuf {
+  animation:
+    masc-pop 0.35s ease both,
+    masc-wobble 2.8s ease-in-out 0.35s infinite;
+}
+.mascotte--oisillon {
+  animation:
+    masc-pop 0.35s ease both,
+    masc-hop 2s ease-in-out 0.35s infinite;
+}
+.mascotte--oiseau {
+  animation:
+    masc-pop 0.35s ease both,
+    masc-breathe 3s ease-in-out 0.35s infinite;
+}
+@keyframes masc-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes masc-wobble {
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(6deg);
+  }
+}
+@keyframes masc-hop {
+  0%,
+  55%,
+  100% {
+    transform: translateY(0);
+  }
+  72% {
+    transform: translateY(-20%);
+  }
+}
+@keyframes masc-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascotte {
+    animation: none;
+  }
+}
 .progress-rang-ico {
   font-size: 22px;
 }

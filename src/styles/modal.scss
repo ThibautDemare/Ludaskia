@@ -216,6 +216,16 @@
 .levelup-unlock-ico {
   font-size: 20px;
 }
+/* Évolution de la mascotte : mise en avant (icône plus grande + petite éclosion) */
+.levelup-unlock--mascotte .levelup-unlock-ico {
+  font-size: 30px;
+  animation: masc-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both 0.2s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .levelup-unlock--mascotte .levelup-unlock-ico {
+    animation: none;
+  }
+}
 .levelup-ok {
   background: linear-gradient(135deg, #ffb300, #ef6c00);
 }

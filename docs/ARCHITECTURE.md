@@ -121,9 +121,11 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   `gSnapshot`), dont des groupes **par matière** et **par catégorie** générés
   depuis le catalogue.
 - **`unlocks.ts`** — déblocages cosmétiques **dérivés du niveau** (issue #28),
-  module **pur** sans stockage ni migration : **rangs** (`RANGS`, `titreDuNiveau`)
-  et récompenses de palier (`recompensesNiveau`, `recompensesEntre` qui gère un saut
-  de plusieurs niveaux). Mascotte/avatars/thèmes viendront s'y ajouter.
+  module **pur** sans stockage ni migration : **rangs** (`RANGS`, `titreDuNiveau`),
+  **mascotte évolutive** (`MASCOTTE` à 9 formes œuf→aigle, `mascotteDuNiveau` ; chaque
+  forme porte une catégorie `oeuf|oisillon|oiseau` qui pilote l'animation), et
+  récompenses de palier (`recompensesNiveau`, `recompensesEntre` qui agrège un saut de
+  plusieurs niveaux). Avatars/thèmes viendront s'y ajouter.
 
 ### `src/ui/`
 - **`chrono.ts`** — chronomètre croissant de la barre (sessions).
@@ -262,12 +264,16 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   le niveau 100, dernier palier ~717 XP (pas un mur).
   Affiché dans la barre d'outils en **badge niveau + barre de progression**
   (`progressionNiveau`) ; l'XP brute n'apparaît plus qu'en infobulle.
-- **Déblocages par niveau (rangs)** : monter de niveau débloque du **cosmétique**
-  (jamais du contenu d'apprentissage). En place : un **rang** (titre + icône Nature,
-  épicène) dérivé du niveau (`core/unlocks.ts`), affiché dans le **badge de la barre**
-  (icône du rang) et dans une **carte « progression »** sur l'accueil ; les nouveaux
-  rangs sont annoncés dans la **modale de niveau** (`showLevelUp` liste les déblocages
-  du palier). Mascotte évolutive, avatars et thèmes débloquables suivront.
+- **Déblocages par niveau** : monter de niveau débloque du **cosmétique** (jamais du
+  contenu d'apprentissage). En place : un **rang** (titre + icône Nature, épicène) et
+  une **mascotte évolutive** (compagnon œuf→aigle), tous deux dérivés du niveau
+  (`core/unlocks.ts`). Le rang s'affiche dans le **badge de la barre** ; rang + mascotte
+  vivent dans une **carte « progression »** sur l'accueil, où la mascotte est **animée**
+  (entrée + boucle de repos douce selon sa forme, coupée sous `prefers-reduced-motion` ;
+  animée uniquement sur cet écran de contemplation, jamais pendant un exercice
+  chronométré). Les déblocages d'un palier sont annoncés dans la **modale de niveau**
+  (`showLevelUp`), l'évolution de la mascotte y étant mise en avant. Avatars et thèmes
+  débloquables suivront (phase 3).
 - **Règle des 60 %** : un bilan/leçon ne « compte » (temps, record, étoile,
   objectif, trophée) que si ≥ 60 % des calculs ont une réponse. Le sprint compte
   s'il va au bout des 5 minutes.

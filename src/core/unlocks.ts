@@ -37,6 +37,39 @@ export function titreDuNiveau(niveau: number): Rang {
   return rang;
 }
 
+/* ---------- Mascotte évolutive (compagnon qui grandit) ----------
+   Forme dérivée du niveau. Début densifié (éclosion dès le niv 3) et moitié
+   haute étoffée pour ne pas figer le compagnon de 50 à 100 (avis pédagogique).
+   `forme` pilote l'animation (œuf qui se balance, oisillon qui sautille, oiseau
+   qui « respire ») — voir styles. */
+export type FormeMascotte = 'oeuf' | 'oisillon' | 'oiseau';
+export interface Mascotte {
+  seuil: number; // niveau minimal pour cette forme
+  emoji: string;
+  forme: FormeMascotte;
+}
+export const MASCOTTE: Mascotte[] = [
+  { seuil: 1, emoji: '🥚', forme: 'oeuf' },
+  { seuil: 3, emoji: '🐣', forme: 'oisillon' },
+  { seuil: 10, emoji: '🐥', forme: 'oisillon' },
+  { seuil: 25, emoji: '🐤', forme: 'oisillon' },
+  { seuil: 50, emoji: '🦉', forme: 'oiseau' },
+  { seuil: 65, emoji: '🦜', forme: 'oiseau' },
+  { seuil: 80, emoji: '🦢', forme: 'oiseau' },
+  { seuil: 90, emoji: '🦚', forme: 'oiseau' },
+  { seuil: NIVEAU_MAX, emoji: '🦅', forme: 'oiseau' },
+];
+
+// Forme courante : la plus haute dont le seuil est atteint.
+export function mascotteDuNiveau(niveau: number): Mascotte {
+  let m = MASCOTTE[0];
+  for (const f of MASCOTTE) {
+    if (niveau >= f.seuil) m = f;
+    else break;
+  }
+  return m;
+}
+
 /* ---------- Récompenses débloquées à un palier ---------- */
 export type TypeRecompense = 'rang' | 'mascotte' | 'avatar' | 'theme';
 export interface Recompense {
@@ -46,12 +79,14 @@ export interface Recompense {
 }
 
 // Ce qui se débloque PILE au niveau `niveau` (vide si ce n'est pas un palier).
-// Phase 1 : seulement les rangs (mascotte/avatar/thème ajoutés plus tard).
-// Le niveau 1 (rang de départ) n'est pas un déblocage « vécu » : on l'ignore.
+// Couvre rangs et mascotte (avatars/thèmes ajoutés en phase 3). Le niveau 1
+// (rang et œuf de départ) n'est pas un déblocage « vécu » : on l'ignore.
 export function recompensesNiveau(niveau: number): Recompense[] {
   const out: Recompense[] = [];
   const rang = RANGS.find((r) => r.seuil === niveau && r.seuil > 1);
   if (rang) out.push({ type: 'rang', icone: rang.icone, texte: `Nouveau rang : ${rang.titre}` });
+  const masc = MASCOTTE.find((m) => m.seuil === niveau && m.seuil > 1);
+  if (masc) out.push({ type: 'mascotte', icone: masc.emoji, texte: 'Ton compagnon grandit !' });
   return out;
 }
 

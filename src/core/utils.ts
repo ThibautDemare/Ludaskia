@@ -54,6 +54,14 @@ export function uniqueExact(gen: () => Item, n: number, mt = 10000): Item[] {
 }
 export const escapeHTML = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
+/* Normalisation d'une réponse TEXTE pour comparaison (conjugaison, orthographe…) :
+   - trim des bords,
+   - toute suite d'espaces internes réduite à une seule (une double espace entre
+     l'auxiliaire et le verbe — « a  mangé » — ne doit pas être comptée fausse),
+   - NFC (accents et apostrophes exigés).
+   Ne concerne PAS la correction numérique (calcul). */
+export const normalizeText = (s: string) => s.trim().replace(/\s+/g, ' ').normalize('NFC');
+
 /* Formatage mm:ss d'une durée en millisecondes */
 export function fmt(ms: number) {
   const s = Math.floor(ms / 1000),

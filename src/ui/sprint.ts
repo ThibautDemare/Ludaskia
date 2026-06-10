@@ -157,6 +157,10 @@ export function sprintCleanup() {
   sprintPaused = false;
 }
 
+// Un sprint est-il EN COURS (pas l'écran de résultats) ? Sert au garde-fou de
+// sortie (#63) : quitter un sprint perd la progression (mode non reprenable).
+export const isSprintRunning = () => sprintActive;
+
 export function runSprint() {
   setCurrentMode('sprint');
   setCurrentLessonId(null);

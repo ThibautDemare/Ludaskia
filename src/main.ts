@@ -13,6 +13,7 @@ import './styles/profiles.scss';
 import './styles/sprint.scss';
 import './styles/revision.scss';
 import './styles/modal.scss';
+import './styles/reprise.scss';
 import './styles/print.scss';
 import './styles/bilan.scss';
 import './styles/catalog.scss';
@@ -53,10 +54,16 @@ import {
 } from './ui/navigation';
 import { ORTHO_CATEGORY_ID } from './core/catalog';
 import { verify, printAll } from './ui/session';
+import { captureResume } from './ui/resume';
+import { isSprintRunning } from './ui/sprint';
+import { isRevisionRunning } from './ui/revision';
 import { hideCelebration, hideLevelUp } from './ui/effects';
 import { openRecompenses, openTrophees, hideUnlockModals } from './ui/unlocks-view';
 import { closeProfileMenu, toggleProfileMenu } from './ui/menu';
 import { initTts } from './ui/tts';
+
+// Quitter ces modes (non reprenables) perd la progression → on confirme (#63).
+const quittingLosesProgress = () => isSprintRunning() || isRevisionRunning();
 
 /* ---------- Téléchargement d'un objet en fichier JSON ---------- */
 function downloadJSON(filename: string, obj: any) {
@@ -76,6 +83,9 @@ function downloadJSON(filename: string, obj: any) {
    ============================================================ */
 function wireDOM() {
   document.getElementById('btnVerify')!.addEventListener('click', verify);
+  // Accueil : la confirmation des modes NON reprenables (sprint, révision) est
+  // gérée au niveau du hashchange (couvre aussi Précédent / édition d'URL), pour
+  // ne pas demander deux fois. Les exercices grille sont sauvegardés en silence.
   document.getElementById('btnHome')!.addEventListener('click', goHome);
   document.getElementById('btnPrint')!.addEventListener('click', printAll);
   document.getElementById('cardLecon')!.addEventListener('click', startMatieres);
@@ -300,8 +310,54 @@ function wireDOM() {
     }
   });
 
-  // Précédent/Suivant du navigateur → on rejoue la vue correspondante
-  window.addEventListener('hashchange', route);
+  // Sauvegarde de l'exercice en cours quand l'app passe en arrière-plan ou se
+  // ferme (onglet masqué, app quittée sur tablette) — le cas « interruption »
+  // le plus fréquent pour un CE2 (#63).
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') captureResume();
+  });
+  window.addEventListener('pagehide', captureResume);
+  // Sauvegarde débouncée à la saisie : couvre aussi une coupure brutale
+  // (batterie) où pagehide ne se déclenche pas.
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
+  document.addEventListener('input', (e) => {
+    const t = e.target as HTMLElement;
+    if (t instanceof HTMLInputElement && t.classList.contains('ans')) {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(captureResume, 800);
+    }
+  });
+
+  // Modes NON reprenables (sprint, révision) : quitter perd la progression. On
+  // confirme avant de tout changement de vue interne (Précédent/Suivant, Accueil,
+  // édition du hash). Si l'enfant annule, on remet le hash précédent sans rejouer
+  // la vue (le sprint continue). Les exercices grille passent sans confirmation
+  // (sauvegardés automatiquement, #63).
+  let revertingHash = false;
+  window.addEventListener('hashchange', (e: HashChangeEvent) => {
+    if (revertingHash) {
+      revertingHash = false;
+      return;
+    }
+    if (
+      quittingLosesProgress() &&
+      !confirm('Tu veux vraiment arrêter ? Tu perdras ta progression.')
+    ) {
+      revertingHash = true;
+      location.hash = new URL(e.oldURL).hash || '#accueil';
+      return;
+    }
+    route();
+  });
+  // Fermeture d'onglet / rechargement / changement d'URL (barre d'adresse) :
+  // mêmes modes non reprenables → invite native du navigateur. (Les exercices
+  // grille sont déjà sauvegardés via visibilitychange/pagehide, donc pas d'invite.)
+  window.addEventListener('beforeunload', (e: BeforeUnloadEvent) => {
+    if (quittingLosesProgress()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
   // Au chargement : on affiche la vue désignée par le hash (accueil par défaut)
   route();
 }

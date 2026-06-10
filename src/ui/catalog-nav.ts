@@ -12,6 +12,7 @@ import {
   getLessonsBySubject,
   getLessonsByCategory,
 } from '../core/catalog';
+import type { BilanConfig } from '../core/catalog';
 import { LESSONS } from '../core/lessons';
 import { loadStars, loadLessonStats } from '../core/progress';
 import { loadOrtho } from '../core/orthographe/store';
@@ -19,7 +20,8 @@ import { listOrthoLecons, type LeconOrthoRef } from '../core/orthographe/lessons
 import { escapeHTML } from '../core/utils';
 import { lessonCardHTML } from './render';
 import { startCategorySprint } from './sprint';
-import { runBilanConfig } from './bilan';
+import { startBilan, categoryBilanCtx } from './bilan';
+import { renderReprises } from './resume';
 import { printScope } from './session';
 import { buildExpressConfig } from '../core/bilan-express';
 import {
@@ -108,6 +110,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
     .join('');
 
   el.innerHTML = `
+    <div id="catReprises" class="reprises reprises-cat"></div>
     <div class="cat-actions">
       <button class="cat-action" data-act="express">⏱️ Bilan express<small>rapide · ~20 questions</small></button>
       <button class="cat-action" data-act="complet">📚 Bilan complet<small>toutes les questions</small></button>
@@ -139,15 +142,16 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
       lastExpressByCat[categoryId],
     );
     lastExpressByCat[categoryId] = config.lessonIds;
-    runBilanConfig(config);
+    startBilan(config, categoryBilanCtx('express', categoryId, config));
   });
   el.querySelector('[data-act="complet"]')!.addEventListener('click', () => {
-    runBilanConfig({
+    const config: BilanConfig = {
       id: '',
       label: `Bilan complet — ${category?.label ?? ''}`,
       lessonIds,
       questionsPerLesson: 'all',
-    });
+    };
+    startBilan(config, categoryBilanCtx('complet', categoryId, config));
   });
   el.querySelector('[data-act="sprint"]')!.addEventListener('click', () => {
     startCategorySprint(categoryId);
@@ -158,6 +162,9 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
   el.querySelector('[data-act="custom"]')!.addEventListener('click', () => {
     goCategorieBilan(categoryId);
   });
+
+  // Section « À continuer » filtrée sur cette catégorie (#63).
+  renderReprises(el.querySelector<HTMLElement>('#catReprises'), categoryId);
 }
 
 /* ---------- Écran : catégorie Orthographe ----------

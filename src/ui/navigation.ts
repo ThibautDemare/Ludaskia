@@ -16,7 +16,7 @@ import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
 import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
 import { runSprint, sprintCleanup, renderSprintConfigScreen } from './sprint';
-import { runRevisionEspacee } from './revision';
+import { runRevisionEspacee, revisionCleanup } from './revision';
 import { renderBilanConfigScreen } from './bilan';
 import { renderSubjects, renderCategories, renderCategorie } from './catalog-nav';
 import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
@@ -26,6 +26,11 @@ import { renderOrthoListeForm } from './ortho-liste';
 import { startOrthoRun } from './ortho-runner';
 import { closeProfileMenu } from './menu';
 import { applyPreferences, renderPreferences } from './preferences';
+import { leconKey } from '../core/resume';
+import { captureResume, clearResumeCtx, setResumeCtx, maybeRelaunch } from './resume';
+
+// Icône de matière pour les cartes de reprise (#63).
+const SUBJECT_ICON: Record<string, string> = { math: '🔢', francais: '📚' };
 
 // État de session partagé (réassigné depuis sprint.ts / session.ts) : accesseurs dédiés.
 let currentMode: string | null = null; // 'complet' | 'express' | 'lecon' | 'revision' | null
@@ -56,7 +61,14 @@ export const setPendingRevision = (v: Item[]) => {
 
 // Déclencheurs (liés à l'UI)
 export function goHome() {
-  location.hash = 'accueil';
+  // Un exercice repris est rendu directement (sans changer le hash) : si on est
+  // déjà sur #accueil, réassigner le hash ne déclencherait pas hashchange → on
+  // rend la vue à la main (et resetSessionUI sauvegarde l'exercice en cours).
+  if ((location.hash === '#accueil' || location.hash === '') && currentMode !== null) {
+    showHomeView();
+  } else {
+    location.hash = 'accueil';
+  }
 }
 export function showLessons() {
   location.hash = 'lecons';
@@ -83,7 +95,12 @@ export function showProfiles() {
   location.hash = 'profils';
 }
 export function startLecon(id: string) {
-  if (getAllLessons().find((l) => l.id === id)) location.hash = 'lecon-' + id;
+  const lesson = getLessonById(id);
+  if (!lesson) return;
+  // Une reprise existe pour cette leçon ? → proposer « Continuer / Recommencer ».
+  maybeRelaunch(leconKey(id), lesson.label, () => {
+    location.hash = 'lecon-' + id;
+  });
 }
 export function startSprint() {
   location.hash = 'sprint-config';
@@ -180,8 +197,12 @@ export function setToolbar({
 
 // Remet l'UI dans l'état « hors session » (commun à l'accueil et au sélecteur)
 function resetSessionUI() {
+  // Avant d'effacer #sheets : sauvegarder l'exercice en cours s'il y a lieu (#63).
+  captureResume();
+  clearResumeCtx();
   resetChrono();
   sprintCleanup(); // stoppe un éventuel sprint en cours (compte à rebours)
+  revisionCleanup(); // remet à zéro le drapeau « révision en cours » (#63)
   currentMode = null;
   currentLessonId = null;
   document.getElementById('sheets')!.innerHTML = '';
@@ -324,12 +345,22 @@ export function showBilanCustomView(categoryId?: string) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function runLecon(id: string) {
-  if (!getLessonById(id)) {
+  const lesson = getLessonById(id);
+  if (!lesson) {
     showHomeView();
     return;
   }
   currentMode = 'lecon';
   currentLessonId = id;
+  // Contexte de reprise : cette leçon devient « l'exercice en cours » (#63).
+  setResumeCtx({
+    key: leconKey(id),
+    mode: 'lecon',
+    label: lesson.label,
+    icon: SUBJECT_ICON[lesson.subject] ?? '📘',
+    categoryId: lesson.category,
+    relaunch: { type: 'lecon', lessonId: id },
+  });
   setInputCounter(0);
   setSessionItems({});
   const fiche = buildLessonFiche(id); // aiguille math (rendu riche) / autres matières (texte)

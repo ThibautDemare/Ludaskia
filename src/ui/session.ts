@@ -20,6 +20,7 @@ import {
 import { updateGoal, evaluateTrophies } from '../core/rewards';
 import { recompensesEntre, type Recompense } from '../core/unlocks';
 import { stopChrono } from './chrono';
+import { finishResume } from './resume';
 import { showCelebration, showLevelUp } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
@@ -86,6 +87,8 @@ export function verify() {
     }
   });
   setLastErrors(errors);
+  // L'exercice est vérifié (corrections révélées) : la reprise n'a plus lieu d'être (#63).
+  finishResume();
   const lastErrors = getLastErrors();
   // Un exercice ne « compte » que si au moins 60 % des calculs ont une réponse.
   const recordable = currentMode && currentMode !== 'revision';

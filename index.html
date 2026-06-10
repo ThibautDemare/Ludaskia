@@ -30,8 +30,9 @@
       <div class="big">Ludaskia</div>
       <div class="tagline">Entraînement chronométré · maths et français</div>
       <div class="home-grid">
-        <!-- Colonne gauche : progression (défi, objectifs, classements, trophées) -->
+        <!-- Colonne gauche : progression (rang/niveau, défi, objectifs, classements, trophées) -->
         <div class="home-col home-col-left">
+          <div id="progression"></div>
           <div class="goal" id="goal"></div>
           <div class="objectives" id="objectives"></div>
           <div class="boards" id="boards"></div>
@@ -187,6 +188,7 @@
         <p class="levelup-kicker">Niveau supérieur&nbsp;!</p>
         <h2 class="levelup-title" id="levelupTitle">Bravo, tu montes d'un niveau&nbsp;!</h2>
         <p class="levelup-next" id="levelupNext"></p>
+        <ul class="levelup-unlocks" id="levelupUnlocks" style="display: none"></ul>
         <button class="modal-ok levelup-ok" id="levelupOk">Continuer</button>
       </div>
     </div>

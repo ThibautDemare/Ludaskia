@@ -2,6 +2,7 @@
    Effets visuels : courbe de progression, confettis, modale
    ============================================================ */
 import { getXP, progressionNiveau, NIVEAU_MAX } from '../core/progress';
+import type { Recompense } from '../core/unlocks';
 
 /* Mini-courbe SVG de la progression (score % au fil des essais) */
 export function sparkline(vals: number[], w = 260, h = 46) {
@@ -61,7 +62,7 @@ export function hideCelebration() {
    `then` (optionnel) est rejoué à la fermeture → permet d'enchaîner sur la
    modale de récompense générique s'il y a d'autres gains. */
 let levelUpThen: (() => void) | null = null;
-export function showLevelUp(niveau: number, then?: () => void) {
+export function showLevelUp(niveau: number, recompenses: Recompense[] = [], then?: () => void) {
   const ov = document.getElementById('levelup');
   if (!ov) {
     if (then) then(); // pas de modale dans le DOM : on n'avale pas les autres récompenses
@@ -76,6 +77,14 @@ export function showLevelUp(niveau: number, then?: () => void) {
       niveau >= NIVEAU_MAX
         ? '🏆 Niveau maximum atteint !'
         : `Plus que ${pr.xpRequisPalier - pr.xpDansNiveau} XP avant le niveau ${niveau + 1}`;
+  }
+  // Déblocages du palier (rang, et plus tard mascotte/avatar/thème).
+  const unlocks = document.getElementById('levelupUnlocks');
+  if (unlocks) {
+    unlocks.innerHTML = recompenses
+      .map((r) => `<li><span class="levelup-unlock-ico">${r.icone}</span> ${r.texte}</li>`)
+      .join('');
+    unlocks.style.display = recompenses.length ? '' : 'none';
   }
   levelUpThen = then ?? null;
   ov.style.display = '';

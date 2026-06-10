@@ -125,6 +125,7 @@ import {
   REVISION_INTERVALLES,
 } from '../src/core/revision';
 import { selectDueGroups, countDue } from '../src/core/revision-select';
+import { RANGS, titreDuNiveau, recompensesNiveau, recompensesEntre } from '../src/core/unlocks';
 import {
   loadProfilesMeta,
   listProfiles,
@@ -203,6 +204,10 @@ const api = {
   xpPourNiveau,
   niveauDepuisXP,
   progressionNiveau,
+  RANGS,
+  titreDuNiveau,
+  recompensesNiveau,
+  recompensesEntre,
   GOAL_KEY,
   GOALS_DONE_KEY,
   getGoalsDone,
@@ -589,6 +594,52 @@ describe('XP & gamification multi-matières', () => {
         .map((t) => t.id)
         .includes('cat-math-calcul-3'),
     ).toBe(true);
+  });
+});
+
+describe('Déblocages par niveau (unlocks)', () => {
+  test('titreDuNiveau : rang courant aux bornes des paliers', () => {
+    // Seuils : 1 Graine · 10 Pousse · 25 Arbuste · 45 Jeune arbre · 65 Grand chêne
+    // · 85 Forêt · 100 Légende de la forêt.
+    expect(api.titreDuNiveau(1).titre).toBe('Graine');
+    expect(api.titreDuNiveau(9).titre).toBe('Graine');
+    expect(api.titreDuNiveau(10).titre).toBe('Pousse');
+    expect(api.titreDuNiveau(24).titre).toBe('Pousse');
+    expect(api.titreDuNiveau(25).titre).toBe('Arbuste');
+    expect(api.titreDuNiveau(84).titre).toBe('Grand chêne');
+    expect(api.titreDuNiveau(85).titre).toBe('Forêt');
+    expect(api.titreDuNiveau(99).titre).toBe('Forêt');
+    expect(api.titreDuNiveau(100).titre).toBe('Légende de la forêt');
+  });
+  test('titreDuNiveau : monotone (le rang ne régresse jamais)', () => {
+    let dernierSeuil = 0;
+    for (let n = 1; n <= api.NIVEAU_MAX; n++) {
+      const r = api.titreDuNiveau(n);
+      expect(r.seuil).toBeGreaterThanOrEqual(dernierSeuil);
+      dernierSeuil = r.seuil;
+    }
+    // Le dernier rang couvre exactement le niveau max.
+    expect(api.RANGS[api.RANGS.length - 1].seuil).toBe(api.NIVEAU_MAX);
+  });
+  test('recompensesNiveau : un rang débloqué pile au palier (hors niveau 1)', () => {
+    expect(api.recompensesNiveau(1)).toEqual([]); // rang de départ, pas un déblocage vécu
+    expect(api.recompensesNiveau(2)).toEqual([]); // pas un palier de rang
+    const r10 = api.recompensesNiveau(10);
+    expect(r10).toHaveLength(1);
+    expect(r10[0].type).toBe('rang');
+    expect(r10[0].texte).toContain('Pousse');
+    expect(api.recompensesNiveau(100)[0].texte).toContain('Légende de la forêt');
+  });
+  test('recompensesEntre : agrège les paliers franchis (saut multi-niveaux)', () => {
+    // Saut 9 → 11 : franchit le palier 10 (Pousse).
+    const saut = api.recompensesEntre(9, 11);
+    expect(saut.map((r: { texte: string }) => r.texte).join()).toContain('Pousse');
+    expect(saut).toHaveLength(1);
+    // Gros saut 1 → 30 : franchit Pousse (10) et Arbuste (25).
+    const gros = api.recompensesEntre(1, 30);
+    expect(gros.map((r: { type: string }) => r.type)).toEqual(['rang', 'rang']);
+    // Aucun changement de niveau ⇒ aucun déblocage.
+    expect(api.recompensesEntre(12, 12)).toEqual([]);
   });
 });
 

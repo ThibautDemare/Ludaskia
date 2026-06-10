@@ -31,6 +31,7 @@ import {
 } from '../core/progress';
 import { updateGoal, evaluateTrophies } from '../core/rewards';
 import { getTimer, setTimer, resetChrono } from './chrono';
+import { recompensesEntre } from '../core/unlocks';
 import { showCelebration, showLevelUp } from './effects';
 import {
   setCurrentMode,
@@ -413,7 +414,11 @@ function finalizeSprint() {
   // Passage de niveau pendant le sprint → modale dédiée, puis enchaînement.
   const niveauApres = niveauDepuisXP(getXP());
   if (niveauApres > sprintNiveauDepart)
-    showLevelUp(niveauApres, celeb.length ? () => showCelebration(celeb) : undefined);
+    showLevelUp(
+      niveauApres,
+      recompensesEntre(sprintNiveauDepart, niveauApres),
+      celeb.length ? () => showCelebration(celeb) : undefined,
+    );
   else if (celeb.length) showCelebration(celeb);
 }
 

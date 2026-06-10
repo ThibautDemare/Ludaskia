@@ -120,6 +120,10 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   `updateGoal`) et trophées (`TROPHIES`, `tiers()`, `evaluateTrophies`,
   `gSnapshot`), dont des groupes **par matière** et **par catégorie** générés
   depuis le catalogue.
+- **`unlocks.ts`** — déblocages cosmétiques **dérivés du niveau** (issue #28),
+  module **pur** sans stockage ni migration : **rangs** (`RANGS`, `titreDuNiveau`)
+  et récompenses de palier (`recompensesNiveau`, `recompensesEntre` qui gère un saut
+  de plusieurs niveaux). Mascotte/avatars/thèmes viendront s'y ajouter.
 
 ### `src/ui/`
 - **`chrono.ts`** — chronomètre croissant de la barre (sessions).
@@ -258,6 +262,12 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   le niveau 100, dernier palier ~717 XP (pas un mur).
   Affiché dans la barre d'outils en **badge niveau + barre de progression**
   (`progressionNiveau`) ; l'XP brute n'apparaît plus qu'en infobulle.
+- **Déblocages par niveau (rangs)** : monter de niveau débloque du **cosmétique**
+  (jamais du contenu d'apprentissage). En place : un **rang** (titre + icône Nature,
+  épicène) dérivé du niveau (`core/unlocks.ts`), affiché dans le **badge de la barre**
+  (icône du rang) et dans une **carte « progression »** sur l'accueil ; les nouveaux
+  rangs sont annoncés dans la **modale de niveau** (`showLevelUp` liste les déblocages
+  du palier). Mascotte évolutive, avatars et thèmes débloquables suivront.
 - **Règle des 60 %** : un bilan/leçon ne « compte » (temps, record, étoile,
   objectif, trophée) que si ≥ 60 % des calculs ont une réponse. Le sprint compte
   s'il va au bout des 5 minutes.

@@ -10,22 +10,34 @@
    PURE et testable : `now` (ms) est toujours passé en paramètre —
    jamais de Date.now() interne (cf. contrainte tests Vitest).
 
-   Escalier d'intervalles adapté CE2 (pas de SM-2) :
-     entrée → ~1 sem → ~2-3 sem → ~1 mois → ~2-3 mois → acquis.
+   Escalier d'intervalles adapté CE2 (pas de SM-2), inspiré des « boîtes »
+   de Leitner : phase d'ancrage rapprochée AU DÉBUT (J+1, J+3) pour mordre
+   sur la courbe de l'oubli quand la trace est fraîche, puis espacement
+   progressif :
+     entrée → J+1 → J+3 → ~1 sem → ~2 sem → ~1 mois → ~2-3 mois → acquis.
    Une réussite monte d'un cran ; un échec recule d'UN cran (pas à zéro).
+   La phase rapprochée est sans pénalité : un élément non révisé à temps est
+   simplement « en retard », jamais culpabilisant (cf. discussion #45).
    ============================================================ */
 import type { EtatRevision } from './orthographe/types';
 
 const JOUR = 86_400_000;
 /* Délai avant re-test selon le palier ATTEINT (index = palier). */
-export const REVISION_INTERVALLES = [7 * JOUR, 18 * JOUR, 30 * JOUR, 75 * JOUR];
+export const REVISION_INTERVALLES = [
+  1 * JOUR,
+  3 * JOUR,
+  7 * JOUR,
+  16 * JOUR,
+  35 * JOUR,
+  75 * JOUR,
+];
 /* Palier « acquis » : sort de la rotation active (gardé pour la fierté). */
 export const PALIER_ACQUIS = REVISION_INTERVALLES.length; // 4
 /* Plafond d'éléments dus proposés en une session (par-dessus rien d'autre). */
 export const REVISION_PLAFOND = 12;
 
 /* État d'un élément qui ENTRE en rotation (dès l'ajout / la 1re rencontre) :
-   palier 0, premier re-test après ~1 semaine. */
+   palier 0, premier re-test dès le lendemain (J+1) pour consolider à chaud. */
 export function etatNeuf(now: number): EtatRevision {
   return {
     palier: 0,

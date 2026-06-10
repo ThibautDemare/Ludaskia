@@ -167,7 +167,7 @@ export function loadLessonRevisions(): Record<string, EtatRevision> {
 function saveLessonRevisions(r: Record<string, EtatRevision>) {
   lsSet(LESSON_REVISION_KEY, r);
 }
-/* Entrée en rotation à la première rencontre (1er re-test ~1 semaine), sans
+/* Entrée en rotation à la première rencontre (1er re-test dès J+1), sans
    rendre la leçon due immédiatement. */
 export function enterLessonsRevision(lessonIds: string[], now: number) {
   const all = loadLessonRevisions();

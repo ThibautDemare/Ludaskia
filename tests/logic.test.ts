@@ -1076,12 +1076,12 @@ describe('Impression contextuelle (issue #40)', () => {
 
 describe('Révision espacée (issue #45)', () => {
   const T0 = 1_700_000_000_000; // instant de référence (ms)
-  test('entrée en rotation : palier 0, dû dans ~1 semaine', () => {
+  test('entrée en rotation : palier 0, dû dès J+1', () => {
     const e = etatNeuf(T0);
     expect(e.palier).toBe(0);
     expect(e.prochaineRevision).toBe(T0 + REVISION_INTERVALLES[0]);
     expect(estDu(e, T0)).toBe(false); // pas dû tout de suite
-    expect(estDu(e, T0 + REVISION_INTERVALLES[0])).toBe(true); // dû une semaine plus tard
+    expect(estDu(e, T0 + REVISION_INTERVALLES[0])).toBe(true); // dû dès le lendemain
   });
   test('réussite monte d’un cran ; acquis sort de la rotation', () => {
     let e = etatNeuf(T0);

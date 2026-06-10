@@ -5,47 +5,47 @@
    Appliqués via <html data-theme="..."> (voir ui/preferences.ts). */
 
 :root[data-theme='foret'] {
-  --blue: #2f7d52;
-  --blue-dark: #225c3c;
-  --blue-soft: #e4f0e8;
-  --page-bg: #eef3ee;
+	--blue: #2f7d52;
+	--blue-dark: #225c3c;
+	--blue-soft: #e4f0e8;
+	--page-bg: #eef3ee;
 }
 :root[data-theme='automne'] {
-  --blue: #b5532a;
-  --blue-dark: #8f3e1d;
-  --blue-soft: #f6e7db;
-  --page-bg: #f4ede4;
-  --ink: #2a1d16;
+	--blue: #b5532a;
+	--blue-dark: #8f3e1d;
+	--blue-soft: #f6e7db;
+	--page-bg: #f4ede4;
+	--ink: #2a1d16;
 }
 :root[data-theme='lagon'] {
-  --blue: #0a8a8f;
-  --blue-dark: #066b6f;
-  --blue-soft: #def2f2;
-  --page-bg: #eef6f6;
-  --ink: #142020;
+	--blue: #0a8a8f;
+	--blue-dark: #066b6f;
+	--blue-soft: #def2f2;
+	--page-bg: #eef6f6;
+	--ink: #142020;
 }
 :root[data-theme='fruit-rouge'] {
-  --blue: #d7395a;
-  --blue-dark: #b02945;
-  --blue-soft: #fbe2e7;
-  --page-bg: #fdeff1;
-  --ink: #1f1417;
+	--blue: #d7395a;
+	--blue-dark: #b02945;
+	--blue-soft: #fbe2e7;
+	--page-bg: #fdeff1;
+	--ink: #1f1417;
 }
 
 /* Pastilles d'aperçu du sélecteur de thèmes (couleur d'accent de chaque thème,
    indépendante du thème actif). */
 .theme-defaut .theme-dot {
-  background: #336cbf;
+	background: #336cbf;
 }
 .theme-foret .theme-dot {
-  background: #2f7d52;
+	background: #2f7d52;
 }
 .theme-automne .theme-dot {
-  background: #b5532a;
+	background: #b5532a;
 }
 .theme-lagon .theme-dot {
-  background: #0a8a8f;
+	background: #0a8a8f;
 }
 .theme-fruit-rouge .theme-dot {
-  background: #d7395a;
+	background: #d7395a;
 }

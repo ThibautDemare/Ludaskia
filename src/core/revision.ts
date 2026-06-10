@@ -32,36 +32,36 @@ export const REVISION_PLAFOND = 12;
 /* État d'un élément qui ENTRE en rotation (dès l'ajout / la 1re rencontre) :
    palier 0, premier re-test dès le lendemain (J+1) pour consolider à chaud. */
 export function etatNeuf(now: number): EtatRevision {
-  return {
-    palier: 0,
-    prochaineRevision: now + REVISION_INTERVALLES[0],
-    reussites: 0,
-    dernierTest: null,
-  };
+	return {
+		palier: 0,
+		prochaineRevision: now + REVISION_INTERVALLES[0],
+		reussites: 0,
+		dernierTest: null,
+	};
 }
 
 /* Un élément est « dû » s'il est en rotation, pas encore acquis, et que sa date
    de re-test est passée. */
 export function estDu(e: EtatRevision | undefined | null, now: number): boolean {
-  return (
-    !!e && e.palier < PALIER_ACQUIS && e.prochaineRevision != null && e.prochaineRevision <= now
-  );
+	return (
+		!!e && e.palier < PALIER_ACQUIS && e.prochaineRevision != null && e.prochaineRevision <= now
+	);
 }
 
 export function estAcquis(e: EtatRevision | undefined | null): boolean {
-  return !!e && e.palier >= PALIER_ACQUIS;
+	return !!e && e.palier >= PALIER_ACQUIS;
 }
 
 /* Fait évoluer l'état après une réponse : réussite → +1 cran (jusqu'à acquis,
    qui sort de la rotation) ; échec → -1 cran (jamais en dessous de 0). */
 export function avancerEtat(e: EtatRevision, reussi: boolean, now: number): EtatRevision {
-  const palier = reussi ? Math.min(PALIER_ACQUIS, e.palier + 1) : Math.max(0, e.palier - 1);
-  const acquis = palier >= PALIER_ACQUIS;
-  const delai = REVISION_INTERVALLES[Math.min(palier, REVISION_INTERVALLES.length - 1)];
-  return {
-    palier,
-    prochaineRevision: acquis ? null : now + delai,
-    reussites: e.reussites + (reussi ? 1 : 0),
-    dernierTest: now,
-  };
+	const palier = reussi ? Math.min(PALIER_ACQUIS, e.palier + 1) : Math.max(0, e.palier - 1);
+	const acquis = palier >= PALIER_ACQUIS;
+	const delai = REVISION_INTERVALLES[Math.min(palier, REVISION_INTERVALLES.length - 1)];
+	return {
+		palier,
+		prochaineRevision: acquis ? null : now + delai,
+		reussites: e.reussites + (reussi ? 1 : 0),
+		dernierTest: now,
+	};
 }

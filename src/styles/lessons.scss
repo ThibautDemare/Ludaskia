@@ -1,136 +1,136 @@
 /* Liste des leçons (écran « une leçon à la fois ») */
 .lesson-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 12px;
-  text-align: left;
-  margin-top: 14px;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+	gap: 12px;
+	text-align: left;
+	margin-top: 14px;
 }
 /* Rangée « carte + 🖨 » sur l'écran de catégorie (impression d'une fiche). */
 .lesson-row {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
+	display: flex;
+	align-items: stretch;
+	gap: 8px;
 }
 .lesson-row .lesson-item {
-  flex: 1;
-  min-width: 0;
+	flex: 1;
+	min-width: 0;
 }
 .lz-print {
-  flex: 0 0 auto;
-  width: 46px;
-  font-size: 18px;
-  cursor: pointer;
-  color: var(--blue);
-  background: var(--paper);
-  border: 2px solid var(--blue-soft);
-  border-radius: 12px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  transition:
-    border-color 0.15s ease,
-    background 0.12s ease;
+	flex: 0 0 auto;
+	width: 46px;
+	font-size: 18px;
+	cursor: pointer;
+	color: var(--blue);
+	background: var(--paper);
+	border: 2px solid var(--blue-soft);
+	border-radius: 12px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+	transition:
+		border-color 0.15s ease,
+		background 0.12s ease;
 }
 .lz-print:hover {
-  border-color: var(--blue);
-  background: var(--blue-soft);
+	border-color: var(--blue);
+	background: var(--blue-soft);
 }
 .lesson-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  font: inherit;
-  cursor: pointer;
-  background: var(--paper);
-  border: 2px solid transparent;
-  border-radius: 12px;
-  padding: 12px 14px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  transition:
-    transform 0.12s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	font: inherit;
+	cursor: pointer;
+	background: var(--paper);
+	border: 2px solid transparent;
+	border-radius: 12px;
+	padding: 12px 14px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+	transition:
+		transform 0.12s ease,
+		border-color 0.15s ease,
+		box-shadow 0.15s ease;
 }
 .lesson-item:hover {
-  transform: translateY(-2px);
-  border-color: var(--blue);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+	transform: translateY(-2px);
+	border-color: var(--blue);
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
 }
 .lz-num {
-  flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--blue);
-  color: #fff;
-  font-family: var(--ui);
-  font-weight: 700;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+	flex: 0 0 auto;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: var(--blue);
+	color: #fff;
+	font-family: var(--ui);
+	font-weight: 700;
+	font-size: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 .lz-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	min-width: 0;
 }
 .lz-title {
-  font-family: var(--ui);
-  font-size: 14px;
-  color: var(--ink);
+	font-family: var(--ui);
+	font-size: 14px;
+	color: var(--ink);
 }
 .lz-stat {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--ui);
-  font-size: 12px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-family: var(--ui);
+	font-size: 12px;
 }
 .lz-stat-empty {
-  color: var(--muted);
-  font-style: italic;
+	color: var(--muted);
+	font-style: italic;
 }
 .lz-bar {
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: #e7ebf1;
-  overflow: hidden;
-  max-width: 140px;
+	flex: 1;
+	height: 6px;
+	border-radius: 3px;
+	background: #e7ebf1;
+	overflow: hidden;
+	max-width: 140px;
 }
 .lz-bar-fill {
-  display: block;
-  height: 100%;
-  border-radius: 3px;
+	display: block;
+	height: 100%;
+	border-radius: 3px;
 }
 .lz-pct {
-  font-weight: 700;
+	font-weight: 700;
 }
 .lz-flag {
-  background: #fdecea;
-  color: var(--ko);
-  font-weight: 700;
-  font-size: 11px;
-  border-radius: 999px;
-  padding: 1px 8px;
+	background: #fdecea;
+	color: var(--ko);
+	font-weight: 700;
+	font-size: 11px;
+	border-radius: 999px;
+	padding: 1px 8px;
 }
 .lz-star {
-  flex: 0 0 auto;
-  font-size: 18px;
-  white-space: nowrap;
-  align-self: flex-start;
+	flex: 0 0 auto;
+	font-size: 18px;
+	white-space: nowrap;
+	align-self: flex-start;
 }
 .lz-star.empty {
-  opacity: 0.3;
+	opacity: 0.3;
 }
 .lz-star small {
-  font-size: 11px;
-  font-family: var(--ui);
+	font-size: 11px;
+	font-family: var(--ui);
 }
 .weak-hint {
-  color: var(--ko);
-  font-weight: 700;
+	color: var(--ko);
+	font-weight: 700;
 }

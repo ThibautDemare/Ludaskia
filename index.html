@@ -1,230 +1,230 @@
 <!doctype html>
 <html lang="fr">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Ludaskia — s'exercer en s'amusant</title>
-  </head>
-  <body>
-    <div class="toolbar">
-      <h1>Ludaskia</h1>
-      <span class="toolbar-xp" id="xpBadge" style="display: none"></span>
-      <div class="profile-dd" id="profileDD">
-        <button
-          class="btn-profile"
-          id="toolbarProfile"
-          style="display: none"
-          title="Changer / gérer les profils"
-        ></button>
-        <div class="profile-menu" id="profileMenu" hidden></div>
-      </div>
-      <span class="chrono hidden" id="chrono">00:00</span>
-      <span class="score hidden" id="score"></span>
-      <button class="btn-accent" id="btnVerify" style="display: none">✓ Vérifier</button>
-      <button class="btn-primary" id="btnHome" style="display: none">🏠 Accueil</button>
-      <button class="btn-ghost" id="btnPrint">🖨 Imprimer / PDF</button>
-    </div>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Ludaskia — s'exercer en s'amusant</title>
+	</head>
+	<body>
+		<div class="toolbar">
+			<h1>Ludaskia</h1>
+			<span class="toolbar-xp" id="xpBadge" style="display: none"></span>
+			<div class="profile-dd" id="profileDD">
+				<button
+					class="btn-profile"
+					id="toolbarProfile"
+					style="display: none"
+					title="Changer / gérer les profils"
+				></button>
+				<div class="profile-menu" id="profileMenu" hidden></div>
+			</div>
+			<span class="chrono hidden" id="chrono">00:00</span>
+			<span class="score hidden" id="score"></span>
+			<button class="btn-accent" id="btnVerify" style="display: none">✓ Vérifier</button>
+			<button class="btn-primary" id="btnHome" style="display: none">🏠 Accueil</button>
+			<button class="btn-ghost" id="btnPrint">🖨 Imprimer / PDF</button>
+		</div>
 
-    <!-- Écran d'accueil (interactif) -->
-    <div class="home screen-only home-wide" id="home">
-      <div class="big">Ludaskia</div>
-      <div class="tagline">Entraînement chronométré · maths et français</div>
-      <div class="home-grid">
-        <!-- Colonne gauche : progression (rang/niveau, défi, objectifs, classements, trophées) -->
-        <div class="home-col home-col-left">
-          <div id="progression"></div>
-          <div class="reprises" id="reprises"></div>
-          <div class="goal" id="goal"></div>
-          <div class="objectives" id="objectives"></div>
-          <div class="boards" id="boards"></div>
-          <div class="reward-nav" id="rewardNav"></div>
-        </div>
-        <!-- Colonne droite : accès aux modes + favoris -->
-        <div class="home-col home-col-right">
-          <div class="cards">
-            <div class="card" id="cardSprint">
-              <div class="ico">🏃</div>
-              <h2>Sprint 5 min</h2>
-              <p>
-                En 5 minutes, enchaîne les questions au hasard (maths et français) et fais le plus
-                de bonnes réponses possibles !
-              </p>
-              <div class="card-record" id="recSprint"></div>
-              <span class="go">C'est parti →</span>
-            </div>
-            <div class="card" id="cardRevision">
-              <div class="ico">🔁</div>
-              <h2>Révision</h2>
-              <p>
-                Revois un peu chaque jour ce que tu as déjà appris : on espace les rappels dans le
-                temps.
-              </p>
-              <div class="card-record" id="recRevision"></div>
-              <span class="go">Réviser →</span>
-            </div>
-            <div class="card" id="cardLecon">
-              <div class="ico">📖</div>
-              <h2>Une leçon à la fois</h2>
-              <p>Choisis un seul thème et vise le sans-faute pour décrocher son étoile.</p>
-              <div class="card-record" id="recLecon"></div>
-              <span class="go">Choisir →</span>
-            </div>
-            <div class="card" id="cardBilanCustom">
-              <div class="ico">🎛️</div>
-              <h2>Bilan personnalisé</h2>
-              <p>
-                Choisis les leçons et le nombre de questions. Sauvegarde tes configurations
-                préférées comme favoris.
-              </p>
-              <span class="go">Configurer →</span>
-            </div>
-          </div>
-          <div id="favoris"></div>
-        </div>
-      </div>
-      <div class="printlink">
-        Besoin de feuilles papier à remplir au crayon ? Ouvre une <strong>catégorie</strong> (ou un
-        <strong>bilan personnalisé</strong>) et utilise le bouton 🖨.
-      </div>
-    </div>
+		<!-- Écran d'accueil (interactif) -->
+		<div class="home screen-only home-wide" id="home">
+			<div class="big">Ludaskia</div>
+			<div class="tagline">Entraînement chronométré · maths et français</div>
+			<div class="home-grid">
+				<!-- Colonne gauche : progression (rang/niveau, défi, objectifs, classements, trophées) -->
+				<div class="home-col home-col-left">
+					<div id="progression"></div>
+					<div class="reprises" id="reprises"></div>
+					<div class="goal" id="goal"></div>
+					<div class="objectives" id="objectives"></div>
+					<div class="boards" id="boards"></div>
+					<div class="reward-nav" id="rewardNav"></div>
+				</div>
+				<!-- Colonne droite : accès aux modes + favoris -->
+				<div class="home-col home-col-right">
+					<div class="cards">
+						<div class="card" id="cardSprint">
+							<div class="ico">🏃</div>
+							<h2>Sprint 5 min</h2>
+							<p>
+								En 5 minutes, enchaîne les questions au hasard (maths et français) et fais le plus
+								de bonnes réponses possibles !
+							</p>
+							<div class="card-record" id="recSprint"></div>
+							<span class="go">C'est parti →</span>
+						</div>
+						<div class="card" id="cardRevision">
+							<div class="ico">🔁</div>
+							<h2>Révision</h2>
+							<p>
+								Revois un peu chaque jour ce que tu as déjà appris : on espace les rappels dans le
+								temps.
+							</p>
+							<div class="card-record" id="recRevision"></div>
+							<span class="go">Réviser →</span>
+						</div>
+						<div class="card" id="cardLecon">
+							<div class="ico">📖</div>
+							<h2>Une leçon à la fois</h2>
+							<p>Choisis un seul thème et vise le sans-faute pour décrocher son étoile.</p>
+							<div class="card-record" id="recLecon"></div>
+							<span class="go">Choisir →</span>
+						</div>
+						<div class="card" id="cardBilanCustom">
+							<div class="ico">🎛️</div>
+							<h2>Bilan personnalisé</h2>
+							<p>
+								Choisis les leçons et le nombre de questions. Sauvegarde tes configurations
+								préférées comme favoris.
+							</p>
+							<span class="go">Configurer →</span>
+						</div>
+					</div>
+					<div id="favoris"></div>
+				</div>
+			</div>
+			<div class="printlink">
+				Besoin de feuilles papier à remplir au crayon ? Ouvre une <strong>catégorie</strong> (ou un
+				<strong>bilan personnalisé</strong>) et utilise le bouton 🖨.
+			</div>
+		</div>
 
-    <!-- Écran de sélection d'une leçon -->
-    <div class="home screen-only" id="lessons" style="display: none">
-      <div class="big">Choisis une leçon</div>
-      <div class="tagline" id="starsSummary"></div>
-      <div class="lesson-list" id="lessonList"></div>
-      <div class="printlink"><a id="backHome">← Retour à l'accueil</a></div>
-    </div>
+		<!-- Écran de sélection d'une leçon -->
+		<div class="home screen-only" id="lessons" style="display: none">
+			<div class="big">Choisis une leçon</div>
+			<div class="tagline" id="starsSummary"></div>
+			<div class="lesson-list" id="lessonList"></div>
+			<div class="printlink"><a id="backHome">← Retour à l'accueil</a></div>
+		</div>
 
-    <!-- Écran de gestion des profils -->
-    <div class="home screen-only" id="profils" style="display: none">
-      <div class="big">Profils</div>
-      <div class="tagline">Chaque profil garde sa propre progression.</div>
-      <div class="reward-nav reward-nav-profils">
-        <button class="reward-btn" id="btnRecompensesProfils">🎁 Mes récompenses</button>
-      </div>
-      <div id="preferences"></div>
-      <div class="profile-list" id="profileList"></div>
-      <div class="profile-backup">
-        <button class="profile-backup-btn" id="btnExport">📤 Exporter les profils cochés</button>
-        <button class="profile-backup-btn" id="btnImport">📥 Importer une sauvegarde</button>
-        <input type="file" id="importFile" accept="application/json,.json" hidden />
-      </div>
-      <div class="backup-hint">
-        Coche les profils à exporter (sauvegarde / transfert vers un autre appareil). À l'import, un
-        profil déjà présent n'est remplacé que si la sauvegarde est plus récente.
-      </div>
-      <div class="printlink"><a id="backHomeProfils">← Retour à l'accueil</a></div>
-    </div>
+		<!-- Écran de gestion des profils -->
+		<div class="home screen-only" id="profils" style="display: none">
+			<div class="big">Profils</div>
+			<div class="tagline">Chaque profil garde sa propre progression.</div>
+			<div class="reward-nav reward-nav-profils">
+				<button class="reward-btn" id="btnRecompensesProfils">🎁 Mes récompenses</button>
+			</div>
+			<div id="preferences"></div>
+			<div class="profile-list" id="profileList"></div>
+			<div class="profile-backup">
+				<button class="profile-backup-btn" id="btnExport">📤 Exporter les profils cochés</button>
+				<button class="profile-backup-btn" id="btnImport">📥 Importer une sauvegarde</button>
+				<input type="file" id="importFile" accept="application/json,.json" hidden />
+			</div>
+			<div class="backup-hint">
+				Coche les profils à exporter (sauvegarde / transfert vers un autre appareil). À l'import, un
+				profil déjà présent n'est remplacé que si la sauvegarde est plus récente.
+			</div>
+			<div class="printlink"><a id="backHomeProfils">← Retour à l'accueil</a></div>
+		</div>
 
-    <!-- Écran : choix de la matière -->
-    <div class="home screen-only" id="matieres" style="display: none">
-      <div class="big">Choisis une matière</div>
-      <div class="tagline">Sélectionne une matière pour voir ses catégories.</div>
-      <div id="matieresContent"></div>
-      <div class="printlink"><a id="backHomeMatieres">← Retour à l'accueil</a></div>
-    </div>
+		<!-- Écran : choix de la matière -->
+		<div class="home screen-only" id="matieres" style="display: none">
+			<div class="big">Choisis une matière</div>
+			<div class="tagline">Sélectionne une matière pour voir ses catégories.</div>
+			<div id="matieresContent"></div>
+			<div class="printlink"><a id="backHomeMatieres">← Retour à l'accueil</a></div>
+		</div>
 
-    <!-- Écran : catégories d'une matière -->
-    <div class="home screen-only" id="categories" style="display: none">
-      <div class="big" id="categoriesTitle">Matière</div>
-      <div class="tagline">Choisis une catégorie.</div>
-      <div id="categoriesContent"></div>
-      <div class="printlink"><a id="backMatieres">← Retour aux matières</a></div>
-    </div>
+		<!-- Écran : catégories d'une matière -->
+		<div class="home screen-only" id="categories" style="display: none">
+			<div class="big" id="categoriesTitle">Matière</div>
+			<div class="tagline">Choisis une catégorie.</div>
+			<div id="categoriesContent"></div>
+			<div class="printlink"><a id="backMatieres">← Retour aux matières</a></div>
+		</div>
 
-    <!-- Écran : leçons d'une catégorie (+ accès bilan / sprint) -->
-    <div class="home screen-only" id="categorie" style="display: none">
-      <div class="big" id="categorieTitle">Catégorie</div>
-      <div class="tagline">Travaille une leçon, ou lance un bilan / sprint de la catégorie.</div>
-      <div id="categorieContent"></div>
-      <div class="printlink"><a id="backCategorie">← Retour aux catégories</a></div>
-    </div>
+		<!-- Écran : leçons d'une catégorie (+ accès bilan / sprint) -->
+		<div class="home screen-only" id="categorie" style="display: none">
+			<div class="big" id="categorieTitle">Catégorie</div>
+			<div class="tagline">Travaille une leçon, ou lance un bilan / sprint de la catégorie.</div>
+			<div id="categorieContent"></div>
+			<div class="printlink"><a id="backCategorie">← Retour aux catégories</a></div>
+		</div>
 
-    <!-- Écran : création / édition d'une liste d'orthographe -->
-    <div class="home screen-only" id="ortho-liste" style="display: none">
-      <div class="big" id="orthoListeTitle">Nouvelle liste</div>
-      <div class="tagline">Saisis les mots à apprendre (un par ligne, ou colle un bloc).</div>
-      <div id="orthoListeContent"></div>
-      <div class="printlink"><a id="backOrthoListe">← Retour à l'orthographe</a></div>
-    </div>
+		<!-- Écran : création / édition d'une liste d'orthographe -->
+		<div class="home screen-only" id="ortho-liste" style="display: none">
+			<div class="big" id="orthoListeTitle">Nouvelle liste</div>
+			<div class="tagline">Saisis les mots à apprendre (un par ligne, ou colle un bloc).</div>
+			<div id="orthoListeContent"></div>
+			<div class="printlink"><a id="backOrthoListe">← Retour à l'orthographe</a></div>
+		</div>
 
-    <!-- Écran de configuration du sprint -->
-    <div class="home screen-only" id="sprint-config" style="display: none">
-      <div class="big">Sprint 5 min</div>
-      <div class="tagline">Enchaîne les questions le plus vite possible (maths et français).</div>
-      <div id="sprintConfigContent"></div>
-      <div class="printlink"><a id="backHomeSprintConfig">← Retour à l'accueil</a></div>
-    </div>
+		<!-- Écran de configuration du sprint -->
+		<div class="home screen-only" id="sprint-config" style="display: none">
+			<div class="big">Sprint 5 min</div>
+			<div class="tagline">Enchaîne les questions le plus vite possible (maths et français).</div>
+			<div id="sprintConfigContent"></div>
+			<div class="printlink"><a id="backHomeSprintConfig">← Retour à l'accueil</a></div>
+		</div>
 
-    <!-- Écran de configuration du bilan personnalisé -->
-    <div class="home screen-only" id="bilan-custom" style="display: none">
-      <div class="big">Bilan personnalisé</div>
-      <div class="tagline">Choisis les leçons et le nombre de questions.</div>
-      <div id="bilanCustomContent"></div>
-      <div class="printlink"><a id="backHomeBilanCustom">← Retour à l'accueil</a></div>
-    </div>
+		<!-- Écran de configuration du bilan personnalisé -->
+		<div class="home screen-only" id="bilan-custom" style="display: none">
+			<div class="big">Bilan personnalisé</div>
+			<div class="tagline">Choisis les leçons et le nombre de questions.</div>
+			<div id="bilanCustomContent"></div>
+			<div class="printlink"><a id="backHomeBilanCustom">← Retour à l'accueil</a></div>
+		</div>
 
-    <!-- Zone des exercices -->
-    <div class="sheets" id="sheets"></div>
+		<!-- Zone des exercices -->
+		<div class="sheets" id="sheets"></div>
 
-    <!-- Modale de récompense (trophée, record, étoile, objectif…) -->
-    <div class="modal-overlay" id="celebrate" style="display: none">
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="celebrateTitle">
-        <button class="modal-close" id="celebrateClose" aria-label="Fermer">×</button>
-        <div class="modal-emoji">🎉</div>
-        <h2 class="modal-title" id="celebrateTitle">Bravo !</h2>
-        <ul class="modal-list" id="celebrateList"></ul>
-        <button class="modal-ok" id="celebrateOk">Super !</button>
-      </div>
-    </div>
+		<!-- Modale de récompense (trophée, record, étoile, objectif…) -->
+		<div class="modal-overlay" id="celebrate" style="display: none">
+			<div class="modal" role="dialog" aria-modal="true" aria-labelledby="celebrateTitle">
+				<button class="modal-close" id="celebrateClose" aria-label="Fermer">×</button>
+				<div class="modal-emoji">🎉</div>
+				<h2 class="modal-title" id="celebrateTitle">Bravo !</h2>
+				<ul class="modal-list" id="celebrateList"></ul>
+				<button class="modal-ok" id="celebrateOk">Super !</button>
+			</div>
+		</div>
 
-    <!-- Modale dédiée : passage de niveau (médaillon doré animé) -->
-    <div class="modal-overlay" id="levelup" style="display: none">
-      <div class="levelup-card" role="dialog" aria-modal="true" aria-labelledby="levelupTitle">
-        <button class="modal-close" id="levelupClose" aria-label="Fermer">×</button>
-        <div class="levelup-stage">
-          <div class="levelup-rays"></div>
-          <div class="levelup-medal">
-            <span class="levelup-medal-label">NIVEAU</span>
-            <span class="levelup-medal-num" id="levelupNum">2</span>
-          </div>
-        </div>
-        <p class="levelup-kicker">Niveau supérieur&nbsp;!</p>
-        <h2 class="levelup-title" id="levelupTitle">Bravo, tu montes d'un niveau&nbsp;!</h2>
-        <p class="levelup-next" id="levelupNext"></p>
-        <ul class="levelup-unlocks" id="levelupUnlocks" style="display: none"></ul>
-        <button class="modal-ok levelup-ok" id="levelupOk">Continuer</button>
-      </div>
-    </div>
+		<!-- Modale dédiée : passage de niveau (médaillon doré animé) -->
+		<div class="modal-overlay" id="levelup" style="display: none">
+			<div class="levelup-card" role="dialog" aria-modal="true" aria-labelledby="levelupTitle">
+				<button class="modal-close" id="levelupClose" aria-label="Fermer">×</button>
+				<div class="levelup-stage">
+					<div class="levelup-rays"></div>
+					<div class="levelup-medal">
+						<span class="levelup-medal-label">NIVEAU</span>
+						<span class="levelup-medal-num" id="levelupNum">2</span>
+					</div>
+				</div>
+				<p class="levelup-kicker">Niveau supérieur&nbsp;!</p>
+				<h2 class="levelup-title" id="levelupTitle">Bravo, tu montes d'un niveau&nbsp;!</h2>
+				<p class="levelup-next" id="levelupNext"></p>
+				<ul class="levelup-unlocks" id="levelupUnlocks" style="display: none"></ul>
+				<button class="modal-ok levelup-ok" id="levelupOk">Continuer</button>
+			</div>
+		</div>
 
-    <!-- Modale « Récompenses » : paliers de niveau (rangs, compagnon, avatars, thèmes) -->
-    <div class="modal-overlay" id="recompenses" style="display: none">
-      <div
-        class="modal modal-wide"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="recompensesTitle"
-      >
-        <button class="modal-close" id="recompensesClose" aria-label="Fermer">×</button>
-        <div class="modal-emoji">🎁</div>
-        <h2 class="modal-title" id="recompensesTitle">Mes récompenses</h2>
-        <div class="rewards-body" id="recompensesContent"></div>
-        <button class="modal-ok" id="recompensesOk">Fermer</button>
-      </div>
-    </div>
+		<!-- Modale « Récompenses » : paliers de niveau (rangs, compagnon, avatars, thèmes) -->
+		<div class="modal-overlay" id="recompenses" style="display: none">
+			<div
+				class="modal modal-wide"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="recompensesTitle"
+			>
+				<button class="modal-close" id="recompensesClose" aria-label="Fermer">×</button>
+				<div class="modal-emoji">🎁</div>
+				<h2 class="modal-title" id="recompensesTitle">Mes récompenses</h2>
+				<div class="rewards-body" id="recompensesContent"></div>
+				<button class="modal-ok" id="recompensesOk">Fermer</button>
+			</div>
+		</div>
 
-    <!-- Modale « Trophées » : collection de trophées -->
-    <div class="modal-overlay" id="trophees" style="display: none">
-      <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="tropheesTitle">
-        <button class="modal-close" id="tropheesClose" aria-label="Fermer">×</button>
-        <div class="modal-emoji">🏆</div>
-        <h2 class="modal-title" id="tropheesTitle">Mes trophées</h2>
-        <div class="rewards-body" id="tropheesContent"></div>
-        <button class="modal-ok" id="tropheesOk">Fermer</button>
-      </div>
-    </div>
+		<!-- Modale « Trophées » : collection de trophées -->
+		<div class="modal-overlay" id="trophees" style="display: none">
+			<div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="tropheesTitle">
+				<button class="modal-close" id="tropheesClose" aria-label="Fermer">×</button>
+				<div class="modal-emoji">🏆</div>
+				<h2 class="modal-title" id="tropheesTitle">Mes trophées</h2>
+				<div class="rewards-body" id="tropheesContent"></div>
+				<button class="modal-ok" id="tropheesOk">Fermer</button>
+			</div>
+		</div>
 
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+		<script type="module" src="/src/main.ts"></script>
+	</body>
 </html>

@@ -5,21 +5,21 @@
 import { normalizeText } from './utils';
 
 export type Exercise =
-  | { type: 'text'; question: string; answer: string; answers?: string[] }
-  | { type: 'qcm'; question: string; answer: string; choices: string[] }
-  // Orthographe — interactions réutilisables (vérifiées comme du texte) :
-  | { type: 'motCache'; answer: string } // affiche/masque le mot puis saisie
-  | { type: 'tuiles'; answer: string; lettres: string[] } // lettres mélangées à ordonner
-  | { type: 'dictee'; answer: string; commeDans?: string }; // rien d'affiché, lu en TTS
+	| { type: 'text'; question: string; answer: string; answers?: string[] }
+	| { type: 'qcm'; question: string; answer: string; choices: string[] }
+	// Orthographe — interactions réutilisables (vérifiées comme du texte) :
+	| { type: 'motCache'; answer: string } // affiche/masque le mot puis saisie
+	| { type: 'tuiles'; answer: string; lettres: string[] } // lettres mélangées à ordonner
+	| { type: 'dictee'; answer: string; commeDans?: string }; // rien d'affiché, lu en TTS
 
 /** Mode d'entraînement, pour les types d'exercices qui en proposent plusieurs. */
 export type ExerciseMode = string;
 
 export interface ExerciseType {
-  /** Modes proposés (optionnel ; un type mono-mode l'ignore). */
-  modes?: ExerciseMode[];
-  generate(mode?: ExerciseMode): Exercise;
-  check(exercise: Exercise, input: string): boolean;
+	/** Modes proposés (optionnel ; un type mono-mode l'ignore). */
+	modes?: ExerciseMode[];
+	generate(mode?: ExerciseMode): Exercise;
+	check(exercise: Exercise, input: string): boolean;
 }
 
 /* Vérification générique pour les exercices texte (hors math).
@@ -27,10 +27,10 @@ export interface ExerciseType {
    Accents et apostrophes exigés. Couvre tous les types : comparaison à `answer`
    (+ variantes `answers` pour 'text'). */
 export function checkAnswer(exercise: Exercise, input: string): boolean {
-  const normalized = normalizeText(input);
-  if (normalized === normalizeText(exercise.answer)) return true;
-  if (exercise.type === 'text') {
-    return (exercise.answers ?? []).some((a) => normalizeText(a) === normalized);
-  }
-  return false;
+	const normalized = normalizeText(input);
+	if (normalized === normalizeText(exercise.answer)) return true;
+	if (exercise.type === 'text') {
+		return (exercise.answers ?? []).some((a) => normalizeText(a) === normalized);
+	}
+	return false;
 }

@@ -2,421 +2,421 @@
 
 /* Carte « progression » : rang + niveau + barre (issue #28) */
 .progress-card {
-  max-width: 430px;
-  margin: 0 auto 22px;
-  background: var(--paper);
-  border-radius: 14px;
-  padding: 16px 20px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  font-family: var(--ui);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+	max-width: 430px;
+	margin: 0 auto 22px;
+	background: var(--paper);
+	border-radius: 14px;
+	padding: 16px 20px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+	font-family: var(--ui);
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 }
 .progress-rang {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--blue);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	font-size: 18px;
+	font-weight: 800;
+	color: var(--blue);
 }
 /* Mascotte évolutive : animée seulement ici (écran de contemplation).
    Entrée jouée une fois, puis boucle de repos douce selon la forme.
    transform/opacity uniquement ; coupée sous prefers-reduced-motion. */
 .mascotte {
-  display: inline-block;
-  font-size: 42px;
-  line-height: 1;
-  transform-origin: center bottom;
+	display: inline-block;
+	font-size: 42px;
+	line-height: 1;
+	transform-origin: center bottom;
 }
 .mascotte--oeuf {
-  animation:
-    masc-pop 0.35s ease both,
-    masc-wobble 2.8s ease-in-out 0.35s infinite;
+	animation:
+		masc-pop 0.35s ease both,
+		masc-wobble 2.8s ease-in-out 0.35s infinite;
 }
 .mascotte--oisillon {
-  animation:
-    masc-pop 0.35s ease both,
-    masc-hop 2s ease-in-out 0.35s infinite;
+	animation:
+		masc-pop 0.35s ease both,
+		masc-hop 2s ease-in-out 0.35s infinite;
 }
 .mascotte--oiseau {
-  animation:
-    masc-pop 0.35s ease both,
-    masc-breathe 3s ease-in-out 0.35s infinite;
+	animation:
+		masc-pop 0.35s ease both,
+		masc-breathe 3s ease-in-out 0.35s infinite;
 }
 @keyframes masc-pop {
-  from {
-    transform: scale(0.6);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+	from {
+		transform: scale(0.6);
+		opacity: 0;
+	}
+	to {
+		transform: scale(1);
+		opacity: 1;
+	}
 }
 @keyframes masc-wobble {
-  0%,
-  100% {
-    transform: rotate(-6deg);
-  }
-  50% {
-    transform: rotate(6deg);
-  }
+	0%,
+	100% {
+		transform: rotate(-6deg);
+	}
+	50% {
+		transform: rotate(6deg);
+	}
 }
 @keyframes masc-hop {
-  0%,
-  55%,
-  100% {
-    transform: translateY(0);
-  }
-  72% {
-    transform: translateY(-20%);
-  }
+	0%,
+	55%,
+	100% {
+		transform: translateY(0);
+	}
+	72% {
+		transform: translateY(-20%);
+	}
 }
 @keyframes masc-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.04);
-  }
+	0%,
+	100% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.04);
+	}
 }
 @media (prefers-reduced-motion: reduce) {
-  .mascotte {
-    animation: none;
-  }
+	.mascotte {
+		animation: none;
+	}
 }
 /* Réglage in-app « Réduire les animations » (en plus du média système) */
 html.anim-reduced .mascotte {
-  animation: none;
+	animation: none;
 }
 
 /* Mascotte « accompagnante » + bulle de BD (phase 4). Hors écran chronométré.
    Sur les résultats : entrée seule (mascotte-static), pas de boucle. */
 .mascotte-static {
-  animation: masc-pop 0.35s ease both;
+	animation: masc-pop 0.35s ease both;
 }
 html.anim-reduced .mascotte-static {
-  animation: none;
+	animation: none;
 }
 .mascotte-scene {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin: 0 auto 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	margin: 0 auto 4px;
 }
 .mascotte-bulle {
-  position: relative;
-  background: var(--blue-soft);
-  color: var(--ink);
-  border-radius: 14px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.25;
-  max-width: 220px;
-  text-align: left;
+	position: relative;
+	background: var(--blue-soft);
+	color: var(--ink);
+	border-radius: 14px;
+	padding: 8px 12px;
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1.25;
+	max-width: 220px;
+	text-align: left;
 }
 .mascotte-bulle::before {
-  content: '';
-  position: absolute;
-  left: -6px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: 6px solid transparent;
-  border-left: 0;
-  border-right-color: var(--blue-soft);
+	content: '';
+	position: absolute;
+	left: -6px;
+	top: 50%;
+	transform: translateY(-50%);
+	border: 6px solid transparent;
+	border-left: 0;
+	border-right-color: var(--blue-soft);
 }
 .progress-rang-ico {
-  font-size: 22px;
+	font-size: 22px;
 }
 .progress-lvl {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink);
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--ink);
 }
 .progress-card .lvl-bar {
-  height: 8px;
-  width: 100%;
-  max-width: 280px;
-  margin: 2px auto 0;
-  background: var(--blue-soft);
+	height: 8px;
+	width: 100%;
+	max-width: 280px;
+	margin: 2px auto 0;
+	background: var(--blue-soft);
 }
 .progress-card .lvl-bar-fill {
-  background: var(--blue);
+	background: var(--blue);
 }
 .progress-sub {
-  font-size: 12px;
-  color: var(--grey);
+	font-size: 12px;
+	color: var(--grey);
 }
 
 /* Objectifs de régularité (cadence hebdo/mensuelle) */
 .objectives {
-  max-width: 430px;
-  margin: 0 auto 22px;
-  background: var(--paper);
-  border-radius: 14px;
-  padding: 16px 20px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  font-family: var(--ui);
-  text-align: left;
+	max-width: 430px;
+	margin: 0 auto 22px;
+	background: var(--paper);
+	border-radius: 14px;
+	padding: 16px 20px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+	font-family: var(--ui);
+	text-align: left;
 }
 .obj-h {
-  color: var(--blue);
-  font-size: 15px;
-  margin: 0 0 10px;
-  text-align: center;
+	color: var(--blue);
+	font-size: 15px;
+	margin: 0 0 10px;
+	text-align: center;
 }
 .obj {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 0;
-  border-bottom: 1px solid #eef1f5;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 7px 0;
+	border-bottom: 1px solid #eef1f5;
 }
 .obj:last-child {
-  border-bottom: 0;
+	border-bottom: 0;
 }
 .obj-ico {
-  font-size: 20px;
-  flex: 0 0 auto;
+	font-size: 20px;
+	flex: 0 0 auto;
 }
 .obj-lab {
-  flex: 1;
-  font-size: 14px;
-  color: var(--ink);
+	flex: 1;
+	font-size: 14px;
+	color: var(--ink);
 }
 .obj-prog {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--grey);
-  white-space: nowrap;
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--grey);
+	white-space: nowrap;
 }
 .obj-per {
-  font-weight: 400;
-  color: var(--muted);
+	font-weight: 400;
+	color: var(--muted);
 }
 .obj-check {
-  flex: 0 0 auto;
-  width: 16px;
-  color: var(--ok);
-  font-weight: 800;
+	flex: 0 0 auto;
+	width: 16px;
+	color: var(--ok);
+	font-weight: 800;
 }
 .obj.done .obj-lab,
 .obj.done .obj-prog {
-  color: var(--ok);
+	color: var(--ok);
 }
 
 /* Record affiché sur chaque carte */
 .card-record {
-  font-family: var(--ui);
-  font-size: 13px;
-  color: var(--grey);
-  margin: 0 0 16px;
+	font-family: var(--ui);
+	font-size: 13px;
+	color: var(--grey);
+	margin: 0 0 16px;
 }
 .card-record .muted {
-  color: var(--muted);
-  font-style: italic;
+	color: var(--muted);
+	font-style: italic;
 }
 .card-record strong {
-  color: var(--blue);
+	color: var(--blue);
 }
 
 /* Classements (podium + progression) */
 .boards {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 44px;
+	display: flex;
+	gap: 24px;
+	flex-wrap: wrap;
+	justify-content: center;
+	margin-top: 44px;
 }
 .lb {
-  flex: 1;
-  min-width: 250px;
-  max-width: 330px;
-  background: var(--paper);
-  border-radius: 14px;
-  padding: 20px 22px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
-  text-align: left;
-  font-family: var(--ui);
+	flex: 1;
+	min-width: 250px;
+	max-width: 330px;
+	background: var(--paper);
+	border-radius: 14px;
+	padding: 20px 22px;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
+	text-align: left;
+	font-family: var(--ui);
 }
 .lb h3 {
-  color: var(--blue);
-  font-size: 16px;
-  margin: 0 0 12px;
-  text-align: center;
+	color: var(--blue);
+	font-size: 16px;
+	margin: 0 0 12px;
+	text-align: center;
 }
 .podium {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+	list-style: none;
+	margin: 0;
+	padding: 0;
 }
 .podium li {
-  font-size: 15px;
-  padding: 6px 2px;
-  border-bottom: 1px solid #eef1f5;
+	font-size: 15px;
+	padding: 6px 2px;
+	border-bottom: 1px solid #eef1f5;
 }
 .podium li:last-child {
-  border-bottom: 0;
+	border-bottom: 0;
 }
 .podium strong {
-  color: var(--ink);
+	color: var(--ink);
 }
 .lb-note {
-  font-size: 12.5px;
-  color: var(--grey);
-  font-style: italic;
-  margin: 10px 0 0;
+	font-size: 12.5px;
+	color: var(--grey);
+	font-style: italic;
+	margin: 10px 0 0;
 }
 .lb-count {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 10px 0 0;
-  text-align: right;
+	font-size: 12px;
+	color: var(--muted);
+	margin: 10px 0 0;
+	text-align: right;
 }
 .lb-mut {
-  color: var(--muted);
-  font-weight: 400;
-  font-size: 13px;
+	color: var(--muted);
+	font-weight: 400;
+	font-size: 13px;
 }
 .spark-wrap {
-  margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+	margin-top: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
 }
 .spark-lab {
-  font-size: 12px;
-  color: var(--grey);
+	font-size: 12px;
+	color: var(--grey);
 }
 .spark {
-  display: block;
-  width: 100%;
-  height: auto;
+	display: block;
+	width: 100%;
+	height: auto;
 }
 
 /* Objectif du jour */
 .goal {
-  display: inline-block;
-  margin: 0 0 30px;
-  font-family: var(--ui);
-  font-size: 14px;
-  font-weight: 600;
-  color: #1f4e8c;
-  background: #e6eefb;
-  border: 1px solid #9bbbe6;
-  border-radius: 12px;
-  padding: 10px 18px;
+	display: inline-block;
+	margin: 0 0 30px;
+	font-family: var(--ui);
+	font-size: 14px;
+	font-weight: 600;
+	color: #1f4e8c;
+	background: #e6eefb;
+	border: 1px solid #9bbbe6;
+	border-radius: 12px;
+	padding: 10px 18px;
 }
 .goal:empty {
-  display: none;
+	display: none;
 }
 .goal.done {
-  color: #1b5e20;
-  background: #e7f5e8;
-  border-color: #9ccc9f;
+	color: #1b5e20;
+	background: #e7f5e8;
+	border-color: #9ccc9f;
 }
 .goal .goal-lab {
-  font-weight: 800;
+	font-weight: 800;
 }
 .goal .goal-prog {
-  color: var(--grey);
-  font-weight: 700;
+	color: var(--grey);
+	font-weight: 700;
 }
 
 /* Vitrine des trophées */
 /* Barre « Récompenses » / « Trophées » de l'accueil (ouvrent leurs modales) */
 .reward-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 16px auto 0;
-  max-width: 430px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin: 16px auto 0;
+	max-width: 430px;
 }
 .reward-nav-profils {
-  margin-top: 0;
-  margin-bottom: 14px;
+	margin-top: 0;
+	margin-bottom: 14px;
 }
 .reward-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font: inherit;
-  font-family: var(--ui);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--blue);
-  background: var(--paper);
-  border: 2px solid var(--blue-soft);
-  border-radius: 14px;
-  padding: 12px 16px;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  transition:
-    transform 0.08s ease,
-    border-color 0.15s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	font: inherit;
+	font-family: var(--ui);
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--blue);
+	background: var(--paper);
+	border: 2px solid var(--blue-soft);
+	border-radius: 14px;
+	padding: 12px 16px;
+	cursor: pointer;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+	transition:
+		transform 0.08s ease,
+		border-color 0.15s ease;
 }
 .reward-btn:hover {
-  transform: translateY(-1px);
-  border-color: var(--blue);
+	transform: translateY(-1px);
+	border-color: var(--blue);
 }
 .reward-count {
-  color: var(--muted);
-  font-weight: 700;
-  font-size: 13px;
+	color: var(--muted);
+	font-weight: 700;
+	font-size: 13px;
 }
 .trophies-h {
-  color: var(--blue);
-  font-size: 16px;
-  margin: 0 0 14px;
-  text-align: center;
-  font-family: var(--ui);
+	color: var(--blue);
+	font-size: 16px;
+	margin: 0 0 14px;
+	text-align: center;
+	font-family: var(--ui);
 }
 .trophies-count {
-  color: var(--muted);
-  font-weight: 700;
-  font-size: 14px;
+	color: var(--muted);
+	font-weight: 700;
+	font-size: 14px;
 }
 .trophy-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	gap: 12px;
 }
 .trophy {
-  background: var(--paper);
-  border-radius: 12px;
-  padding: 14px 12px;
-  text-align: center;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  font-family: var(--ui);
+	background: var(--paper);
+	border-radius: 12px;
+	padding: 14px 12px;
+	text-align: center;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+	font-family: var(--ui);
 }
 .trophy.off {
-  opacity: 0.55;
-  filter: grayscale(0.7);
+	opacity: 0.55;
+	filter: grayscale(0.7);
 }
 .trophy-ico {
-  display: block;
-  font-size: 30px;
-  line-height: 1.2;
+	display: block;
+	font-size: 30px;
+	line-height: 1.2;
 }
 .trophy-title {
-  display: block;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--ink);
-  margin-top: 4px;
+	display: block;
+	font-size: 13px;
+	font-weight: 800;
+	color: var(--ink);
+	margin-top: 4px;
 }
 .trophy-desc {
-  display: block;
-  font-size: 11px;
-  color: var(--grey);
-  margin-top: 3px;
-  line-height: 1.3;
+	display: block;
+	font-size: 11px;
+	color: var(--grey);
+	margin-top: 3px;
+	line-height: 1.3;
 }

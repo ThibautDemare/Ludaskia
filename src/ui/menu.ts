@@ -9,18 +9,18 @@
 import { renderProfileMenu } from './render';
 
 export function openProfileMenu() {
-  const el = document.getElementById('profileMenu');
-  if (!el) return;
-  renderProfileMenu();
-  el.hidden = false;
+	const el = document.getElementById('profileMenu');
+	if (!el) return;
+	renderProfileMenu();
+	el.hidden = false;
 }
 export function closeProfileMenu() {
-  const el = document.getElementById('profileMenu');
-  if (el) el.hidden = true;
+	const el = document.getElementById('profileMenu');
+	if (el) el.hidden = true;
 }
 export function toggleProfileMenu() {
-  const el = document.getElementById('profileMenu');
-  if (!el) return;
-  if (el.hidden) openProfileMenu();
-  else closeProfileMenu();
+	const el = document.getElementById('profileMenu');
+	if (!el) return;
+	if (el.hidden) openProfileMenu();
+	else closeProfileMenu();
 }

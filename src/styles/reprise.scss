@@ -7,222 +7,222 @@
    « Continuer » mise en avant et « Effacer » discret + confirmé.
    ============================================================ */
 .reprises {
-  margin: 0 auto 14px;
-  max-width: 430px;
+	margin: 0 auto 14px;
+	max-width: 430px;
 }
 .reprises-cat {
-  max-width: 720px;
-  margin-bottom: 18px;
+	max-width: 720px;
+	margin-bottom: 18px;
 }
 .reprises:empty {
-  display: none;
+	display: none;
 }
 .reprises-h {
-  font-family: var(--ui);
-  font-size: 15px;
-  color: var(--blue);
-  margin: 0 0 8px;
+	font-family: var(--ui);
+	font-size: 15px;
+	color: var(--blue);
+	margin: 0 0 8px;
 }
 .reprises-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
 }
 
 /* ---------- Carte ---------- */
 .reprise-card {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 12px;
-  padding: 12px 14px;
-  background: var(--paper);
-  border: 1.5px solid var(--blue-soft);
-  border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 12px;
+	padding: 12px 14px;
+	background: var(--paper);
+	border: 1.5px solid var(--blue-soft);
+	border-radius: 14px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 .reprise-ico {
-  font-size: 34px;
-  line-height: 1;
-  flex: 0 0 auto;
+	font-size: 34px;
+	line-height: 1;
+	flex: 0 0 auto;
 }
 .reprise-main {
-  flex: 1 1 150px;
-  min-width: 0;
+	flex: 1 1 150px;
+	min-width: 0;
 }
 .reprise-title {
-  font-family: var(--ui);
-  font-weight: 800;
-  font-size: 17px;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+	font-family: var(--ui);
+	font-weight: 800;
+	font-size: 17px;
+	color: var(--ink);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 .reprise-prog-lab {
-  font-family: var(--ui);
-  font-size: 13px;
-  color: var(--grey);
-  margin: 2px 0 6px;
+	font-family: var(--ui);
+	font-size: 13px;
+	color: var(--grey);
+	margin: 2px 0 6px;
 }
 .reprise-count {
-  color: var(--muted);
-  font-weight: 700;
-  margin-left: 4px;
+	color: var(--muted);
+	font-weight: 700;
+	margin-left: 4px;
 }
 /* Barre de progression (réutilise .lvl-bar, mais en bleu et plus haute) */
 .reprise-bar {
-  position: relative;
-  height: 9px;
-  border-radius: 999px;
-  background: var(--blue-soft);
-  overflow: hidden;
+	position: relative;
+	height: 9px;
+	border-radius: 999px;
+	background: var(--blue-soft);
+	overflow: hidden;
 }
 .reprise-bar .lvl-bar-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--blue);
-  transition: width 0.3s ease;
+	position: absolute;
+	inset: 0 auto 0 0;
+	height: 100%;
+	border-radius: 999px;
+	background: var(--blue);
+	transition: width 0.3s ease;
 }
 
 /* ---------- Actions de la carte ---------- */
 .reprise-actions {
-  flex: 1 1 100%;
-  display: flex;
-  align-items: center;
-  gap: 16px;
+	flex: 1 1 100%;
+	display: flex;
+	align-items: center;
+	gap: 16px;
 }
 .reprise-continue {
-  flex: 1 1 auto;
-  font-family: var(--ui);
-  font-weight: 800;
-  font-size: 15px;
-  color: #fff;
-  background: var(--blue);
-  border: 0;
-  border-radius: 10px;
-  padding: 12px 18px;
-  min-height: 46px;
-  cursor: pointer;
-  transition:
-    box-shadow 0.15s ease,
-    transform 0.08s ease;
+	flex: 1 1 auto;
+	font-family: var(--ui);
+	font-weight: 800;
+	font-size: 15px;
+	color: #fff;
+	background: var(--blue);
+	border: 0;
+	border-radius: 10px;
+	padding: 12px 18px;
+	min-height: 46px;
+	cursor: pointer;
+	transition:
+		box-shadow 0.15s ease,
+		transform 0.08s ease;
 }
 .reprise-continue:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 .reprise-continue:active {
-  transform: translateY(1px);
+	transform: translateY(1px);
 }
 /* « Effacer » : volontairement discret et séparé (anti-effacement accidentel) */
 .reprise-erase {
-  flex: 0 0 auto;
-  font-family: var(--ui);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--grey);
-  background: transparent;
-  border: 0;
-  padding: 8px 6px;
-  min-height: 44px;
-  cursor: pointer;
+	flex: 0 0 auto;
+	font-family: var(--ui);
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--grey);
+	background: transparent;
+	border: 0;
+	padding: 8px 6px;
+	min-height: 44px;
+	cursor: pointer;
 }
 .reprise-erase:hover {
-  color: var(--ko);
+	color: var(--ko);
 }
 .reprises-toggle {
-  display: block;
-  margin: 10px auto 0;
-  font-family: var(--ui);
-  font-size: 13px;
-  color: var(--blue);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
+	display: block;
+	margin: 10px auto 0;
+	font-family: var(--ui);
+	font-size: 13px;
+	color: var(--blue);
+	background: transparent;
+	border: 0;
+	cursor: pointer;
 }
 .reprises-more {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-top: 10px;
 }
 
 /* ---------- Modales « Continuer / Recommencer » et « Effacer » ---------- */
 .reprise-modal-sub {
-  font-family: var(--ui);
-  font-size: 15px;
-  color: var(--grey);
-  margin: 0 0 18px;
+	font-family: var(--ui);
+	font-size: 15px;
+	color: var(--grey);
+	margin: 0 0 18px;
 }
 .reprise-modal-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
 }
 .reprise-modal-actions .modal-ok {
-  width: 100%;
-  min-height: 48px;
+	width: 100%;
+	min-height: 48px;
 }
 /* Choix secondaire « Recommencer » : valable, pas puni (contour bleu) */
 .reprise-modal-secondary {
-  font-family: var(--ui);
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--blue);
-  background: var(--paper);
-  border: 2px solid var(--blue);
-  border-radius: 10px;
-  padding: 10px 18px;
-  min-height: 48px;
-  cursor: pointer;
+	font-family: var(--ui);
+	font-weight: 700;
+	font-size: 15px;
+	color: var(--blue);
+	background: var(--paper);
+	border: 2px solid var(--blue);
+	border-radius: 10px;
+	padding: 10px 18px;
+	min-height: 48px;
+	cursor: pointer;
 }
 /* Choix destructeur « Oui, effacer » : discret, en retrait du bouton sûr */
 .reprise-modal-danger {
-  font-family: var(--ui);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--ko);
-  background: transparent;
-  border: 0;
-  padding: 8px;
-  min-height: 44px;
-  cursor: pointer;
+	font-family: var(--ui);
+	font-weight: 600;
+	font-size: 14px;
+	color: var(--ko);
+	background: transparent;
+	border: 0;
+	padding: 8px;
+	min-height: 44px;
+	cursor: pointer;
 }
 
 /* ---------- Toast « Te revoilà ! » ---------- */
 .reprise-toast {
-  position: fixed;
-  left: 50%;
-  bottom: 26px;
-  transform: translate(-50%, 16px);
-  z-index: 10001;
-  max-width: 90vw;
-  padding: 12px 18px;
-  border-radius: 12px;
-  background: var(--blue);
-  color: #fff;
-  font-family: var(--ui);
-  font-size: 14px;
-  font-weight: 600;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-  opacity: 0;
-  transition:
-    opacity 0.35s ease,
-    transform 0.35s ease;
+	position: fixed;
+	left: 50%;
+	bottom: 26px;
+	transform: translate(-50%, 16px);
+	z-index: 10001;
+	max-width: 90vw;
+	padding: 12px 18px;
+	border-radius: 12px;
+	background: var(--blue);
+	color: #fff;
+	font-family: var(--ui);
+	font-size: 14px;
+	font-weight: 600;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+	opacity: 0;
+	transition:
+		opacity 0.35s ease,
+		transform 0.35s ease;
 }
 .reprise-toast.show {
-  opacity: 1;
-  transform: translate(-50%, 0);
+	opacity: 1;
+	transform: translate(-50%, 0);
 }
 @media (prefers-reduced-motion: reduce) {
-  .reprise-toast {
-    transition: opacity 0.2s ease;
-    transform: translate(-50%, 0);
-  }
+	.reprise-toast {
+		transition: opacity 0.2s ease;
+		transform: translate(-50%, 0);
+	}
 }
 html.anim-reduced .reprise-toast {
-  transition: opacity 0.2s ease;
-  transform: translate(-50%, 0);
+	transition: opacity 0.2s ease;
+	transform: translate(-50%, 0);
 }

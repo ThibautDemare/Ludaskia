@@ -16,6 +16,7 @@ import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
 import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
 import { runSprint, sprintCleanup, renderSprintConfigScreen } from './sprint';
+import { runRevisionEspacee } from './revision';
 import { renderBilanConfigScreen } from './bilan';
 import { renderSubjects, renderCategories, renderCategorie } from './catalog-nav';
 import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
@@ -92,6 +93,9 @@ export function startBilanCustom() {
 export function goCategorieBilan(categoryId: string) {
   location.hash = 'bilan-cat-' + categoryId;
 }
+export function startRevisionEspacee() {
+  location.hash = 'revision-espacee';
+}
 export function startRevision() {
   if (!lastErrors.length) return;
   pendingRevision = lastErrors.slice();
@@ -115,7 +119,8 @@ export function route() {
   else if (h === 'revision') {
     if (pendingRevision.length) runRevision(pendingRevision);
     else showHomeView();
-  } else if (h.startsWith('matiere-')) {
+  } else if (h === 'revision-espacee') runRevisionEspacee();
+  else if (h.startsWith('matiere-')) {
     const id = h.slice(8);
     if (SUBJECTS.find((s) => s.id === id)) showMatiereView(id);
     else showMatieresView();

@@ -5,7 +5,8 @@
    sauvegarde via saveOrtho(). Logique pure, testable sans DOM.
    ============================================================ */
 import { lsGet, lsSet } from '../storage';
-import type { MotOrtho, ListeOrtho, OrthoState, MotInput, EtatRevision } from './types';
+import type { MotOrtho, ListeOrtho, OrthoState, MotInput } from './types';
+import { etatNeuf, avancerEtat } from '../revision';
 
 export const ORTHO_KEY = 'ludaskia_ortho';
 
@@ -21,10 +22,6 @@ function genId(): string {
 /** Clé de déduplication d'un mot : trim + NFC + minuscules. */
 export function formeNormalisee(mot: string): string {
   return mot.trim().normalize('NFC').toLocaleLowerCase('fr');
-}
-
-function etatRevisionNeuf(): EtatRevision {
-  return { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null };
 }
 
 export function emptyOrthoState(): OrthoState {
@@ -70,7 +67,7 @@ export function addOrGetMot(
     entourage: [],
     atelierFait: false,
     validation: { motCache: false, tuiles: false, dictee: false },
-    revision: etatRevisionNeuf(),
+    revision: etatNeuf(Date.now()), // entre en rotation de révision dès l'ajout (#45)
     origine,
   };
   state.banque[m.id] = m;
@@ -141,6 +138,17 @@ export function getMot(state: OrthoState, id: string): MotOrtho | undefined {
 /** Mots d'une liste, dans l'ordre, en ignorant les références orphelines. */
 export function motsDeListe(state: OrthoState, liste: ListeOrtho): MotOrtho[] {
   return liste.motIds.map((id) => state.banque[id]).filter((m): m is MotOrtho => !!m);
+}
+
+/** Met à jour l'état de révision espacée d'un mot après une réponse (#45). */
+export function avancerMotRevision(
+  state: OrthoState,
+  motId: string,
+  reussi: boolean,
+  now: number,
+): void {
+  const m = state.banque[motId];
+  if (m) m.revision = avancerEtat(m.revision, reussi, now);
 }
 
 /** Supprime une liste. Les mots restent dans la banque (corpus de l'année). */

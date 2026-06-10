@@ -5,6 +5,8 @@
 import { fmt } from './utils';
 import { lsGet, lsSet } from './storage';
 import { getAllLessons } from './catalog';
+import { etatNeuf, avancerEtat } from './revision';
+import type { EtatRevision } from './orthographe/types';
 
 /* ---------- Records de bilans (classement) ---------- */
 export interface Run {
@@ -146,9 +148,44 @@ export function recordLessonStats(perLesson: Record<string, { ok: number; total:
     s[num] = e;
   }
   lsSet(LESSON_STATS_KEY, s);
+  // Première rencontre d'une leçon → entrée en révision espacée (cf. #45).
+  enterLessonsRevision(
+    Object.keys(perLesson).filter((id) => perLesson[id].total > 0),
+    Date.now(),
+  );
 }
 export const lessonAvgPct = (e: any) =>
   e && e.questions ? Math.round((e.correct / e.questions) * 100) : null;
+
+/* ---------- Révision espacée des leçons (maths / conjugaison) ----------
+   État SR par leçon (les mots d'orthographe ont le leur dans MotOrtho.revision).
+   La logique d'escalier est dans revision.ts (pure) ; ici, persistance + hooks. */
+export const LESSON_REVISION_KEY = 'ludaskia_lessonRevision';
+export function loadLessonRevisions(): Record<string, EtatRevision> {
+  return lsGet(LESSON_REVISION_KEY, {});
+}
+function saveLessonRevisions(r: Record<string, EtatRevision>) {
+  lsSet(LESSON_REVISION_KEY, r);
+}
+/* Entrée en rotation à la première rencontre (1er re-test ~1 semaine), sans
+   rendre la leçon due immédiatement. */
+export function enterLessonsRevision(lessonIds: string[], now: number) {
+  const all = loadLessonRevisions();
+  let changed = false;
+  for (const id of lessonIds) {
+    if (!all[id]) {
+      all[id] = etatNeuf(now);
+      changed = true;
+    }
+  }
+  if (changed) saveLessonRevisions(all);
+}
+/* Met à jour l'état SR d'une leçon après une réponse en révision. */
+export function avancerLessonRevision(lessonId: string, reussi: boolean, now: number) {
+  const all = loadLessonRevisions();
+  all[lessonId] = avancerEtat(all[lessonId] ?? etatNeuf(now), reussi, now);
+  saveLessonRevisions(all);
+}
 
 /* ---------- XP global (1 point par bonne réponse, tous modes) ---------- */
 export const XP_KEY = 'ludaskia_xp';

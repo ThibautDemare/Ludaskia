@@ -117,6 +117,15 @@ import {
   sampleExpressLessons,
 } from '../src/core/bilan-express';
 import {
+  etatNeuf,
+  estDu,
+  estAcquis,
+  avancerEtat,
+  PALIER_ACQUIS,
+  REVISION_INTERVALLES,
+} from '../src/core/revision';
+import { selectDueGroups, countDue } from '../src/core/revision-select';
+import {
   loadProfilesMeta,
   listProfiles,
   activeProfile,
@@ -830,6 +839,79 @@ describe('Impression contextuelle (issue #40)', () => {
     });
     expect(html.includes('bilan-grid')).toBe(true);
     expect(html.includes('Bilan test')).toBe(true);
+  });
+});
+
+describe('Révision espacée (issue #45)', () => {
+  const T0 = 1_700_000_000_000; // instant de référence (ms)
+  test('entrée en rotation : palier 0, dû dans ~1 semaine', () => {
+    const e = etatNeuf(T0);
+    expect(e.palier).toBe(0);
+    expect(e.prochaineRevision).toBe(T0 + REVISION_INTERVALLES[0]);
+    expect(estDu(e, T0)).toBe(false); // pas dû tout de suite
+    expect(estDu(e, T0 + REVISION_INTERVALLES[0])).toBe(true); // dû une semaine plus tard
+  });
+  test('réussite monte d’un cran ; acquis sort de la rotation', () => {
+    let e = etatNeuf(T0);
+    for (let i = 0; i < PALIER_ACQUIS; i++) e = avancerEtat(e, true, T0);
+    expect(e.palier).toBe(PALIER_ACQUIS);
+    expect(estAcquis(e)).toBe(true);
+    expect(e.prochaineRevision).toBe(null); // plus en rotation
+    expect(estDu(e, T0 + 10 * 365 * 86400000)).toBe(false);
+  });
+  test('échec recule d’UN cran, jamais sous 0', () => {
+    let e = etatNeuf(T0);
+    e = avancerEtat(e, true, T0); // palier 1
+    e = avancerEtat(e, true, T0); // palier 2
+    e = avancerEtat(e, false, T0); // → palier 1
+    expect(e.palier).toBe(1);
+    const z = avancerEtat(etatNeuf(T0), false, T0); // déjà à 0
+    expect(z.palier).toBe(0);
+  });
+  test('sélection : éléments dus regroupés par catégorie, plafonnés', () => {
+    const lessonRevisions = {
+      'math-doubles': { palier: 0, prochaineRevision: T0 - 1000, reussites: 0, dernierTest: null },
+      'fr-conj-etre-present': {
+        palier: 1,
+        prochaineRevision: T0 - 5000,
+        reussites: 1,
+        dernierTest: T0,
+      },
+      'math-moities': {
+        palier: 0,
+        prochaineRevision: T0 + 999999,
+        reussites: 0,
+        dernierTest: null,
+      }, // pas dû
+    };
+    const ortho = { banque: {}, listes: [], motIdParForme: {} };
+    expect(countDue(ortho, lessonRevisions, T0)).toBe(2);
+    const groups = selectDueGroups(ortho, lessonRevisions, T0);
+    const cats = groups.map((g) => g.categoryId);
+    expect(cats).toContain('math-calcul');
+    expect(cats).toContain('fr-conjugaison');
+    // une catégorie n'apparaît qu'une fois (regroupement)
+    expect(new Set(cats).size).toBe(cats.length);
+    const total = groups.reduce((n, g) => n + g.items.length, 0);
+    expect(total).toBe(2);
+  });
+  test('sélection : plafond respecté', () => {
+    const lessonRevisions: Record<string, any> = {};
+    for (const l of getAllLessons())
+      lessonRevisions[l.id] = {
+        palier: 0,
+        prochaineRevision: T0 - 1000,
+        reussites: 0,
+        dernierTest: null,
+      };
+    const groups = selectDueGroups(
+      { banque: {}, listes: [], motIdParForme: {} },
+      lessonRevisions,
+      T0,
+      5,
+    );
+    const total = groups.reduce((n, g) => n + g.items.length, 0);
+    expect(total).toBe(5);
   });
 });
 

@@ -137,11 +137,16 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   animé ; un `then` optionnel enchaîne sur `showCelebration` s'il y a d'autres
   gains).
 - **`render.ts`** — rendus accueil/sélecteur/profils (`renderHomeStats` et
-  favoris, badge **niveau + barre** dans `renderToolbarProfile`,
-  `renderObjectives`, `renderGoal`, `renderTrophies`,
+  favoris, badge **niveau + barre** dans `renderToolbarProfile`, carte de
+  progression `renderProgression`, `renderObjectives`, `renderGoal`,
   `renderLessons` + `lessonCardHTML` réutilisable,
   `renderProfileMenu`, `renderProfiles`, `boardHTML`/`sprintBoardHTML`,
   `pctColor`, config `REGULARITY`).
+- **`unlocks-view.ts`** — vitrines de déblocages (issue #28) : barre de l'accueil
+  (`renderRewardNav` : boutons « Récompenses » / « Trophées » avec compteurs) et
+  ouverture des **modales dédiées** `openRecompenses` (paliers de niveau : rangs,
+  compagnon, avatars, thèmes — acquis ✓ / à venir 🔒) et `openTrophees` (collection,
+  sortie de l'inline). Réutilise le rendu `.trophy`.
 - **`catalog-nav.ts`** — navigation **Matière → Catégorie → Leçons**
   (`renderSubjects`, `renderCategories`, `renderCategorie`) ; l'écran d'une
   catégorie donne accès au bilan express (borné) / complet, au sprint, et à
@@ -247,7 +252,11 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
 - **Médailles** = podiums des classements (🥇🥈🥉), réservés au **sprint** (seul
   ensemble stable, donc comparable). Les **bilans** (express/complet) ne sont
   **pas classés** — leurs leçons varient d'un essai à l'autre — mais restent
-  enregistrés (régularité + trophées cumulatifs). **Trophées** = succès cumulatifs.
+  enregistrés (régularité + trophées cumulatifs). **Trophées** = succès cumulatifs,
+  présentés dans une **modale dédiée** (bouton de l'accueil), plus une **modale
+  « Récompenses »** qui récapitule les paliers de niveau (rangs, compagnon, avatars,
+  thèmes) acquis ✓ / à venir 🔒 ; ouvertes depuis l'accueil et l'écran Profils
+  (`ui/unlocks-view.ts`).
 - **Objectifs de régularité** (panneau d'accueil, périodes calendaires) :
   3 sprints/semaine, 2 bilans express/mois, 1 bilan complet/mois. Les bilans de
   catégorie et personnalisés y comptent (mode déduit du nombre de questions :

@@ -24,9 +24,10 @@ import {
 import { countDue } from '../core/revision-select';
 import { titreDuNiveau, mascotteDuNiveau, AVATARS_FORET } from '../core/unlocks';
 import { loadOrtho } from '../core/orthographe/store';
-import { getGoal, evaluateTrophies, loadTrophies, TROPHIES } from '../core/rewards';
+import { getGoal, evaluateTrophies } from '../core/rewards';
 import { sparkline } from './effects';
 import { renderFavoris } from './bilan';
+import { renderRewardNav } from './unlocks-view';
 
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
 export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
@@ -225,7 +226,7 @@ export function renderHomeStats() {
   // express/complet varient d'un essai à l'autre → pas de podium (#35).
   if (boards) boards.innerHTML = sprintBoardHTML();
   evaluateTrophies(); // rattrape d'éventuels trophées acquis (sans célébration ici)
-  renderTrophies();
+  renderRewardNav(); // boutons « Récompenses » / « Trophées » (ouvrent leurs modales)
   renderFavoris(document.getElementById('favoris'));
 }
 
@@ -266,22 +267,6 @@ export function renderGoal() {
     el.className = 'goal';
     el.innerHTML = `🎯 Défi du jour : <span class="goal-lab">${g.label}</span> <span class="goal-prog">(${g.progress}/${g.target})</span>`;
   }
-}
-
-/* Vitrine des trophées */
-export function renderTrophies() {
-  const el = document.getElementById('trophies');
-  if (!el) return;
-  const have = new Set(loadTrophies());
-  const cells = TROPHIES.map((t) => {
-    const on = have.has(t.id);
-    return `<div class="trophy ${on ? 'on' : 'off'}">
-      <span class="trophy-ico">${on ? t.icon : '🔒'}</span>
-      <span class="trophy-title">${t.title}</span>
-      <span class="trophy-desc">${t.desc}</span></div>`;
-  }).join('');
-  el.innerHTML = `<h3 class="trophies-h">Mes trophées <span class="trophies-count">${have.size}/${TROPHIES.length}</span></h3>
-    <div class="trophy-grid">${cells}</div>`;
 }
 
 /* Carte d'une leçon (étoile + taux de réussite). Réutilisée par le sélecteur

@@ -36,7 +36,7 @@
           <div class="goal" id="goal"></div>
           <div class="objectives" id="objectives"></div>
           <div class="boards" id="boards"></div>
-          <div id="trophies"></div>
+          <div class="reward-nav" id="rewardNav"></div>
         </div>
         <!-- Colonne droite : accès aux modes + favoris -->
         <div class="home-col home-col-right">
@@ -99,6 +99,9 @@
     <div class="home screen-only" id="profils" style="display: none">
       <div class="big">Profils</div>
       <div class="tagline">Chaque profil garde sa propre progression.</div>
+      <div class="reward-nav reward-nav-profils">
+        <button class="reward-btn" id="btnRecompensesProfils">🎁 Mes récompenses</button>
+      </div>
       <div id="preferences"></div>
       <div class="profile-list" id="profileList"></div>
       <div class="profile-backup">
@@ -148,7 +151,7 @@
     <!-- Écran de configuration du sprint -->
     <div class="home screen-only" id="sprint-config" style="display: none">
       <div class="big">Sprint 5 min</div>
-      <div class="tagline">Enchaîne les calculs le plus vite possible.</div>
+      <div class="tagline">Enchaîne les questions le plus vite possible (maths et français).</div>
       <div id="sprintConfigContent"></div>
       <div class="printlink"><a id="backHomeSprintConfig">← Retour à l'accueil</a></div>
     </div>
@@ -191,6 +194,33 @@
         <p class="levelup-next" id="levelupNext"></p>
         <ul class="levelup-unlocks" id="levelupUnlocks" style="display: none"></ul>
         <button class="modal-ok levelup-ok" id="levelupOk">Continuer</button>
+      </div>
+    </div>
+
+    <!-- Modale « Récompenses » : paliers de niveau (rangs, compagnon, avatars, thèmes) -->
+    <div class="modal-overlay" id="recompenses" style="display: none">
+      <div
+        class="modal modal-wide"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="recompensesTitle"
+      >
+        <button class="modal-close" id="recompensesClose" aria-label="Fermer">×</button>
+        <div class="modal-emoji">🎁</div>
+        <h2 class="modal-title" id="recompensesTitle">Mes récompenses</h2>
+        <div class="rewards-body" id="recompensesContent"></div>
+        <button class="modal-ok" id="recompensesOk">Fermer</button>
+      </div>
+    </div>
+
+    <!-- Modale « Trophées » : collection de trophées -->
+    <div class="modal-overlay" id="trophees" style="display: none">
+      <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="tropheesTitle">
+        <button class="modal-close" id="tropheesClose" aria-label="Fermer">×</button>
+        <div class="modal-emoji">🏆</div>
+        <h2 class="modal-title" id="tropheesTitle">Mes trophées</h2>
+        <div class="rewards-body" id="tropheesContent"></div>
+        <button class="modal-ok" id="tropheesOk">Fermer</button>
       </div>
     </div>
 

@@ -31,6 +31,30 @@
     opacity: 1;
   }
 }
+/* Modale large et défilante (vitrines Récompenses / Trophées) */
+.modal-wide {
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.rewards-body {
+  text-align: left;
+  margin-bottom: 18px;
+}
+.rewards-sub {
+  text-align: center;
+  font-size: 13px;
+  color: var(--grey);
+  margin: 0 0 14px;
+}
+.rewards-h {
+  color: var(--blue);
+  font-size: 15px;
+  margin: 16px 0 8px;
+}
+.rewards-h:first-of-type {
+  margin-top: 0;
+}
 .modal-close {
   position: absolute;
   top: 10px;

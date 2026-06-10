@@ -2,7 +2,7 @@
    Rendu de l'écran d'accueil et du sélecteur de leçons
    ============================================================ */
 import { escapeHTML, fmt } from '../core/utils';
-import { activeProfile, loadProfilesMeta, PROFILE_EMOJIS } from '../core/profiles';
+import { activeProfile, loadProfilesMeta, PROFILE_EMOJIS, getXPFor } from '../core/profiles';
 import { LESSONS } from '../core/lessons';
 import { getAllLessons } from '../core/catalog';
 import {
@@ -18,10 +18,11 @@ import {
   countSince,
   getXP,
   progressionNiveau,
+  niveauDepuisXP,
   loadLessonRevisions,
 } from '../core/progress';
 import { countDue } from '../core/revision-select';
-import { titreDuNiveau, mascotteDuNiveau } from '../core/unlocks';
+import { titreDuNiveau, mascotteDuNiveau, AVATARS_FORET } from '../core/unlocks';
 import { loadOrtho } from '../core/orthographe/store';
 import { getGoal, evaluateTrophies, loadTrophies, TROPHIES } from '../core/rewards';
 import { sparkline } from './effects';
@@ -97,15 +98,21 @@ export function toggleEmojiPicker(uuid: string) {
 export function closeEmojiPicker() {
   emojiPickerFor = null;
 }
-/* Palette d'avatars : grille des émojis disponibles, le courant marqué. */
-function emojiPaletteHTML(current: string) {
-  const opts = PROFILE_EMOJIS.map(
-    (e) =>
-      `<button class="emoji-opt${e === current ? ' current' : ''}" data-act="set-emoji" data-emoji="${e}"${
-        e === current ? ' aria-current="true"' : ''
-      } title="${e === current ? 'Avatar actuel' : 'Choisir cet avatar'}">${e}</button>`,
+/* Palette d'avatars : les 12 de base (toujours dispo) puis la gamme « forêt »
+   débloquée par niveau. Les avatars verrouillés sont grisés avec « 🔒 Niv X ».
+   `niveau` est celui du profil édité (pas forcément l'actif). */
+function emojiPaletteHTML(current: string, niveau: number) {
+  const dispo = (e: string) =>
+    `<button class="emoji-opt${e === current ? ' current' : ''}" data-act="set-emoji" data-emoji="${e}"${
+      e === current ? ' aria-current="true"' : ''
+    } title="${e === current ? 'Avatar actuel' : 'Choisir cet avatar'}">${e}</button>`;
+  const base = PROFILE_EMOJIS.map(dispo).join('');
+  const foret = AVATARS_FORET.map((a) =>
+    niveau >= a.niveau
+      ? dispo(a.emoji)
+      : `<span class="emoji-opt locked" title="Débloqué au niveau ${a.niveau}">${a.emoji}<span class="emoji-lock">🔒 ${a.niveau}</span></span>`,
   ).join('');
-  return `<div class="emoji-palette" role="listbox" aria-label="Choisir un avatar">${opts}</div>`;
+  return `<div class="emoji-palette" role="listbox" aria-label="Choisir un avatar">${base}${foret}</div>`;
 }
 /* Écran de gestion des profils */
 export function renderProfiles() {
@@ -131,7 +138,7 @@ export function renderProfiles() {
         <button data-act="reset" title="Réinitialiser la progression">♻️</button>
         <button data-act="delete" title="Supprimer le profil"${m.list.length <= 1 ? ' disabled' : ''}>🗑️</button>
       </span>
-      ${p.uuid === emojiPickerFor ? emojiPaletteHTML(p.emoji) : ''}
+      ${p.uuid === emojiPickerFor ? emojiPaletteHTML(p.emoji, niveauDepuisXP(getXPFor(p.uuid))) : ''}
     </div>`,
       )
       .join('') + `<button class="profile-add" id="profileAdd">＋ Nouveau profil</button>`;

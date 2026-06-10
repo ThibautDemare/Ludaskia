@@ -304,13 +304,17 @@ La modale `showLevelUp` actuelle affiche un seul sous-titre. **Décision :** enr
 **liste** des déblocages (style `modal-li` de `showCelebration`) — un seul point
 d'entrée, pas de 2e modale.
 
-## 5. Découpage en 3 PR
+## 5. Découpage en PR
 
 Chaque PR = une branche + une PR liée à #28, CI verte, rebase-merge. Tests Vitest
 des fonctions pures à chaque PR touchant `core/`. Mettre à jour `docs/ARCHITECTURE.md`
 (section Gamification + liste `src/core/`).
 
-### Phase 1 — Rangs / titres (léger, gros effet)
+**Avancement** : Phase 1 ✅ (PR #71) · Phase 2 ✅ (PR #72) · Phase 3 découpée en 3a/3b/3c
+(en cours) · Phase 4 à venir. La phase 3 s'est révélée trop grosse pour une seule PR →
+découpée en **3a avatars**, **3b thèmes (+ réglage animations)**, **3c modales**.
+
+### Phase 1 — Rangs / titres (léger, gros effet) ✅ fait (PR #71)
 **But :** afficher le rang textuel du niveau.
 - `core/unlocks.ts` : `RANGS` + `titreDuNiveau(n)` (+ `recompensesNiveau` minimal, type `rang`).
 - Affichage (cf. §3.3, décidé) : **icône du rang dans le badge de la barre** (« 🌿
@@ -320,14 +324,14 @@ des fonctions pures à chaque PR touchant `core/`. Mettre à jour `docs/ARCHITEC
 - Tests : `titreDuNiveau` aux bornes (9/10, 24/25, 99/100…), monotonicité.
 - **Aucune dépendance** au picker d'avatars → faisable tout de suite.
 
-### Phase 2 — Mascotte évolutive
+### Phase 2 — Mascotte évolutive ✅ fait (PR #72)
 **But :** un compagnon qui grandit aux paliers marquants.
 - `core/unlocks.ts` : `MASCOTTE` + `mascotteDuNiveau(n)` + détection d'évolution
   (via `recompensesEntre`, §4.1).
 - Affichage (cf. §3.3, cadre pédagogique strict) : modale de niveau (forme courante
-  + mise en avant si évolution) ; carte « progression » de l'accueil ; **au démarrage
-  d'une session et sur l'écran de résultats uniquement** (jamais pendant le chrono,
-  jamais sur une erreur).
+  + mise en avant si évolution) ; carte « progression » de l'accueil. *(Les apparitions
+  au démarrage de session / écran de résultats ont été **reportées en phase 4** pour
+  garder la PR focalisée.)*
 - **Animations CSS (cf. §3.4)** : entrée jouée une fois (fondu + léger rebond) ; boucle
   de repos douce **sur la carte accueil seulement** (balancement/sautillement/respiration
   selon la forme) ; `prefers-reduced-motion` → `animation: none` ; transform/opacity only.
@@ -335,36 +339,53 @@ des fonctions pures à chaque PR touchant `core/`. Mettre à jour `docs/ARCHITEC
 - Tests : `mascotteDuNiveau` aux seuils, détection d'évolution sur saut multi-niveaux.
 - Dépend de la phase 1 (module + plomberie modale + carte progression).
 
-### Phase 3 — Cosmétiques (avatars gated + thèmes + modale Récompenses)
-**But :** personnalisation débloquée.
-- `core/unlocks.ts` : `AVATARS_FORET`, `avatarsDebloques`, `avatarEstDebloque`,
-  `THEMES`, `themesDebloques`.
-- `core/profiles.ts` : `getXPFor(uuid)` (§4.2 option b) ; `setProfileEmoji` valide
-  contre les avatars débloqués (§4.3) ; stockage/lecture du thème (`ludaskia_theme`) ;
-  `resetProfile` réinitialise l'avatar **uniquement** s'il est gated (§4.7).
-- `ui/render.ts` : `emojiPaletteHTML` affiche **aussi** les avatars forêt, les
-  verrouillés grisés avec « 🔒 Niv X » ; nouveau sélecteur de thèmes.
+### Phase 3 — Cosmétiques (découpée en 3 PR)
+**But :** personnalisation débloquée. Prérequis (picker d'avatars) déjà sur `main`.
+
+#### Phase 3a — Avatars « forêt » gated (en cours)
+- `core/unlocks.ts` : `AVATARS_FORET` + `niveauRequisAvatar` + `avatarsForetDebloques`
+  (gamme forêt seule — la combinaison base + forêt vit dans `profiles.ts` pour éviter un
+  cycle) ; l'avatar entre aussi dans `recompensesNiveau` (annonce « Nouvel avatar »).
+- `core/profiles.ts` : `getXPFor(uuid)` (§4.2 b) ; `avatarAutorise` / `setProfileEmoji`
+  refusent un avatar verrouillé ; `resetProfile` rend un avatar forêt si l'XP repart à 0
+  (garde un avatar de base) — §4.7.
+- `ui/render.ts` : `emojiPaletteHTML` montre base + forêt, verrouillés grisés « 🔒 Niv X »,
+  jaugé au niveau du **profil édité**.
+- Tests : `niveauRequisAvatar`/`avatarsForetDebloques` ; refus d'un avatar verrouillé ;
+  reset qui rend l'avatar forêt mais garde un avatar de base.
+
+#### Phase 3b — Thèmes de couleur (+ réglage « Animations réduites »)
+- `core/unlocks.ts` : `THEMES` + `themesDebloques`.
 - **Thèmes** (cf. §3.5 palettes, §4.4) — **tous clairs, pas de refactor de tokens** :
-  définir les palettes sous `:root[data-theme="foret|automne|lagon|fruit-rouge"]`
-  (nouveau `themes.scss`) ; appliquer `data-theme` au bootstrap et au changement de
-  profil ; stocker le thème par profil (`ludaskia_theme`, défaut si non débloqué).
-- **Réglage « Animations réduites » par profil** (décidé v1, cf. §3.4) : drapeau
-  `ludaskia_anim` via `lsGet/lsSet`, posé en classe sur `<html>`, en complément de
-  `prefers-reduced-motion`. Toggle dans l'écran Profils (ou Récompenses).
-- **Modale « Récompenses »** (décidé, §3.3/§6) : une **modale dédiée** (pas une vue
-  routée) listant les paliers — acquis ✓ et à venir 🔒 avec « Débloqué au niveau X » —
-  pour rangs, mascotte, avatars et thèmes. Calquée sur le rendu `renderTrophies`
-  ([render.ts:243](../src/ui/render.ts#L243)) ; DOM d'overlay ajouté dans `index.html`
-  (modèle `levelup`/`celebrate`, [index.html:187](../index.html#L187)). **Deux points
-  d'entrée** : carte/bouton sur l'accueil **et** lien dans l'écran Profils.
-- **Modale « Trophées » dédiée** (décidé, §6) : appliquer le même mécanisme aux
-  trophées (aujourd'hui rendus inline sur l'accueil via `renderTrophies`) → un bouton
-  ouvre une modale listant acquis/à obtenir. Mutualiser le composant d'overlay avec
-  la modale Récompenses.
-- Tests : `avatarsDebloques`/`themesDebloques` aux seuils ; refus d'un avatar verrouillé
-  par `setProfileEmoji` ; thème invalide → défaut ; `getXPFor` lit le bon profil ;
-  `resetProfile` ne dégrade que les avatars gated.
-- Prérequis (picker d'avatars) **déjà sur `main`** → aucune attente.
+  palettes sous `:root[data-theme="foret|automne|lagon|fruit-rouge"]` (nouveau
+  `themes.scss`) ; appliquer `data-theme` au bootstrap et au changement de profil ;
+  stocker le thème par profil (`ludaskia_theme`, défaut si non débloqué) ; sélecteur de
+  thèmes (verrouillés grisés).
+- **Réglage « Animations réduites » par profil** (décidé v1, §3.4) : drapeau
+  `ludaskia_anim` (`lsGet/lsSet`), posé en classe sur `<html>`, en plus de
+  `prefers-reduced-motion`. Toggle dans l'écran Profils.
+- Tests : `themesDebloques` aux seuils ; thème stocké non débloqué → défaut.
+
+#### Phase 3c — Modales « Récompenses » et « Trophées »
+- **Modale « Récompenses »** (§3.3/§6) : modale dédiée (pas une vue routée) listant les
+  paliers — acquis ✓ et à venir 🔒 « Débloqué au niveau X » — pour rangs, mascotte,
+  avatars et thèmes. Calquée sur `renderTrophies` ; overlay dans `index.html` (modèle
+  `levelup`/`celebrate`). **Deux entrées** : accueil **et** écran Profils.
+- **Modale « Trophées » dédiée** : même mécanisme, depuis l'inline `renderTrophies`
+  actuel → un bouton ouvre la modale. Composant d'overlay mutualisé.
+
+### Phase 4 — Apparitions de la mascotte autour des exercices
+**But :** rendre la mascotte présente comme **accompagnant**, hors temps chronométré
+(reporté des phases 2-3 pour les isoler ; cf. cadre pédagogique §3.3).
+- **Démarrage de session** : la mascotte accueille/encourage **avant** le chrono
+  (point d'accroche dans `afterStart`, [navigation.ts](../src/ui/navigation.ts) ; veiller
+  à ne pas voler le focus du 1er champ).
+- **Écran de résultats** : la mascotte félicite l'**effort** (pas que le score) dans le
+  bandeau de résultat ([session.ts](../src/ui/session.ts)) et l'équivalent sprint/ortho.
+- **Garde-fous (intangibles)** : jamais visible/animée **pendant** qu'un calcul est
+  chronométré ; **jamais de réaction sur une erreur** ; animations `transform`/`opacity`
+  + `prefers-reduced-motion` (réutiliser les classes de §3.4).
+- À valider sur le terrain (dosage : encourageant sans distraire).
 
 ## 6. Décisions actées & points encore ouverts
 

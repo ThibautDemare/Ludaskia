@@ -70,6 +70,35 @@ export function mascotteDuNiveau(niveau: number): Mascotte {
   return m;
 }
 
+/* ---------- Avatars « forêt » débloqués par palier ----------
+   EN PLUS des 12 avatars de base (PROFILE_EMOJIS, toujours dispo dès le niv 1,
+   définis dans core/profiles.ts). Ce module ne connaît QUE la gamme forêt — la
+   combinaison base + forêt se fait dans profiles.ts (qui possède la base), pour
+   éviter une dépendance circulaire. (🦅 niv 100 est aussi la mascotte finale.) */
+export interface AvatarDeblocable {
+  emoji: string;
+  niveau: number;
+}
+export const AVATARS_FORET: AvatarDeblocable[] = [
+  { emoji: '🐿️', niveau: 5 },
+  { emoji: '🦔', niveau: 15 },
+  { emoji: '🦌', niveau: 30 },
+  { emoji: '🦫', niveau: 45 },
+  { emoji: '🐗', niveau: 60 },
+  { emoji: '🐺', niveau: 75 },
+  { emoji: '🐻', niveau: 90 },
+  { emoji: '🦅', niveau: 100 },
+];
+// Niveau requis pour un avatar forêt, ou null si l'émoji n'appartient pas à la gamme.
+export function niveauRequisAvatar(emoji: string): number | null {
+  const a = AVATARS_FORET.find((x) => x.emoji === emoji);
+  return a ? a.niveau : null;
+}
+// Avatars forêt débloqués à ce niveau.
+export function avatarsForetDebloques(niveau: number): string[] {
+  return AVATARS_FORET.filter((a) => niveau >= a.niveau).map((a) => a.emoji);
+}
+
 /* ---------- Récompenses débloquées à un palier ---------- */
 export type TypeRecompense = 'rang' | 'mascotte' | 'avatar' | 'theme';
 export interface Recompense {
@@ -87,6 +116,8 @@ export function recompensesNiveau(niveau: number): Recompense[] {
   if (rang) out.push({ type: 'rang', icone: rang.icone, texte: `Nouveau rang : ${rang.titre}` });
   const masc = MASCOTTE.find((m) => m.seuil === niveau && m.seuil > 1);
   if (masc) out.push({ type: 'mascotte', icone: masc.emoji, texte: 'Ton compagnon grandit !' });
+  const avatar = AVATARS_FORET.find((a) => a.niveau === niveau);
+  if (avatar) out.push({ type: 'avatar', icone: avatar.emoji, texte: 'Nouvel avatar débloqué !' });
   return out;
 }
 

@@ -123,9 +123,12 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
 - **`unlocks.ts`** — déblocages cosmétiques **dérivés du niveau** (issue #28),
   module **pur** sans stockage ni migration : **rangs** (`RANGS`, `titreDuNiveau`),
   **mascotte évolutive** (`MASCOTTE` à 9 formes œuf→aigle, `mascotteDuNiveau` ; chaque
-  forme porte une catégorie `oeuf|oisillon|oiseau` qui pilote l'animation), et
-  récompenses de palier (`recompensesNiveau`, `recompensesEntre` qui agrège un saut de
-  plusieurs niveaux). Avatars/thèmes viendront s'y ajouter.
+  forme porte une catégorie `oeuf|oisillon|oiseau` qui pilote l'animation), **avatars
+  « forêt »** débloqués par palier (`AVATARS_FORET`, `niveauRequisAvatar`,
+  `avatarsForetDebloques` — gamme forêt seule ; la combinaison avec les 12 de base se
+  fait dans `profiles.ts` pour éviter un cycle), et récompenses de palier
+  (`recompensesNiveau`, `recompensesEntre` qui agrège un saut de plusieurs niveaux).
+  Thèmes à venir.
 
 ### `src/ui/`
 - **`chrono.ts`** — chronomètre croissant de la barre (sessions).
@@ -272,8 +275,11 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   (entrée + boucle de repos douce selon sa forme, coupée sous `prefers-reduced-motion` ;
   animée uniquement sur cet écran de contemplation, jamais pendant un exercice
   chronométré). Les déblocages d'un palier sont annoncés dans la **modale de niveau**
-  (`showLevelUp`), l'évolution de la mascotte y étant mise en avant. Avatars et thèmes
-  débloquables suivront (phase 3).
+  (`showLevelUp`), l'évolution de la mascotte y étant mise en avant. Des **avatars
+  « forêt »** se débloquent aussi par palier : dans le sélecteur d'avatar (écran Profils),
+  les non-débloqués sont grisés « 🔒 Niv X », jaugés au niveau du **profil édité**
+  (`getXPFor`) ; `setProfileEmoji` refuse un avatar verrouillé et `resetProfile` rend un
+  avatar forêt si l'XP repart à zéro. Thèmes de couleur débloquables à suivre.
 - **Règle des 60 %** : un bilan/leçon ne « compte » (temps, record, étoile,
   objectif, trophée) que si ≥ 60 % des calculs ont une réponse. Le sprint compte
   s'il va au bout des 5 minutes.

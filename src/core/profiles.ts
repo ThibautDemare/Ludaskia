@@ -17,6 +17,8 @@ import {
   appKeys,
   setActivePrefix,
 } from './storage';
+import { XP_KEY, niveauDepuisXP } from './progress';
+import { niveauRequisAvatar } from './unlocks';
 
 export interface Profile {
   uuid: string;
@@ -133,10 +135,28 @@ export function renameProfile(uuid: string, name: string) {
     saveProfilesMeta(m);
   }
 }
-// Affecte directement l'avatar choisi dans la palette (no-op si l'émoji est
-// inconnu du catalogue PROFILE_EMOJIS).
+// XP totale d'un profil donné (par UUID), sans changer le profil actif. Lit la
+// clé préfixée brute → permet de gérer le gating des avatars dans l'écran de
+// gestion (où l'on édite un profil qui n'est pas forcément l'actif).
+export function getXPFor(uuid: string): number {
+  try {
+    const v = localStorage.getItem(uuid + '/' + XP_KEY);
+    return v == null ? 0 : JSON.parse(v);
+  } catch (e) {
+    return 0;
+  }
+}
+// Un avatar est autorisé pour un profil s'il est de base (toujours dispo) ou s'il
+// s'agit d'un avatar « forêt » dont le niveau requis est atteint par CE profil.
+export function avatarAutorise(uuid: string, emoji: string): boolean {
+  if (PROFILE_EMOJIS.includes(emoji)) return true;
+  const requis = niveauRequisAvatar(emoji);
+  return requis != null && niveauDepuisXP(getXPFor(uuid)) >= requis;
+}
+// Affecte l'avatar choisi (no-op si verrouillé : base inconnue ou forêt non
+// débloquée pour ce profil — garde-fou contre un contournement via le DOM).
 export function setProfileEmoji(uuid: string, emoji: string) {
-  if (!PROFILE_EMOJIS.includes(emoji)) return;
+  if (!avatarAutorise(uuid, emoji)) return;
   const m = loadProfilesMeta();
   const p = m && m.list.find((x) => x.uuid === uuid);
   if (!p || p.emoji === emoji) return;
@@ -155,6 +175,9 @@ export function resetProfile(uuid: string) {
   const p = m && m.list.find((x) => x.uuid === uuid);
   if (!p) return;
   clearProfileData(profilePrefix(p));
+  // L'XP repart à zéro : un avatar « forêt » gagné n'est plus débloqué → on rend
+  // un avatar de base (les 12 de base relèvent de l'identité, pas d'une récompense).
+  if (!PROFILE_EMOJIS.includes(p.emoji)) p.emoji = PROFILE_EMOJIS[0];
   p.updatedAt = Date.now();
   saveProfilesMeta(m);
 }

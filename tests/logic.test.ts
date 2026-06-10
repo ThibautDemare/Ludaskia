@@ -130,6 +130,9 @@ import {
   titreDuNiveau,
   MASCOTTE,
   mascotteDuNiveau,
+  AVATARS_FORET,
+  niveauRequisAvatar,
+  avatarsForetDebloques,
   recompensesNiveau,
   recompensesEntre,
 } from '../src/core/unlocks';
@@ -141,6 +144,8 @@ import {
   addProfile,
   renameProfile,
   setProfileEmoji,
+  getXPFor,
+  avatarAutorise,
   resetProfile,
   deleteProfile,
   exportProfiles,
@@ -215,6 +220,9 @@ const api = {
   titreDuNiveau,
   MASCOTTE,
   mascotteDuNiveau,
+  AVATARS_FORET,
+  niveauRequisAvatar,
+  avatarsForetDebloques,
   recompensesNiveau,
   recompensesEntre,
   GOAL_KEY,
@@ -237,6 +245,8 @@ const api = {
   resetProfile,
   deleteProfile,
   setProfileEmoji,
+  getXPFor,
+  avatarAutorise,
   PROFILE_EMOJIS,
   exportProfiles,
   importProfiles,
@@ -665,12 +675,14 @@ describe('Déblocages par niveau (unlocks)', () => {
     const r10 = api.recompensesNiveau(10);
     expect(r10.map((r) => r.type)).toEqual(['rang', 'mascotte']);
     expect(r10[0].texte).toContain('Pousse');
-    // 45 : rang seul (pas un palier de mascotte).
-    expect(api.recompensesNiveau(45).map((r) => r.type)).toEqual(['rang']);
-    // 50 : mascotte seule (pas un palier de rang).
+    // 5 : avatar forêt seul (ni rang ni mascotte à ce palier).
+    expect(api.recompensesNiveau(5).map((r) => r.type)).toEqual(['avatar']);
+    // 45 : rang Jeune arbre + avatar 🦫 (pas de mascotte à 45).
+    expect(api.recompensesNiveau(45).map((r) => r.type)).toEqual(['rang', 'avatar']);
+    // 50 : mascotte seule (pas un palier de rang ni d'avatar).
     expect(api.recompensesNiveau(50).map((r) => r.type)).toEqual(['mascotte']);
-    // 100 : rang Légende + mascotte 🦅.
-    expect(api.recompensesNiveau(100).map((r) => r.type)).toEqual(['rang', 'mascotte']);
+    // 100 : rang Légende + mascotte 🦅 + avatar 🦅 (ordre rang → mascotte → avatar).
+    expect(api.recompensesNiveau(100).map((r) => r.type)).toEqual(['rang', 'mascotte', 'avatar']);
   });
   test('recompensesEntre : agrège rangs ET mascotte sur un saut multi-niveaux', () => {
     // 9 → 11 : franchit le palier 10 (rang Pousse + mascotte 🐥).
@@ -681,6 +693,46 @@ describe('Déblocages par niveau (unlocks)', () => {
     expect(gros.filter((r) => r.type === 'rang')).toHaveLength(2);
     // Aucun changement de niveau ⇒ aucun déblocage.
     expect(api.recompensesEntre(12, 12)).toEqual([]);
+  });
+});
+
+describe('Déblocages : avatars forêt (gating)', () => {
+  test('niveauRequisAvatar / avatarsForetDebloques', () => {
+    expect(api.niveauRequisAvatar('🐿️')).toBe(5);
+    expect(api.niveauRequisAvatar('🦅')).toBe(100);
+    expect(api.niveauRequisAvatar('🐧')).toBeNull(); // avatar de base, pas forêt
+    expect(api.avatarsForetDebloques(1)).toEqual([]);
+    expect(api.avatarsForetDebloques(5)).toEqual(['🐿️']);
+    expect(api.avatarsForetDebloques(30)).toEqual(['🐿️', '🦔', '🦌']);
+    // Dernier avatar débloqué au niveau max.
+    expect(api.AVATARS_FORET[api.AVATARS_FORET.length - 1].niveau).toBe(api.NIVEAU_MAX);
+  });
+  test('setProfileEmoji : base toujours OK, forêt seulement si débloqué', () => {
+    const uuid = api.activeProfile().uuid;
+    // Avatar de base : autorisé même au niveau 1.
+    api.setProfileEmoji(uuid, '🦊');
+    expect(api.activeProfile().emoji).toBe('🦊');
+    // Avatar forêt verrouillé (niveau 1 < 5) : refusé.
+    api.setProfileEmoji(uuid, '🐿️');
+    expect(api.activeProfile().emoji).toBe('🦊');
+    expect(api.avatarAutorise(uuid, '🐿️')).toBe(false);
+    // Assez d'XP pour le niveau 5 → débloqué.
+    api.addXP(api.xpPourNiveau(5));
+    expect(api.avatarAutorise(uuid, '🐿️')).toBe(true);
+    api.setProfileEmoji(uuid, '🐿️');
+    expect(api.activeProfile().emoji).toBe('🐿️');
+  });
+  test('resetProfile : rend un avatar forêt (XP=0), garde un avatar de base', () => {
+    const uuid = api.activeProfile().uuid;
+    api.addXP(api.xpPourNiveau(5));
+    api.setProfileEmoji(uuid, '🐿️');
+    expect(api.activeProfile().emoji).toBe('🐿️');
+    api.resetProfile(uuid);
+    expect(api.activeProfile().emoji).toBe(api.PROFILE_EMOJIS[0]); // forêt rendu
+    // Un avatar de base survit au reset.
+    api.setProfileEmoji(uuid, '🐼');
+    api.resetProfile(uuid);
+    expect(api.activeProfile().emoji).toBe('🐼');
   });
 });
 

@@ -176,6 +176,26 @@
   background: #fff;
   cursor: default;
 }
+/* Avatar « forêt » verrouillé : grisé, non cliquable, badge « 🔒 Niv X ». */
+.emoji-opt.locked {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+.emoji-opt.locked:hover {
+  transform: none;
+}
+.emoji-lock {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--grey);
+  filter: grayscale(1);
+}
 .profile-add {
   font: inherit;
   font-family: var(--ui);

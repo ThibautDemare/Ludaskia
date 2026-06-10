@@ -82,7 +82,10 @@ export function showLevelUp(niveau: number, recompenses: Recompense[] = [], then
   const unlocks = document.getElementById('levelupUnlocks');
   if (unlocks) {
     unlocks.innerHTML = recompenses
-      .map((r) => `<li><span class="levelup-unlock-ico">${r.icone}</span> ${r.texte}</li>`)
+      .map(
+        (r) =>
+          `<li class="levelup-unlock levelup-unlock--${r.type}"><span class="levelup-unlock-ico">${r.icone}</span> ${r.texte}</li>`,
+      )
       .join('');
     unlocks.style.display = recompenses.length ? '' : 'none';
   }

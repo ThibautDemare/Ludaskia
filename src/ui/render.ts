@@ -21,7 +21,7 @@ import {
   loadLessonRevisions,
 } from '../core/progress';
 import { countDue } from '../core/revision-select';
-import { titreDuNiveau } from '../core/unlocks';
+import { titreDuNiveau, mascotteDuNiveau } from '../core/unlocks';
 import { loadOrtho } from '../core/orthographe/store';
 import { getGoal, evaluateTrophies, loadTrophies, TROPHIES } from '../core/rewards';
 import { sparkline } from './effects';
@@ -52,17 +52,20 @@ export function renderToolbarProfile() {
   el.innerHTML = `${p.emoji} ${escapeHTML(p.name)} <span class="btn-profile-caret">▾</span>`;
 }
 
-/* Carte « progression » de l'accueil : rang + niveau + barre. Point d'ancrage
-   central de la fierté (la mascotte viendra s'y loger en phase 2). */
+/* Carte « progression » de l'accueil : mascotte + rang + niveau + barre.
+   Point d'ancrage central de la fierté. La mascotte est animée (entrée + repos
+   doux) ici uniquement — écran de contemplation, pas de tâche urgente. */
 export function renderProgression() {
   const el = document.getElementById('progression');
   if (!el) return;
   const pr = progressionNiveau(getXP());
   const rang = titreDuNiveau(pr.niveau);
+  const masc = mascotteDuNiveau(pr.niveau);
   const sub = pr.max
     ? 'Niveau maximum atteint !'
     : `${pr.xpDansNiveau} / ${pr.xpRequisPalier} XP vers le niveau ${pr.niveau + 1}`;
   el.innerHTML = `<div class="progress-card">
+    <span class="mascotte mascotte--${masc.forme}" aria-hidden="true">${masc.emoji}</span>
     <span class="progress-rang"><span class="progress-rang-ico">${rang.icone}</span> ${rang.titre}</span>
     <span class="progress-lvl">Niveau ${pr.niveau}</span>
     <span class="lvl-bar"><span class="lvl-bar-fill" style="width:${pr.pct}%"></span></span>

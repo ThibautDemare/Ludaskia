@@ -125,7 +125,14 @@ import {
   REVISION_INTERVALLES,
 } from '../src/core/revision';
 import { selectDueGroups, countDue } from '../src/core/revision-select';
-import { RANGS, titreDuNiveau, recompensesNiveau, recompensesEntre } from '../src/core/unlocks';
+import {
+  RANGS,
+  titreDuNiveau,
+  MASCOTTE,
+  mascotteDuNiveau,
+  recompensesNiveau,
+  recompensesEntre,
+} from '../src/core/unlocks';
 import {
   loadProfilesMeta,
   listProfiles,
@@ -206,6 +213,8 @@ const api = {
   progressionNiveau,
   RANGS,
   titreDuNiveau,
+  MASCOTTE,
+  mascotteDuNiveau,
   recompensesNiveau,
   recompensesEntre,
   GOAL_KEY,
@@ -621,23 +630,55 @@ describe('Déblocages par niveau (unlocks)', () => {
     // Le dernier rang couvre exactement le niveau max.
     expect(api.RANGS[api.RANGS.length - 1].seuil).toBe(api.NIVEAU_MAX);
   });
-  test('recompensesNiveau : un rang débloqué pile au palier (hors niveau 1)', () => {
-    expect(api.recompensesNiveau(1)).toEqual([]); // rang de départ, pas un déblocage vécu
-    expect(api.recompensesNiveau(2)).toEqual([]); // pas un palier de rang
-    const r10 = api.recompensesNiveau(10);
-    expect(r10).toHaveLength(1);
-    expect(r10[0].type).toBe('rang');
-    expect(r10[0].texte).toContain('Pousse');
-    expect(api.recompensesNiveau(100)[0].texte).toContain('Légende de la forêt');
+  test('mascotteDuNiveau : forme courante aux seuils', () => {
+    // 1 🥚 · 3 🐣 · 10 🐥 · 25 🐤 · 50 🦉 · 65 🦜 · 80 🦢 · 90 🦚 · 100 🦅
+    expect(api.mascotteDuNiveau(1).emoji).toBe('🥚');
+    expect(api.mascotteDuNiveau(2).emoji).toBe('🥚');
+    expect(api.mascotteDuNiveau(3).emoji).toBe('🐣');
+    expect(api.mascotteDuNiveau(9).emoji).toBe('🐣');
+    expect(api.mascotteDuNiveau(10).emoji).toBe('🐥');
+    expect(api.mascotteDuNiveau(49).emoji).toBe('🐤');
+    expect(api.mascotteDuNiveau(50).emoji).toBe('🦉');
+    expect(api.mascotteDuNiveau(64).emoji).toBe('🦉');
+    expect(api.mascotteDuNiveau(65).emoji).toBe('🦜');
+    expect(api.mascotteDuNiveau(100).emoji).toBe('🦅');
+    // `forme` pilote la catégorie d'animation.
+    expect(api.mascotteDuNiveau(1).forme).toBe('oeuf');
+    expect(api.mascotteDuNiveau(3).forme).toBe('oisillon');
+    expect(api.mascotteDuNiveau(50).forme).toBe('oiseau');
   });
-  test('recompensesEntre : agrège les paliers franchis (saut multi-niveaux)', () => {
-    // Saut 9 → 11 : franchit le palier 10 (Pousse).
-    const saut = api.recompensesEntre(9, 11);
-    expect(saut.map((r: { texte: string }) => r.texte).join()).toContain('Pousse');
-    expect(saut).toHaveLength(1);
-    // Gros saut 1 → 30 : franchit Pousse (10) et Arbuste (25).
-    const gros = api.recompensesEntre(1, 30);
-    expect(gros.map((r: { type: string }) => r.type)).toEqual(['rang', 'rang']);
+  test('mascotteDuNiveau : monotone + dernière forme au niveau max', () => {
+    let dernierSeuil = 0;
+    for (let n = 1; n <= api.NIVEAU_MAX; n++) {
+      const m = api.mascotteDuNiveau(n);
+      expect(m.seuil).toBeGreaterThanOrEqual(dernierSeuil);
+      dernierSeuil = m.seuil;
+    }
+    expect(api.MASCOTTE[api.MASCOTTE.length - 1].seuil).toBe(api.NIVEAU_MAX);
+  });
+  test('recompensesNiveau : rang et/ou mascotte selon le palier (hors niveau 1)', () => {
+    expect(api.recompensesNiveau(1)).toEqual([]); // œuf + Graine de départ : pas un déblocage
+    expect(api.recompensesNiveau(2)).toEqual([]); // aucun palier
+    // 3 : mascotte seule (pas un palier de rang).
+    expect(api.recompensesNiveau(3).map((r) => r.type)).toEqual(['mascotte']);
+    // 10 : rang Pousse + mascotte 🐥 (rang annoncé d'abord).
+    const r10 = api.recompensesNiveau(10);
+    expect(r10.map((r) => r.type)).toEqual(['rang', 'mascotte']);
+    expect(r10[0].texte).toContain('Pousse');
+    // 45 : rang seul (pas un palier de mascotte).
+    expect(api.recompensesNiveau(45).map((r) => r.type)).toEqual(['rang']);
+    // 50 : mascotte seule (pas un palier de rang).
+    expect(api.recompensesNiveau(50).map((r) => r.type)).toEqual(['mascotte']);
+    // 100 : rang Légende + mascotte 🦅.
+    expect(api.recompensesNiveau(100).map((r) => r.type)).toEqual(['rang', 'mascotte']);
+  });
+  test('recompensesEntre : agrège rangs ET mascotte sur un saut multi-niveaux', () => {
+    // 9 → 11 : franchit le palier 10 (rang Pousse + mascotte 🐥).
+    expect(api.recompensesEntre(9, 11).map((r) => r.type)).toEqual(['rang', 'mascotte']);
+    // 1 → 25 : mascotte aux niv 3/10/25, rang aux niv 10/25.
+    const gros = api.recompensesEntre(1, 25);
+    expect(gros.filter((r) => r.type === 'mascotte')).toHaveLength(3);
+    expect(gros.filter((r) => r.type === 'rang')).toHaveLength(2);
     // Aucun changement de niveau ⇒ aucun déblocage.
     expect(api.recompensesEntre(12, 12)).toEqual([]);
   });

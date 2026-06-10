@@ -3,47 +3,47 @@
 /* Police d'interface auto-hébergée (Nunito variable, latin) — servie depuis le
    repo, jamais via un CDN. Vite réécrit l'URL (hash + base /Ludaskia/). */
 @font-face {
-  font-family: 'Nunito';
-  font-style: normal;
-  font-weight: 200 1000; /* fichier variable : toute la plage de graisses */
-  font-display: swap;
-  src: url('../fonts/nunito-variable.woff2') format('woff2');
+	font-family: 'Nunito';
+	font-style: normal;
+	font-weight: 200 1000; /* fichier variable : toute la plage de graisses */
+	font-display: swap;
+	src: url('../fonts/nunito-variable.woff2') format('woff2');
 }
 
 :root {
-  --blue: #336cbf;
-  --blue-dark: #2a5aa0;
-  --blue-soft: #e9eff8;
-  --ink: #1a1a1a;
-  --grey: #545454;
-  --muted: #9aa1ac;
-  --paper: #ffffff;
-  --page-bg: #eef1f5; /* fond de page (réécrit par les thèmes ; jamais --paper, gardé blanc) */
-  --ok: #2e7d32;
-  --ko: #c62828;
-  --warn: #b26a00;
-  --warn-bg: #fff3d6;
-  --warn-bd: #ffd54f;
-  --ui:
-    'Nunito', system-ui, sans-serif; /* police de l'interface (chrome), distincte du serif des feuilles */
-  --serif: Georgia, 'Times New Roman', serif; /* feuilles d'exercices : effet « papier » */
+	--blue: #336cbf;
+	--blue-dark: #2a5aa0;
+	--blue-soft: #e9eff8;
+	--ink: #1a1a1a;
+	--grey: #545454;
+	--muted: #9aa1ac;
+	--paper: #ffffff;
+	--page-bg: #eef1f5; /* fond de page (réécrit par les thèmes ; jamais --paper, gardé blanc) */
+	--ok: #2e7d32;
+	--ko: #c62828;
+	--warn: #b26a00;
+	--warn-bg: #fff3d6;
+	--warn-bd: #ffd54f;
+	--ui:
+		'Nunito', system-ui, sans-serif; /* police de l'interface (chrome), distincte du serif des feuilles */
+	--serif: Georgia, 'Times New Roman', serif; /* feuilles d'exercices : effet « papier » */
 }
 * {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 html,
 body {
-  margin: 0;
-  padding: 0;
+	margin: 0;
+	padding: 0;
 }
 body {
-  font-family: var(--ui); /* interface en Nunito ; les feuilles repassent en serif (voir .sheets) */
-  color: var(--ink);
-  background: var(--page-bg);
+	font-family: var(--ui); /* interface en Nunito ; les feuilles repassent en serif (voir .sheets) */
+	color: var(--ink);
+	background: var(--page-bg);
 }
 
 /* Visibilité écran / impression (le détail print est dans print.css) */
 .print-only {
-  display: none;
+	display: none;
 } /* caché à l'écran, montré à l'impression */
 /* .screen-only : montré à l'écran, caché à l'impression */

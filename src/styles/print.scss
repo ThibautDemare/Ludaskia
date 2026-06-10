@@ -1,80 +1,80 @@
 /* Mise en page d'impression (PDF papier à remplir au crayon) */
 @page {
-  size: A4;
-  margin: 14mm;
+	size: A4;
+	margin: 14mm;
 }
 @media print {
-  body {
-    background: #fff;
-  }
-  .toolbar,
-  .home,
-  .result-banner,
-  .objectives,
-  .goal,
-  .boards,
-  #trophies,
-  .confetti-layer,
-  .modal-overlay {
-    display: none !important;
-  }
-  .screen-only {
-    display: none !important;
-  }
-  .print-only {
-    display: block !important;
-  }
-  .sheets {
-    margin: 0;
-    padding: 0;
-    max-width: none;
-  }
-  .page {
-    box-shadow: none;
-    border-radius: 0;
-    margin: 0;
-    padding: 0;
-    page-break-after: always;
-  }
-  .page:last-child {
-    page-break-after: auto;
-  }
-  .ans,
-  .ans-free {
-    border: 0;
-    border-bottom: 1px solid #333 !important;
-    color: transparent !important;
-    background: transparent !important;
-    -webkit-text-fill-color: transparent;
-    font-weight: 400 !important;
-  }
-  .ans.correct,
-  .ans.wrong {
-    border-bottom: 1px solid #333 !important;
-  }
-  .mark {
-    display: none !important;
-  }
-  /* Les grilles sont adaptatives à l'écran ; on rétablit un nombre de colonnes
+	body {
+		background: #fff;
+	}
+	.toolbar,
+	.home,
+	.result-banner,
+	.objectives,
+	.goal,
+	.boards,
+	#trophies,
+	.confetti-layer,
+	.modal-overlay {
+		display: none !important;
+	}
+	.screen-only {
+		display: none !important;
+	}
+	.print-only {
+		display: block !important;
+	}
+	.sheets {
+		margin: 0;
+		padding: 0;
+		max-width: none;
+	}
+	.page {
+		box-shadow: none;
+		border-radius: 0;
+		margin: 0;
+		padding: 0;
+		page-break-after: always;
+	}
+	.page:last-child {
+		page-break-after: auto;
+	}
+	.ans,
+	.ans-free {
+		border: 0;
+		border-bottom: 1px solid #333 !important;
+		color: transparent !important;
+		background: transparent !important;
+		-webkit-text-fill-color: transparent;
+		font-weight: 400 !important;
+	}
+	.ans.correct,
+	.ans.wrong {
+		border-bottom: 1px solid #333 !important;
+	}
+	.mark {
+		display: none !important;
+	}
+	/* Les grilles sont adaptatives à l'écran ; on rétablit un nombre de colonnes
      fixe sur le papier pour garder la mise en page A4 prévue. */
-  .grid.c3,
-  .bilan-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  .grid.c4 {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  /* Bilan contenant des réponses texte (conjugaison) : 2 colonnes max, pas la
+	.grid.c3,
+	.bilan-grid {
+		grid-template-columns: repeat(3, 1fr);
+	}
+	.grid.c4 {
+		grid-template-columns: repeat(4, 1fr);
+	}
+	/* Bilan contenant des réponses texte (conjugaison) : 2 colonnes max, pas la
      grille dense des maths (les formes conjuguées sont longues). */
-  .bilan-grid:has(.ans-text) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  /* Conjugaison : lignes aérées (accents/apostrophes) et champ de réponse long
+	.bilan-grid:has(.ans-text) {
+		grid-template-columns: repeat(2, 1fr);
+	}
+	/* Conjugaison : lignes aérées (accents/apostrophes) et champ de réponse long
      sur une ligne de base. La question rappelle déjà le pronom + l'infinitif. */
-  .conj-list {
-    line-height: 2.6;
-  }
-  .conj-op .ans-text {
-    min-width: 150px;
-  }
+	.conj-list {
+		line-height: 2.6;
+	}
+	.conj-op .ans-text {
+		min-width: 150px;
+	}
 }

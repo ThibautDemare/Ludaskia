@@ -3,395 +3,395 @@
    ============================================================ */
 
 .ortho-placeholder {
-  font-family: var(--ui);
-  color: var(--muted);
-  text-align: center;
-  padding: 2rem 1rem;
+	font-family: var(--ui);
+	color: var(--muted);
+	text-align: center;
+	padding: 2rem 1rem;
 }
 
 /* Catégorie Orthographe : on profite de la largeur sur desktop. */
 .home.categorie-ortho {
-  width: 92%;
-  max-width: 1600px;
+	width: 92%;
+	max-width: 1600px;
 }
 
 /* Deux colonnes : mots de base | mes listes (chacune avec ses sous-colonnes). */
 .ortho-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  align-items: start;
-  margin-top: 14px;
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 24px;
+	align-items: start;
+	margin-top: 14px;
 }
 .ortho-col-title {
-  font-family: var(--ui);
-  font-size: 1.05rem;
-  color: var(--grey);
-  margin: 0;
-  text-align: center;
+	font-family: var(--ui);
+	font-size: 1.05rem;
+	color: var(--grey);
+	margin: 0;
+	text-align: center;
 }
 @media (max-width: 720px) {
-  .ortho-cols {
-    grid-template-columns: 1fr;
-  }
+	.ortho-cols {
+		grid-template-columns: 1fr;
+	}
 }
 
 /* Carte « liste du parent » : la carte d'action + un bouton « modifier ».
    display:flex pour que la carte remplisse la même hauteur que les autres. */
 .nav-card-group {
-  position: relative;
-  display: flex;
+	position: relative;
+	display: flex;
 }
 .nav-card-group .nav-card {
-  flex: 1;
+	flex: 1;
 }
 
 /* Aperçu des mots au survol (ou au focus clavier) d'une carte. */
 .ortho-cards .nav-card {
-  position: relative;
+	position: relative;
 }
 .ortho-cards .nav-card:hover {
-  z-index: 20;
+	z-index: 20;
 }
 .ortho-apercu {
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 6px);
-  z-index: 30;
-  width: max-content;
-  max-width: 280px;
-  padding: 8px 12px;
-  font-family: var(--ui);
-  font-size: 0.85rem;
-  font-weight: 400;
-  line-height: 1.45;
-  color: #fff;
-  background: var(--ink);
-  border-radius: 8px;
-  box-shadow: 0 6px 18px rgb(0 0 0 / 25%);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateX(-50%);
-  transition: opacity 0.12s ease;
+	position: absolute;
+	left: 50%;
+	top: calc(100% + 6px);
+	z-index: 30;
+	width: max-content;
+	max-width: 280px;
+	padding: 8px 12px;
+	font-family: var(--ui);
+	font-size: 0.85rem;
+	font-weight: 400;
+	line-height: 1.45;
+	color: #fff;
+	background: var(--ink);
+	border-radius: 8px;
+	box-shadow: 0 6px 18px rgb(0 0 0 / 25%);
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateX(-50%);
+	transition: opacity 0.12s ease;
 }
 .ortho-cards .nav-card:hover .ortho-apercu,
 .ortho-cards .nav-card:focus-visible .ortho-apercu {
-  opacity: 1;
-  visibility: visible;
+	opacity: 1;
+	visibility: visible;
 }
 .nav-card-edit {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  font-size: 0.95rem;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	width: 30px;
+	height: 30px;
+	border: 0;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.9);
+	font-size: 0.95rem;
+	line-height: 1;
+	cursor: pointer;
+	box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
 }
 .nav-card-edit:hover {
-  background: #fff;
+	background: #fff;
 }
 
 /* Formulaire de création/édition d'une liste. */
 .ortho-form {
-  font-family: var(--ui);
-  max-width: 640px;
-  margin: 0 auto;
-  text-align: left;
+	font-family: var(--ui);
+	max-width: 640px;
+	margin: 0 auto;
+	text-align: left;
 }
 .ortho-field {
-  display: block;
-  margin: 0 0 0.75rem;
+	display: block;
+	margin: 0 0 0.75rem;
 }
 .ortho-field > span {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.25rem;
 }
 .ortho-field input {
-  width: 100%;
-  padding: 0.5rem;
-  font: inherit;
-  border: 1px solid var(--muted);
-  border-radius: 8px;
-  box-sizing: border-box;
+	width: 100%;
+	padding: 0.5rem;
+	font: inherit;
+	border: 1px solid var(--muted);
+	border-radius: 8px;
+	box-sizing: border-box;
 }
 .ortho-rows-head,
 .ortho-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 32px;
-  gap: 0.5rem;
-  align-items: center;
+	display: grid;
+	grid-template-columns: 1fr 1fr 32px;
+	gap: 0.5rem;
+	align-items: center;
 }
 .ortho-rows-head {
-  font-weight: 600;
-  margin: 0.5rem 0 0.25rem;
+	font-weight: 600;
+	margin: 0.5rem 0 0.25rem;
 }
 .ortho-row {
-  margin-bottom: 0.4rem;
+	margin-bottom: 0.4rem;
 }
 .ortho-row input {
-  width: 100%;
-  padding: 0.5rem;
-  font: inherit;
-  border: 1px solid var(--muted);
-  border-radius: 8px;
-  box-sizing: border-box;
+	width: 100%;
+	padding: 0.5rem;
+	font: inherit;
+	border: 1px solid var(--muted);
+	border-radius: 8px;
+	box-sizing: border-box;
 }
 .ortho-row-del {
-  border: 0;
-  background: transparent;
-  font-size: 1.3rem;
-  line-height: 1;
-  color: var(--muted);
-  cursor: pointer;
+	border: 0;
+	background: transparent;
+	font-size: 1.3rem;
+	line-height: 1;
+	color: var(--muted);
+	cursor: pointer;
 }
 .ortho-row-del:hover {
-  color: var(--ko);
+	color: var(--ko);
 }
 .ortho-hint {
-  font-size: 0.9rem;
-  color: var(--muted);
-  margin: 0.5rem 0;
+	font-size: 0.9rem;
+	color: var(--muted);
+	margin: 0.5rem 0;
 }
 .ortho-form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
-  margin-top: 1rem;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	align-items: center;
+	margin-top: 1rem;
 }
 .ortho-del {
-  border: 0;
-  background: transparent;
-  color: var(--ko);
-  font: inherit;
-  cursor: pointer;
+	border: 0;
+	background: transparent;
+	color: var(--ko);
+	font: inherit;
+	cursor: pointer;
 }
 .ortho-del:hover {
-  text-decoration: underline;
+	text-decoration: underline;
 }
 
 /* Runner d'entraînement */
 .ortho-run {
-  font-family: var(--ui);
-  max-width: 640px;
-  margin: 0 auto;
-  text-align: center;
+	font-family: var(--ui);
+	max-width: 640px;
+	margin: 0 auto;
+	text-align: center;
 }
 .ortho-run-consigne {
-  font-size: 1.1rem;
-  color: var(--muted);
+	font-size: 1.1rem;
+	color: var(--muted);
 }
 .ortho-mot-affiche {
-  font-size: 2.6rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  margin: 1rem 0;
+	font-size: 2.6rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	margin: 1rem 0;
 }
 .ortho-input {
-  width: min(100%, 360px);
-  padding: 0.5rem;
-  font-size: 1.6rem;
-  text-align: center;
-  letter-spacing: 0.06em;
-  border: 2px solid var(--blue);
-  border-radius: 10px;
+	width: min(100%, 360px);
+	padding: 0.5rem;
+	font-size: 1.6rem;
+	text-align: center;
+	letter-spacing: 0.06em;
+	border: 2px solid var(--blue);
+	border-radius: 10px;
 }
 .accent-kb {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.3rem;
-  margin: 0.75rem 0;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.3rem;
+	margin: 0.75rem 0;
 }
 .accent-key {
-  min-width: 40px;
-  height: 44px;
-  font-size: 1.2rem;
-  font-family: var(--ui);
-  border: 0;
-  border-radius: 10px;
-  background: var(--blue-soft);
-  color: var(--blue);
-  cursor: pointer;
+	min-width: 40px;
+	height: 44px;
+	font-size: 1.2rem;
+	font-family: var(--ui);
+	border: 0;
+	border-radius: 10px;
+	background: var(--blue-soft);
+	color: var(--blue);
+	cursor: pointer;
 }
 .accent-key:hover {
-  background: var(--blue);
-  color: #fff;
+	background: var(--blue);
+	color: #fff;
 }
 .tuiles-construction {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.4rem;
-  min-height: 56px;
-  padding: 0.5rem;
-  margin-bottom: 1rem;
-  border-bottom: 3px dashed var(--muted);
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.4rem;
+	min-height: 56px;
+	padding: 0.5rem;
+	margin-bottom: 1rem;
+	border-bottom: 3px dashed var(--muted);
 }
 .tuiles-bac {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.4rem;
-  margin-bottom: 1rem;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.4rem;
+	margin-bottom: 1rem;
 }
 .tuile {
-  min-width: 44px;
-  height: 52px;
-  font-size: 1.5rem;
-  font-weight: 700;
-  border: 2px solid var(--blue);
-  border-radius: 10px;
-  background: #fff;
-  cursor: pointer;
+	min-width: 44px;
+	height: 52px;
+	font-size: 1.5rem;
+	font-weight: 700;
+	border: 2px solid var(--blue);
+	border-radius: 10px;
+	background: #fff;
+	cursor: pointer;
 }
 .tuile:hover {
-  background: var(--blue-soft);
+	background: var(--blue-soft);
 }
 .tuile-used {
-  visibility: hidden;
+	visibility: hidden;
 }
 .tuile-pose {
-  background: var(--blue);
-  color: #fff;
+	background: var(--blue);
+	color: #fff;
 }
 .tuile-pose:hover {
-  background: var(--blue-dark);
+	background: var(--blue-dark);
 }
 .ortho-feedback {
-  margin-top: 1rem;
-  font-size: 1.2rem;
+	margin-top: 1rem;
+	font-size: 1.2rem;
 }
 .fb-ok {
-  color: var(--ok);
-  font-weight: 700;
+	color: var(--ok);
+	font-weight: 700;
 }
 .fb-ko {
-  color: var(--ko);
+	color: var(--ko);
 }
 .ortho-feedback .btn-primary {
-  margin-left: 0.5rem;
+	margin-left: 0.5rem;
 }
 .ortho-bilan-emoji {
-  font-size: 3rem;
+	font-size: 3rem;
 }
 
 /* Atelier du mot (entourer les pièges, SVG) */
 .atelier-stage {
-  position: relative;
-  display: inline-block;
-  margin: 1.5rem auto;
+	position: relative;
+	display: inline-block;
+	margin: 1.5rem auto;
 }
 .atelier-mot {
-  font-size: 2.8rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  white-space: nowrap;
-  touch-action: none; /* le glissé surligne, il ne fait pas défiler la page */
-  user-select: none;
+	font-size: 2.8rem;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	white-space: nowrap;
+	touch-action: none; /* le glissé surligne, il ne fait pas défiler la page */
+	user-select: none;
 }
 .atelier-lettre {
-  display: inline-block;
-  padding: 0 3px;
-  border-radius: 6px;
+	display: inline-block;
+	padding: 0 3px;
+	border-radius: 6px;
 }
 .atelier-espace {
-  width: 0.6em; /* espace inter-mot bien marqué (ex. « afin de ») */
+	width: 0.6em; /* espace inter-mot bien marqué (ex. « afin de ») */
 }
 .atelier-lettre.sel {
-  background: var(--blue-soft); /* surlignage en cours */
+	background: var(--blue-soft); /* surlignage en cours */
 }
 .atelier-lettre[data-diff] {
-  text-decoration: underline wavy var(--warn);
-  text-decoration-thickness: 2px;
+	text-decoration: underline wavy var(--warn);
+	text-decoration-thickness: 2px;
 }
 .atelier-svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  overflow: visible;
-  pointer-events: none;
+	position: absolute;
+	top: 0;
+	left: 0;
+	overflow: visible;
+	pointer-events: none;
 }
 .atelier-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem;
-  margin: 0.75rem 0;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.5rem;
+	margin: 0.75rem 0;
 }
 .atelier-undo {
-  font: inherit;
-  font-family: var(--ui);
-  font-size: 0.95rem;
-  color: var(--blue);
-  background: var(--blue-soft);
-  border: 0;
-  border-radius: 10px;
-  padding: 8px 14px;
-  cursor: pointer;
+	font: inherit;
+	font-family: var(--ui);
+	font-size: 0.95rem;
+	color: var(--blue);
+	background: var(--blue-soft);
+	border: 0;
+	border-radius: 10px;
+	padding: 8px 14px;
+	cursor: pointer;
 }
 .atelier-undo:hover {
-  background: #dbe6f6;
+	background: #dbe6f6;
 }
 .atelier-done {
-  margin-top: 0.75rem;
+	margin-top: 0.75rem;
 }
 
 /* Boutons des écrans orthographe : pleins et modernes.
    (Hors barre d'outils, .btn-primary n'a aucune forme propre.) */
 .ortho-run .btn-primary,
 .ortho-form .btn-primary {
-  font: inherit;
-  font-family: var(--ui);
-  font-weight: 700;
-  font-size: 1.05rem;
-  color: #fff;
-  background: var(--blue);
-  border: 0;
-  border-radius: 12px;
-  padding: 12px 22px;
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    transform 0.08s ease,
-    box-shadow 0.15s ease;
+	font: inherit;
+	font-family: var(--ui);
+	font-weight: 700;
+	font-size: 1.05rem;
+	color: #fff;
+	background: var(--blue);
+	border: 0;
+	border-radius: 12px;
+	padding: 12px 22px;
+	cursor: pointer;
+	transition:
+		background 0.15s ease,
+		transform 0.08s ease,
+		box-shadow 0.15s ease;
 }
 .ortho-run .btn-primary:hover,
 .ortho-form .btn-primary:hover {
-  background: var(--blue-dark);
-  box-shadow: 0 3px 8px rgb(0 0 0 / 18%);
+	background: var(--blue-dark);
+	box-shadow: 0 3px 8px rgb(0 0 0 / 18%);
 }
 .ortho-run .btn-primary:active,
 .ortho-form .btn-primary:active {
-  transform: translateY(1px);
+	transform: translateY(1px);
 }
 .ortho-run .btn-primary:disabled,
 .ortho-form .btn-primary:disabled {
-  background: var(--muted);
-  box-shadow: none;
-  cursor: default;
+	background: var(--muted);
+	box-shadow: none;
+	cursor: default;
 }
 .fb-xp {
-  color: var(--warn);
-  font-weight: 700;
+	color: var(--warn);
+	font-weight: 700;
 }
 .ortho-pause-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.75rem;
+	margin-top: 1rem;
 }
 
 .ortho-ecouter {
-  font-size: 1.2rem;
-  margin: 1rem 0;
+	font-size: 1.2rem;
+	margin: 1rem 0;
 }

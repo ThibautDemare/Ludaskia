@@ -311,9 +311,9 @@ des fonctions pures à chaque PR touchant `core/`. Mettre à jour `docs/ARCHITEC
 (section Gamification + liste `src/core/`).
 
 **Avancement** : Phase 1 ✅ (PR #71) · Phase 2 ✅ (PR #72) · Phase 3a ✅ (PR #73) ·
-Phase 3b ✅ (PR #74) · Phase 3c ✅ · **Phase 4** (mascotte autour des exercices) à venir.
-La phase 3 s'est révélée trop grosse pour une seule PR → découpée en **3a avatars**,
-**3b thèmes (+ réglage animations)**, **3c modales**.
+Phase 3b ✅ (PR #74) · Phase 3c ✅ (PR #75) · Phase 4 ✅ (mascotte autour des exercices).
+**Issue #28 complète.** La phase 3 s'est révélée trop grosse pour une seule PR →
+découpée en **3a avatars**, **3b thèmes (+ réglage animations)**, **3c modales**.
 
 ### Phase 1 — Rangs / titres (léger, gros effet) ✅ fait (PR #71)
 **But :** afficher le rang textuel du niveau.
@@ -375,9 +375,14 @@ La phase 3 s'est révélée trop grosse pour une seule PR → découpée en **3a
 - **Modale « Trophées » dédiée** : même mécanisme, depuis l'inline `renderTrophies`
   actuel → un bouton ouvre la modale. Composant d'overlay mutualisé.
 
-### Phase 4 — Apparitions de la mascotte autour des exercices
+### Phase 4 — Apparitions de la mascotte autour des exercices ✅ fait
 **But :** rendre la mascotte présente comme **accompagnant**, hors temps chronométré
 (reporté des phases 2-3 pour les isoler ; cf. cadre pédagogique §3.3).
+*Réalisé : bulle de BD (`mascotteBulleHTML`) sur les écrans de résultats (session,
+sprint, orthographe) et sur la carte d'accueil (qui annonce le défi du jour). Le
+**démarrage de session** est volontairement laissé sans mascotte : `afterStart` lance
+le chrono aussitôt, et une mascotte visible pendant le temps chronométré violerait le
+garde-fou — on privilégie donc les écrans de résultats (moment validé par l'agent UX).*
 - **Démarrage de session** : la mascotte accueille/encourage **avant** le chrono
   (point d'accroche dans `afterStart`, [navigation.ts](../src/ui/navigation.ts) ; veiller
   à ne pas voler le focus du 1er champ).

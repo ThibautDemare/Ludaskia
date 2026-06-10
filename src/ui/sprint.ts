@@ -33,6 +33,7 @@ import { updateGoal, evaluateTrophies } from '../core/rewards';
 import { getTimer, setTimer, resetChrono } from './chrono';
 import { recompensesEntre } from '../core/unlocks';
 import { showCelebration, showLevelUp } from './effects';
+import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
   setCurrentMode,
   setCurrentLessonId,
@@ -433,6 +434,7 @@ function renderSprintResults(medalInfo: any, streakDays: number) {
   if (stage)
     stage.innerHTML = `
     <div class="sprint-done">
+      ${mascotteBulleHTML(encouragementMascotte())}
       <div class="sprint-done-big">${sprintScore}</div>
       <div class="sprint-done-lab">bonne${sprintScore > 1 ? 's' : ''} réponse${sprintScore > 1 ? 's' : ''} en 5 min</div>
       <div class="sprint-done-sub">${sprintAnswered} question${sprintAnswered > 1 ? 's' : ''} tentée${sprintAnswered > 1 ? 's' : ''} · ${acc}% de réussite</div>

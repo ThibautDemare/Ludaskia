@@ -94,6 +94,44 @@
 html.anim-reduced .mascotte {
   animation: none;
 }
+
+/* Mascotte « accompagnante » + bulle de BD (phase 4). Hors écran chronométré.
+   Sur les résultats : entrée seule (mascotte-static), pas de boucle. */
+.mascotte-static {
+  animation: masc-pop 0.35s ease both;
+}
+html.anim-reduced .mascotte-static {
+  animation: none;
+}
+.mascotte-scene {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 auto 4px;
+}
+.mascotte-bulle {
+  position: relative;
+  background: var(--blue-soft);
+  color: var(--ink);
+  border-radius: 14px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  max-width: 220px;
+  text-align: left;
+}
+.mascotte-bulle::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-left: 0;
+  border-right-color: var(--blue-soft);
+}
 .progress-rang-ico {
   font-size: 22px;
 }

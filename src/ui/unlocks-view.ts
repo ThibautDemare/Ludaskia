@@ -6,8 +6,33 @@
    Plus la barre de navigation (deux boutons) de l'accueil.
    ============================================================ */
 import { getXP, niveauDepuisXP } from '../core/progress';
-import { RANGS, MASCOTTE, AVATARS_FORET, THEMES } from '../core/unlocks';
+import { RANGS, MASCOTTE, AVATARS_FORET, THEMES, mascotteDuNiveau } from '../core/unlocks';
 import { TROPHIES, loadTrophies } from '../core/rewards';
+
+/* ---------- Mascotte « accompagnante » : bulle de BD (phase 4) ----------
+   Apparaît AUTOUR des exercices (jamais pendant un calcul chronométré) et sur
+   l'accueil. `loop` n'est vrai que sur l'accueil (écran de contemplation) ; sur
+   les écrans de résultats, entrée seule (mascotte-static), pas de boucle. */
+const ENCOURAGEMENTS = [
+  'Bravo pour tes efforts !',
+  'Tu t’entraînes super bien !',
+  'Continue, tu progresses !',
+  'Joli travail !',
+  'Bien joué !',
+  'Quel bel entraînement !',
+];
+export function encouragementMascotte(): string {
+  return ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
+}
+// Mascotte courante + bulle de BD disant `message`.
+export function mascotteBulleHTML(message: string, loop = false): string {
+  const m = mascotteDuNiveau(niveauDepuisXP(getXP()));
+  const cls = loop ? `mascotte mascotte--${m.forme}` : 'mascotte mascotte-static';
+  return `<div class="mascotte-scene">
+    <span class="${cls}" aria-hidden="true">${m.emoji}</span>
+    <span class="mascotte-bulle">${message}</span>
+  </div>`;
+}
 
 // Une cellule de palier, calquée sur le rendu des trophées (.trophy on/off).
 function tierCell(icone: string, titre: string, seuil: number, debloque: boolean) {

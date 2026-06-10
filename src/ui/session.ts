@@ -18,6 +18,7 @@ import {
   niveauDepuisXP,
 } from '../core/progress';
 import { updateGoal, evaluateTrophies } from '../core/rewards';
+import { recompensesEntre, type Recompense } from '../core/unlocks';
 import { stopChrono } from './chrono';
 import { showCelebration, showLevelUp } from './effects';
 import {
@@ -96,6 +97,7 @@ export function verify() {
     streakDays = 0,
     goalRes: any = null,
     niveauGagne = 0, // > 0 si on vient d'atteindre un nouveau niveau
+    recompensesNiv: Recompense[] = [], // déblocages du(des) palier(s) franchi(s)
     newTrophies: Trophy[] = [];
   const celeb: { icon: string; text: string }[] = []; // récompenses à annoncer dans la modale
   if (recordable && enough && !getSessionRecorded()) {
@@ -104,8 +106,10 @@ export function verify() {
     recordLessonStats(perLesson);
     const niveauAvant = niveauDepuisXP(getXP());
     addXP(ok);
-    niveauGagne = niveauDepuisXP(getXP()); // niveau courant après gain (comparé plus bas)
-    niveauGagne = niveauGagne > niveauAvant ? niveauGagne : 0;
+    const niveauApres = niveauDepuisXP(getXP());
+    niveauGagne = niveauApres > niveauAvant ? niveauApres : 0;
+    // Déblocages de tous les paliers franchis (gère un saut de plusieurs niveaux).
+    recompensesNiv = recompensesEntre(niveauAvant, niveauApres);
     let perfect = false;
     if (currentMode === 'lecon') {
       perfect = ok === inputs.length; // toutes les réponses justes
@@ -179,7 +183,11 @@ export function verify() {
   // Le passage de niveau a sa modale dédiée ; s'il y a aussi d'autres récompenses,
   // on les enchaîne à la fermeture de la modale de niveau.
   if (niveauGagne)
-    showLevelUp(niveauGagne, celeb.length ? () => showCelebration(celeb) : undefined);
+    showLevelUp(
+      niveauGagne,
+      recompensesNiv,
+      celeb.length ? () => showCelebration(celeb) : undefined,
+    );
   else if (celeb.length) showCelebration(celeb);
   // petit rappel dans la barre
   const sc = document.getElementById('score')!;

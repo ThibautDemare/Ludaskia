@@ -26,6 +26,7 @@ import { evaluateTrophies } from '../core/rewards';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 import { goCategorie } from './navigation';
 import { renderAtelier } from './ortho-atelier';
+import { recompensesEntre } from '../core/unlocks';
 import { showCelebration, showLevelUp } from './effects';
 import { dicteeDisponible, dicter } from './tts';
 
@@ -314,8 +315,9 @@ function renderBilan(): void {
   ];
   const niveauApres = niveauDepuisXP(getXP());
   const niveauGagne = niveauApres > niveauAvant ? niveauApres : 0;
+  const recompensesNiv = recompensesEntre(niveauAvant, niveauApres);
   niveauAvant = niveauApres;
-  if (niveauGagne) showLevelUp(niveauGagne, () => showCelebration(celeb));
+  if (niveauGagne) showLevelUp(niveauGagne, recompensesNiv, () => showCelebration(celeb));
   else showCelebration(celeb);
 }
 

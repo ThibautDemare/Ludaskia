@@ -21,6 +21,7 @@ import {
   loadLessonRevisions,
 } from '../core/progress';
 import { countDue } from '../core/revision-select';
+import { titreDuNiveau } from '../core/unlocks';
 import { loadOrtho } from '../core/orthographe/store';
 import { getGoal, evaluateTrophies, loadTrophies, TROPHIES } from '../core/rewards';
 import { sparkline } from './effects';
@@ -35,11 +36,13 @@ export function renderToolbarProfile() {
   if (xpEl) {
     const xp = getXP();
     const pr = progressionNiveau(xp);
-    xpEl.title = pr.max
+    const rang = titreDuNiveau(pr.niveau);
+    const progressTitle = pr.max
       ? `Niveau maximum atteint ! (${xp} XP)`
       : `${pr.xpDansNiveau} / ${pr.xpRequisPalier} XP vers le niveau ${pr.niveau + 1} (${xp} XP au total)`;
+    xpEl.title = `Rang : ${rang.titre} — ${progressTitle}`;
     xpEl.innerHTML =
-      `<span class="lvl-num">⭐ Niveau ${pr.niveau}</span>` +
+      `<span class="lvl-num">${rang.icone} Niveau ${pr.niveau}</span>` +
       `<span class="lvl-bar"><span class="lvl-bar-fill" style="width:${pr.pct}%"></span></span>`;
   }
   const el = document.getElementById('toolbarProfile');
@@ -47,6 +50,24 @@ export function renderToolbarProfile() {
   const p = activeProfile();
   if (!p) return;
   el.innerHTML = `${p.emoji} ${escapeHTML(p.name)} <span class="btn-profile-caret">▾</span>`;
+}
+
+/* Carte « progression » de l'accueil : rang + niveau + barre. Point d'ancrage
+   central de la fierté (la mascotte viendra s'y loger en phase 2). */
+export function renderProgression() {
+  const el = document.getElementById('progression');
+  if (!el) return;
+  const pr = progressionNiveau(getXP());
+  const rang = titreDuNiveau(pr.niveau);
+  const sub = pr.max
+    ? 'Niveau maximum atteint !'
+    : `${pr.xpDansNiveau} / ${pr.xpRequisPalier} XP vers le niveau ${pr.niveau + 1}`;
+  el.innerHTML = `<div class="progress-card">
+    <span class="progress-rang"><span class="progress-rang-ico">${rang.icone}</span> ${rang.titre}</span>
+    <span class="progress-lvl">Niveau ${pr.niveau}</span>
+    <span class="lvl-bar"><span class="lvl-bar-fill" style="width:${pr.pct}%"></span></span>
+    <span class="progress-sub">${sub}</span>
+  </div>`;
 }
 /* Menu déroulant : liste des profils (clic = bascule) + accès à la gestion */
 export function renderProfileMenu() {
@@ -177,7 +198,8 @@ export function boardHTML(mode: string, label: string) {
   </div>`;
 }
 export function renderHomeStats() {
-  // Le badge XP vit désormais dans la barre d'outils (renderToolbarProfile).
+  // Le badge XP vit dans la barre d'outils ; la carte progression sur l'accueil.
+  renderProgression();
   const recL = document.getElementById('recLecon');
   if (recL) {
     const n = starsEarned();

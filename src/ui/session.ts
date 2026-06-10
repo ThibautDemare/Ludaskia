@@ -21,6 +21,7 @@ import { updateGoal, evaluateTrophies } from '../core/rewards';
 import { recompensesEntre, type Recompense } from '../core/unlocks';
 import { stopChrono } from './chrono';
 import { showCelebration, showLevelUp } from './effects';
+import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
   getCurrentMode,
   getCurrentLessonId,
@@ -146,7 +147,10 @@ export function verify() {
   banner.className = 'result-banner screen-only';
   banner.id = 'resultBanner';
   const note = total > 0 ? Math.round((ok / total) * 100) : 0;
-  let html = `<span class="rb-big">${ok}/${total}</span>
+  // La mascotte félicite l'effort (hors chrono, jamais de réaction négative).
+  let html =
+    mascotteBulleHTML(encouragementMascotte()) +
+    `<span class="rb-big">${ok}/${total}</span>
     <span class="rb-sub">bonnes réponses (${note}%)${vides > 0 ? ` · ${vides} non remplie${vides > 1 ? 's' : ''}` : ''}<br>
     Temps : <strong>${fmt(ms)}</strong></span>`;
   if (notEnough) {

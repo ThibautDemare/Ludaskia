@@ -22,12 +22,12 @@ import {
   loadLessonRevisions,
 } from '../core/progress';
 import { countDue } from '../core/revision-select';
-import { titreDuNiveau, mascotteDuNiveau, AVATARS_FORET } from '../core/unlocks';
+import { titreDuNiveau, AVATARS_FORET } from '../core/unlocks';
 import { loadOrtho } from '../core/orthographe/store';
 import { getGoal, evaluateTrophies } from '../core/rewards';
 import { sparkline } from './effects';
 import { renderFavoris } from './bilan';
-import { renderRewardNav } from './unlocks-view';
+import { renderRewardNav, mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
 export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
@@ -62,12 +62,14 @@ export function renderProgression() {
   if (!el) return;
   const pr = progressionNiveau(getXP());
   const rang = titreDuNiveau(pr.niveau);
-  const masc = mascotteDuNiveau(pr.niveau);
   const sub = pr.max
     ? 'Niveau maximum atteint !'
     : `${pr.xpDansNiveau} / ${pr.xpRequisPalier} XP vers le niveau ${pr.niveau + 1}`;
+  // La mascotte annonce le défi du jour s'il reste à faire, sinon elle encourage.
+  const g = getGoal();
+  const bulle = g && !g.done ? `🎯 ${g.label}` : encouragementMascotte();
   el.innerHTML = `<div class="progress-card">
-    <span class="mascotte mascotte--${masc.forme}" aria-hidden="true">${masc.emoji}</span>
+    ${mascotteBulleHTML(bulle, true)}
     <span class="progress-rang"><span class="progress-rang-ico">${rang.icone}</span> ${rang.titre}</span>
     <span class="progress-lvl">Niveau ${pr.niveau}</span>
     <span class="lvl-bar"><span class="lvl-bar-fill" style="width:${pr.pct}%"></span></span>

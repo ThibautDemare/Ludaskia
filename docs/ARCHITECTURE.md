@@ -143,10 +143,11 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   `renderProfileMenu`, `renderProfiles`, `boardHTML`/`sprintBoardHTML`,
   `pctColor`, config `REGULARITY`).
 - **`unlocks-view.ts`** — vitrines de déblocages (issue #28) : barre de l'accueil
-  (`renderRewardNav` : boutons « Récompenses » / « Trophées » avec compteurs) et
+  (`renderRewardNav` : boutons « Récompenses » / « Trophées » avec compteurs),
   ouverture des **modales dédiées** `openRecompenses` (paliers de niveau : rangs,
   compagnon, avatars, thèmes — acquis ✓ / à venir 🔒) et `openTrophees` (collection,
-  sortie de l'inline). Réutilise le rendu `.trophy`.
+  sortie de l'inline ; réutilise le rendu `.trophy`), et la **mascotte accompagnante**
+  `mascotteBulleHTML(message, loop)` + `encouragementMascotte()` (bulle de BD).
 - **`catalog-nav.ts`** — navigation **Matière → Catégorie → Leçons**
   (`renderSubjects`, `renderCategories`, `renderCategorie`) ; l'écran d'une
   catégorie donne accès au bilan express (borné) / complet, au sprint, et à
@@ -288,8 +289,12 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   vivent dans une **carte « progression »** sur l'accueil, où la mascotte est **animée**
   (entrée + boucle de repos douce selon sa forme, coupée sous `prefers-reduced-motion` ;
   animée uniquement sur cet écran de contemplation, jamais pendant un exercice
-  chronométré). Les déblocages d'un palier sont annoncés dans la **modale de niveau**
-  (`showLevelUp`), l'évolution de la mascotte y étant mise en avant. Des **avatars
+  chronométré). La mascotte apparaît aussi comme **accompagnant** (bulle de BD
+  d'encouragement) **autour** des exercices — sur les **écrans de résultats** (session,
+  sprint, orthographe) et sur l'accueil (où elle annonce le défi du jour) — mais
+  **jamais pendant** un calcul chronométré ni en réaction à une erreur. Les déblocages
+  d'un palier sont annoncés dans la **modale de niveau** (`showLevelUp`), l'évolution de
+  la mascotte y étant mise en avant. Des **avatars
   « forêt »** se débloquent aussi par palier : dans le sélecteur d'avatar (écran Profils),
   les non-débloqués sont grisés « 🔒 Niv X », jaugés au niveau du **profil édité**
   (`getXPFor`) ; `setProfileEmoji` refuse un avatar verrouillé et `resetProfile` rend un

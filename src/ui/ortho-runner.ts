@@ -28,6 +28,7 @@ import { goCategorie } from './navigation';
 import { renderAtelier } from './ortho-atelier';
 import { recompensesEntre } from '../core/unlocks';
 import { showCelebration, showLevelUp } from './effects';
+import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import { dicteeDisponible, dicter } from './tts';
 
 const ACCENTS = ['é', 'è', 'ê', 'à', 'â', 'ç', 'ô', 'î', 'ï', 'û', 'ù', 'œ', '-', "'"];
@@ -298,6 +299,7 @@ function renderBilan(): void {
   const total = mots.length;
   sheets().innerHTML = `
     <div class="page ortho-run ortho-bilan">
+      ${mascotteBulleHTML(encouragementMascotte())}
       <div class="ortho-bilan-emoji">🎉</div>
       <h2>Liste prête !</h2>
       <p>Tu as bien travaillé les <b>${total}</b> mot${total > 1 ? 's' : ''} de cette liste.</p>

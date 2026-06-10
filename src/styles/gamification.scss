@@ -293,9 +293,46 @@ html.anim-reduced .mascotte {
 }
 
 /* Vitrine des trophées */
-#trophies {
-  margin-top: 44px;
-  text-align: left;
+/* Barre « Récompenses » / « Trophées » de l'accueil (ouvrent leurs modales) */
+.reward-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px auto 0;
+  max-width: 430px;
+}
+.reward-nav-profils {
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+.reward-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  font-family: var(--ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--blue);
+  background: var(--paper);
+  border: 2px solid var(--blue-soft);
+  border-radius: 14px;
+  padding: 12px 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.08s ease,
+    border-color 0.15s ease;
+}
+.reward-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--blue);
+}
+.reward-count {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 13px;
 }
 .trophies-h {
   color: var(--blue);

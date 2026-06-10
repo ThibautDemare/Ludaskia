@@ -311,8 +311,9 @@ des fonctions pures à chaque PR touchant `core/`. Mettre à jour `docs/ARCHITEC
 (section Gamification + liste `src/core/`).
 
 **Avancement** : Phase 1 ✅ (PR #71) · Phase 2 ✅ (PR #72) · Phase 3a ✅ (PR #73) ·
-Phase 3b ✅ · 3c en attente · Phase 4 à venir. La phase 3 s'est révélée trop grosse pour
-une seule PR → découpée en **3a avatars**, **3b thèmes (+ réglage animations)**, **3c modales**.
+Phase 3b ✅ (PR #74) · Phase 3c ✅ · **Phase 4** (mascotte autour des exercices) à venir.
+La phase 3 s'est révélée trop grosse pour une seule PR → découpée en **3a avatars**,
+**3b thèmes (+ réglage animations)**, **3c modales**.
 
 ### Phase 1 — Rangs / titres (léger, gros effet) ✅ fait (PR #71)
 **But :** afficher le rang textuel du niveau.
@@ -366,7 +367,7 @@ une seule PR → découpée en **3a avatars**, **3b thèmes (+ réglage animatio
   `prefers-reduced-motion`. Toggle dans l'écran Profils.
 - Tests : `themesDebloques` aux seuils ; thème stocké non débloqué → défaut.
 
-#### Phase 3c — Modales « Récompenses » et « Trophées »
+#### Phase 3c — Modales « Récompenses » et « Trophées » ✅ fait
 - **Modale « Récompenses »** (§3.3/§6) : modale dédiée (pas une vue routée) listant les
   paliers — acquis ✓ et à venir 🔒 « Débloqué au niveau X » — pour rangs, mascotte,
   avatars et thèmes. Calquée sur `renderTrophies` ; overlay dans `index.html` (modèle

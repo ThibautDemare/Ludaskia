@@ -54,6 +54,7 @@ import {
 import { ORTHO_CATEGORY_ID } from './core/catalog';
 import { verify, printAll } from './ui/session';
 import { hideCelebration, hideLevelUp } from './ui/effects';
+import { openRecompenses, openTrophees, hideUnlockModals } from './ui/unlocks-view';
 import { closeProfileMenu, toggleProfileMenu } from './ui/menu';
 import { initTts } from './ui/tts';
 
@@ -251,6 +252,24 @@ function wireDOM() {
     }
   });
 
+  // Accueil : barre « Récompenses » / « Trophées » (délégation, conteneur stable)
+  document.getElementById('rewardNav')!.addEventListener('click', (e: any) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.dataset.act === 'open-recompenses') openRecompenses();
+    else if (btn.dataset.act === 'open-trophees') openTrophees();
+  });
+  // Écran Profils : accès aux récompenses
+  document.getElementById('btnRecompensesProfils')!.addEventListener('click', openRecompenses);
+  // Fermeture des modales Récompenses / Trophées (croix, bouton, fond)
+  ['recompenses', 'trophees'].forEach((id) => {
+    document.getElementById(id + 'Ok')!.addEventListener('click', hideUnlockModals);
+    document.getElementById(id + 'Close')!.addEventListener('click', hideUnlockModals);
+    document.getElementById(id)!.addEventListener('click', (e: any) => {
+      if (e.target.id === id) hideUnlockModals();
+    });
+  });
+
   // Sélection d'une leçon dans la liste (délégation)
   document.getElementById('lessonList')!.addEventListener('click', (e: any) => {
     const btn = e.target.closest('.lesson-item');
@@ -276,6 +295,7 @@ function wireDOM() {
     if (e.key === 'Escape') {
       hideCelebration();
       hideLevelUp();
+      hideUnlockModals();
       closeProfileMenu();
     }
   });

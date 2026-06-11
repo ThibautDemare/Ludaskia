@@ -493,6 +493,30 @@ parcours (pas de choix).
 (1 réussite ? 2 ?). v1 envisagée : **1 réussite valide le mode**, l'**entretien**
 (répétition espacée) assurant le renforcement.
 
+### Relecture — « Je relis mes mots » (#80, implémenté)
+Une page d'**étude passive**, **distincte des modes d'entraînement** et de la
+révision espacée : elle affiche **tous les mots d'une liste sur une seule page**,
+chacun avec **les entourages tracés par l'enfant** (mêmes couleurs / même rendu
+SVG que l'atelier). Sa valeur pédagogique est la **mémoire visuelle** des pièges,
+en **complément** (jamais en remplacement) des modes qui *testent* l'orthographe.
+
+- **Pas un exercice** : aucune saisie, aucune vérification, **aucun XP, aucune
+  étoile**, pas de chrono ni de confettis. La relecture seule **ne persiste rien**
+  (`motsDeLecon` matérialise les prédéfinis en mémoire mais on **ne sauvegarde
+  pas** au simple affichage).
+- **Accès** depuis l'écran de choix de mode d'une liste (#69), via une entrée
+  **« 📖 Relire mes mots »** posée **à part** des boutons de mode (identité
+  « étude », sobre, *jamais* « conseillée ») — route `#ortho-revoir-<id>`.
+- **Correction libre, optionnelle** : un **crayon discret par mot** rouvre
+  l'atelier (`renderAtelier`, qui sait charger/sauver `mot.entourage`) ; au
+  « Continuer », on **sauvegarde** et on revient à la relecture, recentrée sur le
+  mot modifié. Un mot **sans entourage** s'affiche normalement (crayon
+  « Entourer les pièges », mention douce « Pas encore de pièges marqués »).
+- **Réutilisation, pas duplication** : `lettresMotHTML` (spans `.atelier-lettre`)
+  et `dessinerEntourages` (tracé SVG lecture seule) sont **extraits de l'atelier**
+  et partagés. Mise en page : grille mobile-first **1 → 2 → 3 colonnes**, mot à
+  `1.8rem` (mobile) / `2.2rem` (tablette), défilement vertical assumé.
+
 ---
 
 ## 3. Révision espacée (chantier séparé — issue à part)

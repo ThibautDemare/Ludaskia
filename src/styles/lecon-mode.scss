@@ -94,6 +94,41 @@
 	}
 }
 
+/* Accès « étude » (relecture, #80) : à part des modes d'entraînement, identité
+   sobre (pas un bouton d'action coloré, jamais « conseillé »), pour signaler
+   que ce n'est pas un exercice et que ça ne rapporte aucun point. */
+.mode-choice-etude {
+	margin-top: 22px;
+}
+.mode-choice-etude-sep {
+	font-size: 13px;
+	color: var(--grey);
+	margin: 0 0 12px;
+}
+.etude-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 14px;
+	min-height: 56px;
+	padding: 12px 20px;
+	background: var(--paper);
+	border: 2px solid var(--blue-soft);
+	border-radius: 14px;
+	cursor: pointer;
+	text-align: left;
+	transition:
+		border-color 0.12s ease,
+		box-shadow 0.12s ease,
+		transform 0.08s ease;
+}
+.etude-btn:hover {
+	border-color: var(--blue);
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+.etude-btn:active {
+	transform: translateY(1px);
+}
+
 /* ---------- Runner QCM de leçon : progression + feedback par choix ---------- */
 .sprint-lecon {
 	margin-top: 24px;

@@ -25,7 +25,7 @@ import { diffCorrect } from '../core/orthographe/diff';
 import { addXP, getXP, niveauDepuisXP } from '../core/progress';
 import { evaluateTrophies } from '../core/rewards';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
-import { goCategorie } from './navigation';
+import { goCategorie, goOrthoRevoir } from './navigation';
 import { renderAtelier } from './ortho-atelier';
 import { recompensesEntre } from '../core/unlocks';
 import { showCelebration, showLevelUp } from './effects';
@@ -111,11 +111,22 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
 				)
 				.join('')}
     </div>
+    <div class="mode-choice-etude">
+      <p class="mode-choice-etude-sep">Ou pour réviser tranquillement</p>
+      <button class="etude-btn" id="btnRevoir">
+        <span class="mode-btn-ico" aria-hidden="true">📖</span>
+        <span class="mode-btn-txt">
+          <span class="mode-btn-label">Relire mes mots</span>
+          <span class="mode-btn-hint">juste pour relire, sans points</span>
+        </span>
+      </button>
+    </div>
   </div>`;
 	host.querySelectorAll<HTMLButtonElement>('.mode-btn').forEach((btn) => {
 		const m = btn.dataset.mode;
 		btn.addEventListener('click', () => go(m ? (m as ModeOrtho) : null));
 	});
+	host.querySelector('#btnRevoir')!.addEventListener('click', () => goOrthoRevoir(lessonId));
 }
 
 /* Prochain mot à travailler, en parcourant cycliquement (on avance même si le

@@ -27,6 +27,7 @@ import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
 import { loadOrtho } from '../core/orthographe/store';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { renderOrthoListeForm } from './ortho-liste';
+import { renderOrthoRevoir } from './ortho-revoir';
 import { startOrthoRun, orthoDiscoveryComplete, renderOrthoModeChoice } from './ortho-runner';
 import { closeProfileMenu } from './menu';
 import { applyPreferences, renderPreferences } from './preferences';
@@ -101,6 +102,9 @@ export function goOrthoNew() {
 }
 export function goOrthoEdit(id: string) {
 	location.hash = 'ortho-edit-' + id;
+}
+export function goOrthoRevoir(id: string) {
+	location.hash = 'ortho-revoir-' + id;
 }
 export function showProfiles() {
 	location.hash = 'profils';
@@ -237,6 +241,8 @@ export function route() {
 		showOrthoEditView(h.slice('ortho-edit-'.length));
 	} else if (h.startsWith('ortho-mode-')) {
 		showOrthoModeView(h.slice('ortho-mode-'.length));
+	} else if (h.startsWith('ortho-revoir-')) {
+		showOrthoRevoirView(h.slice('ortho-revoir-'.length));
 	} else if (h.startsWith('ortho-')) {
 		showOrthoRunView(h.slice(6));
 	} else showHomeView(); // '' ou #accueil
@@ -407,6 +413,18 @@ function showOrthoRunView(id: string) {
 	hideMenus();
 	startOrthoRun(id);
 	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* Page de relecture « Je relis mes mots » d'une liste (#80) : étude passive, pas un
+   exercice → profil visible (comme un écran « menu »), ni Vérifier ni 🖨. */
+function showOrthoRevoirView(id: string) {
+	if (!listOrthoLecons(loadOrtho()).some((l) => l.id === id)) {
+		goCategorie(ORTHO_CATEGORY_ID);
+		return;
+	}
+	resetSessionUI();
+	setToolbar({ verify: false, home: true, profile: true });
+	hideMenus();
+	renderOrthoRevoir(document.getElementById('sheets')!, id);
 }
 /* Écran de choix du mode d'une liste d'orthographe (#69). */
 function showOrthoModeView(id: string) {

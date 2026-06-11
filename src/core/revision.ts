@@ -21,7 +21,7 @@
    ============================================================ */
 import type { EtatRevision } from './orthographe/types';
 
-const JOUR = 86_400_000;
+export const JOUR = 86_400_000;
 /* Délai avant re-test selon le palier ATTEINT (index = palier). */
 export const REVISION_INTERVALLES = [1 * JOUR, 3 * JOUR, 7 * JOUR, 16 * JOUR, 35 * JOUR, 75 * JOUR];
 /* Palier « acquis » : sort de la rotation active (gardé pour la fierté). */

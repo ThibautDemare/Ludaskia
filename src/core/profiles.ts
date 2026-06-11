@@ -19,6 +19,7 @@ import {
 } from './storage';
 import { XP_KEY, niveauDepuisXP } from './progress';
 import { niveauRequisAvatar } from './unlocks';
+import { migrateRevisions } from './revision-migrate';
 
 export interface Profile {
 	uuid: string;
@@ -68,6 +69,9 @@ function applyActive(m: ProfilesMeta) {
 	const p = m.list.find((x) => x.uuid === m.active) || m.list[0];
 	m.active = p.uuid;
 	setActivePrefix(profilePrefix(p));
+	// Le préfixe vient de basculer : rattrape l'historique du profil actif vers la
+	// révision espacée (cf. revision-migrate). Idempotent → sans effet une fois fait.
+	migrateRevisions(Date.now());
 }
 export function initProfiles() {
 	let m = loadProfilesMeta();

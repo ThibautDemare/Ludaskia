@@ -140,6 +140,23 @@ export function motsDeListe(state: OrthoState, liste: ListeOrtho): MotOrtho[] {
 	return liste.motIds.map((id) => state.banque[id]).filter((m): m is MotOrtho => !!m);
 }
 
+/** Reprise : les mots déjà en banque mais sans état de révision (ajoutés avant
+    l'arrivée du mode Révision) entrent en rotation. `now` doit être daté de J-1
+    par l'appelant → 1er re-test échu dès aujourd'hui, donc dus immédiatement.
+    Idempotent : ne touche que les mots dépourvus de `.revision`. Renvoie `true`
+    si la banque a changé (à l'appelant de sauvegarder). */
+export function backfillMotRevisions(state: OrthoState, now: number): boolean {
+	let changed = false;
+	for (const id in state.banque) {
+		const m = state.banque[id];
+		if (!m.revision) {
+			m.revision = etatNeuf(now);
+			changed = true;
+		}
+	}
+	return changed;
+}
+
 /** Met à jour l'état de révision espacée d'un mot après une réponse (#45). */
 export function avancerMotRevision(
 	state: OrthoState,

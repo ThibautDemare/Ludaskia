@@ -21,7 +21,8 @@ import {
 	niveauDepuisXP,
 	loadLessonRevisions,
 } from '../core/progress';
-import { countDue } from '../core/revision-select';
+import { countDue, prochaineEcheance, aDesRevisions } from '../core/revision-select';
+import { JOUR } from '../core/revision';
 import { titreDuNiveau, AVATARS_FORET } from '../core/unlocks';
 import { loadOrtho } from '../core/orthographe/store';
 import { getGoal, evaluateTrophies } from '../core/rewards';
@@ -165,14 +166,41 @@ function fillSprintRecord(elId: string) {
 	}
 	el.innerHTML = `🏅 Record : <strong>${[...runs].sort(cmpRun)[0].ok} bonnes réponses</strong>`;
 }
-/* Nombre d'éléments dus en révision espacée (carte d'accueil) */
+/* Délai d'ici une échéance, en langage d'enfant (calé sur les jours calendaires). */
+function quandRevision(echeance: number, now: number): string {
+	const jour = (ts: number) => {
+		const d = new Date(ts);
+		d.setHours(0, 0, 0, 0);
+		return d.getTime();
+	};
+	const jours = Math.round((jour(echeance) - jour(now)) / JOUR);
+	if (jours <= 0) return "plus tard aujourd'hui";
+	if (jours === 1) return 'demain';
+	return `dans ${jours} jours`;
+}
+
+/* Carte Révision : décompte des éléments dus, ou état « rien à réviser » tourné
+   en réussite (la carte reste visible mais non actionnable, cf. avis UX/pédago). */
 function fillRevisionRecord(elId: string) {
 	const el = document.getElementById(elId);
 	if (!el) return;
-	const n = countDue(loadOrtho(), loadLessonRevisions(), Date.now());
-	el.innerHTML = n
-		? `🔁 <strong>${n}</strong> à réviser`
-		: `<span class="muted">Rien à réviser pour l'instant 👍</span>`;
+	const ortho = loadOrtho();
+	const revisions = loadLessonRevisions();
+	const now = Date.now();
+	const n = countDue(ortho, revisions, now);
+	document.getElementById('cardRevision')?.classList.toggle('card-inactive', n === 0);
+	if (n) {
+		el.innerHTML = `🔁 <strong>${n}</strong> à réviser`;
+		return;
+	}
+	const echeance = prochaineEcheance(ortho, revisions, now);
+	if (echeance != null) {
+		el.innerHTML = `<span class="rev-ok">✅ Bravo, tu es à jour !</span><span class="rev-next">Prochaine révision ${quandRevision(echeance, now)}.</span>`;
+	} else if (aDesRevisions(ortho, revisions)) {
+		el.innerHTML = `<span class="rev-ok">✅ Bravo, tu as tout révisé !</span>`;
+	} else {
+		el.innerHTML = `<span class="rev-empty">Tes révisions apparaîtront ici dès que tu auras travaillé quelques leçons.</span>`;
+	}
 }
 export function sprintBoardHTML() {
 	const runs = loadRuns('sprint');

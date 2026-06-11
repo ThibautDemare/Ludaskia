@@ -146,6 +146,26 @@
 	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
 	border-color: var(--blue);
 }
+/* Cible tactile : pas de :hover sur écran tactile, on garde un retour au tap. */
+.card:active {
+	transform: translateY(-2px);
+}
+/* Carte sans action (ex. Révision quand rien n'est dû) : présence conservée pour
+   le repère spatial, mais ni curseur main, ni effet de survol, ni faux bouton. */
+.card-inactive,
+.card-inactive:active {
+	cursor: default;
+	transform: none;
+}
+.card-inactive:hover {
+	transform: none;
+	box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
+	border-color: transparent;
+}
+/* Spécificité renforcée pour battre `.card .go` (déclarée plus bas). */
+.card.card-inactive .go {
+	display: none;
+}
 .card .ico {
 	font-size: 40px;
 }

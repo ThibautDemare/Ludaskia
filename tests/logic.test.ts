@@ -130,7 +130,12 @@ import {
 	REVISION_INTERVALLES,
 	JOUR,
 } from '../src/core/revision';
-import { selectDueGroups, countDue } from '../src/core/revision-select';
+import {
+	selectDueGroups,
+	countDue,
+	prochaineEcheance,
+	aDesRevisions,
+} from '../src/core/revision-select';
 import { loadLessonRevisions, backfillLessonRevisions } from '../src/core/progress';
 import { loadOrtho, saveOrtho, backfillMotRevisions } from '../src/core/orthographe/store';
 import { migrateRevisions } from '../src/core/revision-migrate';
@@ -1216,6 +1221,35 @@ describe('Révision espacée (issue #45)', () => {
 		);
 		const total = groups.reduce((n, g) => n + g.items.length, 0);
 		expect(total).toBe(5);
+	});
+	test('prochaineEcheance : re-test À VENIR le plus proche, ignore dus et acquis', () => {
+		const lessonRevisions = {
+			'math-doubles': { palier: 0, prochaineRevision: T0 - 1000, reussites: 0, dernierTest: null }, // dû → ignoré
+			'math-moities': { palier: 1, prochaineRevision: T0 + 5000, reussites: 1, dernierTest: T0 },
+			'fr-conj-etre-present': {
+				palier: 2,
+				prochaineRevision: T0 + 2000,
+				reussites: 2,
+				dernierTest: T0,
+			}, // le plus proche
+			'math-tables-addition': {
+				palier: PALIER_ACQUIS,
+				prochaineRevision: null,
+				reussites: 6,
+				dernierTest: T0,
+			}, // acquis → ignoré
+		};
+		const ortho = { banque: {}, listes: [], motIdParForme: {} };
+		expect(prochaineEcheance(ortho, lessonRevisions, T0)).toBe(T0 + 2000);
+	});
+	test('prochaineEcheance : null si rien n’est programmé', () => {
+		const vide = { banque: {}, listes: [], motIdParForme: {} };
+		expect(prochaineEcheance(vide, {}, T0)).toBe(null);
+	});
+	test('aDesRevisions : true dès qu’un élément connu est suivi, false sinon', () => {
+		const ortho = { banque: {}, listes: [], motIdParForme: {} };
+		expect(aDesRevisions(ortho, {})).toBe(false);
+		expect(aDesRevisions(ortho, { 'math-doubles': etatNeuf(T0) })).toBe(true);
 	});
 });
 

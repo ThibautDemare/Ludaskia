@@ -18,6 +18,7 @@ import {
 	prochaineActivite,
 	marquerAtelierFait,
 	validerMode,
+	decouverteEnCours,
 } from '../core/orthographe/runner';
 import type { MotOrtho, OrthoState } from '../core/orthographe/types';
 import { diffCorrect } from '../core/orthographe/diff';
@@ -60,12 +61,18 @@ export function startOrthoRun(lessonId: string): void {
 	renderNext();
 }
 
-/* Prochain mot non maîtrisé, en parcourant cycliquement (on avance même si
-   le mot n'a pas été validé, pour ne pas boucler sur le même). */
+/* Prochain mot à travailler, en parcourant cycliquement (on avance même si le
+   mot n'a pas été validé, pour ne pas boucler sur le même).
+   En phase de découverte (#69), on ne renvoie que des mots pas encore vus à
+   l'atelier : toute la liste est découverte avant le moindre entraînement. */
 function prochainNonMaitrise(): MotOrtho | null {
+	const enDecouverte = decouverteEnCours(mots);
 	for (let k = 0; k < mots.length; k++) {
 		const i = (idx + k) % mots.length;
-		if (statutMot(mots[i], dispoDictee) !== 'maitrise') {
+		const aFaire = enDecouverte
+			? !mots[i].atelierFait
+			: statutMot(mots[i], dispoDictee) !== 'maitrise';
+		if (aFaire) {
 			idx = (i + 1) % mots.length;
 			return mots[i];
 		}

@@ -40,7 +40,8 @@ réutilise toute la mécanique d'entraînement et de progression.
 ## Motivation & suivi
 - **Compteur d'XP** — chaque bonne réponse rapporte des points, tous modes
   confondus.
-- **Objectifs de régularité** (hebdo/mensuels) et **défi du jour**.
+- **Objectifs de régularité** (hebdo/mensuels) et **défi du jour** porté par la
+  mascotte de l'accueil.
 - **Médailles** de classement, **records** personnels, **étoiles** par leçon
   réussie sans faute.
 - **Trophées à débloquer**, dont des séries **par matière** et **par catégorie**.

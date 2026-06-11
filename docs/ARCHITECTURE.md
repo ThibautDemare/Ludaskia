@@ -169,7 +169,8 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   gains).
 - **`render.ts`** — rendus accueil/sélecteur/profils (`renderHomeStats` et
   favoris, badge **niveau + barre** dans `renderToolbarProfile`, carte de
-  progression `renderProgression`, `renderObjectives`, `renderGoal`,
+  progression `renderProgression` (sa bulle de mascotte porte le **défi du
+  jour** : invitation, puis félicitations une fois accompli), `renderObjectives`,
   `renderLessons` + `lessonCardHTML` réutilisable,
   `renderProfileMenu`, `renderProfiles`, `boardHTML`/`sprintBoardHTML`,
   `pctColor`, config `REGULARITY`).

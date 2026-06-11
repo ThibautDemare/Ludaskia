@@ -301,35 +301,6 @@ html.anim-reduced .mascotte-static {
 	height: auto;
 }
 
-/* Objectif du jour */
-.goal {
-	display: inline-block;
-	margin: 0 0 30px;
-	font-family: var(--ui);
-	font-size: 14px;
-	font-weight: 600;
-	color: #1f4e8c;
-	background: #e6eefb;
-	border: 1px solid #9bbbe6;
-	border-radius: 12px;
-	padding: 10px 18px;
-}
-.goal:empty {
-	display: none;
-}
-.goal.done {
-	color: #1b5e20;
-	background: #e7f5e8;
-	border-color: #9ccc9f;
-}
-.goal .goal-lab {
-	font-weight: 800;
-}
-.goal .goal-prog {
-	color: var(--grey);
-	font-weight: 700;
-}
-
 /* Vitrine des trophées */
 /* Barre « Récompenses » / « Trophées » de l'accueil (ouvrent leurs modales) */
 .reward-nav {

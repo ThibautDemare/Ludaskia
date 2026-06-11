@@ -58,9 +58,10 @@ matière. Ex. **`francais/conjugaison.ts`** : tables de 13 verbes (être, avoir,
 1er groupe *aimer*, 2e groupe *finir*, aller, faire, venir, voir, dire, pouvoir,
 vouloir, prendre, naître) aux 4 temps **présent**, **futur**, **imparfait** et
 **passé composé** (les formes du passé composé incluent l'auxiliaire conjugué),
-fabrique `conjugationType(verbId, tense)` (un `ExerciseType` à deux modes :
-`saisie` par défaut — l'enfant écrit la forme — et `qcm` — choix entre plusieurs
-formes, **distracteurs dérivés du paradigme** du verbe, toutes de **vraies formes
+fabrique `conjugationType(verbId, tense)` (un `ExerciseType` à deux modes,
+**choisissables depuis la leçon** (#69) : `saisie` **conseillé** — l'enfant écrit
+la forme, fiche imprimable — et `qcm` — choix entre plusieurs formes,
+**distracteurs dérivés du paradigme** du verbe, toutes de **vraies formes
 correctement orthographiées**, jamais une faute affichée) et descripteurs
 `CONJ_LESSONS` (une leçon par verbe × temps). Dossier `francais` sans cédille
 pour des chemins d'import ASCII portables ; le libellé affiché reste « Français ».
@@ -82,8 +83,16 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   **ou** texte via `normalizeText`), `gridHTML`, `ficheHTML`/`ficheHTMLGeneric`,
   `lessonAttr()`. État de module exposé via accesseurs (voir plus bas).
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
-  (`text` | `qcm`), interface **`ExerciseType`** (`generate()` / `check()`), et
-  `checkAnswer` (normalisation partagée `normalizeText` ; **accents et apostrophes exigés**).
+  (`text` | `qcm` | interactions ortho), interface **`ExerciseType`** : `modes?`
+  (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
+  l'ordre d'affichage), `generate(mode?)`, `check()`. Helpers **`hasMode`** et
+  **`defaultMode`** (les écrans dérivent leurs choix d'ici, **jamais en dur**, #69),
+  et `checkAnswer` (normalisation partagée `normalizeText` ; **accents et
+  apostrophes exigés**).
+- **`lesson-run.ts`** — **`recordLessonRun()`** : enregistrement d'un essai
+  (série, stats par leçon, XP, montée de niveau, étoile, objectif, trophées),
+  **commun à tous les rendus** (fiche en saisie *et* runner QCM) pour garantir la
+  **parité** entre modes — aucun mode n'est plus rentable qu'un autre (#69).
 - **`catalog.ts`** — hiérarchie `SUBJECTS` / `CATEGORIES` / `LessonDef`
   (`id, label, subject, category, level, exerciseType`), helpers
   `getAllLessons/getLessonById/getLessonsBySubject/getLessonsByCategory`,
@@ -182,7 +191,11 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   `showMatieresView`/`showMatiereView`/`showCategorieView`,
   `showSprintConfigView`, `showBilanCustomView`, `showProfilesView`,
   `runComplet/Express/Lecon/Revision`), `setToolbar`, `afterStart`, état de
-  session.
+  session. **Écran de choix de mode** (#69) : `showModeChoice` (catalogue) /
+  `showOrthoModeView` (ortho) — affiché quand une leçon expose plusieurs modes.
+- **`lecon-qcm.ts`** — runner **QCM d'une leçon** (#69) : « une question à la
+  fois », **feedback immédiat**, barre de progression, **sans chrono** ; enregistre
+  via `recordLessonRun` (parité avec la saisie). Réutilise les composants `.sprint-*`.
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
   **filtrable** (toutes matières / une matière / une catégorie) via un écran de
   configuration ; correction par `checkItemAnswer` (numérique ou texte).
@@ -223,8 +236,10 @@ accesseur/mutateur, **comportement identique** :
 Vues routées **par hash** (le Précédent/Suivant du navigateur fonctionne, et un
 hébergement statique sous sous-chemin `/Ludaskia/` ne nécessite aucune config de
 fallback SPA) : `#accueil` · `#matieres` · `#matiere-<id>` · `#categorie-<id>` ·
-`#lecon-<id>` · `#sprint-config` · `#sprint` · `#bilan-custom` · `#bilan-cat-<id>` ·
-`#revision-espacee` · `#profils` · `#revision` (`#lecons`, ancien sélecteur plat, reste
+`#lecon-<id>` · `#mode-<id>` (choix de mode d'une leçon, #69) · `#sprint-config` ·
+`#sprint` · `#bilan-custom` · `#bilan-cat-<id>` · `#ortho-mode-<id>` (choix de mode
+d'une liste d'ortho) · `#revision-espacee` · `#profils` · `#revision`
+(`#lecons`, ancien sélecteur plat, reste
 routable mais n'est plus lié). Les identifiants de leçon sont des **chaînes**
 (`math-tables-addition`, `fr-conj-etre-present`…). Les déclencheurs changent juste
 le hash ; `route()` (sur `hashchange`) rend la vue.
@@ -238,6 +253,20 @@ express/complet : on y accède par Matière → Catégorie. Le **mode Révision*
 (accueil, `#revision-espacee`) rejoue les éléments **dus** par répétition espacée
 — mots d'orthographe **et** leçons maths/conjugaison — **regroupés par catégorie**,
 un élément à la fois, sans chrono ni record.
+
+**Choix du sous-exercice / mode depuis une leçon (#69).** Quand un `ExerciseType`
+expose **plusieurs modes**, taper la leçon ouvre un **écran de choix** (gros
+boutons dérivés de `modes`, le mode `recommended` mis en avant) ; un type
+**mono-mode** (maths) se lance directement. **Conjugaison** : *J'écris le verbe*
+(saisie, conseillé, fiche imprimable) ou *Je choisis la bonne réponse* (runner QCM
+`lecon-qcm.ts`, feedback immédiat, sans chrono). **Orthographe** : le **parcours
+complet** (conseillé, **seul à donner l'étoile**) ou un **mode ciblé** (tuiles /
+mot caché / dictée) pour s'entraîner — l'entraînement ciblé donne de l'XP mais ne
+valide pas (l'étoile reste liée à la suite ordonnée). En **phase de découverte**
+(au moins un mot sans atelier), le parcours ne propose **que des ateliers** : toute
+la liste est découverte avant le moindre entraînement, et le choix de mode n'est
+proposé qu'ensuite. Fin d'exercice : **Recommencer / Quitter** (la pause ortho et
+le runner QCM offrent le même choix).
 
 **Reprise d'un exercice en cours (#63).** Les exercices **grille** (leçon, bilans
 express/complet/personnalisé) sont **sauvegardés automatiquement** quand on les
@@ -368,10 +397,10 @@ La hiérarchie **Matière → Catégorie → Leçon**, les réponses **texte nor
 (+ variantes) et la gamification **agnostique de la matière** sont désormais en
 place. Restent à explorer, en gardant le format « question courte → réponse
 vérifiable » (filtre : **automatisme/mémorisation**) :
-- **mode QCM** : désormais disponible en **conjugaison** (`conjugationType`,
-  mode `qcm` — utilisé en sprint, distracteurs dérivés du paradigme) ; piste pour
-  la mémorisation (capitales/dates). *Écarté pour l'orthographe* (risque d'ancrage
-  de la faute) ;
+- **mode QCM** : disponible en **conjugaison**, **en sprint et depuis la leçon**
+  (#69) via `conjugationType` (mode `qcm`, distracteurs dérivés du paradigme) ;
+  piste pour la mémorisation (capitales/dates). *Écarté pour l'orthographe* (risque
+  d'ancrage de la faute) ;
 - d'autres contenus : maths étendus (conversions d'unités), verbes irréguliers
   anglais ;
 - **filtrage par niveau scolaire** (chaque `LessonDef` porte déjà un `level`) ;

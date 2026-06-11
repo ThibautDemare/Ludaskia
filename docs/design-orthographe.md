@@ -457,6 +457,21 @@ maîtrisés** de la liste (ordre de la liste), puis aux **maîtrisés** en entre
 (La **répétition espacée** — issue 4 — réutilise le même tour mais sélectionne les
 mots **dus** dans toute la banque, sans cram.)
 
+**Phase de découverte (#69)** : tant qu'**au moins un mot** de la liste n'a pas eu
+son atelier (`decouverteEnCours`), le parcours ne propose **que des ateliers** —
+toute la liste est découverte **avant** le moindre entraînement (l'enfant doit
+voir tous ses mots vite : la 1re dictée tombe dès le lendemain). La pause de
+séance (`SEANCE_MAX = 8`) propose **Continuer / Revenir**, donc un enfant motivé
+peut finir la découverte d'une longue liste d'une traite.
+
+**Choix du mode depuis la liste (#69)** : une fois la liste **découverte**, taper
+la liste ouvre un **écran de choix** : le **parcours complet** (conseillé, **seul à
+valider les modes → l'étoile**) ou un **mode ciblé** (`tuiles` / `motCache` /
+`dictee`) pour s'entraîner librement. Le mode ciblé donne de l'**XP** mais
+**ne valide pas** (`validation` inchangée) : l'étoile reste liée à la **suite
+ordonnée**. Tant que la découverte n'est pas finie, on lance directement le
+parcours (pas de choix).
+
 **Déroulé d'un tour** :
 1. **Activité** : Atelier (édition d'entourage) **ou** `generate(mode)` →
    `Exercise` → saisie (clavier d'accents) → `check`.

@@ -34,13 +34,9 @@
 }
 /* Dans la grille, les panneaux remplissent leur colonne (plus de centrage). */
 .home-grid .objectives,
-.home-grid .goal,
 .home-grid .boards {
 	max-width: none;
 	margin: 0 0 16px;
-}
-.home-grid .goal {
-	display: block;
 }
 .home-grid .boards {
 	flex-direction: column;

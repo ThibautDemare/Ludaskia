@@ -28,7 +28,7 @@ import { getGoal, evaluateTrophies } from '../core/rewards';
 import { sparkline } from './effects';
 import { renderFavoris } from './bilan';
 import { renderReprises } from './resume';
-import { renderRewardNav, mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
+import { renderRewardNav, mascotteBulleHTML } from './unlocks-view';
 
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
 export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
@@ -66,9 +66,12 @@ export function renderProgression() {
 	const sub = pr.max
 		? 'Niveau maximum atteint !'
 		: `${pr.xpDansNiveau} / ${pr.xpRequisPalier} XP vers le niveau ${pr.niveau + 1}`;
-	// La mascotte annonce le défi du jour s'il reste à faire, sinon elle encourage.
+	// La mascotte porte seule le défi du jour (plus de carte dédiée) : invitation
+	// tant qu'il reste à faire, félicitations une fois accompli.
 	const g = getGoal();
-	const bulle = g && !g.done ? `🎯 ${g.label}` : encouragementMascotte();
+	const bulle = g.done
+		? `🎉 Bravo ! Tu as réussi ton défi du jour ! Reviens demain pour une nouvelle mission.`
+		: `🎯 Effectue ton défi du jour : ${g.label}`;
 	el.innerHTML = `<div class="progress-card">
     ${mascotteBulleHTML(bulle, true)}
     <span class="progress-rang"><span class="progress-rang-ico">${rang.icone}</span> ${rang.titre}</span>
@@ -224,7 +227,6 @@ export function renderHomeStats() {
 	fillSprintRecord('recSprint');
 	fillRevisionRecord('recRevision');
 	renderObjectives();
-	renderGoal();
 	const boards = document.getElementById('boards');
 	// Seul le sprint a un classement comparable (ensemble stable). Les bilans
 	// express/complet varient d'un essai à l'autre → pas de podium (#35).
@@ -257,20 +259,6 @@ export function renderObjectives() {
     </div>`;
 	}).join('');
 	el.innerHTML = `<h3 class="obj-h">Mes objectifs</h3>${rows}`;
-}
-
-/* Défi du jour (qualité : étoile / leçon sans faute / battre un record) */
-export function renderGoal() {
-	const el = document.getElementById('goal');
-	if (!el) return;
-	const g = getGoal();
-	if (g.done) {
-		el.className = 'goal done';
-		el.innerHTML = `🎯 Défi du jour réussi ! <span class="goal-lab">${g.label}</span> ✓`;
-	} else {
-		el.className = 'goal';
-		el.innerHTML = `🎯 Défi du jour : <span class="goal-lab">${g.label}</span> <span class="goal-prog">(${g.progress}/${g.target})</span>`;
-	}
 }
 
 /* Carte d'une leçon (étoile + taux de réussite). Réutilisée par le sélecteur

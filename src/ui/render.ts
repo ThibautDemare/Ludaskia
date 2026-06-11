@@ -74,8 +74,10 @@ export function renderProgression() {
 		: `🎯 Effectue ton défi du jour : ${g.label}`;
 	el.innerHTML = `<div class="progress-card">
     ${mascotteBulleHTML(bulle, true)}
-    <span class="progress-rang"><span class="progress-rang-ico">${rang.icone}</span> ${rang.titre}</span>
-    <span class="progress-lvl">Niveau ${pr.niveau}</span>
+    <span class="progress-head">
+      <span class="progress-rang"><span class="progress-rang-ico">${rang.icone}</span> ${rang.titre}</span>
+      <span class="progress-lvl">Niveau ${pr.niveau}</span>
+    </span>
     <span class="lvl-bar"><span class="lvl-bar-fill" style="width:${pr.pct}%"></span></span>
     <span class="progress-sub">${sub}</span>
   </div>`;

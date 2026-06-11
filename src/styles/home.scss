@@ -66,14 +66,22 @@
 .home-grid #favoris {
 	margin: 0 0 18px;
 }
-/* En dessous d'un certain seuil, on repasse en une seule colonne. Sur mobile,
-   l'ordre privilégie un accueil chaleureux : la mascotte + le défi du jour
-   d'abord, puis les cartes d'accès (sprint, leçon, bilans), puis le reste de la
-   progression (reprises, objectifs, classements, trophées). */
+/* Sous ce seuil (smartphone/tablette), on quitte la grille à deux colonnes : on
+   empile en une colonne, dans un ordre pensé pour l'enfant — la mascotte + le
+   défi du jour d'abord (accueil chaleureux), puis les cartes d'accès, puis le
+   reste de la progression (reprises, objectifs, classements, trophées).
+   Les cartes, elles, restent dans leur conteneur `.cards` qui est déjà un
+   `flex-wrap` : elles se répartissent en TUILES selon la largeur disponible —
+   une par ligne sur smartphone étroit, plusieurs dès qu'il y a de la place
+   (paysage, tablette). */
 @media (max-width: 920px) {
 	.home-grid {
-		grid-template-columns: 1fr;
-		grid-template-areas: none;
+		display: flex;
+		flex-direction: column;
+		/* On annule le `align-items: start` du desktop : sinon chaque bloc se réduit
+		   à la largeur de son contenu (la carte mascotte rétrécit). On étire tout
+		   sur la pleine largeur pour que mascotte et cartes s'alignent. */
+		align-items: stretch;
 		gap: 8px;
 	}
 	#progression {
@@ -81,6 +89,25 @@
 	}
 	.home-col-right {
 		order: -1;
+	}
+	.home-col-left {
+		order: 0;
+	}
+	/* Alignement des tuiles : la carte mascotte et les cartes d'accès s'étalent
+	   sur la MÊME largeur (pleine colonne), bords alignés. Une tuile par ligne sur
+	   smartphone, deux dès qu'il y a la place (≈ 660 px+) — jamais trois sous
+	   920 px, pour que les 4 cartes forment des lignes pleines (2 + 2). */
+	.cards {
+		justify-content: flex-start;
+	}
+	.cards .card {
+		flex: 1 1 320px;
+		max-width: none;
+	}
+	/* L'ID l'emporte sur le `max-width` de base de gamification.scss. */
+	#progression .progress-card {
+		max-width: none;
+		margin: 0 0 8px;
 	}
 	/* Le nom de l'app est déjà dans la bannière : on masque le gros titre et le
 	   tagline sur mobile pour faire remonter la mascotte dans le premier écran. */
@@ -90,13 +117,6 @@
 	}
 	.home-wide {
 		margin-top: 16px;
-	}
-	/* Mascotte compacte : la carte remplit la colonne et se resserre. */
-	.progress-card {
-		max-width: none;
-		margin: 0 0 8px;
-		padding: 12px 16px;
-		gap: 6px;
 	}
 }
 

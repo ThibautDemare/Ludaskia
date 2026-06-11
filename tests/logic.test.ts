@@ -85,6 +85,7 @@ import {
 	niveauDepuisXP,
 	progressionNiveau,
 } from '../src/core/progress';
+import { recordLessonRun } from '../src/core/lesson-run';
 import {
 	CHALLENGES,
 	challengeContext,
@@ -428,6 +429,35 @@ describe('Étoiles & stats par leçon', () => {
 		expect(e.questions).toBe(24);
 		expect(e.bestPct).toBe(100);
 		expect(api.lessonAvgPct(e)).toBe(92);
+	});
+	// Enregistrement commun à tous les modes de rendu (saisie / QCM) : parité (#69).
+	test('recordLessonRun : leçon sans-faute → étoile + XP = bonnes réponses', () => {
+		const xp0 = api.getXP();
+		const out = recordLessonRun({
+			mode: 'lecon',
+			lessonId: 'math-doubles',
+			ok: 8,
+			questionCount: 8,
+			ms: 1000,
+			perLesson: { 'math-doubles': { ok: 8, total: 8 } },
+		});
+		expect(out.starInfo).toEqual({ perfect: true, newStar: true, count: 1 });
+		expect(api.getXP()).toBe(xp0 + 8);
+		expect(api.starsEarned()).toBe(1);
+	});
+	test('recordLessonRun : leçon avec une faute → pas d’étoile, XP = bonnes réponses', () => {
+		const xp0 = api.getXP();
+		const out = recordLessonRun({
+			mode: 'lecon',
+			lessonId: 'math-doubles',
+			ok: 6,
+			questionCount: 8,
+			ms: 1000,
+			perLesson: { 'math-doubles': { ok: 6, total: 8 } },
+		});
+		expect(out.starInfo?.perfect).toBe(false);
+		expect(out.starInfo?.newStar).toBe(false);
+		expect(api.getXP()).toBe(xp0 + 6);
 	});
 });
 

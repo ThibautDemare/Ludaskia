@@ -293,6 +293,28 @@
 .rb-redo:active {
 	transform: translateY(1px);
 }
+/* Variante « Quitter » en fin de leçon (#69) : discrète à côté de « Recommencer ». */
+.rb-quit {
+	font: inherit;
+	font-family: var(--ui);
+	font-size: 14px;
+	font-weight: 700;
+	border: 0;
+	border-radius: 8px;
+	padding: 9px 16px;
+	cursor: pointer;
+	background: #e7ebf1;
+	color: var(--blue);
+	transition:
+		box-shadow 0.15s ease,
+		transform 0.08s ease;
+}
+.rb-quit:hover {
+	box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+}
+.rb-quit:active {
+	transform: translateY(1px);
+}
 .rb-medal {
 	display: flex;
 	align-items: center;

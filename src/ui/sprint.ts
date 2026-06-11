@@ -18,6 +18,7 @@ import {
 	CATEGORIES,
 } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
+import { hasMode } from '../core/exercise';
 import { checkItemAnswer } from '../core/items';
 import type { Item } from '../core/items';
 import {
@@ -267,7 +268,7 @@ function sprintNext() {
 		guard = 0;
 	do {
 		def = pickSprintDef();
-		if (def.exerciseType.modes?.includes('qcm')) {
+		if (hasMode(def.exerciseType, 'qcm')) {
 			const ex = def.exerciseType.generate('qcm');
 			q = {
 				text: ex.type === 'qcm' ? ex.question : '',

@@ -40,6 +40,15 @@ export interface BilanConfig {
 	label: string;
 	lessonIds: string[];
 	questionsPerLesson: number | 'all';
+	// Mode de lancement d'une sélection de leçons (#64) : un bilan « papier/écran »
+	// à son rythme, ou un sprint chronométré de 5 min alimenté par ces leçons.
+	// Champ optionnel : un favori enregistré avant #64 (sans `mode`) est un bilan.
+	mode?: 'bilan' | 'sprint';
+}
+
+/* Mode effectif d'un BilanConfig (favori legacy sans `mode` = bilan). */
+export function bilanMode(config: BilanConfig): 'bilan' | 'sprint' {
+	return config.mode ?? 'bilan';
 }
 
 /* ---------- Helpers math ---------- */
@@ -272,4 +281,13 @@ export function getLessonsBySubject(subjectId: SubjectId): LessonDef[] {
 
 export function getLessonsByCategory(categoryId: CategoryId): LessonDef[] {
 	return ALL_LESSONS.filter((l) => l.category === categoryId);
+}
+
+/* Résout une liste d'identifiants en LessonDef du catalogue, dans l'ordre
+   demandé et en ignorant les inconnus. Sert au sprint personnalisé (#64) :
+   un favori peut référencer une leçon disparue du catalogue. */
+export function lessonsForIds(ids: string[]): LessonDef[] {
+	return ids
+		.map((id) => ALL_LESSONS.find((l) => l.id === id))
+		.filter((l): l is LessonDef => l !== undefined);
 }

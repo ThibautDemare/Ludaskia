@@ -13,11 +13,12 @@ import {
 	getAllLessons,
 	getLessonsBySubject,
 	getLessonsByCategory,
+	lessonsForIds,
 	genLessonItem,
 	SUBJECTS,
 	CATEGORIES,
 } from '../core/catalog';
-import type { LessonDef } from '../core/catalog';
+import type { BilanConfig, LessonDef } from '../core/catalog';
 import { hasMode } from '../core/exercise';
 import { checkItemAnswer } from '../core/items';
 import type { Item } from '../core/items';
@@ -51,19 +52,24 @@ const SPRINT_MS = 300000; // 5 minutes
 type SprintFilter =
 	| { type: 'all' }
 	| { type: 'subject'; id: string }
-	| { type: 'category'; id: string };
+	| { type: 'category'; id: string }
+	// Sprint personnalisé (#64) : une sélection précise de leçons alimente le
+	// tirage, en lieu et place du filtre tout/matière/catégorie.
+	| { type: 'lessons'; ids: string[]; label: string };
 
 let sprintFilter: SprintFilter = { type: 'all' };
 
 function lessonsForFilter(f: SprintFilter): LessonDef[] {
 	if (f.type === 'subject') return getLessonsBySubject(f.id);
 	if (f.type === 'category') return getLessonsByCategory(f.id);
+	if (f.type === 'lessons') return lessonsForIds(f.ids);
 	return getAllLessons();
 }
 
 function filterLabel(f: SprintFilter): string {
 	if (f.type === 'all') return '';
 	if (f.type === 'subject') return SUBJECTS.find((s) => s.id === f.id)?.label ?? f.id;
+	if (f.type === 'lessons') return f.label;
 	return CATEGORIES.find((c) => c.id === f.id)?.label ?? f.id;
 }
 
@@ -80,18 +86,28 @@ export function startCategorySprint(categoryId: string): void {
 	location.hash = 'sprint';
 }
 
+/* Lance un sprint personnalisé (#64) : la sélection de leçons d'un BilanConfig
+   (composeur ou favori) alimente le tirage. Le sprint reste non reprenable et
+   suit ses règles habituelles (chrono, pause sur erreur, XP/records/trophées). */
+export function startCustomSprint(config: BilanConfig): void {
+	sprintFilter = { type: 'lessons', ids: config.lessonIds, label: config.label };
+	location.hash = 'sprint';
+}
+
 /* ---------- Écran de configuration du sprint ---------- */
 
 export function renderSprintConfigScreen(el: HTMLElement): void {
 	const allLessons = getAllLessons();
 	const totalN = allLessons.length;
 
+	// L'écran de config n'expose que tout/matière/catégorie : un filtre 'lessons'
+	// (sprint personnalisé lancé depuis le composeur) retombe sur « toutes ».
 	const currentValue =
-		sprintFilter.type === 'all'
-			? 'all'
-			: sprintFilter.type === 'subject'
-				? `subject:${sprintFilter.id}`
-				: `category:${sprintFilter.id}`;
+		sprintFilter.type === 'subject'
+			? `subject:${sprintFilter.id}`
+			: sprintFilter.type === 'category'
+				? `category:${sprintFilter.id}`
+				: 'all';
 
 	const opt = (value: string, label: string, n: number, indent = false) => {
 		const checked = currentValue === value ? 'checked' : '';
@@ -166,6 +182,12 @@ export function runSprint() {
 	setCurrentMode('sprint');
 	setCurrentLessonId(null);
 	sprintLessonDefs = lessonsForFilter(sprintFilter);
+	// Sélection vide (ex. favori dont toutes les leçons ont disparu du catalogue) :
+	// rien à tirer, on revient à l'accueil plutôt que de planter le tirage.
+	if (!sprintLessonDefs.length) {
+		goHome();
+		return;
+	}
 	sprintActive = true;
 	sprintPaused = false;
 	sprintRemaining = SPRINT_MS;

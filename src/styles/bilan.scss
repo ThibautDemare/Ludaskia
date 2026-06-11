@@ -132,6 +132,61 @@
 	font-weight: 700;
 	color: var(--blue);
 }
+/* Sélecteur Bilan / Sprint (#64) : deux grandes cibles tactiles, parité visuelle
+   avec le réglage « questions par leçon ». */
+.bc-mode {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 9px;
+}
+.bc-mode-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1 1 160px;
+	min-height: 56px;
+	padding: 12px 16px;
+	background: var(--paper);
+	border: 2px solid transparent;
+	border-radius: 10px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+	cursor: pointer;
+	font-family: var(--ui);
+	font-size: 15px;
+	font-weight: 700;
+	user-select: none;
+	transition:
+		transform 0.08s,
+		box-shadow 0.12s,
+		border-color 0.12s,
+		background 0.12s;
+}
+/* Carte choisie : on double le codage (couleur seule insuffisante pour ce
+   public, cf. avis UX enfant) — bordure plus épaisse, légère surélévation. */
+.bc-mode-item:has(:checked) {
+	background: var(--blue-soft);
+	border-color: var(--blue);
+	border-width: 3px;
+	box-shadow: 0 4px 14px rgba(51, 108, 191, 0.25);
+}
+.bc-mode-item:focus-within {
+	outline: 2px solid var(--blue);
+	outline-offset: 2px;
+}
+.bc-mode-item:active {
+	transform: scale(0.97);
+}
+.bc-mode-item input[type='radio'] {
+	accent-color: var(--blue);
+	width: 24px;
+	height: 24px;
+	flex-shrink: 0;
+}
+.bc-mode-sub {
+	font-weight: 400;
+	font-size: 13px;
+	color: var(--grey);
+}
 .bc-save-row {
 	display: flex;
 	gap: 10px;

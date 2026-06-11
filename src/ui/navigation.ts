@@ -27,7 +27,7 @@ import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
 import { loadOrtho } from '../core/orthographe/store';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { renderOrthoListeForm } from './ortho-liste';
-import { startOrthoRun } from './ortho-runner';
+import { startOrthoRun, orthoDiscoveryComplete, renderOrthoModeChoice } from './ortho-runner';
 import { closeProfileMenu } from './menu';
 import { applyPreferences, renderPreferences } from './preferences';
 import { leconKey } from '../core/resume';
@@ -93,7 +93,8 @@ export function goCategorie(categoryId: string) {
 	location.hash = 'categorie-' + categoryId;
 }
 export function startOrthoLecon(id: string) {
-	location.hash = 'ortho-' + id;
+	// Liste découverte → choix du mode (#69) ; sinon lancement direct (découverte).
+	location.hash = (orthoDiscoveryComplete(id) ? 'ortho-mode-' : 'ortho-') + id;
 }
 export function goOrthoNew() {
 	location.hash = 'ortho-new';
@@ -234,6 +235,8 @@ export function route() {
 		showOrthoNewView();
 	} else if (h.startsWith('ortho-edit-')) {
 		showOrthoEditView(h.slice('ortho-edit-'.length));
+	} else if (h.startsWith('ortho-mode-')) {
+		showOrthoModeView(h.slice('ortho-mode-'.length));
 	} else if (h.startsWith('ortho-')) {
 		showOrthoRunView(h.slice(6));
 	} else showHomeView(); // '' ou #accueil
@@ -403,6 +406,19 @@ function showOrthoRunView(id: string) {
 	setToolbar({ verify: false, home: true, profile: false });
 	hideMenus();
 	startOrthoRun(id);
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* Écran de choix du mode d'une liste d'orthographe (#69). */
+function showOrthoModeView(id: string) {
+	const lecon = listOrthoLecons(loadOrtho()).find((l) => l.id === id);
+	if (!lecon) {
+		goCategorie(ORTHO_CATEGORY_ID);
+		return;
+	}
+	resetSessionUI();
+	setToolbar({ verify: false, home: true, profile: true });
+	hideMenus();
+	renderOrthoModeChoice(document.getElementById('sheets')!, id, lecon.label);
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showSprintConfigView() {

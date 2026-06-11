@@ -11,7 +11,7 @@
 import { escapeHTML } from '../core/utils';
 import { loadOrtho, saveOrtho } from '../core/orthographe/store';
 import { motsDeLecon } from '../core/orthographe/lessons';
-import { genExerciseOrtho } from '../core/orthographe/exercise';
+import { genExerciseOrtho, ORTHO_MODE_OPTIONS } from '../core/orthographe/exercise';
 import { checkAnswer } from '../core/exercise';
 import {
 	statutMot,
@@ -20,7 +20,7 @@ import {
 	validerMode,
 	decouverteEnCours,
 } from '../core/orthographe/runner';
-import type { MotOrtho, OrthoState } from '../core/orthographe/types';
+import type { MotOrtho, OrthoState, ModeOrtho } from '../core/orthographe/types';
 import { diffCorrect } from '../core/orthographe/diff';
 import { addXP, getXP, niveauDepuisXP } from '../core/progress';
 import { evaluateTrophies } from '../core/rewards';
@@ -41,6 +41,14 @@ let idx = 0;
 let dispoDictee = false;
 let niveauAvant = 0;
 let actes = 0;
+// Mode de la séance (#69) : null = parcours complet (atelier → modes → étoile) ;
+// un mode = entraînement ciblé sur ce seul mode (ne valide pas, pas d'étoile).
+let seanceMode: ModeOrtho | null = null;
+// Mode choisi en attente, posé par l'écran de choix et consommé par startOrthoRun.
+let pendingOrthoMode: ModeOrtho | null = null;
+export const setPendingOrthoMode = (m: ModeOrtho | null) => {
+	pendingOrthoMode = m;
+};
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -51,6 +59,8 @@ export function startOrthoRun(lessonId: string): void {
 	mots = motsDeLecon(st, lessonId);
 	saveOrtho(st); // persiste la matérialisation des mots prédéfinis
 	dispoDictee = dicteeDisponible();
+	seanceMode = pendingOrthoMode; // null → parcours complet
+	pendingOrthoMode = null;
 	idx = 0;
 	niveauAvant = niveauDepuisXP(getXP());
 	actes = 0;
@@ -61,11 +71,64 @@ export function startOrthoRun(lessonId: string): void {
 	renderNext();
 }
 
+/* La découverte de la liste est-elle terminée (tous les mots vus à l'atelier) ?
+   Sert à décider d'afficher l'écran de choix de mode (#69). */
+export function orthoDiscoveryComplete(lessonId: string): boolean {
+	const s = loadOrtho();
+	const m = motsDeLecon(s, lessonId);
+	return m.length > 0 && !decouverteEnCours(m);
+}
+
+/* Écran de choix du mode d'une liste (#69), proposé une fois la liste découverte :
+   le parcours complet (conseillé, seul à donner l'étoile) ou un mode ciblé pour
+   s'entraîner librement (sans étoile). Dérivé de ORTHO_MODE_OPTIONS. */
+export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label: string): void {
+	const cibles = ORTHO_MODE_OPTIONS.filter((m) => m.id !== 'dictee' || dicteeDisponible());
+	const go = (mode: ModeOrtho | null) => {
+		setPendingOrthoMode(mode);
+		location.hash = 'ortho-' + lessonId;
+	};
+	host.innerHTML = `<div class="mode-choice">
+    <h2 class="mode-choice-title">Comment veux-tu t'entraîner ?</h2>
+    <p class="mode-choice-lesson">${escapeHTML(label)}</p>
+    <div class="mode-choice-list">
+      <button class="mode-btn recommended" data-mode="">
+        <span class="mode-btn-ico" aria-hidden="true">⭐</span>
+        <span class="mode-btn-txt">
+          <span class="mode-btn-label">Le parcours complet</span>
+          <span class="mode-btn-badge">conseillé · donne l'étoile</span>
+        </span>
+      </button>
+      ${cibles
+				.map(
+					(m) => `<button class="mode-btn" data-mode="${m.id}">
+        <span class="mode-btn-ico" aria-hidden="true">${m.icon ?? '▶'}</span>
+        <span class="mode-btn-txt">
+          <span class="mode-btn-label">${escapeHTML(m.label)}</span>
+          <span class="mode-btn-hint">pour t'entraîner</span>
+        </span>
+      </button>`,
+				)
+				.join('')}
+    </div>
+  </div>`;
+	host.querySelectorAll<HTMLButtonElement>('.mode-btn').forEach((btn) => {
+		const m = btn.dataset.mode;
+		btn.addEventListener('click', () => go(m ? (m as ModeOrtho) : null));
+	});
+}
+
 /* Prochain mot à travailler, en parcourant cycliquement (on avance même si le
    mot n'a pas été validé, pour ne pas boucler sur le même).
    En phase de découverte (#69), on ne renvoie que des mots pas encore vus à
    l'atelier : toute la liste est découverte avant le moindre entraînement. */
 function prochainNonMaitrise(): MotOrtho | null {
+	// Mode ciblé : entraînement libre, on tourne sur tous les mots (jamais « fini »).
+	if (seanceMode) {
+		const m = mots[idx % mots.length];
+		idx = (idx + 1) % mots.length;
+		return m;
+	}
 	const enDecouverte = decouverteEnCours(mots);
 	for (let k = 0; k < mots.length; k++) {
 		const i = (idx + k) % mots.length;
@@ -91,7 +154,8 @@ function renderNext(): void {
 		return;
 	}
 	actes++;
-	const act = prochaineActivite(word, dispoDictee);
+	// Mode ciblé : on impose ce mode ; sinon le parcours choisit l'activité due.
+	const act = seanceMode ?? prochaineActivite(word, dispoDictee);
 	if (act === 'atelier') {
 		renderAtelier(sheets(), word, {
 			onDone: () => {
@@ -140,9 +204,7 @@ function renderMotCache(word: MotOrtho): void {
 
 	const verifier = () => {
 		if (checkAnswer(ex, input.value)) {
-			validerMode(word, 'motCache');
-			saveOrtho(st);
-			addXP(1);
+			reussiteMode(word, 'motCache');
 			(sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
 			input.readOnly = true;
 			reussite(fb, true);
@@ -199,9 +261,7 @@ function renderDictee(word: MotOrtho): void {
 
 	const verifier = () => {
 		if (checkAnswer(ex, input.value)) {
-			validerMode(word, 'dictee');
-			saveOrtho(st);
-			addXP(1);
+			reussiteMode(word, 'dictee');
 			(sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
 			input.readOnly = true;
 			reussite(fb, true);
@@ -290,9 +350,7 @@ function renderTuiles(word: MotOrtho): void {
 		.addEventListener('click', () => {
 			const built = assembled.map((i) => lettres[i]).join('');
 			if (checkAnswer(ex, built)) {
-				validerMode(word, 'tuiles');
-				saveOrtho(st);
-				addXP(1);
+				reussiteMode(word, 'tuiles');
 				(sheets().querySelector('#btnVerifTuiles') as HTMLButtonElement).disabled = true;
 				reussite(fb, true);
 			} else {
@@ -351,9 +409,31 @@ function renderPause(): void {
 		.querySelector('#btnStopSeance')!
 		.addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
 	b.focus();
+	// Mode ciblé : pas de bilan d'étoile → on célèbre les niveaux gagnés à la pause.
+	if (seanceMode) annoncerNiveauSiGagne();
 }
 
 /* ---------- Helpers ---------- */
+/* Réussite d'un mode : +1 XP, et — en parcours complet seulement — validation du
+   mode (l'étoile ne se gagne qu'en faisant la suite ordonnée, pas un mode isolé). */
+function reussiteMode(word: MotOrtho, mode: ModeOrtho): void {
+	if (!seanceMode) {
+		validerMode(word, mode);
+		saveOrtho(st);
+	}
+	addXP(1);
+}
+
+/* Annonce une éventuelle montée de niveau (modale + déblocages), puis met à jour
+   le repère. Utilisé hors bilan (mode ciblé), où il n'y a pas d'écran de fin. */
+function annoncerNiveauSiGagne(): void {
+	const niveauApres = niveauDepuisXP(getXP());
+	if (niveauApres > niveauAvant) {
+		showLevelUp(niveauApres, recompensesEntre(niveauAvant, niveauApres));
+		niveauAvant = niveauApres;
+	}
+}
+
 function reussite(fb: HTMLElement, xpGagne = false): void {
 	const xp = xpGagne ? ' <span class="fb-xp">+1 XP</span>' : '';
 	fb.innerHTML = `<span class="fb-ok">Bravo ! 🎉</span>${xp} `;

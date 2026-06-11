@@ -25,6 +25,14 @@ export function statutMot(mot: MotOrtho, dicteeDispo: boolean): StatutMot {
 	return modesRequis(dicteeDispo).every((m) => mot.validation[m]) ? 'maitrise' : 'enCours';
 }
 
+/* Phase de découverte : au moins un mot de la liste n'a pas encore eu son
+   atelier. Tant qu'elle dure, le parcours ne propose QUE des ateliers, afin de
+   découvrir TOUTE la liste avant de commencer à s'entraîner — l'enfant doit
+   pouvoir voir tous ses mots vite (première dictée dès le lendemain). Voir #69. */
+export function decouverteEnCours(mots: MotOrtho[]): boolean {
+	return mots.some((m) => !m.atelierFait);
+}
+
 /** Prochain mode à valider, dans l'ordre (null si tous les modes requis le sont). */
 export function prochainModeAValider(mot: MotOrtho, dicteeDispo: boolean): ModeOrtho | null {
 	return modesRequis(dicteeDispo).find((m) => !mot.validation[m]) ?? null;

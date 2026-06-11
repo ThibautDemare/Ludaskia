@@ -31,6 +31,7 @@ import {
 	validerMode,
 	marquerAtelierFait,
 	listeEtoilee,
+	decouverteEnCours,
 } from '../src/core/orthographe/runner';
 import { listOrthoLecons, motsDeLecon } from '../src/core/orthographe/lessons';
 import { diffCorrect } from '../src/core/orthographe/diff';
@@ -241,6 +242,17 @@ describe('orthographe — runner (logique pure)', () => {
 		expect(modesRequis(false)).toEqual(['tuiles', 'motCache']);
 		expect(prochainModeAValider(m, false)).toBeNull();
 		expect(statutMot(m, false)).toBe('maitrise');
+	});
+
+	test('phase découverte : vraie tant qu un mot n a pas eu son atelier (#69)', () => {
+		const s = emptyOrthoState();
+		const liste = createListe(s, 'L', [{ mot: 'chat' }, { mot: 'chien' }]);
+		const mots = motsDeListe(s, liste);
+		expect(decouverteEnCours(mots)).toBe(true);
+		marquerAtelierFait(mots[0]);
+		expect(decouverteEnCours(mots)).toBe(true); // un mot reste à découvrir
+		marquerAtelierFait(mots[1]);
+		expect(decouverteEnCours(mots)).toBe(false); // toute la liste est découverte
 	});
 
 	test("mot maîtrisé : activité = un mode (jamais l'atelier)", () => {

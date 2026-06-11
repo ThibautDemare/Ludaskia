@@ -20,7 +20,15 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
 - `main` est **protégée** : **jamais** de commit/push direct dessus. Toute
   modification passe par une **branche + PR** ; la CI doit être verte ; merge en
   **rebase**.
-- Piloter via le CLI **`gh`** (installé et authentifié) : branches, PR, issues.
+- **Issues, PR et milestones → déléguer à l'agent `gestionnaire-github`** dès
+  qu'on veut en ouvrir ou en modifier un. Il connaît déjà les labels, les
+  conventions de langue et le workflow ci-dessous : lui fournir le sujet, il
+  rédige, étiquette, crée et renvoie les URL. **Ne pas appeler `gh` « à la main »
+  pour ça** (même si on a les conventions en tête) ; le réserver aux opérations
+  git brutes (commit, branche, `fetch`, rebase) ou au cas où l'agent serait
+  indisponible.
+- **Référence `gh`** (utilisée par l'agent ; fallback pour les opérations
+  directes) — `gh` est installé et authentifié.
   - **`gh` n'est PAS dans le `PATH`.** L'appeler par son chemin complet, **depuis
     PowerShell** (l'outil Bash ne le voit pas) :
     `& "C:\Program Files\GitHub CLI\gh.exe" <commande>`.

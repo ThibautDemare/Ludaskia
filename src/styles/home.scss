@@ -24,10 +24,25 @@
 .home-grid {
 	display: grid;
 	grid-template-columns: minmax(340px, 460px) 1fr;
-	gap: 36px;
+	/* Colonne gauche = progression (en haut) puis le reste ; colonne droite
+	   (cartes d'accès) sur toute la hauteur. */
+	grid-template-areas:
+		'prog right'
+		'left right';
+	column-gap: 36px;
+	row-gap: 0;
 	align-items: start;
 	text-align: left;
 	margin-top: 10px;
+}
+#progression {
+	grid-area: prog;
+}
+.home-col-left {
+	grid-area: left;
+}
+.home-col-right {
+	grid-area: right;
 }
 .home-col {
 	min-width: 0;
@@ -52,15 +67,36 @@
 	margin: 0 0 18px;
 }
 /* En dessous d'un certain seuil, on repasse en une seule colonne. Sur mobile,
-   on remonte les cartes d'accès (sprint, leçon, bilans) AVANT la progression et
-   les trophées : l'enfant accède d'abord aux exercices. */
+   l'ordre privilégie un accueil chaleureux : la mascotte + le défi du jour
+   d'abord, puis les cartes d'accès (sprint, leçon, bilans), puis le reste de la
+   progression (reprises, objectifs, classements, trophées). */
 @media (max-width: 920px) {
 	.home-grid {
 		grid-template-columns: 1fr;
+		grid-template-areas: none;
 		gap: 8px;
+	}
+	#progression {
+		order: -2;
 	}
 	.home-col-right {
 		order: -1;
+	}
+	/* Le nom de l'app est déjà dans la bannière : on masque le gros titre et le
+	   tagline sur mobile pour faire remonter la mascotte dans le premier écran. */
+	.home-wide > .big,
+	.home-wide > .tagline {
+		display: none;
+	}
+	.home-wide {
+		margin-top: 16px;
+	}
+	/* Mascotte compacte : la carte remplit la colonne et se resserre. */
+	.progress-card {
+		max-width: none;
+		margin: 0 0 8px;
+		padding: 12px 16px;
+		gap: 6px;
 	}
 }
 

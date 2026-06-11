@@ -10,7 +10,11 @@
    history.pushState) pour rester compatible avec file://.
    ============================================================ */
 import { getAllLessons, getLessonById } from '../core/catalog';
+import { defaultMode } from '../core/exercise';
+import type { ExerciseMode } from '../core/exercise';
+import { escapeHTML } from '../core/utils';
 import { buildLessonFiche } from '../core/build';
+import { runLeconQcm } from './lecon-qcm';
 import { setInputCounter, setSessionItems, renderItem } from '../core/items';
 import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
@@ -47,6 +51,12 @@ let sessionRecorded = false; // l'essai en cours a-t-il déjà été enregistré
 export const getSessionRecorded = () => sessionRecorded;
 export const setSessionRecorded = (v: boolean) => {
 	sessionRecorded = v;
+};
+// Mode choisi pour la prochaine leçon lancée (#69), lu et vidé par runLecon.
+// null → mode par défaut du type d'exercice (rétro-compatible : reprise, accès direct).
+let pendingLeconMode: ExerciseMode | null = null;
+export const setPendingLeconMode = (v: ExerciseMode | null) => {
+	pendingLeconMode = v;
 };
 let lastErrors: Item[] = []; // items {text, answer} non réussis lors de la dernière vérification
 export const getLastErrors = () => lastErrors;
@@ -97,10 +107,73 @@ export function showProfiles() {
 export function startLecon(id: string) {
 	const lesson = getLessonById(id);
 	if (!lesson) return;
-	// Une reprise existe pour cette leçon ? → proposer « Continuer / Recommencer ».
+	// Plusieurs modes (ex. conjugaison saisie/QCM) → écran de choix (#69).
+	if ((lesson.exerciseType.modes?.length ?? 0) > 1) {
+		location.hash = 'mode-' + id;
+		return;
+	}
+	// Mono-mode (ex. maths) : pas de choix. Reprise éventuelle → Continuer / Recommencer.
 	maybeRelaunch(leconKey(id), lesson.label, () => {
 		location.hash = 'lecon-' + id;
 	});
+}
+/* Écran de choix du sous-exercice / mode (#69) : gros boutons dérivés des modes
+   du type d'exercice (jamais codés en dur). Le mode conseillé est mis en avant. */
+export function showModeChoice(id: string) {
+	const lesson = getLessonById(id);
+	const opts = lesson?.exerciseType.modes;
+	if (!lesson || !opts || opts.length <= 1) {
+		// Pas de choix réel → lancement direct (cohérent avec le mono-mode).
+		startLecon(id);
+		return;
+	}
+	resetSessionUI();
+	setToolbar({ verify: false, home: true, profile: true });
+	hideMenus();
+	const sheets = document.getElementById('sheets')!;
+	sheets.innerHTML = `<div class="mode-choice">
+    <h2 class="mode-choice-title">Comment veux-tu t'entraîner ?</h2>
+    <p class="mode-choice-lesson">${escapeHTML(lesson.label)}</p>
+    <div class="mode-choice-list">
+      ${opts
+				.map(
+					(
+						m,
+					) => `<button class="mode-btn${m.recommended ? ' recommended' : ''}" data-mode="${m.id}">
+        <span class="mode-btn-ico" aria-hidden="true">${m.icon ?? '▶'}</span>
+        <span class="mode-btn-txt">
+          <span class="mode-btn-label">${escapeHTML(m.label)}</span>
+          ${
+						m.recommended
+							? '<span class="mode-btn-badge">conseillé</span>'
+							: m.hint
+								? `<span class="mode-btn-hint">${escapeHTML(m.hint)}</span>`
+								: ''
+					}
+        </span>
+      </button>`,
+				)
+				.join('')}
+    </div>
+  </div>`;
+	sheets
+		.querySelectorAll<HTMLButtonElement>('.mode-btn')
+		.forEach((btn) => btn.addEventListener('click', () => chooseMode(id, btn.dataset.mode!)));
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* Lance la leçon dans le mode choisi. La saisie (fiche) garde l'offre de reprise ;
+   le QCM (parcours « une question à la fois ») n'est pas repris. */
+function chooseMode(id: string, mode: ExerciseMode) {
+	const lesson = getLessonById(id);
+	if (!lesson) return;
+	setPendingLeconMode(mode);
+	if (lesson.exerciseType.generate(mode).type === 'qcm') {
+		location.hash = 'lecon-' + id;
+	} else {
+		maybeRelaunch(leconKey(id), lesson.label, () => {
+			location.hash = 'lecon-' + id;
+		});
+	}
 }
 export function startSprint() {
 	location.hash = 'sprint-config';
@@ -152,6 +225,10 @@ export function route() {
 	} else if (h.startsWith('lecon-')) {
 		const id = h.slice(6);
 		if (getAllLessons().find((l) => l.id === id)) runLecon(id);
+		else showHomeView();
+	} else if (h.startsWith('mode-')) {
+		const id = h.slice(5);
+		if (getAllLessons().find((l) => l.id === id)) showModeChoice(id);
 		else showHomeView();
 	} else if (h === 'ortho-new') {
 		showOrthoNewView();
@@ -348,6 +425,14 @@ export function runLecon(id: string) {
 	const lesson = getLessonById(id);
 	if (!lesson) {
 		showHomeView();
+		return;
+	}
+	// Mode retenu (choix #69) ou défaut du type d'exercice. Consommé une fois.
+	const mode = pendingLeconMode ?? defaultMode(lesson.exerciseType);
+	pendingLeconMode = null;
+	// Un mode produisant un QCM se joue « une question à la fois » (pas une fiche).
+	if (mode && lesson.exerciseType.generate(mode).type === 'qcm') {
+		runLeconQcm(id, mode);
 		return;
 	}
 	currentMode = 'lecon';

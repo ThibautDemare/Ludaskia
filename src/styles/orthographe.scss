@@ -395,3 +395,134 @@
 	font-size: 1.2rem;
 	margin: 1rem 0;
 }
+
+/* ============================================================
+   Page de relecture « Je relis mes mots » (#80) — étude passive.
+   Une grille de cartes-mots qui réutilise le rendu SVG de l'atelier.
+   ============================================================ */
+.relecture {
+	font-family: var(--ui);
+	max-width: 1100px;
+	margin: 0 auto;
+	text-align: center;
+}
+.relecture-retour {
+	display: inline-block;
+	font: inherit;
+	font-family: var(--ui);
+	color: var(--blue);
+	background: var(--blue-soft);
+	border: 0;
+	border-radius: 10px;
+	padding: 8px 14px;
+	margin: 0 0 0.5rem;
+	cursor: pointer;
+	float: left;
+}
+.relecture-retour:hover {
+	background: #dbe6f6;
+}
+.relecture-titre {
+	font-size: 1.5rem;
+	font-weight: 800;
+	color: var(--blue);
+	margin: 0 0 0.2rem;
+	clear: both;
+}
+.relecture-sous {
+	font-size: 1rem;
+	color: var(--grey);
+	margin: 0 0 0.4rem;
+}
+.relecture-consigne {
+	font-size: 1.05rem;
+	color: var(--muted);
+	margin: 0 auto 1.25rem;
+	max-width: 540px;
+}
+.relecture-vide {
+	color: var(--muted);
+	padding: 2rem 1rem;
+}
+
+/* Grille mobile-first : 1 → 2 → 3 colonnes. Colonnes explicites (et non auto-fit)
+   car la largeur d'une carte dépend du mot le plus long (jamais coupé). */
+.relecture-grille {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 16px;
+	padding: 4px;
+}
+@media (min-width: 600px) {
+	.relecture-grille {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+@media (min-width: 1000px) {
+	.relecture-grille {
+		grid-template-columns: repeat(3, 1fr);
+	}
+}
+
+.relecture-carte {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 16px 20px;
+	background: var(--paper);
+	border-radius: 14px;
+	box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+}
+.relecture-stage {
+	margin: 0.5rem auto;
+}
+/* Mot relu : assez gros pour que les entourages restent nets, mais — contrairement
+   à l'atelier — on laisse le défilement de la page (pas de touch-action: none). */
+.relecture-mot {
+	font-size: 1.8rem;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	white-space: nowrap;
+}
+@media (min-width: 600px) {
+	.relecture-mot {
+		font-size: 2.2rem;
+	}
+}
+.relecture-comme {
+	font-size: 0.95rem;
+	color: var(--grey);
+	margin: 0.4rem 0 0;
+}
+.relecture-aide {
+	font-size: 0.85rem;
+	color: var(--muted);
+	margin: 0.4rem 0 0;
+}
+
+/* Crayon de correction : optionnel, discret mais découvrable. Zone tactile ≥ 44 px. */
+.relecture-crayon {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	width: 44px;
+	height: 44px;
+	border: 0;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.92);
+	color: var(--grey);
+	font-size: 1.1rem;
+	line-height: 1;
+	cursor: pointer;
+	box-shadow: 0 1px 3px rgb(0 0 0 / 22%);
+}
+.relecture-crayon:hover {
+	background: #fff;
+	color: var(--blue);
+}
+.relecture-crayon:focus-visible {
+	outline: 2px solid var(--blue);
+	outline-offset: 2px;
+}

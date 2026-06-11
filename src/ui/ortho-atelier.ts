@@ -15,6 +15,50 @@ import type { Entourage, MotOrtho } from '../core/orthographe/types';
 
 // Palette colorblind-safe (Okabe-Ito).
 const PALETTE = ['#E69F00', '#56B4E9', '#009E73', '#0072B2', '#CC79A7', '#D55E00'];
+const PAD = 6; // marge des rectangles autour des lettres entourées
+
+/* Lettres d'un mot en spans `.atelier-lettre` (indices alignés sur lettresDuMot,
+   espaces inclus → les index d'entourage restent valides). Partagé entre l'atelier
+   et la page de relecture (#80). `diff` souligne les lettres ratées (correction). */
+export function lettresMotHTML(mot: string, diff?: boolean[]): string {
+	return lettresDuMot(mot)
+		.map((l, i) =>
+			l === ' '
+				? `<span class="atelier-lettre atelier-espace" data-i="${i}" data-space="1">&nbsp;</span>`
+				: `<span class="atelier-lettre" data-i="${i}"${diff?.[i] ? ' data-diff="1"' : ''}>${escapeHTML(l)}</span>`,
+		)
+		.join('');
+}
+
+/* Trace les entourages (lecture seule) dans `svg`, calés sur les lettres de `motEl`.
+   Extrait de l'atelier pour un rendu identique en relecture (#80), sans dupliquer le
+   calcul d'offsets ni la palette. Sans effet si le mot n'est pas (encore) dans le DOM. */
+export function dessinerEntourages(
+	motEl: HTMLElement,
+	svg: SVGSVGElement,
+	entourages: Entourage[],
+): void {
+	if (!motEl.isConnected) return;
+	const sp = [...motEl.querySelectorAll<HTMLElement>('.atelier-lettre')];
+	const w = motEl.offsetWidth;
+	const h = motEl.offsetHeight;
+	svg.setAttribute('width', String(w));
+	svg.setAttribute('height', String(h));
+	svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+	svg.innerHTML = entourages
+		.map((e) => {
+			const a = sp[e.debut];
+			const b = sp[e.fin];
+			if (!a || !b) return ''; // entourage hors-bornes (mot modifié) : on l'ignore
+			const x = a.offsetLeft - PAD;
+			const y = a.offsetTop - PAD;
+			const rw = b.offsetLeft + b.offsetWidth - a.offsetLeft + PAD * 2;
+			const rh = a.offsetHeight + PAD * 2;
+			const col = PALETTE[e.couleur % PALETTE.length];
+			return `<rect x="${x}" y="${y}" width="${rw}" height="${rh}" rx="14" ry="16" fill="${col}" fill-opacity="0.22" stroke="${col}" stroke-width="2.5" />`;
+		})
+		.join('');
+}
 
 interface AtelierOpts {
 	onDone: () => void; // appelé au « Continuer » (après mise à jour de mot.entourage)
@@ -60,13 +104,7 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
     <div class="page ortho-run">
       <p class="ortho-run-consigne">${escapeHTML(consigne)}</p>
       <div class="atelier-stage">
-        <div class="atelier-mot" id="atelierMot">${lettres
-					.map((l, i) =>
-						l === ' '
-							? `<span class="atelier-lettre atelier-espace" data-i="${i}" data-space="1">&nbsp;</span>`
-							: `<span class="atelier-lettre" data-i="${i}"${opts.diff?.[i] ? ' data-diff="1"' : ''}>${escapeHTML(l)}</span>`,
-					)
-					.join('')}</div>
+        <div class="atelier-mot" id="atelierMot">${lettresMotHTML(mot.mot, opts.diff)}</div>
         <svg class="atelier-svg" id="atelierSvg"></svg>
       </div>
       <div class="atelier-actions">
@@ -148,27 +186,7 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 	motEl.addEventListener('pointercancel', finDrag);
 
 	function redrawSvg(): void {
-		if (!motEl.isConnected) return;
-		const sp = spans();
-		const w = motEl.offsetWidth;
-		const h = motEl.offsetHeight;
-		svg.setAttribute('width', String(w));
-		svg.setAttribute('height', String(h));
-		svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-		const pad = 6;
-		svg.innerHTML = entourages
-			.map((e) => {
-				const a = sp[e.debut];
-				const b = sp[e.fin];
-				if (!a || !b) return '';
-				const x = a.offsetLeft - pad;
-				const y = a.offsetTop - pad;
-				const rw = b.offsetLeft + b.offsetWidth - a.offsetLeft + pad * 2;
-				const rh = a.offsetHeight + pad * 2;
-				const col = PALETTE[e.couleur % PALETTE.length];
-				return `<rect x="${x}" y="${y}" width="${rw}" height="${rh}" rx="14" ry="16" fill="${col}" fill-opacity="0.22" stroke="${col}" stroke-width="2.5" />`;
-			})
-			.join('');
+		dessinerEntourages(motEl, svg, entourages);
 	}
 
 	host.querySelector('#atelierUndo')!.addEventListener('click', () => {

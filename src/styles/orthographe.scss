@@ -400,6 +400,18 @@
    Page de relecture « Je relis mes mots » (#80) — étude passive.
    Une grille de cartes-mots qui réutilise le rendu SVG de l'atelier.
    ============================================================ */
+/* La relecture est une page de navigation, pas une fiche d'exercice A4 : rendue
+   dans #sheets, elle héritait de la largeur « cahier » (210 mm) et du padding
+   18 mm de .page, ce qui faisait déborder la 3ᵉ colonne hors du cadre. On élargit
+   donc #sheets pour cette page et on allège .page (padding responsive, coins
+   arrondis « UI »). #sheets reste centré, la grille a la place de respirer. */
+.sheets:has(.relecture) {
+	max-width: min(1180px, 96vw);
+}
+.page.relecture {
+	padding: clamp(16px, 4vw, 32px);
+	border-radius: 14px;
+}
 .relecture {
 	font-family: var(--ui);
 	max-width: 1100px;
@@ -445,23 +457,16 @@
 	padding: 2rem 1rem;
 }
 
-/* Grille mobile-first : 1 → 2 → 3 colonnes. Colonnes explicites (et non auto-fit)
-   car la largeur d'une carte dépend du mot le plus long (jamais coupé). */
+/* Grille responsive : le nombre de colonnes s'adapte à la largeur RÉELLE du cadre
+   (auto-fit), et non au viewport — c'est ce qui faisait déborder la 3ᵉ colonne,
+   les media-queries déclenchant 3 colonnes alors que #sheets restait étroit.
+   `min(100%, 18rem)` garantit une seule colonne (jamais de débordement) quand la
+   place manque, tout en gardant des cartes assez larges pour ne couper aucun mot. */
 .relecture-grille {
 	display: grid;
-	grid-template-columns: 1fr;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
 	gap: 16px;
 	padding: 4px;
-}
-@media (min-width: 600px) {
-	.relecture-grille {
-		grid-template-columns: repeat(2, 1fr);
-	}
-}
-@media (min-width: 1000px) {
-	.relecture-grille {
-		grid-template-columns: repeat(3, 1fr);
-	}
 }
 
 .relecture-carte {
@@ -470,7 +475,9 @@
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	padding: 16px 20px;
+	/* Espace en haut réservé au crayon (absolu, coin haut-droit, ~50 px de haut) :
+	   les mots larges (« aujourd'hui », « auparavant ») ne passent plus dessous. */
+	padding: 52px 20px 16px;
 	background: var(--paper);
 	border-radius: 14px;
 	box-shadow: 0 2px 8px rgb(0 0 0 / 10%);

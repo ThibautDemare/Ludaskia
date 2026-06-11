@@ -5,11 +5,20 @@
    L'orchestration (séquence, déblocage, étoile…) vit dans le runner,
    pas ici. Voir docs/design-orthographe.md.
    ============================================================ */
-import type { Exercise, ExerciseType } from '../exercise';
+import type { Exercise, ExerciseType, ModeOption } from '../exercise';
 import { checkAnswer } from '../exercise';
 import { sample } from '../utils';
 import type { MotOrtho, ModeOrtho } from './types';
-import { MODES_ORTHO } from './types';
+
+/* Modes d'entraînement ciblés présentables à l'enfant, dans l'ordre d'étayage
+   décroissant (tuiles → mot caché → dictée). Le mode par défaut d'une liste
+   reste le parcours complet (orchestré par le runner), pas un mode isolé : aucun
+   `recommended` ici. Voir issue #69 et docs/design-orthographe.md. */
+export const ORTHO_MODE_OPTIONS: ModeOption[] = [
+	{ id: 'tuiles', label: 'Je remets les lettres en ordre', icon: '🧩' },
+	{ id: 'motCache', label: "Je regarde puis j'écris", icon: '👁️' },
+	{ id: 'dictee', label: "J'écoute et j'écris", icon: '🔊' },
+];
 
 /** Découpe un mot en lettres (NFC → une lettre accentuée = un seul caractère). */
 export function lettresDuMot(mot: string): string[] {
@@ -42,7 +51,7 @@ export function genExerciseOrtho(mot: MotOrtho, mode: ModeOrtho): Exercise {
 /** ExerciseType mode-aware pour un mot (mode par défaut : motCache). */
 export function orthoType(mot: MotOrtho): ExerciseType {
 	return {
-		modes: [...MODES_ORTHO],
+		modes: ORTHO_MODE_OPTIONS,
 		generate: (mode) => genExerciseOrtho(mot, (mode ?? 'motCache') as ModeOrtho),
 		check: checkAnswer,
 	};

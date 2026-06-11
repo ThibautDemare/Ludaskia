@@ -178,7 +178,8 @@ describe("orthographe — génération d'exercice", () => {
 		const s = emptyOrthoState();
 		const mot = addOrGetMot(s, { mot: 'fleur' });
 		const t = orthoType(mot);
-		expect(t.modes).toEqual(['motCache', 'tuiles', 'dictee']);
+		// Descripteurs de modes ciblés, dans l'ordre d'étayage (tuiles → mot caché → dictée).
+		expect(t.modes?.map((m) => m.id)).toEqual(['tuiles', 'motCache', 'dictee']);
 		expect(t.generate('tuiles').type).toBe('tuiles');
 		expect(t.generate().type).toBe('motCache');
 	});

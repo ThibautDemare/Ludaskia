@@ -8,6 +8,7 @@
    ============================================================ */
 import { escapeHTML } from '../core/utils';
 import { getLessonById, genLessonItem } from '../core/catalog';
+import { hasMode } from '../core/exercise';
 import type { Item } from '../core/items';
 import { checkItemAnswer } from '../core/items';
 import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
@@ -51,7 +52,7 @@ export function runRevisionEspacee(): void {
 			}
 			const lesson = getLessonById(it.id);
 			if (!lesson) continue;
-			if (lesson.exerciseType.modes?.includes('qcm')) {
+			if (hasMode(lesson.exerciseType, 'qcm')) {
 				const ex = lesson.exerciseType.generate('qcm');
 				if (ex.type === 'qcm')
 					items.push({

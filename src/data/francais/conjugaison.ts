@@ -12,7 +12,7 @@
    NB : dossier `francais` sans cédille pour des chemins d'import
    ASCII portables ; le libellé affiché reste « Français ».
    ============================================================ */
-import type { Exercise, ExerciseType, ExerciseMode } from '../../core/exercise';
+import type { Exercise, ExerciseType, ExerciseMode, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { rnd, sample } from '../../core/utils';
 import type { SchoolLevel } from '../../core/catalog';
@@ -214,6 +214,19 @@ export function getVerb(verbId: string): VerbDef | undefined {
 export type ConjMode = 'saisie' | 'qcm';
 export const CONJ_MODES: readonly ConjMode[] = ['saisie', 'qcm'];
 
+/* Modes présentables à l'enfant : la saisie (production) est le mode conseillé,
+   le QCM (reconnaissance) un allègement assumé pour démarrer. Ordre d'affichage :
+   conseillé d'abord. Voir issue #69. */
+export const CONJ_MODE_OPTIONS: ModeOption[] = [
+	{ id: 'saisie', label: "J'écris le verbe", icon: '✏️', recommended: true },
+	{
+		id: 'qcm',
+		label: 'Je choisis la bonne réponse',
+		hint: 'plus facile pour commencer',
+		icon: '✅',
+	},
+];
+
 /* Nombre total de propositions d'un QCM (1 bonne réponse + distracteurs). */
 const QCM_CHOICES = 4;
 
@@ -248,7 +261,7 @@ function qcmDistractors(verb: VerbDef, tense: Tense, person: number, correct: st
 export function conjugationType(verbId: string, tense: Tense): ExerciseType {
 	const verb = getVerb(verbId)!;
 	return {
-		modes: [...CONJ_MODES],
+		modes: CONJ_MODE_OPTIONS,
 		generate(mode?: ExerciseMode): Exercise {
 			const person = rnd(0, 5);
 			const form = verb.forms[tense][person];

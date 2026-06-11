@@ -7,18 +7,9 @@ import type { Item } from '../core/items';
 import type { Trophy } from '../core/rewards';
 import { buildPrintableDOM } from '../core/lessons';
 import type { PrintScope } from '../core/lessons';
-import {
-	updateStreak,
-	recordLessonStats,
-	recordLessonResult,
-	recordRun,
-	streakSuffix,
-	addXP,
-	getXP,
-	niveauDepuisXP,
-} from '../core/progress';
-import { updateGoal, evaluateTrophies } from '../core/rewards';
-import { recompensesEntre, type Recompense } from '../core/unlocks';
+import { streakSuffix } from '../core/progress';
+import { recordLessonRun } from '../core/lesson-run';
+import type { Recompense } from '../core/unlocks';
 import { stopChrono } from './chrono';
 import { finishResume } from './resume';
 import { showCelebration, showLevelUp } from './effects';
@@ -106,41 +97,22 @@ export function verify() {
 	const celeb: { icon: string; text: string }[] = []; // récompenses à annoncer dans la modale
 	if (recordable && enough && !getSessionRecorded()) {
 		setSessionRecorded(true);
-		streakDays = updateStreak().days;
-		recordLessonStats(perLesson);
-		const niveauAvant = niveauDepuisXP(getXP());
-		addXP(ok);
-		const niveauApres = niveauDepuisXP(getXP());
-		niveauGagne = niveauApres > niveauAvant ? niveauApres : 0;
-		// Déblocages de tous les paliers franchis (gère un saut de plusieurs niveaux).
-		recompensesNiv = recompensesEntre(niveauAvant, niveauApres);
-		let perfect = false;
-		if (currentMode === 'lecon') {
-			perfect = ok === inputs.length; // toutes les réponses justes
-			const res = recordLessonResult(currentLessonId!, perfect);
-			starInfo = { perfect, newStar: res.newStar, count: res.count };
-		} else {
-			// Bilan (express/complet) : on enregistre l'essai — il compte pour les
-			// objectifs de régularité et les trophées cumulatifs — mais SANS
-			// classement ni médaille. Les leçons d'un bilan varient à chaque fois :
-			// un « record » comparable n'aurait pas de sens (#35). medalInfo reste nul.
-			recordRun(currentMode, ok, inputs.length, ms);
-		}
-		// Objectif du jour + trophées (évalués après l'enregistrement de l'essai)
-		goalRes = updateGoal({
+		// Enregistrement centralisé (parité avec les autres modes de rendu, cf. #69).
+		const out = recordLessonRun({
 			mode: currentMode,
-			newStar: !!(starInfo && starInfo.newStar),
-			perfect,
 			lessonId: currentLessonId,
-			lessonPct: Math.round((ok / inputs.length) * 100),
+			ok,
+			questionCount: inputs.length,
+			ms,
+			perLesson,
 		});
-		newTrophies = evaluateTrophies();
-		// Liste des récompenses obtenues (sert à la modale + confettis)
-		// Le passage de niveau a sa propre modale dédiée (voir plus bas).
-		if (starInfo && starInfo.newStar)
-			celeb.push({ icon: '⭐', text: 'Étoile gagnée pour cette leçon !' });
-		newTrophies.forEach((t) => celeb.push({ icon: t.icon, text: `Nouveau trophée : ${t.title}` }));
-		if (goalRes && goalRes.justDone) celeb.push({ icon: '🎯', text: 'Objectif du jour réussi !' });
+		starInfo = out.starInfo;
+		streakDays = out.streakDays;
+		goalRes = out.goalRes;
+		niveauGagne = out.niveauGagne;
+		recompensesNiv = out.recompensesNiv;
+		newTrophies = out.newTrophies;
+		celeb.push(...out.celeb);
 	}
 
 	// Bandeau résultat en tête de la zone

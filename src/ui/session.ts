@@ -22,6 +22,8 @@ import {
 	setLastErrors,
 	getLastErrors,
 	startRevision,
+	runLecon,
+	goHome,
 } from './navigation';
 
 /* ---------- Vérification (arrête le chrono) ---------- */
@@ -153,9 +155,22 @@ export function verify() {
 	if (lastErrors.length) {
 		html += `<button class="rb-redo" id="btnRedo">↻ Réviser mes erreurs (${lastErrors.length})</button>`;
 	}
+	// Fin de leçon : recommencer un tour (s'entraîner encore) ou quitter (#69).
+	if (currentMode === 'lecon' && currentLessonId) {
+		html += `<button class="rb-redo" id="btnRecommencer">↻ Recommencer</button>`;
+		html += `<button class="rb-quit" id="btnQuitter">🏠 Quitter</button>`;
+	}
 	banner.innerHTML = html;
 	const redo = banner.querySelector('#btnRedo');
 	if (redo) redo.addEventListener('click', startRevision);
+	const recommencer = banner.querySelector('#btnRecommencer');
+	if (recommencer)
+		recommencer.addEventListener('click', () => {
+			banner.remove(); // le bandeau est frère de #sheets : runLecon ne l'efface pas
+			runLecon(currentLessonId!);
+		});
+	const quitter = banner.querySelector('#btnQuitter');
+	if (quitter) quitter.addEventListener('click', goHome);
 	const sheets = document.getElementById('sheets')!;
 	sheets.parentNode!.insertBefore(banner, sheets);
 	// Récompenses : modale explicite (+ confettis) pour qu'on sache ce qu'on a gagné.

@@ -129,6 +129,11 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   leçons maths/conjugaison.
 - **`revision-select.ts`** — sélection des éléments **dus** (mots + leçons),
   **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`).
+- **`revision-migrate.ts`** — **reprise** de l'historique vers la révision : à
+  l'activation d'un profil (`applyActive`), les leçons déjà notées et les mots
+  déjà en banque sans état SR entrent en rotation, **datés J-1** → dus dès le jour
+  même (`migrateRevisions` ; backfills idempotents dans `progress.ts` /
+  `orthographe/store.ts`). Rattrape l'activité antérieure à #45.
 - **`progress.ts`** — records de bilans (`recordRun`, `cmpRun` « score puis
   temps »), série (`updateStreak`, `streakSuffix`), étoiles
   (`recordLessonResult`, `starsEarned`), stats par leçon (`recordLessonStats`,

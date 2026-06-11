@@ -128,8 +128,13 @@ import {
 	avancerEtat,
 	PALIER_ACQUIS,
 	REVISION_INTERVALLES,
+	JOUR,
 } from '../src/core/revision';
 import { selectDueGroups, countDue } from '../src/core/revision-select';
+import { loadLessonRevisions, backfillLessonRevisions } from '../src/core/progress';
+import { loadOrtho, saveOrtho, backfillMotRevisions } from '../src/core/orthographe/store';
+import { migrateRevisions } from '../src/core/revision-migrate';
+import type { OrthoState } from '../src/core/orthographe/types';
 import {
 	RANGS,
 	titreDuNiveau,
@@ -1211,6 +1216,47 @@ describe('Révision espacée (issue #45)', () => {
 		);
 		const total = groups.reduce((n, g) => n + g.items.length, 0);
 		expect(total).toBe(5);
+	});
+});
+
+describe('Reprise vers la révision espacée (#45)', () => {
+	const NOW = 1_700_000_000_000;
+	// Un mot « pré-fonctionnalité » : présent en banque, sans état de révision.
+	function orthoSansRevision(): OrthoState {
+		return {
+			banque: { w1: { id: 'w1', mot: 'caillou', revision: undefined as any } as any },
+			listes: [],
+			motIdParForme: { caillou: 'w1' },
+		};
+	}
+
+	test('backfillMotRevisions : mot sans état → dû dès aujourd’hui (daté J-1)', () => {
+		const state = orthoSansRevision();
+		expect(backfillMotRevisions(state, NOW - JOUR)).toBe(true);
+		expect(estDu(state.banque.w1.revision, NOW)).toBe(true);
+		// Idempotent : un 2e passage ne change plus rien.
+		expect(backfillMotRevisions(state, NOW - JOUR)).toBe(false);
+	});
+
+	test('backfillLessonRevisions : leçon déjà notée mais hors rotation → due (J-1)', () => {
+		api.recordLessonStats({ 'math-doubles': { ok: 8, total: 10 } });
+		// recordLessonStats l'a entrée à J+1 (pas due) ; on simule l'absence d'état SR.
+		api.lsSet('ludaskia_lessonRevision', {});
+		backfillLessonRevisions(NOW - JOUR);
+		const rev = loadLessonRevisions();
+		expect(estDu(rev['math-doubles'], NOW)).toBe(true);
+		// Idempotent : on ne réécrase pas une leçon déjà en rotation.
+		const snapshot = JSON.stringify(rev);
+		backfillLessonRevisions(NOW - JOUR);
+		expect(JSON.stringify(loadLessonRevisions())).toBe(snapshot);
+	});
+
+	test('migrateRevisions : leçons notées + mots en banque deviennent dus', () => {
+		api.recordLessonStats({ 'math-doubles': { ok: 8, total: 10 } });
+		api.lsSet('ludaskia_lessonRevision', {}); // état d'avant la fonctionnalité
+		saveOrtho(orthoSansRevision());
+		migrateRevisions(NOW);
+		expect(countDue(loadOrtho(), loadLessonRevisions(), NOW)).toBe(2);
 	});
 });
 

@@ -180,6 +180,17 @@ export function enterLessonsRevision(lessonIds: string[], now: number) {
 	}
 	if (changed) saveLessonRevisions(all);
 }
+/* Reprise : injecte en rotation les leçons déjà rencontrées (stats présentes)
+   mais jamais entrées en révision espacée — activité antérieure à l'arrivée du
+   mode Révision, qu'aucune migration ne rattrapait. `now` doit être daté de J-1
+   par l'appelant → 1er re-test échu dès aujourd'hui (leçons dues immédiatement).
+   Idempotent : `enterLessonsRevision` ne touche pas les leçons déjà en rotation. */
+export function backfillLessonRevisions(now: number) {
+	const stats = loadLessonStats();
+	const ids = Object.keys(stats).filter((id) => (stats[id]?.questions ?? 0) > 0);
+	enterLessonsRevision(ids, now);
+}
+
 /* Met à jour l'état SR d'une leçon après une réponse en révision. */
 export function avancerLessonRevision(lessonId: string, reussi: boolean, now: number) {
 	const all = loadLessonRevisions();

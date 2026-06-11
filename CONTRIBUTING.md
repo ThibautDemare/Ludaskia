@@ -1,8 +1,8 @@
 # Contribuer à Ludaskia
 
 Merci de contribuer ! Ce document décrit le **process de développement** du
-projet. (Pour l'architecture technique, voir `CLAUDE.md` — et à terme
-`docs/ARCHITECTURE.md`.)
+projet. (Pour l'architecture technique, voir `docs/ARCHITECTURE.md` ; pour les
+consignes de contribution destinées aux sessions agent, `CLAUDE.md`.)
 
 ## En bref
 
@@ -21,8 +21,8 @@ Issue → branche → Pull Request → CI verte → **rebase-merge**.
 3. **Commits** — format *Conventional Commits*, en anglais (voir plus bas).
 4. **Pull Request** — ouvrir vers `main` et lier l'issue avec `Closes #N` dans la
    description (l'issue se ferme automatiquement au merge).
-5. **CI** — les checks doivent être **verts** pour fusionner *(intégration
-   continue à venir avec la migration outillage, voir issue #1)*.
+5. **CI** — le workflow `ci.yml` enchaîne `format:check → lint → typecheck →
+   test` sur chaque PR ; tous les checks doivent être **verts** pour fusionner.
 6. **Merge** — **rebase uniquement** (squash et merge-commit sont désactivés au
    niveau du dépôt). La branche est supprimée automatiquement après le merge.
 
@@ -30,15 +30,29 @@ Issue → branche → Pull Request → CI verte → **rebase-merge**.
 
 ### Labels
 
+Toute issue porte **au moins un label de type**, **exactement une priorité** et
+**exactement un effort**. Vérifier les labels réels du dépôt via
+`gh label list`.
+
+**Type** (un ou plusieurs) :
+
 | Label | Usage |
 |-------|-------|
-| `bug` | Quelque chose ne fonctionne pas |
-| `enhancement` | Nouvelle fonctionnalité ou amélioration |
-| `refacto` | Restructuration sans nouvelle fonctionnalité visible |
+| `bug` | Dysfonctionnement (« ça ne marche pas ») |
+| `enhancement` | Nouvelle fonctionnalité |
+| `polish` | Existant fonctionnel à peaufiner (sous-optimal, obsolète, à mettre à jour) |
+| `refacto` | Restructuration sans nouveauté visible |
 | `architecture` | Changement structurel fondateur |
 | `content` | Ajout de données ou d'exercices |
 | `gamification` | Trophées, XP, objectifs, récompenses |
 | `documentation` | Documentation |
+
+**Priorité** (un seul) : `priority: high` · `priority: medium` · `priority: low`.
+
+**Effort** (un seul) : `effort: low` · `effort: medium` · `effort: high`.
+
+Génériques GitHub au besoin : `duplicate`, `question`, `good first issue`,
+`help wanted`, `invalid`, `wontfix`.
 
 Appliquer le(s) label(s) le(s) plus précis à chaque issue et PR.
 
@@ -82,12 +96,14 @@ Les commits ne portent **aucune attribution automatique** (configuré dans
 
 ## Lancer le projet
 
-> ⚠️ Ces commandes évolueront avec la migration vers Vite / TypeScript / SCSS
-> (voir issue #1).
+Stack **TypeScript + Vite + SCSS**, tests **Vitest**. Prérequis : Node ≥ 20.
 
-- **Lancer l'app** : ouvrir `index.html` (double-clic) ou via un serveur statique.
-- **Tests** : `node tests/run.js` (aucune dépendance ; code de sortie `1` si un
-  test échoue). À lancer après toute modification de logique.
+- **Installer** : `npm install`.
+- **Lancer l'app** : `npm run dev` (serveur de dev + HMR).
+- **Build de prod** : `npm run build` (→ `dist/`).
+- **Tests** : `npm test` (Vitest). À lancer après toute modification de logique.
+- **Avant de pousser** : `npm run typecheck`, `npm run lint`, `npm test` (la CI
+  vérifie `format:check → lint → typecheck → test`).
 
 ## Langues
 

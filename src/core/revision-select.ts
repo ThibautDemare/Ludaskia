@@ -5,7 +5,7 @@
      - mots d'orthographe (OrthoState.banque[].revision) ;
      - leçons maths/conjugaison (Record<lessonId, EtatRevision>).
    ============================================================ */
-import { estDu, REVISION_PLAFOND } from './revision';
+import { estDu, PALIER_ACQUIS, REVISION_PLAFOND } from './revision';
 import { getLessonById, CATEGORIES, ORTHO_CATEGORY_ID } from './catalog';
 import type { OrthoState, EtatRevision } from './orthographe/types';
 
@@ -53,6 +53,41 @@ function collectDue(
 		}
 	}
 	return due.sort((a, b) => a.due - b.due);
+}
+
+/* Date (ms) du prochain re-test À VENIR parmi les éléments en rotation (mots +
+   leçons non acquis), ou `null` si rien n'est programmé : banque vierge, ou tout
+   acquis. Sert à l'état « rien à réviser » de l'accueil pour annoncer l'échéance.
+   Les éléments déjà dus (échéance passée) sont ignorés ici — ils relèvent de
+   `countDue`. Les leçons orphelines (id absent du catalogue) sont écartées, comme
+   dans la sélection. */
+export function prochaineEcheance(
+	ortho: OrthoState,
+	lessonRevisions: Record<string, EtatRevision>,
+	now: number,
+): number | null {
+	let min: number | null = null;
+	const consider = (e: EtatRevision | undefined | null) => {
+		if (!e || e.palier >= PALIER_ACQUIS || e.prochaineRevision == null) return;
+		if (e.prochaineRevision <= now) return; // déjà dû
+		if (min == null || e.prochaineRevision < min) min = e.prochaineRevision;
+	};
+	for (const id in ortho.banque) consider(ortho.banque[id].revision);
+	for (const id in lessonRevisions) {
+		if (getLessonById(id)) consider(lessonRevisions[id]);
+	}
+	return min;
+}
+
+/* Y a-t-il au moins un élément en rotation (mot ou leçon connue avec un état SR) ?
+   Distingue « profil neuf, rien d'appris » de « tout est à jour / acquis ». */
+export function aDesRevisions(
+	ortho: OrthoState,
+	lessonRevisions: Record<string, EtatRevision>,
+): boolean {
+	for (const id in ortho.banque) if (ortho.banque[id].revision) return true;
+	for (const id in lessonRevisions) if (getLessonById(id)) return true;
+	return false;
 }
 
 /* Nombre total d'éléments dus (pour la carte d'accueil ; non plafonné). */

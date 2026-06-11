@@ -232,6 +232,18 @@ html.anim-reduced .mascotte-static {
 .card-record strong {
 	color: var(--blue);
 }
+/* État « rien à réviser » : réussite valorisée, pas un creux grisé. */
+.card-record .rev-ok {
+	display: block;
+	color: var(--ok);
+	font-weight: 700;
+}
+.card-record .rev-next,
+.card-record .rev-empty {
+	display: block;
+	color: var(--grey);
+	margin-top: 4px;
+}
 
 /* Classements (podium + progression) */
 .boards {

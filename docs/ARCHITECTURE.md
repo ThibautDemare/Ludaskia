@@ -128,7 +128,9 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   en paramètre). État `EtatRevision` partagé par les mots d'orthographe et les
   leçons maths/conjugaison.
 - **`revision-select.ts`** — sélection des éléments **dus** (mots + leçons),
-  **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`).
+  **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`) ;
+  `prochaineEcheance`/`aDesRevisions` alimentent l'état « rien à réviser » de
+  l'accueil (carte conservée mais non actionnable, message valorisant + horizon).
 - **`revision-migrate.ts`** — **reprise** de l'historique vers la révision : à
   l'activation d'un profil (`applyActive`), les leçons déjà notées et les mots
   déjà en banque sans état SR entrent en rotation, **datés J-1** → dus dès le jour

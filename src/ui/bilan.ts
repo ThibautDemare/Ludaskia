@@ -3,9 +3,16 @@
    Suit le même pattern que sprint.ts (dépendance circulaire
    volontaire avec navigation.ts — valide en ES modules).
    ============================================================ */
-import { getAllLessons, getLessonsByCategory, CATEGORIES, SUBJECTS } from '../core/catalog';
+import {
+	getAllLessons,
+	getLessonsByCategory,
+	bilanMode,
+	CATEGORIES,
+	SUBJECTS,
+} from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { loadBilans, saveBilan, deleteBilan } from '../core/bilans';
+import { startCustomSprint } from './sprint';
 import { fichesPagesHTML } from '../core/lessons';
 import { bilanBlocksForIds, buildFichesForIds } from '../core/build';
 import { setInputCounter, setSessionItems, setRenderLesson, renderItem } from '../core/items';
@@ -109,10 +116,14 @@ function readFormConfig(form: HTMLElement): BilanConfig | null {
 		(el) => el.value,
 	);
 	if (!lessonIds.length) return null;
+	const modeEl = form.querySelector<HTMLInputElement>('.bc-mode-radio:checked');
+	const mode = modeEl?.value === 'sprint' ? 'sprint' : 'bilan';
 	const nbqEl = form.querySelector<HTMLInputElement>('.bc-nbq-radio:checked');
 	const nbqRaw = nbqEl ? nbqEl.value : '3';
+	// En sprint, le nombre de questions par leçon n'a pas de sens (le sprint est
+	// borné par le temps) : on garde une valeur neutre, ignorée au lancement.
 	const questionsPerLesson = nbqRaw === 'all' ? ('all' as const) : Number(nbqRaw);
-	return { id: '', label: 'Bilan personnalisé', lessonIds, questionsPerLesson };
+	return { id: '', label: 'Bilan personnalisé', lessonIds, questionsPerLesson, mode };
 }
 
 function genId(): string {
@@ -183,10 +194,22 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 		? `${category!.label} ${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}`
 		: '';
 	const runLabel = scoped ? `Bilan — ${category!.label}` : 'Bilan personnalisé';
+	const sprintLabel = scoped ? `Sprint — ${category!.label}` : 'Sprint personnalisé';
+
+	const modeItem = (value: string, icon: string, title: string, sub: string) =>
+		`<label class="bc-mode-item">
+      <input type="radio" name="bcMode" class="bc-mode-radio" value="${value}"${value === 'bilan' ? ' checked' : ''}>
+      <span>${icon} ${title} <span class="bc-mode-sub">${sub}</span></span>
+    </label>`;
 
 	el.innerHTML = `
     <div class="bilan-config" id="bilanConfigForm">
       ${scoped ? `<p class="bc-scope">Catégorie : <strong>${escapeHTML(category!.label)}</strong></p>` : ''}
+      <div class="bc-section-title">Que veux-tu faire ?</div>
+      <div class="bc-mode">
+        ${modeItem('bilan', '🌱', 'Tranquille', 'à ton rythme')}
+        ${modeItem('sprint', '⏱️', 'Sprint', '5 min chrono')}
+      </div>
       <div class="bc-section-title">Leçons à inclure</div>
       <div class="bc-top-actions">
         <button class="bc-action-btn" id="bcSelectAll">✓ Tout choisir</button>
@@ -194,12 +217,14 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
       </div>
       ${lessonsMarkup}
 
-      <div class="bc-section-title">Questions par leçon</div>
-      <div class="bc-nbq">
-        ${nbqItem('3', '🐢', 'Rapide', '3')}
-        ${nbqItem('5', '🚶', 'Moyen', '5')}
-        ${nbqItem('10', '🏃', 'Costaud', '10')}
-        ${nbqItem('all', '🎯', 'Tout', '')}
+      <div id="bcNbqSection">
+        <div class="bc-section-title">Questions par leçon</div>
+        <div class="bc-nbq">
+          ${nbqItem('3', '🐢', 'Rapide', '3')}
+          ${nbqItem('5', '🚶', 'Moyen', '5')}
+          ${nbqItem('10', '🏃', 'Costaud', '10')}
+          ${nbqItem('all', '🎯', 'Tout', '')}
+        </div>
       </div>
 
       <div class="bc-run-row">
@@ -242,6 +267,21 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 	el.querySelector('#bcSelectAll')!.addEventListener('click', () => setAll(true));
 	el.querySelector('#bcSelectNone')!.addEventListener('click', () => setAll(false));
 
+	// Mode sprint (#64) : le sprint est borné par le temps, le réglage « questions
+	// par leçon » et l'impression d'un bilan papier n'ont pas de sens → masqués.
+	const nbqSection = el.querySelector<HTMLElement>('#bcNbqSection')!;
+	const printBtn = el.querySelector<HTMLElement>('#bcPrint')!;
+	const applyMode = () => {
+		const sprint =
+			form.querySelector<HTMLInputElement>('.bc-mode-radio:checked')?.value === 'sprint';
+		nbqSection.hidden = sprint;
+		printBtn.hidden = sprint;
+	};
+	applyMode();
+	form
+		.querySelectorAll<HTMLInputElement>('.bc-mode-radio')
+		.forEach((r) => r.addEventListener('change', applyMode));
+
 	el.querySelector('#bcRun')!.addEventListener('click', () => {
 		const config = readFormConfig(form);
 		if (!config) {
@@ -249,8 +289,13 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 			return;
 		}
 		errEl.textContent = '';
-		config.label = runLabel;
-		startBilan(config, customBilanCtx(config, categoryId ?? null));
+		if (bilanMode(config) === 'sprint') {
+			config.label = sprintLabel;
+			startCustomSprint(config);
+		} else {
+			config.label = runLabel;
+			startBilan(config, customBilanCtx(config, categoryId ?? null));
+		}
 	});
 
 	// Chemin B (#40) : imprimer le bilan tel que configuré, sans le lancer.
@@ -306,14 +351,20 @@ export function renderFavoris(el: HTMLElement | null): void {
 	}
 	const items = bilans
 		.map((b) => {
-			const nbq =
-				b.questionsPerLesson === 'all'
-					? 'toutes les questions'
-					: `${b.questionsPerLesson} question${(b.questionsPerLesson as number) > 1 ? 's' : ''}/leçon`;
+			const nLessons = `${b.lessonIds.length} leçon${b.lessonIds.length > 1 ? 's' : ''}`;
+			// Un favori sprint (#64) affiche son chrono ; un bilan, ses questions/leçon.
+			const detail =
+				bilanMode(b) === 'sprint'
+					? `⏱️ Sprint · 5 min · ${nLessons}`
+					: `🌱 ${nLessons} · ${
+							b.questionsPerLesson === 'all'
+								? 'toutes les questions'
+								: `${b.questionsPerLesson} question${(b.questionsPerLesson as number) > 1 ? 's' : ''}/leçon`
+						}`;
 			return `<div class="favori-item">
         <div class="favori-info">
           <div class="favori-name">${escapeHTML(b.label)}</div>
-          <div class="favori-meta">${b.lessonIds.length} leçon${b.lessonIds.length > 1 ? 's' : ''} · ${nbq}</div>
+          <div class="favori-meta">${detail}</div>
         </div>
         <div class="favori-btns">
           <button class="favori-btn favori-btn-run" data-run="${b.id}">▶ Lancer</button>
@@ -328,7 +379,9 @@ export function renderFavoris(el: HTMLElement | null): void {
 	el.querySelectorAll<HTMLButtonElement>('[data-run]').forEach((btn) => {
 		btn.addEventListener('click', () => {
 			const config = loadBilans().find((b) => b.id === btn.dataset.run);
-			if (config) startBilan(config, favoriBilanCtx(config));
+			if (!config) return;
+			if (bilanMode(config) === 'sprint') startCustomSprint(config);
+			else startBilan(config, favoriBilanCtx(config));
 		});
 	});
 	el.querySelectorAll<HTMLButtonElement>('[data-del]').forEach((btn) => {

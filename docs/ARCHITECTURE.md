@@ -185,8 +185,10 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   « Je choisis mes leçons » (bilan sur mesure scopé à la catégorie).
 - **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, categoryId?)`
   (global, ou scopé à une catégorie via `#bilan-cat-<id>` — liste à plat,
-  pensée tablette), choix du nombre de questions par intention, favoris
-  (`renderFavoris`), exécution (`runBilanConfig`).
+  pensée tablette), choix **bilan / sprint** (#64 : `BilanConfig.mode`, défaut
+  `bilan`), choix du nombre de questions par intention (masqué en sprint),
+  favoris (`renderFavoris`), exécution (`runBilanConfig`). Le mode sprint
+  délègue à `startCustomSprint` (la sélection alimente le tirage).
 - **`navigation.ts`** — routing par hash (`route`), vues (`showHomeView`,
   `showMatieresView`/`showMatiereView`/`showCategorieView`,
   `showSprintConfigView`, `showBilanCustomView`, `showProfilesView`,
@@ -197,7 +199,8 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   fois », **feedback immédiat**, barre de progression, **sans chrono** ; enregistre
   via `recordLessonRun` (parité avec la saisie). Réutilise les composants `.sprint-*`.
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
-  **filtrable** (toutes matières / une matière / une catégorie) via un écran de
+  **filtrable** (toutes matières / une matière / une catégorie / **une sélection
+  précise de leçons** via `startCustomSprint`, #64) via un écran de
   configuration ; correction par `checkItemAnswer` (numérique ou texte).
 - **`session.ts`** — `verify` (correction + enregistrement), saisie clavier,
   impression contextuelle (#40) : **chemin A** `printAll()` imprime l'écran courant

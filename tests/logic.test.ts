@@ -108,6 +108,8 @@ import {
 	getLessonsBySubject,
 	genLessonItem,
 	getLessonById,
+	lessonsForIds,
+	bilanMode,
 } from '../src/core/catalog';
 import { checkItemAnswer } from '../src/core/items';
 import { checkAnswer } from '../src/core/exercise';
@@ -282,6 +284,8 @@ const api = {
 	PROFILE_EMOJIS,
 	exportProfiles,
 	importProfiles,
+	lessonsForIds,
+	bilanMode,
 };
 
 // Remet l'environnement à neuf (état module + localStorage vierges) avant chaque test.
@@ -884,6 +888,23 @@ describe('Sprint', () => {
 		});
 		expect(body7.includes('sprint-free')).toBe(false);
 		expect(body7.includes('id="sprintInput"')).toBe(true);
+	});
+});
+
+describe('Sélection de leçons & sprint personnalisé (#64)', () => {
+	test('lessonsForIds : résout dans l’ordre demandé et ignore les inconnus', () => {
+		const out = api.lessonsForIds(['math-doubles', 'inconnue-xyz', 'math-tables-addition']);
+		expect(out.map((l) => l.id)).toEqual(['math-doubles', 'math-tables-addition']);
+	});
+	test('lessonsForIds : liste vide ou 100 % inconnus → []', () => {
+		expect(api.lessonsForIds([])).toEqual([]);
+		expect(api.lessonsForIds(['rien', 'non-plus'])).toEqual([]);
+	});
+	test('bilanMode : favori legacy sans mode = bilan ; mode sprint respecté', () => {
+		const base = { id: 'x', label: 'L', lessonIds: ['math-doubles'], questionsPerLesson: 3 };
+		expect(api.bilanMode(base)).toBe('bilan'); // migration : pas de champ → bilan
+		expect(api.bilanMode({ ...base, mode: 'bilan' })).toBe('bilan');
+		expect(api.bilanMode({ ...base, mode: 'sprint' })).toBe('sprint');
 	});
 });
 

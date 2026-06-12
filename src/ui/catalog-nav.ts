@@ -20,7 +20,7 @@ import { listOrthoLecons, type LeconOrthoRef } from '../core/orthographe/lessons
 import { escapeHTML } from '../core/utils';
 import { lessonCardHTML } from './render';
 import { startCategorySprint } from './sprint';
-import { startBilan, categoryBilanCtx } from './bilan';
+import { startBilan, categoryBilanCtx, renderFavoris } from './bilan';
 import { renderReprises } from './resume';
 import { printScope } from './session';
 import { buildExpressConfig } from '../core/bilan-express';
@@ -118,7 +118,8 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
       <button class="cat-action cat-action-secondary" data-act="custom">🎚️ Je choisis mes leçons<small>coche les leçons que tu veux</small></button>
       <button class="cat-action cat-action-secondary" data-act="print">🖨 Imprimer les fiches<small>toute la catégorie</small></button>
     </div>
-    <div class="lesson-list" id="catLessonList">${cards}</div>`;
+    <div class="lesson-list" id="catLessonList">${cards}</div>
+    <div id="catFavoris" class="favoris favoris-cat"></div>`;
 
 	// Délégation : 🖨 d'une leçon (impression, chemin B) ou clic sur la carte (lancer).
 	el.querySelector('#catLessonList')!.addEventListener('click', (e: Event) => {
@@ -165,6 +166,9 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 
 	// Section « À continuer » filtrée sur cette catégorie (#63).
 	renderReprises(el.querySelector<HTMLElement>('#catReprises'), categoryId);
+
+	// Bilans favoris rattachés à cette catégorie (#65), en complément de l'accueil.
+	renderFavoris(el.querySelector<HTMLElement>('#catFavoris'), categoryId);
 }
 
 /* ---------- Écran : catégorie Orthographe ----------

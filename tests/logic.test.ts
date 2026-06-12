@@ -110,6 +110,7 @@ import {
 	getLessonById,
 	lessonsForIds,
 	bilanMode,
+	commonCategoryId,
 } from '../src/core/catalog';
 import { checkItemAnswer } from '../src/core/items';
 import { checkAnswer } from '../src/core/exercise';
@@ -193,6 +194,7 @@ import {
 	clearResumes,
 	type ResumeSnapshot,
 } from '../src/core/resume';
+import { loadBilans, saveBilan } from '../src/core/bilans';
 
 // API agrégée (parité avec l'ancien globalThis.__api), pour conserver le style `api.x`.
 const api = {
@@ -296,6 +298,7 @@ const api = {
 	importProfiles,
 	lessonsForIds,
 	bilanMode,
+	commonCategoryId,
 };
 
 // Remet l'environnement à neuf (état module + localStorage vierges) avant chaque test.
@@ -924,6 +927,49 @@ describe('Sélection de leçons & sprint personnalisé (#64)', () => {
 		expect(api.bilanMode(base)).toBe('bilan'); // migration : pas de champ → bilan
 		expect(api.bilanMode({ ...base, mode: 'bilan' })).toBe('bilan');
 		expect(api.bilanMode({ ...base, mode: 'sprint' })).toBe('sprint');
+	});
+});
+
+describe('Rattachement d’un favori à sa catégorie (#65)', () => {
+	test('commonCategoryId : mono-catégorie → la catégorie ; multi → undefined', () => {
+		const lessons = getAllLessons();
+		// Deux catégories distinctes peuplées par au moins une leçon chacune.
+		const byCat = new Map<string, string[]>();
+		for (const l of lessons) byCat.set(l.category, [...(byCat.get(l.category) ?? []), l.id]);
+		const cats = [...byCat.keys()];
+		expect(cats.length).toBeGreaterThanOrEqual(2);
+
+		// Toutes les leçons d'une même catégorie → cette catégorie.
+		const [catA, catB] = cats;
+		expect(api.commonCategoryId(byCat.get(catA)!)).toBe(catA);
+		// Une seule leçon → sa catégorie.
+		expect(api.commonCategoryId([byCat.get(catA)![0]])).toBe(catA);
+		// Mélange de deux catégories → undefined (bilan multi-catégories, accueil seul).
+		expect(api.commonCategoryId([byCat.get(catA)![0], byCat.get(catB)![0]])).toBeUndefined();
+	});
+	test('commonCategoryId : liste vide ou 100 % inconnus → undefined', () => {
+		expect(api.commonCategoryId([])).toBeUndefined();
+		expect(api.commonCategoryId(['rien', 'non-plus'])).toBeUndefined();
+	});
+	test('loadBilans : backfill de categoryId pour un favori legacy mono-catégorie', () => {
+		const byCat = new Map<string, string[]>();
+		for (const l of getAllLessons()) byCat.set(l.category, [...(byCat.get(l.category) ?? []), l.id]);
+		const [catA, catB] = [...byCat.keys()];
+
+		// Favori antérieur à #65 : aucun champ categoryId enregistré.
+		saveBilan({ id: 'leg-mono', label: 'Vieux', lessonIds: byCat.get(catA)!, questionsPerLesson: 3 });
+		saveBilan({
+			id: 'leg-multi',
+			label: 'Vieux multi',
+			lessonIds: [byCat.get(catA)![0], byCat.get(catB)![0]],
+			questionsPerLesson: 3,
+		});
+
+		const loaded = loadBilans();
+		// Mono-catégorie → rattaché à la lecture, sans réécrire le stockage.
+		expect(loaded.find((b) => b.id === 'leg-mono')!.categoryId).toBe(catA);
+		// Multi-catégories → reste accueil-only.
+		expect(loaded.find((b) => b.id === 'leg-multi')!.categoryId).toBeUndefined();
 	});
 });
 

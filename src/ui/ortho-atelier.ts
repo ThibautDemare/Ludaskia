@@ -115,8 +115,31 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
     </div>`;
 
 	const motEl = host.querySelector('#atelierMot') as HTMLElement;
+	const stage = host.querySelector('.atelier-stage') as HTMLElement;
 	const svg = host.querySelector('#atelierSvg') as unknown as SVGSVGElement;
 	const spans = () => [...motEl.querySelectorAll<HTMLElement>('.atelier-lettre')];
+
+	// Auto-ajustement : un mot long (« aujourd'hui ») déborde sur un écran étroit
+	// car il est en `white-space: nowrap` (nécessaire pour caler les entourages SVG).
+	// On rétrécit donc la police pour qu'il tienne dans la largeur disponible (marge
+	// pour les rectangles qui débordent de PAD). Recalculé au `resize`. Plancher à
+	// ~20 px : sous cette taille, l'enfant fait pivoter l'écran en paysage.
+	const MIN_PX = 20;
+	function ajusterTaille(): void {
+		motEl.style.fontSize = ''; // repart de la taille SCSS (source de vérité)
+		const dispo = (stage.parentElement?.clientWidth ?? motEl.scrollWidth) - PAD * 2 - 4;
+		const naturel = motEl.scrollWidth;
+		if (naturel > dispo) {
+			const base = parseFloat(getComputedStyle(motEl).fontSize);
+			let px = Math.max(MIN_PX, (base * dispo) / naturel);
+			motEl.style.fontSize = `${px}px`;
+			// Le padding px des lettres ne suit pas le ratio → courte correction.
+			while (px > MIN_PX && motEl.scrollWidth > dispo) {
+				px = Math.max(MIN_PX, px - 1);
+				motEl.style.fontSize = `${px}px`;
+			}
+		}
+	}
 
 	// --- état du geste ---
 	let dragging = false;
@@ -206,7 +229,11 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 		opts.onDone();
 	});
 
+	ajusterTaille();
 	redrawSvg();
-	resizeHandler = () => redrawSvg();
+	resizeHandler = () => {
+		ajusterTaille();
+		redrawSvg();
+	};
 	window.addEventListener('resize', resizeHandler);
 }

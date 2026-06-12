@@ -4,6 +4,12 @@ node_modules/
 # Build
 dist/
 
+# Tests e2e (Playwright)
+test-results/
+playwright-report/
+blob-report/
+/playwright/.cache/
+
 # Divers
 *.log
 .DS_Store

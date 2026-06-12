@@ -24,7 +24,8 @@ de conception initial est `docs/design-multi-subject.md`.
 ## Stack & outillage
 - **TypeScript** (`strict`) en **modules ES**, bundlé par **Vite**.
 - Styles en **SCSS** (compilés par Vite).
-- Tests : **Vitest** (environnement `happy-dom`).
+- Tests : **Vitest** (logique pure, `happy-dom`) + **Playwright** (smoke e2e
+  navigation/rendu, dossier `e2e/`, #129).
 - Qualité : **ESLint** (flat config + `typescript-eslint`) et **Prettier**.
 - Déploiement : **GitHub Pages** via GitHub Actions (build Vite → `dist/`).
 
@@ -38,9 +39,12 @@ de conception initial est `docs/design-multi-subject.md`.
 | `npm run typecheck` | `tsc --noEmit` (strict) |
 | `npm run lint` | ESLint |
 | `npm run format` / `format:check` | Prettier |
+| `npm run test:e2e` | smoke tests Playwright (`e2e/`) |
 
-La CI (`.github/workflows/ci.yml`, job `test`) enchaîne `format:check → lint →
-typecheck → test` sur chaque PR et push `main`.
+La CI (`.github/workflows/ci.yml`) a deux jobs : `test` enchaîne `format:check →
+lint → typecheck → test` (bloquant), et `e2e` lance les smoke tests Playwright
+(**non bloquant** tant que le harnais se stabilise, #129). Sur chaque PR et push
+`main`.
 
 ## Structure des sources (`src/`)
 On sépare la **logique pure** (testable sans DOM) du **rendu/interactions DOM**.
@@ -430,6 +434,14 @@ L'état des modules ES étant un singleton, un `beforeEach` reproduit la fraîch
 de l'ancien runner : `localStorage.clear()`, rebranchement du hook
 (`setOnDataWrite`), remise à zéro de l'état du module `items`, puis
 `initProfiles()`. **Lancer `npm test` après toute modif de logique.**
+
+**Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent
+l'app dans un navigateur (profil mobile Chromium) pour couvrir ce que la logique
+pure ne voit pas — navigation par hash, rendu d'un exercice, écran d'une
+catégorie vide, démarrage du sprint, **absence d'erreur de rendu**
+(`watchErrors`). Restent **ciblés et stables** : on teste le contenu présent sur
+`main`, pas une leçon en cours de PR. `vitest` est restreint à `tests/` pour ne
+pas ramasser les specs Playwright. Détails : `e2e/README.md`.
 
 ## Build & déploiement
 - `vite.config.ts` fixe `base: '/Ludaskia/'` (site « projet » servi sous

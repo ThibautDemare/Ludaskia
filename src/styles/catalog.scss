@@ -45,6 +45,30 @@
 	color: var(--grey);
 }
 
+/* ---- Catégorie encore sans leçon (#92) : message rassurant ---- */
+.cat-empty {
+	text-align: center;
+	padding: 48px 24px;
+	color: var(--grey);
+}
+.cat-empty-ico {
+	font-size: 56px;
+	line-height: 1;
+	margin-bottom: 12px;
+}
+.cat-empty-title {
+	font-family: var(--ui);
+	font-size: 20px;
+	font-weight: 700;
+	color: var(--ink, #333);
+	margin: 0 0 6px;
+}
+.cat-empty-sub {
+	font-family: var(--ui);
+	font-size: 15px;
+	margin: 0;
+}
+
 /* ---- Actions d'une catégorie (bilan express / complet / sprint) ---- */
 .cat-actions {
 	display: flex;

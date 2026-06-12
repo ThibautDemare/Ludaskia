@@ -106,11 +106,13 @@ import { sprintQuestionBody } from '../src/ui/sprint';
 import {
 	getAllLessons,
 	getLessonsBySubject,
+	getLessonsByCategory,
 	genLessonItem,
 	getLessonById,
 	lessonsForIds,
 	bilanMode,
 	commonCategoryId,
+	CATEGORIES,
 } from '../src/core/catalog';
 import { checkItemAnswer } from '../src/core/items';
 import { checkAnswer } from '../src/core/exercise';
@@ -546,6 +548,51 @@ describe('Objectifs de régularité', () => {
 	});
 });
 
+describe('Catalogue maths : 4 catégories du manuel (#92)', () => {
+	test('les 4 catégories maths + le calcul mental coexistent', () => {
+		const mathCats = CATEGORIES.filter((c) => c.subject === 'math').map((c) => c.id);
+		for (const id of [
+			'math-numeration',
+			'math-calcul',
+			'math-calcul-mental',
+			'math-grandeurs-mesures',
+			'math-geometrie',
+		]) {
+			expect(mathCats).toContain(id);
+		}
+	});
+	test('« Calcul » (posé) ≠ « Calcul mental » : ids et libellés distincts', () => {
+		const calcul = CATEGORIES.find((c) => c.id === 'math-calcul');
+		const mental = CATEGORIES.find((c) => c.id === 'math-calcul-mental');
+		expect(calcul?.label).toBe('Calcul');
+		expect(mental?.label).toBe('Calcul mental');
+		expect(calcul?.id).not.toBe(mental?.id);
+	});
+	test('les 15 leçons de calcul mental sont rattachées à math-calcul-mental', () => {
+		expect(getLessonsByCategory('math-calcul-mental').length).toBe(15);
+		expect(getLessonsByCategory('math-calcul').length).toBe(0); // posé : à venir
+	});
+	test('les nouvelles catégories arrivent vides, sans casser les helpers', () => {
+		for (const id of [
+			'math-numeration',
+			'math-calcul',
+			'math-grandeurs-mesures',
+			'math-geometrie',
+		]) {
+			expect(getLessonsByCategory(id)).toEqual([]);
+		}
+	});
+	test('aucun trophée de catégorie n’est généré pour une catégorie vide', () => {
+		const ids = api.TROPHIES.map((t) => t.id);
+		// Catégorie peuplée → ses trophées existent…
+		expect(ids).toContain('cat-math-calcul-mental-3');
+		// …les catégories encore vides n’en génèrent pas (pas de trophée impossible).
+		expect(ids).not.toContain('cat-math-calcul-3');
+		expect(ids).not.toContain('cat-math-numeration-3');
+		expect(ids).not.toContain('cat-math-geometrie-3');
+	});
+});
+
 describe('Trophées', () => {
 	test('evaluateTrophies débloque selon les stats, sans doublon', () => {
 		expect(api.evaluateTrophies().length).toBe(0);
@@ -671,12 +718,12 @@ describe('XP & gamification multi-matières', () => {
 		api.recordLessonStats({ 'math-doubles': { ok: 20, total: 20 } });
 		const g = api.gSnapshot();
 		expect(g.subjectCorrect.math).toBe(50);
-		expect(g.categoryCorrect['math-calcul']).toBe(50);
+		expect(g.categoryCorrect['math-calcul-mental']).toBe(50);
 		api.recordLessonResult('math-tables-addition', true);
 		api.recordLessonResult('math-doubles', true);
 		const g2 = api.gSnapshot();
 		expect(g2.subjectStars.math).toBe(2);
-		expect(g2.categoryStars['math-calcul']).toBe(2);
+		expect(g2.categoryStars['math-calcul-mental']).toBe(2);
 	});
 	test('trophée par matière débloqué à 50 bonnes réponses', () => {
 		api.recordLessonStats({ 'math-tables-multiplication': { ok: 50, total: 60 } });
@@ -693,12 +740,12 @@ describe('XP & gamification multi-matières', () => {
 			.slice(0, 3)
 			.map((l) => l.id);
 		for (const id of ids) api.recordLessonResult(id, true);
-		expect(api.gSnapshot().categoryStars['math-calcul']).toBe(3);
+		expect(api.gSnapshot().categoryStars['math-calcul-mental']).toBe(3);
 		expect(
 			api
 				.evaluateTrophies()
 				.map((t) => t.id)
-				.includes('cat-math-calcul-3'),
+				.includes('cat-math-calcul-mental-3'),
 		).toBe(true);
 	});
 });
@@ -1258,7 +1305,7 @@ describe('Révision espacée (issue #45)', () => {
 		expect(countDue(ortho, lessonRevisions, T0)).toBe(2);
 		const groups = selectDueGroups(ortho, lessonRevisions, T0);
 		const cats = groups.map((g) => g.categoryId);
-		expect(cats).toContain('math-calcul');
+		expect(cats).toContain('math-calcul-mental');
 		expect(cats).toContain('fr-conjugaison');
 		// une catégorie n'apparaît qu'une fois (regroupement)
 		expect(new Set(cats).size).toBe(cats.length);

@@ -4,7 +4,7 @@
    ============================================================ */
 import { choice } from './utils';
 import { lsGet, lsSet } from './storage';
-import { getAllLessons, SUBJECTS, CATEGORIES } from './catalog';
+import { getAllLessons, getLessonsByCategory, SUBJECTS, CATEGORIES } from './catalog';
 import {
 	loadRuns,
 	getStreak,
@@ -295,7 +295,13 @@ function subjectTrophies(): Trophy[] {
 	);
 }
 function categoryTrophies(): Trophy[] {
-	return CATEGORIES.flatMap((c) =>
+	// On ne génère des trophées que pour les catégories effectivement peuplées :
+	// les leurs sont mesurés via gSnapshot, qui agrège categoryStars sur
+	// getAllLessons(). Une catégorie sans LessonDef (nouvelles catégories maths
+	// encore vides ; orthographe aux « leçons » dynamiques) ne pourrait pas les
+	// décrocher — inutile d'afficher des trophées impossibles. Ils apparaîtront
+	// d'eux-mêmes dès qu'une leçon rejoint la catégorie.
+	return CATEGORIES.filter((c) => getLessonsByCategory(c.id).length > 0).flatMap((c) =>
 		CATEGORY_LEVELS.map((n) => ({
 			id: `cat-${c.id}-${n}`,
 			icon: '🏷️',

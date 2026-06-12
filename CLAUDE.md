@@ -11,6 +11,28 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
 - **Process de contribution** (branche → PR → CI → rebase-merge, Conventional
   Commits, `main` protégée) → **`CONTRIBUTING.md`**.
 
+## Agents-conseils (à mobiliser selon le sujet)
+- **`pedagogue-primaire`** — justesse pédagogique : contenu, difficulté,
+  progression, correspondance au programme, formulation des consignes, santé
+  d'une mécanique vue comme apprentissage.
+- **`designer-ux-enfant`** — interface enfant (tablette/smartphone) : couleurs,
+  lisibilité, cibles tactiles, responsive, micro-interactions, rendu visuel et
+  ressenti émotionnel des récompenses.
+- **`gamification-enfant`** — game design : structure des mécaniques (XP,
+  niveaux, médailles, trophées, objectifs), courbes de progression, paliers de
+  déblocage, boucles d'engagement, équilibrage effort/récompense, dark patterns
+  à éviter. *Quoi/combien/quand récompenser*, pas la pédagogie ni le rendu.
+- **`specialiste-troubles-apprentissage`** — accessibilité « dys- » et attention
+  (dyslexie, dyscalculie, dyspraxie, TDAH…) : « pro tips » d'adaptation
+  concrète (consignes, présentation des nombres, saisie, multimodalité/audio,
+  pression temporelle, mémoire de travail). *Lever l'obstacle du trouble sans
+  baisser l'exigence* ; renvoie au pédagogue pour la notion, au designer pour
+  le rendu, à gamification pour les mécaniques.
+- Les trois premiers conseillers se recoupent sur la **gamification** : prendre celui
+  dont c'est l'angle (sens pédagogique → pédagogue ; rendu → designer ;
+  mécanique/équilibrage → gamification), quitte à en croiser deux.
+- **`gestionnaire-github`** — issues / PR / milestones (voir Workflow Git plus bas).
+
 ## Lancer
 - `npm install` puis `npm run dev` (serveur + HMR).
 - Avant de pousser : `npm run typecheck`, `npm run lint`, `npm test`.

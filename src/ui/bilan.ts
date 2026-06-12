@@ -7,6 +7,7 @@ import {
 	getAllLessons,
 	getLessonsByCategory,
 	bilanMode,
+	commonCategoryId,
 	CATEGORIES,
 	SUBJECTS,
 } from '../core/catalog';
@@ -104,7 +105,9 @@ function favoriBilanCtx(config: BilanConfig): ResumeCtx {
 		mode: 'custom',
 		label: config.label,
 		icon: '⭐',
-		categoryId: null,
+		// Un favori rattaché à une catégorie (#65) voit aussi sa reprise filtrée
+		// dans cette catégorie ; un favori multi-catégories reste « hors scope ».
+		categoryId: config.categoryId ?? null,
 		relaunch: { type: 'bilan', config },
 	};
 }
@@ -123,7 +126,11 @@ function readFormConfig(form: HTMLElement): BilanConfig | null {
 	// En sprint, le nombre de questions par leçon n'a pas de sens (le sprint est
 	// borné par le temps) : on garde une valeur neutre, ignorée au lancement.
 	const questionsPerLesson = nbqRaw === 'all' ? ('all' as const) : Number(nbqRaw);
-	return { id: '', label: 'Bilan personnalisé', lessonIds, questionsPerLesson, mode };
+	// Rattachement à une catégorie (#65) : déduit des leçons cochées (et non du
+	// contexte d'ouverture) pour couvrir aussi une sélection mono-catégorie
+	// composée depuis l'accueil. `undefined` (multi-catégories) → accueil seul.
+	const categoryId = commonCategoryId(lessonIds);
+	return { id: '', label: 'Bilan personnalisé', lessonIds, questionsPerLesson, mode, categoryId };
 }
 
 function genId(): string {
@@ -340,28 +347,20 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 	});
 }
 
-/* ---------- Section favoris (accueil) ---------- */
+/* ---------- Section favoris (accueil et catégorie) ---------- */
 
-export function renderFavoris(el: HTMLElement | null): void {
-	if (!el) return;
-	const bilans = loadBilans();
-	if (!bilans.length) {
-		el.innerHTML = '';
-		return;
-	}
-	const items = bilans
-		.map((b) => {
-			const nLessons = `${b.lessonIds.length} leçon${b.lessonIds.length > 1 ? 's' : ''}`;
-			// Un favori sprint (#64) affiche son chrono ; un bilan, ses questions/leçon.
-			const detail =
-				bilanMode(b) === 'sprint'
-					? `⏱️ Sprint · 5 min · ${nLessons}`
-					: `🌱 ${nLessons} · ${
-							b.questionsPerLesson === 'all'
-								? 'toutes les questions'
-								: `${b.questionsPerLesson} question${(b.questionsPerLesson as number) > 1 ? 's' : ''}/leçon`
-						}`;
-			return `<div class="favori-item">
+function favoriItemHTML(b: BilanConfig): string {
+	const nLessons = `${b.lessonIds.length} leçon${b.lessonIds.length > 1 ? 's' : ''}`;
+	// Un favori sprint (#64) affiche son chrono ; un bilan, ses questions/leçon.
+	const detail =
+		bilanMode(b) === 'sprint'
+			? `⏱️ Sprint · 5 min · ${nLessons}`
+			: `🌱 ${nLessons} · ${
+					b.questionsPerLesson === 'all'
+						? 'toutes les questions'
+						: `${b.questionsPerLesson} question${(b.questionsPerLesson as number) > 1 ? 's' : ''}/leçon`
+				}`;
+	return `<div class="favori-item">
         <div class="favori-info">
           <div class="favori-name">${escapeHTML(b.label)}</div>
           <div class="favori-meta">${detail}</div>
@@ -371,10 +370,21 @@ export function renderFavoris(el: HTMLElement | null): void {
           <button class="favori-btn favori-btn-del" data-del="${b.id}" title="Supprimer ce favori">🗑</button>
         </div>
       </div>`;
-		})
-		.join('');
+}
+
+/* Rend la liste des favoris dans `el` et câble Lancer/Supprimer.
+   - sans `categoryId` : tous les favoris (accueil) ;
+   - avec `categoryId` : seulement ceux rattachés à cette catégorie (#65).
+   Liste vide → conteneur vidé (aucun titre), pour ne pas encombrer l'écran. */
+export function renderFavoris(el: HTMLElement | null, categoryId?: string): void {
+	if (!el) return;
+	const bilans = loadBilans().filter((b) => !categoryId || b.categoryId === categoryId);
+	if (!bilans.length) {
+		el.innerHTML = '';
+		return;
+	}
 	el.innerHTML = `<h3 class="favoris-title">Mes bilans favoris</h3>
-    <div class="favori-list">${items}</div>`;
+    <div class="favori-list">${bilans.map(favoriItemHTML).join('')}</div>`;
 
 	el.querySelectorAll<HTMLButtonElement>('[data-run]').forEach((btn) => {
 		btn.addEventListener('click', () => {
@@ -390,7 +400,7 @@ export function renderFavoris(el: HTMLElement | null): void {
 				btn.closest('.favori-item')?.querySelector<HTMLElement>('.favori-name')?.textContent ?? '';
 			if (confirm(`Supprimer le bilan « ${name} » ?`)) {
 				deleteBilan(btn.dataset.del!);
-				renderFavoris(el);
+				renderFavoris(el, categoryId);
 			}
 		});
 	});

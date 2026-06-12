@@ -44,6 +44,12 @@ export interface BilanConfig {
 	// à son rythme, ou un sprint chronométré de 5 min alimenté par ces leçons.
 	// Champ optionnel : un favori enregistré avant #64 (sans `mode`) est un bilan.
 	mode?: 'bilan' | 'sprint';
+	// Catégorie de rattachement d'un favori (#65) : renseignée quand toutes les
+	// leçons cochées appartiennent à une même catégorie (composeur scopé OU
+	// sélection mono-catégorie depuis l'accueil). Le favori s'affiche alors dans
+	// cette catégorie en plus de l'accueil. Absente = bilan multi-catégories
+	// (ou favori antérieur à #65) → accueil seulement.
+	categoryId?: CategoryId;
 }
 
 /* Mode effectif d'un BilanConfig (favori legacy sans `mode` = bilan). */
@@ -290,4 +296,13 @@ export function lessonsForIds(ids: string[]): LessonDef[] {
 	return ids
 		.map((id) => ALL_LESSONS.find((l) => l.id === id))
 		.filter((l): l is LessonDef => l !== undefined);
+}
+
+/* Catégorie commune à un ensemble de leçons (#65) : renvoie l'identifiant de
+   catégorie si toutes les leçons connues partagent la même, sinon `undefined`
+   (sélection multi-catégories ou vide). Sert à rattacher un favori à sa
+   catégorie, qu'il soit composé depuis l'écran scopé ou depuis l'accueil. */
+export function commonCategoryId(lessonIds: string[]): CategoryId | undefined {
+	const cats = new Set(lessonsForIds(lessonIds).map((l) => l.category));
+	return cats.size === 1 ? [...cats][0] : undefined;
 }

@@ -195,8 +195,15 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   (global, ou scopé à une catégorie via `#bilan-cat-<id>` — liste à plat,
   pensée tablette), choix **bilan / sprint** (#64 : `BilanConfig.mode`, défaut
   `bilan`), choix du nombre de questions par intention (masqué en sprint),
-  favoris (`renderFavoris`), exécution (`runBilanConfig`). Le mode sprint
-  délègue à `startCustomSprint` (la sélection alimente le tirage).
+  favoris (`renderFavoris(el, categoryId?)`), exécution (`runBilanConfig`). Le
+  mode sprint délègue à `startCustomSprint` (la sélection alimente le tirage).
+  Un favori est **rattaché à une catégorie** (#65 : `BilanConfig.categoryId`,
+  déduit des leçons cochées via `commonCategoryId` — mono-catégorie, même
+  composé depuis l'accueil) : il s'affiche alors aussi sur l'écran de cette
+  catégorie (`renderFavoris` filtré), en complément de l'accueil. Multi-catégories
+  → accueil seul. Les favoris antérieurs à #65 sont **rattachés par backfill**
+  (`bilans.ts:loadBilans` déduit `categoryId` de leurs leçons à la lecture, sans
+  réécrire le stockage).
 - **`navigation.ts`** — routing par hash (`route`), vues (`showHomeView`,
   `showMatieresView`/`showMatiereView`/`showCategorieView`,
   `showSprintConfigView`, `showBilanCustomView`, `showProfilesView`,

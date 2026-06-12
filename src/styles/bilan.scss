@@ -322,12 +322,20 @@
 	min-height: 18px;
 }
 
-/* ---- Section favoris (accueil) ---- */
+/* ---- Section favoris (accueil et catégorie #65) ---- */
 .favoris {
 	max-width: 760px;
 	margin: 28px auto 0;
 	text-align: left;
 	padding: 0 20px;
+}
+/* Sur un écran de catégorie, le conteneur est toujours présent mais vide tant
+   qu'aucun favori n'y est rattaché : on le masque pour ne pas laisser d'espace. */
+.favoris-cat:empty {
+	display: none;
+}
+.favoris-cat {
+	max-width: 720px;
 }
 .favoris-title {
 	font-family: var(--ui);

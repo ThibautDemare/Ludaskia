@@ -82,6 +82,11 @@ réponse **numérique** ; `MESURE_LESSONS` liste les descripteurs. Calibrage CE2
 (avis pédagogique) : facteur grande→petite ≤ 9, sens inverse sur multiples
 exacts (réponse entière), pondération ~60/40 vers le sens ×, mL (L↔mL) et
 conversion min↔s écartés (CM1 / surcharge base 60).
+**`maths/monnaie.ts`** (#96) : 2 leçons de monnaie de la même catégorie
+(`mes-monnaie-calcul` : prix total / reste en € ou en centimes ; `mes-monnaie-rendu` :
+rendu = billet − prix). Même chemin « math moderne » (item `num`). Calibrage CE2 :
+réponse **toujours entière**, unité (€ ou c) collée au champ, pas de décimaux ni de
+mélange €/c franchissant l'euro, billets 5/10/20 €, centimes par pas de 10 sous 1 €.
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication

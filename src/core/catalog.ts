@@ -9,6 +9,7 @@ import type { Item } from './items';
 import { bilanQ } from './lessons';
 import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 import { MESURE_LESSONS } from '../data/maths/mesures';
+import { MONNAIE_LESSONS } from '../data/maths/monnaie';
 
 /* ---------- Types ---------- */
 
@@ -246,10 +247,11 @@ const MATH_LESSONS: LessonDef[] = [
 	},
 ];
 
-/* ---------- Catalogue des leçons « Grandeurs et mesures » (#89) ----------
+/* ---------- Catalogue des leçons « Grandeurs et mesures » (#89, #96) ----------
    Moteur moderne (ExerciseType), hors du pipeline bilanQ : le rendu passe par
-   genLessonItem (item numérique) et buildLessonFiche (liste générique). */
-const GRANDEURS_LESSONS: LessonDef[] = MESURE_LESSONS.map((d) => ({
+   genLessonItem (item numérique) et buildLessonFiche (liste générique).
+   Conversions d'unités (#89) + monnaie (#96). */
+const GRANDEURS_LESSONS: LessonDef[] = [...MESURE_LESSONS, ...MONNAIE_LESSONS].map((d) => ({
 	id: d.id,
 	label: d.label,
 	subject: 'math',

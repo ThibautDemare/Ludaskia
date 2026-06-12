@@ -94,6 +94,19 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 	}
 
 	const lessonDefs = getLessonsByCategory(categoryId);
+
+	// Catégorie encore sans leçon (nouvelles catégories maths en attente de
+	// contenu, #92) : on évite d'afficher des bilans/sprints qui ne tireraient
+	// rien. Un message rassurant tient lieu d'écran.
+	if (!lessonDefs.length) {
+		el.innerHTML = `<div class="cat-empty">
+      <div class="cat-empty-ico" aria-hidden="true">🌱</div>
+      <p class="cat-empty-title">Bientôt disponible&nbsp;!</p>
+      <p class="cat-empty-sub">Les leçons de cette catégorie arrivent prochainement.</p>
+    </div>`;
+		return;
+	}
+
 	const lessonIds = lessonDefs.map((l) => l.id);
 	const stars = loadStars();
 	const lstats = loadLessonStats();

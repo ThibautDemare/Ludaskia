@@ -5,8 +5,12 @@
 > des décisions vit dans les commits, les PR et les issues — pas ici.
 
 ## Vue d'ensemble
-Mini-application web d'entraînement **multi-matières** (niveau CE2) : aujourd'hui
-**calcul mental** (maths) et **conjugaison** (français). Génération aléatoire
+Mini-application web d'entraînement **multi-matières** (niveau CE2). Côté
+**maths**, le catalogue suit le découpage du manuel CE2 en **Numération**,
+**Calcul** (opérations posées), **Calcul mental**, **Grandeurs et mesures** et
+**Géométrie** (#92) — seul le **Calcul mental** est peuplé aujourd'hui, les
+autres catégories accueilleront leurs leçons au fil des issues. Côté
+**français** : **conjugaison** et **orthographe**. Génération aléatoire
 d'exercices, correction instantanée, chronomètre, et une couche de gamification
 (records, médailles, trophées, objectifs, XP) avec gestion de profils. 100 %
 **côté client** (aucun serveur) ; la progression est stockée en `localStorage`.
@@ -98,6 +102,13 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   `getAllLessons/getLessonById/getLessonsBySubject/getLessonsByCategory`,
   `MATH_LESSON_NUM` (pont id→`bilanQ`), et **`genLessonItem(lesson)`** qui produit
   un `Item` pour n'importe quelle matière (maths → `bilanQ` ; texte → `generate()`).
+  Catégories maths (#92) : `math-numeration`, **`math-calcul`** (opérations
+  **posées**, à ne pas confondre avec **`math-calcul-mental`**, les 15 leçons de
+  calcul mental historiques), `math-grandeurs-mesures`, `math-geometrie`. Les
+  catégories sans `LessonDef` sont **légitimes** : la navigation affiche un écran
+  « Bientôt disponible », les trophées de catégorie ne sont générés que pour les
+  catégories peuplées (`rewards.ts`), et le sprint/bilan d'une catégorie vide ne
+  tire rien (retour accueil / no-op) plutôt que de planter.
 - **`lessons.ts`** — contenu **maths** : `LESSONS` (15 leçons constructibles
   isolément), `bilanQ` (générateur réutilisé par le catalogue). Côté impression :
   `PrintScope` + **`buildPrintableDOM(scope)`** (contextuel, **multi-matières** via

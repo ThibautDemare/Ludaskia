@@ -303,17 +303,43 @@ function renderDictee(word: MotOrtho): void {
 }
 
 /* ---------- Tuiles ---------- */
+// Helpers purs sur l'ordre des lettres (`assembled`), testables sans DOM.
+// Tous renvoient un NOUVEAU tableau (aucune mutation en place) et bornent leurs
+// index — `assembled` reste la source de vérité de l'ordre (cf. #68).
+export function insertAt(arr: number[], pos: number, value: number): number[] {
+	const p = Math.max(0, Math.min(arr.length, pos));
+	return [...arr.slice(0, p), value, ...arr.slice(p)];
+}
+export function removeAt(arr: number[], pos: number): number[] {
+	if (pos < 0 || pos >= arr.length) return arr.slice();
+	return [...arr.slice(0, pos), ...arr.slice(pos + 1)];
+}
+export function moveAt(arr: number[], from: number, to: number): number[] {
+	if (from < 0 || from >= arr.length) return arr.slice();
+	return insertAt(removeAt(arr, from), to, arr[from]);
+}
+
+// Au-delà de ce déplacement (px) un geste devient un glisser ; en dessous, c'est
+// un tap. Volontairement élevé : un tap « propre » de CE2 dérive de 8-15 px.
+const DRAG_THRESHOLD = 18;
+
 function renderTuiles(word: MotOrtho): void {
 	const ex = genExerciseOrtho(word, 'tuiles');
 	const lettres = ex.type === 'tuiles' ? ex.lettres : [];
-	const assembled: number[] = []; // indices dans `lettres`
+	let assembled: number[] = []; // indices dans `lettres`, dans l'ordre posé
+	let caret = 0; // position d'insertion (0..assembled.length) ; défaut = fin du mot
+	let sel: number | null = null; // tuile posée sélectionnée (exclusif avec le curseur)
 	const label = (l: string) => (l === ' ' ? '␣' : escapeHTML(l));
+	const glyph = (l: string) => (l === ' ' ? '␣' : l); // pour textContent (fantôme)
 
 	sheets().innerHTML = `
     <div class="page ortho-run">
-      <p class="ortho-run-consigne">Remets les lettres dans le bon ordre.</p>
+      <p class="ortho-run-consigne">Remets les lettres dans le bon ordre.
+        <span class="ortho-run-astuce">Tape entre deux lettres pour choisir où écrire.</span></p>
       ${dispoDictee ? '<div><button class="btn-primary ortho-ecouter" id="btnEcouterTuiles">🔊 Écouter le mot</button></div>' : ''}
+      <p class="tuiles-titre">Ton mot</p>
       <div class="tuiles-construction" id="construction"></div>
+      <p class="tuiles-titre">Les lettres</p>
       <div class="tuiles-bac" id="bac"></div>
       <button class="btn-primary" id="btnVerifTuiles">✓ Vérifier</button>
       <div class="ortho-feedback" id="fb"></div>
@@ -327,47 +353,216 @@ function renderTuiles(word: MotOrtho): void {
 			.addEventListener('click', () => dicter(word.mot, word.commeDans));
 	}
 
+	// --- Rendu ---
+	function slotHTML(pos: number): string {
+		const actif = sel === null && caret === pos;
+		return `<button type="button" class="tuile-slot${actif ? ' is-caret' : ''}" data-slot="${pos}" aria-label="Insérer ici"><span class="tuile-curseur"></span></button>`;
+	}
+	function poseHTML(posLettre: number): string {
+		const i = assembled[posLettre];
+		if (sel !== posLettre) {
+			return `<button type="button" class="tuile tuile-pose" data-pos="${posLettre}">${label(lettres[i])}</button>`;
+		}
+		const auDebut = posLettre === 0;
+		const aLaFin = posLettre === assembled.length - 1;
+		return `
+      <span class="tuile-cell sel">
+        <span class="tuile-controls">
+          <button type="button" class="tuile-fleche${auDebut ? ' is-disabled' : ''}" data-act="left" aria-label="Déplacer à gauche"${auDebut ? ' disabled' : ''}>◀</button>
+          <button type="button" class="tuile-fleche${aLaFin ? ' is-disabled' : ''}" data-act="right" aria-label="Déplacer à droite"${aLaFin ? ' disabled' : ''}>▶</button>
+          <button type="button" class="tuile-retirer" data-act="remove">↩ enlever</button>
+        </span>
+        <button type="button" class="tuile tuile-pose sel" data-pos="${posLettre}">${label(lettres[i])}</button>
+      </span>`;
+	}
 	function redraw(): void {
+		// Mot en construction : slot, tuile, slot, tuile, …, slot final.
+		let html = slotHTML(0);
+		for (let p = 0; p < assembled.length; p++) html += poseHTML(p) + slotHTML(p + 1);
+		construction.innerHTML = html;
+		construction.classList.toggle('vide', assembled.length === 0);
+		// Bac : lettres encore disponibles (les posées restent là mais masquées).
 		bac.innerHTML = lettres
 			.map((l, i) =>
 				assembled.includes(i)
-					? `<button class="tuile tuile-used" disabled>${label(l)}</button>`
-					: `<button class="tuile" data-i="${i}">${label(l)}</button>`,
+					? `<button type="button" class="tuile tuile-used" disabled>${label(l)}</button>`
+					: `<button type="button" class="tuile" data-i="${i}">${label(l)}</button>`,
 			)
 			.join('');
-		construction.innerHTML = assembled
-			.map(
-				(i, pos) =>
-					`<button class="tuile tuile-pose" data-pos="${pos}">${label(lettres[i])}</button>`,
-			)
-			.join('');
-		bac.querySelectorAll<HTMLButtonElement>('.tuile[data-i]').forEach((b) =>
-			b.addEventListener('click', () => {
-				assembled.push(Number(b.dataset.i));
-				redraw();
-			}),
-		);
-		construction.querySelectorAll<HTMLButtonElement>('.tuile-pose').forEach((b) =>
-			b.addEventListener('click', () => {
-				assembled.splice(Number(b.dataset.pos), 1);
-				redraw();
-			}),
-		);
 	}
+
+	// --- Actions (taps : souris, clavier et tap tactile passent par le click) ---
+	function insertLettre(i: number): void {
+		assembled = insertAt(assembled, caret, i);
+		caret += 1;
+		sel = null;
+		redraw();
+	}
+	function poseCaret(pos: number): void {
+		caret = pos;
+		sel = null;
+		redraw();
+	}
+	function selectPose(pos: number): void {
+		sel = sel === pos ? null : pos; // re-tap = désélection
+		redraw();
+	}
+	function deplacer(dir: -1 | 1): void {
+		if (sel === null) return;
+		const to = sel + dir;
+		if (to < 0 || to >= assembled.length) return;
+		assembled = moveAt(assembled, sel, to);
+		sel = to;
+		redraw();
+	}
+	function retirer(): void {
+		if (sel === null) return;
+		assembled = removeAt(assembled, sel);
+		sel = null;
+		caret = Math.min(caret, assembled.length);
+		redraw();
+	}
+
+	let justDragged = false; // neutralise le click synthétique qui suit un glisser
+	construction.addEventListener('click', (e) => {
+		if (justDragged) {
+			justDragged = false;
+			return;
+		}
+		const t = (e.target as HTMLElement).closest('button');
+		if (!t) return;
+		const act = t.dataset.act;
+		if (act === 'left') deplacer(-1);
+		else if (act === 'right') deplacer(1);
+		else if (act === 'remove') retirer();
+		else if (t.dataset.slot !== undefined) poseCaret(Number(t.dataset.slot));
+		else if (t.dataset.pos !== undefined) selectPose(Number(t.dataset.pos));
+	});
+	bac.addEventListener('click', (e) => {
+		if (justDragged) {
+			justDragged = false;
+			return;
+		}
+		const t = (e.target as HTMLElement).closest('.tuile') as HTMLElement | null;
+		if (!t || t.dataset.i === undefined) return;
+		insertLettre(Number(t.dataset.i));
+	});
+
+	// --- Couche glisser-déposer (raccourci « bonus », par-dessus les taps) ---
+	type Source = { type: 'bac' | 'pose'; index: number; el: HTMLElement };
+	let pending: { src: Source | null; x: number; y: number; pid: number } | null = null;
+	let dragging = false;
+	let ghost: HTMLElement | null = null;
+	let dropSlot: number | null = null;
+
+	function sourceFrom(target: HTMLElement): Source | null {
+		const pose = target.closest('.tuile-pose') as HTMLElement | null;
+		if (pose && pose.dataset.pos !== undefined)
+			return { type: 'pose', index: Number(pose.dataset.pos), el: pose };
+		const bacTile = target.closest('.tuiles-bac .tuile') as HTMLElement | null;
+		if (bacTile && bacTile.dataset.i !== undefined && !bacTile.classList.contains('tuile-used'))
+			return { type: 'bac', index: Number(bacTile.dataset.i), el: bacTile };
+		return null;
+	}
+	const lettreDe = (src: Source) =>
+		src.type === 'bac' ? lettres[src.index] : lettres[assembled[src.index]];
+	const clearDrop = () =>
+		construction
+			.querySelectorAll('.tuile-slot.is-drop')
+			.forEach((s) => s.classList.remove('is-drop'));
+	function majDropSlot(x: number, y: number): void {
+		const el = document.elementFromPoint(x, y) as HTMLElement | null;
+		const slot = el?.closest('.tuile-slot') as HTMLElement | null;
+		const pose = el?.closest('.tuile-pose') as HTMLElement | null;
+		let p: number | null = null;
+		if (slot && slot.dataset.slot !== undefined) p = Number(slot.dataset.slot);
+		else if (pose && pose.dataset.pos !== undefined) {
+			const r = pose.getBoundingClientRect();
+			p = Number(pose.dataset.pos) + (x > r.left + r.width / 2 ? 1 : 0);
+		}
+		clearDrop();
+		dropSlot = p;
+		if (p !== null)
+			construction.querySelector(`.tuile-slot[data-slot="${p}"]`)?.classList.add('is-drop');
+	}
+	function endDrag(): void {
+		dragging = false;
+		ghost?.remove();
+		ghost = null;
+		clearDrop();
+		dropSlot = null;
+		document.querySelectorAll('.tuile-source').forEach((s) => s.classList.remove('tuile-source'));
+	}
+
+	const onDown = (e: PointerEvent): void => {
+		// Si un glisser précédent n'a pas été suivi d'un click (variable selon les
+		// navigateurs tactiles), on purge le drapeau ici pour ne pas avaler ce tap.
+		justDragged = false;
+		pending = {
+			src: sourceFrom(e.target as HTMLElement),
+			x: e.clientX,
+			y: e.clientY,
+			pid: e.pointerId,
+		};
+	};
+	const onMove = (e: PointerEvent): void => {
+		if (!pending || pending.pid !== e.pointerId || !pending.src) return;
+		if (!dragging) {
+			if (Math.hypot(e.clientX - pending.x, e.clientY - pending.y) < DRAG_THRESHOLD) return;
+			dragging = true;
+			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+			pending.src.el.classList.add('tuile-source');
+			ghost = document.createElement('div');
+			ghost.className = 'tuile-ghost';
+			ghost.textContent = glyph(lettreDe(pending.src));
+			document.body.appendChild(ghost);
+		}
+		e.preventDefault();
+		if (ghost) {
+			ghost.style.left = `${e.clientX}px`;
+			ghost.style.top = `${e.clientY}px`;
+		}
+		majDropSlot(e.clientX, e.clientY);
+	};
+	const onUp = (e: PointerEvent): void => {
+		if (!pending || pending.pid !== e.pointerId) return;
+		if (dragging && pending.src && dropSlot !== null) {
+			const src = pending.src;
+			if (src.type === 'bac') {
+				assembled = insertAt(assembled, dropSlot, src.index);
+				caret = Math.min(dropSlot + 1, assembled.length);
+			} else {
+				assembled = moveAt(assembled, src.index, dropSlot > src.index ? dropSlot - 1 : dropSlot);
+			}
+			sel = null;
+			justDragged = true; // le click qui suit le glisser ne doit pas re-déclencher un tap
+			endDrag();
+			redraw();
+		} else if (dragging) {
+			endDrag();
+		}
+		pending = null;
+	};
+	for (const zone of [construction, bac]) {
+		zone.addEventListener('pointerdown', onDown);
+		zone.addEventListener('pointermove', onMove);
+		zone.addEventListener('pointerup', onUp);
+		zone.addEventListener('pointercancel', onUp);
+	}
+
 	redraw();
 
-	sheets()
-		.querySelector('#btnVerifTuiles')!
-		.addEventListener('click', () => {
-			const built = assembled.map((i) => lettres[i]).join('');
-			if (checkAnswer(ex, built)) {
-				reussiteMode(word, 'tuiles');
-				(sheets().querySelector('#btnVerifTuiles') as HTMLButtonElement).disabled = true;
-				reussite(fb, true);
-			} else {
-				fb.innerHTML = `<span class="fb-ko">Pas tout à fait, réessaie.</span>`;
-			}
-		});
+	const verifier = (): void => {
+		const built = assembled.map((i) => lettres[i]).join('');
+		if (checkAnswer(ex, built)) {
+			reussiteMode(word, 'tuiles');
+			(sheets().querySelector('#btnVerifTuiles') as HTMLButtonElement).disabled = true;
+			reussite(fb, true);
+		} else {
+			fb.innerHTML = `<span class="fb-ko">Pas tout à fait, réessaie.</span>`;
+		}
+	};
+	sheets().querySelector('#btnVerifTuiles')!.addEventListener('click', verifier);
 }
 
 /* ---------- Bilan ---------- */

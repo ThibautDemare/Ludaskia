@@ -13,6 +13,7 @@ import { loadOrtho, saveOrtho } from '../core/orthographe/store';
 import { motsDeLecon } from '../core/orthographe/lessons';
 import { genExerciseOrtho, ORTHO_MODE_OPTIONS } from '../core/orthographe/exercise';
 import { checkAnswer } from '../core/exercise';
+import { TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
 import {
 	statutMot,
 	prochaineActivite,
@@ -190,8 +191,7 @@ function renderMotCache(word: MotOrtho): void {
       <div class="ortho-mot-affiche" id="motAffiche">${escapeHTML(word.mot)}</div>
       <button class="btn-primary" id="btnCacher">Cacher et écrire →</button>
       <div class="ortho-saisie" id="zoneSaisie" hidden>
-        <input class="ortho-input" id="orthoInput" type="text" inputmode="text"
-               autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+        <input class="ortho-input" id="orthoInput" ${TEXT_ANSWER_INPUT_ATTRS}
                aria-label="Écris le mot" />
         <div class="accent-kb" id="accentKb"></div>
         <button class="btn-primary" id="btnVerifMot">✓ Vérifier</button>
@@ -254,8 +254,7 @@ function renderDictee(word: MotOrtho): void {
       <p class="ortho-run-consigne">Écoute le mot, puis écris-le.</p>
       <button class="btn-primary ortho-ecouter" id="btnEcouter">🔊 Écouter</button>
       <div class="ortho-saisie">
-        <input class="ortho-input" id="orthoInput" type="text" inputmode="text"
-               autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+        <input class="ortho-input" id="orthoInput" ${TEXT_ANSWER_INPUT_ATTRS}
                aria-label="Écris le mot" />
         <div class="accent-kb" id="accentKb"></div>
         <button class="btn-primary" id="btnVerifMot">✓ Vérifier</button>

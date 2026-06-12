@@ -75,6 +75,9 @@
 }
 .rev-input-text {
 	width: 240px;
+	/* Champ rendu en `type="password"` (anti-suggestion clavier, issue #67/#123) :
+	   on rétablit l'affichage en clair du texte saisi. */
+	-webkit-text-security: none;
 }
 .rev-input:focus {
 	outline: none;

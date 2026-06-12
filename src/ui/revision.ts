@@ -10,7 +10,7 @@ import { escapeHTML } from '../core/utils';
 import { getLessonById, genLessonItem } from '../core/catalog';
 import { hasMode } from '../core/exercise';
 import type { Item } from '../core/items';
-import { checkItemAnswer } from '../core/items';
+import { checkItemAnswer, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
 import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
 import type { OrthoState } from '../core/orthographe/types';
 import { loadLessonRevisions, avancerLessonRevision, addXP } from '../core/progress';
@@ -157,7 +157,7 @@ function renderWordLook(it: Extract<RevItem, { kind: 'word' }>) {
 function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 	const stage = document.getElementById('revStage')!;
 	stage.innerHTML = `<div class="rev-consigne">Écris le mot.</div>
-    <div class="rev-q"><input id="revInput" class="rev-input rev-input-text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <div class="rev-q"><input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}></div>
     <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;

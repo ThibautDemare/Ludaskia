@@ -20,7 +20,7 @@ import {
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { hasMode } from '../core/exercise';
-import { checkItemAnswer } from '../core/items';
+import { checkItemAnswer, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
 import type { Item } from '../core/items';
 import {
 	updateStreak,
@@ -355,7 +355,7 @@ function renderSprintQcm(stage: HTMLElement, def: LessonDef, q: Item, choices: s
 export function sprintQuestionBody(q: Item) {
 	const main =
 		q.kind === 'text'
-			? '<input id="sprintInput" class="sprint-input sprint-input-text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">'
+			? `<input id="sprintInput" class="sprint-input sprint-input-text" ${TEXT_ANSWER_INPUT_ATTRS}>`
 			: '<input id="sprintInput" class="sprint-input" inputmode="numeric" autocomplete="off">';
 	if (q._lesson !== 'math-decomposer-multiplication') return escapeHTML(q.text).replace('@', main);
 	const m = q.text.match(/(\d+)\s*×\s*(\d+)/)!;

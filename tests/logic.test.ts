@@ -354,6 +354,15 @@ describe('Items', () => {
 		expect(/class="ans /.test(h)).toBe(true);
 		expect(/data-answer="5"/.test(h)).toBe(true);
 	});
+	test('renderItem : anti-suggestion sur le texte uniquement (issue #67)', () => {
+		// Réponse texte : déguisée en mot de passe pour bloquer les suggestions du clavier.
+		const txt = api.renderItem({ text: 'x = @', answer: 'mangé', kind: 'text' });
+		expect(/type="password"/.test(txt)).toBe(true);
+		// Calcul : saisie numérique inchangée (pas de type password).
+		const num = api.renderItem(api.add(2, 3));
+		expect(/type="password"/.test(num)).toBe(false);
+		expect(/inputmode="numeric"/.test(num)).toBe(true);
+	});
 });
 
 describe('Leçons & bilans', () => {

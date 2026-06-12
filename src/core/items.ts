@@ -72,6 +72,18 @@ export const setRenderLesson = (v: string | null) => {
 // Attribut data-lesson, ou rien si on ne rattache pas le champ à une leçon.
 export const lessonAttr = () => (renderLesson != null ? ` data-lesson="${renderLesson}"` : '');
 
+/* Attributs des champs de réponse TEXTE (conjugaison, etc.) — issue #67, étape 1.
+   Sur tablette, la barre de suggestions prédictive des claviers (Gboard, Samsung,
+   iOS…) ignore autocomplete/autocorrect/spellcheck et « souffle » la bonne forme.
+   Astuce : on déguise le champ en mot de passe (`type="password"`), car aucun
+   clavier ne propose de suggestions sur un champ password. Le texte reste lisible
+   grâce à `-webkit-text-security: none`, porté par les classes `.ans-text` /
+   `.sprint-input-text` (SCSS), et la valeur saisie (`input.value`) demeure le
+   texte tapé → correction (`checkItemAnswer`) inchangée. N'affecte QUE le texte ;
+   la saisie numérique du calcul garde `type` texte + `inputmode="numeric"`. */
+export const TEXT_ANSWER_INPUT_ATTRS =
+	'type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"';
+
 export function renderItem(it: Item, extra = '') {
 	const id = nextInputId();
 	sessionItems[id] = it;
@@ -79,7 +91,7 @@ export function renderItem(it: Item, extra = '') {
 	const ansAttr = String(it.answer).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 	const field =
 		it.kind === 'text'
-			? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><span class="mark" data-for="${id}"></span>`
+			? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
 			: `<input class="ans ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	return escapeHTML(it.text).replace('@', field);
 }

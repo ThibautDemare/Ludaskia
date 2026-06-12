@@ -8,6 +8,7 @@ import type { ExerciseType, Exercise } from './exercise';
 import type { Item } from './items';
 import { bilanQ } from './lessons';
 import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
+import { MESURE_LESSONS } from '../data/maths/mesures';
 
 /* ---------- Types ---------- */
 
@@ -245,6 +246,18 @@ const MATH_LESSONS: LessonDef[] = [
 	},
 ];
 
+/* ---------- Catalogue des leçons « Grandeurs et mesures » (#89) ----------
+   Moteur moderne (ExerciseType), hors du pipeline bilanQ : le rendu passe par
+   genLessonItem (item numérique) et buildLessonFiche (liste générique). */
+const GRANDEURS_LESSONS: LessonDef[] = MESURE_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'math',
+	category: 'math-grandeurs-mesures',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+}));
+
 /* ---------- Catalogue des leçons français (conjugaison) ---------- */
 
 const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
@@ -258,24 +271,35 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 
 /* ---------- Registre global ---------- */
 
-const ALL_LESSONS: LessonDef[] = [...MATH_LESSONS, ...FRENCH_LESSONS];
+const ALL_LESSONS: LessonDef[] = [...MATH_LESSONS, ...GRANDEURS_LESSONS, ...FRENCH_LESSONS];
+
+/* Une leçon math « héritée » est branchée sur le générateur numérique bilanQ
+   (calcul mental, via MATH_LESSON_NUM). Les autres leçons math (moteurs
+   modernes : conversions #89, etc.) produisent leur item via leur ExerciseType. */
+export function isLegacyMathLesson(lesson: LessonDef): boolean {
+	return lesson.subject === 'math' && lesson.id in MATH_LESSON_NUM;
+}
 
 export function getAllLessons(): LessonDef[] {
 	return ALL_LESSONS;
 }
 
 /* Génère un Item prêt à rendre pour n'importe quelle leçon du catalogue.
-   - math : on réutilise le générateur numérique existant (bilanQ)
-   - autres matières : on convertit l'Exercise produit par l'ExerciseType
-     en Item « texte » (corrigé par comparaison de chaîne). */
+   - math hérité (calcul mental) : générateur numérique existant (bilanQ) ;
+   - math moderne (conversions #89…) : item NUMÉRIQUE depuis l'ExerciseType
+     (le `@` de la question marque l'emplacement du champ) ;
+   - autres matières : item TEXTE (corrigé par comparaison de chaîne). */
 export function genLessonItem(lesson: LessonDef): Item {
-	if (lesson.subject === 'math') {
+	if (isLegacyMathLesson(lesson)) {
 		const item = bilanQ(MATH_LESSON_NUM[lesson.id])!;
 		item._lesson = lesson.id;
 		return item;
 	}
 	const ex = lesson.exerciseType.generate();
 	const question = ex.type === 'text' || ex.type === 'qcm' ? ex.question : '';
+	if (lesson.subject === 'math') {
+		return { text: question, answer: ex.answer, kind: 'num', _lesson: lesson.id };
+	}
 	return {
 		text: question,
 		answer: ex.answer,

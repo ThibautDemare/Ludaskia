@@ -116,7 +116,7 @@ import {
 } from '../src/core/catalog';
 import { checkItemAnswer } from '../src/core/items';
 import { checkAnswer } from '../src/core/exercise';
-import { genItems } from '../src/core/build';
+import { genItems, buildLessonFiche } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
 import {
 	EXPRESS_CAP,
@@ -572,13 +572,9 @@ describe('Catalogue maths : 4 catégories du manuel (#92)', () => {
 		expect(getLessonsByCategory('math-calcul-mental').length).toBe(15);
 		expect(getLessonsByCategory('math-calcul').length).toBe(0); // posé : à venir
 	});
-	test('les nouvelles catégories arrivent vides, sans casser les helpers', () => {
-		for (const id of [
-			'math-numeration',
-			'math-calcul',
-			'math-grandeurs-mesures',
-			'math-geometrie',
-		]) {
+	test('les catégories encore sans contenu restent vides, sans casser les helpers', () => {
+		// « Grandeurs et mesures » est désormais peuplée (#89) ; les autres attendent.
+		for (const id of ['math-numeration', 'math-calcul', 'math-geometrie']) {
 			expect(getLessonsByCategory(id)).toEqual([]);
 		}
 	});
@@ -590,6 +586,51 @@ describe('Catalogue maths : 4 catégories du manuel (#92)', () => {
 		expect(ids).not.toContain('cat-math-calcul-3');
 		expect(ids).not.toContain('cat-math-numeration-3');
 		expect(ids).not.toContain('cat-math-geometrie-3');
+	});
+});
+
+describe('Grandeurs et mesures : conversions (#89)', () => {
+	const ids = ['mes-longueurs', 'mes-masses', 'mes-contenances', 'mes-durees'];
+	test('les 4 leçons de conversion peuplent « Grandeurs et mesures »', () => {
+		const cat = getLessonsByCategory('math-grandeurs-mesures').map((l) => l.id);
+		for (const id of ids) expect(cat).toContain(id);
+		expect(cat.length).toBe(4);
+	});
+	test('items numériques, réponses entières positives, corrigés numériquement', () => {
+		for (const id of ids) {
+			const lesson = getLessonById(id)!;
+			for (let i = 0; i < 200; i++) {
+				const it = genLessonItem(lesson);
+				expect(it.kind).toBe('num'); // pas une saisie texte
+				expect(it.text).toContain('@'); // le champ a sa place
+				expect(it._lesson).toBe(id);
+				const ans = Number(it.answer);
+				expect(Number.isInteger(ans)).toBe(true); // jamais de réponse décimale
+				expect(ans).toBeGreaterThan(0);
+				expect(checkItemAnswer(it, String(ans))).toBe(true);
+				expect(checkItemAnswer(it, String(ans + 1))).toBe(false);
+			}
+		}
+	});
+	test('durées : pas de conversion min↔s libre (base 60 écartée du cœur CE2)', () => {
+		const lesson = getLessonById('mes-durees')!;
+		for (let i = 0; i < 300; i++) {
+			// L'unité « s » (secondes) ne doit jamais apparaître comme unité de calcul.
+			expect(genLessonItem(lesson).text).not.toMatch(/\bs\b/);
+		}
+	});
+	test('contenances : pas de mL (réservé au CM1)', () => {
+		const lesson = getLessonById('mes-contenances')!;
+		for (let i = 0; i < 200; i++) {
+			expect(genLessonItem(lesson).text).not.toContain('mL');
+		}
+	});
+	test('buildLessonFiche : rendu fiche/écran avec champs de saisie (chemin math moderne)', () => {
+		const html = buildLessonFiche('mes-longueurs');
+		expect(html).toContain('Je mesure en mètres et en centimètres'); // titre
+		expect(html).toContain('Complète.'); // consigne maths (pas « Écris la forme »)
+		expect(html).toContain('<input'); // au moins un champ de réponse
+		expect(html).not.toContain('@'); // le `@` a bien été remplacé par le champ
 	});
 });
 
@@ -937,10 +978,10 @@ describe('Sprint', () => {
 		expect(api.updateGoal({ mode: 'complet' }).justDone).toBe(false);
 		expect(api.updateGoal({ mode: 'sprint', sprint: true }).justDone).toBe(true);
 	});
-	test('le catalogue couvre les 15 leçons de maths (décomposer incluse)', () => {
-		const mathLessons = getAllLessons().filter((l) => l.subject === 'math');
-		expect(mathLessons.some((l) => l.id === 'math-decomposer-multiplication')).toBe(true);
-		expect(mathLessons.length).toBe(15);
+	test('le calcul mental couvre ses 15 leçons (décomposer incluse)', () => {
+		const calculMental = getLessonsByCategory('math-calcul-mental');
+		expect(calculMental.some((l) => l.id === 'math-decomposer-multiplication')).toBe(true);
+		expect(calculMental.length).toBe(15);
 	});
 	test('sprint leçon 15 : étapes intermédiaires + champ final', () => {
 		const body15 = api.sprintQuestionBody({

@@ -69,6 +69,15 @@ la forme, fiche imprimable — et `qcm` — choix entre plusieurs formes,
 correctement orthographiées**, jamais une faute affichée) et descripteurs
 `CONJ_LESSONS` (une leçon par verbe × temps). Dossier `francais` sans cédille
 pour des chemins d'import ASCII portables ; le libellé affiché reste « Français ».
+**`maths/mesures.ts`** (#89) : moteur de **conversions d'unités** partagé par
+4 leçons de « Grandeurs et mesures » — `mes-longueurs` (m↔cm, km↔m),
+`mes-masses` (kg↔g), `mes-contenances` (L↔cL), `mes-durees` (h↔min + fractions
+d'heure). `conversionType(config)` fabrique un `ExerciseType` **mono-mode** dont
+`generate()` produit une question texte avec `@` (emplacement du champ) et une
+réponse **numérique** ; `MESURE_LESSONS` liste les descripteurs. Calibrage CE2
+(avis pédagogique) : facteur grande→petite ≤ 9, sens inverse sur multiples
+exacts (réponse entière), pondération ~60/40 vers le sens ×, mL (L↔mL) et
+conversion min↔s écartés (CM1 / surcharge base 60).
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
@@ -101,7 +110,13 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   (`id, label, subject, category, level, exerciseType`), helpers
   `getAllLessons/getLessonById/getLessonsBySubject/getLessonsByCategory`,
   `MATH_LESSON_NUM` (pont id→`bilanQ`), et **`genLessonItem(lesson)`** qui produit
-  un `Item` pour n'importe quelle matière (maths → `bilanQ` ; texte → `generate()`).
+  un `Item` pour n'importe quelle matière. Trois chemins, départagés par
+  **`isLegacyMathLesson`** : maths **hérités** (calcul mental, dans
+  `MATH_LESSON_NUM`) → `bilanQ` ; maths **modernes** (conversions #89…, moteur
+  `ExerciseType`) → item **numérique** depuis `generate()` (le `@` de la question
+  place le champ) ; autres matières → item **texte** (`generate()`, corrigé par
+  chaîne). Ajouter une leçon math hors calcul mental ne touche donc plus à
+  `bilanQ`/`LESSONS`.
   Catégories maths (#92) : `math-numeration`, **`math-calcul`** (opérations
   **posées**, à ne pas confondre avec **`math-calcul-mental`**, les 15 leçons de
   calcul mental historiques), `math-grandeurs-mesures`, `math-geometrie`. Les
@@ -115,8 +130,10 @@ pour des chemins d'import ASCII portables ; le libellé affiché reste « Franç
   `buildLessonFiche`/`bilanBlocksForIds`), `coverHTML(scope)` (garde dynamique),
   pagination 2 fiches/A4. (`buildFiches`/`bilanHTML` historiques conservés.)
 - **`build.ts`** — construction **générique multi-matières** : `genItems`,
-  `buildLessonFiche` (aiguille maths riche / autres matières en liste texte),
-  `bilanBlocksForIds`, `buildFichesForIds` (bilans personnalisés).
+  `buildLessonFiche` (calcul mental → rendu riche via `LESSONS.build()` ; maths
+  modernes & autres matières → liste de questions, consigne « Complète. » pour les
+  maths, « Écris la forme correcte. » pour le texte ; même discriminant
+  `isLegacyMathLesson`), `bilanBlocksForIds`, `buildFichesForIds` (bilans persos).
 - **`bilan-express.ts`** — express **borné** (~20 q, cible ~10 min CE2) :
   `expressQuestionsPerLesson` (≤ 3, 1 quand il y a beaucoup de leçons),
   `sampleExpressLessons` (tirage **pondéré** — leçons fragiles/jamais vues

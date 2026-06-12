@@ -5,7 +5,7 @@
    autres matières (texte) passent par genLessonItem + un rendu
    en liste. C'est le pont qui rend le pipeline multi-matières.
    ============================================================ */
-import { getAllLessons, getLessonById, genLessonItem } from './catalog';
+import { getAllLessons, getLessonById, genLessonItem, isLegacyMathLesson } from './catalog';
 import type { LessonDef } from './catalog';
 import { LESSONS } from './lessons';
 import { setRenderLesson, renderItem, ficheHTMLGeneric } from './items';
@@ -39,21 +39,25 @@ export function genItems(lesson: LessonDef, n: number): Item[] {
 export function buildLessonFiche(lessonId: string): string {
 	const lesson = getLessonById(lessonId);
 	if (!lesson) return '';
-	if (lesson.subject === 'math') {
+	// Calcul mental (moteur bilanQ) : rendu riche dédié (grilles, décomposition…).
+	if (isLegacyMathLesson(lesson)) {
 		const math = LESSONS.find((l) => l.id === lessonId)!;
 		setRenderLesson(lessonId);
 		const html = math.build();
 		setRenderLesson(null);
 		return html;
 	}
-	// Matière texte : 8 questions en liste verticale.
+	// Sinon (math moderne : conversions… / matière texte) : 8 questions en liste.
+	// L'item math est numérique, la matière texte est une saisie de chaîne ; la
+	// consigne s'adapte, le `@` de l'item place le champ dans les deux cas.
 	const items = genItems(lesson, 8);
 	setRenderLesson(lessonId);
 	const inner = `<div class="conj-list">${items
 		.map((it) => `<div class="conj-op">${renderItem(it)}</div>`)
 		.join('')}</div>`;
 	setRenderLesson(null);
-	return ficheHTMLGeneric(lesson.label, '', 'Écris la forme correcte.', inner);
+	const consigne = lesson.subject === 'math' ? 'Complète.' : 'Écris la forme correcte.';
+	return ficheHTMLGeneric(lesson.label, '', consigne, inner);
 }
 
 /* Blocs d'un bilan personnalisé : nbQ questions par leçon sélectionnée. */

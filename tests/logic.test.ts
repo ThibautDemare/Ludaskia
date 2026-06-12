@@ -594,7 +594,9 @@ describe('Grandeurs et mesures : conversions (#89)', () => {
 	test('les 4 leçons de conversion peuplent « Grandeurs et mesures »', () => {
 		const cat = getLessonsByCategory('math-grandeurs-mesures').map((l) => l.id);
 		for (const id of ids) expect(cat).toContain(id);
-		expect(cat.length).toBe(4);
+		// La catégorie accueille aussi d'autres leçons (monnaie #96…) : on vérifie
+		// la présence des conversions, pas un total figé.
+		expect(cat.length).toBeGreaterThanOrEqual(4);
 	});
 	test('items numériques, réponses entières positives, corrigés numériquement', () => {
 		for (const id of ids) {
@@ -631,6 +633,46 @@ describe('Grandeurs et mesures : conversions (#89)', () => {
 		expect(html).toContain('Complète.'); // consigne maths (pas « Écris la forme »)
 		expect(html).toContain('<input'); // au moins un champ de réponse
 		expect(html).not.toContain('@'); // le `@` a bien été remplacé par le champ
+	});
+});
+
+describe('Grandeurs et mesures : la monnaie (#96)', () => {
+	const ids = ['mes-monnaie-calcul', 'mes-monnaie-rendu'];
+	test('les 2 leçons de monnaie rejoignent « Grandeurs et mesures »', () => {
+		const cat = getLessonsByCategory('math-grandeurs-mesures').map((l) => l.id);
+		for (const id of ids) expect(cat).toContain(id);
+	});
+	test('réponses entières positives, unité € ou c collée au champ, corrigées', () => {
+		for (const id of ids) {
+			const lesson = getLessonById(id)!;
+			for (let i = 0; i < 300; i++) {
+				const it = genLessonItem(lesson);
+				expect(it.kind).toBe('num');
+				expect(it.text).toContain('@');
+				const ans = Number(it.answer);
+				expect(Number.isInteger(ans)).toBe(true); // jamais de décimal (« 1,60 » banni)
+				expect(ans).toBeGreaterThan(0);
+				expect(checkItemAnswer(it, String(ans))).toBe(true);
+				expect(checkItemAnswer(it, String(ans + 1))).toBe(false);
+				// L'unité du champ encadre les bornes CE2 : € ≤ 20, centimes pas de 10 < 1 €.
+				if (it.text.includes('@ c')) {
+					expect(ans % 10).toBe(0);
+					expect(ans).toBeLessThan(100);
+				} else {
+					expect(it.text).toContain('@ €');
+					expect(ans).toBeLessThanOrEqual(20);
+				}
+			}
+		}
+	});
+	test('« Je rends la monnaie » : rendu = billet − prix, en euros, jamais en centimes', () => {
+		const lesson = getLessonById('mes-monnaie-rendu')!;
+		for (let i = 0; i < 300; i++) {
+			const it = genLessonItem(lesson);
+			expect(it.text).toContain('@ €'); // toujours en euros
+			expect(it.text).not.toContain('@ c');
+			expect(Number(it.answer)).toBeLessThanOrEqual(19); // billet 20 − prix ≥ 1
+		}
 	});
 });
 

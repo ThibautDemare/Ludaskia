@@ -33,3 +33,34 @@ jobs:
 
       - name: Lancer les tests
         run: npm test
+
+  # Tests e2e Playwright (#129) — navigation/rendu réel. NON BLOQUANT tant qu'on
+  # stabilise le harnais : `continue-on-error` fait que ce job ne gèle pas le
+  # merge. À basculer en bloquant (et à ajouter aux checks requis) une fois fiable.
+  e2e:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Cache des navigateurs Playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Installer Chromium (Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Lancer les tests e2e
+        run: npm run test:e2e

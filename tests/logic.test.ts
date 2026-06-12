@@ -953,11 +953,17 @@ describe('Rattachement d’un favori à sa catégorie (#65)', () => {
 	});
 	test('loadBilans : backfill de categoryId pour un favori legacy mono-catégorie', () => {
 		const byCat = new Map<string, string[]>();
-		for (const l of getAllLessons()) byCat.set(l.category, [...(byCat.get(l.category) ?? []), l.id]);
+		for (const l of getAllLessons())
+			byCat.set(l.category, [...(byCat.get(l.category) ?? []), l.id]);
 		const [catA, catB] = [...byCat.keys()];
 
 		// Favori antérieur à #65 : aucun champ categoryId enregistré.
-		saveBilan({ id: 'leg-mono', label: 'Vieux', lessonIds: byCat.get(catA)!, questionsPerLesson: 3 });
+		saveBilan({
+			id: 'leg-mono',
+			label: 'Vieux',
+			lessonIds: byCat.get(catA)!,
+			questionsPerLesson: 3,
+		});
 		saveBilan({
 			id: 'leg-multi',
 			label: 'Vieux multi',

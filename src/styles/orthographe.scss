@@ -189,6 +189,12 @@
 	font-size: 1.1rem;
 	color: var(--muted);
 }
+.ortho-run-astuce {
+	display: block;
+	margin-top: 0.2rem;
+	font-size: 0.85rem;
+	font-style: italic;
+}
 .ortho-mot-affiche {
 	font-size: 2.6rem;
 	font-weight: 700;
@@ -226,26 +232,36 @@
 	background: var(--blue);
 	color: #fff;
 }
-.tuiles-construction {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	gap: 0.4rem;
-	min-height: 56px;
-	padding: 0.5rem;
-	margin-bottom: 1rem;
-	border-bottom: 3px dashed var(--muted);
+// Libellé court au-dessus de chaque zone (« Ton mot » / « Les lettres ») :
+// distinguer visuellement les deux mondes réduit la confusion des cibles de tap.
+.tuiles-titre {
+	margin: 0 0 0.3rem;
+	font-weight: 700;
+	font-size: 0.95rem;
+	color: var(--muted);
 }
+.tuiles-construction,
 .tuiles-bac {
 	display: flex;
 	flex-wrap: wrap;
+	align-items: center;
 	justify-content: center;
-	gap: 0.4rem;
+	gap: 0.5rem;
+	padding: 0.5rem;
 	margin-bottom: 1rem;
+	border-radius: 12px;
+	touch-action: none; // le glisser sur une tuile ne fait pas défiler la page
+}
+.tuiles-construction {
+	min-height: 68px;
+	background: var(--blue-soft); // zone « mot » teintée
+}
+.tuiles-bac {
+	background: var(--page-bg); // réservoir neutre, contraste avec les tuiles blanches
 }
 .tuile {
-	min-width: 44px;
-	height: 52px;
+	min-width: 48px; // cibles agrandies pour des doigts de CE2 (loi de Fitts)
+	height: 56px;
 	font-size: 1.5rem;
 	font-weight: 700;
 	border: 2px solid var(--blue);
@@ -253,8 +269,17 @@
 	background: #fff;
 	cursor: pointer;
 }
-.tuile:hover {
+// :hover seul ne couvre pas le tactile et « colle » après un tap → on s'appuie
+// sur :active / :focus-visible, et on ne garde :hover que sur les vrais pointeurs.
+.tuile:active,
+.tuile:focus-visible {
 	background: var(--blue-soft);
+	outline: none;
+}
+@media (hover: hover) {
+	.tuile:hover {
+		background: var(--blue-soft);
+	}
 }
 .tuile-used {
 	visibility: hidden;
@@ -263,8 +288,124 @@
 	background: var(--blue);
 	color: #fff;
 }
-.tuile-pose:hover {
+.tuile-pose:active,
+.tuile-pose:focus-visible {
 	background: var(--blue-dark);
+	outline: none;
+}
+@media (hover: hover) {
+	.tuile-pose:hover {
+		background: var(--blue-dark);
+	}
+}
+
+/* Curseur d'insertion (couche 1) */
+.tuile-slot {
+	min-width: 12px; // zone tactile fine mais saisissable, sans ressembler à une tuile
+	width: 12px;
+	height: 56px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+}
+.tuile-curseur {
+	width: 3px;
+	height: 38px;
+	border-radius: 2px;
+	background: transparent;
+}
+.tuile-slot.is-caret .tuile-curseur {
+	background: var(--blue);
+	animation: tuile-blink 1s steps(2, start) infinite;
+}
+.tuile-slot.is-drop .tuile-curseur {
+	background: var(--blue);
+	width: 4px;
+	height: 52px;
+	animation: none; // indicateur de dépôt : barre pleine, pas de clignotement
+}
+@keyframes tuile-blink {
+	50% {
+		opacity: 0;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.tuile-slot.is-caret .tuile-curseur {
+		animation: none; // trait fixe coloré, sans clignotement
+	}
+}
+
+/* Tuile sélectionnée + contrôles ← → / enlever (couche 2) */
+.tuile-cell {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.3rem;
+}
+// Sélection signalée par la forme (taille + ombre + bordure), pas par la seule
+// couleur — daltonisme.
+.tuile-cell.sel .tuile-pose.sel {
+	border: 3px solid var(--blue-dark);
+	box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+	transform: scale(1.06);
+}
+.tuile-controls {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+.tuile-fleche,
+.tuile-retirer {
+	min-width: 40px;
+	height: 40px;
+	font-size: 1.1rem;
+	font-weight: 700;
+	border: 2px solid var(--blue);
+	border-radius: 8px;
+	background: var(--blue-soft);
+	color: var(--blue);
+	cursor: pointer;
+}
+.tuile-retirer {
+	min-width: 0;
+	padding: 0 0.6rem;
+	font-size: 0.9rem;
+}
+// Aux extrémités, la flèche reste visible mais grisée (un bouton qui disparaît
+// déroute plus qu'un bouton visiblement inactif).
+.tuile-fleche.is-disabled,
+.tuile-fleche:disabled {
+	border-color: var(--muted);
+	color: var(--muted);
+	background: var(--paper);
+	cursor: default;
+}
+
+/* Glisser-déposer (couche 3) : fantôme suivant le doigt + source estompée */
+.tuile-ghost {
+	position: fixed;
+	z-index: 1000;
+	transform: translate(-50%, -50%) scale(1.1);
+	min-width: 48px;
+	height: 56px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.5rem;
+	font-weight: 700;
+	border-radius: 10px;
+	background: var(--blue);
+	color: #fff;
+	opacity: 0.8;
+	pointer-events: none; // sinon elementFromPoint renverrait le fantôme
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.tuile-source {
+	opacity: 0.4;
 }
 .ortho-feedback {
 	margin-top: 1rem;

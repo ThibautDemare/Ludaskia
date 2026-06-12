@@ -7,3 +7,6 @@ dist/
 # Divers
 *.log
 .DS_Store
+
+# Notes de travail locales (non publiques)
+notes/

@@ -20,6 +20,12 @@ export interface LeconOrthoPredef {
 /** Raccourci : liste de mots -> MotInput[]. */
 const m = (...mots: string[]): MotInput[] => mots.map((mot) => ({ mot }));
 
+/** Mot homophone : la dictée doit lire une phrase d'exemple pour lever l'ambiguïté. */
+const h = (mot: string, commeDans: string): MotInput => ({ mot, commeDans, homophone: true });
+
+/** Mot accompagné d'une phrase d'exemple en dictée (sans drapeau homophone). */
+const c = (mot: string, commeDans: string): MotInput => ({ mot, commeDans });
+
 export const ORTHO_PREDEF: LeconOrthoPredef[] = [
 	{
 		id: 'fr-ortho-invariables-1',
@@ -285,5 +291,85 @@ export const ORTHO_PREDEF: LeconOrthoPredef[] = [
 			'quatre-cents',
 			'mille',
 		),
+	},
+	/* ----------------------------------------------------------------
+	   Mots « irréguliers » : l'orthographe ne reflète pas la
+	   prononciation. Liste fournie par une orthophoniste, regroupée par
+	   type de piège pour aider l'enfant à généraliser. Les mots déjà
+	   présents ailleurs (cent, dix, sept, vingt → leçons « Les nombres »)
+	   ne sont pas redonnés ici : un mot est unique dans toute la banque.
+	   ---------------------------------------------------------------- */
+	{
+		id: 'fr-ortho-irreguliers-ch',
+		label: 'Mots irréguliers — « ch » qui se prononce « k »',
+		niveau: 'ce2',
+		mots: [
+			...m('chorale', 'chronomètre', 'orchidée', 'orchestre', 'technique'),
+			c('choristes', 'les choristes chantent'),
+		],
+	},
+	{
+		id: 'fr-ortho-irreguliers-finale-1',
+		label: 'Mots irréguliers — la lettre muette à la fin (1)',
+		niveau: 'ce2',
+		mots: [
+			h('sang', 'le sang coule'),
+			h('temps', "le temps qu'il fait dehors"),
+			h('corps', 'les parties du corps'),
+			h('cerf', 'le cerf a de grands bois'),
+			h('paix', 'faire la paix avec un ami'),
+			h('poids', 'le poids du cartable'),
+			h('étang', "le canard nage dans l'étang"),
+			...m('tronc', 'tabac', 'respect'),
+		],
+	},
+	{
+		id: 'fr-ortho-irreguliers-finale-2',
+		label: 'Mots irréguliers — la lettre muette à la fin (2)',
+		niveau: 'ce2',
+		mots: [
+			h('long', 'un train très long'),
+			h('puits', "je tire de l'eau du puits"),
+			...m('fusil', 'outil', 'bourg', 'héros', 'sirop', 'nid', 'escroc', 'galop'),
+		],
+	},
+	{
+		id: 'fr-ortho-irreguliers-interne',
+		label: 'Mots irréguliers — la lettre cachée dans le mot',
+		niveau: 'ce2',
+		mots: [
+			h('compter', "compter jusqu'à dix"),
+			h('compteur', 'le compteur de vitesse'),
+			h('fils', 'le fils de mes parents'),
+			h('doigt', 'le doigt de la main'),
+			...m('sculpture', 'baptême', 'automne', 'août'),
+		],
+	},
+	{
+		id: 'fr-ortho-irreguliers-sons',
+		label: 'Mots irréguliers — les lettres qui changent de son',
+		niveau: 'ce2',
+		mots: [
+			h('paon', 'le paon ouvre sa queue'),
+			h('faon', 'le faon est le petit de la biche'),
+			h('seconde', 'attends une seconde'),
+			...m('ville', 'million', 'aiguille', 'oignon', 'sixième', 'crayon', 'acrobatie'),
+		],
+	},
+	{
+		id: 'fr-ortho-irreguliers-quotidien',
+		label: 'Mots irréguliers — des mots-pièges de tous les jours',
+		niveau: 'ce2',
+		mots: [
+			h('net', 'le ciel est net, sans nuage'),
+			h('poêle', 'la poêle pour cuire les œufs'),
+			...m('monsieur', 'femme', 'lycée', 'musée'),
+		],
+	},
+	{
+		id: 'fr-ortho-irreguliers-ailleurs',
+		label: "Mots irréguliers — des mots venus d'ailleurs",
+		niveau: 'ce2',
+		mots: m('parfum', 'aquarelle', 'aquarium', 'podium', 'toast', 'cake', 'dolmen'),
 	},
 ];

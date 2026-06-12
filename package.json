@@ -2,6 +2,7 @@
 	"name": "ludaskia",
 	"version": "0.1.0",
 	"private": true,
+	"license": "UNLICENSED",
 	"type": "module",
 	"description": "Entraînement au calcul mental (CE2), ludique et chronométré.",
 	"scripts": {

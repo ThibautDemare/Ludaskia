@@ -205,9 +205,19 @@ describe('orthographe — leçons prédéfinies', () => {
 		expect(s.banque[ids[0]].origine).toBe('predefini');
 	});
 
-	test('ORTHO_PREDEF : aucun doublon de mot (forme normalisée) sur tout le jeu', () => {
-		const formes = ORTHO_PREDEF.flatMap((l) => l.mots.map((mi) => formeNormalisee(mi.mot)));
-		expect(new Set(formes).size).toBe(formes.length);
+	test('ORTHO_PREDEF : aucun doublon de mot (forme normalisée) au sein d’une même leçon', () => {
+		// Les leçons « Thème : … » (#106) partagent volontairement des mots entre
+		// elles (reine, naitre…) : la banque dédoublonne à l'exécution (motIdParForme).
+		// On garde donc l'invariant utile — pas deux fois le même mot dans UNE leçon.
+		for (const l of ORTHO_PREDEF) {
+			const formes = l.mots.map((mi) => formeNormalisee(mi.mot));
+			expect(new Set(formes).size, `doublon dans « ${l.label} »`).toBe(formes.length);
+		}
+	});
+
+	test('ORTHO_PREDEF : ids uniques', () => {
+		const ids = ORTHO_PREDEF.map((l) => l.id);
+		expect(new Set(ids).size).toBe(ids.length);
 	});
 });
 

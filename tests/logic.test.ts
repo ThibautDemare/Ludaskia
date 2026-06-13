@@ -678,10 +678,11 @@ describe('Grandeurs et mesures : la monnaie (#96)', () => {
 
 describe('Numération : comparer / encadrer / intercaler (#98)', () => {
 	const ids = ['num-comparer', 'num-encadrer-intercaler', 'num-situer-10000'];
-	test('les 3 leçons peuplent « Numération »', () => {
+	test('les 3 leçons « situer un nombre » peuplent « Numération »', () => {
 		const cat = getLessonsByCategory('math-numeration').map((l) => l.id);
 		for (const id of ids) expect(cat).toContain(id);
-		expect(cat.length).toBe(3);
+		// La catégorie accueille aussi la valeur de position (#94) : pas de total figé.
+		expect(cat.length).toBeGreaterThanOrEqual(3);
 	});
 	test('chaque leçon expose les deux modes saisie + tuiles', () => {
 		for (const id of ids) {
@@ -746,6 +747,66 @@ describe('Numération : comparer / encadrer / intercaler (#98)', () => {
 			const it = genLessonItem(l2);
 			const nombres = (it.text.match(/\d+/g) ?? []).map(Number).concat(Number(it.answer) || 0);
 			for (const n of nombres) expect(n).toBeLessThanOrEqual(1000);
+		}
+	});
+});
+
+describe('Numération : valeur de position et décomposition (#94)', () => {
+	const ids = [
+		'num-valeur-position',
+		'num-decompose-100',
+		'num-decompose-1000',
+		'num-decompose-10000',
+	];
+	test('les 4 leçons peuplent « Numération »', () => {
+		const cat = getLessonsByCategory('math-numeration').map((l) => l.id);
+		for (const id of ids) expect(cat).toContain(id);
+	});
+	test('items numériques entiers ≥ 0, corrigés numériquement', () => {
+		for (const id of ids) {
+			const lesson = getLessonById(id)!;
+			for (let i = 0; i < 300; i++) {
+				const it = genLessonItem(lesson);
+				expect(it.kind).toBe('num');
+				expect(it.text).toContain('@');
+				const ans = Number(it.answer);
+				expect(Number.isInteger(ans)).toBe(true);
+				expect(ans).toBeGreaterThanOrEqual(0); // un chiffre/rang peut valoir 0
+				expect(checkItemAnswer(it, String(ans))).toBe(true);
+				expect(checkItemAnswer(it, String(ans + 1))).toBe(false);
+			}
+		}
+	});
+	test('valeur des chiffres : « chiffre des » ∈ 0-9, « en tout » jamais sur les unités', () => {
+		const lesson = getLessonById('num-valeur-position')!;
+		for (let i = 0; i < 600; i++) {
+			const it = genLessonItem(lesson);
+			const ans = Number(it.answer);
+			if (it.text.includes('chiffre des')) {
+				expect(ans).toBeGreaterThanOrEqual(0);
+				expect(ans).toBeLessThanOrEqual(9); // un seul symbole
+			} else {
+				expect(it.text).toContain('en tout');
+				expect(it.text).not.toContain('unités en tout'); // jamais le nombre entier
+			}
+		}
+	});
+	test('décompose : composer redonne le nombre, le rang troué donne son chiffre', () => {
+		// Composer « a centaines + b dizaines + c unités = @ » → la réponse est le
+		// nombre formé ; on vérifie sur la leçon ≤ 1000 que la réponse est cohérente.
+		const lesson = getLessonById('num-decompose-1000')!;
+		for (let i = 0; i < 400; i++) {
+			const it = genLessonItem(lesson);
+			const ans = Number(it.answer);
+			if (it.text.trimEnd().endsWith('= @')) {
+				// forme « composer » (rangs → nombre) : réponse = nombre à 3 rangs
+				expect(ans).toBeGreaterThanOrEqual(100);
+				expect(ans).toBeLessThanOrEqual(999);
+			} else {
+				// forme « décomposer » (trou sur un rang) : réponse = un chiffre 0-9
+				expect(ans).toBeGreaterThanOrEqual(0);
+				expect(ans).toBeLessThanOrEqual(9);
+			}
 		}
 	});
 });

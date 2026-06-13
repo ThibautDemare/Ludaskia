@@ -123,6 +123,16 @@ inversion des aiguilles, ±5 min, confusion quart/demi, ±1 h). Calibrage CE2 (a
 pédagogique) : horloge **12 h** uniquement, 4 plages pondérées (heures pile, demi,
 quarts, multiples de 5), positions d'aiguilles quasi superposées (dont 12 h 00)
 écartées.
+**`maths/perimetre.ts`** (#99) : **3 leçons** de périmètre (catégorie « Grandeurs
+et mesures »), clientes du moteur SVG, mono-mode saisie, réponse **numérique**
+(unité « cm » affichée par l'app) — découpage en 3 compétences distinctes (avis
+pédagogique) : `mes-perimetre-cotes` (additionner les côtés d'un rectangle /
+triangle isocèle / figure en L cotés — `renderPolygoneCote`), `mes-perimetre-quadrillage`
+(compter les **côtés de carreaux** du contour sur grille — `renderQuadrillage` +
+`boundaryEdges`), `mes-perimetre-formule` (déduire : carré `4 × côté`, rectangle
+`2 × (L + l)`). La définition (« le périmètre, c'est le tour ») est rappelée dans
+chaque énoncé. Calibrage CE2 : côtés 2–15, périmètre ≤ ~50 ; figures à l'échelle
+(triangle isocèle, L cohérent) ; quadrillage ≤ 6×6, périmètre 8–20.
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
@@ -153,13 +163,18 @@ quarts, multiples de 5), positions d'aiguilles quasi superposées (dont 12 h 00)
   `aria-label` ; `line`, `circle`, `rect`, `polygon`, `polyline`, `text`,
   `pointOnCircle`) et un premier renderer **`renderHorloge(h, m)`** (cadran,
   graduations, chiffres, deux aiguilles distinctes — la petite/heures
-  **proportionnelle aux minutes**). `renderFigure(spec)` aiguille par données
-  (union **`FigureSpec`**, point d'extension). **C'est le socle réutilisable** des
-  futures figures de « Grandeurs et mesures » / « Géométrie » (rectangles cotés et
-  figures en L pour le périmètre, polygones et quadrillages, cercle coté, schémas
-  de solides) : on compose avec les primitives, on ajoute un `renderXxx` (+ variant
-  `FigureSpec` au besoin), jamais de SVG « à la main » dans une leçon. Tokens de
-  couleur dédiés (`--clock-min`…) ; styles dans `src/styles/figures.scss`.
+  **proportionnelle aux minutes**), **`renderPolygoneCote(points, labels)`**
+  (#99 — polygone dessiné **à l'échelle** depuis ses sommets, chaque côté coté à
+  l'extérieur ; un label vide = côté non coté) et **`renderQuadrillage(cols, rows,
+  cells)`** (#99 — figure rectiligne sur grille, **contour surligné** ; le helper
+  **`boundaryEdges(cells)`** donne les côtés unitaires du tour, sa longueur = le
+  périmètre en côtés de carreaux). `renderFigure(spec)` aiguille par données (union
+  **`FigureSpec`** : `horloge` | `polygoneCote` | `quadrillage`, **point
+  d'extension**). **C'est le socle réutilisable** des figures de « Grandeurs et
+  mesures » / « Géométrie » (à venir : cercle coté #102, schémas de solides #103) :
+  on compose avec les primitives, on ajoute un `renderXxx` (+ variant `FigureSpec`
+  au besoin), jamais de SVG « à la main » dans une leçon. Tokens de couleur dédiés
+  (`--clock-min`…) ; styles dans `src/styles/figures.scss`.
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
   (`text` | `qcm` | `tuilesNombre` (numération #98) | `posed` (calcul posé #97 :
   op + opérandes) | interactions ortho), interface **`ExerciseType`** : `modes?`

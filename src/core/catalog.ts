@@ -11,6 +11,7 @@ import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 import { MESURE_LESSONS } from '../data/maths/mesures';
 import { MONNAIE_LESSONS } from '../data/maths/monnaie';
 import { HEURE_LESSONS } from '../data/maths/heure';
+import { PERIMETRE_LESSONS } from '../data/maths/perimetre';
 import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration';
 import { POSITION_LESSONS } from '../data/maths/position';
 import { POSEE_LESSONS } from '../data/maths/posee';
@@ -260,6 +261,7 @@ const GRANDEURS_LESSONS: LessonDef[] = [
 	...MESURE_LESSONS,
 	...MONNAIE_LESSONS,
 	...HEURE_LESSONS,
+	...PERIMETRE_LESSONS,
 ].map((d) => ({
 	id: d.id,
 	label: d.label,

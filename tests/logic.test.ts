@@ -117,7 +117,14 @@ import {
 } from '../src/core/catalog';
 import { checkItemAnswer, figureBlock } from '../src/core/items';
 import type { PosedSpec } from '../src/core/items';
-import { renderHorloge, renderFigure, pointOnCircle } from '../src/core/figures';
+import {
+	renderHorloge,
+	renderFigure,
+	pointOnCircle,
+	renderPolygoneCote,
+	renderQuadrillage,
+	boundaryEdges,
+} from '../src/core/figures';
 import { checkAnswer } from '../src/core/exercise';
 import { genItems, buildLessonFiche } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
@@ -790,6 +797,136 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 		expect(html).toContain('<svg'); // l'horloge s'affiche sur la fiche
 		expect(html).toContain('<input'); // champ de réponse
 		expect(html).not.toContain('@'); // le `@` est remplacé par le champ
+	});
+});
+
+describe('Moteur de figures : polygone coté & quadrillage (#99)', () => {
+	test('renderPolygoneCote : SVG accessible, polygone, une cote par côté non vide', () => {
+		const html = renderPolygoneCote(
+			[
+				[0, 0],
+				[5, 0],
+				[5, 3],
+				[0, 3],
+			],
+			['5', '3', '5', '3'],
+		);
+		expect(html).toContain('<svg');
+		expect(html).toContain('role="img"');
+		expect(html).toContain('<polygon');
+		expect((html.match(/<text/g) ?? []).length).toBe(4); // 4 côtés cotés
+	});
+	test('renderPolygoneCote : un label vide ne dessine pas de cote (dimensions déduites)', () => {
+		const html = renderPolygoneCote(
+			[
+				[0, 0],
+				[6, 0],
+				[6, 4],
+				[0, 4],
+			],
+			['6', '4', '', ''],
+		);
+		expect((html.match(/<text/g) ?? []).length).toBe(2); // seules 2 dimensions cotées
+	});
+	test('boundaryEdges : périmètre rectiligne = nombre de côtés unitaires du contour', () => {
+		// Rectangle 3×2 cases → périmètre 2*(3+2) = 10 côtés.
+		const rect: Array<[number, number]> = [];
+		for (let y = 0; y < 2; y++) for (let x = 0; x < 3; x++) rect.push([x, y]);
+		expect(boundaryEdges(rect).length).toBe(10);
+		// Une seule case → 4 côtés.
+		expect(boundaryEdges([[0, 0]]).length).toBe(4);
+		// Figure en L (rectangle 3×2 moins le coin haut-droite) garde le périmètre 10.
+		const ell = rect.filter(([x, y]) => !(x === 2 && y === 0));
+		expect(boundaryEdges(ell).length).toBe(10);
+	});
+	test('renderQuadrillage : trame + cases + contour surligné', () => {
+		const html = renderQuadrillage(4, 4, [
+			[1, 1],
+			[2, 1],
+			[1, 2],
+			[2, 2],
+		]);
+		expect(html).toContain('<svg');
+		expect(html).toContain('<rect'); // cases pleines
+		expect(html).toContain('<line'); // trame + contour
+	});
+	test('renderFigure : dispatch polygoneCote et quadrillage', () => {
+		expect(
+			renderFigure({
+				kind: 'polygoneCote',
+				points: [
+					[0, 0],
+					[4, 0],
+					[4, 4],
+					[0, 4],
+				],
+				labels: ['4', '4', '4', '4'],
+			}),
+		).toContain('<polygon');
+		expect(renderFigure({ kind: 'quadrillage', cols: 3, rows: 3, cells: [[1, 1]] })).toContain(
+			'<svg',
+		);
+	});
+});
+
+describe('Grandeurs et mesures : le périmètre (#99)', () => {
+	const ids = ['mes-perimetre-cotes', 'mes-perimetre-quadrillage', 'mes-perimetre-formule'];
+	test('les 3 leçons de périmètre peuplent « Grandeurs et mesures »', () => {
+		const cat = getLessonsByCategory('math-grandeurs-mesures').map((l) => l.id);
+		for (const id of ids) expect(cat).toContain(id);
+	});
+	test('items numériques avec figure, réponse entière positive, corrigés numériquement', () => {
+		for (const id of ids) {
+			const lesson = getLessonById(id)!;
+			for (let i = 0; i < 200; i++) {
+				const it = genLessonItem(lesson);
+				expect(it.kind).toBe('num'); // réponse numérique
+				expect(it.text).toContain('@');
+				expect(it.text).toContain('tour'); // la définition est rappelée
+				expect(it.figure).toContain('<svg'); // figure affichée
+				expect(it._lesson).toBe(id);
+				const ans = Number(it.answer);
+				expect(Number.isInteger(ans)).toBe(true);
+				expect(ans).toBeGreaterThan(0);
+				expect(checkItemAnswer(it, String(ans))).toBe(true);
+				expect(checkItemAnswer(it, String(ans + 1))).toBe(false);
+			}
+		}
+	});
+	test('additionner les côtés : périmètre raisonnable au calcul mental CE2 (≤ 60 cm)', () => {
+		const lesson = getLessonById('mes-perimetre-cotes')!;
+		for (let i = 0; i < 300; i++) {
+			const it = genLessonItem(lesson);
+			expect(it.text).toContain('@ cm'); // unité cm affichée par l'app
+			expect(Number(it.answer)).toBeLessThanOrEqual(60);
+		}
+	});
+	test('quadrillage : périmètre pair (figure rectiligne), entre 8 et 24 côtés, sans unité cm', () => {
+		const lesson = getLessonById('mes-perimetre-quadrillage')!;
+		for (let i = 0; i < 300; i++) {
+			const it = genLessonItem(lesson);
+			expect(it.text).not.toContain('cm'); // on compte des côtés de carreaux, pas des cm
+			const p = Number(it.answer);
+			expect(p % 2).toBe(0); // tout polygone rectiligne a un périmètre pair
+			expect(p).toBeGreaterThanOrEqual(8);
+			expect(p).toBeLessThanOrEqual(24);
+		}
+	});
+	test('formule : carré (4×côté) ou rectangle (2×(L+l)), figure cotée partiellement', () => {
+		const lesson = getLessonById('mes-perimetre-formule')!;
+		for (let i = 0; i < 300; i++) {
+			const it = genLessonItem(lesson);
+			expect(it.text).toMatch(/carré|rectangle/);
+			expect(it.text).toContain('@ cm');
+			expect(Number(it.answer) % 2).toBe(0); // 4c et 2(L+l) sont pairs
+		}
+	});
+	test('buildLessonFiche : fiche imprimable avec figure SVG et champ de saisie', () => {
+		const html = buildLessonFiche('mes-perimetre-cotes');
+		expect(html).toContain('Je calcule le périmètre'); // titre
+		expect(html).toContain('<svg');
+		expect(html).toContain('<input');
+		expect(html).not.toContain('@');
 	});
 });
 

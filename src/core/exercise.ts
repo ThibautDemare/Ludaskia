@@ -21,6 +21,10 @@ export type Exercise =
 	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
 	// des distracteurs vers l'emplacement `@` de la question. Réponse = `answer`.
 	| { type: 'tuilesNombre'; question: string; answer: string; tuiles: string[] }
+	// Vocabulaire (#108) — l'enfant range une SUITE de tuiles-mots dans l'ordre
+	// alphabétique. `tuiles` = la suite mélangée affichée ; `ordre` = la bonne
+	// suite triée (calculée, jamais codée en dur). Mono-mode (runner dédié).
+	| { type: 'tuilesOrdre'; question: string; tuiles: string[]; ordre: string[] }
 	// Calcul posé (#97) — opération en colonnes ; le catalogue en fait un Item
 	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.
 	| { type: 'posed'; op: '+' | '-' | 'x'; a: number; b: number }
@@ -67,9 +71,10 @@ export function defaultMode(type: ExerciseType): ExerciseMode | undefined {
    Accents et apostrophes exigés. Couvre tous les types : comparaison à `answer`
    (+ variantes `answers` pour 'text'). */
 export function checkAnswer(exercise: Exercise, input: string): boolean {
-	// Le calcul posé n'a pas de réponse unique (corrigé cellule par cellule) :
-	// il ne passe jamais par cette vérification générique.
-	if (exercise.type === 'posed') return false;
+	// Le calcul posé (corrigé cellule par cellule) et le rangement d'une suite
+	// (#108, corrigé par son runner / sa propre check) n'ont pas de réponse texte
+	// unique : ils ne passent jamais par cette vérification générique.
+	if (exercise.type === 'posed' || exercise.type === 'tuilesOrdre') return false;
 	const normalized = normalizeText(input);
 	if (normalized === normalizeText(exercise.answer)) return true;
 	if (exercise.type === 'text') {

@@ -26,9 +26,10 @@ test('Grammaire (vide) affiche « Bientôt disponible » sans erreur', async ({ 
 	expect(errors).toEqual([]);
 });
 
-test('Vocabulaire (vide) affiche « Bientôt disponible » sans erreur', async ({ page }) => {
+test('Vocabulaire liste ses leçons (ordre alphabétique, #108) sans erreur', async ({ page }) => {
+	// Depuis #108, la catégorie Vocabulaire n'est plus vide.
 	const errors = watchErrors(page);
 	await gotoHash(page, 'categorie-fr-vocabulaire');
-	await expect(page.locator('.cat-empty')).toBeVisible();
+	await expect(page.locator('.lesson-item').first()).toBeVisible();
 	expect(errors).toEqual([]);
 });

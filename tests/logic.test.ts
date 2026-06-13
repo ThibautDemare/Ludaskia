@@ -105,7 +105,6 @@ import { REGULARITY } from '../src/ui/render';
 import { sprintQuestionBody } from '../src/ui/sprint';
 import {
 	getAllLessons,
-	getLessonsBySubject,
 	getLessonsByCategory,
 	genLessonItem,
 	getLessonById,
@@ -113,8 +112,10 @@ import {
 	bilanMode,
 	commonCategoryId,
 	isPosedLesson,
+	isOrderingLesson,
 	CATEGORIES,
 } from '../src/core/catalog';
+import { VOCAB_LESSONS, trierAlpha } from '../src/data/francais/vocabulaire';
 import { checkItemAnswer, figureBlock } from '../src/core/items';
 import type { PosedSpec } from '../src/core/items';
 import {
@@ -1833,9 +1834,12 @@ describe('Français — Conjugaison', () => {
 		expect(t.check(ex, 'sommes allé')).toBe(false); // accord pluriel manquant
 	});
 	test('catalogue : 52 leçons de conjugaison (13 verbes × 4 temps)', () => {
-		const fr = getLessonsBySubject('francais');
-		expect(fr.length).toBe(CONJ_LESSONS.length);
-		expect(fr.length).toBe(52);
+		// La matière Français contient désormais aussi du vocabulaire (#108) : on
+		// compte la conjugaison par sa catégorie, pas par la matière entière.
+		const conj = getLessonsByCategory('fr-conjugaison');
+		expect(conj.length).toBe(CONJ_LESSONS.length);
+		expect(conj.length).toBe(52);
+		const fr = conj;
 		expect(fr.every((l) => l.category === 'fr-conjugaison')).toBe(true);
 		expect(fr.some((l) => l.id === 'fr-conj-etre-present')).toBe(true);
 		expect(fr.some((l) => l.id === 'fr-conj-aller-futur')).toBe(true);
@@ -2399,5 +2403,90 @@ describe("Reprise d'exercice en cours (#63)", () => {
 		const autre = api.addProfile('Autre');
 		api.setActiveProfile(autre.uuid);
 		expect(loadResumes(3000).length).toBe(0);
+	});
+});
+
+describe('vocabulaire — ordre alphabétique (#108)', () => {
+	const ID_NIV1 = 'fr-vocab-alpha-initiale';
+	const ID_NIV2 = 'fr-vocab-alpha-deuxieme';
+
+	test('trierAlpha : tri français, gère les accents', () => {
+		expect(trierAlpha(['banane', 'arbre', 'école', 'avion'])).toEqual([
+			'arbre',
+			'avion',
+			'banane',
+			'école',
+		]);
+		// é se classe avec e (entre « danse » et « fleur »), pas après z.
+		expect(trierAlpha(['fleur', 'école', 'danse'])).toEqual(['danse', 'école', 'fleur']);
+	});
+
+	test('génération : suite mélangée valide, ordre = tri calculé (jamais figé)', () => {
+		for (const def of VOCAB_LESSONS) {
+			for (let i = 0; i < 60; i++) {
+				const ex = def.exerciseType.generate('tuiles');
+				expect(ex.type).toBe('tuilesOrdre');
+				if (ex.type !== 'tuilesOrdre') continue;
+				// 4 à 5 mots, tous distincts.
+				expect(ex.ordre.length).toBeGreaterThanOrEqual(4);
+				expect(ex.ordre.length).toBeLessThanOrEqual(5);
+				expect(new Set(ex.ordre).size).toBe(ex.ordre.length);
+				// `ordre` est exactement le tri alphabétique des tuiles (correction calculée).
+				expect(ex.ordre).toEqual(trierAlpha(ex.tuiles));
+				// `tuiles` est une permutation de `ordre`…
+				expect([...ex.tuiles].sort()).toEqual([...ex.ordre].sort());
+				// …et n'est PAS déjà rangée (sinon exercice sans intérêt).
+				expect(ex.tuiles).not.toEqual(ex.ordre);
+			}
+		}
+	});
+
+	test('niveau 1 : initiales toutes différentes', () => {
+		const def = VOCAB_LESSONS.find((l) => l.id === ID_NIV1)!;
+		for (let i = 0; i < 60; i++) {
+			const ex = def.exerciseType.generate('tuiles');
+			if (ex.type !== 'tuilesOrdre') continue;
+			const initiales = ex.ordre.map((m) => m[0]);
+			expect(new Set(initiales).size).toBe(initiales.length);
+		}
+	});
+
+	test('niveau 2 : même initiale, deuxièmes lettres distinctes', () => {
+		const def = VOCAB_LESSONS.find((l) => l.id === ID_NIV2)!;
+		for (let i = 0; i < 60; i++) {
+			const ex = def.exerciseType.generate('tuiles');
+			if (ex.type !== 'tuilesOrdre') continue;
+			const initiales = new Set(ex.ordre.map((m) => m[0]));
+			expect(initiales.size).toBe(1); // tous la même 1re lettre
+			const deuxiemes = ex.ordre.map((m) => m[1]);
+			expect(new Set(deuxiemes).size).toBe(deuxiemes.length); // 2e lettre discriminante
+		}
+	});
+
+	test('check() : accepte la suite écrite (espaces ou virgules), rejette le désordre', () => {
+		const def = VOCAB_LESSONS.find((l) => l.id === ID_NIV1)!;
+		const ex = def.exerciseType.generate('tuiles');
+		if (ex.type !== 'tuilesOrdre') throw new Error('type inattendu');
+		expect(def.exerciseType.check(ex, ex.ordre.join(' '))).toBe(true);
+		expect(def.exerciseType.check(ex, ex.ordre.join(', '))).toBe(true);
+		expect(def.exerciseType.check(ex, ex.ordre.join('  '))).toBe(true); // espaces multiples
+		expect(def.exerciseType.check(ex, [...ex.ordre].reverse().join(' '))).toBe(false);
+	});
+
+	test('genLessonItem : repli texte rangé pour fiche/bilan/révision', () => {
+		const lesson = getLessonById(ID_NIV1)!;
+		expect(isOrderingLesson(lesson)).toBe(true);
+		const it = genLessonItem(lesson);
+		expect(it.kind).toBe('text');
+		expect(it.text).toContain('@'); // emplacement du champ
+		// La bonne réponse est la suite rangée ; checkItemAnswer la valide.
+		expect(checkItemAnswer(it, String(it.answer))).toBe(true);
+		expect(checkItemAnswer(it, 'zzz nimporte quoi')).toBe(false);
+	});
+
+	test('isOrderingLesson : vrai pour le rangement, faux pour les autres', () => {
+		expect(isOrderingLesson(getLessonById(ID_NIV2)!)).toBe(true);
+		expect(isOrderingLesson(getLessonById('math-tables-addition')!)).toBe(false);
+		expect(isOrderingLesson(getLessonById('fr-conj-etre-present')!)).toBe(false);
 	});
 });

@@ -8,6 +8,7 @@ import type { ExerciseType, Exercise } from './exercise';
 import type { Item } from './items';
 import { bilanQ } from './lessons';
 import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
+import { VOCAB_LESSONS } from '../data/francais/vocabulaire';
 import { MESURE_LESSONS } from '../data/maths/mesures';
 import { MONNAIE_LESSONS } from '../data/maths/monnaie';
 import { HEURE_LESSONS } from '../data/maths/heure';
@@ -307,6 +308,19 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 	exerciseType: conjugationType(d.verbId, d.tense),
 }));
 
+/* ---------- Catalogue des leçons « Vocabulaire » (#108) ----------
+   Ordre alphabétique : l'enfant range une suite de mots (interaction tuiles,
+   runner ui/lecon-ordre.ts). Mono-mode ; le repli texte (fiche/bilan/révision)
+   est produit par genLessonItem, et le sprint les exclut (cf. isOrderingLesson). */
+const VOCAB_LESSONS_DEFS: LessonDef[] = VOCAB_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'francais',
+	category: 'fr-vocabulaire',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+}));
+
 /* ---------- Catalogue des leçons « Calcul » (opérations posées, #97) ----------
    Items `kind: 'posed'` : la grille (cellules-chiffres notées une à une) est
    rendue par renderItem. Passent par les bilans/impression/révision ; exclues du
@@ -345,12 +359,21 @@ const ALL_LESSONS: LessonDef[] = [
 	...GRANDEURS_LESSONS,
 	...GEOMETRIE_LESSONS_DEFS,
 	...FRENCH_LESSONS,
+	...VOCAB_LESSONS_DEFS,
 ];
 
 /* Une opération posée (#97) se rend en grille multi-cellules : incompatible avec
    le sprint (« une réponse à la fois »), qui les exclut de son tirage. */
 export function isPosedLesson(lesson: LessonDef): boolean {
 	return lesson.exerciseType.generate().type === 'posed';
+}
+
+/* Une leçon « ranger une suite » (#108, ordre alphabétique) se joue en déplaçant
+   plusieurs tuiles : interaction d'écran dédiée (ui/lecon-ordre.ts), incompatible
+   avec le sprint « une réponse à la fois » → exclue de son tirage (comme la posée).
+   Reste jouable en bilan/fiche/révision via le repli texte de genLessonItem. */
+export function isOrderingLesson(lesson: LessonDef): boolean {
+	return lesson.exerciseType.generate().type === 'tuilesOrdre';
 }
 
 /* Une leçon math « héritée » est branchée sur le générateur numérique bilanQ
@@ -377,6 +400,18 @@ export function genLessonItem(lesson: LessonDef): Item {
 		return item;
 	}
 	const ex = lesson.exerciseType.generate();
+	// Ordre alphabétique (#108) : l'interaction tuiles vit dans son runner d'écran.
+	// Ici (fiche/bilan/révision), repli TEXTE non interactif : on liste les mots
+	// mélangés et on attend la suite rangée (séparée par des espaces ou virgules).
+	if (ex.type === 'tuilesOrdre') {
+		return {
+			text: `${ex.question} (${ex.tuiles.join(', ')}) @`,
+			answer: ex.ordre.join(' '),
+			answers: [ex.ordre.join(', ')],
+			kind: 'text',
+			_lesson: lesson.id,
+		};
+	}
 	// Calcul posé (#97) : item « conteneur » déployé en grille par renderItem.
 	if (ex.type === 'posed') {
 		const result = ex.op === '+' ? ex.a + ex.b : ex.op === '-' ? ex.a - ex.b : ex.a * ex.b;

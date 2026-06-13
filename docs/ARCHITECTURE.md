@@ -12,8 +12,8 @@ Mini-application web d'entraînement **multi-matières** (niveau CE2). Côté
 grandeurs et mesures, géométrie). Côté
 **français**, le catalogue suit les 4 catégories du manuel CE2 dans l'ordre
 canonique — **grammaire**, **conjugaison**, **orthographe**, **vocabulaire**
-(#107) ; grammaire et vocabulaire sont pour l'instant **vides** (prêtes à
-accueillir les leçons de contenu à venir). Génération aléatoire
+(#107) ; **grammaire** reste pour l'instant vide, **vocabulaire** accueille
+l'ordre alphabétique (#108). Génération aléatoire
 d'exercices, correction instantanée, chronomètre, et une couche de gamification
 (records, médailles, trophées, objectifs, XP) avec gestion de profils. 100 %
 **côté client** (aucun serveur) ; la progression est stockée en `localStorage`.
@@ -76,6 +76,15 @@ la forme, fiche imprimable — et `qcm` — choix entre plusieurs formes,
 correctement orthographiées**, jamais une faute affichée) et descripteurs
 `CONJ_LESSONS` (une leçon par verbe × temps). Dossier `francais` sans cédille
 pour des chemins d'import ASCII portables ; le libellé affiché reste « Français ».
+**`francais/vocabulaire.ts`** (#108) : catégorie **Vocabulaire**, leçons
+**« Ordre alphabétique »** (`fr-vocab-alpha-initiale` tri par 1re lettre,
+`fr-vocab-alpha-deuxieme` tri par 2e lettre à initiale commune). `ordreType`
+fabrique un `ExerciseType` **mono-mode** dont `generate()` produit un `Exercise`
+**`tuilesOrdre`** `{question, tuiles (suite mélangée), ordre (suite triée)}` — la
+bonne suite est **calculée** par `trierAlpha` (`localeCompare` fr), jamais figée.
+Joué par un runner d'écran dédié `ui/lecon-ordre.ts` ; **exclu du sprint**
+(`isOrderingLesson`, comme la posée), avec un **repli texte** en bilan/fiche/
+révision (genLessonItem : « écris les mots dans l'ordre »).
 **`maths/mesures.ts`** (#89) : moteur de **conversions d'unités** partagé par
 4 leçons de « Grandeurs et mesures » — `mes-longueurs` (m↔cm, km↔m),
 `mes-masses` (kg↔g), `mes-contenances` (L↔cL), `mes-durees` (h↔min + fractions
@@ -216,7 +225,8 @@ le dessin 3D (faces cachées).
   jamais de SVG « à la main » dans une leçon. Tokens de couleur dédiés
   (`--clock-min`…) ; styles dans `src/styles/figures.scss`.
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
-  (`text` | `qcm` | `tuilesNombre` (numération #98) | `posed` (calcul posé #97 :
+  (`text` | `qcm` | `tuilesNombre` (numération #98) | `tuilesOrdre` (ordre
+  alphabétique #108 : suite mélangée + suite triée) | `posed` (calcul posé #97 :
   op + opérandes) | interactions ortho), interface **`ExerciseType`** : `modes?`
   (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
   l'ordre d'affichage), `generate(mode?)`, `check()`. Helpers **`hasMode`** et
@@ -367,6 +377,14 @@ le dessin 3D (faces cachées).
   (signe/nombre) dans l'emplacement par **tap ou glisser-déposer** ; parité
   `recordLessonRun`. Runner d'écran dédié (routé par `runLecon` quand le mode produit
   un `tuilesNombre`) — **n'altère pas** le moteur de tuiles de l'orthographe.
+- **`lecon-ordre.ts`** — runner **« ranger une suite »** d'une leçon de vocabulaire
+  (#108, ordre alphabétique). Même forme « une question à la fois » : l'enfant
+  **tape** une tuile-mot du bac → elle se place dans la prochaine case **numérotée**
+  de la rangée-réponse ; **taper** une tuile posée la renvoie au bac (les suivantes
+  se re-tassent) ; glisser-déposer du bac vers la rangée en appoint. Feedback
+  immédiat case par case (✓/✗) + bon ordre montré ; parité `recordLessonRun`. Routé
+  par `runLecon` quand le mode produit un `tuilesOrdre`. Interaction validée côté
+  UX enfant (tap fiable au doigt, drag en appoint).
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
   **filtrable** (toutes matières / une matière / une catégorie / **une sélection
   précise de leçons** via `startCustomSprint`, #64) via un écran de

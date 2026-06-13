@@ -241,3 +241,91 @@
 .ltui-tuile:disabled {
 	cursor: default;
 }
+
+/* ---- Runner « ranger une suite » de vocabulaire (#108, ordre alphabétique) ----
+   Mobile-first : rangée-réponse et bac empilés, tuiles qui passent à la ligne
+   plutôt que de rapetisser la cible (loi de Fitts, doigt de CE2). */
+.lord-consigne {
+	font-size: 1.15rem;
+	font-weight: 700;
+	text-align: center;
+}
+/* Rangée-réponse : cases numérotées qui se remplissent à la suite. */
+.lord-seq {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	justify-content: center;
+	margin: 18px 0 8px;
+}
+/* Une case = position numérotée (chiffre en filigrane) + le mot posé. */
+.lord-cell {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 96px;
+	height: 56px;
+	padding: 0 14px;
+	font-size: 1.25rem;
+	font-weight: 700;
+	border: 2px dashed var(--blue);
+	border-radius: 10px;
+	background: var(--blue-soft);
+	cursor: default;
+}
+.lord-cell.rempli {
+	border-style: solid;
+	background: #fff;
+	cursor: pointer;
+}
+.lord-num {
+	position: absolute;
+	top: 2px;
+	left: 6px;
+	font-size: 0.7rem;
+	font-weight: 800;
+	color: var(--blue);
+	opacity: 0.55;
+}
+.lord-cell.rempli .lord-num {
+	opacity: 0.4;
+}
+.lord-cell.correct {
+	border-color: var(--ok);
+	background: #e7f6e7;
+	color: var(--ok);
+}
+.lord-cell.wrong {
+	border-color: var(--ko);
+	background: #fbe4e4;
+	color: var(--ko);
+}
+/* Marque ✓/✗ : double la couleur d'un signe (daltonisme). */
+.lord-mark {
+	position: absolute;
+	top: -8px;
+	right: -8px;
+	width: 22px;
+	height: 22px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.85rem;
+	font-weight: 800;
+	border-radius: 50%;
+	color: #fff;
+}
+.lord-cell.correct .lord-mark {
+	background: var(--ok);
+}
+.lord-cell.wrong .lord-mark {
+	background: var(--ko);
+}
+.lord-tuile {
+	min-width: 72px;
+	padding: 0 14px;
+}
+.lord-tuile:disabled {
+	cursor: default;
+}

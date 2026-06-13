@@ -25,9 +25,9 @@
 	--warn: #b26a00;
 	--warn-bg: #fff3d6;
 	--warn-bd: #ffd54f;
-	--ui:
-		'Nunito', system-ui, sans-serif; /* police de l'interface (chrome), distincte du serif des feuilles */
-	--serif: Georgia, 'Times New Roman', serif; /* feuilles d'exercices : effet « papier » */
+	--ui: 'Nunito', system-ui, sans-serif; /* police de TOUTE l'interface, à l'écran (#137) */
+	--serif:
+		Georgia, 'Times New Roman', serif; /* réservé à l'IMPRESSION des fiches : effet « papier » (#137) */
 }
 * {
 	box-sizing: border-box;
@@ -38,7 +38,9 @@ body {
 	padding: 0;
 }
 body {
-	font-family: var(--ui); /* interface en Nunito ; les feuilles repassent en serif (voir .sheets) */
+	font-family: var(
+		--ui
+	); /* Nunito partout à l'écran ; serif uniquement à l'impression (print.scss) */
 	color: var(--ink);
 	background: var(--page-bg);
 }

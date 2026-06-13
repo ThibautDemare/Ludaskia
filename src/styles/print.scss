@@ -27,6 +27,9 @@
 		margin: 0;
 		padding: 0;
 		max-width: none;
+		/* Effet « cahier » réservé à l'impression (#137) : les fiches passent en serif
+       sur le papier ; les sous-éléments « chrome » gardent var(--ui). */
+		font-family: var(--serif);
 	}
 	.page {
 		box-shadow: none;

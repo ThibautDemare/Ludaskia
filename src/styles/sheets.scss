@@ -3,10 +3,9 @@
 	max-width: 210mm;
 	margin: 24px auto;
 	padding: 0 10px;
-	/* Effet « cahier » : les feuilles (écran + PDF) restent en serif, alors que
-     le reste de l'interface est en Nunito. Les sous-éléments « chrome »
-     (.temps, .bilan-sub, .foot, .result-banner…) forcent var(--ui). */
-	font-family: var(--serif);
+	/* À l'ÉCRAN, les feuilles héritent de Nunito (var(--ui), comme tout le site) :
+     l'interface est uniforme (#137). L'effet « cahier » en serif est réservé à
+     l'IMPRESSION (`@media print { .sheets }` dans print.scss). */
 }
 .page {
 	background: var(--paper);

@@ -488,16 +488,68 @@ export function renderSceneFigures(cells: Array<{ shape: PlaneShape; rotation?: 
 	);
 }
 
+/* ---------- Cercle coté (#102 — rayon, diamètre, vocabulaire) ----------
+   Cercle avec son centre ; un segment (rayon : centre→bord, ou diamètre :
+   bord→bord par le centre) peut être mis en évidence et coté (ou marqué « ? »
+   pour une question de vocabulaire). */
+export function renderCercle(segment?: 'rayon' | 'diametre', label?: string): string {
+	const cx = 100;
+	const cy = 100;
+	const r = 70;
+	const body: string[] = [
+		circle(cx, cy, r, { fill: 'var(--blue-soft)', stroke: 'var(--blue)', 'stroke-width': 3 }),
+	];
+	if (segment === 'diametre')
+		body.push(
+			line(cx - r, cy, cx + r, cy, {
+				stroke: 'var(--clock-min)',
+				'stroke-width': 4,
+				'stroke-linecap': 'round',
+			}),
+		);
+	else if (segment === 'rayon')
+		body.push(
+			line(cx, cy, cx + r, cy, {
+				stroke: 'var(--clock-min)',
+				'stroke-width': 4,
+				'stroke-linecap': 'round',
+			}),
+		);
+	body.push(circle(cx, cy, 4, { fill: 'var(--ink)' })); // centre marqué
+	if (label) {
+		const lx = segment === 'rayon' ? cx + r / 2 : cx;
+		body.push(
+			text(lx, cy - 10, label, {
+				'text-anchor': 'middle',
+				'font-family': 'var(--ui)',
+				'font-weight': 700,
+				'font-size': 14,
+				fill: 'var(--ink)',
+			}),
+		);
+	}
+	return svgCanvas(
+		200,
+		200,
+		'Cercle',
+		'Cercle',
+		`Un cercle avec son centre${segment ? ' et un segment mis en évidence' : ''}.`,
+		body.join(''),
+		'figure-cercle',
+	);
+}
+
 /* ---------- Dispatch par données (point d'extension) ---------- */
 
 /** Description d'une figure par données. Étendre l'union + le switch ci-dessous
-    pour chaque nouvelle figure (cercle coté #102, solide #103…). */
+    pour chaque nouvelle figure (solide #103…). */
 export type FigureSpec =
 	| { kind: 'horloge'; heures: number; minutes: number }
 	| { kind: 'polygoneCote'; points: Array<[number, number]>; labels: string[] }
 	| { kind: 'quadrillage'; cols: number; rows: number; cells: Array<[number, number]> }
 	| { kind: 'figurePlane'; shape: PlaneShape; rotation?: number }
-	| { kind: 'sceneFigures'; cells: Array<{ shape: PlaneShape; rotation?: number }> };
+	| { kind: 'sceneFigures'; cells: Array<{ shape: PlaneShape; rotation?: number }> }
+	| { kind: 'cercle'; segment?: 'rayon' | 'diametre'; label?: string };
 
 export function renderFigure(spec: FigureSpec): string {
 	switch (spec.kind) {
@@ -511,5 +563,7 @@ export function renderFigure(spec: FigureSpec): string {
 			return renderFigurePlane(spec.shape, spec.rotation);
 		case 'sceneFigures':
 			return renderSceneFigures(spec.cells);
+		case 'cercle':
+			return renderCercle(spec.segment, spec.label);
 	}
 }

@@ -45,7 +45,7 @@
 	color: var(--grey);
 }
 .rev-q {
-	font-family: var(--serif);
+	font-family: var(--ui);
 	font-size: 28px;
 	color: var(--ink);
 	display: flex;
@@ -55,14 +55,14 @@
 	justify-content: center;
 }
 .rev-word {
-	font-family: var(--serif);
+	font-family: var(--ui);
 	font-size: 40px;
 	font-weight: 700;
 	letter-spacing: 2px;
 	color: var(--ink);
 }
 .rev-input {
-	font-family: var(--serif);
+	font-family: var(--ui);
 	font-size: 28px;
 	width: 130px;
 	text-align: center;
@@ -94,7 +94,7 @@
 	justify-content: center;
 }
 .rev-choice {
-	font-family: var(--serif);
+	font-family: var(--ui);
 	font-size: 22px;
 	color: var(--ink);
 	background: #fff;

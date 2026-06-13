@@ -78,7 +78,7 @@
 	color: var(--grey);
 }
 .sprint-q {
-	font-family: var(--serif);
+	font-family: var(--ui);
 	font-size: 30px;
 	color: var(--ink);
 	display: flex;
@@ -105,7 +105,7 @@
 	justify-content: center;
 }
 .sprint-choice {
-	font-family: var(--serif);
+	font-family: var(--ui);
 	font-size: 24px;
 	color: var(--ink);
 	background: #fff;
@@ -129,7 +129,7 @@
 }
 .sprint-input {
 	font: inherit;
-	font-family: var(--serif);
+	font-family: var(--ui);
 	font-size: 30px;
 	width: 120px;
 	text-align: center;
@@ -146,7 +146,7 @@
 /* Champ de brouillon (étapes de la leçon 15) : saisissable mais non corrigé */
 .sprint-free {
 	font: inherit;
-	font-family: var(--serif);
+	font-family: var(--ui);
 	font-size: 20px;
 	width: 52px;
 	text-align: center;

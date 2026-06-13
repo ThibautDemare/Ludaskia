@@ -134,3 +134,63 @@
 	color: var(--ko);
 	font-weight: 700;
 }
+
+/* ---- Opérations posées (#97) : grille en colonnes ---- */
+.posee {
+	display: inline-grid;
+	gap: 4px;
+	justify-items: center;
+	align-items: center;
+	margin: 8px 0 16px;
+	font-variant-numeric: tabular-nums;
+}
+.posee-cell {
+	width: var(--posee-col, 2.1rem);
+	height: 2.4rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.4rem;
+	font-weight: 700;
+	box-sizing: border-box;
+}
+.posee-op {
+	color: var(--blue);
+}
+/* Champs : chiffre du résultat (noté) et retenue (aide, non notée). */
+.posee-input,
+.posee-carry {
+	border: 2px solid var(--blue);
+	border-radius: 8px;
+	text-align: center;
+	font: inherit;
+	padding: 0;
+	background: #fff;
+}
+.posee-carry {
+	width: 1.5rem;
+	height: 1.5rem;
+	font-size: 0.95rem;
+	border-style: dashed;
+	border-color: var(--grey);
+	color: var(--grey);
+}
+.posee-input.correct {
+	border-color: var(--ok);
+	background: #e7f6e7;
+	color: var(--ok);
+}
+.posee-input.wrong {
+	border-color: var(--ko);
+	background: #fbe4e4;
+	color: var(--ko);
+}
+/* Trait de l'opération, sur toute la largeur de la grille (la grille a
+   justify-items: center → il faut forcer l'étirement, sinon largeur nulle). */
+.posee-rule {
+	justify-self: stretch;
+	height: 3px;
+	background: var(--ink);
+	border-radius: 2px;
+	margin: 3px 0;
+}

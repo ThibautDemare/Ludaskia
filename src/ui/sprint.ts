@@ -15,6 +15,7 @@ import {
 	getLessonsByCategory,
 	lessonsForIds,
 	genLessonItem,
+	isPosedLesson,
 	SUBJECTS,
 	CATEGORIES,
 } from '../core/catalog';
@@ -60,10 +61,17 @@ type SprintFilter =
 let sprintFilter: SprintFilter = { type: 'all' };
 
 function lessonsForFilter(f: SprintFilter): LessonDef[] {
-	if (f.type === 'subject') return getLessonsBySubject(f.id);
-	if (f.type === 'category') return getLessonsByCategory(f.id);
-	if (f.type === 'lessons') return lessonsForIds(f.ids);
-	return getAllLessons();
+	const base =
+		f.type === 'subject'
+			? getLessonsBySubject(f.id)
+			: f.type === 'category'
+				? getLessonsByCategory(f.id)
+				: f.type === 'lessons'
+					? lessonsForIds(f.ids)
+					: getAllLessons();
+	// Les opérations posées (#97) se jouent en grille multi-cellules, pas « une
+	// réponse à la fois » : on les écarte du sprint chronométré.
+	return base.filter((d) => !isPosedLesson(d));
 }
 
 function filterLabel(f: SprintFilter): string {
@@ -294,7 +302,7 @@ function sprintNext() {
 			const ex = def.exerciseType.generate('qcm');
 			q = {
 				text: ex.type === 'qcm' ? ex.question : '',
-				answer: ex.answer,
+				answer: ex.type === 'qcm' ? ex.answer : '',
 				kind: 'text',
 				_lesson: def.id,
 			};

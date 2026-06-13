@@ -112,9 +112,11 @@ import {
 	lessonsForIds,
 	bilanMode,
 	commonCategoryId,
+	isPosedLesson,
 	CATEGORIES,
 } from '../src/core/catalog';
 import { checkItemAnswer } from '../src/core/items';
+import type { PosedSpec } from '../src/core/items';
 import { checkAnswer } from '../src/core/exercise';
 import { genItems, buildLessonFiche } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
@@ -570,21 +572,18 @@ describe('Catalogue maths : 4 catégories du manuel (#92)', () => {
 	});
 	test('les 15 leçons de calcul mental sont rattachées à math-calcul-mental', () => {
 		expect(getLessonsByCategory('math-calcul-mental').length).toBe(15);
-		expect(getLessonsByCategory('math-calcul').length).toBe(0); // posé : à venir
+		expect(getLessonsByCategory('math-calcul').length).toBeGreaterThan(0); // posé (#97)
 	});
 	test('les catégories encore sans contenu restent vides, sans casser les helpers', () => {
-		// « Grandeurs et mesures » (#89/#96) et « Numération » (#98) sont peuplées ;
-		// « Calcul » (posé) et « Géométrie » attendent encore leurs leçons.
-		for (const id of ['math-calcul', 'math-geometrie']) {
-			expect(getLessonsByCategory(id)).toEqual([]);
-		}
+		// Numération (#98/#94), Calcul posé (#97), Grandeurs et mesures (#89/#96) sont
+		// peuplées ; « Géométrie » attend encore ses leçons.
+		expect(getLessonsByCategory('math-geometrie')).toEqual([]);
 	});
 	test('aucun trophée de catégorie n’est généré pour une catégorie vide', () => {
 		const ids = api.TROPHIES.map((t) => t.id);
 		// Catégorie peuplée → ses trophées existent…
 		expect(ids).toContain('cat-math-calcul-mental-3');
-		// …les catégories encore vides n’en génèrent pas (pas de trophée impossible).
-		expect(ids).not.toContain('cat-math-calcul-3');
+		// …une catégorie encore vide n’en génère pas (pas de trophée impossible).
 		expect(ids).not.toContain('cat-math-geometrie-3');
 	});
 });
@@ -808,6 +807,69 @@ describe('Numération : valeur de position et décomposition (#94)', () => {
 				expect(ans).toBeLessThanOrEqual(9);
 			}
 		}
+	});
+});
+
+describe('Calcul : opérations posées (#97)', () => {
+	const ids = ['calc-addition-posee', 'calc-soustraction-posee', 'calc-multiplication-posee'];
+	test('les 3 leçons peuplent « Calcul »', () => {
+		const cat = getLessonsByCategory('math-calcul').map((l) => l.id);
+		for (const id of ids) expect(cat).toContain(id);
+		expect(cat.length).toBe(3);
+	});
+	test('genLessonItem → item posed cohérent (op, opérandes, résultat)', () => {
+		for (const id of ids) {
+			const lesson = getLessonById(id)!;
+			for (let i = 0; i < 300; i++) {
+				const it = genLessonItem(lesson);
+				expect(it.kind).toBe('posed');
+				const p = it.posed!;
+				expect(['+', '-', 'x']).toContain(p.op);
+				const r = p.op === '+' ? p.a + p.b : p.op === '-' ? p.a - p.b : p.a * p.b;
+				expect(Number(it.answer)).toBe(r);
+				if (p.op === '-') {
+					expect(p.a).toBeGreaterThanOrEqual(p.b); // jamais de négatif
+					expect(r).toBeGreaterThanOrEqual(0);
+				}
+			}
+		}
+	});
+	test('isPosedLesson : vrai pour les posées, faux pour les autres', () => {
+		for (const id of ids) expect(isPosedLesson(getLessonById(id)!)).toBe(true);
+		expect(isPosedLesson(getLessonById('mes-longueurs')!)).toBe(false);
+		expect(isPosedLesson(getLessonById('math-tables-addition')!)).toBe(false);
+	});
+	test('renderItem : grille dont les cellules-résultat reconstituent le résultat', () => {
+		const cas: Array<[PosedSpec, string]> = [
+			[{ op: '+', a: 347, b: 285 }, '632'],
+			[{ op: '-', a: 503, b: 287 }, '216'],
+			[{ op: 'x', a: 123, b: 4 }, '492'],
+		];
+		for (const [posed, attendu] of cas) {
+			setInputCounter(0);
+			setSessionItems({});
+			const html = renderItem({ text: '', answer: Number(attendu), kind: 'posed', posed });
+			expect(html).toContain('class="posee"');
+			// Pour +, − et ×1 chiffre, les seuls champs .posee-input sont le résultat.
+			const digits = [...html.matchAll(/posee-input[^>]*data-answer="(\d)"/g)]
+				.map((m) => m[1])
+				.join('');
+			expect(digits).toBe(attendu);
+		}
+	});
+	test('multiplication ×2 chiffres : produits partiels (plusieurs lignes de cellules)', () => {
+		setInputCounter(0);
+		setSessionItems({});
+		// 24 × 13 = 312 ; pp1 = 72, pp2 = 24 (décalé) → plus de 3 cellules-résultat.
+		const html = renderItem({
+			text: '',
+			answer: 312,
+			kind: 'posed',
+			posed: { op: 'x', a: 24, b: 13 },
+		});
+		const nbInputs = [...html.matchAll(/posee-input/g)].length;
+		expect(nbInputs).toBeGreaterThan(3); // pp1 + pp2 + somme finale
+		expect((html.match(/posee-rule/g) ?? []).length).toBe(2); // deux traits
 	});
 });
 

@@ -11,6 +11,7 @@ import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 import { MESURE_LESSONS } from '../data/maths/mesures';
 import { MONNAIE_LESSONS } from '../data/maths/monnaie';
 import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration';
+import { POSITION_LESSONS } from '../data/maths/position';
 
 /* ---------- Types ---------- */
 
@@ -261,18 +262,21 @@ const GRANDEURS_LESSONS: LessonDef[] = [...MESURE_LESSONS, ...MONNAIE_LESSONS].m
 	exerciseType: d.exerciseType,
 }));
 
-/* ---------- Catalogue des leçons « Numération » (#98) ----------
-   Moteur moderne à DEUX modes (saisie / tuiles). Le rendu fiche/bilan/sprint
-   utilise le mode saisie (item texte ou numérique) ; le mode tuiles est un
-   runner d'écran dédié (ui/lecon-tuiles.ts), routé au lancement de la leçon. */
-const NUMERATION_LESSONS_DEFS: LessonDef[] = NUMERATION_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
-	subject: 'math',
-	category: 'math-numeration',
-	level: 'ce2',
-	exerciseType: d.exerciseType,
-}));
+/* ---------- Catalogue des leçons « Numération » (#98, #94) ----------
+   Situer un nombre (#98 : comparer/encadrer/intercaler, modes saisie/tuiles) et
+   valeur de position / décomposition (#94 : mono-mode saisie). Le rendu
+   fiche/bilan/sprint utilise le mode saisie (item texte ou numérique) ; le mode
+   tuiles (#98) est un runner d'écran dédié (ui/lecon-tuiles.ts). */
+const NUMERATION_LESSONS_DEFS: LessonDef[] = [...NUMERATION_LESSONS, ...POSITION_LESSONS].map(
+	(d) => ({
+		id: d.id,
+		label: d.label,
+		subject: 'math',
+		category: 'math-numeration',
+		level: 'ce2',
+		exerciseType: d.exerciseType,
+	}),
+);
 
 /* ---------- Catalogue des leçons français (conjugaison) ---------- */
 

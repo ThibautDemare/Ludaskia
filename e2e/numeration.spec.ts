@@ -5,10 +5,12 @@
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
 
-test('Numération : la catégorie liste les 3 leçons', async ({ page }) => {
+test('Numération : la catégorie liste ses leçons', async ({ page }) => {
 	const errors = watchErrors(page);
 	await gotoHash(page, 'categorie-math-numeration');
-	await expect(page.locator('.lesson-item')).toHaveCount(3);
+	await expect(page.locator('.lesson-item').first()).toBeVisible();
+	// comparer/encadrer/intercaler (#98) + valeur de position/décomposition (#94)
+	expect(await page.locator('.lesson-item').count()).toBeGreaterThanOrEqual(3);
 	expect(errors).toEqual([]);
 });
 

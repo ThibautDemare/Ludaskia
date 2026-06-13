@@ -97,6 +97,13 @@ tuiles produit un `Exercise` de type **`tuilesNombre`** (`{question, answer, tui
 rendu par un runner d'écran dédié `ui/lecon-tuiles.ts`. Calibrage CE2 : nombres à
 3 chiffres (4 réservés à la leçon « 10 000 »), `=` minoritaire, ~30 % de longueurs
 différentes (cas charnière), distracteurs typés sur les erreurs classiques.
+**`maths/position.ts`** (#94) : 4 leçons de numération positionnelle de la même
+catégorie — `num-valeur-position` (« chiffre des X » vs « combien de X en tout »)
+et `num-decompose-100/1000/10000` (décomposition « en rangs », sens décomposer
+troué dominant + composer). Mono-mode saisie, réponse numérique unique (pas de
+multi-champs : le `@` reste unique par item). Calibrage CE2 : « en tout » jamais
+sur les unités, forme additive écartée (ambiguïté 6 vs 60), zéro intercalaire
+inclus, accords singulier/pluriel soignés.
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication

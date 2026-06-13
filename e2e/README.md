@@ -22,9 +22,10 @@ Le serveur de dev est démarré automatiquement par Playwright (`webServer` dans
 
 ## Conventions
 
-- **Tester le contenu stable de `main`** (calcul mental, catégories vides,
-  sprint), pas une leçon en cours de PR — un smoke test ne doit pas devenir
-  rouge parce qu'une leçon a bougé.
+- **Tester le contenu de la branche** : les leçons **ajoutées dans la même PR**
+  ont leur spec (ex. `numeration.spec.ts`, #98) — elle atterrit sur `main` avec
+  la leçon. Ne pas tester une leçon vivant sur une **autre** branche ouverte. Un
+  smoke test ne doit pas devenir rouge parce qu'une leçon d'un autre lot a bougé.
 - Naviguer via `gotoHash` (helpers) ; vérifier l'absence d'erreur de rendu via
   `watchErrors` (exceptions non rattrapées + `console.error` applicatifs).
 - Rester **ciblé et robuste** : peu de tests, des sélecteurs stables

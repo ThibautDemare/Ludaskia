@@ -87,6 +87,16 @@ conversion min↔s écartés (CM1 / surcharge base 60).
 rendu = billet − prix). Même chemin « math moderne » (item `num`). Calibrage CE2 :
 réponse **toujours entière**, unité (€ ou c) collée au champ, pas de décimaux ni de
 mélange €/c franchissant l'euro, billets 5/10/20 €, centimes par pas de 10 sous 1 €.
+**`maths/numeration.ts`** (#98) : 3 leçons « situer un nombre » (catégorie
+`math-numeration`) — `num-comparer` (placer `<`, `=`, `>`), `num-encadrer-intercaler`
+(dizaine/centaine juste avant/après, intercaler entre bornes serrées),
+`num-situer-10000` (idem jusqu'à 9999, encadrement au millier). **Deux modes** par
+leçon (#69) : `saisie` (conseillé, compatible fiche/bilan : on tape le signe ou le
+nombre) et `tuiles` (on déplace la bonne tuile parmi des distracteurs). Le mode
+tuiles produit un `Exercise` de type **`tuilesNombre`** (`{question, answer, tuiles}`)
+rendu par un runner d'écran dédié `ui/lecon-tuiles.ts`. Calibrage CE2 : nombres à
+3 chiffres (4 réservés à la leçon « 10 000 »), `=` minoritaire, ~30 % de longueurs
+différentes (cas charnière), distracteurs typés sur les erreurs classiques.
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
@@ -105,7 +115,8 @@ mélange €/c franchissant l'euro, billets 5/10/20 €, centimes par pas de 10 
   **ou** texte via `normalizeText`), `gridHTML`, `ficheHTML`/`ficheHTMLGeneric`,
   `lessonAttr()`. État de module exposé via accesseurs (voir plus bas).
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
-  (`text` | `qcm` | interactions ortho), interface **`ExerciseType`** : `modes?`
+  (`text` | `qcm` | `tuilesNombre` (numération #98 : poser une tuile signe/nombre) |
+  interactions ortho), interface **`ExerciseType`** : `modes?`
   (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
   l'ordre d'affichage), `generate(mode?)`, `check()`. Helpers **`hasMode`** et
   **`defaultMode`** (les écrans dérivent leurs choix d'ici, **jamais en dur**, #69),
@@ -121,11 +132,11 @@ mélange €/c franchissant l'euro, billets 5/10/20 €, centimes par pas de 10 
   `MATH_LESSON_NUM` (pont id→`bilanQ`), et **`genLessonItem(lesson)`** qui produit
   un `Item` pour n'importe quelle matière. Trois chemins, départagés par
   **`isLegacyMathLesson`** : maths **hérités** (calcul mental, dans
-  `MATH_LESSON_NUM`) → `bilanQ` ; maths **modernes** (conversions #89…, moteur
-  `ExerciseType`) → item **numérique** depuis `generate()` (le `@` de la question
-  place le champ) ; autres matières → item **texte** (`generate()`, corrigé par
-  chaîne). Ajouter une leçon math hors calcul mental ne touche donc plus à
-  `bilanQ`/`LESSONS`.
+  `MATH_LESSON_NUM`) → `bilanQ` ; maths **modernes** (conversions #89, monnaie #96,
+  numération #98…, moteur `ExerciseType`) → item depuis `generate()` (le `@` place
+  le champ), `kind` déduit de la réponse via `answerEstNumerique` (nombre → `num`,
+  signe `<`/`=`/`>` → `text`) ; autres matières → item **texte**. Ajouter une leçon
+  math hors calcul mental ne touche donc plus à `bilanQ`/`LESSONS`.
   Catégories maths (#92) : `math-numeration`, **`math-calcul`** (opérations
   **posées**, à ne pas confondre avec **`math-calcul-mental`**, les 15 leçons de
   calcul mental historiques), `math-grandeurs-mesures`, `math-geometrie`. Les
@@ -250,6 +261,11 @@ mélange €/c franchissant l'euro, billets 5/10/20 €, centimes par pas de 10 
 - **`lecon-qcm.ts`** — runner **QCM d'une leçon** (#69) : « une question à la
   fois », **feedback immédiat**, barre de progression, **sans chrono** ; enregistre
   via `recordLessonRun` (parité avec la saisie). Réutilise les composants `.sprint-*`.
+- **`lecon-tuiles.ts`** — runner **tuiles** d'une leçon de numération (#98) : même
+  forme « une question à la fois » que le QCM, mais l'enfant **pose une tuile**
+  (signe/nombre) dans l'emplacement par **tap ou glisser-déposer** ; parité
+  `recordLessonRun`. Runner d'écran dédié (routé par `runLecon` quand le mode produit
+  un `tuilesNombre`) — **n'altère pas** le moteur de tuiles de l'orthographe.
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
   **filtrable** (toutes matières / une matière / une catégorie / **une sélection
   précise de leçons** via `startCustomSprint`, #64) via un écran de

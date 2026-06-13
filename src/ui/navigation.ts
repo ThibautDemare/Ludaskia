@@ -15,6 +15,7 @@ import type { ExerciseMode } from '../core/exercise';
 import { escapeHTML } from '../core/utils';
 import { buildLessonFiche } from '../core/build';
 import { runLeconQcm } from './lecon-qcm';
+import { runLeconTuiles } from './lecon-tuiles';
 import { setInputCounter, setSessionItems, renderItem } from '../core/items';
 import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
@@ -174,7 +175,10 @@ function chooseMode(id: string, mode: ExerciseMode) {
 	const lesson = getLessonById(id);
 	if (!lesson) return;
 	setPendingLeconMode(mode);
-	if (lesson.exerciseType.generate(mode).type === 'qcm') {
+	// Les modes « une question à la fois » (QCM, tuiles) ne sont pas des grilles :
+	// pas d'offre de reprise. Seule la saisie (fiche grille) la propose.
+	const type = lesson.exerciseType.generate(mode).type;
+	if (type === 'qcm' || type === 'tuilesNombre') {
 		location.hash = 'lecon-' + id;
 	} else {
 		maybeRelaunch(leconKey(id), lesson.label, () => {
@@ -469,10 +473,18 @@ export function runLecon(id: string) {
 	// Mode retenu (choix #69) ou défaut du type d'exercice. Consommé une fois.
 	const mode = pendingLeconMode ?? defaultMode(lesson.exerciseType);
 	pendingLeconMode = null;
-	// Un mode produisant un QCM se joue « une question à la fois » (pas une fiche).
-	if (mode && lesson.exerciseType.generate(mode).type === 'qcm') {
-		runLeconQcm(id, mode);
-		return;
+	// Un mode produisant un QCM ou des tuiles se joue « une question à la fois »
+	// (pas une fiche grille) — chacun son runner d'écran dédié.
+	if (mode) {
+		const t = lesson.exerciseType.generate(mode).type;
+		if (t === 'qcm') {
+			runLeconQcm(id, mode);
+			return;
+		}
+		if (t === 'tuilesNombre') {
+			runLeconTuiles(id, mode);
+			return;
+		}
 	}
 	currentMode = 'lecon';
 	currentLessonId = id;

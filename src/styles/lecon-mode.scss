@@ -183,3 +183,61 @@
 .lqcm-ko strong {
 	color: var(--ok);
 }
+
+/* ---- Runner « tuiles » de numération (#98) ---- */
+.ltui-consigne {
+	font-family: var(--ui);
+	font-size: 14px;
+	color: var(--grey);
+	margin: 0 0 12px;
+}
+.ltui-enonce {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	font-size: 1.6rem;
+	font-weight: 700;
+}
+/* Emplacement de réponse : case en pointillés qui accueille la tuile. */
+.ltui-slot {
+	min-width: 64px;
+	height: 56px;
+	padding: 0 10px;
+	font-size: 1.5rem;
+	font-weight: 700;
+	border: 2px dashed var(--blue);
+	border-radius: 10px;
+	background: var(--blue-soft);
+	cursor: pointer;
+	vertical-align: middle;
+}
+.ltui-slot.rempli {
+	border-style: solid;
+	background: #fff;
+}
+.ltui-slot.correct {
+	border-color: var(--ok);
+	background: #e7f6e7;
+	color: var(--ok);
+}
+.ltui-slot.wrong {
+	border-color: var(--ko);
+	background: #fbe4e4;
+	color: var(--ko);
+}
+.ltui-bac {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	justify-content: center;
+	margin: 22px 0 18px;
+}
+.ltui-tuile {
+	min-width: 56px;
+	padding: 0 12px;
+}
+.ltui-tuile:disabled {
+	cursor: default;
+}

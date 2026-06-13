@@ -7,6 +7,9 @@ import { normalizeText } from './utils';
 export type Exercise =
 	| { type: 'text'; question: string; answer: string; answers?: string[] }
 	| { type: 'qcm'; question: string; answer: string; choices: string[] }
+	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
+	// des distracteurs vers l'emplacement `@` de la question. Réponse = `answer`.
+	| { type: 'tuilesNombre'; question: string; answer: string; tuiles: string[] }
 	// Orthographe — interactions réutilisables (vérifiées comme du texte) :
 	| { type: 'motCache'; answer: string } // affiche/masque le mot puis saisie
 	| { type: 'tuiles'; answer: string; lettres: string[] } // lettres mélangées à ordonner

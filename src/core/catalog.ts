@@ -10,6 +10,7 @@ import { bilanQ } from './lessons';
 import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 import { MESURE_LESSONS } from '../data/maths/mesures';
 import { MONNAIE_LESSONS } from '../data/maths/monnaie';
+import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration';
 
 /* ---------- Types ---------- */
 
@@ -260,6 +261,19 @@ const GRANDEURS_LESSONS: LessonDef[] = [...MESURE_LESSONS, ...MONNAIE_LESSONS].m
 	exerciseType: d.exerciseType,
 }));
 
+/* ---------- Catalogue des leçons « Numération » (#98) ----------
+   Moteur moderne à DEUX modes (saisie / tuiles). Le rendu fiche/bilan/sprint
+   utilise le mode saisie (item texte ou numérique) ; le mode tuiles est un
+   runner d'écran dédié (ui/lecon-tuiles.ts), routé au lancement de la leçon. */
+const NUMERATION_LESSONS_DEFS: LessonDef[] = NUMERATION_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'math',
+	category: 'math-numeration',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+}));
+
 /* ---------- Catalogue des leçons français (conjugaison) ---------- */
 
 const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
@@ -273,7 +287,12 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 
 /* ---------- Registre global ---------- */
 
-const ALL_LESSONS: LessonDef[] = [...MATH_LESSONS, ...GRANDEURS_LESSONS, ...FRENCH_LESSONS];
+const ALL_LESSONS: LessonDef[] = [
+	...MATH_LESSONS,
+	...NUMERATION_LESSONS_DEFS,
+	...GRANDEURS_LESSONS,
+	...FRENCH_LESSONS,
+];
 
 /* Une leçon math « héritée » est branchée sur le générateur numérique bilanQ
    (calcul mental, via MATH_LESSON_NUM). Les autres leçons math (moteurs
@@ -288,8 +307,9 @@ export function getAllLessons(): LessonDef[] {
 
 /* Génère un Item prêt à rendre pour n'importe quelle leçon du catalogue.
    - math hérité (calcul mental) : générateur numérique existant (bilanQ) ;
-   - math moderne (conversions #89…) : item NUMÉRIQUE depuis l'ExerciseType
-     (le `@` de la question marque l'emplacement du champ) ;
+   - math moderne (conversions #89, monnaie #96, numération #98…) : item depuis
+     l'ExerciseType (le `@` de la question marque l'emplacement du champ) ; le
+     `kind` suit la réponse — numérique (nombre) ou texte (signe <, =, >) ;
    - autres matières : item TEXTE (corrigé par comparaison de chaîne). */
 export function genLessonItem(lesson: LessonDef): Item {
 	if (isLegacyMathLesson(lesson)) {
@@ -298,9 +318,11 @@ export function genLessonItem(lesson: LessonDef): Item {
 		return item;
 	}
 	const ex = lesson.exerciseType.generate();
-	const question = ex.type === 'text' || ex.type === 'qcm' ? ex.question : '';
+	const question =
+		ex.type === 'text' || ex.type === 'qcm' || ex.type === 'tuilesNombre' ? ex.question : '';
 	if (lesson.subject === 'math') {
-		return { text: question, answer: ex.answer, kind: 'num', _lesson: lesson.id };
+		const kind = answerEstNumerique(String(ex.answer)) ? 'num' : 'text';
+		return { text: question, answer: ex.answer, kind, _lesson: lesson.id };
 	}
 	return {
 		text: question,

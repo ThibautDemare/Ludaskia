@@ -9,6 +9,7 @@ import './styles/home.scss';
 import './styles/sheets.scss';
 import './styles/gamification.scss';
 import './styles/lessons.scss';
+import './styles/figures.scss';
 import './styles/profiles.scss';
 import './styles/sprint.scss';
 import './styles/lecon-mode.scss';

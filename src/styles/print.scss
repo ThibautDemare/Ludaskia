@@ -54,6 +54,14 @@
 	.mark {
 		display: none !important;
 	}
+	/* Figures SVG (#88) : taille raisonnable sur le papier (plusieurs par fiche),
+	   centrées. La légende reste lisible mais discrète. */
+	.figure-svg {
+		max-width: 44mm;
+	}
+	.clock-legend {
+		font-size: 8pt;
+	}
 	/* Les grilles sont adaptatives à l'écran ; on rétablit un nombre de colonnes
      fixe sur le papier pour garder la mise en page A4 prévue. */
 	.grid.c3,

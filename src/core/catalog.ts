@@ -10,6 +10,7 @@ import { bilanQ } from './lessons';
 import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 import { MESURE_LESSONS } from '../data/maths/mesures';
 import { MONNAIE_LESSONS } from '../data/maths/monnaie';
+import { HEURE_LESSONS } from '../data/maths/heure';
 import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration';
 import { POSITION_LESSONS } from '../data/maths/position';
 import { POSEE_LESSONS } from '../data/maths/posee';
@@ -255,7 +256,11 @@ const MATH_LESSONS: LessonDef[] = [
    Moteur moderne (ExerciseType), hors du pipeline bilanQ : le rendu passe par
    genLessonItem (item numérique) et buildLessonFiche (liste générique).
    Conversions d'unités (#89) + monnaie (#96). */
-const GRANDEURS_LESSONS: LessonDef[] = [...MESURE_LESSONS, ...MONNAIE_LESSONS].map((d) => ({
+const GRANDEURS_LESSONS: LessonDef[] = [
+	...MESURE_LESSONS,
+	...MONNAIE_LESSONS,
+	...HEURE_LESSONS,
+].map((d) => ({
 	id: d.id,
 	label: d.label,
 	subject: 'math',
@@ -357,15 +362,21 @@ export function genLessonItem(lesson: LessonDef): Item {
 	}
 	const question =
 		ex.type === 'text' || ex.type === 'qcm' || ex.type === 'tuilesNombre' ? ex.question : '';
+	// Figure SVG éventuelle (#88) : portée par 'text'/'qcm', affichée par renderItem.
+	const figure = ex.type === 'text' || ex.type === 'qcm' ? ex.figure : undefined;
 	if (lesson.subject === 'math') {
 		const kind = answerEstNumerique(String(ex.answer)) ? 'num' : 'text';
-		return { text: question, answer: ex.answer, kind, _lesson: lesson.id };
+		// `answers` (formes équivalentes acceptées, ex. « 10 h 15 » / « 10h15 ») est
+		// aussi propagé pour les maths : la lecture de l'heure tolère plusieurs écritures.
+		const answers = ex.type === 'text' ? ex.answers : undefined;
+		return { text: question, answer: ex.answer, answers, kind, figure, _lesson: lesson.id };
 	}
 	return {
 		text: question,
 		answer: ex.answer,
 		answers: ex.type === 'text' ? ex.answers : undefined,
 		kind: 'text',
+		figure,
 		_lesson: lesson.id,
 	};
 }

@@ -1,0 +1,61 @@
+/* ============================================================
+   Figures SVG génératives (#88) — affichage commun à toutes les
+   figures du moteur core/figures.ts (horloge, puis rectangles
+   cotés, polygones, quadrillages, solides…). Le conteneur `.figure`
+   est posé par figureBlock (core/items.ts) AU-DESSUS de la question,
+   dans tous les rendus (fiche, QCM, sprint, révision).
+   ============================================================ */
+
+.figure {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	margin: 0.4rem auto 0.9rem;
+}
+
+/* Le SVG est piloté par son conteneur (mobile-first) ; le viewBox carré porte
+   le ratio, donc height auto suffit (pas de saut de mise en page). */
+.figure-svg {
+	display: block;
+	width: 100%;
+	max-width: 260px;
+	height: auto;
+}
+@media (min-width: 600px) {
+	.figure-svg {
+		max-width: 300px;
+	}
+}
+/* Paysage bas (tablette tenue à plat) : on borne par la hauteur pour que cadran
+   + question + champ tiennent sans défilement involontaire. */
+@media (orientation: landscape) and (max-height: 540px) {
+	.figure-svg {
+		width: auto;
+		max-width: none;
+		max-height: 44vh;
+	}
+}
+
+/* ---------- Horloge ---------- */
+.figure-horloge {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+/* Légende (jamais l'info par la seule couleur) : rôle des deux aiguilles. */
+.clock-legend {
+	margin: 0.35rem 0 0;
+	color: var(--grey);
+	font-size: 0.85rem;
+	text-align: center;
+}
+.cl-dot {
+	font-size: 1.05em;
+	vertical-align: -0.05em;
+}
+.cl-h {
+	color: var(--blue);
+}
+.cl-m {
+	color: var(--clock-min);
+}

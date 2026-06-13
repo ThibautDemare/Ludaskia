@@ -12,7 +12,7 @@ import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import type { ExerciseMode } from '../core/exercise';
 import type { Item } from '../core/items';
-import { checkItemAnswer } from '../core/items';
+import { checkItemAnswer, figureBlock } from '../core/items';
 import { commKey, escapeHTML } from '../core/utils';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
@@ -64,7 +64,13 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 		}
 		seen.add(key);
 		out.push({
-			item: { text: ex.question, answer: ex.answer, kind: 'text', _lesson: l.id },
+			item: {
+				text: ex.question,
+				answer: ex.answer,
+				kind: 'text',
+				figure: ex.figure,
+				_lesson: l.id,
+			},
 			choices: ex.choices,
 		});
 		misses = 0;
@@ -112,6 +118,7 @@ function renderQuestion(): void {
       ${progressHTML()}
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+        ${figureBlock(q.item.figure)}
         <div class="sprint-q sprint-q-qcm">${question}</div>
         <div class="sprint-choices" id="lqcmChoices">
           ${q.choices

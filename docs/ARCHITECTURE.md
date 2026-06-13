@@ -146,6 +146,12 @@ losange), losange à diagonales inégales ; scène ≤ 6 figures, réponse 1–4
 (la couleur n'est pas un indice) ; propriétés sans inclusion (« un carré est-il un
 rectangle ? ») ni double négation. **« Clique sur les rectangles » (multi-sélection)
 hors périmètre** (le runner QCM est mono-réponse).
+**`maths/cercle.ts`** (#102) : leçon **« Le cercle »** (`geom-cercle`, Géométrie),
+deux modes `qcm` (conseillé) / `saisie`. Trois familles : rayon → diamètre (d = 2 r),
+diamètre → rayon (r = d / 2) et vocabulaire (centre / rayon / diamètre). Le cercle
+SVG (`renderCercle`) met en évidence le segment concerné (coté pour le calcul, « ? »
+pour le vocabulaire). Calibrage : rayon 2–15, distracteurs = confusion
+rayon/diamètre (×2 oublié/ajouté).
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
@@ -187,8 +193,10 @@ hors périmètre** (le runner QCM est mono-réponse).
   mesures » / « Géométrie ». Côté géométrie (#100) : **`renderFigurePlane(shape,
   rotation)`** (figure pleine à reconnaître, rotation pour varier l'orientation) et
   **`renderSceneFigures(cells)`** (scène de plusieurs figures à compter, grille
-  monochrome). `FigureSpec` couvre désormais `horloge | polygoneCote | quadrillage |
-  figurePlane | sceneFigures` (à venir : cercle coté #102, solides #103). On compose
+  monochrome) et **`renderCercle(segment?, label?)`** (#102 — cercle + centre, rayon
+  ou diamètre surligné et coté, ou marqué « ? » pour le vocabulaire). `FigureSpec`
+  couvre `horloge | polygoneCote | quadrillage | figurePlane | sceneFigures | cercle`
+  (à venir : solides #103). On compose
   avec les primitives, on ajoute un `renderXxx` (+ variant `FigureSpec` au besoin),
   jamais de SVG « à la main » dans une leçon. Tokens de couleur dédiés
   (`--clock-min`…) ; styles dans `src/styles/figures.scss`.

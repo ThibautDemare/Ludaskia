@@ -126,6 +126,7 @@ import {
 	boundaryEdges,
 	renderFigurePlane,
 	renderSceneFigures,
+	renderCercle,
 } from '../src/core/figures';
 import { checkAnswer } from '../src/core/exercise';
 import { genItems, buildLessonFiche } from '../src/core/build';
@@ -1030,6 +1031,56 @@ describe('Géométrie : je reconnais les figures planes (#100)', () => {
 			const ex = type.generate('qcm');
 			if (ex.type !== 'qcm') continue;
 			expect(ex.question.toLowerCase()).not.toMatch(/est-il un|est un rectangle/);
+		}
+	});
+});
+
+describe('Géométrie : le cercle (#102)', () => {
+	test('renderCercle : SVG accessible ; segment mis en évidence si demandé', () => {
+		const sans = renderCercle();
+		expect(sans).toContain('<svg');
+		expect(sans).toContain('<circle');
+		const avec = renderCercle('diametre', '10 cm');
+		expect(avec).toContain('var(--clock-min)'); // segment surligné
+		expect(avec).toContain('10 cm'); // cote affichée
+		// La description ne nomme pas « rayon »/« diamètre » (sinon réponse soufflée au vocabulaire).
+		const head = renderCercle('rayon', '?').slice(0, renderCercle('rayon', '?').indexOf('</desc>'));
+		expect(head).not.toContain('rayon');
+	});
+	test('renderFigure : dispatch cercle', () => {
+		expect(renderFigure({ kind: 'cercle', segment: 'rayon', label: '5 cm' })).toContain('<svg');
+	});
+	test('la leçon « Le cercle » peuple « Géométrie » avec 2 modes', () => {
+		const cat = getLessonsByCategory('math-geometrie').map((l) => l.id);
+		expect(cat).toContain('geom-cercle');
+		const modes = (getLessonById('geom-cercle')!.exerciseType.modes ?? []).map((m) => m.id);
+		expect(modes).toEqual(['qcm', 'saisie']);
+	});
+	test('QCM : figure + 4 propositions distinctes dont la bonne ; d = 2r et r = d/2 corrects', () => {
+		const type = getLessonById('geom-cercle')!.exerciseType;
+		for (let i = 0; i < 500; i++) {
+			const ex = type.generate('qcm');
+			if (ex.type !== 'qcm') throw new Error('mode qcm');
+			expect(ex.figure).toContain('<svg');
+			expect(ex.choices.length).toBe(4);
+			expect(new Set(ex.choices).size).toBe(4);
+			expect(ex.choices).toContain(ex.answer);
+			// Cohérence du calcul : « rayon … diamètre ? » → réponse = 2× ; « diamètre … rayon ? » → /2.
+			const mr = ex.question.match(/rayon mesure (\d+) cm\. Quel est le diamètre/);
+			if (mr) expect(Number(ex.answer)).toBe(2 * Number(mr[1]));
+			const md = ex.question.match(/diamètre mesure (\d+) cm\. Quel est le rayon/);
+			if (md) expect(Number(ex.answer)).toBe(Number(md[1]) / 2);
+			// Vocabulaire : réponse parmi les termes attendus.
+			if (!mr && !md) expect(['rayon', 'diamètre', 'centre']).toContain(ex.answer);
+		}
+	});
+	test('saisie : item avec figure et champ, réponse vérifiable', () => {
+		const lesson = getLessonById('geom-cercle')!;
+		for (let i = 0; i < 200; i++) {
+			const it = genLessonItem(lesson);
+			expect(it.text).toContain('@');
+			expect(it.figure).toContain('<svg');
+			expect(checkItemAnswer(it, String(it.answer))).toBe(true);
 		}
 	});
 });

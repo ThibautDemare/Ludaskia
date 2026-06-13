@@ -1107,6 +1107,12 @@ describe('Géométrie : je reconnais les solides (#103)', () => {
 		expect(cat).toContain('geo-solides-reconnaitre');
 		expect(cat).toContain('geo-solides-proprietes');
 	});
+	test('une série propose PLUSIEURS questions (dédup par réponse+figure, pas par énoncé constant)', () => {
+		// Régression : l'énoncé « Quel est ce solide ? » est constant ; dédupe par texte
+		// seul ne laissait qu'UNE question. On doit obtenir plusieurs solides distincts.
+		const lesson = getLessonById('geo-solides-reconnaitre')!;
+		expect(genItems(lesson, 8).length).toBeGreaterThanOrEqual(5);
+	});
 	test('reconnaître — QCM : schéma + 4 noms distincts dont le bon', () => {
 		const type = getLessonById('geo-solides-reconnaitre')!.exerciseType;
 		for (let i = 0; i < 300; i++) {

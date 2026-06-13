@@ -48,8 +48,11 @@ function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
 }
 
-/* Génère jusqu'à n questions QCM distinctes (dédup par énoncé), comme genItems
-   pour la fiche : on s'arrête après une longue série de tirages sans nouveauté. */
+/* Génère jusqu'à n questions QCM distinctes, comme genItems pour la fiche : on
+   s'arrête après une longue série de tirages sans nouveauté. La clé de dédup inclut
+   la RÉPONSE et la FIGURE, pas seulement l'énoncé : pour les leçons à énoncé
+   constant mais visuel variable (« Quel est ce solide ? », figures planes…), dédupe
+   par texte seul ne laisserait qu'UNE question. */
 function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[] {
 	const out: QcmQuestion[] = [];
 	const seen = new Set<string>();
@@ -57,7 +60,7 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 	while (out.length < n && misses < 80) {
 		const ex = l.exerciseType.generate(m);
 		if (ex.type !== 'qcm') break; // sécurité : ce runner n'a de sens que pour un QCM
-		const key = commKey(ex.question);
+		const key = `${commKey(ex.question)}¦${ex.answer}¦${ex.figure ?? ''}`;
 		if (seen.has(key)) {
 			misses++;
 			continue;

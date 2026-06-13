@@ -11,6 +11,8 @@ test('Reconnaître un solide (QCM) : un schéma SVG et 4 noms, un clic donne un 
 	const errors = watchErrors(page);
 	await gotoHash(page, 'lecon-geo-solides-reconnaitre'); // mode conseillé = QCM → runner direct
 	await expect(page.locator('.figure svg').first()).toBeVisible();
+	// La série compte PLUSIEURS questions (régression : énoncé constant dédupé à 1).
+	await expect(page.locator('.lqcm-progress-lab')).toHaveText(/Question 1 \/ ([2-9]|\d\d)/);
 	await expect(page.locator('.sprint-choice')).toHaveCount(4);
 	await page.locator('.sprint-choice').first().click();
 	await expect(page.locator('#lqcmFeedback')).toBeVisible();

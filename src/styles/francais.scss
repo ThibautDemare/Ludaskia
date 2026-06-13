@@ -1,15 +1,14 @@
 /* Exercices texte (français) : champ de saisie large + liste de conjugaison */
 
 /* Champ texte corrigé (conjugaison, etc.) : plus large, aligné à gauche,
-   police lisible, sans correction automatique du clavier.
-   Le champ est rendu en `type="password"` (anti-suggestion clavier, issue #67) :
-   on rétablit l'affichage en clair du texte saisi via `-webkit-text-security`. */
+   police lisible, sans correction automatique du clavier. Rendu en `type="password"`
+   (anti-suggestion clavier) puis démasqué en `type="text"` par ui/anti-suggestion.ts
+   — voir #67/#123/#139. */
 .ans-text {
 	width: 140px;
 	text-align: left;
 	font-size: 15px;
 	font-family: var(--ui);
-	-webkit-text-security: none;
 }
 
 /* Liste verticale d'items de conjugaison (vue leçon / fiche français) */
@@ -37,11 +36,11 @@
 	font-size: 13px;
 }
 
-/* Sprint : champ texte (réponses de conjugaison) */
+/* Sprint : champ texte (réponses de conjugaison). Rendu password puis démasqué
+   par ui/anti-suggestion.ts (anti-suggestion clavier, #139). */
 .sprint-input-text {
 	width: 220px;
 	text-align: center;
 	font-family: var(--ui);
 	font-size: 24px;
-	-webkit-text-security: none;
 }

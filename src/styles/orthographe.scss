@@ -209,9 +209,8 @@
 	letter-spacing: 0.06em;
 	border: 2px solid var(--blue);
 	border-radius: 10px;
-	/* Champ rendu en `type="password"` (anti-suggestion clavier, issue #67/#123) :
-	   on rétablit l'affichage en clair du texte saisi. */
-	-webkit-text-security: none;
+	/* Champ rendu en `type="password"` (anti-suggestion clavier) puis démasqué en
+	   `type="text"` par ui/anti-suggestion.ts — voir #67/#123/#139. */
 }
 .accent-kb {
 	display: flex;

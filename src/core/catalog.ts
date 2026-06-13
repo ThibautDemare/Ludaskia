@@ -17,6 +17,7 @@ import { POSITION_LESSONS } from '../data/maths/position';
 import { POSEE_LESSONS } from '../data/maths/posee';
 import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';
 import { CERCLE_LESSONS } from '../data/maths/cercle';
+import { SOLIDE_LESSONS } from '../data/maths/solides';
 
 /* ---------- Types ---------- */
 
@@ -316,7 +317,11 @@ const CALCUL_LESSONS_DEFS: LessonDef[] = POSEE_LESSONS.map((d) => ({
 /* ---------- Catalogue des leçons « Géométrie » (figures planes, #100) ----------
    Clientes du moteur de figures SVG : reconnaissance visuelle (modes QCM/saisie)
    et propriétés/vocabulaire (QCM textuel). */
-const GEOMETRIE_LESSONS_DEFS: LessonDef[] = [...GEOMETRIE_LESSONS, ...CERCLE_LESSONS].map((d) => ({
+const GEOMETRIE_LESSONS_DEFS: LessonDef[] = [
+	...GEOMETRIE_LESSONS,
+	...CERCLE_LESSONS,
+	...SOLIDE_LESSONS,
+].map((d) => ({
 	id: d.id,
 	label: d.label,
 	subject: 'math',

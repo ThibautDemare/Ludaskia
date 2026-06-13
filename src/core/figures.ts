@@ -46,6 +46,9 @@ export function line(x1: number, y1: number, x2: number, y2: number, a: Attrs = 
 export function circle(cx: number, cy: number, r: number, a: Attrs = {}): string {
 	return `<circle ${attrs({ cx, cy, r, ...a })} />`;
 }
+export function ellipse(cx: number, cy: number, rx: number, ry: number, a: Attrs = {}): string {
+	return `<ellipse ${attrs({ cx, cy, rx, ry, ...a })} />`;
+}
 export function rect(x: number, y: number, w: number, h: number, a: Attrs = {}): string {
 	return `<rect ${attrs({ x, y, width: w, height: h, ...a })} />`;
 }
@@ -539,17 +542,119 @@ export function renderCercle(segment?: 'rayon' | 'diametre', label?: string): st
 	);
 }
 
+/* ---------- Solides en perspective (#103 — reconnaissance) ----------
+   Schémas en perspective cavalière, SANS arêtes cachées (avis designer) : face
+   avant pleine (`--blue-soft` + contour `--blue`), arêtes de profondeur en
+   contour atténué (opacité 0,55). Monochrome, orientation STABLE (jamais de
+   rotation : un solide retourné devient illisible). Le but est de RECONNAÎTRE
+   la silhouette, pas de compter les faces. */
+export type Solid = 'cube' | 'pave' | 'cylindre' | 'cone' | 'pyramide' | 'boule';
+
+const SOLID_SIZE = 200;
+const DEPTH = {
+	fill: 'none',
+	stroke: 'var(--blue)',
+	'stroke-width': 2,
+	opacity: 0.55,
+	'stroke-linecap': 'round',
+} as const;
+
+/* Boîte (cube / pavé droit) : face avant pleine + 3 arêtes de fuite + 2 arêtes
+   arrière visibles (les 3 arêtes du fond cachées sont omises). */
+function boite(x: number, y: number, w: number, h: number, ox: number, oy: number): string {
+	const TL: [number, number] = [x, y];
+	const TR: [number, number] = [x + w, y];
+	const BR: [number, number] = [x + w, y + h];
+	const BL: [number, number] = [x, y + h];
+	const off = (p: [number, number]): [number, number] => [p[0] + ox, p[1] + oy];
+	const seg = (a: [number, number], b: [number, number]) => line(a[0], a[1], b[0], b[1], DEPTH);
+	return (
+		seg(TR, off(TR)) +
+		seg(BR, off(BR)) +
+		seg(TL, off(TL)) +
+		seg(off(TL), off(TR)) +
+		seg(off(TR), off(BR)) +
+		polygon([TL, TR, BR, BL], SHAPE_FILL) // face avant par-dessus les arêtes
+	);
+}
+
+export function renderSolide(solid: Solid): string {
+	let body = '';
+	switch (solid) {
+		case 'cube':
+			body = boite(45, 80, 80, 80, 34, -26);
+			break;
+		case 'pave':
+			body = boite(34, 96, 110, 56, 30, -24);
+			break;
+		case 'cylindre':
+			body =
+				rect(55, 60, 90, 90, { fill: 'var(--blue-soft)' }) +
+				line(55, 60, 55, 150, { stroke: 'var(--blue)', 'stroke-width': 3 }) +
+				line(145, 60, 145, 150, { stroke: 'var(--blue)', 'stroke-width': 3 }) +
+				ellipse(100, 150, 45, 14, SHAPE_FILL) +
+				ellipse(100, 60, 45, 14, SHAPE_FILL);
+			break;
+		case 'cone':
+			body =
+				polygon(
+					[
+						[100, 40],
+						[55, 150],
+						[145, 150],
+					],
+					SHAPE_FILL,
+				) + ellipse(100, 150, 45, 14, SHAPE_FILL);
+			break;
+		case 'pyramide': {
+			const A: [number, number] = [108, 42];
+			const FL: [number, number] = [50, 158];
+			const FR: [number, number] = [138, 158];
+			const BR: [number, number] = [168, 134];
+			const BL: [number, number] = [80, 134];
+			body =
+				line(A[0], A[1], BR[0], BR[1], DEPTH) +
+				line(FR[0], FR[1], BR[0], BR[1], DEPTH) +
+				line(BR[0], BR[1], BL[0], BL[1], DEPTH) +
+				line(BL[0], BL[1], FL[0], FL[1], DEPTH) +
+				line(A[0], A[1], BL[0], BL[1], DEPTH) +
+				polygon([A, FL, FR], SHAPE_FILL); // face avant par-dessus
+			break;
+		}
+		case 'boule':
+			body =
+				circle(100, 100, 60, SHAPE_FILL) +
+				ellipse(100, 100, 60, 18, {
+					fill: 'none',
+					stroke: 'var(--blue)',
+					'stroke-width': 2,
+					opacity: 0.5,
+				});
+			break;
+	}
+	return svgCanvas(
+		SOLID_SIZE,
+		SOLID_SIZE,
+		'Solide',
+		'Solide',
+		'Un solide dessiné en volume à reconnaître : observe sa forme, puis nomme-le.',
+		body,
+		'figure-solide',
+	);
+}
+
 /* ---------- Dispatch par données (point d'extension) ---------- */
 
 /** Description d'une figure par données. Étendre l'union + le switch ci-dessous
-    pour chaque nouvelle figure (solide #103…). */
+    pour chaque nouvelle figure. */
 export type FigureSpec =
 	| { kind: 'horloge'; heures: number; minutes: number }
 	| { kind: 'polygoneCote'; points: Array<[number, number]>; labels: string[] }
 	| { kind: 'quadrillage'; cols: number; rows: number; cells: Array<[number, number]> }
 	| { kind: 'figurePlane'; shape: PlaneShape; rotation?: number }
 	| { kind: 'sceneFigures'; cells: Array<{ shape: PlaneShape; rotation?: number }> }
-	| { kind: 'cercle'; segment?: 'rayon' | 'diametre'; label?: string };
+	| { kind: 'cercle'; segment?: 'rayon' | 'diametre'; label?: string }
+	| { kind: 'solide'; solid: Solid };
 
 export function renderFigure(spec: FigureSpec): string {
 	switch (spec.kind) {
@@ -565,5 +670,7 @@ export function renderFigure(spec: FigureSpec): string {
 			return renderSceneFigures(spec.cells);
 		case 'cercle':
 			return renderCercle(spec.segment, spec.label);
+		case 'solide':
+			return renderSolide(spec.solid);
 	}
 }

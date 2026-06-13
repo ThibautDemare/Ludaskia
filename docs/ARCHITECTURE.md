@@ -152,6 +152,16 @@ diamètre → rayon (r = d / 2) et vocabulaire (centre / rayon / diamètre). Le 
 SVG (`renderCercle`) met en évidence le segment concerné (coté pour le calcul, « ? »
 pour le vocabulaire). Calibrage : rayon 2–15, distracteurs = confusion
 rayon/diamètre (×2 oublié/ajouté).
+**`maths/solides.ts`** (#103) : **2 leçons** de Géométrie (schémas SVG générés, pas
+d'images statiques). `geo-solides-reconnaitre` — nommer un solide affiché en
+perspective (`renderSolide`), modes `qcm` (conseillé) / `saisie` (« pavé » accepté
+pour « pavé droit »). `geo-solides-proprietes` — propriétés **mémorisées** en QCM
+textuel (sans figure). Calibrage CE2 (avis pédagogique) : 6 solides (cube, pavé
+droit, cylindre, cône, pyramide, boule) ; comptage **exact réservé aux polyèdres**
+(cube/pavé 6 faces, 8 sommets, cube 12 arêtes ; pyramide 5 faces / 5 sommets) ;
+cylindre/cône/boule **jamais comptés** (ambigu) → propriétés qualitatives (« roule »,
+« une pointe », « 2 disques »). **Hors périmètre** : compter faces/arêtes/sommets sur
+le dessin 3D (faces cachées).
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
@@ -194,9 +204,11 @@ rayon/diamètre (×2 oublié/ajouté).
   rotation)`** (figure pleine à reconnaître, rotation pour varier l'orientation) et
   **`renderSceneFigures(cells)`** (scène de plusieurs figures à compter, grille
   monochrome) et **`renderCercle(segment?, label?)`** (#102 — cercle + centre, rayon
-  ou diamètre surligné et coté, ou marqué « ? » pour le vocabulaire). `FigureSpec`
-  couvre `horloge | polygoneCote | quadrillage | figurePlane | sceneFigures | cercle`
-  (à venir : solides #103). On compose
+  ou diamètre surligné et coté, ou marqué « ? » pour le vocabulaire) et
+  **`renderSolide(solid)`** (#103 — schéma d'un solide en **perspective cavalière
+  sans arêtes cachées** : cube, pavé droit, cylindre, cône, pyramide, boule ;
+  primitive `ellipse` ajoutée). `FigureSpec` couvre `horloge | polygoneCote |
+  quadrillage | figurePlane | sceneFigures | cercle | solide`. On compose
   avec les primitives, on ajoute un `renderXxx` (+ variant `FigureSpec` au besoin),
   jamais de SVG « à la main » dans une leçon. Tokens de couleur dédiés
   (`--clock-min`…) ; styles dans `src/styles/figures.scss`.

@@ -127,6 +127,7 @@ import {
 	renderFigurePlane,
 	renderSceneFigures,
 	renderCercle,
+	renderSolide,
 } from '../src/core/figures';
 import { checkAnswer } from '../src/core/exercise';
 import { genItems, buildLessonFiche } from '../src/core/build';
@@ -1081,6 +1082,67 @@ describe('Géométrie : le cercle (#102)', () => {
 			expect(it.text).toContain('@');
 			expect(it.figure).toContain('<svg');
 			expect(checkItemAnswer(it, String(it.answer))).toBe(true);
+		}
+	});
+});
+
+describe('Géométrie : je reconnais les solides (#103)', () => {
+	const SOLIDS = ['cube', 'pave', 'cylindre', 'cone', 'pyramide', 'boule'] as const;
+	const NOMS = ['cube', 'pavé droit', 'cylindre', 'cône', 'pyramide', 'boule'];
+	test('renderSolide : SVG accessible (desc neutre) pour les 6 solides', () => {
+		for (const s of SOLIDS) {
+			const html = renderSolide(s);
+			expect(html).toContain('<svg');
+			expect(html).toContain('role="img"');
+			// La description ne nomme aucun solide (sinon réponse soufflée).
+			const head = html.slice(0, html.indexOf('</desc>'));
+			for (const n of NOMS) expect(head).not.toContain(n);
+		}
+	});
+	test('renderFigure : dispatch solide', () => {
+		expect(renderFigure({ kind: 'solide', solid: 'cylindre' })).toContain('<svg');
+	});
+	test('les 2 leçons de solides peuplent « Géométrie »', () => {
+		const cat = getLessonsByCategory('math-geometrie').map((l) => l.id);
+		expect(cat).toContain('geo-solides-reconnaitre');
+		expect(cat).toContain('geo-solides-proprietes');
+	});
+	test('reconnaître — QCM : schéma + 4 noms distincts dont le bon', () => {
+		const type = getLessonById('geo-solides-reconnaitre')!.exerciseType;
+		for (let i = 0; i < 300; i++) {
+			const ex = type.generate('qcm');
+			if (ex.type !== 'qcm') throw new Error('mode qcm');
+			expect(ex.figure).toContain('<svg');
+			expect(ex.choices.length).toBe(4);
+			expect(new Set(ex.choices).size).toBe(4);
+			expect(ex.choices).toContain(ex.answer);
+			expect(NOMS).toContain(ex.answer);
+		}
+	});
+	test('reconnaître — saisie : « pavé » accepté pour « pavé droit »', () => {
+		const type = getLessonById('geo-solides-reconnaitre')!.exerciseType;
+		let testePave = false;
+		for (let i = 0; i < 600 && !testePave; i++) {
+			const ex = type.generate('saisie');
+			if (ex.type === 'text' && ex.answer === 'pavé droit') {
+				expect(type.check(ex, 'pavé')).toBe(true);
+				expect(type.check(ex, 'pavé droit')).toBe(true);
+				testePave = true;
+			}
+		}
+		expect(testePave).toBe(true);
+	});
+	test('propriétés — QCM textuel sans figure ; comptage seulement sur les polyèdres', () => {
+		const type = getLessonById('geo-solides-proprietes')!.exerciseType;
+		for (let i = 0; i < 400; i++) {
+			const ex = type.generate('qcm');
+			if (ex.type !== 'qcm') throw new Error('mode qcm');
+			expect(ex.figure).toBeUndefined();
+			expect(ex.choices).toContain(ex.answer);
+			// On ne demande JAMAIS le nombre de faces/arêtes d'un solide à face courbe.
+			expect(ex.question.toLowerCase()).not.toMatch(
+				/(faces|arêtes).*(cylindre|cône|boule)|(cylindre|cône|boule).*(faces|arêtes)/,
+			);
 		}
 	});
 });

@@ -14,11 +14,12 @@ test("l'accueil se charge sans erreur", async ({ page }) => {
 	expect(errors).toEqual([]);
 });
 
-test('une catégorie sans leçon affiche « Bientôt disponible »', async ({ page }) => {
+test('une catégorie inconnue retombe proprement sur les matières', async ({ page }) => {
+	// Toutes les catégories du catalogue sont désormais peuplées (Géométrie : #100) ;
+	// on vérifie le repli défensif d'un identifiant de catégorie inconnu.
 	const errors = watchErrors(page);
-	await gotoHash(page, 'categorie-math-geometrie'); // encore vide (Géométrie)
-	await expect(page.locator('.cat-empty')).toBeVisible();
-	await expect(page.getByText('Bientôt disponible')).toBeVisible();
+	await gotoHash(page, 'categorie-math-inexistant');
+	await expect(page.locator('#matieres')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

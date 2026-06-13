@@ -15,6 +15,7 @@ import { PERIMETRE_LESSONS } from '../data/maths/perimetre';
 import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration';
 import { POSITION_LESSONS } from '../data/maths/position';
 import { POSEE_LESSONS } from '../data/maths/posee';
+import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';
 
 /* ---------- Types ---------- */
 
@@ -311,6 +312,18 @@ const CALCUL_LESSONS_DEFS: LessonDef[] = POSEE_LESSONS.map((d) => ({
 	exerciseType: d.exerciseType,
 }));
 
+/* ---------- Catalogue des leçons « Géométrie » (figures planes, #100) ----------
+   Clientes du moteur de figures SVG : reconnaissance visuelle (modes QCM/saisie)
+   et propriétés/vocabulaire (QCM textuel). */
+const GEOMETRIE_LESSONS_DEFS: LessonDef[] = GEOMETRIE_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'math',
+	category: 'math-geometrie',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+}));
+
 /* ---------- Registre global ---------- */
 
 const ALL_LESSONS: LessonDef[] = [
@@ -318,6 +331,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...NUMERATION_LESSONS_DEFS,
 	...CALCUL_LESSONS_DEFS,
 	...GRANDEURS_LESSONS,
+	...GEOMETRIE_LESSONS_DEFS,
 	...FRENCH_LESSONS,
 ];
 

@@ -73,11 +73,10 @@
 	padding: 2px 6px;
 	color: var(--ink);
 }
+/* Champ rendu en `type="password"` (anti-suggestion clavier) puis démasqué en
+   `type="text"` par ui/anti-suggestion.ts — voir #67/#123/#139. */
 .rev-input-text {
 	width: 240px;
-	/* Champ rendu en `type="password"` (anti-suggestion clavier, issue #67/#123) :
-	   on rétablit l'affichage en clair du texte saisi. */
-	-webkit-text-security: none;
 }
 .rev-input:focus {
 	outline: none;

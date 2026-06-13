@@ -63,6 +63,7 @@ import { hideCelebration, hideLevelUp } from './ui/effects';
 import { openRecompenses, openTrophees, hideUnlockModals } from './ui/unlocks-view';
 import { closeProfileMenu, toggleProfileMenu } from './ui/menu';
 import { initTts } from './ui/tts';
+import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 
 // Quitter ces modes (non reprenables) perd la progression → on confirme (#63).
 const quittingLosesProgress = () => isSprintRunning() || isRevisionRunning();
@@ -84,6 +85,9 @@ function downloadJSON(filename: string, obj: any) {
    Initialisation : câblage des événements au chargement
    ============================================================ */
 function wireDOM() {
+	// Champs de réponse texte « mot de passe visible » : démasquage auto dès l'insertion
+	// (texte lisible sans réactiver les suggestions du clavier mobile). Voir #139.
+	installVisiblePasswordReveal();
 	document.getElementById('btnVerify')!.addEventListener('click', verify);
 	// Accueil : la confirmation des modes NON reprenables (sprint, révision) est
 	// gérée au niveau du hashchange (couvre aussi Précédent / édition d'URL), pour

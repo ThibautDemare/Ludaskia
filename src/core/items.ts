@@ -95,17 +95,20 @@ export const setRenderLesson = (v: string | null) => {
 // Attribut data-lesson, ou rien si on ne rattache pas le champ à une leçon.
 export const lessonAttr = () => (renderLesson != null ? ` data-lesson="${renderLesson}"` : '');
 
-/* Attributs des champs de réponse TEXTE (conjugaison, etc.) — issue #67, étape 1.
+/* Attributs des champs de réponse TEXTE (conjugaison, etc.) — issues #67/#123/#139.
    Sur tablette, la barre de suggestions prédictive des claviers (Gboard, Samsung,
    iOS…) ignore autocomplete/autocorrect/spellcheck et « souffle » la bonne forme.
-   Astuce : on déguise le champ en mot de passe (`type="password"`), car aucun
-   clavier ne propose de suggestions sur un champ password. Le texte reste lisible
-   grâce à `-webkit-text-security: none`, porté par les classes `.ans-text` /
-   `.sprint-input-text` (SCSS), et la valeur saisie (`input.value`) demeure le
-   texte tapé → correction (`checkItemAnswer`) inchangée. N'affecte QUE le texte ;
-   la saisie numérique du calcul garde `type` texte + `inputmode="numeric"`. */
+   Parade : on rend le champ en `type="password"` (aucun clavier ne propose de
+   suggestion sur un password), MAIS on le démasque en `type="text"` dès l'insertion
+   via `data-unmask` (cf. `ui/anti-suggestion.ts`). Né password puis basculé en texte
+   AVANT tout focus, Android le traite en « mot de passe visible » (textVisiblePassword) :
+   le texte saisi reste lisible ET le clavier ne propose toujours pas de suggestions.
+   (`-webkit-text-security: none` ne démasque PAS un vrai password — vérifié Chrome/FF.)
+   N'affecte QUE le texte ; la saisie numérique du calcul garde `type` texte +
+   `inputmode="numeric"`. La valeur saisie (`input.value`) demeure le texte tapé →
+   correction (`checkItemAnswer`) inchangée. */
 export const TEXT_ANSWER_INPUT_ATTRS =
-	'type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"';
+	'type="password" data-unmask autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"';
 
 export function renderItem(it: Item, extra = '') {
 	// Opération posée : déployée en grille de colonnes (plusieurs champs .ans).

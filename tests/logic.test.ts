@@ -124,6 +124,8 @@ import {
 	renderPolygoneCote,
 	renderQuadrillage,
 	boundaryEdges,
+	renderFigurePlane,
+	renderSceneFigures,
 } from '../src/core/figures';
 import { checkAnswer } from '../src/core/exercise';
 import { genItems, buildLessonFiche } from '../src/core/build';
@@ -582,17 +584,20 @@ describe('Catalogue maths : 4 catégories du manuel (#92)', () => {
 		expect(getLessonsByCategory('math-calcul-mental').length).toBe(15);
 		expect(getLessonsByCategory('math-calcul').length).toBeGreaterThan(0); // posé (#97)
 	});
-	test('les catégories encore sans contenu restent vides, sans casser les helpers', () => {
-		// Numération (#98/#94), Calcul posé (#97), Grandeurs et mesures (#89/#96) sont
-		// peuplées ; « Géométrie » attend encore ses leçons.
-		expect(getLessonsByCategory('math-geometrie')).toEqual([]);
+	test('toutes les catégories maths sont désormais peuplées ; helper robuste sur un id inconnu', () => {
+		// Numération (#98/#94), Calcul posé (#97), Grandeurs et mesures (#89/#96/#88/#99)
+		// et Géométrie (#100) sont peuplées.
+		expect(getLessonsByCategory('math-geometrie').length).toBeGreaterThan(0);
+		// Le helper ne casse pas sur une catégorie inconnue (pas de leçon).
+		expect(getLessonsByCategory('math-inexistant')).toEqual([]);
 	});
-	test('aucun trophée de catégorie n’est généré pour une catégorie vide', () => {
+	test('les trophées de catégorie suivent les catégories peuplées', () => {
 		const ids = api.TROPHIES.map((t) => t.id);
-		// Catégorie peuplée → ses trophées existent…
+		// Catégories peuplées → leurs trophées existent (calcul mental, et Géométrie #100)…
 		expect(ids).toContain('cat-math-calcul-mental-3');
-		// …une catégorie encore vide n’en génère pas (pas de trophée impossible).
-		expect(ids).not.toContain('cat-math-geometrie-3');
+		expect(ids).toContain('cat-math-geometrie-3');
+		// …une catégorie inexistante n’en génère pas (pas de trophée impossible).
+		expect(ids).not.toContain('cat-math-inexistant-3');
 	});
 });
 
@@ -936,6 +941,96 @@ describe('Grandeurs et mesures : le périmètre (#99)', () => {
 		expect(html).toContain('<svg');
 		expect(html).toContain('<input');
 		expect(html).not.toContain('@');
+	});
+});
+
+describe('Moteur de figures : figures planes & scène (#100)', () => {
+	test('renderFigurePlane : SVG accessible (desc neutre), polygone rempli', () => {
+		const html = renderFigurePlane('carre', 30);
+		expect(html).toContain('<svg');
+		expect(html).toContain('role="img"');
+		expect(html).toContain('<polygon');
+		expect(html).toContain('var(--blue-soft)'); // forme pleine
+		// La description ne nomme pas la figure (sinon réponse soufflée).
+		const head = html.slice(0, html.indexOf('</desc>'));
+		expect(head).not.toContain('carré');
+	});
+	test('renderFigurePlane : le cercle est un <circle>, pas un polygone', () => {
+		const html = renderFigurePlane('cercle');
+		expect(html).toContain('<circle');
+		expect(html).not.toContain('<polygon');
+	});
+	test('renderSceneFigures : autant de formes que de cases', () => {
+		const html = renderSceneFigures([
+			{ shape: 'carre' },
+			{ shape: 'triangle', rotation: 180 },
+			{ shape: 'cercle' },
+		]);
+		expect(html).toContain('<svg');
+		expect((html.match(/<polygon/g) ?? []).length).toBe(2); // carré + triangle
+		expect((html.match(/<circle/g) ?? []).length).toBe(1); // cercle
+	});
+	test('renderFigure : dispatch figurePlane et sceneFigures', () => {
+		expect(renderFigure({ kind: 'figurePlane', shape: 'losange' })).toContain('<polygon');
+		expect(renderFigure({ kind: 'sceneFigures', cells: [{ shape: 'rectangle' }] })).toContain(
+			'<svg',
+		);
+	});
+});
+
+describe('Géométrie : je reconnais les figures planes (#100)', () => {
+	const NOMS = ['carré', 'rectangle', 'triangle', 'losange', 'cercle'];
+	test('les 2 leçons peuplent « Géométrie »', () => {
+		const cat = getLessonsByCategory('math-geometrie').map((l) => l.id);
+		expect(cat).toContain('geo-figures-reconnaitre');
+		expect(cat).toContain('geo-figures-proprietes');
+	});
+	test('reconnaître — QCM : figure + 4 propositions distinctes dont la bonne', () => {
+		const type = getLessonById('geo-figures-reconnaitre')!.exerciseType;
+		for (let i = 0; i < 400; i++) {
+			const ex = type.generate('qcm');
+			if (ex.type !== 'qcm') throw new Error('mode qcm');
+			expect(ex.figure).toContain('<svg');
+			expect(ex.choices.length).toBeGreaterThanOrEqual(3);
+			expect(new Set(ex.choices).size).toBe(ex.choices.length); // distinctes
+			expect(ex.choices).toContain(ex.answer);
+			// Nommage → un nom connu ; comptage → un nombre 1..4.
+			if (/^\d+$/.test(ex.answer)) {
+				const n = Number(ex.answer);
+				expect(n).toBeGreaterThanOrEqual(1);
+				expect(n).toBeLessThanOrEqual(4);
+			} else {
+				expect(NOMS).toContain(ex.answer);
+			}
+		}
+	});
+	test('reconnaître — saisie : item avec figure, champ, réponse vérifiable', () => {
+		const lesson = getLessonById('geo-figures-reconnaitre')!;
+		for (let i = 0; i < 200; i++) {
+			const it = genLessonItem(lesson);
+			expect(it.text).toContain('@');
+			expect(it.figure).toContain('<svg');
+			expect(['num', 'text']).toContain(it.kind); // comptage (num) ou nommage (text)
+			expect(checkItemAnswer(it, String(it.answer))).toBe(true);
+		}
+	});
+	test('propriétés — QCM textuel sans figure, réponse parmi les choix', () => {
+		const type = getLessonById('geo-figures-proprietes')!.exerciseType;
+		for (let i = 0; i < 200; i++) {
+			const ex = type.generate('qcm');
+			if (ex.type !== 'qcm') throw new Error('mode qcm');
+			expect(ex.figure).toBeUndefined(); // pas de figure (vocabulaire/propriétés)
+			expect(ex.choices.length).toBe(4);
+			expect(ex.choices).toContain(ex.answer);
+		}
+	});
+	test('propriétés : jamais de question d’inclusion « carré = rectangle » (piège CE2)', () => {
+		const type = getLessonById('geo-figures-proprietes')!.exerciseType;
+		for (let i = 0; i < 200; i++) {
+			const ex = type.generate('qcm');
+			if (ex.type !== 'qcm') continue;
+			expect(ex.question.toLowerCase()).not.toMatch(/est-il un|est un rectangle/);
+		}
 	});
 });
 

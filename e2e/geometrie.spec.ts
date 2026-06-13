@@ -1,0 +1,43 @@
+/* ============================================================
+   Tests e2e de la Géométrie — figures planes (#100) : reconnaissance
+   (figure SVG + QCM / saisie) et propriétés (QCM textuel).
+   ============================================================ */
+import { test, expect } from '@playwright/test';
+import { watchErrors, gotoHash } from './helpers';
+
+test('Reconnaître (QCM) : une figure SVG et 4 propositions, un clic donne un retour', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'lecon-geo-figures-reconnaitre'); // mode conseillé = QCM → runner direct
+	await expect(page.locator('.figure svg').first()).toBeVisible();
+	await expect(page.locator('.sprint-choice')).toHaveCount(4);
+	await page.locator('.sprint-choice').first().click();
+	await expect(page.locator('#lqcmFeedback')).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
+test('Reconnaître (saisie) : la fiche montre la figure et corrige la réponse écrite', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'mode-geo-figures-reconnaitre'); // écran de choix de mode
+	await page.locator('.mode-btn[data-mode="saisie"]').click();
+	await expect(page.locator('.figure svg').first()).toBeVisible();
+	const field = page.locator('.ans').first();
+	await field.waitFor();
+	const good = await field.getAttribute('data-answer');
+	await field.fill(good ?? '');
+	await page.locator('#btnVerify').click();
+	await expect(page.locator('.mark.correct').first()).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
+test('Propriétés (QCM) : question textuelle, 4 choix, retour immédiat', async ({ page }) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'lecon-geo-figures-proprietes'); // mono-mode QCM → runner direct
+	await expect(page.locator('.sprint-choice')).toHaveCount(4);
+	await page.locator('.sprint-choice').first().click();
+	await expect(page.locator('#lqcmFeedback')).toBeVisible();
+	expect(errors).toEqual([]);
+});

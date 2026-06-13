@@ -350,6 +350,144 @@ export function renderQuadrillage(
 	);
 }
 
+/* ---------- Figures planes (#100 — reconnaissance) ----------
+   Formes pleines (remplissage `--blue-soft` + contour `--blue`) à reconnaître,
+   SANS cote. On part de sommets canoniques (carré unité), on tourne autour du
+   centre puis on met à l'échelle pour tenir dans une case. Calibrage (avis
+   designer + pedagogue) : trait franc (3), losange à diagonales INÉGALES (pas un
+   carré tourné), carré incliné ~30-40° (pas 45° → indécidable vs losange),
+   monochrome (la couleur ne doit pas être un indice de tri). */
+
+export type PlaneShape =
+	| 'carre'
+	| 'rectangle'
+	| 'triangle'
+	| 'triangleRectangle'
+	| 'losange'
+	| 'cercle'
+	| 'parallelogramme'; // distracteur visuel uniquement (jamais à nommer au CE2)
+
+// Sommets canoniques dans le carré unité [0,1]² (y vers le bas ; la rotation gère
+// l'orientation, le centrage gère la position). Le cercle est traité à part.
+const SHAPE_POINTS: Record<Exclude<PlaneShape, 'cercle'>, Array<[number, number]>> = {
+	carre: [
+		[0, 0],
+		[1, 0],
+		[1, 1],
+		[0, 1],
+	],
+	rectangle: [
+		[0, 0],
+		[1, 0],
+		[1, 0.62],
+		[0, 0.62],
+	],
+	triangle: [
+		[0.5, 0],
+		[1, 1],
+		[0, 1],
+	],
+	triangleRectangle: [
+		[0, 0],
+		[0, 1],
+		[1, 1],
+	],
+	losange: [
+		[0.5, 0.18],
+		[1, 0.5],
+		[0.5, 0.82],
+		[0, 0.5],
+	], // diagonales inégales
+	parallelogramme: [
+		[0.25, 0],
+		[1, 0],
+		[0.75, 1],
+		[0, 1],
+	],
+};
+
+const SHAPE_FILL = {
+	fill: 'var(--blue-soft)',
+	stroke: 'var(--blue)',
+	'stroke-width': 3,
+	'stroke-linejoin': 'round',
+} as const;
+
+function rotateAbout([x, y]: [number, number], deg: number): [number, number] {
+	const r = (deg * Math.PI) / 180;
+	const dx = x - 0.5;
+	const dy = y - 0.5;
+	return [0.5 + dx * Math.cos(r) - dy * Math.sin(r), 0.5 + dx * Math.sin(r) + dy * Math.cos(r)];
+}
+
+/* Une forme remplie, ajustée et centrée dans la case [cx±box/2, cy±box/2]. */
+function shapeBody(shape: PlaneShape, cx: number, cy: number, box: number, rotDeg: number): string {
+	const inner = box * 0.78; // marge interne ~11 %
+	if (shape === 'cercle') return circle(r2(cx), r2(cy), r2(inner / 2), SHAPE_FILL);
+	const pts = SHAPE_POINTS[shape].map((p) => rotateAbout(p, rotDeg));
+	const xs = pts.map((p) => p[0]);
+	const ys = pts.map((p) => p[1]);
+	const minX = Math.min(...xs);
+	const maxX = Math.max(...xs);
+	const minY = Math.min(...ys);
+	const maxY = Math.max(...ys);
+	const w = maxX - minX || 1;
+	const h = maxY - minY || 1;
+	const s = inner / Math.max(w, h);
+	const offX = cx - (minX + w / 2) * s;
+	const offY = cy - (minY + h / 2) * s;
+	const fitted = pts.map(([x, y]): [number, number] => [r2(offX + x * s), r2(offY + y * s)]);
+	return polygon(fitted, SHAPE_FILL);
+}
+
+const PLANE_SIZE = 200;
+
+/** Figure unique à reconnaître (option rotation pour varier l'orientation). */
+export function renderFigurePlane(shape: PlaneShape, rotation = 0): string {
+	return svgCanvas(
+		PLANE_SIZE,
+		PLANE_SIZE,
+		'Figure géométrique',
+		'Figure géométrique',
+		'Une figure plane à reconnaître : observe ses côtés et ses angles, puis nomme-la.',
+		shapeBody(shape, PLANE_SIZE / 2, PLANE_SIZE / 2, PLANE_SIZE, rotation),
+		'figure-plane',
+	);
+}
+
+/** Scène de plusieurs figures (comptage) : grille régulière, monochrome — la
+    couleur ne doit jamais devenir l'indice (on discrimine la FORME). */
+export function renderSceneFigures(cells: Array<{ shape: PlaneShape; rotation?: number }>): string {
+	const n = cells.length;
+	const cols = n <= 2 ? n : n <= 4 ? 2 : 3;
+	const rows = Math.ceil(n / cols);
+	const cell = 100;
+	const W = cols * cell;
+	const H = rows * cell;
+	const body = cells
+		.map((c, i) => {
+			const col = i % cols;
+			const row = Math.floor(i / cols);
+			return shapeBody(
+				c.shape,
+				col * cell + cell / 2,
+				row * cell + cell / 2,
+				cell,
+				c.rotation ?? 0,
+			);
+		})
+		.join('');
+	return svgCanvas(
+		W,
+		H,
+		'Figures à compter',
+		'Figures à compter',
+		'Plusieurs figures planes : compte celles qui ont la forme demandée.',
+		body,
+		'figure-scene',
+	);
+}
+
 /* ---------- Dispatch par données (point d'extension) ---------- */
 
 /** Description d'une figure par données. Étendre l'union + le switch ci-dessous
@@ -357,7 +495,9 @@ export function renderQuadrillage(
 export type FigureSpec =
 	| { kind: 'horloge'; heures: number; minutes: number }
 	| { kind: 'polygoneCote'; points: Array<[number, number]>; labels: string[] }
-	| { kind: 'quadrillage'; cols: number; rows: number; cells: Array<[number, number]> };
+	| { kind: 'quadrillage'; cols: number; rows: number; cells: Array<[number, number]> }
+	| { kind: 'figurePlane'; shape: PlaneShape; rotation?: number }
+	| { kind: 'sceneFigures'; cells: Array<{ shape: PlaneShape; rotation?: number }> };
 
 export function renderFigure(spec: FigureSpec): string {
 	switch (spec.kind) {
@@ -367,5 +507,9 @@ export function renderFigure(spec: FigureSpec): string {
 			return renderPolygoneCote(spec.points, spec.labels);
 		case 'quadrillage':
 			return renderQuadrillage(spec.cols, spec.rows, spec.cells);
+		case 'figurePlane':
+			return renderFigurePlane(spec.shape, spec.rotation);
+		case 'sceneFigures':
+			return renderSceneFigures(spec.cells);
 	}
 }

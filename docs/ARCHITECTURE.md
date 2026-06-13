@@ -8,8 +8,8 @@
 Mini-application web d'entraînement **multi-matières** (niveau CE2). Côté
 **maths**, le catalogue suit le découpage du manuel CE2 en **Numération**,
 **Calcul** (opérations posées), **Calcul mental**, **Grandeurs et mesures** et
-**Géométrie** (#92) — seul le **Calcul mental** est peuplé aujourd'hui, les
-autres catégories accueilleront leurs leçons au fil des issues. Côté
+**Géométrie** (#92) — toutes peuplées (numération, calcul posé, calcul mental,
+grandeurs et mesures, géométrie). Côté
 **français** : **conjugaison** et **orthographe**. Génération aléatoire
 d'exercices, correction instantanée, chronomètre, et une couche de gamification
 (records, médailles, trophées, objectifs, XP) avec gestion de profils. 100 %
@@ -133,6 +133,19 @@ triangle isocèle / figure en L cotés — `renderPolygoneCote`), `mes-perimetre
 `2 × (L + l)`). La définition (« le périmètre, c'est le tour ») est rappelée dans
 chaque énoncé. Calibrage CE2 : côtés 2–15, périmètre ≤ ~50 ; figures à l'échelle
 (triangle isocèle, L cohérent) ; quadrillage ≤ 6×6, périmètre 8–20.
+**`maths/geometrie.ts`** (#100) : **2 leçons** de « Géométrie » (figures planes),
+clientes du moteur SVG. `geo-figures-reconnaitre` — identification **visuelle** :
+nommer une figure affichée (`renderFigurePlane`) ou compter les figures d'une forme
+dans une scène (`renderSceneFigures`) ; deux modes (#69) `qcm` (conseillé, écran) et
+`saisie` (on écrit le nom / le nombre, fiche imprimable). `geo-figures-proprietes` —
+propriétés et vocabulaire (nombre de côtés, angles droits, côtés égaux) en **QCM
+textuel** (mono-mode, sans figure). Calibrage CE2 (avis pédagogique + designer) :
+figures carré/rectangle/triangle/triangle rectangle/losange/cercle (pas le
+parallélogramme comme réponse) ; carré incliné ≤ 40° (jamais 45° = indécidable vs
+losange), losange à diagonales inégales ; scène ≤ 6 figures, réponse 1–4, monochrome
+(la couleur n'est pas un indice) ; propriétés sans inclusion (« un carré est-il un
+rectangle ? ») ni double négation. **« Clique sur les rectangles » (multi-sélection)
+hors périmètre** (le runner QCM est mono-réponse).
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
@@ -171,9 +184,13 @@ chaque énoncé. Calibrage CE2 : côtés 2–15, périmètre ≤ ~50 ; figures �
   périmètre en côtés de carreaux). `renderFigure(spec)` aiguille par données (union
   **`FigureSpec`** : `horloge` | `polygoneCote` | `quadrillage`, **point
   d'extension**). **C'est le socle réutilisable** des figures de « Grandeurs et
-  mesures » / « Géométrie » (à venir : cercle coté #102, schémas de solides #103) :
-  on compose avec les primitives, on ajoute un `renderXxx` (+ variant `FigureSpec`
-  au besoin), jamais de SVG « à la main » dans une leçon. Tokens de couleur dédiés
+  mesures » / « Géométrie ». Côté géométrie (#100) : **`renderFigurePlane(shape,
+  rotation)`** (figure pleine à reconnaître, rotation pour varier l'orientation) et
+  **`renderSceneFigures(cells)`** (scène de plusieurs figures à compter, grille
+  monochrome). `FigureSpec` couvre désormais `horloge | polygoneCote | quadrillage |
+  figurePlane | sceneFigures` (à venir : cercle coté #102, solides #103). On compose
+  avec les primitives, on ajoute un `renderXxx` (+ variant `FigureSpec` au besoin),
+  jamais de SVG « à la main » dans une leçon. Tokens de couleur dédiés
   (`--clock-min`…) ; styles dans `src/styles/figures.scss`.
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
   (`text` | `qcm` | `tuilesNombre` (numération #98) | `posed` (calcul posé #97 :

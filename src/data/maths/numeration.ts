@@ -125,6 +125,7 @@ function numerationType(genFact: () => Fact): ExerciseType {
 			return { type: 'text', question: f.question, answer: f.answer };
 		},
 		check(exercise: Exercise, input: string): boolean {
+			if (!('answer' in exercise)) return false;
 			const a = exercise.answer;
 			return answerEstNumerique(a)
 				? Number(input.trim().replace(',', '.')) === Number(a)

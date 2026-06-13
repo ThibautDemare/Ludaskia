@@ -4,11 +4,23 @@
    ============================================================ */
 import { escapeHTML, normalizeText } from './utils';
 
+/* Opération posée (#97) : décrite par ses opérandes et son opérateur ; le rendu
+   (grille de colonnes, cellules de résultat, produits partiels) est calculé par
+   posedGridHTML. `kind: 'posed'` est un item « conteneur » : renderItem le déploie
+   en PLUSIEURS champs `.ans` (un par chiffre de résultat), corrigés indépendamment
+   par verify(). Multiplicateur `b` à 2 chiffres → produits partiels. */
+export interface PosedSpec {
+	op: '+' | '-' | 'x';
+	a: number;
+	b: number;
+}
+
 export interface Item {
 	text: string;
 	answer: number | string;
 	answers?: string[]; // formes équivalentes acceptées (exercices texte)
-	kind?: 'num' | 'text'; // 'num' par défaut (calcul) ; 'text' = saisie libre corrigée par chaîne
+	kind?: 'num' | 'text' | 'posed'; // 'num' par défaut (calcul) ; 'text' = saisie chaîne ; 'posed' = grille
+	posed?: PosedSpec; // présent si kind === 'posed'
 	_lesson?: string;
 }
 
@@ -85,6 +97,8 @@ export const TEXT_ANSWER_INPUT_ATTRS =
 	'type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"';
 
 export function renderItem(it: Item, extra = '') {
+	// Opération posée : déployée en grille de colonnes (plusieurs champs .ans).
+	if (it.kind === 'posed' && it.posed) return posedGridHTML(it.posed);
 	const id = nextInputId();
 	sessionItems[id] = it;
 	// Réponse exposée pour la révélation après correction (échappée pour les attributs).
@@ -98,6 +112,65 @@ export function renderItem(it: Item, extra = '') {
 export function gridHTML(items: Item[], cols: number) {
 	const cls = cols === 3 ? 'c3' : 'c4';
 	return `<div class="grid ${cls}">${items.map((it) => `<div class="op">${renderItem(it)}</div>`).join('')}</div>`;
+}
+
+/* Grille d'une opération posée (#97) : grille CSS de C+1 colonnes (1 pour le signe
+   + C colonnes de chiffres alignées à droite). Les chiffres du résultat (et des
+   produits partiels en ×2 chiffres) sont des champs `.ans` NOTÉS un par un ; une
+   rangée de retenues `.ans-free` (non notée) sert d'aide visible. verify() corrige
+   chaque cellule via son data-answer ; un sans-faute = toutes les cellules justes. */
+function posedGridHTML(spec: PosedSpec): string {
+	const { op, a, b } = spec;
+	const result = op === '+' ? a + b : op === '-' ? a - b : a * b;
+	const sign = op === '+' ? '+' : op === '-' ? '−' : '×';
+	const digits = (n: number) => String(n).split('');
+
+	const empty = () => `<span class="posee-cell"></span>`;
+	const opCell = (s: string) => `<span class="posee-cell posee-op">${s}</span>`;
+	const digitCell = (d: string) => `<span class="posee-cell posee-digit">${d}</span>`;
+	const carryCell = () =>
+		`<input class="ans-free posee-cell posee-carry" maxlength="1" inputmode="numeric" autocomplete="off" aria-label="retenue">`;
+	const inputCell = (d: string) => {
+		const id = nextInputId();
+		sessionItems[id] = { text: '', answer: Number(d), kind: 'num' };
+		return `<input class="ans posee-cell posee-input" id="${id}" data-answer="${d}"${lessonAttr()} maxlength="1" inputmode="numeric" autocomplete="off" aria-label="chiffre du résultat">`;
+	};
+
+	// Une rangée = signe (ou vide) + C cellules alignées à droite, décalées de `shift`.
+	const rule = (C: number) => `<span class="posee-rule" style="grid-column: 1 / ${C + 2}"></span>`;
+	const row = (C: number, signHTML: string, cells: string[], shift = 0): string => {
+		const slots = Array.from({ length: C }, empty);
+		const start = C - shift - cells.length;
+		for (let i = 0; i < cells.length; i++) slots[start + i] = cells[i];
+		return signHTML + slots.join('');
+	};
+
+	const C =
+		op === 'x' && b >= 10
+			? digits(result).length
+			: Math.max(digits(a).length, digits(b).length, digits(result).length);
+
+	const parts: string[] = [];
+	if (op === 'x' && b >= 10) {
+		// Multiplication à 2 chiffres : deux produits partiels + somme finale.
+		const pp1 = a * (b % 10);
+		const pp2 = a * Math.floor(b / 10);
+		parts.push(row(C, empty(), digits(a).map(digitCell)));
+		parts.push(row(C, opCell(sign), digits(b).map(digitCell)));
+		parts.push(rule(C));
+		parts.push(row(C, empty(), digits(pp1).map(inputCell)));
+		parts.push(row(C, empty(), digits(pp2).map(inputCell), 1)); // décalé d'un rang
+		parts.push(rule(C));
+		parts.push(row(C, empty(), digits(result).map(inputCell)));
+	} else {
+		// Addition, soustraction, multiplication ×1 chiffre.
+		parts.push(row(C, empty(), Array.from({ length: C }, carryCell))); // retenues (aide)
+		parts.push(row(C, empty(), digits(a).map(digitCell)));
+		parts.push(row(C, opCell(sign), digits(b).map(digitCell)));
+		parts.push(rule(C));
+		parts.push(row(C, empty(), digits(result).map(inputCell)));
+	}
+	return `<div class="posee" style="grid-template-columns: repeat(${C + 1}, var(--posee-col, 2.1rem))">${parts.join('')}</div>`;
 }
 /* L'en-tête de fiche : le champ "Temps : ___ min" est print-only */
 export function ficheHTML(

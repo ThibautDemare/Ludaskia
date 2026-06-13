@@ -10,6 +10,9 @@ export type Exercise =
 	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
 	// des distracteurs vers l'emplacement `@` de la question. Réponse = `answer`.
 	| { type: 'tuilesNombre'; question: string; answer: string; tuiles: string[] }
+	// Calcul posé (#97) — opération en colonnes ; le catalogue en fait un Item
+	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.
+	| { type: 'posed'; op: '+' | '-' | 'x'; a: number; b: number }
 	// Orthographe — interactions réutilisables (vérifiées comme du texte) :
 	| { type: 'motCache'; answer: string } // affiche/masque le mot puis saisie
 	| { type: 'tuiles'; answer: string; lettres: string[] } // lettres mélangées à ordonner
@@ -53,6 +56,9 @@ export function defaultMode(type: ExerciseType): ExerciseMode | undefined {
    Accents et apostrophes exigés. Couvre tous les types : comparaison à `answer`
    (+ variantes `answers` pour 'text'). */
 export function checkAnswer(exercise: Exercise, input: string): boolean {
+	// Le calcul posé n'a pas de réponse unique (corrigé cellule par cellule) :
+	// il ne passe jamais par cette vérification générique.
+	if (exercise.type === 'posed') return false;
 	const normalized = normalizeText(input);
 	if (normalized === normalizeText(exercise.answer)) return true;
 	if (exercise.type === 'text') {

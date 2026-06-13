@@ -10,7 +10,7 @@ import { escapeHTML } from '../core/utils';
 import { getLessonById, genLessonItem } from '../core/catalog';
 import { hasMode } from '../core/exercise';
 import type { Item } from '../core/items';
-import { checkItemAnswer, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
+import { checkItemAnswer, renderItem, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
 import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
 import type { OrthoState } from '../core/orthographe/types';
 import { loadLessonRevisions, avancerLessonRevision, addXP } from '../core/progress';
@@ -110,7 +110,23 @@ function renderCurrent() {
 	const it = items[idx];
 	if (it.kind === 'qcm') renderQcm(it);
 	else if (it.kind === 'word') renderWordLook(it);
+	else if (it.item.kind === 'posed') renderPosed(it);
 	else renderNum(it);
+}
+
+/* Révision d'une opération posée (#97) : la grille de cellules, validée d'un coup
+   (toutes les cellules-résultat justes = réussi). */
+function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
+	const stage = document.getElementById('revStage')!;
+	stage.innerHTML = `<div class="rev-q rev-posee">${renderItem(it.item)}</div>
+    <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
+	document.getElementById('revValidate')!.addEventListener('click', () => {
+		const cells = [...stage.querySelectorAll<HTMLInputElement>('.posee-input')];
+		const vide = cells.find((c) => c.value.trim() === '');
+		if (vide) return vide.focus();
+		const reussi = cells.every((c) => Number(c.value.trim()) === Number(c.dataset.answer));
+		grade(reussi, String(it.item.answer));
+	});
 }
 
 function renderNum(it: Extract<RevItem, { kind: 'num' }>) {

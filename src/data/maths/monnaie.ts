@@ -68,7 +68,7 @@ function monnaieType(situations: Array<() => Exercise>): ExerciseType {
 	return {
 		generate: () => choice(situations)(),
 		check: (exercise: Exercise, input: string): boolean =>
-			Number(input.trim().replace(',', '.')) === Number(exercise.answer),
+			'answer' in exercise && Number(input.trim().replace(',', '.')) === Number(exercise.answer),
 	};
 }
 

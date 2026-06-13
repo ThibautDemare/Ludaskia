@@ -215,6 +215,20 @@ document.addEventListener('keydown', (e: any) => {
 	if (i > -1 && i < all.length - 1) all[i + 1].focus();
 	else verify(); // dernier champ
 });
+// Grille posée (#97) : navigation entre cellules aux flèches ← →.
+document.addEventListener('keydown', (e: any) => {
+	const t = e.target;
+	if (t.tagName !== 'INPUT' || !t.classList.contains('posee-cell')) return;
+	if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+	const grid = t.closest('.posee');
+	if (!grid) return;
+	const cells = [...grid.querySelectorAll('input.posee-cell')];
+	const j = cells.indexOf(t) + (e.key === 'ArrowLeft' ? -1 : 1);
+	if (j >= 0 && j < cells.length) {
+		e.preventDefault();
+		(cells[j] as HTMLInputElement).focus();
+	}
+});
 
 /* ---------- Impression (issue #40) ----------
    Deux chemins :

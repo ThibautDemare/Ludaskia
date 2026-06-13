@@ -12,6 +12,7 @@ import { MESURE_LESSONS } from '../data/maths/mesures';
 import { MONNAIE_LESSONS } from '../data/maths/monnaie';
 import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration';
 import { POSITION_LESSONS } from '../data/maths/position';
+import { POSEE_LESSONS } from '../data/maths/posee';
 
 /* ---------- Types ---------- */
 
@@ -65,6 +66,7 @@ export function bilanMode(config: BilanConfig): 'bilan' | 'sprint' {
 
 /* Vérifie une réponse numérique (accepte la virgule comme séparateur décimal). */
 function checkMath(_exercise: Exercise, input: string): boolean {
+	if (!('answer' in _exercise)) return false; // jamais 'posed' ici (garde de type)
 	const norm = (s: string) => s.trim().replace(',', '.');
 	return Number(norm(input)) === Number(norm(_exercise.answer));
 }
@@ -289,14 +291,34 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 	exerciseType: conjugationType(d.verbId, d.tense),
 }));
 
+/* ---------- Catalogue des leçons « Calcul » (opérations posées, #97) ----------
+   Items `kind: 'posed'` : la grille (cellules-chiffres notées une à une) est
+   rendue par renderItem. Passent par les bilans/impression/révision ; exclues du
+   sprint (une grille multi-cellules ne se joue pas « une réponse à la fois »). */
+const CALCUL_LESSONS_DEFS: LessonDef[] = POSEE_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'math',
+	category: 'math-calcul',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+}));
+
 /* ---------- Registre global ---------- */
 
 const ALL_LESSONS: LessonDef[] = [
 	...MATH_LESSONS,
 	...NUMERATION_LESSONS_DEFS,
+	...CALCUL_LESSONS_DEFS,
 	...GRANDEURS_LESSONS,
 	...FRENCH_LESSONS,
 ];
+
+/* Une opération posée (#97) se rend en grille multi-cellules : incompatible avec
+   le sprint (« une réponse à la fois »), qui les exclut de son tirage. */
+export function isPosedLesson(lesson: LessonDef): boolean {
+	return lesson.exerciseType.generate().type === 'posed';
+}
 
 /* Une leçon math « héritée » est branchée sur le générateur numérique bilanQ
    (calcul mental, via MATH_LESSON_NUM). Les autres leçons math (moteurs
@@ -322,6 +344,17 @@ export function genLessonItem(lesson: LessonDef): Item {
 		return item;
 	}
 	const ex = lesson.exerciseType.generate();
+	// Calcul posé (#97) : item « conteneur » déployé en grille par renderItem.
+	if (ex.type === 'posed') {
+		const result = ex.op === '+' ? ex.a + ex.b : ex.op === '-' ? ex.a - ex.b : ex.a * ex.b;
+		return {
+			text: '',
+			answer: result,
+			kind: 'posed',
+			posed: { op: ex.op, a: ex.a, b: ex.b },
+			_lesson: lesson.id,
+		};
+	}
 	const question =
 		ex.type === 'text' || ex.type === 'qcm' || ex.type === 'tuilesNombre' ? ex.question : '';
 	if (lesson.subject === 'math') {

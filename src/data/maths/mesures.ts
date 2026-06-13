@@ -88,7 +88,9 @@ export function conversionType(config: MesureConfig): ExerciseType {
 			return generateConversion(config.conversions);
 		},
 		check(exercise: Exercise, input: string): boolean {
-			return Number(input.trim().replace(',', '.')) === Number(exercise.answer);
+			return (
+				'answer' in exercise && Number(input.trim().replace(',', '.')) === Number(exercise.answer)
+			);
 		},
 	};
 }

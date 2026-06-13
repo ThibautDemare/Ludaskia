@@ -97,6 +97,15 @@ tuiles produit un `Exercise` de type **`tuilesNombre`** (`{question, answer, tui
 rendu par un runner d'écran dédié `ui/lecon-tuiles.ts`. Calibrage CE2 : nombres à
 3 chiffres (4 réservés à la leçon « 10 000 »), `=` minoritaire, ~30 % de longueurs
 différentes (cas charnière), distracteurs typés sur les erreurs classiques.
+**`maths/posee.ts`** (#97) : 3 leçons d'**opérations posées** (catégorie
+`math-calcul`) — `calc-addition-posee`, `calc-soustraction-posee` (a ≥ b garanti),
+`calc-multiplication-posee` (×1 chiffre et ×2 chiffres avec produits partiels). Le
+générateur produit un `Exercise` `posed` (op + opérandes) ; le catalogue en fait un
+**Item `kind: 'posed'`** que `renderItem` déploie en **grille de colonnes**
+(posedGridHTML) : chaque chiffre du résultat (et des produits partiels) est un champ
+`.ans` noté individuellement, des cellules de retenue `.ans-free` servent d'aide.
+verify() corrige chaque cellule (sans-faute = toutes justes). Exclu du sprint
+(multi-cellules), pris en charge en bilans/impression/révision.
 **`maths/position.ts`** (#94) : 4 leçons de numération positionnelle de la même
 catégorie — `num-valeur-position` (« chiffre des X » vs « combien de X en tout »)
 et `num-decompose-100/1000/10000` (décomposition « en rangs », sens décomposer
@@ -118,12 +127,15 @@ inclus, accords singulier/pluriel soignés.
   branchement du hook sont appelés par `main.ts`.
 - **`items.ts`** — item de rendu `{text, answer, answers?, kind?}` (`@` = champ).
   Fabriques math (`add/sub/mul/dbl/half/comp/facteur`), `renderItem` (champ
-  numérique ou **texte** selon `kind`), `checkItemAnswer` (correction numérique
-  **ou** texte via `normalizeText`), `gridHTML`, `ficheHTML`/`ficheHTMLGeneric`,
-  `lessonAttr()`. État de module exposé via accesseurs (voir plus bas).
+  numérique, **texte**, ou **grille posée** selon `kind`), `checkItemAnswer`
+  (correction numérique **ou** texte via `normalizeText`), `gridHTML`,
+  `ficheHTML`/`ficheHTMLGeneric`, `lessonAttr()`. Le `kind: 'posed'` (#97) est un
+  item « conteneur » (`posed: {op, a, b}`) que **`posedGridHTML`** déploie en grille
+  de colonnes — plusieurs champs `.ans` (chiffres de résultat / produits partiels,
+  notés un à un) + cellules de retenue `.ans-free`. État de module via accesseurs.
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
-  (`text` | `qcm` | `tuilesNombre` (numération #98 : poser une tuile signe/nombre) |
-  interactions ortho), interface **`ExerciseType`** : `modes?`
+  (`text` | `qcm` | `tuilesNombre` (numération #98) | `posed` (calcul posé #97 :
+  op + opérandes) | interactions ortho), interface **`ExerciseType`** : `modes?`
   (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
   l'ordre d'affichage), `generate(mode?)`, `check()`. Helpers **`hasMode`** et
   **`defaultMode`** (les écrans dérivent leurs choix d'ici, **jamais en dur**, #69),

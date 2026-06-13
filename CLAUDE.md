@@ -35,7 +35,9 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
 
 ## Lancer
 - `npm install` puis `npm run dev` (serveur + HMR).
-- Avant de pousser : `npm run typecheck`, `npm run lint`, `npm test`.
+- Avant de pousser : `npm run typecheck`, `npm run lint`, `npm test`. Si la PR
+  ajoute une fonctionnalité visuelle, lancer aussi sa spec : `npm run test:e2e`
+  (au 1er usage, `npx playwright install chromium`).
 - Build de prod : `npm run build` (→ `dist/`).
 
 ## Workflow Git/GitHub (sessions agent)
@@ -87,6 +89,21 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
   sauf accès bruts dédiés dans `src/core/storage.ts`).
 - **Séparation** logique (`src/core/`, testable sans DOM) / rendu (`src/ui/`).
   Lancer `npm test` après toute modif de logique.
+- **Tests e2e systématiques pour toute fonctionnalité visuelle.** Dès qu'on
+  ajoute du visible/navigable — **nouvelle leçon**, **nouveau type d'exercice
+  ou mode**, **nouvel écran/vue** — on écrit **dans la même PR** une **spec
+  Playwright** dans `e2e/` (au moins un *smoke test* : la vue se rend sans erreur
+  et l'interaction clé fonctionne). C'est un **réflexe**, pas une option : pas de
+  fonctionnalité visuelle sans sa spec.
+  - **Pattern** (voir specs existantes `e2e/*.spec.ts`) : naviguer via `gotoHash`,
+    poser `watchErrors` et vérifier `expect(errors).toEqual([])`, **sélecteurs
+    stables** (`#btnVerify`, `.lesson-item`, `.ans`, `.mark.correct`, `.mode-btn`,
+    `#ltuiSlot`…), remplir un champ avec son `data-answer` puis valider. Un nouveau
+    type d'exercice mérite **son** fichier spec (ex. `numeration.spec.ts`,
+    `position.spec.ts`).
+  - **Portée** : tester le contenu **de la branche** ; rester **ciblé et robuste**
+    (peu de tests, pas de suite exhaustive fragile). Conventions détaillées dans
+    `e2e/README.md`.
 - **Commits : aucune attribution Claude** (`Co-Authored-By` / « Generated with
   Claude Code »).
 

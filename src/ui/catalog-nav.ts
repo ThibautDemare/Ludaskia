@@ -12,7 +12,7 @@ import {
 	getLessonsBySubject,
 	getLessonsByCategory,
 } from '../core/catalog';
-import type { BilanConfig } from '../core/catalog';
+import type { BilanConfig, LessonDef } from '../core/catalog';
 import { LESSONS } from '../core/lessons';
 import { loadStars, loadLessonStats } from '../core/progress';
 import { loadOrtho } from '../core/orthographe/store';
@@ -69,7 +69,7 @@ export function renderCategories(el: HTMLElement, subjectId: string, titleEl: HT
 			.map((c) => {
 				const n =
 					c.id === ORTHO_CATEGORY_ID
-						? listOrthoLecons(loadOrtho()).length
+						? listOrthoLecons(loadOrtho()).length + getLessonsByCategory(c.id).length
 						: getLessonsByCategory(c.id).length;
 				return `<button class="nav-card" data-category="${c.id}">
           <div class="nav-card-title">${escapeHTML(c.label)}</div>
@@ -114,11 +114,31 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 	// On réutilise les cartes riches (numéro, titre, étoile, %) à partir des
 	// entrées LESSONS correspondantes ; fallback minimal si absente.
 	// Chaque leçon : carte riche + un 🖨 pour imprimer sa fiche (sans la lancer).
-	const cards = lessonDefs
-		.map((def, i) => {
-			const rich = LESSONS.find((l) => l.id === def.id);
-			const entry = rich ?? { id: def.id, num: i + 1, title: def.label };
-			return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(def.label)}">🖨</button></div>`;
+	const cardRow = (def: LessonDef, i: number) => {
+		const rich = LESSONS.find((l) => l.id === def.id);
+		const entry = rich ?? { id: def.id, num: i + 1, title: def.label };
+		return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(def.label)}">🖨</button></div>`;
+	};
+
+	// Regroupement par rubrique (#109), dans l'ordre d'apparition. Une leçon sans
+	// rubrique forme un groupe « sans titre » (rendu à plat, rétro-compatible).
+	const groupes: { rubrique: string; defs: LessonDef[] }[] = [];
+	lessonDefs.forEach((def) => {
+		const r = def.rubrique ?? '';
+		let g = groupes.find((x) => x.rubrique === r);
+		if (!g) {
+			g = { rubrique: r, defs: [] };
+			groupes.push(g);
+		}
+		g.defs.push(def);
+	});
+	const aRubriques = groupes.some((g) => g.rubrique !== '');
+	const listHTML = groupes
+		.map((g) => {
+			const head =
+				g.rubrique && aRubriques ? `<h3 class="cat-rubrique">${escapeHTML(g.rubrique)}</h3>` : '';
+			const rows = g.defs.map((def) => cardRow(def, lessonDefs.indexOf(def))).join('');
+			return `${head}<div class="lesson-list">${rows}</div>`;
 		})
 		.join('');
 
@@ -131,11 +151,11 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
       <button class="cat-action cat-action-secondary" data-act="custom">🎚️ Je choisis mes leçons<small>coche les leçons que tu veux</small></button>
       <button class="cat-action cat-action-secondary" data-act="print">🖨 Imprimer les fiches<small>toute la catégorie</small></button>
     </div>
-    <div class="lesson-list" id="catLessonList">${cards}</div>
+    <div id="catLessons">${listHTML}</div>
     <div id="catFavoris" class="favoris favoris-cat"></div>`;
 
 	// Délégation : 🖨 d'une leçon (impression, chemin B) ou clic sur la carte (lancer).
-	el.querySelector('#catLessonList')!.addEventListener('click', (e: Event) => {
+	el.querySelector('#catLessons')!.addEventListener('click', (e: Event) => {
 		const target = e.target as HTMLElement;
 		const printBtn = target.closest('.lz-print') as HTMLElement | null;
 		if (printBtn && printBtn.dataset.print) {
@@ -189,6 +209,11 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
    carte « + Ajouter une liste ». Pas de bilan/sprint (modes propres au runner). */
 function renderOrthoCategorie(el: HTMLElement): void {
 	const lecons = listOrthoLecons(loadOrtho());
+	// Leçons « moteur » de la catégorie Orthographe (accords #109) : exercices de
+	// transformation (pluriel/féminin), distincts des dictées de mots. Affichés
+	// dans leur propre rubrique, lancés par le parcours standard (saisie/QCM).
+	const accords = getLessonsByCategory(ORTHO_CATEGORY_ID);
+	const stars = loadStars();
 	const predef = lecons.filter((l) => l.source === 'predefini');
 	// Listes du parent triées par date de contrôle décroissante (sans date en dernier).
 	const listes = lecons
@@ -231,23 +256,49 @@ function renderOrthoCategorie(el: HTMLElement): void {
       <button class="nav-card-edit" data-ortho-edit="${l.id}" aria-label="Modifier la liste" title="Modifier">✎</button>
     </div>`;
 
-	el.innerHTML = `<div class="ortho-cols">
-    <section class="ortho-col">
-      <h3 class="ortho-col-title">📘 Mots de base</h3>
-      <div class="nav-cards ortho-cards">${predef.map(baseCard).join('')}</div>
-    </section>
-    <section class="ortho-col">
-      <h3 class="ortho-col-title">📝 Mes listes</h3>
-      <div class="nav-cards ortho-cards">
-        <button class="nav-card nav-card-add" data-ortho-new="1">
-          <div class="nav-ico">➕</div>
-          <div class="nav-card-title">Ajouter une liste</div>
-          <div class="nav-card-sub">les mots de la semaine</div>
-        </button>
-        ${listes.map(listCard).join('')}
+	// Carte d'une leçon d'accords (transformation) : annonce clairement le geste
+	// (« transformer », pas « écrire un mot dicté ») pour ne pas tromper l'enfant.
+	const accordCard = (l: LessonDef) => {
+		const etoilee = (stars[l.id] ?? 0) > 0;
+		return `<button class="nav-card" data-accord="${l.id}">
+      <div class="nav-ico">✍️</div>
+      <div class="nav-card-title">${escapeHTML(l.label)}${etoilee ? ' ⭐' : ''}</div>
+      <div class="nav-card-sub">je transforme les mots</div>
+    </button>`;
+	};
+
+	const accordsSection = accords.length
+		? `<section class="ortho-rubrique">
+        <h3 class="cat-rubrique">Les accords</h3>
+        <p class="ortho-rubrique-hint">Transforme les mots : pluriel et féminin.</p>
+        <div class="nav-cards ortho-cards">${accords.map(accordCard).join('')}</div>
+      </section>`
+		: '';
+
+	el.innerHTML = `${accordsSection}
+    <section class="ortho-rubrique">
+      <h3 class="cat-rubrique">Les dictées de mots</h3>
+      <div class="ortho-cols">
+        <section class="ortho-col">
+          <h4 class="ortho-col-title">📘 Mots de base</h4>
+          <div class="nav-cards ortho-cards">${predef.map(baseCard).join('')}</div>
+        </section>
+        <section class="ortho-col">
+          <h4 class="ortho-col-title">📝 Mes listes</h4>
+          <div class="nav-cards ortho-cards">
+            <button class="nav-card nav-card-add" data-ortho-new="1">
+              <div class="nav-ico">➕</div>
+              <div class="nav-card-title">Ajouter une liste</div>
+              <div class="nav-card-sub">les mots de la semaine</div>
+            </button>
+            ${listes.map(listCard).join('')}
+          </div>
+        </section>
       </div>
-    </section>
-  </div>`;
+    </section>`;
+	el.querySelectorAll<HTMLButtonElement>('[data-accord]').forEach((btn) => {
+		btn.addEventListener('click', () => startLecon(btn.dataset.accord!));
+	});
 	el.querySelectorAll<HTMLButtonElement>('[data-ortho]').forEach((btn) => {
 		btn.addEventListener('click', () => startOrthoLecon(btn.dataset.ortho!));
 	});

@@ -133,6 +133,7 @@ import {
 import { checkAnswer } from '../src/core/exercise';
 import { genItems, buildLessonFiche } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
+import { ACCORD_LESSONS, transfosDisponibles } from '../src/data/francais/accords';
 import {
 	EXPRESS_CAP,
 	expressQuestionsPerLesson,
@@ -2488,5 +2489,74 @@ describe('vocabulaire — ordre alphabétique (#108)', () => {
 		expect(isOrderingLesson(getLessonById(ID_NIV2)!)).toBe(true);
 		expect(isOrderingLesson(getLessonById('math-tables-addition')!)).toBe(false);
 		expect(isOrderingLesson(getLessonById('fr-conj-etre-present')!)).toBe(false);
+	});
+});
+
+describe('orthographe — accords pluriel/féminin (#109)', () => {
+	const reg = ACCORD_LESSONS.find((l) => l.id === 'fr-accords-reguliers')!;
+	const irr = ACCORD_LESSONS.find((l) => l.id === 'fr-accords-irreguliers')!;
+
+	test('transfosDisponibles : écarte les transformations triviales (source = cible)', () => {
+		// « gris » au pluriel reste « gris » → aucune transformation de nombre.
+		expect(transfosDisponibles({ mascSing: 'gris', mascPlur: 'gris' })).toEqual([]);
+		const t = transfosDisponibles({
+			mascSing: 'grand',
+			femSing: 'grande',
+			mascPlur: 'grands',
+			femPlur: 'grandes',
+		});
+		expect(t.length).toBe(4); // 2 pluriels + 2 féminins
+		expect(t.every((x) => x.source !== x.answer)).toBe(true);
+	});
+
+	test('saisie : toujours du texte, formes courtes uniquement', () => {
+		for (const lesson of [reg, irr]) {
+			for (let i = 0; i < 200; i++) {
+				const ex = lesson.exerciseType.generate('saisie');
+				expect(ex.type).toBe('text');
+				if (ex.type === 'text') expect(ex.answer.length).toBeLessThanOrEqual(9);
+			}
+		}
+	});
+
+	test('QCM : 4 propositions distinctes dont la bonne réponse', () => {
+		for (const lesson of [reg, irr]) {
+			for (let i = 0; i < 200; i++) {
+				const ex = lesson.exerciseType.generate('qcm');
+				expect(ex.type).toBe('qcm');
+				if (ex.type === 'qcm') {
+					expect(ex.choices.length).toBe(4);
+					expect(new Set(ex.choices).size).toBe(4); // pas de doublon
+					expect(ex.choices).toContain(ex.answer);
+				}
+			}
+		}
+	});
+
+	test('repli QCM : une forme longue n’apparaît qu’en QCM, jamais en saisie', () => {
+		let vueLongueEnQcm = false;
+		for (let i = 0; i < 300; i++) {
+			const s = irr.exerciseType.generate('saisie');
+			if (s.type === 'text') expect(s.answer.length).toBeLessThanOrEqual(9);
+			const q = irr.exerciseType.generate('qcm');
+			if (q.type === 'qcm' && q.answer.length > 9) vueLongueEnQcm = true;
+		}
+		expect(vueLongueEnQcm).toBe(true);
+	});
+
+	test('catalogue : leçons d’accords en Orthographe, rubrique « Les accords »', () => {
+		const lesson = getLessonById('fr-accords-reguliers')!;
+		expect(lesson.category).toBe('fr-orthographe');
+		expect(lesson.rubrique).toBe('Les accords');
+		const ortho = getLessonsByCategory('fr-orthographe').map((l) => l.id);
+		expect(ortho.sort()).toEqual(['fr-accords-irreguliers', 'fr-accords-reguliers']);
+	});
+
+	test('rubriques : la conjugaison est étiquetée par temps', () => {
+		const conj = getLessonsByCategory('fr-conjugaison');
+		expect(conj.every((l) => !!l.rubrique)).toBe(true);
+		expect(new Set(conj.map((l) => l.rubrique))).toEqual(
+			new Set(['Présent', 'Futur', 'Imparfait', 'Passé composé']),
+		);
 	});
 });

@@ -125,7 +125,7 @@
 .ortho-rows-head,
 .ortho-row {
 	display: grid;
-	grid-template-columns: 1fr 1fr 32px;
+	grid-template-columns: 1fr 1fr 2rem 2rem;
 	gap: 0.5rem;
 	align-items: center;
 }
@@ -133,8 +133,64 @@
 	font-weight: 600;
 	margin: 0.5rem 0 0.25rem;
 }
-.ortho-row {
+.ortho-row-wrap {
 	margin-bottom: 0.4rem;
+}
+/* Bouton « ✍️ accords » : déplie les formes fléchies d'une ligne (facultatif, #109). */
+.ortho-formes-toggle {
+	border: 1px solid var(--muted);
+	background: var(--paper);
+	border-radius: 8px;
+	font-size: 1rem;
+	line-height: 1;
+	padding: 0.4rem 0;
+	cursor: pointer;
+}
+.ortho-formes-toggle.actif {
+	border-color: var(--blue);
+	background: var(--blue-soft);
+}
+/* Panneau des 4 formes (masc/fém × sing/plur) sous la ligne. */
+.ortho-formes {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.4rem 0.6rem;
+	margin: 0.3rem 0 0.2rem;
+	padding: 0.5rem 0.6rem;
+	background: var(--blue-soft);
+	border-radius: 8px;
+}
+/* L'attribut [hidden] doit l'emporter sur display:grid (spécificité de classe). */
+.ortho-formes[hidden] {
+	display: none;
+}
+.ortho-forme {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	font-size: 0.8rem;
+	color: var(--grey);
+}
+.ortho-forme input {
+	width: 100%;
+	padding: 0.4rem;
+	font: inherit;
+	border: 1px solid var(--muted);
+	border-radius: 8px;
+	box-sizing: border-box;
+}
+@media (max-width: 720px) {
+	.ortho-formes {
+		grid-template-columns: 1fr;
+	}
+}
+.ortho-rubrique + .ortho-rubrique {
+	margin-top: 1.4rem;
+}
+.ortho-rubrique-hint {
+	font-size: 0.9rem;
+	color: var(--grey);
+	margin: 0 0 0.6rem;
 }
 .ortho-row input {
 	width: 100%;

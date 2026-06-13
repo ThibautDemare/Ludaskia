@@ -9,6 +9,7 @@ import type { Item } from './items';
 import { bilanQ } from './lessons';
 import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 import { VOCAB_LESSONS } from '../data/francais/vocabulaire';
+import { ACCORD_LESSONS } from '../data/francais/accords';
 import { MESURE_LESSONS } from '../data/maths/mesures';
 import { MONNAIE_LESSONS } from '../data/maths/monnaie';
 import { HEURE_LESSONS } from '../data/maths/heure';
@@ -44,6 +45,10 @@ export interface LessonDef {
 	category: CategoryId;
 	level: SchoolLevel;
 	exerciseType: ExerciseType;
+	// Rubrique facultative : sous-section au sein d'une catégorie (#109). Sert à
+	// regrouper les leçons à l'écran (ex. conjugaison par temps, orthographe
+	// « Les accords »). Une leçon sans rubrique s'affiche à plat.
+	rubrique?: string;
 }
 
 export interface BilanConfig {
@@ -306,6 +311,21 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 	category: 'fr-conjugaison',
 	level: d.level,
 	exerciseType: conjugationType(d.verbId, d.tense),
+	rubrique: d.rubrique, // regroupement par temps (#109)
+}));
+
+/* ---------- Catalogue des leçons « Orthographe » sur moteur LessonDef (#109) ----------
+   Accords (pluriel & féminin) : exercices de transformation saisie/QCM, dans la
+   catégorie Orthographe sous la rubrique « Les accords » (à côté des dictées de
+   mots, qui passent, elles, par le runner dédié). */
+const ACCORD_LESSONS_DEFS: LessonDef[] = ACCORD_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'francais',
+	category: ORTHO_CATEGORY_ID,
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+	rubrique: d.rubrique,
 }));
 
 /* ---------- Catalogue des leçons « Vocabulaire » (#108) ----------
@@ -359,6 +379,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...GRANDEURS_LESSONS,
 	...GEOMETRIE_LESSONS_DEFS,
 	...FRENCH_LESSONS,
+	...ACCORD_LESSONS_DEFS,
 	...VOCAB_LESSONS_DEFS,
 ];
 

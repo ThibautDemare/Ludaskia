@@ -27,12 +27,25 @@ export interface EtatRevision {
 	dernierTest: number | null; // timestamp ms
 }
 
+/** Formes fléchies d'un mot variable (nom/adjectif), pour les leçons d'accord
+    (pluriels & féminins, #109). Toutes FACULTATIVES : un mot « neutre » (sans
+    aucune forme) n'est pas éligible aux exercices de transformation, mais reste
+    utilisable dans les autres leçons d'orthographe. La correction se fait sur la
+    forme STOCKÉE, jamais par règle déduite. */
+export interface FormesAccord {
+	mascSing?: string; // masculin singulier (ex. « grand », « cheval »)
+	femSing?: string; // féminin singulier (ex. « grande »)
+	mascPlur?: string; // masculin pluriel (ex. « grands », « chevaux »)
+	femPlur?: string; // féminin pluriel (ex. « grandes »)
+}
+
 /** Un mot de la banque du profil. */
 export interface MotOrtho {
 	id: string; // stable ; dédup par forme normalisée
 	mot: string; // forme correcte exacte (NFC) = référence de vérification
 	commeDans?: string; // bout de phrase d'exemple (dictée)
 	homophone?: boolean; // exige « commeDans » en dictée
+	formes?: FormesAccord; // formes fléchies optionnelles (accords #109)
 	entourage: Entourage[]; // marquage de l'enfant (sauvegardé)
 	atelierFait: boolean; // l'atelier de découverte a-t-il été fait ?
 	validation: Record<ModeOrtho, boolean>; // pour l'étoile de liste
@@ -62,4 +75,5 @@ export interface MotInput {
 	mot: string;
 	commeDans?: string;
 	homophone?: boolean;
+	formes?: FormesAccord; // formes fléchies optionnelles (accords #109)
 }

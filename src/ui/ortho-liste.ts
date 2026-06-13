@@ -1,9 +1,10 @@
 /* ============================================================
    Mode Orthographe — formulaire de création/édition d'une liste.
    Saisie en tableau dynamique : chaque ligne = un champ « mot » + un
-   champ « comme dans… ». Une ligne vide est toujours présente en bas
-   (elle apparaît dès qu'on remplit la dernière). Un copier-coller
-   multi-lignes éclate chaque ligne dans son propre champ « mot ».
+   champ « comme dans… » + un panneau dépliable « accords » (facultatif :
+   les 4 formes fléchies masc/fém × sing/plur, #109). Une ligne vide est
+   toujours présente en bas (elle apparaît dès qu'on remplit la dernière).
+   Un copier-coller multi-lignes éclate chaque ligne dans son propre champ.
    ============================================================ */
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 import {
@@ -15,8 +16,14 @@ import {
 	getListe,
 	motsDeListe,
 } from '../core/orthographe/store';
-import type { MotInput } from '../core/orthographe/types';
+import type { MotInput, FormesAccord } from '../core/orthographe/types';
 import { goCategorie } from './navigation';
+
+interface RowData {
+	mot: string;
+	commeDans: string;
+	formes?: FormesAccord;
+}
 
 /** Rend le formulaire dans `el`. listeId null = création ; sinon édition. */
 export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): void {
@@ -24,8 +31,12 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 	const liste = listeId ? getListe(state, listeId) : undefined;
 	const editing = !!liste;
 
-	const initialRows = liste
-		? motsDeListe(state, liste).map((mo) => ({ mot: mo.mot, commeDans: mo.commeDans ?? '' }))
+	const initialRows: RowData[] = liste
+		? motsDeListe(state, liste).map((mo) => ({
+				mot: mo.mot,
+				commeDans: mo.commeDans ?? '',
+				formes: mo.formes,
+			}))
 		: [];
 
 	el.innerHTML = `
@@ -40,7 +51,7 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
       </label>
       <div class="ortho-rows-head"><span>Mot</span><span>Comme dans… (facultatif)</span><span></span></div>
       <div class="ortho-rows" id="orthoRows"></div>
-      <p class="ortho-hint">Astuce : tu peux coller une liste de mots (un par ligne) dans la case « Mot ».</p>
+      <p class="ortho-hint">Astuce : tu peux coller une liste de mots (un par ligne) dans la case « Mot ». Le bouton ✍️ d'une ligne ajoute, en option, le pluriel et le féminin (leçon « Les accords »).</p>
       <div class="ortho-form-actions">
         <button class="btn-primary" id="orthoSave">💾 Enregistrer</button>
         ${editing ? '<button class="ortho-del" id="orthoDelete">🗑 Supprimer la liste</button>' : ''}
@@ -51,22 +62,38 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 	(el.querySelector('#orthoDate') as HTMLInputElement).value = liste?.dateControle ?? '';
 	const rowsEl = el.querySelector('#orthoRows') as HTMLElement;
 
-	function makeRow(mot = '', commeDans = ''): HTMLElement {
+	function makeRow(data: RowData = { mot: '', commeDans: '' }): HTMLElement {
+		const wrap = document.createElement('div');
+		wrap.className = 'ortho-row-wrap';
+
 		const row = document.createElement('div');
 		row.className = 'ortho-row';
 
 		const inMot = document.createElement('input');
 		inMot.className = 'ortho-mot';
 		inMot.type = 'text';
-		inMot.value = mot;
+		inMot.value = data.mot;
 		inMot.setAttribute('aria-label', 'Mot');
 
 		const inComme = document.createElement('input');
 		inComme.className = 'ortho-comme';
 		inComme.type = 'text';
-		inComme.value = commeDans;
+		inComme.value = data.commeDans;
 		inComme.placeholder = 'comme dans…';
 		inComme.setAttribute('aria-label', 'Comme dans');
+
+		const aFormes = !!(
+			data.formes &&
+			(data.formes.mascSing || data.formes.femSing || data.formes.mascPlur || data.formes.femPlur)
+		);
+
+		const toggle = document.createElement('button');
+		toggle.className = 'ortho-formes-toggle' + (aFormes ? ' actif' : '');
+		toggle.type = 'button';
+		toggle.textContent = '✍️';
+		toggle.title = 'Pluriel et féminin (facultatif)';
+		toggle.setAttribute('aria-label', 'Ajouter le pluriel et le féminin');
+		toggle.setAttribute('aria-expanded', aFormes ? 'true' : 'false');
 
 		const del = document.createElement('button');
 		del.className = 'ortho-row-del';
@@ -74,20 +101,50 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 		del.textContent = '×';
 		del.setAttribute('aria-label', 'Supprimer la ligne');
 
+		row.append(inMot, inComme, toggle, del);
+
+		// Panneau « accords » : 4 formes fléchies facultatives.
+		const panel = document.createElement('div');
+		panel.className = 'ortho-formes';
+		panel.hidden = !aFormes;
+		const mkForme = (cls: string, label: string, ph: string, val?: string) => {
+			const f = document.createElement('label');
+			f.className = 'ortho-forme';
+			f.innerHTML = `<span>${label}</span>`;
+			const inp = document.createElement('input');
+			inp.className = cls;
+			inp.type = 'text';
+			inp.value = val ?? '';
+			inp.placeholder = ph;
+			inp.setAttribute('aria-label', label);
+			f.appendChild(inp);
+			return f;
+		};
+		panel.append(
+			mkForme('ortho-f-ms', 'Masculin singulier', 'grand', data.formes?.mascSing),
+			mkForme('ortho-f-fs', 'Féminin singulier', 'grande', data.formes?.femSing),
+			mkForme('ortho-f-mp', 'Masculin pluriel', 'grands', data.formes?.mascPlur),
+			mkForme('ortho-f-fp', 'Féminin pluriel', 'grandes', data.formes?.femPlur),
+		);
+
 		inMot.addEventListener('input', ensureTrailingBlank);
 		inMot.addEventListener('paste', onPasteMot);
+		toggle.addEventListener('click', () => {
+			panel.hidden = !panel.hidden;
+			toggle.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+		});
 		del.addEventListener('click', () => {
-			row.remove();
+			wrap.remove();
 			ensureTrailingBlank();
 		});
 
-		row.append(inMot, inComme, del);
-		return row;
+		wrap.append(row, panel);
+		return wrap;
 	}
 
 	// Garantit qu'une (et une seule) ligne vide est présente en bas.
 	function ensureTrailingBlank(): void {
-		const rows = [...rowsEl.querySelectorAll('.ortho-row')];
+		const rows = [...rowsEl.querySelectorAll('.ortho-row-wrap')];
 		const last = rows[rows.length - 1] as HTMLElement | undefined;
 		const lastMot = last ? (last.querySelector('.ortho-mot') as HTMLInputElement).value.trim() : '';
 		if (!last || lastMot !== '') rowsEl.appendChild(makeRow());
@@ -104,31 +161,42 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 			.filter((s) => s !== '');
 		if (!lignes.length) return;
 		const target = e.target as HTMLInputElement;
-		const row = target.closest('.ortho-row') as HTMLElement;
+		const wrap = target.closest('.ortho-row-wrap') as HTMLElement;
 		target.value = lignes[0];
-		let after: Element = row;
+		let after: Element = wrap;
 		for (const mot of lignes.slice(1)) {
-			const r = makeRow(mot);
+			const r = makeRow({ mot, commeDans: '' });
 			after.after(r);
 			after = r;
 		}
 		ensureTrailingBlank();
 	}
 
-	initialRows.forEach((r) => rowsEl.appendChild(makeRow(r.mot, r.commeDans)));
+	initialRows.forEach((r) => rowsEl.appendChild(makeRow(r)));
 	ensureTrailingBlank();
 
 	el.querySelector('#orthoSave')!.addEventListener('click', () => {
 		const label =
 			(el.querySelector('#orthoLabel') as HTMLInputElement).value.trim() || 'Liste de mots';
 		const date = (el.querySelector('#orthoDate') as HTMLInputElement).value || undefined;
-		const mots: MotInput[] = [...rowsEl.querySelectorAll('.ortho-row')]
-			.map((row) => ({
-				mot: (row.querySelector('.ortho-mot') as HTMLInputElement).value.trim(),
-				comme: (row.querySelector('.ortho-comme') as HTMLInputElement).value.trim(),
-			}))
-			.filter((r) => r.mot !== '')
-			.map((r) => ({ mot: r.mot, commeDans: r.comme || undefined }));
+		const val = (row: Element, cls: string) =>
+			(row.querySelector(cls) as HTMLInputElement | null)?.value.trim() ?? '';
+		const mots: MotInput[] = [...rowsEl.querySelectorAll('.ortho-row-wrap')]
+			.map((row) => {
+				const formes: FormesAccord = {
+					mascSing: val(row, '.ortho-f-ms') || undefined,
+					femSing: val(row, '.ortho-f-fs') || undefined,
+					mascPlur: val(row, '.ortho-f-mp') || undefined,
+					femPlur: val(row, '.ortho-f-fp') || undefined,
+				};
+				const aFormes = formes.mascSing || formes.femSing || formes.mascPlur || formes.femPlur;
+				return {
+					mot: val(row, '.ortho-mot'),
+					commeDans: val(row, '.ortho-comme') || undefined,
+					formes: aFormes ? formes : undefined,
+				};
+			})
+			.filter((r) => r.mot !== '');
 		if (!mots.length) {
 			alert('Ajoute au moins un mot.');
 			return;

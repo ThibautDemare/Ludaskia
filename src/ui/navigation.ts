@@ -16,6 +16,7 @@ import { escapeHTML } from '../core/utils';
 import { buildLessonFiche } from '../core/build';
 import { runLeconQcm } from './lecon-qcm';
 import { runLeconTuiles } from './lecon-tuiles';
+import { runLeconOrdre } from './lecon-ordre';
 import { setInputCounter, setSessionItems, renderItem } from '../core/items';
 import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
@@ -178,7 +179,7 @@ function chooseMode(id: string, mode: ExerciseMode) {
 	// Les modes « une question à la fois » (QCM, tuiles) ne sont pas des grilles :
 	// pas d'offre de reprise. Seule la saisie (fiche grille) la propose.
 	const type = lesson.exerciseType.generate(mode).type;
-	if (type === 'qcm' || type === 'tuilesNombre') {
+	if (type === 'qcm' || type === 'tuilesNombre' || type === 'tuilesOrdre') {
 		location.hash = 'lecon-' + id;
 	} else {
 		maybeRelaunch(leconKey(id), lesson.label, () => {
@@ -483,6 +484,10 @@ export function runLecon(id: string) {
 		}
 		if (t === 'tuilesNombre') {
 			runLeconTuiles(id, mode);
+			return;
+		}
+		if (t === 'tuilesOrdre') {
+			runLeconOrdre(id, mode);
 			return;
 		}
 	}

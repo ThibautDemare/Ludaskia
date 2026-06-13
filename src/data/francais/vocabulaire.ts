@@ -1,0 +1,188 @@
+/* ============================================================
+   Données + moteur des leçons de Vocabulaire (#108).
+   ------------------------------------------------------------
+   Première leçon : « Ordre alphabétique ». L'enfant range 4 à 5 mots
+   mélangés dans l'ordre alphabétique (interaction tuiles, runner
+   ui/lecon-ordre.ts). La bonne suite est TOUJOURS calculée par tri
+   (`localeCompare` français), jamais codée en dur.
+
+   Deux niveaux de progression = deux leçons distinctes :
+   - 1re lettre : des mots dont les premières lettres sont toutes
+     différentes (le tri se joue sur l'initiale) ;
+   - 2e lettre : des mots qui commencent par la même lettre et dont la
+     2e lettre diffère (le tri se joue sur la deuxième lettre).
+
+   Convention de données : noms communs CE2 courants, en minuscules et au
+   singulier ; aucune métadonnée — un simple tableau de chaînes suffit.
+   ============================================================ */
+import type { Exercise, ExerciseType } from '../../core/exercise';
+import { choice, sample, normalizeText } from '../../core/utils';
+
+export interface VocabLessonDef {
+	id: string;
+	label: string;
+	exerciseType: ExerciseType;
+}
+
+/* Pool de noms communs pour le tri par 1re lettre. On pioche des INITIALES
+   toutes différentes (une par lettre), puis un mot au hasard pour chacune :
+   le rangement se joue donc bien sur la première lettre. */
+const POOL_INITIALE: string[] = [
+	'arbre',
+	'avion',
+	'ananas',
+	'ballon',
+	'banane',
+	'bateau',
+	'cahier',
+	'carotte',
+	'cerise',
+	'dauphin',
+	'danse',
+	'doigt',
+	'école',
+	'étoile',
+	'escargot',
+	'fleur',
+	'fraise',
+	'fromage',
+	'gâteau',
+	'girafe',
+	'gomme',
+	'hibou',
+	'herbe',
+	'histoire',
+	'igloo',
+	'image',
+	'île',
+	'jardin',
+	'jouet',
+	'journal',
+	'lapin',
+	'livre',
+	'lune',
+	'maison',
+	'montagne',
+	'mouton',
+	'nuage',
+	'neige',
+	'nid',
+	'orange',
+	'oiseau',
+	'ours',
+	'papillon',
+	'pomme',
+	'panier',
+	'robot',
+	'renard',
+	'rivière',
+	'soleil',
+	'singe',
+	'souris',
+	'tortue',
+	'table',
+	'tigre',
+	'vélo',
+	'vache',
+	'voiture',
+];
+
+/* Groupes de mots partageant la 1re lettre mais dont la 2e lettre DIFFÈRE :
+   ainsi le tri alphabétique de tout le groupe se joue sans ambiguïté sur la
+   deuxième lettre (pas besoin de regarder plus loin). */
+const GROUPES_DEUXIEME: string[][] = [
+	['ballon', 'bicyclette', 'bonbon', 'brosse', 'bulle'], // b : a i o r u
+	['cabane', 'ceinture', 'chien', 'classe', 'crayon', 'cuisine'], // c : a e h l r u
+	['facteur', 'fenêtre', 'fil', 'forêt', 'fruit', 'fumée'], // f : a e i o r u
+	['maison', 'melon', 'midi', 'moto', 'mur'], // m : a e i o u
+	['panier', 'peigne', 'pirate', 'pomme', 'prince', 'puzzle'], // p : a e i o r u
+	['sac', 'seau', 'singe', 'soleil', 'sucre'], // s : a e i o u
+	['table', 'timbre', 'tomate', 'train', 'tulipe'], // t : a i o r u
+];
+
+/* Tri alphabétique français (gère les accents : é ≈ e). */
+export const trierAlpha = (mots: string[]): string[] =>
+	[...mots].sort((a, b) => a.localeCompare(b, 'fr'));
+
+const memeSuite = (a: string[], b: string[]): boolean =>
+	a.length === b.length && a.every((x, i) => x === b[i]);
+
+/* Mélange en garantissant un ordre DIFFÉRENT de la suite triée : un exercice
+   « déjà rangé » n'aurait aucun intérêt. */
+function melangerNonTrie(ordre: string[]): string[] {
+	if (ordre.length < 2) return [...ordre];
+	let melange = sample(ordre, ordre.length);
+	for (let essais = 0; memeSuite(melange, ordre) && essais < 20; essais++) {
+		melange = sample(ordre, ordre.length);
+	}
+	if (memeSuite(melange, ordre)) melange = [...ordre].reverse();
+	return melange;
+}
+
+const nbMots = (): number => choice([4, 5]);
+const CONSIGNE = "Range ces mots dans l'ordre alphabétique.";
+
+/* Niveau 1 — tri par 1re lettre : initiales toutes différentes. */
+function genNiveau1(): Exercise {
+	const parInitiale = new Map<string, string[]>();
+	for (const mot of POOL_INITIALE) {
+		const k = mot[0];
+		const liste = parInitiale.get(k);
+		if (liste) liste.push(mot);
+		else parInitiale.set(k, [mot]);
+	}
+	const initiales = sample([...parInitiale.keys()], nbMots());
+	const mots = initiales.map((k) => choice(parInitiale.get(k)!));
+	const ordre = trierAlpha(mots);
+	return { type: 'tuilesOrdre', question: CONSIGNE, tuiles: melangerNonTrie(ordre), ordre };
+}
+
+/* Niveau 2 — tri par 2e lettre : mots à 1re lettre commune. */
+function genNiveau2(): Exercise {
+	const groupe = choice(GROUPES_DEUXIEME);
+	const n = Math.min(nbMots(), groupe.length);
+	const mots = sample(groupe, n);
+	const ordre = trierAlpha(mots);
+	const question = `Ces mots commencent par la même lettre. ${CONSIGNE}`;
+	return { type: 'tuilesOrdre', question, tuiles: melangerNonTrie(ordre), ordre };
+}
+
+/* Fabrique un ExerciseType mono-mode « tuiles » (ranger la suite). Le runner
+   d'écran compare directement la suite posée à `ordre` ; `check()` ne sert
+   qu'au repli texte (fiche/bilan) : mots écrits dans l'ordre, séparés par des
+   espaces ou des virgules. */
+function ordreType(gen: () => Exercise): ExerciseType {
+	return {
+		modes: [
+			{
+				id: 'tuiles',
+				label: 'Je range les mots',
+				hint: 'glisse ou tape les tuiles',
+				icon: '🔤',
+				recommended: true,
+			},
+		],
+		generate: () => gen(),
+		check(exercise: Exercise, input: string): boolean {
+			if (exercise.type !== 'tuilesOrdre') return false;
+			const norm = (s: string) =>
+				normalizeText(s)
+					.toLowerCase()
+					.replace(/\s*,\s*/g, ' ');
+			return norm(input) === norm(exercise.ordre.join(' '));
+		},
+	};
+}
+
+export const VOCAB_LESSONS: VocabLessonDef[] = [
+	{
+		id: 'fr-vocab-alpha-initiale',
+		label: 'Ordre alphabétique — la 1re lettre',
+		exerciseType: ordreType(genNiveau1),
+	},
+	{
+		id: 'fr-vocab-alpha-deuxieme',
+		label: 'Ordre alphabétique — la 2e lettre',
+		exerciseType: ordreType(genNiveau2),
+	},
+];

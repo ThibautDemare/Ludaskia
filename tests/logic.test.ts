@@ -573,8 +573,9 @@ describe('Catalogue maths : 4 catégories du manuel (#92)', () => {
 		expect(getLessonsByCategory('math-calcul').length).toBe(0); // posé : à venir
 	});
 	test('les catégories encore sans contenu restent vides, sans casser les helpers', () => {
-		// « Grandeurs et mesures » est désormais peuplée (#89) ; les autres attendent.
-		for (const id of ['math-numeration', 'math-calcul', 'math-geometrie']) {
+		// « Grandeurs et mesures » (#89/#96) et « Numération » (#98) sont peuplées ;
+		// « Calcul » (posé) et « Géométrie » attendent encore leurs leçons.
+		for (const id of ['math-calcul', 'math-geometrie']) {
 			expect(getLessonsByCategory(id)).toEqual([]);
 		}
 	});
@@ -584,7 +585,6 @@ describe('Catalogue maths : 4 catégories du manuel (#92)', () => {
 		expect(ids).toContain('cat-math-calcul-mental-3');
 		// …les catégories encore vides n’en génèrent pas (pas de trophée impossible).
 		expect(ids).not.toContain('cat-math-calcul-3');
-		expect(ids).not.toContain('cat-math-numeration-3');
 		expect(ids).not.toContain('cat-math-geometrie-3');
 	});
 });
@@ -672,6 +672,80 @@ describe('Grandeurs et mesures : la monnaie (#96)', () => {
 			expect(it.text).toContain('@ €'); // toujours en euros
 			expect(it.text).not.toContain('@ c');
 			expect(Number(it.answer)).toBeLessThanOrEqual(19); // billet 20 − prix ≥ 1
+		}
+	});
+});
+
+describe('Numération : comparer / encadrer / intercaler (#98)', () => {
+	const ids = ['num-comparer', 'num-encadrer-intercaler', 'num-situer-10000'];
+	test('les 3 leçons peuplent « Numération »', () => {
+		const cat = getLessonsByCategory('math-numeration').map((l) => l.id);
+		for (const id of ids) expect(cat).toContain(id);
+		expect(cat.length).toBe(3);
+	});
+	test('chaque leçon expose les deux modes saisie + tuiles', () => {
+		for (const id of ids) {
+			const modes = (getLessonById(id)!.exerciseType.modes ?? []).map((m) => m.id);
+			expect(modes).toContain('saisie');
+			expect(modes).toContain('tuiles');
+		}
+	});
+	test('mode tuiles : type tuilesNombre, tuiles distinctes incluant la réponse', () => {
+		for (const id of ids) {
+			const type = getLessonById(id)!.exerciseType;
+			for (let i = 0; i < 300; i++) {
+				const ex = type.generate('tuiles');
+				expect(ex.type).toBe('tuilesNombre');
+				if (ex.type !== 'tuilesNombre') continue; // narrowing
+				expect(ex.question).toContain('@');
+				expect(ex.tuiles).toContain(ex.answer); // la bonne tuile est présente
+				expect(new Set(ex.tuiles).size).toBe(ex.tuiles.length); // toutes distinctes
+				expect(ex.tuiles.length).toBeGreaterThanOrEqual(2);
+				expect(ex.tuiles.length).toBeLessThanOrEqual(4); // mémoire de travail CE2
+				expect(type.check(ex, ex.answer)).toBe(true); // la réponse se valide
+			}
+		}
+	});
+	test('comparer : item texte (signe), le signe est mathématiquement correct', () => {
+		const lesson = getLessonById('num-comparer')!;
+		for (let i = 0; i < 400; i++) {
+			const it = genLessonItem(lesson);
+			expect(it.kind).toBe('text'); // un signe, pas un nombre
+			const m = it.text.match(/^(\d+)\s*@\s*(\d+)$/);
+			expect(m).not.toBeNull();
+			const a = Number(m![1]),
+				b = Number(m![2]);
+			const attendu = a < b ? '<' : a > b ? '>' : '=';
+			expect(it.answer).toBe(attendu);
+			expect(['<', '=', '>']).toContain(String(it.answer));
+		}
+	});
+	test('encadrer/intercaler : réponses numériques entières positives, corrigées', () => {
+		const lesson = getLessonById('num-encadrer-intercaler')!;
+		for (let i = 0; i < 400; i++) {
+			const it = genLessonItem(lesson);
+			expect(it.kind).toBe('num');
+			const ans = Number(it.answer);
+			expect(Number.isInteger(ans)).toBe(true);
+			expect(ans).toBeGreaterThan(0);
+			expect(checkItemAnswer(it, String(ans))).toBe(true);
+			expect(checkItemAnswer(it, String(ans + 1))).toBe(false);
+		}
+	});
+	test('jusqu’à 10 000 : nombres ≤ 9999 (4 chiffres réservés à cette leçon)', () => {
+		const lesson = getLessonById('num-situer-10000')!;
+		for (let i = 0; i < 400; i++) {
+			const it = genLessonItem(lesson);
+			// Tous les nombres de l'énoncé (et la réponse) restent dans la plage CE2.
+			const nombres = (it.text.match(/\d+/g) ?? []).map(Number).concat(Number(it.answer) || 0);
+			for (const n of nombres) expect(n).toBeLessThanOrEqual(10000);
+		}
+		// La leçon « jusqu'à 1000 » ne dépasse pas le millier (4 chiffres réservés à L3).
+		const l2 = getLessonById('num-encadrer-intercaler')!;
+		for (let i = 0; i < 400; i++) {
+			const it = genLessonItem(l2);
+			const nombres = (it.text.match(/\d+/g) ?? []).map(Number).concat(Number(it.answer) || 0);
+			for (const n of nombres) expect(n).toBeLessThanOrEqual(1000);
 		}
 	});
 });

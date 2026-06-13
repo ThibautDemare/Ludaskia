@@ -16,7 +16,7 @@ test("l'accueil se charge sans erreur", async ({ page }) => {
 
 test('une catégorie sans leçon affiche « Bientôt disponible »', async ({ page }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'categorie-math-numeration');
+	await gotoHash(page, 'categorie-math-geometrie'); // encore vide (Géométrie)
 	await expect(page.locator('.cat-empty')).toBeVisible();
 	await expect(page.getByText('Bientôt disponible')).toBeVisible();
 	expect(errors).toEqual([]);

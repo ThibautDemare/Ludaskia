@@ -5,8 +5,10 @@
 import { normalizeText } from './utils';
 
 export type Exercise =
-	| { type: 'text'; question: string; answer: string; answers?: string[] }
-	| { type: 'qcm'; question: string; answer: string; choices: string[] }
+	// `figure` (#88) : fragment SVG optionnel (moteur core/figures.ts) affiché
+	// au-dessus de la question — horloge, plus tard rectangle coté, polygone…
+	| { type: 'text'; question: string; answer: string; answers?: string[]; figure?: string }
+	| { type: 'qcm'; question: string; answer: string; choices: string[]; figure?: string }
 	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
 	// des distracteurs vers l'emplacement `@` de la question. Réponse = `answer`.
 	| { type: 'tuilesNombre'; question: string; answer: string; tuiles: string[] }

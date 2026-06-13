@@ -113,6 +113,16 @@ troué dominant + composer). Mono-mode saisie, réponse numérique unique (pas d
 multi-champs : le `@` reste unique par item). Calibrage CE2 : « en tout » jamais
 sur les unités, forme additive écartée (ambiguïté 6 vs 60), zéro intercalaire
 inclus, accords singulier/pluriel soignés.
+**`maths/heure.ts`** (#88) : leçon **« Je lis l'heure »** (`mes-lecture-heure`,
+catégorie « Grandeurs et mesures »), **première cliente du moteur de figures SVG**
+(`core/figures.ts`) — chaque question affiche une **horloge** générée. Deux modes
+(#69) : `saisie` (conseillé, fiche imprimable ; réponse « H h MM » au **parsing
+tolérant** — `10h15`, `10:15`, `8`/`8h`/`8h00` pour les heures pile, déclaré via
+`answers`) et `qcm` (4 propositions, **distracteurs = erreurs classiques** :
+inversion des aiguilles, ±5 min, confusion quart/demi, ±1 h). Calibrage CE2 (avis
+pédagogique) : horloge **12 h** uniquement, 4 plages pondérées (heures pile, demi,
+quarts, multiples de 5), positions d'aiguilles quasi superposées (dont 12 h 00)
+écartées.
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
@@ -125,14 +135,31 @@ inclus, accords singulier/pluriel soignés.
 - **`profiles.ts`** — profils (UUID, préfixe, `updatedAt`), `initProfiles`,
   export/import. ⚠️ Plus d'effet de bord au chargement : `initProfiles()` et le
   branchement du hook sont appelés par `main.ts`.
-- **`items.ts`** — item de rendu `{text, answer, answers?, kind?}` (`@` = champ).
+- **`items.ts`** — item de rendu `{text, answer, answers?, kind?, figure?}` (`@` = champ).
   Fabriques math (`add/sub/mul/dbl/half/comp/facteur`), `renderItem` (champ
   numérique, **texte**, ou **grille posée** selon `kind`), `checkItemAnswer`
   (correction numérique **ou** texte via `normalizeText`), `gridHTML`,
   `ficheHTML`/`ficheHTMLGeneric`, `lessonAttr()`. Le `kind: 'posed'` (#97) est un
   item « conteneur » (`posed: {op, a, b}`) que **`posedGridHTML`** déploie en grille
   de colonnes — plusieurs champs `.ans` (chiffres de résultat / produits partiels,
-  notés un à un) + cellules de retenue `.ans-free`. État de module via accesseurs.
+  notés un à un) + cellules de retenue `.ans-free`. Le champ **`figure`** (#88) porte
+  un fragment SVG (moteur `figures.ts`) que **`figureBlock`** affiche AU-DESSUS de la
+  question ; `renderItem` l'ajoute, et les runners « une question à la fois » (QCM,
+  sprint, révision) appellent `figureBlock` au même endroit pour un rendu identique
+  partout. État de module via accesseurs.
+- **`figures.ts`** — **moteur de figures SVG génératives (#88)**, module **PUR**
+  (renvoie une chaîne de balisage, aucun accès DOM). Primitives bas niveau
+  réutilisables (`svgCanvas` — viewBox carré + `role="img"` + `<title>`/`<desc>` +
+  `aria-label` ; `line`, `circle`, `rect`, `polygon`, `polyline`, `text`,
+  `pointOnCircle`) et un premier renderer **`renderHorloge(h, m)`** (cadran,
+  graduations, chiffres, deux aiguilles distinctes — la petite/heures
+  **proportionnelle aux minutes**). `renderFigure(spec)` aiguille par données
+  (union **`FigureSpec`**, point d'extension). **C'est le socle réutilisable** des
+  futures figures de « Grandeurs et mesures » / « Géométrie » (rectangles cotés et
+  figures en L pour le périmètre, polygones et quadrillages, cercle coté, schémas
+  de solides) : on compose avec les primitives, on ajoute un `renderXxx` (+ variant
+  `FigureSpec` au besoin), jamais de SVG « à la main » dans une leçon. Tokens de
+  couleur dédiés (`--clock-min`…) ; styles dans `src/styles/figures.scss`.
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
   (`text` | `qcm` | `tuilesNombre` (numération #98) | `posed` (calcul posé #97 :
   op + opérandes) | interactions ortho), interface **`ExerciseType`** : `modes?`

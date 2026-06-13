@@ -21,7 +21,7 @@ import {
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { hasMode } from '../core/exercise';
-import { checkItemAnswer, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
+import { checkItemAnswer, figureBlock, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
 import type { Item } from '../core/items';
 import {
 	updateStreak,
@@ -304,6 +304,7 @@ function sprintNext() {
 				text: ex.type === 'qcm' ? ex.question : '',
 				answer: ex.type === 'qcm' ? ex.answer : '',
 				kind: 'text',
+				figure: ex.type === 'qcm' ? ex.figure : undefined,
 				_lesson: def.id,
 			};
 			choices = ex.type === 'qcm' ? ex.choices : null;
@@ -338,6 +339,7 @@ function renderSprintTyped(stage: HTMLElement, def: LessonDef, q: Item) {
 	const deco = def.id === 'math-decomposer-multiplication' ? ' deco' : '';
 	stage.innerHTML = `
     <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(def.label)}</span></div>
+    ${figureBlock(q.figure)}
     <div class="sprint-q${deco}">${sprintQuestionBody(q)}</div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintValidate">Valider</button></div>`;
 	document.getElementById('sprintValidate')?.addEventListener('click', sprintSubmit);
@@ -350,6 +352,7 @@ function renderSprintQcm(stage: HTMLElement, def: LessonDef, q: Item, choices: s
 	const question = escapeHTML(q.text).replace('@', '<span class="sprint-blank">?</span>');
 	stage.innerHTML = `
     <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(def.label)}</span></div>
+    ${figureBlock(q.figure)}
     <div class="sprint-q sprint-q-qcm">${question}</div>
     <div class="sprint-choices">
       ${choices.map((c, i) => `<button class="sprint-choice" data-i="${i}">${escapeHTML(c)}</button>`).join('')}

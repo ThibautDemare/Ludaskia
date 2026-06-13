@@ -115,8 +115,9 @@ import {
 	isPosedLesson,
 	CATEGORIES,
 } from '../src/core/catalog';
-import { checkItemAnswer } from '../src/core/items';
+import { checkItemAnswer, figureBlock } from '../src/core/items';
 import type { PosedSpec } from '../src/core/items';
+import { renderHorloge, renderFigure, pointOnCircle } from '../src/core/figures';
 import { checkAnswer } from '../src/core/exercise';
 import { genItems, buildLessonFiche } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
@@ -672,6 +673,123 @@ describe('Grandeurs et mesures : la monnaie (#96)', () => {
 			expect(it.text).not.toContain('@ c');
 			expect(Number(it.answer)).toBeLessThanOrEqual(19); // billet 20 − prix ≥ 1
 		}
+	});
+});
+
+describe('Moteur de figures SVG (#88)', () => {
+	test('renderHorloge : SVG accessible (role img, titre, description) + légende', () => {
+		const html = renderHorloge(10, 15);
+		expect(html).toContain('<svg');
+		expect(html).toContain('role="img"');
+		expect(html).toContain('<title>'); // accessibilité
+		expect(html).toContain('<desc>');
+		expect(html).toContain('viewBox="0 0 200 200"');
+		expect(html).toContain('class="clock-legend"'); // rôle des aiguilles rappelé
+		// La description NE souffle PAS la réponse (pas de « 10 h 15 » dans le desc/title).
+		const head = html.slice(0, html.indexOf('</desc>'));
+		expect(head).not.toContain('10 h 15');
+	});
+	test('renderHorloge : 12 chiffres, 60 graduations, 2 aiguilles + moyeu', () => {
+		const html = renderHorloge(3, 0);
+		expect((html.match(/<text/g) ?? []).length).toBe(12); // chiffres 1–12
+		expect((html.match(/<line/g) ?? []).length).toBe(62); // 60 graduations + 2 aiguilles
+		expect((html.match(/<circle/g) ?? []).length).toBe(2); // cadran + moyeu
+	});
+	test('aiguille des heures proportionnelle aux minutes (pas pile sur le chiffre à la demie)', () => {
+		// À 3 h 30, la petite aiguille est À MI-CHEMIN entre 3 et 4 (105°), pas sur 3 (90°).
+		const [x3h, y3h] = pointOnCircle(100, 100, 52, 3 * 30 + 30 * 0.5);
+		const [x3, y3] = pointOnCircle(100, 100, 52, 90);
+		expect(Math.hypot(x3h - x3, y3h - y3)).toBeGreaterThan(5); // positions distinctes
+		expect(renderHorloge(3, 30)).toContain(`x2="${x3h}"`);
+	});
+	test('renderFigure dispatch : horloge', () => {
+		expect(renderFigure({ kind: 'horloge', heures: 6, minutes: 45 })).toContain('<svg');
+	});
+	test('figureBlock : enveloppe seulement si figure présente (SVG non échappé)', () => {
+		expect(figureBlock(undefined)).toBe('');
+		const b = figureBlock('<svg id="x"></svg>');
+		expect(b).toContain('class="figure"');
+		expect(b).toContain('<svg id="x">'); // pas d'échappement du balisage
+	});
+});
+
+describe("Grandeurs et mesures : lire l'heure (#88)", () => {
+	const lesson = () => getLessonById('mes-lecture-heure')!;
+	test("la leçon « Je lis l'heure » peuple « Grandeurs et mesures » avec 2 modes", () => {
+		const cat = getLessonsByCategory('math-grandeurs-mesures').map((l) => l.id);
+		expect(cat).toContain('mes-lecture-heure');
+		const modes = (lesson().exerciseType.modes ?? []).map((m) => m.id);
+		expect(modes).toEqual(['saisie', 'qcm']);
+	});
+	test('saisie : item texte avec figure horloge, corrigé sur formes équivalentes', () => {
+		const l = lesson();
+		for (let i = 0; i < 300; i++) {
+			const it = genLessonItem(l);
+			expect(it.kind).toBe('text'); // « 10 h 15 » n'est pas numérique
+			expect(it.text).toContain('@');
+			expect(it.figure).toContain('<svg'); // l'horloge accompagne la question
+			expect(it._lesson).toBe('mes-lecture-heure');
+			expect(checkItemAnswer(it, String(it.answer))).toBe(true); // forme canonique
+			for (const v of it.answers ?? []) expect(checkItemAnswer(it, v)).toBe(true); // variantes
+			expect(checkItemAnswer(it, 'pas une heure')).toBe(false);
+		}
+	});
+	test('format canonique « H h MM » : heures 1–12, minutes multiples de 5, jamais 12 h 00', () => {
+		const type = lesson().exerciseType;
+		for (let i = 0; i < 500; i++) {
+			const ex = type.generate('saisie');
+			if (ex.type !== 'text') throw new Error('saisie doit produire un texte');
+			const m = ex.answer.match(/^(\d{1,2}) h (\d{2})$/);
+			expect(m).not.toBeNull();
+			const h = Number(m![1]),
+				min = Number(m![2]);
+			expect(h).toBeGreaterThanOrEqual(1);
+			expect(h).toBeLessThanOrEqual(12);
+			expect(min % 5).toBe(0);
+			expect(ex.answer).not.toBe('12 h 00'); // aiguilles superposées : écarté
+		}
+	});
+	test('QCM : 4 propositions distinctes, la bonne en fait partie, figure présente', () => {
+		const type = lesson().exerciseType;
+		for (let i = 0; i < 300; i++) {
+			const ex = type.generate('qcm');
+			if (ex.type !== 'qcm') throw new Error('qcm doit produire un qcm');
+			expect(ex.choices.length).toBe(4);
+			expect(new Set(ex.choices).size).toBe(4); // toutes distinctes
+			expect(ex.choices).toContain(ex.answer);
+			expect(ex.figure).toContain('<svg');
+			for (const c of ex.choices) expect(c).toMatch(/^\d{1,2} h \d{2}$/); // même format
+		}
+	});
+	test('saisie tolérante : 8 h 05 accepte « 8h5 » / « 8:05 » ; heures pile « 9 » / « 9h »', () => {
+		const type = lesson().exerciseType;
+		let testedMin = false,
+			testedRound = false;
+		for (let i = 0; i < 3000 && !(testedMin && testedRound); i++) {
+			const ex = type.generate('saisie');
+			if (ex.type !== 'text') continue;
+			if (ex.answer === '8 h 05') {
+				expect(type.check(ex, '8h5')).toBe(true);
+				expect(type.check(ex, '8:05')).toBe(true);
+				expect(type.check(ex, '8 h 05')).toBe(true);
+				testedMin = true;
+			}
+			const round = ex.answer.match(/^(\d{1,2}) h 00$/);
+			if (round) {
+				const h = round[1];
+				expect(type.check(ex, h)).toBe(true);
+				expect(type.check(ex, `${h}h`)).toBe(true);
+				testedRound = true;
+			}
+		}
+		expect(testedMin && testedRound).toBe(true);
+	});
+	test('buildLessonFiche : fiche imprimable avec horloge SVG et champ de saisie', () => {
+		const html = buildLessonFiche('mes-lecture-heure');
+		expect(html).toContain("Je lis l'heure"); // titre
+		expect(html).toContain('<svg'); // l'horloge s'affiche sur la fiche
+		expect(html).toContain('<input'); // champ de réponse
+		expect(html).not.toContain('@'); // le `@` est remplacé par le champ
 	});
 });
 

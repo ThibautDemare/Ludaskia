@@ -10,7 +10,7 @@ import { escapeHTML } from '../core/utils';
 import { getLessonById, genLessonItem } from '../core/catalog';
 import { hasMode } from '../core/exercise';
 import type { Item } from '../core/items';
-import { checkItemAnswer, renderItem, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
+import { checkItemAnswer, figureBlock, renderItem, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
 import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
 import type { OrthoState } from '../core/orthographe/types';
 import { loadLessonRevisions, avancerLessonRevision, addXP } from '../core/progress';
@@ -59,7 +59,7 @@ export function runRevisionEspacee(): void {
 						groupLabel: g.label,
 						kind: 'qcm',
 						lessonId: it.id,
-						item: { text: ex.question, answer: ex.answer, kind: 'text' },
+						item: { text: ex.question, answer: ex.answer, kind: 'text', figure: ex.figure },
 						choices: ex.choices,
 					});
 			} else {
@@ -135,7 +135,7 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 		'@',
 		'<input id="revInput" class="rev-input" inputmode="numeric" autocomplete="off">',
 	);
-	stage.innerHTML = `<div class="rev-q">${q}</div>
+	stage.innerHTML = `${figureBlock(it.item.figure)}<div class="rev-q">${q}</div>
     <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;
@@ -149,7 +149,7 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 	const stage = document.getElementById('revStage')!;
 	const q = escapeHTML(it.item.text).replace('@', '<span class="rev-blank">?</span>');
-	stage.innerHTML = `<div class="rev-q rev-q-qcm">${q}</div>
+	stage.innerHTML = `${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm">${q}</div>
     <div class="rev-choices">${it.choices
 			.map((c, i) => `<button class="rev-choice" data-i="${i}">${escapeHTML(c)}</button>`)
 			.join('')}</div>`;

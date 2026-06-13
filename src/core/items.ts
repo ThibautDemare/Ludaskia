@@ -21,7 +21,16 @@ export interface Item {
 	answers?: string[]; // formes équivalentes acceptées (exercices texte)
 	kind?: 'num' | 'text' | 'posed'; // 'num' par défaut (calcul) ; 'text' = saisie chaîne ; 'posed' = grille
 	posed?: PosedSpec; // présent si kind === 'posed'
+	figure?: string; // fragment SVG (moteur core/figures.ts), affiché au-dessus de la question (#88)
 	_lesson?: string;
+}
+
+/* Enveloppe d'affichage d'une figure SVG (#88), placée AVANT la question.
+   Centralisé ici pour que tous les rendus (fiche, QCM, sprint, révision)
+   affichent la figure de la même façon — appelée par renderItem et par les
+   runners « une question à la fois ». Le fragment SVG n'est PAS échappé. */
+export function figureBlock(figure?: string): string {
+	return figure ? `<div class="figure">${figure}</div>` : '';
 }
 
 /* Vérifie la réponse saisie pour un item, selon son type.
@@ -107,7 +116,7 @@ export function renderItem(it: Item, extra = '') {
 		it.kind === 'text'
 			? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
 			: `<input class="ans ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
-	return escapeHTML(it.text).replace('@', field);
+	return figureBlock(it.figure) + escapeHTML(it.text).replace('@', field);
 }
 export function gridHTML(items: Item[], cols: number) {
 	const cls = cols === 3 ? 'c3' : 'c4';

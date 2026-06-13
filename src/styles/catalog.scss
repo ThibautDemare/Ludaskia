@@ -1,5 +1,15 @@
 /* Navigation multi-matières : cartes matière/catégorie + actions de catégorie */
 
+/* Titre de rubrique : sous-section au sein d'une catégorie (#109) — conjugaison
+   par temps, orthographe « Les accords » / « Les dictées ». */
+.cat-rubrique {
+	font-family: var(--ui);
+	font-size: 1.1rem;
+	font-weight: 800;
+	color: var(--blue);
+	margin: 1.2rem 0 0.5rem;
+}
+
 /* ---- Cartes de navigation (matières, catégories) ---- */
 .nav-cards {
 	display: grid;

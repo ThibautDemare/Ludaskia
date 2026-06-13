@@ -5,7 +5,7 @@
    sauvegarde via saveOrtho(). Logique pure, testable sans DOM.
    ============================================================ */
 import { lsGet, lsSet } from '../storage';
-import type { MotOrtho, ListeOrtho, OrthoState, MotInput } from './types';
+import type { MotOrtho, ListeOrtho, OrthoState, MotInput, FormesAccord } from './types';
 import { etatNeuf, avancerEtat } from '../revision';
 
 export const ORTHO_KEY = 'ludaskia_ortho';
@@ -26,6 +26,23 @@ export function formeNormalisee(mot: string): string {
 
 export function emptyOrthoState(): OrthoState {
 	return { banque: {}, listes: [], motIdParForme: {} };
+}
+
+/** Normalise des formes fléchies (trim + NFC) ; renvoie undefined si toutes vides
+    (un mot « neutre », non éligible aux exercices d'accord). #109 */
+export function normaliserFormes(formes?: FormesAccord): FormesAccord | undefined {
+	if (!formes) return undefined;
+	const clean = (s?: string) => {
+		const v = s?.trim().normalize('NFC');
+		return v ? v : undefined;
+	};
+	const out: FormesAccord = {
+		mascSing: clean(formes.mascSing),
+		femSing: clean(formes.femSing),
+		mascPlur: clean(formes.mascPlur),
+		femPlur: clean(formes.femPlur),
+	};
+	return out.mascSing || out.femSing || out.mascPlur || out.femPlur ? out : undefined;
 }
 
 export function loadOrtho(): OrthoState {
@@ -54,9 +71,10 @@ export function addOrGetMot(
 	const existingId = state.motIdParForme[forme];
 	const existing = existingId ? state.banque[existingId] : undefined;
 	if (existing) {
-		// « comme dans »/homophone fournis : on applique (l'édition la plus récente gagne).
+		// « comme dans »/homophone/formes fournis : on applique (l'édition la plus récente gagne).
 		if (input.commeDans !== undefined) existing.commeDans = input.commeDans.trim() || undefined;
 		if (input.homophone !== undefined) existing.homophone = input.homophone || undefined;
+		if (input.formes !== undefined) existing.formes = normaliserFormes(input.formes);
 		return existing;
 	}
 	const m: MotOrtho = {
@@ -64,6 +82,7 @@ export function addOrGetMot(
 		mot,
 		commeDans: input.commeDans?.trim() || undefined,
 		homophone: input.homophone || undefined,
+		formes: normaliserFormes(input.formes),
 		entourage: [],
 		atelierFait: false,
 		validation: { motCache: false, tuiles: false, dictee: false },

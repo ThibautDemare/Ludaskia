@@ -282,6 +282,15 @@ export function conjugationType(verbId: string, tense: Tense): ExerciseType {
 	};
 }
 
+/* Rubrique d'une leçon de conjugaison = le temps (regroupement par temps dans
+   l'écran de catégorie, #109). Libellé capitalisé pour le titre de section. */
+const TENSE_RUBRIQUE: Record<Tense, string> = {
+	present: 'Présent',
+	futur: 'Futur',
+	imparfait: 'Imparfait',
+	passe_compose: 'Passé composé',
+};
+
 /* Descripteurs de leçons : une leçon par (verbe × temps). */
 export interface ConjLessonDesc {
 	id: string;
@@ -289,6 +298,7 @@ export interface ConjLessonDesc {
 	verbId: string;
 	tense: Tense;
 	level: SchoolLevel;
+	rubrique: string;
 }
 
 const LESSON_LABEL: Record<string, string> = {
@@ -314,5 +324,6 @@ export const CONJ_LESSONS: ConjLessonDesc[] = VERBS.flatMap((v) =>
 		verbId: v.id,
 		tense,
 		level: 'ce2' as SchoolLevel,
+		rubrique: TENSE_RUBRIQUE[tense],
 	})),
 );

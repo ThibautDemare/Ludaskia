@@ -18,6 +18,7 @@ import {
 	motsDeListe,
 	ajouterMots,
 	formeNormalisee,
+	normaliserFormes,
 } from '../src/core/orthographe/store';
 import { checkAnswer } from '../src/core/exercise';
 import { genExerciseOrtho, orthoType } from '../src/core/orthographe/exercise';
@@ -34,6 +35,7 @@ import {
 	decouverteEnCours,
 } from '../src/core/orthographe/runner';
 import { listOrthoLecons, motsDeLecon } from '../src/core/orthographe/lessons';
+import { ACCORD_LESSONS } from '../src/data/francais/accords';
 import { diffCorrect } from '../src/core/orthographe/diff';
 import { gSnapshot, evaluateTrophies, loadTrophies } from '../src/core/rewards';
 
@@ -218,6 +220,82 @@ describe('orthographe — leçons prédéfinies', () => {
 	test('ORTHO_PREDEF : ids uniques', () => {
 		const ids = ORTHO_PREDEF.map((l) => l.id);
 		expect(new Set(ids).size).toBe(ids.length);
+	});
+});
+
+describe('orthographe — formes fléchies / accords (#109)', () => {
+	test('normaliserFormes : trim + NFC, et undefined si tout est vide', () => {
+		expect(normaliserFormes(undefined)).toBeUndefined();
+		expect(normaliserFormes({})).toBeUndefined();
+		expect(normaliserFormes({ mascSing: '  ', femSing: '' })).toBeUndefined();
+		expect(normaliserFormes({ mascSing: ' grand ', mascPlur: 'grands' })).toEqual({
+			mascSing: 'grand',
+			femSing: undefined,
+			mascPlur: 'grands',
+			femPlur: undefined,
+		});
+	});
+
+	test('addOrGetMot : un mot sans formes reste « neutre » (utilisable ailleurs)', () => {
+		const s = emptyOrthoState();
+		const m = addOrGetMot(s, { mot: 'bonjour' });
+		expect(m.formes).toBeUndefined();
+	});
+
+	test('addOrGetMot : stocke les 4 formes fléchies', () => {
+		const s = emptyOrthoState();
+		const m = addOrGetMot(s, {
+			mot: 'grand',
+			formes: { mascSing: 'grand', femSing: 'grande', mascPlur: 'grands', femPlur: 'grandes' },
+		});
+		expect(m.formes).toEqual({
+			mascSing: 'grand',
+			femSing: 'grande',
+			mascPlur: 'grands',
+			femPlur: 'grandes',
+		});
+	});
+
+	test('addOrGetMot : met à jour les formes sur un mot existant (édition)', () => {
+		const s = emptyOrthoState();
+		const a = addOrGetMot(s, { mot: 'cheval' });
+		expect(a.formes).toBeUndefined();
+		addOrGetMot(s, { mot: 'cheval', formes: { mascSing: 'cheval', mascPlur: 'chevaux' } });
+		expect(s.banque[a.id].formes).toEqual({
+			mascSing: 'cheval',
+			femSing: undefined,
+			mascPlur: 'chevaux',
+			femPlur: undefined,
+		});
+	});
+
+	test('createListe : les formes survivent à la persistance (banque)', () => {
+		const s = emptyOrthoState();
+		createListe(s, 'Accords', [{ mot: 'petit', formes: { mascSing: 'petit', femSing: 'petite' } }]);
+		saveOrtho(s);
+		const reloaded = loadOrtho();
+		const mot = Object.values(reloaded.banque).find((m) => m.mot === 'petit');
+		expect(mot?.formes?.femSing).toBe('petite');
+	});
+
+	test('un mot fléchi de la banque « remonte » dans la leçon des accords réguliers', () => {
+		// On sème un mot du parent avec des formes courtes uniques (hors jeu prédéfini).
+		const s = loadOrtho();
+		createListe(s, 'Ma liste', [
+			{
+				mot: 'lutin',
+				formes: { mascSing: 'lutin', femSing: 'lutine', mascPlur: 'lutins', femPlur: 'lutines' },
+			},
+		]);
+		saveOrtho(s);
+		const reg = ACCORD_LESSONS.find((l) => l.id === 'fr-accords-reguliers')!;
+		const sources = new Set<string>();
+		for (let i = 0; i < 500; i++) {
+			const ex = reg.exerciseType.generate('saisie');
+			const m = ex.type === 'text' ? /: (.+?) →/.exec(ex.question) : null;
+			if (m) sources.add(m[1]);
+		}
+		expect([...sources].some((src) => src.startsWith('lutin'))).toBe(true);
 	});
 });
 

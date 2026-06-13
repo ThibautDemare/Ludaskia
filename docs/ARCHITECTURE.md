@@ -13,15 +13,18 @@ grandeurs et mesures, géométrie). Côté
 **français**, le catalogue suit les 4 catégories du manuel CE2 dans l'ordre
 canonique — **grammaire**, **conjugaison**, **orthographe**, **vocabulaire**
 (#107) ; **grammaire** reste pour l'instant vide, **vocabulaire** accueille
-l'ordre alphabétique (#108). Génération aléatoire
+l'ordre alphabétique (#108), **orthographe** réunit les dictées de mots et les
+**accords** (pluriel/féminin, #109). Génération aléatoire
 d'exercices, correction instantanée, chronomètre, et une couche de gamification
 (records, médailles, trophées, objectifs, XP) avec gestion de profils. 100 %
 **côté client** (aucun serveur) ; la progression est stockée en `localStorage`.
 
 Le contenu est organisé en hiérarchie **Matière → Catégorie → Leçon**
-(`src/core/catalog.ts`). Chaque leçon porte un **`ExerciseType`**
-(`src/core/exercise.ts`) qui encapsule la **génération** et la **vérification**
-d'un exercice — c'est ce qui rend le moteur agnostique de la matière. Le document
+(`src/core/catalog.ts`). Une leçon peut porter une **`rubrique`** facultative
+(sous-section affichée groupée dans l'écran de catégorie — #109 : conjugaison par
+temps, orthographe « Les accords » / « Les dictées »). Chaque leçon porte un
+**`ExerciseType`** (`src/core/exercise.ts`) qui encapsule la **génération** et la
+**vérification** d'un exercice — c'est ce qui rend le moteur agnostique de la matière. Le document
 de conception initial est `docs/design-multi-subject.md`.
 
 ## Stack & outillage
@@ -76,6 +79,17 @@ la forme, fiche imprimable — et `qcm` — choix entre plusieurs formes,
 correctement orthographiées**, jamais une faute affichée) et descripteurs
 `CONJ_LESSONS` (une leçon par verbe × temps). Dossier `francais` sans cédille
 pour des chemins d'import ASCII portables ; le libellé affiché reste « Français ».
+**`francais/accords.ts`** (#109) : catégorie **Orthographe**, rubrique « Les
+accords » — 2 leçons de **transformation** (pluriel/féminin) `fr-accords-reguliers`
+et `fr-accords-irreguliers` (séparation règle/exception, avis pédagogique).
+`accordType(reguliers)` fabrique un `ExerciseType` **deux modes** (saisie/QCM,
+moteur de la conjugaison) : `generate()` tire une transformation (« Mets au
+pluriel : grand → @ ») dont la réponse est la **forme stockée** (jamais déduite) ;
+QCM aux distracteurs = **vraies formes** (jamais une faute affichée) ; **repli
+mots longs** = les formes cibles longues ne sont proposées **qu'en QCM** (chaque
+mode reste stable en type, contrainte du routage des runners). La leçon des
+réguliers complète son pool avec les **mots fléchis de la banque** du profil
+(`MotOrtho.formes`, saisis par le parent), qui « remontent » dans les exercices.
 **`francais/vocabulaire.ts`** (#108) : catégorie **Vocabulaire**, leçons
 **« Ordre alphabétique »** (`fr-vocab-alpha-initiale` tri par 1re lettre,
 `fr-vocab-alpha-deuxieme` tri par 2e lettre à initiale commune). `ordreType`
@@ -349,7 +363,13 @@ le dessin 3D (faces cachées).
 - **`catalog-nav.ts`** — navigation **Matière → Catégorie → Leçons**
   (`renderSubjects`, `renderCategories`, `renderCategorie`) ; l'écran d'une
   catégorie donne accès au bilan express (borné) / complet, au sprint, et à
-  « Je choisis mes leçons » (bilan sur mesure scopé à la catégorie).
+  « Je choisis mes leçons » (bilan sur mesure scopé à la catégorie). `renderCategorie`
+  **regroupe les leçons par `rubrique`** (#109 : titres de section, ordre
+  d'apparition ; sans rubrique = rendu à plat). L'écran **sur-mesure** de
+  l'orthographe (`renderOrthoCategorie`) sépare deux rubriques : **« Les accords »**
+  (leçons `LessonDef` de transformation, lancées par le parcours standard
+  saisie/QCM) et **« Les dictées de mots »** (mots de base prédéfinis + listes du
+  parent, jouées par le runner ortho dédié).
 - **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, categoryId?)`
   (global, ou scopé à une catégorie via `#bilan-cat-<id>` — liste à plat,
   pensée tablette), choix **bilan / sprint** (#64 : `BilanConfig.mode`, défaut
@@ -489,7 +509,10 @@ Tout passe par `lsGet/lsSet`. Les clés sont **préfixées par le profil actif**
 `ludaskia_goal`, `ludaskia_goalsDone`, `ludaskia_trophies`, `ludaskia_xp`,
 `ludaskia_bilans` (configs de bilans favoris), `ludaskia_resume` (exercices
 grille **en cours**, repris ou abandonnés — #63). L'état SR des **mots**
-d'orthographe vit dans `ludaskia_ortho` (`MotOrtho.revision`).
+d'orthographe vit dans `ludaskia_ortho` (`MotOrtho.revision`). Un `MotOrtho`
+porte aussi des **formes fléchies** optionnelles (`formes?: FormesAccord` — masc/fém
+× sing/plur, #109), saisissables par le parent dans l'éditeur de listes et
+exploitées par la leçon d'accords.
 Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
 
 ## Profils

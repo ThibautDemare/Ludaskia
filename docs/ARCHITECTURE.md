@@ -10,7 +10,10 @@ Mini-application web d'entraînement **multi-matières** (niveau CE2). Côté
 **Calcul** (opérations posées), **Calcul mental**, **Grandeurs et mesures** et
 **Géométrie** (#92) — toutes peuplées (numération, calcul posé, calcul mental,
 grandeurs et mesures, géométrie). Côté
-**français** : **conjugaison** et **orthographe**. Génération aléatoire
+**français**, le catalogue suit les 4 catégories du manuel CE2 dans l'ordre
+canonique — **grammaire**, **conjugaison**, **orthographe**, **vocabulaire**
+(#107) ; grammaire et vocabulaire sont pour l'instant **vides** (prêtes à
+accueillir les leçons de contenu à venir). Génération aléatoire
 d'exercices, correction instantanée, chronomètre, et une couche de gamification
 (records, médailles, trophées, objectifs, XP) avec gestion de profils. 100 %
 **côté client** (aucun serveur) ; la progression est stockée en `localStorage`.

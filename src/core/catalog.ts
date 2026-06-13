@@ -127,8 +127,14 @@ export const CATEGORIES: Category[] = [
 	{ id: 'math-calcul-mental', label: 'Calcul mental', subject: 'math' },
 	{ id: 'math-grandeurs-mesures', label: 'Grandeurs et mesures', subject: 'math' },
 	{ id: 'math-geometrie', label: 'Géométrie', subject: 'math' },
+	// Français — 4 catégories du manuel CE2, dans l'ordre canonique. Grammaire et
+	// Vocabulaire (FR-A, #107) sont le prérequis structurel des futures leçons de
+	// contenu : elles arrivent VIDES (la navigation affiche « Bientôt disponible »,
+	// aucun trophée ni bilan n'est généré tant qu'elles n'ont pas de leçon).
+	{ id: 'fr-grammaire', label: 'Grammaire', subject: 'francais' },
 	{ id: 'fr-conjugaison', label: 'Conjugaison', subject: 'francais' },
 	{ id: ORTHO_CATEGORY_ID, label: 'Orthographe', subject: 'francais' },
+	{ id: 'fr-vocabulaire', label: 'Vocabulaire', subject: 'francais' },
 ];
 
 /* ---------- Catalogue des leçons math ---------- */

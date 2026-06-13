@@ -15,8 +15,9 @@ test("l'accueil se charge sans erreur", async ({ page }) => {
 });
 
 test('une catégorie inconnue retombe proprement sur les matières', async ({ page }) => {
-	// Toutes les catégories du catalogue sont désormais peuplées (Géométrie : #100) ;
-	// on vérifie le repli défensif d'un identifiant de catégorie inconnu.
+	// Repli défensif d'un identifiant de catégorie INCONNU (absent du catalogue) :
+	// retour aux matières. À distinguer d'une catégorie connue mais VIDE
+	// (ex. Grammaire/Vocabulaire, #107), qui affiche « Bientôt disponible ».
 	const errors = watchErrors(page);
 	await gotoHash(page, 'categorie-math-inexistant');
 	await expect(page.locator('#matieres')).toBeVisible();

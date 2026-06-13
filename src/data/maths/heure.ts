@@ -153,6 +153,7 @@ function genExercise(mode?: ExerciseMode): Exercise {
 		answer: fmtHeure(h, m),
 		answers: variantes(h, m),
 		figure,
+		champHeure: true, // saisie en 2 champs [heures] h [minutes] (#88)
 	};
 }
 

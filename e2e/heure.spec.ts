@@ -13,10 +13,17 @@ test("Lire l'heure (saisie) : l'horloge s'affiche et la bonne réponse est valid
 	await gotoHash(page, 'lecon-mes-lecture-heure'); // accès direct → mode conseillé (saisie)
 	// L'horloge SVG accompagne la question.
 	await expect(page.locator('.figure svg').first()).toBeVisible();
-	const field = page.locator('.ans').first();
-	await field.waitFor();
-	const good = await field.getAttribute('data-answer'); // forme canonique « H h MM »
-	await field.fill(good ?? '');
+	const heures = page.locator('.heure-h').first();
+	await heures.waitFor();
+	// La réponse canonique « H h MM » est portée par le champ des heures ; on remplit
+	// les deux champs séparément (heures / minutes).
+	const good = (await heures.getAttribute('data-answer')) ?? '';
+	const m = good.match(/^(\d{1,2}) h (\d{2})$/);
+	await heures.fill(m?.[1] ?? '');
+	await page
+		.locator('.heure-min')
+		.first()
+		.fill(m?.[2] ?? '');
 	await page.locator('#btnVerify').click();
 	await expect(page.locator('.mark.correct').first()).toBeVisible();
 	expect(errors).toEqual([]);

@@ -365,7 +365,13 @@ export function genLessonItem(lesson: LessonDef): Item {
 	// Figure SVG éventuelle (#88) : portée par 'text'/'qcm', affichée par renderItem.
 	const figure = ex.type === 'text' || ex.type === 'qcm' ? ex.figure : undefined;
 	if (lesson.subject === 'math') {
-		const kind = answerEstNumerique(String(ex.answer)) ? 'num' : 'text';
+		// Saisie de l'heure en 2 champs (#88) ; sinon numérique (calcul) ou texte (signe).
+		const kind =
+			ex.type === 'text' && ex.champHeure
+				? 'heure'
+				: answerEstNumerique(String(ex.answer))
+					? 'num'
+					: 'text';
 		// `answers` (formes équivalentes acceptées, ex. « 10 h 15 » / « 10h15 ») est
 		// aussi propagé pour les maths : la lecture de l'heure tolère plusieurs écritures.
 		const answers = ex.type === 'text' ? ex.answers : undefined;

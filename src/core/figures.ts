@@ -127,8 +127,10 @@ export function renderHorloge(heures: number, minutes: number): string {
 	}
 
 	// Chiffres 1–12 (12/3/6/9 renforcés : ancres mentales des quarts/demies).
+	// Rayon 62 : nettement à l'intérieur des graduations (qui descendent jusqu'à
+	// r≈78) pour que les chiffres ne « mordent » pas dessus.
 	for (let n = 1; n <= 12; n++) {
-		const [x, y] = pointOnCircle(CX, CY, 74, n * 30);
+		const [x, y] = pointOnCircle(CX, CY, 62, n * 30);
 		const cardinal = n % 3 === 0;
 		parts.push(
 			text(x, y, String(n), {
@@ -136,7 +138,7 @@ export function renderHorloge(heures: number, minutes: number): string {
 				'dominant-baseline': 'central',
 				'font-family': 'var(--ui)',
 				'font-weight': cardinal ? 800 : 700,
-				'font-size': cardinal ? 19 : 15,
+				'font-size': cardinal ? 18 : 14,
 				fill: 'var(--ink)',
 			}),
 		);

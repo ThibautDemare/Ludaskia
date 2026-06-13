@@ -19,7 +19,7 @@ export interface Item {
 	text: string;
 	answer: number | string;
 	answers?: string[]; // formes équivalentes acceptées (exercices texte)
-	kind?: 'num' | 'text' | 'posed'; // 'num' par défaut (calcul) ; 'text' = saisie chaîne ; 'posed' = grille
+	kind?: 'num' | 'text' | 'posed' | 'heure'; // 'num' (calcul) ; 'text' (chaîne) ; 'posed' (grille) ; 'heure' (2 champs H h MM, #88)
 	posed?: PosedSpec; // présent si kind === 'posed'
 	figure?: string; // fragment SVG (moteur core/figures.ts), affiché au-dessus de la question (#88)
 	_lesson?: string;
@@ -38,7 +38,9 @@ export function figureBlock(figure?: string): string {
      exigés (formes alternatives via answers)
    - calcul : comparaison numérique (virgule tolérée comme séparateur décimal) */
 export function checkItemAnswer(it: Item, raw: string): boolean {
-	if (it.kind === 'text') {
+	// 'heure' (#88) : saisie en 2 champs, déjà fusionnée en « H h MM » par l'appelant
+	// (session.verify) ; on la compare comme du texte (forme canonique + variantes).
+	if (it.kind === 'text' || it.kind === 'heure') {
 		const v = normalizeText(raw);
 		if (v === normalizeText(String(it.answer))) return true;
 		return (it.answers ?? []).some((a) => normalizeText(a) === v);
@@ -112,6 +114,20 @@ export function renderItem(it: Item, extra = '') {
 	sessionItems[id] = it;
 	// Réponse exposée pour la révélation après correction (échappée pour les attributs).
 	const ansAttr = String(it.answer).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+	// Saisie de l'heure (#88) : DEUX champs « [heures] h [minutes] », le « h » en dur.
+	// Seul le champ des heures est `.ans` (noté) et porte la réponse canonique ; il
+	// référence le champ des minutes (`data-min-field`) que session.verify fusionne en
+	// « H h MM » avant correction → checkItemAnswer inchangé (comparaison texte).
+	if (it.kind === 'heure') {
+		const mid = nextInputId();
+		const group =
+			`<span class="heure-input">` +
+			`<input class="ans heure-h ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} data-min-field="${mid}" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="heures">` +
+			`<span class="heure-sep" aria-hidden="true">h</span>` +
+			`<input class="heure-min" id="${mid}" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="minutes">` +
+			`</span><span class="mark" data-for="${id}"></span>`;
+		return figureBlock(it.figure) + escapeHTML(it.text).replace('@', group);
+	}
 	const field =
 		it.kind === 'text'
 			? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`

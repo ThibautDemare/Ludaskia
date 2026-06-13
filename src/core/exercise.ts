@@ -7,7 +7,16 @@ import { normalizeText } from './utils';
 export type Exercise =
 	// `figure` (#88) : fragment SVG optionnel (moteur core/figures.ts) affiché
 	// au-dessus de la question — horloge, plus tard rectangle coté, polygone…
-	| { type: 'text'; question: string; answer: string; answers?: string[]; figure?: string }
+	// `champHeure` (#88) : la réponse est une heure « H h MM » → saisie en 2 champs
+	// [heures] h [minutes] (item `kind: 'heure'`), fusionnés avant correction.
+	| {
+			type: 'text';
+			question: string;
+			answer: string;
+			answers?: string[];
+			figure?: string;
+			champHeure?: boolean;
+	  }
 	| { type: 'qcm'; question: string; answer: string; choices: string[]; figure?: string }
 	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
 	// des distracteurs vers l'emplacement `@` de la question. Réponse = `answer`.

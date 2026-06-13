@@ -728,11 +728,11 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 		const modes = (lesson().exerciseType.modes ?? []).map((m) => m.id);
 		expect(modes).toEqual(['saisie', 'qcm']);
 	});
-	test('saisie : item texte avec figure horloge, corrigé sur formes équivalentes', () => {
+	test('saisie : item « heure » (2 champs) avec figure horloge, corrigé sur formes équivalentes', () => {
 		const l = lesson();
 		for (let i = 0; i < 300; i++) {
 			const it = genLessonItem(l);
-			expect(it.kind).toBe('text'); // « 10 h 15 » n'est pas numérique
+			expect(it.kind).toBe('heure'); // saisie en 2 champs [heures] h [minutes]
 			expect(it.text).toContain('@');
 			expect(it.figure).toContain('<svg'); // l'horloge accompagne la question
 			expect(it._lesson).toBe('mes-lecture-heure');
@@ -740,6 +740,15 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 			for (const v of it.answers ?? []) expect(checkItemAnswer(it, v)).toBe(true); // variantes
 			expect(checkItemAnswer(it, 'pas une heure')).toBe(false);
 		}
+	});
+	test('renderItem : un item « heure » produit 2 champs et un « h » en dur', () => {
+		const it = genLessonItem(lesson());
+		const html = renderItem(it);
+		expect(html).toContain('class="ans heure-h '); // champ des heures (noté)
+		expect(html).toContain('heure-min'); // champ des minutes
+		expect(html).toContain('data-min-field='); // lien heures → minutes (fusion à la correction)
+		expect(html).toContain('>h<'); // séparateur « h » affiché en dur
+		expect((html.match(/<input/g) ?? []).length).toBe(2); // exactement 2 champs
 	});
 	test('format canonique « H h MM » : heures 1–12, minutes multiples de 5, jamais 12 h 00', () => {
 		const type = lesson().exerciseType;

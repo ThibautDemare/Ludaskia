@@ -48,7 +48,17 @@ export function verify() {
 		const it = sessionItems[inp.id];
 		const ln = inp.dataset.lesson;
 		const bucket = ln != null ? perLesson[ln] || (perLesson[ln] = { ok: 0, total: 0 }) : null;
-		const raw = inp.value.trim();
+		// Saisie de l'heure (#88) : on FUSIONNE les 2 champs en « H h MM » (minutes sur
+		// 2 chiffres) avant correction → checkItemAnswer reste inchangé. Champ heures vide
+		// = non répondu ; minutes vide = « 00 » (heure pile).
+		let raw = inp.value.trim();
+		const minFieldId = inp.dataset.minField;
+		if (minFieldId) {
+			const minInp = document.getElementById(minFieldId) as HTMLInputElement | null;
+			const hv = inp.value.trim();
+			const mv = (minInp?.value ?? '').trim();
+			raw = hv === '' ? '' : `${hv} h ${(mv || '0').padStart(2, '0')}`;
+		}
 		if (raw === '') {
 			vides++;
 			if (it) errors.push(it);
@@ -193,11 +203,16 @@ export function verify() {
 }
 
 /* ---------- Saisie ---------- */
-// Modifier un champ efface son marquage
+// Modifier un champ efface son marquage. Pour l'heure (#88), éditer le champ des
+// minutes (.heure-min) efface la marque du champ des heures qui lui est lié.
 document.addEventListener('input', (e: any) => {
-	if (e.target.classList && e.target.classList.contains('ans')) {
-		e.target.classList.remove('correct', 'wrong');
-		const mark: any = document.querySelector(`.mark[data-for="${e.target.id}"]`);
+	let marked: HTMLElement | null = null;
+	if (e.target.classList && e.target.classList.contains('ans')) marked = e.target;
+	else if (e.target.classList && e.target.classList.contains('heure-min'))
+		marked = e.target.closest('.heure-input')?.querySelector('.heure-h') ?? null;
+	if (marked) {
+		marked.classList.remove('correct', 'wrong');
+		const mark: any = document.querySelector(`.mark[data-for="${marked.id}"]`);
 		if (mark) {
 			mark.className = 'mark';
 			mark.textContent = '';
@@ -205,12 +220,22 @@ document.addEventListener('input', (e: any) => {
 	}
 });
 // Confort de saisie : Entrée passe au champ suivant ; sur le dernier, on vérifie.
+// Le champ des minutes (.heure-min) entre dans la navigation (heures → minutes → …).
 document.addEventListener('keydown', (e: any) => {
 	const t = e.target;
 	if (e.key !== 'Enter' || t.tagName !== 'INPUT') return;
-	if (!t.classList.contains('ans') && !t.classList.contains('ans-free')) return;
+	if (
+		!t.classList.contains('ans') &&
+		!t.classList.contains('ans-free') &&
+		!t.classList.contains('heure-min')
+	)
+		return;
 	e.preventDefault();
-	const all: any[] = [...document.querySelectorAll('#sheets input.ans, #sheets input.ans-free')];
+	const all: any[] = [
+		...document.querySelectorAll(
+			'#sheets input.ans, #sheets input.ans-free, #sheets input.heure-min',
+		),
+	];
 	const i = all.indexOf(t);
 	if (i > -1 && i < all.length - 1) all[i + 1].focus();
 	else verify(); // dernier champ

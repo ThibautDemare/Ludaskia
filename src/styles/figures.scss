@@ -59,3 +59,34 @@
 .cl-m {
 	color: var(--clock-min);
 }
+
+/* ---------- Saisie de l'heure en 2 champs « [h] h [min] » (#88) ---------- */
+.heure-input {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.35em;
+	white-space: nowrap;
+}
+/* Deux boîtes étroites (2 chiffres) ; le champ minutes reprend le style de `.ans`. */
+.heure-input input {
+	width: 2.7em;
+	text-align: center;
+}
+.heure-min {
+	font: inherit;
+	font-size: 14px;
+	padding: 2px 4px;
+	border: 0;
+	border-bottom: 1.5px solid #333;
+	background: transparent;
+	color: var(--ink);
+}
+.heure-min:focus {
+	outline: none;
+	border-bottom-color: var(--blue);
+}
+.heure-sep {
+	font-weight: 800;
+	font-size: 1.15em;
+	color: var(--ink);
+}

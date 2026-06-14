@@ -188,6 +188,7 @@ function renderMotCache(word: MotOrtho): void {
 	sheets().innerHTML = `
     <div class="page ortho-run">
       <p class="ortho-run-consigne">Regarde bien ce mot, puis cache-le et écris-le.</p>
+      ${dispoDictee ? '<div><button class="btn-primary ortho-ecouter" id="btnEcouterMot">🔊 Écouter le mot</button></div>' : ''}
       <div class="ortho-mot-affiche" id="motAffiche">${escapeHTML(word.mot)}</div>
       <button class="btn-primary" id="btnCacher">Cacher et écrire →</button>
       <div class="ortho-saisie" id="zoneSaisie" hidden>
@@ -205,6 +206,14 @@ function renderMotCache(word: MotOrtho): void {
 	const fb = sheets().querySelector('#fb') as HTMLElement;
 
 	renderAccentKb(sheets().querySelector('#accentKb') as HTMLElement, input);
+
+	// Écoute du mot (#150) : disponible avant ET après l'avoir caché (le bouton est
+	// hors des éléments masqués) — entendre la prononciation aide à l'écrire.
+	if (dispoDictee) {
+		sheets()
+			.querySelector('#btnEcouterMot')!
+			.addEventListener('click', () => dicter(word.mot, word.commeDans));
+	}
 
 	btnCacher.addEventListener('click', () => {
 		motAffiche.style.display = 'none';

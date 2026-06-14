@@ -131,10 +131,12 @@ import {
 	renderSolide,
 } from '../src/core/figures';
 import { checkAnswer } from '../src/core/exercise';
+import type { Exercise } from '../src/core/exercise';
 import { genItems, buildLessonFiche } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
 import { ACCORD_LESSONS, transfosDisponibles } from '../src/data/francais/accords';
 import { HOMOPHONE_PAIRS, HOMOPHONE_LESSONS } from '../src/data/francais/homophones';
+import { variantes as heureVariantes } from '../src/data/maths/heure';
 import {
 	EXPRESS_CAP,
 	expressQuestionsPerLesson,
@@ -789,26 +791,26 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 	});
 	test('saisie tolérante : 8 h 05 accepte « 8h5 » / « 8:05 » ; heures pile « 9 » / « 9h »', () => {
 		const type = lesson().exerciseType;
-		let testedMin = false,
-			testedRound = false;
-		for (let i = 0; i < 3000 && !(testedMin && testedRound); i++) {
-			const ex = type.generate('saisie');
-			if (ex.type !== 'text') continue;
-			if (ex.answer === '8 h 05') {
-				expect(type.check(ex, '8h5')).toBe(true);
-				expect(type.check(ex, '8:05')).toBe(true);
-				expect(type.check(ex, '8 h 05')).toBe(true);
-				testedMin = true;
-			}
-			const round = ex.answer.match(/^(\d{1,2}) h 00$/);
-			if (round) {
-				const h = round[1];
-				expect(type.check(ex, h)).toBe(true);
-				expect(type.check(ex, `${h}h`)).toBe(true);
-				testedRound = true;
-			}
-		}
-		expect(testedMin && testedRound).toBe(true);
+		// Exercices construits (déterministe) : on teste le parsing tolérant via les
+		// variantes acceptées, sans dépendre d'un tirage aléatoire qui tombe sur 8 h 05.
+		const mkSaisie = (h: number, m: number): Exercise => ({
+			type: 'text',
+			question: 'Quelle heure est-il ? @',
+			answer: `${h} h ${String(m).padStart(2, '0')}`,
+			answers: heureVariantes(h, m),
+			champHeure: true,
+		});
+		// Cas « minutes » (8 h 05).
+		const exMin = mkSaisie(8, 5);
+		expect(type.check(exMin, '8h5')).toBe(true);
+		expect(type.check(exMin, '8:05')).toBe(true);
+		expect(type.check(exMin, '8 h 05')).toBe(true);
+		expect(type.check(exMin, '9 h 05')).toBe(false); // mauvaise heure
+		// Cas « heure pile » (9 h 00) : tolère « 9 » et « 9h ».
+		const exRound = mkSaisie(9, 0);
+		expect(type.check(exRound, '9')).toBe(true);
+		expect(type.check(exRound, '9h')).toBe(true);
+		expect(type.check(exRound, '9 h 00')).toBe(true);
 	});
 	test('buildLessonFiche : fiche imprimable avec horloge SVG et champ de saisie', () => {
 		const html = buildLessonFiche('mes-lecture-heure');

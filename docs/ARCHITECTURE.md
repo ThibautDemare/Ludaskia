@@ -12,7 +12,8 @@ Mini-application web d'entraînement **multi-matières** (niveau CE2). Côté
 grandeurs et mesures, géométrie). Côté
 **français**, le catalogue suit les 4 catégories du manuel CE2 dans l'ordre
 canonique — **grammaire**, **conjugaison**, **orthographe**, **vocabulaire**
-(#107) ; **grammaire** reste pour l'instant vide, **vocabulaire** accueille
+(#107) ; **grammaire** porte le **pronom sujet et l'accord sujet-verbe** (#115),
+**vocabulaire** accueille
 l'ordre alphabétique (#108), le **sens propre / figuré** (#112) et les
 **familles de mots / préfixes / suffixes** (#113), **orthographe** réunit les dictées de mots, les
 **accords** (pluriel/féminin, #109), les **homophones grammaticaux**
@@ -108,6 +109,13 @@ mm/mb/mp (le m de la règle blanchi, **majuscules/noms propres et adverbes en
 -mment exclus**) + contre-exemples en « n » + **exceptions** (bonbon, bonbonne,
 néanmoins). **`tiragePondere`** (pur, `r` injectable) sur-pondère les exceptions
 (poids 3 → ~10-12 % des tirages, calibré avec le pédagogue).
+**`francais/grammaire-sujet.ts`** (#115) : catégorie **Grammaire**, 2 leçons QCM —
+**« Le pronom sujet »** (`fr-gram-pronom-sujet` : « mes amis et moi » → nous) et
+**« L'accord du verbe avec le sujet »** (`fr-gram-accord-sujet-verbe` : « les oiseaux
+(voir) » → voient). Chaque sujet (`SUJETS`) est mappé à une **personne** (0–5) ; la
+forme conjuguée est **lue depuis `VERBS`/`getVerb`** (base de conjugaison, présent),
+jamais codée en dur. Paires sujet+verbe curées (animaux limités aux verbes
+plausibles), distracteurs d'accord = autres formes réelles du présent.
 **`francais/familles.ts`** (#113) : catégorie **Vocabulaire**, leçon **« Familles,
 préfixes et suffixes »** (`fr-vocab-familles`). QCM de reconnaissance 3 options, trois
 types équilibrés : familles de mots (bonne réponse + **faux-ami** plausible d'une autre

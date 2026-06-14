@@ -143,6 +143,7 @@ import {
 	poidsDe,
 	motComplet,
 } from '../src/data/francais/mbp';
+import { GROUPES_SENS, SENS_FIGURE_LESSONS } from '../src/data/francais/sens-figure';
 import { variantes as heureVariantes } from '../src/data/maths/heure';
 import {
 	EXPRESS_CAP,
@@ -2697,5 +2698,52 @@ describe('orthographe — m devant m, b, p (#111)', () => {
 		const lesson = getLessonById('fr-mbp')!;
 		expect(lesson.category).toBe('fr-orthographe');
 		expect(lesson.rubrique).toBe('Les règles');
+	});
+});
+
+describe('vocabulaire — sens propre / sens figuré (#112)', () => {
+	test('banque : groupes bien formés, mot présent dans la phrase, équilibre propre/figuré', () => {
+		let nbPropre = 0,
+			nbFigure = 0;
+		for (const g of GROUPES_SENS) {
+			// 3 options distinctes et non vides.
+			const opts = [g.propre, g.figure, g.distracteur];
+			expect(new Set(opts).size, JSON.stringify(opts)).toBe(3);
+			for (const o of opts) expect(o.length).toBeGreaterThan(0);
+			expect(g.phrases.length).toBeGreaterThan(0);
+			for (const p of g.phrases) {
+				expect(['propre', 'figuré']).toContain(p.sens);
+				expect(p.phrase.includes(p.mot), p.phrase).toBe(true); // le mot cité figure bien
+				if (p.sens === 'propre') nbPropre++;
+				else nbFigure++;
+			}
+		}
+		const total = nbPropre + nbFigure;
+		expect(total).toBeGreaterThanOrEqual(30); // ≥ 30 (cible 100)
+		// Équilibre propre/figuré : chacun entre 40 % et 60 %.
+		expect(nbPropre / total).toBeGreaterThanOrEqual(0.4);
+		expect(nbPropre / total).toBeLessThanOrEqual(0.6);
+	});
+
+	test('génération : QCM 3 options dont la bonne (sens contextuel) + explication', () => {
+		const type = SENS_FIGURE_LESSONS[0].exerciseType;
+		// Toutes les bonnes réponses possibles (sens propre + sens figuré de chaque groupe).
+		const sensValides = new Set(GROUPES_SENS.flatMap((g) => [g.propre, g.figure]));
+		for (let i = 0; i < 120; i++) {
+			const ex = type.generate('qcm');
+			expect(ex.type).toBe('qcm');
+			if (ex.type !== 'qcm') continue;
+			expect(ex.choices.length).toBe(3);
+			expect(new Set(ex.choices).size).toBe(3); // pas de doublon
+			expect(ex.choices).toContain(ex.answer);
+			expect(sensValides.has(ex.answer)).toBe(true); // jamais le distracteur en réponse
+			expect(ex.question).toContain('@');
+			expect(ex.explication ?? '').toMatch(/sens (propre|figuré)/);
+		}
+	});
+
+	test('catalogue : leçon « sens propre / figuré » en Vocabulaire', () => {
+		const lesson = getLessonById('fr-vocab-sens')!;
+		expect(lesson.category).toBe('fr-vocabulaire');
 	});
 });

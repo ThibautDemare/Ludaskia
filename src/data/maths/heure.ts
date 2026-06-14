@@ -65,7 +65,7 @@ function fmtHeure(h: number, m: number): string {
 /* Formes d'écriture acceptées en saisie (parsing tolérant, avis pédagogique) :
    séparateur « h » ou « : », minutes avec ou sans zéro ; pour les heures pile,
    on accepte aussi « 8 », « 8 h », « 8h00 », « 8 heures ». */
-function variantes(h: number, m: number): string[] {
+export function variantes(h: number, m: number): string[] {
 	const set = new Set<string>();
 	const minForms = m === 0 ? ['00', '0'] : [String(m).padStart(2, '0'), String(m)];
 	for (const mf of minForms) {

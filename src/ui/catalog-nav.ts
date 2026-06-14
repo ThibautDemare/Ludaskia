@@ -261,6 +261,7 @@ function renderOrthoCategorie(el: HTMLElement): void {
 	const RUBRIQUE_META: Record<string, { ico: string; hint: string }> = {
 		'Les accords': { ico: '✍️', hint: 'je transforme les mots' },
 		'Les homophones': { ico: '🔤', hint: 'je choisis la bonne écriture' },
+		'Les règles': { ico: '📏', hint: 'je choisis la bonne lettre' },
 	};
 	const moteurCard = (l: LessonDef) => {
 		const etoilee = (stars[l.id] ?? 0) > 0;

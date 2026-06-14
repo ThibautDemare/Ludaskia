@@ -1361,6 +1361,27 @@ describe('Calcul : opérations posées (#97)', () => {
 		expect(nbInputs).toBeGreaterThan(3); // pp1 + pp2 + somme finale
 		expect((html.match(/posee-rule/g) ?? []).length).toBe(2); // deux traits
 	});
+	test('multiplication ×2 chiffres : 0 fourni du décalage + retenues de la somme (#154)', () => {
+		setInputCounter(0);
+		setSessionItems({});
+		// 24 × 13 → pp1 = 72, pp2 = 24 (suivi du 0 fourni), somme = 312. C = 3 colonnes.
+		const html = renderItem({
+			text: '',
+			answer: 312,
+			kind: 'posed',
+			posed: { op: 'x', a: 24, b: 13 },
+		});
+		// Le 0 du décalage est FOURNI (grisé) : présent, mais pas un champ noté.
+		expect(html).toContain('posee-zero');
+		expect((html.match(/posee-zero/g) ?? []).length).toBe(1);
+		// Rangée de retenues au-dessus de la somme : C cellules d'aide non notées.
+		expect((html.match(/posee-carry/g) ?? []).length).toBe(3);
+		// Chiffres NOTÉS, dans l'ordre : pp1 (72) + pp2 (24) + somme (312) ; le 0 exclu.
+		const digits = [...html.matchAll(/posee-input[^>]*data-answer="(\d)"/g)]
+			.map((m) => m[1])
+			.join('');
+		expect(digits).toBe('7224312');
+	});
 });
 
 describe('Trophées', () => {

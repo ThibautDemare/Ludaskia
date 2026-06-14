@@ -156,6 +156,11 @@ function posedGridHTML(spec: PosedSpec): string {
 	const empty = () => `<span class="posee-cell"></span>`;
 	const opCell = (s: string) => `<span class="posee-cell posee-op">${s}</span>`;
 	const digitCell = (d: string) => `<span class="posee-cell posee-digit">${d}</span>`;
+	// Zéro FOURNI (grisé, non saisi) du 2ᵉ produit partiel : on multiplie par les
+	// dizaines, donc le produit se termine par 0 — ce 0 explique le décalage et
+	// réaligne la ligne sous la somme (#154, avis pedagogue-primaire).
+	const zeroCell = () =>
+		`<span class="posee-cell posee-digit posee-zero" aria-label="zéro du décalage">0</span>`;
 	const carryCell = () =>
 		`<input class="ans-free posee-cell posee-carry" maxlength="1" inputmode="numeric" autocomplete="off" aria-label="retenue">`;
 	const inputCell = (d: string) => {
@@ -181,14 +186,20 @@ function posedGridHTML(spec: PosedSpec): string {
 	const parts: string[] = [];
 	if (op === 'x' && b >= 10) {
 		// Multiplication à 2 chiffres : deux produits partiels + somme finale.
+		// Retenues des produits partiels « dans la tête » (multiplicateurs doux, cf.
+		// posee.ts) ; SEULE l'addition finale, qui est une vraie addition à retenues,
+		// reçoit une rangée d'aide — comme l'addition posée (#154, avis pédagogique).
 		const pp1 = a * (b % 10);
 		const pp2 = a * Math.floor(b / 10);
 		parts.push(row(C, empty(), digits(a).map(digitCell)));
 		parts.push(row(C, opCell(sign), digits(b).map(digitCell)));
 		parts.push(rule(C));
 		parts.push(row(C, empty(), digits(pp1).map(inputCell)));
-		parts.push(row(C, empty(), digits(pp2).map(inputCell), 1)); // décalé d'un rang
+		// 2ᵉ produit partiel suivi de son 0 fourni (× dizaines) : le décalage est
+		// porté par ce 0, plus besoin de `shift` spatial → la ligne s'aligne sur la somme.
+		parts.push(row(C, empty(), [...digits(pp2).map(inputCell), zeroCell()]));
 		parts.push(rule(C));
+		parts.push(row(C, empty(), Array.from({ length: C }, carryCell))); // retenues de la somme
 		parts.push(row(C, empty(), digits(result).map(inputCell)));
 	} else {
 		// Addition, soustraction, multiplication ×1 chiffre.

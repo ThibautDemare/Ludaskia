@@ -157,6 +157,9 @@ function redraw(): void {
 	});
 	const verif = sheets().querySelector('#ltuiVerif') as HTMLButtonElement;
 	verif.disabled = placed === null || answered;
+	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
+	// (#ltuiActions) reste, pour ne pas afficher deux boutons à la fois (#153).
+	verif.hidden = answered;
 }
 
 function place(val: string | null): void {

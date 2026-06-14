@@ -209,10 +209,10 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
    carte « + Ajouter une liste ». Pas de bilan/sprint (modes propres au runner). */
 function renderOrthoCategorie(el: HTMLElement): void {
 	const lecons = listOrthoLecons(loadOrtho());
-	// Leçons « moteur » de la catégorie Orthographe (accords #109) : exercices de
-	// transformation (pluriel/féminin), distincts des dictées de mots. Affichés
-	// dans leur propre rubrique, lancés par le parcours standard (saisie/QCM).
-	const accords = getLessonsByCategory(ORTHO_CATEGORY_ID);
+	// Leçons « moteur » de la catégorie Orthographe (accords #109, homophones #110) :
+	// exercices LessonDef (transformation / QCM), distincts des dictées de mots.
+	// Regroupées par rubrique, lancées par le parcours standard (saisie/QCM).
+	const moteurLecons = getLessonsByCategory(ORTHO_CATEGORY_ID);
 	const stars = loadStars();
 	const predef = lecons.filter((l) => l.source === 'predefini');
 	// Listes du parent triées par date de contrôle décroissante (sans date en dernier).
@@ -256,26 +256,44 @@ function renderOrthoCategorie(el: HTMLElement): void {
       <button class="nav-card-edit" data-ortho-edit="${l.id}" aria-label="Modifier la liste" title="Modifier">✎</button>
     </div>`;
 
-	// Carte d'une leçon d'accords (transformation) : annonce clairement le geste
-	// (« transformer », pas « écrire un mot dicté ») pour ne pas tromper l'enfant.
-	const accordCard = (l: LessonDef) => {
+	// Icône + sous-titre par rubrique « moteur » : annonce le geste attendu (ne pas
+	// laisser croire à une dictée). Repli générique pour une rubrique inconnue.
+	const RUBRIQUE_META: Record<string, { ico: string; hint: string }> = {
+		'Les accords': { ico: '✍️', hint: 'je transforme les mots' },
+		'Les homophones': { ico: '🔤', hint: 'je choisis la bonne écriture' },
+	};
+	const moteurCard = (l: LessonDef) => {
 		const etoilee = (stars[l.id] ?? 0) > 0;
-		return `<button class="nav-card" data-accord="${l.id}">
-      <div class="nav-ico">✍️</div>
+		const hint = RUBRIQUE_META[l.rubrique ?? '']?.hint ?? "je m'entraîne";
+		const ico = RUBRIQUE_META[l.rubrique ?? '']?.ico ?? '📘';
+		return `<button class="nav-card" data-lecon="${l.id}">
+      <div class="nav-ico">${ico}</div>
       <div class="nav-card-title">${escapeHTML(l.label)}${etoilee ? ' ⭐' : ''}</div>
-      <div class="nav-card-sub">je transforme les mots</div>
+      <div class="nav-card-sub">${hint}</div>
     </button>`;
 	};
 
-	const accordsSection = accords.length
-		? `<section class="ortho-rubrique">
-        <h3 class="cat-rubrique">Les accords</h3>
-        <p class="ortho-rubrique-hint">Transforme les mots : pluriel et féminin.</p>
-        <div class="nav-cards ortho-cards">${accords.map(accordCard).join('')}</div>
-      </section>`
-		: '';
+	// Regroupement des leçons moteur par rubrique, dans l'ordre d'apparition.
+	const rubriques: { nom: string; lecons: LessonDef[] }[] = [];
+	moteurLecons.forEach((l) => {
+		const nom = l.rubrique ?? 'Exercices';
+		let g = rubriques.find((r) => r.nom === nom);
+		if (!g) {
+			g = { nom, lecons: [] };
+			rubriques.push(g);
+		}
+		g.lecons.push(l);
+	});
+	const moteurSections = rubriques
+		.map(
+			(r) => `<section class="ortho-rubrique">
+        <h3 class="cat-rubrique">${escapeHTML(r.nom)}</h3>
+        <div class="nav-cards ortho-cards">${r.lecons.map(moteurCard).join('')}</div>
+      </section>`,
+		)
+		.join('');
 
-	el.innerHTML = `${accordsSection}
+	el.innerHTML = `${moteurSections}
     <section class="ortho-rubrique">
       <h3 class="cat-rubrique">Les dictées de mots</h3>
       <div class="ortho-cols">
@@ -296,8 +314,8 @@ function renderOrthoCategorie(el: HTMLElement): void {
         </section>
       </div>
     </section>`;
-	el.querySelectorAll<HTMLButtonElement>('[data-accord]').forEach((btn) => {
-		btn.addEventListener('click', () => startLecon(btn.dataset.accord!));
+	el.querySelectorAll<HTMLButtonElement>('[data-lecon]').forEach((btn) => {
+		btn.addEventListener('click', () => startLecon(btn.dataset.lecon!));
 	});
 	el.querySelectorAll<HTMLButtonElement>('[data-ortho]').forEach((btn) => {
 		btn.addEventListener('click', () => startOrthoLecon(btn.dataset.ortho!));

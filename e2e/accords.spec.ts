@@ -14,8 +14,8 @@ test('la catégorie Orthographe sépare « Les accords » et « Les dictées »'
 	const rubriques = page.locator('.cat-rubrique');
 	await expect(rubriques.filter({ hasText: 'Les accords' })).toBeVisible();
 	await expect(rubriques.filter({ hasText: 'Les dictées' })).toBeVisible();
-	await expect(page.locator('[data-accord="fr-accords-reguliers"]')).toBeVisible();
-	await expect(page.locator('[data-accord="fr-accords-irreguliers"]')).toBeVisible();
+	await expect(page.locator('[data-lecon="fr-accords-reguliers"]')).toBeVisible();
+	await expect(page.locator('[data-lecon="fr-accords-irreguliers"]')).toBeVisible();
 	// Les dictées de mots restent présentes (mots de base).
 	await expect(page.locator('[data-ortho]').first()).toBeVisible();
 	expect(errors).toEqual([]);
@@ -24,7 +24,7 @@ test('la catégorie Orthographe sépare « Les accords » et « Les dictées »'
 test('leçon d’accords : choix de mode puis saisie corrigée', async ({ page }) => {
 	const errors = watchErrors(page);
 	await gotoHash(page, 'categorie-fr-orthographe');
-	await page.locator('[data-accord="fr-accords-reguliers"]').click();
+	await page.locator('[data-lecon="fr-accords-reguliers"]').click();
 	// Écran de choix de mode (#69) : saisie (conseillé) + QCM.
 	await expect(page.locator('.mode-btn[data-mode="saisie"]')).toBeVisible();
 	await expect(page.locator('.mode-btn[data-mode="qcm"]')).toBeVisible();
@@ -46,7 +46,7 @@ test('leçon d’accords : choix de mode puis saisie corrigée', async ({ page }
 test('leçon d’accords : le mode QCM propose des choix et donne un retour', async ({ page }) => {
 	const errors = watchErrors(page);
 	await gotoHash(page, 'categorie-fr-orthographe');
-	await page.locator('[data-accord="fr-accords-irreguliers"]').click();
+	await page.locator('[data-lecon="fr-accords-irreguliers"]').click();
 	await page.locator('.mode-btn[data-mode="qcm"]').click();
 	const choices = page.locator('.sprint-choice');
 	await choices.first().waitFor();

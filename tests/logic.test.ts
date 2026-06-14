@@ -134,6 +134,7 @@ import { checkAnswer } from '../src/core/exercise';
 import { genItems, buildLessonFiche } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
 import { ACCORD_LESSONS, transfosDisponibles } from '../src/data/francais/accords';
+import { HOMOPHONE_PAIRS, HOMOPHONE_LESSONS } from '../src/data/francais/homophones';
 import {
 	EXPRESS_CAP,
 	expressQuestionsPerLesson,
@@ -2549,7 +2550,8 @@ describe('orthographe — accords pluriel/féminin (#109)', () => {
 		expect(lesson.category).toBe('fr-orthographe');
 		expect(lesson.rubrique).toBe('Les accords');
 		const ortho = getLessonsByCategory('fr-orthographe').map((l) => l.id);
-		expect(ortho.sort()).toEqual(['fr-accords-irreguliers', 'fr-accords-reguliers']);
+		expect(ortho).toContain('fr-accords-reguliers');
+		expect(ortho).toContain('fr-accords-irreguliers');
 	});
 
 	test('rubriques : la conjugaison est étiquetée par temps', () => {
@@ -2558,5 +2560,58 @@ describe('orthographe — accords pluriel/féminin (#109)', () => {
 		expect(new Set(conj.map((l) => l.rubrique))).toEqual(
 			new Set(['Présent', 'Futur', 'Imparfait', 'Passé composé']),
 		);
+	});
+});
+
+describe('orthographe — homophones grammaticaux (#110)', () => {
+	test('banques : chaque paire bien formée et fournie (≈100, ≥ 30 mini)', () => {
+		expect(HOMOPHONE_PAIRS.map((p) => p.id)).toEqual([
+			'fr-homophones-a',
+			'fr-homophones-et',
+			'fr-homophones-on',
+			'fr-homophones-son',
+			'fr-homophones-ou',
+		]);
+		for (const p of HOMOPHONE_PAIRS) {
+			// Volume : cible 100/paire, minimum 30 (critère d'acceptation).
+			const total = p.phrasesA.length + p.phrasesB.length;
+			expect(total, p.id).toBeGreaterThanOrEqual(30);
+			expect(total, p.id).toBeGreaterThanOrEqual(90); // on vise la centaine
+			expect(p.explication.length).toBeGreaterThan(10);
+			// Chaque phrase : exactement un trou `@`, jamais en tête (majuscule).
+			for (const phrase of [...p.phrasesA, ...p.phrasesB]) {
+				expect(phrase.split('@').length - 1, phrase).toBe(1);
+				expect(phrase.trim().startsWith('@'), phrase).toBe(false);
+			}
+			// Pas de doublon de phrase au sein de la paire.
+			const all = [...p.phrasesA, ...p.phrasesB];
+			expect(new Set(all).size, p.id).toBe(all.length);
+		}
+	});
+
+	test('génération : QCM à 2 options (les 2 graphies), bonne réponse + explication', () => {
+		for (const lesson of HOMOPHONE_LESSONS) {
+			for (let i = 0; i < 60; i++) {
+				const ex = lesson.exerciseType.generate('qcm');
+				expect(ex.type).toBe('qcm');
+				if (ex.type !== 'qcm') continue;
+				const paire = HOMOPHONE_PAIRS.find((p) => p.label === lesson.label)!;
+				// Exactement les deux graphies de la paire, jamais une forme fautive.
+				expect([...ex.choices].sort()).toEqual([...paire.options].sort());
+				expect(paire.options).toContain(ex.answer);
+				expect(ex.explication).toBe(paire.explication);
+				expect(ex.question).toContain('@');
+			}
+		}
+	});
+
+	test('catalogue : 5 leçons d’homophones en Orthographe, rubrique « Les homophones »', () => {
+		const ids = HOMOPHONE_LESSONS.map((l) => l.id);
+		for (const id of ids) {
+			const lesson = getLessonById(id)!;
+			expect(lesson.category).toBe('fr-orthographe');
+			expect(lesson.rubrique).toBe('Les homophones');
+		}
+		expect(ids).toHaveLength(5);
 	});
 });

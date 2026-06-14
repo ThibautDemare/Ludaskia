@@ -19,10 +19,11 @@ test('la matière Français liste Grammaire et Vocabulaire', async ({ page }) =>
 	expect(errors).toEqual([]);
 });
 
-test('Grammaire (vide) affiche « Bientôt disponible » sans erreur', async ({ page }) => {
+test('Grammaire liste ses leçons (pronom/accord, #115) sans erreur', async ({ page }) => {
+	// Depuis #115, la catégorie Grammaire n'est plus vide.
 	const errors = watchErrors(page);
 	await gotoHash(page, 'categorie-fr-grammaire');
-	await expect(page.locator('.cat-empty')).toBeVisible();
+	await expect(page.locator('.lesson-item').first()).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

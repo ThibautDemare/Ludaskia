@@ -133,7 +133,8 @@ import {
 import { checkAnswer } from '../src/core/exercise';
 import type { Exercise } from '../src/core/exercise';
 import { genItems, buildLessonFiche } from '../src/core/build';
-import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
+import { conjugationType, VERBS, CONJ_LESSONS, getVerb } from '../src/data/francais/conjugaison';
+import { SUJETS, GRAMMAIRE_SUJET_LESSONS } from '../src/data/francais/grammaire-sujet';
 import { ACCORD_LESSONS, transfosDisponibles } from '../src/data/francais/accords';
 import { HOMOPHONE_PAIRS, HOMOPHONE_LESSONS } from '../src/data/francais/homophones';
 import {
@@ -2854,5 +2855,78 @@ describe('vocabulaire — familles, préfixes, suffixes (#113)', () => {
 	test('catalogue : leçon « familles, préfixes, suffixes » en Vocabulaire', () => {
 		const lesson = getLessonById('fr-vocab-familles')!;
 		expect(lesson.category).toBe('fr-vocabulaire');
+	});
+});
+
+describe('grammaire — pronom sujet & accord sujet-verbe (#115)', () => {
+	const PRONOMS = ['il', 'elle', 'ils', 'elles', 'nous', 'vous', 'je', 'tu'];
+	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+	test('mapping : personne valide, pronom cohérent, verbes présents dans la base', () => {
+		for (const s of SUJETS) {
+			expect(s.personne).toBeGreaterThanOrEqual(0);
+			expect(s.personne).toBeLessThanOrEqual(5);
+			expect(PRONOMS).toContain(s.pronom);
+			expect(s.verbes.length).toBeGreaterThan(0);
+			for (const v of s.verbes) expect(getVerb(v), `${s.texte}/${v}`).toBeTruthy();
+			// Cohérence personne ↔ pronom (genre/nombre).
+			if (s.pronom === 'nous') expect(s.personne).toBe(3);
+			if (s.pronom === 'vous') expect(s.personne).toBe(4);
+			if (s.pronom === 'ils' || s.pronom === 'elles') expect(s.personne).toBe(5);
+			if (s.pronom === 'il' || s.pronom === 'elle') expect(s.personne).toBe(2);
+		}
+	});
+
+	test('invariant : ≥ 4 formes distinctes au présent → QCM d’accord à 4 choix', () => {
+		const verbesUtilises = new Set(SUJETS.flatMap((s) => s.verbes));
+		for (const v of verbesUtilises) {
+			const present = getVerb(v)!.forms.present;
+			expect(new Set(present).size, v).toBeGreaterThanOrEqual(4);
+		}
+	});
+
+	test('pronom sujet : QCM 4 pronoms distincts dont le bon', () => {
+		const type = GRAMMAIRE_SUJET_LESSONS.find((l) => l.id === 'fr-gram-pronom-sujet')!.exerciseType;
+		const pronomsAttendus = new Set(SUJETS.map((s) => s.pronom));
+		for (let i = 0; i < 100; i++) {
+			const ex = type.generate('qcm');
+			expect(ex.type).toBe('qcm');
+			if (ex.type !== 'qcm') continue;
+			expect(ex.choices.length).toBe(4);
+			expect(new Set(ex.choices).size).toBe(4);
+			expect(ex.choices).toContain(ex.answer);
+			expect(pronomsAttendus.has(ex.answer)).toBe(true);
+			ex.choices.forEach((c) => expect(PRONOMS).toContain(c));
+			expect(ex.question).toContain('@');
+		}
+	});
+
+	test('accord sujet-verbe : forme lue depuis la base, accordée au sujet', () => {
+		const type = GRAMMAIRE_SUJET_LESSONS.find(
+			(l) => l.id === 'fr-gram-accord-sujet-verbe',
+		)!.exerciseType;
+		for (let i = 0; i < 150; i++) {
+			const ex = type.generate('qcm');
+			expect(ex.type).toBe('qcm');
+			if (ex.type !== 'qcm') continue;
+			expect(ex.choices.length).toBe(4);
+			expect(new Set(ex.choices).size).toBe(4); // 4 vraies formes distinctes
+			expect(ex.choices).toContain(ex.answer);
+			// Décortique « Sujet (infinitif) → @ » et recompose la bonne forme depuis la base.
+			const m = /^(.+) \((.+)\) →/.exec(ex.question);
+			expect(m, ex.question).not.toBeNull();
+			const sujet = SUJETS.find((s) => cap(s.texte) === m![1])!;
+			const verbe = VERBS.find((v) => v.infinitif === m![2])!;
+			expect(sujet).toBeTruthy();
+			expect(verbe).toBeTruthy();
+			expect(ex.answer).toBe(verbe.forms.present[sujet.personne]); // accord correct
+		}
+	});
+
+	test('catalogue : 2 leçons de grammaire (pronom, accord) en Grammaire', () => {
+		const pronom = getLessonById('fr-gram-pronom-sujet')!;
+		const accord = getLessonById('fr-gram-accord-sujet-verbe')!;
+		expect(pronom.category).toBe('fr-grammaire');
+		expect(accord.category).toBe('fr-grammaire');
 	});
 });

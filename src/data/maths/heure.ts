@@ -67,23 +67,31 @@ function fmtHeure(h: number, m: number): string {
    on accepte aussi « 8 », « 8 h », « 8h00 », « 8 heures ». */
 export function variantes(h: number, m: number): string[] {
 	const set = new Set<string>();
+	// Sur un cadran à 12 h sans repère matin/après-midi, midi et minuit occupent
+	// EXACTEMENT la même position : « 12 h MM » et « 0 h MM » sont deux lectures
+	// correctes de la même horloge (#152). On accepte donc les deux pour h = 12,
+	// sans rien changer à la forme canonique affichée (« 12 h MM ») ni introduire
+	// le format 24 h dans l'énoncé (calibrage CE2 : voir en-tête).
+	const heureForms = h === 12 ? ['12', '0'] : [String(h)];
 	const minForms = m === 0 ? ['00', '0'] : [String(m).padStart(2, '0'), String(m)];
-	for (const mf of minForms) {
-		set.add(`${h} h ${mf}`);
-		set.add(`${h}h${mf}`);
-		set.add(`${h}h ${mf}`);
-		set.add(`${h} h${mf}`);
-		set.add(`${h} H ${mf}`);
-		set.add(`${h}H${mf}`);
-		set.add(`${h}:${mf}`);
-		set.add(`${h} : ${mf}`);
-	}
-	if (m === 0) {
-		set.add(`${h}`);
-		set.add(`${h} h`);
-		set.add(`${h}h`);
-		set.add(`${h} heures`);
-		set.add(`${h}heures`);
+	for (const hf of heureForms) {
+		for (const mf of minForms) {
+			set.add(`${hf} h ${mf}`);
+			set.add(`${hf}h${mf}`);
+			set.add(`${hf}h ${mf}`);
+			set.add(`${hf} h${mf}`);
+			set.add(`${hf} H ${mf}`);
+			set.add(`${hf}H${mf}`);
+			set.add(`${hf}:${mf}`);
+			set.add(`${hf} : ${mf}`);
+		}
+		if (m === 0) {
+			set.add(`${hf}`);
+			set.add(`${hf} h`);
+			set.add(`${hf}h`);
+			set.add(`${hf} heures`);
+			set.add(`${hf}heures`);
+		}
 	}
 	return [...set];
 }

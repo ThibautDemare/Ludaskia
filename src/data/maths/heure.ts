@@ -9,7 +9,9 @@
    - `qcm` : 4 propositions, distracteurs = erreurs classiques.
 
    Calibrage pédagogique CE2 (avis pedagogue-primaire) :
-   - horloge 12 h UNIQUEMENT (jamais 0 h ni format 24 h : CM1) ;
+   - horloge 12 h pour l'AFFICHAGE et la forme canonique attendue ; mais comme un
+     cadran sans repère matin/soir est ambigu, la SAISIE accepte aussi l'équivalent
+     24 h de chaque heure (8 ↔ 20, 12 ↔ 0…) — toute lecture juste du cadran (#152) ;
    - 4 plages pondérées du simple au dur : heures pile (~40 %),
      demi-heures (~25 %), quarts 15/45 (~20 %), multiples de 5
      (~15 %) ; la minute près relève du CM1, écartée ;
@@ -67,12 +69,13 @@ function fmtHeure(h: number, m: number): string {
    on accepte aussi « 8 », « 8 h », « 8h00 », « 8 heures ». */
 export function variantes(h: number, m: number): string[] {
 	const set = new Set<string>();
-	// Sur un cadran à 12 h sans repère matin/après-midi, midi et minuit occupent
-	// EXACTEMENT la même position : « 12 h MM » et « 0 h MM » sont deux lectures
-	// correctes de la même horloge (#152). On accepte donc les deux pour h = 12,
-	// sans rien changer à la forme canonique affichée (« 12 h MM ») ni introduire
-	// le format 24 h dans l'énoncé (calibrage CE2 : voir en-tête).
-	const heureForms = h === 12 ? ['12', '0'] : [String(h)];
+	// Un cadran à 12 h sans repère matin/après-midi est ambigu : la même position
+	// se lit aussi bien en heure « du matin » qu'en heure 24 h « du soir » (8 ↔ 20,
+	// 1 ↔ 13…, et 12 ↔ 0 pour midi/minuit). On accepte donc, en saisie, la lecture
+	// 12 h ET son équivalent 24 h pour CHAQUE heure (#152) — toute lecture correcte
+	// du cadran est validée. La forme canonique affichée reste en 12 h (« H h MM »).
+	const alt = h === 12 ? 0 : h + 12;
+	const heureForms = [String(h), String(alt)];
 	const minForms = m === 0 ? ['00', '0'] : [String(m).padStart(2, '0'), String(m)];
 	for (const hf of heureForms) {
 		for (const mf of minForms) {

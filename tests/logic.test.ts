@@ -819,7 +819,7 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 		expect(type.check(exRound, '9h')).toBe(true);
 		expect(type.check(exRound, '9 h 00')).toBe(true);
 	});
-	test('midi / minuit : sur 12 h MM, « 0 h MM » est aussi accepté (#152)', () => {
+	test('cadran ambigu : la lecture 24 h équivalente est acceptée pour chaque heure (#152)', () => {
 		const type = lesson().exerciseType;
 		const mk = (h: number, m: number): Exercise => ({
 			type: 'text',
@@ -828,15 +828,23 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 			answers: heureVariantes(h, m),
 			champHeure: true,
 		});
+		// 12 ↔ 0 (midi / minuit).
 		const ex12 = mk(12, 35);
-		// La forme canonique 12 h reste juste…
-		expect(type.check(ex12, '12 h 35')).toBe(true);
-		// …et la lecture « minuit/midi » (0 h) l'est aussi : même position d'aiguilles.
+		expect(type.check(ex12, '12 h 35')).toBe(true); // forme canonique
 		expect(type.check(ex12, '0 h 35')).toBe(true);
 		expect(type.check(ex12, '0h35')).toBe(true);
-		expect(type.check(ex12, '0:35')).toBe(true);
-		// L'équivalence ne vaut que pour 12 h : « 0 h » sur une autre heure reste faux.
-		expect(type.check(mk(3, 35), '0 h 35')).toBe(false);
+		// 8 ↔ 20 (matin / soir) : les deux lectures du cadran sont justes.
+		const ex8 = mk(8, 35);
+		expect(type.check(ex8, '8 h 35')).toBe(true);
+		expect(type.check(ex8, '20 h 35')).toBe(true);
+		// 1 ↔ 13, y compris en heure pile (« 13 h », « 13 heures »).
+		const ex1 = mk(1, 0);
+		expect(type.check(ex1, '1 h 00')).toBe(true);
+		expect(type.check(ex1, '13 h 00')).toBe(true);
+		expect(type.check(ex1, '13 heures')).toBe(true);
+		// On valide L'ÉQUIVALENT (h+12), pas n'importe quelle autre heure 24 h.
+		expect(type.check(ex8, '0 h 35')).toBe(false); // 8 ↔ 20, jamais 0
+		expect(type.check(ex8, '21 h 35')).toBe(false);
 	});
 	test('buildLessonFiche : fiche imprimable avec horloge SVG et champ de saisie', () => {
 		const html = buildLessonFiche('mes-lecture-heure');

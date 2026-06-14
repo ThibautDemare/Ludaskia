@@ -135,6 +135,13 @@ import type { Exercise } from '../src/core/exercise';
 import { genItems, buildLessonFiche } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS, getVerb } from '../src/data/francais/conjugaison';
 import { SUJETS, GRAMMAIRE_SUJET_LESSONS } from '../src/data/francais/grammaire-sujet';
+import {
+	CLASSES,
+	ARTICLES,
+	ADVERBES,
+	ITEMS_CLASSES,
+	CLASSES_LESSONS,
+} from '../src/data/francais/classes-mots';
 import { ACCORD_LESSONS, transfosDisponibles } from '../src/data/francais/accords';
 import { HOMOPHONE_PAIRS, HOMOPHONE_LESSONS } from '../src/data/francais/homophones';
 import {
@@ -2942,5 +2949,66 @@ describe('grammaire — pronom sujet & accord sujet-verbe (#115)', () => {
 		const accord = getLessonById('fr-gram-accord-sujet-verbe')!;
 		expect(pronom.category).toBe('fr-grammaire');
 		expect(accord.category).toBe('fr-grammaire');
+	});
+});
+
+describe('grammaire — classes de mots, articles, adverbes (#116)', () => {
+	test('CLASSES : classe valide, mot non vide', () => {
+		for (const c of CLASSES) {
+			expect(['nom', 'verbe', 'adjectif']).toContain(c.classe);
+			expect(c.mot.length).toBeGreaterThan(0);
+		}
+	});
+
+	test('ARTICLES : genre/nombre valide ; le/la jamais devant une voyelle (élision)', () => {
+		for (const a of ARTICLES) {
+			expect(['le', 'la', 'les']).toContain(a.article);
+			if (a.article !== 'les') {
+				// « le/la » devant voyelle deviendrait « l' » : on l'évite (QCM à 3 options).
+				expect(/^[aeiouyàâäéèêëîïôöùûüh]/i.test(a.mot), a.mot).toBe(false);
+			}
+		}
+	});
+
+	test('ADVERBES : l’adverbe et les distracteurs sont des mots de la phrase, distincts', () => {
+		for (const a of ADVERBES) {
+			expect(a.distracteurs.length).toBe(2);
+			expect(a.phrase.includes(a.adverbe), a.phrase).toBe(true);
+			for (const d of a.distracteurs) expect(a.phrase.includes(d), `${a.phrase} / ${d}`).toBe(true);
+			expect(new Set([a.adverbe, ...a.distracteurs]).size).toBe(3); // pas de doublon
+		}
+	});
+
+	test('banque combinée : ≥ 30 items, trois sous-types couverts et équilibrés', () => {
+		expect(ITEMS_CLASSES.length).toBeGreaterThanOrEqual(30);
+		const parType = { classe: 0, article: 0, adverbe: 0 };
+		for (const it of ITEMS_CLASSES) parType[it.type]++;
+		const total = ITEMS_CLASSES.length;
+		for (const t of ['classe', 'article', 'adverbe'] as const) {
+			expect(parType[t], t).toBeGreaterThan(0);
+			expect(parType[t] / total).toBeGreaterThanOrEqual(0.25);
+			expect(parType[t] / total).toBeLessThanOrEqual(0.45);
+		}
+	});
+
+	test('génération : QCM 3 options dont la bonne réponse + explication', () => {
+		const type = CLASSES_LESSONS[0].exerciseType;
+		const reponsesValides = new Set(ITEMS_CLASSES.map((it) => it.reponse));
+		for (let i = 0; i < 150; i++) {
+			const ex = type.generate('qcm');
+			expect(ex.type).toBe('qcm');
+			if (ex.type !== 'qcm') continue;
+			expect(ex.choices.length).toBe(3);
+			expect(new Set(ex.choices).size).toBe(3);
+			expect(ex.choices).toContain(ex.answer);
+			expect(reponsesValides.has(ex.answer)).toBe(true);
+			expect(ex.question).toContain('@');
+			expect((ex.explication ?? '').length).toBeGreaterThan(10);
+		}
+	});
+
+	test('catalogue : leçon « classes de mots » en Grammaire', () => {
+		const lesson = getLessonById('fr-gram-classes')!;
+		expect(lesson.category).toBe('fr-grammaire');
 	});
 });

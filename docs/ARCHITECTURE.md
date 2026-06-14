@@ -12,8 +12,8 @@ Mini-application web d'entraînement **multi-matières** (niveau CE2). Côté
 grandeurs et mesures, géométrie). Côté
 **français**, le catalogue suit les 4 catégories du manuel CE2 dans l'ordre
 canonique — **grammaire**, **conjugaison**, **orthographe**, **vocabulaire**
-(#107) ; **grammaire** porte le **pronom sujet et l'accord sujet-verbe** (#115),
-**vocabulaire** accueille
+(#107) ; **grammaire** porte le **pronom sujet et l'accord sujet-verbe** (#115)
+et les **classes de mots / articles / adverbes** (#116), **vocabulaire** accueille
 l'ordre alphabétique (#108), le **sens propre / figuré** (#112) et les
 **familles de mots / préfixes / suffixes** (#113), **orthographe** réunit les dictées de mots, les
 **accords** (pluriel/féminin, #109), les **homophones grammaticaux**
@@ -109,6 +109,11 @@ mm/mb/mp (le m de la règle blanchi, **majuscules/noms propres et adverbes en
 -mment exclus**) + contre-exemples en « n » + **exceptions** (bonbon, bonbonne,
 néanmoins). **`tiragePondere`** (pur, `r` injectable) sur-pondère les exceptions
 (poids 3 → ~10-12 % des tirages, calibré avec le pédagogue).
+**`francais/classes-mots.ts`** (#116) : catégorie **Grammaire**, leçon **« Classes de
+mots, articles, adverbes »** (`fr-gram-classes`). QCM d'étiquetage, 3 sous-types
+(classe nom/verbe/adjectif ; article le/la/les ; repérer l'adverbe dans une phrase),
+sur une **banque interne étiquetée** (jamais les listes du parent). Un builder unifie
+les 3 types en items QCM. Relue par l'agent pédagogue.
 **`francais/grammaire-sujet.ts`** (#115) : catégorie **Grammaire**, 2 leçons QCM —
 **« Le pronom sujet »** (`fr-gram-pronom-sujet` : « mes amis et moi » → nous) et
 **« L'accord du verbe avec le sujet »** (`fr-gram-accord-sujet-verbe` : « les oiseaux

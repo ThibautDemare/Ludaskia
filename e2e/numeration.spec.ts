@@ -50,6 +50,10 @@ test('comparer (tuiles) : on place la bonne tuile, feedback positif', async ({ p
 	await page.locator('#ltuiVerif').click();
 	await expect(page.locator('#ltuiFeedback')).toContainText('Bravo'); // feedback positif
 	await expect(page.locator('#ltuiSlot')).toHaveClass(/correct/);
+	// #153 : une fois la réponse validée, « Vérifier » s'efface ; seul le bouton
+	// « Continuer ▶ » reste affiché (pas deux boutons à la fois).
+	await expect(page.locator('#ltuiVerif')).toBeHidden();
+	await expect(page.locator('#ltuiNext')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

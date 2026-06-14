@@ -1913,6 +1913,22 @@ describe('Français — Conjugaison', () => {
 		expect(fr.some((l) => l.id === 'fr-conj-venir-imparfait')).toBe(true);
 		expect(fr.some((l) => l.id === 'fr-conj-prendre-passe_compose')).toBe(true);
 	});
+	test('libellés uniformes « Verbe (Ne groupe) au temps » ; auxiliaires à part', () => {
+		const labelOf = (id: string) => CONJ_LESSONS.find((l) => l.id === id)!.label;
+		// Format uniforme pour les verbes ordinaires (1er / 2e / 3e groupe).
+		expect(labelOf('fr-conj-aimer-present')).toBe('Aimer (1er groupe) au présent');
+		expect(labelOf('fr-conj-finir-futur')).toBe('Finir (2e groupe) au futur');
+		expect(labelOf('fr-conj-aller-imparfait')).toBe("Aller (3e groupe) à l'imparfait");
+		expect(labelOf('fr-conj-naitre-passe_compose')).toBe('Naître (3e groupe) au passé composé');
+		// Les auxiliaires gardent leur libellé dédié (pas de groupe).
+		expect(labelOf('fr-conj-etre-present')).toBe("L'auxiliaire être au présent");
+		expect(labelOf('fr-conj-avoir-futur')).toBe("L'auxiliaire avoir au futur");
+		// Tous les libellés non-auxiliaires portent un groupe (aucun « (undefined) »).
+		const nonAux = CONJ_LESSONS.filter(
+			(l) => l.verbId !== 'etre' && l.verbId !== 'avoir',
+		);
+		expect(nonAux.every((l) => /\((1er|2e|3e) groupe\)/.test(l.label))).toBe(true);
+	});
 	test('genLessonItem : item texte pour le français, numérique pour les maths', () => {
 		const frItem = genLessonItem(getLessonById('fr-conj-etre-present')!);
 		expect(frItem.kind).toBe('text');

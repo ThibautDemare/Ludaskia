@@ -301,26 +301,41 @@ export interface ConjLessonDesc {
 	rubrique: string;
 }
 
-const LESSON_LABEL: Record<string, string> = {
+/* Libellé dédié des auxiliaires : ils ne relèvent pas d'un groupe, donc ils
+   gardent leur titre propre (les seuls à déroger au format uniforme ci-dessous). */
+const AUXILIAIRE_LABEL: Record<string, string> = {
 	etre: "L'auxiliaire être",
 	avoir: "L'auxiliaire avoir",
-	aimer: 'Verbes du 1er groupe (aimer)',
-	finir: 'Verbes du 2e groupe (finir)',
-	aller: 'Aller',
-	faire: 'Faire',
-	venir: 'Venir',
-	voir: 'Voir',
-	dire: 'Dire',
-	pouvoir: 'Pouvoir',
-	vouloir: 'Vouloir',
-	prendre: 'Prendre',
-	naitre: 'Naître',
 };
+
+/* Groupe de chaque verbe conjugué (hors auxiliaires) : 1er (aimer), 2e (finir),
+   3e groupe pour les verbes irréguliers fréquents. */
+const VERB_GROUPE: Record<string, string> = {
+	aimer: '1er groupe',
+	finir: '2e groupe',
+	aller: '3e groupe',
+	faire: '3e groupe',
+	venir: '3e groupe',
+	voir: '3e groupe',
+	dire: '3e groupe',
+	pouvoir: '3e groupe',
+	vouloir: '3e groupe',
+	prendre: '3e groupe',
+	naitre: '3e groupe',
+};
+
+/* Partie « verbe » du titre, uniforme : « Verbe (Ne groupe) » (infinitif capitalisé
+   + groupe), sauf les auxiliaires qui gardent leur libellé dédié. */
+function verbeLabel(v: VerbDef): string {
+	if (AUXILIAIRE_LABEL[v.id]) return AUXILIAIRE_LABEL[v.id];
+	const cap = v.infinitif.charAt(0).toUpperCase() + v.infinitif.slice(1);
+	return `${cap} (${VERB_GROUPE[v.id]})`;
+}
 
 export const CONJ_LESSONS: ConjLessonDesc[] = VERBS.flatMap((v) =>
 	TENSES.map((tense) => ({
 		id: `fr-conj-${v.id}-${tense}`,
-		label: `${LESSON_LABEL[v.id]} ${TENSE_PHRASE[tense]}`,
+		label: `${verbeLabel(v)} ${TENSE_PHRASE[tense]}`,
 		verbId: v.id,
 		tense,
 		level: 'ce2' as SchoolLevel,

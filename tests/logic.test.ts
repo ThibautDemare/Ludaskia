@@ -136,6 +136,13 @@ import { genItems, buildLessonFiche } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS } from '../src/data/francais/conjugaison';
 import { ACCORD_LESSONS, transfosDisponibles } from '../src/data/francais/accords';
 import { HOMOPHONE_PAIRS, HOMOPHONE_LESSONS } from '../src/data/francais/homophones';
+import {
+	MBP_BANK,
+	MBP_LESSONS,
+	tiragePondere,
+	poidsDe,
+	motComplet,
+} from '../src/data/francais/mbp';
 import { variantes as heureVariantes } from '../src/data/maths/heure';
 import {
 	EXPRESS_CAP,
@@ -2615,5 +2622,80 @@ describe('orthographe — homophones grammaticaux (#110)', () => {
 			expect(lesson.rubrique).toBe('Les homophones');
 		}
 		expect(ids).toHaveLength(5);
+	});
+});
+
+describe('orthographe — m devant m, b, p (#111)', () => {
+	const APRES = (mot: string) => mot[mot.indexOf('@') + 1]; // lettre juste après le trou
+
+	test('banque : items bien formés, trou au bon endroit selon le type', () => {
+		expect(MBP_BANK.length).toBeGreaterThan(40);
+		for (const it of MBP_BANK) {
+			// Exactement un trou, jamais en tête.
+			expect(it.mot.split('@').length - 1, it.mot).toBe(1);
+			expect(it.mot.startsWith('@'), it.mot).toBe(false);
+			expect(['m', 'n']).toContain(it.reponse);
+			const apres = APRES(it.mot);
+			if (it.type === 'regle') {
+				// Devant m, b, p → réponse « m ».
+				expect(['m', 'b', 'p'], it.mot).toContain(apres);
+				expect(it.reponse).toBe('m');
+			} else if (it.type === 'contre') {
+				// La lettre suivante n'est PAS m, b, p → réponse « n ».
+				expect(['m', 'b', 'p'].includes(apres), it.mot).toBe(false);
+				expect(it.reponse).toBe('n');
+			} else {
+				// Exception : « n » malgré b/m derrière.
+				expect(['m', 'b'], it.mot).toContain(apres);
+				expect(it.reponse).toBe('n');
+			}
+		}
+	});
+
+	test('banque : pas de doublon, pas de majuscule (noms propres exclus)', () => {
+		const complets = MBP_BANK.map(motComplet);
+		expect(new Set(complets).size).toBe(complets.length); // aucun doublon
+		for (const mot of complets) {
+			expect(/\p{Lu}/u.test(mot), mot).toBe(false); // aucune majuscule
+			expect(/mment$/.test(mot), mot).toBe(false); // adverbes en -mment écartés
+		}
+	});
+
+	test('tirage pondéré : déterministe, et exceptions sur-pondérées', () => {
+		// r = 0 → 1er item ; r → 1 → dernier item.
+		expect(tiragePondere(MBP_BANK, 0)).toBe(MBP_BANK[0]);
+		expect(tiragePondere(MBP_BANK, 0.999999)).toBe(MBP_BANK[MBP_BANK.length - 1]);
+		// Une exception pèse plus qu'un mot ordinaire.
+		const exc = MBP_BANK.find((i) => i.type === 'exception')!;
+		const reg = MBP_BANK.find((i) => i.type === 'regle')!;
+		expect(poidsDe(exc)).toBeGreaterThan(poidsDe(reg));
+		// Part des exceptions dans le tirage : régulièrement présentes, sans dominer.
+		const total = MBP_BANK.reduce((s, it) => s + poidsDe(it), 0);
+		const poidsExc = MBP_BANK.filter((i) => i.type === 'exception').reduce(
+			(s, it) => s + poidsDe(it),
+			0,
+		);
+		const part = poidsExc / total;
+		expect(part).toBeGreaterThanOrEqual(0.08);
+		expect(part).toBeLessThanOrEqual(0.15);
+	});
+
+	test('génération : QCM « m ou n ? » + explication, bonne réponse présente', () => {
+		const type = MBP_LESSONS[0].exerciseType;
+		for (let i = 0; i < 80; i++) {
+			const ex = type.generate('qcm');
+			expect(ex.type).toBe('qcm');
+			if (ex.type !== 'qcm') continue;
+			expect([...ex.choices].sort()).toEqual(['m', 'n']);
+			expect(['m', 'n']).toContain(ex.answer);
+			expect(ex.question).toContain('@');
+			expect((ex.explication ?? '').length).toBeGreaterThan(10);
+		}
+	});
+
+	test('catalogue : leçon m/b/p en Orthographe, rubrique « Les règles »', () => {
+		const lesson = getLessonById('fr-mbp')!;
+		expect(lesson.category).toBe('fr-orthographe');
+		expect(lesson.rubrique).toBe('Les règles');
 	});
 });

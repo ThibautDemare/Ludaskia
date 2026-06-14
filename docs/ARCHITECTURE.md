@@ -14,8 +14,8 @@ grandeurs et mesures, géométrie). Côté
 canonique — **grammaire**, **conjugaison**, **orthographe**, **vocabulaire**
 (#107) ; **grammaire** reste pour l'instant vide, **vocabulaire** accueille
 l'ordre alphabétique (#108), **orthographe** réunit les dictées de mots, les
-**accords** (pluriel/féminin, #109) et les **homophones grammaticaux**
-(a/à, et/est…, #110). Génération aléatoire
+**accords** (pluriel/féminin, #109), les **homophones grammaticaux**
+(a/à, et/est…, #110) et les **règles** (m devant m/b/p, #111). Génération aléatoire
 d'exercices, correction instantanée, chronomètre, et une couche de gamification
 (records, médailles, trophées, objectifs, XP) avec gestion de profils. 100 %
 **côté client** (aucun serveur) ; la progression est stockée en `localStorage`.
@@ -99,6 +99,14 @@ homophones » — 5 leçons (a/à, et/est, on/ont, son/sont, ou/où), une par pa
 QCM. Données : 2 listes de phrases par paire (`phrasesA`/`phrasesB` → réponse
 implicite, pas de clé erronée possible), ~100 phrases/paire, relues par l'agent
 pédagogue (ambiguïté, niveau CE2, « où » de lieu uniquement).
+**`francais/mbp.ts`** (#111) : catégorie **Orthographe**, rubrique « Les règles » —
+leçon unique **« m devant m, b, p »** (`fr-mbp`). Exercice « m ou n ? » : mot à
+trou (`@`), QCM **2 options** (m/n), feedback `explication` selon le type. Banque
+combinée : mots réguliers curatés + **mots de `ORTHO_PREDEF` (#106)** contenant
+mm/mb/mp (le m de la règle blanchi, **majuscules/noms propres et adverbes en
+-mment exclus**) + contre-exemples en « n » + **exceptions** (bonbon, bonbonne,
+néanmoins). **`tiragePondere`** (pur, `r` injectable) sur-pondère les exceptions
+(poids 3 → ~10-12 % des tirages, calibré avec le pédagogue).
 **`francais/vocabulaire.ts`** (#108) : catégorie **Vocabulaire**, leçons
 **« Ordre alphabétique »** (`fr-vocab-alpha-initiale` tri par 1re lettre,
 `fr-vocab-alpha-deuxieme` tri par 2e lettre à initiale commune). `ordreType`
@@ -376,10 +384,10 @@ le dessin 3D (faces cachées).
   **regroupe les leçons par `rubrique`** (#109 : titres de section, ordre
   d'apparition ; sans rubrique = rendu à plat). L'écran **sur-mesure** de
   l'orthographe (`renderOrthoCategorie`) **regroupe ses leçons `LessonDef` par
-  rubrique** — **« Les accords »** (transformation #109) et **« Les homophones »**
-  (QCM #110), lancées par le parcours standard saisie/QCM — au-dessus de **« Les
-  dictées de mots »** (mots de base prédéfinis + listes du parent, jouées par le
-  runner ortho dédié).
+  rubrique** — **« Les accords »** (transformation #109), **« Les homophones »**
+  (QCM #110) et **« Les règles »** (m/b/p, QCM #111), lancées par le parcours
+  standard saisie/QCM — au-dessus de **« Les dictées de mots »** (mots de base
+  prédéfinis + listes du parent, jouées par le runner ortho dédié).
 - **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, categoryId?)`
   (global, ou scopé à une catégorie via `#bilan-cat-<id>` — liste à plat,
   pensée tablette), choix **bilan / sprint** (#64 : `BilanConfig.mode`, défaut

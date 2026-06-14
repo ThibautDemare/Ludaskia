@@ -157,6 +157,12 @@
 .posee-op {
 	color: var(--blue);
 }
+/* Zéro fourni du 2ᵉ produit partiel (× dizaines) : grisé, pour signaler « c'est
+   donné, tu n'as pas à le saisir » et distinguer des chiffres-résultat à saisir. */
+.posee-zero {
+	color: var(--muted);
+	opacity: 0.6;
+}
 /* Champs : chiffre du résultat (noté) et retenue (aide, non notée). */
 .posee-input,
 .posee-carry {

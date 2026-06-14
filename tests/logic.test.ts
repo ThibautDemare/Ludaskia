@@ -1925,9 +1925,7 @@ describe('Français — Conjugaison', () => {
 		expect(labelOf('fr-conj-etre-present')).toBe("L'auxiliaire être au présent");
 		expect(labelOf('fr-conj-avoir-futur')).toBe("L'auxiliaire avoir au futur");
 		// Tous les libellés non-auxiliaires portent un groupe (aucun « (undefined) »).
-		const nonAux = CONJ_LESSONS.filter(
-			(l) => l.verbId !== 'etre' && l.verbId !== 'avoir',
-		);
+		const nonAux = CONJ_LESSONS.filter((l) => l.verbId !== 'etre' && l.verbId !== 'avoir');
 		expect(nonAux.every((l) => /\((1er|2e|3e) groupe\)/.test(l.label))).toBe(true);
 	});
 	test('genLessonItem : item texte pour le français, numérique pour les maths', () => {

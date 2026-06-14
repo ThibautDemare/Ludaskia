@@ -656,19 +656,26 @@
 	padding: 2rem 1rem;
 }
 
-/* Grille responsive : le nombre de colonnes s'adapte à la largeur RÉELLE du cadre
-   (auto-fit), et non au viewport — c'est ce qui faisait déborder la 3ᵉ colonne,
-   les media-queries déclenchant 3 colonnes alors que #sheets restait étroit.
-   `min(100%, 18rem)` garantit une seule colonne (jamais de débordement) quand la
-   place manque, tout en gardant des cartes assez larges pour ne couper aucun mot. */
+/* Disposition en flex (et non en grille à colonnes fixes) : chaque carte se
+   dimensionne à SON mot. Un mot long — qui reste sur une seule ligne, exigé par
+   l'overlay SVG des entourages — élargit sa carte au lieu de déborder ; les mots
+   courts gardent une largeur mini confortable. `flex-wrap` répartit les cartes
+   sur plusieurs lignes d'elles-mêmes, sans forcer un nombre de colonnes. */
 .relecture-grille {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
 	gap: 16px;
 	padding: 4px;
 }
 
 .relecture-carte {
+	/* Pas d'étirement (flex-grow 0) : la carte épouse son contenu. min-width fixe
+	   la taille mini, et tombe à 100 % sur écran plus étroit (jamais de débordement
+	   horizontal) ; max-width la borne au cadre. */
+	flex: 0 1 auto;
+	min-width: min(18rem, 100%);
+	max-width: 100%;
 	position: relative;
 	display: flex;
 	flex-direction: column;

@@ -10,6 +10,7 @@ import { bilanQ } from './lessons';
 import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 import { VOCAB_LESSONS } from '../data/francais/vocabulaire';
 import { ACCORD_LESSONS } from '../data/francais/accords';
+import { HOMOPHONE_LESSONS } from '../data/francais/homophones';
 import { MESURE_LESSONS } from '../data/maths/mesures';
 import { MONNAIE_LESSONS } from '../data/maths/monnaie';
 import { HEURE_LESSONS } from '../data/maths/heure';
@@ -328,6 +329,19 @@ const ACCORD_LESSONS_DEFS: LessonDef[] = ACCORD_LESSONS.map((d) => ({
 	rubrique: d.rubrique,
 }));
 
+/* ---------- Catalogue des leçons « Orthographe » — homophones (#110) ----------
+   5 paires (a/à, et/est, on/ont, son/sont, ou/où), une leçon par paire, QCM
+   2 options dans la catégorie Orthographe, rubrique « Les homophones ». */
+const HOMOPHONE_LESSONS_DEFS: LessonDef[] = HOMOPHONE_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'francais',
+	category: ORTHO_CATEGORY_ID,
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+	rubrique: d.rubrique,
+}));
+
 /* ---------- Catalogue des leçons « Vocabulaire » (#108) ----------
    Ordre alphabétique : l'enfant range une suite de mots (interaction tuiles,
    runner ui/lecon-ordre.ts). Mono-mode ; le repli texte (fiche/bilan/révision)
@@ -380,6 +394,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...GEOMETRIE_LESSONS_DEFS,
 	...FRENCH_LESSONS,
 	...ACCORD_LESSONS_DEFS,
+	...HOMOPHONE_LESSONS_DEFS,
 	...VOCAB_LESSONS_DEFS,
 ];
 

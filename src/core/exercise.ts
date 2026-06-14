@@ -17,7 +17,16 @@ export type Exercise =
 			figure?: string;
 			champHeure?: boolean;
 	  }
-	| { type: 'qcm'; question: string; answer: string; choices: string[]; figure?: string }
+	// `explication` (#110) : justification pédagogique optionnelle affichée APRÈS
+	// la réponse dans le runner QCM (ex. critère de substitution des homophones).
+	| {
+			type: 'qcm';
+			question: string;
+			answer: string;
+			choices: string[];
+			figure?: string;
+			explication?: string;
+	  }
 	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
 	// des distracteurs vers l'emplacement `@` de la question. Réponse = `answer`.
 	| { type: 'tuilesNombre'; question: string; answer: string; tuiles: string[] }

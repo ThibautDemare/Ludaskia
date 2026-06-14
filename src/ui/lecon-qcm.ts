@@ -35,6 +35,7 @@ const NB_QUESTIONS = 8;
 interface QcmQuestion {
 	item: Item; // { text, answer, kind:'text', _lesson }
 	choices: string[];
+	explication?: string; // justification affichée après la réponse (#110)
 }
 
 let lesson: LessonDef;
@@ -75,6 +76,7 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 				_lesson: l.id,
 			},
 			choices: ex.choices,
+			explication: ex.explication,
 		});
 		misses = 0;
 	}
@@ -157,6 +159,8 @@ function answer(choiceIdx: number): void {
 	fb.innerHTML = correct
 		? `<span class="lqcm-ok">Bravo ! 🎉</span>`
 		: `<span class="lqcm-ko">La bonne réponse était <strong>${escapeHTML(String(q.item.answer))}</strong>.</span>`;
+	// Justification pédagogique (ex. critère de substitution des homophones, #110).
+	if (q.explication) fb.innerHTML += `<p class="lqcm-expl">${escapeHTML(q.explication)}</p>`;
 	const actions = sheets().querySelector('#lqcmActions') as HTMLElement;
 	actions.hidden = false;
 	const last = idx >= questions.length - 1;

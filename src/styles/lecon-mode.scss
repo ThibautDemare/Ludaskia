@@ -183,6 +183,17 @@
 .lqcm-ko strong {
 	color: var(--ok);
 }
+/* Justification pédagogique après la réponse (#110 : critère de substitution). */
+.lqcm-expl {
+	margin: 10px auto 0;
+	max-width: 520px;
+	font-size: 14px;
+	line-height: 1.4;
+	color: var(--ink);
+	background: var(--blue-soft);
+	border-radius: 10px;
+	padding: 10px 14px;
+}
 
 /* ---- Runner « tuiles » de numération (#98) ---- */
 .ltui-consigne {

@@ -144,6 +144,13 @@ import {
 	motComplet,
 } from '../src/data/francais/mbp';
 import { GROUPES_SENS, SENS_FIGURE_LESSONS } from '../src/data/francais/sens-figure';
+import {
+	FAMILLES,
+	PREFIXES,
+	SUFFIXES,
+	ITEMS_FAMILLES,
+	FAMILLES_LESSONS,
+} from '../src/data/francais/familles';
 import { variantes as heureVariantes } from '../src/data/maths/heure';
 import {
 	EXPRESS_CAP,
@@ -2744,6 +2751,60 @@ describe('vocabulaire — sens propre / sens figuré (#112)', () => {
 
 	test('catalogue : leçon « sens propre / figuré » en Vocabulaire', () => {
 		const lesson = getLessonById('fr-vocab-sens')!;
+		expect(lesson.category).toBe('fr-vocabulaire');
+	});
+});
+
+describe('vocabulaire — familles, préfixes, suffixes (#113)', () => {
+	test('FAMILLES : 3 options distinctes, faux-ami ≠ bonne réponse', () => {
+		for (const f of FAMILLES) {
+			const opts = [f.famille, f.fauxAmi, f.autre];
+			for (const o of opts) expect(o.length).toBeGreaterThan(0);
+			expect(new Set(opts).size, f.mot).toBe(3); // bonne réponse, faux-ami, intrus distincts
+			expect(f.explication.length).toBeGreaterThan(10);
+		}
+	});
+
+	test('PRÉFIXES & SUFFIXES : sens + 2 distracteurs distincts, non vides', () => {
+		for (const a of [...PREFIXES, ...SUFFIXES]) {
+			const opts = [a.sens, ...a.distracteurs];
+			expect(opts.length).toBe(3);
+			for (const o of opts) expect(o.length).toBeGreaterThan(0);
+			expect(new Set(opts).size, a.mot).toBe(3); // pas de distracteur = bonne réponse
+		}
+	});
+
+	test('banque combinée : ≥ 30 items, trois types couverts de façon équilibrée', () => {
+		expect(ITEMS_FAMILLES.length).toBeGreaterThanOrEqual(30);
+		const parType = { famille: 0, prefixe: 0, suffixe: 0 };
+		for (const it of ITEMS_FAMILLES) parType[it.type]++;
+		const total = ITEMS_FAMILLES.length;
+		for (const t of ['famille', 'prefixe', 'suffixe'] as const) {
+			expect(parType[t], t).toBeGreaterThan(0);
+			// Équilibre : chaque type entre 25 % et 42 % de la banque.
+			expect(parType[t] / total).toBeGreaterThanOrEqual(0.25);
+			expect(parType[t] / total).toBeLessThanOrEqual(0.42);
+		}
+	});
+
+	test('génération : QCM 3 options dont la bonne réponse + explication', () => {
+		const type = FAMILLES_LESSONS[0].exerciseType;
+		const reponsesValides = new Set(ITEMS_FAMILLES.map((it) => it.reponse));
+		for (let i = 0; i < 150; i++) {
+			const ex = type.generate('qcm');
+			expect(ex.type).toBe('qcm');
+			if (ex.type !== 'qcm') continue;
+			expect(ex.choices.length).toBe(3);
+			expect(new Set(ex.choices).size).toBe(3);
+			expect(ex.choices).toContain(ex.answer);
+			expect(reponsesValides.has(ex.answer)).toBe(true); // jamais un distracteur en réponse
+			expect(ex.question).toContain('@');
+			expect((ex.explication ?? '').length).toBeGreaterThan(10);
+		}
+	});
+
+	test('catalogue : leçon « familles, préfixes, suffixes » en Vocabulaire', () => {
+		const lesson = getLessonById('fr-vocab-familles')!;
 		expect(lesson.category).toBe('fr-vocabulaire');
 	});
 });

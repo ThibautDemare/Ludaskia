@@ -13,8 +13,8 @@ grandeurs et mesures, géométrie). Côté
 **français**, le catalogue suit les 4 catégories du manuel CE2 dans l'ordre
 canonique — **grammaire**, **conjugaison**, **orthographe**, **vocabulaire**
 (#107) ; **grammaire** reste pour l'instant vide, **vocabulaire** accueille
-l'ordre alphabétique (#108) et le **sens propre / figuré** (#112),
-**orthographe** réunit les dictées de mots, les
+l'ordre alphabétique (#108), le **sens propre / figuré** (#112) et les
+**familles de mots / préfixes / suffixes** (#113), **orthographe** réunit les dictées de mots, les
 **accords** (pluriel/féminin, #109), les **homophones grammaticaux**
 (a/à, et/est…, #110) et les **règles** (m devant m/b/p, #111). Génération aléatoire
 d'exercices, correction instantanée, chronomètre, et une couche de gamification
@@ -108,6 +108,14 @@ mm/mb/mp (le m de la règle blanchi, **majuscules/noms propres et adverbes en
 -mment exclus**) + contre-exemples en « n » + **exceptions** (bonbon, bonbonne,
 néanmoins). **`tiragePondere`** (pur, `r` injectable) sur-pondère les exceptions
 (poids 3 → ~10-12 % des tirages, calibré avec le pédagogue).
+**`francais/familles.ts`** (#113) : catégorie **Vocabulaire**, leçon **« Familles,
+préfixes et suffixes »** (`fr-vocab-familles`). QCM de reconnaissance 3 options, trois
+types équilibrés : familles de mots (bonne réponse + **faux-ami** plausible d'une autre
+famille + intrus), préfixes (re-, dé-, in-/im-, pré-, sur-, sous-) et suffixes
+(-eur/-euse, -tion/-sion, -ment, -able/-ible, -ette) où l'on décode le sens. Un builder
+unifie les 3 banques en items `{ question, reponse, distracteurs, explication }`.
+Relue par l'agent pédagogue (faux-amis vérifiés au CNRTL : retrait de laitue←lait,
+pommade←pomme… qui étaient en réalité de la même famille).
 **`francais/sens-figure.ts`** (#112) : catégorie **Vocabulaire**, leçon **« Sens
 propre / sens figuré »** (`fr-vocab-sens`). QCM 3 options : courte phrase +
 « Ici, « X » veut dire : ? ». Données **par mot** (chaque verbe porte ses 3 options

@@ -12,6 +12,7 @@ import { VOCAB_LESSONS } from '../data/francais/vocabulaire';
 import { SENS_FIGURE_LESSONS } from '../data/francais/sens-figure';
 import { FAMILLES_LESSONS } from '../data/francais/familles';
 import { GRAMMAIRE_SUJET_LESSONS } from '../data/francais/grammaire-sujet';
+import { CLASSES_LESSONS } from '../data/francais/classes-mots';
 import { ACCORD_LESSONS } from '../data/francais/accords';
 import { HOMOPHONE_LESSONS } from '../data/francais/homophones';
 import { MBP_LESSONS } from '../data/francais/mbp';
@@ -405,6 +406,17 @@ const GRAMMAIRE_SUJET_LESSONS_DEFS: LessonDef[] = GRAMMAIRE_SUJET_LESSONS.map((d
 	exerciseType: d.exerciseType,
 }));
 
+/* ---------- Grammaire — classes de mots, articles, adverbes (#116) ----------
+   Leçon QCM d'étiquetage (banque interne étiquetée, hors listes du parent). */
+const CLASSES_LESSONS_DEFS: LessonDef[] = CLASSES_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'francais',
+	category: 'fr-grammaire',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+}));
+
 /* ---------- Catalogue des leçons « Calcul » (opérations posées, #97) ----------
    Items `kind: 'posed'` : la grille (cellules-chiffres notées une à une) est
    rendue par renderItem. Passent par les bilans/impression/révision ; exclues du
@@ -450,6 +462,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...SENS_FIGURE_LESSONS_DEFS,
 	...FAMILLES_LESSONS_DEFS,
 	...GRAMMAIRE_SUJET_LESSONS_DEFS,
+	...CLASSES_LESSONS_DEFS,
 ];
 
 /* Une opération posée (#97) se rend en grille multi-cellules : incompatible avec

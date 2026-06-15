@@ -14,7 +14,8 @@
 		"typecheck": "tsc --noEmit",
 		"lint": "eslint .",
 		"format": "prettier --write .",
-		"format:check": "prettier --check ."
+		"format:check": "prettier --check .",
+		"forest:gen": "node tools/forest/generate-forest.mjs 15 14 public/foret-pied.svg"
 	},
 	"engines": {
 		"node": ">=20"

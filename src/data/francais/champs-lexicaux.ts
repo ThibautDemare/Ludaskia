@@ -95,7 +95,6 @@ export const CHAMPS: Champ[] = [
 			{ mot: 'lisière', def: 'Le bord de la forêt.' },
 			{ mot: 'écorce', def: 'La peau dure qui recouvre le tronc des arbres.' },
 			{ mot: 'brindille', def: 'Une toute petite branche fine et cassante.' },
-			{ mot: 'frondaison', def: "L'ensemble des feuilles et des branches en haut des arbres." },
 			{ mot: 'taillis', def: 'Un groupe de petits arbres serrés les uns contre les autres.' },
 			// Plantes/végétaux qui poussent aussi au jardin ou en montagne → ambigus.
 			{
@@ -145,21 +144,14 @@ export const CHAMPS: Champ[] = [
 			{ mot: 'façade', def: "Le devant d'un bâtiment." },
 			{ mot: 'boulevard', def: 'Une grande et large avenue.' },
 			{ mot: 'réverbère', def: 'Le grand lampadaire qui éclaire la rue.' },
-			{ mot: 'quartier', def: "Une partie d'une ville." },
 		],
 	},
 	{
 		id: 'emotions',
 		nom: 'les émotions',
-		// Émotions courantes (joie, peur…) ET secondaires plus subtiles (honte,
-		// soulagement…) : la banque reste large ; le QCM « définition → mot »
-		// distingue p. ex. « déception » de « tristesse ».
+		// Émotions « secondaires », plus subtiles : on évite joie/peur/colère, déjà
+		// connues dès la maternelle (elles n'enrichissent pas le lexique CE2).
 		mots: [
-			{ mot: 'joie', def: 'Le bonheur, quand on est très content.' },
-			{ mot: 'colère', def: 'Quand on est très énervé et fâché.' },
-			{ mot: 'peur', def: "Ce qu'on ressent face à un danger." },
-			{ mot: 'tristesse', def: "Ce qu'on ressent quand on a du chagrin." },
-			{ mot: 'surprise', def: "Ce qu'on ressent devant quelque chose d'inattendu." },
 			{ mot: 'honte', def: "Ce qu'on ressent après avoir fait une bêtise devant les autres." },
 			{ mot: 'fierté', def: "Ce qu'on ressent quand on a réussi quelque chose de difficile." },
 			{ mot: 'jalousie', def: "Ce qu'on ressent quand on voudrait avoir ce qu'a un autre." },

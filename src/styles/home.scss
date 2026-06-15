@@ -10,6 +10,16 @@
 	font-size: 34px;
 	font-weight: 700;
 	margin: 0 0 6px;
+	/* Logo « arbre » empilé au-dessus du nom sur l'accueil. */
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+}
+.brand-logo {
+	display: block;
+	height: 72px;
+	width: auto;
 }
 .home .tagline {
 	color: var(--grey);

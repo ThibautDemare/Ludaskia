@@ -132,6 +132,8 @@ import {
 } from '../src/core/figures';
 import { checkAnswer } from '../src/core/exercise';
 import type { Exercise } from '../src/core/exercise';
+import { isNewerVersion, canReloadNow } from '../src/core/version';
+import type { ReloadState, ReloadThresholds } from '../src/core/version';
 import { genItems, buildLessonFiche } from '../src/core/build';
 import { conjugationType, VERBS, CONJ_LESSONS, getVerb } from '../src/data/francais/conjugaison';
 import { SUJETS, GRAMMAIRE_SUJET_LESSONS } from '../src/data/francais/grammaire-sujet';
@@ -3010,5 +3012,57 @@ describe('grammaire — classes de mots, articles, adverbes (#116)', () => {
 	test('catalogue : leçon « classes de mots » en Grammaire', () => {
 		const lesson = getLessonById('fr-gram-classes')!;
 		expect(lesson.category).toBe('fr-grammaire');
+	});
+});
+
+describe('auto-actualisation (core/version)', () => {
+	test('isNewerVersion : différence stricte sur une chaîne non vide', () => {
+		expect(isNewerVersion('abc', 'def')).toBe(true);
+		expect(isNewerVersion('abc', 'abc')).toBe(false); // identique → pas neuf
+		expect(isNewerVersion('abc', '')).toBe(false); // chaîne vide ignorée
+		expect(isNewerVersion('abc', null)).toBe(false);
+		expect(isNewerVersion('abc', undefined)).toBe(false);
+		expect(isNewerVersion('abc', 42)).toBe(false); // type non-chaîne ignoré
+	});
+
+	const THR: ReloadThresholds = { minIdleMs: 4000, minVisibleMs: 1500 };
+	// État « moment sûr » de référence : tout est réuni pour recharger.
+	const sain = (): ReloadState => ({
+		updatePending: true,
+		calmScreen: true,
+		busy: false,
+		alreadyReloaded: false,
+		idleMs: 5000,
+		visibleMs: 2000,
+	});
+
+	test('canReloadNow : recharge dans un état sûr', () => {
+		expect(canReloadNow(sain(), THR)).toBe(true);
+	});
+
+	test('canReloadNow : ne recharge pas sans mise à jour en attente', () => {
+		expect(canReloadNow({ ...sain(), updatePending: false }, THR)).toBe(false);
+	});
+
+	test('canReloadNow : jamais en plein exercice (écran non calme)', () => {
+		expect(canReloadNow({ ...sain(), calmScreen: false }, THR)).toBe(false);
+	});
+
+	test('canReloadNow : jamais pendant sprint / révision (busy)', () => {
+		expect(canReloadNow({ ...sain(), busy: true }, THR)).toBe(false);
+	});
+
+	test('canReloadNow : anti-boucle (déjà rechargé pour cette version)', () => {
+		expect(canReloadNow({ ...sain(), alreadyReloaded: true }, THR)).toBe(false);
+	});
+
+	test('canReloadNow : attend un court délai d’inactivité', () => {
+		expect(canReloadNow({ ...sain(), idleMs: 1000 }, THR)).toBe(false);
+		expect(canReloadNow({ ...sain(), idleMs: 4000 }, THR)).toBe(true); // seuil atteint
+	});
+
+	test('canReloadNow : attend un instant après le retour sur l’onglet', () => {
+		expect(canReloadNow({ ...sain(), visibleMs: 500 }, THR)).toBe(false);
+		expect(canReloadNow({ ...sain(), visibleMs: 1500 }, THR)).toBe(true); // seuil atteint
 	});
 });

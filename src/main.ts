@@ -21,6 +21,7 @@ import './styles/bilan.scss';
 import './styles/catalog.scss';
 import './styles/francais.scss';
 import './styles/orthographe.scss';
+import './styles/version-update.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -63,6 +64,7 @@ import { hideCelebration, hideLevelUp } from './ui/effects';
 import { openRecompenses, openTrophees, hideUnlockModals } from './ui/unlocks-view';
 import { closeProfileMenu, toggleProfileMenu } from './ui/menu';
 import { initTts } from './ui/tts';
+import { initVersionCheck } from './ui/version-check';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 
 // Quitter ces modes (non reprenables) perd la progression → on confirme (#63).
@@ -373,6 +375,7 @@ setOnDataWrite(touchActiveProfile);
 initProfiles();
 applyPreferences(); // thème + animations du profil actif, dès avant le 1er rendu
 initTts(); // précharge les voix de synthèse (dictée best-effort)
+initVersionCheck(); // auto-actualisation : recharge l'onglet quand un nouveau déploiement est en ligne
 // Les scripts type="module" sont différés : si le DOM est déjà prêt, on câble
 // immédiatement, sinon on attend DOMContentLoaded (parité avec l'ancien main.js).
 if (document.readyState !== 'loading') wireDOM();

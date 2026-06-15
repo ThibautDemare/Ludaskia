@@ -110,8 +110,8 @@ export interface Theme {
 	niveau: number;
 }
 export const THEMES: Theme[] = [
-	{ id: 'defaut', label: 'Classique', icone: '🔵', niveau: 1 },
-	{ id: 'foret', label: 'Forêt', icone: '🌲', niveau: 20 },
+	{ id: 'defaut', label: 'Forêt', icone: '🌳', niveau: 1 },
+	{ id: 'ciel', label: 'Ciel', icone: '🔵', niveau: 20 },
 	{ id: 'automne', label: 'Automne', icone: '🍂', niveau: 40 },
 	{ id: 'lagon', label: 'Lagon', icone: '🌊', niveau: 70 },
 	{ id: 'fruit-rouge', label: 'Fruit rouge', icone: '🍓', niveau: 95 },

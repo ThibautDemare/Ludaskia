@@ -6,7 +6,7 @@
 	font-family: var(--ui);
 	font-size: 1.1rem;
 	font-weight: 800;
-	color: var(--blue);
+	color: var(--accent);
 	margin: 1.2rem 0 0.5rem;
 }
 
@@ -36,7 +36,7 @@
 }
 .nav-card:hover {
 	transform: translateY(-3px);
-	border-color: var(--blue);
+	border-color: var(--accent);
 	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
 }
 .nav-ico {
@@ -47,7 +47,7 @@
 	font-family: var(--ui);
 	font-size: 17px;
 	font-weight: 700;
-	color: var(--blue);
+	color: var(--accent);
 }
 .nav-card-sub {
 	font-family: var(--ui);
@@ -97,7 +97,7 @@
 	font-size: 15px;
 	font-weight: 700;
 	cursor: pointer;
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 	border: 0;
 	border-radius: 10px;
@@ -108,7 +108,7 @@
 		transform 0.08s;
 }
 .cat-action:hover {
-	background: #1a3fa5;
+	background: var(--accent-dark);
 }
 .cat-action:active {
 	transform: translateY(1px);
@@ -122,11 +122,11 @@
    contour, pour la distinguer des 3 actions « 1 tap = ça démarre ». */
 .cat-action-secondary {
 	background: transparent;
-	color: var(--blue);
-	border: 2px solid var(--blue);
+	color: var(--accent);
+	border: 2px solid var(--accent);
 }
 .cat-action-secondary:hover {
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 }
 .cat-action-secondary small {

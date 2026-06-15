@@ -16,11 +16,11 @@ export function sparkline(vals: number[], w = 260, h = 46) {
 	const dots = vals
 		.map(
 			(v, i) =>
-				`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.5" fill="var(--blue)"/>`,
+				`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.5" fill="var(--accent)"/>`,
 		)
 		.join('');
 	return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Progression des scores">
-    <polyline fill="none" stroke="var(--blue)" stroke-width="2" points="${pts}"/>${dots}</svg>`;
+    <polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${pts}"/>${dots}</svg>`;
 }
 
 /* Petite pluie de confettis */

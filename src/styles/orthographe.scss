@@ -147,8 +147,8 @@
 	cursor: pointer;
 }
 .ortho-formes-toggle.actif {
-	border-color: var(--blue);
-	background: var(--blue-soft);
+	border-color: var(--accent);
+	background: var(--accent-soft);
 }
 /* Panneau des 4 formes (masc/fém × sing/plur) sous la ligne. */
 .ortho-formes {
@@ -157,7 +157,7 @@
 	gap: 0.4rem 0.6rem;
 	margin: 0.3rem 0 0.2rem;
 	padding: 0.5rem 0.6rem;
-	background: var(--blue-soft);
+	background: var(--accent-soft);
 	border-radius: 8px;
 }
 /* L'attribut [hidden] doit l'emporter sur display:grid (spécificité de classe). */
@@ -263,7 +263,7 @@
 	font-size: 1.6rem;
 	text-align: center;
 	letter-spacing: 0.06em;
-	border: 2px solid var(--blue);
+	border: 2px solid var(--accent);
 	border-radius: 10px;
 	/* Champ rendu en `type="password"` (anti-suggestion clavier) puis démasqué en
 	   `type="text"` par ui/anti-suggestion.ts — voir #67/#123/#139. */
@@ -282,12 +282,12 @@
 	font-family: var(--ui);
 	border: 0;
 	border-radius: 10px;
-	background: var(--blue-soft);
-	color: var(--blue);
+	background: var(--accent-soft);
+	color: var(--accent);
 	cursor: pointer;
 }
 .accent-key:hover {
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 }
 // Libellé court au-dessus de chaque zone (« Ton mot » / « Les lettres ») :
@@ -312,7 +312,7 @@
 }
 .tuiles-construction {
 	min-height: 68px;
-	background: var(--blue-soft); // zone « mot » teintée
+	background: var(--accent-soft); // zone « mot » teintée
 }
 .tuiles-bac {
 	background: var(--page-bg); // réservoir neutre, contraste avec les tuiles blanches
@@ -322,7 +322,7 @@
 	height: 56px;
 	font-size: 1.5rem;
 	font-weight: 700;
-	border: 2px solid var(--blue);
+	border: 2px solid var(--accent);
 	border-radius: 10px;
 	background: #fff;
 	cursor: pointer;
@@ -331,29 +331,29 @@
 // sur :active / :focus-visible, et on ne garde :hover que sur les vrais pointeurs.
 .tuile:active,
 .tuile:focus-visible {
-	background: var(--blue-soft);
+	background: var(--accent-soft);
 	outline: none;
 }
 @media (hover: hover) {
 	.tuile:hover {
-		background: var(--blue-soft);
+		background: var(--accent-soft);
 	}
 }
 .tuile-used {
 	visibility: hidden;
 }
 .tuile-pose {
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 }
 .tuile-pose:active,
 .tuile-pose:focus-visible {
-	background: var(--blue-dark);
+	background: var(--accent-dark);
 	outline: none;
 }
 @media (hover: hover) {
 	.tuile-pose:hover {
-		background: var(--blue-dark);
+		background: var(--accent-dark);
 	}
 }
 
@@ -377,11 +377,11 @@
 	background: transparent;
 }
 .tuile-slot.is-caret .tuile-curseur {
-	background: var(--blue);
+	background: var(--accent);
 	animation: tuile-blink 1s steps(2, start) infinite;
 }
 .tuile-slot.is-drop .tuile-curseur {
-	background: var(--blue);
+	background: var(--accent);
 	width: 4px;
 	height: 52px;
 	animation: none; // indicateur de dépôt : barre pleine, pas de clignotement
@@ -407,7 +407,7 @@
 // Sélection signalée par la forme (taille + ombre + bordure), pas par la seule
 // couleur — daltonisme.
 .tuile-cell.sel .tuile-pose.sel {
-	border: 3px solid var(--blue-dark);
+	border: 3px solid var(--accent-dark);
 	box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
 	transform: scale(1.06);
 }
@@ -422,10 +422,10 @@
 	height: 40px;
 	font-size: 1.1rem;
 	font-weight: 700;
-	border: 2px solid var(--blue);
+	border: 2px solid var(--accent);
 	border-radius: 8px;
-	background: var(--blue-soft);
-	color: var(--blue);
+	background: var(--accent-soft);
+	color: var(--accent);
 	cursor: pointer;
 }
 .tuile-retirer {
@@ -456,7 +456,7 @@
 	font-size: 1.5rem;
 	font-weight: 700;
 	border-radius: 10px;
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 	opacity: 0.8;
 	pointer-events: none; // sinon elementFromPoint renverrait le fantôme
@@ -506,7 +506,7 @@
 	width: 0.6em; /* espace inter-mot bien marqué (ex. « afin de ») */
 }
 .atelier-lettre.sel {
-	background: var(--blue-soft); /* surlignage en cours */
+	background: var(--accent-soft); /* surlignage en cours */
 }
 .atelier-lettre[data-diff] {
 	text-decoration: underline wavy var(--warn);
@@ -530,8 +530,8 @@
 	font: inherit;
 	font-family: var(--ui);
 	font-size: 0.95rem;
-	color: var(--blue);
-	background: var(--blue-soft);
+	color: var(--accent);
+	background: var(--accent-soft);
 	border: 0;
 	border-radius: 10px;
 	padding: 8px 14px;
@@ -553,7 +553,7 @@
 	font-weight: 700;
 	font-size: 1.05rem;
 	color: #fff;
-	background: var(--blue);
+	background: var(--accent);
 	border: 0;
 	border-radius: 12px;
 	padding: 12px 22px;
@@ -565,7 +565,7 @@
 }
 .ortho-run .btn-primary:hover,
 .ortho-form .btn-primary:hover {
-	background: var(--blue-dark);
+	background: var(--accent-dark);
 	box-shadow: 0 3px 8px rgb(0 0 0 / 18%);
 }
 .ortho-run .btn-primary:active,
@@ -621,8 +621,8 @@
 	display: inline-block;
 	font: inherit;
 	font-family: var(--ui);
-	color: var(--blue);
-	background: var(--blue-soft);
+	color: var(--accent);
+	background: var(--accent-soft);
 	border: 0;
 	border-radius: 10px;
 	padding: 8px 14px;
@@ -636,7 +636,7 @@
 .relecture-titre {
 	font-size: 1.5rem;
 	font-weight: 800;
-	color: var(--blue);
+	color: var(--accent);
 	margin: 0 0 0.2rem;
 	clear: both;
 }
@@ -733,9 +733,9 @@
 }
 .relecture-crayon:hover {
 	background: #fff;
-	color: var(--blue);
+	color: var(--accent);
 }
 .relecture-crayon:focus-visible {
-	outline: 2px solid var(--blue);
+	outline: 2px solid var(--accent);
 	outline-offset: 2px;
 }

@@ -48,7 +48,7 @@
 	margin: 0 0 14px;
 }
 .rewards-h {
-	color: var(--blue);
+	color: var(--accent);
 	font-size: 15px;
 	margin: 16px 0 8px;
 }
@@ -74,7 +74,7 @@
 	line-height: 1;
 }
 .modal-title {
-	color: var(--blue);
+	color: var(--accent);
 	font-size: 24px;
 	margin: 8px 0 16px;
 }
@@ -91,7 +91,7 @@
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	background: var(--blue-soft);
+	background: var(--accent-soft);
 	border-radius: 10px;
 	padding: 10px 14px;
 	font-size: 15px;
@@ -109,7 +109,7 @@
 	border: 0;
 	border-radius: 10px;
 	cursor: pointer;
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 	padding: 11px 28px;
 	transition:
@@ -211,7 +211,7 @@
 .levelup-title {
 	margin: 4px 0 6px;
 	font-size: 22px;
-	color: var(--blue);
+	color: var(--accent);
 }
 .levelup-next {
 	margin: 0 0 14px;
@@ -235,7 +235,7 @@
 	gap: 8px;
 	font-size: 15px;
 	font-weight: 700;
-	color: var(--blue);
+	color: var(--accent);
 }
 .levelup-unlock-ico {
 	font-size: 20px;

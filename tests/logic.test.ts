@@ -1011,7 +1011,7 @@ describe('Moteur de figures : figures planes & scène (#100)', () => {
 		expect(html).toContain('<svg');
 		expect(html).toContain('role="img"');
 		expect(html).toContain('<polygon');
-		expect(html).toContain('var(--blue-soft)'); // forme pleine
+		expect(html).toContain('var(--accent-soft)'); // forme pleine
 		// La description ne nomme pas la figure (sinon réponse soufflée).
 		const head = html.slice(0, html.indexOf('</desc>'));
 		expect(head).not.toContain('carré');
@@ -1711,8 +1711,8 @@ describe('Déblocages : avatars forêt (gating)', () => {
 describe('Déblocages : thèmes & préférences', () => {
 	test('themesDebloques : défaut toujours dispo, autres par palier', () => {
 		expect(api.themesDebloques(1)).toEqual(['defaut']);
-		expect(api.themesDebloques(20)).toEqual(['defaut', 'foret']);
-		expect(api.themesDebloques(70)).toEqual(['defaut', 'foret', 'automne', 'lagon']);
+		expect(api.themesDebloques(20)).toEqual(['defaut', 'ciel']);
+		expect(api.themesDebloques(70)).toEqual(['defaut', 'ciel', 'automne', 'lagon']);
 		expect(api.themesDebloques(95)).toContain('fruit-rouge');
 		// Le défaut n'a pas de seuil de déblocage « vécu ».
 		expect(THEMES_UNLOCK[0].id).toBe('defaut');
@@ -1720,7 +1720,7 @@ describe('Déblocages : thèmes & préférences', () => {
 	});
 	test('recompensesNiveau : thème annoncé à 20/40/70/95 (hors défaut)', () => {
 		expect(api.recompensesNiveau(20).map((r) => r.type)).toEqual(['theme']);
-		expect(api.recompensesNiveau(20)[0].texte).toContain('Forêt');
+		expect(api.recompensesNiveau(20)[0].texte).toContain('Ciel');
 		expect(api.recompensesNiveau(95).map((r) => r.type)).toContain('theme');
 		// 21 n'est pas un palier.
 		expect(api.recompensesNiveau(21)).toEqual([]);
@@ -1728,20 +1728,20 @@ describe('Déblocages : thèmes & préférences', () => {
 	test('getTheme / setTheme : gating par niveau du profil actif, défaut sinon', () => {
 		expect(api.getTheme()).toBe('defaut'); // au départ
 		// Thème verrouillé (niveau 1 < 20) : refusé, reste au défaut.
-		api.setTheme('foret');
+		api.setTheme('ciel');
 		expect(api.getTheme()).toBe('defaut');
-		// Assez d'XP pour le niveau 20 → Forêt débloqué et sélectionnable.
+		// Assez d'XP pour le niveau 20 → Ciel débloqué et sélectionnable.
 		api.addXP(api.xpPourNiveau(20));
-		api.setTheme('foret');
-		expect(api.getTheme()).toBe('foret');
+		api.setTheme('ciel');
+		expect(api.getTheme()).toBe('ciel');
 	});
 	test('getTheme : garde-fou si le thème stocké n’est plus débloqué', () => {
 		// Thème stocké directement (jadis débloqué) mais niveau insuffisant → défaut.
-		api.lsSet('ludaskia_theme', 'foret');
-		expect(api.getTheme()).toBe('defaut'); // niveau 1 → Forêt (niv 20) non débloqué
+		api.lsSet('ludaskia_theme', 'ciel');
+		expect(api.getTheme()).toBe('defaut'); // niveau 1 → Ciel (niv 20) non débloqué
 		// Avec l'XP suffisante, le thème stocké redevient valide.
 		api.addXP(api.xpPourNiveau(20));
-		expect(api.getTheme()).toBe('foret');
+		expect(api.getTheme()).toBe('ciel');
 	});
 	test('animationsReduites : faux par défaut, persistant', () => {
 		expect(api.animationsReduites()).toBe(false);

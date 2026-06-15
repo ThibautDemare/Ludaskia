@@ -1,0 +1,39 @@
+/* ============================================================
+   Voile d'auto-actualisation (cf. ui/version-check.ts).
+   Couvre l'écran d'un voile doux + la mascotte (« je me mets à jour… »)
+   juste avant le rechargement, pour MASQUER le flash blanc et donner un
+   repère de continuité à l'enfant (avis UX enfant + troubles/attention).
+   Respecte « réduire les animations » / prefers-reduced-motion.
+   ============================================================ */
+.update-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 10050; /* au-dessus de tout, y compris les modales (10001) */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	background: rgba(255, 255, 255, 0.9);
+	backdrop-filter: blur(2px);
+	opacity: 0;
+	transition: opacity 0.3s ease;
+}
+.update-overlay.show {
+	opacity: 1;
+}
+.update-card {
+	max-width: 92vw;
+	padding: 22px 24px;
+	border-radius: 18px;
+	background: #fff;
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.update-overlay {
+		transition: opacity 0.15s ease;
+	}
+}
+html.anim-reduced .update-overlay {
+	transition: opacity 0.15s ease;
+}

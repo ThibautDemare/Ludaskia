@@ -127,7 +127,17 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 	const MIN_PX = 20;
 	function ajusterTaille(): void {
 		motEl.style.fontSize = ''; // repart de la taille SCSS (source de vérité)
-		const dispo = (stage.parentElement?.clientWidth ?? motEl.scrollWidth) - PAD * 2 - 4;
+		// Largeur réellement disponible = largeur de CONTENU du parent (.page), donc
+		// son clientWidth MOINS son padding horizontal. .page a un padding de 18 mm
+		// (~68 px/côté) que clientWidth inclut : sans le retrancher, on surestime la
+		// place de ~136 px et le mot déborde malgré le rétrécissement (#166).
+		const parent = stage.parentElement;
+		let dispo = motEl.scrollWidth;
+		if (parent) {
+			const cs = getComputedStyle(parent);
+			const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+			dispo = parent.clientWidth - padX - PAD * 2 - 4;
+		}
 		const naturel = motEl.scrollWidth;
 		if (naturel > dispo) {
 			const base = parseFloat(getComputedStyle(motEl).fontSize);

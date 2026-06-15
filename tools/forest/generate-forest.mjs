@@ -92,7 +92,8 @@ function buildTree(seed) {
 		const cs = [{ x: ccx, y: ccy, r: regionR * 0.6 }];
 		for (let k = 0; k < count; k++) {
 			const ang = R.f(0, Math.PI * 2);
-			const dd = regionR * Math.pow(R.f(0, 1), 0.65);
+			// Borne l'écartement : un lobe ne peut pas se détacher du reste du feuillage.
+			const dd = Math.min(regionR * Math.pow(R.f(0, 1), 0.65), regionR * 0.82);
 			cs.push({
 				x: ccx + Math.cos(ang) * dd,
 				y: ccy + Math.sin(ang) * dd * squash,

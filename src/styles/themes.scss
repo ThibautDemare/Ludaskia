@@ -4,30 +4,32 @@
    --ok/--ko/--warn (code couleur réussite/erreur appris par l'enfant).
    Appliqués via <html data-theme="..."> (voir ui/preferences.ts). */
 
-:root[data-theme='foret'] {
-	--blue: #2f7d52;
-	--blue-dark: #225c3c;
-	--blue-soft: #e4f0e8;
-	--page-bg: #eef3ee;
+/* « Ciel » = le bleu historique, désormais thème déblocable (le vert est devenu
+   le défaut, voir base.scss). */
+:root[data-theme='ciel'] {
+	--accent: #336cbf;
+	--accent-dark: #2a5aa0;
+	--accent-soft: #e9eff8;
+	--page-bg: #eef1f5;
 }
 :root[data-theme='automne'] {
-	--blue: #b5532a;
-	--blue-dark: #8f3e1d;
-	--blue-soft: #f6e7db;
+	--accent: #b5532a;
+	--accent-dark: #8f3e1d;
+	--accent-soft: #f6e7db;
 	--page-bg: #f4ede4;
 	--ink: #2a1d16;
 }
 :root[data-theme='lagon'] {
-	--blue: #0a8a8f;
-	--blue-dark: #066b6f;
-	--blue-soft: #def2f2;
+	--accent: #0a8a8f;
+	--accent-dark: #066b6f;
+	--accent-soft: #def2f2;
 	--page-bg: #eef6f6;
 	--ink: #142020;
 }
 :root[data-theme='fruit-rouge'] {
-	--blue: #d7395a;
-	--blue-dark: #b02945;
-	--blue-soft: #fbe2e7;
+	--accent: #d7395a;
+	--accent-dark: #b02945;
+	--accent-soft: #fbe2e7;
 	--page-bg: #fdeff1;
 	--ink: #1f1417;
 }
@@ -35,10 +37,10 @@
 /* Pastilles d'aperçu du sélecteur de thèmes (couleur d'accent de chaque thème,
    indépendante du thème actif). */
 .theme-defaut .theme-dot {
-	background: #336cbf;
-}
-.theme-foret .theme-dot {
 	background: #2f7d52;
+}
+.theme-ciel .theme-dot {
+	background: #336cbf;
 }
 .theme-automne .theme-dot {
 	background: #b5532a;

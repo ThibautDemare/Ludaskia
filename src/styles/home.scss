@@ -6,7 +6,7 @@
 	text-align: center;
 }
 .home .big {
-	color: var(--blue);
+	color: var(--accent);
 	font-size: 34px;
 	font-weight: 700;
 	margin: 0 0 6px;
@@ -144,7 +144,7 @@
 .card:hover {
 	transform: translateY(-4px);
 	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
-	border-color: var(--blue);
+	border-color: var(--accent);
 }
 /* Cible tactile : pas de :hover sur écran tactile, on garde un retour au tap. */
 .card:active {
@@ -170,7 +170,7 @@
 	font-size: 40px;
 }
 .card h2 {
-	color: var(--blue);
+	color: var(--accent);
 	font-size: 21px;
 	margin: 12px 0 8px;
 }
@@ -183,7 +183,7 @@
 }
 .card .go {
 	display: inline-block;
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 	font-weight: 700;
 	font-family: var(--ui);
@@ -198,7 +198,7 @@
 	color: var(--grey);
 }
 .home .printlink a {
-	color: var(--blue);
+	color: var(--accent);
 	cursor: pointer;
 	text-decoration: underline;
 	font-weight: 700;

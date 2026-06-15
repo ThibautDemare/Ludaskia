@@ -110,7 +110,7 @@ export function renderHorloge(heures: number, minutes: number): string {
 
 	// Cadran : disque papier cerné de bleu.
 	parts.push(
-		circle(CX, CY, 92, { fill: 'var(--paper)', stroke: 'var(--blue)', 'stroke-width': 4 }),
+		circle(CX, CY, 92, { fill: 'var(--paper)', stroke: 'var(--accent)', 'stroke-width': 4 }),
 	);
 
 	// Graduations : 60 traits, gros aux heures (multiples de 5), fins ailleurs.
@@ -160,7 +160,7 @@ export function renderHorloge(heures: number, minutes: number): string {
 	const [hx, hy] = pointOnCircle(CX, CY, 52, hourAngle);
 	parts.push(
 		line(CX, CY, hx, hy, {
-			stroke: 'var(--blue)',
+			stroke: 'var(--accent)',
 			'stroke-width': 8.5,
 			'stroke-linecap': 'round',
 		}),
@@ -220,8 +220,8 @@ export function renderPolygoneCote(points: Array<[number, number]>, labels: stri
 
 	const body: string[] = [
 		polygon(tp, {
-			fill: 'var(--blue-soft)',
-			stroke: 'var(--blue)',
+			fill: 'var(--accent-soft)',
+			stroke: 'var(--accent)',
 			'stroke-width': 2.5,
 			'stroke-linejoin': 'round',
 		}),
@@ -332,7 +332,7 @@ export function renderQuadrillage(
 		);
 	// Cases pleines.
 	for (const [x, y] of cells)
-		body.push(rect(px(x), px(y), GRID_CELL, GRID_CELL, { fill: 'var(--blue-soft)' }));
+		body.push(rect(px(x), px(y), GRID_CELL, GRID_CELL, { fill: 'var(--accent-soft)' }));
 	// Contour surligné (on compte CES côtés).
 	for (const [[ax, ay], [bx, by]] of boundaryEdges(cells))
 		body.push(
@@ -354,7 +354,7 @@ export function renderQuadrillage(
 }
 
 /* ---------- Figures planes (#100 — reconnaissance) ----------
-   Formes pleines (remplissage `--blue-soft` + contour `--blue`) à reconnaître,
+   Formes pleines (remplissage `--accent-soft` + contour `--accent`) à reconnaître,
    SANS cote. On part de sommets canoniques (carré unité), on tourne autour du
    centre puis on met à l'échelle pour tenir dans une case. Calibrage (avis
    designer + pedagogue) : trait franc (3), losange à diagonales INÉGALES (pas un
@@ -410,8 +410,8 @@ const SHAPE_POINTS: Record<Exclude<PlaneShape, 'cercle'>, Array<[number, number]
 };
 
 const SHAPE_FILL = {
-	fill: 'var(--blue-soft)',
-	stroke: 'var(--blue)',
+	fill: 'var(--accent-soft)',
+	stroke: 'var(--accent)',
 	'stroke-width': 3,
 	'stroke-linejoin': 'round',
 } as const;
@@ -500,7 +500,7 @@ export function renderCercle(segment?: 'rayon' | 'diametre', label?: string): st
 	const cy = 100;
 	const r = 70;
 	const body: string[] = [
-		circle(cx, cy, r, { fill: 'var(--blue-soft)', stroke: 'var(--blue)', 'stroke-width': 3 }),
+		circle(cx, cy, r, { fill: 'var(--accent-soft)', stroke: 'var(--accent)', 'stroke-width': 3 }),
 	];
 	if (segment === 'diametre')
 		body.push(
@@ -544,7 +544,7 @@ export function renderCercle(segment?: 'rayon' | 'diametre', label?: string): st
 
 /* ---------- Solides en perspective (#103 — reconnaissance) ----------
    Schémas en perspective cavalière, SANS arêtes cachées (avis designer) : face
-   avant pleine (`--blue-soft` + contour `--blue`), arêtes de profondeur en
+   avant pleine (`--accent-soft` + contour `--accent`), arêtes de profondeur en
    contour atténué (opacité 0,55). Monochrome, orientation STABLE (jamais de
    rotation : un solide retourné devient illisible). Le but est de RECONNAÎTRE
    la silhouette, pas de compter les faces. */
@@ -553,7 +553,7 @@ export type Solid = 'cube' | 'pave' | 'cylindre' | 'cone' | 'pyramide' | 'boule'
 const SOLID_SIZE = 200;
 const DEPTH = {
 	fill: 'none',
-	stroke: 'var(--blue)',
+	stroke: 'var(--accent)',
 	'stroke-width': 2,
 	opacity: 0.55,
 	'stroke-linecap': 'round',
@@ -589,9 +589,9 @@ export function renderSolide(solid: Solid): string {
 			break;
 		case 'cylindre':
 			body =
-				rect(55, 60, 90, 90, { fill: 'var(--blue-soft)' }) +
-				line(55, 60, 55, 150, { stroke: 'var(--blue)', 'stroke-width': 3 }) +
-				line(145, 60, 145, 150, { stroke: 'var(--blue)', 'stroke-width': 3 }) +
+				rect(55, 60, 90, 90, { fill: 'var(--accent-soft)' }) +
+				line(55, 60, 55, 150, { stroke: 'var(--accent)', 'stroke-width': 3 }) +
+				line(145, 60, 145, 150, { stroke: 'var(--accent)', 'stroke-width': 3 }) +
 				ellipse(100, 150, 45, 14, SHAPE_FILL) +
 				ellipse(100, 60, 45, 14, SHAPE_FILL);
 			break;
@@ -626,7 +626,7 @@ export function renderSolide(solid: Solid): string {
 				circle(100, 100, 60, SHAPE_FILL) +
 				ellipse(100, 100, 60, 18, {
 					fill: 'none',
-					stroke: 'var(--blue)',
+					stroke: 'var(--accent)',
 					'stroke-width': 2,
 					opacity: 0.5,
 				});

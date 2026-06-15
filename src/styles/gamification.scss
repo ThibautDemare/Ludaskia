@@ -25,7 +25,7 @@
 .progress-rang {
 	font-size: 18px;
 	font-weight: 800;
-	color: var(--blue);
+	color: var(--accent);
 }
 /* Mascotte évolutive : animée seulement ici (écran de contemplation).
    Entrée jouée une fois, puis boucle de repos douce selon la forme.
@@ -116,7 +116,7 @@ html.anim-reduced .mascotte-static {
 }
 .mascotte-bulle {
 	position: relative;
-	background: var(--blue-soft);
+	background: var(--accent-soft);
 	color: var(--ink);
 	border-radius: 14px;
 	padding: 8px 12px;
@@ -134,7 +134,7 @@ html.anim-reduced .mascotte-static {
 	transform: translateY(-50%);
 	border: 6px solid transparent;
 	border-left: 0;
-	border-right-color: var(--blue-soft);
+	border-right-color: var(--accent-soft);
 }
 .progress-rang-ico {
 	font-size: 22px;
@@ -151,10 +151,10 @@ html.anim-reduced .mascotte-static {
 	width: 100%;
 	max-width: 280px;
 	margin: 2px auto 0;
-	background: var(--blue-soft);
+	background: var(--accent-soft);
 }
 .progress-card .lvl-bar-fill {
-	background: var(--blue);
+	background: var(--accent);
 }
 .progress-sub {
 	font-size: 12px;
@@ -173,7 +173,7 @@ html.anim-reduced .mascotte-static {
 	text-align: left;
 }
 .obj-h {
-	color: var(--blue);
+	color: var(--accent);
 	font-size: 15px;
 	margin: 0 0 10px;
 	text-align: center;
@@ -230,7 +230,7 @@ html.anim-reduced .mascotte-static {
 	font-style: italic;
 }
 .card-record strong {
-	color: var(--blue);
+	color: var(--accent);
 }
 /* État « rien à réviser » : réussite valorisée, pas un creux grisé. */
 .card-record .rev-ok {
@@ -265,7 +265,7 @@ html.anim-reduced .mascotte-static {
 	font-family: var(--ui);
 }
 .lb h3 {
-	color: var(--blue);
+	color: var(--accent);
 	font-size: 16px;
 	margin: 0 0 12px;
 	text-align: center;
@@ -341,9 +341,9 @@ html.anim-reduced .mascotte-static {
 	font-family: var(--ui);
 	font-size: 15px;
 	font-weight: 700;
-	color: var(--blue);
+	color: var(--accent);
 	background: var(--paper);
-	border: 2px solid var(--blue-soft);
+	border: 2px solid var(--accent-soft);
 	border-radius: 14px;
 	padding: 12px 16px;
 	cursor: pointer;
@@ -354,7 +354,7 @@ html.anim-reduced .mascotte-static {
 }
 .reward-btn:hover {
 	transform: translateY(-1px);
-	border-color: var(--blue);
+	border-color: var(--accent);
 }
 .reward-count {
 	color: var(--muted);
@@ -362,7 +362,7 @@ html.anim-reduced .mascotte-static {
 	font-size: 13px;
 }
 .trophies-h {
-	color: var(--blue);
+	color: var(--accent);
 	font-size: 16px;
 	margin: 0 0 14px;
 	text-align: center;

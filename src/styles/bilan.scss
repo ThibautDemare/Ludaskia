@@ -11,7 +11,7 @@
 	font-family: var(--ui);
 	font-size: 16px;
 	font-weight: 700;
-	color: var(--blue);
+	color: var(--accent);
 	margin: 24px 0 10px;
 }
 .bc-top-actions {
@@ -25,17 +25,17 @@
 	font-size: 13px;
 	min-height: 40px;
 	padding: 9px 16px;
-	border: 1.5px solid var(--blue);
+	border: 1.5px solid var(--accent);
 	border-radius: 6px;
 	background: transparent;
-	color: var(--blue);
+	color: var(--accent);
 	cursor: pointer;
 	transition:
 		background 0.1s,
 		color 0.1s;
 }
 .bc-action-btn:hover {
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 }
 .bc-category {
@@ -82,18 +82,18 @@
 		transform 0.06s;
 }
 .bc-item:has(:checked) {
-	background: var(--blue-soft);
-	border-color: var(--blue);
+	background: var(--accent-soft);
+	border-color: var(--accent);
 }
 .bc-item:active {
 	transform: scale(0.98);
 }
 .bc-item:focus-within {
-	outline: 2px solid var(--blue);
+	outline: 2px solid var(--accent);
 	outline-offset: 2px;
 }
 .bc-item input[type='checkbox'] {
-	accent-color: var(--blue);
+	accent-color: var(--accent);
 	width: 22px;
 	height: 22px;
 	flex-shrink: 0;
@@ -119,18 +119,18 @@
 	user-select: none;
 }
 .bc-nbq-item:has(:checked) {
-	background: var(--blue-soft);
-	border-color: var(--blue);
+	background: var(--accent-soft);
+	border-color: var(--accent);
 }
 .bc-nbq-item input[type='radio'] {
-	accent-color: var(--blue);
+	accent-color: var(--accent);
 	width: 20px;
 	height: 20px;
 	flex-shrink: 0;
 }
 .bc-nbq-num {
 	font-weight: 700;
-	color: var(--blue);
+	color: var(--accent);
 }
 /* Sélecteur Bilan / Sprint (#64) : deux grandes cibles tactiles, parité visuelle
    avec le réglage « questions par leçon ». */
@@ -164,20 +164,20 @@
 /* Carte choisie : on double le codage (couleur seule insuffisante pour ce
    public, cf. avis UX enfant) — bordure plus épaisse, légère surélévation. */
 .bc-mode-item:has(:checked) {
-	background: var(--blue-soft);
-	border-color: var(--blue);
+	background: var(--accent-soft);
+	border-color: var(--accent);
 	border-width: 3px;
 	box-shadow: 0 4px 14px rgba(51, 108, 191, 0.25);
 }
 .bc-mode-item:focus-within {
-	outline: 2px solid var(--blue);
+	outline: 2px solid var(--accent);
 	outline-offset: 2px;
 }
 .bc-mode-item:active {
 	transform: scale(0.97);
 }
 .bc-mode-item input[type='radio'] {
-	accent-color: var(--blue);
+	accent-color: var(--accent);
 	width: 24px;
 	height: 24px;
 	flex-shrink: 0;
@@ -205,7 +205,7 @@
 	outline: none;
 }
 .bc-label-input:focus {
-	border-color: var(--blue);
+	border-color: var(--accent);
 }
 .bc-btns {
 	display: flex;
@@ -229,31 +229,31 @@
 	transform: scale(0.97);
 }
 .bc-btn-run {
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 	border: none;
 	min-height: 52px;
 	font-size: 17px;
 }
 .bc-btn-run:hover {
-	background: #1a3fa5;
+	background: var(--accent-dark);
 }
 .bc-btn-save {
 	background: transparent;
-	color: var(--blue);
-	border: 2px solid var(--blue);
+	color: var(--accent);
+	border: 2px solid var(--accent);
 }
 .bc-btn-save:hover {
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 }
 .bc-btn-print {
 	background: transparent;
-	color: var(--blue);
-	border: 2px solid var(--blue);
+	color: var(--accent);
+	border: 2px solid var(--accent);
 }
 .bc-btn-print:hover {
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 }
 .bc-btn:disabled {
@@ -276,7 +276,7 @@
 	margin: 0 0 6px;
 }
 .bc-scope strong {
-	color: var(--blue);
+	color: var(--accent);
 }
 
 /* Ligne d'action principale + compteur de leçons choisies */
@@ -302,7 +302,7 @@
 	font-family: var(--ui);
 	font-size: 14px;
 	font-weight: 700;
-	color: var(--blue);
+	color: var(--accent);
 	cursor: pointer;
 	padding: 10px 0;
 	list-style: none;
@@ -341,7 +341,7 @@
 	font-family: var(--ui);
 	font-size: 17px;
 	font-weight: 700;
-	color: var(--blue);
+	color: var(--accent);
 	margin: 0 0 12px;
 }
 .favori-list {
@@ -395,12 +395,12 @@
 		color 0.1s;
 }
 .favori-btn-run {
-	background: var(--blue);
+	background: var(--accent);
 	color: #fff;
 	border: none;
 }
 .favori-btn-run:hover {
-	background: #1a3fa5;
+	background: var(--accent-dark);
 }
 .favori-btn-del {
 	background: transparent;

@@ -11,15 +11,18 @@
 }
 
 :root {
-	--blue: #336cbf;
-	--blue-dark: #2a5aa0;
-	--blue-soft: #e9eff8;
-	--clock-min: #e8662a; /* aiguille des minutes (#88) — corail, distinct du bleu des heures ; 1er token du moteur de figures */
+	/* Accent de marque = VERT (thème par défaut). Le bleu historique est devenu le
+	   thème déblocable « ciel » (voir themes.scss). Les tokens nomment un RÔLE
+	   (--accent…), pas une teinte. */
+	--accent: #2f7d52;
+	--accent-dark: #225c3c;
+	--accent-soft: #e4f0e8;
+	--clock-min: #e8662a; /* aiguille des minutes (#88) — corail, distinct de l'accent des heures ; 1er token du moteur de figures */
 	--ink: #1a1a1a;
 	--grey: #545454;
 	--muted: #9aa1ac;
 	--paper: #ffffff;
-	--page-bg: #eef1f5; /* fond de page (réécrit par les thèmes ; jamais --paper, gardé blanc) */
+	--page-bg: #eef3ee; /* fond de page (réécrit par les thèmes ; jamais --paper, gardé blanc) */
 	--ok: #2e7d32;
 	--ko: #c62828;
 	--warn: #b26a00;

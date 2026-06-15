@@ -54,7 +54,7 @@
 	vertical-align: -0.05em;
 }
 .cl-h {
-	color: var(--blue);
+	color: var(--accent);
 }
 .cl-m {
 	color: var(--clock-min);
@@ -83,7 +83,7 @@
 }
 .heure-min:focus {
 	outline: none;
-	border-bottom-color: var(--blue);
+	border-bottom-color: var(--accent);
 }
 .heure-sep {
 	font-weight: 800;

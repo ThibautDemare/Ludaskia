@@ -13,7 +13,7 @@
 .mode-choice-title {
 	font-size: 22px;
 	font-weight: 800;
-	color: var(--blue);
+	color: var(--accent);
 	margin: 0 0 4px;
 }
 .mode-choice-lesson {
@@ -34,7 +34,7 @@
 	width: 100%;
 	min-height: 64px;
 	padding: 16px 20px;
-	background: var(--blue-soft);
+	background: var(--accent-soft);
 	border: 2px solid transparent;
 	border-radius: 14px;
 	cursor: pointer;
@@ -51,7 +51,7 @@
 	transform: translateY(1px);
 }
 .mode-btn.recommended {
-	border-color: var(--blue);
+	border-color: var(--accent);
 }
 .mode-btn-ico {
 	font-size: 30px;
@@ -112,7 +112,7 @@
 	min-height: 56px;
 	padding: 12px 20px;
 	background: var(--paper);
-	border: 2px solid var(--blue-soft);
+	border: 2px solid var(--accent-soft);
 	border-radius: 14px;
 	cursor: pointer;
 	text-align: left;
@@ -122,7 +122,7 @@
 		transform 0.08s ease;
 }
 .etude-btn:hover {
-	border-color: var(--blue);
+	border-color: var(--accent);
 	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
 }
 .etude-btn:active {
@@ -148,13 +148,13 @@
 }
 .lqcm-bar {
 	height: 10px;
-	background: var(--blue-soft);
+	background: var(--accent-soft);
 	border-radius: 999px;
 	overflow: hidden;
 }
 .lqcm-bar-fill {
 	height: 100%;
-	background: var(--blue);
+	background: var(--accent);
 	border-radius: 999px;
 	transition: width 0.25s ease;
 }
@@ -190,7 +190,7 @@
 	font-size: 14px;
 	line-height: 1.4;
 	color: var(--ink);
-	background: var(--blue-soft);
+	background: var(--accent-soft);
 	border-radius: 10px;
 	padding: 10px 14px;
 }
@@ -218,9 +218,9 @@
 	padding: 0 10px;
 	font-size: 1.5rem;
 	font-weight: 700;
-	border: 2px dashed var(--blue);
+	border: 2px dashed var(--accent);
 	border-radius: 10px;
-	background: var(--blue-soft);
+	background: var(--accent-soft);
 	cursor: pointer;
 	vertical-align: middle;
 }
@@ -280,9 +280,9 @@
 	padding: 0 14px;
 	font-size: 1.25rem;
 	font-weight: 700;
-	border: 2px dashed var(--blue);
+	border: 2px dashed var(--accent);
 	border-radius: 10px;
-	background: var(--blue-soft);
+	background: var(--accent-soft);
 	cursor: default;
 }
 .lord-cell.rempli {
@@ -296,7 +296,7 @@
 	left: 6px;
 	font-size: 0.7rem;
 	font-weight: 800;
-	color: var(--blue);
+	color: var(--accent);
 	opacity: 0.55;
 }
 .lord-cell.rempli .lord-num {
@@ -360,7 +360,7 @@
 }
 /* Une colonne = un thème : un titre + une zone qui accueille les tuiles. */
 .ltri-col {
-	border: 2px solid var(--blue-soft);
+	border: 2px solid var(--accent-soft);
 	border-radius: 14px;
 	overflow: hidden;
 	background: var(--paper);
@@ -369,8 +369,8 @@
 	font-family: var(--ui);
 	font-weight: 800;
 	text-align: center;
-	color: var(--blue);
-	background: var(--blue-soft);
+	color: var(--accent);
+	background: var(--accent-soft);
 	padding: 8px 10px;
 }
 .ltri-zone {
@@ -423,8 +423,8 @@
 }
 /* Tuile du bac sélectionnée (1er temps du tap) : mise en avant nette. */
 .ltri-tuile.ltri-sel {
-	border-color: var(--blue);
-	background: var(--blue);
+	border-color: var(--accent);
+	background: var(--accent);
 	color: #fff;
 	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }

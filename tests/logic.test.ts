@@ -113,6 +113,7 @@ import {
 	commonCategoryId,
 	isPosedLesson,
 	isOrderingLesson,
+	isTriLesson,
 	CATEGORIES,
 } from '../src/core/catalog';
 import { VOCAB_LESSONS, trierAlpha } from '../src/data/francais/vocabulaire';
@@ -152,6 +153,7 @@ import {
 	motComplet,
 } from '../src/data/francais/mbp';
 import { GROUPES_SENS, SENS_FIGURE_LESSONS } from '../src/data/francais/sens-figure';
+import { CHAMPS, TOUS_LES_MOTS, CHAMPS_LESSONS } from '../src/data/francais/champs-lexicaux';
 import {
 	FAMILLES,
 	PREFIXES,
@@ -2876,6 +2878,171 @@ describe('vocabulaire — familles, préfixes, suffixes (#113)', () => {
 	test('catalogue : leçon « familles, préfixes, suffixes » en Vocabulaire', () => {
 		const lesson = getLessonById('fr-vocab-familles')!;
 		expect(lesson.category).toBe('fr-vocabulaire');
+	});
+});
+
+describe('vocabulaire — champs lexicaux (#114)', () => {
+	const ID_MOTS = 'fr-vocab-champs-mots';
+	const ID_TRI = 'fr-vocab-champs-tri';
+
+	test('banque : ≥ 30 mots, chaque champ ≥ 4 mots (dont ≥ 3 non ambigus), défs OK', () => {
+		expect(TOUS_LES_MOTS.length).toBeGreaterThanOrEqual(30);
+		for (const c of CHAMPS) {
+			expect(c.mots.length, c.id).toBeGreaterThanOrEqual(4); // QCM 4 options du même champ
+			// Intrus (3 membres) & tri (3 par thème) ne tirent que des mots non ambigus.
+			expect(c.mots.filter((m) => !m.ambigu).length, c.id).toBeGreaterThanOrEqual(3);
+			expect(c.nom.length).toBeGreaterThan(0);
+			for (const m of c.mots) {
+				expect(m.mot.length, c.id).toBeGreaterThan(0);
+				expect(m.def.length, m.mot).toBeGreaterThan(10);
+			}
+		}
+	});
+
+	test('banque : chaque mot est mono-thématique (aucun doublon entre champs)', () => {
+		// L'intrus et le tri supposent qu'un mot appartient à UN seul thème.
+		expect(new Set(TOUS_LES_MOTS).size).toBe(TOUS_LES_MOTS.length);
+	});
+
+	test('mots stockés sans article (tuiles homogènes), un seul mot par tuile', () => {
+		for (const m of TOUS_LES_MOTS) {
+			expect(m, m).not.toMatch(/^(le |la |les |l’|un |une |des )/i);
+		}
+	});
+
+	test('flag « ambigu » : les mots transversaux connus sont bien marqués', () => {
+		const motsAmbigus = new Set(
+			CHAMPS.flatMap((c) => c.mots.filter((m) => m.ambigu).map((m) => m.mot)),
+		);
+		// Mots relief/végétaux pouvant relever de plusieurs champs (cf. revue pédago).
+		for (const m of ['fougère', 'mousse', 'ronce', 'falaise', 'galet', 'torrent']) {
+			expect(motsAmbigus.has(m), m).toBe(true);
+		}
+		// Un mot mono-thématique franc n'est pas marqué.
+		expect(motsAmbigus.has('averse')).toBe(false);
+		expect(motsAmbigus.has('poignet')).toBe(false);
+	});
+
+	test('mots « ambigus » : exclus de l’intrus et du tri, gardés pour définition → mot', () => {
+		const ambigus = new Set(
+			CHAMPS.flatMap((c) => c.mots.filter((m) => m.ambigu).map((m) => m.mot)),
+		);
+		expect(ambigus.size).toBeGreaterThan(0); // le mécanisme est réellement utilisé
+		const typeMots = CHAMPS_LESSONS.find((l) => l.id === ID_MOTS)!.exerciseType;
+		const typeTri = CHAMPS_LESSONS.find((l) => l.id === ID_TRI)!.exerciseType;
+		const vusEnDefinition = new Set<string>();
+		for (let i = 0; i < 500; i++) {
+			const ex = typeMots.generate('qcm');
+			if (ex.type !== 'qcm') continue;
+			if (ex.question.includes('n’appartient pas')) {
+				// Intrus : aucune option (membres + intrus) n'est un mot ambigu.
+				for (const c of ex.choices) expect(ambigus.has(c), c).toBe(false);
+			} else {
+				// Définition → mot : les mots ambigus restent jouables (cible/distracteur).
+				for (const c of ex.choices) if (ambigus.has(c)) vusEnDefinition.add(c);
+			}
+		}
+		for (let i = 0; i < 300; i++) {
+			const ex = typeTri.generate('tri');
+			if (ex.type !== 'tuilesTri') continue;
+			for (const t of ex.mots) expect(ambigus.has(t.mot), t.mot).toBe(false);
+		}
+		expect(vusEnDefinition.size).toBeGreaterThan(0); // au moins un mot ambigu vu en définition
+	});
+
+	test('« Le mot juste » : QCM 4 options, bonne réponse incluse, énoncé + explication', () => {
+		const type = CHAMPS_LESSONS.find((l) => l.id === ID_MOTS)!.exerciseType;
+		for (let i = 0; i < 200; i++) {
+			const ex = type.generate('qcm');
+			expect(ex.type).toBe('qcm');
+			if (ex.type !== 'qcm') continue;
+			expect(ex.choices.length).toBe(4);
+			expect(new Set(ex.choices).size).toBe(4); // options distinctes
+			expect(ex.choices).toContain(ex.answer);
+			expect(ex.choices.every((c) => TOUS_LES_MOTS.includes(c))).toBe(true);
+			expect(ex.question).toContain('@'); // emplacement du champ (repli texte)
+			expect((ex.explication ?? '').length).toBeGreaterThan(10);
+		}
+	});
+
+	test('« Le mot juste » : les deux formats (définition, intrus) apparaissent', () => {
+		const type = CHAMPS_LESSONS.find((l) => l.id === ID_MOTS)!.exerciseType;
+		let definitions = 0;
+		let intrus = 0;
+		for (let i = 0; i < 300; i++) {
+			const ex = type.generate('qcm');
+			if (ex.type !== 'qcm') continue;
+			if (ex.question.includes('n’appartient pas')) intrus++;
+			else definitions++;
+		}
+		expect(definitions).toBeGreaterThan(0);
+		expect(intrus).toBeGreaterThan(0);
+	});
+
+	test('intrus : la réponse n’est jamais un mot du thème visé', () => {
+		const type = CHAMPS_LESSONS.find((l) => l.id === ID_MOTS)!.exerciseType;
+		for (let i = 0; i < 300; i++) {
+			const ex = type.generate('qcm');
+			if (ex.type !== 'qcm' || !ex.question.includes('n’appartient pas')) continue;
+			// Le champ visé est nommé dans l'énoncé ; l'intrus vient d'un autre champ.
+			const champVise = CHAMPS.find((c) => ex.question.includes(`« ${c.nom} »`))!;
+			expect(champVise).toBeTruthy();
+			expect(champVise.mots.some((m) => m.mot === ex.answer)).toBe(false);
+		}
+	});
+
+	test('« Ranger par thème » : 2 thèmes distincts, 6 tuiles fournies, cat correcte', () => {
+		const type = CHAMPS_LESSONS.find((l) => l.id === ID_TRI)!.exerciseType;
+		for (let i = 0; i < 200; i++) {
+			const ex = type.generate('tri');
+			expect(ex.type).toBe('tuilesTri');
+			if (ex.type !== 'tuilesTri') continue;
+			expect(ex.categories.length).toBe(2);
+			expect(ex.categories[0]).not.toBe(ex.categories[1]);
+			expect(ex.mots.length).toBe(6); // 3 + 3
+			expect(new Set(ex.mots.map((m) => m.mot)).size).toBe(6);
+			// 3 tuiles par thème, et chaque tuile appartient réellement à son champ.
+			const champA = CHAMPS.find((c) => c.nom === ex.categories[0])!;
+			const champB = CHAMPS.find((c) => c.nom === ex.categories[1])!;
+			for (const t of ex.mots) {
+				const source = t.cat === 0 ? champA : champB;
+				expect(
+					source.mots.some((m) => m.mot === t.mot),
+					t.mot,
+				).toBe(true);
+			}
+			expect(ex.mots.filter((m) => m.cat === 0).length).toBe(3);
+		}
+	});
+
+	test('tri : pas de réponse texte unique (corrigé par le runner)', () => {
+		const type = CHAMPS_LESSONS.find((l) => l.id === ID_TRI)!.exerciseType;
+		const ex = type.generate('tri');
+		expect(type.check(ex, 'la météo')).toBe(false);
+	});
+
+	test('genLessonItem : repli texte (une tuile → son thème) pour fiche/bilan', () => {
+		const lesson = getLessonById(ID_TRI)!;
+		expect(isTriLesson(lesson)).toBe(true);
+		const it = genLessonItem(lesson);
+		expect(it.kind).toBe('text');
+		expect(it.text).toContain('@');
+		expect(checkItemAnswer(it, String(it.answer))).toBe(true);
+		expect(checkItemAnswer(it, 'thème inexistant')).toBe(false);
+	});
+
+	test('isTriLesson : vrai pour le tri, faux pour les autres', () => {
+		expect(isTriLesson(getLessonById(ID_TRI)!)).toBe(true);
+		expect(isTriLesson(getLessonById(ID_MOTS)!)).toBe(false);
+		expect(isTriLesson(getLessonById('math-tables-addition')!)).toBe(false);
+	});
+
+	test('catalogue : les deux leçons sont en Vocabulaire, rubrique « Champs lexicaux »', () => {
+		for (const id of [ID_MOTS, ID_TRI]) {
+			const lesson = getLessonById(id)!;
+			expect(lesson.category).toBe('fr-vocabulaire');
+			expect(lesson.rubrique).toBe('Champs lexicaux');
+		}
 	});
 });
 

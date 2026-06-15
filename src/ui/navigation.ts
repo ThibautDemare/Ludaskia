@@ -17,6 +17,7 @@ import { buildLessonFiche } from '../core/build';
 import { runLeconQcm } from './lecon-qcm';
 import { runLeconTuiles } from './lecon-tuiles';
 import { runLeconOrdre } from './lecon-ordre';
+import { runLeconTri } from './lecon-tri';
 import { setInputCounter, setSessionItems, renderItem } from '../core/items';
 import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
@@ -488,6 +489,10 @@ export function runLecon(id: string) {
 		}
 		if (t === 'tuilesOrdre') {
 			runLeconOrdre(id, mode);
+			return;
+		}
+		if (t === 'tuilesTri') {
+			runLeconTri(id, mode);
 			return;
 		}
 	}

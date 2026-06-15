@@ -340,3 +340,97 @@
 .lord-tuile:disabled {
 	cursor: default;
 }
+
+/* ---- Runner « ranger par thème » de vocabulaire (#114, champs lexicaux) ----
+   Deux colonnes-thèmes (zones de dépôt) + un bac de tuiles. Mobile-first : les
+   colonnes s'empilent sur petit écran, côte à côte dès qu'il y a la place. */
+.ltri-cols {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin: 18px 0 8px;
+}
+@media (min-width: 520px) {
+	.ltri-cols {
+		flex-direction: row;
+	}
+	.ltri-col {
+		flex: 1 1 0;
+	}
+}
+/* Une colonne = un thème : un titre + une zone qui accueille les tuiles. */
+.ltri-col {
+	border: 2px solid var(--blue-soft);
+	border-radius: 14px;
+	overflow: hidden;
+	background: var(--paper);
+}
+.ltri-col-titre {
+	font-family: var(--ui);
+	font-weight: 800;
+	text-align: center;
+	color: var(--blue);
+	background: var(--blue-soft);
+	padding: 8px 10px;
+}
+.ltri-zone {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	justify-content: center;
+	align-content: flex-start;
+	min-height: 72px;
+	padding: 12px;
+}
+/* Tuile posée dans une colonne (cliquable pour la retirer tant qu'on n'a pas
+   vérifié) ; reprend l'allure d'une tuile pleine. */
+.ltri-posee {
+	position: relative;
+	min-width: 72px;
+	padding: 0 14px;
+	background: #fff;
+}
+.ltri-posee.correct {
+	border-color: var(--ok);
+	background: #e7f6e7;
+	color: var(--ok);
+}
+.ltri-posee.wrong {
+	border-color: var(--ko);
+	background: #fbe4e4;
+	color: var(--ko);
+}
+/* Marque ✓/✗ : double la couleur d'un signe (daltonisme). */
+.ltri-mark {
+	position: absolute;
+	top: -8px;
+	right: -8px;
+	width: 22px;
+	height: 22px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.85rem;
+	font-weight: 800;
+	border-radius: 50%;
+	color: #fff;
+}
+.ltri-posee.correct .ltri-mark {
+	background: var(--ok);
+}
+.ltri-posee.wrong .ltri-mark {
+	background: var(--ko);
+}
+/* Tuile du bac sélectionnée (1er temps du tap) : mise en avant nette. */
+.ltri-tuile.ltri-sel {
+	border-color: var(--blue);
+	background: var(--blue);
+	color: #fff;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+/* Bon classement montré après une erreur. */
+.ltri-solution {
+	margin-top: 8px;
+	font-size: 0.95rem;
+	line-height: 1.5;
+}

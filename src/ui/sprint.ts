@@ -17,6 +17,7 @@ import {
 	genLessonItem,
 	isPosedLesson,
 	isOrderingLesson,
+	isTriLesson,
 	SUBJECTS,
 	CATEGORIES,
 } from '../core/catalog';
@@ -70,10 +71,11 @@ function lessonsForFilter(f: SprintFilter): LessonDef[] {
 				: f.type === 'lessons'
 					? lessonsForIds(f.ids)
 					: getAllLessons();
-	// Les opérations posées (#97, grille multi-cellules) et le rangement d'une
-	// suite (#108, plusieurs tuiles à ordonner) ne se jouent pas « une réponse à
-	// la fois » : on les écarte du sprint chronométré.
-	return base.filter((d) => !isPosedLesson(d) && !isOrderingLesson(d));
+	// Les opérations posées (#97, grille multi-cellules), le rangement d'une suite
+	// (#108, plusieurs tuiles à ordonner) et le tri par thème (#114, tuiles à
+	// classer) ne se jouent pas « une réponse à la fois » : on les écarte du
+	// sprint chronométré.
+	return base.filter((d) => !isPosedLesson(d) && !isOrderingLesson(d) && !isTriLesson(d));
 }
 
 function filterLabel(f: SprintFilter): string {

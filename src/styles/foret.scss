@@ -1,0 +1,52 @@
+/* Bande décorative « forêt » en pied d'accueil.
+   Le SVG est PRÉ-GÉNÉRÉ (public/foret-pied.svg, via tools/forest/) puis inséré
+   dans le DOM au chargement — donc l'animation « vent » ci-dessous (classe .sway
+   portée par chaque arbre) peut être désactivée par l'option « animations réduites »
+   du profil (html.anim-reduced) comme par le réglage système (prefers-reduced-motion).
+   Purement décoratif (aria-hidden) ; affiché uniquement sur l'accueil. */
+
+.home-foret {
+	width: 100vw;
+	margin-left: calc(50% - 50vw); /* full-bleed : déborde .home jusqu'aux bords de l'écran */
+	margin-top: 12px;
+	line-height: 0;
+	pointer-events: none;
+}
+.home-foret .foret-svg {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+/* L'accueil n'a pas de marge basse : la forêt touche le bas de la page. */
+.home-wide {
+	margin-bottom: 0;
+}
+
+/* Effet « vent » : oscillation douce, pivot à la base de chaque arbre. La durée et
+   le déphasage sont portés en style inline par le SVG (un arbre = une cadence). */
+@keyframes foret-sway {
+	0%,
+	100% {
+		transform: rotate(-1.1deg);
+	}
+	50% {
+		transform: rotate(1.1deg);
+	}
+}
+.home-foret .sway {
+	transform-box: fill-box;
+	transform-origin: 50% 100%;
+	animation-name: foret-sway;
+	animation-timing-function: ease-in-out;
+	animation-iteration-count: infinite;
+	will-change: transform;
+}
+/* Pas de mouvement si l'utilisateur réduit les animations (profil OU système). */
+html.anim-reduced .home-foret .sway {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.home-foret .sway {
+		animation: none;
+	}
+}

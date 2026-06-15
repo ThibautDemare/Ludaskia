@@ -22,6 +22,7 @@ import './styles/catalog.scss';
 import './styles/francais.scss';
 import './styles/orthographe.scss';
 import './styles/version-update.scss';
+import './styles/foret.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -368,6 +369,18 @@ function wireDOM() {
 	});
 	// Au chargement : on affiche la vue désignée par le hash (accueil par défaut)
 	route();
+
+	// Bande décorative « forêt » de pied d'accueil : SVG pré-généré, inséré dans le
+	// DOM (pour que l'animation « vent » respecte l'option « animations réduites »).
+	const foretEl = document.getElementById('homeForet');
+	if (foretEl) {
+		fetch(`${import.meta.env.BASE_URL}foret-pied.svg`)
+			.then((r) => (r.ok ? r.text() : ''))
+			.then((svg) => {
+				if (svg) foretEl.innerHTML = svg;
+			})
+			.catch(() => {}); // décoration non critique : on ignore l'échec
+	}
 }
 
 // (1) hook d'écriture → (2) profils → (3) câblage DOM + route initiale.

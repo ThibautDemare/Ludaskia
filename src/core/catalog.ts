@@ -11,6 +11,7 @@ import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 import { VOCAB_LESSONS } from '../data/francais/vocabulaire';
 import { SENS_FIGURE_LESSONS } from '../data/francais/sens-figure';
 import { FAMILLES_LESSONS } from '../data/francais/familles';
+import { CHAMPS_LESSONS } from '../data/francais/champs-lexicaux';
 import { GRAMMAIRE_SUJET_LESSONS } from '../data/francais/grammaire-sujet';
 import { CLASSES_LESSONS } from '../data/francais/classes-mots';
 import { ACCORD_LESSONS } from '../data/francais/accords';
@@ -395,6 +396,20 @@ const FAMILLES_LESSONS_DEFS: LessonDef[] = FAMILLES_LESSONS.map((d) => ({
 	exerciseType: d.exerciseType,
 }));
 
+/* ---------- Vocabulaire — champs lexicaux (#114) ----------
+   Deux leçons sous la rubrique « Champs lexicaux » : « Le mot juste » (QCM 4
+   options : définition → mot + intrus) et « Ranger par thème » (tri de tuiles
+   dans deux thèmes, runner ui/lecon-tri.ts). */
+const CHAMPS_LESSONS_DEFS: LessonDef[] = CHAMPS_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'francais',
+	category: 'fr-vocabulaire',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+	rubrique: 'Champs lexicaux',
+}));
+
 /* ---------- Grammaire — pronom sujet & accord sujet-verbe (#115) ----------
    2 leçons QCM ; les formes sont lues depuis la base de conjugaison. */
 const GRAMMAIRE_SUJET_LESSONS_DEFS: LessonDef[] = GRAMMAIRE_SUJET_LESSONS.map((d) => ({
@@ -461,6 +476,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...VOCAB_LESSONS_DEFS,
 	...SENS_FIGURE_LESSONS_DEFS,
 	...FAMILLES_LESSONS_DEFS,
+	...CHAMPS_LESSONS_DEFS,
 	...GRAMMAIRE_SUJET_LESSONS_DEFS,
 	...CLASSES_LESSONS_DEFS,
 ];
@@ -477,6 +493,15 @@ export function isPosedLesson(lesson: LessonDef): boolean {
    Reste jouable en bilan/fiche/révision via le repli texte de genLessonItem. */
 export function isOrderingLesson(lesson: LessonDef): boolean {
 	return lesson.exerciseType.generate().type === 'tuilesOrdre';
+}
+
+/* Une leçon « ranger par thème » (#114, champs lexicaux) se joue en triant
+   plusieurs tuiles dans deux colonnes : interaction d'écran dédiée
+   (ui/lecon-tri.ts), incompatible avec le sprint « une réponse à la fois » →
+   exclue de son tirage. Reste jouable en bilan/fiche/révision via le repli
+   texte de genLessonItem (une tuile → « dans quel thème ? »). */
+export function isTriLesson(lesson: LessonDef): boolean {
+	return lesson.exerciseType.generate().type === 'tuilesTri';
 }
 
 /* Une leçon math « héritée » est branchée sur le générateur numérique bilanQ
@@ -511,6 +536,18 @@ export function genLessonItem(lesson: LessonDef): Item {
 			text: `${ex.question} (${ex.tuiles.join(', ')}) @`,
 			answer: ex.ordre.join(' '),
 			answers: [ex.ordre.join(', ')],
+			kind: 'text',
+			_lesson: lesson.id,
+		};
+	}
+	// Tri par thème (#114) : l'interaction (deux colonnes) vit dans son runner.
+	// Repli TEXTE non interactif pour fiche/bilan/révision : une tuile tirée au
+	// sort de la question et son thème attendu (« la météo » / « la mer »).
+	if (ex.type === 'tuilesTri') {
+		const tuile = ex.mots[0]; // l'ordre des tuiles est déjà mélangé à la génération
+		return {
+			text: `Dans quel thème ranger « ${tuile.mot} » ? (${ex.categories[0]} / ${ex.categories[1]}) @`,
+			answer: ex.categories[tuile.cat],
 			kind: 'text',
 			_lesson: lesson.id,
 		};

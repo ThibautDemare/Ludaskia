@@ -14,8 +14,9 @@ grandeurs et mesures, géométrie). Côté
 canonique — **grammaire**, **conjugaison**, **orthographe**, **vocabulaire**
 (#107) ; **grammaire** porte le **pronom sujet et l'accord sujet-verbe** (#115)
 et les **classes de mots / articles / adverbes** (#116), **vocabulaire** accueille
-l'ordre alphabétique (#108), le **sens propre / figuré** (#112) et les
-**familles de mots / préfixes / suffixes** (#113), **orthographe** réunit les dictées de mots, les
+l'ordre alphabétique (#108), le **sens propre / figuré** (#112), les
+**familles de mots / préfixes / suffixes** (#113) et les **champs lexicaux**
+(#114), **orthographe** réunit les dictées de mots, les
 **accords** (pluriel/féminin, #109), les **homophones grammaticaux**
 (a/à, et/est…, #110) et les **règles** (m devant m/b/p, #111). Génération aléatoire
 d'exercices, correction instantanée, chronomètre, et une couche de gamification
@@ -144,6 +145,20 @@ bonne suite est **calculée** par `trierAlpha` (`localeCompare` fr), jamais fig�
 Joué par un runner d'écran dédié `ui/lecon-ordre.ts` ; **exclu du sprint**
 (`isOrderingLesson`, comme la posée), avec un **repli texte** en bilan/fiche/
 révision (genLessonItem : « écris les mots dans l'ordre »).
+**`francais/champs-lexicaux.ts`** (#114) : catégorie **Vocabulaire**, rubrique
+**« Champs lexicaux »**, deux leçons. Banque `CHAMPS` de mots **précis/rares**
+(météo, corps, cuisine, forêt, mer, école, ville, émotions, montagne, jardin),
+mots sans article + définition « enfant », relue par l'agent pédagogue. **« Le
+mot juste »** (`fr-vocab-champs-mots`) : QCM 4 options alternant **définition →
+mot** (distracteurs du même champ) et **intrus** (3 mots d'un champ + 1 d'un
+autre). **« Ranger par thème »** (`fr-vocab-champs-tri`) : `Exercise`
+**`tuilesTri`** `{question, categories: [t1, t2], mots: [{mot, cat}]}` — l'enfant
+trie des tuiles fournies dans 2 thèmes (runner `ui/lecon-tri.ts`), **exclu du
+sprint** (`isTriLesson`), repli texte en bilan/fiche (une tuile → son thème). Un
+mot pouvant relever de plusieurs champs (relief, plante sauvage…) est marqué
+`ambigu` : **conservé dans la banque** et dans « définition → mot », mais **exclu
+de l'intrus et du tri** (qui croisent deux champs) via `motsNets` — on ne retire
+jamais un mot de la banque, on le flague pour le format concerné.
 **`maths/mesures.ts`** (#89) : moteur de **conversions d'unités** partagé par
 4 leçons de « Grandeurs et mesures » — `mes-longueurs` (m↔cm, km↔m),
 `mes-masses` (kg↔g), `mes-contenances` (L↔cL), `mes-durees` (h↔min + fractions
@@ -285,7 +300,8 @@ le dessin 3D (faces cachées).
   (`--clock-min`…) ; styles dans `src/styles/figures.scss`.
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
   (`text` | `qcm` | `tuilesNombre` (numération #98) | `tuilesOrdre` (ordre
-  alphabétique #108 : suite mélangée + suite triée) | `posed` (calcul posé #97 :
+  alphabétique #108 : suite mélangée + suite triée) | `tuilesTri` (champs
+  lexicaux #114 : tuiles + thème correct de chacune) | `posed` (calcul posé #97 :
   op + opérandes) | interactions ortho), interface **`ExerciseType`** : `modes?`
   (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
   l'ordre d'affichage), `generate(mode?)`, `check()`. Helpers **`hasMode`** et
@@ -453,6 +469,13 @@ le dessin 3D (faces cachées).
   immédiat case par case (✓/✗) + bon ordre montré ; parité `recordLessonRun`. Routé
   par `runLecon` quand le mode produit un `tuilesOrdre`. Interaction validée côté
   UX enfant (tap fiable au doigt, drag en appoint).
+- **`lecon-tri.ts`** — runner **« ranger par thème »** d'une leçon de vocabulaire
+  (#114, champs lexicaux). « Une question à la fois » : l'enfant trie des
+  tuiles-mots **fournies** dans **deux colonnes-thèmes** par **tap en deux temps**
+  (taper une tuile la sélectionne, taper une colonne l'y dépose) ou glisser-déposer ;
+  **taper** une tuile posée la renvoie au bac. Feedback immédiat tuile par tuile
+  (✓/✗) + bon classement montré ; parité `recordLessonRun`. Routé par `runLecon`
+  quand le mode produit un `tuilesTri`. Calqué sur `lecon-ordre.ts`.
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
   **filtrable** (toutes matières / une matière / une catégorie / **une sélection
   précise de leçons** via `startCustomSprint`, #64) via un écran de

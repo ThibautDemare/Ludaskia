@@ -34,6 +34,15 @@ export type Exercise =
 	// alphabétique. `tuiles` = la suite mélangée affichée ; `ordre` = la bonne
 	// suite triée (calculée, jamais codée en dur). Mono-mode (runner dédié).
 	| { type: 'tuilesOrdre'; question: string; tuiles: string[]; ordre: string[] }
+	// Vocabulaire (#114) — champs lexicaux : l'enfant range des tuiles-mots FOURNIES
+	// dans deux thèmes (catégories). `mots` porte la catégorie correcte de chaque
+	// tuile (0 ou 1) ; corrigé tuile par tuile par son runner (ui/lecon-tri.ts).
+	| {
+			type: 'tuilesTri';
+			question: string;
+			categories: [string, string];
+			mots: { mot: string; cat: 0 | 1 }[];
+	  }
 	// Calcul posé (#97) — opération en colonnes ; le catalogue en fait un Item
 	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.
 	| { type: 'posed'; op: '+' | '-' | 'x'; a: number; b: number }
@@ -80,10 +89,11 @@ export function defaultMode(type: ExerciseType): ExerciseMode | undefined {
    Accents et apostrophes exigés. Couvre tous les types : comparaison à `answer`
    (+ variantes `answers` pour 'text'). */
 export function checkAnswer(exercise: Exercise, input: string): boolean {
-	// Le calcul posé (corrigé cellule par cellule) et le rangement d'une suite
-	// (#108, corrigé par son runner / sa propre check) n'ont pas de réponse texte
-	// unique : ils ne passent jamais par cette vérification générique.
-	if (exercise.type === 'posed' || exercise.type === 'tuilesOrdre') return false;
+	// Le calcul posé (corrigé cellule par cellule), le rangement d'une suite (#108)
+	// et le tri par thème (#114) — corrigés par leur runner — n'ont pas de réponse
+	// texte unique : ils ne passent jamais par cette vérification générique.
+	if (exercise.type === 'posed' || exercise.type === 'tuilesOrdre' || exercise.type === 'tuilesTri')
+		return false;
 	const normalized = normalizeText(input);
 	if (normalized === normalizeText(exercise.answer)) return true;
 	if (exercise.type === 'text') {

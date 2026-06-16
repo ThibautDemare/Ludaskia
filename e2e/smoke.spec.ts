@@ -11,6 +11,10 @@ test("l'accueil se charge sans erreur", async ({ page }) => {
 	const errors = watchErrors(page);
 	await gotoHash(page, 'accueil');
 	await expect(page.locator('#btnVerify')).toBeHidden(); // pas en exercice
+	// L'identité est portée par l'en-tête (logo « arbre » dans sa pastille, #182).
+	await expect(page.locator('.toolbar-logo img')).toBeVisible();
+	// Le bloc d'accueil n'affiche plus le nom « Ludaskia » (plus de doublon).
+	await expect(page.locator('#home .big')).not.toContainText('Ludaskia');
 	expect(errors).toEqual([]);
 });
 

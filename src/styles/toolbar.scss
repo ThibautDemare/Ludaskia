@@ -18,6 +18,29 @@
 	font-weight: 700;
 	letter-spacing: 0.3px;
 	margin-right: auto;
+	/* Logo + nom alignés sur une ligne (le logo à gauche du mot). */
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+/* Pastille blanche derrière le logo de l'en-tête : le feuillage vert reste
+   lisible sur n'importe quel fond accent (vert, bleu, orange, teal, rose).
+   --paper n'est jamais réécrit par les thèmes. */
+.toolbar-logo {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	background: var(--paper);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+.toolbar-logo img {
+	display: block;
+	height: 22px;
+	width: auto;
 }
 .toolbar button {
 	font: inherit;

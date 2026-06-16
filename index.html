@@ -12,7 +12,12 @@
 	</head>
 	<body>
 		<div class="toolbar">
-			<h1>Ludaskia</h1>
+			<h1>
+				<!-- Logo « arbre » dans une pastille blanche : contraste garanti sur
+				     le fond accent quel que soit le thème (vert, bleu, orange…). -->
+				<span class="toolbar-logo"><img src="/logo.png" alt="" aria-hidden="true" /></span>
+				Ludaskia
+			</h1>
 			<span class="toolbar-xp" id="xpBadge" style="display: none"></span>
 			<div class="profile-dd" id="profileDD">
 				<button
@@ -33,11 +38,10 @@
 		<!-- Écran d'accueil (interactif) -->
 		<div class="home screen-only home-wide" id="home">
 			<div class="big">
-				<!-- Logo « arbre » (même illustration que la favicon). -->
+				<!-- Petit visuel d'accueil : le logo « arbre » seul (le nom est porté
+				     par l'en-tête). -->
 				<img class="brand-logo" src="/logo.png" alt="" aria-hidden="true" />
-				Ludaskia
 			</div>
-			<div class="tagline">Entraînement chronométré · maths et français</div>
 			<div class="home-grid">
 				<!-- Progression (mascotte/rang/niveau + défi du jour). Cellule à part
 				     pour pouvoir la remonter EN PREMIER sur mobile (accueil chaleureux). -->

@@ -10,7 +10,9 @@
 	font-size: 34px;
 	font-weight: 700;
 	margin: 0 0 6px;
-	/* Logo « arbre » empilé au-dessus du nom sur l'accueil. */
+	/* Sur l'accueil, le `.big` ne porte plus que le logo « arbre » (le nom est
+	   dans l'en-tête) ; le centrage vaut aussi pour les titres texte des autres
+	   écrans (« Choisis une leçon », « Profils »…). */
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -119,10 +121,9 @@
 		max-width: none;
 		margin: 0 0 8px;
 	}
-	/* Le nom de l'app est déjà dans la bannière : on masque le gros titre et le
-	   tagline sur mobile pour faire remonter la mascotte dans le premier écran. */
-	.home-wide > .big,
-	.home-wide > .tagline {
+	/* L'identité (logo + nom) est déjà dans la bannière : sur mobile, on masque le
+	   visuel d'accueil pour faire remonter la mascotte dans le premier écran. */
+	.home-wide > .big {
 		display: none;
 	}
 	.home-wide {

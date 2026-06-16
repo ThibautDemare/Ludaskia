@@ -42,6 +42,41 @@
 	height: 34px;
 	width: auto;
 }
+/* Sur écran étroit, la barre est dense (identité + niveau + profil + accueil… et
+   en exercice : chrono, score, boutons). On la resserre, et sous le seuil on
+   garde le logo « arbre » SEUL : à côté de l'arbre, le mot devient redondant, et
+   le retirer évite le passage sur deux lignes. */
+@media (max-width: 600px) {
+	.toolbar {
+		gap: 6px;
+		padding: 10px 12px;
+	}
+	.toolbar-title {
+		display: none;
+	}
+	.toolbar-logo {
+		width: 40px;
+		height: 40px;
+	}
+	.toolbar-logo img {
+		height: 30px;
+	}
+	.toolbar button {
+		padding: 7px 10px;
+		font-size: 13px;
+	}
+	.toolbar-xp {
+		min-width: 56px;
+		padding: 5px 9px;
+	}
+	.lvl-num {
+		font-size: 13px;
+	}
+	/* Boutons utilitaires (Accueil, Imprimer) en icône seule : le texte tombe. */
+	.toolbar .btn-label {
+		display: none;
+	}
+}
 .toolbar button {
 	font: inherit;
 	font-size: 14px;

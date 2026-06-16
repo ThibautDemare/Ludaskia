@@ -11,6 +11,9 @@
 	--accent-dark: #2a5aa0;
 	--accent-soft: #e9eff8;
 	--page-bg: #eef1f5;
+	/* L'accent est bleu → la couleur « révision/impression » (bleue par défaut)
+	   se confondrait avec lui : on la bascule en sarcelle, distincte. */
+	--cat-bleu: #0a8a8f;
 }
 :root[data-theme='automne'] {
 	--accent: #b5532a;
@@ -18,6 +21,9 @@
 	--accent-soft: #f6e7db;
 	--page-bg: #f4ede4;
 	--ink: #2a1d16;
+	/* L'accent est orange/rouille → le corail du sprint est trop proche : on le
+	   bascule en sarcelle (couleur froide, nettement distincte). */
+	--cat-sprint: #0a8a8f;
 }
 :root[data-theme='lagon'] {
 	--accent: #0a8a8f;
@@ -32,6 +38,8 @@
 	--accent-soft: #fbe2e7;
 	--page-bg: #fdeff1;
 	--ink: #1f1417;
+	/* L'accent est rouge/rose → le corail du sprint est trop proche : sarcelle. */
+	--cat-sprint: #0a8a8f;
 }
 
 /* Pastilles d'aperçu du sélecteur de thèmes (couleur d'accent de chaque thème,

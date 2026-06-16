@@ -116,17 +116,15 @@ function wireDOM() {
 	document.getElementById('backHome')!.addEventListener('click', goHome);
 	document.getElementById('backHomeBilanCustom')!.addEventListener('click', goHome);
 	document.getElementById('backHomeSprintConfig')!.addEventListener('click', goHome);
-	// Navigation multi-matières : retours en arrière
-	document.getElementById('backHomeMatieres')!.addEventListener('click', goHome);
-	document.getElementById('backMatieres')!.addEventListener('click', startMatieres);
+	// Navigation multi-matières : retour « d'un cran » en haut de chaque vue de la
+	// hiérarchie (matières ← accueil, catégories ← matières, catégorie ← catégories).
+	document.getElementById('backHomeMatieresTop')!.addEventListener('click', goHome);
 	document.getElementById('backMatieresTop')!.addEventListener('click', startMatieres);
-	const backCategorieHandler = (e: any) => {
+	document.getElementById('backCategorieTop')!.addEventListener('click', (e: any) => {
 		const subject = e.currentTarget.dataset.subject;
 		if (subject) goCategories(subject);
 		else startMatieres();
-	};
-	document.getElementById('backCategorie')!.addEventListener('click', backCategorieHandler);
-	document.getElementById('backCategorieTop')!.addEventListener('click', backCategorieHandler);
+	});
 	document
 		.getElementById('backOrthoListe')!
 		.addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));

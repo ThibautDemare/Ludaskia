@@ -23,6 +23,9 @@ import { MONNAIE_LESSONS } from '../data/maths/monnaie';
 import { HEURE_LESSONS } from '../data/maths/heure';
 import { PERIMETRE_LESSONS } from '../data/maths/perimetre';
 import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration';
+// Réexposé pour les vues qui décident d'un rendu numérique vs texte (ex. révision,
+// #186) sans importer directement un module de données maths.
+export { answerEstNumerique };
 import { POSITION_LESSONS } from '../data/maths/position';
 import { POSEE_LESSONS } from '../data/maths/posee';
 import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';

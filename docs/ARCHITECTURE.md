@@ -421,6 +421,9 @@ le dessin 3D (faces cachées).
   compagnon, avatars, thèmes — acquis ✓ / à venir 🔒) et `openTrophees` (collection,
   sortie de l'inline ; réutilise le rendu `.trophy`), et la **mascotte accompagnante**
   `mascotteBulleHTML(message, loop)` + `encouragementMascotte()` (bulle de BD).
+- **`cat-visuals.ts`** — visuels (icône + teinte de pastille) des matières et
+  catégories, **source partagée** par `catalog-nav.ts` et `bilan.ts` (mêmes
+  couleurs d'une catégorie d'un écran à l'autre).
 - **`catalog-nav.ts`** — navigation **Matière → Catégorie → Leçons**
   (`renderSubjects`, `renderCategories`, `renderCategorie`) ; l'écran d'une
   catégorie donne accès au bilan express (borné) / complet, au sprint, et à
@@ -432,10 +435,16 @@ le dessin 3D (faces cachées).
   (QCM #110) et **« Les règles »** (m/b/p, QCM #111), lancées par le parcours
   standard saisie/QCM — au-dessus de **« Les dictées de mots »** (mots de base
   prédéfinis + listes du parent, jouées par le runner ortho dédié).
-- **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, categoryId?)`
-  (global, ou scopé à une catégorie via `#bilan-cat-<id>` — liste à plat,
-  pensée tablette), choix **bilan / sprint** (#64 : `BilanConfig.mode`, défaut
-  `bilan`), choix du nombre de questions par intention (masqué en sprint),
+- **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, categoryId?)`.
+  En **global**, les leçons sont organisées **Matière → Catégorie → Rubrique** (#195) :
+  matières en **volets repliables** (`<details>`), catégories à pastille/gouttière
+  colorée, rubriques reprenant le registre de l'écran de catégorie ; chaque niveau
+  porte une **case parent à 3 états** (`.bc-group-check`, cochée/partielle/décochée)
+  qui (dé)coche tout son périmètre, et un **compteur « x/y »** (`.bc-group-count`).
+  En **scopé** à une catégorie (via `#bilan-cat-<id>`), même regroupement par
+  rubrique sans les volets matière. Choix **bilan / sprint** (#64 : `BilanConfig.mode`,
+  défaut `bilan`), choix du nombre de questions par intention (cartes verticales
+  `.bc-nbq-item`, icône agrandie ; masqué en sprint),
   favoris (`renderFavoris(el, categoryId?)`), exécution (`runBilanConfig`). Le
   mode sprint délègue à `startCustomSprint` (la sélection alimente le tirage).
   Un favori est **rattaché à une catégorie** (#65 : `BilanConfig.categoryId`,

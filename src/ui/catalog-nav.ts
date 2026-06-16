@@ -24,6 +24,7 @@ import { startBilan, categoryBilanCtx, renderFavoris } from './bilan';
 import { renderReprises } from './resume';
 import { printScope } from './session';
 import { icon, type IconName } from './icon';
+import { subjectIcon, subjectTint, catTint } from './cat-visuals';
 import { buildExpressConfig } from '../core/bilan-express';
 import {
 	startLecon,
@@ -39,20 +40,8 @@ import {
    refaire tomber le même échantillon de leçons d'un express à l'autre). */
 const lastExpressByCat: Record<string, string[]> = {};
 
-/* Icône + teinte de pastille par matière (mêmes pastilles que les catégories,
-   pour ne pas « jurer » avec elles). Fallback générique. */
-const SUBJECT_ICON: Record<string, IconName> = { math: 'calculator', francais: 'book-open' };
-const subjectIcon = (id: string): IconName => SUBJECT_ICON[id] ?? 'book-open';
-const SUBJECT_TINT: Record<string, string> = {
-	math: 'var(--accent)',
-	francais: 'var(--cat-sprint)',
-};
-const subjectTint = (id: string) => SUBJECT_TINT[id] ?? 'var(--accent)';
-
-/* Teintes des pastilles de catégorie : on CYCLE les 4 hues existantes (pas de
-   nouvelle couleur) pour varier les cartes sans gonfler la palette. Purement
-   décoratif (l'info reste portée par le libellé + l'icône). */
-const CAT_TINTS = ['var(--accent)', 'var(--cat-sprint)', 'var(--cat-bilan)', 'var(--cat-bleu)'];
+/* Visuels (icône + teinte) des matières/catégories : voir ui/cat-visuals.ts
+   (source partagée avec le configurateur de bilan). */
 
 /* ---------- Écran : liste des matières ---------- */
 export function renderSubjects(el: HTMLElement): void {
@@ -85,7 +74,7 @@ export function renderCategories(el: HTMLElement, subjectId: string, titleEl: HT
 						: getLessonsByCategory(c.id).length;
 				// Pastille colorée + icône : carte de catégorie plus engageante (la
 				// couleur cycle pour varier ; elle double l'icône, jamais l'info seule).
-				const tint = CAT_TINTS[i % CAT_TINTS.length];
+				const tint = catTint(i);
 				const ico = c.icon
 					? `<span class="cat-ico" style="background:${tint}">${icon(c.icon)}</span>`
 					: '';

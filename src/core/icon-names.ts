@@ -18,6 +18,7 @@ export type IconName =
 	| 'reset'
 	| 'palette'
 	| 'plus'
+	| 'caret-down'
 	| 'lock'
 	| 'export'
 	| 'import'

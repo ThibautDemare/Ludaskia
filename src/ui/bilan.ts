@@ -11,7 +11,8 @@ import {
 	CATEGORIES,
 	SUBJECTS,
 } from '../core/catalog';
-import type { BilanConfig, LessonDef } from '../core/catalog';
+import type { BilanConfig, LessonDef, Category } from '../core/catalog';
+import { subjectIcon, subjectTint, catTint } from './cat-visuals';
 import { loadBilans, saveBilan, deleteBilan } from '../core/bilans';
 import { startCustomSprint } from './sprint';
 import { fichesPagesHTML } from '../core/lessons';
@@ -157,6 +158,68 @@ function lessonChecks(lessons: LessonDef[]): string {
 		.join('');
 }
 
+/* Case parent d'un groupe (matière/catégorie/rubrique) : coche/décoche tout son
+   périmètre, et reflète un état partiel (indéterminé) — câblé dans le JS. */
+function groupCheck(label: string): string {
+	return `<input type="checkbox" class="bc-group-check" aria-label="Tout choisir : ${escapeHTML(label)}">`;
+}
+
+/* Regroupe des leçons par rubrique (#109), dans leur ordre d'apparition. Une
+   leçon sans rubrique rejoint un groupe « sans titre » (clé vide). */
+function groupByRubrique(lessons: LessonDef[]): { rubrique: string; lessons: LessonDef[] }[] {
+	const groups: { rubrique: string; lessons: LessonDef[] }[] = [];
+	lessons.forEach((l) => {
+		const r = l.rubrique ?? '';
+		let g = groups.find((x) => x.rubrique === r);
+		if (!g) {
+			g = { rubrique: r, lessons: [] };
+			groups.push(g);
+		}
+		g.lessons.push(l);
+	});
+	return groups;
+}
+
+/* Corps d'une catégorie : leçons regroupées par rubrique si la catégorie en a
+   (même présentation que l'écran de catégorie, #109), sinon grille à plat. Les
+   leçons sans rubrique d'une catégorie mixte restent à plat (sans en-tête). */
+function categoryBody(lessons: LessonDef[]): string {
+	const groups = groupByRubrique(lessons);
+	const aRubriques = groups.some((g) => g.rubrique !== '');
+	if (!aRubriques) return `<div class="bc-lessons-grid">${lessonChecks(lessons)}</div>`;
+	return groups
+		.map((g) => {
+			if (g.rubrique === '') return `<div class="bc-lessons-grid">${lessonChecks(g.lessons)}</div>`;
+			return `<div class="bc-group bc-rubrique">
+        <label class="bc-group-head bc-rubrique-head">
+          ${groupCheck(g.rubrique)}
+          <span class="bc-group-title bc-rubrique-title">${escapeHTML(g.rubrique)}</span>
+          <span class="bc-group-count" aria-hidden="true"></span>
+        </label>
+        <div class="bc-lessons-grid">${lessonChecks(g.lessons)}</div>
+      </div>`;
+		})
+		.join('');
+}
+
+/* Bloc d'une catégorie (configurateur global) : en-tête à pastille colorée +
+   case parent + compteur, puis corps groupé par rubrique. La teinte (cyclée)
+   et l'icône reprennent celles des cartes de navigation (cf. cat-visuals). */
+function categoryBlock(cat: Category, lessons: LessonDef[], tint: string): string {
+	const ico = cat.icon
+		? `<span class="cat-ico bc-cat-ico" style="background:${tint}">${icon(cat.icon)}</span>`
+		: '';
+	return `<div class="bc-group bc-category" style="--bc-cat-tint:${tint}">
+      <label class="bc-group-head bc-cat-head">
+        ${groupCheck(cat.label)}
+        ${ico}
+        <span class="bc-group-title bc-cat-title">${escapeHTML(cat.label)}</span>
+        <span class="bc-group-count" aria-hidden="true"></span>
+      </label>
+      <div class="bc-cat-body">${categoryBody(lessons)}</div>
+    </div>`;
+}
+
 /* Écran de composition d'un bilan.
    - global (categoryId absent) : leçons groupées par matière > catégorie ;
    - scopé à une catégorie : liste à plat de ses leçons (entrée « Je choisis
@@ -169,32 +232,47 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 
 	let lessonsMarkup: string;
 	if (scoped) {
-		lessonsMarkup = `<div class="bc-lessons-grid">${lessonChecks(getLessonsByCategory(category!.id))}</div>`;
+		// Écran scopé : une seule catégorie, déjà nommée par `.bc-scope`. On
+		// regroupe simplement ses leçons par rubrique (#109) ; le « Tout choisir »
+		// global du haut couvre le niveau catégorie.
+		lessonsMarkup = `<div class="bc-scoped-lessons">${categoryBody(getLessonsByCategory(category!.id))}</div>`;
 	} else {
+		// Écran global : Matière (volet repliable) → Catégorie → Rubrique. Volets
+		// repliés par défaut (109 leçons) — les compteurs « x/y » par matière disent
+		// l'état sans déplier (cf. avis UX enfant).
 		const lessons = getAllLessons();
 		lessonsMarkup = SUBJECTS.map((subj) => {
 			const catBlocks = CATEGORIES.filter((c) => c.subject === subj.id)
-				.map((cat) => {
-					const catLessons = lessons.filter((l) => l.subject === subj.id && l.category === cat.id);
-					if (!catLessons.length) return '';
-					return `<div class="bc-category">
-            <div class="bc-cat-label">${escapeHTML(cat.label)}</div>
-            <div class="bc-lessons-grid">${lessonChecks(catLessons)}</div>
-          </div>`;
+				.map((cat, i) => {
+					const catLessons = lessons.filter((l) => l.category === cat.id);
+					return catLessons.length ? categoryBlock(cat, catLessons, catTint(i)) : '';
 				})
 				.join('');
-			return catBlocks
-				? `<div class="bc-subject"><div class="bc-section-title">${escapeHTML(subj.label)}</div>${catBlocks}</div>`
-				: '';
+			if (!catBlocks) return '';
+			return `<details class="bc-group bc-subject">
+        <summary class="bc-group-head bc-subject-head">
+          <span class="bc-check-wrap"><input type="checkbox" class="bc-group-check" aria-label="Tout choisir : ${escapeHTML(subj.label)}"></span>
+          <span class="cat-ico bc-subject-ico" style="background:${subjectTint(subj.id)}">${icon(subjectIcon(subj.id))}</span>
+          <span class="bc-group-title bc-subject-title">${escapeHTML(subj.label)}</span>
+          <span class="bc-group-count" aria-hidden="true"></span>
+          <span class="bc-chevron" aria-hidden="true">${icon('caret-down')}</span>
+        </summary>
+        <div class="bc-subject-body">${catBlocks}</div>
+      </details>`;
 		}).join('');
 	}
 
 	// Défaut : « Moyen » sur un écran scopé (révision pour de vrai), « Un peu » sinon.
 	const defaultNbq = scoped ? '5' : '3';
-	const nbqItem = (value: string, icon: string, intent: string, num: string) =>
+	// Carte verticale : icône (agrandie) au-dessus du libellé et du nombre, pour
+	// un picto lisible et tapable au doigt (cf. avis UX enfant). Le bouton radio
+	// est masqué visuellement (l'état coché est porté par la carte).
+	const nbqItem = (value: string, ico: string, intent: string, num: string) =>
 		`<label class="bc-nbq-item">
       <input type="radio" name="bcNbq" class="bc-nbq-radio" value="${value}"${value === defaultNbq ? ' checked' : ''}>
-      <span>${icon} ${intent}${num ? ` <span class="bc-nbq-num">${num}</span>` : ''}</span>
+      <span class="bc-nbq-ico">${ico}</span>
+      <span class="bc-nbq-label">${intent}</span>
+      <span class="bc-nbq-num">${num || '&nbsp;'}</span>
     </label>`;
 
 	const today = new Date();
@@ -257,20 +335,66 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 	const countEl = el.querySelector<HTMLElement>('#bcCount')!;
 	const savedEl = el.querySelector<HTMLElement>('#bcSaved')!;
 
-	const updateCount = () => {
+	// Groupes (matière / catégorie / rubrique) : chaque groupe porte une case
+	// parent (`.bc-group-check`) et un compteur (`.bc-group-count`) dans son
+	// en-tête direct (`:scope > .bc-group-head`). On collecte une fois les
+	// références ; le périmètre d'un groupe = toutes les leçons qu'il contient
+	// (les groupes sont imbriqués matière ⊃ catégorie ⊃ rubrique).
+	const groups = [...form.querySelectorAll<HTMLElement>('.bc-group')].map((group) => {
+		const head = group.querySelector<HTMLElement>(':scope > .bc-group-head')!;
+		return {
+			group,
+			cb: head.querySelector<HTMLInputElement>('.bc-group-check')!,
+			counter: head.querySelector<HTMLElement>('.bc-group-count')!,
+		};
+	});
+
+	// Recalcule l'état de chaque case parent (cochée / partielle « indéterminée »)
+	// et son compteur « x/y », plus le compteur global de leçons choisies. Le
+	// texte « x/y » est le vrai porteur d'info (la couleur seule ne suffit pas
+	// pour ce public, cf. avis UX enfant).
+	const refresh = () => {
+		for (const { group, cb, counter } of groups) {
+			const boxes = group.querySelectorAll<HTMLInputElement>('.bc-lesson-check');
+			const total = boxes.length;
+			const checked = [...boxes].filter((b) => b.checked).length;
+			cb.checked = total > 0 && checked === total;
+			cb.indeterminate = checked > 0 && checked < total;
+			counter.textContent = `${checked}/${total}`;
+			counter.classList.toggle('is-full', total > 0 && checked === total);
+		}
 		const n = form.querySelectorAll<HTMLInputElement>('.bc-lesson-check:checked').length;
 		countEl.textContent = n
 			? `${n} leçon${n > 1 ? 's' : ''} choisie${n > 1 ? 's' : ''}`
 			: 'Aucune leçon choisie';
 	};
-	updateCount();
-	form.addEventListener('change', updateCount);
+
+	// Case parent → coche/décoche toutes les leçons de son périmètre. Sur la barre
+	// de matière, la case est un `<label>` distinct (`.bc-check-wrap`) : on stoppe
+	// la propagation pour ne pas (dé)plier l'accordéon en cochant.
+	groups.forEach(({ group, cb }) => {
+		const wrap = cb.closest('.bc-check-wrap');
+		if (wrap) wrap.addEventListener('click', (e) => e.stopPropagation());
+		cb.addEventListener('change', () => {
+			group
+				.querySelectorAll<HTMLInputElement>('.bc-lesson-check')
+				.forEach((b) => (b.checked = cb.checked));
+			refresh();
+		});
+	});
+
+	// Une leçon cochée/décochée met à jour tous les compteurs et états parents.
+	form.addEventListener('change', (e) => {
+		if ((e.target as HTMLElement).classList.contains('bc-lesson-check')) refresh();
+	});
+
+	refresh();
 
 	const setAll = (checked: boolean) => {
 		form
 			.querySelectorAll<HTMLInputElement>('.bc-lesson-check')
 			.forEach((cb) => (cb.checked = checked));
-		updateCount();
+		refresh();
 	};
 	el.querySelector('#bcSelectAll')!.addEventListener('click', () => setAll(true));
 	el.querySelector('#bcSelectNone')!.addEventListener('click', () => setAll(false));

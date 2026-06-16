@@ -42,9 +42,20 @@
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 .reprise-ico {
-	font-size: 34px;
-	line-height: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	background: var(--accent-soft);
+	color: var(--accent);
 	flex: 0 0 auto;
+}
+.reprise-ico .ph-icon {
+	width: 26px;
+	height: 26px;
+	vertical-align: 0;
 }
 .reprise-main {
 	flex: 1 1 150px;

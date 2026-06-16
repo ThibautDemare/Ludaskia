@@ -3,6 +3,7 @@
    Utilisé par tous les types d'exercices (math, conjugaison, QCM, orthographe…).
    ============================================================ */
 import { normalizeText } from './utils';
+import type { IconName } from './icon-names';
 
 export type Exercise =
 	// `figure` (#88) : fragment SVG optionnel (moteur core/figures.ts) affiché
@@ -61,7 +62,7 @@ export interface ModeOption {
 	id: ExerciseMode;
 	label: string; // libellé à l'action, lisible par un CE2 (« J'écris le verbe »)
 	hint?: string; // sous-ligne d'aide optionnelle (« plus facile pour commencer »)
-	icon?: string; // pictogramme/emoji
+	icon?: IconName; // pictogramme (icône Phosphor, rendu par ui/icon.ts)
 	recommended?: boolean; // mode par défaut / conseillé (mis en avant, choisi si aucun)
 }
 

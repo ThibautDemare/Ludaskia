@@ -22,6 +22,7 @@ import { setCurrentMode, setCurrentLessonId, afterStart } from './navigation';
 import { printScope } from './session';
 import { bilanCategoryKey, bilanCustomKey } from '../core/resume';
 import { setResumeCtx, clearResumeCtx, maybeRelaunch, type ResumeCtx } from './resume';
+import { icon } from './icon';
 
 /* ---------- Génération de bilan express personnalisé ---------- */
 
@@ -84,7 +85,7 @@ export function categoryBilanCtx(
 		key: bilanCategoryKey(mode, categoryId),
 		mode,
 		label: config.label,
-		icon: mode === 'complet' ? '📚' : '⏱️',
+		icon: mode === 'complet' ? 'exam' : 'timer',
 		categoryId,
 		relaunch: { type: 'bilan', config },
 	};
@@ -94,7 +95,7 @@ function customBilanCtx(config: BilanConfig, categoryId: string | null): ResumeC
 		key: bilanCustomKey(categoryId),
 		mode: 'custom',
 		label: config.label,
-		icon: '🎚️',
+		icon: 'faders',
 		categoryId,
 		relaunch: { type: 'bilan', config },
 	};
@@ -104,7 +105,7 @@ function favoriBilanCtx(config: BilanConfig): ResumeCtx {
 		key: `bilan-favori-${config.id}`,
 		mode: 'custom',
 		label: config.label,
-		icon: '⭐',
+		icon: 'bookmark',
 		// Un favori rattaché à une catégorie (#65) voit aussi sa reprise filtrée
 		// dans cette catégorie ; un favori multi-catégories reste « hors scope ».
 		categoryId: config.categoryId ?? null,
@@ -203,10 +204,10 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 	const runLabel = scoped ? `Bilan — ${category!.label}` : 'Bilan personnalisé';
 	const sprintLabel = scoped ? `Sprint — ${category!.label}` : 'Sprint personnalisé';
 
-	const modeItem = (value: string, icon: string, title: string, sub: string) =>
+	const modeItem = (value: string, ico: string, title: string, sub: string) =>
 		`<label class="bc-mode-item">
       <input type="radio" name="bcMode" class="bc-mode-radio" value="${value}"${value === 'bilan' ? ' checked' : ''}>
-      <span>${icon} ${title} <span class="bc-mode-sub">${sub}</span></span>
+      <span>${ico} ${title} <span class="bc-mode-sub">${sub}</span></span>
     </label>`;
 
 	el.innerHTML = `
@@ -214,13 +215,13 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
       ${scoped ? `<p class="bc-scope">Catégorie : <strong>${escapeHTML(category!.label)}</strong></p>` : ''}
       <div class="bc-section-title">Que veux-tu faire ?</div>
       <div class="bc-mode">
-        ${modeItem('bilan', '🌱', 'Tranquille', 'à ton rythme')}
-        ${modeItem('sprint', '⏱️', 'Sprint', '5 min chrono')}
+        ${modeItem('bilan', icon('feather'), 'Tranquille', 'à ton rythme')}
+        ${modeItem('sprint', icon('run'), 'Sprint', '5 min chrono')}
       </div>
       <div class="bc-section-title">Leçons à inclure</div>
       <div class="bc-top-actions">
-        <button class="bc-action-btn" id="bcSelectAll">✓ Tout choisir</button>
-        <button class="bc-action-btn" id="bcSelectNone">✗ Tout enlever</button>
+        <button class="bc-action-btn" id="bcSelectAll">${icon('check')} Tout choisir</button>
+        <button class="bc-action-btn" id="bcSelectNone">${icon('x')} Tout enlever</button>
       </div>
       ${lessonsMarkup}
 
@@ -235,16 +236,16 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
       </div>
 
       <div class="bc-run-row">
-        <button id="bcRun" class="bc-btn bc-btn-run">▶ C'est parti !</button>
-        <button id="bcPrint" class="bc-btn bc-btn-print" title="Imprimer ce bilan à remplir au crayon">🖨 Imprimer</button>
+        <button id="bcRun" class="bc-btn bc-btn-run">${icon('play')} C'est parti !</button>
+        <button id="bcPrint" class="bc-btn bc-btn-print" title="Imprimer ce bilan à remplir au crayon">${icon('printer')} Imprimer</button>
         <span class="bc-count" id="bcCount"></span>
       </div>
 
       <details class="bc-save">
-        <summary>💾 Garder ce bilan pour plus tard</summary>
+        <summary>${icon('bookmark')} Garder pour plus tard</summary>
         <div class="bc-save-row">
           <input id="bcLabel" class="bc-label-input" type="text" placeholder="Nom du bilan" maxlength="60" value="${escapeHTML(defaultName)}">
-          <button id="bcSave" class="bc-btn bc-btn-save">💾 Enregistrer</button>
+          <button id="bcSave" class="bc-btn bc-btn-save">${icon('bookmark')} Garder</button>
         </div>
         <div class="bc-saved" id="bcSaved" role="status"></div>
       </details>
@@ -354,8 +355,8 @@ function favoriItemHTML(b: BilanConfig): string {
 	// Un favori sprint (#64) affiche son chrono ; un bilan, ses questions/leçon.
 	const detail =
 		bilanMode(b) === 'sprint'
-			? `⏱️ Sprint · 5 min · ${nLessons}`
-			: `🌱 ${nLessons} · ${
+			? `${icon('run')} Sprint · 5 min · ${nLessons}`
+			: `${icon('feather')} ${nLessons} · ${
 					b.questionsPerLesson === 'all'
 						? 'toutes les questions'
 						: `${b.questionsPerLesson} question${(b.questionsPerLesson as number) > 1 ? 's' : ''}/leçon`
@@ -366,8 +367,8 @@ function favoriItemHTML(b: BilanConfig): string {
           <div class="favori-meta">${detail}</div>
         </div>
         <div class="favori-btns">
-          <button class="favori-btn favori-btn-run" data-run="${b.id}">▶ Lancer</button>
-          <button class="favori-btn favori-btn-del" data-del="${b.id}" title="Supprimer ce favori">🗑</button>
+          <button class="favori-btn favori-btn-run" data-run="${b.id}">${icon('play')} Lancer</button>
+          <button class="favori-btn favori-btn-del" data-del="${b.id}" title="Supprimer ce favori" aria-label="Supprimer ce favori">${icon('trash')}</button>
         </div>
       </div>`;
 }

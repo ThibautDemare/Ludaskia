@@ -119,12 +119,12 @@ const LONG_SEUIL = 9;
 const QCM_CHOICES = 4;
 
 const ACCORD_MODE_OPTIONS: ModeOption[] = [
-	{ id: 'saisie', label: "J'écris la forme", icon: '✏️', recommended: true },
+	{ id: 'saisie', label: "J'écris la forme", icon: 'pencil', recommended: true },
 	{
 		id: 'qcm',
 		label: 'Je choisis la bonne réponse',
 		hint: 'plus facile pour commencer',
-		icon: '✅',
+		icon: 'check-circle',
 	},
 ];
 

@@ -141,7 +141,7 @@ export const ITEMS_CLASSES: ItemClasseQcm[] = [
 ];
 
 const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: '✅', recommended: true },
+	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'check-circle', recommended: true },
 ];
 
 export function classesMotsType(): ExerciseType {

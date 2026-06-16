@@ -169,6 +169,29 @@
 }
 .mark.correct {
 	color: var(--ok);
+	display: inline-block; /* pour que le scale de l'animation s'applique */
+	animation: reussite-pop 0.32s ease-out both;
+}
+/* Petit « pop » de réussite : récompense le bon geste (cf. UX enfant). Coupé
+   par le réglage in-app ET par la préférence système. */
+@keyframes reussite-pop {
+	0% {
+		transform: scale(0.7);
+	}
+	55% {
+		transform: scale(1.18);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.mark.correct {
+		animation: none;
+	}
+}
+html.anim-reduced .mark.correct {
+	animation: none;
 }
 .mark.wrong {
 	color: var(--ko);

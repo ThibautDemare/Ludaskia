@@ -23,6 +23,7 @@ import { startCategorySprint } from './sprint';
 import { startBilan, categoryBilanCtx, renderFavoris } from './bilan';
 import { renderReprises } from './resume';
 import { printScope } from './session';
+import { icon, type IconName } from './icon';
 import { buildExpressConfig } from '../core/bilan-express';
 import {
 	startLecon,
@@ -38,9 +39,20 @@ import {
    refaire tomber le même échantillon de leçons d'un express à l'autre). */
 const lastExpressByCat: Record<string, string[]> = {};
 
-/* Icône par matière (fallback générique). */
-const SUBJECT_ICON: Record<string, string> = { math: '🔢', francais: '📚' };
-const subjectIcon = (id: string) => SUBJECT_ICON[id] ?? '📘';
+/* Icône + teinte de pastille par matière (mêmes pastilles que les catégories,
+   pour ne pas « jurer » avec elles). Fallback générique. */
+const SUBJECT_ICON: Record<string, IconName> = { math: 'calculator', francais: 'book-open' };
+const subjectIcon = (id: string): IconName => SUBJECT_ICON[id] ?? 'book-open';
+const SUBJECT_TINT: Record<string, string> = {
+	math: 'var(--accent)',
+	francais: 'var(--cat-sprint)',
+};
+const subjectTint = (id: string) => SUBJECT_TINT[id] ?? 'var(--accent)';
+
+/* Teintes des pastilles de catégorie : on CYCLE les 4 hues existantes (pas de
+   nouvelle couleur) pour varier les cartes sans gonfler la palette. Purement
+   décoratif (l'info reste portée par le libellé + l'icône). */
+const CAT_TINTS = ['var(--accent)', 'var(--cat-sprint)', 'var(--cat-bilan)', 'var(--cat-bleu)'];
 
 /* ---------- Écran : liste des matières ---------- */
 export function renderSubjects(el: HTMLElement): void {
@@ -48,7 +60,7 @@ export function renderSubjects(el: HTMLElement): void {
     ${SUBJECTS.map((s) => {
 			const n = getLessonsBySubject(s.id).length;
 			return `<button class="nav-card" data-subject="${s.id}">
-        <div class="nav-ico">${subjectIcon(s.id)}</div>
+        <span class="cat-ico" style="background:${subjectTint(s.id)}">${icon(subjectIcon(s.id))}</span>
         <div class="nav-card-title">${escapeHTML(s.label)}</div>
         <div class="nav-card-sub">${n} leçon${n > 1 ? 's' : ''}</div>
       </button>`;
@@ -66,12 +78,19 @@ export function renderCategories(el: HTMLElement, subjectId: string, titleEl: HT
 	const cats = CATEGORIES.filter((c) => c.subject === subjectId);
 	el.innerHTML = `<div class="nav-cards">
     ${cats
-			.map((c) => {
+			.map((c, i) => {
 				const n =
 					c.id === ORTHO_CATEGORY_ID
 						? listOrthoLecons(loadOrtho()).length + getLessonsByCategory(c.id).length
 						: getLessonsByCategory(c.id).length;
+				// Pastille colorée + icône : carte de catégorie plus engageante (la
+				// couleur cycle pour varier ; elle double l'icône, jamais l'info seule).
+				const tint = CAT_TINTS[i % CAT_TINTS.length];
+				const ico = c.icon
+					? `<span class="cat-ico" style="background:${tint}">${icon(c.icon)}</span>`
+					: '';
 				return `<button class="nav-card" data-category="${c.id}">
+          ${ico}
           <div class="nav-card-title">${escapeHTML(c.label)}</div>
           <div class="nav-card-sub">${n} leçon${n > 1 ? 's' : ''}</div>
         </button>`;
@@ -117,7 +136,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 	const cardRow = (def: LessonDef, i: number) => {
 		const rich = LESSONS.find((l) => l.id === def.id);
 		const entry = rich ?? { id: def.id, num: i + 1, title: def.label };
-		return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(def.label)}">🖨</button></div>`;
+		return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(def.label)}">${icon('printer')}</button></div>`;
 	};
 
 	// Regroupement par rubrique (#109), dans l'ordre d'apparition. Une leçon sans
@@ -145,11 +164,11 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 	el.innerHTML = `
     <div id="catReprises" class="reprises reprises-cat"></div>
     <div class="cat-actions">
-      <button class="cat-action" data-act="express">⏱️ Bilan express<small>rapide · ~20 questions</small></button>
-      <button class="cat-action" data-act="complet">📚 Bilan complet<small>toutes les questions</small></button>
-      <button class="cat-action" data-act="sprint">🏃 Sprint 5 min<small>cette catégorie</small></button>
-      <button class="cat-action cat-action-secondary" data-act="custom">🎚️ Je choisis mes leçons<small>coche les leçons que tu veux</small></button>
-      <button class="cat-action cat-action-secondary" data-act="print">🖨 Imprimer les fiches<small>toute la catégorie</small></button>
+      <button class="cat-action" data-act="express"><span class="cat-action-line">${icon('timer')} Bilan express</span><small>rapide · ~20 questions</small></button>
+      <button class="cat-action" data-act="complet"><span class="cat-action-line">${icon('exam')} Bilan complet</span><small>toutes les questions</small></button>
+      <button class="cat-action" data-act="sprint"><span class="cat-action-line">${icon('run')} Sprint 5 min</span><small>cette catégorie</small></button>
+      <button class="cat-action cat-action-secondary" data-act="custom"><span class="cat-action-line">${icon('faders')} Je choisis mes leçons</span><small>coche les leçons que tu veux</small></button>
+      <button class="cat-action cat-action-secondary" data-act="print"><span class="cat-action-line">${icon('printer')} Imprimer les fiches</span><small>toute la catégorie</small></button>
     </div>
     <div id="catLessons">${listHTML}</div>
     <div id="catFavoris" class="favoris favoris-cat"></div>`;
@@ -228,7 +247,7 @@ function renderOrthoCategorie(el: HTMLElement): void {
 		const mots = `${l.nbMots} mot${l.nbMots > 1 ? 's' : ''}`;
 		if (l.source === 'liste' && l.dateControle) {
 			const [, m, d] = l.dateControle.split('-');
-			return `${mots} · 📅 ${d}/${m}`;
+			return `${mots} · ${icon('calendar')} ${d}/${m}`;
 		}
 		return mots;
 	};
@@ -240,35 +259,44 @@ function renderOrthoCategorie(el: HTMLElement): void {
 			l.source === 'liste' ? [...l.mots].sort((a, b) => a.localeCompare(b, 'fr')) : l.mots;
 		return `<div class="ortho-apercu" aria-hidden="true">${mots.map(escapeHTML).join(' · ')}</div>`;
 	};
-	const baseCard = (l: LeconOrthoRef) => `<button class="nav-card" data-ortho="${l.id}">
-      <div class="nav-ico">📘</div>
+	const baseCard = (
+		l: LeconOrthoRef,
+		tint: string,
+	) => `<button class="nav-card" data-ortho="${l.id}">
+      <span class="cat-ico" style="background:${tint}">${icon('book-open')}</span>
       <div class="nav-card-title">${escapeHTML(l.label)}</div>
       <div class="nav-card-sub">${sub(l)}</div>
       ${apercu(l)}
     </button>`;
-	const listCard = (l: LeconOrthoRef) => `<div class="nav-card-group">
+	const listCard = (l: LeconOrthoRef, tint: string) => `<div class="nav-card-group">
       <button class="nav-card" data-ortho="${l.id}">
-        <div class="nav-ico">📝</div>
+        <span class="cat-ico" style="background:${tint}">${icon('cards')}</span>
         <div class="nav-card-title">${escapeHTML(l.label)}</div>
         <div class="nav-card-sub">${sub(l)}</div>
         ${apercu(l)}
       </button>
-      <button class="nav-card-edit" data-ortho-edit="${l.id}" aria-label="Modifier la liste" title="Modifier">✎</button>
+      <button class="nav-card-edit" data-ortho-edit="${l.id}" aria-label="Modifier la liste" title="Modifier">${icon('pencil')}</button>
     </div>`;
 
 	// Icône + sous-titre par rubrique « moteur » : annonce le geste attendu (ne pas
 	// laisser croire à une dictée). Repli générique pour une rubrique inconnue.
-	const RUBRIQUE_META: Record<string, { ico: string; hint: string }> = {
-		'Les accords': { ico: '✍️', hint: 'je transforme les mots' },
-		'Les homophones': { ico: '🔤', hint: 'je choisis la bonne écriture' },
-		'Les règles': { ico: '📏', hint: 'je choisis la bonne lettre' },
+	const RUBRIQUE_META: Record<string, { ico: IconName; hint: string; tint: string }> = {
+		'Les accords': { ico: 'pencil', hint: 'je transforme les mots', tint: 'var(--accent)' },
+		'Les homophones': {
+			ico: 'text',
+			hint: 'je choisis la bonne écriture',
+			tint: 'var(--cat-sprint)',
+		},
+		'Les règles': { ico: 'ruler', hint: 'je choisis la bonne lettre', tint: 'var(--cat-bilan)' },
 	};
 	const moteurCard = (l: LessonDef) => {
 		const etoilee = (stars[l.id] ?? 0) > 0;
-		const hint = RUBRIQUE_META[l.rubrique ?? '']?.hint ?? "je m'entraîne";
-		const ico = RUBRIQUE_META[l.rubrique ?? '']?.ico ?? '📘';
+		const meta = RUBRIQUE_META[l.rubrique ?? ''];
+		const hint = meta?.hint ?? "je m'entraîne";
+		const ico = meta?.ico ?? 'book-open';
+		const tint = meta?.tint ?? 'var(--accent)';
 		return `<button class="nav-card" data-lecon="${l.id}">
-      <div class="nav-ico">${ico}</div>
+      <span class="cat-ico" style="background:${tint}">${icon(ico)}</span>
       <div class="nav-card-title">${escapeHTML(l.label)}${etoilee ? ' ⭐' : ''}</div>
       <div class="nav-card-sub">${hint}</div>
     </button>`;
@@ -299,18 +327,18 @@ function renderOrthoCategorie(el: HTMLElement): void {
       <h3 class="cat-rubrique">Les dictées de mots</h3>
       <div class="ortho-cols">
         <section class="ortho-col">
-          <h4 class="ortho-col-title">📘 Mots de base</h4>
-          <div class="nav-cards ortho-cards">${predef.map(baseCard).join('')}</div>
+          <h4 class="ortho-col-title">${icon('book-open')} Mots de base</h4>
+          <div class="nav-cards ortho-cards">${predef.map((l) => baseCard(l, 'var(--cat-bleu)')).join('')}</div>
         </section>
         <section class="ortho-col">
-          <h4 class="ortho-col-title">📝 Mes listes</h4>
+          <h4 class="ortho-col-title">${icon('cards')} Mes listes</h4>
           <div class="nav-cards ortho-cards">
             <button class="nav-card nav-card-add" data-ortho-new="1">
-              <div class="nav-ico">➕</div>
+              <span class="cat-ico" style="background:var(--accent)">${icon('plus')}</span>
               <div class="nav-card-title">Ajouter une liste</div>
               <div class="nav-card-sub">les mots de la semaine</div>
             </button>
-            ${listes.map(listCard).join('')}
+            ${listes.map((l) => listCard(l, 'var(--accent)')).join('')}
           </div>
         </section>
       </div>

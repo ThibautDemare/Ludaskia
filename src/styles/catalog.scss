@@ -43,6 +43,23 @@
 	font-size: 38px;
 	line-height: 1;
 }
+/* Pastille colorée d'une carte de catégorie : disque teinté + icône blanche
+   (même registre que les cartes de l'accueil). */
+.cat-ico {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 56px;
+	height: 56px;
+	border-radius: 50%;
+	color: #fff;
+	margin-bottom: 2px;
+}
+.cat-ico .ph-icon {
+	width: 30px;
+	height: 30px;
+	vertical-align: 0;
+}
 .nav-card-title {
 	font-family: var(--ui);
 	font-size: 17px;
@@ -113,6 +130,13 @@
 .cat-action:active {
 	transform: translateY(1px);
 }
+/* Ligne « icône + libellé » (groupée pour rester sur une ligne dans le bouton
+   en colonne, le sous-titre <small> passant dessous). */
+.cat-action-line {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
 .cat-action small {
 	font-weight: 400;
 	font-size: 12px;
@@ -131,4 +155,37 @@
 }
 .cat-action-secondary small {
 	opacity: 1;
+}
+/* Couleur par famille d'action : la couleur double l'icône (2e voie de lecture),
+   jamais l'info seule. Bilans = violet, sprint = corail, impression = bleu ;
+   les leçons gardent --accent (vert, suit le thème). */
+.cat-action[data-act='sprint'] {
+	background: var(--cat-sprint);
+}
+.cat-action[data-act='sprint']:hover {
+	background: #d2551f;
+}
+.cat-action[data-act='express'],
+.cat-action[data-act='complet'] {
+	background: var(--cat-bilan);
+}
+.cat-action[data-act='express']:hover,
+.cat-action[data-act='complet']:hover {
+	background: #6b4eb0;
+}
+.cat-action-secondary[data-act='custom'] {
+	color: var(--cat-bilan);
+	border-color: var(--cat-bilan);
+}
+.cat-action-secondary[data-act='custom']:hover {
+	background: var(--cat-bilan);
+	color: #fff;
+}
+.cat-action-secondary[data-act='print'] {
+	color: var(--cat-bleu);
+	border-color: var(--cat-bleu);
+}
+.cat-action-secondary[data-act='print']:hover {
+	background: var(--cat-bleu);
+	color: #fff;
 }

@@ -132,10 +132,21 @@
 	background: transparent;
 	border-radius: 8px;
 	padding: 6px 8px;
-	transition: background 0.15s ease;
+	color: var(--accent); /* icônes vives, cohérentes avec le thème (pas le noir d'--ink) */
+	transition:
+		background 0.15s ease,
+		color 0.15s ease;
 }
 .profile-tools button:hover {
 	background: #eef1f5;
+}
+/* Action destructive : discrète au repos, rouge à l'intention (au survol). */
+.profile-tools button[data-act='delete'] {
+	color: var(--muted);
+}
+.profile-tools button[data-act='delete']:hover {
+	color: var(--ko);
+	background: #fdecea;
 }
 .profile-tools button[disabled] {
 	opacity: 0.3;
@@ -191,10 +202,12 @@
 	transform: none;
 }
 .emoji-lock {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
 	font-size: 10px;
 	font-weight: 700;
 	color: var(--grey);
-	filter: grayscale(1);
 }
 
 /* Bloc « Préférences » (thème de couleur + animations) — issue #28 phase 3b */

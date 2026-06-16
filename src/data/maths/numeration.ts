@@ -26,8 +26,19 @@ import { rnd, choice, sample } from '../../core/utils';
 
 /* Deux modes communs à toutes les leçons de numération. */
 const MODES: ModeOption[] = [
-	{ id: 'saisie', label: "J'écris la réponse", hint: 'au clavier', icon: '⌨️', recommended: true },
-	{ id: 'tuiles', label: 'Je déplace les tuiles', hint: 'glisse la bonne tuile', icon: '🧩' },
+	{
+		id: 'saisie',
+		label: "J'écris la réponse",
+		hint: 'au clavier',
+		icon: 'keyboard',
+		recommended: true,
+	},
+	{
+		id: 'tuiles',
+		label: 'Je déplace les tuiles',
+		hint: 'glisse la bonne tuile',
+		icon: 'puzzle-piece',
+	},
 ];
 
 /* Un « fait » : un énoncé (avec `@` = emplacement de réponse), la bonne réponse,

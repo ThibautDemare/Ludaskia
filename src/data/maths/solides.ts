@@ -43,10 +43,10 @@ const MODES: ModeOption[] = [
 		id: 'qcm',
 		label: 'Je choisis la bonne réponse',
 		hint: 'parmi 4',
-		icon: '👆',
+		icon: 'hand-pointing',
 		recommended: true,
 	},
-	{ id: 'saisie', label: "J'écris le nom", hint: 'au clavier', icon: '⌨️' },
+	{ id: 'saisie', label: "J'écris le nom", hint: 'au clavier', icon: 'keyboard' },
 ];
 
 /* ---------- Objectif 1 : reconnaître (schéma + nom) ---------- */
@@ -145,7 +145,9 @@ const PROPRIETES: PropQ[] = [
 
 function proprietesType(): ExerciseType {
 	return {
-		modes: [{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: '👆', recommended: true }],
+		modes: [
+			{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'hand-pointing', recommended: true },
+		],
 		generate(): Exercise {
 			const p = choice(PROPRIETES);
 			return {

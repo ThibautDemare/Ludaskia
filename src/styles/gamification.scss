@@ -191,6 +191,10 @@ html.anim-reduced .mascotte-static {
 .obj-ico {
 	font-size: 20px;
 	flex: 0 0 auto;
+	color: var(--accent); /* picto coloré (pas le noir d'--ink) */
+}
+.obj.done .obj-ico {
+	color: var(--ok);
 }
 .obj-lab {
 	flex: 1;

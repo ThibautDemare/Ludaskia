@@ -5,6 +5,7 @@
    génération et la vérification d'un exercice.
    ============================================================ */
 import type { ExerciseType, Exercise } from './exercise';
+import type { IconName } from './icon-names';
 import type { Item } from './items';
 import { bilanQ } from './lessons';
 import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
@@ -43,6 +44,7 @@ export interface Category {
 	id: CategoryId;
 	label: string;
 	subject: SubjectId;
+	icon?: IconName; // pictogramme de la carte de catégorie (rendu par ui/icon.ts)
 }
 
 export interface LessonDef {
@@ -135,19 +137,19 @@ export const CATEGORIES: Category[] = [
 	// complété par le « Calcul mental » historique. ⚠ « Calcul » (math-calcul,
 	// opérations posées) est distinct du « Calcul mental » (math-calcul-mental).
 	// Les nouvelles catégories arrivent vides : leurs leçons suivront par issue.
-	{ id: 'math-numeration', label: 'Numération', subject: 'math' },
-	{ id: 'math-calcul', label: 'Calcul', subject: 'math' },
-	{ id: 'math-calcul-mental', label: 'Calcul mental', subject: 'math' },
-	{ id: 'math-grandeurs-mesures', label: 'Grandeurs et mesures', subject: 'math' },
-	{ id: 'math-geometrie', label: 'Géométrie', subject: 'math' },
+	{ id: 'math-numeration', label: 'Numération', subject: 'math', icon: 'list-numbers' },
+	{ id: 'math-calcul', label: 'Calcul', subject: 'math', icon: 'plus-minus' },
+	{ id: 'math-calcul-mental', label: 'Calcul mental', subject: 'math', icon: 'brain' },
+	{ id: 'math-grandeurs-mesures', label: 'Grandeurs et mesures', subject: 'math', icon: 'ruler' },
+	{ id: 'math-geometrie', label: 'Géométrie', subject: 'math', icon: 'shapes' },
 	// Français — 4 catégories du manuel CE2, dans l'ordre canonique. Grammaire et
 	// Vocabulaire (FR-A, #107) sont le prérequis structurel des futures leçons de
 	// contenu : elles arrivent VIDES (la navigation affiche « Bientôt disponible »,
 	// aucun trophée ni bilan n'est généré tant qu'elles n'ont pas de leçon).
-	{ id: 'fr-grammaire', label: 'Grammaire', subject: 'francais' },
-	{ id: 'fr-conjugaison', label: 'Conjugaison', subject: 'francais' },
-	{ id: ORTHO_CATEGORY_ID, label: 'Orthographe', subject: 'francais' },
-	{ id: 'fr-vocabulaire', label: 'Vocabulaire', subject: 'francais' },
+	{ id: 'fr-grammaire', label: 'Grammaire', subject: 'francais', icon: 'text' },
+	{ id: 'fr-conjugaison', label: 'Conjugaison', subject: 'francais', icon: 'clock-clockwise' },
+	{ id: ORTHO_CATEGORY_ID, label: 'Orthographe', subject: 'francais', icon: 'pencil' },
+	{ id: 'fr-vocabulaire', label: 'Vocabulaire', subject: 'francais', icon: 'translate' },
 ];
 
 /* ---------- Catalogue des leçons math ---------- */

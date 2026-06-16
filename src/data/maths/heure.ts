@@ -24,8 +24,14 @@ import { normalizeText, rnd, choice, sample } from '../../core/utils';
 import { renderFigure } from '../../core/figures';
 
 const MODES: ModeOption[] = [
-	{ id: 'saisie', label: "J'écris l'heure", hint: 'au clavier', icon: '⌨️', recommended: true },
-	{ id: 'qcm', label: 'Je choisis la bonne heure', hint: 'parmi 4', icon: '👆' },
+	{
+		id: 'saisie',
+		label: "J'écris l'heure",
+		hint: 'au clavier',
+		icon: 'keyboard',
+		recommended: true,
+	},
+	{ id: 'qcm', label: 'Je choisis la bonne heure', hint: 'parmi 4', icon: 'hand-pointing' },
 ];
 
 interface Heure {

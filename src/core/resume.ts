@@ -42,7 +42,7 @@ export interface ResumeSnapshot {
 	savedAt: number; // ms (passé en paramètre — ce module ne lit pas l'horloge)
 	mode: ResumeMode;
 	label: string; // libellé affiché sur la carte
-	icon: string; // emoji affiché sur la carte (matière pour une leçon, type pour un bilan)
+	icon: string; // nom d'icône Phosphor (matière pour une leçon, type pour un bilan), rendu via iconOr()
 	categoryId: string | null; // pour filtrer la carte sur l'écran de catégorie
 	relaunch: ResumeRelaunch; // pour « Recommencer »
 	// État de restauration (exercice « grille ») :

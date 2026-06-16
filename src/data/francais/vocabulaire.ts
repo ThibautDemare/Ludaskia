@@ -158,7 +158,7 @@ function ordreType(gen: () => Exercise): ExerciseType {
 				id: 'tuiles',
 				label: 'Je range les mots',
 				hint: 'glisse ou tape les tuiles',
-				icon: '🔤',
+				icon: 'text',
 				recommended: true,
 			},
 		],

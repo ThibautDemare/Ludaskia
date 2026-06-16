@@ -7,6 +7,7 @@
    orthographe = mot caché (on regarde, puis on écrit).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
+import { icon } from './icon';
 import { getLessonById, genLessonItem } from '../core/catalog';
 import { hasMode } from '../core/exercise';
 import type { Item } from '../core/items';
@@ -81,7 +82,7 @@ export function runRevisionEspacee(): void {
       <div class="rev-done-big">👍</div>
       <div class="rev-done-lab">Rien à réviser pour l'instant !</div>
       <div class="rev-done-sub">Reviens un autre jour : les notions à entretenir réapparaîtront ici.</div>
-      <div class="rev-actions"><button class="rev-btn" id="revHome">🏠 Accueil</button></div>
+      <div class="rev-actions"><button class="rev-btn" id="revHome">${icon('house')} Accueil</button></div>
     </div></div>`;
 		document.getElementById('revHome')!.addEventListener('click', goHome);
 		return;
@@ -233,7 +234,7 @@ function renderDone() {
     <div class="rev-done-big">${score}/${items.length}</div>
     <div class="rev-done-lab">révision terminée</div>
     <div class="rev-done-sub">Les notions réussies reviendront plus tard, les autres plus tôt.</div>
-    <div class="rev-actions"><button class="rev-btn" id="revHome">🏠 Accueil</button></div>
+    <div class="rev-actions"><button class="rev-btn" id="revHome">${icon('house')} Accueil</button></div>
   </div>`;
 	document.getElementById('revHome')!.addEventListener('click', goHome);
 }

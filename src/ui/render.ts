@@ -30,9 +30,34 @@ import { sparkline } from './effects';
 import { renderFavoris } from './bilan';
 import { renderReprises } from './resume';
 import { renderRewardNav, mascotteBulleHTML } from './unlocks-view';
+import { icon, type IconName } from './icon';
 
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
 export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
+
+/* Boutons fonctionnels au markup statique (toolbar + sauvegarde des profils) :
+   leur libellé vit dans index.html, mais l'icône est injectée ici pour garder
+   UNE seule source des SVG (cf. ui/icon.ts). Appelé une fois au câblage. */
+export function paintStaticIcons() {
+	const set = (id: string, html: string) => {
+		const el = document.getElementById(id);
+		if (el) el.innerHTML = html;
+	};
+	set('btnVerify', `${icon('check')} Vérifier`);
+	set('btnHome', `${icon('house')} Accueil`);
+	set('btnPrint', `${icon('printer')} Imprimer / PDF`);
+	set('btnExport', `${icon('export')} Exporter les profils cochés`);
+	set('btnImport', `${icon('import')} Importer une sauvegarde`);
+	// Grosses icônes d'entrée des cartes d'accueil (mode = rôle fonctionnel).
+	const setIco = (cardId: string, html: string) => {
+		const el = document.querySelector(`#${cardId} .ico`);
+		if (el) el.innerHTML = html;
+	};
+	setIco('cardSprint', icon('run'));
+	setIco('cardRevision', icon('repeat'));
+	setIco('cardLecon', icon('book-open'));
+	setIco('cardBilanCustom', icon('faders'));
+}
 
 /* Bouton de profil dans la barre d'outils (libellé = profil actif) + badge de niveau */
 export function renderToolbarProfile() {
@@ -93,9 +118,10 @@ export function renderProfileMenu() {
 		m.list
 			.map(
 				(p) =>
-					`<button class="pm-item${p.uuid === m.active ? ' active' : ''}" data-uuid="${p.uuid}">${p.emoji} ${escapeHTML(p.name)}${p.uuid === m.active ? ' <span class="pm-check">✓</span>' : ''}</button>`,
+					`<button class="pm-item${p.uuid === m.active ? ' active' : ''}" data-uuid="${p.uuid}">${p.emoji} ${escapeHTML(p.name)}${p.uuid === m.active ? ` <span class="pm-check">${icon('check', { label: 'profil actif' })}</span>` : ''}</button>`,
 			)
-			.join('') + `<button class="pm-item pm-manage" id="pmManage">⚙️ Gérer les profils</button>`;
+			.join('') +
+		`<button class="pm-item pm-manage" id="pmManage">${icon('gear')} Gérer les profils</button>`;
 }
 /* Profil dont la palette d'avatars est ouverte (null = aucune). Géré ici car
    l'écran de gestion se re-rend entièrement via renderProfiles(). */
@@ -120,7 +146,7 @@ function emojiPaletteHTML(current: string, niveau: number) {
 	const foret = AVATARS_FORET.map((a) =>
 		niveau >= a.niveau
 			? dispo(a.emoji)
-			: `<span class="emoji-opt locked" title="Débloqué au niveau ${a.niveau}">${a.emoji}<span class="emoji-lock">🔒 ${a.niveau}</span></span>`,
+			: `<span class="emoji-opt locked" title="Débloqué au niveau ${a.niveau}">${a.emoji}<span class="emoji-lock">${icon('lock')} ${a.niveau}</span></span>`,
 	).join('');
 	return `<div class="emoji-palette" role="listbox" aria-label="Choisir un avatar">${base}${foret}</div>`;
 }
@@ -143,15 +169,16 @@ export function renderProfiles() {
         ${p.uuid === m.active ? '<span class="profile-tag">actif</span>' : ''}
       </button>
       <span class="profile-tools">
-        <button data-act="emoji" title="Changer l'avatar"${p.uuid === emojiPickerFor ? ' aria-expanded="true"' : ''}>🎨</button>
-        <button data-act="rename" title="Renommer">✏️</button>
-        <button data-act="reset" title="Réinitialiser la progression">♻️</button>
-        <button data-act="delete" title="Supprimer le profil"${m.list.length <= 1 ? ' disabled' : ''}>🗑️</button>
+        <button data-act="emoji" title="Changer l'avatar"${p.uuid === emojiPickerFor ? ' aria-expanded="true"' : ''}>${icon('palette', { cls: 'ph-lg', label: "Changer l'avatar" })}</button>
+        <button data-act="rename" title="Renommer">${icon('pencil', { cls: 'ph-lg', label: 'Renommer' })}</button>
+        <button data-act="reset" title="Réinitialiser la progression">${icon('reset', { cls: 'ph-lg', label: 'Réinitialiser la progression' })}</button>
+        <button data-act="delete" title="Supprimer le profil"${m.list.length <= 1 ? ' disabled' : ''}>${icon('trash', { cls: 'ph-lg', label: 'Supprimer le profil' })}</button>
       </span>
       ${p.uuid === emojiPickerFor ? emojiPaletteHTML(p.emoji, niveauDepuisXP(getXPFor(p.uuid))) : ''}
     </div>`,
 			)
-			.join('') + `<button class="profile-add" id="profileAdd">＋ Nouveau profil</button>`;
+			.join('') +
+		`<button class="profile-add" id="profileAdd">${icon('plus')} Nouveau profil</button>`;
 	renderToolbarProfile(); // garde le bouton de la barre synchronisé
 }
 
@@ -190,14 +217,14 @@ function fillRevisionRecord(elId: string) {
 	const n = countDue(ortho, revisions, now);
 	document.getElementById('cardRevision')?.classList.toggle('card-inactive', n === 0);
 	if (n) {
-		el.innerHTML = `🔁 <strong>${n}</strong> à réviser`;
+		el.innerHTML = `${icon('repeat')} <strong>${n}</strong> à réviser`;
 		return;
 	}
 	const echeance = prochaineEcheance(ortho, revisions, now);
 	if (echeance != null) {
-		el.innerHTML = `<span class="rev-ok">✅ Bravo, tu es à jour !</span><span class="rev-next">Prochaine révision ${quandRevision(echeance, now)}.</span>`;
+		el.innerHTML = `<span class="rev-ok">${icon('check-circle')} Bravo, tu es à jour !</span><span class="rev-next">Prochaine révision ${quandRevision(echeance, now)}.</span>`;
 	} else if (aDesRevisions(ortho, revisions)) {
-		el.innerHTML = `<span class="rev-ok">✅ Bravo, tu as tout révisé !</span>`;
+		el.innerHTML = `<span class="rev-ok">${icon('check-circle')} Bravo, tu as tout révisé !</span>`;
 	} else {
 		el.innerHTML = `<span class="rev-empty">Tes révisions apparaîtront ici dès que tu auras travaillé quelques leçons.</span>`;
 	}
@@ -268,10 +295,16 @@ export function renderHomeStats() {
 
 /* Objectifs de régularité (cadence saine, périodes calendaires).
    La pratique espacée prime : on encourage à revenir, sans pression quotidienne. */
-export const REGULARITY = [
-	{ mode: 'sprint', icon: '🏃', label: 'Sprints', target: 3, period: 'week' },
-	{ mode: 'express', icon: '⏱️', label: 'Bilan express', target: 2, period: 'month' },
-	{ mode: 'complet', icon: '📚', label: 'Bilan complet', target: 1, period: 'month' },
+export const REGULARITY: {
+	mode: string;
+	icon: IconName;
+	label: string;
+	target: number;
+	period: string;
+}[] = [
+	{ mode: 'sprint', icon: 'run', label: 'Sprints', target: 3, period: 'week' },
+	{ mode: 'express', icon: 'timer', label: 'Bilan express', target: 2, period: 'month' },
+	{ mode: 'complet', icon: 'exam', label: 'Bilan complet', target: 1, period: 'month' },
 ];
 const PERIOD_LABEL: Record<string, string> = { week: 'cette semaine', month: 'ce mois-ci' };
 export function renderObjectives() {
@@ -282,10 +315,10 @@ export function renderObjectives() {
 		const n = countSince(o.mode, since);
 		const done = n >= o.target;
 		return `<div class="obj ${done ? 'done' : ''}">
-      <span class="obj-ico">${o.icon}</span>
+      <span class="obj-ico">${icon(o.icon)}</span>
       <span class="obj-lab">${o.label}</span>
       <span class="obj-prog">${Math.min(n, o.target)}/${o.target} <span class="obj-per">${PERIOD_LABEL[o.period]}</span></span>
-      <span class="obj-check">${done ? '✓' : ''}</span>
+      <span class="obj-check">${done ? icon('check') : ''}</span>
     </div>`;
 	}).join('');
 	el.innerHTML = `<h3 class="obj-h">Mes objectifs</h3>${rows}`;

@@ -31,6 +31,17 @@ test('vue catégories : le bouton du haut remonte vers les matières', async ({ 
 	expect(errors).toEqual([]);
 });
 
+test("vue matières : le bouton du haut ramène à l'accueil", async ({ page }) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'matieres');
+	const back = page.locator('#backHomeMatieresTop');
+	await expect(back).toBeVisible();
+	await expect(back).toHaveText(/Retour à l'accueil/);
+	await back.click();
+	await expect(page.locator('#home')).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
 test('fin de leçon (saisie) : « Retour à la catégorie » ramène à la vue catégorie', async ({
 	page,
 }) => {

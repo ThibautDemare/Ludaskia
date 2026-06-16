@@ -37,6 +37,7 @@ import gear from '@phosphor-icons/core/assets/bold/gear-bold.svg?raw';
 import reset from '@phosphor-icons/core/assets/bold/arrows-clockwise-bold.svg?raw';
 import palette from '@phosphor-icons/core/assets/bold/palette-bold.svg?raw';
 import plus from '@phosphor-icons/core/assets/bold/plus-bold.svg?raw';
+import caretDown from '@phosphor-icons/core/assets/bold/caret-down-bold.svg?raw';
 import lock from '@phosphor-icons/core/assets/bold/lock-bold.svg?raw';
 import exportIcon from '@phosphor-icons/core/assets/bold/export-bold.svg?raw';
 import importIcon from '@phosphor-icons/core/assets/bold/download-simple-bold.svg?raw';
@@ -86,6 +87,7 @@ const SVGS: Record<IconName, string> = {
 	reset,
 	palette,
 	plus,
+	'caret-down': caretDown,
 	lock,
 	export: exportIcon,
 	import: importIcon,

@@ -38,17 +38,152 @@
 	background: var(--accent);
 	color: #fff;
 }
-.bc-category {
+/* ---- Hiérarchie Matière > Catégorie > Rubrique (#195) ----
+   Trois registres visuels distincts pour casser la grande liste : la matière
+   (volet repliable) sert d'ancre ; la catégorie porte une gouttière colorée +
+   son icône ; la rubrique reprend le registre de l'écran de catégorie. */
+
+/* En-tête commun de groupe : case parent + (icône) + titre + compteur. */
+.bc-group-head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 48px; /* grande cible tactile à chaque niveau */
+	cursor: pointer;
+	user-select: none;
+}
+.bc-group-check {
+	accent-color: var(--accent);
+	width: 22px;
+	height: 22px;
+	flex-shrink: 0;
+	margin: 0;
+	cursor: pointer;
+}
+/* Sur la barre de matière, la case est isolée dans une zone tactile ~44px,
+   distincte du reste de la barre (qui, lui, déplie l'accordéon). */
+.bc-check-wrap {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	flex-shrink: 0;
+	margin: -11px 0 -11px -11px; /* recentre sans gonfler la hauteur de la barre */
+	cursor: pointer;
+}
+.bc-group-title {
+	flex: 1; /* pousse compteur + chevron à droite */
+	min-width: 0;
+}
+.bc-group-count {
+	font-family: var(--ui);
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--grey);
+	flex-shrink: 0;
+}
+.bc-group-count.is-full {
+	color: var(--accent);
+}
+
+/* Niveau 1 — Matière : volet repliable, titre fort, neutre (--ink), avec
+   pastille d'icône. On réserve --accent aux états cochés/actifs. */
+.bc-subject {
 	margin-bottom: 14px;
 }
-.bc-cat-label {
+.bc-subject-head {
+	list-style: none;
+	padding: 6px 4px;
+}
+.bc-subject-head::-webkit-details-marker {
+	display: none;
+}
+.bc-subject-ico {
+	width: 34px;
+	height: 34px;
+	margin: 0;
+}
+.bc-subject-ico .ph-icon {
+	width: 20px;
+	height: 20px;
+}
+.bc-subject-title {
 	font-family: var(--ui);
-	font-size: 12px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
+	font-size: 18px;
+	font-weight: 800;
+	color: var(--ink);
+}
+.bc-chevron {
+	display: inline-flex;
+	flex-shrink: 0;
 	color: var(--grey);
-	margin-bottom: 8px;
+}
+.bc-chevron .ph-icon {
+	width: 18px;
+	height: 18px;
+	transition: transform 0.15s ease;
+}
+.bc-subject[open] .bc-chevron .ph-icon {
+	transform: rotate(180deg);
+}
+.bc-subject-body {
+	padding: 4px 0 4px 6px;
+}
+
+/* Niveau 2 — Catégorie : gouttière colorée à gauche + icône + titre en casse
+   normale (les majuscules nuisent à la lecture d'un CE2). */
+.bc-category {
+	border-left: 3px solid var(--bc-cat-tint, var(--accent));
+	padding-left: 12px;
+	margin: 12px 0;
+}
+.bc-cat-head {
+	padding: 4px 0;
+}
+.bc-cat-ico {
+	width: 28px;
+	height: 28px;
+	margin: 0;
+}
+.bc-cat-ico .ph-icon {
+	width: 17px;
+	height: 17px;
+}
+.bc-cat-title {
+	font-family: var(--ui);
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--ink);
+}
+
+/* Niveau 3 — Rubrique : registre proche de `.cat-rubrique` (cohérence avec
+   l'écran de catégorie), plus discret car imbriqué. */
+.bc-rubrique {
+	margin: 8px 0 8px 6px;
+}
+.bc-rubrique-head {
+	min-height: 40px;
+	padding: 2px 0;
+}
+.bc-rubrique-title {
+	font-family: var(--ui);
+	font-size: 13.5px;
+	font-weight: 700;
+	color: var(--grey);
+}
+.bc-rubrique .bc-lessons-grid {
+	margin-top: 6px;
+}
+.bc-group-head:focus-within {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+	.bc-chevron .ph-icon {
+		transition: none;
+	}
 }
 /* Mobile-first : une colonne (grandes cibles), grille seulement sur grand écran. */
 .bc-lessons-grid {
@@ -98,39 +233,84 @@
 	height: 22px;
 	flex-shrink: 0;
 }
+/* Questions par leçon (#195) : 4 cartes verticales (icône agrandie au-dessus
+   du libellé + nombre), pour un picto lisible et tapable au doigt. */
 .bc-nbq {
-	display: flex;
-	flex-wrap: wrap;
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
 	gap: 9px;
+}
+@media (max-width: 400px) {
+	.bc-nbq {
+		grid-template-columns: repeat(2, 1fr);
+	}
 }
 .bc-nbq-item {
 	display: flex;
+	flex-direction: column;
 	align-items: center;
-	gap: 8px;
-	min-height: 48px;
-	padding: 10px 16px;
+	justify-content: center;
+	gap: 4px;
+	min-height: 88px;
+	padding: 12px 8px;
 	background: var(--paper);
 	border: 2px solid transparent;
-	border-radius: 10px;
+	border-radius: 12px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 	cursor: pointer;
 	font-family: var(--ui);
 	font-size: 14px;
+	text-align: center;
 	user-select: none;
+	position: relative;
+	transition:
+		background 0.1s,
+		border-color 0.1s,
+		transform 0.06s;
 }
+/* Radio masqué visuellement (l'état coché est porté par la carte) mais
+   focusable et accessible. */
+.bc-nbq-radio {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+.bc-nbq-ico .ph-icon {
+	width: 40px;
+	height: 40px;
+	color: var(--accent);
+}
+@media (min-width: 640px) {
+	.bc-nbq-ico .ph-icon {
+		width: 44px;
+		height: 44px;
+	}
+}
+.bc-nbq-label {
+	font-weight: 600;
+	color: var(--ink);
+}
+.bc-nbq-num {
+	font-size: 18px;
+	font-weight: 800;
+	color: var(--accent);
+	line-height: 1;
+}
+/* Carte choisie : double codage (fond + bordure épaissie), couleur seule
+   insuffisante pour ce public. */
 .bc-nbq-item:has(:checked) {
 	background: var(--accent-soft);
 	border-color: var(--accent);
+	border-width: 3px;
 }
-.bc-nbq-item input[type='radio'] {
-	accent-color: var(--accent);
-	width: 20px;
-	height: 20px;
-	flex-shrink: 0;
+.bc-nbq-item:focus-within {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
 }
-.bc-nbq-num {
-	font-weight: 700;
-	color: var(--accent);
+.bc-nbq-item:active {
+	transform: scale(0.97);
 }
 /* Sélecteur Bilan / Sprint (#64) : deux grandes cibles tactiles, parité visuelle
    avec le réglage « questions par leçon ». */

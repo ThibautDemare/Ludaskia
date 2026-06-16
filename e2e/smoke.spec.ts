@@ -60,3 +60,33 @@ test('le sprint démarre avec son compte à rebours', async ({ page }) => {
 	await expect(page.locator('#sprintTime')).toHaveText(/0[45]:\d\d/); // ~05:00
 	expect(errors).toEqual([]);
 });
+
+test('Sprint : la touche Entrée enchaîne après la correction', async ({ page }) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'sprint');
+
+	// On veut une question À SAISIE (maths) : une bonne réponse enchaîne seule (✓),
+	// seule une erreur affiche le bouton « Continuer » qu'on veut tester au clavier.
+	// Les tirages mêlent saisie et QCM, on relance le sprint jusqu'à une saisie.
+	let typed = false;
+	for (let i = 0; i < 25 && !typed; i++) {
+		await page.locator('#sprintStage').waitFor();
+		if (await page.locator('#sprintInput').count()) {
+			typed = true;
+			break;
+		}
+		await gotoHash(page, 'accueil');
+		await gotoHash(page, 'sprint');
+	}
+	expect(typed).toBeTruthy();
+
+	// Réponse volontairement fausse → correction + bouton « Continuer » (chrono en pause).
+	await page.locator('#sprintInput').fill('999999');
+	await page.locator('#sprintInput').press('Enter');
+	await expect(page.locator('#sprintContinue')).toBeVisible();
+
+	// Entrée enchaîne sur la question suivante, sans cliquer le bouton.
+	await page.locator('#sprintContinue').press('Enter');
+	await expect(page.locator('#sprintContinue')).toBeHidden();
+	expect(errors).toEqual([]);
+});

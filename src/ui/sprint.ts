@@ -4,7 +4,8 @@
    - bonne réponse → petite animation ✓ puis question suivante
      (le compte à rebours continue)
    - mauvaise réponse → on révèle la bonne réponse et on MET LE
-     CHRONO EN PAUSE jusqu'à ce que l'élève clique « Continuer »
+     CHRONO EN PAUSE jusqu'à ce que l'élève passe à la suite
+     (clic « Continuer » OU touche Entrée)
    - validation sur Entrée OU bouton « Valider »
    - un sprint ne compte que s'il va au bout des 5 minutes
    ============================================================ */
@@ -330,13 +331,17 @@ function sprintNext() {
 	else renderSprintTyped(stage, def, q);
 }
 
-// Entrée valide la saisie (utile pour la leçon 15 et ses étapes). Fonction
-// nommée : addEventListener déduplique, pas d'accumulation de listeners.
+// Entrée : pendant une correction (chrono en pause) elle enchaîne sur la
+// question suivante comme le bouton « Continuer » ; sinon elle valide la saisie
+// (utile pour la leçon 15 et ses étapes). Le listener est posé sur #sprintStage
+// (persistant) : sans ce routage, son preventDefault bloquerait l'activation
+// native de « Continuer » au clavier. Fonction nommée : addEventListener
+// déduplique, pas d'accumulation de listeners.
 function onSprintEnter(e: KeyboardEvent) {
-	if (e.key === 'Enter') {
-		e.preventDefault();
-		sprintSubmit();
-	}
+	if (e.key !== 'Enter') return;
+	e.preventDefault();
+	if (sprintPaused) sprintContinue();
+	else sprintSubmit();
 }
 
 // Question à saisir (maths) : champ + bouton Valider.

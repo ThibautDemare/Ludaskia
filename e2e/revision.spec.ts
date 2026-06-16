@@ -55,6 +55,27 @@ test('Révision : la comparaison se joue en tuiles (pas de clavier) + consigne',
 	expect(errors).toEqual([]);
 });
 
+test('Révision : la touche Entrée valide puis enchaîne sur la suite', async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('num-valeur-position'));
+	await gotoHash(page, 'revision-espacee');
+
+	// Question à saisie : on remplit puis on valide à la touche Entrée (pas de clic).
+	const input = page.locator('#revInput');
+	await expect(input).toBeVisible();
+	await input.fill('0'); // peu importe la justesse : on teste l'enchaînement clavier
+	await input.press('Enter');
+
+	// Le verdict s'affiche, avec le bouton « Terminer » (un seul élément dû).
+	await expect(page.locator('.rev-feedback')).toBeVisible();
+	await expect(page.locator('#revNext')).toBeVisible();
+
+	// Entrée enchaîne sur l'écran de fin sans cliquer le bouton.
+	await page.locator('#revNext').press('Enter');
+	await expect(page.locator('.rev-done')).toContainText('terminée');
+	expect(errors).toEqual([]);
+});
+
 test("Révision : l'ordre alphabétique se joue en tuiles-mots", async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(seedDueLesson('fr-vocab-alpha-initiale'));

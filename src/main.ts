@@ -110,11 +110,14 @@ function wireDOM() {
 	// Navigation multi-matières : retours en arrière
 	document.getElementById('backHomeMatieres')!.addEventListener('click', goHome);
 	document.getElementById('backMatieres')!.addEventListener('click', startMatieres);
-	document.getElementById('backCategorie')!.addEventListener('click', (e: any) => {
+	document.getElementById('backMatieresTop')!.addEventListener('click', startMatieres);
+	const backCategorieHandler = (e: any) => {
 		const subject = e.currentTarget.dataset.subject;
 		if (subject) goCategories(subject);
 		else startMatieres();
-	});
+	};
+	document.getElementById('backCategorie')!.addEventListener('click', backCategorieHandler);
+	document.getElementById('backCategorieTop')!.addEventListener('click', backCategorieHandler);
 	document
 		.getElementById('backOrthoListe')!
 		.addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));

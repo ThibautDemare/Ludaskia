@@ -337,6 +337,14 @@ html.anim-reduced .mark.correct {
 .rb-quit:active {
 	transform: translateY(1px);
 }
+/* Le « ← Retour à la catégorie » réutilise .backlink-top : neutraliser sa marge
+   dans le bandeau (flex avec gap) pour rester aligné avec Recommencer / Quitter. */
+.result-banner .backlink-top {
+	margin: 0;
+	font-size: 14px;
+	min-height: 0;
+	padding: 9px 16px;
+}
 .rb-medal {
 	display: flex;
 	align-items: center;

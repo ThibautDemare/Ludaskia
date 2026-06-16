@@ -25,7 +25,9 @@ import {
 	startRevision,
 	runLecon,
 	goHome,
+	goCategorie,
 } from './navigation';
+import { getLessonById } from '../core/catalog';
 
 /* ---------- Vérification (arrête le chrono) ---------- */
 export function verify() {
@@ -169,6 +171,9 @@ export function verify() {
 	// Fin de leçon : recommencer un tour (s'entraîner encore) ou quitter (#69).
 	if (currentMode === 'lecon' && currentLessonId) {
 		html += `<button class="rb-redo" id="btnRecommencer">↻ Recommencer</button>`;
+		const cat = getLessonById(currentLessonId)?.category;
+		if (cat)
+			html += `<button class="backlink-top" id="btnBackCategorie">← Retour à la catégorie</button>`;
 		html += `<button class="rb-quit" id="btnQuitter">${icon('house')} Quitter</button>`;
 	}
 	banner.innerHTML = html;
@@ -179,6 +184,12 @@ export function verify() {
 		recommencer.addEventListener('click', () => {
 			banner.remove(); // le bandeau est frère de #sheets : runLecon ne l'efface pas
 			runLecon(currentLessonId!);
+		});
+	const backCat = banner.querySelector('#btnBackCategorie');
+	if (backCat)
+		backCat.addEventListener('click', () => {
+			const cat = getLessonById(currentLessonId!)?.category;
+			if (cat) goCategorie(cat);
 		});
 	const quitter = banner.querySelector('#btnQuitter');
 	if (quitter) quitter.addEventListener('click', goHome);

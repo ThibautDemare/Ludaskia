@@ -162,6 +162,7 @@ export function runRevisionEspacee(): void {
     </div>
     <div class="rev-stage" id="revStage"></div>
   </div>`;
+	bindEnter(); // une seule fois : #revStage persiste d'une question à l'autre
 	renderCurrent();
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -223,7 +224,6 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 		if (inp.value.trim() === '') return inp.focus();
 		grade(checkItemAnswer(it.item, inp.value), String(it.item.answer));
 	});
-	bindEnter();
 	(document.getElementById('revInput') as HTMLInputElement).focus();
 }
 
@@ -261,7 +261,6 @@ function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 		if (inp.value.trim() === '') return inp.focus();
 		grade(checkItemAnswer({ text: '', answer: it.mot, kind: 'text' }, inp.value), it.mot);
 	});
-	bindEnter();
 	(document.getElementById('revInput') as HTMLInputElement).focus();
 }
 
@@ -488,13 +487,17 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 	redraw();
 }
 
+// Entrée enchaîne sur l'action principale visible : après une réponse, le bouton
+// « Continuer / Terminer » (#revNext) ; sinon « Valider » (#revValidate). Posé une
+// seule fois sur #revStage (persistant) : son preventDefault bloquerait sinon
+// l'activation native de « Continuer » au clavier.
 function bindEnter() {
 	const stage = document.getElementById('revStage')!;
 	stage.addEventListener('keydown', (e) => {
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			document.getElementById('revValidate')?.dispatchEvent(new Event('click'));
-		}
+		if (e.key !== 'Enter') return;
+		e.preventDefault();
+		const btn = document.getElementById('revNext') ?? document.getElementById('revValidate');
+		btn?.dispatchEvent(new Event('click'));
 	});
 }
 

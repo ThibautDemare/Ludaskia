@@ -16,6 +16,8 @@ import {
 	startOfWeek,
 	startOfMonth,
 	countSince,
+	countNewLessonsSince,
+	loadLessonFirstSeen,
 	getXP,
 	progressionNiveau,
 	niveauDepuisXP,
@@ -295,33 +297,59 @@ export function renderHomeStats() {
 	renderFavoris(document.getElementById('favoris'));
 }
 
-/* Objectifs de régularité (cadence saine, périodes calendaires).
-   La pratique espacée prime : on encourage à revenir, sans pression quotidienne. */
+/* Objectifs de régularité (cadence saine, hebdomadaires).
+   La pratique espacée prime : on encourage à revenir et à varier les activités
+   (un peu de chrono, de l'entretien espacé, de la découverte), sans pression
+   quotidienne. Cibles validées sur l'angle engagement CE2 (#178).
+   `metric` choisit le compteur : 'runs' = essais d'un mode depuis le début de
+   période (countSince) ; 'newLessons' = leçons travaillées pour la 1re fois. */
 export const REGULARITY: {
 	mode: string;
 	icon: IconName;
 	label: string;
 	target: number;
 	period: string;
+	metric?: 'runs' | 'newLessons';
 }[] = [
-	{ mode: 'sprint', icon: 'run', label: 'Sprints', target: 3, period: 'week' },
-	{ mode: 'express', icon: 'timer', label: 'Bilan express', target: 2, period: 'month' },
-	{ mode: 'complet', icon: 'exam', label: 'Bilan complet', target: 1, period: 'month' },
+	{ mode: 'sprint', icon: 'run', label: 'Sprints', target: 2, period: 'week' },
+	{ mode: 'revision-espacee', icon: 'repeat', label: 'Révisions', target: 3, period: 'week' },
+	{
+		mode: 'lecon',
+		icon: 'book-open',
+		label: 'Nouvelle leçon',
+		target: 1,
+		period: 'week',
+		metric: 'newLessons',
+	},
 ];
 const PERIOD_LABEL: Record<string, string> = { week: 'cette semaine', month: 'ce mois-ci' };
+
+/* Reste-t-il une leçon jamais travaillée à découvrir ? Sert à neutraliser
+   l'objectif « nouvelle leçon » quand tout le catalogue est connu (sinon
+   objectif fantôme, jamais cochable — dark pattern, cf. avis gamification #178). */
+function aLeconInedite(): boolean {
+	const vues = loadLessonFirstSeen();
+	return getAllLessons().some((l) => vues[l.id] == null);
+}
+
 export function renderObjectives() {
 	const el = document.getElementById('objectives');
 	if (!el) return;
-	const rows = REGULARITY.map((o) => {
+	const rows = REGULARITY.flatMap((o) => {
 		const since = o.period === 'week' ? startOfWeek() : startOfMonth();
-		const n = countSince(o.mode, since);
+		const n = o.metric === 'newLessons' ? countNewLessonsSince(since) : countSince(o.mode, since);
 		const done = n >= o.target;
-		return `<div class="obj ${done ? 'done' : ''}">
+		// « Nouvelle leçon » non atteinte et plus aucune leçon inédite : on masque
+		// l'objectif plutôt que d'afficher une cible impossible à cocher.
+		if (o.metric === 'newLessons' && !done && !aLeconInedite()) return [];
+		return [
+			`<div class="obj ${done ? 'done' : ''}">
       <span class="obj-ico">${icon(o.icon)}</span>
       <span class="obj-lab">${o.label}</span>
       <span class="obj-prog">${Math.min(n, o.target)}/${o.target} <span class="obj-per">${PERIOD_LABEL[o.period]}</span></span>
       <span class="obj-check">${done ? icon('check') : ''}</span>
-    </div>`;
+    </div>`,
+		];
 	}).join('');
 	el.innerHTML = `<h3 class="obj-h">Mes objectifs</h3>${rows}`;
 }

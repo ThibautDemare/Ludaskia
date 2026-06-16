@@ -76,6 +76,10 @@ import {
 	loadLessonStats,
 	recordLessonStats,
 	lessonAvgPct,
+	LESSON_FIRST_SEEN_KEY,
+	loadLessonFirstSeen,
+	markLessonsFirstSeen,
+	countNewLessonsSince,
 	XP_KEY,
 	getXP,
 	addXP,
@@ -297,6 +301,10 @@ const api = {
 	loadLessonStats,
 	recordLessonStats,
 	lessonAvgPct,
+	LESSON_FIRST_SEEN_KEY,
+	loadLessonFirstSeen,
+	markLessonsFirstSeen,
+	countNewLessonsSince,
 	XP_KEY,
 	getXP,
 	addXP,
@@ -583,14 +591,45 @@ describe('Objectifs de régularité', () => {
 		expect(api.countSince('sprint', now - 7 * 86400000)).toBe(1); // un seul dans les 7 derniers jours
 		expect(api.startOfWeek() <= now && api.startOfMonth() <= now).toBe(true);
 	});
-	test('REGULARITY : 3 sprints/semaine, 2 express/mois, 1 complet/mois', () => {
+	test('REGULARITY : 2 sprints, 3 révisions, 1 nouvelle leçon (tout hebdo, #178)', () => {
 		const byMode = Object.fromEntries(api.REGULARITY.map((o) => [o.mode, o]));
-		expect(byMode.sprint.target).toBe(3);
-		expect(byMode.sprint.period).toBe('week');
-		expect(byMode.express.target).toBe(2);
-		expect(byMode.express.period).toBe('month');
-		expect(byMode.complet.target).toBe(1);
-		expect(byMode.complet.period).toBe('month');
+		// Plus aucun objectif sur les bilans express/complet.
+		expect(byMode.express).toBeUndefined();
+		expect(byMode.complet).toBeUndefined();
+		// Les trois objectifs sont hebdomadaires.
+		expect(api.REGULARITY.every((o) => o.period === 'week')).toBe(true);
+		expect(byMode.sprint.target).toBe(2);
+		expect(byMode['revision-espacee'].target).toBe(3);
+		expect(byMode.lecon.target).toBe(1);
+		expect(byMode.lecon.metric).toBe('newLessons');
+	});
+});
+
+describe('Objectif « nouvelle leçon » : premier passage par leçon (#178)', () => {
+	test('countNewLessonsSince ne compte que les 1res rencontres dans la fenêtre', () => {
+		const now = Date.now();
+		const semaine = now - 3 * 86400000; // début de fenêtre : il y a 3 jours
+		// Leçon découverte avant la fenêtre → ne compte pas.
+		api.markLessonsFirstSeen(['math-doubles'], now - 10 * 86400000);
+		// Leçon découverte dans la fenêtre → compte.
+		api.markLessonsFirstSeen(['math-tables-multiplication'], now - 1 * 86400000);
+		expect(api.countNewLessonsSince(semaine)).toBe(1);
+		expect(api.countNewLessonsSince(now - 30 * 86400000)).toBe(2);
+	});
+	test('markLessonsFirstSeen ne réécrit jamais la 1re date', () => {
+		const t1 = Date.now() - 5 * 86400000;
+		api.markLessonsFirstSeen(['math-doubles'], t1);
+		api.markLessonsFirstSeen(['math-doubles'], Date.now()); // 2e passage : ignoré
+		expect(api.loadLessonFirstSeen()['math-doubles']).toBe(t1);
+		// Donc ne compte pas comme « nouvelle » cette semaine.
+		expect(api.countNewLessonsSince(api.startOfWeek())).toBe(0);
+	});
+	test('recordLessonStats date le 1er passage, pas les suivants', () => {
+		const since = api.startOfWeek();
+		api.recordLessonStats({ 'math-doubles': { ok: 5, total: 8 } }); // 1re fois cette semaine
+		expect(api.countNewLessonsSince(since)).toBe(1);
+		api.recordLessonStats({ 'math-doubles': { ok: 8, total: 8 } }); // 2e fois : pas une nouvelle leçon
+		expect(api.countNewLessonsSince(since)).toBe(1);
 	});
 });
 

@@ -575,8 +575,10 @@ le sprint passent tous deux par ce point.
 ## Données (`localStorage`)
 Tout passe par `lsGet/lsSet`. Les clés sont **préfixées par le profil actif**
 (`<uuid>/ludaskia_…`) sauf la méta globale `ludaskia_profiles`. Clés par profil :
-`ludaskia_runs_{complet,express,sprint}`, `ludaskia_streak`, `ludaskia_stars`,
-`ludaskia_lessonStats`, `ludaskia_lessonRevision` (état SR par leçon),
+`ludaskia_runs_{complet,express,sprint,revision-espacee}` (le dernier non classé,
+décompte d'objectif seul), `ludaskia_streak`, `ludaskia_stars`,
+`ludaskia_lessonStats`, `ludaskia_lessonFirstSeen` (date du 1er passage par
+leçon, objectif « nouvelle leçon »), `ludaskia_lessonRevision` (état SR par leçon),
 `ludaskia_goal`, `ludaskia_goalsDone`, `ludaskia_trophies`, `ludaskia_xp`,
 `ludaskia_bilans` (configs de bilans favoris), `ludaskia_resume` (exercices
 grille **en cours**, repris ou abandonnés — #63). L'état SR des **mots**
@@ -606,10 +608,18 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   « Récompenses »** qui récapitule les paliers de niveau (rangs, compagnon, avatars,
   thèmes) acquis ✓ / à venir 🔒 ; ouvertes depuis l'accueil et l'écran Profils
   (`ui/unlocks-view.ts`).
-- **Objectifs de régularité** (panneau d'accueil, périodes calendaires) :
-  3 sprints/semaine, 2 bilans express/mois, 1 bilan complet/mois. Les bilans de
-  catégorie et personnalisés y comptent (mode déduit du nombre de questions :
-  « toutes » → complet, sinon express).
+- **Objectifs de régularité** (panneau d'accueil, hebdomadaires, `REGULARITY`) :
+  **2 sprints**, **3 révisions** (sessions de répétition espacée *terminées*) et
+  **1 nouvelle leçon** par semaine (#178). Ces trois pratiques constituent un
+  usage sain (un peu de chrono, de l'entretien espacé, de la découverte) ; les
+  bilans express/complet n'y figurent plus. Comptage : `countSince(mode, since)`
+  pour sprint et `revision-espacee` (une session terminée enregistre un `run`
+  non classé, juste pour le décompte) ; `countNewLessonsSince(since)` pour la
+  nouvelle leçon, à partir du **premier passage daté par leçon**
+  (`ludaskia_lessonFirstSeen`, posé dans `recordLessonStats` à la 1re rencontre).
+  L'objectif « nouvelle leçon » est **masqué** quand le catalogue est entièrement
+  découvert et qu'aucune découverte n'a eu lieu cette semaine (pas d'objectif
+  fantôme jamais cochable).
 - **Défi du jour** contextuel et « qualité » : jamais un défi impossible
   (remédiation seulement s'il existe une leçon < 70 % ; « bats ton record »
   seulement s'il y a un record).

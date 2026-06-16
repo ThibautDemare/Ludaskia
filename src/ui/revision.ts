@@ -14,7 +14,7 @@ import type { Item } from '../core/items';
 import { checkItemAnswer, figureBlock, renderItem, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
 import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
 import type { OrthoState } from '../core/orthographe/types';
-import { loadLessonRevisions, avancerLessonRevision, addXP } from '../core/progress';
+import { loadLessonRevisions, avancerLessonRevision, addXP, recordRun } from '../core/progress';
 import { selectDueGroups } from '../core/revision-select';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
 
@@ -42,6 +42,7 @@ let idx = 0;
 let score = 0;
 let ortho: OrthoState;
 let active = false; // une révision est-elle EN COURS ? (garde-fou de sortie, #63)
+let startTs = 0; // début de la session (durée enregistrée à la fin, #178)
 
 // Exposé pour le garde-fou de sortie ; remis à zéro en quittant la vue.
 export const isRevisionRunning = () => active;
@@ -153,6 +154,7 @@ export function runRevisionEspacee(): void {
 		return;
 	}
 	active = true; // révision réellement en cours (au moins un élément à réviser)
+	startTs = Date.now();
 	sheets.innerHTML = `<div class="revision">
     <div class="rev-hud">
       <span class="rev-prog" id="revProg"></span>
@@ -528,6 +530,10 @@ function next() {
 
 function renderDone() {
 	active = false; // terminée : plus rien à perdre, pas de confirmation de sortie
+	// Une session de révision TERMINÉE compte comme une « révision » de la semaine
+	// (objectif de régularité #178). Pas de classement ni de médaille : ce run
+	// n'alimente aucun podium, il sert seulement au comptage via countSince.
+	recordRun('revision-espacee', score, items.length, Date.now() - startTs);
 	const stage = document.getElementById('revStage')!;
 	if (!stage) return;
 	document.querySelector('.rev-hud')?.remove();

@@ -135,9 +135,13 @@ export function loadLessonStats() {
 }
 export function recordLessonStats(perLesson: Record<string, { ok: number; total: number }>) {
 	const s = loadLessonStats();
+	// Leçons rencontrées pour la 1re fois dans cet essai (aucune stat antérieure) :
+	// sert au suivi « première fois » (objectif « nouvelle leçon », #178).
+	const premieres: string[] = [];
 	for (const num in perLesson) {
 		const { ok, total } = perLesson[num];
 		if (!total) continue;
+		if (!s[num]) premieres.push(num);
 		const e = s[num] || { attempts: 0, correct: 0, questions: 0, bestPct: 0, lastPct: 0 };
 		e.attempts++;
 		e.correct += ok;
@@ -148,14 +152,42 @@ export function recordLessonStats(perLesson: Record<string, { ok: number; total:
 		s[num] = e;
 	}
 	lsSet(LESSON_STATS_KEY, s);
-	// Première rencontre d'une leçon → entrée en révision espacée (cf. #45).
+	const now = Date.now();
+	// Première rencontre : on date le premier passage (objectif « nouvelle leçon »)
+	// puis on entre la leçon en révision espacée (cf. #45).
+	markLessonsFirstSeen(premieres, now);
 	enterLessonsRevision(
 		Object.keys(perLesson).filter((id) => perLesson[id].total > 0),
-		Date.now(),
+		now,
 	);
 }
 export const lessonAvgPct = (e: any) =>
 	e && e.questions ? Math.round((e.correct / e.questions) * 100) : null;
+
+/* ---------- Premier passage par leçon (objectif « nouvelle leçon », #178) ----------
+   Date (ms) de la 1re fois qu'une leçon est travaillée, tous modes confondus.
+   On ne stocke QUE la première occurrence (jamais réécrite), si bien qu'une
+   leçon déjà rencontrée avant l'arrivée de ce suivi reste « ancienne » : elle
+   ne sera datée que si elle est vraiment nouvelle. */
+export const LESSON_FIRST_SEEN_KEY = 'ludaskia_lessonFirstSeen';
+export function loadLessonFirstSeen(): Record<string, number> {
+	return lsGet(LESSON_FIRST_SEEN_KEY, {});
+}
+export function markLessonsFirstSeen(lessonIds: string[], now: number) {
+	const all = loadLessonFirstSeen();
+	let changed = false;
+	for (const id of lessonIds) {
+		if (all[id] == null) {
+			all[id] = now;
+			changed = true;
+		}
+	}
+	if (changed) lsSet(LESSON_FIRST_SEEN_KEY, all);
+}
+/* Nombre de leçons découvertes (1er passage) depuis un instant donné. */
+export function countNewLessonsSince(since: number): number {
+	return Object.values(loadLessonFirstSeen()).filter((ts) => ts >= since).length;
+}
 
 /* ---------- Révision espacée des leçons (maths / conjugaison) ----------
    État SR par leçon (les mots d'orthographe ont le leur dans MotOrtho.revision).

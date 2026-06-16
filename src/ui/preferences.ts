@@ -10,18 +10,26 @@ import { lsGet, lsSet } from '../core/storage';
 import { getXP, niveauDepuisXP } from '../core/progress';
 import { THEMES, themesDebloques } from '../core/unlocks';
 import { activeProfile } from '../core/profiles';
+import { icon } from './icon';
 
 export const THEME_KEY = 'ludaskia_theme';
 export const ANIM_KEY = 'ludaskia_anim';
 
+// Thèmes disponibles pour le profil actif. Sur le SERVEUR DEV uniquement
+// (MODE === 'development'), on les débloque TOUS pour faciliter le test visuel.
+// On cible MODE plutôt que DEV pour exclure les tests (Vitest tourne en MODE
+// 'test') et le build de prod (MODE 'production') : zéro effet hors `npm run dev`.
+const themesDispo = (niveau: number): string[] =>
+	import.meta.env.MODE === 'development' ? THEMES.map((t) => t.id) : themesDebloques(niveau);
+
 // Thème courant du profil actif (garde-fou : un thème non débloqué retombe sur défaut).
 export function getTheme(): string {
 	const id = lsGet(THEME_KEY, 'defaut');
-	return themesDebloques(niveauDepuisXP(getXP())).includes(id) ? id : 'defaut';
+	return themesDispo(niveauDepuisXP(getXP())).includes(id) ? id : 'defaut';
 }
 // Change le thème (no-op si non débloqué pour ce profil).
 export function setTheme(id: string) {
-	if (!themesDebloques(niveauDepuisXP(getXP())).includes(id)) return;
+	if (!themesDispo(niveauDepuisXP(getXP())).includes(id)) return;
 	lsSet(THEME_KEY, id);
 }
 export function animationsReduites(): boolean {
@@ -45,13 +53,13 @@ export function renderPreferences() {
 	const p = activeProfile();
 	if (!p) return;
 	const niveau = niveauDepuisXP(getXP());
-	const debloques = themesDebloques(niveau);
+	const debloques = themesDispo(niveau);
 	const courant = getTheme();
 	const swatches = THEMES.map((t) => {
 		if (!debloques.includes(t.id)) {
 			return `<span class="theme-opt theme-${t.id} locked" title="Débloqué au niveau ${t.niveau}">
         <span class="theme-dot"></span><span class="theme-lab">${t.label}</span>
-        <span class="theme-lock">🔒 Niv ${t.niveau}</span></span>`;
+        <span class="theme-lock">${icon('lock')} Niv ${t.niveau}</span></span>`;
 		}
 		return `<button class="theme-opt theme-${t.id}${t.id === courant ? ' current' : ''}" data-act="set-theme" data-theme="${t.id}"${
 			t.id === courant ? ' aria-current="true"' : ''
@@ -60,7 +68,7 @@ export function renderPreferences() {
 	}).join('');
 	el.innerHTML = `<h3 class="pref-h">Préférences de ${escapeHTML(p.name)}</h3>
     <div class="pref-block">
-      <span class="pref-lab">🎨 Thème de couleur</span>
+      <span class="pref-lab">${icon('palette')} Thème de couleur</span>
       <div class="theme-palette" role="listbox" aria-label="Choisir un thème">${swatches}</div>
     </div>
     <label class="pref-toggle">

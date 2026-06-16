@@ -66,6 +66,12 @@ import clockClockwise from '@phosphor-icons/core/assets/bold/clock-clockwise-bol
 import translate from '@phosphor-icons/core/assets/bold/translate-bold.svg?raw';
 import calendar from '@phosphor-icons/core/assets/bold/calendar-bold.svg?raw';
 import feather from '@phosphor-icons/core/assets/bold/feather-bold.svg?raw';
+// Quantité croissante : barres « signal » graduées pour les paliers chiffrés,
+// pile (stack) pour « Tout » (hors-gradation, cf. #180).
+import quantity1 from '@phosphor-icons/core/assets/bold/cell-signal-low-bold.svg?raw';
+import quantity2 from '@phosphor-icons/core/assets/bold/cell-signal-medium-bold.svg?raw';
+import quantity3 from '@phosphor-icons/core/assets/bold/cell-signal-high-bold.svg?raw';
+import quantityAll from '@phosphor-icons/core/assets/bold/stack-bold.svg?raw';
 
 const SVGS: Record<IconName, string> = {
 	check,
@@ -109,6 +115,10 @@ const SVGS: Record<IconName, string> = {
 	translate,
 	calendar,
 	feather,
+	'quantity-1': quantity1,
+	'quantity-2': quantity2,
+	'quantity-3': quantity3,
+	'quantity-all': quantityAll,
 };
 
 export interface IconOptions {

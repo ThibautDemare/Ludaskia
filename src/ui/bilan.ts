@@ -189,7 +189,7 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 		}).join('');
 	}
 
-	// Défaut : « Moyen » sur un écran scopé (révision pour de vrai), « Rapide » sinon.
+	// Défaut : « Moyen » sur un écran scopé (révision pour de vrai), « Un peu » sinon.
 	const defaultNbq = scoped ? '5' : '3';
 	const nbqItem = (value: string, icon: string, intent: string, num: string) =>
 		`<label class="bc-nbq-item">
@@ -228,10 +228,10 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
       <div id="bcNbqSection">
         <div class="bc-section-title">Questions par leçon</div>
         <div class="bc-nbq">
-          ${nbqItem('3', '🐢', 'Rapide', '3')}
-          ${nbqItem('5', '🚶', 'Moyen', '5')}
-          ${nbqItem('10', '🏃', 'Costaud', '10')}
-          ${nbqItem('all', '🎯', 'Tout', '')}
+          ${nbqItem('3', icon('quantity-1'), 'Un peu', '3')}
+          ${nbqItem('5', icon('quantity-2'), 'Moyen', '5')}
+          ${nbqItem('10', icon('quantity-3'), 'Beaucoup', '10')}
+          ${nbqItem('all', icon('quantity-all'), 'Tout', '')}
         </div>
       </div>
 

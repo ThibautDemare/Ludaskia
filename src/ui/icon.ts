@@ -28,6 +28,7 @@ export type { IconName };
 import check from '@phosphor-icons/core/assets/bold/check-bold.svg?raw';
 import checkCircle from '@phosphor-icons/core/assets/bold/check-circle-bold.svg?raw';
 import x from '@phosphor-icons/core/assets/bold/x-bold.svg?raw';
+import list from '@phosphor-icons/core/assets/bold/list-bold.svg?raw';
 import house from '@phosphor-icons/core/assets/bold/house-bold.svg?raw';
 import printer from '@phosphor-icons/core/assets/bold/printer-bold.svg?raw';
 import trash from '@phosphor-icons/core/assets/bold/trash-bold.svg?raw';
@@ -70,6 +71,7 @@ const SVGS: Record<IconName, string> = {
 	check,
 	'check-circle': checkCircle,
 	x,
+	list,
 	house,
 	printer,
 	trash,

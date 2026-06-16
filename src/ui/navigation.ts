@@ -35,7 +35,7 @@ import { renderOrthoListeForm } from './ortho-liste';
 import { renderOrthoRevoir } from './ortho-revoir';
 import { iconOr } from './icon';
 import { startOrthoRun, orthoDiscoveryComplete, renderOrthoModeChoice } from './ortho-runner';
-import { closeProfileMenu } from './menu';
+import { closeProfileMenu, closeDrawer } from './menu';
 import { applyPreferences, renderPreferences } from './preferences';
 import { leconKey } from '../core/resume';
 import { captureResume, clearResumeCtx, setResumeCtx, maybeRelaunch } from './resume';
@@ -291,6 +291,7 @@ export function setToolbar({
 		if (profile) renderToolbarProfile();
 	}
 	closeProfileMenu(); // tout changement de vue referme le menu déroulant
+	closeDrawer(); // … et le tiroir mobile (ex. après un tap sur Accueil)
 }
 
 // Remet l'UI dans l'état « hors session » (commun à l'accueil et au sélecteur)

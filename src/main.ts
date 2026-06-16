@@ -63,7 +63,7 @@ import { isSprintRunning } from './ui/sprint';
 import { isRevisionRunning } from './ui/revision';
 import { hideCelebration, hideLevelUp } from './ui/effects';
 import { openRecompenses, openTrophees, hideUnlockModals } from './ui/unlocks-view';
-import { closeProfileMenu, toggleProfileMenu } from './ui/menu';
+import { closeProfileMenu, toggleProfileMenu, toggleDrawer, closeDrawer } from './ui/menu';
 import { initTts } from './ui/tts';
 import { initVersionCheck } from './ui/version-check';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
@@ -99,7 +99,16 @@ function wireDOM() {
 	// gérée au niveau du hashchange (couvre aussi Précédent / édition d'URL), pour
 	// ne pas demander deux fois. Les exercices grille sont sauvegardés en silence.
 	document.getElementById('btnHome')!.addEventListener('click', goHome);
-	document.getElementById('btnPrint')!.addEventListener('click', printAll);
+	document.getElementById('btnPrint')!.addEventListener('click', () => {
+		closeDrawer(); // Imprimer ne change pas de vue : on referme le tiroir à la main
+		printAll();
+	});
+	// Tiroir mobile : hamburger (ouvre/ferme) + voile (ferme au tap extérieur)
+	document.getElementById('toolbarBurger')!.addEventListener('click', (e) => {
+		e.stopPropagation();
+		toggleDrawer();
+	});
+	document.getElementById('toolbarScrim')!.addEventListener('click', closeDrawer);
 	document.getElementById('cardLecon')!.addEventListener('click', startMatieres);
 	document.getElementById('cardSprint')!.addEventListener('click', startSprint);
 	document.getElementById('cardRevision')!.addEventListener('click', startRevisionEspacee);
@@ -319,6 +328,7 @@ function wireDOM() {
 			hideLevelUp();
 			hideUnlockModals();
 			closeProfileMenu();
+			closeDrawer();
 		}
 	});
 

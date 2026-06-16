@@ -9,6 +9,7 @@ export type IconName =
 	| 'check'
 	| 'check-circle'
 	| 'x'
+	| 'list'
 	| 'house'
 	| 'printer'
 	| 'trash'

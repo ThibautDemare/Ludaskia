@@ -15,6 +15,9 @@ test("l'accueil se charge sans erreur", async ({ page }) => {
 	await expect(page.locator('.toolbar-logo img')).toBeVisible();
 	// Le bloc d'accueil n'affiche plus le nom « Ludaskia » (plus de doublon).
 	await expect(page.locator('#home .big')).not.toContainText('Ludaskia');
+	// Sur mobile (Pixel 5, < 600px), la barre reste sur une ligne : le mot
+	// « Ludaskia » est masqué, seul le logo porte l'identité.
+	await expect(page.locator('.toolbar-title')).toBeHidden();
 	expect(errors).toEqual([]);
 });
 

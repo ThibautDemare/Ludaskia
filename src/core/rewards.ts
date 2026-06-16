@@ -226,6 +226,15 @@ export const TROPHIES: Trophy[] = [
 		test: (g: any) => g.perfectBilan,
 	},
 	{
+		// Bonus découvrable : reconnaître un seul bilan de longue haleine (≈ 3 leçons
+		// × 10 ou 6 × 5), sans en faire une norme ni une famille « toujours plus long ».
+		id: 'bilanLong',
+		icon: '🌲',
+		title: 'Grande exploration',
+		desc: 'Terminer un grand bilan de 30 questions d’une traite.',
+		test: (g: any) => g.bestBilanCount >= 30,
+	},
+	{
 		id: 'champion',
 		icon: '🥇',
 		title: 'Champion',
@@ -365,6 +374,7 @@ export function gSnapshot() {
 		totalLessons: getAllLessons().length, // total de leçons du catalogue (seuil du trophée « partout »)
 		maxStreak: s.max || s.days || 0,
 		bestExpressMs: re.length ? Math.min(...re.map((r) => r.ms)) : Infinity,
+		bestBilanCount: all.length ? Math.max(...all.map((r) => r.count)) : 0, // plus grand bilan (complet/express) terminé en une session
 		perfectBilan: all.some((r) => r.count > 0 && r.ok === r.count),
 		gold: rc.length >= 3 || re.length >= 3, // un podium d'or existe dès 3 essais dans un mode
 		goalsDone: getGoalsDone(),

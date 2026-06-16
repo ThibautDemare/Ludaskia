@@ -1478,6 +1478,21 @@ describe('Trophées', () => {
 				.includes('vol100'),
 		).toBe(true);
 	});
+	test('trophée « Grande exploration » : plus grand bilan d’une session (#181)', () => {
+		// Aucun bilan : métrique à 0, trophée verrouillé.
+		expect(api.gSnapshot().bestBilanCount).toBe(0);
+		// Plusieurs petits bilans cumulés ne suffisent pas : c'est la taille d'UNE session qui compte.
+		api.recordRun('complet', 10, 10, 200000);
+		api.recordRun('express', 18, 20, 300000);
+		expect(api.gSnapshot().bestBilanCount).toBe(20);
+		expect(api.evaluateTrophies().map((t) => t.id)).not.toContain('bilanLong');
+		// Un seul bilan d'au moins 30 questions déclenche le trophée.
+		api.recordRun('complet', 28, 30, 600000);
+		expect(api.gSnapshot().bestBilanCount).toBe(30);
+		expect(api.evaluateTrophies().map((t) => t.id)).toContain('bilanLong');
+		// Persistant : rien de nouveau au passage suivant.
+		expect(api.evaluateTrophies().map((t) => t.id)).not.toContain('bilanLong');
+	});
 	test('trophées à paliers compilés (metric/n → test)', () => {
 		const def = api.TROPHIES.find((t) => t.id === 'stars5')!;
 		expect(typeof def.test === 'function').toBe(true);

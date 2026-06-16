@@ -248,3 +248,38 @@
 	text-decoration: underline;
 	font-weight: 700;
 }
+
+/* Bouton « ← Retour » d'un cran, en haut du contenu (vues catégories/catégorie)
+   et réutilisé en fin de leçon (bandeau résultat). Cible tactile ≥ 48 px, style
+   secondaire/doux (distinct du « 🏠 Accueil » de la toolbar). Toujours picto + mot. */
+.backlink-top {
+	/* Bloc à largeur de contenu, calé à GAUCHE même quand le conteneur .home
+	   est centré (text-align n'agit pas sur un bloc à `width: fit-content`). */
+	display: flex;
+	width: fit-content;
+	align-items: center;
+	gap: 8px;
+	min-height: 48px;
+	padding: 10px 16px;
+	margin: 0 0 20px;
+	/* Bordure teintée accent (suit le thème) : détache le fond doux du fond de
+	   page, qui en est très proche (--page-bg ≈ --accent-soft). */
+	border: 1.5px solid var(--accent);
+	border-radius: 8px;
+	background: var(--accent-soft);
+	color: var(--accent);
+	font-family: var(--ui);
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 1.1;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+}
+.backlink-top:active {
+	background: var(--accent);
+	color: #fff;
+}
+.backlink-top:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}

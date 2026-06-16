@@ -385,10 +385,14 @@ export function showCategorieView(categoryId: string) {
 		categoryId,
 		document.getElementById('categorieTitle')!,
 	);
-	// Lien « Retour » dynamique vers la matière parente.
+	// Liens « Retour » dynamiques vers la matière parente (haut de page + bas de page).
 	const cat = CATEGORIES.find((c) => c.id === categoryId);
-	const back = document.getElementById('backCategorie') as HTMLAnchorElement | null;
-	if (back && cat) back.dataset.subject = cat.subject;
+	if (cat) {
+		for (const id of ['backCategorie', 'backCategorieTop']) {
+			const back = document.getElementById(id) as HTMLElement | null;
+			if (back) back.dataset.subject = cat.subject;
+		}
+	}
 	// L'orthographe (deux colonnes + sous-colonnes) profite de toute la largeur.
 	document
 		.getElementById('categorie')!

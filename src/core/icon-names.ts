@@ -38,6 +38,11 @@ export type IconName =
 	| 'timer'
 	| 'exam'
 	| 'bookmark'
+	// Quantité croissante (sélecteur « questions par leçon » du bilan)
+	| 'quantity-1'
+	| 'quantity-2'
+	| 'quantity-3'
+	| 'quantity-all'
 	// Icônes de catégorie / matière (cartes de navigation)
 	| 'calculator'
 	| 'list-numbers'

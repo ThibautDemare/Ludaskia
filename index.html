@@ -18,22 +18,38 @@
 				<span class="toolbar-logo"><img src="/logo.png" alt="" aria-hidden="true" /></span>
 				<span class="toolbar-title">Ludaskia</span>
 			</h1>
-			<span class="toolbar-xp" id="xpBadge" style="display: none"></span>
-			<div class="profile-dd" id="profileDD">
-				<button
-					class="btn-profile"
-					id="toolbarProfile"
-					style="display: none"
-					title="Changer / gérer les profils"
-				></button>
-				<div class="profile-menu" id="profileMenu" hidden></div>
-			</div>
+			<!-- Toujours visibles (même en exercice) : repère de temps + action principale. -->
 			<span class="chrono hidden" id="chrono">00:00</span>
 			<span class="score hidden" id="score"></span>
 			<button class="btn-accent" id="btnVerify" style="display: none">Vérifier</button>
-			<button class="btn-primary" id="btnHome" style="display: none">Accueil</button>
-			<button class="btn-ghost" id="btnPrint">Imprimer / PDF</button>
+			<!-- Déclencheur du tiroir (mobile uniquement, masqué en desktop par CSS). -->
+			<button
+				class="toolbar-burger"
+				id="toolbarBurger"
+				type="button"
+				aria-label="Ouvrir le menu"
+				aria-expanded="false"
+				aria-controls="toolbarDrawer"
+			></button>
+			<!-- Contrôles secondaires : alignés en barre sur desktop (display:contents),
+			     repliés en tiroir latéral sur mobile (niveau/XP, profil, Accueil, Imprimer). -->
+			<div class="toolbar-drawer" id="toolbarDrawer">
+				<span class="toolbar-xp" id="xpBadge" style="display: none"></span>
+				<div class="profile-dd" id="profileDD">
+					<button
+						class="btn-profile"
+						id="toolbarProfile"
+						style="display: none"
+						title="Changer / gérer les profils"
+					></button>
+					<div class="profile-menu" id="profileMenu" hidden></div>
+				</div>
+				<button class="btn-primary" id="btnHome" style="display: none">Accueil</button>
+				<button class="btn-ghost" id="btnPrint">Imprimer / PDF</button>
+			</div>
 		</div>
+		<!-- Voile derrière le tiroir mobile (fermeture au tap extérieur). -->
+		<div class="toolbar-scrim" id="toolbarScrim" hidden></div>
 
 		<!-- Écran d'accueil (interactif) -->
 		<div class="home screen-only home-wide" id="home">

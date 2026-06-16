@@ -43,11 +43,11 @@ export function paintStaticIcons() {
 		const el = document.getElementById(id);
 		if (el) el.innerHTML = html;
 	};
-	// Le libellé est enveloppé dans `.btn-label` : sur mobile (barre dense), on
-	// masque le texte de ces boutons utilitaires (icône maison/imprimante seule).
 	set('btnVerify', `${icon('check')} Vérifier`);
-	set('btnHome', `${icon('house')}<span class="btn-label"> Accueil</span>`);
-	set('btnPrint', `${icon('printer')}<span class="btn-label"> Imprimer / PDF</span>`);
+	set('btnHome', `${icon('house')} Accueil`);
+	set('btnPrint', `${icon('printer')} Imprimer / PDF`);
+	// Déclencheur du tiroir mobile (caché en desktop par CSS) : icône hamburger.
+	set('toolbarBurger', icon('list'));
 	set('btnExport', `${icon('export')} Exporter les profils cochés`);
 	set('btnImport', `${icon('import')} Importer une sauvegarde`);
 	// Grosses icônes d'entrée des cartes d'accueil (mode = rôle fonctionnel).

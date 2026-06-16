@@ -32,6 +32,7 @@ import { recompensesEntre } from '../core/unlocks';
 import { showCelebration, showLevelUp } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import { dicteeDisponible, dicter } from './tts';
+import { icon, iconOr } from './icon';
 
 const ACCENTS = ['é', 'è', 'ê', 'à', 'â', 'ç', 'ô', 'î', 'ï', 'û', 'ù', 'œ', '-', "'"];
 const SEANCE_MAX = 8; // activités par séance avant de proposer une pause (rythme CE2)
@@ -94,7 +95,7 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
     <p class="mode-choice-lesson">${escapeHTML(label)}</p>
     <div class="mode-choice-list">
       <button class="mode-btn recommended" data-mode="">
-        <span class="mode-btn-ico" aria-hidden="true">⭐</span>
+        <span class="mode-btn-ico">${icon('star', { cls: 'ph-star' })}</span>
         <span class="mode-btn-txt">
           <span class="mode-btn-label">Le parcours complet</span>
           <span class="mode-btn-badge">conseillé · donne l'étoile</span>
@@ -103,7 +104,7 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
       ${cibles
 				.map(
 					(m) => `<button class="mode-btn" data-mode="${m.id}">
-        <span class="mode-btn-ico" aria-hidden="true">${m.icon ?? '▶'}</span>
+        <span class="mode-btn-ico">${iconOr(m.icon)}</span>
         <span class="mode-btn-txt">
           <span class="mode-btn-label">${escapeHTML(m.label)}</span>
           <span class="mode-btn-hint">pour t'entraîner</span>
@@ -115,7 +116,7 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
     <div class="mode-choice-etude">
       <p class="mode-choice-etude-sep">Ou pour réviser tranquillement</p>
       <button class="etude-btn" id="btnRevoir">
-        <span class="mode-btn-ico" aria-hidden="true">📖</span>
+        <span class="mode-btn-ico">${icon('book-open')}</span>
         <span class="mode-btn-txt">
           <span class="mode-btn-label">Relire mes mots</span>
           <span class="mode-btn-hint">juste pour relire, sans points</span>
@@ -188,7 +189,7 @@ function renderMotCache(word: MotOrtho): void {
 	sheets().innerHTML = `
     <div class="page ortho-run">
       <p class="ortho-run-consigne">Regarde bien ce mot, puis cache-le et écris-le.</p>
-      ${dispoDictee ? '<div><button class="btn-primary ortho-ecouter" id="btnEcouterMot">🔊 Écouter le mot</button></div>' : ''}
+      ${dispoDictee ? `<div><button class="btn-primary ortho-ecouter" id="btnEcouterMot">${icon('speaker')} Écouter le mot</button></div>` : ''}
       <div class="ortho-mot-affiche" id="motAffiche">${escapeHTML(word.mot)}</div>
       <button class="btn-primary" id="btnCacher">Cacher et écrire →</button>
       <div class="ortho-saisie" id="zoneSaisie" hidden>
@@ -261,7 +262,7 @@ function renderDictee(word: MotOrtho): void {
 	sheets().innerHTML = `
     <div class="page ortho-run">
       <p class="ortho-run-consigne">Écoute le mot, puis écris-le.</p>
-      <button class="btn-primary ortho-ecouter" id="btnEcouter">🔊 Écouter</button>
+      <button class="btn-primary ortho-ecouter" id="btnEcouter">${icon('speaker')} Écouter</button>
       <div class="ortho-saisie">
         <input class="ortho-input" id="orthoInput" ${TEXT_ANSWER_INPUT_ATTRS}
                aria-label="Écris le mot" />
@@ -344,7 +345,7 @@ function renderTuiles(word: MotOrtho): void {
     <div class="page ortho-run">
       <p class="ortho-run-consigne">Remets les lettres dans le bon ordre.
         <span class="ortho-run-astuce">Tape entre deux lettres pour choisir où écrire.</span></p>
-      ${dispoDictee ? '<div><button class="btn-primary ortho-ecouter" id="btnEcouterTuiles">🔊 Écouter le mot</button></div>' : ''}
+      ${dispoDictee ? `<div><button class="btn-primary ortho-ecouter" id="btnEcouterTuiles">${icon('speaker')} Écouter le mot</button></div>` : ''}
       <p class="tuiles-titre">Ton mot</p>
       <div class="tuiles-construction" id="construction"></div>
       <p class="tuiles-titre">Les lettres</p>

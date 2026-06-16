@@ -239,7 +239,7 @@ function genIntrus(): Exercise {
 }
 
 const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: '✅', recommended: true },
+	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'check-circle', recommended: true },
 ];
 
 export function motJusteType(): ExerciseType {
@@ -259,7 +259,7 @@ export function motJusteType(): ExerciseType {
 const NB_PAR_THEME = 3;
 
 const MODE_TRI: ModeOption[] = [
-	{ id: 'tri', label: 'Je range chaque mot dans son thème', icon: '🗂️', recommended: true },
+	{ id: 'tri', label: 'Je range chaque mot dans son thème', icon: 'cards', recommended: true },
 ];
 
 export function triType(): ExerciseType {

@@ -225,7 +225,7 @@ export const GROUPES_SENS: GroupeSens[] = [
 ];
 
 const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis le bon sens', icon: '✅', recommended: true },
+	{ id: 'qcm', label: 'Je choisis le bon sens', icon: 'check-circle', recommended: true },
 ];
 
 export function sensFigureType(): ExerciseType {

@@ -33,6 +33,7 @@ import { countDue } from '../core/revision-select';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { renderOrthoListeForm } from './ortho-liste';
 import { renderOrthoRevoir } from './ortho-revoir';
+import { iconOr } from './icon';
 import { startOrthoRun, orthoDiscoveryComplete, renderOrthoModeChoice } from './ortho-runner';
 import { closeProfileMenu } from './menu';
 import { applyPreferences, renderPreferences } from './preferences';
@@ -40,7 +41,7 @@ import { leconKey } from '../core/resume';
 import { captureResume, clearResumeCtx, setResumeCtx, maybeRelaunch } from './resume';
 
 // Icône de matière pour les cartes de reprise (#63).
-const SUBJECT_ICON: Record<string, string> = { math: '🔢', francais: '📚' };
+const SUBJECT_ICON: Record<string, string> = { math: 'calculator', francais: 'book-open' };
 
 // État de session partagé (réassigné depuis sprint.ts / session.ts) : accesseurs dédiés.
 let currentMode: string | null = null; // 'complet' | 'express' | 'lecon' | 'revision' | null
@@ -150,7 +151,7 @@ export function showModeChoice(id: string) {
 					(
 						m,
 					) => `<button class="mode-btn${m.recommended ? ' recommended' : ''}" data-mode="${m.id}">
-        <span class="mode-btn-ico" aria-hidden="true">${m.icon ?? '▶'}</span>
+        <span class="mode-btn-ico">${iconOr(m.icon)}</span>
         <span class="mode-btn-txt">
           <span class="mode-btn-label">${escapeHTML(m.label)}</span>
           ${
@@ -503,7 +504,7 @@ export function runLecon(id: string) {
 		key: leconKey(id),
 		mode: 'lecon',
 		label: lesson.label,
-		icon: SUBJECT_ICON[lesson.subject] ?? '📘',
+		icon: SUBJECT_ICON[lesson.subject] ?? 'book-open',
 		categoryId: lesson.category,
 		relaunch: { type: 'lecon', lessonId: id },
 	});

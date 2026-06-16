@@ -37,7 +37,7 @@ import {
 	exportProfiles,
 	importProfiles,
 } from './core/profiles';
-import { renderProfiles, toggleEmojiPicker, closeEmojiPicker } from './ui/render';
+import { renderProfiles, toggleEmojiPicker, closeEmojiPicker, paintStaticIcons } from './ui/render';
 import {
 	applyPreferences,
 	renderPreferences,
@@ -88,6 +88,9 @@ function downloadJSON(filename: string, obj: any) {
    Initialisation : câblage des événements au chargement
    ============================================================ */
 function wireDOM() {
+	// Boutons fonctionnels au markup statique (toolbar + sauvegarde profils) :
+	// injecte leurs icônes Phosphor (les libellés sont déjà dans index.html).
+	paintStaticIcons();
 	// Champs de réponse texte « mot de passe visible » : démasquage auto dès l'insertion
 	// (texte lisible sans réactiver les suggestions du clavier mobile). Voir #139.
 	installVisiblePasswordReveal();

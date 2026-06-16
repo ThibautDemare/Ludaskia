@@ -63,7 +63,7 @@ export const SUJETS: Sujet[] = [
 const POOL_PRONOMS = ['il', 'elle', 'ils', 'elles', 'nous', 'vous', 'je', 'tu'];
 
 const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: '✅', recommended: true },
+	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'check-circle', recommended: true },
 ];
 
 /* Majuscule initiale (le sujet ouvre la phrase de l'exercice d'accord). */

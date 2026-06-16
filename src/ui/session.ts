@@ -2,6 +2,7 @@
    Déroulé d'une session : vérification, saisie clavier, impression
    ============================================================ */
 import { fmt } from '../core/utils';
+import { icon } from './icon';
 import { getSessionItems, setSessionItems, checkItemAnswer } from '../core/items';
 import type { Item } from '../core/items';
 import type { Trophy } from '../core/rewards';
@@ -168,7 +169,7 @@ export function verify() {
 	// Fin de leçon : recommencer un tour (s'entraîner encore) ou quitter (#69).
 	if (currentMode === 'lecon' && currentLessonId) {
 		html += `<button class="rb-redo" id="btnRecommencer">↻ Recommencer</button>`;
-		html += `<button class="rb-quit" id="btnQuitter">🏠 Quitter</button>`;
+		html += `<button class="rb-quit" id="btnQuitter">${icon('house')} Quitter</button>`;
 	}
 	banner.innerHTML = html;
 	const redo = banner.querySelector('#btnRedo');

@@ -218,12 +218,12 @@ export const CONJ_MODES: readonly ConjMode[] = ['saisie', 'qcm'];
    le QCM (reconnaissance) un allègement assumé pour démarrer. Ordre d'affichage :
    conseillé d'abord. Voir issue #69. */
 export const CONJ_MODE_OPTIONS: ModeOption[] = [
-	{ id: 'saisie', label: "J'écris le verbe", icon: '✏️', recommended: true },
+	{ id: 'saisie', label: "J'écris le verbe", icon: 'pencil', recommended: true },
 	{
 		id: 'qcm',
 		label: 'Je choisis la bonne réponse',
 		hint: 'plus facile pour commencer',
-		icon: '✅',
+		icon: 'check-circle',
 	},
 ];
 

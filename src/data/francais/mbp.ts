@@ -165,7 +165,7 @@ export function explicationMbp(item: MotMbp): string {
 }
 
 const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne lettre', icon: '✅', recommended: true },
+	{ id: 'qcm', label: 'Je choisis la bonne lettre', icon: 'check-circle', recommended: true },
 ];
 
 export function mbpType(): ExerciseType {

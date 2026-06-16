@@ -31,6 +31,20 @@
 	--ui: 'Nunito', system-ui, sans-serif; /* police de TOUTE l'interface, à l'écran (#137) */
 	--serif:
 		Georgia, 'Times New Roman', serif; /* réservé à l'IMPRESSION des fiches : effet « papier » (#137) */
+	/* Icônes Phosphor inline (cf. ui/icon.ts) : un seul endroit pour ajuster la
+	   taille. --icon suit le texte courant (boutons libellés) ; --icon-lg pour
+	   une icône autonome dans une cible tactile. */
+	--icon: 1.15em;
+	--icon-lg: 1.5rem;
+	/* Couleurs « par famille d'action » : réinjectent de la variété chromatique
+	   maintenant que les pictos fonctionnels sont monochromes (les emojis étaient
+	   l'unique source de couleur). STABLES — contrairement à --accent, les thèmes
+	   déblocables (themes.scss) ne les réécrivent PAS : « sprint = corail » reste
+	   vrai quel que soit le thème. La couleur double toujours une icône, jamais
+	   l'info seule. Les leçons gardent --accent (suit le thème). */
+	--cat-sprint: #e8662a; /* corail (même teinte que --clock-min) : sprint / vitesse */
+	--cat-bilan: #7a5cc0; /* violet-myrtille : bilans / objectifs */
+	--cat-bleu: #336cbf; /* bleu : révision / impression (papier) */
 }
 * {
 	box-sizing: border-box;
@@ -46,6 +60,20 @@ body {
 	); /* Nunito partout à l'écran ; serif uniquement à l'impression (print.scss) */
 	color: var(--ink);
 	background: var(--page-bg);
+}
+
+/* Icônes Phosphor inline (markup produit par ui/icon.ts) : la couleur est
+   héritée via currentColor (donc pilotée par le contexte / nos tokens), seule
+   la taille et l'alignement sont fixés ici. */
+.ph-icon {
+	width: var(--icon);
+	height: var(--icon);
+	flex: none; /* ne pas se laisser écraser dans un conteneur flex */
+	vertical-align: -0.15em; /* aligne sur la ligne de base du texte voisin */
+}
+.ph-icon.ph-lg {
+	width: var(--icon-lg);
+	height: var(--icon-lg);
 }
 
 /* Visibilité écran / impression (le détail print est dans print.css) */

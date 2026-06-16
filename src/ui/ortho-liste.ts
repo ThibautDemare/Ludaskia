@@ -18,6 +18,7 @@ import {
 } from '../core/orthographe/store';
 import type { MotInput, FormesAccord } from '../core/orthographe/types';
 import { goCategorie } from './navigation';
+import { icon } from './icon';
 
 interface RowData {
 	mot: string;
@@ -53,8 +54,8 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
       <div class="ortho-rows" id="orthoRows"></div>
       <p class="ortho-hint">Astuce : tu peux coller une liste de mots (un par ligne) dans la case « Mot ». Le bouton ✍️ d'une ligne ajoute, en option, le pluriel et le féminin (leçon « Les accords »).</p>
       <div class="ortho-form-actions">
-        <button class="btn-primary" id="orthoSave">💾 Enregistrer</button>
-        ${editing ? '<button class="ortho-del" id="orthoDelete">🗑 Supprimer la liste</button>' : ''}
+        <button class="btn-primary" id="orthoSave">${icon('check')} Enregistrer</button>
+        ${editing ? `<button class="ortho-del" id="orthoDelete">${icon('trash')} Supprimer la liste</button>` : ''}
       </div>
     </div>`;
 

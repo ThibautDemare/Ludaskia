@@ -36,7 +36,7 @@ export interface HomophoneLessonDef {
 const RUBRIQUE = 'Les homophones';
 
 const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis le bon mot', icon: '✅', recommended: true },
+	{ id: 'qcm', label: 'Je choisis le bon mot', icon: 'check-circle', recommended: true },
 ];
 
 export const HOMOPHONE_PAIRS: PaireHomophone[] = [

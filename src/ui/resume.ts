@@ -17,6 +17,7 @@
    (verify) ou en quittant vers un menu.
    ============================================================ */
 import { escapeHTML } from '../core/utils';
+import { icon, iconOr } from './icon';
 import {
 	loadResumes,
 	getResume,
@@ -189,7 +190,7 @@ function progressLabel(s: ResumeSnapshot): string {
 function cardHTML(s: ResumeSnapshot): string {
 	const pct = s.total ? Math.round((s.answered / s.total) * 100) : 0;
 	return `<div class="reprise-card" data-key="${escapeHTML(s.key)}">
-    <div class="reprise-ico" aria-hidden="true">${s.icon}</div>
+    <div class="reprise-ico" aria-hidden="true">${iconOr(s.icon)}</div>
     <div class="reprise-main">
       <div class="reprise-title">${escapeHTML(s.label)}</div>
       <div class="reprise-prog-lab">${progressLabel(s)} <span class="reprise-count">${s.answered}/${s.total}</span></div>
@@ -197,7 +198,7 @@ function cardHTML(s: ResumeSnapshot): string {
     </div>
     <div class="reprise-actions">
       <button class="reprise-continue" data-act="continue" data-key="${escapeHTML(s.key)}">Continuer →</button>
-      <button class="reprise-erase" data-act="erase" data-key="${escapeHTML(s.key)}" title="Effacer cet exercice" aria-label="Effacer : ${escapeHTML(s.label)}">🗑 Effacer</button>
+      <button class="reprise-erase" data-act="erase" data-key="${escapeHTML(s.key)}" title="Effacer cet exercice" aria-label="Effacer : ${escapeHTML(s.label)}">${icon('trash')} Effacer</button>
     </div>
   </div>`;
 }

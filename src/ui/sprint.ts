@@ -23,6 +23,7 @@ import {
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { hasMode } from '../core/exercise';
+import { icon, type IconName } from './icon';
 import { checkItemAnswer, figureBlock, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
 import type { Item } from '../core/items';
 import {
@@ -146,7 +147,7 @@ export function renderSprintConfigScreen(el: HTMLElement): void {
       ${opt('all', 'Toutes les matières', totalN)}
       ${subjectOptions}
     </div>
-    <button id="scLaunch" class="sprint-btn">Lancer ▶</button>
+    <button id="scLaunch" class="sprint-btn">${icon('play')} Lancer</button>
   </div>`;
 
 	el.querySelector('#scLaunch')!.addEventListener('click', () => {
@@ -261,16 +262,16 @@ function sprintUpdateScore() {
 
 // Icône + libellé court par matière, pour signaler la matière de chaque
 // question (cf. issue #54 : lisible instantanément par un enfant de CE2).
-const SPRINT_SUBJECT_META: Record<string, { icon: string; label: string }> = {
-	math: { icon: '🔢', label: 'Maths' },
-	francais: { icon: '✏️', label: 'Français' },
+const SPRINT_SUBJECT_META: Record<string, { icon: IconName; label: string }> = {
+	math: { icon: 'calculator', label: 'Maths' },
+	francais: { icon: 'book-open', label: 'Français' },
 };
 function subjectTag(subject: string): string {
 	const meta = SPRINT_SUBJECT_META[subject] ?? {
-		icon: '📘',
+		icon: 'book-open' as IconName,
 		label: SUBJECTS.find((s) => s.id === subject)?.label ?? subject,
 	};
-	return `<span class="sprint-subject sprint-subject-${subject}">${meta.icon} ${escapeHTML(meta.label)}</span>`;
+	return `<span class="sprint-subject sprint-subject-${subject}">${icon(meta.icon)} ${escapeHTML(meta.label)}</span>`;
 }
 
 // Choisit la prochaine leçon en gardant la même matière sur une mini-série de
@@ -483,7 +484,7 @@ function renderSprintResults(medalInfo: any, streakDays: number) {
       ${extra}
       <div class="sprint-actions">
         <button class="sprint-btn" id="sprintAgain">↻ Recommencer</button>
-        <button class="sprint-btn ghost" id="sprintHome">🏠 Accueil</button>
+        <button class="sprint-btn ghost" id="sprintHome">${icon('house')} Accueil</button>
       </div>
     </div>`;
 	const again = document.getElementById('sprintAgain');

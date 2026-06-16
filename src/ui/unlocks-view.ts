@@ -8,6 +8,7 @@
 import { getXP, niveauDepuisXP } from '../core/progress';
 import { RANGS, MASCOTTE, AVATARS_FORET, THEMES, mascotteDuNiveau } from '../core/unlocks';
 import { TROPHIES, loadTrophies } from '../core/rewards';
+import { icon } from './icon';
 
 /* ---------- Mascotte « accompagnante » : bulle de BD (phase 4) ----------
    Apparaît AUTOUR des exercices (jamais pendant un calcul chronométré) et sur
@@ -37,7 +38,7 @@ export function mascotteBulleHTML(message: string, loop = false): string {
 // Une cellule de palier, calquée sur le rendu des trophées (.trophy on/off).
 function tierCell(icone: string, titre: string, seuil: number, debloque: boolean) {
 	return `<div class="trophy ${debloque ? 'on' : 'off'}">
-    <span class="trophy-ico">${debloque ? icone : '🔒'}</span>
+    <span class="trophy-ico">${debloque ? icone : icon('lock')}</span>
     <span class="trophy-title">${titre}</span>
     <span class="trophy-desc">${debloque ? 'Débloqué ✓' : 'Niveau ' + seuil}</span></div>`;
 }
@@ -70,7 +71,7 @@ function trophiesContentHTML(): string {
 	const cells = TROPHIES.map((t) => {
 		const on = have.has(t.id);
 		return `<div class="trophy ${on ? 'on' : 'off'}">
-      <span class="trophy-ico">${on ? t.icon : '🔒'}</span>
+      <span class="trophy-ico">${on ? t.icon : icon('lock')}</span>
       <span class="trophy-title">${t.title}</span>
       <span class="trophy-desc">${t.desc}</span></div>`;
 	}).join('');

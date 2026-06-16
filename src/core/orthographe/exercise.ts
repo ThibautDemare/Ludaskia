@@ -15,9 +15,9 @@ import type { MotOrtho, ModeOrtho } from './types';
    reste le parcours complet (orchestré par le runner), pas un mode isolé : aucun
    `recommended` ici. Voir issue #69 et docs/design-orthographe.md. */
 export const ORTHO_MODE_OPTIONS: ModeOption[] = [
-	{ id: 'tuiles', label: 'Je remets les lettres en ordre', icon: '🧩' },
-	{ id: 'motCache', label: "Je regarde puis j'écris", icon: '👁️' },
-	{ id: 'dictee', label: "J'écoute et j'écris", icon: '🔊' },
+	{ id: 'tuiles', label: 'Je remets les lettres en ordre', icon: 'puzzle-piece' },
+	{ id: 'motCache', label: "Je regarde puis j'écris", icon: 'eye' },
+	{ id: 'dictee', label: "J'écoute et j'écris", icon: 'speaker' },
 ];
 
 /** Découpe un mot en lettres (NFC → une lettre accentuée = un seul caractère). */

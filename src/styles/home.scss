@@ -20,7 +20,7 @@
 }
 .brand-logo {
 	display: block;
-	height: 72px;
+	height: 96px;
 	width: auto;
 }
 .home .tagline {
@@ -32,6 +32,13 @@
 /* Accueil large : deux colonnes (progression à gauche · actions à droite) */
 .home-wide {
 	max-width: 1480px;
+	/* Le logo d'accueil tient lieu de bandeau : on le rapproche de l'en-tête
+	   (moins d'air au-dessus que le 60px générique de .home). */
+	margin-top: 28px;
+}
+/* Logo d'accueil : un peu d'air en dessous avant la grille d'actions. */
+.home-wide > .big {
+	margin-bottom: 28px;
 }
 .home-grid {
 	display: grid;

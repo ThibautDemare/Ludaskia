@@ -589,7 +589,9 @@ export function genLessonItem(lesson: LessonDef): Item {
 			text: `${ex.enonce} **${last.question}** @`,
 			answer: String(last.answer),
 			kind: 'num',
-			parle: ex.parle,
+			// Texte lu aligné sur l'AFFICHÉ du repli (énoncé + question finale), sans la
+			// sous-question intermédiaire — absente de l'écran en bilan/révision.
+			parle: `${ex.enonce} ${last.question}`,
 			_lesson: lesson.id,
 		};
 	}

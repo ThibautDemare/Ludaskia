@@ -83,7 +83,10 @@ export function bindBrouillon(root: ParentNode = document): void {
 		const ouvrir = panel.hidden;
 		panel.hidden = !ouvrir;
 		toggle.setAttribute('aria-expanded', String(ouvrir));
-		// Le canvas n'a une taille mesurable qu'une fois le panneau affiché.
+		// Le canvas n'a une taille mesurable qu'une fois le panneau affiché. On le
+		// dimensionne UNE fois : après une rotation/redimensionnement, la bitmap garde
+		// sa taille initiale (tracé légèrement décalé) — acceptable pour un brouillon
+		// jetable recréé à chaque problème ; pas de ResizeObserver en v1.
 		if (ouvrir && !ctx) {
 			ctx = setupCanvas(canvas);
 			wireDessin();

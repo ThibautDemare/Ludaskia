@@ -27,6 +27,7 @@ import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration
 // #186) sans importer directement un module de données maths.
 export { answerEstNumerique };
 import { POSITION_LESSONS } from '../data/maths/position';
+import { FRACTIONS_LESSONS } from '../data/maths/fractions';
 import { POSEE_LESSONS } from '../data/maths/posee';
 import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';
 import { CERCLE_LESSONS } from '../data/maths/cercle';
@@ -321,6 +322,20 @@ const NUMERATION_LESSONS_DEFS: LessonDef[] = [...NUMERATION_LESSONS, ...POSITION
 	}),
 );
 
+/* ---------- Catalogue des leçons « Numération » — Fractions (#200) ----------
+   Programme cycle 2 rénové 2025 : fractions < 1, dénominateur ≤ 12. Sens, collection,
+   bande graduée, égalités, comparaison et addition (même dénominateur). Regroupées
+   sous la rubrique « Fractions » (les autres leçons de Numération restent à plat). */
+const FRACTIONS_LESSONS_DEFS: LessonDef[] = FRACTIONS_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'math',
+	category: 'math-numeration',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+	rubrique: 'Fractions',
+}));
+
 /* ---------- Catalogue des leçons « Résolution de problèmes » (#199) ----------
    Énoncés générés par gabarits (structures de Vergnaud). Runner dédié, un
    problème à la fois ; réponse numérique. Exclus du sprint chronométré. */
@@ -504,6 +519,7 @@ const GEOMETRIE_LESSONS_DEFS: LessonDef[] = [
 const ALL_LESSONS: LessonDef[] = [
 	...MATH_LESSONS,
 	...NUMERATION_LESSONS_DEFS,
+	...FRACTIONS_LESSONS_DEFS,
 	...CALCUL_LESSONS_DEFS,
 	...GRANDEURS_LESSONS,
 	...GEOMETRIE_LESSONS_DEFS,

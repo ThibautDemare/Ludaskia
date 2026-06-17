@@ -572,6 +572,8 @@ export function genLessonItem(lesson: LessonDef): Item {
 		ex.type === 'text' || ex.type === 'qcm' || ex.type === 'tuilesNombre' ? ex.question : '';
 	// Figure SVG éventuelle (#88) : portée par 'text'/'qcm', affichée par renderItem.
 	const figure = ex.type === 'text' || ex.type === 'qcm' ? ex.figure : undefined;
+	// Texte lu à voix haute (#42) si l'énoncé est télégraphique (cf. tts-text).
+	const parle = 'parle' in ex ? ex.parle : undefined;
 	if (lesson.subject === 'math') {
 		// Saisie de l'heure en 2 champs (#88) ; sinon numérique (calcul) ou texte (signe).
 		const kind =
@@ -583,7 +585,7 @@ export function genLessonItem(lesson: LessonDef): Item {
 		// `answers` (formes équivalentes acceptées, ex. « 10 h 15 » / « 10h15 ») est
 		// aussi propagé pour les maths : la lecture de l'heure tolère plusieurs écritures.
 		const answers = ex.type === 'text' ? ex.answers : undefined;
-		return { text: question, answer: ex.answer, answers, kind, figure, _lesson: lesson.id };
+		return { text: question, answer: ex.answer, answers, kind, figure, parle, _lesson: lesson.id };
 	}
 	return {
 		text: question,
@@ -591,6 +593,7 @@ export function genLessonItem(lesson: LessonDef): Item {
 		answers: ex.type === 'text' ? ex.answers : undefined,
 		kind: 'text',
 		figure,
+		parle,
 		_lesson: lesson.id,
 	};
 }

@@ -5,6 +5,11 @@
 import { normalizeText } from './utils';
 import type { IconName } from './icon-names';
 
+// `parle` (#42) : texte LU à voix haute par le bouton « Écouter », quand
+// l'énoncé affiché est télégraphique/symbolique et ne se lit pas tel quel
+// (ex. « pouvoir · présent — je @ » → « Conjugue le verbe pouvoir au présent,
+// avec je. »). Optionnel : si absent, la lecture dérive de l'énoncé affiché
+// (core/tts-text → texteParle). Ne doit JAMAIS contenir la réponse ni un indice.
 export type Exercise =
 	// `figure` (#88) : fragment SVG optionnel (moteur core/figures.ts) affiché
 	// au-dessus de la question — horloge, plus tard rectangle coté, polygone…
@@ -17,6 +22,7 @@ export type Exercise =
 			answers?: string[];
 			figure?: string;
 			champHeure?: boolean;
+			parle?: string;
 	  }
 	// `explication` (#110) : justification pédagogique optionnelle affichée APRÈS
 	// la réponse dans le runner QCM (ex. critère de substitution des homophones).
@@ -27,14 +33,15 @@ export type Exercise =
 			choices: string[];
 			figure?: string;
 			explication?: string;
+			parle?: string;
 	  }
 	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
 	// des distracteurs vers l'emplacement `@` de la question. Réponse = `answer`.
-	| { type: 'tuilesNombre'; question: string; answer: string; tuiles: string[] }
+	| { type: 'tuilesNombre'; question: string; answer: string; tuiles: string[]; parle?: string }
 	// Vocabulaire (#108) — l'enfant range une SUITE de tuiles-mots dans l'ordre
 	// alphabétique. `tuiles` = la suite mélangée affichée ; `ordre` = la bonne
 	// suite triée (calculée, jamais codée en dur). Mono-mode (runner dédié).
-	| { type: 'tuilesOrdre'; question: string; tuiles: string[]; ordre: string[] }
+	| { type: 'tuilesOrdre'; question: string; tuiles: string[]; ordre: string[]; parle?: string }
 	// Vocabulaire (#114) — champs lexicaux : l'enfant range des tuiles-mots FOURNIES
 	// dans deux thèmes (catégories). `mots` porte la catégorie correcte de chaque
 	// tuile (0 ou 1) ; corrigé tuile par tuile par son runner (ui/lecon-tri.ts).
@@ -43,6 +50,7 @@ export type Exercise =
 			question: string;
 			categories: [string, string];
 			mots: { mot: string; cat: 0 | 1 }[];
+			parle?: string;
 	  }
 	// Calcul posé (#97) — opération en colonnes ; le catalogue en fait un Item
 	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.
@@ -69,6 +77,10 @@ export interface ModeOption {
 export interface ExerciseType {
 	/** Modes proposés, dans l'ordre d'affichage (optionnel ; un type mono-mode l'ignore). */
 	modes?: ModeOption[];
+	/** Consigne de la fiche en saisie (#42) : phrase qui NOMME la tâche, propre à ce
+	 *  type d'exercice (ex. « Conjugue le verbe au temps demandé. »). Remplace le
+	 *  générique « Écris la forme correcte. » quand elle est définie. */
+	consigne?: string;
 	generate(mode?: ExerciseMode): Exercise;
 	check(exercise: Exercise, input: string): boolean;
 }

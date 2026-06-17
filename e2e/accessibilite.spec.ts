@@ -32,6 +32,26 @@ test('Confort de lecture : classe, espacement et persistance', async ({ page }) 
 	expect(errors).toEqual([]);
 });
 
+test('Consigne de conjugaison : nomme la tâche, et le texte lu est une phrase', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'lecon-fr-conj-etre-present'); // fiche en saisie
+	const consigne = page.locator('.consigne-line').first();
+	await consigne.waitFor();
+	// Affichage : la consigne nomme le verbe à conjuguer et le temps (plus de
+	// « Écris la forme correcte. » générique).
+	await expect(consigne).toContainText('Conjugue');
+	await expect(consigne).toContainText('présent');
+	// Texte lu (dissociation #42) : présent dans l'attribut data-tts (indépendant de
+	// la disponibilité d'une voix), et c'est une vraie phrase (pas le `@` télégraphique).
+	const lu = await consigne.getAttribute('data-tts');
+	expect(lu).toBeTruthy();
+	expect(lu).toContain('Conjugue');
+	expect(lu).not.toContain('@');
+	expect(errors).toEqual([]);
+});
+
 test('Préférences : réglage de lecture auto + statut de la lecture vocale', async ({ page }) => {
 	const errors = watchErrors(page);
 	await gotoHash(page, 'profils');

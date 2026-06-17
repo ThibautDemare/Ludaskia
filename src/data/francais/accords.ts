@@ -174,6 +174,7 @@ function banqueFlechies(): FormesAccord[] {
 function accordType(reguliers: boolean): ExerciseType {
 	return {
 		modes: ACCORD_MODE_OPTIONS,
+		consigne: 'Écris chaque mot à la forme demandée.', // #42 : nomme la tâche
 		generate(mode?: ExerciseMode): Exercise {
 			const base = reguliers ? [...ACCORDS_REGULIERS, ...banqueFlechies()] : ACCORDS_IRREGULIERS;
 			// Toutes les transformations possibles (mot + transformation).

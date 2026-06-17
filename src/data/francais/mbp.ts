@@ -179,6 +179,9 @@ export function mbpType(): ExerciseType {
 				answer: item.reponse,
 				choices: sample(['m', 'n'], 2),
 				explication: explicationMbp(item),
+				// Texte lu (#42) : on ne lit PAS le mot — l'entendre prononcé donnerait
+				// la nasale (donc la lettre). On lit la consigne ; le mot reste à l'écran.
+				parle: 'Choisis la bonne lettre pour compléter le mot.',
 			};
 		},
 		check: (exercise, input) => checkAnswer(exercise, input),

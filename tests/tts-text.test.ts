@@ -32,6 +32,17 @@ describe('texteParle', () => {
 		expect(texteParle('Pierre &amp; Paul')).toBe('Pierre & Paul');
 	});
 
+	it('neutralise les séparateurs purement visuels (puce, tirets longs, flèche)', () => {
+		expect(texteParle('pouvoir · présent — je @')).toBe('pouvoir présent je');
+		expect(texteParle('« mes amis et moi » → @')).toBe('« mes amis et moi »');
+	});
+
+	it('lit les unités en toutes lettres', () => {
+		expect(texteParle('Tu as 20 €.')).toBe('Tu as 20 euros.');
+		expect(texteParle('Périmètre : 24 cm')).toBe('Périmètre : 24 centimètres');
+		expect(texteParle('une demi-heure = @ min')).toBe('une demi-heure égale minutes');
+	});
+
 	it('réduit les espaces multiples et trim', () => {
 		expect(texteParle('  a   b  ')).toBe('a b');
 		expect(texteParle('')).toBe('');

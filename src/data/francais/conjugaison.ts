@@ -262,11 +262,17 @@ export function conjugationType(verbId: string, tense: Tense): ExerciseType {
 	const verb = getVerb(verbId)!;
 	return {
 		modes: CONJ_MODE_OPTIONS,
+		// Consigne de la fiche en saisie : nomme la tâche (le temps figure dans
+		// chaque énoncé « verbe · temps — pronom »). #42.
+		consigne: `Conjugue chaque verbe ${TENSE_PHRASE[tense]}.`,
 		generate(mode?: ExerciseMode): Exercise {
 			const person = rnd(0, 5);
 			const form = verb.forms[tense][person];
 			const pron = displayPronoun(person, form);
 			const question = `${verb.infinitif} · ${TENSE_LABEL[tense]} — ${pron}@`;
+			// Texte LU à voix haute (#42) : l'énoncé affiché est télégraphique, illisible
+			// tel quel. On nomme la tâche en phrase, sans donner la forme attendue.
+			const parle = `Conjugue le verbe ${verb.infinitif} ${TENSE_PHRASE[tense]}, avec ${PRONOUNS[person]}.`;
 			if (mode === 'qcm') {
 				const distractors = qcmDistractors(verb, tense, person, form);
 				return {
@@ -274,9 +280,10 @@ export function conjugationType(verbId: string, tense: Tense): ExerciseType {
 					question,
 					answer: form,
 					choices: sample([form, ...distractors], QCM_CHOICES),
+					parle,
 				};
 			}
-			return { type: 'text', question, answer: form };
+			return { type: 'text', question, answer: form, parle };
 		},
 		check: (exercise, input) => checkAnswer(exercise, input),
 	};

@@ -6,7 +6,10 @@
 .profile-menu {
 	position: absolute;
 	top: calc(100% + 6px);
-	left: 0;
+	/* Le bouton de profil est collé au bord droit de la barre : on aligne le menu
+	   sur ce bord (sinon il déborde de la page vers la droite). */
+	right: 0;
+	left: auto;
 	z-index: 50;
 	min-width: 190px;
 	background: var(--paper);

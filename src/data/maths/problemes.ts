@@ -72,6 +72,8 @@ const LIEUX = ['la boîte', 'le tiroir', 'le panier', 'la trousse', 'le sac', 'l
 // Couleurs à pluriel INVARIABLE en genre (rouges/jaunes/roses/oranges) : évite tout
 // problème d'accord de l'adjectif quel que soit le genre de l'objet.
 const COULEURS = ['rouges', 'jaunes', 'roses', 'oranges'];
+// Objets qui se déclinent naturellement en couleurs (composition par couleur).
+const OBJETS_COLORES = ['billes', 'perles', 'ballons', 'fleurs', 'voitures', 'jetons', 'crayons'];
 // Objets « achetables » pour les problèmes de monnaie (deux étapes).
 const ACHATS = [
 	{ s: 'livre', p: 'livres' },
@@ -100,20 +102,21 @@ function probleme(enonce: string, etapes: ProblemeEtape[]): Exercise {
 // Structure statique parties↔tout, sans transformation. La plus simple.
 function genComposition(): Exercise {
 	const lieu = choice(LIEUX);
-	const obj = choice(OBJETS);
+	const obj = choice(OBJETS_COLORES);
 	const [c1, c2] = sample(COULEURS, 2);
 	if (rnd(0, 1) === 0) {
-		// 3A — recherche du tout (facile) : « en tout » → addition (loyal).
-		const a = rnd(10, 400),
-			b = rnd(10, 400);
+		// 3A — recherche du tout : deux parts explicites → addition (loyal).
+		const a = rnd(5, 50),
+			b = rnd(5, 50);
 		return probleme(`Dans ${lieu}, il y a ${a} ${obj} ${c1} et ${b} ${obj} ${c2}.`, [
 			{ question: `Combien y a-t-il de ${obj} en tout ?`, answer: a + b },
 		]);
 	}
-	// 3B — recherche d'une partie : « en tout » est présent mais il faut SOUSTRAIRE.
-	const t = rnd(30, 800),
-		a = rnd(10, t - 5);
-	return probleme(`Dans ${lieu}, il y a ${t} ${obj} en tout. ${a} sont ${c1}.`, [
+	// 3B — recherche d'une partie : on ÉTABLIT qu'il n'y a que DEUX sortes (sinon
+	// « combien sont c2 ? » serait indécidable). « en tout » présent → soustraction.
+	const t = rnd(20, 90),
+		a = rnd(5, t - 5);
+	return probleme(`Dans ${lieu}, il y a ${t} ${obj} : des ${c1} et des ${c2}. ${a} sont ${c1}.`, [
 		{ question: `Combien sont ${c2} ?`, answer: t - a },
 	]);
 }
@@ -128,8 +131,8 @@ function genTransformation(): Exercise {
 	const r = rnd(0, 99);
 	if (r < 45) {
 		// 1A — recherche de l'état final (le plus facile). Perte : b ≤ a (jamais négatif).
-		const a = rnd(10, 500),
-			b = gain ? rnd(5, 400) : rnd(5, a);
+		const a = rnd(10, 90),
+			b = gain ? rnd(5, 80) : rnd(5, a);
 		return probleme(`${p.nom} a ${a} ${obj}. ${cap(il(p.genre))} en ${verbe} ${b}.`, [
 			{
 				question: `Combien ${p.nom} a-t-${il(p.genre)} de ${obj} maintenant ?`,
@@ -139,8 +142,8 @@ function genTransformation(): Exercise {
 	}
 	if (r < 75) {
 		// 1B — recherche de la transformation (verbe cohérent avec le sens réel).
-		const a = rnd(10, 500);
-		const c = gain ? a + rnd(5, 400) : a - rnd(5, a - 1);
+		const a = rnd(15, 95);
+		const c = gain ? a + rnd(5, 80) : a - rnd(5, a - 1);
 		return probleme(`${p.nom} avait ${a} ${obj}. Maintenant ${il(p.genre)} en a ${c}.`, [
 			{
 				question: `Combien ${p.nom} en a-t-${il(p.genre)} ${verbePasse} ?`,
@@ -150,8 +153,8 @@ function genTransformation(): Exercise {
 	}
 	// 1C — recherche de l'état initial (PIÈGE LOYAL, minoritaire, tardif) :
 	// « gagné » → on soustrait, « donné » → on additionne.
-	const b = rnd(5, 300);
-	const c = gain ? rnd(b + 5, 600) : rnd(10, 500);
+	const b = rnd(5, 50);
+	const c = gain ? rnd(b + 5, 99) : rnd(15, 95);
 	return probleme(`${p.nom} a ${verbePasse} ${b} ${obj}. Maintenant ${il(p.genre)} en a ${c}.`, [
 		{
 			question: `Combien ${p.nom} en avait-${il(p.genre)} au début ?`,
@@ -207,8 +210,8 @@ function genComparaison(): Exercise {
 	const r = rnd(0, 99);
 	if (r < 45) {
 		// 2A — recherche de l'écart (le plus accessible de cette leçon).
-		const a = rnd(40, 500),
-			b = rnd(10, a - 5);
+		const a = rnd(25, 95),
+			b = rnd(5, a - 5);
 		return probleme(`${p1.nom} a ${a} ${obj}. ${p2.nom} a ${b} ${obj}.`, [
 			{
 				question: `Combien ${p1.nom} a-t-${il(p1.genre)} de ${obj} de plus que ${p2.nom} ?`,
@@ -218,8 +221,8 @@ function genComparaison(): Exercise {
 	}
 	if (r < 80) {
 		// 2B — « de plus » = addition (loyal, non piège).
-		const a = rnd(20, 500),
-			d = rnd(5, 300);
+		const a = rnd(15, 80),
+			d = rnd(5, 40);
 		return probleme(`${p1.nom} a ${a} ${obj}. ${p2.nom} a ${d} ${obj} de plus que ${p1.nom}.`, [
 			{
 				question: `Combien ${p2.nom} a-t-${il(p2.genre)} de ${obj} ?`,
@@ -228,7 +231,7 @@ function genComparaison(): Exercise {
 		]);
 	}
 	// 2C — comparaison inversée (PIÈGE DUR, minoritaire, tardif) : « de plus » → soustraction.
-	const a = rnd(40, 600),
+	const a = rnd(25, 95),
 		d = rnd(5, a - 5);
 	return probleme(`${p1.nom} a ${a} ${obj}. ${p1.nom} a ${d} ${obj} de plus que ${p2.nom}.`, [
 		{
@@ -251,8 +254,8 @@ function genDeuxEtapes(): Exercise {
 	return probleme(
 		`${p.nom} achète ${n} ${art.p} à ${m} € chacun. ${cap(il(p.genre))} paie avec un billet de ${billet} €.`,
 		[
-			{ question: `Étape 1 — Combien coûtent les ${n} ${art.p} ?`, answer: cout },
-			{ question: `Étape 2 — Combien lui rend-on ?`, answer: billet - cout },
+			{ question: `Combien coûtent les ${n} ${art.p} ?`, answer: cout },
+			{ question: `Combien lui rend-on ?`, answer: billet - cout },
 		],
 	);
 }

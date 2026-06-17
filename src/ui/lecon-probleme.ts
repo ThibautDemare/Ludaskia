@@ -17,6 +17,7 @@ import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import { streakSuffix } from '../core/progress';
 import { bindConsigneTts } from './consigne-tts';
+import { brouillonHTML, bindBrouillon } from './brouillon';
 import { showLevelUp, showCelebration } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
@@ -99,13 +100,18 @@ function progressHTML(): string {
 function renderQuestion(): void {
 	answered = false;
 	const q = questions[idx];
+	const multi = q.etapes.length > 1;
 	const etapesHTML = q.etapes
 		.map(
 			(et, i) => `<div class="prob-etape">
+        ${multi ? `<span class="prob-num">Étape ${i + 1}</span>` : ''}
         <label class="prob-q" for="probInput${i}">${escapeHTML(et.question)}</label>
-        <span class="prob-saisie">
-          <input class="prob-input" id="probInput${i}" data-i="${i}" data-answer="${et.answer}" inputmode="numeric" autocomplete="off" />
-          <span class="prob-mark" data-for="${i}"></span>
+        <span class="prob-rep">
+          <span class="prob-rep-lab">Ma réponse</span>
+          <span class="prob-saisie">
+            <input class="prob-input" id="probInput${i}" data-i="${i}" data-answer="${et.answer}" inputmode="numeric" autocomplete="off" />
+            <span class="prob-mark" data-for="${i}"></span>
+          </span>
         </span>
       </div>`,
 		)
@@ -113,16 +119,20 @@ function renderQuestion(): void {
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
       ${progressHTML()}
-      <div class="sprint-stage">
-        <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
-        <p class="prob-enonce"${ttsAttr(q.parle)}>${escapeHTML(q.enonce)}</p>
-        <div class="prob-etapes">${etapesHTML}</div>
-        <button class="sprint-btn" id="probVerif">Vérifier</button>
-        <div class="sprint-correction" id="probFeedback" hidden></div>
-        <div class="sprint-actions" id="probActions" hidden></div>
+      <div class="sprint-stage prob-stage">
+        <div class="prob-col">
+          <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+          <p class="prob-enonce" data-tts-pos="start"${ttsAttr(q.parle)}>${escapeHTML(q.enonce)}</p>
+          <div class="prob-etapes${multi ? ' prob-etapes-multi' : ''}">${etapesHTML}</div>
+          ${brouillonHTML()}
+          <button class="sprint-btn" id="probVerif">Vérifier</button>
+          <div class="sprint-correction" id="probFeedback" hidden></div>
+          <div class="sprint-actions" id="probActions" hidden></div>
+        </div>
       </div>
     </div>`;
-	bindConsigneTts(sheets()); // bouton « Écouter » sur l'énoncé (#42)
+	bindConsigneTts(sheets()); // bouton « Écouter » en tête de l'énoncé (#42)
+	bindBrouillon(sheets()); // ardoise de dessin repliable (#199)
 	sheets()
 		.querySelector('#probVerif')!
 		.addEventListener('click', () => verifier());

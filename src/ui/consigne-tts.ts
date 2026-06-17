@@ -44,7 +44,10 @@ export function bindConsigneTts(root: ParentNode = document): void {
 		const texte = el.dataset.tts || '';
 		if (!texte.trim()) return;
 		const btn = fabriquerBouton(texte);
-		el.append(btn); // inline en fin de consigne (et non un bloc centré dessous)
+		// Par défaut le bouton suit la consigne (inline) ; `data-tts-pos="start"`
+		// l'ancre EN TÊTE (énoncés longs : il reste rattaché au texte, jamais isolé).
+		if (el.dataset.ttsPos === 'start') el.prepend(btn);
+		else el.append(btn);
 		if (!premier) {
 			premier = btn;
 			premierTexte = texte;

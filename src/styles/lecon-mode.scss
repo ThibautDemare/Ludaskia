@@ -459,21 +459,44 @@ html.anim-reduced .sprint-choice.correct {
 }
 
 /* ---------- Résolution de problèmes (#199) ---------- */
-/* Énoncé : texte lisible, aligné à gauche, largeur de ligne bornée (lecture).
-   Le bouton « Écouter » (#42) est injecté inline en fin d'énoncé. */
-.prob-enonce {
+/* Un problème se LIT puis se résout : on abandonne le centrage hérité du sprint
+   et on aligne tout sur un seul rail à gauche, dans une colonne bornée. */
+.prob-stage.sprint-stage {
+	align-items: stretch;
+	justify-content: flex-start;
+	text-align: left;
+}
+.prob-col {
+	width: 100%;
 	max-width: 34rem;
-	margin: 0.4rem auto 0.2rem;
+	margin: 0 auto;
+	text-align: left;
+}
+/* Carte « énoncé » légèrement teintée : le texte + son bouton « Écouter » (ancré
+   EN TÊTE via data-tts-pos="start") forment un bloc « voici l'histoire ». */
+.prob-enonce {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.6rem;
+	margin: 0.5rem 0 1rem;
+	padding: 0.9rem 1rem;
+	background: var(--accent-soft);
+	border-radius: 12px;
 	font-size: 1.15rem;
 	line-height: 1.55;
-	text-align: left;
+}
+.prob-enonce .consigne-tts {
+	flex: 0 0 auto;
+	margin: 0; /* annule le retrait inline du placement par défaut */
+}
+.prob-enonce .consigne-tts-lab {
+	display: inline; /* sur ce runner, on montre toujours le libellé « Écouter » */
 }
 .prob-etapes {
 	display: flex;
 	flex-direction: column;
 	gap: 1rem;
-	margin: 1rem auto 0.5rem;
-	max-width: 34rem;
+	margin: 0 0 1rem;
 }
 .prob-etape {
 	display: flex;
@@ -481,8 +504,32 @@ html.anim-reduced .sprint-choice.correct {
 	gap: 0.4rem;
 	align-items: flex-start;
 }
+/* Problème à deux étapes : chaque étape est un bloc numéroté séquentiel. */
+.prob-etapes-multi .prob-etape {
+	border-left: 3px solid var(--accent-soft);
+	padding-left: 0.8rem;
+}
+.prob-num {
+	display: inline-block;
+	padding: 0.1rem 0.6rem;
+	background: var(--accent);
+	color: #fff;
+	border-radius: 999px;
+	font-size: 0.85rem;
+	font-weight: 700;
+}
 .prob-q {
 	font-weight: 700;
+}
+.prob-rep {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+}
+.prob-rep-lab {
+	font-size: 0.85rem;
+	font-weight: 700;
+	color: var(--grey);
 }
 .prob-saisie {
 	display: inline-flex;
@@ -490,13 +537,15 @@ html.anim-reduced .sprint-choice.correct {
 	gap: 0.6rem;
 }
 .prob-input {
-	width: 5.5rem;
+	width: 100%;
+	max-width: 9rem;
 	min-height: 48px;
 	padding: 0.4rem 0.6rem;
 	font-size: 1.3rem;
 	text-align: center;
 	border: 2px solid var(--muted);
 	border-radius: 10px;
+	scroll-margin-top: 1rem; /* le focus reste visible au-dessus du clavier virtuel */
 }
 .prob-input.correct {
 	border-color: var(--ok);
@@ -515,4 +564,59 @@ html.anim-reduced .sprint-choice.correct {
 }
 .prob-mark .sol {
 	font-weight: 700;
+}
+
+/* ---------- Brouillon (#199) — ardoise de dessin repliable ---------- */
+.brouillon {
+	margin: 0.5rem 0 1rem;
+}
+.brouillon-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	min-height: 44px;
+	padding: 0.4rem 0.9rem;
+	border: 1px solid var(--accent);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--accent-dark);
+	font: 600 0.95rem/1 var(--ui);
+	cursor: pointer;
+}
+.brouillon-panel {
+	margin-top: 0.6rem;
+}
+.brouillon-canvas {
+	display: block;
+	width: 100%;
+	height: 240px;
+	border: 2px dashed var(--muted);
+	border-radius: 12px;
+	/* Papier crème + quadrillage léger pour aligner les colonnes d'une opération. */
+	background-color: #fffef9;
+	background-image:
+		linear-gradient(var(--accent-soft) 1px, transparent 1px),
+		linear-gradient(90deg, var(--accent-soft) 1px, transparent 1px);
+	background-size: 24px 24px;
+	touch-action: none; /* IMPÉRATIF : le doigt trace au lieu de faire défiler la page */
+	cursor: crosshair;
+}
+.brouillon-clear {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	min-height: 44px;
+	margin-top: 0.5rem;
+	padding: 0.4rem 0.9rem;
+	border: 1px solid var(--muted);
+	border-radius: 999px;
+	background: var(--paper);
+	color: var(--grey);
+	font: 600 0.9rem/1 var(--ui);
+	cursor: pointer;
+}
+@media (min-width: 600px) {
+	.brouillon-canvas {
+		height: 320px;
+	}
 }

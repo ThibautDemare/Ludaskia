@@ -181,8 +181,21 @@ body.drawer-open {
 		height: 24px;
 		color: var(--accent);
 	}
+	/* Bouton profil : sur le fond blanc du tiroir, le style transparent partagé le
+	   rend invisible (blanc sur blanc). On lui donne un fond + une bordure d'accent
+	   pour qu'il se lise comme un contrôle dépliable ; survol/ouvert plus marqués. */
+	.toolbar-drawer .btn-profile {
+		background: var(--accent-soft);
+		border: 2px solid var(--accent) !important;
+	}
+	.toolbar-drawer .btn-profile:hover,
+	.toolbar-drawer .btn-profile:active {
+		background: var(--paper);
+	}
 	.toolbar-drawer .btn-profile-caret {
 		margin-left: auto;
+		opacity: 1;
+		color: var(--accent);
 	}
 
 	/* Sous-menu profils : en flux normal dans le tiroir (pousse le contenu vers

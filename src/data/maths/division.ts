@@ -29,10 +29,10 @@ function moitieQuartType(): ExerciseType {
 		generate(): Exercise {
 			if (rnd(0, 1) === 0) {
 				const q = rnd(2, 20); // résultat 2..20
-				return { type: 'text', question: `moitié de ${q * 2} = @`, answer: String(q) };
+				return { type: 'text', question: `La moitié de ${q * 2} = @`, answer: String(q) };
 			}
 			const q = rnd(2, 10); // résultat 2..10
-			return { type: 'text', question: `quart de ${q * 4} = @`, answer: String(q) };
+			return { type: 'text', question: `Le quart de ${q * 4} = @`, answer: String(q) };
 		},
 		check: numerique,
 	};

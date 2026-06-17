@@ -23,8 +23,8 @@ describe('Moitié et quart d’une collection', () => {
 			const rep = Number(ex.answer);
 			expect(Number.isInteger(rep)).toBe(true);
 			expect(rep).toBeGreaterThanOrEqual(2);
-			const moitie = /^moitié de (\d+) = @$/.exec(ex.question);
-			const quart = /^quart de (\d+) = @$/.exec(ex.question);
+			const moitie = /^La moitié de (\d+) = @$/.exec(ex.question);
+			const quart = /^Le quart de (\d+) = @$/.exec(ex.question);
 			expect(Boolean(moitie) || Boolean(quart)).toBe(true);
 			if (moitie) expect(Number(moitie[1])).toBe(rep * 2);
 			if (quart) expect(Number(quart[1])).toBe(rep * 4);
@@ -71,12 +71,22 @@ describe('Je partage', () => {
 	});
 
 	it('figure de découverte : uniquement en partage et pour un petit total (≤ 12)', () => {
-		for (const ex of gen('math-div-partage')) {
+		const items = gen('math-div-partage');
+		// La figure DOIT apparaître parfois (sinon le déclencheur est cassé).
+		expect(items.some((e) => e.type === 'text' && Boolean(e.figure))).toBe(true);
+		for (const ex of items) {
 			if (ex.type === 'text' && ex.figure) {
 				expect(ex.question.startsWith('On partage')).toBe(true);
 				expect(ints(ex.question)[0]).toBeLessThanOrEqual(12);
 			}
 		}
+	});
+
+	it('exclusion du sprint : « Je partage » exclue, « Moitié et quart » éligible', () => {
+		const partage = DIVISION_LESSONS.find((l) => l.id === 'math-div-partage')!;
+		const moitie = DIVISION_LESSONS.find((l) => l.id === 'math-div-moitie-quart')!;
+		expect(partage.excludeFromSprint).toBe(true);
+		expect(moitie.excludeFromSprint).toBeFalsy();
 	});
 });
 

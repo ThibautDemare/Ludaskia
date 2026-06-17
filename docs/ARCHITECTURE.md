@@ -507,6 +507,12 @@ le dessin 3D (faces cachées).
   **filtrable** (toutes matières / une matière / une catégorie / **une sélection
   précise de leçons** via `startCustomSprint`, #64) via un écran de
   configuration ; correction par `checkItemAnswer` (numérique ou texte).
+  **Exclusions du sprint** (`lessonsForFilter`) : par TYPE d'item (posée, tuiles
+  ordre/tri, problème — détecté via `generate().type`) **et** par le flag
+  déclaratif **`LessonDef.excludeFromSprint`** (#104) pour une leçon qui produit un
+  item `text` ordinaire mais ne convient pas au chrono (figure de découverte,
+  lecture d'énoncé — ex. « Je partage »). L'écran de config ne compte que les
+  leçons **éligibles** (une catégorie entièrement exclue n'est pas proposée).
 - **`session.ts`** — `verify` (correction + enregistrement), saisie clavier,
   impression contextuelle (#40) : **chemin A** `printAll()` imprime l'écran courant
   vierge (le CSS print met `.ans` en transparent) ; **chemin B** `printScope(scope)`

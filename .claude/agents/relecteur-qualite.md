@@ -75,11 +75,30 @@ faut.**
   de SVG « à la main » dans une leçon ; réponses comparées via
   `normalizeText`/`checkItemAnswer` ; enregistrement d'un essai via
   `recordLessonRun` (parité entre modes). Signale toute entorse.
-- **Lisibilité et duplication.** Nommage clair (en **français** pour le code, l'UI
-  et les commentaires), fonctions à responsabilité unique, pas de copier-coller
-  d'une logique qui existe déjà (réutilise les moteurs partagés :
-  `conversionType`, `conjugationType`, runners de tuiles…). Un module qui gonfle
-  ou mélange trop de responsabilités → propose un découpage **concret**.
+- **Propreté du code — garde-fou anti-spaghetti.** C'est un **axe à part
+  entière**, pas un détail de style laissé à Prettier. Traque concrètement, et
+  pour chaque point dis **où** (`fichier:ligne`) et propose la **forme cible** :
+  - **Duplication.** Copier-coller d'une logique qui existe déjà au lieu de
+    réutiliser les moteurs/utilitaires partagés (`conversionType`,
+    `conjugationType`, runners de tuiles, `normalizeText`, `figureBlock`,
+    `recordLessonRun`…). Deux blocs quasi identiques → propose une factorisation
+    concrète (helper, paramètre, donnée), pas « pense à factoriser ».
+  - **Fonctions trop grosses ou trop chargées.** Une fonction qui s'étire,
+    mélange plusieurs responsabilités (génération + rendu + correction) ou empile
+    les `if` imbriqués est à découper. Vise une **responsabilité unique** et une
+    imbrication faible (early-return plutôt que pyramides de `if`).
+  - **Nommage.** Variables, fonctions et types au nom **explicite et en
+    français** (cohérent avec le code, l'UI, les commentaires). Pas de `x`,
+    `tmp`, `data`, `flag` quand le rôle est précis ; un booléen se lit comme une
+    affirmation (`estDu`, `aDesRevisions`). Un nom trompeur est un bug de lecture.
+  - **Couplage / cohésion.** Un module qui gonfle ou mêle des responsabilités
+    hétérogènes (métier + DOM + stockage) → propose un **découpage concret** (quel
+    bout va où). Méfie-toi des dépendances circulaires (cf. `menu.ts` extrait pour
+    casser le cycle `main ↔ navigation`).
+  - **Complexité gratuite.** Abstraction prématurée, drapeaux booléens en série,
+    état mutable partagé évitable, généricité que personne n'utilise. Le code doit
+    rester **simple à suivre** pour le prochain contributeur — quitte à préférer
+    deux fonctions claires à une fonction « maligne ».
 - **TypeScript strict, vraiment.** Repère les `any`, les `as` qui masquent un
   vrai problème, les `!` non-null hasardeux, les types trop larges. Le code doit
   passer `tsc --noEmit` sans contournement.

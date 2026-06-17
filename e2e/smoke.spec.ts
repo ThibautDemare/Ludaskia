@@ -63,22 +63,14 @@ test('le sprint démarre avec son compte à rebours', async ({ page }) => {
 
 test('Sprint : la touche Entrée enchaîne après la correction', async ({ page }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'sprint');
 
-	// On veut une question À SAISIE (maths) : une bonne réponse enchaîne seule (✓),
-	// seule une erreur affiche le bouton « Continuer » qu'on veut tester au clavier.
-	// Les tirages mêlent saisie et QCM, on relance le sprint jusqu'à une saisie.
-	let typed = false;
-	for (let i = 0; i < 25 && !typed; i++) {
-		await page.locator('#sprintStage').waitFor();
-		if (await page.locator('#sprintInput').count()) {
-			typed = true;
-			break;
-		}
-		await gotoHash(page, 'accueil');
-		await gotoHash(page, 'sprint');
-	}
-	expect(typed).toBeTruthy();
+	// On filtre le sprint sur « Calcul mental » (100 % saisie) via l'écran de config :
+	// chaque question a un champ, donc une réponse fausse affiche le bouton
+	// « Continuer » qu'on veut tester au clavier (une bonne réponse enchaîne seule).
+	await gotoHash(page, 'sprint-config');
+	await page.locator('.sc-option', { hasText: 'Calcul mental' }).click();
+	await page.locator('#scLaunch').click();
+	await expect(page.locator('#sprintInput')).toBeVisible();
 
 	// Réponse volontairement fausse → correction + bouton « Continuer » (chrono en pause).
 	await page.locator('#sprintInput').fill('999999');

@@ -28,6 +28,16 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
   pression temporelle, mémoire de travail). *Lever l'obstacle du trouble sans
   baisser l'exigence* ; renvoie au pédagogue pour la notion, au designer pour
   le rendu, à gamification pour les mécaniques.
+- **`relecteur-accessibilite`** — accessibilité **technique/normative** (a11y) :
+  contraste WCAG, cibles tactiles, ARIA et libellés des figures SVG, navigation
+  clavier/focus, qualité du TTS. Complète le `specialiste-troubles-apprentissage`
+  (cognitif) et le `designer-ux-enfant` (rendu). Avis, ne modifie pas le code.
+- **`redacteur-contenu-francais`** — relecture **conseil** de la langue des
+  énoncés et libellés (orthographe, clarté, ambiguïté, registre CE2). Pur
+  conseiller : il **signale et suggère**, ne réécrit jamais à l'aveugle.
+  Respecte les choix actés (formulations validées par le `pedagogue-primaire`,
+  apostrophe droite `'` retenue pour l'accessibilité clavier) ; renvoie au
+  pédagogue pour le fond.
 - Les trois premiers conseillers se recoupent sur la **gamification** : prendre celui
   dont c'est l'angle (sens pédagogique → pédagogue ; rendu → designer ;
   mécanique/équilibrage → gamification), quitte à en croiser deux.
@@ -36,7 +46,15 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
   du moteur), **et surtout vérification que tous les tests nécessaires existent**
   (Vitest pour la logique, smoke Playwright pour toute fonctionnalité visuelle).
   Fait tourner `typecheck`/`lint`/`test` et explique les échecs ; donne un avis,
-  ne modifie pas le code.
+  ne modifie pas le code. Couvre aussi la **propreté du code** (duplication,
+  taille des fonctions, nommage, couplage — garde-fou anti-spaghetti).
+- **`auteur-tests-e2e`** — **écrit** et fait tourner la spec Playwright (`e2e/`)
+  d'une fonctionnalité visuelle (leçon, type d'exercice, mode, écran), selon le
+  pattern maison. Le bras armé de la règle « pas de visuel sans sa spec ».
+- **`integrateur-lecon`** — **implémente** une nouvelle leçon de bout en bout
+  (données `src/data/`, fabrique d'`ExerciseType`, branchement catalogue, modes,
+  figures SVG) **plus ses tests**. Sollicite le pédagogue (fond) et le designer
+  (rendu) ; n'ouvre pas la PR lui-même.
 - **`gestionnaire-github`** — issues / PR / milestones (voir Workflow Git plus bas).
 
 ## Lancer

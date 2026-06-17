@@ -29,6 +29,17 @@ test('un problème simple : énoncé affiché, bonne réponse validée', async (
 	expect(errors).toEqual([]);
 });
 
+test('le brouillon se déplie à la demande', async ({ page }) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'lecon-math-prob-composition');
+	const panel = page.locator('.brouillon-panel');
+	await expect(panel).toBeHidden(); // replié par défaut
+	await page.locator('.brouillon-toggle').click();
+	await expect(panel).toBeVisible();
+	await expect(page.locator('.brouillon-canvas')).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
 test('un problème à deux étapes : deux sous-questions, deux champs', async ({ page }) => {
 	const errors = watchErrors(page);
 	await gotoHash(page, 'lecon-math-prob-deux-etapes');

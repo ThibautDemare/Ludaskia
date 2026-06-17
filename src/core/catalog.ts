@@ -32,6 +32,7 @@ import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';
 import { CERCLE_LESSONS } from '../data/maths/cercle';
 import { SOLIDE_LESSONS } from '../data/maths/solides';
 import { PROBLEMES_LESSONS } from '../data/maths/problemes';
+import { DIVISION_LESSONS } from '../data/maths/division';
 
 /* ---------- Types ---------- */
 
@@ -62,6 +63,10 @@ export interface LessonDef {
 	// regrouper les leçons à l'écran (ex. conjugaison par temps, orthographe
 	// « Les accords »). Une leçon sans rubrique s'affiche à plat.
 	rubrique?: string;
+	// Exclue du sprint chronométré (#104) : leçons « découverte » à figure / lecture
+	// d'énoncé, incompatibles avec la pression du chrono (en plus des posées/tuiles/
+	// problèmes déjà écartées par leur type).
+	excludeFromSprint?: boolean;
 }
 
 export interface BilanConfig {
@@ -328,6 +333,20 @@ const PROBLEMES_LESSONS_DEFS: LessonDef[] = PROBLEMES_LESSONS.map((d) => ({
 	exerciseType: d.exerciseType,
 }));
 
+/* ---------- Catalogue des leçons « Division par le sens » (#104) ----------
+   Moteur moderne (ExerciseType) : moitié/quart d'une collection + « Je partage »
+   (deux sens, signe ÷, figure de découverte). Rattachées au Calcul mental.
+   « Je partage » est exclue du sprint (figure + lecture d'énoncé). */
+const DIVISION_LESSONS_DEFS: LessonDef[] = DIVISION_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'math',
+	category: 'math-calcul-mental',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+	excludeFromSprint: d.excludeFromSprint,
+}));
+
 /* ---------- Catalogue des leçons français (conjugaison) ---------- */
 
 const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
@@ -489,6 +508,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...GRANDEURS_LESSONS,
 	...GEOMETRIE_LESSONS_DEFS,
 	...PROBLEMES_LESSONS_DEFS,
+	...DIVISION_LESSONS_DEFS,
 	...FRENCH_LESSONS,
 	...ACCORD_LESSONS_DEFS,
 	...HOMOPHONE_LESSONS_DEFS,

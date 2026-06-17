@@ -79,7 +79,12 @@ function lessonsForFilter(f: SprintFilter): LessonDef[] {
 	// classer) ne se jouent pas « une réponse à la fois » : on les écarte du
 	// sprint chronométré.
 	return base.filter(
-		(d) => !isPosedLesson(d) && !isOrderingLesson(d) && !isTriLesson(d) && !isProblemeLesson(d),
+		(d) =>
+			!d.excludeFromSprint &&
+			!isPosedLesson(d) &&
+			!isOrderingLesson(d) &&
+			!isTriLesson(d) &&
+			!isProblemeLesson(d),
 	);
 }
 

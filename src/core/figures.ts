@@ -650,13 +650,18 @@ export function renderSolide(solid: Solid): string {
    au-dessus, et les contenants VIDES (paniers) en dessous. La figure porte le
    SENS (« répartir cette collection dans ces paniers »), jamais le RÉSULTAT (les
    paniers restent vides → l'enfant calcule, il ne compte pas une réponse déjà
-   posée). Avis pedagogue-primaire (#104). Total dessiné plafonné ~12 (lisibilité). */
+   posée). Avis pedagogue-primaire (#104). Total dessiné plafonné ~12 (lisibilité).
+   Calibré pour la plage réellement tirée : `paniers` 2..6, `total` 4..12 (la
+   disposition suppose un petit nombre de paniers — au-delà, `bw` se resserrerait). */
 export function renderGroupes(paniers: number, total: number): string {
 	const W = 260;
 	const H = 200;
 	const body: string[] = [];
 
 	// Collection à partager : `total` jetons en vrac (corail), en 1 ou 2 rangées.
+	// Contour `--ink` (neutre, INDÉPENDANT du thème) : sur les thèmes chauds
+	// (`--accent` rouge/rouille) un contour d'accent se confondrait avec le corail
+	// du remplissage → délimitation < 3:1 (avis relecteur-accessibilite, #104).
 	const R = 9;
 	const perRow = Math.min(total, 6);
 	const rows = Math.ceil(total / perRow);
@@ -670,7 +675,7 @@ export function renderGroupes(paniers: number, total: number): string {
 			body.push(
 				circle(r2(startX + c * stepX), r2(topY + r * (2 * R + 6)), R, {
 					fill: 'var(--clock-min)',
-					stroke: 'var(--accent)',
+					stroke: 'var(--ink)',
 					'stroke-width': 1.5,
 				}),
 			);

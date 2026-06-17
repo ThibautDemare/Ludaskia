@@ -31,6 +31,12 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
 - Les trois premiers conseillers se recoupent sur la **gamification** : prendre celui
   dont c'est l'angle (sens pédagogique → pédagogue ; rendu → designer ;
   mécanique/équilibrage → gamification), quitte à en croiser deux.
+- **`relecteur-qualite`** — qualité technique & maintenabilité : relecture de
+  code avant PR, respect de l'architecture (séparation `core`/`ui`, invariants
+  du moteur), **et surtout vérification que tous les tests nécessaires existent**
+  (Vitest pour la logique, smoke Playwright pour toute fonctionnalité visuelle).
+  Fait tourner `typecheck`/`lint`/`test` et explique les échecs ; donne un avis,
+  ne modifie pas le code.
 - **`gestionnaire-github`** — issues / PR / milestones (voir Workflow Git plus bas).
 
 ## Lancer

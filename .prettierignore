@@ -2,6 +2,7 @@ dist
 node_modules
 package-lock.json
 *.md
+.claude
 
 # SVG pré-généré (forêt de pied d'accueil) — produit par tools/forest/, ne pas reformater
 public/foret-pied.svg

@@ -51,11 +51,35 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
 - **`auteur-tests-e2e`** — **écrit** et fait tourner la spec Playwright (`e2e/`)
   d'une fonctionnalité visuelle (leçon, type d'exercice, mode, écran), selon le
   pattern maison. Le bras armé de la règle « pas de visuel sans sa spec ».
-- **`integrateur-lecon`** — **implémente** une nouvelle leçon de bout en bout
-  (données `src/data/`, fabrique d'`ExerciseType`, branchement catalogue, modes,
-  figures SVG) **plus ses tests**. Sollicite le pédagogue (fond) et le designer
-  (rendu) ; n'ouvre pas la PR lui-même.
+- **`integrateur-lecon`** — **implémente** une nouvelle leçon de bout en bout,
+  **exploration technique comprise** (données `src/data/`, fabrique d'`ExerciseType`,
+  branchement catalogue, modes, figures SVG) **plus ses tests**. Il **explore
+  lui-même** le code et **sollicite** `pedagogue-primaire` (fond) / `designer-ux-enfant`
+  (rendu) pour combler un manque, au lieu de s'arrêter ; il **ne tranche pas seul un
+  arbitrage produit majeur** (périmètre, ce qu'on diffère, compromis UX) → il le
+  remonte. N'ouvre pas la PR lui-même.
 - **`gestionnaire-github`** — issues / PR / milestones (voir Workflow Git plus bas).
+
+### Comment orchestrer les agents (réflexes, pas optionnels)
+- **Déléguer l'implémentation d'une leçon — tôt ou pas du tout.** Leçon
+  **routinière sur un moteur existant** (banque QCM, conversion, variante d'un type
+  déjà en place) → confier la **tranche entière dès le départ** à `integrateur-lecon`
+  (il explore + implémente + teste dans **son** contexte, ce qui garde le fil
+  principal léger). Leçon à **architecture ou rendu nouveaux** (nouveau renderer/runner,
+  UX sensible où le mainteneur réagit) → **garder le cadrage** (exploration + pédago +
+  designer) et ne déléguer que des sous-parties. **Anti-pattern à éviter** :
+  explorer/charger soi-même tout le contexte *puis* passer l'implémentation à l'agent
+  (on cumule le coût de contexte **et** le risque de passation).
+- **Relecteurs — à lancer AVANT d'ouvrir la PR**, en parallèle, selon ce que la PR
+  touche (réflexe déclenché par la dimension, pas par l'humeur) :
+  - code logique/structurel non trivial, nouveau module/type → **`relecteur-qualite`** ;
+  - rendu, **figure SVG**, **TTS / audio**, couleurs ou thème, cibles tactiles,
+    focus/navigation clavier → **`relecteur-accessibilite`** ;
+  - **nouveaux énoncés, consignes ou libellés** en français → **`redacteur-contenu-francais`** ;
+  - toute fonctionnalité **visuelle/navigable** → sa **spec Playwright** via
+    **`auteur-tests-e2e`** (dans la même PR ; cf. règle e2e plus bas).
+  Plusieurs dimensions touchées → plusieurs relecteurs (ex. une nouvelle leçon à
+  figure avec énoncés FR = qualité **+** accessibilité **+** langue).
 
 ## Lancer
 - `npm install` puis `npm run dev` (serveur + HMR).

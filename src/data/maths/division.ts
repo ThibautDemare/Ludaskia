@@ -63,9 +63,15 @@ function partageType(): ExerciseType {
 				// (taille = quotient, nombre de paquets = diviseur → réponse = diviseur)
 				const taille = quotient;
 				const nbPaquets = diviseur;
+				const phrase = `On range ${total} jetons par paquets de ${taille}.`;
+				// Variante « question en mots » (parallèle à la découverte du partage) :
+				// l'inconnue est nommée, le ÷ n'est introduit que sur les autres items.
+				const enMots = rnd(0, 9) < 4;
 				return {
 					type: 'text',
-					question: `On range ${total} jetons par paquets de ${taille}. ${total} ÷ ${taille} = @`,
+					question: enMots
+						? `${phrase} Combien de paquets ? @`
+						: `${phrase} ${total} ÷ ${taille} = @`,
 					answer: String(nbPaquets),
 				};
 			}

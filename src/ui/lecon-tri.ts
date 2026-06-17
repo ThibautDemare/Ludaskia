@@ -16,6 +16,8 @@ import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import type { ExerciseMode } from '../core/exercise';
 import { escapeHTML } from '../core/utils';
+import { ttsAttr } from '../core/tts-text';
+import { bindConsigneTts } from './consigne-tts';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import { streakSuffix } from '../core/progress';
@@ -113,7 +115,7 @@ function renderQuestion(): void {
       ${progressHTML()}
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
-        <p class="sprint-q lord-consigne">${escapeHTML(q.question)}</p>
+        <p class="sprint-q lord-consigne"${ttsAttr(q.question)}>${escapeHTML(q.question)}</p>
         <p class="ltui-consigne">Tape un mot, puis tape son thème (ou glisse-le dans la colonne).</p>
         <div class="ltri-cols" id="ltriCols"></div>
         <div class="ltui-bac" id="ltriBac"></div>
@@ -126,6 +128,7 @@ function renderQuestion(): void {
 	sheets()
 		.querySelector('#ltriVerif')!
 		.addEventListener('click', () => verifier());
+	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
 }
 
 function motsDeColonne(col: 0 | 1): string[] {

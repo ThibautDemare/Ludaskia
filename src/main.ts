@@ -23,6 +23,7 @@ import './styles/francais.scss';
 import './styles/orthographe.scss';
 import './styles/version-update.scss';
 import './styles/foret.scss';
+import './styles/accessibility.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -36,6 +37,7 @@ import {
 	setActiveProfile,
 	exportProfiles,
 	importProfiles,
+	setPref,
 } from './core/profiles';
 import { renderProfiles, toggleEmojiPicker, closeEmojiPicker, paintStaticIcons } from './ui/render';
 import {
@@ -281,6 +283,11 @@ function wireDOM() {
 		if (e.target.id === 'prefAnim') {
 			setAnimationsReduites(e.target.checked);
 			applyPreferences();
+		} else if (e.target.id === 'prefConfort') {
+			setPref('confortLecture', e.target.checked);
+			applyPreferences();
+		} else if (e.target.id === 'prefLectureAuto') {
+			setPref('lectureConsigneAuto', e.target.checked);
 		}
 	});
 

@@ -499,8 +499,22 @@ le dessin 3D (faces cachées).
 - **`preferences.ts`** — préférences cosmétiques **par profil** (issue #28) : thème de
   couleur (`getTheme`/`setTheme`, gating par niveau) et réduction des animations
   (`animationsReduites`/`setAnimationsReduites`). `applyPreferences()` pose
-  `<html data-theme>` + la classe `anim-reduced` (appelé dans `route()` → couvre bootstrap
-  et bascules de profil) ; `renderPreferences()` rend le bloc de l'écran Profils.
+  `<html data-theme>` + les classes `anim-reduced` / `confort-lecture` (appelé dans
+  `route()` → couvre bootstrap et bascules de profil) ; `renderPreferences()` rend le
+  bloc de l'écran Profils (thème, animations, **accessibilité**).
+- **Accessibilité (#42)** — deux aides transverses, réglées **dans la méta de profil**
+  (`Profile.prefs`, cf. `core/profiles.ts`) pour **survivre à « Réinitialiser »** (qui
+  n'efface que les clés de données) ; câblées dans `exportProfiles`/`importProfiles` et
+  bumpent `updatedAt` (`setPref`). (1) **Confort de lecture** (`confortLecture`) — classe
+  `<html class="confort-lecture">` ; le SCSS (`styles/accessibility.scss`) garde Nunito
+  mais augmente espacement + taille (figures SVG exclues). (2) **Bouton « Écouter la
+  consigne »** (TTS) — `ui/consigne-tts.ts` greffe un bouton après chaque consigne portant
+  un attribut `data-tts` ; le texte parlé est normalisé par `core/tts-text.ts`
+  (`texteParle`/`ttsAttr` : retire le `@`, traduit `+ − × ÷ =` en mots, strip HTML).
+  Lecture via `dicterConsigne` (`ui/tts.ts`, débit 0,92). **À la demande** ; **aucun bouton
+  si pas de voix FR** (`dicteeDisponible`) ; lecture **auto** opt-in (`lectureConsigneAuto`,
+  1re consigne seulement). Branché dans tous les runners d'exercice **sauf le sprint**
+  (QCM, tuiles, ordre, tri, révision, et la fiche/bilan via `afterStart`).
 
 ### `src/main.ts` (entrée)
 Importe les feuilles SCSS, puis initialise **dans cet ordre** :

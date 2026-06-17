@@ -3,6 +3,7 @@
    et fabrique de champs / grilles / fiches.
    ============================================================ */
 import { escapeHTML, normalizeText } from './utils';
+import { ttsAttr } from './tts-text';
 
 /* Opération posée (#97) : décrite par ses opérandes et son opérateur ; le rendu
    (grille de colonnes, cellules de résultat, produits partiels) est calculé par
@@ -225,7 +226,7 @@ export function ficheHTML(
       <span class="temps print-only">Temps : ______ min</span>
     </div>
     <p class="fiche-sub">${sous}</p>
-    <p class="consigne-line">${consigne}</p>
+    <p class="consigne-line"${ttsAttr(consigne)}>${consigne}</p>
     ${inner}
   </div>`;
 }
@@ -238,7 +239,7 @@ export function ficheHTMLGeneric(titre: string, sous: string, consigne: string, 
       <span class="temps print-only">Temps : ______ min</span>
     </div>
     ${sous ? `<p class="fiche-sub">${sous}</p>` : ''}
-    <p class="consigne-line">${consigne}</p>
+    <p class="consigne-line"${ttsAttr(consigne)}>${consigne}</p>
     ${inner}
   </div>`;
 }

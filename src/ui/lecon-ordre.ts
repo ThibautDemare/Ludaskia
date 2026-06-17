@@ -15,6 +15,8 @@ import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import type { ExerciseMode } from '../core/exercise';
 import { escapeHTML } from '../core/utils';
+import { ttsAttr } from '../core/tts-text';
+import { bindConsigneTts } from './consigne-tts';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import { streakSuffix } from '../core/progress';
@@ -110,7 +112,7 @@ function renderQuestion(): void {
       ${progressHTML()}
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
-        <p class="sprint-q lord-consigne">${escapeHTML(q.question)}</p>
+        <p class="sprint-q lord-consigne"${ttsAttr(q.question)}>${escapeHTML(q.question)}</p>
         <div class="lord-seq" id="lordSeq"></div>
         <p class="ltui-consigne">Tape les mots dans l'ordre (ou glisse-les dans les cases).</p>
         <div class="ltui-bac" id="lordBac"></div>
@@ -123,6 +125,7 @@ function renderQuestion(): void {
 	sheets()
 		.querySelector('#lordVerif')!
 		.addEventListener('click', () => verifier());
+	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
 }
 
 function redraw(): void {

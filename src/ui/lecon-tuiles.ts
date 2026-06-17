@@ -12,6 +12,8 @@ import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import type { ExerciseMode } from '../core/exercise';
 import { commKey, escapeHTML } from '../core/utils';
+import { ttsAttr } from '../core/tts-text';
+import { bindConsigneTts } from './consigne-tts';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import { streakSuffix } from '../core/progress';
@@ -111,7 +113,7 @@ function renderQuestion(): void {
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
         <p class="ltui-consigne">Amène la bonne tuile dans la case (tape-la ou glisse-la).</p>
-        <div class="sprint-q ltui-enonce">${enonce}</div>
+        <div class="sprint-q ltui-enonce"${ttsAttr(q.question)}>${enonce}</div>
         <div class="ltui-bac" id="ltuiBac"></div>
         <button class="sprint-btn" id="ltuiVerif" disabled>Vérifier</button>
         <div class="sprint-correction" id="ltuiFeedback" hidden></div>
@@ -135,6 +137,7 @@ function renderQuestion(): void {
 	slot.addEventListener('click', () => {
 		if (placed !== null) place(null); // retirer la tuile posée
 	});
+	bindConsigneTts(sheets()); // bouton « Écouter » sur l'énoncé (#42)
 }
 
 function redraw(): void {

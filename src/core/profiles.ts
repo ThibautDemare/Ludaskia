@@ -21,11 +21,21 @@ import { XP_KEY, niveauDepuisXP } from './progress';
 import { niveauRequisAvatar } from './unlocks';
 import { migrateRevisions } from './revision-migrate';
 
+/* Réglages d'accessibilité par profil (#42). Vivent dans la MÉTA de profil (pas
+   dans les clés de données) : un aménagement doit survivre à « Réinitialiser »,
+   qui n'efface que les données de progression. */
+export interface ProfilePrefs {
+	/** Confort de lecture : espacement + taille augmentés (police Nunito gardée). */
+	confortLecture?: boolean;
+	/** Lire la consigne à voix haute automatiquement à l'arrivée sur l'exercice. */
+	lectureConsigneAuto?: boolean;
+}
 export interface Profile {
 	uuid: string;
 	name: string;
 	emoji: string;
 	updatedAt: number;
+	prefs?: ProfilePrefs;
 }
 export interface ProfilesMeta {
 	list: Profile[];
@@ -168,6 +178,27 @@ export function setProfileEmoji(uuid: string, emoji: string) {
 	p.updatedAt = Date.now();
 	saveProfilesMeta(m);
 }
+/* ---------- Préférences d'accessibilité du profil actif (#42) ---------- */
+// Lues/écrites dans la méta (survivent à « Réinitialiser »). Toute écriture bumpe
+// updatedAt (comme renameProfile) pour que l'export/fusion par récence les emporte.
+export function getPrefs(): ProfilePrefs {
+	return activeProfile()?.prefs ?? {};
+}
+export function setPref<K extends keyof ProfilePrefs>(key: K, value: ProfilePrefs[K]) {
+	const m = loadProfilesMeta();
+	const p = m && m.list.find((x) => x.uuid === m.active);
+	if (!p) return;
+	p.prefs = { ...p.prefs, [key]: value };
+	p.updatedAt = Date.now();
+	saveProfilesMeta(m);
+}
+export function confortLecture(): boolean {
+	return getPrefs().confortLecture === true;
+}
+export function lectureConsigneAuto(): boolean {
+	return getPrefs().lectureConsigneAuto === true;
+}
+
 // Efface les données d'un profil (clés sous son préfixe), sauf la méta.
 function clearProfileData(prefix: string) {
 	lsKeysRaw()
@@ -229,6 +260,7 @@ export function exportProfiles(uuids: string[]) {
 			name: p.name,
 			emoji: p.emoji,
 			updatedAt: p.updatedAt || 0,
+			prefs: p.prefs, // réglages d'accessibilité (#42)
 			data: profileDataRelative(p),
 		})),
 	};
@@ -251,16 +283,18 @@ export function importProfiles(payload: any) {
 				writeProfileData(profilePrefix(existing), ip.data);
 				existing.name = ip.name || existing.name;
 				existing.emoji = ip.emoji || existing.emoji;
+				if (ip.prefs) existing.prefs = ip.prefs; // réglages d'accessibilité (#42)
 				existing.updatedAt = ip.updatedAt || Date.now();
 				updated++;
 			} else skipped++; // version locale plus récente ou identique → on garde
 		} else {
 			// profil inconnu → ajout
-			const p = {
+			const p: Profile = {
 				uuid: ip.uuid,
 				name: ip.name || 'Profil',
 				emoji: ip.emoji || PROFILE_EMOJIS[0],
 				updatedAt: ip.updatedAt || Date.now(),
+				prefs: ip.prefs || undefined, // réglages d'accessibilité (#42)
 			};
 			writeProfileData(profilePrefix(p), ip.data);
 			m.list.push(p);

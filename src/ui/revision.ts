@@ -7,6 +7,8 @@
    orthographe = mot caché (on regarde, puis on écrit).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
+import { ttsAttr } from '../core/tts-text';
+import { bindConsigneTts } from './consigne-tts';
 import { icon } from './icon';
 import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
 import { hasMode } from '../core/exercise';
@@ -184,6 +186,7 @@ function renderCurrent() {
 	else if (it.kind === 'tri') renderTri(it);
 	else if (it.item.kind === 'posed') renderPosed(it);
 	else renderNum(it);
+	bindConsigneTts(document.getElementById('revStage')!); // bouton « Écouter » (#42)
 }
 
 /* Consigne (#186) : libellé de la leçon, affiché au-dessus de l'exercice (le HUD
@@ -217,7 +220,7 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 		? `<input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}>`
 		: '<input id="revInput" class="rev-input" inputmode="numeric" autocomplete="off">';
 	const q = escapeHTML(it.item.text).replace('@', champ);
-	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q">${q}</div>
+	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q"${ttsAttr(it.item.text)}>${q}</div>
     <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;
@@ -230,7 +233,7 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 	const stage = document.getElementById('revStage')!;
 	const q = escapeHTML(it.item.text).replace('@', '<span class="rev-blank">?</span>');
-	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm">${q}</div>
+	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm"${ttsAttr(it.item.text)}>${q}</div>
     <div class="rev-choices">${it.choices
 			.map((c, i) => `<button class="rev-choice" data-i="${i}">${escapeHTML(c)}</button>`)
 			.join('')}</div>`;
@@ -280,7 +283,7 @@ function renderTuile(it: Extract<RevItem, { kind: 'tuile' }>) {
 	);
 	stage.innerHTML = `${consigneHTML(it)}
     <p class="ltui-consigne">Amène la bonne tuile dans la case (tape-la ou glisse-la).</p>
-    <div class="rev-q ltui-enonce">${enonce}</div>
+    <div class="rev-q ltui-enonce"${ttsAttr(it.question)}>${enonce}</div>
     <div class="ltui-bac" id="ltuiBac"></div>
     <div class="rev-actions"><button class="rev-btn" id="revValidate" disabled>Valider</button></div>`;
 	const slot = document.getElementById('ltuiSlot') as HTMLElement;
@@ -332,7 +335,7 @@ function renderOrdre(it: Extract<RevItem, { kind: 'ordre' }>) {
 	const stage = document.getElementById('revStage')!;
 	const placed: string[] = [];
 	stage.innerHTML = `${consigneHTML(it)}
-    <p class="rev-q lord-consigne">${escapeHTML(it.question)}</p>
+    <p class="rev-q lord-consigne"${ttsAttr(it.question)}>${escapeHTML(it.question)}</p>
     <div class="lord-seq" id="lordSeq"></div>
     <p class="ltui-consigne">Tape les mots dans l'ordre (ou glisse-les dans les cases).</p>
     <div class="ltui-bac" id="lordBac"></div>
@@ -398,7 +401,7 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 	const placed: Record<string, 0 | 1> = {};
 	let selected: string | null = null;
 	stage.innerHTML = `${consigneHTML(it)}
-    <p class="rev-q lord-consigne">${escapeHTML(it.question)}</p>
+    <p class="rev-q lord-consigne"${ttsAttr(it.question)}>${escapeHTML(it.question)}</p>
     <p class="ltui-consigne">Tape un mot, puis tape son thème (ou glisse-le dans la colonne).</p>
     <div class="ltri-cols" id="ltriCols"></div>
     <div class="ltui-bac" id="ltriBac"></div>

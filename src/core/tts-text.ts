@@ -17,6 +17,21 @@ const OPERATEURS: [RegExp, string][] = [
 	[/\s=\s/g, ' égale '],
 ];
 
+// Unités lues en toutes lettres (un enfant dyscalculique a besoin de la
+// verbalisation pleine ; « cm » épelé « cé-èm » n'est que du bruit). On ne
+// substitue que des tokens NON ambigus précédés d'un espace : on évite les
+// lettres seules « m », « c », « h », « L » qui se confondraient avec du texte.
+const UNITES: [RegExp, string][] = [
+	[/ €/g, ' euros'],
+	[/\bcentim(?:è|e)tres?\b/gi, 'centimètres'], // garde-fou si déjà en toutes lettres
+	[/ cm\b/g, ' centimètres'],
+	[/ mm\b/g, ' millimètres'],
+	[/ dm\b/g, ' décimètres'],
+	[/ km\b/g, ' kilomètres'],
+	[/ kg\b/g, ' kilogrammes'],
+	[/ min\b/g, ' minutes'],
+];
+
 /** Transforme un énoncé affiché en texte à lire à voix haute. */
 export function texteParle(raw: string): string {
 	if (!raw) return '';
@@ -24,8 +39,11 @@ export function texteParle(raw: string): string {
 		.replace(/<[^>]*>/g, ' ') // une consigne peut contenir du HTML (gras…)
 		.replace(/&amp;/g, '&')
 		.replace(/&lt;/g, '<')
+		.replace(/[·—–]/g, ' ') // séparateurs purement visuels (puce, tirets longs)
+		.replace(/→/g, ' ') // flèche « devient » : muette (souvent suivie du trou)
 		.replace(/@/g, ' '); // le trou à remplir : silence, pas « arobase »
 	for (const [re, mot] of OPERATEURS) t = t.replace(re, mot);
+	for (const [re, mot] of UNITES) t = t.replace(re, mot);
 	return t.replace(/\s+/g, ' ').trim();
 }
 

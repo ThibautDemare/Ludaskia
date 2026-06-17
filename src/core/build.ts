@@ -58,7 +58,11 @@ export function buildLessonFiche(lessonId: string): string {
 		.map((it) => `<div class="conj-op">${renderItem(it)}</div>`)
 		.join('')}</div>`;
 	setRenderLesson(null);
-	const consigne = lesson.subject === 'math' ? 'Complète.' : 'Écris la forme correcte.';
+	// Consigne propre au type d'exercice si définie (#42 : nomme la tâche, ex.
+	// « Conjugue le verbe au temps demandé. ») ; sinon générique selon la matière.
+	const consigne =
+		lesson.exerciseType.consigne ??
+		(lesson.subject === 'math' ? 'Complète.' : 'Écris la forme correcte.');
 	return ficheHTMLGeneric(lesson.label, '', consigne, inner);
 }
 

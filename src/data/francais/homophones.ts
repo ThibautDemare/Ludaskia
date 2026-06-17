@@ -610,6 +610,10 @@ function homophoneType(paire: PaireHomophone): ExerciseType {
 				answer: reponse,
 				choices: sample([...paire.options], 2), // les deux graphies, jamais une faute
 				explication: paire.explication,
+				// Texte lu (#42) : on ne lit PAS la phrase — l'intonation de la synthèse
+				// trancherait l'homophone (« il EST malade ») et donnerait la réponse.
+				// On lit la consigne ; la phrase reste à l'écran.
+				parle: 'Choisis le bon mot pour compléter la phrase.',
 			};
 		},
 		check: (exercise, input) => checkAnswer(exercise, input),

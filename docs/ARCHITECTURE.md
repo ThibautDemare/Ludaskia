@@ -515,6 +515,17 @@ le dessin 3D (faces cachées).
   si pas de voix FR** (`dicteeDisponible`) ; lecture **auto** opt-in (`lectureConsigneAuto`,
   1re consigne seulement). Branché dans tous les runners d'exercice **sauf le sprint**
   (QCM, tuiles, ordre, tri, révision, et la fiche/bilan via `afterStart`).
+  - **Dissociation affiché / lu** : un énoncé télégraphique (« pouvoir · présent — je @ »)
+    est illisible tel quel à l'oral. Les générateurs peuvent donc poser un champ
+    optionnel **`parle`** (sur `Exercise`, propagé à `Item` et lu en priorité par le bouton ;
+    fallback `texteParle`). **Règle d'or** : `parle` ne contient **jamais** la réponse ni un
+    indice — homophones et m/b/p y lisent **la consigne seule** (l'intonation/la nasale
+    trahiraient la solution) ; comparaison, conjugaison, pronom sujet, accord sujet-verbe,
+    classe, article reçoivent une **phrase reconstruite** qui nomme la tâche. Les options de
+    QCM ne sont jamais lues (le `data-tts` ne porte que l'énoncé).
+  - **Consigne de la fiche** : `ExerciseType.consigne` (optionnel) nomme la tâche
+    (« Conjugue chaque verbe au présent. ») et remplace le générique « Écris la forme
+    correcte. » (`core/build.ts`).
 
 ### `src/main.ts` (entrée)
 Importe les feuilles SCSS, puis initialise **dans cet ordre** :

@@ -75,6 +75,7 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 				answer: ex.answer,
 				kind: 'text',
 				figure: ex.figure,
+				parle: ex.parle,
 				_lesson: l.id,
 			},
 			choices: ex.choices,
@@ -126,7 +127,7 @@ function renderQuestion(): void {
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
         ${figureBlock(q.item.figure)}
-        <div class="sprint-q sprint-q-qcm"${ttsAttr(q.item.text)}>${question}</div>
+        <div class="sprint-q sprint-q-qcm"${ttsAttr(q.item.parle ?? q.item.text)}>${question}</div>
         <div class="sprint-choices" id="lqcmChoices">
           ${q.choices
 						.map((c, i) => `<button class="sprint-choice" data-i="${i}">${escapeHTML(c)}</button>`)

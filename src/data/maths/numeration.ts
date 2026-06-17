@@ -47,6 +47,7 @@ interface Fact {
 	question: string;
 	answer: string;
 	tuiles: string[];
+	parle?: string; // texte lu si l'énoncé affiché est symbolique (#42 ; ex. « 34 @ 56 »)
 }
 
 function signe(a: number, b: number): string {
@@ -85,7 +86,14 @@ function compareFact(max: number): Fact {
 		a = rnd(100, max);
 		b = rnd(0, 1) === 0 ? memeTete(a) : rnd(100, max);
 	}
-	return { question: `${a} @ ${b}`, answer: signe(a, b), tuiles: ['<', '=', '>'] };
+	// Texte lu (#42) : « 34 @ 56 » est illisible à voix haute ; on nomme la tâche
+	// sans donner le signe (la réponse).
+	return {
+		question: `${a} @ ${b}`,
+		answer: signe(a, b),
+		tuiles: ['<', '=', '>'],
+		parle: `Compare ${a} et ${b}.`,
+	};
 }
 
 /* ---------- Encadrer ---------- */
@@ -131,9 +139,15 @@ function numerationType(genFact: () => Fact): ExerciseType {
 		generate(mode?: ExerciseMode): Exercise {
 			const f = genFact();
 			if (mode === 'tuiles') {
-				return { type: 'tuilesNombre', question: f.question, answer: f.answer, tuiles: f.tuiles };
+				return {
+					type: 'tuilesNombre',
+					question: f.question,
+					answer: f.answer,
+					tuiles: f.tuiles,
+					parle: f.parle,
+				};
 			}
-			return { type: 'text', question: f.question, answer: f.answer };
+			return { type: 'text', question: f.question, answer: f.answer, parle: f.parle };
 		},
 		check(exercise: Exercise, input: string): boolean {
 			if (!('answer' in exercise)) return false;

@@ -34,6 +34,7 @@ interface TuilesQuestion {
 	question: string; // énoncé avec `@` = emplacement
 	answer: string; // libellé de la bonne tuile
 	tuiles: string[]; // réponse + distracteurs (déjà mélangés)
+	parle?: string; // texte lu à voix haute si l'énoncé est télégraphique (#42)
 }
 
 let lesson: LessonDef;
@@ -61,7 +62,7 @@ function genQuestions(l: LessonDef, m: ExerciseMode, n: number): TuilesQuestion[
 			continue;
 		}
 		seen.add(key);
-		out.push({ question: ex.question, answer: ex.answer, tuiles: ex.tuiles });
+		out.push({ question: ex.question, answer: ex.answer, tuiles: ex.tuiles, parle: ex.parle });
 		misses = 0;
 	}
 	return out;
@@ -113,7 +114,7 @@ function renderQuestion(): void {
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
         <p class="ltui-consigne">Amène la bonne tuile dans la case (tape-la ou glisse-la).</p>
-        <div class="sprint-q ltui-enonce"${ttsAttr(q.question)}>${enonce}</div>
+        <div class="sprint-q ltui-enonce"${ttsAttr(q.parle ?? q.question)}>${enonce}</div>
         <div class="ltui-bac" id="ltuiBac"></div>
         <button class="sprint-btn" id="ltuiVerif" disabled>Vérifier</button>
         <div class="sprint-correction" id="ltuiFeedback" hidden></div>

@@ -23,6 +23,7 @@ export interface Item {
 	kind?: 'num' | 'text' | 'posed' | 'heure'; // 'num' (calcul) ; 'text' (chaîne) ; 'posed' (grille) ; 'heure' (2 champs H h MM, #88)
 	posed?: PosedSpec; // présent si kind === 'posed'
 	figure?: string; // fragment SVG (moteur core/figures.ts), affiché au-dessus de la question (#88)
+	parle?: string; // texte LU à voix haute si l'énoncé est télégraphique (#42 ; cf. tts-text)
 	_lesson?: string;
 }
 

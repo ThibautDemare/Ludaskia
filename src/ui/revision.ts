@@ -28,7 +28,14 @@ type RevItem = { groupLabel: string; consigne?: string } & (
 	| { kind: 'qcm'; lessonId: string; item: Item; choices: string[] }
 	| { kind: 'word'; wordId: string; mot: string }
 	// Interactions « tuiles » rejouées telles quelles en révision (#186), sans clavier.
-	| { kind: 'tuile'; lessonId: string; question: string; answer: string; tuiles: string[] }
+	| {
+			kind: 'tuile';
+			lessonId: string;
+			question: string;
+			answer: string;
+			tuiles: string[];
+			parle?: string;
+	  }
 	| { kind: 'ordre'; lessonId: string; question: string; ordre: string[]; tuiles: string[] }
 	| {
 			kind: 'tri';
@@ -80,7 +87,13 @@ export function runRevisionEspacee(): void {
 						consigne,
 						kind: 'qcm',
 						lessonId: it.id,
-						item: { text: ex.question, answer: ex.answer, kind: 'text', figure: ex.figure },
+						item: {
+							text: ex.question,
+							answer: ex.answer,
+							kind: 'text',
+							figure: ex.figure,
+							parle: ex.parle,
+						},
 						choices: ex.choices,
 					});
 				continue;
@@ -126,6 +139,7 @@ export function runRevisionEspacee(): void {
 						question: tex.question,
 						answer: tex.answer,
 						tuiles: tex.tuiles,
+						parle: tex.parle,
 					});
 					continue;
 				}
@@ -220,7 +234,7 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 		? `<input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}>`
 		: '<input id="revInput" class="rev-input" inputmode="numeric" autocomplete="off">';
 	const q = escapeHTML(it.item.text).replace('@', champ);
-	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q"${ttsAttr(it.item.text)}>${q}</div>
+	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q"${ttsAttr(it.item.parle ?? it.item.text)}>${q}</div>
     <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;
@@ -233,7 +247,7 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 	const stage = document.getElementById('revStage')!;
 	const q = escapeHTML(it.item.text).replace('@', '<span class="rev-blank">?</span>');
-	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm"${ttsAttr(it.item.text)}>${q}</div>
+	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm"${ttsAttr(it.item.parle ?? it.item.text)}>${q}</div>
     <div class="rev-choices">${it.choices
 			.map((c, i) => `<button class="rev-choice" data-i="${i}">${escapeHTML(c)}</button>`)
 			.join('')}</div>`;
@@ -283,7 +297,7 @@ function renderTuile(it: Extract<RevItem, { kind: 'tuile' }>) {
 	);
 	stage.innerHTML = `${consigneHTML(it)}
     <p class="ltui-consigne">Amène la bonne tuile dans la case (tape-la ou glisse-la).</p>
-    <div class="rev-q ltui-enonce"${ttsAttr(it.question)}>${enonce}</div>
+    <div class="rev-q ltui-enonce"${ttsAttr(it.parle ?? it.question)}>${enonce}</div>
     <div class="ltui-bac" id="ltuiBac"></div>
     <div class="rev-actions"><button class="rev-btn" id="revValidate" disabled>Valider</button></div>`;
 	const slot = document.getElementById('ltuiSlot') as HTMLElement;

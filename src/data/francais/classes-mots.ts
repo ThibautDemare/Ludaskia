@@ -99,6 +99,7 @@ export interface ItemClasseQcm {
 	reponse: string;
 	distracteurs: string[];
 	explication: string;
+	parle?: string; // texte lu si l'énoncé affiché est télégraphique (#42)
 }
 
 const ROLE_CLASSE: Record<Classe, string> = {
@@ -114,6 +115,7 @@ const itemsClasse = (): ItemClasseQcm[] =>
 		reponse: c.classe,
 		distracteurs: (['nom', 'verbe', 'adjectif'] as Classe[]).filter((x) => x !== c.classe),
 		explication: `« ${c.mot} » est un ${c.classe} : ${ROLE_CLASSE[c.classe]}.`,
+		parle: `À quelle classe appartient le mot « ${c.mot} » : un nom, un verbe ou un adjectif ?`,
 	}));
 
 const itemsArticle = (): ItemClasseQcm[] =>
@@ -123,6 +125,7 @@ const itemsArticle = (): ItemClasseQcm[] =>
 		reponse: a.article,
 		distracteurs: (['le', 'la', 'les'] as Article[]).filter((x) => x !== a.article),
 		explication: `On dit « ${a.article} ${a.mot} ».`,
+		parle: `Quel petit mot va devant « ${a.mot} » : le, la ou les ?`,
 	}));
 
 const itemsAdverbe = (): ItemClasseQcm[] =>
@@ -155,6 +158,7 @@ export function classesMotsType(): ExerciseType {
 				answer: it.reponse,
 				choices: sample([it.reponse, ...it.distracteurs], 3),
 				explication: it.explication,
+				parle: it.parle,
 			};
 		},
 		check: (exercise, input) => checkAnswer(exercise, input),

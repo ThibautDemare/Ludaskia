@@ -71,7 +71,8 @@ export function dbl(n: number): Item {
 	return { text: `double de ${n} = @`, answer: 2 * n };
 }
 export function half(n: number): Item {
-	return { text: `moitié de ${n} = @`, answer: n / 2 };
+	// « La moitié de » (article) : aligné sur la leçon « Division par le sens » (#104).
+	return { text: `La moitié de ${n} = @`, answer: n / 2 };
 }
 export function comp(a: number, total: number): Item {
 	return { text: `${a} + @ = ${total}`, answer: total - a };

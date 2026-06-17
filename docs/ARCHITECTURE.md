@@ -293,8 +293,11 @@ le dessin 3D (faces cachées).
   ou diamètre surligné et coté, ou marqué « ? » pour le vocabulaire) et
   **`renderSolide(solid)`** (#103 — schéma d'un solide en **perspective cavalière
   sans arêtes cachées** : cube, pavé droit, cylindre, cône, pyramide, boule ;
-  primitive `ellipse` ajoutée). `FigureSpec` couvre `horloge | polygoneCote |
-  quadrillage | figurePlane | sceneFigures | cercle | solide`. On compose
+  primitive `ellipse` ajoutée) et **`renderGroupes(paniers, total)`** (#104 —
+  division par le sens : `total` jetons en vrac + `paniers` contenants **vides** ;
+  montre la SITUATION, jamais le résultat → l'enfant calcule, il ne compte pas une
+  réponse déjà posée). `FigureSpec` couvre `horloge | polygoneCote |
+  quadrillage | figurePlane | sceneFigures | cercle | solide | groupes`. On compose
   avec les primitives, on ajoute un `renderXxx` (+ variant `FigureSpec` au besoin),
   jamais de SVG « à la main » dans une leçon. Tokens de couleur dédiés
   (`--clock-min`…) ; styles dans `src/styles/figures.scss`.

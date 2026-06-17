@@ -27,6 +27,7 @@ function fabriquerBouton(texte: string): HTMLButtonElement {
 	btn.type = 'button';
 	btn.className = 'consigne-tts';
 	btn.setAttribute('aria-label', 'Écouter la consigne');
+	btn.title = 'Écouter la consigne';
 	btn.innerHTML = `${icon('speaker')}<span class="consigne-tts-lab">Écouter</span>`;
 	btn.addEventListener('click', () => parler(btn, texte));
 	return btn;
@@ -43,7 +44,7 @@ export function bindConsigneTts(root: ParentNode = document): void {
 		const texte = el.dataset.tts || '';
 		if (!texte.trim()) return;
 		const btn = fabriquerBouton(texte);
-		el.insertAdjacentElement('afterend', btn);
+		el.append(btn); // inline en fin de consigne (et non un bloc centré dessous)
 		if (!premier) {
 			premier = btn;
 			premierTexte = texte;

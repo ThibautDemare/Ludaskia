@@ -32,6 +32,7 @@ import { POSEE_LESSONS } from '../data/maths/posee';
 import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';
 import { CERCLE_LESSONS } from '../data/maths/cercle';
 import { SOLIDE_LESSONS } from '../data/maths/solides';
+import { SYMETRIE_LESSONS } from '../data/maths/symetrie-axiale';
 import { PROBLEMES_LESSONS } from '../data/maths/problemes';
 import { DIVISION_LESSONS } from '../data/maths/division';
 
@@ -514,6 +515,19 @@ const GEOMETRIE_LESSONS_DEFS: LessonDef[] = [
 	exerciseType: d.exerciseType,
 }));
 
+/* ---------- Catalogue de la leçon « Symétrie axiale » (#201) ----------
+   QCM mono-mode (oui/non + désigner le reflet A/B/C). Exclue du sprint
+   chronométré : tâche visuo-spatiale de reconnaissance, sans pression de temps. */
+const SYMETRIE_LESSONS_DEFS: LessonDef[] = SYMETRIE_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'math',
+	category: 'math-geometrie',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+	excludeFromSprint: d.excludeFromSprint,
+}));
+
 /* ---------- Registre global ---------- */
 
 const ALL_LESSONS: LessonDef[] = [
@@ -523,6 +537,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...CALCUL_LESSONS_DEFS,
 	...GRANDEURS_LESSONS,
 	...GEOMETRIE_LESSONS_DEFS,
+	...SYMETRIE_LESSONS_DEFS,
 	...PROBLEMES_LESSONS_DEFS,
 	...DIVISION_LESSONS_DEFS,
 	...FRENCH_LESSONS,

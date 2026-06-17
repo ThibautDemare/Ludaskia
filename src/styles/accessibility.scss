@@ -3,7 +3,7 @@
    1. Confort de lecture : police Nunito GARDÉE, mais espacement + taille
       augmentés (c'est l'espacement qui est étayé — Zorzi 2012 — pas une police
       « spécial dys »). Classe posée sur <html> par applyPreferences().
-   2. Bouton « Écouter la consigne » (TTS), greffé après la consigne par
+   2. Bouton « Écouter la consigne » (TTS), greffé dans la consigne par
       ui/consigne-tts.ts.
    ============================================================ */
 
@@ -41,35 +41,49 @@ html.confort-lecture {
 }
 
 /* ---- 2. Bouton « Écouter la consigne » ---- */
-/* Cible tactile ≥ 48 px (doigt d'enfant), libellé + picto (jamais l'icône
-   seule), centré sous la consigne. Apparaît UNIQUEMENT si une voix FR existe
-   (sinon ui/consigne-tts ne l'injecte pas). */
+/* Discret mais tappable (avis UX) : icône-seule en « ghost » (fond transparent,
+   filet léger), posée INLINE en fin de consigne — pas un gros bloc centré qui
+   vole la vedette à la consigne. La cible tactile (≥ 44 px) vient du rembourrage,
+   pas de l'encre. Le libellé « Écouter » est masqué par défaut (gardé en
+   aria-label + title) et réapparaît en mode Confort de lecture, où le public en
+   a besoin et l'écran est déjà aéré. */
 .consigne-tts {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.4em;
-	margin: 0.5rem auto 0.75rem;
-	min-height: 48px;
-	padding: 0.45rem 1rem;
-	border: 2px solid var(--accent);
+	justify-content: center;
+	gap: 0.3em;
+	vertical-align: middle;
+	margin-left: 0.4em;
+	min-width: 44px;
+	min-height: 44px;
+	padding: 0 0.5rem;
+	border: 1px solid var(--accent-soft);
 	border-radius: 999px;
-	background: var(--accent-soft);
-	color: var(--accent-dark);
-	font: 600 1rem/1 var(--ui);
+	background: transparent;
+	color: var(--accent);
+	font: 600 0.85rem/1 var(--ui);
 	cursor: pointer;
 	transition: background 0.15s ease;
 }
-.consigne-tts:hover {
-	background: var(--paper);
-}
 .consigne-tts .ph-icon {
-	font-size: 1.3em;
+	font-size: var(--icon);
 }
-/* État « ça parle » : pulsation douce du picto pour relier le son au bouton
-   (respecte prefers-reduced-motion / anim-reduced). */
+.consigne-tts-lab {
+	display: none; /* icône seule par défaut (libellé en aria-label + title) */
+}
+html.confort-lecture .consigne-tts-lab {
+	display: inline; /* mode Confort : on réaffiche le libellé texte */
+}
+.consigne-tts:hover,
+.consigne-tts:focus-visible,
+.consigne-tts:active {
+	background: var(--accent-soft);
+}
+/* État « ça parle » : doux (fond accent-soft, pas d'aplat plein) + pulsation
+   légère du picto pour relier le son au bouton (double codage non-chromatique). */
 .consigne-tts.speaking {
-	background: var(--accent);
-	color: var(--paper);
+	background: var(--accent-soft);
+	color: var(--accent-dark);
 }
 .consigne-tts.speaking .ph-icon {
 	animation: consigne-tts-pulse 0.9s ease-in-out infinite;
@@ -80,7 +94,7 @@ html.confort-lecture {
 		transform: scale(1);
 	}
 	50% {
-		transform: scale(1.18);
+		transform: scale(1.1);
 	}
 }
 html.anim-reduced .consigne-tts.speaking .ph-icon {
@@ -90,16 +104,6 @@ html.anim-reduced .consigne-tts.speaking .ph-icon {
 	.consigne-tts.speaking .ph-icon {
 		animation: none;
 	}
-}
-/* Le bouton est un bloc centré quand il suit une consigne centrée (QCM, énoncés). */
-.sprint-q + .consigne-tts,
-.rev-q + .consigne-tts,
-.consigne-line + .consigne-tts,
-.lord-consigne + .consigne-tts {
-	display: flex;
-	width: fit-content;
-	margin-left: auto;
-	margin-right: auto;
 }
 
 /* ---- 3. Écran Préférences : statut de la lecture vocale ---- */

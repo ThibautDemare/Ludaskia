@@ -54,4 +54,5 @@ export type IconName =
 	| 'clock-clockwise'
 	| 'translate'
 	| 'calendar'
-	| 'feather';
+	| 'feather'
+	| 'lightbulb';

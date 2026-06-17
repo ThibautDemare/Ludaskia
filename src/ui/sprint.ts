@@ -19,6 +19,7 @@ import {
 	isPosedLesson,
 	isOrderingLesson,
 	isTriLesson,
+	isProblemeLesson,
 	SUBJECTS,
 	CATEGORIES,
 } from '../core/catalog';
@@ -77,7 +78,9 @@ function lessonsForFilter(f: SprintFilter): LessonDef[] {
 	// (#108, plusieurs tuiles à ordonner) et le tri par thème (#114, tuiles à
 	// classer) ne se jouent pas « une réponse à la fois » : on les écarte du
 	// sprint chronométré.
-	return base.filter((d) => !isPosedLesson(d) && !isOrderingLesson(d) && !isTriLesson(d));
+	return base.filter(
+		(d) => !isPosedLesson(d) && !isOrderingLesson(d) && !isTriLesson(d) && !isProblemeLesson(d),
+	);
 }
 
 function filterLabel(f: SprintFilter): string {
@@ -111,8 +114,10 @@ export function startCustomSprint(config: BilanConfig): void {
 /* ---------- Écran de configuration du sprint ---------- */
 
 export function renderSprintConfigScreen(el: HTMLElement): void {
-	const allLessons = getAllLessons();
-	const totalN = allLessons.length;
+	// On ne compte que les leçons ÉLIGIBLES au sprint (posée, tuiles, problèmes…
+	// en sont exclues) : une catégorie entièrement inéligible (ex. Résolution de
+	// problèmes) ne doit pas apparaître, sinon le sprint serait vide (#199).
+	const totalN = lessonsForFilter({ type: 'all' }).length;
 
 	// L'écran de config n'expose que tout/matière/catégorie : un filtre 'lessons'
 	// (sprint personnalisé lancé depuis le composeur) retombe sur « toutes ».
@@ -133,13 +138,13 @@ export function renderSprintConfigScreen(el: HTMLElement): void {
 	};
 
 	const subjectOptions = SUBJECTS.flatMap((subj) => {
-		const subjLessons = getLessonsBySubject(subj.id);
-		if (!subjLessons.length) return [];
+		const subjN = lessonsForFilter({ type: 'subject', id: subj.id }).length;
+		if (!subjN) return [];
 		const catOptions = CATEGORIES.filter((c) => c.subject === subj.id).flatMap((cat) => {
-			const n = getLessonsByCategory(cat.id).length;
+			const n = lessonsForFilter({ type: 'category', id: cat.id }).length;
 			return n ? [opt(`category:${cat.id}`, cat.label, n, true)] : [];
 		});
-		return [opt(`subject:${subj.id}`, subj.label, subjLessons.length), ...catOptions];
+		return [opt(`subject:${subj.id}`, subj.label, subjN), ...catOptions];
 	}).join('');
 
 	el.innerHTML = `<div class="sprint-config">

@@ -18,6 +18,7 @@ import { runLeconQcm } from './lecon-qcm';
 import { runLeconTuiles } from './lecon-tuiles';
 import { runLeconOrdre } from './lecon-ordre';
 import { runLeconTri } from './lecon-tri';
+import { runLeconProbleme } from './lecon-probleme';
 import { setInputCounter, setSessionItems, renderItem } from '../core/items';
 import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
@@ -480,6 +481,12 @@ export function runLecon(id: string) {
 	// Mode retenu (choix #69) ou défaut du type d'exercice. Consommé une fois.
 	const mode = pendingLeconMode ?? defaultMode(lesson.exerciseType);
 	pendingLeconMode = null;
+	// Résolution de problèmes (#199) : runner dédié, un problème à la fois (mono-mode,
+	// donc aiguillé avant le bloc des modes ci-dessous).
+	if (lesson.exerciseType.generate().type === 'probleme') {
+		runLeconProbleme(id);
+		return;
+	}
 	// Un mode produisant un QCM ou des tuiles se joue « une question à la fois »
 	// (pas une fiche grille) — chacun son runner d'écran dédié.
 	if (mode) {

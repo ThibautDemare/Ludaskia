@@ -485,6 +485,21 @@ le dessin 3D (faces cachées).
   **taper** une tuile posée la renvoie au bac. Feedback immédiat tuile par tuile
   (✓/✗) + bon classement montré ; parité `recordLessonRun`. Routé par `runLecon`
   quand le mode produit un `tuilesTri`. Calqué sur `lecon-ordre.ts`.
+- **`lecon-probleme.ts`** — runner **« Résolution de problèmes »** (#199), un
+  problème à la fois. L'énoncé (`Exercise` `type: 'probleme'` : `enonce`, `etapes[]`,
+  `parle`) reste visible avec **son bouton « Écouter »** (#42, `data-tts` = `parle`) ;
+  **une** sous-question (problème simple) ou **deux** (problème à deux étapes —
+  l'item multi-`@` arbitré par l'issue : sous-questions affichées d'emblée, étape 1 =
+  intermédiaire, étape 2 = réponse finale). Chaque étape a sa réponse numérique
+  (`data-answer`), corrigée indépendamment ; problème réussi si **toutes** ses étapes
+  le sont. Parité `recordLessonRun`. Routé par `runLecon` quand `generate().type ===
+  'probleme'`. Les énoncés sont **générés par gabarits** (structures de Vergnaud) dans
+  `data/maths/problemes.ts` : positions d'inconnue variées, pièges « mots-clés »
+  loyaux et minoritaires, calibrage CE2 (additifs ≤ 1000, multiplicatifs dans les
+  tables, division exacte). **Catégorie `math-problemes`**, **exclue du sprint**
+  (`isProblemeLesson`, comme la posée). Repli texte (énoncé + question finale) via
+  `genLessonItem` pour le bilan / la révision. La **question finale en gras** passe
+  par la convention `**…**` rendue par `enonceTexte` (`core/items.ts`).
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
   **filtrable** (toutes matières / une matière / une catégorie / **une sélection
   précise de leçons** via `startCustomSprint`, #64) via un écran de

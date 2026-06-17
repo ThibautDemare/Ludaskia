@@ -35,6 +35,14 @@ export function figureBlock(figure?: string): string {
 	return figure ? `<div class="figure">${figure}</div>` : '';
 }
 
+/* Énoncé d'un item, échappé puis enrichi d'un GRAS léger via la convention
+   `**…**` (#199 : mettre en évidence la question finale d'un problème). On
+   échappe d'abord (sécurité), donc le `<strong>` injecté ensuite est sûr. Aucun
+   autre énoncé n'utilise `**` aujourd'hui : transformation sans effet de bord. */
+export function enonceTexte(text: string): string {
+	return escapeHTML(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
 /* Vérifie la réponse saisie pour un item, selon son type.
    - texte : normalizeText (trim + espaces internes réduits + NFC), accents/apostrophes
      exigés (formes alternatives via answers)
@@ -131,13 +139,13 @@ export function renderItem(it: Item, extra = '') {
 			`<span class="heure-sep" aria-hidden="true">h</span>` +
 			`<input class="heure-min" id="${mid}" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="minutes">` +
 			`</span><span class="mark" data-for="${id}"></span>`;
-		return figureBlock(it.figure) + escapeHTML(it.text).replace('@', group);
+		return figureBlock(it.figure) + enonceTexte(it.text).replace('@', group);
 	}
 	const field =
 		it.kind === 'text'
 			? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
 			: `<input class="ans ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
-	return figureBlock(it.figure) + escapeHTML(it.text).replace('@', field);
+	return figureBlock(it.figure) + enonceTexte(it.text).replace('@', field);
 }
 export function gridHTML(items: Item[], cols: number) {
 	const cls = cols === 3 ? 'c3' : 'c4';

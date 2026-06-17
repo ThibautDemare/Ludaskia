@@ -5,6 +5,12 @@
 import { normalizeText } from './utils';
 import type { IconName } from './icon-names';
 
+/** Une sous-question d'un problème (#199) : son intitulé et sa réponse numérique. */
+export interface ProblemeEtape {
+	question: string; // ex. « Combien Léo a-t-il de billes maintenant ? »
+	answer: number;
+}
+
 // `parle` (#42) : texte LU à voix haute par le bouton « Écouter », quand
 // l'énoncé affiché est télégraphique/symbolique et ne se lit pas tel quel
 // (ex. « pouvoir · présent — je @ » → « Conjugue le verbe pouvoir au présent,
@@ -55,6 +61,11 @@ export type Exercise =
 	// Calcul posé (#97) — opération en colonnes ; le catalogue en fait un Item
 	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.
 	| { type: 'posed'; op: '+' | '-' | 'x'; a: number; b: number }
+	// Résolution de problèmes (#199) — énoncé textuel + 1 sous-question (problème
+	// simple) ou 2 (problème à deux étapes, « chunking »). Chaque étape a sa réponse
+	// numérique, corrigée indépendamment. Runner dédié (ui/lecon-probleme.ts) ;
+	// `parle` = énoncé complet lu à voix haute (jamais la réponse). Hors sprint.
+	| { type: 'probleme'; enonce: string; etapes: ProblemeEtape[]; parle: string }
 	// Orthographe — interactions réutilisables (vérifiées comme du texte) :
 	| { type: 'motCache'; answer: string } // affiche/masque le mot puis saisie
 	| { type: 'tuiles'; answer: string; lettres: string[] } // lettres mélangées à ordonner
@@ -105,7 +116,12 @@ export function checkAnswer(exercise: Exercise, input: string): boolean {
 	// Le calcul posé (corrigé cellule par cellule), le rangement d'une suite (#108)
 	// et le tri par thème (#114) — corrigés par leur runner — n'ont pas de réponse
 	// texte unique : ils ne passent jamais par cette vérification générique.
-	if (exercise.type === 'posed' || exercise.type === 'tuilesOrdre' || exercise.type === 'tuilesTri')
+	if (
+		exercise.type === 'posed' ||
+		exercise.type === 'tuilesOrdre' ||
+		exercise.type === 'tuilesTri' ||
+		exercise.type === 'probleme'
+	)
 		return false;
 	const normalized = normalizeText(input);
 	if (normalized === normalizeText(exercise.answer)) return true;

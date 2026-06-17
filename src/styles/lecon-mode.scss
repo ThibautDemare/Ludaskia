@@ -457,3 +457,62 @@ html.anim-reduced .sprint-choice.correct {
 	font-size: 0.95rem;
 	line-height: 1.5;
 }
+
+/* ---------- Résolution de problèmes (#199) ---------- */
+/* Énoncé : texte lisible, aligné à gauche, largeur de ligne bornée (lecture).
+   Le bouton « Écouter » (#42) est injecté inline en fin d'énoncé. */
+.prob-enonce {
+	max-width: 34rem;
+	margin: 0.4rem auto 0.2rem;
+	font-size: 1.15rem;
+	line-height: 1.55;
+	text-align: left;
+}
+.prob-etapes {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	margin: 1rem auto 0.5rem;
+	max-width: 34rem;
+}
+.prob-etape {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	align-items: flex-start;
+}
+.prob-q {
+	font-weight: 700;
+}
+.prob-saisie {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+.prob-input {
+	width: 5.5rem;
+	min-height: 48px;
+	padding: 0.4rem 0.6rem;
+	font-size: 1.3rem;
+	text-align: center;
+	border: 2px solid var(--muted);
+	border-radius: 10px;
+}
+.prob-input.correct {
+	border-color: var(--ok);
+}
+.prob-input.wrong {
+	border-color: var(--ko);
+}
+.prob-mark {
+	font-weight: 700;
+}
+.prob-mark.correct {
+	color: var(--ok);
+}
+.prob-mark.wrong {
+	color: var(--ko);
+}
+.prob-mark .sol {
+	font-weight: 700;
+}

@@ -13,7 +13,13 @@ import { icon } from './icon';
 import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
 import { hasMode } from '../core/exercise';
 import type { Item } from '../core/items';
-import { checkItemAnswer, figureBlock, renderItem, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
+import {
+	checkItemAnswer,
+	enonceTexte,
+	figureBlock,
+	renderItem,
+	TEXT_ANSWER_INPUT_ATTRS,
+} from '../core/items';
 import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
 import type { OrthoState } from '../core/orthographe/types';
 import { loadLessonRevisions, avancerLessonRevision, addXP, recordRun } from '../core/progress';
@@ -233,7 +239,7 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 	const champ = texte
 		? `<input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}>`
 		: '<input id="revInput" class="rev-input" inputmode="numeric" autocomplete="off">';
-	const q = escapeHTML(it.item.text).replace('@', champ);
+	const q = enonceTexte(it.item.text).replace('@', champ);
 	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q"${ttsAttr(it.item.parle ?? it.item.text)}>${q}</div>
     <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
 	document.getElementById('revValidate')!.addEventListener('click', () => {

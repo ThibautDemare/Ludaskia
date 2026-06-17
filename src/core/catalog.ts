@@ -31,6 +31,7 @@ import { POSEE_LESSONS } from '../data/maths/posee';
 import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';
 import { CERCLE_LESSONS } from '../data/maths/cercle';
 import { SOLIDE_LESSONS } from '../data/maths/solides';
+import { PROBLEMES_LESSONS } from '../data/maths/problemes';
 
 /* ---------- Types ---------- */
 
@@ -145,6 +146,7 @@ export const CATEGORIES: Category[] = [
 	{ id: 'math-calcul-mental', label: 'Calcul mental', subject: 'math', icon: 'brain' },
 	{ id: 'math-grandeurs-mesures', label: 'Grandeurs et mesures', subject: 'math', icon: 'ruler' },
 	{ id: 'math-geometrie', label: 'Géométrie', subject: 'math', icon: 'shapes' },
+	{ id: 'math-problemes', label: 'Résolution de problèmes', subject: 'math', icon: 'lightbulb' },
 	// Français — 4 catégories du manuel CE2, dans l'ordre canonique. Grammaire et
 	// Vocabulaire (FR-A, #107) sont le prérequis structurel des futures leçons de
 	// contenu : elles arrivent VIDES (la navigation affiche « Bientôt disponible »,
@@ -314,6 +316,18 @@ const NUMERATION_LESSONS_DEFS: LessonDef[] = [...NUMERATION_LESSONS, ...POSITION
 	}),
 );
 
+/* ---------- Catalogue des leçons « Résolution de problèmes » (#199) ----------
+   Énoncés générés par gabarits (structures de Vergnaud). Runner dédié, un
+   problème à la fois ; réponse numérique. Exclus du sprint chronométré. */
+const PROBLEMES_LESSONS_DEFS: LessonDef[] = PROBLEMES_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'math',
+	category: 'math-problemes',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+}));
+
 /* ---------- Catalogue des leçons français (conjugaison) ---------- */
 
 const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
@@ -474,6 +488,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...CALCUL_LESSONS_DEFS,
 	...GRANDEURS_LESSONS,
 	...GEOMETRIE_LESSONS_DEFS,
+	...PROBLEMES_LESSONS_DEFS,
 	...FRENCH_LESSONS,
 	...ACCORD_LESSONS_DEFS,
 	...HOMOPHONE_LESSONS_DEFS,
@@ -507,6 +522,13 @@ export function isOrderingLesson(lesson: LessonDef): boolean {
    texte de genLessonItem (une tuile → « dans quel thème ? »). */
 export function isTriLesson(lesson: LessonDef): boolean {
 	return lesson.exerciseType.generate().type === 'tuilesTri';
+}
+
+/* Une leçon « Résolution de problèmes » (#199) : énoncé à lire + réflexion, jouée
+   dans un runner dédié un problème à la fois. Lecture et raisonnement sont
+   incompatibles avec la pression du chrono → exclue du sprint (comme la posée). */
+export function isProblemeLesson(lesson: LessonDef): boolean {
+	return lesson.exerciseType.generate().type === 'probleme';
 }
 
 /* Une leçon math « héritée » est branchée sur le générateur numérique bilanQ
@@ -554,6 +576,20 @@ export function genLessonItem(lesson: LessonDef): Item {
 			text: `Dans quel thème ranger « ${tuile.mot} » ? (${ex.categories[0]} / ${ex.categories[1]}) @`,
 			answer: ex.categories[tuile.cat],
 			kind: 'text',
+			_lesson: lesson.id,
+		};
+	}
+	// Résolution de problèmes (#199) : le runner dédié (ui/lecon-probleme.ts) gère
+	// l'énoncé + ses sous-questions. Repli TEXTE pour bilan/révision : énoncé +
+	// question finale en gras, réponse = dernière étape (les étapes intermédiaires
+	// ne sont pas corrigées hors du runner dédié).
+	if (ex.type === 'probleme') {
+		const last = ex.etapes[ex.etapes.length - 1];
+		return {
+			text: `${ex.enonce} **${last.question}** @`,
+			answer: String(last.answer),
+			kind: 'num',
+			parle: ex.parle,
 			_lesson: lesson.id,
 		};
 	}

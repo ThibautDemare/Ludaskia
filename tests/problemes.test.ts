@@ -6,6 +6,8 @@
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import { PROBLEMES_LESSONS } from '../src/data/maths/problemes';
+import { genLessonItem, getLessonById } from '../src/core/catalog';
+import { enonceTexte } from '../src/core/items';
 
 const TIRAGES = 400;
 
@@ -76,5 +78,34 @@ describe('problèmes — calibrage CE2 par structure', () => {
 			// Le billet = coût + rendu (étape 1 cohérente avec étape 2).
 			expect(cout.answer + rendu.answer).toBeGreaterThan(cout.answer);
 		}
+	});
+});
+
+describe('problèmes — repli texte (bilan/révision via genLessonItem)', () => {
+	it('problème simple : item numérique, énoncé + question en gras, réponse entière', () => {
+		const it = genLessonItem(getLessonById('math-prob-composition')!);
+		expect(it.kind).toBe('num');
+		expect(it.text).toContain('@'); // emplacement du champ
+		expect(it.text).toContain('**'); // question finale en gras
+		expect(Number.isInteger(Number(it.answer))).toBe(true);
+		expect(it.parle).toBeTruthy();
+	});
+
+	it('problème à deux étapes : le repli ne corrige que la réponse finale (item num valide)', () => {
+		for (let i = 0; i < 50; i++) {
+			const it = genLessonItem(getLessonById('math-prob-deux-etapes')!);
+			expect(it.kind).toBe('num');
+			expect(it.text).toContain('**');
+			const n = Number(it.answer);
+			expect(Number.isInteger(n)).toBe(true);
+			expect(n).toBeGreaterThanOrEqual(0);
+		}
+	});
+});
+
+describe('enonceTexte (#199) — gras léger + échappement', () => {
+	it('transforme **…** en <strong> et conserve l’échappement HTML', () => {
+		expect(enonceTexte('Total **42** ?')).toBe('Total <strong>42</strong> ?');
+		expect(enonceTexte('a < b **x**')).toBe('a &lt; b <strong>x</strong>');
 	});
 });

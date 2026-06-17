@@ -99,14 +99,16 @@
 .bc-subject-head::-webkit-details-marker {
 	display: none;
 }
-.bc-subject-ico {
-	width: 28px;
-	height: 28px;
+/* Pastilles : on doit surclasser `.cat-ico` (catalog.scss, 56px) → sélecteur
+   plus spécifique via l'en-tête. Ici, format réduit adapté à une liste dense. */
+.bc-subject-head .bc-subject-ico {
+	width: 26px;
+	height: 26px;
 	margin: 0;
 }
-.bc-subject-ico .ph-icon {
-	width: 17px;
-	height: 17px;
+.bc-subject-head .bc-subject-ico .ph-icon {
+	width: 15px;
+	height: 15px;
 }
 .bc-subject-title {
 	font-family: var(--ui);
@@ -141,14 +143,14 @@
 .bc-cat-head {
 	padding: 4px 0;
 }
-.bc-cat-ico {
-	width: 24px;
-	height: 24px;
+.bc-cat-head .bc-cat-ico {
+	width: 22px;
+	height: 22px;
 	margin: 0;
 }
-.bc-cat-ico .ph-icon {
-	width: 14px;
-	height: 14px;
+.bc-cat-head .bc-cat-ico .ph-icon {
+	width: 13px;
+	height: 13px;
 }
 .bc-cat-title {
 	font-family: var(--ui);

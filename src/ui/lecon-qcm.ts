@@ -14,6 +14,8 @@ import type { ExerciseMode } from '../core/exercise';
 import type { Item } from '../core/items';
 import { checkItemAnswer, figureBlock } from '../core/items';
 import { commKey, escapeHTML } from '../core/utils';
+import { ttsAttr } from '../core/tts-text';
+import { bindConsigneTts } from './consigne-tts';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import { streakSuffix } from '../core/progress';
@@ -124,7 +126,7 @@ function renderQuestion(): void {
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
         ${figureBlock(q.item.figure)}
-        <div class="sprint-q sprint-q-qcm">${question}</div>
+        <div class="sprint-q sprint-q-qcm"${ttsAttr(q.item.text)}>${question}</div>
         <div class="sprint-choices" id="lqcmChoices">
           ${q.choices
 						.map((c, i) => `<button class="sprint-choice" data-i="${i}">${escapeHTML(c)}</button>`)
@@ -137,6 +139,7 @@ function renderQuestion(): void {
 	sheets()
 		.querySelectorAll<HTMLButtonElement>('#lqcmChoices .sprint-choice')
 		.forEach((btn) => btn.addEventListener('click', () => answer(Number(btn.dataset.i))));
+	bindConsigneTts(sheets()); // bouton « Écouter » sur l'énoncé (#42)
 }
 
 function answer(choiceIdx: number): void {

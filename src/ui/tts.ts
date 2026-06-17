@@ -43,3 +43,27 @@ export function dicter(mot: string, commeDans?: string): void {
 	u.rate = 0.85; // diction un peu lente pour un enfant
 	speechSynthesis.speak(u);
 }
+
+/** Coupe toute lecture en cours (changement d'écran, nouvelle question). */
+export function stopTts(): void {
+	if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
+}
+
+/** Lit une CONSIGNE déjà normalisée (cf. core/tts-text). Débit un peu plus vif
+ *  que la dictée mot-à-mot (phrase entière, pas d'épellation). `onDone` permet de
+ *  retirer l'état visuel « ça parle » à la fin (ou en cas d'erreur/voix absente). */
+export function dicterConsigne(texte: string, onDone?: () => void): void {
+	if (typeof speechSynthesis === 'undefined' || !texte.trim()) {
+		onDone?.();
+		return;
+	}
+	speechSynthesis.cancel(); // un seul énoncé vivant à la fois
+	const v = voixFr();
+	const u = new SpeechSynthesisUtterance(texte);
+	if (v) u.voice = v;
+	u.lang = v?.lang ?? 'fr-FR';
+	u.rate = 0.92;
+	u.addEventListener('end', () => onDone?.());
+	u.addEventListener('error', () => onDone?.());
+	speechSynthesis.speak(u);
+}

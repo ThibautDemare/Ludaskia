@@ -21,6 +21,8 @@ import { runLeconTri } from './lecon-tri';
 import { setInputCounter, setSessionItems, renderItem } from '../core/items';
 import type { Item } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
+import { bindConsigneTts } from './consigne-tts';
+import { stopTts } from './tts';
 import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
 import { runSprint, sprintCleanup, renderSprintConfigScreen } from './sprint';
 import { runRevisionEspacee, revisionCleanup } from './revision';
@@ -213,6 +215,7 @@ export function startRevision() {
 }
 
 export function route() {
+	stopTts(); // coupe une lecture de consigne en cours quand on change d'écran (#42)
 	// Applique le thème + le réglage d'animations du profil actif (couvre le
 	// bootstrap et chaque bascule de profil, qui passent toutes par route()).
 	applyPreferences();
@@ -538,6 +541,7 @@ export function afterStart() {
 	setToolbar({ verify: true, home: true, profile: false, print: true }); // exercice : pas de profil, 🖨 dispo
 	startChrono();
 	window.scrollTo({ top: 0, behavior: 'smooth' });
+	bindConsigneTts(document.getElementById('sheets')!); // bouton « Écouter » sur la consigne (#42)
 	// Confort de saisie : on place le curseur sur le premier calcul.
 	const first = document.querySelector('#sheets input') as HTMLInputElement | null;
 	if (first) first.focus({ preventScroll: true });

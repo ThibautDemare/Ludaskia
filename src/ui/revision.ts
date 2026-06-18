@@ -12,6 +12,8 @@ import { bindConsigneTts } from './consigne-tts';
 import { icon } from './icon';
 import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
 import { hasMode } from '../core/exercise';
+import type { QcmVariante } from '../core/exercise';
+import { PONCT_MOTS } from './ponctuation-view';
 import type { Item } from '../core/items';
 import {
 	checkItemAnswer,
@@ -31,7 +33,7 @@ import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } fro
 // d'orthographe, qui portent déjà leur propre consigne.
 type RevItem = { groupLabel: string; consigne?: string } & (
 	| { kind: 'num'; lessonId: string; item: Item }
-	| { kind: 'qcm'; lessonId: string; item: Item; choices: string[] }
+	| { kind: 'qcm'; lessonId: string; item: Item; choices: string[]; variante?: QcmVariante }
 	| { kind: 'word'; wordId: string; mot: string }
 	// Interactions « tuiles » rejouées telles quelles en révision (#186), sans clavier.
 	| {
@@ -101,6 +103,7 @@ export function runRevisionEspacee(): void {
 							parle: ex.parle,
 						},
 						choices: ex.choices,
+						variante: ex.variante,
 					});
 				continue;
 			}
@@ -252,10 +255,21 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 
 function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 	const stage = document.getElementById('revStage')!;
-	const q = escapeHTML(it.item.text).replace('@', '<span class="rev-blank">?</span>');
+	// Ponctuation (#204) : en révision (rendu propre, sans boutons-symboles), le trou
+	// devient un cadre pointillé NEUTRE — jamais un « ? », qui est ici l'une des trois
+	// réponses — et les choix sont affichés par leur MOT (un « . » nu serait illisible).
+	const ponct = it.variante === 'ponctuation';
+	const blank = ponct
+		? '<span class="lqcm-ponct-trou" aria-hidden="true"></span>'
+		: '<span class="rev-blank">?</span>';
+	const q = escapeHTML(it.item.text).replace('@', blank);
 	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm"${ttsAttr(it.item.parle ?? it.item.text)}>${q}</div>
     <div class="rev-choices">${it.choices
-			.map((c, i) => `<button class="rev-choice" data-i="${i}">${escapeHTML(c)}</button>`)
+			.map((c, i) => {
+				const label = ponct ? (PONCT_MOTS[c] ?? c) : c;
+				const aria = ponct ? ` aria-label="${escapeHTML(label)}"` : '';
+				return `<button class="rev-choice" data-i="${i}"${aria}>${escapeHTML(label)}</button>`;
+			})
 			.join('')}</div>`;
 	stage.querySelectorAll<HTMLButtonElement>('.rev-choice').forEach((btn) => {
 		btn.addEventListener('click', () =>

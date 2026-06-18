@@ -10,7 +10,8 @@
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
-import type { ProblemeEtape } from '../core/exercise';
+import type { ExerciseMode, ProblemeEtape, ProbLexique } from '../core/exercise';
+import { figureBlock } from '../core/items';
 import { commKey, escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { recordLessonRun } from '../core/lesson-run';
@@ -31,13 +32,20 @@ import {
 
 const NB_QUESTIONS = 8;
 
+// Lexique d'affichage par défaut : vocabulaire « problème » de #199. Une leçon qui
+// réutilise ce runner (division avec reste, #95) le surcharge via `probLexique`.
+const LEX_DEFAUT: ProbLexique = { nom: 'Problème', nomPluriel: 'problèmes', badgeEtape: true };
+
 interface ProbQuestion {
 	enonce: string;
 	etapes: ProblemeEtape[];
 	parle: string;
+	figure?: string;
 }
 
 let lesson: LessonDef;
+let probMode: ExerciseMode | undefined; // mode retenu (#95) — passé à la génération et conservé au « Recommencer »
+let lex: ProbLexique = LEX_DEFAUT;
 let questions: ProbQuestion[] = [];
 let idx = 0;
 let score = 0;
@@ -47,13 +55,14 @@ function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
 }
 
-/* Génère jusqu'à n problèmes distincts (dédup par énoncé), comme genQcmQuestions. */
-function genQuestions(l: LessonDef, n: number): ProbQuestion[] {
+/* Génère jusqu'à n problèmes distincts (dédup par énoncé), comme genQcmQuestions.
+   `m` (#95) : mode retenu, transmis à la génération (un type mono-mode l'ignore). */
+function genQuestions(l: LessonDef, n: number, m?: ExerciseMode): ProbQuestion[] {
 	const out: ProbQuestion[] = [];
 	const seen = new Set<string>();
 	let misses = 0;
 	while (out.length < n && misses < 80) {
-		const ex = l.exerciseType.generate();
+		const ex = l.exerciseType.generate(m);
 		if (ex.type !== 'probleme') break; // ce runner n'a de sens que pour un problème
 		const key = commKey(ex.enonce);
 		if (seen.has(key)) {
@@ -61,20 +70,22 @@ function genQuestions(l: LessonDef, n: number): ProbQuestion[] {
 			continue;
 		}
 		seen.add(key);
-		out.push({ enonce: ex.enonce, etapes: ex.etapes, parle: ex.parle });
+		out.push({ enonce: ex.enonce, etapes: ex.etapes, parle: ex.parle, figure: ex.figure });
 		misses = 0;
 	}
 	return out;
 }
 
-export function runLeconProbleme(lessonId: string): void {
+export function runLeconProbleme(lessonId: string, m?: ExerciseMode): void {
 	const l = getLessonById(lessonId);
 	if (!l) {
 		goHome();
 		return;
 	}
 	lesson = l;
-	questions = genQuestions(l, NB_QUESTIONS);
+	probMode = m;
+	lex = l.exerciseType.probLexique ?? LEX_DEFAUT;
+	questions = genQuestions(l, NB_QUESTIONS, m);
 	if (!questions.length) {
 		goHome();
 		return;
@@ -92,7 +103,7 @@ export function runLeconProbleme(lessonId: string): void {
 function progressHTML(): string {
 	const pct = Math.round((idx / questions.length) * 100);
 	return `<div class="lqcm-progress">
-    <span class="lqcm-progress-lab">Problème ${idx + 1} / ${questions.length}</span>
+    <span class="lqcm-progress-lab">${lex.nom} ${idx + 1} / ${questions.length}</span>
     <div class="lqcm-bar"><div class="lqcm-bar-fill" style="width:${pct}%"></div></div>
   </div>`;
 }
@@ -104,7 +115,7 @@ function renderQuestion(): void {
 	const etapesHTML = q.etapes
 		.map(
 			(et, i) => `<div class="prob-etape">
-        ${multi ? `<span class="prob-num">Étape ${i + 1}</span>` : ''}
+        ${multi && lex.badgeEtape !== false ? `<span class="prob-num">Étape ${i + 1}</span>` : ''}
         <label class="prob-q" for="probInput${i}">${escapeHTML(et.question)}</label>
         <span class="prob-rep">
           <span class="prob-rep-lab">Ma réponse</span>
@@ -123,6 +134,7 @@ function renderQuestion(): void {
         <div class="prob-col">
           <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
           <p class="prob-enonce" data-tts-pos="start"${ttsAttr(q.parle)}>${escapeHTML(q.enonce)}</p>
+          ${figureBlock(q.figure)}
           <div class="prob-etapes${multi ? ' prob-etapes-multi' : ''}">${etapesHTML}</div>
           ${brouillonHTML()}
           <button class="sprint-btn" id="probVerif">Vérifier</button>
@@ -196,13 +208,14 @@ function finish(): void {
 
 function renderResult(out: LessonRunOutcome): void {
 	const acc = questions.length ? Math.round((score / questions.length) * 100) : 0;
+	const titrePluriel = lex.nomPluriel.charAt(0).toUpperCase() + lex.nomPluriel.slice(1);
 	let extra = '';
 	if (out.starInfo) {
 		if (out.starInfo.perfect)
 			extra += `<div class="rb-medal"><span class="rb-medal-ico">⭐</span><span class="rb-medal-txt">${out.starInfo.newStar ? 'Étoile gagnée !' : 'Encore sans faute !'}</span></div>`;
 		const msg =
 			(out.starInfo.perfect
-				? `Problèmes réussis sans faute${out.starInfo.count > 1 ? ` (${out.starInfo.count}×)` : ''}. Bravo !`
+				? `${titrePluriel} réussis sans faute${out.starInfo.count > 1 ? ` (${out.starInfo.count}×)` : ''}. Bravo !`
 				: `Il faut un sans-faute pour décrocher l'étoile. Réessaie ⭐`) +
 			streakSuffix(out.streakDays);
 		extra += `<div class="sprint-done-sub">${msg}</div>`;
@@ -213,7 +226,7 @@ function renderResult(out: LessonRunOutcome): void {
         <div class="sprint-done">
           ${mascotteBulleHTML(encouragementMascotte())}
           <div class="sprint-done-big">${score} / ${questions.length}</div>
-          <div class="sprint-done-lab">problème${score > 1 ? 's' : ''} réussi${score > 1 ? 's' : ''} (${acc}%)</div>
+          <div class="sprint-done-lab">${score > 1 ? lex.nomPluriel : lex.nom.toLowerCase()} réussi${score > 1 ? 's' : ''} (${acc}%)</div>
           ${extra}
           <div class="sprint-actions">
             <button class="sprint-btn" id="probAgain">↻ Recommencer</button>
@@ -224,7 +237,7 @@ function renderResult(out: LessonRunOutcome): void {
     </div>`;
 	sheets()
 		.querySelector('#probAgain')!
-		.addEventListener('click', () => runLeconProbleme(lesson.id));
+		.addEventListener('click', () => runLeconProbleme(lesson.id, probMode));
 	sheets()
 		.querySelector('#probBack')!
 		.addEventListener('click', () => goCategorie(lesson.category));

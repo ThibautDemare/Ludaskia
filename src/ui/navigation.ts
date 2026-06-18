@@ -181,10 +181,10 @@ function chooseMode(id: string, mode: ExerciseMode) {
 	const lesson = getLessonById(id);
 	if (!lesson) return;
 	setPendingLeconMode(mode);
-	// Les modes « une question à la fois » (QCM, tuiles) ne sont pas des grilles :
-	// pas d'offre de reprise. Seule la saisie (fiche grille) la propose.
+	// Les modes « une question à la fois » (QCM, tuiles, problème) ne sont pas des
+	// grilles : pas d'offre de reprise. Seule la saisie (fiche grille) la propose.
 	const type = lesson.exerciseType.generate(mode).type;
-	if (type === 'qcm' || type === 'tuilesNombre' || type === 'tuilesOrdre') {
+	if (type === 'qcm' || type === 'tuilesNombre' || type === 'tuilesOrdre' || type === 'probleme') {
 		location.hash = 'lecon-' + id;
 	} else {
 		maybeRelaunch(leconKey(id), lesson.label, () => {
@@ -481,16 +481,19 @@ export function runLecon(id: string) {
 	// Mode retenu (choix #69) ou défaut du type d'exercice. Consommé une fois.
 	const mode = pendingLeconMode ?? defaultMode(lesson.exerciseType);
 	pendingLeconMode = null;
-	// Résolution de problèmes (#199) : runner dédié, un problème à la fois (mono-mode,
-	// donc aiguillé avant le bloc des modes ci-dessous).
-	if (lesson.exerciseType.generate().type === 'probleme') {
-		runLeconProbleme(id);
+	// Type effectif du mode retenu (un type mono-mode passe `mode` = undefined et
+	// génère son unique type). Sert à aiguiller vers le runner d'écran dédié.
+	const t = lesson.exerciseType.generate(mode).type;
+	// Résolution de problèmes (#199) et division avec reste (#95) : runner « problème »
+	// dédié (énoncé + sous-questions corrigées par champ). Sensible au mode — un type
+	// mono-mode garde son comportement d'origine (mode = undefined).
+	if (t === 'probleme') {
+		runLeconProbleme(id, mode);
 		return;
 	}
 	// Un mode produisant un QCM ou des tuiles se joue « une question à la fois »
 	// (pas une fiche grille) — chacun son runner d'écran dédié.
 	if (mode) {
-		const t = lesson.exerciseType.generate(mode).type;
 		if (t === 'qcm') {
 			runLeconQcm(id, mode);
 			return;

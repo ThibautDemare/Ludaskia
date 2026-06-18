@@ -16,11 +16,12 @@ async function repondPremier(page: Page): Promise<void> {
 	await expect(page.locator('.mark.correct').first()).toBeVisible();
 }
 
-test('la catégorie Calcul mental liste les deux leçons de division', async ({ page }) => {
+test('la catégorie Calcul mental liste les leçons de division', async ({ page }) => {
 	const errors = watchErrors(page);
 	await gotoHash(page, 'categorie-math-calcul-mental');
 	await expect(page.locator('[data-id="math-div-moitie-quart"]')).toBeVisible();
 	await expect(page.locator('[data-id="math-div-partage"]')).toBeVisible();
+	await expect(page.locator('[data-id="math-div-reste"]')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

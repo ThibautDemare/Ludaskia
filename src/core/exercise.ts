@@ -19,6 +19,15 @@ export interface ProblemeEtape {
 	answer: number;
 }
 
+/** Lexique d'affichage du runner « problème » (#95). Permet à une leçon qui réutilise
+    ce runner (ex. division avec reste) d'en adapter le vocabulaire sans toucher le
+    runner. Défaut (si absent) = vocabulaire « problème » de #199. */
+export interface ProbLexique {
+	nom: string; // unité au singulier, capitalisée — progression « {nom} X / Y » (« Calcul »)
+	nomPluriel: string; // unité au pluriel, minuscule — résultat « N {nomPluriel} réussis »
+	badgeEtape?: boolean; // afficher le badge « Étape N » sur les sous-questions ? (défaut true)
+}
+
 // `parle` (#42) : texte LU à voix haute par le bouton « Écouter », quand
 // l'énoncé affiché est télégraphique/symbolique et ne se lit pas tel quel
 // (ex. « pouvoir · présent — je @ » → « Conjugue le verbe pouvoir au présent,
@@ -77,10 +86,11 @@ export type Exercise =
 	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.
 	| { type: 'posed'; op: '+' | '-' | 'x'; a: number; b: number }
 	// Résolution de problèmes (#199) — énoncé textuel + 1 sous-question (problème
-	// simple) ou 2 (problème à deux étapes, « chunking »). Chaque étape a sa réponse
-	// numérique, corrigée indépendamment. Runner dédié (ui/lecon-probleme.ts) ;
-	// `parle` = énoncé complet lu à voix haute (jamais la réponse). Hors sprint.
-	| { type: 'probleme'; enonce: string; etapes: ProblemeEtape[]; parle: string }
+	// simple) ou 2 (deux étapes, « chunking » ; ou résultat + reste d'une division
+	// par le sens, #95). Chaque étape a sa réponse numérique, corrigée indépendamment.
+	// Runner dédié (ui/lecon-probleme.ts) ; `parle` = énoncé complet lu à voix haute
+	// (jamais la réponse). `figure` (#95) = situation de départ optionnelle. Hors sprint.
+	| { type: 'probleme'; enonce: string; etapes: ProblemeEtape[]; parle: string; figure?: string }
 	// Orthographe — interactions réutilisables (vérifiées comme du texte) :
 	| { type: 'motCache'; answer: string } // affiche/masque le mot puis saisie
 	| { type: 'tuiles'; answer: string; lettres: string[] } // lettres mélangées à ordonner
@@ -107,6 +117,8 @@ export interface ExerciseType {
 	 *  type d'exercice (ex. « Conjugue le verbe au temps demandé. »). Remplace le
 	 *  générique « Écris la forme correcte. » quand elle est définie. */
 	consigne?: string;
+	/** Lexique d'affichage du runner « problème » (#95) — voir `ProbLexique`. */
+	probLexique?: ProbLexique;
 	generate(mode?: ExerciseMode): Exercise;
 	check(exercise: Exercise, input: string): boolean;
 }

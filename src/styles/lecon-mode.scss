@@ -547,6 +547,13 @@ html.anim-reduced .sprint-choice.correct {
 	border-radius: 10px;
 	scroll-margin-top: 1rem; /* le focus reste visible au-dessus du clavier virtuel */
 }
+.prob-input:focus-visible {
+	/* focus franc et cohérent (WCAG 2.4.7) ; l'offset détache l'anneau de la
+	   bordure d'état .correct/.wrong pour ne pas confondre focus et résultat. */
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-color: var(--accent);
+}
 .prob-input.correct {
 	border-color: var(--ok);
 }

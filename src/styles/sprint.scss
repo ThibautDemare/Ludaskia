@@ -104,6 +104,23 @@
 	gap: 12px;
 	justify-content: center;
 }
+/* Variante EMPILÉE (#205) : options en colonne, pleine largeur, bien aérées —
+   pour des formes quasi-homophones (allé/allée/allés) qu'une rangée rendrait
+   piégeuses au doigt. Cible tactile généreuse pour un CE2 sur tablette. */
+.sprint-choices--pile {
+	flex-direction: column;
+	flex-wrap: nowrap;
+	align-items: stretch;
+	gap: 14px;
+	width: 100%;
+	max-width: 420px;
+	margin-inline: auto;
+}
+.sprint-choices--pile .sprint-choice {
+	width: 100%;
+	min-height: 60px;
+	text-align: center;
+}
 .sprint-choice {
 	font-family: var(--ui);
 	font-size: 24px;

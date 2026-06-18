@@ -17,6 +17,7 @@ import { CHAMPS_LESSONS } from '../data/francais/champs-lexicaux';
 import { GRAMMAIRE_SUJET_LESSONS } from '../data/francais/grammaire-sujet';
 import { CLASSES_LESSONS } from '../data/francais/classes-mots';
 import { ACCORD_LESSONS } from '../data/francais/accords';
+import { PARTICIPE_LESSONS } from '../data/francais/participe-passe-etre';
 import { HOMOPHONE_LESSONS } from '../data/francais/homophones';
 import { MBP_LESSONS } from '../data/francais/mbp';
 import { MESURE_LESSONS } from '../data/maths/mesures';
@@ -71,6 +72,10 @@ export interface LessonDef {
 	// d'énoncé, incompatibles avec la pression du chrono (en plus des posées/tuiles/
 	// problèmes déjà écartées par leur type).
 	excludeFromSprint?: boolean;
+	// Repère de difficulté affiché sur la carte de leçon (#205) : signale une leçon
+	// plus exigeante (charge cognitive élevée, notion vue en avance). La navigation
+	// pose un badge « plus dur » ; n'influe pas sur la génération.
+	repere?: 'plus-difficile';
 }
 
 export interface BilanConfig {
@@ -391,6 +396,22 @@ const ACCORD_LESSONS_DEFS: LessonDef[] = ACCORD_LESSONS.map((d) => ({
 	rubrique: d.rubrique,
 }));
 
+/* ---------- Orthographe — accord du participe passé avec « être » (#205) ----------
+   Transformation guidée + QCM 3 options (rubrique « Les accords »). Sensibilisation
+   CE2 à charge cognitive élevée → signalée « plus difficile » et exclue du sprint
+   chronométré (la réflexion sur le genre/nombre du sujet ne se fait pas dans l'urgence). */
+const PARTICIPE_LESSONS_DEFS: LessonDef[] = PARTICIPE_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'francais',
+	category: ORTHO_CATEGORY_ID,
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+	rubrique: d.rubrique,
+	excludeFromSprint: true,
+	repere: 'plus-difficile',
+}));
+
 /* ---------- Catalogue des leçons « Orthographe » — homophones (#110) ----------
    5 paires (a/à, et/est, on/ont, son/sont, ou/où), une leçon par paire, QCM
    2 options dans la catégorie Orthographe, rubrique « Les homophones ». */
@@ -562,6 +583,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...DIVISION_LESSONS_DEFS,
 	...FRENCH_LESSONS,
 	...ACCORD_LESSONS_DEFS,
+	...PARTICIPE_LESSONS_DEFS,
 	...HOMOPHONE_LESSONS_DEFS,
 	...MBP_LESSONS_DEFS,
 	...VOCAB_LESSONS_DEFS,

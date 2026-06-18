@@ -125,7 +125,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 	const cardRow = (def: LessonDef, i: number) => {
 		const rich = LESSONS.find((l) => l.id === def.id);
 		const entry = rich ?? { id: def.id, num: i + 1, title: def.label };
-		return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(def.label)}">${icon('printer')}</button></div>`;
+		return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats, def.repere)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(def.label)}">${icon('printer')}</button></div>`;
 	};
 
 	// Regroupement par rubrique (#109), dans l'ordre d'apparition. Une leçon sans
@@ -284,9 +284,13 @@ function renderOrthoCategorie(el: HTMLElement): void {
 		const hint = meta?.hint ?? "je m'entraîne";
 		const ico = meta?.ico ?? 'book-open';
 		const tint = meta?.tint ?? 'var(--accent)';
+		const repere =
+			l.repere === 'plus-difficile'
+				? ' <span class="lz-level" title="Leçon plus difficile">plus dur</span>'
+				: '';
 		return `<button class="nav-card" data-lecon="${l.id}">
       <span class="cat-ico" style="background:${tint}">${icon(ico)}</span>
-      <div class="nav-card-title">${escapeHTML(l.label)}${etoilee ? ' ⭐' : ''}</div>
+      <div class="nav-card-title">${escapeHTML(l.label)}${etoilee ? ' ⭐' : ''}${repere}</div>
       <div class="nav-card-sub">${hint}</div>
     </button>`;
 	};

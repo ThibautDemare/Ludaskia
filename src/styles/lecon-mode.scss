@@ -196,6 +196,20 @@ html.anim-reduced .sprint-choice.correct {
 .sprint-choice:disabled {
 	cursor: default;
 }
+/* Terminaison du participe surlignée dans une option (#205, `choicesView` + `.term`) :
+   graisse + soulignement — DEUX signaux non chromatiques (jamais la couleur seule).
+   Le souligné suit la couleur de l'état après réponse (vert/rouge) via currentColor. */
+.sprint-choice .term {
+	font-weight: 800;
+	text-decoration: underline;
+	text-decoration-thickness: 2px;
+	text-underline-offset: 3px;
+	text-decoration-color: var(--accent);
+}
+.sprint-choice.correct .term,
+.sprint-choice.wrong .term {
+	text-decoration-color: currentColor;
+}
 .lqcm-ok {
 	color: var(--ok);
 	font-weight: 700;

@@ -360,8 +360,15 @@ export function lessonCardHTML(
 	l: { id: string; num: number | string; title: string },
 	stars: Record<string, number>,
 	lstats: Record<string, any>,
+	repere?: 'plus-difficile',
 ) {
 	const c = stars[l.id] || 0;
+	// Repère « plus difficile » (#205) : badge texte ambre (un défi, pas un échec) —
+	// l'info passe par le LIBELLÉ, jamais la seule couleur.
+	const repereBadge =
+		repere === 'plus-difficile'
+			? `<span class="lz-level" title="Leçon plus difficile">plus dur</span>`
+			: '';
 	const starBadge =
 		c > 0
 			? `<span class="lz-star" title="${c} sans-faute${c > 1 ? 's' : ''}">⭐${c > 1 ? `<small>×${c}</small>` : ''}</span>`
@@ -379,7 +386,7 @@ export function lessonCardHTML(
 	}
 	return `<button class="lesson-item" data-id="${l.id}">
     <span class="lz-num">${l.num}</span>
-    <span class="lz-main"><span class="lz-title">${l.title}</span>${stat}</span>
+    <span class="lz-main"><span class="lz-titleline"><span class="lz-title">${l.title}</span>${repereBadge}</span>${stat}</span>
     ${starBadge}</button>`;
 }
 

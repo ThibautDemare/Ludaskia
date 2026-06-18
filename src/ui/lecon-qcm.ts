@@ -40,6 +40,7 @@ interface QcmQuestion {
 	item: Item; // { text, answer, kind:'text', _lesson }
 	choices: string[]; // valeurs comparées (clé de correction)
 	choicesView?: ChoiceView[]; // affichage riche optionnel, aligné sur choices (#200)
+	empilees?: boolean; // options en colonne (#205, quasi-homophones)
 	explication?: string; // justification affichée après la réponse (#110)
 	consigne?: string; // consigne renforcée affichée en gras (#203)
 	picto?: string; // symbole décoratif doublant la consigne (#203, « ↔ » / « = »)
@@ -86,6 +87,7 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 			},
 			choices: ex.choices,
 			choicesView: ex.choicesView,
+			empilees: ex.choicesEmpilees,
 			explication: ex.explication,
 			consigne: ex.consigne,
 			picto: ex.picto,
@@ -151,7 +153,7 @@ function renderQuestion(): void {
         ${figureBlock(q.item.figure)}
         ${consigneHTML}
         <div class="sprint-q sprint-q-qcm"${q.consigne ? '' : ttsAttr(ttsText)}>${question}</div>
-        <div class="sprint-choices${q.ttsItems ? ' lqcm-choices-tts' : ''}" id="lqcmChoices">
+        <div class="sprint-choices${q.empilees ? ' sprint-choices--pile' : ''}${q.ttsItems ? ' lqcm-choices-tts' : ''}" id="lqcmChoices">
           ${q.choices
 						.map((c, i) => {
 							const btn = choiceButtonHTML(c, i, q.choicesView?.[i]);

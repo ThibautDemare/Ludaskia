@@ -33,6 +33,7 @@ import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';
 import { CERCLE_LESSONS } from '../data/maths/cercle';
 import { SOLIDE_LESSONS } from '../data/maths/solides';
 import { SYMETRIE_LESSONS } from '../data/maths/symetrie-axiale';
+import { ANGLES_LESSONS } from '../data/maths/angles';
 import { PROBLEMES_LESSONS } from '../data/maths/problemes';
 import { DIVISION_LESSONS } from '../data/maths/division';
 
@@ -506,6 +507,7 @@ const GEOMETRIE_LESSONS_DEFS: LessonDef[] = [
 	...GEOMETRIE_LESSONS,
 	...CERCLE_LESSONS,
 	...SOLIDE_LESSONS,
+	...ANGLES_LESSONS,
 ].map((d) => ({
 	id: d.id,
 	label: d.label,

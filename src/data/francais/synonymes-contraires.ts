@@ -6,22 +6,25 @@
      franche (grand/petit, ouvrir/fermer…), consigne « Quel mot veut dire le
      contraire ? », picto « ↔ » ;
    - « Les mots de sens proche » (synonymes) — relations plus floues, consigne
-     « Quel mot veut dire pareil ? », picto « = ».
+     « Quel mot veut dire presque la même chose ? », picto « = ».
 
    Principes (cf. issue #203, avis pedagogue-primaire) :
    - le mot-cible est TOUJOURS en CONTEXTE, jamais isolé : il est en **gras**
      dans une phrase courte (~8 mots), rendue par enonceTexte (#199) ;
    - 3 options, UNE SEULE réponse défendable. Les distracteurs sont FRANCS :
-     aucun quasi-synonyme de la réponse (piège injuste). Ils partagent le
-     genre/nombre du mot-cible pour qu'on puisse les substituer naturellement ;
+     aucun quasi-synonyme de la réponse (piège injuste), et jamais un mot déjà
+     présent dans la phrase (indice). Ils partagent le genre/nombre du mot-cible
+     pour qu'on puisse les substituer naturellement ;
    - lexique COURANT CE2 (pas de registre soutenu, pas de CM1/CM2) ;
+   - lecture vocale (#42) : comme le **gras** est invisible à l'oral, le texte
+     lu NOMME le mot-cible (« Quel mot veut dire le contraire de « grand » ? … ») ;
    - champ `explication` reformulant avec le bon mot (« « grand » veut dire le
      contraire de « petit » »).
 
    Banque INTERNE étiquetée (comme classes-mots.ts / sens-figure.ts) : on
    n'étiquette pas les listes personnalisables du parent. Un builder commun
    transforme chaque entrée en item QCM { question, reponse, distracteurs,
-   explication, consigne, picto, ttsItems }.
+   explication, consigne, picto, parle }.
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
@@ -75,7 +78,7 @@ export const CONTRAIRES: ItemSens[] = [
 	{
 		phrase: 'Après la fête, le grand verre est **vide**.',
 		reponse: 'plein',
-		distracteurs: ['cassé', 'propre'],
+		distracteurs: ['cassé', 'rond'],
 	},
 	{
 		phrase: 'Le bébé de la voisine est encore très **jeune**.',
@@ -88,9 +91,9 @@ export const CONTRAIRES: ItemSens[] = [
 		distracteurs: ['gentil', 'riche'],
 	},
 	{
-		phrase: 'Le mannequin du magasin est très **mince**.',
+		phrase: 'Le crayon que j’utilise est tout **mince**.',
 		reponse: 'gros',
-		distracteurs: ['grand', 'calme'],
+		distracteurs: ['long', 'rouge'],
 	},
 	{
 		phrase: 'L’éléphant du cirque est un animal très **gros**.',
@@ -108,7 +111,7 @@ export const CONTRAIRES: ItemSens[] = [
 		distracteurs: ['douce', 'blanche'],
 	},
 	{
-		phrase: 'Le lutteur du village est un homme très **fort**.',
+		phrase: 'L’ogre du conte est un homme très **fort**.',
 		reponse: 'faible',
 		distracteurs: ['grand', 'gentil'],
 	},
@@ -288,7 +291,7 @@ export const CONTRAIRES: ItemSens[] = [
 		distracteurs: ['tomber', 'briller'],
 	},
 	{
-		phrase: 'Le robot avance, puis se met à **reculer**.',
+		phrase: 'Le camion s’arrête, puis se met à **reculer**.',
 		reponse: 'avancer',
 		distracteurs: ['tourner', 'klaxonner'],
 	},
@@ -362,11 +365,6 @@ export const SENS_PROCHE: ItemSens[] = [
 		distracteurs: ['petite', 'pressée'],
 	},
 	{
-		phrase: 'Le tigre affamé est un animal très **méchant**.',
-		reponse: 'féroce',
-		distracteurs: ['rapide', 'gros'],
-	},
-	{
 		phrase: 'Après tout ce sport, je suis vraiment **fatigué**.',
 		reponse: 'épuisé',
 		distracteurs: ['content', 'propre'],
@@ -392,7 +390,7 @@ export const SENS_PROCHE: ItemSens[] = [
 		distracteurs: ['grand', 'calme'],
 	},
 	{
-		phrase: 'Au matin, le grand spectacle va **commencer**.',
+		phrase: 'Au matin, le spectacle va **commencer**.',
 		reponse: 'débuter',
 		distracteurs: ['tomber', 'briller'],
 	},
@@ -462,26 +460,6 @@ export const SENS_PROCHE: ItemSens[] = [
 		distracteurs: ['facteur', 'boulanger'],
 	},
 	{
-		phrase: 'Devant le monstre du film, il a très **peur**.',
-		reponse: 'frayeur',
-		distracteurs: ['faim', 'froid'],
-	},
-	{
-		phrase: 'Le chevalier du roi est très **courageux**.',
-		reponse: 'brave',
-		distracteurs: ['poli', 'riche'],
-	},
-	{
-		phrase: 'Le coucher de soleil est vraiment **magnifique**.',
-		reponse: 'superbe',
-		distracteurs: ['nuageux', 'froid'],
-	},
-	{
-		phrase: 'Le petit chaton du voisin est tout **mignon**.',
-		reponse: 'joli',
-		distracteurs: ['rapide', 'gris'],
-	},
-	{
 		phrase: 'Le coureur du stade est très **rapide**.',
 		reponse: 'vif',
 		distracteurs: ['grand', 'fort'],
@@ -497,19 +475,14 @@ export const SENS_PROCHE: ItemSens[] = [
 		distracteurs: ['grand', 'sombre'],
 	},
 	{
-		phrase: 'Ce travail de jardin est vraiment très **dur**.',
+		phrase: 'Ce problème de calcul est vraiment très **dur**.',
 		reponse: 'difficile',
-		distracteurs: ['long', 'sale'],
+		distracteurs: ['long', 'propre'],
 	},
 	{
 		phrase: 'Le gâteau au chocolat de mamie est **bon**.',
 		reponse: 'délicieux',
 		distracteurs: ['chaud', 'mou'],
-	},
-	{
-		phrase: 'Le joli jardin de l’école est très **beau**.',
-		reponse: 'magnifique',
-		distracteurs: ['grand', 'vert'],
 	},
 	{
 		phrase: 'La sorcière du conte est vraiment très **laide**.',
@@ -522,13 +495,8 @@ export const SENS_PROCHE: ItemSens[] = [
 		distracteurs: ['grand', 'roux'],
 	},
 	{
-		phrase: 'Le clown porte un costume vraiment **rigolo**.',
-		reponse: 'drôle',
-		distracteurs: ['grand', 'rouge'],
-	},
-	{
-		phrase: 'Le gros gâteau d’anniversaire est **énorme**.',
-		reponse: 'immense',
+		phrase: 'Le gros gâteau d’anniversaire est vraiment **énorme**.',
+		reponse: 'géant',
 		distracteurs: ['chaud', 'rond'],
 	},
 	{
@@ -537,19 +505,14 @@ export const SENS_PROCHE: ItemSens[] = [
 		distracteurs: ['souvent', 'bien'],
 	},
 	{
-		phrase: 'Le grand frère de Tom est très **costaud**.',
+		phrase: 'Le sportif du club est vraiment très **musclé**.',
 		reponse: 'fort',
-		distracteurs: ['grand', 'calme'],
+		distracteurs: ['rapide', 'calme'],
 	},
 	{
 		phrase: 'Le spectacle nous a bien fait **rigoler**.',
 		reponse: 'rire',
 		distracteurs: ['pleurer', 'dormir'],
-	},
-	{
-		phrase: 'Le maître de l’école est parfois très **sévère**.',
-		reponse: 'dur',
-		distracteurs: ['grand', 'gentil'],
 	},
 	{
 		phrase: 'Le voleur du film s’enfuit très **vite**.',
@@ -567,11 +530,6 @@ export const SENS_PROCHE: ItemSens[] = [
 		distracteurs: ['chaud', 'propre'],
 	},
 	{
-		phrase: 'Le grand sportif du club est très **musclé**.',
-		reponse: 'fort',
-		distracteurs: ['grand', 'rapide'],
-	},
-	{
 		phrase: 'Le bébé panda du zoo est vraiment **adorable**.',
 		reponse: 'mignon',
 		distracteurs: ['rapide', 'gris'],
@@ -580,6 +538,46 @@ export const SENS_PROCHE: ItemSens[] = [
 		phrase: 'La tarte aux pommes de mamie est **délicieuse**.',
 		reponse: 'bonne',
 		distracteurs: ['chaude', 'ronde'],
+	},
+	{
+		phrase: 'Mon papa conduit une belle **voiture**.',
+		reponse: 'automobile',
+		distracteurs: ['moto', 'maison'],
+	},
+	{
+		phrase: 'Mon vélo de course est encore tout **neuf**.',
+		reponse: 'nouveau',
+		distracteurs: ['cassé', 'rouge'],
+	},
+	{
+		phrase: 'Le grand-père raconte une belle **histoire**.',
+		reponse: 'récit',
+		distracteurs: ['chanson', 'leçon'],
+	},
+	{
+		phrase: 'Le voilier blanc navigue sur la **mer**.',
+		reponse: 'océan',
+		distracteurs: ['rivière', 'montagne'],
+	},
+	{
+		phrase: 'Le camion roule sur une longue **route**.',
+		reponse: 'chemin',
+		distracteurs: ['maison', 'rivière'],
+	},
+	{
+		phrase: 'Le chat gris dort sur le grand **canapé**.',
+		reponse: 'sofa',
+		distracteurs: ['tapis', 'fauteuil'],
+	},
+	{
+		phrase: 'En hiver, je mets un gros **pull**.',
+		reponse: 'chandail',
+		distracteurs: ['chapeau', 'short'],
+	},
+	{
+		phrase: 'Le vieux loup affamé est tout **maigre**.',
+		reponse: 'mince',
+		distracteurs: ['gris', 'lent'],
 	},
 ];
 
@@ -593,7 +591,7 @@ export interface ItemSensQcm {
 	explication: string;
 	consigne: string;
 	picto: string;
-	parle: string; // consigne + phrase « à plat » (sans gras) pour la lecture vocale
+	parle: string; // consigne (NOMMANT le mot-cible) + phrase « à plat » pour la lecture vocale
 }
 
 const RE_GRAS = /\*\*(.+?)\*\*/;
@@ -613,22 +611,26 @@ const MODE_QCM: ModeOption[] = [
 ];
 
 interface SensConfig {
-	consigne: string;
+	consigne: string; // consigne AFFICHÉE (générique : le mot-cible est repéré par le gras)
 	picto: string;
 	explication: (cible: string, reponse: string) => string;
+	// Consigne LUE : nomme le mot-cible, car le gras est invisible à l'oral (#42).
+	parle: (cible: string, phrasePlate: string) => string;
 }
 
 const CONFIG_CONTRAIRES: SensConfig = {
 	consigne: 'Quel mot veut dire le contraire ?',
 	picto: '↔',
 	explication: (cible, reponse) => `« ${cible} » veut dire le contraire de « ${reponse} ».`,
+	parle: (cible, phrase) => `Quel mot veut dire le contraire de « ${cible} » ? ${phrase}`,
 };
 
 const CONFIG_SENS_PROCHE: SensConfig = {
-	consigne: 'Quel mot veut dire pareil ?',
+	consigne: 'Quel mot veut dire presque la même chose ?',
 	picto: '=',
 	explication: (cible, reponse) =>
-		`« ${cible} » veut dire à peu près la même chose que « ${reponse} ».`,
+		`« ${cible} » veut dire presque la même chose que « ${reponse} ».`,
+	parle: (cible, phrase) => `Quel mot veut dire presque la même chose que « ${cible} » ? ${phrase}`,
 };
 
 /** Transforme une entrée de banque en item QCM (avec consigne + picto + parlé). */
@@ -641,7 +643,7 @@ function toQcm(it: ItemSens, cfg: SensConfig): ItemSensQcm {
 		explication: cfg.explication(cible, it.reponse),
 		consigne: cfg.consigne,
 		picto: cfg.picto,
-		parle: `${cfg.consigne} ${aPlat(it.phrase)}`,
+		parle: cfg.parle(cible, aPlat(it.phrase)),
 	};
 }
 

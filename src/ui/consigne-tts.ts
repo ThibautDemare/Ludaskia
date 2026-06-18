@@ -10,6 +10,10 @@
    - PAS de voix FR sur l'appareil → aucun bouton (on ne pollue pas l'écran) ;
    - lecture automatique seulement si le profil l'a activée, et seulement la
      PREMIÈRE consigne de l'écran (best-effort : bloquée hors geste sur iOS).
+
+   `bindItemTts` (#203) applique les mêmes règles à un bouton « haut-parleur »
+   COMPACT, posé sur le mot-cible et sur chaque option d'un QCM (lecture mot à mot,
+   jamais automatique).
    ============================================================ */
 import { dicteeDisponible, dicterConsigne } from './tts';
 import { lectureConsigneAuto } from '../core/profiles';

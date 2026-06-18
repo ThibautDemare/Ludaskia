@@ -136,6 +136,18 @@ propre / sens figuré »** (`fr-vocab-sens`). QCM 3 options : courte phrase +
 fixes propre/figuré/distracteur ; seules les phrases et le `sens` varient → les
 deux sens sont toujours proposés, pas de clé erronée), équilibre propre/figuré.
 Feedback `explication` rappelant le sens employé. Relue par l'agent pédagogue.
+**`francais/synonymes-contraires.ts`** (#203) : catégorie **Vocabulaire**, rubrique
+**« Synonymes et contraires »**, deux leçons dans l'ordre pédagogique **« Les
+contraires »** (`fr-vocab-contraires`, antonymes) puis **« Les mots de sens
+proche »** (`fr-vocab-sens-proche`, synonymes). QCM 3 options ; le **mot-cible est
+en gras** (`**…**` rendu par `enonceTexte`) dans une phrase courte ; distracteurs
+**francs** (aucun quasi-synonyme, aucun mot déjà dans la phrase). Le runner QCM
+affiche une **consigne renforcée** + **picto** (`↔` / `=`) et greffe un bouton TTS
+sur le mot-cible et chaque option (champs **`consigne`/`picto`/`ttsItems`** de la
+variante `qcm`, `ui/consigne-tts.ts → bindItemTts`). La lecture vocale **nomme** le
+mot-cible (le gras est muet à l'oral). **Exclues du sprint** (`excludeFromSprint`).
+Banques relues par les agents pédagogue (justesse, distracteurs francs, lexique CE2)
+et langue (accords, registre).
 **`francais/vocabulaire.ts`** (#108) : catégorie **Vocabulaire**, leçons
 **« Ordre alphabétique »** (`fr-vocab-alpha-initiale` tri par 1re lettre,
 `fr-vocab-alpha-deuxieme` tri par 2e lettre à initiale commune). `ordreType`

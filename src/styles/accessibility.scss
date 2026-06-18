@@ -106,6 +106,51 @@ html.anim-reduced .consigne-tts.speaking .ph-icon {
 	}
 }
 
+/* ---- Haut-parleur compact par mot / option (#203) ---- */
+/* Variante allégée du bouton consigne (icône seule), greffée sur le mot-cible et
+   sur CHAQUE option des leçons « contraires / sens proche » par ui/consigne-tts
+   (bindItemTts). Cible tactile bornée (40 px) — les mots sont rapprochés ; même état
+   « speaking » que la consigne (pulsation du picto, double codage non chromatique). */
+.item-tts {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	vertical-align: middle;
+	margin-left: 0.25em;
+	min-width: 40px;
+	min-height: 40px;
+	padding: 0;
+	border: 1px solid var(--accent-soft);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--accent);
+	cursor: pointer;
+	transition: background 0.15s ease;
+}
+.item-tts .ph-icon {
+	font-size: var(--icon);
+}
+.item-tts:hover,
+.item-tts:focus-visible,
+.item-tts:active {
+	background: var(--accent-soft);
+}
+.item-tts.speaking {
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+}
+.item-tts.speaking .ph-icon {
+	animation: consigne-tts-pulse 0.9s ease-in-out infinite;
+}
+html.anim-reduced .item-tts.speaking .ph-icon {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.item-tts.speaking .ph-icon {
+		animation: none;
+	}
+}
+
 /* ---- 3. Écran Préférences : statut de la lecture vocale ---- */
 .pref-tts-statut {
 	display: flex;

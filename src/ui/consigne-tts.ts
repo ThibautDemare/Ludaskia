@@ -56,3 +56,36 @@ export function bindConsigneTts(root: ParentNode = document): void {
 	// Lecture auto (opt-in profil) : seulement la 1re consigne, best-effort.
 	if (premier && lectureConsigneAuto()) parler(premier, premierTexte);
 }
+
+/** Cible d'un bouton « haut-parleur » compact (#203). */
+export interface ItemTtsCible {
+	anchor: Element; // élément d'ancrage du bouton
+	texte: string; // mot lu à voix haute
+	dans?: boolean; // true : bouton ajouté DANS l'ancre (option) ; sinon JUSTE APRÈS (mot inline)
+}
+
+/** Greffe un bouton « haut-parleur » compact (icône seule) lisant UN mot, sur le
+    mot-cible (en gras) et sur CHAQUE option d'un QCM (#203, leçons contraires /
+    sens proche). Mêmes règles que la consigne : lecture à la demande, jamais en
+    rafale (dicterConsigne coupe la lecture en cours), jamais automatique ; aucun
+    bouton si l'appareil n'a pas de voix française. Le clic n'enclenche pas le choix
+    sous-jacent (stopPropagation). */
+export function bindItemTts(cibles: ItemTtsCible[]): void {
+	if (!dicteeDisponible()) return; // pas de voix → pas de bouton
+	for (const { anchor, texte, dans } of cibles) {
+		if (!texte.trim()) continue;
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'item-tts';
+		btn.setAttribute('aria-label', `Écouter le mot ${texte}`);
+		btn.title = `Écouter le mot ${texte}`;
+		btn.innerHTML = icon('speaker');
+		btn.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			parler(btn, texte);
+		});
+		if (dans) anchor.append(btn);
+		else anchor.insertAdjacentElement('afterend', btn);
+	}
+}

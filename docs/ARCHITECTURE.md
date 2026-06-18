@@ -508,13 +508,20 @@ réponse) ; publics servis = clavier et basse vision (figures agrandies, libell�
   quand le mode produit un `tuilesTri`. Calqué sur `lecon-ordre.ts`.
 - **`lecon-probleme.ts`** — runner **« Résolution de problèmes »** (#199), un
   problème à la fois. L'énoncé (`Exercise` `type: 'probleme'` : `enonce`, `etapes[]`,
-  `parle`) reste visible avec **son bouton « Écouter »** (#42, `data-tts` = `parle`) ;
+  `parle`, `figure?` #95) reste visible avec **son bouton « Écouter »** (#42, `data-tts` = `parle`) ;
   **une** sous-question (problème simple) ou **deux** (problème à deux étapes —
   l'item multi-`@` arbitré par l'issue : sous-questions affichées d'emblée, étape 1 =
   intermédiaire, étape 2 = réponse finale). Chaque étape a sa réponse numérique
   (`data-answer`), corrigée indépendamment ; problème réussi si **toutes** ses étapes
-  le sont. Parité `recordLessonRun`. Routé par `runLecon` quand `generate().type ===
-  'probleme'`. Les énoncés sont **générés par gabarits** (structures de Vergnaud) dans
+  le sont. Parité `recordLessonRun`. Routé par `runLecon` via `generate(mode).type ===
+  'probleme'` — **aiguillage sensible au mode** (#95) : un type mono-mode passe `mode`
+  `undefined` et garde son comportement d'origine. **Réutilisé en multi-mode** par la
+  leçon de **division avec reste** `math-div-reste` (#95) : mode `saisie` = `probleme` à
+  deux sous-questions (quotient + reste), mode `qcm` via `lecon-qcm.ts` ;
+  `runLeconProbleme(id, mode?)` transmet le mode à la génération, et le runner adapte ses
+  libellés via **`ExerciseType.probLexique`** (« Calcul » au lieu de « Problème », badge
+  « Étape » masqué) — le lexique par défaut préserve les libellés #199.
+  Les énoncés sont **générés par gabarits** (structures de Vergnaud) dans
   `data/maths/problemes.ts` : positions d'inconnue variées, pièges « mots-clés »
   loyaux et minoritaires, calibrage CE2 (additifs ≤ 1000, multiplicatifs dans les
   tables, division exacte). **Catégorie `math-problemes`**, **exclue du sprint**

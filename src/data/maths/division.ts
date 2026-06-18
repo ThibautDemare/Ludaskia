@@ -1,21 +1,27 @@
 /* ============================================================
-   Division par le sens (#104) — Calcul mental CE2.
+   Division par le sens (#104, #95) — Calcul mental CE2.
    Au CE2, la division s'aborde par le SENS (partage équitable et groupement),
-   jamais en technique posée (= CM1). Division EXACTE uniquement (reste nul),
-   adossée aux tables (réciproque de la multiplication). Le signe ÷ n'apparaît
-   JAMAIS seul : il est toujours précédé d'une phrase qui décrit la situation.
-   Conception pédagogique : avis pedagogue-primaire (#104).
+   jamais en technique posée (= CM1). Elle s'adosse aux tables (réciproque de la
+   multiplication) ; le signe ÷ n'apparaît JAMAIS seul, toujours précédé d'une
+   phrase qui décrit la situation. La découverte du RESTE (#95) est un attendu
+   CE2 (quotient + reste en calcul réfléchi) ; seule la division POSÉE reste CM1.
+   Conception pédagogique : avis pedagogue-primaire (#104, #95).
 
-   Deux leçons :
+   Trois leçons :
    1. « Moitié et quart d'une collection » — fraction-opérateur (dénominateurs 2
       et 4), résultat entier garanti. Pas de signe ÷, pas de figure.
-   2. « Je partage » — division exacte dans les tables, DEUX sens (partage /
-      groupement) clairement contrastés, signe ÷ adossé à la situation. Une
-      figure « situation de départ » (jetons + paniers vides) sur une minorité
-      d'items de découverte (total ≤ 12) — exclue du sprint (cf. catalog).
+   2. « Je partage » — division EXACTE (reste nul) dans les tables, DEUX sens
+      (partage / groupement) contrastés, signe ÷ adossé à la situation. Figure
+      « situation de départ » (jetons + paniers vides) sur une minorité d'items
+      de découverte (total ≤ 12) — exclue du sprint (cf. catalog).
+   3. « Je découvre le reste » (#95) — partages/groupements AVEC reste : l'enfant
+      donne le résultat du partage ET le reste. Deux modes : saisie (runner
+      « problème » → feedback par champ, réussite tout-ou-rien) et QCM (accessible).
+      Exclue du sprint.
    ============================================================ */
-import { choice, rnd } from '../../core/utils';
-import type { Exercise, ExerciseType } from '../../core/exercise';
+import { choice, rnd, sample } from '../../core/utils';
+import { checkAnswer } from '../../core/exercise';
+import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { renderFigure } from '../../core/figures';
 
 const numerique = (ex: Exercise, input: string): boolean =>
@@ -99,6 +105,128 @@ function partageType(): ExerciseType {
 	};
 }
 
+/* ---------- Leçon 3 : Je découvre le reste (#95) ----------
+   Division euclidienne par le SENS : partages/groupements où il RESTE des objets.
+   L'enfant donne deux réponses (le résultat du partage ET le reste). Calcul réfléchi
+   adossé aux tables, JAMAIS la division posée (= CM1). Invariants garantis :
+   reste < diviseur, diviseur ≤ 9 (tables), total ≤ 81. Restes nuls mélangés (~1/3,
+   jamais < ~30 % — « reste 0 » est un cas parmi d'autres ; une rampe adaptative
+   pourra venir plus tard, cf. #95). */
+const POOL_DIVISEUR_RESTE = [2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9];
+
+function tirePartitionReste(): {
+	diviseur: number;
+	quotient: number;
+	reste: number;
+	total: number;
+} {
+	const diviseur = choice(POOL_DIVISEUR_RESTE);
+	// q borné pour garder total (= d·q + reste, reste ≤ d−1) ≤ 81, et q ≤ 9 (tables).
+	const quotient = rnd(2, Math.min(9, Math.floor((81 - (diviseur - 1)) / diviseur)));
+	// ~1/3 de restes nuls : la division exacte reste un cas parmi d'autres.
+	const reste = rnd(0, 2) === 0 ? 0 : rnd(1, diviseur - 1);
+	return { diviseur, quotient, reste, total: diviseur * quotient + reste };
+}
+
+// Item « problème » à deux sous-questions (résultat du partage puis reste), corrigé
+// CHAMP PAR CHAMP par le runner. Deux sens contrastés ; le signe ÷ (~moitié des
+// items) n'apparaît jamais seul, toujours après la phrase de situation.
+function genResteProbleme(): Exercise {
+	const { diviseur, quotient, reste, total } = tirePartitionReste();
+	const groupement = rnd(0, 1) === 0;
+	const avecSigne = rnd(0, 1) === 0;
+
+	if (groupement) {
+		// GROUPEMENT : paquets de taille `diviseur` ; on cherche le NOMBRE de paquets
+		// complets (= quotient) et ce qu'il reste. reste < taille d'un paquet.
+		let enonce = `On range ${total} jetons par paquets de ${diviseur}.`;
+		if (avecSigne) enonce += ` On calcule ${total} ÷ ${diviseur}.`;
+		return {
+			type: 'probleme',
+			enonce,
+			etapes: [
+				{ question: 'Combien de paquets complets peut-on faire ?', answer: quotient },
+				{ question: 'Combien de jetons reste-t-il ?', answer: reste },
+			],
+			parle: `On range ${total} jetons par paquets de ${diviseur}. Combien de paquets complets peut-on faire ? Et combien de jetons reste-t-il ?`,
+			// Pas de figure en groupement : renderGroupes illustre un partage (paniers).
+		};
+	}
+
+	// PARTAGE : `diviseur` paniers égaux ; on cherche la part d'UN panier (= quotient)
+	// et ce qu'il reste. reste < nombre de paniers. Figure de découverte (jetons +
+	// paniers vides) sur une minorité de petits nombres, comme « Je partage ».
+	const figure =
+		total <= 12 && diviseur <= 6 && rnd(0, 9) < 4
+			? renderFigure({ kind: 'groupes', paniers: diviseur, total })
+			: undefined;
+	let enonce = `On partage ${total} jetons en ${diviseur} paniers égaux.`;
+	if (avecSigne) enonce += ` On calcule ${total} ÷ ${diviseur}.`;
+	return {
+		type: 'probleme',
+		enonce,
+		etapes: [
+			{ question: 'Combien de jetons dans chaque panier ?', answer: quotient },
+			{ question: 'Combien de jetons reste-t-il ?', answer: reste },
+		],
+		parle: `On partage ${total} jetons en ${diviseur} paniers égaux. Combien de jetons dans chaque panier ? Et combien de jetons reste-t-il ?`,
+		figure,
+	};
+}
+
+// Réponse QCM combinée « résultat + reste » (chaîne comparée telle quelle).
+const fmtQR = (q: number, r: number): string => `${q} et il reste ${r}`;
+
+// Variante QCM (mode accessible) : une question, 4 choix. Distracteurs = erreurs
+// classiques (résultat ±1, reste ±1, et surtout « reste ≥ diviseur » : on aurait pu
+// continuer le partage).
+function genResteQcm(): Exercise {
+	const { diviseur, quotient, reste, total } = tirePartitionReste();
+	const groupement = rnd(0, 1) === 0;
+	const question = groupement
+		? `On range ${total} jetons par paquets de ${diviseur}. Combien de paquets complets peut-on faire ? Et combien de jetons reste-t-il ?`
+		: `On partage ${total} jetons en ${diviseur} paniers égaux. Combien de jetons dans chaque panier ? Et combien de jetons reste-t-il ?`;
+	const parle = question; // énoncé déjà complet et sans symbole : lu tel quel par le TTS
+	const correct = fmtQR(quotient, reste);
+	const candidats = [
+		fmtQR(quotient + 1, reste),
+		quotient > 1 ? fmtQR(quotient - 1, reste) : fmtQR(quotient + 2, reste),
+		fmtQR(quotient, reste + 1), // reste+1 : peut atteindre le diviseur → erreur typique
+		reste > 0 ? fmtQR(quotient, reste - 1) : fmtQR(quotient + 2, reste),
+		fmtQR(quotient > 1 ? quotient - 1 : quotient, reste + diviseur), // reste ≥ diviseur
+	].filter((c) => c !== correct);
+	const distracteurs = sample([...new Set(candidats)], 3);
+	return {
+		type: 'qcm',
+		question,
+		answer: correct,
+		choices: sample([correct, ...distracteurs], distracteurs.length + 1),
+		parle,
+	};
+}
+
+const RESTE_MODES: ModeOption[] = [
+	{
+		id: 'saisie',
+		label: "J'écris le résultat et le reste",
+		hint: 'deux réponses',
+		icon: 'pencil',
+		recommended: true,
+	},
+	{ id: 'qcm', label: 'Je choisis la bonne réponse', hint: 'parmi 4', icon: 'hand-pointing' },
+];
+
+function resteType(): ExerciseType {
+	return {
+		modes: RESTE_MODES,
+		// Affichage du runner « problème » : vocabulaire « calcul » plutôt que
+		// « problème », pas de badge « Étape » (les deux champs sont nommés).
+		probLexique: { nom: 'Calcul', nomPluriel: 'calculs', badgeEtape: false },
+		generate: (mode) => (mode === 'qcm' ? genResteQcm() : genResteProbleme()),
+		check: (ex, input) => checkAnswer(ex, input),
+	};
+}
+
 export interface DivisionLessonDef {
 	id: string;
 	label: string;
@@ -117,6 +245,13 @@ export const DIVISION_LESSONS: DivisionLessonDef[] = [
 		label: 'Je partage',
 		exerciseType: partageType(),
 		// Lecture d'énoncé + figure de découverte : incompatible avec le chrono.
+		excludeFromSprint: true,
+	},
+	{
+		id: 'math-div-reste',
+		label: 'Je découvre le reste',
+		exerciseType: resteType(),
+		// Deux champs (résultat + reste) + lecture d'énoncé + figure : hors chrono.
 		excludeFromSprint: true,
 	},
 ];

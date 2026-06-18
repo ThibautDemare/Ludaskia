@@ -654,8 +654,8 @@ describe('Catalogue maths : 4 catégories du manuel (#92)', () => {
 		expect(calcul?.id).not.toBe(mental?.id);
 	});
 	test('les leçons de calcul mental sont rattachées à math-calcul-mental', () => {
-		// 15 leçons « legacy » (bilanQ) + 2 leçons de division par le sens (#104).
-		expect(getLessonsByCategory('math-calcul-mental').length).toBe(17);
+		// 15 leçons « legacy » (bilanQ) + 2 division par le sens (#104) + reste (#95).
+		expect(getLessonsByCategory('math-calcul-mental').length).toBe(18);
 		expect(getLessonsByCategory('math-calcul').length).toBeGreaterThan(0); // posé (#97)
 	});
 	test('toutes les catégories maths sont désormais peuplées ; helper robuste sur un id inconnu', () => {
@@ -1834,7 +1834,8 @@ describe('Sprint', () => {
 		const calculMental = getLessonsByCategory('math-calcul-mental');
 		expect(calculMental.some((l) => l.id === 'math-decomposer-multiplication')).toBe(true);
 		expect(calculMental.some((l) => l.id === 'math-div-partage')).toBe(true); // #104
-		expect(calculMental.length).toBe(17); // 15 legacy + moitié-quart + Je partage
+		expect(calculMental.some((l) => l.id === 'math-div-reste')).toBe(true); // #95
+		expect(calculMental.length).toBe(18); // 15 legacy + moitié-quart + Je partage + reste
 	});
 	test('sprint leçon 15 : étapes intermédiaires + champ final', () => {
 		const body15 = api.sprintQuestionBody({

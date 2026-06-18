@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { FRACTIONS_LESSONS, nomFraction } from '../src/data/maths/fractions';
 import { renderFractionBarre } from '../src/core/figures';
+import { mathInline } from '../src/core/fraction-text';
 import { genLessonItem, getLessonById, getLessonsByCategory } from '../src/core/catalog';
 
 const TIRAGES = 400;
@@ -21,6 +22,23 @@ function parse(f: string): [number, number] {
 	const [n, d] = f.split('/').map(Number);
 	return [n, d];
 }
+
+describe('mathInline — affichage empilé (barre horizontale, #200)', () => {
+	it("rend la fraction empilée avec un aria-label verbal, pas l'oblique", () => {
+		const html = mathInline('Combien font 6/8 + 1/8 ?');
+		// La barre horizontale est rendue (num/den dans des span séparés), pas « 6/8 » brut.
+		expect(html).not.toContain('6/8');
+		expect(html).toContain('frac-num');
+		expect(html).toContain('frac-den');
+		// aria-label verbal pour le lecteur d'écran (jamais « six slash huit »).
+		expect(html).toContain('aria-label="six huitièmes"');
+		expect(html).toContain('aria-label="un huitième"');
+	});
+
+	it('laisse intact un texte sans fraction (échappement seul)', () => {
+		expect(mathInline('a < b')).toBe('a &lt; b');
+	});
+});
 
 describe('nomFraction — libellé verbal (#42)', () => {
 	it('cas spéciaux et pluriels', () => {

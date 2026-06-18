@@ -4,6 +4,7 @@
    ============================================================ */
 import { escapeHTML, normalizeText } from './utils';
 import { ttsAttr } from './tts-text';
+import { stackFractions } from './fraction-text';
 
 /* Opération posée (#97) : décrite par ses opérandes et son opérateur ; le rendu
    (grille de colonnes, cellules de résultat, produits partiels) est calculé par
@@ -35,12 +36,13 @@ export function figureBlock(figure?: string): string {
 	return figure ? `<div class="figure">${figure}</div>` : '';
 }
 
-/* Énoncé d'un item, échappé puis enrichi d'un GRAS léger via la convention
-   `**…**` (#199 : mettre en évidence la question finale d'un problème). On
-   échappe d'abord (sécurité), donc le `<strong>` injecté ensuite est sûr. Aucun
-   autre énoncé n'utilise `**` aujourd'hui : transformation sans effet de bord. */
+/* Énoncé d'un item, échappé puis enrichi : GRAS léger via `**…**` (#199 : question
+   finale d'un problème) et fractions « num/den » rendues empilées (#200, barre
+   horizontale attendue au CE2). On échappe d'abord (sécurité), donc les balises
+   injectées ensuite sont sûres. Seuls les énoncés de fractions contiennent « n/m »
+   à l'exécution : transformation sans effet de bord ailleurs. */
 export function enonceTexte(text: string): string {
-	return escapeHTML(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+	return stackFractions(escapeHTML(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'));
 }
 
 /* Vérifie la réponse saisie pour un item, selon son type.

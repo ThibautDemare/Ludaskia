@@ -205,6 +205,9 @@ function redraw(): void {
 	}
 	const verif = sheets().querySelector('#ltriVerif') as HTMLButtonElement;
 	verif.disabled = Object.keys(placed).length !== q.mots.length || answered;
+	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
+	// (#ltriActions) reste, pour ne pas afficher deux boutons à la fois (#153).
+	verif.hidden = answered;
 }
 
 function selectTuile(val: string): void {

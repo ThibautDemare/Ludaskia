@@ -226,7 +226,8 @@ function renderMotCache(word: MotOrtho): void {
 	const verifier = () => {
 		if (checkAnswer(ex, input.value)) {
 			reussiteMode(word, 'motCache');
-			(sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
+			// Réussite : « Vérifier » s'efface, seul « Continuer → » reste (pas deux boutons, #153).
+			(sheets().querySelector('#btnVerifMot') as HTMLButtonElement).hidden = true;
 			input.readOnly = true;
 			reussite(fb, true);
 		} else {
@@ -282,7 +283,8 @@ function renderDictee(word: MotOrtho): void {
 	const verifier = () => {
 		if (checkAnswer(ex, input.value)) {
 			reussiteMode(word, 'dictee');
-			(sheets().querySelector('#btnVerifMot') as HTMLButtonElement).disabled = true;
+			// Réussite : « Vérifier » s'efface, seul « Continuer → » reste (pas deux boutons, #153).
+			(sheets().querySelector('#btnVerifMot') as HTMLButtonElement).hidden = true;
 			input.readOnly = true;
 			reussite(fb, true);
 		} else {
@@ -565,7 +567,8 @@ function renderTuiles(word: MotOrtho): void {
 		const built = assembled.map((i) => lettres[i]).join('');
 		if (checkAnswer(ex, built)) {
 			reussiteMode(word, 'tuiles');
-			(sheets().querySelector('#btnVerifTuiles') as HTMLButtonElement).disabled = true;
+			// Réussite : « Vérifier » s'efface, seul « Continuer → » reste (pas deux boutons, #153).
+			(sheets().querySelector('#btnVerifTuiles') as HTMLButtonElement).hidden = true;
 			reussite(fb, true);
 		} else {
 			fb.innerHTML = `<span class="fb-ko">Pas tout à fait, réessaie.</span>`;

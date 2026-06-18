@@ -12,11 +12,12 @@ import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import type { ChoiceView, ExerciseMode } from '../core/exercise';
 import type { Item } from '../core/items';
-import { checkItemAnswer, choiceButtonHTML, figureBlock } from '../core/items';
+import { checkItemAnswer, choiceButtonHTML, enonceTexte, figureBlock } from '../core/items';
 import { commKey, escapeHTML } from '../core/utils';
 import { mathInline } from '../core/fraction-text';
 import { ttsAttr } from '../core/tts-text';
-import { bindConsigneTts } from './consigne-tts';
+import { bindConsigneTts, bindItemTts } from './consigne-tts';
+import type { ItemTtsCible } from './consigne-tts';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import { streakSuffix } from '../core/progress';
@@ -40,6 +41,9 @@ interface QcmQuestion {
 	choices: string[]; // valeurs comparées (clé de correction)
 	choicesView?: ChoiceView[]; // affichage riche optionnel, aligné sur choices (#200)
 	explication?: string; // justification affichée après la réponse (#110)
+	consigne?: string; // consigne renforcée affichée en gras (#203)
+	picto?: string; // symbole décoratif doublant la consigne (#203, « ↔ » / « = »)
+	ttsItems?: boolean; // haut-parleur sur le mot-cible + chaque option (#203)
 }
 
 let lesson: LessonDef;
@@ -83,6 +87,9 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 			choices: ex.choices,
 			choicesView: ex.choicesView,
 			explication: ex.explication,
+			consigne: ex.consigne,
+			picto: ex.picto,
+			ttsItems: ex.ttsItems,
 		});
 		misses = 0;
 	}
@@ -123,17 +130,36 @@ function progressHTML(): string {
 function renderQuestion(): void {
 	answered = false;
 	const q = questions[idx];
-	// `mathInline` : échappe + rend les fractions « num/den » empilées (barre horizontale).
-	const question = mathInline(q.item.text).replace('@', '<span class="sprint-blank">?</span>');
+	// `enonceTexte` : échappe + GRAS « **…** » (mot-cible des contraires/sens proche,
+	// #203) + fractions « num/den » empilées (#200) — superset sûr de `mathInline`.
+	const question = enonceTexte(q.item.text).replace('@', '<span class="sprint-blank">?</span>');
+	const ttsText = q.item.parle ?? q.item.text;
+	// Consigne renforcée optionnelle (#203) : ligne en gras précédée d'un picto
+	// décoratif (« ↔ » / « = », aria-hidden — le sens est porté par le texte). Elle
+	// porte la lecture vocale globale (consigne + phrase) ; l'énoncé n'a alors pas
+	// son propre bouton « Écouter ».
+	const consigneHTML = q.consigne
+		? `<div class="lqcm-consigne"${ttsAttr(ttsText)}>${
+				q.picto ? `<span class="lqcm-picto" aria-hidden="true">${escapeHTML(q.picto)}</span>` : ''
+			}<strong>${escapeHTML(q.consigne)}</strong></div>`
+		: '';
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
       ${progressHTML()}
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
         ${figureBlock(q.item.figure)}
-        <div class="sprint-q sprint-q-qcm"${ttsAttr(q.item.parle ?? q.item.text)}>${question}</div>
-        <div class="sprint-choices" id="lqcmChoices">
-          ${q.choices.map((c, i) => choiceButtonHTML(c, i, q.choicesView?.[i])).join('')}
+        ${consigneHTML}
+        <div class="sprint-q sprint-q-qcm"${q.consigne ? '' : ttsAttr(ttsText)}>${question}</div>
+        <div class="sprint-choices${q.ttsItems ? ' lqcm-choices-tts' : ''}" id="lqcmChoices">
+          ${q.choices
+						.map((c, i) => {
+							const btn = choiceButtonHTML(c, i, q.choicesView?.[i]);
+							// Les options portant un haut-parleur (#203) sont enveloppées pour
+							// accueillir le bouton sans l'imbriquer dans le bouton-choix.
+							return q.ttsItems ? `<span class="lqcm-choice-wrap">${btn}</span>` : btn;
+						})
+						.join('')}
         </div>
         <div class="sprint-correction" id="lqcmFeedback" hidden></div>
         <div class="sprint-actions" id="lqcmActions" hidden></div>
@@ -142,7 +168,17 @@ function renderQuestion(): void {
 	sheets()
 		.querySelectorAll<HTMLButtonElement>('#lqcmChoices .sprint-choice')
 		.forEach((btn) => btn.addEventListener('click', () => answer(Number(btn.dataset.i))));
-	bindConsigneTts(sheets()); // bouton « Écouter » sur l'énoncé (#42)
+	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne/énoncé (#42)
+	// TTS individuel (#203) : haut-parleur sur le mot-cible (en gras) et chaque option.
+	if (q.ttsItems) {
+		const cibles: ItemTtsCible[] = [];
+		const cible = sheets().querySelector('.sprint-q-qcm strong');
+		if (cible?.textContent) cibles.push({ anchor: cible, texte: cible.textContent });
+		sheets()
+			.querySelectorAll<HTMLElement>('#lqcmChoices .lqcm-choice-wrap')
+			.forEach((wrap, i) => cibles.push({ anchor: wrap, texte: q.choices[i], dans: true }));
+		bindItemTts(cibles);
+	}
 }
 
 function answer(choiceIdx: number): void {

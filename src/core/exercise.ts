@@ -46,6 +46,13 @@ export type Exercise =
 	// présent, le runner rend `html` (non échappé) avec `aria-label=label` au lieu du
 	// texte brut. Sert p. ex. à écrire « 2/4 » en fraction empilée (barre horizontale)
 	// ou, à terme, à proposer une figure SVG en choix.
+	// `consigne`/`picto`/`ttsItems` (#203) : leçons « mots de sens proche / contraires ».
+	// `consigne` est une question-consigne renforcée affichée en gras au-dessus de la
+	// phrase (« Quel mot veut dire le contraire ? »), `picto` un symbole décoratif qui
+	// la double sans en être l'unique indice (« = » sens proche, « ↔ » contraire) ;
+	// `ttsItems` greffe un bouton « Écouter » sur le mot-cible et sur CHAQUE option
+	// (lecture à la demande, jamais en rafale). Optionnels : les autres QCM ne les
+	// fournissent pas et restent rendus à l'identique.
 	| {
 			type: 'qcm';
 			question: string;
@@ -55,6 +62,9 @@ export type Exercise =
 			figure?: string;
 			explication?: string;
 			parle?: string;
+			consigne?: string;
+			picto?: string;
+			ttsItems?: boolean;
 	  }
 	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
 	// des distracteurs vers l'emplacement `@` de la question. Réponse = `answer`.

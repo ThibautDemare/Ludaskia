@@ -11,6 +11,7 @@ import { bilanQ } from './lessons';
 import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 import { VOCAB_LESSONS } from '../data/francais/vocabulaire';
 import { SENS_FIGURE_LESSONS } from '../data/francais/sens-figure';
+import { SENS_LESSONS } from '../data/francais/synonymes-contraires';
 import { FAMILLES_LESSONS } from '../data/francais/familles';
 import { CHAMPS_LESSONS } from '../data/francais/champs-lexicaux';
 import { GRAMMAIRE_SUJET_LESSONS } from '../data/francais/grammaire-sujet';
@@ -464,6 +465,23 @@ const CHAMPS_LESSONS_DEFS: LessonDef[] = CHAMPS_LESSONS.map((d) => ({
 	rubrique: 'Champs lexicaux',
 }));
 
+/* ---------- Vocabulaire — contraires & mots de sens proche (#203) ----------
+   Deux leçons QCM (3 options) sous la rubrique « Synonymes et contraires », dans
+   l'ordre pédagogique : contraires d'abord, puis sens proche. Mot-cible en gras
+   dans une phrase courte ; consigne renforcée (picto ↔ / =) ; TTS mot-cible +
+   options. Exclues du sprint (lecture d'une phrase + pression du chrono déconseillée
+   pour les profils dys) : jouées en mode leçon/bilan/révision. */
+const SENS_LESSONS_DEFS: LessonDef[] = SENS_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'francais',
+	category: 'fr-vocabulaire',
+	level: 'ce2',
+	exerciseType: d.exerciseType,
+	rubrique: 'Synonymes et contraires',
+	excludeFromSprint: true,
+}));
+
 /* ---------- Grammaire — pronom sujet & accord sujet-verbe (#115) ----------
    2 leçons QCM ; les formes sont lues depuis la base de conjugaison. */
 const GRAMMAIRE_SUJET_LESSONS_DEFS: LessonDef[] = GRAMMAIRE_SUJET_LESSONS.map((d) => ({
@@ -546,6 +564,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...MBP_LESSONS_DEFS,
 	...VOCAB_LESSONS_DEFS,
 	...SENS_FIGURE_LESSONS_DEFS,
+	...SENS_LESSONS_DEFS,
 	...FAMILLES_LESSONS_DEFS,
 	...CHAMPS_LESSONS_DEFS,
 	...GRAMMAIRE_SUJET_LESSONS_DEFS,

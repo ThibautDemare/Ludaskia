@@ -181,6 +181,9 @@ function redraw(): void {
 	}
 	const verif = sheets().querySelector('#lordVerif') as HTMLButtonElement;
 	verif.disabled = placed.length !== q.ordre.length || answered;
+	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
+	// (#lordActions) reste, pour ne pas afficher deux boutons à la fois (#153).
+	verif.hidden = answered;
 }
 
 function poser(val: string): void {

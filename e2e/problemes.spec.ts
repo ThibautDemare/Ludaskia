@@ -25,6 +25,9 @@ test('un problème simple : énoncé affiché, bonne réponse validée', async (
 	await input.fill(answer!);
 	await page.locator('#probVerif').click();
 	await expect(page.locator('.prob-mark.correct').first()).toBeVisible();
+	// #153 : une fois la réponse validée, « Vérifier » s'efface ; seul « Continuer ▶ »
+	// reste affiché (pas deux boutons à la fois).
+	await expect(page.locator('#probVerif')).toBeHidden();
 	await expect(page.locator('#probNext')).toBeVisible();
 	expect(errors).toEqual([]);
 });

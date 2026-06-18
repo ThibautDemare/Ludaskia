@@ -52,6 +52,10 @@ test('« Ranger par thème » : trier les tuiles puis vérifier corrige tuile pa
 	expect(await page.locator('.ltri-posee.correct').count()).toBe(3);
 	expect(await page.locator('.ltri-posee.wrong').count()).toBe(3);
 	await expect(page.locator('.lqcm-ko')).toBeVisible(); // bon classement montré
+	// #153 : une fois la réponse validée, « Vérifier » s'efface ; seul « Continuer ▶ »
+	// reste affiché (pas deux boutons à la fois).
+	await expect(page.locator('#ltriVerif')).toBeHidden();
+	await expect(page.locator('#ltriNext')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

@@ -176,6 +176,9 @@ function verifier(): void {
 		if (!correct) toutJuste = false;
 	});
 	if (toutJuste) score++;
+	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
+	// (#probActions) reste, pour ne pas afficher deux boutons à la fois (#153).
+	(sheets().querySelector('#probVerif') as HTMLButtonElement).hidden = true;
 	const fb = sheets().querySelector('#probFeedback') as HTMLElement;
 	fb.hidden = false;
 	fb.innerHTML = toutJuste

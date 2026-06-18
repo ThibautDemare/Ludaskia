@@ -44,6 +44,11 @@ export interface VerbeEtre {
 	infinitif: string;
 	base: string;
 	terminaisons: Record<Forme, string>;
+	// Complément fixe optionnel (avis pedagogue-primaire) : seuls les verbes qui
+	// sonnent tronqués sans complément en reçoivent un (ex. « aller » → « à l'école »).
+	// Court, invariable, sans autre marque d'accord ; identique source et cible (décor
+	// stable). Les autres verbes restent en phrase nue (charge de lecture minimale).
+	complement?: string;
 }
 
 /* Verbes archi-fréquents, EXCLUSIVEMENT « être » dans l'emploi de mouvement/état
@@ -52,7 +57,12 @@ export interface VerbeEtre {
    une première rencontre). La famille graphique « -é » domine (propre aux verbes
    du 1er groupe + naître) ; « -i » (partir) et « -u » (venir) apportent la variété. */
 export const VERBES: VerbeEtre[] = [
-	{ infinitif: 'aller', base: 'all', terminaisons: { ms: 'é', fs: 'ée', mp: 'és', fp: 'ées' } },
+	{
+		infinitif: 'aller',
+		base: 'all',
+		terminaisons: { ms: 'é', fs: 'ée', mp: 'és', fp: 'ées' },
+		complement: "à l'école", // « Il est allé. » sonne tronqué → on ancre un lieu familier
+	},
 	{ infinitif: 'partir', base: 'part', terminaisons: { ms: 'i', fs: 'ie', mp: 'is', fp: 'ies' } },
 	{ infinitif: 'venir', base: 'ven', terminaisons: { ms: 'u', fs: 'ue', mp: 'us', fp: 'ues' } },
 	{ infinitif: 'tomber', base: 'tomb', terminaisons: { ms: 'é', fs: 'ée', mp: 'és', fp: 'ées' } },
@@ -157,9 +167,11 @@ function genItem(): Exercise {
 		p.options.map((f) => ({ valeur: forme(v, f), vue: vue(v, f) })),
 		p.options.length,
 	);
+	// Complément fixe éventuel (ex. « à l'école »), identique des deux côtés de la flèche.
+	const c = v.complement ? ` ${v.complement}` : '';
 	return {
 		type: 'qcm',
-		question: `${p.sujetSource} ${p.auxSource} ${forme(v, p.formeSource)}. → **${p.sujetCible}** ${p.auxCible} @`,
+		question: `${p.sujetSource} ${p.auxSource} ${forme(v, p.formeSource)}${c}. → **${p.sujetCible}** ${p.auxCible} @${c}`,
 		answer: reponse,
 		choices: propositions.map((o) => o.valeur),
 		choicesView: propositions.map((o) => o.vue),

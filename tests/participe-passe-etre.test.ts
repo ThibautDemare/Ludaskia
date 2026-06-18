@@ -62,7 +62,8 @@ describe('génération — invariants du QCM', () => {
 		// « Elle est <fs> » — jamais une source déjà accordée autrement.
 		for (const ex of tirages()) {
 			if (ex.type !== 'qcm') continue;
-			const m = ex.question.match(/^(Il|Elle) est (\S+?)\.\s*→/);
+			// Le participe est le 1er mot après « est » (suivi d'un point OU d'un complément).
+			const m = ex.question.match(/^(Il|Elle) est (\S+?)(?:\.| )/);
 			expect(m).not.toBeNull();
 			const [, sujet, source] = m!;
 			const v = verbeDeForme(source)!;

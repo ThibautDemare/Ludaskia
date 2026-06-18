@@ -149,6 +149,14 @@
 	/* La barre de fraction. */
 	border-top: 0.09em solid currentColor;
 }
+
+/* Choix de QCM riche par figure SVG (#200, `choicesView`) : on borne la figure pour
+   qu'elle tienne dans le bouton sans casser la cible tactile. */
+.sprint-choice .figure-svg {
+	max-height: 72px;
+	width: auto;
+	vertical-align: middle;
+}
 .sprint-input {
 	font: inherit;
 	font-family: var(--ui);

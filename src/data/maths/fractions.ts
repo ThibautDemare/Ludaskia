@@ -41,7 +41,7 @@ import { rnd, choice, sample } from '../../core/utils';
 import { renderFigure } from '../../core/figures';
 // Libellé verbal (#42) défini en core (utilitaire nombre→mots, réutilisé par le
 // rendu empilé des fractions). Réexposé ici pour les imports/tests existants.
-import { nomFraction } from '../../core/fraction-text';
+import { nomFraction, fractionChoiceViews } from '../../core/fraction-text';
 export { nomFraction };
 
 /* ---------- Notation et distracteurs ----------
@@ -108,11 +108,13 @@ function genSens(): Exercise {
 	const den = choice(DENS_SENS);
 	const num = rnd(1, den - 1);
 	const parts = num > 1 ? 'parts coloriées' : 'part coloriée';
+	const choices = qcmChoices(num, den);
 	return {
 		type: 'qcm',
 		question: 'Quelle fraction est coloriée ?',
 		answer: frac(num, den),
-		choices: qcmChoices(num, den),
+		choices,
+		choicesView: fractionChoiceViews(choices),
 		figure: renderFigure({ kind: 'fractionBarre', num, den }),
 		explication: `${num} ${parts} sur ${den} parts égales → ${nomFraction(num, den)} (${frac(num, den)}).`,
 		parle: 'Quelle fraction est coloriée ?',
@@ -145,11 +147,13 @@ function genBande(): Exercise {
 	const den = choice(DENS_BANDE);
 	const num = rnd(1, den - 1);
 	const parts = num > 1 ? 'parts' : 'part';
+	const choices = qcmChoices(num, den);
 	return {
 		type: 'qcm',
 		question: 'Quelle fraction est marquée sur la bande ?',
 		answer: frac(num, den),
-		choices: qcmChoices(num, den),
+		choices,
+		choicesView: fractionChoiceViews(choices),
 		figure: renderFigure({ kind: 'fractionBande', num, den }),
 		explication: `Le repère tombe sur ${nomFraction(num, den)} : ${num} ${parts} sur ${den} (${frac(num, den)}).`,
 		parle: 'Quelle fraction est marquée sur la bande ?',
@@ -310,11 +314,13 @@ function genComparaison(): Exercise {
 	const explication = memeNum
 		? `Plus il y a de parts, plus chaque part est petite : ${frac(grande[0], grande[1])} est la plus grande.`
 		: `Sur la barre, ${frac(grande[0], grande[1])} colorie la plus grande longueur : c'est la plus grande.`;
+	const choices = sample([frac(a[0], a[1]), frac(b[0], b[1])], 2);
 	return {
 		type: 'qcm',
 		question: 'Quelle est la plus grande fraction ?',
 		answer: frac(grande[0], grande[1]),
-		choices: sample([frac(a[0], a[1]), frac(b[0], b[1])], 2),
+		choices,
+		choicesView: fractionChoiceViews(choices),
 		figure: renderFigure({ kind: 'fractionPaire', haut: a, bas: b }),
 		explication,
 		parle: 'Quelle est la plus grande fraction ?',
@@ -344,11 +350,13 @@ function genSomme(): Exercise {
 	const n1 = rnd(1, den - 2);
 	const n2 = rnd(1, den - 1 - n1); // n1 + n2 ≤ den - 1 → résultat < 1
 	const somme = n1 + n2;
+	const choices = sample([frac(somme, den), ...distracteursSomme(n1, n2, den)], 4);
 	return {
 		type: 'qcm',
 		question: `Combien font ${frac(n1, den)} + ${frac(n2, den)} ?`,
 		answer: frac(somme, den),
-		choices: sample([frac(somme, den), ...distracteursSomme(n1, n2, den)], 4),
+		choices,
+		choicesView: fractionChoiceViews(choices),
 		figure: renderFigure({ kind: 'fractionSomme', a: [n1, den], b: [n2, den] }),
 		explication: `On garde le dénominateur et on additionne les numérateurs : ${n1} + ${n2} = ${somme} → ${frac(somme, den)} (${nomFraction(somme, den)}).`,
 		parle: `Combien font ${nomFraction(n1, den)} plus ${nomFraction(n2, den)} ?`,

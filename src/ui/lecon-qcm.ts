@@ -10,9 +10,9 @@
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
-import type { ExerciseMode } from '../core/exercise';
+import type { ChoiceView, ExerciseMode } from '../core/exercise';
 import type { Item } from '../core/items';
-import { checkItemAnswer, figureBlock } from '../core/items';
+import { checkItemAnswer, choiceButtonHTML, figureBlock } from '../core/items';
 import { commKey, escapeHTML } from '../core/utils';
 import { mathInline } from '../core/fraction-text';
 import { ttsAttr } from '../core/tts-text';
@@ -37,7 +37,8 @@ const NB_QUESTIONS = 8;
 
 interface QcmQuestion {
 	item: Item; // { text, answer, kind:'text', _lesson }
-	choices: string[];
+	choices: string[]; // valeurs comparées (clé de correction)
+	choicesView?: ChoiceView[]; // affichage riche optionnel, aligné sur choices (#200)
 	explication?: string; // justification affichée après la réponse (#110)
 }
 
@@ -80,6 +81,7 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 				_lesson: l.id,
 			},
 			choices: ex.choices,
+			choicesView: ex.choicesView,
 			explication: ex.explication,
 		});
 		misses = 0;
@@ -131,9 +133,7 @@ function renderQuestion(): void {
         ${figureBlock(q.item.figure)}
         <div class="sprint-q sprint-q-qcm"${ttsAttr(q.item.parle ?? q.item.text)}>${question}</div>
         <div class="sprint-choices" id="lqcmChoices">
-          ${q.choices
-						.map((c, i) => `<button class="sprint-choice" data-i="${i}">${mathInline(c)}</button>`)
-						.join('')}
+          ${q.choices.map((c, i) => choiceButtonHTML(c, i, q.choicesView?.[i])).join('')}
         </div>
         <div class="sprint-correction" id="lqcmFeedback" hidden></div>
         <div class="sprint-actions" id="lqcmActions" hidden></div>

@@ -5,6 +5,7 @@
 import { escapeHTML, normalizeText } from './utils';
 import { ttsAttr } from './tts-text';
 import { stackFractions } from './fraction-text';
+import type { ChoiceView } from './exercise';
 
 /* Opération posée (#97) : décrite par ses opérandes et son opérateur ; le rendu
    (grille de colonnes, cellules de résultat, produits partiels) est calculé par
@@ -43,6 +44,16 @@ export function figureBlock(figure?: string): string {
    à l'exécution : transformation sans effet de bord ailleurs. */
 export function enonceTexte(text: string): string {
 	return stackFractions(escapeHTML(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'));
+}
+
+/* Un bouton-choix de QCM (#200), partagé par le runner leçon et le sprint.
+   `value` est la VALEUR comparée (rendue échappée par défaut) ; si une `view` riche
+   est fournie, on rend son HTML/SVG de confiance avec un `aria-label` verbal (le
+   lecteur d'écran lit le libellé, jamais le balisage ni « num slash den »). */
+export function choiceButtonHTML(value: string, index: number, view?: ChoiceView): string {
+	const inner = view ? view.html : escapeHTML(value);
+	const aria = view ? ` aria-label="${escapeHTML(view.label)}"` : '';
+	return `<button class="sprint-choice" data-i="${index}"${aria}>${inner}</button>`;
 }
 
 /* Vérifie la réponse saisie pour un item, selon son type.

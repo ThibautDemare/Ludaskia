@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { FRACTIONS_LESSONS, nomFraction } from '../src/data/maths/fractions';
 import { renderFractionBarre } from '../src/core/figures';
 import { mathInline } from '../src/core/fraction-text';
+import { choiceButtonHTML } from '../src/core/items';
 import { genLessonItem, getLessonById, getLessonsByCategory } from '../src/core/catalog';
 
 const TIRAGES = 400;
@@ -37,6 +38,51 @@ describe('mathInline — affichage empilé (barre horizontale, #200)', () => {
 
 	it('laisse intact un texte sans fraction (échappement seul)', () => {
 		expect(mathInline('a < b')).toBe('a &lt; b');
+	});
+});
+
+describe('choicesView — choix QCM riches (#200)', () => {
+	it('les leçons à choix-fractions fournissent une vue alignée (html + libellé verbal)', () => {
+		for (const id of [
+			'num-frac-sens',
+			'num-frac-bande',
+			'num-frac-comparaison',
+			'num-frac-addition',
+		]) {
+			for (const ex of genere(id)) {
+				if (ex.type !== 'qcm') continue;
+				expect(ex.choicesView).toBeDefined();
+				expect(ex.choicesView).toHaveLength(ex.choices.length);
+				ex.choices.forEach((c, i) => {
+					const v = ex.choicesView![i];
+					const [n, d] = parse(c);
+					expect(v.html).toContain('frac-num'); // fraction empilée, pas « n/d »
+					expect(v.label).toBe(nomFraction(n, d)); // libellé parlé aligné sur la valeur
+				});
+			}
+		}
+	});
+
+	it("les choix texte (égalités oui/non) n'ont pas de vue riche", () => {
+		for (const ex of genere('num-frac-egalites')) {
+			if (ex.type !== 'qcm') continue;
+			expect(ex.choicesView).toBeUndefined();
+		}
+	});
+
+	it('choiceButtonHTML : valeur échappée par défaut, html + aria-label si vue', () => {
+		// Sans vue : la valeur est échappée (sécurité), pas de aria-label.
+		const plain = choiceButtonHTML('a < b', 0);
+		expect(plain).toContain('data-i="0"');
+		expect(plain).toContain('a &lt; b');
+		expect(plain).not.toContain('aria-label');
+		// Avec vue : html de confiance rendu tel quel + libellé parlé en aria-label.
+		const rich = choiceButtonHTML('3/4', 1, {
+			html: '<span class="frac">x</span>',
+			label: 'trois quarts',
+		});
+		expect(rich).toContain('aria-label="trois quarts"');
+		expect(rich).toContain('<span class="frac">x</span>');
 	});
 });
 

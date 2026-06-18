@@ -64,7 +64,10 @@ export function text(x: number, y: number, content: string, a: Attrs = {}): stri
 	return `<text ${attrs({ x, y, ...a })}>${escapeHTML(content)}</text>`;
 }
 
-/** Enveloppe SVG accessible : viewBox (w×h), role="img", titre + description. */
+/** Enveloppe SVG accessible : viewBox (w×h), role="img", titre + description.
+    `decorative` : SVG purement DÉCORATIF (`aria-hidden`, sans role/label/titre) —
+    à n'utiliser que lorsqu'un parent déjà nommé porte le sens (ex. une figure rendue
+    DANS un bouton-choix QCM, dont le `aria-label` décrit déjà le choix). */
 export function svgCanvas(
 	w: number,
 	h: number,
@@ -73,9 +76,17 @@ export function svgCanvas(
 	desc: string,
 	body: string,
 	cls = '',
+	decorative = false,
 ): string {
+	const klass = `figure-svg${cls ? ' ' + cls : ''}`;
+	if (decorative) {
+		return (
+			`<svg class="${klass}" viewBox="0 0 ${w} ${h}" aria-hidden="true" ` +
+			`xmlns="http://www.w3.org/2000/svg">${body}</svg>`
+		);
+	}
 	return (
-		`<svg class="figure-svg${cls ? ' ' + cls : ''}" viewBox="0 0 ${w} ${h}" ` +
+		`<svg class="${klass}" viewBox="0 0 ${w} ${h}" ` +
 		`role="img" aria-label="${escapeHTML(ariaLabel)}" xmlns="http://www.w3.org/2000/svg">` +
 		`<title>${escapeHTML(title)}</title><desc>${escapeHTML(desc)}</desc>${body}</svg>`
 	);
@@ -1106,82 +1117,84 @@ const SYM_MOTIFS: Record<SymMotif, SymPt[]> = {
 	],
 };
 
-/** Format 3 : trois propositions étiquetées (A/B/C). Dans chaque cellule, le
-    motif d'origine et son image de l'autre côté du miroir (axe `v` ou `h`).
-    `cells[i].t` décrit la transformation de l'image (le runner ne connaît que
-    le label correct, calculé côté données). */
-export function renderSymReflet(
+const SYM_CELL = 160; // côté du carré (question « miroir » et chaque scène-choix)
+
+/* Décor commun d'une scène de miroir : le motif de DÉPART placé d'un côté de l'axe
+   (gauche si axe vertical, haut si horizontal), l'axe (« miroir ») au centre, et
+   le côté opposé laissé libre (le reflet y prendra place). Échelle/placement
+   IDENTIQUES pour la question et pour chaque choix → seule l'image-reflet change. */
+function symSceneBase(
 	motif: SymMotif,
 	axis: 'v' | 'h',
-	cells: Array<{ t: SymTransform; label: string }>,
-): string {
-	const cw = 160;
-	const labelH = 30;
-	const W = cells.length * cw;
-	const H = cw + labelH;
-	const unit = SYM_MOTIFS[motif];
-	const body: string[] = [];
+): { base: SymPt[]; xc: number; yc: number; mline: [SymPt, SymPt] } {
+	const cw = SYM_CELL;
+	const reg =
+		axis === 'v'
+			? { x: 16, y: 16, w: cw / 2 - 28, h: cw - 32 }
+			: { x: 16, y: 16, w: cw - 32, h: cw / 2 - 28 };
+	const S = Math.min(reg.w, reg.h);
+	const sx = reg.x + (reg.w - S) / 2;
+	const sy = reg.y + (reg.h - S) / 2;
+	const base: SymPt[] = SYM_MOTIFS[motif].map(([ux, uy]) => [sx + ux * S, sy + uy * S]);
+	const mline: [SymPt, SymPt] =
+		axis === 'v'
+			? [
+					[cw / 2, 10],
+					[cw / 2, cw - 10],
+				]
+			: [
+					[10, cw / 2],
+					[cw - 10, cw / 2],
+				];
+	return { base, xc: sx + S / 2, yc: sy + S / 2, mline };
+}
 
-	cells.forEach((cell, i) => {
-		const ox0 = i * cw;
-		// Région du motif d'origine (gauche si axe vertical, haut si horizontal).
-		const reg =
-			axis === 'v'
-				? { x: 16, y: 22, w: cw / 2 - 28, h: cw - 44 }
-				: { x: 22, y: 16, w: cw - 44, h: cw / 2 - 28 };
-		const S = Math.min(reg.w, reg.h);
-		const sx = reg.x + (reg.w - S) / 2;
-		const sy = reg.y + (reg.h - S) / 2;
-		// Points du motif d'origine, en coordonnées LOCALES à la cellule.
-		const base: SymPt[] = unit.map(([ux, uy]) => [sx + ux * S, sy + uy * S]);
-		const xc = sx + S / 2;
-		const yc = sy + S / 2;
-		// Image selon la transformation, toujours dans la région MIROIR de `base`.
-		const img: SymPt[] = base.map(([x, y]) => {
-			if (axis === 'v') {
-				const dx = cw - 2 * xc; // translation vers la région droite
-				if (cell.t === 'reflet') return [cw - x, y]; // retourné (vrai miroir)
-				if (cell.t === 'glisse') return [x + dx, y]; // même sens (translation)
-				return [2 * xc - x + dx, 2 * yc - y]; // demi-tour (rotation)
-			}
-			const dy = cw - 2 * yc;
-			if (cell.t === 'reflet') return [x, cw - y];
-			if (cell.t === 'glisse') return [x, y + dy];
-			return [2 * xc - x, 2 * yc - y + dy];
-		});
-		// Mappage LOCAL → GLOBAL (décalage de cellule + arrondi).
-		const G = ([x, y]: SymPt): SymPt => [r2(ox0 + x), r2(y)];
-		// Miroir (axe en pointillé corail).
-		const mline: [SymPt, SymPt] =
-			axis === 'v'
-				? [G([cw / 2, 10]), G([cw / 2, cw - 10])]
-				: [G([10, cw / 2]), G([cw - 10, cw / 2])];
-		body.push(symDashedSeg(mline[0], mline[1]));
-		body.push(polygon(base.map(G), SHAPE_FILL));
-		body.push(polygon(img.map(G), SHAPE_FILL));
-		// Étiquette A/B/C sous la cellule.
-		const [lx, ly] = G([cw / 2, cw + 18]);
-		body.push(
-			text(lx, ly, cell.label, {
-				'text-anchor': 'middle',
-				'dominant-baseline': 'central',
-				'font-family': 'var(--ui)',
-				'font-weight': 800,
-				'font-size': 22,
-				fill: 'var(--ink)',
-			}),
-		);
-	});
+const symR = ([x, y]: SymPt): SymPt => [r2(x), r2(y)];
 
+/** Format 3 — figure de la QUESTION : la figure de départ posée devant le miroir
+    (axe en pointillé), l'autre côté laissé VIDE — le reflet est à reconnaître
+    parmi les choix. */
+export function renderSymMiroir(motif: SymMotif, axis: 'v' | 'h'): string {
+	const { base, mline } = symSceneBase(motif, axis);
+	const body = symDashedSeg(symR(mline[0]), symR(mline[1])) + polygon(base.map(symR), SHAPE_FILL);
 	return svgCanvas(
-		W,
-		H,
-		'Trois propositions de reflet',
-		'Reflets dans le miroir',
-		'Trois propositions A, B et C : dans chacune, une figure et une image de l’autre côté du miroir. Trouve l’image qui est le vrai reflet.',
-		body.join(''),
-		'figure-symetrie-reflet',
+		SYM_CELL,
+		SYM_CELL,
+		'Une figure devant un miroir',
+		'Figure et miroir',
+		'Une figure posée devant un miroir (le trait en pointillé) : son reflet est à reconnaître.',
+		body,
+		'figure-symetrie-miroir',
 	);
+}
+
+/** Format 3 — une SCÈNE-CHOIX cliquable : la même figure de départ, le miroir, et
+    DE L'AUTRE CÔTÉ une image transformée. `reflet` = retourné (vrai miroir, calculé
+    par réflexion EXACTE des points → pixel-perfect), `glisse` = même sens
+    (translation), `tourne` = demi-tour (rotation). Le motif-source et l'axe sont
+    répétés dans chaque choix À DESSEIN (avis pedagogue-primaire #201) : l'enfant
+    VÉRIFIE le pliage au lieu de devoir imaginer le reflet de tête. SVG décoratif
+    (`aria-hidden`) : le bouton porte déjà le libellé parlé du choix. */
+export function renderSymImage(motif: SymMotif, axis: 'v' | 'h', t: SymTransform): string {
+	const { base, xc, yc, mline } = symSceneBase(motif, axis);
+	const cw = SYM_CELL;
+	const img: SymPt[] = base.map(([x, y]) => {
+		if (axis === 'v') {
+			const dx = cw - 2 * xc; // emplacement miroir, côté opposé
+			if (t === 'reflet') return [cw - x, y]; // retourné (vrai miroir)
+			if (t === 'glisse') return [x + dx, y]; // même sens (translation)
+			return [2 * xc - x + dx, 2 * yc - y]; // demi-tour (rotation)
+		}
+		const dy = cw - 2 * yc;
+		if (t === 'reflet') return [x, cw - y];
+		if (t === 'glisse') return [x, y + dy];
+		return [2 * xc - x, 2 * yc - y + dy];
+	});
+	const body =
+		symDashedSeg(symR(mline[0]), symR(mline[1])) +
+		polygon(base.map(symR), SHAPE_FILL) +
+		polygon(img.map(symR), SHAPE_FILL);
+	return svgCanvas(SYM_CELL, SYM_CELL, '', '', '', body, 'figure-symetrie-image', true);
 }
 
 /* ---------- Dispatch par données (point d'extension) ---------- */
@@ -1288,12 +1301,8 @@ export type FigureSpec =
 	| { kind: 'fractionSomme'; a: [number, number]; b: [number, number] }
 	| { kind: 'fractionCollection'; num: number; den: number; parGroupe: number }
 	| { kind: 'symJuger'; shape: SymShape; axis?: SymAxis }
-	| {
-			kind: 'symReflet';
-			motif: SymMotif;
-			axis: 'v' | 'h';
-			cells: Array<{ t: SymTransform; label: string }>;
-	  };
+	| { kind: 'symMiroir'; motif: SymMotif; axis: 'v' | 'h' }
+	| { kind: 'symImage'; motif: SymMotif; axis: 'v' | 'h'; t: SymTransform };
 
 export function renderFigure(spec: FigureSpec): string {
 	switch (spec.kind) {
@@ -1325,7 +1334,9 @@ export function renderFigure(spec: FigureSpec): string {
 			return renderFractionCollection(spec.num, spec.den, spec.parGroupe);
 		case 'symJuger':
 			return renderSymJuger(spec.shape, spec.axis);
-		case 'symReflet':
-			return renderSymReflet(spec.motif, spec.axis, spec.cells);
+		case 'symMiroir':
+			return renderSymMiroir(spec.motif, spec.axis);
+		case 'symImage':
+			return renderSymImage(spec.motif, spec.axis, spec.t);
 	}
 }

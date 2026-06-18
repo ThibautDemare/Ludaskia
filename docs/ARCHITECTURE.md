@@ -248,6 +248,19 @@ droit, cylindre, cône, pyramide, boule) ; comptage **exact réservé aux polyè
 cylindre/cône/boule **jamais comptés** (ambigu) → propriétés qualitatives (« roule »,
 « une pointe », « 2 disques »). **Hors périmètre** : compter faces/arêtes/sommets sur
 le dessin 3D (faces cachées).
+**`maths/symetrie-axiale.ts`** (#201) : leçon **« Le miroir magique »** (`geo-symetrie-axiale`,
+Géométrie), **reconnaissance seule** (jamais tracer, attendu CE2). QCM mono-mode mêlant
+trois formats : amorce « a-t-elle un axe ? » (oui/non), « ce trait est-il un axe ? »
+(oui/non, avec le **piège diagonale-du-rectangle**, source de vérité `AXES`/`axeEstDeSymetrie`),
+et le cœur (~60 %) « quel est le reflet ? » — **choix QCM riches** (`choicesView`, #200) :
+chaque proposition est une **scène cliquable** (figure de départ + miroir + image), où l'image
+est le vrai reflet, un **glissé** (translation) ou un **tourné** (demi-tour). Distracteurs et
+scène complète par choix validés par le pédagogue (l'enfant **vérifie le pliage**, il n'imagine
+pas le reflet). Reflet calculé par réflexion **exacte** des points (`renderSymMiroir` /
+`renderSymImage`). **Exclue du sprint chronométré** (tâche visuo-spatiale). _Accessibilité_ :
+comme l'horloge ou les solides, c'est une **tâche purement visuelle** — le format « quel reflet ? »
+n'est **pas résoluble au lecteur d'écran** par conception (verbaliser l'orientation donnerait la
+réponse) ; publics servis = clavier et basse vision (figures agrandies, libellés positionnels).
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
@@ -296,10 +309,15 @@ le dessin 3D (faces cachées).
   primitive `ellipse` ajoutée) et **`renderGroupes(paniers, total)`** (#104 —
   division par le sens : `total` jetons en vrac + `paniers` contenants **vides** ;
   montre la SITUATION, jamais le résultat → l'enfant calcule, il ne compte pas une
-  réponse déjà posée). `FigureSpec` couvre `horloge | polygoneCote |
-  quadrillage | figurePlane | sceneFigures | cercle | solide | groupes`. On compose
+  réponse déjà posée) et **`renderSymMiroir(motif, axis)`** / **`renderSymImage(motif, axis, t)`**
+  (#201 — symétrie axiale : figure devant un miroir, et scène-choix « figure + miroir + image »
+  où l'image est un reflet/glissé/tourné ; reflet par réflexion exacte des points).
+  `FigureSpec` couvre `horloge | polygoneCote | quadrillage | figurePlane | sceneFigures |
+  cercle | solide | groupes | fraction* | symJuger | symMiroir | symImage`. On compose
   avec les primitives, on ajoute un `renderXxx` (+ variant `FigureSpec` au besoin),
-  jamais de SVG « à la main » dans une leçon. Tokens de couleur dédiés
+  jamais de SVG « à la main » dans une leçon. `svgCanvas(..., decorative)` rend un SVG
+  **décoratif** (`aria-hidden`, sans role/label) quand un parent déjà nommé porte le sens
+  (ex. une figure DANS un bouton-choix QCM dont l'`aria-label` décrit déjà le choix). Tokens de couleur dédiés
   (`--clock-min`…) ; styles dans `src/styles/figures.scss`.
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
   (`text` | `qcm` | `tuilesNombre` (numération #98) | `tuilesOrdre` (ordre

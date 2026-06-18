@@ -261,6 +261,18 @@ pas le reflet). Reflet calculé par réflexion **exacte** des points (`renderSym
 comme l'horloge ou les solides, c'est une **tâche purement visuelle** — le format « quel reflet ? »
 n'est **pas résoluble au lecteur d'écran** par conception (verbaliser l'orientation donnerait la
 réponse) ; publics servis = clavier et basse vision (figures agrandies, libellés positionnels).
+**`maths/angles.ts`** (#202) : leçon **« Les angles »** (`geo-angles`, Géométrie),
+cliente du moteur SVG (`renderAngle`). **QCM mono-mode** ; trois « temps » tirés à
+chaque question selon une pondération CE2 (40/35/25) : reconnaître l'angle droit
+(Oui/Non), **comparer** à l'angle droit (plus petit / égal / plus grand), puis
+**nommer** (aigu / droit / obtus — le vocabulaire n'arrive qu'au temps 3, avec une
+**bulle d'aide** `.angle-aide` qui l'ancre sur la comparaison). Calibrage CE2
+(programme 2025, avis pédagogue + designer) : jugement **à l'œil, SANS degrés**
+(aigu ~30–60°, obtus ~115–150°, marge nette autour de 90° ; zone indécidable
+~80–100° et quasi-plats >170° bannis) ; le **carré de codage** est posé d'office par
+le renderer sur tout angle droit (« égal/droit » n'est donc proposé que sur un angle
+marqué) ; orientations variées (bissectrice). Champ `explication` après réponse. La
+mesure au rapporteur relève du CM1 (future leçon).
 
 ### `src/core/`
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
@@ -289,7 +301,8 @@ réponse) ; publics servis = clavier et basse vision (figures agrandies, libell�
   (renvoie une chaîne de balisage, aucun accès DOM). Primitives bas niveau
   réutilisables (`svgCanvas` — viewBox carré + `role="img"` + `<title>`/`<desc>` +
   `aria-label` ; `line`, `circle`, `rect`, `polygon`, `polyline`, `text`,
-  `pointOnCircle`) et un premier renderer **`renderHorloge(h, m)`** (cadran,
+  `pointOnCircle`, et **`arc(cx, cy, r, deg1, deg2)`** — path d'arc, #202) et un
+  premier renderer **`renderHorloge(h, m)`** (cadran,
   graduations, chiffres, deux aiguilles distinctes — la petite/heures
   **proportionnelle aux minutes**), **`renderPolygoneCote(points, labels)`**
   (#99 — polygone dessiné **à l'échelle** depuis ses sommets, chaque côté coté à
@@ -309,11 +322,15 @@ réponse) ; publics servis = clavier et basse vision (figures agrandies, libell�
   primitive `ellipse` ajoutée) et **`renderGroupes(paniers, total)`** (#104 —
   division par le sens : `total` jetons en vrac + `paniers` contenants **vides** ;
   montre la SITUATION, jamais le résultat → l'enfant calcule, il ne compte pas une
-  réponse déjà posée) et **`renderSymMiroir(motif, axis)`** / **`renderSymImage(motif, axis, t)`**
+  réponse déjà posée), **`renderSymMiroir(motif, axis)`** / **`renderSymImage(motif, axis, t)`**
   (#201 — symétrie axiale : figure devant un miroir, et scène-choix « figure + miroir + image »
-  où l'image est un reflet/glissé/tourné ; reflet par réflexion exacte des points).
+  où l'image est un reflet/glissé/tourné ; reflet par réflexion exacte des points) et
+  **`renderAngle(opening, bisector)`** (#202 — deux demi-droites depuis un sommet net : un
+  **arc** matérialise l'ouverture d'un aigu/obtus, le **carré de codage** marque l'angle droit
+  (jamais les deux), orientation variée par la bissectrice ; **aucune mesure affichée** et
+  invariant « 90° ⇒ carré » garanti par `opening === 90`).
   `FigureSpec` couvre `horloge | polygoneCote | quadrillage | figurePlane | sceneFigures |
-  cercle | solide | groupes | fraction* | symJuger | symMiroir | symImage`. On compose
+  cercle | solide | groupes | fraction* | symJuger | symMiroir | symImage | angle`. On compose
   avec les primitives, on ajoute un `renderXxx` (+ variant `FigureSpec` au besoin),
   jamais de SVG « à la main » dans une leçon. `svgCanvas(..., decorative)` rend un SVG
   **décoratif** (`aria-hidden`, sans role/label) quand un parent déjà nommé porte le sens

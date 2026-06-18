@@ -60,6 +60,18 @@
 	color: var(--clock-min);
 }
 
+/* ---------- Angle (#202) ---------- */
+/* Bulle d'aide du temps 3 : ancre le vocabulaire aigu/obtus sur la comparaison à
+   l'angle droit (jamais une mesure chiffrée). Sous le SVG, comme la légende de
+   l'horloge. */
+.angle-aide {
+	margin: 0.35rem 0 0;
+	max-width: 260px;
+	color: var(--grey);
+	font-size: 0.85rem;
+	text-align: center;
+}
+
 /* ---------- Saisie de l'heure en 2 champs « [h] h [min] » (#88) ---------- */
 .heure-input {
 	display: inline-flex;

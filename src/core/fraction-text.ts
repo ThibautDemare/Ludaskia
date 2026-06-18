@@ -9,6 +9,7 @@
    transforme cette clé EN AFFICHAGE empilé au moment du rendu.
    ============================================================ */
 import { escapeHTML } from './utils';
+import type { ChoiceView } from './exercise';
 
 // Noms du dénominateur au SINGULIER : 2,3,4 sont spéciaux (demi/tiers/quart) ;
 // au-delà, ordinal en « -ième ». Couvre les dénominateurs du périmètre CE2.
@@ -50,7 +51,17 @@ export function stackFractions(escaped: string): string {
 	);
 }
 
-/** Échappe un texte puis empile ses fractions (énoncés et choix de QCM). */
+/** Échappe un texte puis empile ses fractions (énoncés libres de QCM/fiche). */
 export function mathInline(text: string): string {
 	return stackFractions(escapeHTML(text));
+}
+
+/** Vues riches de choix de QCM faits de notations « num/den » : chaque choix devient
+    une fraction empilée (html) + son libellé parlé (label). Aligné par index sur les
+    valeurs passées (qui restent la clé de comparaison du QCM). */
+export function fractionChoiceViews(choices: string[]): ChoiceView[] {
+	return choices.map((c) => {
+		const [n, d] = c.split('/').map(Number);
+		return { html: fractionInlineHTML(n, d), label: nomFraction(n, d) };
+	});
 }

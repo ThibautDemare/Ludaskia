@@ -25,8 +25,15 @@ import {
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { hasMode } from '../core/exercise';
+import type { ChoiceView } from '../core/exercise';
+import { mathInline } from '../core/fraction-text';
 import { icon, type IconName } from './icon';
-import { checkItemAnswer, figureBlock, TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
+import {
+	checkItemAnswer,
+	choiceButtonHTML,
+	figureBlock,
+	TEXT_ANSWER_INPUT_ATTRS,
+} from '../core/items';
 import type { Item } from '../core/items';
 import {
 	updateStreak,
@@ -310,6 +317,7 @@ function sprintNext() {
 	let q: Item,
 		def: LessonDef,
 		choices: string[] | null,
+		choicesView: ChoiceView[] | undefined,
 		key: string,
 		guard = 0;
 	do {
@@ -324,9 +332,11 @@ function sprintNext() {
 				_lesson: def.id,
 			};
 			choices = ex.type === 'qcm' ? ex.choices : null;
+			choicesView = ex.type === 'qcm' ? ex.choicesView : undefined;
 		} else {
 			q = genLessonItem(def); // aiguille math (bilanQ) ; pose _lesson
 			choices = null;
+			choicesView = undefined;
 		}
 		key = commKey(q.text);
 		guard++;
@@ -337,7 +347,7 @@ function sprintNext() {
 	sprintCurrentDef = def;
 	const stage = document.getElementById('sprintStage');
 	if (!stage) return;
-	if (choices) renderSprintQcm(stage, def, q, choices);
+	if (choices) renderSprintQcm(stage, def, q, choices, choicesView);
 	else renderSprintTyped(stage, def, q);
 }
 
@@ -368,14 +378,21 @@ function renderSprintTyped(stage: HTMLElement, def: LessonDef, q: Item) {
 }
 
 // Question à choix (conjugaison) : un clic sur une proposition vaut réponse.
-function renderSprintQcm(stage: HTMLElement, def: LessonDef, q: Item, choices: string[]) {
-	const question = escapeHTML(q.text).replace('@', '<span class="sprint-blank">?</span>');
+function renderSprintQcm(
+	stage: HTMLElement,
+	def: LessonDef,
+	q: Item,
+	choices: string[],
+	choicesView?: ChoiceView[],
+) {
+	// `mathInline` : empile les fractions « num/den » de l'énoncé (barre horizontale).
+	const question = mathInline(q.text).replace('@', '<span class="sprint-blank">?</span>');
 	stage.innerHTML = `
     <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(def.label)}</span></div>
     ${figureBlock(q.figure)}
     <div class="sprint-q sprint-q-qcm">${question}</div>
     <div class="sprint-choices">
-      ${choices.map((c, i) => `<button class="sprint-choice" data-i="${i}">${escapeHTML(c)}</button>`).join('')}
+      ${choices.map((c, i) => choiceButtonHTML(c, i, choicesView?.[i])).join('')}
     </div>`;
 	stage.querySelectorAll<HTMLButtonElement>('.sprint-choice').forEach((btn) => {
 		btn.addEventListener('click', () => sprintAnswer(choices[Number(btn.dataset.i)]));

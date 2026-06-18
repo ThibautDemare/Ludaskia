@@ -5,6 +5,14 @@
 import { normalizeText } from './utils';
 import type { IconName } from './icon-names';
 
+/** Affichage riche d'un choix de QCM (#200) : un fragment HTML/SVG DE CONFIANCE
+    (généré par l'app, jamais une saisie utilisateur) et son libellé parlé pour
+    l'accessibilité (lu par le lecteur d'écran / le TTS, jamais le balisage). */
+export interface ChoiceView {
+	html: string;
+	label: string;
+}
+
 /** Une sous-question d'un problème (#199) : son intitulé et sa réponse numérique. */
 export interface ProblemeEtape {
 	question: string; // ex. « Combien Léo a-t-il de billes maintenant ? »
@@ -32,11 +40,18 @@ export type Exercise =
 	  }
 	// `explication` (#110) : justification pédagogique optionnelle affichée APRÈS
 	// la réponse dans le runner QCM (ex. critère de substitution des homophones).
+	// `choicesView` (#200) : affichage RICHE optionnel des choix (HTML/SVG de
+	// confiance + libellé parlé), aligné par index sur `choices`. `choices` reste la
+	// VALEUR comparée (clé de correction/déduplication) ; quand `choicesView` est
+	// présent, le runner rend `html` (non échappé) avec `aria-label=label` au lieu du
+	// texte brut. Sert p. ex. à écrire « 2/4 » en fraction empilée (barre horizontale)
+	// ou, à terme, à proposer une figure SVG en choix.
 	| {
 			type: 'qcm';
 			question: string;
 			answer: string;
 			choices: string[];
+			choicesView?: ChoiceView[];
 			figure?: string;
 			explication?: string;
 			parle?: string;

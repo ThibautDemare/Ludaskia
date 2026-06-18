@@ -27,6 +27,10 @@ test('Lire une fraction (QCM) : figure barre SVG, 4 choix, un clic donne un reto
 	const choices = page.locator('.sprint-choice');
 	await choices.first().waitFor();
 	expect(await choices.count()).toBe(4);
+	// Choix riches (#200) : la fraction est rendue EMPILÉE (barre horizontale),
+	// pas « 6/8 » à plat, et le bouton porte un libellé parlé pour l'accessibilité.
+	await expect(choices.first().locator('.frac')).toBeVisible();
+	await expect(choices.first()).toHaveAttribute('aria-label', /.+/);
 	await choices.first().click();
 	await expect(page.locator('#lqcmFeedback')).toBeVisible();
 	await expect(page.locator('#lqcmNext')).toBeVisible();

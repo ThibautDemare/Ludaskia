@@ -17,7 +17,7 @@
    au miroir (seul outil de vérification d'un CE2). Mono-mode QCM ; exclue du
    sprint chronométré (tâche visuo-spatiale, pas de course contre la montre).
    ============================================================ */
-import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
+import type { ChoiceView, Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import type { SymAxis, SymMotif, SymShape, SymTransform } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
 import { choice, normalizeText, rnd, sample } from '../../core/utils';
@@ -48,6 +48,7 @@ interface Fait {
 	base: string;
 	answer: string;
 	choices: string[];
+	choicesView?: ChoiceView[]; // affichage riche des choix (figures-images du format 3)
 	figure: string;
 	explication: string;
 	parle: string;
@@ -139,23 +140,32 @@ function faitAxe(): Fait {
 /* ---------- Format 3 : « quel est le vrai reflet ? » (cœur) ---------- */
 
 const MOTIFS: SymMotif[] = ['drapeau', 'botte'];
-const LABELS = ['A', 'B', 'C'];
+// Valeurs (clé de correction) ET libellés parlés des choix : positionnels et neutres
+// (ne soufflent pas la réponse). Les images sont rendues dans `choicesView`.
+const POSITIONS = ['la première image', 'la deuxième image', 'la troisième image'];
 
 function faitReflet(): Fait {
 	const motif = choice(MOTIFS);
 	const axis = choice<'v' | 'h'>(['v', 'v', 'h']); // vertical un peu plus fréquent (plus facile)
 	const transforms = sample<SymTransform>(['reflet', 'glisse', 'tourne'], 3);
-	const cells = transforms.map((t, i) => ({ t, label: LABELS[i] }));
+	// Chaque choix est une SCÈNE cliquable (figure de départ + miroir + image), pour
+	// que l'enfant VÉRIFIE le pliage au lieu d'imaginer le reflet (avis pédagogue).
+	// La valeur reste positionnelle (correction + récapitulatif).
+	const choicesView: ChoiceView[] = transforms.map((t, i) => ({
+		html: renderFigure({ kind: 'symImage', motif, axis, t }),
+		label: POSITIONS[i].charAt(0).toUpperCase() + POSITIONS[i].slice(1),
+	}));
 	// `'reflet'` est toujours présent (sample des trois transformations) → indexOf ≥ 0.
-	const answer = LABELS[transforms.indexOf('reflet')];
+	const answer = POSITIONS[transforms.indexOf('reflet')];
 	return {
-		base: 'Quelle image est le vrai reflet dans le miroir ?',
+		base: "Touche l'image où la figure est bien reflétée dans le miroir.",
 		answer,
-		choices: LABELS.slice(),
-		figure: renderFigure({ kind: 'symReflet', motif, axis, cells }),
+		choices: POSITIONS.slice(),
+		choicesView,
+		figure: renderFigure({ kind: 'symMiroir', motif, axis }),
 		parle:
-			'Observe la figure et le miroir. Parmi les images A, B et C, laquelle est le vrai reflet de la figure ?',
-		explication: `Le reflet, c'est l'image ${answer} : elle est retournée, comme dans un vrai miroir. Les autres ont seulement été glissées (déplacées sans être retournées) ou tournées.`,
+			'Observe la figure et son miroir. Touche, parmi les trois images, celle où la figure est bien reflétée dans le miroir.',
+		explication: `Le bon reflet est ${answer} : la figure y est retournée, comme dans un vrai miroir. Dans les autres, elle est seulement glissée (déplacée sans être retournée) ou tournée.`,
 	};
 }
 
@@ -172,6 +182,7 @@ function symetrieType(): ExerciseType {
 				question: f.base,
 				answer: f.answer,
 				choices: f.choices,
+				choicesView: f.choicesView,
 				figure: f.figure,
 				explication: f.explication,
 				parle: f.parle,

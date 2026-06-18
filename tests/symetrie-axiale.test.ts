@@ -1,20 +1,21 @@
 /* ============================================================
    Symétrie axiale (#201) — logique de génération (src/data/maths/symetrie-axiale)
-   et exactitude du rendu (src/core/figures : renderSymReflet).
+   et exactitude du rendu (src/core/figures : renderSymMiroir / renderSymImage).
    On tire beaucoup de questions et on vérifie les invariants CE2 : toujours un
-   QCM à figure, réponse parmi les choix, les trois formats présents, et SURTOUT
-   que le « reflet » est le miroir EXACT du motif (pixel-perfect). Pas de DOM.
+   QCM à figure, réponse parmi les choix, les trois formats présents, le format
+   reflet en figures-choix cliquables, et SURTOUT que le « reflet » est le miroir
+   EXACT du motif (pixel-perfect). Pas de DOM.
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import { SYMETRIE_LESSONS, axeEstDeSymetrie } from '../src/data/maths/symetrie-axiale';
-import { renderSymReflet } from '../src/core/figures';
+import { renderSymImage } from '../src/core/figures';
 import type { SymMotif } from '../src/core/figures';
 
 const type = SYMETRIE_LESSONS[0].exerciseType;
 const TIRAGES = 600;
 const draws = Array.from({ length: TIRAGES }, () => type.generate('qcm'));
 
-/** Extrait les listes de points de chaque <polygon> d'un fragment SVG. */
+/** Liste des points de chaque <polygon> d'un fragment SVG. */
 function polygones(svg: string): number[][][] {
 	const out: number[][][] = [];
 	const re = /<polygon points="([^"]+)"/g;
@@ -50,30 +51,35 @@ describe('symétrie axiale — invariants de génération', () => {
 
 	it('les trois formats apparaissent (amorce, axe, reflet)', () => {
 		const ouiNon = draws.filter((d) => d.type === 'qcm' && d.choices.join('') === 'OuiNon');
-		const reflet = draws.filter((d) => d.type === 'qcm' && d.choices.join('') === 'ABC');
+		const reflet = draws.filter((d) => d.type === 'qcm' && !!d.choicesView);
 		expect(reflet.length).toBeGreaterThan(0);
 		const enonces = new Set(ouiNon.map((d) => (d.type === 'qcm' ? d.question : '')));
 		expect(enonces.has('Cette figure a-t-elle un axe de symétrie ?')).toBe(true);
 		expect(enonces.has('Le trait en pointillé est-il un axe de symétrie ?')).toBe(true);
 	});
 
-	it('le format reflet montre trois propositions étiquetées A, B, C', () => {
-		const reflet = draws.find((d) => d.type === 'qcm' && d.choices.join('') === 'ABC');
+	it('le format reflet propose trois FIGURES-choix cliquables + une figure « miroir »', () => {
+		const reflet = draws.find((d) => d.type === 'qcm' && !!d.choicesView);
 		expect(reflet).toBeTruthy();
-		if (reflet && reflet.type === 'qcm') {
-			expect(reflet.figure).toContain('>A<');
-			expect(reflet.figure).toContain('>B<');
-			expect(reflet.figure).toContain('>C<');
+		if (reflet && reflet.type === 'qcm' && reflet.choicesView) {
+			// La question montre le miroir ; chaque choix est une image SVG avec libellé parlé.
+			expect(reflet.figure).toContain('figure-symetrie-miroir');
+			expect(reflet.choicesView).toHaveLength(reflet.choices.length);
+			expect(reflet.choicesView).toHaveLength(3);
+			for (const v of reflet.choicesView) {
+				expect(v.html).toContain('figure-symetrie-image');
+				expect(v.label.length).toBeGreaterThan(0);
+			}
 		}
 	});
 });
 
 describe('symétrie axiale — reflet pixel-perfect', () => {
-	const CW = 160; // largeur de cellule de renderSymReflet (axe au centre)
-
-	it('axe vertical : l’image « reflet » est le miroir EXACT du motif (x → CW - x, y inchangé)', () => {
-		const svg = renderSymReflet('drapeau', 'v', [{ t: 'reflet', label: 'A' }]);
-		const [base, img] = polygones(svg);
+	const CW = 160; // côté de la scène (axe au centre)
+	// Chaque scène-choix contient DEUX polygones : [0] = figure de départ (identique
+	// partout), [1] = image transformée. Le reflet doit être le miroir EXACT du départ.
+	it('axe vertical : le reflet est le miroir EXACT de la figure (x → CW - x, y inchangé)', () => {
+		const [base, img] = polygones(renderSymImage('drapeau', 'v', 'reflet'));
 		expect(base.length).toBe(img.length);
 		for (let i = 0; i < base.length; i++) {
 			expect(base[i][0] + img[i][0]).toBeCloseTo(CW, 1); // somme des x = axe doublé
@@ -81,9 +87,8 @@ describe('symétrie axiale — reflet pixel-perfect', () => {
 		}
 	});
 
-	it('axe horizontal : l’image « reflet » est le miroir EXACT (y → CW - y, x inchangé)', () => {
-		const svg = renderSymReflet('botte', 'h', [{ t: 'reflet', label: 'A' }]);
-		const [base, img] = polygones(svg);
+	it('axe horizontal : le reflet est le miroir EXACT de la figure (y → CW - y, x inchangé)', () => {
+		const [base, img] = polygones(renderSymImage('botte', 'h', 'reflet'));
 		for (let i = 0; i < base.length; i++) {
 			expect(img[i][0]).toBeCloseTo(base[i][0], 5);
 			expect(base[i][1] + img[i][1]).toBeCloseTo(CW, 1);
@@ -94,13 +99,10 @@ describe('symétrie axiale — reflet pixel-perfect', () => {
 		const motifs: SymMotif[] = ['drapeau', 'botte'];
 		for (const motif of motifs) {
 			for (const axis of ['v', 'h'] as const) {
+				// poly[1] = l'image transformée (poly[0] = figure de départ, identique partout).
 				const img = (t: 'reflet' | 'glisse' | 'tourne') =>
-					JSON.stringify(polygones(renderSymReflet(motif, axis, [{ t, label: 'A' }]))[1]);
-				const reflet = img('reflet');
-				const glisse = img('glisse');
-				const tourne = img('tourne');
-				// Trois propositions mutuellement distinctes → une seule bonne réponse (le reflet).
-				expect(new Set([reflet, glisse, tourne]).size).toBe(3);
+					JSON.stringify(polygones(renderSymImage(motif, axis, t))[1]);
+				expect(new Set([img('reflet'), img('glisse'), img('tourne')]).size).toBe(3);
 			}
 		}
 	});

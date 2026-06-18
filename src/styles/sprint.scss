@@ -157,6 +157,22 @@
 	width: auto;
 	vertical-align: middle;
 }
+/* Scènes-reflets de la symétrie (#201) : chaque choix est une mini-scène (figure +
+   miroir + image). La chiralité doit rester lisible au doigt → vignettes plus
+   grandes que les choix-figures génériques, cadre resserré. Règle placée APRÈS la
+   précédente (même spécificité) pour la surcharger. */
+.sprint-choice .figure-symetrie-image {
+	max-height: 116px;
+}
+.sprint-choice:has(.figure-symetrie-image) {
+	padding: 10px 12px;
+}
+/* Focus clavier visible sur les choix (cohérent avec les autres contrôles) :
+   indispensable pour atteindre les figures-choix au clavier (#201). */
+.sprint-choice:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
 .sprint-input {
 	font: inherit;
 	font-family: var(--ui);

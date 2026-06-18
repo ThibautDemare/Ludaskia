@@ -18,10 +18,22 @@ import { getLessonById, getLessonsByCategory } from '../src/core/catalog';
 
 const RE_GRAS_G = /\*\*(.+?)\*\*/g;
 const cibleDe = (phrase: string) => phrase.match(/\*\*(.+?)\*\*/)?.[1] ?? '';
+const aPlat = (phrase: string) => phrase.replace(/\*\*(.+?)\*\*/g, '$1');
+// Mots de la phrase (minuscule, ponctuation de bord retirée) — sert à vérifier
+// qu'aucune option ne figure déjà dans la phrase (pas d'amorce / d'indice).
+const motsDe = (phrase: string): Set<string> =>
+	new Set(
+		aPlat(phrase)
+			.toLowerCase()
+			.split(/\s+/)
+			.map((m) => m.replace(/^[«».,;:!?"'']+|[«».,;:!?"'']+$/g, '')),
+	);
 
 /* Invariants communs à une banque (contraires ou sens proche). */
 function verifieBanque(banque: ItemSens[], min: number) {
 	expect(banque.length).toBeGreaterThanOrEqual(min);
+	// Un même mot-cible doit toujours appeler la MÊME réponse (anti-nœud lexical).
+	const cibleVersReponses = new Map<string, Set<string>>();
 	for (const it of banque) {
 		// Exactement UN mot-cible en gras dans la phrase (jamais isolé, toujours en contexte).
 		const gras = it.phrase.match(RE_GRAS_G) ?? [];
@@ -35,8 +47,17 @@ function verifieBanque(banque: ItemSens[], min: number) {
 		expect(new Set(opts).size, it.phrase).toBe(3);
 		// Le mot-cible n'est jamais une option (ni réponse, ni distracteur).
 		expect(opts, it.phrase).not.toContain(cible);
+		// Aucune option ne figure déjà dans la phrase (sinon amorce / indice involontaire).
+		const mots = motsDe(it.phrase);
+		for (const o of opts) expect(mots.has(o.toLowerCase()), `${it.phrase} :: « ${o} »`).toBe(false);
 		// Phrase courte (consigne #203 : ~8 mots) — borne large pour rester robuste.
 		expect(it.phrase.split(/\s+/).length, it.phrase).toBeLessThanOrEqual(12);
+		const k = cible.toLowerCase();
+		if (!cibleVersReponses.has(k)) cibleVersReponses.set(k, new Set());
+		cibleVersReponses.get(k)!.add(it.reponse);
+	}
+	for (const [cible, reps] of cibleVersReponses) {
+		expect(reps.size, `mot-cible « ${cible} » → { ${[...reps].join(', ')} }`).toBe(1);
 	}
 }
 
@@ -62,8 +83,8 @@ describe('Vocabulaire — contraires (#203)', () => {
 			expect(ex.picto).toBe('↔');
 			expect(ex.ttsItems).toBe(true);
 			expect(ex.explication ?? '').toContain('le contraire de');
-			// Lecture vocale = consigne + phrase « à plat » (sans marqueurs de gras).
-			expect(ex.parle ?? '').toContain('Quel mot veut dire le contraire ?');
+			// Lecture vocale : NOMME le mot-cible (le gras est invisible à l'oral), sans marqueurs.
+			expect(ex.parle ?? '').toContain('Quel mot veut dire le contraire de');
 			expect(ex.parle ?? '').not.toContain('**');
 		}
 	});
@@ -86,11 +107,11 @@ describe('Vocabulaire — mots de sens proche (#203)', () => {
 			expect(ex.choices).toContain(ex.answer);
 			expect(reponses.has(ex.answer)).toBe(true);
 			expect(ex.question).toMatch(/\*\*(.+?)\*\*/);
-			expect(ex.consigne).toBe('Quel mot veut dire pareil ?');
+			expect(ex.consigne).toBe('Quel mot veut dire presque la même chose ?');
 			expect(ex.picto).toBe('=');
 			expect(ex.ttsItems).toBe(true);
 			expect(ex.explication ?? '').toContain('la même chose');
-			expect(ex.parle ?? '').toContain('Quel mot veut dire pareil ?');
+			expect(ex.parle ?? '').toContain('presque la même chose');
 			expect(ex.parle ?? '').not.toContain('**');
 		}
 	});

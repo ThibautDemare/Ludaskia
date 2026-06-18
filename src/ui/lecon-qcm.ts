@@ -141,7 +141,7 @@ function renderQuestion(): void {
 	const consigneHTML = q.consigne
 		? `<div class="lqcm-consigne"${ttsAttr(ttsText)}>${
 				q.picto ? `<span class="lqcm-picto" aria-hidden="true">${escapeHTML(q.picto)}</span>` : ''
-			}<strong>${escapeHTML(q.consigne)}</strong></div>`
+			}<span class="lqcm-consigne-txt">${escapeHTML(q.consigne)}</span></div>`
 		: '';
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">

@@ -222,6 +222,8 @@ html.anim-reduced .sprint-choice.correct {
 /* Consigne-question en gras, précédée d'un picto décoratif (↔ contraire, = sens
    proche) posé dans une pastille. Le picto DOUBLE le sens : il n'en est pas l'unique
    indice (le texte de la consigne reste explicite, et le picto est aria-hidden). */
+/* Consigne sobre (instruction, pas bannière) : c'est la PASTILLE qui porte l'accent
+   coloré, pas tout le texte — sinon elle vole la vedette à la phrase (designer-ux-enfant). */
 .lqcm-consigne {
 	display: flex;
 	align-items: center;
@@ -231,9 +233,9 @@ html.anim-reduced .sprint-choice.correct {
 	margin: 0 auto 14px;
 	max-width: 560px;
 	font-family: var(--ui);
-	font-size: 20px;
-	font-weight: 700;
-	color: var(--accent-dark);
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--grey);
 }
 .lqcm-picto {
 	display: inline-flex;
@@ -248,12 +250,18 @@ html.anim-reduced .sprint-choice.correct {
 	font-size: 1.1em;
 	line-height: 1;
 }
+/* Mot-cible (#203) : en gras (via enonceTexte) ET coloré, seul élément en accent
+   dans la phrase — repérable d'un coup d'œil, double codage (designer-ux-enfant). */
+.sprint-q-qcm strong {
+	color: var(--accent-dark);
+}
 /* Option « parlante » (#203) : le bouton-choix et son haut-parleur forment un bloc,
-   ce qui évite d'imbriquer un bouton (le haut-parleur) dans un autre (le choix). */
+   ce qui évite d'imbriquer un bouton (le haut-parleur) dans un autre (le choix). Le
+   gap sépare nettement « écouter » de « répondre » (réponse irréversible au tap). */
 .lqcm-choice-wrap {
 	display: inline-flex;
 	align-items: center;
-	gap: 4px;
+	gap: 8px;
 }
 
 /* ---- Runner « tuiles » de numération (#98) ---- */

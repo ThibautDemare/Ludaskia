@@ -278,6 +278,105 @@ html.anim-reduced .sprint-choice.correct {
 	gap: 8px;
 }
 
+/* ---- Variante « ponctuation » du runner QCM (#204) ----
+   Trou final = cadre vide pointillé (jamais un « ? » qui se confondrait avec la
+   réponse). Choix = boutons-symboles (gros glyphe + mot), cible tactile ≥ 72 px. */
+.lqcm-ponct-trou {
+	display: inline-block;
+	min-width: 1.5em;
+	margin-left: 0.15em;
+	padding: 0 0.12em;
+	font-weight: 800;
+	text-align: center;
+	border: 2px dashed var(--accent);
+	border-radius: 6px;
+	background: var(--accent-soft); /* zone « à remplir » lisible (comme .ltui-slot) */
+	vertical-align: baseline;
+}
+/* Le signe réinjecté est TOUJOURS la bonne réponse → on le montre « juste » (vert),
+   même après une erreur (le rouge reste porté par le bouton tapé). Petit pop à
+   l'apparition pour attirer l'œil sur la phrase complétée (coupé si anim réduites). */
+.lqcm-ponct-trou.rempli {
+	border-style: solid;
+	animation: lqcm-trou-pop 0.25s ease-out;
+}
+.lqcm-ponct-trou.rempli-ok {
+	border-color: var(--ok);
+	color: var(--ok);
+	background: #e4f1ea;
+}
+@keyframes lqcm-trou-pop {
+	0% {
+		transform: scale(0.85);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.lqcm-ponct-trou.rempli {
+		animation: none;
+	}
+}
+html.anim-reduced .lqcm-ponct-trou.rempli {
+	animation: none;
+}
+.lqcm-choices-sym {
+	gap: 20px;
+}
+/* Les boutons-symboles n'ont pas de classe propre (choiceButtonHTML émet juste
+   .sprint-choice) : on les cible via leur conteneur. */
+.lqcm-choices-sym .sprint-choice {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	min-width: 80px;
+	min-height: 80px;
+	padding: 10px 12px;
+}
+/* Tablette : cibles plus généreuses (loi de Fitts, doigt de CE2). */
+@media (min-width: 560px) {
+	.lqcm-choices-sym {
+		gap: 24px;
+	}
+	.lqcm-choices-sym .sprint-choice {
+		min-width: 92px;
+		min-height: 92px;
+	}
+}
+.lqcm-sym-glyph {
+	/* Le glyphe est de l'INFORMATION (le signe à choisir) : en --ink (contraste
+	   maximal, indépendant du thème), pas en couleur d'accent. */
+	font-size: 44px;
+	line-height: 1;
+	font-weight: 800;
+	color: var(--ink);
+}
+/* Le point est minuscule par nature : on le grossit pour équilibrer sa présence
+   visuelle face à « ? » et « ! ». */
+.lqcm-sym-glyph--point {
+	font-size: 56px;
+}
+.lqcm-sym-mot {
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1.1;
+	text-align: center;
+	color: var(--grey);
+}
+/* États juste/faux : la couleur gagne aussi le glyphe et le mot (sinon le glyphe
+   reste en --ink et l'info ne passe pas pour les boutons-symboles). */
+.lqcm-choices-sym .sprint-choice.correct .lqcm-sym-glyph,
+.lqcm-choices-sym .sprint-choice.correct .lqcm-sym-mot {
+	color: var(--ok);
+}
+.lqcm-choices-sym .sprint-choice.wrong .lqcm-sym-glyph,
+.lqcm-choices-sym .sprint-choice.wrong .lqcm-sym-mot {
+	color: var(--ko);
+}
+
 /* ---- Runner « tuiles » de numération (#98) ---- */
 .ltui-consigne {
 	font-family: var(--ui);

@@ -16,6 +16,7 @@ import { FAMILLES_LESSONS } from '../data/francais/familles';
 import { CHAMPS_LESSONS } from '../data/francais/champs-lexicaux';
 import { GRAMMAIRE_SUJET_LESSONS } from '../data/francais/grammaire-sujet';
 import { CLASSES_LESSONS } from '../data/francais/classes-mots';
+import { PHRASES_LESSONS } from '../data/francais/phrases';
 import { ACCORD_LESSONS } from '../data/francais/accords';
 import { PARTICIPE_LESSONS } from '../data/francais/participe-passe-etre';
 import { HOMOPHONE_LESSONS } from '../data/francais/homophones';
@@ -526,6 +527,22 @@ const CLASSES_LESSONS_DEFS: LessonDef[] = CLASSES_LESSONS.map((d) => ({
 	exerciseType: d.exerciseType,
 }));
 
+/* ---------- Grammaire — les phrases : ponctuation finale & types (#204) ----------
+   2 leçons QCM regroupées sous la rubrique « Les phrases » : F1 « Quel point à la
+   fin ? » (boutons-symboles `. ? !`) et F2 « Quel type de phrase ? ». Hors sprint
+   (excludeFromSprint) : leur valeur tient au choix QCM / aux boutons-symboles et,
+   pour F2, à des libellés multi-mots — pas à la saisie chronométrée. */
+const PHRASES_LESSONS_DEFS: LessonDef[] = PHRASES_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'francais',
+	category: 'fr-grammaire',
+	level: 'ce2',
+	rubrique: 'Les phrases',
+	exerciseType: d.exerciseType,
+	excludeFromSprint: true,
+}));
+
 /* ---------- Catalogue des leçons « Calcul » (opérations posées, #97) ----------
    Items `kind: 'posed'` : la grille (cellules-chiffres notées une à une) est
    rendue par renderItem. Passent par les bilans/impression/révision ; exclues du
@@ -593,6 +610,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...CHAMPS_LESSONS_DEFS,
 	...GRAMMAIRE_SUJET_LESSONS_DEFS,
 	...CLASSES_LESSONS_DEFS,
+	...PHRASES_LESSONS_DEFS,
 ];
 
 /* Une opération posée (#97) se rend en grille multi-cellules : incompatible avec

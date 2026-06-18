@@ -10,7 +10,7 @@
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
-import type { ChoiceView, ExerciseMode } from '../core/exercise';
+import type { ChoiceView, ExerciseMode, QcmVariante } from '../core/exercise';
 import type { Item } from '../core/items';
 import { checkItemAnswer, choiceButtonHTML, enonceTexte, figureBlock } from '../core/items';
 import { commKey, escapeHTML } from '../core/utils';
@@ -18,6 +18,7 @@ import { mathInline } from '../core/fraction-text';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts, bindItemTts } from './consigne-tts';
 import type { ItemTtsCible } from './consigne-tts';
+import { PONCT_MOTS, ponctView } from './ponctuation-view';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import { streakSuffix } from '../core/progress';
@@ -45,6 +46,7 @@ interface QcmQuestion {
 	consigne?: string; // consigne renforcée affichée en gras (#203)
 	picto?: string; // symbole décoratif doublant la consigne (#203, « ↔ » / « = »)
 	ttsItems?: boolean; // haut-parleur sur le mot-cible + chaque option (#203)
+	variante?: QcmVariante; // présentation boutons-symboles + cadre pointillé (#204)
 }
 
 let lesson: LessonDef;
@@ -92,6 +94,7 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 			consigne: ex.consigne,
 			picto: ex.picto,
 			ttsItems: ex.ttsItems,
+			variante: ex.variante,
 		});
 		misses = 0;
 	}
@@ -132,9 +135,14 @@ function progressHTML(): string {
 function renderQuestion(): void {
 	answered = false;
 	const q = questions[idx];
-	// `enonceTexte` : échappe + GRAS « **…** » (mot-cible des contraires/sens proche,
-	// #203) + fractions « num/den » empilées (#200) — superset sûr de `mathInline`.
-	const question = enonceTexte(q.item.text).replace('@', '<span class="sprint-blank">?</span>');
+	const ponct = q.variante === 'ponctuation';
+	// `enonceTexte` : échappe + GRAS « **…** » (mot-cible #203) + fractions empilées (#200).
+	// Ponctuation (#204) : le trou final est un cadre vide pointillé (PAS un « ? », qui se
+	// confondrait avec la réponse) ; sinon le repère « ? » standard du QCM.
+	const trou = ponct
+		? '<span class="lqcm-ponct-trou" id="lqcmTrou" aria-hidden="true"></span>'
+		: '<span class="sprint-blank">?</span>';
+	const question = enonceTexte(q.item.text).replace('@', trou);
 	const ttsText = q.item.parle ?? q.item.text;
 	// Consigne renforcée optionnelle (#203) : ligne en gras précédée d'un picto
 	// décoratif (« ↔ » / « = », aria-hidden — le sens est porté par le texte). Elle
@@ -153,16 +161,15 @@ function renderQuestion(): void {
         ${figureBlock(q.item.figure)}
         ${consigneHTML}
         <div class="sprint-q sprint-q-qcm"${q.consigne ? '' : ttsAttr(ttsText)}>${question}</div>
-        <div class="sprint-choices${q.empilees ? ' sprint-choices--pile' : ''}${q.ttsItems ? ' lqcm-choices-tts' : ''}" id="lqcmChoices">
+        <div class="sprint-choices${q.empilees ? ' sprint-choices--pile' : ''}${q.ttsItems ? ' lqcm-choices-tts' : ''}${ponct ? ' lqcm-choices-sym' : ''}" id="lqcmChoices">
           ${q.choices
 						.map((c, i) => {
-							const btn = choiceButtonHTML(c, i, q.choicesView?.[i]);
+							const btn = choiceButtonHTML(c, i, ponct ? ponctView(c) : q.choicesView?.[i]);
 							// Les options portant un haut-parleur (#203) sont enveloppées pour
 							// accueillir le bouton sans l'imbriquer dans le bouton-choix.
 							return q.ttsItems ? `<span class="lqcm-choice-wrap">${btn}</span>` : btn;
 						})
 						.join('')}
-        </div>
         <div class="sprint-correction" id="lqcmFeedback" hidden></div>
         <div class="sprint-actions" id="lqcmActions" hidden></div>
       </div>
@@ -200,12 +207,30 @@ function answer(choiceIdx: number): void {
 		});
 	const fb = sheets().querySelector('#lqcmFeedback') as HTMLElement;
 	fb.hidden = false;
+	// Ponctuation (#204) : on NOMME le signe (« point d'exclamation (!) ») plutôt que
+	// d'afficher un glyphe nu, peu lisible isolé dans la phrase de feedback.
+	const ans = String(q.item.answer);
+	const ansHTML =
+		q.variante === 'ponctuation'
+			? `${escapeHTML(PONCT_MOTS[ans] ?? ans)} (${escapeHTML(ans)})`
+			: mathInline(ans);
 	fb.innerHTML = correct
 		? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-		: `<span class="lqcm-ko">La bonne réponse était <strong>${mathInline(String(q.item.answer))}</strong>.</span>`;
+		: `<span class="lqcm-ko">La bonne réponse était <strong>${ansHTML}</strong>.</span>`;
 	// Justification pédagogique (ex. critère de substitution des homophones, #110).
 	// `mathInline` empile aussi les fractions citées dans l'explication (cohérence d'écriture).
 	if (q.explication) fb.innerHTML += `<p class="lqcm-expl">${mathInline(q.explication)}</p>`;
+	// Ponctuation (#204) : on réinjecte le BON signe dans le trou de la phrase → l'enfant
+	// voit sa phrase complétée correctement. Le signe étant toujours la bonne réponse, on
+	// le montre « juste » (vert) même après une erreur (le rouge reste sur le bouton tapé).
+	if (q.variante === 'ponctuation') {
+		const trou = sheets().querySelector('#lqcmTrou');
+		if (trou) {
+			trou.textContent = ans;
+			trou.classList.add('rempli', 'rempli-ok');
+			trou.removeAttribute('aria-hidden');
+		}
+	}
 	const actions = sheets().querySelector('#lqcmActions') as HTMLElement;
 	actions.hidden = false;
 	const last = idx >= questions.length - 1;

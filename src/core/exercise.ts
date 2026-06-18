@@ -13,6 +13,11 @@ export interface ChoiceView {
 	label: string;
 }
 
+/** Variante de PRÉSENTATION d'un QCM (#204), source unique du type (réutilisée par
+    le runner et la révision). 'ponctuation' → trou en cadre pointillé + boutons-
+    symboles. Petit enum fermé piloté par la donnée. */
+export type QcmVariante = 'ponctuation';
+
 /** Une sous-question d'un problème (#199) : son intitulé et sa réponse numérique. */
 export interface ProblemeEtape {
 	question: string; // ex. « Combien Léo a-t-il de billes maintenant ? »
@@ -65,6 +70,11 @@ export type Exercise =
 	// `choicesEmpilees` (#205) : disposition VERTICALE des options (le runner ajoute
 	// `.sprint-choices--pile`). Pour des options quasi-homophones (allé/allée/allés),
 	// une rangée serait piégeuse au doigt ; on les empile, en pleine largeur.
+	// `variante` (#204) : indice de PRÉSENTATION lu par le runner QCM. 'ponctuation'
+	// → trou final en cadre pointillé (pas un « ? »), boutons-symboles (gros glyphe
+	// + mot), et réinjection du signe dans la phrase après la réponse. Absent = QCM
+	// texte standard. Orthogonal à `choicesView` (le runner fabrique lui-même la vue
+	// des symboles à partir de cette variante).
 	| {
 			type: 'qcm';
 			question: string;
@@ -78,6 +88,7 @@ export type Exercise =
 			consigne?: string;
 			picto?: string;
 			ttsItems?: boolean;
+			variante?: QcmVariante;
 	  }
 	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
 	// des distracteurs vers l'emplacement `@` de la question. Réponse = `answer`.

@@ -14,6 +14,7 @@ import type { ExerciseMode } from '../core/exercise';
 import type { Item } from '../core/items';
 import { checkItemAnswer, figureBlock } from '../core/items';
 import { commKey, escapeHTML } from '../core/utils';
+import { mathInline } from '../core/fraction-text';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { recordLessonRun } from '../core/lesson-run';
@@ -120,7 +121,8 @@ function progressHTML(): string {
 function renderQuestion(): void {
 	answered = false;
 	const q = questions[idx];
-	const question = escapeHTML(q.item.text).replace('@', '<span class="sprint-blank">?</span>');
+	// `mathInline` : échappe + rend les fractions « num/den » empilées (barre horizontale).
+	const question = mathInline(q.item.text).replace('@', '<span class="sprint-blank">?</span>');
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
       ${progressHTML()}
@@ -130,7 +132,7 @@ function renderQuestion(): void {
         <div class="sprint-q sprint-q-qcm"${ttsAttr(q.item.parle ?? q.item.text)}>${question}</div>
         <div class="sprint-choices" id="lqcmChoices">
           ${q.choices
-						.map((c, i) => `<button class="sprint-choice" data-i="${i}">${escapeHTML(c)}</button>`)
+						.map((c, i) => `<button class="sprint-choice" data-i="${i}">${mathInline(c)}</button>`)
 						.join('')}
         </div>
         <div class="sprint-correction" id="lqcmFeedback" hidden></div>
@@ -162,9 +164,10 @@ function answer(choiceIdx: number): void {
 	fb.hidden = false;
 	fb.innerHTML = correct
 		? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-		: `<span class="lqcm-ko">La bonne réponse était <strong>${escapeHTML(String(q.item.answer))}</strong>.</span>`;
+		: `<span class="lqcm-ko">La bonne réponse était <strong>${mathInline(String(q.item.answer))}</strong>.</span>`;
 	// Justification pédagogique (ex. critère de substitution des homophones, #110).
-	if (q.explication) fb.innerHTML += `<p class="lqcm-expl">${escapeHTML(q.explication)}</p>`;
+	// `mathInline` empile aussi les fractions citées dans l'explication (cohérence d'écriture).
+	if (q.explication) fb.innerHTML += `<p class="lqcm-expl">${mathInline(q.explication)}</p>`;
 	const actions = sheets().querySelector('#lqcmActions') as HTMLElement;
 	actions.hidden = false;
 	const last = idx >= questions.length - 1;

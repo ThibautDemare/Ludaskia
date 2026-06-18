@@ -39,35 +39,15 @@ import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { rnd, choice, sample } from '../../core/utils';
 import { renderFigure } from '../../core/figures';
+// Libellé verbal (#42) défini en core (utilitaire nombre→mots, réutilisé par le
+// rendu empilé des fractions). Réexposé ici pour les imports/tests existants.
+import { nomFraction } from '../../core/fraction-text';
+export { nomFraction };
 
-/* ---------- Libellé verbal (#42) ---------- */
-
-// Noms du dénominateur au SINGULIER : 2,3,4 sont spéciaux (demi/tiers/quart) ;
-// au-delà, c'est l'ordinal en « -ième ». On ne couvre QUE les dénominateurs du
-// périmètre (pas de 7/9/11, hors progression CE2).
-const NOM_DEN: Record<number, string> = {
-	2: 'demi',
-	3: 'tiers',
-	4: 'quart',
-	5: 'cinquième',
-	6: 'sixième',
-	8: 'huitième',
-	10: 'dixième',
-	12: 'douzième',
-};
-const NOM_NUM = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf'];
-
-/** Libellé parlé d'une fraction : « un demi », « trois quarts », « deux cinquièmes ».
-    Le dénominateur prend la marque du pluriel quand le numérateur > 1 (« tiers »
-    reste invariable, « quart » → « quarts », « cinquième » → « cinquièmes »). */
-export function nomFraction(num: number, den: number): string {
-	const base = NOM_DEN[den] ?? `${den}ièmes`;
-	if (num === 1) return `un ${base}`;
-	const pluriel = base.endsWith('s') ? base : `${base}s`;
-	return `${NOM_NUM[num] ?? num} ${pluriel}`;
-}
-
-/* ---------- Notation et distracteurs ---------- */
+/* ---------- Notation et distracteurs ----------
+   `frac()` produit la CLÉ PLATE « num/den » (réponse + comparaison QCM) ; l'affichage
+   empilé (barre horizontale, attendu au CE2) est appliqué au rendu par `mathInline`
+   (core/fraction-text). On ne stocke donc jamais de HTML dans la donnée. */
 
 const frac = (num: number, den: number): string => `${num}/${den}`;
 

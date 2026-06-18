@@ -94,6 +94,16 @@ mots longs** = les formes cibles longues ne sont proposées **qu'en QCM** (chaqu
 mode reste stable en type, contrainte du routage des runners). La leçon des
 réguliers complète son pool avec les **mots fléchis de la banque** du profil
 (`MotOrtho.formes`, saisis par le parent), qui « remontent » dans les exercices.
+**`francais/participe-passe-etre.ts`** (#205) : catégorie **Orthographe**, rubrique
+« Les accords » — leçon **« Le participe passé avec être »** (`fr-accords-participe-etre`),
+**transformation guidée + QCM 3 options** (« Il est parti. → **Elle** est @ ? »). Module
+distinct de `conjugaison.ts` ; 8 verbes **exclusivement « être »** (radical + 4 terminaisons
+stockées), 4 patrons d'accord (il→elle, il→ils, elle→elles, il→elles — atteint le féminin
+pluriel). Réutilise les **choix riches** `choicesView` (#200) pour **surligner la
+terminaison** (`<span class="term">`), sujet en gras via `enonceTexte`, **options empilées**
+(nouveau `Exercise.choicesEmpilees` → `.sprint-choices--pile`) et **pas de TTS** (`parle: ''`,
+formes homophones). Leçon signalée **« plus dur »** (nouveau `LessonDef.repere`, badge ambre)
+et **exclue du sprint** (charge cognitive, notion vue en avance).
 **`francais/homophones.ts`** (#110) : catégorie **Orthographe**, rubrique « Les
 homophones » — 5 leçons (a/à, et/est, on/ont, son/sont, ou/où), une par paire.
 `homophoneType(paire)` fabrique un `ExerciseType` **QCM mono-mode** : phrase à trou

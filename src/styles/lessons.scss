@@ -82,6 +82,28 @@
 	font-size: 14px;
 	color: var(--ink);
 }
+/* Ligne du titre : titre + éventuel badge « plus dur » (#205), qui passe à la
+   ligne proprement sur écran étroit. */
+.lz-titleline {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+/* Badge « plus dur » (#205) : ambre (un défi, pas une erreur — d'où la famille
+   --warn et non --ko du flag « à revoir »). Info portée par le texte, pas la seule
+   couleur. Texte assombri (#8a5200, ≈ 5,8:1 sur --warn-bg) pour passer WCAG AA en
+   petite taille — var(--warn) seul (#b26a00) n'atteint que ~3,9:1. */
+.lz-level {
+	background: var(--warn-bg);
+	color: #8a5200;
+	font-family: var(--ui);
+	font-weight: 700;
+	font-size: 11px;
+	border-radius: 999px;
+	padding: 1px 8px;
+	white-space: nowrap;
+}
 .lz-stat {
 	display: flex;
 	align-items: center;

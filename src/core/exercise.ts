@@ -62,12 +62,16 @@ export type Exercise =
 	// `ttsItems` greffe un bouton « Écouter » sur le mot-cible et sur CHAQUE option
 	// (lecture à la demande, jamais en rafale). Optionnels : les autres QCM ne les
 	// fournissent pas et restent rendus à l'identique.
+	// `choicesEmpilees` (#205) : disposition VERTICALE des options (le runner ajoute
+	// `.sprint-choices--pile`). Pour des options quasi-homophones (allé/allée/allés),
+	// une rangée serait piégeuse au doigt ; on les empile, en pleine largeur.
 	| {
 			type: 'qcm';
 			question: string;
 			answer: string;
 			choices: string[];
 			choicesView?: ChoiceView[];
+			choicesEmpilees?: boolean;
 			figure?: string;
 			explication?: string;
 			parle?: string;

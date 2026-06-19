@@ -28,17 +28,22 @@ export const LEVEL_LABEL: Record<SchoolLevel, string> = {
    - sinon (leçon entièrement au-dessus du niveau demandé, ex. un CP sur une leçon
      CE2-only) le plus BAS niveau supporté (clamp). Ne renvoie jamais `undefined`. */
 export function effectiveLevel(lesson: LessonDef, niveau: SchoolLevel): SchoolLevel {
-	if (lesson.levels.length === 0 || lesson.levels.includes(niveau)) return niveau;
+	return closestSupported(lesson.levels, niveau);
+}
+
+/* Niveau supporté le plus proche d'un niveau demandé, parmi un ensemble :
+   - le niveau demandé s'il est supporté ;
+   - sinon le plus haut supporté EN-DESSOUS (repli) ;
+   - sinon le plus BAS supporté (clamp, ensemble entièrement au-dessus).
+   Ensemble vide → le niveau demandé (aucune contrainte). Partagé par
+   `effectiveLevel` (leçon) et le combinateur `calibrated` (table de params). */
+export function closestSupported(supported: SchoolLevel[], niveau: SchoolLevel): SchoolLevel {
+	if (supported.length === 0 || supported.includes(niveau)) return niveau;
 	const wanted = LEVEL_ORDER.indexOf(niveau);
-	// Indices des niveaux supportés, triés par ordre scolaire croissant.
-	const supported = lesson.levels.map((l) => LEVEL_ORDER.indexOf(l)).sort((a, b) => a - b);
-	// Plus haut niveau supporté dont l'index ne dépasse pas le niveau demandé.
+	const idxs = supported.map((l) => LEVEL_ORDER.indexOf(l)).sort((a, b) => a - b);
 	let best = -1;
-	for (const idx of supported) {
-		if (idx <= wanted) best = idx;
-	}
-	// Aucun en-dessous → clamp sur le plus bas niveau supporté.
-	if (best === -1) best = supported[0];
+	for (const idx of idxs) if (idx <= wanted) best = idx;
+	if (best === -1) best = idxs[0];
 	return LEVEL_ORDER[best];
 }
 

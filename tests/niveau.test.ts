@@ -6,7 +6,7 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 import { availableLevels, lessonsForLevel } from '../src/core/levels';
 import { niveauActif, besoinChoixNiveau } from '../src/core/niveau-actif';
-import { getAllLessons } from '../src/core/catalog';
+import { getAllLessons, getLessonById, genLessonItem } from '../src/core/catalog';
 import type { SchoolLevel } from '../src/core/catalog';
 import {
 	initProfiles,
@@ -148,5 +148,37 @@ describe('namespacing de la progression par niveau (Lot 2)', () => {
 		// Idempotent : un second passage ne change rien.
 		migrateNiveauNamespacing();
 		expect(lsGet(STARS_KEY, {})).toEqual({ 'math-doubles@ce2': 2, 'math-complements@ce2': 1 });
+	});
+});
+
+describe('contenu multi-niveau (Lot 3)', () => {
+	it('le catalogue expose désormais CE2 et CM1', () => {
+		expect(availableLevels(getAllLessons())).toContain('ce2');
+		expect(availableLevels(getAllLessons())).toContain('cm1');
+	});
+
+	it('« Je compare les nombres » est calibrée CE2+CM1', () => {
+		expect(getLessonById('num-comparer')?.levels).toEqual(['ce2', 'cm1']);
+	});
+
+	it('numération calibrée : nombres plus grands en CM1 qu’en CE2', () => {
+		const lesson = getLessonById('num-comparer')!;
+		const maxValeur = (niveau: SchoolLevel) => {
+			let max = 0;
+			for (let i = 0; i < 300; i++) {
+				const it = genLessonItem(lesson, niveau);
+				for (const n of it.text.match(/\d+/g) ?? []) max = Math.max(max, Number(n));
+			}
+			return max;
+		};
+		// CE2 : plage ≤ 999 (le cas charnière 999/1000 atteint au plus 1001) ;
+		// CM1 : plage jusqu'à 9999 → dépasse nettement le CE2.
+		expect(maxValeur('ce2')).toBeLessThanOrEqual(1001);
+		expect(maxValeur('cm1')).toBeGreaterThan(1500);
+	});
+
+	it('le passé composé est ouvert au CM1 (multi-niveau « identique »)', () => {
+		expect(getLessonById('fr-conj-etre-passe_compose')?.levels).toEqual(['ce2', 'cm1']);
+		expect(getLessonById('fr-conj-etre-present')?.levels).toEqual(['ce2']);
 	});
 });

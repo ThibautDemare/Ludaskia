@@ -153,6 +153,9 @@ export interface ExerciseType {
 	consigne?: string;
 	/** Lexique d'affichage du runner « problème » (#95) — voir `ProbLexique`. */
 	probLexique?: ProbLexique;
+	/** Niveaux scolaires couverts (#225), renseigné par les combinateurs multi-niveaux
+	 *  (`calibrated`, `bankByLevel`) : le catalogue en dérive `LessonDef.levels`. */
+	levels?: SchoolLevel[];
 	generate(opts?: GenerateOpts): Exercise;
 	check(exercise: Exercise, input: string): boolean;
 }

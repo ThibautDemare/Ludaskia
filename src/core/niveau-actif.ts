@@ -8,8 +8,8 @@
    ============================================================ */
 import { lsGet, PROFILES_KEY } from './storage';
 import { getAllLessons } from './catalog';
-import type { SchoolLevel } from './catalog';
-import { availableLevels } from './levels';
+import type { LessonDef, SchoolLevel } from './catalog';
+import { availableLevels, effectiveLevel } from './levels';
 
 /* Niveau de référence stocké dans la méta du profil actif (undefined si non choisi). */
 function niveauReferenceStocke(): SchoolLevel | undefined {
@@ -34,4 +34,12 @@ export function niveauActif(): SchoolLevel {
    ⇒ aucun choix à faire, on reste silencieusement dessus). */
 export function besoinChoixNiveau(): boolean {
 	return niveauReferenceStocke() === undefined && availableLevels(getAllLessons()).length >= 2;
+}
+
+/* Niveau effectif POUR UNE LEÇON : le niveau actif résolu sur les niveaux que la
+   leçon supporte (repli/clamp via effectiveLevel). C'est ce qu'on passe à
+   `generate`/`genLessonItem` au seam UI — une référence hors-filtre (favori,
+   révision) est ainsi calibrée sans jamais être cassée. */
+export function niveauLecon(lesson: LessonDef): SchoolLevel {
+	return effectiveLevel(lesson, niveauActif());
 }

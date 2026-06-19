@@ -305,7 +305,7 @@ export interface ConjLessonDesc {
 	label: string;
 	verbId: string;
 	tense: Tense;
-	level: SchoolLevel;
+	levels: SchoolLevel[];
 	rubrique: string;
 }
 
@@ -340,13 +340,21 @@ function verbeLabel(v: VerbDef): string {
 	return `${cap} (${VERB_GROUPE[v.id]})`;
 }
 
+/* Niveaux d'une leçon de conjugaison (#225) — multi-niveau « identique » (même
+   génération, leçon partagée). Le passé composé (auxiliaire + accord) est
+   consolidé en CM1 : on l'ouvre aux deux niveaux. Les autres temps restent CE2
+   pour l'instant (à étendre avec le pedagogue-primaire). */
+function conjLevels(tense: Tense): SchoolLevel[] {
+	return tense === 'passe_compose' ? ['ce2', 'cm1'] : ['ce2'];
+}
+
 export const CONJ_LESSONS: ConjLessonDesc[] = VERBS.flatMap((v) =>
 	TENSES.map((tense) => ({
 		id: `fr-conj-${v.id}-${tense}`,
 		label: `${verbeLabel(v)} ${TENSE_PHRASE[tense]}`,
 		verbId: v.id,
 		tense,
-		level: 'ce2' as SchoolLevel,
+		levels: conjLevels(tense),
 		rubrique: TENSE_RUBRIQUE[tense],
 	})),
 );

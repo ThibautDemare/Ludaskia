@@ -7,6 +7,7 @@
    ============================================================ */
 import { getAllLessons, getLessonById, genLessonItem, isLegacyMathLesson } from './catalog';
 import type { LessonDef } from './catalog';
+import { niveauLecon } from './niveau-actif';
 import { LESSONS } from './lessons';
 import { setRenderLesson, renderItem, ficheHTMLGeneric } from './items';
 import type { Item } from './items';
@@ -22,9 +23,10 @@ import { commKey } from './utils';
 export function genItems(lesson: LessonDef, n: number): Item[] {
 	const items: Item[] = [];
 	const seen = new Set<string>();
+	const level = niveauLecon(lesson); // calibrage au niveau effectif (#225)
 	let misses = 0;
 	while (items.length < n && misses < 80) {
-		const it = genLessonItem(lesson);
+		const it = genLessonItem(lesson, level);
 		const key = `${commKey(it.text)}¦${it.answer}¦${it.figure ?? ''}`;
 		if (seen.has(key)) {
 			misses++;

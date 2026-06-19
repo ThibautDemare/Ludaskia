@@ -31,6 +31,15 @@ export function lsSet(key: string, value: any) {
 	} catch (e) {}
 	if (key !== PROFILES_KEY && onDataWrite) onDataWrite(); // marque le profil actif comme modifié
 }
+/* Écriture SANS notifier onDataWrite : réservée aux migrations internes (réécriture
+   de clés), qui ne doivent pas bumper `updatedAt` du profil — sinon la fusion par
+   récence de l'export/import serait faussée (la simple activation rendrait le profil
+   « plus récent »). */
+export function lsSetQuiet(key: string, value: any) {
+	try {
+		localStorage.setItem(realKey(key), JSON.stringify(value));
+	} catch (e) {}
+}
 /* Accès bas niveau aux clés réelles (réinitialiser/supprimer/sauvegarder) */
 export function lsKeysRaw(): string[] {
 	const o: string[] = [];

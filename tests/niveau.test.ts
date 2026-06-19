@@ -19,7 +19,18 @@ import {
 	setNiveauReference,
 	touchActiveProfile,
 } from '../src/core/profiles';
-import { setOnDataWrite } from '../src/core/storage';
+import { setOnDataWrite, lsGet, lsSet } from '../src/core/storage';
+import {
+	recordLessonResult,
+	recordLessonStats,
+	starsEarned,
+	loadLessonStats,
+	loadLessonStatsAll,
+	loadLessonRevisions,
+	avancerLessonRevision,
+	migrateNiveauNamespacing,
+	STARS_KEY,
+} from '../src/core/progress';
 
 beforeEach(() => {
 	localStorage.clear();
@@ -91,5 +102,51 @@ describe('niveauActif / besoinChoixNiveau', () => {
 	it('ne redemande plus la classe une fois choisie', () => {
 		setNiveauReference('ce2');
 		expect(besoinChoixNiveau()).toBe(false);
+	});
+});
+
+describe('namespacing de la progression par niveau (Lot 2)', () => {
+	it('étoiles scopées au niveau actif, acquis CE2 conservé au passage en CM1', () => {
+		setNiveauReference('ce2');
+		recordLessonResult('math-doubles', true);
+		expect(starsEarned()).toBe(1);
+		// Passage au CM1 : l'étoile CE2 n'est pas comptée (scope CM1) mais reste stockée.
+		setNiveauReference('cm1');
+		expect(starsEarned()).toBe(0);
+		// Retour au CE2 : l'acquis est conservé (pas de reset).
+		setNiveauReference('ce2');
+		expect(starsEarned()).toBe(1);
+	});
+
+	it('stats : effort GLOBAL (tous niveaux), complétude SCOPÉE au niveau actif', () => {
+		setNiveauReference('ce2');
+		recordLessonStats({ 'math-doubles': { ok: 5, total: 5 } });
+		setNiveauReference('cm1');
+		recordLessonStats({ 'math-doubles': { ok: 3, total: 4 } });
+		// Agrégat global = somme des deux niveaux.
+		expect(loadLessonStatsAll()['math-doubles'].questions).toBe(9);
+		// Vue scopée = niveau actif seulement.
+		expect(loadLessonStats()['math-doubles'].questions).toBe(4);
+		setNiveauReference('ce2');
+		expect(loadLessonStats()['math-doubles'].questions).toBe(5);
+	});
+
+	it('état de révision SR scopé au niveau actif', () => {
+		const now = 1_000_000;
+		setNiveauReference('ce2');
+		avancerLessonRevision('math-doubles', true, now);
+		expect(loadLessonRevisions()['math-doubles']).toBeDefined();
+		setNiveauReference('cm1');
+		expect(loadLessonRevisions()['math-doubles']).toBeUndefined();
+	});
+
+	it('migration : renomme les clés legacy (sans @) en @ce2, idempotente', () => {
+		// Mélange d'une clé legacy (pleine) et d'une clé déjà namespacée.
+		lsSet(STARS_KEY, { 'math-doubles': 2, 'math-complements@ce2': 1 });
+		migrateNiveauNamespacing();
+		expect(lsGet(STARS_KEY, {})).toEqual({ 'math-doubles@ce2': 2, 'math-complements@ce2': 1 });
+		// Idempotent : un second passage ne change rien.
+		migrateNiveauNamespacing();
+		expect(lsGet(STARS_KEY, {})).toEqual({ 'math-doubles@ce2': 2, 'math-complements@ce2': 1 });
 	});
 });

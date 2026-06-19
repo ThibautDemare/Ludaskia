@@ -5,15 +5,24 @@
 import { choice } from './utils';
 import { lsGet, lsSet } from './storage';
 import { getAllLessons, getLessonsByCategory, SUBJECTS, CATEGORIES } from './catalog';
+import { niveauActif } from './niveau-actif';
 import {
 	loadRuns,
 	getStreak,
 	loadLessonStats,
+	loadLessonStatsAll,
 	loadStars,
 	lessonAvgPct,
 	starsEarned,
 	todayStr,
 } from './progress';
+
+/* Leçons du niveau ACTIF (complétude scopée : « toutes les leçons », « tout au
+   vert » et trophées par matière/catégorie se mesurent sur ce périmètre). */
+function lessonsNiveauActif() {
+	const niveau = niveauActif();
+	return getAllLessons().filter((l) => l.levels.includes(niveau));
+}
 import { loadOrtho } from './orthographe/store';
 import type { MotOrtho } from './orthographe/types';
 
@@ -39,7 +48,7 @@ export function weakLessons(): string[] {
 export function challengeContext() {
 	return {
 		weak: weakLessons(),
-		starsLeft: starsEarned() < getAllLessons().length,
+		starsLeft: starsEarned() < lessonsNiveauActif().length,
 		hasSprint: loadRuns('sprint').length > 0,
 	};
 }
@@ -336,19 +345,26 @@ export function gSnapshot() {
 		re = loadRuns('express'),
 		all = [...rc, ...re];
 	const s = getStreak();
-	const stats = loadLessonStats();
+	// Effort (GLOBAL, tous niveaux confondus) : total de réponses + bonnes réponses
+	// cumulées par matière/catégorie (trophées « N calculs », « N bonnes réponses »).
+	const statsAll = loadLessonStatsAll();
 	let totalAnswered = 0;
-	for (const k in stats) totalAnswered += stats[k].questions || 0;
-	// Agrégats par matière et par catégorie (bonnes réponses cumulées + leçons étoilées).
-	const starsMap = loadStars();
+	for (const k in statsAll) totalAnswered += statsAll[k].questions || 0;
 	const subjectCorrect: Record<string, number> = {};
 	const categoryCorrect: Record<string, number> = {};
-	const subjectStars: Record<string, number> = {};
-	const categoryStars: Record<string, number> = {};
 	for (const l of getAllLessons()) {
-		const correct = (stats[l.id] && stats[l.id].correct) || 0;
+		const correct = (statsAll[l.id] && statsAll[l.id].correct) || 0;
 		subjectCorrect[l.subject] = (subjectCorrect[l.subject] || 0) + correct;
 		categoryCorrect[l.category] = (categoryCorrect[l.category] || 0) + correct;
+	}
+	// Complétude (SCOPÉE au niveau actif) : leçons étoilées par matière/catégorie,
+	// et « tout au vert ». Mesurées sur le périmètre du niveau actif uniquement.
+	const stats = loadLessonStats(); // stats scopées (pour « tout au vert »)
+	const starsMap = loadStars(); // étoiles scopées
+	const lessonsActif = lessonsNiveauActif();
+	const subjectStars: Record<string, number> = {};
+	const categoryStars: Record<string, number> = {};
+	for (const l of lessonsActif) {
 		if ((starsMap[l.id] || 0) > 0) {
 			subjectStars[l.subject] = (subjectStars[l.subject] || 0) + 1;
 			categoryStars[l.category] = (categoryStars[l.category] || 0) + 1;
@@ -371,7 +387,7 @@ export function gSnapshot() {
 	return {
 		totalRuns: all.length,
 		stars: starsEarned(),
-		totalLessons: getAllLessons().length, // total de leçons du catalogue (seuil du trophée « partout »)
+		totalLessons: lessonsActif.length, // leçons du niveau actif (seuil « partout », complétude scopée)
 		maxStreak: s.max || s.days || 0,
 		bestExpressMs: re.length ? Math.min(...re.map((r) => r.ms)) : Infinity,
 		bestBilanCount: all.length ? Math.max(...all.map((r) => r.count)) : 0, // plus grand bilan (complet/express) terminé en une session
@@ -380,10 +396,10 @@ export function gSnapshot() {
 		goalsDone: getGoalsDone(),
 		sprints: loadRuns('sprint').length,
 		totalAnswered, // total de calculs résolus (tous modes enregistrés)
-		allGreen: getAllLessons().every((l) => {
+		allGreen: lessonsActif.every((l) => {
 			const a = lessonAvgPct(stats[l.id]);
 			return a != null && a >= 70;
-		}), // aucune leçon à revoir
+		}), // aucune leçon à revoir (au niveau actif)
 		subjectCorrect, // bonnes réponses cumulées par matière
 		categoryCorrect, // bonnes réponses cumulées par catégorie
 		subjectStars, // leçons étoilées par matière

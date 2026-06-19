@@ -5,7 +5,12 @@
    ============================================================ */
 import { beforeEach, describe, it, expect } from 'vitest';
 import { availableLevels, lessonsForLevel } from '../src/core/levels';
-import { niveauActif, besoinChoixNiveau } from '../src/core/niveau-actif';
+import {
+	niveauActif,
+	besoinChoixNiveau,
+	niveauActifMatiere,
+	niveauLecon,
+} from '../src/core/niveau-actif';
 import { getAllLessons, getLessonById, genLessonItem } from '../src/core/catalog';
 import type { SchoolLevel } from '../src/core/catalog';
 import {
@@ -17,6 +22,8 @@ import {
 	importProfiles,
 	getNiveauReference,
 	setNiveauReference,
+	getNiveauParMatiere,
+	setNiveauMatiere,
 	touchActiveProfile,
 } from '../src/core/profiles';
 import { setOnDataWrite, lsGet, lsSet } from '../src/core/storage';
@@ -180,5 +187,47 @@ describe('contenu multi-niveau (Lot 3)', () => {
 	it('le passé composé est ouvert au CM1 (multi-niveau « identique »)', () => {
 		expect(getLessonById('fr-conj-etre-passe_compose')?.levels).toEqual(['ce2', 'cm1']);
 		expect(getLessonById('fr-conj-etre-present')?.levels).toEqual(['ce2']);
+	});
+});
+
+describe('niveau par matière (Lot 4)', () => {
+	it('niveauActifMatiere : ajustement matière > référence > défaut catalogue', () => {
+		expect(niveauActifMatiere('math')).toBe('ce2'); // rien choisi → plus bas dispo
+		setNiveauReference('cm1');
+		expect(niveauActifMatiere('math')).toBe('cm1'); // hérite de la classe
+		expect(niveauActifMatiere('francais')).toBe('cm1');
+		setNiveauMatiere('francais', 'ce2');
+		expect(niveauActifMatiere('francais')).toBe('ce2'); // ajustement matière
+		expect(niveauActifMatiere('math')).toBe('cm1'); // math suit toujours la classe
+	});
+
+	it('setNiveauMatiere(undefined) retire l’ajustement (héritage de la classe)', () => {
+		setNiveauReference('cm1');
+		setNiveauMatiere('francais', 'ce2');
+		expect(getNiveauParMatiere().francais).toBe('ce2');
+		setNiveauMatiere('francais', undefined);
+		expect(getNiveauParMatiere().francais).toBeUndefined();
+		expect(niveauActifMatiere('francais')).toBe('cm1');
+	});
+
+	it('export/import emporte niveauParMatiere', () => {
+		const uuid = activeProfile().uuid;
+		setNiveauReference('cm1');
+		setNiveauMatiere('francais', 'ce2');
+		const payload = exportProfiles([uuid]);
+		localStorage.clear();
+		initProfiles();
+		importProfiles(payload);
+		const restored = listProfiles().find((p) => p.uuid === uuid);
+		expect(restored?.niveauParMatiere?.francais).toBe('ce2');
+	});
+
+	it('niveauLecon résout par la matière de la leçon', () => {
+		setNiveauReference('cm1');
+		setNiveauMatiere('math', 'ce2');
+		// Math ajusté en CE2 → la leçon calibrée comparer reste en CE2.
+		expect(niveauLecon(getLessonById('num-comparer')!)).toBe('ce2');
+		// Français suit la classe (CM1) → passé composé en CM1.
+		expect(niveauLecon(getLessonById('fr-conj-etre-passe_compose')!)).toBe('cm1');
 	});
 });

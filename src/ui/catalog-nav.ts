@@ -13,7 +13,7 @@ import {
 	getLessonsByCategory,
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
-import { niveauActif } from '../core/niveau-actif';
+import { niveauActifMatiere } from '../core/niveau-actif';
 import { LESSONS } from '../core/lessons';
 import { loadStars, loadLessonStats } from '../core/progress';
 import { loadOrtho } from '../core/orthographe/store';
@@ -46,10 +46,9 @@ const lastExpressByCat: Record<string, string[]> = {};
 
 /* ---------- Écran : liste des matières ---------- */
 export function renderSubjects(el: HTMLElement): void {
-	const niveau = niveauActif();
 	el.innerHTML = `<div class="nav-cards">
     ${SUBJECTS.map((s) => {
-			const n = getLessonsBySubject(s.id, niveau).length;
+			const n = getLessonsBySubject(s.id, niveauActifMatiere(s.id)).length;
 			return `<button class="nav-card" data-subject="${s.id}">
         <span class="cat-ico" style="background:${subjectTint(s.id)}">${icon(subjectIcon(s.id))}</span>
         <div class="nav-card-title">${escapeHTML(s.label)}</div>
@@ -67,7 +66,7 @@ export function renderCategories(el: HTMLElement, subjectId: string, titleEl: HT
 	const subject = SUBJECTS.find((s) => s.id === subjectId);
 	if (titleEl && subject) titleEl.textContent = subject.label;
 	const cats = CATEGORIES.filter((c) => c.subject === subjectId);
-	const niveau = niveauActif();
+	const niveau = niveauActifMatiere(subjectId);
 	el.innerHTML = `<div class="nav-cards">
     ${cats
 			.map((c, i) => {
@@ -104,7 +103,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 		return;
 	}
 
-	const lessonDefs = getLessonsByCategory(categoryId, niveauActif());
+	const lessonDefs = getLessonsByCategory(categoryId, niveauActifMatiere(category?.subject ?? ''));
 
 	// Catégorie encore sans leçon (nouvelles catégories maths en attente de
 	// contenu, #92) : on évite d'afficher des bilans/sprints qui ne tireraient
@@ -223,7 +222,7 @@ function renderOrthoCategorie(el: HTMLElement): void {
 	// Leçons « moteur » de la catégorie Orthographe (accords #109, homophones #110) :
 	// exercices LessonDef (transformation / QCM), distincts des dictées de mots.
 	// Regroupées par rubrique, lancées par le parcours standard (saisie/QCM).
-	const moteurLecons = getLessonsByCategory(ORTHO_CATEGORY_ID, niveauActif());
+	const moteurLecons = getLessonsByCategory(ORTHO_CATEGORY_ID, niveauActifMatiere('francais'));
 	const stars = loadStars();
 	const predef = lecons.filter((l) => l.source === 'predefini');
 	// Listes du parent triées par date de contrôle décroissante (sans date en dernier).

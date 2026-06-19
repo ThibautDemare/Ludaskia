@@ -38,7 +38,10 @@ import {
 	exportProfiles,
 	importProfiles,
 	setPref,
+	setNiveauReference,
+	setNiveauMatiere,
 } from './core/profiles';
+import type { SchoolLevel } from './core/catalog';
 import { renderProfiles, toggleEmojiPicker, closeEmojiPicker, paintStaticIcons } from './ui/render';
 import {
 	applyPreferences,
@@ -289,6 +292,18 @@ function wireDOM() {
 			applyPreferences();
 		} else if (e.target.id === 'prefLectureAuto') {
 			setPref('lectureConsigneAuto', e.target.checked);
+		} else if (e.target.id === 'prefNiveauRef') {
+			// Réglage parent (#225) : classe du profil → re-rendu (les compteurs et le
+			// catalogue suivent à la prochaine navigation).
+			setNiveauReference(e.target.value as SchoolLevel);
+			renderPreferences();
+		} else if (e.target.dataset.act === 'set-niveau-matiere') {
+			// Ajustement par matière ; valeur vide = « comme la classe » (héritage).
+			setNiveauMatiere(
+				e.target.dataset.subject,
+				(e.target.value || undefined) as SchoolLevel | undefined,
+			);
+			renderPreferences();
 		}
 	});
 

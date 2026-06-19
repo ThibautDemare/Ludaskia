@@ -42,6 +42,11 @@ export interface Profile {
 	// prefs) ; réglage de CONTENU, distinct du niveau d'XP. Indéfini tant que
 	// l'enfant n'a pas choisi sa classe (popup d'onboarding).
 	niveauReference?: SchoolLevel;
+	// Ajustement optionnel du niveau PAR MATIÈRE (#225, lot 4) : cible les profils
+	// en dents de scie (fort en maths, plus fragile en français…). Le niveau
+	// effectif d'une matière = niveauParMatiere[subject] ?? niveauReference. Réservé
+	// à l'espace « Réglages parent ». Une matière absente hérite de la référence.
+	niveauParMatiere?: Record<string, SchoolLevel>;
 }
 export interface ProfilesMeta {
 	list: Profile[];
@@ -223,6 +228,22 @@ export function setNiveauReference(level: SchoolLevel) {
 	p.updatedAt = Date.now();
 	saveProfilesMeta(m);
 }
+// Ajustement du niveau par matière (#225, lot 4). `undefined` retire l'ajustement
+// (la matière hérite de nouveau du niveau de référence).
+export function getNiveauParMatiere(): Record<string, SchoolLevel> {
+	return activeProfile()?.niveauParMatiere ?? {};
+}
+export function setNiveauMatiere(subject: string, level: SchoolLevel | undefined) {
+	const m = loadProfilesMeta();
+	const p = m && m.list.find((x) => x.uuid === m.active);
+	if (!p) return;
+	const map = { ...(p.niveauParMatiere ?? {}) };
+	if (level) map[subject] = level;
+	else delete map[subject];
+	p.niveauParMatiere = map;
+	p.updatedAt = Date.now();
+	saveProfilesMeta(m);
+}
 
 // Efface les données d'un profil (clés sous son préfixe), sauf la méta.
 function clearProfileData(prefix: string) {
@@ -287,6 +308,7 @@ export function exportProfiles(uuids: string[]) {
 			updatedAt: p.updatedAt || 0,
 			prefs: p.prefs, // réglages d'accessibilité (#42)
 			niveauReference: p.niveauReference, // niveau scolaire de référence (#225)
+			niveauParMatiere: p.niveauParMatiere, // ajustement par matière (#225, lot 4)
 			data: profileDataRelative(p),
 		})),
 	};
@@ -311,6 +333,7 @@ export function importProfiles(payload: any) {
 				existing.emoji = ip.emoji || existing.emoji;
 				if (ip.prefs) existing.prefs = ip.prefs; // réglages d'accessibilité (#42)
 				if (ip.niveauReference) existing.niveauReference = ip.niveauReference; // niveau (#225)
+				if (ip.niveauParMatiere) existing.niveauParMatiere = ip.niveauParMatiere; // niveau/matière
 				existing.updatedAt = ip.updatedAt || Date.now();
 				updated++;
 			} else skipped++; // version locale plus récente ou identique → on garde
@@ -323,6 +346,7 @@ export function importProfiles(payload: any) {
 				updatedAt: ip.updatedAt || Date.now(),
 				prefs: ip.prefs || undefined, // réglages d'accessibilité (#42)
 				niveauReference: ip.niveauReference || undefined, // niveau scolaire (#225)
+				niveauParMatiere: ip.niveauParMatiere || undefined, // ajustement par matière (#225)
 			};
 			writeProfileData(profilePrefix(p), ip.data);
 			m.list.push(p);

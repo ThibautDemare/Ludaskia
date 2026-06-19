@@ -407,3 +407,27 @@
 	text-align: center;
 	margin-top: 10px;
 }
+
+/* Réglage du niveau scolaire (parent, #225 lot 4) : une ligne libellé + select
+   par matière, cibles tactiles confortables pour un doigt d'adulte. */
+.pref-niveau {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.pref-niveau-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	font-size: 14px;
+}
+.pref-niveau-select {
+	font: inherit;
+	min-height: 40px;
+	padding: 6px 10px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--paper);
+	color: var(--ink);
+}

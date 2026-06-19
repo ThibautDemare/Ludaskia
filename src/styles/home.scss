@@ -292,6 +292,8 @@
 	margin-top: 5px;
 	padding-top: 5px;
 	border-top: 1px solid var(--line);
-	font-size: 0.82em;
-	color: var(--muted);
+	/* Lisible (hérite des 13 px de .card-record) + contraste AA : var(--grey) comme
+	   les autres sous-lignes (.rev-next), pas var(--muted) (~2,3:1, illisible). La
+	   hiérarchie vient du picto + du nombre en gras/accent de la ligne du dessus. */
+	color: var(--grey);
 }

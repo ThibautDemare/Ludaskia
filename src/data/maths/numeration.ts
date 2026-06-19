@@ -22,6 +22,8 @@
      confondus, saut de rang, nombre non arrondi, recopie d'une borne).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
+import type { SchoolLevel } from '../../core/catalog';
+import { calibrated } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
 
 /* Deux modes communs à toutes les leçons de numération. */
@@ -164,13 +166,19 @@ export interface NumerationLessonDef {
 	id: string;
 	label: string;
 	exerciseType: ExerciseType;
+	levels?: SchoolLevel[];
 }
 
 export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 	{
 		id: 'num-comparer',
 		label: 'Je compare les nombres',
-		exerciseType: numerationType(() => compareFact(999)),
+		// Multi-niveaux « calibré » (#225) : CE2 compare jusqu'à 999 (3 chiffres),
+		// CM1 jusqu'à 9999 (4 chiffres). Même leçon, même id, plage recalibrée.
+		levels: ['ce2', 'cm1'],
+		exerciseType: calibrated<number>({ ce2: 999, cm1: 9999 }, (max) =>
+			numerationType(() => compareFact(max)),
+		),
 	},
 	{
 		id: 'num-encadrer-intercaler',

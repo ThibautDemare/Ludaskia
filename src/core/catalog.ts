@@ -329,7 +329,9 @@ const NUMERATION_LESSONS_DEFS: LessonDef[] = [...NUMERATION_LESSONS, ...POSITION
 		label: d.label,
 		subject: 'math',
 		category: 'math-numeration',
-		levels: ['ce2'],
+		// Niveaux dérivés du moteur (#225) : une leçon « calibrée » (combinateur
+		// `calibrated`) expose ses niveaux ; les autres restent CE2.
+		levels: d.exerciseType.levels ?? ['ce2'],
 		exerciseType: d.exerciseType,
 	}),
 );
@@ -381,7 +383,7 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-conjugaison',
-	levels: [d.level],
+	levels: d.levels,
 	exerciseType: conjugationType(d.verbId, d.tense),
 	rubrique: d.rubrique, // regroupement par temps (#109)
 }));

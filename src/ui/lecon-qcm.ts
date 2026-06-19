@@ -10,6 +10,7 @@
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
+import { niveauLecon } from '../core/niveau-actif';
 import type { ChoiceView, ExerciseMode, QcmVariante } from '../core/exercise';
 import type { Item } from '../core/items';
 import { checkItemAnswer, choiceButtonHTML, enonceTexte, figureBlock } from '../core/items';
@@ -70,7 +71,7 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 	const seen = new Set<string>();
 	let misses = 0;
 	while (out.length < n && misses < 80) {
-		const ex = l.exerciseType.generate({ mode: m });
+		const ex = l.exerciseType.generate({ mode: m, level: niveauLecon(l) });
 		if (ex.type !== 'qcm') break; // sécurité : ce runner n'a de sens que pour un QCM
 		const key = `${commKey(ex.question)}¦${ex.answer}¦${ex.figure ?? ''}`;
 		if (seen.has(key)) {

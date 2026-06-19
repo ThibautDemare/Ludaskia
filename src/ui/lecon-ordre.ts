@@ -13,6 +13,7 @@
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
+import { niveauLecon } from '../core/niveau-actif';
 import type { ExerciseMode } from '../core/exercise';
 import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
@@ -58,7 +59,7 @@ function genQuestions(l: LessonDef, m: ExerciseMode, n: number): OrdreQuestion[]
 	const seen = new Set<string>();
 	let misses = 0;
 	while (out.length < n && misses < 80) {
-		const ex = l.exerciseType.generate({ mode: m });
+		const ex = l.exerciseType.generate({ mode: m, level: niveauLecon(l) });
 		if (ex.type !== 'tuilesOrdre') break; // ce runner n'a de sens que pour ce type
 		const key = ex.ordre.join('|');
 		if (seen.has(key)) {

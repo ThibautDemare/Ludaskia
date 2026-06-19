@@ -24,6 +24,7 @@ import {
 	CATEGORIES,
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
+import { niveauLecon } from '../core/niveau-actif';
 import { hasMode } from '../core/exercise';
 import type { ChoiceView } from '../core/exercise';
 import { mathInline } from '../core/fraction-text';
@@ -322,8 +323,9 @@ function sprintNext() {
 		guard = 0;
 	do {
 		def = pickSprintDef();
+		const level = niveauLecon(def); // calibrage au niveau effectif (#225)
 		if (hasMode(def.exerciseType, 'qcm')) {
-			const ex = def.exerciseType.generate({ mode: 'qcm' });
+			const ex = def.exerciseType.generate({ mode: 'qcm', level });
 			q = {
 				text: ex.type === 'qcm' ? ex.question : '',
 				answer: ex.type === 'qcm' ? ex.answer : '',
@@ -334,7 +336,7 @@ function sprintNext() {
 			choices = ex.type === 'qcm' ? ex.choices : null;
 			choicesView = ex.type === 'qcm' ? ex.choicesView : undefined;
 		} else {
-			q = genLessonItem(def); // aiguille math (bilanQ) ; pose _lesson
+			q = genLessonItem(def, level); // aiguille math (bilanQ) ; pose _lesson
 			choices = null;
 			choicesView = undefined;
 		}

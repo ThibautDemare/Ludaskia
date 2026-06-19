@@ -11,6 +11,7 @@ import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { icon } from './icon';
 import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
+import { niveauLecon } from '../core/niveau-actif';
 import { hasMode } from '../core/exercise';
 import type { QcmVariante } from '../core/exercise';
 import { PONCT_MOTS } from './ponctuation-view';
@@ -85,10 +86,11 @@ export function runRevisionEspacee(): void {
 			const lesson = getLessonById(it.id);
 			if (!lesson) continue;
 			const type = lesson.exerciseType;
+			const level = niveauLecon(lesson); // calibrage au niveau effectif (#225)
 			const consigne = lesson.label; // consigne affichée = libellé de la leçon (#186)
 			// QCM (conjugaison, homophones, géométrie…) : inchangé.
 			if (hasMode(type, 'qcm')) {
-				const ex = type.generate({ mode: 'qcm' });
+				const ex = type.generate({ mode: 'qcm', level });
 				if (ex.type === 'qcm')
 					items.push({
 						groupLabel: g.label,
@@ -109,7 +111,7 @@ export function runRevisionEspacee(): void {
 			}
 			// Interactions « tuiles » natives, rejouées telles quelles en révision (#186) :
 			// ranger une suite (ordre alpha) et ranger par thème (champs lexicaux).
-			const ex = type.generate();
+			const ex = type.generate({ level });
 			if (ex.type === 'tuilesOrdre') {
 				items.push({
 					groupLabel: g.label,
@@ -138,7 +140,7 @@ export function runRevisionEspacee(): void {
 			// tuiles plutôt qu'en saisie : un signe n'est pas saisissable au clavier numérique
 			// sur mobile (#186).
 			if (ex.type === 'text' && !answerEstNumerique(String(ex.answer)) && hasMode(type, 'tuiles')) {
-				const tex = type.generate({ mode: 'tuiles' });
+				const tex = type.generate({ mode: 'tuiles', level });
 				if (tex.type === 'tuilesNombre') {
 					items.push({
 						groupLabel: g.label,
@@ -160,7 +162,7 @@ export function runRevisionEspacee(): void {
 				consigne,
 				kind: 'num',
 				lessonId: it.id,
-				item: genLessonItem(lesson),
+				item: genLessonItem(lesson, level),
 			});
 		}
 	}

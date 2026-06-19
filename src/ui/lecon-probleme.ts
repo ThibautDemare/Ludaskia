@@ -10,6 +10,7 @@
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
+import { niveauLecon } from '../core/niveau-actif';
 import type { ExerciseMode, ProblemeEtape, ProbLexique } from '../core/exercise';
 import { figureBlock } from '../core/items';
 import { commKey, escapeHTML } from '../core/utils';
@@ -62,7 +63,7 @@ function genQuestions(l: LessonDef, n: number, m?: ExerciseMode): ProbQuestion[]
 	const seen = new Set<string>();
 	let misses = 0;
 	while (out.length < n && misses < 80) {
-		const ex = l.exerciseType.generate({ mode: m });
+		const ex = l.exerciseType.generate({ mode: m, level: niveauLecon(l) });
 		if (ex.type !== 'probleme') break; // ce runner n'a de sens que pour un problème
 		const key = commKey(ex.enonce);
 		if (seen.has(key)) {

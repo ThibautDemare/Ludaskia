@@ -32,6 +32,7 @@ import {
 	recordLessonStats,
 	starsEarned,
 	starsEarnedAll,
+	etoileAuxNiveaux,
 	loadLessonStats,
 	loadLessonStatsAll,
 	loadLessonRevisions,
@@ -154,6 +155,15 @@ describe('namespacing de la progression par niveau (Lot 2)', () => {
 		expect(starsEarnedAll()).toBe(2);
 		// alors que la vue scopée, elle, ne montre que le niveau courant.
 		expect(starsEarned()).toBe(1);
+	});
+
+	it('etoileAuxNiveaux : niveaux où la leçon est étoilée (badge « déjà maîtrisée »)', () => {
+		expect(etoileAuxNiveaux('num-comparer')).toEqual([]);
+		setNiveauReference('ce2');
+		recordLessonResult('num-comparer', true);
+		setNiveauReference('cm1');
+		recordLessonResult('num-comparer', true);
+		expect([...etoileAuxNiveaux('num-comparer')].sort()).toEqual(['ce2', 'cm1']);
 	});
 
 	it('état de révision SR scopé au niveau actif', () => {

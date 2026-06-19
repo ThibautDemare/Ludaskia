@@ -170,6 +170,7 @@ function renderQuestion(): void {
 							return q.ttsItems ? `<span class="lqcm-choice-wrap">${btn}</span>` : btn;
 						})
 						.join('')}
+        </div>
         <div class="sprint-correction" id="lqcmFeedback" hidden></div>
         <div class="sprint-actions" id="lqcmActions" hidden></div>
       </div>

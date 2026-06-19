@@ -38,5 +38,10 @@ test("Lire l'heure (QCM) : l'horloge s'affiche et un choix donne un retour", asy
 	await page.locator('.sprint-choice').first().click(); // feedback immédiat
 	await expect(page.locator('#lqcmFeedback')).toBeVisible();
 	await expect(page.locator('#lqcmNext')).toBeVisible();
+	// Le feedback et « Continuer » sont des FRÈRES du bloc de choix (empilés
+	// dessous), pas imbriqués dans la grille flex des choix (sinon ils s'alignent
+	// avec les boutons — bug du `</div>` manquant corrigé dans lecon-qcm.ts).
+	await expect(page.locator('#lqcmChoices #lqcmFeedback')).toHaveCount(0);
+	await expect(page.locator('#lqcmChoices #lqcmNext')).toHaveCount(0);
 	expect(errors).toEqual([]);
 });

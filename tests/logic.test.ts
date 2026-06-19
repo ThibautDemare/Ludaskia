@@ -1764,14 +1764,36 @@ describe('Déblocages : avatars forêt (gating)', () => {
 });
 
 describe('Déblocages : thèmes & préférences', () => {
-	test('themesDebloques : défaut toujours dispo, autres par palier', () => {
-		expect(api.themesDebloques(1)).toEqual(['defaut']);
-		expect(api.themesDebloques(20)).toEqual(['defaut', 'ciel']);
-		expect(api.themesDebloques(70)).toEqual(['defaut', 'ciel', 'automne', 'lagon']);
+	test('themesDebloques : confort (niv 1) toujours dispo, couleur par palier', () => {
+		// Les thèmes de CONFORT (Forêt / Nuit / Clair-obscur) sont à niveau 1 → dispo dès le départ.
+		expect(api.themesDebloques(1)).toEqual(['defaut', 'nuit', 'auto']);
+		expect(api.themesDebloques(20)).toEqual(['defaut', 'nuit', 'auto', 'ciel']);
+		expect(api.themesDebloques(70)).toEqual(['defaut', 'nuit', 'auto', 'ciel', 'automne', 'lagon']);
 		expect(api.themesDebloques(95)).toContain('fruit-rouge');
 		// Le défaut n'a pas de seuil de déblocage « vécu ».
 		expect(THEMES_UNLOCK[0].id).toBe('defaut');
 		expect(THEMES_UNLOCK[0].niveau).toBe(1);
+	});
+	test('thèmes de confort (#224) : Nuit & Clair-obscur, niv 1, sans récompense', () => {
+		const confort = THEMES_UNLOCK.filter((t) => t.confort);
+		// Exactement les trois thèmes d'affichage, tous au niveau 1.
+		expect(confort.map((t) => t.id)).toEqual(['defaut', 'nuit', 'auto']);
+		expect(confort.every((t) => t.niveau === 1)).toBe(true);
+		// Aucun thème de confort n'est annoncé comme récompense de palier.
+		for (let n = 1; n <= 100; n++) {
+			const themes = api.recompensesNiveau(n).filter((r) => r.type === 'theme');
+			expect(themes.some((r) => /Nuit|Clair-obscur/.test(r.texte))).toBe(false);
+		}
+	});
+	test('setTheme : un thème de confort est sélectionnable dès le niveau 1', () => {
+		// Niveau 1, aucune XP : Nuit et Clair-obscur passent le garde-fou (non gatés).
+		api.setTheme('nuit');
+		expect(api.getTheme()).toBe('nuit');
+		api.setTheme('auto');
+		expect(api.getTheme()).toBe('auto');
+		// Un thème de couleur gaté reste, lui, refusé à ce niveau.
+		api.setTheme('ciel');
+		expect(api.getTheme()).toBe('auto');
 	});
 	test('recompensesNiveau : thème annoncé à 20/40/70/95 (hors défaut)', () => {
 		expect(api.recompensesNiveau(20).map((r) => r.type)).toEqual(['theme']);

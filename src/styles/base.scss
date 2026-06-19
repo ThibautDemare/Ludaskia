@@ -28,6 +28,15 @@
 	--warn: #b26a00;
 	--warn-bg: #fff3d6;
 	--warn-bd: #ffd54f;
+	/* Tokens sémantiques partagés (issue #224) : valeurs CLAIRES ci-dessous =
+	   aspect historique inchangé ; le thème « Nuit » les réécrit (themes.scss).
+	   Les composants doivent les utiliser plutôt que des couleurs en dur, pour
+	   suivre le thème d'affichage. */
+	--on-accent: #ffffff; /* texte/icône posé SUR une surface --accent (inversé en sombre) */
+	--line: #e4e8ef; /* filets et séparateurs fins */
+	--track: #e7ebf1; /* surface neutre pleine : jauge, bouton « fantôme » */
+	--ok-soft: #e4f1ea; /* fond de retour « réussite » (doublé par l'icône, pas la couleur seule) */
+	--ko-soft: #fbe4e4; /* fond de retour « erreur » */
 	--ui: 'Nunito', system-ui, sans-serif; /* police de TOUTE l'interface, à l'écran (#137) */
 	--serif:
 		Georgia, 'Times New Roman', serif; /* réservé à l'IMPRESSION des fiches : effet « papier » (#137) */

@@ -157,16 +157,25 @@ html.anim-reduced .item-tts.speaking .ph-icon {
 }
 
 /* ---- 3. Écran Préférences : statut de la lecture vocale ---- */
+/* Note de STATUT rattachée à la case « Lire la consigne » : indentée sous son
+   libellé (case 18px + gap 8px) et plus petite → ne se lit pas comme une 4ᵉ
+   option à cocher, mais comme l'état de l'option au-dessus. */
+.pref-toggle-tts {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
 .pref-tts-statut {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: 0.4em;
-	margin: 0.4rem 0 0;
+	margin: 0 0 0 26px;
 	color: var(--grey);
-	font-size: 0.9rem;
+	font-size: 0.82rem;
+	line-height: 1.35;
 }
 .pref-hint {
-	color: var(--muted);
+	color: var(--grey); /* lisible (AA) : --muted (#9aa1ac ≈ 2,6:1 sur blanc) échouait */
 	font-weight: 400;
 }
 .pref-toggle-off {

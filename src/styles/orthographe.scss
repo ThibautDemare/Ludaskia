@@ -65,7 +65,7 @@
 	font-size: 0.85rem;
 	font-weight: 400;
 	line-height: 1.45;
-	color: #fff;
+	color: var(--paper);
 	background: var(--ink);
 	border-radius: 8px;
 	box-shadow: 0 6px 18px rgb(0 0 0 / 25%);
@@ -95,7 +95,7 @@
 	box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
 }
 .nav-card-edit:hover {
-	background: #fff;
+	background: var(--paper);
 }
 
 /* Formulaire de création/édition d'une liste. */
@@ -288,7 +288,7 @@
 }
 .accent-key:hover {
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 }
 // Libellé court au-dessus de chaque zone (« Ton mot » / « Les lettres ») :
 // distinguer visuellement les deux mondes réduit la confusion des cibles de tap.
@@ -324,7 +324,7 @@
 	font-weight: 700;
 	border: 2px solid var(--accent);
 	border-radius: 10px;
-	background: #fff;
+	background: var(--paper);
 	cursor: pointer;
 }
 // :hover seul ne couvre pas le tactile et « colle » après un tap → on s'appuie
@@ -344,7 +344,7 @@
 }
 .tuile-pose {
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 }
 .tuile-pose:active,
 .tuile-pose:focus-visible {
@@ -457,7 +457,7 @@
 	font-weight: 700;
 	border-radius: 10px;
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 	opacity: 0.8;
 	pointer-events: none; // sinon elementFromPoint renverrait le fantôme
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -552,7 +552,7 @@
 	font-family: var(--ui);
 	font-weight: 700;
 	font-size: 1.05rem;
-	color: #fff;
+	color: var(--on-accent);
 	background: var(--accent);
 	border: 0;
 	border-radius: 12px;
@@ -732,7 +732,7 @@
 	box-shadow: 0 1px 3px rgb(0 0 0 / 22%);
 }
 .relecture-crayon:hover {
-	background: #fff;
+	background: var(--paper);
 	color: var(--accent);
 }
 .relecture-crayon:focus-visible {

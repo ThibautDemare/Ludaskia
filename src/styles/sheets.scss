@@ -160,7 +160,7 @@
 	color: var(--ko);
 	border-bottom-color: var(--ko);
 	font-weight: 700;
-	background: rgba(198, 40, 40, 0.08);
+	background: var(--ko-soft); /* token (#224) : suit le thème (lisible aussi en sombre) */
 }
 .mark {
 	font-family: var(--ui);
@@ -304,7 +304,7 @@ html.anim-reduced .mark.correct {
 	padding: 9px 16px;
 	cursor: pointer;
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 	transition:
 		box-shadow 0.15s ease,
 		transform 0.08s ease;
@@ -325,7 +325,7 @@ html.anim-reduced .mark.correct {
 	border-radius: 8px;
 	padding: 9px 16px;
 	cursor: pointer;
-	background: #e7ebf1;
+	background: var(--track);
 	color: var(--accent);
 	transition:
 		box-shadow 0.15s ease,

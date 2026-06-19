@@ -59,3 +59,121 @@
 .theme-fruit-rouge .theme-dot {
 	background: #d7395a;
 }
+/* Pastille « Nuit » : sombre. */
+.theme-nuit .theme-dot {
+	background: #222a36;
+}
+/* Pastille « Clair-obscur » : BICOLORE (clair | sombre). Le thème s'adaptant au
+   système, une couleur d'accent fixe « mentirait » → la pastille porte le double
+   codage, pas une icône. Split DIAGONAL et moitié réellement CLAIRE (crème « jour »,
+   pas le vert Forêt foncé) pour que le contraste clair↔sombre se lise d'emblée. */
+.theme-auto .theme-dot {
+	background: linear-gradient(135deg, #fdf6e3 0 50%, #222a36 50% 100%);
+}
+
+/* ============================================================
+   Thème d'affichage SOMBRE (issue #224) : « Nuit » (fixe) et « Clair-obscur »
+   (auto) quand le système est en mode sombre. Contrairement aux thèmes de
+   couleur clairs ci-dessus, le mode sombre RÉÉCRIT délibérément les tokens de
+   base (--paper, --ink, --ok/--ko…) : c'est un réglage de confort, pas une
+   surcouche d'accent. Palette validée WCAG AA (texte courant ≥ 4,5:1).
+   Le thème auto n'est PAS résolu en JS : `@media (prefers-color-scheme: dark)`
+   applique la même palette à `[data-theme='auto']`, donc bascule en direct. */
+@mixin nuit-palette {
+	--ink: #e9edf3;
+	--grey: #aeb7c4;
+	--muted: #969eac; /* relevé vs #8c94a2 pour garder ≥ 4,5:1 sur --paper avec marge */
+	--paper: #222a36; /* surface de carte (sur-élevée par rapport au fond) */
+	--page-bg: #161b23; /* fond de page (plus sombre que les cartes) */
+	--accent: #52c98a; /* vert vif : lisible comme texte/icône sur fond sombre */
+	--accent-dark: #3fa86d; /* survol des boutons accent */
+	--accent-soft: #22382c; /* surface teintée vert sombre (ex-#e4f0e8 clair) */
+	--on-accent: #0c130e; /* texte/icône sur surface vive (accent, ok, ko) → sombre */
+	--ok: #5ed18f;
+	--ko: #ff6f6f;
+	--warn: #f0b850;
+	--warn-bg: #3a2f12;
+	--warn-bd: #6b5512;
+	--line: #353d4a;
+	--track: #2c3543;
+	--ok-soft: #1d3326;
+	--ko-soft: #3b2222;
+	/* --cat-*, --clock-min : NON réécrits. À leurs valeurs claires, ils servent
+	   surtout de FOND de bouton/pastille (texte blanc lisible) et restent vifs
+	   sur fond sombre ; leur rare usage en TEXTE est rehaussé localement (ci-dessous). */
+}
+@mixin nuit-overrides {
+	/* Barre d'outils : barre sombre dédiée (pas l'accent vif, qui serait criard),
+	   texte clair conservé. */
+	.toolbar {
+		background: #1c2330;
+	}
+	.toolbar-logo {
+		background: #fff; /* badge clair gardé : le feuillage vert du logo reste vif */
+	}
+	/* Pastilles à fond blanc de la barre → elles deviennent CRIARDES sur barre
+	   sombre. Le bouton primaire « Accueil » passe en vert accent (reste l'action
+	   mise en avant, sur-marque) ; le score en chip translucide ; le désactivé en
+	   surface sombre discrète. */
+	.btn-primary {
+		background: var(--accent);
+		color: var(--on-accent);
+	}
+	.score {
+		background: rgba(255, 255, 255, 0.16);
+		color: var(--accent);
+	}
+	.toolbar button[disabled] {
+		background: rgba(255, 255, 255, 0.08) !important;
+		color: var(--muted) !important;
+	}
+	/* Ombres teintées (pensées pour un fond clair) → neutres et plus profondes. */
+	.card {
+		box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+	}
+	.bc-mode-item:has(:checked) {
+		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+	}
+	/* Survols bleu pâle (atelier / relecture) → surface neutre sombre. */
+	.atelier-undo:hover,
+	.relecture-retour:hover {
+		background: var(--track);
+	}
+	/* Couleurs de famille employées comme TEXTE (catalogue) : rehaussées (WCAG AA)
+	   pour le fond sombre, sans toucher le token (gardé lisible en fond de bouton). */
+	.cat-action-secondary[data-act='custom'] {
+		color: #a48cdd;
+		border-color: #a48cdd;
+	}
+	.cat-action-secondary[data-act='print'] {
+		color: #6ea6ee;
+		border-color: #6ea6ee;
+	}
+	/* Ardoise de brouillon : papier sombre (le tracé suit --ink, donc clair). */
+	.brouillon-canvas {
+		background-color: #1e2530;
+	}
+	/* Voile d'auto-actualisation : sombre (un voile blanc flasherait sur page sombre). */
+	.update-overlay {
+		background: rgba(12, 16, 22, 0.88);
+	}
+	/* Liseré clair sur les pastilles : une pastille sombre (Nuit, moitié sombre de
+	   Clair-obscur) ne doit pas disparaître sur la carte sombre. */
+	.theme-dot {
+		box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+	}
+	/* Médaille de niveau : liseré crème (pas blanc pur) pour éviter un halo dur. */
+	.levelup-medal {
+		border-color: #fff3c4;
+	}
+}
+:root[data-theme='nuit'] {
+	@include nuit-palette;
+	@include nuit-overrides;
+}
+@media (prefers-color-scheme: dark) {
+	:root[data-theme='auto'] {
+		@include nuit-palette;
+		@include nuit-overrides;
+	}
+}

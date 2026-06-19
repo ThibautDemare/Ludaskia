@@ -183,7 +183,7 @@ html.anim-reduced .mascotte-static {
 	align-items: center;
 	gap: 10px;
 	padding: 7px 0;
-	border-bottom: 1px solid #eef1f5;
+	border-bottom: 1px solid var(--line);
 }
 .obj:last-child {
 	border-bottom: 0;
@@ -282,7 +282,7 @@ html.anim-reduced .mascotte-static {
 .podium li {
 	font-size: 15px;
 	padding: 6px 2px;
-	border-bottom: 1px solid #eef1f5;
+	border-bottom: 1px solid var(--line);
 }
 .podium li:last-child {
 	border-bottom: 0;

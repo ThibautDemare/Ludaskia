@@ -305,8 +305,12 @@ mesure au rapporteur relève du CM1 (future leçon).
   `PROFILES_KEY`, et `setOnDataWrite(fn)` (hook appelé après chaque écriture de
   donnée de profil — branché depuis `main.ts`).
 - **`profiles.ts`** — profils (UUID, préfixe, `updatedAt`), `initProfiles`,
-  export/import. ⚠️ Plus d'effet de bord au chargement : `initProfiles()` et le
-  branchement du hook sont appelés par `main.ts`.
+  export/import. La **méta de profil** porte aussi `prefs` (a11y #42),
+  `niveauReference` et `niveauParMatiere` (classe scolaire #225) — champs **additifs**
+  (format export `v2` inchangé), emportés par l'export, survivent à « Réinitialiser ».
+  `applyActive()` déclenche les migrations idempotentes (`migrateNiveauNamespacing`
+  **avant** `migrateRevisions`). ⚠️ Plus d'effet de bord au chargement :
+  `initProfiles()` et le branchement du hook sont appelés par `main.ts`.
 - **`items.ts`** — item de rendu `{text, answer, answers?, kind?, figure?}` (`@` = champ).
   Fabriques math (`add/sub/mul/dbl/half/comp/facteur`), `renderItem` (champ
   numérique, **texte**, ou **grille posée** selon `kind`), `checkItemAnswer`
@@ -364,7 +368,8 @@ mesure au rapporteur relève du CM1 (future leçon).
   lexicaux #114 : tuiles + thème correct de chacune) | `posed` (calcul posé #97 :
   op + opérandes) | interactions ortho), interface **`ExerciseType`** : `modes?`
   (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
-  l'ordre d'affichage), `generate(mode?)`, `check()`. Helpers **`hasMode`** et
+  l'ordre d'affichage), `generate(opts? : {mode?, level?})` (le `level` #225 calibre
+  une leçon multi-niveaux), `check()`. Helpers **`hasMode`** et
   **`defaultMode`** (les écrans dérivent leurs choix d'ici, **jamais en dur**, #69),
   et `checkAnswer` (normalisation partagée `normalizeText` ; **accents et
   apostrophes exigés**).
@@ -373,9 +378,10 @@ mesure au rapporteur relève du CM1 (future leçon).
   **commun à tous les rendus** (fiche en saisie *et* runner QCM) pour garantir la
   **parité** entre modes — aucun mode n'est plus rentable qu'un autre (#69).
 - **`catalog.ts`** — hiérarchie `SUBJECTS` / `CATEGORIES` / `LessonDef`
-  (`id, label, subject, category, level, exerciseType`), helpers
-  `getAllLessons/getLessonById/getLessonsBySubject/getLessonsByCategory`,
-  `MATH_LESSON_NUM` (pont id→`bilanQ`), et **`genLessonItem(lesson)`** qui produit
+  (`id, label, subject, category, levels: SchoolLevel[], exerciseType` — #225), helpers
+  `getAllLessons/getLessonById/getLessonsBySubject/getLessonsByCategory` (ces deux
+  derniers acceptent un `niveau?` optionnel qui filtre par niveau),
+  `MATH_LESSON_NUM` (pont id→`bilanQ`), et **`genLessonItem(lesson, level?)`** qui produit
   un `Item` pour n'importe quelle matière. Trois chemins, départagés par
   **`isLegacyMathLesson`** : maths **hérités** (calcul mental, dans
   `MATH_LESSON_NUM`) → `bilanQ` ; maths **modernes** (conversions #89, monnaie #96,
@@ -804,6 +810,44 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
 - Une récompense déclenche une **modale + confettis** (jamais de confettis sans
   explication).
 
+## Niveaux scolaires (#225)
+Le **niveau scolaire** (`SchoolLevel = cp|ce1|ce2|cm1|cm2|6e`) est un **réglage de
+contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulaire enfant :
+« **classe** » pour le scolaire, « niveau »/rang pour l'XP.
+
+- **`levels.ts`** (pur) — `LEVEL_ORDER`, `LEVEL_LABEL`, `effectiveLevel(lesson, niveau)`
+  et `closestSupported(supported, niveau)` (niveau demandé, sinon plus haut supporté
+  **en-dessous**, sinon plus bas — repli/clamp), `availableLevels(lessons)` (union des
+  niveaux présents), `lessonsForLevel(lessons, niveau)`.
+- **`level-combinators.ts`** (pur) — `calibrated(table, build)` : **un seul `id`**
+  recalibré par une table de paramètres par niveau (génératif : numération…), expose
+  ses `levels`; `bankByLevel(items)` : banque QCM tagguée par item, dérive l'union des
+  niveaux. Le catalogue dérive `LessonDef.levels` de ces combinateurs (numération) ou
+  de la donnée (conjugaison taggée).
+- **`niveau-actif.ts`** — résout le niveau au **seam** profil/catalogue (lit la méta
+  profil **directement** via `storage`, pour éviter un cycle `progress → niveau-actif →
+  profiles`). `niveauActif()` (classe de référence), `niveauActifMatiere(subject)`
+  (= `niveauParMatiere[subject] ?? niveauReference ?? plus bas dispo`), `niveauLecon(lesson)`
+  (= `effectiveLevel` sur la matière, **passé à `generate`/`genLessonItem`** par
+  `build`/runners/`revision`/`sprint`), `besoinChoixNiveau()`, `lessonsNiveauActif()`.
+- **Progression namespacée `lessonId@niveau`** (`progress.ts`) — étoiles, stats,
+  premier passage, **état SR**. Les `load*` renvoient une **vue scopée** au niveau actif
+  **par matière** (clés `lessonId` simples → consommateurs inchangés) ; les `load*All`
+  / `starsEarnedAll` agrègent **tous niveaux** (effort, cumul « trésor » qui ne baisse
+  jamais). Écriture clampée via `niveauLecon`. Migration unique `migrateNiveauNamespacing`
+  (legacy → `@ce2`, via `lsSetQuiet` pour ne pas bumper `updatedAt`).
+- **Scoping gamification** (`rewards.ts`) — **complétude** (`starsAll`, `allgreen`, par
+  matière/catégorie) et **objectif du jour** scopés au niveau actif ; **XP, déblocages
+  (forêt), trophées d'effort/régularité (`vol`/`sprint`/`streak`/`goal`/`ortho`)
+  restent GLOBAUX**. ⚠️ Les **records** (`RUNS_KEY`, par mode) restent eux aussi
+  **globaux** (non scopés par niveau) — déviation assumée (records secondaires, par
+  mode et non par leçon).
+- **UI** — popup de **choix de classe** (`ui/onboarding.ts`, choix forcé, déclenchée si
+  `besoinChoixNiveau()`), filtrage catalogue/sprint par `niveauActifMatiere`, **réglage
+  parent** par matière (`ui/preferences.ts`), compteur d'accueil (cumul + objectif
+  scopé), badge « déjà maîtrisée en \<classe\> » (`etoileAuxNiveaux`). **V1 = niveau
+  actif seul** dans les pools ; mélange bas-niveau + entretien révision = **V2** (piste).
+
 ## Tests
 `tests/logic.test.ts` (Vitest) importe directement les modules de `src/core/` (et
 quelques-uns de `src/ui/`) et couvre la **logique pure** (génération, persistance,
@@ -870,7 +914,10 @@ vérifiable » (filtre : **automatisme/mémorisation**) :
   d'ancrage de la faute) ;
 - d'autres contenus : maths étendus (conversions d'unités), verbes irréguliers
   anglais ;
-- **filtrage par niveau scolaire** (chaque `LessonDef` porte déjà un `level`) ;
+- **niveaux scolaires — V2** (#225) : mélange biaisé vers le bas dans les pools de
+  tirage (sprint / révision : ≈ 80 % niveau actif / 15 % −1 / 2 % −2), **entretien des
+  acquis du niveau inférieur** en révision espacée, et davantage de contenu CM1 (le
+  filtrage, le namespacing `@niveau` et le calibrage par niveau sont déjà en place) ;
 - **affiner** la révision espacée : réglage de l'escalier d'intervalles, et
   généralisation (la brique `revision.ts` est déjà agnostique du type d'élément).
 - **corrigé imprimable** (page réponses) et **accessibilité/dys** de l'impression

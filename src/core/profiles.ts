@@ -20,6 +20,7 @@ import {
 import { XP_KEY, niveauDepuisXP } from './progress';
 import { niveauRequisAvatar } from './unlocks';
 import { migrateRevisions } from './revision-migrate';
+import type { SchoolLevel } from './catalog';
 
 /* Réglages d'accessibilité par profil (#42). Vivent dans la MÉTA de profil (pas
    dans les clés de données) : un aménagement doit survivre à « Réinitialiser »,
@@ -36,6 +37,11 @@ export interface Profile {
 	emoji: string;
 	updatedAt: number;
 	prefs?: ProfilePrefs;
+	// Niveau scolaire de référence (#225) : la « classe » du profil, défaut de
+	// toutes les matières. Vit dans la MÉTA (survit à « Réinitialiser », comme
+	// prefs) ; réglage de CONTENU, distinct du niveau d'XP. Indéfini tant que
+	// l'enfant n'a pas choisi sa classe (popup d'onboarding).
+	niveauReference?: SchoolLevel;
 }
 export interface ProfilesMeta {
 	list: Profile[];
@@ -199,6 +205,22 @@ export function lectureConsigneAuto(): boolean {
 	return getPrefs().lectureConsigneAuto === true;
 }
 
+/* ---------- Niveau scolaire de référence du profil actif (#225) ---------- */
+// Lu/écrit dans la méta (survit à « Réinitialiser »). L'écriture bumpe updatedAt
+// pour que l'export/fusion par récence l'emporte. Indéfini = classe pas encore
+// choisie (déclenche la popup d'onboarding).
+export function getNiveauReference(): SchoolLevel | undefined {
+	return activeProfile()?.niveauReference;
+}
+export function setNiveauReference(level: SchoolLevel) {
+	const m = loadProfilesMeta();
+	const p = m && m.list.find((x) => x.uuid === m.active);
+	if (!p) return;
+	p.niveauReference = level;
+	p.updatedAt = Date.now();
+	saveProfilesMeta(m);
+}
+
 // Efface les données d'un profil (clés sous son préfixe), sauf la méta.
 function clearProfileData(prefix: string) {
 	lsKeysRaw()
@@ -261,6 +283,7 @@ export function exportProfiles(uuids: string[]) {
 			emoji: p.emoji,
 			updatedAt: p.updatedAt || 0,
 			prefs: p.prefs, // réglages d'accessibilité (#42)
+			niveauReference: p.niveauReference, // niveau scolaire de référence (#225)
 			data: profileDataRelative(p),
 		})),
 	};
@@ -284,6 +307,7 @@ export function importProfiles(payload: any) {
 				existing.name = ip.name || existing.name;
 				existing.emoji = ip.emoji || existing.emoji;
 				if (ip.prefs) existing.prefs = ip.prefs; // réglages d'accessibilité (#42)
+				if (ip.niveauReference) existing.niveauReference = ip.niveauReference; // niveau (#225)
 				existing.updatedAt = ip.updatedAt || Date.now();
 				updated++;
 			} else skipped++; // version locale plus récente ou identique → on garde
@@ -295,6 +319,7 @@ export function importProfiles(payload: any) {
 				emoji: ip.emoji || PROFILE_EMOJIS[0],
 				updatedAt: ip.updatedAt || Date.now(),
 				prefs: ip.prefs || undefined, // réglages d'accessibilité (#42)
+				niveauReference: ip.niveauReference || undefined, // niveau scolaire (#225)
 			};
 			writeProfileData(profilePrefix(p), ip.data);
 			m.list.push(p);

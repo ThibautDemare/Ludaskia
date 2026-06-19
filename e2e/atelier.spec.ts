@@ -12,8 +12,9 @@ test("atelier : aucun mot ne déborde du cadre, même long (« aujourd'hui ») �
 	page,
 }) => {
 	const errors = watchErrors(page);
-	// « Tu n'as rien entouré ? Continuer quand même » apparaît à chaque mot : on accepte.
-	page.on('dialog', (d) => d.accept());
+	// Aucune lettre n'est entourée → à chaque « J'ai fini », la modale custom (#230)
+	// « Tu veux continuer sans rien entourer ? » s'ouvre ; on clique « Continuer quand
+	// même » pour avancer (remplace l'ancien dialogue natif auto-accepté).
 	// Liste prédéfinie « Mots invariables (1) » → profil neuf : découverte = atelier.
 	await gotoHash(page, 'ortho-fr-ortho-invariables-1');
 
@@ -36,6 +37,9 @@ test("atelier : aucun mot ne déborde du cadre, même long (« aujourd'hui ») �
 		const done = page.locator('#btnAtelierDone');
 		if (!(await done.isVisible())) break;
 		await done.click();
+		// La modale custom s'ouvre (rien d'entouré) → « Continuer quand même » pour avancer.
+		const continuer = page.getByRole('button', { name: 'Continuer quand même' });
+		if (await continuer.isVisible().catch(() => false)) await continuer.click();
 		// Attendre le mot suivant (texte changé) ou la sortie de l'atelier.
 		await page
 			.waitForFunction((prev) => {

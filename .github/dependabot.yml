@@ -1,0 +1,35 @@
+# Mises à jour de dépendances automatisées (Dependabot).
+# Ouvre des PR de montée de version que la CI valide automatiquement.
+version: 2
+updates:
+  # Dépendances npm (front Vite/TS/SCSS + outillage de test).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      # Regroupe les montées mineures/patch en une seule PR pour limiter le bruit.
+      # Les montées majeures restent des PR individuelles (relecture au cas par cas).
+      npm-minor-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+
+  # Versions des actions utilisées dans les workflows (.github/workflows/*).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions-all:
+        patterns:
+          - '*'

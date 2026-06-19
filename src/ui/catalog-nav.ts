@@ -14,8 +14,9 @@ import {
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { niveauActifMatiere } from '../core/niveau-actif';
+import { LEVEL_ORDER, LEVEL_LABEL } from '../core/levels';
 import { LESSONS } from '../core/lessons';
-import { loadStars, loadLessonStats } from '../core/progress';
+import { loadStars, loadLessonStats, etoileAuxNiveaux } from '../core/progress';
 import { loadOrtho } from '../core/orthographe/store';
 import { listOrthoLecons, type LeconOrthoRef } from '../core/orthographe/lessons';
 import { escapeHTML } from '../core/utils';
@@ -103,7 +104,8 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 		return;
 	}
 
-	const lessonDefs = getLessonsByCategory(categoryId, niveauActifMatiere(category?.subject ?? ''));
+	const niveau = niveauActifMatiere(category?.subject ?? '');
+	const lessonDefs = getLessonsByCategory(categoryId, niveau);
 
 	// Catégorie encore sans leçon (nouvelles catégories maths en attente de
 	// contenu, #92) : on évite d'afficher des bilans/sprints qui ne tireraient
@@ -124,10 +126,18 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 	// On réutilise les cartes riches (numéro, titre, étoile, %) à partir des
 	// entrées LESSONS correspondantes ; fallback minimal si absente.
 	// Chaque leçon : carte riche + un 🖨 pour imprimer sa fiche (sans la lancer).
+	const ai = LEVEL_ORDER.indexOf(niveau);
 	const cardRow = (def: LessonDef, i: number) => {
 		const rich = LESSONS.find((l) => l.id === def.id);
 		const entry = rich ?? { id: def.id, num: i + 1, title: def.label };
-		return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats, def.repere)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(def.label)}">${icon('printer')}</button></div>`;
+		// Badge « déjà maîtrisée en <classe inférieure> » : même leçon étoilée à un
+		// niveau plus bas que le niveau actif de la matière (#225). On nomme la classe
+		// inférieure maîtrisée la plus haute.
+		const bas = etoileAuxNiveaux(def.id)
+			.filter((lv) => LEVEL_ORDER.indexOf(lv) < ai)
+			.sort((a, b) => LEVEL_ORDER.indexOf(a) - LEVEL_ORDER.indexOf(b));
+		const badge = bas.length ? LEVEL_LABEL[bas[bas.length - 1]] : undefined;
+		return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats, def.repere, badge)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(def.label)}">${icon('printer')}</button></div>`;
 	};
 
 	// Regroupement par rubrique (#109), dans l'ordre d'apparition. Une leçon sans

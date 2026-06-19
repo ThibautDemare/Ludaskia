@@ -104,6 +104,19 @@
 	padding: 1px 8px;
 	white-space: nowrap;
 }
+/* Badge « déjà maîtrisée en <classe inférieure> » (#225) : reconnaissance d'un acquis
+   (ton « validé », vert), distinct du badge ambre « plus dur ». Contraste à revalider
+   en thème Nuit (relecteur-accessibilite). */
+.lz-prev {
+	background: var(--accent-soft);
+	color: var(--accent);
+	font-family: var(--ui);
+	font-weight: 700;
+	font-size: 11px;
+	border-radius: 999px;
+	padding: 1px 8px;
+	white-space: nowrap;
+}
 .lz-stat {
 	display: flex;
 	align-items: center;

@@ -182,6 +182,14 @@ export function starsEarnedAll(): number {
 	const raw = loadStarsRaw();
 	return Object.keys(raw).filter((k) => (raw[k] || 0) > 0).length;
 }
+/* Niveaux auxquels une leçon est étoilée (≥1 sans-faute). Sert au badge « déjà
+   maîtrisée en CE2 » quand l'enfant retrouve la même leçon à un niveau supérieur. */
+export function etoileAuxNiveaux(lessonId: string): SchoolLevel[] {
+	const raw = loadStarsRaw();
+	return Object.keys(raw)
+		.filter((k) => lessonOfKey(k) === lessonId && (raw[k] || 0) > 0)
+		.map((k) => niveauOfKey(k) as SchoolLevel);
+}
 export { loadStars };
 
 /* ---------- Stats de réussite par leçon ----------

@@ -24,7 +24,8 @@ import {
 	niveauDepuisXP,
 	loadLessonRevisions,
 } from '../core/progress';
-import { lessonsNiveauActif } from '../core/niveau-actif';
+import { lessonsNiveauActif, niveauActif } from '../core/niveau-actif';
+import { LEVEL_LABEL } from '../core/levels';
 import { countDue, prochaineEcheance, aDesRevisions } from '../core/revision-select';
 import { JOUR } from '../core/revision';
 import { titreDuNiveau, AVATARS_FORET } from '../core/unlocks';
@@ -288,13 +289,22 @@ export function renderHomeStats() {
 		const tous = starsEarnedAll(); // cumul tous niveaux (ne baisse jamais)
 		// Au changement de classe, le compteur scopé retombe (catalogue plus petit) :
 		// pour ne JAMAIS donner l'impression d'avoir perdu ses succès, dès qu'il existe
-		// des étoiles à un AUTRE niveau, on met en avant le CUMUL « trésor » et on
-		// repasse l'objectif du niveau courant en sous-ligne (#225, avis gamification/UX).
-		recL.innerHTML =
-			tous > n
-				? `⭐ <strong>${tous}</strong> étoile${tous > 1 ? 's' : ''} gagnée${tous > 1 ? 's' : ''}` +
-					`<span class="rec-sub">${n}/${total} à ton niveau actuel</span>`
-				: `⭐ <strong>${n}/${total}</strong> leçon${n > 1 ? 's' : ''} réussie${n > 1 ? 's' : ''} sans faute`;
+		// des étoiles à un AUTRE niveau, on met en avant le CUMUL « trésor » (qui ne
+		// baisse jamais) et on passe l'objectif de la CLASSE en sous-ligne (#225, avis
+		// gamification/UX/pédago). Deux pictos distincts (⭐ trésor / 🎯 objectif) et un
+		// « 0 sur N » remplacé par une invitation (un « 0 » se lit comme une note).
+		if (tous > n) {
+			const classe = LEVEL_LABEL[niveauActif()];
+			const objectif =
+				n === 0
+					? `${classe} : ${total} étoile${total > 1 ? 's' : ''} à gagner`
+					: `${n} sur ${total} en ${classe}`;
+			recL.innerHTML =
+				`⭐ <strong>${tous}</strong> étoile${tous > 1 ? 's' : ''} gagnée${tous > 1 ? 's' : ''}` +
+				`<span class="rec-sub">🎯 ${objectif}</span>`;
+		} else {
+			recL.innerHTML = `⭐ <strong>${n}/${total}</strong> leçon${n > 1 ? 's' : ''} réussie${n > 1 ? 's' : ''} sans faute`;
+		}
 	}
 	fillSprintRecord('recSprint');
 	fillRevisionRecord('recRevision');
@@ -372,8 +382,15 @@ export function lessonCardHTML(
 	stars: Record<string, number>,
 	lstats: Record<string, any>,
 	repere?: 'plus-difficile',
+	badge?: string,
 ) {
 	const c = stars[l.id] || 0;
+	// Badge « déjà maîtrisée en CE2 » (#225) : la même leçon a été réussie sans faute
+	// à un niveau inférieur. Reconnaissance d'un acquis (texte, ton « validé »), JAMAIS
+	// une fausse étoile pleine — l'étoile de CE niveau se gagne à part.
+	const prevBadge = badge
+		? `<span class="lz-prev" title="Déjà réussie sans faute en ${badge}">✓ ${badge}</span>`
+		: '';
 	// Repère « plus difficile » (#205) : badge texte ambre (un défi, pas un échec) —
 	// l'info passe par le LIBELLÉ, jamais la seule couleur.
 	const repereBadge =
@@ -397,7 +414,7 @@ export function lessonCardHTML(
 	}
 	return `<button class="lesson-item" data-id="${l.id}">
     <span class="lz-num">${l.num}</span>
-    <span class="lz-main"><span class="lz-titleline"><span class="lz-title">${l.title}</span>${repereBadge}</span>${stat}</span>
+    <span class="lz-main"><span class="lz-titleline"><span class="lz-title">${l.title}</span>${repereBadge}${prevBadge}</span>${stat}</span>
     ${starBadge}</button>`;
 }
 

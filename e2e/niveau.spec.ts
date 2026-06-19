@@ -10,6 +10,11 @@ import { watchErrors, gotoHash } from './helpers';
 /* Profil neuf SANS niveau de référence → popup de choix de classe au démarrage. */
 const SEED_SANS_NIVEAU = `localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: 'e2e', name: 'E2E', emoji: '🦊', updatedAt: 1 }], active: 'e2e' }));`;
 
+/* Profil en CM1 ayant déjà l'étoile CE2 de « comparer » (clé namespacée @ce2). */
+const SEED_CM1_AVEC_CE2 =
+	`localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: 'e2e', name: 'E2E', emoji: '🦊', updatedAt: 1, niveauReference: 'cm1' }], active: 'e2e' }));` +
+	`localStorage.setItem('e2e/ludaskia_stars', JSON.stringify({ 'num-comparer@ce2': 1 }));`;
+
 test('la popup de choix de classe s’affiche pour un profil neuf', async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(SEED_SANS_NIVEAU);
@@ -44,6 +49,16 @@ test('le catalogue CE2 reste complet après choix de la classe CE2', async ({ pa
 	// CE2 : les deux leçons sont présentes (aucun filtrage visible).
 	await expect(page.locator('.lesson-item[data-id="num-comparer"]')).toBeVisible();
 	await expect(page.locator('.lesson-item[data-id="num-encadrer-intercaler"]')).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
+test('badge « déjà maîtrisée en CE2 » sur une leçon retrouvée au CM1', async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(SEED_CM1_AVEC_CE2);
+	await page.goto('#categorie-math-numeration', { waitUntil: 'networkidle' });
+	const card = page.locator('.lesson-item[data-id="num-comparer"]');
+	await expect(card).toBeVisible();
+	await expect(card.locator('.lz-prev')).toContainText('CE2');
 	expect(errors).toEqual([]);
 });
 

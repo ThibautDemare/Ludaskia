@@ -1,45 +1,61 @@
 /* ============================================================
    Niveau scolaire ACTIF (#225) — résolution au seam profil/catalogue.
-   Compose le niveau de référence du profil actif avec les niveaux
-   réellement présents au catalogue. Lit la méta de profil DIRECTEMENT
-   depuis le stockage (pas via profiles.ts) pour rester indépendant : on
-   évite ainsi un cycle progress → niveau-actif → profiles → progress
-   (profiles.ts importe déjà progress.ts).
+   Compose le niveau du profil actif (référence + ajustement par matière)
+   avec les niveaux présents au catalogue. Lit la méta de profil DIRECTEMENT
+   depuis le stockage (pas via profiles.ts) pour rester indépendant : on évite
+   un cycle progress → niveau-actif → profiles → progress (profiles.ts importe
+   déjà progress.ts).
    ============================================================ */
 import { lsGet, PROFILES_KEY } from './storage';
 import { getAllLessons } from './catalog';
-import type { LessonDef, SchoolLevel } from './catalog';
+import type { LessonDef, SchoolLevel, SubjectId } from './catalog';
 import { availableLevels, effectiveLevel } from './levels';
 
-/* Niveau de référence stocké dans la méta du profil actif (undefined si non choisi). */
-function niveauReferenceStocke(): SchoolLevel | undefined {
-	const meta = lsGet(PROFILES_KEY, null) as {
-		list?: { uuid: string; niveauReference?: SchoolLevel }[];
-		active?: string;
-	} | null;
-	const list = meta?.list ?? [];
-	const p = list.find((x) => x.uuid === meta?.active) ?? list[0];
-	return p?.niveauReference;
+interface ProfilMeta {
+	uuid: string;
+	niveauReference?: SchoolLevel;
+	niveauParMatiere?: Record<string, SchoolLevel>;
 }
 
-/* Niveau actif du profil : sa classe choisie, sinon le plus bas niveau disponible
-   au catalogue (jamais indéfini → le catalogue n'est jamais vide pendant que la
-   popup d'onboarding attend un choix). */
+/* Profil actif lu directement dans la méta (undefined si aucun). */
+function profilActif(): ProfilMeta | undefined {
+	const meta = lsGet(PROFILES_KEY, null) as { list?: ProfilMeta[]; active?: string } | null;
+	const list = meta?.list ?? [];
+	return list.find((x) => x.uuid === meta?.active) ?? list[0];
+}
+
+/* Plus bas niveau présent au catalogue : défaut quand rien n'est choisi. */
+function niveauParDefaut(): SchoolLevel {
+	return availableLevels(getAllLessons())[0];
+}
+
+/* Niveau de RÉFÉRENCE actif (classe du profil), sinon défaut catalogue.
+   Sert aux contextes globaux (onboarding) ; le filtrage/génération passent par
+   le niveau PAR MATIÈRE. */
 export function niveauActif(): SchoolLevel {
-	return niveauReferenceStocke() ?? availableLevels(getAllLessons())[0];
+	return profilActif()?.niveauReference ?? niveauParDefaut();
+}
+
+/* Niveau actif d'une MATIÈRE : ajustement par matière s'il existe, sinon la
+   classe de référence, sinon défaut catalogue. */
+export function niveauActifMatiere(subject: SubjectId): SchoolLevel {
+	const p = profilActif();
+	return p?.niveauParMatiere?.[subject] ?? p?.niveauReference ?? niveauParDefaut();
 }
 
 /* Faut-il demander à l'enfant de choisir sa classe ? Seulement si aucune classe
    n'est encore choisie ET qu'au moins deux niveaux ont du contenu (un seul niveau
    ⇒ aucun choix à faire, on reste silencieusement dessus). */
 export function besoinChoixNiveau(): boolean {
-	return niveauReferenceStocke() === undefined && availableLevels(getAllLessons()).length >= 2;
+	return (
+		profilActif()?.niveauReference === undefined && availableLevels(getAllLessons()).length >= 2
+	);
 }
 
-/* Niveau effectif POUR UNE LEÇON : le niveau actif résolu sur les niveaux que la
-   leçon supporte (repli/clamp via effectiveLevel). C'est ce qu'on passe à
-   `generate`/`genLessonItem` au seam UI — une référence hors-filtre (favori,
-   révision) est ainsi calibrée sans jamais être cassée. */
+/* Niveau effectif POUR UNE LEÇON : le niveau actif de SA MATIÈRE résolu sur les
+   niveaux que la leçon supporte (repli/clamp via effectiveLevel). C'est ce qu'on
+   passe à `generate`/`genLessonItem` au seam UI — une référence hors-filtre
+   (favori, révision) est ainsi calibrée sans jamais être cassée. */
 export function niveauLecon(lesson: LessonDef): SchoolLevel {
-	return effectiveLevel(lesson, niveauActif());
+	return effectiveLevel(lesson, niveauActifMatiere(lesson.subject));
 }

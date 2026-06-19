@@ -24,6 +24,7 @@ import { printScope } from './session';
 import { bilanCategoryKey, bilanCustomKey } from '../core/resume';
 import { setResumeCtx, clearResumeCtx, maybeRelaunch, type ResumeCtx } from './resume';
 import { icon } from './icon';
+import { uiConfirm } from './ui-modal';
 
 /* ---------- Génération de bilan express personnalisé ---------- */
 
@@ -520,12 +521,25 @@ export function renderFavoris(el: HTMLElement | null, categoryId?: string): void
 		});
 	});
 	el.querySelectorAll<HTMLButtonElement>('[data-del]').forEach((btn) => {
-		btn.addEventListener('click', () => {
+		btn.addEventListener('click', async () => {
 			const name =
 				btn.closest('.favori-item')?.querySelector<HTMLElement>('.favori-name')?.textContent ?? '';
-			if (confirm(`Supprimer le bilan « ${name} » ?`)) {
+			// On nomme l'objet par son nom (« Supprimer « X » ? ») plutôt que par le mot
+			// « bilan », abstrait pour un CE2 (avis pédagogue/rédacteur, #230).
+			const ok = await uiConfirm({
+				title: `Supprimer « ${name} » ?`,
+				message: 'Tu ne pourras pas le récupérer.',
+				confirmLabel: 'Supprimer',
+				cancelLabel: 'Non, je garde',
+				destructive: true,
+				confirmIcon: 'trash',
+				emoji: '🗑️',
+			});
+			if (ok) {
 				deleteBilan(btn.dataset.del!);
 				renderFavoris(el, categoryId);
+				// Déclencheur recréé/supprimé au re-rendu → repli sur une action restante.
+				el.querySelector<HTMLElement>('button')?.focus();
 			}
 		});
 	});

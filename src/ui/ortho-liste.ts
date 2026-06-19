@@ -19,6 +19,7 @@ import {
 import type { MotInput, FormesAccord } from '../core/orthographe/types';
 import { goCategorie } from './navigation';
 import { icon } from './icon';
+import { uiAlert, uiConfirm } from './ui-modal';
 
 interface RowData {
 	mot: string;
@@ -176,7 +177,7 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 	initialRows.forEach((r) => rowsEl.appendChild(makeRow(r)));
 	ensureTrailingBlank();
 
-	el.querySelector('#orthoSave')!.addEventListener('click', () => {
+	el.querySelector('#orthoSave')!.addEventListener('click', async () => {
 		const label =
 			(el.querySelector('#orthoLabel') as HTMLInputElement).value.trim() || 'Liste de mots';
 		const date = (el.querySelector('#orthoDate') as HTMLInputElement).value || undefined;
@@ -199,7 +200,7 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 			})
 			.filter((r) => r.mot !== '');
 		if (!mots.length) {
-			alert('Ajoute au moins un mot.');
+			await uiAlert({ title: 'Écris au moins un mot.', emoji: '✏️' });
 			return;
 		}
 		const st = loadOrtho();
@@ -210,8 +211,17 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 	});
 
 	if (editing && listeId) {
-		el.querySelector('#orthoDelete')!.addEventListener('click', () => {
-			if (!confirm('Supprimer cette liste ? (les mots restent dans la banque)')) return;
+		el.querySelector('#orthoDelete')!.addEventListener('click', async () => {
+			const ok = await uiConfirm({
+				title: 'Supprimer cette liste ?',
+				message: 'Les mots resteront dans la banque.',
+				confirmLabel: 'Supprimer',
+				cancelLabel: 'Non, je garde',
+				destructive: true,
+				confirmIcon: 'trash',
+				emoji: '🗑️',
+			});
+			if (!ok) return;
 			const st = loadOrtho();
 			deleteListe(st, listeId);
 			saveOrtho(st);

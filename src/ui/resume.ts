@@ -18,6 +18,7 @@
    ============================================================ */
 import { escapeHTML } from '../core/utils';
 import { icon, iconOr } from './icon';
+import { uiConfirm, toast } from './ui-modal';
 import {
 	loadResumes,
 	getResume,
@@ -251,77 +252,44 @@ function wireReprises(el: HTMLElement, categoryId?: string): void {
 				openEraseModal(snap ? snap.label : '', () => {
 					removeResume(btn.dataset.key!);
 					renderReprises(el, categoryId);
+					// Carte (et son bouton déclencheur) supprimée au re-rendu → repli de
+					// focus explicite, jamais sur <body> (a11y, #230).
+					(
+						el.querySelector<HTMLElement>('.reprise-continue') ??
+						document.getElementById('toolbarProfile')
+					)?.focus();
 				});
 			});
 		}
 	});
 }
 
-/* ---------- Modales légères (réutilisent .modal-overlay / .modal) ---------- */
-function buildOverlay(): { overlay: HTMLElement; close: () => void } {
-	const overlay = document.createElement('div');
-	overlay.className = 'modal-overlay';
-	const close = () => overlay.remove();
-	overlay.addEventListener('click', (e) => {
-		if (e.target === overlay) close();
-	});
-	document.body.appendChild(overlay);
-	return { overlay, close };
-}
-
-/* « Tu avais commencé cet exercice ! » → Continuer (primaire) / Recommencer. */
+/* ---------- Modales (déléguées au helper accessible ui/ui-modal) ---------- */
+/* « Tu avais commencé ! » → Continuer (sûr, primaire, focus, ESC) / Recommencer.
+   Le choix par défaut est de REPRENDRE : l'enfant a rouvert l'exercice qu'il
+   faisait. */
 function openChoiceModal(label: string, onContinue: () => void, onRestart: () => void): void {
-	const { overlay, close } = buildOverlay();
-	overlay.innerHTML = `<div class="modal reprise-modal">
-    <button class="modal-close" aria-label="Fermer">×</button>
-    <div class="modal-emoji">🔁</div>
-    <p class="modal-title">Tu avais commencé&nbsp;!</p>
-    <p class="reprise-modal-sub">${escapeHTML(label)}</p>
-    <div class="reprise-modal-actions">
-      <button class="modal-ok" data-act="continue">Continuer où j'en étais</button>
-      <button class="reprise-modal-secondary" data-act="restart">Recommencer du début</button>
-    </div>
-  </div>`;
-	overlay.querySelector('.modal-close')!.addEventListener('click', close);
-	overlay.querySelector('[data-act="continue"]')!.addEventListener('click', () => {
-		close();
-		onContinue();
-	});
-	overlay.querySelector('[data-act="restart"]')!.addEventListener('click', () => {
-		close();
-		onRestart();
-	});
+	void uiConfirm({
+		emoji: '🔁',
+		title: 'Tu avais commencé !',
+		message: label,
+		confirmLabel: 'Recommencer du début',
+		cancelLabel: "Continuer où j'en étais",
+	}).then((recommencer) => (recommencer ? onRestart() : onContinue()));
 }
 
-/* Confirmation avant d'effacer une reprise (anti-effacement accidentel).
-   Le bouton sûr (« Non, je garde ») est le plus gros et le mieux placé. */
+/* Confirmation avant d'effacer une reprise (anti-effacement accidentel). Le choix
+   sûr (« Non, je garde ») domine et reçoit le focus ; effacer est en danger bordé. */
 function openEraseModal(label: string, onConfirm: () => void): void {
-	const { overlay, close } = buildOverlay();
-	overlay.innerHTML = `<div class="modal reprise-modal">
-    <div class="modal-emoji">🗑</div>
-    <p class="modal-title">Effacer cet exercice ?</p>
-    <p class="reprise-modal-sub">${escapeHTML(label)}<br>Tu repartiras de zéro.</p>
-    <div class="reprise-modal-actions">
-      <button class="modal-ok" data-act="keep">Non, je garde</button>
-      <button class="reprise-modal-danger" data-act="erase">Oui, effacer</button>
-    </div>
-  </div>`;
-	overlay.querySelector('[data-act="keep"]')!.addEventListener('click', close);
-	overlay.querySelector('[data-act="erase"]')!.addEventListener('click', () => {
-		close();
-		onConfirm();
+	void uiConfirm({
+		emoji: '🗑️',
+		title: 'Effacer cet exercice ?',
+		message: `${label}\nTu repartiras de zéro.`,
+		confirmLabel: 'Effacer',
+		cancelLabel: 'Non, je garde',
+		destructive: true,
+		confirmIcon: 'trash',
+	}).then((effacer) => {
+		if (effacer) onConfirm();
 	});
-}
-
-/* ---------- Toast non bloquant ---------- */
-function toast(message: string): void {
-	const t = document.createElement('div');
-	t.className = 'reprise-toast';
-	t.textContent = message;
-	document.body.appendChild(t);
-	setTimeout(() => t.classList.add('show'), 10);
-	setTimeout(() => {
-		t.classList.remove('show');
-		setTimeout(() => t.remove(), 400);
-	}, 3200);
 }

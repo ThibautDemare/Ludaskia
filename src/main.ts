@@ -67,6 +67,7 @@ import { hideCelebration, hideLevelUp } from './ui/effects';
 import { openRecompenses, openTrophees, hideUnlockModals } from './ui/unlocks-view';
 import { closeProfileMenu, toggleProfileMenu, toggleDrawer, closeDrawer } from './ui/menu';
 import { initTts } from './ui/tts';
+import { maybeShowClassChoice } from './ui/onboarding';
 import { initVersionCheck } from './ui/version-check';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 
@@ -390,6 +391,10 @@ function wireDOM() {
 	});
 	// Au chargement : on affiche la vue désignée par le hash (accueil par défaut)
 	route();
+
+	// Onboarding : si le profil n'a pas encore de classe et que plusieurs niveaux
+	// ont du contenu, on demande la classe (re-rendu de la vue courante au choix).
+	maybeShowClassChoice(route);
 
 	// Bande décorative « forêt » de pied d'accueil : SVG pré-généré, inséré dans le
 	// DOM (pour que l'animation « vent » respecte l'option « animations réduites »).

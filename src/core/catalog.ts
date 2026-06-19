@@ -755,12 +755,16 @@ export function getLessonById(id: string): LessonDef | undefined {
 	return ALL_LESSONS.find((l) => l.id === id);
 }
 
-export function getLessonsBySubject(subjectId: SubjectId): LessonDef[] {
-	return ALL_LESSONS.filter((l) => l.subject === subjectId);
+export function getLessonsBySubject(subjectId: SubjectId, niveau?: SchoolLevel): LessonDef[] {
+	return ALL_LESSONS.filter(
+		(l) => l.subject === subjectId && (!niveau || l.levels.includes(niveau)),
+	);
 }
 
-export function getLessonsByCategory(categoryId: CategoryId): LessonDef[] {
-	return ALL_LESSONS.filter((l) => l.category === categoryId);
+export function getLessonsByCategory(categoryId: CategoryId, niveau?: SchoolLevel): LessonDef[] {
+	return ALL_LESSONS.filter(
+		(l) => l.category === categoryId && (!niveau || l.levels.includes(niveau)),
+	);
 }
 
 /* Résout une liste d'identifiants en LessonDef du catalogue, dans l'ordre

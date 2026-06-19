@@ -41,3 +41,22 @@ export function effectiveLevel(lesson: LessonDef, niveau: SchoolLevel): SchoolLe
 	if (best === -1) best = supported[0];
 	return LEVEL_ORDER[best];
 }
+
+/* Niveaux réellement présents dans un ensemble de leçons (union des `levels`),
+   triés par ordre scolaire. Alimente la popup de choix de classe : on ne propose
+   que des niveaux qui ont du contenu (un seul niveau dispo ⇒ pas de choix utile). */
+export function availableLevels(lessons: { levels: SchoolLevel[] }[]): SchoolLevel[] {
+	const set = new Set<SchoolLevel>();
+	for (const l of lessons) for (const lv of l.levels) set.add(lv);
+	return LEVEL_ORDER.filter((lv) => set.has(lv));
+}
+
+/* Leçons appartenant au niveau demandé (filtrage du catalogue par niveau actif).
+   Appartenance stricte : `effectiveLevel` (repli/clamp) sert à la GÉNÉRATION
+   d'une référence hors-filtre (favori, révision), pas au filtrage de l'écran. */
+export function lessonsForLevel<T extends { levels: SchoolLevel[] }>(
+	lessons: T[],
+	niveau: SchoolLevel,
+): T[] {
+	return lessons.filter((l) => l.levels.includes(niveau));
+}

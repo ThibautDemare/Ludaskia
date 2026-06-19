@@ -63,7 +63,10 @@ export interface LessonDef {
 	label: string;
 	subject: SubjectId;
 	category: CategoryId;
-	level: SchoolLevel;
+	// Niveaux scolaires supportés par la leçon (#225). Ensemble explicite : la
+	// plupart restent CE2-only (`['ce2']`) ; une leçon multi-niveaux liste tous
+	// les niveaux qu'elle couvre. Résolu via `effectiveLevel` (core/levels.ts).
+	levels: SchoolLevel[];
 	exerciseType: ExerciseType;
 	// Rubrique facultative : sous-section au sein d'une catégorie (#109). Sert à
 	// regrouper les leçons à l'écran (ex. conjugaison par temps, orthographe
@@ -180,7 +183,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: "Tables d'addition",
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(1),
 	},
 	{
@@ -188,7 +191,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: 'Complément à 10/100',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(2),
 	},
 	{
@@ -196,7 +199,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: 'Doubles',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(3),
 	},
 	{
@@ -204,7 +207,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: 'Moitiés',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(4),
 	},
 	{
@@ -212,7 +215,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: 'Ajouter 9, 19...',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(5),
 	},
 	{
@@ -220,7 +223,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: 'Soustraire 9, 19...',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(6),
 	},
 	{
@@ -228,7 +231,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: 'Table de ×',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(7),
 	},
 	{
@@ -236,7 +239,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: 'Moitié (pair)',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(8),
 	},
 	{
@@ -244,7 +247,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: 'Multiples de 25',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(9),
 	},
 	{
@@ -252,7 +255,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: 'Décompo. de 60',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(10),
 	},
 	{
@@ -260,7 +263,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: 'Dizaines/centaines',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(11),
 	},
 	{
@@ -268,7 +271,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: '× 10, × 100',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(12),
 	},
 	{
@@ -276,7 +279,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: '× 4, × 8',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(13),
 	},
 	{
@@ -284,7 +287,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: '× 20, 30, 40',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(14),
 	},
 	{
@@ -292,7 +295,7 @@ const MATH_LESSONS: LessonDef[] = [
 		label: 'Décomposer',
 		subject: 'math',
 		category: 'math-calcul-mental',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: mathType(15),
 	},
 ];
@@ -311,7 +314,7 @@ const GRANDEURS_LESSONS: LessonDef[] = [
 	label: d.label,
 	subject: 'math',
 	category: 'math-grandeurs-mesures',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 }));
 
@@ -326,7 +329,7 @@ const NUMERATION_LESSONS_DEFS: LessonDef[] = [...NUMERATION_LESSONS, ...POSITION
 		label: d.label,
 		subject: 'math',
 		category: 'math-numeration',
-		level: 'ce2',
+		levels: ['ce2'],
 		exerciseType: d.exerciseType,
 	}),
 );
@@ -340,7 +343,7 @@ const FRACTIONS_LESSONS_DEFS: LessonDef[] = FRACTIONS_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'math',
 	category: 'math-numeration',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 	rubrique: 'Fractions',
 }));
@@ -353,7 +356,7 @@ const PROBLEMES_LESSONS_DEFS: LessonDef[] = PROBLEMES_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'math',
 	category: 'math-problemes',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 }));
 
@@ -366,7 +369,7 @@ const DIVISION_LESSONS_DEFS: LessonDef[] = DIVISION_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'math',
 	category: 'math-calcul-mental',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 	excludeFromSprint: d.excludeFromSprint,
 }));
@@ -378,7 +381,7 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-conjugaison',
-	level: d.level,
+	levels: [d.level],
 	exerciseType: conjugationType(d.verbId, d.tense),
 	rubrique: d.rubrique, // regroupement par temps (#109)
 }));
@@ -392,7 +395,7 @@ const ACCORD_LESSONS_DEFS: LessonDef[] = ACCORD_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: ORTHO_CATEGORY_ID,
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 	rubrique: d.rubrique,
 }));
@@ -406,7 +409,7 @@ const PARTICIPE_LESSONS_DEFS: LessonDef[] = PARTICIPE_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: ORTHO_CATEGORY_ID,
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 	rubrique: d.rubrique,
 	excludeFromSprint: true,
@@ -421,7 +424,7 @@ const HOMOPHONE_LESSONS_DEFS: LessonDef[] = HOMOPHONE_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: ORTHO_CATEGORY_ID,
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 	rubrique: d.rubrique,
 }));
@@ -434,7 +437,7 @@ const MBP_LESSONS_DEFS: LessonDef[] = MBP_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: ORTHO_CATEGORY_ID,
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 	rubrique: d.rubrique,
 }));
@@ -448,7 +451,7 @@ const VOCAB_LESSONS_DEFS: LessonDef[] = VOCAB_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 }));
 
@@ -459,7 +462,7 @@ const SENS_FIGURE_LESSONS_DEFS: LessonDef[] = SENS_FIGURE_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 }));
 
@@ -470,7 +473,7 @@ const FAMILLES_LESSONS_DEFS: LessonDef[] = FAMILLES_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 }));
 
@@ -483,7 +486,7 @@ const CHAMPS_LESSONS_DEFS: LessonDef[] = CHAMPS_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 	rubrique: 'Champs lexicaux',
 }));
@@ -499,7 +502,7 @@ const SENS_LESSONS_DEFS: LessonDef[] = SENS_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 	rubrique: 'Synonymes et contraires',
 	excludeFromSprint: true,
@@ -512,7 +515,7 @@ const GRAMMAIRE_SUJET_LESSONS_DEFS: LessonDef[] = GRAMMAIRE_SUJET_LESSONS.map((d
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-grammaire',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 }));
 
@@ -523,7 +526,7 @@ const CLASSES_LESSONS_DEFS: LessonDef[] = CLASSES_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-grammaire',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 }));
 
@@ -537,7 +540,7 @@ const PHRASES_LESSONS_DEFS: LessonDef[] = PHRASES_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-grammaire',
-	level: 'ce2',
+	levels: ['ce2'],
 	rubrique: 'Les phrases',
 	exerciseType: d.exerciseType,
 	excludeFromSprint: true,
@@ -552,7 +555,7 @@ const CALCUL_LESSONS_DEFS: LessonDef[] = POSEE_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'math',
 	category: 'math-calcul',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 }));
 
@@ -569,7 +572,7 @@ const GEOMETRIE_LESSONS_DEFS: LessonDef[] = [
 	label: d.label,
 	subject: 'math',
 	category: 'math-geometrie',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 }));
 
@@ -581,7 +584,7 @@ const SYMETRIE_LESSONS_DEFS: LessonDef[] = SYMETRIE_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'math',
 	category: 'math-geometrie',
-	level: 'ce2',
+	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 	excludeFromSprint: d.excludeFromSprint,
 }));
@@ -660,13 +663,13 @@ export function getAllLessons(): LessonDef[] {
      l'ExerciseType (le `@` de la question marque l'emplacement du champ) ; le
      `kind` suit la réponse — numérique (nombre) ou texte (signe <, =, >) ;
    - autres matières : item TEXTE (corrigé par comparaison de chaîne). */
-export function genLessonItem(lesson: LessonDef): Item {
+export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 	if (isLegacyMathLesson(lesson)) {
 		const item = bilanQ(MATH_LESSON_NUM[lesson.id])!;
 		item._lesson = lesson.id;
 		return item;
 	}
-	const ex = lesson.exerciseType.generate();
+	const ex = lesson.exerciseType.generate({ level });
 	// Ordre alphabétique (#108) : l'interaction tuiles vit dans son runner d'écran.
 	// Ici (fiche/bilan/révision), repli TEXTE non interactif : on liste les mots
 	// mélangés et on attend la suite rangée (séparée par des espaces ou virgules).

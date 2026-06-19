@@ -13,7 +13,7 @@
    pair (= 2 r) ; distracteurs = confusion rayon/diamètre (oubli ou
    ajout du ×2). Effort faible (pas de moteur complexe).
    ============================================================ */
-import type { Exercise, ExerciseType, ExerciseMode, ModeOption } from '../../core/exercise';
+import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import { renderFigure } from '../../core/figures';
 import { rnd, choice, sample, normalizeText } from '../../core/utils';
 
@@ -117,7 +117,8 @@ function vocabulaireFait(): Fait {
 function cercleType(): ExerciseType {
 	return {
 		modes: MODES,
-		generate(mode?: ExerciseMode): Exercise {
+		generate(opts?: GenerateOpts): Exercise {
+			const mode = opts?.mode;
 			const r = rnd(1, 100);
 			const f = r <= 40 ? rayonVersDiametre() : r <= 70 ? diametreVersRayon() : vocabulaireFait();
 			if (mode === 'qcm') {

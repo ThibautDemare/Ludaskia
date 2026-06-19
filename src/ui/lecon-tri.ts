@@ -60,7 +60,7 @@ function genQuestions(l: LessonDef, m: ExerciseMode, n: number): TriQuestion[] {
 	const seen = new Set<string>();
 	let misses = 0;
 	while (out.length < n && misses < 80) {
-		const ex = l.exerciseType.generate(m);
+		const ex = l.exerciseType.generate({ mode: m });
 		if (ex.type !== 'tuilesTri') break; // ce runner n'a de sens que pour ce type
 		const key = [...ex.mots.map((x) => x.mot)].sort((a, b) => a.localeCompare(b)).join('|');
 		if (seen.has(key)) {

@@ -19,7 +19,7 @@ const LECON = PARTICIPE_LESSONS[0];
 const FORMES: Forme[] = ['ms', 'fs', 'mp', 'fp'];
 
 function tirages() {
-	return Array.from({ length: TIRAGES }, () => LECON.exerciseType.generate('qcm'));
+	return Array.from({ length: TIRAGES }, () => LECON.exerciseType.generate({ mode: 'qcm' }));
 }
 
 /* Le verbe (unique) dont une des 4 formes vaut `f` — les radicaux sont distincts. */

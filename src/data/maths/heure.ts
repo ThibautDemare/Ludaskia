@@ -177,7 +177,7 @@ function genExercise(mode?: ExerciseMode): Exercise {
 export function heureType(): ExerciseType {
 	return {
 		modes: MODES,
-		generate: genExercise,
+		generate: (opts) => genExercise(opts?.mode),
 		check(exercise: Exercise, input: string): boolean {
 			if (exercise.type !== 'text' && exercise.type !== 'qcm') return false;
 			const norm = normalizeText(input);

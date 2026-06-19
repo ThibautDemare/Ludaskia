@@ -21,7 +21,7 @@
      contour et on compte des CÔTÉS de carreaux (pas des cases → aire) ;
    - formules : carré côté 2–12, rectangle L≠l avec L+l ≤ 30.
    ============================================================ */
-import type { Exercise, ExerciseType, ExerciseMode } from '../../core/exercise';
+import type { Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
 import { renderFigure, boundaryEdges } from '../../core/figures';
 import { rnd } from '../../core/utils';
 
@@ -156,7 +156,7 @@ function formuleFact(): Exercise {
 
 function perimetreType(genFact: () => Exercise): ExerciseType {
 	return {
-		generate(_mode?: ExerciseMode): Exercise {
+		generate(_opts?: GenerateOpts): Exercise {
 			return genFact();
 		},
 		check(exercise: Exercise, input: string): boolean {

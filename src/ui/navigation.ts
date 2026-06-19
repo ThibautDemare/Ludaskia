@@ -183,7 +183,7 @@ function chooseMode(id: string, mode: ExerciseMode) {
 	setPendingLeconMode(mode);
 	// Les modes « une question à la fois » (QCM, tuiles, problème) ne sont pas des
 	// grilles : pas d'offre de reprise. Seule la saisie (fiche grille) la propose.
-	const type = lesson.exerciseType.generate(mode).type;
+	const type = lesson.exerciseType.generate({ mode }).type;
 	if (type === 'qcm' || type === 'tuilesNombre' || type === 'tuilesOrdre' || type === 'probleme') {
 		location.hash = 'lecon-' + id;
 	} else {
@@ -483,7 +483,7 @@ export function runLecon(id: string) {
 	pendingLeconMode = null;
 	// Type effectif du mode retenu (un type mono-mode passe `mode` = undefined et
 	// génère son unique type). Sert à aiguiller vers le runner d'écran dédié.
-	const t = lesson.exerciseType.generate(mode).type;
+	const t = lesson.exerciseType.generate({ mode }).type;
 	// Résolution de problèmes (#199) et division avec reste (#95) : runner « problème »
 	// dédié (énoncé + sous-questions corrigées par champ). Sensible au mode — un type
 	// mono-mode garde son comportement d'origine (mode = undefined).

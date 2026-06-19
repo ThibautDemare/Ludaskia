@@ -12,7 +12,7 @@
    NB : dossier `francais` sans cédille pour des chemins d'import
    ASCII portables ; le libellé affiché reste « Français ».
    ============================================================ */
-import type { Exercise, ExerciseType, ExerciseMode, ModeOption } from '../../core/exercise';
+import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { rnd, sample } from '../../core/utils';
 import type { SchoolLevel } from '../../core/catalog';
@@ -265,7 +265,8 @@ export function conjugationType(verbId: string, tense: Tense): ExerciseType {
 		// Consigne de la fiche en saisie : nomme la tâche (le temps figure dans
 		// chaque énoncé « verbe · temps — pronom »). #42.
 		consigne: `Conjugue chaque verbe ${TENSE_PHRASE[tense]}.`,
-		generate(mode?: ExerciseMode): Exercise {
+		generate(opts?: GenerateOpts): Exercise {
+			const mode = opts?.mode;
 			const person = rnd(0, 5);
 			const form = verb.forms[tense][person];
 			const pron = displayPronoun(person, form);

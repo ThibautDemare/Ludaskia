@@ -16,3 +16,6 @@ blob-report/
 
 # Notes de travail locales (non publiques)
 notes/
+
+# Worktrees git locaux (sessions agent / parallèles)
+.claude/worktrees/

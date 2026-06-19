@@ -584,12 +584,26 @@ mesure au rapporteur relève du CM1 (future leçon).
   la barre n'apparaît qu'en exercice (drapeau `print` de `setToolbar`).
 - **`menu.ts`** — liste déroulante de profils (`open/close/toggleProfileMenu`),
   extrait pour éviter un cycle `main ↔ navigation`.
-- **`preferences.ts`** — préférences cosmétiques **par profil** (issue #28) : thème de
-  couleur (`getTheme`/`setTheme`, gating par niveau) et réduction des animations
+- **`preferences.ts`** — préférences cosmétiques **par profil** (issue #28) : thème
+  d'affichage/couleur (`getTheme`/`setTheme`, gating par niveau) et réduction des animations
   (`animationsReduites`/`setAnimationsReduites`). `applyPreferences()` pose
   `<html data-theme>` + les classes `anim-reduced` / `confort-lecture` (appelé dans
   `route()` → couvre bootstrap et bascules de profil) ; `renderPreferences()` rend le
   bloc de l'écran Profils (thème, animations, **accessibilité**).
+- **Thèmes d'affichage (#224)** — un seul attribut `data-theme` porte deux familles
+  (cf. `core/unlocks.ts` `THEMES`) : les thèmes de **confort** (`confort: true`, `niveau: 1`,
+  jamais gatés ni récompensés) — **Forêt** (`defaut`, clair), **Nuit** (`nuit`, sombre fixe),
+  **Clair-obscur** (`auto`, suit le système) — et les thèmes de **couleur** débloqués par palier.
+  Étant à `niveau: 1`, les confort passent le garde-fou de `getTheme`/`setTheme` sans cas
+  particulier et `recompensesNiveau` (filtre `niveau > 1`) les ignore. `renderPreferences`
+  scinde le sélecteur en deux sections (« Apparence » sans cadenas | « Thèmes à débloquer »).
+  Le **mode sombre** (`styles/themes.scss`, mixins `nuit-palette`/`nuit-overrides`) **réécrit
+  les tokens de base** (`--paper`, `--ink`, `--ok`/`--ko`…) — assumé, contrairement aux thèmes
+  de couleur clairs — palette validée **WCAG AA**. Nouveaux tokens sémantiques dans `base.scss`
+  (`--on-accent`, `--line`, `--track`, `--ok-soft`, `--ko-soft`) pour que les composants suivent
+  le thème (fonds de cartes en `var(--paper)`, etc.). **Clair-obscur** n'est pas résolu en JS :
+  `@media (prefers-color-scheme: dark)` applique la palette sombre à `[data-theme='auto']`,
+  d'où une bascule **en direct** sans rechargement.
 - **Accessibilité (#42)** — deux aides transverses, réglées **dans la méta de profil**
   (`Profile.prefs`, cf. `core/profiles.ts`) pour **survivre à « Réinitialiser »** (qui
   n'efface que les clés de données) ; câblées dans `exportProfiles`/`importProfiles` et

@@ -99,24 +99,42 @@ export function avatarsForetDebloques(niveau: number): string[] {
 	return AVATARS_FORET.filter((a) => niveau >= a.niveau).map((a) => a.emoji);
 }
 
-/* ---------- Thèmes de couleur débloqués par palier ----------
-   Tous CLAIRS (avis UX + pédagogue) : un thème ne réécrit que l'accent, le soft,
-   le fond de page et l'encre — voir styles/themes.scss. `defaut` (niv 1) est
-   toujours disponible. Gamme répartie sur la roue, sans teinte gender-codée. */
+/* ---------- Thèmes d'affichage (issue #224) ----------
+   Deux familles partagent le même sélecteur et le même attribut `data-theme`
+   (un seul thème actif à la fois) :
+
+   • Thèmes de CONFORT (`confort: true`, `niveau: 1`) — réglages d'affichage et
+     d'accessibilité, JAMAIS gatés ni présentés comme des récompenses :
+       - « Forêt » (`defaut`) : clair, fond vert — le défaut historique ;
+       - « Nuit » (`nuit`) : sombre fixe — réécrit les tokens de base (--paper,
+         --ink, --ok/--ko…), voir styles/themes.scss ;
+       - « Clair-obscur » (`auto`) : suit `prefers-color-scheme` du système et
+         bascule clair/sombre en direct (résolu dans ui/preferences.ts).
+   • Thèmes de COULEUR débloqués par palier — tous CLAIRS (avis UX + pédagogue) :
+     ne réécrivent que l'accent, le soft, le fond de page et l'encre.
+
+   Les confort étant à `niveau: 1`, `themesDebloques` les inclut toujours (le
+   garde-fou de gating de preferences.ts les laisse donc passer sans cas
+   particulier) et `recompensesNiveau` (qui filtre `niveau > 1`) les ignore. Le
+   champ `icone` ne sert qu'aux notifications de récompense → vide pour le confort. */
 export interface Theme {
 	id: string;
 	label: string;
 	icone: string;
 	niveau: number;
+	/** Thème d'affichage/accessibilité : disponible dès le niv 1, hors récompenses. */
+	confort?: boolean;
 }
 export const THEMES: Theme[] = [
-	{ id: 'defaut', label: 'Forêt', icone: '🌳', niveau: 1 },
+	{ id: 'defaut', label: 'Forêt', icone: '🌳', niveau: 1, confort: true },
+	{ id: 'nuit', label: 'Nuit', icone: '', niveau: 1, confort: true },
+	{ id: 'auto', label: 'Clair-obscur', icone: '', niveau: 1, confort: true },
 	{ id: 'ciel', label: 'Ciel', icone: '🔵', niveau: 20 },
 	{ id: 'automne', label: 'Automne', icone: '🍂', niveau: 40 },
 	{ id: 'lagon', label: 'Lagon', icone: '🌊', niveau: 70 },
 	{ id: 'fruit-rouge', label: 'Fruit rouge', icone: '🍓', niveau: 95 },
 ];
-// Ids des thèmes débloqués à ce niveau (le défaut est toujours inclus).
+// Ids des thèmes débloqués à ce niveau (les confort, niv 1, sont toujours inclus).
 export function themesDebloques(niveau: number): string[] {
 	return THEMES.filter((t) => niveau >= t.niveau).map((t) => t.id);
 }

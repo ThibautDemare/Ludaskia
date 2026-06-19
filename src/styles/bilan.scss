@@ -36,7 +36,7 @@
 }
 .bc-action-btn:hover {
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 }
 /* ---- Hiérarchie Matière > Catégorie > Rubrique (#195) ----
    Trois registres visuels distincts pour casser la grande liste : la matière
@@ -382,7 +382,7 @@
 	font-family: var(--ui);
 	font-size: 14px;
 	padding: 8px 12px;
-	border: 1.5px solid #dde1e9;
+	border: 1.5px solid var(--line);
 	border-radius: 8px;
 	outline: none;
 }
@@ -412,7 +412,7 @@
 }
 .bc-btn-run {
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 	border: none;
 	min-height: 52px;
 	font-size: 17px;
@@ -427,7 +427,7 @@
 }
 .bc-btn-save:hover {
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 }
 .bc-btn-print {
 	background: transparent;
@@ -436,7 +436,7 @@
 }
 .bc-btn-print:hover {
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 }
 .bc-btn:disabled {
 	opacity: 0.4;
@@ -578,7 +578,7 @@
 }
 .favori-btn-run {
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 	border: none;
 }
 .favori-btn-run:hover {
@@ -591,5 +591,5 @@
 }
 .favori-btn-del:hover {
 	background: var(--ko, #c62828);
-	color: #fff;
+	color: var(--on-accent);
 }

@@ -110,7 +110,7 @@
 	font-family: var(--ui);
 	font-weight: 800;
 	font-size: 15px;
-	color: #fff;
+	color: var(--on-accent);
 	background: var(--accent);
 	border: 0;
 	border-radius: 10px;
@@ -213,7 +213,7 @@
 	padding: 12px 18px;
 	border-radius: 12px;
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 	font-family: var(--ui);
 	font-size: 14px;
 	font-weight: 600;

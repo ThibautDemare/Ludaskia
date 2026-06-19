@@ -115,7 +115,7 @@
 	font-weight: 700;
 	cursor: pointer;
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 	border: 0;
 	border-radius: 10px;
 	padding: 12px 20px;
@@ -151,7 +151,7 @@
 }
 .cat-action-secondary:hover {
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 }
 .cat-action-secondary small {
 	opacity: 1;

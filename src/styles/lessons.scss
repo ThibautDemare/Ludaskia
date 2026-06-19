@@ -62,7 +62,7 @@
 	height: 28px;
 	border-radius: 50%;
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 	font-family: var(--ui);
 	font-weight: 700;
 	font-size: 14px;
@@ -119,7 +119,7 @@
 	flex: 1;
 	height: 6px;
 	border-radius: 3px;
-	background: #e7ebf1;
+	background: var(--track);
 	overflow: hidden;
 	max-width: 140px;
 }
@@ -132,7 +132,7 @@
 	font-weight: 700;
 }
 .lz-flag {
-	background: #fdecea;
+	background: var(--ko-soft);
 	color: var(--ko);
 	font-weight: 700;
 	font-size: 11px;
@@ -193,7 +193,7 @@
 	text-align: center;
 	font: inherit;
 	padding: 0;
-	background: #fff;
+	background: var(--paper);
 }
 .posee-carry {
 	width: 1.5rem;
@@ -205,12 +205,12 @@
 }
 .posee-input.correct {
 	border-color: var(--ok);
-	background: #e7f6e7;
+	background: var(--ok-soft);
 	color: var(--ok);
 }
 .posee-input.wrong {
 	border-color: var(--ko);
-	background: #fbe4e4;
+	background: var(--ko-soft);
 	color: var(--ko);
 }
 /* Trait de l'opération, sur toute la largeur de la grille (la grille a

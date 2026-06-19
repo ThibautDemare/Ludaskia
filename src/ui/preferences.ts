@@ -1,14 +1,20 @@
 /* ============================================================
-   Préférences cosmétiques par profil (issue #28, phase 3b) :
-   - thème de couleur (débloqué par niveau),
+   Préférences cosmétiques par profil (issue #28, phase 3b ; #224) :
+   - thème d'affichage/couleur (un seul actif via <html data-theme>),
    - réduction des animations (accessibilité, en plus de prefers-reduced-motion).
    Stockage par profil via lsGet/lsSet (clés préfixées). L'application au DOM
    (data-theme + classe) est faite par applyPreferences().
-   ============================================================ */
+
+   Le sélecteur regroupe deux familles partageant le même attribut `data-theme`
+   (cf. core/unlocks.ts) : les thèmes de CONFORT (Forêt / Nuit / Clair-obscur,
+   `confort: true`, jamais gatés) et les thèmes de COULEUR débloqués par palier.
+   Le thème automatique « Clair-obscur » (`auto`) n'est pas résolu en JS : on pose
+   `data-theme="auto"` et c'est `@media (prefers-color-scheme: dark)` (themes.scss)
+   qui bascule clair/sombre en direct, sans rechargement ni listener. */
 import { escapeHTML } from '../core/utils';
 import { lsGet, lsSet } from '../core/storage';
 import { getXP, niveauDepuisXP } from '../core/progress';
-import { THEMES, themesDebloques } from '../core/unlocks';
+import { THEMES, themesDebloques, type Theme } from '../core/unlocks';
 import { activeProfile, confortLecture, lectureConsigneAuto } from '../core/profiles';
 import { dicteeDisponible } from './tts';
 import { icon } from './icon';
@@ -49,6 +55,29 @@ export function applyPreferences() {
 	root.classList.toggle('confort-lecture', confortLecture());
 }
 
+// Id de la ligne d'aide reliée (aria-describedby) au thème automatique.
+const HINT_AUTO_ID = 'theme-hint-auto';
+
+// Une pastille du sélecteur : « radio » sélectionnable si débloqué, sinon vignette
+// verrouillée avec son palier. Le conteneur est un role="radiogroup" (choix
+// exclusif d'un thème) ; chaque option porte aria-checked. Les thèmes de confort
+// sont niv 1 → toujours débloqués, donc jamais de cadenas (réservé aux récompenses).
+function themeSwatch(t: Theme, courant: string, debloques: string[]): string {
+	if (!debloques.includes(t.id)) {
+		return `<span class="theme-opt theme-${t.id} locked" role="radio" aria-checked="false" aria-disabled="true" title="Débloqué au niveau ${t.niveau}">
+        <span class="theme-dot"></span><span class="theme-lab">${t.label}</span>
+        <span class="theme-lock">${icon('lock')} Niv ${t.niveau}</span></span>`;
+	}
+	const actif = t.id === courant;
+	// Thème actif : la coche double l'indice de bordure colorée (pas de signal par
+	// la seule couleur — a11y / daltonisme).
+	const coche = actif ? `<span class="theme-check">${icon('check')}</span>` : '';
+	// Le thème automatique pointe vers sa ligne d'aide (comportement non évident).
+	const describedby = t.id === 'auto' ? ` aria-describedby="${HINT_AUTO_ID}"` : '';
+	return `<button class="theme-opt theme-${t.id}${actif ? ' current' : ''}" role="radio" aria-checked="${actif ? 'true' : 'false'}" data-act="set-theme" data-theme="${t.id}"${describedby} title="${actif ? 'Thème actuel' : 'Choisir ce thème'}">
+      <span class="theme-dot"></span><span class="theme-lab">${t.label}</span>${coche}</button>`;
+}
+
 // Bloc « Préférences » de l'écran Profils (thème + animations) pour le profil actif.
 export function renderPreferences() {
 	const el = document.getElementById('preferences');
@@ -59,40 +88,47 @@ export function renderPreferences() {
 	const debloques = themesDispo(niveau);
 	const courant = getTheme();
 	const dispoVoix = dicteeDisponible(); // statut de la lecture vocale (#42)
-	const swatches = THEMES.map((t) => {
-		if (!debloques.includes(t.id)) {
-			return `<span class="theme-opt theme-${t.id} locked" title="Débloqué au niveau ${t.niveau}">
-        <span class="theme-dot"></span><span class="theme-lab">${t.label}</span>
-        <span class="theme-lock">${icon('lock')} Niv ${t.niveau}</span></span>`;
-		}
-		return `<button class="theme-opt theme-${t.id}${t.id === courant ? ' current' : ''}" data-act="set-theme" data-theme="${t.id}"${
-			t.id === courant ? ' aria-current="true"' : ''
-		} title="${t.id === courant ? 'Thème actuel' : 'Choisir ce thème'}">
-      <span class="theme-dot"></span><span class="theme-lab">${t.label}</span></button>`;
-	}).join('');
+	// Deux sections : confort (Forêt / Nuit / Clair-obscur, sans cadenas) et
+	// récompenses (thèmes de couleur gatés, cadenas conservé).
+	const confort = THEMES.filter((t) => t.confort).map((t) => themeSwatch(t, courant, debloques));
+	const recompenses = THEMES.filter((t) => !t.confort).map((t) =>
+		themeSwatch(t, courant, debloques),
+	);
 	el.innerHTML = `<h3 class="pref-h">Préférences de ${escapeHTML(p.name)}</h3>
     <div class="pref-block">
-      <span class="pref-lab">${icon('palette')} Thème de couleur</span>
-      <div class="theme-palette" role="listbox" aria-label="Choisir un thème">${swatches}</div>
+      <span class="pref-lab">${icon('palette')} Thème</span>
+      <div class="theme-section">
+        <span class="theme-section-lab">Apparence</span>
+        <div class="theme-palette" role="radiogroup" aria-label="Choisir un thème d'apparence">${confort.join('')}</div>
+        <p class="pref-hint theme-hint" id="${HINT_AUTO_ID}"><strong>Clair-obscur</strong> suit ton appareil : il devient clair ou sombre tout seul.</p>
+      </div>
+      <div class="theme-section">
+        <span class="theme-section-lab">${icon('lock')} Thèmes à débloquer</span>
+        <div class="theme-palette" role="radiogroup" aria-label="Choisir un thème de couleur à débloquer">${recompenses.join('')}</div>
+      </div>
     </div>
-    <label class="pref-toggle">
-      <input type="checkbox" id="prefAnim"${animationsReduites() ? ' checked' : ''} />
-      <span>Réduire les animations</span>
-    </label>
     <div class="pref-block">
       <span class="pref-lab">${icon('eye')} Accessibilité</span>
-      <label class="pref-toggle">
-        <input type="checkbox" id="prefConfort"${confortLecture() ? ' checked' : ''} />
-        <span>Confort de lecture <small class="pref-hint">(texte plus grand et plus aéré)</small></span>
-      </label>
-      <label class="pref-toggle${dispoVoix ? '' : ' pref-toggle-off'}">
-        <input type="checkbox" id="prefLectureAuto"${lectureConsigneAuto() ? ' checked' : ''}${dispoVoix ? '' : ' disabled'} />
-        <span>Lire la consigne à voix haute automatiquement</span>
-      </label>
-      <p class="pref-tts-statut">${
-				dispoVoix
-					? `${icon('speaker')} Lecture vocale disponible sur cet appareil.`
-					: `${icon('speaker')} Lecture vocale indisponible sur cet appareil (aucune voix française).`
-			}</p>
+      <div class="pref-toggles">
+        <label class="pref-toggle">
+          <input type="checkbox" id="prefAnim"${animationsReduites() ? ' checked' : ''} />
+          <span>Réduire les animations</span>
+        </label>
+        <label class="pref-toggle">
+          <input type="checkbox" id="prefConfort"${confortLecture() ? ' checked' : ''} />
+          <span>Confort de lecture <small class="pref-hint">(texte plus grand et plus aéré)</small></span>
+        </label>
+        <div class="pref-toggle-tts">
+          <label class="pref-toggle${dispoVoix ? '' : ' pref-toggle-off'}">
+            <input type="checkbox" id="prefLectureAuto"${lectureConsigneAuto() ? ' checked' : ''}${dispoVoix ? '' : ' disabled'} />
+            <span>Lire la consigne à voix haute automatiquement</span>
+          </label>
+          <p class="pref-tts-statut">${
+						dispoVoix
+							? `${icon('speaker')} Lecture vocale disponible sur cet appareil.`
+							: `${icon('speaker')} Lecture vocale indisponible sur cet appareil (aucune voix française).`
+					}</p>
+        </div>
+      </div>
     </div>`;
 }

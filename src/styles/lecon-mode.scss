@@ -83,7 +83,7 @@
 	font-weight: 800;
 	letter-spacing: 0.3px;
 	color: var(--ok);
-	background: #e4f1ea;
+	background: var(--ok-soft);
 	border-radius: 999px;
 	padding: 2px 10px;
 }
@@ -166,7 +166,7 @@
 /* Feedback immédiat : bonne réponse en vert, mauvais choix tapé en rouge. */
 .sprint-choice.correct {
 	border-color: var(--ok);
-	background: #e4f1ea;
+	background: var(--ok-soft);
 	color: var(--ok);
 	font-weight: 700;
 	animation: reussite-flash 0.5s ease-out;
@@ -190,7 +190,7 @@ html.anim-reduced .sprint-choice.correct {
 }
 .sprint-choice.wrong {
 	border-color: var(--ko);
-	background: #fbe4e4;
+	background: var(--ko-soft);
 	color: var(--ko);
 }
 .sprint-choice:disabled {
@@ -303,7 +303,7 @@ html.anim-reduced .sprint-choice.correct {
 .lqcm-ponct-trou.rempli-ok {
 	border-color: var(--ok);
 	color: var(--ok);
-	background: #e4f1ea;
+	background: var(--ok-soft);
 }
 @keyframes lqcm-trou-pop {
 	0% {
@@ -408,16 +408,16 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 }
 .ltui-slot.rempli {
 	border-style: solid;
-	background: #fff;
+	background: var(--paper);
 }
 .ltui-slot.correct {
 	border-color: var(--ok);
-	background: #e7f6e7;
+	background: var(--ok-soft);
 	color: var(--ok);
 }
 .ltui-slot.wrong {
 	border-color: var(--ko);
-	background: #fbe4e4;
+	background: var(--ko-soft);
 	color: var(--ko);
 }
 .ltui-bac {
@@ -469,7 +469,7 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 }
 .lord-cell.rempli {
 	border-style: solid;
-	background: #fff;
+	background: var(--paper);
 	cursor: pointer;
 }
 .lord-num {
@@ -486,12 +486,12 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 }
 .lord-cell.correct {
 	border-color: var(--ok);
-	background: #e7f6e7;
+	background: var(--ok-soft);
 	color: var(--ok);
 }
 .lord-cell.wrong {
 	border-color: var(--ko);
-	background: #fbe4e4;
+	background: var(--ko-soft);
 	color: var(--ko);
 }
 /* Marque ✓/✗ : double la couleur d'un signe (daltonisme). */
@@ -507,7 +507,7 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 	font-size: 0.85rem;
 	font-weight: 800;
 	border-radius: 50%;
-	color: #fff;
+	color: var(--on-accent);
 }
 .lord-cell.correct .lord-mark {
 	background: var(--ok);
@@ -570,16 +570,16 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 	position: relative;
 	min-width: 72px;
 	padding: 0 14px;
-	background: #fff;
+	background: var(--paper);
 }
 .ltri-posee.correct {
 	border-color: var(--ok);
-	background: #e7f6e7;
+	background: var(--ok-soft);
 	color: var(--ok);
 }
 .ltri-posee.wrong {
 	border-color: var(--ko);
-	background: #fbe4e4;
+	background: var(--ko-soft);
 	color: var(--ko);
 }
 /* Marque ✓/✗ : double la couleur d'un signe (daltonisme). */
@@ -595,7 +595,7 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 	font-size: 0.85rem;
 	font-weight: 800;
 	border-radius: 50%;
-	color: #fff;
+	color: var(--on-accent);
 }
 .ltri-posee.correct .ltri-mark {
 	background: var(--ok);
@@ -607,7 +607,7 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 .ltri-tuile.ltri-sel {
 	border-color: var(--accent);
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 /* Bon classement montré après une erreur. */
@@ -672,7 +672,7 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 	display: inline-block;
 	padding: 0.1rem 0.6rem;
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 	border-radius: 999px;
 	font-size: 0.85rem;
 	font-weight: 700;

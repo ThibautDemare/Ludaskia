@@ -341,3 +341,237 @@ html.anim-reduced .levelup-unlock--mascotte .levelup-unlock-ico {
 		0 0 0 2px var(--paper),
 		0 0 0 5px var(--accent);
 }
+
+/* ============================================================
+   Modales custom accessibles (#230) — uiAlert / uiConfirm / uiPrompt
+   (cf. ui/ui-modal.ts). Étendent .modal-overlay / .modal : message lisible,
+   ligne d'actions à grosses cibles (action sûre en haut), bouton secondaire et
+   bouton DANGER bordé (contraste AA dans tous les thèmes, y compris Nuit où un
+   aplat plein --ko échoue), champ de saisie tablette, bouton « Écouter ».
+   ============================================================ */
+
+/* Overlay PLUS OPAQUE en thème sombre : un voile clair laisserait trop voir le
+   fond et brouillerait la mise au point sur la modale. */
+:root[data-theme='nuit'] .modal-overlay {
+	background: rgba(0, 0, 0, 0.72);
+}
+@media (prefers-color-scheme: dark) {
+	:root[data-theme='auto'] .modal-overlay {
+		background: rgba(0, 0, 0, 0.72);
+	}
+}
+
+/* Message (relié en aria-describedby). `pre-line` : un message multi-lignes
+   (récap d'import) garde ses retours, sans <br> dans une chaîne échappée. */
+.modal-msg {
+	font-family: var(--ui);
+	font-size: 16px;
+	line-height: 1.5;
+	color: var(--ink);
+	margin: 0 0 18px;
+	white-space: pre-line;
+}
+html.confort-lecture .modal-msg {
+	text-align: left; /* aligné à gauche en confort : pas de rivières d'espaces */
+}
+
+.modal-form {
+	margin: 0;
+}
+
+/* Ligne d'actions : empilée pleine largeur, action SÛRE en haut (1re dans le DOM),
+   gap ≥ 16px pour éviter le tap accidentel sur l'action dangereuse (anti-impulsivité). */
+.modal-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin-top: 4px;
+}
+.modal-actions .modal-ok,
+.modal-actions .modal-secondary,
+.modal-actions .modal-danger {
+	width: 100%;
+	min-height: 52px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.4em;
+}
+
+/* Bouton secondaire : choix valable, pas puni (contour accent), cohérent avec
+   .reprise-modal-secondary. */
+.modal-secondary {
+	font: inherit;
+	font-weight: 700;
+	font-size: 15px;
+	color: var(--accent);
+	background: var(--paper);
+	border: 2px solid var(--accent);
+	border-radius: 10px;
+	padding: 11px 22px;
+	cursor: pointer;
+	transition:
+		box-shadow 0.15s ease,
+		transform 0.08s ease,
+		background 0.15s ease;
+}
+.modal-secondary:hover {
+	background: var(--accent-soft);
+}
+.modal-secondary:active {
+	transform: translateY(1px);
+}
+
+/* Bouton DANGER : bordé, fond teinté doux + texte --ko (jamais un aplat plein
+   --ko : en Nuit, --ko vif sur blanc tombe sous AA — cf. issue #230). Le danger
+   est porté par le LIBELLÉ + l'icône (corbeille/réinit) + la position, jamais par
+   la seule couleur. Mis en retrait visuel de l'action sûre. */
+.modal-danger {
+	font: inherit;
+	font-weight: 700;
+	font-size: 15px;
+	color: var(--ko);
+	background: var(--ko-soft);
+	border: 2px solid var(--ko);
+	border-radius: 10px;
+	padding: 11px 22px;
+	cursor: pointer;
+	transition:
+		box-shadow 0.15s ease,
+		transform 0.08s ease,
+		filter 0.15s ease;
+}
+.modal-danger:hover {
+	filter: brightness(0.97);
+	box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+}
+.modal-danger:active {
+	transform: translateY(1px);
+}
+.modal-danger .ph-icon {
+	width: 1.2em;
+	height: 1.2em;
+}
+
+/* Anneau de focus clavier net (charte, ratio ≥ 3:1) sur toutes les actions. */
+.modal-actions .modal-ok:focus-visible,
+.modal-actions .modal-secondary:focus-visible,
+.modal-actions .modal-danger:focus-visible,
+.modal-listen:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 5px var(--accent);
+}
+
+/* Champ de saisie (uiPrompt) : pensé doigt + clavier tablette — pleine largeur,
+   haut, gros texte. */
+.modal-field {
+	width: 100%;
+	min-height: 54px;
+	font-family: var(--ui);
+	font-size: 20px;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--line);
+	border-radius: 12px;
+	padding: 10px 16px;
+	margin: 0 0 12px;
+}
+.modal-field::placeholder {
+	color: var(--muted);
+}
+.modal-field:focus-visible {
+	outline: none;
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px var(--accent-soft);
+}
+/* État invalide : doublé bord rouge + message texte (jamais la couleur seule). */
+.modal-field.invalid {
+	border-color: var(--ko);
+	background: var(--ko-soft);
+}
+.modal-field-error {
+	font-family: var(--ui);
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--ko);
+	text-align: left;
+	margin: -4px 0 12px;
+}
+
+/* Bouton « Écouter » (TTS) : chip discret centré sous le message, libellé gardé
+   (une modale n'est pas encombrée comme une consigne inline). Mêmes règles que
+   ui/consigne-tts : pulsation du picto à la lecture (double codage non chromatique). */
+.modal-listen {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.35em;
+	margin: 0 auto 18px;
+	min-height: 44px;
+	padding: 6px 16px;
+	border: 1px solid var(--accent-soft);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--accent);
+	font: 600 0.9rem/1 var(--ui);
+	cursor: pointer;
+	transition: background 0.15s ease;
+}
+.modal-listen:hover,
+.modal-listen:active {
+	background: var(--accent-soft);
+}
+.modal-listen.speaking {
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+}
+.modal-listen.speaking .ph-icon {
+	animation: consigne-tts-pulse 0.9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+	.modal-listen.speaking .ph-icon {
+		animation: none;
+	}
+}
+html.anim-reduced .modal-listen.speaking .ph-icon {
+	animation: none;
+}
+
+/* ---------- Toast non bloquant (centralisé, cf. ui/ui-modal.ts) ---------- */
+/* Repris de .reprise-toast : info légère, en bas d'écran, auto-effacée. */
+.ui-toast {
+	position: fixed;
+	left: 50%;
+	bottom: 26px;
+	transform: translate(-50%, 16px);
+	z-index: 10001;
+	max-width: 90vw;
+	padding: 12px 18px;
+	border-radius: 12px;
+	background: var(--accent);
+	color: var(--on-accent);
+	font-family: var(--ui);
+	font-size: 14px;
+	font-weight: 600;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+	opacity: 0;
+	transition:
+		opacity 0.35s ease,
+		transform 0.35s ease;
+}
+.ui-toast.show {
+	opacity: 1;
+	transform: translate(-50%, 0);
+}
+@media (prefers-reduced-motion: reduce) {
+	.ui-toast {
+		transition: opacity 0.2s ease;
+		transform: translate(-50%, 0);
+	}
+}
+html.anim-reduced .ui-toast {
+	transition: opacity 0.2s ease;
+	transform: translate(-50%, 0);
+}

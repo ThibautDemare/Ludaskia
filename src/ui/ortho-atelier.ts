@@ -12,6 +12,7 @@
 import { escapeHTML } from '../core/utils';
 import { lettresDuMot } from '../core/orthographe/exercise';
 import type { Entourage, MotOrtho } from '../core/orthographe/types';
+import { uiConfirm } from './ui-modal';
 
 // Palette colorblind-safe (Okabe-Ito).
 const PALETTE = ['#E69F00', '#56B4E9', '#009E73', '#0072B2', '#CC79A7', '#D55E00'];
@@ -226,14 +227,35 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 		entourages.pop();
 		redrawSvg();
 	});
-	host.querySelector('#atelierClear')!.addEventListener('click', () => {
-		if (entourages.length && !confirm('Tout effacer ?')) return;
+	host.querySelector('#atelierClear')!.addEventListener('click', async () => {
+		if (entourages.length) {
+			const ok = await uiConfirm({
+				title: 'Tout effacer ?',
+				message: 'Tu effaceras tout ce que tu as entouré.',
+				confirmLabel: 'Tout effacer',
+				cancelLabel: 'Non, je garde',
+				destructive: true,
+				confirmIcon: 'trash',
+				emoji: '🗑️',
+			});
+			if (!ok) return;
+		}
 		entourages.length = 0;
 		redrawSvg();
 	});
 
-	host.querySelector('#btnAtelierDone')!.addEventListener('click', () => {
-		if (entourages.length === 0 && !confirm("Tu n'as rien entouré. Continuer quand même ?")) return;
+	host.querySelector('#btnAtelierDone')!.addEventListener('click', async () => {
+		// Double négation supprimée (« Tu n'as rien entouré. Continuer quand même ? »).
+		// Choix sûr = revenir entourer (primaire, focus) ; continuer reste possible.
+		if (entourages.length === 0) {
+			const ok = await uiConfirm({
+				title: 'Tu veux continuer sans rien entourer ?',
+				confirmLabel: 'Continuer quand même',
+				cancelLabel: 'Je retourne entourer',
+				emoji: '✏️',
+			});
+			if (!ok) return;
+		}
 		mot.entourage = entourages;
 		cleanupResize();
 		opts.onDone();

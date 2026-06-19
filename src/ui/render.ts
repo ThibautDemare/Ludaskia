@@ -187,6 +187,15 @@ export function renderProfiles() {
 			.join('') +
 		`<button class="profile-add" id="profileAdd">${icon('plus')} Nouveau profil</button>`;
 	renderToolbarProfile(); // garde le bouton de la barre synchronisé
+	syncExportButton(); // état du bouton « Exporter » selon les cases (re)cochées
+}
+
+/* Le bouton « Exporter » suit la sélection : actif tant qu'au moins un profil est
+   coché (les cases sont rendues cochées), désactivé sinon — plutôt qu'une alerte
+   au clic (#230). Appelé au rendu et à chaque changement de case (cf. main.ts). */
+export function syncExportButton() {
+	const btn = document.getElementById('btnExport') as HTMLButtonElement | null;
+	if (btn) btn.disabled = !document.querySelector('#profileList .profile-check:checked');
 }
 
 /* Record de sprint (compté en nombre de bonnes réponses) */

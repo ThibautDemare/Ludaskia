@@ -332,3 +332,12 @@ html.anim-reduced .levelup-unlock--mascotte .levelup-unlock-ico {
 .onb-niv-btn:active {
 	transform: translateY(1px);
 }
+/* Focus clavier (et auto-focus du 1er choix à l'ouverture) : anneau dans la charte
+   plutôt que le contour bleu par défaut du navigateur. Garde un repère visible
+   (accessibilité) tout en restant discret et cohérent. */
+.onb-niv-btn:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 5px var(--accent);
+}

@@ -10,6 +10,7 @@ import {
 	cmpRun,
 	runPct,
 	starsEarned,
+	starsEarnedAll,
 	loadStars,
 	loadLessonStats,
 	lessonAvgPct,
@@ -23,6 +24,7 @@ import {
 	niveauDepuisXP,
 	loadLessonRevisions,
 } from '../core/progress';
+import { lessonsNiveauActif } from '../core/niveau-actif';
 import { countDue, prochaineEcheance, aDesRevisions } from '../core/revision-select';
 import { JOUR } from '../core/revision';
 import { titreDuNiveau, AVATARS_FORET } from '../core/unlocks';
@@ -281,9 +283,18 @@ export function renderHomeStats() {
 	renderReprises(document.getElementById('reprises')); // « À continuer » (#63)
 	const recL = document.getElementById('recLecon');
 	if (recL) {
-		const n = starsEarned();
-		const total = getAllLessons().length;
-		recL.innerHTML = `⭐ <strong>${n}/${total}</strong> leçon${n > 1 ? 's' : ''} réussie${n > 1 ? 's' : ''} sans faute`;
+		const n = starsEarned(); // étoiles du niveau actif (par matière)
+		const total = lessonsNiveauActif().length; // catalogue du niveau actif
+		const tous = starsEarnedAll(); // cumul tous niveaux (ne baisse jamais)
+		// Au changement de classe, le compteur scopé retombe (catalogue plus petit) :
+		// pour ne JAMAIS donner l'impression d'avoir perdu ses succès, dès qu'il existe
+		// des étoiles à un AUTRE niveau, on met en avant le CUMUL « trésor » et on
+		// repasse l'objectif du niveau courant en sous-ligne (#225, avis gamification/UX).
+		recL.innerHTML =
+			tous > n
+				? `⭐ <strong>${tous}</strong> étoile${tous > 1 ? 's' : ''} gagnée${tous > 1 ? 's' : ''}` +
+					`<span class="rec-sub">${n}/${total} à ton niveau actuel</span>`
+				: `⭐ <strong>${n}/${total}</strong> leçon${n > 1 ? 's' : ''} réussie${n > 1 ? 's' : ''} sans faute`;
 	}
 	fillSprintRecord('recSprint');
 	fillRevisionRecord('recRevision');
@@ -401,7 +412,7 @@ export function renderLessons() {
 	const sum = document.getElementById('starsSummary');
 	if (sum) {
 		const n = starsEarned();
-		const total = getAllLessons().length;
+		const total = lessonsNiveauActif().length;
 		const weak = LESSONS.filter((l) => {
 			const a = lessonAvgPct(lstats[l.id]);
 			return a != null && a < 70;

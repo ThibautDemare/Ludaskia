@@ -5,7 +5,7 @@
 import { choice } from './utils';
 import { lsGet, lsSet } from './storage';
 import { getAllLessons, getLessonsByCategory, SUBJECTS, CATEGORIES } from './catalog';
-import { niveauActif } from './niveau-actif';
+import { lessonsNiveauActif } from './niveau-actif';
 import {
 	loadRuns,
 	getStreak,
@@ -16,13 +16,6 @@ import {
 	starsEarned,
 	todayStr,
 } from './progress';
-
-/* Leçons du niveau ACTIF (complétude scopée : « toutes les leçons », « tout au
-   vert » et trophées par matière/catégorie se mesurent sur ce périmètre). */
-function lessonsNiveauActif() {
-	const niveau = niveauActif();
-	return getAllLessons().filter((l) => l.levels.includes(niveau));
-}
 import { loadOrtho } from './orthographe/store';
 import type { MotOrtho } from './orthographe/types';
 

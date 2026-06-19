@@ -283,3 +283,13 @@
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
 }
+
+/* Sous-ligne du compteur « une leçon à la fois » (#225) : objectif du niveau actif
+   sous le cumul d'étoiles « trésor ». Discrète, pour ne pas voler la vedette au
+   cumul (qui, lui, ne baisse jamais au changement de classe). */
+.rec-sub {
+	display: block;
+	margin-top: 2px;
+	font-size: 0.82em;
+	color: var(--muted);
+}

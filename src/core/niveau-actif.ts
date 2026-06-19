@@ -59,3 +59,10 @@ export function besoinChoixNiveau(): boolean {
 export function niveauLecon(lesson: LessonDef): SchoolLevel {
 	return effectiveLevel(lesson, niveauActifMatiere(lesson.subject));
 }
+
+/* Leçons du NIVEAU ACTIF, par matière : chaque leçon est retenue si elle est
+   disponible au niveau actif de SA matière. Périmètre de complétude et compteurs
+   (« X / Y leçons réussies »), cohérent avec le catalogue filtré. */
+export function lessonsNiveauActif(): LessonDef[] {
+	return getAllLessons().filter((l) => l.levels.includes(niveauActifMatiere(l.subject)));
+}

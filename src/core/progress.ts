@@ -4,9 +4,9 @@
    ============================================================ */
 import { fmt } from './utils';
 import { lsGet, lsSet, lsSetQuiet } from './storage';
-import { getAllLessons } from './catalog';
+import { getAllLessons, getLessonById } from './catalog';
 import type { SchoolLevel } from './catalog';
-import { niveauActif } from './niveau-actif';
+import { niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
 import { etatNeuf, avancerEtat } from './revision';
 import type { EtatRevision } from './orthographe/types';
 
@@ -30,11 +30,28 @@ function niveauOfKey(key: string): string {
 	const i = key.lastIndexOf('@');
 	return i < 0 ? NIVEAU_LEGACY : key.slice(i + 1);
 }
-/* Vue { lessonId: valeur } d'une carte namespacée, restreinte au niveau actif. */
+/* Niveau de STOCKAGE d'une leçon = le niveau auquel elle est jouée/générée
+   (niveauLecon, clampé sur les niveaux que la leçon supporte). Une leçon CE2-only
+   jouée par un CM1 (favori/révision) est stockée @ce2 (cohérent avec sa génération). */
+function niveauStockage(lessonId: string): SchoolLevel {
+	const lesson = getLessonById(lessonId);
+	return lesson ? niveauLecon(lesson) : niveauActif();
+}
+
+/* Vue { lessonId: valeur } d'une carte namespacée, restreinte au niveau actif PAR
+   MATIÈRE : chaque leçon est lue au niveau actif de sa matière (non clampé) — une
+   leçon hors du catalogue actif (ex. CE2-only quand la matière est en CM1) est donc
+   exclue de la vue. Mémoïse le niveau par matière (peu de matières). */
 function scopeActif<V>(raw: Record<string, V>): Record<string, V> {
-	const niveau = niveauActif();
+	const cache: Record<string, SchoolLevel> = {};
 	const out: Record<string, V> = {};
-	for (const k in raw) if (niveauOfKey(k) === niveau) out[lessonOfKey(k)] = raw[k];
+	for (const k in raw) {
+		const id = lessonOfKey(k);
+		const subject = getLessonById(id)?.subject ?? '';
+		const niveau =
+			cache[subject] ?? (cache[subject] = subject ? niveauActifMatiere(subject) : niveauActif());
+		if (niveauOfKey(k) === niveau) out[id] = raw[k];
+	}
 	return out;
 }
 
@@ -148,7 +165,7 @@ function saveStars(s: Record<string, number>) {
 }
 export function recordLessonResult(lessonId: string, perfect: boolean) {
 	const stars = loadStarsRaw();
-	const k = nsKey(lessonId, niveauActif());
+	const k = nsKey(lessonId, niveauStockage(lessonId));
 	const had = (stars[k] || 0) > 0;
 	if (perfect) stars[k] = (stars[k] || 0) + 1;
 	saveStars(stars);
@@ -157,6 +174,13 @@ export function recordLessonResult(lessonId: string, perfect: boolean) {
 export function starsEarned() {
 	const s = loadStars();
 	return getAllLessons().filter((l) => (s[l.id] || 0) > 0).length;
+}
+/* Étoiles gagnées TOUS NIVEAUX confondus (chaque leçon@niveau étoilée compte une
+   fois) : compteur « trésor » cumulatif qui ne baisse JAMAIS au changement de
+   classe — il évite le sentiment de perte (#225, avis gamification/UX). */
+export function starsEarnedAll(): number {
+	const raw = loadStarsRaw();
+	return Object.keys(raw).filter((k) => (raw[k] || 0) > 0).length;
 }
 export { loadStars };
 
@@ -198,14 +222,13 @@ export function loadLessonStatsAll(): Record<string, LessonStat> {
 }
 export function recordLessonStats(perLesson: Record<string, { ok: number; total: number }>) {
 	const s = loadLessonStatsRaw();
-	const niveau = niveauActif();
 	// Leçons rencontrées pour la 1re fois dans cet essai (aucune stat antérieure) :
 	// sert au suivi « première fois » (objectif « nouvelle leçon », #178).
 	const premieres: string[] = [];
 	for (const num in perLesson) {
 		const { ok, total } = perLesson[num];
 		if (!total) continue;
-		const k = nsKey(num, niveau);
+		const k = nsKey(num, niveauStockage(num));
 		if (!s[k]) premieres.push(num);
 		const e = s[k] || { attempts: 0, correct: 0, questions: 0, bestPct: 0, lastPct: 0 };
 		e.attempts++;
@@ -243,10 +266,9 @@ export function loadLessonFirstSeen(): Record<string, number> {
 }
 export function markLessonsFirstSeen(lessonIds: string[], now: number) {
 	const all = loadLessonFirstSeenRaw();
-	const niveau = niveauActif();
 	let changed = false;
 	for (const id of lessonIds) {
-		const k = nsKey(id, niveau);
+		const k = nsKey(id, niveauStockage(id));
 		if (all[k] == null) {
 			all[k] = now;
 			changed = true;
@@ -276,10 +298,9 @@ function saveLessonRevisions(r: Record<string, EtatRevision>) {
    rendre la leçon due immédiatement. */
 export function enterLessonsRevision(lessonIds: string[], now: number) {
 	const all = loadLessonRevisionsRaw();
-	const niveau = niveauActif();
 	let changed = false;
 	for (const id of lessonIds) {
-		const k = nsKey(id, niveau);
+		const k = nsKey(id, niveauStockage(id));
 		if (!all[k]) {
 			all[k] = etatNeuf(now);
 			changed = true;
@@ -301,7 +322,7 @@ export function backfillLessonRevisions(now: number) {
 /* Met à jour l'état SR d'une leçon après une réponse en révision. */
 export function avancerLessonRevision(lessonId: string, reussi: boolean, now: number) {
 	const all = loadLessonRevisionsRaw();
-	const k = nsKey(lessonId, niveauActif());
+	const k = nsKey(lessonId, niveauStockage(lessonId));
 	all[k] = avancerEtat(all[k] ?? etatNeuf(now), reussi, now);
 	saveLessonRevisions(all);
 }

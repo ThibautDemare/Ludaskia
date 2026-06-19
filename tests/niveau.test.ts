@@ -31,6 +31,7 @@ import {
 	recordLessonResult,
 	recordLessonStats,
 	starsEarned,
+	starsEarnedAll,
 	loadLessonStats,
 	loadLessonStatsAll,
 	loadLessonRevisions,
@@ -126,16 +127,33 @@ describe('namespacing de la progression par niveau (Lot 2)', () => {
 	});
 
 	it('stats : effort GLOBAL (tous niveaux), complétude SCOPÉE au niveau actif', () => {
+		// Leçon MULTI-NIVEAU (ce2+cm1) : le stockage est clampé au niveau de jeu, donc
+		// le CE2 et le CM1 ont des entrées distinctes (une leçon CE2-only, elle, se
+		// rangerait toujours @ce2 même jouée en CM1).
 		setNiveauReference('ce2');
-		recordLessonStats({ 'math-doubles': { ok: 5, total: 5 } });
+		recordLessonStats({ 'num-comparer': { ok: 5, total: 5 } });
 		setNiveauReference('cm1');
-		recordLessonStats({ 'math-doubles': { ok: 3, total: 4 } });
+		recordLessonStats({ 'num-comparer': { ok: 3, total: 4 } });
 		// Agrégat global = somme des deux niveaux.
-		expect(loadLessonStatsAll()['math-doubles'].questions).toBe(9);
+		expect(loadLessonStatsAll()['num-comparer'].questions).toBe(9);
 		// Vue scopée = niveau actif seulement.
-		expect(loadLessonStats()['math-doubles'].questions).toBe(4);
+		expect(loadLessonStats()['num-comparer'].questions).toBe(4);
 		setNiveauReference('ce2');
-		expect(loadLessonStats()['math-doubles'].questions).toBe(5);
+		expect(loadLessonStats()['num-comparer'].questions).toBe(5);
+	});
+
+	it('starsEarnedAll : cumul tous niveaux, ne baisse jamais au changement de classe', () => {
+		setNiveauReference('ce2');
+		recordLessonResult('num-comparer', true); // étoile @ce2
+		setNiveauReference('cm1');
+		recordLessonResult('num-comparer', true); // étoile @cm1 (leçon multi-niveau)
+		// Deux entrées distinctes (num-comparer@ce2 + @cm1) → trésor = 2.
+		expect(starsEarnedAll()).toBe(2);
+		// Le cumul est indépendant du niveau actif : aucun succès ne « disparaît ».
+		setNiveauReference('ce2');
+		expect(starsEarnedAll()).toBe(2);
+		// alors que la vue scopée, elle, ne montre que le niveau courant.
+		expect(starsEarned()).toBe(1);
 	});
 
 	it('état de révision SR scopé au niveau actif', () => {

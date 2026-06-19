@@ -298,7 +298,7 @@ export function renderHomeStats() {
 			const objectif =
 				n === 0
 					? `${classe} : ${total} étoile${total > 1 ? 's' : ''} à gagner`
-					: `${n} sur ${total} en ${classe}`;
+					: `${n}/${total} en ${classe}`;
 			recL.innerHTML =
 				`⭐ <strong>${tous}</strong> étoile${tous > 1 ? 's' : ''} gagnée${tous > 1 ? 's' : ''}` +
 				`<span class="rec-sub">🎯 ${objectif}</span>`;

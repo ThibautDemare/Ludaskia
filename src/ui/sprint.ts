@@ -24,7 +24,7 @@ import {
 	CATEGORIES,
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
-import { niveauLecon } from '../core/niveau-actif';
+import { niveauLecon, niveauActifMatiere } from '../core/niveau-actif';
 import { hasMode } from '../core/exercise';
 import type { ChoiceView } from '../core/exercise';
 import { mathInline } from '../core/fraction-text';
@@ -82,11 +82,18 @@ function lessonsForFilter(f: SprintFilter): LessonDef[] {
 				: f.type === 'lessons'
 					? lessonsForIds(f.ids)
 					: getAllLessons();
+	// Filtre par niveau actif de la matière (#225) — SAUF un favori explicite
+	// (`lessons`), qui résout hors-filtre pour ne pas être cassé par un changement de
+	// classe (la génération reste calibrée par niveauLecon).
+	const auNiveau =
+		f.type === 'lessons'
+			? base
+			: base.filter((d) => d.levels.includes(niveauActifMatiere(d.subject)));
 	// Les opérations posées (#97, grille multi-cellules), le rangement d'une suite
 	// (#108, plusieurs tuiles à ordonner) et le tri par thème (#114, tuiles à
 	// classer) ne se jouent pas « une réponse à la fois » : on les écarte du
 	// sprint chronométré.
-	return base.filter(
+	return auNiveau.filter(
 		(d) =>
 			!d.excludeFromSprint &&
 			!isPosedLesson(d) &&

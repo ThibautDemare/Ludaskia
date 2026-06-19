@@ -105,11 +105,13 @@
 	white-space: nowrap;
 }
 /* Badge « déjà maîtrisée en <classe inférieure> » (#225) : reconnaissance d'un acquis
-   (ton « validé », vert), distinct du badge ambre « plus dur ». Contraste à revalider
-   en thème Nuit (relecteur-accessibilite). */
+   (registre « réussite », vert), distinct du badge ambre « plus dur ». Couleurs FIXES
+   (pas les tokens d'accent) : un vert sombre sur vert pâle garantit ≥ 7:1 sur tous les
+   thèmes (l'accent du thème échouait AA sur les thèmes clairs — a11y #225). 11px gras
+   → seuil AA = 4,5:1. */
 .lz-prev {
-	background: var(--accent-soft);
-	color: var(--accent);
+	background: #e4f1ea;
+	color: #1b5e20;
 	font-family: var(--ui);
 	font-weight: 700;
 	font-size: 11px;

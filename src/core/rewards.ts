@@ -31,7 +31,9 @@ const WEAK_PCT = 70; // en dessous : leçon « à revoir »
 // Leçons actuellement « à revoir » (taux de réussite < 70 %).
 export function weakLessons(): string[] {
 	const stats = loadLessonStats();
-	return getAllLessons()
+	// Périmètre = leçons du niveau actif (les stats sont scopées par matière ; itérer
+	// sur lessonsNiveauActif() rend l'intention explicite — #225).
+	return lessonsNiveauActif()
 		.filter((l) => {
 			const a = lessonAvgPct(stats[l.id]);
 			return a != null && a < WEAK_PCT;

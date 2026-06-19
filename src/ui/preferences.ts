@@ -111,7 +111,7 @@ function niveauParentHTML(): string {
         </label>`,
 	).join('');
 	return `<div class="pref-block">
-      <span class="pref-lab">${icon('book-open')} Niveau scolaire <small class="pref-hint">(réglage parent)</small></span>
+      <span class="pref-lab">${icon('book-open')} Classe scolaire <small class="pref-hint">(réglage parent)</small></span>
       <div class="pref-niveau">
         <label class="pref-niveau-row">
           <span><strong>Classe</strong></span>

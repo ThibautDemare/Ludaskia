@@ -52,7 +52,7 @@ export function genExerciseOrtho(mot: MotOrtho, mode: ModeOrtho): Exercise {
 export function orthoType(mot: MotOrtho): ExerciseType {
 	return {
 		modes: ORTHO_MODE_OPTIONS,
-		generate: (mode) => genExerciseOrtho(mot, (mode ?? 'motCache') as ModeOrtho),
+		generate: (opts) => genExerciseOrtho(mot, (opts?.mode ?? 'motCache') as ModeOrtho),
 		check: checkAnswer,
 	};
 }

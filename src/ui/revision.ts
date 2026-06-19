@@ -88,7 +88,7 @@ export function runRevisionEspacee(): void {
 			const consigne = lesson.label; // consigne affichée = libellé de la leçon (#186)
 			// QCM (conjugaison, homophones, géométrie…) : inchangé.
 			if (hasMode(type, 'qcm')) {
-				const ex = type.generate('qcm');
+				const ex = type.generate({ mode: 'qcm' });
 				if (ex.type === 'qcm')
 					items.push({
 						groupLabel: g.label,
@@ -138,7 +138,7 @@ export function runRevisionEspacee(): void {
 			// tuiles plutôt qu'en saisie : un signe n'est pas saisissable au clavier numérique
 			// sur mobile (#186).
 			if (ex.type === 'text' && !answerEstNumerique(String(ex.answer)) && hasMode(type, 'tuiles')) {
-				const tex = type.generate('tuiles');
+				const tex = type.generate({ mode: 'tuiles' });
 				if (tex.type === 'tuilesNombre') {
 					items.push({
 						groupLabel: g.label,

@@ -70,7 +70,7 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 	const seen = new Set<string>();
 	let misses = 0;
 	while (out.length < n && misses < 80) {
-		const ex = l.exerciseType.generate(m);
+		const ex = l.exerciseType.generate({ mode: m });
 		if (ex.type !== 'qcm') break; // sécurité : ce runner n'a de sens que pour un QCM
 		const key = `${commKey(ex.question)}¦${ex.answer}¦${ex.figure ?? ''}`;
 		if (seen.has(key)) {

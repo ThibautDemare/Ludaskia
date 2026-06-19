@@ -121,7 +121,7 @@ describe('Les angles — génération QCM', () => {
 		expect(def).toBeDefined();
 		expect(def?.subject).toBe('math');
 		expect(def?.category).toBe('math-geometrie');
-		expect(def?.level).toBe('ce2');
+		expect(def?.levels).toEqual(['ce2']);
 		expect(def?.excludeFromSprint).toBeFalsy(); // QCM tappable sous chrono (figure + choix)
 	});
 });

@@ -70,7 +70,7 @@ describe('Vocabulaire — contraires (#203)', () => {
 		const type = SENS_LESSONS.find((l) => l.id === 'fr-vocab-contraires')!.exerciseType;
 		const reponses = new Set(ITEMS_CONTRAIRES.map((i) => i.reponse));
 		for (let n = 0; n < 200; n++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;
 			expect(ex.choices.length).toBe(3);
@@ -99,7 +99,7 @@ describe('Vocabulaire — mots de sens proche (#203)', () => {
 		const type = SENS_LESSONS.find((l) => l.id === 'fr-vocab-sens-proche')!.exerciseType;
 		const reponses = new Set(ITEMS_SENS_PROCHE.map((i) => i.reponse));
 		for (let n = 0; n < 200; n++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;
 			expect(ex.choices.length).toBe(3);
@@ -125,7 +125,7 @@ describe('Vocabulaire — catalogue contraires / sens proche (#203)', () => {
 			expect(lesson.category).toBe('fr-vocabulaire');
 			expect(lesson.rubrique).toBe('Synonymes et contraires');
 			expect(lesson.excludeFromSprint).toBe(true);
-			expect(lesson.level).toBe('ce2');
+			expect(lesson.levels).toEqual(['ce2']);
 		}
 	});
 

@@ -21,7 +21,7 @@
    - HORS PÉRIMÈTRE : compter faces/arêtes/sommets sur le dessin (faces
      cachées) — les propriétés sont mémorisées, pas comptées.
    ============================================================ */
-import type { Exercise, ExerciseType, ExerciseMode, ModeOption } from '../../core/exercise';
+import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import type { Solid } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
 import { choice, sample, normalizeText } from '../../core/utils';
@@ -54,7 +54,8 @@ const MODES: ModeOption[] = [
 function reconnaitreType(): ExerciseType {
 	return {
 		modes: MODES,
-		generate(mode?: ExerciseMode): Exercise {
+		generate(opts?: GenerateOpts): Exercise {
+			const mode = opts?.mode;
 			const solid = choice(TOUS);
 			const answer = NOM[solid];
 			const figure = renderFigure({ kind: 'solide', solid });

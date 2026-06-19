@@ -54,7 +54,7 @@ function genQuestions(l: LessonDef, m: ExerciseMode, n: number): TuilesQuestion[
 	const seen = new Set<string>();
 	let misses = 0;
 	while (out.length < n && misses < 80) {
-		const ex = l.exerciseType.generate(m);
+		const ex = l.exerciseType.generate({ mode: m });
 		if (ex.type !== 'tuilesNombre') break; // ce runner n'a de sens que pour des tuiles
 		const key = commKey(ex.question);
 		if (seen.has(key)) {

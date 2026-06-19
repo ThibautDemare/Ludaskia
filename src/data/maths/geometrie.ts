@@ -21,7 +21,7 @@
    - propriétés : pas d'inclusion (« un carré est-il un rectangle ? »),
      pas de double négation ; une propriété observable et tranchée.
    ============================================================ */
-import type { Exercise, ExerciseType, ExerciseMode, ModeOption } from '../../core/exercise';
+import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import type { PlaneShape } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
 import { rnd, choice, sample, normalizeText } from '../../core/utils';
@@ -138,7 +138,8 @@ function compterFait(): Fait {
 function reconnaitreType(): ExerciseType {
 	return {
 		modes: MODES,
-		generate(mode?: ExerciseMode): Exercise {
+		generate(opts?: GenerateOpts): Exercise {
+			const mode = opts?.mode;
 			const f = rnd(1, 100) <= 60 ? nommerFait() : compterFait();
 			if (mode === 'qcm') {
 				return {

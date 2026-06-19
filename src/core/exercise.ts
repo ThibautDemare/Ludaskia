@@ -4,6 +4,7 @@
    ============================================================ */
 import { normalizeText } from './utils';
 import type { IconName } from './icon-names';
+import type { SchoolLevel } from './catalog';
 
 /** Affichage riche d'un choix de QCM (#200) : un fragment HTML/SVG DE CONFIANCE
     (généré par l'app, jamais une saisie utilisateur) et son libellé parlé pour
@@ -124,6 +125,14 @@ export type Exercise =
 /** Mode d'entraînement, pour les types d'exercices qui en proposent plusieurs. */
 export type ExerciseMode = string;
 
+/** Options de génération (#225). Le niveau est résolu UNE fois en amont (seam
+ *  UI/catalogue via `effectiveLevel`) puis passé ici ; une fabrique mono-niveau
+ *  l'ignore → comportement identique. `mode` reste l'option historique. */
+export interface GenerateOpts {
+	mode?: ExerciseMode;
+	level?: SchoolLevel;
+}
+
 /* Descripteur d'un mode présentable à l'enfant (écran de choix depuis une leçon).
    Les modes sont listés dans l'ordre d'affichage (du plus conseillé/accessible au
    plus exigeant) ; chaque écran dérive ses choix d'ici, jamais en dur. */
@@ -144,7 +153,7 @@ export interface ExerciseType {
 	consigne?: string;
 	/** Lexique d'affichage du runner « problème » (#95) — voir `ProbLexique`. */
 	probLexique?: ProbLexique;
-	generate(mode?: ExerciseMode): Exercise;
+	generate(opts?: GenerateOpts): Exercise;
 	check(exercise: Exercise, input: string): boolean;
 }
 

@@ -323,7 +323,7 @@ function sprintNext() {
 	do {
 		def = pickSprintDef();
 		if (hasMode(def.exerciseType, 'qcm')) {
-			const ex = def.exerciseType.generate('qcm');
+			const ex = def.exerciseType.generate({ mode: 'qcm' });
 			q = {
 				text: ex.type === 'qcm' ? ex.question : '',
 				answer: ex.type === 'qcm' ? ex.answer : '',

@@ -62,7 +62,7 @@ function genQuestions(l: LessonDef, n: number, m?: ExerciseMode): ProbQuestion[]
 	const seen = new Set<string>();
 	let misses = 0;
 	while (out.length < n && misses < 80) {
-		const ex = l.exerciseType.generate(m);
+		const ex = l.exerciseType.generate({ mode: m });
 		if (ex.type !== 'probleme') break; // ce runner n'a de sens que pour un problème
 		const key = commKey(ex.enonce);
 		if (seen.has(key)) {

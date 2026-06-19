@@ -222,7 +222,7 @@ function resteType(): ExerciseType {
 		// Affichage du runner « problème » : vocabulaire « calcul » plutôt que
 		// « problème », pas de badge « Étape » (les deux champs sont nommés).
 		probLexique: { nom: 'Calcul', nomPluriel: 'calculs', badgeEtape: false },
-		generate: (mode) => (mode === 'qcm' ? genResteQcm() : genResteProbleme()),
+		generate: (opts) => (opts?.mode === 'qcm' ? genResteQcm() : genResteProbleme()),
 		check: (ex, input) => checkAnswer(ex, input),
 	};
 }

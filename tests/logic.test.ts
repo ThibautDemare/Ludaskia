@@ -832,7 +832,7 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 	test('format canonique « H h MM » : heures 1–12, minutes multiples de 5, jamais 12 h 00', () => {
 		const type = lesson().exerciseType;
 		for (let i = 0; i < 500; i++) {
-			const ex = type.generate('saisie');
+			const ex = type.generate({ mode: 'saisie' });
 			if (ex.type !== 'text') throw new Error('saisie doit produire un texte');
 			const m = ex.answer.match(/^(\d{1,2}) h (\d{2})$/);
 			expect(m).not.toBeNull();
@@ -847,7 +847,7 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 	test('QCM : 4 propositions distinctes, la bonne en fait partie, figure présente', () => {
 		const type = lesson().exerciseType;
 		for (let i = 0; i < 300; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('qcm doit produire un qcm');
 			expect(ex.choices.length).toBe(4);
 			expect(new Set(ex.choices).size).toBe(4); // toutes distinctes
@@ -1089,7 +1089,7 @@ describe('Géométrie : je reconnais les figures planes (#100)', () => {
 	test('reconnaître — QCM : figure + 4 propositions distinctes dont la bonne', () => {
 		const type = getLessonById('geo-figures-reconnaitre')!.exerciseType;
 		for (let i = 0; i < 400; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm');
 			expect(ex.figure).toContain('<svg');
 			expect(ex.choices.length).toBeGreaterThanOrEqual(3);
@@ -1118,7 +1118,7 @@ describe('Géométrie : je reconnais les figures planes (#100)', () => {
 	test('propriétés — QCM textuel sans figure, réponse parmi les choix', () => {
 		const type = getLessonById('geo-figures-proprietes')!.exerciseType;
 		for (let i = 0; i < 200; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm');
 			expect(ex.figure).toBeUndefined(); // pas de figure (vocabulaire/propriétés)
 			expect(ex.choices.length).toBe(4);
@@ -1128,7 +1128,7 @@ describe('Géométrie : je reconnais les figures planes (#100)', () => {
 	test('propriétés : jamais de question d’inclusion « carré = rectangle » (piège CE2)', () => {
 		const type = getLessonById('geo-figures-proprietes')!.exerciseType;
 		for (let i = 0; i < 200; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') continue;
 			expect(ex.question.toLowerCase()).not.toMatch(/est-il un|est un rectangle/);
 		}
@@ -1159,7 +1159,7 @@ describe('Géométrie : le cercle (#102)', () => {
 	test('QCM : figure + 4 propositions distinctes dont la bonne ; d = 2r et r = d/2 corrects', () => {
 		const type = getLessonById('geom-cercle')!.exerciseType;
 		for (let i = 0; i < 500; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm');
 			expect(ex.figure).toContain('<svg');
 			expect(ex.choices.length).toBe(4);
@@ -1215,7 +1215,7 @@ describe('Géométrie : je reconnais les solides (#103)', () => {
 	test('reconnaître — QCM : schéma + 4 noms distincts dont le bon', () => {
 		const type = getLessonById('geo-solides-reconnaitre')!.exerciseType;
 		for (let i = 0; i < 300; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm');
 			expect(ex.figure).toContain('<svg');
 			expect(ex.choices.length).toBe(4);
@@ -1228,7 +1228,7 @@ describe('Géométrie : je reconnais les solides (#103)', () => {
 		const type = getLessonById('geo-solides-reconnaitre')!.exerciseType;
 		let testePave = false;
 		for (let i = 0; i < 600 && !testePave; i++) {
-			const ex = type.generate('saisie');
+			const ex = type.generate({ mode: 'saisie' });
 			if (ex.type === 'text' && ex.answer === 'pavé droit') {
 				expect(type.check(ex, 'pavé')).toBe(true);
 				expect(type.check(ex, 'pavé droit')).toBe(true);
@@ -1240,7 +1240,7 @@ describe('Géométrie : je reconnais les solides (#103)', () => {
 	test('propriétés — QCM textuel sans figure ; comptage seulement sur les polyèdres', () => {
 		const type = getLessonById('geo-solides-proprietes')!.exerciseType;
 		for (let i = 0; i < 400; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm');
 			expect(ex.figure).toBeUndefined();
 			expect(ex.choices).toContain(ex.answer);
@@ -1271,7 +1271,7 @@ describe('Numération : comparer / encadrer / intercaler (#98)', () => {
 		for (const id of ids) {
 			const type = getLessonById(id)!.exerciseType;
 			for (let i = 0; i < 300; i++) {
-				const ex = type.generate('tuiles');
+				const ex = type.generate({ mode: 'tuiles' });
 				expect(ex.type).toBe('tuilesNombre');
 				if (ex.type !== 'tuilesNombre') continue; // narrowing
 				expect(ex.question).toContain('@');
@@ -2090,7 +2090,7 @@ describe('Français — Conjugaison', () => {
 			for (const tense of tenses) {
 				const type = conjugationType(verbId, tense);
 				for (let i = 0; i < 30; i++) {
-					const ex = type.generate('qcm');
+					const ex = type.generate({ mode: 'qcm' });
 					expect(ex.type).toBe('qcm');
 					if (ex.type === 'qcm') {
 						expect(ex.choices.length).toBe(4);
@@ -2105,7 +2105,7 @@ describe('Français — Conjugaison', () => {
 	});
 	test('mode QCM : check accepte la bonne forme, refuse une autre proposition', () => {
 		const type = conjugationType('etre', 'imparfait');
-		const ex = type.generate('qcm');
+		const ex = type.generate({ mode: 'qcm' });
 		if (ex.type === 'qcm') {
 			expect(type.check(ex, ex.answer)).toBe(true);
 			const wrong = ex.choices.find((c) => c !== ex.answer)!;
@@ -2115,7 +2115,7 @@ describe('Français — Conjugaison', () => {
 	test('rétrocompatibilité : sans mode (ou « saisie ») → exercice texte', () => {
 		const type = conjugationType('etre', 'present');
 		expect(type.generate().type).toBe('text');
-		expect(type.generate('saisie').type).toBe('text');
+		expect(type.generate({ mode: 'saisie' }).type).toBe('text');
 	});
 });
 
@@ -2596,7 +2596,7 @@ describe('vocabulaire — ordre alphabétique (#108)', () => {
 	test('génération : suite mélangée valide, ordre = tri calculé (jamais figé)', () => {
 		for (const def of VOCAB_LESSONS) {
 			for (let i = 0; i < 60; i++) {
-				const ex = def.exerciseType.generate('tuiles');
+				const ex = def.exerciseType.generate({ mode: 'tuiles' });
 				expect(ex.type).toBe('tuilesOrdre');
 				if (ex.type !== 'tuilesOrdre') continue;
 				// 4 à 5 mots, tous distincts.
@@ -2616,7 +2616,7 @@ describe('vocabulaire — ordre alphabétique (#108)', () => {
 	test('niveau 1 : initiales toutes différentes', () => {
 		const def = VOCAB_LESSONS.find((l) => l.id === ID_NIV1)!;
 		for (let i = 0; i < 60; i++) {
-			const ex = def.exerciseType.generate('tuiles');
+			const ex = def.exerciseType.generate({ mode: 'tuiles' });
 			if (ex.type !== 'tuilesOrdre') continue;
 			const initiales = ex.ordre.map((m) => m[0]);
 			expect(new Set(initiales).size).toBe(initiales.length);
@@ -2626,7 +2626,7 @@ describe('vocabulaire — ordre alphabétique (#108)', () => {
 	test('niveau 2 : même initiale, deuxièmes lettres distinctes', () => {
 		const def = VOCAB_LESSONS.find((l) => l.id === ID_NIV2)!;
 		for (let i = 0; i < 60; i++) {
-			const ex = def.exerciseType.generate('tuiles');
+			const ex = def.exerciseType.generate({ mode: 'tuiles' });
 			if (ex.type !== 'tuilesOrdre') continue;
 			const initiales = new Set(ex.ordre.map((m) => m[0]));
 			expect(initiales.size).toBe(1); // tous la même 1re lettre
@@ -2637,7 +2637,7 @@ describe('vocabulaire — ordre alphabétique (#108)', () => {
 
 	test('check() : accepte la suite écrite (espaces ou virgules), rejette le désordre', () => {
 		const def = VOCAB_LESSONS.find((l) => l.id === ID_NIV1)!;
-		const ex = def.exerciseType.generate('tuiles');
+		const ex = def.exerciseType.generate({ mode: 'tuiles' });
 		if (ex.type !== 'tuilesOrdre') throw new Error('type inattendu');
 		expect(def.exerciseType.check(ex, ex.ordre.join(' '))).toBe(true);
 		expect(def.exerciseType.check(ex, ex.ordre.join(', '))).toBe(true);
@@ -2683,7 +2683,7 @@ describe('orthographe — accords pluriel/féminin (#109)', () => {
 	test('saisie : toujours du texte, formes courtes uniquement', () => {
 		for (const lesson of [reg, irr]) {
 			for (let i = 0; i < 200; i++) {
-				const ex = lesson.exerciseType.generate('saisie');
+				const ex = lesson.exerciseType.generate({ mode: 'saisie' });
 				expect(ex.type).toBe('text');
 				if (ex.type === 'text') expect(ex.answer.length).toBeLessThanOrEqual(9);
 			}
@@ -2693,7 +2693,7 @@ describe('orthographe — accords pluriel/féminin (#109)', () => {
 	test('QCM : 4 propositions distinctes dont la bonne réponse', () => {
 		for (const lesson of [reg, irr]) {
 			for (let i = 0; i < 200; i++) {
-				const ex = lesson.exerciseType.generate('qcm');
+				const ex = lesson.exerciseType.generate({ mode: 'qcm' });
 				expect(ex.type).toBe('qcm');
 				if (ex.type === 'qcm') {
 					expect(ex.choices.length).toBe(4);
@@ -2707,9 +2707,9 @@ describe('orthographe — accords pluriel/féminin (#109)', () => {
 	test('repli QCM : une forme longue n’apparaît qu’en QCM, jamais en saisie', () => {
 		let vueLongueEnQcm = false;
 		for (let i = 0; i < 300; i++) {
-			const s = irr.exerciseType.generate('saisie');
+			const s = irr.exerciseType.generate({ mode: 'saisie' });
 			if (s.type === 'text') expect(s.answer.length).toBeLessThanOrEqual(9);
-			const q = irr.exerciseType.generate('qcm');
+			const q = irr.exerciseType.generate({ mode: 'qcm' });
 			if (q.type === 'qcm' && q.answer.length > 9) vueLongueEnQcm = true;
 		}
 		expect(vueLongueEnQcm).toBe(true);
@@ -2762,7 +2762,7 @@ describe('orthographe — homophones grammaticaux (#110)', () => {
 	test('génération : QCM à 2 options (les 2 graphies), bonne réponse + explication', () => {
 		for (const lesson of HOMOPHONE_LESSONS) {
 			for (let i = 0; i < 60; i++) {
-				const ex = lesson.exerciseType.generate('qcm');
+				const ex = lesson.exerciseType.generate({ mode: 'qcm' });
 				expect(ex.type).toBe('qcm');
 				if (ex.type !== 'qcm') continue;
 				const paire = HOMOPHONE_PAIRS.find((p) => p.label === lesson.label)!;
@@ -2844,7 +2844,7 @@ describe('orthographe — m devant m, b, p (#111)', () => {
 	test('génération : QCM « m ou n ? » + explication, bonne réponse présente', () => {
 		const type = MBP_LESSONS[0].exerciseType;
 		for (let i = 0; i < 80; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;
 			expect([...ex.choices].sort()).toEqual(['m', 'n']);
@@ -2890,7 +2890,7 @@ describe('vocabulaire — sens propre / sens figuré (#112)', () => {
 		// Toutes les bonnes réponses possibles (sens propre + sens figuré de chaque groupe).
 		const sensValides = new Set(GROUPES_SENS.flatMap((g) => [g.propre, g.figure]));
 		for (let i = 0; i < 120; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;
 			expect(ex.choices.length).toBe(3);
@@ -2944,7 +2944,7 @@ describe('vocabulaire — familles, préfixes, suffixes (#113)', () => {
 		const type = FAMILLES_LESSONS[0].exerciseType;
 		const reponsesValides = new Set(ITEMS_FAMILLES.map((it) => it.reponse));
 		for (let i = 0; i < 150; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;
 			expect(ex.choices.length).toBe(3);
@@ -3013,7 +3013,7 @@ describe('vocabulaire — champs lexicaux (#114)', () => {
 		const typeTri = CHAMPS_LESSONS.find((l) => l.id === ID_TRI)!.exerciseType;
 		const vusEnDefinition = new Set<string>();
 		for (let i = 0; i < 500; i++) {
-			const ex = typeMots.generate('qcm');
+			const ex = typeMots.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') continue;
 			if (ex.question.includes('n’appartient pas')) {
 				// Intrus : aucune option (membres + intrus) n'est un mot ambigu.
@@ -3024,7 +3024,7 @@ describe('vocabulaire — champs lexicaux (#114)', () => {
 			}
 		}
 		for (let i = 0; i < 300; i++) {
-			const ex = typeTri.generate('tri');
+			const ex = typeTri.generate({ mode: 'tri' });
 			if (ex.type !== 'tuilesTri') continue;
 			for (const t of ex.mots) expect(ambigus.has(t.mot), t.mot).toBe(false);
 		}
@@ -3034,7 +3034,7 @@ describe('vocabulaire — champs lexicaux (#114)', () => {
 	test('« Le mot juste » : QCM 4 options, bonne réponse incluse, énoncé + explication', () => {
 		const type = CHAMPS_LESSONS.find((l) => l.id === ID_MOTS)!.exerciseType;
 		for (let i = 0; i < 200; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;
 			expect(ex.choices.length).toBe(4);
@@ -3051,7 +3051,7 @@ describe('vocabulaire — champs lexicaux (#114)', () => {
 		let definitions = 0;
 		let intrus = 0;
 		for (let i = 0; i < 300; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') continue;
 			if (ex.question.includes('n’appartient pas')) intrus++;
 			else definitions++;
@@ -3063,7 +3063,7 @@ describe('vocabulaire — champs lexicaux (#114)', () => {
 	test('intrus : la réponse n’est jamais un mot du thème visé', () => {
 		const type = CHAMPS_LESSONS.find((l) => l.id === ID_MOTS)!.exerciseType;
 		for (let i = 0; i < 300; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm' || !ex.question.includes('n’appartient pas')) continue;
 			// Le champ visé est nommé dans l'énoncé ; l'intrus vient d'un autre champ.
 			const champVise = CHAMPS.find((c) => ex.question.includes(`« ${c.nom} »`))!;
@@ -3075,7 +3075,7 @@ describe('vocabulaire — champs lexicaux (#114)', () => {
 	test('« Ranger par thème » : 2 thèmes distincts, 6 tuiles fournies, cat correcte', () => {
 		const type = CHAMPS_LESSONS.find((l) => l.id === ID_TRI)!.exerciseType;
 		for (let i = 0; i < 200; i++) {
-			const ex = type.generate('tri');
+			const ex = type.generate({ mode: 'tri' });
 			expect(ex.type).toBe('tuilesTri');
 			if (ex.type !== 'tuilesTri') continue;
 			expect(ex.categories.length).toBe(2);
@@ -3098,7 +3098,7 @@ describe('vocabulaire — champs lexicaux (#114)', () => {
 
 	test('tri : pas de réponse texte unique (corrigé par le runner)', () => {
 		const type = CHAMPS_LESSONS.find((l) => l.id === ID_TRI)!.exerciseType;
-		const ex = type.generate('tri');
+		const ex = type.generate({ mode: 'tri' });
 		expect(type.check(ex, 'la météo')).toBe(false);
 	});
 
@@ -3158,7 +3158,7 @@ describe('grammaire — pronom sujet & accord sujet-verbe (#115)', () => {
 		const type = GRAMMAIRE_SUJET_LESSONS.find((l) => l.id === 'fr-gram-pronom-sujet')!.exerciseType;
 		const pronomsAttendus = new Set(SUJETS.map((s) => s.pronom));
 		for (let i = 0; i < 100; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;
 			expect(ex.choices.length).toBe(4);
@@ -3175,7 +3175,7 @@ describe('grammaire — pronom sujet & accord sujet-verbe (#115)', () => {
 			(l) => l.id === 'fr-gram-accord-sujet-verbe',
 		)!.exerciseType;
 		for (let i = 0; i < 150; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;
 			expect(ex.choices.length).toBe(4);
@@ -3243,7 +3243,7 @@ describe('grammaire — classes de mots, articles, adverbes (#116)', () => {
 		const type = CLASSES_LESSONS[0].exerciseType;
 		const reponsesValides = new Set(ITEMS_CLASSES.map((it) => it.reponse));
 		for (let i = 0; i < 150; i++) {
-			const ex = type.generate('qcm');
+			const ex = type.generate({ mode: 'qcm' });
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;
 			expect(ex.choices.length).toBe(3);

@@ -20,7 +20,7 @@
    ont des formes renseignées (listes du parent, #109) : ils « remontent »
    ainsi dans les exercices.
    ============================================================ */
-import type { Exercise, ExerciseType, ExerciseMode, ModeOption } from '../../core/exercise';
+import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
 import type { FormesAccord } from '../../core/orthographe/types';
@@ -175,7 +175,8 @@ function accordType(reguliers: boolean): ExerciseType {
 	return {
 		modes: ACCORD_MODE_OPTIONS,
 		consigne: 'Écris chaque mot à la forme demandée.', // #42 : nomme la tâche
-		generate(mode?: ExerciseMode): Exercise {
+		generate(opts?: GenerateOpts): Exercise {
+			const mode = opts?.mode;
 			const base = reguliers ? [...ACCORDS_REGULIERS, ...banqueFlechies()] : ACCORDS_IRREGULIERS;
 			// Toutes les transformations possibles (mot + transformation).
 			const paires = base.flatMap((f) => transfosDisponibles(f).map((t) => ({ f, t })));

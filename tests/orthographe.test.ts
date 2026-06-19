@@ -183,7 +183,7 @@ describe("orthographe — génération d'exercice", () => {
 		const t = orthoType(mot);
 		// Descripteurs de modes ciblés, dans l'ordre d'étayage (tuiles → mot caché → dictée).
 		expect(t.modes?.map((m) => m.id)).toEqual(['tuiles', 'motCache', 'dictee']);
-		expect(t.generate('tuiles').type).toBe('tuiles');
+		expect(t.generate({ mode: 'tuiles' }).type).toBe('tuiles');
 		expect(t.generate().type).toBe('motCache');
 	});
 });
@@ -291,7 +291,7 @@ describe('orthographe — formes fléchies / accords (#109)', () => {
 		const reg = ACCORD_LESSONS.find((l) => l.id === 'fr-accords-reguliers')!;
 		const sources = new Set<string>();
 		for (let i = 0; i < 500; i++) {
-			const ex = reg.exerciseType.generate('saisie');
+			const ex = reg.exerciseType.generate({ mode: 'saisie' });
 			const m = ex.type === 'text' ? /: (.+?) →/.exec(ex.question) : null;
 			if (m) sources.add(m[1]);
 		}

@@ -21,7 +21,7 @@
    - tuiles : 3 à 4 tuiles, distracteurs = erreurs typiques (avant/après
      confondus, saut de rang, nombre non arrondi, recopie d'une borne).
    ============================================================ */
-import type { Exercise, ExerciseType, ExerciseMode, ModeOption } from '../../core/exercise';
+import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import { rnd, choice, sample } from '../../core/utils';
 
 /* Deux modes communs à toutes les leçons de numération. */
@@ -136,7 +136,8 @@ export function answerEstNumerique(answer: string): boolean {
 function numerationType(genFact: () => Fact): ExerciseType {
 	return {
 		modes: MODES,
-		generate(mode?: ExerciseMode): Exercise {
+		generate(opts?: GenerateOpts): Exercise {
+			const mode = opts?.mode;
 			const f = genFact();
 			if (mode === 'tuiles') {
 				return {

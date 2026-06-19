@@ -15,7 +15,7 @@ const TIRAGES = 400;
 
 function genere(lessonId: string) {
 	const l = FRACTIONS_LESSONS.find((x) => x.id === lessonId)!;
-	return Array.from({ length: TIRAGES }, () => l.exerciseType.generate('qcm'));
+	return Array.from({ length: TIRAGES }, () => l.exerciseType.generate({ mode: 'qcm' }));
 }
 
 /* Découpe une notation « num/den » en nombres. */

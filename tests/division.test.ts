@@ -93,7 +93,7 @@ describe('Je partage', () => {
 describe('Je découvre le reste (#95)', () => {
 	const lesson = DIVISION_LESSONS.find((l) => l.id === 'math-div-reste')!;
 	const genReste = (mode: string, n = TIRAGES) =>
-		Array.from({ length: n }, () => lesson.exerciseType.generate(mode));
+		Array.from({ length: n }, () => lesson.exerciseType.generate({ mode }));
 
 	it('expose deux modes : saisie (conseillé) puis QCM', () => {
 		const ids = lesson.exerciseType.modes?.map((m) => m.id) ?? [];

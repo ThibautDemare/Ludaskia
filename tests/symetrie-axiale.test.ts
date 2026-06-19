@@ -13,7 +13,7 @@ import type { SymMotif } from '../src/core/figures';
 
 const type = SYMETRIE_LESSONS[0].exerciseType;
 const TIRAGES = 600;
-const draws = Array.from({ length: TIRAGES }, () => type.generate('qcm'));
+const draws = Array.from({ length: TIRAGES }, () => type.generate({ mode: 'qcm' }));
 
 /** Liste des points de chaque <polygon> d'un fragment SVG. */
 function polygones(svg: string): number[][][] {

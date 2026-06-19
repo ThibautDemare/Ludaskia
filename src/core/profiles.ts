@@ -17,7 +17,7 @@ import {
 	appKeys,
 	setActivePrefix,
 } from './storage';
-import { XP_KEY, niveauDepuisXP } from './progress';
+import { XP_KEY, niveauDepuisXP, migrateNiveauNamespacing } from './progress';
 import { niveauRequisAvatar } from './unlocks';
 import { migrateRevisions } from './revision-migrate';
 import type { SchoolLevel } from './catalog';
@@ -85,8 +85,11 @@ function applyActive(m: ProfilesMeta) {
 	const p = m.list.find((x) => x.uuid === m.active) || m.list[0];
 	m.active = p.uuid;
 	setActivePrefix(profilePrefix(p));
-	// Le préfixe vient de basculer : rattrape l'historique du profil actif vers la
-	// révision espacée (cf. revision-migrate). Idempotent → sans effet une fois fait.
+	// Le préfixe vient de basculer. (1) Namespacing de la progression par niveau
+	// (#225) : renomme l'existant legacy en `@ce2` AVANT (2) le rattrapage vers la
+	// révision espacée (qui écrit, lui, des clés namespacées). Les deux sont
+	// idempotents → sans effet une fois faits.
+	migrateNiveauNamespacing();
 	migrateRevisions(Date.now());
 }
 export function initProfiles() {

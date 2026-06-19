@@ -3,10 +3,40 @@
    étoiles et statistiques par leçon. (localStorage via lsGet/lsSet)
    ============================================================ */
 import { fmt } from './utils';
-import { lsGet, lsSet } from './storage';
+import { lsGet, lsSet, lsSetQuiet } from './storage';
 import { getAllLessons } from './catalog';
+import type { SchoolLevel } from './catalog';
+import { niveauActif } from './niveau-actif';
 import { etatNeuf, avancerEtat } from './revision';
 import type { EtatRevision } from './orthographe/types';
+
+/* ---------- Namespacing de la progression par niveau (#225) ----------
+   Tout l'état PAR LEÇON (étoiles, stats, premier passage, état SR) est rangé sous
+   une clé `lessonId@niveau`. En LECTURE, les `load*` renvoient une VUE scopée au
+   niveau ACTIF (clés `lessonId` simples) → les consommateurs restent inchangés et
+   deviennent automatiquement scopés. En ÉCRITURE, on namespace la clé. Les
+   `load*All` exposent un agrégat tous-niveaux (clés simples) pour les métriques
+   GLOBALES d'effort, distinctes de la complétude (scopée). Une clé « pleine »
+   (legacy, sans `@`) est traitée comme CE2 (tout l'existant l'était). */
+const NIVEAU_LEGACY: SchoolLevel = 'ce2';
+function nsKey(lessonId: string, niveau: SchoolLevel): string {
+	return `${lessonId}@${niveau}`;
+}
+function lessonOfKey(key: string): string {
+	const i = key.lastIndexOf('@');
+	return i < 0 ? key : key.slice(0, i);
+}
+function niveauOfKey(key: string): string {
+	const i = key.lastIndexOf('@');
+	return i < 0 ? NIVEAU_LEGACY : key.slice(i + 1);
+}
+/* Vue { lessonId: valeur } d'une carte namespacée, restreinte au niveau actif. */
+function scopeActif<V>(raw: Record<string, V>): Record<string, V> {
+	const niveau = niveauActif();
+	const out: Record<string, V> = {};
+	for (const k in raw) if (niveauOfKey(k) === niveau) out[lessonOfKey(k)] = raw[k];
+	return out;
+}
 
 /* ---------- Records de bilans (classement) ---------- */
 export interface Run {
@@ -107,18 +137,22 @@ export const streakSuffix = (days: number) => (days >= 2 ? ` · 🔥 ${days} jou
 
 /* ---------- Étoiles par leçon (1 dès le premier sans-faute) ---------- */
 export const STARS_KEY = 'ludaskia_stars';
-function loadStars() {
+function loadStarsRaw(): Record<string, number> {
 	return lsGet(STARS_KEY, {});
+}
+function loadStars(): Record<string, number> {
+	return scopeActif(loadStarsRaw());
 }
 function saveStars(s: Record<string, number>) {
 	lsSet(STARS_KEY, s);
 }
 export function recordLessonResult(lessonId: string, perfect: boolean) {
-	const stars = loadStars();
-	const had = (stars[lessonId] || 0) > 0;
-	if (perfect) stars[lessonId] = (stars[lessonId] || 0) + 1;
+	const stars = loadStarsRaw();
+	const k = nsKey(lessonId, niveauActif());
+	const had = (stars[k] || 0) > 0;
+	if (perfect) stars[k] = (stars[k] || 0) + 1;
 	saveStars(stars);
-	return { count: stars[lessonId] || 0, newStar: perfect && !had };
+	return { count: stars[k] || 0, newStar: perfect && !had };
 }
 export function starsEarned() {
 	const s = loadStars();
@@ -130,26 +164,57 @@ export { loadStars };
    Agrégées sur tous les contextes (leçon seule, bilan complet, express).
    Sert à repérer les thèmes à retravailler. */
 export const LESSON_STATS_KEY = 'ludaskia_lessonStats';
-export function loadLessonStats() {
+interface LessonStat {
+	attempts: number;
+	correct: number;
+	questions: number;
+	bestPct: number;
+	lastPct: number;
+}
+function loadLessonStatsRaw(): Record<string, LessonStat> {
 	return lsGet(LESSON_STATS_KEY, {});
 }
+export function loadLessonStats() {
+	return scopeActif(loadLessonStatsRaw());
+}
+/* Stats CUMULÉES par leçon, TOUS niveaux confondus (clé `lessonId` simple). Sert
+   aux agrégats GLOBAUX d'effort (total de réponses, bonnes réponses par matière),
+   distincts de la complétude (scopée au niveau actif). */
+export function loadLessonStatsAll(): Record<string, LessonStat> {
+	const raw = loadLessonStatsRaw();
+	const out: Record<string, LessonStat> = {};
+	for (const k in raw) {
+		const id = lessonOfKey(k);
+		const s = raw[k];
+		const e = out[id] || { attempts: 0, correct: 0, questions: 0, bestPct: 0, lastPct: 0 };
+		e.attempts += s.attempts || 0;
+		e.correct += s.correct || 0;
+		e.questions += s.questions || 0;
+		e.bestPct = Math.max(e.bestPct, s.bestPct || 0);
+		e.lastPct = s.lastPct || 0;
+		out[id] = e;
+	}
+	return out;
+}
 export function recordLessonStats(perLesson: Record<string, { ok: number; total: number }>) {
-	const s = loadLessonStats();
+	const s = loadLessonStatsRaw();
+	const niveau = niveauActif();
 	// Leçons rencontrées pour la 1re fois dans cet essai (aucune stat antérieure) :
 	// sert au suivi « première fois » (objectif « nouvelle leçon », #178).
 	const premieres: string[] = [];
 	for (const num in perLesson) {
 		const { ok, total } = perLesson[num];
 		if (!total) continue;
-		if (!s[num]) premieres.push(num);
-		const e = s[num] || { attempts: 0, correct: 0, questions: 0, bestPct: 0, lastPct: 0 };
+		const k = nsKey(num, niveau);
+		if (!s[k]) premieres.push(num);
+		const e = s[k] || { attempts: 0, correct: 0, questions: 0, bestPct: 0, lastPct: 0 };
 		e.attempts++;
 		e.correct += ok;
 		e.questions += total;
 		const pct = Math.round((ok / total) * 100);
 		e.bestPct = Math.max(e.bestPct, pct);
 		e.lastPct = pct;
-		s[num] = e;
+		s[k] = e;
 	}
 	lsSet(LESSON_STATS_KEY, s);
 	const now = Date.now();
@@ -170,15 +235,20 @@ export const lessonAvgPct = (e: any) =>
    leçon déjà rencontrée avant l'arrivée de ce suivi reste « ancienne » : elle
    ne sera datée que si elle est vraiment nouvelle. */
 export const LESSON_FIRST_SEEN_KEY = 'ludaskia_lessonFirstSeen';
-export function loadLessonFirstSeen(): Record<string, number> {
+function loadLessonFirstSeenRaw(): Record<string, number> {
 	return lsGet(LESSON_FIRST_SEEN_KEY, {});
 }
+export function loadLessonFirstSeen(): Record<string, number> {
+	return scopeActif(loadLessonFirstSeenRaw());
+}
 export function markLessonsFirstSeen(lessonIds: string[], now: number) {
-	const all = loadLessonFirstSeen();
+	const all = loadLessonFirstSeenRaw();
+	const niveau = niveauActif();
 	let changed = false;
 	for (const id of lessonIds) {
-		if (all[id] == null) {
-			all[id] = now;
+		const k = nsKey(id, niveau);
+		if (all[k] == null) {
+			all[k] = now;
 			changed = true;
 		}
 	}
@@ -193,8 +263,11 @@ export function countNewLessonsSince(since: number): number {
    État SR par leçon (les mots d'orthographe ont le leur dans MotOrtho.revision).
    La logique d'escalier est dans revision.ts (pure) ; ici, persistance + hooks. */
 export const LESSON_REVISION_KEY = 'ludaskia_lessonRevision';
-export function loadLessonRevisions(): Record<string, EtatRevision> {
+function loadLessonRevisionsRaw(): Record<string, EtatRevision> {
 	return lsGet(LESSON_REVISION_KEY, {});
+}
+export function loadLessonRevisions(): Record<string, EtatRevision> {
+	return scopeActif(loadLessonRevisionsRaw());
 }
 function saveLessonRevisions(r: Record<string, EtatRevision>) {
 	lsSet(LESSON_REVISION_KEY, r);
@@ -202,11 +275,13 @@ function saveLessonRevisions(r: Record<string, EtatRevision>) {
 /* Entrée en rotation à la première rencontre (1er re-test dès J+1), sans
    rendre la leçon due immédiatement. */
 export function enterLessonsRevision(lessonIds: string[], now: number) {
-	const all = loadLessonRevisions();
+	const all = loadLessonRevisionsRaw();
+	const niveau = niveauActif();
 	let changed = false;
 	for (const id of lessonIds) {
-		if (!all[id]) {
-			all[id] = etatNeuf(now);
+		const k = nsKey(id, niveau);
+		if (!all[k]) {
+			all[k] = etatNeuf(now);
 			changed = true;
 		}
 	}
@@ -225,9 +300,35 @@ export function backfillLessonRevisions(now: number) {
 
 /* Met à jour l'état SR d'une leçon après une réponse en révision. */
 export function avancerLessonRevision(lessonId: string, reussi: boolean, now: number) {
-	const all = loadLessonRevisions();
-	all[lessonId] = avancerEtat(all[lessonId] ?? etatNeuf(now), reussi, now);
+	const all = loadLessonRevisionsRaw();
+	const k = nsKey(lessonId, niveauActif());
+	all[k] = avancerEtat(all[k] ?? etatNeuf(now), reussi, now);
 	saveLessonRevisions(all);
+}
+
+/* ---------- Migration : namespacing de la progression par niveau (#225) ----------
+   Renomme une fois les clés « pleines » (legacy, sans `@`) de chaque carte vers
+   `@ce2` (tout l'existant était CE2). Idempotente. Doit tourner À L'ACTIVATION
+   d'un profil AVANT migrateRevisions (qui écrit, lui, des clés namespacées). */
+function migrateMapNamespacing(storageKey: string): void {
+	const raw = lsGet(storageKey, {}) as Record<string, unknown>;
+	let changed = false;
+	const out: Record<string, unknown> = {};
+	for (const k in raw) {
+		if (k.includes('@')) out[k] = raw[k];
+		else {
+			out[nsKey(lessonOfKey(k), NIVEAU_LEGACY)] = raw[k];
+			changed = true;
+		}
+	}
+	// Écriture « silencieuse » : une migration ne doit pas bumper updatedAt.
+	if (changed) lsSetQuiet(storageKey, out);
+}
+export function migrateNiveauNamespacing(): void {
+	migrateMapNamespacing(STARS_KEY);
+	migrateMapNamespacing(LESSON_STATS_KEY);
+	migrateMapNamespacing(LESSON_FIRST_SEEN_KEY);
+	migrateMapNamespacing(LESSON_REVISION_KEY);
 }
 
 /* ---------- XP global (1 point par bonne réponse, tous modes) ---------- */

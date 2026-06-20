@@ -100,3 +100,42 @@ test("Révision : l'ordre alphabétique se joue en tuiles-mots", async ({ page }
 	await expect(page.locator('.rev-feedback.ok')).toBeVisible();
 	expect(errors).toEqual([]);
 });
+
+/* #264 — Le chemin QCM de la révision enrichit désormais l'énoncé (gras + fractions
+   empilées) ET les boutons-réponses, comme les runners leçon et sprint. */
+test('Révision QCM : fractions empilées dans l’énoncé ET les choix (#264)', async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('num-frac-addition'));
+	await gotoHash(page, 'revision-espacee');
+
+	// L'énoncé QCM tiré (ex. « Combien font 1/4 + 1/4 ? ») est rendu en fractions
+	// empilées (barre horizontale `.frac`), pas en oblique « 1/4 ».
+	const enonce = page.locator('.rev-q-qcm');
+	await expect(enonce).toBeVisible();
+	await expect(enonce.locator('.frac').first()).toBeVisible();
+	await expect(enonce).not.toContainText('/');
+
+	// Les boutons-réponses affichent aussi les fractions empilées (pas de « 1/4 » oblique).
+	const choices = page.locator('.rev-choices');
+	await expect(choices.locator('.rev-choice .frac').first()).toBeVisible();
+	await expect(choices).not.toContainText('/');
+
+	expect(errors).toEqual([]);
+});
+
+test('Révision QCM : mot-cible des « contraires » en gras, sans astérisques (#264)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('fr-vocab-contraires'));
+	await gotoHash(page, 'revision-espacee');
+
+	// Le mot-cible (tiré au hasard ; chaque phrase de la banque le met en **gras**)
+	// est rendu en <strong>, sans laisser fuiter les marqueurs « ** » dans le texte.
+	const enonce = page.locator('.rev-q-qcm');
+	await expect(enonce).toBeVisible();
+	await expect(enonce.locator('strong')).toBeVisible();
+	await expect(enonce).not.toContainText('**');
+
+	expect(errors).toEqual([]);
+});

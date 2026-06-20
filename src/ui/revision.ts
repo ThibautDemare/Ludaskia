@@ -13,8 +13,9 @@ import { icon } from './icon';
 import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import { hasMode } from '../core/exercise';
-import type { QcmVariante } from '../core/exercise';
+import type { ChoiceView, QcmVariante } from '../core/exercise';
 import { PONCT_MOTS } from './ponctuation-view';
+import { mathInline } from '../core/fraction-text';
 import type { Item } from '../core/items';
 import {
 	checkItemAnswer,
@@ -34,7 +35,16 @@ import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } fro
 // d'orthographe, qui portent déjà leur propre consigne.
 type RevItem = { groupLabel: string; consigne?: string } & (
 	| { kind: 'num'; lessonId: string; item: Item }
-	| { kind: 'qcm'; lessonId: string; item: Item; choices: string[]; variante?: QcmVariante }
+	| {
+			kind: 'qcm';
+			lessonId: string;
+			item: Item;
+			choices: string[];
+			// Affichage RICHE optionnel des choix (#200), aligné par index sur `choices` :
+			// fractions empilées (« 2/4 » → barre horizontale), etc. — comme la leçon (#264).
+			choicesView?: ChoiceView[];
+			variante?: QcmVariante;
+	  }
 	| { kind: 'word'; wordId: string; mot: string }
 	// Interactions « tuiles » rejouées telles quelles en révision (#186), sans clavier.
 	| {
@@ -105,6 +115,7 @@ export function runRevisionEspacee(): void {
 							parle: ex.parle,
 						},
 						choices: ex.choices,
+						choicesView: ex.choicesView,
 						variante: ex.variante,
 					});
 				continue;
@@ -264,13 +275,25 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 	const blank = ponct
 		? '<span class="lqcm-ponct-trou" aria-hidden="true"></span>'
 		: '<span class="rev-blank">?</span>';
-	const q = escapeHTML(it.item.text).replace('@', blank);
+	// `enonceTexte` : échappe + GRAS « **…** » (#199/#203) + fractions empilées (#200),
+	// comme les runners leçon et sprint — le chemin QCM de la révision l'avait oublié (#264).
+	const q = enonceTexte(it.item.text).replace('@', blank);
 	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm"${ttsAttr(it.item.parle ?? it.item.text)}>${q}</div>
     <div class="rev-choices">${it.choices
 			.map((c, i) => {
+				// Ponctuation (#204) : libellé MOT lisible (un « . » nu serait invisible) — on
+				// n'utilise PAS les boutons-symboles de la leçon. Sinon, vue riche optionnelle
+				// (#200/#264 : fractions empilées) rendue telle quelle, son libellé parlé en
+				// aria-label ; à défaut, le texte du choix échappé.
+				const view = ponct ? undefined : it.choicesView?.[i];
 				const label = ponct ? (PONCT_MOTS[c] ?? c) : c;
-				const aria = ponct ? ` aria-label="${escapeHTML(label)}"` : '';
-				return `<button class="rev-choice" data-i="${i}"${aria}>${escapeHTML(label)}</button>`;
+				const inner = view ? view.html : escapeHTML(label);
+				const aria = view
+					? ` aria-label="${escapeHTML(view.label)}"`
+					: ponct
+						? ` aria-label="${escapeHTML(label)}"`
+						: '';
+				return `<button class="rev-choice" data-i="${i}"${aria}>${inner}</button>`;
 			})
 			.join('')}</div>`;
 	stage.querySelectorAll<HTMLButtonElement>('.rev-choice').forEach((btn) => {
@@ -555,9 +578,12 @@ function grade(reussi: boolean, correct: string) {
 		addXP(1);
 	}
 	const stage = document.getElementById('revStage')!;
+	// `mathInline` (= échappe + empile les fractions « n/d ») : la bonne réponse révélée
+	// s'affiche en barre horizontale comme les choix, pas en oblique (#264). Sans effet
+	// sur les réponses non fractionnaires (mots, signes, heures…).
 	const verdict = reussi
 		? `<div class="rev-feedback ok">✓ Bravo !</div>`
-		: `<div class="rev-feedback ko">✗ La bonne réponse : <strong>${escapeHTML(correct)}</strong></div>`;
+		: `<div class="rev-feedback ko">✗ La bonne réponse : <strong>${mathInline(correct)}</strong></div>`;
 	stage.innerHTML = `${verdict}
     <div class="rev-actions"><button class="rev-btn" id="revNext">${idx + 1 < items.length ? 'Continuer ▶' : 'Terminer'}</button></div>`;
 	document.getElementById('revNext')!.addEventListener('click', next);

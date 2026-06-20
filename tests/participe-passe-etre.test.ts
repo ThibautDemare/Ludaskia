@@ -41,7 +41,7 @@ describe('génération — invariants du QCM', () => {
 			expect(ex.choices).toContain(ex.answer);
 			expect(ex.choicesEmpilees).toBe(true);
 			expect(ex.parle).toBe(''); // formes homophones → pas de bouton « Écouter »
-			expect(ex.consigne).toBe('Choisis la bonne forme.'); // consigne d'action visible (#265)
+			expect(ex.consigne).toBe('Choisis la bonne fin du mot.'); // consigne d'action visible (#265)
 		}
 	});
 

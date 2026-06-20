@@ -699,6 +699,7 @@ export interface ItemVocabQcm {
 	reponse: string;
 	distracteurs: string[];
 	explication: string;
+	consigne: string; // consigne d'action visible (#265) ; varie selon la tâche (famille vs sens)
 }
 
 const itemsFamille = (): ItemVocabQcm[] =>
@@ -708,6 +709,7 @@ const itemsFamille = (): ItemVocabQcm[] =>
 		reponse: f.famille,
 		distracteurs: [f.fauxAmi, f.autre],
 		explication: f.explication,
+		consigne: 'Quel mot est de la même famille ?',
 	}));
 
 const itemsAffixe = (arr: ItemAffixe[], type: 'prefixe' | 'suffixe'): ItemVocabQcm[] =>
@@ -717,6 +719,7 @@ const itemsAffixe = (arr: ItemAffixe[], type: 'prefixe' | 'suffixe'): ItemVocabQ
 		reponse: a.sens,
 		distracteurs: [...a.distracteurs],
 		explication: a.explication,
+		consigne: 'Que veut dire ce mot ?',
 	}));
 
 export const ITEMS_FAMILLES: ItemVocabQcm[] = [
@@ -740,6 +743,7 @@ export function famillesType(): ExerciseType {
 				answer: it.reponse,
 				choices: sample([it.reponse, ...it.distracteurs], 3),
 				explication: it.explication,
+				consigne: it.consigne, // consigne d'action visible (#265)
 			};
 		},
 		check: (exercise, input) => checkAnswer(exercise, input),

@@ -327,13 +327,16 @@ export function typePhraseType(): ExerciseType {
 			const p = choice(PHRASES_TYPE);
 			return {
 				type: 'qcm',
-				question: `Quel est le type de cette phrase ? « ${p.phrase} »`,
+				question: `« ${p.phrase} »`,
 				answer: TYPE_LABELS[p.type],
 				choices: sample(OPTIONS, OPTIONS.length), // 3 libellés, ordre mélangé
 				explication: p.explication,
+				// Consigne d'action visible (#265) : « Que fait cette phrase ? » est plus concret
+				// pour un CE2 que « le type de phrase » (abstrait) ; l'énoncé n'est plus que la phrase.
+				consigne: 'Que fait cette phrase ?',
 				// Lu à voix haute (#42) : on nomme la tâche et on lit la phrase (la
 				// réponse — le type — n'est jamais prononcée).
-				parle: `Quel est le type de cette phrase ? ${p.phrase}`,
+				parle: `Que fait cette phrase ? ${p.phrase}`,
 			};
 		},
 		check: (exercise, input) => checkAnswer(exercise, input),

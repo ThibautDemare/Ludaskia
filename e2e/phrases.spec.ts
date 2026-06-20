@@ -64,6 +64,8 @@ test('F2 type de phrase : 3 options texte + feedback après clic', async ({ page
 	// Vérification des 3 libellés enfant (ordre aléatoire → on trie).
 	const labels = (await choices.allTextContents()).map((s) => s.trim()).sort();
 	expect(labels).toEqual(['Donner un ordre', 'Poser une question', 'Raconter ou dire']);
+	// Consigne d'action visible (#265) : « Que fait cette phrase ? » (et plus « le type »).
+	await expect(page.locator('.lqcm-consigne')).toContainText('Que fait cette phrase');
 	// Clic sur le 1er choix → feedback immédiat.
 	await choices.first().click();
 	await expect(page.locator('#lqcmFeedback')).toBeVisible();

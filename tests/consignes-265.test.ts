@@ -8,6 +8,8 @@ import { describe, it, expect } from 'vitest';
 import { ITEMS_CLASSES } from '../src/data/francais/classes-mots';
 import { ITEMS_FAMILLES } from '../src/data/francais/familles';
 import { POSEE_LESSONS } from '../src/data/maths/posee';
+import { NUMERATION_LESSONS } from '../src/data/maths/numeration';
+import { MESURE_LESSONS } from '../src/data/maths/mesures';
 
 describe("classes-mots — consigne d'action par item (#265)", () => {
 	it('classe → « Est-ce un nom… », article → « Quel petit mot va devant… », adverbe → aucune', () => {
@@ -47,6 +49,22 @@ describe("opérations posées — consigne d'action (#265)", () => {
 		};
 		for (const l of POSEE_LESSONS) {
 			expect(l.exerciseType.consigne).toBe(attendu[l.id]);
+		}
+	});
+});
+
+describe("maths saisie — énoncé/consigne d'action (#265)", () => {
+	it("numération-comparaison : l'énoncé commence par « Compare : »", () => {
+		const compare = NUMERATION_LESSONS.find((l) => l.id === 'num-comparer')!;
+		for (let i = 0; i < 50; i++) {
+			const ex = compare.exerciseType.generate();
+			expect('question' in ex && ex.question.startsWith('Compare : ')).toBe(true);
+		}
+	});
+
+	it('mesures (conversion) : consigne « Complète : écris le bon nombre. »', () => {
+		for (const l of MESURE_LESSONS) {
+			expect(l.exerciseType.consigne).toBe('Complète : écris le bon nombre.');
 		}
 	});
 });

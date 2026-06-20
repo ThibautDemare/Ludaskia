@@ -76,6 +76,9 @@ function generateConversion(conversions: Conversion[]): Exercise {
 export function conversionType(config: MesureConfig): ExerciseType {
 	const facts = config.facts ?? [];
 	return {
+		// Consigne d'action (#265) : l'énoncé « 3 m = @ cm » est une égalité sans verbe
+		// (« faut-il convertir ? compléter ? »). Affichée en fiche et propagée en révision.
+		consigne: 'Complète : écris le bon nombre.',
 		generate(): Exercise {
 			if (facts.length && rnd(1, 4) === 1) {
 				const f = choice(facts);

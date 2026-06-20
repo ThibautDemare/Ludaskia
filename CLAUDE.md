@@ -122,6 +122,10 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
     `gamification` (trophées, XP, objectifs, récompenses), `documentation`.
   - **Priorité** (un seul) : `priority: high` / `priority: medium` / `priority: low`.
   - **Effort** (un seul) : `effort: low` / `effort: medium` / `effort: high`.
+  - **Niveau scolaire** (optionnel — **complète** les labels obligatoires, ne les
+    remplace pas) : tag transversal de **classe** pour le contenu multi-niveaux
+    (#225), aussi destiné à étiqueter les **leçons** par classe. Existants :
+    `ce2`, `cm1` ; famille extensible (futurs `cp`, `ce1`, `cm2`, `6e`).
   - Génériques GitHub disponibles au besoin : `duplicate`, `question`,
     `good first issue`, `help wanted`, `invalid`, `wontfix`.
 - Le mainteneur peut travailler **en parallèle** dans une autre session :

@@ -69,6 +69,14 @@ Labels **obligatoires** sur CHAQUE issue : **au moins un label de type** +
 **Génériques GitHub** au besoin : `duplicate`, `question`, `good first issue`,
 `help wanted`, `invalid`, `wontfix`.
 
+**Niveau scolaire** (optionnel — ne remplace **pas** les labels obligatoires
+type/priorité/effort, il les complète) : tag transversal de **classe** pour le
+contenu multi-niveaux (#225). À poser quand une issue/PR concerne une classe
+précise ; destiné aussi à **étiqueter les leçons** par classe lors du
+rétro-taggage du catalogue. Existants : `ce2` (`#66BB6A`) · `cm1` (`#F9A825`).
+Famille **extensible** (futurs `cp`, `ce1`, `cm2`, `6e` — à créer au besoin, même
+style « Niveau scolaire : XXX »).
+
 Liste tenue à la main ; en cas de doute (label refusé, dépôt modifié), vérifie :
 `& "C:\Program Files\GitHub CLI\gh.exe" label list --limit 50`.
 

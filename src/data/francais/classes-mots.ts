@@ -99,6 +99,7 @@ export interface ItemClasseQcm {
 	reponse: string;
 	distracteurs: string[];
 	explication: string;
+	consigne?: string; // consigne d'action visible (#265) ; absente quand l'énoncé est déjà une question
 	parle?: string; // texte lu si l'énoncé affiché est télégraphique (#42)
 }
 
@@ -115,6 +116,8 @@ const itemsClasse = (): ItemClasseQcm[] =>
 		reponse: c.classe,
 		distracteurs: (['nom', 'verbe', 'adjectif'] as Classe[]).filter((x) => x !== c.classe),
 		explication: `« ${c.mot} » est un ${c.classe} : ${ROLE_CLASSE[c.classe]}.`,
+		// Énoncé télégraphique « … est un… : @ » → consigne d'action visible (#265).
+		consigne: 'Est-ce un nom, un verbe ou un adjectif ?',
 		parle: `À quelle classe appartient le mot « ${c.mot} » : un nom, un verbe ou un adjectif ?`,
 	}));
 
@@ -125,6 +128,8 @@ const itemsArticle = (): ItemClasseQcm[] =>
 		reponse: a.article,
 		distracteurs: (['le', 'la', 'les'] as Article[]).filter((x) => x !== a.article),
 		explication: `On dit « ${a.article} ${a.mot} ».`,
+		// Énoncé télégraphique « @ mot » → consigne d'action visible (#265).
+		consigne: 'Quel petit mot va devant : le, la ou les ?',
 		parle: `Quel petit mot va devant « ${a.mot} » : le, la ou les ?`,
 	}));
 
@@ -158,6 +163,7 @@ export function classesMotsType(): ExerciseType {
 				answer: it.reponse,
 				choices: sample([it.reponse, ...it.distracteurs], 3),
 				explication: it.explication,
+				consigne: it.consigne, // visible si l'énoncé est télégraphique (#265) ; absente pour l'adverbe
 				parle: it.parle,
 			};
 		},

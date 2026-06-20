@@ -241,6 +241,9 @@ export function sensFigureType(): ExerciseType {
 				answer: reponse,
 				choices: sample([g.propre, g.figure, g.distracteur], 3),
 				explication: `Ici, « ${ph.mot} » est employé au sens ${ph.sens}.`,
+				// Consigne d'action visible (#265) : cadre la tâche (choisir le sens du mot).
+				// « Quel est le sens… » évite l'écho avec l'énoncé « … veut dire : @ ».
+				consigne: 'Quel est le sens du mot dans cette phrase ?',
 			};
 		},
 		check: (exercise, input) => checkAnswer(exercise, input),

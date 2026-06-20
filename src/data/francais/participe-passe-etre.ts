@@ -178,7 +178,8 @@ function genItem(): Exercise {
 		choicesEmpilees: true,
 		explication: explicationPour(p, reponse),
 		// Consigne d'action visible (#265) : l'énoncé « … → **Elle** est @ » est muet sur la tâche.
-		consigne: 'Choisis la bonne forme.',
+		// « la bonne fin du mot » colle à la terminaison surlignée (.term) des options.
+		consigne: 'Choisis la bonne fin du mot.',
 		// PAS de TTS : allé/allée/allés sont homophones → l'oral trahirait ou n'aiderait pas.
 		// `parle: ''` ⇒ ttsAttr('') ne greffe aucun bouton « Écouter » (consigne incluse).
 		parle: '',

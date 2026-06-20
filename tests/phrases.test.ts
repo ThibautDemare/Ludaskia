@@ -133,6 +133,7 @@ describe('F2 — génération (QCM texte)', () => {
 			const ex = type.generate();
 			if (ex.type !== 'qcm') throw new Error('attendu qcm');
 			expect([...ex.choices].sort()).toEqual([...LABELS].sort()); // les 3 libellés, mélangés
+			expect(ex.consigne).toBe('Que fait cette phrase ?'); // consigne d'action visible (#265)
 			expect(ex.choices).toContain(ex.answer);
 			expect(LABELS).toContain(ex.answer);
 			expect(ex.choices.join(' ')).not.toMatch(/exclamati/i); // l'exclamative n'est pas un type

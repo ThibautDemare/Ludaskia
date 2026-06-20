@@ -18,6 +18,8 @@ test('familles/préfixes/suffixes : QCM 3 options + feedback', async ({ page }) 
 	const choices = page.locator('.sprint-choice');
 	await choices.first().waitFor();
 	expect(await choices.count()).toBe(3);
+	// Consigne d'action visible (#265) : chaque item (famille / préfixe-suffixe) en porte une.
+	await expect(page.locator('.lqcm-consigne')).toBeVisible();
 	await choices.first().click();
 	await expect(page.locator('.lqcm-expl')).toBeVisible();
 	expect(errors).toEqual([]);

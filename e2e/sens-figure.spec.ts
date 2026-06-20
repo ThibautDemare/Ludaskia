@@ -18,6 +18,8 @@ test('sens propre / figuré : QCM 3 options + feedback du sens', async ({ page }
 	const choices = page.locator('.sprint-choice');
 	await choices.first().waitFor();
 	expect(await choices.count()).toBe(3);
+	// Consigne d'action visible (#265) : cadre la tâche (choisir le sens du mot).
+	await expect(page.locator('.lqcm-consigne')).toContainText('Quel est le sens du mot');
 	await choices.first().click();
 	await expect(page.locator('.lqcm-expl')).toBeVisible();
 	await expect(page.locator('.lqcm-expl')).toContainText('sens');

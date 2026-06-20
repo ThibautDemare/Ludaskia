@@ -617,7 +617,9 @@ describe('Objectif « nouvelle leçon » : premier passage par leçon (#178)', (
 		expect(api.countNewLessonsSince(now - 30 * 86400000)).toBe(2);
 	});
 	test('markLessonsFirstSeen ne réécrit jamais la 1re date', () => {
-		const t1 = Date.now() - 5 * 86400000;
+		// t1 ancré sur le début de semaine (pas « maintenant ») → toujours avant la
+		// semaine courante, quel que soit le jour (sinon flaky le ven/sam/dim).
+		const t1 = api.startOfWeek() - 5 * 86400000;
 		api.markLessonsFirstSeen(['math-doubles'], t1);
 		api.markLessonsFirstSeen(['math-doubles'], Date.now()); // 2e passage : ignoré
 		expect(api.loadLessonFirstSeen()['math-doubles']).toBe(t1);

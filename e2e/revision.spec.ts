@@ -96,6 +96,19 @@ test('Révision : un QCM à consigne renforcée affiche la consigne + le picto (
 	expect(errors).toEqual([]);
 });
 
+test("Révision : une opération posée affiche sa consigne d'action (#265)", async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('calc-addition-posee'));
+	await gotoHash(page, 'revision-espacee');
+
+	// La grille posée n'a aucun énoncé : avant, l'enfant ne voyait que le libellé de
+	// leçon. La consigne d'ACTION est désormais propagée jusqu'en révision (#265).
+	await expect(page.locator('.lqcm-consigne')).toContainText("Pose l'addition");
+	await expect(page.locator('.rev-posee')).toBeVisible();
+	await expect(page.locator('.posee-input').first()).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
 test("Révision : l'ordre alphabétique se joue en tuiles-mots", async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(seedDueLesson('fr-vocab-alpha-initiale'));

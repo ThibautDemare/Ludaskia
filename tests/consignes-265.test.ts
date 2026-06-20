@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { ITEMS_CLASSES } from '../src/data/francais/classes-mots';
 import { ITEMS_FAMILLES } from '../src/data/francais/familles';
+import { POSEE_LESSONS } from '../src/data/maths/posee';
 
 describe("classes-mots — consigne d'action par item (#265)", () => {
 	it('classe → « Est-ce un nom… », article → « Quel petit mot va devant… », adverbe → aucune', () => {
@@ -31,6 +32,21 @@ describe("familles — consigne d'action par tâche (#265)", () => {
 			} else {
 				expect(item.consigne).toBe('Que veut dire ce mot ?');
 			}
+		}
+	});
+});
+
+describe("opérations posées — consigne d'action (#265)", () => {
+	// La grille posée n'a pas d'énoncé : sa consigne (ExerciseType.consigne) est désormais
+	// affichée en fiche ET en révision (propagée par renderPosed).
+	it('chaque leçon posée porte sa consigne « Pose … et calcule. »', () => {
+		const attendu: Record<string, string> = {
+			'calc-addition-posee': "Pose l'addition et calcule.",
+			'calc-soustraction-posee': 'Pose la soustraction et calcule.',
+			'calc-multiplication-posee': 'Pose la multiplication et calcule.',
+		};
+		for (const l of POSEE_LESSONS) {
+			expect(l.exerciseType.consigne).toBe(attendu[l.id]);
 		}
 	});
 });

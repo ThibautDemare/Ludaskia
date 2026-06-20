@@ -18,6 +18,7 @@ import { commKey, escapeHTML } from '../core/utils';
 import { mathInline } from '../core/fraction-text';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts, bindItemTts } from './consigne-tts';
+import { consigneRenforceeHTML } from './consigne-renforcee';
 import type { ItemTtsCible } from './consigne-tts';
 import { PONCT_MOTS, ponctView } from './ponctuation-view';
 import { recordLessonRun } from '../core/lesson-run';
@@ -148,12 +149,8 @@ function renderQuestion(): void {
 	// Consigne renforcée optionnelle (#203) : ligne en gras précédée d'un picto
 	// décoratif (« ↔ » / « = », aria-hidden — le sens est porté par le texte). Elle
 	// porte la lecture vocale globale (consigne + phrase) ; l'énoncé n'a alors pas
-	// son propre bouton « Écouter ».
-	const consigneHTML = q.consigne
-		? `<div class="lqcm-consigne"${ttsAttr(ttsText)}>${
-				q.picto ? `<span class="lqcm-picto" aria-hidden="true">${escapeHTML(q.picto)}</span>` : ''
-			}<span class="lqcm-consigne-txt">${escapeHTML(q.consigne)}</span></div>`
-		: '';
+	// son propre bouton « Écouter ». Markup partagé avec la révision (#265).
+	const consigneHTML = consigneRenforceeHTML(q.consigne, q.picto, ttsText);
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
       ${progressHTML()}

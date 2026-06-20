@@ -9,6 +9,7 @@
 import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
+import { consigneRenforceeHTML } from './consigne-renforcee';
 import { icon } from './icon';
 import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
@@ -44,6 +45,12 @@ type RevItem = { groupLabel: string; consigne?: string } & (
 			// fractions empilées (« 2/4 » → barre horizontale), etc. — comme la leçon (#264).
 			choicesView?: ChoiceView[];
 			variante?: QcmVariante;
+			// Consigne renforcée + picto de la leçon (#203), propagés jusqu'en révision (#265).
+			// `consigne` (commun au RevItem) porte le LIBELLÉ de leçon ; ces deux champs portent
+			// l'ACTION (« Quel mot veut dire le contraire ? » + « ↔ »), affichée au-dessus de
+			// l'énoncé comme dans le runner leçon (lecon-qcm.ts).
+			consigneRenforcee?: string;
+			picto?: string;
 	  }
 	| { kind: 'word'; wordId: string; mot: string }
 	// Interactions « tuiles » rejouées telles quelles en révision (#186), sans clavier.
@@ -117,6 +124,8 @@ export function runRevisionEspacee(): void {
 						choices: ex.choices,
 						choicesView: ex.choicesView,
 						variante: ex.variante,
+						consigneRenforcee: ex.consigne,
+						picto: ex.picto,
 					});
 				continue;
 			}
@@ -278,7 +287,14 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 	// `enonceTexte` : échappe + GRAS « **…** » (#199/#203) + fractions empilées (#200),
 	// comme les runners leçon et sprint — le chemin QCM de la révision l'avait oublié (#264).
 	const q = enonceTexte(it.item.text).replace('@', blank);
-	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm"${ttsAttr(it.item.parle ?? it.item.text)}>${q}</div>
+	const ttsText = it.item.parle ?? it.item.text;
+	// Consigne renforcée (#203) propagée en révision (#265) : ligne en gras + picto au-dessus
+	// de l'énoncé (« Quel mot veut dire le contraire ? »), pour donner l'ACTION et pas
+	// seulement le libellé de leçon. Comme dans le runner leçon (lecon-qcm.ts), elle porte
+	// alors la lecture vocale globale (consigne + phrase) et l'énoncé n'a plus son propre
+	// bouton « Écouter » (markup partagé via consigneRenforceeHTML).
+	const consigneRenfHTML = consigneRenforceeHTML(it.consigneRenforcee, it.picto, ttsText);
+	stage.innerHTML = `${consigneHTML(it)}${consigneRenfHTML}${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm"${it.consigneRenforcee ? '' : ttsAttr(ttsText)}>${q}</div>
     <div class="rev-choices">${it.choices
 			.map((c, i) => {
 				// Ponctuation (#204) : libellé MOT lisible (un « . » nu serait invisible) — on

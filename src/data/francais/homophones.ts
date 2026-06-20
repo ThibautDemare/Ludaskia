@@ -610,6 +610,9 @@ function homophoneType(paire: PaireHomophone): ExerciseType {
 				answer: reponse,
 				choices: sample([...paire.options], 2), // les deux graphies, jamais une faute
 				explication: paire.explication,
+				// Consigne d'action visible (#265) : sans elle, l'enfant voyait une phrase à
+				// trou + 2 boutons, sans instruction sur ce qu'on attend de lui.
+				consigne: 'Choisis le bon mot pour compléter la phrase.',
 				// Texte lu (#42) : on ne lit PAS la phrase — l'intonation de la synthèse
 				// trancherait l'homophone (« il EST malade ») et donnerait la réponse.
 				// On lit la consigne ; la phrase reste à l'écran.

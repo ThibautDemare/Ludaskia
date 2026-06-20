@@ -177,7 +177,10 @@ function genItem(): Exercise {
 		choicesView: propositions.map((o) => o.vue),
 		choicesEmpilees: true,
 		explication: explicationPour(p, reponse),
+		// Consigne d'action visible (#265) : l'énoncé « … → **Elle** est @ » est muet sur la tâche.
+		consigne: 'Choisis la bonne forme.',
 		// PAS de TTS : allé/allée/allés sont homophones → l'oral trahirait ou n'aiderait pas.
+		// `parle: ''` ⇒ ttsAttr('') ne greffe aucun bouton « Écouter » (consigne incluse).
 		parle: '',
 	};
 }

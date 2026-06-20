@@ -33,6 +33,8 @@ test('homophone a/à : QCM à 2 options + feedback de substitution', async ({ pa
 	expect(await choices.count()).toBe(2);
 	const labels = (await choices.allTextContents()).map((s) => s.trim()).sort();
 	expect(labels).toEqual(['a', 'à']);
+	// Consigne d'action visible (#265) : l'enfant sait quoi faire sans cliquer « Écouter ».
+	await expect(page.locator('.lqcm-consigne')).toContainText('Choisis le bon mot');
 	await choices.first().click();
 	// Retour immédiat + critère de substitution (« avait »).
 	await expect(page.locator('.lqcm-expl')).toBeVisible();

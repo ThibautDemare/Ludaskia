@@ -20,6 +20,7 @@ import {
 	marquerAtelierFait,
 	validerMode,
 	decouverteEnCours,
+	listeEtoilee,
 } from '../core/orthographe/runner';
 import type { MotOrtho, OrthoState, ModeOrtho } from '../core/orthographe/types';
 import { diffCorrect } from '../core/orthographe/diff';
@@ -51,6 +52,11 @@ let actes = 0;
 // Mode de la séance (#69) : null = parcours complet (atelier → modes → étoile) ;
 // un mode = entraînement ciblé sur ce seul mode (ne valide pas, pas d'étoile).
 let seanceMode: ModeOrtho | null = null;
+// Tour de révision : true quand le parcours complet est lancé sur une liste DÉJÀ
+// entièrement maîtrisée. Au lieu d'un bilan vide (l'étoile est déjà gagnée), on
+// repasse chaque mot une fois en mode d'entretien, puis on clôt par « Révision
+// terminée » (pas la célébration « Liste prête ! » de première complétion).
+let revisionRun = false;
 // Mode choisi en attente, posé par l'écran de choix et consommé par startOrthoRun.
 let pendingOrthoMode: ModeOrtho | null = null;
 export const setPendingOrthoMode = (m: ModeOrtho | null) => {
@@ -82,6 +88,9 @@ export function startOrthoRun(lessonId: string): void {
 	idx = 0;
 	niveauAvant = niveauDepuisXP(getXP());
 	actes = 0;
+	// Parcours complet sur une liste déjà acquise → tour de révision (sinon le bilan
+	// tomberait tout de suite, sans rien proposer à travailler).
+	revisionRun = !seanceMode && listeEtoilee(mots, dispoDictee);
 	if (!mots.length) {
 		goCategorie(ORTHO_CATEGORY_ID);
 		return;
@@ -158,6 +167,10 @@ function prochainNonMaitrise(): MotOrtho | null {
 		idx = (idx + 1) % mots.length;
 		return m;
 	}
+	// Tour de révision : liste déjà acquise → on repasse chaque mot UNE fois, dans
+	// l'ordre, puis « fini » (pas de filtre de statut, ils sont tous maîtrisés ;
+	// l'activité due sera un mode d'entretien aléatoire via prochaineActivite).
+	if (revisionRun) return idx < mots.length ? mots[idx++] : null;
 	const enDecouverte = decouverteEnCours(mots);
 	for (let k = 0; k < mots.length; k++) {
 		const i = (idx + k) % mots.length;
@@ -176,7 +189,8 @@ function renderNext(): void {
 	cleanupMotCacheResize(); // on quitte un éventuel mot affiché : plus rien à retracer
 	const word = prochainNonMaitrise();
 	if (!word) {
-		renderBilan();
+		if (revisionRun) renderRevisionFin();
+		else renderBilan();
 		return;
 	}
 	if (actes >= SEANCE_MAX) {
@@ -624,25 +638,57 @@ function renderBilan(): void {
       ${mascotteBulleHTML(encouragementMascotte())}
       <div class="ortho-bilan-emoji">🎉</div>
       <h2>Liste prête !</h2>
-      <p>Tu as bien travaillé les <b>${total}</b> mot${total > 1 ? 's' : ''} de cette liste.</p>
+      <p>Tu as bien travaillé ${total > 1 ? `les <b>${total}</b> mots` : 'le mot'} de cette liste.</p>
       <button class="btn-primary" id="btnBilanRetour">Retour à l'orthographe</button>
     </div>`;
 	sheets()
 		.querySelector('#btnBilanRetour')!
 		.addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
 
-	// Récompenses : trophées éventuels + montée de niveau, avec modale + confettis.
+	// Récompenses : l'étoile « Liste prête », plus trophées éventuels + montée de niveau.
+	annoncerRecompensesFin([{ icon: '🌟', text: 'Liste prête, bravo !' }]);
+}
+
+/* ---------- Fin d'un tour de révision (liste déjà maîtrisée) ----------
+   La liste est déjà acquise : on NE rejoue PAS la célébration « Liste prête ! »
+   (l'étoile est gagnée), mais un bilan de révision plus sobre. On annonce tout de
+   même les récompenses légitimement gagnées pendant la révision (trophées, montée
+   de niveau due à l'XP), sans la fausse étoile de première complétion. */
+function renderRevisionFin(): void {
+	const total = mots.length;
+	sheets().innerHTML = `
+    <div class="page ortho-run ortho-bilan">
+      ${mascotteBulleHTML(encouragementMascotte())}
+      <div class="ortho-bilan-emoji">✅</div>
+      <h2>Révision terminée !</h2>
+      <p>Tu as révisé ${total > 1 ? `les <b>${total}</b> mots` : 'le mot'} de cette liste.</p>
+      <button class="btn-primary" id="btnBilanRetour">Retour à l'orthographe</button>
+    </div>`;
+	sheets()
+		.querySelector('#btnBilanRetour')!
+		.addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
+	annoncerRecompensesFin([]); // pas d'étoile : seulement trophées/niveau réellement gagnés
+}
+
+/* Annonce les récompenses obtenues en fin de parcours ou de révision : trophées
+   nouvellement débloqués + éventuelle montée de niveau (modale + confettis). `celebBase`
+   = entrées de célébration toujours montrées (l'étoile « Liste prête » du parcours
+   complet) ; vide en révision, où l'on ne célèbre que ce qui a réellement été gagné. */
+function annoncerRecompensesFin(celebBase: { icon: string; text: string }[]): void {
 	const newTrophies = evaluateTrophies();
 	const celeb = [
-		{ icon: '🌟', text: 'Liste prête, bravo !' },
+		...celebBase,
 		...newTrophies.map((t) => ({ icon: t.icon, text: `Trophée : ${t.title}` })),
 	];
 	const niveauApres = niveauDepuisXP(getXP());
 	const niveauGagne = niveauApres > niveauAvant ? niveauApres : 0;
 	const recompensesNiv = recompensesEntre(niveauAvant, niveauApres);
 	niveauAvant = niveauApres;
-	if (niveauGagne) showLevelUp(niveauGagne, recompensesNiv, () => showCelebration(celeb));
-	else showCelebration(celeb);
+	const celebrer = () => {
+		if (celeb.length) showCelebration(celeb);
+	};
+	if (niveauGagne) showLevelUp(niveauGagne, recompensesNiv, celebrer);
+	else celebrer();
 }
 
 /* ---------- Pause de séance (rythme adapté à un CE2) ---------- */
@@ -666,8 +712,9 @@ function renderPause(): void {
 		.querySelector('#btnStopSeance')!
 		.addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
 	b.focus();
-	// Mode ciblé : pas de bilan d'étoile → on célèbre les niveaux gagnés à la pause.
-	if (seanceMode) annoncerNiveauSiGagne();
+	// Hors parcours de première complétion (mode ciblé ou révision), il n'y a pas de
+	// bilan d'étoile → on célèbre à la pause les niveaux éventuellement gagnés.
+	if (seanceMode || revisionRun) annoncerNiveauSiGagne();
 }
 
 /* ---------- Helpers ---------- */

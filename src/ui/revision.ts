@@ -34,8 +34,11 @@ import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } fro
 // `consigne` (#186) : libellé de la leçon, affiché au-dessus de l'exercice pour
 // dire ce qu'on attend (le HUD ne montre que la catégorie). Absent pour les mots
 // d'orthographe, qui portent déjà leur propre consigne.
+// `consigneAction` (#265, cas `num`/posé) : consigne d'ACTION du type d'exercice
+// (ExerciseType.consigne, ex. « Pose l'addition et calcule. »), propagée du repli
+// fiche jusqu'en révision — indispensable à la posée, qui n'a pas d'énoncé textuel.
 type RevItem = { groupLabel: string; consigne?: string } & (
-	| { kind: 'num'; lessonId: string; item: Item }
+	| { kind: 'num'; lessonId: string; item: Item; consigneAction?: string }
 	| {
 			kind: 'qcm';
 			lessonId: string;
@@ -183,6 +186,7 @@ export function runRevisionEspacee(): void {
 				kind: 'num',
 				lessonId: it.id,
 				item: genLessonItem(lesson, level),
+				consigneAction: type.consigne, // action « quoi faire » (#265) ; surtout pour la posée
 			});
 		}
 	}
@@ -244,7 +248,9 @@ function consigneHTML(it: RevItem): string {
    (toutes les cellules-résultat justes = réussi). */
 function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
 	const stage = document.getElementById('revStage')!;
-	stage.innerHTML = `${consigneHTML(it)}<div class="rev-q rev-posee">${renderItem(it.item)}</div>
+	// La grille posée n'a pas d'énoncé : la consigne d'action (#265) porte la lecture vocale.
+	const actionHTML = consigneRenforceeHTML(it.consigneAction, undefined, it.consigneAction ?? '');
+	stage.innerHTML = `${consigneHTML(it)}${actionHTML}<div class="rev-q rev-posee">${renderItem(it.item)}</div>
     <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const cells = [...stage.querySelectorAll<HTMLInputElement>('.posee-input')];
@@ -265,7 +271,12 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 		? `<input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}>`
 		: '<input id="revInput" class="rev-input" inputmode="numeric" autocomplete="off">';
 	const q = enonceTexte(it.item.text).replace('@', champ);
-	stage.innerHTML = `${consigneHTML(it)}${figureBlock(it.item.figure)}<div class="rev-q"${ttsAttr(it.item.parle ?? it.item.text)}>${q}</div>
+	// Consigne d'action (#265) : si le type en fournit une, elle s'affiche au-dessus de
+	// l'énoncé et porte la lecture vocale ; l'énoncé garde la sienne sinon. Aujourd'hui les
+	// exos saisie portent l'instruction dans leur énoncé (consigneAction vide) ; cas générique.
+	const actionHTML = consigneRenforceeHTML(it.consigneAction, undefined, it.consigneAction ?? '');
+	const enonceTts = it.consigneAction ? '' : ttsAttr(it.item.parle ?? it.item.text);
+	stage.innerHTML = `${consigneHTML(it)}${actionHTML}${figureBlock(it.item.figure)}<div class="rev-q"${enonceTts}>${q}</div>
     <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;

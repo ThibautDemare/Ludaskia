@@ -41,8 +41,11 @@ function multiplicationGen(): PosedGen {
 	return { op: 'x', a: rnd(12, 99), b: choice(MULT2) };
 }
 
-function posedType(gen: () => PosedGen): ExerciseType {
+function posedType(gen: () => PosedGen, consigne: string): ExerciseType {
 	return {
+		// Consigne d'action (#265) : la grille posée n'a pas d'énoncé textuel ; sans elle,
+		// l'enfant (surtout en révision) ne voyait que le libellé de leçon, jamais « quoi faire ».
+		consigne,
 		generate(): Exercise {
 			const { op, a, b } = gen();
 			return { type: 'posed', op, a, b };
@@ -64,15 +67,19 @@ export interface PoseeLessonDef {
 }
 
 export const POSEE_LESSONS: PoseeLessonDef[] = [
-	{ id: 'calc-addition-posee', label: "L'addition posée", exerciseType: posedType(additionGen) },
+	{
+		id: 'calc-addition-posee',
+		label: "L'addition posée",
+		exerciseType: posedType(additionGen, "Pose l'addition et calcule."),
+	},
 	{
 		id: 'calc-soustraction-posee',
 		label: 'La soustraction posée',
-		exerciseType: posedType(soustractionGen),
+		exerciseType: posedType(soustractionGen, 'Pose la soustraction et calcule.'),
 	},
 	{
 		id: 'calc-multiplication-posee',
 		label: 'La multiplication posée',
-		exerciseType: posedType(multiplicationGen),
+		exerciseType: posedType(multiplicationGen, 'Pose la multiplication et calcule.'),
 	},
 ];

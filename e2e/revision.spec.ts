@@ -76,6 +76,26 @@ test('Révision : la touche Entrée valide puis enchaîne sur la suite', async (
 	expect(errors).toEqual([]);
 });
 
+test('Révision : un QCM à consigne renforcée affiche la consigne + le picto (#265)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('fr-vocab-contraires'));
+	await gotoHash(page, 'revision-espacee');
+
+	// Le libellé de la leçon reste affiché (contexte)…
+	await expect(page.locator('.rev-consigne')).toContainText('Les contraires');
+	// …ET la consigne d'ACTION renforcée + son picto sont propagés (#265) : avant,
+	// l'enfant ne voyait que le libellé, jamais l'instruction « quoi faire ».
+	await expect(page.locator('.lqcm-consigne')).toContainText('Quel mot veut dire le contraire');
+	await expect(page.locator('.lqcm-picto')).toHaveText('↔');
+
+	// L'exercice reste jouable : on choisit une option, le verdict s'affiche.
+	await page.locator('.rev-choice').first().click();
+	await expect(page.locator('.rev-feedback')).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
 test("Révision : l'ordre alphabétique se joue en tuiles-mots", async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(seedDueLesson('fr-vocab-alpha-initiale'));

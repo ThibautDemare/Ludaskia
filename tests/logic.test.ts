@@ -718,7 +718,7 @@ describe('Grandeurs et mesures : conversions (#89)', () => {
 	test('buildLessonFiche : rendu fiche/écran avec champs de saisie (chemin math moderne)', () => {
 		const html = buildLessonFiche('mes-longueurs');
 		expect(html).toContain('Je mesure en mètres et en centimètres'); // titre
-		expect(html).toContain('Complète.'); // consigne maths (pas « Écris la forme »)
+		expect(html).toContain('Complète : écris le bon nombre.'); // consigne d'action (#265)
 		expect(html).toContain('<input'); // au moins un champ de réponse
 		expect(html).not.toContain('@'); // le `@` a bien été remplacé par le champ
 	});
@@ -1290,7 +1290,7 @@ describe('Numération : comparer / encadrer / intercaler (#98)', () => {
 		for (let i = 0; i < 400; i++) {
 			const it = genLessonItem(lesson);
 			expect(it.kind).toBe('text'); // un signe, pas un nombre
-			const m = it.text.match(/^(\d+)\s*@\s*(\d+)$/);
+			const m = it.text.match(/^Compare : (\d+)\s*@\s*(\d+)$/); // énoncé préfixé (#265)
 			expect(m).not.toBeNull();
 			const a = Number(m![1]),
 				b = Number(m![2]);

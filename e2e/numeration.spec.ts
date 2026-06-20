@@ -41,6 +41,7 @@ test('comparer (tuiles) : on place la bonne tuile, feedback positif', async ({ p
 	await expect(page.locator('#ltuiSlot')).toBeVisible();
 	// Déduit le bon signe depuis les deux nombres de l'énoncé.
 	const enonce = await page.locator('.ltui-enonce').innerText();
+	expect(enonce).toContain('Compare'); // consigne d'action dans l'énoncé (#265)
 	const m = enonce.match(/(\d+)\D+?(\d+)/);
 	expect(m).not.toBeNull();
 	const a = Number(m![1]),

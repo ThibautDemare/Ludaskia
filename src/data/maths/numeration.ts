@@ -91,7 +91,10 @@ function compareFact(max: number): Fact {
 	// Texte lu (#42) : « 34 @ 56 » est illisible à voix haute ; on nomme la tâche
 	// sans donner le signe (la réponse).
 	return {
-		question: `${a} @ ${b}`,
+		// Consigne d'action dans l'énoncé (#265) : « Compare : » dit quoi faire et marche
+		// en saisie (on tape le signe) ET en tuiles (on glisse <, =, >) ; « {a} @ {b} »
+		// seul était muet (ni verbe, ni indice de ce qu'on attend dans le trou).
+		question: `Compare : ${a} @ ${b}`,
 		answer: signe(a, b),
 		tuiles: ['<', '=', '>'],
 		parle: `Compare ${a} et ${b}.`,

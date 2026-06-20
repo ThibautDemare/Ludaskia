@@ -19,6 +19,8 @@ test('pronom sujet : QCM 4 options + feedback', async ({ page }) => {
 	const choices = page.locator('.sprint-choice');
 	await choices.first().waitFor();
 	expect(await choices.count()).toBe(4);
+	// Consigne d'action visible (#265) : l'énoncé « … → @ » ne dit pas la tâche.
+	await expect(page.locator('.lqcm-consigne')).toContainText('Par quel pronom');
 	await choices.first().click();
 	await expect(page.locator('.lqcm-expl')).toBeVisible();
 	expect(errors).toEqual([]);
@@ -30,6 +32,8 @@ test('accord sujet-verbe : QCM 4 formes + feedback', async ({ page }) => {
 	const choices = page.locator('.sprint-choice');
 	await choices.first().waitFor();
 	expect(await choices.count()).toBe(4);
+	// Consigne d'action visible (#265) : l'énoncé « … (verbe) → @ » ne dit pas la tâche.
+	await expect(page.locator('.lqcm-consigne')).toContainText('Choisis la bonne forme du verbe');
 	await choices.first().click();
 	await expect(page.locator('.lqcm-expl')).toBeVisible();
 	expect(errors).toEqual([]);

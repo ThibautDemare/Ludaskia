@@ -85,6 +85,8 @@ export function pronomSujetType(): ExerciseType {
 				answer: s.pronom,
 				choices: sample([s.pronom, ...distracteurs], 4),
 				explication: `On peut remplacer « ${s.texte} » par « ${s.pronom} ».`,
+				// Consigne d'action visible (#265) : l'énoncé « … → @ » est muet sur la tâche.
+				consigne: 'Par quel pronom peut-on remplacer ce groupe de mots ?',
 				// Texte lu (#42) : la flèche est muette à l'oral ; on nomme la tâche
 				// sans dire le pronom (la réponse).
 				parle: `Par quel pronom peut-on remplacer « ${s.texte} » ?`,
@@ -125,6 +127,8 @@ export function accordSujetVerbeType(): ExerciseType {
 				answer: correcte,
 				choices,
 				explication: `Avec « ${s.texte} », « ${verbe.infinitif} » s'écrit « ${correcte} ».`,
+				// Consigne d'action visible (#265) : l'énoncé « … (verbe) → @ » est muet sur la tâche.
+				consigne: 'Choisis la bonne forme du verbe.',
 				// Texte lu (#42) : énoncé symbolique ; on nomme la tâche sans dire la forme.
 				parle: `Conjugue le verbe ${verbe.infinitif} pour aller avec « ${s.texte} ».`,
 			};

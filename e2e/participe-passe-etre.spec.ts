@@ -35,6 +35,9 @@ test('QCM : 3 options empilées, terminaison surlignée, sujet en gras, sans TTS
 	expect(await page.locator('.sprint-choice .term').count()).toBe(3);
 	// Sujet de la phrase transformée en gras.
 	await expect(page.locator('.sprint-q-qcm strong')).toBeVisible();
+	// Consigne d'action visible (#265), mais muette : pas de data-tts (formes homophones).
+	await expect(page.locator('.lqcm-consigne')).toContainText('Choisis la bonne forme');
+	expect(await page.locator('.lqcm-consigne[data-tts]').count()).toBe(0);
 	// Pas de bouton « Écouter » : l'énoncé ne porte pas de data-tts (formes homophones).
 	expect(await page.locator('.sprint-q-qcm[data-tts]').count()).toBe(0);
 	expect(errors).toEqual([]);

@@ -251,11 +251,16 @@
 	font-size: 0.85rem;
 	font-style: italic;
 }
+/* Mode « afficher/cacher » : le mot est rendu en spans `.atelier-lettre` (comme
+   l'atelier/la relecture) et posé dans un `.atelier-stage` pour pouvoir tracer ses
+   entourages en lecture seule (#263). `nowrap` garde les lettres sur une ligne (offsets
+   SVG corrects ; un mot long est rétréci par ajusterTailleMot) ; la marge verticale
+   vient du `.atelier-stage` parent. */
 .ortho-mot-affiche {
 	font-size: 2.6rem;
 	font-weight: 700;
 	letter-spacing: 0.08em;
-	margin: 1rem 0;
+	white-space: nowrap;
 }
 .ortho-input {
 	width: min(100%, 360px);

@@ -27,7 +27,12 @@ import { addXP, getXP, niveauDepuisXP } from '../core/progress';
 import { evaluateTrophies } from '../core/rewards';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 import { goCategorie, goOrthoRevoir } from './navigation';
-import { renderAtelier } from './ortho-atelier';
+import {
+	renderAtelier,
+	lettresMotHTML,
+	dessinerEntourages,
+	ajusterTailleMot,
+} from './ortho-atelier';
 import { recompensesEntre } from '../core/unlocks';
 import { showCelebration, showLevelUp } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
@@ -51,6 +56,17 @@ let pendingOrthoMode: ModeOrtho | null = null;
 export const setPendingOrthoMode = (m: ModeOrtho | null) => {
 	pendingOrthoMode = m;
 };
+
+// Retrace des entourages du mot affiché en mode « afficher/cacher » au resize (#263).
+// Module-level (un seul mot affiché à la fois) ; nettoyé dès qu'on cache le mot ou
+// qu'on change d'activité (début de renderNext), comme l'atelier/la relecture.
+let motCacheResize: (() => void) | null = null;
+function cleanupMotCacheResize(): void {
+	if (motCacheResize) {
+		window.removeEventListener('resize', motCacheResize);
+		motCacheResize = null;
+	}
+}
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -157,6 +173,7 @@ function prochainNonMaitrise(): MotOrtho | null {
 }
 
 function renderNext(): void {
+	cleanupMotCacheResize(); // on quitte un éventuel mot affiché : plus rien à retracer
 	const word = prochainNonMaitrise();
 	if (!word) {
 		renderBilan();
@@ -190,7 +207,10 @@ function renderMotCache(word: MotOrtho): void {
     <div class="page ortho-run">
       <p class="ortho-run-consigne">Regarde bien ce mot, puis cache-le et écris-le.</p>
       ${dispoDictee ? `<div><button class="btn-primary ortho-ecouter" id="btnEcouterMot">${icon('speaker')} Écouter le mot</button></div>` : ''}
-      <div class="ortho-mot-affiche" id="motAffiche">${escapeHTML(word.mot)}</div>
+      <div class="atelier-stage" id="motStage">
+        <div class="ortho-mot-affiche" id="motAffiche">${lettresMotHTML(word.mot)}</div>
+        <svg class="atelier-svg" id="motSvg" aria-hidden="true"></svg>
+      </div>
       <button class="btn-primary" id="btnCacher">Cacher et écrire →</button>
       <div class="ortho-saisie" id="zoneSaisie" hidden>
         <input class="ortho-input" id="orthoInput" ${TEXT_ANSWER_INPUT_ATTRS}
@@ -200,13 +220,29 @@ function renderMotCache(word: MotOrtho): void {
       </div>
       <div class="ortho-feedback" id="fb"></div>
     </div>`;
+	const motStage = sheets().querySelector('#motStage') as HTMLElement;
 	const motAffiche = sheets().querySelector('#motAffiche') as HTMLElement;
+	const motSvg = sheets().querySelector('#motSvg') as unknown as SVGSVGElement;
 	const btnCacher = sheets().querySelector('#btnCacher') as HTMLButtonElement;
 	const zone = sheets().querySelector('#zoneSaisie') as HTMLElement;
 	const input = sheets().querySelector('#orthoInput') as HTMLInputElement;
 	const fb = sheets().querySelector('#fb') as HTMLElement;
 
 	renderAccentKb(sheets().querySelector('#accentKb') as HTMLElement, input);
+
+	// Rappel visuel des pièges (#263) : si l'enfant a entouré des lettres à l'atelier,
+	// on les retrace ici en LECTURE SEULE (mêmes couleurs/rendu que l'atelier et la
+	// relecture) tant que le mot est affiché. `ajusterTailleMot` garde un mot long dans
+	// le cadre ; on retrace au resize (offsets dépendants de la mise en page) et une
+	// fois les polices prêtes (premier rendu). Nettoyé dès qu'on cache le mot.
+	const retracer = (): void => {
+		ajusterTailleMot(motAffiche, motStage);
+		if (word.entourage.length) dessinerEntourages(motAffiche, motSvg, word.entourage);
+	};
+	retracer();
+	void document.fonts?.ready?.then(retracer);
+	motCacheResize = retracer;
+	window.addEventListener('resize', motCacheResize);
 
 	// Écoute du mot (#150) : disponible avant ET après l'avoir caché (le bouton est
 	// hors des éléments masqués) — entendre la prononciation aide à l'écrire.
@@ -217,7 +253,8 @@ function renderMotCache(word: MotOrtho): void {
 	}
 
 	btnCacher.addEventListener('click', () => {
-		motAffiche.style.display = 'none';
+		cleanupMotCacheResize(); // mot caché : plus d'entourages à retracer
+		motStage.style.display = 'none';
 		btnCacher.style.display = 'none';
 		zone.hidden = false;
 		input.focus();
@@ -237,7 +274,9 @@ function renderMotCache(word: MotOrtho): void {
 				input.value = '';
 				input.focus();
 			} else {
-				// 2e erreur : on bascule sur l'atelier de correction (diff sur le mot).
+				// 2e erreur : on bascule sur l'atelier de correction (diff sur le mot). Le
+				// retrace du mot affiché a déjà été coupé au clic « Cacher » (on n'arrive
+				// ici qu'après), donc `motCacheResize` est déjà nul — rien à nettoyer.
 				const diff = diffCorrect(input.value, word.mot);
 				renderAtelier(sheets(), word, {
 					onDone: () => {

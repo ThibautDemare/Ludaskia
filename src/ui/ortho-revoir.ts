@@ -104,7 +104,7 @@ function carteHTML(mot: MotOrtho, i: number): string {
               aria-label="${escapeHTML(crayonLabel)}" title="${escapeHTML(crayonLabel)}">✏️</button>
       <div class="atelier-stage relecture-stage">
         <div class="relecture-mot" data-mot="${i}">${lettresMotHTML(mot.mot)}</div>
-        <svg class="atelier-svg" data-svg="${i}"></svg>
+        <svg class="atelier-svg" data-svg="${i}" aria-hidden="true"></svg>
       </div>
       ${comme}
       ${aide}

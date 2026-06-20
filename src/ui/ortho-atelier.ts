@@ -17,6 +17,7 @@ import { uiConfirm } from './ui-modal';
 // Palette colorblind-safe (Okabe-Ito).
 const PALETTE = ['#E69F00', '#56B4E9', '#009E73', '#0072B2', '#CC79A7', '#D55E00'];
 const PAD = 6; // marge des rectangles autour des lettres entourées
+const MIN_PX = 20; // plancher de police d'un mot rétréci (sous ça : pivoter en paysage)
 
 /* Lettres d'un mot en spans `.atelier-lettre` (indices alignés sur lettresDuMot,
    espaces inclus → les index d'entourage restent valides). Partagé entre l'atelier
@@ -59,6 +60,38 @@ export function dessinerEntourages(
 			return `<rect x="${x}" y="${y}" width="${rw}" height="${rh}" rx="14" ry="16" fill="${col}" fill-opacity="0.22" stroke="${col}" stroke-width="2.5" />`;
 		})
 		.join('');
+}
+
+/* Rétrécit la police de `motEl` (en `white-space: nowrap`) pour qu'il tienne dans la
+   largeur de CONTENU de son conteneur de page : un mot long (« aujourd'hui »,
+   « trois-cent-cinquante-deux ») déborderait sinon, car il reste sur une ligne (pour
+   caler les entourages SVG). À recalculer au `resize`. Partagé entre l'atelier
+   (entourer) et le mode « afficher/cacher » (#263). Plancher ~20 px. */
+export function ajusterTailleMot(motEl: HTMLElement, stage: HTMLElement): void {
+	if (!motEl.isConnected) return; // détaché (retrace asynchrone tardif) : no-op sûr
+	motEl.style.fontSize = ''; // repart de la taille SCSS (source de vérité)
+	// Largeur réellement disponible = largeur de CONTENU du parent (.page), donc son
+	// clientWidth MOINS son padding horizontal. .page a un padding (~68 px/côté) que
+	// clientWidth inclut : sans le retrancher, on surestime la place et le mot
+	// déborde malgré le rétrécissement (#166).
+	const parent = stage.parentElement;
+	let dispo = motEl.scrollWidth;
+	if (parent) {
+		const cs = getComputedStyle(parent);
+		const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+		dispo = parent.clientWidth - padX - PAD * 2 - 4;
+	}
+	const naturel = motEl.scrollWidth;
+	if (naturel > dispo) {
+		const base = parseFloat(getComputedStyle(motEl).fontSize);
+		let px = Math.max(MIN_PX, (base * dispo) / naturel);
+		motEl.style.fontSize = `${px}px`;
+		// Le padding px des lettres ne suit pas le ratio → courte correction.
+		while (px > MIN_PX && motEl.scrollWidth > dispo) {
+			px = Math.max(MIN_PX, px - 1);
+			motEl.style.fontSize = `${px}px`;
+		}
+	}
 }
 
 interface AtelierOpts {
@@ -106,7 +139,7 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
       <p class="ortho-run-consigne">${escapeHTML(consigne)}</p>
       <div class="atelier-stage">
         <div class="atelier-mot" id="atelierMot">${lettresMotHTML(mot.mot, opts.diff)}</div>
-        <svg class="atelier-svg" id="atelierSvg"></svg>
+        <svg class="atelier-svg" id="atelierSvg" aria-hidden="true"></svg>
       </div>
       <div class="atelier-actions">
         <button type="button" class="atelier-undo" id="atelierUndo">↩️ Effacer le dernier</button>
@@ -119,38 +152,6 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 	const stage = host.querySelector('.atelier-stage') as HTMLElement;
 	const svg = host.querySelector('#atelierSvg') as unknown as SVGSVGElement;
 	const spans = () => [...motEl.querySelectorAll<HTMLElement>('.atelier-lettre')];
-
-	// Auto-ajustement : un mot long (« aujourd'hui ») déborde sur un écran étroit
-	// car il est en `white-space: nowrap` (nécessaire pour caler les entourages SVG).
-	// On rétrécit donc la police pour qu'il tienne dans la largeur disponible (marge
-	// pour les rectangles qui débordent de PAD). Recalculé au `resize`. Plancher à
-	// ~20 px : sous cette taille, l'enfant fait pivoter l'écran en paysage.
-	const MIN_PX = 20;
-	function ajusterTaille(): void {
-		motEl.style.fontSize = ''; // repart de la taille SCSS (source de vérité)
-		// Largeur réellement disponible = largeur de CONTENU du parent (.page), donc
-		// son clientWidth MOINS son padding horizontal. .page a un padding de 18 mm
-		// (~68 px/côté) que clientWidth inclut : sans le retrancher, on surestime la
-		// place de ~136 px et le mot déborde malgré le rétrécissement (#166).
-		const parent = stage.parentElement;
-		let dispo = motEl.scrollWidth;
-		if (parent) {
-			const cs = getComputedStyle(parent);
-			const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-			dispo = parent.clientWidth - padX - PAD * 2 - 4;
-		}
-		const naturel = motEl.scrollWidth;
-		if (naturel > dispo) {
-			const base = parseFloat(getComputedStyle(motEl).fontSize);
-			let px = Math.max(MIN_PX, (base * dispo) / naturel);
-			motEl.style.fontSize = `${px}px`;
-			// Le padding px des lettres ne suit pas le ratio → courte correction.
-			while (px > MIN_PX && motEl.scrollWidth > dispo) {
-				px = Math.max(MIN_PX, px - 1);
-				motEl.style.fontSize = `${px}px`;
-			}
-		}
-	}
 
 	// --- état du geste ---
 	let dragging = false;
@@ -261,10 +262,10 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 		opts.onDone();
 	});
 
-	ajusterTaille();
+	ajusterTailleMot(motEl, stage);
 	redrawSvg();
 	resizeHandler = () => {
-		ajusterTaille();
+		ajusterTailleMot(motEl, stage);
 		redrawSvg();
 	};
 	window.addEventListener('resize', resizeHandler);

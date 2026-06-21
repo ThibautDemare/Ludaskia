@@ -6,3 +6,6 @@ package-lock.json
 
 # SVG pré-généré (forêt de pied d'accueil) — produit par tools/forest/, ne pas reformater
 public/foret-pied.svg
+
+# Shards de conjugaison pré-générés (LEFFF) — produits par tools/verbs/, JSON compact, ne pas reformater
+src/data/francais/verbs/

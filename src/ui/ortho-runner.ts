@@ -9,7 +9,8 @@
    - La dictée n'est pas proposée tant que le TTS n'est pas branché.
    ============================================================ */
 import { escapeHTML } from '../core/utils';
-import { loadOrtho, saveOrtho } from '../core/orthographe/store';
+import { loadOrtho, saveOrtho, getListe } from '../core/orthographe/store';
+import { materialiserVerbes } from '../core/orthographe/verbes';
 import { motsDeLecon } from '../core/orthographe/lessons';
 import { genExerciseOrtho, ORTHO_MODE_OPTIONS } from '../core/orthographe/exercise';
 import { checkAnswer } from '../core/exercise';
@@ -78,10 +79,50 @@ function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
 }
 
-export function startOrthoRun(lessonId: string): void {
+/* ---------- Contexte d'une cible verbe (#261) ----------
+   Une cible verbe porte `contexte` (pronom + complément) : on affiche la phrase à
+   trou autour du slot interactif (le « trou » = la forme à écrire/assembler) et on
+   lit la phrase complète en TTS. Un mot classique (`contexte` absent) est inchangé. */
+
+/* Phrase à trou. `reveal` montre la forme (phase « affiché » du mot caché). */
+function contexteHTML(word: MotOrtho, reveal = false): string {
+	if (!word.contexte) return '';
+	const { avant, apres } = word.contexte;
+	const creux = reveal
+		? `<span class="ortho-trou is-rempli">${escapeHTML(word.mot)}</span>`
+		: `<span class="ortho-trou" aria-hidden="true">______</span>`;
+	return `<p class="ortho-contexte" lang="fr">${escapeHTML(avant)}${creux}${escapeHTML(apres)}</p>`;
+}
+
+/* Phrase complète lue par le TTS pour une cible verbe : « il mange une pomme ». */
+function phraseVerbe(word: MotOrtho): string {
+	const c = word.contexte!;
+	return `${c.avant}${word.mot}${c.apres}`;
+}
+
+/* Écoute d'une cible : phrase complète pour un verbe (lève l'ambiguïté), sinon
+   « mot. Comme dans : … » pour un mot classique. */
+function ecouterCible(word: MotOrtho): void {
+	if (word.contexte) dicter(phraseVerbe(word));
+	else dicter(word.mot, word.commeDans);
+}
+
+function ecouterLabel(word: MotOrtho): string {
+	return word.contexte ? 'Écouter la phrase' : 'Écouter le mot';
+}
+
+export async function startOrthoRun(lessonId: string): Promise<void> {
 	st = loadOrtho();
 	mots = motsDeLecon(st, lessonId);
-	saveOrtho(st); // persiste la matérialisation des mots prédéfinis
+	// Verbes de la liste (#261) : résolus via LEFFF (async) puis matérialisés en
+	// cibles dictée/tuiles/mot-caché et concaténés aux mots classiques.
+	const liste = getListe(st, lessonId);
+	if (liste?.verbes?.length) {
+		renderPreparation();
+		const cibles = await materialiserVerbes(st, liste.verbes, Date.now());
+		mots = [...mots, ...cibles];
+	}
+	saveOrtho(st); // persiste la matérialisation (mots prédéfinis + cibles verbe)
 	dispoDictee = dicteeDisponible();
 	seanceMode = pendingOrthoMode; // null → parcours complet
 	pendingOrthoMode = null;
@@ -96,6 +137,16 @@ export function startOrthoRun(lessonId: string): void {
 		return;
 	}
 	renderNext();
+}
+
+/* Écran d'attente bref pendant la résolution des formes verbales (chargement
+   paresseux d'un shard). Évite un écran vide le temps de l'import dynamique. */
+function renderPreparation(): void {
+	sheets().innerHTML = `
+    <div class="page ortho-run ortho-bilan">
+      <div class="ortho-bilan-emoji">⏳</div>
+      <p>Un instant, je prépare tes mots…</p>
+    </div>`;
 }
 
 /* La découverte de la liste est-elle terminée (tous les mots vus à l'atelier) ?
@@ -202,6 +253,7 @@ function renderNext(): void {
 	const act = seanceMode ?? prochaineActivite(word, dispoDictee);
 	if (act === 'atelier') {
 		renderAtelier(sheets(), word, {
+			contexteHTML: contexteHTML(word),
 			onDone: () => {
 				marquerAtelierFait(word);
 				saveOrtho(st);
@@ -219,8 +271,9 @@ function renderMotCache(word: MotOrtho): void {
 	let essais = 0;
 	sheets().innerHTML = `
     <div class="page ortho-run">
-      <p class="ortho-run-consigne">Regarde bien ce mot, puis cache-le et écris-le.</p>
-      ${dispoDictee ? `<div><button class="btn-primary ortho-ecouter" id="btnEcouterMot">${icon('speaker')} Écouter le mot</button></div>` : ''}
+      <p class="ortho-run-consigne">${word.contexte ? 'Regarde bien le verbe, puis cache-le et écris-le.' : 'Regarde bien ce mot, puis cache-le et écris-le.'}</p>
+      ${contexteHTML(word)}
+      ${dispoDictee ? `<div><button class="btn-primary ortho-ecouter" id="btnEcouterMot">${icon('speaker')} ${ecouterLabel(word)}</button></div>` : ''}
       <div class="atelier-stage" id="motStage">
         <div class="ortho-mot-affiche" id="motAffiche">${lettresMotHTML(word.mot)}</div>
         <svg class="atelier-svg" id="motSvg" aria-hidden="true"></svg>
@@ -263,7 +316,7 @@ function renderMotCache(word: MotOrtho): void {
 	if (dispoDictee) {
 		sheets()
 			.querySelector('#btnEcouterMot')!
-			.addEventListener('click', () => dicter(word.mot, word.commeDans));
+			.addEventListener('click', () => ecouterCible(word));
 	}
 
 	btnCacher.addEventListener('click', () => {
@@ -293,6 +346,7 @@ function renderMotCache(word: MotOrtho): void {
 				// ici qu'après), donc `motCacheResize` est déjà nul — rien à nettoyer.
 				const diff = diffCorrect(input.value, word.mot);
 				renderAtelier(sheets(), word, {
+					contexteHTML: contexteHTML(word),
 					onDone: () => {
 						saveOrtho(st);
 						renderNext();
@@ -315,11 +369,12 @@ function renderDictee(word: MotOrtho): void {
 	let essais = 0;
 	sheets().innerHTML = `
     <div class="page ortho-run">
-      <p class="ortho-run-consigne">Écoute le mot, puis écris-le.</p>
-      <button class="btn-primary ortho-ecouter" id="btnEcouter">${icon('speaker')} Écouter</button>
+      <p class="ortho-run-consigne">${word.contexte ? 'Écoute la phrase, puis écris seulement le verbe.' : 'Écoute le mot, puis écris-le.'}</p>
+      ${contexteHTML(word)}
+      <button class="btn-primary ortho-ecouter" id="btnEcouter">${icon('speaker')} ${word.contexte ? 'Écouter la phrase' : 'Écouter'}</button>
       <div class="ortho-saisie">
         <input class="ortho-input" id="orthoInput" ${TEXT_ANSWER_INPUT_ATTRS}
-               aria-label="Écris le mot" />
+               aria-label="${word.contexte ? 'Écris le verbe' : 'Écris le mot'}" />
         <div class="accent-kb" id="accentKb"></div>
         <button class="btn-primary" id="btnVerifMot">✓ Vérifier</button>
       </div>
@@ -329,7 +384,7 @@ function renderDictee(word: MotOrtho): void {
 	const fb = sheets().querySelector('#fb') as HTMLElement;
 	renderAccentKb(sheets().querySelector('#accentKb') as HTMLElement, input);
 
-	const ecouter = () => dicter(word.mot, word.commeDans);
+	const ecouter = () => ecouterCible(word);
 	sheets().querySelector('#btnEcouter')!.addEventListener('click', ecouter);
 	ecouter(); // tentative de lecture auto (peut être bloquée tant qu'il n'y a pas eu de geste)
 
@@ -350,12 +405,15 @@ function renderDictee(word: MotOrtho): void {
 			} else {
 				const diff = diffCorrect(input.value, word.mot);
 				renderAtelier(sheets(), word, {
+					contexteHTML: contexteHTML(word),
 					onDone: () => {
 						saveOrtho(st);
 						renderNext();
 					},
 					diff,
-					consigne: "Regarde le mot et où tu t'es trompé, puis entoure le piège.",
+					consigne: word.contexte
+						? "Regarde le verbe et où tu t'es trompé, puis entoure le piège."
+						: "Regarde le mot et où tu t'es trompé, puis entoure le piège.",
 				});
 			}
 		}
@@ -398,10 +456,11 @@ function renderTuiles(word: MotOrtho): void {
 
 	sheets().innerHTML = `
     <div class="page ortho-run">
-      <p class="ortho-run-consigne">Remets les lettres dans le bon ordre.
+      <p class="ortho-run-consigne">${word.contexte ? 'Remets les lettres du verbe dans le bon ordre.' : 'Remets les lettres dans le bon ordre.'}
         <span class="ortho-run-astuce">Tape entre deux lettres pour choisir où écrire.</span></p>
-      ${dispoDictee ? `<div><button class="btn-primary ortho-ecouter" id="btnEcouterTuiles">${icon('speaker')} Écouter le mot</button></div>` : ''}
-      <p class="tuiles-titre">Ton mot</p>
+      ${contexteHTML(word)}
+      ${dispoDictee ? `<div><button class="btn-primary ortho-ecouter" id="btnEcouterTuiles">${icon('speaker')} ${ecouterLabel(word)}</button></div>` : ''}
+      <p class="tuiles-titre">${word.contexte ? 'Le verbe' : 'Ton mot'}</p>
       <div class="tuiles-construction" id="construction"></div>
       <p class="tuiles-titre">Les lettres</p>
       <div class="tuiles-bac" id="bac"></div>
@@ -414,7 +473,7 @@ function renderTuiles(word: MotOrtho): void {
 	if (dispoDictee) {
 		sheets()
 			.querySelector('#btnEcouterTuiles')!
-			.addEventListener('click', () => dicter(word.mot, word.commeDans));
+			.addEventListener('click', () => ecouterCible(word));
 	}
 
 	// --- Rendu ---

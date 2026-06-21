@@ -16,15 +16,46 @@ import {
 	getListe,
 	motsDeListe,
 } from '../core/orthographe/store';
-import type { MotInput, FormesAccord } from '../core/orthographe/types';
+import type { MotInput, FormesAccord, VerbeConfig } from '../core/orthographe/types';
+import {
+	lookupConjugatedForms,
+	type VerbTense,
+	type FormesConjuguees,
+} from '../data/francais/verbs-lookup';
+import { PRONOUNS, displayPronoun } from '../data/francais/conjugaison';
 import { goCategorie } from './navigation';
 import { icon } from './icon';
 import { uiAlert, uiConfirm } from './ui-modal';
+import { escapeHTML } from '../core/utils';
 
 interface RowData {
 	mot: string;
 	commeDans: string;
 	formes?: FormesAccord;
+	verbe?: VerbeConfig; // ligne verbe (#261) : pronoms/temps/complément préréglés
+}
+
+/* Temps proposés pour un verbe (#261). v1 : le présent seul ; la rangée de chips
+   est prête à en accueillir d'autres (futur, imparfait…) sans refonte. */
+const TEMPS_OPTIONS: { id: VerbTense; label: string }[] = [{ id: 'present', label: 'présent' }];
+
+/* Aperçu : jusqu'à 2 phrases générées pour les pronoms cochés (forme réelle LEFFF). */
+function apercuPhrases(forms: FormesConjuguees, pronoms: number[], complement: string): string {
+	const apres = complement.trim() ? ' ' + complement.trim() : '';
+	return pronoms
+		.slice(0, 2)
+		.map((p) => `${displayPronoun(p, forms[p])}${forms[p]}${apres}`)
+		.join(' · ');
+}
+
+/* Résumé compact d'un verbe configuré : « manger · je, tu, il · présent ». */
+function resumeVerbe(infinitif: string, pronoms: number[], temps: VerbTense[]): string {
+	const pron =
+		pronoms.length === PRONOUNS.length
+			? 'tous les pronoms'
+			: pronoms.map((p) => PRONOUNS[p]).join(', ');
+	const tps = temps.map((t) => TEMPS_OPTIONS.find((o) => o.id === t)?.label ?? t).join(', ');
+	return `${infinitif || 'verbe'} · ${pron} · ${tps}`;
 }
 
 /** Rend le formulaire dans `el`. listeId null = création ; sinon édition. */
@@ -34,11 +65,14 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 	const editing = !!liste;
 
 	const initialRows: RowData[] = liste
-		? motsDeListe(state, liste).map((mo) => ({
-				mot: mo.mot,
-				commeDans: mo.commeDans ?? '',
-				formes: mo.formes,
-			}))
+		? [
+				...motsDeListe(state, liste).map((mo) => ({
+					mot: mo.mot,
+					commeDans: mo.commeDans ?? '',
+					formes: mo.formes,
+				})),
+				...(liste.verbes ?? []).map((v) => ({ mot: v.infinitif, commeDans: '', verbe: v })),
+			]
 		: [];
 
 	el.innerHTML = `
@@ -51,9 +85,9 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
         <span>Date du contrôle (facultatif)</span>
         <input id="orthoDate" type="date" />
       </label>
-      <div class="ortho-rows-head"><span>Mot</span><span>Comme dans… (facultatif)</span><span></span></div>
+      <div class="ortho-rows-head"><span>Mot ou verbe</span><span>Comme dans… (facultatif)</span><span></span></div>
       <div class="ortho-rows" id="orthoRows"></div>
-      <p class="ortho-hint">Astuce : tu peux coller une liste de mots (un par ligne) dans la case « Mot ». Le bouton ✍️ d'une ligne ajoute, en option, le pluriel et le féminin (leçon « Les accords »).</p>
+      <p class="ortho-hint">Astuce : tu peux coller une liste de mots (un par ligne) dans la case « Mot ». Le bouton ✍️ d'une ligne ajoute, en option, le pluriel et le féminin (leçon « Les accords »). Si tu saisis un <b>verbe</b>, propose de régler sa conjugaison (pronoms, temps, complément) pour l'entraîner en phrase.</p>
       <div class="ortho-form-actions">
         <button class="btn-primary" id="orthoSave">${icon('check')} Enregistrer</button>
         ${editing ? `<button class="ortho-del" id="orthoDelete">${icon('trash')} Supprimer la liste</button>` : ''}
@@ -75,7 +109,7 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 		inMot.className = 'ortho-mot';
 		inMot.type = 'text';
 		inMot.value = data.mot;
-		inMot.setAttribute('aria-label', 'Mot');
+		inMot.setAttribute('aria-label', 'Mot ou verbe');
 
 		const inComme = document.createElement('input');
 		inComme.className = 'ortho-comme';
@@ -129,7 +163,130 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 			mkForme('ortho-f-fp', 'Féminin pluriel', 'grandes', data.formes?.femPlur),
 		);
 
-		inMot.addEventListener('input', ensureTrailingBlank);
+		// ----- Verbe (#261) : détection + panneau de paramétrage -----
+		let mode: 'mot' | 'verbe' = data.verbe ? 'verbe' : 'mot';
+		let formesPresent: FormesConjuguees | null = null;
+
+		// Barre « ce mot est un verbe ? » (mode mot, non bloquante).
+		const suggest = document.createElement('button');
+		suggest.type = 'button';
+		suggest.className = 'ortho-verbe-suggest';
+		suggest.hidden = true;
+
+		// Barre-résumé repliable (mode verbe) : « manger · je, tu, il · présent ».
+		const resumeBtn = document.createElement('button');
+		resumeBtn.type = 'button';
+		resumeBtn.className = 'ortho-verbe-resume';
+		resumeBtn.hidden = true;
+		resumeBtn.setAttribute('aria-expanded', 'false');
+
+		const pronomsSel = new Set<number>(data.verbe ? data.verbe.pronoms : [0, 1, 2, 3, 4, 5]);
+		const tempsSel = new Set<VerbTense>(data.verbe ? data.verbe.temps : ['present']);
+		const verbePanel = document.createElement('div');
+		verbePanel.className = 'ortho-verbe';
+		verbePanel.hidden = true;
+		verbePanel.innerHTML = `
+      <div class="ortho-verbe-grp">
+        <span class="ortho-verbe-grp-label">Pronoms à entraîner</span>
+        <div class="ortho-chips" role="group" aria-label="Pronoms à entraîner">
+          ${PRONOUNS.map(
+						(lbl, i) =>
+							`<button type="button" class="ortho-chip ortho-chip-pronom${pronomsSel.has(i) ? ' actif' : ''}" data-p="${i}" aria-pressed="${pronomsSel.has(i)}">${lbl}</button>`,
+					).join('')}
+        </div>
+      </div>
+      <div class="ortho-verbe-grp">
+        <span class="ortho-verbe-grp-label">Temps</span>
+        <div class="ortho-chips" role="group" aria-label="Temps">
+          ${TEMPS_OPTIONS.map(
+						(t) =>
+							`<button type="button" class="ortho-chip ortho-chip-temps${tempsSel.has(t.id) ? ' actif' : ''}" data-t="${t.id}" aria-pressed="${tempsSel.has(t.id)}">${t.label}</button>`,
+					).join('')}
+        </div>
+      </div>
+      <label class="ortho-verbe-comp">
+        <span>Complément (facultatif)</span>
+        <input class="ortho-complement" type="text" placeholder="une pomme" aria-label="Complément du verbe" />
+      </label>
+      <p class="ortho-hint ortho-verbe-aide">Choisis un complément qui marche avec tous les pronoms : « une pomme », « à la balle »… (évite « ma… », « notre… »). Tu peux le laisser vide.</p>
+      <p class="ortho-verbe-apercu" aria-live="polite"></p>
+      <button type="button" class="ortho-verbe-notverb">Ce n'est pas un verbe</button>`;
+		(verbePanel.querySelector('.ortho-complement') as HTMLInputElement).value =
+			data.verbe?.complement ?? '';
+
+		const apercuEl = verbePanel.querySelector('.ortho-verbe-apercu') as HTMLElement;
+		const complementInput = verbePanel.querySelector('.ortho-complement') as HTMLInputElement;
+		const selPronoms = (): number[] =>
+			[...verbePanel.querySelectorAll<HTMLElement>('.ortho-chip-pronom.actif')].map((b) =>
+				Number(b.dataset.p),
+			);
+		const selTemps = (): VerbTense[] =>
+			[...verbePanel.querySelectorAll<HTMLElement>('.ortho-chip-temps.actif')].map(
+				(b) => b.dataset.t as VerbTense,
+			);
+
+		function refreshApercu(): void {
+			const pr = selPronoms();
+			apercuEl.textContent =
+				formesPresent && pr.length ? apercuPhrases(formesPresent, pr, complementInput.value) : '';
+		}
+		function refreshResume(): void {
+			resumeBtn.textContent = '✏️ ' + resumeVerbe(inMot.value.trim(), selPronoms(), selTemps());
+		}
+
+		function switchToVerbe(expand: boolean): void {
+			mode = 'verbe';
+			wrap.classList.add('is-verbe');
+			suggest.hidden = true;
+			panel.hidden = true; // ferme le panneau accords (exclusif)
+			resumeBtn.hidden = false;
+			verbePanel.hidden = !expand;
+			resumeBtn.setAttribute('aria-expanded', verbePanel.hidden ? 'false' : 'true');
+			refreshResume();
+			if (formesPresent) refreshApercu();
+			else void detect();
+			ensureTrailingBlank();
+		}
+		function switchToMot(): void {
+			mode = 'mot';
+			wrap.classList.remove('is-verbe');
+			resumeBtn.hidden = true;
+			verbePanel.hidden = true;
+			if (formesPresent) showSuggest(); // toujours un verbe → on reproposse
+		}
+		function showSuggest(): void {
+			const v = inMot.value.trim();
+			suggest.innerHTML = `${icon('lightbulb')} « ${escapeHTML(v)} » est un verbe — Régler la conjugaison`;
+			suggest.hidden = false;
+		}
+
+		let detectTimer: number | undefined;
+		async function detect(): Promise<void> {
+			const v = inMot.value.trim();
+			if (!v) {
+				formesPresent = null;
+				suggest.hidden = true;
+				return;
+			}
+			const forms = await lookupConjugatedForms(v, 'present');
+			if (inMot.value.trim() !== v) return; // la saisie a changé entre-temps
+			formesPresent = forms;
+			if (mode === 'verbe') refreshApercu();
+			else if (forms) showSuggest();
+			else suggest.hidden = true;
+		}
+		const scheduleDetect = (): void => {
+			window.clearTimeout(detectTimer);
+			detectTimer = window.setTimeout(() => void detect(), 450);
+		};
+
+		inMot.addEventListener('input', () => {
+			ensureTrailingBlank();
+			if (mode === 'mot') suggest.hidden = true;
+			else refreshResume();
+			scheduleDetect();
+		});
+		inMot.addEventListener('blur', () => void detect());
 		inMot.addEventListener('paste', onPasteMot);
 		toggle.addEventListener('click', () => {
 			panel.hidden = !panel.hidden;
@@ -139,8 +296,33 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 			wrap.remove();
 			ensureTrailingBlank();
 		});
+		suggest.addEventListener('click', () => switchToVerbe(true));
+		resumeBtn.addEventListener('click', () => {
+			verbePanel.hidden = !verbePanel.hidden;
+			resumeBtn.setAttribute('aria-expanded', verbePanel.hidden ? 'false' : 'true');
+		});
+		verbePanel.addEventListener('click', (e) => {
+			const target = e.target as HTMLElement;
+			if (target.closest('.ortho-verbe-notverb')) {
+				switchToMot();
+				return;
+			}
+			const chip = target.closest('.ortho-chip') as HTMLElement | null;
+			if (!chip) return;
+			const grp = chip.classList.contains('ortho-chip-pronom')
+				? '.ortho-chip-pronom'
+				: '.ortho-chip-temps';
+			const actifs = verbePanel.querySelectorAll(grp + '.actif');
+			if (chip.classList.contains('actif') && actifs.length <= 1) return; // garde-fou : au moins 1
+			chip.classList.toggle('actif');
+			chip.setAttribute('aria-pressed', chip.classList.contains('actif') ? 'true' : 'false');
+			refreshApercu();
+			refreshResume();
+		});
+		complementInput.addEventListener('input', refreshApercu);
 
-		wrap.append(row, panel);
+		wrap.append(row, suggest, resumeBtn, panel, verbePanel);
+		if (mode === 'verbe') switchToVerbe(false); // édition d'un verbe : replié, résumé affiché
 		return wrap;
 	}
 
@@ -183,29 +365,48 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 		const date = (el.querySelector('#orthoDate') as HTMLInputElement).value || undefined;
 		const val = (row: Element, cls: string) =>
 			(row.querySelector(cls) as HTMLInputElement | null)?.value.trim() ?? '';
-		const mots: MotInput[] = [...rowsEl.querySelectorAll('.ortho-row-wrap')]
-			.map((row) => {
-				const formes: FormesAccord = {
-					mascSing: val(row, '.ortho-f-ms') || undefined,
-					femSing: val(row, '.ortho-f-fs') || undefined,
-					mascPlur: val(row, '.ortho-f-mp') || undefined,
-					femPlur: val(row, '.ortho-f-fp') || undefined,
-				};
-				const aFormes = formes.mascSing || formes.femSing || formes.mascPlur || formes.femPlur;
-				return {
-					mot: val(row, '.ortho-mot'),
-					commeDans: val(row, '.ortho-comme') || undefined,
-					formes: aFormes ? formes : undefined,
-				};
-			})
-			.filter((r) => r.mot !== '');
-		if (!mots.length) {
-			await uiAlert({ title: 'Écris au moins un mot.', emoji: '✏️' });
+		// Deux passes sur les lignes : mots classiques d'un côté, verbes de l'autre (#261).
+		const mots: MotInput[] = [];
+		const verbes: VerbeConfig[] = [];
+		for (const row of [...rowsEl.querySelectorAll('.ortho-row-wrap')]) {
+			const motVal = val(row, '.ortho-mot');
+			if (!motVal) continue;
+			if (row.classList.contains('is-verbe')) {
+				const pronoms = [...row.querySelectorAll<HTMLElement>('.ortho-chip-pronom.actif')].map(
+					(b) => Number(b.dataset.p),
+				);
+				const temps = [...row.querySelectorAll<HTMLElement>('.ortho-chip-temps.actif')].map(
+					(b) => b.dataset.t as VerbTense,
+				);
+				verbes.push({
+					kind: 'verbe',
+					infinitif: motVal,
+					pronoms,
+					temps,
+					complement: val(row, '.ortho-complement') || undefined,
+				});
+				continue;
+			}
+			const formes: FormesAccord = {
+				mascSing: val(row, '.ortho-f-ms') || undefined,
+				femSing: val(row, '.ortho-f-fs') || undefined,
+				mascPlur: val(row, '.ortho-f-mp') || undefined,
+				femPlur: val(row, '.ortho-f-fp') || undefined,
+			};
+			const aFormes = formes.mascSing || formes.femSing || formes.mascPlur || formes.femPlur;
+			mots.push({
+				mot: motVal,
+				commeDans: val(row, '.ortho-comme') || undefined,
+				formes: aFormes ? formes : undefined,
+			});
+		}
+		if (!mots.length && !verbes.length) {
+			await uiAlert({ title: 'Écris au moins un mot ou un verbe.', emoji: '✏️' });
 			return;
 		}
 		const st = loadOrtho();
-		if (editing && listeId) updateListe(st, listeId, label, mots, date);
-		else createListe(st, label, mots, date);
+		if (editing && listeId) updateListe(st, listeId, label, mots, date, verbes);
+		else createListe(st, label, mots, date, verbes);
 		saveOrtho(st);
 		goCategorie(ORTHO_CATEGORY_ID);
 	});

@@ -90,7 +90,7 @@ function contexteHTML(word: MotOrtho, reveal = false): string {
 	const { avant, apres } = word.contexte;
 	const creux = reveal
 		? `<span class="ortho-trou is-rempli">${escapeHTML(word.mot)}</span>`
-		: `<span class="ortho-trou" aria-hidden="true">______</span>`;
+		: `<span class="ortho-trou"><span aria-hidden="true">______</span><span class="sr-only">le verbe à écrire</span></span>`;
 	return `<p class="ortho-contexte" lang="fr">${escapeHTML(avant)}${creux}${escapeHTML(apres)}</p>`;
 }
 

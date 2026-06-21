@@ -7,6 +7,22 @@
       ui/consigne-tts.ts.
    ============================================================ */
 
+/* ---- 0. Utilitaire lecteur d'écran ---- */
+/* Texte réservé au lecteur d'écran (masqué visuellement, lu à voix). Pattern clip
+   standard. Ex. : libeller le « trou » d'une phrase à dictée (#261) où les tirets
+   sont aria-hidden. */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
 /* ---- 1. Confort de lecture ---- */
 /* Taille de base +15 % (les tailles rem suivent). Espacement appliqué au texte
    du body ; word-spacing nettement > letter-spacing pour ne pas désagréger les

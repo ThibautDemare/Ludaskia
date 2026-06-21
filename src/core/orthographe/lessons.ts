@@ -7,6 +7,7 @@
    ============================================================ */
 import { ORTHO_PREDEF } from '../../data/francais/orthographe';
 import { ajouterMots, getListe, motsDeListe } from './store';
+import { nbCiblesVerbes } from './verbes';
 import type { MotOrtho, OrthoState } from './types';
 
 export type SourceLecon = 'predefini' | 'liste';
@@ -33,9 +34,10 @@ export function listOrthoLecons(state: OrthoState): LeconOrthoRef[] {
 	const listes: LeconOrthoRef[] = state.listes.map((l) => ({
 		id: l.id,
 		label: l.label,
+		// Un verbe compte pour ses couples (pronoms × temps) réellement dictés (#261).
+		nbMots: l.motIds.length + nbCiblesVerbes(l.verbes),
 		source: 'liste',
-		nbMots: l.motIds.length,
-		mots: motsDeListe(state, l).map((m) => m.mot),
+		mots: [...motsDeListe(state, l).map((m) => m.mot), ...(l.verbes ?? []).map((v) => v.infinitif)],
 		dateControle: l.dateControle,
 		createdAt: l.createdAt,
 	}));

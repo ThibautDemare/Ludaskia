@@ -194,7 +194,10 @@ const TENSE_PHRASE: Record<Tense, string> = {
 /* Liste ordonnée des temps couverts (sert à la génération des leçons). */
 export const TENSES: Tense[] = ['present', 'futur', 'imparfait', 'passe_compose'];
 
-const PRONOUNS = ['je', 'tu', 'il', 'nous', 'vous', 'ils'];
+/* Pronoms personnels sujets, dans l'ordre des personnes 0..5 (réutilisé par les
+   cibles verbe des listes d'orthographe, #261). « il » / « ils » couvrent les 3es
+   personnes ; pas de « elle/elles » (accords de genre, cf. #261). */
+export const PRONOUNS = ['je', 'tu', 'il', 'nous', 'vous', 'ils'];
 
 /* Pronom affiché : élision « je » → « j' » devant une voyelle ou un h muet
    (le contenu tapé reste la seule forme verbale, ex. « ai » → « j'ai »). */

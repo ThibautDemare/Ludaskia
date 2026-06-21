@@ -83,6 +83,17 @@ la forme, fiche imprimable — et `qcm` — choix entre plusieurs formes,
 correctement orthographiées**, jamais une faute affichée) et descripteurs
 `CONJ_LESSONS` (une leçon par verbe × temps). Dossier `francais` sans cédille
 pour des chemins d'import ASCII portables ; le libellé affiché reste « Français ».
+**`francais/verbs-lookup.ts` + `francais/verbs/` (#261)** : bibliothèque de formes
+conjuguées tirée du lexique **LEFFF** (~7800 verbes), **pré-générée au build** par
+`tools/verbs/generate-verbs.mjs` (`npm run verbs:gen`) en **shards JSON** + un
+**manifeste** de clés-frontières. Au runtime, `lookupConjugatedForms(infinitif, temps)`
+localise le shard par **dichotomie** puis le charge **paresseusement** via
+`import.meta.glob('./verbs/verbs-*.json')` (un seul chunk par requête). Sert à la
+**détection** d'un verbe et aux **dictées de verbes custom** des listes d'orthographe
+(cf. `docs/design-orthographe.md` § Verbes dans les listes). Build-only :
+`french-verbs`/`french-verbs-lefff` (Apache-2.0 ; **données LGPLLR**) restent en
+`devDependencies` ; le dataset brut (~6,3 Mo) n'est jamais livré, seules les formes du
+présent dérivées et shardées partent au client.
 **`francais/accords.ts`** (#109) : catégorie **Orthographe**, rubrique « Les
 accords » — 2 leçons de **transformation** (pluriel/féminin) `fr-accords-reguliers`
 et `fr-accords-irreguliers` (séparation règle/exception, avis pédagogique).

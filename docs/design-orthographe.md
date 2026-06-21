@@ -237,6 +237,46 @@ declare const ORTHO_PREDEF: LeconOrthoPredef[]; // fourni par le mainteneur
      `OrthoState`), donc **hors** `generate()/check()`. L'**atelier** y vit aussi
      car il **n'a pas de `check()`** (activité sans bonne/mauvaise réponse).
 
+### Verbes dans les listes (#261)
+
+Une liste mélange **mots classiques** et **verbes**. À la saisie d'un mot, l'app
+**détecte** (au repos : debounce + `blur`) s'il s'agit d'un verbe via le lexique
+**LEFFF** et propose, sans rien imposer, un panneau de paramétrage : multi-sélection
+des **pronoms** (`je tu il nous vous ils` — pas de `elle/elles`, accords de genre) ×
+des **temps** (présent en v1, UI prête pour d'autres), + un **complément** facultatif.
+
+- **Stockage** : la liste porte `verbes: VerbeConfig[]` (`{ infinitif, pronoms[],
+  temps[], complement? }`), à côté de `motIds`. Les mots classiques sont inchangés.
+- **Jeu** : au lancement du parcours (frontière **async** dans le runner UI), chaque
+  verbe est **résolu** via LEFFF puis **matérialisé** en une cible `MotOrtho` par
+  couple (pronom × temps) — id namespacé `v:<clé>#<temps>#<personne>`, **jamais**
+  indexé par forme (les homophones *je/il* « mange » restent distincts ; pas de
+  collision avec la banque de mots). La cible porte un `contexte { avant, apres }`
+  (« il … une pomme ») affiché en **phrase à trou** dans les 4 activités ; le TTS lit
+  la **phrase complète** (lève l'ambiguïté phonétique /mɑ̃ʒe/). La cible se rejoue
+  comme un mot (atelier → tuiles → mot caché → dictée), et persiste sa progression.
+- **Réponse** = la forme conjuguée seule (`mange`) ; le contexte n'est jamais comparé.
+- **Limites connues** : complément **fixe** à travers les personnes (peut sonner
+  étrange avec *nous/vous*) ; un verbe à N couples compte pour N cibles (relecture,
+  `nbMots`). Hors v1 : autres temps, phase de découverte du paradigme.
+
+#### Bibliothèque LEFFF (build-only + lookup paresseux)
+
+`src/data/francais/verbs-lookup.ts` (`lookupConjugatedForms`, `estVerbe`) lit des
+**shards JSON** pré-générés (`src/data/francais/verbs/`) par
+`tools/verbs/generate-verbs.mjs` (`npm run verbs:gen`) à partir des devDependencies
+`french-verbs` + `french-verbs-lefff`. Un **manifeste** de clés-frontières localise le
+shard par **dichotomie**, puis `import.meta.glob('./verbs/verbs-*.json')` charge **un
+seul** shard à la demande (chunk Vite séparé, ~34 Ko, mis en cache).
+
+- **Normalisation jumelée** (critique) : `normVerbKey`/`stripPronominal` et le **tri
+  par comparaison de chaînes NFC brute** (jamais `localeCompare`) sont identiques côté
+  script et côté runtime (test de cohérence sur l'ordre du manifeste).
+- **Licences** : le **code** `french-verbs(-lefff)` est Apache-2.0 ; les **données** de
+  conjugaison (et donc les shards dérivés livrés) restent **LGPLLR**. Le dataset brut
+  (`conjugations.json`, ~6,3 Mo) **n'est jamais embarqué** — seules les formes du
+  présent, dérivées et shardées, partent au client (cf. `verbs/ATTRIBUTION.md`).
+
 ### Les 4 activités (dont 3 « validantes »)
 
 | Activité | Rôle | Notée ? |

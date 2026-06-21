@@ -5,7 +5,14 @@
    sauvegarde via saveOrtho(). Logique pure, testable sans DOM.
    ============================================================ */
 import { lsGet, lsSet } from '../storage';
-import type { MotOrtho, ListeOrtho, OrthoState, MotInput, FormesAccord } from './types';
+import type {
+	MotOrtho,
+	ListeOrtho,
+	OrthoState,
+	MotInput,
+	FormesAccord,
+	VerbeConfig,
+} from './types';
 import { etatNeuf, avancerEtat } from '../revision';
 
 export const ORTHO_KEY = 'ludaskia_ortho';
@@ -45,12 +52,34 @@ export function normaliserFormes(formes?: FormesAccord): FormesAccord | undefine
 	return out.mascSing || out.femSing || out.mascPlur || out.femPlur ? out : undefined;
 }
 
+/** Normalise les verbes paramétrés d'une liste (#261) : infinitif trim+NFC,
+    dédup et bornage des pronoms (0..5) et des temps, complément trim→undefined.
+    Écarte les entrées incomplètes (sans infinitif, sans pronom ou sans temps). */
+export function normaliserVerbes(verbes?: VerbeConfig[]): VerbeConfig[] {
+	if (!Array.isArray(verbes)) return [];
+	const out: VerbeConfig[] = [];
+	for (const v of verbes) {
+		const infinitif = (v?.infinitif ?? '').trim().normalize('NFC');
+		const pronoms = [
+			...new Set((v?.pronoms ?? []).filter((p) => Number.isInteger(p) && p >= 0 && p <= 5)),
+		].sort((a, b) => a - b);
+		const temps = [...new Set(v?.temps ?? [])];
+		const complement = v?.complement?.trim() || undefined;
+		if (!infinitif || pronoms.length === 0 || temps.length === 0) continue;
+		out.push({ kind: 'verbe', infinitif, pronoms, temps, complement });
+	}
+	return out;
+}
+
 export function loadOrtho(): OrthoState {
 	const s = lsGet(ORTHO_KEY, null) as Partial<OrthoState> | null;
 	if (!s || typeof s !== 'object') return emptyOrthoState();
 	return {
 		banque: s.banque ?? {},
-		listes: Array.isArray(s.listes) ? s.listes : [],
+		listes: (Array.isArray(s.listes) ? s.listes : []).map((l) => ({
+			...l,
+			verbes: l.verbes ? normaliserVerbes(l.verbes) : undefined,
+		})),
 		motIdParForme: s.motIdParForme ?? {},
 	};
 }
@@ -114,13 +143,16 @@ export function createListe(
 	label: string,
 	mots: MotInput[],
 	dateControle?: string,
+	verbes: VerbeConfig[] = [],
 ): ListeOrtho {
 	const now = Date.now();
+	const v = normaliserVerbes(verbes);
 	const liste: ListeOrtho = {
 		id: genId(),
 		label,
 		dateControle,
 		motIds: ajouterMots(state, mots, 'liste'),
+		verbes: v.length ? v : undefined,
 		createdAt: now,
 		updatedAt: now,
 	};
@@ -136,12 +168,15 @@ export function updateListe(
 	label: string,
 	mots: MotInput[],
 	dateControle?: string,
+	verbes: VerbeConfig[] = [],
 ): ListeOrtho | null {
 	const liste = state.listes.find((l) => l.id === id);
 	if (!liste) return null;
 	liste.label = label;
 	liste.dateControle = dateControle;
 	liste.motIds = ajouterMots(state, mots, 'liste');
+	const v = normaliserVerbes(verbes);
+	liste.verbes = v.length ? v : undefined;
 	liste.updatedAt = Date.now();
 	return liste;
 }

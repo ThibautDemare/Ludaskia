@@ -98,6 +98,7 @@ interface AtelierOpts {
 	onDone: () => void; // appelé au « Continuer » (après mise à jour de mot.entourage)
 	diff?: boolean[]; // contexte correction : lettres (du mot) ratées à souligner
 	consigne?: string;
+	contexteHTML?: string; // phrase à trou d'une cible verbe (#261), affichée en légende
 }
 
 let resizeHandler: (() => void) | null = null;
@@ -137,6 +138,7 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 	host.innerHTML = `
     <div class="page ortho-run">
       <p class="ortho-run-consigne">${escapeHTML(consigne)}</p>
+      ${opts.contexteHTML ?? ''}
       <div class="atelier-stage">
         <div class="atelier-mot" id="atelierMot">${lettresMotHTML(mot.mot, opts.diff)}</div>
         <svg class="atelier-svg" id="atelierSvg" aria-hidden="true"></svg>

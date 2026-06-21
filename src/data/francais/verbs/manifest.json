@@ -1,0 +1,106 @@
+[
+	{
+		"first": "abaisser",
+		"file": "verbs-00.json"
+	},
+	{
+		"first": "animaliser",
+		"file": "verbs-01.json"
+	},
+	{
+		"first": "bagarrer",
+		"file": "verbs-02.json"
+	},
+	{
+		"first": "cabotiner",
+		"file": "verbs-03.json"
+	},
+	{
+		"first": "clapper",
+		"file": "verbs-04.json"
+	},
+	{
+		"first": "corner",
+		"file": "verbs-05.json"
+	},
+	{
+		"first": "distraire",
+		"file": "verbs-06.json"
+	},
+	{
+		"first": "décélérer",
+		"file": "verbs-07.json"
+	},
+	{
+		"first": "déphonologiser",
+		"file": "verbs-08.json"
+	},
+	{
+		"first": "déteutonner",
+		"file": "verbs-09.json"
+	},
+	{
+		"first": "enluminer",
+		"file": "verbs-10.json"
+	},
+	{
+		"first": "fiancer",
+		"file": "verbs-11.json"
+	},
+	{
+		"first": "goujonner",
+		"file": "verbs-12.json"
+	},
+	{
+		"first": "incarner",
+		"file": "verbs-13.json"
+	},
+	{
+		"first": "libeller",
+		"file": "verbs-14.json"
+	},
+	{
+		"first": "moquetter",
+		"file": "verbs-15.json"
+	},
+	{
+		"first": "outrager",
+		"file": "verbs-16.json"
+	},
+	{
+		"first": "poireauter",
+		"file": "verbs-17.json"
+	},
+	{
+		"first": "queuter",
+		"file": "verbs-18.json"
+	},
+	{
+		"first": "redéfaire",
+		"file": "verbs-19.json"
+	},
+	{
+		"first": "restructurer",
+		"file": "verbs-20.json"
+	},
+	{
+		"first": "réimproviser",
+		"file": "verbs-21.json"
+	},
+	{
+		"first": "sociabiliser",
+		"file": "verbs-22.json"
+	},
+	{
+		"first": "suturer",
+		"file": "verbs-23.json"
+	},
+	{
+		"first": "troquer",
+		"file": "verbs-24.json"
+	},
+	{
+		"first": "échafauder",
+		"file": "verbs-25.json"
+	}
+]

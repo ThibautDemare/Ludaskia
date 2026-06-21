@@ -8,6 +8,8 @@
    Voir docs/design-orthographe.md.
    ============================================================ */
 
+import type { VerbTense } from '../../data/francais/verbs-lookup';
+
 /** Modes d'entraînement validants (= types d'interaction Exercise correspondants). */
 export type ModeOrtho = 'motCache' | 'tuiles' | 'dictee';
 export const MODES_ORTHO: readonly ModeOrtho[] = ['motCache', 'tuiles', 'dictee'];
@@ -39,26 +41,49 @@ export interface FormesAccord {
 	femPlur?: string; // féminin pluriel (ex. « grandes »)
 }
 
+/** Phrase de contexte d'une cible VERBE (#261) : la forme conjuguée (= `mot`)
+    s'écrit dans le « trou » d'une phrase « pronom + forme + complément », affichée
+    autour du slot interactif dans tous les modes et lue en TTS pour lever
+    l'ambiguïté phonétique. Purement d'AFFICHAGE : jamais comparé à la saisie. */
+export interface ContexteVerbe {
+	avant: string; // pronom (avec élision/espace), ex. « il », « j' »
+	apres: string; // complément précédé d'un espace, ex. « une pomme », ou ''
+}
+
 /** Un mot de la banque du profil. */
 export interface MotOrtho {
-	id: string; // stable ; dédup par forme normalisée
+	id: string; // stable ; dédup par forme normalisée (cibles verbe : id namespacé « v:… »)
 	mot: string; // forme correcte exacte (NFC) = référence de vérification
 	commeDans?: string; // bout de phrase d'exemple (dictée)
 	homophone?: boolean; // exige « commeDans » en dictée
 	formes?: FormesAccord; // formes fléchies optionnelles (accords #109)
+	contexte?: ContexteVerbe; // phrase à trou d'une cible verbe (#261)
 	entourage: Entourage[]; // marquage de l'enfant (sauvegardé)
 	atelierFait: boolean; // l'atelier de découverte a-t-il été fait ?
 	validation: Record<ModeOrtho, boolean>; // pour l'étoile de liste
 	revision: EtatRevision;
-	origine: 'liste' | 'predefini';
+	origine: 'liste' | 'predefini' | 'verbe';
 }
 
-/** Une liste = une leçon dynamique, créée par le parent. */
+/** Configuration d'un VERBE saisi par le parent dans une liste (#261). La dictée
+    tire ses cibles dans le PRODUIT cartésien (pronoms × temps) ; chaque couple est
+    matérialisé en MotOrtho au lancement du parcours (formes issues de LEFFF). */
+export interface VerbeConfig {
+	kind: 'verbe';
+	infinitif: string; // saisie parent (NFC), ex. « manger », « s'enfuir »
+	pronoms: number[]; // indices 0..5 (je, tu, il, nous, vous, ils), au moins 1
+	temps: VerbTense[]; // au moins 1 ; v1 : ['present']
+	complement?: string; // bout de phrase invariant, ex. « une pomme » (facultatif)
+}
+
+/** Une liste = une leçon dynamique, créée par le parent. Elle mélange des mots
+    classiques (`motIds`) et des verbes paramétrés (`verbes`, #261). */
 export interface ListeOrtho {
 	id: string;
 	label: string;
 	dateControle?: string; // ISO court, repère doux optionnel
 	motIds: string[]; // références vers la banque
+	verbes?: VerbeConfig[]; // verbes paramétrés (#261) ; absent = liste de mots seuls
 	createdAt: number;
 	updatedAt: number;
 }

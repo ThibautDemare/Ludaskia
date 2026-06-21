@@ -87,7 +87,7 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
       </label>
       <div class="ortho-rows-head"><span>Mot ou verbe</span><span>Comme dans… (facultatif)</span><span></span></div>
       <div class="ortho-rows" id="orthoRows"></div>
-      <p class="ortho-hint">Astuce : tu peux coller une liste de mots (un par ligne) dans la case « Mot ». Le bouton ✍️ d'une ligne ajoute, en option, le pluriel et le féminin (leçon « Les accords »). Si tu saisis un <b>verbe</b>, propose de régler sa conjugaison (pronoms, temps, complément) pour l'entraîner en phrase.</p>
+      <p class="ortho-hint">Astuce : tu peux coller une liste de mots (un par ligne) dans la case « Mot ». Le bouton ✍️ d'une ligne ajoute, en option, le pluriel et le féminin (leçon « Les accords »). Si tu saisis un <b>verbe</b>, l'application te proposera de régler sa conjugaison (pronoms, temps, complément) pour le travailler dans une phrase.</p>
       <div class="ortho-form-actions">
         <button class="btn-primary" id="orthoSave">${icon('check')} Enregistrer</button>
         ${editing ? `<button class="ortho-del" id="orthoDelete">${icon('trash')} Supprimer la liste</button>` : ''}
@@ -246,6 +246,10 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 			if (formesPresent) refreshApercu();
 			else void detect();
 			ensureTrailingBlank();
+			// Le bouton de suggestion qui avait le focus vient d'être masqué : on déplace
+			// le focus dans le panneau (sinon il retombe sur <body>). Jamais à l'init
+			// (édition d'une liste : expand=false), pour ne pas voler le focus au chargement.
+			if (expand) verbePanel.querySelector<HTMLElement>('.ortho-chip')?.focus();
 		}
 		function switchToMot(): void {
 			mode = 'mot';
@@ -253,6 +257,7 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 			resumeBtn.hidden = true;
 			verbePanel.hidden = true;
 			if (formesPresent) showSuggest(); // toujours un verbe → on reproposse
+			inMot.focus(); // « Ce n'est pas un verbe » masque le panneau : on rend le focus au champ
 		}
 		function showSuggest(): void {
 			const v = inMot.value.trim();
@@ -261,15 +266,19 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 		}
 
 		let detectTimer: number | undefined;
+		let detectSeq = 0;
 		async function detect(): Promise<void> {
 			const v = inMot.value.trim();
+			const seq = ++detectSeq;
 			if (!v) {
 				formesPresent = null;
 				suggest.hidden = true;
 				return;
 			}
 			const forms = await lookupConjugatedForms(v, 'present');
-			if (inMot.value.trim() !== v) return; // la saisie a changé entre-temps
+			// Jeton de séquence : une détection plus récente (frappe rapide, input+blur)
+			// a pris la main → on abandonne ce résultat périmé.
+			if (seq !== detectSeq || inMot.value.trim() !== v) return;
 			formesPresent = forms;
 			if (mode === 'verbe') refreshApercu();
 			else if (forms) showSuggest();

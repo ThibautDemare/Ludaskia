@@ -11,6 +11,8 @@ import {
 	createListe,
 	updateListe,
 	normaliserVerbes,
+	loadOrtho,
+	saveOrtho,
 } from '../src/core/orthographe/store';
 import type { VerbeConfig } from '../src/core/orthographe/types';
 import type { FormesConjuguees, VerbTense } from '../src/data/francais/verbs-lookup';
@@ -99,6 +101,15 @@ describe('materialiserVerbes (lookup LEFFF réel + banque)', () => {
 		const st = emptyOrthoState();
 		expect(await materialiserVerbes(st, [cfg([0], '', 'zzzxqyw')], 1000)).toEqual([]);
 	});
+
+	it('homophones je/il (« mange ») → deux cibles de banque distinctes', async () => {
+		const st = emptyOrthoState();
+		await materialiserVerbes(st, [cfg([0, 2])], 1000); // je, il
+		expect(Object.keys(st.banque).sort()).toEqual(
+			[cibleVerbeId('manger', 'present', 0), cibleVerbeId('manger', 'present', 2)].sort(),
+		);
+		expect(Object.values(st.banque).map((m) => m.mot)).toEqual(['mange', 'mange']);
+	});
 });
 
 describe('store — persistance des verbes', () => {
@@ -133,5 +144,15 @@ describe('store — persistance des verbes', () => {
 		expect(liste.motIds).toHaveLength(1);
 		updateListe(st, liste.id, 'L2', [{ mot: 'chat' }], undefined, []);
 		expect(st.listes[0].verbes).toBeUndefined(); // plus aucun verbe → undefined
+	});
+
+	it('loadOrtho : rétrocompat d’une liste sans champ verbes', () => {
+		const st = emptyOrthoState();
+		createListe(st, 'Legacy', [{ mot: 'chat' }]); // liste créée sans verbes
+		saveOrtho(st);
+		const reloaded = loadOrtho();
+		expect(reloaded.listes).toHaveLength(1);
+		expect(reloaded.listes[0].verbes).toBeUndefined();
+		expect(reloaded.listes[0].motIds).toHaveLength(1);
 	});
 });

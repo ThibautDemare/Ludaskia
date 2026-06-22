@@ -13,6 +13,12 @@
 	margin-bottom: 24px;
 	gap: 12px;
 }
+/* Sans pression temporelle (#223) : minuteur + score masqués. Le HUD ne porte plus
+   qu'un éventuel badge de filtre → on le recentre pour ne pas laisser un vide à
+   gauche (là où était le minuteur). */
+.sprint-hud--calme {
+	justify-content: center;
+}
 .sprint-time {
 	font-family: 'Courier New', monospace;
 	font-size: 34px;

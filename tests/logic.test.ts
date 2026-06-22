@@ -52,6 +52,9 @@ import {
 	bilanBlocks,
 	bilanHTML,
 	buildPrintableDOM,
+	CIBLES_MOITIES,
+	CIBLES_MOITIE_PAIR,
+	CIBLES_DECOMPO_MULT,
 } from '../src/core/lessons';
 import {
 	RUNS_KEY,
@@ -451,6 +454,178 @@ describe('Leçons & bilans', () => {
 	});
 });
 
+/* ============================================================
+   Variété des plages de calcul mental (anti-répétition, #287).
+   On tire BEAUCOUP d'échantillons de bilanQ (générateur interactif, le plus
+   important pour l'anti-répétition) et on vérifie : les nouvelles bornes sont
+   atteintes, les réponses générées sont exactes, et fiche ⇄ bilanQ partagent les
+   mêmes ensembles (cohérence imprimable == entraînement).
+   ============================================================ */
+describe('Calcul mental : variété des plages (#287)', () => {
+	// Petit helper : extrait les deux opérandes/cible d'un item de calcul mental.
+	const ECH = 4000; // beaucoup d'échantillons pour couvrir les bornes
+
+	test('math-complements (k=2) : compléments à 10, à 100 ET à 1000, réponses exactes', () => {
+		const totaux = new Set<number>();
+		for (let i = 0; i < ECH; i++) {
+			const it = bilanQ(2)!;
+			// Forme « a + @ = total » : on relit a et total depuis le texte.
+			const m = it.text.match(/^(\d+) \+ @ = (\d+)$/);
+			expect(m).not.toBeNull();
+			const a = Number(m![1]),
+				total = Number(m![2]);
+			totaux.add(total);
+			expect(Number(it.answer)).toBe(total - a); // réponse = complément exact
+			expect(Number(it.answer)).toBeGreaterThanOrEqual(0);
+			expect(total).toBeLessThanOrEqual(10000); // champ CE2 ≤ 10 000
+		}
+		// Les trois familles apparaissent (l'ancien pool n'avait que 10 et 100).
+		expect(totaux.has(10)).toBe(true);
+		expect(totaux.has(100)).toBe(true);
+		expect(totaux.has(1000)).toBe(true);
+	});
+
+	test('math-doubles (k=3) : n atteint 1 jusqu’à 50, double exact', () => {
+		let nMax = 0,
+			nMin = Infinity;
+		for (let i = 0; i < ECH; i++) {
+			const it = bilanQ(3)!;
+			const m = it.text.match(/^double de (\d+) = @$/);
+			expect(m).not.toBeNull();
+			const n = Number(m![1]);
+			nMax = Math.max(nMax, n);
+			nMin = Math.min(nMin, n);
+			expect(Number(it.answer)).toBe(2 * n); // double exact
+		}
+		expect(nMax).toBe(50); // borne haute CE2 atteinte (anciennement 39 → 35 en bilanQ)
+		expect(nMin).toBeGreaterThanOrEqual(1);
+	});
+
+	test('CIBLES_MOITIES : ~30 cibles à moitié TOUJOURS entière, plus variées que l’ancienne liste (16)', () => {
+		expect(CIBLES_MOITIES.length).toBeGreaterThan(16); // variété > ancienne liste figée
+		for (const n of CIBLES_MOITIES) expect(n % 2).toBe(0); // moitié entière garantie
+		// Couvre les trois familles attendues.
+		expect(CIBLES_MOITIES).toContain(20); // pairs ≤ 20
+		expect(CIBLES_MOITIES).toContain(100); // dizaines entières ≤ 100
+		expect(CIBLES_MOITIES).toContain(200); // centaines rondes
+		expect(CIBLES_MOITIES).toContain(400);
+	});
+
+	test('math-moities (k=4) : générateur, moitié entière, tire dans CIBLES_MOITIES', () => {
+		const vus = new Set<number>();
+		const ensemble = new Set(CIBLES_MOITIES);
+		for (let i = 0; i < ECH; i++) {
+			const it = bilanQ(4)!;
+			const m = it.text.match(/^La moitié de (\d+) = @$/);
+			expect(m).not.toBeNull();
+			const n = Number(m![1]);
+			vus.add(n);
+			expect(ensemble.has(n)).toBe(true); // jamais hors plage
+			expect(Number.isInteger(Number(it.answer))).toBe(true); // moitié entière
+			expect(Number(it.answer)).toBe(n / 2); // exacte
+		}
+		// On finit par couvrir la quasi-totalité des cibles (variété réelle).
+		expect(vus.size).toBeGreaterThanOrEqual(CIBLES_MOITIES.length - 2);
+	});
+
+	test('CIBLES_MOITIE_PAIR : pairs 22–98, EXCLUT les multiples de 10 et les cibles de moities (~35)', () => {
+		expect(CIBLES_MOITIE_PAIR.length).toBeGreaterThan(14); // variété > ancienne liste (14)
+		const moities = new Set(CIBLES_MOITIES);
+		for (const n of CIBLES_MOITIE_PAIR) {
+			expect(n % 2).toBe(0); // pair → moitié entière
+			expect(n).toBeGreaterThanOrEqual(22);
+			expect(n).toBeLessThanOrEqual(98);
+			expect(n % 10).not.toBe(0); // pas de multiple de 10 (exclusion demandée)
+			expect(moities.has(n)).toBe(false); // pas de doublon avec « Les moitiés »
+		}
+	});
+
+	test('math-moitie-pair (k=8) : générateur, moitié entière, exclut les multiples de 10', () => {
+		const vus = new Set<number>();
+		const ensemble = new Set(CIBLES_MOITIE_PAIR);
+		for (let i = 0; i < ECH; i++) {
+			const it = bilanQ(8)!;
+			const m = it.text.match(/^La moitié de (\d+) = @$/);
+			expect(m).not.toBeNull();
+			const n = Number(m![1]);
+			vus.add(n);
+			expect(ensemble.has(n)).toBe(true);
+			expect(n % 10).not.toBe(0); // jamais un multiple de 10
+			expect(Number.isInteger(Number(it.answer))).toBe(true);
+			expect(Number(it.answer)).toBe(n / 2); // exacte
+		}
+		expect(vus.size).toBeGreaterThanOrEqual(CIBLES_MOITIE_PAIR.length - 3);
+		// Le seuil de charge CE2 (passage par décomposition) est bien atteint mais borné.
+		expect(vus.has(74)).toBe(true);
+		expect(vus.has(98)).toBe(true);
+	});
+
+	test('CIBLES_DECOMPO_MULT : b dans {12–19} ∪ {21–29 hors ×10} (~17, élargi)', () => {
+		expect(CIBLES_DECOMPO_MULT.length).toBeGreaterThan(8); // élargi vs petite liste figée
+		for (const b of CIBLES_DECOMPO_MULT) {
+			const ok = (b >= 12 && b <= 19) || (b >= 21 && b <= 29);
+			expect(ok).toBe(true);
+			expect(b % 10).not.toBe(0); // 20 exclu (multiple de 10)
+		}
+		// Bornes représentatives présentes.
+		expect(CIBLES_DECOMPO_MULT).toContain(12);
+		expect(CIBLES_DECOMPO_MULT).toContain(19);
+		expect(CIBLES_DECOMPO_MULT).toContain(21);
+		expect(CIBLES_DECOMPO_MULT).toContain(29);
+		expect(CIBLES_DECOMPO_MULT).not.toContain(20);
+	});
+
+	test('math-decomposer-multiplication (k=15) : a∈[3,9], b dans la plage élargie, produit exact', () => {
+		let aMax = 0,
+			aMin = Infinity;
+		const bVus = new Set<number>();
+		const bEnsemble = new Set(CIBLES_DECOMPO_MULT);
+		for (let i = 0; i < ECH; i++) {
+			const it = bilanQ(15)!;
+			const m = it.text.match(/^(\d+) × (\d+) = @$/);
+			expect(m).not.toBeNull();
+			const a = Number(m![1]),
+				b = Number(m![2]);
+			aMax = Math.max(aMax, a);
+			aMin = Math.min(aMin, a);
+			bVus.add(b);
+			expect(bEnsemble.has(b)).toBe(true); // b toujours dans la plage élargie
+			expect(Number(it.answer)).toBe(a * b); // produit exact
+		}
+		expect(aMin).toBe(3);
+		expect(aMax).toBe(9); // borne haute élargie (anciennement 8)
+		// b couvre largement la plage (variété réelle, pas la vieille liste de 8 valeurs).
+		expect(bVus.size).toBeGreaterThanOrEqual(CIBLES_DECOMPO_MULT.length - 1);
+	});
+
+	test('fiches imprimables des leçons modifiées se construisent sans exception', () => {
+		// La fiche partage les mêmes plages que bilanQ : on vérifie qu'elle se rend.
+		for (const id of [
+			'math-complements',
+			'math-doubles',
+			'math-moities',
+			'math-moitie-pair',
+			'math-decomposer-multiplication',
+		]) {
+			expect(() => buildLessonFiche(id)).not.toThrow();
+			const html = buildLessonFiche(id);
+			expect(html).toContain('<input'); // au moins un champ de réponse
+			expect(html).not.toContain('@'); // le `@` est remplacé par le champ
+		}
+	});
+
+	test('le complément à 1000 apparaît bien sur la fiche imprimable', () => {
+		// On régénère plusieurs fois la fiche pour voir au moins un total de 1000.
+		// Le `@` est déjà remplacé par le champ → on cherche le « = 1000 » rendu (un
+		// complément à 1000 sur une centaine ronde : « 300 = </span> » suivi du total).
+		let vu1000 = false;
+		for (let i = 0; i < 200 && !vu1000; i++) {
+			if (/= 1000\b/.test(buildLessonFiche('math-complements'))) vu1000 = true;
+		}
+		expect(vu1000).toBe(true);
+	});
+});
+
 describe('Records & classement', () => {
 	test('cmpRun : score puis temps', () => {
 		const arr = [
@@ -742,13 +917,15 @@ describe('Grandeurs et mesures : la monnaie (#96)', () => {
 				expect(ans).toBeGreaterThan(0);
 				expect(checkItemAnswer(it, String(ans))).toBe(true);
 				expect(checkItemAnswer(it, String(ans + 1))).toBe(false);
-				// L'unité du champ encadre les bornes CE2 : € ≤ 20, centimes pas de 10 < 1 €.
+				// L'unité du champ encadre les bornes CE2 : centimes pas de 10 < 1 € ;
+				// côté euros, « Je calcule » reste ≤ 20 € mais « Je rends » accepte le
+				// billet de 50 € (#287) → rendu jusqu'à 49 €.
 				if (it.text.includes('@ c')) {
 					expect(ans % 10).toBe(0);
 					expect(ans).toBeLessThan(100);
 				} else {
 					expect(it.text).toContain('@ €');
-					expect(ans).toBeLessThanOrEqual(20);
+					expect(ans).toBeLessThanOrEqual(id === 'mes-monnaie-rendu' ? 49 : 20);
 				}
 			}
 		}
@@ -759,7 +936,8 @@ describe('Grandeurs et mesures : la monnaie (#96)', () => {
 			const it = genLessonItem(lesson);
 			expect(it.text).toContain('@ €'); // toujours en euros
 			expect(it.text).not.toContain('@ c');
-			expect(Number(it.answer)).toBeLessThanOrEqual(19); // billet 20 − prix ≥ 1
+			// CE2 : prix entier < billet, billet max 50 € (#287) → rendu ≤ 49.
+			expect(Number(it.answer)).toBeLessThanOrEqual(49);
 		}
 	});
 });

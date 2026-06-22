@@ -17,11 +17,24 @@
       attendu de fin de CE2 2025 (« additionner et soustraire des
       fractions de même dénominateur »).
 
+   Multi-niveaux (#287) : trois leçons (collection, bande, addition) sont
+   `calibrated` par une table { ce2, cm1 } ; le CE2 reste calibré à l'identique
+   (sauf rééquilibrages décrits ci-dessous), le CM1 élargit les plages de
+   dénominateurs. Le CM1 reste « derrière le paramètre `level` » (le catalogue
+   garde `levels: ['ce2']`, cf. catalog.ts) : on le rend juste calibré et
+   testable via `generate({ level: 'cm1' })`. La leçon 1 (sens, barre divisée)
+   N'est PAS calibrée : elle est purement visuelle et la barre plafonne à 8
+   parts (voir DENS_SENS) ; ouvrir le CM1 n'y ajouterait que du verbal sans la
+   figure, hors périmètre #287.
+
    Calibrage (avis pedagogue-primaire) :
    - dénominateurs 2,3,4 d'abord, puis 5,6,8 ; figure plafonnée à 8
      parts pour rester lisible (10/12 réservés au verbal/futur) ;
-   - leçon 2 : le dénominateur DIVISE la collection (résultat entier),
-     numérateur 1 dominant (sens partitif pur) ;
+   - leçon 2 (collection) : le dénominateur DIVISE la collection (résultat
+     entier). On NE force PLUS le numérateur 1 dominant : le pédagogue (#287)
+     recommande de faire monter les numérateurs > 1 (« deux tiers de », « trois
+     quarts de »), pas seulement le partitif pur. On vise ~40 % de num = 1
+     (contre ~60 % auparavant) — cf. genCollection ;
    - leçon 4 : égalités à facteur entier simple (×2, ×3), visuellement
      évidentes ; jamais de quasi-égalités comme distracteurs ;
    - leçon 5 : comparaison à appui visuel. Même dénominateur (plus de
@@ -37,6 +50,7 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
+import { calibrated } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
 import { renderFigure } from '../../core/figures';
 // Libellé verbal (#42) défini en core (utilitaire nombre→mots, réutilisé par le
@@ -100,7 +114,11 @@ function qcmChoices(num: number, den: number): string[] {
 	return sample([frac(num, den), ...distracteurs(num, den)], 4);
 }
 
-/* ---------- Leçon 1 : sens — fraction d'un tout ---------- */
+/* ---------- Leçon 1 : sens — fraction d'un tout ----------
+   NON calibrée par niveau (#287) : leçon purement VISUELLE (barre divisée), dont
+   la lisibilité plafonne à 8 parts (10/12 illisibles à l'œil). Élargir au CM1 ne
+   pourrait être que verbal — sans la figure, donc hors esprit de cette leçon. On
+   la laisse CE2-only (le catalogue garde `levels: ['ce2']`). */
 // Dénominateurs pondérés vers les petits ; plafonnés à 8 (lisibilité de la barre).
 const DENS_SENS = [2, 2, 3, 3, 4, 4, 5, 6, 8];
 
@@ -121,15 +139,39 @@ function genSens(): Exercise {
 	};
 }
 
-/* ---------- Leçon 2 : fraction d'une collection (saisie numérique) ---------- */
-const DENS_COLLECTION = [2, 3, 4, 5, 6];
+/* ---------- Leçon 2 : fraction d'une collection (saisie numérique) ----------
+   Calibrée par niveau (#287). `totalMax` borne la taille de la collection (le
+   dénominateur DIVISE le total → résultat entier) ; `parGroupe` est tiré entre 2
+   et le plus grand entier ≤ 6 tel que den × parGroupe ≤ totalMax (donc ≥ 2 pour
+   tous les dénominateurs des deux niveaux). */
+interface CollectionConfig {
+	dens: number[];
+	totalMax: number;
+}
 
-function genCollection(): Exercise {
-	const den = choice(DENS_COLLECTION);
-	const parGroupe = rnd(2, 4); // total = den × parGroupe ≤ 24, résultat entier garanti
-	const total = den * parGroupe;
-	// Numérateur 1 dominant (sens partitif pur : « la moitié, le quart… de »).
-	const num = rnd(1, 10) <= 6 ? 1 : rnd(1, den - 1);
+// CE2 : dénominateurs 2–6, collection ≤ 36.
+const COLLECTION_CE2: CollectionConfig = { dens: [2, 3, 4, 5, 6], totalMax: 36 };
+// CM1 : + dénominateurs 8 et 10, collection ≤ 60.
+const COLLECTION_CM1: CollectionConfig = { dens: [2, 3, 4, 5, 6, 8, 10], totalMax: 60 };
+
+/* Numérateur de la collection. On NE force PLUS systématiquement num = 1 (#287) :
+   le pédagogue veut faire monter les numérateurs > 1. On garde num = 1 ~1 fois sur
+   4 quand le dénominateur le permet (den ≥ 3) ; sinon num est tiré dans 2..den-1.
+   Avec les dénominateurs CE2 [2,3,4,5,6] (équiprobables), den = 2 impose num = 1 :
+   la part globale de num = 1 ressort à ~40 % (0,2 × 1 + 0,8 × 0,25), contre ~60 %
+   auparavant. */
+function numCollection(den: number): number {
+	if (den === 2) return 1; // 2 → seule fraction propre : un demi
+	return rnd(1, 4) === 1 ? 1 : rnd(2, den - 1);
+}
+
+function genCollection(config: CollectionConfig): Exercise {
+	const den = choice(config.dens);
+	// parGroupe entre 2 et le plus grand entier ≤ 6 gardant den × parGroupe ≤ totalMax.
+	const parGroupeMax = Math.min(6, Math.floor(config.totalMax / den));
+	const parGroupe = rnd(2, parGroupeMax);
+	const total = den * parGroupe; // résultat entier garanti (den divise total)
+	const num = numCollection(den);
 	const res = num * parGroupe;
 	return {
 		type: 'text',
@@ -140,11 +182,16 @@ function genCollection(): Exercise {
 	};
 }
 
-/* ---------- Leçon 3 : fraction sur une bande graduée ---------- */
-const DENS_BANDE = [2, 3, 4, 6, 8];
+/* ---------- Leçon 3 : fraction sur une bande graduée ----------
+   Calibrée par niveau (#287). La bande graduée reste lisible bien au-delà de la
+   barre divisée (graduations fines), donc on peut monter jusqu'à 10. */
+// CE2 : {2, 3, 4, 6, 8} + 5.
+const DENS_BANDE_CE2 = [2, 3, 4, 5, 6, 8];
+// CM1 : + 10.
+const DENS_BANDE_CM1 = [2, 3, 4, 5, 6, 8, 10];
 
-function genBande(): Exercise {
-	const den = choice(DENS_BANDE);
+function genBande(dens: number[]): Exercise {
+	const den = choice(dens);
 	const num = rnd(1, den - 1);
 	const parts = num > 1 ? 'parts' : 'part';
 	const choices = qcmChoices(num, den);
@@ -377,8 +424,13 @@ function genComparaison(): Exercise {
    Attendu de fin de CE2 2025. On garde le dénominateur, on additionne les
    numérateurs ; résultat < 1 (somme des numérateurs < dénominateur), pour rester
    dans l'invariant « fraction < 1 ». Distracteur central = l'erreur classique
-   « on additionne aussi les dénominateurs » (1/4 + 2/4 → 3/8). */
-const DENS_SOMME = [3, 4, 5, 6, 8];
+   « on additionne aussi les dénominateurs » (1/4 + 2/4 → 3/8).
+   Calibrée par niveau (#287) — l'addition ne dépend d'aucune figure plafonnée, on
+   peut monter le dénominateur sans souci de lisibilité. */
+// CE2 : {3, 4, 5, 6, 8} + 10.
+const DENS_SOMME_CE2 = [3, 4, 5, 6, 8, 10];
+// CM1 : + 12.
+const DENS_SOMME_CM1 = [3, 4, 5, 6, 8, 10, 12];
 
 function distracteursSomme(n1: number, n2: number, den: number): string[] {
 	const somme = n1 + n2;
@@ -391,8 +443,8 @@ function distracteursSomme(n1: number, n2: number, den: number): string[] {
 	]);
 }
 
-function genSomme(): Exercise {
-	const den = choice(DENS_SOMME);
+function genSomme(dens: number[]): Exercise {
+	const den = choice(dens);
 	const n1 = rnd(1, den - 2);
 	const n2 = rnd(1, den - 1 - n1); // n1 + n2 ≤ den - 1 → résultat < 1
 	const somme = n1 + n2;
@@ -435,18 +487,34 @@ export interface FractionLessonDef {
 }
 
 export const FRACTIONS_LESSONS: FractionLessonDef[] = [
+	// Leçon 1 (sens) : NON calibrée — purement visuelle, barre ≤ 8 parts (cf. DENS_SENS).
 	{ id: 'num-frac-sens', label: 'Lire une fraction', exerciseType: qcmType(genSens) },
 	{
 		id: 'num-frac-collection',
 		label: "Fraction d'une collection",
-		exerciseType: saisieNumType(genCollection),
+		exerciseType: calibrated<CollectionConfig>(
+			{ ce2: COLLECTION_CE2, cm1: COLLECTION_CM1 },
+			(config) => saisieNumType(() => genCollection(config)),
+		),
 	},
-	{ id: 'num-frac-bande', label: 'Fraction sur une bande', exerciseType: qcmType(genBande) },
+	{
+		id: 'num-frac-bande',
+		label: 'Fraction sur une bande',
+		exerciseType: calibrated<number[]>({ ce2: DENS_BANDE_CE2, cm1: DENS_BANDE_CM1 }, (dens) =>
+			qcmType(() => genBande(dens)),
+		),
+	},
 	{ id: 'num-frac-egalites', label: 'Fractions égales', exerciseType: qcmType(genEgalites) },
 	{
 		id: 'num-frac-comparaison',
 		label: 'Comparer des fractions',
 		exerciseType: qcmType(genComparaison),
 	},
-	{ id: 'num-frac-addition', label: 'Additionner des fractions', exerciseType: qcmType(genSomme) },
+	{
+		id: 'num-frac-addition',
+		label: 'Additionner des fractions',
+		exerciseType: calibrated<number[]>({ ce2: DENS_SOMME_CE2, cm1: DENS_SOMME_CM1 }, (dens) =>
+			qcmType(() => genSomme(dens)),
+		),
+	},
 ];

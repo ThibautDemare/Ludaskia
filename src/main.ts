@@ -422,9 +422,10 @@ function wireDOM() {
 
 	document.addEventListener('keydown', (e: any) => {
 		if (e.key === 'Escape') {
-			hideCelebration();
-			hideLevelUp();
-			hideUnlockModals();
+			// La fermeture Échap des modales (récompenses, trophées, levelup, célébration)
+			// est désormais possédée par leur focus-trap (modal-a11y), qui consomme
+			// l'événement en capture AVANT d'arriver ici. Restent les surcouches
+			// non-modales : menu profil et tiroir mobile.
 			closeProfileMenu();
 			closeDrawer();
 		}

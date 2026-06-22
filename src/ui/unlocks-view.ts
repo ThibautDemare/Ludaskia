@@ -9,6 +9,7 @@ import { getXP, niveauDepuisXP } from '../core/progress';
 import { RANGS, MASCOTTE, AVATARS_FORET, THEMES, mascotteDuNiveau } from '../core/unlocks';
 import { TROPHIES, loadTrophies } from '../core/rewards';
 import { icon } from './icon';
+import { activateModal } from './modal-a11y';
 
 /* ---------- Mascotte « accompagnante » : bulle de BD (phase 4) ----------
    Apparaît AUTOUR des exercices (jamais pendant un calcul chronométré) et sur
@@ -97,11 +98,21 @@ export function renderRewardNav() {
 		`<button class="reward-btn" data-act="open-trophees">🏆 Mes trophées <span class="reward-count">${trophies}/${TROPHIES.length}</span></button>`;
 }
 
+// Une seule vitrine ouverte à la fois (Récompenses XOR Trophées) → un seul
+// `release` partagé (focus-trap + inert + restauration du focus, #235).
+let unlockRelease: (() => void) | null = null;
 function fillAndShow(overlayId: string, contentId: string, html: string) {
 	const c = document.getElementById(contentId);
 	if (c) c.innerHTML = html;
 	const ov = document.getElementById(overlayId);
-	if (ov) ov.style.display = '';
+	if (!ov) return;
+	ov.style.display = '';
+	unlockRelease?.(); // garde : libère une éventuelle vitrine encore active
+	// Focus initial sur l'action « Fermer » (`<id>Ok`), pas sur la croix.
+	unlockRelease = activateModal(ov, {
+		onEscape: hideUnlockModals,
+		initialFocus: document.getElementById(overlayId + 'Ok'),
+	});
 }
 export function openRecompenses() {
 	fillAndShow('recompenses', 'recompensesContent', recompensesContentHTML());
@@ -110,6 +121,8 @@ export function openTrophees() {
 	fillAndShow('trophees', 'tropheesContent', trophiesContentHTML());
 }
 export function hideUnlockModals() {
+	unlockRelease?.();
+	unlockRelease = null;
 	for (const id of ['recompenses', 'trophees']) {
 		const ov = document.getElementById(id);
 		if (ov) ov.style.display = 'none';

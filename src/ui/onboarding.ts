@@ -11,6 +11,7 @@ import { availableLevels, LEVEL_LABEL } from '../core/levels';
 import { getAllLessons } from '../core/catalog';
 import type { SchoolLevel } from '../core/catalog';
 import { setNiveauReference } from '../core/profiles';
+import { activateModal } from './modal-a11y';
 
 /* Affiche la popup si — et seulement si — un choix de classe est requis.
    `onChosen` est rappelé après le choix (re-rendu de la vue courante). */
@@ -40,13 +41,17 @@ export function showClassChoice(onChosen?: () => void): void {
 			</div>
 		</div>`;
 	document.body.appendChild(overlay);
+	// Choix FORCÉ : focus-trap + arrière-plan inerte, mais PAS de fermeture par Échap
+	// ni au clic sur le fond (onEscape omis). Focus initial sur le 1er choix (#235).
+	const release = activateModal(overlay, {
+		initialFocus: overlay.querySelector<HTMLButtonElement>('.onb-niv-btn'),
+	});
 	overlay.querySelectorAll<HTMLButtonElement>('[data-niveau]').forEach((btn) => {
 		btn.addEventListener('click', () => {
+			release(); // libère l'arrière-plan inerte + restaure le focus
 			setNiveauReference(btn.dataset.niveau as SchoolLevel);
 			overlay.remove();
 			onChosen?.();
 		});
 	});
-	// Focus le premier choix (navigation clavier ; le choix est obligatoire).
-	overlay.querySelector<HTMLButtonElement>('.onb-niv-btn')?.focus();
 }

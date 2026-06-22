@@ -464,6 +464,18 @@ html.confort-lecture .modal-msg {
 		0 0 0 5px var(--accent);
 }
 
+/* Même anneau pour les boutons des modales STATIQUES (récompenses, trophées,
+   célébration, levelup) : depuis #235 le focus y est réellement piégé et projeté,
+   donc l'utilisateur clavier doit voir où il est. `.modal-ok` couvre aussi
+   `.levelup-ok` (qui porte les deux classes). */
+.modal-close:focus-visible,
+.modal-ok:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 5px var(--accent);
+}
+
 /* Champ de saisie (uiPrompt) : pensé doigt + clavier tablette — pleine largeur,
    haut, gros texte. */
 .modal-field {

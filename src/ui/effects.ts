@@ -3,6 +3,7 @@
    ============================================================ */
 import { getXP, progressionNiveau, NIVEAU_MAX } from '../core/progress';
 import type { Recompense } from '../core/unlocks';
+import { activateModal } from './modal-a11y';
 
 /* Mini-courbe SVG de la progression (score % au fil des essais) */
 export function sparkline(vals: number[], w = 260, h = 46) {
@@ -42,6 +43,7 @@ export function confetti() {
 }
 
 /* Modale de récompense : annonce explicitement ce qui vient d'être gagné. */
+let celebrateRelease: (() => void) | null = null;
 export function showCelebration(items: { icon: string; text: string }[]) {
 	if (!items || !items.length) return;
 	const list = document.getElementById('celebrateList');
@@ -50,10 +52,20 @@ export function showCelebration(items: { icon: string; text: string }[]) {
 			.map((i) => `<li><span class="modal-li-ico">${i.icon}</span> ${i.text}</li>`)
 			.join('');
 	const ov = document.getElementById('celebrate');
-	if (ov) ov.style.display = '';
+	if (ov) {
+		ov.style.display = '';
+		// Focus-trap + arrière-plan inerte + ESC = fermer + restauration du focus (#235).
+		// Focus initial sur l'action principale (« Super ! »), pas sur la croix.
+		celebrateRelease = activateModal(ov, {
+			onEscape: hideCelebration,
+			initialFocus: document.getElementById('celebrateOk'),
+		});
+	}
 	confetti();
 }
 export function hideCelebration() {
+	celebrateRelease?.();
+	celebrateRelease = null;
 	const ov = document.getElementById('celebrate');
 	if (ov) ov.style.display = 'none';
 }
@@ -62,6 +74,7 @@ export function hideCelebration() {
    `then` (optionnel) est rejoué à la fermeture → permet d'enchaîner sur la
    modale de récompense générique s'il y a d'autres gains. */
 let levelUpThen: (() => void) | null = null;
+let levelupRelease: (() => void) | null = null;
 export function showLevelUp(niveau: number, recompenses: Recompense[] = [], then?: () => void) {
 	const ov = document.getElementById('levelup');
 	if (!ov) {
@@ -91,9 +104,17 @@ export function showLevelUp(niveau: number, recompenses: Recompense[] = [], then
 	}
 	levelUpThen = then ?? null;
 	ov.style.display = '';
+	// Focus-trap + arrière-plan inerte + ESC = fermer + restauration du focus (#235).
+	// Focus initial sur l'action principale (« Continuer »), pas sur la croix.
+	levelupRelease = activateModal(ov, {
+		onEscape: hideLevelUp,
+		initialFocus: document.getElementById('levelupOk'),
+	});
 	confetti();
 }
 export function hideLevelUp() {
+	levelupRelease?.();
+	levelupRelease = null;
 	const ov = document.getElementById('levelup');
 	if (ov) ov.style.display = 'none';
 	const then = levelUpThen;

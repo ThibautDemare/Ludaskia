@@ -3,9 +3,10 @@
    étoiles et statistiques par leçon. (localStorage via lsGet/lsSet)
    ============================================================ */
 import { fmt } from './utils';
-import { lsGet, lsSet, lsSetQuiet } from './storage';
+import { lsGet, lsSet, lsSetQuiet, lsRemoveQuiet } from './storage';
 import { getAllLessons, getLessonById } from './catalog';
 import type { SchoolLevel } from './catalog';
+import { LEVEL_ORDER } from './levels';
 import { niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
 import { etatNeuf, avancerEtat } from './revision';
 import type { EtatRevision } from './orthographe/types';
@@ -55,7 +56,14 @@ function scopeActif<V>(raw: Record<string, V>): Record<string, V> {
 	return out;
 }
 
-/* ---------- Records de bilans (classement) ---------- */
+/* ---------- Records de bilans (classement), SCOPÉS par niveau (#233) ----------
+   Un record CM1 (nombres plus grands, contenu plus dur) n'est pas comparable à un
+   record CE2 : chaque mode est rangé PAR NIVEAU sous `ludaskia_runs_<mode>@<niveau>`.
+   Le niveau d'un record = niveau scolaire ACTIF (un sprint/bilan balaie le catalogue
+   du niveau, il n'est pas attaché à une matière). En LECTURE, `loadRuns` renvoie le
+   classement du niveau ACTIF (affichage des podiums/records) ; `loadRunsAll` agrège
+   TOUS les niveaux pour les compteurs d'EFFORT (trophées, régularité), qui restent
+   GLOBAUX — un trophée acquis ne se reverrouille jamais au changement de classe. */
 export interface Run {
 	ts: number;
 	ok: number;
@@ -63,12 +71,21 @@ export interface Run {
 	ms: number;
 }
 export const RUNS_KEY = (m: string) => `ludaskia_runs_${m}`;
-const MAX_RUNS = 50; // on ne garde que les 50 derniers essais par mode
+function runsKey(mode: string, niveau: SchoolLevel): string {
+	return `${RUNS_KEY(mode)}@${niveau}`;
+}
+const MAX_RUNS = 50; // on ne garde que les 50 derniers essais par mode ET par niveau
+/* Classement du niveau ACTIF (affichage des podiums/records). */
 export function loadRuns(mode: string): Run[] {
-	return lsGet(RUNS_KEY(mode), []);
+	return lsGet(runsKey(mode, niveauActif()), []);
+}
+/* Essais TOUS niveaux confondus : base des compteurs d'effort GLOBAUX (trophées,
+   régularité), qui ne dépendent pas de la classe active. */
+export function loadRunsAll(mode: string): Run[] {
+	return LEVEL_ORDER.flatMap((niveau) => lsGet(runsKey(mode, niveau), []) as Run[]);
 }
 function saveRuns(mode: string, runs: Run[]) {
-	lsSet(RUNS_KEY(mode), runs);
+	lsSet(runsKey(mode, niveauActif()), runs);
 }
 
 /* Bornes de période calendaire (pour les objectifs de régularité) */
@@ -83,9 +100,12 @@ export function startOfMonth() {
 	const d = new Date();
 	return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
 }
-/* Nombre d'essais d'un mode depuis un instant donné */
+/* Nombre d'essais d'un mode depuis un instant donné, TOUS niveaux confondus :
+   la régularité est un compteur d'EFFORT (comme les trophées), indépendant de la
+   classe active — changer de niveau en cours de semaine ne remet pas à zéro
+   l'objectif « 2 sprints cette semaine » (#233). */
 export function countSince(mode: string, since: number) {
-	return loadRuns(mode).filter((r) => r.ts >= since).length;
+	return loadRunsAll(mode).filter((r) => r.ts >= since).length;
 }
 
 /* Classement « score puis temps » : plus de bonnes réponses d'abord,
@@ -353,11 +373,28 @@ function migrateMapNamespacing(storageKey: string): void {
 	// Écriture « silencieuse » : une migration ne doit pas bumper updatedAt.
 	if (changed) lsSetQuiet(storageKey, out);
 }
+/* Records (#233) : la clé legacy GLOBALE `ludaskia_runs_<mode>` (tout l'existant
+   était CE2) est renommée vers `…@ce2`. Idempotente et silencieuse. On préserve une
+   éventuelle clé `@ce2` déjà présente (pas d'écrasement) ; en pratique l'écriture
+   passe désormais toujours par une clé namespacée, donc la legacy ne coexiste avec
+   `@ce2` que le temps de cette migration. */
+const RUN_MODES = ['sprint', 'express', 'complet', 'revision-espacee']; // 'lecon' n'enregistre pas de run
+function migrateRunsNamespacing(): void {
+	for (const mode of RUN_MODES) {
+		const legacyKey = RUNS_KEY(mode);
+		const legacy = lsGet(legacyKey, null) as Run[] | null;
+		if (legacy == null) continue; // rien de legacy à migrer
+		const cible = runsKey(mode, NIVEAU_LEGACY);
+		if (lsGet(cible, null) == null) lsSetQuiet(cible, legacy);
+		lsRemoveQuiet(legacyKey);
+	}
+}
 export function migrateNiveauNamespacing(): void {
 	migrateMapNamespacing(STARS_KEY);
 	migrateMapNamespacing(LESSON_STATS_KEY);
 	migrateMapNamespacing(LESSON_FIRST_SEEN_KEY);
 	migrateMapNamespacing(LESSON_REVISION_KEY);
+	migrateRunsNamespacing();
 }
 
 /* ---------- XP global (1 point par bonne réponse, tous modes) ---------- */

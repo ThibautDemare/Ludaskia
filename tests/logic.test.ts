@@ -584,7 +584,7 @@ describe('Défi du jour (qualité)', () => {
 describe('Objectifs de régularité', () => {
 	test('countSince compte les essais d’une période', () => {
 		const now = Date.now();
-		api.lsSet('ludaskia_runs_sprint', [
+		api.lsSet('ludaskia_runs_sprint@ce2', [
 			{ ts: now, ok: 1, count: 1, ms: 1 },
 			{ ts: now - 40 * 86400000, ok: 1, count: 1, ms: 1 },
 		]);

@@ -40,6 +40,14 @@ export function lsSetQuiet(key: string, value: any) {
 		localStorage.setItem(realKey(key), JSON.stringify(value));
 	} catch (e) {}
 }
+/* Suppression d'une clé (préfixée profil) SANS notifier onDataWrite : réservée
+   aux migrations internes (renommage de clés), au même titre que lsSetQuiet —
+   elles ne doivent pas bumper `updatedAt` du profil. */
+export function lsRemoveQuiet(key: string) {
+	try {
+		localStorage.removeItem(realKey(key));
+	} catch (e) {}
+}
 /* Accès bas niveau aux clés réelles (réinitialiser/supprimer/sauvegarder) */
 export function lsKeysRaw(): string[] {
 	const o: string[] = [];

@@ -328,7 +328,8 @@
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	padding: 10px 14px;
+	min-height: 48px; /* cible tactile enfant (a11y) */
+	padding: 12px 14px;
 	background: var(--paper);
 	border-radius: 10px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
@@ -340,9 +341,15 @@
 }
 .sc-option input[type='radio'] {
 	accent-color: var(--accent);
-	width: 16px;
-	height: 16px;
+	width: 20px;
+	height: 20px;
 	flex-shrink: 0;
+}
+/* Focus net sur les radios (aligné sur .sprint-choice ; le focus natif seul est
+   trop discret en thème sombre). */
+.sc-option input[type='radio']:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
 }
 .sc-option-indent {
 	margin-left: 28px;
@@ -359,17 +366,18 @@
 	color: var(--grey);
 	margin-left: 4px;
 }
-/* Sélecteur de périmètre (#208) : les deux options côte à côte si la place suffit. */
+/* Sélecteur de périmètre (#208) : choix binaire EMPILÉ (lisible, parallèle clair des
+   deux options), séparé visuellement du groupe « matière » par un filet. */
 .sc-perimetre {
-	flex-direction: row;
-	flex-wrap: wrap;
+	padding-bottom: 18px;
+	border-bottom: 1px solid var(--line);
 }
-.sc-perimetre .sc-option {
-	flex: 1 1 180px;
-}
-/* Option de filtre vide au périmètre choisi : visible (repère) mais non sélectionnable. */
+/* Option de filtre vide au périmètre choisi : visible (repère) mais non sélectionnable.
+   L'attribut `disabled` (sur le radio) porte l'info pour l'AT et exempte du contraste ;
+   l'opacité reste assez haute pour rester lisible, et le compteur « 0 leçon » double
+   l'indice visuellement (pas une info portée par la seule pâleur). */
 .sc-option-disabled {
-	opacity: 0.45;
+	opacity: 0.6;
 	cursor: not-allowed;
 }
 .sc-option-disabled input[type='radio'] {

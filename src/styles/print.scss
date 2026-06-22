@@ -7,6 +7,26 @@
 	body {
 		background: #fff;
 	}
+	/* L'impression est TOUJOURS sur papier blanc : on rétablit la palette CLAIRE quel
+	   que soit le thème d'affichage (#41). Les thèmes Nuit / Clair-obscur (#224)
+	   réécrivent --ink/--accent/… → sinon, sur blanc, les réponses du corrigé seraient
+	   peu contrastées et le ✓ (var(--ink)) quasi invisible. `!important` pour battre
+	   `:root[data-theme='nuit']` sans dépendre de l'ordre de cascade. */
+	:root {
+		--ink: #1a1a1a !important;
+		--grey: #545454 !important;
+		--muted: #9aa1ac !important;
+		--paper: #ffffff !important;
+		--page-bg: #ffffff !important;
+		--accent: #2f7d52 !important;
+		--accent-dark: #225c3c !important;
+		--accent-soft: #e4f0e8 !important;
+		--on-accent: #ffffff !important;
+		--ok: #2e7d32 !important;
+		--ko: #c62828 !important;
+		--line: #e4e8ef !important;
+		--track: #e7ebf1 !important;
+	}
 	.toolbar,
 	.home,
 	.result-banner,

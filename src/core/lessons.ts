@@ -3,7 +3,7 @@
    ce qui permet de jouer une leçon seule OU le bilan complet.
    build() régénère des items frais à chaque appel.
    ============================================================ */
-import { rnd, choice, sample, commKey, escapeHTML } from './utils';
+import { rnd, choice, sample, commKey, escapeHTML, withSeed, randomSeed, randFloat } from './utils';
 import { uniqueComm, uniqueExact } from './utils';
 import {
 	add,
@@ -20,6 +20,7 @@ import {
 	setRenderLesson,
 	setInputCounter,
 	setPrintMode,
+	setCorrigeMode,
 	estItemQcm,
 	nextInputId,
 	getSessionItems,
@@ -341,7 +342,9 @@ export function bilanQ(k: number): Item | undefined {
 			return add(a, b);
 		}
 		case 2:
-			return Math.random() < 0.5
+			// randFloat (et non Math.random) : l'aléa doit être seedable pour que le
+			// corrigé imprimable corresponde à la feuille (#41).
+			return randFloat() < 0.5
 				? comp(rnd(1, 9), 10)
 				: comp(choice([10, 20, 30, 40, 60, 70, 80, 90]), 100);
 		case 3:
@@ -448,6 +451,7 @@ export interface PrintScope {
 	lessonIds: string[]; // leçons à imprimer (toutes matières)
 	kind: 'fiches' | 'bilan'; // entraînement vs évaluation
 	nbQ?: number; // questions par leçon pour un bilan (défaut 3)
+	corrige?: boolean; // #41 : ajouter un corrigé (mêmes items, réponses révélées)
 }
 
 // Au-delà de ce volume, on prévient (gros PDF) et on suggère l'impression par catégorie.
@@ -527,22 +531,54 @@ function bilanPrintHTML(scope: PrintScope): string {
   </div>`;
 }
 
+/* Page de garde du corrigé (#41) : sépare nettement les réponses (copie du parent)
+   de la feuille de l'enfant. Pas de cartouche prénom/date. */
+function corrigeCoverHTML(scope: PrintScope): string {
+	const n = scope.lessonIds.length;
+	const sousTitre =
+		scope.kind === 'bilan'
+			? `Réponses du bilan · ${n} leçon${n > 1 ? 's' : ''}`
+			: `Réponses des fiches · ${n} fiche${n > 1 ? 's' : ''}`;
+	return `<div class="page cover cover-corrige print-only">
+    <div class="big">Corrigé</div>
+    <div class="tagline">${escapeHTML(scope.title)}</div>
+    <div class="cover-sub">${sousTitre}</div>
+    <p class="consigne">Les bonnes réponses sont indiquées. À garder par le parent pour la correction.</p>
+  </div>`;
+}
+
 /* Document imprimable pour un périmètre donné. Page de garde dynamique, sauf
    pour une fiche d'une seule leçon. Jamais de bilan récap collé aux fiches :
-   « fiches » et « bilan » sont deux documents distincts (kind). */
+   « fiches » et « bilan » sont deux documents distincts (kind).
+   Mode impression (#289) actif pour TOUTE la génération (QCM en cases à cocher,
+   zone-réponse garantie, consignes-crayon), retiré quoi qu'il arrive. */
 export function buildPrintableDOM(scope: PrintScope): string {
-	setInputCounter(0);
-	// Mode impression (#289) : actif pour TOUTE la génération du document (QCM en cases
-	// à cocher, zone-réponse garantie, consignes-crayon), puis retiré quoi qu'il arrive
-	// — l'écran (sprint, bilan interactif) ne doit jamais hériter de ce mode.
 	setPrintMode(true);
 	try {
 		const single = scope.lessonIds.length === 1;
 		const cover = single ? '' : coverHTML(scope);
-		const body =
-			scope.kind === 'bilan' ? bilanPrintHTML(scope) : fichesPagesForIds(scope.lessonIds);
-		return cover + body;
+		// Un corps (fiches ou bilan) ; les items sont régénérés à chaque appel.
+		const renderBody = () => {
+			setInputCounter(0);
+			return scope.kind === 'bilan' ? bilanPrintHTML(scope) : fichesPagesForIds(scope.lessonIds);
+		};
+		if (!scope.corrige) return cover + renderBody();
+		// Corrigé (#41) : on rend le corps DEUX fois — feuille vierge puis réponses
+		// révélées — sur les MÊMES items. Le pipeline régénérant aléatoirement, on fixe
+		// une graine commune (withSeed) pour que le corrigé corresponde à la feuille.
+		const seed = randomSeed();
+		const blank = withSeed(seed, renderBody);
+		const corrige = withSeed(seed, () => {
+			setCorrigeMode(true);
+			try {
+				return corrigeCoverHTML(scope) + renderBody();
+			} finally {
+				setCorrigeMode(false);
+			}
+		});
+		return cover + blank + corrige;
 	} finally {
 		setPrintMode(false);
+		setCorrigeMode(false);
 	}
 }

@@ -8,7 +8,7 @@
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import { SYMETRIE_LESSONS, axeEstDeSymetrie } from '../src/data/maths/symetrie-axiale';
-import { renderSymImage } from '../src/core/figures';
+import { renderSymImage, renderSymJuger } from '../src/core/figures';
 import type { SymMotif } from '../src/core/figures';
 
 const type = SYMETRIE_LESSONS[0].exerciseType;
@@ -106,6 +106,24 @@ describe('symétrie axiale — reflet pixel-perfect', () => {
 					JSON.stringify(polygones(renderSymImage(motif, axis, t))[1]);
 				expect(new Set([img('reflet'), img('glisse'), img('tourne')]).size).toBe(3);
 			}
+		}
+	});
+
+	it('le cœur est tracé SYMÉTRIQUE (un seul chemin, chaque x a son miroir autour du centre)', () => {
+		// Régression : l'ancien cœur (2 cercles + triangle, formes séparées contourées)
+		// paraissait asymétrique au creux central → réponse « Oui » trompeuse. Désormais
+		// un seul <path> symétrique par construction.
+		const svg = renderSymJuger('coeur'); // figure seule (sans axe)
+		expect((svg.match(/<path/g) ?? []).length).toBe(1);
+		expect(svg).not.toContain('<circle'); // plus de cercles séparés
+		const d = svg.match(/<path d="([^"]+)"/)?.[1] ?? '';
+		const nums = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+		const xs = nums.filter((_, i) => i % 2 === 0); // les x des paires « x y »
+		expect(xs.length).toBeGreaterThan(0);
+		const centre = (Math.min(...xs) + Math.max(...xs)) / 2;
+		// Chaque x a son miroir (2·centre − x) présent dans le tracé (à 1 px près).
+		for (const x of xs) {
+			expect(xs.some((o) => Math.abs(o - (2 * centre - x)) <= 1)).toBe(true);
 		}
 	});
 });

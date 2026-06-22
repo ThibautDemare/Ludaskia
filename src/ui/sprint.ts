@@ -44,7 +44,14 @@ import {
 	addXP,
 	getXP,
 	niveauDepuisXP,
+	loadLessonFirstSeen,
 } from '../core/progress';
+import {
+	appliquerScope,
+	scopeParDefaut,
+	perimetreChoisissable,
+	type SprintScope,
+} from '../core/sprint-scope';
 import { updateGoal, evaluateTrophies } from '../core/rewards';
 import { getTimer, setTimer, resetChrono } from './chrono';
 import { recompensesEntre } from '../core/unlocks';
@@ -72,6 +79,9 @@ type SprintFilter =
 	| { type: 'lessons'; ids: string[]; label: string };
 
 let sprintFilter: SprintFilter = { type: 'all' };
+// Périmètre (#208, lot 2) : toutes les leçons éligibles, ou uniquement celles déjà
+// rencontrées. Résolu (défaut adaptatif) à chaque entrée dans la config / lancement.
+let sprintScope: SprintScope = 'all';
 
 function lessonsForFilter(f: SprintFilter): LessonDef[] {
 	const base =
@@ -120,6 +130,8 @@ function parseFilter(value: string): SprintFilter {
    sans passer par l'écran de configuration. */
 export function startCategorySprint(categoryId: string): void {
 	sprintFilter = { type: 'category', id: categoryId };
+	// Lancement direct (sans écran de config) → périmètre par défaut adaptatif (#208).
+	sprintScope = scopeParDefaut(lessonsForFilter(sprintFilter));
 	location.hash = 'sprint';
 }
 
@@ -128,54 +140,98 @@ export function startCategorySprint(categoryId: string): void {
    suit ses règles habituelles (chrono, pause sur erreur, XP/records/trophées). */
 export function startCustomSprint(config: BilanConfig): void {
 	sprintFilter = { type: 'lessons', ids: config.lessonIds, label: config.label };
+	// Un favori est une sélection EXPLICITE de leçons : le périmètre « déjà vues »
+	// ne s'y applique pas (on respecte le choix du parent/enfant).
+	sprintScope = 'all';
 	location.hash = 'sprint';
 }
 
 /* ---------- Écran de configuration du sprint ---------- */
 
 export function renderSprintConfigScreen(el: HTMLElement): void {
-	// On ne compte que les leçons ÉLIGIBLES au sprint (posée, tuiles, problèmes…
-	// en sont exclues) : une catégorie entièrement inéligible (ex. Résolution de
-	// problèmes) ne doit pas apparaître, sinon le sprint serait vide (#199).
-	const totalN = lessonsForFilter({ type: 'all' }).length;
+	// À chaque entrée dans l'écran : périmètre par défaut ADAPTATIF (#208) — « déjà
+	// vues » tant qu'il reste du non-rencontré, sinon « tout ».
+	drawSprintConfig(el, scopeParDefaut(lessonsForFilter({ type: 'all' })));
+}
 
-	// L'écran de config n'expose que tout/matière/catégorie : un filtre 'lessons'
-	// (sprint personnalisé lancé depuis le composeur) retombe sur « toutes ».
-	const currentValue =
+/* Rendu (ré-entrant) de l'écran de config pour un périmètre donné. Re-dessiné au
+   basculement du périmètre : les comptes par filtre et les options vides en dépendent. */
+function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
+	sprintScope = scope; // mémorisé pour le lancement
+	const vues = loadLessonFirstSeen();
+	// Le choix de périmètre n'est proposé que s'il a un sens (mélange vu / pas-vu).
+	const choisissable = perimetreChoisissable(lessonsForFilter({ type: 'all' }), vues);
+
+	// On ne compte que les leçons ÉLIGIBLES au sprint (posée, tuiles, problèmes… en
+	// sont exclues), puis restreintes au périmètre courant.
+	const countFor = (f: SprintFilter): number =>
+		appliquerScope(lessonsForFilter(f), scope, vues).length;
+
+	// Filtre courant (l'écran n'expose que tout/matière/catégorie ; un favori 'lessons'
+	// retombe sur « toutes »). Rabattu sur « toutes » s'il est vide au périmètre choisi.
+	const wanted =
 		sprintFilter.type === 'subject'
 			? `subject:${sprintFilter.id}`
 			: sprintFilter.type === 'category'
 				? `category:${sprintFilter.id}`
 				: 'all';
+	const currentValue = countFor(parseFilter(wanted)) > 0 ? wanted : 'all';
 
 	const opt = (value: string, label: string, n: number, indent = false) => {
 		const checked = currentValue === value ? 'checked' : '';
-		const cls = `sc-option${indent ? ' sc-option-indent' : ''}`;
+		const disabled = n === 0 ? 'disabled' : '';
+		const cls = `sc-option${indent ? ' sc-option-indent' : ''}${n === 0 ? ' sc-option-disabled' : ''}`;
 		return `<label class="${cls}">
-      <input type="radio" name="scFilter" class="sc-radio" value="${value}" ${checked}>
+      <input type="radio" name="scFilter" class="sc-radio" value="${value}" ${checked} ${disabled}>
       <span>${escapeHTML(label)} <span class="sc-count">${n} leçon${n > 1 ? 's' : ''}</span></span>
     </label>`;
 	};
 
+	// La structure matière/catégorie reste affichée selon l'ÉLIGIBILITÉ (indépendante
+	// du périmètre) → liste stable au basculement ; seules les options vides au
+	// périmètre courant sont grisées (compte 0).
 	const subjectOptions = SUBJECTS.flatMap((subj) => {
-		const subjN = lessonsForFilter({ type: 'subject', id: subj.id }).length;
-		if (!subjN) return [];
-		const catOptions = CATEGORIES.filter((c) => c.subject === subj.id).flatMap((cat) => {
-			const n = lessonsForFilter({ type: 'category', id: cat.id }).length;
-			return n ? [opt(`category:${cat.id}`, cat.label, n, true)] : [];
-		});
-		return [opt(`subject:${subj.id}`, subj.label, subjN), ...catOptions];
+		if (!lessonsForFilter({ type: 'subject', id: subj.id }).length) return [];
+		const catOptions = CATEGORIES.filter((c) => c.subject === subj.id).flatMap((cat) =>
+			lessonsForFilter({ type: 'category', id: cat.id }).length
+				? [opt(`category:${cat.id}`, cat.label, countFor({ type: 'category', id: cat.id }), true)]
+				: [],
+		);
+		return [
+			opt(`subject:${subj.id}`, subj.label, countFor({ type: 'subject', id: subj.id })),
+			...catOptions,
+		];
 	}).join('');
 
+	// Sélecteur de périmètre (#208) : « Ce que je connais déjà » (défaut) en tête.
+	// « connais » et non « appris » : critère = rencontrée, pas maîtrisée (avis pédago).
+	const perimetre = choisissable
+		? `<div class="sc-section-title">Je m'entraîne sur</div>
+    <div class="sc-options sc-perimetre">
+      <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="seen" ${scope === 'seen' ? 'checked' : ''}><span>Ce que je connais déjà</span></label>
+      <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="all" ${scope === 'all' ? 'checked' : ''}><span>Tout</span></label>
+    </div>`
+		: '';
+
 	el.innerHTML = `<div class="sprint-config">
+    ${perimetre}
     <div class="sc-section-title">Filtre</div>
     <div class="sc-options">
-      ${opt('all', 'Toutes les matières', totalN)}
+      ${opt('all', 'Toutes les matières', countFor({ type: 'all' }))}
       ${subjectOptions}
     </div>
     <button id="scLaunch" class="sprint-btn">${icon('play')} Lancer</button>
   </div>`;
 
+	// Basculer le périmètre : on conserve le filtre en cours puis on redessine.
+	el.querySelectorAll<HTMLInputElement>('.sc-scope').forEach((r) =>
+		r.addEventListener('change', () => {
+			const f = el.querySelector<HTMLInputElement>('.sc-radio:checked');
+			if (f) sprintFilter = parseFilter(f.value);
+			const next = el.querySelector<HTMLInputElement>('.sc-scope:checked')?.value;
+			drawSprintConfig(el, next === 'seen' ? 'seen' : 'all');
+		}),
+	);
 	el.querySelector('#scLaunch')!.addEventListener('click', () => {
 		const selected = el.querySelector<HTMLInputElement>('.sc-radio:checked');
 		sprintFilter = parseFilter(selected ? selected.value : 'all');
@@ -220,7 +276,11 @@ export const isSprintRunning = () => sprintActive;
 export function runSprint() {
 	setCurrentMode('sprint');
 	setCurrentLessonId(null);
-	sprintLessonDefs = lessonsForFilter(sprintFilter);
+	// Pool éligible filtré par le périmètre (#208). Un favori ('lessons') ignore le
+	// périmètre : c'est déjà une sélection explicite.
+	const eligibles = lessonsForFilter(sprintFilter);
+	sprintLessonDefs =
+		sprintFilter.type === 'lessons' ? eligibles : appliquerScope(eligibles, sprintScope);
 	// Sélection vide (ex. favori dont toutes les leçons ont disparu du catalogue) :
 	// rien à tirer, on revient à l'accueil plutôt que de planter le tirage.
 	if (!sprintLessonDefs.length) {

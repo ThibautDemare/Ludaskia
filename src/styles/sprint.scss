@@ -359,6 +359,22 @@
 	color: var(--grey);
 	margin-left: 4px;
 }
+/* Sélecteur de périmètre (#208) : les deux options côte à côte si la place suffit. */
+.sc-perimetre {
+	flex-direction: row;
+	flex-wrap: wrap;
+}
+.sc-perimetre .sc-option {
+	flex: 1 1 180px;
+}
+/* Option de filtre vide au périmètre choisi : visible (repère) mais non sélectionnable. */
+.sc-option-disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.sc-option-disabled input[type='radio'] {
+	cursor: not-allowed;
+}
 
 /* Écran de fin de sprint */
 .sprint-done {

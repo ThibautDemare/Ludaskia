@@ -508,6 +508,13 @@ mesure au rapporteur relève du CM1 (future leçon).
   + confirmation), `maybeRelaunch` (à la relance d'un exercice déjà commencé :
   modale **« Continuer / Recommencer »**), et le **contexte de reprise** posé au
   lancement (`setResumeCtx`) / nettoyé à la fin (`finishResume`).
+- **`modal-a11y.ts`** — **mécanique a11y partagée des modales** (#235, extraite de
+  `ui-modal.ts`) : `activateModal(overlay, opts) → release()` pose le **focus-trap**
+  (Tab/Maj+Tab bouclent à l'intérieur), l'**arrière-plan `inert`** + scroll-lock, la
+  **fermeture Échap** optionnelle (`onEscape` omis = **choix forcé**) et la
+  **restauration du focus** au déclencheur. Source unique consommée par `ui-modal.ts`
+  (uiAlert/Confirm/Prompt) **et** par toutes les modales statiques à contenu sur-mesure
+  (`effects.ts`, `unlocks-view.ts`, `onboarding.ts`, voile de `version-check.ts`).
 - **`effects.ts`** — `sparkline` (SVG), `confetti`, modale `showCelebration`, et
   modale dédiée **passage de niveau** `showLevelUp`/`hideLevelUp` (médaillon doré
   animé ; un `then` optionnel enchaîne sur `showCelebration` s'il y a d'autres

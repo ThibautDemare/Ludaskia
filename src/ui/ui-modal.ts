@@ -27,14 +27,12 @@ import { escapeHTML } from '../core/utils';
 import { icon, type IconName } from './icon';
 import { dicteeDisponible, dicterConsigne, stopTts } from './tts';
 import { lectureConsigneAuto } from '../core/profiles';
+import { activateModal, FOCUSABLE } from './modal-a11y';
 
 /* Une seule modale ouverte à la fois : ouvrir par-dessus une autre casserait le
    focus-trap et le scroll-lock. Les appels sont normalement séquentiels (chacun
    est `await`é) ; ce garde-fou couvre un appel concurrent accidentel. */
 let activeOverlay: HTMLElement | null = null;
-
-const FOCUSABLE =
-	'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 const TITLE_ID = 'uimodal-title';
 const DESC_ID = 'uimodal-desc';
@@ -66,64 +64,6 @@ interface ModalConfig {
 	onSubmit?: (modal: HTMLElement) => { value: unknown } | null; // null = garder ouvert (validation échouée)
 	onOpen?: (modal: HTMLElement) => void; // câblage spécifique (champ de saisie)
 	restoreFocusTo?: () => HTMLElement | null; // repli de focus si le déclencheur a disparu
-}
-
-/* ---------- Arrière-plan inerte + verrou de défilement ---------- */
-/* Rend tout le reste du <body> non focusable / non lu par les technologies
-   d'assistance, et bloque le défilement de la page derrière la modale. */
-function lockBackground(overlay: HTMLElement): () => void {
-	const inerted: HTMLElement[] = [];
-	for (const child of Array.from(document.body.children)) {
-		if (child === overlay) continue;
-		const el = child as HTMLElement;
-		if (el.hasAttribute('inert')) continue; // ne pas « libérer » plus tard ce qui l'était déjà
-		el.setAttribute('inert', '');
-		inerted.push(el);
-	}
-	const prevOverflow = document.body.style.overflow;
-	document.body.style.overflow = 'hidden';
-	return () => {
-		inerted.forEach((el) => el.removeAttribute('inert'));
-		document.body.style.overflow = prevOverflow;
-	};
-}
-
-/* ---------- Focus ---------- */
-function visibleFocusables(modal: HTMLElement): HTMLElement[] {
-	return [...modal.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
-		(el) => el.offsetParent !== null || el === document.activeElement,
-	);
-}
-
-/* Boucle le focus à l'intérieur de la modale (Tab depuis le dernier → premier,
-   Shift+Tab depuis le premier → dernier). */
-function trapTab(e: KeyboardEvent, modal: HTMLElement): void {
-	const items = visibleFocusables(modal);
-	if (!items.length) {
-		e.preventDefault();
-		return;
-	}
-	const first = items[0];
-	const last = items[items.length - 1];
-	const active = document.activeElement as HTMLElement | null;
-	if (e.shiftKey && (active === first || !modal.contains(active))) {
-		e.preventDefault();
-		last.focus();
-	} else if (!e.shiftKey && (active === last || !modal.contains(active))) {
-		e.preventDefault();
-		first.focus();
-	}
-}
-
-/* Rend le focus au déclencheur ; s'il a disparu (re-rendu, profil supprimé),
-   repli explicite fourni par l'appelant — jamais <body> (qui ferait perdre le
-   contexte au lecteur d'écran). */
-function restoreFocus(trigger: HTMLElement | null, fallback?: () => HTMLElement | null): void {
-	if (trigger && document.contains(trigger) && typeof trigger.focus === 'function') {
-		trigger.focus();
-		return;
-	}
-	fallback?.()?.focus?.();
 }
 
 /* ---------- Lecture vocale ---------- */
@@ -177,32 +117,19 @@ function openModal(cfg: ModalConfig): Promise<unknown> {
 	document.body.appendChild(overlay);
 	const modal = overlay.querySelector<HTMLElement>('.modal')!;
 	const form = modal.querySelector<HTMLFormElement>('.modal-form')!;
-	const unlock = lockBackground(overlay);
-
 	return new Promise<unknown>((resolve) => {
 		let settled = false;
-
-		function onKeydown(e: KeyboardEvent): void {
-			if (e.key === 'Escape') {
-				// On consomme l'événement : sinon le handler ESC global (main.ts) se
-				// déclencherait aussi (fermeture d'autres modales, etc.).
-				e.preventDefault();
-				e.stopPropagation();
-				finish(cfg.cancelValue);
-			} else if (e.key === 'Tab') {
-				trapTab(e, modal);
-			}
-		}
+		// Mécanique a11y mutualisée (focus-trap, inert, scroll-lock, ESC, restauration
+		// du focus) : `release()` est rendu par `activateModal`, plus bas.
+		let release: (() => void) | null = null;
 
 		function finish(value: unknown): void {
 			if (settled) return;
 			settled = true;
 			stopTts();
-			document.removeEventListener('keydown', onKeydown, true);
-			unlock();
+			release?.();
 			overlay.remove();
 			if (activeOverlay === overlay) activeOverlay = null;
-			restoreFocus(trigger, cfg.restoreFocusTo);
 			resolve(value);
 		}
 
@@ -234,16 +161,20 @@ function openModal(cfg: ModalConfig): Promise<unknown> {
 			if (e.target === overlay) finish(cfg.cancelValue);
 		});
 
-		// Capture (true) pour passer AVANT le handler ESC global de main.ts.
-		document.addEventListener('keydown', onKeydown, true);
-
 		cfg.onOpen?.(modal);
 
-		// Focus initial : l'élément désigné (action sûre / champ), sinon le 1er focusable.
-		const initial =
+		// Focus-trap + arrière-plan inerte + ESC = annuler + restauration du focus,
+		// mutualisés (modal-a11y). Focus initial : l'élément désigné (action sûre /
+		// champ), sinon le 1er focusable.
+		const initialFocus =
 			modal.querySelector<HTMLElement>('[data-initial-focus]') ??
 			modal.querySelector<HTMLElement>(FOCUSABLE);
-		initial?.focus();
+		release = activateModal(overlay, {
+			trigger,
+			onEscape: () => finish(cfg.cancelValue),
+			restoreFocusTo: cfg.restoreFocusTo,
+			initialFocus,
+		});
 
 		// Lecture vocale automatique à l'ouverture (opt-in profil), best-effort.
 		if (listen && lectureConsigneAuto()) speak(listen, cfg.ttsText);

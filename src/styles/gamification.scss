@@ -360,6 +360,14 @@ html.anim-reduced .mascotte-static {
 	transform: translateY(-1px);
 	border-color: var(--accent);
 }
+/* Anneau de focus charte : le focus revient sur ce déclencheur à la fermeture de
+   la modale Récompenses / Trophées (#235) — il doit être visible au clavier. */
+.reward-btn:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 5px var(--accent);
+}
 .reward-count {
 	color: var(--muted);
 	font-weight: 700;

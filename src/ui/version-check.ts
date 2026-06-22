@@ -15,6 +15,7 @@ import { isSprintRunning } from './sprint';
 import { isRevisionRunning } from './revision';
 import { mascotteBulleHTML } from './unlocks-view';
 import { dicter } from './tts';
+import { activateModal } from './modal-a11y';
 
 // Message porté par la mascotte (1re personne, concret, annonce le « flash »).
 // « version » évité (mot d'adulte) ; ton « bonne nouvelle », pas alerte.
@@ -157,6 +158,11 @@ function showOverlay(): void {
 	el.setAttribute('aria-live', 'polite');
 	el.innerHTML = `<div class="update-card">${mascotteBulleHTML(MESSAGE)}</div>`;
 	document.body.appendChild(el);
+	// Le voile masque l'app juste avant le rechargement : on rend l'arrière-plan
+	// inerte (Tab et lecteurs d'écran ne s'y promènent plus). Pas de fermeture par
+	// Échap (une mise à jour ne s'annule pas) ni de restauration du focus (reload
+	// imminent) → on ignore la fonction `release` rendue (#235).
+	activateModal(el);
 	void el.offsetWidth; // reflow → la transition d'opacité joue
 	el.classList.add('show');
 }

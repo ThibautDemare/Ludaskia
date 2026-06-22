@@ -722,7 +722,8 @@ En modules ES, on ne peut pas réassigner une variable d'un autre module. Les
 états globaux mutables d'autrefois sont donc exposés via des paires
 accesseur/mutateur, **comportement identique** :
 - `items.ts` : `get/setInputCounter` (+ `nextInputId`), `get/setSessionItems`,
-  `get/setRenderLesson` ;
+  `get/setRenderLesson`, `get/setPrintMode` (#289 : rendu papier des QCM en cases à
+  cocher, posé/retiré autour de `buildPrintableDOM`) ;
 - `chrono.ts` : `get/setTimer` (le handle d'intervalle est réutilisé par le sprint) ;
 - `navigation.ts` : `get/set` pour `currentMode`, `currentLessonId`,
   `sessionRecorded`, `lastErrors`, `pendingRevision`.

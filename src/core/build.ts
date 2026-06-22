@@ -9,7 +9,7 @@ import { getAllLessons, getLessonById, genLessonItem, isLegacyMathLesson } from 
 import type { LessonDef } from './catalog';
 import { niveauLecon } from './niveau-actif';
 import { LESSONS } from './lessons';
-import { setRenderLesson, renderItem, ficheHTMLGeneric } from './items';
+import { setRenderLesson, renderItem, ficheHTMLGeneric, getPrintMode, estItemQcm } from './items';
 import type { Item } from './items';
 import { commKey } from './utils';
 
@@ -62,9 +62,14 @@ export function buildLessonFiche(lessonId: string): string {
 	setRenderLesson(null);
 	// Consigne propre au type d'exercice si définie (#42 : nomme la tâche, ex.
 	// « Conjugue le verbe au temps demandé. ») ; sinon générique selon la matière.
+	// En impression (#289), une fiche de QCM se remplit en cochant → consigne d'action
+	// dédiée (la question de chaque item reste affichée — décision produit).
+	const isQcm = items.some(estItemQcm);
 	const consigne =
-		lesson.exerciseType.consigne ??
-		(lesson.subject === 'math' ? 'Complète.' : 'Écris la forme correcte.');
+		getPrintMode() && isQcm
+			? 'Coche la bonne réponse.'
+			: (lesson.exerciseType.consigne ??
+				(lesson.subject === 'math' ? 'Complète.' : 'Écris la forme correcte.'));
 	return ficheHTMLGeneric(lesson.label, '', consigne, inner);
 }
 

@@ -263,6 +263,44 @@ html.anim-reduced .mark.correct {
 	font-size: 12.5px;
 }
 
+/* QCM imprimable (#289) : question + choix en cases à cocher ☐. S'insère dans le flux
+   de fiche (`.conj-op`) ou de bilan (`.bop`), qui sont des rangées flex → on force la
+   question et la liste en pleine largeur pour qu'elles s'empilent proprement. */
+.qcm-print-q {
+	flex: 0 0 100%;
+	margin: 0 0 6px;
+	font-weight: 600;
+}
+.qcm-print-choices {
+	flex: 0 0 100%;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.qcm-print-choice {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.qcm-print-box {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--ink);
+	border-radius: 3px;
+}
+/* Consigne d'action « Coche… » d'un bloc QCM de bilan (la fiche la porte dans son en-tête). */
+.bloc-consigne {
+	display: block;
+	color: var(--grey);
+	font-style: italic;
+	font-size: 12px;
+	margin: 2px 0 4px;
+}
+
 .foot {
 	text-align: center;
 	color: var(--grey);

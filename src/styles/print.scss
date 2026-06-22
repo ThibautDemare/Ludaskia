@@ -114,4 +114,25 @@
 	.conj-op .ans-text {
 		min-width: 150px;
 	}
+	/* QCM imprimé (#289) : case à cocher bien contrastée sur papier N&B ; images-choix
+	   (symétrie) plus compactes que la figure principale ; un bilan de QCM respire mieux
+	   en 2 colonnes (les choix sont empilés). */
+	.qcm-print-box {
+		border-color: #333 !important;
+	}
+	.qcm-print-choice .figure-svg {
+		max-width: 34mm;
+	}
+	.bilan-grid:has(.qcm-print-choices) {
+		grid-template-columns: repeat(2, 1fr);
+	}
+	/* Terminaison surlignée (#205) d'une option de QCM : le style écran est scopé
+	   `.sprint-choice` → on le réapplique au libellé IMPRIMÉ (gras + souligné noir,
+	   deux signaux non chromatiques) pour ne pas perdre l'indice d'accord sur papier. */
+	.qcm-print-label .term {
+		font-weight: 800;
+		text-decoration: underline;
+		text-decoration-thickness: 2px;
+		text-underline-offset: 3px;
+	}
 }

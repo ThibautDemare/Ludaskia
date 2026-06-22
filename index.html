@@ -11,13 +11,18 @@
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 	</head>
 	<body>
-		<div class="toolbar">
-			<h1>
+		<header class="toolbar">
+			<!-- Branding = lien vers l'accueil (logo cliquable, convention universelle).
+			     Ce n'est PLUS un <h1> : chaque écran porte désormais son propre <h1> (#277).
+			     L'aria-label garde un nom accessible même quand « Ludaskia » est masqué
+			     sous 600px (cf. toolbar.scss). La garde de sortie d'exercice reste assurée
+			     au niveau du hashchange (main.ts), donc un simple lien suffit. -->
+			<a class="toolbar-brand" href="#accueil" aria-label="Ludaskia — retour à l'accueil">
 				<!-- Logo « arbre » dans une pastille blanche : contraste garanti sur
 				     le fond accent quel que soit le thème (vert, bleu, orange…). -->
 				<span class="toolbar-logo"><img src="/logo.png" alt="" aria-hidden="true" /></span>
 				<span class="toolbar-title">Ludaskia</span>
-			</h1>
+			</a>
 			<!-- Toujours visibles (même en exercice) : repère de temps + action principale. -->
 			<span class="chrono hidden" id="chrono">00:00</span>
 			<span class="score hidden" id="score"></span>
@@ -47,12 +52,15 @@
 				<button class="btn-primary" id="btnHome" style="display: none">Accueil</button>
 				<button class="btn-ghost" id="btnPrint">Imprimer / PDF</button>
 			</div>
-		</div>
+		</header>
 		<!-- Voile derrière le tiroir mobile (fermeture au tap extérieur). -->
 		<div class="toolbar-scrim" id="toolbarScrim" hidden></div>
 
 		<!-- Écran d'accueil (interactif) -->
 		<div class="home screen-only home-wide" id="home">
+			<!-- Titre de page sémantique (#277) : l'accueil n'a pas de titre VISUEL (juste
+			     le logo, aria-hidden) → un <h1> réservé au lecteur d'écran identifie la page. -->
+			<h1 class="sr-only">Accueil</h1>
 			<div class="big">
 				<!-- Petit visuel d'accueil : le logo « arbre » seul (le nom est porté
 				     par l'en-tête). -->
@@ -126,7 +134,7 @@
 
 		<!-- Écran de sélection d'une leçon -->
 		<div class="home screen-only" id="lessons" style="display: none">
-			<div class="big">Choisis une leçon</div>
+			<h1 class="big">Choisis une leçon</h1>
 			<div class="tagline" id="starsSummary"></div>
 			<div class="lesson-list" id="lessonList"></div>
 			<div class="printlink"><a id="backHome">← Retour à l'accueil</a></div>
@@ -134,7 +142,7 @@
 
 		<!-- Écran de gestion des profils -->
 		<div class="home screen-only" id="profils" style="display: none">
-			<div class="big">Profils</div>
+			<h1 class="big">Profils</h1>
 			<div class="tagline">Chaque profil garde sa propre progression.</div>
 			<div class="reward-nav reward-nav-profils">
 				<button class="reward-btn" id="btnRecompensesProfils">🎁 Mes récompenses</button>
@@ -158,7 +166,7 @@
 			<button type="button" class="backlink-top" id="backHomeMatieresTop">
 				← Retour à l'accueil
 			</button>
-			<div class="big">Choisis une matière</div>
+			<h1 class="big">Choisis une matière</h1>
 			<div class="tagline">Sélectionne une matière pour voir ses catégories.</div>
 			<div id="matieresContent"></div>
 		</div>
@@ -166,7 +174,7 @@
 		<!-- Écran : catégories d'une matière -->
 		<div class="home screen-only" id="categories" style="display: none">
 			<button type="button" class="backlink-top" id="backMatieresTop">← Retour aux matières</button>
-			<div class="big" id="categoriesTitle">Matière</div>
+			<h1 class="big" id="categoriesTitle">Matière</h1>
 			<div class="tagline">Choisis une catégorie.</div>
 			<div id="categoriesContent"></div>
 		</div>
@@ -176,14 +184,14 @@
 			<button type="button" class="backlink-top" id="backCategorieTop">
 				← Retour aux catégories
 			</button>
-			<div class="big" id="categorieTitle">Catégorie</div>
+			<h1 class="big" id="categorieTitle">Catégorie</h1>
 			<div class="tagline">Travaille une leçon, ou lance un bilan / sprint de la catégorie.</div>
 			<div id="categorieContent"></div>
 		</div>
 
 		<!-- Écran : création / édition d'une liste d'orthographe -->
 		<div class="home screen-only" id="ortho-liste" style="display: none">
-			<div class="big" id="orthoListeTitle">Nouvelle liste</div>
+			<h1 class="big" id="orthoListeTitle">Nouvelle liste</h1>
 			<div class="tagline">Saisis les mots à apprendre (un par ligne, ou colle un bloc).</div>
 			<div id="orthoListeContent"></div>
 			<div class="printlink"><a id="backOrthoListe">← Retour à l'orthographe</a></div>
@@ -191,7 +199,7 @@
 
 		<!-- Écran de configuration du sprint -->
 		<div class="home screen-only" id="sprint-config" style="display: none">
-			<div class="big">Sprint 5 min</div>
+			<h1 class="big">Sprint 5 min</h1>
 			<div class="tagline">Enchaîne les questions le plus vite possible (maths et français).</div>
 			<div id="sprintConfigContent"></div>
 			<div class="printlink"><a id="backHomeSprintConfig">← Retour à l'accueil</a></div>
@@ -199,7 +207,7 @@
 
 		<!-- Écran de configuration du bilan personnalisé -->
 		<div class="home screen-only" id="bilan-custom" style="display: none">
-			<div class="big">Bilan personnalisé</div>
+			<h1 class="big">Bilan personnalisé</h1>
 			<div class="tagline">Choisis les leçons et le nombre de questions.</div>
 			<div id="bilanCustomContent"></div>
 			<div class="printlink"><a id="backHomeBilanCustom">← Retour à l'accueil</a></div>

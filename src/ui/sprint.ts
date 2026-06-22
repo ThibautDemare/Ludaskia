@@ -203,19 +203,21 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 		];
 	}).join('');
 
-	// Sélecteur de périmètre (#208) : « Ce que je connais déjà » (défaut) en tête.
+	// Sélecteur de périmètre (#208) : « Ce que tu connais déjà » (défaut) en tête.
 	// « connais » et non « appris » : critère = rencontrée, pas maîtrisée (avis pédago).
+	// Voix « tu » (#278, l'app pose la question) ; titre en <h2> sous le <h1>
+	// « Sprint 5 min » de l'écran (#277). L'id reste la cible de l'aria-labelledby.
 	const perimetre = choisissable
-		? `<div class="sc-section-title" id="scScopeTitle">Je m'entraîne sur</div>
+		? `<h2 class="sc-section-title" id="scScopeTitle">Sur quoi veux-tu t'entraîner&nbsp;?</h2>
     <div class="sc-options sc-perimetre" role="radiogroup" aria-labelledby="scScopeTitle">
-      <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="seen" ${scope === 'seen' ? 'checked' : ''}><span>Ce que je connais déjà</span></label>
+      <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="seen" ${scope === 'seen' ? 'checked' : ''}><span>Ce que tu connais déjà</span></label>
       <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="all" ${scope === 'all' ? 'checked' : ''}><span>Tout</span></label>
     </div>`
 		: '';
 
 	el.innerHTML = `<div class="sprint-config">
     ${perimetre}
-    <div class="sc-section-title" id="scFilterTitle">Dans quelle matière&nbsp;?</div>
+    <h2 class="sc-section-title" id="scFilterTitle">Dans quelle matière&nbsp;?</h2>
     <div class="sc-options" role="radiogroup" aria-labelledby="scFilterTitle">
       ${opt('all', 'Toutes les matières', countFor({ type: 'all' }))}
       ${subjectOptions}

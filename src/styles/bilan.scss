@@ -561,7 +561,9 @@
 }
 .favori-btns {
 	display: flex;
-	gap: 8px;
+	/* Espace généreux entre Lancer et Supprimer (action destructrice) : on monte de
+	   8 à 12px pour limiter l'appui voisin au doigt d'enfant (#85). */
+	gap: 12px;
 	flex-shrink: 0;
 }
 .favori-btn {
@@ -569,12 +571,24 @@
 	font-family: var(--ui);
 	font-size: 13px;
 	font-weight: 700;
+	/* Cible tactile enfant (a11y, #85) : 44px de haut, contenu centré (le min-height
+	   seul collerait le texte en haut sans le inline-flex). */
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
 	padding: 6px 14px;
 	border-radius: 7px;
 	cursor: pointer;
 	transition:
 		background 0.1s,
 		color 0.1s;
+}
+/* Focus clavier net (échec 2.4.7 sinon : aucun style de focus n'existait). Aligné
+   sur le pattern maison (.item-tts, .sprint-choice…). */
+.favori-btn:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
 }
 .favori-btn-run {
 	background: var(--accent);
@@ -585,6 +599,8 @@
 	background: var(--accent-dark);
 }
 .favori-btn-del {
+	/* Bouton icône-seule : on garantit une cible carrée ≥ 44×44 (#85). */
+	min-width: 44px;
 	background: transparent;
 	color: var(--ko, #c62828);
 	border: 1.5px solid var(--ko, #c62828);

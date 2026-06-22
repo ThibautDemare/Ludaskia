@@ -19,6 +19,8 @@ import {
 	lessonAttr,
 	setRenderLesson,
 	setInputCounter,
+	setPrintMode,
+	estItemQcm,
 	nextInputId,
 	getSessionItems,
 } from './items';
@@ -509,7 +511,11 @@ function bilanPrintHTML(scope: PrintScope): string {
 			setRenderLesson(b.id);
 			const ops = b.ops.map((o) => `<div class="bop">${renderItem(o)}</div>`).join('');
 			setRenderLesson(null);
-			return `<div class="bloc"><span class="btheme">${escapeHTML(b.theme)}</span>${ops}</div>`;
+			// Bloc de QCM imprimé (#289) : consigne d'action « Coche… » sous le thème (le
+			// bilan n'a pas de consigne par leçon, contrairement à la fiche).
+			const isQcm = b.ops.some(estItemQcm);
+			const action = isQcm ? `<span class="bloc-consigne">Coche la bonne réponse.</span>` : '';
+			return `<div class="bloc"><span class="btheme">${escapeHTML(b.theme)}</span>${action}${ops}</div>`;
 		})
 		.join('');
 	return `<div class="page">
@@ -526,8 +532,17 @@ function bilanPrintHTML(scope: PrintScope): string {
    « fiches » et « bilan » sont deux documents distincts (kind). */
 export function buildPrintableDOM(scope: PrintScope): string {
 	setInputCounter(0);
-	const single = scope.lessonIds.length === 1;
-	const cover = single ? '' : coverHTML(scope);
-	const body = scope.kind === 'bilan' ? bilanPrintHTML(scope) : fichesPagesForIds(scope.lessonIds);
-	return cover + body;
+	// Mode impression (#289) : actif pour TOUTE la génération du document (QCM en cases
+	// à cocher, zone-réponse garantie, consignes-crayon), puis retiré quoi qu'il arrive
+	// — l'écran (sprint, bilan interactif) ne doit jamais hériter de ce mode.
+	setPrintMode(true);
+	try {
+		const single = scope.lessonIds.length === 1;
+		const cover = single ? '' : coverHTML(scope);
+		const body =
+			scope.kind === 'bilan' ? bilanPrintHTML(scope) : fichesPagesForIds(scope.lessonIds);
+		return cover + body;
+	} finally {
+		setPrintMode(false);
+	}
 }

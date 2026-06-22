@@ -730,6 +730,11 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 	const figure = ex.type === 'text' || ex.type === 'qcm' ? ex.figure : undefined;
 	// Texte lu à voix haute (#42) si l'énoncé est télégraphique (cf. tts-text).
 	const parle = 'parle' in ex ? ex.parle : undefined;
+	// Choix d'un QCM (#289) : conservés pour le rendu PAPIER en cases à cocher (jetés
+	// jusqu'ici). `choicesView` (vue riche : fraction empilée, terminaison, image) suit
+	// `choices` par index. Le runner d'écran n'en dépend pas (il lit l'Exercise).
+	const choices = ex.type === 'qcm' ? ex.choices : undefined;
+	const choicesView = ex.type === 'qcm' ? ex.choicesView : undefined;
 	if (lesson.subject === 'math') {
 		// Saisie de l'heure en 2 champs (#88) ; sinon numérique (calcul) ou texte (signe).
 		const kind =
@@ -741,7 +746,17 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 		// `answers` (formes équivalentes acceptées, ex. « 10 h 15 » / « 10h15 ») est
 		// aussi propagé pour les maths : la lecture de l'heure tolère plusieurs écritures.
 		const answers = ex.type === 'text' ? ex.answers : undefined;
-		return { text: question, answer: ex.answer, answers, kind, figure, parle, _lesson: lesson.id };
+		return {
+			text: question,
+			answer: ex.answer,
+			answers,
+			kind,
+			figure,
+			parle,
+			choices,
+			choicesView,
+			_lesson: lesson.id,
+		};
 	}
 	return {
 		text: question,
@@ -750,6 +765,8 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 		kind: 'text',
 		figure,
 		parle,
+		choices,
+		choicesView,
 		_lesson: lesson.id,
 	};
 }

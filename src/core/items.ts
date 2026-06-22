@@ -26,8 +26,18 @@ export interface Item {
 	posed?: PosedSpec; // présent si kind === 'posed'
 	figure?: string; // fragment SVG (moteur core/figures.ts), affiché au-dessus de la question (#88)
 	parle?: string; // texte LU à voix haute si l'énoncé est télégraphique (#42 ; cf. tts-text)
+	// QCM (#289) : choix conservés pour le rendu PAPIER en cases à cocher. À l'écran, le
+	// QCM est joué par son runner interactif (qui lit l'Exercise, pas l'Item) ; ces champs
+	// ne servent qu'au chemin fiche/bilan IMPRIMÉ. `choicesView` (vue riche) est aligné
+	// par index sur `choices` (la valeur). Voir genLessonItem et renderItem.
+	choices?: string[];
+	choicesView?: ChoiceView[];
 	_lesson?: string;
 }
+
+/* Un item est-il un QCM ? (source unique #289 : rendu PAPIER en cases à cocher dans
+   renderItem, et consigne d'action « Coche… » de la fiche/du bloc de bilan). */
+export const estItemQcm = (it: Item): boolean => !!(it.choices && it.choices.length);
 
 /* Enveloppe d'affichage d'une figure SVG (#88), placée AVANT la question.
    Centralisé ici pour que tous les rendus (fiche, QCM, sprint, révision)
@@ -118,6 +128,14 @@ export const setRenderLesson = (v: string | null) => {
 };
 // Attribut data-lesson, ou rien si on ne rattache pas le champ à une leçon.
 export const lessonAttr = () => (renderLesson != null ? ` data-lesson="${renderLesson}"` : '');
+// Mode IMPRESSION (#289) : posé/retiré autour de buildPrintableDOM (seul point d'entrée
+// d'impression). En impression, renderItem rend les QCM en cases à cocher et garantit une
+// zone-réponse pour tout item ; à l'écran (sprint, bilan interactif) rien ne change.
+let printMode = false;
+export const getPrintMode = () => printMode;
+export const setPrintMode = (v: boolean) => {
+	printMode = v;
+};
 
 /* Attributs des champs de réponse TEXTE (conjugaison, etc.) — issues #67/#123/#139.
    Sur tablette, la barre de suggestions prédictive des claviers (Gboard, Samsung,
@@ -134,9 +152,31 @@ export const lessonAttr = () => (renderLesson != null ? ` data-lesson="${renderL
 export const TEXT_ANSWER_INPUT_ATTRS =
 	'type="password" data-unmask autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"';
 
+/* Rendu PAPIER d'un QCM (#289) : la question, puis chaque choix précédé d'une case à
+   cocher ☐. Le libellé est le texte échappé, ou la vue riche `choicesView` de confiance
+   (fraction empilée, terminaison surlignée, image de symétrie), alignée par index. La
+   consigne d'action « Coche… » est portée par la fiche / le bloc de bilan, pas répétée
+   ici. Réservé à l'impression : à l'écran, le QCM est joué par son runner interactif. */
+function qcmCheckboxHTML(it: Item): string {
+	const lis = (it.choices ?? [])
+		.map((c, i) => {
+			const view = it.choicesView?.[i];
+			const label = view ? view.html : escapeHTML(c);
+			const aria = view ? ` aria-label="${escapeHTML(view.label)}"` : '';
+			return `<li class="qcm-print-choice"><span class="qcm-print-box" aria-hidden="true"></span><span class="qcm-print-label"${aria}>${label}</span></li>`;
+		})
+		.join('');
+	return `${figureBlock(it.figure)}<p class="qcm-print-q">${enonceTexte(it.text)}</p><ul class="qcm-print-choices">${lis}</ul>`;
+}
+
 export function renderItem(it: Item, extra = '') {
 	// Opération posée : déployée en grille de colonnes (plusieurs champs .ans).
 	if (it.kind === 'posed' && it.posed) return posedGridHTML(it.posed);
+	// QCM imprimable (#289) : un item porteur de `choices` (sa question n'a pas de `@`)
+	// est rendu en cases à cocher, UNIQUEMENT en impression. À l'écran, ce chemin
+	// (fiche/bilan interactif) laisse le QCM sans champ de saisie — limite préexistante,
+	// hors périmètre #289 (le QCM interactif vit dans son propre runner, pas ici).
+	if (printMode && estItemQcm(it)) return qcmCheckboxHTML(it);
 	const id = nextInputId();
 	sessionItems[id] = it;
 	// Réponse exposée pour la révélation après correction (échappée pour les attributs).
@@ -159,7 +199,11 @@ export function renderItem(it: Item, extra = '') {
 		it.kind === 'text'
 			? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
 			: `<input class="ans ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
-	return figureBlock(it.figure) + enonceTexte(it.text).replace('@', field);
+	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
+	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
+	const texte = enonceTexte(it.text);
+	const place = texte.includes('@') ? texte : printMode ? `${texte} @` : texte;
+	return figureBlock(it.figure) + place.replace('@', field);
 }
 export function gridHTML(items: Item[], cols: number) {
 	const cls = cols === 3 ? 'c3' : 'c4';

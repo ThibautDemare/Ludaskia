@@ -158,13 +158,16 @@ function faitReflet(): Fait {
 	// `'reflet'` est toujours présent (sample des trois transformations) → indexOf ≥ 0.
 	const answer = POSITIONS[transforms.indexOf('reflet')];
 	return {
-		base: "Touche l'image où la figure est bien reflétée dans le miroir.",
+		// Énoncé NEUTRE en modalité (#289) : pas de verbe tactile (« Touche ») — la
+		// fiche imprimée doit pouvoir se cocher au crayon, et la question marche aussi
+		// bien à l'écran (l'enfant désigne l'image) que sur papier.
+		base: 'Quelle image montre le vrai reflet de la figure dans le miroir ?',
 		answer,
 		choices: POSITIONS.slice(),
 		choicesView,
 		figure: renderFigure({ kind: 'symMiroir', motif, axis }),
 		parle:
-			'Observe la figure et son miroir. Touche, parmi les trois images, celle où la figure est bien reflétée dans le miroir.',
+			'Observe la figure et son miroir. Parmi les trois images, laquelle montre le vrai reflet de la figure dans le miroir ?',
 		explication: `Le bon reflet est ${answer} : la figure y est retournée, comme dans un vrai miroir. Dans les autres, elle est seulement glissée (déplacée sans être retournée) ou tournée.`,
 	};
 }

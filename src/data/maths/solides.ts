@@ -142,6 +142,26 @@ const PROPRIETES: PropQ[] = [
 		a: 'la boule',
 		choices: ['la boule', 'le cylindre', 'le cube', 'le cône'],
 	},
+	// ----- Ajouts #285 (variété) : comptage EXACT réservé aux polyèdres (cube/pavé/pyramide) ;
+	// pour les solides ronds, propriétés qualitatives sûres + ancrage objet-réel. -----
+	{ q: "Combien d'arêtes a un pavé droit ?", a: '12', choices: ['6', '8', '10', '12'] },
+	{ q: 'Combien de sommets a un pavé droit ?', a: '8', choices: ['4', '6', '8', '12'] },
+	{
+		q: 'Combien de sommets a une pyramide à base carrée ?',
+		a: '5',
+		choices: ['4', '5', '6', '8'],
+	},
+	{ q: 'Combien de disques a un cylindre ?', a: '2', choices: ['0', '1', '2', '3'] },
+	{
+		q: "Quel solide a la forme d'un dé ?",
+		a: 'le cube',
+		choices: ['le cube', 'la boule', 'le cylindre', 'le cône'],
+	},
+	{
+		q: "Quel solide a la forme d'une balle ?",
+		a: 'la boule',
+		choices: ['la boule', 'le cube', 'le pavé droit', 'le cône'],
+	},
 ];
 
 function proprietesType(): ExerciseType {

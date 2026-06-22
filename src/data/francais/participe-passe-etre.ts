@@ -51,11 +51,23 @@ export interface VerbeEtre {
 	complement?: string;
 }
 
-/* Verbes archi-fréquents, EXCLUSIVEMENT « être » dans l'emploi de mouvement/état
-   visé (avis pedagogue-primaire : « monter » et « sortir » écartés car ils se
-   construisent aussi avec « avoir » en emploi transitif — message brouillé pour
-   une première rencontre). La famille graphique « -é » domine (propre aux verbes
-   du 1er groupe + naître) ; « -i » (partir) et « -u » (venir) apportent la variété. */
+/* Verbes de mouvement/état au participe passé avec « être ».
+   #285 (variété) : +6 verbes (revenir, repartir, retomber, monter, descendre, rentrer).
+
+   DOCTRINE AFFINÉE (avis pedagogue-primaire, #285). « monter / descendre / sortir »
+   avaient été écartés en #205 car ils prennent aussi « avoir » au sens transitif
+   (« il a monté la valise »). Mais ce piège n'existe que si l'enfant CHOISIT
+   l'auxiliaire. ICI « être » est IMPOSÉ par l'énoncé et la phrase reste SANS COD
+   (« Il est monté. ») : seul l'accord du participe avec le sujet est en jeu — donc
+   monter/descendre/rentrer sont SÛRS dans cette leçon. On garde en revanche fermés :
+   - « sortir / passer / retourner » : emploi transitif « avoir » + COD ultra-fréquent
+     à l'oral enfantin (« il a sorti le chien »), trop proche de la confusion ;
+   - « devenir » : attribut variable (devenu grand → devenue grande), qui casserait
+     l'invariant « complément invariable, identique source/cible » ;
+   - « mourir » : thème inadapté à une répétition décontextualisée pour un enfant.
+
+   La famille graphique « -é » domine (1er groupe + naître) ; « -i » (partir/repartir)
+   et « -u » (venir/revenir/descendre) apportent la variété graphique. */
 export const VERBES: VerbeEtre[] = [
 	{
 		infinitif: 'aller',
@@ -70,6 +82,25 @@ export const VERBES: VerbeEtre[] = [
 	{ infinitif: 'rester', base: 'rest', terminaisons: { ms: 'é', fs: 'ée', mp: 'és', fp: 'ées' } },
 	{ infinitif: 'entrer', base: 'entr', terminaisons: { ms: 'é', fs: 'ée', mp: 'és', fp: 'ées' } },
 	{ infinitif: 'naître', base: 'n', terminaisons: { ms: 'é', fs: 'ée', mp: 'és', fp: 'ées' } },
+	// ----- Ajouts #285 : verbes toujours « être », complets sans complément. -----
+	{ infinitif: 'revenir', base: 'reven', terminaisons: { ms: 'u', fs: 'ue', mp: 'us', fp: 'ues' } },
+	{
+		infinitif: 'repartir',
+		base: 'repart',
+		terminaisons: { ms: 'i', fs: 'ie', mp: 'is', fp: 'ies' },
+	},
+	{
+		infinitif: 'retomber',
+		base: 'retomb',
+		terminaisons: { ms: 'é', fs: 'ée', mp: 'és', fp: 'ées' },
+	},
+	{ infinitif: 'monter', base: 'mont', terminaisons: { ms: 'é', fs: 'ée', mp: 'és', fp: 'ées' } },
+	{
+		infinitif: 'descendre',
+		base: 'descend',
+		terminaisons: { ms: 'u', fs: 'ue', mp: 'us', fp: 'ues' },
+	},
+	{ infinitif: 'rentrer', base: 'rentr', terminaisons: { ms: 'é', fs: 'ée', mp: 'és', fp: 'ées' } },
 ];
 
 /* Patron de transformation : sujet source (singulier) → sujet cible. `options`

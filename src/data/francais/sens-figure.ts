@@ -222,6 +222,96 @@ export const GROUPES_SENS: GroupeSens[] = [
 			{ phrase: 'Ce secret me pèse.', mot: 'pèse', sens: 'figuré' },
 		],
 	},
+	// ----- Ajouts #285 (variété anti-répétition) : 8 verbes, sens propre/figuré CE2,
+	// 2 phrases par sens (équilibre conservé). -----
+	{
+		propre: 'surveiller un lieu',
+		figure: 'ne pas révéler (conserver)',
+		distracteur: 'perdre',
+		phrases: [
+			{ phrase: 'Le chien garde la maison.', mot: 'garde', sens: 'propre' },
+			{ phrase: 'Le berger garde ses moutons.', mot: 'garde', sens: 'propre' },
+			{ phrase: 'Tu sais garder un secret.', mot: 'garder', sens: 'figuré' },
+			{ phrase: 'Garde cette nouvelle pour toi.', mot: 'Garde', sens: 'figuré' },
+		],
+	},
+	{
+		propre: 'faire un bond',
+		figure: "passer sans s'arrêter",
+		distracteur: 'tomber',
+		phrases: [
+			{ phrase: 'Le kangourou saute très haut.', mot: 'saute', sens: 'propre' },
+			{ phrase: 'Elle saute par-dessus la flaque.', mot: 'saute', sens: 'propre' },
+			{ phrase: "J'ai sauté une ligne en lisant.", mot: 'sauté', sens: 'figuré' },
+			{ phrase: 'Il a sauté le petit-déjeuner.', mot: 'sauté', sens: 'figuré' },
+		],
+	},
+	{
+		propre: 'trancher avec une lame',
+		figure: 'interrompre',
+		distracteur: 'coller',
+		phrases: [
+			{ phrase: 'Il coupe le pain.', mot: 'coupe', sens: 'propre' },
+			{ phrase: 'Le coiffeur coupe les cheveux.', mot: 'coupe', sens: 'propre' },
+			{ phrase: 'Ne coupe pas la parole.', mot: 'coupe', sens: 'figuré' },
+			{ phrase: 'Elle me coupe quand je parle.', mot: 'coupe', sens: 'figuré' },
+		],
+	},
+	{
+		propre: 'percevoir une odeur',
+		figure: 'deviner, pressentir',
+		distracteur: 'toucher',
+		phrases: [
+			{ phrase: 'Je sens le parfum des roses.', mot: 'sens', sens: 'propre' },
+			{ phrase: 'Le chien sent une piste.', mot: 'sent', sens: 'propre' },
+			{ phrase: "Je sens qu'il va pleuvoir.", mot: 'sens', sens: 'figuré' },
+			{ phrase: 'Elle sent un danger.', mot: 'sent', sens: 'figuré' },
+		],
+	},
+	{
+		propre: 'égarer un objet',
+		figure: 'ne plus avoir (patience, courage)',
+		distracteur: 'trouver',
+		phrases: [
+			{ phrase: "J'ai perdu ma gomme.", mot: 'perdu', sens: 'propre' },
+			{ phrase: 'Il perd souvent ses clés.', mot: 'perd', sens: 'propre' },
+			{ phrase: 'Ne perds pas patience.', mot: 'perds', sens: 'figuré' },
+			{ phrase: 'Elle perd courage trop vite.', mot: 'perd', sens: 'figuré' },
+		],
+	},
+	{
+		propre: 'tenir et transporter',
+		figure: 'apporter de la chance',
+		distracteur: 'poser',
+		phrases: [
+			{ phrase: 'Il porte un gros sac.', mot: 'porte', sens: 'propre' },
+			{ phrase: 'Elle porte le bébé.', mot: 'porte', sens: 'propre' },
+			{ phrase: 'Ce trèfle porte chance.', mot: 'porte', sens: 'figuré' },
+			{ phrase: 'On dit que le fer à cheval porte bonheur.', mot: 'porte', sens: 'figuré' },
+		],
+	},
+	{
+		propre: "aller d'un lieu à un autre",
+		figure: "s'écouler (le temps)",
+		distracteur: 'rester',
+		phrases: [
+			{ phrase: 'Le train passe sous le pont.', mot: 'passe', sens: 'propre' },
+			{ phrase: 'Nous passons par la forêt.', mot: 'passons', sens: 'propre' },
+			{ phrase: 'Les vacances passent trop vite.', mot: 'passent', sens: 'figuré' },
+			{ phrase: 'Le temps passe doucement.', mot: 'passe', sens: 'figuré' },
+		],
+	},
+	{
+		propre: 'poursuivre pour attraper',
+		figure: 'faire partir, éloigner',
+		distracteur: 'nourrir',
+		phrases: [
+			{ phrase: 'Le lion chasse la gazelle.', mot: 'chasse', sens: 'propre' },
+			{ phrase: 'Le chat chasse les souris.', mot: 'chasse', sens: 'propre' },
+			{ phrase: 'Le vent chasse les nuages.', mot: 'chasse', sens: 'figuré' },
+			{ phrase: 'Chasse cette mauvaise idée.', mot: 'Chasse', sens: 'figuré' },
+		],
+	},
 ];
 
 const MODE_QCM: ModeOption[] = [

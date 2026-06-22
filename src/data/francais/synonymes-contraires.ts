@@ -320,6 +320,77 @@ export const CONTRAIRES: ItemSens[] = [
 		reponse: 'vite',
 		distracteurs: ['souvent', 'gentiment'],
 	},
+	// ----- Ajouts #285 (variété) : antonymes francs, distracteurs hors de la phrase. -----
+	{
+		phrase: 'L’avion vole très **haut** dans le ciel.',
+		reponse: 'bas',
+		distracteurs: ['rond', 'bleu'],
+	},
+	{
+		phrase: 'Le tiroir du meuble est tout en **bas**.',
+		reponse: 'haut',
+		distracteurs: ['rond', 'vert'],
+	},
+	{
+		phrase: 'Le pain de la veille est devenu tout **dur**.',
+		reponse: 'mou',
+		distracteurs: ['rond', 'sucré'],
+	},
+	{
+		phrase: 'Après la pluie, le sol est tout **mou**.',
+		reponse: 'dur',
+		distracteurs: ['vert', 'plat'],
+	},
+	{
+		phrase: 'Le grand couloir est très **large**.',
+		reponse: 'étroit',
+		distracteurs: ['long', 'gris'],
+	},
+	{
+		phrase: 'Le petit chemin du bois est **étroit**.',
+		reponse: 'large',
+		distracteurs: ['rond', 'vert'],
+	},
+	{
+		phrase: 'Après la douche, mon chien est tout **mouillé**.',
+		reponse: 'sec',
+		distracteurs: ['petit', 'gris'],
+	},
+	{
+		phrase: 'En été, le sol du jardin est **sec**.',
+		reponse: 'mouillé',
+		distracteurs: ['vert', 'dur'],
+	},
+	{
+		phrase: 'Le gros dictionnaire est très **épais**.',
+		reponse: 'fin',
+		distracteurs: ['rond', 'léger'],
+	},
+	{
+		phrase: 'Le trait de crayon est très **fin**.',
+		reponse: 'épais',
+		distracteurs: ['long', 'rouge'],
+	},
+	{
+		phrase: 'Le chat veut rester **dehors**.',
+		reponse: 'dedans',
+		distracteurs: ['debout', 'vite'],
+	},
+	{
+		phrase: 'Quand il pleut, on joue **dedans**.',
+		reponse: 'dehors',
+		distracteurs: ['debout', 'souvent'],
+	},
+	{
+		phrase: 'Le jour de la fête, il est très **content**.',
+		reponse: 'triste',
+		distracteurs: ['poli', 'grand'],
+	},
+	{
+		phrase: 'Après le départ de son ami, il est **triste**.',
+		reponse: 'content',
+		distracteurs: ['poli', 'rapide'],
+	},
 ];
 
 /* ---------- Banque : Les mots de sens proche (synonymes) ---------- */
@@ -578,6 +649,47 @@ export const SENS_PROCHE: ItemSens[] = [
 		phrase: 'Le vieux loup affamé est tout **maigre**.',
 		reponse: 'mince',
 		distracteurs: ['gris', 'lent'],
+	},
+	// ----- Ajouts #285 (variété) : synonymes francs CE2 ; distracteurs hors de la phrase. -----
+	{
+		phrase: 'À la récré, le garçon est **content**.',
+		reponse: 'joyeux',
+		distracteurs: ['fatigué', 'poli'],
+	},
+	{
+		phrase: 'Quand on le dérange, papa est **fâché**.',
+		reponse: 'mécontent',
+		distracteurs: ['fatigué', 'poli'],
+	},
+	{
+		phrase: 'Le lièvre file **rapidement**.',
+		reponse: 'vite',
+		distracteurs: ['souvent', 'bien'],
+	},
+	{
+		phrase: 'Le coucher de soleil est très **joli**.',
+		reponse: 'beau',
+		distracteurs: ['grand', 'lourd'],
+	},
+	{
+		phrase: 'Le petit renard est très **rusé**.',
+		reponse: 'malin',
+		distracteurs: ['roux', 'grand'],
+	},
+	{
+		phrase: 'Après l’orage, la mer est **tranquille**.',
+		reponse: 'calme',
+		distracteurs: ['propre', 'grande'],
+	},
+	{
+		phrase: 'Le coureur du marathon est très **mince**.',
+		reponse: 'maigre',
+		distracteurs: ['grand', 'blond'],
+	},
+	{
+		phrase: 'Le film va bientôt **finir**.',
+		reponse: 'terminer',
+		distracteurs: ['tomber', 'briller'],
 	},
 ];
 

@@ -50,9 +50,10 @@ const MODE_QCM: ModeOption[] = [
 ];
 
 /* ---------- F1 — banque « Quel point à la fin ? » ---------- */
-// Équilibre : 8 « . » / 7 « ? » / 7 « ! ». Aucun item ambigu (deux items
+// Équilibre : 14 « . » / 13 « ? » / 13 « ! ». Aucun item ambigu (deux items
 // « limite » signalés par le pédagogue remplacés par des exclamatives en
-// « Quelle/Comme », sans interjection à double lecture).
+// « Quelle/Comme », sans interjection à double lecture). Banque étoffée (#285)
+// pour casser la répétition : +6 phrases par signe, mêmes règles d'or.
 export const PHRASES_PONCT: PhrasePonct[] = [
 	// « . » — déclaratives neutres, AUCUN marqueur.
 	{
@@ -167,12 +168,107 @@ export const PHRASES_PONCT: PhrasePonct[] = [
 		point: '!',
 		explication: "« Comme » marque l'étonnement : c'est un point d'exclamation.",
 	},
+	// ----- Ajouts #285 (variété anti-répétition) : +6 par signe, équilibre conservé. -----
+	// « . » — déclaratives neutres, AUCUN marqueur.
+	{
+		phrase: 'La pluie tombe sur les toits',
+		point: '.',
+		explication: "On raconte ce qui se passe dehors : c'est un point.",
+	},
+	{
+		phrase: 'Les élèves rangent leurs cartables',
+		point: '.',
+		explication: "La phrase dit ce qu'on fait : on met un point.",
+	},
+	{
+		phrase: 'Le boulanger prépare le pain chaud',
+		point: '.',
+		explication: "On donne une information : c'est un point.",
+	},
+	{
+		phrase: 'Mon chat ronronne sur le coussin',
+		point: '.',
+		explication: "La phrase raconte une scène calme : c'est un point.",
+	},
+	{
+		phrase: 'Nous plantons des tomates au jardin',
+		point: '.',
+		explication: "On dit ce qu'on fait, sans surprise : c'est un point.",
+	},
+	{
+		phrase: 'Le voilier avance sur la mer',
+		point: '.',
+		explication: 'La phrase raconte quelque chose : on met un point.',
+	},
+	// « ? » — marqueur interrogatif explicite (mot interrogatif ou inversion).
+	{
+		phrase: 'Combien de bonbons veux-tu',
+		point: '?',
+		explication: "« Combien » demande un nombre : c'est un point d'interrogation.",
+	},
+	{
+		phrase: 'Aimes-tu les fraises',
+		point: '?',
+		explication: "Le verbe est placé avant « tu » : c'est un point d'interrogation.",
+	},
+	{
+		phrase: 'Quand reviens-tu de vacances',
+		point: '?',
+		explication: "« Quand » demande un moment : on met un point d'interrogation.",
+	},
+	{
+		phrase: 'Veux-tu jouer avec moi',
+		point: '?',
+		explication: "Le verbe est placé avant « tu » : c'est un point d'interrogation.",
+	},
+	{
+		phrase: 'Comment fais-tu ce tour de magie',
+		point: '?',
+		explication: "« Comment » pose une question : on met un point d'interrogation.",
+	},
+	{
+		phrase: 'Qui a pris mon crayon rouge',
+		point: '?',
+		explication: "« Qui » demande une personne : c'est un point d'interrogation.",
+	},
+	// « ! » — interjection ou exclamation lexicalement marquée (« Quel(le)… », « Comme… »).
+	{
+		phrase: 'Quelle jolie surprise tu me fais',
+		point: '!',
+		explication: "« Quelle » montre qu'on est content : c'est un point d'exclamation.",
+	},
+	{
+		phrase: 'Bravo pour ce beau dessin',
+		point: '!',
+		explication: "« Bravo » félicite très fort : c'est un point d'exclamation.",
+	},
+	{
+		phrase: 'Quel joli château de sable',
+		point: '!',
+		explication: "« Quel » montre qu'on est émerveillé : c'est un point d'exclamation.",
+	},
+	{
+		phrase: 'Comme cette fleur sent bon',
+		point: '!',
+		explication: "« Comme » marque la surprise : c'est un point d'exclamation.",
+	},
+	{
+		phrase: 'Attention à la marche',
+		point: '!',
+		explication: "« Attention » avertit fort : on met un point d'exclamation.",
+	},
+	{
+		phrase: 'Quel magnifique arc-en-ciel',
+		point: '!',
+		explication: "« Quel » montre qu'on est émerveillé : c'est un point d'exclamation.",
+	},
 ];
 
 /* ---------- F2 — banque « Quel type de phrase ? » ---------- */
-// Équilibre : 7 déclaratifs / 7 interrogatifs / 7 impératifs. Mélange VOULU :
+// Équilibre : 13 déclaratifs / 13 interrogatifs / 13 impératifs. Mélange VOULU :
 // impératifs au point + déclaratifs au « ! » → l'enfant ne peut pas se fier au
-// seul symbole, il doit lire la structure (avis pédagogue).
+// seul symbole, il doit lire la structure (avis pédagogue). Banque étoffée
+// (#285) : +6 phrases par type, équilibre et mélange conservés.
 export const PHRASES_TYPE: PhraseType[] = [
 	// Déclaratif — on raconte / on dit (dont 2 au « ! » : le « ! » ne dit pas « ordre »).
 	{
@@ -282,6 +378,101 @@ export const PHRASES_TYPE: PhraseType[] = [
 		phrase: 'Mange tes légumes.',
 		type: 'imperatif',
 		explication: "La phrase dit de faire quelque chose : c'est un ordre.",
+	},
+	// ----- Ajouts #285 (variété anti-répétition) : +6 par type, mélange point ≠ type conservé. -----
+	// Déclaratif — on raconte / on dit (dont 1 au « ! » : le « ! » ne dit pas « ordre »).
+	{
+		phrase: 'Le facteur apporte une lettre.',
+		type: 'declaratif',
+		explication: 'La phrase donne une information : elle raconte.',
+	},
+	{
+		phrase: 'Les abeilles butinent les fleurs.',
+		type: 'declaratif',
+		explication: 'On raconte ce que font les abeilles : la phrase raconte.',
+	},
+	{
+		phrase: 'Mon grand frère joue de la guitare.',
+		type: 'declaratif',
+		explication: 'La phrase raconte quelque chose : elle dit.',
+	},
+	{
+		phrase: 'La neige recouvre tout le village.',
+		type: 'declaratif',
+		explication: "On décrit ce qu'on voit : la phrase raconte.",
+	},
+	{
+		phrase: 'Ce gâteau au chocolat est vraiment délicieux !',
+		type: 'declaratif',
+		explication:
+			"Le « ! » montre qu'on se régale, mais la phrase raconte un fait : c'est une phrase qui dit.",
+	},
+	{
+		phrase: 'Le train pour Paris part à midi.',
+		type: 'declaratif',
+		explication: 'On donne une information : la phrase raconte.',
+	},
+	// Interrogatif — on pose une question.
+	{
+		phrase: 'Veux-tu venir à mon anniversaire ?',
+		type: 'interrogatif',
+		explication: "Le verbe est placé avant « tu » et on attend une réponse : c'est une question.",
+	},
+	{
+		phrase: 'Pourquoi le ciel est-il bleu ?',
+		type: 'interrogatif',
+		explication: "« Pourquoi » attend une explication : c'est une phrase qui demande.",
+	},
+	{
+		phrase: 'Combien de pommes reste-t-il ?',
+		type: 'interrogatif',
+		explication: "« Combien » demande un nombre : c'est une phrase qui pose une question.",
+	},
+	{
+		phrase: 'As-tu rangé tes affaires ?',
+		type: 'interrogatif',
+		explication: "On attend une réponse oui ou non : c'est une question.",
+	},
+	{
+		phrase: 'Où as-tu trouvé ce caillou ?',
+		type: 'interrogatif',
+		explication: "« Où » demande un endroit : c'est une phrase qui pose une question.",
+	},
+	{
+		phrase: "Comment s'appelle ta maîtresse ?",
+		type: 'interrogatif',
+		explication: "« Comment » demande une réponse : c'est une question.",
+	},
+	// Impératif — on donne un ordre / un conseil (dont la plupart au point).
+	{
+		phrase: 'Range tes affaires avant de partir.',
+		type: 'imperatif',
+		explication: "La phrase dit de faire quelque chose : c'est un ordre.",
+	},
+	{
+		phrase: 'Lave-toi les mains avant le repas.',
+		type: 'imperatif',
+		explication: "La phrase commande de faire quelque chose : c'est un ordre.",
+	},
+	{
+		phrase: 'Ne touche pas à ce vase.',
+		type: 'imperatif',
+		explication: "La phrase dit de ne pas faire quelque chose : c'est un ordre.",
+	},
+	{
+		phrase: 'Ferme bien la fenêtre.',
+		type: 'imperatif',
+		explication: "La phrase commande de faire quelque chose : c'est un ordre.",
+	},
+	{
+		phrase: "Aide ton petit frère, s'il te plaît.",
+		type: 'imperatif',
+		explication: "On demande de faire quelque chose : c'est un ordre (poli).",
+	},
+	{
+		phrase: "Viens vite, on t'attend !",
+		type: 'imperatif',
+		explication: "Même avec un « ! », la phrase commande de faire quelque chose : c'est un ordre.",
 	},
 ];
 

@@ -89,15 +89,22 @@ const POOL_INITIALE: string[] = [
 
 /* Groupes de mots partageant la 1re lettre mais dont la 2e lettre DIFFÈRE :
    ainsi le tri alphabétique de tout le groupe se joue sans ambiguïté sur la
-   deuxième lettre (pas besoin de regarder plus loin). */
+   deuxième lettre (pas besoin de regarder plus loin).
+   #285 (variété) : groupes d/g/l/r/v ajoutés et groupes existants étoffés ; dans
+   chaque groupe, toutes les 2es lettres restent distinctes (cf. annotations). */
 const GROUPES_DEUXIEME: string[][] = [
-	['ballon', 'bicyclette', 'bonbon', 'brosse', 'bulle'], // b : a i o r u
-	['cabane', 'ceinture', 'chien', 'classe', 'crayon', 'cuisine'], // c : a e h l r u
-	['facteur', 'fenêtre', 'fil', 'forêt', 'fruit', 'fumée'], // f : a e i o r u
+	['ballon', 'berger', 'bicyclette', 'bonbon', 'brosse', 'bulle'], // b : a e i o r u
+	['cabane', 'ceinture', 'chien', 'citron', 'classe', 'crayon', 'cuisine'], // c : a e h i l r u
+	['dauphin', 'dent', 'dindon', 'doigt', 'drapeau', 'dune'], // d : a e i o r u
+	['facteur', 'fenêtre', 'fil', 'fleur', 'forêt', 'fruit', 'fumée'], // f : a e i l o r u
+	['gare', 'genou', 'girafe', 'gomme', 'grenouille', 'guitare'], // g : a e i o r u
+	['lac', 'lettre', 'lion', 'loup', 'lune'], // l : a e i o u
 	['maison', 'melon', 'midi', 'moto', 'mur'], // m : a e i o u
-	['panier', 'peigne', 'pirate', 'pomme', 'prince', 'puzzle'], // p : a e i o r u
-	['sac', 'seau', 'singe', 'soleil', 'sucre'], // s : a e i o u
-	['table', 'timbre', 'tomate', 'train', 'tulipe'], // t : a i o r u
+	['panier', 'peigne', 'pirate', 'plume', 'pomme', 'prince', 'puzzle'], // p : a e i l o r u
+	['rat', 'renard', 'rideau', 'robot', 'rue'], // r : a e i o u
+	['sac', 'seau', 'singe', 'soleil', 'stylo', 'sucre'], // s : a e i o t u
+	['table', 'tente', 'timbre', 'tomate', 'train', 'tulipe'], // t : a e i o r u
+	['vache', 'vent', 'ville', 'voiture', 'vue'], // v : a e i o u
 ];
 
 /* Tri alphabétique français (gère les accents : é ≈ e). */

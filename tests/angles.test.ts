@@ -1,33 +1,46 @@
 /* ============================================================
-   Les angles (#202) — logique de génération (src/data/maths/angles) et
-   invariants du renderer (src/core/figures → renderAngle). Sans DOM.
-   Invariants CE2 : QCM aux trois temps (Oui-Non / comparer / nommer) ;
-   AUCUN degré affiché ; « angle droit ⇒ carré de codage » (jamais d'arc),
-   « aigu/obtus ⇒ arc » (jamais de carré) ; « égal/droit » n'est proposé QUE
-   sur un angle droit marqué ; le vocabulaire (bulle d'aide) n'apparaît qu'au
-   temps 3 ; calibrage 40/35/25 entre les temps.
+   Les angles (#202, variété des énoncés #288) — logique de génération
+   (src/data/maths/angles) et invariants du renderer (src/core/figures →
+   renderAngle). Sans DOM.
+
+   Les énoncés ont désormais plusieurs VARIANTES de surface et six FAMILLES :
+   on ne classe donc JAMAIS par la chaîne de l'énoncé, mais par la `famille`
+   (identifiant stable) exposée par `genAngle()`. Invariants CE2 : QCM par
+   famille (Oui/Non binaire vs 3 termes) ; AUCUN degré affiché ; « angle droit
+   ⇒ carré de codage » (jamais d'arc) ; réponse loyale à la figure montrée ;
+   la bulle d'aide (vocabulaire) n'apparaît qu'au nommage et au Oui/Non aigu
+   (réduite, sans « obtus ») ; pondération Oui/Non ≤ 45 % / 3 termes ≥ 55 %.
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import type { Exercise } from '../src/core/exercise';
-import { ANGLES_LESSONS } from '../src/data/maths/angles';
+import { ANGLES_LESSONS, genAngle, ENONCES, type Famille } from '../src/data/maths/angles';
 import { renderAngle, renderFigure } from '../src/core/figures';
 import { getLessonById } from '../src/core/catalog';
 
-const TIRAGES = 1000;
+const TIRAGES = 2000;
 const lesson = ANGLES_LESSONS[0];
-const tirages = Array.from({ length: TIRAGES }, () => lesson.exerciseType.generate());
+const tirages = Array.from({ length: TIRAGES }, () => genAngle());
 
-const Q1 = 'Cet angle est-il un angle droit ?';
-const Q2 = "Compare cet angle à l'angle droit.";
-const Q3 = 'Cet angle est-il aigu, droit ou obtus ?';
+/** Familles à réponse binaire Oui/Non. */
+const OUI_NON: Famille[] = ['estDroit', 'poserCarre', 'coinReel', 'aiguOuiNon'];
+const TOUTES: Famille[] = [
+	'estDroit',
+	'poserCarre',
+	'coinReel',
+	'aiguOuiNon',
+	'comparer',
+	'nommer',
+];
 
 const count = (re: RegExp, s: string) => s.match(re)?.length ?? 0;
+const part = (pred: (t: ReturnType<typeof genAngle>) => boolean) =>
+	tirages.filter(pred).length / TIRAGES;
 
 describe('Les angles — génération QCM', () => {
-	it('chaque exercice est un QCM avec figure, énoncé connu, explication et la bonne réponse parmi les choix', () => {
-		for (const ex of tirages) {
+	it('chaque exercice est un QCM à énoncé connu (variante de sa famille), figure, explication, bonne réponse parmi les choix', () => {
+		for (const { ex, famille } of tirages) {
 			if (ex.type !== 'qcm') throw new Error('attendu qcm');
-			expect([Q1, Q2, Q3]).toContain(ex.question);
+			expect(ENONCES[famille]).toContain(ex.question); // énoncé = une variante de surface de la famille
 			expect(ex.figure ?? '').toContain('<svg');
 			expect(ex.choices).toContain(ex.answer);
 			expect(typeof ex.explication).toBe('string');
@@ -36,77 +49,100 @@ describe('Les angles — génération QCM', () => {
 	});
 
 	it('aucun degré ni « 90 » dans l’énoncé, la figure ou l’aide (jugement à l’œil)', () => {
-		for (const ex of tirages) {
+		for (const { ex } of tirages) {
 			if (ex.type !== 'qcm') continue;
 			expect(ex.question).not.toContain('°');
 			expect(ex.question.toLowerCase()).not.toContain('degré');
-			// La figure d'angle ne porte AUCUN texte (pas de cote) → pas de mesure affichée.
 			const svg = (ex.figure ?? '').split('</svg>')[0];
-			expect(svg).not.toContain('<text');
+			expect(svg).not.toContain('<text'); // la figure ne porte AUCUNE cote
 			expect(ex.figure ?? '').not.toContain('°');
 		}
 	});
 
-	it('options et réponses valides par temps', () => {
-		for (const ex of tirages) {
+	it('options valides selon la famille (Oui/Non binaire, comparaison, nommage)', () => {
+		for (const { ex, famille } of tirages) {
 			if (ex.type !== 'qcm') continue;
-			if (ex.question === Q1) {
+			if (OUI_NON.includes(famille)) {
 				expect([...ex.choices].sort()).toEqual(['Non', 'Oui']);
 				expect(['Oui', 'Non']).toContain(ex.answer);
-			} else if (ex.question === Q2) {
+			} else if (famille === 'comparer') {
 				expect([...ex.choices].sort()).toEqual(['plus grand', 'plus petit', 'égal']);
-				expect(['plus petit', 'égal', 'plus grand']).toContain(ex.answer);
 			} else {
 				expect([...ex.choices].sort()).toEqual(['Aigu', 'Droit', 'Obtus']);
-				expect(['Aigu', 'Droit', 'Obtus']).toContain(ex.answer);
 			}
 		}
 	});
 
-	it('la bulle d’aide (vocabulaire) n’apparaît qu’au temps 3', () => {
-		for (const ex of tirages) {
-			if (ex.type !== 'qcm') continue;
-			const aide = (ex.figure ?? '').includes('angle-aide');
-			expect(aide).toBe(ex.question === Q3);
-		}
-		// Et l'aide ne souffle pas la réponse : elle nomme la relation, pas l'angle montré.
-		const t3 = tirages.find((e) => e.type === 'qcm' && e.question === Q3);
-		expect(t3 && (t3.type === 'qcm' ? t3.figure : '')).toContain('aigu');
-	});
-
-	it('loyauté : « Oui / égal / Droit » ne sont la réponse QUE sur un angle droit MARQUÉ (carré, jamais d’arc)', () => {
-		for (const ex of tirages) {
+	it('loyauté : carré de codage ⟺ angle droit montré, et réponse cohérente avec la figure (par famille)', () => {
+		for (const { ex, famille, cat } of tirages) {
 			if (ex.type !== 'qcm') continue;
 			const svg = (ex.figure ?? '').split('</svg>')[0];
-			const estDroitMontre =
-				(ex.question === Q1 && ex.answer === 'Oui') ||
-				(ex.question === Q2 && ex.answer === 'égal') ||
-				(ex.question === Q3 && ex.answer === 'Droit');
-			if (estDroitMontre) {
-				expect(svg).toContain('<polyline'); // carré de codage présent
-				expect(svg).not.toContain('<path'); // jamais d'arc sur un angle droit
+			// Invariant renderer : carré (polyline) ⟺ angle droit ; sinon arc (path).
+			if (cat === 'droit') {
+				expect(svg).toContain('<polyline');
+				expect(svg).not.toContain('<path');
 			} else {
-				expect(svg).toContain('<path'); // arc d'ouverture (aigu/obtus)
-				expect(svg).not.toContain('<polyline'); // pas de carré sur un non-droit
+				expect(svg).toContain('<path');
+				expect(svg).not.toContain('<polyline');
+			}
+			// La bonne réponse découle loyalement de la catégorie montrée.
+			if (famille === 'estDroit' || famille === 'poserCarre' || famille === 'coinReel') {
+				expect(ex.answer).toBe(cat === 'droit' ? 'Oui' : 'Non');
+			} else if (famille === 'aiguOuiNon') {
+				expect(ex.answer).toBe(cat === 'aigu' ? 'Oui' : 'Non');
+			} else if (famille === 'comparer') {
+				expect(ex.answer).toBe(
+					cat === 'aigu' ? 'plus petit' : cat === 'droit' ? 'égal' : 'plus grand',
+				);
+			} else {
+				expect(ex.answer).toBe(cat === 'aigu' ? 'Aigu' : cat === 'droit' ? 'Droit' : 'Obtus');
 			}
 		}
 	});
 
-	it('les trois temps sont tous tirés, avec une pondération décroissante 40/35/25', () => {
-		const n1 = tirages.filter((e) => e.type === 'qcm' && e.question === Q1).length;
-		const n2 = tirages.filter((e) => e.type === 'qcm' && e.question === Q2).length;
-		const n3 = tirages.filter((e) => e.type === 'qcm' && e.question === Q3).length;
-		expect(n1).toBeGreaterThan(0);
-		expect(n2).toBeGreaterThan(0);
-		expect(n3).toBeGreaterThan(0);
-		expect(n1).toBeGreaterThan(n3); // temps 1 (40 %) nettement plus fréquent que temps 3 (25 %)
+	it('bulle d’aide : au nommage (aigu + obtus) et au Oui/Non aigu (réduite, SANS « obtus ») ; nulle part ailleurs', () => {
+		for (const { ex, famille } of tirages) {
+			if (ex.type !== 'qcm') continue;
+			const fig = ex.figure ?? '';
+			expect(fig.includes('angle-aide')).toBe(famille === 'nommer' || famille === 'aiguOuiNon');
+			if (famille === 'nommer') {
+				expect(fig).toContain('aigu');
+				expect(fig).toContain('obtus'); // les deux termes au nommage
+			}
+			if (famille === 'aiguOuiNon') {
+				expect(fig).toContain('aigu');
+				expect(fig).not.toContain('obtus'); // un seul mot neuf à la fois
+			}
+		}
+	});
+
+	it('équilibrage Oui/Non : les deux réponses apparaissent dans chaque famille binaire', () => {
+		for (const f of OUI_NON) {
+			const sub = tirages.filter((t) => t.famille === f);
+			expect(sub.some((t) => t.ex.type === 'qcm' && t.ex.answer === 'Oui')).toBe(true);
+			expect(sub.some((t) => t.ex.type === 'qcm' && t.ex.answer === 'Non')).toBe(true);
+		}
+		// Le « Non » de « est-ce aigu ? » mélange droit ET obtus (pas de raccourci « pas aigu = obtus »).
+		const nonAigu = tirages.filter(
+			(t) => t.famille === 'aiguOuiNon' && t.ex.type === 'qcm' && t.ex.answer === 'Non',
+		);
+		expect(nonAigu.some((t) => t.cat === 'droit')).toBe(true);
+		expect(nonAigu.some((t) => t.cat === 'obtus')).toBe(true);
+	});
+
+	it('pondération : toutes les familles tirées ; Oui/Non ≈ 45 % (≤ ~50 %), comparaison = pièce maîtresse', () => {
+		for (const f of TOUTES) expect(tirages.some((t) => t.famille === f)).toBe(true);
+		const ouiNon = part((t) => OUI_NON.includes(t.famille));
+		expect(ouiNon).toBeGreaterThan(0.38);
+		expect(ouiNon).toBeLessThan(0.52); // plafond ~45 %
+		expect(part((t) => t.famille === 'comparer')).toBeGreaterThan(0.28); // ~35 %
 	});
 
 	it('check() : exact (accents/apostrophes exigés) accepté, sinon refusé', () => {
 		const t = lesson.exerciseType;
 		const ex: Exercise = {
 			type: 'qcm',
-			question: Q2,
+			question: "Compare cet angle à l'angle droit.",
 			answer: 'égal',
 			choices: ['plus petit', 'égal', 'plus grand'],
 		};

@@ -1,9 +1,13 @@
 name: Déploiement GitHub Pages
 
-# Construit le site (Vite) puis le publie à chaque push sur main.
+# Construit le site (Vite) puis le publie quand une *release* GitHub est publiée.
+# Merger sur `main` ne déploie plus : `main` est la ligne d'intégration où l'on
+# consolide plusieurs PR ; la mise en prod est une action délibérée (publier une
+# release `vAAAA.MM.JJ`). `workflow_dispatch` reste un filet de secours manuel
+# (déploie alors l'état de la branche par défaut).
 on:
-  push:
-    branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
 
 # Permissions nécessaires au déploiement Pages.

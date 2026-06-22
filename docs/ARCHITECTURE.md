@@ -439,13 +439,21 @@ mesure au rapporteur relève du CM1 (future leçon).
   choix a un sens. Consommé par `ui/sprint.ts` (sélecteur dans l'écran de config, options
   vides au périmètre courant désactivées) ; un favori (`lessons`) ignore le périmètre.
 - **`lessons.ts`** — contenu **maths** : `LESSONS` (15 leçons constructibles
-  isolément), `bilanQ` (générateur réutilisé par le catalogue). Côté impression :
-  `PrintScope` + **`buildPrintableDOM(scope)`** (contextuel, **multi-matières** via
-  `buildLessonFiche`/`bilanBlocksForIds`), `coverHTML(scope)` (garde dynamique),
-  pagination 2 fiches/A4. (`buildFiches`/`bilanHTML` historiques conservés.)
-  **Corrigé (#41)** : `scope.corrige` rend le corps DEUX fois — feuille vierge puis
-  réponses révélées (`corrigeMode`) — sur les MÊMES items (graine commune via
-  `withSeed`), avec `corrigeCoverHTML` en intercalaire.
+  isolément), `bilanQ` (générateur réutilisé par le catalogue). La **fiche
+  imprimable** (`LESSONS[i].build()`) et la **génération interactive** (`bilanQ`,
+  sprint/bilan) doivent tirer dans les **mêmes plages** — c'est `bilanQ` qui pilote
+  l'anti-répétition de l'entraînement. Quand une plage n'est pas une simple borne
+  numérique (cibles de **moitiés** `CIBLES_MOITIES` / `CIBLES_MOITIE_PAIR`,
+  décomposition `CIBLES_DECOMPO_MULT`), elle est **centralisée en constante exportée**
+  en tête du module et **partagée** par les deux chemins (#287). ⚠ Le système
+  fiche/`bilanQ` n'a **pas** de paramètre `level` : ces leçons sont **CE2 seulement**,
+  leur calibrage CM1 est **différé** au déploiement du CM1 du calcul mental. Côté
+  impression : `PrintScope` + **`buildPrintableDOM(scope)`** (contextuel,
+  **multi-matières** via `buildLessonFiche`/`bilanBlocksForIds`), `coverHTML(scope)`
+  (garde dynamique), pagination 2 fiches/A4. (`buildFiches`/`bilanHTML` historiques
+  conservés.) **Corrigé (#41)** : `scope.corrige` rend le corps DEUX fois — feuille
+  vierge puis réponses révélées (`corrigeMode`) — sur les MÊMES items (graine commune
+  via `withSeed`), avec `corrigeCoverHTML` en intercalaire.
 - **`build.ts`** — construction **générique multi-matières** : `genItems`,
   `buildLessonFiche` (calcul mental → rendu riche via `LESSONS.build()` ; maths
   modernes & autres matières → liste de questions, consigne « Complète. » pour les

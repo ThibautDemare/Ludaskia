@@ -3,10 +3,13 @@
    Invariants CE2 : division EXACTE (reste nul), diviseur ≥ 2, quotient ≥ 2,
    dividende ≤ 100, réponse entière ; moitié/quart à résultat entier ; figure de
    découverte uniquement en partage et pour un petit total. Pas de DOM.
+   Plages par niveau (#287) : « Moitié et quart » est calibrée CE2/CM1 — CE2
+   moitié X ≤ 50 / quart X ≤ 48, CM1 jusqu'à X ≤ 100. Pas de DOM.
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import { DIVISION_LESSONS } from '../src/data/maths/division';
 import { renderFigure } from '../src/core/figures';
+import type { SchoolLevel } from '../src/core/catalog';
 
 const TIRAGES = 500;
 
@@ -15,6 +18,23 @@ function gen(id: string) {
 	return Array.from({ length: TIRAGES }, () => l.exerciseType.generate());
 }
 const ints = (s: string) => (s.match(/\d+/g) ?? []).map(Number);
+
+// Dividendes « la moitié de X » et « le quart de X » d'un niveau (≥ 1000 tirages).
+function dividendesMoitieQuart(level: SchoolLevel, n = 1000) {
+	const l = DIVISION_LESSONS.find((x) => x.id === 'math-div-moitie-quart')!;
+	const moities: number[] = [];
+	const quarts: number[] = [];
+	for (let i = 0; i < n; i++) {
+		const ex = l.exerciseType.generate({ level });
+		if (ex.type !== 'text') throw new Error('attendu text');
+		const m = /^La moitié de (\d+) = @$/.exec(ex.question);
+		const q = /^Le quart de (\d+) = @$/.exec(ex.question);
+		if (m) moities.push(Number(m[1]));
+		if (q) quarts.push(Number(q[1]));
+		expect(l.exerciseType.check(ex, String(ex.answer))).toBe(true); // la réponse stockée se valide
+	}
+	return { moities, quarts };
+}
 
 describe('Moitié et quart d’une collection', () => {
 	it('résultat entier garanti, quotient ≥ 2, dénominateurs 2 et 4 seulement', () => {
@@ -30,6 +50,40 @@ describe('Moitié et quart d’une collection', () => {
 			if (quart) expect(Number(quart[1])).toBe(rep * 4);
 			expect(ex.figure).toBeUndefined(); // pas de figure sur cette leçon
 		}
+	});
+
+	it('expose CE2 + CM1 (moteur calibré, #287)', () => {
+		const l = DIVISION_LESSONS.find((x) => x.id === 'math-div-moitie-quart')!;
+		expect(l.exerciseType.levels).toEqual(['ce2', 'cm1']);
+	});
+
+	it('CE2 : moitié X ≤ 50 (quotient 2–25), quart X ≤ 48 (quotient 2–12)', () => {
+		const { moities, quarts } = dividendesMoitieQuart('ce2');
+		for (const x of moities) {
+			expect(x % 2).toBe(0);
+			expect(x).toBeLessThanOrEqual(50); // X = 2·q, q ≤ 25
+			expect(x).toBeGreaterThanOrEqual(4); // q ≥ 2
+		}
+		for (const x of quarts) {
+			expect(x % 4).toBe(0);
+			expect(x).toBeLessThanOrEqual(48); // X = 4·q, q ≤ 12
+			expect(x).toBeGreaterThanOrEqual(8); // q ≥ 2
+		}
+		// Les bornes hautes CE2 sont effectivement atteintes (sinon le calibrage est trop étroit).
+		expect(Math.max(...moities)).toBe(50);
+		expect(Math.max(...quarts)).toBe(48);
+	});
+
+	it('CM1 : moitié ET quart jusqu’à X ≤ 100, et X > 50 possible', () => {
+		const { moities, quarts } = dividendesMoitieQuart('cm1');
+		for (const x of [...moities, ...quarts]) expect(x).toBeLessThanOrEqual(100);
+		for (const x of moities) expect(x % 2).toBe(0);
+		for (const x of quarts) expect(x % 4).toBe(0);
+		// Extension CM1 : on dépasse la borne CE2 (X > 50) côté moitié ET côté quart.
+		expect(moities.some((x) => x > 50)).toBe(true);
+		expect(quarts.some((x) => x > 48)).toBe(true);
+		expect(Math.max(...moities)).toBe(100); // X = 2·q, q ≤ 50
+		expect(Math.max(...quarts)).toBe(100); // X = 4·q, q ≤ 25
 	});
 });
 

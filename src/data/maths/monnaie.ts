@@ -1,5 +1,5 @@
 /* ============================================================
-   Grandeurs et mesures — la monnaie (MES 5/6, #96).
+   Grandeurs et mesures — la monnaie (MES 5/6, #96 ; plages par niveau #287).
    Deux leçons à réponse NUMÉRIQUE unique, rendues via le chemin
    « math moderne » du catalogue (item `num`).
 
@@ -9,12 +9,21 @@
      décimal n'est pas installé en CE2), jamais de mélange €/c qui
      franchit l'euro.
    - euros entiers ≤ 20 € ; centimes par pas de 10 c et sous 1 € (les
-     deux sommes < 1 €) ; billets réels 5/10/20 € (pas de 50 €).
+     deux sommes < 1 €) ; billets réels 5/10/20 € + 50 € (#287).
    - types au programme : prix total (+), reste/rendu de monnaie (−).
      « Composer une somme avec des pièces » est écarté (pas de réponse
      numérique unique).
+
+   Multi-niveaux (#225/#287) : « Je rends la monnaie » est `calibrated`
+   par une table { ce2, cm1 } ; le CM1 introduit des PRIX DÉCIMAUX (ex.
+   1,50 €), donc le franchissement de l'euro — proscrit au CE2. La règle
+   d'or reste : JAMAIS de décimal au CE2 (franchir l'euro = CM1). Le CM1
+   reste prêt derrière le paramètre `level` (non surfacé au catalogue,
+   déploiement du cursus séparé). « Je calcule avec les euros » reste
+   mono-niveau (CE2), inchangée.
    ============================================================ */
-import type { Exercise, ExerciseType } from '../../core/exercise';
+import type { Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
+import { calibrated } from '../../core/level-combinators';
 import { rnd, choice } from '../../core/utils';
 
 const OBJETS = ['livre', 'jouet', 'ballon', 'stylo', 'cahier', 'jeu', 'gâteau', 'cadeau', 'crayon'];
@@ -22,6 +31,12 @@ const obj = () => choice(OBJETS);
 
 function ex(question: string, answer: number): Exercise {
 	return { type: 'text', question, answer: String(answer) };
+}
+
+/* Correction numérique commune aux deux leçons : la virgule décimale est tolérée
+   (« 1,50 » == « 1.5 ») même si le CE2 reste entier. */
+function checkNumerique(exercise: Exercise, input: string): boolean {
+	return 'answer' in exercise && Number(input.trim().replace(',', '.')) === Number(exercise.answer);
 }
 
 /* ---------- Leçon 1 : « Je calcule avec les euros » ----------
@@ -52,14 +67,40 @@ function centReste(): Exercise {
 }
 
 /* ---------- Leçon 2 : « Je rends la monnaie » ----------
-   Complément « prix → billet » : prix entier, billet réel 5/10/20 €. */
-const BILLETS = [5, 10, 20];
-function rendreMonnaie(): Exercise {
-	const billet = choice(BILLETS);
-	const p = rnd(1, billet - 1); // prix strictement inférieur au billet
+   Complément « prix → billet ». Calibrée par niveau (#287) :
+   - CE2 : prix ENTIER, billets réels 5/10/20/50 € (ajout du 50 €).
+   - CM1 : prix DÉCIMAL (centimes par pas de 5 c, ex. 1,50 €), donc le
+     franchissement de l'euro — proscrit au CE2.
+   `decimal` bascule le mode ; les billets sont fournis par la config. */
+interface RenduConfig {
+	billets: number[];
+	decimal: boolean; // CM1 : prix au centime près (franchit l'euro)
+}
+
+/* Formate un montant en euros pour l'affichage : entier (« 3 € ») ou décimal
+   à la française (« 1,50 € »), toujours deux décimales en mode décimal. */
+function fmtEuros(montant: number): string {
+	return Number.isInteger(montant) ? String(montant) : montant.toFixed(2).replace('.', ',');
+}
+
+function rendreMonnaie(config: RenduConfig): Exercise {
+	const billet = choice(config.billets);
+	if (!config.decimal) {
+		// CE2 : prix entier, rendu entier.
+		const p = rnd(1, billet - 1); // prix strictement inférieur au billet
+		return ex(
+			`Un ${obj()} coûte ${fmtEuros(p)} €. Tu paies avec un billet de ${billet} €. Combien te rend-on ? @ €`,
+			billet - p,
+		);
+	}
+	// CM1 : prix décimal au pas de 5 c (montants réalistes, ex. 1,50 € ou 3,75 €).
+	// On travaille en centimes pour rester exact, puis on reformate en euros.
+	const billetC = billet * 100;
+	const prixC = rnd(1, billetC / 5 - 1) * 5; // 0,05 € .. (billet − 0,05 €), pas de 5 c
+	const renduC = billetC - prixC;
 	return ex(
-		`Un ${obj()} coûte ${p} €. Tu paies avec un billet de ${billet} €. Combien te rend-on ? @ €`,
-		billet - p,
+		`Un ${obj()} coûte ${fmtEuros(prixC / 100)} €. Tu paies avec un billet de ${billet} €. Combien te rend-on ? @ €`,
+		renduC / 100,
 	);
 }
 
@@ -67,8 +108,16 @@ function rendreMonnaie(): Exercise {
 function monnaieType(situations: Array<() => Exercise>): ExerciseType {
 	return {
 		generate: () => choice(situations)(),
-		check: (exercise: Exercise, input: string): boolean =>
-			'answer' in exercise && Number(input.trim().replace(',', '.')) === Number(exercise.answer),
+		check: checkNumerique,
+	};
+}
+
+/* Fabrique l'ExerciseType « Je rends la monnaie » pour un jeu de paramètres
+   (un niveau). Utilisée comme `build` du combinateur `calibrated`. */
+function renduType(config: RenduConfig): ExerciseType {
+	return {
+		generate: (_opts?: GenerateOpts) => rendreMonnaie(config),
+		check: checkNumerique,
 	};
 }
 
@@ -87,6 +136,14 @@ export const MONNAIE_LESSONS: MonnaieLessonDef[] = [
 	{
 		id: 'mes-monnaie-rendu',
 		label: 'Je rends la monnaie',
-		exerciseType: monnaieType([rendreMonnaie]),
+		exerciseType: calibrated<RenduConfig>(
+			{
+				// CE2 : prix entier, billets réels 5/10/20 € + le 50 € (#287). Jamais de décimal.
+				ce2: { billets: [5, 10, 20, 50], decimal: false },
+				// CM1 : prix décimaux (franchissement de l'euro), mêmes billets.
+				cm1: { billets: [5, 10, 20, 50], decimal: true },
+			},
+			renduType,
+		),
 	},
 ];

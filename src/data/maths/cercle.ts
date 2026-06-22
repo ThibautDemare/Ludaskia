@@ -1,5 +1,5 @@
 /* ============================================================
-   Géométrie — Le cercle (GEOM9, #102).
+   Géométrie — Le cercle (GEOM9, #102 ; plages par niveau #287).
    Cliente du moteur de figures SVG (core/figures.ts, `renderCercle`).
    Une leçon `geom-cercle`, deux modes (#69) : `qcm` (conseillé) et
    `saisie` (fiche imprimable). Trois familles de questions :
@@ -9,11 +9,18 @@
    Le cercle affiché met en évidence le segment concerné (rayon ou
    diamètre), coté pour le calcul ou marqué « ? » pour le vocabulaire.
 
-   Calibrage CE2 : nombres petits (rayon 2–15) ; le diamètre toujours
-   pair (= 2 r) ; distracteurs = confusion rayon/diamètre (oubli ou
+   Calibrage CE2 : rayon 2–20 (#287) ; le diamètre toujours pair (= 2 r,
+   donc r ↔ d entier) ; distracteurs = confusion rayon/diamètre (oubli ou
    ajout du ×2). Effort faible (pas de moteur complexe).
+
+   Multi-niveaux (#225/#287) : la leçon est `calibrated` par une table
+   { ce2, cm1 } ; seule la borne max du rayon change (CE2 2–20, CM1 2–50),
+   le diamètre restant PAIR pour que r ↔ d reste entier à tous les niveaux.
+   Le CM1 reste prêt derrière le paramètre `level` (non surfacé au catalogue,
+   déploiement du cursus séparé).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
+import { calibrated } from '../../core/level-combinators';
 import { renderFigure } from '../../core/figures';
 import { rnd, choice, sample, normalizeText } from '../../core/utils';
 
@@ -49,8 +56,14 @@ function choixNum(answer: number, distract: number[]): string[] {
 	return sample([answer, ...sample([...s], 3)], 4).map(String);
 }
 
-function rayonVersDiametre(): Fait {
-	const ray = rnd(2, 15);
+/* Plage du rayon, calibrée par niveau (#287). Le diamètre = 2 × rayon reste
+   PAIR → r ↔ d entier à tous les niveaux (pas de demi-entier au CM1). */
+interface CercleConfig {
+	rayonMax: number; // borne max du rayon (CE2 : 20, CM1 : 50)
+}
+
+function rayonVersDiametre(rayonMax: number): Fait {
+	const ray = rnd(2, rayonMax);
 	const ans = 2 * ray;
 	return {
 		base: `Le rayon mesure ${ray} cm. Quel est le diamètre ?`,
@@ -61,8 +74,8 @@ function rayonVersDiametre(): Fait {
 	};
 }
 
-function diametreVersRayon(): Fait {
-	const ray = rnd(2, 15);
+function diametreVersRayon(rayonMax: number): Fait {
+	const ray = rnd(2, rayonMax);
 	const dia = 2 * ray;
 	return {
 		base: `Le diamètre mesure ${dia} cm. Quel est le rayon ?`,
@@ -114,13 +127,18 @@ function vocabulaireFait(): Fait {
 	};
 }
 
-function cercleType(): ExerciseType {
+function cercleType(config: CercleConfig): ExerciseType {
 	return {
 		modes: MODES,
 		generate(opts?: GenerateOpts): Exercise {
 			const mode = opts?.mode;
 			const r = rnd(1, 100);
-			const f = r <= 40 ? rayonVersDiametre() : r <= 70 ? diametreVersRayon() : vocabulaireFait();
+			const f =
+				r <= 40
+					? rayonVersDiametre(config.rayonMax)
+					: r <= 70
+						? diametreVersRayon(config.rayonMax)
+						: vocabulaireFait();
 			if (mode === 'qcm') {
 				return {
 					type: 'qcm',
@@ -158,6 +176,12 @@ export const CERCLE_LESSONS: CercleLessonDef[] = [
 	{
 		id: 'geom-cercle',
 		label: 'Le cercle',
-		exerciseType: cercleType(),
+		exerciseType: calibrated<CercleConfig>(
+			{
+				ce2: { rayonMax: 20 }, // rayon 2–20
+				cm1: { rayonMax: 50 }, // rayon 2–50 (diamètre toujours pair → r ↔ d entier)
+			},
+			cercleType,
+		),
 	},
 ];

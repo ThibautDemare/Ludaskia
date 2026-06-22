@@ -189,7 +189,7 @@ const MATH_LESSONS: LessonDef[] = [
 	},
 	{
 		id: 'math-complements',
-		label: 'Complément à 10/100',
+		label: 'Complément à 10/100/1000',
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -315,6 +315,8 @@ const GRANDEURS_LESSONS: LessonDef[] = [
 	label: d.label,
 	subject: 'math',
 	category: 'math-grandeurs-mesures',
+	// CM1 prêt derrière `level` (générateurs `calibrated`, #287) mais PAS encore
+	// surfacé : le cursus CM1 (ordre pédagogique math.cm1) relève du déploiement CM1.
 	levels: ['ce2'],
 	exerciseType: d.exerciseType,
 }));
@@ -346,7 +348,7 @@ const FRACTIONS_LESSONS_DEFS: LessonDef[] = FRACTIONS_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'math',
 	category: 'math-numeration',
-	levels: ['ce2'],
+	levels: ['ce2'], // CM1 prêt derrière `level` (#287), surfacé au déploiement CM1
 	exerciseType: d.exerciseType,
 	rubrique: 'Fractions',
 }));
@@ -372,7 +374,7 @@ const DIVISION_LESSONS_DEFS: LessonDef[] = DIVISION_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'math',
 	category: 'math-calcul-mental',
-	levels: ['ce2'],
+	levels: ['ce2'], // CM1 prêt derrière `level` (#287), surfacé au déploiement CM1
 	exerciseType: d.exerciseType,
 	excludeFromSprint: d.excludeFromSprint,
 }));

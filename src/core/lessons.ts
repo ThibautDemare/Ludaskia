@@ -3,7 +3,7 @@
    ce qui permet de jouer une leçon seule OU le bilan complet.
    build() régénère des items frais à chaque appel.
    ============================================================ */
-import { rnd, choice, sample, commKey, escapeHTML, withSeed, randomSeed, randFloat } from './utils';
+import { rnd, choice, sample, commKey, escapeHTML, withSeed, randomSeed } from './utils';
 import { uniqueComm, uniqueExact } from './utils';
 import {
 	add,
@@ -30,6 +30,57 @@ import type { Item } from './items';
 // générique : dépendance circulaire build ↔ lessons sans effet de bord au chargement.
 import { buildLessonFiche, bilanBlocksForIds } from './build';
 
+/* ============================================================
+   Plages partagées fiche ⇄ bilanQ (anti-répétition, #287)
+   ------------------------------------------------------------
+   Les leçons de calcul mental vivent à DEUX endroits qui doivent rester
+   COHÉRENTS : la fiche imprimable (build() ci-dessous) et la génération
+   interactive (bilanQ). Pour les cibles qui ne sont pas de simples bornes
+   numériques (moitiés, décomposition multiplicative), on centralise la plage
+   ICI afin que fiche et entraînement tirent dans le MÊME ensemble.
+
+   ⚠ Périmètre CE2 uniquement (#287) : le système fiche/bilanQ n'a pas de
+   paramètre `level`. Le calibrage CM1 de ces leçons est DIFFÉRÉ au déploiement
+   du CM1 du calcul mental (le rendre multi-niveau dépasse cette issue).
+   ============================================================ */
+
+/* « Les moitiés » (leçon 4) : la moitié doit toujours être ENTIÈRE. ~30 cibles
+   = pairs ≤ 20, dizaines entières ≤ 100 (20,30,…,100) et deux centaines rondes
+   (200, 400). Générateur figé en constante (mêmes valeurs fiche et bilan). */
+export const CIBLES_MOITIES: number[] = (() => {
+	const cibles: number[] = [];
+	for (let n = 2; n <= 20; n += 2) cibles.push(n); // pairs ≤ 20 (dont 10, 20)
+	for (let d = 30; d <= 100; d += 10) cibles.push(d); // dizaines entières (30 → 100)
+	cibles.push(200, 400); // quelques centaines rondes
+	return cibles;
+})();
+
+/* « La moitié d'un nombre pair » (leçon 8) : pairs 22–98, en EXCLUANT les
+   multiples de 10 ET les valeurs déjà couvertes par « Les moitiés » (pas de
+   doublon entre les deux leçons). ~35 cibles. Reste dans les bornes CE2 :
+   « moitié de 74 » / « moitié de 98 » (décomposition dizaines/unités) est le
+   seuil de charge maximal validé pour la classe (#287). */
+export const CIBLES_MOITIE_PAIR: number[] = (() => {
+	const dejaVues = new Set(CIBLES_MOITIES);
+	const cibles: number[] = [];
+	for (let n = 22; n <= 98; n += 2) {
+		if (n % 10 === 0) continue; // pas de multiple de 10 (trivial)
+		if (dejaVues.has(n)) continue; // pas de doublon avec « Les moitiés »
+		cibles.push(n);
+	}
+	return cibles;
+})();
+
+/* « Décomposer pour calculer une multiplication » (leçon 15) : b à 2 chiffres
+   décomposable en dizaines + unités → {12–19} ∪ {21–29 hors multiples de 10}
+   (#287, élargi depuis la petite liste figée). ~17 valeurs ; a tiré dans 3–9. */
+export const CIBLES_DECOMPO_MULT: number[] = (() => {
+	const cibles: number[] = [];
+	for (let b = 12; b <= 19; b++) cibles.push(b); // 12 → 19
+	for (let b = 21; b <= 29; b++) cibles.push(b); // 21 → 29 (tous non multiples de 10)
+	return cibles;
+})();
+
 export const LESSONS = [
 	{
 		num: 1,
@@ -52,13 +103,18 @@ export const LESSONS = [
 		num: 2,
 		id: 'math-complements',
 		title: 'Les compléments',
-		sub: 'Trouver le nombre qui complète à 10 ou à 100.',
+		sub: 'Trouver le nombre qui complète à 10, à 100 ou à 1000.',
 		consigne: 'Complète chaque égalité.',
 		build() {
+			// Trois familles (#287) : compléments à 10, à 100 et à 1000 (centaines rondes).
 			const pool10 = [];
 			for (let a = 1; a <= 9; a++) pool10.push(comp(a, 10));
 			const pool100 = [10, 20, 30, 40, 50, 60, 70, 80, 90].map((a) => comp(a, 100));
-			const items = sample([...sample(pool10, 6), ...sample(pool100, 6)], 12);
+			const pool1000 = [100, 200, 300, 400, 500, 600, 700, 800, 900].map((a) => comp(a, 1000));
+			const items = sample(
+				[...sample(pool10, 4), ...sample(pool100, 4), ...sample(pool1000, 4)],
+				12,
+			);
 			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
 		},
 	},
@@ -70,8 +126,9 @@ export const LESSONS = [
 		sub: "Le double, c'est deux fois le nombre.",
 		consigne: 'Écris le double.',
 		build() {
+			// CE2 : n de 1 à 50 (#287, élargi depuis 1–39) pour varier les doubles.
 			const items = sample(
-				[...Array(39).keys()].map((i) => i + 1),
+				[...Array(50).keys()].map((i) => i + 1),
 				12,
 			).map(dbl);
 			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
@@ -85,9 +142,8 @@ export const LESSONS = [
 		sub: "La moitié, c'est le nombre partagé en deux.",
 		consigne: 'Écris la moitié.',
 		build() {
-			const items = sample([2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 30, 40, 50, 60, 80, 100], 12).map(
-				half,
-			);
+			// Cibles partagées avec bilanQ (#287) : ~30 valeurs à moitié entière.
+			const items = sample(CIBLES_MOITIES, 12).map(half);
 			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
 		},
 	},
@@ -142,7 +198,9 @@ export const LESSONS = [
 		sub: 'Je sépare les dizaines et les unités si besoin.',
 		consigne: 'Écris la moitié.',
 		build() {
-			const items = sample([24, 36, 48, 52, 64, 28, 46, 82, 38, 56, 74, 98, 66, 84], 12).map(half);
+			// Cibles partagées avec bilanQ (#287) : pairs 22–98, hors multiples de 10 et
+			// hors valeurs déjà vues dans « Les moitiés » (~35 valeurs, moitié entière).
+			const items = sample(CIBLES_MOITIE_PAIR, 12).map(half);
 			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
 		},
 	},
@@ -277,8 +335,9 @@ export const LESSONS = [
 			const seen = new Set();
 			const d = [];
 			while (d.length < 6) {
-				const a = rnd(3, 8),
-					b = choice([12, 13, 14, 15, 16, 21, 23, 24]);
+				// a 3–9, b dans la plage élargie {12–19} ∪ {21–29 hors ×10} (#287).
+				const a = rnd(3, 9),
+					b = choice(CIBLES_DECOMPO_MULT);
 				const k = a + 'x' + b;
 				if (!seen.has(k)) {
 					seen.add(k);
@@ -318,7 +377,7 @@ export function buildFiches() {
    ============================================================ */
 export const THEMES: Record<number, string> = {
 	1: "Table d'addition",
-	2: 'Complément à 10/100',
+	2: 'Complément à 10/100/1000',
 	3: 'Doubles',
 	4: 'Moitiés',
 	5: 'Ajouter 9, 19...',
@@ -341,16 +400,21 @@ export function bilanQ(k: number): Item | undefined {
 			[a, b] = [Math.min(a, b), Math.max(a, b)];
 			return add(a, b);
 		}
-		case 2:
-			// randFloat (et non Math.random) : l'aléa doit être seedable pour que le
-			// corrigé imprimable corresponde à la feuille (#41).
-			return randFloat() < 0.5
-				? comp(rnd(1, 9), 10)
-				: comp(choice([10, 20, 30, 40, 60, 70, 80, 90]), 100);
+		case 2: {
+			// Trois familles de compléments (#287) : à 10, à 100 et à 1000 (centaines
+			// rondes). Élargir le pool casse la répétition de l'ancien duo 10/100
+			// (9 + 9 valeurs). rnd/choice passent par randFloat (donc seedable) : le
+			// corrigé imprimable correspond à la feuille (#41). Réponse calculée par comp().
+			const f = rnd(1, 3);
+			if (f === 1) return comp(rnd(1, 9), 10);
+			if (f === 2) return comp(choice([10, 20, 30, 40, 50, 60, 70, 80, 90]), 100);
+			return comp(choice([100, 200, 300, 400, 500, 600, 700, 800, 900]), 1000);
+		}
 		case 3:
-			return dbl(rnd(5, 35));
+			// Le double : n de 1 à 50 au CE2 (#287, élargi depuis 1–39).
+			return dbl(rnd(1, 50));
 		case 4:
-			return half(choice([8, 12, 16, 20, 30, 40, 50, 60, 80, 100]));
+			return half(choice(CIBLES_MOITIES));
 		case 5:
 			return add(rnd(20, 60), choice([8, 9, 18, 19, 28, 29]));
 		case 6:
@@ -362,7 +426,7 @@ export function bilanQ(k: number): Item | undefined {
 			return mul(a, b);
 		}
 		case 8:
-			return half(choice([24, 36, 48, 52, 64, 28, 46, 82, 56, 74, 66, 84]));
+			return half(choice(CIBLES_MOITIE_PAIR));
 		case 9:
 			return mul(rnd(2, 12), 25);
 		case 10:
@@ -380,7 +444,7 @@ export function bilanQ(k: number): Item | undefined {
 		case 14:
 			return mul(rnd(2, 12), choice([20, 30, 40]));
 		case 15:
-			return mul(rnd(3, 8), choice([12, 13, 14, 15, 16, 21, 23, 24]));
+			return mul(rnd(3, 9), choice(CIBLES_DECOMPO_MULT));
 	}
 }
 export function bilanBlocks(nbQ: number) {

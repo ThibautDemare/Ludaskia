@@ -9,7 +9,8 @@
 
    Trois leçons :
    1. « Moitié et quart d'une collection » — fraction-opérateur (dénominateurs 2
-      et 4), résultat entier garanti. Pas de signe ÷, pas de figure.
+      et 4), résultat entier garanti. Pas de signe ÷, pas de figure. Calibrée par
+      niveau (#287) : CE2 moitié X ≤ 50 / quart X ≤ 48, CM1 jusqu'à X ≤ 100.
    2. « Je partage » — division EXACTE (reste nul) dans les tables, DEUX sens
       (partage / groupement) contrastés, signe ÷ adossé à la situation. Figure
       « situation de départ » (jetons + paniers vides) sur une minorité d'items
@@ -22,6 +23,7 @@
 import { choice, rnd, sample } from '../../core/utils';
 import { checkAnswer } from '../../core/exercise';
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
+import { calibrated } from '../../core/level-combinators';
 import { renderFigure } from '../../core/figures';
 
 const numerique = (ex: Exercise, input: string): boolean =>
@@ -30,14 +32,23 @@ const numerique = (ex: Exercise, input: string): boolean =>
 /* ---------- Leçon 1 : Moitié et quart d'une collection ---------- */
 // Fraction-opérateur (« prendre la moitié / le quart de »), distincte du signe ÷
 // (leçon 2). Résultat entier garanti par tirage d'un multiple ; quotient ≥ 2.
-function moitieQuartType(): ExerciseType {
+// Calibrée par niveau (#287) : seules les bornes du quotient (donc du dividende X)
+// changent. CE2 : moitié X ≤ 50 (quotient 2–25), quart X ≤ 48 (quotient 2–12) ;
+// CM1 : moitié ET quart jusqu'à X ≤ 100 (quotient 2–50 / 2–25). Le CM1 reste prêt
+// derrière le paramètre `level` (non surfacé au catalogue, déploiement séparé).
+interface MoitieQuartConfig {
+	moitieQuotientMax: number; // borne max du résultat de « la moitié de X » (X = 2·q)
+	quartQuotientMax: number; // borne max du résultat de « le quart de X » (X = 4·q)
+}
+
+function moitieQuartType(config: MoitieQuartConfig): ExerciseType {
 	return {
 		generate(): Exercise {
 			if (rnd(0, 1) === 0) {
-				const q = rnd(2, 20); // résultat 2..20
+				const q = rnd(2, config.moitieQuotientMax); // résultat 2..max (X = 2·q)
 				return { type: 'text', question: `La moitié de ${q * 2} = @`, answer: String(q) };
 			}
-			const q = rnd(2, 10); // résultat 2..10
+			const q = rnd(2, config.quartQuotientMax); // résultat 2..max (X = 4·q)
 			return { type: 'text', question: `Le quart de ${q * 4} = @`, answer: String(q) };
 		},
 		check: numerique,
@@ -238,7 +249,15 @@ export const DIVISION_LESSONS: DivisionLessonDef[] = [
 	{
 		id: 'math-div-moitie-quart',
 		label: "Moitié et quart d'une collection",
-		exerciseType: moitieQuartType(),
+		exerciseType: calibrated<MoitieQuartConfig>(
+			{
+				// CE2 : moitié X ≤ 50 (quotient 2–25), quart X ≤ 48 (quotient 2–12).
+				ce2: { moitieQuotientMax: 25, quartQuotientMax: 12 },
+				// CM1 : moitié ET quart jusqu'à X ≤ 100 (quotient 2–50 / 2–25).
+				cm1: { moitieQuotientMax: 50, quartQuotientMax: 25 },
+			},
+			moitieQuartType,
+		),
 	},
 	{
 		id: 'math-div-partage',

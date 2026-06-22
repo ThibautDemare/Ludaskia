@@ -427,6 +427,13 @@ mesure au rapporteur relève du CM1 (future leçon).
   (`loadStars`). Avance par la **maîtrise**, jamais par calendrier ; `leconSuivante` =
   contournement « voir une autre leçon » (jamais de mur). Reste **distinct** de la
   révision espacée (avancer vers le neuf ↔ entretenir l'acquis) et du défi du jour.
+- **`sprint-scope.ts`** — **périmètre du sprint** (#208, pure) : `all` (toutes les
+  leçons éligibles du niveau) ou `seen` (uniquement les leçons **déjà rencontrées**,
+  `loadLessonFirstSeen` — pas « acquises » : le sprint consolide, y compris le fragile).
+  `appliquerScope` filtre, `scopeParDefaut` donne le défaut **adaptatif** (« déjà vues »
+  tant qu'il reste du non-rencontré, sinon « tout »), `perimetreChoisissable` dit si le
+  choix a un sens. Consommé par `ui/sprint.ts` (sélecteur dans l'écran de config, options
+  vides au périmètre courant désactivées) ; un favori (`lessons`) ignore le périmètre.
 - **`lessons.ts`** — contenu **maths** : `LESSONS` (15 leçons constructibles
   isolément), `bilanQ` (générateur réutilisé par le catalogue). Côté impression :
   `PrintScope` + **`buildPrintableDOM(scope)`** (contextuel, **multi-matières** via

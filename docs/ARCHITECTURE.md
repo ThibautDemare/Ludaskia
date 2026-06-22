@@ -937,7 +937,13 @@ pas ramasser les specs Playwright. Détails : `e2e/README.md`.
   sous-chemin) et `build.outDir: 'dist'`.
 - `npm run build` produit un bundle minifié/hashé dans `dist/`.
 - `.github/workflows/pages.yml` : `npm ci` → `npm run build` → publication de
-  `dist/` sur GitHub Pages à chaque push `main`.
+  `dist/` sur GitHub Pages **quand une release GitHub est publiée**
+  (`on: release: published`) ; `workflow_dispatch` en filet manuel. Merger une PR
+  sur `main` **ne déploie plus** : `main` est la ligne d'intégration (on y
+  consolide plusieurs PR), la mise en prod est une **release délibérée**. Tag
+  calendaire `vAAAA.MM.JJ` (suffixe `.2`, `.3`… si plusieurs le même jour),
+  publiée via l'agent `gestionnaire-github`. Le `GITHUB_SHA` de l'événement
+  release pointe sur le commit du tag → l'estampille SHA reste correcte.
 - **Estampille de version** : `vite.config.ts` calcule une `buildVersion` (SHA
   court du commit via `GITHUB_SHA` en CI, sinon horodatage local), l'injecte dans
   l'app (`define: __APP_VERSION__`) **et** émet un `dist/version.json`

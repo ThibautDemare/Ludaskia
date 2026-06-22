@@ -6,9 +6,12 @@ consignes de contribution destinées aux sessions agent, `CLAUDE.md`.)
 
 ## En bref
 
-Issue → branche → Pull Request → CI verte → **rebase-merge**.
+Issue → branche → Pull Request → CI verte → **rebase-merge** sur `main`.
 
-`main` est **protégée** : aucun push direct, tout passe par une PR.
+`main` est **protégée** : aucun push direct, tout passe par une PR. Merger sur
+`main` **ne déploie pas** : `main` est la ligne d'intégration où l'on consolide
+plusieurs PR. La **mise en production** est une étape distincte et délibérée —
+publier une *release* (voir « Mise en production » plus bas).
 
 ## Étapes
 
@@ -25,6 +28,29 @@ Issue → branche → Pull Request → CI verte → **rebase-merge**.
    test` sur chaque PR ; tous les checks doivent être **verts** pour fusionner.
 6. **Merge** — **rebase uniquement** (squash et merge-commit sont désactivés au
    niveau du dépôt). La branche est supprimée automatiquement après le merge.
+
+## Mise en production (déploiement)
+
+Le déploiement sur GitHub Pages est déclenché par la **publication d'une release
+GitHub**, **pas** par le merge. On peut ainsi consolider plusieurs PR sur `main`,
+les tester ensemble, puis publier quand on le décide.
+
+1. S'assurer que `main` est à jour et contient bien tout ce qu'on veut publier.
+2. **Publier une release** avec un tag **calendaire** `vAAAA.MM.JJ` (date du jour) :
+   ```bash
+   gh release create v2026.06.22 --target main --title "v2026.06.22" \
+     --notes "Résumé en français de ce que la release met en prod"
+   ```
+   (ou via l'UI GitHub : *Releases → Draft a new release*).
+3. Plusieurs releases le même jour → suffixer : `v2026.06.22.2`, `v2026.06.22.3`…
+   (la première du jour reste sans suffixe).
+
+La publication déclenche `pages.yml` (`npm ci → npm run build →` déploiement Pages)
+sur le commit du tag ; `workflow_dispatch` reste un filet de secours manuel.
+
+> Déléguer de préférence la création des releases à l'agent `gestionnaire-github`
+> (il calcule le nom du tag et rédige les notes en français). La mise en prod ne se
+> fait **jamais** sans le feu vert du mainteneur.
 
 ## Labels et milestones
 

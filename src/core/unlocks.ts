@@ -116,7 +116,8 @@ export function avatarsForetDebloques(niveau: number): string[] {
    Les confort étant à `niveau: 1`, `themesDebloques` les inclut toujours (le
    garde-fou de gating de preferences.ts les laisse donc passer sans cas
    particulier) et `recompensesNiveau` (qui filtre `niveau > 1`) les ignore. Le
-   champ `icone` ne sert qu'aux notifications de récompense → vide pour le confort. */
+   champ `icone` apparaît dans la grille « Mes récompenses » (ui/unlocks-view.ts)
+   et servirait aux notifications de récompense, ignorées ici pour le confort. */
 export interface Theme {
 	id: string;
 	label: string;
@@ -127,8 +128,8 @@ export interface Theme {
 }
 export const THEMES: Theme[] = [
 	{ id: 'defaut', label: 'Forêt', icone: '🌳', niveau: 1, confort: true },
-	{ id: 'nuit', label: 'Nuit', icone: '', niveau: 1, confort: true },
-	{ id: 'auto', label: 'Clair-obscur', icone: '', niveau: 1, confort: true },
+	{ id: 'nuit', label: 'Nuit', icone: '🌙', niveau: 1, confort: true },
+	{ id: 'auto', label: 'Clair-obscur', icone: '🌓', niveau: 1, confort: true },
 	{ id: 'ciel', label: 'Ciel', icone: '🔵', niveau: 20 },
 	{ id: 'automne', label: 'Automne', icone: '🍂', niveau: 40 },
 	{ id: 'lagon', label: 'Lagon', icone: '🌊', niveau: 70 },

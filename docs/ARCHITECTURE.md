@@ -474,8 +474,9 @@ mesure au rapporteur relève du CM1 (future leçon).
   déjà en banque sans état SR entrent en rotation, **datés J-1** → dus dès le jour
   même (`migrateRevisions` ; backfills idempotents dans `progress.ts` /
   `orthographe/store.ts`). Rattrape l'activité antérieure à #45.
-- **`progress.ts`** — records de bilans (`recordRun`, `cmpRun` « score puis
-  temps »), série (`updateStreak`, `streakSuffix`), étoiles
+- **`progress.ts`** — records de bilans **scopés par niveau** (`recordRun`,
+  `cmpRun` « score puis temps », `loadRuns` = niveau actif / `loadRunsAll` = tous
+  niveaux pour l'effort — #233), série (`updateStreak`, `streakSuffix`), étoiles
   (`recordLessonResult`, `starsEarned`), stats par leçon (`recordLessonStats`,
   `lessonAvgPct`), **XP global** (`getXP`/`addXP`, `ludaskia_xp`) et **niveaux
   dérivés** (`niveauDepuisXP`, `progressionNiveau`, `xpVersSuivant`,
@@ -810,8 +811,10 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   **1 nouvelle leçon** par semaine (#178). Ces trois pratiques constituent un
   usage sain (un peu de chrono, de l'entretien espacé, de la découverte) ; les
   bilans express/complet n'y figurent plus. Comptage : `countSince(mode, since)`
-  pour sprint et `revision-espacee` (une session terminée enregistre un `run`
-  non classé, juste pour le décompte) ; `countNewLessonsSince(since)` pour la
+  pour sprint et `revision-espacee` — **tous niveaux confondus** (effort global :
+  changer de classe en cours de semaine ne remet pas l'objectif à zéro, #233) ;
+  une session terminée enregistre un `run` non classé, juste pour le décompte ;
+  `countNewLessonsSince(since)` pour la
   nouvelle leçon, à partir du **premier passage daté par leçon**
   (`ludaskia_lessonFirstSeen`, posé dans `recordLessonStats` à la 1re rencontre).
   L'objectif « nouvelle leçon » est **masqué** quand le catalogue est entièrement
@@ -894,9 +897,16 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
 - **Scoping gamification** (`rewards.ts`) — **complétude** (`starsAll`, `allgreen`, par
   matière/catégorie) et **objectif du jour** scopés au niveau actif ; **XP, déblocages
   (forêt), trophées d'effort/régularité (`vol`/`sprint`/`streak`/`goal`/`ortho`)
-  restent GLOBAUX**. ⚠️ Les **records** (`RUNS_KEY`, par mode) restent eux aussi
-  **globaux** (non scopés par niveau) — déviation assumée (records secondaires, par
-  mode et non par leçon).
+  restent GLOBAUX** (`loadRunsAll` agrège tous niveaux — un trophée acquis ne se
+  reverrouille jamais au changement de classe).
+- **Records de bilans/sprint SCOPÉS par niveau** (`progress.ts`, #233) — clé
+  `ludaskia_runs_<mode>@<niveau>` (le niveau d'un record = **niveau actif**, un
+  sprint/bilan balayant le catalogue du niveau et non une matière). `loadRuns(mode)`
+  renvoie le **classement du niveau actif** (podiums/records affichés) ; `loadRunsAll(mode)`
+  agrège **tous niveaux** pour les compteurs d'EFFORT globaux (trophées, `countSince`).
+  Migration `migrateRunsNamespacing` (legacy `ludaskia_runs_<mode>` globale → `@ce2`,
+  silencieuse) intégrée à `migrateNiveauNamespacing`. Le défi quotidien « bats ton
+  record de sprint » reste, lui, scopé au niveau actif (pas un trophée).
 - **UI** — popup de **choix de classe** (`ui/onboarding.ts`, choix forcé, déclenchée si
   `besoinChoixNiveau()`), filtrage catalogue/sprint par `niveauActifMatiere`, **réglage
   parent** par matière (`ui/preferences.ts`), compteur d'accueil (cumul + objectif

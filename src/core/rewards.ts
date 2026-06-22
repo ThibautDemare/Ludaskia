@@ -8,6 +8,7 @@ import { getAllLessons, getLessonsByCategory, SUBJECTS, CATEGORIES } from './cat
 import { lessonsNiveauActif } from './niveau-actif';
 import {
 	loadRuns,
+	loadRunsAll,
 	getStreak,
 	loadLessonStats,
 	loadLessonStatsAll,
@@ -44,6 +45,8 @@ export function challengeContext() {
 	return {
 		weak: weakLessons(),
 		starsLeft: starsEarned() < lessonsNiveauActif().length,
+		// Défi quotidien « bats ton record de sprint » : SCOPÉ au niveau actif (≠ trophée
+		// d'effort) — on ne le propose pas s'il n'y a aucun record à battre à ce niveau.
 		hasSprint: loadRuns('sprint').length > 0,
 	};
 }
@@ -336,8 +339,10 @@ export function loadTrophies() {
 }
 /* Instantané des stats servant aux conditions de trophées */
 export function gSnapshot() {
-	const rc = loadRuns('complet'),
-		re = loadRuns('express'),
+	// Effort GLOBAL : les trophées de bilans/sprints comptent TOUS niveaux confondus
+	// (un trophée acquis ne se reverrouille pas au changement de classe — #233).
+	const rc = loadRunsAll('complet'),
+		re = loadRunsAll('express'),
 		all = [...rc, ...re];
 	const s = getStreak();
 	// Effort (GLOBAL, tous niveaux confondus) : total de réponses + bonnes réponses
@@ -389,7 +394,7 @@ export function gSnapshot() {
 		perfectBilan: all.some((r) => r.count > 0 && r.ok === r.count),
 		gold: rc.length >= 3 || re.length >= 3, // un podium d'or existe dès 3 essais dans un mode
 		goalsDone: getGoalsDone(),
-		sprints: loadRuns('sprint').length,
+		sprints: loadRunsAll('sprint').length, // effort global (tous niveaux)
 		totalAnswered, // total de calculs résolus (tous modes enregistrés)
 		allGreen: lessonsActif.every((l) => {
 			const a = lessonAvgPct(stats[l.id]);

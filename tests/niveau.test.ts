@@ -30,6 +30,10 @@ import { setOnDataWrite, lsGet, lsSet } from '../src/core/storage';
 import {
 	recordLessonResult,
 	recordLessonStats,
+	recordRun,
+	loadRuns,
+	loadRunsAll,
+	countSince,
 	starsEarned,
 	starsEarnedAll,
 	etoileAuxNiveaux,
@@ -39,7 +43,9 @@ import {
 	avancerLessonRevision,
 	migrateNiveauNamespacing,
 	STARS_KEY,
+	RUNS_KEY,
 } from '../src/core/progress';
+import { gSnapshot } from '../src/core/rewards';
 
 beforeEach(() => {
 	localStorage.clear();
@@ -183,6 +189,82 @@ describe('namespacing de la progression par niveau (Lot 2)', () => {
 		// Idempotent : un second passage ne change rien.
 		migrateNiveauNamespacing();
 		expect(lsGet(STARS_KEY, {})).toEqual({ 'math-doubles@ce2': 2, 'math-complements@ce2': 1 });
+	});
+});
+
+describe('records de sprint scopés par niveau (#233)', () => {
+	it('classement scopé au niveau actif, record CE2 conservé au passage en CM1', () => {
+		setNiveauReference('ce2');
+		recordRun('sprint', 8, 10, 300000);
+		expect(loadRuns('sprint').length).toBe(1);
+		// Passage au CM1 : le classement repart de zéro (records non comparables) mais
+		// le record CE2 reste stocké.
+		setNiveauReference('cm1');
+		expect(loadRuns('sprint').length).toBe(0);
+		recordRun('sprint', 12, 15, 280000);
+		expect(loadRuns('sprint').length).toBe(1);
+		// Retour au CE2 : le record d'origine est intact (pas d'écrasement).
+		setNiveauReference('ce2');
+		expect(loadRuns('sprint').length).toBe(1);
+		expect(loadRuns('sprint')[0].ok).toBe(8);
+	});
+
+	it('recordRun : rang/médaille calculés sur le classement du niveau actif', () => {
+		setNiveauReference('cm1');
+		recordRun('sprint', 5, 10, 400000);
+		recordRun('sprint', 7, 10, 380000);
+		const r = recordRun('sprint', 9, 10, 360000); // meilleur score CM1 → 1er, record
+		expect(r.rank).toBe(1);
+		expect(r.total).toBe(3);
+		expect(r.medal).toBe(1);
+		expect(r.isRecord).toBe(true);
+	});
+
+	it('loadRunsAll : agrège tous les niveaux (compteur d’effort global)', () => {
+		setNiveauReference('ce2');
+		recordRun('sprint', 8, 10, 300000);
+		setNiveauReference('cm1');
+		recordRun('sprint', 12, 15, 280000);
+		// loadRuns ne voit que le niveau actif…
+		expect(loadRuns('sprint').length).toBe(1);
+		// …loadRunsAll voit les deux, quel que soit le niveau actif.
+		expect(loadRunsAll('sprint').length).toBe(2);
+		setNiveauReference('ce2');
+		expect(loadRunsAll('sprint').length).toBe(2);
+	});
+
+	it('trophées d’effort (gSnapshot.sprints) globaux, ne se reverrouillent pas', () => {
+		setNiveauReference('ce2');
+		recordRun('sprint', 8, 10, 300000);
+		setNiveauReference('cm1');
+		recordRun('sprint', 12, 15, 280000);
+		// Le compteur de sprints est global (2) même si le classement CM1 n'en montre qu'un.
+		expect(gSnapshot().sprints).toBe(2);
+		setNiveauReference('ce2');
+		expect(gSnapshot().sprints).toBe(2);
+	});
+
+	it('régularité (countSince) globale : un sprint dans un autre niveau compte', () => {
+		setNiveauReference('cm1');
+		recordRun('sprint', 12, 15, 280000);
+		setNiveauReference('ce2');
+		// Aucun sprint CE2, mais le sprint CM1 compte pour la régularité (effort global).
+		expect(loadRuns('sprint').length).toBe(0);
+		expect(countSince('sprint', 0)).toBe(1);
+	});
+
+	it('migration : clé legacy globale ludaskia_runs_sprint → @ce2, idempotente', () => {
+		setNiveauReference('ce2');
+		// Données pré-#233 : clé GLOBALE sans niveau (tout l'existant était CE2).
+		lsSet(RUNS_KEY('sprint'), [{ ts: 1, ok: 4, count: 5, ms: 300000 }]);
+		migrateNiveauNamespacing();
+		// La clé legacy est renommée et lisible comme record CE2.
+		expect(loadRuns('sprint').length).toBe(1);
+		expect(lsGet(RUNS_KEY('sprint'), null)).toBeNull(); // legacy supprimée
+		expect(lsGet(`${RUNS_KEY('sprint')}@ce2`, []).length).toBe(1);
+		// Idempotent : un second passage ne change rien.
+		migrateNiveauNamespacing();
+		expect(loadRuns('sprint').length).toBe(1);
 	});
 });
 

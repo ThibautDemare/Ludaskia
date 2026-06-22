@@ -310,22 +310,21 @@
 #leconDuJour:empty {
 	display: none;
 }
-.lj-kicker {
+/* Le titre de la CARTE est « Ta prochaine leçon » (h2 hérité de `.card h2` : vert,
+   grand, comme « Sprint 5 min »). Le nom de la leçon est mis en valeur mais reste
+   SECONDAIRE (sous le titre), au-dessus de la sous-ligne « matière · catégorie ». */
+.lj-title {
 	display: block;
-	margin-top: 12px;
-	font-family: var(--ui);
-	font-size: 13px;
+	font-size: 17px;
 	font-weight: 700;
-	color: var(--grey);
+	color: var(--ink);
 }
-/* Le kicker occupe l'air au-dessus du titre : on resserre le h2 hérité de .card. */
-#leconDuJour h2 {
-	margin-top: 2px;
-}
-/* Sous-ligne « matière · catégorie » (hérite de `.card p`) : une seule ligne, le
-   titre de leçon domine ; resserrée avant le CTA. */
 .lj-sub {
-	margin-bottom: 14px;
+	display: block;
+	margin-top: 2px;
+	font-size: 13px;
+	color: var(--grey);
+	/* Une seule ligne (le titre de carte et le nom de leçon priment) — tronquée si long. */
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;

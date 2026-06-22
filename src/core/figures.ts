@@ -617,15 +617,41 @@ function boite(x: number, y: number, w: number, h: number, ox: number, oy: numbe
 	);
 }
 
-export function renderSolide(solid: Solid): string {
+/* Orientation d'un solide (#286 — variété visuelle, choisie par la DONNÉE pour
+   garder ce module déterministe). `mirror` : fuite vers la GAUCHE (miroir
+   horizontal, figure recentrée par transform). `lean` : vecteur de fuite des
+   boîtes — 0 canonique (~37°), 1 plus plat (~30°), 2 plus raide (~45°), toujours
+   vers le HAUT. Sans objet pour cylindre/cône/boule (une seule vue lisible). */
+export interface SolidOrient {
+	mirror?: boolean;
+	lean?: 0 | 1 | 2;
+}
+
+// Vecteurs de fuite (ox, oy) des boîtes, indexés par `lean` (oy < 0 : vers le haut).
+const FUITE_CUBE: ReadonlyArray<readonly [number, number]> = [
+	[34, -26],
+	[35, -20],
+	[28, -28],
+];
+const FUITE_PAVE: ReadonlyArray<readonly [number, number]> = [
+	[30, -24],
+	[31, -18],
+	[25, -25],
+];
+
+export function renderSolide(solid: Solid, orient: SolidOrient = {}): string {
 	let body = '';
 	switch (solid) {
-		case 'cube':
-			body = boite(45, 80, 80, 80, 34, -26);
+		case 'cube': {
+			const [ox, oy] = FUITE_CUBE[orient.lean ?? 0];
+			body = boite(45, 80, 80, 80, ox, oy);
 			break;
-		case 'pave':
-			body = boite(34, 96, 110, 56, 30, -24);
+		}
+		case 'pave': {
+			const [ox, oy] = FUITE_PAVE[orient.lean ?? 0];
+			body = boite(34, 96, 110, 56, ox, oy);
 			break;
+		}
 		case 'cylindre':
 			body =
 				rect(55, 60, 90, 90, { fill: 'var(--accent-soft)' }) +
@@ -671,6 +697,9 @@ export function renderSolide(solid: Solid): string {
 				});
 			break;
 	}
+	// Miroir horizontal (#286) : fuite vers la gauche ; transform centré → coordonnées
+	// internes inchangées, perspective cavalière sans arêtes cachées conservée.
+	if (orient.mirror) body = `<g transform="translate(${SOLID_SIZE} 0) scale(-1 1)">${body}</g>`;
 	return svgCanvas(
 		SOLID_SIZE,
 		SOLID_SIZE,
@@ -934,7 +963,7 @@ export type SymShape =
 /** Orientation d'un axe : vertical, horizontal, diagonale « \ » (d1), diagonale « / » (d2). */
 export type SymAxis = 'v' | 'h' | 'd1' | 'd2';
 /** Motifs chiraux du format 3 (asymétriques dans les deux sens). */
-export type SymMotif = 'drapeau' | 'botte';
+export type SymMotif = 'drapeau' | 'botte' | 'lettreF' | 'poisson' | 'chaussure';
 /** Transformation appliquée au motif pour fabriquer une proposition. */
 export type SymTransform = 'reflet' | 'glisse' | 'tourne';
 
@@ -1142,6 +1171,49 @@ const SYM_MOTIFS: Record<SymMotif, SymPt[]> = {
 		[0.82, 0.62],
 		[0.82, 0.9],
 		[0.22, 0.9],
+	],
+	// #286 (variété visuelle) — 3 motifs chiraux supplémentaires (aucun axe ni
+	// symétrie de demi-tour), cadrés par designer-ux-enfant : branches larges,
+	// déséquilibre haut/bas franc, reconnaissables en aplat à petite taille.
+	// Lettre F : hampe à gauche, barre du haut plus longue que celle du milieu,
+	// rien en bas → chiral dans les deux sens (exemple canonique).
+	lettreF: [
+		[0.26, 0.1],
+		[0.74, 0.1],
+		[0.74, 0.28],
+		[0.46, 0.28],
+		[0.46, 0.46],
+		[0.66, 0.46],
+		[0.66, 0.64],
+		[0.46, 0.64],
+		[0.46, 0.9],
+		[0.26, 0.9],
+	],
+	// Poisson de profil : bouche pointue à gauche, nageoire dorsale en haut, queue
+	// triangulaire échancrée à droite → silhouette chirale sans détail interne.
+	poisson: [
+		[0.1, 0.5],
+		[0.3, 0.36],
+		[0.44, 0.34],
+		[0.5, 0.24],
+		[0.56, 0.34],
+		[0.7, 0.4],
+		[0.92, 0.3],
+		[0.8, 0.5],
+		[0.92, 0.7],
+		[0.7, 0.6],
+		[0.3, 0.64],
+	],
+	// Chaussure de profil : talon haut à l'arrière (gauche), pointe relevée à
+	// l'avant (droite), semelle plate en bas → repères gauche/droite et haut/bas nets.
+	chaussure: [
+		[0.14, 0.84],
+		[0.14, 0.56],
+		[0.34, 0.48],
+		[0.5, 0.54],
+		[0.7, 0.52],
+		[0.88, 0.6],
+		[0.88, 0.84],
 	],
 };
 
@@ -1398,7 +1470,7 @@ export type FigureSpec =
 	| { kind: 'figurePlane'; shape: PlaneShape; rotation?: number }
 	| { kind: 'sceneFigures'; cells: Array<{ shape: PlaneShape; rotation?: number }> }
 	| { kind: 'cercle'; segment?: 'rayon' | 'diametre'; label?: string }
-	| { kind: 'solide'; solid: Solid }
+	| { kind: 'solide'; solid: Solid; orient?: SolidOrient }
 	| { kind: 'groupes'; paniers: number; total: number }
 	| { kind: 'fractionBarre'; num: number; den: number }
 	| { kind: 'fractionBande'; num: number; den: number }
@@ -1425,7 +1497,7 @@ export function renderFigure(spec: FigureSpec): string {
 		case 'cercle':
 			return renderCercle(spec.segment, spec.label);
 		case 'solide':
-			return renderSolide(spec.solid);
+			return renderSolide(spec.solid, spec.orient);
 		case 'groupes':
 			return renderGroupes(spec.paniers, spec.total);
 		case 'fractionBarre':

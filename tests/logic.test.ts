@@ -1381,6 +1381,31 @@ describe('Géométrie : je reconnais les solides (#103)', () => {
 	test('renderFigure : dispatch solide', () => {
 		expect(renderFigure({ kind: 'solide', solid: 'cylindre' })).toContain('<svg');
 	});
+	test('renderSolide — orientation (#286) : miroir par transform, angle/profondeur variables', () => {
+		// Miroir horizontal = transform centré (coordonnées internes inchangées).
+		expect(renderSolide('cube', { mirror: true })).toContain('scale(-1 1)');
+		expect(renderSolide('cube', { mirror: false })).not.toContain('scale(-1 1)');
+		// `lean` change la géométrie de fuite des boîtes.
+		expect(renderSolide('cube', { lean: 0 })).not.toBe(renderSolide('cube', { lean: 2 }));
+		// La description reste neutre quelle que soit l'orientation (réponse jamais soufflée).
+		for (const o of [{ mirror: true }, { lean: 2, mirror: true }] as const) {
+			const head = renderSolide('cube', o).split('</desc>')[0];
+			for (const n of NOMS) expect(head).not.toContain(n);
+		}
+	});
+	test('reconnaître — un polyèdre varie d’orientation, un solide rond reste identique', () => {
+		const type = getLessonById('geo-solides-reconnaitre')!.exerciseType;
+		const figuresDe = (nom: string): Set<string> => {
+			const set = new Set<string>();
+			for (let i = 0; i < 1200; i++) {
+				const ex = type.generate({ mode: 'qcm' });
+				if (ex.type === 'qcm' && ex.answer === nom && ex.figure) set.add(ex.figure);
+			}
+			return set;
+		};
+		expect(figuresDe('cube').size).toBeGreaterThanOrEqual(2); // orientation variée (#286)
+		expect(figuresDe('boule').size).toBe(1); // une seule vue lisible
+	});
 	test('les 2 leçons de solides peuplent « Géométrie »', () => {
 		const cat = getLessonsByCategory('math-geometrie').map((l) => l.id);
 		expect(cat).toContain('geo-solides-reconnaitre');

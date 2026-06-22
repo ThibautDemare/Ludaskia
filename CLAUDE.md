@@ -101,13 +101,22 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
   indisponible.
 - **Référence `gh`** (utilisée par l'agent ; fallback pour les opérations
   directes) — `gh` est installé et authentifié.
-  - **`gh` n'est PAS dans le `PATH`.** L'appeler par son chemin complet, **depuis
-    PowerShell** (l'outil Bash ne le voit pas) :
-    `& "C:\Program Files\GitHub CLI\gh.exe" <commande>`.
-  - Pour un `--body`/`--title` multi-ligne (issues, PR, en **français** avec
-    accents), utiliser un **here-string PowerShell** `@'...'@` (le `'@` final
-    collé à la colonne 0) et passer la variable : `& $gh issue create --body $body`.
-    Penser à doubler les apostrophes (`d''XP`) dans un here-string simple-quote.
+  - **Appeler `gh` « nu »**, **depuis PowerShell** : `gh <commande>` (p. ex.
+    `gh issue view 235`). Le dossier `C:\Program Files\GitHub CLI` est dans le PATH
+    utilisateur. **Ne plus** utiliser le chemin complet `& "C:\…\gh.exe" …` ni une
+    variable `$gh = …; & $gh …` : ces formes (opérateur d'appel `&` / variable) **ne
+    sont pas reconnues par l'allow-list des permissions** et redemandent confirmation
+    à chaque appel. Les verbes de **lecture** (issue/pr `view`/`list`, `repo view`,
+    `label list`, `pr diff`/`checks`, `run view`, `auth status`) et de **gestion
+    issues/PR** (issue/pr `create`/`edit`/`comment`) sont pré-autorisés dans
+    `.claude/settings.local.json` ; `pr merge`, `repo delete/edit/archive/rename`,
+    `issue delete`, `secret`/`variable`, `auth token/logout` y sont **refusés**, et
+    `gh api` en écriture demande confirmation.
+  - **Corps multi-ligne** (issue, PR, milestone, en **français** avec accents) :
+    ne **jamais** le passer en `--body` inline ni via un here-string `@'...'@`
+    (risque de casse d'encodage sous PowerShell). Écrire le corps dans un fichier
+    `.md` UTF-8 **avec l'outil Write** (p. ex. dans le scratchpad de session), le
+    passer avec **`--body-file`**, puis supprimer le fichier.
 - **Une PR par changement**, liée à son issue le cas échéant (`Closes #N`) ;
   attendre la CI verte puis rebase-merge. **Ne pas merger sans le feu vert du
   mainteneur.**

@@ -26,16 +26,21 @@ voir les garde-fous PR ci-dessous.
 
 # Appel de `gh` (impératif technique)
 
-`gh` n'est **pas** dans le `PATH` et l'outil Bash ne le voit pas. Tu l'appelles
-**toujours** par son chemin complet, **depuis PowerShell** :
+Le dossier de GitHub CLI est dans le `PATH`. Appelle `gh` **nu**, **depuis
+PowerShell** :
 
 ```
-& "C:\Program Files\GitHub CLI\gh.exe" <commande>
+gh <commande>
 ```
+
+N'utilise **pas** le chemin complet `& "C:\Program Files\GitHub CLI\gh.exe" …` ni
+une variable `$gh = …; & $gh …` : ces formes (opérateur d'appel `&` / variable) ne
+sont **pas** reconnues par l'allow-list des permissions et redemandent confirmation
+à chaque appel.
 
 Pour tout corps de texte en français **avec accents** (issue, milestone), n'utilise
 **pas** `--body` en ligne (risque de casse d'encodage sous PowerShell). Écris le
-corps dans un fichier `.md` UTF-8 (via l'outil Write, p. ex. sous `$env:TEMP`),
+corps dans un fichier `.md` UTF-8 (via l'outil Write, p. ex. dans le scratchpad),
 passe-le avec `--body-file`, puis supprime le fichier.
 
 # Conventions de langue
@@ -78,7 +83,7 @@ Famille **extensible** (futurs `cp`, `ce1`, `cm2`, `6e` — à créer au besoin,
 style « Niveau scolaire : XXX »).
 
 Liste tenue à la main ; en cas de doute (label refusé, dépôt modifié), vérifie :
-`& "C:\Program Files\GitHub CLI\gh.exe" label list --limit 50`.
+`gh label list --limit 50`.
 
 **Rédaction** — titre court et explicite ; corps structuré, adapté au cas :
 - `## Contexte` — le pourquoi, l'état actuel, les fichiers concernés (`src/...`).
@@ -108,7 +113,7 @@ Workflow du projet (`main` est **protégée** : jamais de commit/push direct) :
 2. **Une PR par changement**, liée à son issue : mettre `Closes #N` dans le corps
    quand la PR fermera l'issue.
 3. Titre/corps en **anglais**. Corps : résumé du quoi/pourquoi, et le `Closes #N`.
-4. Créer : `& "C:\Program Files\GitHub CLI\gh.exe" pr create --title "..." --body-file "..." --base main`.
+4. Créer : `gh pr create --title "..." --body-file "..." --base main`.
 5. Attendre la **CI verte** (`format:check → lint → typecheck → test`) ; en cas de
    conflit avec `main`, prévenir (rebase à faire par celui qui édite le code).
 

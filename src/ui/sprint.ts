@@ -206,8 +206,8 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 	// Sélecteur de périmètre (#208) : « Ce que je connais déjà » (défaut) en tête.
 	// « connais » et non « appris » : critère = rencontrée, pas maîtrisée (avis pédago).
 	const perimetre = choisissable
-		? `<div class="sc-section-title">Je m'entraîne sur</div>
-    <div class="sc-options sc-perimetre">
+		? `<div class="sc-section-title" id="scScopeTitle">Je m'entraîne sur</div>
+    <div class="sc-options sc-perimetre" role="radiogroup" aria-labelledby="scScopeTitle">
       <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="seen" ${scope === 'seen' ? 'checked' : ''}><span>Ce que je connais déjà</span></label>
       <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="all" ${scope === 'all' ? 'checked' : ''}><span>Tout</span></label>
     </div>`
@@ -215,8 +215,8 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 
 	el.innerHTML = `<div class="sprint-config">
     ${perimetre}
-    <div class="sc-section-title">Filtre</div>
-    <div class="sc-options">
+    <div class="sc-section-title" id="scFilterTitle">Dans quelle matière&nbsp;?</div>
+    <div class="sc-options" role="radiogroup" aria-labelledby="scFilterTitle">
       ${opt('all', 'Toutes les matières', countFor({ type: 'all' }))}
       ${subjectOptions}
     </div>

@@ -15,7 +15,7 @@ import { escapeHTML } from '../core/utils';
 import { SUBJECTS, CATEGORIES, getLessonById } from '../core/catalog';
 import { sequenceLeconDuJour, leconSuivante } from '../core/lecon-du-jour';
 import { icon } from './icon';
-import { subjectTint } from './cat-visuals';
+import { subjectTint, subjectIcon } from './cat-visuals';
 import { startLecon, startRevisionEspacee } from './navigation';
 
 /* Rend le bloc dans `el`. `cibleId` (optionnel) force l'affichage d'une leçon
@@ -41,7 +41,8 @@ export function renderLeconDuJour(el: HTMLElement | null, cibleId?: string): voi
 	const subject = SUBJECTS.find((s) => s.id === lesson.subject);
 	const cat = CATEGORIES.find((c) => c.id === lesson.category);
 	const tint = subjectTint(lesson.subject);
-	const ico = cat?.icon ? icon(cat.icon) : '';
+	// Repli sur l'icône de la matière si la catégorie n'en a pas (pas de pastille vide).
+	const ico = icon(cat?.icon ?? subjectIcon(lesson.subject));
 	const sousTitre = `${escapeHTML(subject?.label ?? '')}${cat ? ' · ' + escapeHTML(cat.label) : ''}`;
 	// « Voir une autre leçon » n'a de sens que s'il reste plus d'une leçon à faire.
 	const autre =
@@ -57,7 +58,7 @@ export function renderLeconDuJour(el: HTMLElement | null, cibleId?: string): voi
         <span class="lj-cat">${sousTitre}</span>
         <span class="lj-title">${escapeHTML(lesson.label)}</span>
       </span>
-      <span class="lj-go">C'est parti →</span>
+      <span class="lj-go">C'est parti <span aria-hidden="true">→</span></span>
     </button>
     ${autre}
   </section>`;

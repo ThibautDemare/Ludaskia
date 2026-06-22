@@ -94,7 +94,9 @@
 	.posee-input,
 	.posee-carry {
 		border: 1.5px solid #333 !important;
-		border-radius: 6px !important;
+		/* 3px : rayon commun à toutes les « cases à remplir » (case-résultat, retenue,
+		   case à cocher, case de trou) — aspect scolaire net, angles francs (avis designer). */
+		border-radius: 3px !important;
 		background: transparent !important;
 	}
 	.posee-carry {
@@ -114,9 +116,17 @@
 	}
 	/* Les grilles sont adaptatives à l'écran ; on rétablit un nombre de colonnes
      fixe sur le papier pour garder la mise en page A4 prévue. */
-	.grid.c3,
-	.bilan-grid {
+	.grid.c3 {
 		grid-template-columns: repeat(3, 1fr);
+	}
+	/* Bilan imprimé : multi-COLONNES, pas CSS Grid — le Grid ne se fragmente pas
+	   proprement sur plusieurs pages (le contenu déborde → items coupés ET chevauchement
+	   sur la page suivante). Le multicol flue et casse correctement entre les pages ;
+	   `break-inside` (plus bas) garde chaque bloc / item / choix intègre. */
+	.bilan-grid {
+		display: block;
+		column-count: 3;
+		column-gap: 24px;
 	}
 	.grid.c4 {
 		grid-template-columns: repeat(4, 1fr);
@@ -124,7 +134,7 @@
 	/* Bilan contenant des réponses texte (conjugaison) : 2 colonnes max, pas la
      grille dense des maths (les formes conjuguées sont longues). */
 	.bilan-grid:has(.ans-text) {
-		grid-template-columns: repeat(2, 1fr);
+		column-count: 2;
 	}
 	/* Conjugaison : lignes aérées (accents/apostrophes) et champ de réponse long
      sur une ligne de base. La question rappelle déjà le pronom + l'infinitif. */
@@ -144,7 +154,7 @@
 		max-width: 34mm;
 	}
 	.bilan-grid:has(.qcm-print-choices) {
-		grid-template-columns: repeat(2, 1fr);
+		column-count: 2;
 	}
 	/* Terminaison surlignée (#205) d'une option de QCM : le style écran est scopé
 	   `.sprint-choice` → on le réapplique au libellé IMPRIMÉ (gras + souligné noir,
@@ -154,5 +164,71 @@
 		text-decoration: underline;
 		text-decoration-thickness: 2px;
 		text-underline-offset: 3px;
+	}
+
+	/* === Finitions de rendu d'impression (retours de test pré-déploiement) === */
+
+	/* (1) Résultat de l'opération posée : sans taille propre, `.posee-input` remplissait
+	   TOUTE la colonne → cases voisines quasi collées (lecture « une seule boîte à
+	   barreaux »). On les rend plus petites que la colonne, comme les retenues, pour des
+	   cases nettement séparées et alignées sous les chiffres. */
+	.posee-input {
+		width: 1.6rem !important;
+		height: 1.9rem !important;
+	}
+
+	/* (2) Item AVEC figure (solides, figures, horloge…) : la figure occupe sa PROPRE
+	   ligne (donc centrée, via son `align-items: center` interne), la question + sa ligne
+	   de réponse passent dessous, ENSEMBLE (on garde la rangée flex pour ne pas éclater
+	   l'énoncé et son champ). Lecture naturelle « dessin puis question ». */
+	.conj-op .figure,
+	.bop .figure {
+		flex: 0 0 100%;
+	}
+
+	/* (3) Séparation plus lisible entre exercices : blocs de bilan aérés, en-tête de
+	   thème net (gras + filet) plutôt qu'en italique discrète, fiches bien détachées. */
+	.bloc {
+		break-inside: avoid;
+		margin: 0 0 16px;
+	}
+	.bop,
+	.conj-op,
+	.qcm-print-choice {
+		break-inside: avoid;
+	}
+	.bloc .btheme {
+		display: block;
+		font-style: normal;
+		font-weight: 700;
+		font-size: 13px;
+		border-bottom: 1px solid #666;
+		padding-bottom: 3px;
+		margin-bottom: 6px;
+	}
+	.fiche {
+		break-inside: avoid;
+	}
+	.fiche + .fiche {
+		margin-top: 12mm;
+	}
+
+	/* (4) `@` des QCM à trou (homophones, m/b/p…) rendu en RECTANGLE VIDE (cf.
+	   qcmCheckboxHTML) : un enfant comprend « le mot/la lettre va ici », pas un « @ ». */
+	.cloze-box {
+		display: inline-block;
+		width: 1.8em;
+		height: 1.15em;
+		border: 1px solid #333;
+		border-radius: 3px;
+		vertical-align: middle;
+		margin: 0 2px;
+	}
+
+	/* (5) Fractions empilées (#200) : volontairement réduites à l'écran (0.82em, car
+	   elles occupent deux lignes). À la taille d'impression elles deviennent illisibles
+	   pour un enfant → on les agrandit nettement sur le papier (la barre, en `em`, suit). */
+	.frac {
+		font-size: 1.3em;
 	}
 }

@@ -139,7 +139,8 @@ function faitAxe(): Fait {
 
 /* ---------- Format 3 : « quel est le vrai reflet ? » (cœur) ---------- */
 
-const MOTIFS: SymMotif[] = ['drapeau', 'botte'];
+// #286 : 5 motifs chiraux (× 2 axes) pour casser la répétition visuelle du format 3.
+const MOTIFS: SymMotif[] = ['drapeau', 'botte', 'lettreF', 'poisson', 'chaussure'];
 // Valeurs (clé de correction) ET libellés parlés des choix : positionnels et neutres
 // (ne soufflent pas la réponse). Les images sont rendues dans `choicesView`.
 const POSITIONS = ['la première image', 'la deuxième image', 'la troisième image'];

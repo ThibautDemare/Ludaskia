@@ -96,7 +96,9 @@ describe('symétrie axiale — reflet pixel-perfect', () => {
 	});
 
 	it('les trois images (reflet/glissé/tourné) sont distinctes, pour chaque motif et chaque axe', () => {
-		const motifs: SymMotif[] = ['drapeau', 'botte'];
+		// #286 : les 5 motifs chiraux (aucun axe ni symétrie de demi-tour) → reflet,
+		// glissé et tourné donnent bien trois images distinctes (sinon question ambiguë).
+		const motifs: SymMotif[] = ['drapeau', 'botte', 'lettreF', 'poisson', 'chaussure'];
 		for (const motif of motifs) {
 			for (const axis of ['v', 'h'] as const) {
 				// poly[1] = l'image transformée (poly[0] = figure de départ, identique partout).

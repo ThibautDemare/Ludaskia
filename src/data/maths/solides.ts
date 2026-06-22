@@ -22,9 +22,26 @@
      cachées) — les propriétés sont mémorisées, pas comptées.
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
-import type { Solid } from '../../core/figures';
+import type { Solid, SolidOrient } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
-import { choice, sample, normalizeText } from '../../core/utils';
+import { choice, sample, normalizeText, rnd } from '../../core/utils';
+
+/* Orientation du schéma (#286 — variété visuelle, cadrage designer-ux-enfant) :
+   on fait varier cube/pavé/pyramide pour qu'un même solide n'apparaisse pas
+   toujours à l'identique. ~60 % vue canonique (ancrage), ~40 % variantes (miroir
+   horizontal, et léger angle/profondeur pour les boîtes). Cylindre/cône/boule :
+   une seule vue lisible → orientation inchangée. */
+function orientSolide(solid: Solid): SolidOrient {
+	if (solid === 'cube' || solid === 'pave') {
+		const r = rnd(1, 100);
+		if (r <= 60) return { lean: 0, mirror: false }; // canonique (fuite haut-droite)
+		if (r <= 80) return { lean: 0, mirror: true }; // miroir (fuite haut-gauche)
+		const lean: 1 | 2 = rnd(1, 2) === 1 ? 1 : 2; // plus plat / plus raide
+		return { lean, mirror: rnd(1, 2) === 1 };
+	}
+	if (solid === 'pyramide') return { mirror: rnd(1, 100) > 60 }; // 60 % canonique / 40 % miroir
+	return {}; // cylindre / cône / boule : vue unique
+}
 
 const NOM: Record<Solid, string> = {
 	cube: 'cube',
@@ -58,7 +75,7 @@ function reconnaitreType(): ExerciseType {
 			const mode = opts?.mode;
 			const solid = choice(TOUS);
 			const answer = NOM[solid];
-			const figure = renderFigure({ kind: 'solide', solid });
+			const figure = renderFigure({ kind: 'solide', solid, orient: orientSolide(solid) });
 			if (mode === 'qcm') {
 				const distract = sample(
 					TOUS.map((s) => NOM[s]).filter((n) => n !== answer),

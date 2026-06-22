@@ -34,9 +34,8 @@ export function renderLeconDuJour(el: HTMLElement | null, cibleId?: string): voi
 		delete el.dataset.lesson;
 		el.innerHTML = `
       <div class="ico" aria-hidden="true">${icon('star')}</div>
-      <span class="lj-kicker">Programme terminé</span>
-      <h2 class="lj-title">Bravo&nbsp;!</h2>
-      <p class="lj-sub">Tu as fait le tour des leçons de ta classe.</p>
+      <h2>Bravo&nbsp;!</h2>
+      <p>Tu as fait le tour des leçons de ta classe.</p>
       <span class="go">Réviser <span aria-hidden="true">→</span></span>`;
 	} else {
 		el.dataset.mode = 'lesson';
@@ -54,9 +53,11 @@ export function renderLeconDuJour(el: HTMLElement | null, cibleId?: string): voi
 				: '';
 		el.innerHTML = `
       <div class="ico" style="background:${tint}" aria-hidden="true">${ico}</div>
-      <span class="lj-kicker">Ta prochaine leçon</span>
-      <h2 class="lj-title">${escapeHTML(lesson.label)}</h2>
-      <p class="lj-sub">${sousTitre}</p>
+      <h2>Ta prochaine leçon</h2>
+      <p>
+        <span class="lj-title">${escapeHTML(lesson.label)}</span>
+        <span class="lj-sub">${sousTitre}</span>
+      </p>
       <span class="go">C'est parti <span aria-hidden="true">→</span></span>
       ${autre}`;
 	}

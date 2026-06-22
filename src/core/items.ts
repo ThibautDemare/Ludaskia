@@ -182,7 +182,14 @@ function qcmCheckboxHTML(it: Item): string {
 			return `<li class="${liCls}"><span class="${boxCls}" aria-hidden="true"></span><span class="qcm-print-label"${aria}>${label}</span></li>`;
 		})
 		.join('');
-	return `${figureBlock(it.figure)}<p class="qcm-print-q">${enonceTexte(it.text)}</p><ul class="qcm-print-choices">${lis}</ul>`;
+	// Le `@` (emplacement de la réponse dans les QCM à trou : homophones, m/b/p…) ne doit
+	// pas s'imprimer tel quel — incompris d'un enfant. On le rend par un rectangle vide
+	// qui matérialise « le mot/la lettre va ici » (#41 suivi de #289).
+	const question = enonceTexte(it.text).replace(
+		'@',
+		'<span class="cloze-box" aria-hidden="true"></span>',
+	);
+	return `${figureBlock(it.figure)}<p class="qcm-print-q">${question}</p><ul class="qcm-print-choices">${lis}</ul>`;
 }
 
 export function renderItem(it: Item, extra = '') {

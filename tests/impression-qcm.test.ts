@@ -67,6 +67,19 @@ describe('renderItem — cases à cocher RÉSERVÉES à l’impression (#289)', 
 		expect(html).not.toContain('class="ans');
 	});
 
+	it('en impression, le `@` d’un QCM à trou devient une case vide (pas un « @ » littéral)', () => {
+		setPrintMode(true);
+		const html = renderItem({
+			text: 'Le bébé @ beaucoup pleuré.',
+			answer: 'a',
+			choices: ['a', 'à'],
+			kind: 'text',
+		});
+		expect(html).toContain('cloze-box'); // emplacement matérialisé par un rectangle vide
+		expect(html).not.toContain('@'); // plus de « @ » brut, incompréhensible pour un enfant
+		setPrintMode(false);
+	});
+
 	it('en impression, un item de saisie sans `@` reçoit quand même une zone-réponse', () => {
 		// Item texte fabriqué sans `@` : la garantie d'impression doit ajouter un champ.
 		setPrintMode(true);

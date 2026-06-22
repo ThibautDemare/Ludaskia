@@ -313,6 +313,10 @@ mesure au rapporteur relève du CM1 (future leçon).
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
   (`uniqueComm/Exact`, `commKey`), `escapeHTML`, `fmt` (mm:ss), et `normalizeText`
   (normalisation **partagée** des réponses texte : trim + espaces internes réduits + NFC).
+  **RNG seedable (#41)** : tout l'aléa passe par `randFloat()` (source déroutable) ;
+  `withSeed(seed, fn)` la rend déterministe le temps de `fn`, `randomSeed()` tire une
+  graine. **Invariant** : les générateurs d'exercices ne doivent JAMAIS appeler
+  `Math.random` directement (sinon le corrigé imprimable diverge de la feuille).
 - **`storage.ts`** — `lsGet/lsSet` (clés préfixées par profil), accès bruts
   (`lsKeysRaw/lsRemoveRaw/lsSetRaw`, `appKeys`), `setActivePrefix`, constante
   `PROFILES_KEY`, et `setOnDataWrite(fn)` (hook appelé après chaque écriture de
@@ -439,6 +443,9 @@ mesure au rapporteur relève du CM1 (future leçon).
   `PrintScope` + **`buildPrintableDOM(scope)`** (contextuel, **multi-matières** via
   `buildLessonFiche`/`bilanBlocksForIds`), `coverHTML(scope)` (garde dynamique),
   pagination 2 fiches/A4. (`buildFiches`/`bilanHTML` historiques conservés.)
+  **Corrigé (#41)** : `scope.corrige` rend le corps DEUX fois — feuille vierge puis
+  réponses révélées (`corrigeMode`) — sur les MÊMES items (graine commune via
+  `withSeed`), avec `corrigeCoverHTML` en intercalaire.
 - **`build.ts`** — construction **générique multi-matières** : `genItems`,
   `buildLessonFiche` (calcul mental → rendu riche via `LESSONS.build()` ; maths
   modernes & autres matières → liste de questions, consigne « Complète. » pour les
@@ -723,7 +730,8 @@ En modules ES, on ne peut pas réassigner une variable d'un autre module. Les
 accesseur/mutateur, **comportement identique** :
 - `items.ts` : `get/setInputCounter` (+ `nextInputId`), `get/setSessionItems`,
   `get/setRenderLesson`, `get/setPrintMode` (#289 : rendu papier des QCM en cases à
-  cocher, posé/retiré autour de `buildPrintableDOM`) ;
+  cocher, posé/retiré autour de `buildPrintableDOM`), `get/setCorrigeMode` (#41 :
+  sous-mode qui révèle les réponses pour le corrigé imprimable) ;
 - `chrono.ts` : `get/setTimer` (le handle d'intervalle est réutilisé par le sprint) ;
 - `navigation.ts` : `get/set` pour `currentMode`, `currentLessonId`,
   `sessionRecorded`, `lastErrors`, `pendingRevision`.

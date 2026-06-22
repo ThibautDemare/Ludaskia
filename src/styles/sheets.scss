@@ -301,6 +301,53 @@ html.anim-reduced .mark.correct {
 	margin: 2px 0 4px;
 }
 
+/* Corrigé imprimable (#41) : réponses révélées sur la copie du parent. L'information
+   est portée par le CONTENU (réponse écrite, ✓, chiffre) — pas par la couleur seule ;
+   la teinte d'accent ne fait que distinguer du reste, et reste lisible en N&B. */
+.ans-corrige {
+	font-weight: 700;
+	color: var(--accent);
+	border-bottom: 1px solid #333;
+	padding: 0 3px;
+}
+.posee-corrige {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 1.5px solid #333;
+	border-radius: 6px;
+	font-weight: 700;
+	color: var(--accent);
+}
+/* Case du bon choix : cochée par un ✓ centré (glyphe → s'imprime, contrairement à un
+   fond) ; le libellé du bon choix passe en gras (second indice, non chromatique). */
+.qcm-print-box--checked {
+	position: relative;
+}
+.qcm-print-box--checked::after {
+	content: '✓';
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--ink);
+}
+.qcm-print-choice--correct .qcm-print-label {
+	font-weight: 700;
+}
+/* Page de garde du corrigé : « Corrigé » en accent ET encadré — un cadre est un indice
+   NON chromatique (survit au N&B), pour la repérer dans la pile sans confondre avec la
+   page de garde de l'enfant. */
+.cover-corrige .big {
+	color: var(--accent);
+	border: 2px solid var(--ink);
+	border-radius: 12px;
+	padding: 4px 20px;
+}
+
 .foot {
 	text-align: center;
 	color: var(--grey);

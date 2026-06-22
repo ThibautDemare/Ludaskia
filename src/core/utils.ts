@@ -3,12 +3,52 @@
    ============================================================ */
 import type { Item } from './items';
 
-export const rnd = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-export const choice = <T>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
+/* Source d'aléa indirecte (#41). Par défaut `Math.random` ; `withSeed` la remplace
+   temporairement par un PRNG DÉTERMINISTE. Sert au corrigé imprimable : la feuille et
+   son corrigé doivent contenir EXACTEMENT les mêmes items, or le pipeline régénère à
+   chaque appel — on rejoue donc la génération avec la même graine. INVARIANT : tout
+   l'aléa de GÉNÉRATION (`rnd`/`choice`/`sample` ET les générateurs de leçons) doit
+   passer par `randFloat()`, JAMAIS par `Math.random` direct, sinon le corrigé diverge
+   de la feuille. */
+let randomSource: () => number = Math.random;
+/* Réel dans [0,1), équivalent de `Math.random` mais déroutable par `withSeed`. */
+export const randFloat = (): number => randomSource();
+
+/* PRNG déterministe (mulberry32) : rapide, sans dépendance, suffisant pour varier des
+   exercices (pas un usage cryptographique). */
+function mulberry32(seed: number): () => number {
+	let a = seed >>> 0;
+	return () => {
+		a = (a + 0x6d2b79f5) | 0;
+		let t = Math.imul(a ^ (a >>> 15), 1 | a);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+
+/* Graine aléatoire (tirée AVANT tout seed → varie d'une impression à l'autre). */
+export const randomSeed = (): number => Math.floor(randFloat() * 0x100000000) >>> 0;
+
+/* Exécute `fn` avec un RNG déterministe : deux appels de même graine produisent la
+   MÊME suite de tirages. La source précédente est restaurée même si `fn` lève (et les
+   appels imbriqués sont gérés : on restaure la source englobante, pas Math.random).
+   USAGE SYNCHRONE uniquement — un tirage asynchrone après le retour ne serait pas seedé. */
+export function withSeed<T>(seed: number, fn: () => T): T {
+	const prev = randomSource;
+	randomSource = mulberry32(seed);
+	try {
+		return fn();
+	} finally {
+		randomSource = prev;
+	}
+}
+
+export const rnd = (min: number, max: number) => Math.floor(randFloat() * (max - min + 1)) + min;
+export const choice = <T>(a: T[]): T => a[Math.floor(randFloat() * a.length)];
 export function sample<T>(arr: T[], n: number): T[] {
 	const c = [...arr];
 	for (let i = c.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
+		const j = Math.floor(randFloat() * (i + 1));
 		[c[i], c[j]] = [c[j], c[i]];
 	}
 	return c.slice(0, n);

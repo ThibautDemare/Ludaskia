@@ -136,6 +136,15 @@ export const getPrintMode = () => printMode;
 export const setPrintMode = (v: boolean) => {
 	printMode = v;
 };
+// Mode CORRIGÉ (#41) : sous-mode d'impression qui RÉVÈLE les réponses au lieu de
+// champs/cases vides (ligne remplie, case cochée ☑, cellules posées complétées). Posé
+// autour du 2ᵉ rendu du document dans buildPrintableDOM, sur les MÊMES items que la
+// feuille vierge (graine commune, cf. withSeed). N'a d'effet que si printMode est actif.
+let corrigeMode = false;
+export const getCorrigeMode = () => corrigeMode;
+export const setCorrigeMode = (v: boolean) => {
+	corrigeMode = v;
+};
 
 /* Attributs des champs de réponse TEXTE (conjugaison, etc.) — issues #67/#123/#139.
    Sur tablette, la barre de suggestions prédictive des claviers (Gboard, Samsung,
@@ -158,12 +167,19 @@ export const TEXT_ANSWER_INPUT_ATTRS =
    consigne d'action « Coche… » est portée par la fiche / le bloc de bilan, pas répétée
    ici. Réservé à l'impression : à l'écran, le QCM est joué par son runner interactif. */
 function qcmCheckboxHTML(it: Item): string {
+	const answer = String(it.answer);
 	const lis = (it.choices ?? [])
 		.map((c, i) => {
 			const view = it.choicesView?.[i];
 			const label = view ? view.html : escapeHTML(c);
 			const aria = view ? ` aria-label="${escapeHTML(view.label)}"` : '';
-			return `<li class="qcm-print-choice"><span class="qcm-print-box" aria-hidden="true"></span><span class="qcm-print-label"${aria}>${label}</span></li>`;
+			// Corrigé (#41) : la case du bon choix est cochée ☑ et le libellé mis en gras
+			// (le ✓ ET la graisse — deux indices, pas la couleur seule). `answer` est
+			// toujours l'une des valeurs de `choices` (par construction du générateur).
+			const correct = corrigeMode && c === answer;
+			const liCls = correct ? 'qcm-print-choice qcm-print-choice--correct' : 'qcm-print-choice';
+			const boxCls = correct ? 'qcm-print-box qcm-print-box--checked' : 'qcm-print-box';
+			return `<li class="${liCls}"><span class="${boxCls}" aria-hidden="true"></span><span class="qcm-print-label"${aria}>${label}</span></li>`;
 		})
 		.join('');
 	return `${figureBlock(it.figure)}<p class="qcm-print-q">${enonceTexte(it.text)}</p><ul class="qcm-print-choices">${lis}</ul>`;
@@ -186,6 +202,11 @@ export function renderItem(it: Item, extra = '') {
 	// référence le champ des minutes (`data-min-field`) que session.verify fusionne en
 	// « H h MM » avant correction → checkItemAnswer inchangé (comparaison texte).
 	if (it.kind === 'heure') {
+		// Corrigé (#41) : l'heure complète révélée à la place des deux champs « h ».
+		if (corrigeMode) {
+			const rev = `<span class="ans-corrige">${escapeHTML(String(it.answer))}</span>`;
+			return figureBlock(it.figure) + enonceTexte(it.text).replace('@', rev);
+		}
 		const mid = nextInputId();
 		const group =
 			`<span class="heure-input">` +
@@ -195,8 +216,12 @@ export function renderItem(it: Item, extra = '') {
 			`</span><span class="mark" data-for="${id}"></span>`;
 		return figureBlock(it.figure) + enonceTexte(it.text).replace('@', group);
 	}
-	const field =
-		it.kind === 'text'
+	// Corrigé (#41) : la réponse écrite sur la ligne, à la place du champ vide. Pas de
+	// classe `.ans` (que l'impression rend transparente pour cacher la saisie) — on
+	// utilise `.ans-corrige`, visible. Pas de `mark` (le corrigé n'est pas corrigé).
+	const field = corrigeMode
+		? `<span class="ans-corrige ${extra}">${escapeHTML(String(it.answer))}</span>`
+		: it.kind === 'text'
 			? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
 			: `<input class="ans ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
@@ -232,6 +257,8 @@ function posedGridHTML(spec: PosedSpec): string {
 	const carryCell = () =>
 		`<input class="ans-free posee-cell posee-carry" maxlength="1" inputmode="numeric" autocomplete="off" aria-label="retenue">`;
 	const inputCell = (d: string) => {
+		// Corrigé (#41) : le chiffre du résultat révélé dans la cellule (au lieu du champ).
+		if (corrigeMode) return `<span class="posee-cell posee-input posee-corrige">${d}</span>`;
 		const id = nextInputId();
 		sessionItems[id] = { text: '', answer: Number(d), kind: 'num' };
 		return `<input class="ans posee-cell posee-input" id="${id}" data-answer="${d}"${lessonAttr()} maxlength="1" inputmode="numeric" autocomplete="off" aria-label="chiffre du résultat">`;

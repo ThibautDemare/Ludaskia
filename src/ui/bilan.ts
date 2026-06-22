@@ -319,6 +319,10 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
         <button id="bcPrint" class="bc-btn bc-btn-print" title="Imprimer ce bilan à remplir au crayon">${icon('printer')} Imprimer</button>
         <span class="bc-count" id="bcCount"></span>
       </div>
+      <label class="bc-corrige" id="bcCorrigeWrap">
+        <input type="checkbox" id="bcCorrige">
+        <span>${icon('printer')} Imprimer aussi le corrigé pour le parent (avec les réponses)</span>
+      </label>
 
       <details class="bc-save">
         <summary>${icon('bookmark')} Garder pour plus tard</summary>
@@ -404,11 +408,14 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 	// par leçon » et l'impression d'un bilan papier n'ont pas de sens → masqués.
 	const nbqSection = el.querySelector<HTMLElement>('#bcNbqSection')!;
 	const printBtn = el.querySelector<HTMLElement>('#bcPrint')!;
+	const corrigeWrap = el.querySelector<HTMLElement>('#bcCorrigeWrap')!;
 	const applyMode = () => {
 		const sprint =
 			form.querySelector<HTMLInputElement>('.bc-mode-radio:checked')?.value === 'sprint';
 		nbqSection.hidden = sprint;
 		printBtn.hidden = sprint;
+		// Le corrigé n'a de sens qu'à l'impression (chemin papier), pas en sprint.
+		corrigeWrap.hidden = sprint;
 	};
 	applyMode();
 	form
@@ -442,11 +449,14 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 		}
 		errEl.textContent = '';
 		const isAll = config.questionsPerLesson === 'all';
+		// #41 : si la case est cochée, on ajoute un corrigé (mêmes items, réponses révélées).
+		const corrige = el.querySelector<HTMLInputElement>('#bcCorrige')?.checked ?? false;
 		printScope({
 			title: runLabel,
 			lessonIds: config.lessonIds,
 			kind: isAll ? 'fiches' : 'bilan',
 			nbQ: isAll ? undefined : (config.questionsPerLesson as number),
+			corrige,
 		});
 	});
 

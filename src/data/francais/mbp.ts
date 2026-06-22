@@ -20,7 +20,7 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
-import { sample } from '../../core/utils';
+import { sample, randFloat } from '../../core/utils';
 import { ORTHO_PREDEF } from './orthographe';
 
 export type TypeMbp = 'regle' | 'contre' | 'exception';
@@ -172,7 +172,8 @@ export function mbpType(): ExerciseType {
 	return {
 		modes: MODE_QCM,
 		generate(): Exercise {
-			const item = tiragePondere(MBP_BANK, Math.random());
+			// randFloat (et non Math.random) : aléa seedable → corrigé == feuille (#41).
+			const item = tiragePondere(MBP_BANK, randFloat());
 			return {
 				type: 'qcm',
 				question: item.mot,

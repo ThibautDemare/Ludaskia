@@ -197,6 +197,27 @@ const EGALITES: Paire[] = [
 		[2, 4],
 		[4, 8],
 	],
+	// ----- Ajouts #285 (variété) : égalités évidentes, dénominateur ≤ 8 (CE2). -----
+	[
+		[2, 4],
+		[3, 6],
+	],
+	[
+		[3, 6],
+		[4, 8],
+	],
+	[
+		[2, 6],
+		[1, 3],
+	],
+	[
+		[4, 6],
+		[2, 3],
+	],
+	[
+		[6, 8],
+		[3, 4],
+	],
 ];
 // Inégalités franches (jamais de quasi-égalité, qui serait un piège injuste).
 const INEGALITES: Paire[] = [
@@ -231,6 +252,31 @@ const INEGALITES: Paire[] = [
 	[
 		[3, 8],
 		[1, 2],
+	],
+	// ----- Ajouts #285 (variété) : inégalités à écart visuel franc, dénominateur ≤ 8. -----
+	[
+		[3, 4],
+		[1, 4],
+	],
+	[
+		[1, 2],
+		[1, 6],
+	],
+	[
+		[2, 3],
+		[1, 6],
+	],
+	[
+		[5, 6],
+		[1, 2],
+	],
+	[
+		[3, 8],
+		[3, 4],
+	],
+	[
+		[7, 8],
+		[1, 4],
 	],
 ];
 

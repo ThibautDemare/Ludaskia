@@ -45,6 +45,13 @@ const ACCORDS_REGULIERS: FormesAccord[] = [
 	{ mascSing: 'lent', femSing: 'lente', mascPlur: 'lents', femPlur: 'lentes' },
 	{ mascSing: 'bleu', femSing: 'bleue', mascPlur: 'bleus', femPlur: 'bleues' },
 	{ mascSing: 'noir', femSing: 'noire', mascPlur: 'noirs', femPlur: 'noires' },
+	// Ajouts #285 (variété) : adjectifs PARFAITEMENT réguliers (féminin + e, pluriel + s).
+	{ mascSing: 'rond', femSing: 'ronde', mascPlur: 'ronds', femPlur: 'rondes' },
+	{ mascSing: 'plat', femSing: 'plate', mascPlur: 'plats', femPlur: 'plates' },
+	{ mascSing: 'dur', femSing: 'dure', mascPlur: 'durs', femPlur: 'dures' },
+	{ mascSing: 'lourd', femSing: 'lourde', mascPlur: 'lourds', femPlur: 'lourdes' },
+	{ mascSing: 'froid', femSing: 'froide', mascPlur: 'froids', femPlur: 'froides' },
+	{ mascSing: 'haut', femSing: 'haute', mascPlur: 'hauts', femPlur: 'hautes' },
 	// Noms réguliers avec masculin/féminin.
 	{ mascSing: 'ami', femSing: 'amie', mascPlur: 'amis', femPlur: 'amies' },
 	{ mascSing: 'voisin', femSing: 'voisine', mascPlur: 'voisins', femPlur: 'voisines' },
@@ -89,6 +96,18 @@ const ACCORDS_IRREGULIERS: FormesAccord[] = [
 		mascPlur: 'merveilleux',
 		femPlur: 'merveilleuses',
 	},
+	// Ajouts #285 (variété) : adjectifs à féminin/pluriel irréguliers, sans risque.
+	{ mascSing: 'blanc', femSing: 'blanche', mascPlur: 'blancs', femPlur: 'blanches' },
+	{ mascSing: 'frais', femSing: 'fraîche', mascPlur: 'frais', femPlur: 'fraîches' },
+	{ mascSing: 'vieux', femSing: 'vieille', mascPlur: 'vieux', femPlur: 'vieilles' },
+	{ mascSing: 'épais', femSing: 'épaisse', mascPlur: 'épais', femPlur: 'épaisses' },
+	// (« gris » retiré : une fois les transformations triviales filtrées, il ne
+	//  produirait que des transformations régulières — rien d'irrégulier à montrer.)
+	// Noms à pluriel irrégulier supplémentaires (-eaux, -aux).
+	{ mascSing: 'cadeau', mascPlur: 'cadeaux' },
+	{ mascSing: 'manteau', mascPlur: 'manteaux' },
+	{ mascSing: 'tableau', mascPlur: 'tableaux' },
+	{ mascSing: 'métal', mascPlur: 'métaux' },
 ];
 
 /* Une transformation possible : consigne + forme de départ → forme cible. */

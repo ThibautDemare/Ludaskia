@@ -48,6 +48,17 @@ export const CLASSES: ItemClasse[] = [
 	{ mot: 'joli', classe: 'adjectif' },
 	{ mot: 'petit', classe: 'adjectif' },
 	{ mot: 'rapide', classe: 'adjectif' },
+	// ----- Ajouts #285 (variété anti-répétition) : mots CE2 sans ambiguïté de classe. -----
+	{ mot: 'ballon', classe: 'nom' },
+	{ mot: 'jardin', classe: 'nom' },
+	{ mot: 'oiseau', classe: 'nom' },
+	{ mot: 'gâteau', classe: 'nom' },
+	{ mot: 'sauter', classe: 'verbe' },
+	{ mot: 'jouer', classe: 'verbe' },
+	{ mot: 'écrire', classe: 'verbe' },
+	{ mot: 'gentil', classe: 'adjectif' },
+	{ mot: 'lourd', classe: 'adjectif' },
+	{ mot: 'méchant', classe: 'adjectif' },
 ];
 
 export const ARTICLES: ItemArticle[] = [
@@ -63,6 +74,20 @@ export const ARTICLES: ItemArticle[] = [
 	{ mot: 'chats', article: 'les' },
 	{ mot: 'livres', article: 'les' },
 	{ mot: 'maisons', article: 'les' },
+	// ----- Ajouts #285 : « le/la » jamais devant voyelle ni « h » (sinon élision « l' »). -----
+	{ mot: 'gâteau', article: 'le' },
+	{ mot: 'bureau', article: 'le' },
+	{ mot: 'panier', article: 'le' },
+	{ mot: 'vélo', article: 'le' },
+	{ mot: 'jardin', article: 'le' },
+	{ mot: 'montagne', article: 'la' },
+	{ mot: 'banane', article: 'la' },
+	{ mot: 'tortue', article: 'la' },
+	{ mot: 'chaise', article: 'la' },
+	{ mot: 'oiseaux', article: 'les' },
+	{ mot: 'voitures', article: 'les' },
+	{ mot: 'étoiles', article: 'les' },
+	{ mot: 'ballons', article: 'les' },
 ];
 
 export const ADVERBES: ItemAdverbe[] = [
@@ -90,6 +115,40 @@ export const ADVERBES: ItemAdverbe[] = [
 	},
 	{ phrase: "L'élève écrit mal.", adverbe: 'mal', distracteurs: ['élève', 'écrit'] },
 	{ phrase: 'Le bébé dort peu.', adverbe: 'peu', distracteurs: ['bébé', 'dort'] },
+	// ----- Ajouts #285 : un SEUL adverbe par phrase (pas d'ambiguïté) ; distracteurs = mots de la phrase. -----
+	{ phrase: 'Le chien attend dehors.', adverbe: 'dehors', distracteurs: ['chien', 'attend'] },
+	{ phrase: 'Le bus arrive tard.', adverbe: 'tard', distracteurs: ['bus', 'arrive'] },
+	{ phrase: 'Le coureur arrive enfin.', adverbe: 'enfin', distracteurs: ['coureur', 'arrive'] },
+	{
+		phrase: 'Tu ranges tes jouets maintenant.',
+		adverbe: 'maintenant',
+		distracteurs: ['ranges', 'jouets'],
+	},
+	{
+		phrase: 'La maîtresse parle doucement.',
+		adverbe: 'doucement',
+		distracteurs: ['maîtresse', 'parle'],
+	},
+	{ phrase: 'Le chat dort encore.', adverbe: 'encore', distracteurs: ['chat', 'dort'] },
+	{
+		phrase: 'Les enfants jouent calmement.',
+		adverbe: 'calmement',
+		distracteurs: ['enfants', 'jouent'],
+	},
+	{ phrase: 'Tu peux poser ton sac ici.', adverbe: 'ici', distracteurs: ['poser', 'sac'] },
+	{ phrase: 'Le train est arrivé tôt.', adverbe: 'tôt', distracteurs: ['train', 'arrivé'] },
+	{ phrase: 'Le bébé crie fort.', adverbe: 'fort', distracteurs: ['bébé', 'crie'] },
+	{ phrase: 'Le chien court loin.', adverbe: 'loin', distracteurs: ['chien', 'court'] },
+	{
+		phrase: 'On trouve des fleurs partout.',
+		adverbe: 'partout',
+		distracteurs: ['trouve', 'fleurs'],
+	},
+	{
+		phrase: 'Le grand garçon répond gentiment.',
+		adverbe: 'gentiment',
+		distracteurs: ['garçon', 'répond'],
+	},
 ];
 
 /** Item QCM unifié. */

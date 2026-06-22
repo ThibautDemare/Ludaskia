@@ -206,6 +206,44 @@ const PROPRIETES: PropQ[] = [
 		a: 'égaux',
 		choices: ['égaux', 'tous égaux', 'différents', 'courbes'],
 	},
+	// ----- Ajouts #285 (variété) : propriétés observables et tranchées, sans inclusion
+	// (« un carré est-il un rectangle ») ni double négation. -----
+	{ q: 'Combien de côtés a un losange ?', a: '4', choices: ['3', '4', '5', '6'] },
+	{ q: "Combien d'angles droits a un carré ?", a: '4', choices: ['1', '2', '3', '4'] },
+	{ q: 'Combien de côtés égaux a un losange ?', a: '4', choices: ['1', '2', '3', '4'] },
+	{ q: 'Combien de sommets a un triangle ?', a: '3', choices: ['2', '3', '4', '5'] },
+	{ q: 'Combien de sommets a un rectangle ?', a: '4', choices: ['3', '4', '5', '6'] },
+	{ q: 'Combien de côtés a un triangle rectangle ?', a: '3', choices: ['2', '3', '4', '5'] },
+	{
+		q: "Combien d'angles droits a un triangle rectangle ?",
+		a: '1',
+		choices: ['0', '1', '2', '3'],
+	},
+	{
+		q: 'Quelle figure est toute ronde ?',
+		a: 'cercle',
+		choices: ['cercle', 'carré', 'triangle', 'losange'],
+	},
+	{
+		q: 'Le carré a ses quatre côtés…',
+		a: 'égaux',
+		choices: ['égaux', 'différents', 'courbes', 'arrondis'],
+	},
+	{
+		q: 'Le losange a ses quatre côtés…',
+		a: 'égaux',
+		choices: ['égaux', 'différents', 'courbes', 'arrondis'],
+	},
+	{
+		q: 'Le rectangle a…',
+		a: 'quatre angles droits',
+		choices: ['quatre angles droits', 'aucun angle droit', 'trois côtés', 'des côtés courbes'],
+	},
+	{
+		q: 'Le triangle a…',
+		a: 'trois côtés',
+		choices: ['trois côtés', 'quatre côtés', 'aucun côté', 'des côtés courbes'],
+	},
 ];
 
 function proprietesType(): ExerciseType {

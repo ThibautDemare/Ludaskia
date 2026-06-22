@@ -51,7 +51,7 @@ export function renderLeconDuJour(el: HTMLElement | null, cibleId?: string): voi
 			: '';
 
 	el.innerHTML = `<section class="lecon-jour">
-    <h2 class="lj-head">On continue&nbsp;?</h2>
+    <h2 class="lj-head">Ta prochaine leçon</h2>
     <button class="lj-card" type="button" data-lj="go" data-lesson="${escapeHTML(lesson.id)}">
       <span class="lj-ico" style="background:${tint}" aria-hidden="true">${ico}</span>
       <span class="lj-texts">

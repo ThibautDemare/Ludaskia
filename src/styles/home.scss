@@ -43,11 +43,9 @@
 .home-grid {
 	display: grid;
 	grid-template-columns: minmax(340px, 460px) 1fr;
-	/* Leçon du jour en bandeau pleine largeur tout en haut (#208) ; en dessous,
-	   colonne gauche = progression puis le reste, colonne droite (cartes d'accès)
-	   sur toute la hauteur. */
+	/* Colonne gauche = progression (en haut) puis le reste ; colonne droite
+	   (cartes d'accès, dont la « leçon du jour », #208) sur toute la hauteur. */
 	grid-template-areas:
-		'jour jour'
 		'prog right'
 		'left right';
 	column-gap: 36px;
@@ -55,14 +53,6 @@
 	align-items: start;
 	text-align: left;
 	margin-top: 10px;
-}
-#leconDuJour {
-	grid-area: jour;
-	margin-bottom: 18px;
-}
-/* Conteneur vide (rien à proposer dans de rares cas) : pas d'espace fantôme. */
-#leconDuJour:empty {
-	display: none;
 }
 #progression {
 	grid-area: prog;
@@ -113,14 +103,10 @@
 		align-items: stretch;
 		gap: 8px;
 	}
-	/* Accueil chaleureux : la mascotte ouvre, la leçon du jour vient juste après
-	   (très visible en 2e bloc), puis le reste (avis designer-ux-enfant). */
+	/* Accueil chaleureux : la mascotte ouvre, puis les cartes d'accès — dont la
+	   « leçon du jour » qui est la 1re carte (#208) —, puis le reste. */
 	#progression {
-		order: -3;
-	}
-	#leconDuJour {
 		order: -2;
-		margin-bottom: 8px;
 	}
 	.home-col-right {
 		order: -1;
@@ -315,94 +301,47 @@
 }
 
 /* ---------- Leçon du jour (#208) ----------
-   Bandeau « prochain pas à travailler » en haut de l'accueil. Carte chaleureuse
-   et cliquable, distincte des cartes d'accès aux modes (plus grande, teintée
-   accent). Le bouton « Voir une autre leçon » lève tout effet de mur. */
-.lecon-jour {
-	background: var(--paper);
-	border: 2px solid var(--accent-soft);
-	border-radius: 16px;
-	padding: 16px 18px;
-	box-shadow: 0 6px 22px rgba(34, 92, 60, 0.14);
+   Carte de l'accueil sur le MÊME modèle que les cartes de mode (`.card`) : pastille
+   d'icône, titre, descriptif, CTA. Contenu DYNAMIQUE (la prochaine leçon à faire),
+   rendu par renderLeconDuJour ; la pastille prend la couleur de la matière (inline).
+   `#leconDuJour` est lui-même un `.card` → hérite cadre, survol et pastille `.ico`.
+   « Voir une autre leçon » lève tout effet de mur. */
+/* Avant le 1er rendu, la carte est vide : pas de cadre `.card` fantôme. */
+#leconDuJour:empty {
+	display: none;
 }
-.lj-head {
-	margin: 0 0 10px;
-	font-size: 18px;
-	color: var(--accent);
-}
-.lj-card {
-	display: flex;
-	align-items: center;
-	gap: 14px;
-	width: 100%;
-	text-align: left;
-	background: var(--accent-soft);
-	border: 0;
-	border-radius: 12px;
-	padding: 14px 16px;
-	cursor: pointer;
-	transition:
-		transform 0.12s ease,
-		box-shadow 0.15s ease;
-}
-.lj-card:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 10px 24px rgba(34, 92, 60, 0.2);
-}
-.lj-card:focus-visible {
-	outline: 3px solid var(--accent);
-	outline-offset: 2px;
-}
-.lj-ico {
-	flex: 0 0 auto;
-	width: 48px;
-	height: 48px;
-	border-radius: 50%;
-	display: grid;
-	place-items: center;
-	color: var(--on-accent);
-}
-.lj-ico svg {
-	width: 26px;
-	height: 26px;
-}
-.lj-texts {
-	display: flex;
-	flex: 1 1 auto;
-	flex-direction: column;
-	gap: 2px;
-	min-width: 0;
-}
-.lj-cat {
+.lj-kicker {
+	display: block;
+	margin-top: 12px;
+	font-family: var(--ui);
 	font-size: 13px;
+	font-weight: 700;
 	color: var(--grey);
-	/* Reste sur une ligne (le titre de leçon doit dominer) — tronqué si trop long. */
+}
+/* Le kicker occupe l'air au-dessus du titre : on resserre le h2 hérité de .card. */
+#leconDuJour h2 {
+	margin-top: 2px;
+}
+/* Sous-ligne « matière · catégorie » (hérite de `.card p`) : une seule ligne, le
+   titre de leçon domine ; resserrée avant le CTA. */
+.lj-sub {
+	margin-bottom: 14px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
-.lj-title {
-	font-size: 20px;
-	font-weight: 700;
-	color: var(--ink);
-}
-.lj-go {
-	flex: 0 0 auto;
-	font-weight: 700;
-	color: var(--accent);
-	white-space: nowrap;
-}
+/* Action secondaire discrète DANS la carte (le clic est intercepté avant le
+   lancement de la leçon). Sur sa propre ligne, zone cliquable ajustée au texte. */
 .lj-autre {
-	display: inline-flex;
-	align-items: center;
-	min-height: 44px; /* cible tactile enfant (a11y) sans changer l'allure « lien » */
-	margin-top: 6px;
-	padding: 4px 2px;
+	display: block;
+	width: fit-content;
+	margin-top: 12px;
+	padding: 6px 2px;
 	background: none;
 	border: 0;
 	color: var(--grey);
 	font: inherit;
-	font-size: 14px;
+	font-size: 13px;
 	text-decoration: underline;
 	cursor: pointer;
 }
@@ -412,46 +351,4 @@
 .lj-autre:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
-}
-.lj-done {
-	text-align: center;
-}
-.lj-done-msg {
-	margin: 0 0 12px;
-	font-size: 18px;
-	font-weight: 700;
-	color: var(--accent);
-}
-.lj-revision {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	padding: 10px 16px;
-	background: var(--accent);
-	color: var(--on-accent);
-	border: 0;
-	border-radius: 10px;
-	font: inherit;
-	font-weight: 700;
-	cursor: pointer;
-}
-.lj-revision svg {
-	width: 20px;
-	height: 20px;
-}
-.lj-revision:focus-visible {
-	outline: 3px solid var(--accent);
-	outline-offset: 2px;
-}
-/* Smartphone étroit : la carte s'empile pour ne pas comprimer un titre long et le
-   « C'est parti → » (qui devient une ligne pleine, cible franche en bas). */
-@media (max-width: 480px) {
-	.lj-card {
-		flex-wrap: wrap;
-	}
-	.lj-go {
-		flex-basis: 100%;
-		margin-top: 8px;
-		text-align: right;
-	}
 }

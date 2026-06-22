@@ -526,13 +526,16 @@ mesure au rapporteur relève du CM1 (future leçon).
   accompli), `renderObjectives`, `renderLessons` + `lessonCardHTML` réutilisable,
   `renderProfileMenu`, `renderProfiles`, `boardHTML`/`sprintBoardHTML`,
   `pctColor`, config `REGULARITY`).
-- **`lecon-du-jour.ts`** — bloc **« leçon du jour »** de l'accueil (#208, conteneur
-  `#leconDuJour`, bandeau pleine largeur en haut de `.home-grid`). `renderLeconDuJour`
-  affiche la carte cliquable (→ `startLecon`, gère les modes) du prochain pas
-  (`core/lecon-du-jour.ts`), un bouton **« Voir une autre leçon »** (contournement
-  `leconSuivante`, jamais de mur) et, tout acquis, une **félicitation + passerelle
-  vers la révision**. Re-rendu à chaque accueil ; contournement **éphémère** (la cible
-  vit dans le DOM, pas d'état de module).
+- **`lecon-du-jour.ts`** — carte **« leçon du jour »** de l'accueil (#208) : `#leconDuJour`
+  est la **1re carte** de la rangée `.cards`, sur le **même modèle visuel** que les cartes
+  de mode (pastille `.ico`, titre, descriptif, CTA), au contenu **dynamique**.
+  `renderLeconDuJour` peint la carte du prochain pas (`core/lecon-du-jour.ts`) — pastille à
+  la couleur de la matière, libellé de leçon, « matière · catégorie », « C'est parti → » —
+  avec un bouton **« Voir une autre leçon »** (contournement `leconSuivante`, jamais de mur)
+  et, tout acquis, une **félicitation + passerelle vers la révision**. La carte est cliquable
+  (→ `startLecon`/`startRevisionEspacee`) via un listener posé **une seule fois** sur l'élément
+  persistant ; l'état (leçon courante, mode) vit dans ses `data-*`, le contournement est
+  **éphémère** (revenir sur l'accueil ré-affiche la vraie leçon du jour).
 - **`unlocks-view.ts`** — vitrines de déblocages (issue #28) : barre de l'accueil
   (`renderRewardNav` : boutons « Récompenses » / « Trophées » avec compteurs),
   ouverture des **modales dédiées** `openRecompenses` (paliers de niveau : rangs,

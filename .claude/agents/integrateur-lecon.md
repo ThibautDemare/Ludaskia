@@ -56,13 +56,22 @@ meilleur gabarit. Étapes typiques :
    vraies formes**, jamais une faute affichée. Modes via `modes`/`defaultMode`
    (#69), **jamais en dur**.
 3. **Catalogue** — déclare la `LessonDef` (`id` chaîne stable, `label`, `subject`,
-   `category`, `level`, `exerciseType`) ; vérifie le bon chemin dans
+   `category`, `levels`, `exerciseType`) ; vérifie le bon chemin dans
    `genLessonItem` (`isLegacyMathLesson`, `kind` déduit via `answerEstNumerique`).
    Range la leçon dans sa catégorie/rubrique.
-4. **Figures** — si visuel : un `renderXxx` dans `core/figures.ts` (+ variant
+4. **Ordre pédagogique (#208)** — insère l'`id` de la leçon dans
+   `src/data/ordre-pedagogique.ts` (`ORDRE_LECONS[matière][niveau]`), à la **bonne
+   place** de la progression de l'année, **pour chaque niveau** de ses `levels`. C'est
+   obligatoire : sans ça, la leçon s'affiche en **fin** de catégorie (fallback) et
+   n'apparaît jamais comme « leçon du jour » avant les leçons déjà ordonnées — et le
+   **test de complétude** `tests/ordre-pedagogique.test.ts` **échoue** tant que
+   l'insertion manque. En cas de doute sur la position pédagogique, demande à
+   `pedagogue-primaire` (les dépendances internes priment : ex. numération avant
+   posée, présent avant passé composé).
+5. **Figures** — si visuel : un `renderXxx` dans `core/figures.ts` (+ variant
    `FigureSpec`), **jamais de SVG à la main** dans la leçon ; styles dans
    `figures.scss`, tokens de couleur dédiés.
-5. **Tests** — Vitest dans `tests/` pour la logique (génération déterministe via
+6. **Tests** — Vitest dans `tests/` pour la logique (génération déterministe via
    `r` injectable, `check`, bords) **et** smoke Playwright dans `e2e/` pour le
    visuel (la fonctionnalité est navigable → la règle e2e s'applique ; tu peux
    déléguer la spec à `auteur-tests-e2e` ou l'écrire toi-même).

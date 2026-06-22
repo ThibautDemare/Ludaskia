@@ -72,7 +72,9 @@ src/
 
 ### `src/data/`
 Contenus statiques en TypeScript (`as const`-friendly), une arborescence par
-matière. Ex. **`francais/conjugaison.ts`** : tables de 13 verbes (être, avoir,
+matière. L'**ordre pédagogique** des leçons (#208) y vit aussi, à plat :
+**`ordre-pedagogique.ts`** (`ORDRE_LECONS[matière][niveau]`, exploité par
+`core/ordre.ts`). Ex. **`francais/conjugaison.ts`** : tables de 13 verbes (être, avoir,
 1er groupe *aimer*, 2e groupe *finir*, aller, faire, venir, voir, dire, pouvoir,
 vouloir, prendre, naître) aux 4 temps **présent**, **futur**, **imparfait** et
 **passé composé** (les formes du passé composé incluent l'auxiliaire conjugué),
@@ -391,7 +393,8 @@ mesure au rapporteur relève du CM1 (future leçon).
 - **`catalog.ts`** — hiérarchie `SUBJECTS` / `CATEGORIES` / `LessonDef`
   (`id, label, subject, category, levels: SchoolLevel[], exerciseType` — #225), helpers
   `getAllLessons/getLessonById/getLessonsBySubject/getLessonsByCategory` (ces deux
-  derniers acceptent un `niveau?` optionnel qui filtre par niveau),
+  derniers acceptent un `niveau?` optionnel : avec un niveau, ils **filtrent ET trient
+  selon l'ordre pédagogique** #208, cf. `ordre.ts` ; sans niveau, ordre de déclaration),
   `MATH_LESSON_NUM` (pont id→`bilanQ`), et **`genLessonItem(lesson, level?)`** qui produit
   un `Item` pour n'importe quelle matière. Trois chemins, départagés par
   **`isLegacyMathLesson`** : maths **hérités** (calcul mental, dans
@@ -407,6 +410,23 @@ mesure au rapporteur relève du CM1 (future leçon).
   « Bientôt disponible », les trophées de catégorie ne sont générés que pour les
   catégories peuplées (`rewards.ts`), et le sprint/bilan d'une catégorie vide ne
   tire rien (retour accueil / no-op) plutôt que de planter.
+- **`ordre.ts`** — **ordre pédagogique** des leçons (#208). Consomme la table de
+  données `data/ordre-pedagogique.ts` (`ORDRE_LECONS[matière][niveau]` = liste d'`id`
+  **ordonnée** = progression de l'année, validée avec `pedagogue-primaire`) et expose
+  `ordreLecons` / `positionLecon` / `trierParOrdre`. Le tri est **stable et TOTAL** :
+  une leçon absente de l'ordre est reléguée **en queue** (ordre de déclaration), jamais
+  perdue. `getLessonsBySubject/ByCategory` trient via lui dès qu'un `niveau` est fourni.
+  **Invariant gardé par test** (`tests/ordre-pedagogique.test.ts`) : toute leçon figure
+  dans l'ordre de chacun de ses niveaux → **ajouter une leçon impose de l'insérer dans
+  `ORDRE_LECONS`** (sinon le test échoue ; cf. agent `integrateur-lecon`).
+- **`lecon-du-jour.ts`** — la **« leçon du jour »** (#208), pure : le prochain pas à
+  travailler, mis en avant sur l'accueil. Entrelace les séquences par matière — chacune
+  à **son** niveau actif (`niveauActifMatiere` → multi-niveau natif) — en **alternance
+  1:1 sur les leçons restant à acquérir** (`sequenceLeconDuJour`), et renvoie la
+  **première non acquise** (`leconDuJour`) ; « acquise » = ≥ 1 étoile au niveau actif
+  (`loadStars`). Avance par la **maîtrise**, jamais par calendrier ; `leconSuivante` =
+  contournement « voir une autre leçon » (jamais de mur). Reste **distinct** de la
+  révision espacée (avancer vers le neuf ↔ entretenir l'acquis) et du défi du jour.
 - **`lessons.ts`** — contenu **maths** : `LESSONS` (15 leçons constructibles
   isolément), `bilanQ` (générateur réutilisé par le catalogue). Côté impression :
   `PrintScope` + **`buildPrintableDOM(scope)`** (contextuel, **multi-matières** via
@@ -485,13 +505,20 @@ mesure au rapporteur relève du CM1 (future leçon).
   modale dédiée **passage de niveau** `showLevelUp`/`hideLevelUp` (médaillon doré
   animé ; un `then` optionnel enchaîne sur `showCelebration` s'il y a d'autres
   gains).
-- **`render.ts`** — rendus accueil/sélecteur/profils (`renderHomeStats` et
-  favoris, badge **niveau + barre** dans `renderToolbarProfile`, carte de
-  progression `renderProgression` (sa bulle de mascotte porte le **défi du
-  jour** : invitation, puis félicitations une fois accompli), `renderObjectives`,
-  `renderLessons` + `lessonCardHTML` réutilisable,
+- **`render.ts`** — rendus accueil/sélecteur/profils (`renderHomeStats` — qui
+  appelle aussi `renderLeconDuJour` (#208) — et favoris, badge **niveau + barre**
+  dans `renderToolbarProfile`, carte de progression `renderProgression` (sa bulle de
+  mascotte porte le **défi du jour** : invitation, puis félicitations une fois
+  accompli), `renderObjectives`, `renderLessons` + `lessonCardHTML` réutilisable,
   `renderProfileMenu`, `renderProfiles`, `boardHTML`/`sprintBoardHTML`,
   `pctColor`, config `REGULARITY`).
+- **`lecon-du-jour.ts`** — bloc **« leçon du jour »** de l'accueil (#208, conteneur
+  `#leconDuJour`, bandeau pleine largeur en haut de `.home-grid`). `renderLeconDuJour`
+  affiche la carte cliquable (→ `startLecon`, gère les modes) du prochain pas
+  (`core/lecon-du-jour.ts`), un bouton **« Voir une autre leçon »** (contournement
+  `leconSuivante`, jamais de mur) et, tout acquis, une **félicitation + passerelle
+  vers la révision**. Re-rendu à chaque accueil ; contournement **éphémère** (la cible
+  vit dans le DOM, pas d'état de module).
 - **`unlocks-view.ts`** — vitrines de déblocages (issue #28) : barre de l'accueil
   (`renderRewardNav` : boutons « Récompenses » / « Trophées » avec compteurs),
   ouverture des **modales dédiées** `openRecompenses` (paliers de niveau : rangs,

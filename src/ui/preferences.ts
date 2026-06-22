@@ -19,6 +19,7 @@ import {
 	activeProfile,
 	confortLecture,
 	lectureConsigneAuto,
+	sansPressionTemporelle,
 	getNiveauReference,
 	getNiveauParMatiere,
 } from '../core/profiles';
@@ -163,6 +164,10 @@ export function renderPreferences() {
         <label class="pref-toggle">
           <input type="checkbox" id="prefConfort"${confortLecture() ? ' checked' : ''} />
           <span>Confort de lecture <small class="pref-hint">(texte plus grand et plus aéré)</small></span>
+        </label>
+        <label class="pref-toggle">
+          <input type="checkbox" id="prefSansChrono"${sansPressionTemporelle() ? ' checked' : ''} />
+          <span>Masquer le minuteur <small class="pref-hint">(le minuteur et le score restent cachés pendant le sprint ; ils s'affichent à la fin)</small></span>
         </label>
         <div class="pref-toggle-tts">
           <label class="pref-toggle${dispoVoix ? '' : ' pref-toggle-off'}">

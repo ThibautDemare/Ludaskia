@@ -53,6 +53,7 @@ import {
 	type SprintScope,
 } from '../core/sprint-scope';
 import { updateGoal, evaluateTrophies } from '../core/rewards';
+import { sansPressionTemporelle } from '../core/profiles';
 import { getTimer, setTimer, resetChrono } from './chrono';
 import { recompensesEntre } from '../core/unlocks';
 import { showCelebration, showLevelUp } from './effects';
@@ -245,6 +246,11 @@ let sprintLessonDefs: LessonDef[] = [];
 
 let sprintActive = false,
 	sprintPaused = false;
+// Sans pression temporelle (#223) : minuteur + score masqués, fin douce. Lu une
+// fois au lancement (runSprint). `sprintTimeUp` = les 5 min sont écoulées mais on
+// laisse l'enfant terminer la question en cours avant de finaliser.
+let sprintSansPression = false,
+	sprintTimeUp = false;
 let sprintRemaining = SPRINT_MS,
 	sprintLastTick = 0;
 let sprintScore = 0,
@@ -291,6 +297,8 @@ export function runSprint() {
 	}
 	sprintActive = true;
 	sprintPaused = false;
+	sprintSansPression = sansPressionTemporelle();
+	sprintTimeUp = false;
 	sprintRemaining = SPRINT_MS;
 	sprintScore = 0;
 	sprintAnswered = 0;
@@ -305,13 +313,21 @@ export function runSprint() {
 	setToolbar({ verify: false, home: true, profile: false }); // pas de Vérifier (validation auto par question)
 	resetChrono(); // le sprint a son propre compte à rebours
 	const badge = filterLabel(sprintFilter);
+	const badgeHTML = badge ? `<span class="sprint-filter-badge">${escapeHTML(badge)}</span>` : '';
+	// Sans pression (#223) : on masque le minuteur ET le score live (révélés au bilan).
+	// Le HUD ne garde alors que le badge éventuel ; sans badge, il n'est pas rendu du
+	// tout (pas de barre vide au-dessus de la question).
+	const hudContent = sprintSansPression
+		? badgeHTML
+		: `<span class="sprint-time" id="sprintTime">05:00</span>
+        ${badgeHTML}
+        <span class="sprint-score" id="sprintScore">0 bonne réponse</span>`;
+	const hud = hudContent
+		? `<div class="sprint-hud${sprintSansPression ? ' sprint-hud--calme' : ''}">${hudContent}</div>`
+		: '';
 	document.getElementById('sheets')!.innerHTML = `
     <div class="sprint">
-      <div class="sprint-hud">
-        <span class="sprint-time" id="sprintTime">05:00</span>
-        ${badge ? `<span class="sprint-filter-badge">${escapeHTML(badge)}</span>` : ''}
-        <span class="sprint-score" id="sprintScore">0 bonne réponse</span>
-      </div>
+      ${hud}
       <div class="sprint-stage" id="sprintStage"></div>
     </div>`;
 	sprintRenderTime();
@@ -330,6 +346,16 @@ function sprintTick() {
 	if (sprintRemaining <= 0) {
 		sprintRemaining = 0;
 		sprintRenderTime();
+		// Sans pression (#223) : pas de coupure sèche. On note que le temps est écoulé
+		// et on stoppe le ticker ; la finalisation attend la fin de la question en cours
+		// (validation correcte ou « Continuer » après une erreur — cf. sprintAnswer /
+		// sprintContinue). Le temps reste plafonné à SPRINT_MS pour le record.
+		if (sprintSansPression && !sprintTimeUp) {
+			sprintTimeUp = true;
+			const t = getTimer();
+			if (t) clearInterval(t);
+			return;
+		}
 		finalizeSprint();
 		return;
 	}
@@ -501,7 +527,10 @@ function sprintAnswer(raw: string) {
 		const stage = document.getElementById('sprintStage');
 		if (stage) stage.innerHTML = `<div class="sprint-check">✓</div>`; // petite animation
 		setTimeout(() => {
-			if (sprintActive && !sprintPaused) sprintNext();
+			if (!sprintActive || sprintPaused) return;
+			if (sprintTimeUp)
+				finalizeSprint(); // temps écoulé : on finalise après la question (#223)
+			else sprintNext();
 		}, 600);
 	} else {
 		sprintShowCorrection(sprintCurrent!.answer);
@@ -538,7 +567,9 @@ function sprintShowCorrection(ans: number | string) {
 function sprintContinue() {
 	if (!sprintActive) return;
 	sprintPaused = false; // le compte à rebours repart
-	sprintNext();
+	if (sprintTimeUp)
+		finalizeSprint(); // temps écoulé pendant la correction : on finalise (#223)
+	else sprintNext();
 }
 
 function finalizeSprint() {

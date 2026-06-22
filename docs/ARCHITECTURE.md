@@ -638,7 +638,9 @@ mesure au rapporteur relève du CM1 (future leçon).
   déclaratif **`LessonDef.excludeFromSprint`** (#104) pour une leçon qui produit un
   item `text` ordinaire mais ne convient pas au chrono (figure de découverte,
   lecture d'énoncé — ex. « Je partage »). L'écran de config ne compte que les
-  leçons **éligibles** (une catégorie entièrement exclue n'est pas proposée).
+  leçons **éligibles** (une catégorie entièrement exclue n'est pas proposée). Le
+  réglage de profil **« sans pression temporelle »** (#223) masque le minuteur et le
+  score ici et bascule la fin en mode doux — détaillé dans la section Accessibilité.
 - **`session.ts`** — `verify` (correction + enregistrement), saisie clavier,
   impression contextuelle (#40) : **chemin A** `printAll()` imprime l'écran courant
   vierge (le CSS print met `.ans` en transparent) ; **chemin B** `printScope(scope)`
@@ -690,6 +692,20 @@ mesure au rapporteur relève du CM1 (future leçon).
   - **Consigne de la fiche** : `ExerciseType.consigne` (optionnel) nomme la tâche
     (« Conjugue chaque verbe au présent. ») et remplace le générique « Écris la forme
     correcte. » (`core/build.ts`).
+- **Sprint sans pression temporelle (#223)** — 3ᵉ préférence de profil
+  (`ProfilePrefs.sansPressionTemporelle`, accesseur `sansPressionTemporelle()`, toggle
+  `#prefSansChrono` « Masquer le minuteur » dans le bloc Accessibilité), pour les profils
+  dys/TDAH chez qui le décompte visible est anxiogène. Vit dans la méta (survit à
+  « Réinitialiser », exporté/fusionné avec le reste de `prefs`). Quand actif, `runSprint`
+  **n'affiche ni `#sprintTime` ni `#sprintScore`** (révélés seulement au bilan), recentre
+  le HUD (`.sprint-hud--calme`, ou pas de HUD du tout sans badge de filtre) et **ne pose
+  jamais `.low`** (pas de signal d'urgence). Le **temps continue d'être mesuré** : `sprintTick`,
+  les records/médailles/XP/objectif et `recordRun(…, SPRINT_MS)` sont **inchangés et communs**
+  (pas de classement séparé ; le temps ne départage jamais, `ms` constant). **Fin douce** :
+  à l'épuisement des 5 min, `sprintTick` pose `sprintTimeUp` et stoppe le ticker au lieu de
+  couper net ; la finalisation attend la **fin de la question en cours** (`sprintAnswer` /
+  `sprintContinue`). Réglage **non transverse** (propre au sprint), d'où un point distinct du
+  trio #42 ci-dessus.
 
 ### `src/main.ts` (entrée)
 Importe les feuilles SCSS, puis initialise **dans cet ordre** :

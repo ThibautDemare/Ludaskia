@@ -366,6 +366,10 @@ function wireDOM() {
 			applyPreferences();
 		} else if (e.target.id === 'prefLectureAuto') {
 			setPref('lectureConsigneAuto', e.target.checked);
+		} else if (e.target.id === 'prefSansChrono') {
+			// Sprint sans pression temporelle (#223) : lu au lancement du sprint, pas
+			// d'effet immédiat sur le document → pas d'applyPreferences().
+			setPref('sansPressionTemporelle', e.target.checked);
 		} else if (e.target.id === 'prefNiveauRef') {
 			// Réglage parent (#225) : classe du profil → re-rendu (les compteurs et le
 			// catalogue suivent à la prochaine navigation).

@@ -30,6 +30,11 @@ export interface ProfilePrefs {
 	confortLecture?: boolean;
 	/** Lire la consigne à voix haute automatiquement à l'arrivée sur l'exercice. */
 	lectureConsigneAuto?: boolean;
+	/** Sprint sans pression temporelle (#223) : le minuteur ET le score live sont
+	 *  masqués pendant la partie (anxiogènes pour les profils dys/TDAH), le temps
+	 *  continue d'être mesuré en coulisse, et la dernière question entamée se termine
+	 *  avant la finalisation (pas de coupure sèche). Score révélé au bilan. */
+	sansPressionTemporelle?: boolean;
 }
 export interface Profile {
 	uuid: string;
@@ -211,6 +216,9 @@ export function confortLecture(): boolean {
 }
 export function lectureConsigneAuto(): boolean {
 	return getPrefs().lectureConsigneAuto === true;
+}
+export function sansPressionTemporelle(): boolean {
+	return getPrefs().sansPressionTemporelle === true;
 }
 
 /* ---------- Niveau scolaire de référence du profil actif (#225) ---------- */

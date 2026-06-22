@@ -47,8 +47,10 @@ function figureAngle(cat: Categorie): string {
 /* Bulle d'aide du temps 3 : ancre le vocabulaire sur la comparaison à l'angle
    droit (apostrophe droite — convention projet ; flèche plutôt que `=` pour ne pas
    évoquer l'égalité d'angles). */
+// `screen-only` : rappel utile à l'écran, retiré à l'impression (#290) — il
+// fuiterait entre la figure et la question, et donnerait la réponse sur un bilan.
 const AIDE_TEMPS3 =
-	'<p class="angle-aide">plus petit que l\'angle droit → aigu · plus grand → obtus</p>';
+	'<p class="angle-aide screen-only">plus petit que l\'angle droit → aigu · plus grand → obtus</p>';
 
 /* Temps 1 — reconnaître l'angle droit (à son carré de codage). Oui/Non équilibrés
    (50 % droit, sinon aigu ou obtus) pour ne pas récompenser un « Non » systématique. */

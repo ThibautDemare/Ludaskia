@@ -1011,10 +1011,6 @@ function symShapeBody(shape: SymShape, P: SymPlace, s: number): string {
 		const [px, py] = P(x, y);
 		return rect(px, py, r2(w * s), r2(h * s), SHAPE_FILL);
 	};
-	const ci = (cx: number, cy: number, rr: number): string => {
-		const [px, py] = P(cx, cy);
-		return circle(px, py, r2(rr * s), SHAPE_FILL);
-	};
 	const el = (cx: number, cy: number, rx: number, ry: number): string => {
 		const [px, py] = P(cx, cy);
 		return ellipse(px, py, r2(rx * s), r2(ry * s), SHAPE_FILL);
@@ -1055,16 +1051,21 @@ function symShapeBody(shape: SymShape, P: SymPlace, s: number): string {
 				el(0.66, 0.65, 0.13, 0.1) +
 				ur(0.47, 0.28, 0.06, 0.46)
 			);
-		case 'coeur':
-			return (
-				ci(0.32, 0.36, 0.2) +
-				ci(0.68, 0.36, 0.2) +
-				pol([
-					[0.12, 0.42],
-					[0.88, 0.42],
-					[0.5, 0.93],
-				])
-			);
+		case 'coeur': {
+			// Cœur en UN seul chemin, SYMÉTRIQUE PAR CONSTRUCTION : chaque courbe de
+			// droite est le miroir exact de la courbe gauche autour de x = 0,5. L'ancien
+			// tracé (2 cercles + triangle, formes séparées et contourées) laissait des
+			// contours internes et un artefact de recouvrement au creux central — le
+			// cœur paraissait asymétrique alors que la réponse attendue est « Oui ».
+			const pt = (x: number, y: number): string => P(x, y).join(' ');
+			const d =
+				`M ${pt(0.5, 0.32)} ` +
+				`C ${pt(0.42, 0.16)} ${pt(0.18, 0.16)} ${pt(0.12, 0.34)} ` +
+				`C ${pt(0.07, 0.46)} ${pt(0.2, 0.56)} ${pt(0.5, 0.93)} ` +
+				`C ${pt(0.8, 0.56)} ${pt(0.93, 0.46)} ${pt(0.88, 0.34)} ` +
+				`C ${pt(0.82, 0.16)} ${pt(0.58, 0.16)} ${pt(0.5, 0.32)} Z`;
+			return `<path d="${d}" ${attrs(SHAPE_FILL)} />`;
+		}
 		case 'lettreA':
 			return (
 				pol([

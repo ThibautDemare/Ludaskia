@@ -34,6 +34,7 @@ import { getGoal, evaluateTrophies } from '../core/rewards';
 import { sparkline } from './effects';
 import { renderFavoris } from './bilan';
 import { renderReprises } from './resume';
+import { renderLeconDuJour } from './lecon-du-jour';
 import { renderRewardNav, mascotteBulleHTML } from './unlocks-view';
 import { icon, type IconName } from './icon';
 
@@ -290,6 +291,7 @@ export function boardHTML(mode: string, label: string) {
 export function renderHomeStats() {
 	// Le badge XP vit dans la barre d'outils ; la carte progression sur l'accueil.
 	renderProgression();
+	renderLeconDuJour(document.getElementById('leconDuJour')); // « leçon du jour » (#208)
 	renderReprises(document.getElementById('reprises')); // « À continuer » (#63)
 	const recL = document.getElementById('recLecon');
 	if (recL) {

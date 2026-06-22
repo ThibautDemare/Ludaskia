@@ -39,6 +39,7 @@ import { SYMETRIE_LESSONS } from '../data/maths/symetrie-axiale';
 import { ANGLES_LESSONS } from '../data/maths/angles';
 import { PROBLEMES_LESSONS } from '../data/maths/problemes';
 import { DIVISION_LESSONS } from '../data/maths/division';
+import { trierParOrdre } from './ordre';
 
 /* ---------- Types ---------- */
 
@@ -757,16 +758,22 @@ export function getLessonById(id: string): LessonDef | undefined {
 	return ALL_LESSONS.find((l) => l.id === id);
 }
 
+/* Leçons d'une matière. Avec un niveau, le résultat est filtré ET trié selon
+   l'ordre pédagogique de ce niveau (#208) ; sans niveau, ordre de déclaration. */
 export function getLessonsBySubject(subjectId: SubjectId, niveau?: SchoolLevel): LessonDef[] {
-	return ALL_LESSONS.filter(
+	const lessons = ALL_LESSONS.filter(
 		(l) => l.subject === subjectId && (!niveau || l.levels.includes(niveau)),
 	);
+	return niveau ? trierParOrdre(lessons, niveau) : lessons;
 }
 
+/* Leçons d'une catégorie. Avec un niveau, filtré ET trié selon l'ordre
+   pédagogique (#208) ; sans niveau, ordre de déclaration (composeur/sprint). */
 export function getLessonsByCategory(categoryId: CategoryId, niveau?: SchoolLevel): LessonDef[] {
-	return ALL_LESSONS.filter(
+	const lessons = ALL_LESSONS.filter(
 		(l) => l.category === categoryId && (!niveau || l.levels.includes(niveau)),
 	);
+	return niveau ? trierParOrdre(lessons, niveau) : lessons;
 }
 
 /* Résout une liste d'identifiants en LessonDef du catalogue, dans l'ordre

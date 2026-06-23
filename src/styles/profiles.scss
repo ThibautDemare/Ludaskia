@@ -50,11 +50,17 @@
 	margin-left: auto;
 	color: var(--accent);
 }
-.pm-manage {
+/* « Mon espace » (personnalisation enfant) : item normal, séparé des bascules de
+   profil par un filet. « Espace encadrants » (zone adulte) : gris + cadenas, décroché
+   du vert de marque pour être trouvable sans être tentant (#234). */
+.pm-mine {
 	border-top: 1px solid var(--line);
-	border-radius: 0 0 8px 8px;
 	margin-top: 2px;
-	color: var(--accent);
+	font-weight: 700;
+}
+.pm-manage {
+	border-radius: 0 0 8px 8px;
+	color: var(--grey);
 	font-weight: 700;
 }
 
@@ -80,6 +86,12 @@
 }
 .profile-row.active {
 	border-color: var(--accent);
+}
+/* Carte « Mon espace » (#234) : un seul profil (le sien), avatar + prénom + outils
+   (avatar / renommer). Le prénom occupe l'espace pour pousser les outils à droite. */
+.profile-row.mine .profile-name {
+	flex: 1;
+	min-width: 0;
 }
 .profile-check {
 	flex: 0 0 auto;

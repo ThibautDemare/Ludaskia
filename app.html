@@ -172,24 +172,17 @@
 			<div class="printlink"><a id="backHome">← Retour à l'accueil</a></div>
 		</div>
 
-		<!-- Écran de gestion des profils -->
+		<!-- Écran « Mon espace » (#234) : l'enfant personnalise SON profil (avatar, prénom),
+		     son thème et son confort. La gestion des autres profils + export/import sont dans
+		     l'espace encadrants. -->
 		<div class="home screen-only" id="profils" style="display: none">
-			<h1 class="big">Profils</h1>
-			<div class="tagline">Chaque profil garde sa propre progression.</div>
+			<h1 class="big">Mon espace</h1>
+			<div class="tagline">Choisis ton avatar, ta couleur et ton confort.</div>
+			<div class="profile-list" id="profileList"></div>
 			<div class="reward-nav reward-nav-profils">
 				<button class="reward-btn" id="btnRecompensesProfils">🎁 Mes récompenses</button>
 			</div>
 			<div id="preferences"></div>
-			<div class="profile-list" id="profileList"></div>
-			<div class="profile-backup">
-				<button class="profile-backup-btn" id="btnExport">Exporter les profils cochés</button>
-				<button class="profile-backup-btn" id="btnImport">Importer une sauvegarde</button>
-				<input type="file" id="importFile" accept="application/json,.json" hidden />
-			</div>
-			<div class="backup-hint">
-				Coche les profils à exporter (sauvegarde / transfert vers un autre appareil). À l'import, un
-				profil déjà présent n'est remplacé que si la sauvegarde est plus récente.
-			</div>
 			<!-- Accès à l'espace encadrant (#234) : lien sobre en pied de page, registre
 			     « pour les adultes » (barrière douce). Pas dans la barre d'outils de l'enfant. -->
 			<div class="encadrant-access">

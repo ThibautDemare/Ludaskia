@@ -47,15 +47,24 @@ test('cartes de catégorie : pastille + icône Phosphor', async ({ page }) => {
 	expect(errors).toEqual([]);
 });
 
-test('écran profils : outils et sauvegarde rendus en icônes', async ({ page }) => {
+test('écran « Mon espace » : outils du profil rendus en icônes', async ({ page }) => {
 	const errors = watchErrors(page);
 	await gotoHash(page, 'profils');
-	// Boutons d'action de profil (changer avatar, renommer, réinitialiser, supprimer)
+	// Outils de SON profil : changer l'avatar + renommer (2 icônes Phosphor).
 	await expect(page.locator('.profile-tools button svg.ph-icon').first()).toBeVisible();
-	expect(await page.locator('.profile-tools button svg.ph-icon').count()).toBeGreaterThan(1);
-	// Ajout de profil + export/import portent aussi leur icône.
-	await expect(page.locator('#profileAdd svg.ph-icon')).toBeVisible();
-	await expect(page.locator('#btnExport svg.ph-icon')).toBeVisible();
-	await expect(page.locator('#btnImport svg.ph-icon')).toBeVisible();
+	expect(await page.locator('.profile-tools button svg.ph-icon').count()).toBeGreaterThanOrEqual(2);
+	expect(errors).toEqual([]);
+});
+
+test('espace encadrants : gestion + sauvegarde rendues en icônes', async ({ page }) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'encadrant');
+	// Nouveau profil + export/import portent leur icône.
+	await expect(page.locator('#encAdd svg.ph-icon')).toBeVisible();
+	await expect(page.locator('[data-act="enc-export"] svg.ph-icon')).toBeVisible();
+	await expect(page.locator('[data-act="enc-import"] svg.ph-icon')).toBeVisible();
+	// Actions de gestion (repliées) : icônes aussi (renommer / avatar / réinitialiser / supprimer).
+	await page.locator('.enc-gerer > summary').first().click();
+	expect(await page.locator('.enc-gerer-actions button svg.ph-icon').count()).toBeGreaterThan(2);
 	expect(errors).toEqual([]);
 });

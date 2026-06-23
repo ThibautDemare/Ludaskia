@@ -287,21 +287,26 @@ function posedGridHTML(spec: PosedSpec): string {
 
 	const parts: string[] = [];
 	if (op === 'x' && b >= 10) {
-		// Multiplication à 2 chiffres : deux produits partiels + somme finale.
+		// Multiplication à 2 chiffres : deux produits partiels + addition finale.
 		// Retenues des produits partiels « dans la tête » (multiplicateurs doux, cf.
 		// posee.ts) ; SEULE l'addition finale, qui est une vraie addition à retenues,
-		// reçoit une rangée d'aide — comme l'addition posée (#154, avis pédagogique).
+		// reçoit une rangée d'aide (#154, avis pédagogique). Cette rangée est posée
+		// AU-DESSUS des produits partiels — les opérandes de cette addition —, conforme
+		// à la convention « retenues au-dessus des nombres qu'on additionne » ; un
+		// marqueur « + » devant le 2ᵉ produit partiel signale l'addition (#300/#307).
 		const pp1 = a * (b % 10);
 		const pp2 = a * Math.floor(b / 10);
 		parts.push(row(C, empty(), digits(a).map(digitCell)));
 		parts.push(row(C, opCell(sign), digits(b).map(digitCell)));
 		parts.push(rule(C));
+		// Retenues de l'addition finale, au-dessus de ses opérandes (les produits partiels).
+		parts.push(row(C, empty(), Array.from({ length: C }, carryCell)));
 		parts.push(row(C, empty(), digits(pp1).map(inputCell)));
 		// 2ᵉ produit partiel suivi de son 0 fourni (× dizaines) : le décalage est
 		// porté par ce 0, plus besoin de `shift` spatial → la ligne s'aligne sur la somme.
-		parts.push(row(C, empty(), [...digits(pp2).map(inputCell), zeroCell()]));
+		// Le « + » marque l'addition des deux produits partiels.
+		parts.push(row(C, opCell('+'), [...digits(pp2).map(inputCell), zeroCell()]));
 		parts.push(rule(C));
-		parts.push(row(C, empty(), Array.from({ length: C }, carryCell))); // retenues de la somme
 		parts.push(row(C, empty(), digits(result).map(inputCell)));
 	} else {
 		// Addition, soustraction, multiplication ×1 chiffre.

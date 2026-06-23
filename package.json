@@ -16,7 +16,8 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"forest:gen": "node tools/forest/generate-forest.mjs 15 14 public/foret-pied.svg",
-		"verbs:gen": "node tools/verbs/generate-verbs.mjs"
+		"verbs:gen": "node tools/verbs/generate-verbs.mjs",
+		"og:gen": "node tools/og-image/generate.mjs"
 	},
 	"engines": {
 		"node": ">=20"

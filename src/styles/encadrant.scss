@@ -254,6 +254,25 @@
 	outline: 3px solid var(--admin-accent);
 	outline-offset: 1px;
 }
+/* Aménagements : cases à cocher (posées par l'adulte). */
+.enc-toggle {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.5rem;
+	margin: 0.45rem 0;
+	font-size: 0.9rem;
+	cursor: pointer;
+}
+.enc-toggle input {
+	margin-top: 0.15rem;
+	flex: none;
+	width: 18px;
+	height: 18px;
+	accent-color: var(--admin-accent);
+}
+.enc-toggle-off {
+	opacity: 0.6;
+}
 
 /* ---------- Boutons / liens ---------- */
 .enc-btn,

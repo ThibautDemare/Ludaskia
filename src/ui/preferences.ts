@@ -21,7 +21,6 @@ import {
 	lectureConsigneAuto,
 	sansPressionTemporelle,
 } from '../core/profiles';
-import { dicteeDisponible } from './tts';
 import { icon } from './icon';
 
 export const THEME_KEY = 'ludaskia_theme';
@@ -92,7 +91,6 @@ export function renderPreferences() {
 	const niveau = niveauDepuisXP(getXP());
 	const debloques = themesDispo(niveau);
 	const courant = getTheme();
-	const dispoVoix = dicteeDisponible(); // statut de la lecture vocale (#42)
 	// Deux sections : confort (Forêt / Nuit / Clair-obscur, sans cadenas) et
 	// récompenses (thèmes de couleur gatés, cadenas conservé).
 	const confort = THEMES.filter((t) => t.confort).map((t) => themeSwatch(t, courant, debloques));
@@ -113,7 +111,7 @@ export function renderPreferences() {
       </div>
     </div>
     <div class="pref-block">
-      <span class="pref-lab">${icon('eye')} Accessibilité</span>
+      <span class="pref-lab">${icon('eye')} Mon confort</span>
       <div class="pref-toggles">
         <label class="pref-toggle">
           <input type="checkbox" id="prefAnim"${animationsReduites() ? ' checked' : ''} />
@@ -123,21 +121,25 @@ export function renderPreferences() {
           <input type="checkbox" id="prefConfort"${confortLecture() ? ' checked' : ''} />
           <span>Confort de lecture <small class="pref-hint">(texte plus grand et plus aéré)</small></span>
         </label>
-        <label class="pref-toggle">
-          <input type="checkbox" id="prefSansChrono"${sansPressionTemporelle() ? ' checked' : ''} />
-          <span>Masquer le minuteur <small class="pref-hint">(le minuteur et le score restent cachés pendant le sprint ; ils s'affichent à la fin)</small></span>
-        </label>
-        <div class="pref-toggle-tts">
-          <label class="pref-toggle${dispoVoix ? '' : ' pref-toggle-off'}">
-            <input type="checkbox" id="prefLectureAuto"${lectureConsigneAuto() ? ' checked' : ''}${dispoVoix ? '' : ' disabled'} />
-            <span>Lire la consigne à voix haute automatiquement</span>
-          </label>
-          <p class="pref-tts-statut">${
-						dispoVoix
-							? `${icon('speaker')} Lecture vocale disponible sur cet appareil.`
-							: `${icon('speaker')} Lecture vocale indisponible sur cet appareil (aucune voix française).`
-					}</p>
-        </div>
       </div>
+      ${amenagementsInfoHTML()}
     </div>`;
+}
+
+/* Aménagements posés par l'adulte dans l'espace encadrants (#234) : masquer le
+   minuteur, lecture auto des consignes. Affichés ici en LECTURE SEULE — l'enfant
+   comprend pourquoi son app se comporte ainsi sans pouvoir le désactiver par jeu.
+   Rien n'est affiché si aucun aménagement n'est posé. L'écoute « à la demande »
+   (bouton « Écouter ») reste, elle, toujours disponible côté enfant. */
+function amenagementsInfoHTML(): string {
+	const lignes: string[] = [];
+	if (sansPressionTemporelle())
+		lignes.push('Le minuteur est masqué pendant les sprints (réglé par un adulte).');
+	if (lectureConsigneAuto())
+		lignes.push('Les consignes sont lues à voix haute automatiquement (réglé par un adulte).');
+	return lignes.length
+		? `<div class="pref-amenagements">${lignes
+				.map((l) => `<p class="pref-hint">${icon('lock')} ${l}</p>`)
+				.join('')}</div>`
+		: '';
 }

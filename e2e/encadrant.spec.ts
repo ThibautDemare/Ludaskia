@@ -215,3 +215,19 @@ test("carte « À revoir » : épingler une leçon faible la fait apparaître su
 
 	expect(errors).toEqual([]);
 });
+
+/* 7. Split accessibilité (#234) : « Mon confort » (enfant) vs « Aménagements » (encadrant). */
+test('accessibilité : confort côté enfant, aménagements côté encadrant', async ({ page }) => {
+	const errors = watchErrors(page);
+	// Écran « Mon espace » : confort de lecture + animations, MAIS plus le minuteur
+	// ni la lecture auto (devenus des aménagements posés par l'adulte).
+	await gotoHash(page, 'profils');
+	await expect(page.locator('#prefAnim')).toBeVisible();
+	await expect(page.locator('#prefConfort')).toBeVisible();
+	await expect(page.locator('#prefSansChrono')).toHaveCount(0);
+	await expect(page.locator('#prefLectureAuto')).toHaveCount(0);
+	// Espace encadrants : les deux aménagements (masquer le minuteur + lecture auto).
+	await gotoHash(page, 'encadrant');
+	expect(await page.locator('[data-act="set-amenagement"]').count()).toBe(2);
+	expect(errors).toEqual([]);
+});

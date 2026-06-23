@@ -215,21 +215,16 @@ function wireDOM() {
 		renderPreferences();
 	});
 	prefs.addEventListener('change', (e: any) => {
+		// « Mon confort » : réglages que l'enfant ajuste lui-même (auto-régulation).
 		if (e.target.id === 'prefAnim') {
 			setAnimationsReduites(e.target.checked);
 			applyPreferences();
 		} else if (e.target.id === 'prefConfort') {
 			setPref('confortLecture', e.target.checked);
 			applyPreferences();
-		} else if (e.target.id === 'prefLectureAuto') {
-			setPref('lectureConsigneAuto', e.target.checked);
-		} else if (e.target.id === 'prefSansChrono') {
-			// Sprint sans pression temporelle (#223) : lu au lancement du sprint, pas
-			// d'effet immédiat sur le document → pas d'applyPreferences().
-			setPref('sansPressionTemporelle', e.target.checked);
 		}
-		// Le réglage « Classe scolaire » a migré vers l'espace encadrant (#234) :
-		// il n'est plus exposé à l'enfant dans ces préférences.
+		// La « Classe scolaire » et les aménagements (masquer le minuteur, lecture auto
+		// des consignes) ont migré dans l'espace encadrants (#234) : posés par l'adulte.
 	});
 
 	// Accueil : barre « Récompenses » / « Trophées » (délégation, conteneur stable)

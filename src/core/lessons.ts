@@ -26,6 +26,7 @@ import {
 	getSessionItems,
 } from './items';
 import type { Item } from './items';
+import type { SchoolLevel } from './catalog';
 // Import « tardif » (utilisé seulement dans des corps de fonction) du pipeline
 // générique : dépendance circulaire build ↔ lessons sans effet de bord au chargement.
 import { buildLessonFiche, bilanBlocksForIds } from './build';
@@ -516,6 +517,9 @@ export interface PrintScope {
 	kind: 'fiches' | 'bilan'; // entraînement vs évaluation
 	nbQ?: number; // questions par leçon pour un bilan (défaut 3)
 	corrige?: boolean; // #41 : ajouter un corrigé (mêmes items, réponses révélées)
+	// #234 : niveau de calibrage forcé (impression au niveau d'un profil consulté par
+	// l'encadrant). Absent = niveau effectif du profil/niveau ACTIF (comportement usuel).
+	level?: SchoolLevel;
 }
 
 // Au-delà de ce volume, on prévient (gros PDF) et on suggère l'impression par catégorie.
@@ -546,8 +550,9 @@ export function coverHTML(scope: PrintScope): string {
   </div>`;
 }
 
-/* Fiches paginées pour l'impression : 2 par A4, les leçons « longues » seules. */
-function fichesPagesForIds(lessonIds: string[]): string {
+/* Fiches paginées pour l'impression : 2 par A4, les leçons « longues » seules.
+   `level` (optionnel) force le calibrage (impression au niveau d'un profil consulté, #234). */
+function fichesPagesForIds(lessonIds: string[], level?: SchoolLevel): string {
 	const pages: string[] = [];
 	let cur: string[] = [];
 	const flush = () => {
@@ -557,7 +562,7 @@ function fichesPagesForIds(lessonIds: string[]): string {
 		}
 	};
 	for (const id of lessonIds) {
-		const fiche = buildLessonFiche(id);
+		const fiche = buildLessonFiche(id, level);
 		if (LONG_FICHE_LESSONS.has(id)) {
 			flush();
 			pages.push(`<div class="page">${fiche}<p class="foot print-only">Ludaskia</p></div>`);
@@ -573,7 +578,7 @@ function fichesPagesForIds(lessonIds: string[]): string {
 /* Bilan imprimable multi-matières : nbQ questions par leçon, mise en page grille. */
 function bilanPrintHTML(scope: PrintScope): string {
 	const nbQ = scope.nbQ ?? 3;
-	const blocks = bilanBlocksForIds(scope.lessonIds, nbQ);
+	const blocks = bilanBlocksForIds(scope.lessonIds, nbQ, scope.level);
 	const cells = blocks
 		.map((b) => {
 			setRenderLesson(b.id);
@@ -624,7 +629,9 @@ export function buildPrintableDOM(scope: PrintScope): string {
 		// Un corps (fiches ou bilan) ; les items sont régénérés à chaque appel.
 		const renderBody = () => {
 			setInputCounter(0);
-			return scope.kind === 'bilan' ? bilanPrintHTML(scope) : fichesPagesForIds(scope.lessonIds);
+			return scope.kind === 'bilan'
+				? bilanPrintHTML(scope)
+				: fichesPagesForIds(scope.lessonIds, scope.level);
 		};
 		if (!scope.corrige) return cover + renderBody();
 		// Corrigé (#41) : on rend le corps DEUX fois — feuille vierge puis réponses

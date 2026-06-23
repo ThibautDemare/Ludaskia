@@ -40,6 +40,7 @@ import { iconOr } from './icon';
 import { startOrthoRun, orthoDiscoveryComplete, renderOrthoModeChoice } from './ortho-runner';
 import { closeProfileMenu, closeDrawer } from './menu';
 import { applyPreferences, renderPreferences } from './preferences';
+import { enterEncadrant } from './encadrant';
 import { leconKey } from '../core/resume';
 import { captureResume, clearResumeCtx, setResumeCtx, maybeRelaunch } from './resume';
 
@@ -117,6 +118,9 @@ export function goOrthoRevoir(id: string) {
 }
 export function showProfiles() {
 	location.hash = 'profils';
+}
+export function showEncadrant() {
+	location.hash = 'encadrant';
 }
 export function startLecon(id: string) {
 	const lesson = getLessonById(id);
@@ -231,6 +235,7 @@ export function route() {
 	} else if (h === 'matieres') showMatieresView();
 	else if (h === 'lecons') showLessonsView();
 	else if (h === 'profils') showProfilesView();
+	else if (h === 'encadrant') showEncadrantView();
 	else if (h === 'revision') {
 		if (pendingRevision.length) runRevision(pendingRevision);
 		else showHomeView();
@@ -322,6 +327,7 @@ export function hideMenus() {
 		'home',
 		'lessons',
 		'profils',
+		'encadrant',
 		'bilan-custom',
 		'sprint-config',
 		'matieres',
@@ -358,6 +364,17 @@ export function showProfilesView() {
 	renderPreferences();
 	renderProfiles();
 	document.getElementById('profils')!.style.display = '';
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* Espace encadrant (#234) : vue adulte gatée. On masque le profil/XP de la barre
+   (zone « pour les grands », signal de rupture) ; le retour se fait via le bouton
+   « Retour à [prénom] » de la vue (ou Accueil). enterEncadrant gère le verrou PIN. */
+export function showEncadrantView() {
+	resetSessionUI();
+	setToolbar({ verify: false, home: true, profile: false });
+	hideMenus();
+	document.getElementById('encadrant')!.style.display = '';
+	enterEncadrant(document.getElementById('encadrantContent')!);
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showMatieresView() {

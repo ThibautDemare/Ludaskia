@@ -1,0 +1,219 @@
+/* ============================================================
+   Espace encadrant (#234) — smoke tests e2e.
+   Couvre : accès depuis Profils, rendu de la vue, bouton Retour,
+   cycle PIN complet (activation → rechargement → mauvais code →
+   bon code), et carte « À revoir » sur l'accueil enfant (seeding).
+   ============================================================ */
+import { test, expect } from '@playwright/test';
+import { watchErrors, gotoHash } from './helpers';
+
+/* ----- Seeds localStorage ----- */
+
+/* Profil e2e avec niveauReference CE2 (gotoHash l'injecte déjà, mais on
+   le reproduit ici pour les tests qui naviguent directement sans gotoHash). */
+const SEED_CE2 = `(() => {
+  const KEY = 'ludaskia_profiles';
+  let m = null;
+  try { m = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e) {}
+  if (!m || !Array.isArray(m.list) || !m.list.length) {
+    m = { list: [{ uuid: 'e2e', name: 'E2E', emoji: '\\uD83E\\uDD8A', updatedAt: 1, niveauReference: 'ce2' }], active: 'e2e' };
+  } else {
+    m.list.forEach(p => { if (!p.niveauReference) p.niveauReference = 'ce2'; });
+  }
+  localStorage.setItem(KEY, JSON.stringify(m));
+})();`;
+
+/* Supprime tout verrou PIN éventuel persisté d'un test précédent. */
+const CLEAR_PIN = `localStorage.removeItem('ludaskia_encadrant_lock');`;
+
+/* Seed des stats faibles pour la carte « À revoir » : profil e2e,
+   leçon « math-complements » en CE2, taux récent 20 % (< seuil 70 %). */
+const SEED_STATS_FAIBLES = `(() => {
+  const stat = { attempts: 1, correct: 2, questions: 10, bestPct: 20, lastPct: 20, recentPct: [20] };
+  localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({ 'math-complements@ce2': stat }));
+})();`;
+
+/* ----- Tests ----- */
+
+/* 1. Accès depuis Profils : #btnEncadrant visible → clic → espace visible */
+test("accès depuis Profils : #btnEncadrant visible, clic ouvre l'espace encadrant", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await gotoHash(page, 'profils');
+
+	const btn = page.locator('#btnEncadrant');
+	await expect(btn).toBeVisible();
+	await btn.click();
+
+	// La vue encadrant s'affiche (le titre distinctif est présent).
+	await expect(page.locator('.enc-title')).toBeVisible();
+	await expect(page.locator('.enc-title')).toContainText('encadrant');
+	expect(errors).toEqual([]);
+});
+
+/* 2. Navigation directe : rendu de l'espace sans erreur */
+test('navigation directe #encadrant : titre + bandeau contexte + récap présents', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await gotoHash(page, 'encadrant');
+
+	await expect(page.locator('.enc-title')).toBeVisible();
+	await expect(page.locator('.enc-context')).toBeVisible();
+	// Le bloc de chiffres de progression est rendu.
+	await expect(page.locator('.enc-stats')).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
+/* 3. Bouton Retour : revenir à l'accueil enfant */
+test("bouton « Retour » de l'espace encadrant ramène à l'accueil", async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await gotoHash(page, 'encadrant');
+
+	await expect(page.locator('.enc-back[data-act="retour"]')).toBeVisible();
+	await page.locator('.enc-back[data-act="retour"]').click();
+
+	await expect(page.locator('#home')).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
+/* 4. Réglages classe : les selects de niveau sont présents (CE2 + CM1 au catalogue) */
+test("réglages classe : selects de niveau présents dans l'espace encadrant", async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await gotoHash(page, 'encadrant');
+
+	// Select de la classe de référence.
+	await expect(page.locator('select[data-act="set-niveau-ref"]')).toBeVisible();
+	// Select par matière (au moins Mathématiques).
+	await expect(page.locator('select[data-act="set-niveau-mat"]').first()).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
+/* 5. Cycle PIN complet :
+      a) activer le code (4 chiffres au pavé → secret affiché)
+      b) cocher la case + terminer
+      c) recharger → pavé de saisie affiché
+      d) mauvais code → message d'erreur
+      e) bon code → espace ouvert
+   NOTE : on NE pose PAS CLEAR_PIN via addInitScript ici, car addInitScript
+   s'exécute à chaque navigation — il effacerait le PIN lors du rechargement.
+   On supprime le verrou éventuel via page.evaluate() après le premier chargement. */
+test('cycle PIN : activation, rechargement, mauvais code refusé, bon code accepté', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// Premier chargement (via gotoHash qui injecte le profil CE2).
+	await gotoHash(page, 'encadrant');
+
+	// Nettoyer un verrou PIN éventuel laissé par un test précédent (via evaluate,
+	// pas addInitScript, pour ne pas ré-exécuter la suppression sur le rechargement).
+	await page.evaluate(() => localStorage.removeItem('ludaskia_encadrant_lock'));
+	// Re-rendre la vue sans verrou.
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	// Vérifier que l'espace est directement accessible (pas de pavé).
+	await expect(page.locator('.enc-context')).toBeVisible();
+
+	// Cliquer « Activer un code ».
+	await page.locator('[data-act="pin-activer"]').click();
+
+	// Un pavé numérique doit apparaître.
+	await expect(page.locator('.kp-key[data-d="1"]')).toBeVisible();
+
+	// Saisir le code 1-2-3-4.
+	const CODE = ['1', '2', '3', '4'];
+	for (const d of CODE) {
+		await page.locator(`.kp-key[data-d="${d}"]`).click();
+	}
+
+	// Après 4 chiffres, le panneau secret de récupération apparaît.
+	await expect(page.locator('.enc-secret')).toBeVisible();
+
+	// Cocher la case « J'ai conservé ma clé ».
+	await page.locator('[data-act="secret-conserve"]').click();
+
+	// Le bouton « Terminer » est maintenant actif → cliquer.
+	await expect(page.locator('[data-act="pin-terminer"]')).toBeEnabled();
+	await page.locator('[data-act="pin-terminer"]').click();
+
+	// De retour dans l'espace (session déjà déverrouillée en mémoire).
+	await expect(page.locator('.enc-context')).toBeVisible();
+
+	// Recharger la page → réinitialise l'état mémoire JS (deverrouille = false),
+	// le verrou PIN est dans localStorage → le pavé doit s'afficher.
+	// On utilise page.evaluate pour naviguer sans re-exécuter addInitScript.
+	await page.evaluate(() => {
+		location.hash = 'accueil';
+	});
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	// Le pavé de saisie doit s'afficher (plus d'état déverrouillé en mémoire).
+	await expect(page.locator('.kp-dot').first()).toBeVisible();
+	await expect(page.locator('.kp-key[data-d="1"]')).toBeVisible();
+
+	// Saisir un MAUVAIS code (9-9-9-9).
+	for (const d of ['9', '9', '9', '9']) {
+		await page.locator(`.kp-key[data-d="${d}"]`).click();
+	}
+
+	// Message d'erreur visible ; l'espace n'est pas ouvert (renderGate efface le DOM,
+	// donc .enc-context est absent — toHaveCount(0) est plus robuste que toBeHidden).
+	await expect(page.locator('.enc-gate-err')).toBeVisible();
+	await expect(page.locator('.enc-context')).toHaveCount(0);
+
+	// Saisir le BON code (1-2-3-4).
+	for (const d of CODE) {
+		await page.locator(`.kp-key[data-d="${d}"]`).click();
+	}
+
+	// L'espace est maintenant accessible.
+	await expect(page.locator('.enc-context')).toBeVisible();
+
+	expect(errors).toEqual([]);
+});
+
+/* 6. Carte « À revoir » sur l'accueil enfant (seeding de stats faibles).
+      Étapes : seed stats → épingler dans l'espace encadrant → accueil enfant
+      affiche la carte. */
+test("carte « À revoir » : épingler une leçon faible la fait apparaître sur l'accueil", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// Injecter stats faibles ET supprimer PIN avant chargement.
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_STATS_FAIBLES);
+	// gotoHash injecte aussi ENSURE_NIVEAU (CE2) — on passe par navigation directe
+	// pour conserver le seeding addInitScript déjà posé.
+	await page.addInitScript(SEED_CE2);
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	// La leçon faible doit apparaître dans la section « À revoir » (liste .enc-revoir,
+	// hors détail dépliable des catégories), proposée à l'épinglage (bouton « Épingler »).
+	const btnEpingler = page
+		.locator('.enc-revoir [data-act="epingler"]')
+		.filter({ hasText: 'Épingler' })
+		.first();
+	await expect(btnEpingler).toBeVisible();
+	await btnEpingler.click();
+
+	// Une fois épinglée, la leçon passe dans les « Épinglées » (bouton « Retirer »).
+	await expect(
+		page.locator('.enc-revoir [data-act="epingler"]').filter({ hasText: 'Retirer' }).first(),
+	).toBeVisible();
+
+	// Naviguer vers l'accueil de l'enfant.
+	await page.locator('[data-act="retour"]').click();
+	await expect(page.locator('#home')).toBeVisible();
+
+	// La carte « À revoir » doit être visible et contenir un titre de leçon.
+	const carteARevoir = page.locator('#aRevoir');
+	await expect(carteARevoir).toBeVisible();
+	await expect(carteARevoir.locator('.lj-title')).toBeVisible();
+
+	expect(errors).toEqual([]);
+});

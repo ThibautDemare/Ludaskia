@@ -3,276 +3,531 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Ludaskia — s'exercer en s'amusant</title>
+		<title>Ludaskia — entraînement en maths et en français (CE2, CM1)</title>
+		<meta
+			name="description"
+			content="Ludaskia est un jeu d'entraînement gratuit au calcul mental et au français pour le CE2 et le CM1. Sans compte, sans publicité : les données restent sur l'appareil."
+		/>
 		<!-- Favicon + icône d'application (logo « arbre »). Fichiers dans public/ ;
 		     chemins SANS la base : Vite préfixe lui-même /Ludaskia/. -->
 		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
 		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 	</head>
-	<body>
-		<header class="toolbar">
-			<!-- Branding = lien vers l'accueil (logo cliquable, convention universelle).
-			     Ce n'est PLUS un <h1> : chaque écran porte désormais son propre <h1> (#277).
-			     L'aria-label garde un nom accessible même quand « Ludaskia » est masqué
-			     sous 600px (cf. toolbar.scss). La garde de sortie d'exercice reste assurée
-			     au niveau du hashchange (main.ts), donc un simple lien suffit. -->
-			<a class="toolbar-brand" href="#accueil" aria-label="Ludaskia — retour à l'accueil">
-				<!-- Logo « arbre » dans une pastille blanche : contraste garanti sur
-				     le fond accent quel que soit le thème (vert, bleu, orange…). -->
-				<span class="toolbar-logo"><img src="/logo.png" alt="" aria-hidden="true" /></span>
-				<span class="toolbar-title">Ludaskia</span>
-			</a>
-			<!-- Toujours visibles (même en exercice) : repère de temps + action principale. -->
-			<span class="chrono hidden" id="chrono">00:00</span>
-			<span class="score hidden" id="score"></span>
-			<button class="btn-accent" id="btnVerify" style="display: none">Vérifier</button>
-			<!-- Déclencheur du tiroir (mobile uniquement, masqué en desktop par CSS). -->
-			<button
-				class="toolbar-burger"
-				id="toolbarBurger"
-				type="button"
-				aria-label="Ouvrir le menu"
-				aria-expanded="false"
-				aria-controls="toolbarDrawer"
-			></button>
-			<!-- Contrôles secondaires : alignés en barre sur desktop (display:contents),
-			     repliés en tiroir latéral sur mobile (niveau/XP, profil, Accueil, Imprimer). -->
-			<div class="toolbar-drawer" id="toolbarDrawer">
-				<span class="toolbar-xp" id="xpBadge" style="display: none"></span>
-				<div class="profile-dd" id="profileDD">
-					<button
-						class="btn-profile"
-						id="toolbarProfile"
-						style="display: none"
-						title="Changer / gérer les profils"
-					></button>
-					<div class="profile-menu" id="profileMenu" hidden></div>
-				</div>
-				<button class="btn-primary" id="btnHome" style="display: none">Accueil</button>
-				<button class="btn-ghost" id="btnPrint">Imprimer / PDF</button>
+	<body class="vitrine">
+		<!-- ============================================================
+		   PAGE VITRINE (#271) — atterrissage public, DISTINCTE de l'app
+		   (app.html). One-pager mobile-first, audience adulte (parent /
+		   enseignant). 100 % statique : un seul CTA vert (lien vers
+		   app.html), répété en bas. Le JS (src/vitrine.ts) n'est qu'un
+		   agrément (forêt décorative + lien « Continuer »).
+		   ============================================================ -->
+
+		<!-- En-tête minimal : la marque + le CTA principal. Pas la barre d'outils
+		     de l'app (profil, impression…) qui n'a de sens que dans app.html. -->
+		<header class="v-header">
+			<div class="v-header-in">
+				<span class="v-brand">
+					<span class="v-brand-logo"><img src="/logo.png" alt="" aria-hidden="true" /></span>
+					<span class="v-brand-name">Ludaskia</span>
+				</span>
+				<a class="v-cta v-cta--sm" href="app.html">Commencer</a>
 			</div>
 		</header>
-		<!-- Voile derrière le tiroir mobile (fermeture au tap extérieur). -->
-		<div class="toolbar-scrim" id="toolbarScrim" hidden></div>
 
-		<!-- Écran d'accueil (interactif) -->
-		<div class="home screen-only home-wide" id="home">
-			<!-- Titre de page sémantique (#277) : l'accueil n'a pas de titre VISUEL (juste
-			     le logo, aria-hidden) → un <h1> réservé au lecteur d'écran identifie la page. -->
-			<h1 class="sr-only">Accueil</h1>
-			<div class="big">
-				<!-- Petit visuel d'accueil : le logo « arbre » seul (le nom est porté
-				     par l'en-tête). -->
-				<img class="brand-logo" src="/logo.png" alt="" aria-hidden="true" />
-			</div>
-			<div class="home-grid">
-				<!-- Progression (mascotte/rang/niveau + défi du jour). Cellule à part
-				     pour pouvoir la remonter EN PREMIER sur mobile (accueil chaleureux). -->
-				<div id="progression"></div>
-				<!-- Colonne gauche : reprises, objectifs, classements, trophées -->
-				<div class="home-col home-col-left">
-					<div class="reprises" id="reprises"></div>
-					<div class="objectives" id="objectives"></div>
-					<div class="boards" id="boards"></div>
-					<div class="reward-nav" id="rewardNav"></div>
-				</div>
-				<!-- Colonne droite : accès aux modes + favoris -->
-				<div class="home-col home-col-right">
-					<div class="cards">
-						<!-- Leçon du jour (#208) : 1re carte, contenu dynamique (le prochain
-						     pas à travailler) rendu par renderLeconDuJour ; cliquable comme
-						     les autres cartes de mode. -->
-						<div class="card" id="leconDuJour"></div>
-						<div class="card" id="cardSprint">
-							<div class="ico"></div>
-							<h2>Sprint 5 min</h2>
-							<p>
-								En 5 minutes, enchaîne les questions au hasard (maths et français) et fais le plus
-								de bonnes réponses possibles !
-							</p>
-							<div class="card-record" id="recSprint"></div>
-							<span class="go">C'est parti →</span>
-						</div>
-						<div class="card" id="cardRevision">
-							<div class="ico"></div>
-							<h2>Révision</h2>
-							<p>
-								Revois un peu chaque jour ce que tu as déjà appris : on espace les rappels dans le
-								temps.
-							</p>
-							<div class="card-record" id="recRevision"></div>
-							<span class="go">Réviser →</span>
-						</div>
-						<div class="card" id="cardLecon">
-							<div class="ico"></div>
-							<h2>Une leçon à la fois</h2>
-							<p>Choisis un seul thème et vise le sans-faute pour décrocher son étoile.</p>
-							<div class="card-record" id="recLecon"></div>
-							<span class="go">Choisir →</span>
-						</div>
-						<div class="card" id="cardBilanCustom">
-							<div class="ico"></div>
-							<h2>Bilan personnalisé</h2>
-							<p>
-								Choisis les leçons et le nombre de questions. Sauvegarde tes configurations
-								préférées comme favoris.
-							</p>
-							<span class="go">Configurer →</span>
-						</div>
+		<main class="v-main">
+			<!-- ===== HERO ===== -->
+			<section class="v-hero" aria-labelledby="vHeroTitle">
+				<div class="v-hero-text">
+					<h1 id="vHeroTitle">S'entraîner en maths et en français, du CE2 au CM1.</h1>
+					<p class="v-hero-sub">
+						Un jeu d'entraînement <strong>gratuit</strong>, sans publicité et sans compte. Les
+						exercices se jouent directement dans le navigateur, et tout reste sur votre appareil.
+					</p>
+					<div class="v-hero-actions">
+						<a class="v-cta" href="app.html">Commencer</a>
+						<!-- Agrément « Continuer » : révélé par src/vitrine.ts si un profil
+						     existe déjà sur l'appareil (sinon masqué). -->
+						<a class="v-continue" href="app.html" data-continuer hidden>
+							Déjà venu ? Reprendre l'entraînement <span aria-hidden="true">→</span>
+						</a>
 					</div>
-					<div id="favoris"></div>
+					<p class="v-hero-note">
+						<a class="v-anchor" href="#exemples"
+							>Voir un exemple d'exercice <span aria-hidden="true">↓</span></a
+						>
+					</p>
 				</div>
-			</div>
-			<div class="printlink">
-				Besoin de feuilles papier à remplir au crayon ? Ouvre une <strong>catégorie</strong> (ou un
-				<strong>bilan personnalisé</strong>) et utilise le bouton <strong>Imprimer / PDF</strong>.
-			</div>
-			<!-- Bande décorative « forêt » (SVG pré-généré, inséré au chargement) — accueil seulement. -->
-			<div class="home-foret" id="homeForet" aria-hidden="true"></div>
-		</div>
+				<!-- Visuel : une carte d'exercice reconstituée (pas une capture : nette,
+				     robuste, sans dette). La mascotte n'est qu'un clin d'œil en coin. -->
+				<div class="v-hero-visual" aria-hidden="true">
+					<div class="v-demo-card">
+						<span class="v-demo-tag">Maths</span>
+						<p class="v-demo-q">Compare les deux nombres</p>
+						<div class="v-demo-compare">
+							<span class="v-demo-num">348</span>
+							<span class="v-demo-slot v-demo-slot--ok">&lt;</span>
+							<span class="v-demo-num">392</span>
+						</div>
+						<div class="v-demo-feedback">Bravo&nbsp;! 🎉</div>
+					</div>
+					<span class="v-mascotte">🦊</span>
+				</div>
+			</section>
 
-		<!-- Écran de sélection d'une leçon -->
-		<div class="home screen-only" id="lessons" style="display: none">
-			<h1 class="big">Choisis une leçon</h1>
-			<div class="tagline" id="starsSummary"></div>
-			<div class="lesson-list" id="lessonList"></div>
-			<div class="printlink"><a id="backHome">← Retour à l'accueil</a></div>
-		</div>
+			<!-- ===== C'EST QUOI ===== -->
+			<section class="v-section v-about" aria-labelledby="vAboutTitle">
+				<div class="v-wrap">
+					<h2 id="vAboutTitle">C'est quoi Ludaskia&nbsp;?</h2>
+					<p>
+						Ludaskia est une application web d'entraînement au calcul mental et au français, pensée
+						pour les enfants du CE2 et du CM1. Chaque séance propose des exercices variés, corrigés
+						tout de suite, avec de courtes explications. C'est un complément ludique au travail de
+						la classe et de la maison&nbsp;— pas un substitut à l'école.
+					</p>
+				</div>
+			</section>
 
-		<!-- Écran de gestion des profils -->
-		<div class="home screen-only" id="profils" style="display: none">
-			<h1 class="big">Profils</h1>
-			<div class="tagline">Chaque profil garde sa propre progression.</div>
-			<div class="reward-nav reward-nav-profils">
-				<button class="reward-btn" id="btnRecompensesProfils">🎁 Mes récompenses</button>
-			</div>
-			<div id="preferences"></div>
-			<div class="profile-list" id="profileList"></div>
-			<div class="profile-backup">
-				<button class="profile-backup-btn" id="btnExport">Exporter les profils cochés</button>
-				<button class="profile-backup-btn" id="btnImport">Importer une sauvegarde</button>
-				<input type="file" id="importFile" accept="application/json,.json" hidden />
-			</div>
-			<div class="backup-hint">
-				Coche les profils à exporter (sauvegarde / transfert vers un autre appareil). À l'import, un
-				profil déjà présent n'est remplacé que si la sauvegarde est plus récente.
-			</div>
-			<div class="printlink"><a id="backHomeProfils">← Retour à l'accueil</a></div>
-		</div>
-
-		<!-- Écran : choix de la matière -->
-		<div class="home screen-only" id="matieres" style="display: none">
-			<button type="button" class="backlink-top" id="backHomeMatieresTop">
-				← Retour à l'accueil
-			</button>
-			<h1 class="big">Choisis une matière</h1>
-			<div class="tagline">Sélectionne une matière pour voir ses catégories.</div>
-			<div id="matieresContent"></div>
-		</div>
-
-		<!-- Écran : catégories d'une matière -->
-		<div class="home screen-only" id="categories" style="display: none">
-			<button type="button" class="backlink-top" id="backMatieresTop">← Retour aux matières</button>
-			<h1 class="big" id="categoriesTitle">Matière</h1>
-			<div class="tagline">Choisis une catégorie.</div>
-			<div id="categoriesContent"></div>
-		</div>
-
-		<!-- Écran : leçons d'une catégorie (+ accès bilan / sprint) -->
-		<div class="home screen-only" id="categorie" style="display: none">
-			<button type="button" class="backlink-top" id="backCategorieTop">
-				← Retour aux catégories
-			</button>
-			<h1 class="big" id="categorieTitle">Catégorie</h1>
-			<div class="tagline">Travaille une leçon, ou lance un bilan / sprint de la catégorie.</div>
-			<div id="categorieContent"></div>
-		</div>
-
-		<!-- Écran : création / édition d'une liste d'orthographe -->
-		<div class="home screen-only" id="ortho-liste" style="display: none">
-			<h1 class="big" id="orthoListeTitle">Nouvelle liste</h1>
-			<div class="tagline">Saisis les mots à apprendre (un par ligne, ou colle un bloc).</div>
-			<div id="orthoListeContent"></div>
-			<div class="printlink"><a id="backOrthoListe">← Retour à l'orthographe</a></div>
-		</div>
-
-		<!-- Écran de configuration du sprint -->
-		<div class="home screen-only" id="sprint-config" style="display: none">
-			<h1 class="big">Sprint 5 min</h1>
-			<div class="tagline">Enchaîne les questions le plus vite possible (maths et français).</div>
-			<div id="sprintConfigContent"></div>
-			<div class="printlink"><a id="backHomeSprintConfig">← Retour à l'accueil</a></div>
-		</div>
-
-		<!-- Écran de configuration du bilan personnalisé -->
-		<div class="home screen-only" id="bilan-custom" style="display: none">
-			<h1 class="big">Bilan personnalisé</h1>
-			<div class="tagline">Choisis les leçons et le nombre de questions.</div>
-			<div id="bilanCustomContent"></div>
-			<div class="printlink"><a id="backHomeBilanCustom">← Retour à l'accueil</a></div>
-		</div>
-
-		<!-- Zone des exercices -->
-		<div class="sheets" id="sheets"></div>
-
-		<!-- Modale de récompense (trophée, record, étoile, objectif…) -->
-		<div class="modal-overlay" id="celebrate" style="display: none">
-			<div class="modal" role="dialog" aria-modal="true" aria-labelledby="celebrateTitle">
-				<button class="modal-close" id="celebrateClose" aria-label="Fermer">×</button>
-				<div class="modal-emoji">🎉</div>
-				<h2 class="modal-title" id="celebrateTitle">Bravo !</h2>
-				<ul class="modal-list" id="celebrateList"></ul>
-				<button class="modal-ok" id="celebrateOk">Super !</button>
-			</div>
-		</div>
-
-		<!-- Modale dédiée : passage de niveau (médaillon doré animé) -->
-		<div class="modal-overlay" id="levelup" style="display: none">
-			<div class="levelup-card" role="dialog" aria-modal="true" aria-labelledby="levelupTitle">
-				<button class="modal-close" id="levelupClose" aria-label="Fermer">×</button>
-				<div class="levelup-stage">
-					<div class="levelup-rays"></div>
-					<div class="levelup-medal">
-						<span class="levelup-medal-label">NIVEAU</span>
-						<span class="levelup-medal-num" id="levelupNum">2</span>
+			<!-- ===== MATIÈRES ===== -->
+			<section class="v-section v-section--soft v-matieres" aria-labelledby="vMatieresTitle">
+				<div class="v-wrap">
+					<h2 id="vMatieresTitle">Deux matières, organisées comme en classe</h2>
+					<div class="v-cards v-cards--2">
+						<article class="v-card">
+							<span class="v-card-ico v-ico--math">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M200,20H56A20,20,0,0,0,36,40V216a20,20,0,0,0,20,20H200a20,20,0,0,0,20-20V40A20,20,0,0,0,200,20Zm-4,192H60V44H196ZM80,76A12,12,0,0,1,92,64h72a12,12,0,0,1,0,24H92A12,12,0,0,1,80,76Zm40,52a16,16,0,1,1-16-16A16,16,0,0,1,120,128Zm48,0a16,16,0,1,1-16-16A16,16,0,0,1,168,128Zm-48,48a16,16,0,1,1-16-16A16,16,0,0,1,120,176Zm48,0a16,16,0,1,1-16-16A16,16,0,0,1,168,176Z"
+									/>
+								</svg>
+							</span>
+							<h3>Maths</h3>
+							<p>
+								Calcul mental, opérations posées, numération, géométrie, grandeurs et mesures,
+								monnaie… On lit l'heure, on compare des nombres, on reconnaît des figures, on
+								convertit des longueurs.
+							</p>
+							<ul class="v-tags">
+								<li>Calcul &amp; opérations</li>
+								<li>Numération</li>
+								<li>Géométrie</li>
+								<li>Grandeurs et mesures</li>
+							</ul>
+						</article>
+						<article class="v-card">
+							<span class="v-card-ico v-ico--fr">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M224.11,31.92A68,68,0,0,0,128,31.87l-70.12,69.3A19.91,19.91,0,0,0,52,115.31V187L23.52,215.51a12,12,0,0,0,17,17L69,204H140.7a19.87,19.87,0,0,0,14.15-5.86l.05,0,69.21-70A68.06,68.06,0,0,0,224.11,31.92Zm-79.21,17A44,44,0,0,1,210,108H165l27.52-27.51a12,12,0,0,0-17-17L124,115V69.54ZM76,117l24-23.72V139L76,163Zm63,63H93l48-48h45.5Z"
+									/>
+								</svg>
+							</span>
+							<h3>Français</h3>
+							<p>
+								Orthographe, grammaire, conjugaison et vocabulaire&nbsp;: dictées de mots, accords,
+								homophones (a/à, et/est…), familles de mots, verbes aux temps principaux.
+							</p>
+							<ul class="v-tags">
+								<li>Orthographe</li>
+								<li>Grammaire</li>
+								<li>Conjugaison</li>
+								<li>Vocabulaire</li>
+							</ul>
+						</article>
 					</div>
 				</div>
-				<p class="levelup-kicker">Niveau supérieur&nbsp;!</p>
-				<h2 class="levelup-title" id="levelupTitle">Bravo, tu montes d'un niveau&nbsp;!</h2>
-				<p class="levelup-next" id="levelupNext"></p>
-				<ul class="levelup-unlocks" id="levelupUnlocks" style="display: none"></ul>
-				<button class="modal-ok levelup-ok" id="levelupOk">Continuer</button>
-			</div>
-		</div>
+			</section>
 
-		<!-- Modale « Récompenses » : paliers de niveau (rangs, compagnon, avatars, thèmes) -->
-		<div class="modal-overlay" id="recompenses" style="display: none">
-			<div
-				class="modal modal-wide"
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby="recompensesTitle"
+			<!-- ===== MODES ===== -->
+			<section class="v-section v-modes" aria-labelledby="vModesTitle">
+				<div class="v-wrap">
+					<h2 id="vModesTitle">Plusieurs façons de s'entraîner</h2>
+					<div class="v-cards v-cards--4">
+						<article class="v-mode">
+							<span class="v-mode-ico">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M128,44a96,96,0,1,0,96,96A96.11,96.11,0,0,0,128,44Zm0,168a72,72,0,1,1,72-72A72.08,72.08,0,0,1,128,212ZM164.49,99.51a12,12,0,0,1,0,17l-28,28a12,12,0,0,1-17-17l28-28A12,12,0,0,1,164.49,99.51ZM92,16A12,12,0,0,1,104,4h48a12,12,0,0,1,0,24H104A12,12,0,0,1,92,16Z"
+									/>
+								</svg>
+							</span>
+							<h3>Sprint 5 min</h3>
+							<p>
+								En cinq minutes, l'enfant enchaîne des questions au hasard et fait le plus de bonnes
+								réponses possibles.
+							</p>
+						</article>
+						<article class="v-mode">
+							<span class="v-mode-ico">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M20,128A76.08,76.08,0,0,1,96,52h99l-3.52-3.51a12,12,0,1,1,17-17l24,24a12,12,0,0,1,0,17l-24,24a12,12,0,0,1-17-17L195,76H96a52.06,52.06,0,0,0-52,52,12,12,0,0,1-24,0Zm204-12a12,12,0,0,0-12,12,52.06,52.06,0,0,1-52,52H61l3.52-3.51a12,12,0,1,0-17-17l-24,24a12,12,0,0,0,0,17l24,24a12,12,0,1,0,17-17L61,204h99a76.08,76.08,0,0,0,76-76A12,12,0,0,0,224,116Z"
+									/>
+								</svg>
+							</span>
+							<h3>Révision</h3>
+							<p>
+								Un petit rappel régulier de ce qui a déjà été vu&nbsp;: l'application espace les
+								révisions dans le temps.
+							</p>
+						</article>
+						<article class="v-mode">
+							<span class="v-mode-ico">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M243,96a20.33,20.33,0,0,0-17.74-14l-56.59-4.57L146.83,24.62a20.36,20.36,0,0,0-37.66,0L87.35,77.44,30.76,82A20.45,20.45,0,0,0,19.1,117.88l43.18,37.24-13.2,55.7A20.37,20.37,0,0,0,79.57,233L128,203.19,176.43,233a20.39,20.39,0,0,0,30.49-22.15l-13.2-55.7,43.18-37.24A20.43,20.43,0,0,0,243,96ZM172.53,141.7a12,12,0,0,0-3.84,11.86L181.58,208l-47.29-29.08a12,12,0,0,0-12.58,0L74.42,208l12.89-54.4a12,12,0,0,0-3.84-11.86L41.2,105.24l55.4-4.47a12,12,0,0,0,10.13-7.38L128,41.89l21.27,51.5a12,12,0,0,0,10.13,7.38l55.4,4.47Z"
+									/>
+								</svg>
+							</span>
+							<h3>Une leçon à la fois</h3>
+							<p>
+								Un seul thème à travailler, avec l'objectif d'un sans-faute pour décrocher son
+								étoile.
+							</p>
+						</article>
+						<article class="v-mode">
+							<span class="v-mode-ico">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M216,36H40A20,20,0,0,0,20,56V216a12,12,0,0,0,17.37,10.73L64,213.42l26.63,13.31a12,12,0,0,0,10.74,0L128,213.42l26.63,13.31a12,12,0,0,0,10.74,0L192,213.42l26.63,13.31A12,12,0,0,0,236,216V56A20,20,0,0,0,216,36Zm-4,160.58-14.63-7.31a12,12,0,0,0-10.74,0L160,202.58l-26.63-13.31a12,12,0,0,0-10.74,0L96,202.58,69.37,189.27a12,12,0,0,0-10.74,0L44,196.58V60H212ZM62.63,170.73a12,12,0,0,0,16.1-5.36L81.42,160h37.16l2.69,5.37a12,12,0,1,0,21.46-10.74l-32-64a12,12,0,0,0-21.46,0l-32,64A12,12,0,0,0,62.63,170.73ZM106.58,136H93.42L100,122.83ZM144,128a12,12,0,0,1,12-12h4v-4a12,12,0,0,1,24,0v4h4a12,12,0,0,1,0,24h-4v4a12,12,0,0,1-24,0v-4h-4A12,12,0,0,1,144,128Z"
+									/>
+								</svg>
+							</span>
+							<h3>Bilan personnalisé</h3>
+							<p>
+								Choisissez les leçons et le nombre de questions, et enregistrez vos réglages
+								préférés.
+							</p>
+						</article>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== GAMIFICATION SAINE ===== -->
+			<section class="v-section v-section--soft v-gamif" aria-labelledby="vGamifTitle">
+				<div class="v-wrap v-gamif-grid">
+					<div class="v-gamif-text">
+						<h2 id="vGamifTitle">Une progression qui motive, sans pression</h2>
+						<p>
+							Pour donner envie de revenir, Ludaskia récompense les efforts&nbsp;: des points
+							d'expérience, des étoiles quand une leçon est réussie sans faute, des médailles et des
+							trophées. Un petit compagnon évolue au fil des progrès.
+						</p>
+						<p>
+							Tout est pensé comme un encouragement&nbsp;: pas de message culpabilisant si on saute
+							un jour.
+						</p>
+					</div>
+					<!-- Mini-démonstration sobre (CSS) : barre d'XP + récompenses. -->
+					<div class="v-gamif-demo" aria-hidden="true">
+						<div class="v-xp">
+							<div class="v-xp-top">
+								<span class="v-xp-lab">Expérience</span><span class="v-xp-lvl">Niv. 7</span>
+							</div>
+							<div class="v-xp-bar"><span class="v-xp-fill"></span></div>
+						</div>
+						<div class="v-rewards">
+							<span class="v-reward">⭐</span>
+							<span class="v-reward">🏅</span>
+							<span class="v-reward">🏆</span>
+							<span class="v-reward v-reward--mascotte">🦊</span>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== POUR LES PARENTS (confiance / vie privée) — bloc clé ===== -->
+			<section class="v-section v-parents" aria-labelledby="vParentsTitle">
+				<div class="v-wrap">
+					<div class="v-trust">
+						<div class="v-trust-head">
+							<span class="v-trust-shield">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M208,36H48A20,20,0,0,0,28,56v56c0,54.29,26.32,87.22,48.4,105.29,23.71,19.39,47.44,26,48.44,26.29a12.1,12.1,0,0,0,6.32,0c1-.28,24.73-6.9,48.44-26.29,22.08-18.07,48.4-51,48.4-105.29V56A20,20,0,0,0,208,36Zm-4,76c0,35.71-13.09,64.69-38.91,86.15A126.28,126.28,0,0,1,128,219.38a126.14,126.14,0,0,1-37.09-21.23C65.09,176.69,52,147.71,52,112V60H204ZM79.51,144.49a12,12,0,1,1,17-17L112,143l47.51-47.52a12,12,0,0,1,17,17l-56,56a12,12,0,0,1-17,0Z"
+									/>
+								</svg>
+							</span>
+							<div>
+								<h2 id="vParentsTitle">Vos données restent chez vous</h2>
+							</div>
+						</div>
+						<ul class="v-guarantees">
+							<li>
+								<span class="v-check" aria-hidden="true"
+									><svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 256 256"
+										fill="currentColor"
+										class="ph-icon"
+										focusable="false"
+									>
+										<path
+											d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"
+										/></svg
+								></span>
+								<span
+									><strong>Aucun compte.</strong> Pas d'inscription ni de mot de passe&nbsp;: on
+									ouvre et on commence.</span
+								>
+							</li>
+							<li>
+								<span class="v-check" aria-hidden="true"
+									><svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 256 256"
+										fill="currentColor"
+										class="ph-icon"
+										focusable="false"
+									>
+										<path
+											d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"
+										/></svg
+								></span>
+								<span
+									><strong>Gratuit, sans publicité.</strong> Rien à payer, aucune publicité, rien à
+									débloquer en payant.</span
+								>
+							</li>
+							<li>
+								<span class="v-check" aria-hidden="true"
+									><svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 256 256"
+										fill="currentColor"
+										class="ph-icon"
+										focusable="false"
+									>
+										<path
+											d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"
+										/></svg
+								></span>
+								<span
+									><strong>Vos données sur l'appareil.</strong> Les scores et la progression restent
+									dans le navigateur&nbsp;; rien n'est envoyé sur Internet.</span
+								>
+							</li>
+							<li>
+								<span class="v-check" aria-hidden="true"
+									><svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 256 256"
+										fill="currentColor"
+										class="ph-icon"
+										focusable="false"
+									>
+										<path
+											d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"
+										/></svg
+								></span>
+								<span
+									><strong>Fonctionne hors-ligne.</strong> Une fois la page ouverte, l'entraînement
+									marche sans connexion.</span
+								>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== ACCESSIBILITÉ (discrète, factuelle) ===== -->
+			<section class="v-section v-a11y" aria-labelledby="vA11yTitle">
+				<div class="v-wrap v-a11y-row">
+					<span class="v-a11y-ico">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 256 256"
+							fill="currentColor"
+							class="ph-icon ph-lg"
+							focusable="false"
+							aria-hidden="true"
+						>
+							<path
+								d="M157.27,21.22a12,12,0,0,0-12.64,1.31L75.88,76H32A20,20,0,0,0,12,96v64a20,20,0,0,0,20,20H75.88l68.75,53.47A12,12,0,0,0,164,224V32A12,12,0,0,0,157.27,21.22ZM36,100H68v56H36Zm104,99.46L92,162.13V93.87l48-37.33ZM212,128a44,44,0,0,1-11,29.11,12,12,0,1,1-18-15.88,20,20,0,0,0,0-26.43,12,12,0,0,1,18-15.86A43.94,43.94,0,0,1,212,128Zm40,0a83.87,83.87,0,0,1-21.39,56,12,12,0,0,1-17.89-16,60,60,0,0,0,0-80,12,12,0,1,1,17.88-16A83.87,83.87,0,0,1,252,128Z"
+							/>
+						</svg>
+					</span>
+					<div>
+						<h2 id="vA11yTitle">Un peu de confort en plus</h2>
+						<p>
+							Tout se règle selon les préférences de chacun&nbsp;: un bouton «&nbsp;Écouter&nbsp;»
+							lit les consignes à voix haute, le minuteur du Sprint peut être masqué pour
+							s'entraîner sans pression, et l'affichage (police, couleurs, animations) s'ajuste pour
+							rester lisible et confortable.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== EXEMPLES D'EXERCICES (cartes reconstituées) ===== -->
+			<section
+				class="v-section v-section--soft v-exemples"
+				id="exemples"
+				aria-labelledby="vExTitle"
 			>
-				<button class="modal-close" id="recompensesClose" aria-label="Fermer">×</button>
-				<div class="modal-emoji">🎁</div>
-				<h2 class="modal-title" id="recompensesTitle">Mes récompenses</h2>
-				<div class="rewards-body" id="recompensesContent"></div>
-				<button class="modal-ok" id="recompensesOk">Fermer</button>
-			</div>
-		</div>
+				<div class="v-wrap">
+					<h2 id="vExTitle">À quoi ça ressemble&nbsp;?</h2>
+					<div class="v-ex-grid" aria-hidden="true">
+						<div class="v-demo-card">
+							<span class="v-demo-tag">Calcul mental</span>
+							<p class="v-demo-q">Combien font 7&nbsp;×&nbsp;8&nbsp;?</p>
+							<div class="v-demo-answer">56</div>
+							<div class="v-demo-feedback">Bravo&nbsp;! 🎉</div>
+						</div>
+						<div class="v-demo-card">
+							<span class="v-demo-tag">Orthographe</span>
+							<p class="v-demo-q">
+								Complète&nbsp;: «&nbsp;Il <span class="v-demo-gap">a</span> mangé.&nbsp;»
+							</p>
+							<div class="v-demo-chips">
+								<span class="v-demo-chip v-demo-chip--ok">a</span>
+								<span class="v-demo-chip">à</span>
+							</div>
+						</div>
+						<div class="v-demo-card">
+							<span class="v-demo-tag">Numération</span>
+							<p class="v-demo-q">Range du plus petit au plus grand</p>
+							<div class="v-demo-order">
+								<span class="v-demo-pill">14</span>
+								<span class="v-demo-pill">29</span>
+								<span class="v-demo-pill">41</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
 
-		<!-- Modale « Trophées » : collection de trophées -->
-		<div class="modal-overlay" id="trophees" style="display: none">
-			<div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="tropheesTitle">
-				<button class="modal-close" id="tropheesClose" aria-label="Fermer">×</button>
-				<div class="modal-emoji">🏆</div>
-				<h2 class="modal-title" id="tropheesTitle">Mes trophées</h2>
-				<div class="rewards-body" id="tropheesContent"></div>
-				<button class="modal-ok" id="tropheesOk">Fermer</button>
-			</div>
-		</div>
+			<!-- ===== FAQ ===== -->
+			<section class="v-section v-faq" aria-labelledby="vFaqTitle">
+				<div class="v-wrap">
+					<h2 id="vFaqTitle">Questions fréquentes</h2>
+					<div class="v-faq-list">
+						<div class="v-faq-item">
+							<h3>Faut-il créer un compte&nbsp;?</h3>
+							<p>
+								Non. Aucune inscription, aucun mot de passe&nbsp;: on ouvre Ludaskia et on commence.
+								La progression est enregistrée automatiquement sur l'appareil.
+							</p>
+						</div>
+						<div class="v-faq-item">
+							<h3>Est-ce payant&nbsp;?</h3>
+							<p>
+								Non, Ludaskia est entièrement gratuit. Pas de publicité, pas d'achat dans
+								l'application, rien à débloquer en payant.
+							</p>
+						</div>
+						<div class="v-faq-item">
+							<h3>Que deviennent les données de mon enfant&nbsp;?</h3>
+							<p>
+								Elles restent sur votre appareil, dans le navigateur. Rien n'est envoyé sur un
+								serveur ni partagé. Si vous effacez les données du navigateur, la progression est
+								perdue&nbsp;— vous pouvez en faire une sauvegarde depuis l'application.
+							</p>
+						</div>
+						<div class="v-faq-item">
+							<h3>Ça marche sans connexion&nbsp;?</h3>
+							<p>
+								Oui, une fois la page chargée. Vous pouvez ensuite vous entraîner hors connexion,
+								par exemple en voiture ou en voyage.
+							</p>
+						</div>
+						<div class="v-faq-item">
+							<h3>Pour quelles classes&nbsp;?</h3>
+							<p>
+								Le CE2 et le CM1 pour le moment&nbsp;: on choisit la classe au démarrage pour avoir
+								les bons exercices. D'autres classes&nbsp;— et d'autres matières&nbsp;— viendront
+								s'ajouter au fil du temps.
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
 
-		<script type="module" src="/src/main.ts"></script>
+			<!-- ===== CTA FINAL ===== -->
+			<section class="v-section v-final" aria-labelledby="vFinalTitle">
+				<div class="v-wrap v-final-wrap">
+					<h2 id="vFinalTitle">Prêt à essayer&nbsp;?</h2>
+					<p class="v-final-sub">Gratuit, sans compte, directement dans le navigateur.</p>
+					<a class="v-cta v-cta--lg" href="app.html">Commencer</a>
+				</div>
+			</section>
+		</main>
+
+		<!-- Bande décorative « forêt » (SVG pré-généré, inséré par src/vitrine.ts) —
+		     pied de page, full-bleed, purement décorative (aria-hidden). Animation
+		     « vent » figée par prefers-reduced-motion (cf. foret.scss). -->
+		<div class="home-foret" id="vitrineForet" aria-hidden="true"></div>
+
+		<footer class="v-footer">
+			<p>
+				Ludaskia est un projet libre et open-source.
+				<a class="v-gh" href="https://github.com/ThibautDemare/Ludaskia">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 256 256"
+						fill="currentColor"
+						class="ph-icon"
+						focusable="false"
+						aria-hidden="true"
+					>
+						<path
+							d="M212.62,75.17A63.7,63.7,0,0,0,206.39,26,12,12,0,0,0,196,20a63.71,63.71,0,0,0-50,24H126A63.71,63.71,0,0,0,76,20a12,12,0,0,0-10.39,6,63.7,63.7,0,0,0-6.23,49.17A61.5,61.5,0,0,0,52,104v8a60.1,60.1,0,0,0,45.76,58.28A43.66,43.66,0,0,0,92,192v4H76a20,20,0,0,1-20-20,44.05,44.05,0,0,0-44-44,12,12,0,0,0,0,24,20,20,0,0,1,20,20,44.05,44.05,0,0,0,44,44H92v12a12,12,0,0,0,24,0V192a20,20,0,0,1,40,0v40a12,12,0,0,0,24,0V192a43.66,43.66,0,0,0-5.76-21.72A60.1,60.1,0,0,0,220,112v-8A61.5,61.5,0,0,0,212.62,75.17ZM196,112a36,36,0,0,1-36,36H112a36,36,0,0,1-36-36v-8a37.87,37.87,0,0,1,6.13-20.12,11.65,11.65,0,0,0,1.58-11.49,39.9,39.9,0,0,1-.4-27.72,39.87,39.87,0,0,1,26.41,17.8A12,12,0,0,0,119.82,68h32.35a12,12,0,0,0,10.11-5.53,39.84,39.84,0,0,1,26.41-17.8,39.9,39.9,0,0,1-.4,27.72,12,12,0,0,0,1.61,11.53A37.85,37.85,0,0,1,196,104Z"
+						/>
+					</svg>
+					Voir le code </a
+				>.
+			</p>
+		</footer>
+
+		<script type="module" src="/src/vitrine.ts"></script>
 	</body>
 </html>

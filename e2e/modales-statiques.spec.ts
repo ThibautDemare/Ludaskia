@@ -124,7 +124,7 @@ test('Trophées — ouverture, Échap ferme et retire inert', async ({ page }) =
 test('Onboarding — Échap ne ferme PAS la popup (choix forcé)', async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(SEED_SANS_NIVEAU);
-	await page.goto('#accueil', { waitUntil: 'networkidle' });
+	await page.goto('app.html#accueil', { waitUntil: 'networkidle' });
 
 	// La popup est visible au chargement.
 	await expect(page.locator('#onboardingNiveau')).toBeVisible();
@@ -150,7 +150,7 @@ test('Onboarding — Échap ne ferme PAS la popup (choix forcé)', async ({ page
 test("Onboarding — clic sur CE2 ferme la popup et libère l'arrière-plan", async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(SEED_SANS_NIVEAU);
-	await page.goto('#accueil', { waitUntil: 'networkidle' });
+	await page.goto('app.html#accueil', { waitUntil: 'networkidle' });
 
 	await expect(page.locator('#onboardingNiveau')).toBeVisible();
 

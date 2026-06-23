@@ -21,7 +21,7 @@ test('voile de mise à jour : apparaît quand une nouvelle version est en ligne'
 		}),
 	);
 	const errors = watchErrors(page);
-	await page.goto('#accueil', { waitUntil: 'networkidle' });
+	await page.goto('app.html#accueil', { waitUntil: 'networkidle' });
 
 	// La détection est différée (1re vérif ~1,5 s) et le reload n'a lieu qu'après
 	// un court délai d'inactivité (écran calme) : on laisse le temps au voile.

@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import type { Plugin } from 'vite';
 
@@ -23,7 +24,18 @@ function emitVersionFile(): Plugin {
 
 export default defineConfig({
 	base: '/Ludaskia/',
-	build: { outDir: 'dist' },
+	build: {
+		outDir: 'dist',
+		// Build multi-page (#271) : `index.html` = page vitrine (atterrissage public),
+		// `app.html` = l'application elle-même (que l'utilisateur régulier met en favori).
+		// Vite émet les deux pages ; les chemins absolus restent préfixés par `base`.
+		rollupOptions: {
+			input: {
+				main: fileURLToPath(new URL('./index.html', import.meta.url)),
+				app: fileURLToPath(new URL('./app.html', import.meta.url)),
+			},
+		},
+	},
 	define: { __APP_VERSION__: JSON.stringify(buildVersion) },
 	plugins: [emitVersionFile()],
 	// Vitest = logique pure (dossier tests/). Les specs Playwright (e2e/) ont

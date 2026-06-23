@@ -114,7 +114,7 @@ function focusRowAction(uuid: string, act: string): void {
    ============================================================ */
 function wireDOM() {
 	// Boutons fonctionnels au markup statique (toolbar + sauvegarde profils) :
-	// injecte leurs icônes Phosphor (les libellés sont déjà dans index.html).
+	// injecte leurs icônes Phosphor (les libellés sont déjà dans app.html).
 	paintStaticIcons();
 	// Champs de réponse texte « mot de passe visible » : démasquage auto dès l'insertion
 	// (texte lisible sans réactiver les suggestions du clavier mobile). Voir #139.

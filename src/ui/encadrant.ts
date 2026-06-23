@@ -18,6 +18,7 @@ import {
 	activeProfile,
 	setNiveauReferenceFor,
 	setNiveauMatiereFor,
+	setPrefFor,
 	addProfile,
 	renameProfile,
 	setProfileEmoji,
@@ -48,6 +49,7 @@ import {
 } from '../core/encadrant-lock';
 import { getAllLessons, SUBJECTS, type SchoolLevel, type LessonDef } from '../core/catalog';
 import { availableLevels, LEVEL_LABEL } from '../core/levels';
+import { dicteeDisponible } from './tts';
 import { printScope } from './session';
 import { uiConfirm, uiPrompt, toast } from './ui-modal';
 
@@ -270,8 +272,35 @@ function reglagesHTML(consulte: Profile): string {
 	return `<section class="enc-section">
       <h2 class="enc-h2">Réglages</h2>
       ${classeHTML(consulte)}
+      ${amenagementsHTML(consulte)}
       ${pinHTML()}
     </section>`;
+}
+
+/* Aménagements « dys »/attention posés par l'adulte (avis specialiste-troubles-
+   apprentissage) : masquer le minuteur (pression temporelle) + lecture auto des
+   consignes. Stables (l'enfant ne les bascule pas par jeu) ; l'écoute À LA DEMANDE
+   reste toujours dispo côté enfant. Écrits sur le profil CONSULTÉ (setPrefFor). */
+function amenagementsHTML(consulte: Profile): string {
+	const prefs = consulte.prefs ?? {};
+	const voix = dicteeDisponible();
+	return `<div class="enc-block">
+      <h3 class="enc-h3">Aménagements</h3>
+      <p class="enc-hint">Réglages d'accompagnement posés par l'adulte (l'enfant ne peut pas les changer).</p>
+      <label class="enc-toggle">
+        <input type="checkbox" data-act="set-amenagement" data-pref="sansPressionTemporelle"${prefs.sansPressionTemporelle ? ' checked' : ''} />
+        <span>Masquer le minuteur pendant les sprints <small class="enc-hint">(moins de pression ; le score s'affiche à la fin)</small></span>
+      </label>
+      <label class="enc-toggle${voix ? '' : ' enc-toggle-off'}">
+        <input type="checkbox" data-act="set-amenagement" data-pref="lectureConsigneAuto"${prefs.lectureConsigneAuto ? ' checked' : ''}${voix ? '' : ' disabled'} />
+        <span>Lire la consigne à voix haute automatiquement</span>
+      </label>
+      <p class="enc-hint">${
+				voix
+					? `${icon('speaker')} Lecture vocale disponible sur cet appareil.`
+					: `${icon('speaker')} Lecture vocale indisponible sur cet appareil (aucune voix française).`
+			}</p>
+    </div>`;
 }
 
 function classeHTML(consulte: Profile): string {
@@ -621,6 +650,12 @@ function onChange(e: Event): void {
 			(t as HTMLElement).dataset.subject ?? '',
 			(t.value || undefined) as SchoolLevel | undefined,
 		);
+		renderEspace();
+	} else if (act === 'set-amenagement' && consulteUuid) {
+		const pref = (t as HTMLElement).dataset.pref as
+			| 'sansPressionTemporelle'
+			| 'lectureConsigneAuto';
+		setPrefFor(consulteUuid, pref, (t as HTMLInputElement).checked);
 		renderEspace();
 	} else if (act === 'secret-conserve') {
 		secretConserve = (t as HTMLInputElement).checked;

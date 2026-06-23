@@ -896,12 +896,19 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
 ## Profils
 - Chaque profil a un **UUID stable** (id inter-appareils) et un **`updatedAt`**
   (ms) bumpé à chaque écriture via le hook `onDataWrite`.
-- Sélecteur = **liste déroulante dans la barre d'outils** (bascule rapide +
-  « Gérer »). Écran `#profils` : créer / renommer / avatar / réinitialiser /
-  supprimer (jamais le dernier).
-- **Export/import par profil** (`exportProfiles`/`importProfiles`) : fusion par
-  **UUID**, écrase un profil existant **seulement si la sauvegarde est plus
-  récente** (`updatedAt`), ajoute si l'UUID est inconnu.
+- **Bascule** du profil actif = **liste déroulante de la barre d'outils**
+  (`renderProfileMenu`) ; ses items basculent l'actif. Le menu propose aussi
+  **« Mon espace »** (→ `#profils`) et **« Espace encadrants »** (→ `#encadrant`,
+  gris + cadenas) — #234.
+- **Écran enfant `#profils` = « Mon espace »** (#234) : l'enfant ne gère que **son**
+  profil (avatar + prénom) + thème + « Mon confort ». **La gestion des AUTRES profils**
+  (créer / renommer / avatar / réinitialiser / **supprimer**) **et l'export/import**
+  vivent dans l'**espace encadrants** (un enfant ne touche pas aux profils des autres).
+- **Export/import par profil** (`exportProfiles`/`importProfiles`, dans l'espace
+  encadrants) : fusion par **UUID**, écrase un profil existant **seulement si la
+  sauvegarde est plus récente** (`updatedAt`), ajoute si l'UUID est inconnu.
+- **Réglages par UUID** (#234) : l'encadrant règle un profil CONSULTÉ via
+  `setNiveauReferenceFor`/`setNiveauMatiereFor`/`setPrefFor` (jamais `m.active`).
 - Pas de migration de données prévue (on part de profils vierges).
 
 ## Gamification (pédagogie : régularité espacée, pas de pression quotidienne)
@@ -980,17 +987,23 @@ Vue gatée `#encadrant` (dans app.html, **pas** une page séparée), réservée 
 (parents/enseignants) et **distincte de l'espace enfant** : voix « **vous** » (cf. Voix,
 cas (d)), chrome neutre (token `--admin-bg` + accent `--admin-accent` bleu, stables quel
 que soit le thème déblocable), densité d'info plus élevée, aucun vocabulaire visuel
-enfantin. Accès par un lien sobre en **pied de l'écran Profils** (`#btnEncadrant`) — jamais
-dans la barre d'outils de l'enfant.
+enfantin. **Accès** : lien sobre en pied de l'écran « Mon espace » (`#btnEncadrant`) **et**
+item « Espace encadrants » (gris + cadenas) dans le menu profils de la barre — jamais un bouton
+permanent visible dans la barre de l'enfant.
 
 - **Consultation SANS bascule** : on lit la progression de **n'importe quel** profil par
   UUID, sans changer le profil actif. Tout l'accès stats usuel lit le profil/niveau ACTIFS ;
   ici, `core/encadrant-stats.ts` lit les **clés brutes** `uuid + '/' + KEY` (via `lsGetRaw`,
   sur le modèle de `getXPFor`) et résout le niveau depuis la méta du profil **consulté**
   (`niveauProfilMatiere`). **Invariant** (testé) : aucune lecture du tableau de bord ne touche
-  `meta.active` ni `activePrefix`. Le sélecteur emploie le verbe « Voir » (≠ bascule) et un
-  bandeau persistant « Vous regardez [prénom] » ; le bouton « Retour à [prénom] » nomme le
-  joueur **actif** (pas le consulté).
+  `meta.active` ni `activePrefix`. Chaque carte profil propose « Voir le suivi » (≠ bascule) ;
+  l'enfant consulté est nommé par le titre du récap (emoji + « Progression de [prénom] »), et
+  le bouton « Retour à [prénom] » nomme le joueur **actif** (pas le consulté).
+- **Gestion des profils** (#234) : créer / renommer / avatar / **réinitialiser** / **supprimer**
+  (+ export/import) vivent ICI, fusionnés à la liste de consultation (carte par enfant : « Voir
+  le suivi » + repli « Gérer ce profil »). Opérations par UUID (`renameProfile`/`setProfileEmoji`/
+  `resetProfile`/`deleteProfile`/`exportProfiles`/`importProfiles`). L'écran enfant « Mon espace »
+  ne permet que l'édition de SON profil.
 - **Récap = outil d'accompagnement, pas un bulletin** (avis `pedagogue-primaire`) : état par
   notion/catégorie en **4 niveaux** (`niveauNotion` : à découvrir / non acquis / en cours /
   acquis), piloté par le **`%` récent JAMAIS affiché en nombre** ; « N notions maîtrisées
@@ -1002,8 +1015,13 @@ dans la barre d'outils de l'enfant.
   accueil, `ui/a-revoir-card.ts` affiche une carte (`#aRevoir`, modèle « leçon du jour ») qui
   **boucle** sur la liste ; auto-nettoyage au rendu (`revoirActives` exclut une leçon redevenue
   solide). L'enfant n'a pas à être présent quand l'encadrant épingle.
-- **Réglage « Classe scolaire » déplacé** ici (hors de portée de l'enfant, retiré de
-  `renderPreferences`) ; il opère **par UUID consulté** (`setNiveauReferenceFor`/`setNiveauMatiereFor`).
+- **Réglages déplacés hors de portée de l'enfant** (par UUID consulté) : la **« Classe
+  scolaire »** (`setNiveauReferenceFor`/`setNiveauMatiereFor`) et les **« Aménagements »**
+  dys/attention — *masquer le minuteur* + *lecture auto des consignes* (`setPrefFor`, avis
+  `specialiste-troubles-apprentissage`). Le **« Mon confort »** (réduire les animations,
+  confort de lecture) reste côté enfant (auto-régulation immédiate, coût d'erreur nul) ;
+  un aménagement actif est rappelé en lecture seule sur « Mon espace » (« réglé par un
+  adulte »). L'écoute TTS **à la demande** reste toujours dispo côté enfant.
 - **Impression** d'une fiche au niveau du profil consulté **sans bascule** : `buildLessonFiche`/
   `buildPrintableDOM` acceptent un `level?`/`PrintScope.level` explicite (`printScope`).
 - **Verrou optionnel** (`core/encadrant-lock.ts`) : PIN 4 chiffres **OFF par défaut**, **haché**

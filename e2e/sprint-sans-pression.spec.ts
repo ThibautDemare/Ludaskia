@@ -4,14 +4,18 @@
    Vérifie trois comportements :
    1. Témoin (réglage inactif) : #sprintTime et #sprintScore sont
       visibles dans le HUD du sprint.
-   2. Option active : après avoir coché #prefSansChrono dans les
-      préférences profil, #sprintTime et #sprintScore sont absents du
-      DOM pendant le sprint, mais #sprintStage se rend normalement.
-   3. Persistance : le réglage coché survit à un rechargement de
-      l'écran Profils (rangé dans la méta du profil).
+   2. Option active : après avoir coché l'aménagement « Masquer le
+      minuteur » dans l'espace encadrants (#234), #sprintTime et
+      #sprintScore sont absents du DOM pendant le sprint, mais
+      #sprintStage se rend normalement.
+   3. Persistance : l'aménagement coché survit à la navigation
+      (rangé dans la méta du profil).
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
+
+/* L'aménagement « Masquer le minuteur » vit dans l'espace encadrants (#234). */
+const SANS_CHRONO = '[data-act="set-amenagement"][data-pref="sansPressionTemporelle"]';
 
 test('sprint normal (témoin) : minuteur et score visibles dans le HUD', async ({ page }) => {
 	const errors = watchErrors(page);
@@ -29,9 +33,9 @@ test('option active : #sprintTime et #sprintScore absents, #sprintStage présent
 }) => {
 	const errors = watchErrors(page);
 
-	// Activer le réglage dans l'écran Profils.
-	await gotoHash(page, 'profils');
-	const toggle = page.locator('#prefSansChrono');
+	// Activer l'aménagement dans l'espace encadrants.
+	await gotoHash(page, 'encadrant');
+	const toggle = page.locator(SANS_CHRONO);
 	await expect(toggle).toBeVisible();
 	await toggle.check();
 
@@ -49,16 +53,18 @@ test('option active : #sprintTime et #sprintScore absents, #sprintStage présent
 	expect(errors).toEqual([]);
 });
 
-test('persistance : #prefSansChrono reste coché après retour sur Profils', async ({ page }) => {
+test('persistance : l’aménagement « Masquer le minuteur » survit à la navigation', async ({
+	page,
+}) => {
 	const errors = watchErrors(page);
 
-	// Cocher le réglage.
-	await gotoHash(page, 'profils');
-	await page.locator('#prefSansChrono').check();
+	// Cocher l'aménagement dans l'espace encadrants.
+	await gotoHash(page, 'encadrant');
+	await page.locator(SANS_CHRONO).check();
 
-	// Revenir sur l'écran Profils : la méta du profil a survécu à la navigation.
-	await gotoHash(page, 'profils');
-	await expect(page.locator('#prefSansChrono')).toBeChecked();
+	// Revenir : la méta du profil a survécu à la navigation.
+	await gotoHash(page, 'encadrant');
+	await expect(page.locator(SANS_CHRONO)).toBeChecked();
 
 	expect(errors).toEqual([]);
 });

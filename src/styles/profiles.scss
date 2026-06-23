@@ -258,6 +258,10 @@
 	flex-direction: column;
 	gap: 12px;
 }
+/* Aménagements posés par l'adulte, affichés en lecture seule côté enfant (#234). */
+.pref-amenagements {
+	margin-top: 10px;
+}
 /* En-tête d'un grand bloc (Thème, Accessibilité) : niveau de section le PLUS
    fort sous le titre du panneau — plus gros et plus gras que les sous-libellés. */
 .pref-lab {

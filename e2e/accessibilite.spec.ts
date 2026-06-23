@@ -52,12 +52,18 @@ test('Consigne de conjugaison : nomme la tâche, et le texte lu est une phrase',
 	expect(errors).toEqual([]);
 });
 
-test('Préférences : réglage de lecture auto + statut de la lecture vocale', async ({ page }) => {
+test('Aménagements (espace encadrants) : lecture auto + statut de la lecture vocale', async ({
+	page,
+}) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'profils');
+	// La lecture auto des consignes est devenue un aménagement posé par l'adulte (#234).
+	await gotoHash(page, 'encadrant');
 
-	await expect(page.locator('#prefLectureAuto')).toHaveCount(1);
-	await expect(page.locator('.pref-tts-statut')).toBeVisible();
+	await expect(
+		page.locator('[data-act="set-amenagement"][data-pref="lectureConsigneAuto"]'),
+	).toHaveCount(1);
+	// Le statut de la lecture vocale sur l'appareil est affiché.
+	await expect(page.getByText(/Lecture vocale/)).toBeVisible();
 
 	expect(errors).toEqual([]);
 });

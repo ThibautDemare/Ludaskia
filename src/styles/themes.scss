@@ -33,12 +33,16 @@
 	--ink: #142020;
 }
 :root[data-theme='fruit-rouge'] {
-	--accent: #d7395a;
-	--accent-dark: #b02945;
-	--accent-soft: #fbe2e7;
-	--page-bg: #fdeff1;
-	--ink: #1f1417;
-	/* L'accent est rouge/rose → le corail du sprint est trop proche : sarcelle. */
+	/* Rouge « fraise mûre » : carmin chaud (~352°), volontairement plus rouge et
+	   plus profond que l'ancien #d7395a (framboise ~347°, qui rendait « rose »).
+	   Le fond et les tons d'appui sont quasi désaturés (blanc cassé tiède, chair
+	   de fraise) pour ne pas réintroduire le rose pâle qui inondait la page. */
+	--accent: #c62a3e;
+	--accent-dark: #9e1f30;
+	--accent-soft: #f9e0db;
+	--page-bg: #fbf3f1;
+	--ink: #241413;
+	/* L'accent est rouge → le corail du sprint est trop proche : sarcelle. */
 	--cat-sprint: #0a8a8f;
 }
 
@@ -57,7 +61,7 @@
 	background: #0a8a8f;
 }
 .theme-fruit-rouge .theme-dot {
-	background: #d7395a;
+	background: #c62a3e;
 }
 /* Pastille « Nuit » : sombre. */
 .theme-nuit .theme-dot {

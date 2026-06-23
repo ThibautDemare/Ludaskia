@@ -8,7 +8,14 @@
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, seedAideVue } from './helpers';
+
+/* Si le tirage de révision tombe sur le mode « tuiles » (renderTuiles dans
+   ortho-runner), l'aide contextuelle « lettres » s'auto-affiche et bloquerait
+   les interactions. On la marque comme déjà vue pour tous les runners. */
+test.beforeEach(async ({ page }) => {
+	await seedAideVue(page);
+});
 
 /* État ortho seedé : une liste « l-rev » d'un seul mot « chat » DÉJÀ maîtrisé
    (atelier fait + tous les modes validés). Lettres distinctes → tuiles non ambiguës. */
@@ -29,7 +36,8 @@ const SEED_MAITRISEE = {
 };
 
 /* Complète l'activité d'entretien affichée, quel que soit le mode tiré au hasard
-   (tuiles ou affiche/masque ; la dictée n'apparaît pas sans voix TTS en headless). */
+   (tuiles, affiche/masque, ou dictée — les trois peuvent apparaître selon la
+   disponibilité du TTS dans l'environnement Chromium headless). */
 async function completerEntretien(page: Page, mot: string): Promise<void> {
 	if (
 		await page
@@ -45,16 +53,18 @@ async function completerEntretien(page: Page, mot: string): Promise<void> {
 				.click();
 		}
 		await page.locator('#btnVerifTuiles').click();
+	} else if (
+		await page
+			.locator('#btnCacher')
+			.isVisible()
+			.catch(() => false)
+	) {
+		// Affiche/masque : cacher d'abord, puis écrire le mot et vérifier.
+		await page.locator('#btnCacher').click();
+		await page.locator('#orthoInput').fill(mot);
+		await page.locator('#btnVerifMot').click();
 	} else {
-		// Affiche/masque : cacher d'abord si besoin, puis écrire le mot et vérifier.
-		if (
-			await page
-				.locator('#btnCacher')
-				.isVisible()
-				.catch(() => false)
-		) {
-			await page.locator('#btnCacher').click();
-		}
+		// Dictée : TTS disponible dans l'environnement → champ texte direct.
 		await page.locator('#orthoInput').fill(mot);
 		await page.locator('#btnVerifMot').click();
 	}
@@ -79,13 +89,8 @@ test('liste déjà maîtrisée : « parcours complet » lance une révision, pas
 	// …et surtout PAS le bilan « Liste prête ! » à vide (le bug corrigé).
 	await expect(page.getByText('Liste prête')).toHaveCount(0);
 
-	// Garde : sans TTS (headless), l'entretien tombe sur tuiles OU affiche/masque ; on
-	// l'asserte pour un échec lisible si le tirage des modes changeait un jour.
-	const estTuiles = await page.locator('#btnVerifTuiles').isVisible();
-	const estMotCache = await page.locator('#btnCacher').isVisible();
-	expect(estTuiles || estMotCache).toBeTruthy();
-
-	// On travaille le mot, puis on enchaîne via le « Continuer → » du feedback de réussite
+	// On travaille le mot (tuiles, affiche/masque ou dictée selon le TTS disponible),
+	// puis on enchaîne via le « Continuer → » du feedback de réussite
 	// (sélecteur serré : pas le « Continuer encore un peu » de la pause). La liste ne fait
 	// qu'un mot → on atteint la fin de révision.
 	await completerEntretien(page, 'chat');

@@ -40,6 +40,7 @@ import { showCelebration, showLevelUp } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import { dicteeDisponible, dicter } from './tts';
 import { icon, iconOr } from './icon';
+import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 
 const ACCENTS = ['é', 'è', 'ê', 'à', 'â', 'ç', 'ô', 'î', 'ï', 'û', 'ù', 'œ', '-', "'"];
 const SEANCE_MAX = 8; // activités par séance avant de proposer une pause (rythme CE2)
@@ -278,7 +279,7 @@ function renderMotCache(word: MotOrtho): void {
         <div class="ortho-mot-affiche" id="motAffiche">${lettresMotHTML(word.mot)}</div>
         <svg class="atelier-svg" id="motSvg" aria-hidden="true"></svg>
       </div>
-      <button class="btn-primary" id="btnCacher">Cacher et écrire →</button>
+      <div><button class="btn-primary" id="btnCacher">Cacher et écrire →</button></div>
       <div class="ortho-saisie" id="zoneSaisie" hidden>
         <input class="ortho-input" id="orthoInput" ${TEXT_ANSWER_INPUT_ATTRS}
                aria-label="Écris le mot" />
@@ -475,6 +476,7 @@ function renderTuiles(word: MotOrtho): void {
 			.querySelector('#btnEcouterTuiles')!
 			.addEventListener('click', () => ecouterCible(word));
 	}
+	monterBoutonAide(sheets().querySelector('.ortho-run'), 'lettres'); // bouton « ? » persistant (#272)
 
 	// --- Rendu ---
 	function slotHTML(pos: number): string {
@@ -687,6 +689,8 @@ function renderTuiles(word: MotOrtho): void {
 		}
 	};
 	sheets().querySelector('#btnVerifTuiles')!.addEventListener('click', verifier);
+
+	maybeAutoAide('lettres'); // bulle d'aide au 1er lancement (une fois par profil)
 }
 
 /* ---------- Bilan ---------- */

@@ -6,7 +6,13 @@
    la correction — sans erreur de rendu.
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, seedAideVue } from './helpers';
+
+/* Le runner « tri » (ranger par thème) déclenche l'aide contextuelle au 1er
+   lancement. On la marque comme déjà vue pour éviter que l'overlay bloque. */
+test.beforeEach(async ({ page }) => {
+	await seedAideVue(page);
+});
 
 test('la catégorie Vocabulaire liste les deux leçons de champs lexicaux', async ({ page }) => {
 	const errors = watchErrors(page);

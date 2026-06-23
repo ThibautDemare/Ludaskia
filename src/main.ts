@@ -24,6 +24,7 @@ import './styles/orthographe.scss';
 import './styles/version-update.scss';
 import './styles/foret.scss';
 import './styles/accessibility.scss';
+import './styles/aide-exercice.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {

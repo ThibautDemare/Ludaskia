@@ -6,7 +6,13 @@
    correction valide — sans erreur de rendu.
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, seedAideVue } from './helpers';
+
+/* Le runner « ordre » (ranger une suite) déclenche l'aide contextuelle au 1er
+   lancement. On la marque comme déjà vue pour éviter que l'overlay bloque. */
+test.beforeEach(async ({ page }) => {
+	await seedAideVue(page);
+});
 
 test('la catégorie Vocabulaire liste les leçons d’ordre alphabétique', async ({ page }) => {
 	const errors = watchErrors(page);

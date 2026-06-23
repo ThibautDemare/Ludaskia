@@ -46,3 +46,18 @@ export async function gotoHash(page: Page, hash: string): Promise<void> {
 	await page.addInitScript(ENSURE_NIVEAU);
 	await page.goto(`#${hash}`, { waitUntil: 'networkidle' });
 }
+
+/* Aide contextuelle : masque l'auto-modale pour les 5 runners concernés.
+   À appeler via `addInitScript` AVANT `gotoHash` dans les specs préexistantes
+   qui exercent ces runners mais ne testent PAS l'aide elle-même.
+   Clé préfixée par le profil e2e (uuid = 'e2e', préfixe = 'e2e/').
+   Ne PAS utiliser dans aide-exercice.spec.ts (elle gère l'aide elle-même). */
+export function seedAideVueScript(): string {
+	return `localStorage.setItem('e2e/ludaskia_aide_vue', '{"tuiles":true,"ordre":true,"tri":true,"atelier":true,"lettres":true}');`;
+}
+
+/* Surcharge pratique : injecte directement le script sur la page.
+   Appeler AVANT gotoHash (addInitScript s'exécute avant le chargement). */
+export async function seedAideVue(page: Page): Promise<void> {
+	await page.addInitScript(seedAideVueScript());
+}

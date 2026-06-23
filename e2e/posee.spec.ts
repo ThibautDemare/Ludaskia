@@ -37,3 +37,40 @@ test('Multiplication posée : la grille (produits partiels possibles) se rend', 
 	expect(await page.locator('.posee').first().locator('.posee-input').count()).toBeGreaterThan(0);
 	expect(errors).toEqual([]);
 });
+
+/* Le cas ×2 chiffres (deux produits partiels + addition finale) est tiré ~40 % du
+   temps. On recharge la leçon jusqu'à en trouver un — repéré par le 0 fourni du
+   décalage (`.posee-zero`) —, borné, et on échoue franchement sinon (même pattern
+   que la bulle d'aide probabiliste dans impression-rendu.spec.ts). #307 : la rangée
+   de retenues est posée AU-DESSUS des produits partiels (opérandes de l'addition),
+   et un marqueur « + » signale cette addition. */
+test('Multiplication posée ×2 chiffres : retenues au-dessus des produits partiels + marqueur « + » (#307)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	const grid = page.locator('.posee', { has: page.locator('.posee-zero') }).first();
+
+	let trouve = false;
+	for (let i = 0; i < 30 && !trouve; i++) {
+		await gotoHash(page, 'lecon-calc-multiplication-posee');
+		await expect(page.locator('.posee').first()).toBeVisible();
+		trouve = (await grid.count()) > 0;
+	}
+	expect(
+		trouve,
+		'Aucune multiplication ×2 chiffres (avec .posee-zero) trouvée en 30 tirages — vérifier multiplicationGen (posee.ts)',
+	).toBe(true);
+
+	// Marqueur « + » de l'addition des deux produits partiels (en plus du « × »).
+	await expect(grid.locator('.posee-op', { hasText: '+' })).toHaveCount(1);
+
+	// Rangée de retenues posée plus HAUT que la 1re cellule-résultat (au-dessus des
+	// produits partiels, et non plus juste au-dessus de la somme).
+	const carryBox = await grid.locator('.posee-carry').first().boundingBox();
+	const inputBox = await grid.locator('.posee-input').first().boundingBox();
+	expect(carryBox).not.toBeNull();
+	expect(inputBox).not.toBeNull();
+	expect(carryBox!.y).toBeLessThan(inputBox!.y);
+
+	expect(errors).toEqual([]);
+});

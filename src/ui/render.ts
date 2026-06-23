@@ -131,7 +131,11 @@ export function renderProfileMenu() {
 					`<button class="pm-item${p.uuid === m.active ? ' active' : ''}" data-uuid="${p.uuid}">${p.emoji} ${escapeHTML(p.name)}${p.uuid === m.active ? ` <span class="pm-check">${icon('check', { label: 'profil actif' })}</span>` : ''}</button>`,
 			)
 			.join('') +
-		`<button class="pm-item pm-manage" id="pmManage">${icon('gear')} Gérer les profils</button>`;
+		// « Mon espace » : l'enfant personnalise SON profil (avatar / thème / confort).
+		// « Espace encadrants » : zone adulte (gestion des profils, suivi, réglages) —
+		// gris + cadenas pour la décrocher visuellement et la rendre peu tentante.
+		`<button class="pm-item pm-mine" id="pmMine">${icon('palette')} Mon espace</button>` +
+		`<button class="pm-item pm-manage" id="pmManage">${icon('lock')} Espace encadrants</button>`;
 }
 /* Profil dont la palette d'avatars est ouverte (null = aucune). Géré ici car
    l'écran de gestion se re-rend entièrement via renderProfiles(). */
@@ -160,45 +164,26 @@ export function emojiPaletteHTML(current: string, niveau: number) {
 	).join('');
 	return `<div class="emoji-palette" role="listbox" aria-label="Choisir un avatar">${base}${foret}</div>`;
 }
-/* Écran de gestion des profils */
+/* Écran « Mon espace » (#234) : carte de SON profil uniquement (avatar + prénom).
+   La gestion des AUTRES profils (créer / réinitialiser / supprimer / export) a migré
+   dans l'espace encadrants — un enfant ne touche pas aux profils des autres. */
 export function renderProfiles() {
 	const el = document.getElementById('profileList');
 	if (!el) return;
-	const m = loadProfilesMeta();
-	if (!m) return;
-	if (emojiPickerFor && !m.list.some((p) => p.uuid === emojiPickerFor)) emojiPickerFor = null;
-	el.innerHTML =
-		m.list
-			.map(
-				(p) => `
-    <div class="profile-row${p.uuid === m.active ? ' active' : ''}" data-uuid="${p.uuid}">
-      <input type="checkbox" class="profile-check" data-uuid="${p.uuid}" checked title="Inclure dans l'export">
-      <button class="profile-pick" data-act="pick" title="Choisir ce profil">
-        <span class="profile-emoji">${p.emoji}</span>
-        <span class="profile-name">${escapeHTML(p.name)}</span>
-        ${p.uuid === m.active ? '<span class="profile-tag">actif</span>' : ''}
-      </button>
+	const p = activeProfile();
+	if (!p) return;
+	if (emojiPickerFor && emojiPickerFor !== p.uuid) emojiPickerFor = null;
+	el.innerHTML = `
+    <div class="profile-row active mine" data-uuid="${p.uuid}">
+      <span class="profile-emoji">${p.emoji}</span>
+      <span class="profile-name">${escapeHTML(p.name)}</span>
       <span class="profile-tools">
-        <button data-act="emoji" title="Changer l'avatar"${p.uuid === emojiPickerFor ? ' aria-expanded="true"' : ''}>${icon('palette', { cls: 'ph-lg', label: "Changer l'avatar" })}</button>
-        <button data-act="rename" title="Renommer">${icon('pencil', { cls: 'ph-lg', label: 'Renommer' })}</button>
-        <button data-act="reset" title="Réinitialiser la progression">${icon('reset', { cls: 'ph-lg', label: 'Réinitialiser la progression' })}</button>
-        <button data-act="delete" title="Supprimer le profil"${m.list.length <= 1 ? ' disabled' : ''}>${icon('trash', { cls: 'ph-lg', label: 'Supprimer le profil' })}</button>
+        <button data-act="emoji" title="Changer mon avatar"${p.uuid === emojiPickerFor ? ' aria-expanded="true"' : ''}>${icon('palette', { cls: 'ph-lg', label: 'Changer mon avatar' })}</button>
+        <button data-act="rename" title="Changer mon prénom">${icon('pencil', { cls: 'ph-lg', label: 'Changer mon prénom' })}</button>
       </span>
       ${p.uuid === emojiPickerFor ? emojiPaletteHTML(p.emoji, niveauDepuisXP(getXPFor(p.uuid))) : ''}
-    </div>`,
-			)
-			.join('') +
-		`<button class="profile-add" id="profileAdd">${icon('plus')} Nouveau profil</button>`;
+    </div>`;
 	renderToolbarProfile(); // garde le bouton de la barre synchronisé
-	syncExportButton(); // état du bouton « Exporter » selon les cases (re)cochées
-}
-
-/* Le bouton « Exporter » suit la sélection : actif tant qu'au moins un profil est
-   coché (les cases sont rendues cochées), désactivé sinon — plutôt qu'une alerte
-   au clic (#230). Appelé au rendu et à chaque changement de case (cf. main.ts). */
-export function syncExportButton() {
-	const btn = document.getElementById('btnExport') as HTMLButtonElement | null;
-	if (btn) btn.disabled = !document.querySelector('#profileList .profile-check:checked');
 }
 
 /* Record de sprint (compté en nombre de bonnes réponses) */

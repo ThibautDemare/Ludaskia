@@ -66,9 +66,10 @@ test('réglage parent : ajuster le niveau d’une matière filtre son catalogue 
 	page,
 }) => {
 	const errors = watchErrors(page);
-	// gotoHash amorce niveauReference=CE2 (pas de popup) ; le bloc parent s'affiche.
-	await gotoHash(page, 'profils');
-	const mathSelect = page.locator('select[data-act="set-niveau-matiere"][data-subject="math"]');
+	// Le réglage de classe par matière vit désormais dans l'espace encadrants (#234) ;
+	// gotoHash amorce niveauReference=CE2 (pas de popup). PIN désactivé par défaut.
+	await gotoHash(page, 'encadrant');
+	const mathSelect = page.locator('select[data-act="set-niveau-mat"][data-subject="math"]');
 	await expect(mathSelect).toBeVisible();
 	await mathSelect.selectOption('cm1');
 	// Maths passées en CM1 → la Numération ne montre que les leçons disponibles en CM1.

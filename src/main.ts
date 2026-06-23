@@ -31,25 +31,14 @@ import { setOnDataWrite } from './core/storage';
 import {
 	initProfiles,
 	touchActiveProfile,
-	addProfile,
 	renameProfile,
 	setProfileEmoji,
-	resetProfile,
-	deleteProfile,
 	setActiveProfile,
-	exportProfiles,
-	importProfiles,
 	setPref,
 	listProfiles,
 } from './core/profiles';
-import { uiAlert, uiConfirm, uiPrompt } from './ui/ui-modal';
-import {
-	renderProfiles,
-	toggleEmojiPicker,
-	closeEmojiPicker,
-	paintStaticIcons,
-	syncExportButton,
-} from './ui/render';
+import { uiConfirm, uiPrompt } from './ui/ui-modal';
+import { renderProfiles, toggleEmojiPicker, closeEmojiPicker, paintStaticIcons } from './ui/render';
 import {
 	applyPreferences,
 	renderPreferences,
@@ -85,20 +74,7 @@ import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 // Quitter ces modes (non reprenables) perd la progression → on confirme (#63).
 const quittingLosesProgress = () => isSprintRunning() || isRevisionRunning();
 
-/* ---------- Téléchargement d'un objet en fichier JSON ---------- */
-function downloadJSON(filename: string, obj: any) {
-	const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
-	const url = URL.createObjectURL(blob);
-	const a = document.createElement('a');
-	a.href = url;
-	a.download = filename;
-	document.body.appendChild(a);
-	a.click();
-	a.remove();
-	setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-/* Rend le focus à un bouton d'action d'une ligne profil après re-rendu (le
+/* Rend le focus à un bouton d'action de la carte profil après re-rendu (le
    déclencheur d'origine a été recréé par renderProfiles). Repli sur « Nouveau
    profil » si la ligne a disparu — jamais <body> (cf. #230). */
 function focusRowAction(uuid: string, act: string): void {
@@ -166,8 +142,12 @@ function wireDOM() {
 		const btn = e.target.closest('button');
 		if (!btn) return;
 		closeProfileMenu();
+		if (btn.id === 'pmMine') {
+			showProfiles(); // « Mon espace » : l'enfant personnalise son propre profil
+			return;
+		}
 		if (btn.id === 'pmManage') {
-			showProfiles();
+			showEncadrant(); // zone adulte : gestion des profils, suivi, réglages
 			return;
 		}
 		if (btn.dataset.uuid) {
@@ -180,36 +160,18 @@ function wireDOM() {
 		if (!e.target.closest('#profileDD')) closeProfileMenu();
 	});
 
-	// Écran de gestion des profils (délégation)
+	// Écran « Mon espace » : l'enfant ne gère que SON profil (renommer / avatar).
+	// Créer / choisir / réinitialiser / supprimer un profil et l'export/import ont
+	// migré dans l'espace encadrants (ui/encadrant.ts) — #234.
 	document.getElementById('profileList')!.addEventListener('click', async (e: any) => {
 		const btn = e.target.closest('button');
 		if (!btn) return;
-		if (btn.id === 'profileAdd') {
-			const n = await uiPrompt({
-				title: 'Quel est ton prénom ?',
-				okLabel: "C'est parti !",
-				placeholder: 'Ton prénom',
-				emoji: '🎒',
-			});
-			if (n) {
-				addProfile(n); // uiPrompt renvoie une valeur déjà « trim »ée et non vide
-				applyPreferences(); // nouveau profil actif → son thème (défaut)
-				renderPreferences();
-				renderProfiles();
-				document.getElementById('profileAdd')?.focus(); // déclencheur recréé au re-rendu
-			}
-			return;
-		}
 		const row = e.target.closest('.profile-row');
 		if (!row) return;
 		const uuid = row.dataset.uuid;
 		// Toute action autre que l'ouverture/choix d'avatar referme la palette.
 		if (btn.dataset.act !== 'emoji' && btn.dataset.act !== 'set-emoji') closeEmojiPicker();
 		switch (btn.dataset.act) {
-			case 'pick':
-				setActiveProfile(uuid);
-				goHome();
-				break;
 			case 'rename': {
 				const courant = listProfiles().find((p) => p.uuid === uuid)?.name ?? '';
 				const n = await uiPrompt({
@@ -236,121 +198,14 @@ function wireDOM() {
 				closeEmojiPicker();
 				renderProfiles();
 				break;
-			case 'reset': {
-				const nom = listProfiles().find((p) => p.uuid === uuid)?.name ?? 'ce profil';
-				const ok = await uiConfirm({
-					title: `Effacer toute la progression de ${nom} ?`,
-					message: 'Tout repartira de zéro. Tu ne pourras pas la récupérer.',
-					confirmLabel: 'Tout effacer',
-					cancelLabel: 'Non, je garde',
-					destructive: true,
-					confirmIcon: 'reset',
-					emoji: '🧹',
-				});
-				if (ok) {
-					resetProfile(uuid);
-					applyPreferences(); // l'XP repart à 0 → thème éventuellement réinitialisé
-					renderPreferences();
-					renderProfiles();
-					focusRowAction(uuid, 'reset');
-				}
-				break;
-			}
-			case 'delete': {
-				const nom = listProfiles().find((p) => p.uuid === uuid)?.name ?? 'ce profil';
-				const ok = await uiConfirm({
-					title: `Supprimer le profil de ${nom} ?`,
-					message: 'Le profil et toute sa progression seront effacés.',
-					confirmLabel: 'Supprimer',
-					cancelLabel: 'Non, je garde',
-					destructive: true,
-					confirmIcon: 'trash',
-					emoji: '🗑️',
-				});
-				if (ok) {
-					deleteProfile(uuid);
-					applyPreferences(); // l'actif peut avoir changé → son thème
-					renderPreferences();
-					renderProfiles(); // resynchronise aussi le bouton « Exporter »
-					document.getElementById('profileAdd')?.focus(); // la ligne a disparu → repli explicite
-				}
-				break;
-			}
 		}
 	});
 
-	// Export : profils cochés → fichier JSON. Le bouton est désactivé tant que rien
-	// n'est coché (updateExportState) — plus d'alerte une fois cliqué (#230) ; ce
-	// garde-fou couvre seulement le cas limite (aucun profil).
-	document.getElementById('btnExport')!.addEventListener('click', () => {
-		const uuids = [...document.querySelectorAll('#profileList .profile-check:checked')].map(
-			(c: any) => c.dataset.uuid,
-		);
-		if (!uuids.length) return;
-		const payload = exportProfiles(uuids)!;
-		const d = new Date().toISOString().slice(0, 10);
-		const slug = (s: string) =>
-			(s || 'profil')
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, '-')
-				.replace(/^-|-$/g, '');
-		const name = uuids.length === 1 ? slug(payload.profiles[0].name) : `${uuids.length}-profils`;
-		downloadJSON(`ludaskia-${name}-${d}.json`, payload);
-	});
-	// Cocher/décocher un profil → (dés)active le bouton « Exporter » (#230). Pas de
-	// re-rendu (qui re-cocherait tout) : on synchronise seulement le bouton.
-	document.getElementById('profileList')!.addEventListener('change', (e: any) => {
-		if (e.target?.classList?.contains('profile-check')) syncExportButton();
-	});
-	// Import : fusion par UUID (écrase si plus récent, ajoute si inconnu)
-	document
-		.getElementById('btnImport')!
-		.addEventListener('click', () =>
-			(document.getElementById('importFile') as HTMLInputElement).click(),
-		);
-	document.getElementById('importFile')!.addEventListener('change', (e: any) => {
-		const file = e.target.files && e.target.files[0];
-		e.target.value = ''; // autorise un futur ré-import du même fichier
-		if (!file) return;
-		const reader = new FileReader();
-		reader.onload = async () => {
-			let payload = null;
-			try {
-				payload = JSON.parse(reader.result as string);
-			} catch (err) {}
-			const res = payload && importProfiles(payload);
-			if (!res) {
-				await uiAlert({
-					title: 'Ce fichier ne peut pas être ouvert.',
-					message: 'Essaie avec un autre fichier.',
-					variant: 'error',
-					emoji: '⚠️',
-				});
-				return;
-			}
-			// L'import peut changer le profil actif → on reflète l'écran AVANT le message.
-			applyPreferences();
-			renderPreferences();
-			renderProfiles(); // resynchronise aussi le bouton « Exporter »
-			const pluriel = (n: number) => (n > 1 ? 's' : '');
-			const lignes: string[] = [];
-			if (res.added)
-				lignes.push(`${res.added} profil${pluriel(res.added)} ajouté${pluriel(res.added)}`);
-			if (res.updated) lignes.push(`${res.updated} profil${pluriel(res.updated)} mis à jour`);
-			if (res.skipped)
-				lignes.push(
-					`${res.skipped} profil${pluriel(res.skipped)} ignoré${pluriel(res.skipped)} (déjà à jour)`,
-				);
-			await uiAlert({
-				title: "C'est fait !",
-				message: lignes.join('\n') || 'Aucun profil à importer.',
-				emoji: '✅',
-			});
-		};
-		reader.readAsText(file);
-	});
+	// Gestion des profils (créer / réinitialiser / supprimer) et export/import : déplacés
+	// dans l'espace encadrants (ui/encadrant.ts) — un enfant ne touche pas aux profils
+	// des autres (#234).
 
-	// Écran Profils : préférences du profil actif (thème de couleur + animations)
+	// Écran « Mon espace » : préférences du profil actif (thème de couleur + animations)
 	const prefs = document.getElementById('preferences')!;
 	prefs.addEventListener('click', (e: any) => {
 		const btn = e.target.closest('[data-act="set-theme"]');

@@ -250,7 +250,7 @@ function profilsHTML(profiles: Profile[], consulte: Profile, actif: Profile): st
       <h2 class="enc-h2">Profils</h2>
       <p class="enc-hint">Choisissez « Voir le suivi » pour consulter un enfant ci-dessous, ou dépliez « Gérer » pour le modifier.</p>
       <ul class="enc-profiles">${cartes}</ul>
-      <button type="button" class="enc-btn-sec enc-prof-add" data-act="enc-add">${icon('plus')} Nouveau profil</button>
+      <button type="button" class="enc-btn-sec enc-prof-add" id="encAdd" data-act="enc-add">${icon('plus')} Nouveau profil</button>
     </section>`;
 }
 

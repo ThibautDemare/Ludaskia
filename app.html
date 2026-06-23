@@ -9,6 +9,34 @@
 		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
 		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<!-- Open Graph / Twitter Card — aperçu lors du partage du lien (WhatsApp,
+		     Messenger, Facebook, X, Slack…). URL ABSOLUES obligatoires : les crawlers
+		     ne résolvent pas les chemins relatifs (et Vite ne réécrit pas le `content`
+		     des <meta>, contrairement aux href/src). Bannière 1200×630 régénérable via
+		     `npm run og:gen` (tools/og-image/). -->
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="Ludaskia" />
+		<meta property="og:title" content="Ludaskia — s'exercer en s'amusant" />
+		<meta
+			property="og:description"
+			content="Jeu d'entraînement gratuit au calcul mental et au français pour le CE2 et le CM1 : exercices variés, corrigés tout de suite. Sans compte ni publicité."
+		/>
+		<meta property="og:url" content="https://thibautdemare.github.io/Ludaskia/app.html" />
+		<meta property="og:image" content="https://thibautdemare.github.io/Ludaskia/og-image.png" />
+		<meta property="og:image:type" content="image/png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta
+			property="og:image:alt"
+			content="Logo de Ludaskia : un arbre dans une pastille blanche, à côté du nom de l'application."
+		/>
+		<meta property="og:locale" content="fr_FR" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:image" content="https://thibautdemare.github.io/Ludaskia/og-image.png" />
+		<meta
+			name="twitter:image:alt"
+			content="Logo de Ludaskia : un arbre dans une pastille blanche, à côté du nom de l'application."
+		/>
 	</head>
 	<body>
 		<header class="toolbar">

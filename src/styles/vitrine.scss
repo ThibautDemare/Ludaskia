@@ -1,0 +1,766 @@
+/* ============================================================
+   Page VITRINE (#271) — index.html. Page d'atterrissage publique,
+   DISTINCTE de l'app (app.html). One-pager mobile-first, audience
+   adulte (parent / enseignant). Réutilise les tokens de base.scss
+   (couleurs de marque, police Nunito) et la bande forêt de foret.scss.
+
+   Principes (avis designer-ux-enfant + relecteur-accessibilite) :
+   - calme et lisible (« fiche produit »), pas un « site enfant » criard ;
+   - le vert de marque et la mascotte/forêt en TOUCHES, pas en décor ;
+   - UN seul CTA proéminent (vert), répété ; fonds blancs/clairs alternés ;
+   - cibles tactiles ≥ 44 px, états :active et :focus-visible explicites.
+   ============================================================ */
+
+body.vitrine {
+	/* Fond légèrement teinté (vert très clair) plutôt que blanc pur : les grandes
+	   plages blanches paraissaient « vides ». Les cartes (blanches) ressortent
+	   alors sur ce fond chaleureux, et les sections `--soft` rythment la page. */
+	background: var(--page-bg);
+	color: var(--ink);
+	overflow-x: hidden; /* la bande forêt full-bleed (100vw) ne doit pas créer de scroll horizontal */
+	line-height: 1.55;
+}
+
+/* L'attribut `hidden` doit TOUJOURS l'emporter sur nos `display:` (sinon une
+   règle comme `.v-continue { display:inline-flex }` ré-affiche un élément masqué).
+   Le lien « Continuer » est masqué par défaut et révélé par src/vitrine.ts. */
+.vitrine [hidden] {
+	display: none !important;
+}
+
+/* ---- Conteneur de lecture centré ---- */
+.v-wrap {
+	max-width: 1080px;
+	margin: 0 auto;
+	padding: 0 20px;
+}
+/* Mesure de ligne confortable pour les sections de texte seul. */
+.v-about p,
+.v-a11y p,
+.v-faq-item p {
+	max-width: 640px;
+}
+
+/* ============================================================
+   En-tête minimal
+   ============================================================ */
+.v-header {
+	background: var(--accent); /* bandeau de marque plein : ancre l'identité en haut de page */
+	box-shadow: 0 2px 10px rgb(0 0 0 / 12%);
+}
+.v-header-in {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px 20px;
+	max-width: 1080px;
+	margin: 0 auto;
+}
+/* CTA de l'en-tête : inversé (surface claire, texte vert) pour ressortir sur le vert. */
+.v-header .v-cta {
+	background: var(--paper);
+	color: var(--accent-dark);
+}
+.v-header .v-cta:hover {
+	background: #f1f6f2;
+}
+.v-brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+}
+.v-brand-logo {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 52px;
+	height: 52px;
+	border-radius: 50%; /* pastille RONDE, comme la barre d'outils de l'app (.toolbar-logo) */
+	background: var(--paper);
+	box-shadow: 0 2px 6px rgb(0 0 0 / 18%);
+}
+.v-brand-logo img {
+	display: block;
+	height: 38px; /* logo plus petit que le cercle → respiration autour, comme l'app */
+	width: auto;
+}
+.v-brand-name {
+	font-weight: 800;
+	font-size: 1.4rem;
+	color: var(--on-accent); /* blanc sur le bandeau vert */
+}
+
+/* ============================================================
+   CTA principal (lien vers app.html)
+   ============================================================ */
+.v-cta {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 52px;
+	padding: 0 28px;
+	border-radius: 14px;
+	background: var(--accent);
+	color: var(--on-accent);
+	font-weight: 800;
+	font-size: 1.1rem;
+	text-decoration: none;
+	/* Même comportement que les boutons de l'app (.sprint-btn) : plat au repos,
+	   ombre douce au survol, léger enfoncement à l'appui (pas d'ombre « 3D »). */
+	transition:
+		box-shadow 0.15s ease,
+		transform 0.08s ease;
+}
+.v-cta:hover {
+	box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+}
+.v-cta:active {
+	transform: translateY(1px);
+}
+.v-cta:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 3px;
+}
+.v-cta--sm {
+	min-height: 44px;
+	padding: 0 18px;
+	font-size: 1rem;
+	border-radius: 12px;
+}
+.v-cta--lg {
+	min-height: 60px;
+	padding: 0 40px;
+	font-size: 1.25rem;
+}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.v-hero {
+	background: var(--page-bg);
+	padding: 40px 20px 56px;
+}
+.v-hero-text {
+	max-width: 1080px;
+	margin: 0 auto;
+}
+.v-hero h1 {
+	margin: 0 0 16px;
+	font-size: clamp(1.8rem, 6.5vw, 2.1rem);
+	font-weight: 800;
+	line-height: 1.15;
+	color: var(--ink);
+}
+.v-hero-sub {
+	margin: 0 0 24px;
+	font-size: 1.1rem;
+	max-width: 620px;
+	color: var(--grey);
+}
+.v-hero-sub strong {
+	color: var(--ink);
+}
+.v-hero-actions {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 10px;
+}
+.v-continue {
+	font-weight: 700;
+	color: var(--accent-dark);
+	text-decoration: none;
+	padding: 8px 4px;
+	min-height: 44px;
+	display: inline-flex;
+	align-items: center;
+}
+.v-continue:hover {
+	text-decoration: underline;
+}
+.v-continue:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+.v-hero-note {
+	margin: 16px 0 0;
+}
+.v-anchor {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	color: var(--grey);
+	font-weight: 600;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+.v-anchor:hover {
+	color: var(--accent-dark);
+}
+.v-anchor:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+
+/* Visuel du hero : carte d'exercice + mascotte en clin d'œil. */
+.v-hero-visual {
+	position: relative;
+	margin: 32px auto 0;
+	max-width: 360px;
+}
+.v-mascotte {
+	position: absolute;
+	right: -6px;
+	bottom: -14px;
+	font-size: 3rem;
+	line-height: 1;
+	transform: rotate(8deg);
+	filter: drop-shadow(0 2px 3px rgb(0 0 0 / 18%));
+}
+
+/* ============================================================
+   Sections : rythme et fonds alternés
+   ============================================================ */
+.v-section {
+	padding: 48px 0;
+	background: var(--page-bg);
+}
+.v-section--soft {
+	/* Vert nettement plus marqué que --page-bg : l'alternance des bandes se voit
+	   (sinon « fadouille »). Reste AA pour le texte gris/ink/accent-dark (≥ 5,4:1). */
+	background: #c7e2ce;
+}
+.v-section h2 {
+	margin: 0 0 20px;
+	font-size: clamp(1.4rem, 5vw, 1.6rem);
+	font-weight: 800;
+	color: var(--ink);
+}
+.v-section p {
+	font-size: 1.05rem;
+}
+
+/* ============================================================
+   Cartes (matières / modes)
+   ============================================================ */
+.v-cards {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: 1fr;
+}
+.v-card {
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	padding: 22px;
+	box-shadow: 0 2px 10px rgb(0 0 0 / 5%);
+}
+.v-section--soft .v-card {
+	box-shadow: 0 2px 12px rgb(0 0 0 / 7%);
+}
+.v-card h3 {
+	margin: 14px 0 8px;
+	font-size: 1.3rem;
+	font-weight: 800;
+}
+.v-card p {
+	margin: 0 0 14px;
+	color: var(--grey);
+}
+.v-card-ico {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 54px;
+	height: 54px;
+	border-radius: 14px;
+}
+.v-card-ico .ph-icon {
+	width: 30px;
+	height: 30px;
+}
+.v-ico--math {
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+}
+.v-ico--fr {
+	/* teinte distincte (myrtille) — l'info passe par l'icône + le titre, pas la couleur seule */
+	background: #ece7f6;
+	color: #5a44a0;
+}
+.v-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.v-tags li {
+	font-size: 0.92rem;
+	font-weight: 600;
+	color: var(--accent-dark);
+	background: var(--accent-soft);
+	border-radius: 999px;
+	padding: 5px 12px;
+}
+
+/* Modes : cartes plus compactes. */
+.v-mode {
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 16px;
+	padding: 18px;
+	text-align: center;
+	box-shadow: 0 2px 10px rgb(0 0 0 / 6%);
+}
+.v-mode-ico {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	border-radius: 12px;
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+	margin-bottom: 8px;
+}
+.v-mode-ico .ph-icon {
+	width: 26px;
+	height: 26px;
+}
+.v-mode h3 {
+	margin: 0 0 6px;
+	font-size: 1.1rem;
+	font-weight: 800;
+}
+.v-mode p {
+	margin: 0;
+	font-size: 0.98rem;
+	color: var(--grey);
+}
+
+/* ============================================================
+   Gamification : texte + mini-démo
+   ============================================================ */
+.v-gamif-grid {
+	display: grid;
+	gap: 28px;
+	align-items: center;
+}
+.v-gamif-text p {
+	color: var(--grey);
+	max-width: 560px;
+}
+.v-gamif-demo {
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	padding: 22px;
+	box-shadow: 0 2px 12px rgb(0 0 0 / 7%);
+}
+.v-xp-top {
+	display: flex;
+	justify-content: space-between;
+	font-weight: 700;
+	margin-bottom: 8px;
+}
+.v-xp-lab {
+	color: var(--grey);
+}
+.v-xp-lvl {
+	color: var(--accent-dark);
+}
+.v-xp-bar {
+	height: 16px;
+	border-radius: 999px;
+	background: var(--track);
+	overflow: hidden;
+}
+.v-xp-fill {
+	display: block;
+	height: 100%;
+	width: 68%;
+	border-radius: 999px;
+	background: var(--accent);
+}
+.v-rewards {
+	display: flex;
+	justify-content: space-around;
+	margin-top: 18px;
+	font-size: 1.9rem;
+}
+.v-reward--mascotte {
+	transform: rotate(6deg);
+}
+
+/* ============================================================
+   Bloc confiance / vie privée (différenciateur n°1)
+   ============================================================ */
+.v-trust {
+	background: var(--accent-soft);
+	border: 1px solid #cfe2d6;
+	border-radius: 22px;
+	padding: 26px 24px;
+}
+.v-trust-head {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-bottom: 18px;
+}
+.v-trust-shield {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 56px;
+	height: 56px;
+	flex: none;
+	border-radius: 50%;
+	background: var(--paper);
+	color: var(--accent);
+}
+.v-trust-shield .ph-icon {
+	width: 32px;
+	height: 32px;
+}
+.v-trust-head h2 {
+	margin: 0;
+	font-size: 1.45rem;
+}
+.v-guarantees {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 14px;
+}
+.v-guarantees li {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	font-size: 1.02rem;
+}
+.v-check {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	flex: none;
+	border-radius: 50%;
+	background: var(--accent);
+	color: var(--on-accent);
+	margin-top: 1px;
+}
+.v-check .ph-icon {
+	width: 16px;
+	height: 16px;
+}
+
+/* ============================================================
+   Accessibilité (ligne discrète)
+   ============================================================ */
+.v-a11y-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+}
+.v-a11y-ico {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 52px;
+	height: 52px;
+	flex: none;
+	border-radius: 14px;
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+}
+.v-a11y-ico .ph-icon {
+	width: 28px;
+	height: 28px;
+}
+.v-a11y-row h2 {
+	margin-top: 0;
+}
+.v-a11y-row p {
+	color: var(--grey);
+}
+
+/* ============================================================
+   Cartes d'exercice reconstituées (hero + section exemples)
+   ============================================================ */
+.v-demo-card {
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	padding: 20px;
+	box-shadow: 0 6px 20px rgb(0 0 0 / 8%);
+}
+.v-demo-tag {
+	display: inline-block;
+	font-size: 0.8rem;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	color: var(--accent-dark);
+	background: var(--accent-soft);
+	border-radius: 999px;
+	padding: 4px 12px;
+	margin-bottom: 12px;
+}
+.v-demo-q {
+	margin: 0 0 14px;
+	font-size: 1.15rem;
+	font-weight: 700;
+	color: var(--ink);
+}
+.v-demo-compare {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 14px;
+}
+.v-demo-num {
+	font-size: 1.8rem;
+	font-weight: 800;
+}
+.v-demo-slot {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 48px;
+	height: 48px;
+	border-radius: 12px;
+	font-size: 1.6rem;
+	font-weight: 800;
+	border: 2px dashed var(--muted);
+	color: var(--grey);
+}
+.v-demo-slot--ok {
+	border: 2px solid var(--ok);
+	background: var(--ok-soft);
+	color: var(
+		--accent-dark
+	); /* contraste AA sur --ok-soft / --paper (l'info reste portée par la bordure + le texte) */
+}
+.v-demo-answer {
+	font-size: 2.2rem;
+	font-weight: 800;
+	text-align: center;
+	color: var(--accent-dark);
+}
+.v-demo-gap {
+	border-bottom: 2px solid var(--accent);
+	padding: 0 4px;
+	font-weight: 800;
+	color: var(--accent-dark);
+}
+.v-demo-chips,
+.v-demo-order {
+	display: flex;
+	justify-content: center;
+	gap: 10px;
+	margin-top: 6px;
+}
+.v-demo-chip {
+	min-width: 46px;
+	height: 46px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 12px;
+	font-size: 1.3rem;
+	font-weight: 800;
+	border: 2px solid var(--line);
+	background: var(--paper);
+}
+.v-demo-chip--ok {
+	border-color: var(--ok);
+	background: var(--ok-soft);
+	color: var(
+		--accent-dark
+	); /* contraste AA sur --ok-soft / --paper (l'info reste portée par la bordure + le texte) */
+}
+.v-demo-pill {
+	min-width: 46px;
+	height: 40px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 10px;
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: var(--accent-dark);
+	background: var(--accent-soft);
+}
+.v-demo-feedback {
+	margin-top: 14px;
+	text-align: center;
+	font-weight: 800;
+	color: var(
+		--accent-dark
+	); /* contraste AA sur --ok-soft / --paper (l'info reste portée par la bordure + le texte) */
+}
+.v-ex-grid {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: 1fr;
+}
+
+/* ============================================================
+   FAQ
+   ============================================================ */
+.v-faq-list {
+	display: grid;
+	gap: 18px;
+}
+.v-faq-item h3 {
+	margin: 0 0 6px;
+	font-size: 1.12rem;
+	font-weight: 800;
+}
+.v-faq-item p {
+	margin: 0;
+	color: var(--grey);
+}
+
+/* ============================================================
+   CTA final (bande de clôture)
+   ============================================================ */
+.v-final {
+	background: var(--accent-dark);
+	text-align: center;
+}
+.v-final-wrap h2 {
+	color: var(--on-accent);
+}
+.v-final-sub {
+	color: var(--accent-soft);
+	margin: 0 0 22px;
+	font-size: 1.1rem;
+}
+/* Sur fond foncé, le CTA s'inverse (surface claire, texte vert) pour ressortir. */
+.v-final .v-cta {
+	background: var(--paper);
+	color: var(--accent-dark);
+}
+.v-final .v-cta:hover {
+	background: #f1f6f2;
+	box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
+}
+.v-final .v-cta:focus-visible {
+	outline: 3px solid var(--paper);
+	outline-offset: 3px;
+}
+
+/* ============================================================
+   Pied de page
+   ============================================================ */
+.v-footer {
+	text-align: center;
+	padding: 24px 20px 36px;
+	color: var(--grey);
+	font-size: 0.95rem;
+}
+.v-footer a {
+	color: var(--accent-dark);
+	font-weight: 600;
+}
+/* Lien « Voir le code » : icône GitHub alignée au libellé. */
+.v-gh {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+.v-gh .ph-icon {
+	width: 1.2em;
+	height: 1.2em;
+}
+.v-footer a:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+/* La bande forêt en pied : pas de marge basse résiduelle. */
+#vitrineForet {
+	margin-top: 0;
+}
+
+/* ============================================================
+   Tablette / desktop (mobile-first → on élargit)
+   ============================================================ */
+@media (min-width: 768px) {
+	.v-section {
+		padding: 80px 0;
+	}
+	/* Hero en 2 colonnes : texte à gauche, visuel à droite, CTA visible sans scroll. */
+	.v-hero {
+		display: grid;
+		grid-template-columns: 1.1fr 0.9fr;
+		gap: 32px;
+		align-items: center;
+		max-width: 1080px;
+		margin: 0 auto;
+		padding: 64px 20px 88px;
+	}
+	.v-hero-text,
+	.v-hero-visual {
+		grid-row: 1;
+	}
+	.v-hero-visual {
+		margin-top: 0;
+	}
+	.v-hero h1 {
+		font-size: clamp(2.2rem, 4vw, 2.75rem);
+	}
+	.v-hero-sub {
+		font-size: 1.2rem;
+	}
+	.v-hero-actions {
+		flex-direction: row;
+		align-items: center;
+		gap: 18px;
+		flex-wrap: wrap;
+	}
+	.v-section p {
+		font-size: 1.1rem;
+	}
+	.v-cards--2 {
+		grid-template-columns: 1fr 1fr;
+		gap: 24px;
+	}
+	.v-cards--4 {
+		grid-template-columns: 1fr 1fr;
+		gap: 20px;
+	}
+	.v-gamif-grid {
+		grid-template-columns: 1.1fr 0.9fr;
+		gap: 40px;
+	}
+	.v-ex-grid {
+		grid-template-columns: 1fr 1fr 1fr;
+	}
+	.v-guarantees {
+		grid-template-columns: 1fr 1fr;
+		gap: 16px 28px;
+	}
+	.v-trust {
+		padding: 32px 34px;
+	}
+}
+
+@media (min-width: 1024px) {
+	.v-cards--4 {
+		grid-template-columns: repeat(4, 1fr);
+	}
+}
+
+/* Le hero passe en grille seulement ≥768 px : sur mobile il reste en flux
+   normal (le `display:grid` ci-dessus est dans la media query). */

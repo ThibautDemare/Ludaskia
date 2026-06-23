@@ -41,10 +41,11 @@ const ENSURE_NIVEAU = `(() => {
 })();`;
 
 /* Navigue vers une vue routée par hash (#accueil, #categorie-..., #lecon-...).
-   Le `#hash` est résolu contre la baseURL (…/Ludaskia/). */
+   L'application vit sur `app.html` (#271 : `index.html` est la page vitrine) ;
+   le `#hash` est résolu contre la baseURL (…/Ludaskia/app.html). */
 export async function gotoHash(page: Page, hash: string): Promise<void> {
 	await page.addInitScript(ENSURE_NIVEAU);
-	await page.goto(`#${hash}`, { waitUntil: 'networkidle' });
+	await page.goto(`app.html#${hash}`, { waitUntil: 'networkidle' });
 }
 
 /* Aide contextuelle : masque l'auto-modale pour les 5 runners concernés.

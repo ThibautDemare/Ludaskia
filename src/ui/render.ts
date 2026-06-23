@@ -42,7 +42,7 @@ import { icon, type IconName } from './icon';
 export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
 
 /* Boutons fonctionnels au markup statique (toolbar + sauvegarde des profils) :
-   leur libellé vit dans index.html, mais l'icône est injectée ici pour garder
+   leur libellé vit dans app.html, mais l'icône est injectée ici pour garder
    UNE seule source des SVG (cf. ui/icon.ts). Appelé une fois au câblage. */
 export function paintStaticIcons() {
 	const set = (id: string, html: string) => {

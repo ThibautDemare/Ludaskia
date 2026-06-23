@@ -25,6 +25,7 @@ import './styles/version-update.scss';
 import './styles/foret.scss';
 import './styles/accessibility.scss';
 import './styles/aide-exercice.scss';
+import './styles/encadrant.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -39,12 +40,9 @@ import {
 	exportProfiles,
 	importProfiles,
 	setPref,
-	setNiveauReference,
-	setNiveauMatiere,
 	listProfiles,
 } from './core/profiles';
 import { uiAlert, uiConfirm, uiPrompt } from './ui/ui-modal';
-import type { SchoolLevel } from './core/catalog';
 import {
 	renderProfiles,
 	toggleEmojiPicker,
@@ -62,6 +60,7 @@ import {
 	route,
 	goHome,
 	showProfiles,
+	showEncadrant,
 	startSprint,
 	startBilanCustom,
 	startRevisionEspacee,
@@ -154,6 +153,8 @@ function wireDOM() {
 		.getElementById('backOrthoListe')!
 		.addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
 	document.getElementById('backHomeProfils')!.addEventListener('click', goHome);
+	// Accès à l'espace encadrant depuis le pied de l'écran Profils (#234).
+	document.getElementById('btnEncadrant')!.addEventListener('click', showEncadrant);
 
 	// Bouton profil de la barre : ouvre/ferme la liste déroulante
 	document.getElementById('toolbarProfile')!.addEventListener('click', (e) => {
@@ -371,19 +372,9 @@ function wireDOM() {
 			// Sprint sans pression temporelle (#223) : lu au lancement du sprint, pas
 			// d'effet immédiat sur le document → pas d'applyPreferences().
 			setPref('sansPressionTemporelle', e.target.checked);
-		} else if (e.target.id === 'prefNiveauRef') {
-			// Réglage parent (#225) : classe du profil → re-rendu (les compteurs et le
-			// catalogue suivent à la prochaine navigation).
-			setNiveauReference(e.target.value as SchoolLevel);
-			renderPreferences();
-		} else if (e.target.dataset.act === 'set-niveau-matiere') {
-			// Ajustement par matière ; valeur vide = « comme la classe » (héritage).
-			setNiveauMatiere(
-				e.target.dataset.subject,
-				(e.target.value || undefined) as SchoolLevel | undefined,
-			);
-			renderPreferences();
 		}
+		// Le réglage « Classe scolaire » a migré vers l'espace encadrant (#234) :
+		// il n'est plus exposé à l'enfant dans ces préférences.
 	});
 
 	// Accueil : barre « Récompenses » / « Trophées » (délégation, conteneur stable)

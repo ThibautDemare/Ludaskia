@@ -6,7 +6,7 @@
    en liste. C'est le pont qui rend le pipeline multi-matières.
    ============================================================ */
 import { getAllLessons, getLessonById, genLessonItem, isLegacyMathLesson } from './catalog';
-import type { LessonDef } from './catalog';
+import type { LessonDef, SchoolLevel } from './catalog';
 import { niveauLecon } from './niveau-actif';
 import { LESSONS } from './lessons';
 import { setRenderLesson, renderItem, ficheHTMLGeneric, getPrintMode, estItemQcm } from './items';
@@ -20,13 +20,15 @@ import { commKey } from './utils';
    série de tirages sans nouveauté (la pioche est aléatoire). La clé inclut la
    RÉPONSE et la FIGURE, pas seulement le texte : sinon une leçon à énoncé
    constant mais visuel variable (« Quel est ce solide ? ») n'aurait qu'UN item. */
-export function genItems(lesson: LessonDef, n: number): Item[] {
+export function genItems(lesson: LessonDef, n: number, level?: SchoolLevel): Item[] {
 	const items: Item[] = [];
 	const seen = new Set<string>();
-	const level = niveauLecon(lesson); // calibrage au niveau effectif (#225)
+	// Calibrage au niveau effectif (#225), surchargeable (#234) : impression d'une fiche
+	// au niveau d'un profil CONSULTÉ par l'encadrant, sans changer le profil/niveau actif.
+	const lvl = level ?? niveauLecon(lesson);
 	let misses = 0;
 	while (items.length < n && misses < 80) {
-		const it = genLessonItem(lesson, level);
+		const it = genLessonItem(lesson, lvl);
 		const key = `${commKey(it.text)}¦${it.answer}¦${it.figure ?? ''}`;
 		if (seen.has(key)) {
 			misses++;
@@ -39,8 +41,9 @@ export function genItems(lesson: LessonDef, n: number): Item[] {
 	return items;
 }
 
-/* Fiche d'une leçon (vue « une leçon à la fois »). */
-export function buildLessonFiche(lessonId: string): string {
+/* Fiche d'une leçon (vue « une leçon à la fois »). `level` (optionnel) force le
+   calibrage à un niveau donné — impression au niveau d'un profil consulté (#234). */
+export function buildLessonFiche(lessonId: string, level?: SchoolLevel): string {
 	const lesson = getLessonById(lessonId);
 	if (!lesson) return '';
 	// Calcul mental (moteur bilanQ) : rendu riche dédié (grilles, décomposition…).
@@ -54,7 +57,7 @@ export function buildLessonFiche(lessonId: string): string {
 	// Sinon (math moderne : conversions… / matière texte) : 8 questions en liste.
 	// L'item math est numérique, la matière texte est une saisie de chaîne ; la
 	// consigne s'adapte, le `@` de l'item place le champ dans les deux cas.
-	const items = genItems(lesson, 8);
+	const items = genItems(lesson, 8, level);
 	setRenderLesson(lessonId);
 	const inner = `<div class="conj-list">${items
 		.map((it) => `<div class="conj-op">${renderItem(it)}</div>`)
@@ -73,19 +76,20 @@ export function buildLessonFiche(lessonId: string): string {
 	return ficheHTMLGeneric(lesson.label, '', consigne, inner);
 }
 
-/* Blocs d'un bilan personnalisé : nbQ questions par leçon sélectionnée. */
-export function bilanBlocksForIds(lessonIds: string[], nbQ: number) {
+/* Blocs d'un bilan personnalisé : nbQ questions par leçon sélectionnée. `level`
+   (optionnel) force le calibrage (impression au niveau d'un profil consulté, #234). */
+export function bilanBlocksForIds(lessonIds: string[], nbQ: number, level?: SchoolLevel) {
 	const blocks: { id: string; theme: string; ops: Item[] }[] = [];
 	for (const lesson of getAllLessons()) {
 		if (!lessonIds.includes(lesson.id)) continue;
-		blocks.push({ id: lesson.id, theme: lesson.label, ops: genItems(lesson, nbQ) });
+		blocks.push({ id: lesson.id, theme: lesson.label, ops: genItems(lesson, nbQ, level) });
 	}
 	return blocks;
 }
 
 /* Fiches complètes pour un sous-ensemble de leçons (bilan complet personnalisé). */
-export function buildFichesForIds(lessonIds: string[]): string[] {
+export function buildFichesForIds(lessonIds: string[], level?: SchoolLevel): string[] {
 	return getAllLessons()
 		.filter((l) => lessonIds.includes(l.id))
-		.map((l) => buildLessonFiche(l.id));
+		.map((l) => buildLessonFiche(l.id, level));
 }

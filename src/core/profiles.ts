@@ -211,6 +211,23 @@ export function setPref<K extends keyof ProfilePrefs>(key: K, value: ProfilePref
 	p.updatedAt = Date.now();
 	saveProfilesMeta(m);
 }
+/* Variante PAR UUID (#234, espace encadrant) : règle une préférence d'un profil
+   CONSULTÉ (pas forcément l'actif) sans toucher m.active. Sert aux « aménagements »
+   posés par l'adulte (masquer le minuteur, lecture auto). L'application au DOM
+   (applyPreferences) ne concerne que le profil actif → l'appelant ne la déclenche
+   que si le profil ciblé est l'actif. */
+export function setPrefFor<K extends keyof ProfilePrefs>(
+	uuid: string,
+	key: K,
+	value: ProfilePrefs[K],
+) {
+	const m = loadProfilesMeta();
+	const p = m && m.list.find((x) => x.uuid === uuid);
+	if (!p) return;
+	p.prefs = { ...p.prefs, [key]: value };
+	p.updatedAt = Date.now();
+	saveProfilesMeta(m);
+}
 export function confortLecture(): boolean {
 	return getPrefs().confortLecture === true;
 }
@@ -244,6 +261,30 @@ export function getNiveauParMatiere(): Record<string, SchoolLevel> {
 export function setNiveauMatiere(subject: string, level: SchoolLevel | undefined) {
 	const m = loadProfilesMeta();
 	const p = m && m.list.find((x) => x.uuid === m.active);
+	if (!p) return;
+	const map = { ...(p.niveauParMatiere ?? {}) };
+	if (level) map[subject] = level;
+	else delete map[subject];
+	p.niveauParMatiere = map;
+	p.updatedAt = Date.now();
+	saveProfilesMeta(m);
+}
+
+/* ---------- Réglages de niveau PAR UUID (#234, espace encadrant) ----------
+   L'encadrant règle la classe d'un profil CONSULTÉ qui n'est pas forcément l'actif :
+   on cible le profil par UUID et on NE touche JAMAIS m.active (pas de bascule de
+   l'enfant courant). On bumpe updatedAt du profil ciblé (fusion par récence). */
+export function setNiveauReferenceFor(uuid: string, level: SchoolLevel) {
+	const m = loadProfilesMeta();
+	const p = m && m.list.find((x) => x.uuid === uuid);
+	if (!p) return;
+	p.niveauReference = level;
+	p.updatedAt = Date.now();
+	saveProfilesMeta(m);
+}
+export function setNiveauMatiereFor(uuid: string, subject: string, level: SchoolLevel | undefined) {
+	const m = loadProfilesMeta();
+	const p = m && m.list.find((x) => x.uuid === uuid);
 	if (!p) return;
 	const map = { ...(p.niveauParMatiere ?? {}) };
 	if (level) map[subject] = level;

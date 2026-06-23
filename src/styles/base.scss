@@ -54,6 +54,16 @@
 	--cat-sprint: #e8662a; /* corail (même teinte que --clock-min) : sprint / vitesse */
 	--cat-bilan: #7a5cc0; /* violet-myrtille : bilans / objectifs */
 	--cat-bleu: #336cbf; /* bleu : révision / impression (papier) */
+	/* Espace encadrant (#234) : zone ADULTE neutre, retirée du vert de marque pour
+	   signaler « on a quitté l'espace de l'enfant ». --admin-bg = fond gris-bleuté ;
+	   --admin-accent = bleu d'accent (titres/boutons), stable quel que soit le thème
+	   déblocable choisi par l'enfant. Réécrits en Nuit (themes.scss). */
+	--admin-bg: #eef1f4;
+	--admin-accent: #2c5b9e;
+	/* Fond des boutons PLEINS de l'espace encadrant (texte blanc) : volontairement
+	   NON réécrit en Nuit (l'accent y est éclairci pour le TEXTE, trop clair pour un
+	   fond à texte blanc) → reste ce bleu foncé, blanc dessus ≥ AA dans les deux thèmes. */
+	--admin-fill: #2c5b9e;
 }
 * {
 	box-sizing: border-box;

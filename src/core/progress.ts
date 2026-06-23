@@ -23,11 +23,11 @@ const NIVEAU_LEGACY: SchoolLevel = 'ce2';
 function nsKey(lessonId: string, niveau: SchoolLevel): string {
 	return `${lessonId}@${niveau}`;
 }
-function lessonOfKey(key: string): string {
+export function lessonOfKey(key: string): string {
 	const i = key.lastIndexOf('@');
 	return i < 0 ? key : key.slice(0, i);
 }
-function niveauOfKey(key: string): string {
+export function niveauOfKey(key: string): string {
 	const i = key.lastIndexOf('@');
 	return i < 0 ? NIVEAU_LEGACY : key.slice(i + 1);
 }
@@ -216,12 +216,19 @@ export { loadStars };
    Agrégées sur tous les contextes (leçon seule, bilan complet, express).
    Sert à repérer les thèmes à retravailler. */
 export const LESSON_STATS_KEY = 'ludaskia_lessonStats';
-interface LessonStat {
+// Taille de la fenêtre glissante des derniers essais d'une leçon (#234) : « à revoir »
+// et l'état d'acquisition de l'espace encadrant se fondent sur la performance RÉCENTE,
+// pas sur le cumul historique (lessonAvgPct), qui sous-estime un enfant ayant progressé.
+const RECENT_MAX = 5;
+export interface LessonStat {
 	attempts: number;
 	correct: number;
 	questions: number;
 	bestPct: number;
 	lastPct: number;
+	/** % des RECENT_MAX derniers essais (fenêtre glissante, non bornée par dates : un enfant
+	 *  qui espace ses essais ne perd pas la visu). Absent sur les données antérieures à #234. */
+	recentPct?: number[];
 }
 function loadLessonStatsRaw(): Record<string, LessonStat> {
 	return lsGet(LESSON_STATS_KEY, {});
@@ -253,9 +260,11 @@ export function recordLessonStats(perLesson: Record<string, { ok: number; total:
 	// Leçons rencontrées pour la 1re fois dans cet essai (aucune stat antérieure) :
 	// sert au suivi « première fois » (objectif « nouvelle leçon », #178).
 	const premieres: string[] = [];
+	let hadActivity = false; // au moins une leçon réellement travaillée (≥1 question)
 	for (const num in perLesson) {
 		const { ok, total } = perLesson[num];
 		if (!total) continue;
+		hadActivity = true;
 		const k = nsKey(num, niveauStockage(num));
 		if (!s[k]) premieres.push(num);
 		const e = s[k] || { attempts: 0, correct: 0, questions: 0, bestPct: 0, lastPct: 0 };
@@ -265,10 +274,14 @@ export function recordLessonStats(perLesson: Record<string, { ok: number; total:
 		const pct = Math.round((ok / total) * 100);
 		e.bestPct = Math.max(e.bestPct, pct);
 		e.lastPct = pct;
+		// Fenêtre glissante des derniers % (#234) : base de la performance « récente ».
+		e.recentPct = [...(e.recentPct ?? []), pct].slice(-RECENT_MAX);
 		s[k] = e;
 	}
 	lsSet(LESSON_STATS_KEY, s);
 	const now = Date.now();
+	// Journal d'activité (#234) : un point par session finalisée, tous contextes confondus.
+	if (hadActivity) recordActivity(now);
 	// Première rencontre : on date le premier passage (objectif « nouvelle leçon »)
 	// puis on entre la leçon en révision espacée (cf. #45).
 	markLessonsFirstSeen(premieres, now);
@@ -279,6 +292,31 @@ export function recordLessonStats(perLesson: Record<string, { ok: number; total:
 }
 export const lessonAvgPct = (e: any) =>
 	e && e.questions ? Math.round((e.correct / e.questions) * 100) : null;
+/* Moyenne des derniers essais (fenêtre glissante recentPct) ; null si aucun historique
+   récent (repli sur lessonAvgPct laissé à l'appelant). Performance RÉCENTE pour l'espace
+   encadrant (#234), distincte du cumul historique de lessonAvgPct. */
+export const recentAvgPct = (e: any): number | null =>
+	e && Array.isArray(e.recentPct) && e.recentPct.length
+		? Math.round(e.recentPct.reduce((sum: number, p: number) => sum + p, 0) / e.recentPct.length)
+		: null;
+
+/* ---------- Journal d'activité : sessions finalisées (#234) ----------
+   Horodatage léger de CHAQUE session d'entraînement finalisée (leçon seule, bilan,
+   express… tout ce qui passe par recordLessonStats), pour le graphe d'activité de
+   l'espace encadrant. Indépendant des Run, qui ne couvrent pas les leçons jouées
+   seules. Par profil (clé préfixée), borné aux ACTIVITY_MAX derniers événements. */
+export const ACTIVITY_KEY = 'ludaskia_activity';
+const ACTIVITY_MAX = 200;
+export function loadActivity(): number[] {
+	const v = lsGet(ACTIVITY_KEY, []);
+	return Array.isArray(v) ? v : [];
+}
+function recordActivity(now: number) {
+	const a = loadActivity();
+	a.push(now);
+	if (a.length > ACTIVITY_MAX) a.splice(0, a.length - ACTIVITY_MAX);
+	lsSet(ACTIVITY_KEY, a);
+}
 
 /* ---------- Premier passage par leçon (objectif « nouvelle leçon », #178) ----------
    Date (ms) de la 1re fois qu'une leçon est travaillée, tous modes confondus.

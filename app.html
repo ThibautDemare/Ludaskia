@@ -108,6 +108,10 @@
 				<!-- Colonne droite : accès aux modes + favoris -->
 				<div class="home-col home-col-right">
 					<div class="cards">
+						<!-- À revoir (#234) : carte SUPPLÉMENTAIRE, affichée seulement quand
+						     l'encadrant a épinglé des leçons à revoir (rendue par renderARevoir,
+						     masquée sinon). Placée en tête : c'est une suggestion ciblée. -->
+						<div class="card" id="aRevoir" style="display: none"></div>
 						<!-- Leçon du jour (#208) : 1re carte, contenu dynamique (le prochain
 						     pas à travailler) rendu par renderLeconDuJour ; cliquable comme
 						     les autres cartes de mode. -->
@@ -186,7 +190,28 @@
 				Coche les profils à exporter (sauvegarde / transfert vers un autre appareil). À l'import, un
 				profil déjà présent n'est remplacé que si la sauvegarde est plus récente.
 			</div>
+			<!-- Accès à l'espace encadrant (#234) : lien sobre en pied de page, registre
+			     « pour les adultes » (barrière douce). Pas dans la barre d'outils de l'enfant. -->
+			<div class="encadrant-access">
+				<button type="button" class="encadrant-access-btn" id="btnEncadrant">
+					<span class="encadrant-access-ico" id="encadrantAccessIco" aria-hidden="true"></span>
+					<span class="encadrant-access-txt">
+						<span class="encadrant-access-title">Espace encadrants</span>
+						<span class="encadrant-access-sub"
+							>Suivi des progrès et réglages — pour les adultes</span
+						>
+					</span>
+					<span class="encadrant-access-arrow" aria-hidden="true">→</span>
+				</button>
+			</div>
 			<div class="printlink"><a id="backHomeProfils">← Retour à l'accueil</a></div>
+		</div>
+
+		<!-- Espace encadrant (#234) : vue gatée réservée aux adultes (parents/enseignants).
+		     Voix « vous », chrome neutre (cf. encadrant.scss) ; contenu rendu par ui/encadrant.ts.
+		     Pas la classe « home » (évite d'hériter du rendu enfant). -->
+		<div class="screen-only encadrant-screen" id="encadrant" style="display: none">
+			<div id="encadrantContent"></div>
 		</div>
 
 		<!-- Écran : choix de la matière -->

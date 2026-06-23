@@ -98,6 +98,10 @@
 	--track: #2c3543;
 	--ok-soft: #1d3326;
 	--ko-soft: #3b2222;
+	/* Espace encadrant (#234) : fond neutre plus sombre que les cartes (--paper), et
+	   bleu d'accent relevé pour rester lisible comme TEXTE sur fond sombre. */
+	--admin-bg: #12171f;
+	--admin-accent: #6ea6ee;
 	/* --cat-*, --clock-min : NON réécrits. À leurs valeurs claires, ils servent
 	   surtout de FOND de bouton/pastille (texte blanc lisible) et restent vifs
 	   sur fond sombre ; leur rare usage en TEXTE est rehaussé localement (ci-dessous). */

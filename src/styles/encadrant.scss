@@ -1,0 +1,672 @@
+/* ============================================================
+   Espace encadrant (#234) — zone ADULTE, distincte de l'espace enfant.
+   Signaux de rupture : chrome neutre (--admin-bg), accent BLEU (--admin-accent,
+   stable quel que soit le thème déblocable de l'enfant), densité d'info plus élevée,
+   aucun vocabulaire visuel enfantin (pas de pastille ronde / mascotte / emoji
+   expressif). Graphes en tokens / currentColor → survivent au thème Nuit.
+   ============================================================ */
+
+/* ---------- Point d'accès en pied de l'écran Profils ---------- */
+.encadrant-access {
+	margin-top: 1.5rem;
+	padding-top: 1rem;
+	border-top: 1px solid var(--line);
+}
+.encadrant-access-btn {
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+	width: 100%;
+	min-height: 56px;
+	padding: 0.7rem 0.9rem;
+	background: transparent;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	color: var(--grey);
+	cursor: pointer;
+	text-align: left;
+	font: inherit;
+}
+.encadrant-access-btn:hover {
+	background: var(--track);
+}
+.encadrant-access-btn:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 2px;
+}
+.encadrant-access-ico {
+	display: inline-flex;
+	color: var(--admin-accent);
+	font-size: 1.4rem;
+}
+.encadrant-access-txt {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+}
+.encadrant-access-title {
+	font-weight: 800;
+	color: var(--ink);
+}
+.encadrant-access-sub {
+	font-size: 0.85rem;
+	color: var(--muted);
+}
+.encadrant-access-arrow {
+	color: var(--muted);
+}
+
+/* ---------- L'écran ---------- */
+.encadrant-screen {
+	background: var(--admin-bg);
+	min-height: 100vh;
+	padding: 1rem 1rem 3rem;
+}
+#encadrantContent {
+	max-width: 880px;
+	margin: 0 auto;
+}
+
+.enc-title {
+	font-size: 1.45rem;
+	font-weight: 900;
+	color: var(--ink);
+	margin: 0.3rem 0 1rem;
+}
+.enc-topbar {
+	margin-bottom: 0.4rem;
+}
+.enc-back {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	min-height: 44px;
+	padding: 0.5rem 0.85rem;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	color: var(--admin-accent);
+	font: inherit;
+	font-weight: 800;
+	cursor: pointer;
+}
+.enc-back:hover {
+	background: var(--track);
+}
+.enc-back:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 2px;
+}
+
+/* ---------- Sections / blocs (densité « tableau de bord ») ---------- */
+.enc-section {
+	margin-bottom: 1.4rem;
+}
+.enc-h2 {
+	font-size: 1.05rem;
+	font-weight: 800;
+	color: var(--admin-accent);
+	margin: 0 0 0.6rem;
+}
+.enc-h3 {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	font-size: 0.95rem;
+	font-weight: 800;
+	color: var(--ink);
+	margin: 0 0 0.5rem;
+}
+.enc-h3 svg {
+	width: 1.1em;
+	height: 1.1em;
+}
+.enc-block {
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	padding: 0.85rem 0.95rem;
+	margin-bottom: 0.7rem;
+}
+.enc-hint {
+	font-size: 0.85rem;
+	color: var(--muted);
+	margin: 0.4rem 0 0;
+}
+.enc-frame {
+	font-size: 0.9rem;
+	color: var(--grey);
+	margin: 0 0 0.8rem;
+}
+.enc-warn {
+	font-size: 0.88rem;
+	color: var(--ink);
+	background: var(--warn-bg);
+	border: 1px solid var(--warn-bd);
+	border-radius: 10px;
+	padding: 0.6rem 0.7rem;
+	margin: 0 0 0.7rem;
+}
+
+/* ---------- Contexte « vous regardez … » ---------- */
+.enc-context {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-left: 4px solid var(--admin-accent);
+	border-radius: 10px;
+	padding: 0.6rem 0.8rem;
+	margin-bottom: 1.1rem;
+	color: var(--grey);
+}
+.enc-context-emoji {
+	font-size: 1.4rem;
+}
+
+/* ---------- Sélecteur de profils (consultation, ≠ bascule) ---------- */
+.enc-profiles {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+.enc-profile {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	width: 100%;
+	min-height: 52px;
+	padding: 0.5rem 0.8rem;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	font: inherit;
+	color: var(--ink);
+	cursor: pointer;
+	text-align: left;
+}
+.enc-profile:hover {
+	background: var(--track);
+}
+.enc-profile:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 2px;
+}
+.enc-profile.current {
+	border-color: var(--admin-accent);
+	box-shadow: inset 0 0 0 1px var(--admin-accent);
+}
+.enc-profile-emoji {
+	font-size: 1.5rem;
+}
+.enc-profile-name {
+	font-weight: 800;
+	flex: 1;
+}
+.enc-profile-actif {
+	font-size: 0.75rem;
+	color: var(--admin-accent);
+	background: var(--track);
+	padding: 0.1rem 0.5rem;
+	border-radius: 999px;
+}
+.enc-profile-go {
+	font-size: 0.85rem;
+	color: var(--muted);
+	font-weight: 700;
+}
+
+/* ---------- Réglages (classe + code) ---------- */
+.enc-niveau {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+.enc-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.6rem;
+}
+.enc-select-niveau {
+	min-height: 44px;
+	padding: 0.3rem 0.5rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--paper);
+	color: var(--ink);
+	font: inherit;
+}
+.enc-select-niveau:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 1px;
+}
+
+/* ---------- Boutons / liens ---------- */
+.enc-btn,
+.enc-btn-sec {
+	min-height: 44px;
+	padding: 0.5rem 1rem;
+	border-radius: 10px;
+	font: inherit;
+	font-weight: 800;
+	cursor: pointer;
+}
+.enc-btn {
+	background: var(--admin-fill);
+	color: #fff;
+	border: 1px solid var(--admin-fill);
+}
+.enc-btn[disabled] {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+.enc-btn-sec {
+	background: var(--paper);
+	color: var(--admin-accent);
+	border: 1px solid var(--admin-accent);
+}
+.enc-btn-sec.on {
+	background: var(--admin-fill);
+	color: #fff;
+	border-color: var(--admin-fill);
+}
+.enc-btn:focus-visible,
+.enc-btn-sec:focus-visible,
+.enc-link:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 2px;
+}
+.enc-link {
+	background: none;
+	border: none;
+	color: var(--admin-accent);
+	font: inherit;
+	text-decoration: underline;
+	cursor: pointer;
+	padding: 0.5rem;
+	min-height: 44px;
+}
+.enc-input {
+	width: 100%;
+	min-height: 48px;
+	padding: 0.5rem 0.7rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--paper);
+	color: var(--ink);
+	font: inherit;
+	margin-bottom: 0.6rem;
+}
+.enc-input:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 1px;
+}
+.enc-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin: 0.5rem 0;
+}
+.enc-check {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0.6rem 0;
+	font-size: 0.9rem;
+}
+.enc-secret {
+	display: block;
+	font-family: ui-monospace, monospace;
+	font-size: 0.95rem;
+	background: var(--track);
+	border: 1px dashed var(--admin-accent);
+	border-radius: 8px;
+	padding: 0.6rem 0.7rem;
+	word-break: break-all;
+	color: var(--ink);
+}
+
+/* ---------- Pavé numérique (porte + définition du code) ---------- */
+.enc-gate {
+	max-width: 340px;
+	margin: 1.5rem auto;
+	text-align: center;
+}
+.enc-gate-hint {
+	color: var(--grey);
+	margin: 0 0 1rem;
+}
+.enc-gate-err {
+	color: var(--ko);
+	font-weight: 800;
+	margin: 0 0 0.6rem;
+}
+.enc-gate-links {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.2rem;
+	margin-top: 0.8rem;
+}
+.kp {
+	margin: 0 auto;
+}
+.kp-dots {
+	display: flex;
+	justify-content: center;
+	gap: 0.8rem;
+	margin: 0.5rem 0 1rem;
+}
+.kp-dot {
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	border: 2px solid var(--admin-accent);
+	background: transparent;
+}
+.kp-dot.filled {
+	background: var(--admin-accent);
+}
+.kp-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 0.6rem;
+	max-width: 280px;
+	margin: 0 auto;
+}
+.kp-key {
+	min-height: 64px;
+	font-size: 1.4rem;
+	font-weight: 800;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	color: var(--ink);
+	cursor: pointer;
+}
+.kp-key:hover {
+	background: var(--track);
+}
+.kp-key:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 2px;
+}
+.kp-del {
+	color: var(--admin-accent);
+}
+.kp-spacer {
+	visibility: hidden;
+}
+.kp-shake {
+	animation: kp-shake 0.32s ease;
+}
+@keyframes kp-shake {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	20%,
+	60% {
+		transform: translateX(-7px);
+	}
+	40%,
+	80% {
+		transform: translateX(7px);
+	}
+}
+.anim-reduced .kp-shake {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.kp-shake {
+		animation: none;
+	}
+}
+
+/* ---------- Chiffres-clés ---------- */
+.enc-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+	margin-bottom: 0.9rem;
+}
+.enc-stat {
+	flex: 1;
+	min-width: 90px;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	padding: 0.7rem;
+	text-align: center;
+}
+.enc-stat-num {
+	display: block;
+	font-size: 1.8rem;
+	font-weight: 900;
+	color: var(--admin-accent);
+	line-height: 1.1;
+}
+.enc-stat-lab {
+	font-size: 0.78rem;
+	color: var(--grey);
+}
+
+/* ---------- Graphe d'activité (barres, tokens uniquement) ---------- */
+.enc-bars {
+	display: flex;
+	align-items: flex-end;
+	gap: 0.5rem;
+	height: 92px;
+	padding-top: 0.4rem;
+}
+.enc-bar-col {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-end;
+	height: 100%;
+	gap: 0.25rem;
+}
+.enc-bar {
+	width: 100%;
+	max-width: 26px;
+	min-height: 3px;
+	background: var(--admin-accent);
+	border-radius: 4px 4px 0 0;
+}
+.enc-bar-lab {
+	font-size: 0.72rem;
+	color: var(--muted);
+}
+
+/* ---------- Échelle d'acquisition (4 niveaux, doublée couleur + mot) ---------- */
+.enc-key-acquis {
+	--k: var(--ok);
+}
+.enc-key-en-cours {
+	--k: var(--cat-bleu);
+}
+.enc-key-non-acquis {
+	--k: var(--warn);
+}
+.enc-key-a-decouvrir {
+	--k: var(--muted);
+}
+.enc-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin: 0 0 0.6rem;
+}
+.enc-key {
+	font-size: 0.78rem;
+	font-weight: 700;
+	color: var(--ink);
+	padding-left: 1.1rem;
+	position: relative;
+}
+.enc-key::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 0.15rem;
+	width: 0.8rem;
+	height: 0.8rem;
+	border-radius: 3px;
+	background: var(--k);
+}
+.enc-cats {
+	display: flex;
+	flex-direction: column;
+}
+/* Catégorie dépliable : résumé (libellé + compteur + barre) cliquable, détail par leçon. */
+.enc-cat-d {
+	border-top: 1px solid var(--line);
+	padding: 0.5rem 0;
+}
+.enc-cat-d:first-child {
+	border-top: none;
+}
+.enc-cat-sum {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 0.2rem 0.6rem;
+	align-items: center;
+	cursor: pointer;
+	list-style: none; /* retire le marqueur natif (on garde un chevron via ::after) */
+}
+.enc-cat-sum::-webkit-details-marker {
+	display: none;
+}
+.enc-cat-sum::after {
+	content: '▸';
+	grid-row: 1;
+	grid-column: 2;
+	color: var(--muted);
+}
+.enc-cat-d[open] .enc-cat-sum::after {
+	content: '▾';
+}
+.enc-cat-lab {
+	font-weight: 700;
+	font-size: 0.9rem;
+}
+.enc-cat-counts {
+	font-size: 0.8rem;
+	color: var(--grey);
+	white-space: nowrap;
+	grid-column: 1;
+}
+.enc-seg {
+	grid-column: 1 / -1;
+	display: flex;
+	height: 10px;
+	border-radius: 5px;
+	overflow: hidden;
+	background: var(--track);
+}
+.enc-seg-part {
+	background: var(--k);
+}
+/* Détail par leçon (déplié) */
+.enc-detail {
+	list-style: none;
+	margin: 0.5rem 0 0.2rem;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+.enc-detail-item {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.85rem;
+}
+.enc-detail-puce {
+	flex: none;
+	width: 0.7rem;
+	height: 0.7rem;
+	border-radius: 3px;
+	background: var(--k);
+}
+.enc-detail-lab {
+	flex: 1;
+}
+.enc-detail-mot {
+	font-size: 0.75rem;
+	color: var(--grey);
+	white-space: nowrap;
+}
+
+/* ---------- À revoir ensemble ---------- */
+.enc-sub-lab {
+	font-size: 0.85rem;
+	font-weight: 800;
+	color: var(--grey);
+	margin: 0.6rem 0 0.2rem;
+}
+.enc-revoir {
+	list-style: none;
+	margin: 0.4rem 0 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+.enc-revoir-item {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem 0.6rem;
+	padding: 0.5rem 0.6rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+}
+.enc-revoir-lab {
+	font-weight: 800;
+	flex: 1;
+	min-width: 120px;
+}
+/* État d'acquisition : le MOT est en --ink (lisible partout) ; la couleur du niveau
+   n'est portée que par une petite pastille (indice secondaire), pas par le texte —
+   sinon --muted/--cat-bleu/--warn en texte passent sous AA (a11y). */
+.enc-revoir-etat {
+	font-size: 0.78rem;
+	font-weight: 800;
+	color: var(--ink);
+	padding-left: 1rem;
+	position: relative;
+}
+.enc-revoir-etat::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 0.18rem;
+	width: 0.7rem;
+	height: 0.7rem;
+	border-radius: 3px;
+	background: var(--k);
+}
+.enc-actions {
+	display: flex;
+	gap: 0.4rem;
+	flex-wrap: wrap;
+}
+
+/* ---------- Tablette/desktop : deux colonnes pour le sélecteur ---------- */
+@media (min-width: 720px) {
+	.enc-profiles {
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+	.enc-profile {
+		flex: 1 1 240px;
+	}
+}

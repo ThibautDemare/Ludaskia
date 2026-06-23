@@ -20,11 +20,7 @@ import {
 	confortLecture,
 	lectureConsigneAuto,
 	sansPressionTemporelle,
-	getNiveauReference,
-	getNiveauParMatiere,
 } from '../core/profiles';
-import { getAllLessons, SUBJECTS } from '../core/catalog';
-import { availableLevels, LEVEL_LABEL } from '../core/levels';
 import { dicteeDisponible } from './tts';
 import { icon } from './icon';
 
@@ -87,43 +83,6 @@ function themeSwatch(t: Theme, courant: string, debloques: string[]): string {
       <span class="theme-dot"></span><span class="theme-lab">${t.label}</span>${coche}</button>`;
 }
 
-/* Bloc « Niveau scolaire » (réglage parent, #225 lot 4) : classe du profil +
-   ajustement optionnel par matière. Affiché seulement si plusieurs niveaux ont du
-   contenu (sinon aucun choix utile). Vocabulaire neutre (« CE2 / CM1 »), jamais
-   présenté comme un score, distinct du niveau d'XP. */
-function niveauParentHTML(): string {
-	const niveaux = availableLevels(getAllLessons());
-	if (niveaux.length < 2) return '';
-	const ref = getNiveauReference() ?? niveaux[0];
-	const parMat = getNiveauParMatiere();
-	const opts = (sel: string | undefined) =>
-		niveaux
-			.map(
-				(lv) => `<option value="${lv}"${lv === sel ? ' selected' : ''}>${LEVEL_LABEL[lv]}</option>`,
-			)
-			.join('');
-	const matieres = SUBJECTS.map(
-		(s) => `<label class="pref-niveau-row">
-          <span>${escapeHTML(s.label)}</span>
-          <select class="pref-niveau-select" data-act="set-niveau-matiere" data-subject="${s.id}">
-            <option value=""${parMat[s.id] ? '' : ' selected'}>Comme la classe</option>
-            ${opts(parMat[s.id])}
-          </select>
-        </label>`,
-	).join('');
-	return `<div class="pref-block">
-      <span class="pref-lab">${icon('book-open')} Classe scolaire <small class="pref-hint">(réglage parent)</small></span>
-      <div class="pref-niveau">
-        <label class="pref-niveau-row">
-          <span><strong>Classe</strong></span>
-          <select class="pref-niveau-select" id="prefNiveauRef">${opts(ref)}</select>
-        </label>
-        ${matieres}
-      </div>
-      <p class="pref-hint">« Comme la classe » suit la classe choisie ; ajuste une matière si besoin.</p>
-    </div>`;
-}
-
 // Bloc « Préférences » de l'écran Profils (thème + animations) pour le profil actif.
 export function renderPreferences() {
 	const el = document.getElementById('preferences');
@@ -153,7 +112,6 @@ export function renderPreferences() {
         <div class="theme-palette" role="radiogroup" aria-label="Choisir un thème de couleur à débloquer">${recompenses.join('')}</div>
       </div>
     </div>
-    ${niveauParentHTML()}
     <div class="pref-block">
       <span class="pref-lab">${icon('eye')} Accessibilité</span>
       <div class="pref-toggles">

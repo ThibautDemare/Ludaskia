@@ -493,8 +493,10 @@ mesure au rapporteur relève du CM1 (future leçon).
   `cmpRun` « score puis temps », `loadRuns` = niveau actif / `loadRunsAll` = tous
   niveaux pour l'effort — #233), série (`updateStreak`, `streakSuffix`), étoiles
   (`recordLessonResult`, `starsEarned`), stats par leçon (`recordLessonStats`,
-  `lessonAvgPct`), **XP global** (`getXP`/`addXP`, `ludaskia_xp`) et **niveaux
-  dérivés** (`niveauDepuisXP`, `progressionNiveau`, `xpVersSuivant`,
+  `lessonAvgPct` cumul + `recentPct`/`recentAvgPct` = perf **récente**, #234),
+  **journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée
+  horodatée par `recordLessonStats`, #234), **XP global** (`getXP`/`addXP`, `ludaskia_xp`)
+  et **niveaux dérivés** (`niveauDepuisXP`, `progressionNiveau`, `xpVersSuivant`,
   `xpPourNiveau`, `NIVEAU_MAX`), périodes calendaires (`startOfWeek/Month`,
   `countSince`).
 - **`rewards.ts`** — défi du jour contextuel (`CHALLENGES`, `getGoal`,
@@ -510,6 +512,14 @@ mesure au rapporteur relève du CM1 (future leçon).
   fait dans `profiles.ts` pour éviter un cycle), **thèmes de couleur** (`THEMES`,
   `themesDebloques` — tous clairs, débloqués par palier), et récompenses de palier
   (`recompensesNiveau`, `recompensesEntre` qui agrège un saut de plusieurs niveaux).
+- **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
+  bascule** (`progressionProfil`, `niveauNotion` échelle 4 niveaux, `activiteParJour`,
+  `niveauProfilMatiere`) et **file « à revoir »** (`loadRevoir`/`loadRevoirFor`/
+  `toggleRevoirFor`/`revoirActives`). Lit les clés brutes du profil consulté.
+- **`encadrant-lock.ts`** (#234) — verrou optionnel de l'espace encadrant : PIN haché
+  (SHA-256 `crypto.subtle`) + récupération par secret (GUID) ; clé GLOBALE
+  `ludaskia_encadrant_lock` (`pinActif`/`definirPin`/`verifierPin`/`reinitViaRecuperation`/
+  `desactiverPin`).
 
 ### `src/ui/`
 - **`chrono.ts`** — chronomètre croissant de la barre (sessions). `startChrono`
@@ -524,6 +534,12 @@ mesure au rapporteur relève du CM1 (future leçon).
   + confirmation), `maybeRelaunch` (à la relance d'un exercice déjà commencé :
   modale **« Continuer / Recommencer »**), et le **contexte de reprise** posé au
   lancement (`setResumeCtx`) / nettoyé à la fin (`finishResume`).
+- **`encadrant.ts`** (#234) — rendu de l'**espace encadrant** (`enterEncadrant`) :
+  porte PIN (pavé numérique), sélecteur de profils en **consultation** (≠ bascule),
+  réglages (classe par UUID + code), et **récap** par profil. Listeners délégués posés
+  une fois sur `#encadrantContent` ; voix « vous », accent neutre (`encadrant.scss`).
+- **`a-revoir-card.ts`** (#234) — carte d'accueil `#aRevoir` (modèle « leçon du jour »)
+  affichant les leçons épinglées « à revoir » par l'encadrant, masquée si vide.
 - **`modal-a11y.ts`** — **mécanique a11y partagée des modales** (#235, extraite de
   `ui-modal.ts`) : `activateModal(overlay, opts) → release()` pose le **focus-trap**
   (Tab/Maj+Tab bouclent à l'intérieur), l'**arrière-plan `inert`** + scroll-lock, la
@@ -806,7 +822,7 @@ le sprint passent tous deux par ce point.
 ## Voix des libellés (« tu » / « je », #278)
 
 Parti pris de rédaction de l'interface, fondé sur **qui parle** (acté #278 ;
-avis `redacteur-contenu-francais` + `pedagogue-primaire`). Trois cas, à appliquer
+avis `redacteur-contenu-francais` + `pedagogue-primaire`). Quatre cas, à appliquer
 dès la création d'un libellé :
 
 - **(a) L'app parle À l'enfant → « tu »** (voix par défaut) : titres d'écran et de
@@ -822,6 +838,12 @@ dès la création d'un libellé :
 - **(c) La mascotte / l'app se décrit → « je »** (conservé) : la mascotte est le
   sujet du verbe. Ex. « Je me mets à jour… je reviens tout de suite ! »,
   « Un instant, je prépare tes mots… ». Les tutoyer serait un contresens.
+- **(d) L'app parle à un ADULTE → « vous »** (#234) : **uniquement** dans l'**espace
+  encadrant** (`ui/encadrant.ts`), qui n'est pas destiné à l'enfant. Ex. « Entrez
+  votre code à 4 chiffres », « Vous regardez les progrès de Léa », « Conservez bien
+  cette clé ». Ce basculement « tu → vous » est, avec le retrait du vert de marque,
+  le principal signal de rupture « on a quitté l'espace de l'enfant ». Le vouvoiement
+  ne déborde **jamais** hors de cet espace.
 
 Le défaut à corriger = un cas (a) **déguisé en (b)** : un titre/une question posés
 par l'interface mais rédigés en « je ». Règle mnémotechnique : si on peut préfixer
@@ -853,7 +875,18 @@ décompte d'objectif seul), `ludaskia_streak`, `ludaskia_stars`,
 leçon, objectif « nouvelle leçon »), `ludaskia_lessonRevision` (état SR par leçon),
 `ludaskia_goal`, `ludaskia_goalsDone`, `ludaskia_trophies`, `ludaskia_xp`,
 `ludaskia_bilans` (configs de bilans favoris), `ludaskia_resume` (exercices
-grille **en cours**, repris ou abandonnés — #63). L'état SR des **mots**
+grille **en cours**, repris ou abandonnés — #63), `ludaskia_activity` (#234 :
+journal borné d'horodatages des sessions finalisées, alimenté une fois par
+`recordLessonStats` — base du graphe d'activité de l'espace encadrant, plus complet
+que les `runs` car il couvre aussi les leçons jouées seules), `ludaskia_revoir`
+(#234 : ids de leçons épinglées « à revoir » par l'encadrant → carte d'accueil de
+l'enfant). Un `LessonStat` porte aussi `recentPct?` (#234 : fenêtre glissante des
+derniers % d'une leçon — base de la performance **récente**, distincte du cumul
+historique de `lessonAvgPct`). **Clé GLOBALE** (non préfixée profil), comme
+`ludaskia_profiles` : `ludaskia_encadrant_lock` (#234 : `{pinHash, recoveryHash}`
+du verrou optionnel de l'espace encadrant — verrou de l'ESPACE, pas d'un profil,
+donc non exporté et survit à la réinitialisation/suppression d'un profil).
+L'état SR des **mots**
 d'orthographe vit dans `ludaskia_ortho` (`MotOrtho.revision`). Un `MotOrtho`
 porte aussi des **formes fléchies** optionnelles (`formes?: FormesAccord` — masc/fém
 × sing/plur, #109), saisissables par le parent dans l'éditeur de listes et
@@ -941,6 +974,46 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   s'il va au bout des 5 minutes.
 - Une récompense déclenche une **modale + confettis** (jamais de confettis sans
   explication).
+
+## Espace encadrant (#234)
+Vue gatée `#encadrant` (dans app.html, **pas** une page séparée), réservée aux adultes
+(parents/enseignants) et **distincte de l'espace enfant** : voix « **vous** » (cf. Voix,
+cas (d)), chrome neutre (token `--admin-bg` + accent `--admin-accent` bleu, stables quel
+que soit le thème déblocable), densité d'info plus élevée, aucun vocabulaire visuel
+enfantin. Accès par un lien sobre en **pied de l'écran Profils** (`#btnEncadrant`) — jamais
+dans la barre d'outils de l'enfant.
+
+- **Consultation SANS bascule** : on lit la progression de **n'importe quel** profil par
+  UUID, sans changer le profil actif. Tout l'accès stats usuel lit le profil/niveau ACTIFS ;
+  ici, `core/encadrant-stats.ts` lit les **clés brutes** `uuid + '/' + KEY` (via `lsGetRaw`,
+  sur le modèle de `getXPFor`) et résout le niveau depuis la méta du profil **consulté**
+  (`niveauProfilMatiere`). **Invariant** (testé) : aucune lecture du tableau de bord ne touche
+  `meta.active` ni `activePrefix`. Le sélecteur emploie le verbe « Voir » (≠ bascule) et un
+  bandeau persistant « Vous regardez [prénom] » ; le bouton « Retour à [prénom] » nomme le
+  joueur **actif** (pas le consulté).
+- **Récap = outil d'accompagnement, pas un bulletin** (avis `pedagogue-primaire`) : état par
+  notion/catégorie en **4 niveaux** (`niveauNotion` : à découvrir / non acquis / en cours /
+  acquis), piloté par le **`%` récent JAMAIS affiché en nombre** ; « N notions maîtrisées
+  récemment » (jalons datés) ; **2-3** leçons « à revoir » (perf récente < 70 %) ; graphe
+  d'activité 7 jours (journal `ludaskia_activity`). **Bannis** : moyenne/note globale, XP comme
+  niveau scolaire, classement, comparaison entre profils, temps-performance.
+- **« À revoir » → carte d'accueil** : l'encadrant **épingle** des leçons
+  (`toggleRevoirFor(uuid, …)` → `ludaskia_revoir` du profil). Au retour de l'enfant sur son
+  accueil, `ui/a-revoir-card.ts` affiche une carte (`#aRevoir`, modèle « leçon du jour ») qui
+  **boucle** sur la liste ; auto-nettoyage au rendu (`revoirActives` exclut une leçon redevenue
+  solide). L'enfant n'a pas à être présent quand l'encadrant épingle.
+- **Réglage « Classe scolaire » déplacé** ici (hors de portée de l'enfant, retiré de
+  `renderPreferences`) ; il opère **par UUID consulté** (`setNiveauReferenceFor`/`setNiveauMatiereFor`).
+- **Impression** d'une fiche au niveau du profil consulté **sans bascule** : `buildLessonFiche`/
+  `buildPrintableDOM` acceptent un `level?`/`PrintScope.level` explicite (`printScope`).
+- **Verrou optionnel** (`core/encadrant-lock.ts`) : PIN 4 chiffres **OFF par défaut**, **haché**
+  (SHA-256 `crypto.subtle`), réinitialisable **uniquement** via un **secret de récupération**
+  (GUID) affiché une fois (copier/télécharger `.txt`) — son haché seul est stocké. Garde-fou
+  anti-modification accidentelle par l'enfant, **pas** une sécurité (contournable en devtools →
+  vrai verrouillage = contrôles parentaux de l'appareil) ; à l'activation, on prévient que perdre
+  PIN **et** secret rend l'accès définitivement perdu. Déverrouillage mémorisé pour la session de
+  page. La **protection inter-profils en classe** (verrou de profil) relève de #299, qui
+  réutilisera ce mécanisme.
 
 ## Niveaux scolaires (#225)
 Le **niveau scolaire** (`SchoolLevel = cp|ce1|ce2|cm1|cm2|6e`) est un **réglage de

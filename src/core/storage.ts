@@ -48,6 +48,17 @@ export function lsRemoveQuiet(key: string) {
 		localStorage.removeItem(realKey(key));
 	} catch (e) {}
 }
+/* Lecture d'une clé RÉELLE (déjà préfixée, JSON tolérant) : pour lire les données
+   d'un profil donné par UUID SANS changer le profil actif — espace encadrant (#234),
+   sur le modèle de getXPFor (profiles.ts). Ne passe pas par le préfixe actif. */
+export function lsGetRaw(realK: string, fallback: any) {
+	try {
+		const v = localStorage.getItem(realK);
+		return v == null ? fallback : JSON.parse(v);
+	} catch (e) {
+		return fallback;
+	}
+}
 /* Accès bas niveau aux clés réelles (réinitialiser/supprimer/sauvegarder) */
 export function lsKeysRaw(): string[] {
 	const o: string[] = [];

@@ -54,16 +54,14 @@ test("accès depuis Profils : #btnEncadrant visible, clic ouvre l'espace encadra
 });
 
 /* 2. Navigation directe : rendu de l'espace sans erreur */
-test('navigation directe #encadrant : titre + bandeau contexte + récap présents', async ({
-	page,
-}) => {
+test('navigation directe #encadrant : titre + récap (progression) présents', async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(CLEAR_PIN);
 	await gotoHash(page, 'encadrant');
 
 	await expect(page.locator('.enc-title')).toBeVisible();
-	await expect(page.locator('.enc-context')).toBeVisible();
-	// Le bloc de chiffres de progression est rendu.
+	// Le récap nomme l'enfant consulté (titre « Progression de … ») + chiffres-clés.
+	await expect(page.locator('.enc-frame')).toBeVisible();
 	await expect(page.locator('.enc-stats')).toBeVisible();
 	expect(errors).toEqual([]);
 });
@@ -117,7 +115,7 @@ test('cycle PIN : activation, rechargement, mauvais code refusé, bon code accep
 	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
 
 	// Vérifier que l'espace est directement accessible (pas de pavé).
-	await expect(page.locator('.enc-context')).toBeVisible();
+	await expect(page.locator('.enc-frame')).toBeVisible();
 
 	// Cliquer « Activer un code ».
 	await page.locator('[data-act="pin-activer"]').click();
@@ -142,7 +140,7 @@ test('cycle PIN : activation, rechargement, mauvais code refusé, bon code accep
 	await page.locator('[data-act="pin-terminer"]').click();
 
 	// De retour dans l'espace (session déjà déverrouillée en mémoire).
-	await expect(page.locator('.enc-context')).toBeVisible();
+	await expect(page.locator('.enc-frame')).toBeVisible();
 
 	// Recharger la page → réinitialise l'état mémoire JS (deverrouille = false),
 	// le verrou PIN est dans localStorage → le pavé doit s'afficher.
@@ -162,9 +160,9 @@ test('cycle PIN : activation, rechargement, mauvais code refusé, bon code accep
 	}
 
 	// Message d'erreur visible ; l'espace n'est pas ouvert (renderGate efface le DOM,
-	// donc .enc-context est absent — toHaveCount(0) est plus robuste que toBeHidden).
+	// donc le récap .enc-frame est absent — toHaveCount(0) plus robuste que toBeHidden).
 	await expect(page.locator('.enc-gate-err')).toBeVisible();
-	await expect(page.locator('.enc-context')).toHaveCount(0);
+	await expect(page.locator('.enc-frame')).toHaveCount(0);
 
 	// Saisir le BON code (1-2-3-4).
 	for (const d of CODE) {
@@ -172,7 +170,7 @@ test('cycle PIN : activation, rechargement, mauvais code refusé, bon code accep
 	}
 
 	// L'espace est maintenant accessible.
-	await expect(page.locator('.enc-context')).toBeVisible();
+	await expect(page.locator('.enc-frame')).toBeVisible();
 
 	expect(errors).toEqual([]);
 });

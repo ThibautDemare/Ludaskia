@@ -149,63 +149,42 @@
 }
 
 /* ---------- Contexte « vous regardez … » ---------- */
-.enc-context {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-left: 4px solid var(--admin-accent);
-	border-radius: 10px;
-	padding: 0.6rem 0.8rem;
-	margin-bottom: 1.1rem;
-	color: var(--grey);
-}
-.enc-context-emoji {
-	font-size: 1.4rem;
-}
-
-/* ---------- Sélecteur de profils (consultation, ≠ bascule) ---------- */
+/* ---------- Profils : consulter (« Voir le suivi ») + gérer (replié) ---------- */
 .enc-profiles {
 	list-style: none;
 	margin: 0;
 	padding: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 0.4rem;
+	gap: 0.5rem;
 }
-.enc-profile {
-	display: flex;
-	align-items: center;
-	gap: 0.6rem;
-	width: 100%;
-	min-height: 52px;
-	padding: 0.5rem 0.8rem;
+.enc-prof-card {
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 10px;
-	font: inherit;
-	color: var(--ink);
-	cursor: pointer;
-	text-align: left;
+	padding: 0.5rem 0.7rem;
 }
-.enc-profile:hover {
-	background: var(--track);
-}
-.enc-profile:focus-visible {
-	outline: 3px solid var(--admin-accent);
-	outline-offset: 2px;
-}
-.enc-profile.current {
+.enc-prof-card.current {
 	border-color: var(--admin-accent);
 	box-shadow: inset 0 0 0 1px var(--admin-accent);
+}
+.enc-prof-head {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+.enc-prof-id {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
 }
 .enc-profile-emoji {
 	font-size: 1.5rem;
 }
 .enc-profile-name {
 	font-weight: 800;
-	flex: 1;
 }
 .enc-profile-actif {
 	font-size: 0.75rem;
@@ -214,10 +193,40 @@
 	padding: 0.1rem 0.5rem;
 	border-radius: 999px;
 }
-.enc-profile-go {
+.enc-gerer {
+	margin-top: 0.4rem;
+}
+.enc-gerer > summary {
+	cursor: pointer;
 	font-size: 0.85rem;
+	color: var(--admin-accent);
+	padding: 0.3rem 0;
+	list-style: none;
+}
+.enc-gerer > summary::-webkit-details-marker {
+	display: none;
+}
+.enc-gerer > summary::before {
+	content: '▸ ';
 	color: var(--muted);
-	font-weight: 700;
+}
+.enc-gerer[open] > summary::before {
+	content: '▾ ';
+}
+.enc-gerer-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	padding: 0.2rem 0 0.4rem;
+}
+/* Spécificité (deux classes) pour battre `.enc-btn-sec` déclaré plus bas (sinon, à
+   spécificité égale, le bleu d'accent l'emporterait et « Supprimer » resterait bleu). */
+.enc-btn-sec.enc-danger {
+	color: var(--ko);
+	border-color: var(--ko);
+}
+.enc-prof-add {
+	margin-top: 0.5rem;
 }
 
 /* ---------- Réglages (classe + code) ---------- */
@@ -660,13 +669,5 @@
 	flex-wrap: wrap;
 }
 
-/* ---------- Tablette/desktop : deux colonnes pour le sélecteur ---------- */
-@media (min-width: 720px) {
-	.enc-profiles {
-		flex-direction: row;
-		flex-wrap: wrap;
-	}
-	.enc-profile {
-		flex: 1 1 240px;
-	}
-}
+/* Les cartes profil (consulter + gérer dépliable) restent en COLONNE à toutes les
+   tailles : un dépliage en grille 2 colonnes décalerait les cartes voisines. */

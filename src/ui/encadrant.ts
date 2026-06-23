@@ -18,8 +18,19 @@ import {
 	activeProfile,
 	setNiveauReferenceFor,
 	setNiveauMatiereFor,
+	addProfile,
+	renameProfile,
+	setProfileEmoji,
+	resetProfile,
+	deleteProfile,
+	exportProfiles,
+	importProfiles,
+	getXPFor,
 	type Profile,
 } from '../core/profiles';
+import { emojiPaletteHTML } from './render';
+import { niveauDepuisXP } from '../core/progress';
+import { applyPreferences } from './preferences';
 import {
 	progressionProfil,
 	toggleRevoirFor,
@@ -38,7 +49,7 @@ import {
 import { getAllLessons, SUBJECTS, type SchoolLevel, type LessonDef } from '../core/catalog';
 import { availableLevels, LEVEL_LABEL } from '../core/levels';
 import { printScope } from './session';
-import { uiConfirm } from './ui-modal';
+import { uiConfirm, uiPrompt, toast } from './ui-modal';
 
 /* ---------- État de la vue (module) ---------- */
 let container: HTMLElement | null = null;
@@ -51,6 +62,7 @@ let recoveryErreur = false; // clé de récupération invalide
 let pinPanel: 'none' | 'saisie' | 'secret' = 'none'; // sous-panneau « code » des réglages
 let pinSecret: string | null = null; // secret de récupération à afficher une fois
 let secretConserve = false; // case « j'ai conservé ma clé »
+let gestionEmojiFor: string | null = null; // profil dont la palette d'avatar est ouverte (gestion)
 
 /* Mot affiché pour un niveau d'acquisition (échelle type LSU ; wording validé par
    pedagogue-primaire / redacteur-contenu-francais — la notion est qualifiée, pas l'enfant). */
@@ -192,34 +204,65 @@ function renderEspace(): void {
       </button>
     </div>
     <h1 class="enc-title">Espace encadrants</h1>
-    ${selecteurHTML(profiles, consulte, actif)}
-    <div class="enc-context" role="status">
-      <span class="enc-context-emoji" aria-hidden="true">${escapeHTML(consulte.emoji)}</span>
-      Vous regardez les progrès de <strong>${escapeHTML(consulte.name)}</strong>.
-    </div>
+    ${profilsHTML(profiles, consulte, actif)}
     ${recapHTML(recap, consulte)}
-    ${reglagesHTML(consulte)}`;
+    ${reglagesHTML(consulte)}
+    ${sauvegardeHTML()}`;
 }
 
-function selecteurHTML(profiles: Profile[], consulte: Profile, actif: Profile): string {
-	if (profiles.length < 2) return '';
-	const items = profiles
+/* Liste des profils : CONSULTER (« Voir le suivi » → recap ci-dessous) + GÉRER
+   (renommer/avatar/réinitialiser/supprimer, replié). Action de gestion = encadrant
+   UNIQUEMENT (un enfant ne touche pas aux profils des autres). Suppression désactivée
+   s'il ne reste qu'un profil. La bascule du profil ACTIF reste au menu de la barre. */
+function profilsHTML(profiles: Profile[], consulte: Profile, actif: Profile): string {
+	const seul = profiles.length <= 1;
+	const cartes = profiles
 		.map((p) => {
 			const courant = p.uuid === consulte.uuid;
 			const joue = p.uuid === actif.uuid;
-			return `<li>
-        <button type="button" class="enc-profile${courant ? ' current' : ''}" data-act="voir" data-uuid="${p.uuid}"${courant ? ' aria-current="true"' : ''}>
+			const palette =
+				gestionEmojiFor === p.uuid
+					? emojiPaletteHTML(p.emoji, niveauDepuisXP(getXPFor(p.uuid)))
+					: '';
+			return `<li class="enc-prof-card${courant ? ' current' : ''}">
+        <div class="enc-prof-head">
           <span class="enc-profile-emoji" aria-hidden="true">${escapeHTML(p.emoji)}</span>
-          <span class="enc-profile-name">${escapeHTML(p.name)}</span>
-          ${joue ? '<span class="enc-profile-actif">joue en ce moment</span>' : ''}
-          <span class="enc-profile-go" aria-hidden="true">${courant ? 'En cours' : 'Voir →'}</span>
-        </button>
+          <span class="enc-prof-id">
+            <span class="enc-profile-name">${escapeHTML(p.name)}</span>
+            ${joue ? '<span class="enc-profile-actif">joue en ce moment</span>' : ''}
+          </span>
+          <button type="button" class="enc-btn${courant ? '' : '-sec'}" data-act="voir" data-uuid="${p.uuid}"${courant ? ' aria-current="true"' : ''}>${courant ? `${icon('check')} Affiché` : `${icon('eye')} Voir le suivi`}</button>
+        </div>
+        <details class="enc-gerer"${gestionEmojiFor === p.uuid ? ' open' : ''}>
+          <summary>Gérer ce profil</summary>
+          <div class="enc-gerer-actions">
+            <button type="button" class="enc-btn-sec" data-act="enc-rename" data-uuid="${p.uuid}">${icon('pencil')} Renommer</button>
+            <button type="button" class="enc-btn-sec" data-act="enc-emoji" data-uuid="${p.uuid}">${icon('palette')} Avatar</button>
+            <button type="button" class="enc-btn-sec" data-act="enc-reset" data-uuid="${p.uuid}">${icon('reset')} Réinitialiser</button>
+            <button type="button" class="enc-btn-sec enc-danger" data-act="enc-delete" data-uuid="${p.uuid}"${seul ? ' disabled' : ''}>${icon('trash')} Supprimer</button>
+          </div>
+          ${palette}
+        </details>
       </li>`;
 		})
 		.join('');
 	return `<section class="enc-section">
-      <h2 class="enc-h2">Quel enfant souhaitez-vous suivre ?</h2>
-      <ul class="enc-profiles">${items}</ul>
+      <h2 class="enc-h2">Profils</h2>
+      <p class="enc-hint">Choisissez « Voir le suivi » pour consulter un enfant ci-dessous, ou dépliez « Gérer » pour le modifier.</p>
+      <ul class="enc-profiles">${cartes}</ul>
+      <button type="button" class="enc-btn-sec enc-prof-add" data-act="enc-add">${icon('plus')} Nouveau profil</button>
+    </section>`;
+}
+
+/* Sauvegarde : export de TOUS les profils / import (fusion par UUID, par récence). */
+function sauvegardeHTML(): string {
+	return `<section class="enc-section">
+      <h2 class="enc-h2">Sauvegarde</h2>
+      <p class="enc-hint">Exportez les profils (transfert vers un autre appareil) ou importez une sauvegarde. À l'import, un profil déjà présent n'est remplacé que s'il est plus récent.</p>
+      <div class="enc-actions">
+        <button type="button" class="enc-btn-sec" data-act="enc-export">${icon('export')} Exporter les profils</button>
+        <button type="button" class="enc-btn-sec" data-act="enc-import">${icon('import')} Importer une sauvegarde</button>
+      </div>
     </section>`;
 }
 
@@ -306,7 +349,7 @@ function pinHTML(): string {
 /* ---------- Récap de progression (accompagnement, pas un bulletin) ---------- */
 function recapHTML(recap: RecapProfil, consulte: Profile): string {
 	return `<section class="enc-section">
-      <h2 class="enc-h2">Progression de ${escapeHTML(consulte.name)}</h2>
+      <h2 class="enc-h2"><span aria-hidden="true">${escapeHTML(consulte.emoji)}</span> Progression de ${escapeHTML(consulte.name)}</h2>
       <p class="enc-frame">Voici où en est l'entraînement de ${escapeHTML(consulte.name)}, pour vous aider à l'accompagner.</p>
       ${chiffresHTML(recap)}
       ${activiteHTML(recap)}
@@ -490,6 +533,35 @@ function onClick(e: Event): void {
 			pinPanel = 'none';
 			renderEspace();
 			break;
+		case 'enc-rename':
+			if (el.dataset.uuid) onEncRename(el.dataset.uuid);
+			break;
+		case 'enc-emoji':
+			gestionEmojiFor = gestionEmojiFor === el.dataset.uuid ? null : (el.dataset.uuid ?? null);
+			renderEspace();
+			break;
+		case 'set-emoji':
+			if (gestionEmojiFor && el.dataset.emoji) {
+				setProfileEmoji(gestionEmojiFor, el.dataset.emoji);
+				gestionEmojiFor = null;
+				renderEspace();
+			}
+			break;
+		case 'enc-reset':
+			if (el.dataset.uuid) onEncReset(el.dataset.uuid);
+			break;
+		case 'enc-delete':
+			if (el.dataset.uuid) onEncDelete(el.dataset.uuid);
+			break;
+		case 'enc-add':
+			onEncAdd();
+			break;
+		case 'enc-export':
+			onEncExport();
+			break;
+		case 'enc-import':
+			onEncImport();
+			break;
 		case 'recovery-valider':
 			onRecoveryValider();
 			break;
@@ -624,6 +696,104 @@ function onPinDesactiver(): void {
 	});
 }
 
+/* ---------- Gestion des profils (encadrant uniquement) ---------- */
+function onEncRename(uuid: string): void {
+	const courant = listProfiles().find((p) => p.uuid === uuid)?.name ?? '';
+	void uiPrompt({
+		title: 'Nouveau prénom',
+		okLabel: 'Renommer',
+		defaultValue: courant,
+		selectDefault: true,
+	}).then((n) => {
+		if (n) {
+			renameProfile(uuid, n);
+			renderEspace();
+		}
+	});
+}
+
+function onEncReset(uuid: string): void {
+	const nom = listProfiles().find((p) => p.uuid === uuid)?.name ?? 'ce profil';
+	void uiConfirm({
+		title: `Réinitialiser la progression de ${nom} ?`,
+		message: 'Toute sa progression repartira de zéro. C’est irréversible.',
+		confirmLabel: 'Tout réinitialiser',
+		destructive: true,
+		confirmIcon: 'reset',
+	}).then((ok) => {
+		if (!ok) return;
+		resetProfile(uuid);
+		if (uuid === activeProfile()?.uuid) applyPreferences(); // l'XP repart à 0 → thème éventuel
+		renderEspace();
+	});
+}
+
+function onEncDelete(uuid: string): void {
+	const nom = listProfiles().find((p) => p.uuid === uuid)?.name ?? 'ce profil';
+	void uiConfirm({
+		title: `Supprimer le profil de ${nom} ?`,
+		message: 'Le profil et toute sa progression seront définitivement effacés.',
+		confirmLabel: 'Supprimer',
+		destructive: true,
+		confirmIcon: 'trash',
+	}).then((ok) => {
+		if (!ok || !deleteProfile(uuid)) return;
+		applyPreferences(); // le profil actif a pu changer
+		if (consulteUuid === uuid) consulteUuid = activeProfile()?.uuid ?? null;
+		renderEspace();
+	});
+}
+
+function onEncAdd(): void {
+	void uiPrompt({
+		title: 'Prénom du nouveau profil',
+		okLabel: 'Créer le profil',
+		placeholder: 'Prénom',
+	}).then((n) => {
+		if (!n) return;
+		addProfile(n); // devient le profil actif
+		applyPreferences();
+		consulteUuid = activeProfile()?.uuid ?? null;
+		renderEspace();
+	});
+}
+
+function onEncExport(): void {
+	const payload = exportProfiles(listProfiles().map((p) => p.uuid));
+	if (!payload) return;
+	const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+	telechargerBlob(`ludaskia-${payload.profiles.length}-profils.json`, blob);
+}
+
+function onEncImport(): void {
+	const input = document.createElement('input');
+	input.type = 'file';
+	input.accept = 'application/json,.json';
+	input.addEventListener('change', () => {
+		const file = input.files?.[0];
+		if (!file) return;
+		const reader = new FileReader();
+		reader.onload = () => {
+			try {
+				const res = importProfiles(JSON.parse(String(reader.result)));
+				if (!res) {
+					toast('Fichier de sauvegarde non reconnu.');
+					return;
+				}
+				consulteUuid = activeProfile()?.uuid ?? null;
+				renderEspace();
+				toast(
+					`Import : ${res.added} ajouté(s), ${res.updated} mis à jour, ${res.skipped} ignoré(s).`,
+				);
+			} catch {
+				toast('Fichier de sauvegarde illisible.');
+			}
+		};
+		reader.readAsText(file);
+	});
+	input.click();
+}
+
 function onImprimer(lessonId: string, corrige = false): void {
 	const consulte = listProfiles().find((p) => p.uuid === consulteUuid) ?? activeProfile();
 	const lesson = getAllLessons().find((l) => l.id === lessonId);
@@ -633,15 +803,22 @@ function onImprimer(lessonId: string, corrige = false): void {
 	printScope({ title: lesson.label, lessonIds: [lessonId], kind: 'fiches', level, corrige });
 }
 
-function telechargerSecret(secret: string): void {
-	const texte = `Clé de récupération — Espace encadrants (Ludaskia)\n\n${secret}\n\nÀ conserver précieusement : cette clé permet de réinitialiser votre code d'accès si vous l'oubliez. Si vous perdez à la fois le code et cette clé, l'accès à cet espace sera définitivement perdu.\n`;
-	const blob = new Blob([texte], { type: 'text/plain;charset=utf-8' });
+/* Déclenche le téléchargement d'un blob (export profils, clé de récupération…). */
+function telechargerBlob(nom: string, blob: Blob): void {
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement('a');
 	a.href = url;
-	a.download = 'ludaskia-cle-recuperation.txt';
+	a.download = nom;
 	document.body.appendChild(a);
 	a.click();
 	a.remove();
 	setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function telechargerSecret(secret: string): void {
+	const texte = `Clé de récupération — Espace encadrants (Ludaskia)\n\n${secret}\n\nÀ conserver précieusement : cette clé permet de réinitialiser votre code d'accès si vous l'oubliez. Si vous perdez à la fois le code et cette clé, l'accès à cet espace sera définitivement perdu.\n`;
+	telechargerBlob(
+		'ludaskia-cle-recuperation.txt',
+		new Blob([texte], { type: 'text/plain;charset=utf-8' }),
+	);
 }

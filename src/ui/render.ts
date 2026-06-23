@@ -147,7 +147,7 @@ export function closeEmojiPicker() {
 /* Palette d'avatars : les 12 de base (toujours dispo) puis la gamme « forêt »
    débloquée par niveau. Les avatars verrouillés sont grisés avec « 🔒 Niv X ».
    `niveau` est celui du profil édité (pas forcément l'actif). */
-function emojiPaletteHTML(current: string, niveau: number) {
+export function emojiPaletteHTML(current: string, niveau: number) {
 	const dispo = (e: string) =>
 		`<button class="emoji-opt${e === current ? ' current' : ''}" data-act="set-emoji" data-emoji="${e}"${
 			e === current ? ' aria-current="true"' : ''

@@ -13,6 +13,7 @@ import { escapeHTML } from '../core/utils';
 import { lettresDuMot } from '../core/orthographe/exercise';
 import type { Entourage, MotOrtho } from '../core/orthographe/types';
 import { uiConfirm } from './ui-modal';
+import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 
 // Palette colorblind-safe (Okabe-Ito).
 const PALETTE = ['#E69F00', '#56B4E9', '#009E73', '#0072B2', '#CC79A7', '#D55E00'];
@@ -150,6 +151,8 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
       <div class="atelier-done"><button class="btn-primary" id="btnAtelierDone">Continuer →</button></div>
     </div>`;
 
+	monterBoutonAide(host.querySelector('.ortho-run'), 'atelier'); // bouton « ? » persistant (#272)
+
 	const motEl = host.querySelector('#atelierMot') as HTMLElement;
 	const stage = host.querySelector('.atelier-stage') as HTMLElement;
 	const svg = host.querySelector('#atelierSvg') as unknown as SVGSVGElement;
@@ -271,4 +274,6 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 		redrawSvg();
 	};
 	window.addEventListener('resize', resizeHandler);
+
+	maybeAutoAide('atelier'); // bulle d'aide au 1er lancement (une fois par profil)
 }

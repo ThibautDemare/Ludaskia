@@ -3,7 +3,13 @@
    clavier, tuiles à déplacer) bout en bout dans le navigateur.
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, seedAideVue } from './helpers';
+
+/* Le mode « tuiles » de numération déclenche l'aide contextuelle au 1er lancement.
+   On la marque comme déjà vue pour éviter que l'overlay bloque les interactions. */
+test.beforeEach(async ({ page }) => {
+	await seedAideVue(page);
+});
 
 test('Numération : la catégorie liste ses leçons', async ({ page }) => {
 	const errors = watchErrors(page);

@@ -31,6 +31,7 @@ import {
 	setCurrentMode,
 	setCurrentLessonId,
 } from './navigation';
+import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 
 const NB_QUESTIONS = 6;
 
@@ -93,6 +94,7 @@ export function runLeconOrdre(lessonId: string, m: ExerciseMode): void {
 	hideMenus();
 	setToolbar({ verify: false, home: true, profile: false });
 	renderQuestion();
+	maybeAutoAide('ordre'); // bulle d'aide au 1er lancement (une fois par profil)
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -127,6 +129,7 @@ function renderQuestion(): void {
 		.querySelector('#lordVerif')!
 		.addEventListener('click', () => verifier());
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
+	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'ordre'); // bouton « ? » persistant (#272)
 }
 
 function redraw(): void {

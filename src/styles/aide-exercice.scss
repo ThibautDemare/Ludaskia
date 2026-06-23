@@ -1,0 +1,743 @@
+/* ============================================================
+   Aide contextuelle des exercices (#272) — bouton « ampoule », mini-modale
+   (mascotte + étapes), et illustrations ANIMÉES (un doigt exécute le geste,
+   jouées une fois, rejouables via « Revoir », figées sous mouvement réduit).
+   Réutilise .modal-overlay / .modal / .modal-title / .modal-close / .modal-ok /
+   .modal-listen (cf. styles/modal.scss) et la mascotte (cf. gamification.scss).
+   ============================================================ */
+
+/* ---------- Bouton « ampoule » d'aide, en-tête de l'exercice ---------- */
+/* Ancré en haut-droite du conteneur d'exercice. Scopé `.sprint-lecon` (jamais le
+   sprint chronométré, qui n'a pas ce bouton) ; `position: relative` seul ne décale
+   rien visuellement. */
+.sprint-lecon .sprint-stage,
+.ortho-run {
+	position: relative;
+}
+.aide-btn {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	z-index: 2;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 44px;
+	min-height: 44px;
+	padding: 0;
+	border: 1px solid var(--accent);
+	border-radius: 999px;
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+	cursor: pointer;
+	transition:
+		background 0.15s ease,
+		box-shadow 0.15s ease;
+}
+.aide-btn .ph-icon {
+	width: 24px;
+	height: 24px;
+}
+.aide-btn:hover,
+.aide-btn:active {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+.aide-btn:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 5px var(--accent);
+}
+
+/* Couloir réservé au bouton d'aide (en haut-droite) pour ne jamais masquer le
+   titre de leçon ni la consigne, même sur petit écran (≈ 320 px). */
+.sprint-lecon .sprint-theme {
+	padding-left: 40px;
+	padding-right: 40px;
+}
+.ortho-run .ortho-run-consigne {
+	padding-left: 52px;
+	padding-right: 52px;
+}
+
+/* ---------- Mini-modale d'aide ---------- */
+.aide-modal {
+	max-width: 440px;
+}
+/* Mascotte qui « présente » l'aide (emoji + bulle, cf. gamification.scss). */
+.aide-modal .mascotte-scene {
+	margin: 2px auto 8px;
+	padding: 0 8px;
+}
+.aide-titre {
+	margin-top: 0;
+}
+/* Bouton principal de fermeture (hors .modal-actions : il faut imposer la hauteur). */
+.aide-ok {
+	min-height: 48px;
+}
+/* Croix : cible tactile pleine (l'icône reste petite, la zone cliquable fait 44px). */
+.aide-close {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 44px;
+	min-height: 44px;
+}
+.aide-close .ph-icon {
+	width: 20px;
+	height: 20px;
+}
+.aide-illu-wrap {
+	margin: 4px 0 6px;
+}
+.aide-etapes {
+	counter-reset: aide;
+	list-style: none;
+	margin: 4px 0 12px;
+	padding: 0;
+	text-align: left;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.aide-etapes li {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 14px;
+	background: var(--accent-soft);
+	border-radius: 12px;
+	font-family: var(--ui);
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--ink);
+	line-height: 1.35;
+}
+.aide-etapes li::before {
+	counter-increment: aide;
+	content: counter(aide);
+	flex: 0 0 auto;
+	width: 28px;
+	height: 28px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: var(--accent);
+	color: var(--on-accent);
+	font: 800 15px/1 var(--ui);
+}
+.aide-alt,
+.aide-repar {
+	font-family: var(--ui);
+	font-size: 14.5px;
+	line-height: 1.4;
+	margin: 0 0 12px;
+}
+/* Voie alternative présentée à ÉGALITÉ de la principale (clé dys-praxie), pas en retrait. */
+.aide-alt {
+	font-weight: 600;
+	color: var(--ink);
+}
+.aide-repar {
+	color: var(--muted);
+}
+/* « Revoir » : rejoue l'animation à la demande. */
+.aide-revoir {
+	display: flex;
+	align-items: center;
+	gap: 0.35em;
+	width: fit-content;
+	margin: 0 auto 12px;
+	min-height: 40px;
+	padding: 6px 16px;
+	border: 1px solid var(--accent-soft);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--accent);
+	font: 700 0.9rem/1 var(--ui);
+	cursor: pointer;
+	transition: background 0.15s ease;
+}
+.aide-revoir .ph-icon {
+	width: 18px;
+	height: 18px;
+}
+.aide-revoir:hover,
+.aide-revoir:active {
+	background: var(--accent-soft);
+}
+.aide-revoir:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 5px var(--accent);
+}
+
+/* ============================================================
+   Scènes animées du geste — éléments en position absolue dans une scène de
+   taille fixe (280×128). L'animation joue UNE fois (classe .is-anim) ; l'état
+   « au repos » (sans .is-anim, ou sous mouvement réduit) montre le geste TERMINÉ.
+   ============================================================ */
+.aide-anim {
+	position: relative;
+	width: 280px;
+	max-width: 100%;
+	height: 128px;
+	margin: 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-family: var(--ui);
+}
+.an-finger {
+	position: absolute;
+	z-index: 6;
+	color: var(--ink);
+	pointer-events: none;
+}
+.an-finger .ph-icon {
+	width: 28px;
+	height: 28px;
+	filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+}
+/* Tuile / mot / lettre / case : aspect commun. */
+.an-tile,
+.an-word,
+.an-letter,
+.an-built {
+	position: absolute;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 2px solid var(--accent);
+	border-radius: 10px;
+	background: var(--paper);
+	color: var(--accent);
+	font-weight: 800;
+	font-size: 16px;
+}
+
+/* ---- tuiles (numération) : la tuile « 7 » se pose dans la case vide ---- */
+.aide-anim--tuiles .an-slot {
+	position: absolute;
+	left: 150px;
+	top: 44px;
+	width: 56px;
+	height: 40px;
+	border: 2px dashed var(--accent);
+	border-radius: 10px;
+	background: var(--accent-soft);
+}
+.aide-anim--tuiles .an-tile {
+	left: 155px;
+	top: 44px;
+	width: 46px;
+	height: 40px;
+}
+.aide-anim--tuiles .an-finger {
+	left: 165px;
+	top: 60px;
+}
+.aide-anim--tuiles.is-anim .an-tile {
+	animation: an-tuiles-tile 2.8s ease forwards;
+}
+.aide-anim--tuiles.is-anim .an-finger {
+	animation: an-tuiles-finger 2.8s ease forwards;
+}
+/* La tuile reste à gauche tant que le doigt ne l'a pas prise, puis le doigt la porte
+   dans la case ; à la fin il s'écarte vers le bas pour ne pas masquer le « 7 ». */
+@keyframes an-tuiles-tile {
+	0%,
+	20% {
+		transform: translateX(-130px);
+	}
+	55%,
+	100% {
+		transform: translateX(0);
+	}
+}
+@keyframes an-tuiles-finger {
+	0% {
+		transform: translate(-130px, 0);
+	}
+	12% {
+		transform: translate(-130px, -5px) scale(0.85);
+	}
+	20% {
+		transform: translate(-130px, 0) scale(1);
+	}
+	55%,
+	72% {
+		transform: translate(0, 0);
+	}
+	100% {
+		transform: translate(4px, 30px);
+	}
+}
+
+/* ---- ordre (ranger une suite) : deux mots montent dans les cases 1 puis 2 ---- */
+.aide-anim--ordre .an-case {
+	position: absolute;
+	top: 6px;
+	width: 96px;
+	height: 44px;
+	border: 2px dashed var(--accent);
+	border-radius: 10px;
+	background: var(--accent-soft);
+}
+.aide-anim--ordre .an-case--1 {
+	left: 38px;
+}
+.aide-anim--ordre .an-case--2 {
+	left: 146px;
+}
+/* Numéro de case (filigrane au coin haut-gauche, comme le vrai runner) : le mot
+   posé est plus petit que la case, le numéro reste donc visible. */
+.aide-anim--ordre .an-case i {
+	position: absolute;
+	top: 3px;
+	left: 7px;
+	font: 800 11px/1 var(--ui);
+	font-style: normal;
+	color: var(--accent);
+	opacity: 0.7;
+}
+.aide-anim--ordre .an-word {
+	width: 80px;
+	height: 30px;
+	font-size: 14px;
+}
+.aide-anim--ordre .an-word--1 {
+	left: 46px;
+	top: 13px;
+}
+.aide-anim--ordre .an-word--2 {
+	left: 154px;
+	top: 13px;
+}
+.aide-anim--ordre .an-finger {
+	left: 60px;
+	top: 92px;
+}
+.aide-anim--ordre.is-anim .an-word--1 {
+	animation: an-ordre-w1 3.6s ease forwards;
+}
+.aide-anim--ordre.is-anim .an-word--2 {
+	animation: an-ordre-w2 3.6s ease forwards;
+}
+.aide-anim--ordre.is-anim .an-finger {
+	animation: an-ordre-finger 3.6s ease forwards;
+}
+/* Chaque mot ne monte dans sa case qu'APRÈS que le doigt l'a touché. */
+@keyframes an-ordre-w1 {
+	0%,
+	16% {
+		transform: translateY(66px);
+	}
+	36%,
+	100% {
+		transform: translateY(0);
+	}
+}
+@keyframes an-ordre-w2 {
+	0%,
+	66% {
+		transform: translateY(66px);
+	}
+	86%,
+	100% {
+		transform: translateY(0);
+	}
+}
+@keyframes an-ordre-finger {
+	0% {
+		transform: translate(0, 0);
+	}
+	9% {
+		transform: translate(0, -5px) scale(0.85);
+	}
+	16% {
+		transform: translate(0, 0) scale(1);
+	}
+	50% {
+		transform: translate(108px, 0);
+	}
+	58% {
+		transform: translate(108px, -5px) scale(0.85);
+	}
+	66%,
+	100% {
+		transform: translate(108px, 0) scale(1);
+	}
+}
+
+/* ---- tri (ranger par thème) : « chat » est touché puis déplacé dans sa colonne ---- */
+.aide-anim--tri .an-col {
+	position: absolute;
+	top: 8px;
+	width: 74px;
+	height: 112px;
+	border: 2px solid var(--accent-soft);
+	border-radius: 12px;
+	background: var(--paper);
+	overflow: hidden;
+}
+.aide-anim--tri .an-col b {
+	display: block;
+	text-align: center;
+	font: 800 11px/1.4 var(--ui);
+	color: var(--accent);
+	background: var(--accent-soft);
+	padding: 6px 4px;
+}
+.aide-anim--tri .an-col--a {
+	left: 120px;
+}
+.aide-anim--tri .an-col--b {
+	left: 200px;
+}
+.aide-anim--tri .an-chat {
+	left: 128px;
+	top: 50px;
+	width: 58px;
+	height: 34px;
+	font-size: 15px;
+}
+.aide-anim--tri .an-finger {
+	left: 138px;
+	top: 70px;
+}
+.aide-anim--tri.is-anim .an-chat {
+	animation: an-tri-chat 3.6s ease forwards;
+}
+.aide-anim--tri.is-anim .an-finger {
+	animation: an-tri-finger 3.6s ease forwards;
+}
+/* Le mot « chat » ne se déplace qu'APRÈS que le doigt a touché la colonne (≈ 50 %). */
+@keyframes an-tri-chat {
+	0%,
+	52% {
+		transform: translate(-114px, 0);
+	}
+	60% {
+		transform: translate(-114px, -6px) scale(1.06);
+	}
+	80%,
+	100% {
+		transform: translate(0, 0) scale(1);
+	}
+}
+@keyframes an-tri-finger {
+	0% {
+		transform: translate(-108px, 0);
+	}
+	10% {
+		transform: translate(-108px, -5px) scale(0.85);
+	}
+	18% {
+		transform: translate(-108px, 0) scale(1);
+	}
+	44% {
+		transform: translate(0, -16px);
+	}
+	50% {
+		transform: translate(0, -21px) scale(0.85);
+	}
+	58% {
+		transform: translate(0, -16px) scale(1);
+	}
+	72% {
+		transform: translate(0, -16px);
+	}
+	100% {
+		transform: translate(8px, 26px);
+	}
+}
+
+/* ---- lettres (dictée) : on touche r, a, t ; le mot « rat » se construit, PUIS le
+   doigt touche une lettre posée (« a ») qui se SÉLECTIONNE et montre ses contrôles
+   d'édition ◀ ▶ ↩ (mécanisme peu évident à expliciter) ---- */
+.aide-anim--lettres .an-built {
+	top: 26px;
+	width: 38px;
+	height: 40px;
+	background: var(--accent);
+	color: var(--on-accent);
+	border-color: var(--accent);
+	font-size: 18px;
+}
+.aide-anim--lettres .an-built--1 {
+	left: 100px;
+}
+.aide-anim--lettres .an-built--2 {
+	left: 142px;
+}
+.aide-anim--lettres .an-built--3 {
+	left: 184px;
+}
+/* Contrôles de la lettre sélectionnée (apparaissent à la fin, au-dessus du « a »). */
+.aide-anim--lettres .an-edit {
+	position: absolute;
+	left: 124px;
+	top: 0;
+	display: inline-flex;
+	gap: 4px;
+	padding: 3px 5px;
+	border-radius: 8px;
+	background: var(--paper);
+	border: 1.5px solid var(--accent);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+	opacity: 0;
+	z-index: 7;
+}
+.aide-anim--lettres .an-edit span {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 4px;
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+	font: 700 11px/1 var(--ui);
+}
+.aide-anim--lettres .an-letter {
+	top: 80px;
+	width: 44px;
+	height: 40px;
+	font-size: 18px;
+}
+/* Bac MÉLANGÉ : a · t · r (le mot à former est « rat »). */
+.aide-anim--lettres .an-letter--a {
+	left: 40px;
+}
+.aide-anim--lettres .an-letter--t {
+	left: 100px;
+}
+.aide-anim--lettres .an-letter--r {
+	left: 160px;
+}
+.aide-anim--lettres .an-finger {
+	left: 174px;
+	top: 96px;
+}
+.aide-anim--lettres.is-anim .an-built--1 {
+	animation: an-pop 4.8s ease forwards;
+}
+.aide-anim--lettres.is-anim .an-built--2 {
+	animation: an-pop-2 4.8s ease forwards;
+}
+.aide-anim--lettres.is-anim .an-built--3 {
+	animation: an-pop-3 4.8s ease forwards;
+}
+.aide-anim--lettres.is-anim .an-edit {
+	animation: an-edit-show 4.8s ease forwards;
+}
+.aide-anim--lettres.is-anim .an-finger {
+	animation: an-lettres-finger 4.8s ease forwards;
+}
+/* Apparition « pop » des lettres construites, après chaque tap (r → a → t). */
+@keyframes an-pop {
+	0%,
+	12% {
+		opacity: 0;
+		transform: scale(0.4);
+	}
+	18%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+/* « a » apparaît, puis se SÉLECTIONNE à la fin (le doigt vient la toucher). */
+@keyframes an-pop-2 {
+	0%,
+	38% {
+		opacity: 0;
+		transform: scale(0.4);
+	}
+	44%,
+	84% {
+		opacity: 1;
+		transform: scale(1);
+		border-color: var(--accent);
+		box-shadow: none;
+	}
+	92%,
+	100% {
+		opacity: 1;
+		transform: scale(1.12);
+		border-color: var(--accent-dark);
+		box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+	}
+}
+@keyframes an-pop-3 {
+	0%,
+	60% {
+		opacity: 0;
+		transform: scale(0.4);
+	}
+	66%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+@keyframes an-edit-show {
+	0%,
+	86% {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	94%,
+	100% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+/* Le doigt cherche r (droite), a (gauche), t (milieu) — l'ordre du mot — puis remonte
+   toucher la lettre posée « a » pour montrer qu'on peut la corriger. */
+@keyframes an-lettres-finger {
+	0% {
+		transform: translate(0, 0);
+	}
+	8% {
+		transform: translate(0, -5px) scale(0.85);
+	}
+	14% {
+		transform: translate(0, 0) scale(1);
+	}
+	26% {
+		transform: translate(-120px, 0);
+	}
+	32% {
+		transform: translate(-120px, -5px) scale(0.85);
+	}
+	38% {
+		transform: translate(-120px, 0) scale(1);
+	}
+	50% {
+		transform: translate(-60px, 0);
+	}
+	56% {
+		transform: translate(-60px, -5px) scale(0.85);
+	}
+	62% {
+		transform: translate(-60px, 0) scale(1);
+	}
+	80% {
+		transform: translate(-24px, -56px);
+	}
+	86% {
+		transform: translate(-24px, -60px) scale(0.85);
+	}
+	92%,
+	100% {
+		transform: translate(-24px, -56px) scale(1);
+	}
+}
+
+/* ---- atelier (orthographe) : le doigt glisse, le surlignage se trace ---- */
+.aide-anim--atelier .aide-demo-mot {
+	display: inline-flex;
+	font: 800 34px/1 var(--ui);
+	letter-spacing: 2px;
+	color: var(--ink);
+}
+.aide-anim--atelier .aide-demo-grp {
+	position: relative;
+	display: inline-flex;
+}
+.aide-demo-hl {
+	position: absolute;
+	inset: -6px -8px;
+	border-radius: 12px;
+	background: rgba(230, 159, 0, 0.28); /* même teinte que l'atelier réel (Okabe-Ito) */
+	border: 2.5px solid #e69f00;
+	transform: scaleX(0);
+	transform-origin: left center;
+}
+.aide-demo-doigt {
+	position: absolute;
+	left: -6px;
+	top: 100%;
+	margin-top: 2px;
+	display: inline-flex;
+	color: var(--ink);
+}
+.aide-demo-doigt .ph-icon {
+	width: 26px;
+	height: 26px;
+}
+.aide-anim--atelier.is-anim .aide-demo-hl {
+	animation: aide-surligne 1.7s ease 0.35s forwards;
+}
+.aide-anim--atelier.is-anim .aide-demo-doigt {
+	animation: aide-doigt 1.7s ease 0.35s forwards;
+}
+@keyframes aide-surligne {
+	from {
+		transform: scaleX(0);
+	}
+	to {
+		transform: scaleX(1);
+	}
+}
+@keyframes aide-doigt {
+	from {
+		left: -6px;
+	}
+	to {
+		left: calc(100% - 18px);
+	}
+}
+/* Au repos (sans .is-anim) : surlignage tracé (l'atelier garde son état final). */
+.aide-anim--atelier:not(.is-anim) .aide-demo-hl {
+	transform: scaleX(1);
+}
+.aide-anim--atelier:not(.is-anim) .aide-demo-doigt {
+	left: calc(100% - 18px);
+}
+
+/* ---------- Mouvement réduit : on FIGE sur l'état final, on garde l'info ---------- */
+@media (prefers-reduced-motion: reduce) {
+	.aide-anim.is-anim .an-tile,
+	.aide-anim.is-anim .an-word,
+	.aide-anim.is-anim .an-built,
+	.aide-anim.is-anim .an-edit,
+	.aide-anim.is-anim .an-finger,
+	.aide-anim.is-anim .aide-demo-hl,
+	.aide-anim.is-anim .aide-demo-doigt {
+		animation: none;
+	}
+	.aide-anim--atelier .aide-demo-hl {
+		transform: scaleX(1);
+	}
+	.aide-anim--atelier .aide-demo-doigt {
+		left: calc(100% - 18px);
+	}
+	.aide-revoir {
+		display: none; /* sans mouvement, « Revoir » n'aurait rien à rejouer */
+	}
+}
+html.anim-reduced .aide-anim.is-anim .an-tile,
+html.anim-reduced .aide-anim.is-anim .an-word,
+html.anim-reduced .aide-anim.is-anim .an-built,
+html.anim-reduced .aide-anim.is-anim .an-edit,
+html.anim-reduced .aide-anim.is-anim .an-finger,
+html.anim-reduced .aide-anim.is-anim .aide-demo-hl,
+html.anim-reduced .aide-anim.is-anim .aide-demo-doigt {
+	animation: none;
+}
+html.anim-reduced .aide-anim--atelier .aide-demo-hl {
+	transform: scaleX(1);
+}
+html.anim-reduced .aide-anim--atelier .aide-demo-doigt {
+	left: calc(100% - 18px);
+}
+html.anim-reduced .aide-revoir {
+	display: none;
+}

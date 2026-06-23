@@ -28,6 +28,7 @@ import {
 	setCurrentMode,
 	setCurrentLessonId,
 } from './navigation';
+import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 
 const NB_QUESTIONS = 8;
 
@@ -89,6 +90,7 @@ export function runLeconTuiles(lessonId: string, m: ExerciseMode): void {
 	hideMenus();
 	setToolbar({ verify: false, home: true, profile: false });
 	renderQuestion();
+	maybeAutoAide('tuiles'); // bulle d'aide au 1er lancement (une fois par profil)
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -140,6 +142,7 @@ function renderQuestion(): void {
 		if (placed !== null) place(null); // retirer la tuile posée
 	});
 	bindConsigneTts(sheets()); // bouton « Écouter » sur l'énoncé (#42)
+	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'tuiles'); // bouton « ? » persistant (#272)
 }
 
 function redraw(): void {

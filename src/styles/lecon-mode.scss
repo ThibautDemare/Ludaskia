@@ -525,14 +525,16 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 
 /* ---- Runner « ranger par thème » de vocabulaire (#114, champs lexicaux) ----
    Deux colonnes-thèmes (zones de dépôt) + un bac de tuiles. Mobile-first : les
-   colonnes s'empilent sur petit écran, côte à côte dès qu'il y a la place. */
+   colonnes s'empilent (pleine largeur) jusqu'à ce qu'il y ait assez de place pour
+   les mettre côte à côte SANS écraser les mots longs (« émerveillement ») — d'où le
+   seuil large à 720px, qui évite tout débordement/coupure dans une colonne étroite. */
 .ltri-cols {
 	display: flex;
 	flex-direction: column;
 	gap: 14px;
 	margin: 18px 0 8px;
 }
-@media (min-width: 520px) {
+@media (min-width: 720px) {
 	.ltri-cols {
 		flex-direction: row;
 	}
@@ -568,8 +570,19 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
    vérifié) ; reprend l'allure d'une tuile pleine. */
 .ltri-posee {
 	position: relative;
+	/* On NE coupe JAMAIS le mot (`white-space: nowrap`) et `flex-shrink: 0` empêche la
+	   zone flex d'écraser la tuile sous son contenu. Les colonnes restant assez larges
+	   (cf. seuil 720px de `.ltri-cols`), même un mot long tient sur une ligne (#272). */
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
 	min-width: 72px;
-	padding: 0 14px;
+	height: auto;
+	min-height: 56px;
+	padding: 6px 14px;
+	line-height: 1.2;
+	white-space: nowrap;
 	background: var(--paper);
 }
 .ltri-posee.correct {

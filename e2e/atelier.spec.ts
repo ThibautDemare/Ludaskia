@@ -6,7 +6,13 @@
    et on vérifie qu'aucun mot ne dépasse le cadre de la page.
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, seedAideVue } from './helpers';
+
+/* Le runner « atelier » déclenche l'aide contextuelle au 1er lancement.
+   On la marque comme déjà vue pour éviter que l'overlay bloque les interactions. */
+test.beforeEach(async ({ page }) => {
+	await seedAideVue(page);
+});
 
 test("atelier : aucun mot ne déborde du cadre, même long (« aujourd'hui ») — #166", async ({
 	page,

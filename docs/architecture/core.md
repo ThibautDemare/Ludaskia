@@ -40,7 +40,10 @@ propre doc de conception : `docs/design-orthographe.md`.
   un fragment SVG (moteur `figures.ts`) que **`figureBlock`** affiche AU-DESSUS de la
   question ; `renderItem` l'ajoute, et les runners « une question à la fois » (QCM,
   sprint, révision) appellent `figureBlock` au même endroit pour un rendu identique
-  partout. État de module via accesseurs.
+  partout. **`enonceTexte`** échappe puis enrichit l'énoncé : gras `**…**`, fractions
+  empilées (`stackFractions`) et **grands nombres groupés** enveloppés en `.bignum`
+  (`wrapGrandsNombres`, #240) — transformations disjointes, sans effet de bord. État
+  de module via accesseurs.
 - **`figures.ts`** — **moteur de figures SVG génératives (#88)**, module **PUR**
   (renvoie une chaîne de balisage, aucun accès DOM). Primitives bas niveau
   réutilisables (`svgCanvas` — viewBox carré + `role="img"` + `<title>`/`<desc>` +
@@ -90,12 +93,30 @@ propre doc de conception : `docs/design-orthographe.md`.
   une leçon multi-niveaux), `check()`. Helpers **`hasMode`** et
   **`defaultMode`** (les écrans dérivent leurs choix d'ici, **jamais en dur**, #69),
   et `checkAnswer` (normalisation partagée `normalizeText` ; **accents et
-  apostrophes exigés**).
+  apostrophes exigés**). Le type `text` porte un champ optionnel **`intervalle`**
+  (#240, intercalation CM1 « grands nombres ») : quand il est présent, la correction
+  accepte **toute valeur strictement comprise** entre les deux bornes (et non plus la
+  seule `answer`) ; absent (cas CE2), comportement de réponse unique **inchangé** — la
+  donnée de l'exercice porte ainsi la règle, le `check` partagé (via `calibrated`,
+  pris sur le plus bas niveau) reste unique.
 - **`fraction-text.ts`** (#42/#200) — module **pur** : libellé verbal d'une fraction
   (`texteParle` : « trois quarts ») et **rendu typographique empilé** (barre horizontale,
   numérateur au-dessus) via `mathInline`. La donnée garde la clé plate « num/den » ; ce
   module la transforme en affichage au rendu (l'oblique « 6/8 » se confondrait avec une
   division — avis pédagogue).
+- **`nombres.ts`** (#240) — module **pur** : formatage UNIQUE des grands nombres
+  (numération CM1 « millions »). **`formatNombre(n)`** groupe les chiffres par classes de
+  3 avec une **espace fine insécable U+202F** (via `Intl.NumberFormat('fr-FR')`) — JAMAIS
+  de virgule (séparateur décimal en français) — mais **seulement à partir de 5 chiffres
+  (≥ 10 000)** : en deçà (≤ 9 999, plage CE2), le nombre reste sans séparateur, l'affichage
+  CE2 est inchangé. **`nettoyerSaisieNombre`** retire tous les
+  espaces d'une saisie (normal, U+202F, U+00A0) **sans** toucher la virgule : un enfant qui
+  recopie « 1 002 050 » n'est pas pénalisé. **`wrapGrandsNombres(escaped)`** enveloppe les
+  nombres groupés (≥ 10 000) d'un texte **déjà échappé** dans `<span class="bignum">` (rendu
+  identique partout : `tabular-nums`, `nowrap`, `clamp` — cf. `styles/lessons.scss`) ;
+  appelé par `items.ts → enonceTexte`, donc partagé par tous les rendus (fiche, sprint,
+  révision, impression). On n'écrit jamais le caractère U+202F en clair dans le source
+  (échappements `U+202F`/`U+00A0`). Réutilisé par `data/maths/numeration.ts` et `position.ts`.
 - **`aide.ts`** (#272) — **aide contextuelle** des runners à interaction non intuitive,
   module **pur** : porte le **contenu** des aides (`AIDES` : titre + étapes courtes ≤ 3 +
   voie alternative + filet anti-erreur) pour 5 types (`tuiles`, `ordre`, `tri`, `atelier`,

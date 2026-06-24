@@ -360,8 +360,9 @@ const NUMERATION_LESSONS_DEFS: LessonDef[] = [...NUMERATION_LESSONS, ...POSITION
 		subject: 'math',
 		category: 'math-numeration',
 		// Niveaux dérivés du moteur (#225) : une leçon « calibrée » (combinateur
-		// `calibrated`) expose ses niveaux ; les autres restent CE2.
-		levels: d.exerciseType.levels ?? ['ce2'],
+		// `calibrated`) expose ses niveaux ; sinon le `levels` explicite du descripteur
+		// (ex. la décompo multiplicative CM1-only, #240) ; à défaut CE2.
+		levels: d.exerciseType.levels ?? d.levels ?? ['ce2'],
 		exerciseType: d.exerciseType,
 	}),
 );

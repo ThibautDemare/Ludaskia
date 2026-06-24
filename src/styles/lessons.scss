@@ -172,6 +172,20 @@
 	font-weight: 700;
 }
 
+/* ---- Grands nombres (#240, numération CM1 « millions ») ----
+   Tout nombre groupé par classes de 3 (≥ 10 000, séparateur ` ` U+202F injecté par
+   core/nombres.ts → enveloppé en .bignum par enonceTexte) est rendu ici de façon
+   IDENTIQUE partout (énoncé, comparaison, encadrement, valeur de position,
+   décompositions). `tabular-nums` aligne les chiffres ; `nowrap` empêche un grand
+   nombre de se couper entre deux classes ; `clamp` réduit la taille sur mobile pour
+   éviter tout débordement/scroll horizontal — sans jamais tronquer. */
+.bignum {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	font-size: clamp(1rem, 5vw, var(--num-fs));
+	font-weight: 700;
+}
+
 /* ---- Opérations posées (#97) : grille en colonnes ---- */
 .posee {
 	display: inline-grid;

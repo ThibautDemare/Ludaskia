@@ -40,6 +40,9 @@ describe('core/ordre — helpers', () => {
 	it('ordreLecons rend la liste de la matière×niveau (ou vide si non renseigné)', () => {
 		expect(ordreLecons('math', 'ce2')).toEqual(ORDRE_LECONS.math.ce2 as string[]);
 		expect(ordreLecons('math', 'ce2')[0]).toBe('num-comparer');
+		// Math CM1 = numération « grands nombres » (#240) + calcul mental (#241) : 8 leçons.
+		expect(ordreLecons('math', 'cm1')).toHaveLength(8);
+		expect(ordreLecons('math', 'cm1')[0]).toBe('num-comparer');
 		expect(ordreLecons('francais', 'cm1')).toHaveLength(13);
 		// Niveau sans ordre défini → liste vide (fallback ordre de déclaration).
 		expect(ordreLecons('math', 'cp')).toEqual([]);
@@ -71,7 +74,7 @@ describe('core/ordre — application au catalogue', () => {
 		expect(getLessonsBySubject('math', 'ce2').map((l) => l.id)).toEqual(M_CE2);
 		expect(getLessonsBySubject('francais', 'ce2').map((l) => l.id)).toEqual(F_CE2);
 		expect(getLessonsBySubject('francais', 'cm1').map((l) => l.id)).toEqual(F_CM1);
-		// Maths CM1 (#241) : « comparer » (calibré) + les 2 leçons de calcul mental CM1.
+		// Maths CM1 : numération « grands nombres » (#240) + calcul mental (#241).
 		expect(getLessonsBySubject('math', 'cm1').map((l) => l.id)).toEqual(M_CM1);
 	});
 
@@ -171,7 +174,8 @@ describe('leçon du jour', () => {
 	it('multi-niveau : en CM1, déroule les ordres CM1, file vide ⇒ on continue l’autre matière', () => {
 		setNiveauReference('cm1');
 		const seq = sequenceLeconDuJour();
-		// math CM1 = 3 leçons (#241), français CM1 = 13 → entrelacement puis français seul.
+		// math CM1 = 8 leçons (numération #240 + calcul mental #241), français CM1 = 13
+		// → entrelacement 1:1 jusqu'à épuisement des maths, puis français seul.
 		expect(seq).toHaveLength(M_CM1.length + 13);
 		expect(seq[0].id).toBe(M_CM1[0]); // math.cm1[0] = num-comparer
 		expect(seq[1].id).toBe(F_CM1[0]); // fr-conj-etre-passe_compose

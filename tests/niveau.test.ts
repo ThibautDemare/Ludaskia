@@ -13,6 +13,7 @@ import {
 } from '../src/core/niveau-actif';
 import { getAllLessons, getLessonById, genLessonItem } from '../src/core/catalog';
 import type { SchoolLevel } from '../src/core/catalog';
+import { nettoyerSaisieNombre } from '../src/core/nombres';
 import {
 	initProfiles,
 	activeProfile,
@@ -278,20 +279,23 @@ describe('contenu multi-niveau (Lot 3)', () => {
 		expect(getLessonById('num-comparer')?.levels).toEqual(['ce2', 'cm1']);
 	});
 
-	it('numération calibrée : nombres plus grands en CM1 qu’en CE2', () => {
+	it('numération calibrée : nombres plus grands en CM1 (millions) qu’en CE2', () => {
 		const lesson = getLessonById('num-comparer')!;
 		const maxValeur = (niveau: SchoolLevel) => {
 			let max = 0;
 			for (let i = 0; i < 300; i++) {
 				const it = genLessonItem(lesson, niveau);
-				for (const n of it.text.match(/\d+/g) ?? []) max = Math.max(max, Number(n));
+				// Les grands nombres sont groupés (#240, séparateur U+202F dès 10 000) : on
+				// déspatialise pour extraire les nombres entiers (sinon « 12 345 » → 12, 345).
+				for (const n of nettoyerSaisieNombre(it.text).match(/\d+/g) ?? [])
+					max = Math.max(max, Number(n));
 			}
 			return max;
 		};
-		// CE2 : plage ≤ 999 (le cas charnière 999/1000 atteint au plus 1001) ;
-		// CM1 : plage jusqu'à 9999 → dépasse nettement le CE2.
+		// CE2 : plage ≤ 999 (le cas charnière 999/1000 atteint au plus 1001 — GELÉE) ;
+		// CM1 (#240) : grands nombres jusqu'au million → dépasse très largement le CE2.
 		expect(maxValeur('ce2')).toBeLessThanOrEqual(1001);
-		expect(maxValeur('cm1')).toBeGreaterThan(1500);
+		expect(maxValeur('cm1')).toBeGreaterThan(100000);
 	});
 
 	it('le passé composé est ouvert au CM1 (multi-niveau « identique »)', () => {

@@ -45,6 +45,11 @@
 	   une icône autonome dans une cible tactile. */
 	--icon: 1.15em;
 	--icon-lg: 1.5rem;
+	/* Taille de référence des GRANDS NOMBRES (#240, numération CM1 « millions ») :
+	   un nombre à 7 chiffres groupé (« 9 999 999 ») doit rester lisible sans
+	   déborder ni se couper sur mobile. La classe .bignum part de cette valeur via
+	   un clamp responsive (cf. ci-dessous). */
+	--num-fs: 1.35rem;
 	/* Couleurs « par famille d'action » : réinjectent de la variété chromatique
 	   maintenant que les pictos fonctionnels sont monochromes (les emojis étaient
 	   l'unique source de couleur). STABLES — contrairement à --accent, les thèmes

@@ -44,6 +44,12 @@ export type Exercise =
 	// au-dessus de la question — horloge, plus tard rectangle coté, polygone…
 	// `champHeure` (#88) : la réponse est une heure « H h MM » → saisie en 2 champs
 	// [heures] h [minutes] (item `kind: 'heure'`), fusionnés avant correction.
+	// `intervalle` (#240) : numération « intercaler » aux grandes plages (CM1) — la
+	// réponse n'est plus une valeur unique mais TOUTE valeur strictement comprise
+	// entre deux bornes [min, max] exclues (« un nombre entre 610 000 et 620 000 »).
+	// `answer` reste une valeur valide (un exemple : révélation/correction, mode
+	// tuiles). Absent (cas CE2) ⇒ correction par comparaison à `answer` (réponse
+	// unique) : le comportement CE2 est INCHANGÉ.
 	| {
 			type: 'text';
 			question: string;
@@ -52,6 +58,7 @@ export type Exercise =
 			figure?: string;
 			champHeure?: boolean;
 			parle?: string;
+			intervalle?: [number, number];
 	  }
 	// `explication` (#110) : justification pédagogique optionnelle affichée APRÈS
 	// la réponse dans le runner QCM (ex. critère de substitution des homophones).

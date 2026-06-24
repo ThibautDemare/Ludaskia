@@ -144,6 +144,8 @@ export interface JourActivite {
 	lecon: number;
 	bilan: number;
 	sprint: number;
+	revision: number;
+	dictee: number;
 	inconnu: number;
 }
 
@@ -167,6 +169,8 @@ export function activiteParJourParType(
 		lecon: 0,
 		bilan: 0,
 		sprint: 0,
+		revision: 0,
+		dictee: 0,
 		inconnu: 0,
 	}));
 	for (const e of normalizeActivity(activity)) {

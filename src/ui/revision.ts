@@ -27,7 +27,13 @@ import {
 } from '../core/items';
 import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
 import type { OrthoState } from '../core/orthographe/types';
-import { loadLessonRevisions, avancerLessonRevision, addXP, recordRun } from '../core/progress';
+import {
+	loadLessonRevisions,
+	avancerLessonRevision,
+	addXP,
+	recordRun,
+	recordSessionActivity,
+} from '../core/progress';
 import { selectDueGroups } from '../core/revision-select';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
 
@@ -629,6 +635,7 @@ function renderDone() {
 	// (objectif de régularité #178). Pas de classement ni de médaille : ce run
 	// n'alimente aucun podium, il sert seulement au comptage via countSince.
 	recordRun('revision-espacee', score, items.length, Date.now() - startTs);
+	recordSessionActivity('revision'); // un point dans le graphe d'activité encadrant (#319)
 	const stage = document.getElementById('revStage')!;
 	if (!stage) return;
 	document.querySelector('.rev-hud')?.remove();

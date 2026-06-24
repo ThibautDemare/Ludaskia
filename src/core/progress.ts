@@ -310,13 +310,16 @@ export const recentAvgPct = (e: any): number | null =>
    borné aux ACTIVITY_MAX dernières entrées.
 
    Format : `{ t, k }` — horodatage + TYPE de session (#319 : permet la répartition
-   « par type » dans le graphe). Type enregistrable : 'lecon' | 'bilan' | 'sprint'.
+   « par type » dans le graphe). Types : 'lecon' | 'bilan' | 'sprint' (via
+   recordLessonStats) + 'revision' | 'dictee' (sessions qui ne passent PAS par
+   recordLessonStats → journalisées via recordSessionActivity).
    MIGRATION : l'ancien format était un simple `number` (horodatage) ; on le lit
    encore (→ type 'inconnu') et on le réécrit au format objet au prochain passage. */
 export const ACTIVITY_KEY = 'ludaskia_activity';
 const ACTIVITY_MAX = 200;
-export type ActivityKind = 'lecon' | 'bilan' | 'sprint'; // types enregistrables
+export type ActivityKind = 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee'; // enregistrables
 export type ActivityKindStored = ActivityKind | 'inconnu'; // + héritage (ancien format)
+const ACTIVITY_KINDS: readonly ActivityKind[] = ['lecon', 'bilan', 'sprint', 'revision', 'dictee'];
 export interface ActivityEntry {
 	t: number; // horodatage (ms)
 	k: ActivityKindStored;
@@ -333,7 +336,7 @@ export function normalizeActivity(raw: unknown): ActivityEntry[] {
 			const k = (e as ActivityEntry).k;
 			out.push({
 				t: (e as ActivityEntry).t,
-				k: k === 'lecon' || k === 'bilan' || k === 'sprint' ? k : 'inconnu',
+				k: (ACTIVITY_KINDS as readonly string[]).includes(k) ? (k as ActivityKind) : 'inconnu',
 			});
 		}
 	}
@@ -347,6 +350,11 @@ function recordActivity(now: number, kind: ActivityKind) {
 	a.push({ t: now, k: kind });
 	if (a.length > ACTIVITY_MAX) a.splice(0, a.length - ACTIVITY_MAX);
 	lsSet(ACTIVITY_KEY, a);
+}
+/* Journalise une session finalisée d'un type qui NE passe PAS par recordLessonStats
+   (révision espacée, dictée d'orthographe) — un point d'activité daté (#319). */
+export function recordSessionActivity(kind: ActivityKind): void {
+	recordActivity(Date.now(), kind);
 }
 
 /* ---------- Premier passage par leçon (objectif « nouvelle leçon », #178) ----------

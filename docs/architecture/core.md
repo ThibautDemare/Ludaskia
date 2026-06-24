@@ -248,12 +248,15 @@ propre doc de conception : `docs/design-orthographe.md`.
   (`recordLessonResult`, `starsEarned`), stats par leçon (`recordLessonStats`,
   `lessonAvgPct` cumul + `recentAvgPct` = perf **récente**, calculée sur la fenêtre
   glissante de données `recentPct`, #234),
-  **journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée
-  par `recordLessonStats`, #234 ; **entrées typées** `ActivityEntry = {t, k}` avec
-  `ActivityKind = 'lecon' | 'bilan' | 'sprint'` (+ `'inconnu'` pour l'ancien format),
-  #319). `recordLessonStats(perLesson, kind = 'lecon')` journalise le type ; `normalizeActivity`
-  lit **tolérant** l'ancien `number[]` (chaque horodatage nu → `'inconnu'`) et le réécrit au
-  format objet au prochain passage (migration **lazy, sans perte**). **XP global** (`getXP`/`addXP`, `ludaskia_xp`)
+  **journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée,
+  #234 ; **entrées typées** `ActivityEntry = {t, k}` avec
+  `ActivityKind = 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee'` (+ `'inconnu'`
+  pour l'ancien format), #319). `recordLessonStats(perLesson, kind = 'lecon')` journalise
+  les leçons/bilans/sprints ; les sessions qui **ne passent pas** par `recordLessonStats`
+  (révision espacée `ui/revision.ts`, dictée d'orthographe `ui/ortho-runner.ts`) appellent
+  **`recordSessionActivity(kind)`**. `normalizeActivity` lit **tolérant** l'ancien `number[]`
+  (chaque horodatage nu → `'inconnu'`) et le réécrit au format objet au prochain passage
+  (migration **lazy, sans perte**). **XP global** (`getXP`/`addXP`, `ludaskia_xp`)
   et **niveaux dérivés** (`niveauDepuisXP`, `progressionNiveau`, `xpVersSuivant`,
   `xpPourNiveau`, `NIVEAU_MAX`), périodes calendaires (`startOfWeek/Month`,
   `countSince`).
@@ -278,7 +281,7 @@ propre doc de conception : `docs/design-orthographe.md`.
   **activité** et **file « à revoir »** (`loadRevoir`/`loadRevoirFor`/
   `toggleRevoirFor`/`revoirActives`). Lit les clés brutes du profil consulté. Le graphe
   d'activité (#319) repose sur **`activiteParJourParType(activity, now, n)`** → `JourActivite[]`
-  (`{total, lecon, bilan, sprint, inconnu}`, index `n-1` = aujourd'hui ; `normalizeActivity`
+  (`{total, lecon, bilan, sprint, revision, dictee, inconnu}`, index `n-1` = aujourd'hui ; `normalizeActivity`
   y est l'**unique frontière de normalisation** de l'ancien/nouveau format) ; `activiteParJour`
   en est **dérivé** (totaux seuls) et `echelleActivite(max)` calcule une échelle Y « ronde »
   (`{top, step, ticks}`). `RecapProfil.activite7j` est désormais un `JourActivite[]`.

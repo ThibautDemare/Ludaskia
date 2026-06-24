@@ -524,9 +524,18 @@ $plot-h: 140px;
 	outline-offset: 2px;
 }
 
-/* Couleurs des types (tokens sémantiques de l'app). `--k` pilote swatch + segment. */
+/* Couleurs des types (tokens sémantiques de l'app + 2 dédiées). `--k` pilote la
+   pastille de légende ET le segment. Révision = bleu (token « révision »), bilan =
+   violet, sprint = corail ; leçon = vert (--ok, déjà calibré par thème), dictée =
+   rose. Teintes relevées au besoin en thème Nuit (cf. themes.scss). */
 .enc-act-lecon {
+	--k: var(--ok);
+}
+.enc-act-revision {
 	--k: var(--cat-bleu);
+}
+.enc-act-dictee {
+	--k: var(--cat-rose);
 }
 .enc-act-bilan {
 	--k: var(--cat-bilan);
@@ -535,7 +544,8 @@ $plot-h: 140px;
 	--k: var(--cat-sprint);
 }
 .enc-act-inconnu {
-	--k: var(--muted);
+	/* gris neutre dédié (≠ --muted, sous 3:1 sur fond clair) : segment legacy lisible (WCAG 1.4.11). */
+	--k: #6b7280;
 }
 
 /* Disposition : [axe Y] [zone traçante + libellés de jour]. */

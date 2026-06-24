@@ -25,7 +25,7 @@ import {
 } from '../core/orthographe/runner';
 import type { MotOrtho, OrthoState, ModeOrtho } from '../core/orthographe/types';
 import { diffCorrect } from '../core/orthographe/diff';
-import { addXP, getXP, niveauDepuisXP } from '../core/progress';
+import { addXP, getXP, niveauDepuisXP, recordSessionActivity } from '../core/progress';
 import { evaluateTrophies } from '../core/rewards';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 import { goCategorie, goOrthoRevoir } from './navigation';
@@ -59,6 +59,10 @@ let seanceMode: ModeOrtho | null = null;
 // repasse chaque mot une fois en mode d'entretien, puis on clôt par « Révision
 // terminée » (pas la célébration « Liste prête ! » de première complétion).
 let revisionRun = false;
+// Une session d'orthographe a-t-elle déjà été journalisée dans le graphe d'activité
+// encadrant (#319) ? Posée une seule fois par session (au 1er écran terminal atteint :
+// pause, bilan ou révision terminée), pour ne pas re-compter les « Continuer encore ».
+let orthoJournalisee = false;
 // Mode choisi en attente, posé par l'écran de choix et consommé par startOrthoRun.
 let pendingOrthoMode: ModeOrtho | null = null;
 export const setPendingOrthoMode = (m: ModeOrtho | null) => {
@@ -130,6 +134,7 @@ export async function startOrthoRun(lessonId: string): Promise<void> {
 	idx = 0;
 	niveauAvant = niveauDepuisXP(getXP());
 	actes = 0;
+	orthoJournalisee = false; // nouvelle session → re-journalisable une fois (#319)
 	// Parcours complet sur une liste déjà acquise → tour de révision (sinon le bilan
 	// tomberait tout de suite, sans rien proposer à travailler).
 	revisionRun = !seanceMode && listeEtoilee(mots, dispoDictee);
@@ -693,8 +698,17 @@ function renderTuiles(word: MotOrtho): void {
 	maybeAutoAide('lettres'); // bulle d'aide au 1er lancement (une fois par profil)
 }
 
+/* Journalise UNE session d'orthographe (#319) au 1er écran terminal atteint (bilan,
+   révision terminée ou pause) ; le flag évite de re-compter un « Continuer encore ». */
+function journalOrthoSession(): void {
+	if (orthoJournalisee) return;
+	orthoJournalisee = true;
+	recordSessionActivity('dictee');
+}
+
 /* ---------- Bilan ---------- */
 function renderBilan(): void {
+	journalOrthoSession();
 	const total = mots.length;
 	sheets().innerHTML = `
     <div class="page ortho-run ortho-bilan">
@@ -718,6 +732,7 @@ function renderBilan(): void {
    même les récompenses légitimement gagnées pendant la révision (trophées, montée
    de niveau due à l'XP), sans la fausse étoile de première complétion. */
 function renderRevisionFin(): void {
+	journalOrthoSession();
 	const total = mots.length;
 	sheets().innerHTML = `
     <div class="page ortho-run ortho-bilan">
@@ -756,6 +771,7 @@ function annoncerRecompensesFin(celebBase: { icon: string; text: string }[]): vo
 
 /* ---------- Pause de séance (rythme adapté à un CE2) ---------- */
 function renderPause(): void {
+	journalOrthoSession();
 	sheets().innerHTML = `
     <div class="page ortho-run ortho-bilan">
       <div class="ortho-bilan-emoji">👏</div>

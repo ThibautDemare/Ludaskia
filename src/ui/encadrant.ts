@@ -86,6 +86,8 @@ const ORDRE_NIVEAUX: NiveauNotion[] = ['a-decouvrir', 'non-acquis', 'en-cours', 
    `mot` = singulier pour le détail inline ; `legende` = libellé de la légende. */
 const TYPES_ACTIVITE: { k: keyof JourActivite; mot: string; legende: string; cls: string }[] = [
 	{ k: 'lecon', mot: 'leçon', legende: 'Leçons', cls: 'enc-act-lecon' },
+	{ k: 'revision', mot: 'révision', legende: 'Révisions', cls: 'enc-act-revision' },
+	{ k: 'dictee', mot: 'dictée', legende: 'Dictées', cls: 'enc-act-dictee' },
 	{ k: 'bilan', mot: 'bilan', legende: 'Bilans', cls: 'enc-act-bilan' },
 	{ k: 'sprint', mot: 'sprint', legende: 'Sprints', cls: 'enc-act-sprint' },
 ];
@@ -505,9 +507,11 @@ function activiteHTML(recap: RecapProfil): string {
 			lecon: acc.lecon + j.lecon,
 			bilan: acc.bilan + j.bilan,
 			sprint: acc.sprint + j.sprint,
+			revision: acc.revision + j.revision,
+			dictee: acc.dictee + j.dictee,
 			inconnu: acc.inconnu + j.inconnu,
 		}),
-		{ total: 0, lecon: 0, bilan: 0, sprint: 0, inconnu: 0 },
+		{ total: 0, lecon: 0, bilan: 0, sprint: 0, revision: 0, dictee: 0, inconnu: 0 },
 	);
 	const synthese = `${total} session${total > 1 ? 's' : ''} sur la semaine${
 		parType ? ` — ${repartitionTexte(totalParType)}` : ''

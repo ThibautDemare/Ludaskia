@@ -212,6 +212,11 @@
 .sprint-input:focus {
 	outline: none;
 }
+/* Focus clavier visible (WCAG 2.4.7), même pattern que `.ans` / `.prob-input`. */
+.sprint-input:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
 /* Champ de brouillon (étapes de la leçon 15) : saisissable mais non corrigé */
 .sprint-free {
 	font: inherit;
@@ -229,6 +234,10 @@
 	outline: none;
 	border-bottom-color: var(--accent);
 	background: var(--accent-soft);
+}
+.sprint-free:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
 }
 /* Leçon 15 « décomposer » : ligne plus longue → on réduit un peu */
 .sprint-q.deco {

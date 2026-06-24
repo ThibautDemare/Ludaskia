@@ -183,7 +183,10 @@
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 	font-size: clamp(1rem, 5vw, var(--num-fs));
-	font-weight: 700;
+	/* Pas de `font-weight: 700` : le gras était sur-appliqué (tout nombre ≥ 10 000, y
+	   compris les valeurs de rang d'une décomposition « 4 × 1 000 000 + … ») et créait
+	   une emphase incohérente. Les grands nombres ressortent déjà par la taille et les
+	   chiffres tabulaires ; l'emphase d'un nombre focal, si besoin, passe par `**…**`. */
 }
 
 /* ---- Opérations posées (#97) : grille en colonnes ---- */

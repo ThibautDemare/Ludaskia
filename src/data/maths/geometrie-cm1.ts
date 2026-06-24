@@ -556,8 +556,11 @@ function comptageType(): ExerciseType {
 			const carac = choice<Caracteristique>(['faces', 'aretes', 'sommets']);
 			const bon = e[carac];
 			// Formulation « de mémoire » : on demande le nombre de … d'un solide NOMMÉ,
-			// jamais « sur le dessin » (pas de figure jointe).
-			const question = `Combien de ${CARAC_LABEL[carac]} a ${e.nom} ?`;
+			// jamais « sur le dessin » (pas de figure jointe). Élision « de » → « d' »
+			// devant voyelle (« d'arêtes », mais « de faces » / « de sommets »).
+			const mot = CARAC_LABEL[carac];
+			const de = /^[aeiouàâäéèêëïîôöùûüyh]/i.test(mot) ? "d'" : 'de ';
+			const question = `Combien ${de}${mot} a ${e.nom} ?`;
 			return {
 				type: 'qcm',
 				question,

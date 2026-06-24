@@ -129,6 +129,15 @@
 	background: transparent;
 	color: var(--ink);
 }
+/* Réponse « grand nombre » (#240, numération CM1 « millions ») : le champ standard (58px)
+   est trop étroit pour un nombre à 5-7 chiffres (encadrement au million, « combien en
+   tout », décomposition). On l'élargit et on agrandit un peu, chiffres tabulaires. Doit
+   suivre `.ans` (même spécificité → l'emporte par l'ordre source). */
+.ans-grand {
+	width: 9ch;
+	font-size: 1.1rem;
+	font-variant-numeric: tabular-nums;
+}
 .ans:focus {
 	outline: none;
 	border-bottom-color: var(--accent);

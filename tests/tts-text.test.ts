@@ -5,6 +5,7 @@
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import { texteParle, ttsAttr } from '../src/core/tts-text';
+import { formatNombre } from '../src/core/nombres';
 
 describe('texteParle', () => {
 	it('retire le marqueur @ du trou à remplir (silence, pas « arobase »)', () => {
@@ -46,6 +47,17 @@ describe('texteParle', () => {
 	it('réduit les espaces multiples et trim', () => {
 		expect(texteParle('  a   b  ')).toBe('a b');
 		expect(texteParle('')).toBe('');
+	});
+
+	it('colle les classes d’un grand nombre pour une lecture « entier » (#240)', () => {
+		// formatNombre groupe avec l'espace fine insécable U+202F ; le TTS doit lire
+		// l'entier (« un million deux mille cinquante »), pas épeler les groupes.
+		expect(texteParle(`Compare ${formatNombre(1002050)} et 999.`)).toBe('Compare 1002050 et 999.');
+		expect(texteParle(`La centaine de mille juste avant ${formatNombre(4538207)} : @`)).toBe(
+			'La centaine de mille juste avant 4538207 :',
+		);
+		// L'espace insécable U+00A0 entre chiffres est aussi neutralisé.
+		expect(texteParle('x ' + '1' + String.fromCharCode(0x00a0) + '234 y')).toBe('x 1234 y');
 	});
 });
 

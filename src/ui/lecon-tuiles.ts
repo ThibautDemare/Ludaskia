@@ -13,6 +13,7 @@ import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import type { ExerciseMode } from '../core/exercise';
 import { commKey, escapeHTML } from '../core/utils';
+import { wrapGrandsNombres } from '../core/nombres';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { recordLessonRun } from '../core/lesson-run';
@@ -106,8 +107,9 @@ function renderQuestion(): void {
 	answered = false;
 	placed = null;
 	const q = questions[idx];
-	// L'énoncé : le `@` devient l'emplacement (drop zone).
-	const enonce = escapeHTML(q.question).replace(
+	// L'énoncé : le `@` devient l'emplacement (drop zone). Les grands nombres groupés
+	// sont enveloppés en .bignum (#240), comme dans le rendu fiche/sprint.
+	const enonce = wrapGrandsNombres(escapeHTML(q.question)).replace(
 		'@',
 		`<button type="button" class="ltui-slot" id="ltuiSlot" aria-label="Emplacement de la réponse"></button>`,
 	);
@@ -154,8 +156,10 @@ function redraw(): void {
 	bac.innerHTML = q.tuiles
 		.map((t) => {
 			const used = t === placed;
+			// `data-val` reste la valeur BRUTE (clé de comparaison `placed === answer`) ;
+			// le contenu visible enveloppe les grands nombres groupés en .bignum (#240).
 			return `<button type="button" class="tuile ltui-tuile${used ? ' tuile-used' : ''}"
-        data-val="${escapeHTML(t)}"${used || answered ? ' disabled' : ' draggable="true"'}>${escapeHTML(t)}</button>`;
+        data-val="${escapeHTML(t)}"${used || answered ? ' disabled' : ' draggable="true"'}>${wrapGrandsNombres(escapeHTML(t))}</button>`;
 		})
 		.join('');
 	bac.querySelectorAll<HTMLButtonElement>('.ltui-tuile').forEach((btn) => {

@@ -5,6 +5,7 @@
 import { escapeHTML, normalizeText } from './utils';
 import { ttsAttr } from './tts-text';
 import { stackFractions } from './fraction-text';
+import { wrapGrandsNombres, nettoyerSaisieNombre } from './nombres';
 import type { ChoiceView } from './exercise';
 
 /* Opération posée (#97) : décrite par ses opérandes et son opérateur ; le rendu
@@ -48,12 +49,17 @@ export function figureBlock(figure?: string): string {
 }
 
 /* Énoncé d'un item, échappé puis enrichi : GRAS léger via `**…**` (#199 : question
-   finale d'un problème) et fractions « num/den » rendues empilées (#200, barre
-   horizontale attendue au CE2). On échappe d'abord (sécurité), donc les balises
-   injectées ensuite sont sûres. Seuls les énoncés de fractions contiennent « n/m »
-   à l'exécution : transformation sans effet de bord ailleurs. */
+   finale d'un problème), fractions « num/den » rendues empilées (#200, barre
+   horizontale attendue au CE2) et grands nombres groupés enveloppés en .bignum
+   (#240, numération « millions » : tabular-nums + nowrap + clamp, rendu identique
+   partout). On échappe d'abord (sécurité), donc les balises injectées ensuite sont
+   sûres. Les transformations sont disjointes (fractions = « n/m » ; grands nombres =
+   classes séparées par U+202F, caractère introduit seulement par formatNombre) :
+   sans effet de bord ailleurs. */
 export function enonceTexte(text: string): string {
-	return stackFractions(escapeHTML(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'));
+	return wrapGrandsNombres(
+		stackFractions(escapeHTML(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')),
+	);
 }
 
 /* Un bouton-choix de QCM (#200), partagé par le runner leçon et le sprint.
@@ -78,7 +84,9 @@ export function checkItemAnswer(it: Item, raw: string): boolean {
 		if (v === normalizeText(String(it.answer))) return true;
 		return (it.answers ?? []).some((a) => normalizeText(a) === v);
 	}
-	return Number(raw.replace(',', '.')) === Number(it.answer);
+	// Tolère les séparateurs de milliers d'un grand nombre recopié (« 1 002 050 »,
+	// #240) : on neutralise les espaces (normal/U+202F/U+00A0) avant comparaison.
+	return Number(nettoyerSaisieNombre(raw).replace(',', '.')) === Number(it.answer);
 }
 
 export function add(a: number, b: number): Item {

@@ -33,10 +33,10 @@ test('choisir CM1 filtre le catalogue sur le niveau CM1', async ({ page }) => {
 	await page.locator('#onboardingNiveau [data-niveau="cm1"]').click();
 	await expect(page.locator('#onboardingNiveau')).toHaveCount(0);
 	// Catégorie Numération : la leçon multi-niveau « comparer » (CE2+CM1) reste,
-	// une leçon restée CE2-only disparaît du catalogue CM1.
+	// une leçon restée CE2-only (« décompose jusqu'à 100 ») disparaît du catalogue CM1.
 	await page.goto('app.html#categorie-math-numeration', { waitUntil: 'networkidle' });
 	await expect(page.locator('.lesson-item[data-id="num-comparer"]')).toBeVisible();
-	await expect(page.locator('.lesson-item[data-id="num-encadrer-intercaler"]')).toHaveCount(0);
+	await expect(page.locator('.lesson-item[data-id="num-decompose-100"]')).toHaveCount(0);
 	expect(errors).toEqual([]);
 });
 
@@ -75,6 +75,6 @@ test('réglage parent : ajuster le niveau d’une matière filtre son catalogue 
 	// Maths passées en CM1 → la Numération ne montre que les leçons disponibles en CM1.
 	await gotoHash(page, 'categorie-math-numeration');
 	await expect(page.locator('.lesson-item[data-id="num-comparer"]')).toBeVisible();
-	await expect(page.locator('.lesson-item[data-id="num-encadrer-intercaler"]')).toHaveCount(0);
+	await expect(page.locator('.lesson-item[data-id="num-decompose-100"]')).toHaveCount(0);
 	expect(errors).toEqual([]);
 });

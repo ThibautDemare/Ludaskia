@@ -215,7 +215,7 @@ jamais un mot de la banque, on le flague pour le format concerné.
 
 ### Numération
 
-#### `maths/numeration.ts` (#98)
+#### `maths/numeration.ts` (#98, grands nombres CM1 #240)
 
 3 leçons « situer un nombre » (catégorie
 `math-numeration`) — `num-comparer` (placer `<`, `=`, `>`), `num-encadrer-intercaler`
@@ -227,19 +227,33 @@ tuiles produit un `Exercise` de type **`tuilesNombre`** (`{question, answer, tui
 rendu par un runner d'écran dédié `ui/lecon-tuiles.ts`. Calibrage CE2 : nombres à
 3 chiffres (4 réservés à la leçon « 10 000 »), `=` minoritaire, ~30 % de longueurs
 différentes (cas charnière), distracteurs typés sur les erreurs classiques.
-**Multi-niveaux** : `num-comparer` est `calibrated` (CE2 ≤ 999 / CM1 ≤ 9999) et
-**réellement surfacé en CM1** (la classe CM1 devient sélectionnable) — à la différence
-des autres leçons calibrées qui restent volontairement `levels: ['ce2']`.
+**Multi-niveaux** : les **3 leçons** sont `calibrated` et **surfacées en CM1** (plafond
+= **le million**, 7 chiffres, max 9 999 999 ; le milliard est réservé au CM2). Les
+plages **CE2 sont gelées** (invariant) ; la génération CM1 mêle 5/6/7 chiffres, pondérée
+vers les cas formateurs (zéros intercalaires, charnières de classe). `RANG_MOT` est
+étendu (dizaine/centaine **de mille**, **million**) et l'encadrement choisit le rang
+selon la taille du nombre. **Intercalation CM1** : check **par intervalle** (toute valeur
+strictement entre deux multiples ronds consécutifs, via le champ `Exercise.intervalle`) ;
+le CE2 garde sa **réponse unique**. **Saisie** : on ne fait jamais taper > 6 chiffres
+(comparaison = signe, encadrement/intercalation = nombres ronds), et le `check` tolère
+les espaces de groupement (`nettoyerSaisieNombre`). Tous les grands nombres affichés sont
+groupés via `core/nombres.ts` (`formatNombre`, classe `.bignum`).
 
-#### `maths/position.ts` (#94)
+#### `maths/position.ts` (#94, grands nombres CM1 #240)
 
-4 leçons de numération positionnelle de la même
-catégorie — `num-valeur-position` (« chiffre des X » vs « combien de X en tout »)
-et `num-decompose-100/1000/10000` (décomposition « en rangs », sens décomposer
-troué dominant + composer). Mono-mode saisie, réponse numérique unique (pas de
-multi-champs : le `@` reste unique par item). Calibrage CE2 : « en tout » jamais
-sur les unités, forme additive écartée (ambiguïté 6 vs 60), zéro intercalaire
-inclus, accords singulier/pluriel soignés.
+5 leçons de numération positionnelle de la même
+catégorie — `num-valeur-position` (« chiffre des X » vs « combien de X en tout »),
+`num-decompose-100/1000/10000` (décomposition « en rangs », sens décomposer troué
+dominant + composer) et **`num-decompose-multiplicative`** (nouvelle leçon **CM1-only**,
+#240). Mono-mode saisie, réponse numérique unique (pas de multi-champs : le `@` reste
+unique par item). Calibrage CE2 : « en tout » jamais sur les unités, forme additive
+écartée (ambiguïté 6 vs 60), zéro intercalaire inclus, accords singulier/pluriel soignés.
+**Multi-niveaux** : `num-valeur-position` et `num-decompose-10000` sont `calibrated`
+(rangs jusqu'au **million** en CM1). La **décomposition multiplicative** (forme
+« chiffre × valeur de rang » : `4 × 1000000 + 5 × 100000 + …`, sens décomposer troué
+dominant → réponse = 1 chiffre) est une leçon distincte de la décompo « en rangs » CE2 ;
+son `levels: ['cm1']` est porté par le descripteur (le catalogue prend
+`exerciseType.levels ?? d.levels ?? ['ce2']`).
 
 #### `maths/fractions.ts` (#200) — rubrique « Fractions »
 

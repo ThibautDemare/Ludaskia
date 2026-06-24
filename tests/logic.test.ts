@@ -131,6 +131,7 @@ import {
 import { VOCAB_LESSONS, trierAlpha } from '../src/data/francais/vocabulaire';
 import { checkItemAnswer, figureBlock } from '../src/core/items';
 import type { PosedSpec } from '../src/core/items';
+import { nettoyerSaisieNombre } from '../src/core/nombres';
 import {
 	renderHorloge,
 	renderFigure,
@@ -1632,7 +1633,9 @@ describe('Numération : comparer / encadrer / intercaler (#98)', () => {
 		for (let i = 0; i < 400; i++) {
 			const it = genLessonItem(lesson);
 			expect(it.kind).toBe('text'); // un signe, pas un nombre
-			const m = it.text.match(/^Compare : (\d+)\s*@\s*(\d+)$/); // énoncé préfixé (#265)
+			// Les grands nombres sont groupés (#240, séparateur U+202F dès 10 000) : on
+			// déspatialise avant d'extraire les opérandes.
+			const m = nettoyerSaisieNombre(it.text).match(/^Compare:(\d+)@(\d+)$/);
 			expect(m).not.toBeNull();
 			const a = Number(m![1]),
 				b = Number(m![2]);
@@ -1653,19 +1656,25 @@ describe('Numération : comparer / encadrer / intercaler (#98)', () => {
 			expect(checkItemAnswer(it, String(ans + 1))).toBe(false);
 		}
 	});
-	test('jusqu’à 10 000 : nombres ≤ 9999 (4 chiffres réservés à cette leçon)', () => {
+	test('jusqu’à 10 000 (CE2) : nombres ≤ 9999 (4 chiffres réservés à cette leçon)', () => {
+		// Sans niveau, genLessonItem utilise le plus bas niveau supporté (CE2) : les
+		// plages CE2 sont GELÉES (#240). On déspatialise le séparateur de milliers
+		// (U+202F dès 10 000) pour extraire les nombres entiers.
 		const lesson = getLessonById('num-situer-10000')!;
 		for (let i = 0; i < 400; i++) {
 			const it = genLessonItem(lesson);
-			// Tous les nombres de l'énoncé (et la réponse) restent dans la plage CE2.
-			const nombres = (it.text.match(/\d+/g) ?? []).map(Number).concat(Number(it.answer) || 0);
+			const nombres = (nettoyerSaisieNombre(it.text).match(/\d+/g) ?? [])
+				.map(Number)
+				.concat(Number(it.answer) || 0);
 			for (const n of nombres) expect(n).toBeLessThanOrEqual(10000);
 		}
-		// La leçon « jusqu'à 1000 » ne dépasse pas le millier (4 chiffres réservés à L3).
+		// La leçon « j'encadre et j'intercale » en CE2 ne dépasse pas le millier.
 		const l2 = getLessonById('num-encadrer-intercaler')!;
 		for (let i = 0; i < 400; i++) {
 			const it = genLessonItem(l2);
-			const nombres = (it.text.match(/\d+/g) ?? []).map(Number).concat(Number(it.answer) || 0);
+			const nombres = (nettoyerSaisieNombre(it.text).match(/\d+/g) ?? [])
+				.map(Number)
+				.concat(Number(it.answer) || 0);
 			for (const n of nombres) expect(n).toBeLessThanOrEqual(1000);
 		}
 	});
@@ -1904,9 +1913,9 @@ describe('Trophées', () => {
 		expect(def.test!({ stars: 0, totalLessons: 0 })).toBe(false);
 	});
 	test('gSnapshot expose totalLessons (= catalogue du niveau actif)', () => {
-		// totalLessons est SCOPÉ au niveau actif (CE2 par défaut, #225/#233) : il compte
-		// les leçons visibles à ce niveau, pas tout le catalogue multi-niveaux (les
-		// leçons CM1-only — #241 — en sont exclues).
+		// totalLessons est SCOPÉ au niveau actif (complétude « partout », #225/#233). Le
+		// profil de test est CE2 par défaut ; des leçons CM1-only existent (calcul mental
+		// #241 et num-decompose-multiplicative #240) → total CE2 < total tous niveaux.
 		const ce2 = getAllLessons().filter((l) => l.levels.includes('ce2')).length;
 		expect(api.gSnapshot().totalLessons).toBe(ce2);
 	});

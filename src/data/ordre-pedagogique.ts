@@ -91,10 +91,21 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'num-frac-comparaison',
 			'num-frac-addition',
 		],
-		// Calcul mental CM1 (#241) en plus de « comparer » (combinateur calibré #225) :
-		// les multiples de 50 tôt (réinvestit les multiples de 25 du CE2), puis
-		// ÷10/÷100 (quotients entiers) une fois la multiplication ×10/×100 consolidée.
-		cm1: ['num-comparer', 'math-multiples-50', 'math-diviser-10-100'],
+		// CM1 math : numération « grands nombres » jusqu'au million (#240) ET calcul
+		// mental (#241), entrelacés. Dépendances respectées — numération : comparer →
+		// encadrer/intercaler → valeur de position → décompositions (« en rangs » puis
+		// multiplicative) → situer ; calcul mental : multiples de 50 tôt (réinvestit les
+		// multiples de 25 du CE2) puis ÷10/÷100 (quotients entiers) après ×10/×100.
+		cm1: [
+			'num-comparer',
+			'math-multiples-50',
+			'num-encadrer-intercaler',
+			'num-valeur-position',
+			'math-diviser-10-100',
+			'num-decompose-10000',
+			'num-decompose-multiplicative',
+			'num-situer-10000',
+		],
 	},
 	francais: {
 		ce2: [

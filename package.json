@@ -4,7 +4,7 @@
 	"private": true,
 	"license": "UNLICENSED",
 	"type": "module",
-	"description": "Entraînement au calcul mental (CE2), ludique et chronométré.",
+	"description": "Entraînement aux automatismes en maths et en français (CE2, CM1), ludique et chronométré.",
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",

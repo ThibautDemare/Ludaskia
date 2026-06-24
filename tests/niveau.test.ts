@@ -298,9 +298,16 @@ describe('contenu multi-niveau (Lot 3)', () => {
 		expect(maxValeur('cm1')).toBeGreaterThan(100000);
 	});
 
-	it('le passé composé est ouvert au CM1 (multi-niveau « identique »)', () => {
+	it('conjugaison : TOUT le corpus est ouvert aux 4 temps en CM1 (multi-niveau « identique », #239)', () => {
+		// Les 13 verbes du corpus sont ouverts CM1 aux 4 temps (tag additif : le CE2 est
+		// conservé). Vérifié sur quelques (verbe × temps) représentatifs, naître inclus.
+		expect(getLessonById('fr-conj-etre-present')?.levels).toEqual(['ce2', 'cm1']);
+		expect(getLessonById('fr-conj-aimer-imparfait')?.levels).toEqual(['ce2', 'cm1']);
+		expect(getLessonById('fr-conj-aller-futur')?.levels).toEqual(['ce2', 'cm1']);
 		expect(getLessonById('fr-conj-etre-passe_compose')?.levels).toEqual(['ce2', 'cm1']);
-		expect(getLessonById('fr-conj-etre-present')?.levels).toEqual(['ce2']);
+		// naître est dans le périmètre CM1 comme les autres (tout le corpus est CM1).
+		expect(getLessonById('fr-conj-naitre-present')?.levels).toEqual(['ce2', 'cm1']);
+		expect(getLessonById('fr-conj-naitre-passe_compose')?.levels).toEqual(['ce2', 'cm1']);
 	});
 });
 

@@ -48,7 +48,7 @@ phrase **sans** la ponctuation finale (la lire avec l'intonation donnerait la r�
 
 ### Conjugaison
 
-#### `francais/conjugaison.ts`
+#### `francais/conjugaison.ts` (conjugaison CM1 #239)
 
 tables de 13 verbes (être, avoir,
 1er groupe *aimer*, 2e groupe *finir*, aller, faire, venir, voir, dire, pouvoir,
@@ -59,9 +59,28 @@ fabrique `conjugationType(verbId, tense)` (un `ExerciseType` à deux modes,
 la forme, fiche imprimable — et `qcm` — choix entre plusieurs formes,
 **distracteurs dérivés du paradigme** du verbe, toutes de **vraies formes
 correctement orthographiées**, jamais une faute affichée) et descripteurs
-`CONJ_LESSONS` (une leçon par verbe × temps). **Multi-niveaux** : le **passé composé**
-est ouvert **CE2 + CM1** (`conjLevels` → `['ce2','cm1']`, surfacé au catalogue) ; les
-trois autres temps restent CE2.
+`CONJ_LESSONS` (une leçon par verbe × temps). **Multi-niveaux** : **tout le corpus**
+(13 verbes × 4 temps = 52 leçons) est ouvert **CE2 + CM1** — tag **additif**
+`['ce2','cm1']` porté par chaque descripteur (le CE2 n'est jamais retiré). Le passé
+simple et le plus-que-parfait (attendus CM2) ne sont **pas** dans le corpus, donc
+hors périmètre. `VERB_GROUPE` (groupe de chaque verbe, auxiliaires à part) est exporté
+pour les QCM méta ci-dessous.
+
+#### `francais/conjugaison-meta.ts` (#239)
+
+**3 leçons CM1** de **reconnaissance** (QCM mono-mode, `levels: ['cm1']`), regroupées
+sous la rubrique **« Reconnaître les verbes »** de la catégorie Conjugaison et
+**exclues du sprint** (`excludeFromSprint`, comme les autres QCM à libellés longs).
+Elles prennent du recul sur le paradigme travaillé verbe par verbe (`CONJ_LESSONS`) :
+**« Temps simple ou composé ? »** (`fr-conj-simple-compose`, 2 options empilées, via
+l'**indice observable** « un seul mot / deux parties » plutôt que l'étiquette abstraite),
+**« 1er, 2e ou 3e groupe ? »** (`fr-conj-groupe`, 3 vraies étiquettes ; auxiliaires
+**exclus** — hors groupes ; `aller` gardé comme **piège enseigné**, -er mais 3e groupe,
+explication dédiée) et **« Quel est l'infinitif ? »** (`fr-conj-infinitif`, distracteurs =
+**vrais infinitifs** d'autres verbes du corpus). Les banques sont **dérivées de `VERBS`**
+(aucune forme écrite en dur ici) ; distracteurs = vraies étiquettes / vraies formes
+(invariant du moteur : jamais une faute affichée). Branchées au catalogue via
+`CONJ_META_LESSONS` (`core/catalog.ts`).
 
 #### `francais/verbs-lookup.ts` + `francais/verbs/` (#261)
 

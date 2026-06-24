@@ -149,7 +149,14 @@ import type { Exercise } from '../src/core/exercise';
 import { isNewerVersion, canReloadNow } from '../src/core/version';
 import type { ReloadState, ReloadThresholds } from '../src/core/version';
 import { genItems, buildLessonFiche } from '../src/core/build';
-import { conjugationType, VERBS, CONJ_LESSONS, getVerb } from '../src/data/francais/conjugaison';
+import {
+	conjugationType,
+	VERBS,
+	CONJ_LESSONS,
+	getVerb,
+	VERB_GROUPE,
+	displayPronoun,
+} from '../src/data/francais/conjugaison';
 import { SUJETS, GRAMMAIRE_SUJET_LESSONS } from '../src/data/francais/grammaire-sujet';
 import {
 	CLASSES,
@@ -2356,18 +2363,23 @@ describe('Français — Conjugaison', () => {
 		expect(t.check(ex, 'sommes allés')).toBe(true);
 		expect(t.check(ex, 'sommes allé')).toBe(false); // accord pluriel manquant
 	});
-	test('catalogue : 52 leçons de conjugaison (13 verbes × 4 temps)', () => {
+	test('catalogue : 52 leçons verbe×temps + 3 QCM méta CM1 (#239)', () => {
 		// La matière Français contient désormais aussi du vocabulaire (#108) : on
-		// compte la conjugaison par sa catégorie, pas par la matière entière.
+		// compte la conjugaison par sa catégorie, pas par la matière entière. La
+		// catégorie inclut aussi les 3 QCM méta CM1 (#239), hors CONJ_LESSONS.
 		const conj = getLessonsByCategory('fr-conjugaison');
-		expect(conj.length).toBe(CONJ_LESSONS.length);
-		expect(conj.length).toBe(52);
+		expect(conj.length).toBe(CONJ_LESSONS.length + 3);
+		expect(conj.length).toBe(55);
 		const fr = conj;
 		expect(fr.every((l) => l.category === 'fr-conjugaison')).toBe(true);
 		expect(fr.some((l) => l.id === 'fr-conj-etre-present')).toBe(true);
 		expect(fr.some((l) => l.id === 'fr-conj-aller-futur')).toBe(true);
 		expect(fr.some((l) => l.id === 'fr-conj-venir-imparfait')).toBe(true);
 		expect(fr.some((l) => l.id === 'fr-conj-prendre-passe_compose')).toBe(true);
+		// Les 3 QCM méta CM1 sont rattachés à la catégorie Conjugaison.
+		expect(fr.some((l) => l.id === 'fr-conj-simple-compose')).toBe(true);
+		expect(fr.some((l) => l.id === 'fr-conj-groupe')).toBe(true);
+		expect(fr.some((l) => l.id === 'fr-conj-infinitif')).toBe(true);
 	});
 	test('libellés uniformes « Verbe (Ne groupe) au temps » ; auxiliaires à part', () => {
 		const labelOf = (id: string) => CONJ_LESSONS.find((l) => l.id === id)!.label;
@@ -2383,6 +2395,75 @@ describe('Français — Conjugaison', () => {
 		const nonAux = CONJ_LESSONS.filter((l) => l.verbId !== 'etre' && l.verbId !== 'avoir');
 		expect(nonAux.every((l) => /\((1er|2e|3e) groupe\)/.test(l.label))).toBe(true);
 	});
+
+	/* QCM méta CM1 (#239) : on teste la LOGIQUE de génération (pas seulement le
+	   branchement). Distracteurs = vraies étiquettes/formes (invariant du moteur). */
+	test('QCM méta « groupe » : réponse = groupe réel, être/avoir exclus, aller = 3e groupe', () => {
+		const type = getLessonById('fr-conj-groupe')!.exerciseType!;
+		let vuAller = false;
+		for (let i = 0; i < 300; i++) {
+			const ex = type.generate();
+			if (ex.type !== 'qcm') throw new Error('qcm attendu');
+			// L'énoncé montre un INFINITIF ; jamais un auxiliaire (hors groupes).
+			expect(ex.question).not.toContain('être');
+			expect(ex.question).not.toContain('avoir');
+			// 3 vraies étiquettes de groupe, la bonne incluse.
+			expect(ex.choices).toHaveLength(3);
+			for (const c of ex.choices!) expect(['1er groupe', '2e groupe', '3e groupe']).toContain(c);
+			expect(ex.choices).toContain(ex.answer);
+			// La réponse = groupe RÉEL du verbe affiché.
+			const inf = ex.question.match(/« (.+?) »/)![1];
+			const verb = VERBS.find((v) => v.infinitif === inf)!;
+			expect(verb).toBeDefined();
+			expect(ex.answer).toBe(VERB_GROUPE[verb.id]);
+			if (inf === 'aller') {
+				vuAller = true;
+				expect(ex.answer).toBe('3e groupe'); // piège enseigné : -er mais 3e groupe
+			}
+		}
+		expect(vuAller).toBe(true); // aller fait bien partie du vivier
+	});
+
+	test('QCM méta « infinitif » : réponse = infinitif réel, 4 vrais infinitifs distincts', () => {
+		const type = getLessonById('fr-conj-infinitif')!.exerciseType!;
+		const INFINITIFS = VERBS.map((v) => v.infinitif);
+		for (let i = 0; i < 300; i++) {
+			const ex = type.generate();
+			if (ex.type !== 'qcm') throw new Error('qcm attendu');
+			expect(ex.choices).toHaveLength(4);
+			expect(new Set(ex.choices).size).toBe(4); // 4 choix DISTINCTS
+			for (const c of ex.choices!) expect(INFINITIFS).toContain(c); // vrais infinitifs
+			expect(ex.choices).toContain(ex.answer);
+			expect(INFINITIFS).toContain(ex.answer as string);
+		}
+	});
+
+	test('QCM méta « simple/composé » : 2 libellés fixes, composé ⟺ passé composé', () => {
+		const type = getLessonById('fr-conj-simple-compose')!.exerciseType!;
+		const COMPOSE = 'en deux parties (temps composé)';
+		const SIMPLE = 'en un seul mot (temps simple)';
+		// Toutes les « questions » (pronom + forme) de passé composé du corpus : ce sont
+		// les seules formes « en deux parties » (auxiliaire + participe).
+		const pcQuestions = new Set<string>();
+		for (const v of VERBS) {
+			v.forms.passe_compose.forEach((form, p) =>
+				pcQuestions.add(`${displayPronoun(p, form)}${form}`),
+			);
+		}
+		let vuCompose = false,
+			vuSimple = false;
+		for (let i = 0; i < 300; i++) {
+			const ex = type.generate();
+			if (ex.type !== 'qcm') throw new Error('qcm attendu');
+			expect(ex.choices).toEqual([COMPOSE, SIMPLE]); // 2 libellés fixes, ordre stable
+			const attendu = pcQuestions.has(ex.question) ? COMPOSE : SIMPLE;
+			expect(ex.answer).toBe(attendu);
+			if (ex.answer === COMPOSE) vuCompose = true;
+			else vuSimple = true;
+		}
+		expect(vuCompose && vuSimple).toBe(true); // les deux cas apparaissent
+	});
+
 	test('genLessonItem : item texte pour le français, numérique pour les maths', () => {
 		const frItem = genLessonItem(getLessonById('fr-conj-etre-present')!);
 		expect(frItem.kind).toBe('text');
@@ -3089,11 +3170,13 @@ describe('orthographe — accords pluriel/féminin (#109)', () => {
 		expect(ortho).toContain('fr-accords-irreguliers');
 	});
 
-	test('rubriques : la conjugaison est étiquetée par temps', () => {
+	test('rubriques : la conjugaison est étiquetée par temps (+ QCM méta CM1)', () => {
 		const conj = getLessonsByCategory('fr-conjugaison');
 		expect(conj.every((l) => !!l.rubrique)).toBe(true);
+		// Les leçons verbe×temps sont rangées par temps ; les 3 QCM méta CM1 (#239)
+		// forment une rubrique « Reconnaître les verbes ».
 		expect(new Set(conj.map((l) => l.rubrique))).toEqual(
-			new Set(['Présent', 'Futur', 'Imparfait', 'Passé composé']),
+			new Set(['Présent', 'Futur', 'Imparfait', 'Passé composé', 'Reconnaître les verbes']),
 		);
 	});
 });

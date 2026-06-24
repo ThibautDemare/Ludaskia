@@ -193,22 +193,76 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-conj-naitre-passe_compose',
 			'fr-accords-participe-etre',
 		],
-		// CM1 : les 13 passé composé (seules leçons FR taguées CM1), auxiliaires
-		// d'abord puis groupes croissants (verbes en auxiliaire « être » regroupés).
+		// CM1 conjugaison (#239) : les 13 verbes du corpus × 4 temps (52 leçons) + 3 QCM
+		// « méta ». Progression par TEMPS dans l'ordre des TENSES (présent → futur →
+		// imparfait → passé composé) ; à l'intérieur d'un temps, auxiliaires d'abord puis
+		// verbes (ordre de déclaration de VERBS, naître en dernier). Les QCM « groupe » et
+		// « infinitif » arrivent TÔT (après le bloc présent : on reconnaît un verbe/son
+		// groupe dès qu'on a conjugué au présent). Le QCM « simple/composé » vient APRÈS le
+		// passé composé (la notion de temps composé y est introduite). Le plus-que-parfait
+		// est un attendu CM2 (B.O. 2025), donc HORS périmètre CM1 (différé).
 		cm1: [
+			// Présent
+			'fr-conj-etre-present',
+			'fr-conj-avoir-present',
+			'fr-conj-aimer-present',
+			'fr-conj-finir-present',
+			'fr-conj-aller-present',
+			'fr-conj-faire-present',
+			'fr-conj-venir-present',
+			'fr-conj-voir-present',
+			'fr-conj-dire-present',
+			'fr-conj-pouvoir-present',
+			'fr-conj-vouloir-present',
+			'fr-conj-prendre-present',
+			'fr-conj-naitre-present',
+			// QCM méta de classement des verbes (tôt) : groupe puis infinitif.
+			'fr-conj-groupe',
+			'fr-conj-infinitif',
+			// Futur
+			'fr-conj-etre-futur',
+			'fr-conj-avoir-futur',
+			'fr-conj-aimer-futur',
+			'fr-conj-finir-futur',
+			'fr-conj-aller-futur',
+			'fr-conj-faire-futur',
+			'fr-conj-venir-futur',
+			'fr-conj-voir-futur',
+			'fr-conj-dire-futur',
+			'fr-conj-pouvoir-futur',
+			'fr-conj-vouloir-futur',
+			'fr-conj-prendre-futur',
+			'fr-conj-naitre-futur',
+			// Imparfait
+			'fr-conj-etre-imparfait',
+			'fr-conj-avoir-imparfait',
+			'fr-conj-aimer-imparfait',
+			'fr-conj-finir-imparfait',
+			'fr-conj-aller-imparfait',
+			'fr-conj-faire-imparfait',
+			'fr-conj-venir-imparfait',
+			'fr-conj-voir-imparfait',
+			'fr-conj-dire-imparfait',
+			'fr-conj-pouvoir-imparfait',
+			'fr-conj-vouloir-imparfait',
+			'fr-conj-prendre-imparfait',
+			'fr-conj-naitre-imparfait',
+			// Passé composé (auxiliaire + participe)
 			'fr-conj-etre-passe_compose',
 			'fr-conj-avoir-passe_compose',
 			'fr-conj-aimer-passe_compose',
 			'fr-conj-finir-passe_compose',
 			'fr-conj-aller-passe_compose',
-			'fr-conj-venir-passe_compose',
 			'fr-conj-faire-passe_compose',
+			'fr-conj-venir-passe_compose',
 			'fr-conj-voir-passe_compose',
 			'fr-conj-dire-passe_compose',
 			'fr-conj-pouvoir-passe_compose',
 			'fr-conj-vouloir-passe_compose',
 			'fr-conj-prendre-passe_compose',
 			'fr-conj-naitre-passe_compose',
+			// QCM méta « temps simple / composé » : APRÈS le passé composé (notion introduite).
+			'fr-conj-simple-compose',
 		],
 	},
 };

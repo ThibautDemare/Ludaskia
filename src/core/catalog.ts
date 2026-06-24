@@ -9,6 +9,7 @@ import type { IconName } from './icon-names';
 import type { Item } from './items';
 import { bilanQ } from './lessons';
 import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
+import { CONJ_META_LESSONS } from '../data/francais/conjugaison-meta';
 import { VOCAB_LESSONS } from '../data/francais/vocabulaire';
 import { SENS_FIGURE_LESSONS } from '../data/francais/sens-figure';
 import { SENS_LESSONS } from '../data/francais/synonymes-contraires';
@@ -420,6 +421,23 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 	rubrique: d.rubrique, // regroupement par temps (#109)
 }));
 
+/* ---------- Conjugaison CM1 — trois QCM « méta » (#239) ----------
+   Reconnaissance (QCM mono-mode) : temps simple/composé, groupe d'un verbe,
+   infinitif d'une forme conjuguée. Taguées CM1 (le périmètre CE2 est inchangé) ;
+   regroupées sous la rubrique « Reconnaître les verbes » au sein de la Conjugaison.
+   Énoncés courts à lire + QCM → exclues du sprint chronométré (comme les autres QCM
+   de reconnaissance à libellés longs). */
+const CONJ_META_LESSONS_DEFS: LessonDef[] = CONJ_META_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'francais',
+	category: 'fr-conjugaison',
+	levels: ['cm1'],
+	exerciseType: d.exerciseType,
+	rubrique: 'Reconnaître les verbes',
+	excludeFromSprint: true,
+}));
+
 /* ---------- Catalogue des leçons « Orthographe » sur moteur LessonDef (#109) ----------
    Accords (pluriel & féminin) : exercices de transformation saisie/QCM, dans la
    catégorie Orthographe sous la rubrique « Les accords » (à côté des dictées de
@@ -652,6 +670,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...PROBLEMES_LESSONS_DEFS,
 	...DIVISION_LESSONS_DEFS,
 	...FRENCH_LESSONS,
+	...CONJ_META_LESSONS_DEFS,
 	...ACCORD_LESSONS_DEFS,
 	...PARTICIPE_LESSONS_DEFS,
 	...HOMOPHONE_LESSONS_DEFS,

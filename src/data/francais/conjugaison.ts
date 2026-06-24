@@ -320,8 +320,9 @@ const AUXILIAIRE_LABEL: Record<string, string> = {
 };
 
 /* Groupe de chaque verbe conjugué (hors auxiliaires) : 1er (aimer), 2e (finir),
-   3e groupe pour les verbes irréguliers fréquents. */
-const VERB_GROUPE: Record<string, string> = {
+   3e groupe pour les verbes irréguliers fréquents. Réutilisé par les QCM méta
+   (#239, conjugaison-meta.ts) — d'où l'export. */
+export const VERB_GROUPE: Record<string, string> = {
 	aimer: '1er groupe',
 	finir: '2e groupe',
 	aller: '3e groupe',
@@ -343,21 +344,19 @@ function verbeLabel(v: VerbDef): string {
 	return `${cap} (${VERB_GROUPE[v.id]})`;
 }
 
-/* Niveaux d'une leçon de conjugaison (#225) — multi-niveau « identique » (même
-   génération, leçon partagée). Le passé composé (auxiliaire + accord) est
-   consolidé en CM1 : on l'ouvre aux deux niveaux. Les autres temps restent CE2
-   pour l'instant (à étendre avec le pedagogue-primaire). */
-function conjLevels(tense: Tense): SchoolLevel[] {
-	return tense === 'passe_compose' ? ['ce2', 'cm1'] : ['ce2'];
-}
-
+/* Périmètre conjugaison CM1 (#239) : TOUT le corpus est ouvert au CM1 — les 13
+   verbes (être, avoir, 1er/2e groupe, irréguliers fréquents du 3e + naître) × les
+   4 temps présents dans le corpus (présent, futur, imparfait, passé composé). Tag
+   CM1 ADDITIF : le CE2 n'est JAMAIS retiré (toutes les leçons restent CE2). Le passé
+   simple et le plus-que-parfait (attendus CM2) ne sont pas dans le corpus, donc non
+   concernés. Les 3 QCM méta CM1 (conjugaison-meta.ts) tirent dans tout VERBS. */
 export const CONJ_LESSONS: ConjLessonDesc[] = VERBS.flatMap((v) =>
 	TENSES.map((tense) => ({
 		id: `fr-conj-${v.id}-${tense}`,
 		label: `${verbeLabel(v)} ${TENSE_PHRASE[tense]}`,
 		verbId: v.id,
 		tense,
-		levels: conjLevels(tense),
+		levels: ['ce2', 'cm1'] as SchoolLevel[],
 		rubrique: TENSE_RUBRIQUE[tense],
 	})),
 );

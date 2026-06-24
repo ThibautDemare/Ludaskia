@@ -4,6 +4,7 @@
 		"commit": "",
 		"pr": ""
 	},
+	"disableArtifact": true,
 	"permissions": {
 		"allow": [
 			"Bash(npm run typecheck)",
@@ -76,6 +77,10 @@
 			"PowerShell(Test-Path*)",
 			"PowerShell(Measure-Object*)",
 			"PowerShell(Sort-Object*)"
+		],
+		"deny": [
+			"Artifact",
+			"ShareOnboardingGuide"
 		]
 	}
 }

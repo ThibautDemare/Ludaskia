@@ -58,6 +58,14 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
   (rendu) pour combler un manque, au lieu de s'arrêter ; il **ne tranche pas seul un
   arbitrage produit majeur** (périmètre, ce qu'on diffère, compromis UX) → il le
   remonte. N'ouvre pas la PR lui-même.
+- **`expert-documentation`** — référent **doc & capacités du code**. On le
+  consulte pour savoir **ce que le code sait faire** et **où c'est documenté**
+  (« a-t-on déjà ce moteur ? », « où est géré l'XP ? », « comment marche X ? ») :
+  il explore lui-même `src/` (qui fait foi) et la doc, et répond de façon sourcée.
+  Et en **fin de dev**, il vérifie que le changement se reflète dans la doc « état
+  courant » (`docs/ARCHITECTURE.md` + `docs/architecture/*`, READMEs) et **édite
+  la doc** pour combler l'écart. **Édite la doc, jamais le code** (renvoie à
+  `relecteur-qualite` / `integrateur-lecon` / `auteur-tests-e2e`).
 - **`gestionnaire-github`** — issues / PR / milestones (voir Workflow Git plus bas).
 
 ### Comment orchestrer les agents (réflexes, pas optionnels)
@@ -80,6 +88,12 @@ trophées, objectifs) et profils. 100 % côté client (`localStorage`).
     **`auteur-tests-e2e`** (dans la même PR ; cf. règle e2e plus bas).
   Plusieurs dimensions touchées → plusieurs relecteurs (ex. une nouvelle leçon à
   figure avec énoncés FR = qualité **+** accessibilité **+** langue).
+- **Doc — resync en fin de dev.** Quand un dev touche l'architecture (nouveau
+  module/type/convention, nouvelle leçon/catégorie, mode, mécanique, clé de
+  stockage…), passer le diff à **`expert-documentation`** : il vérifie que la doc
+  « état courant » (`docs/ARCHITECTURE.md` + `docs/architecture/*`) reste fidèle au
+  code et la met à jour. C'est aussi l'agent à interroger en amont pour savoir si
+  une capacité **existe déjà** avant de la réimplémenter.
 
 ## Lancer
 - `npm install` puis `npm run dev` (serveur + HMR).

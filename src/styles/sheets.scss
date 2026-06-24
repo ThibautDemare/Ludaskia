@@ -151,6 +151,10 @@
 	border-bottom-color: var(--accent);
 	background: var(--accent-soft);
 }
+/* Les états corrigés sont déclarés APRÈS `.ans:focus` (même spécificité) : ils
+   l'emportent donc sur le focus accent même si le champ corrigé est focalisé —
+   on ne lit jamais « accent » là où il y a un verdict (#312). Ne pas remonter
+   ces règles au-dessus de `.ans:focus`. */
 .ans.correct {
 	color: var(--ok);
 	border-bottom-color: var(--ok);
@@ -161,6 +165,10 @@
 	border-bottom-color: var(--ko);
 	font-weight: 700;
 	background: var(--ko-soft); /* token (#224) : suit le thème (lisible aussi en sombre) */
+	/* Indice de FORME (pas seulement la couleur) : une barre rouge à gauche, que le
+	   chrome de l'appli n'a jamais → l'erreur reste saillante même dans un thème dont
+	   l'accent est rouge (#312). `inset` = aucun décalage de mise en page. */
+	box-shadow: inset 3px 0 0 var(--ko);
 }
 .mark {
 	font-family: var(--ui);
@@ -195,6 +203,7 @@ html.anim-reduced .mark.correct {
 }
 .mark.wrong {
 	color: var(--ko);
+	font-size: 15px; /* la croix ✗ est le signal le plus important : un cran plus grosse que le ✓ (#312) */
 }
 .mark.wrong .sol {
 	color: var(--ok);

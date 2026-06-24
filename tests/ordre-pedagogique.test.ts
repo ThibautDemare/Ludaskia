@@ -32,6 +32,7 @@ beforeEach(() => {
 
 // Raccourcis typés `string[]` (le helper évite le `| undefined` du Partial).
 const M_CE2 = ordreLecons('math', 'ce2');
+const M_CM1 = ordreLecons('math', 'cm1');
 const F_CE2 = ordreLecons('francais', 'ce2');
 const F_CM1 = ordreLecons('francais', 'cm1');
 
@@ -70,7 +71,8 @@ describe('core/ordre — application au catalogue', () => {
 		expect(getLessonsBySubject('math', 'ce2').map((l) => l.id)).toEqual(M_CE2);
 		expect(getLessonsBySubject('francais', 'ce2').map((l) => l.id)).toEqual(F_CE2);
 		expect(getLessonsBySubject('francais', 'cm1').map((l) => l.id)).toEqual(F_CM1);
-		expect(getLessonsBySubject('math', 'cm1').map((l) => l.id)).toEqual(['num-comparer']);
+		// Maths CM1 (#241) : « comparer » (calibré) + les 2 leçons de calcul mental CM1.
+		expect(getLessonsBySubject('math', 'cm1').map((l) => l.id)).toEqual(M_CM1);
 	});
 
 	it('getLessonsByCategory(niveau) : leçons triées selon l’ordre (positions croissantes)', () => {
@@ -169,21 +171,22 @@ describe('leçon du jour', () => {
 	it('multi-niveau : en CM1, déroule les ordres CM1, file vide ⇒ on continue l’autre matière', () => {
 		setNiveauReference('cm1');
 		const seq = sequenceLeconDuJour();
-		// math CM1 = 1 leçon, français CM1 = 13 → entrelacement puis français seul.
-		expect(seq).toHaveLength(1 + 13);
-		expect(seq[0].id).toBe('num-comparer'); // math.cm1[0]
+		// math CM1 = 3 leçons (#241), français CM1 = 13 → entrelacement puis français seul.
+		expect(seq).toHaveLength(M_CM1.length + 13);
+		expect(seq[0].id).toBe(M_CM1[0]); // math.cm1[0] = num-comparer
 		expect(seq[1].id).toBe(F_CM1[0]); // fr-conj-etre-passe_compose
-		expect(seq[2].id).toBe(F_CM1[1]); // math épuisée → français continue
-		expect(leconDuJour()!.id).toBe('num-comparer');
+		expect(seq[2].id).toBe(M_CM1[1]); // math.cm1[1] = math-multiples-50
+		expect(seq[3].id).toBe(F_CM1[1]);
+		expect(leconDuJour()!.id).toBe(M_CM1[0]);
 	});
 
 	it('niveau PAR MATIÈRE : maths en CM1, français en CE2, chacun sur son ordre', () => {
 		setNiveauReference('ce2');
 		setNiveauMatiere('math', 'cm1'); // profil en dents de scie (#225)
 		const seq = sequenceLeconDuJour();
-		expect(seq[0].id).toBe('num-comparer'); // maths CM1 (seule leçon)
+		expect(seq[0].id).toBe(M_CM1[0]); // maths CM1 (num-comparer)
 		expect(seq[1].id).toBe(F_CE2[0]); // français reste CE2
-		// maths CM1 épuisée après la 1re → la suite est 100 % français CE2.
-		expect(seq[2].id).toBe(F_CE2[1]);
+		expect(seq[2].id).toBe(M_CM1[1]); // maths CM1 continue (math-multiples-50)
+		expect(seq[3].id).toBe(F_CE2[1]);
 	});
 });

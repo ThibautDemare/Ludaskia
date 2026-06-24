@@ -91,8 +91,10 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'num-frac-comparaison',
 			'num-frac-addition',
 		],
-		// Seule leçon de maths aujourd'hui taguée CM1 (combinateur calibré #225).
-		cm1: ['num-comparer'],
+		// Calcul mental CM1 (#241) en plus de « comparer » (combinateur calibré #225) :
+		// les multiples de 50 tôt (réinvestit les multiples de 25 du CE2), puis
+		// ÷10/÷100 (quotients entiers) une fois la multiplication ×10/×100 consolidée.
+		cm1: ['num-comparer', 'math-multiples-50', 'math-diviser-10-100'],
 	},
 	francais: {
 		ce2: [

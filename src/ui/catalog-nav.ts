@@ -15,7 +15,7 @@ import {
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { niveauActifMatiere } from '../core/niveau-actif';
 import { LEVEL_ORDER, LEVEL_LABEL } from '../core/levels';
-import { LESSONS } from '../core/lessons';
+import { LESSONS_CALCUL_MENTAL } from '../core/lessons';
 import { loadStars, loadLessonStats, etoileAuxNiveaux } from '../core/progress';
 import { loadOrtho } from '../core/orthographe/store';
 import { listOrthoLecons, type LeconOrthoRef } from '../core/orthographe/lessons';
@@ -128,7 +128,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 	// Chaque leçon : carte riche + un 🖨 pour imprimer sa fiche (sans la lancer).
 	const ai = LEVEL_ORDER.indexOf(niveau);
 	const cardRow = (def: LessonDef, i: number) => {
-		const rich = LESSONS.find((l) => l.id === def.id);
+		const rich = LESSONS_CALCUL_MENTAL.find((l) => l.id === def.id);
 		const entry = rich ?? { id: def.id, num: i + 1, title: def.label };
 		// Badge « déjà maîtrisée en <classe inférieure> » : même leçon étoilée à un
 		// niveau plus bas que le niveau actif de la matière (#225). On nomme la classe

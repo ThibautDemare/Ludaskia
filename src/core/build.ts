@@ -8,7 +8,7 @@
 import { getAllLessons, getLessonById, genLessonItem, isLegacyMathLesson } from './catalog';
 import type { LessonDef, SchoolLevel } from './catalog';
 import { niveauLecon } from './niveau-actif';
-import { LESSONS } from './lessons';
+import { LESSONS_CALCUL_MENTAL } from './lessons';
 import { setRenderLesson, renderItem, ficheHTMLGeneric, getPrintMode, estItemQcm } from './items';
 import type { Item } from './items';
 import { commKey } from './utils';
@@ -48,7 +48,7 @@ export function buildLessonFiche(lessonId: string, level?: SchoolLevel): string 
 	if (!lesson) return '';
 	// Calcul mental (moteur bilanQ) : rendu riche dédié (grilles, décomposition…).
 	if (isLegacyMathLesson(lesson)) {
-		const math = LESSONS.find((l) => l.id === lessonId)!;
+		const math = LESSONS_CALCUL_MENTAL.find((l) => l.id === lessonId)!;
 		setRenderLesson(lessonId);
 		const html = math.build();
 		setRenderLesson(null);

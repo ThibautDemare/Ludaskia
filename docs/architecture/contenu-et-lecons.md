@@ -272,13 +272,26 @@ verify() corrige chaque cellule (sans-faute = toutes justes). Exclu du sprint
 
 ### Calcul mental
 
-Catégorie `math-calcul-mental`. Deux origines :
+Catégorie `math-calcul-mental`. Trois origines :
 
-- **15 leçons historiques** (`core/lessons.ts`, `LESSONS`/`bilanQ` — tables d'addition,
+- **15 leçons CE2 historiques** (`core/lessons.ts`, `LESSONS`/`bilanQ` — tables d'addition,
   compléments à 10/100/1000, doubles, moitiés, ajouter/soustraire 9·19, tables de ×,
   multiples de 25, décompo. de 60, ×10·×100, ×4·×8, ×20·30·40, décomposer…). Système
-  fiche/`bilanQ` **sans paramètre `level`** : **CE2 seulement**, calibrage CM1 différé
-  (cf. [Logique pure](core.md)).
+  fiche/`bilanQ` **sans paramètre `level`** : le **calibrage** d'une leçon donnée est
+  figé (pas de recalibrage par niveau) — étendre au CM1 se fait par une **leçon
+  distincte** (cf. ci-dessous), pas en surchargeant une plage CE2.
+- **2 leçons CM1** (#241, `core/lessons.ts`, tableau **`LESSONS_CM1`** + cas `bilanQ`
+  16/17) : **« Multiples de 50 »** (`math-multiples-50`, clone CM1 des multiples de 25,
+  50×2 → 50×12) et **« Diviser par 10, par 100 »** (`math-diviser-10-100`, symétrique de
+  « ×10, ×100 » : 6 items ÷10 puis 6 ÷100). **Quotients ENTIERS uniquement** — le
+  dividende est toujours un multiple exact (finit par `0` / `00`), jamais de reste ni de
+  virgule (les décimaux sont différés au chantier dédié) ; quotient ≤ 2 chiffres.
+  `levels: ['cm1']` + ordre pédagogique `math.cm1`. **Convention multi-niveaux du
+  moteur historique** : `LESSONS` reste l'ensemble **CE2** consommé par les vues legacy
+  « toutes les leçons » (`buildFiches`, `bilanBlocks`, `bilanHTML`, `renderLessons`) ;
+  les leçons CM1 vivent dans `LESSONS_CM1` ; **`LESSONS_CALCUL_MENTAL`** (= `LESSONS` +
+  `LESSONS_CM1`) est le **lookup combiné** utilisé par `buildLessonFiche` et la carte de
+  catégorie pour retrouver le rendu riche d'une leçon par `id` (tous niveaux).
 - **`maths/division.ts` (#104, #95) — division par le sens** (jamais posée au CE2),
   3 leçons : **« Moitié et quart d'une collection »** (`math-div-moitie-quart`,
   fraction-opérateur, résultat entier ; `calibrated` CE2 X ≤ 50 / CM1 X ≤ 100),

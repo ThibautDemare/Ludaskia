@@ -158,16 +158,22 @@ propre doc de conception : `docs/design-orthographe.md`.
 
 ## Contenu maths & génération de fiches/bilans
 
-- **`lessons.ts`** — contenu **maths** : `LESSONS` (15 leçons constructibles
-  isolément), `bilanQ` (générateur réutilisé par le catalogue). La **fiche
-  imprimable** (`LESSONS[i].build()`) et la **génération interactive** (`bilanQ`,
+- **`lessons.ts`** — contenu **maths** : `LESSONS` (15 leçons CE2 constructibles
+  isolément), `LESSONS_CM1` (leçons CM1, #241), `LESSONS_CALCUL_MENTAL` (lookup combiné
+  CE2+CM1 pour le rendu par `id`), `bilanQ` (générateur réutilisé par le catalogue). La
+  **fiche imprimable** (`build()`) et la **génération interactive** (`bilanQ`,
   sprint/bilan) doivent tirer dans les **mêmes plages** — c'est `bilanQ` qui pilote
   l'anti-répétition de l'entraînement. Quand une plage n'est pas une simple borne
   numérique (cibles de **moitiés** `CIBLES_MOITIES` / `CIBLES_MOITIE_PAIR`,
-  décomposition `CIBLES_DECOMPO_MULT`), elle est **centralisée en constante exportée**
-  en tête du module et **partagée** par les deux chemins (#287). ⚠ Le système
-  fiche/`bilanQ` n'a **pas** de paramètre `level` : ces leçons sont **CE2 seulement**,
-  leur calibrage CM1 est **différé** au déploiement du CM1 du calcul mental. Côté
+  décomposition `CIBLES_DECOMPO_MULT`, dividendes exacts `DIVIDENDES_DIV_10/100`), elle
+  est **centralisée en constante exportée** en tête du module et **partagée** par les
+  deux chemins (#287). ⚠ Le système fiche/`bilanQ` n'a **pas** de paramètre `level` : le
+  **calibrage d'une leçon est figé** (pas de recalibrage par niveau). Étendre une notion
+  au CM1 se fait par une **leçon distincte** (nouvel `id` + nouveau numéro `bilanQ`, dans
+  `LESSONS_CM1`, taguée `levels: ['cm1']`), **jamais** en surchargeant la plage d'une
+  leçon CE2. Les vues legacy « toutes les leçons » (`buildFiches`, `bilanBlocks`,
+  `bilanHTML`, `renderLessons`) itèrent le seul `LESSONS` (CE2) ; `buildLessonFiche`
+  retrouve une leçon (tous niveaux) dans `LESSONS_CALCUL_MENTAL`. Côté
   impression : `PrintScope` + **`buildPrintableDOM(scope)`** (contextuel,
   **multi-matières** via `buildLessonFiche`/`bilanBlocksForIds`), `coverHTML(scope)`
   (garde dynamique), pagination 2 fiches/A4. (`buildFiches`/`bilanHTML` historiques

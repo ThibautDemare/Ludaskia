@@ -17,7 +17,7 @@ import {
 	ESPACE_FINE,
 } from '../src/core/nombres';
 import { getLessonById, genLessonItem } from '../src/core/catalog';
-import { checkItemAnswer } from '../src/core/items';
+import { checkItemAnswer, renderItem } from '../src/core/items';
 
 /* Espaces de référence, désignés par leur point de code pour ne JAMAIS écrire de
    caractère invisible dans ce source (fragile à l'édition / au lint). */
@@ -286,5 +286,33 @@ describe('Accord des libellés de rang (#240)', () => {
 				expect(it.text).not.toContain('de milles');
 			}
 		}
+	});
+});
+
+describe('Ajustements numération (suite des retours mainteneur)', () => {
+	// « combien de X en tout » ne doit JAMAIS porter sur le rang le plus haut du nombre :
+	// là, countOf = le chiffre du rang (ex. dizaines de mille de 71 347 = 7), « en tout »
+	// ne distingue rien et l'item est trompeur. On exclut ce cas → la réponse est toujours
+	// strictement > le chiffre, donc ≥ 10 (au moins 2 chiffres).
+	it('valeur de position « combien en tout » : non dégénéré (réponse ≥ 10), CE2 et CM1', () => {
+		const exType = getLessonById('num-valeur-position')!.exerciseType;
+		for (const level of ['ce2', 'cm1'] as const) {
+			let vusEnTout = 0;
+			for (let i = 0; i < 2000; i++) {
+				const ex = exType.generate({ level });
+				if (ex.type !== 'text' || !ex.question.includes('combien y a-t-il de')) continue;
+				vusEnTout++;
+				expect(Number(ex.answer)).toBeGreaterThanOrEqual(10);
+			}
+			expect(vusEnTout).toBeGreaterThan(0); // ce type de question apparaît bien
+		}
+	});
+
+	// Champ de saisie élargi (.ans-grand) pour une réponse numérique à ≥ 5 chiffres.
+	it('renderItem : un grand nombre (≥ 10 000) reçoit la classe ans-grand, pas un petit', () => {
+		expect(renderItem({ text: 'x = @', answer: 1_400_000, kind: 'num' })).toContain('ans-grand');
+		expect(renderItem({ text: 'x = @', answer: 90_000, kind: 'num' })).toContain('ans-grand');
+		expect(renderItem({ text: 'x = @', answer: 7, kind: 'num' })).not.toContain('ans-grand');
+		expect(renderItem({ text: 'x = @', answer: 999, kind: 'num' })).not.toContain('ans-grand');
 	});
 });

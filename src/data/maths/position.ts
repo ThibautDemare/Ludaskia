@@ -76,11 +76,13 @@ function valeurPositionFact(maxRang: number): Exercise {
 			digitAt(n, r.place),
 		);
 	}
-	// « combien de X en tout » : la quantité totale (jamais sur les unités). On
-	// limite le rang pour que la réponse reste ≤ 6 chiffres saisis (contrainte UX
-	// #240) : on demande un rang assez haut pour que le quotient soit petit.
+	// « combien de X en tout » : la quantité totale. On exclut DEUX rangs dégénérés :
+	// les unités (countOf = le nombre entier) ET le rang le plus haut du nombre (rnd
+	// jusqu'à haut-1) — sur ce dernier, countOf = le CHIFFRE du rang (ex. « dizaines de
+	// mille en tout » de 71 347 = 7 = le chiffre), « en tout » ne distingue alors plus
+	// rien et l'item est trompeur. Borne basse rangMin → réponse ≤ 6 chiffres (UX #240).
 	const rangMin = Math.max(1, haut - 4); // garantit countOf ≤ 5 chiffres
-	const r = RANGS[rnd(rangMin, haut)];
+	const r = RANGS[rnd(rangMin, haut - 1)];
 	return ex(
 		`Dans ${formatNombre(n)}, combien y a-t-il de ${pluriel(r.mot, 2)} en tout ? @`,
 		countOf(n, r.place),

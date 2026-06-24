@@ -361,8 +361,12 @@ describe('Géométrie CM1 — comptage faces/arêtes/sommets DE MÉMOIRE', () =>
 			expect(m).toBeTruthy();
 			const nom = m![1];
 			expect(Object.keys(VRAI)).toContain(nom);
-			// La réponse correspond à la caractéristique demandée.
-			const caracMatch = ex.question.match(/Combien de (\S+)/);
+			// Élision « de » → « d' » devant voyelle : « Combien d'arêtes… » (jamais la forme
+			// fautive « de arêtes »), mais « Combien de faces/sommets… ».
+			expect(ex.question).not.toContain('de arêtes');
+			// La réponse correspond à la caractéristique demandée (regex tolérant « de »/« d' »).
+			const caracMatch = ex.question.match(/Combien d(?:e |')(\S+)/);
+			expect(caracMatch).toBeTruthy();
 			const carac = caracMatch![1];
 			const map: Record<string, keyof (typeof VRAI)['un cube']> = {
 				faces: 'faces',

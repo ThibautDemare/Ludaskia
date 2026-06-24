@@ -239,11 +239,18 @@ export function renderItem(it: Item, extra = '') {
 	// Corrigé (#41) : la réponse écrite sur la ligne, à la place du champ vide. Pas de
 	// classe `.ans` (que l'impression rend transparente pour cacher la saisie) — on
 	// utilise `.ans-corrige`, visible. Pas de `mark` (le corrigé n'est pas corrigé).
+	// Champ « grand nombre » : une réponse numérique à ≥ 5 chiffres (encadrement au
+	// million, « combien en tout », décomposition #240) déborde du champ standard (58px)
+	// → variante `.ans-grand` plus large, à chiffres tabulaires.
+	const grand =
+		it.kind !== 'text' && Number.isFinite(Number(it.answer)) && Math.abs(Number(it.answer)) >= 10000
+			? ' ans-grand'
+			: '';
 	const field = corrigeMode
 		? `<span class="ans-corrige ${extra}">${escapeHTML(String(it.answer))}</span>`
 		: it.kind === 'text'
 			? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
-			: `<input class="ans ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
+			: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
 	const texte = enonceTexte(it.text);

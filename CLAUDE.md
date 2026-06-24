@@ -1,9 +1,12 @@
 # CLAUDE.md — Ludaskia
 
-Mini-application web d'entraînement au **calcul mental** (CE2) : génération de
-calculs, correction instantanée, chronomètre, gamification (records, médailles,
-trophées, objectifs) et profils. 100 % côté client (`localStorage`).
-**TypeScript + Vite + SCSS**, tests **Vitest**.
+Mini-application web d'entraînement **multi-matières** (CE2, et **début de
+CM1**) : **maths** (numération, calcul, calcul mental, grandeurs & mesures,
+géométrie, problèmes) et **français** (grammaire, conjugaison, orthographe,
+vocabulaire). Génération d'exercices, correction instantanée, chronomètre,
+gamification (records, médailles, trophées, objectifs, XP) et profils. 100 %
+côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
+**Playwright**.
 
 ## Où trouver quoi
 - **Architecture technique** (stack, structure `src/`, données, build, déploiement,

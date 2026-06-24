@@ -580,7 +580,7 @@ function finalizeSprint() {
 	if (t) clearInterval(t);
 	// Un sprint compte car il est allé au bout du temps : on enregistre tout.
 	const streakDays = updateStreak().days;
-	recordLessonStats(sprintPerLesson);
+	recordLessonStats(sprintPerLesson, 'sprint'); // type journalisé pour le graphe d'activité (#319)
 	const medalInfo = recordRun('sprint', sprintScore, sprintAnswered, SPRINT_MS);
 	const goalRes = updateGoal({ mode: 'sprint', sprint: true, isRecord: medalInfo.isRecord });
 	const newTrophies = evaluateTrophies();

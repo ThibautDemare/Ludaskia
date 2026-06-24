@@ -255,7 +255,10 @@ export function loadLessonStatsAll(): Record<string, LessonStat> {
 	}
 	return out;
 }
-export function recordLessonStats(perLesson: Record<string, { ok: number; total: number }>) {
+export function recordLessonStats(
+	perLesson: Record<string, { ok: number; total: number }>,
+	kind: ActivityKind = 'lecon', // type journalisé pour le graphe d'activité (#319)
+) {
 	const s = loadLessonStatsRaw();
 	// Leçons rencontrées pour la 1re fois dans cet essai (aucune stat antérieure) :
 	// sert au suivi « première fois » (objectif « nouvelle leçon », #178).
@@ -280,8 +283,8 @@ export function recordLessonStats(perLesson: Record<string, { ok: number; total:
 	}
 	lsSet(LESSON_STATS_KEY, s);
 	const now = Date.now();
-	// Journal d'activité (#234) : un point par session finalisée, tous contextes confondus.
-	if (hadActivity) recordActivity(now);
+	// Journal d'activité (#234) : un point par session finalisée, typé par contexte (#319).
+	if (hadActivity) recordActivity(now, kind);
 	// Première rencontre : on date le premier passage (objectif « nouvelle leçon »)
 	// puis on entre la leçon en révision espacée (cf. #45).
 	markLessonsFirstSeen(premieres, now);
@@ -300,20 +303,48 @@ export const recentAvgPct = (e: any): number | null =>
 		? Math.round(e.recentPct.reduce((sum: number, p: number) => sum + p, 0) / e.recentPct.length)
 		: null;
 
-/* ---------- Journal d'activité : sessions finalisées (#234) ----------
-   Horodatage léger de CHAQUE session d'entraînement finalisée (leçon seule, bilan,
-   express… tout ce qui passe par recordLessonStats), pour le graphe d'activité de
-   l'espace encadrant. Indépendant des Run, qui ne couvrent pas les leçons jouées
-   seules. Par profil (clé préfixée), borné aux ACTIVITY_MAX derniers événements. */
+/* ---------- Journal d'activité : sessions finalisées (#234, typé #319) ----------
+   Une entrée par session d'entraînement finalisée (tout ce qui passe par
+   recordLessonStats), pour le graphe d'activité de l'espace encadrant. Indépendant
+   des Run, qui ne couvrent pas les leçons jouées seules. Par profil (clé préfixée),
+   borné aux ACTIVITY_MAX dernières entrées.
+
+   Format : `{ t, k }` — horodatage + TYPE de session (#319 : permet la répartition
+   « par type » dans le graphe). Type enregistrable : 'lecon' | 'bilan' | 'sprint'.
+   MIGRATION : l'ancien format était un simple `number` (horodatage) ; on le lit
+   encore (→ type 'inconnu') et on le réécrit au format objet au prochain passage. */
 export const ACTIVITY_KEY = 'ludaskia_activity';
 const ACTIVITY_MAX = 200;
-export function loadActivity(): number[] {
-	const v = lsGet(ACTIVITY_KEY, []);
-	return Array.isArray(v) ? v : [];
+export type ActivityKind = 'lecon' | 'bilan' | 'sprint'; // types enregistrables
+export type ActivityKindStored = ActivityKind | 'inconnu'; // + héritage (ancien format)
+export interface ActivityEntry {
+	t: number; // horodatage (ms)
+	k: ActivityKindStored;
 }
-function recordActivity(now: number) {
-	const a = loadActivity();
-	a.push(now);
+/* Normalise un journal brut (lu en localStorage) en entrées typées, en tolérant
+   l'ANCIEN format `number[]` (chaque nombre → entrée de type 'inconnu'). Pur. */
+export function normalizeActivity(raw: unknown): ActivityEntry[] {
+	if (!Array.isArray(raw)) return [];
+	const out: ActivityEntry[] = [];
+	for (const e of raw) {
+		if (typeof e === 'number') {
+			out.push({ t: e, k: 'inconnu' }); // ancien format : horodatage nu
+		} else if (e && typeof e === 'object' && typeof (e as ActivityEntry).t === 'number') {
+			const k = (e as ActivityEntry).k;
+			out.push({
+				t: (e as ActivityEntry).t,
+				k: k === 'lecon' || k === 'bilan' || k === 'sprint' ? k : 'inconnu',
+			});
+		}
+	}
+	return out;
+}
+export function loadActivity(): ActivityEntry[] {
+	return normalizeActivity(lsGet(ACTIVITY_KEY, []));
+}
+function recordActivity(now: number, kind: ActivityKind) {
+	const a = loadActivity(); // normalisé : réécrit aussi l'éventuel héritage au format objet
+	a.push({ t: now, k: kind });
 	if (a.length > ACTIVITY_MAX) a.splice(0, a.length - ACTIVITY_MAX);
 	lsSet(ACTIVITY_KEY, a);
 }

@@ -38,6 +38,19 @@ récemment » (jalons datés) ; **2-3** leçons « à revoir » (perf récente <
 d'activité 7 jours (journal `ludaskia_activity`). **Bannis** : moyenne/note globale, XP comme
 niveau scolaire, classement, comparaison entre profils, temps-performance.
 
+## Graphe « Activité des 7 derniers jours » (#319)
+
+Histogramme par jour (index 6 = aujourd'hui), avec **échelle Y chiffrée** (graduations +
+lignes de repère, via `echelleActivite` côté `core/encadrant-stats.ts`) et une **bascule
+« Total » / « Par type »** (état `vueActivite`, boutons-segments `data-act="activite-mode"`).
+En mode « Total » chaque barre = le nombre de sessions du jour ; en mode « Par type » la barre
+est **empilée**, segmentée par type de session (`lecon`/`bilan`/`sprint`, + `inconnu` pour les
+sessions de l'ancien format) avec **légende**. Couleurs reprises des tokens sémantiques
+(`--cat-bleu`/`--cat-bilan`/`--cat-sprint`), relevées en thème Nuit pour le contraste. Le détail
+par type est aussi exposé en **texte** (a11y, `repartitionTexte`). Pas d'activité → ni graphe ni
+bascule (rien à comparer). Le type de session est journalisé en amont par `recordLessonRun`
+(`'lecon'` seule / `'bilan'` express\complet) et `ui/sprint.ts` (`'sprint'`).
+
 ## « À revoir » → carte d'accueil
 
 **« À revoir » → carte d'accueil** : l'encadrant **épingle** des leçons

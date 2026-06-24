@@ -33,6 +33,17 @@ const SEED_STATS_FAIBLES = `(() => {
   localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({ 'math-complements@ce2': stat }));
 })();`;
 
+/* Seed du journal d'activité TYPÉ (#319) pour le profil e2e : quelques sessions
+   réparties sur les derniers jours, plusieurs types (leçon / bilan / sprint). */
+const SEED_ACTIVITE = `(() => {
+  const now = Date.now(); const day = 86400000;
+  const acts = [
+    { t: now, k: 'lecon' }, { t: now, k: 'lecon' }, { t: now, k: 'sprint' },
+    { t: now - day, k: 'bilan' }, { t: now - 2 * day, k: 'lecon' },
+  ];
+  localStorage.setItem('e2e/ludaskia_activity', JSON.stringify(acts));
+})();`;
+
 /* ----- Tests ----- */
 
 /* 1. Accès depuis Profils : #btnEncadrant visible → clic → espace visible */
@@ -212,6 +223,35 @@ test("carte « À revoir » : épingler une leçon faible la fait apparaître su
 	const carteARevoir = page.locator('#aRevoir');
 	await expect(carteARevoir).toBeVisible();
 	await expect(carteARevoir.locator('.lj-title')).toBeVisible();
+
+	expect(errors).toEqual([]);
+});
+
+/* 8. Graphe d'activité (#319) : échelle Y + bascule « Total » / « Par type ». */
+test("graphe d'activité : échelle Y présente, bascule « Par type » empile les segments", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_ACTIVITE);
+	await page.addInitScript(SEED_CE2);
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	// Le graphe se rend, avec une échelle Y chiffrée (≥ 2 graduations).
+	await expect(page.locator('.enc-chart')).toBeVisible();
+	expect(await page.locator('.enc-axis-tick').count()).toBeGreaterThanOrEqual(2);
+
+	// Vue par défaut « Total » : barres simples présentes, bouton « Total » actif.
+	await expect(page.locator('.enc-bar').first()).toBeVisible();
+	await expect(page.locator('.enc-act-mode[data-mode="total"]')).toHaveClass(/on/);
+	await expect(page.locator('.enc-seg-bar')).toHaveCount(0);
+
+	// Bascule « Par type » → segments empilés + légende des types.
+	await page.locator('.enc-act-mode[data-mode="type"]').click();
+	await expect(page.locator('.enc-act-mode[data-mode="type"]')).toHaveClass(/on/);
+	await expect(page.locator('.enc-seg-bar').first()).toBeVisible();
+	await expect(page.locator('.enc-key.enc-act-lecon')).toBeVisible();
+	await expect(page.locator('.enc-key.enc-act-sprint')).toBeVisible();
 
 	expect(errors).toEqual([]);
 });

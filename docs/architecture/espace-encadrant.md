@@ -44,12 +44,16 @@ Histogramme par jour (index 6 = aujourd'hui), avec **échelle Y chiffrée** (gra
 lignes de repère, via `echelleActivite` côté `core/encadrant-stats.ts`) et une **bascule
 « Total » / « Par type »** (état `vueActivite`, boutons-segments `data-act="activite-mode"`).
 En mode « Total » chaque barre = le nombre de sessions du jour ; en mode « Par type » la barre
-est **empilée**, segmentée par type de session (`lecon`/`bilan`/`sprint`, + `inconnu` pour les
-sessions de l'ancien format) avec **légende**. Couleurs reprises des tokens sémantiques
-(`--cat-bleu`/`--cat-bilan`/`--cat-sprint`), relevées en thème Nuit pour le contraste. Le détail
-par type est aussi exposé en **texte** (a11y, `repartitionTexte`). Pas d'activité → ni graphe ni
-bascule (rien à comparer). Le type de session est journalisé en amont par `recordLessonRun`
-(`'lecon'` seule / `'bilan'` express\complet) et `ui/sprint.ts` (`'sprint'`).
+est **empilée**, segmentée par type de session (`lecon`/`revision`/`dictee`/`bilan`/`sprint`,
++ `inconnu` pour les sessions de l'ancien format) avec **légende**. Couleurs : leçon = vert
+(`--ok`), révision = bleu (`--cat-bleu`), dictée = rose, bilan = violet (`--cat-bilan`),
+sprint = corail (`--cat-sprint`) — relevées en thème Nuit pour le contraste, avec un filet
+séparateur entre segments (daltonisme). Le détail par type est aussi exposé en **texte**
+(a11y, `repartitionTexte`). Pas d'activité → ni graphe ni bascule (rien à comparer). Le type
+est journalisé en amont par `recordLessonRun` (`'lecon'` seule / `'bilan'` express\complet),
+`ui/sprint.ts` (`'sprint'`), et `recordSessionActivity` pour les sessions hors
+`recordLessonStats` : révision espacée (`ui/revision.ts` → `'revision'`) et dictée
+d'orthographe (`ui/ortho-runner.ts` → `'dictee'`, un point par séance).
 
 ## « À revoir » → carte d'accueil
 

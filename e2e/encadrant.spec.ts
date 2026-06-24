@@ -38,8 +38,8 @@ const SEED_STATS_FAIBLES = `(() => {
 const SEED_ACTIVITE = `(() => {
   const now = Date.now(); const day = 86400000;
   const acts = [
-    { t: now, k: 'lecon' }, { t: now, k: 'lecon' }, { t: now, k: 'sprint' },
-    { t: now - day, k: 'bilan' }, { t: now - 2 * day, k: 'lecon' },
+    { t: now, k: 'lecon' }, { t: now, k: 'sprint' }, { t: now, k: 'revision' },
+    { t: now, k: 'dictee' }, { t: now - day, k: 'bilan' }, { t: now - 2 * day, k: 'lecon' },
   ];
   localStorage.setItem('e2e/ludaskia_activity', JSON.stringify(acts));
 })();`;
@@ -251,6 +251,8 @@ test("graphe d'activité : échelle Y présente, bascule « Par type » empile l
 	await expect(page.locator('.enc-act-mode[data-mode="type"]')).toHaveClass(/on/);
 	await expect(page.locator('.enc-seg-bar').first()).toBeVisible();
 	await expect(page.locator('.enc-key.enc-act-lecon')).toBeVisible();
+	await expect(page.locator('.enc-key.enc-act-revision')).toBeVisible();
+	await expect(page.locator('.enc-key.enc-act-dictee')).toBeVisible();
 	await expect(page.locator('.enc-key.enc-act-sprint')).toBeVisible();
 
 	expect(errors).toEqual([]);

@@ -11,6 +11,7 @@ import {
 	loadLessonStats,
 	loadActivity,
 	normalizeActivity,
+	recordSessionActivity,
 	ACTIVITY_KEY,
 } from '../src/core/progress';
 import { recordLessonRun } from '../src/core/lesson-run';
@@ -94,6 +95,11 @@ describe('type journalisé selon le mode (jointure recordLessonRun → journal, 
 		recordLessonRun({ ...base, mode: 'complet', lessonId: null });
 		expect(loadActivity().map((e) => e.k)).toEqual(['lecon', 'bilan', 'bilan']);
 	});
+	it("recordSessionActivity journalise les types hors recordLessonStats ('revision', 'dictee')", () => {
+		recordSessionActivity('revision');
+		recordSessionActivity('dictee');
+		expect(loadActivity().map((e) => e.k)).toEqual(['revision', 'dictee']);
+	});
 });
 
 describe('normalizeActivity (tolérance de format, #319)', () => {
@@ -101,6 +107,8 @@ describe('normalizeActivity (tolérance de format, #319)', () => {
 		const out = normalizeActivity([
 			123, // ancien : horodatage → inconnu
 			{ t: 456, k: 'lecon' },
+			{ t: 600, k: 'revision' }, // nouveaux types acceptés (#319)
+			{ t: 650, k: 'dictee' },
 			{ t: 789, k: 'zzz' }, // type inconnu → 'inconnu'
 			{ k: 'sprint' }, // sans horodatage → ignoré
 			null,
@@ -109,6 +117,8 @@ describe('normalizeActivity (tolérance de format, #319)', () => {
 		expect(out).toEqual([
 			{ t: 123, k: 'inconnu' },
 			{ t: 456, k: 'lecon' },
+			{ t: 600, k: 'revision' },
+			{ t: 650, k: 'dictee' },
 			{ t: 789, k: 'inconnu' },
 		]);
 	});

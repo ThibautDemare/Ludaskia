@@ -94,7 +94,8 @@ meilleur gabarit. Étapes typiques :
 Tu as `Bash`/`PowerShell` : fais réellement tourner
 `npm run typecheck` · `npm run lint` · `npm run format:check` · `npm test`
 (et `npm run test:e2e` si tu as touché au visuel). Cite tout échec et corrige-le.
-Mets à jour `docs/ARCHITECTURE.md` si tu introduis un nouveau module/type/convention.
+Mets à jour `docs/ARCHITECTURE.md` si tu introduis un nouveau module/type/convention
+(ou confie la resynchronisation de la doc à **`expert-documentation`**).
 
 # Ta sortie
 

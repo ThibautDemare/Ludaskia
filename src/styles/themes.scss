@@ -147,6 +147,16 @@
 	.relecture-retour:hover {
 		background: var(--track);
 	}
+	/* Graphe d'activité encadrant (#319) : les segments par type sont des FONDS posés
+	   sur la carte sombre (--paper). Bleu/violet à leur valeur claire passent sous 3:1
+	   vs --paper Nuit → on relève `--k` localement (WCAG 1.4.11), comme pour les
+	   couleurs de famille en texte. Corail (sprint) et gris (autre) restent ≥ 3:1. */
+	.enc-act-lecon {
+		--k: #6ea6ee;
+	}
+	.enc-act-bilan {
+		--k: #a48cdd;
+	}
 	/* Couleurs de famille employées comme TEXTE (catalogue) : rehaussées (WCAG AA)
 	   pour le fond sombre, sans toucher le token (gardé lisible en fond de bouton). */
 	.cat-action-secondary[data-act='custom'] {

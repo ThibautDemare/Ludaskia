@@ -37,8 +37,10 @@ import {
 	toggleRevoirFor,
 	loadRevoirFor,
 	niveauProfilMatiere,
+	echelleActivite,
 	type RecapProfil,
 	type NiveauNotion,
+	type JourActivite,
 } from '../core/encadrant-stats';
 import {
 	pinActif,
@@ -65,6 +67,7 @@ let pinPanel: 'none' | 'saisie' | 'secret' = 'none'; // sous-panneau « code » 
 let pinSecret: string | null = null; // secret de récupération à afficher une fois
 let secretConserve = false; // case « j'ai conservé ma clé »
 let gestionEmojiFor: string | null = null; // profil dont la palette d'avatar est ouverte (gestion)
+let vueActivite: 'total' | 'type' = 'total'; // graphe d'activité : « Total » ou « Par type » (#319)
 
 /* Mot affiché pour un niveau d'acquisition (échelle type LSU ; wording validé par
    pedagogue-primaire / redacteur-contenu-francais — la notion est qualifiée, pas l'enfant). */
@@ -77,6 +80,24 @@ const MOT_NIVEAU: Record<NiveauNotion, string> = {
 // Ordre de PROGRESSION (croissant) pour la légende et les segments (avis pédago :
 // l'échelle doit se lire comme une gradation, pas un ordre arbitraire).
 const ORDRE_NIVEAUX: NiveauNotion[] = ['a-decouvrir', 'non-acquis', 'en-cours', 'acquis'];
+
+/* Types de session du graphe d'activité (#319). Couleurs reprises des tokens
+   sémantiques de l'app (cohérence : sprint = corail, bilan = violet, leçon = bleu).
+   `mot` = singulier pour le détail inline ; `legende` = libellé de la légende. */
+const TYPES_ACTIVITE: { k: keyof JourActivite; mot: string; legende: string; cls: string }[] = [
+	{ k: 'lecon', mot: 'leçon', legende: 'Leçons', cls: 'enc-act-lecon' },
+	{ k: 'bilan', mot: 'bilan', legende: 'Bilans', cls: 'enc-act-bilan' },
+	{ k: 'sprint', mot: 'sprint', legende: 'Sprints', cls: 'enc-act-sprint' },
+];
+// Sessions de l'ancien format (sans type) : segment neutre, affiché seulement si présent.
+const TYPE_INCONNU = {
+	k: 'inconnu' as const,
+	mot: 'autre',
+	legende: 'Autre',
+	cls: 'enc-act-inconnu',
+};
+// Noms de jours (l'index = getDay()) pour les libellés accessibles des colonnes.
+const NOMS_JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
 /* ---------- Point d'entrée (appelé par navigation.showEncadrantView) ---------- */
 export function enterEncadrant(el: HTMLElement): void {
@@ -397,29 +418,116 @@ function chiffresHTML(recap: RecapProfil): string {
     </div>`;
 }
 
+/* Détail textuel de la répartition par type d'un jour (« 2 leçons, 1 sprint ») — a11y. */
+function repartitionTexte(j: JourActivite): string {
+	return [...TYPES_ACTIVITE, TYPE_INCONNU]
+		.map((t) => {
+			const c = j[t.k];
+			return c ? `${c} ${t.mot}${c > 1 ? 's' : ''}` : '';
+		})
+		.filter(Boolean)
+		.join(', ');
+}
+
 function activiteHTML(recap: RecapProfil): string {
-	const a = recap.activite7j;
-	const total = a.reduce((s, x) => s + x, 0);
-	const max = Math.max(1, ...a);
-	// Initiale du jour de la semaine pour chaque colonne (la dernière = aujourd'hui).
-	const init = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+	const jours = recap.activite7j;
+	const total = jours.reduce((s, j) => s + j.total, 0);
+	// Pas d'activité : pas de graphe ni de bascule (rien à comparer).
+	if (total === 0) {
+		return `<div class="enc-block">
+      <h3 class="enc-h3">${icon('calendar')} Activité des 7 derniers jours</h3>
+      <p class="enc-hint">Aucune session récente.</p>
+    </div>`;
+	}
+	const parType = vueActivite === 'type';
+
+	// Échelle Y « ronde » (calcul testé côté core). `pct` = hauteur d'une valeur en %
+	// de la zone traçante : pour une colonne, la PILE occupe pct(total) et chaque
+	// segment pct(sous-total) → la somme des segments = pct(total). Sommet `top` ≥ max.
+	const { top, ticks } = echelleActivite(Math.max(...jours.map((j) => j.total)));
+	const pct = (v: number) => (v / top) * 100;
+	const axis = ticks
+		.map((t) => `<span class="enc-axis-tick" style="bottom:${pct(t)}%">${t}</span>`)
+		.join('');
+	const gridlines = ticks
+		.map((t) => `<span class="enc-gridline" style="bottom:${pct(t)}%"></span>`)
+		.join('');
+
+	// Libellés de jour, calculés une fois (initiale visible + nom complet pour l'a11y) ;
+	// dernière colonne = aujourd'hui.
 	const today = new Date();
-	const lab = (i: number) => {
+	const infos = jours.map((_, i) => {
 		const d = new Date(today);
-		d.setDate(d.getDate() - (a.length - 1 - i));
-		return init[d.getDay()];
-	};
-	const bars = a
-		.map((c, i) => {
-			const h = Math.round((c / max) * 100);
-			return `<div class="enc-bar-col"><div class="enc-bar" style="height:${h}%"></div><span class="enc-bar-lab">${lab(i)}</span></div>`;
+		d.setDate(d.getDate() - (jours.length - 1 - i));
+		const nom = i === jours.length - 1 ? "aujourd'hui" : NOMS_JOURS[d.getDay()];
+		return { initiale: NOMS_JOURS[d.getDay()].charAt(0).toUpperCase(), nom };
+	});
+
+	const colonnes = jours
+		.map((j, i) => {
+			const detail = parType && j.total ? ` (${repartitionTexte(j)})` : '';
+			const cap = infos[i].nom.charAt(0).toUpperCase() + infos[i].nom.slice(1);
+			const aria = `${cap} : ${j.total} session${j.total > 1 ? 's' : ''}${detail}`;
+			let barre: string;
+			if (parType) {
+				const segs = [...TYPES_ACTIVITE, TYPE_INCONNU]
+					.map((t) => {
+						const c = j[t.k];
+						return c ? `<span class="enc-seg-bar ${t.cls}" style="height:${pct(c)}%"></span>` : '';
+					})
+					.join('');
+				barre = `<div class="enc-bar-stack">${segs}</div>`;
+			} else {
+				barre = `<div class="enc-bar" style="height:${pct(j.total)}%"></div>`;
+			}
+			return `<div class="enc-bar-col" role="img" aria-label="${aria}" title="${aria}">${barre}</div>`;
 		})
 		.join('');
-	const aria = `Activité des 7 derniers jours, ${total} session${total > 1 ? 's' : ''} au total.`;
+	const labs = infos.map((info) => `<span class="enc-bar-lab">${info.initiale}</span>`).join('');
+
+	// Bascule Total / Par type (pattern bouton-segment, sélecteur stable pour l'e2e).
+	const bascule = `<div class="enc-act-modes" role="group" aria-label="Affichage du graphe d'activité">
+      <button type="button" class="enc-act-mode${parType ? '' : ' on'}" data-act="activite-mode" data-mode="total" aria-pressed="${!parType}">Total</button>
+      <button type="button" class="enc-act-mode${parType ? ' on' : ''}" data-act="activite-mode" data-mode="type" aria-pressed="${parType}">Par type</button>
+    </div>`;
+	// Légende (mode « par type ») : « Autre » seulement si d'anciennes sessions non typées existent.
+	const legendeTypes = [...TYPES_ACTIVITE, ...(jours.some((j) => j.inconnu) ? [TYPE_INCONNU] : [])];
+	const legende = parType
+		? `<p class="enc-legend">${legendeTypes
+				.map((t) => `<span class="enc-key ${t.cls}">${t.legende}</span>`)
+				.join('')}</p>`
+		: '';
+	// Synthèse : total de la semaine, + répartition globale par type (donne au lecteur
+	// d'écran le même niveau d'info que la pile visuelle, sans parcourir les colonnes).
+	const totalParType: JourActivite = jours.reduce(
+		(acc, j) => ({
+			total: acc.total + j.total,
+			lecon: acc.lecon + j.lecon,
+			bilan: acc.bilan + j.bilan,
+			sprint: acc.sprint + j.sprint,
+			inconnu: acc.inconnu + j.inconnu,
+		}),
+		{ total: 0, lecon: 0, bilan: 0, sprint: 0, inconnu: 0 },
+	);
+	const synthese = `${total} session${total > 1 ? 's' : ''} sur la semaine${
+		parType ? ` — ${repartitionTexte(totalParType)}` : ''
+	}.`;
+
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon('calendar')} Activité des 7 derniers jours</h3>
-      ${total === 0 ? `<p class="enc-hint">Aucune session récente.</p>` : `<div class="enc-bars" role="img" aria-label="${aria}">${bars}</div>`}
-      <p class="enc-hint">${total} session${total > 1 ? 's' : ''} sur la semaine.</p>
+      ${bascule}
+      ${legende}
+      <div class="enc-chart">
+        <div class="enc-chart-axis" aria-hidden="true">${axis}</div>
+        <div class="enc-chart-main">
+          <div class="enc-chart-plot">
+            <div class="enc-gridlines" aria-hidden="true">${gridlines}</div>
+            <div class="enc-bars">${colonnes}</div>
+          </div>
+          <div class="enc-bars-labs" aria-hidden="true">${labs}</div>
+        </div>
+      </div>
+      <p class="enc-hint">${synthese}</p>
     </div>`;
 }
 
@@ -561,6 +669,14 @@ function onClick(e: Event): void {
 			consulteUuid = el.dataset.uuid ?? consulteUuid;
 			pinPanel = 'none';
 			renderEspace();
+			break;
+		case 'activite-mode':
+			vueActivite = el.dataset.mode === 'type' ? 'type' : 'total';
+			renderEspace();
+			// Le re-rendu recrée le DOM → on garde le focus clavier sur le bouton actif.
+			(container?.querySelector('.enc-act-mode.on') as HTMLElement | null)?.focus({
+				preventScroll: true,
+			});
 			break;
 		case 'enc-rename':
 			if (el.dataset.uuid) onEncRename(el.dataset.uuid);

@@ -27,6 +27,7 @@ import {
 	recentAvgPct,
 	loadLessonStats,
 	loadStars,
+	normalizeActivity,
 	type LessonStat,
 } from './progress';
 import {
@@ -133,25 +134,68 @@ export interface RecapProfil {
 	totalLecons: number; // notions du périmètre (niveau du profil)
 	nouvellesRecentes: number; // notions maîtrisées dont la 1re rencontre date de < 30 j
 	aRevoir: RecapNotion[]; // notions faibles (perf récente < 70 %), triées, UI cape à 3
-	activite7j: number[]; // nb de sessions par jour, 7 derniers (index 6 = aujourd'hui)
+	activite7j: JourActivite[]; // activité par jour, 7 derniers (index 6 = aujourd'hui), avec répartition par type
 }
 
-/* Compteur de sessions par jour sur les `n` derniers jours (index n-1 = aujourd'hui).
-   Pur (déterministe pour un `now` donné). Exporté pour test. */
-export function activiteParJour(activity: number[], now: number, n = JOURS_ACTIVITE): number[] {
+/* Activité d'un jour : total + détail par type de session (#319). `inconnu` =
+   sessions de l'ancien format (sans type) ; en pratique quasi toujours 0. */
+export interface JourActivite {
+	total: number;
+	lecon: number;
+	bilan: number;
+	sprint: number;
+	inconnu: number;
+}
+
+/* Activité par jour ET par type sur les `n` derniers jours (index n-1 = aujourd'hui).
+   `activity` est le journal BRUT (lu en localStorage) : normalizeActivity tolère
+   l'ancien format (nombres → 'inconnu') ET le nouveau, c'est donc l'unique frontière
+   de normalisation. Pur (déterministe pour un `now` donné). Exporté pour test. */
+export function activiteParJourParType(
+	activity: unknown,
+	now: number,
+	n = JOURS_ACTIVITE,
+): JourActivite[] {
 	const startOfDay = (ts: number) => {
 		const d = new Date(ts);
 		d.setHours(0, 0, 0, 0);
 		return d.getTime();
 	};
 	const today = startOfDay(now);
-	const buckets = new Array(n).fill(0);
-	for (const ts of activity) {
-		if (typeof ts !== 'number') continue;
-		const diff = Math.round((today - startOfDay(ts)) / 86400000);
-		if (diff >= 0 && diff < n) buckets[n - 1 - diff]++;
+	const jours: JourActivite[] = Array.from({ length: n }, () => ({
+		total: 0,
+		lecon: 0,
+		bilan: 0,
+		sprint: 0,
+		inconnu: 0,
+	}));
+	for (const e of normalizeActivity(activity)) {
+		const diff = Math.round((today - startOfDay(e.t)) / 86400000);
+		if (diff >= 0 && diff < n) {
+			const j = jours[n - 1 - diff];
+			j.total++;
+			j[e.k]++; // e.k ∈ {lecon,bilan,sprint,inconnu} ⊆ clés numériques de JourActivite
+		}
 	}
-	return buckets;
+	return jours;
+}
+
+/* Compteur de sessions par jour (totaux seuls) — vue « Total » du graphe et tests
+   existants. Dérivé de la version par type. Pur. Exporté pour test. */
+export function activiteParJour(activity: unknown, now: number, n = JOURS_ACTIVITE): number[] {
+	return activiteParJourParType(activity, now, n).map((j) => j.total);
+}
+
+/* Échelle Y « ronde » du graphe d'activité à partir du max journalier (#319) : pas = 1
+   si max ≤ 5, sinon ≈ max/4 ; sommet = multiple du pas ≥ max ; graduations du sommet à 0.
+   Pure (logique de calcul sortie de l'UI pour être testable). Exportée pour test. */
+export function echelleActivite(max: number): { top: number; step: number; ticks: number[] } {
+	const m = Math.max(1, Math.round(max));
+	const step = m <= 5 ? 1 : Math.ceil(m / 4);
+	const top = Math.ceil(m / step) * step;
+	const ticks: number[] = [];
+	for (let v = top; v >= 0; v -= step) ticks.push(v);
+	return { top, step, ticks };
 }
 
 /* Tableau de bord d'un profil (par UUID), SANS changer le profil actif.
@@ -161,7 +205,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 	const starsRaw = lsGetRaw(uuid + '/' + STARS_KEY, {}) as Record<string, number>;
 	const statsRaw = lsGetRaw(uuid + '/' + LESSON_STATS_KEY, {}) as Record<string, LessonStat>;
 	const firstSeenRaw = lsGetRaw(uuid + '/' + LESSON_FIRST_SEEN_KEY, {}) as Record<string, number>;
-	const activity = (lsGetRaw(uuid + '/' + ACTIVITY_KEY, []) as number[]) || [];
+	const activity = lsGetRaw(uuid + '/' + ACTIVITY_KEY, []); // brut : normalisé par activiteParJourParType
 	const file = loadRevoirFor(uuid);
 	const fileSet = new Set(file);
 
@@ -237,7 +281,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 		totalLecons,
 		nouvellesRecentes,
 		aRevoir,
-		activite7j: activiteParJour(activity, now),
+		activite7j: activiteParJourParType(activity, now),
 	};
 }
 

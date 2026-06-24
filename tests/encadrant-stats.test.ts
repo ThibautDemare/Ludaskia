@@ -8,6 +8,8 @@ import { beforeEach, describe, it, expect } from 'vitest';
 import {
 	niveauNotion,
 	activiteParJour,
+	activiteParJourParType,
+	echelleActivite,
 	progressionProfil,
 	niveauProfilMatiere,
 	loadRevoir,
@@ -90,6 +92,72 @@ describe('activiteParJour', () => {
 	});
 	it('compte plusieurs sessions le même jour', () => {
 		expect(activiteParJour([NOW, NOW, NOW], NOW)[6]).toBe(3);
+	});
+});
+
+describe('activiteParJourParType (répartition par type, #319)', () => {
+	const NOW = 1_700_000_000_000; // instant fixe
+	const JOUR = 86_400_000;
+	it('ventile les types dans le seau du jour, total = somme des types', () => {
+		const j = activiteParJourParType(
+			[
+				{ t: NOW, k: 'lecon' },
+				{ t: NOW, k: 'lecon' },
+				{ t: NOW, k: 'sprint' },
+				{ t: NOW - JOUR, k: 'bilan' },
+			],
+			NOW,
+		);
+		expect(j.length).toBe(7);
+		expect(j[6]).toEqual({ total: 3, lecon: 2, bilan: 0, sprint: 1, inconnu: 0 });
+		expect(j[5]).toEqual({ total: 1, lecon: 0, bilan: 1, sprint: 0, inconnu: 0 });
+		// Invariant : total == somme des types, pour chaque jour.
+		for (const d of j) expect(d.total).toBe(d.lecon + d.bilan + d.sprint + d.inconnu);
+	});
+	it('tolère l’ANCIEN format (nombres) → type « inconnu »', () => {
+		const j = activiteParJourParType([NOW, NOW], NOW);
+		expect(j[6]).toEqual({ total: 2, lecon: 0, bilan: 0, sprint: 0, inconnu: 2 });
+	});
+	it('mélange ancien (nombre) et nouveau (objet typé)', () => {
+		const j = activiteParJourParType([NOW, { t: NOW, k: 'sprint' }], NOW);
+		expect(j[6].total).toBe(2);
+		expect(j[6].inconnu).toBe(1);
+		expect(j[6].sprint).toBe(1);
+	});
+	it('au-delà de 7 jours : exclu', () => {
+		const j = activiteParJourParType([{ t: NOW - 7 * JOUR, k: 'lecon' }], NOW);
+		expect(j.reduce((s, d) => s + d.total, 0)).toBe(0);
+	});
+	it('le totaux dérivés (activiteParJour) restent cohérents', () => {
+		const entries = [
+			{ t: NOW, k: 'lecon' as const },
+			{ t: NOW, k: 'bilan' as const },
+		];
+		expect(activiteParJour(entries, NOW)).toEqual(
+			activiteParJourParType(entries, NOW).map((d) => d.total),
+		);
+	});
+	it('accepte un journal mixte (ancien nombre + nouvel objet) sans casser le typage', () => {
+		const j = activiteParJourParType([NOW, { t: NOW, k: 'sprint' }], NOW);
+		expect(j[6]).toEqual({ total: 2, lecon: 0, bilan: 0, sprint: 1, inconnu: 1 });
+	});
+});
+
+describe('echelleActivite (graduations « rondes », #319)', () => {
+	it('max ≤ 5 → pas de 1, sommet = max', () => {
+		expect(echelleActivite(3)).toEqual({ top: 3, step: 1, ticks: [3, 2, 1, 0] });
+		expect(echelleActivite(5)).toEqual({ top: 5, step: 1, ticks: [5, 4, 3, 2, 1, 0] });
+	});
+	it('max grand → pas ≈ max/4, sommet = multiple du pas ≥ max (≤ 5 graduations)', () => {
+		const e = echelleActivite(10); // step = ceil(10/4) = 3 → top = 12
+		expect(e.step).toBe(3);
+		expect(e.top).toBe(12);
+		expect(e.ticks).toEqual([12, 9, 6, 3, 0]);
+		expect(e.top).toBeGreaterThanOrEqual(10);
+	});
+	it('borne basse : max 0 ou 1 → échelle 0..1', () => {
+		expect(echelleActivite(0)).toEqual({ top: 1, step: 1, ticks: [1, 0] });
+		expect(echelleActivite(1)).toEqual({ top: 1, step: 1, ticks: [1, 0] });
 	});
 });
 

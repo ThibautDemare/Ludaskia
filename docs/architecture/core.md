@@ -249,7 +249,11 @@ propre doc de conception : `docs/design-orthographe.md`.
   `lessonAvgPct` cumul + `recentAvgPct` = perf **récente**, calculée sur la fenêtre
   glissante de données `recentPct`, #234),
   **journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée
-  horodatée par `recordLessonStats`, #234), **XP global** (`getXP`/`addXP`, `ludaskia_xp`)
+  par `recordLessonStats`, #234 ; **entrées typées** `ActivityEntry = {t, k}` avec
+  `ActivityKind = 'lecon' | 'bilan' | 'sprint'` (+ `'inconnu'` pour l'ancien format),
+  #319). `recordLessonStats(perLesson, kind = 'lecon')` journalise le type ; `normalizeActivity`
+  lit **tolérant** l'ancien `number[]` (chaque horodatage nu → `'inconnu'`) et le réécrit au
+  format objet au prochain passage (migration **lazy, sans perte**). **XP global** (`getXP`/`addXP`, `ludaskia_xp`)
   et **niveaux dérivés** (`niveauDepuisXP`, `progressionNiveau`, `xpVersSuivant`,
   `xpPourNiveau`, `NIVEAU_MAX`), périodes calendaires (`startOfWeek/Month`,
   `countSince`).
@@ -270,9 +274,14 @@ propre doc de conception : `docs/design-orthographe.md`.
 ## Espace encadrant (logique pure)
 
 - **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
-  bascule** (`progressionProfil`, `niveauNotion` échelle 4 niveaux, `activiteParJour`,
-  `niveauProfilMatiere`) et **file « à revoir »** (`loadRevoir`/`loadRevoirFor`/
-  `toggleRevoirFor`/`revoirActives`). Lit les clés brutes du profil consulté.
+  bascule** (`progressionProfil`, `niveauNotion` échelle 4 niveaux, `niveauProfilMatiere`),
+  **activité** et **file « à revoir »** (`loadRevoir`/`loadRevoirFor`/
+  `toggleRevoirFor`/`revoirActives`). Lit les clés brutes du profil consulté. Le graphe
+  d'activité (#319) repose sur **`activiteParJourParType(activity, now, n)`** → `JourActivite[]`
+  (`{total, lecon, bilan, sprint, inconnu}`, index `n-1` = aujourd'hui ; `normalizeActivity`
+  y est l'**unique frontière de normalisation** de l'ancien/nouveau format) ; `activiteParJour`
+  en est **dérivé** (totaux seuls) et `echelleActivite(max)` calcule une échelle Y « ronde »
+  (`{top, step, ticks}`). `RecapProfil.activite7j` est désormais un `JourActivite[]`.
 - **`encadrant-lock.ts`** (#234) — verrou optionnel de l'espace encadrant : PIN haché
   (SHA-256 `crypto.subtle`) + récupération par secret (GUID) ; clé GLOBALE
   `ludaskia_encadrant_lock` (`pinActif`/`definirPin`/`verifierPin`/`reinitViaRecuperation`/

@@ -46,7 +46,9 @@ export interface LessonRunOutcome {
    - autres modes (bilan express/complet) : essai classé via recordRun, sans étoile. */
 export function recordLessonRun(p: LessonRunInput): LessonRunOutcome {
 	const streakDays = updateStreak().days;
-	recordLessonStats(p.perLesson);
+	// Type journalisé pour le graphe d'activité (#319) : 'lecon' (leçon seule) sinon
+	// 'bilan' (express/complet). Le sprint a son propre chemin (ui/sprint.ts).
+	recordLessonStats(p.perLesson, p.mode === 'lecon' ? 'lecon' : 'bilan');
 	const niveauAvant = niveauDepuisXP(getXP());
 	addXP(p.ok);
 	const niveauApres = niveauDepuisXP(getXP());

@@ -484,13 +484,107 @@
 	color: var(--grey);
 }
 
-/* ---------- Graphe d'activité (barres, tokens uniquement) ---------- */
+/* ---------- Graphe d'activité (barres, tokens uniquement, #234 / #319) ----------
+   Échelle Y chiffrée (graduations + lignes de repère) pour LIRE la quantité réelle,
+   et mode « par type » (barres empilées + légende). Tout en tokens / currentColor
+   → survit au thème Nuit. $plot-h = hauteur de la zone traçante (axe + plot alignés). */
+$plot-h: 140px;
+
+/* Bascule Total / Par type (boutons-segments). */
+.enc-act-modes {
+	display: inline-flex;
+	gap: 0;
+	margin: 0 0 0.7rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	overflow: hidden;
+}
+.enc-act-mode {
+	font: inherit;
+	font-size: 0.82rem;
+	font-weight: 700;
+	padding: 0.4rem 0.9rem;
+	min-height: 44px; /* cible tactile confortable (aligné sur .enc-btn) */
+	background: var(--paper);
+	color: var(--grey);
+	border: none;
+	cursor: pointer;
+}
+.enc-act-mode + .enc-act-mode {
+	border-left: 1px solid var(--line);
+}
+.enc-act-mode.on {
+	/* --admin-fill (et non --admin-accent, éclairci en Nuit) : garde #fff lisible
+	   sur le bouton actif dans tous les thèmes (a11y, cf. .enc-btn). */
+	background: var(--admin-fill);
+	color: #fff;
+}
+.enc-act-mode:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 2px;
+}
+
+/* Couleurs des types (tokens sémantiques de l'app). `--k` pilote swatch + segment. */
+.enc-act-lecon {
+	--k: var(--cat-bleu);
+}
+.enc-act-bilan {
+	--k: var(--cat-bilan);
+}
+.enc-act-sprint {
+	--k: var(--cat-sprint);
+}
+.enc-act-inconnu {
+	--k: var(--muted);
+}
+
+/* Disposition : [axe Y] [zone traçante + libellés de jour]. */
+.enc-chart {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.4rem;
+}
+.enc-chart-axis {
+	position: relative;
+	height: $plot-h;
+	width: 1.4rem;
+	flex: 0 0 auto;
+}
+.enc-axis-tick {
+	position: absolute;
+	right: 0;
+	transform: translateY(50%); /* centre l'étiquette sur sa ligne de repère */
+	font-size: 0.7rem;
+	color: var(--grey); /* chiffres utiles à lire → contraste AA (≠ --muted, sous le seuil) */
+	line-height: 1;
+}
+.enc-chart-main {
+	flex: 1;
+	min-width: 0;
+}
+.enc-chart-plot {
+	position: relative;
+	height: $plot-h;
+}
+.enc-gridlines {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+}
+.enc-gridline {
+	position: absolute;
+	left: 0;
+	right: 0;
+	height: 1px;
+	background: var(--line);
+}
 .enc-bars {
+	position: relative;
+	z-index: 1;
 	display: flex;
 	align-items: flex-end;
 	gap: 0.5rem;
-	height: 92px;
-	padding-top: 0.4rem;
+	height: 100%;
 }
 .enc-bar-col {
 	flex: 1;
@@ -499,7 +593,6 @@
 	align-items: center;
 	justify-content: flex-end;
 	height: 100%;
-	gap: 0.25rem;
 }
 .enc-bar {
 	width: 100%;
@@ -508,9 +601,34 @@
 	background: var(--admin-accent);
 	border-radius: 4px 4px 0 0;
 }
+/* Barre empilée (mode « par type ») : segments du bas vers le haut, coins arrondis clippés. */
+.enc-bar-stack {
+	width: 100%;
+	max-width: 26px;
+	height: 100%;
+	display: flex;
+	flex-direction: column-reverse;
+	border-radius: 4px 4px 0 0;
+	overflow: hidden;
+}
+.enc-seg-bar {
+	width: 100%;
+	min-height: 2px;
+	background: var(--k);
+	/* Filet couleur-carte entre segments empilés : sépare deux types adjacents même
+	   quand leurs teintes sont proches (ex. bleu/violet) ou en daltonisme (WCAG 1.4.11). */
+	box-shadow: 0 -1px 0 var(--paper);
+}
+.enc-bars-labs {
+	display: flex;
+	gap: 0.5rem;
+	margin-top: 0.25rem;
+}
 .enc-bar-lab {
+	flex: 1;
+	text-align: center;
 	font-size: 0.72rem;
-	color: var(--muted);
+	color: var(--grey); /* lisible (AA) ≠ --muted */
 }
 
 /* ---------- Échelle d'acquisition (4 niveaux, doublée couleur + mot) ---------- */

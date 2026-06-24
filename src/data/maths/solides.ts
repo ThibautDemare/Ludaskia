@@ -50,6 +50,8 @@ const NOM: Record<Solid, string> = {
 	cone: 'cône',
 	pyramide: 'pyramide',
 	boule: 'boule',
+	// Prisme droit : CM1 (#242). Absent du tirage CE2 (`TOUS` ci-dessous reste à 6).
+	prisme: 'prisme',
 };
 const TOUS: Solid[] = ['cube', 'pave', 'cylindre', 'cone', 'pyramide', 'boule'];
 // Formes équivalentes acceptées en saisie (le QCM reste sur le libellé de référence).

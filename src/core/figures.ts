@@ -405,12 +405,18 @@ export type PlaneShape =
 	| 'rectangle'
 	| 'triangle'
 	| 'triangleRectangle'
+	| 'triangleEquilateral' // 3 côtés égaux (marqués), angles 60° (CM1, #242)
+	| 'triangleIsocele' // 2 côtés égaux (marqués), franchement non-équilatéral (CM1, #242)
+	| 'triangleQuelconque' // scalène ~3:4:5,5, aucun angle droit — contre-exemple (CM1, #242)
 	| 'losange'
 	| 'cercle'
-	| 'parallelogramme'; // distracteur visuel uniquement (jamais à nommer au CE2)
+	| 'parallelogramme'; // jamais tiré au CE2 (déclaré dans NOM) ; réponse de reconnaissance au CM1 (#242)
 
 // Sommets canoniques dans le carré unité [0,1]² (y vers le bas ; la rotation gère
 // l'orientation, le centrage gère la position). Le cercle est traité à part.
+// `shapeBody` met TOUT à l'échelle de façon UNIFORME (même facteur en x et y) → les
+// longueurs et les angles sont préservés : un côté « égal par construction » le reste
+// à l'écran (exigence #242 : la distinction ne repose pas sur le seul coup d'œil).
 const SHAPE_POINTS: Record<Exclude<PlaneShape, 'cercle'>, Array<[number, number]>> = {
 	carre: [
 		[0, 0],
@@ -434,18 +440,50 @@ const SHAPE_POINTS: Record<Exclude<PlaneShape, 'cercle'>, Array<[number, number]
 		[0, 1],
 		[1, 1],
 	],
+	// Équilatéral : base 1, hauteur √3/2 ≈ 0,866 → les 3 côtés mesurent 1 (angles 60°).
+	triangleEquilateral: [
+		[0.5, 0],
+		[1, 0.866],
+		[0, 0.866],
+	],
+	// Isocèle FRANC : apex ~40° (élancé), base 1, hauteur 1,37 → AB = AC ≈ 1,46, base 1.
+	// Loin de l'équilatéral (60°) ET de la zone 55-70° à éviter (avis designer #242).
+	triangleIsocele: [
+		[0.5, 0],
+		[1, 1.37],
+		[0, 1.37],
+	],
+	// Quelconque/scalène : côtés 3:4:5,5 (angle opposé au plus long ≈ 102°, AUCUN angle
+	// droit). Sert de contre-exemple / distracteur (aucune marque de côté égal).
+	triangleQuelconque: [
+		[0, 2.13],
+		[5.5, 2.13],
+		[3.39, 0],
+	],
 	losange: [
 		[0.5, 0.18],
 		[1, 0.5],
 		[0.5, 0.82],
 		[0, 0.5],
 	], // diagonales inégales
+	// Parallélogramme (#242) : côté oblique incliné ~28° de la verticale (décalage du
+	// haut ≈ 0,53 pour base 1) et ratio longueur/largeur ~1,9 (rectangle penché allongé,
+	// pas quasi-carré). Hauteur 1, base 1,9 → décalage horizontal 0,53.
 	parallelogramme: [
-		[0.25, 0],
-		[1, 0],
-		[0.75, 1],
+		[0.53, 0],
+		[2.43, 0],
+		[1.9, 1],
 		[0, 1],
 	],
+};
+
+// Côtés à MARQUER « égaux » (tirets) par forme, en index de côté `points[i]→points[i+1]`
+// (#242). Équilatéral : les 3 côtés ; isocèle : les 2 côtés égaux (les obliques AB, CA,
+// indices 0 et 2) ; les autres : aucune marque. La marque est CONCORDANTE avec le tracé
+// (côtés réellement égaux par construction), jamais un simple décor.
+const SHAPE_MARQUES_EGAL: Partial<Record<Exclude<PlaneShape, 'cercle'>, number[]>> = {
+	triangleEquilateral: [0, 1, 2],
+	triangleIsocele: [0, 2],
 };
 
 const SHAPE_FILL = {
@@ -462,7 +500,39 @@ function rotateAbout([x, y]: [number, number], deg: number): [number, number] {
 	return [0.5 + dx * Math.cos(r) - dy * Math.sin(r), 0.5 + dx * Math.sin(r) + dy * Math.cos(r)];
 }
 
-/* Une forme remplie, ajustée et centrée dans la case [cx±box/2, cy±box/2]. */
+/* Marque de « côté égal » (#242) : un court tiret PERPENDICULAIRE au milieu d'un côté
+   marqué `a → b`. Couleur `--ink` (robuste à tous les thèmes), trait ~2,3, longueur ~9 px
+   (viewBox 200), extrémités/jonction arrondies. Les côtés portant la MÊME marque sont
+   égaux par construction → le double signal (figure + tiret) est concordant. */
+const MARQUE_EGAL = {
+	stroke: 'var(--ink)',
+	'stroke-width': 2.3,
+	'stroke-linecap': 'round',
+	'stroke-linejoin': 'round',
+} as const;
+const MARQUE_LEN = 9; // demi-longueur du tiret de chaque côté du milieu (viewBox 200)
+
+function marqueEgal(a: [number, number], b: [number, number]): string {
+	const mx = (a[0] + b[0]) / 2;
+	const my = (a[1] + b[1]) / 2;
+	// Normale unitaire au côté (perpendiculaire).
+	let nx = -(b[1] - a[1]);
+	let ny = b[0] - a[0];
+	const len = Math.hypot(nx, ny) || 1;
+	nx /= len;
+	ny /= len;
+	return line(
+		r2(mx - nx * MARQUE_LEN),
+		r2(my - ny * MARQUE_LEN),
+		r2(mx + nx * MARQUE_LEN),
+		r2(my + ny * MARQUE_LEN),
+		MARQUE_EGAL,
+	);
+}
+
+/* Une forme remplie, ajustée et centrée dans la case [cx±box/2, cy±box/2]. Les triangles
+   particuliers (#242) reçoivent en plus une MARQUE de côté égal au milieu de chaque côté
+   concerné (équilatéral : 3 côtés ; isocèle : les 2 obliques égaux). */
 function shapeBody(shape: PlaneShape, cx: number, cy: number, box: number, rotDeg: number): string {
 	const inner = box * 0.78; // marge interne ~11 %
 	if (shape === 'cercle') return circle(r2(cx), r2(cy), r2(inner / 2), SHAPE_FILL);
@@ -475,11 +545,18 @@ function shapeBody(shape: PlaneShape, cx: number, cy: number, box: number, rotDe
 	const maxY = Math.max(...ys);
 	const w = maxX - minX || 1;
 	const h = maxY - minY || 1;
-	const s = inner / Math.max(w, h);
+	const s = inner / Math.max(w, h); // échelle UNIFORME (préserve angles et égalités)
 	const offX = cx - (minX + w / 2) * s;
 	const offY = cy - (minY + h / 2) * s;
 	const fitted = pts.map(([x, y]): [number, number] => [r2(offX + x * s), r2(offY + y * s)]);
-	return polygon(fitted, SHAPE_FILL);
+	let body = polygon(fitted, SHAPE_FILL);
+	const marques = SHAPE_MARQUES_EGAL[shape];
+	if (marques) {
+		for (const i of marques) {
+			body += marqueEgal(fitted[i], fitted[(i + 1) % fitted.length]);
+		}
+	}
+	return body;
 }
 
 const PLANE_SIZE = 200;
@@ -587,7 +664,7 @@ export function renderCercle(segment?: 'rayon' | 'diametre', label?: string): st
    contour atténué (opacité 0,55). Monochrome, orientation STABLE (jamais de
    rotation : un solide retourné devient illisible). Le but est de RECONNAÎTRE
    la silhouette, pas de compter les faces. */
-export type Solid = 'cube' | 'pave' | 'cylindre' | 'cone' | 'pyramide' | 'boule';
+export type Solid = 'cube' | 'pave' | 'cylindre' | 'cone' | 'pyramide' | 'boule' | 'prisme';
 
 const SOLID_SIZE = 200;
 const DEPTH = {
@@ -617,6 +694,33 @@ function boite(x: number, y: number, w: number, h: number, ox: number, oy: numbe
 	);
 }
 
+/* Prisme droit (#242) — base TRIANGULAIRE : face avant triangulaire pleine + 3 arêtes
+   de fuite (depuis les 3 sommets de la face avant) + 2 arêtes arrière VISIBLES (les
+   arêtes du fond cachées sont omises, comme `boite`). Style identique aux autres
+   solides : perspective cavalière sans arêtes cachées, fuite vers le haut. */
+function prismeTriangulaire(ox: number, oy: number): string {
+	const A: [number, number] = [60, 72]; // sommet (apex) de la face avant
+	const BL: [number, number] = [42, 150]; // base gauche
+	const BR: [number, number] = [120, 150]; // base droite
+	const off = (p: [number, number]): [number, number] => [p[0] + ox, p[1] + oy];
+	const seg = (a: [number, number], b: [number, number]) => line(a[0], a[1], b[0], b[1], DEPTH);
+	const A2 = off(A);
+	const BL2 = off(BL);
+	const BR2 = off(BR);
+	return (
+		// Arêtes de fuite (les 3 sommets de la face avant vers l'arrière).
+		seg(A, A2) +
+		seg(BL, BL2) +
+		seg(BR, BR2) +
+		// Face arrière : les 2 arêtes du dessus visibles (apex arrière vers les bases).
+		// Le côté bas arrière (BL2→BR2) est caché par la face avant → omis.
+		seg(A2, BL2) +
+		seg(A2, BR2) +
+		// Face avant triangulaire pleine, par-dessus les arêtes.
+		polygon([A, BL, BR], SHAPE_FILL)
+	);
+}
+
 /* Orientation d'un solide (#286 — variété visuelle, choisie par la DONNÉE pour
    garder ce module déterministe). `mirror` : fuite vers la GAUCHE (miroir
    horizontal, figure recentrée par transform). `lean` : vecteur de fuite des
@@ -637,6 +741,12 @@ const FUITE_PAVE: ReadonlyArray<readonly [number, number]> = [
 	[30, -24],
 	[31, -18],
 	[25, -25],
+];
+// Prisme droit triangulaire (#242) : fuite un peu plus courte (la face avant est haute).
+const FUITE_PRISME: ReadonlyArray<readonly [number, number]> = [
+	[40, -28],
+	[42, -22],
+	[34, -30],
 ];
 
 export function renderSolide(solid: Solid, orient: SolidOrient = {}): string {
@@ -696,6 +806,11 @@ export function renderSolide(solid: Solid, orient: SolidOrient = {}): string {
 					opacity: 0.5,
 				});
 			break;
+		case 'prisme': {
+			const [ox, oy] = FUITE_PRISME[orient.lean ?? 0];
+			body = prismeTriangulaire(ox, oy);
+			break;
+		}
 	}
 	// Miroir horizontal (#286) : fuite vers la gauche ; transform centré → coordonnées
 	// internes inchangées, perspective cavalière sans arêtes cachées conservée.

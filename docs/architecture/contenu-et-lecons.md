@@ -403,6 +403,29 @@ cylindre/cône/boule **jamais comptés** (ambigu) → propriétés qualitatives 
 « une pointe », « 2 disques »). **Hors périmètre** : compter faces/arêtes/sommets sur
 le dessin 3D (faces cachées).
 
+#### `maths/geometrie-cm1.ts` (#242)
+
+**6 leçons** de Géométrie **CM1** (contenu **additif**, ids `geo-cm1-*`, `levels: ['cm1']`
+— le **CE2 est gelé**, ces leçons ne touchent pas les banques/plages de `geometrie.ts` et
+`solides.ts`). **Figures planes** : **« Je reconnais les triangles »** (`geo-cm1-triangles`,
+qcm/saisie — équilatéral / isocèle / rectangle / quelconque, figure tirée **de** la réponse →
+quand la réponse est « isocèle » on dessine un isocèle **franc**, jamais d'ambiguïté
+équilatéral/isocèle), **« Les propriétés des triangles »** (`geo-cm1-triangles-prop`, QCM
+textuel ; les choix d'une question de **côtés égaux** ne mêlent jamais « équilatéral » et
+« isocèle » → pas d'inclusion), **« Je reconnais les quadrilatères »** (`geo-cm1-quadrilateres`,
+qcm/saisie — carré / rectangle / losange / **parallélogramme** comme réponse à part entière ;
+**aucune inclusion**, rotation 0° pour le parallélogramme). **Solides** : **« Je reconnais les
+solides »** (`geo-cm1-solides`, qcm/saisie — les 6 solides CE2 + le **prisme**), **« Polyèdre
+ou non ? »** (`geo-cm1-polyedre`, QCM — le contenu le plus **structurant** : faces planes ⇒
+polyèdre cube/pavé/pyramide/prisme, surface courbe ⇒ non cône/cylindre/boule) et **« Compter
+faces, arêtes et sommets »** (`geo-cm1-solides-comptage`, QCM **DE MÉMOIRE**, **sans figure** et
+**uniquement sur les polyèdres** — jamais « compte sur le dessin », qui n'a pas les arêtes
+cachées). Distracteurs = **vraies formes** / valeurs voisines réelles. Ordre pédagogique
+`math.cm1` (#208) : figures planes avant solides, triangles (quelconque en contre-exemple)
+avant quadrilatères, parallélogramme en dernier des planes, solides reconnaissance →
+polyèdre/non-polyèdre → comptage. Cliente du moteur SVG : triangles particuliers et prisme
+ajoutés à `core/figures.ts` (cf. [Logique pure](core.md)).
+
 #### `maths/symetrie-axiale.ts` (#201)
 
 leçon **« Le miroir magique »** (`geo-symetrie-axiale`,

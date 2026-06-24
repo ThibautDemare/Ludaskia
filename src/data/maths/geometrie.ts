@@ -11,8 +11,9 @@
 
    Calibrage pédagogique CE2 (avis pedagogue-primaire + designer) :
    - figures retenues : carré, rectangle, triangle, triangle rectangle,
-     losange, cercle. PAS le parallélogramme comme réponse (CM1) — il
-     ne sert que de distracteur visuel dans une scène.
+     losange, cercle. PAS le parallélogramme comme réponse au CE2 (réponse de
+     reconnaissance seulement au CM1, #242) — déclaré dans NOM mais jamais
+     tiré par un générateur CE2.
    - carré parfois incliné (~30-40°, jamais 45° = indécidable vs losange) ;
      losange à diagonales inégales (clairement pas un carré tourné).
    - scène de comptage : ≤ 6 figures, réponse cible 1–4, formes sûres
@@ -33,6 +34,11 @@ const NOM: Record<PlaneShape, string> = {
 	rectangle: 'rectangle',
 	triangle: 'triangle',
 	triangleRectangle: 'triangle', // au CE2, on accepte « triangle » (pas de distinguo en nommage)
+	// Triangles particuliers CM1 (#242) : au CE2 ils ne sont jamais tirés (NOMS_QCM /
+	// le pool de tirage ci-dessous restent CE2), mais le NOM doit couvrir l'union.
+	triangleEquilateral: 'triangle équilatéral',
+	triangleIsocele: 'triangle isocèle',
+	triangleQuelconque: 'triangle quelconque',
 	losange: 'losange',
 	cercle: 'cercle',
 	parallelogramme: 'parallélogramme',

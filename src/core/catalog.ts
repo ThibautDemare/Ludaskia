@@ -35,6 +35,7 @@ import { POSEE_LESSONS } from '../data/maths/posee';
 import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';
 import { CERCLE_LESSONS } from '../data/maths/cercle';
 import { SOLIDE_LESSONS } from '../data/maths/solides';
+import { GEOMETRIE_CM1_LESSONS } from '../data/maths/geometrie-cm1';
 import { SYMETRIE_LESSONS } from '../data/maths/symetrie-axiale';
 import { ANGLES_LESSONS } from '../data/maths/angles';
 import { PROBLEMES_LESSONS } from '../data/maths/problemes';
@@ -609,6 +610,20 @@ const GEOMETRIE_LESSONS_DEFS: LessonDef[] = [
 	exerciseType: d.exerciseType,
 }));
 
+/* ---------- Catalogue des leçons « Géométrie » CM1 (#242) ----------
+   Contenu ADDITIF tagué CM1 (le CE2 est gelé) : triangles particuliers (reconnaissance +
+   propriétés), quadrilatères dont le parallélogramme, solides dont le prisme,
+   polyèdre/non-polyèdre et comptage faces/arêtes/sommets DE MÉMOIRE. Même traitement que
+   les leçons de Géométrie CE2 (figures / QCM mono-réponse, compatibles bilan/sprint). */
+const GEOMETRIE_CM1_LESSONS_DEFS: LessonDef[] = GEOMETRIE_CM1_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'math',
+	category: 'math-geometrie',
+	levels: ['cm1'],
+	exerciseType: d.exerciseType,
+}));
+
 /* ---------- Catalogue de la leçon « Symétrie axiale » (#201) ----------
    QCM mono-mode (oui/non + désigner le reflet A/B/C). Exclue du sprint
    chronométré : tâche visuo-spatiale de reconnaissance, sans pression de temps. */
@@ -632,6 +647,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...CALCUL_LESSONS_DEFS,
 	...GRANDEURS_LESSONS,
 	...GEOMETRIE_LESSONS_DEFS,
+	...GEOMETRIE_CM1_LESSONS_DEFS,
 	...SYMETRIE_LESSONS_DEFS,
 	...PROBLEMES_LESSONS_DEFS,
 	...DIVISION_LESSONS_DEFS,

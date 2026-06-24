@@ -142,6 +142,9 @@ export const MATH_LESSON_NUM: Record<string, number> = {
 	'math-multiplier-4-8': 13,
 	'math-multiplier-20-30-40': 14,
 	'math-decomposer-multiplication': 15,
+	// Calcul mental CM1 (#241) : numéros bilanQ prolongeant la série CE2.
+	'math-multiples-50': 16,
+	'math-diviser-10-100': 17,
 };
 
 /* ---------- Sujets et catégories ---------- */
@@ -298,6 +301,30 @@ const MATH_LESSONS: LessonDef[] = [
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
 		exerciseType: mathType(15),
+	},
+];
+
+/* ---------- Calcul mental CM1 (#241) ----------
+   Deux leçons CM1 sur le moteur historique (bilanQ) : « Les multiples de 50 »
+   (clone CM1 des multiples de 25) et « Diviser par 10, par 100 » (symétrique de
+   « Multiplier par 10, par 100 », quotients ENTIERS uniquement). Distinctes des
+   leçons CE2 (numéros bilanQ 16/17), taguées CM1 — visibles quand la classe est CM1. */
+const MATH_LESSONS_CM1: LessonDef[] = [
+	{
+		id: 'math-multiples-50',
+		label: 'Multiples de 50',
+		subject: 'math',
+		category: 'math-calcul-mental',
+		levels: ['cm1'],
+		exerciseType: mathType(16),
+	},
+	{
+		id: 'math-diviser-10-100',
+		label: '÷ 10, ÷ 100',
+		subject: 'math',
+		category: 'math-calcul-mental',
+		levels: ['cm1'],
+		exerciseType: mathType(17),
 	},
 ];
 
@@ -598,6 +625,7 @@ const SYMETRIE_LESSONS_DEFS: LessonDef[] = SYMETRIE_LESSONS.map((d) => ({
 
 const ALL_LESSONS: LessonDef[] = [
 	...MATH_LESSONS,
+	...MATH_LESSONS_CM1,
 	...NUMERATION_LESSONS_DEFS,
 	...FRACTIONS_LESSONS_DEFS,
 	...CALCUL_LESSONS_DEFS,

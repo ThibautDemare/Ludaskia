@@ -55,6 +55,10 @@ import {
 	CIBLES_MOITIES,
 	CIBLES_MOITIE_PAIR,
 	CIBLES_DECOMPO_MULT,
+	FACTEURS_MULTIPLES_50,
+	DIVIDENDES_DIV_10,
+	DIVIDENDES_DIV_100,
+	LESSONS_CALCUL_MENTAL,
 } from '../src/core/lessons';
 import {
 	RUNS_KEY,
@@ -122,6 +126,7 @@ import {
 	isOrderingLesson,
 	isTriLesson,
 	CATEGORIES,
+	MATH_LESSON_NUM,
 } from '../src/core/catalog';
 import { VOCAB_LESSONS, trierAlpha } from '../src/data/francais/vocabulaire';
 import { checkItemAnswer, figureBlock } from '../src/core/items';
@@ -440,13 +445,14 @@ describe('Leçons & bilans', () => {
 		expect([...h.matchAll(/data-lesson="math-tables-multiplication"/g)].length).toBe(3);
 	});
 	test('bilanQ renvoie un item valide pour chaque leçon', () => {
-		for (let k = 1; k <= 15; k++) {
+		// 1–15 = CE2, 16–17 = CM1 (#241).
+		for (let k = 1; k <= 17; k++) {
 			const q = api.bilanQ(k);
 			expect(q && typeof q.text === 'string' && Number.isFinite(q.answer)).toBe(true);
 		}
 	});
-	test('aucun résultat négatif (hors-programme CE2)', () => {
-		for (let k = 1; k <= 15; k++)
+	test('aucun résultat négatif (hors-programme)', () => {
+		for (let k = 1; k <= 17; k++)
 			for (let i = 0; i < 300; i++) {
 				const q = api.bilanQ(k)!;
 				expect(Number(q.answer) >= 0).toBe(true);
@@ -623,6 +629,136 @@ describe('Calcul mental : variété des plages (#287)', () => {
 			if (/= 1000\b/.test(buildLessonFiche('math-complements'))) vu1000 = true;
 		}
 		expect(vu1000).toBe(true);
+	});
+});
+
+/* ============================================================
+   Calcul mental CM1 (issue #241) : multiples de 50 ; ÷10 et ÷100.
+   Invariant n°1 : les divisions ÷10/÷100 ont des quotients ENTIERS exacts
+   (jamais de reste ni de virgule). On vérifie aussi les bornes (quotient ≤ 2
+   chiffres) et la variété du nombre de zéros du dividende.
+   ============================================================ */
+describe('Calcul mental CM1 (#241)', () => {
+	const ECH = 4000;
+
+	test('FACTEURS_MULTIPLES_50 : 2 → 12 (même plage que les multiples de 25)', () => {
+		expect(FACTEURS_MULTIPLES_50).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+	});
+
+	test('DIVIDENDES_DIV_10 : multiples exacts de 10, quotient 2 → 99', () => {
+		expect(DIVIDENDES_DIV_10[0]).toBe(20); // pas de trivial 10÷10
+		expect(DIVIDENDES_DIV_10[DIVIDENDES_DIV_10.length - 1]).toBe(990);
+		for (const d of DIVIDENDES_DIV_10) {
+			expect(d % 10).toBe(0); // finit par 0 → quotient entier
+			const q = d / 10;
+			expect(Number.isInteger(q)).toBe(true);
+			expect(q).toBeGreaterThanOrEqual(2);
+			expect(q).toBeLessThanOrEqual(99); // quotient ≤ 2 chiffres
+		}
+	});
+
+	test('DIVIDENDES_DIV_100 : multiples exacts de 100, quotient 2 → 99', () => {
+		expect(DIVIDENDES_DIV_100[0]).toBe(200);
+		expect(DIVIDENDES_DIV_100[DIVIDENDES_DIV_100.length - 1]).toBe(9900);
+		for (const d of DIVIDENDES_DIV_100) {
+			expect(d % 100).toBe(0); // finit par « 00 » → quotient entier
+			const q = d / 100;
+			expect(Number.isInteger(q)).toBe(true);
+			expect(q).toBeGreaterThanOrEqual(2);
+			expect(q).toBeLessThanOrEqual(99);
+		}
+	});
+
+	test('math-multiples-50 (k=16) : multiple exact de 50, 100 → 600', () => {
+		const facteurs = new Set<number>();
+		for (let i = 0; i < ECH; i++) {
+			const it = bilanQ(16)!;
+			const m = it.text.match(/^(\d+) × 50 = @$/);
+			expect(m).not.toBeNull();
+			const a = Number(m![1]);
+			facteurs.add(a);
+			expect(a).toBeGreaterThanOrEqual(2);
+			expect(a).toBeLessThanOrEqual(12);
+			expect(Number(it.answer)).toBe(a * 50); // produit exact
+			expect(Number(it.answer) % 50).toBe(0); // toujours un multiple de 50
+		}
+		// Toute la plage 2 → 12 est couverte (variété réelle).
+		expect(facteurs.size).toBe(FACTEURS_MULTIPLES_50.length);
+		expect([...facteurs].sort((x, y) => x - y)).toEqual(FACTEURS_MULTIPLES_50);
+	});
+
+	test('math-diviser-10-100 (k=17) : quotient ENTIER exact, jamais de reste/virgule', () => {
+		const zerosDividendes = new Set<number>(); // nb de zéros finaux du dividende
+		const diviseurs = new Set<number>();
+		let vuQuotientRond = false; // ex. 4000÷100=40 (piège « j'enlève deux zéros »)
+		let vuQuotientPlein = false; // ex. 4700÷100=47
+		for (let i = 0; i < ECH; i++) {
+			const it = bilanQ(17)!;
+			const m = it.text.match(/^(\d+) ÷ (10|100) = @$/);
+			expect(m).not.toBeNull();
+			const dividende = Number(m![1]),
+				diviseur = Number(m![2]);
+			diviseurs.add(diviseur);
+			// INVARIANT n°1 : division EXACTE → quotient entier, aucun reste.
+			expect(dividende % diviseur).toBe(0);
+			const q = dividende / diviseur;
+			expect(Number.isInteger(q)).toBe(true);
+			expect(Number(it.answer)).toBe(q); // réponse = quotient exact
+			expect(String(it.answer)).not.toContain('.'); // jamais de décimal
+			expect(String(it.answer)).not.toContain(','); // jamais de virgule
+			expect(q).toBeGreaterThanOrEqual(2); // évite le trivial
+			expect(q).toBeLessThanOrEqual(99); // quotient ≤ 2 chiffres
+			// Nombre de zéros finaux du dividende (varié pour casser « j'enlève un zéro »).
+			zerosDividendes.add(String(dividende).match(/0+$/)?.[0].length ?? 0);
+			if (q % 10 === 0) vuQuotientRond = true;
+			else vuQuotientPlein = true;
+		}
+		// Les deux sous-familles (÷10 et ÷100) apparaissent.
+		expect(diviseurs.has(10)).toBe(true);
+		expect(diviseurs.has(100)).toBe(true);
+		// Variété du nombre de zéros FINAUX du dividende (1, 2 et 3 atteignables dans la
+		// plage : ex. 20 → 1, 200 → 2, 9000 → 3). On casse ainsi le réflexe « je compte
+		// les zéros » : un même nombre de zéros mène à des quotients différents selon le
+		// diviseur (200÷10=20 vs 200÷100=2).
+		expect(zerosDividendes.has(1)).toBe(true);
+		expect(zerosDividendes.has(2)).toBe(true);
+		expect(zerosDividendes.has(3)).toBe(true);
+		// Quotients ronds (ex. 4000÷100=40, PAS 400) ET pleins (ex. 4700÷100=47)
+		// co-existent : le piège « j'enlève les zéros » est réellement exercé.
+		expect(vuQuotientRond).toBe(true);
+		expect(vuQuotientPlein).toBe(true);
+	});
+
+	test('fiches imprimables CM1 se construisent et n’affichent ni reste ni virgule', () => {
+		for (const id of ['math-multiples-50', 'math-diviser-10-100']) {
+			expect(() => buildLessonFiche(id)).not.toThrow();
+			const html = buildLessonFiche(id);
+			expect(html).toContain('<input'); // au moins un champ de réponse
+			expect(html).not.toContain('@'); // le `@` est remplacé par le champ
+		}
+		// La fiche ÷10/÷100, régénérée plusieurs fois, ne produit jamais une réponse
+		// décimale (data-answer entier) — l'invariant « quotient entier » tient au rendu.
+		for (let i = 0; i < 100; i++) {
+			const html = buildLessonFiche('math-diviser-10-100');
+			for (const m of html.matchAll(/data-answer="([^"]+)"/g)) {
+				expect(m[1]).toMatch(/^\d+$/); // entier seul, ni « . » ni « , »
+			}
+		}
+	});
+
+	/* Garde-fou du `…find(…)!` de buildLessonFiche : brancher une leçon legacy oblige
+	   à synchroniser TROIS tables à la main (MATH_LESSON_NUM ⇄ LESSONS_CALCUL_MENTAL ⇄
+	   THEMES/bilanQ). Un id ajouté au catalogue sans sa fiche ferait planter le rendu au
+	   runtime sans qu'aucun autre test ne le voie : on verrouille l'invariant ici. */
+	test('cohérence MATH_LESSON_NUM ⇄ LESSONS_CALCUL_MENTAL ⇄ THEMES/bilanQ', () => {
+		for (const [id, num] of Object.entries(MATH_LESSON_NUM)) {
+			expect(
+				LESSONS_CALCUL_MENTAL.find((l) => l.id === id),
+				`fiche riche manquante pour ${id} (n°${num})`,
+			).toBeDefined();
+			expect(THEMES[num], `THEMES[${num}] manquant pour ${id}`).toBeDefined();
+			expect(bilanQ(num), `bilanQ(${num}) ne génère rien pour ${id}`).toBeTruthy();
+		}
 	});
 });
 
@@ -831,8 +967,11 @@ describe('Catalogue maths : 4 catégories du manuel (#92)', () => {
 		expect(calcul?.id).not.toBe(mental?.id);
 	});
 	test('les leçons de calcul mental sont rattachées à math-calcul-mental', () => {
-		// 15 leçons « legacy » (bilanQ) + 2 division par le sens (#104) + reste (#95).
-		expect(getLessonsByCategory('math-calcul-mental').length).toBe(18);
+		// 15 leçons CE2 « legacy » (bilanQ) + 2 division par le sens (#104) + reste (#95)
+		// + 2 leçons CM1 (#241 : multiples de 50, ÷10/÷100). Sans niveau = tout confondu.
+		expect(getLessonsByCategory('math-calcul-mental').length).toBe(20);
+		// En CE2, les 2 leçons CM1 sont filtrées (18 leçons restantes).
+		expect(getLessonsByCategory('math-calcul-mental', 'ce2').length).toBe(18);
 		expect(getLessonsByCategory('math-calcul').length).toBeGreaterThan(0); // posé (#97)
 	});
 	test('toutes les catégories maths sont désormais peuplées ; helper robuste sur un id inconnu', () => {
@@ -1764,8 +1903,12 @@ describe('Trophées', () => {
 		// Garde-fou : aucun déclenchement à 0 leçon.
 		expect(def.test!({ stars: 0, totalLessons: 0 })).toBe(false);
 	});
-	test('gSnapshot expose totalLessons (= catalogue)', () => {
-		expect(api.gSnapshot().totalLessons).toBe(getAllLessons().length);
+	test('gSnapshot expose totalLessons (= catalogue du niveau actif)', () => {
+		// totalLessons est SCOPÉ au niveau actif (CE2 par défaut, #225/#233) : il compte
+		// les leçons visibles à ce niveau, pas tout le catalogue multi-niveaux (les
+		// leçons CM1-only — #241 — en sont exclues).
+		const ce2 = getAllLessons().filter((l) => l.levels.includes('ce2')).length;
+		expect(api.gSnapshot().totalLessons).toBe(ce2);
 	});
 });
 
@@ -2065,7 +2208,8 @@ describe('Sprint', () => {
 		expect(api.updateGoal({ mode: 'sprint', sprint: true }).justDone).toBe(true);
 	});
 	test('le calcul mental couvre ses leçons (décomposer + division par le sens)', () => {
-		const calculMental = getLessonsByCategory('math-calcul-mental');
+		// Périmètre CE2 (le calcul mental CM1 — #241 — est filtré par le niveau).
+		const calculMental = getLessonsByCategory('math-calcul-mental', 'ce2');
 		expect(calculMental.some((l) => l.id === 'math-decomposer-multiplication')).toBe(true);
 		expect(calculMental.some((l) => l.id === 'math-div-partage')).toBe(true); // #104
 		expect(calculMental.some((l) => l.id === 'math-div-reste')).toBe(true); // #95

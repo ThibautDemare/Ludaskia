@@ -90,6 +90,11 @@ export function sub(a: number, b: number): Item {
 export function mul(a: number, b: number): Item {
 	return { text: `${a} × ${b} = @`, answer: a * b };
 }
+export function div(a: number, b: number): Item {
+	// Division EXACTE (quotient entier) du calcul mental : l'appelant garantit que
+	// `a` est un multiple de `b` (jamais de reste ni de virgule au CM1, cf. ÷10/÷100).
+	return { text: `${a} ÷ ${b} = @`, answer: a / b };
+}
 export function dbl(n: number): Item {
 	return { text: `double de ${n} = @`, answer: 2 * n };
 }

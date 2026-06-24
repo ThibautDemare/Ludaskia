@@ -9,6 +9,7 @@ import {
 	add,
 	sub,
 	mul,
+	div,
 	dbl,
 	half,
 	comp,
@@ -79,6 +80,37 @@ export const CIBLES_DECOMPO_MULT: number[] = (() => {
 	const cibles: number[] = [];
 	for (let b = 12; b <= 19; b++) cibles.push(b); // 12 → 19
 	for (let b = 21; b <= 29; b++) cibles.push(b); // 21 → 29 (tous non multiples de 10)
+	return cibles;
+})();
+
+/* ============================================================
+   Plages CM1 (issue #241) — calcul mental étendu au CM1.
+   Ces leçons sont DISTINCTES des leçons CE2 (nouveaux id + nouveaux numéros
+   bilanQ) ; elles ne touchent JAMAIS au calibrage des leçons CE2. Comme pour
+   les CE2, fiche (LESSONS_CM1) et bilanQ partagent CES plages.
+   ============================================================ */
+
+/* « Multiples de 50 » (clone CM1 de « Les multiples de 25 ») : 50×2 → 50×12,
+   soit 100 → 600. Même forme et même plage de multiplicateur que les 25. */
+export const FACTEURS_MULTIPLES_50: number[] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+/* « Diviser par 10 » (quotients ENTIERS uniquement, #241) : dividendes multiples
+   exacts de 10, quotient à 2 chiffres (20 → 990), en évitant le trivial 10÷10=1
+   (quotient ≥ 2). Aucune virgule ni reste : le dividende FINIT toujours par 0. */
+export const DIVIDENDES_DIV_10: number[] = (() => {
+	const cibles: number[] = [];
+	for (let q = 2; q <= 99; q++) cibles.push(q * 10); // 20, 30, … 990 (quotient 2 → 99)
+	return cibles;
+})();
+
+/* « Diviser par 100 » (quotients ENTIERS uniquement, #241) : dividendes multiples
+   exacts de 100, de 200 à 9900 (quotient à 2 chiffres, 2 → 99). Le dividende FINIT
+   toujours par « 00 ». On VARIE volontairement le nombre de zéros FINAUX du dividende
+   (200, 9000…) pour casser le réflexe faux « j'enlève deux zéros » : un quotient rond
+   comme 4000÷100=40 (et non 400) côtoie un quotient « plein » comme 4700÷100=47. */
+export const DIVIDENDES_DIV_100: number[] = (() => {
+	const cibles: number[] = [];
+	for (let q = 2; q <= 99; q++) cibles.push(q * 100); // 200, 300, … 9900 (quotient 2 → 99)
 	return cibles;
 })();
 
@@ -364,6 +396,53 @@ export const LESSONS = [
 		},
 	},
 ];
+
+/* ============================================================
+   Leçons de calcul mental CM1 (issue #241).
+   ------------------------------------------------------------
+   Tableau SÉPARÉ de LESSONS (qui reste l'ensemble CE2 « historique », consommé
+   par les vues legacy « toutes les leçons » : buildFiches, bilanBlocks, bilanHTML,
+   renderLessons). Les leçons CM1 sont surfacées par niveau via le catalogue
+   (catalog.ts : levels=['cm1'] + ordre pédagogique math.cm1) et rendues par
+   buildLessonFiche, qui les retrouve dans LESSONS_CALCUL_MENTAL (lookup combiné).
+   Leur numéro bilanQ prolonge la numérotation CE2 (16, 17) ; jamais de
+   recalibrage d'une leçon CE2.
+   ============================================================ */
+export const LESSONS_CM1 = [
+	{
+		num: 16,
+		id: 'math-multiples-50',
+		title: 'Les multiples de 50',
+		sub: '50, 100, 150, 200... de 50 en 50.',
+		consigne: 'Calcule.',
+		build() {
+			const items = sample(FACTEURS_MULTIPLES_50, 11).map((a) => mul(a, 50));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+		},
+	},
+
+	{
+		num: 17,
+		id: 'math-diviser-10-100',
+		title: 'Diviser par 10, par 100',
+		sub: '÷10 : combien de paquets de 10 · ÷100 : combien de paquets de 100.',
+		consigne: 'Calcule.',
+		build() {
+			// Symétrique de « Multiplier par 10, par 100 » : 6 items ÷10 puis 6 items ÷100.
+			// Quotients ENTIERS garantis (dividendes multiples exacts), à 2 chiffres.
+			const items = sample(DIVIDENDES_DIV_10, 6)
+				.map((a) => div(a, 10))
+				.concat(sample(DIVIDENDES_DIV_100, 6).map((a) => div(a, 100)));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+		},
+	},
+];
+
+/* Lookup combiné pour le rendu d'une fiche de calcul mental (buildLessonFiche) :
+   toutes les leçons « legacy » (CE2 + CM1), retrouvées par id. Les vues legacy
+   « toutes les leçons » continuent d'itérer le seul tableau CE2 (LESSONS). */
+export const LESSONS_CALCUL_MENTAL = [...LESSONS, ...LESSONS_CM1];
+
 export function buildFiches() {
 	return LESSONS.map((l) => {
 		setRenderLesson(l.id);
@@ -392,6 +471,9 @@ export const THEMES: Record<number, string> = {
 	13: '× 4, × 8',
 	14: '× 20, 30, 40',
 	15: 'Décomposer',
+	// CM1 (#241)
+	16: 'Multiples de 50',
+	17: '÷ 10, ÷ 100',
 };
 export function bilanQ(k: number): Item | undefined {
 	switch (k) {
@@ -446,6 +528,16 @@ export function bilanQ(k: number): Item | undefined {
 			return mul(rnd(2, 12), choice([20, 30, 40]));
 		case 15:
 			return mul(rnd(3, 9), choice(CIBLES_DECOMPO_MULT));
+		// ---- CM1 (#241) ----
+		case 16:
+			// Multiples de 50 : 50×2 → 50×12 (clone CM1 des multiples de 25).
+			return mul(choice(FACTEURS_MULTIPLES_50), 50);
+		case 17:
+			// Diviser par 10 OU par 100 : quotient ENTIER garanti (dividende = multiple
+			// exact tiré dans la plage), jamais de reste ni de virgule.
+			return choice([10, 100]) === 10
+				? div(choice(DIVIDENDES_DIV_10), 10)
+				: div(choice(DIVIDENDES_DIV_100), 100);
 	}
 }
 export function bilanBlocks(nbQ: number) {

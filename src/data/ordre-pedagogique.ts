@@ -92,10 +92,13 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'num-frac-addition',
 		],
 		// CM1 math : numération « grands nombres » jusqu'au million (#240) ET calcul
-		// mental (#241), entrelacés. Dépendances respectées — numération : comparer →
-		// encadrer/intercaler → valeur de position → décompositions (« en rangs » puis
-		// multiplicative) → situer ; calcul mental : multiples de 50 tôt (réinvestit les
-		// multiples de 25 du CE2) puis ÷10/÷100 (quotients entiers) après ×10/×100.
+		// mental (#241), entrelacés, puis géométrie (#242). Dépendances respectées —
+		// numération : comparer → encadrer/intercaler → valeur de position → décompositions
+		// (« en rangs » puis multiplicative) → situer ; calcul mental : multiples de 50 tôt
+		// (réinvestit les multiples de 25 du CE2) puis ÷10/÷100 (quotients entiers) après
+		// ×10/×100 ; géométrie : figures planes AVANT solides, triangles (avec le quelconque
+		// en contre-exemple) AVANT quadrilatères, le parallélogramme en DERNIER des planes ;
+		// solides : reconnaissance → polyèdre/non-polyèdre (structurant) → comptage de mémoire.
 		cm1: [
 			'num-comparer',
 			'math-multiples-50',
@@ -105,6 +108,12 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'num-decompose-10000',
 			'num-decompose-multiplicative',
 			'num-situer-10000',
+			'geo-cm1-triangles',
+			'geo-cm1-triangles-prop',
+			'geo-cm1-quadrilateres',
+			'geo-cm1-solides',
+			'geo-cm1-polyedre',
+			'geo-cm1-solides-comptage',
 		],
 	},
 	francais: {

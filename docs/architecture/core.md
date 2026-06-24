@@ -63,10 +63,20 @@ propre doc de conception : `docs/design-orthographe.md`.
   rotation)`** (figure pleine à reconnaître, rotation pour varier l'orientation) et
   **`renderSceneFigures(cells)`** (scène de plusieurs figures à compter, grille
   monochrome) et **`renderCercle(segment?, label?)`** (#102 — cercle + centre, rayon
-  ou diamètre surligné et coté, ou marqué « ? » pour le vocabulaire) et
-  **`renderSolide(solid)`** (#103 — schéma d'un solide en **perspective cavalière
-  sans arêtes cachées** : cube, pavé droit, cylindre, cône, pyramide, boule ;
-  primitive `ellipse` ajoutée) et **`renderGroupes(paniers, total)`** (#104 —
+  ou diamètre surligné et coté, ou marqué « ? » pour le vocabulaire). `PlaneShape`
+  couvre carré, rectangle, triangle (générique), triangle rectangle, losange, cercle,
+  parallélogramme et — **CM1 (#242)** — les **triangles particuliers** `triangleEquilateral`
+  / `triangleIsocele` (FRANC, apex ~40°) / `triangleQuelconque` (scalène ~3:4:5,5, sans
+  angle droit). Sommets canoniques mis à l'échelle de façon **uniforme** (angles et égalités
+  de longueur préservés) ; les triangles équilatéral/isocèle portent une **marque de côté
+  égal** (`SHAPE_MARQUES_EGAL` → court tiret `--ink` perpendiculaire au milieu de chaque côté
+  marqué) **concordante** avec le tracé (côtés réellement égaux). Le tracé du
+  **parallélogramme** est calibré CM1 (#242) : côté oblique incliné ~28° de la verticale,
+  ratio longueur/largeur ~1,9 (rectangle penché allongé). Et
+  **`renderSolide(solid, orient?)`** (#103 — schéma d'un solide en **perspective cavalière
+  sans arêtes cachées** : cube, pavé droit, cylindre, cône, pyramide, boule ; + **CM1 (#242)**
+  le **prisme** droit à base triangulaire — face triangulaire pleine + arêtes de fuite, même
+  style ; primitive `ellipse` ajoutée) et **`renderGroupes(paniers, total)`** (#104 —
   division par le sens : `total` jetons en vrac + `paniers` contenants **vides** ;
   montre la SITUATION, jamais le résultat → l'enfant calcule, il ne compte pas une
   réponse déjà posée), **`renderSymMiroir(motif, axis)`** / **`renderSymImage(motif, axis, t)`**

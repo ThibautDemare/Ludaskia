@@ -17,6 +17,7 @@ import { getXP, niveauDepuisXP } from '../core/progress';
 import { THEMES, themesDebloques, type Theme } from '../core/unlocks';
 import {
 	activeProfile,
+	apparitionsSurprises,
 	confortLecture,
 	lectureConsigneAuto,
 	sansPressionTemporelle,
@@ -137,6 +138,8 @@ function amenagementsInfoHTML(): string {
 		lignes.push('Le minuteur est masqué pendant les sprints (réglé par un adulte).');
 	if (lectureConsigneAuto())
 		lignes.push('Les consignes sont lues à voix haute automatiquement (réglé par un adulte).');
+	if (!apparitionsSurprises())
+		lignes.push('Les apparitions surprises sont désactivées (réglé par un adulte).');
 	return lignes.length
 		? `<div class="pref-amenagements">${lignes
 				.map((l) => `<p class="pref-hint">${icon('lock')} ${l}</p>`)

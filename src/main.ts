@@ -26,6 +26,7 @@ import './styles/foret.scss';
 import './styles/accessibility.scss';
 import './styles/aide-exercice.scss';
 import './styles/encadrant.scss';
+import './styles/eggs.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -71,6 +72,7 @@ import { maybeShowClassChoice } from './ui/onboarding';
 import { initVersionCheck } from './ui/version-check';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 import { installGroupedNumberEcho } from './ui/grand-nombre-echo';
+import { initEggs, mountForestEgg } from './ui/eggs';
 
 // Quitter ces modes (non reprenables) perd la progression → on confirme (#63).
 const quittingLosesProgress = () => isSprintRunning() || isRevisionRunning();
@@ -98,6 +100,9 @@ function wireDOM() {
 	// Grands nombres (#327) : écho groupé à la frappe des champs `.ans-grand`
 	// (« 1 400 000 »). Écouteur délégué, couvre les champs présents et futurs.
 	installGroupedNumberEcho();
+	// Easter eggs (#331) : câble les déclencheurs (chatouiller la mascotte, album).
+	// Le hotspot forêt est monté plus bas, APRÈS l'injection du SVG décoratif.
+	initEggs();
 	document.getElementById('btnVerify')!.addEventListener('click', verify);
 	// Accueil : la confirmation des modes NON reprenables (sprint, révision) est
 	// gérée au niveau du hashchange (couvre aussi Précédent / édition d'URL), pour
@@ -356,7 +361,10 @@ function wireDOM() {
 		fetch(`${import.meta.env.BASE_URL}foret-pied.svg`)
 			.then((r) => (r.ok ? r.text() : ''))
 			.then((svg) => {
-				if (svg) foretEl.innerHTML = svg;
+				if (svg) {
+					foretEl.innerHTML = svg;
+					mountForestEgg(); // egg « animal de la forêt » (#331), APRÈS l'injection (sinon écrasé)
+				}
 			})
 			.catch(() => {}); // décoration non critique : on ignore l'échec
 	}

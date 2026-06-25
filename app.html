@@ -104,6 +104,9 @@
 					<div class="objectives" id="objectives"></div>
 					<div class="boards" id="boards"></div>
 					<div class="reward-nav" id="rewardNav"></div>
+					<!-- Accès à l'album des easter eggs (#331) : rendu par ui/eggs.ts,
+						     MASQUÉ tant qu'aucune surprise n'a été trouvée. -->
+					<div class="reward-nav egg-album-nav" id="eggAlbumNav"></div>
 				</div>
 				<!-- Colonne droite : accès aux modes + favoris -->
 				<div class="home-col home-col-right">
@@ -316,6 +319,18 @@
 				<h2 class="modal-title" id="tropheesTitle">Mes trophées</h2>
 				<div class="rewards-body" id="tropheesContent"></div>
 				<button class="modal-ok" id="tropheesOk">Fermer</button>
+			</div>
+		</div>
+
+		<!-- Modale « Album de surprises » (easter eggs, #331) : uniquement les
+		     trouvailles déjà découvertes — jamais de cases vides ni de compteur. -->
+		<div class="modal-overlay" id="eggAlbum" style="display: none">
+			<div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="eggAlbumTitle">
+				<button class="modal-close" id="eggAlbumClose" aria-label="Fermer">×</button>
+				<div class="modal-emoji">✨</div>
+				<h2 class="modal-title" id="eggAlbumTitle">Mon album de surprises</h2>
+				<div class="rewards-body" id="eggAlbumContent"></div>
+				<button class="modal-ok" id="eggAlbumOk">Fermer</button>
 			</div>
 		</div>
 

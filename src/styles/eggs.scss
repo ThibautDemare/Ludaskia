@@ -1,0 +1,272 @@
+/* Easter eggs (#331) : surprises de l'accueil + album de souvenirs.
+   Toutes les animations respectent le DOUBLE garde-fou maison (réglage profil
+   `html.anim-reduced` ET préférence système `prefers-reduced-motion`). Les eggs
+   d'exploration dégradent vers un simple CHANGEMENT D'ÉTAT (jamais supprimés) ;
+   les particules et l'ambiant, eux, sont coupés. Décor expressif (emoji), pas
+   d'icône fonctionnelle (cf. ui/icon.ts). */
+
+/* ---------- Egg A : chatouiller la mascotte ---------- */
+/* Cabriole ponctuelle : remplace temporairement la boucle de repos (.mascotte),
+   puis la classe est retirée et la boucle reprend. */
+.mascotte.egg-giggle {
+	animation: egg-giggle 0.65s ease;
+}
+@keyframes egg-giggle {
+	0%,
+	100% {
+		transform: rotate(0) translateY(0) scale(1);
+	}
+	15% {
+		transform: rotate(-9deg) scale(1.08);
+	}
+	35% {
+		transform: rotate(8deg) translateY(-12%) scale(1.08);
+	}
+	55% {
+		transform: rotate(-7deg) translateY(0) scale(1.05);
+	}
+	75% {
+		transform: rotate(5deg) translateY(-6%);
+	}
+}
+/* Mouvement réduit : pas de cabriole (la mascotte reste posée). Garde de même
+   spécificité que `.mascotte.egg-giggle`, placée APRÈS pour l'emporter. */
+@media (prefers-reduced-motion: reduce) {
+	.mascotte.egg-giggle {
+		animation: none;
+	}
+}
+html.anim-reduced .mascotte.egg-giggle {
+	animation: none;
+}
+
+/* Plumes qui retombent (particules) : uniquement hors mouvement réduit. */
+.egg-plume-layer {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 60;
+}
+.egg-plume {
+	position: fixed;
+	font-size: 18px;
+	opacity: 0;
+	transform: translate(-50%, 0);
+	animation: egg-plume-fall 1.4s ease-out forwards;
+	will-change: transform, opacity;
+}
+@keyframes egg-plume-fall {
+	0% {
+		opacity: 0;
+		transform: translate(-50%, 0) rotate(0);
+	}
+	18% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		transform: translate(calc(-50% + var(--dx, 0px)), 72px) rotate(40deg);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.egg-plume-layer {
+		display: none;
+	}
+}
+html.anim-reduced .egg-plume-layer {
+	display: none;
+}
+
+/* ---------- Egg B : l'animal de la forêt ---------- */
+/* Hotspot tactile superposé à la bande forêt (zone sans fonction). La bande est
+   `pointer-events: none` ; on réactive localement le hotspot uniquement. */
+.home-foret {
+	position: relative;
+}
+.egg-foret-spot {
+	position: absolute;
+	left: 12%;
+	bottom: 0;
+	width: clamp(44px, 8vw, 72px);
+	height: 62%;
+	pointer-events: auto;
+	cursor: pointer;
+	z-index: 1;
+}
+.egg-animal {
+	position: absolute;
+	left: 50%;
+	bottom: 4px;
+	font-size: clamp(22px, 5vw, 34px);
+	opacity: 0;
+	transform: translateX(-50%) scale(0.6);
+	pointer-events: none;
+}
+.egg-animal.egg-animal-show {
+	animation: egg-animal-peek 1.8s ease both;
+}
+@keyframes egg-animal-peek {
+	0% {
+		opacity: 0;
+		transform: translateX(-50%) translateY(10px) scale(0.6);
+	}
+	14% {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0) scale(1.12);
+	}
+	26% {
+		transform: translateX(-50%) translateY(0) scale(1);
+	}
+	82% {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0) scale(1);
+	}
+	100% {
+		opacity: 0;
+		transform: translateX(-50%) translateY(3px) scale(0.9);
+	}
+}
+/* Mouvement réduit : l'animal apparaît puis disparaît SANS mouvement (la classe
+   est retirée par JS après 1,8 s, ce qui le re-masque proprement). */
+@media (prefers-reduced-motion: reduce) {
+	.egg-animal.egg-animal-show {
+		animation: none;
+		opacity: 1;
+		transform: translateX(-50%) scale(1);
+	}
+}
+html.anim-reduced .egg-animal.egg-animal-show {
+	animation: none;
+	opacity: 1;
+	transform: translateX(-50%) scale(1);
+}
+
+/* ---------- Egg C : la luciole de passage (ambiant) ---------- */
+/* Ne se déclenche jamais sous mouvement réduit (gardé côté JS) ; double garde CSS
+   par sécurité. Traverse la bande HAUTE (périphérie), au-dessus du contenu mais
+   sous les modales. */
+.egg-luciole {
+	position: fixed;
+	left: -8vw;
+	font-size: 22px;
+	pointer-events: auto;
+	cursor: pointer;
+	z-index: 55;
+	filter: drop-shadow(0 0 6px #ffd54f);
+	animation:
+		egg-luciole-cross 9s linear forwards,
+		egg-luciole-bob 2.2s ease-in-out infinite;
+	will-change: left, transform;
+}
+@keyframes egg-luciole-cross {
+	from {
+		left: -8vw;
+	}
+	to {
+		left: 108vw;
+	}
+}
+@keyframes egg-luciole-bob {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-14px);
+	}
+}
+.egg-luciole.egg-luciole-caught {
+	animation: egg-luciole-caught 0.36s ease forwards;
+}
+@keyframes egg-luciole-caught {
+	0% {
+		transform: scale(1);
+		opacity: 1;
+	}
+	40% {
+		transform: scale(1.6);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(0.2);
+		opacity: 0;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.egg-luciole {
+		display: none;
+	}
+}
+html.anim-reduced .egg-luciole {
+	display: none;
+}
+
+/* ---------- Album de souvenirs ---------- */
+/* Grille qui grandit avec son contenu : AUCUNE case vide, AUCUN compteur. */
+.egg-album-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+	gap: 12px;
+}
+.egg-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	background: var(--paper);
+	border: 2px solid var(--accent-soft);
+	border-radius: 14px;
+	padding: 14px 10px;
+	font: inherit;
+	font-family: var(--ui);
+	cursor: pointer;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+	transition:
+		transform 0.08s ease,
+		border-color 0.15s ease;
+}
+.egg-card:hover {
+	transform: translateY(-1px);
+	border-color: var(--accent);
+}
+.egg-card:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 5px var(--accent);
+}
+.egg-card-scene {
+	font-size: 38px;
+	line-height: 1.1;
+}
+.egg-card-title {
+	font-size: 13px;
+	font-weight: 800;
+	color: var(--ink);
+	text-align: center;
+}
+.egg-card-play {
+	animation: egg-card-pop 0.7s ease;
+}
+@keyframes egg-card-pop {
+	0% {
+		transform: scale(1);
+	}
+	30% {
+		transform: scale(1.35) rotate(-6deg);
+	}
+	60% {
+		transform: scale(1.1) rotate(4deg);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.egg-card-play {
+		animation: none;
+	}
+}
+html.anim-reduced .egg-card-play {
+	animation: none;
+}

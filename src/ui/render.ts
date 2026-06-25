@@ -37,6 +37,7 @@ import { renderReprises } from './resume';
 import { renderLeconDuJour } from './lecon-du-jour';
 import { renderARevoir } from './a-revoir-card';
 import { renderRewardNav, mascotteBulleHTML } from './unlocks-view';
+import { onHomeShown } from './eggs';
 import { icon, type IconName } from './icon';
 
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
@@ -315,6 +316,7 @@ export function renderHomeStats() {
 	evaluateTrophies(); // rattrape d'éventuels trophées acquis (sans célébration ici)
 	renderRewardNav(); // boutons « Récompenses » / « Trophées » (ouvrent leurs modales)
 	renderFavoris(document.getElementById('favoris'));
+	onHomeShown(); // easter eggs (#331) : accès à l'album + tentative d'apparition ambiante
 }
 
 /* Objectifs de régularité (cadence saine, hebdomadaires).

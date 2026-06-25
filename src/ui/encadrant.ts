@@ -323,6 +323,10 @@ function amenagementsHTML(consulte: Profile): string {
 					? `${icon('speaker')} Lecture vocale disponible sur cet appareil.`
 					: `${icon('speaker')} Lecture vocale indisponible sur cet appareil (aucune voix française).`
 			}</p>
+      <label class="enc-toggle">
+        <input type="checkbox" data-act="set-amenagement" data-pref="sansApparitionsSurprises"${prefs.sansApparitionsSurprises ? ' checked' : ''} />
+        <span>Désactiver les apparitions surprises <small class="enc-hint">(petites surprises qui passent parfois à l'écran, ex. une luciole — à couper pour un enfant qu'un mouvement inattendu déconcentre)</small></span>
+      </label>
     </div>`;
 }
 
@@ -774,7 +778,8 @@ function onChange(e: Event): void {
 	} else if (act === 'set-amenagement' && consulteUuid) {
 		const pref = (t as HTMLElement).dataset.pref as
 			| 'sansPressionTemporelle'
-			| 'lectureConsigneAuto';
+			| 'lectureConsigneAuto'
+			| 'sansApparitionsSurprises';
 		setPrefFor(consulteUuid, pref, (t as HTMLInputElement).checked);
 		renderEspace();
 	} else if (act === 'secret-conserve') {

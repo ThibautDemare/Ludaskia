@@ -35,6 +35,12 @@ export interface ProfilePrefs {
 	 *  continue d'être mesuré en coulisse, et la dernière question entamée se termine
 	 *  avant la finalisation (pas de coupure sèche). Score révélé au bilan. */
 	sansPressionTemporelle?: boolean;
+	/** Désactive les apparitions surprises ambiantes (easter eggs « qui passent »,
+	 *  ex. la luciole, #331). Aménagement posé par l'adulte pour un enfant qu'un
+	 *  mouvement inattendu déconcentre (TDAH) ou déstabilise (besoin de
+	 *  prévisibilité). N'affecte PAS les eggs d'exploration, déclenchés
+	 *  volontairement par l'enfant. Défaut (absent) = apparitions actives. */
+	sansApparitionsSurprises?: boolean;
 }
 export interface Profile {
 	uuid: string;
@@ -236,6 +242,11 @@ export function lectureConsigneAuto(): boolean {
 }
 export function sansPressionTemporelle(): boolean {
 	return getPrefs().sansPressionTemporelle === true;
+}
+// Apparitions surprises ambiantes actives ? Vrai par défaut (l'aménagement ne
+// fait que les DÉSACTIVER) — cf. #331.
+export function apparitionsSurprises(): boolean {
+	return getPrefs().sansApparitionsSurprises !== true;
 }
 
 /* ---------- Niveau scolaire de référence du profil actif (#225) ---------- */

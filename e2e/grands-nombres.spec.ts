@@ -1,9 +1,12 @@
 /* ============================================================
-   Grands nombres CM1 « millions » (#240) — smoke e2e.
+   Grands nombres CM1 « millions » (#240 / #327) — smoke e2e.
    En profil CM1 : les leçons de numération affichent de grands nombres
    GROUPÉS (classe .bignum, espace fine insécable) sans erreur ; la
    comparaison se joue et se valide ; la nouvelle leçon de décomposition
    MULTIPLICATIVE se rend et valide une bonne réponse.
+   #327 : les champs .ans-grand reformatent leur contenu EN TEMPS RÉEL à la
+   frappe (écho groupé par U+202F), et la correction reste valide malgré les
+   séparateurs.
    Pattern maison : gotoHash, watchErrors + expect(errors).toEqual([]),
    sélecteurs stables (#btnVerify, .ans[data-answer], .mark.correct, .bignum).
    ============================================================ */
@@ -74,5 +77,49 @@ test('CM1 décomposition multiplicative : la leçon se rend et valide une bonne 
 	await field.fill(good ?? '');
 	await page.locator('#btnVerify').click();
 	await expect(page.locator('.mark.correct').first()).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
+/* ---- #327 : écho groupé des grands nombres à la frappe (.ans-grand) ---- */
+
+test('CM1 encadrer : saisie dans .ans-grand reformatée en temps réel (U+202F), correction accepte', async ({
+	page,
+}) => {
+	// U+202F = espace fine insécable, séparateur de classes des grands nombres groupés.
+	const U202F = String.fromCharCode(0x202f);
+	const errors = watchErrors(page);
+	await page.goto('app.html#lecon-num-encadrer-intercaler', { waitUntil: 'networkidle' });
+
+	// La fiche CM1 génère 8 items ; la plupart sont des encadrements avec réponse ≥ 10 000
+	// → champ .ans-grand. On attend le premier champ de ce type (garanti par le calibrage CM1).
+	const grand = page.locator('.ans-grand').first();
+	await grand.waitFor({ state: 'attached', timeout: 10_000 });
+
+	// Réponse attendue lue depuis l'attribut (exercice aléatoire, jamais recalculée ici).
+	const rawAnswer = await grand.getAttribute('data-answer');
+	expect(rawAnswer).not.toBeNull();
+
+	// Chiffres bruts : on retire tout séparateur éventuel déjà présent dans data-answer
+	// (formatNombre peut y insérer U+202F selon le contexte).
+	const digits = (rawAnswer ?? '').replace(/\D/g, '');
+	// .ans-grand n'apparaît que si la réponse est ≥ 10 000 → au moins 5 chiffres.
+	expect(digits.length).toBeGreaterThanOrEqual(5);
+
+	// Frappe réelle via pressSequentially : déclenche l'évènement `input`, ce que fill()
+	// ne fait pas (Playwright envoie des InputEvent synthétiques). L'écho groupé (#327)
+	// écoute `input` délégué sur document → reformate .ans-grand après chaque chiffre.
+	await grand.focus();
+	await grand.pressSequentially(digits);
+
+	// Après la frappe, la valeur affichée doit contenir au moins un U+202F (regroupement).
+	const displayed = await grand.inputValue();
+	expect(displayed).toContain(U202F);
+
+	// Validation : nettoyerSaisieNombre neutralise les U+202F avant comparaison → correct.
+	await page.locator('#btnVerify').click();
+	await expect(grand.locator('xpath=following-sibling::span[contains(@class,"mark")]')).toHaveClass(
+		/correct/,
+	);
+
 	expect(errors).toEqual([]);
 });

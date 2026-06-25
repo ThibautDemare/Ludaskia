@@ -61,3 +61,20 @@ const NOMBRE_GROUPE = /\d{1,3}(?:\u202F\d{3})+/g;
 export function wrapGrandsNombres(escaped: string): string {
 	return escaped.replace(NOMBRE_GROUPE, (m) => `<span class="bignum">${m}</span>`);
 }
+
+/** Groupe une CHAÎNE DE CHIFFRES par classes de 3 depuis la droite, séparées par
+ *  U+202F — pour l'écho de saisie en temps réel des grands nombres (#327, leçons
+ *  « millions » CM1). Travaille sur les chiffres BRUTS (pas via `Number`) pour
+ *  restituer EXACTEMENT ce qui est tapé — zéros de tête compris — et n'introduire
+ *  QUE des séparateurs (aucune valeur n'est recalculée). Ne groupe qu'à partir de
+ *  5 chiffres (≥ 10 000), comme `formatNombre` : la plage CE2 (≤ 9 999) reste sans
+ *  séparateur. L'entrée doit être une suite de chiffres (l'appelant neutralise
+ *  d'abord espaces et autres caractères). */
+export function grouperChiffresSaisis(chiffres: string): string {
+	// Seuil aligné sur formatNombre : on ne groupe pas la plage CE2 (≤ 4 chiffres), pour
+	// un affichage IDENTIQUE partout (« 1400 » n'est jamais groupé, « 14 000 » l'est).
+	if (chiffres.length <= 4) return chiffres;
+	// `\B(?=(\d{3})+(?!\d))` insère un séparateur devant chaque groupe de 3 chiffres
+	// aligné sur la droite : « 14000 » → « 14 000 », « 1400000 » → « 1 400 000 ».
+	return chiffres.replace(/\B(?=(\d{3})+(?!\d))/g, ESPACE_FINE);
+}

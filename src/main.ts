@@ -70,6 +70,7 @@ import { initTts } from './ui/tts';
 import { maybeShowClassChoice } from './ui/onboarding';
 import { initVersionCheck } from './ui/version-check';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
+import { installGroupedNumberEcho } from './ui/grand-nombre-echo';
 
 // Quitter ces modes (non reprenables) perd la progression → on confirme (#63).
 const quittingLosesProgress = () => isSprintRunning() || isRevisionRunning();
@@ -94,6 +95,9 @@ function wireDOM() {
 	// Champs de réponse texte « mot de passe visible » : démasquage auto dès l'insertion
 	// (texte lisible sans réactiver les suggestions du clavier mobile). Voir #139.
 	installVisiblePasswordReveal();
+	// Grands nombres (#327) : écho groupé à la frappe des champs `.ans-grand`
+	// (« 1 400 000 »). Écouteur délégué, couvre les champs présents et futurs.
+	installGroupedNumberEcho();
 	document.getElementById('btnVerify')!.addEventListener('click', verify);
 	// Accueil : la confirmation des modes NON reprenables (sprint, révision) est
 	// gérée au niveau du hashchange (couvre aussi Précédent / édition d'URL), pour

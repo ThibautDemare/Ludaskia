@@ -237,7 +237,9 @@ strictement entre deux multiples ronds consécutifs, via le champ `Exercise.inte
 le CE2 garde sa **réponse unique**. **Saisie** : on ne fait jamais taper > 6 chiffres
 (comparaison = signe, encadrement/intercalation = nombres ronds), et le `check` tolère
 les espaces de groupement (`nettoyerSaisieNombre`). Tous les grands nombres affichés sont
-groupés via `core/nombres.ts` (`formatNombre`, classe `.bignum`).
+groupés via `core/nombres.ts` (`formatNombre`, classe `.bignum`) ; le champ de réponse
+« grand nombre » (`.ans-grand`, ≥ 10 000) **regroupe aussi sa saisie à la frappe** (écho U+202F,
+`ui/grand-nombre-echo.ts`, #327).
 
 #### `maths/position.ts` (#94, grands nombres CM1 #240)
 

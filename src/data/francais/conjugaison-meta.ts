@@ -1,10 +1,10 @@
 /* ============================================================
-   Conjugaison CM1 — trois QCM « méta » (#239).
+   Conjugaison CE2/CM1 — trois QCM « méta » (#239 ; re-tag CE2 + « plus dur » sur groupe).
    ------------------------------------------------------------
    Trois leçons de RECONNAISSANCE (QCM mono-mode) qui prennent du recul sur
    le paradigme déjà travaillé verbe par verbe (CONJ_LESSONS) :
-   - M1 « Temps simple ou composé ? » : à partir de l'INDICE OBSERVABLE (la forme
-     est-elle en un seul mot ou en deux parties), sans nommer le temps abstrait ;
+   - M1 « Temps simple ou composé ? » : à partir de l'INDICE OBSERVABLE (y a-t-il un
+     auxiliaire « avoir »/« être » devant le verbe), sans nommer le temps abstrait ;
    - M2 « 1er, 2e ou 3e groupe ? » : à partir d'un INFINITIF (auxiliaires exclus :
      hors groupes) ; `aller` est gardé comme piège ENSEIGNÉ (en -er mais 3e groupe),
      avec une explication dédiée ;
@@ -27,8 +27,9 @@ import {
 	type Tense,
 } from './conjugaison';
 
-/* Verbes du corpus méta : TOUT VERBS (#239 — toute la conjugaison est CM1, naître
-   inclus). Le QCM groupe (M2) écarte ensuite les auxiliaires (hors groupes). */
+/* Verbes du corpus méta : TOUT VERBS (#239 — tout le corpus de conjugaison est ouvert
+   en CE2 + CM1, naître inclus). Le QCM groupe (M2) écarte ensuite les auxiliaires (hors
+   groupes). */
 const VERBS_META: VerbDef[] = VERBS;
 
 /* Tous les QCM méta sont mono-mode reconnaissance (pas de saisie : on choisit une
@@ -40,12 +41,12 @@ const MODE_QCM: ModeOption[] = [
 /* ------------------------------------------------------------
    M1 — « Temps simple ou composé ? »
    ------------------------------------------------------------
-   Un temps COMPOSÉ s'écrit en deux parties (auxiliaire + participe) → la forme
+   Un temps COMPOSÉ se forme avec un AUXILIAIRE (avoir/être) DEVANT le verbe ; la forme
    stockée du passé composé contient une espace (« a mangé »). Un temps SIMPLE est
-   en un seul mot (présent / futur / imparfait). On s'appuie sur cet INDICE
-   OBSERVABLE, pas sur l'étiquette abstraite « simple/composé ». */
-const M1_COMPOSE = 'en deux parties (temps composé)';
-const M1_SIMPLE = 'en un seul mot (temps simple)';
+   le verbe TOUT SEUL (présent / futur / imparfait). On s'appuie sur l'AUXILIAIRE comme INDICE
+   OBSERVABLE (et non le nombre de mots), pas sur l'étiquette abstraite « simple/composé ». */
+const M1_COMPOSE = '« avoir » ou « être » + le verbe (temps composé)';
+const M1_SIMPLE = 'le verbe tout seul (temps simple)';
 
 /* Le seul temps COMPOSÉ du corpus est le passé composé (auxiliaire + participe ;
    sa forme stockée comporte d'ailleurs une espace, « a mangé »). On le reconnaît
@@ -58,7 +59,7 @@ function estCompose(tense: Tense): boolean {
 export function simpleComposeType(): ExerciseType {
 	return {
 		modes: MODE_QCM,
-		consigne: 'Ce verbe est-il en un seul mot ou en deux parties ?',
+		consigne: 'Ce verbe est-il tout seul, ou avec « avoir » ou « être » devant ?',
 		generate(): Exercise {
 			const verb = choice(VERBS_META);
 			const tense = choice(TENSES);
@@ -67,6 +68,12 @@ export function simpleComposeType(): ExerciseType {
 			const pron = displayPronoun(p, form);
 			const compose = estCompose(tense);
 			const answer = compose ? M1_COMPOSE : M1_SIMPLE;
+			// Pour un temps composé, le 1er mot de la forme stockée est l'auxiliaire
+			// (« a mangé » → « a », « est parti » → « est ») : on le nomme dans le retour.
+			const aux = form.split(' ')[0];
+			const auxInf = ['suis', 'es', 'est', 'sommes', 'êtes', 'sont'].includes(aux)
+				? 'être'
+				: 'avoir';
 			return {
 				type: 'qcm',
 				question: `${pron}${form}`,
@@ -76,9 +83,9 @@ export function simpleComposeType(): ExerciseType {
 				choices: [M1_COMPOSE, M1_SIMPLE],
 				choicesEmpilees: true, // deux libellés longs → empilés (pleine largeur, #205)
 				explication: compose
-					? `« ${pron}${form} » est en DEUX parties (un petit verbe « avoir » ou « être » + le verbe) : c'est un temps composé.`
-					: `« ${pron}${form} » est en UN SEUL mot : c'est un temps simple.`,
-				parle: `Le verbe « ${pron}${form} » est-il écrit en un seul mot, ou en deux parties ?`,
+					? `« ${pron}${form} » : devant le verbe, il y a « ${aux} » — c'est le verbe « ${auxInf} », qu'on appelle l'auxiliaire. Avec un auxiliaire devant, c'est un temps composé.`
+					: `« ${pron}${form} » : le verbe est tout seul, sans « avoir » ni « être » devant. C'est un temps simple.`,
+				parle: `Le verbe « ${pron}${form} » est-il tout seul, ou avec « avoir » ou « être » devant ?`,
 			};
 		},
 		check: (exercise, input) => checkAnswer(exercise, input),

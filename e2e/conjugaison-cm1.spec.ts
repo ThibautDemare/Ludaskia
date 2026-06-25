@@ -1,16 +1,15 @@
 /* ============================================================
-   Smoke e2e — Conjugaison CM1 (#239).
-   Trois QCM « méta » dans la catégorie Conjugaison, taguées CM1 :
+   Smoke e2e — Conjugaison CE2/CM1 (#239, re-tag #239 suite).
+   Trois QCM « méta » dans la catégorie Conjugaison, taguées CE2 + CM1 :
    - fr-conj-simple-compose : Temps simple ou composé ?
-   - fr-conj-groupe         : 1er, 2e ou 3e groupe ?
+   - fr-conj-groupe         : 1er, 2e ou 3e groupe ? (signalée « plus dur »)
    - fr-conj-infinitif      : Quel est l'infinitif ?
 
-   ⚠ Ces leçons sont taguées CM1 : on amorce un profil CM1 et on navigue
-   DIRECTEMENT (pas gotoHash, qui force CE2 via ENSURE_NIVEAU), comme
-   calcul-mental-cm1.spec.ts et geometrie-cm1.spec.ts.
+   On vérifie les QCM en CM1 (profil CM1 amorcé, navigation DIRECTE car gotoHash
+   force CE2 via ENSURE_NIVEAU) ET la présence des leçons en CE2 (via gotoHash).
    ============================================================ */
 import { test, expect, type Page } from '@playwright/test';
-import { watchErrors } from './helpers';
+import { watchErrors, gotoHash } from './helpers';
 
 /* Profil en CM1 (sans popup d'onboarding : niveauReference déjà fixé). */
 const SEED_CM1 = `localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: 'e2e', name: 'E2E', emoji: '🦊', updatedAt: 1, niveauReference: 'cm1' }], active: 'e2e' }));`;
@@ -38,6 +37,21 @@ test('en CM1, la catégorie Conjugaison liste les 3 QCM méta', async ({ page })
 	for (const id of ['fr-conj-simple-compose', 'fr-conj-groupe', 'fr-conj-infinitif']) {
 		await expect(page.locator(`.lesson-item[data-id="${id}"]`)).toBeVisible();
 	}
+	expect(errors).toEqual([]);
+});
+
+test('en CE2 aussi, la Conjugaison liste les 3 QCM méta ; « groupe » est signalée « plus dur »', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'categorie-fr-conjugaison'); // gotoHash force le niveau CE2
+	for (const id of ['fr-conj-simple-compose', 'fr-conj-groupe', 'fr-conj-infinitif']) {
+		await expect(page.locator(`.lesson-item[data-id="${id}"]`)).toBeVisible();
+	}
+	// « groupe » porte la pastille « plus dur » (posée en fin de programme CE2).
+	await expect(page.locator('.lesson-item[data-id="fr-conj-groupe"] .lz-level')).toHaveText(
+		'plus dur',
+	);
 	expect(errors).toEqual([]);
 });
 

@@ -2381,6 +2381,15 @@ describe('Français — Conjugaison', () => {
 		expect(fr.some((l) => l.id === 'fr-conj-groupe')).toBe(true);
 		expect(fr.some((l) => l.id === 'fr-conj-infinitif')).toBe(true);
 	});
+	test('QCM méta : taguées CE2 + CM1 ; « groupe » signalée « plus dur » (#239 suite)', () => {
+		for (const id of ['fr-conj-simple-compose', 'fr-conj-groupe', 'fr-conj-infinitif']) {
+			expect(getLessonById(id)!.levels).toEqual(['ce2', 'cm1']);
+		}
+		// « groupe » porte la pastille « plus dur » (notion en retrait au cycle 2) ; pas les autres.
+		expect(getLessonById('fr-conj-groupe')!.repere).toBe('plus-difficile');
+		expect(getLessonById('fr-conj-infinitif')!.repere).toBeUndefined();
+		expect(getLessonById('fr-conj-simple-compose')!.repere).toBeUndefined();
+	});
 	test('libellés uniformes « Verbe (Ne groupe) au temps » ; auxiliaires à part', () => {
 		const labelOf = (id: string) => CONJ_LESSONS.find((l) => l.id === id)!.label;
 		// Format uniforme pour les verbes ordinaires (1er / 2e / 3e groupe).
@@ -2440,8 +2449,8 @@ describe('Français — Conjugaison', () => {
 
 	test('QCM méta « simple/composé » : 2 libellés fixes, composé ⟺ passé composé', () => {
 		const type = getLessonById('fr-conj-simple-compose')!.exerciseType!;
-		const COMPOSE = 'en deux parties (temps composé)';
-		const SIMPLE = 'en un seul mot (temps simple)';
+		const COMPOSE = '« avoir » ou « être » + le verbe (temps composé)';
+		const SIMPLE = 'le verbe tout seul (temps simple)';
 		// Toutes les « questions » (pronom + forme) de passé composé du corpus : ce sont
 		// les seules formes « en deux parties » (auxiliaire + participe).
 		const pcQuestions = new Set<string>();

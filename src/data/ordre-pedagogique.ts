@@ -142,6 +142,8 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-conj-vouloir-present',
 			'fr-conj-prendre-present',
 			'fr-conj-naitre-present',
+			// QCM méta « infinitif » : retrouver l'infinitif dès qu'on a conjugué au présent.
+			'fr-conj-infinitif',
 			'fr-homophones-a',
 			'fr-conj-etre-futur',
 			'fr-conj-avoir-futur',
@@ -191,7 +193,12 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-conj-vouloir-passe_compose',
 			'fr-conj-prendre-passe_compose',
 			'fr-conj-naitre-passe_compose',
+			// QCM méta « simple/composé » : APRÈS le passé composé (notion de temps composé vue).
+			'fr-conj-simple-compose',
 			'fr-accords-participe-etre',
+			// QCM méta « groupe » : posé en FIN de programme CE2 (notion en retrait au cycle 2,
+			// signalée « plus dur ») ; au CM1 il arrive tôt, après le présent. #239 suite
+			'fr-conj-groupe',
 		],
 		// CM1 conjugaison (#239) : les 13 verbes du corpus × 4 temps (52 leçons) + 3 QCM
 		// « méta ». Progression par TEMPS dans l'ordre des TENSES (présent → futur →

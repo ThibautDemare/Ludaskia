@@ -1,7 +1,14 @@
 /* ============================================================
-   Grammaire — les phrases : ponctuation finale & types (#204).
+   Grammaire — les phrases : ponctuation finale, types & formes (#204 ; CM1 #245).
    ------------------------------------------------------------
-   Deux leçons QCM, dans cet ordre (rubrique « Les phrases ») :
+   Au CE2, deux leçons QCM (rubrique « Les phrases ») ; au CM1 (#245), le « type »
+   s'ouvre (3 types inchangés — B.O. 2025 garde l'exclamative comme FORME, pas un 4e
+   type) et DEUX leçons sur l'axe FORME s'ajoutent : F3 « Affirmative ou négative ? »
+   (identification) et F4 « Mets à la forme négative » (transformation « ne… pas » en
+   QCM à clé unique, jamais en saisie libre). Type et forme ne sont JAMAIS mêlés dans
+   une même question (axes orthogonaux — avis pedagogue).
+
+   Les leçons CE2, dans cet ordre (rubrique « Les phrases ») :
    1. F1 « Quel point à la fin ? » — choisir « . », « ? » ou « ! ».
       Variante de PRÉSENTATION 'ponctuation' (cf. ui/lecon-qcm.ts) :
       boutons-symboles (glyphe + mot), trou final en cadre pointillé,
@@ -22,6 +29,7 @@
    Apostrophe droite « ' » (convention projet, accessibilité clavier).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
+import type { SchoolLevel } from '../../core/catalog';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
 
@@ -30,6 +38,29 @@ export type Ponctuation = '.' | '?' | '!';
 
 /** Type de phrase officiel CE2 (l'exclamative est une forme, pas un type). */
 export type TypePhrase = 'declaratif' | 'interrogatif' | 'imperatif';
+
+/** Forme de phrase (CM1, #245) : axe ORTHOGONAL au type (une phrase de n'importe
+ *  quel type peut être affirmative ou négative). On s'en tient à l'axe BINAIRE
+ *  affirmative/négative (avis pedagogue + B.O. 2025) : l'exclamative reste traitée
+ *  par le « ! » de la leçon « Quel point à la fin ? », jamais mêlée à cet axe. */
+export type FormePhrase = 'affirmative' | 'negative';
+
+/** Un item d'identification de la forme : la phrase complète + sa forme. */
+export interface PhraseForme {
+	phrase: string;
+	forme: FormePhrase;
+	explication: string; // cite le mot de négation (« ne… pas »…), jamais l'intonation
+}
+
+/** Un item de transformation (CM1) : une phrase affirmative, sa forme négative
+ *  CORRECTE (« ne… pas » seul → réponse UNIQUE) et des distracteurs FRANCS (négation
+ *  mal placée, orpheline, ou élision oubliée). Les formes sont STOCKÉES (jamais
+ *  dérivées), comme tout le moteur QCM : aucune négation calculée à la volée. */
+export interface PhraseTransfo {
+	affirmative: string;
+	negative: string;
+	distracteurs: string[];
+}
 
 /** Un item de F1 : la phrase SANS sa ponctuation finale + le bon signe. */
 export interface PhrasePonct {
@@ -484,6 +515,194 @@ export const TYPE_LABELS: Record<TypePhrase, string> = {
 	imperatif: 'Donner un ordre',
 };
 
+/* ---------- F3 (CM1, #245) — banque « Affirmative ou négative ? » ---------- */
+// Axe FORME, distinct du TYPE. Équilibre ~moitié/moitié. Les négatives portent un
+// marqueur EXPLICITE (« ne… pas » majoritaire ; quelques « ne… plus/jamais/rien »
+// pour l'IDENTIFICATION, où la variété ne crée pas d'ambiguïté — la transformation,
+// elle, reste sur « ne… pas »). Les affirmatives n'ont AUCUN mot de négation.
+// L'explication cite le marqueur, jamais l'intonation (règle d'or de F1/F2).
+export const PHRASES_FORME: PhraseForme[] = [
+	// Affirmatives — aucun mot de négation.
+	{
+		phrase: 'Le chat dort sur le canapé.',
+		forme: 'affirmative',
+		explication: "Il n'y a pas de mot comme « ne… pas » : la phrase dit oui, elle est affirmative.",
+	},
+	{
+		phrase: 'Nous mangeons des pâtes ce midi.',
+		forme: 'affirmative',
+		explication: 'La phrase dit oui, sans mot de négation : elle est affirmative.',
+	},
+	{
+		phrase: 'Les enfants jouent dans la cour.',
+		forme: 'affirmative',
+		explication: 'Aucun mot de négation : la phrase dit oui, elle est affirmative.',
+	},
+	{
+		phrase: 'Papa prépare le dîner.',
+		forme: 'affirmative',
+		explication: 'La phrase dit oui, sans « ne… pas » : elle est affirmative.',
+	},
+	{
+		phrase: 'Le train arrive à huit heures.',
+		forme: 'affirmative',
+		explication: 'Aucun mot de négation : la phrase est affirmative.',
+	},
+	{
+		phrase: 'Elle lit un beau livre.',
+		forme: 'affirmative',
+		explication: 'La phrase dit oui, sans mot de négation : elle est affirmative.',
+	},
+	{
+		phrase: 'Mon frère aime le chocolat.',
+		forme: 'affirmative',
+		explication: 'Aucun mot de négation : la phrase dit oui, elle est affirmative.',
+	},
+	{
+		phrase: 'Les oiseaux chantent au printemps.',
+		forme: 'affirmative',
+		explication: 'La phrase dit oui, sans « ne… pas » : elle est affirmative.',
+	},
+	{
+		phrase: 'Tu ranges ta chambre le samedi.',
+		forme: 'affirmative',
+		explication: 'Aucun mot de négation : la phrase est affirmative.',
+	},
+	{
+		phrase: 'Le soleil brille ce matin.',
+		forme: 'affirmative',
+		explication: 'La phrase dit oui, sans mot de négation : elle est affirmative.',
+	},
+	// Négatives — marqueur explicite.
+	{
+		phrase: 'Le chat ne dort pas sur le canapé.',
+		forme: 'negative',
+		explication: '« ne… pas » entoure le verbe : la phrase dit non, elle est négative.',
+	},
+	{
+		phrase: 'Nous ne mangeons pas de pâtes ce midi.',
+		forme: 'negative',
+		explication: '« ne… pas » entoure le verbe : la phrase dit non, elle est négative.',
+	},
+	{
+		phrase: 'Je ne comprends pas la consigne.',
+		forme: 'negative',
+		explication: '« ne… pas » entoure le verbe : la phrase est négative.',
+	},
+	{
+		phrase: 'Les élèves ne bavardent pas en classe.',
+		forme: 'negative',
+		explication: '« ne… pas » entoure le verbe : la phrase dit non, elle est négative.',
+	},
+	{
+		phrase: 'Elle ne regarde jamais la télévision.',
+		forme: 'negative',
+		explication: '« ne… jamais » dit non : la phrase est négative.',
+	},
+	{
+		phrase: 'Tu ne veux plus de dessert.',
+		forme: 'negative',
+		explication: '« ne… plus » dit non : la phrase est négative.',
+	},
+	{
+		phrase: "Il n'y a rien dans le tiroir.",
+		forme: 'negative',
+		explication: '« ne… rien » dit non : la phrase est négative.',
+	},
+	{
+		phrase: "Nous n'aimons pas les épinards.",
+		forme: 'negative',
+		explication:
+			"Devant une voyelle, « ne » devient « n' » : « n'… pas » entoure le verbe, la phrase est négative.",
+	},
+	{
+		phrase: 'Le magasin ne ferme pas le dimanche.',
+		forme: 'negative',
+		explication: '« ne… pas » entoure le verbe : la phrase dit non, elle est négative.',
+	},
+	{
+		phrase: 'On ne sort pas sous la pluie.',
+		forme: 'negative',
+		explication: '« ne… pas » entoure le verbe : la phrase est négative.',
+	},
+];
+
+/** Libellés enfant de la forme (CM1) : concret d'abord (« dit oui/non »), le terme
+ *  grammatical glosé entre parenthèses. Réutilisés comme options ET réponse. */
+export const FORME_LABELS: Record<FormePhrase, string> = {
+	affirmative: 'Elle dit oui (affirmative)',
+	negative: 'Elle dit non (négative)',
+};
+
+/* ---------- F4 (CM1, #245) — banque « Mets à la forme négative » ---------- */
+// Transformation affirmative → négative, « ne… pas » SEULEMENT (réponse unique).
+// Phrases simples (sujet + verbe + complément à article défini : pas de « du/de la »
+// qui changerait, pas de « déjà/encore/toujours » qui appellerait « ne… plus/jamais »).
+// La négative correcte et les distracteurs sont STOCKÉS. Distracteurs francs : « ne »
+// mal placé après le verbe, « pas » orphelin en fin, ou élision « n' » oubliée.
+export const PHRASES_TRANSFO: PhraseTransfo[] = [
+	{
+		affirmative: 'Je vois la mer.',
+		negative: 'Je ne vois pas la mer.',
+		distracteurs: ['Je vois ne pas la mer.', 'Je vois la mer pas.'],
+	},
+	{
+		affirmative: 'Tu fermes la porte.',
+		negative: 'Tu ne fermes pas la porte.',
+		distracteurs: ['Tu fermes ne pas la porte.', 'Tu fermes la porte pas.'],
+	},
+	{
+		affirmative: 'Le chien aboie.',
+		negative: "Le chien n'aboie pas.",
+		distracteurs: ['Le chien ne aboie pas.', 'Le chien aboie pas.'],
+	},
+	{
+		affirmative: 'Nous regardons la télévision.',
+		negative: 'Nous ne regardons pas la télévision.',
+		distracteurs: ['Nous regardons ne pas la télévision.', 'Nous regardons la télévision pas.'],
+	},
+	{
+		affirmative: 'Elle aime les carottes.',
+		negative: "Elle n'aime pas les carottes.",
+		distracteurs: ['Elle ne aime pas les carottes.', 'Elle aime pas les carottes.'],
+	},
+	{
+		affirmative: 'Vous parlez fort.',
+		negative: 'Vous ne parlez pas fort.',
+		distracteurs: ['Vous parlez ne pas fort.', 'Vous parlez fort pas.'],
+	},
+	{
+		affirmative: 'Le bébé dort.',
+		negative: 'Le bébé ne dort pas.',
+		distracteurs: ['Le bébé ne dort.', 'Le bébé dort pas.'],
+	},
+	{
+		affirmative: 'Tu ranges les jouets.',
+		negative: 'Tu ne ranges pas les jouets.',
+		distracteurs: ['Tu ranges ne pas les jouets.', 'Tu ranges les jouets pas.'],
+	},
+	{
+		affirmative: 'Il regarde le film.',
+		negative: 'Il ne regarde pas le film.',
+		distracteurs: ['Il regarde ne pas le film.', 'Il regarde le film pas.'],
+	},
+	{
+		affirmative: 'Nous écoutons la musique.',
+		negative: "Nous n'écoutons pas la musique.",
+		distracteurs: ['Nous ne écoutons pas la musique.', 'Nous écoutons pas la musique.'],
+	},
+	{
+		affirmative: 'Je connais la réponse.',
+		negative: 'Je ne connais pas la réponse.',
+		distracteurs: ['Je connais ne pas la réponse.', 'Je connais la réponse pas.'],
+	},
+	{
+		affirmative: 'Tu trouves la sortie.',
+		negative: 'Tu ne trouves pas la sortie.',
+		distracteurs: ['Tu trouves ne pas la sortie.', 'Tu trouves la sortie pas.'],
+	},
+];
+
 /* ---------- F1 — fabrique de l'ExerciseType ---------- */
 export function ponctuationType(): ExerciseType {
 	return {
@@ -534,14 +753,84 @@ export function typePhraseType(): ExerciseType {
 	};
 }
 
+/* ---------- F3 (CM1) — fabrique « Affirmative ou négative ? » ---------- */
+// QCM 2 options sur l'axe FORME. Mécanique calquée sur F2 (type), mais axe distinct :
+// on ne mêle JAMAIS type et forme dans une même question (avis pedagogue, #245).
+export function formePhraseType(): ExerciseType {
+	const OPTIONS = [FORME_LABELS.affirmative, FORME_LABELS.negative];
+	return {
+		modes: MODE_QCM,
+		consigne: 'Écris si chaque phrase dit oui (affirmative) ou non (négative).',
+		generate(): Exercise {
+			const p = choice(PHRASES_FORME);
+			return {
+				type: 'qcm',
+				question: `« ${p.phrase} »`,
+				answer: FORME_LABELS[p.forme],
+				choices: sample(OPTIONS, OPTIONS.length), // 2 libellés, ordre mélangé
+				explication: p.explication,
+				consigne: 'Cette phrase dit-elle oui ou non ?',
+				parle: `Cette phrase dit-elle oui, ou non ? ${p.phrase}`,
+			};
+		},
+		check: (exercise, input) => checkAnswer(exercise, input),
+	};
+}
+
+/* ---------- F4 (CM1) — fabrique « Mets à la forme négative » ---------- */
+// QCM 3 options (la négative correcte + 2 distracteurs francs STOCKÉS). On vérifie la
+// PLACE de « ne… pas » (et l'élision « n' ») — la difficulté CM1 —, pas une saisie libre
+// (ambiguë, donc injuste en auto-correction). « ne… pas » seulement.
+export function transfoNegativeType(): ExerciseType {
+	return {
+		modes: MODE_QCM,
+		consigne: 'Choisis la bonne phrase à la forme négative.',
+		generate(): Exercise {
+			const p = choice(PHRASES_TRANSFO);
+			return {
+				type: 'qcm',
+				question: `« ${p.affirmative} »`,
+				answer: p.negative,
+				choices: sample([p.negative, ...p.distracteurs], p.distracteurs.length + 1),
+				choicesEmpilees: true, // phrases longues → empilées (pleine largeur)
+				explication: `Pour dire non, « ne… pas » entoure le verbe : « ${p.negative} ».`,
+				consigne: 'Mets cette phrase à la forme négative.',
+				parle: `Mets cette phrase à la forme négative : ${p.affirmative}`,
+			};
+		},
+		check: (exercise, input) => checkAnswer(exercise, input),
+	};
+}
+
 export interface PhraseLessonDef {
 	id: string;
 	label: string;
 	exerciseType: ExerciseType;
+	// Niveaux supportés (#225/#245). Absent → CE2 par défaut (cf. catalog.ts).
+	levels?: SchoolLevel[];
 }
 
-// Ordre imposé par l'issue : la ponctuation d'abord, le type ensuite.
+// Ordre imposé par l'issue : la ponctuation d'abord, le type ensuite. CM1 (#245) :
+// le « type » s'ouvre au CM1 (3 types inchangés, B.O. 2025) ; deux leçons CM1 sur l'axe
+// FORME s'ajoutent (identification puis transformation négative).
 export const PHRASES_LESSONS: PhraseLessonDef[] = [
 	{ id: 'fr-gram-ponctuation', label: 'Quel point à la fin ?', exerciseType: ponctuationType() },
-	{ id: 'fr-gram-type-phrase', label: 'Quel type de phrase ?', exerciseType: typePhraseType() },
+	{
+		id: 'fr-gram-type-phrase',
+		label: 'Quel type de phrase ?',
+		exerciseType: typePhraseType(),
+		levels: ['ce2', 'cm1'],
+	},
+	{
+		id: 'fr-gram-forme',
+		label: 'Affirmative ou négative ?',
+		exerciseType: formePhraseType(),
+		levels: ['cm1'],
+	},
+	{
+		id: 'fr-gram-transfo-negative',
+		label: 'Mets à la forme négative',
+		exerciseType: transfoNegativeType(),
+		levels: ['cm1'],
+	},
 ];

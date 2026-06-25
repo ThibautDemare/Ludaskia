@@ -1863,10 +1863,15 @@ describe('Trophées', () => {
 	});
 	test('trophée « Tout au vert » : toutes les leçons ≥ 70 %', () => {
 		const allIds = getAllLessons().map((l) => l.id);
-		for (const id of allIds.slice(0, allIds.length - 1))
-			api.recordLessonStats({ [id]: { ok: 10, total: 10 } });
-		expect(api.gSnapshot().allGreen).toBe(false); // 1 leçon manquante
-		api.recordLessonStats({ [allIds[allIds.length - 1]]: { ok: 10, total: 10 } });
+		// On omet une leçon du NIVEAU ACTIF (num-comparer, ce2+cm1 → toujours comptée par
+		// allGreen, quels que soient le niveau et l'ordre du catalogue) ; le reste au vert.
+		// (allGreen ne compte que les leçons du niveau actif : omettre une leçon d'un AUTRE
+		// niveau ne la rendrait pas « pas verte ».)
+		const omise = 'num-comparer';
+		for (const id of allIds)
+			if (id !== omise) api.recordLessonStats({ [id]: { ok: 10, total: 10 } });
+		expect(api.gSnapshot().allGreen).toBe(false); // 1 leçon du niveau actif manquante
+		api.recordLessonStats({ [omise]: { ok: 10, total: 10 } });
 		expect(api.gSnapshot().allGreen).toBe(true);
 		expect(
 			api

@@ -27,6 +27,7 @@ import './styles/accessibility.scss';
 import './styles/aide-exercice.scss';
 import './styles/encadrant.scss';
 import './styles/eggs.scss';
+import './styles/tour.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -69,6 +70,7 @@ import { openRecompenses, openTrophees, hideUnlockModals } from './ui/unlocks-vi
 import { closeProfileMenu, toggleProfileMenu, toggleDrawer, closeDrawer } from './ui/menu';
 import { initTts } from './ui/tts';
 import { maybeShowClassChoice } from './ui/onboarding';
+import { lancerTour, maybeOnboarding } from './ui/tour';
 import { initVersionCheck } from './ui/version-check';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 import { installGroupedNumberEcho } from './ui/grand-nombre-echo';
@@ -108,6 +110,12 @@ function wireDOM() {
 	// gérée au niveau du hashchange (couvre aussi Précédent / édition d'URL), pour
 	// ne pas demander deux fois. Les exercices grille sont sauvegardés en silence.
 	document.getElementById('btnHome')!.addEventListener('click', goHome);
+	// Bouton « ? » de l'accueil : rejoue le guide de première visite à la demande
+	// (sans toucher au drapeau « déjà vu » — c'est un rejeu, pas un 1er lancement).
+	document.getElementById('btnGuide')?.addEventListener('click', (e) => {
+		closeDrawer(); // sur mobile, le bouton vit dans le tiroir : on le referme
+		lancerTour({ trigger: e.currentTarget as HTMLElement });
+	});
 	document.getElementById('btnPrint')!.addEventListener('click', () => {
 		closeDrawer(); // Imprimer ne change pas de vue : on referme le tiroir à la main
 		printAll();
@@ -350,9 +358,16 @@ function wireDOM() {
 	// Au chargement : on affiche la vue désignée par le hash (accueil par défaut)
 	route();
 
-	// Onboarding : si le profil n'a pas encore de classe et que plusieurs niveaux
-	// ont du contenu, on demande la classe (re-rendu de la vue courante au choix).
-	maybeShowClassChoice(route);
+	// Onboarding (#330) : choix de classe → mot aux parents → tour enfant.
+	// 1) Si une classe doit être choisie, sa modale s'affiche ; à la fermeture, son
+	//    callback re-rend la vue PUIS enchaîne sur le mot parents + le tour.
+	// 2) Sinon (classe déjà choisie / un seul niveau), on enchaîne tout de suite.
+	// `maybeOnboarding` se garde elle-même de chevaucher la modale de classe.
+	maybeShowClassChoice(() => {
+		route();
+		maybeOnboarding();
+	});
+	maybeOnboarding();
 
 	// Bande décorative « forêt » de pied d'accueil : SVG pré-généré, inséré dans le
 	// DOM (pour que l'animation « vent » respecte l'option « animations réduites »).

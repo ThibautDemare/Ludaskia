@@ -27,7 +27,7 @@ export const FOCUSABLE =
    assumée : une live-region globale (ex. toast `.ui-toast`, enfant de <body>)
    présente AU MOMENT de l'ouverture est inertée donc rendue muette tant que la
    modale est ouverte ; rare en pratique (toast et modale rarement simultanés). */
-function lockBackground(overlay: HTMLElement): () => void {
+function lockBackground(overlay: HTMLElement, lockScroll: boolean): () => void {
 	const inerted: HTMLElement[] = [];
 	for (const child of Array.from(document.body.children)) {
 		if (child === overlay) continue;
@@ -36,11 +36,15 @@ function lockBackground(overlay: HTMLElement): () => void {
 		el.setAttribute('inert', '');
 		inerted.push(el);
 	}
+	// Le verrou de défilement est OPTIONNEL : le guide de première visite (ui/tour)
+	// doit pouvoir amener chaque bloc à l'écran (scrollIntoView) tout en gardant le
+	// focus-trap + l'arrière-plan inerte. `inert` n'empêche pas le défilement
+	// programmatique, seul `overflow:hidden` le ferait — d'où ce drapeau.
 	const prevOverflow = document.body.style.overflow;
-	document.body.style.overflow = 'hidden';
+	if (lockScroll) document.body.style.overflow = 'hidden';
 	return () => {
 		inerted.forEach((el) => el.removeAttribute('inert'));
-		document.body.style.overflow = prevOverflow;
+		if (lockScroll) document.body.style.overflow = prevOverflow;
 	};
 }
 
@@ -97,6 +101,10 @@ export interface ModalA11yOptions {
 	restoreFocusTo?: () => HTMLElement | null;
 	/** Élément à focuser à l'ouverture. Défaut : 1er focusable de la modale. */
 	initialFocus?: HTMLElement | null;
+	/** Verrouiller le défilement de la page (`overflow:hidden`) ? Défaut : `true`
+	    (toutes les modales). Passer `false` pour un overlay qui doit faire défiler
+	    la page (guide de première visite : scrollIntoView vers le bloc surligné). */
+	lockScroll?: boolean;
 }
 
 /** Active focus-trap + arrière-plan inerte + scroll-lock sur une modale déjà
@@ -106,7 +114,7 @@ export interface ModalA11yOptions {
     idempotent (appels multiples sans effet après le premier). */
 export function activateModal(overlay: HTMLElement, opts: ModalA11yOptions = {}): () => void {
 	const trigger = opts.trigger ?? (document.activeElement as HTMLElement | null);
-	const unlock = lockBackground(overlay);
+	const unlock = lockBackground(overlay, opts.lockScroll !== false);
 
 	function onKeydown(e: KeyboardEvent): void {
 		if (e.key === 'Escape') {

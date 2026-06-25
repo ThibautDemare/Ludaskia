@@ -68,6 +68,7 @@ import translate from '@phosphor-icons/core/assets/bold/translate-bold.svg?raw';
 import calendar from '@phosphor-icons/core/assets/bold/calendar-bold.svg?raw';
 import feather from '@phosphor-icons/core/assets/bold/feather-bold.svg?raw';
 import lightbulb from '@phosphor-icons/core/assets/bold/lightbulb-bold.svg?raw';
+import question from '@phosphor-icons/core/assets/bold/question-bold.svg?raw';
 // Quantité croissante : barres « signal » graduées pour les paliers chiffrés,
 // pile (stack) pour « Tout » (hors-gradation, cf. #180).
 import quantity1 from '@phosphor-icons/core/assets/bold/cell-signal-low-bold.svg?raw';
@@ -119,6 +120,7 @@ const SVGS: Record<IconName, string> = {
 	calendar,
 	feather,
 	lightbulb,
+	question,
 	'quantity-1': quantity1,
 	'quantity-2': quantity2,
 	'quantity-3': quantity3,

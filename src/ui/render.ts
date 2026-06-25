@@ -53,6 +53,7 @@ export function paintStaticIcons() {
 	};
 	set('btnVerify', `${icon('check')} Vérifier`);
 	set('btnHome', `${icon('house')} Accueil`);
+	set('btnGuide', `${icon('question')} Guide`); // rejeu du guide de 1re visite (#330)
 	set('btnPrint', `${icon('printer')} Imprimer / PDF`);
 	// Déclencheur du tiroir mobile (caché en desktop par CSS) : icône hamburger.
 	set('toolbarBurger', icon('list'));

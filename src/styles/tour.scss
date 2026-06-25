@@ -1,0 +1,232 @@
+/* ============================================================
+   Guide de première visite (#330) — styles.
+   Deux rendus :
+   - le MOT AUX PARENTS réutilise la modale standard (.modal) ;
+   - le TOUR ENFANT = un encart FIXE en bas (.tour-card) + un « spotlight » :
+     le bloc surligné porte LUI-MÊME le voile, via un box-shadow géant
+     (`0 0 0 9999px`). Astuce clé : le « trou » épouse toujours le bloc, quelle
+     que soit sa taille ou sa position après défilement — aucun recalcul JS.
+
+   Échelle z-index (cf. modal.scss) : accueil/toolbar ≤ 10, modales = 10000,
+   bannière de MAJ = 10050. Le tour vit ENTRE l'accueil et les modales : bloc
+   surligné à 9000, encart à 9001 (au-dessus du voile, sous toute modale).
+   Mouvement neutralisé sous `prefers-reduced-motion` ET `html.anim-reduced`.
+   ============================================================ */
+
+/* ---------- Spotlight : le bloc surligné porte le voile ---------- */
+.tour-cible {
+	position: relative;
+	z-index: 9000;
+	border-radius: 18px; /* arrondit l'anneau + le voile, même pour un conteneur sans fond */
+	box-shadow:
+		0 0 0 4px var(--accent),
+		0 0 0 9999px rgba(20, 30, 50, 0.55); /* anneau d'accent + voile plein écran */
+	transition: box-shadow 0.25s ease;
+}
+
+/* ---------- Encart fixe en bas (mascotte qui parle) ---------- */
+.tour {
+	position: fixed;
+	inset: 0;
+	z-index: 9001;
+	pointer-events: none; /* le conteneur laisse passer ; seul l'encart capte les taps */
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	padding: 16px;
+	padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.tour-card {
+	pointer-events: auto;
+	position: relative;
+	width: 100%;
+	max-width: 520px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	background: var(--paper);
+	border-radius: 18px;
+	padding: 16px 20px 18px;
+	box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+	animation: tour-card-in 0.3s ease;
+}
+@keyframes tour-card-in {
+	0% {
+		transform: translateY(24px);
+		opacity: 0;
+	}
+	100% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+/* « Passer » : sortie PRINCIPALE, visible à chaque étape (la tablette n'a pas
+   d'Échap). Discret mais grande cible tactile (≥ 44px). */
+.tour-skip {
+	align-self: flex-end;
+	margin: -4px -6px 0 0;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3em;
+	min-height: 44px;
+	padding: 6px 12px;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--grey);
+	font: 700 0.85rem/1 var(--ui);
+	cursor: pointer;
+	transition: background 0.15s ease;
+}
+.tour-skip:hover {
+	background: var(--track);
+	color: var(--ink);
+}
+.tour-skip .ph-icon {
+	width: 1.05em;
+	height: 1.05em;
+}
+
+/* Mascotte qui parle + sa bulle (titre + explication). */
+.tour-say {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+.tour-mascotte {
+	font-size: 44px;
+	line-height: 1;
+	flex: none;
+}
+.tour-mascotte.pop {
+	animation: tour-pop 0.4s ease;
+}
+@keyframes tour-pop {
+	0% {
+		transform: scale(0.6);
+	}
+	60% {
+		transform: scale(1.12);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+.tour-bulle {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.tour-title {
+	font-weight: 800;
+	font-size: 1.05rem;
+	color: var(--accent);
+}
+.tour-text {
+	font-size: 1rem;
+	line-height: 1.35;
+	color: var(--ink);
+}
+
+/* Pied : points de progression à gauche, actions à droite (Écouter + Suivant). */
+.tour-foot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 10px 14px;
+}
+.tour-dots {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+.tour-dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 999px;
+	background: var(--track);
+	transition: all 0.2s ease;
+}
+.tour-dot.on {
+	/* étape courante : plus GROSSE (double codage, pas la couleur seule). */
+	width: 13px;
+	height: 13px;
+	background: var(--accent);
+}
+.tour-foot-btns {
+	display: inline-flex;
+	align-items: center;
+	gap: 14px;
+	margin-left: auto;
+}
+/* « Suivant / C'est parti ! » : action principale, grosse cible. Hérite de .modal-ok
+   (fond --accent, anneau de focus défini dans modal.scss). */
+.tour-next {
+	min-height: 52px;
+	padding: 12px 26px;
+	font-size: 1rem;
+}
+/* « Écouter » : hérite de .modal-listen (chip TTS + pulsation), sans sa marge auto. */
+.tour-listen {
+	margin: 0;
+}
+
+/* ---------- Mot aux parents ---------- */
+.parents-body {
+	text-align: left;
+	font-size: 0.95rem;
+	line-height: 1.5;
+	color: var(--ink);
+	margin: 4px 0 20px;
+}
+.parents-body p {
+	margin: 0 0 10px;
+}
+.parents-body p:last-child {
+	margin-bottom: 0;
+}
+.parents-ok {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 50px;
+}
+
+/* ---------- Bouton « ? » de l'accueil (rejeu du tour) ---------- */
+/* Hérite de .btn-ghost (toolbar) : on ajuste juste l'icône. */
+#btnGuide .ph-icon {
+	width: 1.1em;
+	height: 1.1em;
+}
+
+/* ---------- Mouvement réduit (réglage in-app + préférence système) ---------- */
+@media (prefers-reduced-motion: reduce) {
+	.tour-card,
+	.tour-mascotte.pop {
+		animation: none;
+	}
+	.tour-cible,
+	.tour-dot {
+		transition: none;
+	}
+}
+html.anim-reduced .tour-card,
+html.anim-reduced .tour-mascotte.pop {
+	animation: none;
+}
+html.anim-reduced .tour-cible,
+html.anim-reduced .tour-dot {
+	transition: none;
+}
+
+/* ---------- Focus clavier net (anneau de la charte) ---------- */
+.tour-skip:focus-visible,
+.tour-next:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 5px var(--accent);
+}

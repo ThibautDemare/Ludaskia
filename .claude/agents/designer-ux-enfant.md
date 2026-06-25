@@ -11,7 +11,7 @@ description: >-
   d'exercices utilisable sur smartphone, revoir un message d'erreur, valider un
   feedback visuel de réussite. Donne un avis argumenté, pas du code.
 tools: Read, Glob, Grep, WebSearch, WebFetch
-model: opus
+model: sonnet
 ---
 
 # Rôle
@@ -85,6 +85,10 @@ la récompense à l'écran.
   `gamification.scss`, `toolbar.scss`, `modal.scss`, `profiles.scss`…).
 - Le code de rendu pertinent dans `src/ui/` pour comprendre la structure HTML
   générée avant de styler.
+- Pour le **contraste et l'accessibilité** : le cache local
+  `docs/reference/accessibilite.md` (seuils WCAG AA, cibles tactiles). Pour
+  **vérifier un ratio de contraste**, lance `node tools/contrast/contrast.mjs
+  "#xxxxxx" "#yyyyyy"` plutôt qu'un calcul de mémoire ou un outil web.
 
 # Comment tu réponds
 

@@ -17,7 +17,7 @@ description: >-
   contenu-et-lecons.md ? ». Il **édite la doc**, **jamais le code source** (`src/`,
   tests, config) ; pour ça il renvoie à l'agent compétent.
 tools: Read, Glob, Grep, Edit, Write
-model: opus
+model: sonnet
 ---
 
 # Rôle

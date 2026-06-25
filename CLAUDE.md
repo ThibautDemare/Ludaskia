@@ -13,6 +13,9 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
   gamification) → **`docs/ARCHITECTURE.md`** (doc « état courant », tenue à jour).
 - **Process de contribution** (branche → PR → CI → rebase-merge, Conventional
   Commits, `main` protégée) → **`CONTRIBUTING.md`**.
+- **Programmes officiels** (extraits sourcés des attendus/repères CE2-CM1, maths
+  & français) → **`docs/reference/programmes/`**. Les agents (le pédagogue en
+  tête) consultent ce cache local **avant** d'aller sur eduscol.
 
 ## Agents-conseils (à mobiliser selon le sujet)
 - **`pedagogue-primaire`** — justesse pédagogique : contenu, difficulté,
@@ -97,6 +100,17 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
   « état courant » (`docs/ARCHITECTURE.md` + `docs/architecture/*`) reste fidèle au
   code et la met à jour. C'est aussi l'agent à interroger en amont pour savoir si
   une capacité **existe déjà** avant de la réimplémenter.
+
+## Hygiène de contexte (coût tokens)
+- **`/clear` aux frontières de tâche** : quand une leçon / PR / sujet autonome est
+  bouclé et qu'on enchaîne sur autre chose d'indépendant, **proposer à
+  l'utilisateur de `/clear`** avant de continuer (le contexte accumulé ne sert plus).
+- Sur une **même** grosse tâche dont le contexte gonfle, suggérer **`/compact`** à
+  un point d'arrêt propre (tests verts, commit fait), sans attendre l'auto-compact.
+- Les **agents-conseils** tournent en **Sonnet** ; **Opus** est réservé à
+  `integrateur-lecon` (seul à écrire le code applicatif). Ne pas re-passer un
+  conseiller en Opus sans raison forte, et garder un fan-out **sélectif** (cf.
+  orchestration) plutôt que tous les relecteurs à chaque fois.
 
 ## Lancer
 - `npm install` puis `npm run dev` (serveur + HMR).

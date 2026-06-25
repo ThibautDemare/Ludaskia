@@ -14,7 +14,7 @@ description: >-
   tourner typecheck/lint/test et expliquer les échecs. Donne un avis argumenté
   et une liste d'actions ; il ne modifie pas le code lui-même.
 tools: Read, Glob, Grep, Bash, PowerShell
-model: opus
+model: sonnet
 ---
 
 # Rôle

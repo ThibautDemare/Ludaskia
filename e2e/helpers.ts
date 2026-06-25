@@ -27,7 +27,12 @@ export function watchErrors(page: Page): string[] {
    AVANT le chargement (catalogue CE2 = toutes les leçons) pour que la popup ne
    s'affiche pas. On préserve une méta déjà seedée par un test (ex. révision) en y
    ajoutant seulement le niveau. La spec dédiée (niveau.spec.ts) teste la popup
-   elle-même via une navigation directe, sans cet amorçage. */
+   elle-même via une navigation directe, sans cet amorçage.
+
+   Guide de 1re visite (#330) : de même, on amorce les drapeaux « déjà vu » du tour
+   enfant ET du mot aux parents (préfixés par le profil actif) pour que cet
+   onboarding ne s'affiche pas sur l'accueil de toutes les specs. La spec dédiée
+   (tour.spec.ts) navigue « à froid », sans cet amorçage, pour tester l'enchaînement. */
 const ENSURE_NIVEAU = `(() => {
 	const KEY = 'ludaskia_profiles';
 	let m = null;
@@ -38,6 +43,8 @@ const ENSURE_NIVEAU = `(() => {
 		m.list.forEach((p) => { if (!p.niveauReference) p.niveauReference = 'ce2'; });
 	}
 	localStorage.setItem(KEY, JSON.stringify(m));
+	localStorage.setItem(m.active + '/ludaskia_tour_seen', 'true');
+	localStorage.setItem(m.active + '/ludaskia_parents_seen', 'true');
 })();`;
 
 /* Navigue vers une vue routée par hash (#accueil, #categorie-..., #lecon-...).

@@ -55,4 +55,6 @@ export type IconName =
 	| 'translate'
 	| 'calendar'
 	| 'feather'
-	| 'lightbulb';
+	| 'lightbulb'
+	// Aide / guide de première visite (bouton « ? » de l'accueil)
+	| 'question';

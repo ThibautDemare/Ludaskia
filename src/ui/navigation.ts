@@ -278,21 +278,25 @@ export function setToolbar({
 	home,
 	profile,
 	print = false,
+	guide = false,
 }: {
 	verify: boolean;
 	home: boolean;
 	profile: boolean;
 	print?: boolean; // 🖨 « imprimer l'écran courant » : seulement en exercice (#40)
+	guide?: boolean; // « ? » rejeu du guide de 1re visite (#330) : accueil seulement
 }) {
 	const v = document.getElementById('btnVerify') as HTMLButtonElement;
 	const h = document.getElementById('btnHome')!;
 	const pr = document.getElementById('btnPrint');
+	const g = document.getElementById('btnGuide');
 	const p = document.getElementById('toolbarProfile');
 	const xp = document.getElementById('xpBadge');
 	v.style.display = verify ? '' : 'none';
 	v.disabled = !verify;
 	h.style.display = home ? '' : 'none';
 	if (pr) pr.style.display = print ? '' : 'none';
+	if (g) g.style.display = guide ? '' : 'none';
 	// Le badge XP suit la visibilité du profil (écrans « menu », pas en exercice).
 	if (xp) xp.style.display = profile ? '' : 'none';
 	if (p) {
@@ -343,7 +347,7 @@ export function hideMenus() {
 // Rendus des vues (sans toucher à l'historique)
 export function showHomeView() {
 	resetSessionUI();
-	setToolbar({ verify: false, home: false, profile: true }); // accueil : profil visible, ni Vérifier ni Accueil
+	setToolbar({ verify: false, home: false, profile: true, guide: true }); // accueil : profil + « ? » guide ; ni Vérifier ni Accueil
 	hideMenus();
 	document.getElementById('home')!.style.display = '';
 	renderHomeStats();

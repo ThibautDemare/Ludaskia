@@ -209,6 +209,11 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 		// passé composé (la notion de temps composé y est introduite). Le plus-que-parfait
 		// est un attendu CM2 (B.O. 2025), donc HORS périmètre CM1 (différé).
 		cm1: [
+			// Grammaire — les phrases (#245) : le « type » (3 types, B.O. 2025) puis l'axe
+			// FORME (identifier affirmative/négative, puis transformer à la forme négative).
+			'fr-gram-type-phrase',
+			'fr-gram-forme',
+			'fr-gram-transfo-negative',
 			// Présent
 			'fr-conj-etre-present',
 			'fr-conj-avoir-present',

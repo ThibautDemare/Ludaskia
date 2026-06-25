@@ -34,17 +34,37 @@ mots, articles, adverbes »** (`fr-gram-classes`). QCM d'étiquetage, 3 sous-typ
 sur une **banque interne étiquetée** (jamais les listes du parent). Un builder unifie
 les 3 types en items QCM. Relue par l'agent pédagogue.
 
-#### `francais/phrases.ts` (#204)
+#### `francais/phrases.ts` (#204, CM1 #245)
 
-rubrique **« Les phrases »**, 2 leçons QCM (exclues du sprint) : **« Quel point à la
-fin ? »** (`fr-gram-ponctuation` — choisir `.`, `?` ou `!` ; variante de présentation
-`ponctuation` du runner QCM = boutons-symboles glyphe + mot, trou final en cadre
-pointillé, cf. `ui/ponctuation-view.ts`) et **« Quel type de phrase ? »**
-(`fr-gram-type-phrase` — déclaratif / interrogatif / impératif ; l'exclamative est une
-**forme**, pas un type). Banques relues par l'agent pédagogue : chaque phrase porte un
-**marqueur de sens explicite**, mélange volontaire point ≠ type (raisonner sur le sens,
-pas le symbole), `explication` citant le marqueur jamais l'intonation. Le TTS lit la
-phrase **sans** la ponctuation finale (la lire avec l'intonation donnerait la réponse).
+rubrique **« Les phrases »**, 4 leçons QCM (exclues du sprint), niveaux portés **par
+leçon** (`PhraseLessonDef.levels`, branché au catalogue via `d.levels`) :
+
+- **« Quel point à la fin ? »** (`fr-gram-ponctuation`, **CE2** — choisir `.`, `?` ou
+  `!` ; variante de présentation `ponctuation` du runner QCM = boutons-symboles glyphe +
+  mot, trou final en cadre pointillé, cf. `ui/ponctuation-view.ts`).
+- **« Quel type de phrase ? »** (`fr-gram-type-phrase`, **CE2 + CM1** — déclaratif /
+  interrogatif / impératif ; l'exclamative est une **forme**, pas un type, B.O. 2025 :
+  les **3 types sont inchangés**, la leçon s'ouvre simplement au CM1).
+- **« Affirmative ou négative ? »** (`fr-gram-forme`, **CM1**, #245 — QCM 2 options sur
+  l'axe **FORME** : `FormePhrase = affirmative | negative`, banque `PHRASES_FORME`,
+  libellés `FORME_LABELS`). Identification : les négatives portent un **marqueur
+  explicite** (« ne… pas » majoritaire, quelques « ne… plus/jamais/rien »), les
+  affirmatives aucun.
+- **« Mets à la forme négative »** (`fr-gram-transfo-negative`, **CM1**, #245 — QCM
+  3 options de **transformation** affirmative → négative ; banque `PHRASES_TRANSFO`). La
+  négative correcte (« ne… pas » seul → **réponse unique**) et les **distracteurs francs
+  sont STOCKÉS** (négation mal placée, « pas » orphelin, élision « n' » oubliée), jamais
+  une saisie libre ni une négation calculée à la volée. Options empilées
+  (`choicesEmpilees`).
+
+**Type et forme sont des axes ORTHOGONAUX, jamais mêlés dans une même question** (avis
+pédagogue) : l'exclamative reste traitée par le « ! » de F1, jamais sur l'axe forme.
+Banques relues par l'agent pédagogue : chaque phrase porte un **marqueur explicite**
+(de sens pour le type, de négation pour la forme), mélange volontaire point ≠ type
+(raisonner sur le sens, pas le symbole), `explication` citant le marqueur **jamais
+l'intonation**. Le TTS lit la phrase **sans** la ponctuation finale (la lire avec
+l'intonation donnerait la réponse). Ordre pédagogique `francais.cm1` : les 3 leçons de
+grammaire en tête (type → forme → transformation négative), avant la conjugaison.
 
 ### Conjugaison
 

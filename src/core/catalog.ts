@@ -595,7 +595,9 @@ const PHRASES_LESSONS_DEFS: LessonDef[] = PHRASES_LESSONS.map((d) => ({
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-grammaire',
-	levels: ['ce2'],
+	// Niveaux portés par la donnée (#245) : ponctuation = CE2 ; « type » = CE2 + CM1 ;
+	// « forme » et « transformation négative » = CM1. Défaut CE2 si non précisé.
+	levels: d.levels ?? ['ce2'],
 	rubrique: 'Les phrases',
 	exerciseType: d.exerciseType,
 	excludeFromSprint: true,

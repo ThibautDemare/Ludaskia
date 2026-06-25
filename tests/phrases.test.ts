@@ -11,9 +11,15 @@ import {
 	PHRASES_PONCT,
 	PHRASES_TYPE,
 	TYPE_LABELS,
+	PHRASES_FORME,
+	PHRASES_TRANSFO,
+	FORME_LABELS,
 	ponctuationType,
 	typePhraseType,
+	formePhraseType,
+	transfoNegativeType,
 } from '../src/data/francais/phrases';
+import { getLessonById } from '../src/core/catalog';
 import { PONCT_MOTS, ponctView } from '../src/ui/ponctuation-view';
 
 const TIRAGES = 400;
@@ -142,6 +148,107 @@ describe('F2 — génération (QCM texte)', () => {
 				expect(type.check(ex, autre)).toBe(false);
 			}
 		}
+	});
+});
+
+describe('F3 (CM1) — banque « Affirmative ou négative ? »', () => {
+	// Mot de négation : « ne »/« n' » et/ou « pas / plus / jamais / rien ».
+	const NEGATION = /\bne\b|n'|\b(pas|plus|jamais|rien)\b/i;
+
+	it('au moins 12 items, forme valide, phrase ponctuée, sans doublon', () => {
+		expect(PHRASES_FORME.length).toBeGreaterThanOrEqual(12);
+		const vus = new Set<string>();
+		for (const p of PHRASES_FORME) {
+			expect(['affirmative', 'negative']).toContain(p.forme);
+			expect(/[.?!]$/.test(p.phrase)).toBe(true); // phrase complète, ponctuée
+			expect(p.explication.trim().length).toBeGreaterThan(0);
+			expect(vus.has(p.phrase)).toBe(false);
+			vus.add(p.phrase);
+		}
+	});
+
+	it('chaque négative porte un mot de négation ; chaque affirmative n’en porte AUCUN', () => {
+		for (const p of PHRASES_FORME) {
+			expect(NEGATION.test(p.phrase)).toBe(p.forme === 'negative');
+		}
+	});
+
+	it('les deux formes sont représentées (au moins 5 chacune)', () => {
+		for (const f of ['affirmative', 'negative'] as const) {
+			expect(PHRASES_FORME.filter((p) => p.forme === f).length).toBeGreaterThanOrEqual(5);
+		}
+	});
+
+	it('explications : citent le marqueur, jamais l’intonation', () => {
+		for (const p of PHRASES_FORME) {
+			expect(/intonation|on entend|ça monte|la voix/i.test(p.explication)).toBe(false);
+		}
+	});
+});
+
+describe('F3 — génération (QCM 2 options, axe FORME seul)', () => {
+	const type = formePhraseType();
+	const LABELS = Object.values(FORME_LABELS);
+	it('2 libellés (oui/non), réponse cohérente, jamais un libellé de TYPE', () => {
+		for (let i = 0; i < TIRAGES; i++) {
+			const ex = type.generate();
+			if (ex.type !== 'qcm') throw new Error('attendu qcm');
+			expect([...ex.choices].sort()).toEqual([...LABELS].sort()); // 2 libellés, mélangés
+			expect(ex.choices).toContain(ex.answer);
+			expect(LABELS).toContain(ex.answer);
+			// On ne mêle jamais TYPE et FORME : aucun libellé de type ne s'y glisse.
+			expect(ex.choices.join(' ')).not.toMatch(/raconter|question|ordre/i);
+			expect(type.check(ex, ex.answer)).toBe(true);
+			for (const autre of LABELS.filter((l) => l !== ex.answer)) {
+				expect(type.check(ex, autre)).toBe(false);
+			}
+		}
+	});
+});
+
+describe('F4 (CM1) — banque « Mets à la forme négative »', () => {
+	// « ne… pas » (ou « n'… pas » par élision) encadrant le verbe.
+	const NE_PAS = /(\bne\b|n').*\bpas\b/i;
+
+	it('au moins 10 items ; négative en « ne… pas » ; 2 distracteurs francs distincts', () => {
+		expect(PHRASES_TRANSFO.length).toBeGreaterThanOrEqual(10);
+		const vus = new Set<string>();
+		for (const p of PHRASES_TRANSFO) {
+			expect(NE_PAS.test(p.negative)).toBe(true); // la bonne réponse est une vraie négative
+			expect(p.distracteurs.length).toBe(2);
+			const tous = [p.negative, ...p.distracteurs];
+			expect(new Set(tous).size).toBe(tous.length); // tous distincts
+			expect(p.affirmative.trim().length).toBeGreaterThan(0);
+			expect(vus.has(p.affirmative)).toBe(false);
+			vus.add(p.affirmative);
+		}
+	});
+});
+
+describe('F4 — génération (QCM transformation, clé unique)', () => {
+	const type = transfoNegativeType();
+	const NE_PAS = /(\bne\b|n').*\bpas\b/i;
+	it('question = affirmative, 3 choix dont la négative correcte, réponse vérifiée', () => {
+		for (let i = 0; i < TIRAGES; i++) {
+			const ex = type.generate();
+			if (ex.type !== 'qcm') throw new Error('attendu qcm');
+			expect(ex.choices).toHaveLength(3); // négative + 2 distracteurs
+			expect(ex.choices).toContain(ex.answer);
+			expect(NE_PAS.test(ex.answer as string)).toBe(true);
+			expect(type.check(ex, ex.answer)).toBe(true);
+			for (const autre of ex.choices.filter((c) => c !== ex.answer)) {
+				expect(type.check(ex, autre)).toBe(false); // les distracteurs sont rejetés
+			}
+		}
+	});
+});
+
+describe('Catalogue — niveaux des leçons « Les phrases » (#245)', () => {
+	it('ponctuation = CE2 ; type = CE2+CM1 ; forme & transfo = CM1', () => {
+		expect(getLessonById('fr-gram-ponctuation')!.levels).toEqual(['ce2']);
+		expect(getLessonById('fr-gram-type-phrase')!.levels).toEqual(['ce2', 'cm1']);
+		expect(getLessonById('fr-gram-forme')!.levels).toEqual(['cm1']);
+		expect(getLessonById('fr-gram-transfo-negative')!.levels).toEqual(['cm1']);
 	});
 });
 

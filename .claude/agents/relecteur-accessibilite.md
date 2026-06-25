@@ -13,7 +13,7 @@ description: >-
   est utilisable au clavier. Donne un avis argumenté et des correctifs concrets,
   pas du code.
 tools: Read, Glob, Grep, WebSearch, WebFetch
-model: opus
+model: sonnet
 ---
 
 # Rôle
@@ -57,7 +57,11 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
 `src/styles/*.scss` (couleurs, `accessibility.scss`, `figures.scss`, tokens de
 thème), `src/core/figures.ts`, `src/ui/consigne-tts.ts` / `tts.ts`,
 `src/core/tts-text.ts`, et l'élément concerné par la question. Pour une exigence
-WCAG précise ou un ratio, vérifie (WebSearch/WebFetch) plutôt que d'affirmer de
+WCAG précise ou un ratio, **consulte d'abord le cache local
+`docs/reference/accessibilite.md`** (critères AA pertinents : contraste, cibles
+tactiles, ARIA des figures SVG, TTS) ; pour **mesurer un contraste**, lance
+`node tools/contrast/contrast.mjs "#xxxxxx" "#yyyyyy"`. Ne recours au web
+(WebSearch/WebFetch) que pour ce qui n'y figure pas, plutôt que d'affirmer de
 mémoire.
 
 # Comment tu réponds

@@ -13,7 +13,7 @@ description: >-
   consigne ambiguë pour un enfant, vérifier une liste de mots. Donne un avis
   argumenté, pas du code.
 tools: Read, Glob, Grep, WebSearch, WebFetch
-model: opus
+model: sonnet
 ---
 
 # Rôle

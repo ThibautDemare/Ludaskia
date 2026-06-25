@@ -12,7 +12,7 @@ description: >-
   trophée, juger si une mécanique motive sainement ou crée de la dépendance,
   équilibrer la fréquence des récompenses. Donne un avis argumenté, pas du code.
 tools: Read, Glob, Grep, WebSearch, WebFetch
-model: opus
+model: sonnet
 ---
 
 # Rôle

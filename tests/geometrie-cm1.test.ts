@@ -63,9 +63,70 @@ function cotes(poly: [number, number][]): number[] {
 	return poly.map((p, i) => dist(p, poly[(i + 1) % poly.length]));
 }
 
+/* ---------- Parseurs/aides du codage (#326) ---------- */
+
+/** Nombre de carrés de codage d'angle droit (chaque équerre = une <polyline>). */
+function equerres(svg: string): number {
+	return (svg.match(/<polyline/g) ?? []).length;
+}
+
+/** Points de chaque <polyline> (les équerres d'angle droit). */
+function polylignesPts(svg: string): [number, number][][] {
+	const out: [number, number][][] = [];
+	const re = /<polyline points="([^"]+)"/g;
+	let m: RegExpExecArray | null;
+	while ((m = re.exec(svg)) !== null) {
+		out.push(
+			m[1].split(' ').map((p) => {
+				const [x, y] = p.split(',').map(Number);
+				return [x, y] as [number, number];
+			}),
+		);
+	}
+	return out;
+}
+
+/** Distance d'un point au segment [a,b] (pour vérifier qu'un point « longe » un côté). */
+function distPointSeg(p: [number, number], a: [number, number], b: [number, number]): number {
+	const dx = b[0] - a[0];
+	const dy = b[1] - a[1];
+	const L2 = dx * dx + dy * dy || 1;
+	let t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2;
+	t = Math.max(0, Math.min(1, t));
+	return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+}
+
+/** Nombre de marques (tirets) rattachées à chaque côté du polygone, par proximité du
+ *  centre du tiret au milieu du côté. Permet de vérifier la répartition [1,1,2,2]
+ *  (deux familles de longueurs : simple tiret / double tiret). */
+function marquesParCote(
+	poly: [number, number][],
+	marks: { x1: number; y1: number; x2: number; y2: number }[],
+): number[] {
+	const mids = poly.map((p, i): [number, number] => [
+		(p[0] + poly[(i + 1) % poly.length][0]) / 2,
+		(p[1] + poly[(i + 1) % poly.length][1]) / 2,
+	]);
+	const counts = new Array(mids.length).fill(0);
+	for (const mk of marks) {
+		const c: [number, number] = [(mk.x1 + mk.x2) / 2, (mk.y1 + mk.y2) / 2];
+		let best = 0;
+		let bestD = Infinity;
+		mids.forEach((mid, i) => {
+			const d = dist(c, mid);
+			if (d < bestD) {
+				bestD = d;
+				best = i;
+			}
+		});
+		counts[best]++;
+	}
+	return counts;
+}
+
 describe('Géométrie CM1 — tracés des triangles particuliers (#242)', () => {
 	it('équilatéral : SVG valide, 3 côtés égaux, 3 marques de côté égal', () => {
-		const svg = renderFigurePlane('triangleEquilateral');
+		const svg = renderFigurePlane('triangleEquilateral', 0, true);
 		expect(svg).toContain('<svg');
 		expect(svg).toContain('role="img"');
 		const polys = polygones(svg);
@@ -82,7 +143,7 @@ describe('Géométrie CM1 — tracés des triangles particuliers (#242)', () => 
 	});
 
 	it('isocèle FRANC : 2 côtés égaux, le 3e (la base) DIFFÉRENT, 2 marques', () => {
-		const svg = renderFigurePlane('triangleIsocele');
+		const svg = renderFigurePlane('triangleIsocele', 0, true);
 		const c = cotes(polygones(svg)[0]);
 		expect(c).toHaveLength(3);
 		const tri = [...c].sort((a, b) => a - b);
@@ -93,7 +154,8 @@ describe('Géométrie CM1 — tracés des triangles particuliers (#242)', () => 
 	});
 
 	it('quelconque : 3 côtés DIFFÉRENTS, AUCUNE marque, aucun angle droit', () => {
-		const svg = renderFigurePlane('triangleQuelconque');
+		// Même avec le codage demandé, le quelconque n'a aucune marque (contre-exemple).
+		const svg = renderFigurePlane('triangleQuelconque', 0, true);
 		const poly = polygones(svg)[0];
 		const c = [...cotes(poly)].sort((a, b) => a - b);
 		expect(c).toHaveLength(3);
@@ -114,7 +176,7 @@ describe('Géométrie CM1 — tracés des triangles particuliers (#242)', () => 
 	});
 
 	it('la marque est PERPENDICULAIRE au côté qu’elle marque (équilatéral)', () => {
-		const svg = renderFigurePlane('triangleEquilateral', 0);
+		const svg = renderFigurePlane('triangleEquilateral', 0, true);
 		const poly = polygones(svg)[0];
 		const marques = lignes(svg);
 		expect(marques).toHaveLength(3);
@@ -145,6 +207,61 @@ describe('Géométrie CM1 — parallélogramme corrigé (#242)', () => {
 		const lrg = Math.min(c[0], c[1]);
 		expect(lng / lrg).toBeGreaterThan(1.6);
 		expect(lng / lrg).toBeLessThan(2.3);
+	});
+});
+
+describe('Géométrie CM1 — codage des figures (#326)', () => {
+	it('carré codé : 4 carrés d’angle droit + 1 tiret sur chacun des 4 côtés', () => {
+		const svg = renderFigurePlane('carre', 0, true);
+		expect(equerres(svg)).toBe(4);
+		expect(lignes(svg)).toHaveLength(4); // 4 côtés, 1 tiret chacun
+	});
+
+	it('rectangle codé : 4 angles droits ; 2 longueurs (1 tiret) + 2 largeurs (2 tirets)', () => {
+		const svg = renderFigurePlane('rectangle', 0, true);
+		expect(equerres(svg)).toBe(4);
+		const marks = lignes(svg);
+		expect(marks).toHaveLength(6); // 1+1+2+2
+		// Deux côtés à 1 tiret, deux côtés à 2 tirets (deux familles de longueur distinguées).
+		const poly = polygones(svg)[0];
+		expect([...marquesParCote(poly, marks)].sort()).toEqual([1, 1, 2, 2]);
+	});
+
+	it('losange codé : 4 côtés égaux (1 tiret), AUCUN angle droit', () => {
+		const svg = renderFigurePlane('losange', 0, true);
+		expect(equerres(svg)).toBe(0); // pas d'angle droit
+		expect(lignes(svg)).toHaveLength(4);
+	});
+
+	it('parallélogramme codé : côtés opposés égaux (1 et 2 tirets), AUCUN angle droit', () => {
+		const svg = renderFigurePlane('parallelogramme', 0, true);
+		expect(equerres(svg)).toBe(0);
+		const marks = lignes(svg);
+		expect(marks).toHaveLength(6);
+		const poly = polygones(svg)[0];
+		expect([...marquesParCote(poly, marks)].sort()).toEqual([1, 1, 2, 2]);
+	});
+
+	it('triangle rectangle codé : 1 carré d’angle droit, aucun tiret de côté', () => {
+		const svg = renderFigurePlane('triangleRectangle', 0, true);
+		expect(equerres(svg)).toBe(1);
+		expect(lignes(svg)).toHaveLength(0);
+	});
+
+	it('le carré d’angle droit SUIT la rotation : ses branches longent les côtés adjacents', () => {
+		const svg = renderFigurePlane('carre', 30, true); // carré tourné
+		const poly = polygones(svg)[0];
+		const eqs = polylignesPts(svg);
+		expect(eqs).toHaveLength(4);
+		// Chaque équerre = [a, coin, b] : a et b doivent reposer sur un côté du polygone
+		// (donc l'équerre tourne avec la figure, elle n'est pas figée à l'horizontale).
+		const surUnCote = (pt: [number, number]) =>
+			poly.some((p, i) => distPointSeg(pt, p, poly[(i + 1) % poly.length]) < 1.5);
+		for (const eq of eqs) {
+			expect(eq).toHaveLength(3);
+			expect(surUnCote(eq[0])).toBe(true);
+			expect(surUnCote(eq[2])).toBe(true);
+		}
 	});
 });
 
@@ -441,5 +558,23 @@ describe('Géométrie CM1 — catalogue & non-régression CE2', () => {
 		// corriger son tracé est purement additif côté CM1.
 		const fait = renderFigure({ kind: 'figurePlane', shape: 'parallelogramme' as PlaneShape });
 		expect(fait).toContain('<polygon'); // le renderer fonctionne, sans dépendance CE2
+	});
+
+	it('CE2 INCHANGÉ : le codage (#326) est OPT-IN — sans lui, les formes partagées n’ont ni équerre ni tiret', () => {
+		// Carré/rectangle/losange/triangle rectangle sont AUSSI dessinés au CE2 (moteur
+		// partagé). Rendus SANS `codage` (le défaut, ce que fait le CE2), ils ne portent
+		// aucun symbole : le rendu CE2 reste identique à avant #326.
+		for (const shape of ['carre', 'rectangle', 'losange', 'triangleRectangle'] as PlaneShape[]) {
+			const svg = renderFigurePlane(shape, 30); // pas de codage
+			expect(svg).not.toContain('<polyline'); // aucun carré d'angle droit
+			expect(lignes(svg)).toHaveLength(0); // aucun tiret de côté
+		}
+		// Et la leçon de reconnaissance CE2 ne produit jamais de figure codée.
+		const ce2Reco = getLessonById('geo-figures-reconnaitre')!.exerciseType;
+		for (let i = 0; i < 200; i++) {
+			const ex = ce2Reco.generate({ mode: 'qcm' });
+			if (ex.type !== 'qcm' || !ex.figure) continue;
+			expect(ex.figure).not.toContain('<polyline');
+		}
 	});
 });

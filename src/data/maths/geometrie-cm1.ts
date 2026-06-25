@@ -16,6 +16,13 @@
    - quadrilatères : le parallélogramme devient une réponse de reconnaissance à part
      entière (côtés opposés parallèles/égaux). PAS d'inclusion (jamais « un carré /
      rectangle est un parallélogramme »).
+   - CODAGE des figures (#326, attendu CM1 « coder un angle droit, des longueurs égales »)
+     activé via `codage: true` : carré/rectangle = 4 carrés d'angle droit (+ tirets de côté :
+     carré 4 égaux, rectangle longueurs/largeurs distinguées par un double tiret) ; losange =
+     4 côtés égaux, sans angle droit ; parallélogramme = côtés opposés égaux (simple/double
+     tiret), sans angle droit ; triangle rectangle = 1 carré d'angle droit. Rend la
+     reconnaissance ÉQUITABLE (losange vs parallélogramme, carré vs losange) sans curer les
+     distracteurs. Le CE2 partage le moteur mais reste NON codé (codage opt-in).
    SOLIDES
    - reconnaissance des solides dessinables, dont le PRISME droit (nouveau renderer) ;
    - QCM polyèdre / non-polyèdre (contenu le plus structurant du cycle 3) ;
@@ -118,6 +125,7 @@ function triangleRecoExercise(mode: string | undefined): Exercise {
 		kind: 'figurePlane',
 		shape: TRI_SHAPE[t],
 		rotation: rotationTriangle(t),
+		codage: true, // #326 : codage des côtés égaux / angle droit (attendu CM1)
 	});
 	if (mode === 'qcm') {
 		const distract = sample(
@@ -300,6 +308,7 @@ function quadRecoExercise(mode: string | undefined): Exercise {
 		kind: 'figurePlane',
 		shape: QUAD_SHAPE[q],
 		rotation: rotationQuad(q),
+		codage: true, // #326 : codage des côtés égaux / angles droits (rend la reco équitable)
 	});
 	if (mode === 'qcm') {
 		const distract = sample(

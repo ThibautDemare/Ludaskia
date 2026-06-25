@@ -60,7 +60,7 @@ propre doc de conception : `docs/design-orthographe.md`.
   **`FigureSpec`** : `horloge` | `polygoneCote` | `quadrillage`, **point
   d'extension**). **C'est le socle réutilisable** des figures de « Grandeurs et
   mesures » / « Géométrie ». Côté géométrie (#100) : **`renderFigurePlane(shape,
-  rotation)`** (figure pleine à reconnaître, rotation pour varier l'orientation) et
+  rotation, codage?)`** (figure pleine à reconnaître, rotation pour varier l'orientation) et
   **`renderSceneFigures(cells)`** (scène de plusieurs figures à compter, grille
   monochrome) et **`renderCercle(segment?, label?)`** (#102 — cercle + centre, rayon
   ou diamètre surligné et coté, ou marqué « ? » pour le vocabulaire). `PlaneShape`
@@ -68,9 +68,20 @@ propre doc de conception : `docs/design-orthographe.md`.
   parallélogramme et — **CM1 (#242)** — les **triangles particuliers** `triangleEquilateral`
   / `triangleIsocele` (FRANC, apex ~40°) / `triangleQuelconque` (scalène ~3:4:5,5, sans
   angle droit). Sommets canoniques mis à l'échelle de façon **uniforme** (angles et égalités
-  de longueur préservés) ; les triangles équilatéral/isocèle portent une **marque de côté
-  égal** (`SHAPE_MARQUES_EGAL` → court tiret `--ink` perpendiculaire au milieu de chaque côté
-  marqué) **concordante** avec le tracé (côtés réellement égaux). Le tracé du
+  de longueur préservés). **Codage des figures (#326, CM1) — opt-in.** Le paramètre
+  **`codage`** (défaut `false`) ajoute à la forme le **codage géométrique** attendu au CM1
+  (« coder un angle droit, des longueurs égales ») : **tirets de côté égal**
+  (`SHAPE_MARQUES_COTES` → chaque côté marqué porte **1 ou 2** tirets `--ink` perpendiculaires
+  à son milieu via `marqueEgal(a, b, tirets)` ; 1 et 2 distinguent deux familles de longueurs —
+  carré/losange 4 côtés à 1 tiret, rectangle/parallélogramme longueurs à 1 tiret et largeurs à
+  2, triangles équilatéral/isocèle leurs côtés égaux) et **carrés d'angle droit**
+  (`SHAPE_ANGLES_DROITS` → `coinAngleDroit(V, P, N)`, équerre logée dans le coin et **orientée le
+  long des côtés adjacents** donc elle **suit la rotation** ; carré/rectangle = 4 angles,
+  triangle rectangle = 1). Le marquage est **concordant** avec le tracé (côtés réellement égaux,
+  angles réellement droits). **Point d'architecture : le codage est `opt-in`**, activé **par la
+  donnée de la leçon** (CM1 le passe à `true`, cf. `data/maths/geometrie-cm1.ts`) ; le **CE2
+  partage le même moteur** mais ne le demande pas, donc ses figures **restent non codées** (rendu
+  CE2 gelé/inchangé). Le tracé du
   **parallélogramme** est calibré CM1 (#242) : côté oblique incliné ~28° de la verticale,
   ratio longueur/largeur ~1,9 (rectangle penché allongé). Et
   **`renderSolide(solid, orient?)`** (#103 — schéma d'un solide en **perspective cavalière
@@ -87,7 +98,8 @@ propre doc de conception : `docs/design-orthographe.md`.
   (jamais les deux), orientation variée par la bissectrice ; **aucune mesure affichée** et
   invariant « 90° ⇒ carré » garanti par `opening === 90`).
   `FigureSpec` couvre `horloge | polygoneCote | quadrillage | figurePlane | sceneFigures |
-  cercle | solide | groupes | fraction* | symJuger | symMiroir | symImage | angle`. On compose
+  cercle | solide | groupes | fraction* | symJuger | symMiroir | symImage | angle` (le variant
+  `figurePlane` porte le `codage?` ci-dessus). On compose
   avec les primitives, on ajoute un `renderXxx` (+ variant `FigureSpec` au besoin),
   jamais de SVG « à la main » dans une leçon. `svgCanvas(..., decorative)` rend un SVG
   **décoratif** (`aria-hidden`, sans role/label) quand un parent déjà nommé porte le sens

@@ -477,13 +477,64 @@ const SHAPE_POINTS: Record<Exclude<PlaneShape, 'cercle'>, Array<[number, number]
 	],
 };
 
-// Côtés à MARQUER « égaux » (tirets) par forme, en index de côté `points[i]→points[i+1]`
-// (#242). Équilatéral : les 3 côtés ; isocèle : les 2 côtés égaux (les obliques AB, CA,
-// indices 0 et 2) ; les autres : aucune marque. La marque est CONCORDANTE avec le tracé
-// (côtés réellement égaux par construction), jamais un simple décor.
-const SHAPE_MARQUES_EGAL: Partial<Record<Exclude<PlaneShape, 'cercle'>, number[]>> = {
-	triangleEquilateral: [0, 1, 2],
-	triangleIsocele: [0, 2],
+/* CODAGE DES FIGURES (#326 — attendu CM1 « coder un angle droit, des longueurs égales »).
+   Dessiné UNIQUEMENT sur demande explicite (`codage`, donc CM1 seulement) : le moteur est
+   partagé avec le CE2, qui dessine aussi carré/rectangle/losange/triangle rectangle SANS
+   codage (CE2 gelé). Le codage rend la reconnaissance ÉQUITABLE (losange vs parallélogramme
+   indécidables « à l'œil » sans lui), sans curer les distracteurs.
+
+   Côtés à MARQUER par forme, en index de côté `points[i]→points[i+1]`, avec le NOMBRE de
+   tirets : 1 et 2 distinguent DEUX familles de longueurs (un même nombre de tirets = côtés
+   égaux). La marque est CONCORDANTE avec le tracé (côtés réellement égaux par construction).
+   - équilatéral : 3 côtés (1 tiret) ; isocèle : les 2 obliques égaux (1 tiret) ;
+   - carré / losange : 4 côtés égaux (1 tiret) ;
+   - rectangle / parallélogramme : 2 longueurs (1 tiret) + 2 largeurs (2 tirets). */
+const SHAPE_MARQUES_COTES: Partial<
+	Record<Exclude<PlaneShape, 'cercle'>, Array<[cote: number, tirets: number]>>
+> = {
+	triangleEquilateral: [
+		[0, 1],
+		[1, 1],
+		[2, 1],
+	],
+	triangleIsocele: [
+		[0, 1],
+		[2, 1],
+	],
+	carre: [
+		[0, 1],
+		[1, 1],
+		[2, 1],
+		[3, 1],
+	],
+	losange: [
+		[0, 1],
+		[1, 1],
+		[2, 1],
+		[3, 1],
+	],
+	rectangle: [
+		[0, 1],
+		[2, 1],
+		[1, 2],
+		[3, 2],
+	],
+	parallelogramme: [
+		[0, 1],
+		[2, 1],
+		[1, 2],
+		[3, 2],
+	],
+};
+
+/* Sommets portant un carré de codage d'angle droit (index de sommet). Carré & rectangle :
+   les 4 angles droits (convention des manuels ; n'en coder qu'un laisserait croire qu'un
+   seul angle est droit — avis pedagogue). Triangle rectangle : l'unique angle droit
+   (sommet 1, où se rencontrent les deux côtés perpendiculaires). */
+const SHAPE_ANGLES_DROITS: Partial<Record<Exclude<PlaneShape, 'cercle'>, number[]>> = {
+	carre: [0, 1, 2, 3],
+	rectangle: [0, 1, 2, 3],
+	triangleRectangle: [1],
 };
 
 const SHAPE_FILL = {
@@ -500,10 +551,12 @@ function rotateAbout([x, y]: [number, number], deg: number): [number, number] {
 	return [0.5 + dx * Math.cos(r) - dy * Math.sin(r), 0.5 + dx * Math.sin(r) + dy * Math.cos(r)];
 }
 
-/* Marque de « côté égal » (#242) : un court tiret PERPENDICULAIRE au milieu d'un côté
-   marqué `a → b`. Couleur `--ink` (robuste à tous les thèmes), trait ~2,3, longueur ~9 px
-   (viewBox 200), extrémités/jonction arrondies. Les côtés portant la MÊME marque sont
-   égaux par construction → le double signal (figure + tiret) est concordant. */
+/* Marque de « côté égal » (#242/#326) : `tirets` courts traits PERPENDICULAIRES au milieu
+   d'un côté `a → b` (1 = une famille de longueur, 2 = une autre famille). Couleur `--ink`
+   (robuste à tous les thèmes), trait ~2,3, longueur ~9 px (viewBox 200), bouts arrondis.
+   Les côtés portant la MÊME marque sont égaux par construction → signal concordant
+   (figure + tiret). Le double tiret est rendu par deux traits parallèles répartis le long
+   du côté autour du milieu. */
 const MARQUE_EGAL = {
 	stroke: 'var(--ink)',
 	'stroke-width': 2.3,
@@ -511,29 +564,75 @@ const MARQUE_EGAL = {
 	'stroke-linejoin': 'round',
 } as const;
 const MARQUE_LEN = 9; // demi-longueur du tiret de chaque côté du milieu (viewBox 200)
+// Écart entre les deux traits d'un double tiret (le long du côté). 7 (et non 5) pour que
+// l'espace inter-traits reste > l'épaisseur du trait → double tiret lisiblement « double »,
+// même agrandi / en basse vision (avis relecteur-accessibilite + designer #326). N'affecte
+// QUE le double tiret (le simple est centré, écart nul).
+const MARQUE_ECART = 7;
 
-function marqueEgal(a: [number, number], b: [number, number]): string {
+function marqueEgal(a: [number, number], b: [number, number], tirets = 1): string {
 	const mx = (a[0] + b[0]) / 2;
 	const my = (a[1] + b[1]) / 2;
-	// Normale unitaire au côté (perpendiculaire).
-	let nx = -(b[1] - a[1]);
-	let ny = b[0] - a[0];
-	const len = Math.hypot(nx, ny) || 1;
-	nx /= len;
-	ny /= len;
-	return line(
-		r2(mx - nx * MARQUE_LEN),
-		r2(my - ny * MARQUE_LEN),
-		r2(mx + nx * MARQUE_LEN),
-		r2(my + ny * MARQUE_LEN),
-		MARQUE_EGAL,
+	const dx = b[0] - a[0];
+	const dy = b[1] - a[1];
+	const len = Math.hypot(dx, dy) || 1;
+	const tx = dx / len; // unité tangente (le long du côté)
+	const ty = dy / len;
+	const nx = -ty; // unité normale (perpendiculaire au côté)
+	const ny = tx;
+	let out = '';
+	for (let k = 0; k < tirets; k++) {
+		const d = (k - (tirets - 1) / 2) * MARQUE_ECART; // décalage le long du côté, centré
+		const ox = mx + tx * d;
+		const oy = my + ty * d;
+		out += line(
+			r2(ox - nx * MARQUE_LEN),
+			r2(oy - ny * MARQUE_LEN),
+			r2(ox + nx * MARQUE_LEN),
+			r2(oy + ny * MARQUE_LEN),
+			MARQUE_EGAL,
+		);
+	}
+	return out;
+}
+
+const COIN_DROIT_LEN = 13; // côté du carré de codage d'angle droit DANS une figure (viewBox 200)
+
+/* Carré de codage d'un angle droit au sommet `V` d'un polygone, logé DANS le coin et orienté
+   le long des deux côtés adjacents (V→P et V→N) → il SUIT la rotation de la figure (#326).
+   Réutilise la convention de l'équerre de `renderAngle` (équerre ouverte, trait `--ink`).
+   La taille est bornée à 30 % du plus court côté adjacent (figures/côtés courts). */
+function coinAngleDroit(V: [number, number], P: [number, number], N: [number, number]): string {
+	const uLen = Math.hypot(P[0] - V[0], P[1] - V[1]) || 1;
+	const wLen = Math.hypot(N[0] - V[0], N[1] - V[1]) || 1;
+	const ux = (P[0] - V[0]) / uLen;
+	const uy = (P[1] - V[1]) / uLen;
+	const wx = (N[0] - V[0]) / wLen;
+	const wy = (N[1] - V[1]) / wLen;
+	const L = Math.min(COIN_DROIT_LEN, 0.3 * Math.min(uLen, wLen));
+	return polyline(
+		[
+			[r2(V[0] + ux * L), r2(V[1] + uy * L)],
+			[r2(V[0] + (ux + wx) * L), r2(V[1] + (uy + wy) * L)],
+			[r2(V[0] + wx * L), r2(V[1] + wy * L)],
+		],
+		ANGLE_MARK,
 	);
 }
 
-/* Une forme remplie, ajustée et centrée dans la case [cx±box/2, cy±box/2]. Les triangles
-   particuliers (#242) reçoivent en plus une MARQUE de côté égal au milieu de chaque côté
-   concerné (équilatéral : 3 côtés ; isocèle : les 2 obliques égaux). */
-function shapeBody(shape: PlaneShape, cx: number, cy: number, box: number, rotDeg: number): string {
+/* Une forme remplie, ajustée et centrée dans la case [cx±box/2, cy±box/2]. Quand `codage`
+   est demandé (#326, CM1 uniquement — voir SHAPE_MARQUES_COTES / SHAPE_ANGLES_DROITS), la
+   forme reçoit en plus son CODAGE : tirets de côtés égaux (1 ou 2 familles) et carrés
+   d'angle droit. Sans `codage` (CE2, défaut), seul le polygone est dessiné — rendu CE2
+   inchangé. */
+function shapeBody(
+	shape: PlaneShape,
+	cx: number,
+	cy: number,
+	box: number,
+	rotDeg: number,
+	codage = false,
+): string {
 	const inner = box * 0.78; // marge interne ~11 %
 	if (shape === 'cercle') return circle(r2(cx), r2(cy), r2(inner / 2), SHAPE_FILL);
 	const pts = SHAPE_POINTS[shape].map((p) => rotateAbout(p, rotDeg));
@@ -550,10 +649,13 @@ function shapeBody(shape: PlaneShape, cx: number, cy: number, box: number, rotDe
 	const offY = cy - (minY + h / 2) * s;
 	const fitted = pts.map(([x, y]): [number, number] => [r2(offX + x * s), r2(offY + y * s)]);
 	let body = polygon(fitted, SHAPE_FILL);
-	const marques = SHAPE_MARQUES_EGAL[shape];
-	if (marques) {
-		for (const i of marques) {
-			body += marqueEgal(fitted[i], fitted[(i + 1) % fitted.length]);
+	if (codage) {
+		const n = fitted.length;
+		for (const [i, tirets] of SHAPE_MARQUES_COTES[shape] ?? []) {
+			body += marqueEgal(fitted[i], fitted[(i + 1) % n], tirets);
+		}
+		for (const i of SHAPE_ANGLES_DROITS[shape] ?? []) {
+			body += coinAngleDroit(fitted[i], fitted[(i - 1 + n) % n], fitted[(i + 1) % n]);
 		}
 	}
 	return body;
@@ -561,15 +663,16 @@ function shapeBody(shape: PlaneShape, cx: number, cy: number, box: number, rotDe
 
 const PLANE_SIZE = 200;
 
-/** Figure unique à reconnaître (option rotation pour varier l'orientation). */
-export function renderFigurePlane(shape: PlaneShape, rotation = 0): string {
+/** Figure unique à reconnaître (option rotation pour varier l'orientation). `codage`
+    (#326, CM1) ajoute le codage des côtés égaux et des angles droits ; absent au CE2. */
+export function renderFigurePlane(shape: PlaneShape, rotation = 0, codage = false): string {
 	return svgCanvas(
 		PLANE_SIZE,
 		PLANE_SIZE,
 		'Figure géométrique',
 		'Figure géométrique',
 		'Une figure plane à reconnaître : observe ses côtés et ses angles, puis nomme-la.',
-		shapeBody(shape, PLANE_SIZE / 2, PLANE_SIZE / 2, PLANE_SIZE, rotation),
+		shapeBody(shape, PLANE_SIZE / 2, PLANE_SIZE / 2, PLANE_SIZE, rotation, codage),
 		'figure-plane',
 	);
 }
@@ -1583,7 +1686,7 @@ export type FigureSpec =
 	| { kind: 'horloge'; heures: number; minutes: number }
 	| { kind: 'polygoneCote'; points: Array<[number, number]>; labels: string[] }
 	| { kind: 'quadrillage'; cols: number; rows: number; cells: Array<[number, number]> }
-	| { kind: 'figurePlane'; shape: PlaneShape; rotation?: number }
+	| { kind: 'figurePlane'; shape: PlaneShape; rotation?: number; codage?: boolean }
 	| { kind: 'sceneFigures'; cells: Array<{ shape: PlaneShape; rotation?: number }> }
 	| { kind: 'cercle'; segment?: 'rayon' | 'diametre'; label?: string }
 	| { kind: 'solide'; solid: Solid; orient?: SolidOrient }
@@ -1607,7 +1710,7 @@ export function renderFigure(spec: FigureSpec): string {
 		case 'quadrillage':
 			return renderQuadrillage(spec.cols, spec.rows, spec.cells);
 		case 'figurePlane':
-			return renderFigurePlane(spec.shape, spec.rotation);
+			return renderFigurePlane(spec.shape, spec.rotation, spec.codage);
 		case 'sceneFigures':
 			return renderSceneFigures(spec.cells);
 		case 'cercle':

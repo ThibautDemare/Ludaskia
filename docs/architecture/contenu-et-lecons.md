@@ -424,7 +424,14 @@ cachées). Distracteurs = **vraies formes** / valeurs voisines réelles. Ordre p
 `math.cm1` (#208) : figures planes avant solides, triangles (quelconque en contre-exemple)
 avant quadrilatères, parallélogramme en dernier des planes, solides reconnaissance →
 polyèdre/non-polyèdre → comptage. Cliente du moteur SVG : triangles particuliers et prisme
-ajoutés à `core/figures.ts` (cf. [Logique pure](core.md)).
+ajoutés à `core/figures.ts` (cf. [Logique pure](core.md)). **Codage des figures (#326)** : les
+deux leçons de reconnaissance de figures planes (`geo-cm1-triangles`, `geo-cm1-quadrilateres`)
+passent `codage: true` au renderer → les figures portent leur codage géométrique (carrés d'angle
+droit, tirets de côtés égaux, longueurs/largeurs distinguées par un double tiret), attendu B.O.
+2025. Le codage est **opt-in** : il **rend la reconnaissance équitable** (losange vs
+parallélogramme, carré vs losange ne sont plus indécidables « à l'œil ») sans curer les
+distracteurs, et **n'affecte que le CM1** — le CE2 partage le moteur mais ne demande pas le
+codage, ses figures restent non codées.
 
 #### `maths/symetrie-axiale.ts` (#201)
 

@@ -68,12 +68,19 @@ pour les QCM méta ci-dessous.
 
 #### `francais/conjugaison-meta.ts` (#239)
 
-**3 leçons CM1** de **reconnaissance** (QCM mono-mode, `levels: ['cm1']`), regroupées
+**3 leçons CE2 + CM1** de **reconnaissance** (QCM mono-mode, `levels: ['ce2','cm1']` —
+ces notions sont aussi vues au CE2, comme le corpus verbe × temps), regroupées
 sous la rubrique **« Reconnaître les verbes »** de la catégorie Conjugaison et
 **exclues du sprint** (`excludeFromSprint`, comme les autres QCM à libellés longs).
+**« 1er, 2e ou 3e groupe ? »** porte `repere: 'plus-difficile'` (pastille « plus
+dur ») et est posée en **fin de programme CE2** (`ordre-pedagogique.ts`) : la notion
+de groupe est en retrait au cycle 2 et le 2e groupe (« finir ») y est piégeux ; une
+variante CE2 dédiée pourra venir plus tard. Au CM1, « groupe » arrive tôt (après le
+présent).
 Elles prennent du recul sur le paradigme travaillé verbe par verbe (`CONJ_LESSONS`) :
 **« Temps simple ou composé ? »** (`fr-conj-simple-compose`, 2 options empilées, via
-l'**indice observable** « un seul mot / deux parties » plutôt que l'étiquette abstraite),
+l'**indice observable** de l'**auxiliaire** — « avoir »/« être » devant le verbe = composé,
+verbe tout seul = simple — plutôt que l'étiquette abstraite ou le nombre de mots),
 **« 1er, 2e ou 3e groupe ? »** (`fr-conj-groupe`, 3 vraies étiquettes ; auxiliaires
 **exclus** — hors groupes ; `aller` gardé comme **piège enseigné**, -er mais 3e groupe,
 explication dédiée) et **« Quel est l'infinitif ? »** (`fr-conj-infinitif`, distracteurs =

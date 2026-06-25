@@ -421,21 +421,24 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 	rubrique: d.rubrique, // regroupement par temps (#109)
 }));
 
-/* ---------- Conjugaison CM1 — trois QCM « méta » (#239) ----------
+/* ---------- Conjugaison CE2/CM1 — trois QCM « méta » (#239) ----------
    Reconnaissance (QCM mono-mode) : temps simple/composé, groupe d'un verbe,
-   infinitif d'une forme conjuguée. Taguées CM1 (le périmètre CE2 est inchangé) ;
-   regroupées sous la rubrique « Reconnaître les verbes » au sein de la Conjugaison.
-   Énoncés courts à lire + QCM → exclues du sprint chronométré (comme les autres QCM
-   de reconnaissance à libellés longs). */
+   infinitif d'une forme conjuguée. Taguées CE2 + CM1 : ces notions sont aussi vues au
+   CE2 (le re-tag corrige une incohérence — le corpus verbe×temps est déjà ce2+cm1).
+   « groupe » est posé en FIN de programme CE2 (ordre-pedagogique) et signalé « plus dur »
+   (la notion de groupe est en retrait au cycle 2, le 2e groupe « finir » y est piégeux ;
+   une variante CE2 dédiée pourra venir plus tard). Regroupées sous la rubrique
+   « Reconnaître les verbes » ; énoncés courts à lire + QCM → exclues du sprint chronométré. */
 const CONJ_META_LESSONS_DEFS: LessonDef[] = CONJ_META_LESSONS.map((d) => ({
 	id: d.id,
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-conjugaison',
-	levels: ['cm1'],
+	levels: ['ce2', 'cm1'],
 	exerciseType: d.exerciseType,
 	rubrique: 'Reconnaître les verbes',
 	excludeFromSprint: true,
+	...(d.id === 'fr-conj-groupe' ? { repere: 'plus-difficile' as const } : {}),
 }));
 
 /* ---------- Catalogue des leçons « Orthographe » sur moteur LessonDef (#109) ----------

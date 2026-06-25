@@ -123,6 +123,12 @@
 	font-size: 14px;
 	text-align: center;
 	width: 58px;
+	// Cible tactile : hauteur minimale confortable au doigt (#327, suivi a11y) —
+	// un champ sans hauteur explicite tombe à ~25px, sous le seuil de confort enfant.
+	min-height: 32px;
+	// Recadre verticalement le champ sur le texte de l'énoncé (le min-height pourrait
+	// sinon décaler un champ inséré au milieu d'une phrase, hors conteneur flex).
+	vertical-align: middle;
 	padding: 2px 4px;
 	border: 0;
 	border-bottom: 1.5px solid #333;
@@ -132,10 +138,13 @@
 /* Réponse « grand nombre » (#240, numération CM1 « millions ») : le champ standard (58px)
    est trop étroit pour un nombre à 5-7 chiffres (encadrement au million, « combien en
    tout », décomposition). On l'élargit et on agrandit un peu, chiffres tabulaires. Doit
-   suivre `.ans` (même spécificité → l'emporte par l'ordre source). */
+   suivre `.ans` (même spécificité → l'emporte par l'ordre source). La largeur tient compte
+   de l'écho groupé à la frappe (#327) : « 9 999 999 » = 7 chiffres + 2 espaces fines. */
 .ans-grand {
-	width: 9ch;
-	font-size: 1.1rem;
+	width: 11ch;
+	// Taille alignée sur l'énoncé (.bignum, lessons.scss) : grossit sur tablette pour
+	// relire chiffre par chiffre un nombre à 7 chiffres, plancher 1.1rem sur petit écran.
+	font-size: clamp(1.1rem, 4vw, var(--num-fs));
 	font-variant-numeric: tabular-nums;
 }
 .ans:focus {

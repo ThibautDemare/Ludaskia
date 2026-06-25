@@ -125,8 +125,13 @@ propre doc de conception : `docs/design-orthographe.md`.
   nombres groupés (≥ 10 000) d'un texte **déjà échappé** dans `<span class="bignum">` (rendu
   identique partout : `tabular-nums`, `nowrap`, `clamp` — cf. `styles/lessons.scss`) ;
   appelé par `items.ts → enonceTexte`, donc partagé par tous les rendus (fiche, sprint,
-  révision, impression). On n'écrit jamais le caractère U+202F en clair dans le source
-  (échappements `U+202F`/`U+00A0`). Réutilisé par `data/maths/numeration.ts` et `position.ts`.
+  révision, impression). **`grouperChiffresSaisis(chiffres)`** (#327) groupe une **chaîne de
+  chiffres bruts** par classes de 3 depuis la droite (U+202F, même seuil ≥ 5 chiffres que
+  `formatNombre`) sans passer par `Number` — pour l'**écho de saisie à la frappe** des grands
+  nombres (`ui/grand-nombre-echo.ts`) : restitue exactement les chiffres tapés (zéros de tête
+  compris) en n'insérant que des séparateurs. On n'écrit jamais le caractère U+202F en clair dans
+  le source (échappements `U+202F`/`U+00A0`). Réutilisé par `data/maths/numeration.ts` et
+  `position.ts`.
 - **`aide.ts`** (#272) — **aide contextuelle** des runners à interaction non intuitive,
   module **pur** : porte le **contenu** des aides (`AIDES` : titre + étapes courtes ≤ 3 +
   voie alternative + filet anti-erreur) pour 5 types (`tuiles`, `ordre`, `tri`, `atelier`,

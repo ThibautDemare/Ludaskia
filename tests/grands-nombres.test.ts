@@ -14,6 +14,7 @@ import {
 	formatNombre,
 	nettoyerSaisieNombre,
 	wrapGrandsNombres,
+	grouperChiffresSaisis,
 	ESPACE_FINE,
 } from '../src/core/nombres';
 import { getLessonById, genLessonItem } from '../src/core/catalog';
@@ -314,5 +315,28 @@ describe('Ajustements numération (suite des retours mainteneur)', () => {
 		expect(renderItem({ text: 'x = @', answer: 90_000, kind: 'num' })).toContain('ans-grand');
 		expect(renderItem({ text: 'x = @', answer: 7, kind: 'num' })).not.toContain('ans-grand');
 		expect(renderItem({ text: 'x = @', answer: 999, kind: 'num' })).not.toContain('ans-grand');
+	});
+});
+
+describe('grouperChiffresSaisis (#327 — écho de saisie groupé)', () => {
+	it('groupe par classes de 3 depuis la droite avec U+202F, à partir de 5 chiffres', () => {
+		expect(grouperChiffresSaisis('14000')).toBe(`14${U202F}000`);
+		expect(grouperChiffresSaisis('1400000')).toBe(`1${U202F}400${U202F}000`);
+		expect(grouperChiffresSaisis('9999999')).toBe(`9${U202F}999${U202F}999`);
+		expect(grouperChiffresSaisis('100000')).toBe(`100${U202F}000`);
+	});
+
+	it('ne groupe pas en-dessous de 5 chiffres (plage CE2 / saisie en cours)', () => {
+		expect(grouperChiffresSaisis('')).toBe('');
+		expect(grouperChiffresSaisis('7')).toBe('7');
+		expect(grouperChiffresSaisis('999')).toBe('999');
+		expect(grouperChiffresSaisis('1400')).toBe('1400'); // 4 chiffres : pas encore groupé
+	});
+
+	it('préserve EXACTEMENT les chiffres (zéros de tête compris), n’insère que des séparateurs', () => {
+		// Travaille sur la chaîne, pas via Number : « 007012 » garde ses zéros de tête.
+		expect(grouperChiffresSaisis('007012')).toBe(`007${U202F}012`);
+		// Réversible par neutralisation : le groupé se renettoie en la saisie d'origine.
+		expect(nettoyerSaisieNombre(grouperChiffresSaisis('1400000'))).toBe('1400000');
 	});
 });

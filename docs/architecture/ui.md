@@ -210,6 +210,15 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   des claviers mobiles (qui « souffle » la réponse) : les champs réponse naissent en
   `type="password"` (cf. `TEXT_ANSWER_INPUT_ATTRS`, `core/items.ts`) puis sont **démasqués**
   (`data-unmask`, « mot de passe visible » Android) avant focus par un observateur DOM global.
+- **`grand-nombre-echo.ts`** (#327) — **écho groupé des grands nombres à la frappe** sur les
+  champs **`.ans-grand`** (réponses numériques ≥ 10 000 des leçons « millions » CM1, #240).
+  `installGroupedNumberEcho()` (appelé une fois dans `wireDOM`, modèle de
+  `installVisiblePasswordReveal`) pose **deux écouteurs délégués** : `input` regroupe la valeur
+  par classes de 3 (U+202F, via `grouperChiffresSaisis` de `core/nombres.ts`), **curseur préservé**
+  (position raisonnée en *nombre de chiffres à gauche*, stable au reformatage) ; `beforeinput`
+  intercepte Retour arrière / Suppr quand ils tombent sur un séparateur pour effacer le **chiffre
+  voisin** (sinon la touche paraît morte). N'agit que sur des entiers (laisse passer une virgule/un
+  point). La **correction est inchangée** : `nettoyerSaisieNombre` neutralise déjà les séparateurs.
 - Les runners d'**orthographe** (`ui/ortho-atelier.ts`, `ortho-liste.ts`, `ortho-revoir.ts`,
   `ortho-runner.ts`) et leur moteur (`core/orthographe/`) sont décrits dans
   `docs/design-orthographe.md`.

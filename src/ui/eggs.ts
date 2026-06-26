@@ -126,14 +126,14 @@ export function mountForestEgg(): void {
    d'apparition est PURE (decideAmbient) : plancher anti-malchance + cooldown.
    Le compteur reste EN MÉMOIRE (éphémère) pour ne pas écrire en stockage — donc
    ne pas « bumper » la récence du profil — à chaque retour sur l'accueil. */
-let ambiantSince = 0;
+let ambientSince = 0;
 
 export function maybeShowAmbient(): void {
 	if (!ambiantAutorise()) return;
 	const home = homeEl();
 	if (!home || home.querySelector('.egg-luciole')) return; // déjà une en vol
-	const { show, next } = decideAmbient(ambiantSince, Math.random());
-	ambiantSince = next;
+	const { show, next } = decideAmbient(ambientSince, Math.random());
+	ambientSince = next;
 	if (show) spawnLuciole(home);
 }
 
@@ -142,8 +142,9 @@ function spawnLuciole(home: HTMLElement): void {
 	l.className = 'egg-luciole';
 	l.setAttribute('aria-hidden', 'true');
 	l.textContent = '✨';
-	// Bande HAUTE (périphérie) : jamais au-dessus du contenu central.
-	l.style.top = `${8 + Math.random() * 12}vh`;
+	// Frange HAUTE resserrée (≈ 9–16 vh) : sous la barre d'outils, au-dessus du
+	// gros du contenu interactif (avis designer #331).
+	l.style.top = `${9 + Math.random() * 7}vh`;
 	const vie = window.setTimeout(() => l.remove(), 9000); // traversée non attrapée → s'en va
 	l.addEventListener('click', () => {
 		window.clearTimeout(vie);
@@ -167,6 +168,7 @@ export function renderEggAlbumNav(): void {
 }
 
 function eggCardHTML(e: EggDef): string {
+	// `data-egg` (id de l'egg) : sélecteur stable pour les tests e2e (cf. e2e/).
 	return `<button type="button" class="egg-card" data-egg="${escapeHTML(e.id)}" title="Revoir cette surprise">
     <span class="egg-card-scene" aria-hidden="true">${e.emoji}</span>
     <span class="egg-card-title">${escapeHTML(e.titre)}</span>
@@ -175,7 +177,7 @@ function eggCardHTML(e: EggDef): string {
 
 function albumContentHTML(): string {
 	const cards = foundEggs().map(eggCardHTML).join('');
-	return `<p class="rewards-sub">Les petites surprises que tu as découvertes. Touche une carte pour la revoir&nbsp;!</p>
+	return `<p class="rewards-sub">Les petites surprises que tu as découvertes. Touche une carte pour la rejouer&nbsp;!</p>
     <div class="egg-album-grid">${cards}</div>`;
 }
 

@@ -305,6 +305,14 @@ export function setToolbar({
 	}
 	closeProfileMenu(); // tout changement de vue referme le menu déroulant
 	closeDrawer(); // … et le tiroir mobile (ex. après un tap sur Accueil)
+	// Pied de page global (#336) : `session-active` ⇔ une session est en cours
+	// (exercice, sprint, révision : currentMode ≠ null ; remis à null par
+	// resetSessionUI sur tout écran de repos). Le CSS masque alors le pied de page
+	// et le déclencheur cookie — rien de distrayant en plein effort. setToolbar est
+	// le point de passage commun à TOUS les écrans, appelé APRÈS la pose du mode.
+	// EXCEPTION : le runner d'orthographe (showOrthoRunView) est un écran d'effort
+	// qui ne pose PAS currentMode → il rajoute la classe lui-même, après setToolbar.
+	document.body.classList.toggle('session-active', currentMode !== null);
 }
 
 // Remet l'UI dans l'état « hors session » (commun à l'accueil et au sélecteur)
@@ -450,6 +458,11 @@ function showOrthoRunView(id: string) {
 	setToolbar({ verify: false, home: true, profile: false });
 	hideMenus();
 	startOrthoRun(id);
+	// Le runner d'orthographe (dictée, atelier, tuiles…) est un écran d'EFFORT mais
+	// ne pose pas currentMode → setToolbar n'a pas activé `session-active`. On le fait
+	// ici pour masquer le pied de page (et son cookie) en pleine séance (#336). La
+	// classe est retirée par le prochain setToolbar (au retour vers un écran de repos).
+	document.body.classList.add('session-active');
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 /* Page de relecture « Je relis mes mots » d'une liste (#80) : étude passive, pas un

@@ -28,6 +28,7 @@ import './styles/aide-exercice.scss';
 import './styles/encadrant.scss';
 import './styles/eggs.scss';
 import './styles/tour.scss';
+import './styles/footer.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -74,7 +75,8 @@ import { lancerTour, maybeOnboarding } from './ui/tour';
 import { initVersionCheck } from './ui/version-check';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 import { installGroupedNumberEcho } from './ui/grand-nombre-echo';
-import { initEggs, mountForestEgg } from './ui/eggs';
+import { initEggs, mountForestEgg, recordCookieEgg } from './ui/eggs';
+import { fillFooterYear, initFooterCookie } from './ui/footer';
 
 // Quitter ces modes (non reprenables) perd la progression → on confirme (#63).
 const quittingLosesProgress = () => isSprintRunning() || isRevisionRunning();
@@ -105,6 +107,10 @@ function wireDOM() {
 	// Easter eggs (#331) : câble les déclencheurs (chatouiller la mascotte, album).
 	// Le hotspot forêt est monté plus bas, APRÈS l'injection du SVG décoratif.
 	initEggs();
+	// Pied de page global (#336) : année du copyright + clin d'œil « pluie de
+	// cookies ». Le 1er déclenchement range le souvenir dans l'album (recordCookieEgg).
+	fillFooterYear();
+	initFooterCookie(recordCookieEgg);
 	document.getElementById('btnVerify')!.addEventListener('click', verify);
 	// Accueil : la confirmation des modes NON reprenables (sprint, révision) est
 	// gérée au niveau du hashchange (couvre aussi Précédent / édition d'URL), pour

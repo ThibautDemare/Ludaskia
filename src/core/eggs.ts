@@ -5,7 +5,8 @@
    récompense.
 
    Module PUR (aucun accès DOM, testable comme unlocks.ts) :
-   - un catalogue déclaratif d'eggs (familles « exploration » / « ambient ») ;
+   - un catalogue déclaratif d'eggs (familles « exploration » / « ambient » /
+     « visible ») ;
    - l'album des trouvailles (ids persistés, idempotent) ;
    - la décision d'apparition de l'egg ambiant (plancher anti-malchance
      + plafond/cooldown), exprimée comme une fonction PURE testable.
@@ -17,7 +18,11 @@
    ============================================================ */
 import { lsGet, lsSet } from './storage';
 
-export type EggFamily = 'exploration' | 'ambient';
+// 'exploration' : déclencheur CACHÉ à dénicher (taps, hotspot forêt).
+// 'ambient'     : apparition rare qui passe d'elle-même (luciole).
+// 'visible'     : déclencheur OUVERT et assumé, offert à la vue (icône cookie du
+//                 pied de page, #336) — un clin d'œil public, pas un secret.
+export type EggFamily = 'exploration' | 'ambient' | 'visible';
 
 export interface EggDef {
 	id: string;
@@ -36,6 +41,7 @@ export const EGGS: EggDef[] = [
 	{ id: 'mascotte-rieuse', family: 'exploration', emoji: '🐤', titre: "L'oiseau rieur" },
 	{ id: 'ecureuil-foret', family: 'exploration', emoji: '🐿️', titre: "L'écureuil curieux" },
 	{ id: 'luciole', family: 'ambient', emoji: '✨', titre: 'La luciole du soir' },
+	{ id: 'pluie-de-cookies', family: 'visible', emoji: '🍪', titre: 'La pluie de cookies' },
 ];
 
 export function getEgg(id: string): EggDef | undefined {

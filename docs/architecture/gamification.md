@@ -99,14 +99,22 @@ revient pas — la découverte EST la récompense. La persistance passe par une 
 les eggs ne polluent jamais l'XP ni les trophées. Logique pure dans `core/eggs.ts`,
 rendu/déclencheurs dans `ui/eggs.ts` (cf. [`core/`](core.md) et [`ui/`](ui.md)).
 
-Catalogue v1 = **3 eggs**, deux familles : **exploration** (déclenchés volontairement
-par l'enfant — chatouiller la mascotte, un animal caché dans la bande forêt) et
-**ambient** (une luciole rare qui traverse parfois l'accueil). L'**album de surprises**
-(modale, accès masqué tant que rien n'a été trouvé) n'affiche **que les trouvailles** —
-jamais de liste des eggs non trouvés, de cases vides ni de compteur — et chaque carte
-se rejoue au tap. L'apparition ambiante est coupée par l'aménagement encadrant
-**« apparitions surprises »** et par le mouvement réduit (cf. Accessibilité dans
-[`ui/`](ui.md)).
+Catalogue v1 = **4 eggs**, trois familles : **exploration** (déclenchés volontairement
+par l'enfant — chatouiller la mascotte, un animal caché dans la bande forêt),
+**ambient** (une luciole rare qui traverse parfois l'accueil) et **visible** (un
+déclencheur OUVERT et assumé, offert à la vue plutôt que caché). Le seul egg `visible`
+est la **« pluie de cookies »** (#336) : l'icône cookie du **pied de page global**
+(« Pas de cookies… sauf les bons ! ») fait tomber une averse bornée de cookies qui se
+posent en bas, qu'on peut croquer ou ignorer — un jouet jetable, aucun score ni
+compteur. Son rendu vit dans le module **partagé** `ui/footer.ts` (app **et** vitrine,
+sans dépendance stockage) ; côté app seulement, le 1er clic range le souvenir dans
+l'album (`recordCookieEgg`, `ui/eggs.ts`), la vitrine n'a pas d'album. L'**album de
+surprises** (modale, accès masqué tant que rien n'a été trouvé) n'affiche **que les
+trouvailles** — jamais de liste des eggs non trouvés, de cases vides ni de compteur — et
+chaque carte se rejoue au tap. L'apparition ambiante est coupée par l'aménagement
+encadrant **« apparitions surprises »** et par le mouvement réduit (cf. Accessibilité
+dans [`ui/`](ui.md)) ; la pluie de cookies, comme tous les eggs, **ne s'affiche jamais
+pendant l'effort** (masquée par `body.session-active`, cf. [`ui/`](ui.md)).
 
 ## Règle des 60 %
 

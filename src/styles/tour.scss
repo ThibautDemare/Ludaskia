@@ -18,10 +18,30 @@
 	position: relative;
 	z-index: 9000;
 	border-radius: 18px; /* arrondit l'anneau + le voile, même pour un conteneur sans fond */
+	/* Anneau d'accent (côté bloc clair) + liseré CLAIR (contraste garanti côté voile,
+	   quel que soit le thème — l'accent seul disparaît sur le voile sombre) + voile
+	   plein écran. */
 	box-shadow:
 		0 0 0 4px var(--accent),
-		0 0 0 9999px rgba(20, 30, 50, 0.55); /* anneau d'accent + voile plein écran */
+		0 0 0 7px rgba(255, 255, 255, 0.92),
+		0 0 0 9999px rgba(20, 30, 50, 0.55);
 	transition: box-shadow 0.25s ease;
+}
+/* Voile PLUS opaque en thème sombre (même logique que .modal-overlay) : un voile
+   clair laisserait trop voir le fond et brouillerait la mise au point. */
+:root[data-theme='nuit'] .tour-cible {
+	box-shadow:
+		0 0 0 4px var(--accent),
+		0 0 0 7px rgba(255, 255, 255, 0.92),
+		0 0 0 9999px rgba(0, 0, 0, 0.72);
+}
+@media (prefers-color-scheme: dark) {
+	:root[data-theme='auto'] .tour-cible {
+		box-shadow:
+			0 0 0 4px var(--accent),
+			0 0 0 7px rgba(255, 255, 255, 0.92),
+			0 0 0 9999px rgba(0, 0, 0, 0.72);
+	}
 }
 
 /* ---------- Encart fixe en bas (mascotte qui parle) ---------- */

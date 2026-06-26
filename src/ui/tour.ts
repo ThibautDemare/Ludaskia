@@ -132,7 +132,11 @@ export function lancerTour(opts: { trigger?: HTMLElement | null } = {}): void {
 		mascEl.classList.remove('pop');
 		void mascEl.offsetWidth; // force le reflow pour relancer l'animation CSS
 		mascEl.classList.add('pop');
-		next.focus();
+		// Ne PAS re-focuser à chaque étape : l'annonce du focus concurrencerait la
+		// région aria-live (le titre+texte de l'étape). Le focus initial est posé par
+		// activateModal ; ensuite « Suivant » reste l'élément actif, on n'y touche que
+		// s'il a perdu le focus.
+		if (document.activeElement !== next) next.focus();
 		if (listen && lectureConsigneAuto()) lire();
 	}
 
@@ -190,7 +194,7 @@ export function ouvrirMotParents(
 					Vous suivez ses progrès dans l'<strong>espace encadrants</strong> (en bas de
 					«&nbsp;Mon espace&nbsp;»).
 				</p>
-				<p>On va maintenant présenter l'application à votre enfant, en quelques étapes.</p>
+				<p>Nous allons maintenant présenter l'application à votre enfant, en quelques étapes.</p>
 			</div>
 			<button type="button" class="modal-ok parents-ok">Montrer à mon enfant</button>
 		</div>`;
@@ -232,6 +236,12 @@ export function maybeOnboarding(): void {
 	if (!home || home.offsetParent === null) return;
 	// Choix de classe encore ouvert : on laisse son `onChosen` relancer plus tard.
 	if (document.getElementById('onboardingNiveau')) return;
+	// Anti-chevauchement : ne rien relancer si le mot aux parents ou le tour est
+	// déjà à l'écran (symétrique de la garde ci-dessus ; verrouille un éventuel
+	// double appel).
+	if (document.getElementById('motParentsOverlay') || document.getElementById('tourOverlay')) {
+		return;
+	}
 
 	if (!motParentsVu()) {
 		marquerMotParentsVu();

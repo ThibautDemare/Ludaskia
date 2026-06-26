@@ -26,7 +26,11 @@ format objet au prochain passage, sans perte), `ludaskia_revoir`
 l'enfant), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de
 runner — voir `core/aide.ts`), `ludaskia_eggs` (#331 : ids des **easter eggs** trouvés,
 album de l'accueil — clé **dédiée et disjointe** de l'XP et des trophées, les eggs étant
-hors de l'économie de jeu, cf. `core/eggs.ts`). Un `LessonStat` porte aussi `recentPct?` (#234 : fenêtre glissante des
+hors de l'économie de jeu, cf. `core/eggs.ts`), `ludaskia_tour_seen` et `ludaskia_parents_seen`
+(#330 : deux drapeaux booléens **indépendants** du guide de première visite —
+tour enfant vu/sauté, mot aux parents affiché ; voir `core/tour.ts` — l'enchaînement
+automatique ne se déclenche qu'**une fois par profil**, le bouton « ? » rejoue le tour
+sans les toucher). Un `LessonStat` porte aussi `recentPct?` (#234 : fenêtre glissante des
 derniers % d'une leçon — base de la performance **récente**, distincte du cumul
 historique de `lessonAvgPct`). **Clé GLOBALE** (non préfixée profil), comme
 `ludaskia_profiles` : `ludaskia_encadrant_lock` (#234 : `{pinHash, recoveryHash}`

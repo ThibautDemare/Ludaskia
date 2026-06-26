@@ -34,9 +34,13 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   `ui-modal.ts`) : `activateModal(overlay, opts) → release()` pose le **focus-trap**
   (Tab/Maj+Tab bouclent à l'intérieur), l'**arrière-plan `inert`** + scroll-lock, la
   **fermeture Échap** optionnelle (`onEscape` omis = **choix forcé**) et la
-  **restauration du focus** au déclencheur. Source unique consommée par `ui-modal.ts`
-  (uiAlert/Confirm/Prompt) **et** par toutes les modales statiques à contenu sur-mesure
-  (`effects.ts`, `unlocks-view.ts`, `onboarding.ts`, voile de `version-check.ts`).
+  **restauration du focus** au déclencheur. Le scroll-lock est **optionnel**
+  (`lockScroll`, défaut `true`) : passer `false` garde focus-trap + `inert` mais laisse
+  défiler la page — utilisé par le guide de première visite (#330, `ui/tour.ts`) pour
+  amener chaque bloc surligné à l'écran (`scrollIntoView`). Source unique consommée par
+  `ui-modal.ts` (uiAlert/Confirm/Prompt) **et** par toutes les modales statiques à contenu
+  sur-mesure (`effects.ts`, `unlocks-view.ts`, `onboarding.ts`, `tour.ts`, voile de
+  `version-check.ts`).
 - **`ui-modal.ts`** (#230) — modales **custom accessibles** qui remplacent les dialogues
   natifs du navigateur : `uiAlert` → `Promise<void>`, `uiConfirm` → `Promise<boolean>`,
   `uiPrompt` → `Promise<string|null>` (remplacent **1:1** les appels bloquants
@@ -96,6 +100,19 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   compagnon, avatars, thèmes — acquis ✓ / à venir 🔒) et `openTrophees` (collection,
   sortie de l'inline ; réutilise le rendu `.trophy`), et la **mascotte accompagnante**
   `mascotteBulleHTML(message, loop)` + `encouragementMascotte()` (bulle de BD).
+- **`tour.ts`** (#330) — **guide de première visite** (couche UI ; contenu pur dans
+  `core/tour.ts`). Trois pièces : `ouvrirMotParents(onClose)` — courte modale destinée à
+  l'**adulte** qui installe (voix « vous », modale a11y standard) ; `lancerTour(opts)` —
+  **tour enfant** guidé par la **mascotte** sur les 3 repères de l'accueil, chaque étape
+  amenant le bloc à l'écran (`scrollIntoView`) et l'entourant d'un **halo lumineux**
+  (`.tour-cible`) pendant que la mascotte parle dans un **encart fixe** en bas (région
+  `aria-live`, TTS à la demande / auto si `lectureConsigneAuto`, bouton **« Passer »**
+  visible à chaque étape) ; `maybeOnboarding()` — **orchestration du 1er lancement**. Le
+  tour réutilise `activateModal` **sans verrou de défilement** (`lockScroll: false`) pour
+  pouvoir faire défiler vers le bloc surligné, restaure le focus sur `#btnGuide`, et n'est
+  **jamais réimposé** une fois vu/sauté (drapeau par profil). Styles dans
+  `styles/tour.scss`. Rejeu à volonté par le bouton **« ? »** de l'accueil (`#btnGuide`),
+  sans toucher au drapeau « déjà vu ».
 - **`cat-visuals.ts`** — visuels (icône + teinte de pastille) des matières et
   catégories, **source partagée** par `catalog-nav.ts` et `bilan.ts` (mêmes
   couleurs d'une catégorie d'un écran à l'autre).
@@ -139,8 +156,11 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   `showMatieresView`/`showMatiereView`/`showCategorieView`,
   `showSprintConfigView`, `showBilanCustomView`, `showProfilesView`,
   `runComplet/Express/Lecon/Revision`), `setToolbar`, `afterStart`, état de
-  session. **Écran de choix de mode** (#69) : `showModeChoice` (catalogue) /
-  `showOrthoModeView` (ortho) — affiché quand une leçon expose plusieurs modes.
+  session. `setToolbar` porte un drapeau **`guide`** (#330) qui affiche le bouton
+  **« ? »** (`#btnGuide`, rejeu du guide de 1re visite) — **accueil seulement**, comme
+  `print` ne sort qu'en exercice. **Écran de choix de mode** (#69) : `showModeChoice`
+  (catalogue) / `showOrthoModeView` (ortho) — affiché quand une leçon expose plusieurs
+  modes.
 
 ## Runners d'exercice
 

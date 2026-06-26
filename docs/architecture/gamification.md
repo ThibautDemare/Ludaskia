@@ -103,10 +103,11 @@ Catalogue v1 = **4 eggs**, trois familles : **exploration** (déclenchés volont
 par l'enfant — chatouiller la mascotte, un animal caché dans la bande forêt),
 **ambient** (une luciole rare qui traverse parfois l'accueil) et **visible** (un
 déclencheur OUVERT et assumé, offert à la vue plutôt que caché). Le seul egg `visible`
-est la **« pluie de cookies »** (#336) : l'icône cookie du **pied de page global**
-(« Pas de cookies… sauf les bons ! ») fait tomber une averse bornée de cookies qui se
-posent en bas, qu'on peut croquer ou ignorer — un jouet jetable, aucun score ni
-compteur. Son rendu vit dans le module **partagé** `ui/footer.ts` (app **et** vitrine,
+est la **« pluie de cookies »** (#336) : un emoji cookie DISCRET du **pied de page
+global** (« Pas de cookies… sauf les bons ! »), un clin d'œil à dénicher plutôt qu'un
+bouton-CTA, fait tomber une averse bornée de cookies qui se posent en bas et **y
+restent** (ils ne s'effacent pas seuls) ; on les croque un à un (miettes projetées), et
+l'averse se relance une fois tous croqués — un jouet, aucun score ni compteur. Son rendu vit dans le module **partagé** `ui/footer.ts` (app **et** vitrine,
 sans dépendance stockage) ; côté app seulement, le 1er clic range le souvenir dans
 l'album (`recordCookieEgg`, `ui/eggs.ts`), la vitrine n'a pas d'album. L'**album de
 surprises** (modale, accès masqué tant que rien n'a été trouvé) n'affiche **que les

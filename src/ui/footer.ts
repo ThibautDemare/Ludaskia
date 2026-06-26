@@ -8,11 +8,12 @@
    callback `onTrigger`, de ranger le souvenir dans l'album des eggs.
 
    « Pas de cookies… sauf les bons ! » : l'icône cookie du pied de page est un
-   déclencheur VISIBLE et assumé (contrairement aux eggs cachés de #331). Un clic
-   fait tomber une averse BORNÉE de cookies qui se posent en bas et s'y arrêtent ;
-   l'enfant peut en croquer un à un (ils éclatent en miettes), ou les ignorer (ils
-   s'effacent seuls). Aucun score, aucun compteur, aucun « tout nettoyé ! » : un
-   jouet jetable, pas une tâche à accomplir.
+   déclencheur DISCRET (un simple emoji cliquable, pas un bouton-CTA) — un clin
+   d'œil à dénicher, pas une invitation à cliquer à tout prix. Un clic fait tomber
+   une averse BORNÉE de cookies qui se posent en bas et y RESTENT : ils ne
+   s'effacent PAS tout seuls, c'est en les touchant qu'on les croque (ils éclatent
+   en miettes). Aucun score, aucun compteur, aucun « tout nettoyé ! » : un jouet,
+   pas une tâche à accomplir. Une fois tous croqués, l'averse se relance.
 
    Garde-fous (cf. #336 / #331) : strictement gratuit ; couche décorative
    `aria-hidden`, jamais de vol de focus, jamais bloquante (cookies seuls
@@ -51,10 +52,9 @@ export function cookieRain(): void {
 	const n = reduit ? COOKIE_COUNT_REDUIT : COOKIE_COUNT;
 	for (let i = 0; i < n; i++) layer.appendChild(makeCookie(i, n, reduit));
 	document.body.appendChild(layer);
-
-	// Nettoyage automatique : les cookies non croqués s'effacent d'eux-mêmes
-	// (cliquer reste optionnel ; la scène se finit pareil si on ne touche rien).
-	window.setTimeout(() => layer.remove(), reduit ? 6000 : 9000);
+	// PAS de nettoyage automatique : les cookies RESTENT posés jusqu'à ce qu'on les
+	// croque. La couche est retirée seulement quand le dernier a été croqué
+	// (cleanupIfEmpty) — ce qui réarme le déclencheur (cf. le garde anti-empilement).
 }
 
 function makeCookie(i: number, n: number, reduit: boolean): HTMLElement {
@@ -75,20 +75,34 @@ function makeCookie(i: number, n: number, reduit: boolean): HTMLElement {
 	return c;
 }
 
-// Croquer un cookie : il éclate en miettes (qui s'effacent), puis disparaît.
+// Croquer un cookie : il éclate en miettes (projetées en gerbe), puis disparaît.
 // Idempotent (un cookie déjà croqué ne refait rien).
 function croquer(c: HTMLElement, reduit: boolean): void {
 	if (c.dataset.eaten) return;
 	c.dataset.eaten = '1';
+	const layer = c.parentElement;
 	if (!reduit) {
 		semerMiettes(c);
 		c.classList.add('cookie-rain-eaten');
-		window.setTimeout(() => c.remove(), 340);
+		window.setTimeout(() => {
+			c.remove();
+			cleanupIfEmpty(layer);
+		}, 340);
 	} else {
 		// Mouvement réduit : pas d'animation ni de miettes, mais le clic est quand
 		// même récompensé — le cookie disparaît.
 		c.remove();
+		cleanupIfEmpty(layer);
 	}
+}
+
+// Retire la couche quand le dernier cookie a été croqué (réarme le déclencheur).
+// On attend la fin des miettes pour ne pas les couper net.
+function cleanupIfEmpty(layer: HTMLElement | null): void {
+	if (!layer || layer.querySelector('.cookie-rain-item')) return;
+	window.setTimeout(() => {
+		if (layer.parentElement && !layer.querySelector('.cookie-rain-item')) layer.remove();
+	}, 680);
 }
 
 function semerMiettes(c: HTMLElement): void {
@@ -97,12 +111,21 @@ function semerMiettes(c: HTMLElement): void {
 	const r = c.getBoundingClientRect();
 	const cx = r.left + r.width / 2;
 	const cy = r.top + r.height / 2;
-	for (let i = 0; i < 4; i++) {
+	const N = 6;
+	for (let i = 0; i < N; i++) {
 		const m = document.createElement('span');
 		m.className = 'cookie-crumb';
 		m.style.left = `${cx}px`;
 		m.style.top = `${cy}px`;
-		m.style.setProperty('--cx', `${(i % 2 ? 1 : -1) * (6 + i * 5)}px`);
+		// Gerbe radiale franche : réparties tout autour + un peu de jeu, projetées
+		// nettement (34-74 px) pour qu'on les voie vraiment gicler du cookie.
+		const angle = (Math.PI * 2 * i) / N + (Math.random() * 0.8 - 0.4);
+		const dist = 34 + Math.random() * 40;
+		m.style.setProperty('--dx', `${Math.round(Math.cos(angle) * dist)}px`);
+		m.style.setProperty('--dy', `${Math.round(Math.sin(angle) * dist)}px`);
+		const taille = 5 + Math.round(Math.random() * 3); // 5-8 px, miettes variées
+		m.style.width = `${taille}px`;
+		m.style.height = `${taille}px`;
 		layer.appendChild(m);
 		window.setTimeout(() => m.remove(), 650);
 	}

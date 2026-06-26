@@ -150,6 +150,15 @@ propre doc de conception : `docs/design-orthographe.md`.
   voie alternative + filet anti-erreur) pour 5 types (`tuiles`, `ordre`, `tri`, `atelier`,
   `lettres`) et la **mémoire « aide déjà vue »** par profil (`ludaskia_aide_vue`, via
   `lsGet/lsSet`). Le rendu vit dans `ui/aide-exercice.ts`.
+- **`tour.ts`** (#330) — **guide de première visite**, module **pur** (aucun accès DOM) :
+  porte le **contenu** du tour enfant (`TOUR_ETAPES` : 3 grands repères de l'accueil —
+  `.cards` / `#progression` / `#rewardNav` — chacun `{cible, titre, texte}`, ton
+  « invitation » du registre des aides) et le **texte TTS par étape** (`texteTtsEtape`),
+  plus la **mémoire « déjà vu » par profil** via `lsGet/lsSet` — **deux drapeaux booléens
+  indépendants** sous clés préfixées profil : `ludaskia_tour_seen` (tour enfant,
+  `tourVu`/`marquerTourVu`) et `ludaskia_parents_seen` (mot aux parents,
+  `motParentsVu`/`marquerMotParentsVu`). Le rendu (encart mascotte, surlignage, mot aux
+  parents, orchestration) vit dans `ui/tour.ts`.
 - **`icon-names.ts`** — type **pur** `IconName` : noms **sémantiques** (rôle, pas dessin)
   des icônes Phosphor, pour que les modules `core/`/données typent leur champ `icon` sans
   dépendre du rendu. L'association nom → SVG est dans `ui/icon.ts`.

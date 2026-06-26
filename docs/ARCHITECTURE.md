@@ -59,7 +59,8 @@ de conception initial est `docs/design-multi-subject.md`.
 ### Fonctionnement
 
 - [Modes & navigation](architecture/modes-et-navigation.md) — routage par hash,
-  modes d'exercice, choix de mode (#69), reprise (#63), **Pipeline multi-matières**.
+  **onboarding du 1er lancement** (classe → mot parents → guide, #225/#330), modes
+  d'exercice, choix de mode (#69), reprise (#63), **Pipeline multi-matières**.
 - [Données & profils](architecture/donnees-et-profils.md) — clés `localStorage`,
   cycle de vie des profils.
 - [Gamification](architecture/gamification.md) — médailles, trophées, objectifs de

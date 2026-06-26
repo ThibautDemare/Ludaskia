@@ -17,6 +17,23 @@ routable mais n'est plus lié). Les identifiants de leçon sont des **chaînes**
 (`math-tables-addition`, `fr-conj-etre-present`…). Les déclencheurs changent juste
 le hash ; `route()` (sur `hashchange`) rend la vue.
 
+## Onboarding du 1er lancement (#225, #330)
+
+Au premier lancement, `main.ts` enchaîne (après `route()`) un onboarding en **trois
+étapes**, chacune mémorisée **par profil** : **choix de classe** → **mot aux parents** →
+**tour enfant**. La modale de **choix de classe** (`ui/onboarding.ts`,
+`maybeShowClassChoice`, **choix forcé**, déclenchée si `besoinChoixNiveau()` — voir
+[Niveaux scolaires](niveaux-scolaires.md)) s'affiche d'abord ; son callback `onChosen`
+re-rend la vue puis appelle `maybeOnboarding()` (`ui/tour.ts`). Quand aucun choix de
+classe n'est requis, `maybeOnboarding()` est appelé directement. Celui-ci, **idempotent
+et sans effet hors accueil** (et anti-chevauchement avec les autres overlays), affiche
+une fois le **mot aux parents** (modale destinée à l'adulte), puis enchaîne sur le **tour
+enfant** guidé par la mascotte (3 repères de l'accueil ; voir `ui/tour.ts` /
+[Rendu & interactions](ui.md)). Chaque étape pose son drapeau « déjà vu » dès
+l'ouverture (`ludaskia_parents_seen`, `ludaskia_tour_seen`), donc l'enchaînement ne se
+rejoue jamais tout seul. Le bouton **« ? »** de la barre d'accueil (`#btnGuide`, drapeau
+`guide` de `setToolbar`) **rejoue le tour à volonté**, sans toucher à ces drapeaux.
+
 ## Modes d'exercice
 
 Modes d'exercice : **une leçon à la fois** (atteinte via Matière → Catégorie),

@@ -268,8 +268,10 @@ test('accessibilité : confort côté enfant, aménagements côté encadrant', a
 	await expect(page.locator('#prefConfort')).toBeVisible();
 	await expect(page.locator('#prefSansChrono')).toHaveCount(0);
 	await expect(page.locator('#prefLectureAuto')).toHaveCount(0);
-	// Espace encadrants : les deux aménagements (masquer le minuteur + lecture auto).
+	// Espace encadrants : les trois aménagements (masquer le minuteur + lecture auto
+	// + désactiver les apparitions surprises, #331).
 	await gotoHash(page, 'encadrant');
-	expect(await page.locator('[data-act="set-amenagement"]').count()).toBe(2);
+	expect(await page.locator('[data-act="set-amenagement"]').count()).toBe(3);
+	await expect(page.locator('[data-pref="sansApparitionsSurprises"]')).toBeVisible();
 	expect(errors).toEqual([]);
 });

@@ -15,6 +15,27 @@ const SEED_VU =
 	SEED_NEUF +
 	`localStorage.setItem('e2e/ludaskia_parents_seen', 'true');` +
 	`localStorage.setItem('e2e/ludaskia_tour_seen', 'true');`;
+/* Profil VIERGE (sans classe ni drapeaux) → enchaînement complet de 1re visite :
+   popup de choix de classe, puis mot aux parents, puis tour enfant. */
+const SEED_VIERGE = `localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: 'e2e', name: 'E2E', emoji: '🦊', updatedAt: 1 }], active: 'e2e' }));`;
+
+test('1re visite complète : choix de classe → mot aux parents → tour enfant', async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(SEED_VIERGE);
+	await page.goto('app.html#accueil', { waitUntil: 'networkidle' });
+	// 1) Le choix de classe (forcé) s'affiche en premier.
+	const classe = page.locator('#onboardingNiveau');
+	await expect(classe).toBeVisible();
+	await classe.locator('[data-niveau="ce2"]').click();
+	await expect(classe).toHaveCount(0);
+	// 2) Puis le mot aux parents s'enchaîne.
+	const parents = page.locator('#motParentsOverlay');
+	await expect(parents).toBeVisible();
+	await parents.locator('.parents-ok').click();
+	// 3) Puis le tour enfant.
+	await expect(page.locator('#tourOverlay')).toBeVisible();
+	expect(errors).toEqual([]);
+});
 
 test('1re visite : mot aux parents puis tour enfant (3 étapes)', async ({ page }) => {
 	const errors = watchErrors(page);

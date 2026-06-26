@@ -150,6 +150,13 @@ test('Onboarding — Échap ne ferme PAS la popup (choix forcé)', async ({ page
 test("Onboarding — clic sur CE2 ferme la popup et libère l'arrière-plan", async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(SEED_SANS_NIVEAU);
+	// Ce test isole l'a11y de la popup de CLASSE : on amorce les drapeaux du guide
+	// de 1re visite (#330) pour qu'aucune modale ne s'enchaîne après le choix (sinon
+	// le mot aux parents ré-inerte la toolbar). L'enchaînement classe→parents→tour
+	// est couvert par tour.spec.ts.
+	await page.addInitScript(
+		`localStorage.setItem('e2e/ludaskia_tour_seen','true');localStorage.setItem('e2e/ludaskia_parents_seen','true');`,
+	);
 	await page.goto('app.html#accueil', { waitUntil: 'networkidle' });
 
 	await expect(page.locator('#onboardingNiveau')).toBeVisible();

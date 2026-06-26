@@ -57,46 +57,60 @@ body.session-active .cookie-rain-layer {
 }
 
 /* ============================================================
-   Pastille cookie (.cookie-btn) — déclencheur VISIBLE, partagé app + vitrine
+   Cookie déclencheur (.cookie-egg) — easter egg DISCRET, partagé app + vitrine
    ============================================================ */
-/* Vrai bouton (focusable, cible tactile généreuse) : la phrase « …sauf les
-   bons ! 🍪 » EST l'affordance. Couleurs chaudes AUTO-PORTANTES (fixes, pas les
-   tokens --warn* qui s'inversent en thème Nuit) : un cookie reste un cookie quel
-   que soit le thème, et le texte brun foncé garde un contraste ≥ AA (≈ 7,6:1 sur
-   le fond crème) partout — app (socle foncé) comme vitrine (fond clair). */
-.cookie-btn {
+/* Volontairement DISCRET : un simple emoji 🍪 cliquable au fil de la phrase
+   « …sauf les bons ! », PAS un bouton-CTA (ni pilule, ni fond, ni bordure) — un
+   clin d'œil à dénicher. Reste un vrai <button> (focusable clavier, aria-label)
+   pour l'accessibilité ; l'affordance se limite à un léger frémissement au survol
+   et un anneau de focus net (visible seulement au clavier, donc invisible à la
+   souris → discrétion préservée). Cible tactile modeste mais raisonnable (~32 px
+   via le padding, sans fond visible) : c'est un bonus caché, pas un contrôle clé. */
+.cookie-egg {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	min-height: 44px;
-	margin-left: 6px;
-	padding: 6px 14px;
-	border: 2px solid #e6a93a;
-	border-radius: 999px;
-	background: #fff1cf;
-	color: #6d4300;
-	font: inherit;
-	font-weight: 800;
+	justify-content: center;
+	padding: 5px 7px;
+	border: 0;
+	background: none;
+	font-size: 1.3em;
+	line-height: 1;
+	vertical-align: -0.2em;
 	cursor: pointer;
-	transition:
-		transform 0.08s ease,
-		box-shadow 0.15s ease;
+	border-radius: 8px;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-touch-callout: none;
+	transition: transform 0.12s ease;
 }
-.cookie-btn:hover {
-	transform: translateY(-1px);
-	box-shadow: 0 3px 10px rgb(0 0 0 / 18%);
+.cookie-egg:hover {
+	transform: scale(1.18) rotate(-7deg);
 }
-.cookie-btn:active {
-	transform: translateY(0) scale(0.96);
+.cookie-egg:active {
+	transform: scale(0.92);
 }
 /* Focus visible adapté au contexte : contour clair sur le socle foncé de l'app,
    contour foncé sur le fond clair de la vitrine (≥ 4,5:1 des deux côtés). */
-.cookie-btn:focus-visible {
+.cookie-egg:focus-visible {
 	outline: 3px solid var(--accent-dark);
 	outline-offset: 2px;
 }
-.site-footer .cookie-btn:focus-visible {
+.site-footer .cookie-egg:focus-visible {
 	outline-color: var(--on-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+	.cookie-egg {
+		transition: none;
+	}
+	.cookie-egg:hover {
+		transform: none;
+	}
+}
+html.anim-reduced .cookie-egg {
+	transition: none;
+}
+html.anim-reduced .cookie-egg:hover {
+	transform: none;
 }
 
 /* ============================================================
@@ -183,7 +197,8 @@ body.session-active .cookie-rain-layer {
 	}
 }
 
-/* Miettes : quelques points bruns qui retombent et s'effacent. */
+/* Miettes : une gerbe de points bruns PROJETÉS tout autour du cookie croqué
+   (vecteur radial --dx/--dy posé par le JS), qui s'effacent en rétrécissant. */
 .cookie-crumb {
 	position: fixed;
 	width: 6px;
@@ -192,16 +207,19 @@ body.session-active .cookie-rain-layer {
 	background: #a9742f;
 	pointer-events: none;
 	transform: translate(-50%, -50%);
-	animation: cookie-crumb 0.55s ease-out forwards;
+	animation: cookie-crumb 0.6s ease-out forwards;
 }
 @keyframes cookie-crumb {
 	0% {
 		opacity: 1;
-		transform: translate(-50%, -50%);
+		transform: translate(-50%, -50%) scale(1);
+	}
+	70% {
+		opacity: 1;
 	}
 	100% {
 		opacity: 0;
-		transform: translate(calc(-50% + var(--cx, 0px)), calc(-50% + 16px));
+		transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.5);
 	}
 }
 

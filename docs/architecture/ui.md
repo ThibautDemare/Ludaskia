@@ -101,15 +101,16 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
 - **`footer.ts`** (#336) — **pied de page global**, module **PARTAGÉ** par l'app (`main.ts`)
   ET la vitrine (`vitrine.ts`). VOLONTAIREMENT sans dépendance à la couche stockage / profils /
   eggs (la vitrine est statique) : `fillFooterYear()` renseigne l'année du copyright dans les
-  `[data-footer-year]` ; `initFooterCookie(onTrigger?)` câble le bouton `#footerCookie` et joue
-  l'easter egg **« pluie de cookies »** `cookieRain()` (averse BORNÉE d'emojis 🍪 qui tombent,
-  se posent en bas et qu'on peut croquer — miettes ; idempotente tant qu'une averse est en cours,
-  auto-nettoyée). `onTrigger` (optionnel) est appelé AVANT la pluie : l'app y passe
+  `[data-footer-year]` ; `initFooterCookie(onTrigger?)` câble l'emoji DISCRET `#footerCookie`
+  (pas un bouton-CTA) et joue l'easter egg **« pluie de cookies »** `cookieRain()` (averse BORNÉE
+  d'emojis 🍪 qui tombent, se posent en bas et **y restent** jusqu'à ce qu'on les croque — miettes
+  projetées en gerbe ; idempotente tant qu'une averse est en cours, la couche est retirée quand le
+  dernier cookie est croqué, ce qui réarme le déclencheur). `onTrigger` (optionnel) est appelé AVANT la pluie : l'app y passe
   `recordCookieEgg` (album), la vitrine ne passe rien. **Double garde mouvement réduit** lue
   **directement dans le DOM** (`html.anim-reduced` + `prefers-reduced-motion`, pour rester
   indépendant de la couche profils que la vitrine ne charge pas) → version posée sans chute, le
   clic restant récompensé. Couche `aria-hidden`, jamais bloquante (sous les modales). Styles dans
-  `styles/footer.scss` (chrome `.site-footer` de l'app + pastille `.cookie-btn` partagée + pluie ;
+  `styles/footer.scss` (chrome `.site-footer` de l'app + emoji discret `.cookie-egg` partagé + pluie ;
   le `.v-footer` de la vitrine garde son chrome marketing dans `vitrine.scss`).
 - **`unlocks-view.ts`** — vitrines de déblocages (issue #28) : barre de l'accueil
   (`renderRewardNav` : boutons « Récompenses » / « Trophées » avec compteurs),

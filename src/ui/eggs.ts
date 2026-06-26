@@ -128,10 +128,19 @@ export function mountForestEgg(): void {
    ne pas « bumper » la récence du profil — à chaque retour sur l'accueil. */
 let ambientSince = 0;
 
+// En mode DEV uniquement (`npm run dev`), la luciole apparaît à presque chaque
+// retour sur l'accueil pour faciliter le test. En prod et en test (build /
+// Vitest), MODE ≠ 'development' → la rareté normale (decideAmbient) s'applique.
+const DEV_AMBIENT = import.meta.env.MODE === 'development';
+
 export function maybeShowAmbient(): void {
 	if (!ambiantAutorise()) return;
 	const home = homeEl();
 	if (!home || home.querySelector('.egg-luciole')) return; // déjà une en vol
+	if (DEV_AMBIENT) {
+		spawnLuciole(home); // test facilité : pas de tirage, on la montre
+		return;
+	}
 	const { show, next } = decideAmbient(ambientSince, Math.random());
 	ambientSince = next;
 	if (show) spawnLuciole(home);
@@ -142,13 +151,19 @@ function spawnLuciole(home: HTMLElement): void {
 	l.className = 'egg-luciole';
 	l.setAttribute('aria-hidden', 'true');
 	l.textContent = '✨';
-	// Frange HAUTE resserrée (≈ 9–16 vh) : sous la barre d'outils, au-dessus du
-	// gros du contenu interactif (avis designer #331).
-	l.style.top = `${9 + Math.random() * 7}vh`;
-	const vie = window.setTimeout(() => l.remove(), 9000); // traversée non attrapée → s'en va
+	// Léger décalage vertical de base (un peu de variété d'un vol à l'autre) ; la
+	// grande trajectoire courbe est portée par l'animation egg-luciole-fly.
+	l.style.top = `${Math.random() * 6}vh`;
+	const vie = window.setTimeout(() => l.remove(), 24500); // traversée non attrapée → s'en va
 	l.addEventListener('click', () => {
 		window.clearTimeout(vie);
 		if (markEggFound('luciole')) renderEggAlbumNav();
+		// Fige la luciole à sa position visuelle courante avant le « pop » de capture :
+		// sinon, en retirant l'animation de vol, left/transform reviendraient à leur
+		// base (hors écran) et la capture serait invisible.
+		const r = l.getBoundingClientRect();
+		l.style.left = `${r.left}px`;
+		l.style.top = `${r.top}px`;
 		l.classList.add('egg-luciole-caught');
 		window.setTimeout(() => l.remove(), 380);
 	});
@@ -177,7 +192,7 @@ function eggCardHTML(e: EggDef): string {
 
 function albumContentHTML(): string {
 	const cards = foundEggs().map(eggCardHTML).join('');
-	return `<p class="rewards-sub">Les petites surprises que tu as découvertes. Touche une carte pour la rejouer&nbsp;!</p>
+	return `<p class="rewards-sub">Les petites surprises que tu as découvertes.</p>
     <div class="egg-album-grid">${cards}</div>`;
 }
 

@@ -93,7 +93,24 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   de vol de focus ; **double garde mouvement réduit** (`anim-reduced` OU `prefers-reduced-motion`,
   `mouvementReduit`) qui dégrade les eggs d'exploration en simple **changement d'état** (pas de
   particules) et **coupe l'ambiant** ; l'ambiant est aussi coupé par l'aménagement encadrant
-  `apparitionsSurprises()`. Styles dans `styles/eggs.scss`.
+  `apparitionsSurprises()`. L'egg **« pluie de cookies »** (#336, famille `visible`) fait
+  exception au reste : son rendu et son déclencheur vivent dans le module partagé `footer.ts`
+  (ci-dessous), `eggs.ts` n'en expose que le versant ALBUM `recordCookieEgg` (range le souvenir
+  au 1er clic, **côté app seulement** où l'album existe ; `main.ts` le passe comme callback à
+  `initFooterCookie`). Styles dans `styles/eggs.scss`.
+- **`footer.ts`** (#336) — **pied de page global**, module **PARTAGÉ** par l'app (`main.ts`)
+  ET la vitrine (`vitrine.ts`). VOLONTAIREMENT sans dépendance à la couche stockage / profils /
+  eggs (la vitrine est statique) : `fillFooterYear()` renseigne l'année du copyright dans les
+  `[data-footer-year]` ; `initFooterCookie(onTrigger?)` câble le bouton `#footerCookie` et joue
+  l'easter egg **« pluie de cookies »** `cookieRain()` (averse BORNÉE d'emojis 🍪 qui tombent,
+  se posent en bas et qu'on peut croquer — miettes ; idempotente tant qu'une averse est en cours,
+  auto-nettoyée). `onTrigger` (optionnel) est appelé AVANT la pluie : l'app y passe
+  `recordCookieEgg` (album), la vitrine ne passe rien. **Double garde mouvement réduit** lue
+  **directement dans le DOM** (`html.anim-reduced` + `prefers-reduced-motion`, pour rester
+  indépendant de la couche profils que la vitrine ne charge pas) → version posée sans chute, le
+  clic restant récompensé. Couche `aria-hidden`, jamais bloquante (sous les modales). Styles dans
+  `styles/footer.scss` (chrome `.site-footer` de l'app + pastille `.cookie-btn` partagée + pluie ;
+  le `.v-footer` de la vitrine garde son chrome marketing dans `vitrine.scss`).
 - **`unlocks-view.ts`** — vitrines de déblocages (issue #28) : barre de l'accueil
   (`renderRewardNav` : boutons « Récompenses » / « Trophées » avec compteurs),
   ouverture des **modales dédiées** `openRecompenses` (paliers de niveau : rangs,
@@ -158,9 +175,14 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   `runComplet/Express/Lecon/Revision`), `setToolbar`, `afterStart`, état de
   session. `setToolbar` porte un drapeau **`guide`** (#330) qui affiche le bouton
   **« ? »** (`#btnGuide`, rejeu du guide de 1re visite) — **accueil seulement**, comme
-  `print` ne sort qu'en exercice. **Écran de choix de mode** (#69) : `showModeChoice`
-  (catalogue) / `showOrthoModeView` (ortho) — affiché quand une leçon expose plusieurs
-  modes.
+  `print` ne sort qu'en exercice. Il bascule aussi la classe **`body.session-active`**
+  (#336 : vraie quand `currentMode !== null` ⇔ une session est en cours — exercice /
+  sprint / révision), point de passage commun à tous les écrans ; le CSS masque alors le
+  pied de page et une pluie de cookies résiduelle (« rien de distrayant en plein
+  effort »). EXCEPTION : le runner d'orthographe (`showOrthoRunView`) est un écran
+  d'effort qui **ne pose pas** `currentMode` → il ajoute la classe lui-même après
+  `setToolbar`. **Écran de choix de mode** (#69) : `showModeChoice` (catalogue) /
+  `showOrthoModeView` (ortho) — affiché quand une leçon expose plusieurs modes.
 
 ## Runners d'exercice
 

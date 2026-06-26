@@ -536,6 +536,23 @@
 		<div class="home-foret" id="vitrineForet" aria-hidden="true"></div>
 
 		<footer class="v-footer">
+			<p class="v-footer-copy">
+				© <span data-footer-year>2026</span> Ludaskia — tous droits réservés.
+			</p>
+			<p>
+				Ce site n'utilise pas de cookies.
+				<!-- Clin d'œil « pluie de cookies » (#336) : déclencheur visible et assumé,
+				     même jouet que l'app (cf. ui/footer.ts). Ici sans album (la vitrine ne
+				     charge pas la couche eggs). -->
+				<button
+					type="button"
+					class="cookie-btn"
+					id="footerCookie"
+					aria-label="Faire tomber une pluie de cookies"
+				>
+					Sauf les bons&nbsp;! <span aria-hidden="true">🍪</span>
+				</button>
+			</p>
 			<p>
 				Le code source de Ludaskia est consultable.
 				<a class="v-gh" href="https://github.com/ThibautDemare/Ludaskia">

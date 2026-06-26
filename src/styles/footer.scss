@@ -1,0 +1,230 @@
+/* Pied de page global (#336) + easter egg « pluie de cookies ».
+   Importé par les DEUX entrées (app : main.ts ; vitrine : vitrine.ts) car la
+   pluie est partagée. Le chrome du pied de page de l'APP vit ici (.site-footer) ;
+   celui de la vitrine reste dans vitrine.scss (.v-footer, registre marketing).
+   La pastille cookie (.cookie-btn) est commune et auto-portante (lisible sur fond
+   clair comme foncé). Toutes les animations respectent le DOUBLE garde maison
+   (réglage profil `html.anim-reduced` ET préférence système `prefers-reduced-motion`).
+   Décor expressif (emoji), pas d'icône fonctionnelle. */
+
+/* ============================================================
+   Pied de page de l'APPLICATION (.site-footer)
+   ============================================================ */
+/* Socle posé SOUS la bande forêt décorative (empilement, jamais superposition) :
+   ciel → cime des arbres → « terre » du pied de page. Couleur de marque foncée
+   (suit le thème) ; texte clair garanti ≥ AA. */
+.site-footer {
+	margin-top: 24px;
+	padding: 22px 18px calc(22px + env(safe-area-inset-bottom, 0px));
+	background: var(--accent-dark);
+	color: var(--on-accent);
+	text-align: center;
+	font-size: 0.9rem;
+	line-height: 1.5;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+}
+.site-footer-info {
+	margin: 0;
+}
+.site-footer-gh {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--on-accent);
+	font-weight: 700;
+	text-decoration: underline;
+}
+.site-footer-gh .ph-icon {
+	width: 1.2em;
+	height: 1.2em;
+}
+.site-footer-gh:focus-visible {
+	outline: 3px solid var(--on-accent);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+/* Pendant une session (exercice, sprint, révision : body.session-active, posé
+   par setToolbar) : on retire le pied de page ET une éventuelle pluie résiduelle,
+   pour ne rien offrir de distrayant au pire moment (cohérent avec le contrat
+   « jamais pendant l'effort » des eggs #331). */
+body.session-active .site-footer,
+body.session-active .cookie-rain-layer {
+	display: none;
+}
+
+/* ============================================================
+   Pastille cookie (.cookie-btn) — déclencheur VISIBLE, partagé app + vitrine
+   ============================================================ */
+/* Vrai bouton (focusable, cible tactile généreuse) : la phrase « …sauf les
+   bons ! 🍪 » EST l'affordance. Couleurs chaudes AUTO-PORTANTES (fixes, pas les
+   tokens --warn* qui s'inversent en thème Nuit) : un cookie reste un cookie quel
+   que soit le thème, et le texte brun foncé garde un contraste ≥ AA (≈ 7,6:1 sur
+   le fond crème) partout — app (socle foncé) comme vitrine (fond clair). */
+.cookie-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 44px;
+	margin-left: 6px;
+	padding: 6px 14px;
+	border: 2px solid #e6a93a;
+	border-radius: 999px;
+	background: #fff1cf;
+	color: #6d4300;
+	font: inherit;
+	font-weight: 800;
+	cursor: pointer;
+	transition:
+		transform 0.08s ease,
+		box-shadow 0.15s ease;
+}
+.cookie-btn:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 3px 10px rgb(0 0 0 / 18%);
+}
+.cookie-btn:active {
+	transform: translateY(0) scale(0.96);
+}
+/* Focus visible adapté au contexte : contour clair sur le socle foncé de l'app,
+   contour foncé sur le fond clair de la vitrine (≥ 4,5:1 des deux côtés). */
+.cookie-btn:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 2px;
+}
+.site-footer .cookie-btn:focus-visible {
+	outline-color: var(--on-accent);
+}
+
+/* ============================================================
+   Pluie de cookies (couche + items + miettes)
+   ============================================================ */
+/* Couche plein écran NON bloquante (pointer-events: none) : seuls les cookies
+   captent le tap. Au-dessus du contenu et de la barre, mais SOUS les modales
+   (z 9999+) — la pluie ne masque jamais une vraie boîte de dialogue. */
+.cookie-rain-layer {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	overflow: hidden;
+	z-index: 200;
+}
+
+/* Un cookie qui tombe et SE POSE en bas (cible fixe, facile à croquer pour un
+   doigt d'enfant) — on ne demande jamais d'attraper en plein vol.
+   IMPORTANT : l'état de base est le REPOS (en bas). La chute est une animation
+   `both` qui part du haut (0 %) et tient le repos à la fin (100 %). Ainsi, si
+   l'animation est coupée (mouvement réduit), le cookie reste posé en bas — jamais
+   bloqué hors écran. */
+.cookie-rain-item {
+	position: fixed;
+	bottom: 12px;
+	font-size: clamp(28px, 6vw, 40px);
+	line-height: 1;
+	pointer-events: auto;
+	cursor: pointer;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-touch-callout: none;
+	animation: cookie-fall var(--fall, 3s) cubic-bezier(0.4, 0.55, 0.5, 1) both;
+	will-change: transform;
+}
+/* Cible tactile généreuse (~56 px) SANS grossir le glyphe (centrée sur le cookie). */
+.cookie-rain-item::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 56px;
+	height: 56px;
+	transform: translate(-50%, -50%);
+}
+@keyframes cookie-fall {
+	0% {
+		transform: translateY(-118vh) rotate(0);
+		opacity: 0;
+	}
+	8% {
+		opacity: 1;
+	}
+	82% {
+		transform: translateY(0) rotate(var(--spin, 18deg));
+	}
+	90% {
+		/* mini-rebond d'arrivée */
+		transform: translateY(-12px) rotate(var(--spin, 18deg));
+	}
+	100% {
+		transform: translateY(0) rotate(var(--spin, 18deg));
+		opacity: 1;
+	}
+}
+
+/* Croquer : le cookie éclate (réduit + s'efface). */
+.cookie-rain-item.cookie-rain-eaten {
+	animation: cookie-eaten 0.34s ease forwards;
+	pointer-events: none;
+}
+@keyframes cookie-eaten {
+	0% {
+		transform: scale(1);
+		opacity: 1;
+	}
+	35% {
+		transform: scale(1.25);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(0.2);
+		opacity: 0;
+	}
+}
+
+/* Miettes : quelques points bruns qui retombent et s'effacent. */
+.cookie-crumb {
+	position: fixed;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: #a9742f;
+	pointer-events: none;
+	transform: translate(-50%, -50%);
+	animation: cookie-crumb 0.55s ease-out forwards;
+}
+@keyframes cookie-crumb {
+	0% {
+		opacity: 1;
+		transform: translate(-50%, -50%);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(calc(-50% + var(--cx, 0px)), calc(-50% + 16px));
+	}
+}
+
+/* Double garde mouvement réduit : pas de chute, pas de rebond, pas de miettes.
+   Le cookie apparaît posé en bas (base = repos), reste cliquable (le JS le retire
+   au tap), et le clic est récompensé par sa disparition — sans agitation. */
+@media (prefers-reduced-motion: reduce) {
+	.cookie-rain-item,
+	.cookie-rain-item.cookie-rain-eaten {
+		animation: none;
+		opacity: 1;
+		transform: none;
+	}
+	.cookie-crumb {
+		display: none;
+	}
+}
+html.anim-reduced .cookie-rain-item,
+html.anim-reduced .cookie-rain-item.cookie-rain-eaten {
+	animation: none;
+	opacity: 1;
+	transform: none;
+}
+html.anim-reduced .cookie-crumb {
+	display: none;
+}

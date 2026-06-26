@@ -668,6 +668,17 @@ body.vitrine {
 	color: var(--grey);
 	font-size: 0.95rem;
 }
+/* Plusieurs lignes désormais (copyright, « sans cookies » + clin d'œil, code
+   source) : un peu d'air entre elles, et un copyright discret (#336). */
+.v-footer p {
+	margin: 8px 0;
+}
+.v-footer-copy {
+	/* --grey (≈ 6,9:1 sur --page-bg), pas --muted (≈ 2,3:1, échec AA pour du texte) :
+	   même correctif que dans accessibility.scss. */
+	color: var(--grey);
+	font-size: 0.85rem;
+}
 .v-footer a {
 	color: var(--accent-dark);
 	font-weight: 600;

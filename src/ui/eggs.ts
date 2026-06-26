@@ -216,6 +216,15 @@ function hideEggAlbum(): void {
 	if (ov) ov.style.display = 'none';
 }
 
+/* ---------- Egg « pluie de cookies » (#336) — côté album ----------
+   Le rendu de la pluie et le câblage du bouton vivent dans ui/footer.ts (module
+   PARTAGÉ app + vitrine, sans dépendance stockage). Ici, on n'expose que le
+   versant ALBUM : ranger le souvenir au premier déclenchement (côté app, où
+   l'album existe). Idempotent (markEggFound ne range qu'une fois). */
+export function recordCookieEgg(): void {
+	if (markEggFound('pluie-de-cookies')) renderEggAlbumNav();
+}
+
 /* ---------- Câblage (appelé une fois au chargement) ---------- */
 export function initEggs(): void {
 	// Egg A : délégation sur le conteneur stable (#progression est re-rendu en

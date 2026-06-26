@@ -110,9 +110,24 @@ describe('album des trouvailles', () => {
 		expect(foundEggs().map((e) => e.id)).toEqual(['luciole']);
 	});
 
-	it('catalogue v1 : 3 eggs, ids et familles attendus', () => {
-		expect(EGGS.map((e) => e.id)).toEqual(['mascotte-rieuse', 'ecureuil-foret', 'luciole']);
+	it('catalogue : ids et familles attendus (dont l’egg cookie #336)', () => {
+		expect(EGGS.map((e) => e.id)).toEqual([
+			'mascotte-rieuse',
+			'ecureuil-foret',
+			'luciole',
+			'pluie-de-cookies',
+		]);
 		expect(getEgg('luciole')?.family).toBe('ambient');
 		expect(getEgg('mascotte-rieuse')?.family).toBe('exploration');
+		// L'egg cookie a un déclencheur OUVERT (pied de page), d'où la famille 'visible'.
+		expect(getEgg('pluie-de-cookies')?.family).toBe('visible');
+		expect(getEgg('pluie-de-cookies')?.emoji).toBe('🍪');
+	});
+
+	it('range la pluie de cookies dans l’album (1re fois seulement)', () => {
+		// Même chemin idempotent que les autres eggs : recordCookieEgg() s'appuie dessus.
+		expect(markEggFound('pluie-de-cookies')).toBe(true);
+		expect(markEggFound('pluie-de-cookies')).toBe(false);
+		expect(foundEggs().map((e) => e.id)).toEqual(['pluie-de-cookies']);
 	});
 });

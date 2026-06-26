@@ -302,8 +302,10 @@ propre doc de conception : `docs/design-orthographe.md`.
   `gSnapshot`), dont des groupes **par matière** et **par catégorie** générés
   depuis le catalogue.
 - **`eggs.ts`** (#331) — **easter eggs**, module **PUR** (aucun accès DOM, testable
-  comme `unlocks.ts`) : catalogue déclaratif `EGGS` (3 eggs v1, familles `exploration` /
-  `ambient` ; `getEgg`), **album** des trouvailles persisté par profil (clé **dédiée**
+  comme `unlocks.ts`) : catalogue déclaratif `EGGS` (4 eggs v1, familles `EggFamily` =
+  `exploration` / `ambient` / **`visible`** — ce dernier (#336) = déclencheur OUVERT et
+  assumé, p. ex. l'icône cookie du pied de page ; `getEgg`), **album** des trouvailles
+  persisté par profil (clé **dédiée**
   `ludaskia_eggs`, **disjointe** de l'XP/étoiles/trophées) — `markEggFound` **idempotent**
   (renvoie `true` à la 1re découverte), `foundEggIds`/`foundEggs` (ordre de découverte,
   **filtrent les ids orphelins** d'un egg retiré du catalogue), `hasFoundEgg` —, et la

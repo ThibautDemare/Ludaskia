@@ -11,6 +11,8 @@
 import './styles/base.scss'; // tokens (:root), police Nunito, reset
 import './styles/foret.scss'; // bande forêt full-bleed + animation « vent » (prefers-reduced-motion)
 import './styles/vitrine.scss';
+import './styles/footer.scss'; // pied de page partagé + pluie de cookies (#336)
+import { fillFooterYear, initFooterCookie } from './ui/footer';
 
 // Bande décorative « forêt » : même SVG pré-généré que l'accueil de l'app,
 // inséré dans le DOM (pour que l'oscillation respecte « animations réduites »).
@@ -44,3 +46,8 @@ if (aUnProfil()) {
 		el.hidden = false;
 	});
 }
+
+// Pied de page (#336) : année du copyright + clin d'œil « pluie de cookies ».
+// Sur la vitrine, c'est un pur jouet (pas de couche eggs / d'album à charger).
+fillFooterYear();
+initFooterCookie();

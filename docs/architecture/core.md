@@ -23,7 +23,8 @@ propre doc de conception : `docs/design-orthographe.md`.
   `PROFILES_KEY`, et `setOnDataWrite(fn)` (hook appelé après chaque écriture de
   donnée de profil — branché depuis `main.ts`).
 - **`profiles.ts`** — profils (UUID, préfixe, `updatedAt`), `initProfiles`,
-  export/import. La **méta de profil** porte aussi `prefs` (a11y #42),
+  export/import. La **méta de profil** porte aussi `prefs` (a11y #42, dont
+  `sansApparitionsSurprises` #331 — accesseur `apparitionsSurprises()`, vrai par défaut),
   `niveauReference` et `niveauParMatiere` (classe scolaire #225) — champs **additifs**
   (format export `v2` inchangé), emportés par l'export, survivent à « Réinitialiser ».
   `applyActive()` déclenche les migrations idempotentes (`migrateNiveauNamespacing`
@@ -291,6 +292,17 @@ propre doc de conception : `docs/design-orthographe.md`.
   `updateGoal`) et trophées (`TROPHIES`, `tiers()`, `evaluateTrophies`,
   `gSnapshot`), dont des groupes **par matière** et **par catégorie** générés
   depuis le catalogue.
+- **`eggs.ts`** (#331) — **easter eggs**, module **PUR** (aucun accès DOM, testable
+  comme `unlocks.ts`) : catalogue déclaratif `EGGS` (3 eggs v1, familles `exploration` /
+  `ambient` ; `getEgg`), **album** des trouvailles persisté par profil (clé **dédiée**
+  `ludaskia_eggs`, **disjointe** de l'XP/étoiles/trophées) — `markEggFound` **idempotent**
+  (renvoie `true` à la 1re découverte), `foundEggIds`/`foundEggs` (ordre de découverte,
+  **filtrent les ids orphelins** d'un egg retiré du catalogue), `hasFoundEgg` —, et la
+  **décision d'apparition ambiante** `decideAmbient(ambientSince, roll)` (fonction **pure**,
+  `roll` injecté → aucun `Math.random` dans `core`, conforme #41) : **plancher** anti-malchance
+  (`AMBIENT_PITY`, apparition forcée au plus tard) + **cooldown** (`AMBIENT_MIN_GAP`, anti-spam) +
+  tirage `AMBIENT_CHANCE` entre les deux. **Strictement hors économie de jeu** (aucune XP /
+  étoile / graine) — cf. [Gamification](gamification.md). Rendu et déclencheurs : `ui/eggs.ts`.
 - **`unlocks.ts`** — déblocages cosmétiques **dérivés du niveau** (issue #28),
   module **pur** sans stockage ni migration : **rangs** (`RANGS`, `titreDuNiveau`),
   **mascotte évolutive** (`MASCOTTE` à 9 formes œuf→aigle, `mascotteDuNiveau` ; chaque

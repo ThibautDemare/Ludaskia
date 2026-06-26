@@ -67,11 +67,15 @@ solide). L'enfant n'a pas à être présent quand l'encadrant épingle.
 
 **Réglages déplacés hors de portée de l'enfant** (par UUID consulté) : la **« Classe
 scolaire »** (`setNiveauReferenceFor`/`setNiveauMatiereFor`) et les **« Aménagements »**
-dys/attention — *masquer le minuteur* + *lecture auto des consignes* (`setPrefFor`, avis
-`specialiste-troubles-apprentissage`). Le **« Mon confort »** (réduire les animations,
-confort de lecture) reste côté enfant (auto-régulation immédiate, coût d'erreur nul) ;
-un aménagement actif est rappelé en lecture seule sur « Mon espace » (« réglé par un
-adulte »). L'écoute TTS **à la demande** reste toujours dispo côté enfant.
+dys/attention — *masquer le minuteur* + *lecture auto des consignes* + *désactiver les
+apparitions surprises* (`setPrefFor`, avis `specialiste-troubles-apprentissage`). Ce
+dernier (#331, `sansApparitionsSurprises`) coupe l'**easter egg ambiant** (la luciole qui
+passe) pour un enfant qu'un mouvement inattendu déconcentre ou qui a besoin de
+prévisibilité — il **n'affecte pas** les eggs d'exploration, déclenchés volontairement par
+l'enfant (cf. [Gamification](gamification.md)). Le **« Mon confort »** (réduire les
+animations, confort de lecture) reste côté enfant (auto-régulation immédiate, coût
+d'erreur nul) ; un aménagement actif est rappelé en lecture seule sur « Mon espace »
+(« réglé par un adulte »). L'écoute TTS **à la demande** reste toujours dispo côté enfant.
 
 ## Impression sans bascule
 

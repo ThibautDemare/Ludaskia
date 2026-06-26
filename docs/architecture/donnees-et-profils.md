@@ -24,7 +24,9 @@ depuis l'ancien `number[]` : un horodatage nu est lu en `'inconnu'` puis réécr
 format objet au prochain passage, sans perte), `ludaskia_revoir`
 (#234 : ids de leçons épinglées « à revoir » par l'encadrant → carte d'accueil de
 l'enfant), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de
-runner — voir `core/aide.ts`). Un `LessonStat` porte aussi `recentPct?` (#234 : fenêtre glissante des
+runner — voir `core/aide.ts`), `ludaskia_eggs` (#331 : ids des **easter eggs** trouvés,
+album de l'accueil — clé **dédiée et disjointe** de l'XP et des trophées, les eggs étant
+hors de l'économie de jeu, cf. `core/eggs.ts`). Un `LessonStat` porte aussi `recentPct?` (#234 : fenêtre glissante des
 derniers % d'une leçon — base de la performance **récente**, distincte du cumul
 historique de `lessonAvgPct`). **Clé GLOBALE** (non préfixée profil), comme
 `ludaskia_profiles` : `ludaskia_encadrant_lock` (#234 : `{pinHash, recoveryHash}`

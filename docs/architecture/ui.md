@@ -74,6 +74,22 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   (→ `startLecon`/`startRevisionEspacee`) via un listener posé **une seule fois** sur l'élément
   persistant ; l'état (leçon courante, mode) vit dans ses `data-*`, le contournement est
   **éphémère** (revenir sur l'accueil ré-affiche la vraie leçon du jour).
+- **`eggs.ts`** (#331) — **rendu et déclencheurs** des easter eggs (logique pure dans
+  `core/eggs.ts`). Tous ancrés sur l'**accueil**, jamais pendant un exercice / sprint /
+  saisie : egg A « chatouiller la mascotte » (`initEggs` pose un listener délégué sur
+  `#progression`, 3 taps rapprochés → cabriole `egg-giggle` + plumes), egg B « animal de
+  la forêt » (`mountForestEgg` superpose un **hotspot tactile** au SVG décoratif `#homeForet`,
+  appelé **après** l'injection du SVG dans `main.ts`, sans dépendre de sa structure), egg C
+  « luciole » (`maybeShowAmbient`, apparition ambiante via `decideAmbient`, compteur **éphémère
+  en mémoire** pour ne pas bumper la récence du profil). **Album** (`renderEggAlbumNav` peint
+  l'accès `#eggAlbumNav` — **masqué tant que rien n'a été trouvé** —, `openEggAlbum`/`hideEggAlbum`
+  modale a11y `activateModal`, n'affiche que les trouvailles, rejouables au tap). `onHomeShown`
+  (appelé par `renderHomeStats`) rafraîchit l'accès à l'album et tente une apparition ambiante.
+  **Garde-fous** : strictement gratuit (aucune XP/étoile/graine) ; visuels `aria-hidden`, jamais
+  de vol de focus ; **double garde mouvement réduit** (`anim-reduced` OU `prefers-reduced-motion`,
+  `mouvementReduit`) qui dégrade les eggs d'exploration en simple **changement d'état** (pas de
+  particules) et **coupe l'ambiant** ; l'ambiant est aussi coupé par l'aménagement encadrant
+  `apparitionsSurprises()`. Styles dans `styles/eggs.scss`.
 - **`unlocks-view.ts`** — vitrines de déblocages (issue #28) : barre de l'accueil
   (`renderRewardNav` : boutons « Récompenses » / « Trophées » avec compteurs),
   ouverture des **modales dédiées** `openRecompenses` (paliers de niveau : rangs,

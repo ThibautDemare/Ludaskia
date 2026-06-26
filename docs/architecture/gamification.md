@@ -89,6 +89,25 @@ débloquent aussi par palier : choisis dans le bloc « Préférences » de l'éc
 un réglage **« Réduire les animations »** (`ludaskia_anim`, classe `anim-reduced`), en
 complément de `prefers-reduced-motion`.
 
+## Easter eggs (#331) — DÉCOUPLÉS de l'apprentissage
+
+**Mini easter eggs** : de petites surprises de l'accueil à découvrir, **délibérément
+hors de l'économie de jeu**. Ce ne sont **pas** une mécanique de rétention : aucune
+XP / étoile / graine, aucun compteur « X/Y », aucun FOMO, **rien ne se perd** si on ne
+revient pas — la découverte EST la récompense. La persistance passe par une clé
+**dédiée et disjointe** (`ludaskia_eggs`, cf. [Données & profils](donnees-et-profils.md)) :
+les eggs ne polluent jamais l'XP ni les trophées. Logique pure dans `core/eggs.ts`,
+rendu/déclencheurs dans `ui/eggs.ts` (cf. [`core/`](core.md) et [`ui/`](ui.md)).
+
+Catalogue v1 = **3 eggs**, deux familles : **exploration** (déclenchés volontairement
+par l'enfant — chatouiller la mascotte, un animal caché dans la bande forêt) et
+**ambient** (une luciole rare qui traverse parfois l'accueil). L'**album de surprises**
+(modale, accès masqué tant que rien n'a été trouvé) n'affiche **que les trouvailles** —
+jamais de liste des eggs non trouvés, de cases vides ni de compteur — et chaque carte
+se rejoue au tap. L'apparition ambiante est coupée par l'aménagement encadrant
+**« apparitions surprises »** et par le mouvement réduit (cf. Accessibilité dans
+[`ui/`](ui.md)).
+
 ## Règle des 60 %
 
 **Règle des 60 %** : un bilan/leçon ne « compte » (temps, record, étoile,

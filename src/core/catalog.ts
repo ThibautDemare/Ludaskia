@@ -18,7 +18,8 @@ import { CHAMPS_LESSONS } from '../data/francais/champs-lexicaux';
 import { GRAMMAIRE_SUJET_LESSONS } from '../data/francais/grammaire-sujet';
 import { CLASSES_LESSONS } from '../data/francais/classes-mots';
 import { PHRASES_LESSONS } from '../data/francais/phrases';
-import { ACCORD_LESSONS } from '../data/francais/accords';
+import { ACCORD_LESSONS, ACCORD_CM1_LESSONS } from '../data/francais/accords';
+import { ACCORD_GN_LESSONS } from '../data/francais/accord-groupe-nominal';
 import { PARTICIPE_LESSONS } from '../data/francais/participe-passe-etre';
 import { HOMOPHONE_LESSONS } from '../data/francais/homophones';
 import { MBP_LESSONS } from '../data/francais/mbp';
@@ -455,6 +456,19 @@ const ACCORD_LESSONS_DEFS: LessonDef[] = ACCORD_LESSONS.map((d) => ({
 	rubrique: d.rubrique,
 }));
 
+/* ---------- Orthographe — accords CM1 (#243) ----------
+   Même moteur de transformation (saisie/QCM) que le CE2, banque plus exigeante
+   (terminaisons -er/-ère, -f/-ve, -et/-ète, -eur/-trice, -al/-aux). Taguée CM1. */
+const ACCORD_CM1_LESSONS_DEFS: LessonDef[] = ACCORD_CM1_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'francais',
+	category: ORTHO_CATEGORY_ID,
+	levels: ['cm1'],
+	exerciseType: d.exerciseType,
+	rubrique: d.rubrique,
+}));
+
 /* ---------- Orthographe — accord du participe passé avec « être » (#205) ----------
    Transformation guidée + QCM 3 options (rubrique « Les accords »). Sensibilisation
    CE2 à charge cognitive élevée → signalée « plus difficile » et exclue du sprint
@@ -465,6 +479,23 @@ const PARTICIPE_LESSONS_DEFS: LessonDef[] = PARTICIPE_LESSONS.map((d) => ({
 	subject: 'francais',
 	category: ORTHO_CATEGORY_ID,
 	levels: ['ce2'],
+	exerciseType: d.exerciseType,
+	rubrique: d.rubrique,
+	excludeFromSprint: true,
+	repere: 'plus-difficile',
+}));
+
+/* ---------- Orthographe — accord dans le groupe nominal (#243, CM1) ----------
+   QCM rigoureux (calqué sur le participe passé) : on montre un groupe nominal
+   court au singulier, l'enfant choisit le groupe ENTIÈREMENT accordé parmi 3
+   propositions dont chaque distracteur casse exactement une marque. Notion à
+   charge cognitive élevée → exclue du sprint et signalée « plus difficile ». */
+const ACCORD_GN_LESSONS_DEFS: LessonDef[] = ACCORD_GN_LESSONS.map((d) => ({
+	id: d.id,
+	label: d.label,
+	subject: 'francais',
+	category: ORTHO_CATEGORY_ID,
+	levels: ['cm1'],
 	exerciseType: d.exerciseType,
 	rubrique: d.rubrique,
 	excludeFromSprint: true,
@@ -677,7 +708,9 @@ const ALL_LESSONS: LessonDef[] = [
 	...FRENCH_LESSONS,
 	...CONJ_META_LESSONS_DEFS,
 	...ACCORD_LESSONS_DEFS,
+	...ACCORD_CM1_LESSONS_DEFS,
 	...PARTICIPE_LESSONS_DEFS,
+	...ACCORD_GN_LESSONS_DEFS,
 	...HOMOPHONE_LESSONS_DEFS,
 	...MBP_LESSONS_DEFS,
 	...VOCAB_LESSONS_DEFS,

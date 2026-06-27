@@ -125,19 +125,24 @@ présent dérivées et shardées partent au client.
 
 ### Orthographe
 
-#### `francais/accords.ts` (#109)
+#### `francais/accords.ts` (#109, #243)
 
 catégorie **Orthographe**, rubrique « Les
-accords » — 2 leçons de **transformation** (pluriel/féminin) `fr-accords-reguliers`
-et `fr-accords-irreguliers` (séparation règle/exception, avis pédagogique).
-`accordType(reguliers)` fabrique un `ExerciseType` **deux modes** (saisie/QCM,
-moteur de la conjugaison) : `generate()` tire une transformation (« Mets au
-pluriel : grand → @ ») dont la réponse est la **forme stockée** (jamais déduite) ;
-QCM aux distracteurs = **vraies formes** (jamais une faute affichée) ; **repli
-mots longs** = les formes cibles longues ne sont proposées **qu'en QCM** (chaque
-mode reste stable en type, contrainte du routage des runners). La leçon des
-réguliers complète son pool avec les **mots fléchis de la banque** du profil
-(`MotOrtho.formes`, saisis par le parent), qui « remontent » dans les exercices.
+accords » — 2 leçons CE2 de **transformation** (pluriel/féminin) `fr-accords-reguliers`
+et `fr-accords-irreguliers` (séparation règle/exception, avis pédagogique) **plus**
+une leçon CM1 `fr-accords-cm1` (« Pluriel et féminin — au CM1 », #243, banque plus
+exigeante : adjectifs -er/-ère, -f/-ve, -et/-ète sans doublement, -eur/-euse &
+-teur/-trice, -al/-aux + noms à pluriel -aux, avec le piège festival/festivals).
+`accordType({ banque, inclureFlechies? })` fabrique un `ExerciseType` **deux modes**
+(saisie/QCM, moteur de la conjugaison) à partir d'une **banque** `FormesAccord[]` :
+`generate()` tire une transformation (« Mets au pluriel : grand → @ ») dont la
+réponse est la **forme stockée** (jamais déduite) ; QCM aux distracteurs = **vraies
+formes** (jamais une faute affichée) ; **repli mots longs** = les formes cibles
+longues ne sont proposées **qu'en QCM** (chaque mode reste stable en type, contrainte
+du routage des runners). Seule la leçon des réguliers active `inclureFlechies` :
+elle complète son pool avec les **mots fléchis de la banque** du profil
+(`MotOrtho.formes`, saisis par le parent), qui « remontent » dans les exercices ;
+les leçons irréguliers et CM1 gardent une **banque prédéfinie pure** (pas de mixage).
 
 #### `francais/participe-passe-etre.ts` (#205)
 
@@ -152,6 +157,27 @@ terminaison** (`<span class="term">`), sujet en gras via `enonceTexte`, **option
 (nouveau `Exercise.choicesEmpilees` → `.sprint-choices--pile`) et **pas de TTS** (`parle: ''`,
 formes homophones). Leçon signalée **« plus dur »** (nouveau `LessonDef.repere`, badge ambre)
 et **exclue du sprint** (charge cognitive, notion vue en avance).
+
+#### `francais/accord-groupe-nominal.ts` (#243, CM1)
+
+catégorie **Orthographe**, rubrique « Les accords » — leçon **« Accorder tout le
+groupe »** (`fr-accords-groupe-nominal`), **QCM rigoureux** calqué sur le participe
+passé : on montre un **groupe nominal** court au singulier (« le petit chat → @ »),
+l'enfant choisit le groupe **entièrement accordé** parmi **3 options**. Chaque
+distracteur **casse exactement une marque** (déterminant **OU** adjectif **OU** nom)
+en laissant un constituant à sa forme de départ — tous les tokens restent de **vraies
+formes** (la bonne réponse et les distracteurs sont **dérivés par assemblage** des
+formes stockées de chaque constituant, jamais une chaîne mal accordée tapée à la
+main). Modèle de données : chaque `GroupeNominal` liste ses `constituants`
+(`{ depart, cible, marque }`) dans l'ordre d'affichage (déterminant + nom,
+éventuellement + adjectif antéposé **ou** postposé ; 3 max). Accords **réguliers**
+seulement (-s / -e ; le/les, la/les, un/des, une/des, **de/des** pour le pluriel
+indéfini antéposé) — les irréguliers relèvent de `accords.ts`. UX : **surlignage
+`.term`** de la marque sur **chaque** constituant et **uniformément** sur tous les
+choix (déterminant entier, suffixe d'adjectif/nom via préfixe commun ; un suffixe
+vide reste un span vide, donc ne trahit pas la réponse), **options empilées**, **pas
+de TTS** (petit/petits homophones), **explication unique** de la chaîne d'accord.
+Leçon **« plus dur »** et **exclue du sprint**.
 
 #### `francais/homophones.ts` (#110)
 

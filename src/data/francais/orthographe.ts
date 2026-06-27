@@ -1,7 +1,9 @@
 /* ============================================================
-   Données statiques des leçons d'orthographe prédéfinies (CE2).
-   Mots invariables et nombres en lettres, découpés en leçons courtes
-   et numérotées. Proposés en complément des listes du parent.
+   Données statiques des leçons d'orthographe prédéfinies (CE2, puis
+   CM1 #243). Mots invariables et nombres en lettres, découpés en leçons
+   courtes et numérotées. Proposés en complément des listes du parent.
+   Chaque leçon porte un `niveau` ; la visibilité est CUMULATIVE (un CM1
+   voit les leçons CE2 ET CM1 — cf. listOrthoLecons).
    ------------------------------------------------------------
    Conventions : mots en MINUSCULES (on les écrit ainsi dans une
    phrase ; la vérification est stricte, trim + NFC). Apostrophe
@@ -740,5 +742,83 @@ export const ORTHO_PREDEF: LeconOrthoPredef[] = [
 			'mouillé',
 			'sportif',
 		),
+	},
+	/* ----------------------------------------------------------------
+	   Orthographe lexicale CM1 (#243) — 4 leçons regroupées par type de
+	   piège, dans la continuité des leçons ce2. Filtrage CUMULATIF
+	   (listOrthoLecons) : visibles au CM1, jamais au CE2. Aucun mot déjà
+	   présent dans une liste ce2 n'est redonné (un mot est unique dans toute
+	   la banque) : « longtemps » (déjà invariable ce2) écarté de la liste
+	   « lettres internes » → remplacé par « comptine » (p muet interne, dans
+	   la lignée de compter/compteur ce2) ; « vers » (déjà invariable ce2)
+	   écarté de la liste « homophones ».
+	   ---------------------------------------------------------------- */
+	{
+		id: 'fr-ortho-cm1-invariables',
+		label: 'Mots invariables (CM1)',
+		niveau: 'cm1',
+		mots: m(
+			'à présent',
+			'à peine',
+			'afin que',
+			'bien que',
+			"c'est pourquoi",
+			'en effet',
+			'en revanche',
+			'par conséquent',
+			'par exemple',
+			'grâce à',
+			'quant à',
+			'tout à fait',
+		),
+	},
+	{
+		id: 'fr-ortho-cm1-finales',
+		label: 'Lettres finales muettes (CM1)',
+		niveau: 'cm1',
+		mots: [
+			...m('accord', 'aspect'),
+			c('bond', 'un bond en avant'),
+			c('bord', "le bord de l'eau"),
+			c('champ', 'le champ de blé'),
+			c('début', 'au début du film'),
+			...m('effort'),
+			c('fond', 'le fond de la mer'),
+			...m('récit', 'repas', 'succès'),
+			c('tort', 'avoir tort'),
+		],
+	},
+	{
+		id: 'fr-ortho-cm1-internes',
+		label: 'Lettres muettes dans le mot (CM1)',
+		niveau: 'cm1',
+		mots: [
+			...m('bâtiment', 'gymnase', 'programme', 'rythme'),
+			c('scène', 'la scène de théâtre'),
+			...m('thème'),
+			c('nœud', 'un nœud de cravate'),
+			...m('mystère', 'absence', 'sculpteur'),
+			c('dompter', 'dompter un lion'),
+			...m('comptine'),
+		],
+	},
+	{
+		id: 'fr-ortho-cm1-homophones',
+		label: 'Mots qui se ressemblent (CM1)',
+		niveau: 'cm1',
+		mots: [
+			h('verre', 'boire dans un verre'),
+			h('ver', 'un ver de terre'),
+			h('vert', 'un crayon vert'),
+			h('cou', 'tendre le cou'),
+			h('coup', 'donner un coup'),
+			h('coût', 'le coût du billet'),
+			h('signe', 'faire un signe de la main'),
+			h('cygne', 'le cygne sur le lac'),
+			h('chœur', 'chanter en chœur'),
+			h('cœur', 'le cœur qui bat'),
+			h('bal', 'aller au bal'),
+			h('balle', 'lancer la balle'),
+		],
 	},
 ];

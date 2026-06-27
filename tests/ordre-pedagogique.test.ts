@@ -45,8 +45,9 @@ describe('core/ordre — helpers', () => {
 		expect(ordreLecons('math', 'cm1')).toHaveLength(14);
 		expect(ordreLecons('math', 'cm1')[0]).toBe('num-comparer');
 		// Français CM1 : 52 leçons verbe×temps + 3 QCM méta (#239) + 3 leçons de grammaire
-		// « Les phrases » (#245 : type, forme, transfo négative) = 58.
-		expect(ordreLecons('francais', 'cm1')).toHaveLength(58);
+		// « Les phrases » (#245 : type, forme, transfo négative) + 2 leçons d'accords CM1
+		// (#243 : mots isolés + groupe nominal) = 60.
+		expect(ordreLecons('francais', 'cm1')).toHaveLength(60);
 		// Niveau sans ordre défini → liste vide (fallback ordre de déclaration).
 		expect(ordreLecons('math', 'cp')).toEqual([]);
 		expect(ordreLecons('inconnue' as SubjectId, 'ce2')).toEqual([]);
@@ -178,8 +179,8 @@ describe('leçon du jour', () => {
 		setNiveauReference('cm1');
 		const seq = sequenceLeconDuJour();
 		// math CM1 = 14 leçons (numération #240 + calcul mental #241 + géométrie #242),
-		// français CM1 = 58 (conjugaison #239 + grammaire « phrases » #245) → entrelacement
-		// 1:1, puis la matière la plus longue (français) seule.
+		// français CM1 = 60 (conjugaison #239 + grammaire « phrases » #245 + accords #243) →
+		// entrelacement 1:1, puis la matière la plus longue (français) seule.
 		expect(seq).toHaveLength(M_CM1.length + F_CM1.length);
 		expect(seq[0].id).toBe(M_CM1[0]); // math.cm1[0] = num-comparer
 		expect(seq[1].id).toBe(F_CM1[0]); // fr-gram-type-phrase (grammaire en tête au CM1)

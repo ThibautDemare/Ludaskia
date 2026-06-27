@@ -231,6 +231,11 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			// QCM méta de classement des verbes (tôt) : groupe puis infinitif.
 			'fr-conj-groupe',
 			'fr-conj-infinitif',
+			// Orthographe — accords CM1 (#243) sur mots ISOLÉS : terminaisons d'adjectifs plus
+			// subtiles (-er/-ère, -f/-ve, -et/-ète, -eur/-trice, -al/-aux) et noms à pluriel
+			// -aux. Travaillé TÔT (compétence cœur du CM1), comme les accords réguliers au CE2.
+			// L'accord de TOUT le groupe (fr-accords-groupe-nominal) viendra plus tard (apex).
+			'fr-accords-cm1',
 			// Futur
 			'fr-conj-etre-futur',
 			'fr-conj-avoir-futur',
@@ -275,6 +280,10 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-conj-naitre-passe_compose',
 			// QCM méta « temps simple / composé » : APRÈS le passé composé (notion introduite).
 			'fr-conj-simple-compose',
+			// Orthographe — accord de TOUT le groupe nominal (#243) : chaîne d'accord
+			// (déterminant + adjectif + nom), APEX de l'accord au CM1, signalé « plus
+			// difficile ». Placé tard : il suppose l'accord d'un mot isolé (fr-accords-cm1, plus haut).
+			'fr-accords-groupe-nominal',
 		],
 	},
 };

@@ -63,6 +63,58 @@ const ACCORDS_REGULIERS: FormesAccord[] = [
 	{ mascSing: 'maison', mascPlur: 'maisons' },
 ];
 
+/* Mots variables CM1 (#243) : adjectifs à terminaisons plus subtiles (-er/-ère,
+   -f/-ve, -et/-ète sans doublement, -eur/-euse & -teur/-trice, -al/-aux) et
+   quelques noms à pluriel -aux (avec l'exception « festival/festivals » pour le
+   piège). Banque plus exigeante que le CE2 ; elle NE MIXE PAS les mots fléchis du
+   profil (réservés à la leçon des réguliers). Aucun mot déjà présent en CE2. */
+const ACCORDS_CM1: FormesAccord[] = [
+	// Adjectifs -er / -ère.
+	{ mascSing: 'léger', femSing: 'légère', mascPlur: 'légers', femPlur: 'légères' },
+	{ mascSing: 'premier', femSing: 'première', mascPlur: 'premiers', femPlur: 'premières' },
+	{ mascSing: 'dernier', femSing: 'dernière', mascPlur: 'derniers', femPlur: 'dernières' },
+	{ mascSing: 'entier', femSing: 'entière', mascPlur: 'entiers', femPlur: 'entières' },
+	{ mascSing: 'fier', femSing: 'fière', mascPlur: 'fiers', femPlur: 'fières' },
+	{ mascSing: 'étranger', femSing: 'étrangère', mascPlur: 'étrangers', femPlur: 'étrangères' },
+	{ mascSing: 'régulier', femSing: 'régulière', mascPlur: 'réguliers', femPlur: 'régulières' },
+	// Adjectifs -f / -ve.
+	{ mascSing: 'actif', femSing: 'active', mascPlur: 'actifs', femPlur: 'actives' },
+	{ mascSing: 'vif', femSing: 'vive', mascPlur: 'vifs', femPlur: 'vives' },
+	{ mascSing: 'neuf', femSing: 'neuve', mascPlur: 'neufs', femPlur: 'neuves' },
+	{ mascSing: 'bref', femSing: 'brève', mascPlur: 'brefs', femPlur: 'brèves' },
+	{ mascSing: 'positif', femSing: 'positive', mascPlur: 'positifs', femPlur: 'positives' },
+	{ mascSing: 'négatif', femSing: 'négative', mascPlur: 'négatifs', femPlur: 'négatives' },
+	{ mascSing: 'attentif', femSing: 'attentive', mascPlur: 'attentifs', femPlur: 'attentives' },
+	// Adjectifs -et / -ète (exceptions sans doublement du t).
+	{ mascSing: 'secret', femSing: 'secrète', mascPlur: 'secrets', femPlur: 'secrètes' },
+	{ mascSing: 'discret', femSing: 'discrète', mascPlur: 'discrets', femPlur: 'discrètes' },
+	{ mascSing: 'inquiet', femSing: 'inquiète', mascPlur: 'inquiets', femPlur: 'inquiètes' },
+	{ mascSing: 'complet', femSing: 'complète', mascPlur: 'complets', femPlur: 'complètes' },
+	{ mascSing: 'incomplet', femSing: 'incomplète', mascPlur: 'incomplets', femPlur: 'incomplètes' },
+	// Adjectifs -eur / -euse & -teur / -trice.
+	{ mascSing: 'joueur', femSing: 'joueuse', mascPlur: 'joueurs', femPlur: 'joueuses' },
+	{ mascSing: 'menteur', femSing: 'menteuse', mascPlur: 'menteurs', femPlur: 'menteuses' },
+	{ mascSing: 'trompeur', femSing: 'trompeuse', mascPlur: 'trompeurs', femPlur: 'trompeuses' },
+	{ mascSing: 'directeur', femSing: 'directrice', mascPlur: 'directeurs', femPlur: 'directrices' },
+	{ mascSing: 'lecteur', femSing: 'lectrice', mascPlur: 'lecteurs', femPlur: 'lectrices' },
+	{ mascSing: 'acteur', femSing: 'actrice', mascPlur: 'acteurs', femPlur: 'actrices' },
+	// Adjectifs -al / -aux.
+	{ mascSing: 'national', femSing: 'nationale', mascPlur: 'nationaux', femPlur: 'nationales' },
+	{ mascSing: 'local', femSing: 'locale', mascPlur: 'locaux', femPlur: 'locales' },
+	{ mascSing: 'spécial', femSing: 'spéciale', mascPlur: 'spéciaux', femPlur: 'spéciales' },
+	{ mascSing: 'principal', femSing: 'principale', mascPlur: 'principaux', femPlur: 'principales' },
+	{ mascSing: 'royal', femSing: 'royale', mascPlur: 'royaux', femPlur: 'royales' },
+	{ mascSing: 'amical', femSing: 'amicale', mascPlur: 'amicaux', femPlur: 'amicales' },
+	{ mascSing: 'légal', femSing: 'légale', mascPlur: 'légaux', femPlur: 'légales' },
+	// Noms à pluriel -aux (pluriel seul).
+	{ mascSing: 'général', mascPlur: 'généraux' },
+	{ mascSing: 'végétal', mascPlur: 'végétaux' },
+	{ mascSing: 'minéral', mascPlur: 'minéraux' },
+	{ mascSing: 'canal', mascPlur: 'canaux' },
+	// Exception : pluriel régulier en -s malgré la finale -al (le piège).
+	{ mascSing: 'festival', mascPlur: 'festivals' },
+];
+
 /* Mots variables irréguliers : pluriels en -aux/-eaux/-eux, féminins spéciaux. */
 const ACCORDS_IRREGULIERS: FormesAccord[] = [
 	// Pluriels en -aux.
@@ -188,15 +240,24 @@ function banqueFlechies(): FormesAccord[] {
 	}
 }
 
-/* Fabrique l'ExerciseType d'une leçon d'accords. `reguliers` : la leçon des
-   réguliers complète son pool avec les mots fléchis de la banque du profil. */
-function accordType(reguliers: boolean): ExerciseType {
+/* Configuration d'une leçon d'accords (#243) : la banque de mots PRÉDÉFINIE de la
+   leçon et, optionnellement, l'ajout des mots fléchis du profil (listes du parent).
+   Seule la leçon des réguliers CE2 active `inclureFlechies` — les autres leçons
+   (irréguliers, CM1) gardent une banque PRÉDÉFINIE pure, sans mots du profil. */
+interface AccordConfig {
+	banque: FormesAccord[];
+	inclureFlechies?: boolean;
+}
+
+/* Fabrique l'ExerciseType d'une leçon d'accords à partir de sa banque. La leçon
+   des réguliers complète son pool avec les mots fléchis de la banque du profil. */
+function accordType(config: AccordConfig): ExerciseType {
 	return {
 		modes: ACCORD_MODE_OPTIONS,
 		consigne: 'Écris chaque mot à la forme demandée.', // #42 : nomme la tâche
 		generate(opts?: GenerateOpts): Exercise {
 			const mode = opts?.mode;
-			const base = reguliers ? [...ACCORDS_REGULIERS, ...banqueFlechies()] : ACCORDS_IRREGULIERS;
+			const base = config.inclureFlechies ? [...config.banque, ...banqueFlechies()] : config.banque;
 			// Toutes les transformations possibles (mot + transformation).
 			const paires = base.flatMap((f) => transfosDisponibles(f).map((t) => ({ f, t })));
 			const enQcm = mode === 'qcm';
@@ -224,12 +285,29 @@ export const ACCORD_LESSONS: AccordLessonDef[] = [
 		id: 'fr-accords-reguliers',
 		label: 'Pluriel et féminin — réguliers',
 		rubrique: RUBRIQUE_ACCORDS,
-		exerciseType: accordType(true),
+		exerciseType: accordType({ banque: ACCORDS_REGULIERS, inclureFlechies: true }),
 	},
 	{
 		id: 'fr-accords-irreguliers',
 		label: 'Pluriel et féminin — irréguliers',
 		rubrique: RUBRIQUE_ACCORDS,
-		exerciseType: accordType(false),
+		exerciseType: accordType({ banque: ACCORDS_IRREGULIERS }),
 	},
 ];
+
+/* Leçon CM1 (#243) : terminaisons d'adjectifs plus subtiles + noms à pluriel -aux,
+   sur le MÊME moteur deux-modes que le CE2, mais sans mixer les mots fléchis du
+   profil (banque prédéfinie pure). Déclarée à part pour la taguer levels:['cm1']
+   au catalogue (les deux leçons ci-dessus restent CE2). */
+export const ACCORD_CM1_LESSONS: AccordLessonDef[] = [
+	{
+		id: 'fr-accords-cm1',
+		label: 'Pluriel et féminin — au CM1',
+		rubrique: RUBRIQUE_ACCORDS,
+		exerciseType: accordType({ banque: ACCORDS_CM1 }),
+	},
+];
+
+/* Exposées pour les tests (vérifier le contenu des banques et l'invariant
+   « CE2 inchangé »). Pas consommées par le catalogue (qui passe par ACCORD_LESSONS). */
+export { ACCORDS_REGULIERS, ACCORDS_IRREGULIERS, ACCORDS_CM1 };

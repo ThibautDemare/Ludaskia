@@ -73,7 +73,8 @@ export function renderCategories(el: HTMLElement, subjectId: string, titleEl: HT
 			.map((c, i) => {
 				const n =
 					c.id === ORTHO_CATEGORY_ID
-						? listOrthoLecons(loadOrtho()).length + getLessonsByCategory(c.id, niveau).length
+						? listOrthoLecons(loadOrtho(), niveau).length +
+							getLessonsByCategory(c.id, niveau).length
 						: getLessonsByCategory(c.id, niveau).length;
 				// Pastille colorée + icône : carte de catégorie plus engageante (la
 				// couleur cycle pour varier ; elle double l'icône, jamais l'info seule).
@@ -228,11 +229,14 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
    Leçons prédéfinies (invariables/irréguliers) + listes du profil, plus une
    carte « + Ajouter une liste ». Pas de bilan/sprint (modes propres au runner). */
 function renderOrthoCategorie(el: HTMLElement): void {
-	const lecons = listOrthoLecons(loadOrtho());
+	// Niveau actif de la matière français : filtre CUMULATIF des dictées prédéfinies
+	// (#243) — un profil CM1 voit les listes CE2 ET CM1, un CE2 reste aux listes CE2.
+	const niveau = niveauActifMatiere('francais');
+	const lecons = listOrthoLecons(loadOrtho(), niveau);
 	// Leçons « moteur » de la catégorie Orthographe (accords #109, homophones #110) :
 	// exercices LessonDef (transformation / QCM), distincts des dictées de mots.
 	// Regroupées par rubrique, lancées par le parcours standard (saisie/QCM).
-	const moteurLecons = getLessonsByCategory(ORTHO_CATEGORY_ID, niveauActifMatiere('francais'));
+	const moteurLecons = getLessonsByCategory(ORTHO_CATEGORY_ID, niveau);
 	const stars = loadStars();
 	const predef = lecons.filter((l) => l.source === 'predefini');
 	// Listes du parent triées par date de contrôle décroissante (sans date en dernier).

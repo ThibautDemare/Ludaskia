@@ -406,6 +406,104 @@ describe('orthographe — leçons (prédéfinies + listes)', () => {
 	});
 });
 
+describe('orthographe — filtrage CUMULATIF par niveau (#243)', () => {
+	test('un profil CE2 ne voit que les leçons prédéfinies CE2', () => {
+		const s = emptyOrthoState();
+		const lecons = listOrthoLecons(s, 'ce2');
+		const ids = new Set(lecons.map((l) => l.id));
+		// Toutes les prédéfinies visibles sont des listes CE2.
+		const niveauParId = new Map(ORTHO_PREDEF.map((l) => [l.id, l.niveau]));
+		for (const l of lecons) expect(niveauParId.get(l.id)).toBe('ce2');
+		// Les listes CM1 n'apparaissent jamais au CE2.
+		expect(ids.has('fr-ortho-cm1-invariables')).toBe(false);
+		expect(ids.has('fr-ortho-cm1-homophones')).toBe(false);
+		// Le compte = exactement les prédéfinies CE2.
+		const nbCe2 = ORTHO_PREDEF.filter((l) => l.niveau === 'ce2').length;
+		expect(lecons).toHaveLength(nbCe2);
+	});
+
+	test('un profil CM1 voit les leçons CE2 ET CM1 (révision spiralaire)', () => {
+		const s = emptyOrthoState();
+		const ids = new Set(listOrthoLecons(s, 'cm1').map((l) => l.id));
+		// Échantillon CE2 toujours présent…
+		expect(ids.has('fr-ortho-invariables-1')).toBe(true);
+		// …et les 4 nouvelles listes CM1 apparaissent.
+		expect(ids.has('fr-ortho-cm1-invariables')).toBe(true);
+		expect(ids.has('fr-ortho-cm1-finales')).toBe(true);
+		expect(ids.has('fr-ortho-cm1-internes')).toBe(true);
+		expect(ids.has('fr-ortho-cm1-homophones')).toBe(true);
+		// Le compte CM1 = toutes les prédéfinies (cumul).
+		expect(listOrthoLecons(s, 'cm1')).toHaveLength(ORTHO_PREDEF.length);
+	});
+
+	test('les listes du profil restent visibles à tous les niveaux (non taguées)', () => {
+		const s = emptyOrthoState();
+		createListe(s, 'Ma liste', [{ mot: 'pirate' }]);
+		const maListe = (niveau: 'ce2' | 'cm1') =>
+			listOrthoLecons(s, niveau).find((l) => l.source === 'liste' && l.label === 'Ma liste');
+		expect(maListe('ce2')).toBeDefined();
+		expect(maListe('cm1')).toBeDefined();
+	});
+
+	test('sans niveau : toutes les prédéfinies (lookups par id robustes)', () => {
+		const s = emptyOrthoState();
+		expect(listOrthoLecons(s)).toHaveLength(ORTHO_PREDEF.length);
+	});
+});
+
+describe('orthographe — nouvelles leçons CM1 (#243)', () => {
+	const CM1_IDS = [
+		'fr-ortho-cm1-invariables',
+		'fr-ortho-cm1-finales',
+		'fr-ortho-cm1-internes',
+		'fr-ortho-cm1-homophones',
+	];
+
+	test('les 4 nouvelles leçons existent et sont taguées niveau:cm1', () => {
+		for (const id of CM1_IDS) {
+			const l = ORTHO_PREDEF.find((x) => x.id === id);
+			expect(l, `leçon ${id} manquante`).toBeDefined();
+			expect(l!.niveau).toBe('cm1');
+			expect(l!.mots.length).toBeGreaterThanOrEqual(10);
+		}
+	});
+
+	test('chaque mot est UNIQUE dans toute la banque (aucun doublon ce2 ↔ cm1)', () => {
+		// Forme normalisée (trim + NFC + casse), comme la déduplication du store.
+		const occurrences = new Map<string, string[]>();
+		for (const l of ORTHO_PREDEF) {
+			for (const mi of l.mots) {
+				const f = formeNormalisee(mi.mot);
+				const arr = occurrences.get(f) ?? [];
+				arr.push(l.id);
+				occurrences.set(f, arr);
+			}
+		}
+		// On NE tolère un partage de mot QU'entre leçons « Thème : … » (banques par sujet
+		// qui se recoupent volontairement, cf. test existant). Aucun mot CM1 ne doit
+		// réapparaître ailleurs (CE2 hors thèmes, ou autre liste CM1).
+		const cm1MotsToutes = ORTHO_PREDEF.filter((l) => CM1_IDS.includes(l.id)).flatMap((l) =>
+			l.mots.map((mi) => formeNormalisee(mi.mot)),
+		);
+		for (const f of cm1MotsToutes) {
+			const dansListes = occurrences.get(f)!;
+			expect(
+				dansListes,
+				`« ${f} » apparaît dans plusieurs leçons : ${dansListes.join(', ')}`,
+			).toEqual(dansListes.filter((id) => CM1_IDS.includes(id)));
+			expect(dansListes, `« ${f} » dupliqué entre leçons CM1`).toHaveLength(1);
+		}
+	});
+
+	test('la leçon homophones CM1 : chaque entrée porte un commeDans (indictables sans contexte)', () => {
+		const l = ORTHO_PREDEF.find((x) => x.id === 'fr-ortho-cm1-homophones')!;
+		for (const mi of l.mots) {
+			expect(mi.commeDans, `« ${mi.mot} » sans commeDans`).toBeTruthy();
+			expect(mi.homophone, `« ${mi.mot} » non taguée homophone`).toBe(true);
+		}
+	});
+});
+
 describe('orthographe — diff de correction', () => {
 	test('saisie correcte -> aucune lettre marquée', () => {
 		expect(diffCorrect('château', 'château')).toEqual([

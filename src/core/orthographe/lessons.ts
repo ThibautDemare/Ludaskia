@@ -9,6 +9,8 @@ import { ORTHO_PREDEF } from '../../data/francais/orthographe';
 import { ajouterMots, getListe, motsDeListe } from './store';
 import { nbCiblesVerbes } from './verbes';
 import type { MotOrtho, OrthoState } from './types';
+import type { SchoolLevel } from '../catalog';
+import { LEVEL_ORDER } from '../levels';
 
 export type SourceLecon = 'predefini' | 'liste';
 
@@ -22,9 +24,18 @@ export interface LeconOrthoRef {
 	createdAt?: number;
 }
 
-/** Liste unifiée des leçons d'orthographe : prédéfinies puis listes du profil. */
-export function listOrthoLecons(state: OrthoState): LeconOrthoRef[] {
-	const predef: LeconOrthoRef[] = ORTHO_PREDEF.map((l) => ({
+/** Liste unifiée des leçons d'orthographe : prédéfinies puis listes du profil.
+    Filtrage CUMULATIF par niveau (#243) : si `niveau` est fourni, on ne garde
+    que les leçons PRÉDÉFINIES dont le niveau est <= niveau actif (ordre canonique
+    de core/levels.ts). Ainsi un profil CM1 voit les listes CE2 ET CM1 (révision
+    spiralaire), un profil CE2 ne voit que les listes CE2. Sans paramètre (lookups
+    par id), aucun filtrage : toutes les prédéfinies sont visibles (robustesse).
+    Les listes du profil (source 'liste', non taguées) restent TOUJOURS visibles. */
+export function listOrthoLecons(state: OrthoState, niveau?: SchoolLevel): LeconOrthoRef[] {
+	const rangActif = niveau === undefined ? Infinity : LEVEL_ORDER.indexOf(niveau);
+	const predef: LeconOrthoRef[] = ORTHO_PREDEF.filter(
+		(l) => LEVEL_ORDER.indexOf(l.niveau) <= rangActif,
+	).map((l) => ({
 		id: l.id,
 		label: l.label,
 		source: 'predefini',

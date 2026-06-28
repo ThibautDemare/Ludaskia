@@ -792,14 +792,17 @@ export const ORTHO_PREDEF: LeconOrthoPredef[] = [
 		id: 'fr-ortho-cm1-internes',
 		label: 'Lettres muettes dans le mot (CM1)',
 		niveau: 'cm1',
+		// Uniquement des mots à lettre INTERNE muette avérée (relecture langue) :
+		// p muet (sculpteur, comptine, comptable, dompter), c muet du digramme « sc »
+		// (scène), h muet de « th »/« rh » et h interne (thème, rythme, rhume,
+		// rhinocéros, bonheur, malheur). Les pièges d'accent/de graphie (bâtiment,
+		// gymnase, mystère, programme) et les lettres FINALES muettes (nœud) ont été
+		// écartés : ils ne relèvent pas du critère « lettre muette DANS le mot ».
 		mots: [
-			...m('bâtiment', 'gymnase', 'programme', 'rythme'),
-			c('scène', 'la scène de théâtre'),
-			...m('thème'),
-			c('nœud', 'un nœud de cravate'),
-			...m('mystère', 'absence', 'sculpteur'),
+			...m('sculpteur', 'comptine', 'comptable'),
 			c('dompter', 'dompter un lion'),
-			...m('comptine'),
+			c('scène', 'la scène de théâtre'),
+			...m('thème', 'rythme', 'rhume', 'rhinocéros', 'bonheur', 'malheur'),
 		],
 	},
 	{
@@ -812,7 +815,7 @@ export const ORTHO_PREDEF: LeconOrthoPredef[] = [
 			h('vert', 'un crayon vert'),
 			h('cou', 'tendre le cou'),
 			h('coup', 'donner un coup'),
-			h('coût', 'le coût du billet'),
+			h('cout', 'le cout du billet'),
 			h('signe', 'faire un signe de la main'),
 			h('cygne', 'le cygne sur le lac'),
 			h('chœur', 'chanter en chœur'),

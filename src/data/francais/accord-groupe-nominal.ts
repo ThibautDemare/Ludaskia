@@ -303,6 +303,13 @@ export function genItem(): Exercise {
 	// 2 distracteurs : on choisit 2 constituants variables distincts à laisser à
 	// leur forme de départ (chaque distracteur ne casse qu'UNE marque).
 	const variables = sample(indicesVariables(g), 2);
+	// Garde-fou : chaque groupe de la banque a ≥ 2 constituants variables (test
+	// structurel). On échoue tôt si ce n'était plus le cas (sinon < 3 choix générés).
+	if (variables.length < 2) {
+		throw new Error(
+			`accord-groupe-nominal : le groupe « ${g.id} » a moins de 2 constituants variables.`,
+		);
+	}
 	const distracteurs = variables.map((idx) => {
 		const accordes = Array.from({ length: n }, () => true);
 		accordes[idx] = false; // un seul constituant non accordé

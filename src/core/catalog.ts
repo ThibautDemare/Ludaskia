@@ -552,14 +552,16 @@ const SENS_FIGURE_LESSONS_DEFS: LessonDef[] = SENS_FIGURE_LESSONS.map((d) => ({
 	exerciseType: d.exerciseType,
 }));
 
-/* ---------- Vocabulaire — familles de mots, préfixes, suffixes (#113) ----------
-   QCM de reconnaissance (3 options). */
+/* ---------- Vocabulaire — familles de mots, préfixes, suffixes (#113, #244) ----------
+   QCM de reconnaissance (3 options). Niveaux portés par la donnée (#244) : la leçon
+   « familles, préfixes et suffixes » reste CE2 ; deux leçons CM1 séparent familles
+   et affixes (préfixes savants + suffixes nominaux). */
 const FAMILLES_LESSONS_DEFS: LessonDef[] = FAMILLES_LESSONS.map((d) => ({
 	id: d.id,
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	levels: ['ce2'],
+	levels: d.levels,
 	exerciseType: d.exerciseType,
 }));
 
@@ -577,18 +579,19 @@ const CHAMPS_LESSONS_DEFS: LessonDef[] = CHAMPS_LESSONS.map((d) => ({
 	rubrique: 'Champs lexicaux',
 }));
 
-/* ---------- Vocabulaire — contraires & mots de sens proche (#203) ----------
-   Deux leçons QCM (3 options) sous la rubrique « Synonymes et contraires », dans
+/* ---------- Vocabulaire — contraires & mots de sens proche (#203, #244) ----------
+   Leçons QCM (3 options) sous la rubrique « Synonymes et contraires », dans
    l'ordre pédagogique : contraires d'abord, puis sens proche. Mot-cible en gras
    dans une phrase courte ; consigne renforcée (picto ↔ / =) ; TTS mot-cible +
    options. Exclues du sprint (lecture d'une phrase + pression du chrono déconseillée
-   pour les profils dys) : jouées en mode leçon/bilan/révision. */
+   pour les profils dys) : jouées en mode leçon/bilan/révision. Niveaux portés par
+   la donnée (#244) : deux leçons CE2 + deux leçons CM1 (lexique plus exigeant). */
 const SENS_LESSONS_DEFS: LessonDef[] = SENS_LESSONS.map((d) => ({
 	id: d.id,
 	label: d.label,
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	levels: ['ce2'],
+	levels: d.levels,
 	exerciseType: d.exerciseType,
 	rubrique: 'Synonymes et contraires',
 	excludeFromSprint: true,

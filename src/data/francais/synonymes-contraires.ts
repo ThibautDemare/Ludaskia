@@ -26,6 +26,7 @@
    transforme chaque entrée en item QCM { question, reponse, distracteurs,
    explication, consigne, picto, parle }.
    ============================================================ */
+import type { SchoolLevel } from '../../core/catalog';
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
@@ -693,6 +694,210 @@ export const SENS_PROCHE: ItemSens[] = [
 	},
 ];
 
+/* ============================================================
+   Banques CM1 (#244) — ADDITIVES : le CE2 ci-dessus est GELÉ.
+   Adjectifs/notions un cran au-dessus du CE2 (généreux/avare, juste/injuste,
+   périlleux, persuasif…), toujours en contexte « roman / récit ». Aucune réponse
+   ne duplique exactement une réponse CE2 du même type (vérifié par les tests) ;
+   distracteurs francs (aucun quasi-synonyme de la réponse, jamais un mot de la phrase).
+   ============================================================ */
+
+/* ---------- Banque CM1 : Les contraires (antonymes) ---------- */
+export const CONTRAIRES_CM1: ItemSens[] = [
+	{
+		phrase: 'Ce personnage du roman est très **généreux**.',
+		reponse: 'avare',
+		distracteurs: ['courageux', 'heureux'],
+	},
+	{
+		phrase: 'Le vieux marchand du conte est **avare** avec son or.',
+		reponse: 'généreux',
+		distracteurs: ['méchant', 'triste'],
+	},
+	{
+		phrase: 'Le héros de l’histoire se montre très **courageux**.',
+		reponse: 'lâche',
+		distracteurs: ['fort', 'célèbre'],
+	},
+	{
+		phrase: 'Le soldat du film est accusé d’être **lâche**.',
+		reponse: 'courageux',
+		distracteurs: ['faible', 'impoli'],
+	},
+	{
+		phrase: 'La décision du chef est vraiment très **juste**.',
+		reponse: 'injuste',
+		distracteurs: ['longue', 'difficile'],
+	},
+	{
+		phrase: 'Les règles du jeu lui semblent **injustes**.',
+		reponse: 'justes',
+		distracteurs: ['longues', 'strictes'],
+	},
+	{
+		phrase: 'Cet élève est toujours très **attentif** en classe.',
+		reponse: 'distrait',
+		distracteurs: ['poli', 'calme'],
+	},
+	{
+		phrase: 'En cours, ce garçon est souvent **distrait**.',
+		reponse: 'attentif',
+		distracteurs: ['bavard', 'lent'],
+	},
+	{
+		phrase: 'La réponse qu’il donne est très **précise**.',
+		reponse: 'vague',
+		distracteurs: ['longue', 'correcte'],
+	},
+	{
+		phrase: 'La consigne donnée par le maître est très **claire**.',
+		reponse: 'confuse',
+		distracteurs: ['longue', 'stricte'],
+	},
+	{
+		phrase: 'Le savant vit dans une rue très **animée**.',
+		reponse: 'déserte',
+		distracteurs: ['bruyante', 'large'],
+	},
+	{
+		phrase: 'Le village abandonné semble complètement **désert**.',
+		reponse: 'animé',
+		distracteurs: ['sombre', 'vieux'],
+	},
+	{
+		phrase: 'Le comportement de cet enfant est très **poli**.',
+		reponse: 'grossier',
+		distracteurs: ['calme', 'sage'],
+	},
+	{
+		phrase: 'La réponse qu’il a donnée est vraiment **grossière**.',
+		reponse: 'polie',
+		distracteurs: ['courte', 'fausse'],
+	},
+	{
+		phrase: 'Le chien de garde est resté très **calme**.',
+		reponse: 'agité',
+		distracteurs: ['grand', 'fort'],
+	},
+	{
+		phrase: 'Après l’orage, la mer devient très **agitée**.',
+		reponse: 'calme',
+		distracteurs: ['froide', 'grise'],
+	},
+	{
+		phrase: 'Le chemin pour rentrer est très **direct**.',
+		reponse: 'sinueux',
+		distracteurs: ['court', 'sûr'],
+	},
+	{
+		phrase: 'Ce sentier de montagne est vraiment **sinueux**.',
+		reponse: 'droit',
+		distracteurs: ['long', 'étroit'],
+	},
+];
+
+/* ---------- Banque CM1 : Les mots de sens proche (synonymes) ---------- */
+export const SENS_PROCHE_CM1: ItemSens[] = [
+	{
+		phrase: 'Le chevalier du roman se montre très **courageux**.',
+		reponse: 'vaillant',
+		distracteurs: ['rapide', 'célèbre'],
+	},
+	{
+		phrase: 'Le vieux loup de mer est vraiment très **habile**.',
+		reponse: 'adroit',
+		distracteurs: ['rapide', 'fort'],
+	},
+	{
+		phrase: 'Ce scientifique célèbre est un homme très **savant**.',
+		reponse: 'cultivé',
+		distracteurs: ['vieux', 'prudent'],
+	},
+	{
+		phrase: 'L’explorateur revient d’un voyage très **périlleux**.',
+		reponse: 'dangereux',
+		distracteurs: ['long', 'lointain'],
+	},
+	{
+		phrase: 'Le discours du personnage est vraiment **persuasif**.',
+		reponse: 'convaincant',
+		distracteurs: ['long', 'clair'],
+	},
+	{
+		phrase: 'La vieille auberge est un endroit très **accueillant**.',
+		reponse: 'chaleureux',
+		distracteurs: ['grand', 'propre'],
+	},
+	{
+		// Distracteur « petit » du cadrage écarté : il figurait déjà dans la phrase
+		// (indice involontaire) ; remplacé par « roux », franc et compatible (chien masc. sing.).
+		phrase: 'Le petit chien de la ferme est très **craintif**.',
+		reponse: 'peureux',
+		distracteurs: ['roux', 'doux'],
+	},
+	{
+		phrase: 'Le grand pont de pierre est très **solide**.',
+		reponse: 'résistant',
+		distracteurs: ['lourd', 'ancien'],
+	},
+	{
+		phrase: 'Le pirate du roman est un homme très **redoutable**.',
+		reponse: 'terrible',
+		distracteurs: ['grand', 'méchant'],
+	},
+	{
+		phrase: 'L’enfant retrouvé manifeste une grande **joie**.',
+		reponse: 'bonheur',
+		distracteurs: ['chance', 'surprise'],
+	},
+	{
+		phrase: 'Le récit du vieux marin est vraiment **captivant**.',
+		reponse: 'passionnant',
+		distracteurs: ['long', 'étrange'],
+	},
+	{
+		phrase: 'Les paroles de la sorcière semblent très **bizarres**.',
+		reponse: 'étranges',
+		distracteurs: ['longues', 'sombres'],
+	},
+	{
+		// « extrême » (et non « fort », réponse déjà présente au CE2) : intense ~ extrême,
+		// synonymie validée (relecture langue CNRTL).
+		phrase: 'L’alpiniste repose après un effort très **intense**.',
+		reponse: 'extrême',
+		distracteurs: ['long', 'difficile'],
+	},
+	{
+		phrase: 'Ce règlement très **strict** ne plaît pas aux élèves.',
+		reponse: 'sévère',
+		distracteurs: ['long', 'injuste'],
+	},
+	{
+		phrase: 'La vieille chaumière a un aspect vraiment **misérable**.',
+		reponse: 'pauvre',
+		distracteurs: ['gris', 'sombre'],
+	},
+	{
+		// « influent » (et non « fort », réponse déjà présente au CE2) : puissant ~ influent,
+		// synonymie validée (relecture langue CNRTL).
+		phrase: 'Le roi du conte est un souverain très **puissant**.',
+		reponse: 'influent',
+		distracteurs: ['grand', 'riche'],
+	},
+	{
+		phrase: 'Ce chemin de montagne est vraiment **escarpé**.',
+		reponse: 'abrupt',
+		distracteurs: ['étroit', 'long'],
+	},
+	{
+		// « étendu » (et non « immense », réponse déjà présente au CE2) : vaste ~ étendu,
+		// synonymie validée (relecture langue CNRTL).
+		phrase: 'La forêt de ce roman est un endroit très **vaste**.',
+		reponse: 'étendu',
+		distracteurs: ['sombre', 'ancien'],
+	},
+];
+
 /* ---------- Builder commun → item QCM ---------- */
 
 /** Item QCM unifié (sérialisable, indépendant du rendu). */
@@ -764,6 +969,14 @@ export const ITEMS_SENS_PROCHE: ItemSensQcm[] = SENS_PROCHE.map((it) =>
 	toQcm(it, CONFIG_SENS_PROCHE),
 );
 
+/* Pools CM1 (#244) : mêmes builders/config que le CE2, banques CM1 dédiées. */
+export const ITEMS_CONTRAIRES_CM1: ItemSensQcm[] = CONTRAIRES_CM1.map((it) =>
+	toQcm(it, CONFIG_CONTRAIRES),
+);
+export const ITEMS_SENS_PROCHE_CM1: ItemSensQcm[] = SENS_PROCHE_CM1.map((it) =>
+	toQcm(it, CONFIG_SENS_PROCHE),
+);
+
 function sensType(items: ItemSensQcm[]): ExerciseType {
 	return {
 		modes: MODE_QCM,
@@ -788,19 +1001,35 @@ function sensType(items: ItemSensQcm[]): ExerciseType {
 export interface SensLessonDef {
 	id: string;
 	label: string;
+	levels: SchoolLevel[];
 	exerciseType: ExerciseType;
 }
 
-/* Ordre pédagogique (#203) : les contraires AVANT les mots de sens proche. */
+/* Ordre pédagogique (#203, #244) : pour chaque niveau, les contraires AVANT les
+   mots de sens proche. Le CE2 reste inchangé ; le CM1 (#244) ajoute deux leçons. */
 export const SENS_LESSONS: SensLessonDef[] = [
 	{
 		id: 'fr-vocab-contraires',
 		label: 'Les contraires',
+		levels: ['ce2'],
 		exerciseType: sensType(ITEMS_CONTRAIRES),
 	},
 	{
 		id: 'fr-vocab-sens-proche',
 		label: 'Les mots de sens proche',
+		levels: ['ce2'],
 		exerciseType: sensType(ITEMS_SENS_PROCHE),
+	},
+	{
+		id: 'fr-vocab-contraires-cm1',
+		label: 'Les contraires (CM1)',
+		levels: ['cm1'],
+		exerciseType: sensType(ITEMS_CONTRAIRES_CM1),
+	},
+	{
+		id: 'fr-vocab-sens-proche-cm1',
+		label: 'Les mots de sens proche (CM1)',
+		levels: ['cm1'],
+		exerciseType: sensType(ITEMS_SENS_PROCHE_CM1),
 	},
 ];

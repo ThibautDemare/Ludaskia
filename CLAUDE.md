@@ -101,6 +101,15 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
   code et la met à jour. C'est aussi l'agent à interroger en amont pour savoir si
   une capacité **existe déjà** avant de la réimplémenter.
 
+## Style de réponse (Claude et agents)
+- **Direct et concis.** Aller droit au but : pas de phrase d'introduction, pas de
+  reformulation de la question, pas de remplissage ni de récapitulatif inutile.
+  Répondre, puis s'arrêter.
+- **Esprit critique, pas de complaisance.** Ne pas valider par défaut. Si une
+  proposition est discutable, fragile ou améliorable, le dire et expliquer
+  pourquoi, puis proposer mieux. Pas de flatterie (« excellente idée », « très
+  bonne question », « tu as raison »).
+
 ## Hygiène de contexte (coût tokens)
 - **`/clear` aux frontières de tâche** : quand une leçon / PR / sujet autonome est
   bouclé et qu'on enchaîne sur autre chose d'indépendant, **proposer à

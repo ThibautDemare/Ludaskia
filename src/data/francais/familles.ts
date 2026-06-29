@@ -1,5 +1,5 @@
 /* ============================================================
-   Vocabulaire — familles de mots, préfixes, suffixes (#113).
+   Vocabulaire — familles de mots, préfixes, suffixes (#113, #244).
    ------------------------------------------------------------
    QCM de RECONNAISSANCE (3 options), trois types équilibrés :
    - familles : « De la même famille que « dent » : ? » → un mot de la
@@ -9,8 +9,12 @@
 
    Données par type (banques rédigées + relues par l'agent pédagogue) ;
    un builder unifie tout en items QCM { question, reponse, distracteurs,
-   explication }. Tirage uniforme sur l'ensemble → couverture équilibrée.
+   explication }. Le moteur `famillesType(items)` reçoit un POOL d'items
+   (#244) : la leçon CE2 lui passe l'ensemble familles + préfixes + suffixes
+   (ITEMS_FAMILLES) ; les leçons CM1 passent des sous-pools dédiés. Tirage
+   uniforme sur le pool reçu → couverture équilibrée.
    ============================================================ */
+import type { SchoolLevel } from '../../core/catalog';
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
@@ -692,6 +696,292 @@ export const SUFFIXES: ItemAffixe[] = [
 	},
 ];
 
+/* ============================================================
+   Banques CM1 (#244) — ADDITIVES : le CE2 ci-dessus est GELÉ.
+   Familles CM1 = dérivations un cran moins transparentes (préfixe/changement de
+   radical) ; affixes CM1 = nouveaux préfixes savants (anti-, trans-, bi-, tri-,
+   inter-, télé-) et suffixes nominaux (-age, -eur qualité, -iste, -ier, -itude).
+   Aucune réponse/cible ne duplique exactement un item CE2 du même type (vérifié
+   par les tests). Quelques cibles (terre, chant) sont réutilisées du CE2 mais avec
+   un dérivé DIFFÉRENT — relation distincte, donc admise.
+   ============================================================ */
+export const FAMILLES_CM1: ItemFamille[] = [
+	{
+		mot: 'signe',
+		famille: 'signaler',
+		fauxAmi: 'singe',
+		autre: 'bouton',
+		explication:
+			'« signaler » vient de « signe ». « singe » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'corps',
+		famille: 'corporel',
+		fauxAmi: 'corbeau',
+		autre: 'lampe',
+		explication:
+			'« corporel » vient de « corps ». « corbeau » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'bras',
+		famille: 'embrasser',
+		fauxAmi: 'brasse',
+		autre: 'soleil',
+		explication:
+			'« embrasser » vient de « bras ». « brasse » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'droit',
+		famille: 'droiture',
+		fauxAmi: 'drôle',
+		autre: 'tapis',
+		explication:
+			'« droiture » vient de « droit ». « drôle » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'peur',
+		famille: 'apeuré',
+		fauxAmi: 'peu',
+		autre: 'torchon',
+		explication:
+			'« apeuré » vient de « peur ». « peu » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'bouche',
+		famille: 'embouchure',
+		fauxAmi: 'boucher',
+		autre: 'jardin',
+		explication:
+			'« embouchure » vient de « bouche ». « boucher » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		// Cible « terre » réutilisée du CE2 (terre→terrain) mais avec un dérivé différent : OK.
+		mot: 'terre',
+		famille: 'terrasse',
+		fauxAmi: 'terrible',
+		autre: 'sucre',
+		explication:
+			'« terrasse » vient de « terre ». « terrible » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'vie',
+		famille: 'vivant',
+		fauxAmi: 'vide',
+		autre: 'tunnel',
+		explication:
+			'« vivant » vient de « vie ». « vide » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		// Cible « chant » réutilisée du CE2 (chant→chanteur) mais avec un dérivé différent : OK.
+		mot: 'chant',
+		famille: 'enchanter',
+		fauxAmi: 'champ',
+		autre: 'fenêtre',
+		explication:
+			'« enchanter » vient de « chant ». « champ » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'âge',
+		famille: 'âgé',
+		fauxAmi: 'auge',
+		autre: 'rideau',
+		explication:
+			'« âgé » vient de « âge ». « auge » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'nombre',
+		famille: 'nombreux',
+		fauxAmi: 'ombre',
+		autre: 'tambour',
+		explication:
+			'« nombreux » vient de « nombre ». « ombre » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'bond',
+		famille: 'bondir',
+		fauxAmi: 'blond',
+		autre: 'guitare',
+		explication:
+			'« bondir » vient de « bond ». « blond » lui ressemble mais n’est pas de la même famille.',
+	},
+];
+
+/* Préfixes CM1 (#244) : préfixes savants nouveaux (anti-, para-, trans-, bi-, tri-, inter-, télé-). */
+export const PREFIXES_CM1: ItemAffixe[] = [
+	{
+		mot: 'antidouleur',
+		sens: 'contre la douleur',
+		distracteurs: ['à cause de la douleur', 'avec beaucoup de douleur'],
+		explication: 'Le préfixe « anti- » veut dire « contre » : antidouleur = contre la douleur.',
+	},
+	{
+		mot: 'antiglisse',
+		sens: 'contre le glissement',
+		distracteurs: ['pour glisser plus vite', 'à cause du glissement'],
+		explication: 'Le préfixe « anti- » veut dire « contre » : antiglisse = qui empêche de glisser.',
+	},
+	{
+		mot: 'antigel',
+		sens: 'contre le gel',
+		distracteurs: ['qui produit le gel', 'qui fond le gel'],
+		explication: 'Le préfixe « anti- » veut dire « contre » : antigel = qui protège contre le gel.',
+	},
+	{
+		mot: 'transporter',
+		sens: 'porter d’un endroit à un autre',
+		distracteurs: ['porter très lourd', 'poser quelque chose'],
+		explication:
+			'Le préfixe « trans- » veut dire « d’un côté à l’autre » : transporter = porter d’un endroit à un autre.',
+	},
+	{
+		mot: 'transpercer',
+		sens: 'percer de part en part',
+		distracteurs: ['percer un petit trou', 'boucher un trou'],
+		explication:
+			'Le préfixe « trans- » veut dire « à travers » : transpercer = percer de part en part.',
+	},
+	{
+		mot: 'bicolore',
+		sens: 'qui a deux couleurs',
+		distracteurs: ['qui a beaucoup de couleurs', 'qui n’a pas de couleur'],
+		explication: 'Le préfixe « bi- » veut dire « deux » : bicolore = qui a deux couleurs.',
+	},
+	{
+		mot: 'bilingue',
+		sens: 'qui parle deux langues',
+		distracteurs: ['qui ne parle pas', 'qui parle très bien'],
+		explication: 'Le préfixe « bi- » veut dire « deux » : bilingue = qui parle deux langues.',
+	},
+	{
+		mot: 'tricolore',
+		sens: 'qui a trois couleurs',
+		distracteurs: ['qui a deux couleurs', 'qui a beaucoup de couleurs'],
+		explication: 'Le préfixe « tri- » veut dire « trois » : tricolore = qui a trois couleurs.',
+	},
+	{
+		mot: 'international',
+		sens: 'entre plusieurs pays',
+		distracteurs: ['dans un seul pays', 'loin de tous les pays'],
+		explication:
+			'Le préfixe « inter- » veut dire « entre » : international = entre plusieurs pays.',
+	},
+	{
+		mot: 'interclasse',
+		sens: 'entre les classes',
+		distracteurs: ['dans une seule classe', 'avant la classe'],
+		explication:
+			'Le préfixe « inter- » veut dire « entre » : interclasse = le temps entre les classes.',
+	},
+	{
+		mot: 'parapluie',
+		sens: 'qui protège de la pluie',
+		distracteurs: ['qui apporte la pluie', 'qui aime la pluie'],
+		explication:
+			'Le préfixe « para- » veut dire « protège de » : un parapluie protège de la pluie.',
+	},
+	{
+		mot: 'télécommande',
+		sens: 'commande à distance',
+		distracteurs: ['commande très rapide', 'commande difficile à utiliser'],
+		explication:
+			'Le préfixe « télé- » veut dire « à distance » : télécommande = commande à distance.',
+	},
+	{
+		mot: 'téléphone',
+		sens: 'appareil pour parler à distance',
+		distracteurs: ['appareil pour écrire', 'appareil pour écouter de la musique'],
+		explication:
+			'Le préfixe « télé- » veut dire « à distance » : téléphone = appareil pour parler à distance.',
+	},
+];
+
+/* Suffixes CM1 (#244) : suffixes nominaux (-age, -eur qualité, -iste, -ier/-er, -itude).
+   Distracteurs des items « -eur » DISTINCTS des « celui qui … » de la banque CE2
+   (où « -eur » = l'agent) : ici « -eur » nomme une QUALITÉ, pas une personne. */
+export const SUFFIXES_CM1: ItemAffixe[] = [
+	{
+		mot: 'lavage',
+		sens: 'l’action de laver',
+		distracteurs: ['l’endroit pour se laver', 'ce qui sert à laver'],
+		explication: 'Le suffixe « -age » indique l’action : le lavage, c’est l’action de laver.',
+	},
+	{
+		mot: 'passage',
+		sens: 'l’action de passer',
+		distracteurs: ['l’endroit pour dormir', 'l’action de rester'],
+		explication:
+			'Le suffixe « -age » indique l’action ou l’endroit : le passage, c’est l’action de passer.',
+	},
+	{
+		mot: 'bricolage',
+		sens: 'l’action de bricoler',
+		distracteurs: ['l’action de construire une grande maison', 'l’action de réparer une voiture'],
+		explication: 'Le suffixe « -age » indique l’action : le bricolage, c’est l’action de bricoler.',
+	},
+	{
+		mot: 'grandeur',
+		sens: 'la qualité de ce qui est grand',
+		distracteurs: ['celui qui est grand', 'l’action de grandir'],
+		explication:
+			'Le suffixe « -eur » désigne ici une qualité : la grandeur, c’est la qualité de ce qui est grand.',
+	},
+	{
+		mot: 'douceur',
+		sens: 'la qualité de ce qui est doux',
+		distracteurs: ['celui qui est doux', 'l’action d’adoucir'],
+		explication:
+			'Le suffixe « -eur » désigne ici une qualité : la douceur, c’est la qualité de ce qui est doux.',
+	},
+	{
+		mot: 'fraîcheur',
+		sens: 'la qualité de ce qui est frais',
+		distracteurs: ['l’action de refroidir', 'celui qui a froid'],
+		explication:
+			'Le suffixe « -eur » désigne ici une qualité : la fraîcheur, c’est la qualité de ce qui est frais.',
+	},
+	{
+		mot: 'cycliste',
+		sens: 'celui qui fait du vélo',
+		distracteurs: ['celui qui conduit une moto', 'celui qui court à pied'],
+		explication:
+			'Le suffixe « -iste » désigne celui qui pratique : un cycliste, c’est celui qui fait du vélo.',
+	},
+	{
+		mot: 'pianiste',
+		sens: 'celui qui joue du piano',
+		distracteurs: ['celui qui construit des pianos', 'celui qui vend des instruments'],
+		explication:
+			'Le suffixe « -iste » désigne celui qui pratique : un pianiste, c’est celui qui joue du piano.',
+	},
+	{
+		mot: 'cerisier',
+		sens: 'l’arbre qui donne des cerises',
+		distracteurs: ['celui qui vend des cerises', 'un panier pour les cerises'],
+		explication:
+			'Le suffixe « -ier » désigne souvent l’arbre : un cerisier, c’est l’arbre qui donne des cerises.',
+	},
+	{
+		mot: 'oranger',
+		sens: 'l’arbre qui donne des oranges',
+		distracteurs: ['celui qui vend des oranges', 'un jus d’orange'],
+		explication:
+			'Le suffixe « -er » désigne souvent l’arbre : un oranger, c’est l’arbre qui donne des oranges.',
+	},
+	{
+		mot: 'solitude',
+		sens: 'l’état d’être seul',
+		distracteurs: ['l’action d’aider les autres', 'le fait d’avoir beaucoup d’amis'],
+		explication: 'Le suffixe « -itude » indique un état : la solitude, c’est l’état d’être seul.',
+	},
+	{
+		mot: 'exactitude',
+		sens: 'la qualité de ce qui est exact',
+		distracteurs: ['l’action de se tromper', 'le fait d’être en retard'],
+		explication:
+			'Le suffixe « -itude » indique ici une qualité : l’exactitude, c’est la qualité de ce qui est exact.',
+	},
+];
+
 /** Item QCM unifié (3 options : 1 bonne + 2 distracteurs). */
 export interface ItemVocabQcm {
 	type: 'famille' | 'prefixe' | 'suffixe';
@@ -702,8 +992,8 @@ export interface ItemVocabQcm {
 	consigne: string; // consigne d'action visible (#265) ; varie selon la tâche (famille vs sens)
 }
 
-const itemsFamille = (): ItemVocabQcm[] =>
-	FAMILLES.map((f) => ({
+const itemsFamille = (arr: ItemFamille[] = FAMILLES): ItemVocabQcm[] =>
+	arr.map((f) => ({
 		type: 'famille' as const,
 		question: `De la même famille que « ${f.mot} » : @`,
 		reponse: f.famille,
@@ -722,21 +1012,34 @@ const itemsAffixe = (arr: ItemAffixe[], type: 'prefixe' | 'suffixe'): ItemVocabQ
 		consigne: 'Que veut dire ce mot ?',
 	}));
 
-export const ITEMS_FAMILLES: ItemVocabQcm[] = [
-	...itemsFamille(),
+/* Sous-pool : familles CE2 seules (pour une leçon « familles » dédiée). */
+export const ITEMS_FAMILLES_SEULES: ItemVocabQcm[] = itemsFamille();
+/* Sous-pool : préfixes + suffixes CE2 (pour une leçon « affixes » dédiée). */
+export const ITEMS_AFFIXES: ItemVocabQcm[] = [
 	...itemsAffixe(PREFIXES, 'prefixe'),
 	...itemsAffixe(SUFFIXES, 'suffixe'),
+];
+
+/* Pool CE2 historique (leçon unique) : familles + préfixes + suffixes mélangés. */
+export const ITEMS_FAMILLES: ItemVocabQcm[] = [...ITEMS_FAMILLES_SEULES, ...ITEMS_AFFIXES];
+
+/* Pools CM1 (#244) : une leçon « familles » et une leçon « préfixes et suffixes ». */
+export const ITEMS_FAMILLES_CM1: ItemVocabQcm[] = itemsFamille(FAMILLES_CM1);
+export const ITEMS_AFFIXES_CM1: ItemVocabQcm[] = [
+	...itemsAffixe(PREFIXES_CM1, 'prefixe'),
+	...itemsAffixe(SUFFIXES_CM1, 'suffixe'),
 ];
 
 const MODE_QCM: ModeOption[] = [
 	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'check-circle', recommended: true },
 ];
 
-export function famillesType(): ExerciseType {
+/* Moteur QCM de reconnaissance : tire uniformément dans le POOL d'items reçu (#244). */
+export function famillesType(items: ItemVocabQcm[]): ExerciseType {
 	return {
 		modes: MODE_QCM,
 		generate(): Exercise {
-			const it = choice(ITEMS_FAMILLES);
+			const it = choice(items);
 			return {
 				type: 'qcm',
 				question: it.question,
@@ -753,6 +1056,7 @@ export function famillesType(): ExerciseType {
 export interface FamillesLessonDef {
 	id: string;
 	label: string;
+	levels: SchoolLevel[];
 	exerciseType: ExerciseType;
 }
 
@@ -760,6 +1064,19 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 	{
 		id: 'fr-vocab-familles',
 		label: 'Familles, préfixes et suffixes',
-		exerciseType: famillesType(),
+		levels: ['ce2'],
+		exerciseType: famillesType(ITEMS_FAMILLES),
+	},
+	{
+		id: 'fr-vocab-familles-cm1',
+		label: 'Familles de mots (CM1)',
+		levels: ['cm1'],
+		exerciseType: famillesType(ITEMS_FAMILLES_CM1),
+	},
+	{
+		id: 'fr-vocab-affixes-cm1',
+		label: 'Préfixes et suffixes (CM1)',
+		levels: ['cm1'],
+		exerciseType: famillesType(ITEMS_AFFIXES_CM1),
 	},
 ];

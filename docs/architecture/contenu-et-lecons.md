@@ -215,9 +215,9 @@ sont jouées par le **moteur d'orthographe dédié** (`core/orthographe/`, runne
 
 ### Vocabulaire
 
-#### `francais/familles.ts` (#113)
+#### `francais/familles.ts` (#113, #244)
 
-catégorie **Vocabulaire**, leçon **« Familles,
+catégorie **Vocabulaire**, leçon CE2 **« Familles,
 préfixes et suffixes »** (`fr-vocab-familles`). QCM de reconnaissance 3 options, trois
 types équilibrés : familles de mots (bonne réponse + **faux-ami** plausible d'une autre
 famille + intrus), préfixes (re-, dé-, in-/im-, pré-, sur-, sous-) et suffixes
@@ -225,6 +225,15 @@ famille + intrus), préfixes (re-, dé-, in-/im-, pré-, sur-, sous-) et suffixe
 unifie les 3 banques en items `{ question, reponse, distracteurs, explication }`.
 Relue par l'agent pédagogue (faux-amis vérifiés au CNRTL : retrait de laitue←lait,
 pommade←pomme… qui étaient en réalité de la même famille).
+Le moteur **`famillesType(items)`** reçoit un **pool d'items** (#244) ; la leçon CE2 lui
+passe le pool combiné `ITEMS_FAMILLES` (familles + préfixes + suffixes). Deux leçons **CM1**
+(`levels: ['cm1']`) séparent les axes : **« Familles de mots (CM1) »** (`fr-vocab-familles-cm1`,
+pool `ITEMS_FAMILLES_CM1` = familles à dérivation moins transparente) et **« Préfixes et
+suffixes (CM1) »** (`fr-vocab-affixes-cm1`, pool `ITEMS_AFFIXES_CM1` = préfixes savants
+anti-/trans-/bi-/tri-/inter-/télé- + suffixes nominaux -age, -eur *qualité*, -iste, -ier/-er,
+-itude). Les sous-pools CE2 `ITEMS_FAMILLES_SEULES` / `ITEMS_AFFIXES` sont aussi exposés.
+Banques CM1 **additives** (CE2 gelé) ; aucune réponse/cible CM1 ne duplique exactement un
+item CE2 du même type (vérifié en test).
 
 #### `francais/sens-figure.ts` (#112)
 
@@ -235,20 +244,25 @@ fixes propre/figuré/distracteur ; seules les phrases et le `sens` varient → l
 deux sens sont toujours proposés, pas de clé erronée), équilibre propre/figuré.
 Feedback `explication` rappelant le sens employé. Relue par l'agent pédagogue.
 
-#### `francais/synonymes-contraires.ts` (#203)
+#### `francais/synonymes-contraires.ts` (#203, #244)
 
 catégorie **Vocabulaire**, rubrique
-**« Synonymes et contraires »**, deux leçons dans l'ordre pédagogique **« Les
+**« Synonymes et contraires »**. Au CE2, deux leçons dans l'ordre pédagogique **« Les
 contraires »** (`fr-vocab-contraires`, antonymes) puis **« Les mots de sens
 proche »** (`fr-vocab-sens-proche`, synonymes). QCM 3 options ; le **mot-cible est
 en gras** (`**…**` rendu par `enonceTexte`) dans une phrase courte ; distracteurs
-**francs** (aucun quasi-synonyme, aucun mot déjà dans la phrase). Le runner QCM
-affiche une **consigne renforcée** + **picto** (`↔` / `=`) et greffe un bouton TTS
-sur le mot-cible et chaque option (champs **`consigne`/`picto`/`ttsItems`** de la
-variante `qcm`, `ui/consigne-tts.ts → bindItemTts`). La lecture vocale **nomme** le
+**francs** (aucun quasi-synonyme, aucun mot déjà dans la phrase). Le moteur
+**`sensType(items)`** reçoit un **pool d'items** ; deux pools CM1 (`ITEMS_CONTRAIRES_CM1`,
+`ITEMS_SENS_PROCHE_CM1`) alimentent deux leçons **CM1** (`levels: ['cm1']`) :
+**« Les contraires (CM1) »** (`fr-vocab-contraires-cm1`) et **« Les mots de sens proche
+(CM1) »** (`fr-vocab-sens-proche-cm1`), lexique un cran au-dessus (généreux/avare,
+périlleux, persuasif…), banques **additives** (CE2 gelé) sans doublon de réponse CE2↔CM1
+du même type. Le runner QCM affiche une **consigne renforcée** + **picto** (`↔` / `=`) et
+greffe un bouton TTS sur le mot-cible et chaque option (champs **`consigne`/`picto`/`ttsItems`**
+de la variante `qcm`, `ui/consigne-tts.ts → bindItemTts`). La lecture vocale **nomme** le
 mot-cible (le gras est muet à l'oral). **Exclues du sprint** (`excludeFromSprint`).
-Banques relues par les agents pédagogue (justesse, distracteurs francs, lexique CE2)
-et langue (accords, registre).
+Banques relues par les agents pédagogue (justesse, distracteurs francs) et langue
+(accords, registre).
 
 #### `francais/vocabulaire.ts` (#108)
 

@@ -231,6 +231,10 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			// QCM méta de classement des verbes (tôt) : groupe puis infinitif.
 			'fr-conj-groupe',
 			'fr-conj-infinitif',
+			// Vocabulaire — les contraires CM1 (#244) : relation binaire franche, vocab
+			// transversal sans dépendance forte → placé tôt (comme au CE2). Les contraires
+			// AVANT les mots de sens proche (relation plus floue), comme au CE2.
+			'fr-vocab-contraires-cm1',
 			// Orthographe — accords CM1 (#243) sur mots ISOLÉS : terminaisons d'adjectifs plus
 			// subtiles (-er/-ère, -f/-ve, -et/-ète, -eur/-trice, -al/-aux) et noms à pluriel
 			// -aux. Travaillé TÔT (compétence cœur du CM1), comme les accords réguliers au CE2.
@@ -250,6 +254,9 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-conj-vouloir-futur',
 			'fr-conj-prendre-futur',
 			'fr-conj-naitre-futur',
+			// Vocabulaire — les mots de sens proche CM1 (#244) : synonymie (relation plus
+			// fine que les contraires) → après les contraires, dans le fil du milieu d'année.
+			'fr-vocab-sens-proche-cm1',
 			// Imparfait
 			'fr-conj-etre-imparfait',
 			'fr-conj-avoir-imparfait',
@@ -264,6 +271,12 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-conj-vouloir-imparfait',
 			'fr-conj-prendre-imparfait',
 			'fr-conj-naitre-imparfait',
+			// Vocabulaire — morphologie CM1 (#244) : familles de mots (dérivations un cran
+			// moins transparentes) PUIS préfixes/suffixes savants (anti-, trans-, bi-, -age,
+			// -eur qualité, -iste…). Placés plus tard que les synonymes/contraires : analyse
+			// du mot plus exigeante. Familles avant affixes (reconnaître la famille d'abord).
+			'fr-vocab-familles-cm1',
+			'fr-vocab-affixes-cm1',
 			// Passé composé (auxiliaire + participe)
 			'fr-conj-etre-passe_compose',
 			'fr-conj-avoir-passe_compose',

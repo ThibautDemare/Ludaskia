@@ -48,6 +48,14 @@
 	grid-template-areas:
 		'prog right'
 		'left right';
+	/* La colonne droite (cartes) est souvent plus haute que `prog + left`. Avec des
+	   rangées implicites `auto`, la grille répartissait ce surplus de hauteur sur les
+	   DEUX rangées : la 1re (`prog`) s'étirait et `left` (objectifs, classements,
+	   trophées) descendait, paraissant centré face aux cartes (cf. tablette portrait).
+	   En fixant la 2de rangée à `1fr`, c'est elle qui absorbe tout le surplus : `prog`
+	   se cale sur sa hauteur de contenu et `left` remonte juste sous la progression
+	   (combiné à `align-items: start`). Ignoré sous 920 px : la grille passe en `flex`. */
+	grid-template-rows: auto 1fr;
 	column-gap: 36px;
 	row-gap: 0;
 	align-items: start;

@@ -126,6 +126,7 @@ import {
 	isOrderingLesson,
 	isTriLesson,
 	CATEGORIES,
+	ORTHO_CATEGORY_ID,
 	MATH_LESSON_NUM,
 } from '../src/core/catalog';
 import { VOCAB_LESSONS, trierAlpha } from '../src/data/francais/vocabulaire';
@@ -2655,6 +2656,32 @@ describe('Impression contextuelle (issue #40)', () => {
 
 describe('Révision espacée (issue #45)', () => {
 	const T0 = 1_700_000_000_000; // instant de référence (ms)
+	// Construit un OrthoState avec n mots tous dus (une seule source « orthographe »).
+	const motsDus = (n: number): OrthoState => {
+		const banque: OrthoState['banque'] = {};
+		for (let i = 0; i < n; i++) {
+			const id = 'w' + i;
+			banque[id] = {
+				id,
+				mot: 'mot' + i,
+				entourage: [],
+				atelierFait: false,
+				validation: { motCache: false, tuiles: false, dictee: false },
+				revision: { palier: 0, prochaineRevision: T0 - 1000 - i, reussites: 0, dernierTest: null },
+				origine: 'liste',
+			};
+		}
+		return { banque, listes: [], motIdParForme: {} };
+	};
+	// Catégories de leçons (hors orthographe) → leurs ids, dans l'ordre du catalogue.
+	const catsLecons = (): [string, string[]][] => {
+		const m = new Map<string, string[]>();
+		for (const l of getAllLessons()) {
+			if (l.category === ORTHO_CATEGORY_ID) continue;
+			m.set(l.category, [...(m.get(l.category) ?? []), l.id]);
+		}
+		return [...m.entries()];
+	};
 	test('entrée en rotation : palier 0, dû dès J+1', () => {
 		const e = etatNeuf(T0);
 		expect(e.palier).toBe(0);
@@ -2723,6 +2750,103 @@ describe('Révision espacée (issue #45)', () => {
 		);
 		const total = groups.reduce((n, g) => n + g.items.length, 0);
 		expect(total).toBe(5);
+	});
+	test('sélection équilibrée : deux grosses sources se partagent la session', () => {
+		const grosse = catsLecons().find(([, ids]) => ids.length >= 6);
+		expect(grosse).toBeDefined();
+		const [catId, ids] = grosse!;
+		const lessonRevisions: Record<string, any> = {};
+		ids.slice(0, 6).forEach((id, i) => {
+			lessonRevisions[id] = {
+				palier: 0,
+				prochaineRevision: T0 - 1000 - i,
+				reussites: 0,
+				dernierTest: null,
+			};
+		});
+		const groups = selectDueGroups(motsDus(8), lessonRevisions, T0, 12);
+		const taille = (c: string) => groups.find((g) => g.categoryId === c)?.items.length ?? 0;
+		// 12 slots en round-robin entre 2 grosses sources (6 et 8 dus) → 6 / 6
+		expect(taille(catId)).toBe(6);
+		expect(taille(ORTHO_CATEGORY_ID)).toBe(6);
+		expect(taille(catId) + taille(ORTHO_CATEGORY_ID)).toBe(12);
+	});
+	test('sélection équilibrée : une seule grosse source occupe toute la session', () => {
+		const groups = selectDueGroups(motsDus(20), {}, T0, 12);
+		expect(groups.length).toBe(1);
+		expect(groups[0].categoryId).toBe(ORTHO_CATEGORY_ID);
+		expect(groups[0].items.length).toBe(12);
+	});
+	test('sélection équilibrée : plafond 0 ne renvoie rien', () => {
+		const groups = selectDueGroups(motsDus(5), {}, T0, 0);
+		expect(groups.reduce((n, g) => n + g.items.length, 0)).toBe(0);
+	});
+	test('sélection équilibrée : le plafond coupe au milieu de la phase de vidage', () => {
+		const cats = catsLecons()
+			.filter(([, ids]) => ids.length >= 3)
+			.slice(0, 2);
+		expect(cats.length).toBe(2);
+		const lessonRevisions: Record<string, any> = {};
+		let k = 0;
+		for (const [, ids] of cats)
+			for (const id of ids.slice(0, 3))
+				lessonRevisions[id] = {
+					palier: 0,
+					prochaineRevision: T0 - 1000 - k++,
+					reussites: 0,
+					dernierTest: null,
+				};
+		// 2 petites sources de 3, plafond 4 : la 1re est vidée (3), la 2e coupée à 1.
+		const groups = selectDueGroups(
+			{ banque: {}, listes: [], motIdParForme: {} },
+			lessonRevisions,
+			T0,
+			4,
+		);
+		expect(groups.reduce((n, g) => n + g.items.length, 0)).toBe(4);
+		const tailles = groups.map((g) => g.items.length).sort((a, b) => b - a);
+		expect(tailles).toEqual([3, 1]);
+	});
+	test('sélection équilibrée : une petite source est vidée, la grosse remplit le reste', () => {
+		const petite = catsLecons().find(([, ids]) => ids.length >= 4);
+		expect(petite).toBeDefined();
+		const [catId, ids] = petite!;
+		const lessonRevisions: Record<string, any> = {};
+		ids.slice(0, 4).forEach((id, i) => {
+			lessonRevisions[id] = {
+				palier: 0,
+				prochaineRevision: T0 - 1000 - i,
+				reussites: 0,
+				dernierTest: null,
+			};
+		});
+		const groups = selectDueGroups(motsDus(15), lessonRevisions, T0, 12);
+		const taille = (c: string) => groups.find((g) => g.categoryId === c)?.items.length ?? 0;
+		expect(taille(catId)).toBe(4); // petite source (≤ 4) vidée d'un jet
+		expect(taille(ORTHO_CATEGORY_ID)).toBe(8); // grosse source : les 8 slots restants
+	});
+	test('sélection équilibrée : vidage plafonné à 2 sources, pas de famine', () => {
+		const petites = catsLecons()
+			.filter(([, ids]) => ids.length >= 2)
+			.slice(0, 3);
+		expect(petites.length).toBe(3);
+		const lessonRevisions: Record<string, any> = {};
+		let k = 0;
+		for (const [, ids] of petites)
+			for (const id of ids.slice(0, 2))
+				lessonRevisions[id] = {
+					palier: 0,
+					prochaineRevision: T0 - 1000 - k++,
+					reussites: 0,
+					dernierTest: null,
+				};
+		// 3 petites sources pleines (2 chacune = 6 = plafond) : sans le plafond de vidage,
+		// l'orthographe tomberait à 0. Avec le plafond (≤ 2 vidages), elle reste servie.
+		const groups = selectDueGroups(motsDus(10), lessonRevisions, T0, 6);
+		expect(groups.reduce((n, g) => n + g.items.length, 0)).toBe(6);
+		expect(
+			groups.find((g) => g.categoryId === ORTHO_CATEGORY_ID)?.items.length ?? 0,
+		).toBeGreaterThanOrEqual(1);
 	});
 	test('prochaineEcheance : re-test À VENIR le plus proche, ignore dus et acquis', () => {
 		const lessonRevisions = {

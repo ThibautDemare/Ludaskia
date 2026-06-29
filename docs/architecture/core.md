@@ -271,6 +271,17 @@ propre doc de conception : `docs/design-orthographe.md`.
   **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`) ;
   `prochaineEcheance`/`aDesRevisions` alimentent l'état « rien à réviser » de
   l'accueil (carte conservée mais non actionnable, message valorisant + horizon).
+  La composition de la session est **équilibrée par SOURCE** (`categoryId`) via
+  `selectionEquilibree` (#45) : une « source » = une catégorie de leçon (maths,
+  conjugaison…) ou l'orthographe entière (tous les mots confondus). **Phase 1
+  (vidage)** : jusqu'à `REVISION_MAX_VIDAGES_SOURCES` (= 2) petites sources
+  (≤ `REVISION_SEUIL_SOURCE_VIDABLE` = 4 éléments dus) sont prises intégralement,
+  les plus en retard d'abord — pour permettre de « finir » une petite leçon en un
+  jet. **Phase 2 (round-robin)** : les slots restants sont répartis à tour de rôle
+  entre les sources restantes (grosses + petites non vidées), chacune cédant son
+  item le plus en retard. Le plafond de vidage (2 sources) garantit qu'il reste
+  toujours des slots pour le round-robin → aucune source ne peut affamer les
+  autres. `countDue` et l'affichage de l'accueil restent sur le total non plafonné.
 - **`revision-migrate.ts`** — **reprise** de l'historique vers la révision : à
   l'activation d'un profil (`applyActive`), les leçons déjà notées et les mots
   déjà en banque sans état SR entrent en rotation, **datés J-1** → dus dès le jour

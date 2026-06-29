@@ -29,6 +29,12 @@ export const PALIER_ACQUIS = REVISION_INTERVALLES.length; // 6
 /* Plafond d'éléments dus proposés en une session (par-dessus rien d'autre). */
 export const REVISION_PLAFOND = 12;
 
+/* Paramètres de la sélection équilibrée d'une session (algo dans
+   `selectionEquilibree`, revision-select.ts) : une source surreprésentée — l'ortho,
+   où chaque mot compte pour un élément — ne doit pas rafler toute la session. */
+export const REVISION_SEUIL_SOURCE_VIDABLE = 4; // au-delà, une source est « grosse »
+export const REVISION_MAX_VIDAGES_SOURCES = 2; // petites sources vidées d'un jet, max
+
 /* État d'un élément qui ENTRE en rotation (dès l'ajout / la 1re rencontre) :
    palier 0, premier re-test dès le lendemain (J+1) pour consolider à chaud. */
 export function etatNeuf(now: number): EtatRevision {

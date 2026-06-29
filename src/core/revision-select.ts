@@ -5,7 +5,13 @@
      - mots d'orthographe (OrthoState.banque[].revision) ;
      - leçons maths/conjugaison (Record<lessonId, EtatRevision>).
    ============================================================ */
-import { estDu, PALIER_ACQUIS, REVISION_PLAFOND } from './revision';
+import {
+	estDu,
+	PALIER_ACQUIS,
+	REVISION_PLAFOND,
+	REVISION_SEUIL_SOURCE_VIDABLE,
+	REVISION_MAX_VIDAGES_SOURCES,
+} from './revision';
 import { getLessonById, CATEGORIES, ORTHO_CATEGORY_ID } from './catalog';
 import type { OrthoState, EtatRevision } from './orthographe/types';
 
@@ -99,15 +105,72 @@ export function countDue(
 	return collectDue(ortho, lessonRevisions, now).length;
 }
 
+/* Sélection plafonnée et équilibrée entre SOURCES (= `categoryId` : une catégorie
+   de leçon, ou l'orthographe entière). On évite qu'une source surreprésentée
+   monopolise la session : d'abord on vide jusqu'à REVISION_MAX_VIDAGES_SOURCES
+   petites sources (≤ REVISION_SEUIL_SOURCE_VIDABLE éléments dus), les plus en
+   retard d'abord ; puis on partage les slots restants en round-robin entre les
+   sources restantes (grosses + petites non vidées), chacune cédant son élément le
+   plus en retard à tour de rôle. Plafonner le vidage à 2 sources garantit qu'il
+   reste toujours des slots pour le round-robin : aucune source n'est affamée.
+   L'entrée `due` est déjà triée par retard (donc chaque source l'est aussi) ; le
+   résultat ne l'est PAS globalement (vidage puis round-robin) → le call-site
+   re-trie pour l'affichage. */
+function selectionEquilibree(due: DueItem[], plafond: number): DueItem[] {
+	const parSource = new Map<string, DueItem[]>();
+	for (const it of due) {
+		const file = parSource.get(it.categoryId);
+		if (file) file.push(it);
+		else parSource.set(it.categoryId, [it]);
+	}
+	// Sources triées par urgence (retard de leur élément le plus en retard = le 1er).
+	const sources = [...parSource.values()].sort((a, b) => a[0].due - b[0].due);
+	const petites = sources.filter((s) => s.length <= REVISION_SEUIL_SOURCE_VIDABLE);
+	const grosses = sources.filter((s) => s.length > REVISION_SEUIL_SOURCE_VIDABLE);
+
+	const picked: DueItem[] = [];
+	// Phase 1 — vidage : au plus N petites sources, intégralement, les plus urgentes.
+	const aVider = petites.slice(0, REVISION_MAX_VIDAGES_SOURCES);
+	for (const s of aVider) {
+		for (const it of s) {
+			if (picked.length >= plafond) return picked;
+			picked.push(it);
+		}
+	}
+	// Phase 2 — round-robin sur les sources restantes (grosses + petites non vidées).
+	const files = [...grosses, ...petites.slice(REVISION_MAX_VIDAGES_SOURCES)].sort(
+		(a, b) => a[0].due - b[0].due,
+	);
+	const curseur = files.map(() => 0);
+	let progres = true;
+	while (picked.length < plafond && progres) {
+		progres = false;
+		for (let i = 0; i < files.length; i++) {
+			if (curseur[i] < files[i].length) {
+				picked.push(files[i][curseur[i]]);
+				curseur[i]++;
+				progres = true;
+				if (picked.length >= plafond) break;
+			}
+		}
+	}
+	return picked;
+}
+
 /* Sélection plafonnée et regroupée par catégorie (ordre d'apparition) : on
-   révise une catégorie avant de passer à la suivante, jamais en alternance. */
+   révise une catégorie avant de passer à la suivante, jamais en alternance. La
+   composition est équilibrée entre sources (cf. selectionEquilibree) ; l'ordre
+   d'affichage reste « le plus en retard d'abord ». */
 export function selectDueGroups(
 	ortho: OrthoState,
 	lessonRevisions: Record<string, EtatRevision>,
 	now: number,
 	plafond = REVISION_PLAFOND,
 ): DueGroup[] {
-	const capped = collectDue(ortho, lessonRevisions, now).slice(0, plafond);
+	// Re-tri par retard : selectionEquilibree ne garantit pas l'ordre global.
+	const capped = selectionEquilibree(collectDue(ortho, lessonRevisions, now), plafond).sort(
+		(a, b) => a.due - b.due,
+	);
 	const groups: DueGroup[] = [];
 	for (const it of capped) {
 		let g = groups.find((x) => x.categoryId === it.categoryId);

@@ -20,6 +20,8 @@ import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
 import { leconProgressHTML, finishLeconRun, renderLeconResult } from './lecon-runner-shared';
+import { bindTuileInteraction } from './tuile-interaction';
+import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 
 const NB_QUESTIONS = 6;
@@ -35,8 +37,7 @@ let mode: ExerciseMode;
 let questions: OrdreQuestion[] = [];
 let idx = 0;
 let score = 0;
-let placed: string[] = []; // mots posés dans la rangée-réponse, dans l'ordre
-let answered = false;
+let ctrl: TuileController; // widget « ranger une suite » mutualisé (#345)
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -88,8 +89,6 @@ export function runLeconOrdre(lessonId: string, m: ExerciseMode): void {
 }
 
 function renderQuestion(): void {
-	answered = false;
-	placed = [];
 	const q = questions[idx];
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
@@ -97,113 +96,34 @@ function renderQuestion(): void {
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
         <p class="sprint-q lord-consigne"${ttsAttr(q.question)}>${escapeHTML(q.question)}</p>
-        <div class="lord-seq" id="lordSeq"></div>
-        <p class="ltui-consigne">Tape les mots dans l'ordre (ou glisse-les dans les cases).</p>
-        <div class="ltui-bac" id="lordBac"></div>
+        <div data-tuile-mount></div>
         <button class="sprint-btn" id="lordVerif" disabled>Vérifier</button>
         <div class="sprint-correction" id="lordFeedback" hidden></div>
         <div class="sprint-actions" id="lordActions" hidden></div>
       </div>
     </div>`;
-	redraw();
-	sheets()
-		.querySelector('#lordVerif')!
-		.addEventListener('click', () => verifier());
+	const verif = sheets().querySelector('#lordVerif') as HTMLButtonElement;
+	// Widget « ranger une suite » mutualisé (#345) : rangée numérotée + bac, tap/glisser,
+	// figeage et marques ✓/✗ par case à la validation.
+	ctrl = bindTuileInteraction(
+		sheets(),
+		{ kind: 'ordre', question: q.question, ordre: q.ordre, tuiles: q.tuiles },
+		{ variant: 'lecon', onState: (complete) => (verif.disabled = !complete) },
+	);
+	verif.addEventListener('click', () => verifier());
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
 	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'ordre'); // bouton « ? » persistant (#272)
 }
 
-function redraw(): void {
-	const q = questions[idx];
-	// Rangée-réponse : une case numérotée par position.
-	const seq = sheets().querySelector('#lordSeq') as HTMLElement;
-	seq.innerHTML = q.ordre
-		.map((_, i) => {
-			const mot = placed[i];
-			const rempli = mot !== undefined;
-			const label = rempli
-				? `Position ${i + 1} : ${escapeHTML(mot)}, taper pour retirer`
-				: `Position ${i + 1}, vide`;
-			return `<button type="button" class="lord-cell${rempli ? ' rempli' : ''}"
-        data-pos="${i}" aria-label="${label}"${rempli ? '' : ' disabled'}>
-        <span class="lord-num" aria-hidden="true">${i + 1}</span>
-        <span class="lord-mot">${rempli ? escapeHTML(mot) : ''}</span>
-      </button>`;
-		})
-		.join('');
-	if (!answered) {
-		seq.querySelectorAll<HTMLButtonElement>('.lord-cell.rempli').forEach((cell) => {
-			cell.addEventListener('click', () => retirer(Number(cell.dataset.pos)));
-		});
-		// Dépôt (glisser) : lâcher une tuile sur la rangée l'ajoute à la suite.
-		seq.addEventListener('dragover', (e) => {
-			if (!answered && placed.length < q.ordre.length) e.preventDefault();
-		});
-		seq.addEventListener('drop', (e) => {
-			e.preventDefault();
-			const val = e.dataTransfer?.getData('text/plain');
-			if (val) poser(val);
-		});
-	}
-	// Bac : tuiles non encore posées (les posées restent en place mais masquées
-	// pour ne pas faire « sauter » la mise en page). Les mots d'une question sont
-	// distincts → un mot posé est repérable par sa valeur.
-	const bac = sheets().querySelector('#lordBac') as HTMLElement;
-	bac.innerHTML = q.tuiles
-		.map((t) => {
-			const used = placed.includes(t);
-			return `<button type="button" class="tuile lord-tuile${used ? ' tuile-used' : ''}"
-        data-val="${escapeHTML(t)}"${used || answered ? ' disabled' : ' draggable="true"'}
-        aria-label="Ranger le mot ${escapeHTML(t)}">${escapeHTML(t)}</button>`;
-		})
-		.join('');
-	if (!answered) {
-		bac.querySelectorAll<HTMLButtonElement>('.lord-tuile:not(.tuile-used)').forEach((btn) => {
-			const val = btn.dataset.val!;
-			btn.addEventListener('click', () => poser(val));
-			btn.addEventListener('dragstart', (e) => e.dataTransfer?.setData('text/plain', val));
-		});
-	}
+function verifier(): void {
 	const verif = sheets().querySelector('#lordVerif') as HTMLButtonElement;
-	verif.disabled = placed.length !== q.ordre.length || answered;
+	if (verif.disabled) return; // rangée incomplète
+	const q = questions[idx];
+	const correct = ctrl.verify(); // fige + marque chaque case (✓/✗)
+	if (correct) score++;
 	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
 	// (#lordActions) reste, pour ne pas afficher deux boutons à la fois (#153).
-	verif.hidden = answered;
-}
-
-function poser(val: string): void {
-	if (answered) return;
-	const q = questions[idx];
-	if (placed.length >= q.ordre.length || placed.includes(val)) return;
-	placed.push(val);
-	redraw();
-}
-
-function retirer(pos: number): void {
-	if (answered || pos < 0 || pos >= placed.length) return;
-	placed.splice(pos, 1);
-	redraw();
-}
-
-function verifier(): void {
-	const q = questions[idx];
-	if (answered || placed.length !== q.ordre.length) return;
-	answered = true;
-	const correct = placed.every((mot, i) => mot === q.ordre[i]);
-	if (correct) score++;
-	redraw(); // fige les tuiles + régénère la rangée en mode « répondu »
-	// Marque chaque case APRÈS le redraw (qui réécrit le HTML de la rangée) — vert
-	// si bien placée, alerte sinon ; jamais la couleur seule : on ajoute une icône.
-	const seq = sheets().querySelector('#lordSeq') as HTMLElement;
-	seq.querySelectorAll<HTMLElement>('.lord-cell').forEach((cell, i) => {
-		const ok = placed[i] === q.ordre[i];
-		cell.classList.add(ok ? 'correct' : 'wrong');
-		const mark = document.createElement('span');
-		mark.className = 'lord-mark';
-		mark.setAttribute('aria-hidden', 'true');
-		mark.textContent = ok ? '✓' : '✗';
-		cell.appendChild(mark);
-	});
+	verif.hidden = true;
 	const fb = sheets().querySelector('#lordFeedback') as HTMLElement;
 	fb.hidden = false;
 	fb.innerHTML = correct

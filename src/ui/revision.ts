@@ -36,6 +36,7 @@ import {
 } from '../core/progress';
 import { selectDueGroups } from '../core/revision-select';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
+import { bindTuileInteraction } from './tuile-interaction';
 
 // `consigne` (#186) : libellé de la leçon, affiché au-dessus de l'exercice pour
 // dire ce qu'on attend (le HUD ne montre que la catégorie). Absent pour les mots
@@ -359,212 +360,73 @@ function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 	(document.getElementById('revInput') as HTMLInputElement).focus();
 }
 
-/* ---------- Interactions « tuiles » (#186) ----------
-   Rendus « un item à la fois » alignés sur le moteur de révision (validation →
-   grade), réutilisant les composants visuels et le tap/glisser des runners de
-   leçon (ui/lecon-tuiles.ts, lecon-ordre.ts, lecon-tri.ts), sans leur boucle de
-   session ni `recordLessonRun`. Tap fiable au doigt + glisser en appoint souris. */
+/* ---------- Interactions « tuiles » (#186, mutualisées #345) ----------
+   Le widget (rendu + tap/glisser + figeage avec marques ✓/✗) est partagé avec les
+   runners de leçon via `bindTuileInteraction` (ui/tuile-interaction.ts). La
+   révision garde son « chrome » : libellé de leçon (consigneHTML), bouton « Valider »
+   et, à la validation, l'enregistrement SR. Le widget figé+marqué reste visible et
+   le verdict s'insère EN DESSOUS (#revAfter), comme les runners — c'est ce qui
+   fait apparaître les marques ✓/✗ en révision (correction de la divergence #345). */
+
+/* Squelette commun aux trois interactions : consigne, point de montage du widget,
+   et zone d'après-validation (Valider → verdict). `extra` insère la consigne-énoncé
+   propre à l'ordre/au tri (la « tuile » porte la sienne dans son énoncé). */
+function tuileStageHTML(it: RevItem, extra = ''): string {
+	return `${consigneHTML(it)}${extra}
+    <div data-tuile-mount></div>
+    <div id="revAfter"><div class="rev-actions"><button class="rev-btn" id="revValidate" disabled>Valider</button></div></div>`;
+}
 
 /* Comparaison : amener LA bonne tuile (signe <, =, >) dans la case, sans clavier. */
 function renderTuile(it: Extract<RevItem, { kind: 'tuile' }>) {
 	const stage = document.getElementById('revStage')!;
-	let placed: string | null = null;
-	const enonce = escapeHTML(it.question).replace(
-		'@',
-		'<button type="button" class="ltui-slot" id="ltuiSlot" aria-label="Emplacement de la réponse"></button>',
-	);
-	stage.innerHTML = `${consigneHTML(it)}
-    <p class="ltui-consigne">Amène la bonne tuile dans la case (tape-la ou glisse-la).</p>
-    <div class="rev-q ltui-enonce"${ttsAttr(it.parle ?? it.question)}>${enonce}</div>
-    <div class="ltui-bac" id="ltuiBac"></div>
-    <div class="rev-actions"><button class="rev-btn" id="revValidate" disabled>Valider</button></div>`;
-	const slot = document.getElementById('ltuiSlot') as HTMLElement;
-	const bac = document.getElementById('ltuiBac') as HTMLElement;
+	stage.innerHTML = tuileStageHTML(it);
 	const verif = document.getElementById('revValidate') as HTMLButtonElement;
-	function redraw() {
-		slot.textContent = placed ?? '';
-		slot.classList.toggle('rempli', placed !== null);
-		bac.innerHTML = it.tuiles
-			.map((t) => {
-				const used = t === placed;
-				return `<button type="button" class="tuile ltui-tuile${used ? ' tuile-used' : ''}" data-val="${escapeHTML(t)}"${used ? ' disabled' : ' draggable="true"'}>${escapeHTML(t)}</button>`;
-			})
-			.join('');
-		bac.querySelectorAll<HTMLButtonElement>('.ltui-tuile').forEach((btn) => {
-			const val = btn.dataset.val!;
-			btn.addEventListener('click', () => {
-				placed = val;
-				redraw();
-			});
-			btn.addEventListener('dragstart', (e) => e.dataTransfer?.setData('text/plain', val));
-		});
-		verif.disabled = placed === null;
-	}
-	slot.addEventListener('dragover', (e) => e.preventDefault());
-	slot.addEventListener('drop', (e) => {
-		e.preventDefault();
-		const val = e.dataTransfer?.getData('text/plain');
-		if (val) {
-			placed = val;
-			redraw();
-		}
-	});
-	slot.addEventListener('click', () => {
-		if (placed !== null) {
-			placed = null;
-			redraw();
-		}
-	});
+	const ctrl = bindTuileInteraction(
+		stage,
+		{ kind: 'tuile', question: it.question, answer: it.answer, tuiles: it.tuiles, parle: it.parle },
+		{ variant: 'revision', onState: (complete) => (verif.disabled = !complete) },
+	);
 	verif.addEventListener('click', () => {
-		if (placed === null) return;
-		grade(placed === it.answer, it.answer);
+		if (verif.disabled) return;
+		gradeTuile(ctrl.verify(), it.answer);
 	});
-	redraw();
 }
 
 /* Ordre alphabétique : ranger les tuiles-mots dans des cases numérotées. */
 function renderOrdre(it: Extract<RevItem, { kind: 'ordre' }>) {
 	const stage = document.getElementById('revStage')!;
-	const placed: string[] = [];
-	stage.innerHTML = `${consigneHTML(it)}
-    <p class="rev-q lord-consigne"${ttsAttr(it.question)}>${escapeHTML(it.question)}</p>
-    <div class="lord-seq" id="lordSeq"></div>
-    <p class="ltui-consigne">Tape les mots dans l'ordre (ou glisse-les dans les cases).</p>
-    <div class="ltui-bac" id="lordBac"></div>
-    <div class="rev-actions"><button class="rev-btn" id="revValidate" disabled>Valider</button></div>`;
-	const seq = document.getElementById('lordSeq') as HTMLElement;
-	const bac = document.getElementById('lordBac') as HTMLElement;
+	stage.innerHTML = tuileStageHTML(
+		it,
+		`<p class="rev-q lord-consigne"${ttsAttr(it.question)}>${escapeHTML(it.question)}</p>`,
+	);
 	const verif = document.getElementById('revValidate') as HTMLButtonElement;
-	function poser(val: string) {
-		if (placed.length >= it.ordre.length || placed.includes(val)) return;
-		placed.push(val);
-		redraw();
-	}
-	function retirer(pos: number) {
-		if (pos < 0 || pos >= placed.length) return;
-		placed.splice(pos, 1);
-		redraw();
-	}
-	function redraw() {
-		seq.innerHTML = it.ordre
-			.map((_, i) => {
-				const mot = placed[i];
-				const rempli = mot !== undefined;
-				return `<button type="button" class="lord-cell${rempli ? ' rempli' : ''}" data-pos="${i}"${rempli ? '' : ' disabled'}><span class="lord-num" aria-hidden="true">${i + 1}</span><span class="lord-mot">${rempli ? escapeHTML(mot) : ''}</span></button>`;
-			})
-			.join('');
-		seq.querySelectorAll<HTMLButtonElement>('.lord-cell.rempli').forEach((cell) => {
-			cell.addEventListener('click', () => retirer(Number(cell.dataset.pos)));
-		});
-		bac.innerHTML = it.tuiles
-			.map((t) => {
-				const used = placed.includes(t);
-				return `<button type="button" class="tuile lord-tuile${used ? ' tuile-used' : ''}" data-val="${escapeHTML(t)}"${used ? ' disabled' : ' draggable="true"'}>${escapeHTML(t)}</button>`;
-			})
-			.join('');
-		bac.querySelectorAll<HTMLButtonElement>('.lord-tuile:not(.tuile-used)').forEach((btn) => {
-			const val = btn.dataset.val!;
-			btn.addEventListener('click', () => poser(val));
-			btn.addEventListener('dragstart', (e) => e.dataTransfer?.setData('text/plain', val));
-		});
-		verif.disabled = placed.length !== it.ordre.length;
-	}
-	seq.addEventListener('dragover', (e) => {
-		if (placed.length < it.ordre.length) e.preventDefault();
-	});
-	seq.addEventListener('drop', (e) => {
-		e.preventDefault();
-		const val = e.dataTransfer?.getData('text/plain');
-		if (val) poser(val);
-	});
+	const ctrl = bindTuileInteraction(
+		stage,
+		{ kind: 'ordre', question: it.question, ordre: it.ordre, tuiles: it.tuiles },
+		{ variant: 'revision', onState: (complete) => (verif.disabled = !complete) },
+	);
 	verif.addEventListener('click', () => {
-		if (placed.length !== it.ordre.length) return;
-		grade(
-			placed.every((mot, i) => mot === it.ordre[i]),
-			it.ordre.join(' · '),
-		);
+		if (verif.disabled) return;
+		gradeTuile(ctrl.verify(), it.ordre.join(' · '));
 	});
-	redraw();
 }
 
 /* Ranger par thème (champs lexicaux) : tap en deux temps (mot puis thème) ou glisser. */
 function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 	const stage = document.getElementById('revStage')!;
-	const placed: Record<string, 0 | 1> = {};
-	let selected: string | null = null;
-	stage.innerHTML = `${consigneHTML(it)}
-    <p class="rev-q lord-consigne"${ttsAttr(it.question)}>${escapeHTML(it.question)}</p>
-    <p class="ltui-consigne">Tape un mot, puis tape son thème (ou glisse-le dans la colonne).</p>
-    <div class="ltri-cols" id="ltriCols"></div>
-    <div class="ltui-bac" id="ltriBac"></div>
-    <div class="rev-actions"><button class="rev-btn" id="revValidate" disabled>Valider</button></div>`;
-	const cols = document.getElementById('ltriCols') as HTMLElement;
-	const bac = document.getElementById('ltriBac') as HTMLElement;
+	stage.innerHTML = tuileStageHTML(
+		it,
+		`<p class="rev-q lord-consigne"${ttsAttr(it.question)}>${escapeHTML(it.question)}</p>`,
+	);
 	const verif = document.getElementById('revValidate') as HTMLButtonElement;
-	function motsDeColonne(col: 0 | 1): string[] {
-		return it.mots.map((m) => m.mot).filter((mot) => placed[mot] === col);
-	}
-	function poser(val: string, col: 0 | 1) {
-		if (placed[val] !== undefined) return;
-		placed[val] = col;
-		if (selected === val) selected = null;
-		redraw();
-	}
-	function retirer(val: string) {
-		if (placed[val] === undefined) return;
-		delete placed[val];
-		redraw();
-	}
-	function selectTuile(val: string) {
-		if (placed[val] !== undefined) return;
-		selected = selected === val ? null : val;
-		redraw();
-	}
-	function redraw() {
-		cols.innerHTML = ([0, 1] as const)
-			.map((col) => {
-				const tuiles = motsDeColonne(col)
-					.map(
-						(mot) =>
-							`<button type="button" class="tuile ltri-posee" data-mot="${escapeHTML(mot)}">${escapeHTML(mot)}</button>`,
-					)
-					.join('');
-				return `<div class="ltri-col" data-col="${col}"><div class="ltri-col-titre">${escapeHTML(it.categories[col])}</div><div class="ltri-zone" data-col="${col}">${tuiles}</div></div>`;
-			})
-			.join('');
-		cols.querySelectorAll<HTMLElement>('.ltri-col').forEach((colEl) => {
-			const col = Number(colEl.dataset.col) as 0 | 1;
-			colEl.addEventListener('click', (e) => {
-				const posee = (e.target as HTMLElement).closest('.ltri-posee') as HTMLElement | null;
-				if (posee) {
-					retirer(posee.dataset.mot!);
-					return;
-				}
-				if (selected) poser(selected, col);
-			});
-			colEl.addEventListener('dragover', (e) => e.preventDefault());
-			colEl.addEventListener('drop', (e) => {
-				e.preventDefault();
-				const val = e.dataTransfer?.getData('text/plain');
-				if (val) poser(val, col);
-			});
-		});
-		bac.innerHTML = it.mots
-			.map((m) => {
-				if (placed[m.mot] !== undefined) return '';
-				const sel = selected === m.mot ? ' ltri-sel' : '';
-				return `<button type="button" class="tuile lord-tuile ltri-tuile${sel}" data-mot="${escapeHTML(m.mot)}" draggable="true">${escapeHTML(m.mot)}</button>`;
-			})
-			.join('');
-		bac.querySelectorAll<HTMLButtonElement>('.ltri-tuile').forEach((btn) => {
-			const val = btn.dataset.mot!;
-			btn.addEventListener('click', () => selectTuile(val));
-			btn.addEventListener('dragstart', (e) => e.dataTransfer?.setData('text/plain', val));
-		});
-		verif.disabled = Object.keys(placed).length !== it.mots.length;
-	}
+	const ctrl = bindTuileInteraction(
+		stage,
+		{ kind: 'tri', question: it.question, categories: it.categories, mots: it.mots },
+		{ variant: 'revision', onState: (complete) => (verif.disabled = !complete) },
+	);
 	verif.addEventListener('click', () => {
-		if (Object.keys(placed).length !== it.mots.length) return;
+		if (verif.disabled) return;
 		const bon = ([0, 1] as const)
 			.map(
 				(col) =>
@@ -574,12 +436,8 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 						.join(', ')}`,
 			)
 			.join(' — ');
-		grade(
-			it.mots.every((m) => placed[m.mot] === m.cat),
-			bon,
-		);
+		gradeTuile(ctrl.verify(), bon);
 	});
-	redraw();
 }
 
 // Entrée enchaîne sur l'action principale visible : après une réponse, le bouton
@@ -596,8 +454,8 @@ function bindEnter() {
 	});
 }
 
-/* Enregistre la réponse, met à jour l'état SR, puis enchaîne. */
-function grade(reussi: boolean, correct: string) {
+/* Enregistre la réponse et met à jour l'état SR (1 XP si réussie). Sans DOM. */
+function recordGrade(reussi: boolean) {
 	const it = items[idx];
 	const now = Date.now();
 	if (it.kind === 'word') {
@@ -610,17 +468,38 @@ function grade(reussi: boolean, correct: string) {
 		score++;
 		addXP(1);
 	}
-	const stage = document.getElementById('revStage')!;
-	// `mathInline` (= échappe + empile les fractions « n/d ») : la bonne réponse révélée
-	// s'affiche en barre horizontale comme les choix, pas en oblique (#264). Sans effet
-	// sur les réponses non fractionnaires (mots, signes, heures…).
+}
+
+/* Verdict + bouton « Continuer / Terminer ». `mathInline` (= échappe + empile les
+   fractions « n/d ») : la bonne réponse révélée s'affiche en barre horizontale comme
+   les choix, pas en oblique (#264). Sans effet sur les réponses non fractionnaires. */
+function verdictHTML(reussi: boolean, correct: string): string {
 	const verdict = reussi
 		? `<div class="rev-feedback ok">✓ Bravo !</div>`
 		: `<div class="rev-feedback ko">✗ La bonne réponse : <strong>${mathInline(correct)}</strong></div>`;
-	stage.innerHTML = `${verdict}
+	return `${verdict}
     <div class="rev-actions"><button class="rev-btn" id="revNext">${idx + 1 < items.length ? 'Continuer ▶' : 'Terminer'}</button></div>`;
+}
+
+function wireRevNext() {
 	document.getElementById('revNext')!.addEventListener('click', next);
 	document.getElementById('revNext')!.focus();
+}
+
+/* Saisie / QCM / mot / posée : pas de widget à conserver → le verdict remplace le stage. */
+function grade(reussi: boolean, correct: string) {
+	recordGrade(reussi);
+	document.getElementById('revStage')!.innerHTML = verdictHTML(reussi, correct);
+	wireRevNext();
+}
+
+/* Tuiles / ordre / tri : le widget vient d'être figé + marqué (✓/✗) par le binder ;
+   on garde ces marques visibles et on insère le verdict EN DESSOUS (#revAfter), au
+   lieu de remplacer tout le stage — sinon l'enfant ne verrait jamais les marques. */
+function gradeTuile(reussi: boolean, correct: string) {
+	recordGrade(reussi);
+	document.getElementById('revAfter')!.innerHTML = verdictHTML(reussi, correct);
+	wireRevNext();
 }
 
 function next() {

@@ -22,9 +22,11 @@
      cachées) — les propriétés sont mémorisées, pas comptées.
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
+import { checkAnswer } from '../../core/exercise';
+import { checkNumeriqueOuTexte } from '../../core/check-helpers';
 import type { Solid, SolidOrient } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
-import { choice, sample, normalizeText, rnd } from '../../core/utils';
+import { choice, sample, rnd } from '../../core/utils';
 
 /* Orientation du schéma (#286 — variété visuelle, cadrage designer-ux-enfant) :
    on fait varier cube/pavé/pyramide pour qu'un même solide n'apparaisse pas
@@ -99,14 +101,7 @@ function reconnaitreType(): ExerciseType {
 				figure,
 			};
 		},
-		check(exercise: Exercise, input: string): boolean {
-			if (exercise.type !== 'text' && exercise.type !== 'qcm') return false;
-			const v = normalizeText(input);
-			if (v === normalizeText(exercise.answer)) return true;
-			return exercise.type === 'text'
-				? (exercise.answers ?? []).some((a) => normalizeText(a) === v)
-				: false;
-		},
+		check: checkAnswer,
 	};
 }
 
@@ -197,13 +192,7 @@ function proprietesType(): ExerciseType {
 				choices: sample(p.choices, p.choices.length),
 			};
 		},
-		check(exercise: Exercise, input: string): boolean {
-			if (!('answer' in exercise)) return false;
-			const a = exercise.answer;
-			return /^\d+$/.test(a)
-				? Number(input.trim().replace(',', '.')) === Number(a)
-				: normalizeText(input) === normalizeText(a);
-		},
+		check: checkNumeriqueOuTexte,
 	};
 }
 

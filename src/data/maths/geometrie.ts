@@ -25,7 +25,8 @@
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import type { PlaneShape } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
-import { rnd, choice, sample, normalizeText } from '../../core/utils';
+import { checkNumeriqueOuTexte } from '../../core/check-helpers';
+import { rnd, choice, sample } from '../../core/utils';
 
 /* ---------- Identification visuelle ---------- */
 
@@ -164,13 +165,7 @@ function reconnaitreType(): ExerciseType {
 				figure: f.figure,
 			};
 		},
-		check(exercise: Exercise, input: string): boolean {
-			if (exercise.type !== 'text' && exercise.type !== 'qcm') return false;
-			const a = exercise.answer;
-			return /^\d+$/.test(a)
-				? Number(input.trim().replace(',', '.')) === Number(a)
-				: normalizeText(input) === normalizeText(a);
-		},
+		check: checkNumeriqueOuTexte,
 	};
 }
 
@@ -266,13 +261,7 @@ function proprietesType(): ExerciseType {
 				choices: sample(p.choices, p.choices.length),
 			};
 		},
-		check(exercise: Exercise, input: string): boolean {
-			if (!('answer' in exercise)) return false;
-			const a = exercise.answer;
-			return /^\d+$/.test(a)
-				? Number(input.trim().replace(',', '.')) === Number(a)
-				: normalizeText(input) === normalizeText(a);
-		},
+		check: checkNumeriqueOuTexte,
 	};
 }
 

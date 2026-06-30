@@ -30,7 +30,8 @@ import type { Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
 import type { SchoolLevel } from '../../core/catalog';
 import { calibrated } from '../../core/level-combinators';
 import { rnd } from '../../core/utils';
-import { formatNombre, nettoyerSaisieNombre } from '../../core/nombres';
+import { formatNombre } from '../../core/nombres';
+import { checkNumerique } from '../../core/check-helpers';
 
 /* Rangs du plus petit au plus grand (#240 : étendus jusqu'au million). */
 const RANGS = [
@@ -151,9 +152,7 @@ function decomposeMultiplicativeFact(): Exercise {
 function positionType(gen: (opts?: GenerateOpts) => Exercise): ExerciseType {
 	return {
 		generate: (opts?: GenerateOpts) => gen(opts),
-		check: (exercise: Exercise, input: string): boolean =>
-			'answer' in exercise &&
-			Number(nettoyerSaisieNombre(input).replace(',', '.')) === Number(exercise.answer),
+		check: checkNumerique,
 	};
 }
 

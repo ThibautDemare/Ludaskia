@@ -50,6 +50,7 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
+import { checkNumerique } from '../../core/check-helpers';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
 import { renderFigure } from '../../core/figures';
@@ -468,16 +469,12 @@ const MODE_QCM: ModeOption[] = [
 ];
 
 function qcmType(generate: () => Exercise): ExerciseType {
-	return { modes: MODE_QCM, generate, check: (ex, input) => checkAnswer(ex, input) };
+	return { modes: MODE_QCM, generate, check: checkAnswer };
 }
 
 /* Mono-mode saisie (rendu fiche/bilan via le chemin « math moderne » : item numérique). */
 function saisieNumType(generate: () => Exercise): ExerciseType {
-	return {
-		generate,
-		check: (ex, input) =>
-			'answer' in ex && Number(input.trim().replace(',', '.')) === Number(ex.answer),
-	};
+	return { generate, check: checkNumerique };
 }
 
 export interface FractionLessonDef {

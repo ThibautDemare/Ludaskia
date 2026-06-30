@@ -23,6 +23,7 @@
    mono-niveau (CE2), inchangée.
    ============================================================ */
 import type { Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
+import { checkNumerique } from '../../core/check-helpers';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice } from '../../core/utils';
 
@@ -31,12 +32,6 @@ const obj = () => choice(OBJETS);
 
 function ex(question: string, answer: number): Exercise {
 	return { type: 'text', question, answer: String(answer) };
-}
-
-/* Correction numérique commune aux deux leçons : la virgule décimale est tolérée
-   (« 1,50 » == « 1.5 ») même si le CE2 reste entier. */
-function checkNumerique(exercise: Exercise, input: string): boolean {
-	return 'answer' in exercise && Number(input.trim().replace(',', '.')) === Number(exercise.answer);
 }
 
 /* ---------- Leçon 1 : « Je calcule avec les euros » ----------

@@ -122,6 +122,18 @@ propre doc de conception : `docs/design-orthographe.md`.
   seule `answer`) ; absent (cas CE2), comportement de réponse unique **inchangé** — la
   donnée de l'exercice porte ainsi la règle, le `check` partagé (via `calibrated`,
   pris sur le plus bas niveau) reste unique.
+- **`check-helpers.ts`** (#346) — helpers de correction **réutilisables**, module **pur**
+  (sans DOM). Centralise la logique jusqu'ici recopiée dans une dizaine de fabriques
+  `src/data/maths/` (cercle, division, fractions, géométrie, géométrie-cm1, mesures,
+  monnaie, périmètre, position, solides). Deux exports :
+  **`checkNumerique(exercise, input)`** compare la saisie à `answer` comme des nombres
+  (tolère la virgule décimale française et les espaces de groupement via
+  `nettoyerSaisieNombre` ; faux si l'exercice n'a pas de réponse unique ou si la saisie
+  n'est pas un nombre) ; **`checkNumeriqueOuTexte(exercise, input)`** est numérique quand
+  `answer` est un entier (côtés, angles, comptages), sinon délègue à `checkAnswer`
+  (`exercise.ts`) pour la correction texte normalisée — couvre les leçons de géométrie
+  dont la réponse est tantôt un nombre, tantôt un nom. `numeration.ts` conserve son check
+  intervalle/signe propre (#240, hors scope).
 - **`fraction-text.ts`** (#42/#200) — module **pur** : libellé verbal d'une fraction
   (`texteParle` : « trois quarts ») et **rendu typographique empilé** (barre horizontale,
   numérateur au-dessus) via `mathInline`. La donnée garde la clé plate « num/den » ; ce

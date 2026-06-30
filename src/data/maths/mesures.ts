@@ -25,6 +25,7 @@
      le trou alterne à gauche/à droite. L'unité attendue est collée au champ.
    ============================================================ */
 import type { Exercise, ExerciseType } from '../../core/exercise';
+import { checkNumerique } from '../../core/check-helpers';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice } from '../../core/utils';
 
@@ -98,11 +99,7 @@ export function conversionType(config: MesureConfig): ExerciseType {
 			}
 			return generateConversion(config.conversions);
 		},
-		check(exercise: Exercise, input: string): boolean {
-			return (
-				'answer' in exercise && Number(input.trim().replace(',', '.')) === Number(exercise.answer)
-			);
-		},
+		check: checkNumerique,
 	};
 }
 

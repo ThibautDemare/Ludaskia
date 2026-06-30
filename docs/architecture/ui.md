@@ -187,6 +187,13 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
 
 ## Runners d'exercice
 
+- **`lecon-runner-shared.ts`** (#344) — **squelette commun** des cinq runners
+  ci-dessous : `leconProgressHTML(idx, total, libellé?)` (barre de progression, libellé
+  surchargeable, ex. « Problème i / n »), `finishLeconRun(lessonId, ok, total)` (enregistre
+  l'essai via `recordLessonRun` et renvoie l'issue) et `renderLeconResult(opts)` (écran de
+  résultat commun — score, étoile, mascotte, récompenses de niveau). Chaque runner délègue
+  sa fin de session à ce module au lieu de la dupliquer ; `lecon-probleme.ts` passe son
+  lexique (`nom` / `nomPluriel`) via le paramètre optionnel `lexique`.
 - **`lecon-qcm.ts`** — runner **QCM d'une leçon** (#69) : « une question à la
   fois », **feedback immédiat**, barre de progression, **sans chrono** ; enregistre
   via `recordLessonRun` (parité avec la saisie). Réutilise les composants `.sprint-*`.

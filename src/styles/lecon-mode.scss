@@ -420,6 +420,16 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 	background: var(--ko-soft);
 	color: var(--ko);
 }
+// Focus clavier/commutateur VISIBLE sur les cibles d'interaction tuiles qui ne portent
+// pas la classe .tuile — l'emplacement et les cases numérotées (WCAG 2.4.7, #358). Les
+// tuiles du bac et les tuiles posées (.ltri-posee) sont des .tuile → couvertes par la
+// règle .tuile:focus-visible (orthographe.scss) ; on l'ajoute ici par robustesse.
+.ltui-slot:focus-visible,
+.lord-cell:focus-visible,
+.ltri-posee:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
 .ltui-bac {
 	display: flex;
 	flex-wrap: wrap;

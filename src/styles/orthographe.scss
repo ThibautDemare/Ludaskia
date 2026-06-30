@@ -501,7 +501,12 @@
 .tuile:active,
 .tuile:focus-visible {
 	background: var(--accent-soft);
-	outline: none;
+}
+// Focus clavier/commutateur VISIBLE (WCAG 2.4.7, #358) : anneau accent détaché par
+// l'offset (se distingue de la bordure d'état .correct/.wrong, comme .prob-input).
+.tuile:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
 }
 @media (hover: hover) {
 	.tuile:hover {
@@ -518,7 +523,6 @@
 .tuile-pose:active,
 .tuile-pose:focus-visible {
 	background: var(--accent-dark);
-	outline: none;
 }
 @media (hover: hover) {
 	.tuile-pose:hover {

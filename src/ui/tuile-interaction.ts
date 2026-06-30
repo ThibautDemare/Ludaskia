@@ -190,9 +190,13 @@ function bindOrdre(
 					frozen && rempli
 						? `<span class="lord-mark" aria-hidden="true">${ok ? '✓' : '✗'}</span>`
 						: '';
-				const label = rempli
-					? `Position ${i + 1} : ${escapeHTML(mot)}, taper pour retirer`
-					: `Position ${i + 1}, vide`;
+				// Une fois figée, l'aria-label porte le verdict juste/faux (les marques ✓/✗
+				// sont en aria-hidden) → un lecteur d'écran peut relire case par case (#358).
+				const label = !rempli
+					? `Position ${i + 1}, vide`
+					: frozen
+						? `Position ${i + 1} : ${escapeHTML(mot)}, ${ok ? 'correct' : 'incorrect'}`
+						: `Position ${i + 1} : ${escapeHTML(mot)}, taper pour retirer`;
 				const dis = !rempli || frozen ? ' disabled' : '';
 				return `<button type="button" class="lord-cell${rempli ? ' rempli' : ''}${etat}" data-pos="${i}" aria-label="${label}"${dis}>
         <span class="lord-num" aria-hidden="true">${i + 1}</span>
@@ -288,8 +292,10 @@ function bindTri(
 						const mark = frozen
 							? `<span class="ltri-mark" aria-hidden="true">${ok ? '✓' : '✗'}</span>`
 							: '';
+						// Une fois figée, l'aria-label porte le verdict juste/faux (marque ✓/✗ en
+						// aria-hidden) → relecture au lecteur d'écran, tuile par tuile (#358).
 						const label = frozen
-							? escapeHTML(mot)
+							? `${escapeHTML(mot)}, ${ok ? 'correct' : 'incorrect'}`
 							: `Retirer ${escapeHTML(mot)} du thème ${escapeHTML(spec.categories[col])}`;
 						return `<button type="button" class="tuile ltri-posee${etat}" data-mot="${escapeHTML(mot)}"
             aria-label="${label}"${frozen ? ' disabled' : ''}>${escapeHTML(mot)}${mark}</button>`;

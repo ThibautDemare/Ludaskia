@@ -157,6 +157,17 @@
 .rev-btn:active {
 	transform: translateY(1px);
 }
+// Focus clavier VISIBLE sur fond --accent (WCAG 2.4.7, #358) : anneau clair décollé.
+.rev-btn:focus-visible {
+	outline: 2px solid var(--on-accent);
+	outline-offset: 2px;
+}
+// État désactivé signalé (« Valider » démarre inactif tant que la réponse n'est pas
+// complète) : teinte atténuée + curseur neutre.
+.rev-btn:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
 .rev-done {
 	display: flex;
 	flex-direction: column;

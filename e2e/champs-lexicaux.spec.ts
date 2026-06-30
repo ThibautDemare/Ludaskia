@@ -57,6 +57,16 @@ test('« Ranger par thème » : trier les tuiles puis vérifier corrige tuile pa
 
 	expect(await page.locator('.ltri-posee.correct').count()).toBe(3);
 	expect(await page.locator('.ltri-posee.wrong').count()).toBe(3);
+	// #358 : le verdict juste/faux est porté par l'aria-label des tuiles figées (les
+	// marques ✓/✗ sont en aria-hidden) → relecture possible au lecteur d'écran.
+	await expect(page.locator('.ltri-posee.correct').first()).toHaveAttribute(
+		'aria-label',
+		/, correct$/,
+	);
+	await expect(page.locator('.ltri-posee.wrong').first()).toHaveAttribute(
+		'aria-label',
+		/, incorrect$/,
+	);
 	await expect(page.locator('.lqcm-ko')).toBeVisible(); // bon classement montré
 	// #153 : une fois la réponse validée, « Vérifier » s'efface ; seul « Continuer ▶ »
 	// reste affiché (pas deux boutons à la fois).

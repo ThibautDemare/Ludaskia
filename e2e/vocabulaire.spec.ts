@@ -47,6 +47,11 @@ test('ranger les tuiles dans le bon ordre valide la réponse', async ({ page }) 
 	// Toutes les cases correctes, aucune erreur, message de réussite.
 	await expect(page.locator('.lord-cell.wrong')).toHaveCount(0);
 	expect(await page.locator('.lord-cell.correct').count()).toBe(ordre.length);
+	// #358 : le verdict juste/faux est porté par l'aria-label (marques ✓/✗ en aria-hidden).
+	await expect(page.locator('.lord-cell.correct').first()).toHaveAttribute(
+		'aria-label',
+		/, correct$/,
+	);
 	await expect(page.locator('.lqcm-ok')).toBeVisible();
 	// #153 : une fois la réponse validée, « Vérifier » s'efface ; seul « Continuer ▶ »
 	// reste affiché (pas deux boutons à la fois).

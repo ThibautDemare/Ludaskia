@@ -22,12 +22,10 @@
    ============================================================ */
 import { choice, rnd, sample } from '../../core/utils';
 import { checkAnswer } from '../../core/exercise';
+import { checkNumerique } from '../../core/check-helpers';
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { calibrated } from '../../core/level-combinators';
 import { renderFigure } from '../../core/figures';
-
-const numerique = (ex: Exercise, input: string): boolean =>
-	'answer' in ex && Number(input.trim().replace(',', '.')) === Number(ex.answer);
 
 /* ---------- Leçon 1 : Moitié et quart d'une collection ---------- */
 // Fraction-opérateur (« prendre la moitié / le quart de »), distincte du signe ÷
@@ -51,7 +49,7 @@ function moitieQuartType(config: MoitieQuartConfig): ExerciseType {
 			const q = rnd(2, config.quartQuotientMax); // résultat 2..max (X = 4·q)
 			return { type: 'text', question: `Le quart de ${q * 4} = @`, answer: String(q) };
 		},
-		check: numerique,
+		check: checkNumerique,
 	};
 }
 
@@ -112,7 +110,7 @@ function partageType(): ExerciseType {
 				answer: String(quotient),
 			};
 		},
-		check: numerique,
+		check: checkNumerique,
 	};
 }
 
@@ -234,7 +232,7 @@ function resteType(): ExerciseType {
 		// « problème », pas de badge « Étape » (les deux champs sont nommés).
 		probLexique: { nom: 'Calcul', nomPluriel: 'calculs', badgeEtape: false },
 		generate: (opts) => (opts?.mode === 'qcm' ? genResteQcm() : genResteProbleme()),
-		check: (ex, input) => checkAnswer(ex, input),
+		check: checkAnswer,
 	};
 }
 

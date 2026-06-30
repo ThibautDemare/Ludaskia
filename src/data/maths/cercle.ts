@@ -22,7 +22,8 @@
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import { calibrated } from '../../core/level-combinators';
 import { renderFigure } from '../../core/figures';
-import { rnd, choice, sample, normalizeText } from '../../core/utils';
+import { checkNumeriqueOuTexte } from '../../core/check-helpers';
+import { rnd, choice, sample } from '../../core/utils';
 
 const MODES: ModeOption[] = [
 	{
@@ -156,13 +157,7 @@ function cercleType(config: CercleConfig): ExerciseType {
 				figure: f.figure,
 			};
 		},
-		check(exercise: Exercise, input: string): boolean {
-			if (exercise.type !== 'text' && exercise.type !== 'qcm') return false;
-			const a = exercise.answer;
-			return /^\d+$/.test(a)
-				? Number(input.trim().replace(',', '.')) === Number(a)
-				: normalizeText(input) === normalizeText(a);
-		},
+		check: checkNumeriqueOuTexte,
 	};
 }
 

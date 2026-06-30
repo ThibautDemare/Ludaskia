@@ -22,6 +22,7 @@
    - formules : carré côté 2–12, rectangle L≠l avec L+l ≤ 30.
    ============================================================ */
 import type { Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
+import { checkNumerique } from '../../core/check-helpers';
 import { renderFigure, boundaryEdges } from '../../core/figures';
 import { rnd } from '../../core/utils';
 
@@ -159,11 +160,7 @@ function perimetreType(genFact: () => Exercise): ExerciseType {
 		generate(_opts?: GenerateOpts): Exercise {
 			return genFact();
 		},
-		check(exercise: Exercise, input: string): boolean {
-			return (
-				'answer' in exercise && Number(input.trim().replace(',', '.')) === Number(exercise.answer)
-			);
-		},
+		check: checkNumerique,
 	};
 }
 

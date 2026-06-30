@@ -30,9 +30,11 @@
      pavé, pyramide, prisme) — jamais « compte sur le dessin » (arêtes cachées).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
+import { checkAnswer } from '../../core/exercise';
+import { checkNumerique, checkNumeriqueOuTexte } from '../../core/check-helpers';
 import type { PlaneShape, Solid, SolidOrient } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
-import { choice, sample, normalizeText, rnd } from '../../core/utils';
+import { choice, sample, rnd } from '../../core/utils';
 
 /* ---------- Modes communs ---------- */
 
@@ -49,21 +51,6 @@ const MODES_RECO: ModeOption[] = [
 const MODE_QCM_SEUL: ModeOption[] = [
 	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'hand-pointing', recommended: true },
 ];
-
-/* Vérification commune QCM / saisie : réponse numérique (comptage) → comparaison de
-   nombres ; sinon comparaison de texte normalisé (accents exigés). En saisie, des
-   formes équivalentes (`answers`) sont aussi acceptées. */
-function checkReco(exercise: Exercise, input: string): boolean {
-	if (exercise.type !== 'text' && exercise.type !== 'qcm') return false;
-	const v = normalizeText(input);
-	if (/^\d+$/.test(exercise.answer)) {
-		return Number(input.trim().replace(',', '.')) === Number(exercise.answer);
-	}
-	if (v === normalizeText(exercise.answer)) return true;
-	return exercise.type === 'text'
-		? (exercise.answers ?? []).some((a) => normalizeText(a) === v)
-		: false;
-}
 
 /* ---------- Triangles particuliers : reconnaissance ---------- */
 
@@ -156,7 +143,7 @@ function trianglesRecoType(): ExerciseType {
 		generate(opts?: GenerateOpts): Exercise {
 			return triangleRecoExercise(opts?.mode);
 		},
-		check: checkReco,
+		check: checkNumeriqueOuTexte,
 	};
 }
 
@@ -252,13 +239,7 @@ function trianglesProprietesType(): ExerciseType {
 				choices: sample(p.choices, p.choices.length),
 			};
 		},
-		check(exercise: Exercise, input: string): boolean {
-			if (!('answer' in exercise)) return false;
-			const a = exercise.answer;
-			return /^\d+$/.test(a)
-				? Number(input.trim().replace(',', '.')) === Number(a)
-				: normalizeText(input) === normalizeText(a);
-		},
+		check: checkNumeriqueOuTexte,
 	};
 }
 
@@ -368,7 +349,7 @@ function quadrilateresRecoType(): ExerciseType {
 			}
 			return quadRecoExercise(opts?.mode);
 		},
-		check: checkReco,
+		check: checkNumeriqueOuTexte,
 	};
 }
 
@@ -433,7 +414,7 @@ function solidesRecoType(): ExerciseType {
 				figure,
 			};
 		},
-		check: checkReco,
+		check: checkNumeriqueOuTexte,
 	};
 }
 
@@ -512,10 +493,7 @@ function polyedreType(): ExerciseType {
 				choices: sample(p.choices, p.choices.length),
 			};
 		},
-		check(exercise: Exercise, input: string): boolean {
-			if (!('answer' in exercise)) return false;
-			return normalizeText(input) === normalizeText(exercise.answer);
-		},
+		check: checkAnswer,
 	};
 }
 
@@ -577,10 +555,7 @@ function comptageType(): ExerciseType {
 				choices: choixComptage(bon),
 			};
 		},
-		check(exercise: Exercise, input: string): boolean {
-			if (!('answer' in exercise)) return false;
-			return Number(input.trim().replace(',', '.')) === Number(exercise.answer);
-		},
+		check: checkNumerique,
 	};
 }
 

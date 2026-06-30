@@ -21,6 +21,8 @@ import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
 import { leconProgressHTML, finishLeconRun, renderLeconResult } from './lecon-runner-shared';
+import { bindTuileInteraction } from './tuile-interaction';
+import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 
 const NB_QUESTIONS = 6;
@@ -36,9 +38,7 @@ let mode: ExerciseMode;
 let questions: TriQuestion[] = [];
 let idx = 0;
 let score = 0;
-let placed: Record<string, 0 | 1> = {}; // mot → colonne choisie par l'enfant
-let selected: string | null = null; // tuile sélectionnée dans le bac (tap 1er temps)
-let answered = false;
+let ctrl: TuileController; // widget « ranger par thème » mutualisé (#345)
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -90,9 +90,6 @@ export function runLeconTri(lessonId: string, m: ExerciseMode): void {
 }
 
 function renderQuestion(): void {
-	answered = false;
-	placed = {};
-	selected = null;
 	const q = questions[idx];
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
@@ -100,128 +97,34 @@ function renderQuestion(): void {
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
         <p class="sprint-q lord-consigne"${ttsAttr(q.question)}>${escapeHTML(q.question)}</p>
-        <p class="ltui-consigne">Tape un mot, puis tape son thème (ou glisse-le dans la colonne).</p>
-        <div class="ltri-cols" id="ltriCols"></div>
-        <div class="ltui-bac" id="ltriBac"></div>
+        <div data-tuile-mount></div>
         <button class="sprint-btn" id="ltriVerif" disabled>Vérifier</button>
         <div class="sprint-correction" id="ltriFeedback" hidden></div>
         <div class="sprint-actions" id="ltriActions" hidden></div>
       </div>
     </div>`;
-	redraw();
-	sheets()
-		.querySelector('#ltriVerif')!
-		.addEventListener('click', () => verifier());
+	const verif = sheets().querySelector('#ltriVerif') as HTMLButtonElement;
+	// Widget « ranger par thème » mutualisé (#345) : deux colonnes + bac, tap en deux
+	// temps / glisser, figeage et marques ✓/✗ par tuile à la validation.
+	ctrl = bindTuileInteraction(
+		sheets(),
+		{ kind: 'tri', question: q.question, categories: q.categories, mots: q.mots },
+		{ variant: 'lecon', onState: (complete) => (verif.disabled = !complete) },
+	);
+	verif.addEventListener('click', () => verifier());
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
 	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'tri'); // bouton « ? » persistant (#272)
 }
 
-function motsDeColonne(col: 0 | 1): string[] {
-	const q = questions[idx];
-	return q.mots.map((m) => m.mot).filter((mot) => placed[mot] === col);
-}
-
-function redraw(): void {
-	const q = questions[idx];
-	// Deux colonnes-thèmes : chacune liste les tuiles qu'on y a déposées.
-	const cols = sheets().querySelector('#ltriCols') as HTMLElement;
-	cols.innerHTML = ([0, 1] as const)
-		.map((col) => {
-			const tuiles = motsDeColonne(col)
-				.map((mot) => {
-					const m = q.mots.find((x) => x.mot === mot)!;
-					const etat = answered ? (m.cat === col ? ' correct' : ' wrong') : '';
-					const mark = answered
-						? `<span class="ltri-mark" aria-hidden="true">${m.cat === col ? '✓' : '✗'}</span>`
-						: '';
-					const label = answered
-						? escapeHTML(mot)
-						: `Retirer ${escapeHTML(mot)} du thème ${escapeHTML(q.categories[col])}`;
-					return `<button type="button" class="tuile ltri-posee${etat}" data-mot="${escapeHTML(mot)}"
-            aria-label="${label}"${answered ? ' disabled' : ''}>${escapeHTML(mot)}${mark}</button>`;
-				})
-				.join('');
-			return `<div class="ltri-col" data-col="${col}">
-        <div class="ltri-col-titre">${escapeHTML(q.categories[col])}</div>
-        <div class="ltri-zone" data-col="${col}">${tuiles}</div>
-      </div>`;
-		})
-		.join('');
-	if (!answered) {
-		// Dépôt par tap : taper une colonne y place la tuile sélectionnée.
-		cols.querySelectorAll<HTMLElement>('.ltri-col').forEach((colEl) => {
-			const col = Number(colEl.dataset.col) as 0 | 1;
-			colEl.addEventListener('click', (e) => {
-				const posee = (e.target as HTMLElement).closest('.ltri-posee') as HTMLElement | null;
-				if (posee) {
-					retirer(posee.dataset.mot!); // taper une tuile posée la renvoie au bac
-					return;
-				}
-				if (selected) poser(selected, col);
-			});
-			// Dépôt par glisser.
-			colEl.addEventListener('dragover', (e) => {
-				if (!answered) e.preventDefault();
-			});
-			colEl.addEventListener('drop', (e) => {
-				e.preventDefault();
-				const val = e.dataTransfer?.getData('text/plain');
-				if (val) poser(val, col);
-			});
-		});
-	}
-	// Bac : tuiles pas encore rangées. La tuile sélectionnée est mise en avant.
-	const bac = sheets().querySelector('#ltriBac') as HTMLElement;
-	bac.innerHTML = q.mots
-		.map((m) => {
-			if (placed[m.mot] !== undefined) return ''; // déjà rangée → hors du bac
-			const sel = selected === m.mot ? ' ltri-sel' : '';
-			return `<button type="button" class="tuile lord-tuile ltri-tuile${sel}"
-        data-mot="${escapeHTML(m.mot)}" draggable="true"
-        aria-label="Choisir le mot ${escapeHTML(m.mot)}"${selected === m.mot ? ' aria-pressed="true"' : ''}>${escapeHTML(m.mot)}</button>`;
-		})
-		.join('');
-	if (!answered) {
-		bac.querySelectorAll<HTMLButtonElement>('.ltri-tuile').forEach((btn) => {
-			const val = btn.dataset.mot!;
-			btn.addEventListener('click', () => selectTuile(val));
-			btn.addEventListener('dragstart', (e) => e.dataTransfer?.setData('text/plain', val));
-		});
-	}
+function verifier(): void {
 	const verif = sheets().querySelector('#ltriVerif') as HTMLButtonElement;
-	verif.disabled = Object.keys(placed).length !== q.mots.length || answered;
+	if (verif.disabled) return; // toutes les tuiles ne sont pas rangées
+	const q = questions[idx];
+	const correct = ctrl.verify(); // fige + marque chaque tuile (✓/✗)
+	if (correct) score++;
 	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
 	// (#ltriActions) reste, pour ne pas afficher deux boutons à la fois (#153).
-	verif.hidden = answered;
-}
-
-function selectTuile(val: string): void {
-	if (answered || placed[val] !== undefined) return;
-	selected = selected === val ? null : val; // re-taper désélectionne
-	redraw();
-}
-
-function poser(val: string, col: 0 | 1): void {
-	if (answered || placed[val] !== undefined) return;
-	placed[val] = col;
-	if (selected === val) selected = null;
-	redraw();
-}
-
-function retirer(val: string): void {
-	if (answered || placed[val] === undefined) return;
-	delete placed[val];
-	redraw();
-}
-
-function verifier(): void {
-	const q = questions[idx];
-	if (answered || Object.keys(placed).length !== q.mots.length) return;
-	answered = true;
-	selected = null;
-	const correct = q.mots.every((m) => placed[m.mot] === m.cat);
-	if (correct) score++;
-	redraw(); // fige les tuiles + marque chaque colonne (vert/alerte + ✓/✗)
+	verif.hidden = true;
 	const fb = sheets().querySelector('#ltriFeedback') as HTMLElement;
 	fb.hidden = false;
 	if (correct) {

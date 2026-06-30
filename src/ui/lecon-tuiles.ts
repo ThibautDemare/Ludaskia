@@ -13,11 +13,11 @@ import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import type { ExerciseMode } from '../core/exercise';
 import { commKey, escapeHTML } from '../core/utils';
-import { wrapGrandsNombres } from '../core/nombres';
-import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
 import { leconProgressHTML, finishLeconRun, renderLeconResult } from './lecon-runner-shared';
+import { bindTuileInteraction } from './tuile-interaction';
+import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 
 const NB_QUESTIONS = 8;
@@ -34,8 +34,7 @@ let mode: ExerciseMode;
 let questions: TuilesQuestion[] = [];
 let idx = 0;
 let score = 0;
-let placed: string | null = null; // tuile actuellement dans l'emplacement
-let answered = false;
+let ctrl: TuileController; // widget « tuiles » mutualisé (#345)
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -85,91 +84,40 @@ export function runLeconTuiles(lessonId: string, m: ExerciseMode): void {
 }
 
 function renderQuestion(): void {
-	answered = false;
-	placed = null;
 	const q = questions[idx];
-	// L'énoncé : le `@` devient l'emplacement (drop zone). Les grands nombres groupés
-	// sont enveloppés en .bignum (#240), comme dans le rendu fiche/sprint.
-	const enonce = wrapGrandsNombres(escapeHTML(q.question)).replace(
-		'@',
-		`<button type="button" class="ltui-slot" id="ltuiSlot" aria-label="Emplacement de la réponse"></button>`,
-	);
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
-        <p class="ltui-consigne">Amène la bonne tuile dans la case (tape-la ou glisse-la).</p>
-        <div class="sprint-q ltui-enonce"${ttsAttr(q.parle ?? q.question)}>${enonce}</div>
-        <div class="ltui-bac" id="ltuiBac"></div>
+        <div data-tuile-mount></div>
         <button class="sprint-btn" id="ltuiVerif" disabled>Vérifier</button>
         <div class="sprint-correction" id="ltuiFeedback" hidden></div>
         <div class="sprint-actions" id="ltuiActions" hidden></div>
       </div>
     </div>`;
-	redraw();
-	sheets()
-		.querySelector('#ltuiVerif')!
-		.addEventListener('click', () => verifier());
-	// Glisser-déposer (souris/pointeur fin) : la case accepte une tuile lâchée.
-	const slot = sheets().querySelector('#ltuiSlot') as HTMLElement;
-	slot.addEventListener('dragover', (e) => {
-		if (!answered) e.preventDefault();
-	});
-	slot.addEventListener('drop', (e) => {
-		e.preventDefault();
-		const val = e.dataTransfer?.getData('text/plain');
-		if (val) place(val);
-	});
-	slot.addEventListener('click', () => {
-		if (placed !== null) place(null); // retirer la tuile posée
-	});
+	const verif = sheets().querySelector('#ltuiVerif') as HTMLButtonElement;
+	// Le widget « tuiles » mutualisé (#345) rend l'énoncé + le bac, gère tap/glisser
+	// et l'enveloppe .bignum (#240) ; il (dé)active « Vérifier » via onState.
+	ctrl = bindTuileInteraction(
+		sheets(),
+		{ kind: 'tuile', question: q.question, answer: q.answer, tuiles: q.tuiles, parle: q.parle },
+		{ variant: 'lecon', onState: (complete) => (verif.disabled = !complete) },
+	);
+	verif.addEventListener('click', () => verifier());
 	bindConsigneTts(sheets()); // bouton « Écouter » sur l'énoncé (#42)
 	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'tuiles'); // bouton « ? » persistant (#272)
 }
 
-function redraw(): void {
-	const q = questions[idx];
-	const slot = sheets().querySelector('#ltuiSlot') as HTMLElement;
-	slot.textContent = placed ?? '';
-	slot.classList.toggle('rempli', placed !== null);
-	const bac = sheets().querySelector('#ltuiBac') as HTMLElement;
-	bac.innerHTML = q.tuiles
-		.map((t) => {
-			const used = t === placed;
-			// `data-val` reste la valeur BRUTE (clé de comparaison `placed === answer`) ;
-			// le contenu visible enveloppe les grands nombres groupés en .bignum (#240).
-			return `<button type="button" class="tuile ltui-tuile${used ? ' tuile-used' : ''}"
-        data-val="${escapeHTML(t)}"${used || answered ? ' disabled' : ' draggable="true"'}>${wrapGrandsNombres(escapeHTML(t))}</button>`;
-		})
-		.join('');
-	bac.querySelectorAll<HTMLButtonElement>('.ltui-tuile').forEach((btn) => {
-		const val = btn.dataset.val!;
-		btn.addEventListener('click', () => place(val));
-		btn.addEventListener('dragstart', (e) => e.dataTransfer?.setData('text/plain', val));
-	});
+function verifier(): void {
 	const verif = sheets().querySelector('#ltuiVerif') as HTMLButtonElement;
-	verif.disabled = placed === null || answered;
+	if (verif.disabled) return; // pas de tuile posée
+	const q = questions[idx];
+	const correct = ctrl.verify(); // fige + marque la case (✓/✗)
+	if (correct) score++;
 	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
 	// (#ltuiActions) reste, pour ne pas afficher deux boutons à la fois (#153).
-	verif.hidden = answered;
-}
-
-function place(val: string | null): void {
-	if (answered) return;
-	placed = val;
-	redraw();
-}
-
-function verifier(): void {
-	if (answered || placed === null) return;
-	answered = true;
-	const q = questions[idx];
-	const correct = placed === q.answer; // libellés exacts (signe ou nombre)
-	if (correct) score++;
-	const slot = sheets().querySelector('#ltuiSlot') as HTMLElement;
-	slot.classList.add(correct ? 'correct' : 'wrong');
-	redraw(); // fige les tuiles (answered)
+	verif.hidden = true;
 	const fb = sheets().querySelector('#ltuiFeedback') as HTMLElement;
 	fb.hidden = false;
 	fb.innerHTML = correct

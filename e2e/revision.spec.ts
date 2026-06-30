@@ -131,6 +131,32 @@ test("Révision : l'ordre alphabétique se joue en tuiles-mots", async ({ page }
 	}
 	await page.locator('#revValidate').click();
 	await expect(page.locator('.rev-feedback.ok')).toBeVisible();
+	// #345 : le widget figé reste visible avec ses marques ✓/✗ (la révision les
+	// affiche désormais, comme les runners de leçon — correction de la divergence).
+	expect(await page.locator('.lord-cell.correct').count()).toBe(ordre.length);
+	expect(errors).toEqual([]);
+});
+
+/* #345 — Correction de la divergence : « ranger par thème » montre les marques ✓/✗
+   en révision (avant, seul le runner de leçon les produisait). */
+test('Révision : « ranger par thème » montre les marques ✓/✗ (#345)', async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('fr-vocab-champs-tri'));
+	await gotoHash(page, 'revision-espacee');
+
+	await page.locator('.ltri-tuile').first().waitFor();
+	// On range TOUT dans le 1er thème → résultat déterministe : 3 corrects, 3 faux.
+	while ((await page.locator('.ltri-tuile').count()) > 0) {
+		await page.locator('.ltri-tuile').first().click();
+		await page.locator('.ltri-col').first().locator('.ltri-col-titre').click();
+	}
+	await page.locator('#revValidate').click();
+
+	// Les marques apparaissent EN RÉVISION, et le verdict s'affiche sous le widget figé.
+	expect(await page.locator('.ltri-posee.correct').count()).toBe(3);
+	expect(await page.locator('.ltri-posee.wrong').count()).toBe(3);
+	await expect(page.locator('.rev-feedback')).toBeVisible();
+	await expect(page.locator('#revNext')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

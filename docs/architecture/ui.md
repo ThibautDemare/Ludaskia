@@ -194,6 +194,25 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   résultat commun — score, étoile, mascotte, récompenses de niveau). Chaque runner délègue
   sa fin de session à ce module au lieu de la dupliquer ; `lecon-probleme.ts` passe son
   lexique (`nom` / `nomPluriel`) via le paramètre optionnel `lexique`.
+- **`tuile-interaction.ts`** (#345) — **widget « tuiles » mutualisé** pour les trois
+  formats interactifs sans clavier. Point d'entrée unique :
+  `bindTuileInteraction(root, spec, opts) → TuileController`. `spec` est un `TuileSpec`
+  discriminé par `kind` :
+  - `'tuile'` — amener **la** bonne tuile (signe `<`/`=`/`>` ou nombre) dans la case `@`
+    de l'énoncé ;
+  - `'ordre'` — ranger les tuiles-mots dans des **cases numérotées** (ordre alphabétique) ;
+  - `'tri'` — trier les tuiles-mots dans **deux colonnes-thèmes** (champs lexicaux).
+  Le binder remplace le placeholder `[data-tuile-mount]` dans `root` (insertion à plat,
+  sans wrapper), câble TAP et glisser-déposer, et notifie la complétude via
+  `opts.onState(complete)` pour que l'appelant active son bouton « Vérifier ». La méthode
+  `verify()` du contrôleur renvoyé fige le widget, applique les marques ✓/✗ (couleur +
+  icône, pour le daltonisme) et renvoie la justesse ; elle est **idempotente**. La
+  variante `opts.variant` (`'lecon'` | `'revision'`) adapte la classe de l'énoncé et
+  l'enveloppe `.bignum` des grands nombres (#240). Ce module est **partagé** par les trois
+  runners de leçon (`lecon-tuiles.ts`, `lecon-ordre.ts`, `lecon-tri.ts`) et par la
+  révision (`revision.ts`), qui délèguent tous leur interaction au lieu d'en garder une
+  copie locale — la révision affiche désormais les mêmes marques ✓/✗ que les runners
+  (correction de la divergence antérieure à #345).
 - **`lecon-qcm.ts`** — runner **QCM d'une leçon** (#69) : « une question à la
   fois », **feedback immédiat**, barre de progression, **sans chrono** ; enregistre
   via `recordLessonRun` (parité avec la saisie). Réutilise les composants `.sprint-*`.
@@ -207,6 +226,7 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   (signe/nombre) dans l'emplacement par **tap ou glisser-déposer** ; parité
   `recordLessonRun`. Runner d'écran dédié (routé par `runLecon` quand le mode produit
   un `tuilesNombre`) — **n'altère pas** le moteur de tuiles de l'orthographe.
+  Délègue l'interaction à `tuile-interaction.ts` (#345, `kind: 'tuile'`).
 - **`lecon-ordre.ts`** — runner **« ranger une suite »** d'une leçon de vocabulaire
   (#108, ordre alphabétique). Même forme « une question à la fois » : l'enfant
   **tape** une tuile-mot du bac → elle se place dans la prochaine case **numérotée**
@@ -214,14 +234,16 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   se re-tassent) ; glisser-déposer du bac vers la rangée en appoint. Feedback
   immédiat case par case (✓/✗) + bon ordre montré ; parité `recordLessonRun`. Routé
   par `runLecon` quand le mode produit un `tuilesOrdre`. Interaction validée côté
-  UX enfant (tap fiable au doigt, drag en appoint).
+  UX enfant (tap fiable au doigt, drag en appoint). Délègue l'interaction à
+  `tuile-interaction.ts` (#345, `kind: 'ordre'`).
 - **`lecon-tri.ts`** — runner **« ranger par thème »** d'une leçon de vocabulaire
   (#114, champs lexicaux). « Une question à la fois » : l'enfant trie des
   tuiles-mots **fournies** dans **deux colonnes-thèmes** par **tap en deux temps**
   (taper une tuile la sélectionne, taper une colonne l'y dépose) ou glisser-déposer ;
   **taper** une tuile posée la renvoie au bac. Feedback immédiat tuile par tuile
   (✓/✗) + bon classement montré ; parité `recordLessonRun`. Routé par `runLecon`
-  quand le mode produit un `tuilesTri`. Calqué sur `lecon-ordre.ts`.
+  quand le mode produit un `tuilesTri`. Calqué sur `lecon-ordre.ts`. Délègue
+  l'interaction à `tuile-interaction.ts` (#345, `kind: 'tri'`).
 - **`lecon-probleme.ts`** — runner **« Résolution de problèmes »** (#199), un
   problème à la fois. L'énoncé (`Exercise` `type: 'probleme'` : `enonce`, `etapes[]`,
   `parle`, `figure?` #95) reste visible avec **son bouton « Écouter »** (#42, `data-tts` = `parle`) ;

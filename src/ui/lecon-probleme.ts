@@ -15,21 +15,10 @@ import type { ExerciseMode, ProblemeEtape, ProbLexique } from '../core/exercise'
 import { figureBlock } from '../core/items';
 import { commKey, escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
-import { recordLessonRun } from '../core/lesson-run';
-import type { LessonRunOutcome } from '../core/lesson-run';
-import { streakSuffix } from '../core/progress';
 import { bindConsigneTts } from './consigne-tts';
 import { brouillonHTML, bindBrouillon } from './brouillon';
-import { showLevelUp, showCelebration } from './effects';
-import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
-import {
-	setToolbar,
-	hideMenus,
-	goCategorie,
-	goHome,
-	setCurrentMode,
-	setCurrentLessonId,
-} from './navigation';
+import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
+import { leconProgressHTML, finishLeconRun, renderLeconResult } from './lecon-runner-shared';
 
 const NB_QUESTIONS = 8;
 
@@ -101,14 +90,6 @@ export function runLeconProbleme(lessonId: string, m?: ExerciseMode): void {
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function progressHTML(): string {
-	const pct = Math.round((idx / questions.length) * 100);
-	return `<div class="lqcm-progress">
-    <span class="lqcm-progress-lab">${lex.nom} ${idx + 1} / ${questions.length}</span>
-    <div class="lqcm-bar"><div class="lqcm-bar-fill" style="width:${pct}%"></div></div>
-  </div>`;
-}
-
 function renderQuestion(): void {
 	answered = false;
 	const q = questions[idx];
@@ -130,7 +111,7 @@ function renderQuestion(): void {
 		.join('');
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
-      ${progressHTML()}
+      ${leconProgressHTML(idx, questions.length, lex.nom)}
       <div class="sprint-stage prob-stage">
         <div class="prob-col">
           <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
@@ -199,57 +180,12 @@ function verifier(): void {
 }
 
 function finish(): void {
-	const out = recordLessonRun({
-		mode: 'lecon',
-		lessonId: lesson.id,
-		ok: score,
-		questionCount: questions.length,
-		ms: 0,
-		perLesson: { [lesson.id]: { ok: score, total: questions.length } },
+	renderLeconResult({
+		out: finishLeconRun(lesson.id, score, questions.length),
+		score,
+		total: questions.length,
+		category: lesson.category,
+		onAgain: () => runLeconProbleme(lesson.id, probMode),
+		lexique: lex,
 	});
-	renderResult(out);
-}
-
-function renderResult(out: LessonRunOutcome): void {
-	const acc = questions.length ? Math.round((score / questions.length) * 100) : 0;
-	const titrePluriel = lex.nomPluriel.charAt(0).toUpperCase() + lex.nomPluriel.slice(1);
-	let extra = '';
-	if (out.starInfo) {
-		if (out.starInfo.perfect)
-			extra += `<div class="rb-medal"><span class="rb-medal-ico">⭐</span><span class="rb-medal-txt">${out.starInfo.newStar ? 'Étoile gagnée !' : 'Encore sans faute !'}</span></div>`;
-		const msg =
-			(out.starInfo.perfect
-				? `${titrePluriel} réussis sans faute${out.starInfo.count > 1 ? ` (${out.starInfo.count}×)` : ''}. Bravo !`
-				: `Il faut un sans-faute pour décrocher l'étoile. Réessaie ⭐`) +
-			streakSuffix(out.streakDays);
-		extra += `<div class="sprint-done-sub">${msg}</div>`;
-	}
-	sheets().innerHTML = `
-    <div class="sprint sprint-lecon">
-      <div class="sprint-stage">
-        <div class="sprint-done">
-          ${mascotteBulleHTML(encouragementMascotte())}
-          <div class="sprint-done-big">${score} / ${questions.length}</div>
-          <div class="sprint-done-lab">${score > 1 ? lex.nomPluriel : lex.nom.toLowerCase()} réussi${score > 1 ? 's' : ''} (${acc}%)</div>
-          ${extra}
-          <div class="sprint-actions">
-            <button class="sprint-btn" id="probAgain">↻ Recommencer</button>
-            <button class="sprint-btn ghost" id="probBack">Retour</button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-	sheets()
-		.querySelector('#probAgain')!
-		.addEventListener('click', () => runLeconProbleme(lesson.id, probMode));
-	sheets()
-		.querySelector('#probBack')!
-		.addEventListener('click', () => goCategorie(lesson.category));
-	if (out.niveauGagne)
-		showLevelUp(
-			out.niveauGagne,
-			out.recompensesNiv,
-			out.celeb.length ? () => showCelebration(out.celeb) : undefined,
-		);
-	else if (out.celeb.length) showCelebration(out.celeb);
 }

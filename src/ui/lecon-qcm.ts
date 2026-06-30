@@ -21,19 +21,8 @@ import { bindConsigneTts, bindItemTts } from './consigne-tts';
 import { consigneRenforceeHTML } from './consigne-renforcee';
 import type { ItemTtsCible } from './consigne-tts';
 import { PONCT_MOTS, ponctView } from './ponctuation-view';
-import { recordLessonRun } from '../core/lesson-run';
-import type { LessonRunOutcome } from '../core/lesson-run';
-import { streakSuffix } from '../core/progress';
-import { showLevelUp, showCelebration } from './effects';
-import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
-import {
-	setToolbar,
-	hideMenus,
-	goCategorie,
-	goHome,
-	setCurrentMode,
-	setCurrentLessonId,
-} from './navigation';
+import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
+import { leconProgressHTML, finishLeconRun, renderLeconResult } from './lecon-runner-shared';
 
 // Cible de questions ; une leçon offrant moins de variantes en aura moins, sans
 // doublon (une conjugaison = 6 personnes), comme la fiche en saisie.
@@ -126,14 +115,6 @@ export function runLeconQcm(lessonId: string, m: ExerciseMode): void {
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function progressHTML(): string {
-	const pct = Math.round((idx / questions.length) * 100);
-	return `<div class="lqcm-progress">
-    <span class="lqcm-progress-lab">Question ${idx + 1} / ${questions.length}</span>
-    <div class="lqcm-bar"><div class="lqcm-bar-fill" style="width:${pct}%"></div></div>
-  </div>`;
-}
-
 function renderQuestion(): void {
 	answered = false;
 	const q = questions[idx];
@@ -153,7 +134,7 @@ function renderQuestion(): void {
 	const consigneHTML = consigneRenforceeHTML(q.consigne, q.picto, ttsText);
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
-      ${progressHTML()}
+      ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
         <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
         ${figureBlock(q.item.figure)}
@@ -244,58 +225,11 @@ function answer(choiceIdx: number): void {
 }
 
 function finish(): void {
-	// Enregistrement commun (parité avec la fiche en saisie). ms inutile en mode leçon.
-	const out = recordLessonRun({
-		mode: 'lecon',
-		lessonId: lesson.id,
-		ok: score,
-		questionCount: questions.length,
-		ms: 0,
-		perLesson: { [lesson.id]: { ok: score, total: questions.length } },
+	renderLeconResult({
+		out: finishLeconRun(lesson.id, score, questions.length),
+		score,
+		total: questions.length,
+		category: lesson.category,
+		onAgain: () => runLeconQcm(lesson.id, mode),
 	});
-	renderResult(out);
-}
-
-function renderResult(out: LessonRunOutcome): void {
-	const acc = questions.length ? Math.round((score / questions.length) * 100) : 0;
-	let extra = '';
-	if (out.starInfo) {
-		if (out.starInfo.perfect)
-			extra += `<div class="rb-medal"><span class="rb-medal-ico">⭐</span><span class="rb-medal-txt">${out.starInfo.newStar ? 'Étoile gagnée !' : 'Encore sans faute !'}</span></div>`;
-		const msg =
-			(out.starInfo.perfect
-				? `Leçon réussie sans faute${out.starInfo.count > 1 ? ` (${out.starInfo.count}×)` : ''}. Bravo !`
-				: `Il faut un sans-faute pour décrocher l'étoile. Réessaie ⭐`) +
-			streakSuffix(out.streakDays);
-		extra += `<div class="sprint-done-sub">${msg}</div>`;
-	}
-	sheets().innerHTML = `
-    <div class="sprint sprint-lecon">
-      <div class="sprint-stage">
-        <div class="sprint-done">
-          ${mascotteBulleHTML(encouragementMascotte())}
-          <div class="sprint-done-big">${score} / ${questions.length}</div>
-          <div class="sprint-done-lab">bonne${score > 1 ? 's' : ''} réponse${score > 1 ? 's' : ''} (${acc}%)</div>
-          ${extra}
-          <div class="sprint-actions">
-            <button class="sprint-btn" id="lqcmAgain">↻ Recommencer</button>
-            <button class="sprint-btn ghost" id="lqcmBack">Retour</button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-	sheets()
-		.querySelector('#lqcmAgain')!
-		.addEventListener('click', () => runLeconQcm(lesson.id, mode));
-	sheets()
-		.querySelector('#lqcmBack')!
-		.addEventListener('click', () => goCategorie(lesson.category));
-	// Récompenses : modale de niveau (puis confettis), comme les autres écrans.
-	if (out.niveauGagne)
-		showLevelUp(
-			out.niveauGagne,
-			out.recompensesNiv,
-			out.celeb.length ? () => showCelebration(out.celeb) : undefined,
-		);
-	else if (out.celeb.length) showCelebration(out.celeb);
 }

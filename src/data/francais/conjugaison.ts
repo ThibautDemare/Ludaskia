@@ -16,6 +16,7 @@ import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../cor
 import { checkAnswer } from '../../core/exercise';
 import { rnd, sample } from '../../core/utils';
 import type { SchoolLevel } from '../../core/catalog';
+import { MODE_QCM_CHECK } from '../_shared';
 
 export type Tense = 'present' | 'futur' | 'imparfait' | 'passe_compose';
 
@@ -222,12 +223,7 @@ export const CONJ_MODES: readonly ConjMode[] = ['saisie', 'qcm'];
    conseillé d'abord. Voir issue #69. */
 export const CONJ_MODE_OPTIONS: ModeOption[] = [
 	{ id: 'saisie', label: "J'écris le verbe", icon: 'pencil', recommended: true },
-	{
-		id: 'qcm',
-		label: 'Je choisis la bonne réponse',
-		hint: 'plus facile pour commencer',
-		icon: 'check-circle',
-	},
+	{ ...MODE_QCM_CHECK, hint: 'plus facile pour commencer', recommended: false },
 ];
 
 /* Nombre total de propositions d'un QCM (1 bonne réponse + distracteurs). */

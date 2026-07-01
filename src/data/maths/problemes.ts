@@ -15,6 +15,7 @@
    ============================================================ */
 import { choice, rnd, sample } from '../../core/utils';
 import type { Exercise, ExerciseType, ProblemeEtape } from '../../core/exercise';
+import type { LessonInput } from '../_shared';
 
 /* ---------- Briques de gabarit ---------- */
 
@@ -269,16 +270,10 @@ const monoMode = (generate: () => Exercise): ExerciseType => ({
 	check: () => false, // corrigé par le runner dédié (étape par étape), jamais génériquement
 });
 
-export interface ProblemeLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
 // Ordre d'affichage calé sur l'acquisition des opérations (avis pédagogue) :
 // composition → transformation (additif) → multiplication → partage (division) →
 // comparaison (la plus abstraite) → deux étapes (la plus exigeante).
-export const PROBLEMES_LESSONS: ProblemeLessonDef[] = [
+export const PROBLEMES_LESSONS: LessonInput[] = [
 	{ id: 'math-prob-composition', label: 'Parties et tout', exerciseType: monoMode(genComposition) },
 	{
 		id: 'math-prob-transformation',

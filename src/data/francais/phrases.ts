@@ -32,6 +32,8 @@ import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import type { SchoolLevel } from '../../core/catalog';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
+import { MODE_QCM_CHECK } from '../_shared';
+import type { LessonInput } from '../_shared';
 
 /** Ponctuation finale possible (la palette de boutons de F1). */
 export type Ponctuation = '.' | '?' | '!';
@@ -76,9 +78,7 @@ export interface PhraseType {
 	explication: string; // cite le marqueur de sens
 }
 
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'check-circle', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [MODE_QCM_CHECK];
 
 /* ---------- F1 — banque « Quel point à la fin ? » ---------- */
 // Équilibre : 14 « . » / 13 « ? » / 13 « ! ». Aucun item ambigu (deux items
@@ -802,11 +802,8 @@ export function transfoNegativeType(): ExerciseType {
 	};
 }
 
-export interface PhraseLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-	// Niveaux supportés (#225/#245). Absent → CE2 par défaut (cf. catalog.ts).
+// Niveaux supportés (#225/#245). Absent → CE2 par défaut (cf. catalog.ts).
+export interface PhraseLessonDef extends LessonInput {
 	levels?: SchoolLevel[];
 }
 

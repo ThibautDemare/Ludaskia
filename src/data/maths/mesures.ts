@@ -25,6 +25,7 @@
      le trou alterne à gauche/à droite. L'unité attendue est collée au champ.
    ============================================================ */
 import type { Exercise, ExerciseType } from '../../core/exercise';
+import type { LessonInput } from '../_shared';
 import { checkNumerique } from '../../core/check-helpers';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice } from '../../core/utils';
@@ -116,13 +117,7 @@ const DUREE_FACTS: Fact[] = [
 
 /* ---------- Descripteurs des quatre leçons (#89) ---------- */
 
-export interface MesureLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const MESURE_LESSONS: MesureLessonDef[] = [
+export const MESURE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-longueurs',
 		label: 'Je mesure en mètres et en centimètres',

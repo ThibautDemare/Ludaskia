@@ -23,6 +23,7 @@
    mono-niveau (CE2), inchangée.
    ============================================================ */
 import type { Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
+import type { LessonInput } from '../_shared';
 import { checkNumerique } from '../../core/check-helpers';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice } from '../../core/utils';
@@ -116,13 +117,7 @@ function renduType(config: RenduConfig): ExerciseType {
 	};
 }
 
-export interface MonnaieLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const MONNAIE_LESSONS: MonnaieLessonDef[] = [
+export const MONNAIE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-monnaie-calcul',
 		label: 'Je calcule avec les euros',

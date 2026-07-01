@@ -25,12 +25,11 @@ import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
 import type { FormesAccord } from '../../core/orthographe/types';
 import { loadOrtho } from '../../core/orthographe/store';
+import { MODE_QCM_CHECK } from '../_shared';
+import type { LessonInput } from '../_shared';
 
-export interface AccordLessonDef {
-	id: string;
-	label: string;
+export interface AccordLessonDef extends LessonInput {
 	rubrique: string;
-	exerciseType: ExerciseType;
 }
 
 /* Mots variables réguliers : adjectifs (féminin + e, pluriel + s) et noms
@@ -191,12 +190,7 @@ const QCM_CHOICES = 4;
 
 const ACCORD_MODE_OPTIONS: ModeOption[] = [
 	{ id: 'saisie', label: "J'écris la forme", icon: 'pencil', recommended: true },
-	{
-		id: 'qcm',
-		label: 'Je choisis la bonne réponse',
-		hint: 'plus facile pour commencer',
-		icon: 'check-circle',
-	},
+	{ ...MODE_QCM_CHECK, hint: 'plus facile pour commencer', recommended: false },
 ];
 
 const norm = (s: string) => s.normalize('NFC');

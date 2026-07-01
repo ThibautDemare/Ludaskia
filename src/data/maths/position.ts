@@ -27,6 +27,7 @@
      « chiffre × valeur de rang », sens « décomposer » dominant).
    ============================================================ */
 import type { Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
+import type { LessonInput } from '../_shared';
 import type { SchoolLevel } from '../../core/catalog';
 import { calibrated } from '../../core/level-combinators';
 import { rnd } from '../../core/utils';
@@ -156,10 +157,7 @@ function positionType(gen: (opts?: GenerateOpts) => Exercise): ExerciseType {
 	};
 }
 
-export interface PositionLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
+export interface PositionLessonDef extends LessonInput {
 	levels?: SchoolLevel[];
 }
 

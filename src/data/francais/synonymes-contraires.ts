@@ -30,6 +30,8 @@ import type { SchoolLevel } from '../../core/catalog';
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
+import { MODE_QCM_CHECK } from '../_shared';
+import type { LessonInput } from '../_shared';
 
 /** Une entrée de banque : une phrase avec le mot-cible en **gras**, le bon mot
     (contraire ou sens proche selon la leçon) et deux distracteurs francs. */
@@ -923,9 +925,7 @@ function aPlat(phrase: string): string {
 	return phrase.replace(/\*\*(.+?)\*\*/g, '$1');
 }
 
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis le bon mot', icon: 'check-circle', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [{ ...MODE_QCM_CHECK, label: 'Je choisis le bon mot' }];
 
 interface SensConfig {
 	consigne: string; // consigne AFFICHÉE (générique : le mot-cible est repéré par le gras)
@@ -998,11 +998,8 @@ function sensType(items: ItemSensQcm[]): ExerciseType {
 	};
 }
 
-export interface SensLessonDef {
-	id: string;
-	label: string;
+export interface SensLessonDef extends LessonInput {
 	levels: SchoolLevel[];
-	exerciseType: ExerciseType;
 }
 
 /* Ordre pédagogique (#203, #244) : pour chaque niveau, les contraires AVANT les

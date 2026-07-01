@@ -36,6 +36,8 @@
 import type { ChoiceView, Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, escapeHTML, sample } from '../../core/utils';
+import { MODE_QCM_POINT } from '../_shared';
+import type { LessonInput } from '../_shared';
 
 /** Sens de la transformation demandée à l'enfant. */
 export type SensGN = 'pluriel' | 'feminin';
@@ -332,19 +334,14 @@ export function genItem(): Exercise {
 	};
 }
 
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis le bon groupe', icon: 'hand-pointing', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [{ ...MODE_QCM_POINT, label: 'Je choisis le bon groupe' }];
 
 function accordGNType(): ExerciseType {
 	return { modes: MODE_QCM, generate: genItem, check: (ex, input) => checkAnswer(ex, input) };
 }
 
-export interface AccordGNLessonDef {
-	id: string;
-	label: string;
+export interface AccordGNLessonDef extends LessonInput {
 	rubrique: string;
-	exerciseType: ExerciseType;
 }
 
 /* Leçon unique, rubrique « Les accords » (à côté des autres leçons d'accords). */

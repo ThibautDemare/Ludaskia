@@ -18,13 +18,13 @@
    sprint chronométré (tâche visuo-spatiale, pas de course contre la montre).
    ============================================================ */
 import type { ChoiceView, Exercise, ExerciseType, ModeOption } from '../../core/exercise';
+import { MODE_QCM_POINT } from '../_shared';
+import type { LessonInput } from '../_shared';
 import type { SymAxis, SymMotif, SymShape, SymTransform } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
 import { choice, normalizeText, rnd, sample } from '../../core/utils';
 
-const MODES: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'hand-pointing', recommended: true },
-];
+const MODES: ModeOption[] = [MODE_QCM_POINT];
 
 /* Axes de symétrie RÉELS de chaque figure (source de vérité des réponses).
    Le rectangle n'a que les médianes (v, h) — surtout PAS ses diagonales. */
@@ -201,10 +201,7 @@ function symetrieType(): ExerciseType {
 
 /* ---------- Descripteur ---------- */
 
-export interface SymetrieLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
+export interface SymetrieLessonDef extends LessonInput {
 	excludeFromSprint?: boolean;
 }
 

@@ -31,6 +31,9 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
+import { MODE_QCM_POINT } from '../_shared';
+import type { LessonInput } from '../_shared';
+import type { PropQ } from './_shared';
 import { checkNumerique, checkNumeriqueOuTexte } from '../../core/check-helpers';
 import type { PlaneShape, Solid, SolidOrient } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
@@ -39,18 +42,10 @@ import { choice, sample, rnd } from '../../core/utils';
 /* ---------- Modes communs ---------- */
 
 const MODES_RECO: ModeOption[] = [
-	{
-		id: 'qcm',
-		label: 'Je choisis la bonne réponse',
-		hint: 'parmi 4',
-		icon: 'hand-pointing',
-		recommended: true,
-	},
+	{ ...MODE_QCM_POINT, hint: 'parmi 4' },
 	{ id: 'saisie', label: "J'écris le nom", hint: 'au clavier', icon: 'keyboard' },
 ];
-const MODE_QCM_SEUL: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'hand-pointing', recommended: true },
-];
+const MODE_QCM_SEUL: ModeOption[] = [MODE_QCM_POINT];
 
 /* ---------- Triangles particuliers : reconnaissance ---------- */
 
@@ -151,11 +146,6 @@ function trianglesRecoType(): ExerciseType {
    Chaque question a UNE bonne réponse tranchée. INVARIANT respecté : on ne propose
    jamais à la fois « équilatéral » et « isocèle » quand l'un répond à une propriété
    que l'autre vérifie aussi (ex. « 2 côtés égaux ») — les choix sont curés pour ça. */
-interface PropQ {
-	q: string;
-	a: string;
-	choices: string[];
-}
 const TRI_PROPRIETES: PropQ[] = [
 	// Caractéristiques « côtés » : le distracteur « isocèle » est ABSENT quand la réponse
 	// est « équilatéral » sur une propriété de côtés égaux (et réciproquement), pour ne
@@ -561,13 +551,7 @@ function comptageType(): ExerciseType {
 
 /* ---------- Descripteurs ---------- */
 
-export interface GeoCm1LessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const GEOMETRIE_CM1_LESSONS: GeoCm1LessonDef[] = [
+export const GEOMETRIE_CM1_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-cm1-triangles',
 		label: 'Je reconnais les triangles',

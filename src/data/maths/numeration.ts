@@ -37,6 +37,7 @@
      l'intervalle, le nombre rond du milieu reste ≤ 6 chiffres en saisie).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
+import type { LessonInput } from '../_shared';
 import type { SchoolLevel } from '../../core/catalog';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
@@ -391,10 +392,7 @@ function numerationType(genFact: () => Fact): ExerciseType {
 	};
 }
 
-export interface NumerationLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
+export interface NumerationLessonDef extends LessonInput {
 	levels?: SchoolLevel[];
 }
 

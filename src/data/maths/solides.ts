@@ -23,6 +23,9 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
+import { MODE_QCM_POINT } from '../_shared';
+import type { LessonInput } from '../_shared';
+import type { PropQ } from './_shared';
 import { checkNumeriqueOuTexte } from '../../core/check-helpers';
 import type { Solid, SolidOrient } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
@@ -60,13 +63,7 @@ const TOUS: Solid[] = ['cube', 'pave', 'cylindre', 'cone', 'pyramide', 'boule'];
 const ACCEPTE: Partial<Record<Solid, string[]>> = { pave: ['pavé droit', 'pavé'] };
 
 const MODES: ModeOption[] = [
-	{
-		id: 'qcm',
-		label: 'Je choisis la bonne réponse',
-		hint: 'parmi 4',
-		icon: 'hand-pointing',
-		recommended: true,
-	},
+	{ ...MODE_QCM_POINT, hint: 'parmi 4' },
 	{ id: 'saisie', label: "J'écris le nom", hint: 'au clavier', icon: 'keyboard' },
 ];
 
@@ -107,11 +104,6 @@ function reconnaitreType(): ExerciseType {
 
 /* ---------- Objectif 2 : propriétés (QCM textuel) ---------- */
 
-interface PropQ {
-	q: string;
-	a: string;
-	choices: string[];
-}
 const PROPRIETES: PropQ[] = [
 	// Comptage exact : polyèdres uniquement (cube, pavé, pyramide).
 	{ q: 'Combien de faces a un cube ?', a: '6', choices: ['4', '5', '6', '8'] },
@@ -180,9 +172,7 @@ const PROPRIETES: PropQ[] = [
 
 function proprietesType(): ExerciseType {
 	return {
-		modes: [
-			{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'hand-pointing', recommended: true },
-		],
+		modes: [MODE_QCM_POINT],
 		generate(): Exercise {
 			const p = choice(PROPRIETES);
 			return {
@@ -198,13 +188,7 @@ function proprietesType(): ExerciseType {
 
 /* ---------- Descripteurs ---------- */
 
-export interface SolideLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const SOLIDE_LESSONS: SolideLessonDef[] = [
+export const SOLIDE_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-solides-reconnaitre',
 		label: 'Je reconnais les solides',

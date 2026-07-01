@@ -16,6 +16,8 @@
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
+import { MODE_QCM_CHECK } from '../_shared';
+import type { LessonInput } from '../_shared';
 
 export interface PaireHomophone {
 	id: string;
@@ -26,18 +28,13 @@ export interface PaireHomophone {
 	phrasesB: string[]; // bonne réponse = options[1]
 }
 
-export interface HomophoneLessonDef {
-	id: string;
-	label: string;
+export interface HomophoneLessonDef extends LessonInput {
 	rubrique: string;
-	exerciseType: ExerciseType;
 }
 
 const RUBRIQUE = 'Les homophones';
 
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis le bon mot', icon: 'check-circle', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [{ ...MODE_QCM_CHECK, label: 'Je choisis le bon mot' }];
 
 export const HOMOPHONE_PAIRS: PaireHomophone[] = [
 	{

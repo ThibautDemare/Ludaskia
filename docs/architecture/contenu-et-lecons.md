@@ -12,6 +12,48 @@ portables ; le libellé affiché reste « Français ».
 > partagé (`core/`) et les runners (`ui/`) sont décrits dans
 > [Logique pure](core.md) et [Rendu & interactions](ui.md).
 
+## Déclarations mutualisées (`src/data/`)
+
+### `src/data/_shared.ts` (#347)
+
+Centralise deux éléments redéclarés jusqu'ici dans chaque fichier de données :
+
+**Mode QCM** — deux constantes `ModeOption` prêtes à l'emploi, ne différant **que**
+par l'icône :
+
+- **`MODE_QCM_POINT`** (`hand-pointing`, « je désigne ») — QCM de **maths** et les
+  rares leçons français où l'enfant pointe une proposition (accord-groupe-nominal,
+  participe-passe-etre).
+- **`MODE_QCM_CHECK`** (`check-circle`, « je valide ») — QCM de **français** (règle
+  générale ; 2 exceptions ci-dessus utilisent `hand-pointing`).
+
+Les deux ont `id: 'qcm'`, `label: 'Je choisis la bonne réponse'` et
+`recommended: true`. Un fichier qui a besoin d'un libellé différent ou d'un autre
+réglage part de la constante et surcharge par diffusion :
+
+```ts
+{ ...MODE_QCM_POINT, label: 'Je choisis la bonne fraction' }
+{ ...MODE_QCM_CHECK, recommended: false, hint: 'plus facile pour commencer' }
+```
+
+La règle maths / français est historique ; l'unifier serait une décision UX distincte.
+Le contrat des deux constantes est verrouillé par `tests/data-shared.test.ts`.
+
+**Type source d'une leçon** — **`LessonInput { id; label; exerciseType }`** : forme
+minimale d'un descripteur de leçon dans `src/data/`, **avant** que `core/catalog.ts`
+ne la mappe en `LessonDef` complet. Les listes `XXX_LESSONS` sont typées
+`LessonInput[]`. Un fichier qui porte des champs propres (rubrique, niveaux,
+exclusion du sprint) **étend** ce type plutôt que de le redéclarer :
+`extends LessonInput`. `ConjLessonDesc` (`conjugaison.ts`, sans `exerciseType`) reste
+hors de ce type.
+
+### `src/data/maths/_shared.ts` (#347)
+
+Centralise **`PropQ { q; a; choices }`** : question fermée à choix multiples d'une
+propriété géométrique (nombre de faces, de côtés, etc.), utilisée dans
+`geometrie.ts`, `geometrie-cm1.ts` et `solides.ts`. Auparavant recopiée à l'identique
+dans chacun de ces fichiers.
+
 ## Français
 
 ### Grammaire

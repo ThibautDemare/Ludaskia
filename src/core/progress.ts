@@ -116,8 +116,16 @@ export function cmpRun(a: Run, b: Run) {
 export const runPct = (r: Run) => (r.count ? Math.round((r.ok / r.count) * 100) : 0);
 export const fmtRecord = (r: Run) => `${r.ok}/${r.count} · ${fmt(r.ms)}`;
 
+/* Résultat d'un essai classé : rang dans le tableau, effectif, médaille et record.
+   Type explicite (#350) : consommé par le bandeau de sprint et par `updateGoal`. */
+export interface RunResult {
+	rank: number; // position dans le classement (1 = meilleur)
+	total: number; // nombre d'essais enregistrés dans ce mode
+	medal: number; // 0 = aucune, 1 = or, 2 = argent, 3 = bronze
+	isRecord: boolean; // meilleur essai jamais réalisé dans ce mode
+}
 /* Enregistre l'essai courant et calcule médaille / rang / record */
-export function recordRun(mode: string, ok: number, count: number, ms: number) {
+export function recordRun(mode: string, ok: number, count: number, ms: number): RunResult {
 	const run = { ts: Date.now(), ok, count, ms };
 	const runs = loadRuns(mode);
 	const previous = [...runs];
@@ -293,14 +301,14 @@ export function recordLessonStats(
 		now,
 	);
 }
-export const lessonAvgPct = (e: any) =>
+export const lessonAvgPct = (e: LessonStat | undefined) =>
 	e && e.questions ? Math.round((e.correct / e.questions) * 100) : null;
 /* Moyenne des derniers essais (fenêtre glissante recentPct) ; null si aucun historique
    récent (repli sur lessonAvgPct laissé à l'appelant). Performance RÉCENTE pour l'espace
    encadrant (#234), distincte du cumul historique de lessonAvgPct. */
-export const recentAvgPct = (e: any): number | null =>
+export const recentAvgPct = (e: LessonStat | undefined): number | null =>
 	e && Array.isArray(e.recentPct) && e.recentPct.length
-		? Math.round(e.recentPct.reduce((sum: number, p: number) => sum + p, 0) / e.recentPct.length)
+		? Math.round(e.recentPct.reduce((sum, p) => sum + p, 0) / e.recentPct.length)
 		: null;
 
 /* ---------- Journal d'activité : sessions finalisées (#234, typé #319) ----------

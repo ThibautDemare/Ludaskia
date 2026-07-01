@@ -316,7 +316,8 @@ propre doc de conception : `docs/design-orthographe.md`.
 
 ## Progression, gamification & déblocages
 
-- **`progress.ts`** — records de bilans **scopés par niveau** (`recordRun`,
+- **`progress.ts`** — records de bilans **scopés par niveau** (`recordRun` → `RunResult`
+  `{rank, total, medal, isRecord}`,
   `cmpRun` « score puis temps », `loadRuns` = niveau actif / `loadRunsAll` = tous
   niveaux pour l'effort — #233), série (`updateStreak`, `streakSuffix`), étoiles
   (`recordLessonResult`, `starsEarned`), stats par leçon (`recordLessonStats`,
@@ -334,10 +335,11 @@ propre doc de conception : `docs/design-orthographe.md`.
   et **niveaux dérivés** (`niveauDepuisXP`, `progressionNiveau`, `xpVersSuivant`,
   `xpPourNiveau`, `NIVEAU_MAX`), périodes calendaires (`startOfWeek/Month`,
   `countSince`).
-- **`rewards.ts`** — défi du jour contextuel (`CHALLENGES`, `getGoal`,
-  `updateGoal`) et trophées (`TROPHIES`, `tiers()`, `evaluateTrophies`,
-  `gSnapshot`), dont des groupes **par matière** et **par catégorie** générés
-  depuis le catalogue.
+- **`rewards.ts`** — défi du jour contextuel (`CHALLENGES`, `getGoal` → `Goal`
+  `{date, target, progress, done, type, label, lesson?}`, `updateGoal(ev: GoalEvent)`)
+  et trophées (`TROPHIES`, `tiers()`, `evaluateTrophies`,
+  `gSnapshot` — type exporté `GSnapshot`), dont des groupes **par matière** et **par
+  catégorie** générés depuis le catalogue.
 - **`eggs.ts`** (#331) — **easter eggs**, module **PUR** (aucun accès DOM, testable
   comme `unlocks.ts`) : catalogue déclaratif `EGGS` (4 eggs v1, familles `EggFamily` =
   `exploration` / `ambient` / **`visible`** — ce dernier (#336) = déclencheur OUVERT et

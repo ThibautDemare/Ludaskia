@@ -18,15 +18,12 @@ import {
 	gridHTML,
 	ficheHTML,
 	lessonAttr,
-	setRenderLesson,
-	setInputCounter,
-	setPrintMode,
-	setCorrigeMode,
 	estItemQcm,
 	nextInputId,
-	getSessionItems,
+	createRenderContext,
+	withLessonId,
 } from './items';
-import type { Item } from './items';
+import type { Item, RenderContext } from './items';
 import type { SchoolLevel } from './catalog';
 // Import « tardif » (utilisé seulement dans des corps de fonction) du pipeline
 // générique : dépendance circulaire build ↔ lessons sans effet de bord au chargement.
@@ -121,14 +118,14 @@ export const LESSONS = [
 		title: "Les tables d'addition",
 		sub: 'Additionner deux nombres de 1 à 9.',
 		consigne: 'Calcule chaque addition.',
-		build() {
+		build(ctx: RenderContext) {
 			const items = uniqueComm(() => {
 				let a = rnd(2, 9),
 					b = rnd(2, 9);
 				[a, b] = [Math.min(a, b), Math.max(a, b)];
 				return add(a, b);
 			}, 12);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 4));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 4, ctx));
 		},
 	},
 
@@ -138,7 +135,7 @@ export const LESSONS = [
 		title: 'Les compléments',
 		sub: 'Trouver le nombre qui complète à 10, à 100 ou à 1000.',
 		consigne: 'Complète chaque égalité.',
-		build() {
+		build(ctx: RenderContext) {
 			// Trois familles (#287) : compléments à 10, à 100 et à 1000 (centaines rondes).
 			const pool10 = [];
 			for (let a = 1; a <= 9; a++) pool10.push(comp(a, 10));
@@ -148,7 +145,7 @@ export const LESSONS = [
 				[...sample(pool10, 4), ...sample(pool100, 4), ...sample(pool1000, 4)],
 				12,
 			);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 
@@ -158,13 +155,13 @@ export const LESSONS = [
 		title: 'Les doubles',
 		sub: "Le double, c'est deux fois le nombre.",
 		consigne: 'Écris le double.',
-		build() {
+		build(ctx: RenderContext) {
 			// CE2 : n de 1 à 50 (#287, élargi depuis 1–39) pour varier les doubles.
 			const items = sample(
 				[...Array(50).keys()].map((i) => i + 1),
 				12,
 			).map(dbl);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 
@@ -174,10 +171,10 @@ export const LESSONS = [
 		title: 'Les moitiés',
 		sub: "La moitié, c'est le nombre partagé en deux.",
 		consigne: 'Écris la moitié.',
-		build() {
+		build(ctx: RenderContext) {
 			// Cibles partagées avec bilanQ (#287) : ~30 valeurs à moitié entière.
 			const items = sample(CIBLES_MOITIES, 12).map(half);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 
@@ -187,9 +184,9 @@ export const LESSONS = [
 		title: 'Ajouter 9, 19, 29 / 8, 18, 28',
 		sub: 'Astuce : +9 = +10 puis -1 · +8 = +10 puis -2.',
 		consigne: "Calcule en utilisant l'astuce.",
-		build() {
+		build(ctx: RenderContext) {
 			const items = uniqueExact(() => add(rnd(20, 70), choice([8, 9, 18, 19, 28, 29])), 12);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 4));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 4, ctx));
 		},
 	},
 
@@ -199,11 +196,11 @@ export const LESSONS = [
 		title: 'Soustraire 9, 19, 29, 39 et un petit nombre',
 		sub: 'Astuce : -9 = -10 puis +1.',
 		consigne: 'Calcule chaque soustraction.',
-		build() {
+		build(ctx: RenderContext) {
 			const items = uniqueExact(() => sub(rnd(40, 90), choice([9, 19, 29, 39])), 8).concat(
 				uniqueExact(() => sub(rnd(11, 20), rnd(2, 8)), 4),
 			);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 4));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 4, ctx));
 		},
 	},
 
@@ -213,14 +210,14 @@ export const LESSONS = [
 		title: 'Les tables de multiplication',
 		sub: 'Tables de 2 à 9.',
 		consigne: 'Calcule chaque produit.',
-		build() {
+		build(ctx: RenderContext) {
 			const items = uniqueComm(() => {
 				let a = rnd(2, 9),
 					b = rnd(2, 9);
 				[a, b] = [Math.min(a, b), Math.max(a, b)];
 				return mul(a, b);
 			}, 12);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 4));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 4, ctx));
 		},
 	},
 
@@ -230,11 +227,11 @@ export const LESSONS = [
 		title: "La moitié d'un nombre pair",
 		sub: 'Je sépare les dizaines et les unités si besoin.',
 		consigne: 'Écris la moitié.',
-		build() {
+		build(ctx: RenderContext) {
 			// Cibles partagées avec bilanQ (#287) : pairs 22–98, hors multiples de 10 et
 			// hors valeurs déjà vues dans « Les moitiés » (~35 valeurs, moitié entière).
 			const items = sample(CIBLES_MOITIE_PAIR, 12).map(half);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 
@@ -244,9 +241,9 @@ export const LESSONS = [
 		title: 'Les multiples de 25',
 		sub: '25, 50, 75, 100... de 25 en 25.',
 		consigne: 'Calcule.',
-		build() {
+		build(ctx: RenderContext) {
 			const items = sample([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 11).map((a) => mul(a, 25));
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 
@@ -256,7 +253,7 @@ export const LESSONS = [
 		title: 'Décompositions multiplicatives de 60',
 		sub: 'Quel nombre multiplié donne 60 ?',
 		consigne: 'Complète.',
-		build() {
+		build(ctx: RenderContext) {
 			const fac = [
 				[2, 30],
 				[3, 20],
@@ -272,7 +269,7 @@ export const LESSONS = [
 				[1, 60],
 			];
 			const items = sample(fac, 12).map(([a]) => facteur(a, 60));
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 
@@ -282,7 +279,7 @@ export const LESSONS = [
 		title: 'Ajouter, soustraire des dizaines et des centaines',
 		sub: "J'ajoute ou je retire des paquets entiers.",
 		consigne: 'Calcule.',
-		build() {
+		build(ctx: RenderContext) {
 			const items = uniqueExact(() => {
 				const a = rnd(120, 500),
 					op = choice(['+', '-']),
@@ -298,7 +295,7 @@ export const LESSONS = [
 						return op === '+' ? add(a, b) : sub(a, b);
 					}, 6),
 				);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 
@@ -308,7 +305,7 @@ export const LESSONS = [
 		title: 'Multiplier par 10, par 100',
 		sub: "×10 j'ajoute un zéro · ×100 j'ajoute deux zéros.",
 		consigne: 'Calcule.',
-		build() {
+		build(ctx: RenderContext) {
 			const items = sample(
 				[...Array(98).keys()].map((i) => i + 2),
 				6,
@@ -320,7 +317,7 @@ export const LESSONS = [
 						6,
 					).map((a) => mul(a, 100)),
 				);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 
@@ -330,7 +327,7 @@ export const LESSONS = [
 		title: 'Multiplier par 4, par 8',
 		sub: '×4 = double du double · ×8 = double du double du double.',
 		consigne: 'Calcule.',
-		build() {
+		build(ctx: RenderContext) {
 			const items = sample(
 				[...Array(23).keys()].map((i) => i + 3).filter((x) => x !== 8),
 				6,
@@ -342,7 +339,7 @@ export const LESSONS = [
 						6,
 					).map((a) => mul(a, 8)),
 				);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 
@@ -352,9 +349,9 @@ export const LESSONS = [
 		title: 'Multiplier par 20, 30, 40',
 		sub: 'Astuce : je multiplie par le chiffre, puis par 10.',
 		consigne: 'Calcule.',
-		build() {
+		build(ctx: RenderContext) {
 			const items = uniqueComm(() => mul(rnd(2, 12), choice([20, 30, 40])), 12);
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 
@@ -364,7 +361,7 @@ export const LESSONS = [
 		title: 'Décomposer pour calculer une multiplication',
 		sub: 'Ex : 6 × 14 = (6×10) + (6×4) = 60 + 24 = 84.',
 		consigne: 'Décompose puis calcule. Écris les étapes.',
-		build() {
+		build(ctx: RenderContext) {
 			const seen = new Set();
 			const d = [];
 			while (d.length < 6) {
@@ -380,9 +377,9 @@ export const LESSONS = [
 			const lines = d
 				.map(([a, b]) => {
 					const free = () => `<input class="ans-free" inputmode="numeric" autocomplete="off">`;
-					const finalId = nextInputId();
-					getSessionItems()[finalId] = { text: `${a} × ${b} = @`, answer: a * b };
-					const finalField = `<input class="ans" id="${finalId}" data-answer="${a * b}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${finalId}"></span>`;
+					const finalId = nextInputId(ctx);
+					ctx.items[finalId] = { text: `${a} × ${b} = @`, answer: a * b };
+					const finalField = `<input class="ans" id="${finalId}" data-answer="${a * b}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${finalId}"></span>`;
 					return `<div class="op">${a} × ${b} = (${free()} × ${free()}) + (${free()} × ${free()}) = ${free()} + ${free()} = ${finalField}</div>`;
 				})
 				.join('');
@@ -415,9 +412,9 @@ export const LESSONS_CM1 = [
 		title: 'Les multiples de 50',
 		sub: '50, 100, 150, 200... de 50 en 50.',
 		consigne: 'Calcule.',
-		build() {
+		build(ctx: RenderContext) {
 			const items = sample(FACTEURS_MULTIPLES_50, 11).map((a) => mul(a, 50));
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 
@@ -427,13 +424,13 @@ export const LESSONS_CM1 = [
 		title: 'Diviser par 10, par 100',
 		sub: '÷10 : combien de paquets de 10 · ÷100 : combien de paquets de 100.',
 		consigne: 'Calcule.',
-		build() {
+		build(ctx: RenderContext) {
 			// Symétrique de « Multiplier par 10, par 100 » : 6 items ÷10 puis 6 items ÷100.
 			// Quotients ENTIERS garantis (dividendes multiples exacts), à 2 chiffres.
 			const items = sample(DIVIDENDES_DIV_10, 6)
 				.map((a) => div(a, 10))
 				.concat(sample(DIVIDENDES_DIV_100, 6).map((a) => div(a, 100)));
-			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3));
+			return ficheHTML(this.num, this.title, this.sub, this.consigne, gridHTML(items, 3, ctx));
 		},
 	},
 ];
@@ -444,12 +441,9 @@ export const LESSONS_CM1 = [
 export const LESSONS_CALCUL_MENTAL = [...LESSONS, ...LESSONS_CM1];
 
 export function buildFiches() {
-	return LESSONS.map((l) => {
-		setRenderLesson(l.id);
-		const html = l.build();
-		setRenderLesson(null);
-		return html;
-	});
+	// Chaque fiche a son propre contexte (compteur d'id repart de 0) : c'est un rendu
+	// isolé « une leçon = une fiche », jamais assemblé dans un même document interactif.
+	return LESSONS.map((l) => l.build(createRenderContext({ lessonId: l.id })));
 }
 
 /* ============================================================
@@ -564,12 +558,15 @@ export function bilanBlocks(nbQ: number) {
    qui aiguille math vs autres matières. */
 /* numero = libellé ; le bloc temps total est print-only */
 export function bilanHTML(numero: number) {
+	// Un seul contexte pour tout le document : le compteur d'id est partagé entre les
+	// blocs (ids uniques dans la page) ; seule la leçon courante change bloc par bloc.
+	const ctx = createRenderContext();
 	const blocks = bilanBlocks(3);
 	const cells = blocks
 		.map((b) => {
-			setRenderLesson(b.id);
-			const ops = b.ops.map((o) => `<div class="bop">${renderItem(o)}</div>`).join('');
-			setRenderLesson(null);
+			const ops = withLessonId(ctx, b.id, () =>
+				b.ops.map((o) => `<div class="bop">${renderItem(o, ctx)}</div>`).join(''),
+			);
 			return `<div class="bloc"><span class="blab">M${b.num}.</span> <span class="btheme">${b.theme}</span>${ops}</div>`;
 		})
 		.join('');
@@ -644,7 +641,11 @@ export function coverHTML(scope: PrintScope): string {
 
 /* Fiches paginées pour l'impression : 2 par A4, les leçons « longues » seules.
    `level` (optionnel) force le calibrage (impression au niveau d'un profil consulté, #234). */
-function fichesPagesForIds(lessonIds: string[], level?: SchoolLevel): string {
+function fichesPagesForIds(
+	lessonIds: string[],
+	level: SchoolLevel | undefined,
+	ctx: RenderContext,
+): string {
 	const pages: string[] = [];
 	let cur: string[] = [];
 	const flush = () => {
@@ -654,7 +655,7 @@ function fichesPagesForIds(lessonIds: string[], level?: SchoolLevel): string {
 		}
 	};
 	for (const id of lessonIds) {
-		const fiche = buildLessonFiche(id, level);
+		const fiche = buildLessonFiche(id, level, ctx);
 		if (LONG_FICHE_LESSONS.has(id)) {
 			flush();
 			pages.push(`<div class="page">${fiche}<p class="foot print-only">Ludaskia</p></div>`);
@@ -668,14 +669,14 @@ function fichesPagesForIds(lessonIds: string[], level?: SchoolLevel): string {
 }
 
 /* Bilan imprimable multi-matières : nbQ questions par leçon, mise en page grille. */
-function bilanPrintHTML(scope: PrintScope): string {
+function bilanPrintHTML(scope: PrintScope, ctx: RenderContext): string {
 	const nbQ = scope.nbQ ?? 3;
 	const blocks = bilanBlocksForIds(scope.lessonIds, nbQ, scope.level);
 	const cells = blocks
 		.map((b) => {
-			setRenderLesson(b.id);
-			const ops = b.ops.map((o) => `<div class="bop">${renderItem(o)}</div>`).join('');
-			setRenderLesson(null);
+			const ops = withLessonId(ctx, b.id, () =>
+				b.ops.map((o) => `<div class="bop">${renderItem(o, ctx)}</div>`).join(''),
+			);
 			// Bloc de QCM imprimé (#289) : consigne d'action « Coche… » sous le thème (le
 			// bilan n'a pas de consigne par leçon, contrairement à la fiche).
 			const isQcm = b.ops.some(estItemQcm);
@@ -711,37 +712,26 @@ function corrigeCoverHTML(scope: PrintScope): string {
 /* Document imprimable pour un périmètre donné. Page de garde dynamique, sauf
    pour une fiche d'une seule leçon. Jamais de bilan récap collé aux fiches :
    « fiches » et « bilan » sont deux documents distincts (kind).
-   Mode impression (#289) actif pour TOUTE la génération (QCM en cases à cocher,
-   zone-réponse garantie, consignes-crayon), retiré quoi qu'il arrive. */
+   Chaque corps est rendu dans un contexte d'impression FRAIS et local (#352,
+   printMode #289 : QCM en cases à cocher, zone-réponse garantie, consignes-crayon) :
+   aucun état de module n'est posé ni à retirer, donc l'écran n'en hérite jamais. */
 export function buildPrintableDOM(scope: PrintScope): string {
-	setPrintMode(true);
-	try {
-		const single = scope.lessonIds.length === 1;
-		const cover = single ? '' : coverHTML(scope);
-		// Un corps (fiches ou bilan) ; les items sont régénérés à chaque appel.
-		const renderBody = () => {
-			setInputCounter(0);
-			return scope.kind === 'bilan'
-				? bilanPrintHTML(scope)
-				: fichesPagesForIds(scope.lessonIds, scope.level);
-		};
-		if (!scope.corrige) return cover + renderBody();
-		// Corrigé (#41) : on rend le corps DEUX fois — feuille vierge puis réponses
-		// révélées — sur les MÊMES items. Le pipeline régénérant aléatoirement, on fixe
-		// une graine commune (withSeed) pour que le corrigé corresponde à la feuille.
-		const seed = randomSeed();
-		const blank = withSeed(seed, renderBody);
-		const corrige = withSeed(seed, () => {
-			setCorrigeMode(true);
-			try {
-				return corrigeCoverHTML(scope) + renderBody();
-			} finally {
-				setCorrigeMode(false);
-			}
-		});
-		return cover + blank + corrige;
-	} finally {
-		setPrintMode(false);
-		setCorrigeMode(false);
-	}
+	const single = scope.lessonIds.length === 1;
+	const cover = single ? '' : coverHTML(scope);
+	// Un corps (fiches ou bilan) dans son contexte d'impression : compteur d'id à 0,
+	// printMode actif, corrigeMode selon la passe. Les items sont régénérés à chaque appel.
+	const renderBody = (corrige: boolean): string => {
+		const ctx = createRenderContext({ printMode: true, corrigeMode: corrige });
+		return scope.kind === 'bilan'
+			? bilanPrintHTML(scope, ctx)
+			: fichesPagesForIds(scope.lessonIds, scope.level, ctx);
+	};
+	if (!scope.corrige) return cover + renderBody(false);
+	// Corrigé (#41) : on rend le corps DEUX fois — feuille vierge puis réponses révélées —
+	// sur les MÊMES items. Le pipeline régénérant aléatoirement, on fixe une graine commune
+	// (withSeed) pour que le corrigé corresponde à la feuille.
+	const seed = randomSeed();
+	const blank = withSeed(seed, () => renderBody(false));
+	const corrige = withSeed(seed, () => corrigeCoverHTML(scope) + renderBody(true));
+	return cover + blank + corrige;
 }

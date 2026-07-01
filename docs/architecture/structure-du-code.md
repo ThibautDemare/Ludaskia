@@ -51,10 +51,14 @@ En modules ES, on ne peut pas réassigner une variable d'un autre module. Les
 états globaux mutables d'autrefois sont donc exposés via des paires
 accesseur/mutateur, **comportement identique** :
 
-- `items.ts` : `get/setInputCounter` (+ `nextInputId`), `get/setSessionItems`,
-  `get/setRenderLesson`, `get/setPrintMode` (#289 : rendu papier des QCM en cases à
-  cocher, posé/retiré autour de `buildPrintableDOM`), `get/setCorrigeMode` (#41 :
-  sous-mode qui révèle les réponses pour le corrigé imprimable) ;
+- `items.ts` (#352) : plus d'état de module dans ce fichier — l'ancien état
+  (`counter`, `items`, `lessonId`, `printMode`, `corrigeMode`) est regroupé dans
+  l'interface **`RenderContext`**, créée via `createRenderContext(init?)`. Les
+  fonctions de rendu (`renderItem`, `gridHTML`, `posedGridHTML`, `nextInputId`,
+  `lessonAttr`) reçoivent le contexte **explicitement** en paramètre.
 - `chrono.ts` : `get/setTimer` (le handle d'intervalle est réutilisé par le sprint) ;
 - `navigation.ts` : `get/set` pour `currentMode`, `currentLessonId`,
-  `sessionRecorded`, `lastErrors`, `pendingRevision`.
+  `sessionRecorded`, `lastErrors`, `pendingRevision` ; et **`getRenderCtx`/`setRenderCtx`**
+  (#352 : contexte de session interactive — créé neuf à chaque lancement d'exercice
+  via `runLecon`/`runRevision`/`runBilanConfig` et à la reprise, relu par `verify`
+  et `resume.ts` pour retrouver l'`Item` d'un champ).

@@ -117,47 +117,56 @@ export function facteur(a: number, total: number): Item {
 	return { text: `${a} × @ = ${total}`, answer: total / a };
 }
 
-// État partagé de génération. En modules ES, les bindings importés ne sont
-// pas réassignables depuis l'extérieur : on expose des accesseurs dédiés.
-let inputCounter = 0;
-export const getInputCounter = () => inputCounter;
-export const setInputCounter = (v: number) => {
-	inputCounter = v;
-};
-export const nextInputId = () => 'a' + inputCounter++;
-// Mémorise les items {text, answer} de la session courante, par id de champ,
-// pour pouvoir reconstruire « mes erreurs » lors d'une révision.
-let sessionItems: Record<string, Item> = {};
-export const getSessionItems = () => sessionItems;
-export const setSessionItems = (v: Record<string, Item>) => {
-	sessionItems = v;
-};
-// Numéro de la leçon en cours de génération (pour taguer les champs et
-// agréger les stats par leçon, y compris dans les bilans). null = non rattaché.
-let renderLesson: string | null = null;
-export const getRenderLesson = () => renderLesson;
-export const setRenderLesson = (v: string | null) => {
-	renderLesson = v;
-};
-// Attribut data-lesson, ou rien si on ne rattache pas le champ à une leçon.
-export const lessonAttr = () => (renderLesson != null ? ` data-lesson="${renderLesson}"` : '');
-// Mode IMPRESSION (#289) : posé/retiré autour de buildPrintableDOM (seul point d'entrée
-// d'impression). En impression, renderItem rend les QCM en cases à cocher et garantit une
-// zone-réponse pour tout item ; à l'écran (sprint, bilan interactif) rien ne change.
-let printMode = false;
-export const getPrintMode = () => printMode;
-export const setPrintMode = (v: boolean) => {
-	printMode = v;
-};
-// Mode CORRIGÉ (#41) : sous-mode d'impression qui RÉVÈLE les réponses au lieu de
-// champs/cases vides (ligne remplie, case cochée ☑, cellules posées complétées). Posé
-// autour du 2ᵉ rendu du document dans buildPrintableDOM, sur les MÊMES items que la
-// feuille vierge (graine commune, cf. withSeed). N'a d'effet que si printMode est actif.
-let corrigeMode = false;
-export const getCorrigeMode = () => corrigeMode;
-export const setCorrigeMode = (v: boolean) => {
-	corrigeMode = v;
-};
+/* Contexte de rendu (#352) : regroupe l'état AUTREFOIS porté par des variables de
+   module (compteur d'id, table id→Item, leçon courante, modes impression/corrigé).
+   Il est passé EXPLICITEMENT aux fonctions de rendu (renderItem, gridHTML,
+   posedGridHTML) — plus d'état global implicite, donc plus de fuite entre tests ni
+   de chemins d'écriture parallèles. Chaque rendu possède le sien : buildPrintableDOM
+   crée un contexte d'impression frais, le lancement d'une session interactive crée
+   le sien (conservé côté UI pour la correction/reprise). */
+export interface RenderContext {
+	// Prochain id de champ (« a0 », « a1 »…), incrémenté par nextInputId au fil du rendu.
+	counter: number;
+	// Items {text, answer} rendus, par id de champ : sert à corriger la saisie (scoring)
+	// et à reconstruire « mes erreurs » en révision. Rempli pendant le rendu.
+	items: Record<string, Item>;
+	// Leçon en cours de rendu (attribut data-lesson des champs, agrégat de stats par
+	// leçon), ou null si les champs ne sont rattachés à aucune leçon.
+	lessonId: string | null;
+	// Mode IMPRESSION (#289) : QCM rendus en cases à cocher, zone-réponse garantie pour
+	// tout item. À l'écran (false), sprint et bilan interactif sont inchangés.
+	printMode: boolean;
+	// Mode CORRIGÉ (#41) : sous-mode d'impression qui RÉVÈLE les réponses (ligne remplie,
+	// case cochée ☑, cellules posées complétées). N'a d'effet que si printMode est actif.
+	corrigeMode: boolean;
+}
+
+/* Crée un contexte de rendu neuf. Sans argument : session interactive à l'écran
+   (compteur à 0, table vide, hors impression). `init` surcharge à la création
+   (ex. { printMode: true } pour l'impression, { items, counter } pour une reprise). */
+export function createRenderContext(init: Partial<RenderContext> = {}): RenderContext {
+	return { counter: 0, items: {}, lessonId: null, printMode: false, corrigeMode: false, ...init };
+}
+
+// Id de champ unique dans le contexte (« a0 », « a1 »…).
+export const nextInputId = (ctx: RenderContext) => 'a' + ctx.counter++;
+// Attribut data-lesson, ou rien si le champ n'est rattaché à aucune leçon.
+export const lessonAttr = (ctx: RenderContext) =>
+	ctx.lessonId != null ? ` data-lesson="${ctx.lessonId}"` : '';
+
+/* Rend un fragment en rattachant ses champs à `lessonId` (attribut data-lesson), puis
+   détache — sans toucher au compteur d'id ni à la table `items`, qui persistent pour
+   garder des ids uniques dans un document multi-bloc. Centralise le motif tag→rendu→
+   détache partagé par les bilans et les fiches (#352) ; le try/finally garantit le
+   détachement même si le rendu lève. */
+export function withLessonId<T>(ctx: RenderContext, lessonId: string, render: () => T): T {
+	ctx.lessonId = lessonId;
+	try {
+		return render();
+	} finally {
+		ctx.lessonId = null;
+	}
+}
 
 /* Attributs des champs de réponse TEXTE (conjugaison, etc.) — issues #67/#123/#139.
    Sur tablette, la barre de suggestions prédictive des claviers (Gboard, Samsung,
@@ -179,7 +188,7 @@ export const TEXT_ANSWER_INPUT_ATTRS =
    (fraction empilée, terminaison surlignée, image de symétrie), alignée par index. La
    consigne d'action « Coche… » est portée par la fiche / le bloc de bilan, pas répétée
    ici. Réservé à l'impression : à l'écran, le QCM est joué par son runner interactif. */
-function qcmCheckboxHTML(it: Item): string {
+function qcmCheckboxHTML(it: Item, ctx: RenderContext): string {
 	const answer = String(it.answer);
 	const lis = (it.choices ?? [])
 		.map((c, i) => {
@@ -189,7 +198,7 @@ function qcmCheckboxHTML(it: Item): string {
 			// Corrigé (#41) : la case du bon choix est cochée ☑ et le libellé mis en gras
 			// (le ✓ ET la graisse — deux indices, pas la couleur seule). `answer` est
 			// toujours l'une des valeurs de `choices` (par construction du générateur).
-			const correct = corrigeMode && c === answer;
+			const correct = ctx.corrigeMode && c === answer;
 			const liCls = correct ? 'qcm-print-choice qcm-print-choice--correct' : 'qcm-print-choice';
 			const boxCls = correct ? 'qcm-print-box qcm-print-box--checked' : 'qcm-print-box';
 			return `<li class="${liCls}"><span class="${boxCls}" aria-hidden="true"></span><span class="qcm-print-label"${aria}>${label}</span></li>`;
@@ -205,16 +214,16 @@ function qcmCheckboxHTML(it: Item): string {
 	return `${figureBlock(it.figure)}<p class="qcm-print-q">${question}</p><ul class="qcm-print-choices">${lis}</ul>`;
 }
 
-export function renderItem(it: Item, extra = '') {
+export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	// Opération posée : déployée en grille de colonnes (plusieurs champs .ans).
-	if (it.kind === 'posed' && it.posed) return posedGridHTML(it.posed);
+	if (it.kind === 'posed' && it.posed) return posedGridHTML(it.posed, ctx);
 	// QCM imprimable (#289) : un item porteur de `choices` (sa question n'a pas de `@`)
 	// est rendu en cases à cocher, UNIQUEMENT en impression. À l'écran, ce chemin
 	// (fiche/bilan interactif) laisse le QCM sans champ de saisie — limite préexistante,
 	// hors périmètre #289 (le QCM interactif vit dans son propre runner, pas ici).
-	if (printMode && estItemQcm(it)) return qcmCheckboxHTML(it);
-	const id = nextInputId();
-	sessionItems[id] = it;
+	if (ctx.printMode && estItemQcm(it)) return qcmCheckboxHTML(it, ctx);
+	const id = nextInputId(ctx);
+	ctx.items[id] = it;
 	// Réponse exposée pour la révélation après correction (échappée pour les attributs).
 	const ansAttr = String(it.answer).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 	// Saisie de l'heure (#88) : DEUX champs « [heures] h [minutes] », le « h » en dur.
@@ -223,14 +232,14 @@ export function renderItem(it: Item, extra = '') {
 	// « H h MM » avant correction → checkItemAnswer inchangé (comparaison texte).
 	if (it.kind === 'heure') {
 		// Corrigé (#41) : l'heure complète révélée à la place des deux champs « h ».
-		if (corrigeMode) {
+		if (ctx.corrigeMode) {
 			const rev = `<span class="ans-corrige">${escapeHTML(String(it.answer))}</span>`;
 			return figureBlock(it.figure) + enonceTexte(it.text).replace('@', rev);
 		}
-		const mid = nextInputId();
+		const mid = nextInputId(ctx);
 		const group =
 			`<span class="heure-input">` +
-			`<input class="ans heure-h ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} data-min-field="${mid}" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="heures">` +
+			`<input class="ans heure-h ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} data-min-field="${mid}" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="heures">` +
 			`<span class="heure-sep" aria-hidden="true">h</span>` +
 			`<input class="heure-min" id="${mid}" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="minutes">` +
 			`</span><span class="mark" data-for="${id}"></span>`;
@@ -246,20 +255,20 @@ export function renderItem(it: Item, extra = '') {
 		it.kind !== 'text' && Number.isFinite(Number(it.answer)) && Math.abs(Number(it.answer)) >= 10000
 			? ' ans-grand'
 			: '';
-	const field = corrigeMode
+	const field = ctx.corrigeMode
 		? `<span class="ans-corrige ${extra}">${escapeHTML(String(it.answer))}</span>`
 		: it.kind === 'text'
-			? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
-			: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr()} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
+			? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
+			: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
 	const texte = enonceTexte(it.text);
-	const place = texte.includes('@') ? texte : printMode ? `${texte} @` : texte;
+	const place = texte.includes('@') ? texte : ctx.printMode ? `${texte} @` : texte;
 	return figureBlock(it.figure) + place.replace('@', field);
 }
-export function gridHTML(items: Item[], cols: number) {
+export function gridHTML(items: Item[], cols: number, ctx: RenderContext) {
 	const cls = cols === 3 ? 'c3' : 'c4';
-	return `<div class="grid ${cls}">${items.map((it) => `<div class="op">${renderItem(it)}</div>`).join('')}</div>`;
+	return `<div class="grid ${cls}">${items.map((it) => `<div class="op">${renderItem(it, ctx)}</div>`).join('')}</div>`;
 }
 
 /* Grille d'une opération posée (#97) : grille CSS de C+1 colonnes (1 pour le signe
@@ -267,7 +276,7 @@ export function gridHTML(items: Item[], cols: number) {
    produits partiels en ×2 chiffres) sont des champs `.ans` NOTÉS un par un ; une
    rangée de retenues `.ans-free` (non notée) sert d'aide visible. verify() corrige
    chaque cellule via son data-answer ; un sans-faute = toutes les cellules justes. */
-function posedGridHTML(spec: PosedSpec): string {
+function posedGridHTML(spec: PosedSpec, ctx: RenderContext): string {
 	const { op, a, b } = spec;
 	const result = op === '+' ? a + b : op === '-' ? a - b : a * b;
 	const sign = op === '+' ? '+' : op === '-' ? '−' : '×';
@@ -285,10 +294,10 @@ function posedGridHTML(spec: PosedSpec): string {
 		`<input class="ans-free posee-cell posee-carry" maxlength="1" inputmode="numeric" autocomplete="off" aria-label="retenue">`;
 	const inputCell = (d: string) => {
 		// Corrigé (#41) : le chiffre du résultat révélé dans la cellule (au lieu du champ).
-		if (corrigeMode) return `<span class="posee-cell posee-input posee-corrige">${d}</span>`;
-		const id = nextInputId();
-		sessionItems[id] = { text: '', answer: Number(d), kind: 'num' };
-		return `<input class="ans posee-cell posee-input" id="${id}" data-answer="${d}"${lessonAttr()} maxlength="1" inputmode="numeric" autocomplete="off" aria-label="chiffre du résultat">`;
+		if (ctx.corrigeMode) return `<span class="posee-cell posee-input posee-corrige">${d}</span>`;
+		const id = nextInputId(ctx);
+		ctx.items[id] = { text: '', answer: Number(d), kind: 'num' };
+		return `<input class="ans posee-cell posee-input" id="${id}" data-answer="${d}"${lessonAttr(ctx)} maxlength="1" inputmode="numeric" autocomplete="off" aria-label="chiffre du résultat">`;
 	};
 
 	// Une rangée = signe (ou vide) + C cellules alignées à droite, décalées de `shift`.

@@ -9,8 +9,14 @@ import { getAllLessons, getLessonById, genLessonItem, isLegacyMathLesson } from 
 import type { LessonDef, SchoolLevel } from './catalog';
 import { niveauLecon } from './niveau-actif';
 import { LESSONS_CALCUL_MENTAL } from './lessons';
-import { setRenderLesson, renderItem, ficheHTMLGeneric, getPrintMode, estItemQcm } from './items';
-import type { Item } from './items';
+import {
+	renderItem,
+	ficheHTMLGeneric,
+	estItemQcm,
+	createRenderContext,
+	withLessonId,
+} from './items';
+import type { Item, RenderContext } from './items';
 import { commKey } from './utils';
 
 /* Génère jusqu'à n items distincts pour une leçon (dédup par contenu).
@@ -42,34 +48,41 @@ export function genItems(lesson: LessonDef, n: number, level?: SchoolLevel): Ite
 }
 
 /* Fiche d'une leçon (vue « une leçon à la fois »). `level` (optionnel) force le
-   calibrage à un niveau donné — impression au niveau d'un profil consulté (#234). */
-export function buildLessonFiche(lessonId: string, level?: SchoolLevel): string {
+   calibrage à un niveau donné — impression au niveau d'un profil consulté (#234).
+   `ctx` (#352) : contexte de rendu partagé — l'appelant l'impose pour conserver les
+   items (session interactive) ou partager le compteur d'id d'un document imprimé.
+   Par défaut, un contexte frais (fiche isolée, écran unique, tests). */
+export function buildLessonFiche(
+	lessonId: string,
+	level?: SchoolLevel,
+	ctx: RenderContext = createRenderContext(),
+): string {
 	const lesson = getLessonById(lessonId);
 	if (!lesson) return '';
 	// Calcul mental (moteur bilanQ) : rendu riche dédié (grilles, décomposition…).
 	if (isLegacyMathLesson(lesson)) {
 		const math = LESSONS_CALCUL_MENTAL.find((l) => l.id === lessonId)!;
-		setRenderLesson(lessonId);
-		const html = math.build();
-		setRenderLesson(null);
-		return html;
+		return withLessonId(ctx, lessonId, () => math.build(ctx));
 	}
 	// Sinon (math moderne : conversions… / matière texte) : 8 questions en liste.
 	// L'item math est numérique, la matière texte est une saisie de chaîne ; la
 	// consigne s'adapte, le `@` de l'item place le champ dans les deux cas.
 	const items = genItems(lesson, 8, level);
-	setRenderLesson(lessonId);
-	const inner = `<div class="conj-list">${items
-		.map((it) => `<div class="conj-op">${renderItem(it)}</div>`)
-		.join('')}</div>`;
-	setRenderLesson(null);
+	const inner = withLessonId(
+		ctx,
+		lessonId,
+		() =>
+			`<div class="conj-list">${items
+				.map((it) => `<div class="conj-op">${renderItem(it, ctx)}</div>`)
+				.join('')}</div>`,
+	);
 	// Consigne propre au type d'exercice si définie (#42 : nomme la tâche, ex.
 	// « Conjugue le verbe au temps demandé. ») ; sinon générique selon la matière.
 	// En impression (#289), une fiche de QCM se remplit en cochant → consigne d'action
 	// dédiée (la question de chaque item reste affichée — décision produit).
 	const isQcm = items.some(estItemQcm);
 	const consigne =
-		getPrintMode() && isQcm
+		ctx.printMode && isQcm
 			? 'Coche la bonne réponse.'
 			: (lesson.exerciseType.consigne ??
 				(lesson.subject === 'math' ? 'Complète.' : 'Écris la forme correcte.'));
@@ -87,9 +100,15 @@ export function bilanBlocksForIds(lessonIds: string[], nbQ: number, level?: Scho
 	return blocks;
 }
 
-/* Fiches complètes pour un sous-ensemble de leçons (bilan complet personnalisé). */
-export function buildFichesForIds(lessonIds: string[], level?: SchoolLevel): string[] {
+/* Fiches complètes pour un sous-ensemble de leçons (bilan complet personnalisé).
+   `ctx` (#352) partagé entre toutes les fiches : compteur d'id commun (ids uniques
+   dans le document) et items conservés pour la correction d'une session interactive. */
+export function buildFichesForIds(
+	lessonIds: string[],
+	level?: SchoolLevel,
+	ctx: RenderContext = createRenderContext(),
+): string[] {
 	return getAllLessons()
 		.filter((l) => lessonIds.includes(l.id))
-		.map((l) => buildLessonFiche(l.id, level));
+		.map((l) => buildLessonFiche(l.id, level, ctx));
 }

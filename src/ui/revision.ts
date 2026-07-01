@@ -20,6 +20,7 @@ import { mathInline } from '../core/fraction-text';
 import type { Item } from '../core/items';
 import {
 	checkItemAnswer,
+	createRenderContext,
 	enonceTexte,
 	figureBlock,
 	renderItem,
@@ -257,7 +258,9 @@ function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
 	const stage = document.getElementById('revStage')!;
 	// La grille posée n'a pas d'énoncé : la consigne d'action (#265) porte la lecture vocale.
 	const actionHTML = consigneRenforceeHTML(it.consigneAction, undefined, it.consigneAction ?? '');
-	stage.innerHTML = `${consigneHTML(it)}${actionHTML}<div class="rev-q rev-posee">${renderItem(it.item)}</div>
+	// Contexte de rendu jetable (#352) : la révision valide les cellules via le DOM
+	// (`.posee-input` + data-answer), pas via la table id→Item — inutile de la conserver.
+	stage.innerHTML = `${consigneHTML(it)}${actionHTML}<div class="rev-q rev-posee">${renderItem(it.item, createRenderContext())}</div>
     <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const cells = [...stage.querySelectorAll<HTMLInputElement>('.posee-input')];

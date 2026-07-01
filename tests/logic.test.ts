@@ -12,10 +12,10 @@
    - localStorage.clear()
    - on rebranche le hook d'écriture (setOnDataWrite(touchActiveProfile),
      effet de bord que faisait profiles.js au chargement),
-   - on remet à zéro l'état du module items (inputCounter, sessionItems,
-     renderLesson),
    - on appelle initProfiles() pour recréer un profil par défaut + le
      préfixe actif.
+   Le rendu n'a plus d'état de module à réinitialiser (#352) : renderItem
+   reçoit un RenderContext explicite (createRenderContext()).
    ============================================================ */
 import { beforeEach, describe, test, expect } from 'vitest';
 
@@ -40,9 +40,7 @@ import {
 	comp,
 	facteur,
 	renderItem,
-	setInputCounter,
-	setSessionItems,
-	setRenderLesson,
+	createRenderContext,
 } from '../src/core/items';
 import {
 	LESSONS,
@@ -287,6 +285,7 @@ const api = {
 	comp,
 	facteur,
 	renderItem,
+	createRenderContext,
 	LESSONS,
 	buildFiches,
 	THEMES,
@@ -376,15 +375,13 @@ const api = {
 	commonCategoryId,
 };
 
-// Remet l'environnement à neuf (état module + localStorage vierges) avant chaque test.
+// Remet l'environnement à neuf (localStorage vierge) avant chaque test. Le rendu n'a
+// plus d'état de module à réinitialiser (#352) : renderItem reçoit un RenderContext
+// explicite, donc aucun état ne fuit d'un test à l'autre.
 beforeEach(() => {
 	localStorage.clear();
 	// Effet de bord que faisait profiles.js au chargement (hook de bump updatedAt).
 	setOnDataWrite(touchActiveProfile);
-	// État du module items (équivalent d'un module neuf).
-	setInputCounter(0);
-	setSessionItems({});
-	setRenderLesson(null);
 	// Profil par défaut + préfixe actif (comme initProfiles() au chargement).
 	initProfiles();
 });
@@ -427,19 +424,45 @@ describe('Items', () => {
 		expect(api.facteur(4, 60).answer).toBe(15);
 	});
 	test('renderItem remplace @ par un champ', () => {
-		const h = api.renderItem(api.add(2, 3));
+		const h = api.renderItem(api.add(2, 3), api.createRenderContext());
 		expect(h.includes('@')).toBe(false);
 		expect(/class="ans /.test(h)).toBe(true);
 		expect(/data-answer="5"/.test(h)).toBe(true);
 	});
 	test('renderItem : anti-suggestion sur le texte uniquement (issue #67)', () => {
 		// Réponse texte : déguisée en mot de passe pour bloquer les suggestions du clavier.
-		const txt = api.renderItem({ text: 'x = @', answer: 'mangé', kind: 'text' });
+		const txt = api.renderItem(
+			{ text: 'x = @', answer: 'mangé', kind: 'text' },
+			api.createRenderContext(),
+		);
 		expect(/type="password"/.test(txt)).toBe(true);
 		// Calcul : saisie numérique inchangée (pas de type password).
-		const num = api.renderItem(api.add(2, 3));
+		const num = api.renderItem(api.add(2, 3), api.createRenderContext());
 		expect(/type="password"/.test(num)).toBe(false);
 		expect(/inputmode="numeric"/.test(num)).toBe(true);
+	});
+});
+
+describe('RenderContext (#352)', () => {
+	test('document multi-bloc : contexte partagé ⇒ ids de champ uniques', () => {
+		// bilanHTML rend 15 leçons dans UN document avec un seul contexte : le compteur d'id
+		// est partagé, donc chaque champ .ans a un id distinct. Sinon deux blocs pourraient
+		// porter le même id="aN" et verify() (lookup sessionItems[inp.id]) confondrait leurs
+		// réponses — c'est l'invariant central que garantit le contexte partagé (#352).
+		const html = api.bilanHTML(1);
+		const ids = [...html.matchAll(/id="(a\d+)"/g)].map((m) => m[1]);
+		expect(ids.length).toBeGreaterThan(15); // 15 leçons × 3 questions : vrai multi-bloc
+		expect(new Set(ids).size).toBe(ids.length); // aucun id en double
+	});
+
+	test('deux contextes sont indépendants : compteur local, chacun repart de a0', () => {
+		const item = api.add(2, 3);
+		const a = api.renderItem(item, api.createRenderContext());
+		const b = api.renderItem(item, api.createRenderContext());
+		// Chaque contexte a son propre compteur : le premier champ de chacun est « a0 »
+		// (aucune fuite d'état d'un rendu à l'autre — le point de #352).
+		expect(a).toContain('id="a0"');
+		expect(b).toContain('id="a0"');
 	});
 });
 
@@ -1152,7 +1175,7 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 	});
 	test('renderItem : un item « heure » produit 2 champs et un « h » en dur', () => {
 		const it = genLessonItem(lesson());
-		const html = renderItem(it);
+		const html = renderItem(it, createRenderContext());
 		expect(html).toContain('class="ans heure-h '); // champ des heures (noté)
 		expect(html).toContain('heure-min'); // champ des minutes
 		expect(html).toContain('data-min-field='); // lien heures → minutes (fusion à la correction)
@@ -1786,9 +1809,10 @@ describe('Calcul : opérations posées (#97)', () => {
 			[{ op: 'x', a: 123, b: 4 }, '492'],
 		];
 		for (const [posed, attendu] of cas) {
-			setInputCounter(0);
-			setSessionItems({});
-			const html = renderItem({ text: '', answer: Number(attendu), kind: 'posed', posed });
+			const html = renderItem(
+				{ text: '', answer: Number(attendu), kind: 'posed', posed },
+				createRenderContext(),
+			);
 			expect(html).toContain('class="posee"');
 			// Pour +, − et ×1 chiffre, les seuls champs .posee-input sont le résultat.
 			const digits = [...html.matchAll(/posee-input[^>]*data-answer="(\d)"/g)]
@@ -1798,29 +1822,21 @@ describe('Calcul : opérations posées (#97)', () => {
 		}
 	});
 	test('multiplication ×2 chiffres : produits partiels (plusieurs lignes de cellules)', () => {
-		setInputCounter(0);
-		setSessionItems({});
 		// 24 × 13 = 312 ; pp1 = 72, pp2 = 24 (décalé) → plus de 3 cellules-résultat.
-		const html = renderItem({
-			text: '',
-			answer: 312,
-			kind: 'posed',
-			posed: { op: 'x', a: 24, b: 13 },
-		});
+		const html = renderItem(
+			{ text: '', answer: 312, kind: 'posed', posed: { op: 'x', a: 24, b: 13 } },
+			createRenderContext(),
+		);
 		const nbInputs = [...html.matchAll(/posee-input/g)].length;
 		expect(nbInputs).toBeGreaterThan(3); // pp1 + pp2 + somme finale
 		expect((html.match(/posee-rule/g) ?? []).length).toBe(2); // deux traits
 	});
 	test('multiplication ×2 chiffres : 0 fourni + retenues posées au-dessus des produits partiels (#154/#307)', () => {
-		setInputCounter(0);
-		setSessionItems({});
 		// 24 × 13 → pp1 = 72, pp2 = 24 (suivi du 0 fourni), somme = 312. C = 3 colonnes.
-		const html = renderItem({
-			text: '',
-			answer: 312,
-			kind: 'posed',
-			posed: { op: 'x', a: 24, b: 13 },
-		});
+		const html = renderItem(
+			{ text: '', answer: 312, kind: 'posed', posed: { op: 'x', a: 24, b: 13 } },
+			createRenderContext(),
+		);
 		// Le 0 du décalage est FOURNI (grisé) : présent, mais pas un champ noté.
 		expect(html).toContain('posee-zero');
 		expect((html.match(/posee-zero/g) ?? []).length).toBe(1);

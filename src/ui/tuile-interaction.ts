@@ -269,10 +269,18 @@ function bindTri(
 		root,
 		`<p class="ltui-consigne">Tape un mot, puis tape son thème (ou glisse-le dans la colonne).</p>
     <div class="ltri-cols" id="ltriCols"></div>
-    <div class="ltui-bac" id="ltriBac"></div>`,
+    <div class="ltui-bac" id="ltriBac"></div>
+    <p class="sr-only" id="ltriStatus" role="status" aria-live="polite" aria-atomic="true"></p>`,
 	);
 	const cols = root.querySelector('#ltriCols') as HTMLElement;
 	const bac = root.querySelector('#ltriBac') as HTMLElement;
+	const status = root.querySelector('#ltriStatus') as HTMLElement | null;
+	// Annonce vocale du dépôt/retrait (#360, SC 4.1.3) : le déplacement DOM et le focus
+	// ne suffisent pas à dire au lecteur d'écran ce qui vient de se passer. Le nœud vit
+	// hors de cols/bac → il survit aux redraws ; textContent est sûr (pas d'injection).
+	const announce = (msg: string) => {
+		if (status) status.textContent = msg;
+	};
 
 	const placed: Record<string, 0 | 1> = {};
 	let selected: string | null = null;
@@ -280,6 +288,20 @@ function bindTri(
 
 	const motsDeColonne = (col: 0 | 1) =>
 		spec.mots.map((m) => m.mot).filter((mot) => placed[mot] === col);
+
+	// Restauration du focus après un redraw (#360) : innerHTML recrée les éléments et
+	// détruit le focus courant. Indispensable au clavier (sélection → dépôt restent
+	// enchaînables) ; invisible au tap/souris (:focus-visible ne s'affiche pas, et
+	// preventScroll évite tout saut de défilement sur mobile).
+	let pendingFocus: (() => void) | null = null;
+	const focusBacTile = (mot: string) =>
+		[...bac.querySelectorAll<HTMLElement>('.ltri-tuile')]
+			.find((b) => b.dataset.mot === mot)
+			?.focus({ preventScroll: true });
+	const focusColTitre = (col: 0 | 1) =>
+		cols
+			.querySelector<HTMLElement>(`.ltri-col[data-col="${col}"] .ltri-col-titre`)
+			?.focus({ preventScroll: true });
 
 	function redraw() {
 		cols.innerHTML = ([0, 1] as const)
@@ -301,8 +323,15 @@ function bindTri(
             aria-label="${label}"${frozen ? ' disabled' : ''}>${escapeHTML(mot)}${mark}</button>`;
 					})
 					.join('');
+				// Le titre de colonne est la cible de dépôt opérable au clavier (#360) : on en
+				// fait un bouton (role + tabindex) plutôt que la <div> colonne elle-même, qui
+				// contient les tuiles posées (boutons) — un role=button sur la colonne
+				// imbriquerait des boutons (ARIA invalide). Désactivé une fois figé.
+				const titreAttrs = frozen
+					? ''
+					: ` role="button" tabindex="0" aria-label="Déposer dans ${escapeHTML(spec.categories[col])}"`;
 				return `<div class="ltri-col" data-col="${col}">
-        <div class="ltri-col-titre">${escapeHTML(spec.categories[col])}</div>
+        <div class="ltri-col-titre"${titreAttrs}>${escapeHTML(spec.categories[col])}</div>
         <div class="ltri-zone" data-col="${col}">${tuiles}</div>
       </div>`;
 			})
@@ -326,6 +355,13 @@ function bindTri(
 					const val = e.dataTransfer?.getData('text/plain');
 					if (val) poser(val, col);
 				});
+				// Clavier (#360) : Entrée/Espace sur le titre-bouton dépose la tuile sélectionnée.
+				colEl.querySelector<HTMLElement>('.ltri-col-titre')?.addEventListener('keydown', (e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						if (selected) poser(selected, col);
+					}
+				});
 			});
 		}
 		bac.innerHTML = spec.mots
@@ -345,21 +381,32 @@ function bindTri(
 			});
 		}
 		if (!frozen) opts.onState(Object.keys(placed).length === spec.mots.length);
+		// Le focus suit l'action qui vient d'avoir lieu (clavier surtout, #360).
+		if (pendingFocus) {
+			const f = pendingFocus;
+			pendingFocus = null;
+			f();
+		}
 	}
 	function selectTuile(val: string) {
 		if (frozen || placed[val] !== undefined) return;
 		selected = selected === val ? null : val; // re-taper désélectionne
+		pendingFocus = () => focusBacTile(val); // la tuile reste au bac (mise en avant)
 		redraw();
 	}
 	function poser(val: string, col: 0 | 1) {
 		if (frozen || placed[val] !== undefined) return;
 		placed[val] = col;
 		if (selected === val) selected = null;
+		pendingFocus = () => focusColTitre(col); // on garde le focus sur la colonne-cible
+		announce(`${val} placé dans ${spec.categories[col]}`);
 		redraw();
 	}
 	function retirer(val: string) {
 		if (frozen || placed[val] === undefined) return;
 		delete placed[val];
+		pendingFocus = () => focusBacTile(val); // la tuile retourne au bac
+		announce(`${val} retiré`);
 		redraw();
 	}
 	redraw();

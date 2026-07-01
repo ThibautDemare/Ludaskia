@@ -43,6 +43,8 @@ function multiplicationGen(): PosedGen {
 
 function posedType(gen: () => PosedGen, consigne: string): ExerciseType {
 	return {
+		// Format posé (#97) : classé sans appeler generate() (#348), exclu du sprint.
+		exerciseKind: 'posed',
 		// Consigne d'action (#265) : la grille posée n'a pas d'énoncé textuel ; sans elle,
 		// l'enfant (surtout en révision) ne voyait que le libellé de leçon, jamais « quoi faire ».
 		consigne,

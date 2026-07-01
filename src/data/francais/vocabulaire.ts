@@ -160,6 +160,8 @@ function genNiveau2(): Exercise {
    espaces ou des virgules. */
 function ordreType(gen: () => Exercise): ExerciseType {
 	return {
+		// Rangement d'une suite (#108) : classé sans appeler generate() (#348), hors sprint.
+		exerciseKind: 'tuilesOrdre',
 		modes: [
 			{
 				id: 'tuiles',

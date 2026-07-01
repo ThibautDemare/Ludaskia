@@ -263,6 +263,8 @@ function genDeuxEtapes(): Exercise {
 /* ---------- Catalogue des leçons ---------- */
 
 const monoMode = (generate: () => Exercise): ExerciseType => ({
+	// Format « problème » (#199) : classé sans appeler generate() (#348), exclu du sprint.
+	exerciseKind: 'probleme',
 	generate,
 	check: () => false, // corrigé par le runner dédié (étape par étape), jamais génériquement
 });

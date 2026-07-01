@@ -3,8 +3,9 @@
    ============================================================ */
 import { fmt } from '../core/utils';
 import { icon } from './icon';
-import { getSessionItems, setSessionItems, checkItemAnswer } from '../core/items';
-import type { Item } from '../core/items';
+import { getSessionItems, setSessionItems } from '../core/items';
+import { scoreItems } from '../core/scoring';
+import type { ScoredInput } from '../core/scoring';
 import type { Trophy } from '../core/rewards';
 import { buildPrintableDOM } from '../core/lessons';
 import type { PrintScope } from '../core/lessons';
@@ -36,11 +37,33 @@ export function verify() {
 	const sessionItems = getSessionItems();
 	const currentMode = getCurrentMode();
 	const currentLessonId = getCurrentLessonId();
-	let total = 0,
-		ok = 0,
-		vides = 0;
-	const errors: Item[] = []; // items non réussis (faux OU non remplis) pour la révision
-	const perLesson: Record<string, { ok: number; total: number }> = {}; // num -> {ok, total} pour les stats par leçon
+	// Lecture DOM → descripteurs purs (#349). Saisie de l'heure (#88) : on FUSIONNE
+	// les 2 champs en « H h MM » (minutes sur 2 chiffres) AVANT correction → champ
+	// heures vide = non répondu ; minutes vide = « 00 » (heure pile). checkItemAnswer
+	// reste inchangé (la fusion produit sa forme canonique texte).
+	const scored: ScoredInput[] = [];
+	inputs.forEach((inp: any) => {
+		let saisie = inp.value.trim();
+		const minFieldId = inp.dataset.minField;
+		if (minFieldId) {
+			const minInp = document.getElementById(minFieldId) as HTMLInputElement | null;
+			const hv = inp.value.trim();
+			const mv = (minInp?.value ?? '').trim();
+			saisie = hv === '' ? '' : `${hv} h ${(mv || '0').padStart(2, '0')}`;
+		}
+		scored.push({
+			id: inp.id,
+			item: sessionItems[inp.id] ?? null,
+			saisie,
+			answer: inp.dataset.answer,
+			lesson: inp.dataset.lesson ?? null,
+		});
+	});
+	// Calcul du score (logique pure, testée sans DOM — cf. core/scoring.ts).
+	const { ok, total, vides, errors, perLesson, statuses } = scoreItems(scored);
+	// Marquage DOM selon les verdicts : on efface l'ancien marquage puis on pose
+	// ✓ / ✗ (avec révélation de la bonne réponse à côté de l'erreur) ; un champ
+	// laissé vide reste neutre.
 	inputs.forEach((inp: any) => {
 		const mark: any = document.querySelector(`.mark[data-for="${inp.id}"]`);
 		inp.classList.remove('correct', 'wrong');
@@ -48,48 +71,19 @@ export function verify() {
 			mark.className = 'mark';
 			mark.textContent = '';
 		}
-		const it = sessionItems[inp.id];
-		const ln = inp.dataset.lesson;
-		const bucket = ln != null ? perLesson[ln] || (perLesson[ln] = { ok: 0, total: 0 }) : null;
-		// Saisie de l'heure (#88) : on FUSIONNE les 2 champs en « H h MM » (minutes sur
-		// 2 chiffres) avant correction → checkItemAnswer reste inchangé. Champ heures vide
-		// = non répondu ; minutes vide = « 00 » (heure pile).
-		let raw = inp.value.trim();
-		const minFieldId = inp.dataset.minField;
-		if (minFieldId) {
-			const minInp = document.getElementById(minFieldId) as HTMLInputElement | null;
-			const hv = inp.value.trim();
-			const mv = (minInp?.value ?? '').trim();
-			raw = hv === '' ? '' : `${hv} h ${(mv || '0').padStart(2, '0')}`;
-		}
-		if (raw === '') {
-			vides++;
-			if (it) errors.push(it);
-			return;
-		}
-		total++;
-		if (bucket) bucket.total++;
-		// Correction selon le type d'item (texte vs calcul) ; repli numérique si l'item
-		// n'est pas en session (sécurité).
-		const correct = it
-			? checkItemAnswer(it, raw)
-			: Number(raw.replace(',', '.')) === Number(inp.dataset.answer);
-		if (correct) {
-			ok++;
-			if (bucket) bucket.ok++;
+		const status = statuses[inp.id];
+		if (status === 'correct') {
 			inp.classList.add('correct');
 			if (mark) {
 				mark.className = 'mark correct';
 				mark.textContent = '✓';
 			}
-		} else {
+		} else if (status === 'wrong') {
 			inp.classList.add('wrong');
-			// On révèle la bonne réponse à côté de l'erreur.
 			if (mark) {
 				mark.className = 'mark wrong';
 				mark.innerHTML = `✗ <span class="sol">→ ${inp.dataset.answer}</span>`;
 			}
-			if (it) errors.push(it);
 		}
 	});
 	setLastErrors(errors);
@@ -214,59 +208,6 @@ export function verify() {
 	else window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/* ---------- Saisie ---------- */
-// Modifier un champ efface son marquage. Pour l'heure (#88), éditer le champ des
-// minutes (.heure-min) efface la marque du champ des heures qui lui est lié.
-document.addEventListener('input', (e: any) => {
-	let marked: HTMLElement | null = null;
-	if (e.target.classList && e.target.classList.contains('ans')) marked = e.target;
-	else if (e.target.classList && e.target.classList.contains('heure-min'))
-		marked = e.target.closest('.heure-input')?.querySelector('.heure-h') ?? null;
-	if (marked) {
-		marked.classList.remove('correct', 'wrong');
-		const mark: any = document.querySelector(`.mark[data-for="${marked.id}"]`);
-		if (mark) {
-			mark.className = 'mark';
-			mark.textContent = '';
-		}
-	}
-});
-// Confort de saisie : Entrée passe au champ suivant ; sur le dernier, on vérifie.
-// Le champ des minutes (.heure-min) entre dans la navigation (heures → minutes → …).
-document.addEventListener('keydown', (e: any) => {
-	const t = e.target;
-	if (e.key !== 'Enter' || t.tagName !== 'INPUT') return;
-	if (
-		!t.classList.contains('ans') &&
-		!t.classList.contains('ans-free') &&
-		!t.classList.contains('heure-min')
-	)
-		return;
-	e.preventDefault();
-	const all: any[] = [
-		...document.querySelectorAll(
-			'#sheets input.ans, #sheets input.ans-free, #sheets input.heure-min',
-		),
-	];
-	const i = all.indexOf(t);
-	if (i > -1 && i < all.length - 1) all[i + 1].focus();
-	else verify(); // dernier champ
-});
-// Grille posée (#97) : navigation entre cellules aux flèches ← →.
-document.addEventListener('keydown', (e: any) => {
-	const t = e.target;
-	if (t.tagName !== 'INPUT' || !t.classList.contains('posee-cell')) return;
-	if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-	const grid = t.closest('.posee');
-	if (!grid) return;
-	const cells = [...grid.querySelectorAll('input.posee-cell')];
-	const j = cells.indexOf(t) + (e.key === 'ArrowLeft' ? -1 : 1);
-	if (j >= 0 && j < cells.length) {
-		e.preventDefault();
-		(cells[j] as HTMLInputElement).focus();
-	}
-});
-
 /* ---------- Impression (issue #40) ----------
    Deux chemins :
    - A (printAll) : imprimer l'écran courant tel quel. Les champs de réponse
@@ -283,33 +224,91 @@ export function printScope(scope: PrintScope) {
 export function printAll() {
 	window.print();
 }
-
 let printSnapshot: any = null;
-window.addEventListener('beforeprint', () => {
-	if (!pendingPrintScope) return; // chemin A : on n'altère pas #sheets
-	const sheets = document.getElementById('sheets')!;
-	const banner = document.getElementById('resultBanner');
-	printSnapshot = {
-		sheets: sheets.innerHTML,
-		items: getSessionItems(), // buildPrintableDOM régénère des items : on garde ceux de la session
-		banner: banner ? banner.outerHTML : null,
-	};
-	if (banner) banner.remove();
-	sheets.innerHTML = buildPrintableDOM(pendingPrintScope);
-});
-window.addEventListener('afterprint', () => {
-	pendingPrintScope = null;
-	if (!printSnapshot) return;
-	const sheets = document.getElementById('sheets')!;
-	sheets.innerHTML = printSnapshot.sheets;
-	setSessionItems(printSnapshot.items);
-	if (printSnapshot.banner) {
-		const tmp = document.createElement('div');
-		tmp.innerHTML = printSnapshot.banner;
-		const restored: any = tmp.firstChild;
-		sheets.parentNode!.insertBefore(restored, sheets);
-		const redo = restored.querySelector && restored.querySelector('#btnRedo');
-		if (redo) redo.addEventListener('click', startRevision); // le listener est perdu via outerHTML
-	}
-	printSnapshot = null;
-});
+
+/* ---------- Câblage global (appelé une fois par main.ts, cf. initProfiles) ----------
+   Tous les écouteurs délégués de la session (saisie, navigation clavier,
+   impression) sont posés ICI et non à l'import du module (#349) : importer
+   session.ts (test unitaire, autre module) ne doit produire aucun effet de bord. */
+export function initSession() {
+	// Saisie : modifier un champ efface son marquage. Pour l'heure (#88), éditer le
+	// champ des minutes (.heure-min) efface la marque du champ des heures qui lui est lié.
+	document.addEventListener('input', (e: any) => {
+		let marked: HTMLElement | null = null;
+		if (e.target.classList && e.target.classList.contains('ans')) marked = e.target;
+		else if (e.target.classList && e.target.classList.contains('heure-min'))
+			marked = e.target.closest('.heure-input')?.querySelector('.heure-h') ?? null;
+		if (marked) {
+			marked.classList.remove('correct', 'wrong');
+			const mark: any = document.querySelector(`.mark[data-for="${marked.id}"]`);
+			if (mark) {
+				mark.className = 'mark';
+				mark.textContent = '';
+			}
+		}
+	});
+	// Confort de saisie : Entrée passe au champ suivant ; sur le dernier, on vérifie.
+	// Le champ des minutes (.heure-min) entre dans la navigation (heures → minutes → …).
+	document.addEventListener('keydown', (e: any) => {
+		const t = e.target;
+		if (e.key !== 'Enter' || t.tagName !== 'INPUT') return;
+		if (
+			!t.classList.contains('ans') &&
+			!t.classList.contains('ans-free') &&
+			!t.classList.contains('heure-min')
+		)
+			return;
+		e.preventDefault();
+		const all: any[] = [
+			...document.querySelectorAll(
+				'#sheets input.ans, #sheets input.ans-free, #sheets input.heure-min',
+			),
+		];
+		const i = all.indexOf(t);
+		if (i > -1 && i < all.length - 1) all[i + 1].focus();
+		else verify(); // dernier champ
+	});
+	// Grille posée (#97) : navigation entre cellules aux flèches ← →.
+	document.addEventListener('keydown', (e: any) => {
+		const t = e.target;
+		if (t.tagName !== 'INPUT' || !t.classList.contains('posee-cell')) return;
+		if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+		const grid = t.closest('.posee');
+		if (!grid) return;
+		const cells = [...grid.querySelectorAll('input.posee-cell')];
+		const j = cells.indexOf(t) + (e.key === 'ArrowLeft' ? -1 : 1);
+		if (j >= 0 && j < cells.length) {
+			e.preventDefault();
+			(cells[j] as HTMLInputElement).focus();
+		}
+	});
+	// Impression (#40) : beforeprint bascule #sheets sur la version imprimable, afterprint restaure.
+	window.addEventListener('beforeprint', () => {
+		if (!pendingPrintScope) return; // chemin A : on n'altère pas #sheets
+		const sheets = document.getElementById('sheets')!;
+		const banner = document.getElementById('resultBanner');
+		printSnapshot = {
+			sheets: sheets.innerHTML,
+			items: getSessionItems(), // buildPrintableDOM régénère des items : on garde ceux de la session
+			banner: banner ? banner.outerHTML : null,
+		};
+		if (banner) banner.remove();
+		sheets.innerHTML = buildPrintableDOM(pendingPrintScope);
+	});
+	window.addEventListener('afterprint', () => {
+		pendingPrintScope = null;
+		if (!printSnapshot) return;
+		const sheets = document.getElementById('sheets')!;
+		sheets.innerHTML = printSnapshot.sheets;
+		setSessionItems(printSnapshot.items);
+		if (printSnapshot.banner) {
+			const tmp = document.createElement('div');
+			tmp.innerHTML = printSnapshot.banner;
+			const restored: any = tmp.firstChild;
+			sheets.parentNode!.insertBefore(restored, sheets);
+			const redo = restored.querySelector && restored.querySelector('#btnRedo');
+			if (redo) redo.addEventListener('click', startRevision); // le listener est perdu via outerHTML
+		}
+		printSnapshot = null;
+	});
+}

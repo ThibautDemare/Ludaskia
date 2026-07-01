@@ -278,11 +278,22 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   leçons **éligibles** (une catégorie entièrement exclue n'est pas proposée). Le
   réglage de profil **« sans pression temporelle »** (#223) masque le minuteur et le
   score ici et bascule la fin en mode doux — détaillé dans la section Accessibilité.
-- **`session.ts`** — `verify` (correction + enregistrement), saisie clavier,
-  impression contextuelle (#40) : **chemin A** `printAll()` imprime l'écran courant
-  vierge (le CSS print met `.ans` en transparent) ; **chemin B** `printScope(scope)`
-  pose un périmètre que `beforeprint` rend via `buildPrintableDOM(scope)`. Le 🖨 de
-  la barre n'apparaît qu'en exercice (drapeau `print` de `setToolbar`).
+- **`session.ts`** (#349) — session d'exercice grille : vérification, saisie clavier,
+  impression contextuelle (#40). Trois exports :
+  - **`verify()`** — lit les champs `.ans` du DOM (dont la fusion « H h MM » des saisies
+    d'heure, #88), construit une liste de `ScoredInput` (données pures, sans référence DOM),
+    délègue le **calcul du score à `core/scoring.ts`** (`scoreItems`), puis marque les champs
+    selon les `statuses` renvoyés (✓/✗ + révélation de la réponse) et rend le bandeau de
+    résultats et les récompenses.
+  - **`printAll()`** / **`printScope(scope)`** — impression contextuelle (#40) : chemin A
+    imprime l'écran courant vierge (le CSS print met `.ans` en transparent) ; chemin B pose
+    un périmètre que `beforeprint` rend via `buildPrintableDOM(scope)`. Le 🖨 de la barre
+    n'apparaît qu'en exercice (drapeau `print` de `setToolbar`).
+  - **`initSession()`** — câble les cinq écouteurs délégués globaux (effacement du marquage
+    sur `input`, navigation clavier `keydown` ×2, impression `beforeprint`/`afterprint`).
+    **Appelée une fois par `main.ts/wireDOM()`** (comme `installVisiblePasswordReveal`,
+    `installGroupedNumberEcho`, `initEggs`…) : importer `session.ts` ne produit aucun effet
+    de bord.
 - **`consigne-renforcee.ts`** (#203) — markup partagé d'une **consigne renforcée** (ligne
   en gras + picto décoratif `aria-hidden`, double codage) au-dessus de l'énoncé ; source
   unique réutilisée par `lecon-qcm.ts` **et** la révision (#265), portant la lecture TTS

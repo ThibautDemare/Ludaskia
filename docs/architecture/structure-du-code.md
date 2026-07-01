@@ -35,6 +35,12 @@ Importe les feuilles SCSS, puis initialise **dans cet ordre** :
 6. câblage du DOM + `route()` initiale — exécuté immédiatement si le DOM est
    prêt, sinon sur `DOMContentLoaded` (les modules sont différés).
 
+Le câblage DOM (`wireDOM`) pose ensuite — dans cet ordre — `paintStaticIcons`,
+`installVisiblePasswordReveal`, `installGroupedNumberEcho`, `initEggs`, `fillFooterYear`,
+`initFooterCookie`, et **`initSession()`** (écouteurs délégués de saisie / navigation
+clavier / impression de `session.ts`, sans effet de bord à l'import), puis les listeners
+sur les boutons fixes de la barre.
+
 Le projet a **deux pages** (#271) : **`app.html`** charge l'application
 (`<script type="module" src="/src/main.ts">`) ; **`index.html`** est la **vitrine**
 publique et charge `<script type="module" src="/src/vitrine.ts">`.

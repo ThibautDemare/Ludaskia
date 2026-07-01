@@ -62,7 +62,7 @@ import {
 	startLecon,
 } from './ui/navigation';
 import { ORTHO_CATEGORY_ID } from './core/catalog';
-import { verify, printAll } from './ui/session';
+import { verify, printAll, initSession } from './ui/session';
 import { captureResume } from './ui/resume';
 import { isSprintRunning } from './ui/sprint';
 import { isRevisionRunning } from './ui/revision';
@@ -111,6 +111,9 @@ function wireDOM() {
 	// cookies ». Le 1er déclenchement range le souvenir dans l'album (recordCookieEgg).
 	fillFooterYear();
 	initFooterCookie(recordCookieEgg);
+	// Session : écouteurs délégués de saisie / navigation clavier / impression (#349).
+	// Posés ici (et non à l'import de session.ts) pour un module sans effet de bord.
+	initSession();
 	document.getElementById('btnVerify')!.addEventListener('click', verify);
 	// Accueil : la confirmation des modes NON reprenables (sprint, révision) est
 	// gérée au niveau du hashchange (couvre aussi Précédent / édition d'URL), pour

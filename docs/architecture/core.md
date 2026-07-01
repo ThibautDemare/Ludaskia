@@ -179,6 +179,15 @@ propre doc de conception : `docs/design-orthographe.md`.
 - **`icon-names.ts`** — type **pur** `IconName` : noms **sémantiques** (rôle, pas dessin)
   des icônes Phosphor, pour que les modules `core/`/données typent leur champ `icon` sans
   dépendre du rendu. L'association nom → SVG est dans `ui/icon.ts`.
+- **`scoring.ts`** (#349) — correction **pure** d'une feuille de réponses, **sans DOM**.
+  `scoreItems(inputs: ScoredInput[]): ScoreResult` corrige une liste de champs déjà réduits
+  à leurs données (id, `Item | null`, saisie normalisée, leçon), et renvoie :
+  `ok`/`total`/`vides` (champs non remplis, non comptés dans `total` mais envoyés en
+  révision), `errors` (items faux ou vides, pour la révision), `perLesson` (agrégat par
+  leçon `id → {ok, total}`, pour les stats), et `statuses` (`Record<id, ItemStatus>` —
+  `'correct'|'wrong'|'empty'` — pour le marquage DOM par l'appelant). `ui/session.ts`
+  (`verify()`) lit le DOM, construit la liste `ScoredInput`, délègue à `scoreItems`, puis
+  pose les marques ✓/✗ selon les `statuses` renvoyés.
 
 ## Enregistrement, catalogue & ordre pédagogique
 

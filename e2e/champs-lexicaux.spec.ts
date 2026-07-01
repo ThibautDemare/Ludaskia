@@ -91,3 +91,30 @@ test('« Ranger par thème » : taper une tuile posée la renvoie au bac', async
 	expect(await page.locator('.ltri-tuile').count()).toBe(avant);
 	expect(errors).toEqual([]);
 });
+
+/* #360 — Opérable au clavier de bout en bout : Entrée sélectionne une tuile (bouton
+   natif), puis Entrée sur le titre-colonne (role=button) l'y dépose. */
+test('« Ranger par thème » : sélection + dépôt au clavier (#360)', async ({ page }) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'lecon-fr-vocab-champs-tri');
+	await page.locator('.ltri-tuile').first().waitFor();
+	const avant = await page.locator('.ltri-tuile').count();
+
+	// Entrée sur une tuile du bac (bouton natif) la sélectionne.
+	await page.locator('.ltri-tuile').first().focus();
+	await page.keyboard.press('Enter');
+	await expect(page.locator('.ltri-tuile.ltri-sel')).toHaveCount(1);
+	await expect(page.locator('.ltri-tuile.ltri-sel')).toHaveAttribute('aria-pressed', 'true');
+
+	// Le titre de colonne est un bouton focalisable ; Entrée y dépose la tuile.
+	const titre = page.locator('.ltri-col-titre').first();
+	await expect(titre).toHaveAttribute('role', 'button');
+	await titre.focus();
+	await page.keyboard.press('Enter');
+
+	await expect(page.locator('.ltri-posee')).toHaveCount(1);
+	expect(await page.locator('.ltri-tuile').count()).toBe(avant - 1);
+	// Le dépôt est annoncé au lecteur d'écran via la live region (#360, SC 4.1.3).
+	await expect(page.locator('#ltriStatus')).toContainText('placé dans');
+	expect(errors).toEqual([]);
+});

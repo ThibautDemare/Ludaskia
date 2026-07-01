@@ -426,9 +426,16 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 // règle .tuile:focus-visible (orthographe.scss) ; on l'ajoute ici par robustesse.
 .ltui-slot:focus-visible,
 .lord-cell:focus-visible,
-.ltri-posee:focus-visible {
+.ltri-posee:focus-visible,
+.ltri-col-titre:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
+}
+// Le titre de colonne est au ras du bord d'une `.ltri-col` en `overflow: hidden`
+// (arrondi du bandeau) : un anneau EXTÉRIEUR y serait rogné → on le dessine à
+// l'intérieur pour rester visible (#360).
+.ltri-col-titre:focus-visible {
+	outline-offset: -2px;
 }
 .ltui-bac {
 	display: flex;

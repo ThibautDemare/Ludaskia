@@ -3,7 +3,12 @@
    migration du catalogue vers `levels[]`. Logique pure (sans DOM).
    ============================================================ */
 import { describe, it, expect } from 'vitest';
-import { LEVEL_ORDER, LEVEL_LABEL, effectiveLevel } from '../src/core/levels';
+import {
+	LEVEL_ORDER,
+	LEVEL_LABEL,
+	effectiveLevel,
+	niveauDefautCatalogue,
+} from '../src/core/levels';
 import { getAllLessons, genLessonItem } from '../src/core/catalog';
 import type { LessonDef, SchoolLevel } from '../src/core/catalog';
 import type { Exercise } from '../src/core/exercise';
@@ -48,6 +53,16 @@ describe('effectiveLevel', () => {
 		expect(effectiveLevel(lessonWith(['ce2']), 'cp')).toBe('ce2');
 		expect(effectiveLevel(lessonWith(['ce2', 'cm1']), 'ce1')).toBe('ce2');
 		expect(effectiveLevel(lessonWith(['cm1']), 'ce2')).toBe('cm1');
+	});
+});
+
+describe('niveauDefautCatalogue', () => {
+	it('renvoie le plus bas niveau présent (source unique du repli, #351)', () => {
+		expect(niveauDefautCatalogue([{ levels: ['cm1', 'ce2'] }])).toBe('ce2');
+	});
+
+	it('agrège l’union des niveaux et suit LEVEL_ORDER, pas l’ordre d’entrée', () => {
+		expect(niveauDefautCatalogue([{ levels: ['cm1'] }, { levels: ['cm2', 'ce2'] }])).toBe('ce2');
 	});
 });
 

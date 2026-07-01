@@ -9,7 +9,7 @@
 import { lsGet, PROFILES_KEY } from './storage';
 import { getAllLessons } from './catalog';
 import type { LessonDef, SchoolLevel, SubjectId } from './catalog';
-import { availableLevels, effectiveLevel } from './levels';
+import { availableLevels, effectiveLevel, niveauDefautCatalogue } from './levels';
 
 interface ProfilMeta {
 	uuid: string;
@@ -24,23 +24,20 @@ function profilActif(): ProfilMeta | undefined {
 	return list.find((x) => x.uuid === meta?.active) ?? list[0];
 }
 
-/* Plus bas niveau présent au catalogue : défaut quand rien n'est choisi. */
-function niveauParDefaut(): SchoolLevel {
-	return availableLevels(getAllLessons())[0];
-}
-
 /* Niveau de RÉFÉRENCE actif (classe du profil), sinon défaut catalogue.
    Sert aux contextes globaux (onboarding) ; le filtrage/génération passent par
    le niveau PAR MATIÈRE. */
 export function niveauActif(): SchoolLevel {
-	return profilActif()?.niveauReference ?? niveauParDefaut();
+	return profilActif()?.niveauReference ?? niveauDefautCatalogue(getAllLessons());
 }
 
 /* Niveau actif d'une MATIÈRE : ajustement par matière s'il existe, sinon la
    classe de référence, sinon défaut catalogue. */
 export function niveauActifMatiere(subject: SubjectId): SchoolLevel {
 	const p = profilActif();
-	return p?.niveauParMatiere?.[subject] ?? p?.niveauReference ?? niveauParDefaut();
+	return (
+		p?.niveauParMatiere?.[subject] ?? p?.niveauReference ?? niveauDefautCatalogue(getAllLessons())
+	);
 }
 
 /* Faut-il demander à l'enfant de choisir sa classe ? Seulement si aucune classe

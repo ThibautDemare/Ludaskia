@@ -39,7 +39,7 @@ import {
 	type SchoolLevel,
 	type SubjectId,
 } from './catalog';
-import { availableLevels } from './levels';
+import { niveauDefautCatalogue } from './levels';
 import { niveauActifMatiere } from './niveau-actif';
 import type { Profile } from './profiles';
 
@@ -81,12 +81,14 @@ export function toggleRevoirFor(uuid: string, lessonId: string): string[] {
 
 /* ---------- Résolution du niveau d'un profil ARBITRAIRE ----------
    Réplique niveauActifMatiere (niveau-actif.ts) mais paramétré par profil, sans
-   lire meta.active : ajustement par matière, sinon classe de référence, sinon défaut. */
-function niveauDefautCatalogue(): SchoolLevel {
-	return availableLevels(getAllLessons())[0];
-}
+   lire meta.active : ajustement par matière, sinon classe de référence, sinon défaut
+   (niveauDefautCatalogue, source unique dans levels.ts — #351). */
 export function niveauProfilMatiere(profile: Profile, subject: SubjectId): SchoolLevel {
-	return profile.niveauParMatiere?.[subject] ?? profile.niveauReference ?? niveauDefautCatalogue();
+	return (
+		profile.niveauParMatiere?.[subject] ??
+		profile.niveauReference ??
+		niveauDefautCatalogue(getAllLessons())
+	);
 }
 /* Leçons du niveau du profil (par matière) — périmètre de complétude, cohérent
    avec lessonsNiveauActif() mais pour le profil consulté. */

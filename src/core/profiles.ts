@@ -11,6 +11,7 @@ import {
 	PROFILES_KEY,
 	lsGet,
 	lsSet,
+	lsGetRaw,
 	lsKeysRaw,
 	lsRemoveRaw,
 	lsSetRaw,
@@ -175,15 +176,11 @@ export function renameProfile(uuid: string, name: string) {
 	}
 }
 // XP totale d'un profil donné (par UUID), sans changer le profil actif. Lit la
-// clé préfixée brute → permet de gérer le gating des avatars dans l'écran de
-// gestion (où l'on édite un profil qui n'est pas forcément l'actif).
+// clé préfixée brute via lsGetRaw (#351 : plus d'accès localStorage direct) →
+// permet de gérer le gating des avatars dans l'écran de gestion (où l'on édite un
+// profil qui n'est pas forcément l'actif).
 export function getXPFor(uuid: string): number {
-	try {
-		const v = localStorage.getItem(uuid + '/' + XP_KEY);
-		return v == null ? 0 : JSON.parse(v);
-	} catch (e) {
-		return 0;
-	}
+	return lsGetRaw(uuid + '/' + XP_KEY, 0);
 }
 // Un avatar est autorisé pour un profil s'il est de base (toujours dispo) ou s'il
 // s'agit d'un avatar « forêt » dont le niveau requis est atteint par CE profil.

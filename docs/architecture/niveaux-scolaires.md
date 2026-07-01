@@ -11,7 +11,10 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
 - **`levels.ts`** (pur) — `LEVEL_ORDER`, `LEVEL_LABEL`, `effectiveLevel(lesson, niveau)`
   et `closestSupported(supported, niveau)` (niveau demandé, sinon plus haut supporté
   **en-dessous**, sinon plus bas — repli/clamp), `availableLevels(lessons)` (union des
-  niveaux présents), `lessonsForLevel(lessons, niveau)`.
+  niveaux présents), `lessonsForLevel(lessons, niveau)`, et
+  **`niveauDefautCatalogue(lessons)`** (le plus bas niveau ayant du contenu — **source
+  unique** du repli « aucune classe choisie » ; appelé par `niveau-actif.ts` et
+  `encadrant-stats.ts`, #351).
 - **`level-combinators.ts`** (pur) — `calibrated(table, build)` : **un seul `id`**
   recalibré par une table de paramètres par niveau (génératif : numération…), expose
   ses `levels`; `bankByLevel(items)` : banque QCM tagguée par item, dérive l'union des
@@ -20,7 +23,7 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
 - **`niveau-actif.ts`** — résout le niveau au **seam** profil/catalogue (lit la méta
   profil **directement** via `storage`, pour éviter un cycle `progress → niveau-actif →
   profiles`). `niveauActif()` (classe de référence), `niveauActifMatiere(subject)`
-  (= `niveauParMatiere[subject] ?? niveauReference ?? plus bas dispo`), `niveauLecon(lesson)`
+  (= `niveauParMatiere[subject] ?? niveauReference ?? niveauDefautCatalogue(getAllLessons())`), `niveauLecon(lesson)`
   (= `effectiveLevel` sur la matière, **passé à `generate`/`genLessonItem`** par
   `build`/runners/`revision`/`sprint`), `besoinChoixNiveau()`, `lessonsNiveauActif()`.
 

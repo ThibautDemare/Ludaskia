@@ -23,6 +23,8 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
+import { MODE_QCM_CHECK } from '../_shared';
+import type { LessonInput } from '../_shared';
 import { choice, sample } from '../../core/utils';
 
 export interface MotChamp {
@@ -238,9 +240,7 @@ function genIntrus(): Exercise {
 	};
 }
 
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'check-circle', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [MODE_QCM_CHECK];
 
 export function motJusteType(): ExerciseType {
 	return {
@@ -285,13 +285,7 @@ export function triType(): ExerciseType {
 	};
 }
 
-export interface ChampsLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const CHAMPS_LESSONS: ChampsLessonDef[] = [
+export const CHAMPS_LESSONS: LessonInput[] = [
 	{ id: 'fr-vocab-champs-mots', label: 'Le mot juste', exerciseType: motJusteType() },
 	{ id: 'fr-vocab-champs-tri', label: 'Ranger par thème', exerciseType: triType() },
 ];

@@ -49,6 +49,8 @@
    pour le TTS (#42) — on ne dira jamais « deux sur quatre ».
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
+import { MODE_QCM_POINT } from '../_shared';
+import type { LessonInput } from '../_shared';
 import { checkAnswer } from '../../core/exercise';
 import { checkNumerique } from '../../core/check-helpers';
 import { calibrated } from '../../core/level-combinators';
@@ -464,9 +466,7 @@ function genSomme(dens: number[]): Exercise {
 
 /* ---------- Fabriques d'ExerciseType ---------- */
 
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne fraction', icon: 'hand-pointing', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [{ ...MODE_QCM_POINT, label: 'Je choisis la bonne fraction' }];
 
 function qcmType(generate: () => Exercise): ExerciseType {
 	return { modes: MODE_QCM, generate, check: checkAnswer };
@@ -477,13 +477,7 @@ function saisieNumType(generate: () => Exercise): ExerciseType {
 	return { generate, check: checkNumerique };
 }
 
-export interface FractionLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const FRACTIONS_LESSONS: FractionLessonDef[] = [
+export const FRACTIONS_LESSONS: LessonInput[] = [
 	// Leçon 1 (sens) : NON calibrée — purement visuelle, barre ≤ 8 parts (cf. DENS_SENS).
 	{ id: 'num-frac-sens', label: 'Lire une fraction', exerciseType: qcmType(genSens) },
 	{

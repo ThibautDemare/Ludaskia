@@ -15,6 +15,8 @@ import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
 import { getVerb } from './conjugaison';
+import { MODE_QCM_CHECK } from '../_shared';
+import type { LessonInput } from '../_shared';
 
 /** Personne grammaticale : index dans les formes de conjugaison (je…ils). */
 export type Personne = 0 | 1 | 2 | 3 | 4 | 5;
@@ -62,9 +64,7 @@ export const SUJETS: Sujet[] = [
 /* Pronom attendu selon la personne (pour les distracteurs du QCM pronom). */
 const POOL_PRONOMS = ['il', 'elle', 'ils', 'elles', 'nous', 'vous', 'je', 'tu'];
 
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'check-circle', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [MODE_QCM_CHECK];
 
 /* Majuscule initiale (le sujet ouvre la phrase de l'exercice d'accord). */
 const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
@@ -137,13 +137,7 @@ export function accordSujetVerbeType(): ExerciseType {
 	};
 }
 
-export interface GrammaireLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const GRAMMAIRE_SUJET_LESSONS: GrammaireLessonDef[] = [
+export const GRAMMAIRE_SUJET_LESSONS: LessonInput[] = [
 	{ id: 'fr-gram-pronom-sujet', label: 'Le pronom sujet', exerciseType: pronomSujetType() },
 	{
 		id: 'fr-gram-accord-sujet-verbe',

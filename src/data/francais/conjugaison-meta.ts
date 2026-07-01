@@ -18,6 +18,8 @@
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, rnd, sample } from '../../core/utils';
+import { MODE_QCM_CHECK } from '../_shared';
+import type { LessonInput } from '../_shared';
 import {
 	VERBS,
 	TENSES,
@@ -34,9 +36,7 @@ const VERBS_META: VerbDef[] = VERBS;
 
 /* Tous les QCM méta sont mono-mode reconnaissance (pas de saisie : on choisit une
    étiquette / une forme, pas de production). */
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'check-circle', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [MODE_QCM_CHECK];
 
 /* ------------------------------------------------------------
    M1 — « Temps simple ou composé ? »
@@ -181,13 +181,7 @@ export function infinitifType(): ExerciseType {
 /* ------------------------------------------------------------
    Descripteurs de leçons (branchés au catalogue par catalog.ts).
    ------------------------------------------------------------ */
-export interface ConjMetaLessonDesc {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const CONJ_META_LESSONS: ConjMetaLessonDesc[] = [
+export const CONJ_META_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-conj-simple-compose',
 		label: 'Temps simple ou composé ?',

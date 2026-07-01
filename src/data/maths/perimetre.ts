@@ -22,6 +22,7 @@
    - formules : carré côté 2–12, rectangle L≠l avec L+l ≤ 30.
    ============================================================ */
 import type { Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
+import type { LessonInput } from '../_shared';
 import { checkNumerique } from '../../core/check-helpers';
 import { renderFigure, boundaryEdges } from '../../core/figures';
 import { rnd } from '../../core/utils';
@@ -164,13 +165,7 @@ function perimetreType(genFact: () => Exercise): ExerciseType {
 	};
 }
 
-export interface PerimetreLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const PERIMETRE_LESSONS: PerimetreLessonDef[] = [
+export const PERIMETRE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-perimetre-cotes',
 		label: 'Je calcule le périmètre',

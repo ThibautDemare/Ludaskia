@@ -23,6 +23,9 @@
      pas de double négation ; une propriété observable et tranchée.
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
+import { MODE_QCM_POINT } from '../_shared';
+import type { LessonInput } from '../_shared';
+import type { PropQ } from './_shared';
 import type { PlaneShape } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
 import { checkNumeriqueOuTexte } from '../../core/check-helpers';
@@ -53,13 +56,7 @@ const PLURIEL: Record<string, string> = {
 const NOMS_QCM = ['carré', 'rectangle', 'triangle', 'losange', 'cercle'];
 
 const MODES: ModeOption[] = [
-	{
-		id: 'qcm',
-		label: 'Je choisis la bonne réponse',
-		hint: 'parmi 4',
-		icon: 'hand-pointing',
-		recommended: true,
-	},
+	{ ...MODE_QCM_POINT, hint: 'parmi 4' },
 	{ id: 'saisie', label: "J'écris la réponse", hint: 'au clavier', icon: 'keyboard' },
 ];
 
@@ -171,11 +168,6 @@ function reconnaitreType(): ExerciseType {
 
 /* ---------- Propriétés et vocabulaire (QCM) ---------- */
 
-interface PropQ {
-	q: string;
-	a: string;
-	choices: string[];
-}
 const PROPRIETES: PropQ[] = [
 	{ q: 'Combien de côtés a un carré ?', a: '4', choices: ['3', '4', '5', '6'] },
 	{ q: 'Combien de côtés a un triangle ?', a: '3', choices: ['2', '3', '4', '5'] },
@@ -249,9 +241,7 @@ const PROPRIETES: PropQ[] = [
 
 function proprietesType(): ExerciseType {
 	return {
-		modes: [
-			{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'hand-pointing', recommended: true },
-		],
+		modes: [MODE_QCM_POINT],
 		generate(): Exercise {
 			const p = choice(PROPRIETES);
 			return {
@@ -267,13 +257,7 @@ function proprietesType(): ExerciseType {
 
 /* ---------- Descripteurs ---------- */
 
-export interface GeometrieLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const GEOMETRIE_LESSONS: GeometrieLessonDef[] = [
+export const GEOMETRIE_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-figures-reconnaitre',
 		label: 'Je reconnais les figures',

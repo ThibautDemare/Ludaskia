@@ -13,6 +13,8 @@
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
+import { MODE_QCM_CHECK } from '../_shared';
+import type { LessonInput } from '../_shared';
 
 type Sens = 'propre' | 'figuré';
 
@@ -314,9 +316,7 @@ export const GROUPES_SENS: GroupeSens[] = [
 	},
 ];
 
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis le bon sens', icon: 'check-circle', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [{ ...MODE_QCM_CHECK, label: 'Je choisis le bon sens' }];
 
 export function sensFigureType(): ExerciseType {
 	return {
@@ -340,13 +340,7 @@ export function sensFigureType(): ExerciseType {
 	};
 }
 
-export interface SensFigureLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const SENS_FIGURE_LESSONS: SensFigureLessonDef[] = [
+export const SENS_FIGURE_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-vocab-sens',
 		label: 'Sens propre / sens figuré',

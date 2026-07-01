@@ -14,6 +14,7 @@
      multiplicateur « doux » (chiffres simples, souvent un 1).
    ============================================================ */
 import type { Exercise, ExerciseType } from '../../core/exercise';
+import type { LessonInput } from '../_shared';
 import { rnd, choice } from '../../core/utils';
 
 interface PosedGen {
@@ -62,13 +63,7 @@ function posedType(gen: () => PosedGen, consigne: string): ExerciseType {
 	};
 }
 
-export interface PoseeLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const POSEE_LESSONS: PoseeLessonDef[] = [
+export const POSEE_LESSONS: LessonInput[] = [
 	{
 		id: 'calc-addition-posee',
 		label: "L'addition posée",

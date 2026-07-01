@@ -24,6 +24,8 @@ import { choice, rnd, sample } from '../../core/utils';
 import { checkAnswer } from '../../core/exercise';
 import { checkNumerique } from '../../core/check-helpers';
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
+import { MODE_QCM_POINT } from '../_shared';
+import type { LessonInput } from '../_shared';
 import { calibrated } from '../../core/level-combinators';
 import { renderFigure } from '../../core/figures';
 
@@ -222,7 +224,7 @@ const RESTE_MODES: ModeOption[] = [
 		icon: 'pencil',
 		recommended: true,
 	},
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', hint: 'parmi 4', icon: 'hand-pointing' },
+	{ ...MODE_QCM_POINT, hint: 'parmi 4', recommended: false },
 ];
 
 function resteType(): ExerciseType {
@@ -239,10 +241,7 @@ function resteType(): ExerciseType {
 	};
 }
 
-export interface DivisionLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
+export interface DivisionLessonDef extends LessonInput {
 	excludeFromSprint?: boolean;
 }
 

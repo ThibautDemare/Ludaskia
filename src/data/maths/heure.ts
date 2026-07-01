@@ -20,6 +20,8 @@
      superposent (dont 12 h 00) → lecture ambiguë.
    ============================================================ */
 import type { Exercise, ExerciseType, ExerciseMode, ModeOption } from '../../core/exercise';
+import { MODE_QCM_POINT } from '../_shared';
+import type { LessonInput } from '../_shared';
 import { normalizeText, rnd, choice, sample } from '../../core/utils';
 import { renderFigure } from '../../core/figures';
 
@@ -31,7 +33,7 @@ const MODES: ModeOption[] = [
 		icon: 'keyboard',
 		recommended: true,
 	},
-	{ id: 'qcm', label: 'Je choisis la bonne heure', hint: 'parmi 4', icon: 'hand-pointing' },
+	{ ...MODE_QCM_POINT, label: 'Je choisis la bonne heure', hint: 'parmi 4', recommended: false },
 ];
 
 interface Heure {
@@ -189,13 +191,7 @@ export function heureType(): ExerciseType {
 	};
 }
 
-export interface HeureLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const HEURE_LESSONS: HeureLessonDef[] = [
+export const HEURE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-lecture-heure',
 		label: "Je lis l'heure",

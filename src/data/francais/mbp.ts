@@ -22,6 +22,8 @@ import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { sample, randFloat } from '../../core/utils';
 import { ORTHO_PREDEF } from './orthographe';
+import { MODE_QCM_CHECK } from '../_shared';
+import type { LessonInput } from '../_shared';
 
 export type TypeMbp = 'regle' | 'contre' | 'exception';
 
@@ -164,9 +166,7 @@ export function explicationMbp(item: MotMbp): string {
 	return "La lettre d'après n'est pas m, b ni p : on écrit « n ».";
 }
 
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne lettre', icon: 'check-circle', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [{ ...MODE_QCM_CHECK, label: 'Je choisis la bonne lettre' }];
 
 export function mbpType(): ExerciseType {
 	return {
@@ -189,11 +189,8 @@ export function mbpType(): ExerciseType {
 	};
 }
 
-export interface MbpLessonDef {
-	id: string;
-	label: string;
+export interface MbpLessonDef extends LessonInput {
 	rubrique: string;
-	exerciseType: ExerciseType;
 }
 
 export const MBP_LESSONS: MbpLessonDef[] = [

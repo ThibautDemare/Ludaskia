@@ -20,19 +20,15 @@
    déploiement du cursus séparé).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
+import { MODE_QCM_POINT } from '../_shared';
+import type { LessonInput } from '../_shared';
 import { calibrated } from '../../core/level-combinators';
 import { renderFigure } from '../../core/figures';
 import { checkNumeriqueOuTexte } from '../../core/check-helpers';
 import { rnd, choice, sample } from '../../core/utils';
 
 const MODES: ModeOption[] = [
-	{
-		id: 'qcm',
-		label: 'Je choisis la bonne réponse',
-		hint: 'parmi 4',
-		icon: 'hand-pointing',
-		recommended: true,
-	},
+	{ ...MODE_QCM_POINT, hint: 'parmi 4' },
 	{ id: 'saisie', label: "J'écris la réponse", hint: 'au clavier', icon: 'keyboard' },
 ];
 
@@ -161,13 +157,7 @@ function cercleType(config: CercleConfig): ExerciseType {
 	};
 }
 
-export interface CercleLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const CERCLE_LESSONS: CercleLessonDef[] = [
+export const CERCLE_LESSONS: LessonInput[] = [
 	{
 		id: 'geom-cercle',
 		label: 'Le cercle',

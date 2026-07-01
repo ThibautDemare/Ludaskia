@@ -18,6 +18,8 @@ import type { SchoolLevel } from '../../core/catalog';
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
+import { MODE_QCM_CHECK } from '../_shared';
+import type { LessonInput } from '../_shared';
 
 /** Famille de mots : un mot de la famille, un faux-ami, un mot sans rapport. */
 export interface ItemFamille {
@@ -1030,9 +1032,7 @@ export const ITEMS_AFFIXES_CM1: ItemVocabQcm[] = [
 	...itemsAffixe(SUFFIXES_CM1, 'suffixe'),
 ];
 
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'check-circle', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [MODE_QCM_CHECK];
 
 /* Moteur QCM de reconnaissance : tire uniformément dans le POOL d'items reçu (#244). */
 export function famillesType(items: ItemVocabQcm[]): ExerciseType {
@@ -1053,11 +1053,8 @@ export function famillesType(items: ItemVocabQcm[]): ExerciseType {
 	};
 }
 
-export interface FamillesLessonDef {
-	id: string;
-	label: string;
+export interface FamillesLessonDef extends LessonInput {
 	levels: SchoolLevel[];
-	exerciseType: ExerciseType;
 }
 
 export const FAMILLES_LESSONS: FamillesLessonDef[] = [

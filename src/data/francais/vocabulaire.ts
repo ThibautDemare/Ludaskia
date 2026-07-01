@@ -17,12 +17,7 @@
    ============================================================ */
 import type { Exercise, ExerciseType } from '../../core/exercise';
 import { choice, sample, normalizeText } from '../../core/utils';
-
-export interface VocabLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
+import type { LessonInput } from '../_shared';
 
 /* Pool de noms communs pour le tri par 1re lettre. On pioche des INITIALES
    toutes différentes (une par lettre), puis un mot au hasard pour chacune :
@@ -183,7 +178,7 @@ function ordreType(gen: () => Exercise): ExerciseType {
 	};
 }
 
-export const VOCAB_LESSONS: VocabLessonDef[] = [
+export const VOCAB_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-vocab-alpha-initiale',
 		label: 'Ordre alphabétique — la 1re lettre',

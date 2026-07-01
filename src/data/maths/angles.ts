@@ -35,12 +35,12 @@
    variées. La mesure au rapporteur relève du CM1 (future leçon).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
+import { MODE_QCM_POINT } from '../_shared';
+import type { LessonInput } from '../_shared';
 import { renderFigure } from '../../core/figures';
 import { rnd, choice, sample, normalizeText } from '../../core/utils';
 
-const MODES: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'hand-pointing', recommended: true },
-];
+const MODES: ModeOption[] = [MODE_QCM_POINT];
 
 type Categorie = 'aigu' | 'droit' | 'obtus';
 
@@ -231,13 +231,7 @@ function anglesType(): ExerciseType {
 	};
 }
 
-export interface AnglesLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const ANGLES_LESSONS: AnglesLessonDef[] = [
+export const ANGLES_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-angles',
 		label: 'Les angles',

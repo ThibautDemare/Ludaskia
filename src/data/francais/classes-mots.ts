@@ -14,6 +14,8 @@
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
+import { MODE_QCM_CHECK } from '../_shared';
+import type { LessonInput } from '../_shared';
 
 type Classe = 'nom' | 'verbe' | 'adjectif';
 type Article = 'le' | 'la' | 'les';
@@ -207,9 +209,7 @@ export const ITEMS_CLASSES: ItemClasseQcm[] = [
 	...itemsAdverbe(),
 ];
 
-const MODE_QCM: ModeOption[] = [
-	{ id: 'qcm', label: 'Je choisis la bonne réponse', icon: 'check-circle', recommended: true },
-];
+const MODE_QCM: ModeOption[] = [MODE_QCM_CHECK];
 
 export function classesMotsType(): ExerciseType {
 	return {
@@ -230,13 +230,7 @@ export function classesMotsType(): ExerciseType {
 	};
 }
 
-export interface ClassesLessonDef {
-	id: string;
-	label: string;
-	exerciseType: ExerciseType;
-}
-
-export const CLASSES_LESSONS: ClassesLessonDef[] = [
+export const CLASSES_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-gram-classes',
 		label: 'Classes de mots, articles, adverbes',

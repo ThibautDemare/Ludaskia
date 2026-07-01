@@ -40,6 +40,7 @@ import {
 	updateStreak,
 	recordLessonStats,
 	recordRun,
+	type RunResult,
 	streakSuffix,
 	addXP,
 	getXP,
@@ -600,7 +601,7 @@ function finalizeSprint() {
 	else if (celeb.length) showCelebration(celeb);
 }
 
-function renderSprintResults(medalInfo: any, streakDays: number) {
+function renderSprintResults(medalInfo: RunResult, streakDays: number) {
 	const acc = sprintAnswered ? Math.round((sprintScore / sprintAnswered) * 100) : 0;
 	let extra = '';
 	if (medalInfo) {

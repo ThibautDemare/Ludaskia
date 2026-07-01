@@ -96,9 +96,21 @@ export function getGoalsDone() {
 	const v = lsGet(GOALS_DONE_KEY, 0);
 	return typeof v === 'number' ? v : 0;
 }
-export function getGoal() {
+/* Défi du jour stocké (#350) : combine l'état commun (date/cible/avancement) et le
+   descriptif tiré du défi choisi (type/libellé/leçon). `type` reste un `string` pour
+   tolérer les types hérités d'anciennes versions (record/express/sprint/sessions). */
+export interface Goal {
+	date: string;
+	target: number;
+	progress: number;
+	done: boolean;
+	type: string;
+	label: string;
+	lesson?: string;
+}
+export function getGoal(): Goal {
 	const today = todayStr();
-	let goal = lsGet(GOAL_KEY, null);
+	let goal: Goal | null = lsGet(GOAL_KEY, null);
 	if (!goal || goal.date !== today) {
 		// nouveau défi tiré une fois par jour, parmi les défis possibles
 		const c = challengeContext();
@@ -109,8 +121,20 @@ export function getGoal() {
 	}
 	return goal;
 }
+/* Événement de fin de session consommé par le défi du jour (#350). Tous les champs
+   sont optionnels : chaque appelant n'en renseigne que la part utile à son contexte
+   (leçon, bilan, sprint), et chaque type de défi ne lit que ceux qui le concernent. */
+export interface GoalEvent {
+	mode?: string; // 'lecon' | 'express' | 'complet' | 'sprint' …
+	newStar?: boolean; // une nouvelle étoile vient d'être décrochée
+	perfect?: boolean; // leçon réussie sans faute
+	isRecord?: boolean; // nouveau record (sprint/bilan)
+	sprint?: boolean; // la session était un sprint
+	lessonId?: string | null; // leçon concernée (défi de remédiation)
+	lessonPct?: number; // % de réussite sur la leçon (défi de remédiation)
+}
 /* Met à jour le défi selon l'événement de la session. Renvoie {goal, justDone}. */
-export function updateGoal(ev: any) {
+export function updateGoal(ev: GoalEvent) {
 	const goal = getGoal();
 	if (goal.done) return { goal, justDone: false };
 	let inc = 0;
@@ -125,7 +149,7 @@ export function updateGoal(ev: any) {
 			if (ev.mode === 'sprint' && ev.isRecord) inc = 1;
 			break;
 		case 'remediation':
-			if (ev.mode === 'lecon' && ev.lessonId === goal.lesson && ev.lessonPct >= 80) inc = 1;
+			if (ev.mode === 'lecon' && ev.lessonId === goal.lesson && (ev.lessonPct ?? 0) >= 80) inc = 1;
 			break;
 		// types hérités d'anciennes versions (défi déjà stocké pour aujourd'hui)
 		case 'record':
@@ -157,19 +181,29 @@ export function updateGoal(ev: any) {
    tiers() fabrique une famille de trophées à paliers réutilisable. */
 export const TROPHIES_KEY = 'ludaskia_trophies';
 
+/* Instantané des stats servant aux conditions de trophées (#350) : dérivé du
+   RETOUR de gSnapshot() plutôt que redéclaré, pour rester automatiquement à jour
+   quand on ajoute une métrique. Un renommage de champ casse alors le typecheck. */
+export type GSnapshot = ReturnType<typeof gSnapshot>;
+/* Métriques éligibles au raccourci {metric, n} : seules les clés NUMÉRIQUES du
+   snapshot (les booléens et les Record<> passent par un `test` explicite). */
+type GaugeMetric = {
+	[K in keyof GSnapshot]: GSnapshot[K] extends number ? K : never;
+}[keyof GSnapshot];
+
 export interface Trophy {
 	id: string;
 	icon: string;
 	title: string;
 	desc: string;
-	metric?: string;
+	metric?: GaugeMetric;
 	n?: number;
-	test?: (g: any) => boolean;
+	test?: (g: GSnapshot) => boolean;
 }
 export function tiers(
 	prefix: string,
 	icon: string,
-	metric: string,
+	metric: GaugeMetric,
 	levels: { n: number; title: string; desc: string }[],
 ): Trophy[] {
 	// levels : [{n, title, desc}]
@@ -208,7 +242,7 @@ export const TROPHIES: Trophy[] = [
 		icon: '🌟',
 		title: 'Sans faute partout',
 		desc: 'Décrocher l’étoile de toutes les leçons.',
-		test: (g: any) => g.totalLessons > 0 && g.stars >= g.totalLessons,
+		test: (g: GSnapshot) => g.totalLessons > 0 && g.stars >= g.totalLessons,
 	},
 	{
 		id: 'trained10',
@@ -223,14 +257,14 @@ export const TROPHIES: Trophy[] = [
 		icon: '⚡',
 		title: 'Éclair',
 		desc: 'Un bilan express en moins de 8 min.',
-		test: (g: any) => g.bestExpressMs <= 480000,
+		test: (g: GSnapshot) => g.bestExpressMs <= 480000,
 	},
 	{
 		id: 'carton',
 		icon: '💯',
 		title: 'Carton plein',
 		desc: 'Un bilan réussi à 100 %.',
-		test: (g: any) => g.perfectBilan,
+		test: (g: GSnapshot) => g.perfectBilan,
 	},
 	{
 		// Bonus découvrable : reconnaître un seul bilan de longue haleine (≈ 3 leçons
@@ -239,21 +273,21 @@ export const TROPHIES: Trophy[] = [
 		icon: '🌲',
 		title: 'Grande exploration',
 		desc: 'Terminer un grand bilan de 30 questions d’une traite.',
-		test: (g: any) => g.bestBilanCount >= 30,
+		test: (g: GSnapshot) => g.bestBilanCount >= 30,
 	},
 	{
 		id: 'champion',
 		icon: '🥇',
 		title: 'Champion',
 		desc: "Décrocher une médaille d'or.",
-		test: (g: any) => g.gold,
+		test: (g: GSnapshot) => g.gold,
 	},
 	{
 		id: 'allgreen',
 		icon: '🌿',
 		title: 'Tout au vert',
 		desc: 'Toutes les leçons à 70 % ou plus.',
-		test: (g: any) => g.allGreen,
+		test: (g: GSnapshot) => g.allGreen,
 	},
 	...tiers('vol', '🧮', 'totalAnswered', [
 		{ n: 100, title: '100 calculs', desc: '100 calculs résolus.' },
@@ -306,7 +340,7 @@ function subjectTrophies(): Trophy[] {
 			icon: '📗',
 			title: `${n} bonnes réponses en ${s.label}`,
 			desc: `Cumuler ${n} bonnes réponses en ${s.label}.`,
-			test: (g: any) => (g.subjectCorrect[s.id] || 0) >= n,
+			test: (g: GSnapshot) => (g.subjectCorrect[s.id] || 0) >= n,
 		})),
 	);
 }
@@ -323,7 +357,7 @@ function categoryTrophies(): Trophy[] {
 			icon: '🏷️',
 			title: `${n} leçons étoilées — ${c.label}`,
 			desc: `Décrocher l'étoile de ${n} leçons de ${c.label}.`,
-			test: (g: any) => (g.categoryStars[c.id] || 0) >= n,
+			test: (g: GSnapshot) => (g.categoryStars[c.id] || 0) >= n,
 		})),
 	);
 }
@@ -331,7 +365,7 @@ TROPHIES.push(...subjectTrophies(), ...categoryTrophies());
 
 // Compile le raccourci {metric, n} en fonction test.
 TROPHIES.forEach((t) => {
-	if (!t.test && t.metric) t.test = (g: any) => g[t.metric!] >= t.n!;
+	if (!t.test && t.metric) t.test = (g: GSnapshot) => g[t.metric!] >= t.n!;
 });
 
 export function loadTrophies() {

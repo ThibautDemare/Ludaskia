@@ -113,10 +113,15 @@ propre doc de conception : `docs/design-orthographe.md`.
   op + opérandes) | interactions ortho), interface **`ExerciseType`** : `modes?`
   (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
   l'ordre d'affichage), `generate(opts? : {mode?, level?})` (le `level` #225 calibre
-  une leçon multi-niveaux), `check()`. Helpers **`hasMode`** et
-  **`defaultMode`** (les écrans dérivent leurs choix d'ici, **jamais en dur**, #69),
-  et `checkAnswer` (normalisation partagée `normalizeText` ; **accents et
-  apostrophes exigés**). Le type `text` porte un champ optionnel **`intervalle`**
+  une leçon multi-niveaux), `check()`, et **`exerciseKind?`** (#348, type
+  `ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme'`) — étiquette
+  **déclarative statique** portée par les fabriques à runner dédié ; permet aux
+  helpers `isPosedLesson` / `isOrderingLesson` / `isTriLesson` / `isProblemeLesson`
+  de classer une leçon **sans appeler `generate()`** (supprime tout appel à l'aléatoire
+  global au moment du filtrage). Absent = format standard (texte/QCM) éligible au sprint.
+  Helpers **`hasMode`** et **`defaultMode`** (les écrans dérivent leurs choix d'ici,
+  **jamais en dur**, #69), et `checkAnswer` (normalisation partagée `normalizeText` ;
+  **accents et apostrophes exigés**). Le type `text` porte un champ optionnel **`intervalle`**
   (#240, intercalation CM1 « grands nombres ») : quand il est présent, la correction
   accepte **toute valeur strictement comprise** entre les deux bornes (et non plus la
   seule `answer`) ; absent (cas CE2), comportement de réponse unique **inchangé** — la

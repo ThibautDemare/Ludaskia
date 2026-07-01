@@ -132,6 +132,15 @@ export type Exercise =
 /** Mode d'entraînement, pour les types d'exercices qui en proposent plusieurs. */
 export type ExerciseMode = string;
 
+/** Étiquette déclarative du format d'un `ExerciseType` (#348) pour les formats à
+ *  runner d'écran dédié, incompatibles avec le sprint « une réponse à la fois » :
+ *  opération posée (#97), rangement d'une suite (#108), tri par thème (#114),
+ *  résolution de problèmes (#199). Sert à classer une leçon SANS appeler
+ *  `generate()` (qui consomme l'aléatoire global). Absent = format standard
+ *  (texte/QCM) éligible au sprint. Doit refléter le `type` que produit le
+ *  `generate()` par défaut (sans mode) — invariant vérifié en test. */
+export type ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme';
+
 /** Options de génération (#225). Le niveau est résolu UNE fois en amont (seam
  *  UI/catalogue via `effectiveLevel`) puis passé ici ; une fabrique mono-niveau
  *  l'ignore → comportement identique. `mode` reste l'option historique. */
@@ -163,6 +172,10 @@ export interface ExerciseType {
 	/** Niveaux scolaires couverts (#225), renseigné par les combinateurs multi-niveaux
 	 *  (`calibrated`, `bankByLevel`) : le catalogue en dérive `LessonDef.levels`. */
 	levels?: SchoolLevel[];
+	/** Format à runner dédié, hors sprint (#348) — voir `ExerciseKind`. Renseigné
+	 *  par les fabriques concernées ; lu par les helpers de classification du
+	 *  catalogue au lieu d'appeler `generate()`. Absent pour les formats standard. */
+	exerciseKind?: ExerciseKind;
 	generate(opts?: GenerateOpts): Exercise;
 	check(exercise: Exercise, input: string): boolean;
 }

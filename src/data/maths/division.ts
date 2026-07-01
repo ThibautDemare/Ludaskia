@@ -227,6 +227,9 @@ const RESTE_MODES: ModeOption[] = [
 
 function resteType(): ExerciseType {
 	return {
+		// Format « problème » par défaut (#199/#348) : generate() sans mode produit un
+		// item `probleme` (le mode QCM est une variante) → classé et exclu du sprint.
+		exerciseKind: 'probleme',
 		modes: RESTE_MODES,
 		// Affichage du runner « problème » : vocabulaire « calcul » plutôt que
 		// « problème », pas de badge « Étape » (les deux champs sont nommés).

@@ -125,6 +125,7 @@ import {
 	isPosedLesson,
 	isOrderingLesson,
 	isTriLesson,
+	isProblemeLesson,
 	CATEGORIES,
 	ORTHO_CATEGORY_ID,
 	MATH_LESSON_NUM,
@@ -3896,5 +3897,47 @@ describe('auto-actualisation (core/version)', () => {
 	test('canReloadNow : attend un instant après le retour sur l’onglet', () => {
 		expect(canReloadNow({ ...sain(), visibleMs: 500 }, THR)).toBe(false);
 		expect(canReloadNow({ ...sain(), visibleMs: 1500 }, THR)).toBe(true); // seuil atteint
+	});
+});
+
+/* Classification déclarative par format (#348) : les helpers isPosedLesson /
+   isOrderingLesson / isTriLesson / isProblemeLesson lisent l'étiquette statique
+   `exerciseType.exerciseKind` au lieu d'appeler generate(). L'invariant central :
+   cette étiquette DOIT rester d'accord avec le type que produit generate() par
+   défaut (sans mode) — sinon une leçon serait mal classée (ex. un format à runner
+   dédié réintégré à tort dans le sprint « une réponse à la fois »). Ce test croise
+   les deux sources sur TOUT le catalogue : il verrouille la migration (comportement
+   inchangé) ET protège les futures fabriques qui oublieraient de poser l'étiquette. */
+describe('exerciseKind — classification déclarative (#348)', () => {
+	// Doit refléter l'union `ExerciseKind` (src/core/exercise.ts) : les types d'items
+	// à runner d'écran dédié, hors sprint. À tenir à jour si l'union s'étend.
+	const FORMATS_DEDIES = ['posed', 'tuilesOrdre', 'tuilesTri', 'probleme'];
+
+	test("l'étiquette déclarée == le type produit par generate() (invariant)", () => {
+		// NB : ce test appelle generate() sur tout le catalogue À DES FINS DE
+		// VÉRIFICATION uniquement (croiser l'étiquette statique avec le type réellement
+		// produit). En prod, la classification lit `exerciseKind` sans jamais appeler
+		// generate() — c'est justement ce que ce refacto (#348) supprime du filtrage.
+		for (const lesson of getAllLessons()) {
+			const typeGenere = lesson.exerciseType.generate().type;
+			const etiquette = lesson.exerciseType.exerciseKind;
+			if (FORMATS_DEDIES.includes(typeGenere)) {
+				// Format à runner dédié → l'étiquette doit refléter exactement ce type.
+				// (Protège aussi une future fabrique qui oublierait de la poser.)
+				expect(etiquette, `${lesson.id} : exerciseKind devrait valoir '${typeGenere}'`).toBe(
+					typeGenere,
+				);
+			} else {
+				// Format standard (texte/QCM…) → aucune étiquette (éligible au sprint).
+				expect(etiquette, `${lesson.id} : exerciseKind devrait être absent`).toBeUndefined();
+			}
+		}
+	});
+
+	test('isProblemeLesson : vrai pour les problèmes, faux pour les autres', () => {
+		expect(isProblemeLesson(getLessonById('math-prob-composition')!)).toBe(true);
+		expect(isProblemeLesson(getLessonById('math-div-reste')!)).toBe(true); // probleme par défaut
+		expect(isProblemeLesson(getLessonById('math-tables-addition')!)).toBe(false);
+		expect(isProblemeLesson(getLessonById('fr-conj-etre-present')!)).toBe(false);
 	});
 });

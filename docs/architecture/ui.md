@@ -271,8 +271,8 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   précise de leçons** via `startCustomSprint`, #64) via un écran de
   configuration ; correction par `checkItemAnswer` (numérique ou texte).
   **Exclusions du sprint** (`lessonsForFilter`) : par TYPE d'item (posée, tuiles
-  ordre/tri, problème — détecté via `generate().type`) **et** par le flag
-  déclaratif **`LessonDef.excludeFromSprint`** (#104) pour une leçon qui produit un
+  ordre/tri, problème — détecté via l'étiquette déclarative **`ExerciseType.exerciseKind`**,
+  #348) **et** par le flag déclaratif **`LessonDef.excludeFromSprint`** (#104) pour une leçon qui produit un
   item `text` ordinaire mais ne convient pas au chrono (figure de découverte,
   lecture d'énoncé — ex. « Je partage »). L'écran de config ne compte que les
   leçons **éligibles** (une catégorie entièrement exclue n'est pas proposée). Le

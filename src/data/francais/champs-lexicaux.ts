@@ -264,6 +264,8 @@ const MODE_TRI: ModeOption[] = [
 
 export function triType(): ExerciseType {
 	return {
+		// Tri par thème (#114) : classé sans appeler generate() (#348), hors sprint.
+		exerciseKind: 'tuilesTri',
 		modes: MODE_TRI,
 		generate(): Exercise {
 			const [a, b] = sample(CHAMPS, 2);

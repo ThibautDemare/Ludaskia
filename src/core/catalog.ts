@@ -726,10 +726,16 @@ const ALL_LESSONS: LessonDef[] = [
 	...PHRASES_LESSONS_DEFS,
 ];
 
+/* Classification par format (#348) : les leçons à runner d'écran dédié portent une
+   étiquette déclarative `exerciseKind` (posée, rangement, tri, problème), lue ici au
+   lieu d'appeler `generate()` — pas de calcul ni d'aléatoire global consommé lors du
+   filtrage du sprint. Ces quatre formats sont incompatibles avec le sprint « une
+   réponse à la fois » et en sont écartés (cf. filtre de ui/sprint.ts). */
+
 /* Une opération posée (#97) se rend en grille multi-cellules : incompatible avec
    le sprint (« une réponse à la fois »), qui les exclut de son tirage. */
 export function isPosedLesson(lesson: LessonDef): boolean {
-	return lesson.exerciseType.generate().type === 'posed';
+	return lesson.exerciseType.exerciseKind === 'posed';
 }
 
 /* Une leçon « ranger une suite » (#108, ordre alphabétique) se joue en déplaçant
@@ -737,7 +743,7 @@ export function isPosedLesson(lesson: LessonDef): boolean {
    avec le sprint « une réponse à la fois » → exclue de son tirage (comme la posée).
    Reste jouable en bilan/fiche/révision via le repli texte de genLessonItem. */
 export function isOrderingLesson(lesson: LessonDef): boolean {
-	return lesson.exerciseType.generate().type === 'tuilesOrdre';
+	return lesson.exerciseType.exerciseKind === 'tuilesOrdre';
 }
 
 /* Une leçon « ranger par thème » (#114, champs lexicaux) se joue en triant
@@ -746,14 +752,14 @@ export function isOrderingLesson(lesson: LessonDef): boolean {
    exclue de son tirage. Reste jouable en bilan/fiche/révision via le repli
    texte de genLessonItem (une tuile → « dans quel thème ? »). */
 export function isTriLesson(lesson: LessonDef): boolean {
-	return lesson.exerciseType.generate().type === 'tuilesTri';
+	return lesson.exerciseType.exerciseKind === 'tuilesTri';
 }
 
 /* Une leçon « Résolution de problèmes » (#199) : énoncé à lire + réflexion, jouée
    dans un runner dédié un problème à la fois. Lecture et raisonnement sont
    incompatibles avec la pression du chrono → exclue du sprint (comme la posée). */
 export function isProblemeLesson(lesson: LessonDef): boolean {
-	return lesson.exerciseType.generate().type === 'probleme';
+	return lesson.exerciseType.exerciseKind === 'probleme';
 }
 
 /* Une leçon math « héritée » est branchée sur le générateur numérique bilanQ

@@ -3,7 +3,6 @@
    ============================================================ */
 import { fmt } from '../core/utils';
 import { icon } from './icon';
-import { getSessionItems, setSessionItems } from '../core/items';
 import { scoreItems } from '../core/scoring';
 import type { ScoredInput } from '../core/scoring';
 import type { Trophy } from '../core/rewards';
@@ -27,6 +26,7 @@ import {
 	runLecon,
 	goHome,
 	goCategorie,
+	getRenderCtx,
 } from './navigation';
 import { getLessonById } from '../core/catalog';
 
@@ -34,7 +34,7 @@ import { getLessonById } from '../core/catalog';
 export function verify() {
 	const ms = stopChrono();
 	const inputs = document.querySelectorAll('#sheets input.ans');
-	const sessionItems = getSessionItems();
+	const sessionItems = getRenderCtx().items;
 	const currentMode = getCurrentMode();
 	const currentLessonId = getCurrentLessonId();
 	// Lecture DOM → descripteurs purs (#349). Saisie de l'heure (#88) : on FUSIONNE
@@ -224,7 +224,9 @@ export function printScope(scope: PrintScope) {
 export function printAll() {
 	window.print();
 }
-let printSnapshot: any = null;
+// Instantané de #sheets pendant l'impression (chemin B) : la table id→Item de la session
+// n'a plus besoin d'être sauvée (buildPrintableDOM #352 a son propre contexte).
+let printSnapshot: { sheets: string; banner: string | null } | null = null;
 
 /* ---------- Câblage global (appelé une fois par main.ts, cf. initProfiles) ----------
    Tous les écouteurs délégués de la session (saisie, navigation clavier,
@@ -287,9 +289,10 @@ export function initSession() {
 		if (!pendingPrintScope) return; // chemin A : on n'altère pas #sheets
 		const sheets = document.getElementById('sheets')!;
 		const banner = document.getElementById('resultBanner');
+		// buildPrintableDOM (#352) rend dans son PROPRE contexte : la table id→Item de la
+		// session interactive (getRenderCtx) n'est plus touchée → rien à sauver/restaurer ici.
 		printSnapshot = {
 			sheets: sheets.innerHTML,
-			items: getSessionItems(), // buildPrintableDOM régénère des items : on garde ceux de la session
 			banner: banner ? banner.outerHTML : null,
 		};
 		if (banner) banner.remove();
@@ -300,7 +303,6 @@ export function initSession() {
 		if (!printSnapshot) return;
 		const sheets = document.getElementById('sheets')!;
 		sheets.innerHTML = printSnapshot.sheets;
-		setSessionItems(printSnapshot.items);
 		if (printSnapshot.banner) {
 			const tmp = document.createElement('div');
 			tmp.innerHTML = printSnapshot.banner;

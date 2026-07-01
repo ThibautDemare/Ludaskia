@@ -28,7 +28,7 @@ import {
 	type ResumeMode,
 	type ResumeRelaunch,
 } from '../core/resume';
-import { getSessionItems, setSessionItems, setInputCounter, type Item } from '../core/items';
+import { createRenderContext, type Item } from '../core/items';
 import { startChrono, getElapsed } from './chrono';
 import {
 	setCurrentMode,
@@ -37,6 +37,8 @@ import {
 	setSessionRecorded,
 	setToolbar,
 	hideMenus,
+	getRenderCtx,
+	setRenderCtx,
 } from './navigation';
 
 const now = () => Date.now();
@@ -89,7 +91,7 @@ export function captureResume(): void {
 		categoryId: ctx.categoryId,
 		relaunch: ctx.relaunch,
 		sheetsHTML: sheets.innerHTML,
-		items: getSessionItems(),
+		items: getRenderCtx().items,
 		answers,
 		activeId,
 		elapsedMs: getElapsed(),
@@ -112,9 +114,12 @@ export function restoreResume(snap: ResumeSnapshot): void {
 	// Réinjecte le rendu exact, puis recâble la table id de champ -> Item.
 	const sheets = document.getElementById('sheets')!;
 	sheets.innerHTML = snap.sheetsHTML;
-	setSessionItems({ ...snap.items });
-	// Évite toute collision d'id si un futur rendu réutilisait le compteur.
-	setInputCounter(maxInputId(snap.items) + 1);
+	// Contexte de session reconstitué (#352) : items restaurés et compteur repositionné
+	// APRÈS le plus grand id capturé, pour éviter toute collision si un futur rendu de
+	// cette session (rare) mintait de nouveaux champs.
+	setRenderCtx(
+		createRenderContext({ items: { ...snap.items }, counter: maxInputId(snap.items) + 1 }),
+	);
 	// Réécrit les réponses saisies.
 	for (const [id, val] of Object.entries(snap.answers)) {
 		const inp = document.getElementById(id) as HTMLInputElement | null;

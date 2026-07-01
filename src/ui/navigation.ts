@@ -19,8 +19,8 @@ import { runLeconTuiles } from './lecon-tuiles';
 import { runLeconOrdre } from './lecon-ordre';
 import { runLeconTri } from './lecon-tri';
 import { runLeconProbleme } from './lecon-probleme';
-import { setInputCounter, setSessionItems, renderItem } from '../core/items';
-import type { Item } from '../core/items';
+import { renderItem, createRenderContext } from '../core/items';
+import type { Item, RenderContext } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
 import { bindConsigneTts } from './consigne-tts';
 import { stopTts } from './tts';
@@ -78,6 +78,15 @@ let pendingRevision: Item[] = []; // items à réviser, transmis à la vue #revi
 export const getPendingRevision = () => pendingRevision;
 export const setPendingRevision = (v: Item[]) => {
 	pendingRevision = v;
+};
+// Contexte de rendu de la SESSION interactive courante (#352) : remplace l'état de
+// module d'items.ts. Créé neuf à chaque lancement d'exercice (runLecon / runRevision /
+// runBilanConfig / reprise), il conserve la table id→Item que verify (session.ts) relit
+// pour corriger et que la reprise (resume.ts) capture. Le rendu papier a le sien, local.
+let renderCtx: RenderContext = createRenderContext();
+export const getRenderCtx = () => renderCtx;
+export const setRenderCtx = (c: RenderContext) => {
+	renderCtx = c;
 };
 
 // Déclencheurs (liés à l'UI)
@@ -556,9 +565,9 @@ export function runLecon(id: string) {
 		categoryId: lesson.category,
 		relaunch: { type: 'lecon', lessonId: id },
 	});
-	setInputCounter(0);
-	setSessionItems({});
-	const fiche = buildLessonFiche(id); // aiguille math (rendu riche) / autres matières (texte)
+	const ctx = createRenderContext();
+	setRenderCtx(ctx);
+	const fiche = buildLessonFiche(id, undefined, ctx); // aiguille math (rendu riche) / autres matières (texte)
 	document.getElementById('sheets')!.innerHTML =
 		`<div class="page">${fiche}<p class="foot print-only">Ludaskia</p></div>`;
 	afterStart();
@@ -567,9 +576,9 @@ export function runLecon(id: string) {
 export function runRevision(items: Item[]) {
 	currentMode = 'revision';
 	currentLessonId = null;
-	setInputCounter(0);
-	setSessionItems({});
-	const grid = `<div class="grid c3">${items.map((it) => `<div class="op">${renderItem(it)}</div>`).join('')}</div>`;
+	const ctx = createRenderContext();
+	setRenderCtx(ctx);
+	const grid = `<div class="grid c3">${items.map((it) => `<div class="op">${renderItem(it, ctx)}</div>`).join('')}</div>`;
 	document.getElementById('sheets')!.innerHTML = `<div class="page">
     <p class="fiche-title">Révision — tes erreurs</p>
     <p class="fiche-sub">Reprends les calculs que tu n'avais pas réussis.</p>

@@ -16,9 +16,10 @@ DOM/`localStorage` est fourni par `happy-dom` (configuré dans `vite.config.ts`)
 
 Comme l'état des modules ES est un singleton, un `beforeEach` reproduit la fraîcheur de
 l'ancien `freshEnv()` : `localStorage.clear()`, rebranchement du hook d'écriture
-(`setOnDataWrite(touchActiveProfile)`), remise à zéro de l'état du module `items`
-(`setInputCounter`/`setSessionItems`/`setRenderLesson`) puis `initProfiles()` pour
-recréer un profil par défaut et le préfixe actif.
+(`setOnDataWrite(touchActiveProfile)`) puis `initProfiles()` pour recréer un profil par
+défaut et le préfixe actif. Le **rendu** n'a plus d'état de module à réinitialiser
+(#352) : `renderItem`/`gridHTML` reçoivent un `RenderContext` explicite
+(`createRenderContext()`), donc aucun état ne fuit d'un test à l'autre.
 
 ## Étendre
 - Importer le symbole à tester depuis `../src/core/*` (ou `../src/ui/*`) et l'ajouter à

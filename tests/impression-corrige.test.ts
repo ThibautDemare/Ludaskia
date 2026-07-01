@@ -6,17 +6,12 @@
    - la correspondance feuille ↔ corrigé (mêmes questions) ;
    - le confinement du `corrigeMode` (retiré après génération).
    ============================================================ */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { buildPrintableDOM } from '../src/core/lessons';
 import { getLessonById } from '../src/core/catalog';
 import { genItems } from '../src/core/build';
-import { renderItem, setPrintMode, setCorrigeMode, getCorrigeMode } from '../src/core/items';
+import { renderItem, createRenderContext } from '../src/core/items';
 import { withSeed, rnd } from '../src/core/utils';
-
-afterEach(() => {
-	setPrintMode(false);
-	setCorrigeMode(false);
-});
 
 describe('withSeed — RNG déterministe (#41)', () => {
 	// 20 tirages : pour une même graine ils sont identiques ; pour deux graines la
@@ -54,18 +49,20 @@ describe('withSeed — RNG déterministe (#41)', () => {
 
 describe('renderItem — révélation corrigé par type (#41)', () => {
 	it('saisie : réponse écrite sur la ligne (ans-corrige), sans champ de saisie', () => {
-		setPrintMode(true);
-		setCorrigeMode(true);
-		const html = renderItem({ text: '2 + 2 = @', answer: 4, kind: 'num' });
+		const html = renderItem(
+			{ text: '2 + 2 = @', answer: 4, kind: 'num' },
+			createRenderContext({ printMode: true, corrigeMode: true }),
+		);
 		expect(html).toContain('ans-corrige');
 		expect(html).toContain('>4<');
 		expect(html).not.toContain('<input');
 	});
 
 	it('hors corrigé : champ vide normal (pas de révélation)', () => {
-		setPrintMode(true);
-		setCorrigeMode(false);
-		const html = renderItem({ text: '2 + 2 = @', answer: 4, kind: 'num' });
+		const html = renderItem(
+			{ text: '2 + 2 = @', answer: 4, kind: 'num' },
+			createRenderContext({ printMode: true }),
+		);
 		expect(html).toContain('<input');
 		expect(html).not.toContain('ans-corrige');
 	});
@@ -78,7 +75,6 @@ describe('buildPrintableDOM — document avec corrigé (#41)', () => {
 		const dom = buildPrintableDOM({ ...base, kind: 'bilan', nbQ: 3 });
 		expect(dom).not.toContain('cover-corrige');
 		expect(dom).not.toContain('qcm-print-box--checked');
-		expect(getCorrigeMode()).toBe(false);
 	});
 
 	it('avec corrigé : page de garde « Corrigé » + bon choix coché (QCM)', () => {
@@ -87,7 +83,6 @@ describe('buildPrintableDOM — document avec corrigé (#41)', () => {
 		expect(dom).toContain('Corrigé');
 		expect(dom).toContain('qcm-print-box--checked'); // case du bon choix cochée
 		expect(dom).toContain('qcm-print-choice--correct');
-		expect(getCorrigeMode()).toBe(false); // confiné (retiré après génération)
 	});
 
 	it('corrigé d’une fiche posée : cellules-résultat remplies', () => {

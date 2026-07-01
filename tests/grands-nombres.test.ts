@@ -18,7 +18,7 @@ import {
 	ESPACE_FINE,
 } from '../src/core/nombres';
 import { getLessonById, genLessonItem } from '../src/core/catalog';
-import { checkItemAnswer, renderItem } from '../src/core/items';
+import { checkItemAnswer, renderItem, createRenderContext } from '../src/core/items';
 
 /* Espaces de référence, désignés par leur point de code pour ne JAMAIS écrire de
    caractère invisible dans ce source (fragile à l'édition / au lint). */
@@ -311,10 +311,13 @@ describe('Ajustements numération (suite des retours mainteneur)', () => {
 
 	// Champ de saisie élargi (.ans-grand) pour une réponse numérique à ≥ 5 chiffres.
 	it('renderItem : un grand nombre (≥ 10 000) reçoit la classe ans-grand, pas un petit', () => {
-		expect(renderItem({ text: 'x = @', answer: 1_400_000, kind: 'num' })).toContain('ans-grand');
-		expect(renderItem({ text: 'x = @', answer: 90_000, kind: 'num' })).toContain('ans-grand');
-		expect(renderItem({ text: 'x = @', answer: 7, kind: 'num' })).not.toContain('ans-grand');
-		expect(renderItem({ text: 'x = @', answer: 999, kind: 'num' })).not.toContain('ans-grand');
+		const c = () => createRenderContext();
+		expect(renderItem({ text: 'x = @', answer: 1_400_000, kind: 'num' }, c())).toContain(
+			'ans-grand',
+		);
+		expect(renderItem({ text: 'x = @', answer: 90_000, kind: 'num' }, c())).toContain('ans-grand');
+		expect(renderItem({ text: 'x = @', answer: 7, kind: 'num' }, c())).not.toContain('ans-grand');
+		expect(renderItem({ text: 'x = @', answer: 999, kind: 'num' }, c())).not.toContain('ans-grand');
 	});
 });
 

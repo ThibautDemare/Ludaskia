@@ -34,7 +34,7 @@ propre doc de conception : `docs/design-orthographe.md`.
   Fabriques math (`add/sub/mul/dbl/half/comp/facteur`), `renderItem` (champ
   numérique, **texte**, ou **grille posée** selon `kind`), `checkItemAnswer`
   (correction numérique **ou** texte via `normalizeText`), `gridHTML`,
-  `ficheHTML`/`ficheHTMLGeneric`, `lessonAttr()`. Le `kind: 'posed'` (#97) est un
+  `ficheHTML`/`ficheHTMLGeneric`, `lessonAttr(ctx)`. Le `kind: 'posed'` (#97) est un
   item « conteneur » (`posed: {op, a, b}`) que **`posedGridHTML`** déploie en grille
   de colonnes — plusieurs champs `.ans` (chiffres de résultat / produits partiels,
   notés un à un) + cellules de retenue `.ans-free`. Le champ **`figure`** (#88) porte
@@ -43,8 +43,13 @@ propre doc de conception : `docs/design-orthographe.md`.
   sprint, révision) appellent `figureBlock` au même endroit pour un rendu identique
   partout. **`enonceTexte`** échappe puis enrichit l'énoncé : gras `**…**`, fractions
   empilées (`stackFractions`) et **grands nombres groupés** enveloppés en `.bignum`
-  (`wrapGrandsNombres`, #240) — transformations disjointes, sans effet de bord. État
-  de module via accesseurs.
+  (`wrapGrandsNombres`, #240) — transformations disjointes, sans effet de bord.
+  **`RenderContext`** (#352) — interface `{counter, items, lessonId, printMode,
+  corrigeMode}` créée par **`createRenderContext(init?)`** : regroupe l'état de rendu
+  passé **explicitement** à `renderItem`, `gridHTML`, `posedGridHTML`, `nextInputId`,
+  `lessonAttr`. Plus d'état de module implicite dans ce fichier ; le contexte de la
+  session interactive vit dans `ui/navigation.ts` (`getRenderCtx`/`setRenderCtx`),
+  celui de l'impression est créé localement dans `lessons.ts:buildPrintableDOM`.
 - **`figures.ts`** — **moteur de figures SVG génératives (#88)**, module **PUR**
   (renvoie une chaîne de balisage, aucun accès DOM). Primitives bas niveau
   réutilisables (`svgCanvas` — viewBox carré + `role="img"` + `<title>`/`<desc>` +
@@ -262,8 +267,10 @@ propre doc de conception : `docs/design-orthographe.md`.
   **multi-matières** via `buildLessonFiche`/`bilanBlocksForIds`), `coverHTML(scope)`
   (garde dynamique), pagination 2 fiches/A4. (`buildFiches`/`bilanHTML` historiques
   conservés.) **Corrigé (#41)** : `scope.corrige` rend le corps DEUX fois — feuille
-  vierge puis réponses révélées (sous-mode `setCorrigeMode`, `core/items.ts`) — sur les
-  MÊMES items (graine commune via `withSeed`), avec `corrigeCoverHTML` en intercalaire.
+  vierge puis réponses révélées — sur les MÊMES items (graine commune via `withSeed`),
+  avec `corrigeCoverHTML` en intercalaire. Chaque passe crée un `RenderContext` frais
+  (`createRenderContext({ printMode: true, corrigeMode: <bool> })`) ; `printMode` et
+  `corrigeMode` sont des champs du contexte, pas un état de module (#352).
 - **`build.ts`** — construction **générique multi-matières** : `genItems`,
   `buildLessonFiche` (calcul mental → rendu riche via `LESSONS.build()` ; maths
   modernes & autres matières → liste de questions, consigne « Complète. » pour les

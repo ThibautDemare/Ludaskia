@@ -17,9 +17,10 @@ import { loadBilans, saveBilan, deleteBilan } from '../core/bilans';
 import { startCustomSprint } from './sprint';
 import { fichesPagesHTML } from '../core/lessons';
 import { bilanBlocksForIds, buildFichesForIds } from '../core/build';
-import { setInputCounter, setSessionItems, setRenderLesson, renderItem } from '../core/items';
+import { renderItem, createRenderContext, withLessonId } from '../core/items';
+import type { RenderContext } from '../core/items';
 import { escapeHTML } from '../core/utils';
-import { setCurrentMode, setCurrentLessonId, afterStart } from './navigation';
+import { setCurrentMode, setCurrentLessonId, afterStart, setRenderCtx } from './navigation';
 import { printScope } from './session';
 import { bilanCategoryKey, bilanCustomKey } from '../core/resume';
 import { setResumeCtx, clearResumeCtx, maybeRelaunch, type ResumeCtx } from './resume';
@@ -28,13 +29,13 @@ import { uiConfirm } from './ui-modal';
 
 /* ---------- Génération de bilan express personnalisé ---------- */
 
-function bilanCustomExpressHTML(config: BilanConfig): string {
+function bilanCustomExpressHTML(config: BilanConfig, ctx: RenderContext): string {
 	const blocks = bilanBlocksForIds(config.lessonIds, config.questionsPerLesson as number);
 	const cells = blocks
 		.map((b) => {
-			setRenderLesson(b.id);
-			const ops = b.ops.map((o) => `<div class="bop">${renderItem(o)}</div>`).join('');
-			setRenderLesson(null);
+			const ops = withLessonId(ctx, b.id, () =>
+				b.ops.map((o) => `<div class="bop">${renderItem(o, ctx)}</div>`).join(''),
+			);
 			return `<div class="bloc"><span class="btheme">${escapeHTML(b.theme)}</span>${ops}</div>`;
 		})
 		.join('');
@@ -51,13 +52,13 @@ function bilanCustomExpressHTML(config: BilanConfig): string {
 
 export function runBilanConfig(config: BilanConfig, ctx?: ResumeCtx | null): void {
 	if (!config.lessonIds.length) return;
-	setInputCounter(0);
-	setSessionItems({});
+	const renderCtx = createRenderContext();
+	setRenderCtx(renderCtx);
 	let html: string;
 	if (config.questionsPerLesson === 'all') {
-		html = fichesPagesHTML(buildFichesForIds(config.lessonIds));
+		html = fichesPagesHTML(buildFichesForIds(config.lessonIds, undefined, renderCtx));
 	} else {
-		html = bilanCustomExpressHTML(config);
+		html = bilanCustomExpressHTML(config, renderCtx);
 	}
 	document.getElementById('sheets')!.innerHTML = html;
 	// Un bilan compte pour les objectifs de régularité : « complet » quand toutes

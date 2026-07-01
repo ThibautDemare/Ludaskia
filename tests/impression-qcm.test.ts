@@ -7,17 +7,20 @@
    - la zone-réponse garantie (jamais de question « en l'air ») ;
    - le confinement du `printMode` (l'écran n'en hérite pas).
    ============================================================ */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { buildPrintableDOM } from '../src/core/lessons';
 import { getLessonById, genLessonItem } from '../src/core/catalog';
-import { renderItem, setPrintMode, getPrintMode } from '../src/core/items';
+import { renderItem, createRenderContext } from '../src/core/items';
 
 // Un QCM texte pur (angles), un QCM à vue riche (fractions), un QCM à images (symétrie).
 const QCM_TEXTE = 'geo-angles';
 const QCM_VUE_RICHE = 'num-frac-sens';
 const QCM_IMAGES = 'geo-symetrie-axiale';
 
-afterEach(() => setPrintMode(false)); // aucun test ne doit laisser le mode actif
+// Contextes de rendu (#352) : l'écran (par défaut) vs l'impression (printMode). Plus
+// d'état de module à poser/retirer — chaque rendu reçoit le sien, sans fuite entre tests.
+const ecran = () => createRenderContext();
+const impression = () => createRenderContext({ printMode: true });
 
 describe('genLessonItem — propagation des choix de QCM (#289)', () => {
 	it('un QCM texte conserve ses `choices` (jetés jusqu’ici)', () => {
@@ -49,16 +52,14 @@ describe('genLessonItem — propagation des choix de QCM (#289)', () => {
 describe('renderItem — cases à cocher RÉSERVÉES à l’impression (#289)', () => {
 	it('hors impression, un item QCM ne produit PAS de cases à cocher', () => {
 		const it = genLessonItem(getLessonById(QCM_TEXTE)!);
-		setPrintMode(false);
-		const html = renderItem(it);
+		const html = renderItem(it, ecran());
 		expect(html).not.toContain('qcm-print-box');
 		expect(html).not.toContain('qcm-print-choices');
 	});
 
 	it('en impression, un item QCM produit la liste de cases à cocher', () => {
 		const it = genLessonItem(getLessonById(QCM_TEXTE)!);
-		setPrintMode(true);
-		const html = renderItem(it);
+		const html = renderItem(it, impression());
 		expect(html).toContain('qcm-print-choices');
 		// Autant de cases que de choix.
 		const boxes = html.match(/qcm-print-box/g) ?? [];
@@ -68,30 +69,31 @@ describe('renderItem — cases à cocher RÉSERVÉES à l’impression (#289)', 
 	});
 
 	it('en impression, le `@` d’un QCM à trou devient une case vide (pas un « @ » littéral)', () => {
-		setPrintMode(true);
-		const html = renderItem({
-			text: 'Le bébé @ beaucoup pleuré.',
-			answer: 'a',
-			choices: ['a', 'à'],
-			kind: 'text',
-		});
+		const html = renderItem(
+			{
+				text: 'Le bébé @ beaucoup pleuré.',
+				answer: 'a',
+				choices: ['a', 'à'],
+				kind: 'text',
+			},
+			impression(),
+		);
 		expect(html).toContain('cloze-box'); // emplacement matérialisé par un rectangle vide
 		expect(html).not.toContain('@'); // plus de « @ » brut, incompréhensible pour un enfant
-		setPrintMode(false);
 	});
 
 	it('en impression, un item de saisie sans `@` reçoit quand même une zone-réponse', () => {
 		// Item texte fabriqué sans `@` : la garantie d'impression doit ajouter un champ.
-		setPrintMode(true);
-		const html = renderItem({ text: 'Une question sans emplacement', answer: 'x', kind: 'text' });
+		const html = renderItem(
+			{ text: 'Une question sans emplacement', answer: 'x', kind: 'text' },
+			impression(),
+		);
 		expect(html).toContain('class="ans'); // champ ajouté
-		setPrintMode(false);
 		// Hors impression, le comportement historique est inchangé (pas d'ajout).
-		const htmlEcran = renderItem({
-			text: 'Une question sans emplacement',
-			answer: 'x',
-			kind: 'text',
-		});
+		const htmlEcran = renderItem(
+			{ text: 'Une question sans emplacement', answer: 'x', kind: 'text' },
+			ecran(),
+		);
 		expect(htmlEcran).not.toContain('class="ans');
 	});
 });
@@ -135,15 +137,17 @@ describe('buildPrintableDOM — fiche & bilan de QCM (#289)', () => {
 		expect(zones).toBe(cells);
 	});
 
-	it('le `printMode` est retiré après génération (l’écran n’en hérite pas)', () => {
-		expect(getPrintMode()).toBe(false);
+	it('l’impression n’affecte pas le rendu écran : contexte propre à chaque rendu (#352)', () => {
 		buildPrintableDOM({ ...scopeBase, lessonIds: [QCM_TEXTE], kind: 'fiches' });
-		expect(getPrintMode()).toBe(false);
+		// Un rendu écran fait APRÈS une impression part d'un contexte neuf (printMode false) :
+		// aucune case à cocher n'y fuit — le printMode n'est plus un état de module partagé.
+		const html = renderItem(genLessonItem(getLessonById(QCM_TEXTE)!), ecran());
+		expect(html).not.toContain('qcm-print-box');
 	});
 
-	it('le `printMode` est remis à false même si la génération lève (try/finally)', () => {
-		expect(getPrintMode()).toBe(false);
-		// `lessonIds` absent → la génération lève avant tout rendu, APRÈS setPrintMode(true).
+	it('une génération d’impression qui lève ne corrompt aucun état (plus de mode global, #352)', () => {
+		// `lessonIds` absent → la génération lève. Sans état de module à restaurer, un rendu
+		// écran ultérieur reste propre quoi qu'il arrive (chaque contexte est local).
 		expect(() =>
 			buildPrintableDOM({
 				title: 'x',
@@ -151,6 +155,7 @@ describe('buildPrintableDOM — fiche & bilan de QCM (#289)', () => {
 				kind: 'fiches',
 			}),
 		).toThrow();
-		expect(getPrintMode()).toBe(false);
+		const html = renderItem(genLessonItem(getLessonById(QCM_TEXTE)!), ecran());
+		expect(html).not.toContain('qcm-print-box');
 	});
 });

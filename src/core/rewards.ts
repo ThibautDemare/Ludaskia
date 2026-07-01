@@ -115,7 +115,7 @@ export function getGoal(): Goal {
 		// nouveau défi tiré une fois par jour, parmi les défis possibles
 		const c = challengeContext();
 		const pool = CHALLENGES.filter((ch) => ch.avail(c));
-		const def = pool[Math.floor(Math.random() * pool.length)].build(c);
+		const def = choice(pool).build(c);
 		goal = { date: today, target: 1, progress: 0, done: false, ...def };
 		lsSet(GOAL_KEY, goal);
 	}

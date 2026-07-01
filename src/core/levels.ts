@@ -56,6 +56,15 @@ export function availableLevels(lessons: { levels: SchoolLevel[] }[]): SchoolLev
 	return LEVEL_ORDER.filter((lv) => set.has(lv));
 }
 
+/* Niveau par défaut d'un catalogue : le plus bas niveau ayant du contenu. Repli
+   quand aucune classe n'est choisie. Source unique (#351) — les appelants passent
+   getAllLessons() (niveau-actif.ts, encadrant-stats.ts). Reste pur/paramétré comme
+   le reste du module : levels.ts ne dépend pas du singleton catalogue (sinon cycle
+   levels → catalog → data → level-combinators → levels à l'initialisation). */
+export function niveauDefautCatalogue(lessons: { levels: SchoolLevel[] }[]): SchoolLevel {
+	return availableLevels(lessons)[0];
+}
+
 /* Leçons appartenant au niveau demandé (filtrage du catalogue par niveau actif).
    Appartenance stricte : `effectiveLevel` (repli/clamp) sert à la GÉNÉRATION
    d'une référence hors-filtre (favori, révision), pas au filtrage de l'écran. */

@@ -13,6 +13,7 @@
    précédent). La logique de tirage est pure et testable ;
    buildExpressConfig() la branche sur les stats du profil. */
 import { loadLessonStats, lessonAvgPct } from './progress';
+import { randFloat } from './utils';
 import type { BilanConfig } from './catalog';
 
 /* Plafond indicatif de questions d'un express (cible ~10 min en CE2). */
@@ -53,7 +54,7 @@ export function sampleExpressLessons(lessonIds: string[], opts: SampleOpts = {})
 	const out: string[] = [];
 	while (out.length < cap && pool.length) {
 		const total = pool.reduce((s, p) => s + p.w, 0);
-		let r = Math.random() * total;
+		let r = randFloat() * total;
 		let i = 0;
 		while (i < pool.length - 1 && r >= pool[i].w) {
 			r -= pool[i].w;

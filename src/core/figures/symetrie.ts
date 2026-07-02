@@ -369,5 +369,14 @@ export function renderSymImage(motif: SymMotif, axis: 'v' | 'h', t: SymTransform
 		symDashedSeg(symR(mline[0]), symR(mline[1])) +
 		polygon(base.map(symR), SHAPE_FILL) +
 		polygon(img.map(symR), SHAPE_FILL);
-	return svgCanvas(SYM_CELL, SYM_CELL, '', '', body, 'figure-symetrie-image', '', true);
+	return svgCanvas(
+		SYM_CELL,
+		SYM_CELL,
+		'',
+		'',
+		body,
+		'figure-symetrie-image',
+		/* ariaLabel */ '',
+		true,
+	);
 }

@@ -21,10 +21,34 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
 
 ## Espace encadrant (rendu)
 
-- **`encadrant.ts`** (#234) — rendu de l'**espace encadrant** (`enterEncadrant`) :
-  porte PIN (pavé numérique), sélecteur de profils en **consultation** (≠ bascule),
-  réglages (classe par UUID + code), et **récap** par profil. Listeners délégués posés
-  une fois sur `#encadrantContent` ; voix « vous », accent neutre (`encadrant.scss`).
+Découpé par responsabilité (#234, découpage #354) en un **orchestrateur** + cinq
+modules de section, en graphe **étoile** : chaque section n'importe que
+`encadrant-etat` (+ le core), sauf `encadrant-profils` qui dépend aussi de
+`encadrant-pin` (referme son sous-panneau au changement de profil consulté) —
+seule dépendance inter-sections. La logique de données (`core/encadrant-stats.ts`,
+`core/encadrant-lock.ts`) est inchangée. Voix « vous », accent neutre (`encadrant.scss`).
+
+- **`encadrant.ts`** — **orchestrateur** : point d'entrée `enterEncadrant`,
+  câblage des listeners délégués posés une fois sur `#encadrantContent` (dispatch
+  en chaîne vers les modules de section), `rerender` (aiguille porte / récupération
+  / espace via `pinView()` du module pin) et `renderEspace` (compose l'espace à
+  partir des modules ci-dessous).
+- **`encadrant-etat.ts`** — module **feuille** (n'importe aucun autre module
+  `encadrant-*`) : état de vue partagé (conteneur DOM, profil **consulté**) +
+  registre des callbacks `rerender`/`renderEspace` (casse le cycle orchestrateur
+  ↔ sections) + `telechargerBlob` (export, clé de récupération).
+- **`encadrant-pin.ts`** — **verrou par code** : porte PIN + pavé numérique,
+  écran de récupération, bloc « Code d'accès » des réglages ; possède l'état du
+  verrou et la vue courante (`pinView()`, lue par l'orchestrateur).
+- **`encadrant-progression.ts`** — **récap** par profil : chiffres-clés, graphe
+  d'activité 7 jours (#319, bascule Total / Par type), maîtrise par catégorie,
+  file « à revoir » ; handlers `activite-mode`/`epingler`/`imprimer`.
+- **`encadrant-reglages.ts`** — **réglages** sur le profil consulté : classe de
+  référence + niveau par matière, aménagements « dys »/attention ; injecte le
+  bloc PIN rendu par `encadrant-pin`.
+- **`encadrant-profils.ts`** — sélecteur de profils en **consultation** (≠ bascule)
+  + **gestion** réservée à l'adulte (renommer/avatar/réinitialiser/supprimer/créer),
+  plus export/import de tous les profils.
 - **`a-revoir-card.ts`** (#234) — carte d'accueil `#aRevoir` (modèle « leçon du jour »)
   affichant les leçons épinglées « à revoir » par l'encadrant, masquée si vide.
 

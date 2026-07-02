@@ -51,8 +51,8 @@ de conception initial est `docs/design-multi-subject.md`.
   orthographe / vocabulaire ; maths : numération / calcul / calcul mental / grandeurs &
   mesures / géométrie / problèmes).
 - [Logique pure (`src/core/`)](architecture/core.md) — modules `core/` regroupés par
-  thème : fondations (dont **`figures.ts`**), catalogue, progression, révision,
-  gamification, encadrant.
+  thème : fondations (dont **`figures/`**, moteur de figures SVG découpé par
+  famille), catalogue, progression, révision, gamification, encadrant.
 - [Rendu & interactions (`src/ui/`)](architecture/ui.md) — modules `ui/`, runners
   d'exercice, thèmes d'affichage, **Accessibilité (#42)**.
 

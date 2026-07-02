@@ -471,7 +471,7 @@ mélange €/c franchissant l'euro, billets 5/10/20/50 € (#287), centimes par 
 
 leçon **« Je lis l'heure »** (`mes-lecture-heure`,
 catégorie « Grandeurs et mesures »), **première cliente du moteur de figures SVG**
-(`core/figures.ts`) — chaque question affiche une **horloge** générée. Deux modes
+(`core/figures/`) — chaque question affiche une **horloge** générée. Deux modes
 (#69) : `saisie` (conseillé, fiche imprimable ; réponse « H h MM » au **parsing
 tolérant** — `10h15`, `10:15`, `8`/`8h`/`8h00` pour les heures pile, déclaré via
 `answers`) et `qcm` (4 propositions, **distracteurs = erreurs classiques** :
@@ -554,7 +554,7 @@ cachées). Distracteurs = **vraies formes** / valeurs voisines réelles. Ordre p
 `math.cm1` (#208) : figures planes avant solides, triangles (quelconque en contre-exemple)
 avant quadrilatères, parallélogramme en dernier des planes, solides reconnaissance →
 polyèdre/non-polyèdre → comptage. Cliente du moteur SVG : triangles particuliers et prisme
-ajoutés à `core/figures.ts` (cf. [Logique pure](core.md)). **Codage des figures (#326)** : les
+ajoutés à `core/figures/` (module `polygones.ts`, cf. [Logique pure](core.md)). **Codage des figures (#326)** : les
 deux leçons de reconnaissance de figures planes (`geo-cm1-triangles`, `geo-cm1-quadrilateres`)
 passent `codage: true` au renderer → les figures portent leur codage géométrique (carrés d'angle
 droit, tirets de côtés égaux, longueurs/largeurs distinguées par un double tiret), attendu B.O.

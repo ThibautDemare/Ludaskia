@@ -22,7 +22,7 @@ dès la création d'un libellé :
   sujet du verbe. Ex. « Je me mets à jour… je reviens tout de suite ! »,
   « Un instant, je prépare tes mots… ». Les tutoyer serait un contresens.
 - **(d) L'app parle à un ADULTE → « vous »** (#234) : **uniquement** dans l'**espace
-  encadrant** (`ui/encadrant.ts`), qui n'est pas destiné à l'enfant. Ex. « Entrez
+  encadrant** (`ui/encadrant*.ts`, découpé #354), qui n'est pas destiné à l'enfant. Ex. « Entrez
   votre code à 4 chiffres », « Vous regardez les progrès de Léa », « Conservez bien
   cette clé ». Ce basculement « tu → vous » est, avec le retrait du vert de marque,
   le principal signal de rupture « on a quitté l'espace de l'enfant ». Le vouvoiement

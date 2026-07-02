@@ -23,7 +23,7 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
 
 Découpé par responsabilité (#234, découpage #354) en un **orchestrateur** + cinq
 modules de section, en graphe **étoile** : chaque section n'importe que
-`encadrant-etat` (+ le core), sauf `encadrant-profils` qui dépend aussi de
+`encadrant-commun` (+ le core), sauf `encadrant-profils` qui dépend aussi de
 `encadrant-pin` (referme son sous-panneau au changement de profil consulté) —
 seule dépendance inter-sections. La logique de données (`core/encadrant-stats.ts`,
 `core/encadrant-lock.ts`) est inchangée. Voix « vous », accent neutre (`encadrant.scss`).
@@ -33,7 +33,7 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   en chaîne vers les modules de section), `rerender` (aiguille porte / récupération
   / espace via `pinView()` du module pin) et `renderEspace` (compose l'espace à
   partir des modules ci-dessous).
-- **`encadrant-etat.ts`** — module **feuille** (n'importe aucun autre module
+- **`encadrant-commun.ts`** — module **feuille** (n'importe aucun autre module
   `encadrant-*`) : état de vue partagé (conteneur DOM, profil **consulté**) +
   registre des callbacks `rerender`/`renderEspace` (casse le cycle orchestrateur
   ↔ sections) + `telechargerBlob` (export, clé de récupération).

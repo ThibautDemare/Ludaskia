@@ -1,14 +1,16 @@
 /* ============================================================
-   Espace encadrant (#234, découpage #354) — état de vue PARTAGÉ + plomberie.
+   Espace encadrant (#234, découpage #354) — module COMMUN aux sections.
    ------------------------------------------------------------
    Module FEUILLE : il n'importe AUCUN autre module `encadrant-*`. Il porte donc
-   l'état transverse à toutes les sections (conteneur DOM, profil consulté) et le
-   registre des fonctions de re-rendu, ce qui casse le cycle qui existerait sinon
-   entre l'orchestrateur (`encadrant.ts`, qui COMPOSE le rendu de l'espace) et les
-   modules de section (pin / progression / réglages / profils, qui DÉCLENCHENT un
-   re-rendu). L'orchestrateur enregistre ses fonctions via `initEncadrantEtat` ;
+   l'état de vue transverse à toutes les sections (conteneur DOM, profil consulté)
+   et le registre des fonctions de re-rendu, ce qui casse le cycle qui existerait
+   sinon entre l'orchestrateur (`encadrant.ts`, qui COMPOSE le rendu de l'espace) et
+   les modules de section (pin / progression / réglages / profils, qui DÉCLENCHENT un
+   re-rendu). L'orchestrateur enregistre ses fonctions via `initEncadrantCommun` ;
    les sections appellent `rerender()` / `renderEspace()` sans importer l'orchestrateur.
-   ============================================================ */
+   Il héberge aussi `telechargerBlob`, utilitaire de téléchargement partagé par pin
+   (clé de récupération) et profils (export) — placé ici, module déjà commun aux deux,
+   pour éviter un import croisé pin ↔ profils. ============================================================ */
 
 let conteneur: HTMLElement | null = null;
 let consulte: string | null = null; // profil CONSULTÉ (≠ forcément l'actif)
@@ -19,7 +21,7 @@ let renderEspaceFn: () => void = () => {};
    fois par `enterEncadrant`). `rerender` re-rend la vue courante (porte, récupération
    ou espace) ; `renderEspace` re-rend directement l'espace (raccourci des sections qui
    savent y être). */
-export function initEncadrantEtat(
+export function initEncadrantCommun(
 	el: HTMLElement,
 	rerender: () => void,
 	renderEspace: () => void,

@@ -22,7 +22,7 @@ import {
 } from '../core/encadrant-stats';
 import { getAllLessons, type LessonDef } from '../core/catalog';
 import { printScope } from './session';
-import { consulteUuid, renderEspace, container } from './encadrant-etat';
+import { consulteUuid, renderEspace, container } from './encadrant-commun';
 
 /* ---------- État de la section (module) ---------- */
 let vueActivite: 'total' | 'type' = 'total'; // graphe d'activité : « Total » ou « Par type » (#319)

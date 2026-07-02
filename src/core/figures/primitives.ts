@@ -83,17 +83,20 @@ export function arc(
 }
 
 /** Enveloppe SVG accessible : viewBox (w×h), role="img", titre + description.
+    `ariaLabel` par défaut = `title` : le cas le plus courant est un libellé identique
+    au titre, on ne le répète alors pas ; ne le préciser que lorsqu'il diffère (libellé
+    plus explicite pour le lecteur d'écran).
     `decorative` : SVG purement DÉCORATIF (`aria-hidden`, sans role/label/titre) —
     à n'utiliser que lorsqu'un parent déjà nommé porte le sens (ex. une figure rendue
     DANS un bouton-choix QCM, dont le `aria-label` décrit déjà le choix). */
 export function svgCanvas(
 	w: number,
 	h: number,
-	ariaLabel: string,
 	title: string,
 	desc: string,
 	body: string,
 	cls = '',
+	ariaLabel: string = title,
 	decorative = false,
 ): string {
 	const klass = `figure-svg${cls ? ' ' + cls : ''}`;

@@ -41,7 +41,6 @@ export function renderFractionBarre(num: number, den: number): string {
 		FRAC_W,
 		H,
 		'Fraction',
-		'Fraction',
 		// On annonce le nombre de parts (aide le lecteur d'écran à dénombrer) mais
 		// JAMAIS le nombre de coloriées : ce serait souffler le numérateur (la réponse).
 		`Une barre partagée en ${den} parts égales ; certaines parts sont coloriées.`,
@@ -102,7 +101,6 @@ export function renderFractionBande(num: number, den: number): string {
 		W,
 		H,
 		'Bande graduée',
-		'Bande graduée',
 		// On annonce le nombre de parts, jamais la position du repère (la réponse).
 		`Une bande de 0 à 1 partagée en ${den} parts égales, avec un repère sur une graduation.`,
 		body.join(''),
@@ -110,21 +108,32 @@ export function renderFractionBande(num: number, den: number): string {
 	);
 }
 
-/** Deux barres de MÊME longueur empilées (égalités / comparaison) : alignées à gauche
-    pour que la comparaison des longueurs coloriées soit visuellement honnête. */
+/* Mise en page « deux barres de MÊME longueur empilées » (égalités, comparaison, somme) :
+   alignées à gauche pour que la comparaison des longueurs coloriées soit visuellement
+   honnête. Constantes partagées par la paire et la somme. */
+const PAIRE_H = 180;
+const PAIRE_BAR_H = 55;
+const PAIRE_Y_HAUT = 30;
+const PAIRE_Y_BAS = PAIRE_Y_HAUT + PAIRE_BAR_H + 20;
+
+/* Corps commun : les deux barres empilées (haut/bas), avec un éventuel contenu central
+   `milieu` inséré entre elles (ex. le « + » d'une somme). */
+function deuxBarresEmpilees(haut: [number, number], bas: [number, number], milieu = ''): string {
+	return (
+		barre(FRAC_BAR_X, PAIRE_Y_HAUT, FRAC_BAR_W, PAIRE_BAR_H, haut[0], haut[1]) +
+		milieu +
+		barre(FRAC_BAR_X, PAIRE_Y_BAS, FRAC_BAR_W, PAIRE_BAR_H, bas[0], bas[1])
+	);
+}
+
+/** Deux barres de même longueur empilées (égalités / comparaison). */
 export function renderFractionPaire(haut: [number, number], bas: [number, number]): string {
-	const H = 180;
-	const barH = 55;
-	const yHaut = 30;
-	const yBas = yHaut + barH + 20;
 	return svgCanvas(
 		FRAC_W,
-		H,
-		'Deux fractions',
+		PAIRE_H,
 		'Deux fractions',
 		'Deux barres de même longueur partagées en parts égales ; compare les parts coloriées.',
-		barre(FRAC_BAR_X, yHaut, FRAC_BAR_W, barH, haut[0], haut[1]) +
-			barre(FRAC_BAR_X, yBas, FRAC_BAR_W, barH, bas[0], bas[1]),
+		deuxBarresEmpilees(haut, bas),
 		'figure-fraction-paire',
 	);
 }
@@ -132,11 +141,7 @@ export function renderFractionPaire(haut: [number, number], bas: [number, number
 /** Somme de deux fractions de même dénominateur : les deux termes empilés, séparés
     par un « + » (on additionne les numérateurs, le dénominateur ne change pas). */
 export function renderFractionSomme(a: [number, number], b: [number, number]): string {
-	const H = 180;
-	const barH = 55;
-	const yHaut = 30;
-	const yBas = yHaut + barH + 20;
-	const plus = text(FRAC_W / 2, (yHaut + barH + yBas) / 2, '+', {
+	const plus = text(FRAC_W / 2, (PAIRE_Y_HAUT + PAIRE_BAR_H + PAIRE_Y_BAS) / 2, '+', {
 		'text-anchor': 'middle',
 		'dominant-baseline': 'central',
 		'font-family': 'var(--ui)',
@@ -146,14 +151,12 @@ export function renderFractionSomme(a: [number, number], b: [number, number]): s
 	});
 	return svgCanvas(
 		FRAC_W,
-		H,
-		'Addition de deux fractions',
+		PAIRE_H,
 		'Addition de fractions',
 		'Deux fractions de même dénominateur à additionner, illustrées par deux barres.',
-		barre(FRAC_BAR_X, yHaut, FRAC_BAR_W, barH, a[0], a[1]) +
-			plus +
-			barre(FRAC_BAR_X, yBas, FRAC_BAR_W, barH, b[0], b[1]),
+		deuxBarresEmpilees(a, b, plus),
 		'figure-fraction-somme',
+		'Addition de deux fractions',
 	);
 }
 
@@ -204,11 +207,11 @@ export function renderFractionCollection(num: number, den: number, parGroupe: nu
 	return svgCanvas(
 		W,
 		H,
-		'Collection en parts égales',
 		'Collection',
 		// On annonce la structure (groupes × jetons), jamais le nombre de groupes coloriés.
 		`Des jetons rangés en ${den} groupes égaux de ${parGroupe} ; certains groupes sont coloriés.`,
 		body.join(''),
 		'figure-fraction-collection',
+		'Collection en parts égales',
 	);
 }

@@ -38,7 +38,7 @@ propre doc de conception : `docs/design-orthographe.md`.
   item « conteneur » (`posed: {op, a, b}`) que **`posedGridHTML`** déploie en grille
   de colonnes — plusieurs champs `.ans` (chiffres de résultat / produits partiels,
   notés un à un) + cellules de retenue `.ans-free`. Le champ **`figure`** (#88) porte
-  un fragment SVG (moteur `figures.ts`) que **`figureBlock`** affiche AU-DESSUS de la
+  un fragment SVG (moteur `figures/`) que **`figureBlock`** affiche AU-DESSUS de la
   question ; `renderItem` l'ajoute, et les runners « une question à la fois » (QCM,
   sprint, révision) appellent `figureBlock` au même endroit pour un rendu identique
   partout. **`enonceTexte`** échappe puis enrichit l'énoncé : gras `**…**`, fractions
@@ -50,67 +50,90 @@ propre doc de conception : `docs/design-orthographe.md`.
   `lessonAttr`. Plus d'état de module implicite dans ce fichier ; le contexte de la
   session interactive vit dans `ui/navigation.ts` (`getRenderCtx`/`setRenderCtx`),
   celui de l'impression est créé localement dans `lessons.ts:buildPrintableDOM`.
-- **`figures.ts`** — **moteur de figures SVG génératives (#88)**, module **PUR**
-  (renvoie une chaîne de balisage, aucun accès DOM). Primitives bas niveau
-  réutilisables (`svgCanvas` — viewBox carré + `role="img"` + `<title>`/`<desc>` +
-  `aria-label` ; `line`, `circle`, `rect`, `polygon`, `polyline`, `text`,
-  `pointOnCircle`, et **`arc(cx, cy, r, deg1, deg2)`** — path d'arc, #202) et un
-  premier renderer **`renderHorloge(h, m)`** (cadran,
-  graduations, chiffres, deux aiguilles distinctes — la petite/heures
-  **proportionnelle aux minutes**), **`renderPolygoneCote(points, labels)`**
-  (#99 — polygone dessiné **à l'échelle** depuis ses sommets, chaque côté coté à
-  l'extérieur ; un label vide = côté non coté) et **`renderQuadrillage(cols, rows,
-  cells)`** (#99 — figure rectiligne sur grille, **contour surligné** ; le helper
-  **`boundaryEdges(cells)`** donne les côtés unitaires du tour, sa longueur = le
-  périmètre en côtés de carreaux). `renderFigure(spec)` aiguille par données (union
-  **`FigureSpec`** : `horloge` | `polygoneCote` | `quadrillage`, **point
-  d'extension**). **C'est le socle réutilisable** des figures de « Grandeurs et
-  mesures » / « Géométrie ». Côté géométrie (#100) : **`renderFigurePlane(shape,
-  rotation, codage?)`** (figure pleine à reconnaître, rotation pour varier l'orientation) et
-  **`renderSceneFigures(cells)`** (scène de plusieurs figures à compter, grille
-  monochrome) et **`renderCercle(segment?, label?)`** (#102 — cercle + centre, rayon
-  ou diamètre surligné et coté, ou marqué « ? » pour le vocabulaire). `PlaneShape`
-  couvre carré, rectangle, triangle (générique), triangle rectangle, losange, cercle,
-  parallélogramme et — **CM1 (#242)** — les **triangles particuliers** `triangleEquilateral`
-  / `triangleIsocele` (FRANC, apex ~40°) / `triangleQuelconque` (scalène ~3:4:5,5, sans
-  angle droit). Sommets canoniques mis à l'échelle de façon **uniforme** (angles et égalités
-  de longueur préservés). **Codage des figures (#326, CM1) — opt-in.** Le paramètre
-  **`codage`** (défaut `false`) ajoute à la forme le **codage géométrique** attendu au CM1
-  (« coder un angle droit, des longueurs égales ») : **tirets de côté égal**
-  (`SHAPE_MARQUES_COTES` → chaque côté marqué porte **1 ou 2** tirets `--ink` perpendiculaires
-  à son milieu via `marqueEgal(a, b, tirets)` ; 1 et 2 distinguent deux familles de longueurs —
-  carré/losange 4 côtés à 1 tiret, rectangle/parallélogramme longueurs à 1 tiret et largeurs à
-  2, triangles équilatéral/isocèle leurs côtés égaux) et **carrés d'angle droit**
-  (`SHAPE_ANGLES_DROITS` → `coinAngleDroit(V, P, N)`, équerre logée dans le coin et **orientée le
-  long des côtés adjacents** donc elle **suit la rotation** ; carré/rectangle = 4 angles,
-  triangle rectangle = 1). Le marquage est **concordant** avec le tracé (côtés réellement égaux,
-  angles réellement droits). **Point d'architecture : le codage est `opt-in`**, activé **par la
-  donnée de la leçon** (CM1 le passe à `true`, cf. `data/maths/geometrie-cm1.ts`) ; le **CE2
-  partage le même moteur** mais ne le demande pas, donc ses figures **restent non codées** (rendu
-  CE2 gelé/inchangé). Le tracé du
-  **parallélogramme** est calibré CM1 (#242) : côté oblique incliné ~28° de la verticale,
-  ratio longueur/largeur ~1,9 (rectangle penché allongé). Et
-  **`renderSolide(solid, orient?)`** (#103 — schéma d'un solide en **perspective cavalière
-  sans arêtes cachées** : cube, pavé droit, cylindre, cône, pyramide, boule ; + **CM1 (#242)**
-  le **prisme** droit à base triangulaire — face triangulaire pleine + arêtes de fuite, même
-  style ; primitive `ellipse` ajoutée) et **`renderGroupes(paniers, total)`** (#104 —
-  division par le sens : `total` jetons en vrac + `paniers` contenants **vides** ;
-  montre la SITUATION, jamais le résultat → l'enfant calcule, il ne compte pas une
-  réponse déjà posée), **`renderSymMiroir(motif, axis)`** / **`renderSymImage(motif, axis, t)`**
-  (#201 — symétrie axiale : figure devant un miroir, et scène-choix « figure + miroir + image »
-  où l'image est un reflet/glissé/tourné ; reflet par réflexion exacte des points) et
-  **`renderAngle(opening, bisector)`** (#202 — deux demi-droites depuis un sommet net : un
-  **arc** matérialise l'ouverture d'un aigu/obtus, le **carré de codage** marque l'angle droit
-  (jamais les deux), orientation variée par la bissectrice ; **aucune mesure affichée** et
-  invariant « 90° ⇒ carré » garanti par `opening === 90`).
-  `FigureSpec` couvre `horloge | polygoneCote | quadrillage | figurePlane | sceneFigures |
-  cercle | solide | groupes | fraction* | symJuger | symMiroir | symImage | angle` (le variant
-  `figurePlane` porte le `codage?` ci-dessus). On compose
-  avec les primitives, on ajoute un `renderXxx` (+ variant `FigureSpec` au besoin),
-  jamais de SVG « à la main » dans une leçon. `svgCanvas(..., decorative)` rend un SVG
-  **décoratif** (`aria-hidden`, sans role/label) quand un parent déjà nommé porte le sens
-  (ex. une figure DANS un bouton-choix QCM dont l'`aria-label` décrit déjà le choix). Tokens de couleur dédiés
-  (`--clock-min`…) ; styles dans `src/styles/figures.scss`.
+- **`figures/`** — **moteur de figures SVG génératives (#88)**, découpé **par
+  famille** sous `core/figures/` (#353 ; ex-monolithe `figures.ts`, 1741 lignes) ;
+  chaque module reste **PUR** (renvoie une chaîne de balisage, aucun accès DOM).
+  L'import public est inchangé (`'…/core/figures'` résout vers `figures/index.ts`).
+  - **`primitives.ts`** — bas niveau **partagé par toutes les familles** :
+    `svgCanvas` (viewBox carré + `role="img"` + `<title>`/`<desc>` + `aria-label` ;
+    `decorative` rend un SVG **décoratif** — `aria-hidden`, sans role/label — quand
+    un parent déjà nommé porte le sens, ex. une figure DANS un bouton-choix QCM),
+    `line`, `circle`, `ellipse`, `rect`, `polygon`, `polyline`, `text`,
+    `pointOnCircle`, `polar`/`r2` (utilitaires géométriques) et
+    **`arc(cx, cy, r, deg1, deg2)`** (path d'arc, #202) ; tokens de style
+    **réutilisés d'une famille à l'autre** : `SHAPE_FILL` (remplissage des figures
+    pleines) et `ANGLE_MARK` (trait de codage d'un angle droit, partagé par
+    `angles.ts` et le codage de `polygones.ts`, #326).
+  - **`horloge.ts`** — **`renderHorloge(h, m)`** (cadran, graduations, chiffres,
+    deux aiguilles distinctes — la petite/heures **proportionnelle aux minutes**).
+  - **`polygones.ts`** — figures planes cotées, quadrillage, reconnaissance/codage
+    et cercle ; **c'est le socle réutilisable** des figures de « Grandeurs et
+    mesures » / « Géométrie ». **`renderPolygoneCote(points, labels)`** (#99 —
+    polygone dessiné **à l'échelle** depuis ses sommets, chaque côté coté à
+    l'extérieur ; un label vide = côté non coté) et **`renderQuadrillage(cols,
+    rows, cells)`** (#99 — figure rectiligne sur grille, **contour surligné** ; le
+    helper **`boundaryEdges(cells)`** donne les côtés unitaires du tour, sa
+    longueur = le périmètre en côtés de carreaux). Côté géométrie (#100) :
+    **`renderFigurePlane(shape, rotation, codage?)`** (figure pleine à
+    reconnaître, rotation pour varier l'orientation), **`renderSceneFigures(cells)`**
+    (scène de plusieurs figures à compter, grille monochrome) et
+    **`renderCercle(segment?, label?)`** (#102 — cercle + centre, rayon ou
+    diamètre surligné et coté, ou marqué « ? » pour le vocabulaire). `PlaneShape`
+    couvre carré, rectangle, triangle (générique), triangle rectangle, losange,
+    cercle, parallélogramme et — **CM1 (#242)** — les **triangles particuliers**
+    `triangleEquilateral` / `triangleIsocele` (FRANC, apex ~40°) /
+    `triangleQuelconque` (scalène ~3:4:5,5, sans angle droit). Sommets canoniques
+    mis à l'échelle de façon **uniforme** (angles et égalités de longueur
+    préservés). **Codage des figures (#326, CM1) — opt-in.** Le paramètre
+    **`codage`** (défaut `false`) ajoute à la forme le **codage géométrique**
+    attendu au CM1 (« coder un angle droit, des longueurs égales ») : **tirets de
+    côté égal** (`SHAPE_MARQUES_COTES` → chaque côté marqué porte **1 ou 2**
+    tirets `--ink` perpendiculaires à son milieu via `marqueEgal(a, b, tirets)` ;
+    1 et 2 distinguent deux familles de longueurs — carré/losange 4 côtés à
+    1 tiret, rectangle/parallélogramme longueurs à 1 tiret et largeurs à 2,
+    triangles équilatéral/isocèle leurs côtés égaux) et **carrés d'angle droit**
+    (`SHAPE_ANGLES_DROITS` → `coinAngleDroit(V, P, N)`, équerre logée dans le coin
+    et **orientée le long des côtés adjacents** donc elle **suit la rotation** ;
+    carré/rectangle = 4 angles, triangle rectangle = 1). Le marquage est
+    **concordant** avec le tracé (côtés réellement égaux, angles réellement
+    droits). **Point d'architecture : le codage est `opt-in`**, activé **par la
+    donnée de la leçon** (CM1 le passe à `true`, cf.
+    `data/maths/geometrie-cm1.ts`) ; le **CE2 partage le même moteur** mais ne le
+    demande pas, donc ses figures **restent non codées** (rendu CE2
+    gelé/inchangé). Le tracé du **parallélogramme** est calibré CM1 (#242) : côté
+    oblique incliné ~28° de la verticale, ratio longueur/largeur ~1,9 (rectangle
+    penché allongé).
+  - **`solides.ts`** — **`renderSolide(solid, orient?)`** (#103 — schéma d'un
+    solide en **perspective cavalière sans arêtes cachées** : cube, pavé droit,
+    cylindre, cône, pyramide, boule ; + **CM1 (#242)** le **prisme** droit à base
+    triangulaire — face triangulaire pleine + arêtes de fuite, même style ;
+    primitive `ellipse` ajoutée).
+  - **`fractions.ts`** — renderers de fractions (barre, bande, paire, somme,
+    collection groupée) consommés par les leçons de numération/fractions.
+  - **`symetrie.ts`** — **`renderSymJuger`**, **`renderSymMiroir(motif, axis)`** /
+    **`renderSymImage(motif, axis, t)`** (#201 — symétrie axiale : figure devant
+    un miroir, et scène-choix « figure + miroir + image » où l'image est un
+    reflet/glissé/tourné ; reflet par réflexion exacte des points).
+  - **`angles.ts`** — **`renderAngle(opening, bisector)`** (#202 — deux
+    demi-droites depuis un sommet net : un **arc** matérialise l'ouverture d'un
+    aigu/obtus, le **carré de codage** marque l'angle droit (jamais les deux),
+    orientation variée par la bissectrice ; **aucune mesure affichée** et
+    invariant « 90° ⇒ carré » garanti par `opening === 90`).
+  - **`groupes.ts`** — **`renderGroupes(paniers, total)`** (#104 — division par le
+    sens : `total` jetons en vrac + `paniers` contenants **vides** ; montre la
+    SITUATION, jamais le résultat → l'enfant calcule, il ne compte pas une réponse
+    déjà posée).
+  - **`index.ts`** — point d'entrée : réexporte les primitives publiques et
+    toutes les familles, et porte le dispatch par données **`FigureSpec`**
+    (union `horloge | polygoneCote | quadrillage | figurePlane | sceneFigures |
+    cercle | solide | groupes | fraction* | symJuger | symMiroir | symImage |
+    angle` — le variant `figurePlane` porte le `codage?` ci-dessus — **point
+    d'extension**) / **`renderFigure(spec)`**.
+
+  On compose avec les primitives, on ajoute un `renderXxx` dans le module de sa
+  famille (+ variant `FigureSpec` au besoin), jamais de SVG « à la main » dans
+  une leçon. Tokens de couleur dédiés (`--clock-min`…) ; styles dans
+  `src/styles/figures.scss`.
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
   (`text` | `qcm` | `tuilesNombre` (numération #98) | `tuilesOrdre` (ordre
   alphabétique #108 : suite mélangée + suite triée) | `tuilesTri` (champs

@@ -10,7 +10,7 @@
    listeners délégués (posés une fois sur #encadrantContent, idempotents) et le
    re-rendu (`rerender` aiguille la vue ; `renderEspace` compose l'espace à partir
    des modules de section). Le découpage par responsabilité (#354) vit dans :
-     - `encadrant-etat`      : état de vue partagé + plomberie de rendu ;
+     - `encadrant-commun`    : état de vue partagé + plomberie de rendu ;
      - `encadrant-pin`       : porte PIN, pavé, récupération, verrou ;
      - `encadrant-progression` : récap, graphe, maîtrise, à revoir ;
      - `encadrant-reglages`  : classe + aménagements ;
@@ -20,7 +20,7 @@
 import { escapeHTML } from '../core/utils';
 import { listProfiles, activeProfile } from '../core/profiles';
 import { progressionProfil } from '../core/encadrant-stats';
-import { initEncadrantEtat, container, consulteUuid, setConsulteUuid } from './encadrant-etat';
+import { initEncadrantCommun, container, consulteUuid, setConsulteUuid } from './encadrant-commun';
 import {
 	pinView,
 	resetPin,
@@ -37,7 +37,7 @@ import { profilsHTML, sauvegardeHTML, profilsClick } from './encadrant-profils';
 
 /* ---------- Point d'entrée (appelé par navigation.showEncadrantView) ---------- */
 export function enterEncadrant(el: HTMLElement): void {
-	initEncadrantEtat(el, rerender, renderEspace);
+	initEncadrantCommun(el, rerender, renderEspace);
 	wireOnce(el);
 	// Profil consulté par défaut = l'enfant actif (celui qui a passé l'appareil).
 	setConsulteUuid(activeProfile()?.uuid ?? null);

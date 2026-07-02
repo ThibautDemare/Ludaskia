@@ -26,7 +26,7 @@ import { emojiPaletteHTML } from './render';
 import { niveauDepuisXP } from '../core/progress';
 import { applyPreferences } from './preferences';
 import { uiConfirm, uiPrompt, toast } from './ui-modal';
-import { consulteUuid, setConsulteUuid, renderEspace, telechargerBlob } from './encadrant-etat';
+import { consulteUuid, setConsulteUuid, renderEspace, telechargerBlob } from './encadrant-commun';
 import { resetPinPanel } from './encadrant-pin';
 
 /* ---------- État de la section (module) ---------- */

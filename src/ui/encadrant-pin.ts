@@ -17,7 +17,7 @@ import {
 } from '../core/encadrant-lock';
 import { escapeHTML } from '../core/utils';
 import { uiConfirm } from './ui-modal';
-import { container, rerender, renderEspace, telechargerBlob } from './encadrant-etat';
+import { container, rerender, renderEspace, telechargerBlob } from './encadrant-commun';
 
 /* ---------- État du verrou (module) ---------- */
 let deverrouille = false; // PIN validé pour cette session de page

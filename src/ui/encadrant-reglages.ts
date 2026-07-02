@@ -18,7 +18,7 @@ import {
 import { getAllLessons, SUBJECTS, type SchoolLevel } from '../core/catalog';
 import { availableLevels, LEVEL_LABEL } from '../core/levels';
 import { dicteeDisponible } from './tts';
-import { consulteUuid, renderEspace } from './encadrant-etat';
+import { consulteUuid, renderEspace } from './encadrant-commun';
 
 /* La section « Réglages » : classe + aménagements + bloc PIN (rendu par le module pin
    et passé en `pinBlock` par l'orchestrateur). */

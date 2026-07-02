@@ -85,11 +85,11 @@ export function renderHorloge(heures: number, minutes: number): string {
 	const svg = svgCanvas(
 		CLOCK_SIZE,
 		CLOCK_SIZE,
-		'Horloge à aiguilles',
 		'Horloge',
 		"Cadran d'horloge à aiguilles : lis l'heure indiquée par la petite et la grande aiguille.",
 		parts.join(''),
 		'figure-horloge-svg',
+		'Horloge à aiguilles',
 	);
 
 	// Légende (jamais l'info par la seule couleur) : rappelle le rôle des aiguilles.

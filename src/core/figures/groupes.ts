@@ -77,10 +77,10 @@ export function renderGroupes(paniers: number, total: number): string {
 	return svgCanvas(
 		W,
 		H,
-		`${total} jetons à partager dans ${paniers} paniers`,
 		'Partage de jetons',
 		`${total} jetons en vrac, à répartir équitablement dans ${paniers} paniers vides.`,
 		body.join(''),
 		'figure-groupes',
+		`${total} jetons à partager dans ${paniers} paniers`,
 	);
 }

@@ -161,7 +161,6 @@ export function renderSolide(solid: Solid, orient: SolidOrient = {}): string {
 		SOLID_SIZE,
 		SOLID_SIZE,
 		'Solide',
-		'Solide',
 		'Un solide dessiné en volume à reconnaître : observe sa forme, puis nomme-le.',
 		body,
 		'figure-solide',

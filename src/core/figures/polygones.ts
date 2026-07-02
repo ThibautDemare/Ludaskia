@@ -87,11 +87,11 @@ export function renderPolygoneCote(points: Array<[number, number]>, labels: stri
 	return svgCanvas(
 		POLY_SIZE,
 		POLY_SIZE,
-		'Figure géométrique cotée',
 		'Figure cotée',
 		'Figure avec la mesure de chaque côté ; calcule le périmètre (le tour).',
 		body.join(''),
 		'figure-polygone',
+		'Figure géométrique cotée',
 	);
 }
 
@@ -175,7 +175,6 @@ export function renderQuadrillage(
 	return svgCanvas(
 		W,
 		H,
-		'Figure sur quadrillage',
 		'Figure sur quadrillage',
 		'Figure rectiligne sur un quadrillage ; compte les côtés de carreaux qui font le tour.',
 		body.join(''),
@@ -454,7 +453,6 @@ export function renderFigurePlane(shape: PlaneShape, rotation = 0, codage = fals
 		PLANE_SIZE,
 		PLANE_SIZE,
 		'Figure géométrique',
-		'Figure géométrique',
 		'Une figure plane à reconnaître : observe ses côtés et ses angles, puis nomme-la.',
 		shapeBody(shape, PLANE_SIZE / 2, PLANE_SIZE / 2, PLANE_SIZE, rotation, codage),
 		'figure-plane',
@@ -487,7 +485,6 @@ export function renderSceneFigures(cells: Array<{ shape: PlaneShape; rotation?: 
 		W,
 		H,
 		'Figures à compter',
-		'Figures à compter',
 		'Plusieurs figures planes : compte celles qui ont la forme demandée.',
 		body,
 		'figure-scene',
@@ -498,10 +495,15 @@ export function renderSceneFigures(cells: Array<{ shape: PlaneShape; rotation?: 
    Cercle avec son centre ; un segment (rayon : centre→bord, ou diamètre :
    bord→bord par le centre) peut être mis en évidence et coté (ou marqué « ? »
    pour une question de vocabulaire). */
+const CERCLE_SIZE = 200; // viewBox carré du cercle coté
+
 export function renderCercle(segment?: 'rayon' | 'diametre', label?: string): string {
-	const cx = 100;
-	const cy = 100;
-	const r = 70;
+	const cx = CERCLE_SIZE / 2;
+	const cy = CERCLE_SIZE / 2;
+	const r = 70; // rayon du disque
+	const centreR = 4; // rayon du point marquant le centre
+	const segW = 4; // épaisseur du rayon/diamètre mis en évidence
+	const labelDy = 10; // décalage vertical du libellé au-dessus du segment
 	const body: string[] = [
 		circle(cx, cy, r, { fill: 'var(--accent-soft)', stroke: 'var(--accent)', 'stroke-width': 3 }),
 	];
@@ -509,7 +511,7 @@ export function renderCercle(segment?: 'rayon' | 'diametre', label?: string): st
 		body.push(
 			line(cx - r, cy, cx + r, cy, {
 				stroke: 'var(--clock-min)',
-				'stroke-width': 4,
+				'stroke-width': segW,
 				'stroke-linecap': 'round',
 			}),
 		);
@@ -517,15 +519,15 @@ export function renderCercle(segment?: 'rayon' | 'diametre', label?: string): st
 		body.push(
 			line(cx, cy, cx + r, cy, {
 				stroke: 'var(--clock-min)',
-				'stroke-width': 4,
+				'stroke-width': segW,
 				'stroke-linecap': 'round',
 			}),
 		);
-	body.push(circle(cx, cy, 4, { fill: 'var(--ink)' })); // centre marqué
+	body.push(circle(cx, cy, centreR, { fill: 'var(--ink)' })); // centre marqué
 	if (label) {
 		const lx = segment === 'rayon' ? cx + r / 2 : cx;
 		body.push(
-			text(lx, cy - 10, label, {
+			text(lx, cy - labelDy, label, {
 				'text-anchor': 'middle',
 				'font-family': 'var(--ui)',
 				'font-weight': 700,
@@ -535,9 +537,8 @@ export function renderCercle(segment?: 'rayon' | 'diametre', label?: string): st
 		);
 	}
 	return svgCanvas(
-		200,
-		200,
-		'Cercle',
+		CERCLE_SIZE,
+		CERCLE_SIZE,
 		'Cercle',
 		`Un cercle avec son centre${segment ? ' et un segment mis en évidence' : ''}.`,
 		body.join(''),

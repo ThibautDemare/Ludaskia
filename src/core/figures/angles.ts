@@ -62,10 +62,10 @@ export function renderAngle(opening: number, bisector: number): string {
 	return svgCanvas(
 		ANGLE_SIZE,
 		ANGLE_SIZE,
-		'Angle formé par deux demi-droites',
 		'Angle',
 		"Un angle formé de deux demi-droites partant d'un sommet ; compare son ouverture à l'angle droit.",
 		body.join(''),
 		'figure-angle',
+		'Angle formé par deux demi-droites',
 	);
 }

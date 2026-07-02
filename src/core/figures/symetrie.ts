@@ -219,11 +219,11 @@ export function renderSymJuger(shape: SymShape, axis?: SymAxis): string {
 	return svgCanvas(
 		SYM_SIZE,
 		SYM_SIZE,
-		'Figure de symétrie',
 		'Figure',
 		desc,
 		body,
 		'figure-symetrie',
+		'Figure de symétrie',
 	);
 }
 
@@ -335,11 +335,11 @@ export function renderSymMiroir(motif: SymMotif, axis: 'v' | 'h'): string {
 	return svgCanvas(
 		SYM_CELL,
 		SYM_CELL,
-		'Une figure devant un miroir',
 		'Figure et miroir',
 		'Une figure posée devant un miroir (le trait en pointillé) : son reflet est à reconnaître.',
 		body,
 		'figure-symetrie-miroir',
+		'Une figure devant un miroir',
 	);
 }
 
@@ -369,5 +369,5 @@ export function renderSymImage(motif: SymMotif, axis: 'v' | 'h', t: SymTransform
 		symDashedSeg(symR(mline[0]), symR(mline[1])) +
 		polygon(base.map(symR), SHAPE_FILL) +
 		polygon(img.map(symR), SHAPE_FILL);
-	return svgCanvas(SYM_CELL, SYM_CELL, '', '', '', body, 'figure-symetrie-image', true);
+	return svgCanvas(SYM_CELL, SYM_CELL, '', '', body, 'figure-symetrie-image', '', true);
 }

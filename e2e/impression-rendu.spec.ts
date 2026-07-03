@@ -97,7 +97,7 @@ test(".angle-aide.screen-only : visible à l'écran, display:none à l'impressio
 			if (!(await btn.isVisible())) break;
 			await btn.click();
 			// Attend le bouton "Continuer" ou la fin de série.
-			const next = page.locator('#lqcmNext');
+			const next = page.locator('#lqcmActions button');
 			try {
 				await next.waitFor({ timeout: 2000 });
 				// Vérifie si c'est la dernière question avant de cliquer.

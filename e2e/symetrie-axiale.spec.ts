@@ -31,7 +31,7 @@ test('Le miroir magique : on enchaîne plusieurs questions à figure sans erreur
 		await expect(page.locator('.figure svg').first()).toBeVisible();
 		await page.locator('.sprint-choice').first().click();
 		await expect(page.locator('#lqcmFeedback')).toBeVisible();
-		const next = page.locator('#lqcmNext');
+		const next = page.locator('#lqcmActions button');
 		if (await next.isVisible()) await next.click();
 	}
 	expect(errors).toEqual([]);

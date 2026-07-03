@@ -13,7 +13,7 @@ import { recordLessonRun } from '../core/lesson-run';
 import type { Recompense } from '../core/unlocks';
 import { stopChrono } from './chrono';
 import { finishResume } from './resume';
-import { showCelebration, showLevelUp } from './effects';
+import { announceRewards } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
 	getCurrentMode,
@@ -192,13 +192,7 @@ export function verify() {
 	// Récompenses : modale explicite (+ confettis) pour qu'on sache ce qu'on a gagné.
 	// Le passage de niveau a sa modale dédiée ; s'il y a aussi d'autres récompenses,
 	// on les enchaîne à la fermeture de la modale de niveau.
-	if (niveauGagne)
-		showLevelUp(
-			niveauGagne,
-			recompensesNiv,
-			celeb.length ? () => showCelebration(celeb) : undefined,
-		);
-	else if (celeb.length) showCelebration(celeb);
+	announceRewards(niveauGagne, recompensesNiv, celeb);
 	// petit rappel dans la barre
 	const sc = document.getElementById('score')!;
 	sc.classList.remove('hidden');

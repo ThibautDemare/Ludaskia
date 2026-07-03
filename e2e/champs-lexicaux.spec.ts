@@ -71,7 +71,7 @@ test('« Ranger par thème » : trier les tuiles puis vérifier corrige tuile pa
 	// #153 : une fois la réponse validée, « Vérifier » s'efface ; seul « Continuer ▶ »
 	// reste affiché (pas deux boutons à la fois).
 	await expect(page.locator('#ltriVerif')).toBeHidden();
-	await expect(page.locator('#ltriNext')).toBeVisible();
+	await expect(page.locator('#ltriActions button')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

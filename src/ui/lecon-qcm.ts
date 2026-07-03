@@ -22,7 +22,12 @@ import { consigneRenforceeHTML } from './consigne-renforcee';
 import type { ItemTtsCible } from './consigne-tts';
 import { PONCT_MOTS, ponctView } from './ponctuation-view';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
-import { leconProgressHTML, finishLeconRun, renderLeconResult } from './lecon-runner-shared';
+import {
+	leconProgressHTML,
+	finishLeconRun,
+	renderLeconResult,
+	wireNext,
+} from './lecon-runner-shared';
 
 // Cible de questions ; une leçon offrant moins de variantes en aura moins, sans
 // doublon (une conjugaison = 6 personnes), comme la fiche en saisie.
@@ -186,7 +191,6 @@ function answer(choiceIdx: number): void {
 			else if (i === choiceIdx) b.classList.add('wrong');
 		});
 	const fb = sheets().querySelector('#lqcmFeedback') as HTMLElement;
-	fb.hidden = false;
 	// Ponctuation (#204) : on NOMME le signe (« point d'exclamation (!) ») plutôt que
 	// d'afficher un glyphe nu, peu lisible isolé dans la phrase de feedback.
 	const ans = String(q.item.answer);
@@ -194,12 +198,12 @@ function answer(choiceIdx: number): void {
 		q.variante === 'ponctuation'
 			? `${escapeHTML(PONCT_MOTS[ans] ?? ans)} (${escapeHTML(ans)})`
 			: mathInline(ans);
-	fb.innerHTML = correct
+	let feedbackHTML = correct
 		? `<span class="lqcm-ok">Bravo ! 🎉</span>`
 		: `<span class="lqcm-ko">La bonne réponse était <strong>${ansHTML}</strong>.</span>`;
 	// Justification pédagogique (ex. critère de substitution des homophones, #110).
 	// `mathInline` empile aussi les fractions citées dans l'explication (cohérence d'écriture).
-	if (q.explication) fb.innerHTML += `<p class="lqcm-expl">${mathInline(q.explication)}</p>`;
+	if (q.explication) feedbackHTML += `<p class="lqcm-expl">${mathInline(q.explication)}</p>`;
 	// Ponctuation (#204) : on réinjecte le BON signe dans le trou de la phrase → l'enfant
 	// voit sa phrase complétée correctement. Le signe étant toujours la bonne réponse, on
 	// le montre « juste » (vert) même après une erreur (le rouge reste sur le bouton tapé).
@@ -211,17 +215,15 @@ function answer(choiceIdx: number): void {
 			trou.removeAttribute('aria-hidden');
 		}
 	}
-	const actions = sheets().querySelector('#lqcmActions') as HTMLElement;
-	actions.hidden = false;
-	const last = idx >= questions.length - 1;
-	actions.innerHTML = `<button class="sprint-btn" id="lqcmNext">${last ? 'Voir mon résultat ▶' : 'Continuer ▶'}</button>`;
-	const next = sheets().querySelector('#lqcmNext') as HTMLButtonElement;
-	next.addEventListener('click', () => {
-		idx++;
-		if (idx >= questions.length) finish();
-		else renderQuestion();
+	wireNext(sheets().querySelector('#lqcmActions') as HTMLElement, fb, {
+		feedbackHTML,
+		isLast: idx >= questions.length - 1,
+		onNext: () => {
+			idx++;
+			if (idx >= questions.length) finish();
+			else renderQuestion();
+		},
 	});
-	next.focus(); // la touche Entrée enchaîne
 }
 
 function finish(): void {

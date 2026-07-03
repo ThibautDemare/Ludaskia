@@ -49,7 +49,7 @@ test('F1 ponctuation : cliquer un choix remplit le trou et affiche le feedback',
 	await expect(trou).toHaveClass(/rempli/);
 	expect(await trou.textContent()).not.toBe('');
 	// Le bouton « Continuer » / « Voir mon résultat » doit apparaître.
-	await expect(page.locator('#lqcmNext')).toBeVisible();
+	await expect(page.locator('#lqcmActions button')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 
@@ -69,6 +69,6 @@ test('F2 type de phrase : 3 options texte + feedback après clic', async ({ page
 	// Clic sur le 1er choix → feedback immédiat.
 	await choices.first().click();
 	await expect(page.locator('#lqcmFeedback')).toBeVisible();
-	await expect(page.locator('#lqcmNext')).toBeVisible();
+	await expect(page.locator('#lqcmActions button')).toBeVisible();
 	expect(errors).toEqual([]);
 });

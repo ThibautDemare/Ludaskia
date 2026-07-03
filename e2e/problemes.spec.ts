@@ -28,7 +28,7 @@ test('un problème simple : énoncé affiché, bonne réponse validée', async (
 	// #153 : une fois la réponse validée, « Vérifier » s'efface ; seul « Continuer ▶ »
 	// reste affiché (pas deux boutons à la fois).
 	await expect(page.locator('#probVerif')).toBeHidden();
-	await expect(page.locator('#probNext')).toBeVisible();
+	await expect(page.locator('#probActions button')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

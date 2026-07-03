@@ -60,7 +60,7 @@ test('comparer (tuiles) : on place la bonne tuile, feedback positif', async ({ p
 	// #153 : une fois la réponse validée, « Vérifier » s'efface ; seul le bouton
 	// « Continuer ▶ » reste affiché (pas deux boutons à la fois).
 	await expect(page.locator('#ltuiVerif')).toBeHidden();
-	await expect(page.locator('#ltuiNext')).toBeVisible();
+	await expect(page.locator('#ltuiActions button')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

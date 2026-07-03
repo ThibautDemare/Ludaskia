@@ -57,7 +57,7 @@ import { updateGoal, evaluateTrophies } from '../core/rewards';
 import { sansPressionTemporelle } from '../core/profiles';
 import { getTimer, setTimer, resetChrono } from './chrono';
 import { recompensesEntre } from '../core/unlocks';
-import { showCelebration, showLevelUp } from './effects';
+import { announceRewards } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
 	setCurrentMode,
@@ -592,13 +592,11 @@ function finalizeSprint() {
 	renderSprintResults(medalInfo, streakDays);
 	// Passage de niveau pendant le sprint → modale dédiée, puis enchaînement.
 	const niveauApres = niveauDepuisXP(getXP());
-	if (niveauApres > sprintNiveauDepart)
-		showLevelUp(
-			niveauApres,
-			recompensesEntre(sprintNiveauDepart, niveauApres),
-			celeb.length ? () => showCelebration(celeb) : undefined,
-		);
-	else if (celeb.length) showCelebration(celeb);
+	announceRewards(
+		niveauApres > sprintNiveauDepart ? niveauApres : 0,
+		recompensesEntre(sprintNiveauDepart, niveauApres),
+		celeb,
+	);
 }
 
 function renderSprintResults(medalInfo: RunResult, streakDays: number) {

@@ -19,7 +19,12 @@ import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
-import { leconProgressHTML, finishLeconRun, renderLeconResult } from './lecon-runner-shared';
+import {
+	leconProgressHTML,
+	finishLeconRun,
+	renderLeconResult,
+	wireNext,
+} from './lecon-runner-shared';
 import { bindTuileInteraction } from './tuile-interaction';
 import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
@@ -124,22 +129,21 @@ function verifier(): void {
 	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
 	// (#lordActions) reste, pour ne pas afficher deux boutons à la fois (#153).
 	verif.hidden = true;
-	const fb = sheets().querySelector('#lordFeedback') as HTMLElement;
-	fb.hidden = false;
-	fb.innerHTML = correct
-		? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-		: `<span class="lqcm-ko">Le bon rangement : <strong>${q.ordre.map(escapeHTML).join(' · ')}</strong></span>`;
-	const actions = sheets().querySelector('#lordActions') as HTMLElement;
-	actions.hidden = false;
-	const last = idx >= questions.length - 1;
-	actions.innerHTML = `<button class="sprint-btn" id="lordNext">${last ? 'Voir mon résultat ▶' : 'Continuer ▶'}</button>`;
-	const next = sheets().querySelector('#lordNext') as HTMLButtonElement;
-	next.addEventListener('click', () => {
-		idx++;
-		if (idx >= questions.length) finish();
-		else renderQuestion();
-	});
-	next.focus();
+	wireNext(
+		sheets().querySelector('#lordActions') as HTMLElement,
+		sheets().querySelector('#lordFeedback') as HTMLElement,
+		{
+			feedbackHTML: correct
+				? `<span class="lqcm-ok">Bravo ! 🎉</span>`
+				: `<span class="lqcm-ko">Le bon rangement : <strong>${q.ordre.map(escapeHTML).join(' · ')}</strong></span>`,
+			isLast: idx >= questions.length - 1,
+			onNext: () => {
+				idx++;
+				if (idx >= questions.length) finish();
+				else renderQuestion();
+			},
+		},
+	);
 }
 
 function finish(): void {

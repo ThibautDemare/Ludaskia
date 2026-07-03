@@ -54,17 +54,20 @@ propriété géométrique (nombre de faces, de côtés, etc.), ainsi que deux fa
 l'exploitent :
 
 - **`propQExercise(banque)`** — tire une `PropQ` de la banque et la met en forme en
-  `Exercise` QCM (propositions mélangées). Sert aussi hors QCM pur : `geometrie-cm1.ts`
-  l'appelle pour injecter ~30 % de questions de propriété dans le tirage de
-  `geo-cm1-quadrilateres` (leçon par ailleurs orientée reconnaissance visuelle).
+  `Exercise` QCM (propositions mélangées). Sert aussi quand `propQType` ne s'applique pas
+  tel quel : `geometrie-cm1.ts` l'appelle pour injecter ~30 % de questions de propriété
+  dans le tirage mixte de `geo-cm1-quadrilateres` (leçon par ailleurs orientée
+  reconnaissance visuelle) et pour `geo-cm1-polyedre` (QCM à réponses textuelles, dont le
+  `check` est `checkAnswer` et non `checkNumeriqueOuTexte`).
 - **`propQType(banque, modes = [MODE_QCM_POINT])`** — fabrique d'`ExerciseType` complète
   pour une leçon **entièrement** QCM de propriétés : `generate` délègue à `propQExercise`,
   `check` est `checkNumeriqueOuTexte` (`core/check-helpers.ts`).
 
 Utilisées par `geo-figures-proprietes` (`geometrie.ts`), `geo-solides-proprietes`
-(`solides.ts`) et `geo-cm1-triangles-prop` (`geometrie-cm1.ts`) via `propQType` ; le
-tirage mixte de `geo-cm1-quadrilateres` (`geometrie-cm1.ts`) via `propQExercise`. Ces
-quatre fabriques recopiaient auparavant la même logique de tirage à l'identique.
+(`solides.ts`) et `geo-cm1-triangles-prop` (`geometrie-cm1.ts`) via `propQType` ; par le
+tirage mixte de `geo-cm1-quadrilateres` et le QCM `geo-cm1-polyedre` (`geometrie-cm1.ts`)
+via `propQExercise`. Ces cinq fabriques recopiaient auparavant la même logique de tirage à
+l'identique.
 
 ## Français
 

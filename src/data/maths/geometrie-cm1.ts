@@ -389,12 +389,7 @@ function solidesRecoType(): ExerciseType {
    des faces PLANES (polygones) : cube, pavé, pyramide, prisme. Le cône, le cylindre
    et la boule ont une surface courbe → ce ne sont PAS des polyèdres. Les banques
    ci-dessous sont curées (réponses justes vérifiées), pas générées. */
-interface PolyedreQ {
-	q: string;
-	a: string;
-	choices: string[];
-}
-const POLYEDRE_QUESTIONS: PolyedreQ[] = [
+const POLYEDRE_QUESTIONS: PropQ[] = [
 	{
 		q: 'Parmi ces solides, lequel est un polyèdre ?',
 		a: 'le cube',
@@ -450,15 +445,9 @@ const POLYEDRE_QUESTIONS: PolyedreQ[] = [
 function polyedreType(): ExerciseType {
 	return {
 		modes: MODE_QCM_SEUL,
-		generate(): Exercise {
-			const p = choice(POLYEDRE_QUESTIONS);
-			return {
-				type: 'qcm',
-				question: p.q,
-				answer: p.a,
-				choices: sample(p.choices, p.choices.length),
-			};
-		},
+		// Réponses textuelles (« le cube », « oui », « planes ») : correction déléguée
+		// à `checkAnswer`, pas à `checkNumeriqueOuTexte` du helper `propQType`.
+		generate: () => propQExercise(POLYEDRE_QUESTIONS),
 		check: checkAnswer,
 	};
 }

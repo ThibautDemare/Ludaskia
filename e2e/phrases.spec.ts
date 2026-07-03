@@ -72,3 +72,35 @@ test('F2 type de phrase : 3 options texte + feedback après clic', async ({ page
 	await expect(page.locator('#lqcmActions button')).toBeVisible();
 	expect(errors).toEqual([]);
 });
+
+test('F2 type de phrase : on déroule la leçon jusqu’au bout, « Voir mon résultat ▶ » puis l’écran de résultat', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'lecon-fr-gram-type-phrase');
+	// NB_QUESTIONS (lecon-qcm.ts) vise 8 questions, sans doublon (dédup possible) : on
+	// pilote la boucle sur le libellé du bouton « suivant », pas sur un compte figé.
+	// Borne de sécurité anti-boucle-infinie.
+	const MAX_ITER = 12;
+	let sawResultLabel = false;
+	for (let i = 0; i < MAX_ITER; i++) {
+		await page.locator('.sprint-choice').first().waitFor();
+		await page.locator('.sprint-choice').first().click();
+		// Bouton « suivant » ciblé par son conteneur (#lqcmActions garde son id ; le
+		// bouton lui-même n'a plus d'id propre depuis #371).
+		const next = page.locator('#lqcmActions button');
+		await expect(next).toBeVisible();
+		const label = (await next.textContent())?.trim() ?? '';
+		if (label.includes('résultat')) {
+			sawResultLabel = true;
+			await next.click();
+			break;
+		}
+		expect(label).toContain('Continuer');
+		await next.click();
+	}
+	expect(sawResultLabel).toBe(true); // la boucle a bien atteint la dernière question
+	await expect(page.locator('.sprint-done')).toBeVisible();
+	await expect(page.locator('.sprint-done-big')).toHaveText(/\d+ \/ \d+/);
+	expect(errors).toEqual([]);
+});

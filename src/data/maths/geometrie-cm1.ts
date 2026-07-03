@@ -33,7 +33,7 @@ import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../cor
 import { checkAnswer } from '../../core/exercise';
 import { MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
-import type { PropQ } from './_shared';
+import { propQExercise, propQType, type PropQ } from './_shared';
 import { checkNumerique, checkNumeriqueOuTexte } from '../../core/check-helpers';
 import type { PlaneShape, Solid, SolidOrient } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
@@ -217,22 +217,6 @@ const TRI_PROPRIETES: PropQ[] = [
 	},
 ];
 
-function trianglesProprietesType(): ExerciseType {
-	return {
-		modes: MODE_QCM_SEUL,
-		generate(): Exercise {
-			const p = choice(TRI_PROPRIETES);
-			return {
-				type: 'qcm',
-				question: p.q,
-				answer: p.a,
-				choices: sample(p.choices, p.choices.length),
-			};
-		},
-		check: checkNumeriqueOuTexte,
-	};
-}
-
 /* ---------- Quadrilatères : reconnaissance (dont parallélogramme) ----------
    Le parallélogramme est une réponse à part entière. PAS d'inclusion : on ne dit
    jamais qu'un carré/rectangle EST un parallélogramme, et on ne l'oppose pas à un
@@ -328,15 +312,7 @@ function quadrilateresRecoType(): ExerciseType {
 		generate(opts?: GenerateOpts): Exercise {
 			// ~30 % des tirages : une question de propriété textuelle (sans figure) ;
 			// sinon reconnaissance d'une figure.
-			if (opts?.mode === 'qcm' && rnd(1, 100) <= 30) {
-				const p = choice(QUAD_PROPRIETES);
-				return {
-					type: 'qcm',
-					question: p.q,
-					answer: p.a,
-					choices: sample(p.choices, p.choices.length),
-				};
-			}
+			if (opts?.mode === 'qcm' && rnd(1, 100) <= 30) return propQExercise(QUAD_PROPRIETES);
 			return quadRecoExercise(opts?.mode);
 		},
 		check: checkNumeriqueOuTexte,
@@ -560,7 +536,7 @@ export const GEOMETRIE_CM1_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-cm1-triangles-prop',
 		label: 'Les propriétés des triangles',
-		exerciseType: trianglesProprietesType(),
+		exerciseType: propQType(TRI_PROPRIETES, MODE_QCM_SEUL),
 	},
 	{
 		id: 'geo-cm1-quadrilateres',

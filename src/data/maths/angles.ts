@@ -35,10 +35,11 @@
    variées. La mesure au rapporteur relève du CM1 (future leçon).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
+import { checkAnswer } from '../../core/exercise';
 import { MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { renderFigure } from '../../core/figures';
-import { rnd, choice, sample, normalizeText } from '../../core/utils';
+import { rnd, choice, sample } from '../../core/utils';
 
 const MODES: ModeOption[] = [MODE_QCM_POINT];
 
@@ -224,10 +225,7 @@ function anglesType(): ExerciseType {
 		generate(): Exercise {
 			return genAngle().ex;
 		},
-		check(exercise: Exercise, input: string): boolean {
-			if (exercise.type !== 'qcm') return false;
-			return normalizeText(input) === normalizeText(exercise.answer);
-		},
+		check: (exercise, input) => checkAnswer(exercise, input),
 	};
 }
 

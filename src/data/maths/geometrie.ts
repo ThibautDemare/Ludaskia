@@ -25,7 +25,7 @@
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import { MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
-import type { PropQ } from './_shared';
+import { propQType, type PropQ } from './_shared';
 import type { PlaneShape } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
 import { checkNumeriqueOuTexte } from '../../core/check-helpers';
@@ -239,22 +239,6 @@ const PROPRIETES: PropQ[] = [
 	},
 ];
 
-function proprietesType(): ExerciseType {
-	return {
-		modes: [MODE_QCM_POINT],
-		generate(): Exercise {
-			const p = choice(PROPRIETES);
-			return {
-				type: 'qcm',
-				question: p.q,
-				answer: p.a,
-				choices: sample(p.choices, p.choices.length),
-			};
-		},
-		check: checkNumeriqueOuTexte,
-	};
-}
-
 /* ---------- Descripteurs ---------- */
 
 export const GEOMETRIE_LESSONS: LessonInput[] = [
@@ -266,6 +250,6 @@ export const GEOMETRIE_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-figures-proprietes',
 		label: 'Les propriétés des figures',
-		exerciseType: proprietesType(),
+		exerciseType: propQType(PROPRIETES),
 	},
 ];

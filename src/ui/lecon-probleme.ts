@@ -18,7 +18,12 @@ import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { brouillonHTML, bindBrouillon } from './brouillon';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
-import { leconProgressHTML, finishLeconRun, renderLeconResult } from './lecon-runner-shared';
+import {
+	leconProgressHTML,
+	finishLeconRun,
+	renderLeconResult,
+	wireNext,
+} from './lecon-runner-shared';
 
 const NB_QUESTIONS = 8;
 
@@ -161,22 +166,21 @@ function verifier(): void {
 	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
 	// (#probActions) reste, pour ne pas afficher deux boutons à la fois (#153).
 	(sheets().querySelector('#probVerif') as HTMLButtonElement).hidden = true;
-	const fb = sheets().querySelector('#probFeedback') as HTMLElement;
-	fb.hidden = false;
-	fb.innerHTML = toutJuste
-		? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-		: `<span class="lqcm-ko">Regarde la bonne réponse, puis continue.</span>`;
-	const actions = sheets().querySelector('#probActions') as HTMLElement;
-	actions.hidden = false;
-	const last = idx >= questions.length - 1;
-	actions.innerHTML = `<button class="sprint-btn" id="probNext">${last ? 'Voir mon résultat ▶' : 'Continuer ▶'}</button>`;
-	const next = sheets().querySelector('#probNext') as HTMLButtonElement;
-	next.addEventListener('click', () => {
-		idx++;
-		if (idx >= questions.length) finish();
-		else renderQuestion();
-	});
-	next.focus(); // la touche Entrée enchaîne
+	wireNext(
+		sheets().querySelector('#probActions') as HTMLElement,
+		sheets().querySelector('#probFeedback') as HTMLElement,
+		{
+			feedbackHTML: toutJuste
+				? `<span class="lqcm-ok">Bravo ! 🎉</span>`
+				: `<span class="lqcm-ko">Regarde la bonne réponse, puis continue.</span>`,
+			isLast: idx >= questions.length - 1,
+			onNext: () => {
+				idx++;
+				if (idx >= questions.length) finish();
+				else renderQuestion();
+			},
+		},
+	);
 }
 
 function finish(): void {

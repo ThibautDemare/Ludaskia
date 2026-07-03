@@ -36,7 +36,7 @@ import {
 	ajusterTailleMot,
 } from './ortho-atelier';
 import { recompensesEntre } from '../core/unlocks';
-import { showCelebration, showLevelUp } from './effects';
+import { announceRewards, showLevelUp } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import { dicteeDisponible, dicter } from './tts';
 import { icon, iconOr } from './icon';
@@ -762,11 +762,7 @@ function annoncerRecompensesFin(celebBase: { icon: string; text: string }[]): vo
 	const niveauGagne = niveauApres > niveauAvant ? niveauApres : 0;
 	const recompensesNiv = recompensesEntre(niveauAvant, niveauApres);
 	niveauAvant = niveauApres;
-	const celebrer = () => {
-		if (celeb.length) showCelebration(celeb);
-	};
-	if (niveauGagne) showLevelUp(niveauGagne, recompensesNiv, celebrer);
-	else celebrer();
+	announceRewards(niveauGagne, recompensesNiv, celeb);
 }
 
 /* ---------- Pause de séance (rythme adapté à un CE2) ---------- */

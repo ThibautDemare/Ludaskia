@@ -14,7 +14,7 @@ import type { ProbLexique } from '../core/exercise';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import { streakSuffix } from '../core/progress';
-import { showLevelUp, showCelebration } from './effects';
+import { announceRewards } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import { goCategorie } from './navigation';
 
@@ -100,11 +100,26 @@ export function renderLeconResult(opts: LeconResultOpts): void {
 		.querySelector('#leconBack')!
 		.addEventListener('click', () => goCategorie(category));
 	// Récompenses : modale de niveau (puis confettis), comme les autres écrans.
-	if (out.niveauGagne)
-		showLevelUp(
-			out.niveauGagne,
-			out.recompensesNiv,
-			out.celeb.length ? () => showCelebration(out.celeb) : undefined,
-		);
-	else if (out.celeb.length) showCelebration(out.celeb);
+	announceRewards(out.niveauGagne, out.recompensesNiv, out.celeb);
+}
+
+export interface WireNextOpts {
+	feedbackHTML: string; // HTML du feedback, déjà échappé par l'appelant (injecté via innerHTML)
+	isLast: boolean; // dernière question → « Voir mon résultat ▶ », sinon « Continuer ▶ »
+	onNext: () => void; // enchaînement (question suivante ou écran de résultat)
+}
+
+/* Fin de question commune aux cinq runners (#344) : révèle la zone de feedback,
+   affiche le bouton « Continuer ▶ » / « Voir mon résultat ▶ », câble son clic et pose
+   le focus (la touche Entrée enchaîne). `actions`/`feedback` sont les éléments déjà
+   résolus par l'appelant — leurs id `#…Actions` / `#…Feedback` servent de sélecteurs
+   e2e ; le bouton lui-même n'a pas besoin d'id propre. */
+export function wireNext(actions: HTMLElement, feedback: HTMLElement, opts: WireNextOpts): void {
+	feedback.hidden = false;
+	feedback.innerHTML = opts.feedbackHTML;
+	actions.hidden = false;
+	actions.innerHTML = `<button class="sprint-btn">${opts.isLast ? 'Voir mon résultat ▶' : 'Continuer ▶'}</button>`;
+	const next = actions.querySelector<HTMLButtonElement>('button')!;
+	next.addEventListener('click', opts.onNext);
+	next.focus();
 }

@@ -33,7 +33,7 @@ test('Lire une fraction (QCM) : figure barre SVG, 4 choix, un clic donne un reto
 	await expect(choices.first()).toHaveAttribute('aria-label', /.+/);
 	await choices.first().click();
 	await expect(page.locator('#lqcmFeedback')).toBeVisible();
-	await expect(page.locator('#lqcmNext')).toBeVisible();
+	await expect(page.locator('#lqcmActions button')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

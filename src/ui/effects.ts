@@ -121,3 +121,21 @@ export function hideLevelUp() {
 	levelUpThen = null;
 	if (then) then();
 }
+
+/* Annonce des récompenses d'un essai, commune aux écrans de fin (leçon, bilan,
+   sprint, parcours/révision ortho) : passage de niveau via sa modale dédiée (puis,
+   à sa fermeture, la modale générique des autres gains) ; sinon la modale générique
+   seule, s'il y a de quoi célébrer. `niveauGagne` : 0 = aucun niveau franchi. */
+export function announceRewards(
+	niveauGagne: number,
+	recompensesNiv: Recompense[],
+	celeb: { icon: string; text: string }[],
+): void {
+	if (niveauGagne)
+		showLevelUp(
+			niveauGagne,
+			recompensesNiv,
+			celeb.length ? () => showCelebration(celeb) : undefined,
+		);
+	else if (celeb.length) showCelebration(celeb);
+}

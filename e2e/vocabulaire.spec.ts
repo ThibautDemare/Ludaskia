@@ -56,7 +56,7 @@ test('ranger les tuiles dans le bon ordre valide la réponse', async ({ page }) 
 	// #153 : une fois la réponse validée, « Vérifier » s'efface ; seul « Continuer ▶ »
 	// reste affiché (pas deux boutons à la fois).
 	await expect(page.locator('#lordVerif')).toBeHidden();
-	await expect(page.locator('#lordNext')).toBeVisible();
+	await expect(page.locator('#lordActions button')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

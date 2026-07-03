@@ -75,7 +75,10 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
 - **`effects.ts`** — `sparkline` (SVG), `confetti`, modale `showCelebration`, et
   modale dédiée **passage de niveau** `showLevelUp`/`hideLevelUp` (médaillon doré
   animé ; un `then` optionnel enchaîne sur `showCelebration` s'il y a d'autres
-  gains).
+  gains). `announceRewards(niveauGagne, recompensesNiv, celeb)` factorise ce
+  gate (niveau → sa modale, puis la générique ; sinon la générique seule) : il
+  est la porte d'entrée commune des écrans de fin (leçon, bilan, sprint,
+  parcours/révision ortho).
 - **`aide-exercice.ts`** (#272) — couche **UI de l'aide contextuelle** (contenu dans
   `core/aide.ts`) des runners à mécanique non intuitive : `monterBoutonAide(conteneur,
   type)` pose un bouton « ampoule » persistant, `maybeAutoAide(type)` ouvre l'aide **au
@@ -215,9 +218,15 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   ci-dessous : `leconProgressHTML(idx, total, libellé?)` (barre de progression, libellé
   surchargeable, ex. « Problème i / n »), `finishLeconRun(lessonId, ok, total)` (enregistre
   l'essai via `recordLessonRun` et renvoie l'issue) et `renderLeconResult(opts)` (écran de
-  résultat commun — score, étoile, mascotte, récompenses de niveau). Chaque runner délègue
-  sa fin de session à ce module au lieu de la dupliquer ; `lecon-probleme.ts` passe son
-  lexique (`nom` / `nomPluriel`) via le paramètre optionnel `lexique`.
+  résultat commun — score, étoile, mascotte, récompenses de niveau via `announceRewards`).
+  Chaque runner délègue sa fin de session à ce module au lieu de la dupliquer ;
+  `lecon-probleme.ts` passe son lexique (`nom` / `nomPluriel`) via le paramètre optionnel
+  `lexique`. `wireNext(actions, feedback, opts)` mutualise aussi la **fin de question**
+  commune aux cinq runners : révèle le feedback, pose le bouton « Continuer ▶ » / « Voir
+  mon résultat ▶ » (`opts.isLast`) et câble son clic (`opts.onNext`) + le focus. Le bouton
+  n'a plus d'id propre (résolu via `actions.querySelector('button')`) — seuls les
+  conteneurs `#…Actions` / `#…Feedback` de chaque runner restent des sélecteurs stables
+  (repris par les specs e2e).
 - **`tuile-interaction.ts`** (#345) — **widget « tuiles » mutualisé** pour les trois
   formats interactifs sans clavier. Point d'entrée unique :
   `bindTuileInteraction(root, spec, opts) → TuileController`. `spec` est un `TuileSpec`

@@ -224,7 +224,15 @@ propre doc de conception : `docs/design-orthographe.md`.
   **commun à tous les rendus** (fiche en saisie *et* runner QCM) pour garantir la
   **parité** entre modes — aucun mode n'est plus rentable qu'un autre (#69).
 - **`catalog.ts`** — hiérarchie `SUBJECTS` / `CATEGORIES` / `LessonDef`
-  (`id, label, subject, category, levels: SchoolLevel[], exerciseType` — #225), helpers
+  (`id, label, subject, category, levels: SchoolLevel[], exerciseType` — #225). La
+  plupart des familles de leçons passent par **`toLessonDefs(inputs, opts)`** (#373) :
+  fabrique qui mappe une liste `LessonInput` (#347, cf. [Contenu & leçons](contenu-et-lecons.md))
+  en `LessonDef[]` — `opts.subject`/`category` fixes, et `levels`/`rubrique`/
+  `excludeFromSprint`/`repere` optionnels, chacun soit une valeur fixe soit une fonction
+  `(input) => valeur` quand il dérive de la donnée ; un champ résolu à `undefined` est
+  omis. Seule la conjugaison (`FRENCH_LESSONS`) reste hors du helper : son `exerciseType`
+  est **calculé** (`conjugationType(verbId, tense)`), pas porté par l'entrée, donc son
+  descripteur n'est pas un `LessonInput`. Helpers
   `getAllLessons/getLessonById/getLessonsBySubject/getLessonsByCategory` (ces deux
   derniers acceptent un `niveau?` optionnel : avec un niveau, ils **filtrent ET trient
   selon l'ordre pédagogique** #208, cf. `ordre.ts` ; sans niveau, ordre de déclaration),

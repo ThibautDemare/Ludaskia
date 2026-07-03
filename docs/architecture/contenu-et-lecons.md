@@ -41,11 +41,12 @@ Le contrat des deux constantes est verrouillé par `tests/data-shared.test.ts`.
 
 **Type source d'une leçon** — **`LessonInput { id; label; exerciseType }`** : forme
 minimale d'un descripteur de leçon dans `src/data/`, **avant** que `core/catalog.ts`
-ne la mappe en `LessonDef` complet. Les listes `XXX_LESSONS` sont typées
-`LessonInput[]`. Un fichier qui porte des champs propres (rubrique, niveaux,
-exclusion du sprint) **étend** ce type plutôt que de le redéclarer :
-`extends LessonInput`. `ConjLessonDesc` (`conjugaison.ts`, sans `exerciseType`) reste
-hors de ce type.
+ne la mappe en `LessonDef` complet — mapping fait, pour la plupart des familles, par
+la fabrique **`toLessonDefs(inputs, opts)`** (#373, cf. [Logique pure](core.md)). Les
+listes `XXX_LESSONS` sont typées `LessonInput[]`. Un fichier qui porte des champs
+propres (rubrique, niveaux, exclusion du sprint) **étend** ce type plutôt que de le
+redéclarer : `extends LessonInput`. `ConjLessonDesc` (`conjugaison.ts`, sans
+`exerciseType`) reste hors de ce type — et hors de `toLessonDefs`, en conséquence.
 
 ### `src/data/maths/_shared.ts` (#347, #372)
 

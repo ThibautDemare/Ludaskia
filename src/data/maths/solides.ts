@@ -25,8 +25,7 @@ import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../cor
 import { checkAnswer } from '../../core/exercise';
 import { MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
-import type { PropQ } from './_shared';
-import { checkNumeriqueOuTexte } from '../../core/check-helpers';
+import { propQType, type PropQ } from './_shared';
 import type { Solid, SolidOrient } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
 import { choice, sample, rnd } from '../../core/utils';
@@ -170,22 +169,6 @@ const PROPRIETES: PropQ[] = [
 	},
 ];
 
-function proprietesType(): ExerciseType {
-	return {
-		modes: [MODE_QCM_POINT],
-		generate(): Exercise {
-			const p = choice(PROPRIETES);
-			return {
-				type: 'qcm',
-				question: p.q,
-				answer: p.a,
-				choices: sample(p.choices, p.choices.length),
-			};
-		},
-		check: checkNumeriqueOuTexte,
-	};
-}
-
 /* ---------- Descripteurs ---------- */
 
 export const SOLIDE_LESSONS: LessonInput[] = [
@@ -197,6 +180,6 @@ export const SOLIDE_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-solides-proprietes',
 		label: 'Les propriétés des solides',
-		exerciseType: proprietesType(),
+		exerciseType: propQType(PROPRIETES),
 	},
 ];

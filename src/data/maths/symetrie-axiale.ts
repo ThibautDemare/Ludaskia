@@ -18,11 +18,12 @@
    sprint chronométré (tâche visuo-spatiale, pas de course contre la montre).
    ============================================================ */
 import type { ChoiceView, Exercise, ExerciseType, ModeOption } from '../../core/exercise';
+import { checkAnswer } from '../../core/exercise';
 import { MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import type { SymAxis, SymMotif, SymShape, SymTransform } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
-import { choice, normalizeText, rnd, sample } from '../../core/utils';
+import { choice, rnd, sample } from '../../core/utils';
 
 const MODES: ModeOption[] = [MODE_QCM_POINT];
 
@@ -192,10 +193,7 @@ function symetrieType(): ExerciseType {
 				parle: f.parle,
 			};
 		},
-		check(exercise: Exercise, input: string): boolean {
-			if (exercise.type !== 'qcm') return false;
-			return normalizeText(input) === normalizeText(exercise.answer);
-		},
+		check: (exercise, input) => checkAnswer(exercise, input),
 	};
 }
 

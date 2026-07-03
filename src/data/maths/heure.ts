@@ -20,9 +20,10 @@
      superposent (dont 12 h 00) → lecture ambiguë.
    ============================================================ */
 import type { Exercise, ExerciseType, ExerciseMode, ModeOption } from '../../core/exercise';
+import { checkAnswer } from '../../core/exercise';
 import { MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
-import { normalizeText, rnd, choice, sample } from '../../core/utils';
+import { rnd, choice, sample } from '../../core/utils';
 import { renderFigure } from '../../core/figures';
 
 const MODES: ModeOption[] = [
@@ -180,14 +181,7 @@ export function heureType(): ExerciseType {
 	return {
 		modes: MODES,
 		generate: (opts) => genExercise(opts?.mode),
-		check(exercise: Exercise, input: string): boolean {
-			if (exercise.type !== 'text' && exercise.type !== 'qcm') return false;
-			const norm = normalizeText(input);
-			if (norm === normalizeText(exercise.answer)) return true;
-			return exercise.type === 'text'
-				? (exercise.answers ?? []).some((a) => normalizeText(a) === norm)
-				: false;
-		},
+		check: (exercise, input) => checkAnswer(exercise, input),
 	};
 }
 

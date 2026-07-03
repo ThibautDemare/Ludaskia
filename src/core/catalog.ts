@@ -42,6 +42,7 @@ import { SYMETRIE_LESSONS } from '../data/maths/symetrie-axiale';
 import { ANGLES_LESSONS } from '../data/maths/angles';
 import { PROBLEMES_LESSONS } from '../data/maths/problemes';
 import { DIVISION_LESSONS } from '../data/maths/division';
+import type { LessonInput } from '../data/_shared';
 import { trierParOrdre } from './ordre';
 
 /* ---------- Types ---------- */
@@ -106,6 +107,59 @@ export interface BilanConfig {
 /* Mode effectif d'un BilanConfig (favori legacy sans `mode` = bilan). */
 export function bilanMode(config: BilanConfig): 'bilan' | 'sprint' {
 	return config.mode ?? 'bilan';
+}
+
+/* ---------- Fabrique de LessonDef (#373) ----------
+   Une vingtaine de familles de leçons partageaient la MÊME construction
+   `LessonInput -> LessonDef` : recopier id/label/exerciseType, fixer subject et
+   category, poser levels puis les champs optionnels. `LessonInput` (#347) avait
+   centralisé l'ENTRÉE, pas cette SORTIE. `toLessonDefs` factorise le mapping et
+   supprime le risque d'oubli d'un champ à l'ajout d'une famille.
+
+   Chaque champ variable est soit une valeur FIXE (commune à toute la famille),
+   soit une fonction `(input) => valeur` quand il DÉRIVE de la donnée (niveaux
+   d'un moteur calibré, rubrique portée par l'entrée, exclusion du sprint…). Les
+   champs optionnels résolus à `undefined` sont OMIS — sortie identique, champ par
+   champ, à l'écriture manuelle précédente. */
+type Resolvable<T, I> = T | ((input: I) => T);
+
+interface LessonDefOptions<I extends LessonInput> {
+	subject: SubjectId;
+	category: CategoryId;
+	levels?: Resolvable<SchoolLevel[], I>; // défaut ['ce2'] (le cas courant)
+	rubrique?: Resolvable<string | undefined, I>;
+	excludeFromSprint?: Resolvable<boolean | undefined, I>;
+	repere?: Resolvable<'plus-difficile' | undefined, I>;
+}
+
+function resolve<T, I>(r: Resolvable<T, I> | undefined, input: I): T | undefined {
+	// Le cast est nécessaire (pas un raccourci masquant un bug) : `T` étant générique,
+	// TS ne peut pas restreindre `T | ((input: I) => T)` via `typeof === 'function'`
+	// (il ne sait pas prouver que `T` n'est jamais lui-même un type fonction). C'est
+	// sûr tant que les champs résolus restent non-fonctions (levels/rubrique/
+	// excludeFromSprint/repere) ; un futur champ résolvable de type fonction romprait
+	// cette disambiguation et imposerait un discriminant explicite.
+	return typeof r === 'function' ? (r as (input: I) => T)(input) : r;
+}
+
+function toLessonDefs<I extends LessonInput>(inputs: I[], opts: LessonDefOptions<I>): LessonDef[] {
+	return inputs.map((input) => {
+		const def: LessonDef = {
+			id: input.id,
+			label: input.label,
+			subject: opts.subject,
+			category: opts.category,
+			levels: resolve(opts.levels, input) ?? ['ce2'],
+			exerciseType: input.exerciseType,
+		};
+		const rubrique = resolve(opts.rubrique, input);
+		if (rubrique !== undefined) def.rubrique = rubrique;
+		const excludeFromSprint = resolve(opts.excludeFromSprint, input);
+		if (excludeFromSprint !== undefined) def.excludeFromSprint = excludeFromSprint;
+		const repere = resolve(opts.repere, input);
+		if (repere !== undefined) def.repere = repere;
+		return def;
+	});
 }
 
 /* ---------- Helpers math ---------- */
@@ -335,83 +389,65 @@ const MATH_LESSONS_CM1: LessonDef[] = [
    Moteur moderne (ExerciseType), hors du pipeline bilanQ : le rendu passe par
    genLessonItem (item numérique) et buildLessonFiche (liste générique).
    Conversions d'unités (#89) + monnaie (#96). */
-const GRANDEURS_LESSONS: LessonDef[] = [
-	...MESURE_LESSONS,
-	...MONNAIE_LESSONS,
-	...HEURE_LESSONS,
-	...PERIMETRE_LESSONS,
-].map((d) => ({
-	id: d.id,
-	label: d.label,
-	subject: 'math',
-	category: 'math-grandeurs-mesures',
+const GRANDEURS_LESSONS: LessonDef[] = toLessonDefs(
+	[...MESURE_LESSONS, ...MONNAIE_LESSONS, ...HEURE_LESSONS, ...PERIMETRE_LESSONS],
 	// CM1 prêt derrière `level` (générateurs `calibrated`, #287) mais PAS encore
 	// surfacé : le cursus CM1 (ordre pédagogique math.cm1) relève du déploiement CM1.
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-}));
+	// → on garde `levels: ['ce2']` (défaut), sans lire `exerciseType.levels`.
+	{ subject: 'math', category: 'math-grandeurs-mesures' },
+);
 
 /* ---------- Catalogue des leçons « Numération » (#98, #94) ----------
    Situer un nombre (#98 : comparer/encadrer/intercaler, modes saisie/tuiles) et
    valeur de position / décomposition (#94 : mono-mode saisie). Le rendu
    fiche/bilan/sprint utilise le mode saisie (item texte ou numérique) ; le mode
    tuiles (#98) est un runner d'écran dédié (ui/lecon-tuiles.ts). */
-const NUMERATION_LESSONS_DEFS: LessonDef[] = [...NUMERATION_LESSONS, ...POSITION_LESSONS].map(
-	(d) => ({
-		id: d.id,
-		label: d.label,
+const NUMERATION_LESSONS_DEFS: LessonDef[] = toLessonDefs(
+	[...NUMERATION_LESSONS, ...POSITION_LESSONS],
+	{
 		subject: 'math',
 		category: 'math-numeration',
 		// Niveaux dérivés du moteur (#225) : une leçon « calibrée » (combinateur
 		// `calibrated`) expose ses niveaux ; sinon le `levels` explicite du descripteur
 		// (ex. la décompo multiplicative CM1-only, #240) ; à défaut CE2.
-		levels: d.exerciseType.levels ?? d.levels ?? ['ce2'],
-		exerciseType: d.exerciseType,
-	}),
+		levels: (d) => d.exerciseType.levels ?? d.levels ?? ['ce2'],
+	},
 );
 
 /* ---------- Catalogue des leçons « Numération » — Fractions (#200) ----------
    Programme cycle 2 rénové 2025 : fractions < 1, dénominateur ≤ 12. Sens, collection,
    bande graduée, égalités, comparaison et addition (même dénominateur). Regroupées
    sous la rubrique « Fractions » (les autres leçons de Numération restent à plat). */
-const FRACTIONS_LESSONS_DEFS: LessonDef[] = FRACTIONS_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const FRACTIONS_LESSONS_DEFS: LessonDef[] = toLessonDefs(FRACTIONS_LESSONS, {
 	subject: 'math',
 	category: 'math-numeration',
-	levels: ['ce2'], // CM1 prêt derrière `level` (#287), surfacé au déploiement CM1
-	exerciseType: d.exerciseType,
+	// CM1 prêt derrière `level` (#287), surfacé au déploiement CM1 → levels par défaut ['ce2'].
 	rubrique: 'Fractions',
-}));
+});
 
 /* ---------- Catalogue des leçons « Résolution de problèmes » (#199) ----------
    Énoncés générés par gabarits (structures de Vergnaud). Runner dédié, un
    problème à la fois ; réponse numérique. Exclus du sprint chronométré. */
-const PROBLEMES_LESSONS_DEFS: LessonDef[] = PROBLEMES_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const PROBLEMES_LESSONS_DEFS: LessonDef[] = toLessonDefs(PROBLEMES_LESSONS, {
 	subject: 'math',
 	category: 'math-problemes',
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-}));
+});
 
 /* ---------- Catalogue des leçons « Division par le sens » (#104) ----------
    Moteur moderne (ExerciseType) : moitié/quart d'une collection + « Je partage »
    (deux sens, signe ÷, figure de découverte). Rattachées au Calcul mental.
    « Je partage » est exclue du sprint (figure + lecture d'énoncé). */
-const DIVISION_LESSONS_DEFS: LessonDef[] = DIVISION_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const DIVISION_LESSONS_DEFS: LessonDef[] = toLessonDefs(DIVISION_LESSONS, {
 	subject: 'math',
 	category: 'math-calcul-mental',
-	levels: ['ce2'], // CM1 prêt derrière `level` (#287), surfacé au déploiement CM1
-	exerciseType: d.exerciseType,
-	excludeFromSprint: d.excludeFromSprint,
-}));
+	// CM1 prêt derrière `level` (#287), surfacé au déploiement CM1 → levels par défaut ['ce2'].
+	excludeFromSprint: (d) => d.excludeFromSprint,
+});
 
-/* ---------- Catalogue des leçons français (conjugaison) ---------- */
-
+/* ---------- Catalogue des leçons français (conjugaison) ----------
+   Seule famille hors `toLessonDefs` : l'exerciseType n'est pas porté par l'entrée
+   mais CALCULÉ (`conjugationType(verbId, tense)`) — le descripteur `ConjLessonDesc`
+   n'est donc pas un `LessonInput`. Le `.map` reste explicite ici. */
 const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 	id: d.id,
 	label: d.label,
@@ -430,154 +466,114 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
    (la notion de groupe est en retrait au cycle 2, le 2e groupe « finir » y est piégeux ;
    une variante CE2 dédiée pourra venir plus tard). Regroupées sous la rubrique
    « Reconnaître les verbes » ; énoncés courts à lire + QCM → exclues du sprint chronométré. */
-const CONJ_META_LESSONS_DEFS: LessonDef[] = CONJ_META_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const CONJ_META_LESSONS_DEFS: LessonDef[] = toLessonDefs(CONJ_META_LESSONS, {
 	subject: 'francais',
 	category: 'fr-conjugaison',
 	levels: ['ce2', 'cm1'],
-	exerciseType: d.exerciseType,
 	rubrique: 'Reconnaître les verbes',
 	excludeFromSprint: true,
-	...(d.id === 'fr-conj-groupe' ? { repere: 'plus-difficile' as const } : {}),
-}));
+	repere: (d) => (d.id === 'fr-conj-groupe' ? 'plus-difficile' : undefined),
+});
 
 /* ---------- Catalogue des leçons « Orthographe » sur moteur LessonDef (#109) ----------
    Accords (pluriel & féminin) : exercices de transformation saisie/QCM, dans la
    catégorie Orthographe sous la rubrique « Les accords » (à côté des dictées de
    mots, qui passent, elles, par le runner dédié). */
-const ACCORD_LESSONS_DEFS: LessonDef[] = ACCORD_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const ACCORD_LESSONS_DEFS: LessonDef[] = toLessonDefs(ACCORD_LESSONS, {
 	subject: 'francais',
 	category: ORTHO_CATEGORY_ID,
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-	rubrique: d.rubrique,
-}));
+	rubrique: (d) => d.rubrique,
+});
 
 /* ---------- Orthographe — accords CM1 (#243) ----------
    Même moteur de transformation (saisie/QCM) que le CE2, banque plus exigeante
    (terminaisons -er/-ère, -f/-ve, -et/-ète, -eur/-trice, -al/-aux). Taguée CM1. */
-const ACCORD_CM1_LESSONS_DEFS: LessonDef[] = ACCORD_CM1_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const ACCORD_CM1_LESSONS_DEFS: LessonDef[] = toLessonDefs(ACCORD_CM1_LESSONS, {
 	subject: 'francais',
 	category: ORTHO_CATEGORY_ID,
 	levels: ['cm1'],
-	exerciseType: d.exerciseType,
-	rubrique: d.rubrique,
-}));
+	rubrique: (d) => d.rubrique,
+});
 
 /* ---------- Orthographe — accord du participe passé avec « être » (#205) ----------
    Transformation guidée + QCM 3 options (rubrique « Les accords »). Sensibilisation
    CE2 à charge cognitive élevée → signalée « plus difficile » et exclue du sprint
    chronométré (la réflexion sur le genre/nombre du sujet ne se fait pas dans l'urgence). */
-const PARTICIPE_LESSONS_DEFS: LessonDef[] = PARTICIPE_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const PARTICIPE_LESSONS_DEFS: LessonDef[] = toLessonDefs(PARTICIPE_LESSONS, {
 	subject: 'francais',
 	category: ORTHO_CATEGORY_ID,
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-	rubrique: d.rubrique,
+	rubrique: (d) => d.rubrique,
 	excludeFromSprint: true,
 	repere: 'plus-difficile',
-}));
+});
 
 /* ---------- Orthographe — accord dans le groupe nominal (#243, CM1) ----------
    QCM rigoureux (calqué sur le participe passé) : on montre un groupe nominal
    court au singulier, l'enfant choisit le groupe ENTIÈREMENT accordé parmi 3
    propositions dont chaque distracteur casse exactement une marque. Notion à
    charge cognitive élevée → exclue du sprint et signalée « plus difficile ». */
-const ACCORD_GN_LESSONS_DEFS: LessonDef[] = ACCORD_GN_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const ACCORD_GN_LESSONS_DEFS: LessonDef[] = toLessonDefs(ACCORD_GN_LESSONS, {
 	subject: 'francais',
 	category: ORTHO_CATEGORY_ID,
 	levels: ['cm1'],
-	exerciseType: d.exerciseType,
-	rubrique: d.rubrique,
+	rubrique: (d) => d.rubrique,
 	excludeFromSprint: true,
 	repere: 'plus-difficile',
-}));
+});
 
 /* ---------- Catalogue des leçons « Orthographe » — homophones (#110) ----------
    5 paires (a/à, et/est, on/ont, son/sont, ou/où), une leçon par paire, QCM
    2 options dans la catégorie Orthographe, rubrique « Les homophones ». */
-const HOMOPHONE_LESSONS_DEFS: LessonDef[] = HOMOPHONE_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const HOMOPHONE_LESSONS_DEFS: LessonDef[] = toLessonDefs(HOMOPHONE_LESSONS, {
 	subject: 'francais',
 	category: ORTHO_CATEGORY_ID,
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-	rubrique: d.rubrique,
-}));
+	rubrique: (d) => d.rubrique,
+});
 
 /* ---------- Catalogue des leçons « Orthographe » — règle m/m,b,p (#111) ----------
    Leçon unique « m ou n ? » (QCM 2 options), tirage pondéré (exceptions
    sur-pondérées), rubrique « Les règles ». */
-const MBP_LESSONS_DEFS: LessonDef[] = MBP_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const MBP_LESSONS_DEFS: LessonDef[] = toLessonDefs(MBP_LESSONS, {
 	subject: 'francais',
 	category: ORTHO_CATEGORY_ID,
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-	rubrique: d.rubrique,
-}));
+	rubrique: (d) => d.rubrique,
+});
 
 /* ---------- Catalogue des leçons « Vocabulaire » (#108) ----------
    Ordre alphabétique : l'enfant range une suite de mots (interaction tuiles,
    runner ui/lecon-ordre.ts). Mono-mode ; le repli texte (fiche/bilan/révision)
    est produit par genLessonItem, et le sprint les exclut (cf. isOrderingLesson). */
-const VOCAB_LESSONS_DEFS: LessonDef[] = VOCAB_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const VOCAB_LESSONS_DEFS: LessonDef[] = toLessonDefs(VOCAB_LESSONS, {
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-}));
+});
 
 /* ---------- Catalogue des leçons « Vocabulaire » — sens propre/figuré (#112) ----------
    Leçon QCM (3 options) : sens d'un mot selon le contexte. */
-const SENS_FIGURE_LESSONS_DEFS: LessonDef[] = SENS_FIGURE_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const SENS_FIGURE_LESSONS_DEFS: LessonDef[] = toLessonDefs(SENS_FIGURE_LESSONS, {
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-}));
+});
 
 /* ---------- Vocabulaire — familles de mots, préfixes, suffixes (#113, #244) ----------
    QCM de reconnaissance (3 options). Niveaux portés par la donnée (#244) : la leçon
    « familles, préfixes et suffixes » reste CE2 ; deux leçons CM1 séparent familles
    et affixes (préfixes savants + suffixes nominaux). */
-const FAMILLES_LESSONS_DEFS: LessonDef[] = FAMILLES_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const FAMILLES_LESSONS_DEFS: LessonDef[] = toLessonDefs(FAMILLES_LESSONS, {
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	levels: d.levels,
-	exerciseType: d.exerciseType,
-}));
+	levels: (d) => d.levels,
+});
 
 /* ---------- Vocabulaire — champs lexicaux (#114) ----------
    Deux leçons sous la rubrique « Champs lexicaux » : « Le mot juste » (QCM 4
    options : définition → mot + intrus) et « Ranger par thème » (tri de tuiles
    dans deux thèmes, runner ui/lecon-tri.ts). */
-const CHAMPS_LESSONS_DEFS: LessonDef[] = CHAMPS_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const CHAMPS_LESSONS_DEFS: LessonDef[] = toLessonDefs(CHAMPS_LESSONS, {
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
 	rubrique: 'Champs lexicaux',
-}));
+});
 
 /* ---------- Vocabulaire — contraires & mots de sens proche (#203, #244) ----------
    Leçons QCM (3 options) sous la rubrique « Synonymes et contraires », dans
@@ -586,113 +582,79 @@ const CHAMPS_LESSONS_DEFS: LessonDef[] = CHAMPS_LESSONS.map((d) => ({
    options. Exclues du sprint (lecture d'une phrase + pression du chrono déconseillée
    pour les profils dys) : jouées en mode leçon/bilan/révision. Niveaux portés par
    la donnée (#244) : deux leçons CE2 + deux leçons CM1 (lexique plus exigeant). */
-const SENS_LESSONS_DEFS: LessonDef[] = SENS_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const SENS_LESSONS_DEFS: LessonDef[] = toLessonDefs(SENS_LESSONS, {
 	subject: 'francais',
 	category: 'fr-vocabulaire',
-	levels: d.levels,
-	exerciseType: d.exerciseType,
+	levels: (d) => d.levels,
 	rubrique: 'Synonymes et contraires',
 	excludeFromSprint: true,
-}));
+});
 
 /* ---------- Grammaire — pronom sujet & accord sujet-verbe (#115) ----------
    2 leçons QCM ; les formes sont lues depuis la base de conjugaison. */
-const GRAMMAIRE_SUJET_LESSONS_DEFS: LessonDef[] = GRAMMAIRE_SUJET_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const GRAMMAIRE_SUJET_LESSONS_DEFS: LessonDef[] = toLessonDefs(GRAMMAIRE_SUJET_LESSONS, {
 	subject: 'francais',
 	category: 'fr-grammaire',
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-}));
+});
 
 /* ---------- Grammaire — classes de mots, articles, adverbes (#116) ----------
    Leçon QCM d'étiquetage (banque interne étiquetée, hors listes du parent). */
-const CLASSES_LESSONS_DEFS: LessonDef[] = CLASSES_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const CLASSES_LESSONS_DEFS: LessonDef[] = toLessonDefs(CLASSES_LESSONS, {
 	subject: 'francais',
 	category: 'fr-grammaire',
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-}));
+});
 
 /* ---------- Grammaire — les phrases : ponctuation finale & types (#204) ----------
    2 leçons QCM regroupées sous la rubrique « Les phrases » : F1 « Quel point à la
    fin ? » (boutons-symboles `. ? !`) et F2 « Quel type de phrase ? ». Hors sprint
    (excludeFromSprint) : leur valeur tient au choix QCM / aux boutons-symboles et,
    pour F2, à des libellés multi-mots — pas à la saisie chronométrée. */
-const PHRASES_LESSONS_DEFS: LessonDef[] = PHRASES_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const PHRASES_LESSONS_DEFS: LessonDef[] = toLessonDefs(PHRASES_LESSONS, {
 	subject: 'francais',
 	category: 'fr-grammaire',
 	// Niveaux portés par la donnée (#245) : ponctuation = CE2 ; « type » = CE2 + CM1 ;
 	// « forme » et « transformation négative » = CM1. Défaut CE2 si non précisé.
-	levels: d.levels ?? ['ce2'],
+	levels: (d) => d.levels ?? ['ce2'],
 	rubrique: 'Les phrases',
-	exerciseType: d.exerciseType,
 	excludeFromSprint: true,
-}));
+});
 
 /* ---------- Catalogue des leçons « Calcul » (opérations posées, #97) ----------
    Items `kind: 'posed'` : la grille (cellules-chiffres notées une à une) est
    rendue par renderItem. Passent par les bilans/impression/révision ; exclues du
    sprint (une grille multi-cellules ne se joue pas « une réponse à la fois »). */
-const CALCUL_LESSONS_DEFS: LessonDef[] = POSEE_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const CALCUL_LESSONS_DEFS: LessonDef[] = toLessonDefs(POSEE_LESSONS, {
 	subject: 'math',
 	category: 'math-calcul',
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-}));
+});
 
 /* ---------- Catalogue des leçons « Géométrie » (figures planes, #100) ----------
    Clientes du moteur de figures SVG : reconnaissance visuelle (modes QCM/saisie)
    et propriétés/vocabulaire (QCM textuel). */
-const GEOMETRIE_LESSONS_DEFS: LessonDef[] = [
-	...GEOMETRIE_LESSONS,
-	...CERCLE_LESSONS,
-	...SOLIDE_LESSONS,
-	...ANGLES_LESSONS,
-].map((d) => ({
-	id: d.id,
-	label: d.label,
-	subject: 'math',
-	category: 'math-geometrie',
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-}));
+const GEOMETRIE_LESSONS_DEFS: LessonDef[] = toLessonDefs(
+	[...GEOMETRIE_LESSONS, ...CERCLE_LESSONS, ...SOLIDE_LESSONS, ...ANGLES_LESSONS],
+	{ subject: 'math', category: 'math-geometrie' },
+);
 
 /* ---------- Catalogue des leçons « Géométrie » CM1 (#242) ----------
    Contenu ADDITIF tagué CM1 (le CE2 est gelé) : triangles particuliers (reconnaissance +
    propriétés), quadrilatères dont le parallélogramme, solides dont le prisme,
    polyèdre/non-polyèdre et comptage faces/arêtes/sommets DE MÉMOIRE. Même traitement que
    les leçons de Géométrie CE2 (figures / QCM mono-réponse, compatibles bilan/sprint). */
-const GEOMETRIE_CM1_LESSONS_DEFS: LessonDef[] = GEOMETRIE_CM1_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const GEOMETRIE_CM1_LESSONS_DEFS: LessonDef[] = toLessonDefs(GEOMETRIE_CM1_LESSONS, {
 	subject: 'math',
 	category: 'math-geometrie',
 	levels: ['cm1'],
-	exerciseType: d.exerciseType,
-}));
+});
 
 /* ---------- Catalogue de la leçon « Symétrie axiale » (#201) ----------
    QCM mono-mode (oui/non + désigner le reflet A/B/C). Exclue du sprint
    chronométré : tâche visuo-spatiale de reconnaissance, sans pression de temps. */
-const SYMETRIE_LESSONS_DEFS: LessonDef[] = SYMETRIE_LESSONS.map((d) => ({
-	id: d.id,
-	label: d.label,
+const SYMETRIE_LESSONS_DEFS: LessonDef[] = toLessonDefs(SYMETRIE_LESSONS, {
 	subject: 'math',
 	category: 'math-geometrie',
-	levels: ['ce2'],
-	exerciseType: d.exerciseType,
-	excludeFromSprint: d.excludeFromSprint,
-}));
+	excludeFromSprint: (d) => d.excludeFromSprint,
+});
 
 /* ---------- Registre global ---------- */
 

@@ -33,8 +33,7 @@ export type ResumeMode = 'lecon' | 'complet' | 'express' | 'custom';
 
 /** De quoi relancer un exercice « à neuf » (bouton « Recommencer »). */
 export type ResumeRelaunch =
-	| { type: 'lecon'; lessonId: string }
-	| { type: 'bilan'; config: BilanConfig };
+	{ type: 'lecon'; lessonId: string } | { type: 'bilan'; config: BilanConfig };
 
 export interface ResumeSnapshot {
 	key: string; // identité stable de l'exercice (dédup)

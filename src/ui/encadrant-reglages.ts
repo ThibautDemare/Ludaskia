@@ -111,9 +111,7 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 	}
 	if (act === 'set-amenagement' && uuid) {
 		const pref = (t as HTMLElement).dataset.pref as
-			| 'sansPressionTemporelle'
-			| 'lectureConsigneAuto'
-			| 'sansApparitionsSurprises';
+			'sansPressionTemporelle' | 'lectureConsigneAuto' | 'sansApparitionsSurprises';
 		setPrefFor(uuid, pref, (t as HTMLInputElement).checked);
 		renderEspace();
 		return true;

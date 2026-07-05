@@ -118,7 +118,7 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 	// Segments de mots : pour chaque lettre non-espace, bornes [start, end] de son mot.
 	const segStart = new Array<number>(lettres.length).fill(-1);
 	const segEnd = new Array<number>(lettres.length).fill(-1);
-	for (let i = 0; i < lettres.length; ) {
+	for (let i = 0; i < lettres.length;) {
 		if (lettres[i] === ' ') {
 			i++;
 			continue;

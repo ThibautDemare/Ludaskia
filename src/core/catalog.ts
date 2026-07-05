@@ -32,6 +32,7 @@ import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration
 // #186) sans importer directement un module de données maths.
 export { answerEstNumerique };
 import { POSITION_LESSONS } from '../data/maths/position';
+import { DECIMAUX_LESSONS } from '../data/maths/decimaux';
 import { FRACTIONS_LESSONS } from '../data/maths/fractions';
 import { POSEE_LESSONS } from '../data/maths/posee';
 import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';
@@ -414,6 +415,18 @@ const NUMERATION_LESSONS_DEFS: LessonDef[] = toLessonDefs(
 	},
 );
 
+/* ---------- Catalogue des leçons « Numération » — Nombres décimaux (#246, CM1) ----------
+   Premier contact avec le nombre décimal général (au-delà de la monnaie du CE2) :
+   numération de position décimale + rôle du zéro, puis comparer / encadrer / ranger.
+   Toutes CM1-only (le CE2 ne bouge pas), regroupées sous la rubrique « Nombres
+   décimaux ». Borne dure = centièmes (jamais de millièmes). */
+const DECIMAUX_LESSONS_DEFS: LessonDef[] = toLessonDefs(DECIMAUX_LESSONS, {
+	subject: 'math',
+	category: 'math-numeration',
+	levels: ['cm1'],
+	rubrique: 'Nombres décimaux',
+});
+
 /* ---------- Catalogue des leçons « Numération » — Fractions (#200) ----------
    Programme cycle 2 rénové 2025 : fractions < 1, dénominateur ≤ 12. Sens, collection,
    bande graduée, égalités, comparaison et addition (même dénominateur). Regroupées
@@ -662,6 +675,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...MATH_LESSONS,
 	...MATH_LESSONS_CM1,
 	...NUMERATION_LESSONS_DEFS,
+	...DECIMAUX_LESSONS_DEFS,
 	...FRACTIONS_LESSONS_DEFS,
 	...CALCUL_LESSONS_DEFS,
 	...GRANDEURS_LESSONS,

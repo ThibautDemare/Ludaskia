@@ -114,6 +114,15 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'geo-cm1-solides',
 			'geo-cm1-polyedre',
 			'geo-cm1-solides-comptage',
+			// Nombres décimaux (#246) : premier contact avec le nombre décimal général,
+			// placé tard (capstone de la numération, suppose la valeur de position et la
+			// comparaison des entiers solides). Ordre interne : numération de position
+			// décimale → rôle du zéro (« le même nombre ? ») → comparer → encadrer → ranger.
+			'num-dec-position',
+			'num-dec-egales',
+			'num-dec-comparer',
+			'num-dec-encadrer',
+			'num-dec-ranger',
 		],
 	},
 	francais: {

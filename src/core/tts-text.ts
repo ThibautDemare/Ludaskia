@@ -39,6 +39,40 @@ const UNITES: [RegExp, string][] = [
 // (String.fromCharCode), jamais écrits en clair : invisibles et fragiles à l'édition.
 const SEP_MILLIERS = new RegExp('([0-9])[' + String.fromCharCode(0x202f, 0x00a0) + ']([0-9])', 'g');
 
+// Chiffres épelés pour la lecture des décimales (#246, nombres décimaux CM1).
+const CHIFFRE_MOT = [
+	'zéro',
+	'un',
+	'deux',
+	'trois',
+	'quatre',
+	'cinq',
+	'six',
+	'sept',
+	'huit',
+	'neuf',
+];
+
+/* Décimaux (#246) : une VIRGULE ENTRE DEUX CHIFFRES est le séparateur décimal (jamais
+   un séparateur de milliers, qui est une fine insécable U+202F). On la lit « virgule »
+   PUIS on épelle la partie décimale CHIFFRE À CHIFFRE, pour qu'un moteur vocal
+   n'« avale » pas le zéro médian (« 3,04 » → « trois virgule zéro quatre », et non
+   « trois virgule quatre »). La partie entière reste lue comme un entier (seul le
+   dernier de ses chiffres est capturé par `(\d)` puis réémis intact). La virgule
+   d'énumération (« 3, puis 4 », suivie d'une espace) n'est jamais touchée : le motif
+   exige chiffre-virgule-chiffre, sans espace. */
+function epelerDecimales(t: string): string {
+	return t.replace(
+		// `(?!\d)` force `\d+` à capturer TOUTE la partie décimale (pas de repli qui
+		// couperait « 50 » en « 5 »). `(?!\s*€)` laisse les MONTANTS en euros à leur
+		// lecture native (« 1,50 € » → « 1,50 euros », pas « un virgule cinq zéro ») :
+		// la monnaie CM1 (monnaie.ts) ne doit pas être épelée par ce moteur global.
+		/(\d),(\d+)(?!\d)(?!\s*€)/g,
+		(_m, ent: string, frac: string) =>
+			`${ent} virgule ${[...frac].map((c) => CHIFFRE_MOT[Number(c)]).join(' ')}`,
+	);
+}
+
 /** Transforme un énoncé affiché en texte à lire à voix haute. */
 export function texteParle(raw: string): string {
 	if (!raw) return '';
@@ -50,6 +84,7 @@ export function texteParle(raw: string): string {
 		.replace(/→/g, ' ') // flèche « devient » : muette (souvent suivie du trou)
 		.replace(/@/g, ' ') // le trou à remplir : silence, pas « arobase »
 		.replace(SEP_MILLIERS, '$1$2'); // colle les classes des grands nombres (avant le \s+ final)
+	t = epelerDecimales(t); // épelle la partie décimale (après avoir collé les milliers)
 	for (const [re, mot] of OPERATEURS) t = t.replace(re, mot);
 	for (const [re, mot] of UNITES) t = t.replace(re, mot);
 	return t.replace(/\s+/g, ' ').trim();

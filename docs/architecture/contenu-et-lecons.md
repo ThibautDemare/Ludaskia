@@ -401,6 +401,42 @@ dominant → réponse = 1 chiffre) est une leçon distincte de la décompo « en
 son `levels: ['cm1']` est porté par le descripteur (le catalogue prend
 `exerciseType.levels ?? d.levels ?? ['ce2']`).
 
+#### `maths/decimaux.ts` (#246, CM1) — rubrique « Nombres décimaux »
+
+5 leçons **CM1 only** (`levels: ['cm1']` — le CE2 n'est pas retouché, il ne connaît
+le décimal que via la monnaie, `maths/monnaie.ts`) : premier contact avec le nombre
+décimal général, dans l'ordre position → rôle du zéro → comparer → encadrer →
+ranger (capstone de la numération CM1 dans `ordre-pedagogique.ts`, placé après la
+géométrie CM1). **Borne dure** (programme 2025, « au plus deux chiffres après la
+virgule ») : un décimal est représenté en interne par sa valeur en **centièmes**
+(entier) + le nombre de décimales affichées (1 ou 2) — la génération ne peut donc
+jamais produire de millième (réservé au CM2).
+
+- **« Le chiffre des dixièmes et des centièmes »** (`num-dec-position`) — saisie
+  mono-mode, réponse = un chiffre (0-9), cible le **rôle du zéro** (« Dans 3,04, le
+  chiffre des dixièmes ? » → 0).
+- **« Le même nombre ? »** (`num-dec-egales`) — QCM oui/non : deux écritures
+  désignent-elles la même valeur (zéro **final**, « 3,4 »/« 3,40 ») ou des valeurs
+  différentes (zéro **médian** trompeur, « 3,4 »/« 3,04 ») ?
+- **« Je compare les nombres décimaux »** (`num-dec-comparer`) et **« J'encadre
+  entre deux entiers »** (`num-dec-encadrer`) — deux modes **saisie/tuiles**, calqués
+  sur `numeration.ts` (#98) : le mode tuiles produit un `Exercise` `tuilesNombre`,
+  rendu par le même runner `ui/lecon-tuiles.ts`. Distracteurs pédagogiques stockés
+  (parties entières inversées portant les plus grandes décimales, décimales de
+  longueurs différentes, borne avant/après confondue).
+- **« Je range les nombres décimaux »** (`num-dec-ranger`) — QCM à 3 nombres,
+  **pas de glisser-déposer** : réutilise le runner QCM plutôt qu'une interaction
+  motrice nouvelle ; distracteurs = l'ordre « naïf » (décimales lues comme un
+  entier) et l'ordre inverse du bon.
+
+Aucune leçon ne fait **taper** un décimal (réponse = signe / chiffre / entier) : la
+correction réutilise `checkNumerique`/`checkNumeriqueOuTexte` (#346, cf. [Logique
+pure](core.md)) sans toucher `core/exercise.ts`. La lecture TTS d'un décimal épelle
+sa partie décimale **chiffre à chiffre** (`epelerDecimales`, `core/tts-text.ts`)
+pour ne pas « avaler » le zéro médian (« 3,04 » → « trois virgule zéro quatre ») ;
+les montants en euros (`monnaie.ts`) restent lus nativement, exclus par ce même
+moteur. Branché au catalogue via `DECIMAUX_LESSONS_DEFS` (`core/catalog.ts`).
+
 #### `maths/fractions.ts` (#200) — rubrique « Fractions »
 
 6 leçons, fractions **toujours < 1** (numérateur < dénominateur), dénominateur ≤ 12,

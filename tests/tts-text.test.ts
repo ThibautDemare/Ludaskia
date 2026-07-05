@@ -49,6 +49,27 @@ describe('texteParle', () => {
 		expect(texteParle('')).toBe('');
 	});
 
+	it('épelle la partie décimale chiffre à chiffre, zéro médian compris (#246)', () => {
+		// « avaler » le zéro (« trois virgule quatre ») effacerait la différence 3,04 ≠ 3,4.
+		expect(texteParle('3,04')).toBe('3 virgule zéro quatre');
+		expect(texteParle('0,45')).toBe('0 virgule quatre cinq');
+		// Le zéro FINAL est lu aussi (distingue « 3,4 » de « 3,40 » à l'oreille).
+		expect(texteParle('Compare 3,4 et 3,40.')).toBe(
+			'Compare 3 virgule quatre et 3 virgule quatre zéro.',
+		);
+		// Partie entière à plusieurs chiffres : préservée, lue comme un entier.
+		expect(texteParle('13,44')).toBe('13 virgule quatre quatre');
+		// La virgule d'ÉNUMÉRATION (suivie d'une espace) n'est PAS touchée.
+		expect(texteParle('Range 3, puis 5.')).toBe('Range 3, puis 5.');
+		// Un MONTANT en euros n'est PAS épelé (registre monétaire, lecture native) :
+		// « 1,50 € » reste « 1,50 euros », pas « 1 virgule cinq zéro » — sinon régression
+		// de la lecture vocale de la monnaie CM1 (monnaie.ts), atteignable en révision.
+		expect(texteParle('Un stylo coûte 1,50 €.')).toBe('Un stylo coûte 1,50 euros.');
+		// N'interfère pas avec le séparateur de milliers (fine insécable U+202F) : un
+		// grand entier reste collé en entier, sans « virgule » parasite.
+		expect(texteParle(`${formatNombre(13440)}`)).toBe('13440');
+	});
+
 	it('colle les classes d’un grand nombre pour une lecture « entier » (#240)', () => {
 		// formatNombre groupe avec l'espace fine insécable U+202F ; le TTS doit lire
 		// l'entier (« un million deux mille cinquante »), pas épeler les groupes.

@@ -5,7 +5,7 @@
    sont purs (nouveau tableau, pas de mutation) et bornent leurs index.
    ============================================================ */
 import { describe, test, expect } from 'vitest';
-import { insertAt, moveAt, removeAt } from '../src/ui/ortho-runner';
+import { insertAt, moveAt, removeAt } from '../src/core/utils';
 
 describe('insertAt — insertion au curseur', () => {
 	test('insère au milieu', () => {

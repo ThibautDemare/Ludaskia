@@ -12,6 +12,7 @@ import {
 	lsGet,
 	lsSet,
 	lsGetRaw,
+	lsGetItemRaw,
 	lsKeysRaw,
 	lsRemoveRaw,
 	lsSetRaw,
@@ -207,12 +208,10 @@ export function getPrefs(): ProfilePrefs {
 	return activeProfile()?.prefs ?? {};
 }
 export function setPref<K extends keyof ProfilePrefs>(key: K, value: ProfilePrefs[K]) {
-	const m = loadProfilesMeta();
-	const p = m && m.list.find((x) => x.uuid === m.active);
-	if (!p) return;
-	p.prefs = { ...p.prefs, [key]: value };
-	p.updatedAt = Date.now();
-	saveProfilesMeta(m);
+	// Le profil actif est un cas particulier du réglage par UUID (#374 : on délègue
+	// pour ne pas dupliquer la logique de recherche/écriture/bump).
+	const active = loadProfilesMeta()?.active;
+	if (active) setPrefFor(active, key, value);
 }
 /* Variante PAR UUID (#234, espace encadrant) : règle une préférence d'un profil
    CONSULTÉ (pas forcément l'actif) sans toucher m.active. Sert aux « aménagements »
@@ -254,12 +253,9 @@ export function getNiveauReference(): SchoolLevel | undefined {
 	return activeProfile()?.niveauReference;
 }
 export function setNiveauReference(level: SchoolLevel) {
-	const m = loadProfilesMeta();
-	const p = m && m.list.find((x) => x.uuid === m.active);
-	if (!p) return;
-	p.niveauReference = level;
-	p.updatedAt = Date.now();
-	saveProfilesMeta(m);
+	// Cas particulier « profil actif » du réglage par UUID (#374 : délégué).
+	const active = loadProfilesMeta()?.active;
+	if (active) setNiveauReferenceFor(active, level);
 }
 // Ajustement du niveau par matière (#225, lot 4). `undefined` retire l'ajustement
 // (la matière hérite de nouveau du niveau de référence).
@@ -267,15 +263,9 @@ export function getNiveauParMatiere(): Record<string, SchoolLevel> {
 	return activeProfile()?.niveauParMatiere ?? {};
 }
 export function setNiveauMatiere(subject: string, level: SchoolLevel | undefined) {
-	const m = loadProfilesMeta();
-	const p = m && m.list.find((x) => x.uuid === m.active);
-	if (!p) return;
-	const map = { ...(p.niveauParMatiere ?? {}) };
-	if (level) map[subject] = level;
-	else delete map[subject];
-	p.niveauParMatiere = map;
-	p.updatedAt = Date.now();
-	saveProfilesMeta(m);
+	// Cas particulier « profil actif » du réglage par UUID (#374 : délégué).
+	const active = loadProfilesMeta()?.active;
+	if (active) setNiveauMatiereFor(active, subject, level);
 }
 
 /* ---------- Réglages de niveau PAR UUID (#234, espace encadrant) ----------
@@ -339,7 +329,7 @@ function profileDataRelative(p: Profile) {
 		out: Record<string, string> = {};
 	appKeys().forEach((k) => {
 		if (k !== PROFILES_KEY && k.startsWith(P)) {
-			const v = localStorage.getItem(k);
+			const v = lsGetItemRaw(k);
 			if (v != null) out[k.slice(P.length)] = v;
 		}
 	});
@@ -370,16 +360,38 @@ export function exportProfiles(uuids: string[]) {
 		})),
 	};
 }
+// Objet quelconque (garde de type minimale pour valider un payload importé
+// venu de l'extérieur : fichier choisi par l'utilisateur, format non garanti).
+function estObjet(v: unknown): v is Record<string, unknown> {
+	return typeof v === 'object' && v !== null;
+}
+// Un profil d'export après validation de sa forme minimale (uuid + data présents).
+// Les valeurs de `data` sont recopiées via String() par writeProfileData, et les
+// autres champs sont protégés par les fallbacks `|| …` ci-dessous → assertion sûre.
+interface ImportedProfile {
+	uuid: string;
+	data: Record<string, string>;
+	name?: string;
+	emoji?: string;
+	updatedAt?: number;
+	prefs?: ProfilePrefs;
+	niveauReference?: SchoolLevel;
+	niveauParMatiere?: Record<string, SchoolLevel>;
+}
+function estProfilImporte(v: unknown): v is ImportedProfile {
+	return estObjet(v) && typeof v.uuid === 'string' && estObjet(v.data);
+}
 // Fusionne une sauvegarde : par UUID, écrase si plus récent, ajoute si inconnu.
 // Renvoie {added, updated, skipped} ou null si format invalide.
-export function importProfiles(payload: any) {
-	if (!payload || payload.app !== EXPORT_APP || !Array.isArray(payload.profiles)) return null;
+export function importProfiles(payload: unknown) {
+	if (!estObjet(payload) || payload.app !== EXPORT_APP || !Array.isArray(payload.profiles))
+		return null;
 	const m = loadProfilesMeta() || initProfiles();
 	let added = 0,
 		updated = 0,
 		skipped = 0;
-	payload.profiles.forEach((ip: any) => {
-		if (!ip || !ip.uuid || !ip.data) return;
+	payload.profiles.forEach((ip: unknown) => {
+		if (!estProfilImporte(ip)) return;
 		const existing = m.list.find((x) => x.uuid === ip.uuid);
 		if (existing) {
 			if ((ip.updatedAt || 0) > (existing.updatedAt || 0)) {

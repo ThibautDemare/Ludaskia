@@ -185,10 +185,6 @@ export function getListe(state: OrthoState, id: string): ListeOrtho | undefined 
 	return state.listes.find((l) => l.id === id);
 }
 
-export function getMot(state: OrthoState, id: string): MotOrtho | undefined {
-	return state.banque[id];
-}
-
 /** Mots d'une liste, dans l'ordre, en ignorant les références orphelines. */
 export function motsDeListe(state: OrthoState, liste: ListeOrtho): MotOrtho[] {
 	return liste.motIds.map((id) => state.banque[id]).filter((m): m is MotOrtho => !!m);

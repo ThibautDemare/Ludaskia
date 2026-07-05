@@ -8,7 +8,7 @@
      version SVG (entourer les pièges) est une étape suivante.
    - La dictée n'est pas proposée tant que le TTS n'est pas branché.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+import { escapeHTML, insertAt, moveAt, removeAt } from '../core/utils';
 import { loadOrtho, saveOrtho, getListe } from '../core/orthographe/store';
 import { materialiserVerbes } from '../core/orthographe/verbes';
 import { motsDeLecon } from '../core/orthographe/lessons';
@@ -431,21 +431,8 @@ function renderDictee(word: MotOrtho): void {
 }
 
 /* ---------- Tuiles ---------- */
-// Helpers purs sur l'ordre des lettres (`assembled`), testables sans DOM.
-// Tous renvoient un NOUVEAU tableau (aucune mutation en place) et bornent leurs
-// index — `assembled` reste la source de vérité de l'ordre (cf. #68).
-export function insertAt(arr: number[], pos: number, value: number): number[] {
-	const p = Math.max(0, Math.min(arr.length, pos));
-	return [...arr.slice(0, p), value, ...arr.slice(p)];
-}
-export function removeAt(arr: number[], pos: number): number[] {
-	if (pos < 0 || pos >= arr.length) return arr.slice();
-	return [...arr.slice(0, pos), ...arr.slice(pos + 1)];
-}
-export function moveAt(arr: number[], from: number, to: number): number[] {
-	if (from < 0 || from >= arr.length) return arr.slice();
-	return insertAt(removeAt(arr, from), to, arr[from]);
-}
+// Réordonnancement des tuiles : insertAt/removeAt/moveAt vivent désormais dans
+// core/utils.ts (logique pure testable sans DOM, #374) et sont importés ci-dessus.
 
 // Au-delà de ce déplacement (px) un geste devient un glisser ; en dessous, c'est
 // un tap. Volontairement élevé : un tap « propre » de CE2 dérive de 8-15 px.

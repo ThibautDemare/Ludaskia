@@ -211,13 +211,6 @@ export function getVerb(verbId: string): VerbDef | undefined {
 	return VERBS.find((v) => v.id === verbId);
 }
 
-/* Modes de réponse d'un exercice de conjugaison :
-   - 'saisie' : l'enfant écrit la forme (production, mode par défaut) ;
-   - 'qcm'    : l'enfant choisit parmi plusieurs formes (reconnaissance,
-                utilisé en sprint où la frappe pénaliserait la vitesse). */
-export type ConjMode = 'saisie' | 'qcm';
-export const CONJ_MODES: readonly ConjMode[] = ['saisie', 'qcm'];
-
 /* Modes présentables à l'enfant : la saisie (production) est le mode conseillé,
    le QCM (reconnaissance) un allègement assumé pour démarrer. Ordre d'affichage :
    conseillé d'abord. Voir issue #69. */

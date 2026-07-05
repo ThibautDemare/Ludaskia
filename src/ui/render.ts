@@ -14,6 +14,7 @@ import {
 	loadStars,
 	loadLessonStats,
 	lessonAvgPct,
+	type LessonStat,
 	startOfWeek,
 	startOfMonth,
 	countSince,
@@ -382,7 +383,7 @@ export function renderObjectives() {
 export function lessonCardHTML(
 	l: { id: string; num: number | string; title: string },
 	stars: Record<string, number>,
-	lstats: Record<string, any>,
+	lstats: Record<string, LessonStat>,
 	repere?: 'plus-difficile',
 	badge?: string,
 ) {

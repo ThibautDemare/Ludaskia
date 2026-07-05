@@ -59,6 +59,16 @@ export function lsGetRaw(realK: string, fallback: any) {
 		return fallback;
 	}
 }
+/* Lecture d'une clé RÉELLE en CHAÎNE BRUTE (sans JSON.parse) : pour recopier telle
+   quelle la valeur stockée d'un profil (export par UUID), là où lsGetRaw la
+   désérialiserait à tort. Renvoie null si absente. */
+export function lsGetItemRaw(realK: string): string | null {
+	try {
+		return localStorage.getItem(realK);
+	} catch (e) {
+		return null;
+	}
+}
 /* Accès bas niveau aux clés réelles (réinitialiser/supprimer/sauvegarder) */
 export function lsKeysRaw(): string[] {
 	const o: string[] = [];

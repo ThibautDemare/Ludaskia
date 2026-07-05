@@ -33,7 +33,6 @@ import {
 import {
 	getAllLessons,
 	getLessonsByCategory,
-	SUBJECTS,
 	CATEGORIES,
 	type LessonDef,
 	type SchoolLevel,
@@ -90,12 +89,6 @@ export function niveauProfilMatiere(profile: Profile, subject: SubjectId): Schoo
 		niveauDefautCatalogue(getAllLessons())
 	);
 }
-/* Leçons du niveau du profil (par matière) — périmètre de complétude, cohérent
-   avec lessonsNiveauActif() mais pour le profil consulté. */
-export function lessonsDuProfil(profile: Profile): LessonDef[] {
-	return getAllLessons().filter((l) => l.levels.includes(niveauProfilMatiere(profile, l.subject)));
-}
-
 /* ---------- État d'acquisition d'une notion (échelle 4 niveaux) ----------
    - acquis : étoilée (≥ 1 réussite sans faute) ;
    - à découvrir : jamais travaillée (aucune stat) ;
@@ -313,9 +306,4 @@ export function revoirActives(): LessonDef[] {
 		if (!etoilee && (pct == null || pct < SEUIL_REVOIR)) out.push(lesson);
 	}
 	return out;
-}
-
-/* Une matière (pour grouper les catégories à l'affichage). */
-export function libelleMatiere(subject: SubjectId): string {
-	return SUBJECTS.find((s) => s.id === subject)?.label ?? subject;
 }

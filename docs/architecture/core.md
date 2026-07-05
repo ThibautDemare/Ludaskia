@@ -12,16 +12,22 @@ propre doc de conception : `docs/design-orthographe.md`.
 ## Fondations
 
 - **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
-  (`uniqueComm/Exact`, `commKey`), `escapeHTML`, `fmt` (mm:ss), et `normalizeText`
-  (normalisation **partagée** des réponses texte : trim + espaces internes réduits + NFC).
+  (`uniqueComm/Exact`, `commKey`), réordonnancement pur d'un tableau d'index
+  (`insertAt`/`removeAt`/`moveAt`, #374 — utilisés par les tuiles d'orthographe
+  `ui/ortho-runner.ts`, logique agnostique du DOM), `escapeHTML`, `fmt` (mm:ss), et
+  `normalizeText` (normalisation **partagée** des réponses texte : trim + espaces
+  internes réduits + NFC).
   **RNG seedable (#41)** : tout l'aléa passe par `randFloat()` (source déroutable) ;
   `withSeed(seed, fn)` la rend déterministe le temps de `fn`, `randomSeed()` tire une
   graine. **Invariant** : les générateurs d'exercices ne doivent JAMAIS appeler
   `Math.random` directement (sinon le corrigé imprimable diverge de la feuille).
-- **`storage.ts`** — `lsGet/lsSet` (clés préfixées par profil), accès bruts
-  (`lsKeysRaw/lsRemoveRaw/lsSetRaw`, `appKeys`), `setActivePrefix`, constante
-  `PROFILES_KEY`, et `setOnDataWrite(fn)` (hook appelé après chaque écriture de
-  donnée de profil — branché depuis `main.ts`).
+- **`storage.ts`** — `lsGet/lsSet` (clés préfixées par profil), lecture d'une clé
+  réelle par UUID sans changer de profil actif (`lsGetRaw` — JSON tolérant ;
+  `lsGetItemRaw` — chaîne brute sans `JSON.parse`, pour recopier telle quelle une
+  valeur lors d'un export), accès bruts (`lsKeysRaw/lsRemoveRaw/lsSetRaw`,
+  `appKeys`), `setActivePrefix`, constante `PROFILES_KEY`, et `setOnDataWrite(fn)`
+  (hook appelé après chaque écriture de donnée de profil — branché depuis
+  `main.ts`).
 - **`profiles.ts`** — profils (UUID, préfixe, `updatedAt`), `initProfiles`,
   export/import. La **méta de profil** porte aussi `prefs` (a11y #42, dont
   `sansApparitionsSurprises` #331 — accesseur `apparitionsSurprises()`, vrai par défaut),

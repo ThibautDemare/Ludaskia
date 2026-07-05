@@ -92,6 +92,23 @@ export function uniqueExact(gen: () => Item, n: number, mt = 10000): Item[] {
 	}
 	return o;
 }
+/* Réordonnancement pur d'un tableau d'index (aucune mutation en place : renvoie
+   toujours un NOUVEAU tableau, index bornés). Utilisés par les tuiles d'orthographe
+   (ui/ortho-runner) où `assembled` — l'ordre des lettres posées — est la source de
+   vérité (cf. #68), mais logique agnostique et testable sans DOM (#374). */
+export function insertAt(arr: number[], pos: number, value: number): number[] {
+	const p = Math.max(0, Math.min(arr.length, pos));
+	return [...arr.slice(0, p), value, ...arr.slice(p)];
+}
+export function removeAt(arr: number[], pos: number): number[] {
+	if (pos < 0 || pos >= arr.length) return arr.slice();
+	return [...arr.slice(0, pos), ...arr.slice(pos + 1)];
+}
+export function moveAt(arr: number[], from: number, to: number): number[] {
+	if (from < 0 || from >= arr.length) return arr.slice();
+	return insertAt(removeAt(arr, from), to, arr[from]);
+}
+
 export const escapeHTML = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
 /* Normalisation d'une réponse TEXTE pour comparaison (conjugaison, orthographe…) :

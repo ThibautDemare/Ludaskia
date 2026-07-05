@@ -10,6 +10,7 @@ import { buildPrintableDOM } from '../core/lessons';
 import type { PrintScope } from '../core/lessons';
 import { streakSuffix } from '../core/progress';
 import { recordLessonRun } from '../core/lesson-run';
+import type { LessonRunOutcome } from '../core/lesson-run';
 import type { Recompense } from '../core/unlocks';
 import { stopChrono } from './chrono';
 import { finishResume } from './resume';
@@ -33,7 +34,7 @@ import { getLessonById } from '../core/catalog';
 /* ---------- Vérification (arrête le chrono) ---------- */
 export function verify() {
 	const ms = stopChrono();
-	const inputs = document.querySelectorAll('#sheets input.ans');
+	const inputs = document.querySelectorAll<HTMLInputElement>('#sheets input.ans');
 	const sessionItems = getRenderCtx().items;
 	const currentMode = getCurrentMode();
 	const currentLessonId = getCurrentLessonId();
@@ -42,7 +43,7 @@ export function verify() {
 	// heures vide = non répondu ; minutes vide = « 00 » (heure pile). checkItemAnswer
 	// reste inchangé (la fusion produit sa forme canonique texte).
 	const scored: ScoredInput[] = [];
-	inputs.forEach((inp: any) => {
+	inputs.forEach((inp) => {
 		let saisie = inp.value.trim();
 		const minFieldId = inp.dataset.minField;
 		if (minFieldId) {
@@ -64,8 +65,8 @@ export function verify() {
 	// Marquage DOM selon les verdicts : on efface l'ancien marquage puis on pose
 	// ✓ / ✗ (avec révélation de la bonne réponse à côté de l'erreur) ; un champ
 	// laissé vide reste neutre.
-	inputs.forEach((inp: any) => {
-		const mark: any = document.querySelector(`.mark[data-for="${inp.id}"]`);
+	inputs.forEach((inp) => {
+		const mark = document.querySelector<HTMLElement>(`.mark[data-for="${inp.id}"]`);
 		inp.classList.remove('correct', 'wrong');
 		if (mark) {
 			mark.className = 'mark';
@@ -97,9 +98,9 @@ export function verify() {
 	// Enregistrement de l'essai (une seule fois par session)
 	// → bilan complet/express : enregistré (régularité, trophées) mais non classé
 	// → leçon seule : étoile si sans-faute
-	let starInfo: any = null,
+	let starInfo: LessonRunOutcome['starInfo'] = null,
 		streakDays = 0,
-		goalRes: any = null,
+		goalRes: LessonRunOutcome['goalRes'] = null,
 		niveauGagne = 0, // > 0 si on vient d'atteindre un nouveau niveau
 		recompensesNiv: Recompense[] = [], // déblocages du(des) palier(s) franchi(s)
 		newTrophies: Trophy[] = [];
@@ -229,14 +230,15 @@ let printSnapshot: { sheets: string; banner: string | null } | null = null;
 export function initSession() {
 	// Saisie : modifier un champ efface son marquage. Pour l'heure (#88), éditer le
 	// champ des minutes (.heure-min) efface la marque du champ des heures qui lui est lié.
-	document.addEventListener('input', (e: any) => {
+	document.addEventListener('input', (e: Event) => {
+		const t = e.target as HTMLElement | null;
 		let marked: HTMLElement | null = null;
-		if (e.target.classList && e.target.classList.contains('ans')) marked = e.target;
-		else if (e.target.classList && e.target.classList.contains('heure-min'))
-			marked = e.target.closest('.heure-input')?.querySelector('.heure-h') ?? null;
+		if (t?.classList.contains('ans')) marked = t;
+		else if (t?.classList.contains('heure-min'))
+			marked = t.closest('.heure-input')?.querySelector<HTMLElement>('.heure-h') ?? null;
 		if (marked) {
 			marked.classList.remove('correct', 'wrong');
-			const mark: any = document.querySelector(`.mark[data-for="${marked.id}"]`);
+			const mark = document.querySelector<HTMLElement>(`.mark[data-for="${marked.id}"]`);
 			if (mark) {
 				mark.className = 'mark';
 				mark.textContent = '';
@@ -245,9 +247,9 @@ export function initSession() {
 	});
 	// Confort de saisie : Entrée passe au champ suivant ; sur le dernier, on vérifie.
 	// Le champ des minutes (.heure-min) entre dans la navigation (heures → minutes → …).
-	document.addEventListener('keydown', (e: any) => {
-		const t = e.target;
-		if (e.key !== 'Enter' || t.tagName !== 'INPUT') return;
+	document.addEventListener('keydown', (e: KeyboardEvent) => {
+		const t = e.target as HTMLInputElement | null;
+		if (e.key !== 'Enter' || !t || t.tagName !== 'INPUT') return;
 		if (
 			!t.classList.contains('ans') &&
 			!t.classList.contains('ans-free') &&
@@ -255,8 +257,8 @@ export function initSession() {
 		)
 			return;
 		e.preventDefault();
-		const all: any[] = [
-			...document.querySelectorAll(
+		const all = [
+			...document.querySelectorAll<HTMLInputElement>(
 				'#sheets input.ans, #sheets input.ans-free, #sheets input.heure-min',
 			),
 		];
@@ -265,17 +267,17 @@ export function initSession() {
 		else verify(); // dernier champ
 	});
 	// Grille posée (#97) : navigation entre cellules aux flèches ← →.
-	document.addEventListener('keydown', (e: any) => {
-		const t = e.target;
-		if (t.tagName !== 'INPUT' || !t.classList.contains('posee-cell')) return;
+	document.addEventListener('keydown', (e: KeyboardEvent) => {
+		const t = e.target as HTMLElement | null;
+		if (!t || t.tagName !== 'INPUT' || !t.classList.contains('posee-cell')) return;
 		if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
 		const grid = t.closest('.posee');
 		if (!grid) return;
-		const cells = [...grid.querySelectorAll('input.posee-cell')];
-		const j = cells.indexOf(t) + (e.key === 'ArrowLeft' ? -1 : 1);
+		const cells = [...grid.querySelectorAll<HTMLInputElement>('input.posee-cell')];
+		const j = cells.indexOf(t as HTMLInputElement) + (e.key === 'ArrowLeft' ? -1 : 1);
 		if (j >= 0 && j < cells.length) {
 			e.preventDefault();
-			(cells[j] as HTMLInputElement).focus();
+			cells[j].focus();
 		}
 	});
 	// Impression (#40) : beforeprint bascule #sheets sur la version imprimable, afterprint restaure.
@@ -300,10 +302,12 @@ export function initSession() {
 		if (printSnapshot.banner) {
 			const tmp = document.createElement('div');
 			tmp.innerHTML = printSnapshot.banner;
-			const restored: any = tmp.firstChild;
-			sheets.parentNode!.insertBefore(restored, sheets);
-			const redo = restored.querySelector && restored.querySelector('#btnRedo');
-			if (redo) redo.addEventListener('click', startRevision); // le listener est perdu via outerHTML
+			const restored = tmp.firstChild as HTMLElement | null;
+			if (restored) {
+				sheets.parentNode!.insertBefore(restored, sheets);
+				const redo = restored.querySelector('#btnRedo');
+				if (redo) redo.addEventListener('click', startRevision); // le listener est perdu via outerHTML
+			}
 		}
 		printSnapshot = null;
 	});

@@ -203,6 +203,20 @@ propre doc de conception : `docs/design-orthographe.md`.
   compris) en n'insérant que des séparateurs. On n'écrit jamais le caractère U+202F en clair dans
   le source (échappements `U+202F`/`U+00A0`). Réutilisé par `data/maths/numeration.ts` et
   `position.ts`.
+- **`signes.ts`** (#380) — module **pur** : signes de comparaison `< = >`
+  (`SIGNES_COMPARAISON`, type `SigneComparaison`), **`estSigneComparaison(answer)`** (une
+  réponse texte est-elle un signe ? — aiguille `items.ts` et `ui/sprint.ts`),
+  **`signeView(signe)`** (vue riche glyphe + mot-légende, mêmes classes `lqcm-sym-*` que
+  les boutons-symboles de ponctuation #204 — un seul langage visuel « symbole ambigu »)
+  et **`paveSignesHTML(forId)`** (pavé de 3 boutons `.pave-signe`, ordre FIGÉ « < = > »,
+  `screen-only`, jamais imprimé). `items.ts` (`renderItem`) pose un champ dédié
+  **`.ans-signe`** (`inputmode="none"` : pas de clavier virtuel, la frappe au clavier
+  physique reste possible) suivi du pavé quand la réponse d'un item texte est un signe ;
+  ni l'un ni l'autre à l'impression/corrigé. `ui/sprint.ts` consomme
+  `SIGNES_COMPARAISON`/`signeView` directement pour poser ces questions en **QCM à 3
+  choix** (tap direct) plutôt qu'en champ texte — le clavier virtuel n'expose pas ces
+  signes, et sous chrono un QCM valide plus vite qu'une saisie. Le comportement du pavé
+  (clic → remplissage, synchro `aria-pressed`) vit dans `ui/pave-signes.ts`.
 - **`aide.ts`** (#272) — **aide contextuelle** des runners à interaction non intuitive,
   module **pur** : porte le **contenu** des aides (`AIDES` : titre + étapes courtes ≤ 3 +
   voie alternative + filet anti-erreur) pour 5 types (`tuiles`, `ordre`, `tri`, `atelier`,

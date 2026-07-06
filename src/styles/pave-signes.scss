@@ -9,6 +9,10 @@
 
 .pave-signes {
 	display: flex;
+	/* Colonne étroite (bilan multi-leçons .bilan-grid, révision d'erreurs .grid.c3 :
+	   minmax(150px)) : les 3 boutons (~196px incompressibles, min-width) passent à
+	   la ligne (2+1) au lieu de déborder de la colonne. */
+	flex-wrap: wrap;
 	/* Espacement horizontal généreux : un mistap « < »/« > » n'est pas une faute
 	   de frappe mais une réponse inversée (avis spécialiste dys). */
 	gap: 14px;

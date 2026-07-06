@@ -416,6 +416,7 @@ function sprintNext() {
 		def: LessonDef,
 		choices: string[] | null,
 		choicesView: ChoiceView[] | undefined,
+		sym = false, // choix-symboles « < = > » (#380) : présentation glyphe + mot
 		key: string,
 		guard = 0;
 	do {
@@ -440,7 +441,8 @@ function sprintNext() {
 			// « Valider ». Même ordre figé que les tuiles et le pavé de la fiche.
 			if (q.kind === 'text' && estSigneComparaison(q.answer)) {
 				choices = [...SIGNES_COMPARAISON];
-				choicesView = choices.map(signeView);
+				choicesView = SIGNES_COMPARAISON.map(signeView);
+				sym = true;
 			} else {
 				choices = null;
 				choicesView = undefined;
@@ -455,7 +457,7 @@ function sprintNext() {
 	sprintCurrentDef = def;
 	const stage = document.getElementById('sprintStage');
 	if (!stage) return;
-	if (choices) renderSprintQcm(stage, def, q, choices, choicesView);
+	if (choices) renderSprintQcm(stage, def, q, choices, choicesView, sym);
 	else renderSprintTyped(stage, def, q);
 }
 
@@ -492,12 +494,12 @@ function renderSprintQcm(
 	q: Item,
 	choices: string[],
 	choicesView?: ChoiceView[],
+	// Choix-symboles « < = > » (#380) : même présentation glyphe + mot que les
+	// boutons de ponctuation (#204) — la classe conteneur porte la mise en forme.
+	sym = false,
 ) {
 	// `mathInline` : empile les fractions « num/den » de l'énoncé (barre horizontale).
 	const question = mathInline(q.text).replace('@', '<span class="sprint-blank">?</span>');
-	// Choix-symboles « < = > » (#380) : même présentation glyphe + mot que les
-	// boutons de ponctuation (#204) — la classe conteneur porte la mise en forme.
-	const sym = choices.every((c) => estSigneComparaison(c));
 	stage.innerHTML = `
     <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(def.label)}</span></div>
     ${figureBlock(q.figure)}

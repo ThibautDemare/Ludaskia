@@ -293,7 +293,7 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	const field = ctx.corrigeMode
 		? `<span class="ans-corrige ${extra}">${escapeHTML(String(it.answer))}</span>`
 		: signe
-			? `<input class="ans ans-signe ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" maxlength="1" aria-label="signe de comparaison"><span class="mark" data-for="${id}"></span>`
+			? `<input class="ans ans-signe ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" spellcheck="false" maxlength="1" aria-label="signe de comparaison"><span class="mark" data-for="${id}"></span>`
 			: it.kind === 'text'
 				? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
 				: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;

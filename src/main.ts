@@ -7,6 +7,7 @@ import './styles/themes.scss';
 import './styles/toolbar.scss';
 import './styles/home.scss';
 import './styles/sheets.scss';
+import './styles/pave-signes.scss';
 import './styles/gamification.scss';
 import './styles/lessons.scss';
 import './styles/figures.scss';
@@ -75,6 +76,7 @@ import { lancerTour, maybeOnboarding } from './ui/tour';
 import { initVersionCheck } from './ui/version-check';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 import { installGroupedNumberEcho } from './ui/grand-nombre-echo';
+import { installPaveSignes } from './ui/pave-signes';
 import { initEggs, mountForestEgg, recordCookieEgg } from './ui/eggs';
 import { fillFooterYear, initFooterCookie } from './ui/footer';
 
@@ -104,6 +106,9 @@ function wireDOM() {
 	// Grands nombres (#327) : écho groupé à la frappe des champs `.ans-grand`
 	// (« 1 400 000 »). Écouteur délégué, couvre les champs présents et futurs.
 	installGroupedNumberEcho();
+	// Pavé de signes « < = > » (#380) : un tap remplit le champ `.ans-signe` associé.
+	// Écouteurs délégués, couvrent les champs présents et futurs.
+	installPaveSignes();
 	// Easter eggs (#331) : câble les déclencheurs (chatouiller la mascotte, album).
 	// Le hotspot forêt est monté plus bas, APRÈS l'injection du SVG décoratif.
 	initEggs();

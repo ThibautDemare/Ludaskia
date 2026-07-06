@@ -6,6 +6,7 @@ import { escapeHTML, normalizeText } from './utils';
 import { ttsAttr } from './tts-text';
 import { stackFractions } from './fraction-text';
 import { wrapGrandsNombres, nettoyerSaisieNombre } from './nombres';
+import { estSigneComparaison, paveSignesHTML } from './signes';
 import type { ChoiceView } from './exercise';
 
 /* Opération posée (#97) : décrite par ses opérandes et son opérateur ; le rendu
@@ -279,25 +280,28 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	// Champ « grand nombre » : une réponse numérique à ≥ 5 chiffres (encadrement au
 	// million, « combien en tout », décomposition #240) déborde du champ standard (58px)
 	// → variante `.ans-grand` plus large, à chiffres tabulaires.
-	// Corrigé (#41) : la réponse écrite sur la ligne, à la place du champ vide. Pas de
-	// classe `.ans` (que l'impression rend transparente pour cacher la saisie) — on
-	// utilise `.ans-corrige`, visible. Pas de `mark` (le corrigé n'est pas corrigé).
-	// Champ « grand nombre » : une réponse numérique à ≥ 5 chiffres (encadrement au
-	// million, « combien en tout », décomposition #240) déborde du champ standard (58px)
-	// → variante `.ans-grand` plus large, à chiffres tabulaires.
 	const grand =
 		it.kind !== 'text' && Number.isFinite(Number(it.answer)) && Math.abs(Number(it.answer)) >= 10000
 			? ' ans-grand'
 			: '';
+	// Réponse = signe de comparaison (#380) : champ dédié `.ans-signe`, SANS clavier
+	// virtuel (`inputmode="none"` — le pavé de boutons le remplace au doigt ; la frappe
+	// au clavier PHYSIQUE reste possible, inputmode n'affecte pas le desktop). Pas
+	// d'attributs anti-suggestion (#139) : rien à « souffler » pour un signe. Le pavé
+	// est ajouté APRÈS l'énoncé (sa propre rangée), jamais à l'impression.
+	const signe = it.kind === 'text' && estSigneComparaison(it.answer);
 	const field = ctx.corrigeMode
 		? `<span class="ans-corrige ${extra}">${escapeHTML(String(it.answer))}</span>`
-		: it.kind === 'text'
-			? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
-			: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
+		: signe
+			? `<input class="ans ans-signe ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" maxlength="1" aria-label="signe de comparaison"><span class="mark" data-for="${id}"></span>`
+			: it.kind === 'text'
+				? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
+				: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
 	const place = texte.includes('@') ? texte : ctx.printMode ? `${texte} @` : texte;
-	return figureBlock(it.figure) + place.replace('@', field);
+	const pave = signe && !ctx.printMode && !ctx.corrigeMode ? paveSignesHTML(id) : '';
+	return figureBlock(it.figure) + place.replace('@', field) + pave;
 }
 export function gridHTML(items: Item[], cols: number, ctx: RenderContext) {
 	const cls = cols === 3 ? 'c3' : 'c4';

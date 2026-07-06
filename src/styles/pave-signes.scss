@@ -1,0 +1,100 @@
+/* ============================================================
+   Pavé de signes « < = > » (#380) — fiche/bilan en mode saisie.
+   Trois boutons co-localisés SOUS chaque énoncé de comparaison (jamais en
+   plein milieu de la phrase), qui remplissent le champ `.ans-signe` au tap.
+   Le glyphe + mot reprend les classes des boutons-symboles de ponctuation
+   (.lqcm-sym-glyph / .lqcm-sym-mot, lecon-mode.scss), recalibrées ici pour
+   un bouton compact. Comportement : ui/pave-signes.ts.
+   ============================================================ */
+
+.pave-signes {
+	display: flex;
+	/* Espacement horizontal généreux : un mistap « < »/« > » n'est pas une faute
+	   de frappe mais une réponse inversée (avis spécialiste dys). */
+	gap: 14px;
+	/* Dans une ligne-énoncé flex-wrap (.conj-op) : occupe sa PROPRE rangée sous
+	   la phrase — on ne casse pas la lecture « 3 456 _ 3 465 » (avis designer). */
+	flex-basis: 100%;
+	margin-top: 6px;
+}
+
+.pave-signe {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	/* Cible tactile ≥ 56 px : plus stricte que le seuil habituel de 44 px, car
+	   les deux chevrons voisins sont des réponses opposées. */
+	min-width: 56px;
+	min-height: 56px;
+	padding: 6px 10px;
+	font-family: var(--ui);
+	background: var(--paper);
+	border: 2px solid var(--accent-soft);
+	border-radius: 12px;
+	cursor: pointer;
+	transition:
+		border-color 0.12s ease,
+		background 0.12s ease,
+		transform 0.08s ease;
+}
+/* Glyphe/mot des QCM-symboles, recalibrés pour un bouton de 56 px (44 px de
+   glyphe déborderait) ; la graisse 800 du glyphe reste — le trait épais garde
+   l'asymétrie du chevron bien lisible (avis dys). */
+.pave-signe .lqcm-sym-glyph {
+	font-size: 26px;
+}
+.pave-signe .lqcm-sym-mot {
+	font-size: 11px;
+}
+.pave-signe:hover {
+	border-color: var(--accent);
+}
+/* Retour immédiat à l'appui (sans clavier, l'enfant perd le signal habituel
+   « quelque chose s'est passé ») ; neutralisé en animations réduites. */
+.pave-signe:active {
+	transform: scale(0.94);
+}
+.pave-signe:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+/* État « choisi » persistant : la réponse se lit SOUS LE DOIGT (bouton enfoncé)
+   en plus du champ rempli — compense l'absence de focus/curseur dans le champ
+   (avis dys). Bordure + fond, pas la couleur seule. */
+.pave-signe[aria-pressed='true'] {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+}
+html.anim-reduced .pave-signe {
+	transition: none;
+}
+html.anim-reduced .pave-signe:active {
+	transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.pave-signe {
+		transition: none;
+	}
+	.pave-signe:active {
+		transform: none;
+	}
+}
+
+/* Champ signe : un seul caractère — étroit, glyphe bien lisible. Le taper au
+   doigt est optionnel (le pavé s'en charge) ; au clavier physique il se remplit
+   comme n'importe quel champ. Déclaré APRÈS .ans (import après sheets.scss). */
+.ans-signe {
+	width: 44px;
+	font-size: 18px;
+	font-weight: 700;
+}
+
+/* Ligne-énoncé porteuse d'un pavé : bloc plus aéré, pour écarter les rangées de
+   boutons de deux énoncés voisins (mistap inter-lignes, avis dys). */
+.conj-op:has(.pave-signes),
+.bop:has(.pave-signes) {
+	padding-top: 10px;
+	padding-bottom: 14px;
+}

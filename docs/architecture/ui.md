@@ -351,6 +351,15 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   intercepte Retour arrière / Suppr quand ils tombent sur un séparateur pour effacer le **chiffre
   voisin** (sinon la touche paraît morte). N'agit que sur des entiers (laisse passer une virgule/un
   point). La **correction est inchangée** : `nettoyerSaisieNombre` neutralise déjà les séparateurs.
+- **`pave-signes.ts`** (#380) — deux écouteurs **délégués** posés une fois
+  (`installPaveSignes()`, appelé dans `wireDOM`, même modèle que `grand-nombre-echo.ts`)
+  pour le **pavé de boutons-signes** `< = >` (rendu dans `core/signes.ts`/`core/items.ts`,
+  champ `.ans-signe`) : un clic sur `.pave-signe` pose le signe dans le champ associé
+  (`data-for`) puis émet un `input` (bulle) pour rejouer le chemin normal d'effacement du
+  marquage de `session.ts` ; un second écouteur `input` synchronise `aria-pressed` des
+  trois boutons du pavé, y compris à la frappe au clavier physique. Le focus **reste sur
+  le bouton tapé** (pas de saut de vue ni d'ouverture de clavier virtuel). Styles dans
+  `styles/pave-signes.scss`.
 - Les runners d'**orthographe** (`ui/ortho-atelier.ts`, `ortho-liste.ts`, `ortho-revoir.ts`,
   `ortho-runner.ts`) et leur moteur (`core/orthographe/`) sont décrits dans
   `docs/design-orthographe.md`.

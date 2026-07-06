@@ -30,6 +30,12 @@ Le serveur de dev est démarré automatiquement par Playwright (`webServer` dans
   `watchErrors` (exceptions non rattrapées + `console.error` applicatifs).
 - Rester **ciblé et robuste** : peu de tests, des sélecteurs stables
   (`#btnVerify`, `.cat-empty`, `.lesson-item`…), pas de suite exhaustive fragile.
+- **Sprint déterministe** : le tirage du sprint est aléatoire par nature. Pour tester le
+  rendu d'un type de question précis sous sprint, passer par le **composeur de bilan
+  personnalisé** scopé à une seule leçon plutôt que mocker l'aléatoire : `bilan-cat-<id>`
+  → `#bcSelectNone` → cocher la leçon visée (`.bc-lesson-check[value=…]`) → mode `sprint`
+  (`.bc-mode-radio[value="sprint"]`) → `#bcRun` (#64, `ui/bilan.ts`). Le sprint ne tire
+  plus que sur cette leçon. Exemple : `e2e/pave-signes.spec.ts`.
 
 ## CI
 

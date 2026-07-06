@@ -116,6 +116,13 @@ propre doc de conception : `docs/design-orthographe.md`.
     primitive `ellipse` ajoutée).
   - **`fractions.ts`** — renderers de fractions (barre, bande, paire, somme,
     collection groupée) consommés par les leçons de numération/fractions.
+  - **`decimaux.ts`** — **`renderGrilleCentiemes(parts)`** (#247 — grille 10×10 des
+    centièmes : `parts` cases coloriées **contiguës, ligne par ligne** depuis le
+    haut-gauche (1 ligne pleine = 1 dixième) ; maillage des centièmes, séparateurs de
+    dixièmes plus marqués, cadre = l'unité, et **frontière `--accent`** entre zone
+    coloriée et vide — une FORME, pas la seule couleur, SC 1.4.1 ; le `<desc>` décrit la
+    structure, jamais le compte). Sans classe CSS dédiée (viewBox ~236, tient dans
+    `.figure-svg`).
   - **`symetrie.ts`** — **`renderSymJuger`**, **`renderSymMiroir(motif, axis)`** /
     **`renderSymImage(motif, axis, t)`** (#201 — symétrie axiale : figure devant
     un miroir, et scène-choix « figure + miroir + image » où l'image est un
@@ -132,9 +139,9 @@ propre doc de conception : `docs/design-orthographe.md`.
   - **`index.ts`** — point d'entrée : réexporte les primitives publiques et
     toutes les familles, et porte le dispatch par données **`FigureSpec`**
     (union `horloge | polygoneCote | quadrillage | figurePlane | sceneFigures |
-    cercle | solide | groupes | fraction* | symJuger | symMiroir | symImage |
-    angle` — le variant `figurePlane` porte le `codage?` ci-dessus — **point
-    d'extension**) / **`renderFigure(spec)`**.
+    cercle | solide | groupes | fraction* | grilleCentiemes | symJuger | symMiroir |
+    symImage | angle` — le variant `figurePlane` porte le `codage?` ci-dessus —
+    **point d'extension**) / **`renderFigure(spec)`**.
 
   On compose avec les primitives, on ajoute un `renderXxx` dans le module de sa
   famille (+ variant `FigureSpec` au besoin), jamais de SVG « à la main » dans

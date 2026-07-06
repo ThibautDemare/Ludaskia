@@ -123,6 +123,14 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'num-dec-comparer',
 			'num-dec-encadrer',
 			'num-dec-ranger',
+			// Écritures équivalentes (#247) : APRÈS la découverte des décimaux (#246, la
+			// numération de position décimale et la comparaison sont supposées acquises).
+			// Fraction décimale ↔ écriture à virgule (grille 10×10) → fractions décimales
+			// > 1 → décomposition (E + d/10 + c/100) → recomposition (somme → écriture).
+			'num-dec-grille',
+			'num-dec-frac-superieure',
+			'num-dec-decomposer',
+			'num-dec-recomposer',
 		],
 	},
 	francais: {

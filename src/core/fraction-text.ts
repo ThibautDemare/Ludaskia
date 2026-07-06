@@ -12,7 +12,8 @@ import { escapeHTML } from './utils';
 import type { ChoiceView } from './exercise';
 
 // Noms du dénominateur au SINGULIER : 2,3,4 sont spéciaux (demi/tiers/quart) ;
-// au-delà, ordinal en « -ième ». Couvre les dénominateurs du périmètre CE2.
+// au-delà, ordinal en « -ième ». Couvre les dénominateurs du périmètre CE2, plus
+// le CENTIÈME (#247, fractions décimales : n/100) — même mot que decimaux.ts (#246).
 const NOM_DEN: Record<number, string> = {
 	2: 'demi',
 	3: 'tiers',
@@ -22,6 +23,7 @@ const NOM_DEN: Record<number, string> = {
 	8: 'huitième',
 	10: 'dixième',
 	12: 'douzième',
+	100: 'centième',
 };
 const NOM_NUM = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf'];
 

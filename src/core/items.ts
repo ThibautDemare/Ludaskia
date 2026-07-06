@@ -245,6 +245,40 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 			`</span><span class="mark" data-for="${id}"></span>`;
 		return figureBlock(it.figure) + enonceTexte(it.text).replace('@', group);
 	}
+	const texte = enonceTexte(it.text);
+	// Fraction à trou (#247) : un « @ » AU NUMÉRATEUR d'une fraction (« @/10 » / « @/100 »)
+	// se rend EMPILÉ — homogène avec les fractions montrées de l'énoncé (déjà empilées par
+	// `stackFractions`). À l'écran : un champ noté (`.ans` + `.frac-num-input`) DANS le
+	// numérateur (réponse = UN chiffre, dixième/centième) + la marque ✓/✗ après la fraction.
+	// À l'impression : une case vide `.cloze-box` (comme les QCM imprimés) — ou le chiffre
+	// révélé en corrigé —, pour rester cohérent avec le terme voisin empilé. Seule la
+	// décomposition décimale (#247) produit ce motif ; le trou de la partie entière
+	// (« @ + … », sans « / ») passe par le champ générique ci-dessous.
+	const fracTrou = texte.match(/@\/(\d+)/);
+	if (fracTrou) {
+		let numHTML: string;
+		let markHTML = '';
+		if (ctx.corrigeMode) {
+			numHTML = `<span class="ans-corrige">${escapeHTML(String(it.answer))}</span>`;
+		} else if (ctx.printMode) {
+			numHTML = `<span class="cloze-box" aria-hidden="true"></span>`;
+		} else {
+			numHTML =
+				`<input class="ans frac-num-input ${extra}" id="${id}" data-answer="${ansAttr}"` +
+				`${lessonAttr(ctx)} inputmode="numeric" maxlength="1" autocomplete="off" aria-label="chiffre manquant">`;
+			markHTML = `<span class="mark" data-for="${id}"></span>`;
+		}
+		const fracHTML =
+			`<span class="frac"><span class="frac-num">${numHTML}</span>` +
+			`<span class="frac-den">${fracTrou[1]}</span></span>${markHTML}`;
+		return figureBlock(it.figure) + texte.replace(/@\/\d+/, fracHTML);
+	}
+	// Corrigé (#41) : la réponse écrite sur la ligne, à la place du champ vide. Pas de
+	// classe `.ans` (que l'impression rend transparente pour cacher la saisie) — on
+	// utilise `.ans-corrige`, visible. Pas de `mark` (le corrigé n'est pas corrigé).
+	// Champ « grand nombre » : une réponse numérique à ≥ 5 chiffres (encadrement au
+	// million, « combien en tout », décomposition #240) déborde du champ standard (58px)
+	// → variante `.ans-grand` plus large, à chiffres tabulaires.
 	// Corrigé (#41) : la réponse écrite sur la ligne, à la place du champ vide. Pas de
 	// classe `.ans` (que l'impression rend transparente pour cacher la saisie) — on
 	// utilise `.ans-corrige`, visible. Pas de `mark` (le corrigé n'est pas corrigé).
@@ -262,7 +296,6 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 			: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
-	const texte = enonceTexte(it.text);
 	const place = texte.includes('@') ? texte : ctx.printMode ? `${texte} @` : texte;
 	return figureBlock(it.figure) + place.replace('@', field);
 }

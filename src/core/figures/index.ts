@@ -49,6 +49,7 @@ export * from './horloge';
 export * from './polygones';
 export * from './solides';
 export * from './fractions';
+export * from './decimaux';
 export * from './symetrie';
 export * from './angles';
 export * from './groupes';
@@ -70,6 +71,7 @@ import {
 	renderFractionSomme,
 	renderFractionCollection,
 } from './fractions';
+import { renderGrilleCentiemes } from './decimaux';
 import {
 	renderSymJuger,
 	renderSymMiroir,
@@ -98,6 +100,7 @@ export type FigureSpec =
 	| { kind: 'fractionPaire'; haut: [number, number]; bas: [number, number] }
 	| { kind: 'fractionSomme'; a: [number, number]; b: [number, number] }
 	| { kind: 'fractionCollection'; num: number; den: number; parGroupe: number }
+	| { kind: 'grilleCentiemes'; parts: number }
 	| { kind: 'symJuger'; shape: SymShape; axis?: SymAxis }
 	| { kind: 'symMiroir'; motif: SymMotif; axis: 'v' | 'h' }
 	| { kind: 'symImage'; motif: SymMotif; axis: 'v' | 'h'; t: SymTransform }
@@ -131,6 +134,8 @@ export function renderFigure(spec: FigureSpec): string {
 			return renderFractionSomme(spec.a, spec.b);
 		case 'fractionCollection':
 			return renderFractionCollection(spec.num, spec.den, spec.parGroupe);
+		case 'grilleCentiemes':
+			return renderGrilleCentiemes(spec.parts);
 		case 'symJuger':
 			return renderSymJuger(spec.shape, spec.axis);
 		case 'symMiroir':

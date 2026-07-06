@@ -33,6 +33,7 @@ import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration
 export { answerEstNumerique };
 import { POSITION_LESSONS } from '../data/maths/position';
 import { DECIMAUX_LESSONS } from '../data/maths/decimaux';
+import { DECIMAUX_ECRITURES_LESSONS } from '../data/maths/decimaux-ecritures';
 import { FRACTIONS_LESSONS } from '../data/maths/fractions';
 import { POSEE_LESSONS } from '../data/maths/posee';
 import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';
@@ -427,6 +428,16 @@ const DECIMAUX_LESSONS_DEFS: LessonDef[] = toLessonDefs(DECIMAUX_LESSONS, {
 	rubrique: 'Nombres décimaux',
 });
 
+/* ---------- Numération — Nombres décimaux : écritures équivalentes (#247, CM1) ----------
+   Poursuit la rubrique « Nombres décimaux » (#246) : correspondance fraction décimale ↔
+   écriture à virgule (grille 10×10), fractions décimales > 1, décomposition. CM1-only. */
+const DECIMAUX_ECRITURES_LESSONS_DEFS: LessonDef[] = toLessonDefs(DECIMAUX_ECRITURES_LESSONS, {
+	subject: 'math',
+	category: 'math-numeration',
+	levels: ['cm1'],
+	rubrique: 'Nombres décimaux',
+});
+
 /* ---------- Catalogue des leçons « Numération » — Fractions (#200) ----------
    Programme cycle 2 rénové 2025 : fractions < 1, dénominateur ≤ 12. Sens, collection,
    bande graduée, égalités, comparaison et addition (même dénominateur). Regroupées
@@ -676,6 +687,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...MATH_LESSONS_CM1,
 	...NUMERATION_LESSONS_DEFS,
 	...DECIMAUX_LESSONS_DEFS,
+	...DECIMAUX_ECRITURES_LESSONS_DEFS,
 	...FRACTIONS_LESSONS_DEFS,
 	...CALCUL_LESSONS_DEFS,
 	...GRANDEURS_LESSONS,

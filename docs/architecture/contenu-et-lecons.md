@@ -437,6 +437,44 @@ pour ne pas « avaler » le zéro médian (« 3,04 » → « trois virgule zéro
 les montants en euros (`monnaie.ts`) restent lus nativement, exclus par ce même
 moteur. Branché au catalogue via `DECIMAUX_LESSONS_DEFS` (`core/catalog.ts`).
 
+#### `maths/decimaux-ecritures.ts` (#247, CM1) — rubrique « Nombres décimaux »
+
+4 leçons **CM1 only**, dans la **même rubrique** « Nombres décimaux » que #246 (juste
+après, dans `ordre-pedagogique.ts`) : elles relient les trois écritures d'un décimal —
+**fraction décimale** (n/10, n/100), **écriture à virgule** et **décomposition**. Même
+**borne dure** (centièmes au plus ; dénominateur ∈ {10, 100}).
+
+- **« Une fraction, une écriture à virgule »** (`num-dec-grille`) — QCM avec une
+  **figure grille 10×10** (`FigureSpec` `grilleCentiemes`, `core/figures/decimaux.ts`) :
+  `parts` cases coloriées ligne par ligne (1 ligne = 1 dixième). On demande la fraction
+  **ou** l'écriture à virgule. Porte le **piège du zéro** (4/100 → 0,04 et non 0,4) et la
+  **confusion de rang** (n/100 lu n/10).
+- **« Une fraction décimale plus grande que 1 »** (`num-dec-frac-superieure`) — QCM
+  symbolique dans les **deux sens** (42/10 ↔ 4,2 ; 342/100 ↔ 3,42) ; distracteur ciblé =
+  la confusion de rang (même numérateur sur l'autre dénominateur).
+- **« Je décompose un nombre décimal »** (`num-dec-decomposer`) — **saisie** « un terme
+  troué » sur le modèle de `decomposeFact` (`position.ts`) : `E,dc = E + d/10 + c/100`,
+  un rang troué (dixième/centième dominant, entier en appoint), réponse = un **entier**
+  (rôle du zéro inclus). Un trou de rang décimal (`@/10`, `@/100`) se rend **empilé** — le
+  champ noté (`.ans` + `.frac-num-input`) dans le numérateur, homogène avec les fractions
+  montrées ; cf. `renderItem` (`core/items.ts`) qui détecte ce motif et `.frac-num-input`
+  (`sprint.scss`). Le trou de la partie entière (`@ + …`) reste un `.ans` normal.
+- **« Je recompose un nombre décimal »** (`num-dec-recomposer`) — **QCM** réciproque
+  (programme §1.3, « … et réciproquement ») : on montre une somme de fractions décimales
+  (`42 + 4/10 + 8/100 = ?`, zéro de cadrage explicite `3 + 0/10 + 5/100`, ou 2 termes
+  faciles `3 + 5/100`) et on choisit l'écriture à virgule. Distracteurs ciblés : rang
+  inversé (42,84), numérateurs additionnés (4 + 8 → 42,12), un rang oublié (42,4 / 42,08).
+
+Comme #246, **aucun décimal n'est tapé** : les décimaux vivent en énoncé ou en choix de
+QCM (virgule maîtrisée), jamais comme réponse d'un item numérique — qui, révélé,
+s'afficherait avec un **point** (`String(answer)` d'un item `num`). Le sens « composer →
+écriture à virgule » est donc un **QCM** (leçon 4), symétrique de la leçon 3 « décomposer »
+(saisie). Correction : `checkAnswer` (QCM) et `checkNumerique` (décomposition), sans
+réécrire de correction ; les choix de QCM sont dédupliqués **par valeur** (jamais « 0,7 »
+et « 0,70 », ni une écriture égale à la réponse). Le mot « centième » est ajouté à
+`NOM_DEN` (`core/fraction-text.ts`) pour le rendu empilé et le TTS des fractions n/100.
+Branché via `DECIMAUX_ECRITURES_LESSONS_DEFS` (`core/catalog.ts`).
+
 #### `maths/fractions.ts` (#200) — rubrique « Fractions »
 
 6 leçons, fractions **toujours < 1** (numérateur < dénominateur), dénominateur ≤ 12,

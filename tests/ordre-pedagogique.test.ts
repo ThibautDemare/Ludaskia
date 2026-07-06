@@ -41,8 +41,9 @@ describe('core/ordre — helpers', () => {
 		expect(ordreLecons('math', 'ce2')).toEqual(ORDRE_LECONS.math.ce2 as string[]);
 		expect(ordreLecons('math', 'ce2')[0]).toBe('num-comparer');
 		// Math CM1 = numération « grands nombres » (#240) + calcul mental (#241) +
-		// géométrie (#242) + nombres décimaux (#246, 5 leçons) : 8 + 6 + 5 = 19 leçons.
-		expect(ordreLecons('math', 'cm1')).toHaveLength(19);
+		// géométrie (#242) + nombres décimaux (#246, 5 leçons + #247, 4 leçons) :
+		// 8 + 6 + 5 + 4 = 23 leçons.
+		expect(ordreLecons('math', 'cm1')).toHaveLength(23);
 		expect(ordreLecons('math', 'cm1')[0]).toBe('num-comparer');
 		// Français CM1 : 52 leçons verbe×temps + 3 QCM méta (#239) + 3 leçons de grammaire
 		// « Les phrases » (#245 : type, forme, transfo négative) + 2 leçons d'accords CM1
@@ -179,9 +180,10 @@ describe('leçon du jour', () => {
 	it('multi-niveau : en CM1, déroule les ordres CM1, file vide ⇒ on continue l’autre matière', () => {
 		setNiveauReference('cm1');
 		const seq = sequenceLeconDuJour();
-		// math CM1 = 19 leçons (numération #240 + calcul mental #241 + géométrie #242 +
-		// nombres décimaux #246), français CM1 = 64 (conjugaison #239 + grammaire « phrases »
-		// #245 + accords #243 + vocabulaire #244) → entrelacement 1:1, puis la matière la
+		// math CM1 = 23 leçons (numération #240 + calcul mental #241 + géométrie #242 +
+		// nombres décimaux #246 & écritures équivalentes #247), français CM1 = 64
+		// (conjugaison #239 + grammaire « phrases » #245 + accords #243 + vocabulaire #244)
+		// → entrelacement 1:1, puis la matière la
 		// plus longue (français) seule.
 		expect(seq).toHaveLength(M_CM1.length + F_CM1.length);
 		expect(seq[0].id).toBe(M_CM1[0]); // math.cm1[0] = num-comparer

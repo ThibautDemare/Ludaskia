@@ -25,6 +25,7 @@ import {
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { niveauLecon, niveauActifMatiere } from '../core/niveau-actif';
+import { estSigneComparaison, SIGNES_COMPARAISON, signeView } from '../core/signes';
 import { hasMode } from '../core/exercise';
 import type { ChoiceView } from '../core/exercise';
 import { mathInline } from '../core/fraction-text';
@@ -433,8 +434,17 @@ function sprintNext() {
 			choicesView = ex.type === 'qcm' ? ex.choicesView : undefined;
 		} else {
 			q = genLessonItem(def, level); // aiguille math (bilanQ) ; pose _lesson
-			choices = null;
-			choicesView = undefined;
+			// Réponse = signe de comparaison (#380) : posée en QCM à trois choix (tap
+			// direct, chemin déjà câblé) plutôt qu'en saisie — le clavier virtuel
+			// n'expose pas « < = > », et sous chrono le QCM valide au tap sans bouton
+			// « Valider ». Même ordre figé que les tuiles et le pavé de la fiche.
+			if (q.kind === 'text' && estSigneComparaison(q.answer)) {
+				choices = [...SIGNES_COMPARAISON];
+				choicesView = choices.map(signeView);
+			} else {
+				choices = null;
+				choicesView = undefined;
+			}
 		}
 		key = commKey(q.text);
 		guard++;
@@ -485,11 +495,14 @@ function renderSprintQcm(
 ) {
 	// `mathInline` : empile les fractions « num/den » de l'énoncé (barre horizontale).
 	const question = mathInline(q.text).replace('@', '<span class="sprint-blank">?</span>');
+	// Choix-symboles « < = > » (#380) : même présentation glyphe + mot que les
+	// boutons de ponctuation (#204) — la classe conteneur porte la mise en forme.
+	const sym = choices.every((c) => estSigneComparaison(c));
 	stage.innerHTML = `
     <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(def.label)}</span></div>
     ${figureBlock(q.figure)}
     <div class="sprint-q sprint-q-qcm">${question}</div>
-    <div class="sprint-choices">
+    <div class="sprint-choices${sym ? ' lqcm-choices-sym' : ''}">
       ${choices.map((c, i) => choiceButtonHTML(c, i, choicesView?.[i])).join('')}
     </div>`;
 	stage.querySelectorAll<HTMLButtonElement>('.sprint-choice').forEach((btn) => {

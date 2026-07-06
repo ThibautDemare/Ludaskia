@@ -152,7 +152,8 @@ export function verify() {
 		html += `<div class="rb-rank">${msg}</div>`;
 	}
 	if (newTrophies.length) {
-		html += `<div class="rb-trophies">🏆 Nouveau trophée : ${newTrophies.map((t) => `${t.icon} ${t.title}`).join(' · ')} !</div>`;
+		const libelle = newTrophies.length > 1 ? 'Nouveaux trophées' : 'Nouveau trophée';
+		html += `<div class="rb-trophies">🏆 ${libelle} : ${newTrophies.map((t) => `${t.icon} ${t.title}`).join(' · ')} !</div>`;
 	}
 	if (goalRes) {
 		if (goalRes.justDone)

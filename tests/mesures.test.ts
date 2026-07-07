@@ -40,11 +40,12 @@ describe('Mesures — niveaux exposés (#287)', () => {
 		}
 	});
 
-	it('CM1 prêt derrière `level` mais NON surfacé au catalogue (déploiement CM1 séparé)', () => {
+	it('CM1 surfacé au catalogue (#248 : conversions décimales + ordre math.cm1)', () => {
 		for (const def of MESURE_LESSONS) {
-			// Le moteur est calibré (params CM1 prêts), mais la leçon reste CE2 au
-			// catalogue tant que le cursus CM1 (ordre math.cm1) n'est pas construit.
-			expect(getLessonById(def.id)?.levels).toEqual(['ce2']);
+			// Les 4 conversions sont désormais disponibles CE2 + CM1 (le CM1 ajoute les
+			// résultats décimaux, #248) : niveaux dérivés du moteur calibré et insérés dans
+			// l'ordre pédagogique math.cm1.
+			expect(getLessonById(def.id)?.levels).toEqual(['ce2', 'cm1']);
 		}
 	});
 });

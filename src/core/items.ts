@@ -5,7 +5,7 @@
 import { escapeHTML, normalizeText } from './utils';
 import { ttsAttr } from './tts-text';
 import { stackFractions } from './fraction-text';
-import { wrapGrandsNombres, nettoyerSaisieNombre } from './nombres';
+import { wrapGrandsNombres, parseNombreFr } from './nombres';
 import { estSigneComparaison, paveSignesHTML } from './signes';
 import type { ChoiceView } from './exercise';
 
@@ -85,9 +85,12 @@ export function checkItemAnswer(it: Item, raw: string): boolean {
 		if (v === normalizeText(String(it.answer))) return true;
 		return (it.answers ?? []).some((a) => normalizeText(a) === v);
 	}
-	// Tolère les séparateurs de milliers d'un grand nombre recopié (« 1 002 050 »,
-	// #240) : on neutralise les espaces (normal/U+202F/U+00A0) avant comparaison.
-	return Number(nettoyerSaisieNombre(raw).replace(',', '.')) === Number(it.answer);
+	// Comparaison numérique tolérante (via parseNombreFr) appliquée SYMÉTRIQUEMENT à la
+	// saisie ET à la réponse stockée : neutralise les séparateurs de milliers d'un grand
+	// nombre recopié (« 1 002 050 », #240) et accepte la virgule décimale des deux côtés —
+	// une réponse stockée en virgule (« 4,56 », conversions décimales #248) se valide, et
+	// « 4,50 » == « 4,5 » découle de l'égalité numérique.
+	return parseNombreFr(raw) === parseNombreFr(String(it.answer));
 }
 
 export function add(a: number, b: number): Item {
@@ -280,8 +283,12 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	// Champ « grand nombre » : une réponse numérique à ≥ 5 chiffres (encadrement au
 	// million, « combien en tout », décomposition #240) déborde du champ standard (58px)
 	// → variante `.ans-grand` plus large, à chiffres tabulaires.
+	// `parseNombreFr` (et non `Number` brut) pour rester cohérent avec une réponse stockée en
+	// virgule : « 12345,67 » → 12345.67 (et non NaN), donc correctement classé « grand ». Sans
+	// effet sur les leçons actuelles (aucun décimal ≥ 10 000), mais évite un piège futur.
+	const valeurNum = parseNombreFr(String(it.answer));
 	const grand =
-		it.kind !== 'text' && Number.isFinite(Number(it.answer)) && Math.abs(Number(it.answer)) >= 10000
+		it.kind !== 'text' && Number.isFinite(valeurNum) && Math.abs(valeurNum) >= 10000
 			? ' ans-grand'
 			: '';
 	// Réponse = signe de comparaison (#380) : champ dédié `.ans-signe`, SANS clavier
@@ -290,13 +297,18 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	// d'attributs anti-suggestion (#139) : rien à « souffler » pour un signe. Le pavé
 	// est ajouté APRÈS l'énoncé (sa propre rangée), jamais à l'impression.
 	const signe = it.kind === 'text' && estSigneComparaison(it.answer);
+	// Réponse DÉCIMALE (virgule dans la valeur stockée, ex. « 4,56 » : conversions #248) →
+	// clavier `decimal` (qui propose la virgule/point) plutôt que `numeric` (chiffres seuls,
+	// pas de virgule sur mobile). N'affecte que les champs numériques dont la réponse a une
+	// virgule ; les entiers gardent `numeric`.
+	const inputMode = String(it.answer).includes(',') ? 'decimal' : 'numeric';
 	const field = ctx.corrigeMode
 		? `<span class="ans-corrige ${extra}">${escapeHTML(String(it.answer))}</span>`
 		: signe
 			? `<input class="ans ans-signe ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" spellcheck="false" maxlength="1" aria-label="signe de comparaison"><span class="mark" data-for="${id}"></span>`
 			: it.kind === 'text'
 				? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
-				: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
+				: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
 	const place = texte.includes('@') ? texte : ctx.printMode ? `${texte} @` : texte;

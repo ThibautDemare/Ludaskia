@@ -12,18 +12,19 @@
    ============================================================ */
 import type { Exercise } from './exercise';
 import { checkAnswer } from './exercise';
-import { nettoyerSaisieNombre } from './nombres';
+import { parseNombreFr } from './nombres';
 
 /** Correction NUMÉRIQUE : compare la saisie à `answer` comme des nombres.
  *  Tolère la virgule décimale française (« 1,5 » == « 1.5 ») et les espaces de
- *  groupement (« 1 002 » == « 1002 », via `nettoyerSaisieNombre`) pour ne pas
- *  pénaliser un enfant qui recopie un nombre groupé affiché. Plus permissif que
- *  l'ancien `.trim()` recopié partout (qui rejetait les espaces internes) :
- *  comportement unifié voulu (#346). Faux si l'exercice n'a pas de réponse unique
- *  (`answer`) ou si la saisie n'est pas un nombre. */
+ *  groupement (« 1 002 » == « 1002 ») des DEUX côtés (via `parseNombreFr`) pour ne
+ *  pas pénaliser un enfant qui recopie un nombre groupé affiché ET pour comparer
+ *  une réponse stockée en virgule (« 4,56 », conversions décimales #248). Plus
+ *  permissif que l'ancien `.trim()` recopié partout (qui rejetait les espaces
+ *  internes) : comportement unifié voulu (#346). Faux si l'exercice n'a pas de
+ *  réponse unique (`answer`) ou si la saisie n'est pas un nombre. */
 export function checkNumerique(exercise: Exercise, input: string): boolean {
 	if (!('answer' in exercise)) return false;
-	return Number(nettoyerSaisieNombre(input).replace(',', '.')) === Number(exercise.answer);
+	return parseNombreFr(input) === parseNombreFr(exercise.answer);
 }
 
 /** Correction HYBRIDE : numérique quand la réponse est un entier (côtés, angles,

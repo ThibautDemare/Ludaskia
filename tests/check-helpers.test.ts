@@ -33,6 +33,23 @@ describe('checkNumerique', () => {
 		expect(checkNumerique(txt('150'), '150,0')).toBe(true); // 150,0 == 150
 	});
 
+	it('normalise AUSSI la réponse stockée en virgule (#248, conversions décimales)', () => {
+		// Réponse STOCKÉE en virgule française (« 4,56 ») : sans normalisation des deux
+		// côtés, Number("4,56") = NaN → jamais validée. Elle doit se comparer correctement.
+		expect(checkNumerique(txt('4,56'), '4,56')).toBe(true);
+		expect(checkNumerique(txt('4,56'), '4.56')).toBe(true); // saisie au point tolérée
+		expect(checkNumerique(txt('4,5'), '4,50')).toBe(true); // « 4,5 » == « 4,50 »
+		expect(checkNumerique(txt('4,50'), '4,5')).toBe(true); // symétrique
+		expect(checkNumerique(txt('4,56'), '4,57')).toBe(false); // mauvaise valeur
+	});
+
+	it('non-régression : entiers, espaces de groupement, point stocké inchangés', () => {
+		expect(checkNumerique(txt('300'), '300')).toBe(true); // entier (conversions CE2)
+		expect(checkNumerique(txt('1002050'), '1 002 050')).toBe(true); // groupement toléré
+		expect(checkNumerique(txt('1.5'), '1.5')).toBe(true); // réponse stockée au point (legacy)
+		expect(checkNumerique(txt('300'), '301')).toBe(false);
+	});
+
 	it('égalité numérique, pas textuelle (zéros, décimales équivalentes)', () => {
 		expect(checkNumerique(txt('5'), '5,0')).toBe(true);
 		expect(checkNumerique(txt('5'), '05')).toBe(true);

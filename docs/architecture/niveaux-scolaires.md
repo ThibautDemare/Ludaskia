@@ -18,8 +18,9 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
 - **`level-combinators.ts`** (pur) — `calibrated(table, build)` : **un seul `id`**
   recalibré par une table de paramètres par niveau (génératif : numération…), expose
   ses `levels`; `bankByLevel(items)` : banque QCM tagguée par item, dérive l'union des
-  niveaux. Le catalogue dérive `LessonDef.levels` de ces combinateurs (numération) ou
-  de la donnée (conjugaison taggée).
+  niveaux. Le catalogue dérive `LessonDef.levels` de ces combinateurs (numération,
+  grandeurs & mesures — conversions CE2 + CM1, décimaux CM1 #248) ou de la donnée
+  (conjugaison taggée).
 - **`niveau-actif.ts`** — résout le niveau au **seam** profil/catalogue (lit la méta
   profil **directement** via `storage`, pour éviter un cycle `progress → niveau-actif →
   profiles`). `niveauActif()` (classe de référence), `niveauActifMatiere(subject)`

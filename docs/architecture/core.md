@@ -173,9 +173,12 @@ propre doc de conception : `docs/design-orthographe.md`.
   `src/data/maths/` (cercle, division, fractions, géométrie, géométrie-cm1, mesures,
   monnaie, périmètre, position, solides). Deux exports :
   **`checkNumerique(exercise, input)`** compare la saisie à `answer` comme des nombres
-  (tolère la virgule décimale française et les espaces de groupement via
-  `nettoyerSaisieNombre` ; faux si l'exercice n'a pas de réponse unique ou si la saisie
-  n'est pas un nombre) ; **`checkNumeriqueOuTexte(exercise, input)`** est numérique quand
+  via **`parseNombreFr`** (`nombres.ts` : tolère la virgule décimale française et les
+  espaces de groupement) appliqué **symétriquement des deux côtés** — saisie ET
+  `answer` — ce qui valide aussi bien une réponse stockée en virgule (conversions
+  décimales CM1 `mesures.ts`, « 4,56 », #248) qu'une saisie groupée ; faux si
+  l'exercice n'a pas de réponse unique ou si la saisie n'est pas un nombre.
+  **`checkNumeriqueOuTexte(exercise, input)`** est numérique quand
   `answer` est un entier (côtés, angles, comptages), sinon délègue à `checkAnswer`
   (`exercise.ts`) pour la correction texte normalisée — couvre les leçons de géométrie
   dont la réponse est tantôt un nombre, tantôt un nom. `numeration.ts` conserve son check
@@ -192,7 +195,12 @@ propre doc de conception : `docs/design-orthographe.md`.
   (≥ 10 000)** : en deçà (≤ 9 999, plage CE2), le nombre reste sans séparateur, l'affichage
   CE2 est inchangé. **`nettoyerSaisieNombre`** retire tous les
   espaces d'une saisie (normal, U+202F, U+00A0) **sans** toucher la virgule : un enfant qui
-  recopie « 1 002 050 » n'est pas pénalisé. **`wrapGrandsNombres(escaped)`** enveloppe les
+  recopie « 1 002 050 » n'est pas pénalisé. **`parseNombreFr(valeur)`** (#248) enchaîne
+  `nettoyerSaisieNombre` puis convertit la virgule décimale en point avant `Number(...)` —
+  utilisée **symétriquement** sur la saisie ET sur la réponse stockée par
+  `checkNumerique`/`checkItemAnswer` (cf. `check-helpers.ts` ci-dessus), pour valider une
+  réponse stockée en écriture à virgule (conversions décimales CM1 `mesures.ts`, « 4,56 »)
+  sans jamais passer par un `Number("4,56")` qui vaudrait `NaN`. **`wrapGrandsNombres(escaped)`** enveloppe les
   nombres groupés (≥ 10 000) d'un texte **déjà échappé** dans `<span class="bignum">` (rendu
   identique partout : `tabular-nums`, `nowrap`, `clamp` — cf. `styles/lessons.scss`) ;
   appelé par `items.ts → enonceTexte`, donc partagé par tous les rendus (fiche, sprint,

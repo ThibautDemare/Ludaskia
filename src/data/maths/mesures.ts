@@ -23,6 +23,12 @@
      uniquement sur des multiples EXACTS du facteur → réponse entière.
    - pondération ~60/40 en faveur du sens grande→petite (× plus sûr que ÷) ;
      le trou alterne à gauche/à droite. L'unité attendue est collée au champ.
+
+   Décimaux CM1 (#248, programme 2025 §1.3, AU PLUS 2 chiffres après la virgule) :
+   les paires ×10 et ×100 CONCERNÉES portent un flag `decimal` (cf. `Conversion`) qui
+   ouvre une génération décimale bornée. Le CE2 reste STRICTEMENT entier (aucun flag).
+   La réponse décimale est stockée en écriture à VIRGULE (« 4,56 ») — la comparaison
+   numérique (checkNumerique / checkItemAnswer) normalise virgule/point des deux côtés.
    ============================================================ */
 import type { Exercise, ExerciseType } from '../../core/exercise';
 import type { LessonInput } from '../_shared';
@@ -37,6 +43,20 @@ interface Conversion {
 	small: string; // unité petite (ex. 'cm', 'm', 'g', 'cL', 'min')
 	factor: number; // 1 big = factor small
 	maxBig?: number; // valeur max côté grande unité (défaut 9)
+	// Ouverture au DÉCIMAL (#248, CM1 uniquement). Absent → conversions ENTIÈRES : tout
+	// le CE2, les paires ×1000 (résultat < 1 sur > 2 décimales → hors programme) et les
+	// durées (×60). Sinon la paire produit des résultats décimaux à AU PLUS 2 chiffres
+	// après la virgule (programme 2025 §1.3, borne DURE) :
+	//   - 'deux-sens'   : décimal dans les DEUX sens (paires ×10, 1 décimale) —
+	//                     « 4,5 cm = 45 mm » et « 45 mm = 4,5 cm » ;
+	//   - 'vers-grande' : décimal SEULEMENT petite→grande (paires ×100, 2 décimales),
+	//                     avec résultat ≥ 1 dans la grande unité (« 456 cm = 4,56 m »,
+	//                     jamais « 3 cm = 0,03 m »). Le sens grande→petite reste ENTIER
+	//                     (« 3 m = 300 cm », conservé). Le grande→petite DÉCIMAL
+	//                     (« 4,56 m = @ cm ») est DIFFÉRÉ (jugement didactique du
+	//                     pédagogue : contracter petite→grande avant d'étendre l'écriture
+	//                     décimale d'une grande unité vers la petite).
+	decimal?: 'deux-sens' | 'vers-grande';
 }
 
 /* Un « fait » mémorisé (toujours dans le sens grande→petite), pour les repères
@@ -53,18 +73,57 @@ interface MesureConfig {
 }
 
 /* Construit la question texte (avec le `@` = emplacement du champ) en plaçant
-   le trou à gauche ou à droite, l'unité attendue restant collée au champ. */
-function buildQuestion(knownValue: number, knownUnit: string, answerUnit: string): string {
+   le trou à gauche ou à droite, l'unité attendue restant collée au champ. La
+   valeur connue est déjà une chaîne prête à afficher (un décimal est passé en
+   écriture à VIRGULE — jamais de point ; un entier se coerce sans point). */
+function buildQuestion(knownValue: number | string, knownUnit: string, answerUnit: string): string {
 	const known = `${knownValue} ${knownUnit}`;
 	// 50/50 : « known = @ unité » ou « @ unité = known ».
 	return rnd(0, 1) === 0 ? `${known} = @ ${answerUnit}` : `@ ${answerUnit} = ${known}`;
+}
+
+/* Écrit un décimal « entier,frac » à la FRANÇAISE (virgule, jamais de point). Le
+   nombre est construit à partir de ses parties ENTIÈRES (aucun calcul flottant →
+   aucun artefact « 4.5600000001 »), sans zéro final inutile (« 4,50 » → « 4,5 »).
+   `decimales` = largeur de la partie fractionnaire (1 pour ×10, 2 pour ×100). */
+function ecritureDecimale(entier: number, frac: number, decimales: number): string {
+	const fracStr = String(frac).padStart(decimales, '0').replace(/0+$/, '');
+	return fracStr === '' ? String(entier) : `${entier},${fracStr}`;
 }
 
 function generateConversion(conversions: Conversion[]): Exercise {
 	const c = choice(conversions);
 	const maxBig = c.maxBig ?? 9;
 	// ~60 % grande→petite (×, plus intuitif), ~40 % petite→grande (÷, exact).
-	if (rnd(1, 10) <= 6) {
+	const versPetite = rnd(1, 10) <= 6;
+	if (c.decimal) {
+		// Décimales dictées par le facteur (×10 → 1, ×100 → 2 ; seules ces paires portent
+		// un flag décimal, donc `factor` = 10^decimales) : « 10 » → 1, « 100 » → 2.
+		const decimales = String(c.factor).length - 1;
+		// Paires ×100 : le sens grande→petite reste ENTIER (« 3 m = 300 cm »).
+		if (versPetite && c.decimal === 'vers-grande') {
+			const v = rnd(1, maxBig);
+			return {
+				type: 'text',
+				question: buildQuestion(v, c.big, c.small),
+				answer: String(v * c.factor),
+			};
+		}
+		// Génère depuis le côté DÉCIMAL (grande unité) : partie entière ≥ 1 + partie
+		// fractionnaire NON nulle → au plus `decimales` chiffres après la virgule, résultat
+		// ≥ 1, et petite unité ENTIÈRE (petite = entier·facteur + frac, car facteur = 10^décimales).
+		const entier = rnd(1, maxBig);
+		const frac = rnd(1, c.factor - 1); // 1..9 (×10) ou 1..99 (×100), jamais 0
+		const grande = ecritureDecimale(entier, frac, decimales);
+		const petite = entier * c.factor + frac; // entier exact (aucun flottant)
+		return versPetite
+			? // grande→petite : grande décimale connue, petite entière attendue (paires ×10).
+				{ type: 'text', question: buildQuestion(grande, c.big, c.small), answer: String(petite) }
+			: // petite→grande : petite entière connue, grande décimale attendue.
+				{ type: 'text', question: buildQuestion(petite, c.small, c.big), answer: grande };
+	}
+	// ---- Conversions ENTIÈRES (comportement CE2 inchangé) ----
+	if (versPetite) {
 		const v = rnd(1, maxBig); // valeur dans la grande unité
 		return {
 			type: 'text',
@@ -73,11 +132,7 @@ function generateConversion(conversions: Conversion[]): Exercise {
 		};
 	}
 	const k = rnd(1, maxBig); // sens inverse : on part d'un multiple EXACT du facteur
-	return {
-		type: 'text',
-		question: buildQuestion(k * c.factor, c.small, c.big),
-		answer: String(k),
-	};
+	return { type: 'text', question: buildQuestion(k * c.factor, c.small, c.big), answer: String(k) };
 }
 
 /* Fabrique l'ExerciseType d'une leçon de conversion (un jeu de paramètres = un
@@ -132,15 +187,18 @@ export const MESURE_LESSONS: LessonInput[] = [
 						{ big: 'm', small: 'mm', factor: 1000 },
 					],
 				},
-				// CM1 : mêmes unités en 1–20, + le dm (m↔dm, dm↔cm).
+				// CM1 : mêmes unités en 1–20, + le dm (m↔dm, dm↔cm). Décimaux (#248) : les
+				// paires ×10 (cm↔mm, dm↔cm, m↔dm) en décimal dans les deux sens ; m↔cm (×100)
+				// en décimal petite→grande (« 456 cm = 4,56 m »), l'entier grande→petite gardé ;
+				// km↔m et m↔mm (×1000) restent ENTIÈRES (décimal < 1 hors programme).
 				cm1: {
 					conversions: [
-						{ big: 'm', small: 'cm', factor: 100, maxBig: 20 },
+						{ big: 'm', small: 'cm', factor: 100, maxBig: 20, decimal: 'vers-grande' },
 						{ big: 'km', small: 'm', factor: 1000, maxBig: 20 },
-						{ big: 'cm', small: 'mm', factor: 10, maxBig: 20 },
+						{ big: 'cm', small: 'mm', factor: 10, maxBig: 20, decimal: 'deux-sens' },
 						{ big: 'm', small: 'mm', factor: 1000, maxBig: 20 },
-						{ big: 'dm', small: 'cm', factor: 10, maxBig: 20 },
-						{ big: 'm', small: 'dm', factor: 10, maxBig: 20 },
+						{ big: 'dm', small: 'cm', factor: 10, maxBig: 20, decimal: 'deux-sens' },
+						{ big: 'm', small: 'dm', factor: 10, maxBig: 20, decimal: 'deux-sens' },
 					],
 				},
 			},
@@ -153,13 +211,20 @@ export const MESURE_LESSONS: LessonInput[] = [
 		exerciseType: calibrated<MesureConfig>(
 			{
 				ce2: { conversions: [{ big: 'kg', small: 'g', factor: 1000 }] },
-				// CM1 : 1–20, + g↔mg, + le demi-kilo (500 g).
+				// CM1 : 1–20, + g↔mg. Aucune paire ×10/×100 n'existe en masse → pas de
+				// conversion décimale générique ; on ancre plutôt des REPÈRES décimaux mémorisés
+				// (#248) via les facts : le demi-kilo en toutes lettres + les écritures à virgule
+				// 0,5 kg = 500 g et 0,25 kg = 250 g (correspondance décimal ↔ grammes).
 				cm1: {
 					conversions: [
 						{ big: 'kg', small: 'g', factor: 1000, maxBig: 20 },
 						{ big: 'g', small: 'mg', factor: 1000, maxBig: 20 },
 					],
-					facts: [{ left: 'un demi-kilogramme', answerUnit: 'g', answer: 500 }],
+					facts: [
+						{ left: 'un demi-kilogramme', answerUnit: 'g', answer: 500 },
+						{ left: '0,5 kg', answerUnit: 'g', answer: 500 },
+						{ left: '0,25 kg', answerUnit: 'g', answer: 250 },
+					],
 				},
 			},
 			conversionType,
@@ -177,11 +242,13 @@ export const MESURE_LESSONS: LessonInput[] = [
 						{ big: 'L', small: 'dL', factor: 10, maxBig: 12 },
 					],
 				},
-				// CM1 : 1–20, + L↔mL (×1000, franchit le millier).
+				// CM1 : 1–20, + L↔mL (×1000, franchit le millier). Décimaux (#248) : L↔dL (×10)
+				// en décimal dans les deux sens ; L↔cL (×100) en décimal petite→grande
+				// (« 456 cL = 4,56 L »), l'entier grande→petite gardé ; L↔mL (×1000) ENTIÈRE.
 				cm1: {
 					conversions: [
-						{ big: 'L', small: 'cL', factor: 100, maxBig: 20 },
-						{ big: 'L', small: 'dL', factor: 10, maxBig: 20 },
+						{ big: 'L', small: 'cL', factor: 100, maxBig: 20, decimal: 'vers-grande' },
+						{ big: 'L', small: 'dL', factor: 10, maxBig: 20, decimal: 'deux-sens' },
 						{ big: 'L', small: 'mL', factor: 1000, maxBig: 20 },
 					],
 				},

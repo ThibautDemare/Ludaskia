@@ -391,13 +391,22 @@ const MATH_LESSONS_CM1: LessonDef[] = [
    Moteur moderne (ExerciseType), hors du pipeline bilanQ : le rendu passe par
    genLessonItem (item numérique) et buildLessonFiche (liste générique).
    Conversions d'unités (#89) + monnaie (#96). */
-const GRANDEURS_LESSONS: LessonDef[] = toLessonDefs(
-	[...MESURE_LESSONS, ...MONNAIE_LESSONS, ...HEURE_LESSONS, ...PERIMETRE_LESSONS],
-	// CM1 prêt derrière `level` (générateurs `calibrated`, #287) mais PAS encore
-	// surfacé : le cursus CM1 (ordre pédagogique math.cm1) relève du déploiement CM1.
-	// → on garde `levels: ['ce2']` (défaut), sans lire `exerciseType.levels`.
-	{ subject: 'math', category: 'math-grandeurs-mesures' },
-);
+const GRANDEURS_LESSONS: LessonDef[] = [
+	// Conversions d'unités (#89) : niveaux DÉRIVÉS du moteur calibré (#225/#287). Le CM1
+	// est désormais surfacé (#248 : les conversions y ajoutent les résultats décimaux, plus
+	// les unités CM1 déjà calibrées) → CE2 + CM1. Cf. ordre pédagogique math.cm1 (#208).
+	...toLessonDefs(MESURE_LESSONS, {
+		subject: 'math',
+		category: 'math-grandeurs-mesures',
+		levels: (d) => d.exerciseType.levels ?? ['ce2'],
+	}),
+	// Monnaie (#96), lecture de l'heure (#88) et périmètre : CM1 non surfacé (relève du
+	// déploiement CM1 de ces notions) → `levels: ['ce2']` (défaut).
+	...toLessonDefs([...MONNAIE_LESSONS, ...HEURE_LESSONS, ...PERIMETRE_LESSONS], {
+		subject: 'math',
+		category: 'math-grandeurs-mesures',
+	}),
+];
 
 /* ---------- Catalogue des leçons « Numération » (#98, #94) ----------
    Situer un nombre (#98 : comparer/encadrer/intercaler, modes saisie/tuiles) et

@@ -432,9 +432,11 @@ jamais produire de millième (réservé au CM2).
   motrice nouvelle ; distracteurs = l'ordre « naïf » (décimales lues comme un
   entier) et l'ordre inverse du bon.
 
-Aucune leçon ne fait **taper** un décimal (réponse = signe / chiffre / entier) : la
-correction réutilise `checkNumerique`/`checkNumeriqueOuTexte` (#346, cf. [Logique
-pure](core.md)) sans toucher `core/exercise.ts`. La lecture TTS d'un décimal épelle
+Aucune leçon de #246 ne fait **taper** un décimal (réponse = signe / chiffre /
+entier) : la correction réutilise `checkNumerique`/`checkNumeriqueOuTexte` (#346,
+cf. [Logique pure](core.md)) sans toucher `core/exercise.ts`. (Ce n'est plus vrai de
+tout le multi-niveaux CM1 : les conversions `maths/mesures.ts` font taper une
+réponse décimale, « 4,56 » — #248, cf. plus bas.) La lecture TTS d'un décimal épelle
 sa partie décimale **chiffre à chiffre** (`epelerDecimales`, `core/tts-text.ts`)
 pour ne pas « avaler » le zéro médian (« 3,04 » → « trois virgule zéro quatre ») ;
 les montants en euros (`monnaie.ts`) restent lus nativement, exclus par ce même
@@ -540,17 +542,37 @@ Catégorie `math-calcul-mental`. Trois origines :
 
 ### Grandeurs et mesures
 
-#### `maths/mesures.ts` (#89)
+#### `maths/mesures.ts` (#89, multi-niveaux #287, décimaux CM1 #248)
 
 moteur de **conversions d'unités** partagé par
-4 leçons de « Grandeurs et mesures » — `mes-longueurs` (m↔cm, km↔m, cm↔mm, m↔mm),
-`mes-masses` (kg↔g), `mes-contenances` (L↔cL, L↔dL), `mes-durees` (h↔min + fractions
-d'heure). `conversionType(config)` fabrique un `ExerciseType` **mono-mode** dont
-`generate()` produit une question texte avec `@` (emplacement du champ) et une
-réponse **numérique** ; `MESURE_LESSONS` liste les descripteurs. Calibrage CE2
-(avis pédagogique) : facteur grande→petite ≤ 9, sens inverse sur multiples
-exacts (réponse entière), pondération ~60/40 vers le sens ×, mL (L↔mL) et
+4 leçons de « Grandeurs et mesures » — `mes-longueurs`, `mes-masses`, `mes-contenances`,
+`mes-durees` (h↔min + fractions d'heure). `conversionType(config)` fabrique un
+`ExerciseType` **mono-mode** dont `generate()` produit une question texte avec `@`
+(emplacement du champ) et une réponse **numérique** ; `MESURE_LESSONS` liste les
+descripteurs, chacun `calibrated` { ce2, cm1 } (niveaux dérivés au catalogue,
+`core/catalog.ts`). Calibrage CE2 (avis pédagogique, **inchangé** par #248) :
+facteur grande→petite ≤ 9, sens inverse sur multiples exacts (réponse entière),
+pondération ~60/40 vers le sens ×, réponses **toujours entières** ; mL (L↔mL) et
 conversion min↔s écartés (CM1 / surcharge base 60).
+
+Le CM1 élargit les plages (1–20) et ajoute des unités déjà au programme (dm, g↔mg,
+min↔s…) et, depuis #248 (programme 2025 §1.3, au plus 2 chiffres après la virgule),
+ouvre des **résultats décimaux** sur les paires ×10 et ×100 concernées : chaque
+`Conversion` porte un flag optionnel `decimal?: 'deux-sens' | 'vers-grande'` —
+`'deux-sens'` pour les paires ×10 (cm↔mm, dm↔cm, m↔dm, L↔dL, décimal dans les deux
+sens, 1 décimale), `'vers-grande'` pour les paires ×100 (m↔cm, L↔cL, décimal
+seulement petite→grande — « 456 cm = 4,56 m » — le sens grande→petite restant
+entier, « 3 m = 300 cm »). Les paires ×1000 et les durées restent entières (décimal
+< 1 hors programme). Le helper `ecritureDecimale` construit l'écriture à virgule à
+partir des parties entière/fractionnaire (aucun calcul flottant, pas de zéro final
+inutile) ; la réponse décimale est stockée en écriture française (« 4,56 »),
+comparée via `checkNumerique`/`parseNombreFr` (cf. [Logique pure](core.md)). Les
+masses n'ont pas de paire ×10/×100 : le CM1 y ancre plutôt des **repères décimaux
+mémorisés** (0,5 kg = 500 g, 0,25 kg = 250 g) via `facts`, plutôt qu'une génération
+décimale générique. Les 4 leçons, jusqu'ici CE2-only au catalogue, sont désormais
+surfacées au CM1 et insérées dans `ORDRE_LECONS.math.cm1` après le bloc décimaux
+(#246/#247) — transfert pédagogique volontaire (écriture à virgule et valeur de
+position décimale tout juste stabilisées).
 
 #### `maths/monnaie.ts` (#96)
 

@@ -48,6 +48,17 @@ export function nettoyerSaisieNombre(saisie: string): string {
 	return saisie.replace(/[\s\u202F\u00A0]/g, '');
 }
 
+/** Parse un nombre en tolérant les conventions FRANÇAISES : virgule décimale
+ *  (« 1,5 » → 1.5) et espaces de groupement (« 1 002 » → 1002). Utilisé
+ *  SYMÉTRIQUEMENT sur la saisie ET sur la réponse stockée par la correction
+ *  numérique (checkNumerique, checkItemAnswer) : une réponse stockée en virgule
+ *  (« 4,56 », conversions décimales #248) se compare correctement — sans ça,
+ *  `Number("4,56")` = NaN → jamais validée — tout en gardant l'AFFICHAGE du
+ *  corrigé en virgule française. Les entiers sont inchangés (« 300 » → 300). */
+export function parseNombreFr(valeur: string): number {
+	return Number(nettoyerSaisieNombre(valeur).replace(',', '.'));
+}
+
 /* Un nombre GROUPÉ (≥ 10 000) repéré par sa séquence « classes de 3 » séparées par
    l'espace fine insécable U+202F — caractère qu'on n'introduit QUE via formatNombre,
    donc marqueur fiable et sans effet de bord ailleurs dans un énoncé. */

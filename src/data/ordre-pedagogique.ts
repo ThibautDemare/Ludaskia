@@ -131,6 +131,18 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'num-dec-frac-superieure',
 			'num-dec-decomposer',
 			'num-dec-recomposer',
+			// Grandeurs & mesures — conversions (#89) au CM1 avec résultats DÉCIMAUX (#248).
+			// Placées APRÈS le bloc des décimaux (position validée par le pédagogue) : les
+			// conversions décimales (« 456 cm = 4,56 m ») réinvestissent l'écriture à virgule et
+			// la valeur de position décimale, tout juste stabilisées en amont — transfert proche.
+			// L'ordre ne verrouille pas l'accès (les leçons de mesures vivent dans leur propre
+			// catégorie, librement ouvrables) : il ne pilote que le tri d'affichage et la « leçon
+			// du jour ». Ordre interne repris du CE2 : longueurs → masses → contenances → durées
+			// (durées en clôture = contre-exemple utile, elles n'ouvrent jamais le décimal).
+			'mes-longueurs',
+			'mes-masses',
+			'mes-contenances',
+			'mes-durees',
 		],
 	},
 	francais: {

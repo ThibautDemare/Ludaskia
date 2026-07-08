@@ -9,6 +9,7 @@
    transforme cette clé EN AFFICHAGE empilé au moment du rendu.
    ============================================================ */
 import { escapeHTML } from './utils';
+import { nombreEnMots } from './nombres';
 import type { ChoiceView } from './exercise';
 
 // Noms du dénominateur au SINGULIER : 2,3,4 sont spéciaux (demi/tiers/quart) ;
@@ -25,7 +26,6 @@ const NOM_DEN: Record<number, string> = {
 	12: 'douzième',
 	100: 'centième',
 };
-const NOM_NUM = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf'];
 
 /** Nom du dénominateur (« demi », « tiers », « cinquième »…), au singulier ou au pluriel.
     « tiers » reste invariable, « quart » → « quarts », « cinquième » → « cinquièmes ». */
@@ -40,7 +40,7 @@ export function nomDenominateur(den: number, pluriel = false): string {
     reste invariable, « quart » → « quarts », « cinquième » → « cinquièmes »). */
 export function nomFraction(num: number, den: number): string {
 	if (num === 1) return `un ${nomDenominateur(den)}`;
-	return `${NOM_NUM[num] ?? num} ${nomDenominateur(den, true)}`;
+	return `${nombreEnMots(num)} ${nomDenominateur(den, true)}`;
 }
 
 /** Fraction empilée (barre horizontale) accessible : `role="img"` + `aria-label`

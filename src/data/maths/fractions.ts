@@ -472,11 +472,12 @@ function genSomme(dens: number[]): Exercise {
    « plusieurs unités » deviennent illisibles (avis pedagogue-primaire + designer #249).
    Plafond figure : ≤ 2 unités entières (num < 3·den) → barre empilée ≤ 3 barres. ============================================================ */
 
-// Fraction impropre à figure : entier ∈ {1,2} (plafond de la barre empilée), reste ≠ 0.
-function fractionImpropre(dens: number[]): [number, number] {
+// Fraction impropre : entier ∈ [1, maxEntier] (2 par défaut = plafond de la barre empilée ;
+// jusqu'à 6 pour la décomposition symbolique), reste ≠ 0 (vraie impropre, jamais un entier).
+function fractionImpropre(dens: number[], maxEntier = 2): [number, number] {
 	const den = choice(dens);
-	const entier = rnd(1, 2);
-	const reste = rnd(1, den - 1); // partie fractionnaire jamais nulle (vraie impropre)
+	const entier = rnd(1, maxEntier);
+	const reste = rnd(1, den - 1);
 	return [entier * den + reste, den];
 }
 
@@ -487,7 +488,7 @@ function fractionImpropre(dens: number[]): [number, number] {
    qu'UNE unité (quand il y en a deux). */
 const DENS_SUPERIEURE = [2, 3, 4, 5, 6, 8]; // lisibilité de la barre, comme la leçon « sens »
 
-function distracteursImpropre(num: number, den: number): string[] {
+export function distracteursImpropre(num: number, den: number): string[] {
 	const reste = num % den;
 	return collecteDistracteurs(frac(num, den), [
 		[reste, den], // n'a lu que la partie fractionnaire (a oublié les unités entières)
@@ -526,10 +527,9 @@ function genSuperieure(): Exercise {
 const DENS_DECOMPOSER = [2, 3, 4, 5, 6, 8, 10];
 
 function genDecomposer(): Exercise {
-	const den = choice(DENS_DECOMPOSER);
-	const entier = rnd(1, 6);
-	const reste = rnd(1, den - 1);
-	const num = entier * den + reste;
+	const [num, den] = fractionImpropre(DENS_DECOMPOSER, 6); // partie entière ≤ 6 (dans les tables)
+	const entier = Math.floor(num / den);
+	const reste = num % den;
 	// Appui visuel seulement quand la figure reste lisible (≤ 2 unités entières) ; au-delà,
 	// symbolique (le calcul division/reste s'automatise sur les grandes parties entières).
 	const figure = entier <= 2 ? renderFigure({ kind: 'fractionSuperieure', num, den }) : undefined;
@@ -577,7 +577,7 @@ function genEncadrer(): Exercise {
 		answer,
 		choices,
 		figure: renderFigure({ kind: 'fractionDemiDroite', num, den, unites: ENCADRER_UNITES }),
-		explication: `${nomFraction(num, den)} vaut ${bas} et ${nomFraction(num % den, den)} : elle est ${answer}.`,
+		explication: `${nomFraction(num, den)} vaut ${bas} et ${nomFraction(num % den, den)} : c'est ${answer}.`,
 		parle: `Entre quels nombres entiers se trouve ${nomFraction(num, den)} ?`,
 	};
 }

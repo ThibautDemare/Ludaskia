@@ -5,7 +5,7 @@
    collection, comparaison jamais piégée, addition correcte. Pas de DOM.
    ============================================================ */
 import { describe, it, expect } from 'vitest';
-import { FRACTIONS_LESSONS, nomFraction } from '../src/data/maths/fractions';
+import { FRACTIONS_LESSONS, nomFraction, distracteursImpropre } from '../src/data/maths/fractions';
 import {
 	renderFractionBarre,
 	renderFractionBande,
@@ -13,7 +13,8 @@ import {
 	renderFractionDemiDroite,
 } from '../src/core/figures';
 import { mathInline } from '../src/core/fraction-text';
-import { choiceButtonHTML } from '../src/core/items';
+import { choiceButtonHTML, createRenderContext, renderItem } from '../src/core/items';
+import type { Item } from '../src/core/items';
 import { genLessonItem, getLessonById, getLessonsByCategory } from '../src/core/catalog';
 
 const TIRAGES = 400;
@@ -114,6 +115,13 @@ describe('nomFraction — libellé verbal (#42)', () => {
 		expect(nomFraction(5, 6)).toBe('cinq sixièmes');
 		expect(nomFraction(3, 8)).toBe('trois huitièmes');
 		expect(nomFraction(1, 12)).toBe('un douzième');
+	});
+
+	it('numérateurs impropres > 9 dits en toutes lettres (#249, pas « 27 cinquièmes »)', () => {
+		expect(nomFraction(11, 4)).toBe('onze quarts');
+		expect(nomFraction(17, 6)).toBe('dix-sept sixièmes');
+		expect(nomFraction(23, 8)).toBe('vingt-trois huitièmes');
+		expect(nomFraction(27, 5)).toBe('vingt-sept cinquièmes'); // décomposition 27/5 = 5 + 2/5
 	});
 });
 
@@ -465,6 +473,46 @@ describe('leçon « Je décompose une fraction » (saisie, un terme troué)', ()
 			// Appui visuel seulement dans le plafond lisible (≤ 2 unités entières).
 			if (entier <= 2) expect(ex.figure).toBeTruthy();
 			else expect(ex.figure).toBeFalsy();
+		}
+	});
+
+	it('trou au numérateur : champ EMPILÉ à l’écran, case vide à l’impression, révélé en corrigé', () => {
+		// Réutilise le rendu « fraction à trou » de #247 (items.ts) : « @/den » → champ dans
+		// le numérateur (réponse = un chiffre), pas « @/5 » en ligne.
+		const item: Item = { text: '27/5 = 5 + @/5', answer: '2', kind: 'num' };
+		const ecran = renderItem(item, createRenderContext());
+		expect(ecran).toContain('frac-num-input');
+		expect(ecran).not.toContain('@/5');
+		const impr = renderItem(item, createRenderContext({ printMode: true }));
+		expect(impr).toContain('cloze-box');
+		expect(impr).not.toContain('frac-num-input'); // pas de champ à l'impression
+		expect(impr).not.toContain('@/5');
+		const corrige = renderItem(item, createRenderContext({ printMode: true, corrigeMode: true }));
+		expect(corrige).toContain('ans-corrige');
+		expect(corrige).not.toContain('cloze-box');
+	});
+
+	it('trou sur l’entier : champ générique noté (le trou n’est PAS dans un numérateur)', () => {
+		const item: Item = { text: '27/5 = @ + 2/5', answer: '5', kind: 'num' };
+		const ecran = renderItem(item, createRenderContext());
+		expect(ecran).toContain('class="ans'); // champ générique noté
+		expect(ecran).not.toContain('frac-num-input'); // le trou n'est pas au numérateur
+		expect(ecran).not.toContain('@'); // le @ a bien été remplacé par le champ
+	});
+});
+
+describe('distracteurs impropres (#249) — garantie DURE (balayage exhaustif)', () => {
+	it('4 choix distincts sur tout DENS_SUPERIEURE × {1,2} × [1, den-1]', () => {
+		for (const den of [2, 3, 4, 5, 6, 8]) {
+			for (const entier of [1, 2]) {
+				for (let reste = 1; reste < den; reste++) {
+					const num = entier * den + reste;
+					const ds = distracteursImpropre(num, den);
+					expect(ds.length).toBeGreaterThanOrEqual(3);
+					// Réponse + 3 distracteurs → au moins 4 valeurs distinctes garanties.
+					expect(new Set([`${num}/${den}`, ...ds]).size).toBeGreaterThanOrEqual(4);
+				}
+			}
 		}
 	});
 });

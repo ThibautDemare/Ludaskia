@@ -26,8 +26,10 @@ function barre(x0: number, y: number, w: number, h: number, num: number, den: nu
 				'stroke-width': 2,
 			}),
 		);
-		// Point central : signal de forme redondant (parts pleines lisibles sans la couleur).
-		if (plein) parts.push(circle(r2(x + partW / 2), r2(y + h / 2), 3.5, { fill: 'var(--accent)' }));
+		// Point central : signal de forme redondant, SEUL indice réellement perceptible quand
+		// la barre rétrécit (remplissage --accent-soft ≈ 1,17:1 sur --paper, quasi invisible) —
+		// rayon 5 pour rester lisible sur la barre empilée à 3 unités en paysage (a11y #249).
+		if (plein) parts.push(circle(r2(x + partW / 2), r2(y + h / 2), 5, { fill: 'var(--accent)' }));
 	}
 	return parts.join('');
 }

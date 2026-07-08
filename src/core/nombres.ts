@@ -73,6 +73,57 @@ export function wrapGrandsNombres(escaped: string): string {
 	return escaped.replace(NOMBRE_GROUPE, (m) => `<span class="bignum">${m}</span>`);
 }
 
+/* Noms français des nombres pour la lecture verbale (#249 : numérateurs impropres > 9,
+   ex. « vingt-sept cinquièmes »). Table 0-19 (mots pleins) + dizaines 20-60 ; les paliers
+   irréguliers 70/80/90 sont composés à la volée (soixante-dix, quatre-vingts…). */
+const UNITES_MOTS = [
+	'zéro',
+	'un',
+	'deux',
+	'trois',
+	'quatre',
+	'cinq',
+	'six',
+	'sept',
+	'huit',
+	'neuf',
+	'dix',
+	'onze',
+	'douze',
+	'treize',
+	'quatorze',
+	'quinze',
+	'seize',
+	'dix-sept',
+	'dix-huit',
+	'dix-neuf',
+];
+const DIZAINES_MOTS = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante'];
+
+/** Écrit un entier de 0 à 99 en toutes lettres (français), conventions scolaires :
+ *  « et » à 21/31/41/51/61 et 71, traits d'union ailleurs, « quatre-vingts » invariable
+ *  suivi d'un nombre. Au-delà de 99, repli sur les chiffres (aucun appel dans ce cas :
+ *  les numérateurs de fractions de l'app plafonnent à ~69). */
+export function nombreEnMots(n: number): string {
+	if (n < 0 || n > 99 || !Number.isInteger(n)) return String(n);
+	if (n < 20) return UNITES_MOTS[n];
+	if (n < 70) {
+		const d = Math.floor(n / 10);
+		const u = n % 10;
+		if (u === 0) return DIZAINES_MOTS[d];
+		if (u === 1) return `${DIZAINES_MOTS[d]} et un`;
+		return `${DIZAINES_MOTS[d]}-${UNITES_MOTS[u]}`;
+	}
+	if (n < 80) {
+		// 70-79 : « soixante » + 10-19 (« soixante et onze » pour 71).
+		const u = n - 60;
+		return u === 11 ? 'soixante et onze' : `soixante-${UNITES_MOTS[u]}`;
+	}
+	// 80-99 : « quatre-vingt(s) » + 0-19 (« quatre-vingts » pour 80, sinon trait d'union).
+	const u = n - 80;
+	return u === 0 ? 'quatre-vingts' : `quatre-vingt-${UNITES_MOTS[u]}`;
+}
+
 /** Groupe une CHAÎNE DE CHIFFRES par classes de 3 depuis la droite, séparées par
  *  U+202F — pour l'écho de saisie en temps réel des grands nombres (#327, leçons
  *  « millions » CM1). Travaille sur les chiffres BRUTS (pas via `Number`) pour

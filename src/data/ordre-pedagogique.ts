@@ -131,6 +131,22 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'num-dec-frac-superieure',
 			'num-dec-decomposer',
 			'num-dec-recomposer',
+			// Fractions (#200) ouvertes au CM1 + fractions comme NOMBRES (#249). Ordre interne
+			// dicté par le programme 2025 (§1.2) et les prérequis : on rouvre d'abord les 6
+			// leçons de base (sens → collection → bande → égalités → comparaison → addition),
+			// puis les fractions ≥ 1 — impropre (sens visuel) → décomposition (entier + reste,
+			// s'appuie sur l'impropre) → encadrement (statut de nombre, s'appuie sur la bande
+			// et la décomposition). L'ordre ne verrouille pas l'accès (tri d'affichage + leçon
+			// du jour) : les leçons de base vivent aussi dans le parcours CE2.
+			'num-frac-sens',
+			'num-frac-collection',
+			'num-frac-bande',
+			'num-frac-egalites',
+			'num-frac-comparaison',
+			'num-frac-addition',
+			'num-frac-superieure',
+			'num-frac-decomposer',
+			'num-frac-encadrer',
 			// Grandeurs & mesures — conversions (#89) au CM1 avec résultats DÉCIMAUX (#248).
 			// Placées APRÈS le bloc des décimaux (position validée par le pédagogue) : les
 			// conversions décimales (« 456 cm = 4,56 m ») réinvestissent l'écriture à virgule et

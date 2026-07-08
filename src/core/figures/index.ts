@@ -67,8 +67,10 @@ import { renderSolide, type Solid, type SolidOrient } from './solides';
 import {
 	renderFractionBarre,
 	renderFractionBande,
+	renderFractionDemiDroite,
 	renderFractionPaire,
 	renderFractionSomme,
+	renderFractionSuperieure,
 	renderFractionCollection,
 } from './fractions';
 import { renderGrilleCentiemes } from './decimaux';
@@ -97,8 +99,10 @@ export type FigureSpec =
 	| { kind: 'groupes'; paniers: number; total: number }
 	| { kind: 'fractionBarre'; num: number; den: number }
 	| { kind: 'fractionBande'; num: number; den: number }
+	| { kind: 'fractionDemiDroite'; num: number; den: number; unites: number }
 	| { kind: 'fractionPaire'; haut: [number, number]; bas: [number, number] }
 	| { kind: 'fractionSomme'; a: [number, number]; b: [number, number] }
+	| { kind: 'fractionSuperieure'; num: number; den: number }
 	| { kind: 'fractionCollection'; num: number; den: number; parGroupe: number }
 	| { kind: 'grilleCentiemes'; parts: number }
 	| { kind: 'symJuger'; shape: SymShape; axis?: SymAxis }
@@ -128,10 +132,14 @@ export function renderFigure(spec: FigureSpec): string {
 			return renderFractionBarre(spec.num, spec.den);
 		case 'fractionBande':
 			return renderFractionBande(spec.num, spec.den);
+		case 'fractionDemiDroite':
+			return renderFractionDemiDroite(spec.num, spec.den, spec.unites);
 		case 'fractionPaire':
 			return renderFractionPaire(spec.haut, spec.bas);
 		case 'fractionSomme':
 			return renderFractionSomme(spec.a, spec.b);
+		case 'fractionSuperieure':
+			return renderFractionSuperieure(spec.num, spec.den);
 		case 'fractionCollection':
 			return renderFractionCollection(spec.num, spec.den, spec.parGroupe);
 		case 'grilleCentiemes':

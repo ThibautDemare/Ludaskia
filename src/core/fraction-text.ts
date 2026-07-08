@@ -27,14 +27,20 @@ const NOM_DEN: Record<number, string> = {
 };
 const NOM_NUM = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf'];
 
+/** Nom du dénominateur (« demi », « tiers », « cinquième »…), au singulier ou au pluriel.
+    « tiers » reste invariable, « quart » → « quarts », « cinquième » → « cinquièmes ». */
+export function nomDenominateur(den: number, pluriel = false): string {
+	const base = NOM_DEN[den] ?? `${den}ième`;
+	if (!pluriel || base.endsWith('s')) return base;
+	return `${base}s`;
+}
+
 /** Libellé parlé d'une fraction : « un demi », « trois quarts », « deux cinquièmes ».
     Le dénominateur prend la marque du pluriel quand le numérateur > 1 (« tiers »
     reste invariable, « quart » → « quarts », « cinquième » → « cinquièmes »). */
 export function nomFraction(num: number, den: number): string {
-	const base = NOM_DEN[den] ?? `${den}ièmes`;
-	if (num === 1) return `un ${base}`;
-	const pluriel = base.endsWith('s') ? base : `${base}s`;
-	return `${NOM_NUM[num] ?? num} ${pluriel}`;
+	if (num === 1) return `un ${nomDenominateur(den)}`;
+	return `${NOM_NUM[num] ?? num} ${nomDenominateur(den, true)}`;
 }
 
 /** Fraction empilée (barre horizontale) accessible : `role="img"` + `aria-label`

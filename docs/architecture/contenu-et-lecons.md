@@ -480,20 +480,56 @@ et « 0,70 », ni une écriture égale à la réponse). Le mot « centième » e
 `NOM_DEN` (`core/fraction-text.ts`) pour le rendu empilé et le TTS des fractions n/100.
 Branché via `DECIMAUX_ECRITURES_LESSONS_DEFS` (`core/catalog.ts`).
 
-#### `maths/fractions.ts` (#200) — rubrique « Fractions »
+#### `maths/fractions.ts` (#200, #249 CM1) — rubrique « Fractions »
 
-6 leçons, fractions **toujours < 1** (numérateur < dénominateur), dénominateur ≤ 12,
-dans l'ordre pédagogique (avis pédagogue) : **« Lire une fraction »** (`num-frac-sens`,
-QCM, barre divisée), **« Fraction d'une collection »** (`num-frac-collection`, saisie
-numérique, jetons groupés), **« Fraction sur une bande »** (`num-frac-bande`, QCM, bande
-0→1), **« Fractions égales »** (`num-frac-egalites`, QCM oui/non), **« Comparer des
-fractions »** (`num-frac-comparaison`, QCM), **« Additionner des fractions »**
-(`num-frac-addition`, QCM, même dénominateur — attendu de fin de CE2 2025). La fraction
-s'affiche **empilée** (barre horizontale, numérateur au-dessus) via
-`core/fraction-text.ts`, jamais « 6/8 ». **Multi-niveaux** (#287) : 3 leçons (collection,
-bande, addition) sont `calibrated` { ce2, cm1 } (le CM1 élargit les dénominateurs,
-**prêt derrière `level`**, catalogue `['ce2']`) ; la leçon « sens » n'est pas calibrée
-(figure plafonnée à 8 parts).
+9 leçons. Les **6 leçons de base** restent fractions **toujours < 1** (numérateur
+< dénominateur), dénominateur ≤ 12, dans l'ordre pédagogique (avis pédagogue) :
+**« Lire une fraction »** (`num-frac-sens`, QCM, barre divisée), **« Fraction
+d'une collection »** (`num-frac-collection`, saisie numérique, jetons groupés),
+**« Fraction sur une bande »** (`num-frac-bande`, QCM, bande 0→1), **« Fractions
+égales »** (`num-frac-egalites`, QCM oui/non), **« Comparer des fractions »**
+(`num-frac-comparaison`, QCM), **« Additionner des fractions »**
+(`num-frac-addition`, QCM, même dénominateur — attendu de fin de CE2 2025). La
+fraction s'affiche **empilée** (barre horizontale, numérateur au-dessus) via
+`core/fraction-text.ts`, jamais « 6/8 ». **Multi-niveaux** (#287) : 3 leçons
+(collection, bande, addition) sont `calibrated` { ce2, cm1 } (le CM1 élargit les
+dénominateurs) ; la leçon « sens » n'est pas calibrée (figure plafonnée à 8 parts,
+contenu identique aux deux niveaux).
+
+**Surfaçage CM1** (#249) : le catalogue (`FRACTIONS_LESSONS_DEFS`, `core/catalog.ts`)
+dérive `levels` du moteur — `d.exerciseType.levels ?? ['ce2', 'cm1']` — au lieu d'un
+`['ce2']` fixe. Les 3 leçons calibrées exposent `['ce2', 'cm1']` via `calibrated`, et
+les 3 non calibrées (sens, égalités, comparaison) reçoivent le même défaut faute de
+`levels` propre : **les 6 leçons de base sont donc désormais toutes visibles au CM1**,
+y compris « sens ». ⚠ Le commentaire d'en-tête de `fractions.ts` (hérité de #287) dit
+encore que « sens » reste CE2-only « derrière `levels: ['ce2']` » : c'est **le code qui
+fait foi** (`getLessonById('num-frac-sens').levels === ['ce2', 'cm1']`, couvert par
+`tests/fractions.test.ts`), ce commentaire est à corriger côté leçon.
+
+**3 nouvelles leçons « fractions comme nombres »** (#249, CM1-only) — programme 2025
+§1.2, fractions ≥ 1 (impropres). Marquées CM1-only par le helper local
+`cm1Only(exerciseType)` (`{...exerciseType, levels: ['cm1']}`), donc absentes du CE2 :
+
+- **« Une fraction plus grande que 1 »** (`num-frac-superieure`) — QCM, figure
+  **« aire itérée »** (`renderFractionSuperieure`, `core/figures/fractions.ts`) : des
+  barres pleines empilées (une par unité entière) surmontées de la barre partielle du
+  reste. Fraction impropre 1 < f < 3, dénominateurs {2,3,4,5,6,8} ; distracteurs =
+  erreurs classiques du passage à l'impropre (partie fractionnaire seule sans les
+  unités, une unité/part en trop ou en moins…).
+- **« Je décompose une fraction »** (`num-frac-decomposer`) — saisie à trou sur le
+  modèle de la décomposition décimale (#247) : `27/5 = @ + 2/5` (partie entière) OU
+  `27/5 = 5 + @/5` (numérateur du reste), réponse toujours un **entier**
+  (`checkNumerique`) ; réutilise le rendu « fraction à trou » de `core/items.ts`
+  (champ `.frac-num-input` empilé au numérateur). Dénominateurs {2,3,4,5,6,8,10},
+  partie entière ≤ 6 (calcul dans les tables) ; figure d'appui (même
+  `fractionSuperieure`) seulement si la partie entière ≤ 2, sinon symbolique.
+- **« Encadrer une fraction »** (`num-frac-encadrer`) — QCM, figure **demi-droite
+  graduée 0→3** (`renderFractionDemiDroite`), choix texte « entre X et Y » (pas de vue
+  riche fraction). Dénominateurs {2,3,4,5,6,8}, fraction impropre dans (1,3) ;
+  distracteurs = bornes voisines et un encadrement non consécutif.
+
+Plafond figure commun aux deux leçons à barre empilée : num < 3·den (≤ 2 unités
+entières, ≤ 3 barres).
 
 ### Calcul (opérations posées)
 

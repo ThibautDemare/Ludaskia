@@ -115,7 +115,13 @@ propre doc de conception : `docs/design-orthographe.md`.
     triangulaire — face triangulaire pleine + arêtes de fuite, même style ;
     primitive `ellipse` ajoutée).
   - **`fractions.ts`** — renderers de fractions (barre, bande, paire, somme,
-    collection groupée) consommés par les leçons de numération/fractions.
+    collection groupée, #200) consommés par les leçons de numération/fractions ;
+    + **CM1 (#249)** — **`renderFractionSuperieure`** (fraction ≥ 1 en « aire
+    itérée » : barres pleines empilées, une par unité entière, surmontées de la
+    barre partielle du reste) et **`renderFractionDemiDroite`** (demi-droite
+    graduée 0→N, statut de nombre). Les deux tracés d'axe (bande CE2 0→1 et
+    demi-droite CM1 0→N) partagent désormais un traceur interne unique
+    (`dessinerAxeGradue`) ; le rendu CE2 (`unites = 1`) est inchangé.
   - **`decimaux.ts`** — **`renderGrilleCentiemes(parts)`** (#247 — grille 10×10 des
     centièmes : `parts` cases coloriées **contiguës, ligne par ligne** depuis le
     haut-gauche (1 ligne pleine = 1 dixième) ; maillage des centièmes, séparateurs de
@@ -183,11 +189,15 @@ propre doc de conception : `docs/design-orthographe.md`.
   (`exercise.ts`) pour la correction texte normalisée — couvre les leçons de géométrie
   dont la réponse est tantôt un nombre, tantôt un nom. `numeration.ts` conserve son check
   intervalle/signe propre (#240, hors scope).
-- **`fraction-text.ts`** (#42/#200) — module **pur** : libellé verbal d'une fraction
-  (`texteParle` : « trois quarts ») et **rendu typographique empilé** (barre horizontale,
-  numérateur au-dessus) via `mathInline`. La donnée garde la clé plate « num/den » ; ce
-  module la transforme en affichage au rendu (l'oblique « 6/8 » se confondrait avec une
-  division — avis pédagogue).
+- **`fraction-text.ts`** (#42/#200, #249) — module **pur** : libellé verbal d'une
+  fraction (**`nomFraction`** : « trois quarts » ; numérateurs impropres > 9 dits en
+  toutes lettres via `nombreEnMots`, #249 — « vingt-sept cinquièmes », jamais « 27
+  cinquièmes ») et **rendu typographique empilé** (barre horizontale, numérateur
+  au-dessus) via `mathInline`. **`nomDenominateur(den, pluriel)`** (nom seul :
+  « demi », « cinquièmes »…) est exporté séparément et réutilisé par le libellé TTS
+  de la décomposition (#249, `data/maths/fractions.ts`). La donnée garde la clé
+  plate « num/den » ; ce module la transforme en affichage au rendu (l'oblique
+  « 6/8 » se confondrait avec une division — avis pédagogue).
 - **`nombres.ts`** (#240) — module **pur** : formatage UNIQUE des grands nombres
   (numération CM1 « millions »). **`formatNombre(n)`** groupe les chiffres par classes de
   3 avec une **espace fine insécable U+202F** (via `Intl.NumberFormat('fr-FR')`) — JAMAIS
@@ -210,7 +220,11 @@ propre doc de conception : `docs/design-orthographe.md`.
   nombres (`ui/grand-nombre-echo.ts`) : restitue exactement les chiffres tapés (zéros de tête
   compris) en n'insérant que des séparateurs. On n'écrit jamais le caractère U+202F en clair dans
   le source (échappements `U+202F`/`U+00A0`). Réutilisé par `data/maths/numeration.ts` et
-  `position.ts`.
+  `position.ts`. **`nombreEnMots(n)`** (#249) écrit un entier de 0 à 99 en toutes
+  lettres (conventions FR scolaires : « et » à 21/31…/51/61/71, traits d'union
+  ailleurs, « quatre-vingts » invariable) — repli sur les chiffres au-delà de 99
+  (jamais atteint en pratique, les numérateurs de fractions plafonnent à ~69) ; sert
+  `fraction-text.ts` pour les numérateurs impropres > 9.
 - **`signes.ts`** (#380) — module **pur** : signes de comparaison `< = >`
   (`SIGNES_COMPARAISON`, type `SigneComparaison`), **`estSigneComparaison(answer)`** (une
   réponse texte est-elle un signe ? — aiguille `items.ts` et `ui/sprint.ts`),

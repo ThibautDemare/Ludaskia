@@ -20,7 +20,11 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
   ses `levels`; `bankByLevel(items)` : banque QCM tagguée par item, dérive l'union des
   niveaux. Le catalogue dérive `LessonDef.levels` de ces combinateurs (numération,
   grandeurs & mesures — conversions CE2 + CM1, décimaux CM1 #248) ou de la donnée
-  (conjugaison taggée).
+  (conjugaison taggée). Une leçon peut aussi poser `levels` directement sur son
+  `ExerciseType` (champ générique de `exercise.ts`) **sans passer par un
+  combinateur** : ex. le helper local `cm1Only(exerciseType)` de
+  `data/maths/fractions.ts` (#249), qui marque CM1-only les 3 leçons « fractions
+  comme nombres » par un simple `{ ...exerciseType, levels: ['cm1'] }`.
 - **`niveau-actif.ts`** — résout le niveau au **seam** profil/catalogue (lit la méta
   profil **directement** via `storage`, pour éviter un cycle `progress → niveau-actif →
   profiles`). `niveauActif()` (classe de référence), `niveauActifMatiere(subject)`

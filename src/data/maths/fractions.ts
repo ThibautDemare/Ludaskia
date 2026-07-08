@@ -20,12 +20,16 @@
    Multi-niveaux (#287) : trois leçons (collection, bande, addition) sont
    `calibrated` par une table { ce2, cm1 } ; le CE2 reste calibré à l'identique
    (sauf rééquilibrages décrits ci-dessous), le CM1 élargit les plages de
-   dénominateurs. Le CM1 reste « derrière le paramètre `level` » (le catalogue
-   garde `levels: ['ce2']`, cf. catalog.ts) : on le rend juste calibré et
-   testable via `generate({ level: 'cm1' })`. La leçon 1 (sens, barre divisée)
-   N'est PAS calibrée : elle est purement visuelle et la barre plafonne à 8
-   parts (voir DENS_SENS) ; ouvrir le CM1 n'y ajouterait que du verbal sans la
-   figure, hors périmètre #287.
+   dénominateurs. La leçon 1 (sens, barre divisée) N'est PAS calibrée : elle est
+   purement visuelle et la barre plafonne à 8 parts (voir DENS_SENS) ; ouvrir le
+   CM1 n'y ajoute que du verbal sans la figure, donc son contenu est identique aux
+   deux niveaux.
+
+   Ouverture au CM1 (#249) : les 6 leçons de base sont désormais surfacées au CM1
+   (le catalogue dérive `levels` du moteur, défaut ['ce2', 'cm1'] pour les non
+   calibrées, cf. catalog.ts), et trois leçons « fractions comme nombres »
+   (impropres, décomposition, encadrement) sont ajoutées CM1-only (`cm1Only`).
+   Le CE2 reste borné aux fractions < 1.
 
    Calibrage (avis pedagogue-primaire) :
    - dénominateurs 2,3,4 d'abord, puis 5,6,8 ; figure plafonnée à 8

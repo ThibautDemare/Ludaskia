@@ -58,7 +58,7 @@ import { rnd, choice, sample } from '../../core/utils';
 import { renderFigure } from '../../core/figures';
 // Libellé verbal (#42) défini en core (utilitaire nombre→mots, réutilisé par le
 // rendu empilé des fractions). Réexposé ici pour les imports/tests existants.
-import { nomFraction, fractionChoiceViews } from '../../core/fraction-text';
+import { nomFraction, nomDenominateur, fractionChoiceViews } from '../../core/fraction-text';
 export { nomFraction };
 
 /* ---------- Notation et distracteurs ----------
@@ -464,6 +464,124 @@ function genSomme(dens: number[]): Exercise {
 	};
 }
 
+/* ============================================================
+   Fractions comme NOMBRES (#249, CM1) — fractions ≥ 1 (impropres), décomposition
+   (entier + fraction < 1) et statut de nombre (encadrement entre deux entiers sur une
+   demi-droite). Notions du programme 2025 (§1.2), CM1-only : le CE2 reste borné à < 1.
+   Dénominateurs pris dans la famille de l'app {2,3,4,5,6,8,(10)} — au-delà les figures
+   « plusieurs unités » deviennent illisibles (avis pedagogue-primaire + designer #249).
+   Plafond figure : ≤ 2 unités entières (num < 3·den) → barre empilée ≤ 3 barres. ============================================================ */
+
+// Fraction impropre à figure : entier ∈ {1,2} (plafond de la barre empilée), reste ≠ 0.
+function fractionImpropre(dens: number[]): [number, number] {
+	const den = choice(dens);
+	const entier = rnd(1, 2);
+	const reste = rnd(1, den - 1); // partie fractionnaire jamais nulle (vraie impropre)
+	return [entier * den + reste, den];
+}
+
+/* ---------- Leçon 7 : une fraction plus grande que 1 (QCM, aire itérée) ----------
+   Lire une fraction impropre sur la figure « plusieurs unités » (barres pleines + reste).
+   Distracteurs = erreurs classiques du passage à l'impropre : n'avoir lu que la partie
+   fractionnaire (oubli des unités), une unité / une part en trop ou en moins, n'avoir lu
+   qu'UNE unité (quand il y en a deux). */
+const DENS_SUPERIEURE = [2, 3, 4, 5, 6, 8]; // lisibilité de la barre, comme la leçon « sens »
+
+function distracteursImpropre(num: number, den: number): string[] {
+	const reste = num % den;
+	return collecteDistracteurs(frac(num, den), [
+		[reste, den], // n'a lu que la partie fractionnaire (a oublié les unités entières)
+		[num + den, den, true], // une unité de trop
+		[num - den, den, true], // une unité de moins
+		[num + 1, den, true], // une part de trop
+		[num - 1, den, true], // une part de moins
+		[den + reste, den, true], // n'a lu qu'UNE unité entière (quand il y en a deux)
+		...FONDS_GENERIQUE,
+	]);
+}
+
+function genSuperieure(): Exercise {
+	const [num, den] = fractionImpropre(DENS_SUPERIEURE);
+	const entier = Math.floor(num / den);
+	const choices = sample([frac(num, den), ...distracteursImpropre(num, den)], 4);
+	return {
+		type: 'qcm',
+		question: 'Quelle fraction est coloriée ?',
+		answer: frac(num, den),
+		choices,
+		choicesView: fractionChoiceViews(choices),
+		figure: renderFigure({ kind: 'fractionSuperieure', num, den }),
+		explication: `${entier} ${entier > 1 ? 'unités entières' : 'unité entière'} et ${nomFraction(num % den, den)}, cela fait ${nomFraction(num, den)} (${frac(num, den)}).`,
+		parle: 'Quelle fraction est coloriée ?',
+	};
+}
+
+/* ---------- Leçon 8 : je décompose une fraction (saisie, un terme troué) ----------
+   Écrire une fraction impropre comme entier + fraction < 1 (27/5 = 5 + 2/5). Sur le modèle
+   de la décomposition décimale (#247, `decomposeDecFact`) : réponse TOUJOURS un entier
+   (jamais taper une fraction) → checkNumerique. On troue alternativement la partie ENTIÈRE
+   (« @ + 2/5 ») ou le NUMÉRATEUR du reste (« 5 + @/5 ») — les deux morceaux du mécanisme
+   division/reste. Partie entière ≤ 6 (calcul dans les tables mémorisées) ; figure d'appui
+   « aire itérée » tant que la partie entière tient dans le plafond (≤ 2). */
+const DENS_DECOMPOSER = [2, 3, 4, 5, 6, 8, 10];
+
+function genDecomposer(): Exercise {
+	const den = choice(DENS_DECOMPOSER);
+	const entier = rnd(1, 6);
+	const reste = rnd(1, den - 1);
+	const num = entier * den + reste;
+	// Appui visuel seulement quand la figure reste lisible (≤ 2 unités entières) ; au-delà,
+	// symbolique (le calcul division/reste s'automatise sur les grandes parties entières).
+	const figure = entier <= 2 ? renderFigure({ kind: 'fractionSuperieure', num, den }) : undefined;
+	const uniteMot = entier > 1 ? 'unités entières' : 'unité entière';
+	if (rnd(0, 1) === 0) {
+		// Trou sur la partie ENTIÈRE.
+		return {
+			type: 'text',
+			question: `${frac(num, den)} = @ + ${frac(reste, den)}`,
+			answer: String(entier),
+			figure,
+			parle: `Combien d'unités entières y a-t-il dans ${nomFraction(num, den)} ?`,
+		};
+	}
+	// Trou sur le NUMÉRATEUR du reste (rendu empilé par items.ts, réponse = un chiffre).
+	return {
+		type: 'text',
+		question: `${frac(num, den)} = ${entier} + @/${den}`,
+		answer: String(reste),
+		figure,
+		parle: `Dans ${nomFraction(num, den)}, il y a ${entier} ${uniteMot} et combien de ${nomDenominateur(den, true)} ?`,
+	};
+}
+
+/* ---------- Leçon 9 : encadrer une fraction (QCM, demi-droite étendue) ----------
+   Statut de nombre : entre quels deux entiers CONSÉCUTIFS tombe la fraction ? Figure =
+   demi-droite 0→3 (le repère à num/den, fraction dans (1,3)). Distracteurs : voisins
+   immédiats (± une unité) et une paire NON consécutive (erreur sur le sens de l'encadrement).
+   Aucune figure ne « souffle » : lire entre quels entiers tombe le repère EST la compétence. */
+const DENS_ENCADRER = [2, 3, 4, 5, 6, 8];
+const ENCADRER_UNITES = 3; // demi-droite 0→3 (fraction impropre dans (1,3))
+
+function genEncadrer(): Exercise {
+	const [num, den] = fractionImpropre(DENS_ENCADRER); // entier ∈ {1,2} → fraction dans (1,3)
+	const bas = Math.floor(num / den);
+	const bornes = (b: number): string => `entre ${b} et ${b + 1}`;
+	const answer = bornes(bas);
+	const choices = sample(
+		[answer, bornes(bas - 1), bornes(bas + 1), `entre ${bas} et ${bas + 2}`],
+		4,
+	);
+	return {
+		type: 'qcm',
+		question: `Entre quels nombres entiers se trouve ${frac(num, den)} ?`,
+		answer,
+		choices,
+		figure: renderFigure({ kind: 'fractionDemiDroite', num, den, unites: ENCADRER_UNITES }),
+		explication: `${nomFraction(num, den)} vaut ${bas} et ${nomFraction(num % den, den)} : elle est ${answer}.`,
+		parle: `Entre quels nombres entiers se trouve ${nomFraction(num, den)} ?`,
+	};
+}
+
 /* ---------- Fabriques d'ExerciseType ---------- */
 
 const MODE_QCM: ModeOption[] = [{ ...MODE_QCM_POINT, label: 'Je choisis la bonne fraction' }];
@@ -475,6 +593,12 @@ function qcmType(generate: () => Exercise): ExerciseType {
 /* Mono-mode saisie (rendu fiche/bilan via le chemin « math moderne » : item numérique). */
 function saisieNumType(generate: () => Exercise): ExerciseType {
 	return { generate, check: checkNumerique };
+}
+
+/* Marque un ExerciseType comme CM1-only (#249) : le catalogue en dérive `levels: ['cm1']`,
+   donc la leçon n'apparaît PAS au CE2 (fractions ≥ 1 hors programme CE2). */
+function cm1Only(base: ExerciseType): ExerciseType {
+	return { ...base, levels: ['cm1'] };
 }
 
 export const FRACTIONS_LESSONS: LessonInput[] = [
@@ -507,5 +631,21 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		exerciseType: calibrated<number[]>({ ce2: DENS_SOMME_CE2, cm1: DENS_SOMME_CM1 }, (dens) =>
 			qcmType(() => genSomme(dens)),
 		),
+	},
+	// ---- Fractions comme NOMBRES (#249) : CM1-only (fractions ≥ 1, hors programme CE2). ----
+	{
+		id: 'num-frac-superieure',
+		label: 'Une fraction plus grande que 1',
+		exerciseType: cm1Only(qcmType(genSuperieure)),
+	},
+	{
+		id: 'num-frac-decomposer',
+		label: 'Je décompose une fraction',
+		exerciseType: cm1Only(saisieNumType(genDecomposer)),
+	},
+	{
+		id: 'num-frac-encadrer',
+		label: 'Encadrer une fraction',
+		exerciseType: cm1Only(qcmType(genEncadrer)),
 	},
 ];

@@ -447,14 +447,18 @@ const DECIMAUX_ECRITURES_LESSONS_DEFS: LessonDef[] = toLessonDefs(DECIMAUX_ECRIT
 	rubrique: 'Nombres décimaux',
 });
 
-/* ---------- Catalogue des leçons « Numération » — Fractions (#200) ----------
-   Programme cycle 2 rénové 2025 : fractions < 1, dénominateur ≤ 12. Sens, collection,
-   bande graduée, égalités, comparaison et addition (même dénominateur). Regroupées
-   sous la rubrique « Fractions » (les autres leçons de Numération restent à plat). */
+/* ---------- Catalogue des leçons « Numération » — Fractions (#200, CM1 #249) ----------
+   Programme cycle 2 rénové 2025 : au CE2 fractions < 1, dénominateur ≤ 12. Sens, collection,
+   bande graduée, égalités, comparaison et addition (même dénominateur). Regroupées sous la
+   rubrique « Fractions » (les autres leçons de Numération restent à plat).
+   Multi-niveaux (#249) : les 6 leçons de base sont ouvertes au CM1 (dérivées du moteur pour
+   les calibrées collection/bande/addition, défaut ['ce2','cm1'] pour les autres), et trois
+   leçons « fractions comme nombres » (impropres, décomposition, encadrement) sont CM1-only
+   (`cm1Only` → levels ['cm1']). Le CE2 reste borné à < 1. */
 const FRACTIONS_LESSONS_DEFS: LessonDef[] = toLessonDefs(FRACTIONS_LESSONS, {
 	subject: 'math',
 	category: 'math-numeration',
-	// CM1 prêt derrière `level` (#287), surfacé au déploiement CM1 → levels par défaut ['ce2'].
+	levels: (d) => d.exerciseType.levels ?? ['ce2', 'cm1'],
 	rubrique: 'Fractions',
 });
 

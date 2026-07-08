@@ -6,7 +6,7 @@
    inégale serait un contresens). Distinction coloriée / vide par DOUBLE signal (jamais
    la seule couleur) : remplissage `--accent-soft` ET un point plein central `--accent`
    sur les parts coloriées (robuste au daltonisme), contour franc partout. */
-import { circle, line, r2, rect, svgCanvas, text } from './primitives';
+import { type Attrs, circle, line, r2, rect, svgCanvas, text } from './primitives';
 
 const FRAC_W = 320; // largeur viewBox des figures « barre » (plus large que haut)
 const FRAC_BAR_X = 20; // marge gauche de la barre
@@ -49,28 +49,41 @@ export function renderFractionBarre(num: number, den: number): string {
 	);
 }
 
-/** Bande graduée de 0 à 1 (`den` intervalles) avec un repère sur la `num`-ième graduation. */
-export function renderFractionBande(num: number, den: number): string {
-	const W = FRAC_W;
-	const H = 120;
-	const x0 = 30;
-	const x1 = 290;
-	const axisY = 64;
-	const span = x1 - x0;
+/* ---------- Axe gradué : bande 0→1 (CE2) et demi-droite 0→N (CM1, #249) ----------
+   Un axe horizontal partagé en `unites × den` intervalles égaux : les multiples de `den`
+   sont des BORNES ENTIÈRES (0, 1, 2… N) renforcées et numérotées, les graduations
+   intermédiaires restent discrètes. Un repère corail marque la `num`-ième graduation
+   (num/den). Étendre le span au-delà de 1 (`unites` > 1) donne à la fraction son STATUT DE
+   NOMBRE : on lit entre quels entiers elle tombe (#249). À `unites = 1` le tracé est
+   rigoureusement identique à la bande 0→1 du CE2 (mêmes bornes 0/1, mêmes graduations). */
+const DD_X0 = 30;
+const DD_X1 = 290;
+const DD_AXIS_Y = 64;
+const DD_LABEL: Attrs = {
+	'text-anchor': 'middle',
+	'font-family': 'var(--ui)',
+	'font-weight': 700,
+	'font-size': 16,
+	fill: 'var(--ink)',
+};
+
+function dessinerAxeGradue(num: number, den: number, unites: number): string {
+	const span = DD_X1 - DD_X0;
+	const total = unites * den; // nombre d'intervalles sur tout l'axe
 	const body: string[] = [
-		line(x0, axisY, x1, axisY, {
+		line(DD_X0, DD_AXIS_Y, DD_X1, DD_AXIS_Y, {
 			stroke: 'var(--ink)',
 			'stroke-width': 2.5,
 			'stroke-linecap': 'round',
 		}),
 	];
-	// Graduations : bornes (0 et 1) renforcées, intermédiaires discrètes.
-	for (let i = 0; i <= den; i++) {
-		const x = x0 + (i * span) / den;
-		const borne = i === 0 || i === den;
+	// Graduations : bornes ENTIÈRES (multiples de den) renforcées, intermédiaires discrètes.
+	for (let i = 0; i <= total; i++) {
+		const x = DD_X0 + (i * span) / total;
+		const borne = i % den === 0;
 		const len = borne ? 14 : 9;
 		body.push(
-			line(r2(x), axisY - len, r2(x), axisY, {
+			line(r2(x), DD_AXIS_Y - len, r2(x), DD_AXIS_Y, {
 				stroke: borne ? 'var(--ink)' : 'var(--grey)',
 				'stroke-width': borne ? 2.5 : 1.5,
 				'stroke-linecap': 'round',
@@ -78,33 +91,48 @@ export function renderFractionBande(num: number, den: number): string {
 		);
 	}
 	// Repère (mise en évidence corail : sa fonction officielle dans le moteur).
-	const cx = x0 + (num * span) / den;
+	const cx = DD_X0 + (num * span) / total;
 	body.push(
-		line(r2(cx), axisY, r2(cx), axisY - 22, {
+		line(r2(cx), DD_AXIS_Y, r2(cx), DD_AXIS_Y - 22, {
 			stroke: 'var(--clock-min)',
 			'stroke-width': 2.5,
 			'stroke-linecap': 'round',
 		}),
 	);
-	body.push(circle(r2(cx), axisY - 22, 6, { fill: 'var(--clock-min)' }));
-	// Bornes 0 et 1 (sens de la graduation ; jamais la fraction, qui soufflerait la réponse).
-	const lab = {
-		'text-anchor': 'middle',
-		'font-family': 'var(--ui)',
-		'font-weight': 700,
-		'font-size': 16,
-		fill: 'var(--ink)',
-	};
-	body.push(text(x0, axisY + 26, '0', lab));
-	body.push(text(x1, axisY + 26, '1', lab));
+	body.push(circle(r2(cx), DD_AXIS_Y - 22, 6, { fill: 'var(--clock-min)' }));
+	// Libellés des bornes entières 0, 1, … unites (sens de la graduation ; jamais la
+	// fraction ni sa position, qui souffleraient la réponse — cf. desc de chaque figure).
+	for (let u = 0; u <= unites; u++) {
+		const x = DD_X0 + (u * den * span) / total;
+		body.push(text(r2(x), DD_AXIS_Y + 26, String(u), DD_LABEL));
+	}
+	return body.join('');
+}
+
+/** Bande graduée de 0 à 1 (`den` intervalles) avec un repère sur la `num`-ième graduation. */
+export function renderFractionBande(num: number, den: number): string {
 	return svgCanvas(
-		W,
-		H,
+		FRAC_W,
+		120,
 		'Bande graduée',
 		// On annonce le nombre de parts, jamais la position du repère (la réponse).
 		`Une bande de 0 à 1 partagée en ${den} parts égales, avec un repère sur une graduation.`,
-		body.join(''),
+		dessinerAxeGradue(num, den, 1),
 		'figure-fraction-bande',
+	);
+}
+
+/** Demi-droite graduée de 0 à `unites` (`unites × den` intervalles) : place une fraction
+    ≥ 1 et donne à lire entre quels entiers consécutifs elle tombe (statut de nombre, #249). */
+export function renderFractionDemiDroite(num: number, den: number, unites: number): string {
+	return svgCanvas(
+		FRAC_W,
+		120,
+		'Demi-droite graduée',
+		// On annonce l'étendue (0 à N) et le partage, jamais la position du repère (la réponse).
+		`Une demi-droite de 0 à ${unites} partagée en portions égales, avec un repère sur une graduation.`,
+		dessinerAxeGradue(num, den, unites),
+		'figure-fraction-demi-droite',
 	);
 }
 
@@ -157,6 +185,38 @@ export function renderFractionSomme(a: [number, number], b: [number, number]): s
 		deuxBarresEmpilees(a, b, plus),
 		'figure-fraction-somme',
 		'Addition de deux fractions',
+	);
+}
+
+/** Fraction ≥ 1 en modèle « aire itérée » (#249) : une fraction impropre (num > den) se
+    lit comme PLUSIEURS unités. On empile ⌊num/den⌋ barres ENTIÈREMENT coloriées (autant de
+    « plaquettes » pleines) surmontant une barre partielle portant le reste (num % den sur
+    den). La largeur de part ne change pas (FRAC_BAR_W/den) : on empile en HAUTEUR, jamais en
+    largeur — lisible sur mobile même à plusieurs unités (designer #249). Plafond d'emploi :
+    num < 3·den (≤ 2 unités entières → au plus 3 barres = la géométrie déjà éprouvée par
+    `renderFractionPaire`) ; au-delà la fraction reste symbolique (pas de figure). */
+export function renderFractionSuperieure(num: number, den: number): string {
+	const entier = Math.floor(num / den);
+	const reste = num % den; // ∈ [1, den-1] par construction (num non multiple de den)
+	const nBarres = entier + 1; // unités pleines + la barre partielle
+	const gap = 20;
+	const H = PAIRE_Y_HAUT + nBarres * PAIRE_BAR_H + (nBarres - 1) * gap + PAIRE_Y_HAUT;
+	const body: string[] = [];
+	for (let i = 0; i < nBarres; i++) {
+		const y = PAIRE_Y_HAUT + i * (PAIRE_BAR_H + gap);
+		// Unités pleines EN HAUT (ordre de comptage naturel), partie fractionnaire EN BAS.
+		const coloriees = i < entier ? den : reste;
+		body.push(barre(FRAC_BAR_X, y, FRAC_BAR_W, PAIRE_BAR_H, coloriees, den));
+	}
+	return svgCanvas(
+		FRAC_W,
+		H,
+		'Fraction plus grande que 1',
+		// On annonce la structure (nombre de barres, partage) mais JAMAIS le nombre de parts
+		// coloriées : ce serait souffler la réponse (même règle que `renderFractionBarre`).
+		`${nBarres} barres partagées chacune en ${den} parts égales ; certaines parts sont coloriées.`,
+		body.join(''),
+		'figure-fraction-superieure',
 	);
 }
 

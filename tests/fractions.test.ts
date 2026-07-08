@@ -6,7 +6,12 @@
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import { FRACTIONS_LESSONS, nomFraction } from '../src/data/maths/fractions';
-import { renderFractionBarre } from '../src/core/figures';
+import {
+	renderFractionBarre,
+	renderFractionBande,
+	renderFractionSuperieure,
+	renderFractionDemiDroite,
+} from '../src/core/figures';
 import { mathInline } from '../src/core/fraction-text';
 import { choiceButtonHTML } from '../src/core/items';
 import { genLessonItem, getLessonById, getLessonsByCategory } from '../src/core/catalog';
@@ -238,10 +243,10 @@ describe('leçon « Additionner des fractions » (même dénominateur)', () => {
 });
 
 describe('intégration catalogue', () => {
-	it('les 6 leçons sont dans Numération, rubrique « Fractions »', () => {
+	it('les 9 leçons sont dans Numération, rubrique « Fractions »', () => {
 		const num = getLessonsByCategory('math-numeration');
 		const fracs = num.filter((l) => l.rubrique === 'Fractions');
-		expect(fracs).toHaveLength(6);
+		expect(fracs).toHaveLength(9); // 6 de base (#200) + 3 « fractions comme nombres » (#249)
 		for (const l of fracs) expect(l.id.startsWith('num-frac-')).toBe(true);
 	});
 
@@ -257,9 +262,11 @@ describe('intégration catalogue', () => {
 /* ============================================================
    Calibrage par niveau (#287). Les trois leçons calibrées (collection, bande,
    addition) exposent { ce2, cm1 } via leur ExerciseType ; le CE2 garde ses plages
-   (avec quelques ajouts), le CM1 les élargit. La leçon « sens » reste CE2-only
-   (purement visuelle, barre ≤ 8 parts). Le catalogue, lui, garde `levels: ['ce2']`
-   (CM1 derrière le paramètre `level`) : on teste donc le moteur, pas le catalogue.
+   (avec quelques ajouts), le CM1 les élargit. La leçon « sens » n'est PAS calibrée
+   (purement visuelle, barre ≤ 8 parts, contenu identique aux deux niveaux).
+   Surfaçage CM1 (#249) : le catalogue ouvre désormais les 6 leçons de base au CM1
+   (levels dérivés du moteur, défaut ['ce2', 'cm1'] pour les non calibrées), tandis que
+   les 3 leçons « fractions comme nombres » sont CM1-only (levels ['cm1']).
    ============================================================ */
 
 /* Découpe l'énoncé d'addition « a/d + b/d ? » en ses deux fractions. */
@@ -274,9 +281,27 @@ describe('calibrage par niveau (#287)', () => {
 		}
 	});
 
-	it("la leçon « sens » n'est PAS calibrée (purement visuelle, reste CE2-only)", () => {
-		// Pas de `levels` exposés → le catalogue la laisse en ['ce2'] par défaut.
+	it("la leçon « sens » n'est PAS calibrée (purement visuelle)", () => {
+		// Pas de `levels` exposés par le moteur → le catalogue applique le défaut (#249).
 		expect(lecon('num-frac-sens').exerciseType.levels).toBeUndefined();
+	});
+
+	it('surfaçage catalogue (#249) : 6 leçons de base au CM1, 3 nouvelles CM1-only', () => {
+		// Base ouverte aux DEUX niveaux (CE2 inchangé + CM1 ouvert).
+		for (const id of [
+			'num-frac-sens',
+			'num-frac-collection',
+			'num-frac-bande',
+			'num-frac-egalites',
+			'num-frac-comparaison',
+			'num-frac-addition',
+		]) {
+			expect(getLessonById(id)!.levels).toEqual(['ce2', 'cm1']);
+		}
+		// « Fractions comme nombres » : CM1 seulement (fractions ≥ 1, hors programme CE2).
+		for (const id of ['num-frac-superieure', 'num-frac-decomposer', 'num-frac-encadrer']) {
+			expect(getLessonById(id)!.levels).toEqual(['cm1']);
+		}
 	});
 
 	describe('addition : dénominateurs par niveau', () => {
@@ -382,5 +407,117 @@ describe('calibrage par niveau (#287)', () => {
 				expect(parse(ex.answer)[1]).toBeLessThanOrEqual(8);
 			}
 		}
+	});
+});
+
+/* ============================================================
+   Fractions comme NOMBRES (#249, CM1) — impropres, décomposition, encadrement
+   (statut de nombre) + figures « plusieurs unités » (barre empilée, demi-droite).
+   ============================================================ */
+
+/* Tire `n` exercices d'une leçon CM1 (générateurs #249 non paramétrés par mode). */
+function genereCM1(lessonId: string, n = TIRAGES) {
+	const l = lecon(lessonId);
+	return Array.from({ length: n }, () => l.exerciseType.generate({ level: 'cm1' }));
+}
+
+describe('leçon « Une fraction plus grande que 1 » (impropre, QCM)', () => {
+	it('impropre 1 < f < 3, figure, 4 choix distincts dont la réponse, vue riche empilée', () => {
+		for (const ex of genereCM1('num-frac-superieure')) {
+			expect(ex.type).toBe('qcm');
+			if (ex.type !== 'qcm') continue;
+			expect(ex.choices).toHaveLength(4);
+			expect(new Set(ex.choices).size).toBe(4); // choix distincts
+			expect(ex.choices).toContain(ex.answer);
+			expect(ex.choicesView).toHaveLength(4); // fractions empilées
+			expect(ex.figure).toBeTruthy();
+			const [n, d] = parse(ex.answer);
+			expect([2, 3, 4, 5, 6, 8]).toContain(d);
+			expect(n).toBeGreaterThan(d); // strictement impropre (> 1)
+			expect(n).toBeLessThan(3 * d); // ≤ 2 unités entières (plafond figure)
+			expect(n % d).not.toBe(0); // vraie impropre (partie fractionnaire non nulle)
+		}
+	});
+});
+
+describe('leçon « Je décompose une fraction » (saisie, un terme troué)', () => {
+	it('décomposition correcte, réponse entière validée, figure ssi ≤ 2 unités', () => {
+		const l = lecon('num-frac-decomposer');
+		for (const ex of genereCM1('num-frac-decomposer')) {
+			expect(ex.type).toBe('text');
+			if (ex.type !== 'text') continue;
+			// Énoncé « num/den = … » : num/den en tête (avant stackFractions, appliqué au rendu).
+			const m = ex.question.match(/^(\d+)\/(\d+)/)!;
+			const num = Number(m[1]);
+			const den = Number(m[2]);
+			expect([2, 3, 4, 5, 6, 8, 10]).toContain(den);
+			expect(num).toBeGreaterThan(den); // impropre
+			const entier = Math.floor(num / den);
+			const reste = num % den;
+			expect(entier).toBeGreaterThanOrEqual(1);
+			expect(entier).toBeLessThanOrEqual(6); // partie entière dans les tables
+			expect(reste).toBeGreaterThanOrEqual(1); // vraie impropre
+			// Trou entier « = @ + r/den » → réponse = entier ; sinon « = e + @/den » → reste.
+			const attendue = ex.question.includes('@ +') ? entier : reste;
+			expect(Number(ex.answer)).toBe(attendue);
+			expect(l.exerciseType.check(ex, String(attendue))).toBe(true);
+			expect(l.exerciseType.check(ex, String(attendue + 1))).toBe(false);
+			// Appui visuel seulement dans le plafond lisible (≤ 2 unités entières).
+			if (entier <= 2) expect(ex.figure).toBeTruthy();
+			else expect(ex.figure).toBeFalsy();
+		}
+	});
+});
+
+describe('leçon « Encadrer une fraction » (QCM, demi-droite)', () => {
+	it('bornes consécutives correctes, 4 choix texte distincts, figure, pas de vue riche', () => {
+		for (const ex of genereCM1('num-frac-encadrer')) {
+			expect(ex.type).toBe('qcm');
+			if (ex.type !== 'qcm') continue;
+			expect(ex.choices).toHaveLength(4);
+			expect(new Set(ex.choices).size).toBe(4); // choix distincts
+			expect(ex.choices).toContain(ex.answer);
+			expect(ex.choicesView).toBeUndefined(); // choix texte « entre X et Y »
+			expect(ex.figure).toBeTruthy();
+			const [num, den] = parse(ex.question.match(/(\d+)\/(\d+)/)![0]);
+			expect(num).toBeGreaterThan(den); // impropre (> 1)
+			expect(num).toBeLessThan(3 * den); // dans (1,3) → demi-droite 0→3
+			const bas = Math.floor(num / den);
+			expect(ex.answer).toBe(`entre ${bas} et ${bas + 1}`); // encadrement exact
+		}
+	});
+});
+
+describe('figures « fractions ≥ 1 » (#249)', () => {
+	it('renderFractionSuperieure : (entier+1) barres de `den` parts, `num` parts coloriées', () => {
+		for (const [num, den] of [
+			[3, 2], // 1 + 1/2 → 2 barres
+			[7, 3], // 2 + 1/3 → 3 barres
+			[11, 4], // 2 + 3/4 → 3 barres
+		]) {
+			const svg = renderFractionSuperieure(num, den);
+			const entier = Math.floor(num / den);
+			const rects = [...svg.matchAll(/<rect/g)];
+			expect(rects).toHaveLength((entier + 1) * den); // toutes les parts de toutes les barres
+			const widths = [...svg.matchAll(/<rect[^>]*\bwidth="([\d.]+)"/g)].map((m) => m[1]);
+			expect(new Set(widths).size).toBe(1); // parts STRICTEMENT égales (largeur = W/den)
+			const points = [...svg.matchAll(/<circle/g)];
+			expect(points).toHaveLength(num); // un point plein par part coloriée = numérateur
+		}
+	});
+
+	it('renderFractionDemiDroite : bornes entières 0..N numérotées, repère présent', () => {
+		const svg = renderFractionDemiDroite(7, 3, 3); // 7/3 sur une demi-droite 0→3
+		const labels = [...svg.matchAll(/<text[^>]*>(\d+)<\/text>/g)].map((m) => m[1]);
+		expect(labels).toEqual(['0', '1', '2', '3']); // bornes entières numérotées
+		expect(svg).toContain('var(--clock-min)'); // repère corail présent
+		expect(svg).toContain('Demi-droite graduée');
+	});
+
+	it('renderFractionBande (CE2) inchangée : bornes 0 et 1 seulement', () => {
+		const svg = renderFractionBande(1, 4);
+		const labels = [...svg.matchAll(/<text[^>]*>(\d+)<\/text>/g)].map((m) => m[1]);
+		expect(labels).toEqual(['0', '1']); // span 0→1 : deux bornes
+		expect(svg).toContain('Bande graduée');
 	});
 });

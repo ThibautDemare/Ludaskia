@@ -34,7 +34,11 @@
 	.boards,
 	#trophies,
 	.confetti-layer,
-	.modal-overlay {
+	.modal-overlay,
+	/* Pied de page global (copyright, easter egg cookies, lien « Voir le code ») :
+	   chrome d'interface, pas destiné au papier. La fiche imprimée porte son propre
+	   pied de page dédié (`.foot.print-only` → « Ludaskia »). */
+	.site-footer {
 		display: none !important;
 	}
 	.screen-only {

@@ -1065,7 +1065,7 @@ describe('Grandeurs et mesures : conversions (#89)', () => {
 	});
 	test('buildLessonFiche : rendu fiche/écran avec champs de saisie (chemin math moderne)', () => {
 		const html = buildLessonFiche('mes-longueurs');
-		expect(html).toContain('Je mesure en mètres et en centimètres'); // titre
+		expect(html).toContain('Je convertis les longueurs'); // titre
 		expect(html).toContain('Complète : écris le bon nombre.'); // consigne d'action (#265)
 		expect(html).toContain('<input'); // au moins un champ de réponse
 		expect(html).not.toContain('@'); // le `@` a bien été remplacé par le champ

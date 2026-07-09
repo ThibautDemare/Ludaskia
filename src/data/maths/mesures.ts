@@ -175,7 +175,7 @@ const DUREE_FACTS: Fact[] = [
 export const MESURE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-longueurs',
-		label: 'Je mesure en mètres et en centimètres',
+		label: 'Je convertis les longueurs',
 		exerciseType: calibrated<MesureConfig>(
 			{
 				// CE2 : m↔cm, km↔m, ET cm↔mm / m↔mm (mm de longueur = CE2).
@@ -207,7 +207,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 	},
 	{
 		id: 'mes-masses',
-		label: 'Je pèse en kilos et en grammes',
+		label: 'Je convertis les masses',
 		exerciseType: calibrated<MesureConfig>(
 			{
 				ce2: { conversions: [{ big: 'kg', small: 'g', factor: 1000 }] },
@@ -232,7 +232,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 	},
 	{
 		id: 'mes-contenances',
-		label: 'Je verse en litres et en centilitres',
+		label: 'Je convertis les contenances',
 		exerciseType: calibrated<MesureConfig>(
 			{
 				// CE2 : L↔cL ET L↔dL (le dL est au programme) ; PAS le mL (CM1).
@@ -258,7 +258,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 	},
 	{
 		id: 'mes-durees',
-		label: 'Je compte les heures et les minutes',
+		label: 'Je convertis les durées',
 		exerciseType: calibrated<MesureConfig>(
 			{
 				// CE2 : h↔min jusqu'à 4 h + repères culturels. JAMAIS min↔s.

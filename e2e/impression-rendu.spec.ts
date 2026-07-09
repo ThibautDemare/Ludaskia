@@ -71,6 +71,27 @@ test('impression : .posee-input garde un cadre carré (border-top non nul, pas s
 	expect(errors).toEqual([]);
 });
 
+/* --- Pied de page global masqué à l'impression ------------------------- */
+
+/* Le pied de page de l'app (copyright, easter egg cookies, lien « Voir le code »)
+   est du chrome d'interface : visible à l'écran, mais `display:none` sous @media
+   print (la fiche imprimée porte son propre pied de page dédié « Ludaskia »). */
+test("impression : le pied de page global (#siteFooter) est masqué, visible à l'écran", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'accueil');
+
+	const footer = page.locator('#siteFooter');
+	await expect(footer).toBeVisible();
+
+	await page.emulateMedia({ media: 'print' });
+	const display = await footer.evaluate((el) => getComputedStyle(el).display);
+	expect(display).toBe('none');
+
+	expect(errors).toEqual([]);
+});
+
 /* --- Bulle d'aide des angles ------------------------------------------ */
 
 /* La bulle `.angle-aide` ne figure que dans les questions de « temps 3 »

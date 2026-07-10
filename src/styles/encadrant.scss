@@ -677,6 +677,30 @@ $plot-h: 140px;
 	border-radius: 3px;
 	background: var(--k);
 }
+/* Couverture par matière (roll-up en tête de « Notions par catégorie ») */
+.enc-mat-list {
+	list-style: none;
+	margin: 0.2rem 0 0.7rem;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+.enc-mat-item {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.1rem 0.6rem;
+}
+.enc-mat-lab {
+	font-weight: 700;
+	font-size: 0.85rem;
+}
+.enc-mat-counts {
+	font-size: 0.8rem;
+	color: var(--grey);
+}
 .enc-cats {
 	display: flex;
 	flex-direction: column;
@@ -716,7 +740,6 @@ $plot-h: 140px;
 .enc-cat-counts {
 	font-size: 0.8rem;
 	color: var(--grey);
-	white-space: nowrap;
 	grid-column: 1;
 }
 .enc-seg {
@@ -741,8 +764,9 @@ $plot-h: 140px;
 }
 .enc-detail-item {
 	display: flex;
+	flex-wrap: wrap; /* sur petit écran, les actions passent sous le libellé plutôt que de l'écraser */
 	align-items: center;
-	gap: 0.5rem;
+	gap: 0.35rem 0.5rem;
 	font-size: 0.85rem;
 }
 .enc-detail-puce {
@@ -752,13 +776,44 @@ $plot-h: 140px;
 	border-radius: 3px;
 	background: var(--k);
 }
-.enc-detail-lab {
+.enc-detail-main {
 	flex: 1;
+	min-width: 140px; /* garde le libellé + le suivi lisibles ; sous cette largeur, les actions wrappent */
+	display: flex;
+	flex-direction: column;
+	gap: 0.05rem;
+}
+.enc-detail-meta {
+	font-size: 0.72rem;
+	color: var(--grey);
 }
 .enc-detail-mot {
 	font-size: 0.75rem;
 	color: var(--grey);
 	white-space: nowrap;
+}
+/* Tendance récente (#265) : mot lisible en --ink ; la couleur (indice secondaire, WCAG 1.4.1)
+   n'est portée que par le glyphe fléché, qui redouble le sens par sa FORME (daltonisme). */
+.enc-tendance {
+	font-size: 0.72rem;
+	font-weight: 700;
+	color: var(--ink);
+	white-space: nowrap;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.15rem;
+}
+.enc-tendance-glyphe {
+	font-weight: 800;
+}
+.enc-tendance-progresse .enc-tendance-glyphe {
+	color: var(--ok);
+}
+.enc-tendance-stable .enc-tendance-glyphe {
+	color: var(--grey);
+}
+.enc-tendance-a-relancer .enc-tendance-glyphe {
+	color: var(--warn);
 }
 
 /* ---------- À revoir ensemble ---------- */

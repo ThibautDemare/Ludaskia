@@ -16,8 +16,10 @@ import {
 	loadRevoirFor,
 	niveauProfilMatiere,
 	echelleActivite,
+	libelleDerniereFois,
 	type RecapProfil,
 	type NiveauNotion,
+	type TendanceNotion,
 	type JourActivite,
 } from '../core/encadrant-stats';
 import { getAllLessons, type LessonDef } from '../core/catalog';
@@ -38,6 +40,25 @@ const MOT_NIVEAU: Record<NiveauNotion, string> = {
 // Ordre de PROGRESSION (croissant) pour la légende et les segments (avis pédago :
 // l'échelle doit se lire comme une gradation, pas un ordre arbitraire).
 const ORDRE_NIVEAUX: NiveauNotion[] = ['a-decouvrir', 'non-acquis', 'en-cours', 'acquis'];
+
+/* Tendance récente d'une notion : glyphe + mot, formulés en ACTION et non en verdict
+   (avis pédago : « à relancer », jamais « en baisse »). La couleur est un indice SECONDAIRE
+   porté par le glyphe ; le mot reste en --ink (a11y, cf. enc-revoir-etat). Masquée si null. */
+const TENDANCE: Record<TendanceNotion, { glyphe: string; mot: string; titre: string }> = {
+	progresse: { glyphe: '↗', mot: 'en progrès', titre: 'En progrès sur les derniers essais' },
+	stable: { glyphe: '→', mot: 'stable', titre: 'Stable sur les derniers essais' },
+	'a-relancer': {
+		glyphe: '↘',
+		mot: 'à relancer',
+		titre: 'Gagnerait à être retravaillée en ce moment',
+	},
+};
+function tendanceHTML(t: TendanceNotion | null): string {
+	if (!t) return '';
+	const { glyphe, mot, titre } = TENDANCE[t];
+	// `sr-only` : nomme l'info pour les lecteurs d'écran (« Tendance : … »), le glyphe restant décoratif.
+	return `<span class="enc-tendance enc-tendance-${t}" title="${titre}"><span class="enc-tendance-glyphe" aria-hidden="true">${glyphe}</span> <span class="sr-only">Tendance : </span>${mot}</span>`;
+}
 
 /* Types de session du graphe d'activité (#319). Couleurs reprises des tokens
    sémantiques de l'app (cohérence : sprint = corail, bilan = violet, leçon = bleu).
@@ -211,28 +232,39 @@ function maitriseHTML(recap: RecapProfil): string {
 		v > 0
 			? `<span class="enc-seg-part enc-key-${n}" style="flex:${v}" title="${v} ${MOT_NIVEAU[n]}"></span>`
 			: '';
-	// Détail d'une catégorie : une ligne par leçon (puce d'état + libellé + mot +
-	// actions : épingler/retirer + imprimer une fiche + imprimer avec corrigé).
+	// Détail d'une catégorie : une ligne par leçon (puce d'état + libellé + suivi
+	// « travaillée N fois · dernière fois … » + mot + actions : épingler/retirer +
+	// imprimer une fiche + imprimer avec corrigé).
+	const now = Date.now();
 	const detail = (c: RecapProfil['parCategorie'][number]) =>
 		c.lecons
-			.map(
-				(l) => `<li class="enc-detail-item">
+			.map((l) => {
+				const quand = libelleDerniereFois(l.derniereFois, now);
+				const suivi =
+					l.vues > 0
+						? `travaillée ${l.vues} fois${quand ? ` · dernière fois ${quand}` : ''}`
+						: 'pas encore travaillée';
+				return `<li class="enc-detail-item">
           <span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>
-          <span class="enc-detail-lab">${escapeHTML(l.label)}</span>
-          <span class="enc-detail-mot">${MOT_NIVEAU[l.niveau]}</span>
+          <span class="enc-detail-main">
+            <span class="enc-detail-lab">${escapeHTML(l.label)}</span>
+            <span class="enc-detail-meta">${suivi}</span>
+          </span>
+          <span class="enc-detail-mot"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[l.niveau]}</span>
+          ${tendanceHTML(l.tendance)}
           <span class="enc-actions">
             <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${l.lessonId}">${l.epingle ? 'Retirer' : 'Épingler'}</button>
             ${boutonsImpression(l.lessonId)}
           </span>
-        </li>`,
-			)
+        </li>`;
+			})
 			.join('');
 	const cats = recap.parCategorie
 		.map(
 			(c) => `<details class="enc-cat-d">
         <summary class="enc-cat-sum">
           <span class="enc-cat-lab">${escapeHTML(c.label)}</span>
-          <span class="enc-cat-counts">${c.acquis}/${c.total} acquises</span>
+          <span class="enc-cat-counts">${c.travaillees}/${c.total} travaillée${c.travaillees > 1 ? 's' : ''} · ${c.acquis} acquise${c.acquis > 1 ? 's' : ''}</span>
           <span class="enc-seg" aria-hidden="true">${ORDRE_NIVEAUX.map((n) => seg(n, valeur[n](c))).join('')}</span>
         </summary>
         <ul class="enc-detail">${detail(c)}</ul>
@@ -241,10 +273,28 @@ function maitriseHTML(recap: RecapProfil): string {
 		.join('');
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon('star')} Notions par catégorie</h3>
+      ${matieresHTML(recap)}
       <p class="enc-legend">${legende}</p>
       <p class="enc-hint">C'est normal qu'il reste des notions « à découvrir » ou « à renforcer » : ce sont celles qui n'ont pas encore été beaucoup travaillées. Dépliez une catégorie pour voir le détail et épingler une leçon.</p>
       <div class="enc-cats">${cats}</div>
     </div>`;
+}
+
+/* Vue « couverture par matière » : combien de leçons ont déjà été abordées (et acquises)
+   sur le total du niveau, matière par matière. Aide à ÉQUILIBRER l'entraînement entre
+   matières. Factuel (dénombrement), sans note ni pourcentage. */
+function matieresHTML(recap: RecapProfil): string {
+	if (recap.parMatiere.length === 0) return '';
+	const items = recap.parMatiere
+		.map(
+			(m) => `<li class="enc-mat-item">
+        <span class="enc-mat-lab">${escapeHTML(m.label)}</span>
+        <span class="enc-mat-counts">${m.travaillees}/${m.total} travaillée${m.travaillees > 1 ? 's' : ''} · ${m.acquis} acquise${m.acquis > 1 ? 's' : ''}</span>
+      </li>`,
+		)
+		.join('');
+	return `<p class="enc-sub-lab">Couverture par matière</p>
+      <ul class="enc-mat-list">${items}</ul>`;
 }
 
 /* Boutons d'impression d'une leçon (au niveau du profil consulté) : fiche vierge +

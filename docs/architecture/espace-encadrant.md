@@ -38,6 +38,28 @@ récemment » (jalons datés) ; **2-3** leçons « à revoir » (perf récente <
 d'activité 7 jours (journal `ludaskia_activity`). **Bannis** : moyenne/note globale, XP comme
 niveau scolaire, classement, comparaison entre profils, temps-performance.
 
+**Suivi par leçon** : dans le détail dépliable d'une catégorie, chaque leçon affiche
+« travaillée N fois · dernière fois … » — `RecapNotion.vues` (= `LessonStat.attempts`) et
+`RecapNotion.derniereFois` (= `LessonStat.lastAt`, horodatage alimenté par
+`recordLessonStats`). Le libellé (`libelleDerniereFois`) reste relatif tant que c'est lisible
+(aujourd'hui / hier / il y a N jours), sinon bascule en date absolue au-delà d'une semaine.
+
+**Couverture par matière** : bloc « Couverture par matière » en tête de « Notions par
+catégorie » (`RecapMatiere`, roll-up dans `RecapProfil.parMatiere` des catégories d'une même
+matière) : « X/total travaillées · Y acquises » par matière, pour équilibrer l'entraînement
+entre matières plutôt que se focaliser sur une seule. Chaque catégorie affiche le même
+dénombrement (`RecapCategorie.travaillees`). Comptage factuel, aucune note.
+
+**Tendance par notion** (signal COURT TERME, pas une note) : puce ↗ « en progrès » / →
+« stable » / ↘ « à relancer » à côté de l'état, dérivée de la fenêtre glissante `recentPct`
+(`tendanceNotion` : compare la moyenne de la 1re et de la 2de moitié de la fenêtre). **Masquée
+sous 4 essais** — un signal sur trop peu de données serait du bruit lu comme une régression.
+Formulée en action, jamais en verdict (« à relancer », jamais « en baisse ») ; couleur en
+indice **secondaire** porté par le glyphe (`aria-hidden`), mot en `--ink`, libellé `sr-only`
+(« Tendance : … ») pour les lecteurs d'écran. Reste un instantané, sans historique : une frise
+de l'évolution dans la durée (paliers hebdomadaires datés) est un chantier distinct, non
+implémenté ici (#397).
+
 ## Graphe « Activité des 7 derniers jours » (#319)
 
 Histogramme par jour (index 6 = aujourd'hui), avec **échelle Y chiffrée** (graduations +

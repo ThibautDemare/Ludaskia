@@ -32,7 +32,10 @@ tour enfant vu/sauté, mot aux parents affiché ; voir `core/tour.ts` — l'ench
 automatique ne se déclenche qu'**une fois par profil**, le bouton « ? » rejoue le tour
 sans les toucher). Un `LessonStat` porte aussi `recentPct?` (#234 : fenêtre glissante des
 derniers % d'une leçon — base de la performance **récente**, distincte du cumul
-historique de `lessonAvgPct`). **Clé GLOBALE** (non préfixée profil), comme
+historique de `lessonAvgPct`) et `lastAt?` (horodatage ms de la dernière session
+travaillée, écrit par `recordLessonStats` — base du « dernière fois travaillée » et
+de la tendance par notion de l'espace encadrant, cf.
+[Espace encadrant](espace-encadrant.md)). **Clé GLOBALE** (non préfixée profil), comme
 `ludaskia_profiles` : `ludaskia_encadrant_lock` (#234 : `{pinHash, recoveryHash}`
 du verrou optionnel de l'espace encadrant — verrou de l'ESPACE, pas d'un profil,
 donc non exporté et survit à la réinitialisation/suppression d'un profil).

@@ -34,6 +34,7 @@ import {
 	getAllLessons,
 	getLessonsByCategory,
 	CATEGORIES,
+	SUBJECTS,
 	type LessonDef,
 	type SchoolLevel,
 	type SubjectId,
@@ -49,8 +50,14 @@ const SEUIL_NON_ACQUIS = 40; // perf récente < 40 % → « non acquis »
 const SEUIL_REVOIR = 70; // perf récente < 70 % → proposé « à revoir » (cf. WEAK_PCT, rewards.ts)
 const RECENT_FENETRE_NOUVELLES_MS = 30 * 86400000; // « notions maîtrisées récemment » : 30 jours
 const JOURS_ACTIVITE = 7; // graphe d'activité : 7 derniers jours
+// Tendance par notion : dérivée de la fenêtre glissante recentPct, JAMAIS présentée en note.
+// Sous ce nombre d'essais, aucun signal (un signal sur trop peu d'essais serait du bruit lu comme
+// une régression — avis pédago). Seuil = écart de % moyen entre 1re et 2de moitié de la fenêtre.
+const TENDANCE_MIN_ESSAIS = 4;
+const TENDANCE_SEUIL = 10;
 
 export type NiveauNotion = 'a-decouvrir' | 'non-acquis' | 'en-cours' | 'acquis';
+export type TendanceNotion = 'progresse' | 'stable' | 'a-relancer';
 
 /* ---------- File « à revoir » (suggestions de l'encadrant) ----------
    IDs de leçons épinglées par l'encadrant ; rendues comme une carte sur l'accueil
@@ -101,6 +108,22 @@ export function niveauNotion(stat: LessonStat | undefined, etoilee: boolean): Ni
 	return pct < SEUIL_NON_ACQUIS ? 'non-acquis' : 'en-cours';
 }
 
+/* ---------- Tendance récente d'une notion ----------
+   Signal COURT TERME dérivé de la fenêtre glissante recentPct (derniers essais, non datés) :
+   on compare la moyenne de la 1re moitié de la fenêtre à celle de la 2de. Renvoie null tant
+   qu'il n'y a pas assez d'essais (le silence n'est pas un signal négatif). Ce n'est PAS une
+   note ni un pourcentage affiché : juste une direction (progresse / stable / à relancer). */
+export function tendanceNotion(stat: LessonStat | undefined): TendanceNotion | null {
+	const r = stat?.recentPct;
+	if (!Array.isArray(r) || r.length < TENDANCE_MIN_ESSAIS) return null;
+	const mid = Math.floor(r.length / 2);
+	const moy = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
+	const delta = moy(r.slice(mid)) - moy(r.slice(0, mid));
+	if (delta >= TENDANCE_SEUIL) return 'progresse';
+	if (delta <= -TENDANCE_SEUIL) return 'a-relancer';
+	return 'stable';
+}
+
 /* ---------- Récap par profil ---------- */
 export interface RecapCategorie {
 	categoryId: string;
@@ -111,9 +134,19 @@ export interface RecapCategorie {
 	nonAcquis: number;
 	aDecouvrir: number;
 	total: number;
+	travaillees: number; // leçons déjà abordées (≥ 1 session) = total − aDecouvrir ; sert à équilibrer la couverture
 	/** Détail par leçon (état + épinglage) : alimente le dépliage « voir le détail » et
 	   l'épinglage de N'IMPORTE quelle leçon, même non abordée (#234). */
 	lecons: RecapNotion[];
+}
+/* Agrégat au niveau d'une MATIÈRE (roll-up des catégories de même sujet) : donne au
+   parent une vue « couverture » d'un coup d'œil pour équilibrer entre matières. */
+export interface RecapMatiere {
+	subject: SubjectId;
+	label: string;
+	travaillees: number; // leçons abordées dans la matière
+	acquis: number; // leçons acquises (étoilées) dans la matière
+	total: number; // leçons du périmètre (niveau du profil) dans la matière
 }
 export interface RecapNotion {
 	lessonId: string;
@@ -121,9 +154,13 @@ export interface RecapNotion {
 	niveau: NiveauNotion;
 	pctRecent: number | null; // sert au tri/seuil — JAMAIS affiché en nombre côté UI
 	epingle: boolean; // présente dans la file « à revoir »
+	vues: number; // nombre de sessions travaillées (stat.attempts) ; 0 si jamais abordée
+	derniereFois: number | null; // horodatage (ms) de la dernière session (stat.lastAt), null si inconnue
+	tendance: TendanceNotion | null; // direction récente (recentPct) ; null si trop peu d'essais
 }
 export interface RecapProfil {
 	uuid: string;
+	parMatiere: RecapMatiere[]; // roll-up par matière (couverture), matières non vides au niveau du profil
 	parCategorie: RecapCategorie[]; // catégories non vides au niveau du profil
 	totalMaitrisees: number; // notions acquises (étoilées) au niveau du profil
 	totalLecons: number; // notions du périmètre (niveau du profil)
@@ -144,6 +181,30 @@ export interface JourActivite {
 	inconnu: number;
 }
 
+/* Début du jour LOCAL d'un horodatage (ms) — base des différences en jours CALENDAIRES
+   (graphe d'activité + « dernière fois travaillée »). Pur. */
+function startOfDay(ts: number): number {
+	const d = new Date(ts);
+	d.setHours(0, 0, 0, 0);
+	return d.getTime();
+}
+
+/* Libellé « dernière fois travaillée » pour l'espace encadrant, lisible pour un parent :
+   relatif sur la semaine écoulée (aujourd'hui / hier / il y a N jours), date absolue au-delà.
+   `now` injecté (testable). Pur. Renvoie '' si aucune date connue (leçon jamais travaillée
+   ou donnée antérieure à l'arrivée de ce suivi). */
+export function libelleDerniereFois(ts: number | null, now: number): string {
+	if (ts == null) return '';
+	const jours = Math.round((startOfDay(now) - startOfDay(ts)) / 86400000);
+	if (jours <= 0) return "aujourd'hui";
+	if (jours === 1) return 'hier';
+	if (jours <= 7) return `il y a ${jours} jours`;
+	return (
+		'le ' +
+		new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+	);
+}
+
 /* Activité par jour ET par type sur les `n` derniers jours (index n-1 = aujourd'hui).
    `activity` est le journal BRUT (lu en localStorage) : normalizeActivity tolère
    l'ancien format (nombres → 'inconnu') ET le nouveau, c'est donc l'unique frontière
@@ -153,11 +214,6 @@ export function activiteParJourParType(
 	now: number,
 	n = JOURS_ACTIVITE,
 ): JourActivite[] {
-	const startOfDay = (ts: number) => {
-		const d = new Date(ts);
-		d.setHours(0, 0, 0, 0);
-		return d.getTime();
-	};
 	const today = startOfDay(now);
 	const jours: JourActivite[] = Array.from({ length: n }, () => ({
 		total: 0,
@@ -227,6 +283,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 			nonAcquis: 0,
 			aDecouvrir: 0,
 			total: lecons.length,
+			travaillees: 0,
 			lecons: [],
 		};
 		for (const l of lecons) {
@@ -238,14 +295,19 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 			else if (etat === 'en-cours') rc.enCours++;
 			else if (etat === 'non-acquis') rc.nonAcquis++;
 			else rc.aDecouvrir++;
-			// Détail par leçon (état + épinglage) pour le dépliage de la catégorie.
-			rc.lecons.push({
+			// Détail par leçon (état + épinglage + vues/dernière fois/tendance) : le MÊME objet
+			// alimente le dépliage de la catégorie ET, s'il est faible, la file « à revoir ».
+			const notion: RecapNotion = {
 				lessonId: l.id,
 				label: l.label,
 				niveau: etat,
 				pctRecent: recentAvgPct(stat) ?? lessonAvgPct(stat),
 				epingle: fileSet.has(l.id),
-			});
+				vues: stat?.attempts ?? 0,
+				derniereFois: stat?.lastAt ?? null,
+				tendance: tendanceNotion(stat),
+			};
+			rc.lecons.push(notion);
 
 			totalLecons++;
 			if (etoilee) {
@@ -254,27 +316,37 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 				if (typeof fs === 'number' && now - fs <= RECENT_FENETRE_NOUVELLES_MS) nouvellesRecentes++;
 			}
 			// « À revoir » : travaillée, non étoilée, perf récente sous le seuil.
-			if (!etoilee && stat && stat.questions) {
-				const pctRecent = recentAvgPct(stat) ?? lessonAvgPct(stat);
-				if (pctRecent != null && pctRecent < SEUIL_REVOIR) {
-					aRevoir.push({
-						lessonId: l.id,
-						label: l.label,
-						niveau: etat,
-						pctRecent,
-						epingle: fileSet.has(l.id),
-					});
-				}
+			if (
+				!etoilee &&
+				stat?.questions &&
+				notion.pctRecent != null &&
+				notion.pctRecent < SEUIL_REVOIR
+			) {
+				aRevoir.push(notion);
 			}
 		}
+		rc.travaillees = rc.acquis + rc.enCours + rc.nonAcquis;
 		parCategorie.push(rc);
 	}
+
+	// Roll-up par matière (couverture) pour équilibrer entre matières.
+	const parMatiere: RecapMatiere[] = SUBJECTS.map((sub) => {
+		const cats = parCategorie.filter((c) => c.subject === sub.id);
+		return {
+			subject: sub.id,
+			label: sub.label,
+			travaillees: cats.reduce((n, c) => n + c.travaillees, 0),
+			acquis: cats.reduce((n, c) => n + c.acquis, 0),
+			total: cats.reduce((n, c) => n + c.total, 0),
+		};
+	}).filter((m) => m.total > 0);
 
 	// Les plus fragiles d'abord (l'UI en montre 2-3).
 	aRevoir.sort((a, b) => (a.pctRecent ?? 100) - (b.pctRecent ?? 100));
 
 	return {
 		uuid,
+		parMatiere,
 		parCategorie,
 		totalMaitrisees,
 		totalLecons,

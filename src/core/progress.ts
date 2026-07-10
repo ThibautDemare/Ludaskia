@@ -237,6 +237,10 @@ export interface LessonStat {
 	/** % des RECENT_MAX derniers essais (fenêtre glissante, non bornée par dates : un enfant
 	 *  qui espace ses essais ne perd pas la visu). Absent sur les données antérieures à #234. */
 	recentPct?: number[];
+	/** Horodatage (ms) de la DERNIÈRE session travaillée (leçon/bilan/express/sprint) — alimente
+	 *  le suivi « dernière fois travaillée » de l'espace encadrant. Absent sur données antérieures.
+	 *  Non agrégé par loadLessonStatsAll (aucun consommateur global n'en a besoin à ce jour). */
+	lastAt?: number;
 }
 function loadLessonStatsRaw(): Record<string, LessonStat> {
 	return lsGet(LESSON_STATS_KEY, {});
@@ -268,6 +272,7 @@ export function recordLessonStats(
 	kind: ActivityKind = 'lecon', // type journalisé pour le graphe d'activité (#319)
 ) {
 	const s = loadLessonStatsRaw();
+	const now = Date.now(); // instant unique de la session (stats, activité, 1re/dernière fois)
 	// Leçons rencontrées pour la 1re fois dans cet essai (aucune stat antérieure) :
 	// sert au suivi « première fois » (objectif « nouvelle leçon », #178).
 	const premieres: string[] = [];
@@ -287,10 +292,10 @@ export function recordLessonStats(
 		e.lastPct = pct;
 		// Fenêtre glissante des derniers % (#234) : base de la performance « récente ».
 		e.recentPct = [...(e.recentPct ?? []), pct].slice(-RECENT_MAX);
+		e.lastAt = now; // dernière fois travaillée (suivi de l'espace encadrant)
 		s[k] = e;
 	}
 	lsSet(LESSON_STATS_KEY, s);
-	const now = Date.now();
 	// Journal d'activité (#234) : un point par session finalisée, typé par contexte (#319).
 	if (hadActivity) recordActivity(now, kind);
 	// Première rencontre : on date le premier passage (objectif « nouvelle leçon »)

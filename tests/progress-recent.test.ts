@@ -42,6 +42,17 @@ describe('recentPct (fenêtre glissante)', () => {
 		).toBeNull();
 		expect(recentAvgPct(undefined)).toBeNull();
 	});
+
+	it('lastAt = date de la dernière session, et avance à chaque session (#suivi encadrant)', () => {
+		const avant = Date.now();
+		recordLessonStats({ 'math-doubles': { ok: 5, total: 10 } });
+		const s1 = loadLessonStats()['math-doubles'];
+		expect(s1.lastAt).toBeGreaterThanOrEqual(avant);
+		// Une 2e session ne fait jamais reculer la date.
+		recordLessonStats({ 'math-doubles': { ok: 5, total: 10 } });
+		const s2 = loadLessonStats()['math-doubles'];
+		expect(s2.lastAt!).toBeGreaterThanOrEqual(s1.lastAt!);
+	});
 });
 
 describe('journal d’activité', () => {

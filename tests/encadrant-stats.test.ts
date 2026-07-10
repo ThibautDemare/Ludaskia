@@ -10,6 +10,8 @@ import {
 	activiteParJour,
 	activiteParJourParType,
 	echelleActivite,
+	libelleDerniereFois,
+	tendanceNotion,
 	progressionProfil,
 	niveauProfilMatiere,
 	loadRevoir,
@@ -193,6 +195,105 @@ describe('echelleActivite (graduations « rondes », #319)', () => {
 	it('borne basse : max 0 ou 1 → échelle 0..1', () => {
 		expect(echelleActivite(0)).toEqual({ top: 1, step: 1, ticks: [1, 0] });
 		expect(echelleActivite(1)).toEqual({ top: 1, step: 1, ticks: [1, 0] });
+	});
+});
+
+describe('libelleDerniereFois (suivi « dernière fois travaillée »)', () => {
+	const NOW = 1_700_000_000_000; // instant fixe
+	const JOUR = 86_400_000;
+	it('date inconnue (null) → chaîne vide', () => {
+		expect(libelleDerniereFois(null, NOW)).toBe('');
+	});
+	it('même jour → aujourd’hui', () => {
+		expect(libelleDerniereFois(NOW, NOW)).toBe("aujourd'hui");
+	});
+	it('la veille → hier', () => {
+		expect(libelleDerniereFois(NOW - JOUR, NOW)).toBe('hier');
+	});
+	it('2 à 7 jours → il y a N jours', () => {
+		expect(libelleDerniereFois(NOW - 3 * JOUR, NOW)).toBe('il y a 3 jours');
+		expect(libelleDerniereFois(NOW - 7 * JOUR, NOW)).toBe('il y a 7 jours');
+	});
+	it('bascule à J-8 : au-delà de 7 jours → date absolue « le … »', () => {
+		expect(libelleDerniereFois(NOW - 8 * JOUR, NOW).startsWith('le ')).toBe(true);
+		expect(libelleDerniereFois(NOW - 40 * JOUR, NOW).startsWith('le ')).toBe(true);
+	});
+});
+
+describe('progressionProfil : vues + dernière fois par leçon', () => {
+	it('expose le nombre de sessions travaillées et l’horodatage de la dernière', () => {
+		const a = activeProfile();
+		recordLessonStats({ 'math-complements': { ok: 5, total: 10 } });
+		recordLessonStats({ 'math-complements': { ok: 6, total: 10 } });
+		const recap = progressionProfil(a, Date.now());
+		const notion = recap.parCategorie
+			.flatMap((c) => c.lecons)
+			.find((l) => l.lessonId === 'math-complements')!;
+		expect(notion.vues).toBe(2);
+		expect(typeof notion.derniereFois).toBe('number');
+	});
+	it('leçon jamais travaillée → vues 0 et derniereFois null', () => {
+		const a = activeProfile();
+		const notion = recap0LeconVierge(progressionProfil(a, Date.now()));
+		expect(notion.vues).toBe(0);
+		expect(notion.derniereFois).toBeNull();
+	});
+});
+
+/* Première leçon du récap n'ayant jamais été travaillée (0 vue). */
+function recap0LeconVierge(recap: ReturnType<typeof progressionProfil>) {
+	const notion = recap.parCategorie.flatMap((c) => c.lecons).find((l) => l.vues === 0);
+	if (!notion) throw new Error('aucune leçon vierge dans le récap');
+	return notion;
+}
+
+describe('tendanceNotion (direction récente)', () => {
+	const statAvec = (recentPct?: number[]) => ({
+		attempts: recentPct?.length ?? 0,
+		correct: 0,
+		questions: 10,
+		bestPct: 0,
+		lastPct: 0,
+		recentPct,
+	});
+	it('null tant qu’il y a moins de 4 essais (le silence n’est pas un signal négatif)', () => {
+		expect(tendanceNotion(undefined)).toBeNull();
+		expect(tendanceNotion(statAvec([50, 60, 70]))).toBeNull();
+	});
+	it('progresse quand la 2de moitié de la fenêtre dépasse la 1re d’au moins le seuil', () => {
+		expect(tendanceNotion(statAvec([40, 50, 80, 90]))).toBe('progresse');
+	});
+	it('gère la fenêtre max de 5 essais (découpage asymétrique 2 / 3)', () => {
+		expect(tendanceNotion(statAvec([40, 50, 60, 70, 80]))).toBe('progresse'); // 45 → 70
+		expect(tendanceNotion(statAvec([80, 80, 78, 76, 80]))).toBe('stable'); // 80 → 78
+	});
+	it('à relancer quand la 2de moitié chute d’au moins le seuil', () => {
+		expect(tendanceNotion(statAvec([90, 80, 50, 40]))).toBe('a-relancer');
+	});
+	it('stable quand l’écart reste sous le seuil', () => {
+		expect(tendanceNotion(statAvec([70, 75, 72, 78]))).toBe('stable');
+	});
+});
+
+describe('progressionProfil : couverture (travaillées) par catégorie et matière', () => {
+	it('travaillees = total − à découvrir, avec roll-up par matière', () => {
+		const { a } = deuxProfils(); // A : math-doubles étoilée + math-complements 20 %
+		const recap = progressionProfil(a, 1_700_000_000_000);
+		const cm = recap.parCategorie.find((c) => c.categoryId === 'math-calcul-mental')!;
+		expect(cm.travaillees).toBe(cm.acquis + cm.enCours + cm.nonAcquis);
+		expect(cm.travaillees).toBe(cm.total - cm.aDecouvrir);
+		expect(cm.travaillees).toBeGreaterThanOrEqual(2); // doubles + complements
+		const math = recap.parMatiere.find((m) => m.subject === 'math')!;
+		expect(math.label).toBe('Mathématiques');
+		expect(math.total).toBeGreaterThanOrEqual(cm.total);
+		expect(math.travaillees).toBeGreaterThanOrEqual(2);
+		expect(math.acquis).toBeGreaterThanOrEqual(1); // math-doubles étoilée
+	});
+	it('parMatiere n’expose que des matières non vides au niveau du profil', () => {
+		const { a } = deuxProfils();
+		const recap = progressionProfil(a, 1_700_000_000_000);
+		expect(recap.parMatiere.length).toBeGreaterThan(0);
+		expect(recap.parMatiere.every((m) => m.total > 0)).toBe(true);
 	});
 });
 

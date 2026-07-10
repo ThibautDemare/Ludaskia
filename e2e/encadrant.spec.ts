@@ -44,6 +44,15 @@ const SEED_ACTIVITE = `(() => {
   localStorage.setItem('e2e/ludaskia_activity', JSON.stringify(acts));
 })();`;
 
+/* Seed d'une leçon TRAVAILLÉE (math-complements CE2) : 4 sessions, dernière = maintenant,
+   fenêtre récente en hausse (40,50 → 80,90) pour déclencher la tendance « progresse ».
+   Sert au détail « travaillée N fois · dernière fois … » + puce de tendance. */
+const SEED_STATS_VUES = `(() => {
+  const now = Date.now();
+  const stat = { attempts: 4, correct: 26, questions: 40, bestPct: 90, lastPct: 90, recentPct: [40, 50, 80, 90], lastAt: now };
+  localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({ 'math-complements@ce2': stat }));
+})();`;
+
 /* ----- Tests ----- */
 
 /* 1. Accès depuis Profils : #btnEncadrant visible → clic → espace visible */
@@ -227,7 +236,7 @@ test("carte « À revoir » : épingler une leçon faible la fait apparaître su
 	expect(errors).toEqual([]);
 });
 
-/* 8. Graphe d'activité (#319) : échelle Y + bascule « Total » / « Par type ». */
+/* 7. Graphe d'activité (#319) : échelle Y + bascule « Total » / « Par type ». */
 test("graphe d'activité : échelle Y présente, bascule « Par type » empile les segments", async ({
 	page,
 }) => {
@@ -258,7 +267,56 @@ test("graphe d'activité : échelle Y présente, bascule « Par type » empile l
 	expect(errors).toEqual([]);
 });
 
-/* 7. Split accessibilité (#234) : « Mon confort » (enfant) vs « Aménagements » (encadrant). */
+/* 8. Détail des notions : « travaillée N fois · dernière fois … ». */
+test('détail des notions : nombre de fois travaillée + dernière fois', async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_STATS_VUES);
+	await page.addInitScript(SEED_CE2);
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	// Déplier chaque catégorie (clic sur son résumé = toggle natif <details>) pour
+	// exposer les lignes de détail par leçon.
+	const resumes = page.locator('.enc-cat-sum');
+	const n = await resumes.count();
+	for (let i = 0; i < n; i++) await resumes.nth(i).click();
+
+	// La leçon travaillée affiche son nombre de sessions (et une « dernière fois »).
+	await expect(
+		page.locator('.enc-detail-meta').filter({ hasText: 'travaillée 4 fois' }).first(),
+	).toBeVisible();
+	// ... et sa tendance récente (ici « progresse », fenêtre en hausse).
+	await expect(page.locator('.enc-tendance-progresse').first()).toBeVisible();
+	// Une leçon non abordée affiche l'état neutre « pas encore travaillée ».
+	await expect(
+		page.locator('.enc-detail-meta').filter({ hasText: 'pas encore travaillée' }).first(),
+	).toBeVisible();
+
+	expect(errors).toEqual([]);
+});
+
+/* 9. Couverture par matière + compteur « travaillées » par catégorie. */
+test('couverture : vue par matière et compteur « travaillées » par catégorie', async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_STATS_VUES);
+	await page.addInitScript(SEED_CE2);
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	// Vue « Couverture par matière » : toujours visible (hors dépliage des catégories).
+	await expect(page.locator('.enc-mat-list')).toBeVisible();
+	await expect(
+		page.locator('.enc-mat-item').filter({ hasText: 'Mathématiques' }).first(),
+	).toBeVisible();
+	// Le compteur de catégorie affiche la couverture « travaillée(s) » (sous-chaîne robuste au pluriel).
+	await expect(
+		page.locator('.enc-cat-counts').filter({ hasText: 'travaillée' }).first(),
+	).toBeVisible();
+
+	expect(errors).toEqual([]);
+});
+
+/* 10. Split accessibilité (#234) : « Mon confort » (enfant) vs « Aménagements » (encadrant). */
 test('accessibilité : confort côté enfant, aménagements côté encadrant', async ({ page }) => {
 	const errors = watchErrors(page);
 	// Écran « Mon espace » : confort de lecture + animations, MAIS plus le minuteur

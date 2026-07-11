@@ -701,6 +701,101 @@ $plot-h: 140px;
 	font-size: 0.8rem;
 	color: var(--grey);
 }
+
+/* ---------- Frise d'évolution par matière (paliers franchis, #397) ----------
+   Indicateur SECONDAIRE, volontairement plus léger que le graphe d'activité : capsules
+   vertes (--ok = « progrès de maîtrise », distinct du bleu « effort » du graphe d'activité),
+   sans axe ni lignes de repère. Une frise par matière, empilées (petits multiples). */
+.enc-evol {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin: 0.2rem 0 0.2rem;
+}
+.enc-evol-mat {
+	display: flex;
+	flex-direction: column; /* libellé au-dessus (les noms de matière sont longs) */
+	gap: 0.2rem;
+}
+.enc-evol-mat-lab {
+	font-size: 0.82rem;
+	font-weight: 700;
+	color: var(--grey);
+}
+.enc-evol-bars {
+	display: flex;
+	align-items: flex-end;
+	gap: 0.25rem;
+	height: 48px; /* petit (vs $plot-h:140px du graphe d'activité) : widget secondaire */
+}
+.enc-evol-col {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+/* Compteur : toujours présent (vide si 0) pour réserver l'espace et aligner les barres.
+   En --grey (neutre) : la couleur « progrès » est portée par la barre, pas par le chiffre. */
+.enc-evol-num {
+	height: 0.95rem;
+	line-height: 0.95rem;
+	font-size: 0.7rem;
+	font-weight: 800;
+	color: var(--grey);
+}
+.enc-evol-plot {
+	flex: 1;
+	width: 100%;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+}
+/* Amorce des semaines sans franchissement : gris NEUTRE dédié (jamais --ko/--warn). Assez
+   contrasté sur --paper pour rester visible (WCAG 1.4.11, ≥ 3:1 en clair ET en Nuit) — le
+   token --track, pensé pour --page-bg, y est quasi invisible (~1,2:1). Valeur unique dans
+   les deux thèmes, sur le modèle de .enc-act-inconnu. */
+$evol-amorce: #7c8494;
+.enc-evol-bar {
+	width: 100%;
+	max-width: 14px;
+	min-height: 5px; /* amorce visible même à 0 (jamais de trou) */
+	border-radius: 999px; /* capsule (≠ rectangle à coins arrondis du graphe d'activité) */
+	background: $evol-amorce;
+}
+.enc-evol-col.has-value .enc-evol-bar {
+	background: var(--ok); /* vert « progrès » uniquement si ≥ 1 franchissement */
+}
+/* Semaine EN COURS (partielle) : motif HACHURÉ (indice de FORME, pas seulement de couleur)
+   → « pas encore comparable » aux semaines closes. Distinct de l'amorce pleine même quand la
+   semaine est vide (on ne retombe PAS sur du plein, sinon le signal « en cours » disparaît).
+   Redoublé par le libellé « (en cours) » du aria-label. */
+.enc-evol-col.en-cours .enc-evol-bar {
+	background: repeating-linear-gradient(
+		45deg,
+		$evol-amorce,
+		$evol-amorce 3px,
+		var(--paper) 3px,
+		var(--paper) 6px
+	);
+}
+.enc-evol-col.en-cours.has-value .enc-evol-bar {
+	background: repeating-linear-gradient(
+		45deg,
+		var(--ok),
+		var(--ok) 3px,
+		var(--paper) 3px,
+		var(--paper) 6px
+	);
+}
+.enc-evol-cap {
+	display: flex;
+	justify-content: space-between;
+	font-size: 0.7rem;
+	color: var(--muted);
+	margin: 0.1rem 0 0;
+}
+
 .enc-cats {
 	display: flex;
 	flex-direction: column;

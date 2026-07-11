@@ -40,6 +40,7 @@ import type { Item } from '../core/items';
 import {
 	updateStreak,
 	recordLessonStats,
+	recordMonteesPalier,
 	recordRun,
 	type RunResult,
 	streakSuffix,
@@ -597,6 +598,12 @@ function finalizeSprint() {
 	// Un sprint compte car il est allé au bout du temps : on enregistre tout.
 	const streakDays = updateStreak().days;
 	recordLessonStats(sprintPerLesson, 'sprint'); // type journalisé pour le graphe d'activité (#319)
+	// Franchissements de palier (frise d'évolution, #397) : le sprint n'attribue pas d'étoile,
+	// donc ne peut faire atteindre que « en cours », jamais « acquis ».
+	recordMonteesPalier(
+		Object.keys(sprintPerLesson).filter((id) => sprintPerLesson[id].total > 0),
+		Date.now(),
+	);
 	const medalInfo = recordRun('sprint', sprintScore, sprintAnswered, SPRINT_MS);
 	const goalRes = updateGoal({ mode: 'sprint', sprint: true, isRecord: medalInfo.isRecord });
 	const newTrophies = evaluateTrophies();

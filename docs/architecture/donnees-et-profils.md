@@ -11,7 +11,12 @@ décompte d'objectif seul ; clé réellement **namespacée par niveau** :
 `ludaskia_runs_<mode>@<niveau>`, cf. [Niveaux scolaires](niveaux-scolaires.md)),
 `ludaskia_streak`, `ludaskia_stars`,
 `ludaskia_lessonStats`, `ludaskia_lessonFirstSeen` (date du 1er passage par
-leçon, objectif « nouvelle leçon »), `ludaskia_lessonRevision` (état SR par leçon),
+leçon, objectif « nouvelle leçon »), `ludaskia_paliers` (#397 : journal daté des
+**premiers** franchissements de palier par notion — `PaliersNotion {enCours?, acquis?}`,
+namespacée `lessonId@niveau` comme stats/étoiles, 2 horodatages max donc bornée par le
+catalogue — écrit par `recordMonteesPalier` en fin de session, APRÈS l'étoile ; base de la
+frise d'évolution de l'espace encadrant, cf. [Espace encadrant](espace-encadrant.md)),
+`ludaskia_lessonRevision` (état SR par leçon),
 `ludaskia_goal`, `ludaskia_goalsDone`, `ludaskia_trophies`, `ludaskia_xp`,
 `ludaskia_bilans` (configs de bilans favoris), `ludaskia_resume` (exercices
 grille **en cours**, repris ou abandonnés — #63), `ludaskia_activity` (#234 :

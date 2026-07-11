@@ -10,6 +10,7 @@ import {
 	updateStreak,
 	recordLessonStats,
 	recordLessonResult,
+	recordMonteesPalier,
 	recordRun,
 	addXP,
 	getXP,
@@ -64,6 +65,13 @@ export function recordLessonRun(p: LessonRunInput): LessonRunOutcome {
 	} else {
 		recordRun(p.mode, p.ok, p.questionCount, p.ms);
 	}
+
+	// Franchissements de palier (frise d'évolution, #397) : APRÈS l'étoile (l'état « acquis »
+	// en dépend), sur les leçons réellement travaillées dans cette session.
+	recordMonteesPalier(
+		Object.keys(p.perLesson).filter((id) => p.perLesson[id].total > 0),
+		Date.now(),
+	);
 
 	const goalRes = updateGoal({
 		mode: p.mode,

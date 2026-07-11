@@ -17,10 +17,12 @@ import {
 	niveauProfilMatiere,
 	echelleActivite,
 	libelleDerniereFois,
+	debutSemaine,
 	type RecapProfil,
 	type NiveauNotion,
 	type TendanceNotion,
 	type JourActivite,
+	type FriseMatiere,
 } from '../core/encadrant-stats';
 import { getAllLessons, type LessonDef } from '../core/catalog';
 import { printScope } from './session';
@@ -274,6 +276,7 @@ function maitriseHTML(recap: RecapProfil): string {
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon('star')} Notions par catégorie</h3>
       ${matieresHTML(recap)}
+      ${frisesHTML(recap)}
       <p class="enc-legend">${legende}</p>
       <p class="enc-hint">C'est normal qu'il reste des notions « à découvrir » ou « à renforcer » : ce sont celles qui n'ont pas encore été beaucoup travaillées. Dépliez une catégorie pour voir le détail et épingler une leçon.</p>
       <div class="enc-cats">${cats}</div>
@@ -295,6 +298,71 @@ function matieresHTML(recap: RecapProfil): string {
 		.join('');
 	return `<p class="enc-sub-lab">Couverture par matière</p>
       <ul class="enc-mat-list">${items}</ul>`;
+}
+
+/* Frise d'évolution par matière (#397) : petites frises hebdomadaires empilées (une par
+   matière), hauteur = notions ayant franchi un cap cette semaine-là. Sans axe ni pourcentage :
+   juste un compteur de notions au-dessus des barres non nulles (dénombrement, pas une note).
+   Rendu volontairement plus léger que le graphe d'activité (capsules vertes, pas d'axe) pour
+   ne pas être lue comme « le même graphe ». La semaine EN COURS (dernière colonne) est
+   distinguée : partielle, donc non comparable à hauteur égale. Masquée tant qu'aucune matière
+   n'a assez de recul ; amorce textuelle si l'entraînement a commencé mais pas encore assez. */
+function frisesHTML(recap: RecapProfil): string {
+	if (recap.frises.length === 0) {
+		// Rien à tracer ; si l'enfant a déjà travaillé, on annonce que la vue viendra.
+		return recap.parMatiere.some((m) => m.travaillees > 0)
+			? `<p class="enc-sub-lab">Évolution récente</p>
+         <p class="enc-hint">L'évolution par matière apparaîtra ici après quelques semaines d'entraînement.</p>`
+			: '';
+	}
+	// Échelle verticale COMMUNE aux matières (petits multiples comparables entre eux).
+	const maxSem = Math.max(1, ...recap.frises.flatMap((f) => f.semaines));
+	const lundiCourant = debutSemaine(Date.now());
+	const frises = recap.frises.map((f) => friseMatiereHTML(f, maxSem, lundiCourant)).join('');
+	const nbSemaines = recap.frises[0].semaines.length;
+	// Synthèse VISIBLE (pas seulement dans les aria-label des colonnes) : donne le total par
+	// matière d'un coup d'œil, sans devoir parcourir les 12 colonnes (a11y, cf. graphe d'activité).
+	const synthese = recap.frises.map((f) => `${f.total} en ${f.label.toLowerCase()}`).join(', ');
+	return `<p class="enc-sub-lab">Évolution récente</p>
+      <p class="enc-hint">Notions ayant franchi un cap sur les ${nbSemaines} dernières semaines : ${synthese}.</p>
+      <div class="enc-evol">${frises}</div>
+      <p class="enc-evol-cap" aria-hidden="true"><span>sur les ${nbSemaines} dernières semaines</span><span>cette semaine →</span></p>
+      <p class="enc-hint">Chaque marche est une notion qui a franchi un cap (par exemple « en cours » → « acquis »). Une semaine plus calme ne veut pas dire une semaine sans travail : la progression n'est pas régulière.</p>`;
+}
+
+/* Une mini-frise (une matière) : libellé + rangée de colonnes hebdomadaires. Chaque colonne
+   réserve toujours l'espace du compteur au-dessus (aligne les barres), puis la barre-capsule
+   dont la hauteur est proportionnelle au max COMMUN. Colonne vide → amorce grise neutre
+   (jamais un trou, jamais un « 0 »). `role="img"` + libellé daté, comme le graphe d'activité. */
+function friseMatiereHTML(f: FriseMatiere, maxSem: number, lundiCourant: number): string {
+	const n = f.semaines.length;
+	const cols = f.semaines
+		.map((c, i) => {
+			const enCours = i === n - 1;
+			const lundi = lundiCourant - (n - 1 - i) * 7 * 86400000;
+			const quand = enCours
+				? 'Cette semaine (en cours)'
+				: `Semaine du ${new Date(lundi).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`;
+			const combien =
+				c > 0
+					? `${c} notion${c > 1 ? 's' : ''} ${c > 1 ? 'ont' : 'a'} franchi un cap`
+					: "aucune notion n'a franchi de cap";
+			const aria = `${quand} : ${combien}`;
+			const h = Math.round((c / maxSem) * 100);
+			// `role="img"` + aria-label portent toute l'info → on masque le sous-arbre visuel
+			// (compteur + plot) pour éviter une double annonce selon les couples navigateur/AT.
+			return `<span class="enc-evol-col${enCours ? ' en-cours' : ''}${c > 0 ? ' has-value' : ''}" role="img" aria-label="${aria}" title="${aria}">
+        <span class="enc-evol-num" aria-hidden="true">${c > 0 ? c : ''}</span>
+        <span class="enc-evol-plot" aria-hidden="true"><span class="enc-evol-bar" style="height:${h}%"></span></span>
+      </span>`;
+		})
+		.join('');
+	// role="group" + aria-label : rattache les colonnes à leur matière pour une navigation
+	// NON linéaire (saut de graphique en graphique) ; le libellé visuel devient décoratif.
+	return `<div class="enc-evol-mat" role="group" aria-label="${escapeHTML(f.label)}">
+      <span class="enc-evol-mat-lab" aria-hidden="true">${escapeHTML(f.label)}</span>
+      <div class="enc-evol-bars">${cols}</div>
+    </div>`;
 }
 
 /* Boutons d'impression d'une leçon (au niveau du profil consulté) : fiche vierge +

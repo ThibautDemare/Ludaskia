@@ -56,9 +56,26 @@ dénombrement (`RecapCategorie.travaillees`). Comptage factuel, aucune note.
 sous 4 essais** — un signal sur trop peu de données serait du bruit lu comme une régression.
 Formulée en action, jamais en verdict (« à relancer », jamais « en baisse ») ; couleur en
 indice **secondaire** porté par le glyphe (`aria-hidden`), mot en `--ink`, libellé `sr-only`
-(« Tendance : … ») pour les lecteurs d'écran. Reste un instantané, sans historique : une frise
-de l'évolution dans la durée (paliers hebdomadaires datés) est un chantier distinct, non
-implémenté ici (#397).
+(« Tendance : … ») pour les lecteurs d'écran. Reste un instantané, sans historique par
+elle-même — l'historique daté vit dans la frise d'évolution ci-dessous (#397).
+
+## Frise d'évolution (#397)
+
+**Frise d'évolution** par matière, sous « Notions par catégorie » : une rangée de colonnes
+hebdomadaires par matière (**12 dernières semaines**, `SEMAINES_FRISE`), hauteur = nombre de
+**notions distinctes** ayant franchi un cap (« en cours » ou « acquis ») cette semaine-là
+(`frisesParMatiere`, calculée sur le journal daté `ludaskia_paliers` / `PaliersNotion`).
+Alimentée par `recordMonteesPalier(lessonIds, now)` (`core/progress.ts`), appelé **après**
+l'écriture de l'étoile, en fin de session, par `recordLessonRun` et le sprint
+(`ui/sprint.ts`) — modèle « premier franchissement » **monotone** : une notion qui repasse
+par un palier déjà atteint ne re-loggue pas (pas d'oscillation autour du seuil). La
+dernière colonne (semaine en cours) est visuellement distinguée : partielle, non comparable
+à hauteur égale. **Masquée** tant qu'une matière n'a pas au moins **3 semaines de recul**
+depuis son premier franchissement (`PALIERS_MIN_SEMAINES`) — évite de lire « trop tôt »
+comme « aucun progrès » (avis pédago/designer) ; une amorce textuelle s'affiche si l'enfant
+a déjà travaillé la matière sans encore assez de recul. **Garde-fous** (mêmes principes que
+le reste du récap) : aucun pourcentage ni note affichés, aucune comparaison entre enfants —
+un simple compteur de notions au-dessus des barres non vides.
 
 ## Graphe « Activité des 7 derniers jours » (#319)
 

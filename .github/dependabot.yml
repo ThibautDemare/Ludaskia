@@ -11,6 +11,14 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      # typescript-eslint 8.x plafonne sa peer dependency à typescript <6.1.0.
+      # Tant qu'il ne supporte pas TS 7 (nouveau compilateur natif), toute montée
+      # majeure de TypeScript casse `npm ci` (ERESOLVE). À lever quand
+      # typescript-eslint annoncera le support de TS 7.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
     groups:
       # Regroupe les montées mineures/patch en une seule PR pour limiter le bruit.
       # Les montées majeures restent des PR individuelles (relecture au cas par cas).

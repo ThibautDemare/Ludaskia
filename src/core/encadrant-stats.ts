@@ -22,16 +22,29 @@ import {
 	STARS_KEY,
 	LESSON_STATS_KEY,
 	LESSON_FIRST_SEEN_KEY,
+	LESSON_PALIERS_KEY,
 	ACTIVITY_KEY,
-	lessonAvgPct,
-	recentAvgPct,
 	loadLessonStats,
 	loadStars,
 	normalizeActivity,
-	type LessonStat,
+	lessonOfKey,
+	niveauOfKey,
+	startOfWeek,
+	type PaliersNotion,
 } from './progress';
 import {
+	lessonAvgPct,
+	recentAvgPct,
+	niveauNotion,
+	tendanceNotion,
+	SEUIL_REVOIR,
+	type LessonStat,
+	type NiveauNotion,
+	type TendanceNotion,
+} from './maitrise';
+import {
 	getAllLessons,
+	getLessonById,
 	getLessonsByCategory,
 	CATEGORIES,
 	SUBJECTS,
@@ -43,21 +56,18 @@ import { niveauDefautCatalogue } from './levels';
 import { niveauActifMatiere } from './niveau-actif';
 import type { Profile } from './profiles';
 
-/* ---------- Seuils (réglables) ---------- */
-// Échelle d'acquisition (type LSU). Le % récent PILOTE l'état mais n'est jamais
-// affiché en nombre (avis pédagogique : un parent lit « 64 % » comme une note).
-const SEUIL_NON_ACQUIS = 40; // perf récente < 40 % → « non acquis »
-const SEUIL_REVOIR = 70; // perf récente < 70 % → proposé « à revoir » (cf. WEAK_PCT, rewards.ts)
+/* L'échelle de maîtrise (types + niveauNotion/tendanceNotion) vit dans maitrise.ts ; on la
+   re-expose ici pour les consommateurs historiques de l'espace encadrant (UI + tests) qui
+   importent « depuis encadrant-stats ». */
+export { niveauNotion, tendanceNotion } from './maitrise';
+export type { NiveauNotion, TendanceNotion } from './maitrise';
+
+/* ---------- Seuils propres à l'espace encadrant ----------
+   (L'échelle de maîtrise et ses seuils — SEUIL_NON_ACQUIS, tendance — vivent dans maitrise.ts.) */
 const RECENT_FENETRE_NOUVELLES_MS = 30 * 86400000; // « notions maîtrisées récemment » : 30 jours
 const JOURS_ACTIVITE = 7; // graphe d'activité : 7 derniers jours
-// Tendance par notion : dérivée de la fenêtre glissante recentPct, JAMAIS présentée en note.
-// Sous ce nombre d'essais, aucun signal (un signal sur trop peu d'essais serait du bruit lu comme
-// une régression — avis pédago). Seuil = écart de % moyen entre 1re et 2de moitié de la fenêtre.
-const TENDANCE_MIN_ESSAIS = 4;
-const TENDANCE_SEUIL = 10;
-
-export type NiveauNotion = 'a-decouvrir' | 'non-acquis' | 'en-cours' | 'acquis';
-export type TendanceNotion = 'progresse' | 'stable' | 'a-relancer';
+const SEMAINES_FRISE = 12; // frise d'évolution (#397) : 12 dernières semaines (au-delà, le contenu a souvent changé)
+const PALIERS_MIN_SEMAINES = 3; // frise masquée tant que la matière a moins de recul (avis pédago/designer)
 
 /* ---------- File « à revoir » (suggestions de l'encadrant) ----------
    IDs de leçons épinglées par l'encadrant ; rendues comme une carte sur l'accueil
@@ -96,34 +106,6 @@ export function niveauProfilMatiere(profile: Profile, subject: SubjectId): Schoo
 		niveauDefautCatalogue(getAllLessons())
 	);
 }
-/* ---------- État d'acquisition d'une notion (échelle 4 niveaux) ----------
-   - acquis : étoilée (≥ 1 réussite sans faute) ;
-   - à découvrir : jamais travaillée (aucune stat) ;
-   - sinon piloté par la perf RÉCENTE (repli cumul) : < 40 % « non acquis », sinon « en cours ».
-   Le wording côté UI est validé par le pédagogue/rédacteur ; ici, valeurs internes. */
-export function niveauNotion(stat: LessonStat | undefined, etoilee: boolean): NiveauNotion {
-	if (etoilee) return 'acquis';
-	if (!stat || !stat.questions) return 'a-decouvrir';
-	const pct = recentAvgPct(stat) ?? lessonAvgPct(stat) ?? 0;
-	return pct < SEUIL_NON_ACQUIS ? 'non-acquis' : 'en-cours';
-}
-
-/* ---------- Tendance récente d'une notion ----------
-   Signal COURT TERME dérivé de la fenêtre glissante recentPct (derniers essais, non datés) :
-   on compare la moyenne de la 1re moitié de la fenêtre à celle de la 2de. Renvoie null tant
-   qu'il n'y a pas assez d'essais (le silence n'est pas un signal négatif). Ce n'est PAS une
-   note ni un pourcentage affiché : juste une direction (progresse / stable / à relancer). */
-export function tendanceNotion(stat: LessonStat | undefined): TendanceNotion | null {
-	const r = stat?.recentPct;
-	if (!Array.isArray(r) || r.length < TENDANCE_MIN_ESSAIS) return null;
-	const mid = Math.floor(r.length / 2);
-	const moy = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
-	const delta = moy(r.slice(mid)) - moy(r.slice(0, mid));
-	if (delta >= TENDANCE_SEUIL) return 'progresse';
-	if (delta <= -TENDANCE_SEUIL) return 'a-relancer';
-	return 'stable';
-}
-
 /* ---------- Récap par profil ---------- */
 export interface RecapCategorie {
 	categoryId: string;
@@ -167,6 +149,7 @@ export interface RecapProfil {
 	nouvellesRecentes: number; // notions maîtrisées dont la 1re rencontre date de < 30 j
 	aRevoir: RecapNotion[]; // notions faibles (perf récente < 70 %), triées, UI cape à 3
 	activite7j: JourActivite[]; // activité par jour, 7 derniers (index 6 = aujourd'hui), avec répartition par type
+	frises: FriseMatiere[]; // évolution récente par matière (#397) ; vide tant qu'aucune matière n'a assez de recul
 }
 
 /* Activité d'un jour : total + détail par type de session (#319). `inconnu` =
@@ -179,6 +162,17 @@ export interface JourActivite {
 	revision: number;
 	dictee: number;
 	inconnu: number;
+}
+
+/* Frise d'évolution d'une matière (#397) : nombre de NOTIONS DISTINCTES ayant franchi un
+   cap (« en cours » ou « acquis ») par semaine, sur les SEMAINES_FRISE dernières semaines.
+   `semaines` : du plus ancien (index 0) au plus récent ; le DERNIER élément est la semaine
+   EN COURS (partielle) — l'UI la distingue pour ne pas la comparer à hauteur égale. */
+export interface FriseMatiere {
+	subject: SubjectId;
+	label: string;
+	semaines: number[]; // longueur = SEMAINES_FRISE ; count de notions distinctes ayant franchi un cap
+	total: number; // notions distinctes ayant franchi un cap sur toute la fenêtre affichée
 }
 
 /* Début du jour LOCAL d'un horodatage (ms) — base des différences en jours CALENDAIRES
@@ -253,6 +247,59 @@ export function echelleActivite(max: number): { top: number; step: number; ticks
 	return { top, step, ticks };
 }
 
+const SEMAINE_MS = 7 * 86400000;
+/* Début de la semaine LOCALE (lundi 00:00) d'un horodatage — base des seaux hebdomadaires
+   de la frise. Alias de startOfWeek (progress.ts) : la frise et les objectifs de régularité
+   partagent la MÊME notion de « semaine calendaire ». Exporté : l'UI l'utilise pour dater
+   les colonnes dans les libellés accessibles. */
+export const debutSemaine = startOfWeek;
+
+/* Frise d'évolution par matière (#397), calculée à partir du journal daté des paliers
+   (LESSON_PALIERS_KEY) du profil consulté. Pour chaque matière (au niveau du profil) :
+   compte, par semaine, les NOTIONS DISTINCTES ayant franchi un cap cette semaine-là.
+   `paliersRaw` : brut (clés `lessonId@niveau`). `now` injecté (pur/testable).
+
+   Une matière n'apparaît que si (a) elle a au moins une marche DANS la fenêtre affichée
+   ET (b) sa toute 1re marche remonte à ≥ PALIERS_MIN_SEMAINES semaines (assez de recul) —
+   sinon on n'affiche rien plutôt qu'une frise trop courte, lue comme « aucun progrès »
+   alors que c'est « trop tôt » (avis pédago/designer). */
+export function frisesParMatiere(
+	paliersRaw: Record<string, PaliersNotion>,
+	profile: Profile,
+	now: number,
+): FriseMatiere[] {
+	const debutCourante = debutSemaine(now);
+	const out: FriseMatiere[] = [];
+	for (const sub of SUBJECTS) {
+		const niveau = niveauProfilMatiere(profile, sub.id);
+		const semaines = new Array<number>(SEMAINES_FRISE).fill(0);
+		let premiereMarche = Infinity;
+		let totalFenetre = 0;
+		for (const key in paliersRaw) {
+			if (niveauOfKey(key) !== niveau) continue;
+			if (getLessonById(lessonOfKey(key))?.subject !== sub.id) continue;
+			const rec = paliersRaw[key];
+			const marches = [rec.enCours, rec.acquis].filter((t): t is number => typeof t === 'number');
+			if (marches.length === 0) continue;
+			premiereMarche = Math.min(premiereMarche, ...marches);
+			// Une notion ne compte qu'UNE fois par semaine (même si elle franchit « en cours »
+			// puis « acquis » la même semaine) : on dédoublonne ses semaines de franchissement.
+			const indices = new Set<number>();
+			for (const t of marches) {
+				const idx = SEMAINES_FRISE - 1 - Math.round((debutCourante - debutSemaine(t)) / SEMAINE_MS);
+				if (idx >= 0 && idx < SEMAINES_FRISE) indices.add(idx);
+			}
+			for (const idx of indices) semaines[idx]++;
+			if (indices.size > 0) totalFenetre++;
+		}
+		if (premiereMarche === Infinity || totalFenetre === 0) continue; // matière sans marche affichable
+		const reculSemaines = Math.round((debutCourante - debutSemaine(premiereMarche)) / SEMAINE_MS);
+		if (reculSemaines < PALIERS_MIN_SEMAINES) continue; // pas encore assez de recul
+		out.push({ subject: sub.id, label: sub.label, semaines, total: totalFenetre });
+	}
+	return out;
+}
+
 /* Tableau de bord d'un profil (par UUID), SANS changer le profil actif.
    `now` injecté pour testabilité (l'UI passe Date.now()). */
 export function progressionProfil(profile: Profile, now: number): RecapProfil {
@@ -261,6 +308,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 	const statsRaw = lsGetRaw(uuid + '/' + LESSON_STATS_KEY, {}) as Record<string, LessonStat>;
 	const firstSeenRaw = lsGetRaw(uuid + '/' + LESSON_FIRST_SEEN_KEY, {}) as Record<string, number>;
 	const activity = lsGetRaw(uuid + '/' + ACTIVITY_KEY, []); // brut : normalisé par activiteParJourParType
+	const paliersRaw = lsGetRaw(uuid + '/' + LESSON_PALIERS_KEY, {}) as Record<string, PaliersNotion>;
 	const file = loadRevoirFor(uuid);
 	const fileSet = new Set(file);
 
@@ -353,6 +401,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 		nouvellesRecentes,
 		aRevoir,
 		activite7j: activiteParJourParType(activity, now),
+		frises: frisesParMatiere(paliersRaw, profile, now),
 	};
 }
 

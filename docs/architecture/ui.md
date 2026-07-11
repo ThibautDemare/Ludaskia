@@ -41,8 +41,10 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   écran de récupération, bloc « Code d'accès » des réglages ; possède l'état du
   verrou et la vue courante (`pinView()`, lue par l'orchestrateur).
 - **`encadrant-progression.ts`** — **récap** par profil : chiffres-clés, graphe
-  d'activité 7 jours (#319, bascule Total / Par type), maîtrise par catégorie,
-  file « à revoir » ; handlers `activite-mode`/`epingler`/`imprimer`.
+  d'activité 7 jours (#319, bascule Total / Par type), maîtrise par catégorie (avec sa
+  **frise d'évolution hebdomadaire par matière**, #397 — barres-capsules `--ok`, compteur
+  de notions au-dessus des semaines non vides, semaine en cours distinguée, sans axe ni
+  pourcentage), file « à revoir » ; handlers `activite-mode`/`epingler`/`imprimer`.
 - **`encadrant-reglages.ts`** — **réglages** sur le profil consulté : classe de
   référence + niveau par matière, aménagements « dys »/attention ; injecte le
   bloc PIN rendu par `encadrant-pin`.

@@ -403,14 +403,28 @@ propre doc de conception : `docs/design-orthographe.md`.
 
 ## Progression, gamification & déblocages
 
+- **`maitrise.ts`** (#397) — socle **pur** (sans stockage) de l'échelle de maîtrise d'une
+  notion (type LSU) : forme `LessonStat`, `lessonAvgPct` (moyenne cumulée) /
+  `recentAvgPct` (perf **récente**, fenêtre glissante `recentPct` bornée par
+  `RECENT_MAX`), seuils d'acquisition (`SEUIL_NON_ACQUIS`/`SEUIL_REVOIR`) et de tendance
+  (`TENDANCE_MIN_ESSAIS`/`TENDANCE_SEUIL`), `niveauNotion`/`tendanceNotion`. Extrait de
+  `progress.ts`/`encadrant-stats.ts` pour **casser le cycle d'import** entre les deux : ce
+  module ne dépend d'aucun autre module de l'app. `progress.ts` (écriture) et
+  `encadrant-stats.ts` (lecture) le réexportent pour les imports historiques.
 - **`progress.ts`** — records de bilans **scopés par niveau** (`recordRun` → `RunResult`
   `{rank, total, medal, isRecord}`,
   `cmpRun` « score puis temps », `loadRuns` = niveau actif / `loadRunsAll` = tous
   niveaux pour l'effort — #233), série (`updateStreak`, `streakSuffix`), étoiles
-  (`recordLessonResult`, `starsEarned`), stats par leçon (`recordLessonStats`,
-  `lessonAvgPct` cumul + `recentAvgPct` = perf **récente**, calculée sur la fenêtre
-  glissante de données `recentPct`, #234),
-  **journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée,
+  (`recordLessonResult`, `starsEarned`), stats par leçon (`recordLessonStats` ; l'échelle
+  de maîtrise `lessonAvgPct`/`recentAvgPct`/`niveauNotion` vit désormais dans
+  `maitrise.ts`, réexportée ici), **journal daté des paliers franchis** (`ludaskia_paliers`,
+  `PaliersNotion {enCours?, acquis?}`, namespacée `lessonId@niveau` — `recordMonteesPalier
+  (lessonIds, now)`, #397) : marque le **premier** franchissement vers « en cours » puis
+  « acquis » par notion — modèle **monotone** (2 horodatages max, structure bornée par le
+  catalogue, pas de rétention à gérer) ; appelé **après** l'écriture de l'étoile, en fin de
+  session, par `lesson-run.ts:recordLessonRun` et le sprint (`ui/sprint.ts`) — source de la
+  frise d'évolution de l'espace encadrant (cf. [Espace encadrant](espace-encadrant.md)).
+  **Journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée,
   #234 ; **entrées typées** `ActivityEntry = {t, k}` avec
   `ActivityKind = 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee'` (+ `'inconnu'`
   pour l'ancien format), #319). `recordLessonStats(perLesson, kind = 'lecon')` journalise
@@ -453,14 +467,21 @@ propre doc de conception : `docs/design-orthographe.md`.
 ## Espace encadrant (logique pure)
 
 - **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
-  bascule** (`progressionProfil`, `niveauNotion` échelle 4 niveaux, `niveauProfilMatiere`),
-  **activité** et **file « à revoir »** (`loadRevoir`/`loadRevoirFor`/
+  bascule** (`progressionProfil`, `niveauProfilMatiere`) ; réexporte l'échelle de maîtrise
+  (`niveauNotion`/`tendanceNotion`, définie dans `maitrise.ts`) pour les imports
+  historiques, **activité** et **file « à revoir »** (`loadRevoir`/`loadRevoirFor`/
   `toggleRevoirFor`/`revoirActives`). Lit les clés brutes du profil consulté. Le graphe
   d'activité (#319) repose sur **`activiteParJourParType(activity, now, n)`** → `JourActivite[]`
   (`{total, lecon, bilan, sprint, revision, dictee, inconnu}`, index `n-1` = aujourd'hui ; `normalizeActivity`
   y est l'**unique frontière de normalisation** de l'ancien/nouveau format) ; `activiteParJour`
   en est **dérivé** (totaux seuls) et `echelleActivite(max)` calcule une échelle Y « ronde »
   (`{top, step, ticks}`). `RecapProfil.activite7j` est désormais un `JourActivite[]`.
+  **Frise d'évolution par matière** (#397) : `frisesParMatiere(paliersRaw, profile, now)`
+  → `FriseMatiere[]` (`{subject, label, semaines: number[], total}`) compte, par semaine et
+  par matière, les notions **distinctes** ayant franchi un cap sur le journal
+  `ludaskia_paliers` ; fenêtre de **12 semaines** (`SEMAINES_FRISE`), matière masquée tant
+  que son premier franchissement a moins de **3 semaines** de recul
+  (`PALIERS_MIN_SEMAINES`). Exposée dans `RecapProfil.frises`.
 - **`encadrant-lock.ts`** (#234) — verrou optionnel de l'espace encadrant : PIN haché
   (SHA-256 `crypto.subtle`) + récupération par secret (GUID) ; clé GLOBALE
   `ludaskia_encadrant_lock` (`pinActif`/`definirPin`/`verifierPin`/`reinitViaRecuperation`/

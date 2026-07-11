@@ -10,6 +10,13 @@ import { LEVEL_ORDER } from './levels';
 import { niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
 import { etatNeuf, avancerEtat } from './revision';
 import type { EtatRevision } from './orthographe/types';
+import { RECENT_MAX, niveauNotion, type LessonStat } from './maitrise';
+
+/* La forme `LessonStat` et ses dérivations pures (moyennes) vivent dans maitrise.ts
+   (socle sans stockage, cf. cycle d'import) ; on les re-expose ici pour les nombreux
+   consommateurs qui importent déjà « depuis progress ». */
+export type { LessonStat } from './maitrise';
+export { lessonAvgPct, recentAvgPct } from './maitrise';
 
 /* ---------- Namespacing de la progression par niveau (#225) ----------
    Tout l'état PAR LEÇON (étoiles, stats, premier passage, état SR) est rangé sous
@@ -88,9 +95,10 @@ function saveRuns(mode: string, runs: Run[]) {
 	lsSet(runsKey(mode, niveauActif()), runs);
 }
 
-/* Bornes de période calendaire (pour les objectifs de régularité) */
-export function startOfWeek() {
-	const d = new Date();
+/* Bornes de période calendaire (pour les objectifs de régularité, et la frise #397).
+   `ts` par défaut = maintenant ; paramétrable pour dater un horodatage arbitraire (frise). */
+export function startOfWeek(ts = Date.now()) {
+	const d = new Date(ts);
 	const day = (d.getDay() + 6) % 7; // lundi = 0
 	d.setHours(0, 0, 0, 0);
 	d.setDate(d.getDate() - day);
@@ -224,24 +232,6 @@ export { loadStars };
    Agrégées sur tous les contextes (leçon seule, bilan complet, express).
    Sert à repérer les thèmes à retravailler. */
 export const LESSON_STATS_KEY = 'ludaskia_lessonStats';
-// Taille de la fenêtre glissante des derniers essais d'une leçon (#234) : « à revoir »
-// et l'état d'acquisition de l'espace encadrant se fondent sur la performance RÉCENTE,
-// pas sur le cumul historique (lessonAvgPct), qui sous-estime un enfant ayant progressé.
-const RECENT_MAX = 5;
-export interface LessonStat {
-	attempts: number;
-	correct: number;
-	questions: number;
-	bestPct: number;
-	lastPct: number;
-	/** % des RECENT_MAX derniers essais (fenêtre glissante, non bornée par dates : un enfant
-	 *  qui espace ses essais ne perd pas la visu). Absent sur les données antérieures à #234. */
-	recentPct?: number[];
-	/** Horodatage (ms) de la DERNIÈRE session travaillée (leçon/bilan/express/sprint) — alimente
-	 *  le suivi « dernière fois travaillée » de l'espace encadrant. Absent sur données antérieures.
-	 *  Non agrégé par loadLessonStatsAll (aucun consommateur global n'en a besoin à ce jour). */
-	lastAt?: number;
-}
 function loadLessonStatsRaw(): Record<string, LessonStat> {
 	return lsGet(LESSON_STATS_KEY, {});
 }
@@ -306,16 +296,6 @@ export function recordLessonStats(
 		now,
 	);
 }
-export const lessonAvgPct = (e: LessonStat | undefined) =>
-	e && e.questions ? Math.round((e.correct / e.questions) * 100) : null;
-/* Moyenne des derniers essais (fenêtre glissante recentPct) ; null si aucun historique
-   récent (repli sur lessonAvgPct laissé à l'appelant). Performance RÉCENTE pour l'espace
-   encadrant (#234), distincte du cumul historique de lessonAvgPct. */
-export const recentAvgPct = (e: LessonStat | undefined): number | null =>
-	e && Array.isArray(e.recentPct) && e.recentPct.length
-		? Math.round(e.recentPct.reduce((sum, p) => sum + p, 0) / e.recentPct.length)
-		: null;
-
 /* ---------- Journal d'activité : sessions finalisées (#234, typé #319) ----------
    Une entrée par session d'entraînement finalisée (tout ce qui passe par
    recordLessonStats), pour le graphe d'activité de l'espace encadrant. Indépendant
@@ -397,6 +377,54 @@ export function markLessonsFirstSeen(lessonIds: string[], now: number) {
 /* Nombre de leçons découvertes (1er passage) depuis un instant donné. */
 export function countNewLessonsSince(since: number): number {
 	return Object.values(loadLessonFirstSeen()).filter((ts) => ts >= since).length;
+}
+
+/* ---------- Journal daté des paliers franchis « vers le haut » (frise #397) ----------
+   Aucun historique daté des changements de NIVEAU n'existe ailleurs (recentPct et
+   niveauNotion sont recalculés à la volée, non datés). Ce journal, sur le modèle de
+   firstSeen (« écrit une fois, au bon moment, par profil »), date le PREMIER moment où
+   une notion atteint « en cours » puis « acquis ». Deux horodatages max par notion
+   (namespacée par niveau, comme stats/étoiles), donc structure bornée par le nombre de
+   leçons — pas de rétention à gérer. Chaque horodatage présent = une « marche » datée ;
+   la frise de l'espace encadrant les regroupe par semaine et par matière.
+
+   Modèle MONOTONE (premier franchissement seulement) → aucune oscillation autour du seuil
+   des 40 % (une notion qui remonte à « en cours » après y être déjà passée ne re-loggue
+   pas). « acquis » repose sur l'étoile (jamais retirée), donc naturellement définitif. */
+export const LESSON_PALIERS_KEY = 'ludaskia_paliers';
+export interface PaliersNotion {
+	enCours?: number; // ms de la 1re fois où la notion a atteint « en cours »
+	acquis?: number; // ms de la 1re fois où la notion a atteint « acquis »
+}
+function loadPaliersRaw(): Record<string, PaliersNotion> {
+	return lsGet(LESSON_PALIERS_KEY, {});
+}
+/* Enregistre les franchissements de palier pour les leçons TRAVAILLÉES dans une session
+   (profil ACTIF). À appeler APRÈS l'écriture des stats ET de l'étoile (l'état « acquis »
+   dépend de l'étoile), en fin de session — cf. recordLessonRun et le sprint. `now` daté
+   par l'appelant (testable). Un saut direct « à renforcer » → « acquis » ne compte qu'UNE
+   marche (« acquis ») : on ne fabrique pas rétroactivement un palier « en cours ». */
+export function recordMonteesPalier(lessonIds: string[], now: number) {
+	const paliers = loadPaliersRaw();
+	const stars = loadStarsRaw();
+	const stats = loadLessonStatsRaw();
+	let changed = false;
+	for (const id of lessonIds) {
+		const k = nsKey(id, niveauStockage(id));
+		const niveau = niveauNotion(stats[k], (stars[k] || 0) > 0);
+		const rec = paliers[k] ?? {};
+		if (niveau === 'acquis' && rec.acquis == null) {
+			rec.acquis = now;
+			paliers[k] = rec;
+			changed = true;
+		} else if (niveau === 'en-cours' && rec.enCours == null) {
+			rec.enCours = now;
+			paliers[k] = rec;
+			changed = true;
+		}
+		// « à découvrir » / « à renforcer » : pas un palier franchi vers le haut → rien.
+	}
+	if (changed) lsSet(LESSON_PALIERS_KEY, paliers);
 }
 
 /* ---------- Révision espacée des leçons (maths / conjugaison) ----------

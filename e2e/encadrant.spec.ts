@@ -53,6 +53,17 @@ const SEED_STATS_VUES = `(() => {
   localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({ 'math-complements@ce2': stat }));
 })();`;
 
+/* Seed du journal des paliers (#397) : 3 notions de maths ayant franchi un cap, réparties
+   sur les dernières semaines (1re marche à 5 semaines → assez de recul pour afficher la frise). */
+const SEED_PALIERS = `(() => {
+  const now = Date.now(); const week = 7 * 86400000;
+  localStorage.setItem('e2e/ludaskia_paliers', JSON.stringify({
+    'math-complements@ce2': { enCours: now - 5 * week },
+    'math-doubles@ce2': { acquis: now - 2 * week },
+    'math-moities@ce2': { enCours: now - 1 * week },
+  }));
+})();`;
+
 /* ----- Tests ----- */
 
 /* 1. Accès depuis Profils : #btnEncadrant visible → clic → espace visible */
@@ -316,7 +327,27 @@ test('couverture : vue par matière et compteur « travaillées » par catégori
 	expect(errors).toEqual([]);
 });
 
-/* 10. Split accessibilité (#234) : « Mon confort » (enfant) vs « Aménagements » (encadrant). */
+/* 10. Frise d'évolution (#397) : paliers franchis par matière (seed du journal). */
+test("frise d'évolution : la frise « Évolution récente » par matière se rend", async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_PALIERS);
+	await page.addInitScript(SEED_CE2);
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	// Le bloc de frises est rendu, avec une mini-frise « Mathématiques ».
+	await expect(page.locator('.enc-evol')).toBeVisible();
+	await expect(
+		page.locator('.enc-evol-mat-lab').filter({ hasText: 'Mathématiques' }).first(),
+	).toBeVisible();
+	// Au moins une semaine avec un franchissement : barre « pleine » + compteur chiffré.
+	await expect(page.locator('.enc-evol-col.has-value').first()).toBeVisible();
+	await expect(page.locator('.enc-evol-num').filter({ hasText: /\d/ }).first()).toBeVisible();
+
+	expect(errors).toEqual([]);
+});
+
+/* 11. Split accessibilité (#234) : « Mon confort » (enfant) vs « Aménagements » (encadrant). */
 test('accessibilité : confort côté enfant, aménagements côté encadrant', async ({ page }) => {
 	const errors = watchErrors(page);
 	// Écran « Mon espace » : confort de lecture + animations, MAIS plus le minuteur

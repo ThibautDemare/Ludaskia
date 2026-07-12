@@ -248,6 +248,22 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   révision (`revision.ts`), qui délèguent tous leur interaction au lieu d'en garder une
   copie locale — la révision affiche désormais les mêmes marques ✓/✗ que les runners
   (correction de la divergence antérieure à #345).
+- **`appariement.ts`** (#392) — widget **« relier des paires »** par des LIGNES de
+  liaison : deux colonnes de boutons-mots (mélangées **indépendamment**) + un calque
+  SVG de courbes reliant les ancres, dessiné derrière les mots. `bindAppariement(root,
+  spec, opts)` **ne passe pas par `tuile-interaction.ts`** (mécanique de tracé propre,
+  incompatible avec les trois `kind` du binder mutualisé) — il **réutilise seulement**
+  son contrat public `TuileController`/`TuileOptions` (mêmes `onState`/`verify()`) et
+  la tuile `.tuile`, pour rester interchangeable côté runner. Interaction : **tap en
+  deux temps** (taper un mot à gauche l'arme, taper un mot à droite trace le lien ;
+  retaper un mot relié efface son lien) — fiable au doigt et **nativement clavier**
+  (de vrais `<button>`, Entrée/Espace passent par `click`) — et **glisser-déposer en
+  appoint** (souris, jamais l'unique voie, SC 2.5.7). `verify()` fige le widget et
+  marque chaque lien ✓/✗ (couleur + pastille + trait plein/pointillé, jamais la
+  couleur seule). Le SVG est `aria-hidden` (décoratif) : toute l'info de liaison est
+  portée par les libellés des boutons + une live region ; les coordonnées sont
+  mesurées **relativement au conteneur** (indépendantes du défilement) et un
+  `ResizeObserver` les recalcule au redimensionnement/zoom (SC 1.4.4/1.4.10).
 - **`lecon-qcm.ts`** — runner **QCM d'une leçon** (#69) : « une question à la
   fois », **feedback immédiat**, barre de progression, **sans chrono** ; enregistre
   via `recordLessonRun` (parité avec la saisie). Réutilise les composants `.sprint-*`.
@@ -294,6 +310,16 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   autres runners dédiés. Routé par `runLecon` quand `generate(mode).type ===
   'tableauConversion'` ; n'a de sens qu'en complément du mode `saisie`
   (`ui/navigation.ts` propose les deux via `ModeOption`), jamais en remplacement.
+- **`lecon-appariement.ts`** (#392) — runner **« appariement »** d'une leçon de
+  vocabulaire, « une manche à la fois » (5 manches, **distinctes** — dédupliquées sur
+  l'ensemble des mots de gauche). Délègue l'interaction au widget mutualisé
+  `ui/appariement.ts` (tap en deux temps + glisser en appoint). **Feedback différé** :
+  le bouton « Vérifier » fige chaque lien (✓/✗) et révèle les bonnes paires en TEXTE
+  sous le widget en cas d'erreur ; parité `recordLessonRun`. Structure calquée sur
+  `lecon-tri.ts`. **Exclu du sprint** (`isPairingLesson`, comme la posée/l'ordre/le
+  tri/le problème), avec un **repli texte** en bilan/fiche/révision (`genLessonItem` :
+  une paire tirée au sort → « quel mot va avec X ? »). Aide contextuelle dédiée
+  (`monterBoutonAide`/`maybeAutoAide`, type `'appariement'` #272).
 - **`lecon-probleme.ts`** — runner **« Résolution de problèmes »** (#199), un
   problème à la fois. L'énoncé (`Exercise` `type: 'probleme'` : `enonce`, `etapes[]`,
   `parle`, `figure?` #95) reste visible avec **son bouton « Écouter »** (#42, `data-tts` = `parle`) ;
@@ -321,8 +347,10 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   précise de leçons** via `startCustomSprint`, #64) via un écran de
   configuration ; correction par `checkItemAnswer` (numérique ou texte).
   **Exclusions du sprint** (`lessonsForFilter`) : par TYPE d'item (posée, tuiles
-  ordre/tri, problème — détecté via l'étiquette déclarative **`ExerciseType.exerciseKind`**,
-  #348) **et** par le flag déclaratif **`LessonDef.excludeFromSprint`** (#104) pour une leçon qui produit un
+  ordre/tri, problème, appariement — détecté via l'étiquette déclarative
+  **`ExerciseType.exerciseKind`**, #348, via les helpers `isPosedLesson`/
+  `isOrderingLesson`/`isTriLesson`/`isProblemeLesson`/`isPairingLesson` de
+  `core/catalog.ts`) **et** par le flag déclaratif **`LessonDef.excludeFromSprint`** (#104) pour une leçon qui produit un
   item `text` ordinaire mais ne convient pas au chrono (figure de découverte,
   lecture d'énoncé — ex. « Je partage »). L'écran de config ne compte que les
   leçons **éligibles** (une catégorie entièrement exclue n'est pas proposée). Le

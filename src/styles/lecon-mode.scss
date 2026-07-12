@@ -655,7 +655,7 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 .lapp-consigne {
 	text-align: center;
 	font-size: 0.95rem;
-	color: var(--muted);
+	color: var(--grey); // couleur des consignes des autres runners (.ltui-consigne)
 	margin: 6px 0 4px;
 }
 .lapp-board {
@@ -701,6 +701,10 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 	min-height: 56px;
 	height: auto;
 	padding: 8px 12px;
+	// Gras ≥ 19px = « grand texte » WCAG : les états .correct/.wrong (var(--ok)/(--ko)
+	// sur var(--ok-soft)/(--ko-soft)) tiennent alors le 3:1 requis (a11y #392). Ne pas
+	// descendre sous ce seuil (contrairement à .tuile 24px, jamais réduit ailleurs).
+	font-size: 1.2rem;
 	line-height: 1.2;
 	white-space: normal;
 	background: var(--paper);
@@ -758,7 +762,7 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 }
 /* Décoy resté non relié (attendu) : atténué, neutre, sans marque. */
 .lapp-mot.is-decoy {
-	color: var(--muted);
+	color: var(--grey); // atténué mais lisible (pas le --muted trop clair, a11y #392)
 	border-color: var(--line);
 	background: var(--paper);
 }
@@ -812,7 +816,7 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 		stroke-width: 4;
 	}
 	.lapp-mot {
-		font-size: 1.05rem;
+		font-size: 1.35rem; // reste « grand texte » gras (cf. note ci-dessus)
 	}
 }
 

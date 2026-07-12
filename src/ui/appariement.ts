@@ -73,7 +73,7 @@ export function bindAppariement(
 	const mount = root.querySelector('[data-tuile-mount]');
 	if (mount) {
 		mount.outerHTML = `
-    <p class="lapp-consigne">Touche un mot, puis le mot qui va avec (ou glisse-le). Un trait les relie.</p>
+    <p class="lapp-consigne">Touche un mot, puis le mot qui va avec. Un trait les relie.</p>
     <div class="lapp-board" id="lappBoard">
       <svg class="lapp-links" id="lappLinks" aria-hidden="true" focusable="false"></svg>
       <div class="lapp-marks" id="lappMarks" aria-hidden="true"></div>
@@ -217,12 +217,18 @@ export function bindAppariement(
 	}
 	function relier(g: string, d: string): void {
 		if (frozen || bonneDroite.get(g) === undefined) return;
-		// glisser-déposer : le mot de gauche ou de droite peut déjà porter un lien → on le libère
+		// glisser-déposer : le mot de droite peut déjà porter un lien → on le libère (et on
+		// annonce cette déliaison implicite, sinon un lecteur d'écran ne l'apprend pas).
 		const rev = reverse();
-		if (rev[d] !== undefined) delete linkOf[rev[d]];
+		const displaced = rev[d];
+		if (displaced !== undefined) delete linkOf[displaced];
 		linkOf[g] = d;
 		armed = null;
-		announce(`${g} relié à ${d}.`);
+		announce(
+			displaced !== undefined
+				? `Lien retiré : ${displaced} et ${d}. ${g} relié à ${d}.`
+				: `${g} relié à ${d}.`,
+		);
 		redraw();
 	}
 
@@ -266,7 +272,7 @@ export function bindAppariement(
 			armed = null;
 			redraw(); // fige, marque chaque lien (✓/✗, plein/pointillé) et chaque mot
 			announce(
-				`Vérification faite : ${gauches.filter((g) => linkOf[g] === bonneDroite.get(g)).length} bons sur ${gauches.length}.`,
+				`Vérification faite : ${gauches.filter((g) => linkOf[g] === bonneDroite.get(g)).length} bonnes paires sur ${gauches.length}.`,
 			);
 			ro.disconnect();
 			return correct;

@@ -79,7 +79,7 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 	},
 	appariement: {
 		titre: 'Comment relier les mots ?',
-		etapes: ['Touche un mot à gauche.', 'Touche le mot qui va avec, à droite.'],
+		etapes: ['Touche un mot à gauche.', 'Touche le mot qui va avec à droite.'],
 		reparation: "Tu t'es trompé ? Touche un mot relié, le trait s'efface.",
 	},
 };

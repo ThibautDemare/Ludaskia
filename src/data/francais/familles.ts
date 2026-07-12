@@ -1133,7 +1133,7 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 		// ci-dessus (elle ne la remplace pas). Réutilise la banque FAMILLES (base,
 		// dérivé, faux-ami en décoy).
 		id: 'fr-vocab-familles-relier',
-		label: 'Relier les familles de mots',
+		label: 'Familles de mots à relier',
 		levels: ['ce2'],
 		exerciseType: appariementType(FAMILLES),
 	},

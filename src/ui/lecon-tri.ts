@@ -133,8 +133,8 @@ function verifier(): void {
 		// Journal des erreurs (#391) : UNE entrée par mot MAL classé (colonne choisie vs
 		// bonne colonne), pour cibler le mot précis à revoir. Une seule capture par essai
 		// (bouton figé après validation, puis question suivante).
-		const rep = ctrl.reponse();
-		const placement = rep.kind === 'tri' ? rep.placement : {};
+		const rep = ctrl.reponse?.();
+		const placement = rep?.kind === 'tri' ? rep.placement : {};
 		for (const mal of motsMalClasses(q.mots, q.categories, placement)) {
 			capterErreur({
 				text: `Ranger le mot « ${mal.mot} »`,

@@ -20,6 +20,7 @@ import {
 	isOrderingLesson,
 	isTriLesson,
 	isProblemeLesson,
+	isPairingLesson,
 	SUBJECTS,
 	CATEGORIES,
 } from '../core/catalog';
@@ -104,16 +105,17 @@ function lessonsForFilter(f: SprintFilter): LessonDef[] {
 			? base
 			: base.filter((d) => d.levels.includes(niveauActifMatiere(d.subject)));
 	// Les opérations posées (#97, grille multi-cellules), le rangement d'une suite
-	// (#108, plusieurs tuiles à ordonner) et le tri par thème (#114, tuiles à
-	// classer) ne se jouent pas « une réponse à la fois » : on les écarte du
-	// sprint chronométré.
+	// (#108, plusieurs tuiles à ordonner), le tri par thème (#114, tuiles à classer)
+	// et l'appariement (#392, relier des paires) ne se jouent pas « une réponse à la
+	// fois » : on les écarte du sprint chronométré.
 	return auNiveau.filter(
 		(d) =>
 			!d.excludeFromSprint &&
 			!isPosedLesson(d) &&
 			!isOrderingLesson(d) &&
 			!isTriLesson(d) &&
-			!isProblemeLesson(d),
+			!isProblemeLesson(d) &&
+			!isPairingLesson(d),
 	);
 }
 

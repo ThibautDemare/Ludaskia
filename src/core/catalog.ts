@@ -763,6 +763,15 @@ export function isProblemeLesson(lesson: LessonDef): boolean {
 	return lesson.exerciseType.exerciseKind === 'probleme';
 }
 
+/* Une leçon « appariement » (#392, relier des paires) se joue en reliant plusieurs
+   mots dans un diagramme à deux colonnes : interaction d'écran dédiée
+   (ui/lecon-appariement.ts), incompatible avec le sprint « une réponse à la fois »
+   → exclue de son tirage. Reste jouable en bilan/fiche/révision via le repli texte
+   de genLessonItem (une paire → « quel mot va avec X ? »). */
+export function isPairingLesson(lesson: LessonDef): boolean {
+	return lesson.exerciseType.exerciseKind === 'appariement';
+}
+
 /* Une leçon math « héritée » est branchée sur le générateur numérique bilanQ
    (calcul mental, via MATH_LESSON_NUM). Les autres leçons math (moteurs
    modernes : conversions #89, etc.) produisent leur item via leur ExerciseType. */
@@ -824,6 +833,18 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 			// Texte lu aligné sur l'AFFICHÉ du repli (énoncé + question finale), sans la
 			// sous-question intermédiaire — absente de l'écran en bilan/révision.
 			parle: `${ex.enonce} ${last.question}`,
+			_lesson: lesson.id,
+		};
+	}
+	// Appariement (#392) : l'interaction (relier deux colonnes) vit dans son runner
+	// (ui/lecon-appariement.ts). Repli TEXTE non interactif pour fiche/bilan/révision :
+	// une paire tirée au sort → « quel mot va avec X ? », réponse = le mot droite.
+	if (ex.type === 'appariement') {
+		const p = ex.paires[0]; // l'ordre des paires est déjà mélangé à la génération
+		return {
+			text: `Quel mot va avec « ${p.gauche} » ? @`,
+			answer: p.droite,
+			kind: 'text',
 			_lesson: lesson.id,
 		};
 	}

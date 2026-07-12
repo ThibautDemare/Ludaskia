@@ -1053,6 +1053,69 @@ export function famillesType(items: ItemVocabQcm[]): ExerciseType {
 	};
 }
 
+/* ---------- Appariement (#392) : relier chaque mot de base à un dérivé ----------
+   Nouveau format d'interaction « relier des paires » (lignes de liaison), tiré par
+   la leçon « Familles de mots » validée avec le pédagogue (programme CE2 §4.2 :
+   « Trier et apparier des mots et leurs dérivés »). Réutilise la banque FAMILLES :
+   la paire est base ↔ dérivé (dent ↔ dentiste), les décoys sont les faux-amis
+   (dentelle) — ils ressemblent à une base présente sans en être la famille, ce
+   qui relance la distinction base/faux-ami et neutralise la réussite par
+   élimination sur la dernière paire. */
+
+/** Paires (base ↔ dérivé) et décoys (faux-amis) affichés par manche. Bornés pour
+    limiter la charge cognitive et tenir en deux colonnes côte à côte sur mobile. */
+const NB_PAIRES_APPARIEMENT = 4;
+const NB_INTRUS_APPARIEMENT = 2;
+
+const CONSIGNE_APPARIEMENT = 'Relie chaque mot à un mot de sa famille.';
+
+/* Mode unique (comme le tri de champs lexicaux) : lancement direct du runner dédié,
+   pas d'écran de choix de mode (#69). */
+const MODE_RELIER: ModeOption[] = [{ id: 'relier', label: 'Relier les mots', recommended: true }];
+
+/* Moteur d'appariement (#392). Chaque manche tire NB_PAIRES familles DISTINCTES
+   (base ↔ dérivé) + NB_INTRUS faux-amis en décoys. Tous les mots affichés d'une
+   même manche (gauche, droite, décoys) sont DISTINCTS (unicité vérifiée) → aucune
+   correspondance ambiguë. `exerciseKind: 'appariement'` classe la leçon comme
+   format à runner dédié (hors sprint) ; corrigé lien par lien par le runner
+   (ui/lecon-appariement.ts), donc `check` renvoie toujours false ici. */
+export function appariementType(source: ItemFamille[]): ExerciseType {
+	return {
+		modes: MODE_RELIER,
+		consigne: CONSIGNE_APPARIEMENT,
+		exerciseKind: 'appariement',
+		generate(): Exercise {
+			// Tire des familles aux mots tous distincts entre eux (écarte les rares
+			// collisions : un dérivé égal à une autre base, deux dérivés identiques).
+			// Filet borné (comme les autres fabriques) : à défaut, on garde le dernier tirage.
+			let choisis: ItemFamille[] = sample(source, NB_PAIRES_APPARIEMENT);
+			for (let essai = 0; essai < 20; essai++) {
+				const c = sample(source, NB_PAIRES_APPARIEMENT);
+				const mots = c.flatMap((f) => [f.mot, f.famille]);
+				if (new Set(mots).size === mots.length) {
+					choisis = c;
+					break;
+				}
+			}
+			const paires = choisis.map((f) => ({ gauche: f.mot, droite: f.famille }));
+			// Décoys = faux-amis des familles tirées (dans l'ordre déjà mélangé), sans
+			// collision avec un mot déjà affiché ni entre eux. Un faux-ami n'est jamais
+			// une famille correcte (par construction de la banque) → jamais une bonne réponse.
+			const affiches = new Set(paires.flatMap((p) => [p.gauche, p.droite]));
+			const intrus: string[] = [];
+			for (const f of choisis) {
+				if (intrus.length >= NB_INTRUS_APPARIEMENT) break;
+				if (!affiches.has(f.fauxAmi)) {
+					intrus.push(f.fauxAmi);
+					affiches.add(f.fauxAmi);
+				}
+			}
+			return { type: 'appariement', question: CONSIGNE_APPARIEMENT, paires, intrus };
+		},
+		check: () => false,
+	};
+}
+
 export interface FamillesLessonDef extends LessonInput {
 	levels: SchoolLevel[];
 }
@@ -1063,6 +1126,16 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 		label: 'Familles, préfixes et suffixes',
 		levels: ['ce2'],
 		exerciseType: famillesType(ITEMS_FAMILLES),
+	},
+	{
+		// Appariement (#392) : relier chaque mot de base à son dérivé. Nouvelle leçon
+		// CE2 portant le format « lignes de liaison » ; s'ajoute à la leçon QCM
+		// ci-dessus (elle ne la remplace pas). Réutilise la banque FAMILLES (base,
+		// dérivé, faux-ami en décoy).
+		id: 'fr-vocab-familles-relier',
+		label: 'Relier les familles de mots',
+		levels: ['ce2'],
+		exerciseType: appariementType(FAMILLES),
 	},
 	{
 		id: 'fr-vocab-familles-cm1',

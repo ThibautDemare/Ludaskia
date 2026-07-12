@@ -208,6 +208,9 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-conj-prendre-futur',
 			'fr-conj-naitre-futur',
 			'fr-vocab-familles',
+			// Même notion (familles de mots), format d'appariement (#392) juste après le
+			// QCM : varier le format de rappel renforce la rétention (interleaving).
+			'fr-vocab-familles-relier',
 			'fr-homophones-ou',
 			'fr-conj-etre-imparfait',
 			'fr-conj-avoir-imparfait',

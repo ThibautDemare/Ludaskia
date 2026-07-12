@@ -18,6 +18,7 @@ import { runLeconQcm } from './lecon-qcm';
 import { runLeconTuiles } from './lecon-tuiles';
 import { runLeconOrdre } from './lecon-ordre';
 import { runLeconTri } from './lecon-tri';
+import { runLeconAppariement } from './lecon-appariement';
 import { runLeconProbleme } from './lecon-probleme';
 import { runLeconTableau, leconTableauCleanup } from './lecon-tableau';
 import { renderItem, createRenderContext } from '../core/items';
@@ -563,6 +564,10 @@ export function runLecon(id: string) {
 		}
 		if (t === 'tableauConversion') {
 			runLeconTableau(id, mode);
+			return;
+		}
+		if (t === 'appariement') {
+			runLeconAppariement(id, mode);
 			return;
 		}
 	}

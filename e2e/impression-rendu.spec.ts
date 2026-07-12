@@ -112,18 +112,20 @@ test(".angle-aide.screen-only : visible à l'écran, display:none à l'impressio
 
 		// Parcourt toutes les questions d'une série (NB_QUESTIONS = 8).
 		for (let i = 0; i < 8; i++) {
-			if (await page.locator('.angle-aide').isVisible()) return true;
-			// Répond au hasard (1er choix) pour passer à la question suivante.
-			const btn = page.locator('.sprint-choice').first();
+			// Attend un choix ACTIONNABLE (non désactivé) de la question COURANTE : évite de
+			// cliquer les choix déjà figés de la question précédente pendant le re-rendu (course
+			// révélée sous CI chargée). Absence de choix actionnable = fin de série.
+			const btn = page.locator('.sprint-choice:not([disabled])').first();
+			await btn.waitFor({ timeout: 5000 }).catch(() => {});
 			if (!(await btn.isVisible())) break;
-			await btn.click();
+			// La bulle d'aide, si présente, l'est sur la question rendue → on la teste ici.
+			if (await page.locator('.angle-aide').isVisible()) return true;
+			await btn.click(); // répond (1er choix) pour passer à la question suivante
 			// Attend le bouton "Continuer" ou la fin de série.
 			const next = page.locator('#lqcmActions button');
 			try {
 				await next.waitFor({ timeout: 2000 });
-				// Vérifie si c'est la dernière question avant de cliquer.
-				const label = await next.textContent();
-				if (label?.includes('résultat')) break; // fin de série sans bulle trouvée
+				if ((await next.textContent())?.includes('résultat')) break; // fin de série sans bulle
 				await next.click();
 			} catch {
 				break;

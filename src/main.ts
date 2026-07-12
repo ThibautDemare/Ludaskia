@@ -14,6 +14,7 @@ import './styles/figures.scss';
 import './styles/profiles.scss';
 import './styles/sprint.scss';
 import './styles/lecon-mode.scss';
+import './styles/tableau-conversion.scss';
 import './styles/revision.scss';
 import './styles/modal.scss';
 import './styles/reprise.scss';

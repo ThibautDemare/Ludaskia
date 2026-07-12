@@ -5,6 +5,12 @@
    unité, l'enfant écrit la valeur dans l'autre unité (réponse numérique,
    vérifiée par checkItemAnswer en mode `num`).
 
+   Second mode « tableau de conversion » (#394, mécanisme de modes #69) : proposé
+   pour les familles décimales (longueurs, masses, contenances ; PAS les durées,
+   base 60), en COMPLÉMENT de la saisie (jamais un remplacement). L'enfant place un
+   chiffre par colonne d'unité, zéros de transit compris. Voir `generateTableau` et
+   son invariant zéro-de-transit ⊕ virgule ; le rendu vit dans ui/lecon-tableau.ts.
+
    Multi-niveaux (#225/#287) : chaque leçon est `calibrated` par une table
    { ce2, cm1 } ; CE2 reste calibré à l'identique, le CM1 élargit les plages et
    ajoute des unités. Le vrai levier de variété n'est PAS d'élargir 1–9, mais
@@ -30,7 +36,13 @@
    La réponse décimale est stockée en écriture à VIRGULE (« 4,56 ») — la comparaison
    numérique (checkNumerique / checkItemAnswer) normalise virgule/point des deux côtés.
    ============================================================ */
-import type { Exercise, ExerciseType } from '../../core/exercise';
+import type {
+	Exercise,
+	ExerciseType,
+	ModeOption,
+	GenerateOpts,
+	TableauColonne,
+} from '../../core/exercise';
 import type { LessonInput } from '../_shared';
 import { checkNumerique } from '../../core/check-helpers';
 import { calibrated } from '../../core/level-combinators';
@@ -67,10 +79,54 @@ interface Fact {
 	answer: number; // valeur attendue
 }
 
+/* Une unité de l'échelle décimale d'une famille (#394), pour le mode « tableau de
+   conversion ». `nom` = nom complet singulier, AFFICHÉ dans l'en-tête (pas seulement en
+   aria-label) : l'`aria-label` sert le lecteur d'écran, pas l'enfant dyslexique qui LIT
+   l'écran et confond des abréviations proches (dam/dm, hg/kg) — avis
+   specialiste-troubles-apprentissage. */
+interface EchelleUnite {
+	unite: string; // symbole (« km », « dam », « g »…)
+	nom: string; // nom complet singulier (« kilomètre », « décamètre »…)
+}
+
 interface MesureConfig {
 	conversions: Conversion[];
-	facts?: Fact[]; // tirés ~1 fois sur 4 quand présents
+	facts?: Fact[]; // tirés ~1 fois sur 4 quand présents (mode saisie uniquement)
+	// Échelle décimale de la famille, ordonnée GRANDE→PETITE unité (crans successifs ×10).
+	// PRÉSENCE = le mode « tableau de conversion » (#394) est proposé pour cette leçon ;
+	// ABSENCE (durées, base 60 non décimale) = leçon mono-mode, comportement inchangé.
+	// L'échelle est commune aux niveaux d'une famille ; ce sont les `conversions` du niveau
+	// qui déterminent les unités ÉTUDIÉES (les autres colonnes de l'empan = « de transit »).
+	echelle?: EchelleUnite[];
 }
+
+/* Échelles décimales par famille (mode tableau #394). Ordre GRANDE→PETITE, stable d'un
+   exercice à l'autre (avis dys : repérage d'une colonne par sa position mémorisée). Les
+   durées n'en ont pas (base 60 : un tableau décimal y donnerait des réponses fausses). */
+const ECHELLE_LONGUEUR: EchelleUnite[] = [
+	{ unite: 'km', nom: 'kilomètre' },
+	{ unite: 'hm', nom: 'hectomètre' },
+	{ unite: 'dam', nom: 'décamètre' },
+	{ unite: 'm', nom: 'mètre' },
+	{ unite: 'dm', nom: 'décimètre' },
+	{ unite: 'cm', nom: 'centimètre' },
+	{ unite: 'mm', nom: 'millimètre' },
+];
+const ECHELLE_MASSE: EchelleUnite[] = [
+	{ unite: 'kg', nom: 'kilogramme' },
+	{ unite: 'hg', nom: 'hectogramme' },
+	{ unite: 'dag', nom: 'décagramme' },
+	{ unite: 'g', nom: 'gramme' },
+	{ unite: 'dg', nom: 'décigramme' },
+	{ unite: 'cg', nom: 'centigramme' },
+	{ unite: 'mg', nom: 'milligramme' },
+];
+const ECHELLE_CONTENANCE: EchelleUnite[] = [
+	{ unite: 'L', nom: 'litre' },
+	{ unite: 'dL', nom: 'décilitre' },
+	{ unite: 'cL', nom: 'centilitre' },
+	{ unite: 'mL', nom: 'millilitre' },
+];
 
 /* Construit la question texte (avec le `@` = emplacement du champ) en plaçant
    le trou à gauche ou à droite, l'unité attendue restant collée au champ. La
@@ -91,60 +147,182 @@ function ecritureDecimale(entier: number, frac: number, decimales: number): stri
 	return fracStr === '' ? String(entier) : `${entier},${fracStr}`;
 }
 
-function generateConversion(conversions: Conversion[]): Exercise {
+/* Instance concrète d'une conversion TIRÉE : sépare le tirage (sens, décimal, valeurs) du
+   RENDU, pour que la saisie (`generateConversion`) et le tableau (`generateTableau`) partent
+   des MÊMES décisions sans dupliquer la logique de sens/décimal. `sPetit` = la quantité
+   exprimée dans la PETITE unité de la paire, TOUJOURS entière : c'est la base du remplissage
+   colonne par colonne du tableau. `answerDecimal` = la réponse attendue porte une virgule
+   (⟺ sens petite→grande d'une paire décimale, la cible est alors la grande unité). */
+interface ConvInstance {
+	big: string;
+	small: string;
+	factor: number;
+	knownValue: number | string; // valeur connue affichée (décimale en chaîne le cas échéant)
+	knownUnit: string;
+	answerUnit: string; // unité cible
+	answer: string; // valeur cible (entière ou décimale à virgule)
+	sPetit: number;
+	answerDecimal: boolean;
+}
+
+function pickConversionInstance(conversions: Conversion[]): ConvInstance {
 	const c = choice(conversions);
 	const maxBig = c.maxBig ?? 9;
 	// ~60 % grande→petite (×, plus intuitif), ~40 % petite→grande (÷, exact).
 	const versPetite = rnd(1, 10) <= 6;
+	const base = { big: c.big, small: c.small, factor: c.factor };
+	// grande→petite : connue = grande unité, cible = petite (réponse entière).
+	const gp = (knownValue: number | string, sPetit: number): ConvInstance => ({
+		...base,
+		knownValue,
+		knownUnit: c.big,
+		answerUnit: c.small,
+		answer: String(sPetit),
+		sPetit,
+		answerDecimal: false,
+	});
+	// petite→grande : connue = petite unité (sPetit), cible = grande (`answer` : entière ou décimale).
+	const pg = (sPetit: number, answer: string, answerDecimal: boolean): ConvInstance => ({
+		...base,
+		knownValue: sPetit,
+		knownUnit: c.small,
+		answerUnit: c.big,
+		answer,
+		sPetit,
+		answerDecimal,
+	});
 	if (c.decimal) {
-		// Décimales dictées par le facteur (×10 → 1, ×100 → 2 ; seules ces paires portent
-		// un flag décimal, donc `factor` = 10^decimales) : « 10 » → 1, « 100 » → 2.
+		// Décimales dictées par le facteur (×10 → 1, ×100 → 2 ; `factor` = 10^decimales).
 		const decimales = String(c.factor).length - 1;
 		// Paires ×100 : le sens grande→petite reste ENTIER (« 3 m = 300 cm »).
 		if (versPetite && c.decimal === 'vers-grande') {
 			const v = rnd(1, maxBig);
-			return {
-				type: 'text',
-				question: buildQuestion(v, c.big, c.small),
-				answer: String(v * c.factor),
-			};
+			return gp(v, v * c.factor);
 		}
-		// Génère depuis le côté DÉCIMAL (grande unité) : partie entière ≥ 1 + partie
-		// fractionnaire NON nulle → au plus `decimales` chiffres après la virgule, résultat
-		// ≥ 1, et petite unité ENTIÈRE (petite = entier·facteur + frac, car facteur = 10^décimales).
+		// Côté DÉCIMAL (grande unité) : partie entière ≥ 1 + partie fractionnaire NON nulle →
+		// au plus `decimales` chiffres après la virgule, résultat ≥ 1, petite unité ENTIÈRE
+		// (petite = entier·facteur + frac, car facteur = 10^décimales).
 		const entier = rnd(1, maxBig);
 		const frac = rnd(1, c.factor - 1); // 1..9 (×10) ou 1..99 (×100), jamais 0
 		const grande = ecritureDecimale(entier, frac, decimales);
 		const petite = entier * c.factor + frac; // entier exact (aucun flottant)
-		return versPetite
-			? // grande→petite : grande décimale connue, petite entière attendue (paires ×10).
-				{ type: 'text', question: buildQuestion(grande, c.big, c.small), answer: String(petite) }
-			: // petite→grande : petite entière connue, grande décimale attendue.
-				{ type: 'text', question: buildQuestion(petite, c.small, c.big), answer: grande };
+		// grande→petite : grande décimale connue, petite entière attendue (paires ×10) ;
+		// petite→grande : petite entière connue, grande décimale attendue.
+		return versPetite ? gp(grande, petite) : pg(petite, grande, true);
 	}
 	// ---- Conversions ENTIÈRES (comportement CE2 inchangé) ----
 	if (versPetite) {
 		const v = rnd(1, maxBig); // valeur dans la grande unité
-		return {
-			type: 'text',
-			question: buildQuestion(v, c.big, c.small),
-			answer: String(v * c.factor),
-		};
+		return gp(v, v * c.factor);
 	}
 	const k = rnd(1, maxBig); // sens inverse : on part d'un multiple EXACT du facteur
-	return { type: 'text', question: buildQuestion(k * c.factor, c.small, c.big), answer: String(k) };
+	return pg(k * c.factor, String(k), false);
 }
 
-/* Fabrique l'ExerciseType d'une leçon de conversion (un jeu de paramètres = un
-   niveau). Mono-mode (pas de QCM) : le catalogue le rend en item numérique via
-   genLessonItem. Utilisée telle quelle comme `build` du combinateur `calibrated`. */
+function generateConversion(conversions: Conversion[]): Exercise {
+	const inst = pickConversionInstance(conversions);
+	return {
+		type: 'text',
+		question: buildQuestion(inst.knownValue, inst.knownUnit, inst.answerUnit),
+		answer: inst.answer,
+	};
+}
+
+/* Génère un exercice « tableau de conversion » (#394) à partir de la MÊME instance que la
+   saisie. Empan VARIABLE par exercice : on n'affiche que la tranche contiguë de l'échelle de
+   la grande unité de la paire à la petite (« 3 km = ? m » → km·hm·dam·m, jamais km→mm). La
+   quantité, exprimée dans la petite unité (`sPetit`, entière), s'étale un chiffre par colonne,
+   la colonne de tête absorbant les chiffres de poids fort (1-2 chiffres, `maxBig ≤ 20`).
+   INVARIANT (à ne pas casser) : zéro-de-transit et virgule ne coexistent JAMAIS dans le même
+   exercice. Les colonnes de transit (hm/dam, hg-dag-dg-cg — unités NON étudiées au niveau)
+   n'apparaissent que sur les paires ×1000 STRICTEMENT entières (aucune virgule) ; une virgule
+   n'apparaît que sur les paires ×10/×100 décimales, dont toutes les unités intermédiaires sont
+   déjà enseignées (donc AUCUNE colonne de transit). `virguleApres` est posé même si l'app rend
+   la virgule fixe en v1 (donnée générique, ouvre une saisie de la virgule sans refonte). */
+function generateTableau(config: MesureConfig): Exercise {
+	const echelle = config.echelle!;
+	const inst = pickConversionInstance(config.conversions);
+	// Unités ÉTUDIÉES au niveau = celles qui figurent dans ses conversions ; les autres
+	// colonnes de l'empan sont « de transit » (en-tête démoté + case pointillés).
+	const etudiees = new Set<string>();
+	for (const c of config.conversions) {
+		etudiees.add(c.big);
+		etudiees.add(c.small);
+	}
+	const iBig = echelle.findIndex((u) => u.unite === inst.big);
+	const iSmall = echelle.findIndex((u) => u.unite === inst.small);
+	// Garde-fou : une unité d'une `Conversion` absente de l'échelle de sa famille (typo au
+	// prochain ajout) produirait un empan silencieusement faux — mieux vaut échouer net.
+	if (iBig < 0 || iSmall < 0) {
+		throw new Error(`Tableau : unité hors échelle (${inst.big} / ${inst.small})`);
+	}
+	const span = echelle.slice(iBig, iSmall + 1);
+	const m = iSmall - iBig; // nombre de crans entre grande et petite ; facteur = 10^m
+	const colonnes: TableauColonne[] = span.map((u, i) => ({
+		unite: u.unite,
+		nom: u.nom,
+		transit: !etudiees.has(u.unite),
+		// Tête (i = 0) : tous les chiffres de poids fort (⌊sPetit / 10^m⌋, 1-2 chiffres) ;
+		// colonnes suivantes : le chiffre du rang correspondant.
+		chiffres:
+			i === 0
+				? String(Math.floor(inst.sPetit / 10 ** m))
+				: String(Math.floor(inst.sPetit / 10 ** (m - i)) % 10),
+	}));
+	// Virgule : juste après la colonne de l'unité cible, UNIQUEMENT si la réponse est décimale.
+	const virguleApres = inst.answerDecimal
+		? span.findIndex((u) => u.unite === inst.answerUnit)
+		: undefined;
+	// Énoncé PARLÉ (#42) avec les noms d'unités en toutes lettres (le TTS ne lit que la
+	// consigne + l'énoncé, jamais la géométrie du tableau). Accord nom ET verbe sur la valeur
+	// connue (pluriel dès 2 ; « 1 kilomètre fait », « 3 kilomètres font »).
+	const nomConnu = span.find((u) => u.unite === inst.knownUnit)!.nom;
+	const nomCible = span.find((u) => u.unite === inst.answerUnit)!.nom;
+	const valConnue = Number(String(inst.knownValue).replace(',', '.'));
+	const pluriel = valConnue >= 2;
+	const parle = `Combien ${pluriel ? 'font' : 'fait'} ${inst.knownValue} ${nomConnu}${pluriel ? 's' : ''} en ${nomCible}s ?`;
+	return {
+		type: 'tableauConversion',
+		question: buildQuestion(inst.knownValue, inst.knownUnit, inst.answerUnit),
+		answer: inst.answer,
+		answerUnit: inst.answerUnit,
+		colonnes,
+		parle,
+		...(virguleApres !== undefined ? { virguleApres } : {}),
+	};
+}
+
+/* Modes du mode tableau (#394), proposés SEULEMENT quand la leçon porte une `echelle`
+   (longueurs / masses / contenances ; pas les durées). Saisie = mode conseillé et premier
+   contact ; le tableau est un complément, jamais un remplacement. */
+const MODES_MESURE: ModeOption[] = [
+	{
+		id: 'saisie',
+		label: "J'écris le nombre",
+		hint: 'au clavier',
+		icon: 'keyboard',
+		recommended: true,
+	},
+	{ id: 'tableau', label: 'Je remplis le tableau', hint: 'un chiffre par case', icon: 'table' },
+];
+
+/* Fabrique l'ExerciseType d'une leçon de conversion (un jeu de paramètres = un niveau).
+   Deux modes quand une `echelle` est fournie (saisie + tableau #394), mono-mode sinon
+   (durées). Utilisée telle quelle comme `build` du combinateur `calibrated` (qui prend
+   `modes`/`consigne` sur le niveau le plus bas : l'echelle CE2 doit donc être présente
+   pour exposer le tableau au CE2 comme au CM1). */
 export function conversionType(config: MesureConfig): ExerciseType {
 	const facts = config.facts ?? [];
 	return {
+		// Le tableau n'est proposé que si la famille a une échelle décimale.
+		...(config.echelle ? { modes: MODES_MESURE } : {}),
 		// Consigne d'action (#265) : l'énoncé « 3 m = @ cm » est une égalité sans verbe
 		// (« faut-il convertir ? compléter ? »). Affichée en fiche et propagée en révision.
 		consigne: 'Complète : écris le bon nombre.',
-		generate(): Exercise {
+		generate(opts?: GenerateOpts): Exercise {
+			// Mode tableau (#394) : runner dédié (ui/lecon-tableau.ts). Ignore les `facts`
+			// (repères mémorisés, hors geste du tableau) — que du calcul de rang.
+			if (opts?.mode === 'tableau' && config.echelle) return generateTableau(config);
 			if (facts.length && rnd(1, 4) === 1) {
 				const f = choice(facts);
 				return {
@@ -155,7 +333,10 @@ export function conversionType(config: MesureConfig): ExerciseType {
 			}
 			return generateConversion(config.conversions);
 		},
-		check: checkNumerique,
+		// Le tableau est corrigé cellule par cellule par son runner : jamais de correction
+		// numérique générique (cohérent avec checkAnswer qui exclut déjà ce type). Garde-fou
+		// pour un futur appelant qui passerait un tableau à ce `check`.
+		check: (ex, input) => (ex.type === 'tableauConversion' ? false : checkNumerique(ex, input)),
 	};
 }
 
@@ -180,6 +361,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 			{
 				// CE2 : m↔cm, km↔m, ET cm↔mm / m↔mm (mm de longueur = CE2).
 				ce2: {
+					echelle: ECHELLE_LONGUEUR,
 					conversions: [
 						{ big: 'm', small: 'cm', factor: 100 },
 						{ big: 'km', small: 'm', factor: 1000 },
@@ -192,6 +374,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 				// en décimal petite→grande (« 456 cm = 4,56 m »), l'entier grande→petite gardé ;
 				// km↔m et m↔mm (×1000) restent ENTIÈRES (décimal < 1 hors programme).
 				cm1: {
+					echelle: ECHELLE_LONGUEUR,
 					conversions: [
 						{ big: 'm', small: 'cm', factor: 100, maxBig: 20, decimal: 'vers-grande' },
 						{ big: 'km', small: 'm', factor: 1000, maxBig: 20 },
@@ -210,12 +393,13 @@ export const MESURE_LESSONS: LessonInput[] = [
 		label: 'Je convertis les masses',
 		exerciseType: calibrated<MesureConfig>(
 			{
-				ce2: { conversions: [{ big: 'kg', small: 'g', factor: 1000 }] },
+				ce2: { echelle: ECHELLE_MASSE, conversions: [{ big: 'kg', small: 'g', factor: 1000 }] },
 				// CM1 : 1–20, + g↔mg. Aucune paire ×10/×100 n'existe en masse → pas de
 				// conversion décimale générique ; on ancre plutôt des REPÈRES décimaux mémorisés
 				// (#248) via les facts : le demi-kilo en toutes lettres + les écritures à virgule
 				// 0,5 kg = 500 g et 0,25 kg = 250 g (correspondance décimal ↔ grammes).
 				cm1: {
+					echelle: ECHELLE_MASSE,
 					conversions: [
 						{ big: 'kg', small: 'g', factor: 1000, maxBig: 20 },
 						{ big: 'g', small: 'mg', factor: 1000, maxBig: 20 },
@@ -237,6 +421,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 			{
 				// CE2 : L↔cL ET L↔dL (le dL est au programme) ; PAS le mL (CM1).
 				ce2: {
+					echelle: ECHELLE_CONTENANCE,
 					conversions: [
 						{ big: 'L', small: 'cL', factor: 100, maxBig: 12 },
 						{ big: 'L', small: 'dL', factor: 10, maxBig: 12 },
@@ -246,6 +431,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 				// en décimal dans les deux sens ; L↔cL (×100) en décimal petite→grande
 				// (« 456 cL = 4,56 L »), l'entier grande→petite gardé ; L↔mL (×1000) ENTIÈRE.
 				cm1: {
+					echelle: ECHELLE_CONTENANCE,
 					conversions: [
 						{ big: 'L', small: 'cL', factor: 100, maxBig: 20, decimal: 'vers-grande' },
 						{ big: 'L', small: 'dL', factor: 10, maxBig: 20, decimal: 'deux-sens' },

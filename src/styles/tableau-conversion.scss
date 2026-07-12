@@ -1,0 +1,307 @@
+/* ============================================================
+   Mode « tableau de conversion » (#394) — rendu du runner ui/lecon-tableau.ts.
+   Réutilise le langage visuel des cellules posées (.posee-*, lessons.scss) via les
+   MÊMES tokens (bord accent, --paper, --ink, --ok/--ko + soft) sans en créer.
+
+   Décisions de rendu NON négociables (issue #394, avis designer + dys) :
+   - une colonne de TRANSIT (unité non étudiée) n'est JAMAIS grisée/opacifiée (= code
+     du champ désactivé) : la démotion est portée par l'EN-TÊTE seul (texte --grey plus
+     petit/léger, pas de pastille) et la case par un simple bord POINTILLÉ --grey ;
+   - hiérarchie : correct/erreur > case active > transit > étudiée (le plus fort écrase) ;
+   - distinction transit/étudiée par forme + poids + taille + couleur (jamais la couleur
+     seule, WCAG 1.4.1) ; contraste via --grey (~7,6:1), jamais --muted.
+   ============================================================ */
+
+.tc-consigne {
+	font-family: var(--ui);
+	font-weight: 700;
+	color: var(--ink);
+	margin: 0 0 4px;
+}
+.tc-enonce {
+	font-family: var(--ui);
+	font-size: 1.25rem;
+	font-weight: 800;
+	color: var(--ink);
+	font-variant-numeric: tabular-nums;
+	margin: 0 0 12px;
+}
+.tc-trou {
+	color: var(--accent-dark);
+}
+
+/* Garde-fou petits écrans (320 px) : le tableau défile horizontalement plutôt que
+   de déborder ou d'écraser les colonnes. */
+.tc-wrap {
+	overflow-x: auto;
+	padding: 2px;
+	margin-bottom: 8px;
+}
+.tc-table {
+	display: inline-flex;
+	align-items: flex-end;
+	gap: 12px; /* écart INTER-colonnes (les 2 cases d'une tête restent, elles, resserrées) */
+	padding: 4px;
+}
+
+.tc-col {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+}
+
+/* En-tête : symbole + nom complet TOUJOURS visible (avis dys : l'aria-label ne suffit
+   pas à un enfant qui lit l'écran ; le nom entier évite la confusion dam/dm, hg/kg). */
+.tc-head {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1px;
+	min-width: 2.6rem;
+	padding: 3px 8px;
+	border-radius: 10px;
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+	line-height: 1.1;
+}
+.tc-head .tc-sym {
+	font-family: var(--ui);
+	font-weight: 800;
+	/* ≥ 1,2rem gras = « grand texte » WCAG (seuil 3:1) : garde --accent-dark sur
+	   --accent-soft conforme même en thème sombre (4,21:1) ; renforce aussi la
+	   distinction de taille étudiée (gros) / transit (petit) voulue par #394. */
+	font-size: 1.2rem;
+}
+.tc-head .tc-nom {
+	font-family: var(--ui);
+	font-size: 0.66rem;
+	font-weight: 600;
+}
+/* Nom d'unité ÉTUDIÉE : petit (0,66rem) → seuil texte normal 4,5:1. `--accent-dark` sur
+   `--accent-soft` échoue en thème sombre (4,21:1) ; `--ink` est garanti à fort contraste
+   sur tous les thèmes. (Le symbole reste `--accent-dark` : à 1,2rem gras il passe en
+   « grand texte ». Le nom de transit garde `--grey`, hérité de .tc-head--transit.) */
+.tc-head:not(.tc-head--transit) .tc-nom {
+	color: var(--ink);
+}
+/* Unité de transit : démotion par l'en-tête SEUL — texte nu (pas de pastille), --grey,
+   plus léger et plus petit. Forme + poids + taille + couleur, pas la couleur seule. */
+.tc-head--transit {
+	background: transparent;
+	color: var(--grey);
+}
+.tc-head--transit .tc-sym {
+	font-weight: 700;
+	font-size: 0.92rem;
+}
+.tc-head--transit .tc-nom {
+	font-weight: 500;
+	font-size: 0.6rem;
+}
+
+/* Les 2 cases d'une tête à 2 chiffres : resserrées, lues comme UNE seule unité (avis dys). */
+.tc-col-cells {
+	display: flex;
+	gap: 4px;
+}
+
+/* Case saisissable = bouton (aucun clavier natif ne s'ouvre au tap ; le pavé saisit).
+   Défaut = unité étudiée : bord PLEIN accent, comme .posee-input. */
+.tc-cell {
+	appearance: none;
+	width: 2.5rem;
+	height: 2.9rem;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	font-family: var(--ui);
+	font-size: 1.4rem;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--accent);
+	border-radius: 8px;
+	cursor: pointer;
+	transition:
+		border-color 0.12s ease,
+		box-shadow 0.12s ease,
+		background 0.12s ease;
+}
+/* Case de transit : MÊME fond, MÊME couleur de chiffre, MÊME taille — seule différence,
+   le bord POINTILLÉ --grey (langage « secondaire mais saisissable » de .posee-carry).
+   Surtout pas d'opacité ni de fond grisé (= champ désactivé). */
+.tc-cell--transit {
+	border-style: dashed;
+	border-color: var(--grey);
+}
+/* Case active (saisie via le pavé) : prime même sur une colonne de transit (bord plein
+   accent + halo). Déclarée APRÈS --transit pour l'emporter à spécificité égale. */
+.tc-cell--active {
+	border-style: solid;
+	border-color: var(--accent-dark);
+	box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.tc-cell:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+/* Correct / erreur : réutilise le langage .posee-input.correct/.wrong (--ok/--ko + soft)
+   + une icône ✓/✗ (deux indices, pas la couleur seule). Le plus fort : écrase actif/transit.
+   Un zéro de transit bien placé reçoit le MÊME ✓ qu'une case étudiée. */
+.tc-cell.correct {
+	border: 2px solid var(--ok);
+	background: var(--ok-soft);
+	color: var(--ok);
+}
+.tc-cell.wrong {
+	border: 2px solid var(--ko);
+	background: var(--ko-soft);
+	color: var(--ko);
+}
+.tc-cell.correct::after,
+.tc-cell.wrong::after {
+	position: absolute;
+	top: -8px;
+	right: -8px;
+	width: 16px;
+	height: 16px;
+	line-height: 16px;
+	border-radius: 50%;
+	font-size: 11px;
+	font-weight: 900;
+	color: #fff;
+}
+.tc-cell.correct::after {
+	content: '✓';
+	background: var(--ok);
+}
+.tc-cell.wrong::after {
+	content: '✗';
+	background: var(--ko);
+}
+
+/* Virgule fixe (posée par l'app en v1) : glyphe entre deux colonnes, calé sur la rangée
+   des chiffres (align-items: flex-end du tableau + léger décalage). */
+.tc-virgule {
+	align-self: flex-end;
+	margin: 0 -6px 6px; /* mange le gap inter-colonnes : la virgule colle les 2 colonnes */
+	font-family: var(--ui);
+	font-size: 1.6rem;
+	font-weight: 800;
+	color: var(--ink);
+}
+
+/* Légende courte PERMANENTE sous le tableau (rappel à chaque affichage, avis dys). */
+.tc-legende {
+	font-family: var(--ui);
+	font-size: 0.82rem;
+	color: var(--grey);
+	max-width: 34ch;
+	margin: 0 auto 12px;
+}
+
+/* ---- Pavé de chiffres externe (gros boutons ≥ 56 px, jamais de clavier natif) ---- */
+.tc-pave {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 8px;
+	max-width: 232px;
+	margin: 0 auto 14px;
+}
+.tc-pave-btn {
+	appearance: none;
+	min-width: 56px;
+	min-height: 56px;
+	font-family: var(--ui);
+	font-size: 1.5rem;
+	font-weight: 800;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--accent-soft);
+	border-radius: 12px;
+	cursor: pointer;
+	transition:
+		border-color 0.12s ease,
+		transform 0.08s ease;
+}
+.tc-pave-btn:hover {
+	border-color: var(--accent);
+}
+.tc-pave-btn:active {
+	transform: scale(0.94);
+}
+.tc-pave-btn:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.tc-pave-back {
+	color: var(--grey);
+	font-size: 1.3rem;
+}
+
+/* ---- Illustration de l'aide (#272, non interactive) : exemple « 3 km = 3000 m » ---- */
+.aide-anim--tableau {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+}
+.tc-demo-q {
+	font-family: var(--ui);
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	margin: 0;
+}
+.tc-demo {
+	display: inline-flex;
+	gap: 8px;
+}
+.tc-demo-cell {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	width: 2.2rem;
+	padding: 4px 0;
+	font-family: var(--ui);
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--accent);
+	border-radius: 8px;
+}
+.tc-demo-cell b {
+	font-size: 0.7rem;
+	font-weight: 700;
+	color: var(--accent-dark);
+}
+.tc-demo-cell--transit {
+	border-style: dashed;
+	border-color: var(--grey);
+}
+.tc-demo-cell--transit b {
+	color: var(--grey);
+}
+
+/* Animations réduites : pas de mise à l'échelle au tap ni de transitions. */
+html.anim-reduced .tc-cell,
+html.anim-reduced .tc-pave-btn {
+	transition: none;
+}
+html.anim-reduced .tc-pave-btn:active {
+	transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.tc-cell,
+	.tc-pave-btn {
+		transition: none;
+	}
+	.tc-pave-btn:active {
+		transform: none;
+	}
+}

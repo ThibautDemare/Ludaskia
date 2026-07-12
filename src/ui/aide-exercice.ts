@@ -91,6 +91,19 @@ function illustrationHTML(type: TypeAide): string {
 					</span>
 				</div>
 			</div>`;
+		case 'tableau':
+			// Exemple ILLUSTRATIF, non interactif (avis specialiste-troubles-apprentissage :
+			// ne jamais pré-remplir la vraie question) : « 3 km = 3000 m » déjà rempli, les
+			// zéros de transit (hm, dam) bien visibles dans des cases en pointillés.
+			return `<div class="aide-anim aide-anim--tableau" id="aideAnim">
+				<p class="tc-demo-q">3 km = 3000 m</p>
+				<div class="tc-demo">
+					<span class="tc-demo-cell"><b>km</b>3</span>
+					<span class="tc-demo-cell tc-demo-cell--transit"><b>hm</b>0</span>
+					<span class="tc-demo-cell tc-demo-cell--transit"><b>dam</b>0</span>
+					<span class="tc-demo-cell"><b>m</b>0</span>
+				</div>
+			</div>`;
 	}
 }
 

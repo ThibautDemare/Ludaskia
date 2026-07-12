@@ -19,6 +19,7 @@ import { runLeconTuiles } from './lecon-tuiles';
 import { runLeconOrdre } from './lecon-ordre';
 import { runLeconTri } from './lecon-tri';
 import { runLeconProbleme } from './lecon-probleme';
+import { runLeconTableau, leconTableauCleanup } from './lecon-tableau';
 import { renderItem, createRenderContext } from '../core/items';
 import type { Item, RenderContext } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
@@ -197,7 +198,13 @@ function chooseMode(id: string, mode: ExerciseMode) {
 	// Les modes « une question à la fois » (QCM, tuiles, problème) ne sont pas des
 	// grilles : pas d'offre de reprise. Seule la saisie (fiche grille) la propose.
 	const type = lesson.exerciseType.generate({ mode }).type;
-	if (type === 'qcm' || type === 'tuilesNombre' || type === 'tuilesOrdre' || type === 'probleme') {
+	if (
+		type === 'qcm' ||
+		type === 'tuilesNombre' ||
+		type === 'tuilesOrdre' ||
+		type === 'probleme' ||
+		type === 'tableauConversion'
+	) {
 		location.hash = 'lecon-' + id;
 	} else {
 		maybeRelaunch(leconKey(id), lesson.label, () => {
@@ -332,6 +339,7 @@ function resetSessionUI() {
 	resetChrono();
 	sprintCleanup(); // stoppe un éventuel sprint en cours (compte à rebours)
 	revisionCleanup(); // remet à zéro le drapeau « révision en cours » (#63)
+	leconTableauCleanup(); // retire le listener clavier du runner tableau (#394) si actif
 	currentMode = null;
 	currentLessonId = null;
 	document.getElementById('sheets')!.innerHTML = '';
@@ -551,6 +559,10 @@ export function runLecon(id: string) {
 		}
 		if (t === 'tuilesTri') {
 			runLeconTri(id, mode);
+			return;
+		}
+		if (t === 'tableauConversion') {
+			runLeconTableau(id, mode);
 			return;
 		}
 	}

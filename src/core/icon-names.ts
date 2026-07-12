@@ -26,6 +26,7 @@ export type IconName =
 	| 'keyboard'
 	| 'hand-pointing'
 	| 'puzzle-piece'
+	| 'table'
 	| 'text'
 	| 'eye'
 	| 'speaker'

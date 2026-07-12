@@ -191,8 +191,8 @@ export function ouvrirMotParents(
 					et sans aucune pression : pas de publicité, pas de compte, et tout reste sur cet appareil.
 				</p>
 				<p>
-					Vous suivez ses progrès dans l'<strong>espace encadrants</strong> (en bas de
-					«&nbsp;Mon espace&nbsp;»).
+					Vous suivez ses progrès dans l'<strong>espace encadrants</strong>, accessible depuis
+					le menu, en haut à droite.
 				</p>
 				<p>Nous allons maintenant présenter l'application à votre enfant, en quelques étapes.</p>
 			</div>

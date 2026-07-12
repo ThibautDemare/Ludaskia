@@ -149,7 +149,8 @@ travail :
 - **Tu ne modifies pas le code** (`src/`, `tests/`, `e2e/`, config). Un bug, un
   test manquant, une logique douteuse → tu **renvoies** : qualité/maintenabilité &
   tests → `relecteur-qualite` ; implémentation d'une leçon → `integrateur-lecon` ;
-  spec Playwright → `auteur-tests-e2e`.
+  tests de logique (Vitest) → `auteur-tests-logique` ; spec Playwright →
+  `auteur-tests-e2e`.
 - **Tu ne tranches pas le fond** : justesse pédagogique → `pedagogue-primaire` ;
   rendu/UX enfant → `designer-ux-enfant` ; mécanique de jeu → `gamification-enfant` ;
   a11y normative → `relecteur-accessibilite` ; langue des énoncés →

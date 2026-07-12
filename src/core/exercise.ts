@@ -127,6 +127,19 @@ export type Exercise =
 			mots: { mot: string; cat: 0 | 1 }[];
 			parle?: string;
 	  }
+	// Vocabulaire (#392) — appariement : l'enfant RELIE chaque mot de la colonne
+	// gauche à son correspondant de la colonne droite (familles de mots : mot de
+	// base ↔ dérivé). `paires` porte les correspondances CORRECTES ; l'ordre des
+	// deux colonnes est mélangé à l'affichage (jamais aligné). `intrus` = mots en
+	// trop côté droite, sans correspondance (décoys, neutralise la réussite par
+	// élimination). Corrigé par son runner (ui/lecon-appariement.ts), lien par lien.
+	| {
+			type: 'appariement';
+			question: string;
+			paires: { gauche: string; droite: string }[];
+			intrus?: string[];
+			parle?: string;
+	  }
 	// Calcul posé (#97) — opération en colonnes ; le catalogue en fait un Item
 	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.
 	| { type: 'posed'; op: '+' | '-' | 'x'; a: number; b: number }
@@ -165,11 +178,11 @@ export type ExerciseMode = string;
 /** Étiquette déclarative du format d'un `ExerciseType` (#348) pour les formats à
  *  runner d'écran dédié, incompatibles avec le sprint « une réponse à la fois » :
  *  opération posée (#97), rangement d'une suite (#108), tri par thème (#114),
- *  résolution de problèmes (#199). Sert à classer une leçon SANS appeler
- *  `generate()` (qui consomme l'aléatoire global). Absent = format standard
- *  (texte/QCM) éligible au sprint. Doit refléter le `type` que produit le
- *  `generate()` par défaut (sans mode) — invariant vérifié en test. */
-export type ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme';
+ *  résolution de problèmes (#199), appariement (#392). Sert à classer une leçon
+ *  SANS appeler `generate()` (qui consomme l'aléatoire global). Absent = format
+ *  standard (texte/QCM) éligible au sprint. Doit refléter le `type` que produit
+ *  le `generate()` par défaut (sans mode) — invariant vérifié en test. */
+export type ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme' | 'appariement';
 
 /** Options de génération (#225). Le niveau est résolu UNE fois en amont (seam
  *  UI/catalogue via `effectiveLevel`) puis passé ici ; une fabrique mono-niveau
@@ -227,15 +240,17 @@ export function defaultMode(type: ExerciseType): ExerciseMode | undefined {
    Accents et apostrophes exigés. Couvre tous les types : comparaison à `answer`
    (+ variantes `answers` pour 'text'). */
 export function checkAnswer(exercise: Exercise, input: string): boolean {
-	// Le calcul posé (corrigé cellule par cellule), le rangement d'une suite (#108)
-	// et le tri par thème (#114) — corrigés par leur runner — n'ont pas de réponse
-	// texte unique : ils ne passent jamais par cette vérification générique.
+	// Le calcul posé (corrigé cellule par cellule), le rangement d'une suite (#108),
+	// le tri par thème (#114) et l'appariement (#392) — corrigés par leur runner —
+	// n'ont pas de réponse texte unique : ils ne passent jamais par cette
+	// vérification générique.
 	if (
 		exercise.type === 'posed' ||
 		exercise.type === 'tuilesOrdre' ||
 		exercise.type === 'tuilesTri' ||
 		exercise.type === 'probleme' ||
-		exercise.type === 'tableauConversion'
+		exercise.type === 'tableauConversion' ||
+		exercise.type === 'appariement'
 	)
 		return false;
 	const normalized = normalizeText(input);

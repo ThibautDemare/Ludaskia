@@ -125,6 +125,7 @@ import {
 	isOrderingLesson,
 	isTriLesson,
 	isProblemeLesson,
+	isPairingLesson,
 	CATEGORIES,
 	ORTHO_CATEGORY_ID,
 	MATH_LESSON_NUM,
@@ -183,6 +184,7 @@ import {
 	SUFFIXES,
 	ITEMS_FAMILLES,
 	FAMILLES_LESSONS,
+	appariementType,
 } from '../src/data/francais/familles';
 import { variantes as heureVariantes } from '../src/data/maths/heure';
 import {
@@ -3566,6 +3568,84 @@ describe('vocabulaire — familles, préfixes, suffixes (#113)', () => {
 	});
 });
 
+describe('vocabulaire — appariement « Relier les familles de mots » (#392)', () => {
+	const ID = 'fr-vocab-familles-relier';
+	const familleDe = new Map(FAMILLES.map((f) => [f.mot, f.famille]));
+	const fauxAmiDe = new Map(FAMILLES.map((f) => [f.mot, f.fauxAmi]));
+
+	test('type appariement : 4 paires base ↔ dérivé, exerciseKind, corrigé par le runner', () => {
+		const type = appariementType(FAMILLES);
+		expect(type.exerciseKind).toBe('appariement');
+		const ex = type.generate();
+		expect(ex.type).toBe('appariement');
+		if (ex.type !== 'appariement') return;
+		expect(ex.paires.length).toBe(4);
+		// La correction générique renvoie toujours false (le runner corrige lien par lien).
+		expect(type.check(ex, 'peu importe')).toBe(false);
+	});
+
+	test('chaque paire relie un mot de base à un vrai dérivé de sa famille', () => {
+		const type = appariementType(FAMILLES);
+		for (let i = 0; i < 200; i++) {
+			const ex = type.generate();
+			if (ex.type !== 'appariement') continue;
+			for (const p of ex.paires) {
+				expect(familleDe.get(p.gauche), p.gauche).toBe(p.droite);
+			}
+		}
+	});
+
+	test('tous les mots affichés d’une manche sont distincts (aucune ambiguïté)', () => {
+		const type = appariementType(FAMILLES);
+		for (let i = 0; i < 200; i++) {
+			const ex = type.generate();
+			if (ex.type !== 'appariement') continue;
+			const affiches = [
+				...ex.paires.map((p) => p.gauche),
+				...ex.paires.map((p) => p.droite),
+				...(ex.intrus ?? []),
+			];
+			expect(new Set(affiches).size, affiches.join('|')).toBe(affiches.length);
+		}
+	});
+
+	test('décoys = faux-amis de bases présentes, jamais une bonne réponse', () => {
+		const type = appariementType(FAMILLES);
+		let vuDeuxDecoys = false;
+		for (let i = 0; i < 200; i++) {
+			const ex = type.generate();
+			if (ex.type !== 'appariement') continue;
+			const bonnesReponses = new Set(ex.paires.map((p) => p.droite));
+			const fauxAmisPresents = new Set(ex.paires.map((p) => fauxAmiDe.get(p.gauche)));
+			expect((ex.intrus ?? []).length).toBeLessThanOrEqual(2);
+			if ((ex.intrus ?? []).length === 2) vuDeuxDecoys = true;
+			for (const d of ex.intrus ?? []) {
+				expect(fauxAmisPresents.has(d), d).toBe(true); // rattaché à une base de la manche
+				expect(bonnesReponses.has(d), d).toBe(false); // jamais une famille correcte
+			}
+		}
+		expect(vuDeuxDecoys).toBe(true); // le mécanisme de décoys est réellement exercé
+	});
+
+	test('repli texte (fiche/bilan/révision) : « quel mot va avec X ? », réponse = un dérivé', () => {
+		const lesson = getLessonById(ID)!;
+		for (let i = 0; i < 50; i++) {
+			const it = genLessonItem(lesson);
+			expect(it.text).toContain('va avec');
+			expect(it.text).toContain('@'); // emplacement du champ
+			// La réponse est bien un dérivé (valeur d'une famille de la banque).
+			expect([...familleDe.values()]).toContain(it.answer);
+		}
+	});
+
+	test('catalogue : leçon d’appariement CE2 en Vocabulaire, hors sprint', () => {
+		const lesson = getLessonById(ID)!;
+		expect(lesson.category).toBe('fr-vocabulaire');
+		expect(lesson.levels).toContain('ce2');
+		expect(isPairingLesson(lesson)).toBe(true);
+	});
+});
+
 describe('vocabulaire — champs lexicaux (#114)', () => {
 	const ID_MOTS = 'fr-vocab-champs-mots';
 	const ID_TRI = 'fr-vocab-champs-tri';
@@ -3928,7 +4008,7 @@ describe('auto-actualisation (core/version)', () => {
 describe('exerciseKind — classification déclarative (#348)', () => {
 	// Doit refléter l'union `ExerciseKind` (src/core/exercise.ts) : les types d'items
 	// à runner d'écran dédié, hors sprint. À tenir à jour si l'union s'étend.
-	const FORMATS_DEDIES = ['posed', 'tuilesOrdre', 'tuilesTri', 'probleme'];
+	const FORMATS_DEDIES = ['posed', 'tuilesOrdre', 'tuilesTri', 'probleme', 'appariement'];
 
 	test("l'étiquette déclarée == le type produit par generate() (invariant)", () => {
 		// NB : ce test appelle generate() sur tout le catalogue À DES FINS DE
@@ -3956,5 +4036,11 @@ describe('exerciseKind — classification déclarative (#348)', () => {
 		expect(isProblemeLesson(getLessonById('math-div-reste')!)).toBe(true); // probleme par défaut
 		expect(isProblemeLesson(getLessonById('math-tables-addition')!)).toBe(false);
 		expect(isProblemeLesson(getLessonById('fr-conj-etre-present')!)).toBe(false);
+	});
+
+	test('isPairingLesson : vrai pour l’appariement, faux pour les autres', () => {
+		expect(isPairingLesson(getLessonById('fr-vocab-familles-relier')!)).toBe(true);
+		expect(isPairingLesson(getLessonById('fr-vocab-familles')!)).toBe(false); // QCM
+		expect(isPairingLesson(getLessonById('fr-vocab-champs-tri')!)).toBe(false); // tri
 	});
 });

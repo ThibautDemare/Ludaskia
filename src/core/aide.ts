@@ -4,14 +4,15 @@
    étapes courtes + voie alternative + filet anti-erreur) et la mémoire
    « aide déjà vue » par profil (via lsGet/lsSet, jamais localStorage direct).
 
-   Six types, un par runner d'écran dont la mécanique n'est pas évidente :
+   Sept types, un par runner d'écran dont la mécanique n'est pas évidente :
    - `tuiles` → numération (ui/lecon-tuiles) : amener LA tuile dans le trou ;
    - `ordre`  → ranger une suite (ui/lecon-ordre) : tap → case suivante ;
    - `tri`    → ranger par thème (ui/lecon-tri) : tap mot puis tap colonne ;
    - `atelier`→ atelier du mot (ui/ortho-atelier) : glisser pour surligner ;
    - `lettres`→ dictée « remettre les lettres dans l'ordre » (ui/ortho-runner, tuiles) ;
    - `tableau`→ tableau de conversion (ui/lecon-tableau, #394) : un chiffre par case,
-     zéros de transit compris (les cases en pointillés se remplissent aussi).
+     zéros de transit compris (les cases en pointillés se remplissent aussi) ;
+   - `appariement` → relier des paires (ui/lecon-appariement) : tap mot puis tap son correspondant.
 
    Le RENDU (modale, bouton, animation) vit dans ui/aide-exercice.ts.
    Rédaction validée avec les conseillers (designer / troubles d'apprentissage) :
@@ -19,7 +20,7 @@
    ============================================================ */
 import { lsGet, lsSet } from './storage';
 
-export type TypeAide = 'tuiles' | 'ordre' | 'tri' | 'atelier' | 'lettres' | 'tableau';
+export type TypeAide = 'tuiles' | 'ordre' | 'tri' | 'atelier' | 'lettres' | 'tableau' | 'appariement';
 
 export interface AideContenu {
 	/** Titre de la bulle (ton « astuce », jamais « problème »). */
@@ -75,6 +76,11 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 			'Les cases en pointillés se remplissent aussi.',
 		],
 		reparation: "Tu t'es trompé ? Touche la case à corriger pour y revenir.",
+	},
+	appariement: {
+		titre: 'Comment relier les mots ?',
+		etapes: ['Touche un mot à gauche.', 'Touche le mot qui va avec, à droite.'],
+		reparation: "Tu t'es trompé ? Touche un mot relié, le trait s'efface.",
 	},
 };
 

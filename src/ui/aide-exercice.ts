@@ -104,6 +104,14 @@ function illustrationHTML(type: TypeAide): string {
 					<span class="tc-demo-cell"><b>m</b>0</span>
 				</div>
 			</div>`;
+		case 'appariement':
+			// Le doigt touche « dent » à gauche, puis « dentiste » à droite : un trait les relie.
+			return `<div class="aide-anim aide-anim--appariement is-anim" id="aideAnim">
+				<span class="an-mot an-mot--g">dent</span>
+				<span class="an-mot an-mot--d">dentiste</span>
+				<span class="an-lien"></span>
+				${FINGER}
+			</div>`;
 	}
 }
 

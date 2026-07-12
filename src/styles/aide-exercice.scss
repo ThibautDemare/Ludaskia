@@ -206,6 +206,7 @@
 /* Tuile / mot / lettre / case : aspect commun. */
 .an-tile,
 .an-word,
+.an-mot,
 .an-letter,
 .an-built {
 	position: absolute;
@@ -702,16 +703,89 @@
 	left: calc(100% - 18px);
 }
 
+/* ---- appariement (relier des paires) : le doigt touche « dent » puis « dentiste »,
+   un trait se trace entre les deux ---- */
+.aide-anim--appariement .an-mot {
+	top: 46px;
+	height: 32px;
+	min-width: 56px;
+	padding: 0 10px;
+	font-size: 15px;
+}
+.aide-anim--appariement .an-mot--g {
+	left: 14px;
+}
+.aide-anim--appariement .an-mot--d {
+	left: 150px;
+}
+.aide-anim--appariement .an-lien {
+	position: absolute;
+	left: 78px;
+	top: 60px;
+	width: 72px;
+	height: 4px;
+	border-radius: 2px;
+	background: var(--accent);
+	transform-origin: left center;
+}
+.aide-anim--appariement .an-finger {
+	left: 150px;
+	top: 66px;
+}
+.aide-anim--appariement.is-anim .an-lien {
+	transform: scaleX(0);
+	animation: an-appar-lien 3.4s ease forwards;
+}
+.aide-anim--appariement.is-anim .an-finger {
+	animation: an-appar-finger 3.4s ease forwards;
+}
+/* Au repos (sans .is-anim) : le trait est tracé (l'aide garde son état final). */
+.aide-anim--appariement:not(.is-anim) .an-lien {
+	transform: scaleX(1);
+}
+@keyframes an-appar-lien {
+	0%,
+	50% {
+		transform: scaleX(0);
+	}
+	80%,
+	100% {
+		transform: scaleX(1);
+	}
+}
+@keyframes an-appar-finger {
+	0% {
+		transform: translate(-78px, 0);
+	}
+	12% {
+		transform: translate(-78px, -5px) scale(0.85);
+	}
+	50% {
+		transform: translate(0, 0);
+	}
+	58% {
+		transform: translate(0, -5px) scale(0.85);
+	}
+	100% {
+		transform: translate(0, 0);
+	}
+}
+
 /* ---------- Mouvement réduit : on FIGE sur l'état final, on garde l'info ---------- */
 @media (prefers-reduced-motion: reduce) {
 	.aide-anim.is-anim .an-tile,
 	.aide-anim.is-anim .an-word,
+	.aide-anim.is-anim .an-mot,
+	.aide-anim.is-anim .an-lien,
 	.aide-anim.is-anim .an-built,
 	.aide-anim.is-anim .an-edit,
 	.aide-anim.is-anim .an-finger,
 	.aide-anim.is-anim .aide-demo-hl,
 	.aide-anim.is-anim .aide-demo-doigt {
 		animation: none;
+	}
+	.aide-anim--appariement .an-lien {
+		transform: scaleX(1);
 	}
 	.aide-anim--atelier .aide-demo-hl {
 		transform: scaleX(1);
@@ -725,12 +799,17 @@
 }
 html.anim-reduced .aide-anim.is-anim .an-tile,
 html.anim-reduced .aide-anim.is-anim .an-word,
+html.anim-reduced .aide-anim.is-anim .an-mot,
+html.anim-reduced .aide-anim.is-anim .an-lien,
 html.anim-reduced .aide-anim.is-anim .an-built,
 html.anim-reduced .aide-anim.is-anim .an-edit,
 html.anim-reduced .aide-anim.is-anim .an-finger,
 html.anim-reduced .aide-anim.is-anim .aide-demo-hl,
 html.anim-reduced .aide-anim.is-anim .aide-demo-doigt {
 	animation: none;
+}
+html.anim-reduced .aide-anim--appariement .an-lien {
+	transform: scaleX(1);
 }
 html.anim-reduced .aide-anim--atelier .aide-demo-hl {
 	transform: scaleX(1);

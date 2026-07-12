@@ -279,6 +279,21 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   (✓/✗) + bon classement montré ; parité `recordLessonRun`. Routé par `runLecon`
   quand le mode produit un `tuilesTri`. Calqué sur `lecon-ordre.ts`. Délègue
   l'interaction à `tuile-interaction.ts` (#345, `kind: 'tri'`).
+- **`lecon-tableau.ts`** — runner **« tableau de conversion »** d'une leçon de
+  mesures (#394, 2ᵉ mode de longueurs/masses/contenances, jamais les durées) :
+  « une question à la fois », l'enfant remplit **une case par chiffre** (colonnes
+  `TableauColonne[]` de l'exercice, tête à 2 chiffres déployée en 2 cases) via un
+  **pavé de chiffres externe** dédié (jamais de clavier natif ni de tap direct dans
+  une case étroite) — case active surlignée, **avance automatique**, navigation
+  clavier ← →, validation bloquée tant qu'une case est vide ; corrigé **case par
+  case** (comme la grille posée). Colonnes de transit (unité non étudiée au
+  niveau) signalées par un en-tête démoté + case en pointillés (jamais
+  grisées/désactivées), et une virgule fixe insérée par l'app pour les paires
+  décimales CM1 (`virguleApres`). Parité `recordLessonRun` (XP/étoiles) et aide
+  contextuelle (`core/aide.ts`/`aide-exercice.ts`, type `tableau`) comme les
+  autres runners dédiés. Routé par `runLecon` quand `generate(mode).type ===
+  'tableauConversion'` ; n'a de sens qu'en complément du mode `saisie`
+  (`ui/navigation.ts` propose les deux via `ModeOption`), jamais en remplacement.
 - **`lecon-probleme.ts`** — runner **« Résolution de problèmes »** (#199), un
   problème à la fois. L'énoncé (`Exercise` `type: 'probleme'` : `enonce`, `etapes[]`,
   `parle`, `figure?` #95) reste visible avec **son bouton « Écouter »** (#42, `data-tts` = `parle`) ;

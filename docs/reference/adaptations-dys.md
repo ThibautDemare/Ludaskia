@@ -163,7 +163,14 @@ planification et l'exécution des gestes. Elle entraîne une **dysgraphie**
 - Les figures géométriques SVG doivent être **lisibles sans zoom** (taille
   suffisante, pas de surcharge d'annotations).
 - Éviter les saisies dans des tableaux à plusieurs colonnes (difficulté
-  d'orientation spatiale).
+  d'orientation spatiale), **sauf cas mitigé** : case active très visible
+  (surbrillance nette, pas la seule bordure), **avance automatique** vers la case
+  suivante après chaque saisie, et entrée exclusivement par un **pavé large**
+  externe (jamais de tap direct dans une case étroite, ni de clavier natif qui
+  demande de viser). Sous ces trois conditions réunies, le geste redevient un tap
+  sur un gros bouton, pas un pointage fin dans une grille. Ce mitigé doit rester
+  un **complément** à une saisie libre au clavier (jamais son seul mode d'accès à
+  la notion).
 - *(Bonne pratique générale — consensus ergothérapeutes ; Primàbord EBEP)*
 
 ### 3.3 Évaluation

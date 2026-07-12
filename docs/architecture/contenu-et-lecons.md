@@ -578,18 +578,38 @@ Catégorie `math-calcul-mental`. Trois origines :
 
 ### Grandeurs et mesures
 
-#### `maths/mesures.ts` (#89, multi-niveaux #287, décimaux CM1 #248)
+#### `maths/mesures.ts` (#89, multi-niveaux #287, décimaux CM1 #248, tableau de conversion #394)
 
 moteur de **conversions d'unités** partagé par
 4 leçons de « Grandeurs et mesures » — `mes-longueurs`, `mes-masses`, `mes-contenances`,
 `mes-durees` (h↔min + fractions d'heure). `conversionType(config)` fabrique un
-`ExerciseType` **mono-mode** dont `generate()` produit une question texte avec `@`
+`ExerciseType` dont `generate()` produit une question texte avec `@`
 (emplacement du champ) et une réponse **numérique** ; `MESURE_LESSONS` liste les
 descripteurs, chacun `calibrated` { ce2, cm1 } (niveaux dérivés au catalogue,
 `core/catalog.ts`). Calibrage CE2 (avis pédagogique, **inchangé** par #248) :
 facteur grande→petite ≤ 9, sens inverse sur multiples exacts (réponse entière),
 pondération ~60/40 vers le sens ×, réponses **toujours entières** ; mL (L↔mL) et
 conversion min↔s écartés (CM1 / surcharge base 60).
+
+**Second mode « tableau de conversion » (#394).** Proposé (2 modes : `saisie`
+conseillé + `tableau`, `ui/navigation.ts` → `ModeOption`) dès que la famille a une
+`echelle` décimale — **longueurs, masses, contenances**, aux deux niveaux CE2 et
+CM1 (l'`echelle` est portée par le niveau CE2 du `calibrated`, exposée aux deux) ;
+**absente pour les durées** (base 60, un tableau décimal y donnerait des réponses
+fausses) qui restent mono-mode. `generateTableau` part de la **même instance
+tirée** que la saisie (`pickConversionInstance`, aucune duplication de la logique
+sens/décimal) et affiche un **empan variable** : seulement la tranche contiguë de
+l'échelle entre la grande et la petite unité de la paire (« 3 km = ? m » →
+km·hm·dam·m, jamais km→mm). La quantité s'étale un chiffre par colonne, la colonne
+de tête absorbant les chiffres de poids fort (1-2 chiffres). Les unités de l'empan
+non étudiées au niveau sont des **colonnes de transit** (en-tête démoté + case
+pointillés, mais saisissables — l'enfant y écrit des 0). **Invariant** : zéro de
+transit et virgule ne coexistent **jamais** dans un même exercice (les colonnes de
+transit n'apparaissent que sur les paires ×1000 strictement entières ; une virgule
+n'apparaît que sur les paires ×10/×100 décimales CM1, dont toutes les unités
+intermédiaires sont déjà enseignées). Rendu et interaction (pavé de chiffres
+externe, avance automatique) dans `ui/lecon-tableau.ts` (cf.
+[Rendu & interactions](ui.md)).
 
 Le CM1 élargit les plages (1–20) et ajoute des unités déjà au programme (dm, g↔mg,
 min↔s…) et, depuis #248 (programme 2025 §1.3, au plus 2 chiffres après la virgule),

@@ -156,20 +156,27 @@ propre doc de conception : `docs/design-orthographe.md`.
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
   (`text` | `qcm` | `tuilesNombre` (numération #98) | `tuilesOrdre` (ordre
   alphabétique #108 : suite mélangée + suite triée) | `tuilesTri` (champs
-  lexicaux #114 : tuiles + thème correct de chacune) | `posed` (calcul posé #97 :
-  op + opérandes) | `tableauConversion` (tableau de conversion #394 : colonnes
-  **`TableauColonne[]`** — `{unite, nom, transit, chiffres, tete?}`, TOUJOURS
-  grande→petite unité — et `virguleApres?` pour les paires décimales CM1 ; corrigé
-  **colonne par colonne** par son runner, comme `posed`) | interactions ortho),
-  interface **`ExerciseType`** : `modes?`
+  lexicaux #114 : tuiles + thème correct de chacune) | `appariement` (relier des
+  paires #392 : `{question, paires: {gauche, droite}[], intrus?, parle?}` — `paires`
+  porte les correspondances correctes, `intrus?` des mots décoys côté droite sans
+  correspondance) | `posed` (calcul posé #97 : op + opérandes) | `tableauConversion`
+  (tableau de conversion #394 : colonnes **`TableauColonne[]`** —
+  `{unite, nom, transit, chiffres, tete?}`, TOUJOURS grande→petite unité — et
+  `virguleApres?` pour les paires décimales CM1 ; corrigé **colonne par colonne** par
+  son runner, comme `posed`) | interactions ortho), interface **`ExerciseType`** :
+  `modes?`
   (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
   l'ordre d'affichage), `generate(opts? : {mode?, level?})` (le `level` #225 calibre
   une leçon multi-niveaux), `check()`, et **`exerciseKind?`** (#348, type
-  `ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme'`) — étiquette
-  **déclarative statique** portée par les fabriques à runner dédié ; permet aux
-  helpers `isPosedLesson` / `isOrderingLesson` / `isTriLesson` / `isProblemeLesson`
-  de classer une leçon **sans appeler `generate()`** (supprime tout appel à l'aléatoire
-  global au moment du filtrage). Absent = format standard (texte/QCM) éligible au sprint.
+  `ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme' | 'appariement'`)
+  — étiquette **déclarative statique** portée par les fabriques à runner dédié ;
+  permet aux helpers `isPosedLesson` / `isOrderingLesson` / `isTriLesson` /
+  `isProblemeLesson` / `isPairingLesson` de classer une leçon **sans appeler
+  `generate()`** (supprime tout appel à l'aléatoire global au moment du filtrage).
+  Absent = format standard (texte/QCM) éligible au sprint. L'appariement est
+  **corrigé par son runner** (lien par lien), pas par `checkAnswer` : comme
+  `posed`/`tuilesOrdre`/`tuilesTri`/`probleme`, son `check()` renvoie toujours
+  `false`.
   Helpers **`hasMode`** et **`defaultMode`** (les écrans dérivent leurs choix d'ici,
   **jamais en dur**, #69), et `checkAnswer` (normalisation partagée `normalizeText` ;
   **accents et apostrophes exigés**). Le type `text` porte un champ optionnel **`intervalle`**
@@ -245,9 +252,9 @@ propre doc de conception : `docs/design-orthographe.md`.
   (clic → remplissage, synchro `aria-pressed`) vit dans `ui/pave-signes.ts`.
 - **`aide.ts`** (#272) — **aide contextuelle** des runners à interaction non intuitive,
   module **pur** : porte le **contenu** des aides (`AIDES` : titre + étapes courtes ≤ 3 +
-  voie alternative + filet anti-erreur) pour 5 types (`tuiles`, `ordre`, `tri`, `atelier`,
-  `lettres`) et la **mémoire « aide déjà vue »** par profil (`ludaskia_aide_vue`, via
-  `lsGet/lsSet`). Le rendu vit dans `ui/aide-exercice.ts`.
+  voie alternative + filet anti-erreur) pour 6 types (`tuiles`, `ordre`, `tri`, `atelier`,
+  `lettres`, `appariement` #392) et la **mémoire « aide déjà vue »** par profil
+  (`ludaskia_aide_vue`, via `lsGet/lsSet`). Le rendu vit dans `ui/aide-exercice.ts`.
 - **`tour.ts`** (#330) — **guide de première visite**, module **pur** (aucun accès DOM) :
   porte le **contenu** du tour enfant (`TOUR_ETAPES` : 3 grands repères de l'accueil —
   `.cards` / `#progression` / `#rewardNav` — chacun `{cible, titre, texte}`, ton

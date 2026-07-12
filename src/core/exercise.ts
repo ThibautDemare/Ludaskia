@@ -19,6 +19,18 @@ export interface ChoiceView {
     symboles. Petit enum fermé piloté par la donnée. */
 export type QcmVariante = 'ponctuation';
 
+/** Colonne d'un tableau de conversion (#394). L'ordre des colonnes est TOUJOURS
+    grande→petite unité (position spatiale stable d'un exercice à l'autre, avis
+    specialiste-troubles-apprentissage : retrouver une colonne par sa place mémorisée
+    plutôt que par le décodage d'une abréviation proche — dam/dm, hg/kg). */
+export interface TableauColonne {
+	unite: string; // symbole affiché (« km », « hm », « dam », « m »)
+	nom: string; // nom complet singulier (« kilomètre ») — en-tête visible + aria-label
+	transit: boolean; // unité non exercée au niveau : en-tête démoté + case pointillés, mais saisissable
+	chiffres: string; // chiffre(s) attendu(s) dans la case : 1 caractère, sauf la colonne de tête (1-2)
+	// La colonne de tête est TOUJOURS la première (index 0) — inutile de la marquer.
+}
+
 /** Une sous-question d'un problème (#199) : son intitulé et sa réponse numérique. */
 export interface ProblemeEtape {
 	question: string; // ex. « Combien Léo a-t-il de billes maintenant ? »
@@ -118,6 +130,24 @@ export type Exercise =
 	// Calcul posé (#97) — opération en colonnes ; le catalogue en fait un Item
 	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.
 	| { type: 'posed'; op: '+' | '-' | 'x'; a: number; b: number }
+	// Tableau de conversion (#394) — 2ᵉ mode des leçons de mesures : une colonne par
+	// unité, l'enfant place un chiffre par case (zéros de transit compris) via un pavé
+	// externe. Runner dédié (ui/lecon-tableau.ts), corrigé cellule par cellule comme
+	// `posed` : pas de réponse texte unique. `question` porte l'énoncé (consigne / TTS,
+	// même forme que la saisie) ; `answer` la valeur cible (révélation / filet). Les
+	// colonnes vont TOUJOURS de la grande à la petite unité (ordre spatial stable, avis
+	// dys). `virguleApres` = index de colonne après laquelle poser la virgule fixe
+	// (absent = conversion entière) ; stocké même si la virgule reste posée par l'app en
+	// v1, pour ouvrir une saisie de la virgule sans refonte (#394).
+	| {
+			type: 'tableauConversion';
+			question: string;
+			answer: string;
+			answerUnit: string; // unité cible (celle du champ) — source unique, évite de re-parser `question`
+			colonnes: TableauColonne[];
+			virguleApres?: number;
+			parle?: string;
+	  }
 	// Résolution de problèmes (#199) — énoncé textuel + 1 sous-question (problème
 	// simple) ou 2 (deux étapes, « chunking » ; ou résultat + reste d'une division
 	// par le sens, #95). Chaque étape a sa réponse numérique, corrigée indépendamment.
@@ -204,7 +234,8 @@ export function checkAnswer(exercise: Exercise, input: string): boolean {
 		exercise.type === 'posed' ||
 		exercise.type === 'tuilesOrdre' ||
 		exercise.type === 'tuilesTri' ||
-		exercise.type === 'probleme'
+		exercise.type === 'probleme' ||
+		exercise.type === 'tableauConversion'
 	)
 		return false;
 	const normalized = normalizeText(input);

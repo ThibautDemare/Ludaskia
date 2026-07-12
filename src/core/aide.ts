@@ -4,12 +4,14 @@
    étapes courtes + voie alternative + filet anti-erreur) et la mémoire
    « aide déjà vue » par profil (via lsGet/lsSet, jamais localStorage direct).
 
-   Cinq types, un par runner d'écran dont la mécanique n'est pas évidente :
+   Six types, un par runner d'écran dont la mécanique n'est pas évidente :
    - `tuiles` → numération (ui/lecon-tuiles) : amener LA tuile dans le trou ;
    - `ordre`  → ranger une suite (ui/lecon-ordre) : tap → case suivante ;
    - `tri`    → ranger par thème (ui/lecon-tri) : tap mot puis tap colonne ;
    - `atelier`→ atelier du mot (ui/ortho-atelier) : glisser pour surligner ;
-   - `lettres`→ dictée « remettre les lettres dans l'ordre » (ui/ortho-runner, tuiles).
+   - `lettres`→ dictée « remettre les lettres dans l'ordre » (ui/ortho-runner, tuiles) ;
+   - `tableau`→ tableau de conversion (ui/lecon-tableau, #394) : un chiffre par case,
+     zéros de transit compris (les cases en pointillés se remplissent aussi).
 
    Le RENDU (modale, bouton, animation) vit dans ui/aide-exercice.ts.
    Rédaction validée avec les conseillers (designer / troubles d'apprentissage) :
@@ -17,7 +19,7 @@
    ============================================================ */
 import { lsGet, lsSet } from './storage';
 
-export type TypeAide = 'tuiles' | 'ordre' | 'tri' | 'atelier' | 'lettres';
+export type TypeAide = 'tuiles' | 'ordre' | 'tri' | 'atelier' | 'lettres' | 'tableau';
 
 export interface AideContenu {
 	/** Titre de la bulle (ton « astuce », jamais « problème »). */
@@ -64,6 +66,15 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 		titre: 'Comment remettre les lettres ?',
 		etapes: ['Touche les lettres dans le bon ordre.', 'Elles forment ton mot en haut.'],
 		reparation: "Tu t'es trompé ? Touche une lettre placée pour la déplacer ou l'enlever.",
+	},
+	tableau: {
+		titre: 'Comment remplir le tableau ?',
+		etapes: [
+			'Écris un chiffre dans chaque case, de gauche à droite.',
+			"Écris 0 quand il n'y a rien à compter dans cette unité.",
+			'Les cases en pointillés se remplissent aussi.',
+		],
+		reparation: "Tu t'es trompé ? Touche la case à corriger pour y revenir.",
 	},
 };
 

@@ -44,6 +44,7 @@ import importIcon from '@phosphor-icons/core/assets/bold/download-simple-bold.sv
 import keyboard from '@phosphor-icons/core/assets/bold/keyboard-bold.svg?raw';
 import handPointing from '@phosphor-icons/core/assets/bold/hand-pointing-bold.svg?raw';
 import puzzlePiece from '@phosphor-icons/core/assets/bold/puzzle-piece-bold.svg?raw';
+import table from '@phosphor-icons/core/assets/bold/table-bold.svg?raw';
 import text from '@phosphor-icons/core/assets/bold/text-aa-bold.svg?raw';
 import eye from '@phosphor-icons/core/assets/bold/eye-bold.svg?raw';
 import speaker from '@phosphor-icons/core/assets/bold/speaker-high-bold.svg?raw';
@@ -96,6 +97,7 @@ const SVGS: Record<IconName, string> = {
 	keyboard,
 	'hand-pointing': handPointing,
 	'puzzle-piece': puzzlePiece,
+	table,
 	text,
 	eye,
 	speaker,

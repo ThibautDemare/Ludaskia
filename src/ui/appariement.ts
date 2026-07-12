@@ -90,7 +90,7 @@ export function bindAppariement(
 	}
 
 	const board = root.querySelector('#lappBoard') as HTMLElement;
-	const svg = root.querySelector('#lappLinks') as unknown as SVGSVGElement;
+	const svg = root.querySelector('#lappLinks') as SVGSVGElement;
 	const marks = root.querySelector('#lappMarks') as HTMLElement;
 	const status = root.querySelector('#lappStatus') as HTMLElement | null;
 	const announce = (msg: string): void => {

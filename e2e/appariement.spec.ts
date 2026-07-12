@@ -13,6 +13,11 @@
    (ordre DOM) et vérifient la MÉCANIQUE (liens créés, Vérifier activé,
    marques + solution/feedback affichés, Continuer enchaîne) — pas un
    score parfait.
+
+   Le glisser-déposer natif (souris) n'est PAS testé ici : c'est un
+   APPOINT (le tap en deux temps reste la voie primaire, cf. en-tête de
+   ui/appariement.ts) et les événements drag/drop HTML5 sont peu fiables
+   à piloter sous Playwright (pas de vrai geste souris).
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash, seedAideVue } from './helpers';
@@ -82,6 +87,29 @@ test('relier chaque mot au tap : plateau, liens, vérification et manche suivant
 	await expect(page.locator('#lappVerif')).toBeVisible();
 	await expect(page.locator('#lappVerif')).toBeDisabled();
 	expect(await page.locator('.lapp-mot[data-side="g"]').count()).toBe(4);
+	expect(errors).toEqual([]);
+});
+
+test('retaper un mot de gauche relié efface son lien', async ({ page }) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'lecon-fr-vocab-familles-relier');
+	await page.locator('.lapp-mot').first().waitFor();
+
+	const premierGauche = page.locator('.lapp-mot[data-side="g"]').first();
+	const premierDroite = page.locator('.lapp-mot[data-side="d"]').first();
+
+	// Relier le 1er mot de gauche au 1er mot de droite : un trait apparaît.
+	await premierGauche.click();
+	await premierDroite.click();
+	await expect(page.locator('.lapp-link')).toHaveCount(1);
+
+	// Retaper ce même mot de gauche (déjà relié) efface son lien — jamais de
+	// ré-armement implicite (cf. ui/appariement.ts, tapGauche).
+	await premierGauche.click();
+	await expect(page.locator('.lapp-link')).toHaveCount(0);
+	await expect(page.locator('#lappStatus')).toContainText('Lien retiré');
+	await expect(premierGauche).not.toHaveAttribute('aria-pressed', 'true');
+
 	expect(errors).toEqual([]);
 });
 

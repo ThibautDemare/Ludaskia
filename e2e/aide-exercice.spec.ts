@@ -1,8 +1,9 @@
 /* ============================================================
    Aide contextuelle des exercices (#272) — smoke tests.
-   Couvre les 5 runners concernés (tuiles, ordre, tri, atelier, lettres)
-   via les leçons mono-mode les plus simples (ordre + tri), une leçon
-   tuiles + atelier, et le mode dictée « lettres » de l'ortho-runner :
+   Couvre les 6 runners concernés (tuiles, ordre, tri, atelier, lettres,
+   appariement) via les leçons mono-mode les plus simples (ordre + tri +
+   appariement), une leçon tuiles + atelier, et le mode dictée « lettres »
+   de l'ortho-runner :
 
    1. Auto-affichage au 1er lancement + fermeture (.aide-ok).
    2. Présence du bouton .aide-btn ; ré-ouverture à la demande.
@@ -277,6 +278,62 @@ test('aide lettres : bouton .aide-btn présent et rouvre la modale', async ({ pa
 	await expect(page.locator('#aideTitle')).toHaveText('Comment remettre les lettres ?');
 	await expect(page.locator('.aide-revoir')).toBeVisible();
 	await expect(page.locator('ol.aide-etapes')).toBeVisible();
+
+	// Fermeture via la croix.
+	await page.locator('.aide-close').click();
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+/* ================================================================
+   6. Runner « appariement » — fr-vocab-familles-relier (#392)
+      Mono-mode → lancement direct du runner, chemin le plus robuste
+      (même schéma que « tri »).
+   ================================================================ */
+
+test('aide appariement : auto-affichage au 1er lancement, fermeture via .aide-ok', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// Profil neuf → aucune aide vue : la modale « appariement » doit s'ouvrir automatiquement.
+	await gotoHash(page, 'lecon-fr-vocab-familles-relier');
+	await page.locator('.lapp-mot').first().waitFor();
+
+	await expect(page.locator('#aideOverlay')).toBeVisible();
+	await expect(page.locator('.aide-modal[role="dialog"]')).toBeVisible();
+	// Titre spécifique au type « appariement ».
+	await expect(page.locator('#aideTitle')).toHaveText('Comment relier les mots ?');
+	await expect(page.locator('ol.aide-etapes')).toBeVisible();
+	// Illustration animée dédiée (le doigt relie « dent » à « dentiste »).
+	await expect(page.locator('.aide-anim--appariement')).toBeVisible();
+	await expect(page.locator('.aide-revoir')).toBeVisible();
+
+	await page.locator('.aide-ok').click();
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+test('aide appariement : bouton .aide-btn présent et rouvre la modale', async ({ page }) => {
+	const errors = watchErrors(page);
+	// Seed : aide « appariement » déjà vue → pas d'auto-modale, mais le bouton reste.
+	await page.addInitScript(seedAideVue(['appariement']));
+	await gotoHash(page, 'lecon-fr-vocab-familles-relier');
+	await page.locator('.lapp-mot').first().waitFor();
+
+	// Pas d'auto-modale cette fois.
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	// Le bouton ampoule est présent et visible.
+	const btn = page.locator('button.aide-btn');
+	await expect(btn).toBeVisible();
+
+	// Cliquer rouvre la modale.
+	await btn.click();
+	await expect(page.locator('#aideOverlay')).toBeVisible();
+	await expect(page.locator('#aideTitle')).toHaveText('Comment relier les mots ?');
+	await expect(page.locator('.aide-anim--appariement')).toBeVisible();
 
 	// Fermeture via la croix.
 	await page.locator('.aide-close').click();

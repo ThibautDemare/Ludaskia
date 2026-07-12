@@ -1,5 +1,5 @@
 /* ============================================================
-   Smoke e2e — Vocabulaire « Relier les familles de mots » (#392).
+   Smoke e2e — Vocabulaire « Familles de mots à relier » (#392).
    Nouveau type d'interaction « appariement » (relier des paires par des
    LIGNES de liaison), runner dédié ui/lecon-appariement.ts + widget
    ui/appariement.ts. On vérifie le rendu du plateau (deux colonnes), le tap
@@ -27,7 +27,7 @@ test.beforeEach(async ({ page }) => {
 	await seedAideVue(page);
 });
 
-test('la catégorie Vocabulaire propose la leçon « Relier les familles de mots »', async ({
+test('la catégorie Vocabulaire propose la leçon « Familles de mots à relier »', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);

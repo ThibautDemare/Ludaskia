@@ -274,7 +274,11 @@ export function bindAppariement(
 			announce(
 				`Vérification faite : ${gauches.filter((g) => linkOf[g] === bonneDroite.get(g)).length} bonnes paires sur ${gauches.length}.`,
 			);
-			ro.disconnect();
+			// On NE déconnecte PAS l'observer : le résultat figé (traits + pastilles ✓/✗)
+			// reste affiché tant que l'enfant n'a pas cliqué « Continuer », et doit rester
+			// aligné sur les mots s'il tourne la tablette ou zoome (SC 1.4.4/1.4.10). Une
+			// fois la manche suivante rendue, ce board est détaché (renderLinks sort tôt sur
+			// width 0) et l'observer devient inatteignable → collecté.
 			return correct;
 		},
 	};

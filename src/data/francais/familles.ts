@@ -1085,23 +1085,25 @@ export function appariementType(source: ItemFamille[]): ExerciseType {
 		consigne: CONSIGNE_APPARIEMENT,
 		exerciseKind: 'appariement',
 		generate(): Exercise {
-			// Tire des familles aux mots tous distincts entre eux (écarte les rares
-			// collisions : un dérivé égal à une autre base, deux dérivés identiques).
-			// Filet borné (comme les autres fabriques) : à défaut, on garde le dernier tirage.
-			let choisis: ItemFamille[] = sample(source, NB_PAIRES_APPARIEMENT);
-			for (let essai = 0; essai < 20; essai++) {
-				const c = sample(source, NB_PAIRES_APPARIEMENT);
-				const mots = c.flatMap((f) => [f.mot, f.famille]);
-				if (new Set(mots).size === mots.length) {
-					choisis = c;
-					break;
-				}
+			// Tire jusqu'à NB_PAIRES familles dont TOUS les mots (base + dérivé) sont deux à
+			// deux distincts : on parcourt la banque mélangée en écartant toute collision (un
+			// dérivé égal à une autre base, deux dérivés identiques…). Le widget indexant par
+			// le TEXTE du mot, des mots dupliqués dans une manche fausseraient l'appariement —
+			// cette sélection les exclut PAR CONSTRUCTION (plus robuste qu'un retry aléatoire
+			// pour une banque générique). `affiches` = ces mots (gauche + droite).
+			const affiches = new Set<string>();
+			const choisis: ItemFamille[] = [];
+			for (const f of sample(source, source.length)) {
+				if (choisis.length >= NB_PAIRES_APPARIEMENT) break;
+				if (affiches.has(f.mot) || affiches.has(f.famille)) continue;
+				affiches.add(f.mot);
+				affiches.add(f.famille);
+				choisis.push(f);
 			}
 			const paires = choisis.map((f) => ({ gauche: f.mot, droite: f.famille }));
 			// Décoys = faux-amis des familles tirées (dans l'ordre déjà mélangé), sans
 			// collision avec un mot déjà affiché ni entre eux. Un faux-ami n'est jamais
 			// une famille correcte (par construction de la banque) → jamais une bonne réponse.
-			const affiches = new Set(paires.flatMap((p) => [p.gauche, p.droite]));
 			const intrus: string[] = [];
 			for (const f of choisis) {
 				if (intrus.length >= NB_INTRUS_APPARIEMENT) break;

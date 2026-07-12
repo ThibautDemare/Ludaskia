@@ -157,7 +157,11 @@ propre doc de conception : `docs/design-orthographe.md`.
   (`text` | `qcm` | `tuilesNombre` (numération #98) | `tuilesOrdre` (ordre
   alphabétique #108 : suite mélangée + suite triée) | `tuilesTri` (champs
   lexicaux #114 : tuiles + thème correct de chacune) | `posed` (calcul posé #97 :
-  op + opérandes) | interactions ortho), interface **`ExerciseType`** : `modes?`
+  op + opérandes) | `tableauConversion` (tableau de conversion #394 : colonnes
+  **`TableauColonne[]`** — `{unite, nom, transit, chiffres, tete?}`, TOUJOURS
+  grande→petite unité — et `virguleApres?` pour les paires décimales CM1 ; corrigé
+  **colonne par colonne** par son runner, comme `posed`) | interactions ortho),
+  interface **`ExerciseType`** : `modes?`
   (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
   l'ordre d'affichage), `generate(opts? : {mode?, level?})` (le `level` #225 calibre
   une leçon multi-niveaux), `check()`, et **`exerciseKind?`** (#348, type

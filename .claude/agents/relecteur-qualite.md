@@ -47,7 +47,8 @@ faut.**
   (cas nominal, bords, erreurs, déterminisme du tirage aléatoire avec `r`
   injectable, normalisation des réponses…). Une nouvelle fabrique
   d'`ExerciseType`, un nouveau générateur, un calcul de score/XP/niveau, une
-  règle d'accord ou d'homophone **sans test** est un manque à signaler.
+  règle d'accord ou d'homophone **sans test** est un manque à signaler (l'écriture
+  de ces tests revient à **`auteur-tests-logique`**, distinct de l'auteur du code).
 - **Fonctionnalité visuelle/navigable → smoke Playwright.** C'est une **règle
   dure** du projet (`CLAUDE.md`) : toute **nouvelle leçon**, **nouveau type
   d'exercice ou mode**, **nouvel écran/vue** doit arriver **dans la même PR**

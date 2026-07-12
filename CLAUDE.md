@@ -57,6 +57,13 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
 - **`auteur-tests-e2e`** — **écrit** et fait tourner la spec Playwright (`e2e/`)
   d'une fonctionnalité visuelle (leçon, type d'exercice, mode, écran), selon le
   pattern maison. Le bras armé de la règle « pas de visuel sans sa spec ».
+- **`auteur-tests-logique`** — **écrit** et fait tourner les tests **Vitest**
+  (`tests/`) de la logique pure (fabrique d'`ExerciseType`, générateurs, score/XP,
+  règles de langue, normalisation). Pendant de `auteur-tests-e2e` côté logique.
+  Son intérêt : **auteur des tests distinct de l'auteur du code** (pas d'angle mort
+  hérité de l'implémentation), il **dérive les attendus lui-même** et éprouve les
+  **cas tricky** (bornes par échantillon, zéros, déterminisme du tirage `r`,
+  distracteurs QCM). Écrit dans `tests/`, ne touche pas au code applicatif.
 - **`integrateur-lecon`** — **implémente** une nouvelle leçon de bout en bout,
   **exploration technique comprise** (données `src/data/`, fabrique d'`ExerciseType`,
   branchement catalogue, modes, figures SVG) **plus ses tests**. Il **explore
@@ -71,7 +78,8 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
   Et en **fin de dev**, il vérifie que le changement se reflète dans la doc « état
   courant » (`docs/ARCHITECTURE.md` + `docs/architecture/*`, READMEs) et **édite
   la doc** pour combler l'écart. **Édite la doc, jamais le code** (renvoie à
-  `relecteur-qualite` / `integrateur-lecon` / `auteur-tests-e2e`).
+  `relecteur-qualite` / `integrateur-lecon` / `auteur-tests-e2e` /
+  `auteur-tests-logique`).
 - **`gestionnaire-github`** — issues / PR / milestones (voir Workflow Git plus bas).
 
 ### Comment orchestrer les agents (réflexes, pas optionnels)
@@ -92,6 +100,11 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
   - **nouveaux énoncés, consignes ou libellés** en français → **`redacteur-contenu-francais`** ;
   - toute fonctionnalité **visuelle/navigable** → sa **spec Playwright** via
     **`auteur-tests-e2e`** (dans la même PR ; cf. règle e2e plus bas).
+  - **logique pure** ajoutée ou modifiée (générateur, `check`, score/XP/niveau,
+    règle d'accord/homophone, normalisation) → ses **tests Vitest** via
+    **`auteur-tests-logique`**. Réflexe clé : l'**invoquer séparément de l'auteur
+    du code** (celui qui écrit la logique — souvent `integrateur-lecon` ou le fil
+    principal — ne rédige pas ses propres tests), pour garder **auteur ≠ testeur**.
   Plusieurs dimensions touchées → plusieurs relecteurs (ex. une nouvelle leçon à
   figure avec énoncés FR = qualité **+** accessibilité **+** langue).
 - **Doc — resync en fin de dev.** Quand un dev touche l'architecture (nouveau

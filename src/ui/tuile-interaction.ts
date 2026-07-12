@@ -56,8 +56,10 @@ export interface TuileController {
 	/* Fige le widget, applique les marques ✓/✗, renvoie si la réponse est juste.
 	   Idempotent : un second appel renvoie le même verdict sans re-marquer. */
 	verify(): boolean;
-	/* Réponse posée par l'enfant (état courant), pour le journal d'erreurs (#391). */
-	reponse(): TuileReponse;
+	/* Réponse posée par l'enfant (état courant), pour le journal d'erreurs (#391).
+	   OPTIONNELLE : un contrôleur qui ne journalise pas d'erreur (ex. le widget
+	   d'appariement, #392, qui n'a pas de réponse « tuile/ordre/tri ») peut l'omettre. */
+	reponse?(): TuileReponse;
 }
 
 /* Point d'entrée unique (#345). Remplace le placeholder `[data-tuile-mount]`

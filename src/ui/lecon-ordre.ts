@@ -132,8 +132,8 @@ function verifier(): void {
 		// Journal des erreurs (#391) : UNE entrée pour le rangement raté (ordre proposé
 		// vs bon ordre, lisibles). Une seule capture : verifier() ne corrige qu'une fois
 		// (bouton figé après validation, puis on passe à la question suivante).
-		const rep = ctrl.reponse();
-		const propose = rep.kind === 'ordre' ? rep.propose : [];
+		const rep = ctrl.reponse?.();
+		const propose = rep?.kind === 'ordre' ? rep.propose : [];
 		const { donnee, attendue } = ordreErreur(propose, q.ordre);
 		capterErreur({ text: q.question, donnee, attendue, lessonId: lesson.id, mode: 'lecon' });
 	}

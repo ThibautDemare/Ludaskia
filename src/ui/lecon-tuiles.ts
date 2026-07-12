@@ -124,10 +124,10 @@ function verifier(): void {
 	else {
 		// Journal des erreurs (#391) : la tuile posée (libellé) vs la bonne. Une seule
 		// capture : verifier() ne corrige qu'une fois (bouton figé, puis question suivante).
-		const rep = ctrl.reponse();
+		const rep = ctrl.reponse?.();
 		capterErreur({
 			text: q.question,
-			donnee: rep.kind === 'tuile' ? (rep.posee ?? '') : '',
+			donnee: rep?.kind === 'tuile' ? (rep.posee ?? '') : '',
 			attendue: q.answer,
 			lessonId: lesson.id,
 			mode: 'lecon',

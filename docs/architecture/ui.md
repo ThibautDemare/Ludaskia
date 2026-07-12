@@ -44,7 +44,8 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   d'activité 7 jours (#319, bascule Total / Par type), maîtrise par catégorie (avec sa
   **frise d'évolution hebdomadaire par matière**, #397 — barres-capsules `--ok`, compteur
   de notions au-dessus des semaines non vides, semaine en cours distinguée, sans axe ni
-  pourcentage), file « à revoir » ; handlers `activite-mode`/`epingler`/`imprimer`.
+  pourcentage), **historique des erreurs récentes** (#391, cf. `encadrant-erreurs.ts`
+  ci-dessous), file « à revoir » ; handlers `activite-mode`/`epingler`/`imprimer`.
 - **`encadrant-reglages.ts`** — **réglages** sur le profil consulté : classe de
   référence + niveau par matière, aménagements « dys »/attention ; injecte le
   bloc PIN rendu par `encadrant-pin`.
@@ -53,6 +54,37 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   plus export/import de tous les profils.
 - **`a-revoir-card.ts`** (#234) — carte d'accueil `#aRevoir` (modèle « leçon du jour »)
   affichant les leçons épinglées « à revoir » par l'encadrant, masquée si vide.
+
+**Journal des erreurs (#391)** — deux modules distincts, hors des cinq de section
+ci-dessus, plus `core/erreur-representation.ts` (logique pure, cf. [Logique
+pure](core.md)) pour les formats composites :
+- **`erreur-capture.ts`** — point d'entrée UNIQUE `capterErreur`, appelé par **tous les
+  runners** à la correction d'une réponse fausse : met en forme l'énoncé lisible
+  (`questionPourJournal` — `@` → « … », marqueur « exercice avec dessin ») et le libellé
+  d'un choix QCM (`libelleChoix`, vue riche #200 si elle existe), puis délègue à
+  `core/erreurs-journal.ts`. Ignore une erreur sans leçon rattachée ou sans énoncé
+  affichable. Branché sur la fiche en saisie (`session.ts:verify`), le QCM
+  (`lecon-qcm.ts`), le sprint (`sprint.ts`), les tuiles de numération
+  (`lecon-tuiles.ts` — libellé de la tuile posée via `TuileController.reponse()`), le
+  rangement (`lecon-ordre.ts` — `ordreErreur`), le tri par thème (`lecon-tri.ts` — une
+  entrée par mot mal classé via `motsMalClasses`), la résolution de problèmes
+  (`lecon-probleme.ts` — une entrée par sous-question ratée) et la dictée d'orthographe
+  (`ortho-runner.ts` — le **premier essai raté** d'un mot ; libellé résolu via
+  `labelLeconOrtho`, cf. `core/orthographe/lessons.ts`, l'id étant une **liste**
+  d'orthographe et non une leçon du catalogue). Une opération posée (`session.ts`)
+  est agrégée : les cellules-chiffres du RÉSULTAT (`Item.posedResult`) sont regroupées
+  par grille et réduites à **une** entrée via `analyserResultatPosee`, jamais une par
+  chiffre. **Détaché du seuil de 60 %** (`enough`, qui conditionne toujours l'XP) : les
+  erreurs d'une fiche sont journalisées même sous ce seuil (c'est là que l'enfant
+  décroche), via une garde dédiée `sessionErreursLoggees` (`ui/navigation.ts`),
+  indépendante de `sessionRecorded`.
+- **`encadrant-erreurs.ts`** — bloc « Ce qui a été difficile récemment » (`erreursHTML`),
+  inséré par `encadrant-progression.ts` entre la maîtrise par catégorie et « à revoir » :
+  groupé par leçon (`<details>` repliés, la plus récemment ratée en tête), dédoublonnage
+  « vue N fois », bonne réponse mise en avant (jamais barrée). Le libellé du groupe résout
+  d'abord une leçon du catalogue, sinon une liste d'orthographe (`labelLeconOrtho`), sinon
+  l'id brut. Action « Épingler » (`data-act="epingler"`, même mécanique que « à revoir »)
+  **masquée pour un groupe d'orthographe** : la file « à revoir » est catalogue-only.
 
 ## Modales & effets
 
@@ -241,7 +273,10 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   sans wrapper), câble TAP et glisser-déposer, et notifie la complétude via
   `opts.onState(complete)` pour que l'appelant active son bouton « Vérifier ». La méthode
   `verify()` du contrôleur renvoyé fige le widget, applique les marques ✓/✗ (couleur +
-  icône, pour le daltonisme) et renvoie la justesse ; elle est **idempotente**. La
+  icône, pour le daltonisme) et renvoie la justesse ; elle est **idempotente**. La méthode
+  **`reponse()`** (#391) expose l'état final posé/proposé/placé (`TuileReponse`, discriminé
+  par le même `kind`) — lue par le runner en cas d'échec pour journaliser une réponse
+  lisible (cf. « Journal des erreurs » ci-dessous). La
   variante `opts.variant` (`'lecon'` | `'revision'`) adapte la classe de l'énoncé et
   l'enveloppe `.bignum` des grands nombres (#240). Ce module est **partagé** par les trois
   runners de leçon (`lecon-tuiles.ts`, `lecon-ordre.ts`, `lecon-tri.ts`) et par la

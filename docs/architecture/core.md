@@ -43,7 +43,12 @@ propre doc de conception : `docs/design-orthographe.md`.
   `ficheHTML`/`ficheHTMLGeneric`, `lessonAttr(ctx)`. Le `kind: 'posed'` (#97) est un
   item « conteneur » (`posed: {op, a, b}`) que **`posedGridHTML`** déploie en grille
   de colonnes — plusieurs champs `.ans` (chiffres de résultat / produits partiels,
-  notés un à un) + cellules de retenue `.ans-free`. Le champ **`figure`** (#88) porte
+  notés un à un) + cellules de retenue `.ans-free`. Un champ optionnel
+  **`posedResult`** (#391, `{groupe, operation, attendue, pos}`) tague les seules
+  cellules du RÉSULTAT (pas les retenues ni les produits partiels) : `posedGridHTML`
+  y pose un `groupe` stable (id de grille dérivé du compteur de rendu) que le journal
+  d'erreurs (`ui/session.ts`) regroupe en **une** entrée par opération plutôt qu'une
+  par chiffre (cf. `erreur-representation.ts` ci-dessous). Le champ **`figure`** (#88) porte
   un fragment SVG (moteur `figures/`) que **`figureBlock`** affiche AU-DESSUS de la
   question ; `renderItem` l'ajoute, et les runners « une question à la fois » (QCM,
   sprint, révision) appellent `figureBlock` au même endroit pour un rendu identique
@@ -477,6 +482,29 @@ propre doc de conception : `docs/design-orthographe.md`.
 
 ## Espace encadrant (logique pure)
 
+- **`erreurs-journal.ts`** (#391, pur) — **journal des erreurs par profil**. Écriture sur
+  le profil ACTIF (`journaliserErreur`, clé préfixée `ludaskia_erreurs`) ; lecture côté
+  encadrant **par UUID sans bascule** (`chargerErreursFor`, même pattern brut que
+  `loadRevoirFor` ci-dessous). `ErreurEntry` = `{ts, lessonId, mode, question, donnee,
+  attendue}` (déjà des chaînes LISIBLES — le journal ignore les items/exercices).
+  **Rétention** `MAX_ERREURS` (150) : purge des plus anciennes, la plus récente en tête
+  (`ajouterErreur`, pur, testable sans stockage). **`grouperErreursParLecon`** regroupe par
+  leçon (triée par récence de la dernière erreur) et **dédoublonne** (même question + même
+  réponse donnée) en une entrée « vue N fois » — les banques QCM se répètent, pas la peine
+  d'afficher N lignes identiques. Consommé par `ui/encadrant-erreurs.ts` ; la capture au
+  moment de la correction (mise en forme de l'énoncé) vit dans `ui/erreur-capture.ts`.
+  **Couvre tous les runners** (fiche/QCM/sprint, tuiles de numération, rangement, tri,
+  résolution de problèmes, dictée d'orthographe) — cf. [Espace encadrant](espace-encadrant.md).
+- **`erreur-representation.ts`** (#391, pur) — mise en forme de la « réponse donnée /
+  attendue » pour les formats **composites**, à partir des données brutes du runner
+  (indépendant de `erreurs-journal.ts`) : **`analyserResultatPosee(cells)`** agrège les
+  cellules-chiffres du RÉSULTAT d'UNE opération posée en une seule entrée (rien si la
+  grille est vierge ou entièrement juste ; `donnee` reconstruit le nombre dans l'ordre
+  des positions, ou `'(incomplet)'` si des cellules manquent) — consommé par
+  `ui/session.ts:verify` ; **`ordreErreur(propose, ordre)`** joint une suite
+  proposée/attendue par « , » — consommé par `ui/lecon-ordre.ts` ; **`motsMalClasses(mots,
+  categories, placement)`** ne renvoie que les mots MAL classés d'un tri (colonne
+  choisie vs bonne colonne, une entrée par mot) — consommé par `ui/lecon-tri.ts`.
 - **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
   bascule** (`progressionProfil`, `niveauProfilMatiere`) ; réexporte l'échelle de maîtrise
   (`niveauNotion`/`tendanceNotion`, définie dans `maitrise.ts`) pour les imports

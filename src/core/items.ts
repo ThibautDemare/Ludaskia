@@ -35,6 +35,11 @@ export interface Item {
 	choices?: string[];
 	choicesView?: ChoiceView[];
 	_lesson?: string;
+	// Journal d'erreurs (#391) : posé sur les cellules-CHIFFRES du RÉSULTAT d'une
+	// opération posée. Permet à session.verify d'agréger les cellules d'une même grille
+	// en UNE entrée d'erreur (l'opération et son résultat attendu) plutôt qu'une par
+	// chiffre. `groupe` identifie la grille (chaîne stable, sérialisable pour la reprise).
+	posedResult?: { groupe: string; operation: string; attendue: string; pos: number };
 }
 
 /* Un item est-il un QCM ? (source unique #289 : rendu PAPIER en cases à cocher dans
@@ -330,6 +335,13 @@ function posedGridHTML(spec: PosedSpec, ctx: RenderContext): string {
 	const result = op === '+' ? a + b : op === '-' ? a - b : a * b;
 	const sign = op === '+' ? '+' : op === '-' ? '−' : '×';
 	const digits = (n: number) => String(n).split('');
+	// Journal d'erreurs (#391) : descripteur partagé par les cellules-chiffres du RÉSULTAT
+	// (agrégées en UNE entrée par opération dans session.verify, cf. erreur-representation).
+	// `groupe` = id unique de la grille dans le contexte (compteur figé AVANT tout champ,
+	// donc stable pour la reprise) ; `pos` = rang du chiffre dans le résultat.
+	const groupe = 'posee-' + ctx.counter;
+	const operation = `${a} ${sign} ${b}`;
+	const attendue = String(result);
 
 	const empty = () => `<span class="posee-cell"></span>`;
 	const opCell = (s: string) => `<span class="posee-cell posee-op">${s}</span>`;
@@ -341,13 +353,17 @@ function posedGridHTML(spec: PosedSpec, ctx: RenderContext): string {
 		`<span class="posee-cell posee-digit posee-zero" aria-label="zéro du décalage">0</span>`;
 	const carryCell = () =>
 		`<input class="ans-free posee-cell posee-carry" maxlength="1" inputmode="numeric" autocomplete="off" aria-label="retenue">`;
-	const inputCell = (d: string) => {
+	const inputCell = (d: string, posed?: Item['posedResult']) => {
 		// Corrigé (#41) : le chiffre du résultat révélé dans la cellule (au lieu du champ).
 		if (ctx.corrigeMode) return `<span class="posee-cell posee-input posee-corrige">${d}</span>`;
 		const id = nextInputId(ctx);
-		ctx.items[id] = { text: '', answer: Number(d), kind: 'num' };
+		const item: Item = { text: '', answer: Number(d), kind: 'num' };
+		if (posed) item.posedResult = posed; // seules les cellules du RÉSULTAT sont taguées (#391)
+		ctx.items[id] = item;
 		return `<input class="ans posee-cell posee-input" id="${id}" data-answer="${d}"${lessonAttr(ctx)} maxlength="1" inputmode="numeric" autocomplete="off" aria-label="chiffre du résultat">`;
 	};
+	// Cellule d'un chiffre du RÉSULTAT : porte le descripteur d'agrégation (#391).
+	const resultCell = (d: string, pos: number) => inputCell(d, { groupe, operation, attendue, pos });
 
 	// Une rangée = signe (ou vide) + C cellules alignées à droite, décalées de `shift`.
 	const rule = (C: number) => `<span class="posee-rule" style="grid-column: 1 / ${C + 2}"></span>`;
@@ -379,20 +395,28 @@ function posedGridHTML(spec: PosedSpec, ctx: RenderContext): string {
 		parts.push(rule(C));
 		// Retenues de l'addition finale, au-dessus de ses opérandes (les produits partiels).
 		parts.push(row(C, empty(), Array.from({ length: C }, carryCell)));
-		parts.push(row(C, empty(), digits(pp1).map(inputCell)));
+		// Produits partiels : cellules NOTÉES mais NON taguées (#391) — seul le résultat final
+		// est agrégé en erreur (« dont le résultat est faux »).
+		parts.push(
+			row(
+				C,
+				empty(),
+				digits(pp1).map((d) => inputCell(d)),
+			),
+		);
 		// 2ᵉ produit partiel suivi de son 0 fourni (× dizaines) : le décalage est
 		// porté par ce 0, plus besoin de `shift` spatial → la ligne s'aligne sur la somme.
 		// Le « + » marque l'addition des deux produits partiels.
-		parts.push(row(C, opCell('+'), [...digits(pp2).map(inputCell), zeroCell()]));
+		parts.push(row(C, opCell('+'), [...digits(pp2).map((d) => inputCell(d)), zeroCell()]));
 		parts.push(rule(C));
-		parts.push(row(C, empty(), digits(result).map(inputCell)));
+		parts.push(row(C, empty(), digits(result).map(resultCell)));
 	} else {
 		// Addition, soustraction, multiplication ×1 chiffre.
 		parts.push(row(C, empty(), Array.from({ length: C }, carryCell))); // retenues (aide)
 		parts.push(row(C, empty(), digits(a).map(digitCell)));
 		parts.push(row(C, opCell(sign), digits(b).map(digitCell)));
 		parts.push(rule(C));
-		parts.push(row(C, empty(), digits(result).map(inputCell)));
+		parts.push(row(C, empty(), digits(result).map(resultCell)));
 	}
 	return `<div class="posee" style="grid-template-columns: repeat(${C + 1}, var(--posee-col, 2.1rem))">${parts.join('')}</div>`;
 }

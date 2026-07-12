@@ -24,6 +24,7 @@ import {
 import { bindTuileInteraction } from './tuile-interaction';
 import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { capterErreur } from './erreur-capture';
 
 const NB_QUESTIONS = 8;
 
@@ -120,6 +121,18 @@ function verifier(): void {
 	const q = questions[idx];
 	const correct = ctrl.verify(); // fige + marque la case (✓/✗)
 	if (correct) score++;
+	else {
+		// Journal des erreurs (#391) : la tuile posée (libellé) vs la bonne. Une seule
+		// capture : verifier() ne corrige qu'une fois (bouton figé, puis question suivante).
+		const rep = ctrl.reponse();
+		capterErreur({
+			text: q.question,
+			donnee: rep.kind === 'tuile' ? (rep.posee ?? '') : '',
+			attendue: q.answer,
+			lessonId: lesson.id,
+			mode: 'lecon',
+		});
+	}
 	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
 	// (#ltuiActions) reste, pour ne pas afficher deux boutons à la fois (#153).
 	verif.hidden = true;

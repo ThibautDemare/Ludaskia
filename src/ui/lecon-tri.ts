@@ -29,6 +29,8 @@ import {
 import { bindTuileInteraction } from './tuile-interaction';
 import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { capterErreur } from './erreur-capture';
+import { motsMalClasses } from '../core/erreur-representation';
 
 const NB_QUESTIONS = 6;
 
@@ -127,6 +129,22 @@ function verifier(): void {
 	const q = questions[idx];
 	const correct = ctrl.verify(); // fige + marque chaque tuile (✓/✗)
 	if (correct) score++;
+	else {
+		// Journal des erreurs (#391) : UNE entrée par mot MAL classé (colonne choisie vs
+		// bonne colonne), pour cibler le mot précis à revoir. Une seule capture par essai
+		// (bouton figé après validation, puis question suivante).
+		const rep = ctrl.reponse();
+		const placement = rep.kind === 'tri' ? rep.placement : {};
+		for (const mal of motsMalClasses(q.mots, q.categories, placement)) {
+			capterErreur({
+				text: `Ranger le mot « ${mal.mot} »`,
+				donnee: mal.donnee,
+				attendue: mal.attendue,
+				lessonId: lesson.id,
+				mode: 'lecon',
+			});
+		}
+	}
 	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
 	// (#ltriActions) reste, pour ne pas afficher deux boutons à la fois (#153).
 	verif.hidden = true;

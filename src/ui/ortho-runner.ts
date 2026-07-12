@@ -41,12 +41,14 @@ import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import { dicteeDisponible, dicter } from './tts';
 import { icon, iconOr } from './icon';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { capterErreur } from './erreur-capture';
 
 const ACCENTS = ['é', 'è', 'ê', 'à', 'â', 'ç', 'ô', 'î', 'ï', 'û', 'ù', 'œ', '-', "'"];
 const SEANCE_MAX = 8; // activités par séance avant de proposer une pause (rythme CE2)
 
 let st: OrthoState;
 let mots: MotOrtho[];
+let orthoLessonId = ''; // id de la liste travaillée (journal d'erreurs #391)
 let idx = 0;
 let dispoDictee = false;
 let niveauAvant = 0;
@@ -116,8 +118,26 @@ function ecouterLabel(word: MotOrtho): string {
 	return word.contexte ? 'Écouter la phrase' : 'Écouter le mot';
 }
 
+/* Journal des erreurs (#391) : consigne le PREMIER essai raté d'un mot (mot caché,
+   dictée ou tuiles), lisible côté encadrant. mode 'dictee' (le sous-mode importe peu
+   au parent). Pour un verbe en contexte, l'énoncé montre la phrase à trou ; sinon un
+   libellé générique (la bonne réponse — le mot — porte l'info). Appelé une seule fois
+   par activité (garde chez l'appelant). */
+function journalErreurOrtho(word: MotOrtho, saisie: string): void {
+	if (!saisie.trim()) return; // saisie vide = non répondu → ignorée (parité avec la fiche)
+	const c = word.contexte;
+	capterErreur({
+		text: c ? `${c.avant}…${c.apres}` : 'Mot à écrire sous la dictée',
+		donnee: saisie,
+		attendue: word.mot,
+		lessonId: orthoLessonId,
+		mode: 'dictee',
+	});
+}
+
 export async function startOrthoRun(lessonId: string): Promise<void> {
 	st = loadOrtho();
+	orthoLessonId = lessonId;
 	mots = motsDeLecon(st, lessonId);
 	// Verbes de la liste (#261) : résolus via LEFFF (async) puis matérialisés en
 	// cibles dictée/tuiles/mot-caché et concaténés aux mots classiques.
@@ -341,6 +361,7 @@ function renderMotCache(word: MotOrtho): void {
 			input.readOnly = true;
 			reussite(fb, true);
 		} else {
+			if (essais === 0) journalErreurOrtho(word, input.value); // 1er essai raté
 			essais++;
 			if (essais < 2) {
 				fb.innerHTML = `<span class="fb-ko">Presque ! Regarde bien et réessaie.</span>`;
@@ -402,6 +423,7 @@ function renderDictee(word: MotOrtho): void {
 			input.readOnly = true;
 			reussite(fb, true);
 		} else {
+			if (essais === 0) journalErreurOrtho(word, input.value); // 1er essai raté
 			essais++;
 			if (essais < 2) {
 				fb.innerHTML = `<span class="fb-ko">Presque ! Réécoute et réessaie.</span>`;
@@ -669,6 +691,7 @@ function renderTuiles(word: MotOrtho): void {
 
 	redraw();
 
+	let erreurLoggee = false; // journal d'erreurs (#391) : une seule capture par mot
 	const verifier = (): void => {
 		const built = assembled.map((i) => lettres[i]).join('');
 		if (checkAnswer(ex, built)) {
@@ -677,6 +700,10 @@ function renderTuiles(word: MotOrtho): void {
 			(sheets().querySelector('#btnVerifTuiles') as HTMLButtonElement).hidden = true;
 			reussite(fb, true);
 		} else {
+			if (!erreurLoggee) {
+				journalErreurOrtho(word, built); // 1er essai raté
+				erreurLoggee = true;
+			}
 			fb.innerHTML = `<span class="fb-ko">Pas tout à fait, réessaie.</span>`;
 		}
 	};

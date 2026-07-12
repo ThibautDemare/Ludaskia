@@ -21,6 +21,8 @@ import {
 	getCurrentLessonId,
 	getSessionRecorded,
 	setSessionRecorded,
+	getSessionErreursLoggees,
+	setSessionErreursLoggees,
 	setLastErrors,
 	getLastErrors,
 	startRevision,
@@ -30,6 +32,8 @@ import {
 	getRenderCtx,
 } from './navigation';
 import { getLessonById } from '../core/catalog';
+import { capterErreur } from './erreur-capture';
+import { analyserResultatPosee, type CellulePosee } from '../core/erreur-representation';
 
 /* ---------- Vérification (arrête le chrono) ---------- */
 export function verify() {
@@ -123,6 +127,66 @@ export function verify() {
 		recompensesNiv = out.recompensesNiv;
 		newTrophies = out.newTrophies;
 		celeb.push(...out.celeb);
+	}
+
+	// Journal des erreurs (#391) : les réponses FAUSSES de cet essai, pour l'espace
+	// encadrant. DÉTACHÉ du seuil de 60 % (`enough`) : une fiche à peine remplie est
+	// justement là où l'enfant décroche → la donnée la plus utile au parent. Garde
+	// dédiée « une fois par essai » (sessionErreursLoggees), indépendante de
+	// l'enregistrement. Exclut le mode 'revision' (recordable). capterErreur ignore les
+	// champs vides (non répondus) et sans énoncé lisible.
+	// La garde n'est consommée QUE s'il y a au moins une réponse fausse à journaliser :
+	// une 1re validation vide/sans faute (ex. avertissement « 60 % ») ne doit pas « griller »
+	// la journalisation d'une validation ultérieure du même essai (child qui complète ensuite).
+	const aDesErreurs = Object.values(statuses).some((st) => st === 'wrong');
+	if (recordable && aDesErreurs && !getSessionErreursLoggees()) {
+		setSessionErreursLoggees(true);
+		// Champs simples : une entrée par réponse fausse. Les cellules d'opération posée
+		// (posedResult) sont exclues ici et agrégées ci-dessous (une entrée par opération).
+		scored.forEach((s) => {
+			if (statuses[s.id] !== 'wrong' || s.item?.posedResult) return;
+			capterErreur({
+				text: s.item?.text ?? '',
+				figure: s.item?.figure,
+				donnee: s.saisie,
+				attendue: s.item ? String(s.item.answer) : (s.answer ?? ''),
+				lessonId: s.lesson ?? currentLessonId,
+				mode: currentMode!,
+			});
+		});
+		// Opérations posées (#391) : on agrège les cellules-chiffres d'une même grille
+		// (`groupe`) en UNE entrée « a op b » dont le résultat est faux — jamais une par
+		// chiffre (illisible pour le parent). L'aggrégation de forme est pure (testée).
+		const posees = new Map<
+			string,
+			{ operation: string; attendue: string; lessonId: string | null; cells: CellulePosee[] }
+		>();
+		scored.forEach((s) => {
+			const pr = s.item?.posedResult;
+			if (!pr) return;
+			let g = posees.get(pr.groupe);
+			if (!g) {
+				g = {
+					operation: pr.operation,
+					attendue: pr.attendue,
+					lessonId: s.lesson ?? currentLessonId,
+					cells: [],
+				};
+				posees.set(pr.groupe, g);
+			}
+			g.cells.push({ pos: pr.pos, saisie: s.saisie, correct: statuses[s.id] === 'correct' });
+		});
+		posees.forEach((g) => {
+			const res = analyserResultatPosee(g.cells);
+			if (!res.journaliser) return;
+			capterErreur({
+				text: g.operation,
+				donnee: res.donnee,
+				attendue: g.attendue,
+				lessonId: g.lessonId,
+				mode: currentMode!,
+			});
+		});
 	}
 
 	// Bandeau résultat en tête de la zone

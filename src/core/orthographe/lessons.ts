@@ -55,6 +55,21 @@ export function listOrthoLecons(state: OrthoState, niveau?: SchoolLevel): LeconO
 	return [...predef, ...listes];
 }
 
+/** Libellé lisible d'une leçon d'orthographe par id, SANS charger l'état complet :
+    d'abord les listes du profil consulté (`listes`, {id,label} suffisent — lues brutes
+    par UUID côté encadrant), sinon une leçon prédéfinie (statique). null si inconnu.
+    Sert au journal d'erreurs (#391) : les listes d'ortho ne sont pas des `LessonDef`
+    du catalogue, `getLessonById` ne les résout donc pas. Pur. */
+export function labelLeconOrtho(
+	id: string,
+	listes: readonly { id: string; label: string }[] = [],
+): string | null {
+	const custom = listes.find((l) => l && l.id === id);
+	if (custom) return custom.label;
+	const predef = ORTHO_PREDEF.find((l) => l.id === id);
+	return predef ? predef.label : null;
+}
+
 /** Résout les mots d'une leçon (liste du profil OU leçon prédéfinie).
     Une leçon prédéfinie est matérialisée dans la banque au passage
     (l'appelant doit sauvegarder ensuite). Renvoie [] si l'id est inconnu. */

@@ -24,6 +24,7 @@ import {
 	renderLeconResult,
 	wireNext,
 } from './lecon-runner-shared';
+import { capterErreur } from './erreur-capture';
 
 const NB_QUESTIONS = 8;
 
@@ -160,7 +161,18 @@ function verifier(): void {
 		const mark = sheets().querySelector(`.prob-mark[data-for="${i}"]`) as HTMLElement;
 		mark.className = 'prob-mark ' + (correct ? 'correct' : 'wrong');
 		mark.innerHTML = correct ? '✓' : `✗ <span class="sol">→ ${attendu}</span>`;
-		if (!correct) toutJuste = false;
+		if (!correct) {
+			toutJuste = false;
+			// Journal des erreurs (#391) : une entrée par SOUS-QUESTION ratée (l'énoncé de
+			// l'étape, la saisie, la bonne réponse). Garde `answered` → une seule capture par essai.
+			capterErreur({
+				text: q.etapes[i].question,
+				donnee: inp.value.trim(),
+				attendue: String(attendu),
+				lessonId: lesson.id,
+				mode: 'lecon',
+			});
+		}
 	});
 	if (toutJuste) score++;
 	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »

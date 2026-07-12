@@ -28,7 +28,10 @@ depuis #319, alimentées par `recordLessonStats` (leçons/bilans/sprints) et
 depuis l'ancien `number[]` : un horodatage nu est lu en `'inconnu'` puis réécrit au
 format objet au prochain passage, sans perte), `ludaskia_revoir`
 (#234 : ids de leçons épinglées « à revoir » par l'encadrant → carte d'accueil de
-l'enfant), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de
+l'enfant), `ludaskia_erreurs` (#391 : journal des erreurs commises — question posée,
+réponse donnée, réponse attendue, leçon, mode, horodatage — plafonné aux 150 entrées
+les plus récentes ; base du bloc « Ce qui a été difficile récemment » de l'espace
+encadrant, voir `core/erreurs-journal.ts`), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de
 runner — voir `core/aide.ts`), `ludaskia_eggs` (#331 : ids des **easter eggs** trouvés,
 album de l'accueil — clé **dédiée et disjointe** de l'XP et des trophées, les eggs étant
 hors de l'économie de jeu, cf. `core/eggs.ts`), `ludaskia_tour_seen` et `ludaskia_parents_seen`

@@ -20,7 +20,8 @@
    ============================================================ */
 import { lsGet, lsSet } from './storage';
 
-export type TypeAide = 'tuiles' | 'ordre' | 'tri' | 'atelier' | 'lettres' | 'tableau' | 'appariement';
+export type TypeAide =
+	'tuiles' | 'ordre' | 'tri' | 'atelier' | 'lettres' | 'tableau' | 'appariement';
 
 export interface AideContenu {
 	/** Titre de la bulle (ton « astuce », jamais « problème »). */

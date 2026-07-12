@@ -28,6 +28,8 @@ import {
 import { bindTuileInteraction } from './tuile-interaction';
 import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { capterErreur } from './erreur-capture';
+import { ordreErreur } from '../core/erreur-representation';
 
 const NB_QUESTIONS = 6;
 
@@ -126,6 +128,15 @@ function verifier(): void {
 	const q = questions[idx];
 	const correct = ctrl.verify(); // fige + marque chaque case (✓/✗)
 	if (correct) score++;
+	else {
+		// Journal des erreurs (#391) : UNE entrée pour le rangement raté (ordre proposé
+		// vs bon ordre, lisibles). Une seule capture : verifier() ne corrige qu'une fois
+		// (bouton figé après validation, puis on passe à la question suivante).
+		const rep = ctrl.reponse();
+		const propose = rep.kind === 'ordre' ? rep.propose : [];
+		const { donnee, attendue } = ordreErreur(propose, q.ordre);
+		capterErreur({ text: q.question, donnee, attendue, lessonId: lesson.id, mode: 'lecon' });
+	}
 	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
 	// (#lordActions) reste, pour ne pas afficher deux boutons à la fois (#153).
 	verif.hidden = true;

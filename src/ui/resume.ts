@@ -35,6 +35,7 @@ import {
 	setCurrentLessonId,
 	getSessionRecorded,
 	setSessionRecorded,
+	setSessionErreursLoggees,
 	setToolbar,
 	hideMenus,
 	getRenderCtx,
@@ -126,6 +127,7 @@ export function restoreResume(snap: ResumeSnapshot): void {
 		if (inp) inp.value = val;
 	}
 	setSessionRecorded(false);
+	setSessionErreursLoggees(false); // reprise = même essai relancé → re-journalisable une fois (#391)
 	// Nettoyage d'un éventuel résidu de session (score / bandeau de résultat).
 	const sc = document.getElementById('score');
 	if (sc) {

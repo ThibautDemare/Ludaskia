@@ -94,6 +94,44 @@ est journalisé en amont par `recordLessonRun` (`'lecon'` seule / `'bilan'` expr
 `recordLessonStats` : révision espacée (`ui/revision.ts` → `'revision'`) et dictée
 d'orthographe (`ui/ortho-runner.ts` → `'dictee'`, un point par séance).
 
+## Historique des erreurs (#391)
+
+**« Ce qui a été difficile récemment »**, sous le graphe d'activité et avant « à revoir »
+(`ui/encadrant-erreurs.ts`, inséré par `encadrant-progression.ts`) : chaque erreur commise
+pendant un entraînement est journalisée localement (`core/erreurs-journal.ts`, clé
+`ludaskia_erreurs`, 150 entrées les plus récentes par profil) — question posée, réponse
+donnée, bonne réponse, leçon, mode, quand. **Groupé par leçon**, la plus récemment ratée en
+tête, replié par défaut (`<details>`) pour ne pas dérouler un « mur de fautes » ; à
+l'intérieur d'une leçon, une même erreur répétée (même question + même réponse donnée) est
+**dédoublonnée** en une seule ligne « vue N fois » plutôt que N lignes identiques. Parti pris
+(avis designer-ux-enfant) : pas de rouge en aplat, la **bonne réponse** est mise en avant
+(positif), la réponse donnée reste neutre et n'est jamais barrée. Chaque leçon **du catalogue**
+peut être **épinglée** depuis ce bloc (même `data-act="epingler"` → `toggleRevoirFor`, mécanique
+partagée avec « à revoir » ci-dessous) ; l'action est **masquée** pour un groupe d'erreurs de
+dictée (la file « à revoir » est catalogue-only, une liste d'orthographe n'y a pas sa place).
+
+**Capture — couverture complète** : point d'entrée unique `capterErreur` (`ui/erreur-capture.ts`),
+appelé par **tous les runners** au moment de la correction d'une réponse fausse : la fiche en
+saisie (`ui/session.ts:verify`), le QCM de leçon (`ui/lecon-qcm.ts`), le sprint (`ui/sprint.ts`),
+les tuiles de numération (`ui/lecon-tuiles.ts`), le rangement dans l'ordre (`ui/lecon-ordre.ts`),
+le tri par thème (`ui/lecon-tri.ts`, une entrée par mot mal classé), la résolution de problèmes
+(`ui/lecon-probleme.ts`, une entrée par sous-question ratée) et la dictée d'orthographe
+(`ui/ortho-runner.ts`, le **premier essai raté** d'un mot). Ignore une erreur sans leçon
+rattachée ou sans énoncé affichable (rien à regrouper/montrer). Les formats **composites**
+délèguent leur mise en forme à `core/erreur-representation.ts` (pur) : une opération posée
+agrège les cellules-chiffres du résultat (`Item.posedResult`) en **une** entrée par opération
+(`analyserResultatPosee`) plutôt qu'une par chiffre ; les tuiles, le rangement et le tri lisent
+l'état final du widget via `TuileController.reponse()`. Une erreur de dictée référence l'id d'une **liste**
+d'orthographe (pas une leçon du catalogue) : `encadrant-erreurs.ts` résout son libellé via
+`labelLeconOrtho` (`core/orthographe/lessons.ts`), d'où l'action « Épingler » masquée pour ces
+groupes.
+
+**Détachée du seuil de 60 %** : la capture des erreurs d'une fiche est **indépendante** du seuil
+`enough` qui conditionne l'enregistrement (XP, étoile, record) — une fiche remplie à moins de
+60 % journalise quand même ses erreurs (décision mainteneur : c'est précisément là que l'enfant
+décroche, la donnée la plus utile au parent). Garde dédiée « une fois par essai »
+(`sessionErreursLoggees`, `ui/navigation.ts`), distincte de `sessionRecorded`.
+
 ## « À revoir » → carte d'accueil
 
 **« À revoir » → carte d'accueil** : l'encadrant **épingle** des leçons

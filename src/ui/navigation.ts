@@ -64,6 +64,15 @@ export const getSessionRecorded = () => sessionRecorded;
 export const setSessionRecorded = (v: boolean) => {
 	sessionRecorded = v;
 };
+// Les erreurs de l'essai en cours ont-elles déjà été journalisées (#391) ? Garde
+// « une seule fois par essai », indépendante de sessionRecorded (les erreurs se
+// journalisent même sous le seuil de 60 %, cf. session.verify). Remise à false aux
+// MÊMES endroits que sessionRecorded (afterStart ici, restoreResume dans resume.ts).
+let sessionErreursLoggees = false;
+export const getSessionErreursLoggees = () => sessionErreursLoggees;
+export const setSessionErreursLoggees = (v: boolean) => {
+	sessionErreursLoggees = v;
+};
 // Mode choisi pour la prochaine leçon lancée (#69), lu et vidé par runLecon.
 // null → mode par défaut du type d'exercice (rétro-compatible : reprise, accès direct).
 let pendingLeconMode: ExerciseMode | null = null;
@@ -599,6 +608,7 @@ export function runRevision(items: Item[]) {
 }
 export function afterStart() {
 	sessionRecorded = false;
+	sessionErreursLoggees = false; // nouvel essai → erreurs re-journalisables une fois (#391)
 	hideMenus();
 	const sc = document.getElementById('score')!;
 	sc.classList.add('hidden');

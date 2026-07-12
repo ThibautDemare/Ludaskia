@@ -28,6 +28,7 @@ import {
 	renderLeconResult,
 	wireNext,
 } from './lecon-runner-shared';
+import { capterErreur, libelleChoix } from './erreur-capture';
 
 // Cible de questions ; une leçon offrant moins de variantes en aura moins, sans
 // doublon (une conjugaison = 6 personnes), comme la fiche en saisie.
@@ -182,6 +183,19 @@ function answer(choiceIdx: number): void {
 	const chosen = q.choices[choiceIdx];
 	const correct = checkItemAnswer(q.item, chosen);
 	if (correct) score++;
+	else {
+		// Journal des erreurs (#391) : on stocke les LIBELLÉS lisibles des choix (vue riche
+		// #200 : fraction empilée, symbole…), jamais la valeur interne — sinon la ligne serait
+		// inintelligible pour le parent (avis designer). libelleChoix gère le fallback.
+		capterErreur({
+			text: q.item.text,
+			figure: q.item.figure,
+			donnee: libelleChoix(q.choices, q.choicesView, chosen),
+			attendue: libelleChoix(q.choices, q.choicesView, String(q.item.answer)),
+			lessonId: lesson.id,
+			mode: 'lecon',
+		});
+	}
 	// Marquage : la bonne réponse en vert ; le mauvais choix tapé en rouge.
 	sheets()
 		.querySelectorAll<HTMLButtonElement>('#lqcmChoices .sprint-choice')

@@ -44,10 +44,20 @@ export interface TuileOptions {
 	onState: (complete: boolean) => void;
 }
 
+/* Réponse POSÉE par l'enfant, par nature de widget — pour le journal d'erreurs (#391).
+   Lue par les runners après `verify()` afin de journaliser ce que l'enfant a réellement
+   proposé (tuile placée, ordre proposé, colonne choisie par mot). */
+export type TuileReponse =
+	| { kind: 'tuile'; posee: string | null } // libellé de la tuile placée (null si aucune)
+	| { kind: 'ordre'; propose: string[] } // suite proposée, dans l'ordre des cases
+	| { kind: 'tri'; placement: Record<string, 0 | 1> }; // colonne choisie par mot
+
 export interface TuileController {
 	/* Fige le widget, applique les marques ✓/✗, renvoie si la réponse est juste.
 	   Idempotent : un second appel renvoie le même verdict sans re-marquer. */
 	verify(): boolean;
+	/* Réponse posée par l'enfant (état courant), pour le journal d'erreurs (#391). */
+	reponse(): TuileReponse;
 }
 
 /* Point d'entrée unique (#345). Remplace le placeholder `[data-tuile-mount]`
@@ -158,6 +168,7 @@ function bindSlot(
 			redraw();
 			return verdict;
 		},
+		reponse: () => ({ kind: 'tuile', posee: placed }),
 	};
 }
 
@@ -256,6 +267,7 @@ function bindOrdre(
 			redraw(); // fige + marque chaque case (vert/alerte + ✓/✗)
 			return correct;
 		},
+		reponse: () => ({ kind: 'ordre', propose: [...placed] }),
 	};
 }
 
@@ -420,5 +432,6 @@ function bindTri(
 			redraw(); // fige + marque chaque tuile (vert/alerte + ✓/✗)
 			return correct;
 		},
+		reponse: () => ({ kind: 'tri', placement: { ...placed } }),
 	};
 }

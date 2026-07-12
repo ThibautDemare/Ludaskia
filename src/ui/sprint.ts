@@ -69,6 +69,7 @@ import {
 	startSprint,
 	goHome,
 } from './navigation';
+import { capterErreur } from './erreur-capture';
 
 const SPRINT_MS = 300000; // 5 minutes
 
@@ -550,6 +551,16 @@ function sprintAnswer(raw: string) {
 			else sprintNext();
 		}, 600);
 	} else {
+		// Journal des erreurs (#391) : une réponse fausse du sprint, pour l'espace encadrant.
+		// Une fois par question (sprintAnswer n'est appelé qu'une fois par item non vide).
+		capterErreur({
+			text: sprintCurrent!.text,
+			figure: sprintCurrent!.figure,
+			donnee: val,
+			attendue: String(sprintCurrent!.answer),
+			lessonId,
+			mode: 'sprint',
+		});
 		sprintShowCorrection(sprintCurrent!.answer);
 	}
 }

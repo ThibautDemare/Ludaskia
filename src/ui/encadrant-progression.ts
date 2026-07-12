@@ -26,6 +26,7 @@ import {
 } from '../core/encadrant-stats';
 import { getAllLessons, type LessonDef } from '../core/catalog';
 import { printScope } from './session';
+import { erreursHTML } from './encadrant-erreurs';
 import { consulteUuid, renderEspace, container } from './encadrant-commun';
 
 /* ---------- État de la section (module) ---------- */
@@ -90,6 +91,7 @@ export function recapHTML(recap: RecapProfil, consulte: Profile): string {
       ${chiffresHTML(recap)}
       ${activiteHTML(recap)}
       ${maitriseHTML(recap)}
+      ${erreursHTML(consulte, Date.now())}
       ${aRevoirHTML(recap, consulte)}
     </section>`;
 }

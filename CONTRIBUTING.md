@@ -128,8 +128,14 @@ Stack **TypeScript + Vite + SCSS**, tests **Vitest**. Prérequis : Node ≥ 20.
 - **Lancer l'app** : `npm run dev` (serveur de dev + HMR).
 - **Build de prod** : `npm run build` (→ `dist/`).
 - **Tests** : `npm test` (Vitest). À lancer après toute modification de logique.
-- **Avant de pousser** : `npm run typecheck`, `npm run lint`, `npm test` (la CI
-  vérifie `format:check → lint → typecheck → test`).
+- **Avant de pousser** : `npm run verify`, qui enchaîne `format:check → lint →
+  typecheck → test` (l'ordre exact de la CI) et s'arrête au premier échec. Un hook
+  Git `pre-push` (via `husky`, posé automatiquement par `npm install`) le lance
+  déjà avant chaque `git push` : rien à retenir. Pour forcer un push malgré un
+  gate rouge (à éviter), `git push --no-verify`.
+- **Gate complet avec l'e2e** : `npm run verify:full` ajoute `npm run test:e2e`
+  après `verify` (plus lent, nécessite `npx playwright install chromium` au 1ᵉʳ
+  usage). Non inclus dans le hook `pre-push`.
 
 ## Langues
 

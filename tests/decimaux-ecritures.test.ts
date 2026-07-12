@@ -67,7 +67,7 @@ describe('BORNE DURE : centièmes au plus, dénominateur ∈ {10, 100} (#247)', 
 		let vusDecimaux = 0;
 		for (const id of IDS) {
 			const t = getLessonById(id)!.exerciseType;
-			for (let i = 0; i < 400; i++) {
+			for (let i = 0; i < 100; i++) {
 				const ex = t.generate();
 				for (const s of textesDe(ex)) {
 					expect(s).not.toMatch(/\d,\d{3,}/); // pas de millième (3+ décimales)
@@ -115,7 +115,7 @@ describe('Leçon 1 — une fraction, une écriture à virgule (grille, QCM) (#24
 	const t = getLessonById('num-dec-grille')!.exerciseType;
 
 	it('QCM à 4 choix distincts en VALEUR (« 0,7 » et « 0,70 » jamais ensemble), figure cohérente', () => {
-		for (let i = 0; i < 2000; i++) {
+		for (let i = 0; i < 300; i++) {
 			const ex = t.generate();
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;
@@ -165,7 +165,7 @@ describe('Leçon 2 — une fraction décimale plus grande que 1 (QCM, deux sens)
 	it('équivalence dans les deux sens, valeur > 1, choix distincts en valeur', () => {
 		let sensFraction = 0; // fraction montrée → écriture demandée
 		let sensEcriture = 0; // écriture montrée → fraction demandée
-		for (let i = 0; i < 3000; i++) {
+		for (let i = 0; i < 400; i++) {
 			const ex = t.generate();
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;

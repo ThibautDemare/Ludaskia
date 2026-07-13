@@ -49,3 +49,8 @@ catégorie vide, démarrage du sprint, **absence d'erreur de rendu**
 (`watchErrors`). Restent **ciblés et stables** : on teste le contenu présent sur
 `main`, pas une leçon en cours de PR. `vitest` est restreint à `tests/` pour ne
 pas ramasser les specs Playwright. Détails : `e2e/README.md`.
+
+À part, `a11y-axe.spec.ts` fait tourner un **scan axe-core** (WCAG A/AA) sur un
+échantillon de vues plutôt que des assertions de rendu ciblées — signal
+automatisé, **non bloquant** par défaut, complémentaire du jugement de l'agent
+`relecteur-accessibilite`. Détails : `e2e/README.md`.

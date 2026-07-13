@@ -6,7 +6,9 @@
 - Styles en **SCSS** (compilés par Vite).
 - Tests : **Vitest** (logique pure, `happy-dom`, + **fast-check** pour le harnais
   d'invariants du catalogue #410) + **Playwright** (smoke e2e navigation/rendu,
-  dossier `e2e/`, #129).
+  dossier `e2e/`, #129), avec un **scan d'accessibilité automatique axe-core**
+  (`@axe-core/playwright`, #411) sur un échantillon de vues — **non bloquant**
+  par défaut, détail dans `e2e/README.md`.
 - Qualité : **ESLint** (flat config + `typescript-eslint`) et **Prettier**.
 - Déploiement : **GitHub Pages** via GitHub Actions (build Vite → `dist/`).
 

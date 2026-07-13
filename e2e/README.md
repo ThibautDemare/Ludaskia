@@ -37,6 +37,35 @@ Le serveur de dev est démarré automatiquement par Playwright (`webServer` dans
   (`.bc-mode-radio[value="sprint"]`) → `#bcRun` (#64, `ui/bilan.ts`). Le sprint ne tire
   plus que sur cette leçon. Exemple : `e2e/pave-signes.spec.ts`.
 
+## Scan a11y automatique (axe-core, #411)
+
+`a11y-axe.spec.ts` injecte **axe-core** (`@axe-core/playwright`) dans les vues
+pilotées et remonte les violations **WCAG 2.0/2.1 niveaux A + AA** (contraste,
+libellés de formulaire, `<title>`/`<desc>` des figures SVG, rôles ARIA, ordre des
+titres…). C'est un **signal automatisé** qui **complète** l'agent-conseil
+`relecteur-accessibilite` (jugement sémantique, qualité du TTS, pertinence
+contextuelle) sans le remplacer. Helper réutilisable : `e2e/axe.ts` (`scanA11y`
+pour lancer le scan, `formatA11yReport` pour le rapport lisible).
+
+- **Échantillon scanné** (représentatif des grandes familles de rendu, pas
+  exhaustif) : **accueil / grille des leçons** (navigation principale), une
+  **leçon maths avec figure SVG** (libellés de figure + contraste des tracés),
+  une **leçon français en saisie** (consigne + champ de formulaire), l'**espace
+  encadrant** (écran adulte dense), une **modale** (dialog superposé, scan
+  restreint au sous-arbre de la modale). On couvre un exemplaire de chaque
+  famille plutôt que toutes les leçons : les régressions a11y sont quasiment
+  toujours structurelles (un composant, un thème), donc un représentant par
+  famille suffit à les attraper sans suite fragile.
+- **Rapport** : groupé **par règle puis par élément**, trié par sévérité,
+  imprimé dans les logs (exploitable tel quel par un agent) ; le détail JSON
+  complet est **attaché** au rapport Playwright (`axe-<hash>.json`).
+- **Atterrissage NON bloquant** : par défaut les violations sont **remontées mais
+  ne font pas échouer** le test — on ne fige pas le merge sur la dette a11y
+  existante (suivie en #385/#386/#387). La bascule en **gate bloquant** est un
+  suivi séparé, une fois la dette soldée. Pour prévisualiser ce que le gate
+  bloquerait : `A11Y_GATE=1 npx playwright test e2e/a11y-axe.spec.ts` (le scan
+  échoue alors sur toute violation, avec le rapport en message d'assertion).
+
 ## CI
 
 Job `e2e` séparé dans `.github/workflows/ci.yml`, **bloquant** (#413) : la suite

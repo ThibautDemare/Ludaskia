@@ -82,8 +82,8 @@ vrai bug applicatif à remonter (avec `fichier:ligne` côté `src/`).
 
 Le(s) fichier(s) spec **écrits dans `e2e/`** + un court compte rendu : ce qui est
 couvert, le résultat d'exécution (vert/rouge avec extrait), et tout point en
-suspens (sélecteur stable manquant à ajouter côté `src/`, bug applicatif détecté,
-CI e2e non bloquante #129).
+suspens (sélecteur stable manquant à ajouter côté `src/`, bug applicatif détecté).
+La CI e2e est **bloquante** (#413) : une spec rouge gèle le merge.
 
 # Style de réponse
 

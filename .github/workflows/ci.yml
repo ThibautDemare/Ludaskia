@@ -40,12 +40,12 @@ jobs:
       - name: Lancer les tests
         run: npm test
 
-  # Tests e2e Playwright (#129) — navigation/rendu réel. NON BLOQUANT tant qu'on
-  # stabilise le harnais : `continue-on-error` fait que ce job ne gèle pas le
-  # merge. À basculer en bloquant (et à ajouter aux checks requis) une fois fiable.
+  # Tests e2e Playwright (#129) — navigation/rendu réel. BLOQUANT (#413) : la suite
+  # est fiabilisée (exécution en série `workers=1`, `retries=1`, `trace: on-first-retry`)
+  # et gèle désormais le merge en cas d'échec. Reste à l'ajouter aux status checks
+  # requis de la branche protégée `main` (réglage du dépôt, côté mainteneur).
   e2e:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v7
@@ -71,10 +71,10 @@ jobs:
       - name: Lancer les tests e2e
         run: npm run test:e2e
 
-      # Conserve le rapport HTML et les traces/captures même en cas d'échec
-      # (le job étant `continue-on-error`, il faut `!cancelled()` pour que cette
-      # étape s'exécute après un test rouge). Indispensable pour déboguer l'e2e
-      # à distance avant de le passer bloquant.
+      # Conserve le rapport HTML et les traces/captures même en cas d'échec : sans
+      # `continue-on-error`, une étape de test rouge ferait normalement sauter les
+      # suivantes, donc `!cancelled()` force cet upload à s'exécuter quand même.
+      # Indispensable pour déboguer l'e2e à distance (le job est désormais bloquant).
       - name: Conserver le rapport Playwright
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7

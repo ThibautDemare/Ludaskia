@@ -31,5 +31,4 @@ En complément, des **scripts de génération** d'assets/données (hors cycle de
 
 La CI (`.github/workflows/ci.yml`) a deux jobs : `test` enchaîne `format:check →
 lint → typecheck → test` (bloquant), et `e2e` lance les smoke tests Playwright
-(**non bloquant** tant que le harnais se stabilise, #129). Sur chaque PR et push
-`main`.
+(**bloquant** depuis #413 ; #129). Sur chaque PR et push `main`.

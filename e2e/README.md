@@ -39,5 +39,7 @@ Le serveur de dev est démarré automatiquement par Playwright (`webServer` dans
 
 ## CI
 
-Job `e2e` séparé dans `.github/workflows/ci.yml`, **non bloquant**
-(`continue-on-error`) tant que le harnais se stabilise (#129).
+Job `e2e` séparé dans `.github/workflows/ci.yml`, **bloquant** (#413) : la suite
+est fiabilisée (exécution en série `workers=1`, `retries: 1`, `trace:
+on-first-retry`) et gèle le merge en cas d'échec. Reste à l'ajouter aux status
+checks requis de la branche protégée `main` (réglage du dépôt, côté mainteneur).

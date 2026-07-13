@@ -4,8 +4,9 @@
 
 - **TypeScript** (`strict`) en **modules ES**, bundlé par **Vite**.
 - Styles en **SCSS** (compilés par Vite).
-- Tests : **Vitest** (logique pure, `happy-dom`) + **Playwright** (smoke e2e
-  navigation/rendu, dossier `e2e/`, #129).
+- Tests : **Vitest** (logique pure, `happy-dom`, + **fast-check** pour le harnais
+  d'invariants du catalogue #410) + **Playwright** (smoke e2e navigation/rendu,
+  dossier `e2e/`, #129).
 - Qualité : **ESLint** (flat config + `typescript-eslint`) et **Prettier**.
 - Déploiement : **GitHub Pages** via GitHub Actions (build Vite → `dist/`).
 

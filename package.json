@@ -26,6 +26,7 @@
 		"node": ">=20"
 	},
 	"devDependencies": {
+		"@axe-core/playwright": "^4.12.1",
 		"@eslint/js": "^10.0.1",
 		"@phosphor-icons/core": "^2.1.1",
 		"@playwright/test": "^1.61.1",

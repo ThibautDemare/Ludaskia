@@ -25,3 +25,9 @@ défaut et le préfixe actif. Le **rendu** n'a plus d'état de module à réinit
 - Importer le symbole à tester depuis `../src/core/*` (ou `../src/ui/*`) et l'ajouter à
   l'objet `api` en tête de `logic.test.ts` si l'on garde le style `api.x`.
 - Ajouter un cas : `test('nom', () => { ... })` avec les assertions `expect(...)`.
+- **Nouvelle leçon** : pas besoin d'écrire à la main les invariants structurels de base
+  (`generate()` ne lève pas, round-trip de correction, QCM bien formé, générateur non
+  figé) — `catalogue-invariants.test.ts` les éprouve automatiquement pour **toute**
+  leçon du catalogue, sous des graines variées via `fast-check` (property-based). N'écrire
+  un test dédié que pour la **logique propre** à la leçon (calculs spécifiques, cas
+  limites) ; voir `docs/architecture/tests.md`.

@@ -40,25 +40,34 @@ Le serveur de dev est démarré automatiquement par Playwright (`webServer` dans
 ## Scan a11y automatique (axe-core, #411)
 
 `a11y-axe.spec.ts` injecte **axe-core** (`@axe-core/playwright`) dans les vues
-pilotées et remonte les violations **WCAG 2.0/2.1 niveaux A + AA** (contraste,
+pilotées et remonte les violations **WCAG 2.0/2.1/2.2 niveaux A + AA** (contraste,
 libellés de formulaire, `<title>`/`<desc>` des figures SVG, rôles ARIA, ordre des
-titres…). C'est un **signal automatisé** qui **complète** l'agent-conseil
-`relecteur-accessibilite` (jugement sémantique, qualité du TTS, pertinence
-contextuelle) sans le remplacer. Helper réutilisable : `e2e/axe.ts` (`scanA11y`
-pour lancer le scan, `formatA11yReport` pour le rapport lisible).
+titres, `target-size` des cibles tactiles…). C'est un **signal automatisé** qui
+**complète** l'agent-conseil `relecteur-accessibilite` (jugement sémantique,
+qualité du TTS, pertinence contextuelle) sans le remplacer. Helper réutilisable :
+`e2e/axe.ts` (`scanA11y` pour lancer le scan, `formatA11yReport` pour le rapport
+lisible). On écarte les règles « best-practice » (bruit non normatif).
 
 - **Échantillon scanné** (représentatif des grandes familles de rendu, pas
   exhaustif) : **accueil / grille des leçons** (navigation principale), une
   **leçon maths avec figure SVG** (libellés de figure + contraste des tracés),
-  une **leçon français en saisie** (consigne + champ de formulaire), l'**espace
-  encadrant** (écran adulte dense), une **modale** (dialog superposé, scan
-  restreint au sous-arbre de la modale). On couvre un exemplaire de chaque
-  famille plutôt que toutes les leçons : les régressions a11y sont quasiment
-  toujours structurelles (un composant, un thème), donc un représentant par
-  famille suffit à les attraper sans suite fragile.
-- **Rapport** : groupé **par règle puis par élément**, trié par sévérité,
-  imprimé dans les logs (exploitable tel quel par un agent) ; le détail JSON
-  complet est **attaché** au rapport Playwright (`axe-<hash>.json`).
+  une **leçon français en saisie** (consigne + champ de formulaire), une **leçon
+  à tuiles** (ARIA sur-mesure : rôles, zone de dépôt — la famille la plus à
+  risque), l'**espace encadrant** (écran adulte dense), une **modale de saisie**
+  et une **modale de gamification** (dialogs superposés, scan restreint au
+  sous-arbre de la modale). On couvre un exemplaire de chaque famille plutôt que
+  toutes les leçons : les régressions a11y sont quasiment toujours structurelles
+  (un composant, un thème), donc un représentant par famille suffit à les
+  attraper sans suite fragile.
+- **Attente avant scan** : chaque vue attend un élément repère **puis la fin des
+  animations d'entrée** (`settleAnimations`) — scanner une modale à mi-fondu
+  (`modal-pop`, opacité 0→1) donnerait un contraste non déterministe. Règle à
+  suivre pour toute vue animée ajoutée à l'échantillon.
+- **Rapport** : groupé **par règle puis par élément**, trié par sévérité, avec le
+  `failureSummary` d'axe (ratio et couleurs mesurés pour le contraste) et les
+  règles `incomplete` (qu'axe n'a pas pu trancher). Imprimé dans les logs
+  (exploitable tel quel par un agent) ; le détail JSON complet est **attaché** au
+  rapport Playwright (`axe-<hash>.json`).
 - **Atterrissage NON bloquant** : par défaut les violations sont **remontées mais
   ne font pas échouer** le test — on ne fige pas le merge sur la dette a11y
   existante (suivie en #385/#386/#387). La bascule en **gate bloquant** est un

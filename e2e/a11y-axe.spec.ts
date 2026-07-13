@@ -3,10 +3,10 @@
 
    Signal AUTOMATISÉ en complément de l'agent-conseil `relecteur-accessibilite`
    (qui reste utile pour tout ce qu'axe ne mesure pas : sémantique, TTS, contexte).
-   Chaque vue est amenée à un état stable (attente d'un élément repère, comme les
-   autres specs), puis scannée en WCAG A/AA. Le rapport groupé par règle/élément
-   est imprimé dans les logs (exploitable tel quel par un agent) et le détail JSON
-   complet est attaché au rapport Playwright.
+   Chaque vue est amenée à un état stable (attente d'un élément repère PUIS de la
+   fin des animations d'entrée, cf. `settleAnimations`), puis scannée en WCAG A/AA.
+   Le rapport groupé par règle/élément est imprimé dans les logs (exploitable tel
+   quel par un agent) et le détail JSON complet est attaché au rapport Playwright.
 
    ATTERRISSAGE NON BLOQUANT (#411) : par défaut les violations a11y sont REMONTÉES
    mais NE font PAS échouer le test — on ne fige pas le merge sur la dette a11y
@@ -18,12 +18,14 @@
    - Accueil / grille des leçons  → structure de navigation principale.
    - Leçon maths avec figure SVG  → libellés `<title>`/`<desc>` + contraste des tracés.
    - Leçon français (saisie)      → consigne + champ de saisie (label de formulaire).
+   - Leçon à tuiles (tri)          → ARIA sur-mesure (rôles, zone de dépôt), famille à risque.
    - Espace encadrant             → écran adulte dense (stats, réglages, contrôles).
-   - Modale « nouveau profil »     → dialog superposé (rôle, focus, contraste).
+   - Modale « nouveau profil »     → dialog de saisie superposé (rôle, focus, contraste).
+   - Modale Récompenses           → dialog de gamification (couleurs des récompenses).
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, seedAideVue } from './helpers';
 import { scanA11y, formatA11yReport } from './axe';
 
 /* Gate désactivé par défaut (cf. en-tête) ; `A11Y_GATE=1` le passe en bloquant. */
@@ -31,6 +33,28 @@ const GATE = !!process.env.A11Y_GATE;
 
 /* Supprime un éventuel verrou PIN persistant avant d'ouvrir l'espace encadrant. */
 const CLEAR_PIN = `localStorage.removeItem('ludaskia_encadrant_lock');`;
+
+/* Attend la fin des animations d'ENTRÉE (finies, non infinies) du sous-arbre visé
+   avant de scanner : `.modal` a une animation `modal-pop` 0.25s (opacité 0→1), et
+   scanner à mi-fondu rend le contraste NON déterministe sous CI série (#411,
+   relecture qualité). Règle générale : sur une vue animée, attendre la fin des
+   animations, pas seulement un élément repère. On écarte les animations infinies
+   (ambiance) pour ne pas bloquer. */
+async function settleAnimations(page: Page, selector: string): Promise<void> {
+	await page
+		.locator(selector)
+		.first()
+		.evaluate((el) =>
+			Promise.all(
+				el
+					.getAnimations({ subtree: true })
+					.filter(
+						(a) => (a.effect as KeyframeEffect | null)?.getComputedTiming().iterations !== Infinity,
+					)
+					.map((a) => a.finished.catch(() => undefined)),
+			),
+		);
+}
 
 interface View {
 	name: string;
@@ -67,6 +91,16 @@ const VIEWS: View[] = [
 		},
 	},
 	{
+		name: 'Leçon à tuiles (tri de mots)',
+		hash: 'lecon-fr-vocab-champs-tri',
+		open: async (page) => {
+			// Masque l'auto-modale d'aide du runner tuiles pour scanner le runner lui-même.
+			await seedAideVue(page);
+			await gotoHash(page, 'lecon-fr-vocab-champs-tri');
+			await page.locator('.ltri-tuile').first().waitFor({ state: 'visible' });
+		},
+	},
+	{
 		name: 'Espace encadrant',
 		hash: 'encadrant',
 		open: async (page) => {
@@ -85,6 +119,19 @@ const VIEWS: View[] = [
 			await page.locator('[data-act="enc-add"]').click();
 			await page.locator('.modal-overlay:not([id])').waitFor({ state: 'visible' });
 			await page.locator('#uimodal-input').waitFor({ state: 'visible' });
+			await settleAnimations(page, '.modal-overlay:not([id]) .modal');
+		},
+	},
+	{
+		name: 'Modale Récompenses (gamification)',
+		hash: 'accueil',
+		include: '#recompenses',
+		open: async (page) => {
+			await gotoHash(page, 'accueil');
+			await page.locator('#home').waitFor({ state: 'visible' });
+			await page.locator('[data-act="open-recompenses"]').click();
+			await page.locator('#recompenses').waitFor({ state: 'visible' });
+			await settleAnimations(page, '#recompenses .modal');
 		},
 	},
 ];
@@ -100,13 +147,17 @@ for (const view of VIEWS) {
 		// Rapport lisible dans les logs CI + détail JSON complet attaché (débogage à distance).
 		console.log('\n' + report + '\n');
 		await testInfo.attach(`axe-${view.hash}.json`, {
-			body: JSON.stringify(results.violations, null, 2),
+			body: JSON.stringify(
+				{ violations: results.violations, incomplete: results.incomplete },
+				null,
+				2,
+			),
 			contentType: 'application/json',
 		});
 
 		// Smoke : la vue se rend sans erreur JS et axe a bien tourné.
 		expect(errors).toEqual([]);
-		expect(results).toBeTruthy();
+		expect(results.testEngine.name).toBe('axe-core');
 
 		// A11y : non bloquant par défaut (dette existante) ; bloquant si A11Y_GATE=1.
 		if (GATE) {

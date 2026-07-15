@@ -27,8 +27,12 @@ depuis #319, alimentées par `recordLessonStats` (leçons/bilans/sprints) et
 `recordSessionActivity` (révision espacée, dictée d'orthographe) — **migration lazy**
 depuis l'ancien `number[]` : un horodatage nu est lu en `'inconnu'` puis réécrit au
 format objet au prochain passage, sans perte), `ludaskia_revoir`
-(#234 : ids de leçons épinglées « à revoir » par l'encadrant → carte d'accueil de
-l'enfant), `ludaskia_erreurs` (#391 : journal des erreurs commises — question posée,
+(#234 : ids épinglés « à revoir » par l'encadrant → carte d'accueil de l'enfant — un
+`string[]` mêlant des ids de leçon du catalogue et, depuis #424, des entrées de **liste
+de dictée** d'orthographe **préfixées `ortho:`** — `orthoRevoirId`/`isOrthoRevoirId`,
+`core/encadrant-stats.ts` — id opaque pour une liste du parent, `fr-ortho-*` pour une
+dictée prédéfinie ; rétro-compatible, la nature de chaque entrée tient au seul préfixe),
+`ludaskia_erreurs` (#391 : journal des erreurs commises — question posée,
 réponse donnée, réponse attendue, leçon, mode, horodatage — plafonné aux 150 entrées
 les plus récentes ; base du bloc « Ce qui a été difficile récemment » de l'espace
 encadrant, voir `core/erreurs-journal.ts`), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de
@@ -51,7 +55,11 @@ L'état SR des **mots**
 d'orthographe vit dans `ludaskia_ortho` (`MotOrtho.revision`). Un `MotOrtho`
 porte aussi des **formes fléchies** optionnelles (`formes?: FormesAccord` — masc/fém
 × sing/plur, #109), saisissables par le parent dans l'éditeur de listes et
-exploitées par la leçon d'accords.
+exploitées par la leçon d'accords. Le même `MotOrtho` (`atelierFait` + `validation`)
+alimente, depuis #424, l'**avancement par liste** (« à découvrir/en cours/acquis »)
+affiché dans l'espace encadrant — calculé en lecture seule par
+`core/orthographe/progression.ts`, lu par UUID via `loadOrthoFor` (cf.
+[Espace encadrant](espace-encadrant.md)).
 Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
 
 ## Profils

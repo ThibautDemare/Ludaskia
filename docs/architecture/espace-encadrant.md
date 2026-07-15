@@ -94,6 +94,34 @@ est journalisé en amont par `recordLessonRun` (`'lecon'` seule / `'bilan'` expr
 `recordLessonStats` : révision espacée (`ui/revision.ts` → `'revision'`) et dictée
 d'orthographe (`ui/ortho-runner.ts` → `'dictee'`, un point par séance).
 
+## Listes de dictée (#424)
+
+**Bloc « Listes de dictée »** (`listesOrthoHTML`, `ui/encadrant-progression.ts`), entre le
+graphe d'activité et l'historique des erreurs : les dictées d'orthographe (store dynamique,
+cf. [Données & profils](donnees-et-profils.md)) ne sont **pas** des `LessonDef` du catalogue,
+donc suivies **à part**, sur la **même échelle d'acquisition** (`NiveauNotion`) mais à **3
+niveaux seulement** — pas de « à renforcer » : la validation d'un mode d'orthographe est
+**binaire** (validé ou non), il n'existe pas de « perf récente en % » comme pour un QCM.
+`à découvrir` (aucun mot commencé) / `en cours` / `acquis` (tous les mots attendus maîtrisés =
+liste étoilée, cf. `listeEtoilee`, `core/orthographe/runner.ts`).
+
+Calcul dans `core/orthographe/progression.ts` (lecture seule et **synchrone**, sans
+matérialisation LEFFF) : `statutsLecon(state, id, dicteeDispo)` énumère le statut (`StatutMot`)
+de chaque mot **attendu** d'une liste (mots simples + cibles verbe, résolues par l'id
+**déterministe** `cibleVerbeId`) ; `avancementLecon(state, id, dicteeDispo)` en déduit
+`{niveau, total, maitrises}` ; `niveauListeOrtho` en extrait le seul niveau.
+
+Agrégé par profil pour l'espace encadrant par `listesOrthoProfil(profile, dicteeDispo)`
+(`core/encadrant-stats.ts`), qui lit `ludaskia_ortho` du profil **consulté** par UUID
+(`loadOrthoFor`) et unifie prédéfinies + listes du parent via `listOrthoLecons`. **Les dictées
+prédéfinies non commencées sont masquées** (sinon la quarantaine de dictées prédéfinies
+noierait les listes du parent) ; **les listes créées par le parent restent toujours
+visibles**, même « à découvrir ». Pour « en cours », un compte factuel « X/Y mots maîtrisés »
+est accolé (jamais de %), pour restituer la nuance perdue par l'absence de « à renforcer ».
+
+Chaque liste peut être **épinglée** (même mécanique que « à revoir », cf. ci-dessous) — elle
+rejoint alors la file de l'enfant comme une leçon.
+
 ## Historique des erreurs (#391)
 
 **« Ce qui a été difficile récemment »**, sous le graphe d'activité et avant « à revoir »
@@ -105,10 +133,11 @@ tête, replié par défaut (`<details>`) pour ne pas dérouler un « mur de faut
 l'intérieur d'une leçon, une même erreur répétée (même question + même réponse donnée) est
 **dédoublonnée** en une seule ligne « vue N fois » plutôt que N lignes identiques. Parti pris
 (avis designer-ux-enfant) : pas de rouge en aplat, la **bonne réponse** est mise en avant
-(positif), la réponse donnée reste neutre et n'est jamais barrée. Chaque leçon **du catalogue**
-peut être **épinglée** depuis ce bloc (même `data-act="epingler"` → `toggleRevoirFor`, mécanique
-partagée avec « à revoir » ci-dessous) ; l'action est **masquée** pour un groupe d'erreurs de
-dictée (la file « à revoir » est catalogue-only, une liste d'orthographe n'y a pas sa place).
+(positif), la réponse donnée reste neutre et n'est jamais barrée. Chaque groupe — **leçon du
+catalogue ou liste de dictée** (#424) — peut être **épinglé** depuis ce bloc (même
+`data-act="epingler"` → `toggleRevoirFor`, mécanique partagée avec « à revoir » ci-dessous) ;
+l'action n'est **masquée** que si l'id ne résout ni l'une ni l'autre (groupe orphelin, cible
+disparue).
 
 **Capture — couverture complète** : point d'entrée unique `capterErreur` (`ui/erreur-capture.ts`),
 appelé par **tous les runners** au moment de la correction d'une réponse fausse : la fiche en
@@ -123,8 +152,8 @@ agrège les cellules-chiffres du résultat (`Item.posedResult`) en **une** entr�
 (`analyserResultatPosee`) plutôt qu'une par chiffre ; les tuiles, le rangement et le tri lisent
 l'état final du widget via `TuileController.reponse()`. Une erreur de dictée référence l'id d'une **liste**
 d'orthographe (pas une leçon du catalogue) : `encadrant-erreurs.ts` résout son libellé via
-`labelLeconOrtho` (`core/orthographe/lessons.ts`), d'où l'action « Épingler » masquée pour ces
-groupes.
+`labelLeconOrtho` (`core/orthographe/lessons.ts`) et épingle sous l'id **préfixé**
+`orthoRevoirId(id)` (#424, cf. « À revoir » ci-dessous) — même geste que pour une leçon.
 
 **Détachée du seuil de 60 %** : la capture des erreurs d'une fiche est **indépendante** du seuil
 `enough` qui conditionne l'enregistrement (XP, étoile, record) — une fiche remplie à moins de
@@ -134,11 +163,27 @@ décroche, la donnée la plus utile au parent). Garde dédiée « une fois par e
 
 ## « À revoir » → carte d'accueil
 
-**« À revoir » → carte d'accueil** : l'encadrant **épingle** des leçons
-(`toggleRevoirFor(uuid, …)` → `ludaskia_revoir` du profil). Au retour de l'enfant sur son
-accueil, `ui/a-revoir-card.ts` affiche une carte (`#aRevoir`, modèle « leçon du jour ») qui
-**boucle** sur la liste ; auto-nettoyage au rendu (`revoirActives` exclut une leçon redevenue
-solide). L'enfant n'a pas à être présent quand l'encadrant épingle.
+**« À revoir » → carte d'accueil** : l'encadrant **épingle** une leçon du catalogue **ou** une
+liste de dictée (#424) — `toggleRevoirFor(uuid, entryId)` → `ludaskia_revoir` du profil (cf.
+[Données & profils](donnees-et-profils.md)). La file reste un simple `string[]` : une entrée de
+dictée s'y distingue par le préfixe `ortho:` (`orthoRevoirId`/`isOrthoRevoirId`/
+`orthoIdFromRevoir`, `core/encadrant-stats.ts`) — id opaque pour une liste du parent, `fr-ortho-*`
+pour une dictée prédéfinie.
+
+Au retour de l'enfant sur son accueil, `ui/a-revoir-card.ts` affiche une carte (`#aRevoir`,
+modèle « leçon du jour ») qui **boucle** sur `revoirActives(dicteeDispo)` — union `RevoirEntry`
+(`{kind:'lecon', lesson}` ou `{kind:'ortho', source}`, `core/encadrant-stats.ts`). Auto-nettoyage
+**par nature de l'entrée** : une leçon quitte la file si étoilée ou perf récente ≥ seuil, une
+liste de dictée si `niveauListeOrtho(...) === 'acquis'`. Icône/sous-titre : matière/catégorie
+réelles pour une leçon, sous-titre **fixe** « Français · Orthographe » pour une dictée.
+Lancement : `startLecon` pour une leçon, **`startOrthoLecon`** pour une dictée (hash dédié
+`ortho-`/`ortho-mode-`, distinct de `lecon-`/`mode-`). L'enfant n'a pas à être présent quand
+l'encadrant épingle.
+
+Dans l'espace encadrant lui-même, le bloc « Épinglées » (sous « À revoir ensemble ») liste
+**toutes** les entrées de la file sans filtre de faiblesse, via `epingleesProfil(profile)`
+(gestion, pas suggestion) ; une cible disparue (leçon hors catalogue actif, liste supprimée) en
+est silencieusement écartée.
 
 ## Récap du mode Révision espacée (#423)
 

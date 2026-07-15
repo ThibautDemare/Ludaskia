@@ -1,0 +1,479 @@
+/* ============================================================
+   Épingler + suivre les listes de dictée dans l'espace encadrant (#424).
+   ------------------------------------------------------------
+   Couvre la logique PURE ajoutée : progression par liste d'orthographe
+   (statutsLecon / avancementLecon / niveauListeOrtho), les helpers de
+   préfixe « ortho: » de la file « à revoir », et les vues encadrant
+   qui agrègent les dictées (revoirActives, listesOrthoProfil,
+   epingleesProfil, loadOrthoFor).
+
+   Parti pris de l'auteur des tests : les attendus sont DÉRIVÉS de la
+   règle de maîtrise (runner : atelier fait + modes requis validés,
+   dictée requise seulement si le TTS est dispo), jamais recopiés de
+   progression.ts. On construit des états réalistes via le store, puis
+   on FIXE l'état par-mot (atelier/validation) à la main.
+   ============================================================ */
+import { beforeEach, describe, it, expect } from 'vitest';
+import { setOnDataWrite } from '../src/core/storage';
+import {
+	initProfiles,
+	activeProfile,
+	addProfile,
+	setActiveProfile,
+	touchActiveProfile,
+} from '../src/core/profiles';
+import {
+	emptyOrthoState,
+	createListe,
+	saveOrtho,
+	loadOrtho,
+	loadOrthoFor,
+} from '../src/core/orthographe/store';
+import { motsDeLecon } from '../src/core/orthographe/lessons';
+import { cibleVerbeId } from '../src/core/orthographe/verbes';
+import { etatNeuf } from '../src/core/revision';
+import { ORTHO_PREDEF } from '../src/data/francais/orthographe';
+import {
+	statutsLecon,
+	avancementLecon,
+	niveauListeOrtho,
+} from '../src/core/orthographe/progression';
+import {
+	REVOIR_ORTHO_PREFIX,
+	orthoRevoirId,
+	isOrthoRevoirId,
+	orthoIdFromRevoir,
+	toggleRevoirFor,
+	revoirActives,
+	listesOrthoProfil,
+	epingleesProfil,
+} from '../src/core/encadrant-stats';
+import type { MotOrtho, OrthoState, VerbeConfig } from '../src/core/orthographe/types';
+
+beforeEach(() => {
+	localStorage.clear();
+	setOnDataWrite(touchActiveProfile);
+	initProfiles();
+});
+
+/* ---------- Fabrique d'états ----------
+   État par-mot posé À LA MAIN (indépendant de progression.ts) : le statut d'un
+   mot ne dépend QUE de atelierFait + validation (tuiles/motCache/dictee).
+   Rappel de la règle de maîtrise (runner) qu'on encode ici sans y toucher :
+   - nouveau      : atelier non fait ;
+   - enCours      : atelier fait, tous les modes REQUIS pas encore validés ;
+   - maitrise     : atelier fait + tous les modes requis validés
+                    (dictée requise seulement si dicteeDispo). */
+interface EtatMot {
+	atelier?: boolean;
+	tuiles?: boolean;
+	motCache?: boolean;
+	dictee?: boolean;
+}
+function poser(m: MotOrtho, e: EtatMot): void {
+	m.atelierFait = e.atelier ?? false;
+	m.validation = {
+		tuiles: e.tuiles ?? false,
+		motCache: e.motCache ?? false,
+		dictee: e.dictee ?? false,
+	};
+}
+/** Raccourci : mot pleinement travaillé HORS dictée (maîtrisé si dicteeDispo=false). */
+const sansDictee: EtatMot = { atelier: true, tuiles: true, motCache: true, dictee: false };
+/** Raccourci : mot pleinement travaillé, dictée comprise (maîtrisé quel que soit dicteeDispo). */
+const complet: EtatMot = { atelier: true, tuiles: true, motCache: true, dictee: true };
+
+/** Cible verbe placée directement en banque à son id déterministe. */
+function poserCibleVerbe(
+	state: OrthoState,
+	infinitif: string,
+	temps: 'present',
+	person: number,
+	mot: string,
+	e: EtatMot,
+): void {
+	const id = cibleVerbeId(infinitif, temps, person);
+	const cible: MotOrtho = {
+		id,
+		mot,
+		entourage: [],
+		atelierFait: e.atelier ?? false,
+		validation: {
+			tuiles: e.tuiles ?? false,
+			motCache: e.motCache ?? false,
+			dictee: e.dictee ?? false,
+		},
+		revision: etatNeuf(Date.now()),
+		origine: 'verbe',
+	};
+	state.banque[id] = cible;
+}
+
+/* ============================================================
+   progression.ts — statutsLecon / avancementLecon / niveauListeOrtho
+   ============================================================ */
+describe('progression — statutsLecon (liste du parent)', () => {
+	it('liste jamais commencée → tous « nouveau »', () => {
+		const s = emptyOrthoState();
+		const l = createListe(s, 'L', [{ mot: 'chat' }, { mot: 'chien' }, { mot: 'cheval' }]);
+		expect(statutsLecon(s, l.id, false)).toEqual(['nouveau', 'nouveau', 'nouveau']);
+	});
+
+	it('mélange nouveau / enCours / maîtrisé, dans l’ordre des mots', () => {
+		const s = emptyOrthoState();
+		const l = createListe(s, 'L', [{ mot: 'chat' }, { mot: 'chien' }, { mot: 'cheval' }]);
+		poser(s.banque[l.motIds[0]], sansDictee); // maîtrisé (sans dictée)
+		poser(s.banque[l.motIds[1]], { atelier: true }); // atelier seul → enCours
+		// motIds[2] intact → nouveau
+		expect(statutsLecon(s, l.id, false)).toEqual(['maitrise', 'enCours', 'nouveau']);
+	});
+
+	it('un mot ATTENDU absent de la banque compte « nouveau »', () => {
+		const s = emptyOrthoState();
+		const l = createListe(s, 'L', [{ mot: 'chat' }, { mot: 'chien' }]);
+		poser(s.banque[l.motIds[0]], sansDictee);
+		delete s.banque[l.motIds[1]]; // simule un mot jamais matérialisé/joué
+		expect(statutsLecon(s, l.id, false)).toEqual(['maitrise', 'nouveau']);
+	});
+
+	it('id inconnu → [] (et avancement neutre)', () => {
+		const s = emptyOrthoState();
+		expect(statutsLecon(s, 'liste-fantome', false)).toEqual([]);
+		expect(avancementLecon(s, 'liste-fantome', false)).toEqual({
+			niveau: 'a-decouvrir',
+			total: 0,
+			maitrises: 0,
+		});
+	});
+});
+
+describe('progression — avancementLecon (échelle à 3 niveaux)', () => {
+	it('tous « nouveau » → a-decouvrir, maitrises 0', () => {
+		const s = emptyOrthoState();
+		const l = createListe(s, 'L', [{ mot: 'a' }, { mot: 'b' }]);
+		expect(avancementLecon(s, l.id, false)).toEqual({
+			niveau: 'a-decouvrir',
+			total: 2,
+			maitrises: 0,
+		});
+	});
+
+	it('au moins un mot entamé mais pas tous maîtrisés → en-cours, avec le compte exact', () => {
+		const s = emptyOrthoState();
+		const l = createListe(s, 'L', [{ mot: 'a' }, { mot: 'b' }, { mot: 'c' }]);
+		poser(s.banque[l.motIds[0]], sansDictee);
+		poser(s.banque[l.motIds[1]], sansDictee);
+		// c reste nouveau
+		expect(avancementLecon(s, l.id, false)).toEqual({
+			niveau: 'en-cours',
+			total: 3,
+			maitrises: 2,
+		});
+	});
+
+	it('un mot « nouveau » + un « maîtrisé » (aucun enCours) reste en-cours', () => {
+		// Cas limite : « en-cours » n'exige pas un mot au statut enCours, juste
+		// « ni tous nouveaux, ni tous maîtrisés ».
+		const s = emptyOrthoState();
+		const l = createListe(s, 'L', [{ mot: 'a' }, { mot: 'b' }]);
+		poser(s.banque[l.motIds[0]], sansDictee);
+		expect(avancementLecon(s, l.id, false).niveau).toBe('en-cours');
+	});
+
+	it('tous maîtrisés → acquis, maitrises = total', () => {
+		const s = emptyOrthoState();
+		const l = createListe(s, 'L', [{ mot: 'a' }, { mot: 'b' }]);
+		l.motIds.forEach((id) => poser(s.banque[id], sansDictee));
+		expect(avancementLecon(s, l.id, false)).toEqual({
+			niveau: 'acquis',
+			total: 2,
+			maitrises: 2,
+		});
+	});
+});
+
+describe('progression — effet de dicteeDispo (cas tricky)', () => {
+	it('mot validé tuiles+motCache sans dictée : acquis si TTS absent, en-cours si TTS présent', () => {
+		const s = emptyOrthoState();
+		const l = createListe(s, 'L', [{ mot: 'chat' }]);
+		poser(s.banque[l.motIds[0]], sansDictee);
+		// Sans TTS : la dictée n'est pas requise → maîtrisé → liste acquise.
+		expect(niveauListeOrtho(s, l.id, false)).toBe('acquis');
+		expect(avancementLecon(s, l.id, false).maitrises).toBe(1);
+		// Avec TTS : dictée requise mais non validée → enCours → liste en-cours.
+		expect(niveauListeOrtho(s, l.id, true)).toBe('en-cours');
+		expect(avancementLecon(s, l.id, true).maitrises).toBe(0);
+	});
+
+	it('mot complet (dictée comprise) : acquis dans les deux cas', () => {
+		const s = emptyOrthoState();
+		const l = createListe(s, 'L', [{ mot: 'chat' }]);
+		poser(s.banque[l.motIds[0]], complet);
+		expect(niveauListeOrtho(s, l.id, false)).toBe('acquis');
+		expect(niveauListeOrtho(s, l.id, true)).toBe('acquis');
+	});
+});
+
+describe('progression — cibles verbe (#261, résolues par id déterministe)', () => {
+	const verbes: VerbeConfig[] = [
+		{ kind: 'verbe', infinitif: 'manger', pronoms: [0, 2], temps: ['present'] },
+	];
+
+	it('une cible par couple temps×pronom ; absentes de la banque → nouveau', () => {
+		const s = emptyOrthoState();
+		const l = createListe(s, 'Verbes', [], undefined, verbes);
+		// 2 pronoms × 1 temps = 2 cibles attendues, aucune matérialisée.
+		expect(statutsLecon(s, l.id, false)).toEqual(['nouveau', 'nouveau']);
+	});
+
+	it('cible matérialisée résolue par cibleVerbeId ; compte total/maitrises correct', () => {
+		const s = emptyOrthoState();
+		const l = createListe(s, 'Verbes', [], undefined, verbes);
+		poserCibleVerbe(s, 'manger', 'present', 0, 'mange', sansDictee); // « je mange » maîtrisé
+		// personne 2 (« il ») laissée absente → nouveau
+		expect(statutsLecon(s, l.id, false)).toEqual(['maitrise', 'nouveau']);
+		expect(avancementLecon(s, l.id, false)).toEqual({
+			niveau: 'en-cours',
+			total: 2,
+			maitrises: 1,
+		});
+	});
+
+	it('mots simples + verbes : le total additionne les deux familles', () => {
+		const s = emptyOrthoState();
+		const l = createListe(s, 'Mix', [{ mot: 'chat' }, { mot: 'chien' }], undefined, verbes);
+		// 2 simples + 2 cibles = 4 mots attendus.
+		expect(avancementLecon(s, l.id, false).total).toBe(4);
+		// Statuts : simples en tête (ordre des motIds), puis les cibles verbe.
+		poser(s.banque[l.motIds[0]], sansDictee);
+		poserCibleVerbe(s, 'manger', 'present', 0, 'mange', complet);
+		const st = statutsLecon(s, l.id, false);
+		expect(st).toEqual(['maitrise', 'nouveau', 'maitrise', 'nouveau']);
+	});
+});
+
+describe('progression — dictée prédéfinie (résolution par forme normalisée)', () => {
+	const predef = ORTHO_PREDEF.find((l) => l.id === 'fr-ortho-invariables-1')!;
+
+	it('jamais matérialisée → tous « nouveau », total = nb de mots de la leçon', () => {
+		const s = emptyOrthoState();
+		const av = avancementLecon(s, predef.id, false);
+		expect(av.niveau).toBe('a-decouvrir');
+		expect(av.total).toBe(predef.mots.length);
+		expect(av.maitrises).toBe(0);
+		expect(statutsLecon(s, predef.id, false).every((x) => x === 'nouveau')).toBe(true);
+	});
+
+	it('matérialisée puis K mots maîtrisés → en-cours, maitrises = K (lookup par forme)', () => {
+		const s = emptyOrthoState();
+		const mots = motsDeLecon(s, predef.id); // matérialise toute la leçon dans la banque
+		expect(mots.length).toBe(predef.mots.length);
+		const K = 3;
+		for (let i = 0; i < K; i++) poser(mots[i], sansDictee);
+		const av = avancementLecon(s, predef.id, false);
+		expect(av.niveau).toBe('en-cours');
+		expect(av.total).toBe(predef.mots.length);
+		expect(av.maitrises).toBe(K);
+	});
+
+	it('tous maîtrisés hors dictée : acquis sans TTS, en-cours avec TTS', () => {
+		const s = emptyOrthoState();
+		const mots = motsDeLecon(s, predef.id);
+		mots.forEach((m) => poser(m, sansDictee));
+		expect(niveauListeOrtho(s, predef.id, false)).toBe('acquis');
+		expect(niveauListeOrtho(s, predef.id, true)).toBe('en-cours');
+	});
+});
+
+/* ============================================================
+   Helpers de préfixe « ortho: » (encadrant-stats)
+   ============================================================ */
+describe('helpers de préfixe « ortho: »', () => {
+	it('préfixe attendu et aller-retour id → entrée → id', () => {
+		expect(REVOIR_ORTHO_PREFIX).toBe('ortho:');
+		for (const id of ['fr-ortho-invariables-1', 'a1b2-uuid', '', 'ortho:déjà-préfixé']) {
+			const entry = orthoRevoirId(id);
+			expect(isOrthoRevoirId(entry)).toBe(true);
+			expect(orthoIdFromRevoir(entry)).toBe(id); // round-trip exact
+		}
+	});
+
+	it('distingue une entrée de dictée d’un id de leçon du catalogue', () => {
+		expect(isOrthoRevoirId('ortho:fr-ortho-invariables-1')).toBe(true);
+		// Un id de leçon brut (même s'il contient « ortho ») n'est PAS une entrée de dictée.
+		expect(isOrthoRevoirId('fr-ortho-invariables-1')).toBe(false);
+		expect(isOrthoRevoirId('math-complements')).toBe(false);
+	});
+});
+
+/* ============================================================
+   revoirActives — union catalogue / dictée
+   ============================================================ */
+describe('revoirActives — entrées de dictée (kind ortho)', () => {
+	it('coexiste avec une leçon catalogue ; chaque entrée porte son kind et l’id brut', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		const l = createListe(s, 'Dictée', [{ mot: 'chat' }]);
+		saveOrtho(s);
+		toggleRevoirFor(p.uuid, orthoRevoirId(l.id));
+		toggleRevoirFor(p.uuid, 'math-complements'); // leçon jamais retravaillée → faible
+
+		const actives = revoirActives(false);
+		const ortho = actives.find((e) => e.kind === 'ortho');
+		const lecon = actives.find((e) => e.kind === 'lecon');
+		expect(ortho).toBeTruthy();
+		expect(ortho!.id).toBe(l.id); // id BRUT (sans préfixe)
+		expect(ortho!.label).toBe('Dictée');
+		if (ortho!.kind === 'ortho') expect(ortho!.source).toBe('liste');
+		expect(lecon).toBeTruthy();
+		expect(lecon!.id).toBe('math-complements');
+	});
+
+	it('auto-nettoyage quand la liste devient acquise ; dicteeDispo conditionne l’acquis', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		const l = createListe(s, 'Dictée', [{ mot: 'chat' }]);
+		poser(s.banque[l.motIds[0]], sansDictee); // tuiles+motCache, PAS de dictée
+		saveOrtho(s);
+		toggleRevoirFor(p.uuid, orthoRevoirId(l.id));
+
+		// Sans TTS : liste acquise → retirée de la boucle.
+		expect(revoirActives(false).some((e) => e.kind === 'ortho' && e.id === l.id)).toBe(false);
+		// Avec TTS : dictée requise et manquante → liste encore en cours → présente.
+		expect(revoirActives(true).some((e) => e.kind === 'ortho' && e.id === l.id)).toBe(true);
+	});
+
+	it('entrée de dictée orpheline (liste supprimée) ignorée', () => {
+		const p = activeProfile();
+		saveOrtho(loadOrtho()); // état ortho vide mais présent
+		toggleRevoirFor(p.uuid, orthoRevoirId('liste-disparue'));
+		expect(revoirActives(false)).toEqual([]);
+	});
+});
+
+/* ============================================================
+   listesOrthoProfil — récap des dictées d'un profil
+   ============================================================ */
+describe('listesOrthoProfil — filtre et champs', () => {
+	it('liste du parent toujours présente ; prédéfinies non commencées masquées', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		const l = createListe(s, 'Semaine 1', [{ mot: 'chat' }, { mot: 'chien' }]);
+		saveOrtho(s);
+
+		const recap = listesOrthoProfil(p, false);
+		// Une seule entrée : la liste du parent (toutes les prédéfinies sont à découvrir).
+		expect(recap.map((r) => r.id)).toEqual([l.id]);
+		expect(recap[0]).toMatchObject({
+			id: l.id,
+			label: 'Semaine 1',
+			source: 'liste',
+			niveau: 'a-decouvrir',
+			epingle: false,
+			nbMots: 2,
+			maitrises: 0,
+		});
+	});
+
+	it('une prédéfinie apparaît dès qu’elle est commencée', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		const predefId = 'fr-ortho-invariables-1'; // niveau CE2 = niveau du profil par défaut
+		const mots = motsDeLecon(s, predefId);
+		poser(mots[0], { atelier: true }); // un mot entamé → ≠ a-decouvrir
+		saveOrtho(s);
+
+		const recap = listesOrthoProfil(p, false);
+		const predef = recap.find((r) => r.id === predefId);
+		expect(predef).toBeTruthy();
+		expect(predef!.source).toBe('predefini');
+		expect(predef!.niveau).toBe('en-cours');
+	});
+
+	it('epingle reflète la présence de l’entrée préfixée ; maitrises est le compte factuel', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		const l = createListe(s, 'Semaine 1', [{ mot: 'chat' }, { mot: 'chien' }, { mot: 'cheval' }]);
+		poser(s.banque[l.motIds[0]], sansDictee);
+		poser(s.banque[l.motIds[1]], sansDictee);
+		saveOrtho(s);
+		toggleRevoirFor(p.uuid, orthoRevoirId(l.id));
+
+		const r = listesOrthoProfil(p, false).find((x) => x.id === l.id)!;
+		expect(r.epingle).toBe(true);
+		expect(r.maitrises).toBe(2);
+		expect(r.nbMots).toBe(3);
+		expect(r.niveau).toBe('en-cours');
+	});
+
+	it('lecture par UUID : ne dépend pas du profil actif', () => {
+		const a = activeProfile();
+		const sA = loadOrtho();
+		createListe(sA, 'Liste de A', [{ mot: 'chat' }]);
+		saveOrtho(sA);
+		addProfile('Profil B'); // bascule l'actif sur B (état ortho vide)
+
+		// On consulte A alors que B est actif.
+		const recapA = listesOrthoProfil(a, false);
+		expect(recapA.map((r) => r.label)).toEqual(['Liste de A']);
+		expect(activeProfile().name).toBe('Profil B'); // pas de bascule
+	});
+});
+
+/* ============================================================
+   epingleesProfil — liste de gestion (deux kinds, orphelines écartées)
+   ============================================================ */
+describe('epingleesProfil — résolution des entrées épinglées', () => {
+	it('résout leçon catalogue et dictée (parent + prédéfinie), avec l’id brut', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		const l = createListe(s, 'Ma dictée', [{ mot: 'chat' }]);
+		saveOrtho(s);
+		toggleRevoirFor(p.uuid, 'math-complements'); // leçon catalogue
+		toggleRevoirFor(p.uuid, orthoRevoirId(l.id)); // liste du parent
+		toggleRevoirFor(p.uuid, orthoRevoirId('fr-ortho-invariables-1')); // prédéfinie
+
+		const ep = epingleesProfil(p);
+		const lecon = ep.find((e) => e.kind === 'lecon');
+		expect(lecon).toEqual({ kind: 'lecon', id: 'math-complements', label: lecon!.label });
+		const parent = ep.find((e) => e.kind === 'ortho' && e.id === l.id);
+		expect(parent).toEqual({ kind: 'ortho', id: l.id, label: 'Ma dictée' });
+		const pred = ep.find((e) => e.kind === 'ortho' && e.id === 'fr-ortho-invariables-1');
+		expect(pred).toBeTruthy();
+		expect(pred!.label.length).toBeGreaterThan(0); // libellé résolu depuis ORTHO_PREDEF
+	});
+
+	it('entrée dont la cible n’existe plus est écartée (leçon hors catalogue, liste supprimée)', () => {
+		const p = activeProfile();
+		saveOrtho(loadOrtho());
+		toggleRevoirFor(p.uuid, 'lecon-inexistante');
+		toggleRevoirFor(p.uuid, orthoRevoirId('liste-disparue'));
+		expect(epingleesProfil(p)).toEqual([]);
+	});
+
+	it('file vide → []', () => {
+		expect(epingleesProfil(activeProfile())).toEqual([]);
+	});
+});
+
+/* ============================================================
+   loadOrthoFor — lecture de l'état ortho d'un profil par UUID
+   ============================================================ */
+describe('loadOrthoFor', () => {
+	it('lit l’état d’un profil NON actif par UUID (clé brute)', () => {
+		const a = activeProfile();
+		const sA = loadOrtho();
+		createListe(sA, 'Liste de A', [{ mot: 'chat' }, { mot: 'chien' }]);
+		saveOrtho(sA);
+		setActiveProfile(addProfile('Profil B').uuid); // B actif
+
+		const read = loadOrthoFor(a.uuid);
+		expect(read.listes.map((l) => l.label)).toEqual(['Liste de A']);
+		expect(Object.keys(read.banque)).toHaveLength(2);
+	});
+
+	it('profil sans état ortho → état vide normalisé', () => {
+		const read = loadOrthoFor('uuid-inconnu');
+		expect(read).toEqual({ banque: {}, listes: [], motIdParForme: {} });
+	});
+});

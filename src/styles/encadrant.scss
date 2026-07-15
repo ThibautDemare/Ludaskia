@@ -887,6 +887,29 @@ $evol-amorce: #7c8494;
 	color: var(--grey);
 	white-space: nowrap;
 }
+/* Sous-section repliable « Parcourir les dictées proposées » (#424) : dictées prédéfinies
+   épinglables à l'avance. Chevron ▸/▾ comme les autres <summary> de l'espace encadrant. */
+.enc-ortho-dispo {
+	margin-top: 0.4rem;
+}
+.enc-ortho-dispo-sum {
+	cursor: pointer;
+	font-weight: 600;
+	font-size: 0.85rem;
+	color: var(--admin-ink, var(--ink));
+	padding: 0.25rem 0;
+	list-style: none; /* marqueur natif retiré ; chevron via ::after (comme .enc-cat-sum) */
+}
+.enc-ortho-dispo-sum::-webkit-details-marker {
+	display: none;
+}
+.enc-ortho-dispo-sum::after {
+	content: ' ▸';
+	color: var(--muted);
+}
+.enc-ortho-dispo[open] .enc-ortho-dispo-sum::after {
+	content: ' ▾';
+}
 /* Tendance récente (#265) : mot lisible en --ink ; la couleur (indice secondaire, WCAG 1.4.1)
    n'est portée que par le glyphe fléché, qui redouble le sens par sa FORME (daltonisme). */
 .enc-tendance {

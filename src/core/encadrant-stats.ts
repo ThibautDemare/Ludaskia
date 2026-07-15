@@ -497,16 +497,45 @@ export function listesOrthoProfil(profile: Profile, dicteeDispo = false): RecapL
 	const out: RecapListeOrtho[] = [];
 	for (const ref of listOrthoLecons(state, niveau)) {
 		const av = avancementLecon(state, ref.id, dicteeDispo);
-		if (ref.source === 'predefini' && av.niveau === 'a-decouvrir') continue;
+		const epingle = epinglees.has(orthoRevoirId(ref.id));
+		// Prédéfinie jamais commencée : masquée du SUIVI (sinon ~45 lignes « à découvrir »
+		// noieraient les listes du parent), SAUF si elle a été épinglée « à l'avance » (elle
+		// est alors un suivi voulu). Les non commencées non épinglées sont, elles, proposées
+		// séparément par dicteesProposees (sous-section « Parcourir »).
+		if (ref.source === 'predefini' && av.niveau === 'a-decouvrir' && !epingle) continue;
 		out.push({
 			id: ref.id,
 			label: ref.label,
 			source: ref.source,
 			niveau: av.niveau,
-			epingle: epinglees.has(orthoRevoirId(ref.id)),
+			epingle,
 			nbMots: ref.nbMots,
 			maitrises: av.maitrises,
 		});
+	}
+	return out;
+}
+
+/* ---------- Dictées prédéfinies « à épingler à l'avance » ----------
+   Les dictées PRÉDÉFINIES du niveau du profil, pas encore commencées ET pas déjà épinglées
+   (donc absentes du bloc de suivi ci-dessus). Permet à l'encadrant de pousser une dictée
+   prête AVANT que l'enfant ne la rencontre — parité avec « épingler n'importe quelle leçon,
+   même pas encore abordée » du catalogue, sans noyer le suivi. */
+export interface DicteeProposee {
+	id: string; // id BRUT (dictée prédéfinie `fr-ortho-*`)
+	label: string;
+	nbMots: number;
+}
+export function dicteesProposees(profile: Profile, dicteeDispo = false): DicteeProposee[] {
+	const state = loadOrthoFor(profile.uuid);
+	const niveau = niveauProfilMatiere(profile, 'francais');
+	const epinglees = new Set(loadRevoirFor(profile.uuid));
+	const out: DicteeProposee[] = [];
+	for (const ref of listOrthoLecons(state, niveau)) {
+		if (ref.source !== 'predefini') continue;
+		if (epinglees.has(orthoRevoirId(ref.id))) continue;
+		if (niveauListeOrtho(state, ref.id, dicteeDispo) !== 'a-decouvrir') continue;
+		out.push({ id: ref.id, label: ref.label, nbMots: ref.nbMots });
 	}
 	return out;
 }

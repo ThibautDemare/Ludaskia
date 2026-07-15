@@ -19,9 +19,11 @@ import {
 	debutSemaine,
 	orthoRevoirId,
 	listesOrthoProfil,
+	dicteesProposees,
 	epingleesProfil,
 	type RecapProfil,
 	type RecapListeOrtho,
+	type DicteeProposee,
 	type NiveauNotion,
 	type TendanceNotion,
 	type JourActivite,
@@ -400,18 +402,45 @@ function ligneListeOrtho(l: RecapListeOrtho): string {
       </span>
     </li>`;
 }
+/* Une dictée « proposée » (prédéfinie non commencée, épinglable à l'avance) : libellé +
+   nombre de mots + Épingler. Toujours « Épingler » (par construction elle n'est pas épinglée). */
+function ligneDicteeProposee(d: DicteeProposee): string {
+	const entryId = orthoRevoirId(d.id);
+	return `<li class="enc-revoir-item">
+      <span class="enc-revoir-lab">${escapeHTML(d.label)}</span>
+      <span class="enc-detail-meta">${d.nbMots} mot${d.nbMots > 1 ? 's' : ''}</span>
+      <span class="enc-actions">
+        <button type="button" class="enc-btn-sec" data-act="epingler" data-lesson="${entryId}">Épingler</button>
+      </span>
+    </li>`;
+}
 function listesOrthoHTML(consulte: Profile): string {
-	const listes = listesOrthoProfil(consulte, dicteeDisponible());
-	if (listes.length === 0) return '';
+	const dispo = dicteeDisponible();
+	const listes = listesOrthoProfil(consulte, dispo);
+	const proposees = dicteesProposees(consulte, dispo);
+	if (listes.length === 0 && proposees.length === 0) return '';
 	const catOrtho = CATEGORIES.find((c) => c.id === ORTHO_CATEGORY_ID);
 	const legende = ORDRE_NIVEAUX_ORTHO.map(
 		(n) => `<span class="enc-key enc-key-${n}">${MOT_NIVEAU[n]}</span>`,
 	).join('');
+	// Suivi : listes du parent + prédéfinies commencées ou épinglées.
+	const suivi = listes.length
+		? `<ul class="enc-detail">${listes.map(ligneListeOrtho).join('')}</ul>`
+		: `<p class="enc-hint">Aucune dictée commencée pour le moment.</p>`;
+	// « À l'avance » : les prédéfinies restantes, repliées pour ne pas noyer le suivi.
+	const browse = proposees.length
+		? `<details class="enc-ortho-dispo">
+        <summary class="enc-ortho-dispo-sum">Parcourir les dictées proposées (${proposees.length})</summary>
+        <p class="enc-hint">Des dictées prêtes à l'emploi (mots invariables, nombres, thèmes). Épinglez-en une pour la proposer à ${escapeHTML(consulte.name)} avant qu'il ou elle ne la rencontre.</p>
+        <ul class="enc-revoir">${proposees.map(ligneDicteeProposee).join('')}</ul>
+      </details>`
+		: '';
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon(catOrtho?.icon ?? 'book-open')} Listes de dictée</h3>
       <p class="enc-legend">${legende}</p>
       <p class="enc-hint">Les listes de dictée (mots invariables, thèmes, vos propres listes) et leur avancement. Épinglez-en une pour qu'elle revienne sur l'accueil de ${escapeHTML(consulte.name)}.</p>
-      <ul class="enc-detail">${listes.map(ligneListeOrtho).join('')}</ul>
+      ${suivi}
+      ${browse}
     </div>`;
 }
 

@@ -910,6 +910,16 @@ $evol-amorce: #7c8494;
 .enc-ortho-dispo[open] .enc-ortho-dispo-sum::after {
 	content: ' ▾';
 }
+/* Liste des dictées proposées : même reset que .enc-revoir, mais classe DÉDIÉE (ne pas
+   réutiliser .enc-revoir, dont les sélecteurs ciblent la file « À revoir ensemble »). */
+.enc-ortho-dispo-list {
+	list-style: none;
+	margin: 0.4rem 0 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
 /* Tendance récente (#265) : mot lisible en --ink ; la couleur (indice secondaire, WCAG 1.4.1)
    n'est portée que par le glyphe fléché, qui redouble le sens par sa FORME (daltonisme). */
 .enc-tendance {

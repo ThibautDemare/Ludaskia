@@ -62,3 +62,10 @@ body.galerie-active .site-footer {
 		font-family: monospace;
 	}
 }
+
+/* Sections des écrans de runner (#419) : le board se rend avec SES styles réels
+   (sprint, tc-*, prob-*, lapp-*, importés globalement). On neutralise seulement la
+   marge haute héritée du sprint, superflue dans une vignette de galerie. */
+.gal-runner .sprint-lecon {
+	margin-top: 0;
+}

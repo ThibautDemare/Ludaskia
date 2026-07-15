@@ -59,7 +59,17 @@ Autre famille, `galerie.spec.ts` (#412) compare le rendu du catalogue à des
 **baselines de screenshots** (`toHaveScreenshot`) via la route **DEV-only**
 `#galerie` (`src/ui/galerie.ts`, gardée par `import.meta.env.DEV` — absente du
 bundle de production) qui affiche, groupée par catégorie, la fiche de chaque
-leçon sous `withSeed`. Les baselines sont **ancrées sur l'environnement de la
-CI** (ubuntu + Chromium) — comparaison ignorée hors Linux — et se régénèrent
-via le workflow `.github/workflows/update-snapshots.yml`. Détails et
-procédure : `e2e/README.md`.
+leçon sous `withSeed`, **puis un exemplaire de chaque écran de runner
+interactif** (#419 : tuiles, ordre, tri, appariement, problème, tableau de
+conversion). Ces boards sont rendus par le **même code que le runner live** —
+les widgets partagés (`ui/tuile-interaction.ts`, `ui/appariement.ts`) et deux
+fonctions de rendu **pures** extraites des runners pour être réutilisées
+(`renderProblemeBoardHTML` de `ui/lecon-probleme.ts`, `renderTableauBoardHTML`
+de `ui/lecon-tableau.ts`) — de sorte qu'un snapshot détecte les régressions du
+**vrai** rendu ; la galerie n'appelle **jamais** les entrées `runLeconXxx` (qui
+portent les effets de bord : toolbar, aide, storage, listener `document` du
+tableau). Chaque section porte un `data-gallery` → une **capture dédiée** (une
+nouvelle section est donc snapshotée automatiquement). Les baselines sont
+**ancrées sur l'environnement de la CI** (ubuntu + Chromium) — comparaison
+ignorée hors Linux — et se régénèrent via le workflow
+`.github/workflows/update-snapshots.yml`. Détails et procédure : `e2e/README.md`.

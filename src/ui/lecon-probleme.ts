@@ -32,11 +32,38 @@ const NB_QUESTIONS = 8;
 // réutilise ce runner (division avec reste, #95) le surcharge via `probLexique`.
 const LEX_DEFAUT: ProbLexique = { nom: 'Problème', nomPluriel: 'problèmes', badgeEtape: true };
 
-interface ProbQuestion {
+export interface ProbQuestion {
 	enonce: string;
 	etapes: ProblemeEtape[];
 	parle: string;
 	figure?: string;
+}
+
+/* Board PUR d'un problème (#419) : énoncé (+ figure) + sous-questions saisissables.
+   Extrait du runner live (renderQuestion l'appelle) POUR ÊTRE RÉUTILISÉ à l'identique
+   par la galerie visuelle (ui/galerie.ts) — même markup des deux côtés, donc un
+   snapshot y détecte les régressions du VRAI rendu. Fonction pure, SANS effet de bord
+   (pas de TTS branché, pas de listener) : l'entrée live ajoute ces effets autour. */
+export function renderProblemeBoardHTML(q: ProbQuestion, lex: ProbLexique = LEX_DEFAUT): string {
+	const multi = q.etapes.length > 1;
+	const etapesHTML = q.etapes
+		.map(
+			(et, i) => `<div class="prob-etape">
+        ${multi && lex.badgeEtape !== false ? `<span class="prob-num">Étape ${i + 1}</span>` : ''}
+        <label class="prob-q" for="probInput${i}">${escapeHTML(et.question)}</label>
+        <span class="prob-rep">
+          <span class="prob-rep-lab">Ma réponse</span>
+          <span class="prob-saisie">
+            <input class="prob-input" id="probInput${i}" data-i="${i}" data-answer="${et.answer}" inputmode="numeric" autocomplete="off" />
+            <span class="prob-mark" data-for="${i}"></span>
+          </span>
+        </span>
+      </div>`,
+		)
+		.join('');
+	return `<p class="prob-enonce" data-tts-pos="start"${ttsAttr(q.parle)}>${escapeHTML(q.enonce)}</p>
+          ${figureBlock(q.figure)}
+          <div class="prob-etapes${multi ? ' prob-etapes-multi' : ''}">${etapesHTML}</div>`;
 }
 
 let lesson: LessonDef;
@@ -99,31 +126,13 @@ export function runLeconProbleme(lessonId: string, m?: ExerciseMode): void {
 function renderQuestion(): void {
 	answered = false;
 	const q = questions[idx];
-	const multi = q.etapes.length > 1;
-	const etapesHTML = q.etapes
-		.map(
-			(et, i) => `<div class="prob-etape">
-        ${multi && lex.badgeEtape !== false ? `<span class="prob-num">Étape ${i + 1}</span>` : ''}
-        <label class="prob-q" for="probInput${i}">${escapeHTML(et.question)}</label>
-        <span class="prob-rep">
-          <span class="prob-rep-lab">Ma réponse</span>
-          <span class="prob-saisie">
-            <input class="prob-input" id="probInput${i}" data-i="${i}" data-answer="${et.answer}" inputmode="numeric" autocomplete="off" />
-            <span class="prob-mark" data-for="${i}"></span>
-          </span>
-        </span>
-      </div>`,
-		)
-		.join('');
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length, lex.nom)}
       <div class="sprint-stage prob-stage">
         <div class="prob-col">
           <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
-          <p class="prob-enonce" data-tts-pos="start"${ttsAttr(q.parle)}>${escapeHTML(q.enonce)}</p>
-          ${figureBlock(q.figure)}
-          <div class="prob-etapes${multi ? ' prob-etapes-multi' : ''}">${etapesHTML}</div>
+          ${renderProblemeBoardHTML(q, lex)}
           ${brouillonHTML()}
           <button class="sprint-btn" id="probVerif">Vérifier</button>
           <div class="sprint-correction" id="probFeedback" hidden></div>

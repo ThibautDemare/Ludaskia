@@ -432,7 +432,7 @@ function listesOrthoHTML(consulte: Profile): string {
 		? `<details class="enc-ortho-dispo">
         <summary class="enc-ortho-dispo-sum">Parcourir les dictées proposées (${proposees.length})</summary>
         <p class="enc-hint">Des dictées prêtes à l'emploi (mots invariables, nombres, thèmes). Épinglez-en une pour la proposer à ${escapeHTML(consulte.name)} avant qu'il ou elle ne la rencontre.</p>
-        <ul class="enc-revoir">${proposees.map(ligneDicteeProposee).join('')}</ul>
+        <ul class="enc-ortho-dispo-list">${proposees.map(ligneDicteeProposee).join('')}</ul>
       </details>`
 		: '';
 	return `<div class="enc-block">

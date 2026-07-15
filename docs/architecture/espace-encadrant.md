@@ -140,6 +140,31 @@ accueil, `ui/a-revoir-card.ts` affiche une carte (`#aRevoir`, modèle « leçon 
 **boucle** sur la liste ; auto-nettoyage au rendu (`revoirActives` exclut une leçon redevenue
 solide). L'enfant n'a pas à être présent quand l'encadrant épingle.
 
+## Récap du mode Révision espacée (#423)
+
+**Récap du mode Révision espacée** (#423), sous « À revoir » : donne à l'encadrant une vue
+de la file de répétition espacée (#45) du profil consulté. `core/encadrant-stats.ts` (fonction
+`revisionProfil`) projette, PAR ENTRÉE (leçon maths/conjugaison ou mot d'orthographe — deux
+sources fusionnées, `LESSON_REVISION_KEY` et `ORTHO_KEY → banque[].revision`), son **palier
+courant** (position dans l'escalier d'intervalles, `libellePalier`) et son **échéance
+relative** (« à réviser aujourd'hui / demain / dans N jours », « en retard de N jours »,
+`libelleEcheanceRevision`) — jamais de date brute, dans l'esprit du reste du récap. Une
+entrée ayant atteint le palier maximal reste affichée, avec un badge « acquis » plutôt que
+masquée (elle compte pour la couverture). **Même filtre que la frise d'évolution** : seules
+les entrées du **niveau actif de la matière** (`niveauProfilMatiere`) sont montrées, pour ne
+pas afficher de fantôme d'un ancien niveau après un changement de classe.
+
+Deux visualisations, bascule au même patron que le graphe d'activité (module
+`ui/encadrant-revision.ts`) : **« Par catégorie »** (regroupement dépliable, même chrome que
+« Notions par catégorie ») et **« Par urgence »** (liste à plat, les plus en retard d'abord,
+`compareUrgence`). Seul chiffre affiché : un dénombrement (« X en révision, dont Y à réviser
+· Z déjà acquises »), aucun pourcentage ni note.
+
+**Distinct de « à revoir » ci-dessus** : cette file reflète le moteur de révision espacée
+(#45), automatique et alimentée par le passage en session ; la file « à revoir »
+(`ludaskia_revoir`) reste un mécanisme **manuel**, épinglé par l'encadrant. Les deux
+coexistent sans se recouvrir.
+
 ## Réglages déplacés hors de portée de l'enfant
 
 **Réglages déplacés hors de portée de l'enfant** (par UUID consulté) : la **« Classe

@@ -24,6 +24,7 @@ import {
 	LESSON_FIRST_SEEN_KEY,
 	LESSON_PALIERS_KEY,
 	ACTIVITY_KEY,
+	LESSON_REVISION_KEY,
 	loadLessonStats,
 	loadStars,
 	normalizeActivity,
@@ -48,6 +49,7 @@ import {
 	getLessonsByCategory,
 	CATEGORIES,
 	SUBJECTS,
+	ORTHO_CATEGORY_ID,
 	type LessonDef,
 	type SchoolLevel,
 	type SubjectId,
@@ -55,6 +57,9 @@ import {
 import { niveauDefautCatalogue } from './levels';
 import { niveauActifMatiere } from './niveau-actif';
 import type { Profile } from './profiles';
+import { ORTHO_KEY } from './orthographe/store';
+import { REVISION_INTERVALLES, PALIER_ACQUIS, JOUR, estAcquis } from './revision';
+import type { EtatRevision, OrthoState } from './orthographe/types';
 
 /* L'échelle de maîtrise (types + niveauNotion/tendanceNotion) vit dans maitrise.ts ; on la
    re-expose ici pour les consommateurs historiques de l'espace encadrant (UI + tests) qui
@@ -427,4 +432,179 @@ export function revoirActives(): LessonDef[] {
 		if (!etoilee && (pct == null || pct < SEUIL_REVOIR)) out.push(lesson);
 	}
 	return out;
+}
+
+/* ============================================================
+   Récap du mode Révision espacée (#423) — vue ENCADRANT de la file.
+   ------------------------------------------------------------
+   Projette, PAR PROFIL (par UUID, sans bascule), l'état de répétition
+   espacée (#45) des deux sources : les LEÇONS (LESSON_REVISION_KEY) et les
+   MOTS d'orthographe (ORTHO_KEY → banque[].revision). Pour chaque entrée :
+   son palier courant (position dans l'escalier d'intervalles) et sa prochaine
+   échéance, en langage relatif (« à réviser demain », « en retard de 2 jours »),
+   dans l'esprit de l'espace encadrant (pas de pourcentage ni de note).
+   Pure/lecture ; `now` injecté (testable). Ne mute jamais l'état SR.
+   ============================================================ */
+export type NatureRevision = 'lecon' | 'mot';
+
+export interface EntreeRevision {
+	cle: string; // clé d'affichage unique (`lessonId@niveau` pour une leçon, `mot:<id>` pour un mot)
+	label: string; // libellé de leçon résolu, ou le mot lui-même
+	nature: NatureRevision;
+	categoryId: string; // catégorie de rattachement (catalogue ; mots → ORTHO_CATEGORY_ID)
+	palier: number; // 0..PALIER_ACQUIS
+	palierLabel: string; // intervalle courant (« 1 semaine ») ; '' si acquis
+	acquis: boolean; // palier maximal atteint → sorti de la rotation active
+	prochaineRevision: number | null; // échéance (ms) ; null si acquis
+	echeance: string; // libellé relatif de l'échéance ('' si acquis)
+	du: boolean; // échue (aujourd'hui ou en retard) et pas encore acquise
+	joursRestants: number | null; // jours calendaires jusqu'à l'échéance (<0 = en retard) ; null si acquis
+}
+
+export interface GroupeRevision {
+	categoryId: string;
+	label: string;
+	subject: SubjectId;
+	entrees: EntreeRevision[]; // triées par urgence (dues d'abord, acquises en fin)
+	enRotation: number; // entrées non acquises
+	acquises: number;
+	dues: number; // non acquises et échues (aujourd'hui ou en retard)
+}
+
+export interface RecapRevision {
+	total: number;
+	enRotation: number;
+	acquises: number;
+	dues: number;
+	groupes: GroupeRevision[]; // vue « par catégorie » (ordre du catalogue)
+	parUrgence: EntreeRevision[]; // vue « par urgence » (plus en retard d'abord, acquises en fin)
+}
+
+/* Libellé d'un palier = intervalle de re-test correspondant, en langage courant, DÉRIVÉ
+   de REVISION_INTERVALLES (source unique — pas de valeurs recopiées). '' pour l'acquis
+   (rendu par un badge dédié côté UI). Pur. */
+export function libellePalier(palier: number): string {
+	if (palier >= PALIER_ACQUIS) return '';
+	const jours = REVISION_INTERVALLES[Math.min(palier, REVISION_INTERVALLES.length - 1)] / JOUR;
+	if (jours < 7) return `${jours} jour${jours > 1 ? 's' : ''}`;
+	if (jours < 30) {
+		const s = Math.round(jours / 7);
+		return `${s} semaine${s > 1 ? 's' : ''}`;
+	}
+	const m = Math.round(jours / 30);
+	return `${m} mois`;
+}
+
+/* L'escalier complet des paliers, pour la légende (« 1 jour → 3 jours → … → acquis »).
+   Dérivé de REVISION_INTERVALLES + « acquis ». Pur. */
+export function echelleRevisionLabels(): string[] {
+	return REVISION_INTERVALLES.map((_, p) => libellePalier(p)).concat('acquis');
+}
+
+/* Échéance en langage RELATIF pour un parent (jamais une date brute — cf. principe
+   de l'espace encadrant). Formulation NEUTRE en genre (« à réviser … » plutôt que
+   « dû/due … », qui s'accorderait différemment pour une leçon ou un mot). Pur. */
+export function libelleEcheanceRevision(prochaineRevision: number | null, now: number): string {
+	if (prochaineRevision == null) return '';
+	const j = Math.round((startOfDay(prochaineRevision) - startOfDay(now)) / JOUR);
+	if (j < 0) return `en retard de ${-j} jour${-j > 1 ? 's' : ''}`;
+	if (j === 0) return "à réviser aujourd'hui";
+	if (j === 1) return 'à réviser demain';
+	return `à réviser dans ${j} jours`;
+}
+
+function entreeRevision(
+	cle: string,
+	label: string,
+	nature: NatureRevision,
+	categoryId: string,
+	etat: EtatRevision,
+	now: number,
+): EntreeRevision {
+	const acquis = estAcquis(etat);
+	const joursRestants =
+		acquis || etat.prochaineRevision == null
+			? null
+			: Math.round((startOfDay(etat.prochaineRevision) - startOfDay(now)) / JOUR);
+	return {
+		cle,
+		label,
+		nature,
+		categoryId,
+		palier: etat.palier,
+		palierLabel: libellePalier(etat.palier),
+		acquis,
+		prochaineRevision: acquis ? null : etat.prochaineRevision, // un acquis n'a plus d'échéance
+		echeance: libelleEcheanceRevision(acquis ? null : etat.prochaineRevision, now),
+		// « dû » CALENDAIRE (échéance ≤ aujourd'hui) pour la lecture parent — volontairement plus
+		// large que estDu() (revision.ts, comparaison en ms) : un élément programmé pour ce soir est
+		// déjà annoncé « à réviser aujourd'hui » ici, même si le moteur ne le proposera qu'à l'heure dite.
+		du: !acquis && joursRestants != null && joursRestants <= 0,
+		joursRestants,
+	};
+}
+
+/* Tri par urgence : les plus en retard d'abord (jour restant le plus petit/négatif),
+   puis les échéances futures, enfin les acquises ; à égalité, ordre alphabétique. */
+function compareUrgence(a: EntreeRevision, b: EntreeRevision): number {
+	if (a.acquis !== b.acquis) return a.acquis ? 1 : -1;
+	const ja = a.joursRestants ?? Infinity;
+	const jb = b.joursRestants ?? Infinity;
+	if (ja !== jb) return ja - jb;
+	return a.label.localeCompare(b.label, 'fr');
+}
+
+/* File de révision d'un profil (par UUID), SANS changer le profil actif.
+   `now` injecté pour testabilité (l'UI passe Date.now()). */
+export function revisionProfil(profile: Profile, now: number): RecapRevision {
+	const uuid = profile.uuid;
+	const lessonRev = lsGetRaw(uuid + '/' + LESSON_REVISION_KEY, {}) as Record<string, EtatRevision>;
+	const ortho = lsGetRaw(uuid + '/' + ORTHO_KEY, null) as OrthoState | null;
+
+	const entrees: EntreeRevision[] = [];
+	for (const k in lessonRev) {
+		const etat = lessonRev[k];
+		if (!etat || !Number.isFinite(etat.palier)) continue;
+		const lesson = getLessonById(lessonOfKey(k));
+		if (!lesson) continue; // leçon sortie du catalogue (ex. après un changement de version) → ignorée
+		// N'afficher que le niveau ACTIF de la matière : le moteur ne révise que celui-là
+		// (loadLessonRevisions → scopeActif). Une clé `@ancien-niveau` laissée après un
+		// changement de classe est DORMANTE (jamais reproposée) — l'afficher créerait un
+		// doublon fantôme « en retard » que le parent ne pourrait jamais résorber. Même
+		// filtre que frisesParMatiere. (Sans objet pour les mots d'ortho, non namespacés.)
+		if (niveauOfKey(k) !== niveauProfilMatiere(profile, lesson.subject)) continue;
+		entrees.push(entreeRevision(k, lesson.label, 'lecon', lesson.category, etat, now));
+	}
+	if (ortho && ortho.banque && typeof ortho.banque === 'object') {
+		for (const id in ortho.banque) {
+			const m = ortho.banque[id];
+			if (!m || !m.revision || !Number.isFinite(m.revision.palier)) continue;
+			entrees.push(entreeRevision('mot:' + id, m.mot, 'mot', ORTHO_CATEGORY_ID, m.revision, now));
+		}
+	}
+
+	// Regroupement par catégorie, dans l'ORDRE DU CATALOGUE (comme « Notions par catégorie »).
+	const groupes: GroupeRevision[] = [];
+	for (const cat of CATEGORIES) {
+		const es = entrees.filter((e) => e.categoryId === cat.id).sort(compareUrgence);
+		if (es.length === 0) continue;
+		groupes.push({
+			categoryId: cat.id,
+			label: cat.label,
+			subject: cat.subject,
+			entrees: es,
+			enRotation: es.filter((e) => !e.acquis).length,
+			acquises: es.filter((e) => e.acquis).length,
+			dues: es.filter((e) => e.du).length,
+		});
+	}
+
+	return {
+		total: entrees.length,
+		enRotation: entrees.filter((e) => !e.acquis).length,
+		acquises: entrees.filter((e) => e.acquis).length,
+		dues: entrees.filter((e) => e.du).length,
+		groupes,
+		parUrgence: [...entrees].sort(compareUrgence),
+	};
 }

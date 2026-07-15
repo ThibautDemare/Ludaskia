@@ -32,6 +32,7 @@ import {
 	pinChange,
 } from './encadrant-pin';
 import { recapHTML, progressionClick } from './encadrant-progression';
+import { revisionHTML, revisionClick } from './encadrant-revision';
 import { reglagesHTML, reglagesChange } from './encadrant-reglages';
 import { profilsHTML, sauvegardeHTML, profilsClick } from './encadrant-profils';
 
@@ -81,6 +82,7 @@ function renderEspace(): void {
     <h1 class="enc-title">Espace encadrants</h1>
     ${profilsHTML(profiles, consulte, actif)}
     ${recapHTML(recap, consulte)}
+    ${revisionHTML(consulte, Date.now())}
     ${reglagesHTML(consulte, pinPanelHTML())}
     ${sauvegardeHTML()}`;
 }
@@ -96,6 +98,7 @@ function onClick(e: Event): void {
 	}
 	if (pinClick(act, el)) return;
 	if (profilsClick(act, el)) return;
+	if (revisionClick(act, el)) return;
 	progressionClick(act, el);
 }
 

@@ -269,7 +269,10 @@ homophones portent une **phrase d'exemple** (`commeDans`) pour lever l'ambiguït
 dictée. Ces listes ne passent **pas** par le pipeline `LessonDef`/`genLessonItem` : elles
 sont jouées par le **moteur d'orthographe dédié** (`core/orthographe/`, runners
 `ui/ortho-*`), via la catégorie dynamique `ORTHO_CATEGORY_ID` et l'écran sur-mesure
-`renderOrthoCategorie`. Détail du moteur : `docs/design-orthographe.md`.
+`renderOrthoCategorie`. Détail du moteur : `docs/design-orthographe.md`. N'étant pas des
+`LessonDef`, ni les listes prédéfinies ni celles du parent ne bénéficient nativement du
+suivi de maîtrise/épinglage du catalogue : depuis #424, ils sont recréés à part pour
+l'orthographe — cf. [Espace encadrant § Listes de dictée](espace-encadrant.md).
 
 ### Vocabulaire
 

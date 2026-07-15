@@ -97,6 +97,56 @@ test('épingler une liste de dictée : rejoint « à revoir », apparaît sur l�
 	expect(errors).toEqual([]);
 });
 
+/* Sous-section « Parcourir les dictées proposées » (#424, épinglage à l'avance) : les
+   dictées prédéfinies du niveau, jamais commencées ni déjà épinglées, repliées sous un
+   <details> pour ne pas noyer le suivi. Le seed du profil (beforeEach) ne démarre aucune
+   prédéfinie (seule une liste MAISON est en cours) : l'état par défaut suffit. */
+test('« Parcourir les dictées proposées » : épingler une prédéfinie à l’avance la fait rejoindre le suivi et l’accueil', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'encadrant');
+
+	const browse = page.locator('details.enc-ortho-dispo');
+	const sum = browse.locator('summary.enc-ortho-dispo-sum');
+	await expect(sum).toBeVisible();
+	await expect(sum).toContainText(/Parcourir les dictées proposées \(\d+\)/);
+
+	// Repliée par défaut : on déplie pour atteindre la ligne visée.
+	await sum.click();
+	const btnEpingler = browse.locator(
+		'button[data-act="epingler"][data-lesson="ortho:fr-ortho-invariables-1"]',
+	);
+	await expect(btnEpingler).toBeVisible();
+	await expect(btnEpingler).toContainText('Épingler');
+
+	await btnEpingler.click();
+	// Épinglée à l'avance : quitte la sous-section « Parcourir »…
+	await expect(browse.locator('[data-lesson="ortho:fr-ortho-invariables-1"]')).toHaveCount(0);
+	// … rejoint le suivi (Listes de dictée, niveau « à découvrir ») ET les épinglées.
+	await expect(
+		page.locator('.enc-detail-item:has([data-lesson="ortho:fr-ortho-invariables-1"])'),
+	).toBeVisible();
+	await expect(
+		page
+			.locator(
+				'.enc-revoir button[data-act="epingler"][data-lesson="ortho:fr-ortho-invariables-1"]',
+			)
+			.filter({ hasText: 'Retirer' }),
+	).toBeVisible();
+
+	// Accueil enfant : la carte « À revoir » la propose, lançable (hash dictée).
+	await page.locator('.enc-back[data-act="retour"]').click();
+	const carte = page.locator('#aRevoir');
+	await expect(carte).toBeVisible();
+	await expect(carte).toHaveAttribute('data-kind', 'ortho');
+	await expect(carte).toHaveAttribute('data-lesson', 'fr-ortho-invariables-1');
+	await carte.locator('.lj-title').click();
+	await expect(page).toHaveURL(/#ortho-(mode-)?fr-ortho-invariables-1$/);
+
+	expect(errors).toEqual([]);
+});
+
 /* Bonus (#424) : une erreur de dictée peut désormais être épinglée depuis
    « Ce qui a été difficile récemment » (l'action était masquée pour une liste
    d'orthographe ; seules les leçons du catalogue pouvaient l'être). */

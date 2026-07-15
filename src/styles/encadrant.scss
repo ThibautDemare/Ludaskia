@@ -1060,5 +1060,102 @@ $evol-amorce: #7c8494;
 	margin: 0.35rem 0 0;
 }
 
+/* ---------- Récap du mode Révision (#423) ----------
+   File de répétition espacée vue par l'encadrant. Réutilise le chrome des catégories
+   (.enc-cat-d / .enc-cat-sum, chevron inclus) pour la vue « Par catégorie » et la
+   bascule .enc-act-modes. Ci-dessous : la liste d'entrées (partagée par les deux vues)
+   et son état (palier / échéance / badge acquis). Sobre, en tokens (survit au thème Nuit),
+   sans pourcentage ni couleur porteuse d'un sens à elle seule (a11y). */
+/* Intro du bloc Révision : même rendu que .enc-frame, mais classe DÉDIÉE — .enc-frame
+   reste le sélecteur stable réservé à l'intro du récap de progression (e2e strict mode). */
+.enc-rev-frame {
+	font-size: 0.9rem;
+	color: var(--grey);
+	margin: 0 0 0.8rem;
+}
+.enc-rev-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+/* Vue « Par urgence » : rangées bordées (scannables dans une longue liste à plat). */
+.enc-rev-flat {
+	margin-top: 0.2rem;
+}
+.enc-rev-flat .enc-rev-item {
+	padding: 0.45rem 0.6rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+}
+.enc-rev-item {
+	display: flex;
+	flex-wrap: wrap; /* sur petit écran, l'état passe sous le libellé plutôt que de l'écraser */
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.15rem 0.6rem;
+	font-size: 0.85rem;
+}
+/* Les acquises sont déjà mises en retrait par le TRI (elles finissent la liste) et par leur
+   badge dédié : pas d'`opacity` sur l'entrée, qui atténuerait le badge --ok et la catégorie
+   sous le seuil AA (le sens ne doit pas dépendre d'une couleur affaiblie — a11y). */
+.enc-rev-main {
+	flex: 1;
+	min-width: 140px;
+	display: flex;
+	flex-direction: column;
+	gap: 0.05rem;
+}
+.enc-rev-lab {
+	font-weight: 700;
+	color: var(--ink);
+}
+.enc-rev-cat {
+	font-size: 0.72rem;
+	color: var(--grey);
+}
+.enc-rev-etat {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.1rem 0.5rem;
+	text-align: right;
+}
+.enc-rev-palier {
+	font-size: 0.75rem;
+	color: var(--grey);
+	white-space: nowrap;
+}
+/* Échéance : neutre par défaut ; les entrées DUES (aujourd'hui / en retard) sont
+   simplement mises en avant par le poids et la couleur d'encre (jamais un rouge
+   alarmant — le sens tient dans le texte lui-même, pas dans la couleur). */
+.enc-rev-echeance {
+	font-size: 0.78rem;
+	font-weight: 700;
+	color: var(--grey);
+	white-space: nowrap;
+}
+.enc-rev-echeance.du {
+	color: var(--ink);
+	font-weight: 800;
+}
+/* Badge « acquis » : mot + coche, en --ok (positif, ≥ 4,5:1 sur --paper clair et Nuit).
+   Le mot porte le sens ; la couleur et l'icône ne font que le redoubler. */
+.enc-rev-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.2rem;
+	font-size: 0.78rem;
+	font-weight: 800;
+	color: var(--ok);
+	white-space: nowrap;
+}
+.enc-rev-badge svg {
+	width: 1em;
+	height: 1em;
+}
+
 /* Les cartes profil (consulter + gérer dépliable) restent en COLONNE à toutes les
    tailles : un dépliage en grille 2 colonnes décalerait les cartes voisines. */

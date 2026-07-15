@@ -21,7 +21,7 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
 
 ## Espace encadrant (rendu)
 
-Découpé par responsabilité (#234, découpage #354) en un **orchestrateur** + cinq
+Découpé par responsabilité (#234, découpage #354) en un **orchestrateur** + six
 modules de section, en graphe **étoile** : chaque section n'importe que
 `encadrant-commun` (+ le core), sauf `encadrant-profils` qui dépend aussi de
 `encadrant-pin` (referme son sous-panneau au changement de profil consulté) —
@@ -46,6 +46,12 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   de notions au-dessus des semaines non vides, semaine en cours distinguée, sans axe ni
   pourcentage), **historique des erreurs récentes** (#391, cf. `encadrant-erreurs.ts`
   ci-dessous), file « à revoir » ; handlers `activite-mode`/`epingler`/`imprimer`.
+- **`encadrant-revision.ts`** (#423) — **récap du mode Révision espacée** par profil,
+  affiché juste après le bloc ci-dessus : projette la file de répétition espacée (#45,
+  lue par `core/encadrant-stats.ts:revisionProfil`) — palier courant + échéance relative
+  par entrée, badge « acquis » pour les entrées sorties de rotation. Bascule **« Par
+  catégorie »** (regroupement dépliable, même chrome que « Notions par catégorie ») /
+  **« Par urgence »** (liste à plat, plus en retard d'abord) ; handler `revision-mode`.
 - **`encadrant-reglages.ts`** — **réglages** sur le profil consulté : classe de
   référence + niveau par matière, aménagements « dys »/attention ; injecte le
   bloc PIN rendu par `encadrant-pin`.

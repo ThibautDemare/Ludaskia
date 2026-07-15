@@ -395,7 +395,9 @@ propre doc de conception : `docs/design-orthographe.md`.
 - **`revision.ts`** — **révision espacée** (#45), brique **pure** : escalier
   d'intervalles CE2 (`etatNeuf`, `avancerEtat`, `estDu`/`estAcquis` ; `now` passé
   en paramètre). État `EtatRevision` partagé par les mots d'orthographe et les
-  leçons maths/conjugaison.
+  leçons maths/conjugaison. Cette file est aussi **consultable côté encadrant**
+  (par profil, sans bascule) via `encadrant-stats.ts:revisionProfil` — cf.
+  [Espace encadrant](espace-encadrant.md).
 - **`revision-select.ts`** — sélection des éléments **dus** (mots + leçons),
   **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`) ;
   `prochaineEcheance`/`aDesRevisions` alimentent l'état « rien à réviser » de
@@ -521,6 +523,11 @@ propre doc de conception : `docs/design-orthographe.md`.
   `ludaskia_paliers` ; fenêtre de **12 semaines** (`SEMAINES_FRISE`), matière masquée tant
   que son premier franchissement a moins de **3 semaines** de recul
   (`PALIERS_MIN_SEMAINES`). Exposée dans `RecapProfil.frises`.
+  **Récap du mode Révision espacée** (#423) : `revisionProfil(profile, now)` → `RecapRevision`
+  projette la file de répétition espacée (`revision.ts`, #45) du profil consulté — palier
+  courant + échéance relative par entrée (`libellePalier`/`libelleEcheanceRevision`), groupée
+  par catégorie (`GroupeRevision`) et triée par urgence (`parUrgence`) ; même filtre de niveau
+  actif que la frise. Détail dans [Espace encadrant](espace-encadrant.md).
 - **`encadrant-lock.ts`** (#234) — verrou optionnel de l'espace encadrant : PIN haché
   (SHA-256 `crypto.subtle`) + récupération par secret (GUID) ; clé GLOBALE
   `ludaskia_encadrant_lock` (`pinActif`/`definirPin`/`verifierPin`/`reinitViaRecuperation`/

@@ -23,8 +23,8 @@ export interface Entourage {
 
 /** État de répétition espacée d'un mot (escalier d'intervalles). */
 export interface EtatRevision {
-	palier: number; // 0 = neuf … 4 = acquis
-	prochaineRevision: number | null; // timestamp ms ; null tant que pas entré en banque
+	palier: number; // 0 = neuf … PALIER_ACQUIS (= 6, cf. revision.ts) = acquis (hors rotation)
+	prochaineRevision: number | null; // timestamp ms ; null tant que pas entré en banque (ou une fois acquis)
 	reussites: number;
 	dernierTest: number | null; // timestamp ms
 }

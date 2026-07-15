@@ -114,13 +114,21 @@ de chaque mot **attendu** d'une liste (mots simples + cibles verbe, résolues pa
 Agrégé par profil pour l'espace encadrant par `listesOrthoProfil(profile, dicteeDispo)`
 (`core/encadrant-stats.ts`), qui lit `ludaskia_ortho` du profil **consulté** par UUID
 (`loadOrthoFor`) et unifie prédéfinies + listes du parent via `listOrthoLecons`. **Les dictées
-prédéfinies non commencées sont masquées** (sinon la quarantaine de dictées prédéfinies
-noierait les listes du parent) ; **les listes créées par le parent restent toujours
-visibles**, même « à découvrir ». Pour « en cours », un compte factuel « X/Y mots maîtrisés »
-est accolé (jamais de %), pour restituer la nuance perdue par l'absence de « à renforcer ».
+prédéfinies non commencées sont masquées du SUIVI** (sinon la quarantaine de dictées prédéfinies
+noierait les listes du parent), **sauf si elles ont été épinglées** (suivi alors voulu) ; **les
+listes créées par le parent restent toujours visibles**, même « à découvrir ». Pour « en cours »,
+un compte factuel « X/Y mots maîtrisés » est accolé (jamais de %), pour restituer la nuance
+perdue par l'absence de « à renforcer ».
 
 Chaque liste peut être **épinglée** (même mécanique que « à revoir », cf. ci-dessous) — elle
 rejoint alors la file de l'enfant comme une leçon.
+
+**Épingler une dictée « à l'avance »** : une sous-section repliée **« Parcourir les dictées
+proposées »** liste les dictées **prédéfinies non commencées** (`dicteesProposees`,
+`core/encadrant-stats.ts`), pour que l'encadrant en pousse une **avant** que l'enfant ne la
+rencontre — parité avec « épingler n'importe quelle leçon, même pas encore abordée » du
+catalogue, sans noyer le suivi. Une prédéfinie ainsi épinglée quitte cette sous-section et
+apparaît dans le suivi (état « à découvrir » tant qu'elle n'est pas commencée).
 
 ## Historique des erreurs (#391)
 

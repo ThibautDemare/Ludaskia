@@ -40,5 +40,16 @@ export default defineConfig({
 	plugins: [emitVersionFile()],
 	// Vitest = logique pure (dossier tests/). Les specs Playwright (e2e/) ont
 	// leur propre runner : on restreint l'include pour ne pas les ramasser ici.
-	test: { environment: 'happy-dom', include: ['tests/**/*.{test,spec}.ts'] },
+	test: {
+		environment: 'happy-dom',
+		include: ['tests/**/*.{test,spec}.ts'],
+		// Les tests d'invariant échantillonnent LARGEMENT (boucles de 3000+ tirages,
+		// « bornes dures par échantillon » : décimaux, fractions, accords, verbes…).
+		// Corrects et rapides au repos, ils peuvent dépasser le testTimeout par défaut
+		// (5 s) quand la machine est SATURÉE — typiquement le hook pre-push lancé pendant
+		// que plusieurs agents tournent, ou un runner CI contendu (échecs de timeout
+		// intermittents, jamais d'assertion fausse). On élargit le timeout pour éliminer
+		// ces faux échecs SANS réduire l'échantillonnage ; un vrai blocage échoue toujours.
+		testTimeout: 30000,
+	},
 });

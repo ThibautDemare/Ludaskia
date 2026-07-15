@@ -5,6 +5,15 @@
    l'autre (dégradés, ombres floues). Valeurs en dur (pas de dépendance au thème
    du profil) pour un rendu constant, indépendant de l'état local.
    ============================================================ */
+/* Masque le chrome de l'app pendant la galerie : la barre d'outils et le pied de
+   page sont en `position: fixed` et se compositeraient au milieu des captures
+   d'élément (les sections dépassent le viewport). La classe est posée/retirée par
+   ui/navigation.ts (route DEV `#galerie`). */
+body.galerie-active .toolbar,
+body.galerie-active .site-footer {
+	display: none;
+}
+
 .galerie {
 	padding: 12px;
 	background: #ffffff;

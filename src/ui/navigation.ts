@@ -301,6 +301,11 @@ export function route() {
 		resetSessionUI();
 		setToolbar({ verify: false, home: true, profile: false });
 		hideMenus();
+		// Masque le chrome (barre d'outils + pied de page, `position: fixed`) pendant la
+		// galerie : sinon il se composite au milieu des captures d'élément (artefact des
+		// screenshots Playwright sur les éléments plus hauts que le viewport). Retiré par
+		// `setToolbar` en quittant la route. Cf. `body.galerie-active` dans galerie.scss.
+		document.body.classList.add('galerie-active');
 		const sheets = document.getElementById('sheets')!;
 		void import('./galerie').then((m) => {
 			m.renderGalerie(sheets);
@@ -345,6 +350,8 @@ export function setToolbar({
 	}
 	closeProfileMenu(); // tout changement de vue referme le menu déroulant
 	closeDrawer(); // … et le tiroir mobile (ex. après un tap sur Accueil)
+	// Quitter la galerie (#412, route DEV) restaure le chrome masqué pour ses captures.
+	document.body.classList.remove('galerie-active');
 	// Pied de page global (#336) : `session-active` ⇔ une session est en cours
 	// (exercice, sprint, révision : currentMode ≠ null ; remis à null par
 	// resetSessionUI sur tout écran de repos). Le CSS masque alors le pied de page

@@ -46,6 +46,7 @@ import {
 	toggleRevoirFor,
 	revoirActives,
 	listesOrthoProfil,
+	dicteesProposees,
 	epingleesProfil,
 } from '../src/core/encadrant-stats';
 import type { MotOrtho, OrthoState, VerbeConfig } from '../src/core/orthographe/types';
@@ -417,6 +418,79 @@ describe('listesOrthoProfil — filtre et champs', () => {
 		const recapA = listesOrthoProfil(a, false);
 		expect(recapA.map((r) => r.label)).toEqual(['Liste de A']);
 		expect(activeProfile().name).toBe('Profil B'); // pas de bascule
+	});
+
+	it('prédéfinie non commencée mais ÉPINGLÉE À L’AVANCE → apparaît (a-decouvrir + epingle)', () => {
+		const p = activeProfile();
+		const predefId = 'fr-ortho-invariables-1'; // CE2, jamais matérialisée (banque vide)
+		toggleRevoirFor(p.uuid, orthoRevoirId(predefId));
+
+		const recap = listesOrthoProfil(p, false);
+		const pred = recap.find((r) => r.id === predefId);
+		expect(pred).toBeTruthy();
+		expect(pred!.niveau).toBe('a-decouvrir'); // toujours pas commencée
+		expect(pred!.epingle).toBe(true); // c'est l'épinglage qui la fait apparaître
+		expect(pred!.maitrises).toBe(0);
+		expect(pred!.nbMots).toBe(ORTHO_PREDEF.find((l) => l.id === predefId)!.mots.length);
+		// Les AUTRES prédéfinies (non épinglées, non commencées) restent masquées du suivi.
+		const autresPredef = recap.filter((r) => r.source === 'predefini' && r.id !== predefId);
+		expect(autresPredef).toEqual([]);
+	});
+});
+
+/* ============================================================
+   dicteesProposees — prédéfinies « à épingler à l'avance »
+   ============================================================ */
+describe('dicteesProposees — prédéfinies non commencées et non épinglées', () => {
+	const CE2_IDS = ORTHO_PREDEF.filter((l) => l.niveau === 'ce2').map((l) => l.id);
+	const predefId = 'fr-ortho-invariables-1'; // CE2
+
+	it('profil vierge : propose exactement les prédéfinies du niveau (filtre = listOrthoLecons)', () => {
+		const p = activeProfile(); // niveau français par défaut = CE2
+		const proposed = dicteesProposees(p, false);
+		// Toutes les prédéfinies CE2 (aucune commencée, aucune épinglée), et RIEN d'autre.
+		expect(proposed.map((d) => d.id).sort()).toEqual([...CE2_IDS].sort());
+		// Aucune prédéfinie CM1 (hors niveau du profil) — cohérence du filtrage par niveau.
+		expect(proposed.some((d) => d.id.startsWith('fr-ortho-cm1-'))).toBe(false);
+		// Champs factuels.
+		const d = proposed.find((x) => x.id === predefId)!;
+		expect(d.label.length).toBeGreaterThan(0);
+		expect(d.nbMots).toBe(ORTHO_PREDEF.find((l) => l.id === predefId)!.mots.length);
+	});
+
+	it('la même dictée, une fois ÉPINGLÉE, sort des proposées et entre au suivi', () => {
+		const p = activeProfile();
+		toggleRevoirFor(p.uuid, orthoRevoirId(predefId));
+		// Proposées : ne la contient plus.
+		expect(dicteesProposees(p, false).some((d) => d.id === predefId)).toBe(false);
+		// Suivi : l'y trouve désormais (épinglée à l'avance).
+		expect(listesOrthoProfil(p, false).some((r) => r.id === predefId)).toBe(true);
+		// Le reste des prédéfinies CE2 reste proposé.
+		expect(
+			dicteesProposees(p, false)
+				.map((d) => d.id)
+				.sort(),
+		).toEqual(CE2_IDS.filter((id) => id !== predefId).sort());
+	});
+
+	it('une prédéfinie COMMENCÉE est au suivi, jamais dans les proposées', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		const mots = motsDeLecon(s, predefId);
+		poser(mots[0], { atelier: true }); // un mot entamé → ≠ a-decouvrir
+		saveOrtho(s);
+		expect(dicteesProposees(p, false).some((d) => d.id === predefId)).toBe(false);
+		expect(listesOrthoProfil(p, false).some((r) => r.id === predefId)).toBe(true);
+	});
+
+	it('les listes créées par le parent ne sont JAMAIS proposées (prédéfinies seulement)', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		const l = createListe(s, 'Semaine 1', [{ mot: 'chat' }]);
+		saveOrtho(s);
+		const proposed = dicteesProposees(p, false);
+		expect(proposed.some((d) => d.id === l.id)).toBe(false);
+		expect(proposed.every((d) => d.id.startsWith('fr-ortho-'))).toBe(true);
 	});
 });
 

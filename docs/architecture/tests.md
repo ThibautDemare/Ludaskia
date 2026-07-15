@@ -54,3 +54,12 @@ pas ramasser les specs Playwright. Détails : `e2e/README.md`.
 échantillon de vues plutôt que des assertions de rendu ciblées — signal
 automatisé, **non bloquant** par défaut, complémentaire du jugement de l'agent
 `relecteur-accessibilite`. Détails : `e2e/README.md`.
+
+Autre famille, `galerie.spec.ts` (#412) compare le rendu du catalogue à des
+**baselines de screenshots** (`toHaveScreenshot`) via la route **DEV-only**
+`#galerie` (`src/ui/galerie.ts`, gardée par `import.meta.env.DEV` — absente du
+bundle de production) qui affiche, groupée par catégorie, la fiche de chaque
+leçon sous `withSeed`. Les baselines sont **ancrées sur l'environnement de la
+CI** (ubuntu + Chromium) — comparaison ignorée hors Linux — et se régénèrent
+via le workflow `.github/workflows/update-snapshots.yml`. Détails et
+procédure : `e2e/README.md`.

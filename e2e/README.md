@@ -75,6 +75,72 @@ lisible). On écarte les règles « best-practice » (bruit non normatif).
   bloquerait : `A11Y_GATE=1 npx playwright test e2e/a11y-axe.spec.ts` (le scan
   échoue alors sur toute violation, avec le rapport en message d'assertion).
 
+## Snapshots visuels de la galerie (#412)
+
+`galerie.spec.ts` compare le rendu du catalogue à des **baselines de screenshots**
+commitées, pour attraper les régressions purement **graphiques** (mise en page
+cassée, figure SVG mal rendue, couleur qui change) que les smoke tests (absence
+d'erreur JS + interaction) ne voient pas. Complète — sans le remplacer — le
+jugement esthétique/émotionnel de l'agent `designer-ux-enfant` : on n'attrape ici
+que les régressions **mécaniques**.
+
+- **Route galerie** (`src/ui/galerie.ts`) : la route **DEV** `#galerie` rend en une
+  page la **fiche de chaque leçon**, groupée par catégorie. Elle est **absente du
+  build de production** : le handler est gardé par `import.meta.env.DEV` et importe
+  le module galerie dynamiquement → en prod (`vite build`, `DEV=false`) Rollup
+  supprime la branche **et** l'import ⇒ ce code n'est pas dans le bundle exposé. La
+  CI e2e tourne, elle, sur le serveur Vite `npm run dev` (`DEV=true`) → route dispo.
+- **Rendu déterministe** : toute la galerie est construite sous `withSeed` (graine
+  fixe) et chaque leçon calibrée à son premier niveau (`levels[0]`), donc contenu
+  **identique d'un run à l'autre**, indépendant du profil/niveau actif — condition
+  d'une comparaison de pixels stable.
+- **Une capture par catégorie** (`toHaveScreenshot` sur chaque `[data-gallery]`,
+  `animations: 'disabled'`) : diff localisé, PNG de taille raisonnable. Une seule
+  route/spec couvre tout le catalogue visuel.
+- **Périmètre v1** : les **fiches** (saisie, QCM en cases à cocher, opérations
+  posées, **figures SVG**, listes). Les écrans de **runner** interactifs (tuiles,
+  tri, appariement, problème, tableau de conversion), couplés à `#sheets`/au chrono
+  et à l'enregistrement d'un essai, sont un autre type de rendu → suivi séparé.
+
+### Baselines : ancrées sur la CI, jamais générées en local
+
+Le **moteur de rendu de texte** dépend de l'OS (FreeType sous Linux, DirectWrite
+sous Windows, CoreText sous macOS) : même police (Nunito est auto-hébergée,
+identique partout), l'anti-crénelage diffère → une baseline générée sous
+Windows/macOS ne correspondrait jamais au rendu **ubuntu + Chromium** du runner CI.
+Les baselines sont donc **ancrées sur l'environnement de la CI** et le test de
+comparaison est **ignoré hors Linux** (`test.skip`, visible « skipped » en local).
+Le 1er test de la spec (rendu sans erreur + présence des sections) tourne, lui, sur
+toutes les plateformes : il valide la galerie en local sans dépendre des baselines.
+
+### Régénérer les baselines (rendu volontairement modifié)
+
+**Quand** : uniquement après une **évolution VOLONTAIRE du rendu** (nouvelle leçon,
+refonte d'un composant, changement de couleur/figure assumé). Un diff **inattendu**
+est une **régression** → corriger le code, **ne pas** régénérer pour masquer.
+
+**Comment** : via le workflow CI `.github/workflows/update-snapshots.yml`, qui
+régénère dans l'environnement du runner (ubuntu + Chromium) — seul moyen d'obtenir
+des pixels identiques à ceux comparés par le job `e2e`. Il recommite les PNG
+modifiés sur la branche via le `GITHUB_TOKEN`.
+
+- **Workflow déjà sur `main`** : onglet **Actions → « Mettre à jour les snapshots
+  visuels » → Run workflow**, choisir la branche. Il régénère et recommite les
+  baselines. ⚠ Ce push (par `GITHUB_TOKEN`) **ne redéclenche aucun workflow** : pour
+  relancer la comparaison (`ci.yml`), pousser ensuite un commit **normal** (ou
+  ouvrir/rouvrir la PR).
+- **Amorçage** (workflow pas encore sur `main`, ou 1re génération d'une branche) :
+  pousser sur la branche un commit dont le **message contient `[update-snapshots]`**.
+  Le déclencheur `push` du workflow s'exécute, régénère et recommite les baselines.
+  Ordre propre pour éviter une CI rouge : pousser la branche (commit
+  `[update-snapshots]`) **avant** d'ouvrir la PR ; une fois les baselines commitées
+  par le bot (`git fetch`), ouvrir la PR → `ci.yml` compare avec les baselines en
+  place.
+
+**Ne jamais** régénérer en local : `npx playwright test galerie --update-snapshots`
+sous Windows/macOS est ignoré (`test.skip` hors Linux) et ne produit rien
+d'exploitable ; sur une machine Linux le rendu diffère encore du runner CI.
+
 ## CI
 
 Job `e2e` séparé dans `.github/workflows/ci.yml`, **bloquant** (#413) : la suite

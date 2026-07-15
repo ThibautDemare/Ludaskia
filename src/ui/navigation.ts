@@ -292,6 +292,20 @@ export function route() {
 		showOrthoRevoirView(h.slice('ortho-revoir-'.length));
 	} else if (h.startsWith('ortho-')) {
 		showOrthoRunView(h.slice(6));
+	} else if (import.meta.env.DEV && h === 'galerie') {
+		// Galerie visuelle (#412) — DEV UNIQUEMENT. La condition `import.meta.env.DEV`
+		// vaut `false` en build de prod : Rollup supprime la branche ET l'import
+		// dynamique ci-dessous → le code galerie n'est PAS dans le bundle exposé.
+		// L'import est dynamique (et le module isolé) pour ne charger ce rendu qu'à
+		// la demande, uniquement en dev/CI e2e (serveur Vite `npm run dev`).
+		resetSessionUI();
+		setToolbar({ verify: false, home: true, profile: false });
+		hideMenus();
+		const sheets = document.getElementById('sheets')!;
+		void import('./galerie').then((m) => {
+			m.renderGalerie(sheets);
+			window.scrollTo({ top: 0 });
+		});
 	} else showHomeView(); // '' ou #accueil
 }
 

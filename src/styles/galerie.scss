@@ -1,0 +1,55 @@
+/* ============================================================
+   Galerie visuelle (#412) — DEV UNIQUEMENT.
+   Habillage sobre et STABLE de la page galerie (ui/galerie.ts) : la galerie
+   sert de surface aux snapshots, on évite donc tout ce qui varie d'un rendu à
+   l'autre (dégradés, ombres floues). Valeurs en dur (pas de dépendance au thème
+   du profil) pour un rendu constant, indépendant de l'état local.
+   ============================================================ */
+.galerie {
+	padding: 12px;
+	background: #ffffff;
+}
+
+.gal-h1 {
+	font-size: 20px;
+	margin: 0 0 4px;
+}
+
+.gal-intro {
+	margin: 0 0 16px;
+	color: #444444;
+	font-size: 13px;
+}
+
+.gal-section {
+	margin: 0 0 24px;
+	padding: 12px;
+	border: 1px solid #dddddd;
+	border-radius: 8px;
+	background: #fafafa;
+}
+
+.gal-section-title {
+	font-size: 16px;
+	margin: 0 0 12px;
+	padding-bottom: 6px;
+	border-bottom: 2px solid #cccccc;
+}
+
+.gal-lesson {
+	margin: 0 0 16px;
+
+	&:last-child {
+		margin-bottom: 0;
+	}
+}
+
+.gal-lesson-meta {
+	margin: 0 0 6px;
+	font-size: 12px;
+	color: #666666;
+
+	code {
+		font-family: monospace;
+	}
+}

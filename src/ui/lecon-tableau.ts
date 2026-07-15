@@ -47,7 +47,7 @@ const LEGENDE =
 /* Une case saisissable = un chiffre attendu, rattachée à sa colonne. La colonne de tête
    à 2 chiffres se déploie en 2 cases (dizaine puis unité), regroupées visuellement (avis
    dys) mais gérées comme deux cases d'un chiffre → avance auto et pavé homogènes. */
-interface Cellule {
+export interface Cellule {
 	col: TableauColonne;
 	attendu: string; // chiffre attendu ('0'..'9')
 	aria: string; // libellé complet (« chiffre des mètres »)
@@ -90,8 +90,10 @@ function genQuestions(l: LessonDef, m: ExerciseMode, n: number): Tableau[] {
 	return out;
 }
 
-/* Déploie les colonnes de l'exercice en liste plate de cases (une par chiffre attendu). */
-function buildCells(ex: Tableau): Cellule[] {
+/* Déploie les colonnes de l'exercice en liste plate de cases (une par chiffre attendu).
+   Exporté (avec `renderTableauBoardHTML`) pour la galerie visuelle (#419) : pure et
+   déterministe (aucun aléa), il produit les mêmes cases que le runner live. */
+export function buildCells(ex: Tableau): Cellule[] {
 	const out: Cellule[] = [];
 	for (const col of ex.colonnes) {
 		const digits = col.chiffres.split('');
@@ -135,12 +137,18 @@ export function runLeconTableau(lessonId: string, m: ExerciseMode): void {
    fixe étant insérée APRÈS la colonne cible (donnée `virguleApres`). Chaque case porte son
    index plat en `data-i` (repère e2e + rattachement à `cells`) et le chiffre attendu en
    `data-answer` (même convention que la grille posée : correction auditable + repère e2e). */
-function colonneHTML(ex: Tableau, col: TableauColonne, colIndex: number, offset: number): string {
+function colonneHTML(
+	ex: Tableau,
+	col: TableauColonne,
+	colIndex: number,
+	offset: number,
+	cellsArg: Cellule[],
+): string {
 	const tCls = col.transit ? ' tc-col--transit' : '';
 	const nb = col.chiffres.length;
 	const cases = Array.from({ length: nb }, (_, k) => {
 		const i = offset + k;
-		return `<button type="button" class="tc-cell${col.transit ? ' tc-cell--transit' : ''}" data-i="${i}" data-answer="${escapeHTML(cells[i].attendu)}" aria-label="${escapeHTML(cells[i].aria)}"></button>`;
+		return `<button type="button" class="tc-cell${col.transit ? ' tc-cell--transit' : ''}" data-i="${i}" data-answer="${escapeHTML(cellsArg[i].attendu)}" aria-label="${escapeHTML(cellsArg[i].aria)}"></button>`;
 	}).join('');
 	// Virgule fixe (posée par l'app en v1) : élément décoratif entre deux colonnes.
 	const virgule =
@@ -154,16 +162,17 @@ function colonneHTML(ex: Tableau, col: TableauColonne, colIndex: number, offset:
     </div>${virgule}`;
 }
 
-function renderQuestion(): void {
-	const ex = questions[idx];
-	cells = buildCells(ex);
-	active = 0;
-	frozen = false;
-	// Colonnes → HTML, en suivant l'offset des cases plates (tête = 1 ou 2 cases).
+/* Board PUR du tableau (#419) : consigne + énoncé + tableau + légende + pavé, à partir
+   de l'exercice et de SES cases (déployées par `buildCells`). Extrait du runner live
+   (renderQuestion l'appelle) pour être réutilisé À L'IDENTIQUE par la galerie visuelle
+   (ui/galerie.ts) — même markup des deux côtés, donc un snapshot détecte les régressions
+   du VRAI rendu. NE CÂBLE RIEN (pas de `wireInteraction`, donc aucun listener `document`) :
+   l'entrée live ajoute l'interaction autour. */
+export function renderTableauBoardHTML(ex: Tableau, cellsArg: Cellule[]): string {
 	let offset = 0;
 	const colonnes = ex.colonnes
 		.map((col, colIndex) => {
-			const html = colonneHTML(ex, col, colIndex, offset);
+			const html = colonneHTML(ex, col, colIndex, offset, cellsArg);
 			offset += col.chiffres.length;
 			return html;
 		})
@@ -172,18 +181,26 @@ function renderQuestion(): void {
 	// Repli du texte parlé aligné sur les autres runners (jamais chaîne vide) : `parle`
 	// est toujours fourni ici, mais on retombe sur l'énoncé si un futur générateur l'omet.
 	const ttsTexte = `${CONSIGNE} ${ex.parle ?? ex.question}`.trim();
-	sheets().innerHTML = `
-    <div class="sprint sprint-lecon tc-runner">
-      ${leconProgressHTML(idx, questions.length)}
-      <div class="sprint-stage">
-        <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
-        <p class="tc-consigne"${ttsAttr(ttsTexte)}>${escapeHTML(CONSIGNE)}</p>
+	return `<p class="tc-consigne"${ttsAttr(ttsTexte)}>${escapeHTML(CONSIGNE)}</p>
         <p class="tc-enonce">${enonce}</p>
         <div class="tc-wrap">
           <div class="tc-table" id="tcTable" role="group" aria-describedby="tcLegende" aria-label="Tableau de conversion">${colonnes}</div>
         </div>
         <p class="tc-legende" id="tcLegende">${escapeHTML(LEGENDE)}</p>
-        ${paveHTML()}
+        ${paveHTML()}`;
+}
+
+function renderQuestion(): void {
+	const ex = questions[idx];
+	cells = buildCells(ex); // état mutable de saisie (le board pur ci-dessous consomme LES MÊMES cases)
+	active = 0;
+	frozen = false;
+	sheets().innerHTML = `
+    <div class="sprint sprint-lecon tc-runner">
+      ${leconProgressHTML(idx, questions.length)}
+      <div class="sprint-stage">
+        <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+        ${renderTableauBoardHTML(ex, cells)}
         <button class="sprint-btn" id="tcVerif" disabled>Vérifier</button>
         <div class="sprint-correction" id="tcFeedback" hidden></div>
         <div class="sprint-actions" id="tcActions" hidden></div>

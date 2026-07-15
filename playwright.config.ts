@@ -15,6 +15,11 @@ export default defineConfig({
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 1 : 0,
 	workers: process.env.CI ? 1 : undefined,
+	// Snapshots visuels (#412) : ne JAMAIS écrire une baseline manquante lors d'un run
+	// de comparaison (sinon un run sur une branche sans baseline passerait au vert après
+	// retry, faux positif). Une baseline manquante DOIT faire échouer. La (re)génération
+	// est explicite, réservée au workflow `update-snapshots.yml` (`--update-snapshots`).
+	updateSnapshots: 'none',
 	reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
 	use: {
 		baseURL: BASE_URL,

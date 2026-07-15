@@ -1,0 +1,74 @@
+name: Mettre à jour les snapshots visuels
+
+# Régénère les baselines de screenshots de la galerie (#412) DANS l'environnement
+# du runner CI (ubuntu + Chromium), seule façon d'obtenir des pixels identiques à
+# ceux que compare le job `e2e` de ci.yml. Deux déclencheurs :
+#   - workflow_dispatch : régénération manuelle en un clic (« Run workflow »),
+#     disponible une fois ce fichier présent sur la branche par défaut ;
+#   - push : uniquement si le message du dernier commit contient
+#     « [update-snapshots] » (voir le garde `if` du job). Sert à l'AMORÇAGE sur une
+#     branche de feature, avant que le workflow ne soit sur main.
+#
+# Le job recommite les PNG modifiés sur la branche courante via le GITHUB_TOKEN.
+# Ce push NE redéclenche AUCUN workflow (protection anti-boucle de GitHub Actions) :
+# pour relancer la comparaison (ci.yml), pousser ensuite un commit « normal » (ou
+# ouvrir la PR après coup). Procédure détaillée : e2e/README.md.
+on:
+  workflow_dispatch:
+  push:
+
+# Nécessaire pour repousser les baselines régénérées sur la branche.
+permissions:
+  contents: write
+
+concurrency:
+  group: update-snapshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    # workflow_dispatch : toujours. push : seulement si demandé explicitement via le
+    # message de commit (évite de régénérer à chaque push).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[update-snapshots]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
+
+      - name: Installer Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Cache des navigateurs Playwright
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Installer Chromium (Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Régénérer les baselines de la galerie
+        # `=all` : régénère explicitement (surcharge `updateSnapshots: 'none'` de la
+        # config). Un rendu inchangé réencode des PNG identiques → git ne voit rien →
+        # pas de commit inutile (cf. étape suivante).
+        run: npx playwright test galerie --update-snapshots=all
+
+      - name: Committer les baselines mises à jour
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -z "$(git status --porcelain -- e2e)" ]; then
+            echo "Aucune baseline à mettre à jour."
+            exit 0
+          fi
+          git add -- e2e
+          git commit -m "test(e2e): update visual snapshot baselines (#412)"
+          git push

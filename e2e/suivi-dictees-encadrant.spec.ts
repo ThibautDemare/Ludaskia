@@ -100,21 +100,26 @@ test('épingler une liste de dictée : rejoint « à revoir », apparaît sur l�
 /* Bonus (#424) : une erreur de dictée peut désormais être épinglée depuis
    « Ce qui a été difficile récemment » (l'action était masquée pour une liste
    d'orthographe ; seules les leçons du catalogue pouvaient l'être). */
-test('épingler une erreur de dictée depuis « Ce qui a été difficile récemment »', async ({ page }) => {
+test('épingler une erreur de dictée depuis « Ce qui a été difficile récemment »', async ({
+	page,
+}) => {
 	const errors = watchErrors(page);
 	const now = Date.now();
-	await page.addInitScript((liste) => {
-		localStorage.setItem('e2e/ludaskia_erreurs', JSON.stringify(liste));
-	}, [
-		{
-			ts: now,
-			lessonId: 'fr-ortho-invariables-1',
-			mode: 'dictee',
-			question: 'Mot à écrire sous la dictée',
-			donnee: 'osi',
-			attendue: 'aussi',
+	await page.addInitScript(
+		(liste) => {
+			localStorage.setItem('e2e/ludaskia_erreurs', JSON.stringify(liste));
 		},
-	]);
+		[
+			{
+				ts: now,
+				lessonId: 'fr-ortho-invariables-1',
+				mode: 'dictee',
+				question: 'Mot à écrire sous la dictée',
+				donnee: 'osi',
+				attendue: 'aussi',
+			},
+		],
+	);
 	await gotoHash(page, 'encadrant');
 
 	const lecon = page.locator('.enc-err-lecon').filter({ hasText: 'Mots invariables (1)' });
@@ -128,7 +133,9 @@ test('épingler une erreur de dictée depuis « Ce qui a été difficile récemm
 
 	await expect(
 		page
-			.locator('.enc-revoir button[data-act="epingler"][data-lesson="ortho:fr-ortho-invariables-1"]')
+			.locator(
+				'.enc-revoir button[data-act="epingler"][data-lesson="ortho:fr-ortho-invariables-1"]',
+			)
 			.filter({ hasText: 'Retirer' }),
 	).toBeVisible();
 

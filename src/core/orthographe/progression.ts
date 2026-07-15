@@ -82,6 +82,10 @@ export function avancementLecon(
 }
 
 /** Raccourci : seul l'état d'acquisition (sans le compte). */
-export function niveauListeOrtho(state: OrthoState, id: string, dicteeDispo: boolean): NiveauNotion {
+export function niveauListeOrtho(
+	state: OrthoState,
+	id: string,
+	dicteeDispo: boolean,
+): NiveauNotion {
 	return avancementLecon(state, id, dicteeDispo).niveau;
 }

@@ -24,7 +24,7 @@ import {
 	type ErreurAffichee,
 	type GroupeErreursLecon,
 } from '../core/erreurs-journal';
-import { libelleDerniereFois, loadRevoirFor } from '../core/encadrant-stats';
+import { libelleDerniereFois, loadRevoirFor, orthoRevoirId } from '../core/encadrant-stats';
 import { lsGetRaw } from '../core/storage';
 import { ORTHO_KEY } from '../core/orthographe/store';
 import { labelLeconOrtho } from '../core/orthographe/lessons';
@@ -72,16 +72,19 @@ function groupeHTML(
 	// Résolution du libellé : leçon du catalogue, sinon liste d'orthographe (prédéfinie
 	// ou du profil consulté), sinon l'id brut en dernier recours.
 	const lesson = getLessonById(g.lessonId);
-	const label = lesson?.label ?? labelLeconOrtho(g.lessonId, orthoListes) ?? g.lessonId;
+	const labelOrtho = lesson ? null : labelLeconOrtho(g.lessonId, orthoListes);
+	const label = lesson?.label ?? labelOrtho ?? g.lessonId;
 	const quand = libelleDerniereFois(g.derniereFois, now);
 	const visibles = g.erreurs.slice(0, MAX_PAR_LECON);
 	const reste = g.erreurs.length - visibles.length;
-	const epingle = epinglees.has(g.lessonId);
-	// « Épingler » n'a de sens que pour une leçon du catalogue (la file « À revoir »
-	// est catalogue-only) : on masque l'action pour une liste d'orthographe.
-	const actions = lesson
+	// Entrée « à revoir » : id du catalogue pour une leçon, id de dictée préfixé pour une
+	// liste d'orthographe. On peut désormais épingler l'une comme l'autre ; l'action n'est
+	// masquée que pour un id non résolu (ni leçon, ni liste connue).
+	const entryId = lesson ? g.lessonId : labelOrtho ? orthoRevoirId(g.lessonId) : null;
+	const epingle = entryId ? epinglees.has(entryId) : false;
+	const actions = entryId
 		? `<div class="enc-actions">
-        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${g.lessonId}">${epingle ? 'Retirer' : 'Épingler'}</button>
+        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}">${epingle ? 'Retirer' : 'Épingler'}</button>
       </div>`
 		: '';
 	return `<details class="enc-err-lecon">

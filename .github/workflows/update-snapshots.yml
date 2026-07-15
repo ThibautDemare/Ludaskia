@@ -15,7 +15,11 @@ name: Mettre à jour les snapshots visuels
 # ouvrir la PR après coup). Procédure détaillée : e2e/README.md.
 on:
   workflow_dispatch:
+  # Jamais sur `main` : sinon ce workflow tournerait (job ignoré) à chaque push sur
+  # la branche par défaut. Sur une branche de feature, le garde `if` du job filtre.
   push:
+    branches-ignore:
+      - main
 
 # Nécessaire pour repousser les baselines régénérées sur la branche.
 permissions:

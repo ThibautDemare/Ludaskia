@@ -13,18 +13,22 @@ import { icon } from './icon';
 import { listProfiles, activeProfile, type Profile } from '../core/profiles';
 import {
 	toggleRevoirFor,
-	loadRevoirFor,
 	niveauProfilMatiere,
 	echelleActivite,
 	libelleDerniereFois,
 	debutSemaine,
+	orthoRevoirId,
+	listesOrthoProfil,
+	epingleesProfil,
 	type RecapProfil,
+	type RecapListeOrtho,
 	type NiveauNotion,
 	type TendanceNotion,
 	type JourActivite,
 	type FriseMatiere,
 } from '../core/encadrant-stats';
-import { getAllLessons, type LessonDef } from '../core/catalog';
+import { getAllLessons, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
+import { dicteeDisponible } from './tts';
 import { printScope } from './session';
 import { erreursHTML } from './encadrant-erreurs';
 import { consulteUuid, renderEspace, container } from './encadrant-commun';
@@ -91,6 +95,7 @@ export function recapHTML(recap: RecapProfil, consulte: Profile): string {
       ${chiffresHTML(recap)}
       ${activiteHTML(recap)}
       ${maitriseHTML(recap)}
+      ${listesOrthoHTML(consulte)}
       ${erreursHTML(consulte, Date.now())}
       ${aRevoirHTML(recap, consulte)}
     </section>`;
@@ -367,6 +372,49 @@ function friseMatiereHTML(f: FriseMatiere, maxSem: number, lundiCourant: number)
     </div>`;
 }
 
+/* ---------- Bloc « Listes de dictée » ----------
+   Les dictées (store orthographe) ne sont pas des leçons du catalogue → suivies à part,
+   sur la MÊME échelle d'acquisition, mais à 3 niveaux (pas de « à renforcer » : la
+   validation d'un mode est binaire, il n'y a pas de perf récente en %). Chaque liste
+   peut être épinglée (elle rejoint la file « à revoir » de l'enfant, comme une leçon).
+   Les dictées PRÉDÉFINIES non commencées sont masquées (cf. listesOrthoProfil). */
+const ORDRE_NIVEAUX_ORTHO: NiveauNotion[] = ['a-decouvrir', 'en-cours', 'acquis'];
+function ligneListeOrtho(l: RecapListeOrtho): string {
+	const entryId = orthoRevoirId(l.id);
+	// « en cours » regroupe « 1 mot commencé » et « 9/10 maîtrisés » : on accole le compte
+	// factuel de mots maîtrisés pour restituer la nuance (avis pédago), jamais de %.
+	const compte =
+		l.niveau === 'en-cours'
+			? `${l.maitrises}/${l.nbMots} mot${l.nbMots > 1 ? 's' : ''} maîtrisé${l.maitrises > 1 ? 's' : ''}`
+			: `${l.nbMots} mot${l.nbMots > 1 ? 's' : ''}`;
+	const meta = `${compte}${l.source === 'predefini' ? ' · dictée proposée' : ''}`;
+	return `<li class="enc-detail-item">
+      <span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>
+      <span class="enc-detail-main">
+        <span class="enc-detail-lab">${escapeHTML(l.label)}</span>
+        <span class="enc-detail-meta">${meta}</span>
+      </span>
+      <span class="enc-detail-mot"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[l.niveau]}</span>
+      <span class="enc-actions">
+        <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}">${l.epingle ? 'Retirer' : 'Épingler'}</button>
+      </span>
+    </li>`;
+}
+function listesOrthoHTML(consulte: Profile): string {
+	const listes = listesOrthoProfil(consulte, dicteeDisponible());
+	if (listes.length === 0) return '';
+	const catOrtho = CATEGORIES.find((c) => c.id === ORTHO_CATEGORY_ID);
+	const legende = ORDRE_NIVEAUX_ORTHO.map(
+		(n) => `<span class="enc-key enc-key-${n}">${MOT_NIVEAU[n]}</span>`,
+	).join('');
+	return `<div class="enc-block">
+      <h3 class="enc-h3">${icon(catOrtho?.icon ?? 'book-open')} Listes de dictée</h3>
+      <p class="enc-legend">${legende}</p>
+      <p class="enc-hint">Les listes de dictée (mots invariables, thèmes, vos propres listes) et leur avancement. Épinglez-en une pour qu'elle revienne sur l'accueil de ${escapeHTML(consulte.name)}.</p>
+      <ul class="enc-detail">${listes.map(ligneListeOrtho).join('')}</ul>
+    </div>`;
+}
+
 /* Boutons d'impression d'une leçon (au niveau du profil consulté) : fiche vierge +
    fiche avec corrigé (#41). Réutilisés par le détail des catégories ET « à revoir ». */
 function boutonsImpression(lessonId: string): string {
@@ -374,14 +422,17 @@ function boutonsImpression(lessonId: string): string {
       <button type="button" class="enc-btn-sec" data-act="imprimer" data-corrige="1" data-lesson="${lessonId}">${icon('printer')} Corrigé</button>`;
 }
 
-/* Une ligne de leçon « à revoir » : libellé + état éventuel + actions (épingler/retirer
-   + impression). `etat` est l'état d'acquisition affiché (suggestions) ou absent (épinglées). */
+/* Une ligne « à revoir » : libellé + état éventuel + actions (épingler/retirer + impression).
+   `entryId` = id transmis au toggle/à l'impression (leçon = `LessonDef.id` ; liste de dictée =
+   `orthoRevoirId(id)`). `etat` = état d'acquisition affiché (suggestions) ou absent (épinglées).
+   `imprimable` = false pour une liste de dictée (pas de fiche à imprimer). */
 function ligneRevoir(
-	lessonId: string,
+	entryId: string,
 	label: string,
 	epingle: boolean,
-	etat?: NiveauNotion,
+	opts: { etat?: NiveauNotion; imprimable?: boolean } = {},
 ): string {
+	const { etat, imprimable = true } = opts;
 	const badge = etat
 		? `<span class="enc-revoir-etat enc-key-${etat}">${MOT_NIVEAU[etat]}</span>`
 		: '';
@@ -389,28 +440,32 @@ function ligneRevoir(
       <span class="enc-revoir-lab">${escapeHTML(label)}</span>
       ${badge}
       <span class="enc-actions">
-        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${lessonId}">${epingle ? 'Retirer' : 'Épingler'}</button>
-        ${boutonsImpression(lessonId)}
+        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}">${epingle ? 'Retirer' : 'Épingler'}</button>
+        ${imprimable ? boutonsImpression(entryId) : ''}
       </span>
     </li>`;
 }
 
 function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
-	// Leçons actuellement épinglées par l'encadrant (file du profil consulté).
-	const epinglees = new Set(loadRevoirFor(consulte.uuid));
-	const pinned = [...epinglees]
-		.map((id) => getAllLessons().find((l) => l.id === id))
-		.filter((l): l is LessonDef => !!l);
+	// Entrées actuellement épinglées (leçons du catalogue ET listes de dictée), résolues.
+	const pinned = epingleesProfil(consulte);
+	const epingleeIds = new Set(pinned.map((e) => e.id));
 	// Suggestions AUTO : leçons « faiblardes » (perf récente < 70 %) non déjà épinglées (max 3).
-	const suggestions = recap.aRevoir.filter((n) => !epinglees.has(n.lessonId)).slice(0, 3);
+	const suggestions = recap.aRevoir.filter((n) => !epingleeIds.has(n.lessonId)).slice(0, 3);
 
 	const blocEpinglees = pinned.length
-		? `<ul class="enc-revoir">${pinned.map((l) => ligneRevoir(l.id, l.label, true)).join('')}</ul>`
+		? `<ul class="enc-revoir">${pinned
+				.map((e) =>
+					e.kind === 'ortho'
+						? ligneRevoir(orthoRevoirId(e.id), e.label, true, { imprimable: false })
+						: ligneRevoir(e.id, e.label, true),
+				)
+				.join('')}</ul>`
 		: `<p class="enc-hint">Aucune leçon épinglée pour le moment.</p>`;
 	const blocSuggestions = suggestions.length
 		? `<p class="enc-sub-lab">Suggestions</p>
        <p class="enc-hint">Leçons un peu fragiles, qui gagneraient à être revues :</p>
-       <ul class="enc-revoir">${suggestions.map((n) => ligneRevoir(n.lessonId, n.label, false, n.niveau)).join('')}</ul>`
+       <ul class="enc-revoir">${suggestions.map((n) => ligneRevoir(n.lessonId, n.label, false, { etat: n.niveau })).join('')}</ul>`
 		: '';
 
 	return `<div class="enc-block">

@@ -7,55 +7,85 @@
    « voir une autre » fait défiler la liste en boucle. L'enfant n'a donc pas besoin
    d'être présent quand l'encadrant épingle.
 
+   Une entrée épinglée est soit une leçon du catalogue (lancée par `startLecon`), soit
+   une liste de dictée d'orthographe (lancée par `startOrthoLecon`, hash dédié) — cf.
+   `RevoirEntry`. Le libellé/l'icône sont dérivés selon la nature de l'entrée.
+
    La carte est MASQUÉE tant que rien n'est à revoir, et s'auto-nettoie : on
-   n'affiche que les leçons ENCORE faibles (revoirActives) — une notion redevenue
-   solide quitte la boucle. Listener posé une seule fois (élément persistant).
+   n'affiche que les leçons ENCORE faibles / listes non encore acquises (revoirActives)
+   — une notion redevenue solide quitte la boucle. Listener posé une seule fois
+   (élément persistant).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
-import { SUBJECTS, CATEGORIES } from '../core/catalog';
-import type { LessonDef } from '../core/catalog';
-import { revoirActives } from '../core/encadrant-stats';
+import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
+import { revoirActives, type RevoirEntry } from '../core/encadrant-stats';
 import { icon } from './icon';
 import { subjectTint, subjectIcon } from './cat-visuals';
-import { startLecon } from './navigation';
+import { startLecon, startOrthoLecon } from './navigation';
+import { dicteeDisponible } from './tts';
 
-/* Leçon « à revoir » suivante dans la liste active (cyclique → ne bloque jamais). */
-function suivante(apresId: string): LessonDef | null {
-	const lecons = revoirActives();
-	if (lecons.length === 0) return null;
-	const i = lecons.findIndex((l) => l.id === apresId);
-	return i < 0 ? lecons[0] : lecons[(i + 1) % lecons.length];
+/* Entrées « à revoir » actives (dispo TTS passée au core pour l'« acquis » d'une dictée). */
+function actives(): RevoirEntry[] {
+	return revoirActives(dicteeDisponible());
 }
 
-/* Rend la carte dans `el`. `cibleId` force une leçon précise (« voir une autre »). */
+/* Entrée « à revoir » suivante dans la liste active (cyclique → ne bloque jamais). */
+function suivante(apresId: string): RevoirEntry | null {
+	const entrees = actives();
+	if (entrees.length === 0) return null;
+	const i = entrees.findIndex((e) => e.id === apresId);
+	return i < 0 ? entrees[0] : entrees[(i + 1) % entrees.length];
+}
+
+/* Icône + sous-titre d'une entrée : matière/catégorie pour une leçon du catalogue ;
+   « Français · Orthographe » (dictée) pour une liste. */
+function visuel(entree: RevoirEntry): { tint: string; ico: string; sousTitre: string } {
+	if (entree.kind === 'ortho') {
+		const cat = CATEGORIES.find((c) => c.id === ORTHO_CATEGORY_ID);
+		const subject = SUBJECTS.find((s) => s.id === 'francais');
+		return {
+			tint: subjectTint('francais'),
+			ico: icon(cat?.icon ?? subjectIcon('francais')),
+			sousTitre: `${escapeHTML(subject?.label ?? 'Français')} · ${escapeHTML(cat?.label ?? 'Orthographe')}`,
+		};
+	}
+	const lesson = entree.lesson;
+	const subject = SUBJECTS.find((s) => s.id === lesson.subject);
+	const cat = CATEGORIES.find((c) => c.id === lesson.category);
+	return {
+		tint: subjectTint(lesson.subject),
+		ico: icon(cat?.icon ?? subjectIcon(lesson.subject)),
+		sousTitre: `${escapeHTML(subject?.label ?? '')}${cat ? ' · ' + escapeHTML(cat.label) : ''}`,
+	};
+}
+
+/* Rend la carte dans `el`. `cibleId` force une entrée précise (« voir une autre »). */
 export function renderARevoir(el: HTMLElement | null, cibleId?: string): void {
 	if (!el) return;
-	const lecons = revoirActives();
+	const entrees = actives();
 	// Rien à revoir → carte retirée (display:none, robuste face au `display` de .card).
-	if (lecons.length === 0) {
+	if (entrees.length === 0) {
 		el.style.display = 'none';
 		delete el.dataset.lesson;
+		delete el.dataset.kind;
 		el.innerHTML = '';
 		return;
 	}
 	el.style.display = '';
-	const lesson = (cibleId && lecons.find((l) => l.id === cibleId)) || lecons[0];
-	el.dataset.lesson = lesson.id;
-	const subject = SUBJECTS.find((s) => s.id === lesson.subject);
-	const cat = CATEGORIES.find((c) => c.id === lesson.category);
-	const tint = subjectTint(lesson.subject);
-	const ico = icon(cat?.icon ?? subjectIcon(lesson.subject));
-	const sousTitre = `${escapeHTML(subject?.label ?? '')}${cat ? ' · ' + escapeHTML(cat.label) : ''}`;
-	// « Voir une autre » n'a de sens que s'il reste plus d'une leçon à revoir.
+	const entree = (cibleId && entrees.find((e) => e.id === cibleId)) || entrees[0];
+	el.dataset.lesson = entree.id;
+	el.dataset.kind = entree.kind;
+	const { tint, ico, sousTitre } = visuel(entree);
+	// « Voir une autre » n'a de sens que s'il reste plus d'une entrée à revoir.
 	const autre =
-		lecons.length > 1
+		entrees.length > 1
 			? `<button class="lj-autre" type="button" data-ar="autre">Voir une autre leçon</button>`
 			: '';
 	el.innerHTML = `
     <div class="ico" style="background:${tint}" aria-hidden="true">${ico}</div>
     <h2>À revoir</h2>
     <p>
-      <span class="lj-title">${escapeHTML(lesson.label)}</span>
+      <span class="lj-title">${escapeHTML(entree.label)}</span>
       <span class="lj-sub">${sousTitre}</span>
     </p>
     <span class="go">On y retourne <span aria-hidden="true">→</span></span>
@@ -67,7 +97,8 @@ export function renderARevoir(el: HTMLElement | null, cibleId?: string): void {
 	}
 }
 
-/* Clic : « voir une autre » avance dans la liste ; sinon lance la leçon courante. */
+/* Clic : « voir une autre » avance dans la liste ; sinon lance l'entrée courante
+   (leçon du catalogue OU liste de dictée, selon `kind`). */
 function onARevoirClick(e: Event): void {
 	const el = e.currentTarget as HTMLElement;
 	if ((e.target as HTMLElement).closest('[data-ar="autre"]')) {
@@ -75,5 +106,8 @@ function onARevoirClick(e: Event): void {
 		renderARevoir(el, next ? next.id : undefined);
 		return;
 	}
-	if (el.dataset.lesson) startLecon(el.dataset.lesson);
+	const id = el.dataset.lesson;
+	if (!id) return;
+	if (el.dataset.kind === 'ortho') startOrthoLecon(id);
+	else startLecon(id);
 }

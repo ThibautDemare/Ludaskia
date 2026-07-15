@@ -4,7 +4,7 @@
    Les opérations mutent un OrthoState en mémoire ; l'appelant
    sauvegarde via saveOrtho(). Logique pure, testable sans DOM.
    ============================================================ */
-import { lsGet, lsSet } from '../storage';
+import { lsGet, lsSet, lsGetRaw } from '../storage';
 import type {
 	MotOrtho,
 	ListeOrtho,
@@ -71,8 +71,9 @@ export function normaliserVerbes(verbes?: VerbeConfig[]): VerbeConfig[] {
 	return out;
 }
 
-export function loadOrtho(): OrthoState {
-	const s = lsGet(ORTHO_KEY, null) as Partial<OrthoState> | null;
+/** Normalise un état brut lu en localStorage (tolère absent/corrompu). Partagé par
+    loadOrtho (profil actif) et loadOrthoFor (profil arbitraire, espace encadrant). */
+function parseOrtho(s: Partial<OrthoState> | null): OrthoState {
 	if (!s || typeof s !== 'object') return emptyOrthoState();
 	return {
 		banque: s.banque ?? {},
@@ -82,6 +83,16 @@ export function loadOrtho(): OrthoState {
 		})),
 		motIdParForme: s.motIdParForme ?? {},
 	};
+}
+
+export function loadOrtho(): OrthoState {
+	return parseOrtho(lsGet(ORTHO_KEY, null) as Partial<OrthoState> | null);
+}
+
+/** État orthographe d'un profil DONNÉ par UUID (clé BRUTE `uuid/…`), sans changer le
+    profil actif — même parti pris que le reste de l'espace encadrant (encadrant-stats). */
+export function loadOrthoFor(uuid: string): OrthoState {
+	return parseOrtho(lsGetRaw(uuid + '/' + ORTHO_KEY, null) as Partial<OrthoState> | null);
 }
 
 export function saveOrtho(state: OrthoState): void {

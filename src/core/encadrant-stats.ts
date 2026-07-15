@@ -57,7 +57,9 @@ import {
 import { niveauDefautCatalogue } from './levels';
 import { niveauActifMatiere } from './niveau-actif';
 import type { Profile } from './profiles';
-import { ORTHO_KEY } from './orthographe/store';
+import { loadOrtho, loadOrthoFor, ORTHO_KEY } from './orthographe/store';
+import { listOrthoLecons, labelLeconOrtho, type SourceLecon } from './orthographe/lessons';
+import { niveauListeOrtho, avancementLecon } from './orthographe/progression';
 import { REVISION_INTERVALLES, PALIER_ACQUIS, JOUR, estAcquis } from './revision';
 import type { EtatRevision, OrthoState } from './orthographe/types';
 
@@ -92,13 +94,27 @@ function saveRevoirFor(uuid: string, ids: string[]) {
 	// Écriture BRUTE dans le profil ciblé (pas l'actif) : on ne bascule pas l'enfant.
 	lsSetRaw(uuid + '/' + REVOIR_KEY, JSON.stringify(ids));
 }
-/* Épingle/désépingle une leçon pour un profil. Renvoie la nouvelle file. */
-export function toggleRevoirFor(uuid: string, lessonId: string): string[] {
+/* Épingle/désépingle une leçon pour un profil. Renvoie la nouvelle file.
+   `entryId` est soit un id de leçon du catalogue (`LessonDef.id`), soit une entrée de
+   liste de dictée préfixée (`orthoRevoirId`). La file reste un simple `string[]` : la
+   nature de chaque entrée est portée par le préfixe (rétro-compatible avec l'existant). */
+export function toggleRevoirFor(uuid: string, entryId: string): string[] {
 	const ids = loadRevoirFor(uuid);
-	const next = ids.includes(lessonId) ? ids.filter((x) => x !== lessonId) : [...ids, lessonId];
+	const next = ids.includes(entryId) ? ids.filter((x) => x !== entryId) : [...ids, entryId];
 	saveRevoirFor(uuid, next);
 	return next;
 }
+
+/* ---------- Entrées « liste de dictée » de la file « à revoir » ----------
+   Les listes de dictée (orthographe) ne sont PAS des `LessonDef` du catalogue : leur id
+   (opaque pour une liste du parent, `fr-ortho-*` pour une dictée prédéfinie) est préfixé
+   dans la file pour le distinguer d'un id de leçon, sans changer le type de stockage. */
+export const REVOIR_ORTHO_PREFIX = 'ortho:';
+export const orthoRevoirId = (orthoId: string): string => REVOIR_ORTHO_PREFIX + orthoId;
+export const isOrthoRevoirId = (entryId: string): boolean =>
+	entryId.startsWith(REVOIR_ORTHO_PREFIX);
+export const orthoIdFromRevoir = (entryId: string): string =>
+	entryId.slice(REVOIR_ORTHO_PREFIX.length);
 
 /* ---------- Résolution du niveau d'un profil ARBITRAIRE ----------
    Réplique niveauActifMatiere (niveau-actif.ts) mais paramétré par profil, sans
@@ -410,26 +426,114 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 	};
 }
 
-/* Leçons « à revoir » actuellement actives pour le profil ACTIF, filtrées sur celles
-   ENCORE faibles (auto-nettoyage : une notion redevenue solide quitte la boucle).
-   Sert à la carte d'accueil de l'enfant (ui/a-revoir-card.ts). Lit le profil actif. */
-export function revoirActives(): LessonDef[] {
+/* ---------- File « à revoir » côté enfant (union catalogue / dictée) ----------
+   Une entrée épinglée est soit une leçon du catalogue, soit une liste de dictée. La
+   carte d'accueil résout le libellé/lancement selon `kind`. `id` = id BRUT (sans préfixe),
+   utilisé pour le lancement (startLecon / startOrthoLecon). */
+export type RevoirEntry =
+	| { kind: 'lecon'; id: string; label: string; lesson: LessonDef }
+	| { kind: 'ortho'; id: string; label: string; source: SourceLecon };
+
+/* Entrées « à revoir » actuellement actives pour le profil ACTIF, filtrées sur celles
+   ENCORE à travailler (auto-nettoyage : une leçon/liste redevenue solide quitte la boucle) :
+   - leçon du catalogue : non étoilée ET (jamais re-travaillée OU perf récente < seuil) ;
+   - liste de dictée : pas encore « acquise » (tous les mots maîtrisés).
+   Sert à la carte d'accueil de l'enfant (ui/a-revoir-card.ts). Lit le profil actif.
+   `dicteeDispo` (dispo du TTS, fourni par l'UI) conditionne l'« acquis » d'une dictée. */
+export function revoirActives(dicteeDispo = false): RevoirEntry[] {
 	const ids = loadRevoir();
 	if (ids.length === 0) return [];
 	// Vues SCOPÉES au profil et au niveau actifs (clés `lessonId` simples).
 	const stats = loadLessonStats() as Record<string, LessonStat>;
 	const stars = loadStars();
-	const out: LessonDef[] = [];
-	for (const id of ids) {
-		const lesson = getAllLessons().find((l) => l.id === id);
+	// État orthographe du profil actif, chargé une seule fois si au moins une dictée est épinglée.
+	const ortho = ids.some(isOrthoRevoirId) ? loadOrtho() : null;
+	const out: RevoirEntry[] = [];
+	for (const entryId of ids) {
+		if (isOrthoRevoirId(entryId)) {
+			if (!ortho) continue;
+			const orthoId = orthoIdFromRevoir(entryId);
+			const ref = listOrthoLecons(ortho).find((l) => l.id === orthoId);
+			if (!ref) continue; // liste supprimée / dictée inconnue → ignorée
+			// Encore « à revoir » tant que la liste n'est pas entièrement maîtrisée.
+			if (niveauListeOrtho(ortho, orthoId, dicteeDispo) === 'acquis') continue;
+			out.push({ kind: 'ortho', id: orthoId, label: ref.label, source: ref.source });
+			continue;
+		}
+		const lesson = getAllLessons().find((l) => l.id === entryId);
 		// On n'affiche que des leçons du niveau actif de l'enfant (une leçon épinglée
 		// puis sortie du catalogue actif — ex. changement de classe — est ignorée).
 		if (!lesson || !lesson.levels.includes(niveauActifMatiere(lesson.subject))) continue;
-		const etoilee = (stars[id] || 0) > 0;
-		const stat = stats[id];
+		const etoilee = (stars[entryId] || 0) > 0;
+		const stat = stats[entryId];
 		const pct = recentAvgPct(stat) ?? lessonAvgPct(stat);
 		// Encore « à revoir » si non étoilée ET (jamais re-travaillée OU perf récente < seuil).
-		if (!etoilee && (pct == null || pct < SEUIL_REVOIR)) out.push(lesson);
+		if (!etoilee && (pct == null || pct < SEUIL_REVOIR))
+			out.push({ kind: 'lecon', id: entryId, label: lesson.label, lesson });
+	}
+	return out;
+}
+
+/* ---------- Récap des listes de dictée d'un profil (espace encadrant) ----------
+   Les dictées (store orthographe) ne sont pas dans le catalogue → agrégées à part.
+   Lecture BRUTE par UUID (comme le reste du récap), sans changer le profil actif. */
+export interface RecapListeOrtho {
+	id: string; // id BRUT (sans préfixe « ortho: »)
+	label: string;
+	source: SourceLecon;
+	niveau: NiveauNotion; // 'a-decouvrir' | 'en-cours' | 'acquis'
+	epingle: boolean; // présente dans la file « à revoir » (entrée préfixée)
+	nbMots: number; // mots attendus de la liste
+	maitrises: number; // mots déjà maîtrisés (compte factuel, accolé à « en cours » par l'UI)
+}
+/* `dicteeDispo` fourni par l'UI (dispo du TTS) : conditionne l'« acquis » (mode dictée requis).
+   Les dictées PRÉDÉFINIES ne sont listées que si l'enfant en a commencé au moins un mot
+   (≠ « à découvrir ») — sinon les ~45 prédéfinies noieraient les listes du parent. Les listes
+   CRÉÉES par le parent restent toujours visibles. */
+export function listesOrthoProfil(profile: Profile, dicteeDispo = false): RecapListeOrtho[] {
+	const state = loadOrthoFor(profile.uuid);
+	const niveau = niveauProfilMatiere(profile, 'francais');
+	const epinglees = new Set(loadRevoirFor(profile.uuid));
+	const out: RecapListeOrtho[] = [];
+	for (const ref of listOrthoLecons(state, niveau)) {
+		const av = avancementLecon(state, ref.id, dicteeDispo);
+		if (ref.source === 'predefini' && av.niveau === 'a-decouvrir') continue;
+		out.push({
+			id: ref.id,
+			label: ref.label,
+			source: ref.source,
+			niveau: av.niveau,
+			epingle: epinglees.has(orthoRevoirId(ref.id)),
+			nbMots: ref.nbMots,
+			maitrises: av.maitrises,
+		});
+	}
+	return out;
+}
+
+/* ---------- Entrées épinglées d'un profil (espace encadrant, « Épinglées ») ----------
+   TOUTES les entrées de la file (aucun filtre de faiblesse : c'est la liste de gestion),
+   résolues en libellé. Une entrée dont la cible n'existe plus (leçon hors catalogue actif,
+   liste supprimée) est écartée. */
+export interface EpingleEntry {
+	kind: 'lecon' | 'ortho';
+	id: string; // id BRUT (sert au dé-épinglage : lecon → id ; ortho → orthoRevoirId(id))
+	label: string;
+}
+export function epingleesProfil(profile: Profile): EpingleEntry[] {
+	const ids = loadRevoirFor(profile.uuid);
+	if (ids.length === 0) return [];
+	const ortho = ids.some(isOrthoRevoirId) ? loadOrthoFor(profile.uuid) : null;
+	const out: EpingleEntry[] = [];
+	for (const entryId of ids) {
+		if (isOrthoRevoirId(entryId)) {
+			const orthoId = orthoIdFromRevoir(entryId);
+			const label = labelLeconOrtho(orthoId, ortho?.listes ?? []);
+			if (label) out.push({ kind: 'ortho', id: orthoId, label });
+			continue;
+		}
+		const lesson = getLessonById(entryId);
+		if (lesson) out.push({ kind: 'lecon', id: entryId, label: lesson.label });
 	}
 	return out;
 }

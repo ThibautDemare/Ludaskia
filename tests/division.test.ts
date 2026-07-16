@@ -9,6 +9,8 @@
 import { describe, it, expect } from 'vitest';
 import { DIVISION_LESSONS } from '../src/data/maths/division';
 import { renderFigure } from '../src/core/figures';
+import { getLessonById, getLessonsByCategory, isProblemeLesson } from '../src/core/catalog';
+import { withSeed } from '../src/core/utils';
 import type { SchoolLevel } from '../src/core/catalog';
 
 const TIRAGES = 500;
@@ -259,6 +261,215 @@ describe('Je découvre le reste (#95)', () => {
 				expect(reste).toBeLessThan(diviseur);
 				expect(total).toBe(diviseur * quotient + reste);
 			}
+		});
+	});
+});
+
+/* ============================================================
+   Division euclidienne — quotient et reste (CM1, #251)
+   Leçon SŒUR du CE2 « Je découvre le reste » mais registre ABSTRAIT-NUMÉRIQUE :
+   on entraîne le RÉSULTAT de la division euclidienne (quotient ET reste) en calcul
+   réfléchi. Attendus dérivés de la définition d'Euclide (dividende = d·q + r,
+   0 ≤ r < d) et du cadrage #251 (diviseur 2–9, dividende à 2 chiffres, quotient
+   qui PEUT dépasser 9), pas des constantes du code. Pas de DOM.
+   Piège #251 : `exerciseType.check` renvoie TOUJOURS false pour un item `probleme`
+   (correction champ par champ dans le runner) → aucun test de check en saisie ;
+   check n'est exercé qu'en QCM.
+   ============================================================ */
+describe('Division euclidienne — quotient et reste (CM1, #251)', () => {
+	const lesson = getLessonById('math-division-euclidienne')!;
+	const genEucl = (mode: string, n = TIRAGES) =>
+		Array.from({ length: n }, () => lesson.exerciseType.generate({ mode }));
+
+	describe('câblage catalogue', () => {
+		it('leçon CM1-only, rattachée au calcul mental, hors sprint', () => {
+			expect(lesson).toBeDefined();
+			expect(lesson.category).toBe('math-calcul-mental');
+			expect(lesson.levels).toEqual(['cm1']);
+			expect(lesson.exerciseType.levels).toEqual(['cm1']);
+			expect(lesson.excludeFromSprint).toBe(true);
+		});
+
+		it('surfacée au calcul mental (tous niveaux), ABSENTE du calcul mental CE2', () => {
+			const tous = getLessonsByCategory('math-calcul-mental').map((l) => l.id);
+			const ce2 = getLessonsByCategory('math-calcul-mental', 'ce2').map((l) => l.id);
+			const cm1 = getLessonsByCategory('math-calcul-mental', 'cm1').map((l) => l.id);
+			expect(tous).toContain('math-division-euclidienne');
+			expect(ce2).not.toContain('math-division-euclidienne');
+			expect(cm1).toContain('math-division-euclidienne');
+			// La sœur CE2 reste, elle, disponible au CE2 (leçon distincte, non fusionnée).
+			expect(ce2).toContain('math-div-reste');
+		});
+
+		it('deux modes : saisie (recommandé) puis QCM ; classée « problème »', () => {
+			const ids = lesson.exerciseType.modes?.map((m) => m.id) ?? [];
+			expect(ids).toEqual(['saisie', 'qcm']);
+			expect(lesson.exerciseType.modes?.find((m) => m.recommended)?.id).toBe('saisie');
+			expect(isProblemeLesson(lesson)).toBe(true);
+		});
+	});
+
+	describe('mode saisie (problème à deux sous-questions)', () => {
+		const items = genEucl('saisie');
+
+		it('invariants euclidiens : type probleme, 2 étapes, d ∈ [2,9], dividende à 2 chiffres, 0 ≤ r < d, d·q + r', () => {
+			for (const ex of items) {
+				if (ex.type !== 'probleme') throw new Error('attendu probleme');
+				expect(ex.etapes).toHaveLength(2);
+				const quotient = ex.etapes[0].answer;
+				const reste = ex.etapes[1].answer;
+				const [dividende, diviseur] = ints(ex.enonce); // 1er nombre = dividende, 2e = diviseur
+				expect(Number.isInteger(quotient)).toBe(true);
+				expect(Number.isInteger(reste)).toBe(true);
+				// Diviseur : tables, 2 à 9.
+				expect(diviseur).toBeGreaterThanOrEqual(2);
+				expect(diviseur).toBeLessThanOrEqual(9);
+				// Dividende EXACTEMENT à 2 chiffres (jamais 1 ni 3 = territoire du posé).
+				expect(dividende).toBeGreaterThanOrEqual(10);
+				expect(dividende).toBeLessThanOrEqual(99);
+				// Quotient au moins 2 (une division qui « tourne »).
+				expect(quotient).toBeGreaterThanOrEqual(2);
+				// Invariant clé du reste : 0 ≤ r < diviseur (strict).
+				expect(reste).toBeGreaterThanOrEqual(0);
+				expect(reste).toBeLessThan(diviseur);
+				// Identité d'Euclide reconstruite indépendamment (dérivée, pas copiée).
+				expect(dividende).toBe(diviseur * quotient + reste);
+			}
+		});
+
+		it('marqueur CM1 : le quotient peut dépasser 9 (les DEUX cas < 10 et ≥ 10 présents)', () => {
+			const quotients = items.map((e) => (e.type === 'probleme' ? e.etapes[0].answer : NaN));
+			const petits = quotients.filter((q) => q < 10).length;
+			const grands = quotients.filter((q) => q >= 10).length;
+			expect(petits).toBeGreaterThan(0); // pas exclusivement à 2 chiffres
+			expect(grands).toBeGreaterThan(0); // le quotient à 2 chiffres existe bel et bien (≠ CE2)
+			// Ni marginal ni ultra-dominant : bornes larges (tirage aléatoire ~40 % forcés).
+			const part = grands / quotients.length;
+			expect(part).toBeGreaterThan(0.1);
+			expect(part).toBeLessThan(0.9);
+		});
+
+		it('mélange des restes nuls et non nuls (≈ 1/3 de restes nuls, jamais marginal)', () => {
+			const nuls = items.filter((e) => e.type === 'probleme' && e.etapes[1].answer === 0).length;
+			const part = nuls / items.length;
+			expect(nuls).toBeGreaterThan(0);
+			expect(items.length - nuls).toBeGreaterThan(0);
+			expect(part).toBeGreaterThan(0.15);
+			expect(part).toBeLessThan(0.55);
+		});
+
+		it('couvre le reste-frontière r = diviseur − 1', () => {
+			const frontiere = items.some(
+				(e) => e.type === 'probleme' && e.etapes[1].answer === ints(e.enonce)[1] - 1,
+			);
+			expect(frontiere).toBe(true);
+		});
+
+		it('les trois formes d’énoncé apparaissent, et chaque item n’en est QUE une', () => {
+			let combienDeFois = 0;
+			let egalite = 0;
+			let contexte = 0;
+			for (const ex of items) {
+				if (ex.type !== 'probleme') continue;
+				const f1 = /combien de fois/.test(ex.enonce);
+				const f2 = /Complète l'égalité/.test(ex.enonce);
+				const f3 = /boîtes de/.test(ex.enonce);
+				// Formes mutuellement exclusives : exactement une reconnue par énoncé.
+				expect(Number(f1) + Number(f2) + Number(f3)).toBe(1);
+				if (f1) combienDeFois++;
+				if (f2) egalite++;
+				if (f3) contexte++;
+			}
+			expect(combienDeFois).toBeGreaterThan(0);
+			expect(egalite).toBeGreaterThan(0);
+			expect(contexte).toBeGreaterThan(0);
+		});
+
+		it('forme « contexte » : l’objet de l’énoncé == l’objet du libellé du reste (pas de divergence)', () => {
+			const contextes = items.filter((e) => e.type === 'probleme' && /boîtes de/.test(e.enonce));
+			expect(contextes.length).toBeGreaterThan(0);
+			for (const ex of contextes) {
+				if (ex.type !== 'probleme') continue;
+				const m = /^On range \d+ (.+?) dans des boîtes de \d+\.$/.exec(ex.enonce);
+				expect(m).not.toBeNull();
+				const objet = m![1];
+				// La 2e sous-question nomme le MÊME objet (« Combien de <objet> restants ? »).
+				expect(ex.etapes[1].question).toContain(objet);
+			}
+		});
+	});
+
+	describe('mode QCM (variante accessible)', () => {
+		const items = genEucl('qcm');
+
+		it('type qcm : 4 choix distincts, contiennent la bonne réponse, format « q et il reste r »', () => {
+			for (const ex of items) {
+				if (ex.type !== 'qcm') throw new Error('attendu qcm');
+				expect(ex.choices).toHaveLength(4);
+				expect(new Set(ex.choices).size).toBe(4);
+				expect(ex.choices).toContain(ex.answer);
+				for (const c of ex.choices) expect(/^\d+ et il reste \d+$/.test(c)).toBe(true);
+			}
+		});
+
+		it('la bonne réponse encode (q, r) cohérents : dividende = d·q + r, r < d', () => {
+			for (const ex of items) {
+				if (ex.type !== 'qcm') continue;
+				const [dividende, diviseur] = ints(ex.question);
+				const m = /^(\d+) et il reste (\d+)$/.exec(ex.answer)!;
+				const quotient = Number(m[1]);
+				const reste = Number(m[2]);
+				expect(reste).toBeLessThan(diviseur);
+				expect(dividende).toBe(diviseur * quotient + reste);
+			}
+		});
+
+		it('piège « reste ≥ diviseur » SYSTÉMATIQUEMENT présent (q−1 et il reste r+d)', () => {
+			for (const ex of items) {
+				if (ex.type !== 'qcm') continue;
+				const [, diviseur] = ints(ex.question);
+				const m = /^(\d+) et il reste (\d+)$/.exec(ex.answer)!;
+				const quotient = Number(m[1]);
+				const reste = Number(m[2]);
+				// Erreur cible : l'enfant qui aurait pu continuer à diviser (reste ≥ diviseur).
+				const piege = `${quotient - 1} et il reste ${reste + diviseur}`;
+				expect(ex.choices).toContain(piege);
+				// Le piège reste un LEURRE valide : distinct de la bonne réponse.
+				expect(piege).not.toBe(ex.answer);
+			}
+		});
+
+		it('cas-limites couverts par l’échantillon : quotient = 2 (piège → q−1 = 1) et reste = 0', () => {
+			const parse = (a: string) => {
+				const m = /^(\d+) et il reste (\d+)$/.exec(a)!;
+				return { q: Number(m[1]), r: Number(m[2]) };
+			};
+			const qcm = items.filter((e): e is Extract<typeof e, { type: 'qcm' }> => e.type === 'qcm');
+			expect(qcm.some((e) => parse(e.answer).q === 2)).toBe(true);
+			expect(qcm.some((e) => parse(e.answer).r === 0)).toBe(true);
+		});
+
+		it('check() valide la bonne réponse et rejette un mauvais choix', () => {
+			for (const ex of items.slice(0, 50)) {
+				if (ex.type !== 'qcm') continue;
+				expect(lesson.exerciseType.check(ex, ex.answer)).toBe(true);
+				const mauvais = ex.choices.find((c) => c !== ex.answer)!;
+				expect(lesson.exerciseType.check(ex, mauvais)).toBe(false);
+			}
+		});
+	});
+
+	describe('déterminisme du tirage', () => {
+		it('à graine fixée, saisie et QCM sont reproductibles', () => {
+			for (const mode of ['saisie', 'qcm']) {
+				const a = withSeed(20251016, () => lesson.exerciseType.generate({ mode }));
+				const b = withSeed(20251016, () => lesson.exerciseType.generate({ mode }));
+				expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+			}
+			// Graines différentes → items (au moins parfois) différents : le tirage varie vraiment.
+			const s1 = withSeed(1, () => lesson.exerciseType.generate({ mode: 'saisie' }));
+			const s2 = withSeed(2, () => lesson.exerciseType.generate({ mode: 'saisie' }));
+			expect(JSON.stringify(s1)).not.toBe(JSON.stringify(s2));
 		});
 	});
 });

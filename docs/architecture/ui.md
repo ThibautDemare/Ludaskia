@@ -375,7 +375,11 @@ pure](core.md)) pour les formats composites :
   deux sous-questions (quotient + reste), mode `qcm` via `lecon-qcm.ts` ;
   `runLeconProbleme(id, mode?)` transmet le mode à la génération, et le runner adapte ses
   libellés via **`ExerciseType.probLexique`** (« Calcul » au lieu de « Problème », badge
-  « Étape » masqué) — le lexique par défaut préserve les libellés #199.
+  « Étape » masqué) — le lexique par défaut préserve les libellés #199. Même charpente
+  (deux sous-questions, `probLexique`) pour la sœur **CM1** « division euclidienne »
+  `math-division-euclidienne` (#251, `data/maths/division.ts`) : les deux leçons
+  partagent la fabrique `deuxSousQuestionsType(...)`, seuls le libellé de saisie, les
+  générateurs et le niveau (`levels: ['cm1']`) diffèrent.
   Les énoncés sont **générés par gabarits** (structures de Vergnaud) dans
   `data/maths/problemes.ts` : positions d'inconnue variées, pièges « mots-clés »
   loyaux et minoritaires, calibrage CE2 (additifs ≤ 1000, multiplicatifs dans les

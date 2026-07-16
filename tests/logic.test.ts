@@ -1005,8 +1005,9 @@ describe('Catalogue maths : 4 catégories du manuel (#92)', () => {
 	test('les leçons de calcul mental sont rattachées à math-calcul-mental', () => {
 		// 15 leçons CE2 « legacy » (bilanQ) + 2 division par le sens (#104) + reste (#95)
 		// + 2 leçons CM1 (#241 : multiples de 50, ÷10/÷100) + 2 leçons CM1 (#250 :
-		// divisibilité 2/5/10, ordre de grandeur d'un produit). Sans niveau = tout confondu.
-		expect(getLessonsByCategory('math-calcul-mental').length).toBe(22);
+		// divisibilité 2/5/10, ordre de grandeur d'un produit) + 1 leçon CM1 (#251 :
+		// division euclidienne quotient + reste). Sans niveau = tout confondu.
+		expect(getLessonsByCategory('math-calcul-mental').length).toBe(23);
 		// En CE2, les 4 leçons CM1 sont filtrées (18 leçons restantes).
 		expect(getLessonsByCategory('math-calcul-mental', 'ce2').length).toBe(18);
 		expect(getLessonsByCategory('math-calcul').length).toBeGreaterThan(0); // posé (#97)

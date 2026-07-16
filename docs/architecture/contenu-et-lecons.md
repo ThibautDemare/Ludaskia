@@ -584,14 +584,32 @@ Catégorie `math-calcul-mental`. Quatre origines :
   les leçons CM1 vivent dans `LESSONS_CM1` ; **`LESSONS_CALCUL_MENTAL`** (= `LESSONS` +
   `LESSONS_CM1`) est le **lookup combiné** utilisé par `buildLessonFiche` et la carte de
   catégorie pour retrouver le rendu riche d'une leçon par `id` (tous niveaux).
-- **`maths/division.ts` (#104, #95) — division par le sens** (jamais posée au CE2),
-  3 leçons : **« Moitié et quart d'une collection »** (`math-div-moitie-quart`,
-  fraction-opérateur, résultat entier ; `calibrated` CE2 X ≤ 50 / CM1 X ≤ 100),
-  **« Je partage »** (`math-div-partage`, division **exacte** dans les tables, deux sens
-  partage/groupement, figure « situation de départ » `renderGroupes` sur les items de
-  découverte, **exclue du sprint**) et **« Je découvre le reste »** (`math-div-reste`,
-  quotient **+ reste**, deux modes : saisie via le runner « problème » et QCM,
-  **exclue du sprint**).
+- **`maths/division.ts` (#104, #95, CM1 #251) — division par le sens** (jamais posée
+  au CE2), 3 leçons CE2 (`DIVISION_LESSONS`) : **« Moitié et quart d'une collection »**
+  (`math-div-moitie-quart`, fraction-opérateur, résultat entier ; `calibrated` CE2
+  X ≤ 50 / CM1 X ≤ 100), **« Je partage »** (`math-div-partage`, division **exacte**
+  dans les tables, deux sens partage/groupement, figure « situation de départ »
+  `renderGroupes` sur les items de découverte, **exclue du sprint**) et **« Je
+  découvre le reste »** (`math-div-reste`, quotient **+ reste**, deux modes : saisie
+  via le runner « problème » et QCM, **exclue du sprint**).
+
+  **Leçon CM1 séparée** (`DIVISION_EUCLIDIENNE_LESSONS`, #251) : **« Quotient et
+  reste »** (`math-division-euclidienne`) — **distincte** de la sœur CE2 (celle-ci ne
+  bouge pas), pas un recalibrage. Registre **abstrait-numérique** (à l'opposé du
+  concret/narratif « jetons-paniers » du CE2) : trois formes d'énoncé — « Dans 58,
+  combien de fois 7 ? » (cœur), égalité à trous « 58 = 7 × ? + ? », et un contexte
+  court d'appoint (« boîtes de N objets », minoritaire) — **sans figure**. Diviseur
+  ∈ [2,9], dividende à **2 chiffres** (10..99, jamais 3 chiffres = territoire de la
+  posée), quotient **pouvant dépasser 9** (marqueur CM1, ~40 % des items le forcent
+  quand c'est possible), ~1/3 de restes nuls. Même charpente que la sœur CE2 : runner
+  « problème » à deux sous-questions (quotient puis reste, correction indépendante
+  champ par champ) + variante QCM accessible, distracteur prioritaire = piège
+  « reste ≥ diviseur ». Les deux leçons partagent la fabrique **`deuxSousQuestionsType(...)`**
+  (scaffolding commun : modes, `probLexique`, `check`), seuls le libellé de saisie, les
+  générateurs et `levels: ['cm1']` (fixe, posé sur l'`ExerciseType` — pas `bankByLevel`,
+  pas `calibrated`) distinguent les deux. **Exclue du sprint.** Câblée au bloc « Calcul
+  mental CM1 » de `core/catalog.ts` (à la suite de #250), insérée dans
+  `ORDRE_LECONS.math.cm1` juste après `math-ordre-grandeur-produit`.
 - **`maths/divisibilite.ts` + `maths/ordre-grandeur.ts` (#250) — 2 leçons QCM CM1**
   (`CALCUL_MENTAL_CM1_LESSONS_DEFS`, `core/catalog.ts`), **premier usage réel du
   combinateur `bankByLevel`** (#225) : chaque item de banque porte `levels: ['cm1']`,

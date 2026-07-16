@@ -9,6 +9,7 @@
 import type { ExerciseType, GenerateOpts } from './exercise';
 import type { SchoolLevel } from './catalog';
 import { LEVEL_ORDER, closestSupported } from './levels';
+import { choice } from './utils';
 
 /* Recalibre une notion par niveau : `table` mappe niveau → paramètres, `build`
    fabrique l'ExerciseType pour un jeu de paramètres. L'ExerciseType renvoyé lit
@@ -47,7 +48,12 @@ export function calibrated<P>(
 /* Banque d'items tagués par niveau. Expose l'union des niveaux couverts (`levels`,
    pour dériver `LessonDef.levels`) et `at(niveau)` = items disponibles à ce niveau
    (appartenance stricte ; le tirage aléatoire reste au choix de l'appelant). */
-export function bankByLevel<I extends { levels: SchoolLevel[] }>(items: I[]) {
+export interface LevelBank<I> {
+	levels: SchoolLevel[];
+	at(niveau: SchoolLevel): I[];
+}
+
+export function bankByLevel<I extends { levels: SchoolLevel[] }>(items: I[]): LevelBank<I> {
 	const set = new Set<SchoolLevel>();
 	for (const it of items) for (const l of it.levels) set.add(l);
 	const levels = LEVEL_ORDER.filter((l) => set.has(l));
@@ -57,4 +63,16 @@ export function bankByLevel<I extends { levels: SchoolLevel[] }>(items: I[]) {
 			return items.filter((it) => it.levels.includes(niveau));
 		},
 	};
+}
+
+/* Tire un item d'une banque pour le niveau demandé. Replie sur le niveau supporté le
+   plus proche via `closestSupported` — MÊME invariant que `calibrated` (et que la
+   résolution `effectiveLevel` faite en amont), plutôt qu'un repli ad hoc sur le plus bas
+   niveau. Sans niveau demandé, part du plus bas niveau couvert. Centralise le repli pour
+   toutes les banques : à utiliser dans le `generate` d'un ExerciseType sur banque. */
+export function pickFromBank<I extends { levels: SchoolLevel[] }>(
+	bank: LevelBank<I>,
+	niveau?: SchoolLevel,
+): I {
+	return choice(bank.at(closestSupported(bank.levels, niveau ?? bank.levels[0])));
 }

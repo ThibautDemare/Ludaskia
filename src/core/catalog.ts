@@ -44,6 +44,8 @@ import { SYMETRIE_LESSONS } from '../data/maths/symetrie-axiale';
 import { ANGLES_LESSONS } from '../data/maths/angles';
 import { PROBLEMES_LESSONS } from '../data/maths/problemes';
 import { DIVISION_LESSONS } from '../data/maths/division';
+import { DIVISIBILITE_LESSONS } from '../data/maths/divisibilite';
+import { ORDRE_GRANDEUR_LESSONS } from '../data/maths/ordre-grandeur';
 import type { LessonInput } from '../data/_shared';
 import { trierParOrdre } from './ordre';
 
@@ -481,6 +483,24 @@ const DIVISION_LESSONS_DEFS: LessonDef[] = toLessonDefs(DIVISION_LESSONS, {
 	excludeFromSprint: (d) => d.excludeFromSprint,
 });
 
+/* ---------- Calcul mental CM1 — divisibilité & ordre de grandeur (#250) ----------
+   Deux leçons QCM CM1-only sur banque (`bankByLevel`, premier usage réel #225) :
+   critères de divisibilité par 2/5/10 (oui/non) et ordre de grandeur d'un produit
+   (choix parmi 3 puissances de 10). Niveaux DÉRIVÉS du moteur (`bank.levels` exposé
+   par la fabrique d'ExerciseType), comme les leçons `calibrated` — défaut ['cm1']. */
+/* Entrées groupées, typées avec l'exclusion sprint optionnelle (portée par la
+   divisibilité seule ; l'ordre de grandeur, QCM à 3 choix, reste dans le sprint). */
+const CALCUL_MENTAL_CM1_INPUTS: (LessonInput & { excludeFromSprint?: boolean })[] = [
+	...DIVISIBILITE_LESSONS,
+	...ORDRE_GRANDEUR_LESSONS,
+];
+const CALCUL_MENTAL_CM1_LESSONS_DEFS: LessonDef[] = toLessonDefs(CALCUL_MENTAL_CM1_INPUTS, {
+	subject: 'math',
+	category: 'math-calcul-mental',
+	levels: (d) => d.exerciseType.levels ?? ['cm1'],
+	excludeFromSprint: (d) => d.excludeFromSprint,
+});
+
 /* ---------- Catalogue des leçons français (conjugaison) ----------
    Seule famille hors `toLessonDefs` : l'exerciseType n'est pas porté par l'entrée
    mais CALCULÉ (`conjugationType(verbId, tense)`) — le descripteur `ConjLessonDesc`
@@ -698,6 +718,7 @@ const SYMETRIE_LESSONS_DEFS: LessonDef[] = toLessonDefs(SYMETRIE_LESSONS, {
 const ALL_LESSONS: LessonDef[] = [
 	...MATH_LESSONS,
 	...MATH_LESSONS_CM1,
+	...CALCUL_MENTAL_CM1_LESSONS_DEFS,
 	...NUMERATION_LESSONS_DEFS,
 	...DECIMAUX_LESSONS_DEFS,
 	...DECIMAUX_ECRITURES_LESSONS_DEFS,

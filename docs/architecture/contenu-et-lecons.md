@@ -564,7 +564,7 @@ verify() corrige chaque cellule (sans-faute = toutes justes). Exclu du sprint
 
 ### Calcul mental
 
-Catégorie `math-calcul-mental`. Trois origines :
+Catégorie `math-calcul-mental`. Quatre origines :
 
 - **15 leçons CE2 historiques** (`core/lessons.ts`, `LESSONS`/`bilanQ` — tables d'addition,
   compléments à 10/100/1000, doubles, moitiés, ajouter/soustraire 9·19, tables de ×,
@@ -592,6 +592,28 @@ Catégorie `math-calcul-mental`. Trois origines :
   découverte, **exclue du sprint**) et **« Je découvre le reste »** (`math-div-reste`,
   quotient **+ reste**, deux modes : saisie via le runner « problème » et QCM,
   **exclue du sprint**).
+- **`maths/divisibilite.ts` + `maths/ordre-grandeur.ts` (#250) — 2 leçons QCM CM1**
+  (`CALCUL_MENTAL_CM1_LESSONS_DEFS`, `core/catalog.ts`), **premier usage réel du
+  combinateur `bankByLevel`** (#225) : chaque item de banque porte `levels: ['cm1']`,
+  la fabrique d'`ExerciseType` expose `bank.levels`, le catalogue en dérive
+  `LessonDef.levels` (comme `calibrated`). Réponse **calculée puis STOCKÉE** dans
+  l'item (jamais recalculée au `check`), banques **construites déterministiquement à
+  l'import** (aucun aléa → corrigé/galerie stables).
+  - **« Divisible par 2, 5 et 10 »** (`math-divisibilite-2-5-10`) : QCM oui/non mêlant
+    les trois critères (~1/3 chaque diviseur, ~50/50 oui/non), cas frontière
+    équilibrés (fin 0 / 5 / pair non nul / impair ≠ 5), minorité formulée côté
+    diviseur (« d est-il un diviseur de N ? »), grands nombres à 5-6 chiffres
+    (~19 %) groupés via `formatNombre`. Corrigé nommant les **trois** critères.
+    **Exclue du sprint** (oui/non devinable à 50 %).
+  - **« Ordre de grandeur d'un produit »** (`math-ordre-grandeur-produit`) : QCM
+    « dans quelle classe tombe le résultat ? » (« 48 × 21, le résultat sera… »),
+    3 choix libellés par **classe** de nombres + nombre de chiffres (« dans les
+    centaines (3 chiffres) » / « milliers (4 chiffres) » / …), espacés ×10. Formulation
+    par appartenance de classe et non par proximité (« à peu près » serait faux en haut
+    de classe : 5994 ≈ 6000 mais reste « dans les milliers »). Ordre = 10^(nb de
+    chiffres − 1) ; un couple est retenu ssi (1) ordre ≥ 100 et (2) l'estimation par
+    arrondi au chiffre significatif donne la **même classe** — voir la règle
+    d'admissibilité en tête de `ordre-grandeur.ts`.
 
 ### Grandeurs et mesures
 

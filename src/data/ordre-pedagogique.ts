@@ -105,6 +105,12 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'num-encadrer-intercaler',
 			'num-valeur-position',
 			'math-diviser-10-100',
+			// Calcul mental CM1 (#250), groupé avec les autres compétences « de tête » du
+			// début d'année : critères de divisibilité par 2/5/10 (réinvestit la
+			// reconnaissance des multiples), puis ordre de grandeur d'un produit
+			// (estimation, s'appuie sur ×10/×100 et l'arrondi).
+			'math-divisibilite-2-5-10',
+			'math-ordre-grandeur-produit',
 			'num-decompose-10000',
 			'num-decompose-multiplicative',
 			'num-situer-10000',

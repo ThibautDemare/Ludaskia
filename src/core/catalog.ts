@@ -43,7 +43,7 @@ import { GEOMETRIE_CM1_LESSONS } from '../data/maths/geometrie-cm1';
 import { SYMETRIE_LESSONS } from '../data/maths/symetrie-axiale';
 import { ANGLES_LESSONS } from '../data/maths/angles';
 import { PROBLEMES_LESSONS } from '../data/maths/problemes';
-import { DIVISION_LESSONS } from '../data/maths/division';
+import { DIVISION_LESSONS, DIVISION_EUCLIDIENNE_LESSONS } from '../data/maths/division';
 import { DIVISIBILITE_LESSONS } from '../data/maths/divisibilite';
 import { ORDRE_GRANDEUR_LESSONS } from '../data/maths/ordre-grandeur';
 import type { LessonInput } from '../data/_shared';
@@ -483,16 +483,22 @@ const DIVISION_LESSONS_DEFS: LessonDef[] = toLessonDefs(DIVISION_LESSONS, {
 	excludeFromSprint: (d) => d.excludeFromSprint,
 });
 
-/* ---------- Calcul mental CM1 — divisibilité & ordre de grandeur (#250) ----------
-   Deux leçons QCM CM1-only sur banque (`bankByLevel`, premier usage réel #225) :
-   critères de divisibilité par 2/5/10 (oui/non) et ordre de grandeur d'un produit
-   (choix parmi 3 puissances de 10). Niveaux DÉRIVÉS du moteur (`bank.levels` exposé
-   par la fabrique d'ExerciseType), comme les leçons `calibrated` — défaut ['cm1']. */
+/* ---------- Calcul mental CM1 — divisibilité, ordre de grandeur (#250), division
+   euclidienne (#251) ----------
+   Leçons CM1-only rattachées au calcul mental : deux QCM sur banque (`bankByLevel`,
+   premier usage réel #225) — critères de divisibilité par 2/5/10 (oui/non) et ordre
+   de grandeur d'un produit (choix parmi 3 puissances de 10) — et la division
+   euclidienne (quotient + reste), générative sur le runner « problème » à deux
+   sous-questions (leçon distincte du CE2 `math-div-reste`, registre abstrait-numérique).
+   Niveaux DÉRIVÉS du moteur (`exerciseType.levels`, exposé par les banques et par la
+   fabrique de la division euclidienne), comme les leçons `calibrated` — défaut ['cm1']. */
 /* Entrées groupées, typées avec l'exclusion sprint optionnelle (portée par la
-   divisibilité seule ; l'ordre de grandeur, QCM à 3 choix, reste dans le sprint). */
+   divisibilité et la division euclidienne ; l'ordre de grandeur, QCM à 3 choix, reste
+   dans le sprint). */
 const CALCUL_MENTAL_CM1_INPUTS: (LessonInput & { excludeFromSprint?: boolean })[] = [
 	...DIVISIBILITE_LESSONS,
 	...ORDRE_GRANDEUR_LESSONS,
+	...DIVISION_EUCLIDIENNE_LESSONS,
 ];
 const CALCUL_MENTAL_CM1_LESSONS_DEFS: LessonDef[] = toLessonDefs(CALCUL_MENTAL_CM1_INPUTS, {
 	subject: 'math',

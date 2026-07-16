@@ -23,7 +23,8 @@
 import { choice, rnd, sample } from '../../core/utils';
 import { checkAnswer } from '../../core/exercise';
 import { checkNumerique } from '../../core/check-helpers';
-import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
+import type { Exercise, ExerciseType } from '../../core/exercise';
+import type { SchoolLevel } from '../../core/catalog';
 import { MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { calibrated } from '../../core/level-combinators';
@@ -216,29 +217,183 @@ function genResteQcm(): Exercise {
 	};
 }
 
-const RESTE_MODES: ModeOption[] = [
-	{
-		id: 'saisie',
-		label: "J'écris le résultat et le reste",
-		hint: 'deux réponses',
-		icon: 'pencil',
-		recommended: true,
-	},
-	{ ...MODE_QCM_POINT, hint: 'parmi 4', recommended: false },
-];
-
-function resteType(): ExerciseType {
+/* Fabrique commune aux deux leçons « quotient + reste » (CE2 « Je découvre le reste »
+   et CM1 « division euclidienne ») : même charpente de runner « problème » à deux
+   sous-questions — mode saisie recommandé + variante QCM accessible, vocabulaire
+   « calcul » sans badge « Étape » (les deux champs sont nommés), et `checkAnswer` (qui
+   renvoie false pour un item `probleme` : le runner corrige champ par champ en lisant
+   `etapes[].answer`, cf. #199/#348). Seuls le libellé de saisie, les deux générateurs
+   et le(s) niveau(x) distinguent une leçon de l'autre. */
+function deuxSousQuestionsType(opts: {
+	labelSaisie: string;
+	generateProbleme: () => Exercise;
+	generateQcm: () => Exercise;
+	levels?: SchoolLevel[];
+}): ExerciseType {
 	return {
+		...(opts.levels ? { levels: opts.levels } : {}),
 		// Format « problème » par défaut (#199/#348) : generate() sans mode produit un
-		// item `probleme` (le mode QCM est une variante) → classé et exclu du sprint.
+		// item `probleme` (le QCM est une variante) → classé et exclu du sprint.
 		exerciseKind: 'probleme',
-		modes: RESTE_MODES,
-		// Affichage du runner « problème » : vocabulaire « calcul » plutôt que
-		// « problème », pas de badge « Étape » (les deux champs sont nommés).
+		modes: [
+			{
+				id: 'saisie',
+				label: opts.labelSaisie,
+				hint: 'deux réponses',
+				icon: 'pencil',
+				recommended: true,
+			},
+			{ ...MODE_QCM_POINT, hint: 'parmi 4', recommended: false },
+		],
 		probLexique: { nom: 'Calcul', nomPluriel: 'calculs', badgeEtape: false },
-		generate: (opts) => (opts?.mode === 'qcm' ? genResteQcm() : genResteProbleme()),
+		generate: (o) => (o?.mode === 'qcm' ? opts.generateQcm() : opts.generateProbleme()),
 		check: checkAnswer,
 	};
+}
+
+function resteType(): ExerciseType {
+	return deuxSousQuestionsType({
+		labelSaisie: "J'écris le résultat et le reste",
+		generateProbleme: genResteProbleme,
+		generateQcm: genResteQcm,
+	});
+}
+
+/* ---------- Leçon 4 : Division euclidienne — quotient et reste (CM1, #251) ----------
+   Registre ABSTRAIT-NUMÉRIQUE (cœur de la différence avec le CE2 « Je découvre le
+   reste ») : on entraîne le RÉSULTAT de la division euclidienne (le quotient ET le
+   reste) en calcul réfléchi, JAMAIS le geste de la division posée. Trois formes
+   d'énoncé, sans figure ni narration lourde :
+   - « Dans 58, combien de fois 7 ? Et combien reste-t-il ? » (cœur) ;
+   - égalité à trous « 58 = 7 × ? + ? » (le lien structurel dividende = d·q + r) ;
+   - un contexte court d'appoint (minorité), sans jetons/paniers scalés du CE2.
+
+   Runner « problème » à DEUX sous-questions (quotient puis reste), corrigé CHAMP
+   PAR CHAMP (les deux champs visibles à la fois → aucun libellé ne révèle l'autre
+   réponse). Variante QCM accessible : distracteurs = erreurs classiques, en TÊTE le
+   piège « reste ≥ diviseur » (l'enfant qui aurait pu continuer à diviser).
+
+   Plage : diviseur ∈ [2, 9] ; dividende à 2 chiffres (10..99, JAMAIS 3 chiffres =
+   territoire du posé). Le quotient PEUT dépasser 9 (2 chiffres) — marqueur CM1 :
+   ~40 % des items le forcent quand c'est possible. Restes : ~1/3 nuls (comme au CE2),
+   sinon uniforme dans [1, diviseur−1] (couvre le cas-frontière reste = diviseur−1).
+   Invariant 0 ≤ reste < diviseur garanti par construction.
+
+   INVARIANT PROJET : (quotient, reste) sont CALCULÉS à la génération puis STOCKÉS
+   (`etapes[].answer` en saisie, chaîne `answer` en QCM), jamais recalculés au `check`.
+   CM1-only ; exclue du sprint (deux champs + lecture d'énoncé). */
+const POOL_DIVISEUR_EUCLIDIENNE = [2, 3, 4, 5, 6, 7, 8, 9];
+const PLAFOND_EUCLIDIENNE = 99; // dividende à 2 chiffres (jamais 3 = territoire du posé)
+// Objets masculins pluriels à initiale CONSONNE : la forme « contexte court » les
+// insère après « de/des » sans élision (« de gâteaux », « de timbres ») et « restants »
+// s'accorde de la même façon pour tous.
+const OBJETS_EUCLIDIENNE = ['bonbons', 'crayons', 'gâteaux', 'timbres'];
+
+function tireEuclidienne(): {
+	diviseur: number;
+	quotient: number;
+	reste: number;
+	dividende: number;
+} {
+	const diviseur = choice(POOL_DIVISEUR_EUCLIDIENNE);
+	// q borné pour un dividende à 2 chiffres : q·d ≥ 10 (min) et d·q + (d−1) ≤ 99 (max).
+	const quotientMin = Math.max(2, Math.ceil(10 / diviseur));
+	const quotientMax = Math.floor((PLAFOND_EUCLIDIENNE - (diviseur - 1)) / diviseur);
+	// ~40 % d'items forcent un quotient à 2 chiffres (marqueur CM1 : le quotient PEUT
+	// dépasser 9). quotientMax ≥ 10 pour tout diviseur de [2, 9] → toujours possible.
+	const deuxChiffres = quotientMax >= 10 && rnd(0, 9) < 4;
+	const quotient = deuxChiffres
+		? rnd(Math.max(10, quotientMin), quotientMax)
+		: rnd(quotientMin, quotientMax);
+	// ~1/3 de restes nuls ; sinon uniforme dans [1, diviseur−1] (couvre reste = diviseur−1).
+	const reste = rnd(0, 2) === 0 ? 0 : rnd(1, diviseur - 1);
+	return { diviseur, quotient, reste, dividende: diviseur * quotient + reste };
+}
+
+// Item « problème » à deux sous-questions (quotient puis reste), corrigé champ par
+// champ. Les deux champs sont affichés ensemble : aucun libellé ne cite la valeur de
+// l'autre réponse. Trois formes contrastées (le contexte court reste minoritaire).
+function genEuclidienneProbleme(): Exercise {
+	const { diviseur, quotient, reste, dividende } = tireEuclidienne();
+	const forme = rnd(0, 9); // 0-3 : « combien de fois » ; 4-6 : égalité ; 7-9 : contexte
+
+	if (forme <= 3) {
+		// Forme « combien de fois » (abstrait-numérique, cœur de la leçon).
+		return {
+			type: 'probleme',
+			enonce: `Dans ${dividende}, combien de fois ${diviseur} ? Et combien reste-t-il ?`,
+			etapes: [
+				{ question: `Combien de fois ${diviseur} dans ${dividende} ?`, answer: quotient },
+				{ question: 'Combien reste-t-il ?', answer: reste },
+			],
+			parle: `Dans ${dividende}, combien de fois ${diviseur} ? Et combien reste-t-il ?`,
+		};
+	}
+
+	if (forme <= 6) {
+		// Forme « égalité à trous » : dividende = diviseur × quotient + reste. Les libellés
+		// ne citent pas les valeurs (les deux champs sont visibles) → aucune fuite.
+		return {
+			type: 'probleme',
+			enonce: `Complète l'égalité : ${dividende} = ${diviseur} × ? + ?`,
+			etapes: [
+				{ question: 'Le quotient (× combien ?)', answer: quotient },
+				{ question: 'Le reste (+ combien ?)', answer: reste },
+			],
+			parle: `${dividende} égale ${diviseur} multiplié par combien, plus combien ? Trouve d'abord le quotient, puis le reste.`,
+		};
+	}
+
+	// Forme « contexte court » (appoint, minorité) : sans figure, sans narration lourde.
+	// Groupement : boîtes de taille `diviseur` ; reste = ce qui ne remplit pas une boîte.
+	const objet = choice(OBJETS_EUCLIDIENNE);
+	return {
+		type: 'probleme',
+		enonce: `On range ${dividende} ${objet} dans des boîtes de ${diviseur}.`,
+		etapes: [
+			// Libellé identique au fragment lu par le TTS (comme la sœur CE2), pas de
+			// divergence texte-vu / texte-entendu.
+			{ question: 'Combien de boîtes pleines peut-on faire ?', answer: quotient },
+			{ question: `Combien de ${objet} restants ?`, answer: reste },
+		],
+		parle: `On range ${dividende} ${objet} dans des boîtes de ${diviseur}. Combien de boîtes pleines peut-on faire ? Et combien de ${objet} restants ?`,
+	};
+}
+
+// Variante QCM (mode accessible) : une question, 4 choix. En TÊTE des distracteurs, le
+// piège « reste ≥ diviseur » (on aurait pu continuer à diviser) ; les autres = quotient
+// ±1 / reste ±1. Réponse combinée LUE dans l'item (jamais recalculée au check).
+function genEuclidienneQcm(): Exercise {
+	const { diviseur, quotient, reste, dividende } = tireEuclidienne();
+	const question = `Dans ${dividende}, combien de fois ${diviseur} ? Et combien reste-t-il ?`;
+	const correct = fmtQR(quotient, reste);
+	// Distracteur PRIORITAIRE : quotient trop petit d'un cran, donc reste ≥ diviseur
+	// (quotient ≥ 2 toujours → quotient − 1 ≥ 1). C'est l'erreur cible de la leçon.
+	const piegeResteTropGrand = fmtQR(quotient - 1, reste + diviseur);
+	const autres = [
+		fmtQR(quotient + 1, reste),
+		fmtQR(quotient - 1, reste),
+		fmtQR(quotient, reste + 1), // reste + 1 peut atteindre le diviseur → autre forme d'erreur
+		reste > 0 ? fmtQR(quotient, reste - 1) : fmtQR(quotient + 2, reste),
+	].filter((c) => c !== correct && c !== piegeResteTropGrand);
+	const distracteurs = [piegeResteTropGrand, ...sample([...new Set(autres)], 2)];
+	return {
+		type: 'qcm',
+		question,
+		answer: correct,
+		choices: sample([correct, ...distracteurs], distracteurs.length + 1),
+		parle: question,
+	};
+}
+
+function euclidienneType(): ExerciseType {
+	// CM1-only ; même charpente que la sœur CE2 (runner « problème » à deux champs).
+	return deuxSousQuestionsType({
+		levels: ['cm1'],
+		labelSaisie: "J'écris le quotient et le reste",
+		generateProbleme: genEuclidienneProbleme,
+		generateQcm: genEuclidienneQcm,
+	});
 }
 
 export interface DivisionLessonDef extends LessonInput {
@@ -271,6 +426,19 @@ export const DIVISION_LESSONS: DivisionLessonDef[] = [
 		label: 'Je découvre le reste',
 		exerciseType: resteType(),
 		// Deux champs (résultat + reste) + lecture d'énoncé + figure : hors chrono.
+		excludeFromSprint: true,
+	},
+];
+
+/* Division euclidienne CM1 (#251) — leçon SÉPARÉE du CE2 (`math-div-reste` ne bouge
+   pas). Câblée via le bloc « Calcul mental CM1 » du catalogue (levels dérivés
+   ['cm1']), pas via DIVISION_LESSONS (qui défaut à ['ce2']). */
+export const DIVISION_EUCLIDIENNE_LESSONS: DivisionLessonDef[] = [
+	{
+		id: 'math-division-euclidienne',
+		label: 'Quotient et reste',
+		exerciseType: euclidienneType(),
+		// Deux champs (quotient + reste) + lecture d'énoncé : hors chrono.
 		excludeFromSprint: true,
 	},
 ];

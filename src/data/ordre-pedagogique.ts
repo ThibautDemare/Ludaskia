@@ -111,6 +111,12 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			// (estimation, s'appuie sur ×10/×100 et l'arrondi).
 			'math-divisibilite-2-5-10',
 			'math-ordre-grandeur-produit',
+			// Division euclidienne — quotient et reste (#251) : capstone du cluster « calcul
+			// mental » (le plus exigeant — quotient à 2 chiffres + reste, sur des dividendes à
+			// 2 chiffres). Réinvestit les tables, la reconnaissance des multiples et l'ordre de
+			// grandeur (pour estimer le quotient) déjà travaillés juste au-dessus. Registre
+			// abstrait-numérique, distinct du « reste par le sens » du CE2.
+			'math-division-euclidienne',
 			'num-decompose-10000',
 			'num-decompose-multiplicative',
 			'num-situer-10000',

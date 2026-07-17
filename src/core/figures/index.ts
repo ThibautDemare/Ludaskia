@@ -83,7 +83,7 @@ import {
 	type SymMotif,
 	type SymTransform,
 } from './symetrie';
-import { renderAngle } from './angles';
+import { renderAngle, renderAnglePair, renderAngleNomme, type AngleSpec } from './angles';
 import { renderGroupes } from './groupes';
 
 /** Description d'une figure par données. Étendre l'union + le switch ci-dessous
@@ -108,7 +108,9 @@ export type FigureSpec =
 	| { kind: 'symJuger'; shape: SymShape; axis?: SymAxis }
 	| { kind: 'symMiroir'; motif: SymMotif; axis: 'v' | 'h' }
 	| { kind: 'symImage'; motif: SymMotif; axis: 'v' | 'h'; t: SymTransform }
-	| { kind: 'angle'; opening: number; bisector: number };
+	| { kind: 'angle'; opening: number; bisector: number }
+	| { kind: 'anglePair'; a: AngleSpec; b: AngleSpec; labels?: [string, string] }
+	| { kind: 'angleNomme'; spec: AngleSpec; points: [string, string, string] };
 
 export function renderFigure(spec: FigureSpec): string {
 	switch (spec.kind) {
@@ -152,5 +154,9 @@ export function renderFigure(spec: FigureSpec): string {
 			return renderSymImage(spec.motif, spec.axis, spec.t);
 		case 'angle':
 			return renderAngle(spec.opening, spec.bisector);
+		case 'anglePair':
+			return renderAnglePair(spec.a, spec.b, spec.labels);
+		case 'angleNomme':
+			return renderAngleNomme(spec.spec, spec.points);
 	}
 }

@@ -24,6 +24,7 @@ import { PARTICIPE_LESSONS } from '../data/francais/participe-passe-etre';
 import { HOMOPHONE_LESSONS } from '../data/francais/homophones';
 import { MBP_LESSONS } from '../data/francais/mbp';
 import { MESURE_LESSONS } from '../data/maths/mesures';
+import { DUREE_ECOULEE_LESSONS } from '../data/maths/duree-ecoulee';
 import { MONNAIE_LESSONS } from '../data/maths/monnaie';
 import { HEURE_LESSONS } from '../data/maths/heure';
 import { PERIMETRE_LESSONS } from '../data/maths/perimetre';
@@ -402,6 +403,14 @@ const GRANDEURS_LESSONS: LessonDef[] = [
 		category: 'math-grandeurs-mesures',
 		levels: (d) => d.exerciseType.levels ?? ['ce2'],
 	}),
+	// Durée écoulée (#252) : leçon CM1-only, hors sprint (deux champs + lecture d'énoncé),
+	// sur le runner « problème ». Niveaux dérivés du moteur (['cm1']).
+	...toLessonDefs(DUREE_ECOULEE_LESSONS, {
+		subject: 'math',
+		category: 'math-grandeurs-mesures',
+		levels: (d) => d.exerciseType.levels ?? ['cm1'],
+		excludeFromSprint: (d) => d.excludeFromSprint,
+	}),
 	// Monnaie (#96), lecture de l'heure (#88) et périmètre : CM1 non surfacé (relève du
 	// déploiement CM1 de ces notions) → `levels: ['ce2']` (défaut).
 	...toLessonDefs([...MONNAIE_LESSONS, ...HEURE_LESSONS, ...PERIMETRE_LESSONS], {
@@ -693,11 +702,22 @@ const CALCUL_LESSONS_DEFS: LessonDef[] = toLessonDefs(POSEE_LESSONS, {
 
 /* ---------- Catalogue des leçons « Géométrie » (figures planes, #100) ----------
    Clientes du moteur de figures SVG : reconnaissance visuelle (modes QCM/saisie)
-   et propriétés/vocabulaire (QCM textuel). */
-const GEOMETRIE_LESSONS_DEFS: LessonDef[] = toLessonDefs(
-	[...GEOMETRIE_LESSONS, ...CERCLE_LESSONS, ...SOLIDE_LESSONS, ...ANGLES_LESSONS],
-	{ subject: 'math', category: 'math-geometrie' },
-);
+   et propriétés/vocabulaire (QCM textuel). Figures planes / cercle / solides restent
+   CE2 (défaut) ; « Les angles » est calibrée CE2+CM1 (#252, comparaison de deux angles
+   au CM1) → ses niveaux sont DÉRIVÉS du moteur. On mappe les angles SÉPARÉMENT pour ne
+   pas surfacer d'éventuels niveaux latents sur les autres leçons (ordre de déclaration
+   préservé : figures → cercle → solides → angles). */
+const GEOMETRIE_LESSONS_DEFS: LessonDef[] = [
+	...toLessonDefs([...GEOMETRIE_LESSONS, ...CERCLE_LESSONS, ...SOLIDE_LESSONS], {
+		subject: 'math',
+		category: 'math-geometrie',
+	}),
+	...toLessonDefs(ANGLES_LESSONS, {
+		subject: 'math',
+		category: 'math-geometrie',
+		levels: (d) => d.exerciseType.levels ?? ['ce2'],
+	}),
+];
 
 /* ---------- Catalogue des leçons « Géométrie » CM1 (#242) ----------
    Contenu ADDITIF tagué CM1 (le CE2 est gelé) : triangles particuliers (reconnaissance +

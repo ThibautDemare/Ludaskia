@@ -142,7 +142,13 @@ propre doc de conception : `docs/design-orthographe.md`.
     demi-droites depuis un sommet net : un **arc** matérialise l'ouverture d'un
     aigu/obtus, le **carré de codage** marque l'angle droit (jamais les deux),
     orientation variée par la bissectrice ; **aucune mesure affichée** et
-    invariant « 90° ⇒ carré » garanti par `opening === 90`).
+    invariant « 90° ⇒ carré » garanti par `opening === 90`) ; + **CM1 (#252)** —
+    **`renderAnglePair(a, b, labels?)`** (deux angles **côte à côte** pour les
+    comparer, chacun étiqueté **A/B** hors du SVG, longueur des demi-droites
+    réglable **par angle** via `AngleSpec.ray` — dissocie taille du trait et
+    ouverture) et **`renderAngleNomme(spec, points)`** (un angle à **trois
+    points nommés**, seul cas où un `<text>` SVG est admis sur une figure
+    d'angle : ce sont des noms de points, pas des cotes/degrés).
   - **`groupes.ts`** — **`renderGroupes(paniers, total)`** (#104 — division par le
     sens : `total` jetons en vrac + `paniers` contenants **vides** ; montre la
     SITUATION, jamais le résultat → l'enfant calcule, il ne compte pas une réponse
@@ -151,8 +157,8 @@ propre doc de conception : `docs/design-orthographe.md`.
     toutes les familles, et porte le dispatch par données **`FigureSpec`**
     (union `horloge | polygoneCote | quadrillage | figurePlane | sceneFigures |
     cercle | solide | groupes | fraction* | grilleCentiemes | symJuger | symMiroir |
-    symImage | angle` — le variant `figurePlane` porte le `codage?` ci-dessus —
-    **point d'extension**) / **`renderFigure(spec)`**.
+    symImage | angle | anglePair | angleNomme` — le variant `figurePlane` porte le
+    `codage?` ci-dessus — **point d'extension**) / **`renderFigure(spec)`**.
 
   On compose avec les primitives, on ajoute un `renderXxx` dans le module de sa
   famille (+ variant `FigureSpec` au besoin), jamais de SVG « à la main » dans
@@ -168,7 +174,11 @@ propre doc de conception : `docs/design-orthographe.md`.
   (tableau de conversion #394 : colonnes **`TableauColonne[]`** —
   `{unite, nom, transit, chiffres, tete?}`, TOUJOURS grande→petite unité — et
   `virguleApres?` pour les paires décimales CM1 ; corrigé **colonne par colonne** par
-  son runner, comme `posed`) | interactions ortho), interface **`ExerciseType`** :
+  son runner, comme `posed`) | `probleme` (résolution de problèmes #199 :
+  `enonce`, `etapes[]` — 1 ou 2 sous-questions corrigées indépendamment —,
+  `parle`, `figure?` #95, `explication?` #252 — stratégie affichée APRÈS la
+  réponse, ex. le « pont » d'un calcul de durée) | interactions ortho), interface
+  **`ExerciseType`** :
   `modes?`
   (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
   l'ordre d'affichage), `generate(opts? : {mode?, level?})` (le `level` #225 calibre

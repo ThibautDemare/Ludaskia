@@ -377,9 +377,12 @@ pure](core.md)) pour les formats composites :
   libellés via **`ExerciseType.probLexique`** (« Calcul » au lieu de « Problème », badge
   « Étape » masqué) — le lexique par défaut préserve les libellés #199. Même charpente
   (deux sous-questions, `probLexique`) pour la sœur **CM1** « division euclidienne »
-  `math-division-euclidienne` (#251, `data/maths/division.ts`) : les deux leçons
-  partagent la fabrique `deuxSousQuestionsType(...)`, seuls le libellé de saisie, les
-  générateurs et le niveau (`levels: ['cm1']`) diffèrent.
+  `math-division-euclidienne` (#251) et pour la **durée écoulée CM1** `mes-duree-ecoulee`
+  (#252) : les trois leçons partagent la fabrique `deuxSousQuestionsType(...)`, désormais
+  dans le module **`data/maths/_probleme-deux-sous-questions.ts`** ; seuls le libellé de
+  saisie, les générateurs et le niveau diffèrent. Le runner rend aussi le champ optionnel
+  **`probleme.explication`** après la réponse (stratégie du « pont » de la durée écoulée,
+  #252 ; absent = feedback inchangé, comme pour la division).
   Les énoncés sont **générés par gabarits** (structures de Vergnaud) dans
   `data/maths/problemes.ts` : positions d'inconnue variées, pièges « mots-clés »
   loyaux et minoritaires, calibrage CE2 (additifs ≤ 1000, multiplicatifs dans les

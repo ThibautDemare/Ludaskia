@@ -46,6 +46,10 @@ const NOM: Record<PlaneShape, string> = {
 	losange: 'losange',
 	cercle: 'cercle',
 	parallelogramme: 'parallélogramme',
+	// Quadrilatère quelconque (#253) : jamais tiré au CE2 (ni au CM1 en reconnaissance) ; le
+	// NOM doit néanmoins couvrir l'union PlaneShape. N'apparaît que dans la leçon « propriétés »
+	// (figures-proprietes.ts), qui ne NOMME jamais la figure.
+	quadrilatereQuelconque: 'quadrilatère quelconque',
 };
 const PLURIEL: Record<string, string> = {
 	carre: 'carrés',

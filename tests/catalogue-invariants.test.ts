@@ -87,6 +87,30 @@ function assertExercise(type: ExerciseType, ex: Exercise, où: string): void {
 			`${où} : doublon de choix dans le QCM [${ex.choices.join(' | ')}]`,
 		).toBe(ex.choices.length);
 	}
+	// QCM multi-sélection (#253) : pas de champ `answer` (correction tout-ou-rien déléguée
+	// au runner), donc le round-trip ci-dessus est sauté. On éprouve sa bonne formation :
+	// exactement 4 propositions distinctes, au moins une vraie ET au moins une fausse, et
+	// l'ensemble des vraies inclus dans les propositions affichées.
+	if (ex.type === 'qcmMulti') {
+		expect(ex.propositions.length, `${où} : qcmMulti n'a pas 4 propositions`).toBe(4);
+		expect(
+			new Set(ex.propositions).size,
+			`${où} : doublon de proposition dans le qcmMulti [${ex.propositions.join(' | ')}]`,
+		).toBe(ex.propositions.length);
+		expect(
+			ex.correctes.length,
+			`${où} : qcmMulti sans aucune bonne réponse`,
+		).toBeGreaterThanOrEqual(1);
+		expect(ex.correctes.length, `${où} : qcmMulti où tout est vrai (aucune fausse)`).toBeLessThan(
+			4,
+		);
+		for (const c of ex.correctes) {
+			expect(
+				ex.propositions,
+				`${où} : une réponse correcte « ${c} » n'est pas dans les propositions`,
+			).toContain(c);
+		}
+	}
 }
 
 /* Bonne formation de l'ITEM du chemin catalogue (mode par défaut) + round-trip de

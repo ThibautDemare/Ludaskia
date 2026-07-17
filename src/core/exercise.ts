@@ -110,6 +110,24 @@ export type Exercise =
 			ttsItems?: boolean;
 			variante?: QcmVariante;
 	  }
+	// QCM MULTI-SÉLECTION (#253) — « Coche TOUTES les propriétés qui s'appliquent ». On
+	// montre une figure codée et EXACTEMENT 4 affirmations ; l'enfant coche celles qui
+	// sont vraies. Correction TOUT-OU-RIEN par le runner dédié (ui/lecon-qcm-multi.ts) :
+	// juste ⇔ toutes les bonnes cochées ET aucune mauvaise.
+	// `propositions` : les 4 affirmations, dans un ordre STABLE (jamais réordonné à
+	//   l'affichage — un enfant dyspraxique planifie ses appuis par position).
+	// `correctes` : le sous-ensemble VRAI, CALCULÉ puis STOCKÉ à la génération (jamais
+	//   recalculé au check), garanti non vide ET de taille < 4 (au moins une vraie et une
+	//   fausse). Le runner compare l'ensemble coché à cette liste.
+	// `figure` : figure SVG codée ; `parle` : consigne lue à voix haute.
+	| {
+			type: 'qcmMulti';
+			question: string;
+			propositions: string[];
+			correctes: string[];
+			figure?: string;
+			parle?: string;
+	  }
 	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
 	// des distracteurs vers l'emplacement `@` de la question. Réponse = `answer`.
 	| { type: 'tuilesNombre'; question: string; answer: string; tuiles: string[]; parle?: string }
@@ -259,7 +277,8 @@ export function checkAnswer(exercise: Exercise, input: string): boolean {
 		exercise.type === 'tuilesTri' ||
 		exercise.type === 'probleme' ||
 		exercise.type === 'tableauConversion' ||
-		exercise.type === 'appariement'
+		exercise.type === 'appariement' ||
+		exercise.type === 'qcmMulti'
 	)
 		return false;
 	const normalized = normalizeText(input);

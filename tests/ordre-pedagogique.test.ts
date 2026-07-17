@@ -40,13 +40,13 @@ describe('core/ordre — helpers', () => {
 	it('ordreLecons rend la liste de la matière×niveau (ou vide si non renseigné)', () => {
 		expect(ordreLecons('math', 'ce2')).toEqual(ORDRE_LECONS.math.ce2 as string[]);
 		expect(ordreLecons('math', 'ce2')[0]).toBe('num-comparer');
-		// Math CM1 = numération « grands nombres » (#240) + calcul mental (#241 : 2, +
-		// #250 : divisibilité & ordre de grandeur, 2, + #251 : division euclidienne, 1) +
-		// géométrie (#242, 6 + #252 : les angles CM1, 1) + nombres décimaux (#246, 5 leçons
-		// + #247, 4 leçons) + conversions de mesures (#248, 4 leçons + #252 : durée écoulée,
-		// 1) + fractions ouvertes au CM1 & fractions comme nombres (#249, 6 + 3 = 9 leçons) :
-		// 11 + 6 + 7 + 5 + 4 + 5 + 9 = 41 leçons.
-		expect(ordreLecons('math', 'cm1')).toHaveLength(41);
+		// Math CM1 = numération « grands nombres » (#240 : 6) + calcul mental (#241 : 2,
+		// #250 : divisibilité & ordre de grandeur, 2, #251 : division euclidienne, 1 → 5) +
+		// géométrie (#242, 6 + #253 : figure par ses propriétés, 1 + #252 : les angles CM1,
+		// 1 → 8) + nombres décimaux (#246, 5 + #247, 4 → 9) + conversions de mesures (#248, 4
+		// + #253 : aire & périmètre, 1 + #252 : durée écoulée, 1 → 6) + fractions ouvertes au
+		// CM1 & fractions comme nombres (#249, 6 + 3 → 9) : 6 + 5 + 8 + 9 + 6 + 9 = 43 leçons.
+		expect(ordreLecons('math', 'cm1')).toHaveLength(43);
 		expect(ordreLecons('math', 'cm1')[0]).toBe('num-comparer');
 		// Français CM1 : 52 leçons verbe×temps + 3 QCM méta (#239) + 3 leçons de grammaire
 		// « Les phrases » (#245 : type, forme, transfo négative) + 2 leçons d'accords CM1
@@ -183,10 +183,11 @@ describe('leçon du jour', () => {
 	it('multi-niveau : en CM1, déroule les ordres CM1, file vide ⇒ on continue l’autre matière', () => {
 		setNiveauReference('cm1');
 		const seq = sequenceLeconDuJour();
-		// math CM1 = 41 leçons (numération #240 + calcul mental #241, #250 & #251 + géométrie
-		// #242 & les angles CM1 #252 + nombres décimaux #246 & écritures équivalentes #247 +
-		// conversions de mesures #248 & durée écoulée #252 + fractions au CM1 & fractions comme
-		// nombres #249), français CM1 = 64 (conjugaison #239 + grammaire « phrases » #245 +
+		// math CM1 = 43 leçons (numération #240 + calcul mental #241, #250 & #251 + géométrie
+		// #242, figure par ses propriétés #253 & les angles CM1 #252 + nombres décimaux #246 &
+		// écritures équivalentes #247 + conversions de mesures #248, aire & périmètre #253 &
+		// durée écoulée #252 + fractions au CM1 & fractions comme nombres #249), français CM1 =
+		// 64 (conjugaison #239 + grammaire « phrases » #245 +
 		// accords #243 + vocabulaire #244) → entrelacement 1:1, puis la matière la plus longue
 		// (français) seule.
 		expect(seq).toHaveLength(M_CM1.length + F_CM1.length);

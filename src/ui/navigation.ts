@@ -15,6 +15,7 @@ import type { ExerciseMode } from '../core/exercise';
 import { escapeHTML } from '../core/utils';
 import { buildLessonFiche } from '../core/build';
 import { runLeconQcm } from './lecon-qcm';
+import { runLeconQcmMulti } from './lecon-qcm-multi';
 import { runLeconTuiles } from './lecon-tuiles';
 import { runLeconOrdre } from './lecon-ordre';
 import { runLeconTri } from './lecon-tri';
@@ -210,6 +211,7 @@ function chooseMode(id: string, mode: ExerciseMode) {
 	const type = lesson.exerciseType.generate({ mode }).type;
 	if (
 		type === 'qcm' ||
+		type === 'qcmMulti' ||
 		type === 'tuilesNombre' ||
 		type === 'tuilesOrdre' ||
 		type === 'probleme' ||
@@ -578,6 +580,10 @@ export function runLecon(id: string) {
 	if (mode) {
 		if (t === 'qcm') {
 			runLeconQcm(id, mode);
+			return;
+		}
+		if (t === 'qcmMulti') {
+			runLeconQcmMulti(id, mode);
 			return;
 		}
 		if (t === 'tuilesNombre') {

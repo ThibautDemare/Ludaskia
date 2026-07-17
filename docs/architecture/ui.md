@@ -313,6 +313,19 @@ pure](core.md)) pour les formats composites :
   présentation** : consigne renforcée (#203, `consigne-renforcee.ts`), boutons-symboles
   de ponctuation (#204, `ponctuation-view.ts`), choix riches cliquables (#200,
   `choicesView`).
+- **`lecon-qcm-multi.ts`** (#253) — runner **QCM multi-sélection** d'une leçon
+  (« coche TOUTES les propriétés qui s'appliquent ») : une figure codée + **exactement 4**
+  affirmations en **boutons-toggles** (`<button aria-pressed>`, case carrée ☐/☑ décorative,
+  **toute la ligne** cliquable) empilés pleine largeur (`.sprint-choices--pile`). Bouton
+  **« Valider »** désactivé tant que 0 case cochée ; **correction TOUT-OU-RIEN** (juste ⇔
+  toutes les bonnes cochées ET aucune mauvaise) contre la liste **stockée** `correctes` de
+  l'`Exercise` `type: 'qcmMulti'` (jamais recalculée). **Feedback 4 états** dédié
+  (`.lqcm-multi-choice.is-hit`/`.is-missed`/`.is-false`, jamais recyclé de
+  `.sprint-choice`) + badge global ambre/vert + synthèse ; ordre des propositions **stable**
+  (a11y dyspraxie). Tour de **6 questions** (anti-empilement d'étoile). Routé par `runLecon`
+  quand le mode produit un `qcmMulti` ; parité `recordLessonRun` ; TTS via
+  `bindConsigneTts`/`bindItemTts`. Utilisé par la leçon `geo-cm1-figures-proprietes` en
+  **mode non recommandé** (le mode recommandé reste un vrai/faux mono-réponse sur `lecon-qcm.ts`).
 - **`lecon-tuiles.ts`** — runner **tuiles** d'une leçon de numération (#98) : même
   forme « une question à la fois » que le QCM, mais l'enfant **pose une tuile**
   (signe/nombre) dans l'emplacement par **tap ou glisser-déposer** ; parité

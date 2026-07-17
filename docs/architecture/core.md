@@ -82,10 +82,18 @@ propre doc de conception : `docs/design-orthographe.md`.
     mesures » / « Géométrie ». **`renderPolygoneCote(points, labels)`** (#99 —
     polygone dessiné **à l'échelle** depuis ses sommets, chaque côté coté à
     l'extérieur ; un label vide = côté non coté) et **`renderQuadrillage(cols,
-    rows, cells)`** (#99 — figure rectiligne sur grille, **contour surligné** ; le
+    rows, cells, mode?, opts?)`** (#99/#253 — figure rectiligne sur grille ; le
     helper **`boundaryEdges(cells)`** donne les côtés unitaires du tour, sa
-    longueur = le périmètre en côtés de carreaux). Côté géométrie (#100) :
-    **`renderFigurePlane(shape, rotation, codage?)`** (figure pleine à
+    longueur = le périmètre en côtés de carreaux). **Deux modes de dessin**
+    (grammaire visuelle) : `perimetre` (défaut, CE2 — **contour corail** épais,
+    grille interne masquée sous le remplissage → compter des CÔTÉS) et `aire`
+    (#253, CM1 — cases teintées **avec la grille interne visible par-dessus** et
+    contour d'accent → compter des CARREAUX). **`renderQuadrillagePaire(a, b,
+    mode?, labels?)`** (#253) dessine **deux figures à comparer** côte à côte
+    (aire ↔ périmètre), étiquetées A/B, à **taille de case commune** (SVG à taille
+    intrinsèque via `svgCanvas(..., intrinsic)` — une 6×6 paraît plus grande qu'une
+    3×3, plafonnée en CSS `.quad-pair-item`). Côté géométrie (#100) :
+    **`renderFigurePlane(shape, rotation, codage?, parallelisme?)`** (figure pleine à
     reconnaître, rotation pour varier l'orientation), **`renderSceneFigures(cells)`**
     (scène de plusieurs figures à compter, grille monochrome) et
     **`renderCercle(segment?, label?)`** (#102 — cercle + centre, rayon ou
@@ -93,7 +101,9 @@ propre doc de conception : `docs/design-orthographe.md`.
     couvre carré, rectangle, triangle (générique), triangle rectangle, losange,
     cercle, parallélogramme et — **CM1 (#242)** — les **triangles particuliers**
     `triangleEquilateral` / `triangleIsocele` (FRANC, apex ~40°) /
-    `triangleQuelconque` (scalène ~3:4:5,5, sans angle droit). Sommets canoniques
+    `triangleQuelconque` (scalène ~3:4:5,5, sans angle droit), plus — **CM1 (#253)** —
+    le **`quadrilatereQuelconque`** (4 côtés irréguliers, aucun angle droit / côté
+    égal / côté parallèle → aucune marque ; contre-exemple du parallélisme). Sommets canoniques
     mis à l'échelle de façon **uniforme** (angles et égalités de longueur
     préservés). **Codage des figures (#326, CM1) — opt-in.** Le paramètre
     **`codage`** (défaut `false`) ajoute à la forme le **codage géométrique**
@@ -113,7 +123,13 @@ propre doc de conception : `docs/design-orthographe.md`.
     demande pas, donc ses figures **restent non codées** (rendu CE2
     gelé/inchangé). Le tracé du **parallélogramme** est calibré CM1 (#242) : côté
     oblique incliné ~28° de la verticale, ratio longueur/largeur ~1,9 (rectangle
-    penché allongé).
+    penché allongé). **Codage du parallélisme (#253, CM1) — 2ᵉ opt-in `parallelisme`
+    (défaut `false`)** : ajoute des **chevrons** `›` / `»` le long des côtés
+    parallèles (`SHAPE_MARQUES_PARALLELES` → `marqueParallele(a, b, chevrons)`,
+    même style `--ink` que les tirets, **décalés du milieu** pour ne pas heurter le
+    tiret d'égalité), **quadrilatères réguliers seulement** (jamais un triangle ni le
+    `quadrilatereQuelconque`). Orthogonal à `codage` ; utilisé par
+    `data/maths/figures-proprietes.ts`.
   - **`solides.ts`** — **`renderSolide(solid, orient?)`** (#103 — schéma d'un
     solide en **perspective cavalière sans arêtes cachées** : cube, pavé droit,
     cylindre, cône, pyramide, boule ; + **CM1 (#242)** le **prisme** droit à base
@@ -155,17 +171,23 @@ propre doc de conception : `docs/design-orthographe.md`.
     déjà posée).
   - **`index.ts`** — point d'entrée : réexporte les primitives publiques et
     toutes les familles, et porte le dispatch par données **`FigureSpec`**
-    (union `horloge | polygoneCote | quadrillage | figurePlane | sceneFigures |
-    cercle | solide | groupes | fraction* | grilleCentiemes | symJuger | symMiroir |
-    symImage | angle | anglePair | angleNomme` — le variant `figurePlane` porte le
-    `codage?` ci-dessus — **point d'extension**) / **`renderFigure(spec)`**.
+    (union `horloge | polygoneCote | quadrillage | quadrillagePaire | figurePlane |
+    sceneFigures | cercle | solide | groupes | fraction* | grilleCentiemes |
+    symJuger | symMiroir | symImage | angle | anglePair | angleNomme` — le variant
+    `figurePlane` porte le `codage?` ci-dessus, `quadrillage`/`quadrillagePaire`
+    portent le `mode?` aire/périmètre — **point d'extension**) /
+    **`renderFigure(spec)`**.
 
   On compose avec les primitives, on ajoute un `renderXxx` dans le module de sa
   famille (+ variant `FigureSpec` au besoin), jamais de SVG « à la main » dans
   une leçon. Tokens de couleur dédiés (`--clock-min`…) ; styles dans
   `src/styles/figures.scss`.
 - **`exercise.ts`** — abstraction d'exercice : type `Exercise`
-  (`text` | `qcm` | `tuilesNombre` (numération #98) | `tuilesOrdre` (ordre
+  (`text` | `qcm` | `qcmMulti` (multi-sélection #253 : `{question, propositions:
+  string[]` — EXACTEMENT 4, ordre stable —, `correctes: string[]` — sous-ensemble
+  vrai **stocké**, ≥ 1 et < 4 —, `figure?`, `parle?}` ; correction TOUT-OU-RIEN par
+  son runner `lecon-qcm-multi.ts`, `checkAnswer` renvoie `false`) | `tuilesNombre`
+  (numération #98) | `tuilesOrdre` (ordre
   alphabétique #108 : suite mélangée + suite triée) | `tuilesTri` (champs
   lexicaux #114 : tuiles + thème correct de chacune) | `appariement` (relier des
   paires #392 : `{question, paires: {gauche, droite}[], intrus?, parle?}` — `paires`

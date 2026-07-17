@@ -98,16 +98,23 @@ export function svgCanvas(
 	cls = '',
 	ariaLabel: string = title,
 	decorative = false,
+	intrinsic = false,
 ): string {
 	const klass = `figure-svg${cls ? ' ' + cls : ''}`;
+	// Taille INTRINSÈQUE (#253) : par défaut une figure n'a NI width NI height (elle épouse
+	// son conteneur via le CSS `.figure-svg`). Quand `intrinsic` est demandé, on émet
+	// width/height = viewBox : la figure garde alors une taille physique PROPORTIONNELLE à sa
+	// grille (une 6×6 paraît plus grande qu'une 3×3), plafonnée en CSS. Sert à la paire de
+	// quadrillages « aire » à comparer, où la taille EST une information.
+	const size = intrinsic ? `width="${w}" height="${h}" ` : '';
 	if (decorative) {
 		return (
-			`<svg class="${klass}" viewBox="0 0 ${w} ${h}" aria-hidden="true" ` +
+			`<svg class="${klass}" ${size}viewBox="0 0 ${w} ${h}" aria-hidden="true" ` +
 			`xmlns="http://www.w3.org/2000/svg">${body}</svg>`
 		);
 	}
 	return (
-		`<svg class="${klass}" viewBox="0 0 ${w} ${h}" ` +
+		`<svg class="${klass}" ${size}viewBox="0 0 ${w} ${h}" ` +
 		`role="img" aria-label="${escapeHTML(ariaLabel)}" xmlns="http://www.w3.org/2000/svg">` +
 		`<title>${escapeHTML(title)}</title><desc>${escapeHTML(desc)}</desc>${body}</svg>`
 	);

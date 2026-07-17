@@ -136,50 +136,124 @@ export function boundaryEdges(
 const GRID_CELL = 22; // côté d'une case (unités viewBox)
 const GRID_PAD = 8;
 
+/** Une figure rectiligne sur quadrillage, décrite par ses cases pleines. Sert à la
+    PAIRE à comparer (aire ↔ périmètre, #253). */
+export interface QuadFig {
+	cols: number;
+	rows: number;
+	cells: Array<[number, number]>;
+}
+
+/** Mode de dessin d'un quadrillage (#253) — deux « grammaires visuelles » distinctes :
+    - `perimetre` (CE2, #99) : contour CORAIL épais, grille interne masquée sous le
+      remplissage → on compte les CÔTÉS de carreaux du tour ;
+    - `aire` (CM1) : cases teintées AVEC la grille interne visible PAR-DESSUS et un contour
+      d'accent (pas de corail) → on compte les CARREAUX qui remplissent la figure. */
+export type QuadrillageMode = 'perimetre' | 'aire';
+
 export function renderQuadrillage(
 	cols: number,
 	rows: number,
 	cells: Array<[number, number]>,
+	mode: QuadrillageMode = 'perimetre',
+	opts: { intrinsic?: boolean; ariaLabel?: string } = {},
 ): string {
 	const W = cols * GRID_CELL + 2 * GRID_PAD;
 	const H = rows * GRID_CELL + 2 * GRID_PAD;
 	const px = (c: number) => GRID_PAD + c * GRID_CELL;
-	const body: string[] = [];
-	// Trame du quadrillage (discrète).
-	for (let i = 0; i <= cols; i++)
-		body.push(
-			line(px(i), px(0), px(i), GRID_PAD + rows * GRID_CELL, {
-				stroke: 'var(--muted)',
-				'stroke-width': 1,
-			}),
-		);
-	for (let j = 0; j <= rows; j++)
-		body.push(
-			line(px(0), GRID_PAD + j * GRID_CELL, GRID_PAD + cols * GRID_CELL, GRID_PAD + j * GRID_CELL, {
-				stroke: 'var(--muted)',
-				'stroke-width': 1,
-			}),
-		);
-	// Cases pleines.
-	for (const [x, y] of cells)
-		body.push(rect(px(x), px(y), GRID_CELL, GRID_CELL, { fill: 'var(--accent-soft)' }));
-	// Contour surligné (on compte CES côtés).
-	for (const [[ax, ay], [bx, by]] of boundaryEdges(cells))
-		body.push(
+	const grille = (stroke: string, width: number): string[] => {
+		const out: string[] = [];
+		for (let i = 0; i <= cols; i++)
+			out.push(
+				line(px(i), px(0), px(i), GRID_PAD + rows * GRID_CELL, { stroke, 'stroke-width': width }),
+			);
+		for (let j = 0; j <= rows; j++)
+			out.push(
+				line(
+					px(0),
+					GRID_PAD + j * GRID_CELL,
+					GRID_PAD + cols * GRID_CELL,
+					GRID_PAD + j * GRID_CELL,
+					{
+						stroke,
+						'stroke-width': width,
+					},
+				),
+			);
+		return out;
+	};
+	const cellules = (): string[] =>
+		cells.map(([x, y]) => rect(px(x), px(y), GRID_CELL, GRID_CELL, { fill: 'var(--accent-soft)' }));
+	// `join` (linejoin round) UNIQUEMENT en mode aire : le chemin `perimetre` reste
+	// byte-identique au rendu CE2 de `mes-perimetre-quadrillage` (segments `<line>` sans
+	// linejoin — un attribut de plus changerait la chaîne, même si sans effet visuel).
+	const contour = (stroke: string, width: number, join: boolean): string[] =>
+		boundaryEdges(cells).map(([[ax, ay], [bx, by]]) =>
 			line(px(ax), px(ay), px(bx), px(by), {
-				stroke: 'var(--clock-min)',
-				'stroke-width': 4,
+				stroke,
+				'stroke-width': width,
 				'stroke-linecap': 'round',
+				...(join ? { 'stroke-linejoin': 'round' } : {}),
 			}),
 		);
+
+	const body: string[] = [];
+	let desc: string;
+	if (mode === 'aire') {
+		// AIRE (#253) : compter les CASES → remplissage d'abord, PUIS la grille interne
+		// PAR-DESSUS (visible pour compter, en --accent lisible sur le fond teinté : ≥ 3:1
+		// tous thèmes), et un contour en --accent (délimite la figure, sans corail).
+		body.push(
+			...cellules(),
+			...grille('var(--accent)', 1.25),
+			...contour('var(--accent)', 2.75, true),
+		);
+		desc = 'Figure rectiligne sur un quadrillage ; compte les carreaux qui la remplissent.';
+	} else {
+		// PÉRIMÈTRE (CE2, #99) : grille discrète d'abord, cases par-dessus (grille interne
+		// masquée sous le remplissage), contour CORAIL épais (on compte les côtés du tour).
+		body.push(
+			...grille('var(--muted)', 1),
+			...cellules(),
+			...contour('var(--clock-min)', 4, false),
+		);
+		desc = 'Figure rectiligne sur un quadrillage ; compte les côtés de carreaux qui font le tour.';
+	}
 	return svgCanvas(
 		W,
 		H,
 		'Figure sur quadrillage',
-		'Figure rectiligne sur un quadrillage ; compte les côtés de carreaux qui font le tour.',
+		desc,
 		body.join(''),
 		'figure-quadrillage',
+		opts.ariaLabel ?? 'Figure sur quadrillage',
+		false,
+		opts.intrinsic ?? false,
 	);
+}
+
+/* ---------- Paire de quadrillages à comparer (#253 — aire ↔ périmètre) ----------
+   Deux figures CÔTE À CÔTE pour les comparer (« même aire ? » / « même périmètre ? »).
+   La taille de case est COMMUNE aux deux (`intrinsic` → width/height = viewBox) : une 6×6
+   paraît donc plus grande qu'une 3×3, ce qui EST une information pour l'aire — on ne force
+   PAS une largeur identique. Chaque cadran porte une ÉTIQUETTE textuelle « A » / « B » HORS
+   du SVG, qui DOUBLE l'aria-label de chaque figure (jamais d'info par la seule position).
+   Le mode (`aire`/`perimetre`) désigne la grandeur comparée (grille teintée = aire ; trait
+   corail = périmètre). Le plafond d'enveloppe est posé en CSS (`.quad-pair-item`). */
+export function renderQuadrillagePaire(
+	a: QuadFig,
+	b: QuadFig,
+	mode: QuadrillageMode = 'aire',
+	labels: [string, string] = ['A', 'B'],
+): string {
+	const item = (fig: QuadFig, label: string): string => {
+		const svg = renderQuadrillage(fig.cols, fig.rows, fig.cells, mode, {
+			intrinsic: true,
+			ariaLabel: `Figure ${label}`,
+		});
+		return `<div class="quad-pair-item"><span class="quad-pair-label" aria-hidden="true">${label}</span>${svg}</div>`;
+	};
+	return `<div class="quad-pair">${item(a, labels[0])}${item(b, labels[1])}</div>`;
 }
 
 /* ---------- Figures planes (#100 — reconnaissance) ----------
@@ -200,7 +274,8 @@ export type PlaneShape =
 	| 'triangleQuelconque' // scalène ~3:4:5,5, aucun angle droit — contre-exemple (CM1, #242)
 	| 'losange'
 	| 'cercle'
-	| 'parallelogramme'; // jamais tiré au CE2 (déclaré dans NOM) ; réponse de reconnaissance au CM1 (#242)
+	| 'parallelogramme' // jamais tiré au CE2 (déclaré dans NOM) ; réponse de reconnaissance au CM1 (#242)
+	| 'quadrilatereQuelconque'; // 4 côtés irréguliers : aucun angle droit, aucun côté égal, aucun côté parallèle — contre-exemple (#253)
 
 // Sommets canoniques dans le carré unité [0,1]² (y vers le bas ; la rotation gère
 // l'orientation, le centrage gère la position). Le cercle est traité à part.
@@ -265,6 +340,15 @@ const SHAPE_POINTS: Record<Exclude<PlaneShape, 'cercle'>, Array<[number, number]
 		[1.9, 1],
 		[0, 1],
 	],
+	// Quadrilatère QUELCONQUE (#253) : 4 côtés convexes de longueurs toutes DIFFÉRENTES
+	// (≈ 0,93 / 0,79 / 0,83 / 0,66), aucune paire de côtés parallèles, aucun angle droit.
+	// Contre-exemple indispensable de « côtés opposés parallèles » (aucune marque de codage).
+	quadrilatereQuelconque: [
+		[0.1, 0],
+		[1, 0.25],
+		[0.75, 1],
+		[0, 0.65],
+	],
 };
 
 /* CODAGE DES FIGURES (#326 — attendu CM1 « coder un angle droit, des longueurs égales »).
@@ -304,6 +388,42 @@ const SHAPE_MARQUES_COTES: Partial<
 		[3, 1],
 	],
 	rectangle: [
+		[0, 1],
+		[2, 1],
+		[1, 2],
+		[3, 2],
+	],
+	parallelogramme: [
+		[0, 1],
+		[2, 1],
+		[1, 2],
+		[3, 2],
+	],
+};
+
+/* CODAGE DU PARALLÉLISME (#253 — attendu enrichi) : chevrons « › » posés le long des côtés
+   PARALLÈLES, sur le même principe que les tirets (nombre de chevrons = famille : une paire
+   de côtés opposés porte un chevron simple, l'autre paire un chevron double). Le parallélisme
+   n'a de sens que pour les QUADRILATÈRES : réservé aux carré / rectangle / losange /
+   parallélogramme (2 paires de côtés opposés parallèles). ABSENT du quadrilatère quelconque
+   (aucun côté parallèle) et de TOUS les triangles (jamais de côtés parallèles). Opt-in via
+   `parallelisme` (comme `codage`) : n'affecte que les leçons qui le demandent. */
+const SHAPE_MARQUES_PARALLELES: Partial<
+	Record<Exclude<PlaneShape, 'cercle'>, Array<[cote: number, chevrons: number]>>
+> = {
+	carre: [
+		[0, 1],
+		[2, 1],
+		[1, 2],
+		[3, 2],
+	],
+	rectangle: [
+		[0, 1],
+		[2, 1],
+		[1, 2],
+		[3, 2],
+	],
+	losange: [
 		[0, 1],
 		[2, 1],
 		[1, 2],
@@ -379,6 +499,54 @@ function marqueEgal(a: [number, number], b: [number, number], tirets = 1): strin
 	return out;
 }
 
+/* Marque de « côtés parallèles » (#253) : chevron(s) « › » posés LE LONG d'un côté `a → b`
+   (pointe dans le sens du côté), 1 ou 2 selon la famille. Même style/couleur que les tirets
+   d'égalité (`MARQUE_EGAL`). DÉCALÉ du milieu (voir `decal`) pour ne pas se superposer au
+   tiret d'égalité, qui, lui, est centré (un côté de rectangle/parallélogramme porte les DEUX
+   marques). */
+const CHEVRON_LONG = 6.5; // demi-extension le long du côté (viewBox 200)
+const CHEVRON_LARGE = 5.5; // demi-largeur (perpendiculaire) des ailes du chevron
+const CHEVRON_ECART = 6; // écart entre deux chevrons (double), le long du côté
+
+function marqueParallele(a: [number, number], b: [number, number], chevrons = 1): string {
+	const mx = (a[0] + b[0]) / 2;
+	const my = (a[1] + b[1]) / 2;
+	const dx = b[0] - a[0];
+	const dy = b[1] - a[1];
+	const len = Math.hypot(dx, dy) || 1;
+	const tx = dx / len; // tangente (le long du côté)
+	const ty = dy / len;
+	const nx = -ty; // normale (perpendiculaire au côté)
+	const ny = tx;
+	// Centre du groupe de chevrons décalé du milieu (borné) → à l'écart du tiret d'égalité.
+	const decal = Math.min(0.22 * len, 22);
+	const gx = mx + tx * decal;
+	const gy = my + ty * decal;
+	let out = '';
+	for (let k = 0; k < chevrons; k++) {
+		const d = (k - (chevrons - 1) / 2) * CHEVRON_ECART; // position le long du côté (double)
+		const ox = gx + tx * d;
+		const oy = gy + ty * d;
+		// « › » : deux ailes en retrait (−tangente) de part et d'autre, se rejoignant à la
+		// pointe (+tangente). Un polyline aile → pointe → aile.
+		out += polyline(
+			[
+				[
+					r2(ox - tx * CHEVRON_LONG + nx * CHEVRON_LARGE),
+					r2(oy - ty * CHEVRON_LONG + ny * CHEVRON_LARGE),
+				],
+				[r2(ox + tx * CHEVRON_LONG), r2(oy + ty * CHEVRON_LONG)],
+				[
+					r2(ox - tx * CHEVRON_LONG - nx * CHEVRON_LARGE),
+					r2(oy - ty * CHEVRON_LONG - ny * CHEVRON_LARGE),
+				],
+			],
+			MARQUE_EGAL,
+		);
+	}
+	return out;
+}
+
 const COIN_DROIT_LEN = 13; // côté du carré de codage d'angle droit DANS une figure (viewBox 200)
 
 /* Carré de codage d'un angle droit au sommet `V` d'un polygone, logé DANS le coin et orienté
@@ -415,6 +583,7 @@ function shapeBody(
 	box: number,
 	rotDeg: number,
 	codage = false,
+	parallelisme = false,
 ): string {
 	const inner = box * 0.78; // marge interne ~11 %
 	if (shape === 'cercle') return circle(r2(cx), r2(cy), r2(inner / 2), SHAPE_FILL);
@@ -441,20 +610,35 @@ function shapeBody(
 			body += coinAngleDroit(fitted[i], fitted[(i - 1 + n) % n], fitted[(i + 1) % n]);
 		}
 	}
+	// Codage du parallélisme (#253) : opt-in indépendant du codage d'égalité/angles ; ne
+	// concerne que les quadrilatères listés (jamais un triangle → pas d'entrée dans la table).
+	if (parallelisme) {
+		const n = fitted.length;
+		for (const [i, chevrons] of SHAPE_MARQUES_PARALLELES[shape] ?? []) {
+			body += marqueParallele(fitted[i], fitted[(i + 1) % n], chevrons);
+		}
+	}
 	return body;
 }
 
 const PLANE_SIZE = 200;
 
 /** Figure unique à reconnaître (option rotation pour varier l'orientation). `codage`
-    (#326, CM1) ajoute le codage des côtés égaux et des angles droits ; absent au CE2. */
-export function renderFigurePlane(shape: PlaneShape, rotation = 0, codage = false): string {
+    (#326, CM1) ajoute le codage des côtés égaux et des angles droits ; `parallelisme`
+    (#253, CM1) ajoute les chevrons de côtés parallèles (quadrilatères seulement). Les deux
+    sont absents au CE2 (opt-in). */
+export function renderFigurePlane(
+	shape: PlaneShape,
+	rotation = 0,
+	codage = false,
+	parallelisme = false,
+): string {
 	return svgCanvas(
 		PLANE_SIZE,
 		PLANE_SIZE,
 		'Figure géométrique',
 		'Une figure plane à reconnaître : observe ses côtés et ses angles, puis nomme-la.',
-		shapeBody(shape, PLANE_SIZE / 2, PLANE_SIZE / 2, PLANE_SIZE, rotation, codage),
+		shapeBody(shape, PLANE_SIZE / 2, PLANE_SIZE / 2, PLANE_SIZE, rotation, codage, parallelisme),
 		'figure-plane',
 	);
 }

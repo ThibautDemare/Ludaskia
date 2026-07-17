@@ -123,6 +123,10 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'geo-cm1-triangles',
 			'geo-cm1-triangles-prop',
 			'geo-cm1-quadrilateres',
+			// Reconnaître une figure par ses propriétés (#253) : SYNTHÈSE des figures planes
+			// (juger le codage : angle droit, côtés égaux), placée APRÈS triangles ET
+			// quadrilatères (elle réinvestit leurs propriétés), avant les solides.
+			'geo-cm1-figures-proprietes',
 			'geo-cm1-solides',
 			'geo-cm1-polyedre',
 			'geo-cm1-solides-comptage',
@@ -176,6 +180,10 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'mes-masses',
 			'mes-contenances',
 			'mes-durees',
+			// Aire et périmètre (#253) : 100 % comptage sur quadrillage (aire en carreaux,
+			// périmètre en côtés). Réinvestit le périmètre sur quadrillage du CE2 ; indépendant
+			// des conversions/décimaux. Placé dans le cluster mesures, avant le capstone durée.
+			'mes-aire-perimetre',
 			// Calculer une durée (#252) : capstone des mesures CM1 — durée écoulée entre deux
 			// instants ET instant d'arrivée. Réinvestit la lecture de l'heure et h↔min tout
 			// juste consolidés (« mes-durees » juste au-dessus).

@@ -72,6 +72,44 @@
 	text-align: center;
 }
 
+/* Comparaison de DEUX angles côte à côte (#252, CM1) : deux cadrans étiquetés A / B.
+   La lettre au-dessus de chaque SVG double l'aria-label (jamais d'info par la seule
+   position ni la seule couleur). Chaque cadran est plus petit pour tenir la paire sur
+   une ligne ; `flex-wrap` empile sur écran très étroit (les lettres distinguent
+   toujours A et B). */
+.angle-pair {
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+.angle-pair-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+.angle-pair-item .figure-svg {
+	max-width: 150px;
+}
+.angle-pair-label {
+	font-weight: 800;
+	font-size: 1.15rem;
+	/* Libellé FONCTIONNEL (désigne l'angle A/B), pas décoratif : `--ink` pour tenir le
+	   contraste AA sur tous les thèmes (`--accent` échouait à ~4,16:1 sur le lagon). */
+	color: var(--ink);
+	line-height: 1;
+	margin-bottom: 0.2rem;
+}
+
+/* Étiquettes des points de la figure « angle nommé » (#252) : noms de points en
+   `--ink` (contraste), posées via l'attribut `fill` du <text> SVG ; cette règle sert de
+   crochet cohérent et garantit `--ink` même si un thème redéfinit la couleur du texte. */
+.angle-nomme-label {
+	fill: var(--ink);
+	font-weight: 700;
+}
+
 /* ---------- Saisie de l'heure en 2 champs « [h] h [min] » (#88) ---------- */
 .heure-input {
 	display: inline-flex;

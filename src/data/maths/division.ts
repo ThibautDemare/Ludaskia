@@ -21,13 +21,11 @@
       Exclue du sprint.
    ============================================================ */
 import { choice, rnd, sample } from '../../core/utils';
-import { checkAnswer } from '../../core/exercise';
 import { checkNumerique } from '../../core/check-helpers';
 import type { Exercise, ExerciseType } from '../../core/exercise';
-import type { SchoolLevel } from '../../core/catalog';
-import { MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { calibrated } from '../../core/level-combinators';
+import { deuxSousQuestionsType } from './_probleme-deux-sous-questions';
 import { renderFigure } from '../../core/figures';
 
 /* ---------- Leçon 1 : Moitié et quart d'une collection ---------- */
@@ -217,40 +215,9 @@ function genResteQcm(): Exercise {
 	};
 }
 
-/* Fabrique commune aux deux leçons « quotient + reste » (CE2 « Je découvre le reste »
-   et CM1 « division euclidienne ») : même charpente de runner « problème » à deux
-   sous-questions — mode saisie recommandé + variante QCM accessible, vocabulaire
-   « calcul » sans badge « Étape » (les deux champs sont nommés), et `checkAnswer` (qui
-   renvoie false pour un item `probleme` : le runner corrige champ par champ en lisant
-   `etapes[].answer`, cf. #199/#348). Seuls le libellé de saisie, les deux générateurs
-   et le(s) niveau(x) distinguent une leçon de l'autre. */
-function deuxSousQuestionsType(opts: {
-	labelSaisie: string;
-	generateProbleme: () => Exercise;
-	generateQcm: () => Exercise;
-	levels?: SchoolLevel[];
-}): ExerciseType {
-	return {
-		...(opts.levels ? { levels: opts.levels } : {}),
-		// Format « problème » par défaut (#199/#348) : generate() sans mode produit un
-		// item `probleme` (le QCM est une variante) → classé et exclu du sprint.
-		exerciseKind: 'probleme',
-		modes: [
-			{
-				id: 'saisie',
-				label: opts.labelSaisie,
-				hint: 'deux réponses',
-				icon: 'pencil',
-				recommended: true,
-			},
-			{ ...MODE_QCM_POINT, hint: 'parmi 4', recommended: false },
-		],
-		probLexique: { nom: 'Calcul', nomPluriel: 'calculs', badgeEtape: false },
-		generate: (o) => (o?.mode === 'qcm' ? opts.generateQcm() : opts.generateProbleme()),
-		check: checkAnswer,
-	};
-}
-
+/* La charpente commune aux deux leçons « quotient + reste » (runner « problème » à
+   deux sous-questions) vit désormais dans `_probleme-deux-sous-questions.ts`,
+   partagée avec la durée écoulée CM1 (#252). */
 function resteType(): ExerciseType {
 	return deuxSousQuestionsType({
 		labelSaisie: "J'écris le résultat et le reste",

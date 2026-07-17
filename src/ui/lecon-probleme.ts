@@ -37,6 +37,7 @@ export interface ProbQuestion {
 	etapes: ProblemeEtape[];
 	parle: string;
 	figure?: string;
+	explication?: string; // stratégie affichée APRÈS la réponse (#252) — optionnelle
 }
 
 /* Board PUR d'un problème (#419) : énoncé (+ figure) + sous-questions saisissables.
@@ -93,7 +94,13 @@ function genQuestions(l: LessonDef, n: number, m?: ExerciseMode): ProbQuestion[]
 			continue;
 		}
 		seen.add(key);
-		out.push({ enonce: ex.enonce, etapes: ex.etapes, parle: ex.parle, figure: ex.figure });
+		out.push({
+			enonce: ex.enonce,
+			etapes: ex.etapes,
+			parle: ex.parle,
+			figure: ex.figure,
+			explication: ex.explication,
+		});
 		misses = 0;
 	}
 	return out;
@@ -187,13 +194,17 @@ function verifier(): void {
 	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
 	// (#probActions) reste, pour ne pas afficher deux boutons à la fois (#153).
 	(sheets().querySelector('#probVerif') as HTMLButtonElement).hidden = true;
+	// Explication de stratégie (#252, ex. le « pont » d'une durée avec retenue) : affichée
+	// après la réponse quand la leçon la fournit (contenu de confiance, échappé par sûreté).
+	const expl = q.explication ? `<p class="lqcm-expl">${escapeHTML(q.explication)}</p>` : '';
 	wireNext(
 		sheets().querySelector('#probActions') as HTMLElement,
 		sheets().querySelector('#probFeedback') as HTMLElement,
 		{
-			feedbackHTML: toutJuste
-				? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-				: `<span class="lqcm-ko">Regarde la bonne réponse, puis continue.</span>`,
+			feedbackHTML:
+				(toutJuste
+					? `<span class="lqcm-ok">Bravo ! 🎉</span>`
+					: `<span class="lqcm-ko">Regarde la bonne réponse, puis continue.</span>`) + expl,
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;

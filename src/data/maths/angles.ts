@@ -1,9 +1,12 @@
 /* ============================================================
-   Géométrie — Les angles (#202, variété des énoncés #288).
-   Cliente du moteur de figures SVG (core/figures.ts, `renderAngle`).
-   Une leçon `geo-angles`, QCM mono-mode. La figure (ouverture + orientation)
-   est déjà très variée ; #288 enrichit les ÉNONCÉS pour casser l'impression de
-   « toujours la même question », SANS changer la notion ni les plages.
+   Géométrie — Les angles (#202, variété des énoncés #288, extension CM1 #252).
+   Cliente du moteur de figures SVG (core/figures/, `renderAngle` / `renderAnglePair` /
+   `renderAngleNomme`).
+   Une leçon `geo-angles`, QCM mono-mode, CALIBRÉE par niveau (#225) : le CE2 reconnaît
+   et compare À L'ANGLE DROIT (6 familles ci-dessous, INCHANGÉES) ; le CM1 ajoute la
+   comparaison de DEUX angles entre eux (cf. familles CM1, `genAngleCM1`, en bas).
+   #288 enrichit les ÉNONCÉS CE2 pour casser l'impression de « toujours la même
+   question », SANS changer la notion ni les plages.
 
    SIX familles d'énoncés (identifiant STABLE `Famille`, indépendant de la
    tournure affichée : chaque famille tire au hasard parmi ses variantes de
@@ -39,6 +42,8 @@ import { checkAnswer } from '../../core/exercise';
 import { MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { renderFigure } from '../../core/figures';
+import type { AngleSpec } from '../../core/figures';
+import { calibrated } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
 
 const MODES: ModeOption[] = [MODE_QCM_POINT];
@@ -219,11 +224,161 @@ export function genAngle(): AngleTirage {
 	return { ...genNommer(), famille: 'nommer' };
 }
 
-function anglesType(): ExerciseType {
+/* ============================================================
+   Familles CM1 (#252) — COMPARER DEUX ANGLES ENTRE EUX.
+   Le CE2 ne compare qu'à l'angle droit ; la vraie nouveauté CM1 est de comparer
+   DEUX angles l'un à l'autre (cœur du programme). Deux angles s'affichent côte à
+   côte (moteur `renderAnglePair`), étiquetés A / B.
+
+   Piège pédagogique intégré (avis pedagogue) : la LONGUEUR des demi-droites varie
+   d'un angle à l'autre, de sorte que le plus ouvert ait PARFOIS les traits les plus
+   courts — « la taille du trait n'est pas l'ouverture » (erreur classique CM1).
+
+   Loyauté à l'œil (sans rapporteur, comme le CE2 bannit la zone 80–100°) : ouvertures
+   dans une plage franche, et écart NET (≥ CM1_ECART_MIN) garanti dès que la réponse
+   dépend de l'écart. La bonne réponse est CALCULÉE puis STOCKÉE (jamais recalculée).
+
+   Notation « angle AÔB » (#252, B.O. 2025 §2.5) : famille `notation` — un angle aux
+   trois points nommés (`renderAngleNomme`), l'enfant DÉSIGNE le sommet (la lettre du
+   milieu, coiffée du circonflexe). En QCM il n'a pas à taper le Ô.
+
+   Pondération (avis gamification-enfant, esprit du cadrage #252) : `plusOuvert`
+   MAJORITAIRE (objectif du niveau), puis `egaux`, puis `notation` et `nommer` en appoint
+   (consolidation de la classification aigu/droit/obtus, réutilise `genNommer`). */
+const CM1_OUV_MIN = 20; // ouverture minimale (jamais un angle « pointu » indécidable)
+const CM1_OUV_MAX = 160; // ouverture maximale (jamais un quasi-plat)
+const CM1_ECART_MIN = 25; // écart net entre deux ouvertures jugées différentes
+// Deux longueurs de demi-droites franchement distinctes (< 100 = demi-canevas : jamais
+// hors cadre), tirées PAR angle pour dissocier la longueur du trait de l'ouverture.
+const CM1_RAY_COURT = 50;
+const CM1_RAY_LONG = 82;
+
+/** Famille d'énoncé CM1 (identifiant STABLE, pour le routage et les invariants de test). */
+export type FamilleCM1 = 'plusOuvert' | 'egaux' | 'notation' | 'nommer';
+
+/** Un tirage CM1 : l'exercice + sa famille (exposés pour les tests ; le runner n'utilise
+    que `.ex`). Pas de `cat` : `plusOuvert`/`egaux` montrent DEUX angles, pas un seul. */
+export interface AngleCM1Tirage {
+	ex: Exercise;
+	famille: FamilleCM1;
+}
+
+const rayonAleatoire = (): number => choice([CM1_RAY_COURT, CM1_RAY_LONG]);
+
+/* Deux ouvertures avec écart NET (≥ CM1_ECART_MIN) dans [CM1_OUV_MIN, CM1_OUV_MAX]. */
+function deuxOuverturesDistinctes(): [number, number] {
+	const o1 = rnd(CM1_OUV_MIN, CM1_OUV_MAX);
+	let o2 = rnd(CM1_OUV_MIN, CM1_OUV_MAX);
+	while (Math.abs(o1 - o2) < CM1_ECART_MIN) o2 = rnd(CM1_OUV_MIN, CM1_OUV_MAX);
+	return [o1, o2];
+}
+
+/* ---------- plusOuvert — « Quel angle est le plus ouvert ? » (QCM A / B). ---------- */
+function genPlusOuvert(): AngleCM1Tirage {
+	const [oA, oB] = deuxOuverturesDistinctes();
+	const a: AngleSpec = { opening: oA, bisector: bissectrice(), ray: rayonAleatoire() };
+	const b: AngleSpec = { opening: oB, bisector: bissectrice(), ray: rayonAleatoire() };
+	const answer = oA > oB ? 'Angle A' : 'Angle B'; // réponse STOCKÉE (jamais recalculée au check)
+	return {
+		ex: {
+			type: 'qcm',
+			question: 'Quel angle est le plus ouvert ?',
+			answer,
+			choices: sample(['Angle A', 'Angle B'], 2),
+			figure: renderFigure({ kind: 'anglePair', a, b }),
+			explication: "On compare l'ouverture des deux angles, pas la longueur des traits.",
+		},
+		famille: 'plusOuvert',
+	};
+}
+
+/* ---------- egaux — « Ces deux angles sont-ils égaux ? » (Oui/Non). Sur « Non », on
+   garde un écart NET pour rester loyal à l'œil ; sur « Oui », orientations et longueurs
+   de traits différentes → l'enfant reconnaît l'ÉGALITÉ des ouvertures malgré l'apparence. */
+function genEgaux(): AngleCM1Tirage {
+	const egaux = rnd(1, 2) === 1;
+	const oA = rnd(CM1_OUV_MIN, CM1_OUV_MAX);
+	let oB = oA;
+	if (!egaux) {
+		oB = rnd(CM1_OUV_MIN, CM1_OUV_MAX);
+		while (Math.abs(oA - oB) < CM1_ECART_MIN) oB = rnd(CM1_OUV_MIN, CM1_OUV_MAX);
+	}
+	const a: AngleSpec = { opening: oA, bisector: bissectrice(), ray: rayonAleatoire() };
+	const b: AngleSpec = { opening: oB, bisector: bissectrice(), ray: rayonAleatoire() };
+	return {
+		ex: {
+			type: 'qcm',
+			question: 'Ces deux angles sont-ils égaux ?',
+			answer: egaux ? 'Oui' : 'Non',
+			choices: sample(['Oui', 'Non'], 2),
+			figure: renderFigure({ kind: 'anglePair', a, b }),
+			explication: egaux
+				? "Oui : les deux angles ont la même ouverture, même si les traits n'ont pas la même longueur."
+				: "Non : un angle est plus ouvert que l'autre (regarde l'ouverture, pas la longueur des traits).",
+		},
+		famille: 'egaux',
+	};
+}
+
+/* ---------- notation — « Quel point est le sommet de l'angle XŶZ ? » (#252, B.O. §2.5).
+   Le sommet est tiré parmi les VOYELLES (formes précomposées Â/Ê/Î/Ô/Û — robustes, pas
+   de diacritique combiné qui rendrait mal) ; les deux points extérieurs parmi un pool
+   DISJOINT de consonnes. La notation coiffe le sommet, placé au MILIEU (convention). En
+   QCM l'enfant DÉSIGNE la lettre du sommet (il n'a pas à taper le Ô). ---------- */
+const CM1_SOMMETS: Array<[string, string]> = [
+	['A', 'Â'],
+	['E', 'Ê'],
+	['I', 'Î'],
+	['O', 'Ô'],
+	['U', 'Û'],
+];
+const CM1_POINTS_EXT = ['B', 'C', 'D', 'F', 'G', 'H', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T'];
+
+function genNotation(): AngleCM1Tirage {
+	const [sommet, sommetChapeau] = choice(CM1_SOMMETS);
+	const [p1, p2] = sample(CM1_POINTS_EXT, 2); // pool disjoint des voyelles → jamais de collision
+	const spec: AngleSpec = { opening: rnd(35, 140), bisector: bissectrice(), ray: 64 };
+	const notation = `${p1}${sommetChapeau}${p2}`; // sommet coiffé, AU MILIEU
+	return {
+		ex: {
+			type: 'qcm',
+			question: `Quel point est le sommet de l'angle ${notation} ?`,
+			answer: sommet, // la lettre PLAINE du sommet (STOCKÉE)
+			choices: sample([p1, sommet, p2], 3),
+			figure: renderFigure({ kind: 'angleNomme', spec, points: [p1, sommet, p2] }),
+			// TTS (#42) : le circonflexe — qui désigne le sommet — est INAUDIBLE si on lit
+			// « BÂD » tel quel. On verbalise l'accent SANS nommer le sommet, pour laisser
+			// l'enfant à l'oreille faire le MÊME raisonnement que l'enfant voyant.
+			parle: `Quel point est le sommet de l'angle ${p1}, ${sommet} avec un accent circonflexe, ${p2} ?`,
+			explication:
+				"Dans la notation d'un angle, la lettre du milieu, coiffée d'un accent circonflexe (un petit chapeau), désigne le sommet.",
+		},
+		famille: 'notation',
+	};
+}
+
+/* Tirage pondéré CM1 (#252). Bornes sur rnd(1,100) : 1–45 plusOuvert · 46–70 egaux ·
+   71–85 notation · 86–100 nommer → comparaison de deux angles = 70 %, notation et
+   classification en appoint = 15 % chacune. */
+export function genAngleCM1(): AngleCM1Tirage {
+	const r = rnd(1, 100);
+	if (r <= 45) return genPlusOuvert();
+	if (r <= 70) return genEgaux();
+	if (r <= 85) return genNotation();
+	return { ex: genNommer().ex, famille: 'nommer' }; // consolidation aigu/droit/obtus
+}
+
+/* Générateur d'exercice par niveau (paramètre du combinateur `calibrated`, #225) :
+   CE2 = 6 familles historiques (byte-identique), CM1 = comparer deux angles + nommer. */
+interface AngleConfig {
+	gen: () => Exercise;
+}
+
+function anglesType(config: AngleConfig): ExerciseType {
 	return {
 		modes: MODES,
 		generate(): Exercise {
-			return genAngle().ex;
+			return config.gen();
 		},
 		check: (exercise, input) => checkAnswer(exercise, input),
 	};
@@ -233,6 +388,14 @@ export const ANGLES_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-angles',
 		label: 'Les angles',
-		exerciseType: anglesType(),
+		// Calibré par niveau (#225/#252) : le CE2 reste inchangé ; le CM1 ajoute la
+		// comparaison de deux angles. `levels` (dérivé par le catalogue) devient CE2+CM1.
+		exerciseType: calibrated<AngleConfig>(
+			{
+				ce2: { gen: () => genAngle().ex },
+				cm1: { gen: () => genAngleCM1().ex },
+			},
+			anglesType,
+		),
 	},
 ];

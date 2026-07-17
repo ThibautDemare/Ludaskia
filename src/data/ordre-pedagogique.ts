@@ -126,6 +126,11 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'geo-cm1-solides',
 			'geo-cm1-polyedre',
 			'geo-cm1-solides-comptage',
+			// Les angles (#252) en clôture du cluster géométrie : le CM1 y COMPARE deux
+			// angles entre eux (le CE2 ne comparait qu'à l'angle droit), + classification
+			// aigu/droit/obtus en consolidation. Pas de dépendance forte aux figures planes ;
+			// placée après elles comme prolongement visuel naturel.
+			'geo-angles',
 			// Nombres décimaux (#246) : premier contact avec le nombre décimal général,
 			// placé tard (capstone de la numération, suppose la valeur de position et la
 			// comparaison des entiers solides). Ordre interne : numération de position
@@ -171,6 +176,10 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'mes-masses',
 			'mes-contenances',
 			'mes-durees',
+			// Calculer une durée (#252) : capstone des mesures CM1 — durée écoulée entre deux
+			// instants ET instant d'arrivée. Réinvestit la lecture de l'heure et h↔min tout
+			// juste consolidés (« mes-durees » juste au-dessus).
+			'mes-duree-ecoulee',
 		],
 	},
 	francais: {

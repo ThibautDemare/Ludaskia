@@ -24,7 +24,10 @@
    - contenances : CE2 L↔cL (×100) ET L↔dL (×10) ; le mL (L↔mL, ×1000) relève du
      CM1 (franchir le millier), pas le dL.
    - durées : CE2 h↔min (×60, jusqu'à 4 h) + repères culturels (½, ¼, ¾ h, 1 h 30,
-     1 h 15) ; le min↔s « libre » relève du CM1 (jamais ouvert au CE2).
+     1 h 15) ; le min↔s « libre » et les GRANDES unités de temps (siècle↔an, an↔mois,
+     semaine↔jour, jour↔h — relations EXACTES seulement, #252) relèvent du CM1 (jamais
+     ouverts au CE2). Les unités-mots (siècle, an, mois, semaine, jour) sont accordées
+     au pluriel via `uniteAccordee` ; les symboles ne prennent jamais de marque.
    - facteur grande→petite borné par `maxBig` ; sens inverse (petite→grande)
      uniquement sur des multiples EXACTS du facteur → réponse entière.
    - pondération ~60/40 en faveur du sens grande→petite (× plus sûr que ÷) ;
@@ -128,14 +131,46 @@ const ECHELLE_CONTENANCE: EchelleUnite[] = [
 	{ unite: 'mL', nom: 'millilitre' },
 ];
 
+/* Pluriel des unités-MOTS de temps (#252, CM1 uniquement). Le moteur affiche
+   « valeur + unité » sans accorder → « 3 siècle » serait fautif. Les DEUX valeurs
+   (connue ET réponse) étant connues à la génération, on accorde chaque unité à SA
+   valeur. Les unités-SYMBOLES (h, min, s, cm, kg, L…) sont ABSENTES de la table :
+   jamais de pluriel (comportement CE2 STRICTEMENT inchangé). « mois » est invariable
+   (même forme au singulier et au pluriel). */
+const PLURIELS_UNITE: Record<string, string> = {
+	siècle: 'siècles',
+	an: 'ans',
+	semaine: 'semaines',
+	jour: 'jours',
+	mois: 'mois',
+};
+
+/* Unité accordée à sa valeur : pluriel dès 2 (français : singulier pour 0 et 1). Une
+   unité hors table (tout symbole) est rendue telle quelle, sans dépendre de la valeur —
+   la parenthèse `!pluriel` court-circuite AVANT de comparer `valeur` (un `NaN` d'un
+   décimal en chaîne, côté symbole, n'est donc jamais évalué). */
+function uniteAccordee(unite: string, valeur: number): string {
+	const pluriel = PLURIELS_UNITE[unite];
+	if (!pluriel) return unite;
+	return valeur >= 2 ? pluriel : unite;
+}
+
 /* Construit la question texte (avec le `@` = emplacement du champ) en plaçant
    le trou à gauche ou à droite, l'unité attendue restant collée au champ. La
    valeur connue est déjà une chaîne prête à afficher (un décimal est passé en
-   écriture à VIRGULE — jamais de point ; un entier se coerce sans point). */
-function buildQuestion(knownValue: number | string, knownUnit: string, answerUnit: string): string {
-	const known = `${knownValue} ${knownUnit}`;
+   écriture à VIRGULE — jamais de point ; un entier se coerce sans point). Chaque unité
+   est ACCORDÉE à SA valeur (`answerValue` = valeur du champ) pour les unités-mots. */
+function buildQuestion(
+	knownValue: number | string,
+	knownUnit: string,
+	answerUnit: string,
+	answerValue: number,
+): string {
+	const uniteConnue = uniteAccordee(knownUnit, Number(String(knownValue).replace(',', '.')));
+	const known = `${knownValue} ${uniteConnue}`;
+	const cible = uniteAccordee(answerUnit, answerValue);
 	// 50/50 : « known = @ unité » ou « @ unité = known ».
-	return rnd(0, 1) === 0 ? `${known} = @ ${answerUnit}` : `@ ${answerUnit} = ${known}`;
+	return rnd(0, 1) === 0 ? `${known} = @ ${cible}` : `@ ${cible} = ${known}`;
 }
 
 /* Écrit un décimal « entier,frac » à la FRANÇAISE (virgule, jamais de point). Le
@@ -223,7 +258,12 @@ function generateConversion(conversions: Conversion[]): Exercise {
 	const inst = pickConversionInstance(conversions);
 	return {
 		type: 'text',
-		question: buildQuestion(inst.knownValue, inst.knownUnit, inst.answerUnit),
+		question: buildQuestion(
+			inst.knownValue,
+			inst.knownUnit,
+			inst.answerUnit,
+			Number(inst.answer.replace(',', '.')),
+		),
 		answer: inst.answer,
 	};
 }
@@ -283,7 +323,12 @@ function generateTableau(config: MesureConfig): Exercise {
 	const parle = `Combien ${pluriel ? 'font' : 'fait'} ${inst.knownValue} ${nomConnu}${pluriel ? 's' : ''} en ${nomCible}s ?`;
 	return {
 		type: 'tableauConversion',
-		question: buildQuestion(inst.knownValue, inst.knownUnit, inst.answerUnit),
+		question: buildQuestion(
+			inst.knownValue,
+			inst.knownUnit,
+			inst.answerUnit,
+			Number(inst.answer.replace(',', '.')),
+		),
 		answer: inst.answer,
 		answerUnit: inst.answerUnit,
 		colonnes,
@@ -452,11 +497,19 @@ export const MESURE_LESSONS: LessonInput[] = [
 					conversions: [{ big: 'h', small: 'min', factor: 60, maxBig: 4 }],
 					facts: DUREE_FACTS,
 				},
-				// CM1 : h↔min jusqu'à 10 h + min↔s (×60, 1–5 min).
+				// CM1 : h↔min jusqu'à 10 h + min↔s (×60, 1–5 min) + les GRANDES unités de
+				// temps (#252). On ne retient que les relations EXACTES entre unités (jamais
+				// 1 an = 365 jours ni 52 semaines, non exactes) ; `maxBig` modeste (9) pour des
+				// nombres CM1 raisonnables. Les unités-mots sont accordées au pluriel par
+				// `uniteAccordee` (« 3 siècles = 300 ans », « 1 jour = 24 h »).
 				cm1: {
 					conversions: [
 						{ big: 'h', small: 'min', factor: 60, maxBig: 10 },
 						{ big: 'min', small: 's', factor: 60, maxBig: 5 },
+						{ big: 'siècle', small: 'an', factor: 100, maxBig: 9 },
+						{ big: 'an', small: 'mois', factor: 12, maxBig: 9 },
+						{ big: 'semaine', small: 'jour', factor: 7, maxBig: 9 },
+						{ big: 'jour', small: 'h', factor: 24, maxBig: 9 },
 					],
 					facts: DUREE_FACTS,
 				},

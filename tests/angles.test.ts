@@ -13,8 +13,15 @@
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import type { Exercise } from '../src/core/exercise';
-import { ANGLES_LESSONS, genAngle, ENONCES, type Famille } from '../src/data/maths/angles';
-import { renderAngle, renderFigure } from '../src/core/figures';
+import {
+	ANGLES_LESSONS,
+	genAngle,
+	genAngleCM1,
+	ENONCES,
+	type Famille,
+	type FamilleCM1,
+} from '../src/data/maths/angles';
+import { renderAngle, renderAnglePair, renderAngleNomme, renderFigure } from '../src/core/figures';
 import { getLessonById } from '../src/core/catalog';
 
 const TIRAGES = 2000;
@@ -152,12 +159,12 @@ describe('Les angles — génération QCM', () => {
 		expect(t.check(ex, 'plus grand')).toBe(false);
 	});
 
-	it('catalogue : geo-angles est rangée en Géométrie, niveau CE2, non exclue du sprint', () => {
+	it('catalogue : geo-angles est rangée en Géométrie, niveaux CE2 + CM1 (#252), non exclue du sprint', () => {
 		const def = getLessonById('geo-angles');
 		expect(def).toBeDefined();
 		expect(def?.subject).toBe('math');
 		expect(def?.category).toBe('math-geometrie');
-		expect(def?.levels).toEqual(['ce2']);
+		expect(def?.levels).toEqual(['ce2', 'cm1']); // extension CM1 (#252) — moteur calibré
 		expect(def?.excludeFromSprint).toBeFalsy(); // QCM tappable sous chrono (figure + choix)
 	});
 });
@@ -182,5 +189,222 @@ describe('renderAngle — invariants du renderer', () => {
 			expect(count(/<polyline/g, svg)).toBe(0); // pas de carré
 			expect(svg).not.toContain('<text');
 		}
+	});
+});
+
+/* ============================================================
+   Familles CM1 (#252) — comparer DEUX angles entre eux + notation « angle AÔB ».
+   Le CE2 (genAngle) est déjà couvert plus haut ; ici, la nouveauté CM1
+   (`genAngleCM1`, familles plusOuvert / egaux / notation / nommer).
+
+   Les ouvertures ne sont PAS exposées par le tirage : on les MESURE directement
+   sur la figure (angle entre les deux demi-droites, sommet en (100,100)), ce qui
+   éprouve tout le pipeline (génération + rendu). L'attendu (angle le plus ouvert,
+   égalité, sommet nommé) est donc dérivé indépendamment de la valeur stockée.
+   ============================================================ */
+const CM1 = 3000;
+const cm1 = Array.from({ length: CM1 }, () => genAngleCM1());
+const partCM1 = (f: FamilleCM1) => cm1.filter((t) => t.famille === f).length / CM1;
+
+/** Les <svg> d'une figure, dans l'ordre (paire A puis B ; un seul pour un angle nommé). */
+const svgsOf = (fig: string): string[] => fig.match(/<svg[\s\S]*?<\/svg>/g) ?? [];
+/** Extrémité (x2, y2) des demi-droites d'un angle (deux <line> partant du sommet). */
+function raies(svg: string): Array<[number, number]> {
+	return (svg.match(/<line [^>]*\/>/g) ?? []).map((l) => {
+		const x = Number(/x2="([-\d.]+)"/.exec(l)![1]);
+		const y = Number(/y2="([-\d.]+)"/.exec(l)![1]);
+		return [x - 100, y - 100]; // vecteur depuis le sommet (100,100)
+	});
+}
+/** Ouverture mesurée (degrés) = angle entre les deux demi-droites. */
+function ouvertureMesuree(svg: string): number {
+	const [a, b] = raies(svg);
+	const ang = (v: [number, number]) => (Math.atan2(v[1], v[0]) * 180) / Math.PI;
+	let d = Math.abs(ang(a) - ang(b));
+	if (d > 180) d = 360 - d;
+	return d;
+}
+/** Longueur d'une demi-droite (le « trait » — leurre du CM1). */
+function longueurTrait(svg: string): number {
+	const [v] = raies(svg);
+	return Math.hypot(v[0], v[1]);
+}
+
+/** Précomposées Â/Ê/Î/Ô/Û → lettre pleine du sommet. */
+const CHAPEAU: Record<string, string> = { Â: 'A', Ê: 'E', Î: 'I', Ô: 'O', Û: 'U' };
+const VOYELLES = new Set(['A', 'E', 'I', 'O', 'U']);
+
+describe('Les angles CM1 (#252) — comparer deux angles + notation', () => {
+	it('câblage : geo-angles calibrée CE2 + CM1 (moteur par niveau)', () => {
+		expect(getLessonById('geo-angles')?.levels).toEqual(['ce2', 'cm1']);
+	});
+
+	it('QCM bien formé : figure SVG, explication, bonne réponse parmi des choix uniques', () => {
+		for (const { ex } of cm1) {
+			if (ex.type !== 'qcm') throw new Error('attendu qcm');
+			expect(ex.figure ?? '').toContain('<svg');
+			expect(ex.choices).toContain(ex.answer);
+			expect(new Set(ex.choices).size).toBe(ex.choices.length);
+			expect((ex.explication ?? '').length).toBeGreaterThan(0);
+		}
+	});
+
+	it('pondération : 4 familles présentes, plusOuvert majoritaire (bornes larges 45/25/15/15)', () => {
+		for (const f of ['plusOuvert', 'egaux', 'notation', 'nommer'] as FamilleCM1[]) {
+			expect(cm1.some((t) => t.famille === f)).toBe(true);
+		}
+		expect(partCM1('plusOuvert')).toBeGreaterThan(0.35);
+		expect(partCM1('plusOuvert')).toBeLessThan(0.55);
+		expect(partCM1('egaux')).toBeGreaterThan(0.15);
+		expect(partCM1('egaux')).toBeLessThan(0.35);
+		expect(partCM1('notation')).toBeGreaterThan(0.08);
+		expect(partCM1('nommer')).toBeGreaterThan(0.08);
+	});
+
+	describe('famille plusOuvert', () => {
+		const items = cm1.filter((t) => t.famille === 'plusOuvert');
+
+		it('figure = paire de DEUX angles ; choix A/B ; jamais de degré affiché', () => {
+			for (const { ex } of items) {
+				if (ex.type !== 'qcm') continue;
+				expect(svgsOf(ex.figure ?? '')).toHaveLength(2);
+				expect([...ex.choices].sort()).toEqual(['Angle A', 'Angle B']);
+				expect(ex.figure ?? '').not.toContain('°');
+				expect(ex.question).not.toContain('°');
+			}
+		});
+
+		it('écart NET ≥ 25° et réponse LOYALE à l’angle réellement le plus ouvert', () => {
+			for (const { ex } of items) {
+				if (ex.type !== 'qcm') continue;
+				const [sa, sb] = svgsOf(ex.figure ?? '');
+				const oA = ouvertureMesuree(sa);
+				const oB = ouvertureMesuree(sb);
+				expect(Math.abs(oA - oB)).toBeGreaterThanOrEqual(24); // ≥ 25° (marge d'arrondi SVG)
+				expect(ex.answer).toBe(oA > oB ? 'Angle A' : 'Angle B'); // loyauté
+			}
+		});
+
+		it('PIÈGE « longueur du trait » : l’angle le plus ouvert a PARFOIS le trait le plus court', () => {
+			const contreExemple = items.some(({ ex }) => {
+				if (ex.type !== 'qcm') return false;
+				const [sa, sb] = svgsOf(ex.figure ?? '');
+				const oA = ouvertureMesuree(sa);
+				const oB = ouvertureMesuree(sb);
+				const lA = longueurTrait(sa);
+				const lB = longueurTrait(sb);
+				// Le plus ouvert a le trait strictement PLUS COURT → la longueur ne trahit pas la réponse.
+				return (oA > oB && lA < lB) || (oB > oA && lB < lA);
+			});
+			expect(contreExemple).toBe(true);
+		});
+	});
+
+	describe('famille egaux', () => {
+		const items = cm1.filter((t) => t.famille === 'egaux');
+
+		it('« Oui » ⟺ mêmes ouvertures, « Non » ⟺ écart ≥ 25° (réponse loyale)', () => {
+			for (const { ex } of items) {
+				if (ex.type !== 'qcm') continue;
+				expect([...ex.choices].sort()).toEqual(['Non', 'Oui']);
+				const [sa, sb] = svgsOf(ex.figure ?? '');
+				const ecart = Math.abs(ouvertureMesuree(sa) - ouvertureMesuree(sb));
+				if (ex.answer === 'Oui')
+					expect(ecart).toBeLessThan(1); // mêmes ouvertures
+				else expect(ecart).toBeGreaterThanOrEqual(24); // écart net
+			}
+			expect(items.some((t) => t.ex.type === 'qcm' && t.ex.answer === 'Oui')).toBe(true);
+			expect(items.some((t) => t.ex.type === 'qcm' && t.ex.answer === 'Non')).toBe(true);
+		});
+	});
+
+	describe('famille notation', () => {
+		const items = cm1.filter((t) => t.famille === 'notation');
+
+		it('réponse = lettre pleine du sommet (voyelle) ; coiffée au MILIEU ; points extérieurs = consonnes', () => {
+			for (const { ex } of items) {
+				if (ex.type !== 'qcm') continue;
+				const m = /de l'angle (.{3}) \?$/.exec(ex.question);
+				expect(m).not.toBeNull();
+				const notation = m![1];
+				expect(notation).toHaveLength(3);
+				const chapeau = notation[1]; // le sommet est coiffé, AU MILIEU
+				expect(CHAPEAU[chapeau]).toBeDefined();
+				expect(ex.answer).toBe(CHAPEAU[chapeau]); // lettre pleine du sommet
+				expect(VOYELLES.has(ex.answer)).toBe(true);
+				// 3 choix : le sommet (voyelle) + 2 points extérieurs (consonnes, jamais une voyelle).
+				expect(ex.choices).toHaveLength(3);
+				expect(ex.choices).toContain(ex.answer);
+				const exterieurs = ex.choices.filter((c) => c !== ex.answer);
+				expect(exterieurs).toHaveLength(2);
+				for (const c of exterieurs) expect(VOYELLES.has(c)).toBe(false);
+				// Pools disjoints : le sommet n'est jamais l'un des points extérieurs affichés.
+				expect(notation[0]).not.toBe(ex.answer);
+				expect(notation[2]).not.toBe(ex.answer);
+			}
+		});
+
+		it('figure angleNomme : un SVG avec des <text> (NOMS de points) mais AUCUN degré/mesure', () => {
+			for (const { ex } of items) {
+				if (ex.type !== 'qcm') continue;
+				const svgs = svgsOf(ex.figure ?? '');
+				expect(svgs).toHaveLength(1);
+				expect(svgs[0]).toContain('<text'); // exception admise : les noms de points
+				expect(ex.figure ?? '').not.toContain('°');
+				expect((ex.figure ?? '').toLowerCase()).not.toContain('degré');
+			}
+		});
+
+		it('`parle` présent et verbalise l’accent circonflexe (le circonflexe est inaudible)', () => {
+			for (const { ex } of items) {
+				if (ex.type !== 'qcm') continue;
+				expect(typeof ex.parle).toBe('string');
+				expect(ex.parle ?? '').toContain('accent circonflexe');
+			}
+		});
+	});
+
+	describe('famille nommer (consolidation aigu/droit/obtus)', () => {
+		it('choix = les trois termes ; bonne réponse loyale à un angle simple', () => {
+			const items = cm1.filter((t) => t.famille === 'nommer');
+			for (const { ex } of items) {
+				if (ex.type !== 'qcm') continue;
+				expect([...ex.choices].sort()).toEqual(['Aigu', 'Droit', 'Obtus']);
+				expect(['Aigu', 'Droit', 'Obtus']).toContain(ex.answer);
+				expect(svgsOf(ex.figure ?? '')).toHaveLength(1); // un seul angle
+			}
+		});
+	});
+});
+
+describe('renderAnglePair / renderAngleNomme — invariants du renderer (#252)', () => {
+	it('renderAnglePair : deux SVG étiquetés A/B, sans cote, avec des rayons distincts honorés', () => {
+		const fig = renderAnglePair(
+			{ opening: 40, bisector: 30, ray: 50 },
+			{ opening: 120, bisector: 210, ray: 82 },
+		);
+		const svgs = svgsOf(fig);
+		expect(svgs).toHaveLength(2);
+		expect(fig).toContain('Angle A');
+		expect(fig).toContain('Angle B');
+		for (const svg of svgs) {
+			expect(svg).not.toContain('<text'); // aucune cote DANS le SVG (l'étiquette A/B est hors SVG)
+			expect(svg).not.toContain('°');
+		}
+		// Le rayon est honoré par angle : ouverture 40° (A) et 120° (B) retrouvées, traits 50 et 82.
+		expect(Math.round(ouvertureMesuree(svgs[0]))).toBe(40);
+		expect(Math.round(ouvertureMesuree(svgs[1]))).toBe(120);
+		expect(Math.round(longueurTrait(svgs[0]))).toBe(50);
+		expect(Math.round(longueurTrait(svgs[1]))).toBe(82);
+	});
+
+	it('renderAngleNomme : un SVG avec les 3 noms de points (<text>) mais jamais de degré', () => {
+		const fig = renderAngleNomme({ opening: 70, bisector: 20, ray: 64 }, ['B', 'A', 'D']);
+		expect(svgsOf(fig)).toHaveLength(1);
+		expect(fig).toContain('<text');
+		expect(fig).toContain('>B<');
+		expect(fig).toContain('>A<');
+		expect(fig).toContain('>D<');
+		expect(fig).not.toContain('°');
 	});
 });

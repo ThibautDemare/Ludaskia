@@ -610,6 +610,10 @@ Catégorie `math-calcul-mental`. Quatre origines :
   pas `calibrated`) distinguent les deux. **Exclue du sprint.** Câblée au bloc « Calcul
   mental CM1 » de `core/catalog.ts` (à la suite de #250), insérée dans
   `ORDRE_LECONS.math.cm1` juste après `math-ordre-grandeur-produit`.
+
+  > `deuxSousQuestionsType(...)` vit dans **`maths/_probleme-deux-sous-questions.ts`**
+  > (module partagé, #252), et non plus dans `division.ts` : la **durée écoulée CM1**
+  > (`mes-duree-ecoulee`, voir Grandeurs et mesures) en est le **3ᵉ client**.
 - **`maths/divisibilite.ts` + `maths/ordre-grandeur.ts` (#250) — 2 leçons QCM CM1**
   (`CALCUL_MENTAL_CM1_LESSONS_DEFS`, `core/catalog.ts`), **premier usage réel du
   combinateur `bankByLevel`** (#225) : chaque item de banque porte `levels: ['cm1']`,
@@ -686,6 +690,45 @@ décimale générique. Les 4 leçons, jusqu'ici CE2-only au catalogue, sont dés
 surfacées au CM1 et insérées dans `ORDRE_LECONS.math.cm1` après le bloc décimaux
 (#246/#247) — transfert pédagogique volontaire (écriture à virgule et valeur de
 position décimale tout juste stabilisées).
+
+**Grandes unités de temps (#252, CM1).** La config CM1 de `mes-durees` ajoute, EN PLUS
+de h↔min / min↔s, les relations **EXACTES** entre unités de temps : **1 siècle = 100 ans,
+1 an = 12 mois, 1 semaine = 7 jours, 1 jour = 24 h** (`maxBig: 9` ; pas de 1 an = 365
+jours ni 52 semaines, non exactes). Comme le moteur affiche « valeur + unité » sans
+accord, une petite **table de pluriels** (`PLURIELS_UNITE`) + `uniteAccordee(unite,
+valeur)` accordent chaque unité-**mot** à SA valeur (pluriel dès 2 ; « mois » invariable),
+côté connu ET côté réponse — les deux valeurs sont connues à la génération. Les unités-
+**symboles** (h, min, s, cm, kg, L…) sont absentes de la table → **jamais** de pluriel
+(`buildQuestion` prend désormais la valeur cible `answerValue` ; le CE2 est
+**byte-identique**, `uniteAccordee` renvoyant tout symbole tel quel). TTS : les mots se
+lisent tels quels (pas le souci du « h »).
+
+#### `maths/duree-ecoulee.ts` (#252, CM1)
+
+leçon **« Je calcule une durée »** (`mes-duree-ecoulee`, CM1-only, hors sprint),
+distincte de la conversion h↔min (`mes-durees`, inchangée). Sur la charpente partagée
+**`deuxSousQuestionsType(...)`** (runner « problème » à deux champs numériques corrigés
+indépendamment ; mode **saisie** conseillé + variante **QCM**). **Sans figure** (rendu
+« deux horloges » **différé**, texte seul). Deux formes tirées aléatoirement (programme
+2025 §2.6) : **A « durée écoulée »** (« De 8 h 20 à 10 h 50, combien de temps s'est
+écoulé ? » → étapes « Combien d'heures ? » / « Combien de minutes de plus ? ») et
+**B « instant + durée → instant »** (« Il est 8 h 20. 2 h 30 plus tard… » → étapes
+**« Les heures ? » / « Les minutes ? »**). Les libellés de B évitent volontairement
+« Quelle heure ? » (qui, comme dans `heure.ts`, ferait attendre une saisie composée
+« 9h30 » → `NaN` sur un champ à un seul nombre). Calibrage (pédagogue +
+spécialiste-troubles) : minutes **multiples de 5**, **jamais de passage de midi/minuit**
+(même demi-journée), départ < arrivée, durée ≠ 0, amplitude **≤ 4 h** ; la **retenue**
+(minutes d'arrivée < minutes de départ) est **dosée** (~1/3 des cas, jamais bannie).
+`parle` **100 % en toutes lettres** (`nombreEnMots`, « heures/minutes » écrits : le TTS
+n'étend pas le « h »). Champ **`explication`** = stratégie du **« pont »** (« de 8 h 40
+à 9 h = 20 min ; de 9 h à 9 h 10 = 10 min ; total 30 min »), rendu après la réponse dans
+les **deux** modes (le runner problème affiche désormais `probleme.explication` optionnel,
+comme le QCM). Distracteurs QCM = **vraies formes** (jamais une faute affichée), erreurs
+classiques (oubli de retenue = ±1 h, minute mal lue), pool redondant garantissant 4 choix
+uniques. Résultats **CALCULÉS puis STOCKÉS**. Insérée dans `ORDRE_LECONS.math.cm1` juste
+après `mes-durees` (clôture des mesures CM1). _NB_ : les grandes unités de temps (siècle /
+an / mois / semaine / jour) sont, elles, traitées par `mes-durees` (voir plus haut), pas
+ici.
 
 #### `maths/monnaie.ts` (#96)
 
@@ -807,20 +850,45 @@ comme l'horloge ou les solides, c'est une **tâche purement visuelle** — le fo
 n'est **pas résoluble au lecteur d'écran** par conception (verbaliser l'orientation donnerait la
 réponse) ; publics servis = clavier et basse vision (figures agrandies, libellés positionnels).
 
-#### `maths/angles.ts` (#202)
+#### `maths/angles.ts` (#202, extension CM1 #252)
 
-leçon **« Les angles »** (`geo-angles`, Géométrie),
-cliente du moteur SVG (`renderAngle`). **QCM mono-mode** ; trois « temps » tirés à
-chaque question selon une pondération CE2 (40/35/25) : reconnaître l'angle droit
-(Oui/Non), **comparer** à l'angle droit (plus petit / égal / plus grand), puis
-**nommer** (aigu / droit / obtus — le vocabulaire n'arrive qu'au temps 3, avec une
-**bulle d'aide** `.angle-aide` qui l'ancre sur la comparaison). Calibrage CE2
-(programme 2025, avis pédagogue + designer) : jugement **à l'œil, SANS degrés**
-(aigu ~30–60°, obtus ~115–150°, marge nette autour de 90° ; zone indécidable
-~80–100° et quasi-plats >170° bannis) ; le **carré de codage** est posé d'office par
-le renderer sur tout angle droit (« égal/droit » n'est donc proposé que sur un angle
-marqué) ; orientations variées (bissectrice). Champ `explication` après réponse. La
-mesure au rapporteur relève du CM1 (future leçon).
+leçon **« Les angles »** (`geo-angles`, Géométrie), **calibrée par niveau** (#225,
+combinateur `calibrated` { ce2, cm1 } ; niveaux dérivés au catalogue). **QCM mono-mode**,
+cliente du moteur SVG (`renderAngle` / `renderAnglePair` / `renderAngleNomme`).
+
+**CE2 (inchangé, byte-identique).** Six familles d'énoncés (`genAngle`) selon une
+pondération (Oui/Non ≤ 45 % / 3 termes ≥ 55 %) : reconnaître l'angle droit (Oui/Non),
+**comparer** à l'angle droit (plus petit / égal / plus grand), puis **nommer** (aigu /
+droit / obtus, avec une **bulle d'aide** `.angle-aide`). Calibrage (programme 2025,
+avis pédagogue + designer) : jugement **à l'œil, SANS degrés** (aigu ~30–60°, obtus
+~115–150°, marge nette autour de 90° ; zone indécidable ~80–100° et quasi-plats >170°
+bannis) ; le **carré de codage** est posé d'office sur tout angle droit ; orientations
+variées (bissectrice). Champ `explication` après réponse.
+
+**CM1 (#252) — comparer DEUX angles entre eux + notation** (`genAngleCM1`, la vraie
+nouveauté du niveau, le CE2 ne comparant qu'à l'angle droit ; pondération ≈ 45/25/15/15) :
+**`plusOuvert`** (« quel angle est le plus ouvert ? », QCM « Angle A » / « Angle B »,
+majoritaire), **`egaux`** (« ces deux angles sont-ils égaux ? », Oui/Non), **`notation`**
+(voir ci-dessous) et **`nommer`** en appoint (réutilise `genNommer`, consolidation
+aigu/droit/obtus). `plusOuvert`/`egaux` affichent deux angles côte à côte via
+**`renderAnglePair(a, b, labels)`** (`FigureSpec` `anglePair`), chaque cadran étiqueté
+**A / B** hors du SVG (lettre + `aria-label`, jamais info par la seule position ni la
+seule couleur). Écart d'ouverture **NET** (≥ 25°) garanti quand la réponse en dépend
+(loyal à l'œil, sans rapporteur). **Piège pédagogique** : la **longueur des demi-droites**
+(`AngleSpec.ray`) varie par angle → le plus ouvert a parfois les traits les plus courts
+(« la taille du trait n'est pas l'ouverture »). Vocabulaire unifié sur « ouverture ».
+
+**Notation « angle AÔB »** (`notation`, B.O. 2025 §2.5) : figure d'UN angle aux **trois
+points nommés** (**`renderAngleNomme(spec, points)`**, `FigureSpec` `angleNomme`) — un
+point marqué à chaque extrémité + le sommet ; les lettres de points sont des `<text>` SVG
+(**seul** cas où `<text>` est admis sur une figure d'angle : ce sont des NOMS, pas des
+cotes/degrés — l'invariant « aucune mesure affichée » tient). Question « quel point est
+le sommet de l'angle XŶZ ? », le sommet **au milieu** coiffé du circonflexe ; l'enfant
+**désigne** la lettre (QCM, pas de saisie du Ô). Sommet tiré dans {A,E,I,O,U} (formes
+précomposées **Â/Ê/Î/Ô/Û**), points extérieurs dans un pool **disjoint** de consonnes →
+la notation varie (le sommet n'est pas toujours O). Toutes les réponses **STOCKÉES**.
+Insérée dans `ORDRE_LECONS.math.cm1` en clôture du cluster géométrie. Mesure au
+rapporteur (degrés) toujours **différée**.
 
 ### Résolution de problèmes
 

@@ -166,7 +166,16 @@ export type Exercise =
 	// par le sens, #95). Chaque étape a sa réponse numérique, corrigée indépendamment.
 	// Runner dédié (ui/lecon-probleme.ts) ; `parle` = énoncé complet lu à voix haute
 	// (jamais la réponse). `figure` (#95) = situation de départ optionnelle. Hors sprint.
-	| { type: 'probleme'; enonce: string; etapes: ProblemeEtape[]; parle: string; figure?: string }
+	// `explication` (#252) = stratégie affichée APRÈS la réponse (ex. le « pont » d'un
+	// calcul de durée avec retenue). Optionnelle : absente = feedback inchangé.
+	| {
+			type: 'probleme';
+			enonce: string;
+			etapes: ProblemeEtape[];
+			parle: string;
+			figure?: string;
+			explication?: string;
+	  }
 	// Orthographe — interactions réutilisables (vérifiées comme du texte) :
 	| { type: 'motCache'; answer: string } // affiche/masque le mot puis saisie
 	| { type: 'tuiles'; answer: string; lettres: string[] } // lettres mélangées à ordonner

@@ -28,6 +28,7 @@ import { DUREE_ECOULEE_LESSONS } from '../data/maths/duree-ecoulee';
 import { MONNAIE_LESSONS } from '../data/maths/monnaie';
 import { HEURE_LESSONS } from '../data/maths/heure';
 import { PERIMETRE_LESSONS } from '../data/maths/perimetre';
+import { AIRE_PERIMETRE_LESSONS } from '../data/maths/aire-perimetre';
 import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration';
 // Réexposé pour les vues qui décident d'un rendu numérique vs texte (ex. révision,
 // #186) sans importer directement un module de données maths.
@@ -41,6 +42,7 @@ import { GEOMETRIE_LESSONS } from '../data/maths/geometrie';
 import { CERCLE_LESSONS } from '../data/maths/cercle';
 import { SOLIDE_LESSONS } from '../data/maths/solides';
 import { GEOMETRIE_CM1_LESSONS } from '../data/maths/geometrie-cm1';
+import { FIGURES_PROPRIETES_LESSONS } from '../data/maths/figures-proprietes';
 import { SYMETRIE_LESSONS } from '../data/maths/symetrie-axiale';
 import { ANGLES_LESSONS } from '../data/maths/angles';
 import { PROBLEMES_LESSONS } from '../data/maths/problemes';
@@ -417,6 +419,15 @@ const GRANDEURS_LESSONS: LessonDef[] = [
 		subject: 'math',
 		category: 'math-grandeurs-mesures',
 	}),
+	// Aire et périmètre (#253) : leçon CM1-only, 100 % comptage sur quadrillage. Mappée
+	// SÉPARÉMENT (levels ['cm1'] explicites) pour ne pas surfacer de niveau CM1 sur les
+	// leçons CE2 voisines. Exclue du sprint (comptage soigné + vrai/faux devinables).
+	...toLessonDefs(AIRE_PERIMETRE_LESSONS, {
+		subject: 'math',
+		category: 'math-grandeurs-mesures',
+		levels: ['cm1'],
+		excludeFromSprint: (d) => d.excludeFromSprint,
+	}),
 ];
 
 /* ---------- Catalogue des leçons « Numération » (#98, #94) ----------
@@ -730,6 +741,18 @@ const GEOMETRIE_CM1_LESSONS_DEFS: LessonDef[] = toLessonDefs(GEOMETRIE_CM1_LESSO
 	levels: ['cm1'],
 });
 
+/* ---------- Géométrie CM1 — Reconnaître une figure par ses propriétés (#253) ----------
+   Figure NON nommée + codage visible ; on juge des propriétés lisibles (angle droit, côtés
+   de même longueur, nombre de côtés). Deux modes : vrai/faux mono-propriété (runner QCM) et
+   multi-sélection « coche toutes les propriétés » (runner dédié, tout-ou-rien). CM1-only,
+   mappée SÉPARÉMENT (comme angles / durée écoulée) pour porter l'exclusion du sprint. */
+const FIGURES_PROPRIETES_LESSONS_DEFS: LessonDef[] = toLessonDefs(FIGURES_PROPRIETES_LESSONS, {
+	subject: 'math',
+	category: 'math-geometrie',
+	levels: ['cm1'],
+	excludeFromSprint: (d) => d.excludeFromSprint,
+});
+
 /* ---------- Catalogue de la leçon « Symétrie axiale » (#201) ----------
    QCM mono-mode (oui/non + désigner le reflet A/B/C). Exclue du sprint
    chronométré : tâche visuo-spatiale de reconnaissance, sans pression de temps. */
@@ -753,6 +776,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...GRANDEURS_LESSONS,
 	...GEOMETRIE_LESSONS_DEFS,
 	...GEOMETRIE_CM1_LESSONS_DEFS,
+	...FIGURES_PROPRIETES_LESSONS_DEFS,
 	...SYMETRIE_LESSONS_DEFS,
 	...PROBLEMES_LESSONS_DEFS,
 	...DIVISION_LESSONS_DEFS,
@@ -892,6 +916,22 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 			text: `Quel mot va avec « ${p.gauche} » ? @`,
 			answer: p.droite,
 			kind: 'text',
+			_lesson: lesson.id,
+		};
+	}
+	// Multi-sélection (#253) : l'interaction (cocher plusieurs propriétés) vit dans son
+	// runner (ui/lecon-qcm-multi.ts). Ce repli n'est normalement PAS atteint (le mode par
+	// défaut de la leçon est le vrai/faux mono-réponse, qui produit un `qcm`) ; par sûreté
+	// de type et pour un bilan éventuel, on retombe sur UNE proposition jugée vrai/faux
+	// (justesse LUE dans `correctes`, jamais recalculée).
+	if (ex.type === 'qcmMulti') {
+		const prop = ex.propositions[0];
+		return {
+			text: `Vrai ou faux ? ${prop}`,
+			answer: ex.correctes.includes(prop) ? 'Vrai' : 'Faux',
+			kind: 'text',
+			figure: ex.figure,
+			parle: ex.parle,
 			_lesson: lesson.id,
 		};
 	}

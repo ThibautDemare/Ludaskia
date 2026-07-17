@@ -764,6 +764,23 @@ triangle isocèle / figure en L cotés — `renderPolygoneCote`), `mes-perimetre
 chaque énoncé. Calibrage CE2 : côtés 2–15, périmètre ≤ ~50 ; figures à l'échelle
 (triangle isocèle, L cohérent) ; quadrillage ≤ 6×6, périmètre 8–20.
 
+#### `maths/aire-perimetre.ts` (#253, CM1)
+
+leçon **« Aire et périmètre »** (`mes-aire-perimetre`, Grandeurs et mesures,
+`levels: ['cm1']`, **hors sprint**), QCM mono-réponse (`lecon-qcm.ts`) sur quadrillage.
+**100 % comptage, ZÉRO formule** (pas de `L × l`, réservé CM2) : l'aire se compte en
+**carreaux** (unité non conventionnelle, **jamais « cm² »** — ni annonce « 1 cm de côté »),
+le périmètre en **côtés de carreaux** (comme `mes-perimetre-quadrillage`). Figures ≤ 6×6,
+rectilignes (rectangle ou L) — sauf la **comparaison**, bornée à ≤ 5×5 (taille de case
+commune aux deux figures d'une paire). **Pool** (comparaisons minoritaires ~25 %) : compter l'aire
+seule (choix = nombres, **distracteur = le périmètre** de la même figure), rappel du
+périmètre seul, **vrai/faux** sur l'aire OU le périmètre d'une même figure, et **comparer
+deux figures** (« même aire ? » / « même périmètre ? », `renderQuadrillagePaire`) — paires
+choisies pour attaquer la **confusion aire ↔ périmètre** (même aire ≠ même périmètre).
+**Grammaire visuelle** (`renderQuadrillage` mode `aire`/`perimetre`) : grille visible sur
+fond teinté = compter des **cases** ; trait corail épais = compter des **côtés**. Réponses
+**calculées et stockées** à la génération (comptage), jamais recalculées au check.
+
 ### Géométrie
 
 #### `maths/geometrie.ts` (#100)
@@ -780,7 +797,10 @@ parallélogramme comme réponse) ; carré incliné ≤ 40° (jamais 45° = indé
 losange), losange à diagonales inégales ; scène ≤ 6 figures, réponse 1–4, monochrome
 (la couleur n'est pas un indice) ; propriétés sans inclusion (« un carré est-il un
 rectangle ? ») ni double négation. **« Clique sur les rectangles » (multi-sélection)
-hors périmètre** (le runner QCM est mono-réponse).
+hors périmètre pour CETTE leçon** (son runner QCM reste mono-réponse) — un runner
+multi-sélection existe désormais (#253, `ui/lecon-qcm-multi.ts`, cf. [Rendu &
+interactions](ui.md)), mais réservé à la leçon CM1 `geo-cm1-figures-proprietes`
+(`maths/figures-proprietes.ts`, plus bas).
 
 #### `maths/cercle.ts` (#102)
 
@@ -833,6 +853,32 @@ droit, tirets de côtés égaux, longueurs/largeurs distinguées par un double t
 parallélogramme, carré vs losange ne sont plus indécidables « à l'œil ») sans curer les
 distracteurs, et **n'affecte que le CM1** — le CE2 partage le moteur mais ne demande pas le
 codage, ses figures restent non codées.
+
+#### `maths/figures-proprietes.ts` (#253, CM1)
+
+leçon **« Reconnaître une figure par ses propriétés »** (`geo-cm1-figures-proprietes`,
+Géométrie, `levels: ['cm1']`, **hors sprint**). On montre une figure **NON nommée** avec son
+**codage** (`renderFigurePlane`, `codage: true` + `parallelisme: true`, répertoire partagé) et
+on juge des propriétés **directement lisibles** sur ce codage. **INVARIANTS** (pédagogue) :
+**jamais** de nom de figure dans un énoncé/une proposition (« est un carré… » interdit →
+réintroduirait l'**inclusion**, écartée deux fois dans le projet) ; **jamais** de propriété
+**non codée** (les **diagonales** sont exclues) ; pas de double négation (affirmations
+positives). Familles de propositions livrées : **au moins un angle droit** (carré de codage),
+**côtés de même longueur / au moins deux de longueurs différentes / au moins deux égaux**
+(tirets), **côtés opposés parallèles** (chevrons `›` / `»`, **quadrilatères seulement** — jamais
+proposé sur un triangle), **nombre de côtés** (dénombrable). **Répertoire** : les 4
+quadrilatères réguliers + les 4 triangles (dont `triangleQuelconque`) + un **`quadrilatereQuelconque`**
+ajouté au moteur (#253, aucun angle droit / côté égal / côté parallèle → **aucune marque** ;
+c'est le contre-exemple indispensable de « côtés opposés parallèles », sans lui toujours vrai
+sur le pool). Table de vérité du parallélisme : carré / rectangle / losange / parallélogramme =
+**vrai**, quadrilatère quelconque = **faux**. **Deux modes** : `qcm` **(recommandé, défaut)** =
+**vrai/faux mono-propriété** sur `lecon-qcm.ts` (choix Vrai/Faux à positions stables) ; `coche`
+**(non recommandé)** = **multi-sélection** « coche toutes les propriétés qui sont vraies » sur
+`lecon-qcm-multi.ts` (exactement 4 propositions, ≥ 1 vraie **et** ≥ 1 fausse, nombre de vraies
+varié 1→3, jamais « côtés opposés parallèles » sur un triangle ; **tout-ou-rien**, réponse
+`correctes` **stockée**). _À faire valider (rendu)_ : rectangle/parallélogramme portent
+**deux marques par côté** (tiret d'égalité + chevron) — densité assumée, à confirmer sur petite
+figure (designer).
 
 #### `maths/symetrie-axiale.ts` (#201)
 

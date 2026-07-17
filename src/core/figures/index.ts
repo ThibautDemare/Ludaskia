@@ -58,10 +58,13 @@ import { renderHorloge } from './horloge';
 import {
 	renderPolygoneCote,
 	renderQuadrillage,
+	renderQuadrillagePaire,
 	renderFigurePlane,
 	renderSceneFigures,
 	renderCercle,
 	type PlaneShape,
+	type QuadFig,
+	type QuadrillageMode,
 } from './polygones';
 import { renderSolide, type Solid, type SolidOrient } from './solides';
 import {
@@ -91,8 +94,27 @@ import { renderGroupes } from './groupes';
 export type FigureSpec =
 	| { kind: 'horloge'; heures: number; minutes: number }
 	| { kind: 'polygoneCote'; points: Array<[number, number]>; labels: string[] }
-	| { kind: 'quadrillage'; cols: number; rows: number; cells: Array<[number, number]> }
-	| { kind: 'figurePlane'; shape: PlaneShape; rotation?: number; codage?: boolean }
+	| {
+			kind: 'quadrillage';
+			cols: number;
+			rows: number;
+			cells: Array<[number, number]>;
+			mode?: QuadrillageMode;
+	  }
+	| {
+			kind: 'quadrillagePaire';
+			a: QuadFig;
+			b: QuadFig;
+			mode?: QuadrillageMode;
+			labels?: [string, string];
+	  }
+	| {
+			kind: 'figurePlane';
+			shape: PlaneShape;
+			rotation?: number;
+			codage?: boolean;
+			parallelisme?: boolean;
+	  }
 	| { kind: 'sceneFigures'; cells: Array<{ shape: PlaneShape; rotation?: number }> }
 	| { kind: 'cercle'; segment?: 'rayon' | 'diametre'; label?: string }
 	| { kind: 'solide'; solid: Solid; orient?: SolidOrient }
@@ -119,9 +141,11 @@ export function renderFigure(spec: FigureSpec): string {
 		case 'polygoneCote':
 			return renderPolygoneCote(spec.points, spec.labels);
 		case 'quadrillage':
-			return renderQuadrillage(spec.cols, spec.rows, spec.cells);
+			return renderQuadrillage(spec.cols, spec.rows, spec.cells, spec.mode);
+		case 'quadrillagePaire':
+			return renderQuadrillagePaire(spec.a, spec.b, spec.mode, spec.labels);
 		case 'figurePlane':
-			return renderFigurePlane(spec.shape, spec.rotation, spec.codage);
+			return renderFigurePlane(spec.shape, spec.rotation, spec.codage, spec.parallelisme);
 		case 'sceneFigures':
 			return renderSceneFigures(spec.cells);
 		case 'cercle':

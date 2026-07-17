@@ -314,6 +314,15 @@ input.frac-num-input:focus-visible {
 .sprint-btn:active {
 	transform: translateY(1px);
 }
+/* Désactivé (#253 : « Valider » tant que 0 case cochée) : atténué, non cliquable, sans
+   survol. Utilisé par le runner QCM multi-sélection. */
+.sprint-btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.sprint-btn:disabled:hover {
+	box-shadow: none;
+}
 .sprint-btn.ghost {
 	background: var(--track);
 	color: var(--accent);

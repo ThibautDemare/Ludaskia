@@ -187,6 +187,14 @@
 	.levelup-medal {
 		border-color: #fff3c4;
 	}
+	/* Multi-sélection (#253) : le texte ambre `#8a5200` échoue sur `--warn-bg` en Nuit
+	   (~2:1) → `var(--warn)` (#f0b850, ≈ 6,99:1). Ne concerne QUE ces sélecteurs neufs ; les
+	   3 occurrences #8a5200 tracées ailleurs (#385/#386/#387) ne sont PAS touchées. */
+	.lqcm-multi-choice.is-missed,
+	.lqcm-multi-choice.is-missed .lqcm-multi-box,
+	.lqm-badge--revoir {
+		color: var(--warn);
+	}
 }
 :root[data-theme='nuit'] {
 	@include nuit-palette;

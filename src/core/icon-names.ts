@@ -9,6 +9,10 @@ export type IconName =
 	| 'check'
 	| 'check-circle'
 	| 'x'
+	// Case à cocher (multi-sélection #253) : pictogrammes DÉCORATIFs (l'état réel est porté
+	// par aria-pressed) — case vide / case cochée. Nom par le RÔLE (case), pas la graisse.
+	| 'square'
+	| 'check-square'
 	| 'list'
 	| 'house'
 	| 'printer'

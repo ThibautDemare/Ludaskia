@@ -110,6 +110,43 @@
 	font-weight: 700;
 }
 
+/* ---------- Quadrillage — paire à comparer (#253, aire ↔ périmètre) ---------- */
+/* Deux figures côte à côte pour les comparer (« même aire ? » / « même périmètre ? »),
+   étiquetées A / B (lettre au-dessus du SVG, double l'aria-label). Contrairement à
+   `.angle-pair`, on NE force PAS une largeur identique : la taille physique EST une info
+   pour l'aire (une 6×6 doit paraître plus grande qu'une 3×3). Les SVG portent leur taille
+   intrinsèque (width/height = viewBox, cf. `intrinsic`), à taille de case COMMUNE, bornée
+   ici par une enveloppe. */
+.quad-pair {
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	gap: 1.5rem;
+	flex-wrap: wrap;
+}
+.quad-pair-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	max-width: 135px;
+}
+/* On laisse la taille intrinsèque s'exprimer (taille de case commune), plafonnée à ~135 px :
+   pas de `width: 100%` (qui uniformiserait les deux figures et effacerait l'info d'aire). */
+.quad-pair-item .figure-svg {
+	width: auto;
+	max-width: 135px;
+	height: auto;
+}
+.quad-pair-label {
+	font-weight: 800;
+	font-size: 1.15rem;
+	/* Libellé FONCTIONNEL (désigne la figure A/B) : --ink pour tenir le contraste AA sur
+	   tous les thèmes (comme `.angle-pair-label`). */
+	color: var(--ink);
+	line-height: 1;
+	margin-bottom: 0.2rem;
+}
+
 /* ---------- Saisie de l'heure en 2 champs « [h] h [min] » (#88) ---------- */
 .heure-input {
 	display: inline-flex;

@@ -188,6 +188,17 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			// instants ET instant d'arrivée. Réinvestit la lecture de l'heure et h↔min tout
 			// juste consolidés (« mes-durees » juste au-dessus).
 			'mes-duree-ecoulee',
+			// Micro-problèmes décimaux à une étape (#255) : RÉINVESTISSEMENT, placés en clôture
+			// de l'année — ils mobilisent l'écriture à virgule (bloc décimaux num-dec-*) ET les
+			// mesures décimales (conversions), tout juste stabilisées en amont. Ce sont les mêmes
+			// leçons qu'au CE2 (structures de Vergnaud), rouvertes avec des nombres décimaux
+			// (argent, mesures au dixième). Ordre interne du plus simple au plus abstrait :
+			// composition (parties/tout) → transformation (gagner/perdre) → comparaison (écart) →
+			// multiplication (prix × quantité).
+			'math-prob-composition',
+			'math-prob-transformation',
+			'math-prob-comparaison',
+			'math-prob-multiplication',
 		],
 	},
 	francais: {

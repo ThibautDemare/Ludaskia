@@ -383,7 +383,9 @@ pure](core.md)) pour les formats composites :
   (`data-answer`), corrigée indépendamment ; problème réussi si **toutes** ses étapes
   le sont. Parité `recordLessonRun`. Routé par `runLecon` via `generate(mode).type ===
   'probleme'` — **aiguillage sensible au mode** (#95) : un type mono-mode passe `mode`
-  `undefined` et garde son comportement d'origine. **Réutilisé en multi-mode** par la
+  `undefined` et garde son comportement d'origine. Réponse **révélée** en cas d'erreur
+  en **écriture à virgule française** (#255 : quatre leçons ouvrent des réponses
+  décimales au CM1 — un entier reste inchangé). **Réutilisé en multi-mode** par la
   leçon de **division avec reste** `math-div-reste` (#95) : mode `saisie` = `probleme` à
   deux sous-questions (quotient + reste), mode `qcm` via `lecon-qcm.ts` ;
   `runLeconProbleme(id, mode?)` transmet le mode à la génération, et le runner adapte ses

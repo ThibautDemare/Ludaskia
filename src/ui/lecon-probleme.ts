@@ -176,7 +176,10 @@ function verifier(): void {
 		inp.classList.add(correct ? 'correct' : 'wrong');
 		const mark = sheets().querySelector(`.prob-mark[data-for="${i}"]`) as HTMLElement;
 		mark.className = 'prob-mark ' + (correct ? 'correct' : 'wrong');
-		mark.innerHTML = correct ? '✓' : `✗ <span class="sol">→ ${attendu}</span>`;
+		// Réponse révélée en virgule française (#255 : réponses décimales CM1) ; un entier
+		// reste inchangé. Le `data-answer` du champ reste NUMÉRIQUE (le check en dépend).
+		const attenduTexte = String(attendu).replace('.', ',');
+		mark.innerHTML = correct ? '✓' : `✗ <span class="sol">→ ${attenduTexte}</span>`;
 		if (!correct) {
 			toutJuste = false;
 			// Journal des erreurs (#391) : une entrée par SOUS-QUESTION ratée (l'énoncé de

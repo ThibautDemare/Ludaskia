@@ -971,3 +971,24 @@ gabarits** (positions d'inconnue variées, pièges « mots-clés » loyaux et mi
 calibrage CE2 : additifs ≤ 1000, multiplicatifs dans les tables, division exacte).
 Mono-mode, réponse(s) numérique(s), **exclues du sprint** (`isProblemeLesson`). Jouées
 par le runner dédié `ui/lecon-probleme.ts` (cf. [Rendu & interactions](ui.md)).
+
+**Extension CM1 décimale (#255).** Les **4 structures à une seule sous-question**
+(composition, transformation, multiplication, comparaison — pas « Partager et
+grouper », ni « Problèmes en deux étapes ») déclarent `levels: ['ce2','cm1']` sur leur
+`ExerciseType` (dérivés au catalogue comme les autres leçons multi-niveaux) et sont
+**rouvertes au CM1 avec des nombres décimaux « à une étape »** : argent en euros
+(centimes en interne) et mesures au dixième (m/kg/L). `generate` branche lui-même sur
+`opts.level` : niveau absent/`ce2` → chemin CE2 **inchangé** (byte-identique) ; `cm1` →
+tirage ~50 % entier (chemin CE2, pièges « mots-clés » compris) / ~50 % décimal
+**loyal** (aucun piège sur la variante décimale). L'arithmétique décimale reste
+**entière** en interne (centimes/dixièmes) ; la division par 100 ou 10 n'intervient
+qu'au tout dernier moment pour produire la réponse `number`. **« Partager et
+grouper »** (quotient décimal = programme CM2) et **« Problèmes en deux étapes »**
+(hors périmètre « à une étape ») restent **CE2-only**. Les 4 ids sont insérés en
+clôture de `ORDRE_LECONS.math.cm1` (réinvestissement, après les décimaux et les
+mesures CM1). Le repli texte bilan/fiche/révision (`catalog.ts`) et la réponse
+révélée en cas d'erreur dans le runner (`ui/lecon-probleme.ts`) affichent la valeur
+en **écriture à virgule française**.
+
+> Recalibrage par **branchement manuel** sur `opts.level`, pas par le combinateur
+> `calibrated` — voir [Niveaux scolaires](niveaux-scolaires.md#modules).

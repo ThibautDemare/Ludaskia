@@ -199,20 +199,25 @@ propre doc de conception : `docs/design-orthographe.md`.
   son runner, comme `posed`) | `probleme` (résolution de problèmes #199 :
   `enonce`, `etapes[]` — 1 ou 2 sous-questions corrigées indépendamment —,
   `parle`, `figure?` #95, `explication?` #252 — stratégie affichée APRÈS la
-  réponse, ex. le « pont » d'un calcul de durée) | interactions ortho), interface
+  réponse, ex. le « pont » d'un calcul de durée) | `clicMot` (« clique sur le mot »
+  #259 : `{tokens: string[]` — phrase mot à mot, ponctuation comprise —,
+  `cibleIndices: number[]` — indices du verbe conjugué, **stockés**, 1 mot aux temps
+  simples, 2 au passé composé —, `consigne`, `explication`, `parle}` ; corrigé par son
+  runner `lecon-clic-mot.ts` par égalité d'ensembles, `checkAnswer` renvoie `false`)
+  | interactions ortho), interface
   **`ExerciseType`** :
   `modes?`
   (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
   l'ordre d'affichage), `generate(opts? : {mode?, level?})` (le `level` #225 calibre
   une leçon multi-niveaux), `check()`, et **`exerciseKind?`** (#348, type
-  `ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme' | 'appariement'`)
+  `ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme' | 'appariement' | 'clicMot'`)
   — étiquette **déclarative statique** portée par les fabriques à runner dédié ;
   permet aux helpers `isPosedLesson` / `isOrderingLesson` / `isTriLesson` /
-  `isProblemeLesson` / `isPairingLesson` de classer une leçon **sans appeler
+  `isProblemeLesson` / `isPairingLesson` / `isClicMotLesson` de classer une leçon **sans appeler
   `generate()`** (supprime tout appel à l'aléatoire global au moment du filtrage).
-  Absent = format standard (texte/QCM) éligible au sprint. L'appariement est
-  **corrigé par son runner** (lien par lien), pas par `checkAnswer` : comme
-  `posed`/`tuilesOrdre`/`tuilesTri`/`probleme`, son `check()` renvoie toujours
+  Absent = format standard (texte/QCM) éligible au sprint. L'appariement et le clic-mot sont
+  **corrigés par leur runner** (lien par lien / égalité d'ensembles), pas par `checkAnswer` :
+  comme `posed`/`tuilesOrdre`/`tuilesTri`/`probleme`, leur `check()` renvoie toujours
   `false`.
   Helpers **`hasMode`** et **`defaultMode`** (les écrans dérivent leurs choix d'ici,
   **jamais en dur**, #69), et `checkAnswer` (normalisation partagée `normalizeText` ;

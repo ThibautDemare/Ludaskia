@@ -92,6 +92,24 @@ mots, articles, adverbes »** (`fr-gram-classes`). QCM d'étiquetage, 3 sous-typ
 sur une **banque interne étiquetée** (jamais les listes du parent). Un builder unifie
 les 3 types en items QCM. Relue par l'agent pédagogue.
 
+#### `francais/grammaire-clic-mot.ts` (#259)
+
+catégorie **Grammaire**, leçon **« Clique sur le verbe »** (`fr-gram-clic-verbe`),
+**CE2 + CM1**. 1re leçon de la brique d'interaction **« clique sur le mot »** : une
+phrase est rendue **mot par mot** et l'enfant sélectionne le **verbe conjugué**. Banque
+de phrases annotées : chaque phrase est autorée sous la forme `(texte, verbe)` puis
+`phrase()` la **tokenise** (mots + ponctuation) et **calcule une fois** l'ensemble des
+indices-cibles (garde-fou : le verbe doit apparaître **exactement une fois** — sinon
+erreur de construction). L'item `Exercise` `type: 'clicMot'` porte l'ensemble **stocké**
+`cibleIndices` ; le runner (`ui/lecon-clic-mot.ts`) compare par **égalité d'ensembles**,
+ne recalcule rien. `generate({level})` tire dans **`PHRASES_CE2`** (~47 phrases, temps
+simples → cible = 1 mot) ou **`PHRASES_CM1`** (~74 : les CE2 revues + passé composé →
+cible = 2 mots auxiliaire + participe, inversion nominale du sujet, complément
+circonstanciel en tête). Une seule réponse indiscutable par phrase (jamais deux verbes
+conjugués, ni pronominal, ni découpage ambigu) ; position du verbe et type de phrase
+variés. **Exclue du sprint** (`isClicMotLesson`). Relue par l'agent pédagogue et le
+rédacteur FR.
+
 #### `francais/phrases.ts` (#204, CM1 #245)
 
 rubrique **« Les phrases »**, 4 leçons QCM (exclues du sprint), niveaux portés **par

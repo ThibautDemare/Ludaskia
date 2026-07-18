@@ -18,6 +18,7 @@ import { FAMILLES_LESSONS } from '../data/francais/familles';
 import { CHAMPS_LESSONS } from '../data/francais/champs-lexicaux';
 import { GRAMMAIRE_SUJET_LESSONS } from '../data/francais/grammaire-sujet';
 import { CLASSES_LESSONS } from '../data/francais/classes-mots';
+import { CLIC_MOT_LESSONS, joindrePhrase } from '../data/francais/grammaire-clic-mot';
 import { PHRASES_LESSONS } from '../data/francais/phrases';
 import { ACCORD_LESSONS, ACCORD_CM1_LESSONS } from '../data/francais/accords';
 import { ACCORD_GN_LESSONS } from '../data/francais/accord-groupe-nominal';
@@ -711,6 +712,17 @@ const CLASSES_LESSONS_DEFS: LessonDef[] = toLessonDefs(CLASSES_LESSONS, {
 	category: 'fr-grammaire',
 });
 
+/* ---------- Grammaire — « Clique sur le verbe » (#259) ----------
+   Nouvelle brique « clique sur le mot » : phrase rendue mot à mot, l'enfant
+   sélectionne le verbe conjugué (1 mot aux temps simples, 2 au passé composé au
+   CM1). Runner d'écran dédié (ui/lecon-clic-mot.ts), hors sprint. Niveaux DÉRIVÉS
+   du moteur (['ce2','cm1']). */
+const CLIC_MOT_LESSONS_DEFS: LessonDef[] = toLessonDefs(CLIC_MOT_LESSONS, {
+	subject: 'francais',
+	category: 'fr-grammaire',
+	levels: (d) => d.exerciseType.levels ?? ['ce2'],
+});
+
 /* ---------- Grammaire — les phrases : ponctuation finale & types (#204) ----------
    2 leçons QCM regroupées sous la rubrique « Les phrases » : F1 « Quel point à la
    fin ? » (boutons-symboles `. ? !`) et F2 « Quel type de phrase ? ». Hors sprint
@@ -820,6 +832,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...CHAMPS_LESSONS_DEFS,
 	...GRAMMAIRE_SUJET_LESSONS_DEFS,
 	...CLASSES_LESSONS_DEFS,
+	...CLIC_MOT_LESSONS_DEFS,
 	...PHRASES_LESSONS_DEFS,
 ];
 
@@ -866,6 +879,15 @@ export function isProblemeLesson(lesson: LessonDef): boolean {
    de genLessonItem (une paire → « quel mot va avec X ? »). */
 export function isPairingLesson(lesson: LessonDef): boolean {
 	return lesson.exerciseType.exerciseKind === 'appariement';
+}
+
+/* Une leçon « Clique sur le mot » (#259) se joue en sélectionnant des mots dans
+   une phrase : interaction d'écran dédiée (ui/lecon-clic-mot.ts), incompatible
+   avec le sprint « une réponse à la fois » → exclue de son tirage. Reste jouable
+   en bilan/fiche/révision via le repli texte de genLessonItem (phrase → « quel est
+   le verbe ? »). */
+export function isClicMotLesson(lesson: LessonDef): boolean {
+	return lesson.exerciseType.exerciseKind === 'clicMot';
 }
 
 /* Une leçon math « héritée » est branchée sur le générateur numérique bilanQ
@@ -944,6 +966,20 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 			text: `Quel mot va avec « ${p.gauche} » ? @`,
 			answer: p.droite,
 			kind: 'text',
+			_lesson: lesson.id,
+		};
+	}
+	// « Clique sur le mot » (#259) : l'interaction (sélectionner des mots dans une
+	// phrase) vit dans son runner (ui/lecon-clic-mot.ts). Repli TEXTE non interactif
+	// pour fiche/bilan/révision : on montre la phrase et on attend le verbe conjugué
+	// écrit (les mots-cible stockés, jamais recalculés — 1 mot ou 2 au passé composé).
+	if (ex.type === 'clicMot') {
+		const verbe = ex.cibleIndices.map((i) => ex.tokens[i]).join(' ');
+		return {
+			text: `Quel est le verbe conjugué ? « ${joindrePhrase(ex.tokens)} » @`,
+			answer: verbe,
+			kind: 'text',
+			parle: ex.parle,
 			_lesson: lesson.id,
 		};
 	}

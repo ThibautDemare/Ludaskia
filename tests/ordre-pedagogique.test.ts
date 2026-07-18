@@ -54,8 +54,8 @@ describe('core/ordre — helpers', () => {
 		// « Les phrases » (#245 : type, forme, transfo négative) + 2 leçons d'accords CM1
 		// (#243 : mots isolés + groupe nominal) + 4 leçons de vocabulaire CM1 (#244 :
 		// contraires, sens proche, familles, préfixes/suffixes) + 1 leçon d'homonymes
-		// (#254) = 65.
-		expect(ordreLecons('francais', 'cm1')).toHaveLength(65);
+		// (#254) + 1 leçon « Clique sur le verbe » (#259, partagée CE2/CM1) = 66.
+		expect(ordreLecons('francais', 'cm1')).toHaveLength(66);
 		// Niveau sans ordre défini → liste vide (fallback ordre de déclaration).
 		expect(ordreLecons('math', 'cp')).toEqual([]);
 		expect(ordreLecons('inconnue' as SubjectId, 'ce2')).toEqual([]);
@@ -191,9 +191,9 @@ describe('leçon du jour', () => {
 		// écritures équivalentes #247 + conversions de mesures #248, aire & périmètre #253 &
 		// durée écoulée #252 + fractions au CM1 & fractions comme nombres #249 + micro-problèmes
 		// décimaux #255), français CM1 =
-		// 65 (conjugaison #239 + grammaire « phrases » #245 +
-		// accords #243 + vocabulaire #244 + homonymes #254) → entrelacement 1:1, puis la matière la plus longue
-		// (français) seule.
+		// 66 (conjugaison #239 + grammaire « phrases » #245 +
+		// accords #243 + vocabulaire #244 + homonymes #254 + « Clique sur le verbe » #259) →
+		// entrelacement 1:1, puis la matière la plus longue (français) seule.
 		expect(seq).toHaveLength(M_CM1.length + F_CM1.length);
 		expect(seq[0].id).toBe(M_CM1[0]); // math.cm1[0] = num-comparer
 		expect(seq[1].id).toBe(F_CM1[0]); // fr-gram-type-phrase (grammaire en tête au CM1)

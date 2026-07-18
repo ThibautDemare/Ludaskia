@@ -21,6 +21,7 @@ import {
 	isTriLesson,
 	isProblemeLesson,
 	isPairingLesson,
+	isClicMotLesson,
 	SUBJECTS,
 	CATEGORIES,
 } from '../core/catalog';
@@ -116,7 +117,8 @@ function lessonsForFilter(f: SprintFilter): LessonDef[] {
 			!isOrderingLesson(d) &&
 			!isTriLesson(d) &&
 			!isProblemeLesson(d) &&
-			!isPairingLesson(d),
+			!isPairingLesson(d) &&
+			!isClicMotLesson(d),
 	);
 }
 

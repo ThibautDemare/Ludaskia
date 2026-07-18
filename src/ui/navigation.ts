@@ -20,6 +20,7 @@ import { runLeconTuiles } from './lecon-tuiles';
 import { runLeconOrdre } from './lecon-ordre';
 import { runLeconTri } from './lecon-tri';
 import { runLeconAppariement } from './lecon-appariement';
+import { runLeconClicMot } from './lecon-clic-mot';
 import { runLeconProbleme } from './lecon-probleme';
 import { runLeconTableau, leconTableauCleanup } from './lecon-tableau';
 import { renderItem, createRenderContext } from '../core/items';
@@ -573,6 +574,12 @@ export function runLecon(id: string) {
 	// mono-mode garde son comportement d'origine (mode = undefined).
 	if (t === 'probleme') {
 		runLeconProbleme(id, mode);
+		return;
+	}
+	// « Clique sur le mot » (#259) : runner d'écran dédié (phrase découpée en mots
+	// cliquables, sélection multiple). Mode unique, hors sprint — comme le problème.
+	if (t === 'clicMot') {
+		runLeconClicMot(id, mode);
 		return;
 	}
 	// Un mode produisant un QCM ou des tuiles se joue « une question à la fois »

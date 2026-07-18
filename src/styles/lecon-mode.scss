@@ -981,6 +981,154 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 	}
 }
 
+/* ---- Runner « Clique sur le mot » (#259, repérer le verbe conjugué) ----
+   Une phrase se LIT puis se clique : on abandonne le centrage du sprint et on aligne
+   la phrase à GAUCHE dans une colonne bornée (sens de lecture). Chaque mot est un
+   bouton cliquable ; la ponctuation est un texte inerte. Interligne (row-gap) plus
+   grand que l'inter-mots (column-gap) pour que deux lignes ne se touchent pas. */
+.lclic-stage.sprint-stage {
+	align-items: stretch;
+	justify-content: flex-start;
+	text-align: left;
+}
+.lclic-col {
+	width: 100%;
+	max-width: 40rem;
+	margin: 0 auto;
+	text-align: left;
+}
+/* Consigne PERSISTANTE (reste affichée pendant toute la recherche) + son bouton
+   « Écouter ». Instruction claire, sobre (pas une bannière colorée). */
+.lclic-consigne {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.5em;
+	margin: 0.4rem 0 1rem;
+	font-family: var(--ui);
+	font-size: 1.1rem;
+	font-weight: 700;
+	color: var(--ink);
+}
+/* Zone de la phrase : la phrase (mots + ponctuation) puis, dessous, son bouton
+   « Écouter » (lecture de l'énoncé entier, #42). */
+.lclic-phrase-zone {
+	margin: 0 0 1.1rem;
+}
+.lclic-phrase-zone .consigne-tts {
+	margin: 0.6rem 0 0;
+}
+.lclic-phrase {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-start; /* aligné à GAUCHE (sens de lecture, pas centré) */
+	align-items: flex-end;
+	column-gap: 0.3em;
+	row-gap: 0.7em; /* interligne > inter-mots : deux lignes ne se collent pas */
+	font-family: var(--ui);
+	font-size: 1.35rem;
+	font-weight: 600;
+	line-height: 1.2;
+}
+/* Un mot cliquable : cible tactile confortable, affordance DISCRÈTE (soulignement
+   pointillé, pas une pastille pleine) ; le fond ne se remplit qu'à la sélection. */
+.lclic-mot {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
+	min-width: 28px;
+	padding: 6px 8px;
+	border: 0;
+	border-bottom: 2px dotted var(--accent-soft);
+	border-radius: 8px 8px 4px 4px;
+	background: transparent;
+	color: var(--ink);
+	font: inherit;
+	cursor: pointer;
+	transition:
+		background 0.1s ease,
+		color 0.1s ease;
+}
+.lclic-mot:active {
+	background: var(--accent-soft);
+}
+.lclic-mot:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.lclic-mot:disabled {
+	cursor: default;
+}
+/* Ponctuation : texte inerte, aligné sur la ligne de base des mots. */
+.lclic-ponct {
+	align-self: flex-end;
+	padding-bottom: 6px;
+	color: var(--ink);
+	user-select: none;
+}
+/* Sélectionné AVANT « Vérifier » : fond accent plein (jamais vert/rouge à ce stade). */
+.lclic-mot.is-selected {
+	background: var(--accent);
+	color: var(--on-accent);
+	border-bottom-color: var(--accent);
+	box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
+}
+/* Après « Vérifier » : mot sélectionné juste (vert) / faux (rouge). */
+.lclic-mot.correct {
+	background: var(--ok-soft);
+	color: var(--ok);
+	border-bottom: 2px solid var(--ok);
+	font-weight: 800;
+	animation: reussite-flash 0.5s ease-out;
+}
+.lclic-mot.wrong {
+	background: var(--ko-soft);
+	color: var(--ko);
+	border-bottom: 2px solid var(--ko);
+}
+/* Bon mot RÉVÉLÉ dans la phrase (surlignage vert doux), même si l'enfant ne l'avait
+   pas sélectionné — souligné plein pour le distinguer sans compter sur la couleur. */
+.lclic-mot.is-cible {
+	background: var(--ok-soft);
+	color: var(--ok);
+	border-bottom: 2px solid var(--ok);
+	font-weight: 800; /* même poids que .correct : passe le contraste en « grand texte gras » (3:1). */
+}
+@media (prefers-reduced-motion: reduce) {
+	.lclic-mot.correct {
+		animation: none;
+	}
+}
+html.anim-reduced .lclic-mot.correct {
+	animation: none;
+}
+/* Pastille ✓/✗ (double le signe couleur, daltonisme) : posée EN LIGNE après le mot,
+   pour ne pas déborder sur les mots voisins d'une ligne serrée. */
+.lclic-mark {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.15em;
+	height: 1.15em;
+	margin-left: 0.3em;
+	border-radius: 50%;
+	font-size: 0.75em;
+	font-weight: 800;
+	color: var(--on-accent);
+}
+.lclic-mot.correct .lclic-mark {
+	background: var(--ok);
+}
+.lclic-mot.wrong .lclic-mark {
+	background: var(--ko);
+}
+@media (min-width: 560px) {
+	.lclic-phrase {
+		font-size: 1.5rem;
+	}
+}
+
 /* ---------- Résolution de problèmes (#199) ---------- */
 /* Un problème se LIT puis se résout : on abandonne le centrage hérité du sprint
    et on aligne tout sur un seul rail à gauche, dans une colonne bornée. */

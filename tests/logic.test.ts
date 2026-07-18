@@ -4013,7 +4013,14 @@ describe('auto-actualisation (core/version)', () => {
 describe('exerciseKind — classification déclarative (#348)', () => {
 	// Doit refléter l'union `ExerciseKind` (src/core/exercise.ts) : les types d'items
 	// à runner d'écran dédié, hors sprint. À tenir à jour si l'union s'étend.
-	const FORMATS_DEDIES = ['posed', 'tuilesOrdre', 'tuilesTri', 'probleme', 'appariement'];
+	const FORMATS_DEDIES = [
+		'posed',
+		'tuilesOrdre',
+		'tuilesTri',
+		'probleme',
+		'appariement',
+		'clicMot',
+	];
 
 	test("l'étiquette déclarée == le type produit par generate() (invariant)", () => {
 		// NB : ce test appelle generate() sur tout le catalogue À DES FINS DE

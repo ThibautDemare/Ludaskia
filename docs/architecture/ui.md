@@ -74,7 +74,8 @@ pure](core.md)) pour les formats composites :
   (`lecon-tuiles.ts` — libellé de la tuile posée via `TuileController.reponse()`), le
   rangement (`lecon-ordre.ts` — `ordreErreur`), le tri par thème (`lecon-tri.ts` — une
   entrée par mot mal classé via `motsMalClasses`), la résolution de problèmes
-  (`lecon-probleme.ts` — une entrée par sous-question ratée) et la dictée d'orthographe
+  (`lecon-probleme.ts` — une entrée par sous-question ratée), « Clique sur le mot »
+  (`lecon-clic-mot.ts` — une entrée par phrase ratée : mots choisis vs bon(s) mot(s)) et la dictée d'orthographe
   (`ortho-runner.ts` — le **premier essai raté** d'un mot ; libellé résolu via
   `labelLeconOrtho`, cf. `core/orthographe/lessons.ts`, l'id étant une **liste**
   d'orthographe et non une leçon du catalogue). Une opération posée (`session.ts`)
@@ -405,14 +406,32 @@ pure](core.md)) pour les formats composites :
   (`isProblemeLesson`, comme la posée). Repli texte (énoncé + question finale) via
   `genLessonItem` pour le bilan / la révision. La **question finale en gras** passe
   par la convention `**…**` rendue par `enonceTexte` (`core/items.ts`).
+- **`lecon-clic-mot.ts`** (#259) — runner **« Clique sur le mot »**, une phrase à la
+  fois. L'`Exercise` `type: 'clicMot'` (`data/francais/grammaire-clic-mot.ts`) porte
+  `tokens[]` (la phrase mot à mot), `cibleIndices[]` (l'ensemble EXACT des indices du
+  verbe conjugué, **stocké** à la génération), `consigne`, `explication`, `parle`. Chaque
+  MOT est un `<button>` cliquable, la **ponctuation** un `<span>` inerte (`estPonctuation`).
+  **Sélection multiple réversible** (`.is-selected`, aucune correction au 1er tap) ;
+  « Vérifier » (désactivé tant qu'aucun mot n'est choisi) compare l'ensemble sélectionné à
+  `cibleIndices` par **égalité d'ensembles exacte** (au **passé composé** CM1 le verbe fait
+  **2 mots** : auxiliaire + participe). Feedback différé : mots marqués `.correct`/`.wrong`
+  + pastille ✓/✗, **bon(s) mot(s) révélé(s)** dans la phrase (`.is-cible`, vert doux) même
+  en cas d'erreur, `explication` sous la phrase ; chaque mot marqué `.correct` reçoit un
+  flash `reussite-flash` (par mot, pas conditionné à un sans-faute global).
+  Consigne **persistante** + **TTS** (`bindConsigneTts`) sur la consigne ET la phrase entière,
+  journal via `capterErreur`. **Level-agnostic** : `generate({level})` tire dans la banque
+  CE2 (temps simples) ou CM1 (+ passé composé, inversion nominale, CC en tête). **Exclu du
+  sprint** (`isClicMotLesson`), **repli texte** en bilan/fiche/révision (`genLessonItem` :
+  phrase → « quel est le verbe conjugué ? »). Structure calquée sur `lecon-appariement.ts`/
+  `lecon-probleme.ts` (état de module + `lecon-runner-shared.ts`).
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
   **filtrable** (toutes matières / une matière / une catégorie / **une sélection
   précise de leçons** via `startCustomSprint`, #64) via un écran de
   configuration ; correction par `checkItemAnswer` (numérique ou texte).
   **Exclusions du sprint** (`lessonsForFilter`) : par TYPE d'item (posée, tuiles
-  ordre/tri, problème, appariement — détecté via l'étiquette déclarative
+  ordre/tri, problème, appariement, clic-mot — détecté via l'étiquette déclarative
   **`ExerciseType.exerciseKind`**, #348, via les helpers `isPosedLesson`/
-  `isOrderingLesson`/`isTriLesson`/`isProblemeLesson`/`isPairingLesson` de
+  `isOrderingLesson`/`isTriLesson`/`isProblemeLesson`/`isPairingLesson`/`isClicMotLesson` de
   `core/catalog.ts`) **et** par le flag déclaratif **`LessonDef.excludeFromSprint`** (#104) pour une leçon qui produit un
   item `text` ordinaire mais ne convient pas au chrono (figure de découverte,
   lecture d'énoncé — ex. « Je partage »). L'écran de config ne compte que les

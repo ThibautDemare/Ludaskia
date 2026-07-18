@@ -158,6 +158,23 @@ export type Exercise =
 			intrus?: string[];
 			parle?: string;
 	  }
+	// Grammaire (#259) — « Clique sur le mot » : l'enfant lit une phrase découpée en
+	// TOKENS (mots + ponctuation) et SÉLECTIONNE le(s) mot(s) répondant à la consigne
+	// (1re leçon : le verbe conjugué — 1 mot aux temps simples, 2 au passé composé :
+	// auxiliaire + participe). `tokens` = la phrase mot à mot ; les tokens de
+	// PONCTUATION (repérés par `estPonctuation`) ne sont pas cliquables. `cibleIndices`
+	// = l'ensemble EXACT des indices attendus, STOCKÉ à la génération (jamais recalculé
+	// au check ; le runner ui/lecon-clic-mot.ts compare par ÉGALITÉ D'ENSEMBLES). Hors
+	// sprint. `consigne` = tâche visible + persistante ; `explication` = justification
+	// courte affichée après « Vérifier » ; `parle` = phrase entière lue à voix haute.
+	| {
+			type: 'clicMot';
+			tokens: string[];
+			cibleIndices: number[];
+			consigne: string;
+			explication: string;
+			parle: string;
+	  }
 	// Calcul posé (#97) — opération en colonnes ; le catalogue en fait un Item
 	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.
 	| { type: 'posed'; op: '+' | '-' | 'x'; a: number; b: number }
@@ -205,11 +222,13 @@ export type ExerciseMode = string;
 /** Étiquette déclarative du format d'un `ExerciseType` (#348) pour les formats à
  *  runner d'écran dédié, incompatibles avec le sprint « une réponse à la fois » :
  *  opération posée (#97), rangement d'une suite (#108), tri par thème (#114),
- *  résolution de problèmes (#199), appariement (#392). Sert à classer une leçon
+ *  résolution de problèmes (#199), appariement (#392), « clique sur le mot » (#259).
+ *  Sert à classer une leçon
  *  SANS appeler `generate()` (qui consomme l'aléatoire global). Absent = format
  *  standard (texte/QCM) éligible au sprint. Doit refléter le `type` que produit
  *  le `generate()` par défaut (sans mode) — invariant vérifié en test. */
-export type ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme' | 'appariement';
+export type ExerciseKind =
+	'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme' | 'appariement' | 'clicMot';
 
 /** Options de génération (#225). Le niveau est résolu UNE fois en amont (seam
  *  UI/catalogue via `effectiveLevel`) puis passé ici ; une fabrique mono-niveau
@@ -268,9 +287,9 @@ export function defaultMode(type: ExerciseType): ExerciseMode | undefined {
    (+ variantes `answers` pour 'text'). */
 export function checkAnswer(exercise: Exercise, input: string): boolean {
 	// Le calcul posé (corrigé cellule par cellule), le rangement d'une suite (#108),
-	// le tri par thème (#114) et l'appariement (#392) — corrigés par leur runner —
-	// n'ont pas de réponse texte unique : ils ne passent jamais par cette
-	// vérification générique.
+	// le tri par thème (#114), l'appariement (#392) et « clique sur le mot » (#259) —
+	// corrigés par leur runner — n'ont pas de réponse texte unique : ils ne passent
+	// jamais par cette vérification générique.
 	if (
 		exercise.type === 'posed' ||
 		exercise.type === 'tuilesOrdre' ||
@@ -278,6 +297,7 @@ export function checkAnswer(exercise: Exercise, input: string): boolean {
 		exercise.type === 'probleme' ||
 		exercise.type === 'tableauConversion' ||
 		exercise.type === 'appariement' ||
+		exercise.type === 'clicMot' ||
 		exercise.type === 'qcmMulti'
 	)
 		return false;

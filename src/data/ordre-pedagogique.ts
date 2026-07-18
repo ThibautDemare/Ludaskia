@@ -213,6 +213,10 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-conj-etre-present',
 			'fr-conj-avoir-present',
 			'fr-gram-classes',
+			// « Clique sur le verbe » (#259) : repérer le verbe conjugué DANS une phrase,
+			// juste après avoir nommé les classes de mots (dont le verbe) et conjugué
+			// être/avoir au présent. Au CE2 la cible est un seul mot (temps simples).
+			'fr-gram-clic-verbe',
 			'fr-conj-aimer-present',
 			'fr-conj-finir-present',
 			'fr-vocab-contraires',
@@ -385,6 +389,12 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-conj-naitre-passe_compose',
 			// QCM méta « temps simple / composé » : APRÈS le passé composé (notion introduite).
 			'fr-conj-simple-compose',
+			// « Clique sur le verbe » (#259) : même leçon qu'au CE2, mais la banque CM1
+			// ajoute le PASSÉ COMPOSÉ (verbe en 2 mots : auxiliaire + participe). Placée
+			// APRÈS le passé composé et la distinction simple/composé (dépendance interne :
+			// on ne montre pas de temps non encore vu) plutôt qu'auprès des autres leçons
+			// de grammaire du début d'année.
+			'fr-gram-clic-verbe',
 			// Orthographe — accord de TOUT le groupe nominal (#243) : chaîne d'accord
 			// (déterminant + adjectif + nom), APEX de l'accord au CM1, signalé « plus
 			// difficile ». Placé tard : il suppose l'accord d'un mot isolé (fr-accords-cm1, plus haut).

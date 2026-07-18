@@ -318,6 +318,9 @@ propre / sens figuré »** (`fr-vocab-sens`). QCM 3 options : courte phrase +
 fixes propre/figuré/distracteur ; seules les phrases et le `sens` varient → les
 deux sens sont toujours proposés, pas de clé erronée), équilibre propre/figuré.
 Feedback `explication` rappelant le sens employé. Relue par l'agent pédagogue.
+**Exclue du sprint** (correctif #254) : jugement de sens plutôt qu'automatisme
+chronométrable, alignée sur la même politique que les contraires (#203) et
+l'homonymie (ci-dessous) — elle n'y figurait auparavant que par oubli.
 
 #### `francais/synonymes-contraires.ts` (#203, #244)
 
@@ -367,6 +370,26 @@ mot pouvant relever de plusieurs champs (relief, plante sauvage…) est marqué
 `ambigu` : **conservé dans la banque** et dans « définition → mot », mais **exclu
 de l'intrus et du tri** (qui croisent deux champs) via `motsNets` — on ne retire
 jamais un mot de la banque, on le flague pour le format concerné.
+
+#### `francais/homonymie.ts` (#254)
+
+catégorie **Vocabulaire**, leçon CM1 **« Les homonymes »**
+(`fr-vocab-homonymes-cm1`), **premier usage côté français** du combinateur
+**`bankByLevel`** (jusque-là réservé aux maths, cf. `divisibilite.ts` /
+`ordre-grandeur.ts` — [Niveaux scolaires](niveaux-scolaires.md)) : chaque
+homographe de `MOTS_HOMOGRAPHES` porte `levels: ['cm1']`, le catalogue en dérive
+`LessonDef.levels`. QCM : courte phrase + « Ici, « X » veut dire : ? », le nombre
+d'options = le nombre de **sens réels** du mot (2 ou 3) — **contrainte dure**,
+contrairement à `sens-figure.ts` : jamais un sens inventé en distracteur, toutes
+les options sont de vraies définitions du mot. Périmètre **homographes
+uniquement** (même graphie, plusieurs sens : glace, carte, pièce…) ; les
+homophones à graphie différente (ver/verre/vert) sont différés hors #254
+(candidat CM2, format audio/dictée plutôt que QCM texte). TTS : la phrase est lue
+(prononciation identique quel que soit le sens, à l'inverse de `homophones.ts`).
+**Exclue du sprint** (`excludeFromSprint`, comme les contraires #203 et
+sens-figure.ts) : jugement de sens, pas un automatisme à chronométrer. Placée en
+fin de fil vocabulaire CM1 dans l'ordre pédagogique (après
+`fr-vocab-affixes-cm1`).
 
 ## Maths
 

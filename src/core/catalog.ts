@@ -12,6 +12,7 @@ import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 import { CONJ_META_LESSONS } from '../data/francais/conjugaison-meta';
 import { VOCAB_LESSONS } from '../data/francais/vocabulaire';
 import { SENS_FIGURE_LESSONS } from '../data/francais/sens-figure';
+import { HOMONYMIE_LESSONS } from '../data/francais/homonymie';
 import { SENS_LESSONS } from '../data/francais/synonymes-contraires';
 import { FAMILLES_LESSONS } from '../data/francais/familles';
 import { CHAMPS_LESSONS } from '../data/francais/champs-lexicaux';
@@ -632,10 +633,29 @@ const VOCAB_LESSONS_DEFS: LessonDef[] = toLessonDefs(VOCAB_LESSONS, {
 });
 
 /* ---------- Catalogue des leçons « Vocabulaire » — sens propre/figuré (#112) ----------
-   Leçon QCM (3 options) : sens d'un mot selon le contexte. */
+   Leçon QCM (3 options) : sens d'un mot selon le contexte.
+   Exclue du sprint (correctif #254) : même tâche de JUGEMENT DE SENS que les contraires
+   (#203) et l'homonymie — elle y figurait par oubli, pas par exception justifiée.
+   Alignée sur la politique « automatisme chronométrable » vs « jugement de sens ». */
 const SENS_FIGURE_LESSONS_DEFS: LessonDef[] = toLessonDefs(SENS_FIGURE_LESSONS, {
 	subject: 'francais',
 	category: 'fr-vocabulaire',
+	excludeFromSprint: true,
+});
+
+/* ---------- Vocabulaire — les homonymes (homographes) CM1 (#254) ----------
+   Leçon QCM sur banque (`bankByLevel`) : sens d'un homographe selon le contexte,
+   options = les SENS RÉELS du mot (2 ou 3, jamais un sens inventé). CM1-only ;
+   niveaux DÉRIVÉS de la banque (`exerciseType.levels`), comme ordre-grandeur.
+   Exclue du sprint (comme les contraires #203) : c'est un JUGEMENT DE SENS (lire la
+   phrase entière, choisir un sens parmi des idées distinctes), pas un automatisme à
+   chronométrer — le chrono pousserait à deviner au 1er indice au lieu de relire le
+   contexte, et pénaliserait la vitesse de lecture plutôt que le vocabulaire visé. */
+const HOMONYMIE_LESSONS_DEFS: LessonDef[] = toLessonDefs(HOMONYMIE_LESSONS, {
+	subject: 'francais',
+	category: 'fr-vocabulaire',
+	levels: (d) => d.exerciseType.levels ?? ['cm1'],
+	excludeFromSprint: true,
 });
 
 /* ---------- Vocabulaire — familles de mots, préfixes, suffixes (#113, #244) ----------
@@ -790,6 +810,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...MBP_LESSONS_DEFS,
 	...VOCAB_LESSONS_DEFS,
 	...SENS_FIGURE_LESSONS_DEFS,
+	...HOMONYMIE_LESSONS_DEFS,
 	...SENS_LESSONS_DEFS,
 	...FAMILLES_LESSONS_DEFS,
 	...CHAMPS_LESSONS_DEFS,

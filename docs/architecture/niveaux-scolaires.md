@@ -18,11 +18,13 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
 - **`level-combinators.ts`** (pur) — `calibrated(table, build)` : **un seul `id`**
   recalibré par une table de paramètres par niveau (génératif : numération…), expose
   ses `levels`; `bankByLevel(items)` : banque QCM tagguée par item, dérive l'union des
-  niveaux — **premier usage réel en #250** (banques `BANQUE_DIVISIBILITE` de
-  `data/maths/divisibilite.ts` et `BANQUE_ORDRE_GRANDEUR` de
+  niveaux — **premier usage réel en #250**, côté **maths** (banques `BANQUE_DIVISIBILITE`
+  de `data/maths/divisibilite.ts` et `BANQUE_ORDRE_GRANDEUR` de
   `data/maths/ordre-grandeur.ts` : deux banques CM1-only, chaque item porte
-  `levels: ['cm1']`), jusque-là défini mais mobilisé par aucune donnée. Le catalogue
-  dérive `LessonDef.levels` de ces combinateurs (numération,
+  `levels: ['cm1']`), jusque-là défini mais mobilisé par aucune donnée. **Premier usage
+  côté français en #254** (`BANQUE_HOMONYMES` de `data/francais/homonymie.ts`, banque
+  CM1-only d'homographes). Le catalogue dérive `LessonDef.levels` de ces combinateurs
+  (numération,
   grandeurs & mesures — conversions CE2 + CM1, décimaux CM1 #248) ou de la donnée
   (conjugaison taggée). Une leçon peut aussi poser `levels` directement sur son
   `ExerciseType` (champ générique de `exercise.ts`) **sans passer par un

@@ -30,7 +30,13 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
   `ExerciseType` (champ générique de `exercise.ts`) **sans passer par un
   combinateur** : ex. le helper local `cm1Only(exerciseType)` de
   `data/maths/fractions.ts` (#249), qui marque CM1-only les 3 leçons « fractions
-  comme nombres » par un simple `{ ...exerciseType, levels: ['cm1'] }`.
+  comme nombres » par un simple `{ ...exerciseType, levels: ['cm1'] }`. Variante côté
+  **maths** : `maths/problemes.ts` (#255) pose `levels: ['ce2','cm1']` sur 4 de ses
+  6 `ExerciseType` (composition, transformation, multiplication, comparaison) **et**
+  branche `generate` lui-même sur `opts.level` (CE2 inchangé, CM1 = mix entiers/
+  décimaux) — **sans passer par `calibrated`**, qui ne recopie PAS `exerciseKind` sur
+  l'`ExerciseType` qu'il construit et casserait donc `isProblemeLesson` (classification
+  sans appeler `generate()`, #348) et l'exclusion du sprint qui en dépend.
 - **`niveau-actif.ts`** — résout le niveau au **seam** profil/catalogue (lit la méta
   profil **directement** via `storage`, pour éviter un cycle `progress → niveau-actif →
   profiles`). `niveauActif()` (classe de référence), `niveauActifMatiere(subject)`

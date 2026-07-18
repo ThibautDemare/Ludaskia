@@ -12,9 +12,21 @@
    repérer un indice). Calibrage CE2 : additifs ≤ 1000, multiplicatifs dans les
    tables (≤ 10, produit ≤ ~100), division exacte (reste nul). Réponse entière.
    Conception pédagogique : avis pedagogue-primaire (typologie Vergnaud, 2025).
+
+   Extension CM1 (#255) : quatre structures (composition, transformation, comparaison,
+   multiplication) sont rouvertes au CM1 avec des NOMBRES DÉCIMAUX « à une étape »,
+   sans nouvelle leçon (mêmes id/libellés). Le générateur branche sur `opts.level` :
+   level absent/'ce2' → chemin CE2 STRICTEMENT inchangé (byte-identité) ; level 'cm1'
+   → un MIX ~50 % entiers (chemin CE2, pièges compris) + ~50 % décimaux LOYAUX (aucun
+   piège « mots-clés » sur le décimal). Contextes décimaux : ARGENT (centimes) et
+   MESURES au dixième (dixièmes). Robustesse flottante : toute l'arithmétique est
+   ENTIÈRE (centimes / dixièmes), on ne divise par 100 ou 10 qu'au tout dernier moment
+   pour la réponse `number` (cf. decimaux.ts). Partage (quotient décimal → CM2) et
+   « deux étapes » (hors « à une étape ») restent CE2-only.
    ============================================================ */
 import { choice, rnd, sample } from '../../core/utils';
-import type { Exercise, ExerciseType, ProblemeEtape } from '../../core/exercise';
+import type { Exercise, ExerciseType, GenerateOpts, ProblemeEtape } from '../../core/exercise';
+import type { SchoolLevel } from '../../core/catalog';
 import type { LessonInput } from '../_shared';
 
 /* ---------- Briques de gabarit ---------- */
@@ -93,15 +105,35 @@ function deuxPrenoms(): [Prenom, Prenom] {
 }
 
 /* Fabrique l'Exercise à partir d'un énoncé et de ses étapes. Le texte LU
-   (`parle`) = contexte + intitulés des sous-questions (jamais les réponses). */
-function probleme(enonce: string, etapes: ProblemeEtape[]): Exercise {
-	const parle = [enonce, ...etapes.map((e) => e.question)].join(' ');
+   (`parle`) = contexte + intitulés des sous-questions (jamais les réponses).
+   `parleEnonce` (#255) : version PARLÉE de l'énoncé, quand l'affiché contient une
+   unité que le TTS ne lit pas seule (« 3,5 m » → « 3,5 mètres ») ; absent = énoncé
+   affiché lu tel quel (cas CE2 et argent, où « € » est déjà géré par core/tts-text). */
+function probleme(enonce: string, etapes: ProblemeEtape[], parleEnonce?: string): Exercise {
+	const parle = [parleEnonce ?? enonce, ...etapes.map((e) => e.question)].join(' ');
 	return { type: 'probleme', enonce, etapes, parle };
 }
 
+/* Aiguillage CM1 (#255) : à CM1, un item sur deux bascule en décimal (`dec`), sinon on
+   garde le générateur entier CE2 (`ent`). Le `&&` court-circuite AVANT tout tirage sur le
+   chemin CE2 (level absent/'ce2') → suite RNG CE2 strictement identique (byte-identité
+   impérative). Centralisé pour que tout nouveau générateur décimal hérite du même contrat
+   sans le recopier (ordre des opérandes du `&&` à ne pas inverser). */
+function mixCM1(
+	opts: GenerateOpts | undefined,
+	dec: () => Exercise,
+	ent: () => Exercise,
+): Exercise {
+	return opts?.level === 'cm1' && rnd(0, 1) === 0 ? dec() : ent();
+}
+
 /* ---------- Leçon : Composition (parties / tout) ---------- */
+// CM1 (#255) : ~50 % d'items entiers (chemin CE2 inchangé) + ~50 % décimaux loyaux (argent / mesures).
+function genComposition(opts?: GenerateOpts): Exercise {
+	return mixCM1(opts, genCompositionDec, genCompositionEnt);
+}
 // Structure statique parties↔tout, sans transformation. La plus simple.
-function genComposition(): Exercise {
+function genCompositionEnt(): Exercise {
 	const lieu = choice(LIEUX);
 	const obj = choice(OBJETS_COLORES);
 	const [c1, c2] = sample(COULEURS, 2);
@@ -123,7 +155,12 @@ function genComposition(): Exercise {
 }
 
 /* ---------- Leçon : Transformation (gagner / perdre) ---------- */
-function genTransformation(): Exercise {
+// CM1 (#255) : ~50 % entiers (CE2) + ~50 % décimaux ARGENT loyaux (dépense « reste »,
+// recette « donne », recherche du coût entre deux états). Piège « état initial » CE2 non repris.
+function genTransformation(opts?: GenerateOpts): Exercise {
+	return mixCM1(opts, genTransformationDec, genTransformationEnt);
+}
+function genTransformationEnt(): Exercise {
 	const p = prenom();
 	const obj = choice(OBJETS);
 	const gain = rnd(0, 1) === 0;
@@ -165,7 +202,12 @@ function genTransformation(): Exercise {
 }
 
 /* ---------- Leçon : Multiplication (groupes égaux) ---------- */
-function genMultiplication(): Exercise {
+// CM1 (#255) : ~50 % entiers (CE2) + ~50 % décimal × entier < 10 — cas CANONIQUE du
+// programme (« n objets à P € chacun »), prix décimal × quantité entière.
+function genMultiplication(opts?: GenerateOpts): Exercise {
+	return mixCM1(opts, genMultiplicationDec, genMultiplicationEnt);
+}
+function genMultiplicationEnt(): Exercise {
 	const n = rnd(2, 9),
 		m = rnd(2, Math.min(9, Math.floor(100 / n))); // produit ≤ ~100, facteurs ≤ 9
 	const obj = choice(OBJETS);
@@ -205,7 +247,13 @@ function genPartage(): Exercise {
 }
 
 /* ---------- Leçon : Comparaison (la plus abstraite) ---------- */
-function genComparaison(): Exercise {
+// CM1 (#255) : ~50 % entiers (CE2) + ~50 % décimaux loyaux (écart « de plus », état à
+// partir d'un « de plus » non trompeur), argent ou mesures. Piège « comparaison inversée »
+// CE2 non repris sur le décimal.
+function genComparaison(opts?: GenerateOpts): Exercise {
+	return mixCM1(opts, genComparaisonDec, genComparaisonEnt);
+}
+function genComparaisonEnt(): Exercise {
 	const [p1, p2] = deuxPrenoms();
 	const obj = choice(OBJETS);
 	const r = rnd(0, 99);
@@ -242,6 +290,231 @@ function genComparaison(): Exercise {
 	]);
 }
 
+/* ============================================================
+   Habillage DÉCIMAL CM1 (#255) — argent (centimes) et mesures au dixième.
+   TOUTE l'arithmétique est ENTIÈRE ; la division par 100 (argent) ou par 10 (mesures)
+   n'a lieu qu'au TOUT DERNIER moment, pour que la réponse `number` vaille exactement
+   k/100 (ou k/10) et matche la saisie décimale de l'enfant (runner : comparaison
+   numérique, virgule tolérée). Seules des variantes LOYALES ici (aucun piège « mots-clés »).
+   ============================================================ */
+
+// Écriture à virgule d'un montant en CENTIMES (« 750 » → « 7,50 » ; « 600 » → « 6 »).
+// Affichage seulement ; la valeur reste calculée en entier.
+function euros(centimes: number): string {
+	const e = Math.floor(centimes / 100);
+	const c = centimes % 100;
+	return c === 0 ? `${e}` : `${e},${String(c).padStart(2, '0')}`;
+}
+// Centimes « jolis » au pas de 5 (jamais un centième arbitraire type 7,63 €), non nuls.
+const CENTIMES_PRIX = [50, 25, 75, 20, 90, 10, 40, 60, 30, 80, 95, 45, 15, 5];
+// Prix raisonnable : partie entière dans [euMin, euMax] €, partie décimale au pas de 5 c.
+function prixCentimes(euMin: number, euMax: number): number {
+	return rnd(euMin, euMax) * 100 + choice(CENTIMES_PRIX);
+}
+
+// Écriture à virgule d'une mesure en DIXIÈMES (« 35 » → « 3,5 » ; « 60 » → « 6 »).
+function dixiemesTexte(d: number): string {
+	const e = Math.floor(d / 10);
+	const u = d % 10;
+	return u === 0 ? `${e}` : `${e},${u}`;
+}
+// Mesure au dixième : partie entière dans [entMin, entMax], dixième NON nul (1..9) —
+// la valeur « a une virgule » ; le centième reste pour plus tard (cf. #246).
+function mesureDixiemes(entMin: number, entMax: number): number {
+	return rnd(entMin, entMax) * 10 + rnd(1, 9);
+}
+
+// Famille de mesure : symbole affiché + nom LU (le TTS ne sait pas lire « m », « L »,
+// « kg » seuls → on façonne le `parle` avec le mot plein, cf. probleme()). Deux formes
+// pour l'accord : un nom précédé d'un nombre INFÉRIEUR à 2 reste au SINGULIER
+// (« 1,2 mètre »), le pluriel n'apparaît qu'à partir de 2 (« 3,5 mètres ») — règle
+// française du nom après un nombre fractionnaire (BDL/OQLF, Antidote).
+interface Mesure {
+	sym: string;
+	motSg: string; // < 2 : « mètre »
+	motPl: string; // ≥ 2 : « mètres »
+}
+const LONGUEUR: Mesure = { sym: 'm', motSg: 'mètre', motPl: 'mètres' };
+const MASSE: Mesure = { sym: 'kg', motSg: 'kilogramme', motPl: 'kilogrammes' };
+const CONTENANCE: Mesure = { sym: 'L', motSg: 'litre', motPl: 'litres' };
+
+/* Fabrique un problème de MESURE : l'énoncé est bâti DEUX fois par le même gabarit
+   `build`, une fois avec le symbole (affiché : « 3,5 m ») et une fois avec le mot
+   (parlé : « 3,5 mètres ») — même valeurs, seule l'unité change. */
+function mesureProbleme(
+	m: Mesure,
+	build: (u: (d: number) => string) => string,
+	etapes: ProblemeEtape[],
+): Exercise {
+	const enonce = build((d) => `${dixiemesTexte(d)} ${m.sym}`);
+	// Accord du nom d'unité LU : singulier si la valeur < 2 (dixièmes < 20), sinon pluriel.
+	const parleEnonce = build((d) => `${dixiemesTexte(d)} ${d < 20 ? m.motSg : m.motPl}`);
+	return probleme(enonce, etapes, parleEnonce);
+}
+
+/* ---------- Composition décimale (parties / tout) ---------- */
+// Situations additives « deux parts → un tout » par famille de mesure (recherche du
+// tout, addition). `deux` : la phrase des deux parts (u = rendu d'une valeur + unité).
+const COMPO_MESURE: {
+	m: Mesure;
+	deux: (u: (d: number) => string, a: number, b: number, p: string) => string;
+	tout: string;
+	entMin: number;
+	entMax: number;
+}[] = [
+	{
+		m: LONGUEUR,
+		deux: (u, a, b, p) => `${p} attache bout à bout un ruban de ${u(a)} et un ruban de ${u(b)}.`,
+		tout: 'Quelle est la longueur totale du ruban ?',
+		entMin: 1,
+		entMax: 5,
+	},
+	{
+		m: MASSE,
+		deux: (u, a, b, p) => `${p} met ${u(a)} de farine et ${u(b)} de sucre dans un saladier.`,
+		tout: 'Combien pèse le mélange ?',
+		entMin: 1,
+		entMax: 4,
+	},
+	{
+		m: CONTENANCE,
+		deux: (u, a, b, p) => `${p} verse ${u(a)} d'eau et ${u(b)} de jus dans un bidon.`,
+		tout: 'Combien y a-t-il de boisson en tout ?',
+		entMin: 1,
+		entMax: 5,
+	},
+];
+
+function compositionMesureTout(): Exercise {
+	const s = choice(COMPO_MESURE);
+	const p = prenom();
+	const a = mesureDixiemes(s.entMin, s.entMax);
+	const b = mesureDixiemes(s.entMin, s.entMax);
+	return mesureProbleme(s.m, (u) => s.deux(u, a, b, p.nom), [
+		{ question: s.tout, answer: (a + b) / 10 },
+	]);
+}
+
+function compositionArgent(): Exercise {
+	const p = prenom();
+	const [a1, a2] = sample(ACHATS, 2);
+	const c1 = prixCentimes(2, 15);
+	const c2 = prixCentimes(1, 12);
+	if (rnd(1, 10) <= 6) {
+		// Recherche du tout (addition) : deux prix → total payé.
+		return probleme(`${p.nom} achète un ${a1.s} à ${euros(c1)} € et un ${a2.s} à ${euros(c2)} €.`, [
+			{ question: `Combien ${p.nom} paie-t-${il(p.genre)} en tout ?`, answer: (c1 + c2) / 100 },
+		]);
+	}
+	// Recherche d'une partie (soustraction) : total et un prix connus → l'autre prix.
+	const total = c1 + c2;
+	return probleme(
+		`${p.nom} paie ${euros(total)} € pour un ${a1.s} et un ${a2.s}. Le ${a1.s} coûte ${euros(c1)} €.`,
+		[{ question: `Combien coûte le ${a2.s} ?`, answer: c2 / 100 }],
+	);
+}
+
+function genCompositionDec(): Exercise {
+	return rnd(0, 1) === 0 ? compositionArgent() : compositionMesureTout();
+}
+
+/* ---------- Transformation décimale (ARGENT) ---------- */
+function genTransformationDec(): Exercise {
+	const p = prenom();
+	const art = choice(ACHATS);
+	const cas = rnd(1, 10);
+	if (cas <= 4) {
+		// État final — dépense (soustraction). Montants construits pour un reste > 0.
+		const prix = prixCentimes(2, 12);
+		const reste = prixCentimes(1, 15);
+		const avoir = prix + reste;
+		return probleme(
+			`${p.nom} a ${euros(avoir)} €. ${cap(il(p.genre))} achète un ${art.s} à ${euros(prix)} €.`,
+			// « rester » est impersonnel → toujours « il » (jamais accordé au prénom).
+			[{ question: `Combien lui reste-t-il ?`, answer: reste / 100 }],
+		);
+	}
+	if (cas <= 7) {
+		// État final — recette (addition) : « on lui donne ».
+		const avoir = prixCentimes(2, 20);
+		const don = prixCentimes(1, 15);
+		return probleme(
+			`${p.nom} a ${euros(avoir)} € dans sa tirelire. On lui donne ${euros(don)} €.`,
+			[{ question: `Combien a-t-${il(p.genre)} maintenant ?`, answer: (avoir + don) / 100 }],
+		);
+	}
+	// Recherche de la transformation (soustraction) : deux états connus → le coût.
+	const cout = prixCentimes(2, 12);
+	const apres = prixCentimes(1, 10);
+	const avant = cout + apres;
+	return probleme(
+		`${p.nom} avait ${euros(avant)} €. Après avoir acheté un ${art.s}, il lui reste ${euros(apres)} €.`,
+		[{ question: `Combien a coûté le ${art.s} ?`, answer: cout / 100 }],
+	);
+}
+
+/* ---------- Comparaison décimale (écart / « de plus ») ---------- */
+function genComparaisonDec(): Exercise {
+	const [p1, p2] = deuxPrenoms();
+	const argent = rnd(0, 1) === 0;
+	if (rnd(1, 10) <= 6) {
+		// Écart : « combien de plus ? » (soustraction, retenue fréquente). Loyal.
+		if (argent) {
+			const petit = prixCentimes(2, 15);
+			const ecart = prixCentimes(1, 12);
+			const grand = petit + ecart;
+			return probleme(`${p1.nom} a ${euros(grand)} €. ${p2.nom} a ${euros(petit)} €.`, [
+				{
+					question: `Combien ${p1.nom} a-t-${il(p1.genre)} d'argent de plus que ${p2.nom} ?`,
+					answer: ecart / 100,
+				},
+			]);
+		}
+		const petit = mesureDixiemes(1, 4);
+		const ecart = mesureDixiemes(1, 3);
+		const grand = petit + ecart;
+		return mesureProbleme(
+			MASSE,
+			(u) => `Le sac de ${p1.nom} pèse ${u(grand)}. Celui de ${p2.nom} pèse ${u(petit)}.`,
+			[{ question: `Combien le sac de ${p1.nom} pèse-t-il de plus ?`, answer: ecart / 10 }],
+		);
+	}
+	// « de plus » loyal (addition) : on connaît une valeur et l'écart, on cherche l'autre.
+	if (argent) {
+		const base = prixCentimes(2, 15);
+		const deplus = prixCentimes(1, 10);
+		return probleme(
+			`${p1.nom} a ${euros(base)} €. ${p2.nom} a ${euros(deplus)} € de plus que ${p1.nom}.`,
+			[
+				{
+					question: `Combien ${p2.nom} a-t-${il(p2.genre)} d'argent ?`,
+					answer: (base + deplus) / 100,
+				},
+			],
+		);
+	}
+	const base = mesureDixiemes(1, 4);
+	const deplus = mesureDixiemes(1, 3);
+	return mesureProbleme(
+		LONGUEUR,
+		(u) =>
+			`Le ruban de ${p1.nom} mesure ${u(base)}. Celui de ${p2.nom} mesure ${u(deplus)} de plus.`,
+		[{ question: `Quelle est la longueur du ruban de ${p2.nom} ?`, answer: (base + deplus) / 10 }],
+	);
+}
+
+/* ---------- Multiplication décimale (prix × quantité) ---------- */
+function genMultiplicationDec(): Exercise {
+	const p = prenom();
+	const art = choice(ACHATS);
+	const n = rnd(2, 5);
+	// Prix unitaire petit (partie entière ≤ 5 €) → produit ≲ 25 € (décimal × entier < 10).
+	const prix = prixCentimes(1, Math.min(5, Math.floor(20 / n)));
+	return probleme(`${p.nom} achète ${n} ${art.p} à ${euros(prix)} € chacun.`, [
+		{ question: `Combien ${p.nom} paie-t-${il(p.genre)} en tout ?`, answer: (n * prix) / 100 },
+	]);
+}
+
 /* ---------- Leçon : Problèmes à deux étapes (multi-@, #199) ---------- */
 // Chaîne de deux opérations simples. Sous-questions affichées d'emblée
 // (« chunking ») : étape 1 = résultat intermédiaire, étape 2 = réponse finale.
@@ -263,9 +536,17 @@ function genDeuxEtapes(): Exercise {
 
 /* ---------- Catalogue des leçons ---------- */
 
-const monoMode = (generate: () => Exercise): ExerciseType => ({
+// `levels` (#255) : facultatif — les types mono-niveau restent CE2 (défaut du catalogue) ;
+// les structures ouvertes au CM1 le déclarent (['ce2','cm1']) pour que le catalogue en
+// dérive `LessonDef.levels`. `generate` reçoit `opts` (mode + niveau, #225) : le runner
+// « problème » le transmet, un générateur mono-niveau l'ignore (comportement identique).
+const monoMode = (
+	generate: (opts?: GenerateOpts) => Exercise,
+	levels?: SchoolLevel[],
+): ExerciseType => ({
 	// Format « problème » (#199) : classé sans appeler generate() (#348), exclu du sprint.
 	exerciseKind: 'probleme',
+	...(levels ? { levels } : {}),
 	generate,
 	check: () => false, // corrigé par le runner dédié (étape par étape), jamais génériquement
 });
@@ -273,23 +554,30 @@ const monoMode = (generate: () => Exercise): ExerciseType => ({
 // Ordre d'affichage calé sur l'acquisition des opérations (avis pédagogue) :
 // composition → transformation (additif) → multiplication → partage (division) →
 // comparaison (la plus abstraite) → deux étapes (la plus exigeante).
+// Quatre structures ouvertes au CM1 en décimal (#255) → levels ['ce2','cm1']. Partage
+// (quotient décimal = CM2) et « deux étapes » (hors « à une étape ») restent CE2-only.
+const CE2_CM1: SchoolLevel[] = ['ce2', 'cm1'];
 export const PROBLEMES_LESSONS: LessonInput[] = [
-	{ id: 'math-prob-composition', label: 'Parties et tout', exerciseType: monoMode(genComposition) },
+	{
+		id: 'math-prob-composition',
+		label: 'Parties et tout',
+		exerciseType: monoMode(genComposition, CE2_CM1),
+	},
 	{
 		id: 'math-prob-transformation',
 		label: 'Gagner ou perdre',
-		exerciseType: monoMode(genTransformation),
+		exerciseType: monoMode(genTransformation, CE2_CM1),
 	},
 	{
 		id: 'math-prob-multiplication',
 		label: 'Des groupes égaux',
-		exerciseType: monoMode(genMultiplication),
+		exerciseType: monoMode(genMultiplication, CE2_CM1),
 	},
 	{ id: 'math-prob-partage', label: 'Partager et grouper', exerciseType: monoMode(genPartage) },
 	{
 		id: 'math-prob-comparaison',
 		label: 'Comparer (plus ou moins)',
-		exerciseType: monoMode(genComparaison),
+		exerciseType: monoMode(genComparaison, CE2_CM1),
 	},
 	{
 		id: 'math-prob-deux-etapes',

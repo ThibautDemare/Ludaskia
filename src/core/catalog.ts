@@ -485,12 +485,16 @@ const FRACTIONS_LESSONS_DEFS: LessonDef[] = toLessonDefs(FRACTIONS_LESSONS, {
 	rubrique: 'Fractions',
 });
 
-/* ---------- Catalogue des leçons « Résolution de problèmes » (#199) ----------
+/* ---------- Catalogue des leçons « Résolution de problèmes » (#199, CM1 #255) ----------
    Énoncés générés par gabarits (structures de Vergnaud). Runner dédié, un
-   problème à la fois ; réponse numérique. Exclus du sprint chronométré. */
+   problème à la fois ; réponse numérique. Exclus du sprint chronométré.
+   Niveaux DÉRIVÉS du moteur (`exerciseType.levels`, comme les leçons multi-niveaux) :
+   quatre structures sont ouvertes au CM1 en décimal (#255) et déclarent ['ce2','cm1'] ;
+   les autres restent CE2-only (défaut ['ce2']). */
 const PROBLEMES_LESSONS_DEFS: LessonDef[] = toLessonDefs(PROBLEMES_LESSONS, {
 	subject: 'math',
 	category: 'math-problemes',
+	levels: (d) => d.exerciseType.levels ?? ['ce2'],
 });
 
 /* ---------- Catalogue des leçons « Division par le sens » (#104) ----------
@@ -920,7 +924,10 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 		const last = ex.etapes[ex.etapes.length - 1];
 		return {
 			text: `${ex.enonce} **${last.question}** @`,
-			answer: String(last.answer),
+			// Réponse en écriture à virgule française (#255 : les problèmes CM1 ont des
+			// réponses décimales). `checkNumerique` tolère virgule/point des deux côtés ;
+			// un entier est inchangé (« 42 ».replace('.',',') === « 42 »).
+			answer: String(last.answer).replace('.', ','),
 			kind: 'num',
 			// Texte lu aligné sur l'AFFICHÉ du repli (énoncé + question finale), sans la
 			// sous-question intermédiaire — absente de l'écran en bilan/révision.

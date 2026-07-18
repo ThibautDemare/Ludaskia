@@ -242,7 +242,7 @@ describe('Vocabulaire CM1 — catalogue & ordre (#244)', () => {
 
 	it('ordre francais.cm1 contient les 4 leçons, contraires AVANT sens proche, familles AVANT affixes', () => {
 		const ordre = ORDRE_LECONS.francais.cm1!;
-		expect(ordre).toHaveLength(64);
+		expect(ordre).toHaveLength(65);
 		const i = (id: string) => ordre.indexOf(id);
 		for (const id of [
 			'fr-vocab-contraires-cm1',
@@ -264,6 +264,8 @@ describe('Vocabulaire CM1 — catalogue & ordre (#244)', () => {
 			'fr-vocab-sens-proche-cm1',
 			'fr-vocab-familles-cm1',
 			'fr-vocab-affixes-cm1',
+			// Homonymes (#254) : clôt le fil vocabulaire CM1, juste après les affixes.
+			'fr-vocab-homonymes-cm1',
 		]);
 	});
 });

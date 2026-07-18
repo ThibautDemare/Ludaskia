@@ -354,6 +354,10 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			// du mot plus exigeante. Familles avant affixes (reconnaître la famille d'abord).
 			'fr-vocab-familles-cm1',
 			'fr-vocab-affixes-cm1',
+			// Les homonymes (homographes) CM1 (#254) : clôt le fil vocabulaire (contraires →
+			// sens proche → familles → affixes → homonymes). Choisir le sens d'un mot selon le
+			// contexte suppose un lexique déjà étoffé → placé en fin de progression vocabulaire.
+			'fr-vocab-homonymes-cm1',
 			// Passé composé (auxiliaire + participe)
 			'fr-conj-etre-passe_compose',
 			'fr-conj-avoir-passe_compose',

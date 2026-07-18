@@ -3510,9 +3510,12 @@ describe('vocabulaire — sens propre / sens figuré (#112)', () => {
 		}
 	});
 
-	test('catalogue : leçon « sens propre / figuré » en Vocabulaire', () => {
+	test('catalogue : leçon « sens propre / figuré » en Vocabulaire, exclue du sprint', () => {
 		const lesson = getLessonById('fr-vocab-sens')!;
 		expect(lesson.category).toBe('fr-vocabulaire');
+		// Correctif #254 : JUGEMENT DE SENS (comme les contraires / l'homonymie), pas un
+		// automatisme chronométrable — y figurait par oubli. Non-régression du hors-sprint.
+		expect(lesson.excludeFromSprint).toBe(true);
 	});
 });
 

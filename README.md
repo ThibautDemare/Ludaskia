@@ -28,7 +28,8 @@ exercices adaptés.
   mots, types de phrases), **Conjugaison** (verbes fréquents au **présent**,
   **futur**, **imparfait** et **passé composé**), **Orthographe** (dictées de
   mots, accords, homophones, règles) et **Vocabulaire** (ordre alphabétique, sens
-  propre/figuré, familles de mots, champs lexicaux, synonymes et contraires).
+  propre/figuré, familles de mots, champs lexicaux, synonymes et contraires,
+  homonymes).
 
 Beaucoup de leçons proposent **deux façons de répondre** — saisie au clavier ou
 QCM — et certaines s'appuient sur des **figures générées** (horloge, formes

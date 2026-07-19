@@ -18,7 +18,7 @@ import { FAMILLES_LESSONS } from '../data/francais/familles';
 import { CHAMPS_LESSONS } from '../data/francais/champs-lexicaux';
 import { GRAMMAIRE_SUJET_LESSONS } from '../data/francais/grammaire-sujet';
 import { CLASSES_LESSONS } from '../data/francais/classes-mots';
-import { CLIC_MOT_LESSONS, joindrePhrase } from '../data/francais/grammaire-clic-mot';
+import { CLIC_MOT_LESSONS, joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
 import { PHRASES_LESSONS } from '../data/francais/phrases';
 import { ACCORD_LESSONS, ACCORD_CM1_LESSONS } from '../data/francais/accords';
 import { ACCORD_GN_LESSONS } from '../data/francais/accord-groupe-nominal';
@@ -712,11 +712,13 @@ const CLASSES_LESSONS_DEFS: LessonDef[] = toLessonDefs(CLASSES_LESSONS, {
 	category: 'fr-grammaire',
 });
 
-/* ---------- Grammaire — « Clique sur le verbe » (#259) ----------
-   Nouvelle brique « clique sur le mot » : phrase rendue mot à mot, l'enfant
-   sélectionne le verbe conjugué (1 mot aux temps simples, 2 au passé composé au
-   CM1). Runner d'écran dédié (ui/lecon-clic-mot.ts), hors sprint. Niveaux DÉRIVÉS
-   du moteur (['ce2','cm1']). */
+/* ---------- Grammaire — « Clique sur le mot » (#259, #437) ----------
+   Brique « clique sur le mot » : phrase rendue mot à mot, l'enfant sélectionne la
+   cible d'une consigne. « Clique sur le verbe » (CE2 + CM1) plus 5 natures CM1
+   (#437) : déterminant (article/possessif/démonstratif), conjonction de
+   coordination, pronom personnel (sujet/complément), nom noyau du GN et sujet
+   (composé compris). Runner d'écran dédié (ui/lecon-clic-mot.ts), hors sprint.
+   Niveaux DÉRIVÉS du moteur (verbe ['ce2','cm1'], les 5 natures ['cm1']). */
 const CLIC_MOT_LESSONS_DEFS: LessonDef[] = toLessonDefs(CLIC_MOT_LESSONS, {
 	subject: 'francais',
 	category: 'fr-grammaire',
@@ -969,17 +971,22 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 			_lesson: lesson.id,
 		};
 	}
-	// « Clique sur le mot » (#259) : l'interaction (sélectionner des mots dans une
-	// phrase) vit dans son runner (ui/lecon-clic-mot.ts). Repli TEXTE non interactif
-	// pour fiche/bilan/révision : on montre la phrase et on attend le verbe conjugué
-	// écrit (les mots-cible stockés, jamais recalculés — 1 mot ou 2 au passé composé).
+	// « Clique sur le mot » (#259, #437) : l'interaction (sélectionner des mots dans une
+	// phrase) vit dans son runner (ui/lecon-clic-mot.ts). Repli TEXTE non interactif pour
+	// fiche/bilan/révision : on montre la phrase et on attend le(s) mot(s)-cible recopié(s)
+	// (stockés, jamais recalculés). La consigne est NEUTRE (dérivée de `cibleLabel`, valable
+	// pour toutes les natures et tous les genres : verbe, article, nom noyau, conjonction…).
 	if (ex.type === 'clicMot') {
-		const verbe = ex.cibleIndices.map((i) => ex.tokens[i]).join(' ');
+		// Jointure PARTAGÉE avec le runner (helper libelleCible) : « et » si la cible n'est pas
+		// contiguë (sujet composé, ni…ni), sinon la réponse stockée serait « Emma Chloé »/« ni ni »
+		// et une recopie naturelle (« Emma et Chloé ») serait comptée fausse en révision.
+		const motsCible = libelleCible(ex.tokens, ex.cibleIndices);
+		const quoi = ex.cibleLabel ?? 'le mot demandé';
 		return {
-			text: `Quel est le verbe conjugué ? « ${joindrePhrase(ex.tokens)} » @`,
-			answer: verbe,
+			text: `Recopie ${quoi} : « ${joindrePhrase(ex.tokens)} » @`,
+			answer: motsCible,
 			kind: 'text',
-			parle: ex.parle,
+			parle: `Recopie ${quoi}. ${ex.parle}`,
 			_lesson: lesson.id,
 		};
 	}

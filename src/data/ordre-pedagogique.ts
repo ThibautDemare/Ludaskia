@@ -395,6 +395,18 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			// on ne montre pas de temps non encore vu) plutôt qu'auprès des autres leçons
 			// de grammaire du début d'année.
 			'fr-gram-clic-verbe',
+			// Natures de mots « clique sur le mot » (#437) : mêmes briques, cible = une classe
+			// grammaticale. Ordre pédagogique (dépendances internes) : le DÉTERMINANT d'abord
+			// (repère le plus concret du GN, s'appuie sur les classes de mots), puis la
+			// CONJONCTION de coordination (relie deux éléments), puis le PRONOM personnel
+			// (sujet vs complément, réinvestit le pronom sujet), puis le NOM NOYAU du GN
+			// (analyse interne du groupe, suppose déterminant/adjectif connus) et enfin le
+			// SUJET (noyau du groupe sujet, sujet composé compris — synthèse : nom noyau + rôle).
+			'fr-gram-clic-det',
+			'fr-gram-clic-conj',
+			'fr-gram-clic-pron',
+			'fr-gram-clic-noyau',
+			'fr-gram-clic-sujet',
 			// Orthographe — accord de TOUT le groupe nominal (#243) : chaîne d'accord
 			// (déterminant + adjectif + nom), APEX de l'accord au CM1, signalé « plus
 			// difficile ». Placé tard : il suppose l'accord d'un mot isolé (fr-accords-cm1, plus haut).

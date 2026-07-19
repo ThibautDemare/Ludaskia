@@ -407,25 +407,34 @@ pure](core.md)) pour les formats composites :
   (`isProblemeLesson`, comme la posée). Repli texte (énoncé + question finale) via
   `genLessonItem` pour le bilan / la révision. La **question finale en gras** passe
   par la convention `**…**` rendue par `enonceTexte` (`core/items.ts`).
-- **`lecon-clic-mot.ts`** (#259) — runner **« Clique sur le mot »**, une phrase à la
-  fois. L'`Exercise` `type: 'clicMot'` (`data/francais/grammaire-clic-mot.ts`) porte
-  `tokens[]` (la phrase mot à mot), `cibleIndices[]` (l'ensemble EXACT des indices du
-  verbe conjugué, **stocké** à la génération), `consigne`, `explication`, `parle`. Chaque
-  MOT est un `<button>` cliquable, la **ponctuation** un `<span>` inerte (`estPonctuation`).
-  **Sélection multiple réversible** (`.is-selected`, aucune correction au 1er tap) ;
-  « Vérifier » (désactivé tant qu'aucun mot n'est choisi) compare l'ensemble sélectionné à
-  `cibleIndices` par **égalité d'ensembles exacte** (au **passé composé** CM1 le verbe fait
-  **2 mots** : auxiliaire + participe). Feedback différé : mots marqués `.correct`/`.wrong`
-  + pastille ✓/✗, **bon(s) mot(s) révélé(s)** dans la phrase (`.is-cible`, vert doux) même
-  en cas d'erreur, `explication` sous la phrase ; chaque mot marqué `.correct` reçoit un
-  flash `reussite-flash` (par mot, pas conditionné à un sans-faute global).
-  Consigne **persistante** + **TTS** (`bindConsigneTts`) sur la consigne ET la phrase entière,
-  journal via `capterErreur`. **Level-agnostic** : `generate({level})` tire dans la banque
-  CE2 (temps simples) ou CM1 (+ passé composé, inversion nominale, CC en tête). **Exclu du
-  sprint** (`isClicMotLesson`), **repli texte** en bilan/fiche/révision (`genLessonItem` :
-  phrase → « quel est le verbe conjugué ? »). Structure calquée sur `lecon-appariement.ts`/
-  `lecon-probleme.ts` (état de module + `lecon-runner-shared.ts`). Aide contextuelle dédiée
-  (`monterBoutonAide`/`maybeAutoAide`, type `'clicMot'` #272).
+- **`lecon-clic-mot.ts`** (#259, #437) — runner **« Clique sur le mot »**, une phrase
+  à la fois, **agnostique de la notation grammaticale ciblée** : il consomme
+  `consigne`, `explication`, `cibleIndices` et le `cibleLabel?` optionnel de
+  l'`Exercise` `type: 'clicMot'` (`data/francais/grammaire-clic-mot.ts`), sans rien
+  savoir du verbe/déterminant/pronom/etc. visé — 6 leçons le partagent (verbe #259 +
+  5 natures CM1 #437 : déterminant, conjonction, pronom, nom noyau, sujet). L'`Exercise`
+  porte `tokens[]` (la phrase mot à mot), `cibleIndices[]` (l'ensemble EXACT des
+  indices-cibles, **stocké** à la génération, **adjacents ou non**), `consigne`,
+  `explication`, `parle`. Chaque MOT est un `<button>` cliquable, la **ponctuation** un
+  `<span>` inerte (`estPonctuation`). **Sélection multiple réversible** (`.is-selected`,
+  aucune correction au 1er tap) ; « Vérifier » (désactivé tant qu'aucun mot n'est choisi)
+  compare l'ensemble sélectionné à `cibleIndices` par **égalité d'ensembles exacte** —
+  cible multi-mots adjacente (verbe au passé composé, 2 mots) OU **non adjacente**
+  (« ni…ni », sujet composé « Paul … Léa » en sautant « et »). Feedback différé : mots
+  marqués `.correct`/`.wrong` + pastille ✓/✗, **bon(s) mot(s) révélé(s)** dans la phrase
+  (`.is-cible`, vert doux) même en cas d'erreur, `explication` sous la phrase ; chaque
+  mot marqué `.correct` reçoit un flash `reussite-flash` (par mot, pas conditionné à un
+  sans-faute global). Les aria-labels de correction nomment la cible via `cibleLabel`
+  (repli générique « la bonne réponse » si absent) ; cible **double**, l'aria-label du
+  mot-cible révélé non sélectionné dit « l'autre mot » plutôt que de répéter deux fois
+  le même libellé au singulier. L'annonce live (`#lclicStatus`) joint les mots-cibles
+  par « et » quand la cible n'est pas contiguë (évite « Paul Léa » ou « ni ni »).
+  Consigne **persistante** + **TTS** (`bindConsigneTts`) sur la consigne ET la phrase
+  entière, journal via `capterErreur`. **Exclu du sprint** (`isClicMotLesson`), **repli
+  texte** en bilan/fiche/révision (`genLessonItem` : phrase → « Recopie ${cibleLabel} :
+  … », consigne neutre valable pour les 6 leçons). Structure calquée sur
+  `lecon-appariement.ts`/`lecon-probleme.ts` (état de module + `lecon-runner-shared.ts`).
+  Aide contextuelle dédiée (`monterBoutonAide`/`maybeAutoAide`, type `'clicMot'` #272).
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
   **filtrable** (toutes matières / une matière / une catégorie / **une sélection
   précise de leçons** via `startCustomSprint`, #64) via un écran de

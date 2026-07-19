@@ -13,8 +13,8 @@
    - `tableau`→ tableau de conversion (ui/lecon-tableau, #394) : un chiffre par case,
      zéros de transit compris (les cases en pointillés se remplissent aussi) ;
    - `appariement` → relier des paires (ui/lecon-appariement) : tap mot puis tap son correspondant ;
-   - `clicMot` → clique sur le mot (ui/lecon-clic-mot, #259) : toucher le(s) bon(s) mot(s),
-     parfois deux mots collés (verbe au passé composé = auxiliaire + participe).
+   - `clicMot` → clique sur le mot (ui/lecon-clic-mot, #259, #437) : toucher le(s) bon(s)
+     mot(s), parfois deux mots (adjacents — verbe au passé composé — ou non — sujet composé).
 
    Le RENDU (modale, bouton, animation) vit dans ui/aide-exercice.ts.
    Rédaction validée avec les conseillers (designer / troubles d'apprentissage) :
@@ -87,7 +87,9 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 	},
 	clicMot: {
 		titre: 'Comment cliquer sur le mot ?',
-		etapes: ['Touche le bon mot.', 'Parfois, il faut toucher deux mots collés.'],
+		// « deux mots » sans « collés » : la cible peut être en deux mots NON adjacents
+		// (verbe au passé composé = collés ; sujet composé « Paul … Léa » = séparés, #437).
+		etapes: ['Touche le bon mot.', 'Parfois, il faut toucher deux mots.'],
 		reparation: "Tu t'es trompé ? Retouche le mot, il se désélectionne.",
 	},
 };

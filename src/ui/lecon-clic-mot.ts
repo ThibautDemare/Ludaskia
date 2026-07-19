@@ -25,7 +25,7 @@ import { niveauLecon } from '../core/niveau-actif';
 import type { ExerciseMode } from '../core/exercise';
 import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
-import { estPonctuation, joindrePhrase } from '../data/francais/grammaire-clic-mot';
+import { estPonctuation, joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
 import { bindConsigneTts } from './consigne-tts';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
 import {
@@ -45,6 +45,9 @@ interface QuestionClicMot {
 	consigne: string;
 	explication: string;
 	parle: string;
+	// Nom de la cible au singulier (« le verbe conjugué », « l'article »…) : alimente
+	// les aria-labels de correction. Absent ⇒ repli générique « la bonne réponse ».
+	cibleLabel?: string;
 }
 
 let lesson: LessonDef;
@@ -80,6 +83,7 @@ function genQuestions(l: LessonDef, n: number): QuestionClicMot[] {
 			consigne: ex.consigne,
 			explication: ex.explication,
 			parle: ex.parle,
+			cibleLabel: ex.cibleLabel,
 		});
 		misses = 0;
 	}
@@ -175,6 +179,8 @@ function verifier(): void {
 	fige = true;
 	const q = questions[idx];
 	const cible = new Set(q.cibleIndices);
+	// Nom de la cible pour les aria-labels de correction (repli générique si absent).
+	const nomCible = q.cibleLabel ?? 'la bonne réponse';
 	// Égalité d'ensembles exacte : même cardinal ET tout sélectionné est cible.
 	const juste = selection.size === cible.size && [...selection].every((i) => cible.has(i));
 	if (juste) score++;
@@ -192,11 +198,15 @@ function verifier(): void {
 			if (estChoisi && estCible) {
 				marquer(btn, 'correct', '✓', `${btn.textContent ?? ''}, correct`);
 			} else if (estChoisi && !estCible) {
-				marquer(btn, 'wrong', '✗', `${btn.textContent ?? ''}, ce n'est pas le verbe`);
+				marquer(btn, 'wrong', '✗', `${btn.textContent ?? ''}, ce n'est pas ${nomCible}`);
 			} else if (!estChoisi && estCible) {
 				// Bonne réponse révélée dans la phrase (surlignage vert doux), sans pastille.
+				// Cible DOUBLE (ni…ni, sujet composé) : signaler « l'autre mot », sinon les deux
+				// mots révélés énoncent isolément deux fois le même libellé au singulier.
 				btn.classList.add('is-cible');
-				btn.setAttribute('aria-label', `${btn.textContent ?? ''}, c'était le verbe`);
+				const suffixe =
+					cible.size > 1 ? `, avec l'autre mot, c'était ${nomCible}` : `, c'était ${nomCible}`;
+				btn.setAttribute('aria-label', `${btn.textContent ?? ''}${suffixe}`);
 			}
 		});
 
@@ -207,7 +217,9 @@ function verifier(): void {
 	// « Continuer », donc rien ne serait lu sans ça (parité avec ui/appariement.ts).
 	const statusEl = sheets().querySelector('#lclicStatus');
 	if (statusEl) {
-		const motsCible = q.cibleIndices.map((i) => q.tokens[i]).join(' ');
+		// Mots-cibles joints via l'helper PARTAGÉ (« et » si non contigu) : même source que le
+		// repli du catalogue, pour une réponse énoncée/stockée cohérente (évite « Paul Léa »/« ni ni »).
+		const motsCible = libelleCible(q.tokens, q.cibleIndices);
 		statusEl.textContent = juste
 			? 'Bravo, bonne réponse.'
 			: `Ce n'est pas ça. La bonne réponse : ${motsCible}. ${q.explication}`;

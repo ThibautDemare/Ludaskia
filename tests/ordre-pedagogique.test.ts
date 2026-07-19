@@ -54,8 +54,10 @@ describe('core/ordre — helpers', () => {
 		// « Les phrases » (#245 : type, forme, transfo négative) + 2 leçons d'accords CM1
 		// (#243 : mots isolés + groupe nominal) + 4 leçons de vocabulaire CM1 (#244 :
 		// contraires, sens proche, familles, préfixes/suffixes) + 1 leçon d'homonymes
-		// (#254) + 1 leçon « Clique sur le verbe » (#259, partagée CE2/CM1) = 66.
-		expect(ordreLecons('francais', 'cm1')).toHaveLength(66);
+		// (#254) + 1 leçon « Clique sur le verbe » (#259, partagée CE2/CM1) + 5 natures
+		// « clique sur le mot » CM1 (#437 : déterminant, conjonction, pronom, nom noyau,
+		// sujet) = 71.
+		expect(ordreLecons('francais', 'cm1')).toHaveLength(71);
 		// Niveau sans ordre défini → liste vide (fallback ordre de déclaration).
 		expect(ordreLecons('math', 'cp')).toEqual([]);
 		expect(ordreLecons('inconnue' as SubjectId, 'ce2')).toEqual([]);

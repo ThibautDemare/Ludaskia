@@ -167,6 +167,11 @@ export type Exercise =
 	// au check ; le runner ui/lecon-clic-mot.ts compare par ÉGALITÉ D'ENSEMBLES). Hors
 	// sprint. `consigne` = tâche visible + persistante ; `explication` = justification
 	// courte affichée après « Vérifier » ; `parle` = phrase entière lue à voix haute.
+	// `cibleLabel` (#437) NOMME la cible au singulier avec son article (« le verbe
+	// conjugué », « l'article », « le nom noyau », « la conjonction de coordination »…) :
+	// il alimente les aria-labels de correction du runner (« c'était ${cibleLabel} ») et
+	// le repli non interactif du catalogue (« Recopie ${cibleLabel} : … »). Absent ⇒ repli
+	// générique (« la bonne réponse »).
 	| {
 			type: 'clicMot';
 			tokens: string[];
@@ -174,6 +179,7 @@ export type Exercise =
 			consigne: string;
 			explication: string;
 			parle: string;
+			cibleLabel?: string;
 	  }
 	// Calcul posé (#97) — opération en colonnes ; le catalogue en fait un Item
 	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.

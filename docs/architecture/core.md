@@ -204,10 +204,15 @@ propre doc de conception : `docs/design-orthographe.md`.
   `enonce`, `etapes[]` — 1 ou 2 sous-questions corrigées indépendamment —,
   `parle`, `figure?` #95, `explication?` #252 — stratégie affichée APRÈS la
   réponse, ex. le « pont » d'un calcul de durée) | `clicMot` (« clique sur le mot »
-  #259 : `{tokens: string[]` — phrase mot à mot, ponctuation comprise —,
-  `cibleIndices: number[]` — indices du verbe conjugué, **stockés**, 1 mot aux temps
-  simples, 2 au passé composé —, `consigne`, `explication`, `parle}` ; corrigé par son
-  runner `lecon-clic-mot.ts` par égalité d'ensembles, `checkAnswer` renvoie `false`)
+  #259, généralisé #437 : `{tokens: string[]` — phrase mot à mot, ponctuation comprise —,
+  `cibleIndices: number[]` — ensemble EXACT des indices-cibles, **stockés**, adjacents
+  ou non (verbe au passé composé = 2 mots adjacents ; « ni…ni »/sujet composé = cible
+  double non adjacente) —, `consigne`, `explication`, `parle`, `cibleLabel?` — nomme la
+  cible au singulier (« le verbe conjugué », « l'article »…), alimente les aria-labels
+  de correction du runner et le repli `genLessonItem` ; absent ⇒ repli générique `}` ;
+  corrigé par son runner `lecon-clic-mot.ts` par égalité d'ensembles, `checkAnswer`
+  renvoie `false`, runner **agnostique de la notation grammaticale ciblée** — voir 6
+  leçons dans [Contenu & leçons](contenu-et-lecons.md))
   | interactions ortho), interface
   **`ExerciseType`** :
   `modes?`

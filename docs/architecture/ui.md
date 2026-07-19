@@ -423,7 +423,8 @@ pure](core.md)) pour les formats composites :
   CE2 (temps simples) ou CM1 (+ passé composé, inversion nominale, CC en tête). **Exclu du
   sprint** (`isClicMotLesson`), **repli texte** en bilan/fiche/révision (`genLessonItem` :
   phrase → « quel est le verbe conjugué ? »). Structure calquée sur `lecon-appariement.ts`/
-  `lecon-probleme.ts` (état de module + `lecon-runner-shared.ts`).
+  `lecon-probleme.ts` (état de module + `lecon-runner-shared.ts`). Aide contextuelle dédiée
+  (`monterBoutonAide`/`maybeAutoAide`, type `'clicMot'` #272).
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
   **filtrable** (toutes matières / une matière / une catégorie / **une sélection
   précise de leçons** via `startCustomSprint`, #64) via un écran de

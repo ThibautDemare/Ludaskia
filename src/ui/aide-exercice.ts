@@ -112,6 +112,17 @@ function illustrationHTML(type: TypeAide): string {
 				<span class="an-lien"></span>
 				${FINGER}
 			</div>`;
+		case 'clicMot':
+			// Mini-phrase « Léa a chanté hier » : le doigt tape « a » puis « chanté » (le verbe
+			// au passé composé = 2 mots collés). Les deux jetons restent sélectionnés ENSEMBLE
+			// (moment « deux mots »), « Léa »/« hier » restent inchangés (décoys avant/après).
+			return `<div class="aide-anim aide-anim--clicmot is-anim" id="aideAnim">
+				<span class="an-clicmot-tok an-clicmot-tok--1">Léa</span>
+				<span class="an-clicmot-tok an-clicmot-tok--2">a</span>
+				<span class="an-clicmot-tok an-clicmot-tok--3">chanté</span>
+				<span class="an-clicmot-tok an-clicmot-tok--4">hier</span>
+				${FINGER}
+			</div>`;
 	}
 }
 

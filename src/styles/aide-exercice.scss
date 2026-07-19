@@ -771,6 +771,127 @@
 	}
 }
 
+/* ---- clicMot (clique sur le mot) : mini-phrase « Léa a chanté hier ». Le doigt tape
+   « a » puis « chanté », les deux jetons restent sélectionnés ENSEMBLE (moment « deux
+   mots collés »). Les jetons sont stylés comme les VRAIS boutons .lclic-mot du jeu
+   (fond transparent, soulignement pointillé, texte encre), et NON façon tuile/case
+   pleine : fidélité visuelle au composant réel du runner (cf. lecon-mode.scss). ---- */
+.aide-anim--clicmot .an-clicmot-tok {
+	position: absolute;
+	top: 50px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 38px;
+	padding: 0 8px;
+	border: 0;
+	border-bottom: 2px dotted var(--accent-soft);
+	border-radius: 8px 8px 4px 4px;
+	background: transparent;
+	color: var(--ink);
+	font-weight: 700;
+	font-size: 15px;
+	white-space: nowrap;
+}
+/* Positions des 4 jetons de la mini-phrase (largeurs calées sur chaque mot). */
+.aide-anim--clicmot .an-clicmot-tok--1 {
+	left: 38px;
+	width: 44px;
+} /* Léa (décoy avant) */
+.aide-anim--clicmot .an-clicmot-tok--2 {
+	left: 88px;
+	width: 30px;
+} /* a (cible 1) */
+.aide-anim--clicmot .an-clicmot-tok--3 {
+	left: 124px;
+	width: 64px;
+} /* chanté (cible 2) */
+.aide-anim--clicmot .an-clicmot-tok--4 {
+	left: 194px;
+	width: 46px;
+} /* hier (décoy après) */
+/* État sélectionné (au repos / fin d'anim) = mêmes valeurs que .lclic-mot.is-selected. */
+.aide-anim--clicmot .an-clicmot-tok--2,
+.aide-anim--clicmot .an-clicmot-tok--3 {
+	background: var(--accent);
+	color: var(--on-accent);
+	border-bottom-color: var(--accent);
+}
+/* Doigt : base = position finale, près de « chanté » (état figé sous mouvement réduit). */
+.aide-anim--clicmot .an-finger {
+	left: 137px;
+	top: 66px;
+}
+.aide-anim--clicmot.is-anim .an-clicmot-tok--2 {
+	animation: an-clicmot-tok1 3.6s ease forwards;
+}
+.aide-anim--clicmot.is-anim .an-clicmot-tok--3 {
+	animation: an-clicmot-tok2 3.6s ease forwards;
+}
+.aide-anim--clicmot.is-anim .an-finger {
+	animation: an-clicmot-finger 3.6s ease forwards;
+}
+/* « a » se sélectionne SYNCHRONISÉ au tap du doigt (~10 %), puis reste sélectionné. */
+@keyframes an-clicmot-tok1 {
+	0%,
+	8% {
+		background: transparent;
+		color: var(--ink);
+		border-bottom-color: var(--accent-soft);
+	}
+	10%,
+	100% {
+		background: var(--accent);
+		color: var(--on-accent);
+		border-bottom-color: var(--accent);
+	}
+}
+/* « chanté » se sélectionne au 2e tap (~48 %) : les deux mots sont alors sélectionnés
+   ensemble (le moment « deux mots collés » du passé composé). */
+@keyframes an-clicmot-tok2 {
+	0%,
+	46% {
+		background: transparent;
+		color: var(--ink);
+		border-bottom-color: var(--accent-soft);
+	}
+	48%,
+	100% {
+		background: var(--accent);
+		color: var(--on-accent);
+		border-bottom-color: var(--accent);
+	}
+}
+/* Le doigt tape « a », glisse vers « chanté », le tape, TIENT la pause (deux mots
+   sélectionnés ensemble), puis s'écarte pour ne pas masquer le résultat. Le rebond
+   (scale 0.85) est synchronisé avec le changement d'état de chaque mot. */
+@keyframes an-clicmot-finger {
+	0% {
+		transform: translate(-53px, 0);
+	}
+	8% {
+		transform: translate(-53px, -5px) scale(0.85);
+	}
+	14% {
+		transform: translate(-53px, 0) scale(1);
+	}
+	40% {
+		transform: translate(0, 0);
+	}
+	46% {
+		transform: translate(0, -5px) scale(0.85);
+	}
+	52% {
+		transform: translate(0, 0) scale(1);
+	}
+	82% {
+		transform: translate(0, 0);
+	}
+	100% {
+		transform: translate(18px, 28px);
+	}
+}
+
 /* ---------- Mouvement réduit : on FIGE sur l'état final, on garde l'info ---------- */
 @media (prefers-reduced-motion: reduce) {
 	.aide-anim.is-anim .an-tile,
@@ -779,6 +900,7 @@
 	.aide-anim.is-anim .an-lien,
 	.aide-anim.is-anim .an-built,
 	.aide-anim.is-anim .an-edit,
+	.aide-anim.is-anim .an-clicmot-tok,
 	.aide-anim.is-anim .an-finger,
 	.aide-anim.is-anim .aide-demo-hl,
 	.aide-anim.is-anim .aide-demo-doigt {
@@ -803,6 +925,7 @@ html.anim-reduced .aide-anim.is-anim .an-mot,
 html.anim-reduced .aide-anim.is-anim .an-lien,
 html.anim-reduced .aide-anim.is-anim .an-built,
 html.anim-reduced .aide-anim.is-anim .an-edit,
+html.anim-reduced .aide-anim.is-anim .an-clicmot-tok,
 html.anim-reduced .aide-anim.is-anim .an-finger,
 html.anim-reduced .aide-anim.is-anim .aide-demo-hl,
 html.anim-reduced .aide-anim.is-anim .aide-demo-doigt {

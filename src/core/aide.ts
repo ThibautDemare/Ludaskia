@@ -4,7 +4,7 @@
    étapes courtes + voie alternative + filet anti-erreur) et la mémoire
    « aide déjà vue » par profil (via lsGet/lsSet, jamais localStorage direct).
 
-   Sept types, un par runner d'écran dont la mécanique n'est pas évidente :
+   Huit types, un par runner d'écran dont la mécanique n'est pas évidente :
    - `tuiles` → numération (ui/lecon-tuiles) : amener LA tuile dans le trou ;
    - `ordre`  → ranger une suite (ui/lecon-ordre) : tap → case suivante ;
    - `tri`    → ranger par thème (ui/lecon-tri) : tap mot puis tap colonne ;
@@ -12,7 +12,9 @@
    - `lettres`→ dictée « remettre les lettres dans l'ordre » (ui/ortho-runner, tuiles) ;
    - `tableau`→ tableau de conversion (ui/lecon-tableau, #394) : un chiffre par case,
      zéros de transit compris (les cases en pointillés se remplissent aussi) ;
-   - `appariement` → relier des paires (ui/lecon-appariement) : tap mot puis tap son correspondant.
+   - `appariement` → relier des paires (ui/lecon-appariement) : tap mot puis tap son correspondant ;
+   - `clicMot` → clique sur le mot (ui/lecon-clic-mot, #259) : toucher le(s) bon(s) mot(s),
+     parfois deux mots collés (verbe au passé composé = auxiliaire + participe).
 
    Le RENDU (modale, bouton, animation) vit dans ui/aide-exercice.ts.
    Rédaction validée avec les conseillers (designer / troubles d'apprentissage) :
@@ -21,7 +23,7 @@
 import { lsGet, lsSet } from './storage';
 
 export type TypeAide =
-	'tuiles' | 'ordre' | 'tri' | 'atelier' | 'lettres' | 'tableau' | 'appariement';
+	'tuiles' | 'ordre' | 'tri' | 'atelier' | 'lettres' | 'tableau' | 'appariement' | 'clicMot';
 
 export interface AideContenu {
 	/** Titre de la bulle (ton « astuce », jamais « problème »). */
@@ -82,6 +84,11 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 		titre: 'Comment relier les mots ?',
 		etapes: ['Touche un mot à gauche.', 'Touche le mot qui va avec à droite.'],
 		reparation: "Tu t'es trompé ? Touche un mot relié, le trait s'efface.",
+	},
+	clicMot: {
+		titre: 'Comment cliquer sur le mot ?',
+		etapes: ['Touche le bon mot.', 'Parfois, il faut toucher deux mots collés.'],
+		reparation: "Tu t'es trompé ? Retouche le mot, il se désélectionne.",
 	},
 };
 

@@ -992,6 +992,7 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 	text-align: left;
 }
 .lclic-col {
+	position: relative; /* ancre le bouton « ? » d'aide (#272) au coin haut-droit de la colonne */
 	width: 100%;
 	max-width: 40rem;
 	margin: 0 auto;

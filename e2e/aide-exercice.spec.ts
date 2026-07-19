@@ -1,9 +1,9 @@
 /* ============================================================
    Aide contextuelle des exercices (#272) — smoke tests.
-   Couvre les 6 runners concernés (tuiles, ordre, tri, atelier, lettres,
-   appariement) via les leçons mono-mode les plus simples (ordre + tri +
-   appariement), une leçon tuiles + atelier, et le mode dictée « lettres »
-   de l'ortho-runner :
+   Couvre les 7 runners concernés (tuiles, ordre, tri, atelier, lettres,
+   appariement, clicMot) via les leçons mono-mode les plus simples (ordre +
+   tri + appariement + clicMot), une leçon tuiles + atelier, et le mode
+   dictée « lettres » de l'ortho-runner :
 
    1. Auto-affichage au 1er lancement + fermeture (.aide-ok).
    2. Présence du bouton .aide-btn ; ré-ouverture à la demande.
@@ -334,6 +334,60 @@ test('aide appariement : bouton .aide-btn présent et rouvre la modale', async (
 	await expect(page.locator('#aideOverlay')).toBeVisible();
 	await expect(page.locator('#aideTitle')).toHaveText('Comment relier les mots ?');
 	await expect(page.locator('.aide-anim--appariement')).toBeVisible();
+
+	// Fermeture via la croix.
+	await page.locator('.aide-close').click();
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+/* ================================================================
+   7. Runner « clique sur le mot » — fr-gram-clic-verbe (#259/#435)
+      Mono-mode → lancement direct du runner (même schéma que « tri »
+      et « appariement »). La mécanique du runner elle-même (sélection,
+      Vérifier, feedback) est couverte par clic-verbe.spec.ts ; cette
+      spec ne teste que l'aide contextuelle câblée en #435.
+   ================================================================ */
+
+test('aide clicMot : auto-affichage au 1er lancement, fermeture via .aide-ok', async ({ page }) => {
+	const errors = watchErrors(page);
+	// Profil neuf → aucune aide vue : la modale « clicMot » doit s'ouvrir automatiquement.
+	await gotoHash(page, 'lecon-fr-gram-clic-verbe');
+	await page.locator('.lclic-mot').first().waitFor();
+
+	await expect(page.locator('#aideOverlay')).toBeVisible();
+	await expect(page.locator('.aide-modal[role="dialog"]')).toBeVisible();
+	// Titre spécifique au type « clicMot ».
+	await expect(page.locator('#aideTitle')).toHaveText('Comment cliquer sur le mot ?');
+	// Illustration animée dédiée (le doigt touche « a » puis « chanté »).
+	await expect(page.locator('.aide-anim--clicmot')).toBeVisible();
+
+	await page.locator('.aide-ok').click();
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+test('aide clicMot : bouton .aide-btn présent et rouvre la modale', async ({ page }) => {
+	const errors = watchErrors(page);
+	// Seed : aide « clicMot » déjà vue → pas d'auto-modale, mais le bouton reste.
+	await page.addInitScript(seedAideVue(['clicMot']));
+	await gotoHash(page, 'lecon-fr-gram-clic-verbe');
+	await page.locator('.lclic-mot').first().waitFor();
+
+	// Pas d'auto-modale cette fois.
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	// Le bouton ampoule est présent et visible.
+	const btn = page.locator('button.aide-btn');
+	await expect(btn).toBeVisible();
+
+	// Cliquer rouvre la modale.
+	await btn.click();
+	await expect(page.locator('#aideOverlay')).toBeVisible();
+	await expect(page.locator('#aideTitle')).toHaveText('Comment cliquer sur le mot ?');
+	await expect(page.locator('.aide-anim--clicmot')).toBeVisible();
 
 	// Fermeture via la croix.
 	await page.locator('.aide-close').click();

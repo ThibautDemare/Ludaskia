@@ -294,9 +294,10 @@ propre doc de conception : `docs/design-orthographe.md`.
   (clic → remplissage, synchro `aria-pressed`) vit dans `ui/pave-signes.ts`.
 - **`aide.ts`** (#272) — **aide contextuelle** des runners à interaction non intuitive,
   module **pur** : porte le **contenu** des aides (`AIDES` : titre + étapes courtes ≤ 3 +
-  voie alternative + filet anti-erreur) pour 6 types (`tuiles`, `ordre`, `tri`, `atelier`,
-  `lettres`, `appariement` #392) et la **mémoire « aide déjà vue »** par profil
-  (`ludaskia_aide_vue`, via `lsGet/lsSet`). Le rendu vit dans `ui/aide-exercice.ts`.
+  voie alternative + filet anti-erreur) pour 8 types (`tuiles`, `ordre`, `tri`, `atelier`,
+  `lettres`, `tableau` #394, `appariement` #392, `clicMot`) et la **mémoire « aide déjà
+  vue »** par profil (`ludaskia_aide_vue`, via `lsGet/lsSet`). Le rendu vit dans
+  `ui/aide-exercice.ts`.
 - **`tour.ts`** (#330) — **guide de première visite**, module **pur** (aucun accès DOM) :
   porte le **contenu** du tour enfant (`TOUR_ETAPES` : 3 grands repères de l'accueil —
   `.cards` / `#progression` / `#rewardNav` — chacun `{cible, titre, texte}`, ton

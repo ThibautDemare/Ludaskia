@@ -15,9 +15,27 @@
    CE2 (cible = 1 mot, temps simples) : navigation habituelle (gotoHash force
    ce2). CM1 (cible = 1 OU 2 mots au passé composé) : profil seedé en CM1 et
    navigation DIRECTE (gotoHash forcerait ce2), comme problemes-cm1.spec.ts.
+
+   Aide contextuelle (#272/#435) : `maybeAutoAide('clicMot')` ouvre une
+   mini-modale d'aide au 1er lancement (une fois par profil), AVANT toute
+   interaction possible avec les mots — son overlay `#aideOverlay` intercepte
+   les clics. On la ferme systématiquement (si présente) juste après avoir
+   localisé les mots et AVANT le premier clic ; la mécanique de l'aide
+   elle-même est couverte par aide-exercice.spec.ts.
    ============================================================ */
 import { test, expect, type Page } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
+
+/* Ferme l'aide auto-affichée si elle est présente (1er lancement, profil
+   neuf) ; ne fait rien si elle est absente (déjà vue, ou run suivant du
+   même profil dans trouverCibleDouble). Robuste dans les deux cas. */
+async function fermerAideSiPresente(page: Page): Promise<void> {
+	const overlay = page.locator('#aideOverlay');
+	if (await overlay.isVisible()) {
+		await page.locator('.aide-ok').click();
+		await expect(overlay).toHaveCount(0);
+	}
+}
 
 /* Profil en CM1 (sans popup d'onboarding : niveauReference déjà fixé). */
 const SEED_CM1 = `localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: 'e2e', name: 'E2E', emoji: '🦊', updatedAt: 1, niveauReference: 'cm1' }], active: 'e2e' }));`;
@@ -25,6 +43,11 @@ const SEED_CM1 = `localStorage.setItem('ludaskia_profiles', JSON.stringify({ lis
 async function gotoCM1(page: Page, hash: string): Promise<void> {
 	await page.addInitScript(SEED_CM1);
 	await page.goto(`app.html#${hash}`, { waitUntil: 'networkidle' });
+	// `trouverCibleDouble` peut rappeler gotoCM1 avec le MÊME hash (relance sur la
+	// même leçon) : navigateur vers une URL identique à la courante = no-op côté
+	// Chromium (pas de rechargement réel), laissant l'état DÉSACTIVÉ de l'essai
+	// précédent en place → un .reload() explicite force un vrai rechargement à coup sûr.
+	await page.reload({ waitUntil: 'networkidle' });
 }
 
 const NB_QUESTIONS = 8; // cf. ui/lecon-clic-mot.ts
@@ -41,6 +64,7 @@ test("CE2 : sélection réversible d'un mot, Vérifier, feedback + révélation"
 	await gotoHash(page, 'lecon-fr-gram-clic-verbe'); // mono-mode → lancement direct
 	const mots = page.locator('.lclic-mot');
 	await mots.first().waitFor();
+	await fermerAideSiPresente(page); // écarte l'auto-aide (#435) avant toute interaction
 
 	await expect(page.locator('#lclicVerif')).toBeDisabled();
 
@@ -86,6 +110,7 @@ test('CM1 : la leçon se rend (niveau forcé en CM1, navigation directe)', async
 	await gotoCM1(page, 'lecon-fr-gram-clic-verbe');
 	const mots = page.locator('.lclic-mot');
 	await mots.first().waitFor();
+	await fermerAideSiPresente(page); // écarte l'auto-aide (#435) avant toute interaction
 
 	// La consigne CM1 signale qu'au passé composé le verbe est en deux mots.
 	await expect(page.locator('.lclic-consigne')).toContainText('deux mots');
@@ -112,6 +137,7 @@ async function trouverCibleDouble(page: Page, hash: string): Promise<boolean> {
 		for (let q = 0; q < NB_QUESTIONS; q++) {
 			const mots = page.locator('.lclic-mot');
 			await mots.first().waitFor();
+			if (q === 0) await fermerAideSiPresente(page); // écarte l'auto-aide (#435), 1re question du run
 			const n = await mots.count();
 			await mots.nth(n - 1).click();
 			await page.locator('#lclicVerif').click();

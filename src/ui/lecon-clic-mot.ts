@@ -35,6 +35,7 @@ import {
 	wireNext,
 } from './lecon-runner-shared';
 import { capterErreur } from './erreur-capture';
+import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 
 const NB_QUESTIONS = 8;
 
@@ -105,6 +106,7 @@ export function runLeconClicMot(lessonId: string, m?: ExerciseMode): void {
 	hideMenus();
 	setToolbar({ verify: false, home: true, profile: false });
 	renderQuestion();
+	maybeAutoAide('clicMot'); // bulle d'aide au 1er lancement (une fois par profil, jamais sous chrono)
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -145,6 +147,9 @@ function renderQuestion(): void {
 		.forEach((btn) => btn.addEventListener('click', () => toggleMot(btn, verif)));
 	verif.addEventListener('click', () => verifier());
 	bindConsigneTts(sheets()); // boutons « Écouter » : consigne (auto) + phrase entière (#42)
+	// Bouton « ? » d'aide (#272) : renderQuestion() reconstruit tout le sheets() à chaque
+	// question, donc on le re-monte à chaque rendu (l'appel est idempotent).
+	monterBoutonAide(sheets().querySelector('.lclic-col'), 'clicMot');
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

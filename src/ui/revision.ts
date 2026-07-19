@@ -36,6 +36,7 @@ import {
 	recordSessionActivity,
 } from '../core/progress';
 import { selectDueGroups } from '../core/revision-select';
+import { getRevisionPlafond } from '../core/profiles';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
 import { bindTuileInteraction } from './tuile-interaction';
 
@@ -102,7 +103,9 @@ export function runRevisionEspacee(): void {
 	hideMenus();
 	setToolbar({ verify: false, home: true, profile: false });
 	ortho = loadOrtho();
-	const groups = selectDueGroups(ortho, loadLessonRevisions(), Date.now());
+	// Plafond réglé par profil dans l'espace encadrant (#439) ; défaut 12 si non réglé
+	// (fallback + bornage assurés par getRevisionPlafond).
+	const groups = selectDueGroups(ortho, loadLessonRevisions(), Date.now(), getRevisionPlafond());
 	items = [];
 	for (const g of groups) {
 		for (const it of g.items) {

@@ -53,7 +53,8 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   catégorie »** (regroupement dépliable, même chrome que « Notions par catégorie ») /
   **« Par urgence »** (liste à plat, plus en retard d'abord) ; handler `revision-mode`.
 - **`encadrant-reglages.ts`** — **réglages** sur le profil consulté : classe de
-  référence + niveau par matière, aménagements « dys »/attention ; injecte le
+  référence + niveau par matière, longueur d'une séance de Révision (#439, menu à
+  paliers fixes `REVISION_PLAFOND_CHOIX`), aménagements « dys »/attention ; injecte le
   bloc PIN rendu par `encadrant-pin`.
 - **`encadrant-profils.ts`** — sélecteur de profils en **consultation** (≠ bascule)
   + **gestion** réservée à l'adulte (renommer/avatar/réinitialiser/supprimer/créer),

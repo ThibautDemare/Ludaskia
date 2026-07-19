@@ -232,6 +232,14 @@ animations, confort de lecture) reste côté enfant (auto-régulation immédiate
 d'erreur nul) ; un aménagement actif est rappelé en lecture seule sur « Mon espace »
 (« réglé par un adulte »). L'écoute TTS **à la demande** reste toujours dispo côté enfant.
 
+**Séance de révision** (#439) : bloc distinct des « Aménagements » (charge de la séance,
+pas un aménagement dys/attention). Menu déroulant à **paliers fixes**
+(`REVISION_PLAFOND_CHOIX` : 6/8/10/12/15/20/24, 12 marqué « par défaut ») — pas de saisie
+libre, donc pas de valeur extrême possible. Réglé sur le profil consulté
+(`setPrefFor(uuid, 'revisionPlafond', n)`), ajuste le nombre d'éléments proposés par une
+séance de `#revision-espacee` (fallback + bornage assurés à la lecture par
+`getRevisionPlafond`, cf. [Logique pure](core.md)).
+
 ## Impression sans bascule
 
 **Impression** d'une fiche au niveau du profil consulté **sans bascule** : `buildLessonFiche`/

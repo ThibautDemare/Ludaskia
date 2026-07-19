@@ -17,6 +17,7 @@ import {
 } from '../core/profiles';
 import { getAllLessons, SUBJECTS, type SchoolLevel } from '../core/catalog';
 import { availableLevels, LEVEL_LABEL } from '../core/levels';
+import { REVISION_PLAFOND, REVISION_PLAFOND_CHOIX } from '../core/revision';
 import { dicteeDisponible } from './tts';
 import { consulteUuid, renderEspace } from './encadrant-commun';
 
@@ -27,8 +28,30 @@ export function reglagesHTML(consulte: Profile, pinBlock: string): string {
       <h2 class="enc-h2">Réglages</h2>
       ${classeHTML(consulte)}
       ${amenagementsHTML(consulte)}
+      ${plafondRevisionHTML(consulte)}
       ${pinBlock}
     </section>`;
+}
+
+/* Longueur d'une séance de Révision (#439), réglée par l'adulte sur le profil CONSULTÉ
+   (setPrefFor, sans changer le profil actif). Menu à paliers fixes (REVISION_PLAFOND_CHOIX,
+   déjà bornés côté programme) : pas de saisie libre, donc pas de valeur extrême possible.
+   Le défaut (REVISION_PLAFOND) est marqué et reste sélectionné pour un profil non réglé. */
+function plafondRevisionHTML(consulte: Profile): string {
+	const actuel = consulte.prefs?.revisionPlafond ?? REVISION_PLAFOND;
+	// Valeur affichée : le palier stocké s'il fait partie de la liste, sinon on retombe
+	// sur le défaut (donnée importée hors paliers → pas d'option « fantôme » à afficher).
+	const sel = REVISION_PLAFOND_CHOIX.includes(actuel) ? actuel : REVISION_PLAFOND;
+	const opts = REVISION_PLAFOND_CHOIX.map(
+		(n) =>
+			`<option value="${n}"${n === sel ? ' selected' : ''}>${n}${n === REVISION_PLAFOND ? ' (par défaut)' : ''}</option>`,
+	).join('');
+	return `<div class="enc-block">
+      <h3 class="enc-h3">Séance de révision</h3>
+      <label class="enc-row"><span>Nombre de questions par séance</span>
+        <select class="enc-select-niveau" data-act="set-revision-plafond">${opts}</select></label>
+      <p class="enc-hint">Ajustez la longueur d'une séance de révision selon l'attention de l'enfant (par défaut ${REVISION_PLAFOND}).</p>
+    </div>`;
 }
 
 /* Aménagements « dys »/attention posés par l'adulte (avis specialiste-troubles-
@@ -107,6 +130,14 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 			(t.value || undefined) as SchoolLevel | undefined,
 		);
 		renderEspace();
+		return true;
+	}
+	if (act === 'set-revision-plafond' && uuid) {
+		// Le bornage/fallback est fait à la LECTURE (getRevisionPlafond) : ici on écrit
+		// simplement le palier choisi (toujours une valeur de REVISION_PLAFOND_CHOIX).
+		// Pas de renderEspace() : rien d'autre à l'écran ne dépend de ce réglage, et un
+		// re-rendu détruirait le <select> → perte du focus clavier pour rien (avis a11y).
+		setPrefFor(uuid, 'revisionPlafond', Number(t.value));
 		return true;
 	}
 	if (act === 'set-amenagement' && uuid) {

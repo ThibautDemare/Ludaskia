@@ -364,3 +364,29 @@ test('accessibilité : confort côté enfant, aménagements côté encadrant', a
 	await expect(page.locator('[data-pref="sansApparitionsSurprises"]')).toBeVisible();
 	expect(errors).toEqual([]);
 });
+
+/* 12. Longueur de séance de révision (#439) : select par profil, défaut = 12,
+       réglage persistant sur le profil consulté (rechargement compris). */
+test('séance de révision : select visible, 12 par défaut, réglage persistant au rechargement', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await gotoHash(page, 'encadrant');
+
+	const select = page.locator('select[data-act="set-revision-plafond"]');
+	await expect(select).toBeVisible();
+	// Profil non réglé : la valeur par défaut (12) est sélectionnée, libellée « (par défaut) ».
+	await expect(select).toHaveValue('12');
+	await expect(select.locator('option[value="12"]')).toHaveText('12 (par défaut)');
+
+	// Changer la valeur (ex. 24) puis recharger : le réglage doit survivre (profil consulté),
+	// SANS re-poser addInitScript qui écraserait la valeur écrite.
+	await select.selectOption('24');
+	await expect(select).toHaveValue('24');
+
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+	await expect(page.locator('select[data-act="set-revision-plafond"]')).toHaveValue('24');
+
+	expect(errors).toEqual([]);
+});

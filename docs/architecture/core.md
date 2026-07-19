@@ -30,9 +30,13 @@ propre doc de conception : `docs/design-orthographe.md`.
   `main.ts`).
 - **`profiles.ts`** — profils (UUID, préfixe, `updatedAt`), `initProfiles`,
   export/import. La **méta de profil** porte aussi `prefs` (a11y #42, dont
-  `sansApparitionsSurprises` #331 — accesseur `apparitionsSurprises()`, vrai par défaut),
-  `niveauReference` et `niveauParMatiere` (classe scolaire #225) — champs **additifs**
-  (format export `v2` inchangé), emportés par l'export, survivent à « Réinitialiser ».
+  `sansApparitionsSurprises` #331 — accesseur `apparitionsSurprises()`, vrai par défaut,
+  et `revisionPlafond` #439 — accesseur **`getRevisionPlafond()`**, qui applique le
+  fallback (`REVISION_PLAFOND`, 12) ET le bornage `[REVISION_PLAFOND_MIN,
+  REVISION_PLAFOND_MAX]` **à la lecture**, jamais à l'écriture, pour rester robuste aux
+  données importées), `niveauReference` et `niveauParMatiere` (classe scolaire #225) —
+  champs **additifs** (format export `v2` inchangé), emportés par l'export, survivent à
+  « Réinitialiser ».
   `applyActive()` déclenche les migrations idempotentes (`migrateNiveauNamespacing`
   **avant** `migrateRevisions`). ⚠️ Plus d'effet de bord au chargement :
   `initProfiles()` et le branchement du hook sont appelés par `main.ts`.
@@ -435,7 +439,17 @@ propre doc de conception : `docs/design-orthographe.md`.
   en paramètre). État `EtatRevision` partagé par les mots d'orthographe et les
   leçons maths/conjugaison. Cette file est aussi **consultable côté encadrant**
   (par profil, sans bascule) via `encadrant-stats.ts:revisionProfil` — cf.
-  [Espace encadrant](espace-encadrant.md).
+  [Espace encadrant](espace-encadrant.md). **Plafond d'une session réglable par profil**
+  (#439) : `REVISION_PLAFOND` (12) reste la valeur **par défaut** pour un profil non
+  réglé (comportement historique inchangé) ; `REVISION_PLAFOND_MIN`/`_MAX` (6/24) et
+  `REVISION_PLAFOND_CHOIX` (paliers du menu déroulant) bornent le réglage exposé dans
+  l'espace encadrant (`ui/encadrant-reglages.ts`, cf. [Espace
+  encadrant](espace-encadrant.md)) ; fallback + bornage appliqués à la lecture par
+  `profiles.ts:getRevisionPlafond`, consommé par `ui/revision.ts:runRevisionEspacee` au
+  lieu de la valeur par défaut figée. L'algorithme d'équilibrage entre sources
+  (`selectionEquilibree`, `revision-select.ts`) a été **adapté** au passage : son budget
+  de vidage suit désormais le plafond pour qu'un plafond bas (6/8) n'affame plus une
+  source pourtant due (cf. ci-dessous).
 - **`revision-select.ts`** — sélection des éléments **dus** (mots + leçons),
   **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`) ;
   `prochaineEcheance`/`aDesRevisions` alimentent l'état « rien à réviser » de
@@ -446,11 +460,15 @@ propre doc de conception : `docs/design-orthographe.md`.
   (vidage)** : jusqu'à `REVISION_MAX_VIDAGES_SOURCES` (= 2) petites sources
   (≤ `REVISION_SEUIL_SOURCE_VIDABLE` = 4 éléments dus) sont prises intégralement,
   les plus en retard d'abord — pour permettre de « finir » une petite leçon en un
-  jet. **Phase 2 (round-robin)** : les slots restants sont répartis à tour de rôle
-  entre les sources restantes (grosses + petites non vidées), chacune cédant son
-  item le plus en retard. Le plafond de vidage (2 sources) garantit qu'il reste
-  toujours des slots pour le round-robin → aucune source ne peut affamer les
-  autres. `countDue` et l'affichage de l'accueil restent sur le total non plafonné.
+  jet — **mais dans la limite d'un budget** qui réserve un slot à chaque source du
+  round-robin. **Phase 2 (round-robin)** : les slots restants sont répartis à tour de
+  rôle entre les sources restantes (grosses + petites non vidées), chacune cédant son
+  item le plus en retard. **Deux garde-fous** contre la famine d'une source : le vidage
+  est plafonné à 2 sources **et** son budget de slots est plafonné pour laisser une
+  place au round-robin — ce second garde-fou est indispensable depuis que le plafond est
+  réglable et peut descendre bas (#439), sinon une session courte serait entièrement
+  raflée par le vidage. `countDue` et l'affichage de l'accueil restent sur le total non
+  plafonné.
 - **`revision-migrate.ts`** — **reprise** de l'historique vers la révision : à
   l'activation d'un profil (`applyActive`), les leçons déjà notées et les mots
   déjà en banque sans état SR entrent en rotation, **datés J-1** → dus dès le jour

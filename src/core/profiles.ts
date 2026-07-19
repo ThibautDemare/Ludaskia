@@ -22,6 +22,7 @@ import {
 import { XP_KEY, niveauDepuisXP, migrateNiveauNamespacing } from './progress';
 import { niveauRequisAvatar } from './unlocks';
 import { migrateRevisions } from './revision-migrate';
+import { REVISION_PLAFOND, REVISION_PLAFOND_MIN, REVISION_PLAFOND_MAX } from './revision';
 import type { SchoolLevel } from './catalog';
 
 /* Réglages d'accessibilité par profil (#42). Vivent dans la MÉTA de profil (pas
@@ -43,6 +44,12 @@ export interface ProfilePrefs {
 	 *  prévisibilité). N'affecte PAS les eggs d'exploration, déclenchés
 	 *  volontairement par l'enfant. Défaut (absent) = apparitions actives. */
 	sansApparitionsSurprises?: boolean;
+	/** Nombre d'éléments proposés par session de Révision (#439). Réglé par l'adulte
+	 *  dans l'espace encadrant pour adapter la charge d'une séance (attention,
+	 *  rattrapage). Absent = valeur par défaut REVISION_PLAFOND (12). Le fallback ET
+	 *  le bornage se font à la lecture (`getRevisionPlafond`), pas à l'écriture, pour
+	 *  rester robuste aux données importées. */
+	revisionPlafond?: number;
 }
 export interface Profile {
 	uuid: string;
@@ -243,6 +250,16 @@ export function sansPressionTemporelle(): boolean {
 // fait que les DÉSACTIVER) — cf. #331.
 export function apparitionsSurprises(): boolean {
 	return getPrefs().sansApparitionsSurprises !== true;
+}
+// Nombre d'éléments d'une session de Révision pour le profil actif (#439). Le fallback
+// et le bornage se font ICI, à la lecture : un profil sans réglage explicite (ou une
+// valeur importée hors plage / non numérique) retombe sur REVISION_PLAFOND (12), et
+// toute valeur valide est ramenée dans [MIN, MAX]. L'écriture (espace encadrant) ne
+// contrôle donc rien — la lecture est l'unique source de vérité, robuste aux imports.
+export function getRevisionPlafond(): number {
+	const v = getPrefs().revisionPlafond;
+	if (typeof v !== 'number' || !Number.isFinite(v)) return REVISION_PLAFOND;
+	return Math.min(REVISION_PLAFOND_MAX, Math.max(REVISION_PLAFOND_MIN, Math.round(v)));
 }
 
 /* ---------- Niveau scolaire de référence du profil actif (#225) ---------- */

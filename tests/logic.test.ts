@@ -211,7 +211,7 @@ import {
 import { loadLessonRevisions, backfillLessonRevisions } from '../src/core/progress';
 import { loadOrtho, saveOrtho, backfillMotRevisions } from '../src/core/orthographe/store';
 import { migrateRevisions } from '../src/core/revision-migrate';
-import type { OrthoState } from '../src/core/orthographe/types';
+import type { OrthoState, EtatRevision } from '../src/core/orthographe/types';
 import {
 	RANGS,
 	titreDuNiveau,
@@ -247,6 +247,8 @@ import {
 	importProfiles,
 	touchActiveProfile,
 	initProfiles,
+	setPref,
+	getRevisionPlafond,
 	PROFILE_EMOJIS,
 } from '../src/core/profiles';
 import {
@@ -2802,6 +2804,46 @@ describe('Révision espacée (issue #45)', () => {
 	test('sélection équilibrée : plafond 0 ne renvoie rien', () => {
 		const groups = selectDueGroups(motsDus(5), {}, T0, 0);
 		expect(groups.reduce((n, g) => n + g.items.length, 0)).toBe(0);
+	});
+	test('plafond réglé par profil : getRevisionPlafond dimensionne la session (#439)', () => {
+		// Intégration accesseur → sélecteur (le câblage réel de la vue Révision).
+		// 20 mots dus, une seule source. Sans réglage, la session garde le défaut (12).
+		expect(getRevisionPlafond()).toBe(12);
+		const parDefaut = selectDueGroups(motsDus(20), {}, T0, getRevisionPlafond());
+		expect(parDefaut.reduce((n, g) => n + g.items.length, 0)).toBe(12);
+		// L'adulte réduit la charge à 8 → la session suivante ne propose que 8 éléments.
+		setPref('revisionPlafond', 8);
+		expect(getRevisionPlafond()).toBe(8);
+		const reduit = selectDueGroups(motsDus(20), {}, T0, getRevisionPlafond());
+		expect(reduit.reduce((n, g) => n + g.items.length, 0)).toBe(8);
+	});
+	test('anti-famine à petit plafond : 2 petites sources au seuil n’étouffent pas la grosse (#439)', () => {
+		// DEUX catégories de leçons dues, EXACTEMENT 4 éléments chacune (= REVISION_SEUIL_SOURCE_VIDABLE
+		// → « petites » et vidables), PLUS l'orthographe (20 mots dus = grosse source). Les 2 catégories
+		// sont rendues NETTEMENT plus urgentes que l'ortho : sans garde-fou, vider les 2 petites raflait
+		// tous les slots à petit plafond et l'orthographe tombait à 0 (le bug corrigé). Invariant : une
+		// source due n'est jamais totalement affamée tant que la session a la place de la servir.
+		const cats = catsLecons()
+			.filter(([, ids]) => ids.length >= 4)
+			.slice(0, 2);
+		expect(cats.length).toBe(2);
+		const lessonRevisions: Record<string, EtatRevision> = {};
+		let k = 0;
+		for (const [, ids] of cats)
+			for (const id of ids.slice(0, 4))
+				lessonRevisions[id] = {
+					palier: 0,
+					prochaineRevision: T0 - 100_000 - k++, // bien plus en retard que le plus urgent des mots
+					reussites: 0,
+					dernierTest: null,
+				};
+		// Palier 6 = cas de repro exact ; palier 8 = autre nouveau petit palier — même invariant.
+		for (const plafond of [6, 8]) {
+			const groups = selectDueGroups(motsDus(20), lessonRevisions, T0, plafond);
+			expect(groups.reduce((n, g) => n + g.items.length, 0)).toBe(plafond); // plafond respecté
+			const ortho = groups.find((g) => g.categoryId === ORTHO_CATEGORY_ID)?.items.length ?? 0;
+			expect(ortho).toBeGreaterThanOrEqual(1); // la grosse source n'est pas affamée
+		}
 	});
 	test('sélection équilibrée : le plafond coupe au milieu de la phase de vidage', () => {
 		const cats = catsLecons()

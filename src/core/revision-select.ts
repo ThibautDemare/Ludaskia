@@ -111,8 +111,11 @@ export function countDue(
    petites sources (≤ REVISION_SEUIL_SOURCE_VIDABLE éléments dus), les plus en
    retard d'abord ; puis on partage les slots restants en round-robin entre les
    sources restantes (grosses + petites non vidées), chacune cédant son élément le
-   plus en retard à tour de rôle. Plafonner le vidage à 2 sources garantit qu'il
-   reste toujours des slots pour le round-robin : aucune source n'est affamée.
+   plus en retard à tour de rôle. Deux garde-fous contre la famine d'une source :
+   le vidage est plafonné à REVISION_MAX_VIDAGES_SOURCES sources ET son budget de
+   slots est plafonné pour réserver une place à chaque source du round-robin — ce
+   second garde-fou est indispensable depuis que le plafond est réglable et peut
+   descendre bas (#439), sinon le vidage raflerait toute une session courte.
    L'entrée `due` est déjà triée par retard (donc chaque source l'est aussi) ; le
    résultat ne l'est PAS globalement (vidage puis round-robin) → le call-site
    re-trie pour l'affichage. */
@@ -129,18 +132,26 @@ function selectionEquilibree(due: DueItem[], plafond: number): DueItem[] {
 	const grosses = sources.filter((s) => s.length > REVISION_SEUIL_SOURCE_VIDABLE);
 
 	const picked: DueItem[] = [];
-	// Phase 1 — vidage : au plus N petites sources, intégralement, les plus urgentes.
-	const aVider = petites.slice(0, REVISION_MAX_VIDAGES_SOURCES);
-	for (const s of aVider) {
-		for (const it of s) {
-			if (picked.length >= plafond) return picked;
-			picked.push(it);
-		}
-	}
-	// Phase 2 — round-robin sur les sources restantes (grosses + petites non vidées).
+	// Sources restantes pour le round-robin (grosses + petites non vidées), triées par urgence.
 	const files = [...grosses, ...petites.slice(REVISION_MAX_VIDAGES_SOURCES)].sort(
 		(a, b) => a[0].due - b[0].due,
 	);
+	// Phase 1 — vidage : au plus N petites sources, les plus urgentes, MAIS avec un budget
+	// PLAFONNÉ qui réserve un slot par source du round-robin. Le plafond étant réglable par
+	// profil (#439, min 6), sans ce plafonnage le vidage pouvait, à petit plafond, rafler toute
+	// la session (jusqu'à REVISION_MAX_VIDAGES_SOURCES × REVISION_SEUIL_SOURCE_VIDABLE = 8 slots)
+	// et affamer une grosse source pourtant due et plus en retard (ex. l'orthographe). Le budget
+	// suit le plafond : sur une session large (≥ 8 + nb sources) il laisse le vidage se faire en
+	// entier (comportement historique inchangé) ; il ne se resserre que quand le plafond est trop
+	// court pour tout servir, garantissant qu'un round-robin a toujours lieu (aucune famine).
+	const reserveRoundRobin = Math.min(files.length, plafond);
+	const budgetVidage = plafond - reserveRoundRobin;
+	const aVider = petites.slice(0, REVISION_MAX_VIDAGES_SOURCES);
+	// aVider.flat() concatène les petites sources vidées, déjà triées par retard ; on tronque au
+	// budget (chaque source reste ordonnée « plus en retard d'abord »).
+	picked.push(...aVider.flat().slice(0, budgetVidage));
+	// Phase 2 — round-robin sur les sources restantes : chacune cède son élément le plus en
+	// retard à tour de rôle, jusqu'au plafond.
 	const curseur = files.map(() => 0);
 	let progres = true;
 	while (picked.length < plafond && progres) {

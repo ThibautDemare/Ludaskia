@@ -26,8 +26,24 @@ export const JOUR = 86_400_000;
 export const REVISION_INTERVALLES = [1 * JOUR, 3 * JOUR, 7 * JOUR, 16 * JOUR, 35 * JOUR, 75 * JOUR];
 /* Palier « acquis » : sort de la rotation active (gardé pour la fierté). */
 export const PALIER_ACQUIS = REVISION_INTERVALLES.length; // 6
-/* Plafond d'éléments dus proposés en une session (par-dessus rien d'autre). */
+/* Plafond d'éléments dus proposés en une session (par-dessus rien d'autre). Valeur
+   PAR DÉFAUT : un profil sans réglage explicite révise 12 éléments (comportement
+   historique, avant #439). */
 export const REVISION_PLAFOND = 12;
+/* Plafond réglable par profil (#439) : l'adulte ajuste la charge d'une session dans
+   l'espace encadrant. Bornes « raisonnables » (pas de 0, pas de valeur démesurée) et
+   paliers du menu déroulant — calés avec le pédagogue (attention CE2/CM1, charge
+   d'une séance). Le fallback + le bornage se font À LA LECTURE (getRevisionPlafond,
+   profiles.ts), jamais à l'écriture, pour rester robustes aux données importées.
+   NB : les paliers bas (6, 8) sont sûrs car `selectionEquilibree` (revision-select.ts)
+   adapte son budget de vidage au plafond — sans quoi une session courte pouvait affamer
+   une source pourtant due (cf. commentaire de la fonction). */
+export const REVISION_PLAFOND_MIN = 6;
+export const REVISION_PLAFOND_MAX = 24;
+/* Paliers proposés dans le menu (12 = défaut, doit rester dans la liste). Granularité
+   fine sur les petites valeurs (l'écart 6→8 est sensible pour un enfant fatigable),
+   plus large sur les grandes (moins perçu) ; 20/24 = usage intensif assumé (rattrapage). */
+export const REVISION_PLAFOND_CHOIX: readonly number[] = [6, 8, 10, 12, 15, 20, 24];
 
 /* Paramètres de la sélection équilibrée d'une session (algo dans
    `selectionEquilibree`, revision-select.ts) : une source surreprésentée — l'ortho,

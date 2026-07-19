@@ -305,6 +305,15 @@ les pièges). C'est l'idée la plus forte du mode, et **le geste retenu est
 danger ancre le mot ; **surligner** englobe au lieu de pointer et reste passif →
 ce n'est **pas** un outil de l'enfant).
 
+**Écoute du mot (à la demande).** Comme les autres activités du parcours, l'atelier
+affiche un bouton **« Écouter le mot »** (ou « Écouter la phrase » pour une cible
+verbe) dès que l'appareil dispose d'une **voix FR** — en **découverte** comme à la
+**correction**. Le mot étant affiché, l'entendre ne révèle rien : c'est un appui
+**multimodal** (lien son ↔ graphie) qui aide à ancrer l'orthographe, et cela garantit
+que l'enfant peut **(ré)écouter partout** dans le parcours, plus seulement sur les
+écrans qui saisissent. Aucune voix → aucun bouton (pas de bouton mort). Rendu par
+`renderAtelier` via l'option `ecoute` que lui passe le runner (`ecouteAtelier`).
+
 **Présentation & consigne.** Le mot s'affiche **en gros**, au centre, **d'emblée
 légèrement aéré** (espacement des lettres). Consigne incarnée (« étudie » est un
 verbe d'adulte) :

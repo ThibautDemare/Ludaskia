@@ -14,6 +14,7 @@ import { lettresDuMot } from '../core/orthographe/exercise';
 import type { Entourage, MotOrtho } from '../core/orthographe/types';
 import { uiConfirm } from './ui-modal';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { icon } from './icon';
 
 // Palette colorblind-safe (Okabe-Ito).
 const PALETTE = ['#E69F00', '#56B4E9', '#009E73', '#0072B2', '#CC79A7', '#D55E00'];
@@ -100,6 +101,9 @@ interface AtelierOpts {
 	diff?: boolean[]; // contexte correction : lettres (du mot) ratées à souligner
 	consigne?: string;
 	contexteHTML?: string; // phrase à trou d'une cible verbe (#261), affichée en légende
+	// Bouton « Écouter » : l'atelier devient audible comme les autres modes du parcours.
+	// Fourni par le runner (voix dispo) ; absent sinon (pas de voix → pas de bouton).
+	ecoute?: { label: string; onClick: () => void };
 }
 
 let resizeHandler: (() => void) | null = null;
@@ -140,6 +144,7 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
     <div class="page ortho-run">
       <p class="ortho-run-consigne">${escapeHTML(consigne)}</p>
       ${opts.contexteHTML ?? ''}
+      ${opts.ecoute ? `<div><button type="button" class="btn-primary ortho-ecouter" id="btnEcouterAtelier">${icon('speaker')} ${escapeHTML(opts.ecoute.label)}</button></div>` : ''}
       <div class="atelier-stage">
         <div class="atelier-mot" id="atelierMot">${lettresMotHTML(mot.mot, opts.diff)}</div>
         <svg class="atelier-svg" id="atelierSvg" aria-hidden="true"></svg>
@@ -152,6 +157,9 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
     </div>`;
 
 	monterBoutonAide(host.querySelector('.ortho-run'), 'atelier'); // bouton « ? » persistant (#272)
+	if (opts.ecoute) {
+		host.querySelector('#btnEcouterAtelier')!.addEventListener('click', opts.ecoute.onClick);
+	}
 
 	const motEl = host.querySelector('#atelierMot') as HTMLElement;
 	const stage = host.querySelector('.atelier-stage') as HTMLElement;

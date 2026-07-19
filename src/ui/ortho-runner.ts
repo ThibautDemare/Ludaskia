@@ -118,6 +118,14 @@ function ecouterLabel(word: MotOrtho): string {
 	return word.contexte ? 'Écouter la phrase' : 'Écouter le mot';
 }
 
+/* Bouton « Écouter » de l'atelier : on rend l'atelier audible comme les autres
+   modes (découverte ET correction). Absent si aucune voix n'est dispo. Lit le mot
+   (ou la phrase, pour un verbe) — le mot est affiché à l'atelier, rien n'est révélé. */
+function ecouteAtelier(word: MotOrtho): { label: string; onClick: () => void } | undefined {
+	if (!dispoDictee) return undefined;
+	return { label: ecouterLabel(word), onClick: () => ecouterCible(word) };
+}
+
 /* Journal des erreurs (#391) : consigne le PREMIER essai raté d'un mot (mot caché,
    dictée ou tuiles), lisible côté encadrant. mode 'dictee' (le sous-mode importe peu
    au parent). Pour un verbe en contexte, l'énoncé montre la phrase à trou ; sinon un
@@ -280,6 +288,7 @@ function renderNext(): void {
 	if (act === 'atelier') {
 		renderAtelier(sheets(), word, {
 			contexteHTML: contexteHTML(word),
+			ecoute: ecouteAtelier(word),
 			onDone: () => {
 				marquerAtelierFait(word);
 				saveOrtho(st);
@@ -374,6 +383,7 @@ function renderMotCache(word: MotOrtho): void {
 				const diff = diffCorrect(input.value, word.mot);
 				renderAtelier(sheets(), word, {
 					contexteHTML: contexteHTML(word),
+					ecoute: ecouteAtelier(word),
 					onDone: () => {
 						saveOrtho(st);
 						renderNext();
@@ -398,7 +408,7 @@ function renderDictee(word: MotOrtho): void {
     <div class="page ortho-run">
       <p class="ortho-run-consigne">${word.contexte ? 'Écoute la phrase, puis écris seulement le verbe.' : 'Écoute le mot, puis écris-le.'}</p>
       ${contexteHTML(word)}
-      <button class="btn-primary ortho-ecouter" id="btnEcouter">${icon('speaker')} ${word.contexte ? 'Écouter la phrase' : 'Écouter'}</button>
+      <button class="btn-primary ortho-ecouter" id="btnEcouter">${icon('speaker')} ${ecouterLabel(word)}</button>
       <div class="ortho-saisie">
         <input class="ortho-input" id="orthoInput" ${TEXT_ANSWER_INPUT_ATTRS}
                aria-label="${word.contexte ? 'Écris le verbe' : 'Écris le mot'}" />
@@ -434,6 +444,7 @@ function renderDictee(word: MotOrtho): void {
 				const diff = diffCorrect(input.value, word.mot);
 				renderAtelier(sheets(), word, {
 					contexteHTML: contexteHTML(word),
+					ecoute: ecouteAtelier(word),
 					onDone: () => {
 						saveOrtho(st);
 						renderNext();

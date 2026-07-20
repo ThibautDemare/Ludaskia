@@ -435,14 +435,32 @@ pure](core.md)) pour les formats composites :
   … », consigne neutre valable pour les 6 leçons). Structure calquée sur
   `lecon-appariement.ts`/`lecon-probleme.ts` (état de module + `lecon-runner-shared.ts`).
   Aide contextuelle dédiée (`monterBoutonAide`/`maybeAutoAide`, type `'clicMot'` #272).
+- **`lecon-droite-graduee.ts`** (#256) — runner **« Droite graduée »** (placer un
+  nombre), une droite à la fois. Consomme l'`Exercise` `type: 'droiteGraduee'`
+  (`data/maths/droite-graduee.ts`) : la droite est une **coquille SVG
+  `role="radiogroup"`** (`renderDroiteGradueeInteractif`, `core/figures/droite.ts`)
+  où chaque graduation est un `radio` (bandes verticales transparentes qui PAVENT
+  l'axe → **tap aimanté** sur la graduation la plus proche) ; le repère mobile corail
+  est dessiné dans `.dg-repere` (`repereMarkup`). **Sélection réversible** (aucune
+  correction au 1er tap) ; « Vérifier » (`#dgVerify`, désactivé tant qu'aucune
+  graduation choisie) compare la graduation choisie à `cible`. **Clavier** (WCAG
+  2.1.1) : flèches ← → / Début / Fin déplacent le repère de graduation en graduation,
+  Entrée valide ; focus visible sur la bande visée. Feedback différé : la coquille est
+  remplacée par une **figure statique de RÉVÉLATION** (`renderDroiteGraduee` : repère
+  juste en vert plein ; en cas d'erreur, repère de l'enfant en rouge à tête creuse en
+  plus), verdict en **live region** (`#dgStatus`), journal via `capterErreur`. **Exclu
+  du sprint** (`isDroiteGradueeLesson`), **repli LECTURE** en bilan/fiche/révision
+  (`genLessonItem` : droite avec repère à la cible → « Quel nombre est repéré ? »,
+  réponse numérique). Aide contextuelle dédiée (type `'droiteGraduee'` #272). Structure
+  calquée sur `lecon-clic-mot.ts` (état de module + `lecon-runner-shared.ts`).
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
   **filtrable** (toutes matières / une matière / une catégorie / **une sélection
   précise de leçons** via `startCustomSprint`, #64) via un écran de
   configuration ; correction par `checkItemAnswer` (numérique ou texte).
   **Exclusions du sprint** (`lessonsForFilter`) : par TYPE d'item (posée, tuiles
-  ordre/tri, problème, appariement, clic-mot — détecté via l'étiquette déclarative
+  ordre/tri, problème, appariement, clic-mot, droite graduée — détecté via l'étiquette déclarative
   **`ExerciseType.exerciseKind`**, #348, via les helpers `isPosedLesson`/
-  `isOrderingLesson`/`isTriLesson`/`isProblemeLesson`/`isPairingLesson`/`isClicMotLesson` de
+  `isOrderingLesson`/`isTriLesson`/`isProblemeLesson`/`isPairingLesson`/`isClicMotLesson`/`isDroiteGradueeLesson` de
   `core/catalog.ts`) **et** par le flag déclaratif **`LessonDef.excludeFromSprint`** (#104) pour une leçon qui produit un
   item `text` ordinaire mais ne convient pas au chrono (figure de découverte,
   lecture d'énoncé — ex. « Je partage »). L'écran de config ne compte que les

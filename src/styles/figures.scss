@@ -147,6 +147,44 @@
 	margin-bottom: 0.2rem;
 }
 
+/* ---------- Droite graduée (#256) ---------- */
+/* Un peu plus large que les figures carrées : la lisibilité horizontale (crans + libellés)
+   prime, et les cibles tactiles y gagnent. */
+.figure-droite-graduee {
+	max-width: 320px;
+}
+@media (min-width: 600px) {
+	.figure-droite-graduee {
+		max-width: 360px;
+	}
+}
+/* Coquille INTERACTIVE : chaque graduation est une bande verticale transparente (radio)
+   qui PAVE l'axe → un tap se colle à la graduation la plus proche (aimantation), et la
+   hauteur de bande offre une cible tactile confortable malgré la densité horizontale. */
+.dg-interactif {
+	touch-action: manipulation;
+}
+.dg-interactif:focus {
+	outline: none; /* le focus est porté par la bande visée, pas par le SVG entier */
+}
+.dg-hit {
+	cursor: pointer;
+}
+/* Le repère mobile est purement VISUEL : il laisse passer les taps vers les bandes de
+   sélection (un tap sur la tête du repère vise encore la graduation la plus proche). */
+.dg-repere {
+	pointer-events: none;
+}
+/* Focus clavier VISIBLE (WCAG 2.4.7) : la bande visée se teinte et se cerne. */
+.dg-hit:focus {
+	outline: none;
+}
+.dg-hit:focus-visible {
+	outline: 3px solid var(--accent);
+	outline-offset: -3px;
+	fill: var(--accent-soft);
+}
+
 /* ---------- Saisie de l'heure en 2 champs « [h] h [min] » (#88) ---------- */
 .heure-input {
 	display: inline-flex;

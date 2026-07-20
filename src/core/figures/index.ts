@@ -49,6 +49,7 @@ export * from './horloge';
 export * from './polygones';
 export * from './solides';
 export * from './fractions';
+export * from './droite';
 export * from './decimaux';
 export * from './symetrie';
 export * from './angles';
@@ -77,6 +78,7 @@ import {
 	renderFractionCollection,
 } from './fractions';
 import { renderGrilleCentiemes } from './decimaux';
+import { renderDroiteGraduee, type DroiteGraduation, type DroiteRepere } from './droite';
 import {
 	renderSymJuger,
 	renderSymMiroir,
@@ -127,6 +129,15 @@ export type FigureSpec =
 	| { kind: 'fractionSuperieure'; num: number; den: number }
 	| { kind: 'fractionCollection'; num: number; den: number; parGroupe: number }
 	| { kind: 'grilleCentiemes'; parts: number }
+	| {
+			kind: 'droiteGraduee';
+			min: number;
+			max: number;
+			pas: number;
+			bornes: DroiteGraduation[];
+			reperes?: DroiteRepere[];
+			desc?: string;
+	  }
 	| { kind: 'symJuger'; shape: SymShape; axis?: SymAxis }
 	| { kind: 'symMiroir'; motif: SymMotif; axis: 'v' | 'h' }
 	| { kind: 'symImage'; motif: SymMotif; axis: 'v' | 'h'; t: SymTransform }
@@ -170,6 +181,15 @@ export function renderFigure(spec: FigureSpec): string {
 			return renderFractionCollection(spec.num, spec.den, spec.parGroupe);
 		case 'grilleCentiemes':
 			return renderGrilleCentiemes(spec.parts);
+		case 'droiteGraduee':
+			return renderDroiteGraduee({
+				min: spec.min,
+				max: spec.max,
+				pas: spec.pas,
+				bornes: spec.bornes,
+				reperes: spec.reperes,
+				desc: spec.desc,
+			});
 		case 'symJuger':
 			return renderSymJuger(spec.shape, spec.axis);
 		case 'symMiroir':

@@ -37,6 +37,8 @@ import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration
 export { answerEstNumerique };
 import { POSITION_LESSONS } from '../data/maths/position';
 import { DECIMAUX_LESSONS } from '../data/maths/decimaux';
+import { DROITE_GRADUEE_LESSONS } from '../data/maths/droite-graduee';
+import { renderFigure } from './figures';
 import { DECIMAUX_ECRITURES_LESSONS } from '../data/maths/decimaux-ecritures';
 import { FRACTIONS_LESSONS } from '../data/maths/fractions';
 import { POSEE_LESSONS } from '../data/maths/posee';
@@ -471,6 +473,18 @@ const DECIMAUX_ECRITURES_LESSONS_DEFS: LessonDef[] = toLessonDefs(DECIMAUX_ECRIT
 	rubrique: 'Nombres décimaux',
 });
 
+/* ---------- Numération — Droite graduée (#256, CM1) ----------
+   Placer un nombre sur une portion de droite graduée (brique interactive, runner dédié
+   ui/lecon-droite-graduee.ts). Deux leçons CM1-only : ENTIERS (grands nombres) à plat, et
+   DÉCIMAUX sous la rubrique « Nombres décimaux » (poursuit le fil #246/#247). Hors sprint
+   (runner dédié, cf. isDroiteGradueeLesson). */
+const DROITE_GRADUEE_LESSONS_DEFS: LessonDef[] = toLessonDefs(DROITE_GRADUEE_LESSONS, {
+	subject: 'math',
+	category: 'math-numeration',
+	levels: ['cm1'],
+	rubrique: (d) => d.rubrique,
+});
+
 /* ---------- Catalogue des leçons « Numération » — Fractions (#200, CM1 #249) ----------
    Programme cycle 2 rénové 2025 : au CE2 fractions < 1, dénominateur ≤ 12. Sens, collection,
    bande graduée, égalités, comparaison et addition (même dénominateur). Regroupées sous la
@@ -809,6 +823,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...NUMERATION_LESSONS_DEFS,
 	...DECIMAUX_LESSONS_DEFS,
 	...DECIMAUX_ECRITURES_LESSONS_DEFS,
+	...DROITE_GRADUEE_LESSONS_DEFS,
 	...FRACTIONS_LESSONS_DEFS,
 	...CALCUL_LESSONS_DEFS,
 	...GRANDEURS_LESSONS,
@@ -890,6 +905,14 @@ export function isPairingLesson(lesson: LessonDef): boolean {
    le verbe ? »). */
 export function isClicMotLesson(lesson: LessonDef): boolean {
 	return lesson.exerciseType.exerciseKind === 'clicMot';
+}
+
+/* Une leçon « Droite graduée » (#256) se joue en plaçant un repère sur une graduation :
+   interaction d'écran dédiée (ui/lecon-droite-graduee.ts), incompatible avec le sprint
+   « une réponse à la fois » → exclue de son tirage. Reste jouable en bilan/fiche/révision
+   via le repli LECTURE de genLessonItem (lire le nombre repéré). */
+export function isDroiteGradueeLesson(lesson: LessonDef): boolean {
+	return lesson.exerciseType.exerciseKind === 'droiteGraduee';
 }
 
 /* Une leçon math « héritée » est branchée sur le générateur numérique bilanQ
@@ -987,6 +1010,33 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 			answer: motsCible,
 			kind: 'text',
 			parle: `Recopie ${quoi}. ${ex.parle}`,
+			_lesson: lesson.id,
+		};
+	}
+	// Droite graduée (#256) : l'interaction (placer un repère) vit dans son runner
+	// (ui/lecon-droite-graduee.ts). Repli LECTURE non interactif pour fiche/bilan/révision :
+	// on montre la droite avec le repère POSÉ à la cible et on demande de LIRE le nombre
+	// repéré (réponse = le libellé de la cible, stocké). La description SVG ne révèle pas la
+	// valeur (position à lire) ; la réponse numérique tolère espaces/virgule (checkItemAnswer).
+	if (ex.type === 'droiteGraduee') {
+		// Passe par le dispatch FigureSpec (#256) plutôt que d'appeler le renderer en direct :
+		// le variant `droiteGraduee` a ainsi un vrai consommateur (pas de généricité morte) et
+		// tombe sous la couverture de tests du dispatch.
+		const figure = renderFigure({
+			kind: 'droiteGraduee',
+			min: ex.min,
+			max: ex.max,
+			pas: ex.pas,
+			bornes: ex.bornes,
+			reperes: [{ valeur: ex.cible }],
+			desc: 'Une droite graduée avec un repère à lire.',
+		});
+		return {
+			text: 'Quel nombre est repéré sur la droite graduée ? @',
+			answer: ex.cibleLabel,
+			kind: 'num',
+			figure,
+			parle: 'Quel nombre est repéré sur la droite graduée ?',
 			_lesson: lesson.id,
 		};
 	}

@@ -181,6 +181,29 @@ export type Exercise =
 			parle: string;
 			cibleLabel?: string;
 	  }
+	// Droite graduée (#256) — l'enfant PLACE un repère sur la graduation qui correspond
+	// à la valeur cible (numération grands nombres, nombres décimaux). Interaction : une
+	// portion de droite graduée aimantée (chaque graduation = un choix), runner d'écran
+	// dédié (ui/lecon-droite-graduee.ts) qui s'auto-corrige. `min`/`max`/`pas` fixent la
+	// fenêtre et le pavage ; `graduations` = TOUTES les graduations sélectionnables (valeur
+	// + libellé formaté, pour l'axe et les aria-labels) ; `bornes` = le sous-ensemble
+	// NUMÉROTÉ (traits renforcés + libellé) ; `cible` = la valeur à placer (STOCKÉE, ∈
+	// graduations), `cibleLabel` son libellé formaté. `consigne` = tâche persistante,
+	// `explication` = justification après correction, `parle` = énoncé lu. Hors sprint. Le
+	// `check()` renvoie false (le runner corrige par égalité `graduation choisie === cible`).
+	| {
+			type: 'droiteGraduee';
+			min: number;
+			max: number;
+			pas: number;
+			graduations: { valeur: number; label: string }[];
+			bornes: { valeur: number; label: string }[];
+			cible: number;
+			cibleLabel: string;
+			consigne: string;
+			explication: string;
+			parle: string;
+	  }
 	// Calcul posé (#97) — opération en colonnes ; le catalogue en fait un Item
 	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.
 	| { type: 'posed'; op: '+' | '-' | 'x'; a: number; b: number }
@@ -234,7 +257,7 @@ export type ExerciseMode = string;
  *  standard (texte/QCM) éligible au sprint. Doit refléter le `type` que produit
  *  le `generate()` par défaut (sans mode) — invariant vérifié en test. */
 export type ExerciseKind =
-	'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme' | 'appariement' | 'clicMot';
+	'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme' | 'appariement' | 'clicMot' | 'droiteGraduee';
 
 /** Options de génération (#225). Le niveau est résolu UNE fois en amont (seam
  *  UI/catalogue via `effectiveLevel`) puis passé ici ; une fabrique mono-niveau
@@ -304,6 +327,7 @@ export function checkAnswer(exercise: Exercise, input: string): boolean {
 		exercise.type === 'tableauConversion' ||
 		exercise.type === 'appariement' ||
 		exercise.type === 'clicMot' ||
+		exercise.type === 'droiteGraduee' ||
 		exercise.type === 'qcmMulti'
 	)
 		return false;

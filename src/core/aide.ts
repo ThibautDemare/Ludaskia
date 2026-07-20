@@ -4,7 +4,7 @@
    étapes courtes + voie alternative + filet anti-erreur) et la mémoire
    « aide déjà vue » par profil (via lsGet/lsSet, jamais localStorage direct).
 
-   Huit types, un par runner d'écran dont la mécanique n'est pas évidente :
+   Neuf types, un par runner d'écran dont la mécanique n'est pas évidente :
    - `tuiles` → numération (ui/lecon-tuiles) : amener LA tuile dans le trou ;
    - `ordre`  → ranger une suite (ui/lecon-ordre) : tap → case suivante ;
    - `tri`    → ranger par thème (ui/lecon-tri) : tap mot puis tap colonne ;
@@ -15,6 +15,8 @@
    - `appariement` → relier des paires (ui/lecon-appariement) : tap mot puis tap son correspondant ;
    - `clicMot` → clique sur le mot (ui/lecon-clic-mot, #259, #437) : toucher le(s) bon(s)
      mot(s), parfois deux mots (adjacents — verbe au passé composé — ou non — sujet composé).
+   - `droiteGraduee` → placer sur la droite graduée (ui/lecon-droite-graduee, #256) : toucher
+     la graduation qui correspond au nombre demandé (aimantation), puis valider.
 
    Le RENDU (modale, bouton, animation) vit dans ui/aide-exercice.ts.
    Rédaction validée avec les conseillers (designer / troubles d'apprentissage) :
@@ -23,7 +25,15 @@
 import { lsGet, lsSet } from './storage';
 
 export type TypeAide =
-	'tuiles' | 'ordre' | 'tri' | 'atelier' | 'lettres' | 'tableau' | 'appariement' | 'clicMot';
+	| 'tuiles'
+	| 'ordre'
+	| 'tri'
+	| 'atelier'
+	| 'lettres'
+	| 'tableau'
+	| 'appariement'
+	| 'clicMot'
+	| 'droiteGraduee';
 
 export interface AideContenu {
 	/** Titre de la bulle (ton « astuce », jamais « problème »). */
@@ -91,6 +101,16 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 		// (verbe au passé composé = collés ; sujet composé « Paul … Léa » = séparés, #437).
 		etapes: ['Touche le bon mot.', 'Parfois, il faut toucher deux mots.'],
 		reparation: "Tu t'es trompé ? Retouche le mot, il se désélectionne.",
+	},
+	droiteGraduee: {
+		titre: 'Comment placer le repère ?',
+		etapes: [
+			'Regarde les nombres écrits sous la droite.',
+			'Touche la graduation qui correspond au nombre demandé.',
+			'Le repère se pose dessus.',
+		],
+		alternative: 'Au clavier, les flèches ← et → déplacent le repère, cran par cran.',
+		reparation: 'Tu veux changer ? Touche une autre graduation, le repère se déplace.',
 	},
 };
 

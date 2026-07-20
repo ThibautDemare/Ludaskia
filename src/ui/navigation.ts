@@ -21,6 +21,7 @@ import { runLeconOrdre } from './lecon-ordre';
 import { runLeconTri } from './lecon-tri';
 import { runLeconAppariement } from './lecon-appariement';
 import { runLeconClicMot } from './lecon-clic-mot';
+import { runLeconDroiteGraduee } from './lecon-droite-graduee';
 import { runLeconProbleme } from './lecon-probleme';
 import { runLeconTableau, leconTableauCleanup } from './lecon-tableau';
 import { renderItem, createRenderContext } from '../core/items';
@@ -580,6 +581,12 @@ export function runLecon(id: string) {
 	// cliquables, sélection multiple). Mode unique, hors sprint — comme le problème.
 	if (t === 'clicMot') {
 		runLeconClicMot(id, mode);
+		return;
+	}
+	// « Droite graduée » (#256) : runner d'écran dédié (placer un repère sur une graduation
+	// aimantée). Mode unique, hors sprint — comme « clique sur le mot ».
+	if (t === 'droiteGraduee') {
+		runLeconDroiteGraduee(id, mode);
 		return;
 	}
 	// Un mode produisant un QCM ou des tuiles se joue « une question à la fois »

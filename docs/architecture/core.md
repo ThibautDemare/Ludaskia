@@ -147,6 +147,26 @@ propre doc de conception : `docs/design-orthographe.md`.
     graduée 0→N, statut de nombre). Les deux tracés d'axe (bande CE2 0→1 et
     demi-droite CM1 0→N) partagent désormais un traceur interne unique
     (`dessinerAxeGradue`) ; le rendu CE2 (`unites = 1`) est inchangé.
+  - **`droite.ts`** — **droite graduée générique (#256)** : `renderDroiteGraduee`
+    (figure STATIQUE `role="img"`, repli/révélation/`FigureSpec`) et
+    `renderDroiteGradueeInteractif` (coquille `role="radiogroup"` : une graduation =
+    un `radio`, bandes verticales aimantées) sur une fenêtre `[min, max]` d'un `pas`,
+    avec bornes numérotées et repère(s) corail (état neutre / correct / faux, double
+    codage forme + couleur). Agnostique de la matière (valeurs + libellés fournis par
+    le client) ; helpers PURS `valeursGraduations` / `xDeValeur` / `nbIntervalles` /
+    `indexDepuisX` / `repereMarkup`. Consommé par les leçons « placer un nombre » de
+    numération (entiers, décimaux) via le runner `lecon-droite-graduee.ts`.
+    **Précédent d'architecture** : première figure du moteur `figures/` où le SVG
+    porte lui-même la sémantique ARIA d'un widget interactif (`role="radiogroup"` +
+    `radio`), à distinguer des figures STATIQUES `role="img"` du reste du moteur et
+    du calque SVG `aria-hidden` (décoratif) de `ui/appariement.ts` — motif réutilisable
+    pour une prochaine figure interactive. **Invariant de densité** : `n` (nombre
+    d'intervalles) plafonné à ~11 pour la fenêtre `DG_W = 320`, sous peine de bandes
+    tactiles `.dg-hit` sous le plancher WCAG 2.5.8 (24 px) sur petit écran ; élargir
+    `DG_W` si une leçon a besoin de plus de crans. **Parité a11y des graduations
+    muettes** : leur `aria-label` ne révèle jamais la valeur (ce serait souffler la
+    réponse) — elles s'annoncent par position relative (« N graduations après {borne
+    chiffrée} »), le même comptage de crans que fait l'enfant voyant.
   - **`decimaux.ts`** — **`renderGrilleCentiemes(parts)`** (#247 — grille 10×10 des
     centièmes : `parts` cases coloriées **contiguës, ligne par ligne** depuis le
     haut-gauche (1 ligne pleine = 1 dixième) ; maillage des centièmes, séparateurs de
@@ -213,20 +233,26 @@ propre doc de conception : `docs/design-orthographe.md`.
   corrigé par son runner `lecon-clic-mot.ts` par égalité d'ensembles, `checkAnswer`
   renvoie `false`, runner **agnostique de la notation grammaticale ciblée** — voir 6
   leçons dans [Contenu & leçons](contenu-et-lecons.md))
+  | `droiteGraduee` (droite graduée #256 : `{min, max, pas, graduations[]` — toutes les
+  graduations sélectionnables `{valeur, label}` —, `bornes[]` — sous-ensemble numéroté —,
+  `cible` **stockée** ∈ graduations, `cibleLabel`, `consigne`, `explication`, `parle}` ;
+  corrigé par son runner `lecon-droite-graduee.ts` — placer un repère, `check` renvoie
+  `false` — ; repli LECTURE de `genLessonItem` : lire le nombre repéré)
   | interactions ortho), interface
   **`ExerciseType`** :
   `modes?`
   (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
   l'ordre d'affichage), `generate(opts? : {mode?, level?})` (le `level` #225 calibre
   une leçon multi-niveaux), `check()`, et **`exerciseKind?`** (#348, type
-  `ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme' | 'appariement' | 'clicMot'`)
+  `ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme' | 'appariement' | 'clicMot' | 'droiteGraduee'`)
   — étiquette **déclarative statique** portée par les fabriques à runner dédié ;
   permet aux helpers `isPosedLesson` / `isOrderingLesson` / `isTriLesson` /
-  `isProblemeLesson` / `isPairingLesson` / `isClicMotLesson` de classer une leçon **sans appeler
+  `isProblemeLesson` / `isPairingLesson` / `isClicMotLesson` / `isDroiteGradueeLesson` de classer une leçon **sans appeler
   `generate()`** (supprime tout appel à l'aléatoire global au moment du filtrage).
-  Absent = format standard (texte/QCM) éligible au sprint. L'appariement et le clic-mot sont
-  **corrigés par leur runner** (lien par lien / égalité d'ensembles), pas par `checkAnswer` :
-  comme `posed`/`tuilesOrdre`/`tuilesTri`/`probleme`, leur `check()` renvoie toujours
+  Absent = format standard (texte/QCM) éligible au sprint. L'appariement, le clic-mot et
+  la droite graduée sont **corrigés par leur runner** (lien par lien / égalité
+  d'ensembles / graduation choisie === cible), pas par `checkAnswer` : comme
+  `posed`/`tuilesOrdre`/`tuilesTri`/`probleme`, leur `check()` renvoie toujours
   `false`.
   Helpers **`hasMode`** et **`defaultMode`** (les écrans dérivent leurs choix d'ici,
   **jamais en dur**, #69), et `checkAnswer` (normalisation partagée `normalizeText` ;
@@ -303,8 +329,8 @@ propre doc de conception : `docs/design-orthographe.md`.
   (clic → remplissage, synchro `aria-pressed`) vit dans `ui/pave-signes.ts`.
 - **`aide.ts`** (#272) — **aide contextuelle** des runners à interaction non intuitive,
   module **pur** : porte le **contenu** des aides (`AIDES` : titre + étapes courtes ≤ 3 +
-  voie alternative + filet anti-erreur) pour 8 types (`tuiles`, `ordre`, `tri`, `atelier`,
-  `lettres`, `tableau` #394, `appariement` #392, `clicMot`) et la **mémoire « aide déjà
+  voie alternative + filet anti-erreur) pour 9 types (`tuiles`, `ordre`, `tri`, `atelier`,
+  `lettres`, `tableau` #394, `appariement` #392, `clicMot`, `droiteGraduee` #256) et la **mémoire « aide déjà
   vue »** par profil (`ludaskia_aide_vue`, via `lsGet/lsSet`). Le rendu vit dans
   `ui/aide-exercice.ts`.
 - **`tour.ts`** (#330) — **guide de première visite**, module **pur** (aucun accès DOM) :

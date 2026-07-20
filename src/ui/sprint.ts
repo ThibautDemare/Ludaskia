@@ -22,6 +22,7 @@ import {
 	isProblemeLesson,
 	isPairingLesson,
 	isClicMotLesson,
+	isDroiteGradueeLesson,
 	SUBJECTS,
 	CATEGORIES,
 } from '../core/catalog';
@@ -118,7 +119,8 @@ function lessonsForFilter(f: SprintFilter): LessonDef[] {
 			!isTriLesson(d) &&
 			!isProblemeLesson(d) &&
 			!isPairingLesson(d) &&
-			!isClicMotLesson(d),
+			!isClicMotLesson(d) &&
+			!isDroiteGradueeLesson(d),
 	);
 }
 

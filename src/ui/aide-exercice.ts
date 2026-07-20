@@ -123,6 +123,19 @@ function illustrationHTML(type: TypeAide): string {
 				<span class="an-clicmot-tok an-clicmot-tok--4">hier</span>
 				${FINGER}
 			</div>`;
+		case 'droiteGraduee':
+			// Une mini-droite graduée : le doigt touche une graduation, le repère corail
+			// s'y pose (métaphore du placement aimanté).
+			return `<div class="aide-anim aide-anim--droite is-anim" id="aideAnim">
+				<span class="an-droite-axe"></span>
+				<span class="an-droite-tick an-droite-tick--0"></span>
+				<span class="an-droite-tick an-droite-tick--1"></span>
+				<span class="an-droite-tick an-droite-tick--2"></span>
+				<span class="an-droite-tick an-droite-tick--3"></span>
+				<span class="an-droite-tick an-droite-tick--4"></span>
+				<span class="an-droite-repere"></span>
+				${FINGER}
+			</div>`;
 	}
 }
 

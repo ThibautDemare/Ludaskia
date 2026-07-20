@@ -120,6 +120,11 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'num-decompose-10000',
 			'num-decompose-multiplicative',
 			'num-situer-10000',
+			// Placer un ENTIER sur la droite graduée (#256) : consolide « situer » les grands
+			// nombres (dépend de la valeur de position et de la comparaison, tout juste vues) en
+			// donnant à lire l'ordre de grandeur sur une droite. Clôt le cluster numération des
+			// grands nombres, avant la géométrie.
+			'num-droite-entiers',
 			'geo-cm1-triangles',
 			'geo-cm1-triangles-prop',
 			'geo-cm1-quadrilateres',
@@ -144,6 +149,11 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'num-dec-comparer',
 			'num-dec-encadrer',
 			'num-dec-ranger',
+			// Placer un nombre DÉCIMAL sur la droite graduée (#256) : consolide le statut de
+			// NOMBRE du décimal (dépend de comparer/encadrer, tout juste vus) — zoom sur les
+			// dixièmes puis sur un dixième gradué en centièmes. Placé juste après la découverte
+			// des décimaux (#246), avant les écritures équivalentes (#247).
+			'num-droite-decimaux',
 			// Écritures équivalentes (#247) : APRÈS la découverte des décimaux (#246, la
 			// numération de position décimale et la comparaison sont supposées acquises).
 			// Fraction décimale ↔ écriture à virgule (grille 10×10) → fractions décimales

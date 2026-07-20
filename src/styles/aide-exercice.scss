@@ -892,6 +892,103 @@
 	}
 }
 
+/* ---- droite graduée (placer le repère) : le doigt touche une graduation, le repère
+   corail s'y pose (métaphore du placement aimanté). ---- */
+.aide-anim--droite .an-droite-axe {
+	position: absolute;
+	left: 24px;
+	top: 60px;
+	width: 232px;
+	height: 3px;
+	border-radius: 2px;
+	background: var(--ink);
+}
+.aide-anim--droite .an-droite-tick {
+	position: absolute;
+	top: 47px;
+	width: 2px;
+	height: 15px;
+	border-radius: 1px;
+	background: var(--grey);
+}
+.aide-anim--droite .an-droite-tick--0 {
+	left: 24px;
+}
+.aide-anim--droite .an-droite-tick--1 {
+	left: 82px;
+}
+.aide-anim--droite .an-droite-tick--2 {
+	left: 140px;
+}
+.aide-anim--droite .an-droite-tick--3 {
+	left: 198px;
+	top: 44px;
+	height: 18px;
+	background: var(--ink);
+}
+.aide-anim--droite .an-droite-tick--4 {
+	left: 256px;
+}
+.aide-anim--droite .an-droite-repere {
+	position: absolute;
+	left: 192px;
+	top: 28px;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: var(--clock-min);
+	transform-origin: center bottom;
+}
+.aide-anim--droite .an-droite-repere::before {
+	content: '';
+	position: absolute;
+	left: 6px;
+	top: 12px;
+	width: 3px;
+	height: 22px;
+	border-radius: 2px;
+	background: var(--clock-min);
+}
+.aide-anim--droite .an-finger {
+	left: 196px;
+	top: 66px;
+}
+.aide-anim--droite.is-anim .an-droite-repere {
+	transform: scale(0);
+	animation: an-droite-repere 2.6s ease forwards;
+}
+.aide-anim--droite.is-anim .an-finger {
+	animation: an-droite-finger 2.6s ease forwards;
+}
+/* Au repos (sans .is-anim) : le repère est posé (l'aide garde son état final). */
+.aide-anim--droite:not(.is-anim) .an-droite-repere {
+	transform: scale(1);
+}
+@keyframes an-droite-repere {
+	0%,
+	45% {
+		transform: scale(0);
+	}
+	60%,
+	100% {
+		transform: scale(1);
+	}
+}
+@keyframes an-droite-finger {
+	0% {
+		transform: translate(-40px, 0);
+	}
+	40% {
+		transform: translate(0, 0);
+	}
+	50% {
+		transform: translate(0, -5px) scale(0.85);
+	}
+	100% {
+		transform: translate(0, 0);
+	}
+}
+
 /* ---------- Mouvement réduit : on FIGE sur l'état final, on garde l'info ---------- */
 @media (prefers-reduced-motion: reduce) {
 	.aide-anim.is-anim .an-tile,
@@ -901,10 +998,14 @@
 	.aide-anim.is-anim .an-built,
 	.aide-anim.is-anim .an-edit,
 	.aide-anim.is-anim .an-clicmot-tok,
+	.aide-anim.is-anim .an-droite-repere,
 	.aide-anim.is-anim .an-finger,
 	.aide-anim.is-anim .aide-demo-hl,
 	.aide-anim.is-anim .aide-demo-doigt {
 		animation: none;
+	}
+	.aide-anim--droite .an-droite-repere {
+		transform: scale(1);
 	}
 	.aide-anim--appariement .an-lien {
 		transform: scaleX(1);
@@ -926,10 +1027,14 @@ html.anim-reduced .aide-anim.is-anim .an-lien,
 html.anim-reduced .aide-anim.is-anim .an-built,
 html.anim-reduced .aide-anim.is-anim .an-edit,
 html.anim-reduced .aide-anim.is-anim .an-clicmot-tok,
+html.anim-reduced .aide-anim.is-anim .an-droite-repere,
 html.anim-reduced .aide-anim.is-anim .an-finger,
 html.anim-reduced .aide-anim.is-anim .aide-demo-hl,
 html.anim-reduced .aide-anim.is-anim .aide-demo-doigt {
 	animation: none;
+}
+html.anim-reduced .aide-anim--droite .an-droite-repere {
+	transform: scale(1);
 }
 html.anim-reduced .aide-anim--appariement .an-lien {
 	transform: scaleX(1);

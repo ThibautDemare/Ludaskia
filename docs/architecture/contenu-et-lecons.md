@@ -545,6 +545,31 @@ pour ne pas « avaler » le zéro médian (« 3,04 » → « trois virgule zéro
 les montants en euros (`monnaie.ts`) restent lus nativement, exclus par ce même
 moteur. Branché au catalogue via `DECIMAUX_LESSONS_DEFS` (`core/catalog.ts`).
 
+#### `maths/droite-graduee.ts` (#256, CM1) — placer un nombre sur la droite graduée
+
+2 leçons **CM1 only** sur la **brique interactive** « droite graduée » (renderer
+`core/figures/droite.ts`, runner `ui/lecon-droite-graduee.ts`) : l'enfant PLACE un
+repère sur la graduation correspondant à la valeur demandée (tap aimanté OU flèches
+clavier), puis valide (auto-correction). Toujours une **fenêtre zoomée** d'une dizaine
+d'intervalles entre deux bornes rondes ; **3 graduations numérotées** (les deux bornes
++ le milieu), les autres muettes ; la **cible tombe toujours sur une graduation non
+numérotée** (l'enfant compte des crans depuis un repère chiffré).
+
+- **« Je place un nombre sur la droite graduée »** (`num-droite-entiers`) — grands
+  nombres, ordre de grandeur **varié par item** : fenêtre de 100 en dizaines, de
+  1 000 en centaines, de 10 000 en milliers.
+- **« Je place un nombre décimal sur la droite graduée »** (`num-droite-decimaux`,
+  rubrique « Nombres décimaux ») — soit `[n ; n+1]` gradué en **dixièmes** (cran =
+  0,1), soit un **zoom** sur un dixième `[n,d ; n,d+0,1]` gradué en **centièmes**
+  (cran = 0,01). Valeurs internes en **centièmes entiers** (comme `decimaux.ts`) →
+  positions/libellés exacts, aucune erreur de flottant.
+
+`check` renvoie `false` (le runner corrige) ; **exclues du sprint**
+(`isDroiteGradueeLesson`), **repli LECTURE** en bilan/fiche/révision (droite avec le
+repère à la cible → « Quel nombre est repéré ? », réponse numérique). Branchées au
+catalogue via `DROITE_GRADUEE_LESSONS_DEFS` ; insérées dans `ORDRE_LECONS.math.cm1`
+(entiers après `num-situer-10000`, décimaux après `num-dec-ranger`).
+
 #### `maths/decimaux-ecritures.ts` (#247, CM1) — rubrique « Nombres décimaux »
 
 4 leçons **CM1 only**, dans la **même rubrique** « Nombres décimaux » que #246 (juste

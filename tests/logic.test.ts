@@ -4062,6 +4062,7 @@ describe('exerciseKind — classification déclarative (#348)', () => {
 		'probleme',
 		'appariement',
 		'clicMot',
+		'droiteGraduee',
 	];
 
 	test("l'étiquette déclarée == le type produit par generate() (invariant)", () => {

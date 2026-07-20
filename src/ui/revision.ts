@@ -4,11 +4,14 @@
    inter-matières). Un élément à la fois ; chaque réponse met à jour
    l'état SR (et donne 1 XP si réussie). Pas de chrono, pas de record.
    Rendu selon la nature : maths = saisie, conjugaison = QCM,
-   orthographe = mot caché (on regarde, puis on écrit).
+   orthographe = mot caché (on regarde — avec écoute possible —, puis on écrit ;
+   à l'erreur, on rebascule sur l'atelier du mot, comme à l'entraînement).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
+import { dicter, dicteeDisponible } from './tts';
+import { renderAtelier } from './ortho-atelier';
 import { consigneRenforceeHTML } from './consigne-renforcee';
 import { icon } from './icon';
 import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
@@ -27,7 +30,8 @@ import {
 	TEXT_ANSWER_INPUT_ATTRS,
 } from '../core/items';
 import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
-import type { OrthoState } from '../core/orthographe/types';
+import { diffCorrect } from '../core/orthographe/diff';
+import type { OrthoState, MotOrtho } from '../core/orthographe/types';
 import {
 	loadLessonRevisions,
 	avancerLessonRevision,
@@ -343,27 +347,89 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 	});
 }
 
-/* Orthographe — phase 1 : on regarde le mot. */
+/* Mot d'orthographe (banque du profil) derrière un item de révision « word ». */
+function motDeRevision(it: Extract<RevItem, { kind: 'word' }>): MotOrtho | undefined {
+	return ortho.banque[it.wordId];
+}
+
+/* Bouton « Écouter le mot » d'un afficher/cacher en révision : le mode a besoin
+   qu'on puisse (r)entendre le mot — surtout une fois caché — comme au parcours
+   d'entraînement. Lit le mot, avec son « comme dans » pour lever l'ambiguïté d'un
+   homophone. Rendu seulement si l'appareil a une voix FR (sinon pas de bouton mort).
+   Réutilise le bouton `.rev-btn` (icône haut-parleur), comme les autres boutons. */
+function ecouteMotHTML(m: MotOrtho | undefined): string {
+	if (!m || !dicteeDisponible()) return '';
+	return `<div class="rev-actions"><button type="button" class="rev-btn" id="revEcouter">${icon('speaker')} Écouter le mot</button></div>`;
+}
+function bindEcouteMot(m: MotOrtho | undefined): void {
+	if (!m || !dicteeDisponible()) return;
+	document
+		.getElementById('revEcouter')
+		?.addEventListener('click', () => dicter(m.mot, m.commeDans));
+}
+
+/* Orthographe — phase 1 : on regarde le mot (et on peut l'écouter). */
 function renderWordLook(it: Extract<RevItem, { kind: 'word' }>) {
 	const stage = document.getElementById('revStage')!;
+	const m = motDeRevision(it);
 	stage.innerHTML = `<div class="rev-consigne">Regarde bien ce mot, puis écris-le sans le voir.</div>
     <div class="rev-word">${escapeHTML(it.mot)}</div>
+    ${ecouteMotHTML(m)}
     <div class="rev-actions"><button class="rev-btn" id="revHide">Cacher et écrire</button></div>`;
+	bindEcouteMot(m);
 	document.getElementById('revHide')!.addEventListener('click', () => renderWordWrite(it));
 }
 
-/* Orthographe — phase 2 : on écrit le mot de mémoire. */
+/* Orthographe — phase 2 : on écrit le mot de mémoire (l'écoute reste dispo). */
 function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 	const stage = document.getElementById('revStage')!;
+	const m = motDeRevision(it);
 	stage.innerHTML = `<div class="rev-consigne">Écris le mot.</div>
+    ${ecouteMotHTML(m)}
     <div class="rev-q"><input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}></div>
     <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
+	bindEcouteMot(m);
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;
 		if (inp.value.trim() === '') return inp.focus();
-		grade(checkItemAnswer({ text: '', answer: it.mot, kind: 'text' }, inp.value), it.mot);
+		const saisie = inp.value;
+		if (checkItemAnswer({ text: '', answer: it.mot, kind: 'text' }, saisie)) {
+			grade(true, it.mot);
+		} else {
+			// Erreur : on enregistre l'échec SR, puis on rebascule sur l'atelier du mot
+			// (parité avec le parcours d'entraînement) au lieu d'afficher le mot correct
+			// sans correction interactive.
+			recordGrade(false);
+			renderWordCorrection(it, saisie);
+		}
 	});
 	(document.getElementById('revInput') as HTMLInputElement).focus();
+}
+
+/* Orthographe — correction d'un mot raté : réaffiche l'atelier du mot (le mot en
+   grand, les lettres ratées soulignées via le diff) pour que l'enfant revoie où il
+   s'est trompé et ré-entoure le piège, comme à l'entraînement. « Continuer → »
+   persiste l'entourage et passe à l'item suivant. Repli sûr : sans MotOrtho en
+   banque (cas improbable), on retombe sur le verdict simple. */
+function renderWordCorrection(it: Extract<RevItem, { kind: 'word' }>, saisie: string) {
+	const stage = document.getElementById('revStage')!;
+	const m = motDeRevision(it);
+	if (!m) {
+		stage.innerHTML = verdictHTML(false, it.mot);
+		wireRevNext();
+		return;
+	}
+	renderAtelier(stage, m, {
+		diff: diffCorrect(saisie, m.mot),
+		consigne: "Presque ! Regarde où tu t'es trompé, puis entoure le piège.",
+		ecoute: dicteeDisponible()
+			? { label: 'Écouter le mot', onClick: () => dicter(m.mot, m.commeDans) }
+			: undefined,
+		onDone: () => {
+			saveOrtho(ortho);
+			next();
+		},
+	});
 }
 
 /* ---------- Interactions « tuiles » (#186, mutualisées #345) ----------
@@ -454,6 +520,12 @@ function bindEnter() {
 	const stage = document.getElementById('revStage')!;
 	stage.addEventListener('keydown', (e) => {
 		if (e.key !== 'Enter') return;
+		// Si le focus est déjà sur un bouton (Écouter le mot, Continuer, ceux de l'atelier
+		// de correction, un choix de QCM…), on laisse le navigateur l'activer nativement :
+		// ce raccourci ne sert qu'à valider une SAISIE (#revInput, hors <form>) via Entrée.
+		// Sans cette garde, Entrée sur un bouton injecté dans #revStage serait détournée vers
+		// Valider/Continuer — mauvaise réponse enregistrée, boutons de l'atelier morts au clavier.
+		if ((e.target as HTMLElement).tagName === 'BUTTON') return;
 		e.preventDefault();
 		const btn = document.getElementById('revNext') ?? document.getElementById('revValidate');
 		btn?.dispatchEvent(new Event('click'));

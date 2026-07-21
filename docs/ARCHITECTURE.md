@@ -15,7 +15,9 @@ Mini-application web d'entraînement **multi-matières** (CE2, et **début de CM
 **maths**, le catalogue suit le découpage du manuel CE2 en **Numération** (dont les
 **fractions**), **Calcul** (opérations posées), **Calcul mental** (dont la **division par
 le sens**), **Grandeurs et mesures**, **Géométrie** et **Résolution de problèmes**
-(#92) — toutes peuplées. Côté
+(#92) — toutes peuplées —, complétées par une 7e catégorie **Organisation et gestion de
+données** (#257, lecture de tableaux/diagrammes), **CM1 seule** (« Bientôt disponible »
+sous un profil CE2). Côté
 **français**, le catalogue suit les 4 catégories du manuel CE2 dans l'ordre
 canonique — **grammaire**, **conjugaison**, **orthographe**, **vocabulaire**
 (#107) ; **grammaire** porte le **pronom sujet et l'accord sujet-verbe** (#115)
@@ -49,7 +51,7 @@ de conception initial est `docs/design-multi-subject.md`.
 - [Contenu & leçons (`src/data/`)](architecture/contenu-et-lecons.md) — toutes les
   leçons, par **Matière → Catégorie** (français : grammaire / conjugaison /
   orthographe / vocabulaire ; maths : numération / calcul / calcul mental / grandeurs &
-  mesures / géométrie / problèmes).
+  mesures / géométrie / problèmes / organisation et gestion de données).
 - [Logique pure (`src/core/`)](architecture/core.md) — modules `core/` regroupés par
   thème : fondations (dont **`figures/`**, moteur de figures SVG découpé par
   famille), catalogue, progression, révision, gamification, encadrant.

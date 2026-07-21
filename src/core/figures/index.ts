@@ -54,6 +54,7 @@ export * from './decimaux';
 export * from './symetrie';
 export * from './angles';
 export * from './groupes';
+export * from './graphiques';
 
 import { renderHorloge } from './horloge';
 import {
@@ -90,6 +91,12 @@ import {
 } from './symetrie';
 import { renderAngle, renderAnglePair, renderAngleNomme, type AngleSpec } from './angles';
 import { renderGroupes } from './groupes';
+import {
+	renderDiagrammeBarres,
+	renderTableauDonnees,
+	type BarreDonnee,
+	type LigneTableau,
+} from './graphiques';
 
 /** Description d'une figure par données. Étendre l'union + le switch ci-dessous
     pour chaque nouvelle figure. */
@@ -143,7 +150,22 @@ export type FigureSpec =
 	| { kind: 'symImage'; motif: SymMotif; axis: 'v' | 'h'; t: SymTransform }
 	| { kind: 'angle'; opening: number; bisector: number }
 	| { kind: 'anglePair'; a: AngleSpec; b: AngleSpec; labels?: [string, string] }
-	| { kind: 'angleNomme'; spec: AngleSpec; points: [string, string, string] };
+	| { kind: 'angleNomme'; spec: AngleSpec; points: [string, string, string] }
+	| {
+			kind: 'diagrammeBarres';
+			titre: string;
+			barres: BarreDonnee[];
+			pas: number;
+			max: number;
+			desc?: string;
+	  }
+	| {
+			kind: 'tableauDonnees';
+			caption: string;
+			colonnes: string[];
+			lignes: LigneTableau[];
+			coinLabel?: string;
+	  };
 
 export function renderFigure(spec: FigureSpec): string {
 	switch (spec.kind) {
@@ -202,5 +224,20 @@ export function renderFigure(spec: FigureSpec): string {
 			return renderAnglePair(spec.a, spec.b, spec.labels);
 		case 'angleNomme':
 			return renderAngleNomme(spec.spec, spec.points);
+		case 'diagrammeBarres':
+			return renderDiagrammeBarres({
+				titre: spec.titre,
+				barres: spec.barres,
+				pas: spec.pas,
+				max: spec.max,
+				desc: spec.desc,
+			});
+		case 'tableauDonnees':
+			return renderTableauDonnees({
+				caption: spec.caption,
+				colonnes: spec.colonnes,
+				lignes: spec.lignes,
+				coinLabel: spec.coinLabel,
+			});
 	}
 }

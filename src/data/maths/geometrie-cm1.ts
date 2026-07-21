@@ -37,7 +37,7 @@ import { propQExercise, propQType, type PropQ } from './_shared';
 import { checkNumerique, checkNumeriqueOuTexte } from '../../core/check-helpers';
 import type { PlaneShape, Solid, SolidOrient } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
-import { choice, sample, rnd } from '../../core/utils';
+import { choice, sample, rnd, elisionDe } from '../../core/utils';
 
 /* ---------- Modes communs ---------- */
 
@@ -501,8 +501,7 @@ function comptageType(): ExerciseType {
 			// jamais « sur le dessin » (pas de figure jointe). Élision « de » → « d' »
 			// devant voyelle (« d'arêtes », mais « de faces » / « de sommets »).
 			const mot = CARAC_LABEL[carac];
-			const de = /^[aeiouàâäéèêëïîôöùûüyh]/i.test(mot) ? "d'" : 'de ';
-			const question = `Combien ${de}${mot} a ${e.nom} ?`;
+			const question = `Combien ${elisionDe(mot)} a ${e.nom} ?`;
 			return {
 				type: 'qcm',
 				question,

@@ -111,6 +111,15 @@ export function moveAt(arr: number[], from: number, to: number): number[] {
 
 export const escapeHTML = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
+/* Élision de la préposition « de » devant un mot à initiale vocalique : « d'images »,
+   « d'arêtes », « d'œufs » — sinon « de billes », « de faces ». Classe = voyelles simples,
+   accentuées et ligatures `œ`/`æ` ; PAS `y` (« de yaourts », `y` consonantique) ni `h`
+   (ambigu : « d'homme » vs « de hibou ») — ces cas restent volontairement non élidés. Règle
+   unique partagée par les fabriques de contenu (données, géométrie…) pour éviter les
+   divergences. */
+export const elisionDe = (mot: string) =>
+	/^[aeiouàâäéèêëïîôöùûüœæ]/i.test(mot) ? `d'${mot}` : `de ${mot}`;
+
 /* Normalisation d'une réponse TEXTE pour comparaison (conjugaison, orthographe…) :
    - trim des bords,
    - toute suite d'espaces internes réduite à une seule (une double espace entre

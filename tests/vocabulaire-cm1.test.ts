@@ -163,9 +163,13 @@ describe('Vocabulaire CM1 — banques « familles / affixes » (#244)', () => {
 
 describe('Vocabulaire CM1 — NON-régression CE2 (#244)', () => {
 	it('la leçon fr-vocab-familles garde le pool combiné familles + préfixes + suffixes', () => {
-		expect(ITEMS_FAMILLES_SEULES.length).toBe(FAMILLES.length);
+		// Découplage : le pool QCM combiné est bâti sur les 30 familles d'ORIGINE (pas les 54
+		// de FAMILLES, dont 24 sont réservées à la leçon à relier) → équilibre ~⅓ préservé.
+		const NB_FAMILLES_QCM = 30;
+		expect(ITEMS_FAMILLES_SEULES.length).toBe(NB_FAMILLES_QCM);
+		expect(FAMILLES.length).toBe(54); // banque complète (relier) = 30 d'origine + 24 extra
 		expect(ITEMS_AFFIXES.length).toBe(PREFIXES.length + SUFFIXES.length);
-		expect(ITEMS_FAMILLES.length).toBe(FAMILLES.length + PREFIXES.length + SUFFIXES.length);
+		expect(ITEMS_FAMILLES.length).toBe(NB_FAMILLES_QCM + PREFIXES.length + SUFFIXES.length);
 		// La leçon CE2 utilise bien le pool combiné (et reste taguée CE2).
 		const ce2 = getLessonById('fr-vocab-familles')!;
 		expect(ce2.levels).toEqual(['ce2']);

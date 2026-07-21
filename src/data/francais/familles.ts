@@ -38,7 +38,14 @@ export interface ItemAffixe {
 	explication: string;
 }
 
-export const FAMILLES: ItemFamille[] = [
+/* Découplage des banques (correctif des répétitions de « Familles de mots à relier »).
+   `FAMILLES_QCM` = les 30 familles D'ORIGINE, seules versées au POOL QCM combiné
+   (`ITEMS_FAMILLES`) pour préserver son équilibre ~⅓ familles / ⅓ préfixes / ⅓ suffixes.
+   `FAMILLES_RELIER_EXTRA` = les 24 familles AJOUTÉES pour l'anti-répétition de la leçon
+   à relier : elles enrichissent uniquement `FAMILLES` (54), donc la leçon d'appariement,
+   sans toucher le QCM. Le versement de ces 24 au QCM + l'agrandissement des affixes pour
+   rééquilibrer viendront dans une PR de rééquilibrage dédiée. */
+const FAMILLES_QCM: ItemFamille[] = [
 	{
 		mot: 'dent',
 		famille: 'dentiste',
@@ -280,6 +287,207 @@ export const FAMILLES: ItemFamille[] = [
 			'« ventilateur » vient de « vent ». « vente » lui ressemble mais n’est pas de la même famille.',
 	},
 ];
+
+/* Familles supplémentaires (correctif anti-répétition) : réservées à la leçon à relier
+   via `FAMILLES` (54). NON versées au pool QCM combiné — voir découplage ci-dessus. */
+const FAMILLES_RELIER_EXTRA: ItemFamille[] = [
+	{
+		mot: 'porte',
+		famille: 'portail',
+		fauxAmi: 'portrait',
+		autre: 'valise',
+		explication:
+			'« portail » vient de « porte ». « portrait » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'main',
+		famille: 'manette',
+		fauxAmi: 'mairie',
+		autre: 'guitare',
+		explication:
+			'« manette » vient de « main ». « mairie » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'dos',
+		famille: 'dossier',
+		fauxAmi: 'dose',
+		autre: 'échelle',
+		explication:
+			'« dossier » vient de « dos ». « dose » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'tête',
+		famille: 'têtu',
+		fauxAmi: 'tétine',
+		autre: 'vélo',
+		explication:
+			'« têtu » vient de « tête ». « tétine » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'mur',
+		famille: 'muraille',
+		fauxAmi: 'mûre',
+		autre: 'stylo',
+		explication:
+			'« muraille » vient de « mur ». « mûre » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'toit',
+		famille: 'toiture',
+		fauxAmi: 'toilette',
+		autre: 'ballon',
+		explication:
+			'« toiture » vient de « toit ». « toilette » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'arbre',
+		famille: 'arbuste',
+		fauxAmi: 'arbitre',
+		autre: 'télévision',
+		explication:
+			'« arbuste » vient de « arbre ». « arbitre » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'pluie',
+		famille: 'pluvieux',
+		fauxAmi: 'plume',
+		autre: 'ordinateur',
+		explication:
+			'« pluvieux » vient de « pluie ». « plume » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'roue',
+		famille: 'roulette',
+		fauxAmi: 'route',
+		autre: 'lampe',
+		explication:
+			'« roulette » vient de « roue ». « route » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'jeu',
+		famille: 'jouet',
+		fauxAmi: 'jeune',
+		autre: 'parapluie',
+		explication:
+			'« jouet » vient de « jeu ». « jeune » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'loup',
+		famille: 'louveteau',
+		fauxAmi: 'loupe',
+		autre: 'fusée',
+		explication:
+			'« louveteau » vient de « loup ». « loupe » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'papier',
+		famille: 'papeterie',
+		fauxAmi: 'papillon',
+		autre: 'piano',
+		explication:
+			'« papeterie » vient de « papier ». « papillon » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'cheval',
+		famille: 'chevalier',
+		fauxAmi: 'cheveu',
+		autre: 'robot',
+		explication:
+			'« chevalier » vient de « cheval ». « cheveu » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'poisson',
+		famille: 'poissonnerie',
+		fauxAmi: 'poison',
+		autre: 'journal',
+		explication:
+			'« poissonnerie » vient de « poisson ». « poison » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'gomme',
+		famille: 'gommer',
+		fauxAmi: 'pomme',
+		autre: 'cartable',
+		explication:
+			'« gommer » vient de « gomme ». « pomme » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'chien',
+		famille: 'chiot',
+		fauxAmi: 'chignon',
+		autre: 'trompette',
+		explication:
+			'« chiot » vient de « chien ». « chignon » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'ventre',
+		famille: 'ventru',
+		fauxAmi: 'ventouse',
+		autre: 'perroquet',
+		explication:
+			'« ventru » vient de « ventre ». « ventouse » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'vitre',
+		famille: 'vitrine',
+		fauxAmi: 'vitesse',
+		autre: 'banane',
+		explication:
+			'« vitrine » vient de « vitre ». « vitesse » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'nuage',
+		famille: 'nuageux',
+		fauxAmi: 'nuisible',
+		autre: 'raquette',
+		explication:
+			'« nuageux » vient de « nuage ». « nuisible » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'photo',
+		famille: 'photographe',
+		fauxAmi: 'phoque',
+		autre: 'radio',
+		explication:
+			'« photographe » vient de « photo ». « phoque » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'rue',
+		famille: 'ruelle',
+		fauxAmi: 'ruche',
+		autre: 'réveil',
+		explication:
+			'« ruelle » vient de « rue ». « ruche » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'fromage',
+		famille: 'fromagerie',
+		fauxAmi: 'froid',
+		autre: 'ceinture',
+		explication:
+			'« fromagerie » vient de « fromage ». « froid » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'sable',
+		famille: 'sablier',
+		fauxAmi: 'sabre',
+		autre: 'écharpe',
+		explication:
+			'« sablier » vient de « sable ». « sabre » lui ressemble mais n’est pas de la même famille.',
+	},
+	{
+		mot: 'rose',
+		famille: 'rosier',
+		fauxAmi: 'rosée',
+		autre: 'chapeau',
+		explication:
+			'« rosier » vient de « rose ». « rosée » lui ressemble mais n’est pas de la même famille.',
+	},
+];
+
+/* Banque complète (54) : familles d'origine + extra. Utilisée par la leçon à relier
+   (`appariementType(FAMILLES)`) ; le pool QCM combiné, lui, ne prend que `FAMILLES_QCM`. */
+export const FAMILLES: ItemFamille[] = [...FAMILLES_QCM, ...FAMILLES_RELIER_EXTRA];
 
 export const PREFIXES: ItemAffixe[] = [
 	{
@@ -994,7 +1202,7 @@ export interface ItemVocabQcm {
 	consigne: string; // consigne d'action visible (#265) ; varie selon la tâche (famille vs sens)
 }
 
-const itemsFamille = (arr: ItemFamille[] = FAMILLES): ItemVocabQcm[] =>
+const itemsFamille = (arr: ItemFamille[]): ItemVocabQcm[] =>
 	arr.map((f) => ({
 		type: 'famille' as const,
 		question: `De la même famille que « ${f.mot} » : @`,
@@ -1014,8 +1222,10 @@ const itemsAffixe = (arr: ItemAffixe[], type: 'prefixe' | 'suffixe'): ItemVocabQ
 		consigne: 'Que veut dire ce mot ?',
 	}));
 
-/* Sous-pool : familles CE2 seules (pour une leçon « familles » dédiée). */
-export const ITEMS_FAMILLES_SEULES: ItemVocabQcm[] = itemsFamille();
+/* Sous-pool : familles CE2 seules (pour une leçon « familles » dédiée). Bâti sur les
+   30 familles D'ORIGINE (`FAMILLES_QCM`), PAS la banque complète (54) : le pool QCM
+   combiné reste ainsi à l'équilibre ~⅓ familles (découplage — voir en tête de fichier). */
+export const ITEMS_FAMILLES_SEULES: ItemVocabQcm[] = itemsFamille(FAMILLES_QCM);
 /* Sous-pool : préfixes + suffixes CE2 (pour une leçon « affixes » dédiée). */
 export const ITEMS_AFFIXES: ItemVocabQcm[] = [
 	...itemsAffixe(PREFIXES, 'prefixe'),
@@ -1073,10 +1283,74 @@ const CONSIGNE_APPARIEMENT = 'Relie chaque mot à un mot de sa famille.';
    pas d'écran de choix de mode (#69). */
 const MODE_RELIER: ModeOption[] = [{ id: 'relier', label: 'Relier les mots', recommended: true }];
 
+/* Construit UNE manche d'appariement à partir de familles DÉJÀ retenues (bases et
+   dérivés supposés deux à deux distincts). Ajoute jusqu'à NB_INTRUS faux-amis en
+   décoys, en écartant toute collision d'affichage (le widget indexe par le TEXTE du
+   mot : un doublon fausserait l'appariement). Un faux-ami n'est jamais une famille
+   correcte (par construction de la banque) → jamais une bonne réponse. Pur, sans DOM. */
+function construireMancheAppariement(choisis: ItemFamille[]): Exercise {
+	const affiches = new Set<string>();
+	for (const f of choisis) {
+		affiches.add(f.mot);
+		affiches.add(f.famille);
+	}
+	const paires = choisis.map((f) => ({ gauche: f.mot, droite: f.famille }));
+	const intrus: string[] = [];
+	for (const f of choisis) {
+		if (intrus.length >= NB_INTRUS_APPARIEMENT) break;
+		if (!affiches.has(f.fauxAmi)) {
+			intrus.push(f.fauxAmi);
+			affiches.add(f.fauxAmi);
+		}
+	}
+	return { type: 'appariement', question: CONSIGNE_APPARIEMENT, paires, intrus };
+}
+
+/* Tire une SESSION d'appariement SANS RÉPÉTITION inter-manches (correctif des
+   répétitions de « Familles de mots à relier »). Produit `nbManches` manches, chacune
+   de NB_PAIRES paires (base ↔ dérivé) + NB_INTRUS faux-amis en décoys.
+
+   INVARIANT : tant que `source` contient au moins `nbManches × NB_PAIRES` familles
+   DISTINCTES (par leur base `mot`), aucune base n'apparaît dans plus d'une manche — les
+   familles sont tirées SANS REMISE dans une file mélangée. Banque plus petite (cas
+   générique futur) : la file est rechargée (nouvelle passe mélangée) une fois épuisée,
+   ce qui étale les réapparitions au plus tard (une famille n'est réutilisée qu'après
+   avoir consommé toute la banque) — dégradation propre, jamais de plantage.
+
+   Fonction PURE (tout l'aléa passe par `sample`), testable sans DOM : c'est la surface
+   que le test d'invariant doit appeler directement. */
+export function tirerSessionAppariement(source: ItemFamille[], nbManches: number): Exercise[] {
+	const manches: Exercise[] = [];
+	let file: ItemFamille[] = []; // familles restant à tirer sans remise sur la passe courante
+	for (let m = 0; m < nbManches; m++) {
+		const choisis: ItemFamille[] = [];
+		const affiches = new Set<string>(); // bases + dérivés retenus DANS cette manche
+		// Garde-fou anti-boucle : au pire on réinspecte toute la banque une fois de plus
+		// par paire manquante (si des familles restantes collisionnent dans la manche).
+		let budget = source.length + nbManches * NB_PAIRES_APPARIEMENT;
+		while (choisis.length < NB_PAIRES_APPARIEMENT && budget-- > 0) {
+			if (file.length === 0) file = sample(source, source.length);
+			if (file.length === 0) break; // source vide : rien à tirer
+			const f = file.shift()!;
+			// Écarte toute collision d'affichage INTRA-manche (base = base/dérivé déjà posé,
+			// deux dérivés identiques…) : elle rendrait l'appariement ambigu.
+			if (affiches.has(f.mot) || affiches.has(f.famille)) continue;
+			affiches.add(f.mot);
+			affiches.add(f.famille);
+			choisis.push(f);
+		}
+		if (choisis.length === 0) break; // plus rien à produire
+		manches.push(construireMancheAppariement(choisis));
+	}
+	return manches;
+}
+
 /* Moteur d'appariement (#392). Chaque manche tire NB_PAIRES familles DISTINCTES
    (base ↔ dérivé) + NB_INTRUS faux-amis en décoys. Tous les mots affichés d'une
    même manche (gauche, droite, décoys) sont DISTINCTS (unicité vérifiée) → aucune
-   correspondance ambiguë. `exerciseKind: 'appariement'` classe la leçon comme
+   correspondance ambiguë. `generateSession` tire une session ENTIÈRE sans répétition
+   inter-manches (le runner l'emprunte en priorité) ; `generate` reste le tirage d'UNE
+   manche (repli et révision). `exerciseKind: 'appariement'` classe la leçon comme
    format à runner dédié (hors sprint) ; corrigé lien par lien par le runner
    (ui/lecon-appariement.ts), donc `check` renvoie toujours false ici. */
 export function appariementType(source: ItemFamille[]): ExerciseType {
@@ -1085,34 +1359,14 @@ export function appariementType(source: ItemFamille[]): ExerciseType {
 		consigne: CONSIGNE_APPARIEMENT,
 		exerciseKind: 'appariement',
 		generate(): Exercise {
-			// Tire jusqu'à NB_PAIRES familles dont TOUS les mots (base + dérivé) sont deux à
-			// deux distincts : on parcourt la banque mélangée en écartant toute collision (un
-			// dérivé égal à une autre base, deux dérivés identiques…). Le widget indexant par
-			// le TEXTE du mot, des mots dupliqués dans une manche fausseraient l'appariement —
-			// cette sélection les exclut PAR CONSTRUCTION (plus robuste qu'un retry aléatoire
-			// pour une banque générique). `affiches` = ces mots (gauche + droite).
-			const affiches = new Set<string>();
-			const choisis: ItemFamille[] = [];
-			for (const f of sample(source, source.length)) {
-				if (choisis.length >= NB_PAIRES_APPARIEMENT) break;
-				if (affiches.has(f.mot) || affiches.has(f.famille)) continue;
-				affiches.add(f.mot);
-				affiches.add(f.famille);
-				choisis.push(f);
-			}
-			const paires = choisis.map((f) => ({ gauche: f.mot, droite: f.famille }));
-			// Décoys = faux-amis des familles tirées (dans l'ordre déjà mélangé), sans
-			// collision avec un mot déjà affiché ni entre eux. Un faux-ami n'est jamais
-			// une famille correcte (par construction de la banque) → jamais une bonne réponse.
-			const intrus: string[] = [];
-			for (const f of choisis) {
-				if (intrus.length >= NB_INTRUS_APPARIEMENT) break;
-				if (!affiches.has(f.fauxAmi)) {
-					intrus.push(f.fauxAmi);
-					affiches.add(f.fauxAmi);
-				}
-			}
-			return { type: 'appariement', question: CONSIGNE_APPARIEMENT, paires, intrus };
+			const [manche] = tirerSessionAppariement(source, 1);
+			// Repli défensif si la banque est vide (jamais le cas des banques réelles).
+			return (
+				manche ?? { type: 'appariement', question: CONSIGNE_APPARIEMENT, paires: [], intrus: [] }
+			);
+		},
+		generateSession(count: number): Exercise[] {
+			return tirerSessionAppariement(source, count);
 		},
 		check: () => false,
 	};

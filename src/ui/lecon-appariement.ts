@@ -47,14 +47,26 @@ function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
 }
 
-/* Génère des manches DISTINCTES. La consigne étant constante, on déduplique sur
-   l'ensemble des mots de gauche (les bases) de la manche. */
+/* Génère les manches d'une session. Chemin PRIVILÉGIÉ : `generateSession` tire la
+   session entière SANS RÉPÉTITION inter-manches (garantie portée par la fabrique, qui
+   seule connaît la banque). Repli HISTORIQUE (types sans `generateSession`) : des
+   `generate()` indépendants dédupliqués au mieux sur l'ensemble des bases de la manche. */
 function genManches(l: LessonDef, m: ExerciseMode, n: number): MancheAppariement[] {
+	const opts = { mode: m, level: niveauLecon(l) };
+	const session = l.exerciseType.generateSession?.(n, opts);
+	if (session) {
+		const out: MancheAppariement[] = [];
+		for (const ex of session) {
+			if (ex.type !== 'appariement') continue; // ce runner n'a de sens que pour ce type
+			out.push({ question: ex.question, paires: ex.paires, intrus: ex.intrus ?? [] });
+		}
+		return out;
+	}
 	const out: MancheAppariement[] = [];
 	const seen = new Set<string>();
 	let misses = 0;
 	while (out.length < n && misses < 80) {
-		const ex = l.exerciseType.generate({ mode: m, level: niveauLecon(l) });
+		const ex = l.exerciseType.generate(opts);
 		if (ex.type !== 'appariement') break; // ce runner n'a de sens que pour ce type
 		const key = [...ex.paires.map((p) => p.gauche)].sort((a, b) => a.localeCompare(b)).join('|');
 		if (seen.has(key)) {

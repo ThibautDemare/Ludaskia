@@ -295,6 +295,14 @@ export interface ExerciseType {
 	 *  catalogue au lieu d'appeler `generate()`. Absent pour les formats standard. */
 	exerciseKind?: ExerciseKind;
 	generate(opts?: GenerateOpts): Exercise;
+	/** Tire une SESSION ENTIÈRE d'exercices en un seul appel (correctif des répétitions
+	 *  de « Familles de mots à relier »). Réservé aux formats à runner MULTI-MANCHES qui
+	 *  veulent garantir une propriété GLOBALE de la session — ici : aucune répétition
+	 *  inter-manches. `count` = nombre de manches souhaitées. Optionnel : absent ⇒ le
+	 *  runner retombe sur des `generate()` indépendants (comportement historique). Quand
+	 *  il est présent, la garantie de non-répétition est portée par la fabrique, pas par
+	 *  le runner (qui reste agnostique de la banque). */
+	generateSession?(count: number, opts?: GenerateOpts): Exercise[];
 	check(exercise: Exercise, input: string): boolean;
 }
 

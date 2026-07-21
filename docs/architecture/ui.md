@@ -387,8 +387,12 @@ pure](core.md)) pour les formats composites :
   'tableauConversion'` ; n'a de sens qu'en complément du mode `saisie`
   (`ui/navigation.ts` propose les deux via `ModeOption`), jamais en remplacement.
 - **`lecon-appariement.ts`** (#392) — runner **« appariement »** d'une leçon de
-  vocabulaire, « une manche à la fois » (5 manches, **distinctes** — dédupliquées sur
-  l'ensemble des mots de gauche). Délègue l'interaction au widget mutualisé
+  vocabulaire, « une manche à la fois » (5 manches). `genManches` privilégie
+  **`ExerciseType.generateSession`** quand la fabrique l'implémente (session entière
+  tirée **sans remise**, garantie portée par la fabrique — cf.
+  `data/francais/familles.ts:tirerSessionAppariement`, [Contenu &
+  leçons](contenu-et-lecons.md)) ; repli historique sinon (`generate()` en boucle,
+  dédupliqué au mieux sur l'ensemble des mots de gauche). Délègue l'interaction au widget mutualisé
   `ui/appariement.ts` (tap en deux temps + glisser en appoint). **Feedback différé** :
   le bouton « Vérifier » fige chaque lien (✓/✗) et révèle les bonnes paires en TEXTE
   sous le widget en cas d'erreur ; parité `recordLessonRun`. Structure calquée sur

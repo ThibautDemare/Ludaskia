@@ -359,11 +359,11 @@ anti-/trans-/bi-/tri-/inter-/télé- + suffixes nominaux -age, -eur *qualité*, 
 Banques CM1 **additives** (CE2 gelé) ; aucune réponse/cible CM1 ne duplique exactement un
 item CE2 du même type (vérifié en test).
 
-**Appariement (#392)** — s'ajoute une seconde leçon CE2 sur la **même banque**
-`FAMILLES` (base ↔ dérivé), format d'interaction différent : **« Familles de mots à
-relier »** (`fr-vocab-familles-relier`), placée dans l'ordre pédagogique juste après
-`fr-vocab-familles` (interleaving : varier le format de rappel renforce la
-rétention). Le moteur **`appariementType(source)`** produit un `Exercise`
+**Appariement (#392)** — s'ajoute une seconde leçon CE2 sur une banque **partagée**
+avec la leçon QCM ci-dessus (base ↔ dérivé), format d'interaction différent :
+**« Familles de mots à relier »** (`fr-vocab-familles-relier`), placée dans l'ordre
+pédagogique juste après `fr-vocab-familles` (interleaving : varier le format de rappel
+renforce la rétention). Le moteur **`appariementType(source)`** produit un `Exercise`
 `appariement` {question, paires: {gauche, droite}[], intrus?} : chaque manche tire
 4 paires (mot de base ↔ dérivé) **distinctes** entre elles, plus jusqu'à 2 décoys
 (les **faux-amis** des familles tirées, ex. « dentelle » pour « dent/dentiste ») en
@@ -372,6 +372,25 @@ mots « intrus » côté droite, sans correspondance — neutralise la réussite
 (colonnes mélangées indépendamment, lignes de liaison) ; `exerciseKind: 'appariement'`
 l'exclut du sprint. N'affecte pas `fr-vocab-familles`, qui reste la leçon QCM
 existante.
+
+**Banques découplées (correctif des répétitions)** — `FAMILLES` (exportée, **54**
+entrées) = `[...FAMILLES_QCM (30, privée), ...FAMILLES_RELIER_EXTRA (24, privée)]`. La
+leçon à relier consomme les **54** ; le pool QCM combiné `ITEMS_FAMILLES` (et donc
+`ITEMS_FAMILLES_SEULES`) ne prend que les **30 d'origine** (`FAMILLES_QCM`), pour
+préserver son équilibre ~⅓ familles / ⅓ préfixes / ⅓ suffixes — les 24 familles
+ajoutées n'existent donc que côté appariement. (Un rééquilibrage — verser ces 24 au
+pool QCM après avoir agrandi les banques d'affixes en proportion — est envisagé dans
+une PR ultérieure.)
+
+**Anti-répétition inter-manches** — `appariementType` implémente
+**`generateSession(count, opts)`** (cf. [Logique pure](core.md), `ExerciseType`) via la
+fonction pure **`tirerSessionAppariement(source, nbManches)`** : tirage **sans remise**
+sur la banque, garantissant qu'une même famille n'apparaît dans plusieurs manches de la
+session que si la banque compte moins de `nbManches × 4` familles (dégradation propre :
+la file est rechargée et remélangée une fois épuisée, jamais de plantage). Le runner
+`ui/lecon-appariement.ts` (`genManches`) emprunte `generateSession` en priorité ; le
+repli historique (dédup de `generate()` appelé en boucle) ne joue plus que pour un type
+`appariement` qui n'implémenterait pas `generateSession`.
 
 #### `francais/sens-figure.ts` (#112)
 

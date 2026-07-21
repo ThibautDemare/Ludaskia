@@ -271,7 +271,19 @@ propre doc de conception : `docs/design-orthographe.md`.
   `false`.
   Helpers **`hasMode`** et **`defaultMode`** (les écrans dérivent leurs choix d'ici,
   **jamais en dur**, #69), et `checkAnswer` (normalisation partagée `normalizeText` ;
-  **accents et apostrophes exigés**). Le type `text` porte un champ optionnel **`intervalle`**
+  **accents et apostrophes exigés**).
+  **`generateSession?(count, opts)`** (correctif des répétitions de « Familles de mots
+  à relier ») — méthode **optionnelle** qui tire une **session entière** de `count`
+  manches en un seul appel, au lieu de `count` appels indépendants à `generate()` :
+  réservée aux formats à runner **multi-manches** qui veulent garantir une propriété
+  **globale** de la session (ici, l'appariement — un tirage **sans remise**, aucune
+  répétition inter-manches). Absente ⇒ le runner retombe sur des `generate()`
+  indépendants (comportement historique, dédup au mieux) ; la garantie, quand la
+  méthode est fournie, est portée par la fabrique (seule à connaître sa banque), pas
+  par le runner (`ui/lecon-appariement.ts:genManches` l'emprunte en priorité — voir
+  `data/francais/familles.ts:tirerSessionAppariement` dans [Contenu &
+  leçons](contenu-et-lecons.md)).
+  Le type `text` porte un champ optionnel **`intervalle`**
   (#240, intercalation CM1 « grands nombres ») : quand il est présent, la correction
   accepte **toute valeur strictement comprise** entre les deux bornes (et non plus la
   seule `answer`) ; absent (cas CE2), comportement de réponse unique **inchangé** — la

@@ -193,11 +193,26 @@ propre doc de conception : `docs/design-orthographe.md`.
     sens : `total` jetons en vrac + `paniers` contenants **vides** ; montre la
     SITUATION, jamais le résultat → l'enfant calcule, il ne compte pas une réponse
     déjà posée).
+  - **`graphiques.ts`** — **organisation et gestion de données (#257)** :
+    **`renderDiagrammeBarres(spec)`** (diagramme en barres SVG `role="img"` sur
+    `svgCanvas`, viewBox 320×200 ; **axe vertical gradué** au pas ∈ {1, 2, 5, 10} avec
+    lignes de repère `--line`, sommets de barres **pile sur une graduation** — aucune
+    interpolation —, 4-6 barres `SHAPE_FILL`, étiquettes de catégories SOUS les barres
+    en `--ink` ; la valeur **n'est jamais imprimée** sur/au-dessus des barres, la
+    hauteur reste à lire ; `<desc>` = structure seulement, jamais une valeur ; helpers
+    PURS `graduationsAxe` / `yDeValeur` / `emplacementBarre`) et
+    **`renderTableauDonnees(spec)`** (**tableau à double entrée HTML SÉMANTIQUE** —
+    `<table>` + `<caption>` + `<th scope="col/row">` + `<td>`, PAS de SVG : le lecteur
+    d'écran navigue cellule par cellule ; classe `figure-tableau-donnees`, filets fins
+    `--line`, en-têtes `--accent-soft`/`--ink`). **Précédent** : comme
+    `renderDroiteGradueeInteractif`, ce renderer HTML **ne passe pas** par `svgCanvas`
+    (le slot `figure` accepte un markup arbitraire).
   - **`index.ts`** — point d'entrée : réexporte les primitives publiques et
     toutes les familles, et porte le dispatch par données **`FigureSpec`**
     (union `horloge | polygoneCote | quadrillage | quadrillagePaire | figurePlane |
     sceneFigures | cercle | solide | groupes | fraction* | grilleCentiemes |
-    symJuger | symMiroir | symImage | angle | anglePair | angleNomme` — le variant
+    symJuger | symMiroir | symImage | angle | anglePair | angleNomme |
+    diagrammeBarres | tableauDonnees` — le variant
     `figurePlane` porte le `codage?` ci-dessus, `quadrillage`/`quadrillagePaire`
     portent le `mode?` aire/périmètre — **point d'extension**) /
     **`renderFigure(spec)`**.

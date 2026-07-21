@@ -47,8 +47,10 @@ describe('core/ordre — helpers', () => {
 		// décimaux, 1 + #247, 4 → 10) + conversions de mesures (#248, 4 + #253 : aire & périmètre,
 		// 1 + #252 : durée écoulée, 1 → 6) + fractions ouvertes au CM1 & fractions comme nombres
 		// (#249, 6 + 3 → 9) + micro-problèmes décimaux #255 : 4 (composition, transformation,
-		// comparaison, multiplication rouvertes au CM1) : 7 + 5 + 8 + 10 + 6 + 9 + 4 = 49 leçons.
-		expect(ordreLecons('math', 'cm1')).toHaveLength(49);
+		// comparaison, multiplication rouvertes au CM1) + organisation & gestion de données #257 :
+		// 2 (lire un diagramme en barres, lire un tableau à double entrée) :
+		// 7 + 5 + 8 + 10 + 6 + 9 + 4 + 2 = 51 leçons.
+		expect(ordreLecons('math', 'cm1')).toHaveLength(51);
 		expect(ordreLecons('math', 'cm1')[0]).toBe('num-comparer');
 		// Français CM1 : 52 leçons verbe×temps + 3 QCM méta (#239) + 3 leçons de grammaire
 		// « Les phrases » (#245 : type, forme, transfo négative) + 2 leçons d'accords CM1

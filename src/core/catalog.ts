@@ -38,6 +38,7 @@ export { answerEstNumerique };
 import { POSITION_LESSONS } from '../data/maths/position';
 import { DECIMAUX_LESSONS } from '../data/maths/decimaux';
 import { DROITE_GRADUEE_LESSONS } from '../data/maths/droite-graduee';
+import { DONNEES_LESSONS } from '../data/maths/donnees';
 import { renderFigure } from './figures';
 import { DECIMAUX_ECRITURES_LESSONS } from '../data/maths/decimaux-ecritures';
 import { FRACTIONS_LESSONS } from '../data/maths/fractions';
@@ -237,6 +238,16 @@ export const CATEGORIES: Category[] = [
 	{ id: 'math-grandeurs-mesures', label: 'Grandeurs et mesures', subject: 'math', icon: 'ruler' },
 	{ id: 'math-geometrie', label: 'Géométrie', subject: 'math', icon: 'shapes' },
 	{ id: 'math-problemes', label: 'Résolution de problèmes', subject: 'math', icon: 'lightbulb' },
+	// Organisation et gestion de données (#257) : lecture de tableaux / diagrammes en
+	// barres. N'a de leçons qu'en CM1 → affiche « Bientôt disponible » sous un profil CE2
+	// (automatique, catalogue vide). Icône `table` (pas de picto « graphique » dans la
+	// famille Phosphor actuelle ; `table` évoque au plus près l'organisation de données).
+	{
+		id: 'math-donnees',
+		label: 'Organisation et gestion de données',
+		subject: 'math',
+		icon: 'table',
+	},
 	// Français — 4 catégories du manuel CE2, dans l'ordre canonique. Grammaire et
 	// Vocabulaire (FR-A, #107) sont le prérequis structurel des futures leçons de
 	// contenu : elles arrivent VIDES (la navigation affiche « Bientôt disponible »,
@@ -483,6 +494,20 @@ const DROITE_GRADUEE_LESSONS_DEFS: LessonDef[] = toLessonDefs(DROITE_GRADUEE_LES
 	category: 'math-numeration',
 	levels: ['cm1'],
 	rubrique: (d) => d.rubrique,
+});
+
+/* ---------- Organisation et gestion de données (#257, CM1) ----------
+   Deux leçons CM1-only de LECTURE de données, en saisie chiffrée : lire une barre sur un axe
+   gradué, lire une cellule d'un tableau à double entrée. Ce sont de simples exercices `text`
+   portant une `figure` (diagramme SVG / tableau HTML), corrigés par le chemin de saisie
+   générique (pas de runner ni d'exerciseKind dédiés). EXCLUES du sprint (`excludeFromSprint`,
+   comme aire-perimetre / divisibilité) : lecture d'une figure + d'un énoncé, incompatible avec
+   la pression du chrono « une réponse à la fois ». */
+const DONNEES_LESSONS_DEFS: LessonDef[] = toLessonDefs(DONNEES_LESSONS, {
+	subject: 'math',
+	category: 'math-donnees',
+	levels: ['cm1'],
+	excludeFromSprint: true,
 });
 
 /* ---------- Catalogue des leçons « Numération » — Fractions (#200, CM1 #249) ----------
@@ -824,6 +849,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...DECIMAUX_LESSONS_DEFS,
 	...DECIMAUX_ECRITURES_LESSONS_DEFS,
 	...DROITE_GRADUEE_LESSONS_DEFS,
+	...DONNEES_LESSONS_DEFS,
 	...FRACTIONS_LESSONS_DEFS,
 	...CALCUL_LESSONS_DEFS,
 	...GRANDEURS_LESSONS,

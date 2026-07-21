@@ -185,6 +185,58 @@
 	fill: var(--accent-soft);
 }
 
+/* ---------- Organisation et gestion de données (#257) ---------- */
+/* Diagramme en barres : lecture HORIZONTALE (comme la droite graduée) → un peu plus large
+   que les figures carrées. */
+.figure-graphique-barres {
+	max-width: 320px;
+}
+@media (min-width: 600px) {
+	.figure-graphique-barres {
+		max-width: 360px;
+	}
+}
+
+/* Tableau à double entrée (vrai `<table>` HTML sémantique, PAS un SVG) : filets fins
+   `--line` (jamais de bordures noires dures « tableur »), coins extérieurs arrondis, en-têtes
+   sur fond `--accent-soft` en `--ink` gras, cellules sur fond papier. Aucun token `--admin-*`
+   (réservé zone adulte). Cellules assez grandes pour la lisibilité (pas de cible tactile :
+   l'enfant tape la réponse au clavier). */
+.figure-tableau-donnees {
+	border-collapse: collapse;
+	border-radius: 8px;
+	overflow: hidden; /* clippe les coins extérieurs des cellules → coins arrondis */
+	font-family: var(--ui);
+	color: var(--ink);
+	background: var(--paper);
+}
+.figure-tableau-donnees caption {
+	caption-side: top;
+	margin-bottom: 0.4rem;
+	font-weight: 700;
+	font-size: 1rem;
+	color: var(--ink);
+}
+.figure-tableau-donnees th,
+.figure-tableau-donnees td {
+	min-width: 56px;
+	height: 36px;
+	padding: 6px 10px;
+	border: 1px solid var(--line);
+	text-align: center;
+	font-size: 1rem;
+}
+.figure-tableau-donnees th,
+.figure-tableau-donnees .tableau-donnees-coin {
+	background: var(--accent-soft);
+	color: var(--ink);
+	font-weight: 700;
+}
+.figure-tableau-donnees td {
+	background: var(--paper);
+	color: var(--ink);
+}
+
 /* ---------- Saisie de l'heure en 2 champs « [h] h [min] » (#88) ---------- */
 .heure-input {
 	display: inline-flex;

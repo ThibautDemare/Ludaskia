@@ -1080,3 +1080,25 @@ en **écriture à virgule française**.
 
 > Recalibrage par **branchement manuel** sur `opts.level`, pas par le combinateur
 > `calibrated` — voir [Niveaux scolaires](niveaux-scolaires.md#modules).
+
+### Organisation et gestion de données
+
+Catégorie `math-donnees` (icône `table`), **2 leçons CM1-only** (`maths/donnees.ts`,
+programme 2025 §4.1 « lire et interpréter les données ») de **LECTURE de données en
+saisie chiffrée** : **« Je lis un diagramme en barres »** (`donnees-barres-lire`) et
+**« Je lis un tableau à double entrée »** (`donnees-tableau-lire`). Ce sont de **simples
+exercices `text` portant une `figure`** (variants `FigureSpec` `diagrammeBarres` /
+`tableauDonnees`, moteur `figures/graphiques.ts`) : **aucun runner ni `exerciseKind`
+dédié**, ils routent vers le chemin de saisie générique du catalogue et sont **corrigés
+par `checkNumerique`** (réponse = valeur d'une barre lue sur l'axe / d'une cellule au
+croisement ligne × colonne). Mono-mode (pas d'écran de choix de mode) avec une
+`ExerciseType.consigne` propre (« Lis le diagramme en barres… » / « Lis le tableau… »,
+en-tête de fiche + « Écouter »), **exclues du sprint** (`excludeFromSprint`, comme
+aire-perimetre : lecture de figure + énoncé, incompatible avec le chrono). Générateurs
+déterministes (petites valeurs ≤ 50, pas d'axe ∈ {1, 2, 5, 10} pour que les sommets
+tombent pile sur une graduation avec 4-6 graduations, 4-6 barres, 3-4 colonnes ×
+3-4 lignes ; banque de prénoms/objets pour varier, élision « de » → « d' »). La catégorie n'ayant
+de leçons qu'en CM1, elle affiche **« Bientôt disponible »** sous un profil CE2
+(automatique). Les 2 ids sont insérés dans `ORDRE_LECONS.math.cm1` juste après la
+droite graduée entiers (la lecture d'une hauteur sur un axe gradué prolonge « lire une
+valeur sur une graduation »).

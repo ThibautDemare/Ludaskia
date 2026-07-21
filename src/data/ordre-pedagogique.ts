@@ -125,6 +125,14 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			// donnant à lire l'ordre de grandeur sur une droite. Clôt le cluster numération des
 			// grands nombres, avant la géométrie.
 			'num-droite-entiers',
+			// Organisation et gestion de données (#257) : LIRE un diagramme en barres puis un
+			// tableau à double entrée. La lecture d'une hauteur de barre sur un axe gradué
+			// enchaîne directement la compétence « lire une valeur sur une graduation » tout juste
+			// travaillée sur la droite graduée (num-droite-entiers) ; le tableau à double entrée
+			// (croisement ligne × colonne) suit. Petites valeurs, pas de dépendance aux décimaux/
+			// fractions → placées ici, en clôture du bloc numération / lecture de données.
+			'donnees-barres-lire',
+			'donnees-tableau-lire',
 			'geo-cm1-triangles',
 			'geo-cm1-triangles-prop',
 			'geo-cm1-quadrilateres',

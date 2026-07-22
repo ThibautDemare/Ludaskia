@@ -63,7 +63,12 @@ jobs:
         # `=all` : régénère explicitement (surcharge `updateSnapshots: 'none'` de la
         # config). Un rendu inchangé réencode des PNG identiques → git ne voit rien →
         # pas de commit inutile (cf. étape suivante).
-        run: npx playwright test galerie --update-snapshots=all
+        # `--timeout=300000` : l'unique test « rendu par catégorie » boucle sur TOUTES
+        # les catégories ; en mode régénération, chaque section est RÉÉCRITE (encodage
+        # PNG, plus lent que la comparaison), si bien que le total dépasse le timeout
+        # par test de 30 s de la config dès que le catalogue grossit. La comparaison
+        # gatante de ci.yml garde, elle, ses 30 s (lecture rapide). Marge large.
+        run: npx playwright test galerie --update-snapshots=all --timeout=300000
 
       - name: Committer les baselines mises à jour
         run: |

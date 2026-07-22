@@ -240,7 +240,7 @@ export function renderGalerie(container: HTMLElement): void {
 			const fiches = catLessons
 				.map((l) => {
 					const fiche = buildLessonFiche(l.id, l.levels[0], ctx);
-					return `<article class="gal-lesson">
+					return `<article class="gal-lesson" data-gallery-lesson="${escapeHTML(l.id)}">
     <p class="gal-lesson-meta"><code>${escapeHTML(l.id)}</code> · ${escapeHTML(l.levels.join('/'))}</p>
     <div class="page">${fiche}</div>
   </article>`;

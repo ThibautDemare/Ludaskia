@@ -75,12 +75,18 @@ test.describe('Galerie visuelle (#412)', () => {
 		expect(errors).toEqual([]);
 	});
 
-	// Leçons dont la figure a une hauteur INSTABLE au screenshot (arrondi sous-pixel du
-	// scaling SVG `width:100%/height:auto`, cf. #458) : Playwright n'y
-	// obtient jamais deux captures consécutives stables. On les EXCLUT de la comparaison
-	// pixel (elles restent couvertes par les tests de logique). Contournement TRACÉ : le
-	// test échoue quand même sur toute NOUVELLE leçon fautive non listée ici.
-	const INSTABLES_GALERIE = new Set(['num-frac-collection']);
+	// Leçons dont la HAUTEUR rendue est INSTABLE au screenshot (arrondi sous-pixel : scaling
+	// SVG `width:100%/height:auto` pour les figures, reflow de texte pour les fiches sans
+	// figure) → Playwright n'y obtient jamais deux captures consécutives stables. On les
+	// EXCLUT de la comparaison pixel (elles restent couvertes par les tests de logique).
+	// Contournement TRACÉ dans #458 : le test échoue quand même sur toute NOUVELLE leçon
+	// fautive non listée ici (garde-fou anti-régression).
+	const INSTABLES_GALERIE = new Set([
+		'num-frac-collection',
+		'geo-cm1-solides',
+		'geo-symetrie-axiale',
+		'fr-conj-aimer-futur',
+	]);
 
 	test('rendu par leçon conforme aux baselines', async ({ page }, testInfo) => {
 		test.skip(

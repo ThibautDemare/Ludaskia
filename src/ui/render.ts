@@ -37,6 +37,7 @@ import { renderFavoris } from './bilan';
 import { renderReprises } from './resume';
 import { renderLeconDuJour } from './lecon-du-jour';
 import { renderARevoir } from './a-revoir-card';
+import { renderProgrammeCard } from './seance';
 import { renderRewardNav, mascotteBulleHTML } from './unlocks-view';
 import { onHomeShown } from './eggs';
 import { icon, type IconName } from './icon';
@@ -281,6 +282,7 @@ export function boardHTML(mode: string, label: string) {
 export function renderHomeStats() {
 	// Le badge XP vit dans la barre d'outils ; la carte progression sur l'accueil.
 	renderProgression();
+	renderProgrammeCard(document.getElementById('cardProgramme')); // carte « programme du jour » (#440)
 	renderARevoir(document.getElementById('aRevoir')); // carte « à revoir » épinglée par l'encadrant (#234)
 	renderLeconDuJour(document.getElementById('leconDuJour')); // « leçon du jour » (#208)
 	renderReprises(document.getElementById('reprises')); // « À continuer » (#63)

@@ -121,6 +121,11 @@
 				<!-- Colonne droite : accès aux modes + favoris -->
 				<div class="home-col home-col-right">
 					<div class="cards">
+						<!-- Programme du jour (#440) : carte d'entrée vers l'écran #seance, affichée
+						     seulement quand l'encadrant a programmé une séance applicable aujourd'hui
+						     (rendue par renderProgrammeCard, masquée sinon). En tête : c'est le
+						     parcours guidé du jour. -->
+						<div class="card" id="cardProgramme" style="display: none"></div>
 						<!-- À revoir (#234) : carte SUPPLÉMENTAIRE, affichée seulement quand
 						     l'encadrant a épinglé des leçons à revoir (rendue par renderARevoir,
 						     masquée sinon). Placée en tête : c'est une suggestion ciblée. -->
@@ -175,6 +180,14 @@
 			</div>
 			<!-- Bande décorative « forêt » (SVG pré-généré, inséré au chargement) — accueil seulement. -->
 			<div class="home-foret" id="homeForet" aria-hidden="true"></div>
+		</div>
+
+		<!-- Écran « Programme du jour » (#440) : parcours composé par l'encadrant, suivi
+		     par l'enfant dans l'ordre qu'il veut (tuiles des étapes restantes, pastilles
+		     de progression, « Choisis pour moi », état terminé). Contenu rendu par
+		     ui/seance.ts. Redirige vers l'accueil s'il n'y a pas de programme aujourd'hui. -->
+		<div class="home screen-only" id="seance" style="display: none">
+			<div id="seanceContent"></div>
 		</div>
 
 		<!-- Écran de sélection d'une leçon -->

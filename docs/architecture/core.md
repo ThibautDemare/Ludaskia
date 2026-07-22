@@ -619,3 +619,22 @@ propre doc de conception : `docs/design-orthographe.md`.
   (SHA-256 `crypto.subtle`) + récupération par secret (GUID) ; clé GLOBALE
   `ludaskia_encadrant_lock` (`pinActif`/`definirPin`/`verifierPin`/`reinitViaRecuperation`/
   `desactiverPin`).
+- **`seance.ts`** (#440, pur) — **programme du jour** composé par l'encadrant : modèle
+  (`SeanceDef`/`SeanceEtape`/`SeanceRecurrence`, cf. [Modes &
+  navigation](modes-et-navigation.md)), stockage **par profil actif** côté enfant
+  (`chargerSeances`) et **par UUID sans bascule** côté encadrant
+  (`chargerSeancesFor`/`enregistrerSeancesFor`, qui bumpe `updatedAt` via
+  `profiles.ts:touchProfile` puisqu'il contourne le hook `onDataWrite`),
+  **résolution de la définition applicable** aujourd'hui (`defApplicable`, une date
+  ponctuelle l'emporte sur l'hebdo) et **reset paresseux** de l'état du jour à minuit
+  (`etatSeanceJour`, calculé à la lecture, comme le défi du jour) — un état périmé est
+  **archivé** avant d'être remis à zéro (`chargerJournalSeances`/
+  `ludaskia_seanceJournal`, y compris une réalisation **partielle**). **Attribution
+  sans toucher aux runners** : `marquerEtapeLancee` pose un marqueur au lancement
+  d'une étape depuis le programme, `resoudrePending` le consomme au retour en
+  cherchant dans le **journal d'activité existant** (`loadActivity`, #319) une
+  complétion du bon type postérieure au lancement ; sans complétion trouvée,
+  l'étape n'est pas créditée (abandon silencieux). `seancesCompletees` (compteur
+  cumulé) alimente le trophée dédié (cf. [Gamification](gamification.md)). Consommé
+  côté enfant par `ui/seance.ts` et côté encadrant par `ui/encadrant-seance.ts` (cf.
+  [`ui/`](ui.md)).

@@ -13,6 +13,8 @@
      - `encadrant-commun`    : état de vue partagé + plomberie de rendu ;
      - `encadrant-pin`       : porte PIN, pavé, récupération, verrou ;
      - `encadrant-progression` : récap, graphe, maîtrise, à revoir ;
+     - `encadrant-revision` : récap de la révision espacée (#423) ;
+     - `encadrant-seance`   : composition du « programme du jour » (#440) ;
      - `encadrant-reglages`  : classe + aménagements ;
      - `encadrant-profils`   : liste, gestion, sauvegarde.
    La logique de données vit dans core/ (encadrant-stats.ts, encadrant-lock.ts).
@@ -33,6 +35,7 @@ import {
 } from './encadrant-pin';
 import { recapHTML, progressionClick } from './encadrant-progression';
 import { revisionHTML, revisionClick } from './encadrant-revision';
+import { seanceHTML, seanceClick, seanceChange } from './encadrant-seance';
 import { reglagesHTML, reglagesChange } from './encadrant-reglages';
 import { profilsHTML, sauvegardeHTML, profilsClick } from './encadrant-profils';
 
@@ -83,6 +86,7 @@ function renderEspace(): void {
     ${profilsHTML(profiles, consulte, actif)}
     ${recapHTML(recap, consulte)}
     ${revisionHTML(consulte, Date.now())}
+    ${seanceHTML(consulte)}
     ${reglagesHTML(consulte, pinPanelHTML())}
     ${sauvegardeHTML()}`;
 }
@@ -99,6 +103,7 @@ function onClick(e: Event): void {
 	if (pinClick(act, el)) return;
 	if (profilsClick(act, el)) return;
 	if (revisionClick(act, el)) return;
+	if (seanceClick(act, el)) return;
 	progressionClick(act, el);
 }
 
@@ -106,6 +111,7 @@ function onChange(e: Event): void {
 	const t = e.target as HTMLInputElement | HTMLSelectElement;
 	const act = (t as HTMLElement).dataset.act ?? '';
 	if (reglagesChange(act, t)) return;
+	if (seanceChange(act, t)) return;
 	pinChange(act, t);
 }
 

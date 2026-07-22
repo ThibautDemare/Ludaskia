@@ -218,6 +218,30 @@ Deux visualisations, bascule au même patron que le graphe d'activité (module
 (`ludaskia_revoir`) reste un mécanisme **manuel**, épinglé par l'encadrant. Les deux
 coexistent sans se recouvrir.
 
+## Composition du « programme du jour » (#440)
+
+Bloc de composition (`ui/encadrant-seance.ts` — `seanceHTML`/`seanceClick`/
+`seanceChange`, inséré juste après la révision) permettant à l'encadrant de préparer,
+pour le profil **consulté** (par UUID, sans bascule), un ou plusieurs programmes :
+une liste d'**étapes** (Sprint, Révision, Leçon du jour, une leçon précise ou une
+dictée précise — cible filtrée au **niveau du profil**, comme ce que l'enfant voit)
+répétées `count` fois (paliers fixes 1 à 5, pas de saisie libre), et une
+**récurrence** (une **date** ponctuelle ou des **jours de semaine**). Garde-fou
+« un seul programme par jour » : `recurrencesEnConflit` (`core/seance.ts`) refuse une
+récurrence qui chevaucherait celle d'un autre programme du même profil (message
+d'erreur affiché dans la carte, jamais de blocage dur du **volume** d'étapes/programmes).
+`estimationDureeMin` affiche une durée indicative, avec un repère « 2 à 3 activités,
+10 à 15 min » (non contraignant). Persistance **immédiate** à chaque action
+(`enregistrerSeancesFor`, cf. [Données & profils](donnees-et-profils.md)). Un bloc
+« Copier ces programmes » duplique les programmes d'un profil vers un autre
+(`copierSeances`, écrase la cible).
+
+**Métriques de temps (#440)** : chaque étape réalisée est horodatée avec sa durée et
+archivée — y compris une réalisation **partielle** — dans un journal borné
+(`ludaskia_seanceJournal`, cf. [Données & profils](donnees-et-profils.md)) au passage
+de minuit ; base d'un futur récap encadrant « durée des séances ». **Visuel différé** :
+rien n'affiche encore ces métriques côté espace encadrant.
+
 ## Réglages déplacés hors de portée de l'enfant
 
 **Réglages déplacés hors de portée de l'enfant** (par UUID consulté) : la **« Classe

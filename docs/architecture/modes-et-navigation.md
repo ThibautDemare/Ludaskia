@@ -10,7 +10,8 @@ fallback SPA) : `#accueil` · `#matieres` · `#matiere-<id>` · `#categorie-<id>
 `#lecon-<id>` · `#mode-<id>` (choix de mode d'une leçon, #69) · `#sprint-config` ·
 `#sprint` · `#bilan-custom` · `#bilan-cat-<id>` · `#ortho-mode-<id>` (choix de mode
 d'une liste d'ortho) · `#ortho-new` · `#ortho-edit-<id>` · `#ortho-revoir-<id>`
-(création / édition / relecture des listes d'ortho) · `#revision-espacee` · `#profils` ·
+(création / édition / relecture des listes d'ortho) · `#revision-espacee` ·
+`#seance` (programme du jour composé par l'encadrant, #440) · `#profils` ·
 `#encadrant` (espace encadrant, #234) · `#revision`
 (`#lecons`, ancien sélecteur plat, reste
 routable mais n'est plus lié). Les identifiants de leçon sont des **chaînes**
@@ -45,6 +46,42 @@ express/complet : on y accède par Matière → Catégorie. Le **mode Révision*
 (accueil, `#revision-espacee`) rejoue les éléments **dus** par répétition espacée
 — mots d'orthographe **et** leçons maths/conjugaison — **regroupés par catégorie**,
 un élément à la fois, sans chrono ni record.
+
+## Programme du jour composé par l'encadrant (#440)
+
+Le **programme du jour** (`#seance`, `startSeance`/`showSeanceView` dans
+`navigation.ts`, rendu par `ui/seance.ts`, logique par `core/seance.ts`) est une
+**séance** (nom interne des types) : une liste d'**étapes**, chacune un mode
+existant (Sprint, Révision espacée, Leçon du jour, une leçon précise, une dictée
+précise) demandé un certain nombre de fois (`count`), composée à l'avance par
+l'encadrant pour un profil (cf. [Espace encadrant](espace-encadrant.md)). **Distinct
+de la « leçon du jour »** (#208, `core/lecon-du-jour.ts`) : celle-ci propose *une*
+leçon au fil de la maîtrise, sans intervention adulte, alors que le programme est
+une **liste composée à l'avance**, potentiellement multi-modes, que l'enfant
+réalise **dans l'ordre qu'il veut** (une étape épuisée sort des propositions ;
+« compléter » = tout faire). Au plus un programme s'applique par jour
+(récurrence par **date** ponctuelle ou **jours de semaine**, garde-fou de conflit
+côté composition). **Reset paresseux** à minuit (calculé à la lecture, comme le
+défi du jour) : aucun timer, aucun affichage punitif si le programme n'est pas fini
+à temps.
+
+**Attribution sans toucher aux runners** : au lancement d'une étape depuis le
+programme, `marquerEtapeLancee` pose un marqueur « étape en cours » ; au retour
+(carte d'accueil ou écran `#seance`), `rafraichirProgramme` (appelée par
+`showHomeView`/`showSeanceView`) consomme ce marqueur via `resoudrePending`, qui
+cherche dans le **journal d'activité existant** (`loadActivity`, #319) une
+complétion du bon type postérieure au lancement — aucun mode/runner n'est modifié.
+Sans complétion trouvée au retour (abandon en cours d'étape), rien n'est crédité ni
+faussé. La complétion de **tout** le programme déclenche modale + confettis
+(`showCelebration`) et le trophée dédié (cf. [Gamification](gamification.md)),
+**sans XP** (chaque mode a déjà donné le sien).
+
+**Deux surfaces enfant** : la carte d'accueil `#cardProgramme` (`renderProgrammeCard`,
+masquée hors programme applicable ce jour) et l'écran dédié `#seance` (`renderSeance`)
+— tuiles des étapes restantes en ordre libre, jauge de pastilles, bouton « Choisis
+pour moi ». Vocabulaire à l'écran, des **deux côtés** (enfant et encadrant) :
+toujours « programme » / « programme du jour » ; « séance » ne subsiste que dans les
+noms internes du code (`SeanceDef`, `core/seance.ts`…).
 
 ## Choix du sous-exercice / mode depuis une leçon (#69)
 

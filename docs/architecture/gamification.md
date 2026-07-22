@@ -52,6 +52,17 @@ et **par catégorie** (`subjectCorrect/Stars`, `categoryCorrect/Stars`) ; des
 groupes de trophées par matière/catégorie sont **générés depuis le catalogue**
 (ils s'étendent automatiquement avec les nouvelles matières).
 
+## Trophée « programme du jour » (#440)
+
+Le **programme du jour** composé par l'encadrant (cf. [Modes &
+navigation](modes-et-navigation.md) et [Espace encadrant](espace-encadrant.md)) donne
+lieu à un trophée à paliers dédié (`tiers('seance', …)`, métrique
+`seancesCompletees` — compteur **cumulé, jamais remis à zéro**, à la différence de
+l'état du jour) : 1 / 7 / 30 programmes menés **en entier**. **Forfaitaire** (un
+programme court et un long comptent 1 pareil) et **sans XP** : la complétion
+déclenche la modale + confettis habituelle, mais aucun bonus d'XP — chaque mode
+composant le programme a déjà donné le sien.
+
 ## XP & niveaux
 
 **XP & niveaux** : 1 point d'XP par bonne réponse, tous modes confondus

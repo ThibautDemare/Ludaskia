@@ -1,0 +1,182 @@
+/* ============================================================
+   Espace encadrant (#440) — compositeur du « programme du jour ».
+   Registre visuel ADULTE neutre : réutilise les tokens --admin-* et les briques
+   .enc-* de encadrant.scss (blocs, boutons, sélecteurs, cases). Ci-dessous, seules
+   les particularités de composition (carte de programme, jours de semaine, ligne
+   d'activité). Tout en tokens → survit au thème Nuit.
+   ============================================================ */
+
+/* Intro du bloc (classe dédiée, comme .enc-rev-frame). */
+.enc-seance-frame {
+	font-size: 0.9rem;
+	color: var(--grey);
+	margin: 0 0 0.8rem;
+}
+
+/* ---------- Carte d'un programme ---------- */
+.enc-seance-def-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem 0.6rem;
+	margin-bottom: 0.4rem;
+}
+.enc-seance-def-nom {
+	font-weight: 800;
+	font-size: 0.95rem;
+	color: var(--ink);
+	flex: 1;
+	min-width: 120px;
+}
+.enc-seance-duree {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	font-size: 0.8rem;
+	font-weight: 700;
+	color: var(--grey);
+	white-space: nowrap;
+}
+.enc-seance-duree svg {
+	width: 1em;
+	height: 1em;
+}
+
+/* ---------- Récurrence ---------- */
+.enc-seance-rec {
+	margin: 0.2rem 0 0.6rem;
+}
+.enc-seance-date-row {
+	margin-top: 0.4rem;
+}
+.enc-seance-date {
+	min-height: 44px;
+	padding: 0.3rem 0.5rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--paper);
+	color: var(--ink);
+	font: inherit;
+}
+.enc-seance-date:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 1px;
+}
+
+/* Jours de la semaine : cases à cocher compactes en bandeau (cible tactile 44px). */
+.enc-seance-jours {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+	border: none;
+	margin: 0.4rem 0 0;
+	padding: 0;
+}
+.enc-seance-jour {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	min-height: 44px;
+	padding: 0.2rem 0.6rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--paper);
+	font-size: 0.85rem;
+	cursor: pointer;
+}
+.enc-seance-jour.on {
+	border-color: var(--admin-accent);
+	color: var(--admin-accent);
+	font-weight: 800;
+}
+.enc-seance-jour input {
+	width: 18px;
+	height: 18px;
+	accent-color: var(--admin-accent);
+}
+.enc-seance-jour:focus-within {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 2px;
+}
+
+/* ---------- Liste des activités ---------- */
+.enc-seance-etapes {
+	list-style: none;
+	margin: 0.2rem 0 0.5rem;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+.enc-seance-etape {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem 0.5rem;
+	padding: 0.45rem 0.6rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--paper);
+}
+.enc-seance-etape-mode {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-weight: 700;
+	font-size: 0.88rem;
+	color: var(--ink);
+	flex: 1;
+	min-width: 120px;
+}
+.enc-seance-etape-mode svg {
+	width: 1.1em;
+	height: 1.1em;
+	color: var(--admin-accent);
+	flex: none;
+}
+.enc-seance-cible {
+	flex: 1 1 160px;
+	min-width: 0;
+}
+.enc-seance-cible select {
+	width: 100%;
+}
+.enc-seance-count select {
+	min-width: 4.2rem;
+}
+/* Bouton « retirer » icône seule (cible 44px). */
+.enc-seance-etape-del {
+	min-width: 44px;
+	min-height: 44px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	color: var(--ko);
+	cursor: pointer;
+}
+.enc-seance-etape-del svg {
+	width: 1.2em;
+	height: 1.2em;
+}
+.enc-seance-etape-del:hover {
+	background: var(--track);
+}
+.enc-seance-etape-del:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 2px;
+}
+
+.enc-seance-add-etape {
+	display: block;
+	margin: 0.2rem 0 0.4rem;
+}
+.enc-seance-add-etape select {
+	width: 100%;
+}
+
+.enc-seance-add {
+	margin-top: 0.4rem;
+}

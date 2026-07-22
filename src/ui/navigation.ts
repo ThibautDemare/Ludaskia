@@ -46,6 +46,8 @@ import { startOrthoRun, orthoDiscoveryComplete, renderOrthoModeChoice } from './
 import { closeProfileMenu, closeDrawer } from './menu';
 import { applyPreferences, renderPreferences } from './preferences';
 import { enterEncadrant } from './encadrant';
+import { renderSeance, rafraichirProgramme } from './seance';
+import { vueSeanceDuJour } from '../core/seance';
 import { leconKey } from '../core/resume';
 import { captureResume, clearResumeCtx, setResumeCtx, maybeRelaunch } from './resume';
 
@@ -144,6 +146,9 @@ export function showProfiles() {
 }
 export function showEncadrant() {
 	location.hash = 'encadrant';
+}
+export function startSeance() {
+	location.hash = 'seance';
 }
 export function startLecon(id: string) {
 	const lesson = getLessonById(id);
@@ -266,6 +271,7 @@ export function route() {
 	else if (h === 'lecons') showLessonsView();
 	else if (h === 'profils') showProfilesView();
 	else if (h === 'encadrant') showEncadrantView();
+	else if (h === 'seance') showSeanceView();
 	else if (h === 'revision') {
 		if (pendingRevision.length) runRevision(pendingRevision);
 		else showHomeView();
@@ -392,6 +398,7 @@ export function hideMenus() {
 		'lessons',
 		'profils',
 		'encadrant',
+		'seance',
 		'bilan-custom',
 		'sprint-config',
 		'matieres',
@@ -410,7 +417,27 @@ export function showHomeView() {
 	setToolbar({ verify: false, home: false, profile: true, guide: true }); // accueil : profil + « ? » guide ; ni Vérifier ni Accueil
 	hideMenus();
 	document.getElementById('home')!.style.display = '';
+	// Programme du jour (#440) : consomme une étape éventuellement terminée AVANT de
+	// rendre l'accueil (carte à jour), et célèbre si le programme entier vient d'être fini.
+	rafraichirProgramme();
 	renderHomeStats();
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* Écran « Programme du jour » (#440) : parcours composé par l'encadrant. Au retour
+   d'un mode lancé depuis le programme, on résout d'abord l'attribution (et la
+   récompense de complétion) ; s'il n'y a plus de programme applicable aujourd'hui,
+   on rend la main à l'accueil (pas d'écran cul-de-sac). */
+export function showSeanceView() {
+	rafraichirProgramme();
+	if (!vueSeanceDuJour(Date.now())) {
+		goHome();
+		return;
+	}
+	resetSessionUI();
+	setToolbar({ verify: false, home: true, profile: true });
+	hideMenus();
+	renderSeance(document.getElementById('seanceContent')!);
+	document.getElementById('seance')!.style.display = '';
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showLessonsView() {

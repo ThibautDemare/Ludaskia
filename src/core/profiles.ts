@@ -237,6 +237,18 @@ export function setPrefFor<K extends keyof ProfilePrefs>(
 	p.updatedAt = Date.now();
 	saveProfilesMeta(m);
 }
+/* Bump l'`updatedAt` d'un profil DONNÉ par UUID, sans passer par une écriture de
+   clé de données. Réservé aux écritures « par UUID » qui contournent le préfixe actif
+   (donc le hook onDataWrite) mais doivent quand même marquer le profil comme modifié
+   pour la fusion par récence de l'export/import — p. ex. composer/copier une séance
+   pour un profil consulté dans l'espace encadrant (#440). No-op si l'UUID est inconnu. */
+export function touchProfile(uuid: string) {
+	const m = loadProfilesMeta();
+	const p = m && m.list.find((x) => x.uuid === uuid);
+	if (!p) return;
+	p.updatedAt = Date.now();
+	saveProfilesMeta(m);
+}
 export function confortLecture(): boolean {
 	return getPrefs().confortLecture === true;
 }

@@ -21,12 +21,13 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
 
 ## Espace encadrant (rendu)
 
-Découpé par responsabilité (#234, découpage #354) en un **orchestrateur** + six
+Découpé par responsabilité (#234, découpage #354) en un **orchestrateur** + sept
 modules de section, en graphe **étoile** : chaque section n'importe que
 `encadrant-commun` (+ le core), sauf `encadrant-profils` qui dépend aussi de
 `encadrant-pin` (referme son sous-panneau au changement de profil consulté) —
 seule dépendance inter-sections. La logique de données (`core/encadrant-stats.ts`,
-`core/encadrant-lock.ts`) est inchangée. Voix « vous », accent neutre (`encadrant.scss`).
+`core/encadrant-lock.ts`, `core/seance.ts`) est inchangée. Voix « vous », accent
+neutre (`encadrant.scss`).
 
 - **`encadrant.ts`** — **orchestrateur** : point d'entrée `enterEncadrant`,
   câblage des listeners délégués posés une fois sur `#encadrantContent` (dispatch
@@ -52,6 +53,13 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
   par entrée, badge « acquis » pour les entrées sorties de rotation. Bascule **« Par
   catégorie »** (regroupement dépliable, même chrome que « Notions par catégorie ») /
   **« Par urgence »** (liste à plat, plus en retard d'abord) ; handler `revision-mode`.
+- **`encadrant-seance.ts`** (#440) — **compositeur** du « programme du jour » du
+  profil consulté, affiché juste après la révision : programmes (nom, étapes +
+  `count`, récurrence date/hebdo avec garde-fou de conflit `recurrencesEnConflit`),
+  cible d'étape (leçon/dictée) filtrée au niveau du profil, estimation de durée,
+  copie vers un autre profil. Logique + stockage dans `core/seance.ts` (cf. [Logique
+  pure](core.md)) : ce module ne fait que le rendu et l'aiguillage des interactions,
+  persistance immédiate à chaque action.
 - **`encadrant-reglages.ts`** — **réglages** sur le profil consulté : classe de
   référence + niveau par matière, longueur d'une séance de Révision (#439, menu à
   paliers fixes `REVISION_PLAFOND_CHOIX`), aménagements « dys »/attention ; injecte le
@@ -131,12 +139,24 @@ pure](core.md)) pour les formats composites :
 ## Accueil, navigation & catalogue
 
 - **`render.ts`** — rendus accueil/sélecteur/profils (`renderHomeStats` — qui
-  appelle aussi `renderLeconDuJour` (#208) — et favoris, badge **niveau + barre**
-  dans `renderToolbarProfile`, carte de progression `renderProgression` (sa bulle de
+  appelle aussi `renderLeconDuJour` (#208) et `renderProgrammeCard` (carte
+  « programme du jour », #440) — et favoris, badge **niveau + barre** dans
+  `renderToolbarProfile`, carte de progression `renderProgression` (sa bulle de
   mascotte porte le **défi du jour** : invitation, puis félicitations une fois
   accompli), `renderObjectives`, `renderLessons` + `lessonCardHTML` réutilisable,
   `renderProfileMenu`, `renderProfiles`, `boardHTML`/`sprintBoardHTML`,
   `pctColor`, config `REGULARITY`).
+- **`seance.ts`** (#440) — écran `#seance` et carte d'accueil `#cardProgramme` du
+  **programme du jour** composé par l'encadrant (cf. [Modes &
+  navigation](modes-et-navigation.md)) : `renderProgrammeCard` (masquée hors
+  programme applicable ce jour) et `renderSeance` (tuiles des étapes restantes en
+  ordre libre, jauge de pastilles, bouton « Choisis pour moi », état terminé
+  célébré). `lancerEtapeProgramme` pose le marqueur d'attribution
+  (`core/seance.ts:marquerEtapeLancee`) puis délègue au déclencheur du mode
+  existant (`startSprint`/`startRevisionEspacee`/`startLecon`/`startOrthoLecon`) —
+  aucun runner n'est modifié. `rafraichirProgramme` (appelée par la navigation
+  avant l'accueil et l'écran `#seance`) consomme l'attribution au retour et célèbre
+  (modale + confettis) la complétion du programme entier, sans XP.
 - **`lecon-du-jour.ts`** — carte **« leçon du jour »** de l'accueil (#208) : `#leconDuJour`
   est la **1re carte** de la rangée `.cards`, sur le **même modèle visuel** que les cartes
   de mode (pastille `.ico`, titre, descriptif, CTA), au contenu **dynamique**.

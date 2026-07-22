@@ -60,13 +60,15 @@ de conception initial est `docs/design-multi-subject.md`.
 
 - [Modes & navigation](architecture/modes-et-navigation.md) — routage par hash,
   **onboarding du 1er lancement** (classe → mot parents → guide, #225/#330), modes
-  d'exercice, choix de mode (#69), reprise (#63), **Pipeline multi-matières**.
+  d'exercice, choix de mode (#69), reprise (#63), **programme du jour** composé par
+  l'encadrant (#440), **Pipeline multi-matières**.
 - [Données & profils](architecture/donnees-et-profils.md) — clés `localStorage`,
   cycle de vie des profils.
 - [Gamification](architecture/gamification.md) — médailles, trophées, objectifs de
   régularité, XP & niveaux, déblocages.
 - [Espace encadrant (#234)](architecture/espace-encadrant.md) — consultation sans
-  bascule, récap d'accompagnement, verrou PIN optionnel.
+  bascule, récap d'accompagnement, **composition du programme du jour** (#440),
+  verrou PIN optionnel.
 - [Niveaux scolaires (#225)](architecture/niveaux-scolaires.md) — classe par
   matière, namespacing de progression `@niveau`.
 

@@ -19,6 +19,7 @@ import {
 } from './progress';
 import { loadOrtho } from './orthographe/store';
 import type { MotOrtho } from './orthographe/types';
+import { seancesCompletees } from './seance';
 
 /* ---------- Défi du jour ----------
    Recentré « qualité / dépassement » : la cadence (sprints/express/complet)
@@ -307,6 +308,15 @@ export const TROPHIES: Trophy[] = [
 		{ n: 7, title: 'Persévérant', desc: 'Réussir 7 objectifs du jour.' },
 		{ n: 30, title: 'Maître des défis', desc: 'Réussir 30 objectifs du jour.' },
 	]),
+	// Séance du jour (#440) : programmes composés par l'encadrant et menés à terme.
+	// Cumulatif (jamais remis à zéro, contrairement à l'état du jour), forfaitaire
+	// (une séance courte et une longue comptent 1 pareil), sans XP : le feedback de
+	// complétion reste symbolique, chaque mode ayant déjà donné son XP propre.
+	...tiers('seance', '📋', 'seancesCompletees', [
+		{ n: 1, title: 'Premier programme', desc: 'Terminer un programme du jour en entier.' },
+		{ n: 7, title: 'Suivi régulier', desc: 'Terminer 7 programmes du jour.' },
+		{ n: 30, title: 'Grand sérieux', desc: 'Terminer 30 programmes du jour.' },
+	]),
 	// Orthographe
 	...tiers('orthoMots', '📖', 'orthoMotsMaitrises', [
 		{ n: 10, title: 'Collectionneur de mots', desc: '10 mots maîtrisés en orthographe.' },
@@ -428,6 +438,7 @@ export function gSnapshot() {
 		perfectBilan: all.some((r) => r.count > 0 && r.ok === r.count),
 		gold: rc.length >= 3 || re.length >= 3, // un podium d'or existe dès 3 essais dans un mode
 		goalsDone: getGoalsDone(),
+		seancesCompletees: seancesCompletees(), // programmes du jour menés à terme (#440)
 		sprints: loadRunsAll('sprint').length, // effort global (tous niveaux)
 		totalAnswered, // total de calculs résolus (tous modes enregistrés)
 		allGreen: lessonsActif.every((l) => {

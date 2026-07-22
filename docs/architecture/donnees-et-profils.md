@@ -42,7 +42,15 @@ hors de l'économie de jeu, cf. `core/eggs.ts`), `ludaskia_tour_seen` et `ludask
 (#330 : deux drapeaux booléens **indépendants** du guide de première visite —
 tour enfant vu/sauté, mot aux parents affiché ; voir `core/tour.ts` — l'enchaînement
 automatique ne se déclenche qu'**une fois par profil**, le bouton « ? » rejoue le tour
-sans les toucher). Un `LessonStat` porte aussi `recentPct?` (#234 : fenêtre glissante des
+sans les toucher), `ludaskia_seance` (#440 : **programmes du jour** composés par
+l'encadrant pour ce profil — `SeanceDef[]`, cf. [Modes &
+navigation](modes-et-navigation.md) et [Espace encadrant](espace-encadrant.md)),
+`ludaskia_seanceJour` (état du programme du jour **en cours** — reset **paresseux**
+à minuit, calculé à la lecture comme le défi du jour, `core/seance.ts:etatSeanceJour`),
+`ludaskia_seanceJournal` (journal **borné** des réalisations, y compris **partielles**,
+base d'un futur récap encadrant « durée des séances », visuel encore différé) et
+`ludaskia_seancesDone` (compteur **cumulé**, jamais remis à zéro, base du trophée
+dédié, cf. [Gamification](gamification.md)). Un `LessonStat` porte aussi `recentPct?` (#234 : fenêtre glissante des
 derniers % d'une leçon — base de la performance **récente**, distincte du cumul
 historique de `lessonAvgPct`) et `lastAt?` (horodatage ms de la dernière session
 travaillée, écrit par `recordLessonStats` — base du « dernière fois travaillée » et
@@ -79,4 +87,11 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   sauvegarde est plus récente** (`updatedAt`), ajoute si l'UUID est inconnu.
 - **Réglages par UUID** (#234) : l'encadrant règle un profil CONSULTÉ via
   `setNiveauReferenceFor`/`setNiveauMatiereFor`/`setPrefFor` (jamais `m.active`).
+- **`touchProfile(uuid)`** (#440) : bump `updatedAt` d'un profil **donné** sans
+  passer par une écriture de clé de données. Réservé aux écritures **par UUID** qui
+  contournent le préfixe actif (donc le hook `onDataWrite`, qui ne bumpe que le
+  profil actif) mais doivent quand même compter pour la fusion par récence de
+  l'export/import — utilisé par `enregistrerSeancesFor` (composer/copier un
+  programme du jour pour un profil consulté, cf. [Espace
+  encadrant](espace-encadrant.md)).
 - Pas de migration de données prévue (on part de profils vierges).

@@ -148,7 +148,90 @@
 	margin: 0 0 0.7rem;
 }
 
-/* ---------- Contexte « vous regardez … » ---------- */
+/* ---------- Contexte « vous consultez … » + onglets (#459) ---------- */
+/* En-tête de contexte : « Vous consultez : [profil ▾] ». Transverse aux onglets. */
+.enc-context {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem 0.6rem;
+	margin: 0 0 0.6rem;
+}
+.enc-context-lab {
+	font-size: 0.9rem;
+	font-weight: 700;
+	color: var(--grey);
+}
+.enc-context-sel {
+	flex: 1;
+	min-width: 160px;
+	font-weight: 700;
+}
+.enc-context-solo {
+	font-weight: 800;
+	color: var(--ink);
+}
+
+/* Barre d'onglets : navigation de SECTION, DISTINCTE du segment interne .enc-act-modes
+   (rempli). Ici l'onglet actif est SOULIGNÉ (accent), le reste en gris — deux registres
+   différents (« changer de section » vs « changer de vue »). Une seule ligne, colonnes
+   égales, icône au-dessus du libellé : tient dès ~320 px (cf. avis designer). */
+.enc-tabs {
+	display: flex;
+	border-bottom: 1px solid var(--line);
+	margin: 0 0 0.9rem;
+}
+.enc-tab {
+	flex: 1 1 0;
+	min-width: 0;
+	min-height: 48px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.15rem;
+	padding: 0.35rem 0.2rem;
+	font: inherit;
+	font-size: 0.8rem;
+	font-weight: 700;
+	color: var(--grey);
+	background: none;
+	border: none;
+	border-bottom: 3px solid transparent;
+	cursor: pointer;
+}
+.enc-tab .ph-icon {
+	width: 1.15rem;
+	height: 1.15rem;
+}
+.enc-tab-lab {
+	text-align: center;
+	/* Un mot seul (« Programme », « Réglages ») déborderait sur colonne très étroite ou en
+	   zoom 200 % : on autorise la coupure (le bouton grandit via min-height, rien n'est
+	   tronqué) — avis relecteur-accessibilite (SC 1.4.4). */
+	overflow-wrap: anywhere;
+}
+.enc-tab.active {
+	color: var(--admin-accent);
+	border-bottom-color: var(--admin-accent);
+	font-weight: 800;
+}
+.enc-tab:hover {
+	color: var(--admin-accent);
+}
+.enc-tab:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: -3px;
+	/* Fond léger au focus : distingue le focus clavier du soulignement d'état actif (deux
+	   traits 3 px accent au même endroit sinon, sur l'onglet actif refocalisé) — avis a11y. */
+	background: var(--track);
+}
+@media (max-width: 360px) {
+	.enc-tab {
+		font-size: 0.75rem;
+	}
+}
+
 /* ---------- Profils : consulter (« Voir le suivi ») + gérer (replié) ---------- */
 .enc-profiles {
 	list-style: none;
@@ -887,31 +970,9 @@ $evol-amorce: #7c8494;
 	color: var(--grey);
 	white-space: nowrap;
 }
-/* Sous-section repliable « Parcourir les dictées proposées » (#424) : dictées prédéfinies
-   épinglables à l'avance. Chevron ▸/▾ comme les autres <summary> de l'espace encadrant. */
-.enc-ortho-dispo {
-	margin-top: 0.4rem;
-}
-.enc-ortho-dispo-sum {
-	cursor: pointer;
-	font-weight: 600;
-	font-size: 0.85rem;
-	color: var(--admin-ink, var(--ink));
-	padding: 0.25rem 0;
-	list-style: none; /* marqueur natif retiré ; chevron via ::after (comme .enc-cat-sum) */
-}
-.enc-ortho-dispo-sum::-webkit-details-marker {
-	display: none;
-}
-.enc-ortho-dispo-sum::after {
-	content: ' ▸';
-	color: var(--muted);
-}
-.enc-ortho-dispo[open] .enc-ortho-dispo-sum::after {
-	content: ' ▾';
-}
-/* Liste des dictées proposées : même reset que .enc-revoir, mais classe DÉDIÉE (ne pas
-   réutiliser .enc-revoir, dont les sélecteurs ciblent la file « À revoir ensemble »). */
+/* Liste des dictées proposées (bloc « Proposer une dictée à l'avance », onglet Programme,
+   #424/#459) : même reset que .enc-revoir, mais classe DÉDIÉE (ne pas réutiliser .enc-revoir,
+   dont les sélecteurs ciblent la file « À revoir ensemble »). */
 .enc-ortho-dispo-list {
 	list-style: none;
 	margin: 0.4rem 0 0;

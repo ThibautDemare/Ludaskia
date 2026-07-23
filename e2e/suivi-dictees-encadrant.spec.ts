@@ -74,7 +74,8 @@ test('épingler une liste de dictée : rejoint « à revoir », apparaît sur l�
 	await btnEpingler.click();
 	await expect(btnEpingler).toContainText('Retirer');
 
-	// Rejoint la section « À revoir ensemble » → « Épinglées ».
+	// Rejoint la section « À revoir ensemble » → « Épinglées », onglet Programme (#459).
+	await page.locator('.enc-tab[data-tab="programme"]').click();
 	await expect(
 		page
 			.locator(`.enc-revoir button[data-act="epingler"][data-lesson="ortho:${LISTE_ID}"]`)
@@ -97,42 +98,42 @@ test('épingler une liste de dictée : rejoint « à revoir », apparaît sur l�
 	expect(errors).toEqual([]);
 });
 
-/* Sous-section « Parcourir les dictées proposées » (#424, épinglage à l'avance) : les
-   dictées prédéfinies du niveau, jamais commencées ni déjà épinglées, repliées sous un
-   <details> pour ne pas noyer le suivi. Le seed du profil (beforeEach) ne démarre aucune
-   prédéfinie (seule une liste MAISON est en cours) : l'état par défaut suffit. */
-test('« Parcourir les dictées proposées » : épingler une prédéfinie à l’avance la fait rejoindre le suivi et l’accueil', async ({
+/* Section « Proposer une dictée à l'avance » (#424, épinglage à l'avance ; extraite dans
+   son propre bloc de l'onglet Programme par #459, la collapse <details> a disparu) : les
+   dictées prédéfinies du niveau, jamais commencées ni déjà épinglées. Le seed du profil
+   (beforeEach) ne démarre aucune prédéfinie (seule une liste MAISON est en cours) : l'état
+   par défaut suffit. */
+test('« Proposer une dictée à l’avance » : épingler une prédéfinie la fait rejoindre le suivi et l’accueil', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'encadrant');
+	// « Proposer une dictée à l'avance » vit dans l'onglet Programme (#459).
+	await gotoHash(page, 'encadrant/programme');
 
-	const browse = page.locator('details.enc-ortho-dispo');
-	const sum = browse.locator('summary.enc-ortho-dispo-sum');
-	await expect(sum).toBeVisible();
-	await expect(sum).toContainText(/Parcourir les dictées proposées \(\d+\)/);
+	const bloc = page.locator('.enc-block').filter({ hasText: "Proposer une dictée à l'avance" });
+	await expect(bloc).toBeVisible();
 
-	// Repliée par défaut : on déplie pour atteindre la ligne visée.
-	await sum.click();
-	const btnEpingler = browse.locator(
+	const btnEpingler = bloc.locator(
 		'button[data-act="epingler"][data-lesson="ortho:fr-ortho-invariables-1"]',
 	);
 	await expect(btnEpingler).toBeVisible();
 	await expect(btnEpingler).toContainText('Épingler');
 
 	await btnEpingler.click();
-	// Épinglée à l'avance : quitte la sous-section « Parcourir »…
-	await expect(browse.locator('[data-lesson="ortho:fr-ortho-invariables-1"]')).toHaveCount(0);
-	// … rejoint le suivi (Listes de dictée, niveau « à découvrir ») ET les épinglées.
-	await expect(
-		page.locator('.enc-detail-item:has([data-lesson="ortho:fr-ortho-invariables-1"])'),
-	).toBeVisible();
+	// Épinglée à l'avance : quitte la liste « Proposer »…
+	await expect(bloc.locator('[data-lesson="ortho:fr-ortho-invariables-1"]')).toHaveCount(0);
+	// … rejoint les épinglées, même onglet Programme (« À revoir ensemble »).
 	await expect(
 		page
 			.locator(
 				'.enc-revoir button[data-act="epingler"][data-lesson="ortho:fr-ortho-invariables-1"]',
 			)
 			.filter({ hasText: 'Retirer' }),
+	).toBeVisible();
+	// … ET rejoint le suivi (Listes de dictée, niveau « à découvrir »), onglet Suivi (#459).
+	await page.locator('.enc-tab[data-tab="suivi"]').click();
+	await expect(
+		page.locator('.enc-detail-item:has([data-lesson="ortho:fr-ortho-invariables-1"])'),
 	).toBeVisible();
 
 	// Accueil enfant : la carte « À revoir » la propose, lançable (hash dictée).
@@ -181,6 +182,8 @@ test('épingler une erreur de dictée depuis « Ce qui a été difficile récemm
 	await btnEpingler.click();
 	await expect(btnEpingler).toContainText('Retirer');
 
+	// Rejoint « À revoir ensemble », onglet Programme (#459).
+	await page.locator('.enc-tab[data-tab="programme"]').click();
 	await expect(
 		page
 			.locator(

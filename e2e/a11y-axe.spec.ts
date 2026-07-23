@@ -111,11 +111,12 @@ const VIEWS: View[] = [
 	},
 	{
 		name: 'Modale « nouveau profil »',
-		hash: 'encadrant',
+		hash: 'encadrant/profils',
 		include: '.modal-overlay:not([id])',
 		open: async (page) => {
 			await page.addInitScript(CLEAR_PIN);
-			await gotoHash(page, 'encadrant');
+			// Le bouton « Nouveau profil » vit dans l'onglet Profils (#459).
+			await gotoHash(page, 'encadrant/profils');
 			await page.locator('[data-act="enc-add"]').click();
 			await page.locator('.modal-overlay:not([id])').waitFor({ state: 'visible' });
 			await page.locator('#uimodal-input').waitFor({ state: 'visible' });

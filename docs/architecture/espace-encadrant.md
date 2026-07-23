@@ -10,6 +10,44 @@ enfantin. **Accès** : lien sobre en pied de l'écran « Mon espace » (`#btnEnc
 item « Espace encadrants » (gris + cadenas) dans le menu profils de la barre — jamais un bouton
 permanent visible dans la barre de l'enfant.
 
+## Organisation en onglets (#459)
+
+La vue est découpée en **4 onglets**, dans l'ordre de fréquence d'usage
+décroissante : **Suivi** (observer, onglet par défaut) → **Programme**
+(préparer) → **Réglages** (configurer) → **Profils** (gérer) — type `EncTab` /
+`ENC_TABS` et l'état d'onglet actif vivent dans `ui/encadrant-commun.ts`
+(module feuille, transverse à toutes les sections). Un **en-tête de contexte**
+persistant « Vous consultez : [profil ▾] » (`<select data-act="set-consulte">`,
+simple libellé si un seul profil) surmonte la barre d'onglets ; il est
+**distinct** du bouton « Retour à [prénom] » de la barre du haut, qui nomme le
+joueur **actif** — les deux notions ne sont jamais fusionnées.
+
+**Sous-routes de hash** `#encadrant/<onglet>` (Suivi = `#encadrant` sans
+suffixe) : lien direct + restauration de l'onglet au rechargement ; `route()`
+(cf. [Modes & navigation](modes-et-navigation.md)) matche
+`h === 'encadrant' || h.startsWith('encadrant/')`. Un clic d'onglet
+synchronise le hash via `history.replaceState` **sans re-router** (pas de
+`hashchange` déclenché → ne réinitialise pas le profil consulté).
+
+**Choix v1 assumé** : l'en-tête de contexte et la barre d'onglets ne sont
+**pas** collants (la barre d'outils de l'app l'est déjà ; un second en-tête
+collé entrerait en conflit) — le prénom du profil consulté reste donc répété
+dans les titres de section (« Progression de … », « Révisions de … »,
+« Programme du jour de … ») comme filet tant que ce sticky n'est pas fait
+(polish différé).
+
+Répartition des blocs par onglet :
+- **Suivi** — récap de progression (chiffres-clés, activité 7 jours, notions
+  par catégorie + frise, listes de dictée suivies, historique des erreurs),
+  **puis** le récap de révision espacée (#423).
+- **Programme** — composeur du programme du jour (#440), puis « À revoir
+  ensemble » (épinglées + suggestions) et « Proposer une dictée à l'avance » :
+  deux actes de **préparation**, sortis du récap de Suivi (qui garde un simple
+  renvoi textuel vers cet onglet pour les dictées prédéfinies non commencées).
+- **Réglages** — classe scolaire, aménagements dys/attention, longueur d'une
+  séance de révision, code d'accès PIN.
+- **Profils** — liste/gestion des profils + sauvegarde.
+
 ## Consultation SANS bascule
 
 **Consultation SANS bascule** : on lit la progression de **n'importe quel** profil par
@@ -24,7 +62,8 @@ le bouton « Retour à [prénom] » nomme le joueur **actif** (pas le consulté)
 ## Gestion des profils (#234)
 
 **Gestion des profils** (#234) : créer / renommer / avatar / **réinitialiser** / **supprimer**
-(+ export/import) vivent ICI, fusionnés à la liste de consultation (carte par enfant : « Voir
+(+ export/import) vivent dans l'**onglet Profils** (#459), fusionnés à la liste de
+consultation (carte par enfant : « Voir
 le suivi » + repli « Gérer ce profil »). Opérations par UUID (`renameProfile`/`setProfileEmoji`/
 `resetProfile`/`deleteProfile`/`exportProfiles`/`importProfiles`). L'écran enfant « Mon espace »
 ne permet que l'édition de SON profil.
@@ -123,17 +162,20 @@ perdue par l'absence de « à renforcer ».
 Chaque liste peut être **épinglée** (même mécanique que « à revoir », cf. ci-dessous) — elle
 rejoint alors la file de l'enfant comme une leçon.
 
-**Épingler une dictée « à l'avance »** : une sous-section repliée **« Parcourir les dictées
-proposées »** liste les dictées **prédéfinies non commencées** (`dicteesProposees`,
+**Épingler une dictée « à l'avance »** : le bloc **« Proposer une dictée à l'avance »**
+(`dicteesProposeesHTML`, exportée par `ui/encadrant-progression.ts`) liste, dans l'**onglet
+Programme** (#459), les dictées **prédéfinies non commencées** (`dicteesProposees`,
 `core/encadrant-stats.ts`), pour que l'encadrant en pousse une **avant** que l'enfant ne la
 rencontre — parité avec « épingler n'importe quelle leçon, même pas encore abordée » du
-catalogue, sans noyer le suivi. Une prédéfinie ainsi épinglée quitte cette sous-section et
-apparaît dans le suivi (état « à découvrir » tant qu'elle n'est pas commencée).
+catalogue, sans noyer le suivi. Une prédéfinie ainsi épinglée quitte ce bloc et apparaît dans
+le suivi de l'onglet Suivi (état « à découvrir » tant qu'elle n'est pas commencée), qui se
+contente sinon d'un renvoi textuel vers l'onglet Programme.
 
 ## Historique des erreurs (#391)
 
-**« Ce qui a été difficile récemment »**, sous le graphe d'activité et avant « à revoir »
-(`ui/encadrant-erreurs.ts`, inséré par `encadrant-progression.ts`) : chaque erreur commise
+**« Ce qui a été difficile récemment »**, dernier bloc du récap de l'onglet **Suivi** (après
+les notions par catégorie et les listes de dictée, juste avant le récap de révision espacée
+ci-dessous) — `ui/encadrant-erreurs.ts`, inséré par `encadrant-progression.ts` : chaque erreur commise
 pendant un entraînement est journalisée localement (`core/erreurs-journal.ts`, clé
 `ludaskia_erreurs`, 150 entrées les plus récentes par profil) — question posée, réponse
 donnée, bonne réponse, leçon, mode, quand. **Groupé par leçon**, la plus récemment ratée en
@@ -188,14 +230,18 @@ Lancement : `startLecon` pour une leçon, **`startOrthoLecon`** pour une dictée
 `ortho-`/`ortho-mode-`, distinct de `lecon-`/`mode-`). L'enfant n'a pas à être présent quand
 l'encadrant épingle.
 
-Dans l'espace encadrant lui-même, le bloc « Épinglées » (sous « À revoir ensemble ») liste
-**toutes** les entrées de la file sans filtre de faiblesse, via `epingleesProfil(profile)`
-(gestion, pas suggestion) ; une cible disparue (leçon hors catalogue actif, liste supprimée) en
-est silencieusement écartée.
+Dans l'espace encadrant lui-même, le bloc **« À revoir ensemble »** (`aRevoirHTML`, exportée
+par `ui/encadrant-progression.ts`) vit dans l'**onglet Programme** (#459), sous le composeur
+du programme du jour — c'est un acte de **préparation**, pas d'observation. Sa sous-section
+« Épinglées » liste **toutes** les entrées de la file sans filtre de faiblesse, via
+`epingleesProfil(profile)` (gestion, pas suggestion) ; une cible disparue (leçon hors
+catalogue actif, liste supprimée) en est silencieusement écartée.
 
 ## Récap du mode Révision espacée (#423)
 
-**Récap du mode Révision espacée** (#423), sous « À revoir » : donne à l'encadrant une vue
+**Récap du mode Révision espacée** (#423), dans l'**onglet Suivi** (#459), juste après le
+récap de progression (chiffres, activité, notions par catégorie, listes de dictée,
+historique des erreurs) : donne à l'encadrant une vue
 de la file de répétition espacée (#45) du profil consulté. `core/encadrant-stats.ts` (fonction
 `revisionProfil`) projette, PAR ENTRÉE (leçon maths/conjugaison ou mot d'orthographe — deux
 sources fusionnées, `LESSON_REVISION_KEY` et `ORTHO_KEY → banque[].revision`), son **palier
@@ -221,7 +267,7 @@ coexistent sans se recouvrir.
 ## Composition du « programme du jour » (#440)
 
 Bloc de composition (`ui/encadrant-seance.ts` — `seanceHTML`/`seanceClick`/
-`seanceChange`, inséré juste après la révision) permettant à l'encadrant de préparer,
+`seanceChange`, en tête de l'**onglet Programme**, #459) permettant à l'encadrant de préparer,
 pour le profil **consulté** (par UUID, sans bascule), un ou plusieurs programmes :
 une liste d'**étapes** (Sprint, Révision, Leçon du jour, une leçon précise ou une
 dictée précise — cible filtrée au **niveau du profil**, comme ce que l'enfant voit)
@@ -244,7 +290,8 @@ rien n'affiche encore ces métriques côté espace encadrant.
 
 ## Réglages déplacés hors de portée de l'enfant
 
-**Réglages déplacés hors de portée de l'enfant** (par UUID consulté) : la **« Classe
+**Réglages déplacés hors de portée de l'enfant** (par UUID consulté, **onglet Réglages**,
+#459) : la **« Classe
 scolaire »** (`setNiveauReferenceFor`/`setNiveauMatiereFor`) et les **« Aménagements »**
 dys/attention — *masquer le minuteur* + *lecture auto des consignes* + *désactiver les
 apparitions surprises* (`setPrefFor`, avis `specialiste-troubles-apprentissage`). Ce

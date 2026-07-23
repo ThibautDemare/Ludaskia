@@ -12,7 +12,8 @@ fallback SPA) : `#accueil` · `#matieres` · `#matiere-<id>` · `#categorie-<id>
 d'une liste d'ortho) · `#ortho-new` · `#ortho-edit-<id>` · `#ortho-revoir-<id>`
 (création / édition / relecture des listes d'ortho) · `#revision-espacee` ·
 `#seance` (programme du jour composé par l'encadrant, #440) · `#profils` ·
-`#encadrant` (espace encadrant, #234) · `#revision`
+`#encadrant` / `#encadrant/<onglet>` (espace encadrant en onglets, #234/#459) ·
+`#revision`
 (`#lecons`, ancien sélecteur plat, reste
 routable mais n'est plus lié). Les identifiants de leçon sont des **chaînes**
 (`math-tables-addition`, `fr-conj-etre-present`…). Les déclencheurs changent juste

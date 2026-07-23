@@ -14,7 +14,8 @@
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
 
-/* L'aménagement « Masquer le minuteur » vit dans l'espace encadrants (#234). */
+/* L'aménagement « Masquer le minuteur » vit dans l'espace encadrants (#234),
+   onglet Réglages (#459). */
 const SANS_CHRONO = '[data-act="set-amenagement"][data-pref="sansPressionTemporelle"]';
 
 test('sprint normal (témoin) : minuteur et score visibles dans le HUD', async ({ page }) => {
@@ -34,7 +35,7 @@ test('option active : #sprintTime et #sprintScore absents, #sprintStage présent
 	const errors = watchErrors(page);
 
 	// Activer l'aménagement dans l'espace encadrants.
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/reglages');
 	const toggle = page.locator(SANS_CHRONO);
 	await expect(toggle).toBeVisible();
 	await toggle.check();
@@ -59,11 +60,11 @@ test('persistance : l’aménagement « Masquer le minuteur » survit à la navi
 	const errors = watchErrors(page);
 
 	// Cocher l'aménagement dans l'espace encadrants.
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/reglages');
 	await page.locator(SANS_CHRONO).check();
 
 	// Revenir : la méta du profil a survécu à la navigation.
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/reglages');
 	await expect(page.locator(SANS_CHRONO)).toBeChecked();
 
 	expect(errors).toEqual([]);

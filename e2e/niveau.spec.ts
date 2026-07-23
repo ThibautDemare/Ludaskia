@@ -66,9 +66,10 @@ test('réglage parent : ajuster le niveau d’une matière filtre son catalogue 
 	page,
 }) => {
 	const errors = watchErrors(page);
-	// Le réglage de classe par matière vit désormais dans l'espace encadrants (#234) ;
-	// gotoHash amorce niveauReference=CE2 (pas de popup). PIN désactivé par défaut.
-	await gotoHash(page, 'encadrant');
+	// Le réglage de classe par matière vit désormais dans l'espace encadrants (#234),
+	// onglet Réglages (#459) ; gotoHash amorce niveauReference=CE2 (pas de popup).
+	// PIN désactivé par défaut.
+	await gotoHash(page, 'encadrant/reglages');
 	const mathSelect = page.locator('select[data-act="set-niveau-mat"][data-subject="math"]');
 	await expect(mathSelect).toBeVisible();
 	await mathSelect.selectOption('cm1');

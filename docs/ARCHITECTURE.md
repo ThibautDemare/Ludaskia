@@ -68,9 +68,9 @@ de conception initial est `docs/design-multi-subject.md`.
   cycle de vie des profils.
 - [Gamification](architecture/gamification.md) — médailles, trophées, objectifs de
   régularité, XP & niveaux, déblocages.
-- [Espace encadrant (#234)](architecture/espace-encadrant.md) — consultation sans
-  bascule, récap d'accompagnement, **composition du programme du jour** (#440),
-  verrou PIN optionnel.
+- [Espace encadrant (#234)](architecture/espace-encadrant.md) — **organisée en
+  onglets** (#459), consultation sans bascule, récap d'accompagnement,
+  **composition du programme du jour** (#440), verrou PIN optionnel.
 - [Niveaux scolaires (#225)](architecture/niveaux-scolaires.md) — classe par
   matière, namespacing de progression `@niveau`.
 

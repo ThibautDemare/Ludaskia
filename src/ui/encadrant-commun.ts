@@ -12,8 +12,14 @@
    (clé de récupération) et profils (export) — placé ici, module déjà commun aux deux,
    pour éviter un import croisé pin ↔ profils. ============================================================ */
 
+/* Onglets de l'espace (#459) : découpe la page en sections par INTENTION
+   (observer / préparer / configurer / gérer). L'état vit ici — transverse à toutes
+   les sections, comme le profil consulté — et non dans un module de section. */
+export type EncTab = 'suivi' | 'programme' | 'reglages' | 'profils';
+
 let conteneur: HTMLElement | null = null;
 let consulte: string | null = null; // profil CONSULTÉ (≠ forcément l'actif)
+let tab: EncTab = 'suivi'; // onglet affiché (#459)
 let rerenderFn: () => void = () => {};
 let renderEspaceFn: () => void = () => {};
 
@@ -39,6 +45,12 @@ export function consulteUuid(): string | null {
 }
 export function setConsulteUuid(uuid: string | null): void {
 	consulte = uuid;
+}
+export function activeTab(): EncTab {
+	return tab;
+}
+export function setActiveTab(t: EncTab): void {
+	tab = t;
 }
 export function rerender(): void {
 	rerenderFn();

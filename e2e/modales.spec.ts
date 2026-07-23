@@ -5,7 +5,8 @@
    Les modales remplacent window.prompt/confirm/alert ; on les
    déclenche depuis l'ESPACE ENCADRANTS (#234), où vivent désormais
    la création de profil (« Nouveau profil ») et les actions
-   destructives (réinitialiser / supprimer).
+   destructives (réinitialiser / supprimer) — dans l'onglet Profils
+   depuis la restructuration en onglets (#459).
 
    Note sélecteurs : les overlays statiques de gamification
    (celebrate, levelup, recompenses, trophees) et d'onboarding
@@ -21,7 +22,7 @@ const uiModalOverlay = '.modal-overlay:not([id])';
 /* ---------- 1. Ouverture sans erreur JS ---------- */
 test('ouverture du prompt « Nouveau profil » : overlay visible, sans erreur', async ({ page }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/profils');
 
 	await page.locator('[data-act="enc-add"]').click();
 
@@ -43,7 +44,7 @@ test('ouverture du prompt « Nouveau profil » : overlay visible, sans erreur', 
 /* ---------- 2. Enter soumet le prompt et crée le profil ---------- */
 test('Enter soumet le prompt et crée le profil', async ({ page }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/profils');
 
 	const before = await page.locator('.enc-prof-card').count();
 
@@ -66,7 +67,7 @@ test('Enter soumet le prompt et crée le profil', async ({ page }) => {
 /* ---------- 3. Validation d'un champ vide : erreur inline, modale reste ouverte ---------- */
 test('prompt vide : erreur inline visible, la modale reste ouverte', async ({ page }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/profils');
 
 	await page.locator('[data-act="enc-add"]').click();
 	await expect(page.locator('#uimodal-input')).toBeVisible();
@@ -90,7 +91,7 @@ test('prompt vide : erreur inline visible, la modale reste ouverte', async ({ pa
 /* ---------- 4. ESC ferme la modale et n'ajoute pas de profil ---------- */
 test('ESC ferme le prompt sans créer de profil', async ({ page }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/profils');
 
 	const before = await page.locator('.enc-prof-card').count();
 
@@ -112,7 +113,7 @@ test('ESC ferme le prompt sans créer de profil', async ({ page }) => {
 /* ---------- 5. Restauration du focus après ESC ---------- */
 test('ESC sur le prompt restaure le focus sur le bouton déclencheur', async ({ page }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/profils');
 
 	await page.locator('#encAdd').click();
 	await expect(page.locator(uiModalOverlay)).toBeVisible();
@@ -132,7 +133,7 @@ test('confirm destructif reset : alertdialog + focus sur .modal-ok + ESC annule'
 	page,
 }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/profils');
 
 	// Déplier « Gérer ce profil » de la première carte, puis « Réinitialiser ».
 	await page.locator('.enc-gerer > summary').first().click();
@@ -160,7 +161,7 @@ test('confirm destructif reset : alertdialog + focus sur .modal-ok + ESC annule'
 /* ---------- 7. Focus-trap : Tab reste dans .modal ---------- */
 test("focus-trap : Tab reste à l'intérieur de la modale", async ({ page }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/profils');
 
 	await page.locator('[data-act="enc-add"]').click();
 	await expect(page.locator(uiModalOverlay)).toBeVisible();

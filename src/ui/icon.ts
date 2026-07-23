@@ -43,6 +43,7 @@ import caretDown from '@phosphor-icons/core/assets/bold/caret-down-bold.svg?raw'
 import lock from '@phosphor-icons/core/assets/bold/lock-bold.svg?raw';
 import exportIcon from '@phosphor-icons/core/assets/bold/export-bold.svg?raw';
 import importIcon from '@phosphor-icons/core/assets/bold/download-simple-bold.svg?raw';
+import users from '@phosphor-icons/core/assets/bold/users-bold.svg?raw';
 import keyboard from '@phosphor-icons/core/assets/bold/keyboard-bold.svg?raw';
 import handPointing from '@phosphor-icons/core/assets/bold/hand-pointing-bold.svg?raw';
 import puzzlePiece from '@phosphor-icons/core/assets/bold/puzzle-piece-bold.svg?raw';
@@ -98,6 +99,7 @@ const SVGS: Record<IconName, string> = {
 	lock,
 	export: exportIcon,
 	import: importIcon,
+	users,
 	keyboard,
 	'hand-pointing': handPointing,
 	'puzzle-piece': puzzlePiece,

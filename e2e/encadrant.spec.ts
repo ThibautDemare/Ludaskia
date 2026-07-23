@@ -110,11 +110,13 @@ test("bouton « Retour » de l'espace encadrant ramène à l'accueil", async ({ 
 	expect(errors).toEqual([]);
 });
 
-/* 4. Réglages classe : les selects de niveau sont présents (CE2 + CM1 au catalogue) */
-test("réglages classe : selects de niveau présents dans l'espace encadrant", async ({ page }) => {
+/* 4. Réglages classe : les selects de niveau sont présents (CE2 + CM1 au catalogue).
+      Onglet Réglages (#459) : lien direct pour ouvrir la bonne section d'emblée. */
+test("réglages classe : selects de niveau présents dans l'onglet Réglages", async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(CLEAR_PIN);
-	await gotoHash(page, 'encadrant');
+	await page.addInitScript(SEED_CE2);
+	await page.goto('app.html#encadrant/reglages', { waitUntil: 'networkidle' });
 
 	// Select de la classe de référence.
 	await expect(page.locator('select[data-act="set-niveau-ref"]')).toBeVisible();
@@ -131,7 +133,9 @@ test("réglages classe : selects de niveau présents dans l'espace encadrant", a
       e) bon code → espace ouvert
    NOTE : on NE pose PAS CLEAR_PIN via addInitScript ici, car addInitScript
    s'exécute à chaque navigation — il effacerait le PIN lors du rechargement.
-   On supprime le verrou éventuel via page.evaluate() après le premier chargement. */
+   On supprime le verrou éventuel via page.evaluate() après le premier chargement.
+   Le flux d'activation vit dans l'onglet Réglages (#459) : on y navigue directement
+   par lien profond (`#encadrant/reglages`) avant de cliquer « Activer un code ». */
 test('cycle PIN : activation, rechargement, mauvais code refusé, bon code accepté', async ({
 	page,
 }) => {
@@ -142,11 +146,11 @@ test('cycle PIN : activation, rechargement, mauvais code refusé, bon code accep
 	// Nettoyer un verrou PIN éventuel laissé par un test précédent (via evaluate,
 	// pas addInitScript, pour ne pas ré-exécuter la suppression sur le rechargement).
 	await page.evaluate(() => localStorage.removeItem('ludaskia_encadrant_lock'));
-	// Re-rendre la vue sans verrou.
-	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+	// Re-rendre la vue sans verrou, directement sur l'onglet Réglages.
+	await page.goto('app.html#encadrant/reglages', { waitUntil: 'networkidle' });
 
-	// Vérifier que l'espace est directement accessible (pas de pavé).
-	await expect(page.locator('.enc-frame')).toBeVisible();
+	// Vérifier que l'onglet Réglages est directement accessible (pas de pavé).
+	await expect(page.locator('[data-act="pin-activer"]')).toBeVisible();
 
 	// Cliquer « Activer un code ».
 	await page.locator('[data-act="pin-activer"]').click();
@@ -170,8 +174,10 @@ test('cycle PIN : activation, rechargement, mauvais code refusé, bon code accep
 	await expect(page.locator('[data-act="pin-terminer"]')).toBeEnabled();
 	await page.locator('[data-act="pin-terminer"]').click();
 
-	// De retour dans l'espace (session déjà déverrouillée en mémoire).
-	await expect(page.locator('.enc-frame')).toBeVisible();
+	// De retour dans l'espace (session déjà déverrouillée en mémoire) : le re-rendu
+	// reste sur l'onglet courant (Réglages, #459), donc un repère de Réglages plutôt
+	// que .enc-frame (qui est du Suivi).
+	await expect(page.locator('select[data-act="set-niveau-ref"]')).toBeVisible();
 
 	// Recharger la page → réinitialise l'état mémoire JS (deverrouille = false),
 	// le verrou PIN est dans localStorage → le pavé doit s'afficher.
@@ -207,8 +213,8 @@ test('cycle PIN : activation, rechargement, mauvais code refusé, bon code accep
 });
 
 /* 6. Carte « À revoir » sur l'accueil enfant (seeding de stats faibles).
-      Étapes : seed stats → épingler dans l'espace encadrant → accueil enfant
-      affiche la carte. */
+      Étapes : seed stats → épingler dans l'espace encadrant (onglet Programme, #459)
+      → accueil enfant affiche la carte. */
 test("carte « À revoir » : épingler une leçon faible la fait apparaître sur l'accueil", async ({
 	page,
 }) => {
@@ -217,9 +223,10 @@ test("carte « À revoir » : épingler une leçon faible la fait apparaître su
 	await page.addInitScript(CLEAR_PIN);
 	await page.addInitScript(SEED_STATS_FAIBLES);
 	// gotoHash injecte aussi ENSURE_NIVEAU (CE2) — on passe par navigation directe
-	// pour conserver le seeding addInitScript déjà posé.
+	// pour conserver le seeding addInitScript déjà posé. « À revoir ensemble » vit dans
+	// l'onglet Programme → lien profond direct.
 	await page.addInitScript(SEED_CE2);
-	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+	await page.goto('app.html#encadrant/programme', { waitUntil: 'networkidle' });
 
 	// La leçon faible doit apparaître dans la section « À revoir » (liste .enc-revoir,
 	// hors détail dépliable des catégories), proposée à l'épinglage (bouton « Épingler »).
@@ -358,21 +365,22 @@ test('accessibilité : confort côté enfant, aménagements côté encadrant', a
 	await expect(page.locator('#prefSansChrono')).toHaveCount(0);
 	await expect(page.locator('#prefLectureAuto')).toHaveCount(0);
 	// Espace encadrants : les trois aménagements (masquer le minuteur + lecture auto
-	// + désactiver les apparitions surprises, #331).
-	await gotoHash(page, 'encadrant');
+	// + désactiver les apparitions surprises, #331), dans l'onglet Réglages (#459).
+	await gotoHash(page, 'encadrant/reglages');
 	expect(await page.locator('[data-act="set-amenagement"]').count()).toBe(3);
 	await expect(page.locator('[data-pref="sansApparitionsSurprises"]')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 
 /* 12. Longueur de séance de révision (#439) : select par profil, défaut = 12,
-       réglage persistant sur le profil consulté (rechargement compris). */
+       réglage persistant sur le profil consulté (rechargement compris).
+       Le réglage vit dans l'onglet Réglages (#459). */
 test('séance de révision : select visible, 12 par défaut, réglage persistant au rechargement', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(CLEAR_PIN);
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/reglages');
 
 	const select = page.locator('select[data-act="set-revision-plafond"]');
 	await expect(select).toBeVisible();
@@ -385,7 +393,7 @@ test('séance de révision : select visible, 12 par défaut, réglage persistant
 	await select.selectOption('24');
 	await expect(select).toHaveValue('24');
 
-	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+	await page.goto('app.html#encadrant/reglages', { waitUntil: 'networkidle' });
 	await expect(page.locator('select[data-act="set-revision-plafond"]')).toHaveValue('24');
 
 	expect(errors).toEqual([]);

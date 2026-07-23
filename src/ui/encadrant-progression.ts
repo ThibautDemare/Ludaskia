@@ -99,7 +99,6 @@ export function recapHTML(recap: RecapProfil, consulte: Profile): string {
       ${maitriseHTML(recap)}
       ${listesOrthoHTML(consulte)}
       ${erreursHTML(consulte, Date.now())}
-      ${aRevoirHTML(recap, consulte)}
     </section>`;
 }
 
@@ -287,7 +286,7 @@ function maitriseHTML(recap: RecapProfil): string {
       ${matieresHTML(recap)}
       ${frisesHTML(recap)}
       <p class="enc-legend">${legende}</p>
-      <p class="enc-hint">C'est normal qu'il reste des notions « à découvrir » ou « à renforcer » : ce sont celles qui n'ont pas encore été beaucoup travaillées. Dépliez une catégorie pour voir le détail et épingler une leçon.</p>
+      <p class="enc-hint">C'est normal qu'il reste des notions « à découvrir » ou « à renforcer » : ce sont celles qui n'ont pas encore été beaucoup travaillées. Dépliez une catégorie pour voir le détail et épingler une leçon. Les leçons épinglées se retrouvent dans l'onglet Programme.</p>
       <div class="enc-cats">${cats}</div>
     </div>`;
 }
@@ -418,6 +417,8 @@ function listesOrthoHTML(consulte: Profile): string {
 	const dispo = dicteeDisponible();
 	const listes = listesOrthoProfil(consulte, dispo);
 	const proposees = dicteesProposees(consulte, dispo);
+	// Le suivi ne s'affiche que s'il y a des listes suivies OU des dictées à proposer
+	// (dans ce dernier cas, on garde le renvoi vers l'onglet Programme).
 	if (listes.length === 0 && proposees.length === 0) return '';
 	const catOrtho = CATEGORIES.find((c) => c.id === ORTHO_CATEGORY_ID);
 	const legende = ORDRE_NIVEAUX_ORTHO.map(
@@ -427,20 +428,32 @@ function listesOrthoHTML(consulte: Profile): string {
 	const suivi = listes.length
 		? `<ul class="enc-detail">${listes.map(ligneListeOrtho).join('')}</ul>`
 		: `<p class="enc-hint">Aucune dictée commencée pour le moment.</p>`;
-	// « À l'avance » : les prédéfinies restantes, repliées pour ne pas noyer le suivi.
-	const browse = proposees.length
-		? `<details class="enc-ortho-dispo">
-        <summary class="enc-ortho-dispo-sum">Parcourir les dictées proposées (${proposees.length})</summary>
-        <p class="enc-hint">Des dictées prêtes à l'emploi (mots invariables, nombres, thèmes). Épinglez-en une pour la proposer à ${escapeHTML(consulte.name)} avant qu'il ou elle ne la rencontre.</p>
-        <ul class="enc-ortho-dispo-list">${proposees.map(ligneDicteeProposee).join('')}</ul>
-      </details>`
+	// « À l'avance » (parcourir/épingler une dictée non commencée) est déplacé dans l'onglet
+	// Programme (#459) : c'est un acte de préparation, pas d'observation. On laisse ici un
+	// simple renvoi pour ne pas le faire disparaître silencieusement.
+	const renvoi = proposees.length
+		? `<p class="enc-hint">Proposer une dictée à l'avance ? Rendez-vous dans l'onglet <strong>Programme</strong>.</p>`
 		: '';
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon(catOrtho?.icon ?? 'book-open')} Listes de dictée</h3>
       <p class="enc-legend">${legende}</p>
       <p class="enc-hint">Les listes de dictée (mots invariables, thèmes, vos propres listes) et leur avancement. Épinglez-en une pour qu'elle revienne sur l'accueil de ${escapeHTML(consulte.name)}.</p>
       ${suivi}
-      ${browse}
+      ${renvoi}
+    </div>`;
+}
+
+/* Bloc « Proposer une dictée à l'avance » (onglet Programme, #459) : les dictées PRÉDÉFINIES
+   non commencées, épinglables AVANT que l'enfant ne les rencontre (parité avec « épingler
+   n'importe quelle leçon »). Extrait du suivi des dictées (autrefois replié sous « Listes de
+   dictée ») car c'est un acte de préparation. Renvoie '' s'il n'y a rien à proposer. */
+export function dicteesProposeesHTML(consulte: Profile): string {
+	const proposees = dicteesProposees(consulte, dicteeDisponible());
+	if (proposees.length === 0) return '';
+	return `<div class="enc-block">
+      <h3 class="enc-h3">${icon('feather')} Proposer une dictée à l'avance</h3>
+      <p class="enc-hint">Des dictées prêtes à l'emploi (mots invariables, nombres, thèmes). Épinglez-en une pour la proposer à ${escapeHTML(consulte.name)} avant qu'il ou elle ne la rencontre.</p>
+      <ul class="enc-ortho-dispo-list">${proposees.map(ligneDicteeProposee).join('')}</ul>
     </div>`;
 }
 
@@ -475,7 +488,7 @@ function ligneRevoir(
     </li>`;
 }
 
-function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
+export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 	// Entrées actuellement épinglées (leçons du catalogue ET listes de dictée), résolues.
 	const pinned = epingleesProfil(consulte);
 	const epingleeIds = new Set(pinned.map((e) => e.id));
@@ -499,7 +512,7 @@ function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon('repeat')} À revoir ensemble</h3>
-      <p class="enc-hint">Épinglez une leçon : elle apparaîtra sur l'accueil de ${escapeHTML(consulte.name)} pour qu'il y revienne. Pour épingler <strong>n'importe quelle leçon</strong> (même pas encore abordée), dépliez une catégorie ci-dessus.</p>
+      <p class="enc-hint">Épinglez une leçon : elle apparaîtra sur l'accueil de ${escapeHTML(consulte.name)} pour qu'il ou elle y revienne. Pour épingler <strong>n'importe quelle leçon</strong> (même pas encore abordée), dépliez une catégorie dans l'onglet <strong>Suivi</strong>.</p>
       <p class="enc-sub-lab">Épinglées</p>
       ${blocEpinglees}
       ${blocSuggestions}

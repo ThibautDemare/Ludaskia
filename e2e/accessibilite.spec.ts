@@ -56,8 +56,9 @@ test('Aménagements (espace encadrants) : lecture auto + statut de la lecture vo
 	page,
 }) => {
 	const errors = watchErrors(page);
-	// La lecture auto des consignes est devenue un aménagement posé par l'adulte (#234).
-	await gotoHash(page, 'encadrant');
+	// La lecture auto des consignes est devenue un aménagement posé par l'adulte (#234),
+	// réglable dans l'onglet Réglages (#459).
+	await gotoHash(page, 'encadrant/reglages');
 
 	await expect(
 		page.locator('[data-act="set-amenagement"][data-pref="lectureConsigneAuto"]'),

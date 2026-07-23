@@ -270,7 +270,7 @@ export function route() {
 	} else if (h === 'matieres') showMatieresView();
 	else if (h === 'lecons') showLessonsView();
 	else if (h === 'profils') showProfilesView();
-	else if (h === 'encadrant') showEncadrantView();
+	else if (h === 'encadrant' || h.startsWith('encadrant/')) showEncadrantView();
 	else if (h === 'seance') showSeanceView();
 	else if (h === 'revision') {
 		if (pendingRevision.length) runRevision(pendingRevision);

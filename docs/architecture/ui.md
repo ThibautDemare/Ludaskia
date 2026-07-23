@@ -29,44 +29,58 @@ seule dépendance inter-sections. La logique de données (`core/encadrant-stats.
 `core/encadrant-lock.ts`, `core/seance.ts`) est inchangée. Voix « vous », accent
 neutre (`encadrant.scss`).
 
+L'orchestrateur compose désormais l'espace en **4 onglets** (#459, cf. [Espace
+encadrant](espace-encadrant.md) pour la répartition détaillée des blocs) plutôt
+qu'en une page qui empile toutes les sections : `renderEspace` rend un en-tête
+de contexte (profil consulté) + une barre d'onglets + le panneau de l'onglet
+actif, en piochant dans les fonctions de rendu exportées par les modules
+ci-dessous.
+
 - **`encadrant.ts`** — **orchestrateur** : point d'entrée `enterEncadrant`,
   câblage des listeners délégués posés une fois sur `#encadrantContent` (dispatch
   en chaîne vers les modules de section), `rerender` (aiguille porte / récupération
-  / espace via `pinView()` du module pin) et `renderEspace` (compose l'espace à
-  partir des modules ci-dessous).
+  / espace via `pinView()` du module pin), `renderEspace` (en-tête de contexte +
+  barre d'onglets + panneau de l'onglet actif, #459) et `tabPanelHTML` (répartit
+  les fragments des modules ci-dessous par onglet).
 - **`encadrant-commun.ts`** — module **feuille** (n'importe aucun autre module
-  `encadrant-*`) : état de vue partagé (conteneur DOM, profil **consulté**) +
-  registre des callbacks `rerender`/`renderEspace` (casse le cycle orchestrateur
-  ↔ sections) + `telechargerBlob` (export, clé de récupération).
+  `encadrant-*`) : état de vue partagé (conteneur DOM, profil **consulté**,
+  **onglet actif** `EncTab`/`ENC_TABS`, #459) + registre des callbacks
+  `rerender`/`renderEspace` (casse le cycle orchestrateur ↔ sections) +
+  `telechargerBlob` (export, clé de récupération).
 - **`encadrant-pin.ts`** — **verrou par code** : porte PIN + pavé numérique,
   écran de récupération, bloc « Code d'accès » des réglages ; possède l'état du
   verrou et la vue courante (`pinView()`, lue par l'orchestrateur).
-- **`encadrant-progression.ts`** — **récap** par profil : chiffres-clés, graphe
-  d'activité 7 jours (#319, bascule Total / Par type), maîtrise par catégorie (avec sa
-  **frise d'évolution hebdomadaire par matière**, #397 — barres-capsules `--ok`, compteur
-  de notions au-dessus des semaines non vides, semaine en cours distinguée, sans axe ni
-  pourcentage), **historique des erreurs récentes** (#391, cf. `encadrant-erreurs.ts`
-  ci-dessous), file « à revoir » ; handlers `activite-mode`/`epingler`/`imprimer`.
-- **`encadrant-revision.ts`** (#423) — **récap du mode Révision espacée** par profil,
-  affiché juste après le bloc ci-dessus : projette la file de répétition espacée (#45,
-  lue par `core/encadrant-stats.ts:revisionProfil`) — palier courant + échéance relative
-  par entrée, badge « acquis » pour les entrées sorties de rotation. Bascule **« Par
-  catégorie »** (regroupement dépliable, même chrome que « Notions par catégorie ») /
-  **« Par urgence »** (liste à plat, plus en retard d'abord) ; handler `revision-mode`.
+- **`encadrant-progression.ts`** — **récap** par profil (onglet **Suivi**) :
+  chiffres-clés, graphe d'activité 7 jours (#319, bascule Total / Par type),
+  maîtrise par catégorie (avec sa **frise d'évolution hebdomadaire par
+  matière**, #397 — barres-capsules `--ok`, compteur de notions au-dessus des
+  semaines non vides, semaine en cours distinguée, sans axe ni pourcentage),
+  **historique des erreurs récentes** (#391, cf. `encadrant-erreurs.ts`
+  ci-dessous) ; handlers `activite-mode`/`epingler`/`imprimer`. Expose aussi
+  `aRevoirHTML` (file « à revoir ensemble ») et `dicteesProposeesHTML`
+  (dictées prédéfinies épinglables à l'avance), toutes deux rendues par
+  l'orchestrateur dans l'onglet **Programme** (#459) plutôt qu'ici.
+- **`encadrant-revision.ts`** (#423) — **récap du mode Révision espacée** par profil
+  (onglet **Suivi**, #459), affiché juste après le bloc ci-dessus : projette la file de
+  répétition espacée (#45, lue par `core/encadrant-stats.ts:revisionProfil`) — palier
+  courant + échéance relative par entrée, badge « acquis » pour les entrées sorties de
+  rotation. Bascule **« Par catégorie »** (regroupement dépliable, même chrome que
+  « Notions par catégorie ») / **« Par urgence »** (liste à plat, plus en retard
+  d'abord) ; handler `revision-mode`.
 - **`encadrant-seance.ts`** (#440) — **compositeur** du « programme du jour » du
-  profil consulté, affiché juste après la révision : programmes (nom, étapes +
+  profil consulté, en tête de l'onglet **Programme** (#459) : programmes (nom, étapes +
   `count`, récurrence date/hebdo avec garde-fou de conflit `recurrencesEnConflit`),
   cible d'étape (leçon/dictée) filtrée au niveau du profil, estimation de durée,
   copie vers un autre profil. Logique + stockage dans `core/seance.ts` (cf. [Logique
   pure](core.md)) : ce module ne fait que le rendu et l'aiguillage des interactions,
   persistance immédiate à chaque action.
-- **`encadrant-reglages.ts`** — **réglages** sur le profil consulté : classe de
-  référence + niveau par matière, longueur d'une séance de Révision (#439, menu à
-  paliers fixes `REVISION_PLAFOND_CHOIX`), aménagements « dys »/attention ; injecte le
-  bloc PIN rendu par `encadrant-pin`.
+- **`encadrant-reglages.ts`** — **réglages** sur le profil consulté (onglet
+  **Réglages**, #459) : classe de référence + niveau par matière, longueur d'une
+  séance de Révision (#439, menu à paliers fixes `REVISION_PLAFOND_CHOIX`),
+  aménagements « dys »/attention ; injecte le bloc PIN rendu par `encadrant-pin`.
 - **`encadrant-profils.ts`** — sélecteur de profils en **consultation** (≠ bascule)
   + **gestion** réservée à l'adulte (renommer/avatar/réinitialiser/supprimer/créer),
-  plus export/import de tous les profils.
+  plus export/import de tous les profils (onglet **Profils**, #459).
 - **`a-revoir-card.ts`** (#234) — carte d'accueil `#aRevoir` (modèle « leçon du jour »)
   affichant les leçons épinglées « à revoir » par l'encadrant, masquée si vide.
 

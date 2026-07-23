@@ -18,10 +18,10 @@ const CLEAR_PIN = `localStorage.removeItem('ludaskia_encadrant_lock');`;
 /* Crée, via l'UI réelle du compositeur, UN programme avec une étape « Sprint 5
    min » et une récurrence hebdomadaire sur les 7 jours (id de définition
    déterministe : 'd1', 1er programme d'un profil neuf). Laisse la page sur
-   #encadrant, la carte du programme affichée. */
+   #encadrant/programme (onglet Programme, #459), la carte du programme affichée. */
 async function creerProgrammeSprintTousLesJours(page: Page): Promise<void> {
 	await page.addInitScript(CLEAR_PIN);
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/programme');
 	await page.locator('[data-act="seance-add"]').click();
 	await page.locator('select[data-act="seance-etape-add"][data-def="d1"]').selectOption('sprint');
 	for (let jour = 1; jour <= 7; jour++) {
@@ -38,7 +38,7 @@ test('compositeur encadrant : création d’un programme avec une activité et u
 }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(CLEAR_PIN);
-	await gotoHash(page, 'encadrant');
+	await gotoHash(page, 'encadrant/programme');
 
 	const section = page.locator('.enc-seance-section');
 	await expect(section).toBeVisible();

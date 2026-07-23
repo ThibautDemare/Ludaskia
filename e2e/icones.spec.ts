@@ -58,7 +58,8 @@ test('écran « Mon espace » : outils du profil rendus en icônes', async ({ pa
 
 test('espace encadrants : gestion + sauvegarde rendues en icônes', async ({ page }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'encadrant');
+	// Gestion des profils + sauvegarde vivent dans l'onglet Profils (#459).
+	await gotoHash(page, 'encadrant/profils');
 	// Nouveau profil + export/import portent leur icône.
 	await expect(page.locator('#encAdd svg.ph-icon')).toBeVisible();
 	await expect(page.locator('[data-act="enc-export"] svg.ph-icon')).toBeVisible();

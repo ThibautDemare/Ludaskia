@@ -26,6 +26,7 @@ export type IconName =
 	| 'lock'
 	| 'export'
 	| 'import'
+	| 'users'
 	// Pictos de mode d'exercice / navigation
 	| 'keyboard'
 	| 'hand-pointing'

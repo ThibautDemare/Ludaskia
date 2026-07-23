@@ -83,8 +83,10 @@ test('rendu : groupé par leçon, « vu N fois », et épinglage depuis la secti
 		lecons.first().locator('.enc-err-meta').filter({ hasText: 'vue 2 fois' }),
 	).toBeVisible();
 
-	// Épingler depuis la section → la leçon rejoint « À revoir ensemble » (bouton « Retirer »).
+	// Épingler depuis la section → la leçon rejoint « À revoir ensemble », désormais dans
+	// l'onglet Programme (#459) : onglet ouvert (bouton « Retirer »).
 	await lecons.first().locator('[data-act="epingler"]').click();
+	await page.locator('.enc-tab[data-tab="programme"]').click();
 	await expect(
 		page.locator('.enc-revoir [data-act="epingler"]').filter({ hasText: 'Retirer' }).first(),
 	).toBeVisible();

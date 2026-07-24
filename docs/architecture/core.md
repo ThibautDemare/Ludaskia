@@ -656,11 +656,19 @@ propre doc de conception : `docs/design-orthographe.md`.
   ponctuelle l'emporte sur l'hebdo) et **reset paresseux** de l'état du jour à minuit
   (`etatSeanceJour`, calculé à la lecture, comme le défi du jour) — un état périmé est
   **archivé** avant d'être remis à zéro (`chargerJournalSeances`/
-  `ludaskia_seanceJournal`, y compris une réalisation **partielle**). **Attribution
-  sans toucher aux runners** : `marquerEtapeLancee` pose un marqueur au lancement
-  d'une étape depuis le programme, `resoudrePending` le consomme au retour en
-  cherchant dans le **journal d'activité existant** (`loadActivity`, #319) une
-  complétion du bon type postérieure au lancement ; sans complétion trouvée,
+  `ludaskia_seanceJournal`, y compris une réalisation **partielle**). **Étape « dictée »
+  en pool** (#463) : `SeanceEtape.refs?: string[]` porte un pool de dictées visées (l'ancien
+  `ref?: string` — une cible unique — reste lu pour la rétrocompat des programmes déjà
+  configurés) ; `ciblesEtape(etape)` normalise les deux formes, `ciblesValides(etape,
+  disponibles)` écarte les cibles devenues introuvables (liste supprimée, hors niveau) et
+  `tirerCible(etape, disponibles, rand?)` tire une cible au hasard parmi les valides
+  (`rand` injectable, déterministe en test) — 1 cible ⇒ toujours la même, 2+ ⇒ tirage à
+  chaque lancement. **Attribution sans toucher aux runners** : `marquerEtapeLancee(etapeId,
+  now, ref?)` pose un marqueur au lancement d'une étape depuis le programme (le 3e
+  paramètre mémorise, pour une dictée, la cible réellement tirée du pool — nécessaire à la
+  métrique puisque le journal d'activité ne porte que le type), `resoudrePending` le
+  consomme au retour en cherchant dans le **journal d'activité existant** (`loadActivity`,
+  #319) une complétion du bon type postérieure au lancement ; sans complétion trouvée,
   l'étape n'est pas créditée (abandon silencieux). `seancesCompletees` (compteur
   cumulé) alimente le trophée dédié (cf. [Gamification](gamification.md)). Consommé
   côté enfant par `ui/seance.ts` et côté encadrant par `ui/encadrant-seance.ts` (cf.

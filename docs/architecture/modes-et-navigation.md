@@ -53,8 +53,8 @@ un élément à la fois, sans chrono ni record.
 Le **programme du jour** (`#seance`, `startSeance`/`showSeanceView` dans
 `navigation.ts`, rendu par `ui/seance.ts`, logique par `core/seance.ts`) est une
 **séance** (nom interne des types) : une liste d'**étapes**, chacune un mode
-existant (Sprint, Révision espacée, Leçon du jour, une leçon précise, une dictée
-précise) demandé un certain nombre de fois (`count`), composée à l'avance par
+existant (Sprint, Révision espacée, Leçon du jour, une leçon précise, une ou
+plusieurs dictées) demandé un certain nombre de fois (`count`), composée à l'avance par
 l'encadrant pour un profil (cf. [Espace encadrant](espace-encadrant.md)). **Distinct
 de la « leçon du jour »** (#208, `core/lecon-du-jour.ts`) : celle-ci propose *une*
 leçon au fil de la maîtrise, sans intervention adulte, alors que le programme est

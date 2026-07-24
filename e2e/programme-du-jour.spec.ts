@@ -112,9 +112,10 @@ test('accueil enfant : carte programme visible, mène à l’écran #seance', as
 	expect(errors).toEqual([]);
 });
 
-/* 4. Lancement d'une étape : cliquer la tuile sprint mène à l'écran de config
-      du sprint (déclencheur de mode existant, réutilisé par le programme). */
-test('écran #seance : lancer la tuile sprint mène à la config du sprint', async ({ page }) => {
+/* 4. Lancement d'une étape : depuis le programme, l'enfant ne configure pas le
+      sprint — la tuile le lance DIRECTEMENT avec la config par défaut (toutes les
+      matières + périmètre adaptatif), sans passer par l'écran de configuration. */
+test('écran #seance : lancer la tuile sprint démarre le sprint sans config', async ({ page }) => {
 	const errors = watchErrors(page);
 	await creerProgrammeSprintTousLesJours(page);
 
@@ -126,8 +127,9 @@ test('écran #seance : lancer la tuile sprint mène à la config du sprint', asy
 	await expect(tuile).toBeVisible();
 	await tuile.click();
 
-	await expect(page).toHaveURL(/#sprint-config$/);
-	await expect(page.locator('#sprintConfigContent')).toBeVisible();
+	// Sprint lancé directement (pas d'écran de config intermédiaire).
+	await expect(page).toHaveURL(/#sprint$/);
+	await expect(page.locator('#sprintStage')).toBeVisible();
 
 	expect(errors).toEqual([]);
 });

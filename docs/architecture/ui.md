@@ -70,10 +70,14 @@ ci-dessous.
 - **`encadrant-seance.ts`** (#440) — **compositeur** du « programme du jour » du
   profil consulté, en tête de l'onglet **Programme** (#459) : programmes (nom, étapes +
   `count`, récurrence date/hebdo avec garde-fou de conflit `recurrencesEnConflit`),
-  cible d'étape (leçon/dictée) filtrée au niveau du profil, estimation de durée,
-  copie vers un autre profil. Logique + stockage dans `core/seance.ts` (cf. [Logique
-  pure](core.md)) : ce module ne fait que le rendu et l'aiguillage des interactions,
-  persistance immédiate à chaque action.
+  cible d'étape (leçon, ou dictée) filtrée au niveau du profil, estimation de durée,
+  copie vers un autre profil. Une étape « dictée » se cible via une **liste à cocher**
+  (`checkboxesDicteeHTML`, handler `seance-dictee-toggle`, #463) plutôt qu'un menu
+  mono-valeur : le pool coché (`ciblesEtape`) peut compter 0, 1 ou plusieurs dictées ;
+  une cible cochée devenue indisponible reste affichée à part (« Cible actuelle »),
+  décochable sans être perdue en silence. Logique + stockage dans `core/seance.ts`
+  (cf. [Logique pure](core.md)) : ce module ne fait que le rendu et l'aiguillage des
+  interactions, persistance immédiate à chaque action.
 - **`encadrant-reglages.ts`** — **réglages** sur le profil consulté (onglet
   **Réglages**, #459) : classe de référence + niveau par matière, longueur d'une
   séance de Révision (#439, menu à paliers fixes `REVISION_PLAFOND_CHOIX`),
@@ -165,10 +169,13 @@ pure](core.md)) pour les formats composites :
   navigation](modes-et-navigation.md)) : `renderProgrammeCard` (masquée hors
   programme applicable ce jour) et `renderSeance` (tuiles des étapes restantes en
   ordre libre, jauge de pastilles, bouton « Choisis pour moi », état terminé
-  célébré). `lancerEtapeProgramme` pose le marqueur d'attribution
-  (`core/seance.ts:marquerEtapeLancee`) puis délègue au déclencheur du mode
-  existant (`startSprint`/`startRevisionEspacee`/`startLecon`/`startOrthoLecon`) —
-  aucun runner n'est modifié. `rafraichirProgramme` (appelée par la navigation
+  célébré). `lancerEtapeProgramme` tire d'abord la cible d'une étape « dictée »
+  (`core/seance.ts:tirerCible`, #463 — sans effet pour les autres modes) puis pose
+  le marqueur d'attribution (`marquerEtapeLancee`, avec cette cible tirée) et délègue
+  au déclencheur du mode existant (`startSprint`/`startRevisionEspacee`/`startLecon`/
+  `startOrthoLecon`) — aucun runner n'est modifié. Un pool de 2+ dictées s'affiche sous
+  un titre générique (« Une dictée ») : l'enfant ne sait laquelle avant de lancer.
+  `rafraichirProgramme` (appelée par la navigation
   avant l'accueil et l'écran `#seance`) consomme l'attribution au retour et célèbre
   (modale + confettis) la complétion du programme entier, sans XP.
 - **`lecon-du-jour.ts`** — carte **« leçon du jour »** de l'accueil (#208) : `#leconDuJour`

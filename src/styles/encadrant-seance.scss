@@ -155,22 +155,23 @@
 	max-height: 220px;
 	overflow-y: auto;
 }
+.enc-seance-dictees-groupe + .enc-seance-dictees-groupe {
+	margin-top: 0.3rem;
+}
 .enc-seance-dictees-grp {
 	font-size: 0.72rem;
 	font-weight: 800;
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
 	color: var(--grey);
-	margin: 0.5rem 0 0.15rem;
-}
-.enc-seance-dictees-grp:first-child {
-	margin-top: 0.15rem;
+	margin: 0 0 0.15rem;
 }
 .enc-seance-dictee {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
 	min-height: 44px;
+	margin-bottom: 0.1rem;
 	padding: 0.1rem 0.35rem;
 	border-radius: 8px;
 	font-size: 0.85rem;

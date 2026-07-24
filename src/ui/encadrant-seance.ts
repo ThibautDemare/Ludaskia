@@ -155,6 +155,15 @@ function optionsCibleHTML(
    1 cochée ⇒ dictée figée (toujours la même) ; 2+ ⇒ une au hasard à chaque lancement.
    Une cible cochée absente des groupes (liste supprimée, hors niveau) est préservée dans
    un groupe « Cible actuelle » pour rester décochable (jamais de sélection perdue en silence). */
+/* Texte d'aide sous la liste à cocher, selon le nombre de cibles cochées (#463). */
+function hintDictees(n: number, totalDispo: number, hasOrphelins: boolean): string {
+	if (totalDispo === 0 && !hasOrphelins)
+		return "Pour l'instant, aucune dictée n'est disponible pour ce profil.";
+	if (n === 0) return 'Choisissez au moins une dictée.';
+	if (n === 1) return 'Une seule dictée : toujours celle-ci.';
+	return `${n} dictées : une au hasard à chaque lancement.`;
+}
+
 function checkboxesDicteeHTML(
 	def: SeanceDef,
 	etape: SeanceEtape,
@@ -168,36 +177,33 @@ function checkboxesDicteeHTML(
 		? [
 				...dictees,
 				{
-					label: 'Cible actuelle (indisponible)',
+					label: 'Cibles actuelles (indisponibles)',
 					items: orphelins.map((id) => ({ id, label: resoudreLabel(id) ?? id })),
 				},
 			]
 		: dictees;
+	// Le repère est décrit par chaque case (aria-describedby) : comme le focus revient sur
+	// la case cochée après re-rendu, le lecteur d'écran relit l'état à jour dans la même passe.
+	const hintId = `dictee-hint-${def.id}-${etape.id}`;
 	const corps = groupes
 		.map((g) => {
 			const cases = g.items
 				.map((it) => {
 					const on = selected.includes(it.id);
-					return `<label class="enc-seance-dictee${on ? ' on' : ''}"><input type="checkbox" data-act="seance-dictee-toggle" data-def="${def.id}" data-etape="${etape.id}" data-ref="${escapeHTML(it.id)}"${on ? ' checked' : ''} /><span>${escapeHTML(it.label)}</span></label>`;
+					return `<label class="enc-seance-dictee${on ? ' on' : ''}"><input type="checkbox" data-act="seance-dictee-toggle" data-def="${def.id}" data-etape="${etape.id}" data-ref="${escapeHTML(it.id)}" aria-describedby="${hintId}"${on ? ' checked' : ''} /><span>${escapeHTML(it.label)}</span></label>`;
 				})
 				.join('');
-			return `<p class="enc-seance-dictees-grp">${escapeHTML(g.label)}</p>${cases}`;
+			// role="group" + aria-label expose le regroupement (le <p> visuel est masqué pour
+			// éviter la double annonce), même brique que recurrenceHTML.
+			return `<div class="enc-seance-dictees-groupe" role="group" aria-label="${escapeHTML(g.label)}"><p class="enc-seance-dictees-grp" aria-hidden="true">${escapeHTML(g.label)}</p>${cases}</div>`;
 		})
 		.join('');
 	const totalDispo = dictees.reduce((s, g) => s + g.items.length, 0);
-	const n = selected.length;
-	const hint =
-		totalDispo === 0 && !orphelins.length
-			? "Aucune dictée disponible pour ce profil pour l'instant."
-			: n === 0
-				? 'Choisissez au moins une dictée.'
-				: n === 1
-					? 'Une seule dictée : toujours celle-ci.'
-					: `${n} dictées : une au hasard à chaque lancement.`;
-	return `<fieldset class="enc-seance-dictees">
+	const hint = hintDictees(selected.length, totalDispo, orphelins.length > 0);
+	return `<fieldset class="enc-seance-dictees" data-def="${def.id}" data-etape="${etape.id}">
       <legend class="sr-only">Dictées visées (une ou plusieurs)</legend>
       ${corps}
-      <p class="enc-seance-dictees-hint">${escapeHTML(hint)}</p>
+      <p id="${hintId}" class="enc-seance-dictees-hint">${escapeHTML(hint)}</p>
     </fieldset>`;
 }
 
@@ -400,10 +406,15 @@ function profilConsulte(): Profile | null {
 
 /* Re-rend l'espace puis rend le focus clavier à l'élément désigné (le re-rendu recrée
    tout le DOM ; sans ça, la navigation clavier repartirait du haut de la page). */
-function rendre(refocusSel?: string): void {
+function rendre(refocusSel?: string, restoreScroll?: { sel: string; top: number }): void {
 	renderEspace();
+	const c = container();
+	if (restoreScroll) {
+		const sc = c?.querySelector(restoreScroll.sel) as HTMLElement | null;
+		if (sc) sc.scrollTop = restoreScroll.top;
+	}
 	if (refocusSel)
-		(container()?.querySelector(refocusSel) as HTMLElement | null)?.focus({ preventScroll: true });
+		(c?.querySelector(refocusSel) as HTMLElement | null)?.focus({ preventScroll: true });
 }
 
 /* ---------- Handlers délégués (aiguillés par l'orchestrateur) ---------- */
@@ -517,8 +528,14 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			delete etape.ref;
 			enregistrerSeancesFor(uuid, defs);
 			conflit = null;
+			// Conserve le scroll de la liste (capée à 220px) : le re-rendu recrée le conteneur
+			// (scrollTop=0) et le refocus est en preventScroll — sans ça, cocher une case du bas
+			// enverrait le repère de focus hors du cadre visible.
+			const scrollSel = `fieldset.enc-seance-dictees[data-def="${defId}"][data-etape="${t.dataset.etape}"]`;
+			const top = (container()?.querySelector(scrollSel) as HTMLElement | null)?.scrollTop ?? 0;
 			rendre(
 				`input[data-act="seance-dictee-toggle"][data-def="${defId}"][data-etape="${t.dataset.etape}"][data-ref="${ref}"]`,
+				{ sel: scrollSel, top },
 			);
 			return true;
 		}

@@ -50,7 +50,16 @@ export interface SeanceEtape {
 	id: string; // id STABLE de l'étape (sert à l'attribution), unique dans la définition
 	kind: SeanceModeKind;
 	count: number; // nombre de fois requis (>= 1, défaut 1)
-	ref?: string; // id de leçon (kind='lecon') ou id de liste d'orthographe (kind='dictee')
+	ref?: string; // id de leçon (kind='lecon') ou d'UNE dictée figée (kind='dictee', legacy)
+	refs?: string[]; // pool de dictées (kind='dictee', #463) : tirage au lancement, prime sur `ref`
+}
+
+/** Cibles (dictées) autorisées d'une étape, normalisées (#463). Le pool `refs`
+    prime ; sinon on retombe sur l'ancien `ref` unique (rétrocompat des programmes
+    déjà configurés). 1 cible ⇒ dictée figée ; 2+ ⇒ tirage aléatoire au lancement. */
+export function ciblesEtape(etape: SeanceEtape): string[] {
+	if (etape.refs && etape.refs.length) return etape.refs;
+	return etape.ref ? [etape.ref] : [];
 }
 
 /** Récurrence d'une séance : soit une DATE unique (ponctuelle), soit des JOURS de
@@ -83,6 +92,7 @@ export interface SeancePending {
 	etapeId: string;
 	kind: SeanceModeKind;
 	launchTs: number;
+	ref?: string; // cible RÉELLEMENT lancée (dictée tirée du pool, #463) — pour la métrique
 }
 
 /** État du jour d'un profil : quelle définition s'applique, ce qui a été fait,
@@ -296,13 +306,16 @@ export function vueSeanceDuJour(now: number): VueSeance | null {
 
 /* ---------- Attribution ---------- */
 /** Pose le marqueur « étape en cours » au lancement d'un mode DEPUIS le programme.
-    Sans effet si aucune séance ne s'applique ou si l'étape est inconnue. */
-export function marquerEtapeLancee(etapeId: string, now: number): void {
+    Sans effet si aucune séance ne s'applique ou si l'étape est inconnue. `ref` (facultatif,
+    #463) mémorise la cible réellement lancée quand elle est tirée d'un pool (dictée) : elle
+    est reportée telle quelle dans la complétion (la métrique conserve la dictée VUE, pas le
+    pool). Absente ⇒ on retombe sur `etape.ref` (leçon / dictée figée) à la résolution. */
+export function marquerEtapeLancee(etapeId: string, now: number, ref?: string): void {
 	const jour = etatSeanceJour(now);
 	if (!jour) return;
 	const etape = defApplicable(chargerSeances(), now)?.etapes.find((e) => e.id === etapeId);
 	if (!etape) return;
-	jour.pending = { etapeId, kind: etape.kind, launchTs: now };
+	jour.pending = { etapeId, kind: etape.kind, launchTs: now, ref };
 	if (jour.debutTs == null) jour.debutTs = now;
 	lsSet(SEANCE_JOUR_KEY, jour);
 }
@@ -351,7 +364,7 @@ export function resoudrePending(now: number): ResolutionSeance {
 		jour.completions.push({
 			etapeId: p.etapeId,
 			kind: p.kind,
-			ref: etape.ref,
+			ref: p.ref ?? etape.ref, // dictée tirée du pool (#463) sinon cible figée
 			ts: hit.t,
 			dureeMs: Math.max(0, hit.t - p.launchTs),
 		});

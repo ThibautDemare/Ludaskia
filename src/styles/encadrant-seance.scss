@@ -144,6 +144,58 @@
 .enc-seance-count select {
 	min-width: 4.2rem;
 }
+/* Pool de dictées (#463) : liste à cocher pleine largeur sous la ligne d'activité.
+   Hauteur bornée + scroll pour ne pas gonfler la carte quand il y a beaucoup de dictées. */
+.enc-seance-dictees {
+	flex: 1 1 100%;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	margin: 0.1rem 0 0;
+	padding: 0.3rem 0.5rem 0.45rem;
+	max-height: 220px;
+	overflow-y: auto;
+}
+.enc-seance-dictees-grp {
+	font-size: 0.72rem;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--grey);
+	margin: 0.5rem 0 0.15rem;
+}
+.enc-seance-dictees-grp:first-child {
+	margin-top: 0.15rem;
+}
+.enc-seance-dictee {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-height: 44px;
+	padding: 0.1rem 0.35rem;
+	border-radius: 8px;
+	font-size: 0.85rem;
+	color: var(--ink);
+	cursor: pointer;
+}
+.enc-seance-dictee input {
+	width: 18px;
+	height: 18px;
+	accent-color: var(--admin-accent);
+	flex: none;
+}
+.enc-seance-dictee.on {
+	color: var(--admin-accent);
+	font-weight: 700;
+}
+.enc-seance-dictee:focus-within {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 2px;
+}
+.enc-seance-dictees-hint {
+	font-size: 0.8rem;
+	color: var(--grey);
+	margin: 0.4rem 0 0.1rem;
+}
 /* Bouton « retirer » icône seule (cible 44px). */
 .enc-seance-etape-del {
 	min-width: 44px;

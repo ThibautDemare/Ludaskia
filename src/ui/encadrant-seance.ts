@@ -35,6 +35,7 @@ import {
 	chargerSeancesFor,
 	enregistrerSeancesFor,
 	copierSeances,
+	ciblesEtape,
 	genEtapeId,
 	genDefId,
 	estimationDureeMin,
@@ -149,6 +150,57 @@ function optionsCibleHTML(
 	return tete + corps;
 }
 
+/* Cases à cocher des dictées visées par une étape « Une dictée » (#463) : le pool
+   `refs` (ou l'ancien `ref` unique, rétrocompat) présenté comme une liste à cocher.
+   1 cochée ⇒ dictée figée (toujours la même) ; 2+ ⇒ une au hasard à chaque lancement.
+   Une cible cochée absente des groupes (liste supprimée, hors niveau) est préservée dans
+   un groupe « Cible actuelle » pour rester décochable (jamais de sélection perdue en silence). */
+function checkboxesDicteeHTML(
+	def: SeanceDef,
+	etape: SeanceEtape,
+	dictees: Groupe[],
+	resoudreLabel: (id: string) => string | null,
+): string {
+	const selected = ciblesEtape(etape);
+	const dispo = new Set(dictees.flatMap((g) => g.items.map((it) => it.id)));
+	const orphelins = selected.filter((id) => !dispo.has(id));
+	const groupes: Groupe[] = orphelins.length
+		? [
+				...dictees,
+				{
+					label: 'Cible actuelle (indisponible)',
+					items: orphelins.map((id) => ({ id, label: resoudreLabel(id) ?? id })),
+				},
+			]
+		: dictees;
+	const corps = groupes
+		.map((g) => {
+			const cases = g.items
+				.map((it) => {
+					const on = selected.includes(it.id);
+					return `<label class="enc-seance-dictee${on ? ' on' : ''}"><input type="checkbox" data-act="seance-dictee-toggle" data-def="${def.id}" data-etape="${etape.id}" data-ref="${escapeHTML(it.id)}"${on ? ' checked' : ''} /><span>${escapeHTML(it.label)}</span></label>`;
+				})
+				.join('');
+			return `<p class="enc-seance-dictees-grp">${escapeHTML(g.label)}</p>${cases}`;
+		})
+		.join('');
+	const totalDispo = dictees.reduce((s, g) => s + g.items.length, 0);
+	const n = selected.length;
+	const hint =
+		totalDispo === 0 && !orphelins.length
+			? "Aucune dictée disponible pour ce profil pour l'instant."
+			: n === 0
+				? 'Choisissez au moins une dictée.'
+				: n === 1
+					? 'Une seule dictée : toujours celle-ci.'
+					: `${n} dictées : une au hasard à chaque lancement.`;
+	return `<fieldset class="enc-seance-dictees">
+      <legend class="sr-only">Dictées visées (une ou plusieurs)</legend>
+      ${corps}
+      <p class="enc-seance-dictees-hint">${escapeHTML(hint)}</p>
+    </fieldset>`;
+}
+
 /* ---------- Récurrence ---------- */
 function estVide(rec: SeanceRecurrence): boolean {
 	return rec.type === 'date' ? !rec.date : rec.jours.length === 0;
@@ -236,21 +288,19 @@ function etapeHTML(
 	dictees: Groupe[],
 ): string {
 	const info = SEANCE_MODE_INFOS[etape.kind];
-	let cible = '';
+	let cibleInline = ''; // sélecteur compact sur la ligne (leçon)
+	let cibleBloc = ''; // bloc pleine largeur sous la ligne (pool de dictées, #463)
 	if (info.ref === 'lecon') {
-		cible = `<label class="enc-seance-cible"><span class="sr-only">Leçon visée</span>
+		cibleInline = `<label class="enc-seance-cible"><span class="sr-only">Leçon visée</span>
         <select class="enc-select-niveau" data-act="seance-ref" data-def="${def.id}" data-etape="${etape.id}">${optionsCibleHTML(
 					lecons,
 					etape.ref,
 					(id) => getLessonById(id)?.label ?? null,
 				)}</select></label>`;
 	} else if (info.ref === 'dictee') {
-		cible = `<label class="enc-seance-cible"><span class="sr-only">Dictée visée</span>
-        <select class="enc-select-niveau" data-act="seance-ref" data-def="${def.id}" data-etape="${etape.id}">${optionsCibleHTML(
-					dictees,
-					etape.ref,
-					(id) => labelLeconOrtho(id, loadOrthoFor(consulte.uuid).listes),
-				)}</select></label>`;
+		cibleBloc = checkboxesDicteeHTML(def, etape, dictees, (id) =>
+			labelLeconOrtho(id, loadOrthoFor(consulte.uuid).listes),
+		);
 	}
 	const count = `<label class="enc-seance-count"><span class="sr-only">Nombre de fois</span>
       <select class="enc-select-niveau" data-act="seance-count" data-def="${def.id}" data-etape="${etape.id}">${PALIERS.map(
@@ -258,9 +308,10 @@ function etapeHTML(
 			).join('')}</select></label>`;
 	return `<li class="enc-seance-etape">
       <span class="enc-seance-etape-mode">${icon(MODE_ICONE[etape.kind])} ${escapeHTML(info.label)}</span>
-      ${cible}
+      ${cibleInline}
       ${count}
       <button type="button" class="enc-seance-etape-del" data-act="seance-etape-del" data-def="${def.id}" data-etape="${etape.id}" aria-label="Retirer cette activité">${icon('trash')}</button>
+      ${cibleBloc}
     </li>`;
 }
 
@@ -419,10 +470,13 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			const etape: SeanceEtape = { id: genEtapeId(def), kind, count: 1 };
 			const ref = SEANCE_MODE_INFOS[kind].ref;
 			if (ref === 'lecon') etape.ref = premiereRef(groupesLecon(consulte));
-			else if (ref === 'dictee')
-				etape.ref = premiereRef(
+			else if (ref === 'dictee') {
+				// Pool de dictées (#463) : par défaut la 1re dictée cochée (⇒ comportement figé).
+				const first = premiereRef(
 					groupesDictee(uuid, niveauProfilMatiere(consulte, 'francais'), consulte.name),
 				);
+				if (first) etape.refs = [first];
+			}
 			def.etapes.push(etape);
 			enregistrerSeancesFor(uuid, defs);
 			conflit = null;
@@ -449,6 +503,23 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			enregistrerSeancesFor(uuid, defs);
 			conflit = null;
 			rendre(`select[data-act="seance-ref"][data-def="${defId}"][data-etape="${t.dataset.etape}"]`);
+			return true;
+		}
+		case 'seance-dictee-toggle': {
+			const defs = chargerSeancesFor(uuid);
+			const etape = defs.find((d) => d.id === defId)?.etapes.find((e) => e.id === t.dataset.etape);
+			if (!etape) return true;
+			const ref = t.dataset.ref ?? '';
+			const coche = (t as HTMLInputElement).checked;
+			const actuels = ciblesEtape(etape);
+			// On bascule sur le pool `refs` (le champ legacy `ref` unique n'a plus cours).
+			etape.refs = coche ? [...new Set([...actuels, ref])] : actuels.filter((r) => r !== ref);
+			delete etape.ref;
+			enregistrerSeancesFor(uuid, defs);
+			conflit = null;
+			rendre(
+				`input[data-act="seance-dictee-toggle"][data-def="${defId}"][data-etape="${t.dataset.etape}"][data-ref="${ref}"]`,
+			);
 			return true;
 		}
 		case 'seance-rec-date': {

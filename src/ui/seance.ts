@@ -27,7 +27,9 @@ import {
 	vueSeanceDuJour,
 	marquerEtapeLancee,
 	resoudrePending,
+	ciblesEtape,
 	SEANCE_MODE_INFOS,
+	type SeanceEtape,
 	type VueEtape,
 } from '../core/seance';
 import { icon } from './icon';
@@ -35,6 +37,21 @@ import { subjectIcon } from './cat-visuals';
 import { startRevisionEspacee, startLecon, startOrthoLecon } from './navigation';
 import { startDefaultSprint } from './sprint';
 import { showCelebration } from './effects';
+
+/* ---------- Cibles d'une étape « dictée » (#463) ---------- */
+/* Dictées du pool encore présentes dans le catalogue du profil actif. Une cible
+   disparue (liste supprimée, hors niveau) est ignorée ; si aucune ne subsiste,
+   l'étape devient inactive (cf. lancable). */
+function ciblesDicteeValides(e: SeanceEtape): string[] {
+	const dispo = listOrthoLecons(loadOrtho());
+	return ciblesEtape(e).filter((id) => dispo.some((x) => x.id === id));
+}
+/* Tire une dictée valide au hasard dans le pool (undefined si pool vide/obsolète).
+   1 cible ⇒ toujours la même (dictée figée) ; 2+ ⇒ une au hasard à chaque lancement. */
+function tirerCibleDictee(e: SeanceEtape): string | undefined {
+	const valides = ciblesDicteeValides(e);
+	return valides.length ? valides[Math.floor(Math.random() * valides.length)] : undefined;
+}
 
 /* ---------- Visuels d'une étape ---------- */
 function etapeVisuel(v: VueEtape): { ico: string; titre: string } {
@@ -54,8 +71,13 @@ function etapeVisuel(v: VueEtape): { ico: string; titre: string } {
 			};
 		}
 		case 'dictee': {
-			const liste = e.ref ? listOrthoLecons(loadOrtho()).find((x) => x.id === e.ref) : null;
-			return { ico: icon('book-open'), titre: liste?.label ?? 'Une dictée' };
+			const cibles = ciblesEtape(e);
+			if (cibles.length === 1) {
+				const liste = listOrthoLecons(loadOrtho()).find((x) => x.id === cibles[0]);
+				return { ico: icon('book-open'), titre: liste?.label ?? 'Une dictée' };
+			}
+			// Pool de plusieurs dictées : titre générique (la dictée est tirée au lancement).
+			return { ico: icon('book-open'), titre: 'Une dictée' };
 		}
 	}
 }
@@ -86,7 +108,7 @@ function lancable(v: VueEtape): { ok: boolean; raison?: string } {
 				? { ok: true }
 				: { ok: false, raison: 'Leçon indisponible' };
 		case 'dictee':
-			return e.ref && listOrthoLecons(loadOrtho()).some((x) => x.id === e.ref)
+			return ciblesDicteeValides(e).length
 				? { ok: true }
 				: { ok: false, raison: 'Dictée indisponible' };
 	}
@@ -99,8 +121,11 @@ export function lancerEtapeProgramme(etapeId: string): void {
 	const vue = vueSeanceDuJour(Date.now());
 	const v = vue?.etapes.find((x) => x.etape.id === etapeId);
 	if (!v || v.reste <= 0 || !lancable(v).ok) return;
-	marquerEtapeLancee(etapeId, Date.now());
 	const e = v.etape;
+	// Dictée : on TIRE la cible du pool AVANT de poser le marqueur, afin de la mémoriser
+	// (métrique #463) et de la lancer. Les autres modes n'ont pas de cible tirée au lancement.
+	const dicteeCible = e.kind === 'dictee' ? tirerCibleDictee(e) : undefined;
+	marquerEtapeLancee(etapeId, Date.now(), dicteeCible);
 	switch (e.kind) {
 		case 'sprint':
 			// Depuis le programme, l'enfant ne configure pas : lancement direct avec la
@@ -120,7 +145,7 @@ export function lancerEtapeProgramme(etapeId: string): void {
 			if (e.ref) startLecon(e.ref);
 			break;
 		case 'dictee':
-			if (e.ref) startOrthoLecon(e.ref);
+			if (dicteeCible) startOrthoLecon(dicteeCible);
 			break;
 	}
 }

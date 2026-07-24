@@ -966,8 +966,9 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 	}
 	const ex = lesson.exerciseType.generate({ level });
 	// Ordre alphabétique (#108) : l'interaction tuiles vit dans son runner d'écran.
-	// Ici (fiche/bilan/révision), repli TEXTE non interactif : on liste les mots
-	// mélangés et on attend la suite rangée (séparée par des espaces ou virgules).
+	// Ici (fiche/bilan), repli TEXTE non interactif : on liste les mots mélangés et on
+	// attend la suite rangée (séparée par des espaces ou virgules). La révision, elle,
+	// rejoue le vrai widget de rangement (#186/#345), pas ce repli.
 	if (ex.type === 'tuilesOrdre') {
 		return {
 			text: `${ex.question} (${ex.tuiles.join(', ')}) @`,
@@ -978,8 +979,9 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 		};
 	}
 	// Tri par thème (#114) : l'interaction (deux colonnes) vit dans son runner.
-	// Repli TEXTE non interactif pour fiche/bilan/révision : une tuile tirée au
-	// sort de la question et son thème attendu (« la météo » / « la mer »).
+	// Repli TEXTE non interactif pour fiche/bilan (la révision rejoue le vrai widget,
+	// #345) : une tuile tirée au sort de la question et son thème attendu
+	// (« la météo » / « la mer »).
 	if (ex.type === 'tuilesTri') {
 		const tuile = ex.mots[0]; // l'ordre des tuiles est déjà mélangé à la génération
 		return {
@@ -990,9 +992,10 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 		};
 	}
 	// Résolution de problèmes (#199) : le runner dédié (ui/lecon-probleme.ts) gère
-	// l'énoncé + ses sous-questions. Repli TEXTE pour bilan/révision : énoncé +
+	// l'énoncé + ses sous-questions. Repli TEXTE pour bilan/fiche : énoncé +
 	// question finale en gras, réponse = dernière étape (les étapes intermédiaires
-	// ne sont pas corrigées hors du runner dédié).
+	// ne sont pas corrigées hors du runner dédié). La révision, elle, rejoue le board
+	// complet + brouillon (#466), pas ce repli.
 	if (ex.type === 'probleme') {
 		const last = ex.etapes[ex.etapes.length - 1];
 		return {
@@ -1003,14 +1006,15 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 			answer: String(last.answer).replace('.', ','),
 			kind: 'num',
 			// Texte lu aligné sur l'AFFICHÉ du repli (énoncé + question finale), sans la
-			// sous-question intermédiaire — absente de l'écran en bilan/révision.
+			// sous-question intermédiaire — absente de l'écran en bilan/fiche.
 			parle: `${ex.enonce} ${last.question}`,
 			_lesson: lesson.id,
 		};
 	}
 	// Appariement (#392) : l'interaction (relier deux colonnes) vit dans son runner
-	// (ui/lecon-appariement.ts). Repli TEXTE non interactif pour fiche/bilan/révision :
-	// une paire tirée au sort → « quel mot va avec X ? », réponse = le mot droite.
+	// (ui/lecon-appariement.ts). Repli TEXTE non interactif pour fiche/bilan (la révision
+	// monte le vrai widget de liaison, #466) : une paire tirée au sort → « quel mot va
+	// avec X ? », réponse = le mot droite.
 	if (ex.type === 'appariement') {
 		const p = ex.paires[0]; // l'ordre des paires est déjà mélangé à la génération
 		return {
@@ -1022,13 +1026,14 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 	}
 	// « Clique sur le mot » (#259, #437) : l'interaction (sélectionner des mots dans une
 	// phrase) vit dans son runner (ui/lecon-clic-mot.ts). Repli TEXTE non interactif pour
-	// fiche/bilan/révision : on montre la phrase et on attend le(s) mot(s)-cible recopié(s)
-	// (stockés, jamais recalculés). La consigne est NEUTRE (dérivée de `cibleLabel`, valable
-	// pour toutes les natures et tous les genres : verbe, article, nom noyau, conjonction…).
+	// fiche/bilan (la révision monte le vrai widget de sélection, #466) : on montre la
+	// phrase et on attend le(s) mot(s)-cible recopié(s) (stockés, jamais recalculés). La
+	// consigne est NEUTRE (dérivée de `cibleLabel`, valable pour toutes les natures et tous
+	// les genres : verbe, article, nom noyau, conjonction…).
 	if (ex.type === 'clicMot') {
 		// Jointure PARTAGÉE avec le runner (helper libelleCible) : « et » si la cible n'est pas
 		// contiguë (sujet composé, ni…ni), sinon la réponse stockée serait « Emma Chloé »/« ni ni »
-		// et une recopie naturelle (« Emma et Chloé ») serait comptée fausse en révision.
+		// et une recopie naturelle (« Emma et Chloé ») serait comptée fausse en bilan/fiche.
 		const motsCible = libelleCible(ex.tokens, ex.cibleIndices);
 		const quoi = ex.cibleLabel ?? 'le mot demandé';
 		return {

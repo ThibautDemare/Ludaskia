@@ -67,6 +67,55 @@ export function renderProblemeBoardHTML(q: ProbQuestion, lex: ProbLexique = LEX_
           <div class="prob-etapes${multi ? ' prob-etapes-multi' : ''}">${etapesHTML}</div>`;
 }
 
+/* Live region (sr-only) à insérer dans le board par l'APPELANT (runner leçon ET
+   révision) : `corrigerEtapesProbleme` y annonce le verdict non-visuel (#466). Hors
+   du board PUR (renderProblemeBoardHTML), qui reste réutilisé tel quel par la galerie. */
+export const PROB_STATUS_HTML =
+	'<p class="sr-only" id="probStatus" role="status" aria-live="polite" aria-atomic="true"></p>';
+
+/* Corrige les sous-questions d'un problème DANS le DOM (partagé runner ↔ révision,
+   #466) : marque chaque `.prob-input` (couleur + classe) et sa `.prob-mark` (glyphe
+   ✓/✗ + solution révélée + `aria-label` explicite, car le glyphe n'est pas fiablement
+   vocalisé), annonce un résumé dans la live region `#probStatus` si l'appelant en a
+   posé une, et renvoie si TOUTES les étapes sont justes. `onErreur` (optionnel) est
+   appelé par sous-question ratée — seul le runner de leçon journalise (#391) ; la
+   révision l'omet, comme les autres items de sa session. Virgule française tolérée
+   (réponses décimales CM1, #255) ; le `data-answer` reste numérique. */
+export function corrigerEtapesProbleme(
+	root: ParentNode,
+	etapes: ProblemeEtape[],
+	onErreur?: (etape: ProblemeEtape, saisie: string) => void,
+): boolean {
+	const inputs = [...root.querySelectorAll<HTMLInputElement>('.prob-input')];
+	let nbBon = 0;
+	inputs.forEach((inp) => {
+		const i = Number(inp.dataset.i);
+		const attendu = etapes[i].answer;
+		const saisie = inp.value.trim();
+		const correct = Number(saisie.replace(',', '.')) === attendu;
+		inp.disabled = true;
+		inp.classList.add(correct ? 'correct' : 'wrong');
+		const attenduTexte = String(attendu).replace('.', ',');
+		const mark = root.querySelector(`.prob-mark[data-for="${i}"]`) as HTMLElement;
+		mark.className = 'prob-mark ' + (correct ? 'correct' : 'wrong');
+		mark.innerHTML = correct ? '✓' : `✗ <span class="sol">→ ${escapeHTML(attenduTexte)}</span>`;
+		mark.setAttribute(
+			'aria-label',
+			correct ? 'correct' : `incorrect, la bonne réponse était ${attenduTexte}`,
+		);
+		if (correct) nbBon++;
+		else onErreur?.(etapes[i], saisie);
+	});
+	const status = root.querySelector('#probStatus');
+	if (status) {
+		status.textContent =
+			nbBon === inputs.length
+				? 'Bravo, toutes les réponses sont justes.'
+				: `${nbBon} bonne${nbBon > 1 ? 's' : ''} réponse${nbBon > 1 ? 's' : ''} sur ${inputs.length}.`;
+	}
+	return nbBon === inputs.length;
+}
+
 let lesson: LessonDef;
 let probMode: ExerciseMode | undefined; // mode retenu (#95) — passé à la génération et conservé au « Recommencer »
 let lex: ProbLexique = LEX_DEFAUT;
@@ -142,6 +191,7 @@ function renderQuestion(): void {
           ${renderProblemeBoardHTML(q, lex)}
           ${brouillonHTML()}
           <button class="sprint-btn" id="probVerif">Vérifier</button>
+          ${PROB_STATUS_HTML}
           <div class="sprint-correction" id="probFeedback" hidden></div>
           <div class="sprint-actions" id="probActions" hidden></div>
         </div>
@@ -167,32 +217,19 @@ function verifier(): void {
 		return;
 	}
 	answered = true;
-	let toutJuste = true;
-	inputs.forEach((inp) => {
-		const i = Number(inp.dataset.i);
-		const attendu = q.etapes[i].answer;
-		const correct = Number(inp.value.trim().replace(',', '.')) === attendu;
-		inp.disabled = true;
-		inp.classList.add(correct ? 'correct' : 'wrong');
-		const mark = sheets().querySelector(`.prob-mark[data-for="${i}"]`) as HTMLElement;
-		mark.className = 'prob-mark ' + (correct ? 'correct' : 'wrong');
-		// Réponse révélée en virgule française (#255 : réponses décimales CM1) ; un entier
-		// reste inchangé. Le `data-answer` du champ reste NUMÉRIQUE (le check en dépend).
-		const attenduTexte = String(attendu).replace('.', ',');
-		mark.innerHTML = correct ? '✓' : `✗ <span class="sol">→ ${attenduTexte}</span>`;
-		if (!correct) {
-			toutJuste = false;
-			// Journal des erreurs (#391) : une entrée par SOUS-QUESTION ratée (l'énoncé de
-			// l'étape, la saisie, la bonne réponse). Garde `answered` → une seule capture par essai.
-			capterErreur({
-				text: q.etapes[i].question,
-				donnee: inp.value.trim(),
-				attendue: String(attendu),
-				lessonId: lesson.id,
-				mode: 'lecon',
-			});
-		}
-	});
+	// Correction partagée avec la révision (#466) : marque chaque étape (✓/✗ + solution
+	// + aria-label) et annonce le résumé dans #probStatus. Le runner journalise en plus
+	// chaque sous-question ratée (#391) via le callback — une seule capture par essai
+	// (garde `answered`).
+	const toutJuste = corrigerEtapesProbleme(sheets(), q.etapes, (etape, saisie) =>
+		capterErreur({
+			text: etape.question,
+			donnee: saisie,
+			attendue: String(etape.answer),
+			lessonId: lesson.id,
+			mode: 'lecon',
+		}),
+	);
 	if (toutJuste) score++;
 	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
 	// (#probActions) reste, pour ne pas afficher deux boutons à la fois (#153).

@@ -433,8 +433,9 @@ fabrique un `ExerciseType` **mono-mode** dont `generate()` produit un `Exercise`
 **`tuilesOrdre`** `{question, tuiles (suite mélangée), ordre (suite triée)}` — la
 bonne suite est **calculée** par `trierAlpha` (`localeCompare` fr), jamais figée.
 Joué par un runner d'écran dédié `ui/lecon-ordre.ts` ; **exclu du sprint**
-(`isOrderingLesson`, comme la posée), avec un **repli texte** en bilan/fiche/
-révision (genLessonItem : « écris les mots dans l'ordre »).
+(`isOrderingLesson`, comme la posée), avec un **repli texte** en bilan/fiche
+(genLessonItem : « écris les mots dans l'ordre ») — **en révision**, le vrai widget de
+rangement (`tuile-interaction.ts`, `kind: 'ordre'`) est monté, comme le tri ci-dessous.
 
 #### `francais/champs-lexicaux.ts` (#114)
 
@@ -1093,9 +1094,11 @@ qu'au tout dernier moment pour produire la réponse `number`. **« Partager et
 grouper »** (quotient décimal = programme CM2) et **« Problèmes en deux étapes »**
 (hors périmètre « à une étape ») restent **CE2-only**. Les 4 ids sont insérés en
 clôture de `ORDRE_LECONS.math.cm1` (réinvestissement, après les décimaux et les
-mesures CM1). Le repli texte bilan/fiche/révision (`catalog.ts`) et la réponse
-révélée en cas d'erreur dans le runner (`ui/lecon-probleme.ts`) affichent la valeur
-en **écriture à virgule française**.
+mesures CM1). Le repli texte du bilan/de la fiche (`catalog.ts`), la correction par
+étapes en révision (`corrigerEtapesProbleme`, `ui/lecon-probleme.ts`, #466 — la révision
+monte désormais le board complet plutôt que ce repli) et la réponse révélée en cas
+d'erreur dans le runner de leçon affichent tous la valeur en **écriture à virgule
+française**.
 
 > Recalibrage par **branchement manuel** sur `opts.level`, pas par le combinateur
 > `calibrated` — voir [Niveaux scolaires](niveaux-scolaires.md#modules).

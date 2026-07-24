@@ -43,6 +43,15 @@ import { selectDueGroups } from '../core/revision-select';
 import { getRevisionPlafond } from '../core/profiles';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
 import { bindTuileInteraction } from './tuile-interaction';
+import { bindAppariement } from './appariement';
+import { bindClicMot } from './clic-mot-interaction';
+import {
+	renderProblemeBoardHTML,
+	corrigerEtapesProbleme,
+	PROB_STATUS_HTML,
+} from './lecon-probleme';
+import { brouillonHTML, bindBrouillon } from './brouillon';
+import type { ProblemeEtape, ProbLexique } from '../core/exercise';
 
 // `consigne` (#186) : libellé de la leçon, affiché au-dessus de l'exercice pour
 // dire ce qu'on attend (le HUD ne montre que la catégorie). Absent pour les mots
@@ -85,6 +94,43 @@ type RevItem = { groupLabel: string; consigne?: string } & (
 			question: string;
 			categories: [string, string];
 			mots: { mot: string; cat: 0 | 1 }[];
+	  }
+	// Moteurs « riches » rejoués tels quels en révision (#466), au lieu du repli champ
+	// texte dégradé : le vrai widget interactif est monté, comme les tuiles/ordre/tri.
+	| {
+			kind: 'appariement';
+			lessonId: string;
+			question: string;
+			paires: { gauche: string; droite: string }[];
+			intrus: string[];
+	  }
+	// Problème : board complet (énoncé + TOUTES les sous-questions + brouillon), corrigé
+	// étape par étape — perdre les étapes intermédiaires ou le brouillon dénaturait la
+	// tâche « résoudre à étapes » (#466). `lex` porte le lexique d'affichage de la leçon.
+	| {
+			kind: 'probleme';
+			lessonId: string;
+			enonce: string;
+			etapes: ProblemeEtape[];
+			parle: string;
+			figure?: string;
+			explication?: string;
+			lex?: ProbLexique;
+	  }
+	// « Clique sur le mot » : le vrai widget de sélection dans la phrase, monté via le
+	// widget mutualisé — supprime le bruit orthographique de la recopie et gère les
+	// consignes multi-mots sans ambiguïté (#466).
+	| {
+			kind: 'clicMot';
+			lessonId: string;
+			// Consigne d'ACTION propre à l'exercice (« Clique sur le verbe conjugué »),
+			// distincte du libellé de leçon porté par `consigne` (commun au RevItem).
+			actionConsigne: string;
+			tokens: string[];
+			cibleIndices: number[];
+			explication: string;
+			parle: string;
+			cibleLabel?: string;
 	  }
 );
 
@@ -174,6 +220,50 @@ export function runRevisionEspacee(): void {
 				});
 				continue;
 			}
+			// Moteurs « riches » : rejoués tels quels (widget interactif) plutôt que dégradés
+			// en champ texte via genLessonItem (#466).
+			if (ex.type === 'appariement') {
+				items.push({
+					groupLabel: g.label,
+					consigne,
+					kind: 'appariement',
+					lessonId: it.id,
+					question: ex.question,
+					paires: ex.paires,
+					intrus: ex.intrus ?? [],
+				});
+				continue;
+			}
+			if (ex.type === 'probleme') {
+				items.push({
+					groupLabel: g.label,
+					consigne,
+					kind: 'probleme',
+					lessonId: it.id,
+					enonce: ex.enonce,
+					etapes: ex.etapes,
+					parle: ex.parle,
+					figure: ex.figure,
+					explication: ex.explication,
+					lex: type.probLexique,
+				});
+				continue;
+			}
+			if (ex.type === 'clicMot') {
+				items.push({
+					groupLabel: g.label,
+					consigne,
+					kind: 'clicMot',
+					lessonId: it.id,
+					actionConsigne: ex.consigne,
+					tokens: ex.tokens,
+					cibleIndices: ex.cibleIndices,
+					explication: ex.explication,
+					parle: ex.parle,
+					cibleLabel: ex.cibleLabel,
+				});
+				continue;
+			}
 			// Réponse non numérique (signe <, =, >) + mode tuiles disponible → on rejoue en
 			// tuiles plutôt qu'en saisie : un signe n'est pas saisissable au clavier numérique
 			// sur mobile (#186).
@@ -248,6 +338,9 @@ function renderCurrent() {
 	else if (it.kind === 'tuile') renderTuile(it);
 	else if (it.kind === 'ordre') renderOrdre(it);
 	else if (it.kind === 'tri') renderTri(it);
+	else if (it.kind === 'appariement') renderAppariement(it);
+	else if (it.kind === 'probleme') renderProbleme(it);
+	else if (it.kind === 'clicMot') renderClicMot(it);
 	else if (it.item.kind === 'posed') renderPosed(it);
 	else renderNum(it);
 	bindConsigneTts(document.getElementById('revStage')!); // bouton « Écouter » (#42)
@@ -512,6 +605,106 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 	});
 }
 
+/* ---------- Moteurs « riches » rejoués en révision (#466) ---------- */
+
+/* Appariement (#392) : relier les paires, comme à la leçon. Le widget mutualisé
+   (bindAppariement) est monté sur le slot `[data-tuile-mount]` de tuileStageHTML ;
+   à la validation il fige + marque chaque lien (✓/✗) et le verdict s'insère sous
+   le widget (gradeTuile), avec les bonnes paires révélées en texte. */
+function renderAppariement(it: Extract<RevItem, { kind: 'appariement' }>) {
+	const stage = document.getElementById('revStage')!;
+	stage.innerHTML = tuileStageHTML(
+		it,
+		`<p class="rev-q lapp-titre"${ttsAttr(it.question)}>${escapeHTML(it.question)}</p>`,
+	);
+	const verif = document.getElementById('revValidate') as HTMLButtonElement;
+	const ctrl = bindAppariement(
+		stage,
+		{ question: it.question, paires: it.paires, intrus: it.intrus },
+		{ variant: 'revision', onState: (complete) => (verif.disabled = !complete) },
+	);
+	verif.addEventListener('click', () => {
+		if (verif.disabled) return;
+		gradeTuile(ctrl.verify(), it.paires.map((p) => `${p.gauche} → ${p.droite}`).join(' · '));
+	});
+}
+
+/* Résolution de problèmes (#199) : board COMPLET (énoncé + toutes les sous-questions
+   + brouillon) plutôt que la seule question finale en champ texte (#466). Corrigé
+   étape par étape comme le runner de leçon (chaque case marquée ✓/✗ + sa solution) ;
+   réussi ⇔ toutes les étapes justes. Le brouillon (ardoise) reste disponible : sans
+   support pour poser un calcul multi-étapes, on mesurerait la charge de travail, pas
+   la compétence. Le verdict s'insère sous le board (les solutions sont déjà en place). */
+function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
+	const stage = document.getElementById('revStage')!;
+	const board = renderProblemeBoardHTML(
+		{
+			enonce: it.enonce,
+			etapes: it.etapes,
+			parle: it.parle,
+			figure: it.figure,
+			explication: it.explication,
+		},
+		it.lex,
+	);
+	stage.innerHTML = `${consigneHTML(it)}<div class="rev-q rev-probleme">${board}</div>
+    ${brouillonHTML()}
+    ${PROB_STATUS_HTML}
+    <div id="revAfter"><div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div></div>`;
+	bindBrouillon(stage); // ardoise de dessin repliable (#199) — l'énoncé garde sa lecture TTS
+	document.getElementById('revValidate')!.addEventListener('click', () => {
+		const inputs = [...stage.querySelectorAll<HTMLInputElement>('.prob-input')];
+		const vide = inputs.find((c) => c.value.trim() === '');
+		if (vide) return vide.focus();
+		// Correction partagée avec le runner de leçon (#466) : marque chaque étape (✓/✗ +
+		// solution + aria-label) et annonce le résumé dans #probStatus. La révision ne
+		// journalise pas les erreurs (comme ses autres items).
+		const toutJuste = corrigerEtapesProbleme(stage, it.etapes);
+		recordGrade(toutJuste);
+		// Explication de stratégie (#252) affichée après la réponse quand la leçon la fournit.
+		const extra = it.explication ? `<p class="lqcm-expl">${escapeHTML(it.explication)}</p>` : '';
+		document.getElementById('revAfter')!.innerHTML = verdictHTML(toutJuste, undefined, extra);
+		wireRevNext();
+	});
+	const first = stage.querySelector<HTMLInputElement>('.prob-input');
+	if (first) first.focus();
+}
+
+/* « Clique sur le mot » (#259) : le vrai widget de sélection dans la phrase, monté
+   via le widget mutualisé (bindClicMot) sur le slot `[data-tuile-mount]`. À la
+   validation il fige + marque ✓/✗ et révèle le(s) bon(s) mot(s) en place ; le verdict
+   (+ explication) s'insère sous la phrase. La consigne d'action de l'exercice s'affiche
+   au-dessus (le libellé de leçon reste porté par consigneHTML). */
+function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
+	const stage = document.getElementById('revStage')!;
+	stage.innerHTML = tuileStageHTML(
+		it,
+		`<p class="rev-q lclic-consigne"${ttsAttr(it.actionConsigne)}>${escapeHTML(it.actionConsigne)}</p>`,
+	);
+	const verif = document.getElementById('revValidate') as HTMLButtonElement;
+	const ctrl = bindClicMot(
+		stage,
+		{
+			tokens: it.tokens,
+			cibleIndices: it.cibleIndices,
+			parle: it.parle,
+			cibleLabel: it.cibleLabel,
+			// Justification annoncée dans la live region du widget (parité avec le feedback
+			// visuel `extra` ci-dessous, pour un lecteur d'écran) — #466.
+			explication: it.explication,
+		},
+		{ onState: (hasSelection) => (verif.disabled = !hasSelection) },
+	);
+	verif.addEventListener('click', () => {
+		if (verif.disabled) return;
+		const reussi = ctrl.verify();
+		const extra = `<p class="lqcm-expl">${escapeHTML(it.explication)}</p>`;
+		recordGrade(reussi);
+		document.getElementById('revAfter')!.innerHTML = verdictHTML(reussi, undefined, extra);
+		wireRevNext();
+	});
+}
+
 // Entrée enchaîne sur l'action principale visible : après une réponse, le bouton
 // « Continuer / Terminer » (#revNext) ; sinon « Valider » (#revValidate). Posé une
 // seule fois sur #revStage (persistant) : son preventDefault bloquerait sinon
@@ -551,11 +744,17 @@ function recordGrade(reussi: boolean) {
 /* Verdict + bouton « Continuer / Terminer ». `mathInline` (= échappe + empile les
    fractions « n/d ») : la bonne réponse révélée s'affiche en barre horizontale comme
    les choix, pas en oblique (#264). Sans effet sur les réponses non fractionnaires. */
-function verdictHTML(reussi: boolean, correct: string): string {
+function verdictHTML(reussi: boolean, correct?: string, extra = ''): string {
+	// `correct` absent (moteurs qui révèlent EUX-MÊMES la bonne réponse en place —
+	// problème marqué étape par étape, clic-mot surligné) → verdict d'échec neutre,
+	// sans ligne « La bonne réponse : … » redondante. `extra` insère un complément
+	// (ex. l'explication de stratégie) entre le verdict et le bouton.
 	const verdict = reussi
 		? `<div class="rev-feedback ok">✓ Bravo !</div>`
-		: `<div class="rev-feedback ko">✗ La bonne réponse : <strong>${mathInline(correct)}</strong></div>`;
-	return `${verdict}
+		: correct
+			? `<div class="rev-feedback ko">✗ La bonne réponse : <strong>${mathInline(correct)}</strong></div>`
+			: `<div class="rev-feedback ko">✗ Regarde la correction, puis continue.</div>`;
+	return `${verdict}${extra}
     <div class="rev-actions"><button class="rev-btn" id="revNext">${idx + 1 < items.length ? 'Continuer ▶' : 'Terminer'}</button></div>`;
 }
 

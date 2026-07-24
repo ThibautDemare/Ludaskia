@@ -324,7 +324,10 @@ pure](core.md)) pour les formats composites :
   runners de leçon (`lecon-tuiles.ts`, `lecon-ordre.ts`, `lecon-tri.ts`) et par la
   révision (`revision.ts`), qui délèguent tous leur interaction au lieu d'en garder une
   copie locale — la révision affiche désormais les mêmes marques ✓/✗ que les runners
-  (correction de la divergence antérieure à #345).
+  (correction de la divergence antérieure à #345). La révision partage de la même façon
+  les deux autres widgets d'interaction mutualisés ci-dessous, `appariement.ts` et
+  `clic-mot-interaction.ts` (#466) : trois moteurs auparavant dégradés en révision en un
+  simple champ texte (repli `genLessonItem`) montent désormais leur vrai widget.
 - **`appariement.ts`** (#392) — widget **« relier des paires »** par des LIGNES de
   liaison : deux colonnes de boutons-mots (mélangées **indépendamment**) + un calque
   SVG de courbes reliant les ancres, dessiné derrière les mots. `bindAppariement(root,
@@ -340,7 +343,22 @@ pure](core.md)) pour les formats composites :
   couleur seule). Le SVG est `aria-hidden` (décoratif) : toute l'info de liaison est
   portée par les libellés des boutons + une live region ; les coordonnées sont
   mesurées **relativement au conteneur** (indépendantes du défilement) et un
-  `ResizeObserver` les recalcule au redimensionnement/zoom (SC 1.4.4/1.4.10).
+  `ResizeObserver` les recalcule au redimensionnement/zoom (SC 1.4.4/1.4.10). Réutilisé
+  tel quel par `lecon-appariement.ts` (runner de leçon) et, depuis #466, par la révision
+  (`revision.ts`) — plus de repli en champ texte pour cette dernière.
+- **`clic-mot-interaction.ts`** (#466) — **3ᵉ widget d'interaction mutualisé**, aux côtés
+  de `tuile-interaction.ts` et `appariement.ts` : sélectionner un ou plusieurs mots d'une
+  phrase répondant à une consigne. Extrait du runner `lecon-clic-mot.ts` pour être
+  réutilisé à l'identique par la révision. Point d'entrée `bindClicMot(root, spec, opts) →
+  ClicMotController` : remplace le placeholder `[data-tuile-mount]` par la phrase
+  cliquable (mots en `<button>`, ponctuation en `<span>` inerte) + une live region ;
+  sélection **multiple réversible** tant que non figée, notifiée via `opts.onState`.
+  `verify()` fige le widget, compare l'ensemble sélectionné à `cibleIndices` par
+  **égalité d'ensembles exacte**, marque ✓/✗ (mot-cible non choisi révélé en vert doux,
+  « l'autre mot » si la cible est double), annonce le verdict dans la live region et
+  renvoie la justesse ; `selected()` expose les indices choisis pour le journal d'erreurs
+  (#391). Consommé par `lecon-clic-mot.ts` (runner de leçon) et par la révision
+  (`revision.ts`, #466).
 - **`lecon-qcm.ts`** — runner **QCM d'une leçon** (#69) : « une question à la
   fois », **feedback immédiat**, barre de progression, **sans chrono** ; enregistre
   via `recordLessonRun` (parité avec la saisie). Réutilise les composants `.sprint-*`.
@@ -411,8 +429,9 @@ pure](core.md)) pour les formats composites :
   le bouton « Vérifier » fige chaque lien (✓/✗) et révèle les bonnes paires en TEXTE
   sous le widget en cas d'erreur ; parité `recordLessonRun`. Structure calquée sur
   `lecon-tri.ts`. **Exclu du sprint** (`isPairingLesson`, comme la posée/l'ordre/le
-  tri/le problème), avec un **repli texte** en bilan/fiche/révision (`genLessonItem` :
-  une paire tirée au sort → « quel mot va avec X ? »). Aide contextuelle dédiée
+  tri/le problème), avec un **repli texte** en bilan/fiche (`genLessonItem` : une paire
+  tirée au sort → « quel mot va avec X ? ») — **en révision**, c'est désormais le **vrai
+  widget** `appariement.ts` qui est monté, comme en leçon (#466). Aide contextuelle dédiée
   (`monterBoutonAide`/`maybeAutoAide`, type `'appariement'` #272).
 - **`lecon-probleme.ts`** — runner **« Résolution de problèmes »** (#199), un
   problème à la fois. L'énoncé (`Exercise` `type: 'probleme'` : `enonce`, `etapes[]`,
@@ -443,8 +462,13 @@ pure](core.md)) pour les formats composites :
   loyaux et minoritaires, calibrage CE2 (additifs ≤ 1000, multiplicatifs dans les
   tables, division exacte). **Catégorie `math-problemes`**, **exclue du sprint**
   (`isProblemeLesson`, comme la posée). Repli texte (énoncé + question finale) via
-  `genLessonItem` pour le bilan / la révision. La **question finale en gras** passe
-  par la convention `**…**` rendue par `enonceTexte` (`core/items.ts`).
+  `genLessonItem` pour le **bilan / la fiche** — **en révision**, le board complet est
+  monté (énoncé + toutes les sous-questions + brouillon), corrigé étape par étape via
+  **`corrigerEtapesProbleme`** (exportée avec la constante **`PROB_STATUS_HTML`**, live
+  region du verdict) : deux exports **partagés** avec ce runner et consommés par
+  `revision.ts` (#466), qui mutualisent la correction et l'annonce a11y du verdict entre
+  la leçon et la révision. La **question finale en gras** passe par la convention `**…**`
+  rendue par `enonceTexte` (`core/items.ts`).
 - **`lecon-clic-mot.ts`** (#259, #437) — runner **« Clique sur le mot »**, une phrase
   à la fois, **agnostique de la notation grammaticale ciblée** : il consomme
   `consigne`, `explication`, `cibleIndices` et le `cibleLabel?` optionnel de
@@ -469,8 +493,10 @@ pure](core.md)) pour les formats composites :
   par « et » quand la cible n'est pas contiguë (évite « Paul Léa » ou « ni ni »).
   Consigne **persistante** + **TTS** (`bindConsigneTts`) sur la consigne ET la phrase
   entière, journal via `capterErreur`. **Exclu du sprint** (`isClicMotLesson`), **repli
-  texte** en bilan/fiche/révision (`genLessonItem` : phrase → « Recopie ${cibleLabel} :
-  … », consigne neutre valable pour les 6 leçons). Structure calquée sur
+  texte** en bilan/fiche (`genLessonItem` : phrase → « Recopie ${cibleLabel} : … »,
+  consigne neutre valable pour les 6 leçons) — **en révision**, c'est désormais le **vrai
+  widget** de sélection qui est monté, via `clic-mot-interaction.ts` (#466, extrait de ce
+  runner pour être partagé). Structure calquée sur
   `lecon-appariement.ts`/`lecon-probleme.ts` (état de module + `lecon-runner-shared.ts`).
   Aide contextuelle dédiée (`monterBoutonAide`/`maybeAutoAide`, type `'clicMot'` #272).
 - **`lecon-droite-graduee.ts`** (#256) — runner **« Droite graduée »** (placer un

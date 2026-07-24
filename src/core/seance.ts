@@ -58,8 +58,29 @@ export interface SeanceEtape {
     prime ; sinon on retombe sur l'ancien `ref` unique (rétrocompat des programmes
     déjà configurés). 1 cible ⇒ dictée figée ; 2+ ⇒ tirage aléatoire au lancement. */
 export function ciblesEtape(etape: SeanceEtape): string[] {
-	if (etape.refs && etape.refs.length) return etape.refs;
+	if (etape.refs && etape.refs.length) return etape.refs.slice(); // copie : jamais d'aliasing du pool
 	return etape.ref ? [etape.ref] : [];
+}
+
+/** Cibles d'une étape encore présentes parmi les dictées `disponibles` (ids déjà
+    résolus par l'appelant, côté UI). Une cible obsolète (liste supprimée, hors niveau)
+    est écartée : le tirage ne pioche jamais une dictée introuvable. Pur → testable. */
+export function ciblesValides(etape: SeanceEtape, disponibles: readonly string[]): string[] {
+	const set = new Set(disponibles);
+	return ciblesEtape(etape).filter((id) => set.has(id));
+}
+
+/** Tire une cible valide au hasard dans le pool d'une étape « dictée » (#463), ou
+    `undefined` si aucune n'est disponible. 1 cible ⇒ toujours la même (dictée figée) ;
+    2+ ⇒ une au hasard. `rand` ∈ [0,1[ est injectable (défaut `Math.random`) pour un
+    tirage déterministe en test. Pur (hors `rand` par défaut). */
+export function tirerCible(
+	etape: SeanceEtape,
+	disponibles: readonly string[],
+	rand: () => number = Math.random,
+): string | undefined {
+	const valides = ciblesValides(etape, disponibles);
+	return valides.length ? valides[Math.floor(rand() * valides.length)] : undefined;
 }
 
 /** Récurrence d'une séance : soit une DATE unique (ponctuelle), soit des JOURS de

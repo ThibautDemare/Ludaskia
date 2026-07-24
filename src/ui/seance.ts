@@ -28,8 +28,9 @@ import {
 	marquerEtapeLancee,
 	resoudrePending,
 	ciblesEtape,
+	ciblesValides,
+	tirerCible,
 	SEANCE_MODE_INFOS,
-	type SeanceEtape,
 	type VueEtape,
 } from '../core/seance';
 import { icon } from './icon';
@@ -38,18 +39,11 @@ import { startSprint, startRevisionEspacee, startLecon, startOrthoLecon } from '
 import { showCelebration } from './effects';
 
 /* ---------- Cibles d'une étape « dictée » (#463) ---------- */
-/* Dictées du pool encore présentes dans le catalogue du profil actif. Une cible
-   disparue (liste supprimée, hors niveau) est ignorée ; si aucune ne subsiste,
-   l'étape devient inactive (cf. lancable). */
-function ciblesDicteeValides(e: SeanceEtape): string[] {
-	const dispo = listOrthoLecons(loadOrtho());
-	return ciblesEtape(e).filter((id) => dispo.some((x) => x.id === id));
-}
-/* Tire une dictée valide au hasard dans le pool (undefined si pool vide/obsolète).
-   1 cible ⇒ toujours la même (dictée figée) ; 2+ ⇒ une au hasard à chaque lancement. */
-function tirerCibleDictee(e: SeanceEtape): string | undefined {
-	const valides = ciblesDicteeValides(e);
-	return valides.length ? valides[Math.floor(Math.random() * valides.length)] : undefined;
+/* Ids des dictées actuellement proposables au profil actif (prédéfinies du niveau +
+   listes du profil). Le filtrage des cibles valides et le tirage vivent dans
+   core/seance.ts (ciblesValides / tirerCible), testables en déterministe. */
+function dicteesDisponibles(): string[] {
+	return listOrthoLecons(loadOrtho()).map((x) => x.id);
 }
 
 /* ---------- Visuels d'une étape ---------- */
@@ -107,7 +101,7 @@ function lancable(v: VueEtape): { ok: boolean; raison?: string } {
 				? { ok: true }
 				: { ok: false, raison: 'Leçon indisponible' };
 		case 'dictee':
-			return ciblesDicteeValides(e).length
+			return ciblesValides(e, dicteesDisponibles()).length
 				? { ok: true }
 				: { ok: false, raison: 'Dictée indisponible' };
 	}
@@ -123,7 +117,7 @@ export function lancerEtapeProgramme(etapeId: string): void {
 	const e = v.etape;
 	// Dictée : on TIRE la cible du pool AVANT de poser le marqueur, afin de la mémoriser
 	// (métrique #463) et de la lancer. Les autres modes n'ont pas de cible tirée au lancement.
-	const dicteeCible = e.kind === 'dictee' ? tirerCibleDictee(e) : undefined;
+	const dicteeCible = e.kind === 'dictee' ? tirerCible(e, dicteesDisponibles()) : undefined;
 	marquerEtapeLancee(etapeId, Date.now(), dicteeCible);
 	switch (e.kind) {
 		case 'sprint':

@@ -146,6 +146,16 @@ export function startCategorySprint(categoryId: string): void {
 	location.hash = 'sprint';
 }
 
+/* Lance un sprint avec la configuration PAR DÉFAUT, sans passer par l'écran de
+   configuration : toutes les matières + périmètre adaptatif (« ce que l'enfant
+   connaît déjà » tant qu'il reste du non-rencontré, sinon « tout »). Utilisé par
+   le programme du jour, où l'enfant ne configure pas l'étape lui-même. */
+export function startDefaultSprint(): void {
+	sprintFilter = { type: 'all' };
+	sprintScope = scopeParDefaut(lessonsForFilter({ type: 'all' }));
+	location.hash = 'sprint';
+}
+
 /* Lance un sprint personnalisé (#64) : la sélection de leçons d'un BilanConfig
    (composeur ou favori) alimente le tirage. Le sprint reste non reprenable et
    suit ses règles habituelles (chrono, pause sur erreur, XP/records/trophées). */

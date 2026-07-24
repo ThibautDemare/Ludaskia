@@ -32,7 +32,8 @@ import {
 } from '../core/seance';
 import { icon } from './icon';
 import { subjectIcon } from './cat-visuals';
-import { startSprint, startRevisionEspacee, startLecon, startOrthoLecon } from './navigation';
+import { startRevisionEspacee, startLecon, startOrthoLecon } from './navigation';
+import { startDefaultSprint } from './sprint';
 import { showCelebration } from './effects';
 
 /* ---------- Visuels d'une étape ---------- */
@@ -102,7 +103,10 @@ export function lancerEtapeProgramme(etapeId: string): void {
 	const e = v.etape;
 	switch (e.kind) {
 		case 'sprint':
-			startSprint();
+			// Depuis le programme, l'enfant ne configure pas : lancement direct avec la
+			// config par défaut (toutes les matières + périmètre adaptatif) plutôt que
+			// l'écran de configuration.
+			startDefaultSprint();
 			break;
 		case 'revision':
 			startRevisionEspacee();

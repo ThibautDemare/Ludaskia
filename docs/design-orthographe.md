@@ -336,14 +336,17 @@ verbe d'adulte) :
   **accent** (*é* de *bébé*), **son piégeux** (*g* devant *e* dans *plage*).
 
 Choix de conception :
-- **Plusieurs entourages, autant que l'enfant veut, chevauchements permis** : un
-  mot a souvent plusieurs pièges (*femme* = double *m* + le *e* qui sonne *a*).
-  **Pas de limite rigide.** Garde-fous **doux** contre l'entourage « décoratif » :
-  le geste a un **petit coût** (sélection lettre par lettre = frein naturel) ;
-  une **relance verbale optionnelle** si l'enfant entoure beaucoup (> ~⅔ des
-  lettres) — « Tu es sûr que tout est un piège ? » — **une fois, jamais
-  bloquante** ; et surtout le **« on regarde ensemble ? »** qui régule par
-  autocorrection.
+- **Plusieurs entourages, autant que l'enfant veut, mais sans chevauchement** :
+  un mot a souvent plusieurs pièges (*femme* = double *m* + le *e* qui sonne
+  *a*) — **pas de limite rigide** sur leur nombre. En revanche un geste (tap ou
+  glissé) dont la plage recouvre un ou plusieurs entourages existants les
+  **retire** au lieu d'en ajouter un par-dessus (bascule) : deux entourages ne
+  se superposent donc jamais. Garde-fous **doux** contre l'entourage
+  « décoratif » : le geste a un **petit coût** (sélection lettre par lettre =
+  frein naturel) ; une **relance verbale optionnelle** si l'enfant entoure
+  beaucoup (> ~⅔ des lettres) — « Tu es sûr que tout est un piège ? » — **une
+  fois, jamais bloquante** ; et surtout le **« on regarde ensemble ? »** qui
+  régule par autocorrection.
 - **Couleurs attribuées automatiquement par l'outil** (l'enfant ne choisit
   **pas** : éviter qu'il se focalise sur la couleur ou en prenne de trop proches
   qui se confondent). **Sans aucune sémantique** : une **couleur différente par
@@ -387,8 +390,11 @@ Piste technique :
   lettres** (*eau*, *ill*, *ph*) — sinon tout un pan de pièges (un son écrit avec
   plusieurs lettres) devient inaccessible. Pas de tracé libre (cercle propre trop
   dur à la souris/au doigt pour un CE2).
-- **« Défaire » ultra-simple** : toucher un entourage le retire (la sélection va
-  rater à 8 ans → sans annulation facile, frustration immédiate).
+- **« Défaire » ultra-simple, par bascule** : un geste dont la plage recouvre un
+  entourage (ou plusieurs) le retire au lieu d'en ajouter un nouveau — pas de
+  bouton « annuler » séparé (la sélection va rater à 8 ans → sans annulation
+  facile, frustration immédiate). Pendant le geste, l'entourage visé par le
+  retrait s'aperçoit en pointillé (jamais la seule couleur comme indice).
 - **Espacement des lettres constant, pas réactif** : le mot s'affiche aéré
   **dès le départ** (place pour l'ellipse) et **ne bouge plus** (un mot qui
   « bouge » sous le geste déstabilise). Espacement **< un vrai blanc-mot** (sinon
@@ -396,8 +402,9 @@ Piste technique :
 - **Couche SVG en surimpression** : chaque entourage = un **rectangle arrondi**
   (la **boîte englobante** des lettres sélectionnées → géométrie triviale et
   propre pour les groupes ; préféré à l'ellipse) ; fond translucide + trait fin ;
-  **plusieurs rectangles indépendants, chevauchements gérés nativement**
-  (composition des `fill-opacity`). Texte gardé en DOM (hybride DOM + SVG).
+  **plusieurs rectangles indépendants**, mais **sans chevauchement possible**
+  (la bascule retire un rectangle recouvert plutôt que d'en superposer un
+  second). Texte gardé en DOM (hybride DOM + SVG).
 - **Pré-coloration syllabique automatique** en **décor pastel** (toile de fond,
   pas un outil de l'enfant) ; ne **jamais** pré-marquer les pièges.
 

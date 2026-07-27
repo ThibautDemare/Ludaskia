@@ -41,6 +41,7 @@ import {
 	getRenderCtx,
 	setRenderCtx,
 } from './navigation';
+import { setOrigineActivite } from './retour-activite';
 
 const now = () => Date.now();
 const MAX_CARDS = 3; // plafond d'affichage (le reste replié sous « voir tout »)
@@ -110,6 +111,9 @@ export function finishResume(): void {
 /* ---------- Restauration ---------- */
 export function restoreResume(snap: ResumeSnapshot): void {
 	hideMenus();
+	// Une reprise se lance depuis une carte « À continuer » (accueil / catégorie) : c'est
+	// un lancement CATALOGUE, même si l'exercice venait à l'origine du programme (#461).
+	setOrigineActivite('catalogue');
 	setCurrentMode(snap.mode);
 	setCurrentLessonId(snap.relaunch.type === 'lecon' ? snap.relaunch.lessonId : null);
 	// Réinjecte le rendu exact, puis recâble la table id de champ -> Item.

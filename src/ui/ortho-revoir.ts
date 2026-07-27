@@ -15,6 +15,7 @@ import { motsDeLecon, listOrthoLecons } from '../core/orthographe/lessons';
 import type { MotOrtho, OrthoState } from '../core/orthographe/types';
 import { lettresMotHTML, dessinerEntourages, renderAtelier } from './ortho-atelier';
 import { goCategorie } from './navigation';
+import { retourFinActivite } from './retour-activite';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 
 let st: OrthoState;
@@ -54,9 +55,16 @@ function render(): void {
 		? `<div class="relecture-grille">${cartes}</div>`
 		: `<p class="relecture-vide">Cette liste n'a pas encore de mots.</p>`;
 
+	// Relire est un détour d'une liste lancée depuis le catalogue OU depuis le programme
+	// du jour : le retour suit la provenance (#461).
+	const retour = retourFinActivite({
+		label: 'Retour',
+		aller: () => goCategorie(ORTHO_CATEGORY_ID),
+	});
+
 	hostEl.innerHTML = `
     <div class="page relecture">
-      <button type="button" class="relecture-retour" id="relRetour">← Retour</button>
+      <button type="button" class="relecture-retour" id="relRetour">← ${retour.label}</button>
       <h2 class="relecture-titre">📖 Je relis mes mots</h2>
       <p class="relecture-sous">${escapeHTML(label)}</p>
       <p class="relecture-consigne">Regarde bien chaque mot et ses pièges, et essaie de les retenir dans ta tête.</p>
@@ -65,7 +73,7 @@ function render(): void {
 
 	hostEl.querySelector('#relRetour')!.addEventListener('click', () => {
 		cleanup();
-		goCategorie(ORTHO_CATEGORY_ID);
+		retour.aller();
 	});
 
 	// Crayon d'une carte → correction de l'entourage de ce mot (geste optionnel).

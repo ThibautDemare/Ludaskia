@@ -29,6 +29,7 @@ import { addXP, getXP, niveauDepuisXP, recordSessionActivity } from '../core/pro
 import { evaluateTrophies } from '../core/rewards';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 import { goCategorie, goOrthoRevoir } from './navigation';
+import { retourFinActivite } from './retour-activite';
 import {
 	renderAtelier,
 	lettresMotHTML,
@@ -731,21 +732,30 @@ function journalOrthoSession(): void {
 	recordSessionActivity('dictee');
 }
 
+/* Retour de fin de séance d'orthographe : le programme du jour si la dictée en a été
+   lancée (#461), sinon la catégorie Orthographe. Le libellé « catalogue » varie selon
+   l'écran (bilan, révision terminée, pause), d'où le paramètre. */
+function retourOrtho(labelCatalogue: string, labelProgramme?: string) {
+	return retourFinActivite(
+		{ label: labelCatalogue, aller: () => goCategorie(ORTHO_CATEGORY_ID) },
+		labelProgramme,
+	);
+}
+
 /* ---------- Bilan ---------- */
 function renderBilan(): void {
 	journalOrthoSession();
 	const total = mots.length;
+	const retour = retourOrtho("Retour à l'orthographe");
 	sheets().innerHTML = `
     <div class="page ortho-run ortho-bilan">
       ${mascotteBulleHTML(encouragementMascotte())}
       <div class="ortho-bilan-emoji">🎉</div>
       <h2>Liste prête !</h2>
       <p>Tu as bien travaillé ${total > 1 ? `les <b>${total}</b> mots` : 'le mot'} de cette liste.</p>
-      <button class="btn-primary" id="btnBilanRetour">Retour à l'orthographe</button>
+      <button class="btn-primary" id="btnBilanRetour">${retour.label}</button>
     </div>`;
-	sheets()
-		.querySelector('#btnBilanRetour')!
-		.addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
+	sheets().querySelector('#btnBilanRetour')!.addEventListener('click', retour.aller);
 
 	// Récompenses : l'étoile « Liste prête », plus trophées éventuels + montée de niveau.
 	annoncerRecompensesFin([{ icon: '🌟', text: 'Liste prête, bravo !' }]);
@@ -759,17 +769,16 @@ function renderBilan(): void {
 function renderRevisionFin(): void {
 	journalOrthoSession();
 	const total = mots.length;
+	const retour = retourOrtho("Retour à l'orthographe");
 	sheets().innerHTML = `
     <div class="page ortho-run ortho-bilan">
       ${mascotteBulleHTML(encouragementMascotte())}
       <div class="ortho-bilan-emoji">✅</div>
       <h2>Révision terminée !</h2>
       <p>Tu as révisé ${total > 1 ? `les <b>${total}</b> mots` : 'le mot'} de cette liste.</p>
-      <button class="btn-primary" id="btnBilanRetour">Retour à l'orthographe</button>
+      <button class="btn-primary" id="btnBilanRetour">${retour.label}</button>
     </div>`;
-	sheets()
-		.querySelector('#btnBilanRetour')!
-		.addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
+	sheets().querySelector('#btnBilanRetour')!.addEventListener('click', retour.aller);
 	annoncerRecompensesFin([]); // pas d'étoile : seulement trophées/niveau réellement gagnés
 }
 
@@ -793,6 +802,9 @@ function annoncerRecompensesFin(celebBase: { icon: string; text: string }[]): vo
 /* ---------- Pause de séance (rythme adapté à un CE2) ---------- */
 function renderPause(): void {
 	journalOrthoSession();
+	// Bouton d'arrêt : garde son libellé « intention » hors programme ; depuis le
+	// programme, il annonce où il ramène (#461).
+	const retour = retourOrtho('Revenir une autre fois', 'Revenir au programme');
 	sheets().innerHTML = `
     <div class="page ortho-run ortho-bilan">
       <div class="ortho-bilan-emoji">👏</div>
@@ -800,7 +812,7 @@ function renderPause(): void {
       <p>Tu as bien travaillé. Tu peux continuer encore un peu ou revenir une autre fois.</p>
       <div class="ortho-pause-actions">
         <button class="btn-primary" id="btnContinuerSeance">Continuer encore un peu</button>
-        <button class="atelier-undo" id="btnStopSeance">Revenir une autre fois</button>
+        <button class="atelier-undo" id="btnStopSeance">${retour.label}</button>
       </div>
     </div>`;
 	const b = sheets().querySelector('#btnContinuerSeance') as HTMLButtonElement;
@@ -808,9 +820,7 @@ function renderPause(): void {
 		actes = 0;
 		renderNext();
 	});
-	sheets()
-		.querySelector('#btnStopSeance')!
-		.addEventListener('click', () => goCategorie(ORTHO_CATEGORY_ID));
+	sheets().querySelector('#btnStopSeance')!.addEventListener('click', retour.aller);
 	b.focus();
 	// Hors parcours de première complétion (mode ciblé ou révision), il n'y a pas de
 	// bilan d'étoile → on célèbre à la pause les niveaux éventuellement gagnés.

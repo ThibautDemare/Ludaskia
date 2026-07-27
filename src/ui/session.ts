@@ -32,6 +32,7 @@ import {
 	getRenderCtx,
 } from './navigation';
 import { getLessonById } from '../core/catalog';
+import { retourFinActivite, type RetourCible } from './retour-activite';
 import { capterErreur } from './erreur-capture';
 import { analyserResultatPosee, type CellulePosee } from '../core/erreur-representation';
 
@@ -229,11 +230,19 @@ export function verify() {
 		html += `<button class="rb-redo" id="btnRedo">↻ Réviser mes erreurs (${lastErrors.length})</button>`;
 	}
 	// Fin de leçon : recommencer un tour (s'entraîner encore) ou quitter (#69).
+	// Le retour ramène d'où l'on vient (#461) : le programme du jour si la leçon en a
+	// été lancée, sinon sa catégorie.
+	let retour: RetourCible | null = null;
 	if (currentMode === 'lecon' && currentLessonId) {
 		html += `<button class="rb-redo" id="btnRecommencer">↻ Recommencer</button>`;
 		const cat = getLessonById(currentLessonId)?.category;
-		if (cat)
-			html += `<button class="backlink-top" id="btnBackCategorie">← Retour à la catégorie</button>`;
+		if (cat) {
+			retour = retourFinActivite({
+				label: 'Retour à la catégorie',
+				aller: () => goCategorie(cat),
+			});
+			html += `<button class="backlink-top" id="btnBackCategorie">← ${retour.label}</button>`;
+		}
 		html += `<button class="rb-quit" id="btnQuitter">${icon('house')} Quitter</button>`;
 	}
 	banner.innerHTML = html;
@@ -246,11 +255,7 @@ export function verify() {
 			runLecon(currentLessonId!);
 		});
 	const backCat = banner.querySelector('#btnBackCategorie');
-	if (backCat)
-		backCat.addEventListener('click', () => {
-			const cat = getLessonById(currentLessonId!)?.category;
-			if (cat) goCategorie(cat);
-		});
+	if (backCat && retour) backCat.addEventListener('click', retour.aller);
 	const quitter = banner.querySelector('#btnQuitter');
 	if (quitter) quitter.addEventListener('click', goHome);
 	const sheets = document.getElementById('sheets')!;

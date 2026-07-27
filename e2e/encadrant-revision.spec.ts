@@ -42,14 +42,14 @@ test('récap Révision : section rendue, entrées due + acquise, bascule catégo
 	const btnCat = section.locator('[data-act="revision-mode"][data-mode="categorie"]');
 	const btnUrg = section.locator('[data-act="revision-mode"][data-mode="urgence"]');
 	await expect(btnCat).toHaveClass(/on/);
-	await expect(btnCat).toHaveAttribute('aria-pressed', 'true');
-	await expect(btnUrg).toHaveAttribute('aria-pressed', 'false');
+	await expect(btnCat).toHaveAttribute('aria-checked', 'true');
+	await expect(btnUrg).toHaveAttribute('aria-checked', 'false');
 
 	// Bascule vers « Par urgence » : liste à plat, entrées visibles sans dépliage.
 	await btnUrg.click();
 	await expect(btnUrg).toHaveClass(/on/);
-	await expect(btnUrg).toHaveAttribute('aria-pressed', 'true');
-	await expect(btnCat).toHaveAttribute('aria-pressed', 'false');
+	await expect(btnUrg).toHaveAttribute('aria-checked', 'true');
+	await expect(btnCat).toHaveAttribute('aria-checked', 'false');
 	await expect(section.locator('ul.enc-rev-flat')).toBeVisible();
 
 	// L'entrée DUE affiche son palier + une échéance échue (classe `.du`).

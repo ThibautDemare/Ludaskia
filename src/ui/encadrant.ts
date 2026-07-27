@@ -60,6 +60,7 @@ import {
 	reglagesApresRendu,
 } from './encadrant-reglages';
 import { profilsHTML, sauvegardeHTML, profilsClick } from './encadrant-profils';
+import { segmentKeydown } from './segment';
 
 /* Onglets de l'espace (#459), dans l'ordre de fréquence d'usage décroissante :
    observer (Suivi) → préparer (Programme) → configurer (Réglages) → gérer (Profils). */
@@ -239,6 +240,9 @@ function onChange(e: Event): void {
 }
 
 function onKeydown(e: KeyboardEvent): void {
+	// Contrat clavier des boutons-segments (flèches / Home / End), transverse aux
+	// sections : le composant vit dans ui/segment.ts, le câblage ici.
+	if (segmentKeydown(e)) return;
 	pinKeydown(e);
 }
 

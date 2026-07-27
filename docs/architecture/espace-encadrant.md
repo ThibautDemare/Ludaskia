@@ -190,6 +190,27 @@ catalogue ou liste de dictée** (#424) — peut être **épinglé** depuis ce bl
 l'action n'est **masquée** que si l'id ne résout ni l'une ni l'autre (groupe orphelin, cible
 disparue).
 
+**Filtre de période** (#476) : un sélecteur à quatre segments (`Aujourd'hui` / `2 jours` /
+`1 semaine` / `Tout`, `data-act="erreurs-periode"`, handler exporté `erreursClick` et routé
+depuis `progressionClick` puisque c'est cette section qui insère le bloc) — composant
+**segment** partagé de l'espace encadrant (contrat clavier « Radio Group », cf. [Rendu &
+interactions](ui.md)) — borne les erreurs **AVANT** le regroupement : le « récemment » du
+titre correspond ainsi à une vraie fenêtre de temps plutôt qu'aux `MAX_ERREURS` dernières
+erreurs conservées, qui peuvent remonter à des semaines pour un profil peu actif. Fenêtres en **jours calendaires locaux**, aujourd'hui
+inclus, `1 semaine` = 7 jours (`filtrerErreursParPeriode`, `core/erreurs-journal.ts`) ; `Tout`
+lève toute borne (seule la rétention `MAX_ERREURS` joue encore). Défaut **adaptatif**
+(`periodeParDefaut`) : la fenêtre la plus serrée qui contient au moins une erreur, repli sur
+`1 semaine` si le journal est vide ou entièrement plus ancien — répondre d'abord à « sur quoi
+a-t-il buté aujourd'hui ? » sans faire tomber le parent sur un bloc vide dès que la dernière
+séance date de l'avant-veille. Un choix explicite de l'encadrant, lui, est conservé d'un
+profil consulté à l'autre (état de module `periodeChoisie`, même pattern que `vueActivite`/
+`vueRevision`). **Deux messages d'état vide distincts** : journal entièrement vide (« Rien à
+signaler récemment ») vs période sans erreur alors que le journal en contient plus loin
+(invite à élargir la fenêtre). Le segment actif porte un `aria-label` enrichi du résultat
+(nombre de leçons et d'erreurs de la période) : le changement de fenêtre déplace le contenu
+affiché sans y déplacer le focus (SC 4.1.3), et le focus revient sur ce même bouton après le
+re-rendu, ce qui garantit l'annonce.
+
 **Capture — couverture complète** : point d'entrée unique `capterErreur` (`ui/erreur-capture.ts`),
 appelé par **tous les runners** au moment de la correction d'une réponse fausse : la fiche en
 saisie (`ui/session.ts:verify`), le QCM de leçon (`ui/lecon-qcm.ts`), le sprint (`ui/sprint.ts`),

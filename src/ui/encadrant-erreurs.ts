@@ -34,6 +34,7 @@ import { lsGetRaw } from '../core/storage';
 import { ORTHO_KEY } from '../core/orthographe/store';
 import { labelLeconOrtho } from '../core/orthographe/lessons';
 import { container, renderEspace } from './encadrant-commun';
+import { segmentHTML } from './segment';
 
 /* Nombre d'erreurs (dédoublonnées) montrées par leçon avant le repli « + N plus
    anciennes » (avis designer : 3-5 max pour rester lisible). */
@@ -145,8 +146,8 @@ function resumePeriode(groupes: GroupeErreursLecon[]): string {
 	return `${groupes.length} leçon${groupes.length > 1 ? 's' : ''}, ${erreurs} erreur${erreurs > 1 ? 's' : ''}`;
 }
 
-/* Sélecteur de période (#476) — même composant segment que les bascules du récap
-   (`.enc-act-modes`), en variante qui passe à la ligne : quatre libellés ne tiennent
+/* Sélecteur de période (#476) — composant segment partagé de l'espace encadrant
+   (cf. ui/segment.ts), en variante qui passe à la ligne : quatre libellés ne tiennent
    pas sur une ligne de smartphone.
 
    Le segment ACTIF porte un `aria-label` enrichi du résultat (« Aujourd'hui, 3 leçons,
@@ -156,14 +157,18 @@ function resumePeriode(groupes: GroupeErreursLecon[]): string {
    annoncée que de façon inconstante selon le navigateur et l'aide technique. Le libellé
    visible reste le préfixe exact du nom accessible (SC 2.5.3). */
 function periodesHTML(active: PeriodeErreurs, groupes: GroupeErreursLecon[]): string {
-	const btns = PERIODES.map((p) => {
-		const on = p.id === active;
-		const nom = on
-			? ` aria-label="${escapeHTML(p.label)}, ${escapeHTML(resumePeriode(groupes))}"`
-			: '';
-		return `<button type="button" class="enc-act-mode${on ? ' on' : ''}" data-act="erreurs-periode" data-periode="${p.id}" aria-pressed="${on}"${nom}>${escapeHTML(p.label)}</button>`;
-	}).join('');
-	return `<div class="enc-act-modes enc-act-modes-wrap" role="group" aria-label="Période des erreurs affichées">${btns}</div>`;
+	return segmentHTML({
+		act: 'erreurs-periode',
+		valAttr: 'periode',
+		label: 'Période des erreurs affichées',
+		active,
+		wrap: true,
+		options: PERIODES.map((p) => ({
+			val: p.id,
+			label: p.label,
+			ariaLabel: p.id === active ? `${p.label}, ${resumePeriode(groupes)}` : undefined,
+		})),
+	});
 }
 
 /* Bloc « Ce qui a été difficile récemment » du profil consulté (lecture seule).

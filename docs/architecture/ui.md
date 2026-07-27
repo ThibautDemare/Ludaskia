@@ -51,26 +51,32 @@ ci-dessous.
   écran de récupération, bloc « Code d'accès » des réglages ; possède l'état du
   verrou et la vue courante (`pinView()`, lue par l'orchestrateur).
 - **`encadrant-progression.ts`** — **récap** par profil (onglet **Suivi**) :
-  chiffres-clés, graphe d'activité 7 jours (#319, bascule Total / Par type),
-  maîtrise par catégorie (avec sa **frise d'évolution hebdomadaire par
+  chiffres-clés, graphe d'activité 7 jours (#319, bascule Total / Par type —
+  composant segment partagé, cf. `segment.ts` plus bas), maîtrise par catégorie
+  (avec sa **frise d'évolution hebdomadaire par
   matière**, #397 — barres-capsules `--ok`, compteur de notions au-dessus des
   semaines non vides, semaine en cours distinguée, sans axe ni pourcentage),
-  **historique des erreurs récentes** (#391, cf. `encadrant-erreurs.ts`
-  ci-dessous) ; handlers `activite-mode`/`epingler`/`imprimer`. Expose aussi
-  `aRevoirHTML` (file « à revoir ensemble », épinglées + suggestions + **retirées
-  automatiquement** #465, ré-épinglables d'un clic) et `dicteesProposeesHTML`
-  (dictées prédéfinies épinglables à l'avance), toutes deux rendues par
-  l'orchestrateur dans l'onglet **Programme** (#459) plutôt qu'ici.
+  **historique des erreurs récentes** (#391, filtrable par période #476, cf.
+  `encadrant-erreurs.ts` ci-dessous) ; handlers `activite-mode`/`epingler`/
+  `imprimer`, plus `erreurs-periode` (délégué à `erreursClick`, exporté par
+  `encadrant-erreurs.ts` puisque c'est cette section qui insère son bloc).
+  Expose aussi `aRevoirHTML` (file « à revoir ensemble », épinglées + suggestions
+  + **retirées automatiquement** #465, ré-épinglables d'un clic) et
+  `dicteesProposeesHTML` (dictées prédéfinies épinglables à l'avance), toutes
+  deux rendues par l'orchestrateur dans l'onglet **Programme** (#459) plutôt
+  qu'ici.
 - **`encadrant-revision.ts`** (#423) — **récap du mode Révision espacée** par profil
   (onglet **Suivi**, #459), affiché juste après le bloc ci-dessus : projette la file de
   répétition espacée (#45, lue par `core/encadrant-stats.ts:revisionProfil`) — palier
   courant + échéance relative par entrée, badge « acquis » pour les entrées sorties de
   rotation. Bascule **« Par catégorie »** (regroupement dépliable, même chrome que
   « Notions par catégorie ») / **« Par urgence »** (liste à plat, plus en retard
-  d'abord) ; handler `revision-mode`.
+  d'abord) ; handler `revision-mode` (composant segment partagé, cf. `segment.ts`
+  plus bas).
 - **`encadrant-seance.ts`** (#440) — **compositeur** du « programme du jour » du
   profil consulté, en tête de l'onglet **Programme** (#459) : programmes (nom, étapes +
-  `count`, récurrence date/hebdo avec garde-fou de conflit `recurrencesEnConflit`),
+  `count`, récurrence date/hebdo — bascule `seance-rec-type`, composant segment
+  partagé — avec garde-fou de conflit `recurrencesEnConflit`),
   cible d'étape (leçon, ou dictée) filtrée au niveau du profil, estimation de durée,
   copie vers un autre profil. Une étape « dictée » se cible via une **liste à cocher**
   (`checkboxesDicteeHTML`, handler `seance-dictee-toggle`, #463) plutôt qu'un menu
@@ -102,6 +108,20 @@ ci-dessous.
   `purgeRevoirSolides`, cf. [Logique pure](core.md)) : les entrées redevenues solides
   sont retirées de la file **persistée**, pas seulement filtrées à l'affichage.
 
+**Composant segment partagé** — `segment.ts` (hors des sections ci-dessus, consommé par
+quatre d'entre elles) : `segmentHTML(config)` rend un groupe de boutons **choix exclusif**
+conforme au patron APG **« Radio Group »** (`role="radiogroup"` + `role="radio"`/
+`aria-checked`, **tabindex mobile** — seule l'option cochée est dans l'ordre de
+tabulation), en remplacement de l'ancien rendu à la main en `role="group"` +
+`aria-pressed` (des bascules indépendantes, contrat inadapté à un choix exclusif).
+`segmentKeydown(e)`, câblé une fois dans le `onKeydown` délégué de `encadrant.ts`, déplace
+le focus aux flèches/Home/End ; la sélection **suit le focus** (le handler de la section
+clique l'option visée, gère l'état et le re-rendu). Consommé par `activite-mode`
+(`encadrant-progression.ts`), `revision-mode` (`encadrant-revision.ts`), `seance-rec-type`
+(`encadrant-seance.ts`) et `erreurs-periode` (`encadrant-erreurs.ts`) — les
+`data-act`/`data-mode`/`data-type`/`data-periode` de chaque site restent inchangés
+(sélecteurs e2e stables).
+
 **Journal des erreurs (#391)** — deux modules distincts, hors des cinq de section
 ci-dessus, plus `core/erreur-representation.ts` (logique pure, cf. [Logique
 pure](core.md)) pour les formats composites :
@@ -127,13 +147,19 @@ pure](core.md)) pour les formats composites :
   décroche), via une garde dédiée `sessionErreursLoggees` (`ui/navigation.ts`),
   indépendante de `sessionRecorded`.
 - **`encadrant-erreurs.ts`** — bloc « Ce qui a été difficile récemment » (`erreursHTML`),
-  inséré par `encadrant-progression.ts` entre la maîtrise par catégorie et « à revoir » :
-  groupé par leçon (`<details>` repliés, la plus récemment ratée en tête), dédoublonnage
-  « vue N fois », bonne réponse mise en avant (jamais barrée). Le libellé du groupe résout
-  d'abord une leçon du catalogue, sinon une liste d'orthographe (`labelLeconOrtho`), sinon
-  l'id brut. Action « Épingler » (`data-act="epingler"`, même mécanique que « à revoir » —
-  leçon du catalogue **ou** liste d'orthographe, préfixée `orthoRevoirId`, #424) **masquée**
-  seulement pour un groupe dont l'id ne résout ni l'une ni l'autre (groupe orphelin).
+  inséré par `encadrant-progression.ts` après les listes de dictée (dernier bloc du récap de
+  l'onglet Suivi, juste avant le récap de révision espacée) : groupé par leçon (`<details>`
+  repliés, la plus récemment ratée en tête), dédoublonnage « vue N fois », bonne réponse mise
+  en avant (jamais barrée). Le libellé du groupe résout d'abord une leçon du catalogue, sinon
+  une liste d'orthographe (`labelLeconOrtho`), sinon l'id brut. Action « Épingler »
+  (`data-act="epingler"`, même mécanique que « à revoir » — leçon du catalogue **ou** liste
+  d'orthographe, préfixée `orthoRevoirId`, #424) **masquée** seulement pour un groupe dont
+  l'id ne résout ni l'une ni l'autre (groupe orphelin).
+  **Filtre de période** (#476, cf. [Espace encadrant](espace-encadrant.md) pour le détail) :
+  sélecteur à quatre segments (`data-act="erreurs-periode"`, composant segment partagé —
+  `segment.ts` ci-dessus) qui borne les erreurs AVANT le regroupement
+  (`filtrerErreursParPeriode`, `core/erreurs-journal.ts`), défaut adaptatif
+  (`periodeParDefaut`) ; handler exporté `erreursClick`, routé par `progressionClick`.
 
 ## Modales & effets
 

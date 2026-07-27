@@ -227,8 +227,8 @@ test('sélecteur de période : défaut adaptatif, bascule change contenu et comp
 
 	// Défaut adaptatif : rien aujourd'hui, une erreur hier → repli sur « 2 jours ».
 	await expect(periodeBtn('deux-jours')).toHaveClass(/\bon\b/);
-	await expect(periodeBtn('deux-jours')).toHaveAttribute('aria-pressed', 'true');
-	await expect(periodeBtn('jour')).toHaveAttribute('aria-pressed', 'false');
+	await expect(periodeBtn('deux-jours')).toHaveAttribute('aria-checked', 'true');
+	await expect(periodeBtn('jour')).toHaveAttribute('aria-checked', 'false');
 	let lecons = page.locator('.enc-err-lecon');
 	await expect(lecons).toHaveCount(1);
 	await expect(lecons.first().locator('.enc-err-count')).toContainText('1 erreur');

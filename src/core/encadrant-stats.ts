@@ -18,6 +18,7 @@
    et ne sont pas agrégées ici (suivi possible ultérieurement).
    ============================================================ */
 import { lsGet, lsGetRaw, lsGetItemRaw, lsSetRaw } from './storage';
+import { startOfDay } from './utils';
 import {
 	STARS_KEY,
 	LESSON_STATS_KEY,
@@ -194,14 +195,6 @@ export interface FriseMatiere {
 	label: string;
 	semaines: number[]; // longueur = SEMAINES_FRISE ; count de notions distinctes ayant franchi un cap
 	total: number; // notions distinctes ayant franchi un cap sur toute la fenêtre affichée
-}
-
-/* Début du jour LOCAL d'un horodatage (ms) — base des différences en jours CALENDAIRES
-   (graphe d'activité + « dernière fois travaillée »). Pur. */
-function startOfDay(ts: number): number {
-	const d = new Date(ts);
-	d.setHours(0, 0, 0, 0);
-	return d.getTime();
 }
 
 /* Libellé « dernière fois travaillée » pour l'espace encadrant, lisible pour un parent :

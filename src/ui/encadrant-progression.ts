@@ -35,6 +35,7 @@ import { dicteeDisponible } from './tts';
 import { printScope } from './session';
 import { erreursHTML, erreursClick } from './encadrant-erreurs';
 import { consulteUuid, renderEspace, container } from './encadrant-commun';
+import { segmentHTML } from './segment';
 
 /* ---------- État de la section (module) ---------- */
 let vueActivite: 'total' | 'type' = 'total'; // graphe d'activité : « Total » ou « Par type » (#319)
@@ -180,11 +181,17 @@ function activiteHTML(recap: RecapProfil): string {
 		.join('');
 	const labs = infos.map((info) => `<span class="enc-bar-lab">${info.initiale}</span>`).join('');
 
-	// Bascule Total / Par type (pattern bouton-segment, sélecteur stable pour l'e2e).
-	const bascule = `<div class="enc-act-modes" role="group" aria-label="Affichage du graphe d'activité">
-      <button type="button" class="enc-act-mode${parType ? '' : ' on'}" data-act="activite-mode" data-mode="total" aria-pressed="${!parType}">Total</button>
-      <button type="button" class="enc-act-mode${parType ? ' on' : ''}" data-act="activite-mode" data-mode="type" aria-pressed="${parType}">Par type</button>
-    </div>`;
+	// Bascule Total / Par type (composant segment partagé, cf. ui/segment.ts).
+	const bascule = segmentHTML({
+		act: 'activite-mode',
+		valAttr: 'mode',
+		label: "Affichage du graphe d'activité",
+		active: vueActivite,
+		options: [
+			{ val: 'total', label: 'Total' },
+			{ val: 'type', label: 'Par type' },
+		],
+	});
 	// Légende (mode « par type ») : « Autre » seulement si d'anciennes sessions non typées existent.
 	const legendeTypes = [...TYPES_ACTIVITE, ...(jours.some((j) => j.inconnu) ? [TYPE_INCONNU] : [])];
 	const legende = parType

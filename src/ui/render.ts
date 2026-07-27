@@ -1,7 +1,7 @@
 /* ============================================================
    Rendu de l'écran d'accueil et du sélecteur de leçons
    ============================================================ */
-import { escapeHTML, fmt } from '../core/utils';
+import { escapeHTML, fmt, startOfDay } from '../core/utils';
 import {
 	activeProfile,
 	loadProfilesMeta,
@@ -214,12 +214,7 @@ function fillSprintRecord(elId: string) {
 }
 /* Délai d'ici une échéance, en langage d'enfant (calé sur les jours calendaires). */
 function quandRevision(echeance: number, now: number): string {
-	const jour = (ts: number) => {
-		const d = new Date(ts);
-		d.setHours(0, 0, 0, 0);
-		return d.getTime();
-	};
-	const jours = Math.round((jour(echeance) - jour(now)) / JOUR);
+	const jours = Math.round((startOfDay(echeance) - startOfDay(now)) / JOUR);
 	if (jours <= 0) return "plus tard aujourd'hui";
 	if (jours === 1) return 'demain';
 	return `dans ${jours} jours`;

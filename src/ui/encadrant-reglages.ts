@@ -112,15 +112,15 @@ function vuEnClasseHTML(consulte: Profile): string {
 	const blocs = cats.map(categorieVuHTML).join('');
 	return `<div class="enc-block" id="encVuBloc">
       <h3 class="enc-h3">Leçons déjà vues en classe</h3>
-      <p class="enc-hint">Cochez ce que ${escapeHTML(consulte.name)} a déjà travaillé en classe, hors de l'application. Ces leçons rejoignent « ce que tu connais déjà » pour le sprint et entrent en révision : le premier rappel arrive dès le lendemain.</p>
-      <p class="enc-hint">Mieux vaut cocher au fil du programme de la classe : tout déclarer d'un coup fait grimper d'autant ce qu'il y a à réviser. Une erreur au premier rappel est normale — c'est la première fois que l'enfant est mis à l'épreuve sur cette notion dans l'application.</p>
+      <p class="enc-hint">Cochez ce que ${escapeHTML(consulte.name)} a déjà travaillé en classe, hors de l'application. Ces leçons rejoignent « ce que tu connais déjà » pour le sprint et entrent en révision : la première révision arrive dès le lendemain.</p>
+      <p class="enc-hint">Mieux vaut cocher au fil du programme de la classe : tout déclarer d'un coup fait grimper d'autant ce qu'il y a à réviser. Une erreur à cette première révision est normale — c'est la première fois que l'application interroge l'enfant sur cette notion.</p>
       <div class="enc-vu-actions">
         <button type="button" class="enc-btn-sec" data-act="vu-tout">${icon('check')} Tout déclarer</button>
         <button type="button" class="enc-btn-sec" data-act="vu-rien">${icon('x')} Tout retirer</button>
       </div>
       <p class="enc-vu-total" id="encVuTotal"></p>
       <div class="enc-vu-cats">${blocs}</div>
-      <p class="enc-vu-status" id="encVuStatus" role="status" aria-live="polite"></p>
+      <p class="enc-vu-status" id="encVuStatus" role="status"></p>
     </div>`;
 }
 
@@ -133,16 +133,19 @@ function categorieVuHTML(c: CategorieDeclarable): string {
 		.map((l) => {
 			const off = l.jouee ? ' disabled' : '';
 			const mention = l.jouee
-				? ` <small class="enc-hint">déjà travaillée dans l'application</small>`
+				? ` <small class="enc-vu-note">(déjà travaillée dans l'application)</small>`
 				: '';
 			return `<li><label class="enc-vu-item">
-          <input type="checkbox" class="enc-vu-lecon" data-act="vu-lecon" data-cat="${c.categoryId}" data-lesson="${escapeHTML(l.lessonId)}" data-niveau="${l.niveau}"${l.declaree || l.jouee ? ' checked' : ''}${off} />
+          <input type="checkbox" class="enc-vu-lecon" data-act="vu-lecon" data-cat="${c.categoryId}" data-lesson="${l.lessonId}" data-niveau="${l.niveau}"${l.declaree || l.jouee ? ' checked' : ''}${off} />
           <span>${escapeHTML(l.label)}${mention}</span>
         </label></li>`;
 		})
 		.join('');
 	const listId = `encVuList-${c.categoryId}`;
-	return `<div class="enc-vu-cat" data-cat="${c.categoryId}">
+	// `role="group"` + libellé : en navigation « champ par champ » (lecteur d'écran), les
+	// cases de leçons restent rattachées à leur catégorie — sinon ~110 libellés défilent
+	// sans contexte. Pas de <fieldset>/<legend>, qui doublonnerait le titre à l'écran.
+	return `<div class="enc-vu-cat" role="group" aria-label="${escapeHTML(c.label)}" data-cat="${c.categoryId}">
       <div class="enc-vu-head">
         <label class="enc-vu-catlab">
           <input type="checkbox" class="enc-vu-cat-check" data-act="vu-cat" data-cat="${c.categoryId}"${c.declarables === 0 ? ' disabled' : ''} />
@@ -171,8 +174,11 @@ function rafraichirVuEnClasse(): void {
 		const declarables = boxes.filter((b) => !b.disabled);
 		const parent = cat.querySelector<HTMLInputElement>('.enc-vu-cat-check');
 		if (parent) {
+			// L'état de la case parente suit les leçons DÉCLARABLES (les autres sont déjà
+			// rencontrées, cochées et figées). Catégorie entièrement travaillée dans
+			// l'appli : plus rien à déclarer → case cochée et inactive, jamais « vide ».
 			const n = declarables.filter((b) => b.checked).length;
-			parent.checked = declarables.length > 0 && n === declarables.length;
+			parent.checked = declarables.length > 0 ? n === declarables.length : cochees === boxes.length;
 			parent.indeterminate = n > 0 && n < declarables.length;
 		}
 		const compteur = cat.querySelector<HTMLElement>('.enc-vu-count');
@@ -197,9 +203,15 @@ function casesDeclarables(racine: HTMLElement | null): HTMLInputElement[] {
 	return [...racine.querySelectorAll<HTMLInputElement>('.enc-vu-lecon')].filter((b) => !b.disabled);
 }
 
-/* Applique une déclaration groupée : écrit d'un seul coup (une écriture, pas N) puis
-   reflète l'état dans le DOM et annonce le résultat (région `status`) — les actions
-   groupées sont les seules à mériter une annonce, une case isolée se suffit à elle-même. */
+/* Annonce (région `status`) réservée aux changements que l'utilisateur n'a PAS produits
+   directement : action groupée, ou case de catégorie qui bascule d'elle-même. Cocher une
+   case isolée se suffit à soi-même — annoncer à chaque coche serait du bruit. */
+function annoncerVu(texte: string): void {
+	const status = document.getElementById('encVuStatus');
+	if (status) status.textContent = texte;
+}
+
+/* Applique une déclaration groupée : une seule écriture (pas N), puis reflet dans le DOM. */
 function declarerCases(uuid: string, cases: HTMLInputElement[], vu: boolean, annonce: string) {
 	const entrees: LeconNiveau[] = cases.map((b) => ({
 		lessonId: b.dataset.lesson ?? '',
@@ -208,8 +220,7 @@ function declarerCases(uuid: string, cases: HTMLInputElement[], vu: boolean, ann
 	declarerVuAilleursFor(uuid, entrees, vu, Date.now());
 	cases.forEach((b) => (b.checked = vu));
 	rafraichirVuEnClasse();
-	const status = document.getElementById('encVuStatus');
-	if (status) status.textContent = annonce;
+	annoncerVu(annonce);
 }
 
 function classeHTML(consulte: Profile): string {
@@ -273,6 +284,9 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 	// à chaque case cochée, sur une liste qui peut compter plus de cent leçons.
 	if (act === 'vu-lecon' && uuid) {
 		const b = t as HTMLInputElement;
+		const cat = b.closest<HTMLElement>('.enc-vu-cat');
+		const parent = cat?.querySelector<HTMLInputElement>('.enc-vu-cat-check') ?? null;
+		const completeAvant = parent?.checked ?? false;
 		declarerVuAilleursFor(
 			uuid,
 			[{ lessonId: b.dataset.lesson ?? '', niveau: (b.dataset.niveau ?? '') as SchoolLevel }],
@@ -280,6 +294,17 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 			Date.now(),
 		);
 		rafraichirVuEnClasse();
+		// La case de la catégorie a pu basculer d'elle-même (dernière leçon cochée, ou
+		// première décochée) : ce changement sur un contrôle que l'adulte n'a pas touché
+		// passerait inaperçu au lecteur d'écran → on l'annonce (avis a11y).
+		if (parent && parent.checked !== completeAvant) {
+			const label = cat?.querySelector('.enc-vu-catlab span')?.textContent ?? '';
+			annoncerVu(
+				parent.checked
+					? `${label} : toutes les leçons sont déclarées vues en classe.`
+					: `${label} : il reste des leçons à déclarer.`,
+			);
+		}
 		return true;
 	}
 	if (act === 'vu-cat' && uuid) {
@@ -292,7 +317,9 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 			uuid,
 			casesDeclarables(cat),
 			b.checked,
-			b.checked ? `${label} : tout déclaré vu en classe.` : `${label} : déclarations retirées.`,
+			b.checked
+				? `${label} : toutes les leçons sont déclarées vues en classe.`
+				: `${label} : les déclarations sont retirées.`,
 		);
 		return true;
 	}
@@ -326,9 +353,11 @@ export function reglagesClick(act: string, el: HTMLElement): boolean {
 			uuid,
 			casesDeclarables(document.getElementById('encVuBloc')),
 			vu,
+			// « affichées » et non « du niveau » : un profil peut suivre une matière à un
+			// niveau et une autre à un niveau différent (niveauParMatiere).
 			vu
-				? 'Toutes les leçons du niveau sont déclarées vues en classe.'
-				: 'Toutes les déclarations « vu en classe » ont été retirées.',
+				? 'Toutes les leçons affichées sont déclarées vues en classe.'
+				: 'Toutes les déclarations « vu en classe » sont retirées.',
 		);
 		return true;
 	}

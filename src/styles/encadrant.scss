@@ -427,6 +427,11 @@
 	height: 1.1rem;
 	transition: transform 0.15s ease;
 }
+@media (prefers-reduced-motion: reduce) {
+	.enc-vu-expand svg {
+		transition: none;
+	}
+}
 .enc-vu-expand[aria-expanded='true'] svg {
 	transform: rotate(180deg);
 }
@@ -441,6 +446,11 @@
 	display: flex;
 	flex-direction: column;
 	gap: 0.2rem;
+}
+/* L'attribut [hidden] doit l'emporter sur display:flex (spécificité de classe) —
+   sinon la liste reste dépliée alors que le bouton annonce aria-expanded="false". */
+.enc-vu-list[hidden] {
+	display: none;
 }
 .enc-vu-item {
 	display: flex;
@@ -459,9 +469,12 @@
 .enc-vu-item input:disabled {
 	cursor: default;
 }
-.enc-vu-item .enc-hint {
-	margin: 0;
+/* Mention « déjà travaillée » : c'est la seule justification visible de la case figée,
+   donc une info à LIRE — en --grey (AA sur --paper), pas en --muted comme un aparté. */
+.enc-vu-note {
 	display: block;
+	font-size: 0.78rem;
+	color: var(--grey);
 }
 .enc-vu-status {
 	font-size: 0.85rem;

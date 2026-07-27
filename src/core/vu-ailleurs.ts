@@ -25,6 +25,7 @@
 import type { CategoryId, SchoolLevel, SubjectId } from './catalog';
 import { CATEGORIES, getLessonsByCategory } from './catalog';
 import { lsGet, lsGetRaw, lsSetRaw } from './storage';
+import { touchProfile } from './profiles';
 import {
 	scopeActif,
 	enterLessonsRevisionFor,
@@ -93,6 +94,10 @@ export function declarerVuAilleursFor(
 	}
 	if (changees.length === 0) return;
 	lsSetRaw(uuid + '/' + VU_AILLEURS_KEY, JSON.stringify(carte));
+	// L'écriture par UUID court-circuite le hook `onDataWrite` : on marque explicitement
+	// le profil comme modifié, sinon une session où l'adulte ne fait QUE déclarer des
+	// leçons perdrait à la fusion par récence de l'export/import (même geste que #440).
+	touchProfile(uuid);
 	if (vu) enterLessonsRevisionFor(uuid, changees, now);
 	else retirerRevisionsDeclareesFor(uuid, changees);
 }
@@ -108,7 +113,12 @@ export interface LeconDeclarable {
 	/** Déclarée « vue en classe » par l'adulte. */
 	declaree: boolean;
 	/** Déjà travaillée DANS l'appli (date de 1er passage) : rencontrée de toute façon,
-	    la déclaration n'y ajouterait rien → case cochée mais non modifiable. */
+	    la déclaration n'y ajouterait rien → case cochée mais non modifiable.
+	    Critère aligné sur la date de 1er passage — la MÊME source que le périmètre du
+	    sprint — et non sur les statistiques : une leçon travaillée avant l'arrivée de ce
+	    suivi (#178) a des stats mais pas de date, elle n'est donc PAS dans le périmètre
+	    « seen » et doit rester déclarable. (La protection de l'état SR à l'annulation, elle,
+	    regarde bien les stats : elle répond à « y a-t-il eu un vrai passage ? ».) */
 	jouee: boolean;
 }
 export interface CategorieDeclarable {

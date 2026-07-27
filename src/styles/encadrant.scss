@@ -722,6 +722,25 @@ $plot-h: 140px;
 .enc-act-mode + .enc-act-mode {
 	border-left: 1px solid var(--line);
 }
+/* Variante à 4 segments (filtre de période des erreurs, #476) : quatre libellés ne
+   tiennent pas sur une ligne de smartphone → retour à la ligne autorisé. Les
+   séparateurs passent du `border-left` (une seule ligne) à un `column-gap` de 1px sur
+   fond --line. Le `row-gap`, lui, est volontairement plus large : une fois la grille
+   repliée en 2×2 sur téléphone, 1px entre deux rangs de boutons exposerait au mis-tap
+   (public = un parent au doigt, avis relecteur a11y). */
+.enc-act-modes-wrap {
+	display: flex;
+	flex-wrap: wrap;
+	column-gap: 1px;
+	row-gap: 6px;
+	background: var(--line);
+}
+.enc-act-modes-wrap .enc-act-mode {
+	flex: 1 1 auto;
+}
+.enc-act-modes-wrap .enc-act-mode + .enc-act-mode {
+	border-left: none;
+}
 .enc-act-mode.on {
 	/* --admin-fill (et non --admin-accent, éclairci en Nuit) : garde #fff lisible
 	   sur le bouton actif dans tous les thèmes (a11y, cf. .enc-btn). */

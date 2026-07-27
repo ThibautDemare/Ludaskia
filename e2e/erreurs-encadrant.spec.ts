@@ -67,6 +67,12 @@ test('rendu : groupé par leçon, « vu N fois », et épinglage depuis la secti
 	await page.addInitScript(SEED_ERREURS);
 	await gotoHash(page, 'encadrant');
 
+	// Défaut adaptatif (#476) : la fenêtre la plus serrée avec au moins une erreur est
+	// « Aujourd'hui » ici (les 3 erreurs de math-complements y tombent), ce qui masquerait
+	// math-doubles (3 jours). On bascule sur « Tout » pour retrouver l'objet réel de ce
+	// test : grouper/dédoublonner/épingler à travers 2 leçons.
+	await page.locator('.enc-act-mode[data-act="erreurs-periode"][data-periode="tout"]').click();
+
 	// Une carte par leçon ; la plus récemment ratée (math-complements) en tête.
 	const lecons = page.locator('.enc-err-lecon');
 	await expect(lecons.first()).toBeVisible();
@@ -105,6 +111,11 @@ test('état vide : message rassurant quand rien à signaler', async ({ page }) =
 	await expect(section).toBeVisible();
 	await expect(section).toContainText('Rien à signaler récemment');
 	await expect(page.locator('.enc-err-lecon')).toHaveCount(0);
+	// Journal entièrement vide : rien à filtrer → le sélecteur de période (#476) ne
+	// doit pas s'afficher.
+	await expect(
+		page.locator('.enc-act-modes[aria-label="Période des erreurs affichées"]'),
+	).toHaveCount(0);
 	expect(errors).toEqual([]);
 });
 
@@ -170,5 +181,77 @@ test('seuil détaché : valider à vide puis en faux journalise quand même les 
 	// L'erreur remonte bien côté encadrant malgré la 1re validation à vide.
 	await gotoHash(page, 'encadrant');
 	await expect(page.locator('.enc-err-lecon').first()).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
+/* Journal seedé pour le sélecteur de période (#476) : horodatages ancrés sur le DÉBUT
+   DU JOUR LOCAL (+10h) — jamais une soustraction fixe en ms — pour rester robuste à
+   l'heure d'exécution du test (ne bascule pas de jour calendaire selon l'heure du run).
+   - math-complements : une erreur HIER (dans « 2 jours », pas « Aujourd'hui ») + une
+     erreur il y a 5 jours (dans « 1 semaine » seulement) → son compteur doit changer
+     de 1 à 2 erreurs selon la période choisie.
+   - math-doubles : une erreur il y a 6 jours (juste dans « 1 semaine »).
+   - math-mesures : une erreur il y a 20 jours (seulement dans « Tout »).
+   Rien AUJOURD'HUI → le défaut adaptatif doit retomber sur « 2 jours ». */
+const SEED_PERIODES = `(() => {
+  const now = Date.now();
+  const debutJour = new Date(now); debutJour.setHours(0, 0, 0, 0);
+  const ilYA = (jours) => debutJour.getTime() - jours * 86400000 + 10 * 3600000;
+  const liste = [
+    { ts: ilYA(1),  lessonId: 'math-complements', mode: 'lecon',   question: '12 + … = 20', donnee: '7', attendue: '8' },
+    { ts: ilYA(5),  lessonId: 'math-complements', mode: 'lecon',   question: '15 + … = 25', donnee: '9', attendue: '10' },
+    { ts: ilYA(6),  lessonId: 'math-doubles',     mode: 'sprint',  question: 'double de 6 = …', donnee: '11', attendue: '12' },
+    { ts: ilYA(20), lessonId: 'math-mesures',      mode: 'express', question: '3 m = … cm', donnee: '30', attendue: '300' },
+  ];
+  localStorage.setItem('e2e/ludaskia_erreurs', JSON.stringify(liste));
+})();`;
+
+/* 6. Sélecteur de période (#476) : défaut adaptatif, bascule qui change contenu ET
+   compteurs, « Tout » qui retrouve l'historique ancien, et message dédié quand la
+   période choisie est vide alors que le journal ne l'est pas. */
+test('sélecteur de période : défaut adaptatif, bascule change contenu et compteurs, « Tout » retrouve l’historique', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_PERIODES);
+	await gotoHash(page, 'encadrant');
+
+	const periodeBtn = (p: string) =>
+		page.locator(`.enc-act-mode[data-act="erreurs-periode"][data-periode="${p}"]`);
+
+	// Le sélecteur est affiché (journal non vide).
+	await expect(
+		page.locator('.enc-act-modes[aria-label="Période des erreurs affichées"]'),
+	).toBeVisible();
+
+	// Défaut adaptatif : rien aujourd'hui, une erreur hier → repli sur « 2 jours ».
+	await expect(periodeBtn('deux-jours')).toHaveClass(/\bon\b/);
+	await expect(periodeBtn('deux-jours')).toHaveAttribute('aria-pressed', 'true');
+	await expect(periodeBtn('jour')).toHaveAttribute('aria-pressed', 'false');
+	let lecons = page.locator('.enc-err-lecon');
+	await expect(lecons).toHaveCount(1);
+	await expect(lecons.first().locator('.enc-err-count')).toContainText('1 erreur');
+
+	// Bascule sur « 1 semaine » : une 2e leçon apparaît (math-doubles, 6 jours) ET le
+	// compteur de la 1re change (2 erreurs sur la semaine contre 1 sur 2 jours) — le
+	// filtre s'applique bien AVANT le regroupement, pas seulement sur la liste des cartes.
+	await periodeBtn('semaine').click();
+	lecons = page.locator('.enc-err-lecon');
+	await expect(lecons).toHaveCount(2);
+	await expect(lecons.first().locator('.enc-err-count')).toContainText('2 erreurs');
+
+	// Bascule sur « Aujourd'hui » : rien sur cette période alors que le journal n'est
+	// pas vide → message dédié (distinct du message « rien à signaler » générique).
+	await periodeBtn('jour').click();
+	await expect(page.locator('.enc-err-lecon')).toHaveCount(0);
+	await expect(page.locator('.enc-err-vide')).toContainText(
+		'Rien à signaler sur cette période. Élargissez-la',
+	);
+
+	// « Tout » : retrouve aussi l'erreur la plus ancienne (math-mesures, 20 jours).
+	await periodeBtn('tout').click();
+	await expect(page.locator('.enc-err-lecon')).toHaveCount(3);
+
 	expect(errors).toEqual([]);
 });

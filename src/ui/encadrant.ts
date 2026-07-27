@@ -21,8 +21,9 @@
    ============================================================ */
 import { escapeHTML } from '../core/utils';
 import { listProfiles, activeProfile, type Profile } from '../core/profiles';
-import { progressionProfil, type RecapProfil } from '../core/encadrant-stats';
+import { progressionProfil, purgeRevoirSolides, type RecapProfil } from '../core/encadrant-stats';
 import { icon } from './icon';
+import { dicteeDisponible } from './tts';
 import type { IconName } from '../core/icon-names';
 import {
 	initEncadrantCommun,
@@ -171,6 +172,11 @@ function tabsNavHTML(active: EncTab): string {
 
 /* Contenu de l'onglet actif. `recap` n'est calculé que pour les onglets qui l'utilisent. */
 function tabPanelHTML(tab: EncTab, consulte: Profile, actif: Profile, profiles: Profile[]): string {
+	// Nettoyage DUR de la file « à revoir » AVANT toute lecture (#465) : `progressionProfil`
+	// et les lignes de détail du Suivi portent l'état « épinglée », qui serait périmé d'un
+	// rendu si la purge n'intervenait qu'au moment de rendre « À revoir ensemble ».
+	// Idempotent et sans écriture quand il n'y a rien à retirer → appelé pour tous les onglets.
+	purgeRevoirSolides(consulte, dicteeDisponible(), Date.now());
 	switch (tab) {
 		case 'suivi': {
 			const recap: RecapProfil = progressionProfil(consulte, Date.now());

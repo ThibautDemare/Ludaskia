@@ -21,7 +21,6 @@ import {
 	listesOrthoProfil,
 	dicteesProposees,
 	epingleesProfil,
-	purgeRevoirSolides,
 	retraitsAutoProfil,
 	type RecapProfil,
 	type RecapListeOrtho,
@@ -486,17 +485,17 @@ function ligneRevoir(
       <span class="enc-revoir-lab">${escapeHTML(label)}</span>
       ${badge}
       <span class="enc-actions">
-        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}">${epingle ? 'Retirer' : 'Épingler'}</button>
+        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(label)} »">${epingle ? 'Retirer' : 'Épingler'}</button>
         ${imprimable ? boutonsImpression(entryId) : ''}
       </span>
     </li>`;
 }
 
 export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
-	// Nettoyage DUR de la file avant lecture (#465) : la liste de gestion ne doit pas garder
-	// d'entrée « fantôme » (notion redevenue solide, déjà invisible côté enfant).
+	// La file a déjà été nettoyée (purgeRevoirSolides, appelé par l'orchestrateur AVANT le
+	// calcul du récap, #465) : la liste de gestion ne peut donc plus contenir de « fantôme »
+	// (notion redevenue solide, déjà invisible côté enfant).
 	const now = Date.now();
-	purgeRevoirSolides(consulte, dicteeDisponible(), now);
 	// Entrées actuellement épinglées (leçons du catalogue ET listes de dictée), résolues.
 	const pinned = epingleesProfil(consulte);
 	const epingleeIds = new Set(pinned.map((e) => e.id));
@@ -522,7 +521,7 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 		: '';
 	const blocRetraits = retraits.length
 		? `<p class="enc-sub-lab">Retirées automatiquement</p>
-       <p class="enc-hint">Ces notions ont quitté la liste d'elles-mêmes : ${escapeHTML(consulte.name)} les réussit à nouveau. Épinglez-en une de nouveau si vous voulez quand même y revenir.</p>
+       <p class="enc-hint">Ces notions ont quitté la liste d'elles-mêmes : ${escapeHTML(consulte.name)} les maîtrise de nouveau. Épinglez-en une si vous voulez quand même y revenir.</p>
        <ul class="enc-revoir">${retraits
 					.map((r) =>
 						ligneRevoir(r.id, r.label, false, {
@@ -556,9 +555,18 @@ export function progressionClick(act: string, el: HTMLElement): boolean {
 			return true;
 		case 'epingler': {
 			const uuid = consulteUuid();
-			if (uuid && el.dataset.lesson) {
-				toggleRevoirFor(uuid, el.dataset.lesson);
+			const entryId = el.dataset.lesson;
+			if (uuid && entryId) {
+				toggleRevoirFor(uuid, entryId);
 				renderEspace();
+				// Le re-rendu recrée le DOM et la ligne CHANGE de sous-bloc (« Retirées
+				// automatiquement » → « Épinglées », #465) : on ramène le focus sur le bouton de
+				// la MÊME notion, sinon l'utilisateur clavier repart du début du document.
+				container()
+					?.querySelector<HTMLElement>(
+						`[data-act="epingler"][data-lesson="${CSS.escape(entryId)}"]`,
+					)
+					?.focus({ preventScroll: true });
 			}
 			return true;
 		}

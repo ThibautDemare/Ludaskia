@@ -11,7 +11,15 @@ décompte d'objectif seul ; clé réellement **namespacée par niveau** :
 `ludaskia_runs_<mode>@<niveau>`, cf. [Niveaux scolaires](niveaux-scolaires.md)),
 `ludaskia_streak`, `ludaskia_stars`,
 `ludaskia_lessonStats`, `ludaskia_lessonFirstSeen` (date du 1er passage par
-leçon, objectif « nouvelle leçon »), `ludaskia_paliers` (#397 : journal daté des
+leçon, objectif « nouvelle leçon »), `ludaskia_lessonVuAilleurs` (#478 :
+leçons déclarées « vues en classe » par l'adulte, hors de l'application —
+`Record<'lessonId@niveau', true>`, namespacée par niveau comme les autres
+cartes de progression, écrite **par UUID** depuis l'espace encadrant sans
+changer le profil actif, `core/vu-ailleurs.ts` — carte **dédiée** qui ne
+remplace PAS `ludaskia_lessonFirstSeen` : l'union des deux ne se fait que dans
+`core/sprint-scope.ts`, pour le périmètre « déjà vues » du sprint, cf. [Logique
+pure](core.md) ; une déclaration fait aussi entrer la leçon en rotation de
+révision espacée), `ludaskia_paliers` (#397 : journal daté des
 **premiers** franchissements de palier par notion — `PaliersNotion {enCours?, acquis?}`,
 namespacée `lessonId@niveau` comme stats/étoiles, 2 horodatages max donc bornée par le
 catalogue — écrit par `recordMonteesPalier` en fin de session, APRÈS l'étoile ; base de la

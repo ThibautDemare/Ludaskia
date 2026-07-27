@@ -51,7 +51,10 @@ premier passage, **état SR**. Les `load*` renvoient une **vue scopée** au nive
 **par matière** (clés `lessonId` simples → consommateurs inchangés) ; les `load*All`
 / `starsEarnedAll` agrègent **tous niveaux** (effort, cumul « trésor » qui ne baisse
 jamais). Écriture clampée via `niveauLecon`. Migration unique `migrateNiveauNamespacing`
-(legacy → `@ce2`, via `lsSetQuiet` pour ne pas bumper `updatedAt`).
+(legacy → `@ce2`, via `lsSetQuiet` pour ne pas bumper `updatedAt`). Même patron pour la
+carte de déclarations « vues en classe » (`core/vu-ailleurs.ts`, #478) : clés
+`lessonId@niveau`, vue scopée au niveau actif via `scopeActif` (`loadVuAilleurs`) —
+une déclaration faite au CE2 ne rend pas la leçon rencontrée au CM1.
 
 ## Scoping gamification
 

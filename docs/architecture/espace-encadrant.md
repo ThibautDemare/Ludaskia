@@ -46,7 +46,7 @@ Répartition des blocs par onglet :
   deux actes de **préparation**, sortis du récap de Suivi (qui garde un simple
   renvoi textuel vers cet onglet pour les dictées prédéfinies non commencées).
 - **Réglages** — classe scolaire, aménagements dys/attention, longueur d'une
-  séance de révision, code d'accès PIN.
+  séance de révision, leçons déjà vues en classe (#478), code d'accès PIN.
 - **Profils** — liste/gestion des profils + sauvegarde.
 
 ## Consultation SANS bascule
@@ -340,6 +340,46 @@ libre, donc pas de valeur extrême possible. Réglé sur le profil consulté
 (`setPrefFor(uuid, 'revisionPlafond', n)`), ajuste le nombre d'éléments proposés par une
 séance de `#revision-espacee` (fallback + bornage assurés à la lecture par
 `getRevisionPlafond`, cf. [Logique pure](core.md)).
+
+## Leçons déjà vues en classe (#478)
+
+**Leçons déjà vues en classe**, bloc de l'**onglet Réglages** sous « Séance de
+révision » (`ui/encadrant-reglages.ts:vuEnClasseHTML`) : l'adulte déclare, pour
+le profil **consulté**, ce que l'enfant a déjà travaillé HORS de l'application
+(rattrapage à l'arrivée sur l'appli, notions traitées après un changement de
+classe). Une leçon déclarée compte alors comme **rencontrée** pour le
+périmètre « déjà vues » du sprint (`core/sprint-scope.ts`, cf. [Logique
+pure](core.md)) et **entre en révision espacée** au comportement standard
+(état neuf, 1er re-test à J+1).
+
+Case par catégorie (état plein/partiel/vide via l'`indeterminate` du DOM),
+dépliage leçon par leçon (`aria-expanded`/`aria-controls`, listes closes au
+rendu — évite d'ajouter la centaine de cases de leçons à l'ordre de
+tabulation), actions groupées « Tout déclarer » / « Tout retirer ». Une leçon
+**déjà jouée dans l'application** (date de 1er passage) est cochée et **non
+modifiable** : elle est de toute façon rencontrée, la déclarer n'ajouterait
+rien et la décocher ne la retirerait pas du périmètre — incompréhensible pour
+l'adulte. Mise à jour du DOM **en place** après chaque action (jamais
+`renderEspace()`, qui détruirait focus/scroll/dépliages sur une liste pouvant
+dépasser la centaine de leçons) ; un hook post-rendu dédié
+(`reglagesApresRendu`, appelé par l'orchestrateur `encadrant.ts` juste après le
+rendu de l'onglet) pose l'état « indéterminé » des cases de catégorie,
+impossible à exprimer en HTML seul.
+
+**Annulation prudente** (`core/vu-ailleurs.ts:declarerVuAilleursFor` →
+`core/progress.ts:retirerRevisionsDeclareesFor`) : décocher une leçon ne
+retire son état de révision espacée que s'il n'a **jamais été re-testé** et
+que la leçon n'a **aucune statistique** dans l'appli — un progrès issu d'un
+vrai passage n'est jamais détruit, seule la trace créée par la déclaration
+l'est.
+
+**Carte de stockage dédiée** (`ludaskia_lessonVuAilleurs`, cf. [Données &
+profils](donnees-et-profils.md)) qui ne remplace **pas** la date de 1er
+passage : les autres lecteurs de cette date — l'objectif « découvre une
+nouvelle leçon » côté enfant et le récap « notions maîtrisées récemment »
+ci-dessus — restent **aveugles** aux déclarations (l'union des deux cartes ne
+vit que dans `sprint-scope.ts`), pour qu'une déclaration en masse ne
+débloque ni ne gonfle artificiellement ces compteurs.
 
 ## Impression sans bascule
 

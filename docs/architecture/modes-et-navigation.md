@@ -77,6 +77,13 @@ faussé. La complétion de **tout** le programme déclenche modale + confettis
 (`showCelebration`) et le trophée dédié (cf. [Gamification](gamification.md)),
 **sans XP** (chaque mode a déjà donné le sien).
 
+**Retour en fin d'activité (#461)** : une leçon ou une dictée lancée depuis le
+programme ramène, à sa fin, vers `#seance` (« Retour au programme ») plutôt que vers
+la catégorie catalogue de la leçon — c'est `ui/retour-activite.ts` (cf. [Rendu &
+interactions](ui.md)) qui mémorise cette origine et la restitue aux écrans de fin.
+Sprint et révision espacée restent hors périmètre : ils finissent sur l'accueil, qui
+re-rend déjà la carte du programme.
+
 **Deux surfaces enfant** : la carte d'accueil `#cardProgramme` (`renderProgrammeCard`,
 masquée hors programme applicable ce jour) et l'écran dédié `#seance` (`renderSeance`)
 — tuiles des étapes restantes en ordre libre, jauge de pastilles, bouton « Choisis

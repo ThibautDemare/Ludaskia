@@ -29,7 +29,7 @@ import { addXP, getXP, niveauDepuisXP, recordSessionActivity } from '../core/pro
 import { evaluateTrophies } from '../core/rewards';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 import { goCategorie, goOrthoRevoir } from './navigation';
-import { retourFinActivite } from './retour-activite';
+import { retourFinActivite, activiteDemarree } from './retour-activite';
 import {
 	renderAtelier,
 	lettresMotHTML,
@@ -145,6 +145,9 @@ function journalErreurOrtho(word: MotOrtho, saisie: string): void {
 }
 
 export async function startOrthoRun(lessonId: string): Promise<void> {
+	// Cette liste démarre : valide (ou invalide) la provenance mémorisée (#461), le routeur
+	// pouvant nous appeler sans déclencheur (accès direct au hash, Précédent/Suivant).
+	activiteDemarree(lessonId);
 	st = loadOrtho();
 	orthoLessonId = lessonId;
 	mots = motsDeLecon(st, lessonId);

@@ -3,6 +3,7 @@ import { setOnDataWrite } from '../src/core/storage';
 import { initProfiles, touchActiveProfile } from '../src/core/profiles';
 import {
 	setOrigineActivite,
+	activiteDemarree,
 	origineActivite,
 	retourFinActivite,
 	type RetourCible,
@@ -23,6 +24,14 @@ import { startLecon, startOrthoLecon } from '../src/ui/navigation';
    module, donc un lancement qui oublierait de la reposer hériterait de la provenance
    du précédent. Les tests l'éprouvent explicitement (bascule d'origine entre deux
    activités) et s'en protègent entre eux via le `beforeEach`.
+
+   Deuxième volet : le bouton PRÉCÉDENT du navigateur rejoue `#lecon-<id>` sans repasser
+   par un déclencheur. L'origine est donc accordée à une CLÉ d'activité (posée par le
+   lancement, confirmée par `activiteDemarree` au démarrage réel) : toute activité qui
+   démarre sans être celle du dernier lancement retombe sur la valeur sûre « catalogue ».
+   Propriété visée, éprouvée dans les deux sens ci-dessous : l'écran de fin ne doit
+   JAMAIS promettre « Retour au programme » à une activité venue du catalogue (l'inverse
+   — retomber sur la catégorie — est seulement moins pratique, pas mensonger).
    ============================================================ */
 
 /* Cible « catalogue » traçable : `appels` prouve si l'`aller` rendu est bien CELUI
@@ -40,7 +49,7 @@ beforeEach(() => {
 	setOnDataWrite(touchActiveProfile);
 	initProfiles();
 	// Fraîcheur de l'état de MODULE : sans cette remise à zéro, un test « programme »
-	// contaminerait les suivants.
+	// contaminerait les suivants. L'appel sans clé remet aussi la clé d'activité à vide.
 	setOrigineActivite('catalogue');
 	// On part « dans une activité » : ainsi une route vers #seance est observable.
 	location.hash = 'lecon-en-cours';
@@ -141,6 +150,79 @@ describe("Rémanence de l'origine entre deux activités", () => {
 	});
 });
 
+describe("activiteDemarree — l'origine n'est accordée qu'à l'activité lancée", () => {
+	test("l'activité effectivement lancée depuis le programme garde son origine", () => {
+		setOrigineActivite('programme', 'lecon-A');
+		activiteDemarree('lecon-A');
+		expect(origineActivite()).toBe('programme');
+		expect(retourFinActivite(cibleTracee().cible).versProgramme).toBe(true);
+	});
+
+	test('« Recommencer » relance la même activité : origine conservée (idempotent)', () => {
+		setOrigineActivite('programme', 'lecon-A');
+		activiteDemarree('lecon-A');
+		activiteDemarree('lecon-A');
+		activiteDemarree('lecon-A');
+		expect(origineActivite()).toBe('programme');
+	});
+
+	test("Précédent sur une activité du programme lancée plus tôt → cible catalogue de l'appelant", () => {
+		// A vient du programme et a démarré…
+		setOrigineActivite('programme', 'lecon-A');
+		activiteDemarree('lecon-A');
+		// … puis B est lancée depuis le catalogue (l'origine du module suit B)…
+		setOrigineActivite('catalogue', 'lecon-B');
+		activiteDemarree('lecon-B');
+		// … et le bouton Précédent rejoue l'entrée d'historique de A, sans déclencheur.
+		activiteDemarree('lecon-A');
+		expect(origineActivite()).toBe('catalogue');
+		const { cible, appels } = cibleTracee('Retour à la catégorie');
+		const retour = retourFinActivite(cible);
+		expect(retour.label).toBe('Retour à la catégorie');
+		expect(retour.versProgramme).toBe(false);
+		retour.aller();
+		expect(appels).toEqual(['appelant']);
+		expect(location.hash).toBe('#lecon-en-cours');
+	});
+
+	test("la fausse promesse est impossible : une activité du catalogue rejouée n'annonce pas le programme", () => {
+		// B est lancée depuis le catalogue et démarre…
+		setOrigineActivite('catalogue', 'lecon-B');
+		activiteDemarree('lecon-B');
+		// … puis A est lancée depuis le programme (origine « programme », clé A)…
+		setOrigineActivite('programme', 'lecon-A');
+		activiteDemarree('lecon-A');
+		// … et Précédent rejoue B : sans le garde-fou, B annoncerait « Retour au programme ».
+		activiteDemarree('lecon-B');
+		expect(origineActivite()).toBe('catalogue');
+		expect(retourFinActivite(cibleTracee().cible).versProgramme).toBe(false);
+	});
+
+	test('une activité jamais lancée (accès direct au hash) démarre en « catalogue »', async () => {
+		vi.resetModules();
+		const frais = await import('../src/ui/retour-activite');
+		frais.activiteDemarree('lecon-A'); // aucun déclencheur n'est passé par là
+		expect(frais.origineActivite()).toBe('catalogue');
+	});
+
+	test('une reprise (origine posée sans clé) ne peut pas accorder le programme', () => {
+		// `restoreResume` repose l'origine « catalogue » sans clé : une activité qui démarre
+		// derrière ne doit hériter de rien.
+		setOrigineActivite('programme', 'lecon-A');
+		setOrigineActivite('catalogue');
+		activiteDemarree('lecon-A');
+		expect(origineActivite()).toBe('catalogue');
+	});
+
+	test("une origine « programme » posée sans clé n'est accordée à aucune activité", () => {
+		// Filet de sécurité : un déclencheur qui oublierait la clé ne doit pas pouvoir
+		// promettre le programme à la première activité qui démarre.
+		setOrigineActivite('programme');
+		activiteDemarree('lecon-A');
+		expect(origineActivite()).toBe('catalogue');
+	});
+});
+
 describe('Déclencheurs : chaque lancement pose son origine', () => {
 	test("startLecon sans argument d'origine = lancement catalogue", () => {
 		setOrigineActivite('programme'); // provenance résiduelle à écraser
@@ -159,5 +241,23 @@ describe('Déclencheurs : chaque lancement pose son origine', () => {
 		expect(origineActivite()).toBe('catalogue');
 		startOrthoLecon('liste-test', 'programme');
 		expect(origineActivite()).toBe('programme');
+	});
+
+	test("startLecon accorde l'origine à la leçon visée, et à elle seule", () => {
+		const id = getAllLessons()[0]!.id;
+		startLecon(id, 'programme');
+		activiteDemarree(id); // c'est bien cette leçon qui démarre
+		expect(origineActivite()).toBe('programme');
+		// Une autre leçon qui démarrerait derrière (Précédent) ne récupère pas la provenance.
+		activiteDemarree('une-autre-lecon');
+		expect(origineActivite()).toBe('catalogue');
+	});
+
+	test("startOrthoLecon accorde l'origine à la liste visée, et à elle seule", () => {
+		startOrthoLecon('liste-test', 'programme');
+		activiteDemarree('liste-test');
+		expect(origineActivite()).toBe('programme');
+		activiteDemarree('autre-liste');
+		expect(origineActivite()).toBe('catalogue');
 	});
 });

@@ -2,7 +2,13 @@
    Rendu de l'écran d'accueil et du sélecteur de leçons
    ============================================================ */
 import { escapeHTML, fmt } from '../core/utils';
-import { activeProfile, loadProfilesMeta, PROFILE_EMOJIS, getXPFor } from '../core/profiles';
+import {
+	activeProfile,
+	loadProfilesMeta,
+	PROFILE_EMOJIS,
+	getXPFor,
+	getRevisionPlafond,
+} from '../core/profiles';
 import { LESSONS } from '../core/lessons';
 import { getAllLessons } from '../core/catalog';
 import {
@@ -215,7 +221,12 @@ function quandRevision(echeance: number, now: number): string {
 }
 
 /* Carte Révision : décompte des éléments dus, ou état « rien à réviser » tourné
-   en réussite (la carte reste visible mais non actionnable, cf. avis UX/pédago). */
+   en réussite (la carte reste visible mais non actionnable, cf. avis UX/pédago).
+   Au-delà d'une séance, on annonce l'EFFORT DU JOUR (ce que la séance proposera
+   vraiment, plafond #439) et non le stock dû : une déclaration « déjà vu en classe »
+   (#478) peut rendre des dizaines de leçons dues le même jour, et un compteur à
+   trois chiffres qui ne descend pas malgré le travail est décourageant (avis
+   pédagogue). En deçà du plafond, l'affichage est inchangé. */
 function fillRevisionRecord(elId: string) {
 	const el = document.getElementById(elId);
 	if (!el) return;
@@ -225,7 +236,11 @@ function fillRevisionRecord(elId: string) {
 	const n = countDue(ortho, revisions, now);
 	document.getElementById('cardRevision')?.classList.toggle('card-inactive', n === 0);
 	if (n) {
-		el.innerHTML = `${icon('repeat')} <strong>${n}</strong> à réviser`;
+		const plafond = getRevisionPlafond();
+		el.innerHTML =
+			n > plafond
+				? `${icon('repeat')} <strong>${plafond}</strong> à réviser aujourd'hui`
+				: `${icon('repeat')} <strong>${n}</strong> à réviser`;
 		return;
 	}
 	const echeance = prochaineEcheance(ortho, revisions, now);

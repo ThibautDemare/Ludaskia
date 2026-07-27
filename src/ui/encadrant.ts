@@ -53,7 +53,12 @@ import {
 } from './encadrant-progression';
 import { revisionHTML, revisionClick } from './encadrant-revision';
 import { seanceHTML, seanceClick, seanceChange } from './encadrant-seance';
-import { reglagesHTML, reglagesChange } from './encadrant-reglages';
+import {
+	reglagesHTML,
+	reglagesChange,
+	reglagesClick,
+	reglagesApresRendu,
+} from './encadrant-reglages';
 import { profilsHTML, sauvegardeHTML, profilsClick } from './encadrant-profils';
 
 /* Onglets de l'espace (#459), dans l'ordre de fréquence d'usage décroissante :
@@ -125,6 +130,9 @@ function renderEspace(): void {
     ${contexteHTML(profiles, consulte, actif)}
     ${tabsNavHTML(tab)}
     <div class="enc-tabpanel" id="encTabPanel">${tabPanelHTML(tab, consulte, actif, profiles)}</div>`;
+	// Sections dont le rendu demande une finition JS sur le DOM fraîchement posé
+	// (état « indéterminé » des cases parentes, #478) : impossible en HTML seul.
+	if (tab === 'reglages') reglagesApresRendu();
 }
 
 /* En-tête de contexte : « Vous consultez : [profil ▾] », transverse aux onglets Suivi
@@ -209,6 +217,7 @@ function onClick(e: Event): void {
 		return;
 	}
 	if (pinClick(act, el)) return;
+	if (reglagesClick(act, el)) return;
 	if (profilsClick(act, el)) return;
 	if (revisionClick(act, el)) return;
 	if (seanceClick(act, el)) return;

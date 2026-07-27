@@ -15,20 +15,28 @@ import {
 	setPrefFor,
 	type Profile,
 } from '../core/profiles';
-import { getAllLessons, SUBJECTS, type SchoolLevel } from '../core/catalog';
+import { getAllLessons, SUBJECTS, type SchoolLevel, type SubjectId } from '../core/catalog';
 import { availableLevels, LEVEL_LABEL } from '../core/levels';
 import { REVISION_PLAFOND, REVISION_PLAFOND_CHOIX } from '../core/revision';
+import { niveauProfilMatiere } from '../core/encadrant-stats';
+import {
+	categoriesDeclarables,
+	declarerVuAilleursFor,
+	type CategorieDeclarable,
+	type LeconNiveau,
+} from '../core/vu-ailleurs';
 import { dicteeDisponible } from './tts';
 import { consulteUuid, renderEspace } from './encadrant-commun';
 
-/* La section « Réglages » : classe + aménagements + bloc PIN (rendu par le module pin
-   et passé en `pinBlock` par l'orchestrateur). */
+/* La section « Réglages » : classe + aménagements + déjà vu en classe + bloc PIN
+   (rendu par le module pin et passé en `pinBlock` par l'orchestrateur). */
 export function reglagesHTML(consulte: Profile, pinBlock: string): string {
 	return `<section class="enc-section">
       <h2 class="enc-h2">Réglages</h2>
       ${classeHTML(consulte)}
       ${amenagementsHTML(consulte)}
       ${plafondRevisionHTML(consulte)}
+      ${vuEnClasseHTML(consulte)}
       ${pinBlock}
     </section>`;
 }
@@ -82,6 +90,126 @@ function amenagementsHTML(consulte: Profile): string {
         <span>Désactiver les apparitions surprises <small class="enc-hint">(petites surprises qui passent parfois à l'écran, ex. une luciole — à couper pour un enfant qu'un mouvement inattendu déconcentre)</small></span>
       </label>
     </div>`;
+}
+
+/* ---------- Leçons déjà vues en classe (#478) ----------
+   L'adulte déclare ce que l'enfant a travaillé HORS de l'application : ces leçons
+   comptent alors comme « rencontrées » pour le périmètre du sprint et entrent en
+   révision espacée. Écriture par UUID sur le profil CONSULTÉ (declarerVuAilleursFor),
+   sans changer le profil actif.
+
+   Structure (avis a11y) : PAS de case à cocher dans un `<summary>` (contrôle dans un
+   contrôle) — chaque catégorie a une case, un compteur textuel et un bouton de dépliage
+   distinct (`aria-expanded` / `aria-controls`) commandant une liste `hidden`. Listes
+   fermées au rendu : les ~110 cases de leçons restent hors de l'ordre de tabulation
+   tant qu'on n'a pas déplié. Les cases se mettent à jour EN PLACE (pas de re-rendu de
+   l'espace, qui détruirait focus, scroll et dépliages). */
+function vuEnClasseHTML(consulte: Profile): string {
+	const cats = categoriesDeclarables(consulte.uuid, (s: SubjectId) =>
+		niveauProfilMatiere(consulte, s),
+	);
+	if (cats.length === 0) return '';
+	const blocs = cats.map(categorieVuHTML).join('');
+	return `<div class="enc-block" id="encVuBloc">
+      <h3 class="enc-h3">Leçons déjà vues en classe</h3>
+      <p class="enc-hint">Cochez ce que ${escapeHTML(consulte.name)} a déjà travaillé en classe, hors de l'application. Ces leçons rejoignent « ce que tu connais déjà » pour le sprint et entrent en révision : le premier rappel arrive dès le lendemain.</p>
+      <p class="enc-hint">Mieux vaut cocher au fil du programme de la classe : tout déclarer d'un coup fait grimper d'autant ce qu'il y a à réviser. Une erreur au premier rappel est normale — c'est la première fois que l'enfant est mis à l'épreuve sur cette notion dans l'application.</p>
+      <div class="enc-vu-actions">
+        <button type="button" class="enc-btn-sec" data-act="vu-tout">${icon('check')} Tout déclarer</button>
+        <button type="button" class="enc-btn-sec" data-act="vu-rien">${icon('x')} Tout retirer</button>
+      </div>
+      <p class="enc-vu-total" id="encVuTotal"></p>
+      <div class="enc-vu-cats">${blocs}</div>
+      <p class="enc-vu-status" id="encVuStatus" role="status" aria-live="polite"></p>
+    </div>`;
+}
+
+/* Un bloc de catégorie : en-tête (case + compteur + dépliage) et liste des leçons.
+   Une leçon DÉJÀ travaillée dans l'appli est cochée et désactivée : elle est déjà
+   rencontrée, la déclarer n'ajouterait rien — et la décocher ne la retirerait pas du
+   périmètre, ce qui serait incompréhensible. */
+function categorieVuHTML(c: CategorieDeclarable): string {
+	const items = c.lecons
+		.map((l) => {
+			const off = l.jouee ? ' disabled' : '';
+			const mention = l.jouee
+				? ` <small class="enc-hint">déjà travaillée dans l'application</small>`
+				: '';
+			return `<li><label class="enc-vu-item">
+          <input type="checkbox" class="enc-vu-lecon" data-act="vu-lecon" data-cat="${c.categoryId}" data-lesson="${escapeHTML(l.lessonId)}" data-niveau="${l.niveau}"${l.declaree || l.jouee ? ' checked' : ''}${off} />
+          <span>${escapeHTML(l.label)}${mention}</span>
+        </label></li>`;
+		})
+		.join('');
+	const listId = `encVuList-${c.categoryId}`;
+	return `<div class="enc-vu-cat" data-cat="${c.categoryId}">
+      <div class="enc-vu-head">
+        <label class="enc-vu-catlab">
+          <input type="checkbox" class="enc-vu-cat-check" data-act="vu-cat" data-cat="${c.categoryId}"${c.declarables === 0 ? ' disabled' : ''} />
+          <span>${escapeHTML(c.label)}</span>
+        </label>
+        <span class="enc-vu-count" data-count="${c.categoryId}"></span>
+        <button type="button" class="enc-vu-expand" data-act="vu-detail" data-cat="${c.categoryId}" aria-expanded="false" aria-controls="${listId}">
+          <span class="sr-only">Détail des leçons : ${escapeHTML(c.label)}</span>${icon('caret-down')}
+        </button>
+      </div>
+      <ul class="enc-vu-list" id="${listId}" hidden>${items}</ul>
+    </div>`;
+}
+
+/* Recalcule, DEPUIS LE DOM, l'état des cases de catégorie (cochée / partielle) et les
+   compteurs textuels. Appelé après chaque écriture et une fois au rendu (l'état
+   « indéterminé » d'une case n'existe pas en HTML : seul le JS peut le poser). */
+function rafraichirVuEnClasse(): void {
+	const bloc = document.getElementById('encVuBloc');
+	if (!bloc) return;
+	let vues = 0;
+	let total = 0;
+	bloc.querySelectorAll<HTMLElement>('.enc-vu-cat').forEach((cat) => {
+		const boxes = [...cat.querySelectorAll<HTMLInputElement>('.enc-vu-lecon')];
+		const cochees = boxes.filter((b) => b.checked).length;
+		const declarables = boxes.filter((b) => !b.disabled);
+		const parent = cat.querySelector<HTMLInputElement>('.enc-vu-cat-check');
+		if (parent) {
+			const n = declarables.filter((b) => b.checked).length;
+			parent.checked = declarables.length > 0 && n === declarables.length;
+			parent.indeterminate = n > 0 && n < declarables.length;
+		}
+		const compteur = cat.querySelector<HTMLElement>('.enc-vu-count');
+		if (compteur) compteur.textContent = `${cochees} sur ${boxes.length}`;
+		vues += cochees;
+		total += boxes.length;
+	});
+	const tot = document.getElementById('encVuTotal');
+	if (tot)
+		tot.textContent = `${vues} leçon${vues > 1 ? 's' : ''} déjà vue${vues > 1 ? 's' : ''} sur ${total}`;
+}
+
+/* Hook post-rendu de la section (l'orchestrateur l'appelle après avoir posé le HTML). */
+export function reglagesApresRendu(): void {
+	rafraichirVuEnClasse();
+}
+
+/* Les cases de leçons d'un périmètre (bloc entier ou une catégorie), déclarables
+   uniquement — une leçon déjà travaillée dans l'appli n'est pas modifiable. */
+function casesDeclarables(racine: HTMLElement | null): HTMLInputElement[] {
+	if (!racine) return [];
+	return [...racine.querySelectorAll<HTMLInputElement>('.enc-vu-lecon')].filter((b) => !b.disabled);
+}
+
+/* Applique une déclaration groupée : écrit d'un seul coup (une écriture, pas N) puis
+   reflète l'état dans le DOM et annonce le résultat (région `status`) — les actions
+   groupées sont les seules à mériter une annonce, une case isolée se suffit à elle-même. */
+function declarerCases(uuid: string, cases: HTMLInputElement[], vu: boolean, annonce: string) {
+	const entrees: LeconNiveau[] = cases.map((b) => ({
+		lessonId: b.dataset.lesson ?? '',
+		niveau: (b.dataset.niveau ?? '') as SchoolLevel,
+	}));
+	declarerVuAilleursFor(uuid, entrees, vu, Date.now());
+	cases.forEach((b) => (b.checked = vu));
+	rafraichirVuEnClasse();
+	const status = document.getElementById('encVuStatus');
+	if (status) status.textContent = annonce;
 }
 
 function classeHTML(consulte: Profile): string {
@@ -140,11 +268,68 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 		setPrefFor(uuid, 'revisionPlafond', Number(t.value));
 		return true;
 	}
+	// Déclaration « vu en classe » (#478) : écriture ciblée puis mise à jour EN PLACE.
+	// Surtout pas de renderEspace() — il détruirait le DOM (focus, scroll, dépliages)
+	// à chaque case cochée, sur une liste qui peut compter plus de cent leçons.
+	if (act === 'vu-lecon' && uuid) {
+		const b = t as HTMLInputElement;
+		declarerVuAilleursFor(
+			uuid,
+			[{ lessonId: b.dataset.lesson ?? '', niveau: (b.dataset.niveau ?? '') as SchoolLevel }],
+			b.checked,
+			Date.now(),
+		);
+		rafraichirVuEnClasse();
+		return true;
+	}
+	if (act === 'vu-cat' && uuid) {
+		const b = t as HTMLInputElement;
+		const cat = document.querySelector<HTMLElement>(
+			`.enc-vu-cat[data-cat="${b.dataset.cat ?? ''}"]`,
+		);
+		const label = cat?.querySelector('.enc-vu-catlab span')?.textContent ?? '';
+		declarerCases(
+			uuid,
+			casesDeclarables(cat),
+			b.checked,
+			b.checked ? `${label} : tout déclaré vu en classe.` : `${label} : déclarations retirées.`,
+		);
+		return true;
+	}
 	if (act === 'set-amenagement' && uuid) {
 		const pref = (t as HTMLElement).dataset.pref as
 			'sansPressionTemporelle' | 'lectureConsigneAuto' | 'sansApparitionsSurprises';
 		setPrefFor(uuid, pref, (t as HTMLInputElement).checked);
 		renderEspace();
+		return true;
+	}
+	return false;
+}
+
+/* Clics de la section (dépliage d'une catégorie, déclaration de tout le niveau). */
+export function reglagesClick(act: string, el: HTMLElement): boolean {
+	const uuid = consulteUuid();
+	if (act === 'vu-detail') {
+		// Dépliage maison (bouton + liste `hidden`) plutôt que <details>/<summary> : la
+		// ligne porte déjà une case à cocher, imbriquer un contrôle dans le contrôle de
+		// dépliage rendrait le clavier ambigu (avis a11y).
+		const liste = document.getElementById(el.getAttribute('aria-controls') ?? '');
+		if (!liste) return true;
+		const ouvert = el.getAttribute('aria-expanded') === 'true';
+		el.setAttribute('aria-expanded', ouvert ? 'false' : 'true');
+		liste.hidden = ouvert;
+		return true;
+	}
+	if ((act === 'vu-tout' || act === 'vu-rien') && uuid) {
+		const vu = act === 'vu-tout';
+		declarerCases(
+			uuid,
+			casesDeclarables(document.getElementById('encVuBloc')),
+			vu,
+			vu
+				? 'Toutes les leçons du niveau sont déclarées vues en classe.'
+				: 'Toutes les déclarations « vu en classe » ont été retirées.',
+		);
 		return true;
 	}
 	return false;

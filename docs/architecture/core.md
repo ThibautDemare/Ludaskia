@@ -627,8 +627,29 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   bascule** (`progressionProfil`, `niveauProfilMatiere`) ; réexporte l'échelle de maîtrise
   (`niveauNotion`/`tendanceNotion`, définie dans `maitrise.ts`) pour les imports
   historiques, **activité** et **file « à revoir »** (`loadRevoir`/`loadRevoirFor`/
-  `toggleRevoirFor`/`revoirActives`). Lit les clés brutes du profil consulté. Le graphe
-  d'activité (#319) repose sur **`activiteParJourParType(activity, now, n)`** → `JourActivite[]`
+  `toggleRevoirFor`/`revoirActives`/`epingleesProfil`/`purgeRevoirSolides`/
+  `retraitsAutoProfil`). Lit les clés brutes du profil consulté.
+  **Désépinglage automatique** (#465) : `purgeRevoirSolides(profile, dicteeDispo, now)`
+  retire pour de bon de `ludaskia_revoir` les entrées redevenues solides, avec
+  EXACTEMENT le critère de `revoirActives` (leçon étoilée ou perf récente ≥
+  `SEUIL_REVOIR`, liste de dictée « acquise » — cette dernière exigeant en plus
+  `dicteeDispo`, sans quoi l'« acquis » serait trop facile pour justifier un retrait
+  définitif ; le filtre d'affichage, réversible, peut se permettre ce laxisme, pas la
+  purge). Une entrée n'est candidate que si elle a été **vue fragile depuis qu'elle est
+  épinglée** (mémoire `ludaskia_revoirFragile`) : une leçon épinglée alors qu'elle était
+  **déjà** solide n'est jamais retirée d'office — sinon « épingler n'importe quelle
+  leçon, même acquise » deviendrait intenable et un ré-épinglage manuel ne tiendrait
+  pas. Clé de marques **ABSENTE** (premier passage) → toute la file existante est
+  candidate, ce qui purge d'un coup les fantômes accumulés avant #465. Chaque retrait
+  est journalisé (`ludaskia_revoirAuto`, borné à 10 entrées et 30 jours, libellé **figé**
+  à l'instant du retrait) et relu par `retraitsAutoProfil(profile, now)` (une entrée
+  ré-épinglée depuis n'y figure plus). Écritures **brutes** (`lsSetRaw`, sans bump
+  `updatedAt` — cf. [Données & profils](donnees-et-profils.md)) : un nettoyage
+  automatique ne doit pas fausser la fusion par récence de l'export/import. Appelée par
+  `ui/a-revoir-card.ts` (accueil enfant) et `ui/encadrant.ts:tabPanelHTML` (AVANT le
+  calcul du récap, pour tous les onglets) — cf. [Espace
+  encadrant](espace-encadrant.md).
+  Le graphe d'activité (#319) repose sur **`activiteParJourParType(activity, now, n)`** → `JourActivite[]`
   (`{total, lecon, bilan, sprint, revision, dictee, inconnu}`, index `n-1` = aujourd'hui ; `normalizeActivity`
   y est l'**unique frontière de normalisation** de l'ancien/nouveau format) ; `activiteParJour`
   en est **dérivé** (totaux seuls) et `echelleActivite(max)` calcule une échelle Y « ronde »

@@ -41,7 +41,8 @@ Répartition des blocs par onglet :
   par catégorie + frise, listes de dictée suivies, historique des erreurs),
   **puis** le récap de révision espacée (#423).
 - **Programme** — composeur du programme du jour (#440), puis « À revoir
-  ensemble » (épinglées + suggestions) et « Proposer une dictée à l'avance » :
+  ensemble » (épinglées + suggestions + retirées automatiquement, #465) et
+  « Proposer une dictée à l'avance » :
   deux actes de **préparation**, sortis du récap de Suivi (qui garde un simple
   renvoi textuel vers cet onglet pour les dictées prédéfinies non commencées).
 - **Réglages** — classe scolaire, aménagements dys/attention, longueur d'une
@@ -222,20 +223,40 @@ pour une dictée prédéfinie.
 
 Au retour de l'enfant sur son accueil, `ui/a-revoir-card.ts` affiche une carte (`#aRevoir`,
 modèle « leçon du jour ») qui **boucle** sur `revoirActives(dicteeDispo)` — union `RevoirEntry`
-(`{kind:'lecon', lesson}` ou `{kind:'ortho', source}`, `core/encadrant-stats.ts`). Auto-nettoyage
-**par nature de l'entrée** : une leçon quitte la file si étoilée ou perf récente ≥ seuil, une
-liste de dictée si `niveauListeOrtho(...) === 'acquis'`. Icône/sous-titre : matière/catégorie
-réelles pour une leçon, sous-titre **fixe** « Français · Orthographe » pour une dictée.
-Lancement : `startLecon` pour une leçon, **`startOrthoLecon`** pour une dictée (hash dédié
-`ortho-`/`ortho-mode-`, distinct de `lecon-`/`mode-`). L'enfant n'a pas à être présent quand
-l'encadrant épingle.
+(`{kind:'lecon', lesson}` ou `{kind:'ortho', source}`, `core/encadrant-stats.ts`). Ce filtre
+d'**affichage** ne montre que les entrées ENCORE faibles **par nature de l'entrée** : une leçon
+si non étoilée et perf récente < seuil, une liste de dictée si `niveauListeOrtho(...) !==
+'acquis'`. Icône/sous-titre : matière/catégorie réelles pour une leçon, sous-titre **fixe**
+« Français · Orthographe » pour une dictée. Lancement : `startLecon` pour une leçon,
+**`startOrthoLecon`** pour une dictée (hash dédié `ortho-`/`ortho-mode-`, distinct de
+`lecon-`/`mode-`). L'enfant n'a pas à être présent quand l'encadrant épingle.
+
+**Désépinglage automatique** (#465) : le rendu de cette carte déclenche aussi
+`purgeRevoirSolides(profile, dicteeDispo, now)` (`core/encadrant-stats.ts`), qui retire **pour
+de bon** de `ludaskia_revoir` les entrées redevenues solides, avec le MÊME critère que le
+filtre d'affichage ci-dessus. Jusqu'ici seul l'affichage se nettoyait : la file persistée
+gardait l'entrée à vie et l'espace encadrant la listait encore (« entrée fantôme »). Deux
+garde-fous : une leçon épinglée alors qu'elle était **déjà** solide n'est jamais retirée
+d'office — la file mémorise, par profil, les entrées **vues fragiles depuis qu'elles sont
+épinglées** (`ludaskia_revoirFragile`), seules candidates au retrait ; sans quoi « épingler
+n'importe quelle leçon, même déjà acquise » deviendrait intenable et un ré-épinglage manuel ne
+tiendrait pas. Et chaque retrait est **tracé**, jamais silencieux (cf. « Retirées
+automatiquement » ci-dessous). `ui/encadrant.ts:tabPanelHTML` appelle la **même** purge côté
+encadrant, AVANT de calculer le récap de n'importe quel onglet — la consultation ne peut donc
+plus afficher de fantôme non plus.
 
 Dans l'espace encadrant lui-même, le bloc **« À revoir ensemble »** (`aRevoirHTML`, exportée
 par `ui/encadrant-progression.ts`) vit dans l'**onglet Programme** (#459), sous le composeur
 du programme du jour — c'est un acte de **préparation**, pas d'observation. Sa sous-section
 « Épinglées » liste **toutes** les entrées de la file sans filtre de faiblesse, via
 `epingleesProfil(profile)` (gestion, pas suggestion) ; une cible disparue (leçon hors
-catalogue actif, liste supprimée) en est silencieusement écartée.
+catalogue actif, liste supprimée) en est silencieusement écartée — la purge automatique
+ci-dessus l'a déjà débarrassée des entrées redevenues solides, donc « Épinglées » ne peut plus
+contenir de fantôme. Une troisième sous-section, **« Retirées automatiquement »** (#465,
+`retraitsAutoProfil(profile, now)`), rappelle les entrées que la purge vient de retirer —
+libellé et date **figés** à l'instant du retrait, la cible peut avoir disparu depuis sans que
+la trace devienne muette — pour qu'une épingle ne s'efface jamais sans explication ; un bouton
+« Épingler » la remet dans la file d'un clic (elle sort alors de cette trace).
 
 ## Récap du mode Révision espacée (#423)
 

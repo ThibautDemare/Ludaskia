@@ -32,7 +32,14 @@ format objet au prochain passage, sans perte), `ludaskia_revoir`
 de dictée** d'orthographe **préfixées `ortho:`** — `orthoRevoirId`/`isOrthoRevoirId`,
 `core/encadrant-stats.ts` — id opaque pour une liste du parent, `fr-ortho-*` pour une
 dictée prédéfinie ; rétro-compatible, la nature de chaque entrée tient au seul préfixe),
-`ludaskia_erreurs` (#391 : journal des erreurs commises — question posée,
+`ludaskia_revoirFragile` (#465 : mémoire des entrées de `ludaskia_revoir` **vues
+fragiles depuis qu'elles sont épinglées** — seules celles-là sont candidates au retrait
+automatique ; clé **ABSENTE** = jamais encore purgée pour ce profil, ce qui déclenche
+l'adoption de toute la file existante au premier passage, cf.
+`core/encadrant-stats.ts:purgeRevoirSolides`), `ludaskia_revoirAuto` (#465 : journal
+**daté** des retraits automatiques de la file « à revoir », borné à 10 entrées et 30
+jours, libellé figé à l'instant du retrait — base du bloc « Retirées automatiquement »
+de l'espace encadrant, cf. [Espace encadrant](espace-encadrant.md)), `ludaskia_erreurs` (#391 : journal des erreurs commises — question posée,
 réponse donnée, réponse attendue, leçon, mode, horodatage — plafonné aux 150 entrées
 les plus récentes ; base du bloc « Ce qui a été difficile récemment » de l'espace
 encadrant, voir `core/erreurs-journal.ts`), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de

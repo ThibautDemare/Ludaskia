@@ -38,7 +38,7 @@ import {
 	recentAvgPct,
 	niveauNotion,
 	tendanceNotion,
-	SEUIL_REVOIR,
+	estNotionSolide,
 	type LessonStat,
 	type NiveauNotion,
 	type TendanceNotion,
@@ -384,15 +384,13 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 				const fs = firstSeenRaw[k];
 				if (typeof fs === 'number' && now - fs <= RECENT_FENETRE_NOUVELLES_MS) nouvellesRecentes++;
 			}
-			// « À revoir » : travaillée, non étoilée, perf récente sous le seuil.
+			// « À revoir » : travaillée (≥ 1 question, sinon rien à suggérer) et pas encore solide.
 			if (
-				!etoilee &&
 				stat?.questions &&
 				notion.pctRecent != null &&
-				notion.pctRecent < SEUIL_REVOIR
-			) {
+				!estNotionSolide(etoilee, notion.pctRecent)
+			)
 				aRevoir.push(notion);
-			}
 		}
 		rc.travaillees = rc.acquis + rc.enCours + rc.nonAcquis;
 		parCategorie.push(rc);
@@ -466,9 +464,9 @@ export function revoirActives(dicteeDispo = false): RevoirEntry[] {
 		if (!lesson || !lesson.levels.includes(niveauActifMatiere(lesson.subject))) continue;
 		const etoilee = (stars[entryId] || 0) > 0;
 		const stat = stats[entryId];
-		const pct = recentAvgPct(stat) ?? lessonAvgPct(stat);
-		// Encore « à revoir » si non étoilée ET (jamais re-travaillée OU perf récente < seuil).
-		if (!etoilee && (pct == null || pct < SEUIL_REVOIR))
+		// Encore « à revoir » tant que la notion n'est pas solide (non étoilée ET jamais
+		// re-travaillée ou perf récente sous le seuil) — MÊME prédicat que la purge (#465).
+		if (!estNotionSolide(etoilee, recentAvgPct(stat) ?? lessonAvgPct(stat)))
 			out.push({ kind: 'lecon', id: entryId, label: lesson.label, lesson });
 	}
 	return out;
@@ -659,7 +657,7 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): EtatE
 			// et « acquis » devient plus FACILE. Le filtre d'affichage peut se le permettre (il
 			// est réversible), pas un retrait définitif → sur un appareil sans voix de synthèse,
 			// une dictée épinglée n'est jamais retirée d'office.
-			solide: ctx.dicteeDispo && niveauListeOrtho(ctx.ortho, orthoId, true) === 'acquis',
+			solide: ctx.dicteeDispo && niveauListeOrtho(ctx.ortho, orthoId, ctx.dicteeDispo) === 'acquis',
 		};
 	}
 	const lesson = getLessonById(entryId);
@@ -672,8 +670,7 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): EtatE
 	return {
 		kind: 'lecon',
 		label: lesson.label,
-		// Solide = étoilée OU perf récente au-dessus du seuil ; jamais travaillée (pct null) = fragile.
-		solide: etoilee || (pct != null && pct >= SEUIL_REVOIR),
+		solide: estNotionSolide(etoilee, pct), // même prédicat que le filtre d'affichage enfant
 	};
 }
 

@@ -84,7 +84,7 @@ function groupeHTML(
 	const epingle = entryId ? epinglees.has(entryId) : false;
 	const actions = entryId
 		? `<div class="enc-actions">
-        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}">${epingle ? 'Retirer' : 'Épingler'}</button>
+        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(label)} »">${epingle ? 'Retirer' : 'Épingler'}</button>
       </div>`
 		: '';
 	return `<details class="enc-err-lecon">

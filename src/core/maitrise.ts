@@ -55,6 +55,17 @@ export const TENDANCE_SEUIL = 10;
 export type NiveauNotion = 'a-decouvrir' | 'non-acquis' | 'en-cours' | 'acquis';
 export type TendanceNotion = 'progresse' | 'stable' | 'a-relancer';
 
+/* ---------- Notion « solide » : plus besoin d'être revue ----------
+   Étoilée (≥ 1 réussite sans faute) OU perf récente au-dessus du seuil « à revoir ».
+   Point unique de vérité partagé par le filtre d'AFFICHAGE de la carte enfant
+   (revoirActives) et par le DÉSÉPINGLAGE automatique de la file (purgeRevoirSolides,
+   #465) : leur parité est ainsi garantie par le code, pas seulement par les tests.
+   `pct` = perf récente (repli sur le cumul) ; `null` (jamais travaillée) = pas solide,
+   une leçon épinglée « à l'avance » ne doit pas être considérée comme acquise. */
+export function estNotionSolide(etoilee: boolean, pct: number | null): boolean {
+	return etoilee || (pct != null && pct >= SEUIL_REVOIR);
+}
+
 /* ---------- État d'acquisition d'une notion (échelle 4 niveaux) ----------
    - acquis : étoilée (≥ 1 réussite sans faute) ;
    - à découvrir : jamais travaillée (aucune stat) ;

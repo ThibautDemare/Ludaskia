@@ -398,7 +398,7 @@ function ligneListeOrtho(l: RecapListeOrtho): string {
       </span>
       <span class="enc-detail-mot"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[l.niveau]}</span>
       <span class="enc-actions">
-        <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}">${l.epingle ? 'Retirer' : 'Épingler'}</button>
+        <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${l.epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(l.label)} »">${l.epingle ? 'Retirer' : 'Épingler'}</button>
       </span>
     </li>`;
 }
@@ -410,7 +410,7 @@ function ligneDicteeProposee(d: DicteeProposee): string {
       <span class="enc-revoir-lab">${escapeHTML(d.label)}</span>
       <span class="enc-detail-meta">${d.nbMots} mot${d.nbMots > 1 ? 's' : ''}</span>
       <span class="enc-actions">
-        <button type="button" class="enc-btn-sec" data-act="epingler" data-lesson="${entryId}">Épingler</button>
+        <button type="button" class="enc-btn-sec" data-act="epingler" data-lesson="${entryId}" aria-label="Épingler « ${escapeHTML(d.label)} »">Épingler</button>
       </span>
     </li>`;
 }

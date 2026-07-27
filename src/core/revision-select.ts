@@ -96,13 +96,26 @@ export function aDesRevisions(
 	return false;
 }
 
-/* Nombre total d'éléments dus (pour la carte d'accueil ; non plafonné). */
+/* Nombre total d'éléments dus (non plafonné) — base de l'état « y a-t-il à réviser ? ». */
 export function countDue(
 	ortho: OrthoState,
 	lessonRevisions: Record<string, EtatRevision>,
 	now: number,
 ): number {
 	return collectDue(ortho, lessonRevisions, now).length;
+}
+
+/* Ce que la carte Révision de l'accueil ANNONCE à l'enfant : au-delà d'une séance, on
+   montre l'effort du jour (le plafond, exactement ce que `selectDueGroups` proposera) et
+   non le stock dû. Une déclaration « déjà vu en classe » (#478) peut rendre des dizaines
+   de leçons dues le même jour ; un compteur à trois chiffres qui ne descend pas malgré le
+   travail décourage (avis pédagogue). `plafonne` dit lequel des deux est affiché — l'UI
+   adapte le libellé pour ne pas laisser croire qu'il ne reste que ça. Pur. */
+export function effortRevisionAffiche(
+	dus: number,
+	plafond: number,
+): { n: number; plafonne: boolean } {
+	return dus > plafond ? { n: plafond, plafonne: true } : { n: dus, plafonne: false };
 }
 
 /* Sélection plafonnée et équilibrée entre SOURCES (= `categoryId` : une catégorie

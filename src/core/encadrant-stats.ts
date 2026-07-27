@@ -17,7 +17,7 @@
    de mots (store orthographe dynamique) ont leur propre modèle de maîtrise
    et ne sont pas agrégées ici (suivi possible ultérieurement).
    ============================================================ */
-import { lsGet, lsGetRaw, lsSetRaw } from './storage';
+import { lsGet, lsGetRaw, lsGetItemRaw, lsSetRaw } from './storage';
 import {
 	STARS_KEY,
 	LESSON_STATS_KEY,
@@ -603,7 +603,10 @@ export interface RetraitAuto {
 	label: string;
 	at: number; // horodatage du retrait
 }
-const RETRAITS_AUTO_MAX = 6; // trace RÉCENTE, pas un historique : l'onglet reste lisible
+// Trace RÉCENTE, pas un historique : l'onglet reste lisible. Dimensionné pour absorber la
+// passe d'ADOPTION (celle qui purge d'un coup les fantômes d'avant #465) — c'est le moment
+// où l'explication compte le plus ; au-delà, les retraits les plus anciens ne sont pas tracés.
+const RETRAITS_AUTO_MAX = 10;
 const RETRAITS_AUTO_FENETRE_MS = 30 * 86400000; // au-delà, la trace n'apprend plus rien
 
 function loadRetraitsAuto(uuid: string): RetraitAuto[] {
@@ -618,10 +621,14 @@ function loadRetraitsAuto(uuid: string): RetraitAuto[] {
 			(r.kind === 'lecon' || r.kind === 'ortho'),
 	);
 }
-/* Marques de fragilité ; `null` = clé jamais écrite (→ adoption de la file existante). */
+/* Marques de fragilité ; `null` = clé JAMAIS écrite, seul cas qui déclenche l'adoption.
+   Une clé présente mais illisible (JSON cassé, mauvaise forme) rend une liste VIDE et non
+   `null` : sinon une donnée corrompue rouvrirait l'adoption et retirerait d'office une
+   épingle posée sur une notion déjà solide (le garde-fou doit être « fail-safe »). */
 function loadFragiles(uuid: string): string[] | null {
-	const v = lsGetRaw(uuid + '/' + REVOIR_FRAGILE_KEY, null);
-	return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : null;
+	if (lsGetItemRaw(uuid + '/' + REVOIR_FRAGILE_KEY) == null) return null;
+	const v = lsGetRaw(uuid + '/' + REVOIR_FRAGILE_KEY, []);
+	return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
 }
 
 /* Solidité d'une entrée épinglée pour un profil donné ; `null` si la cible n'est pas
@@ -647,8 +654,12 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): EtatE
 		return {
 			kind: 'ortho',
 			label: ref.label,
-			// Solide = liste entièrement maîtrisée (même critère que revoirActives).
-			solide: niveauListeOrtho(ctx.ortho, orthoId, ctx.dicteeDispo) === 'acquis',
+			// Solide = liste entièrement maîtrisée (même critère que revoirActives), MAIS on
+			// exige la dispo du TTS : sans elle, le mode dictée n'est pas requis (modesRequis)
+			// et « acquis » devient plus FACILE. Le filtre d'affichage peut se le permettre (il
+			// est réversible), pas un retrait définitif → sur un appareil sans voix de synthèse,
+			// une dictée épinglée n'est jamais retirée d'office.
+			solide: ctx.dicteeDispo && niveauListeOrtho(ctx.ortho, orthoId, true) === 'acquis',
 		};
 	}
 	const lesson = getLessonById(entryId);

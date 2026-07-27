@@ -46,8 +46,7 @@ import { startOrthoRun, orthoDiscoveryComplete, renderOrthoModeChoice } from './
 import { closeProfileMenu, closeDrawer } from './menu';
 import { applyPreferences, renderPreferences } from './preferences';
 import { enterEncadrant } from './encadrant';
-import { renderSeance, rafraichirProgramme } from './seance';
-import { vueSeanceDuJour } from '../core/seance';
+import { renderSeance, rafraichirProgramme, vueProgramme } from './seance';
 import { leconKey } from '../core/resume';
 import { captureResume, clearResumeCtx, setResumeCtx, maybeRelaunch } from './resume';
 import {
@@ -438,7 +437,7 @@ export function showHomeView() {
    on rend la main à l'accueil (pas d'écran cul-de-sac). */
 export function showSeanceView() {
 	rafraichirProgramme();
-	if (!vueSeanceDuJour(Date.now())) {
+	if (!vueProgramme()) {
 		goHome();
 		return;
 	}

@@ -27,7 +27,7 @@ import {
 	getLessonById,
 	type SchoolLevel,
 } from '../core/catalog';
-import { niveauProfilMatiere } from '../core/encadrant-stats';
+import { niveauProfilMatiere, epingleesProfil } from '../core/encadrant-stats';
 import { listOrthoLecons, labelLeconOrtho } from '../core/orthographe/lessons';
 import { loadOrthoFor } from '../core/orthographe/store';
 import {
@@ -55,11 +55,12 @@ import { consulteUuid, container, renderEspace } from './encadrant-commun';
 let conflit: { uuid: string; defId: string; msg: string } | null = null;
 
 /* Ordre d'affichage des modes dans le sélecteur « Ajouter une activité ». */
-const MODES: SeanceModeKind[] = ['sprint', 'revision', 'leconDuJour', 'lecon', 'dictee'];
+const MODES: SeanceModeKind[] = ['sprint', 'revision', 'aRevoir', 'leconDuJour', 'lecon', 'dictee'];
 /* Icône par mode (redouble le libellé — jamais la couleur seule). */
 const MODE_ICONE: Record<SeanceModeKind, IconName> = {
 	sprint: 'timer',
 	revision: 'clock-clockwise',
+	aRevoir: 'bookmark', // « épinglé » (même icône que la tuile enfant « À revoir »)
 	leconDuJour: 'star',
 	lecon: 'book-open',
 	dictee: 'feather',
@@ -285,6 +286,27 @@ function recurrenceHTML(def: SeanceDef): string {
     </div>`;
 }
 
+/* ---------- Étape « À revoir » (#464) ----------
+   Étape à pool DYNAMIQUE : rien à configurer, la cible est tirée au lancement dans la file
+   épinglée du profil (bloc « Épinglées » de l'onglet Suivi). On affiche donc l'état de cette
+   file, sans quoi l'adulte ne peut pas savoir que l'étape restera invisible tant que rien
+   n'est épinglé.
+
+   Le décompte est celui de la file BRUTE du profil consulté (toutes les épinglées, comme le
+   bloc « Épinglées »), alors que l'enfant ne voit que les entrées ENCORE fragiles
+   (`revoirActives`, qui ne sait lire que le profil ACTIF). D'où la 2e phrase : plutôt que de
+   promettre une activité qui pourrait ne pas apparaître, on énonce la règle. L'écart se
+   résorbera avec le désépinglage automatique (#465). */
+function hintARevoir(n: number): string {
+	if (n === 0)
+		return "Rien n'est épinglé pour l'instant : cette activité n'apparaîtra pas dans le programme.";
+	const file =
+		n === 1
+			? 'Une seule leçon ou dictée épinglée : ce sera celle-ci.'
+			: `${n} leçons ou dictées épinglées : une au hasard à chaque lancement.`;
+	return `${file} Une épinglée redevenue solide n'est plus proposée.`;
+}
+
 /* ---------- Étapes ---------- */
 function etapeHTML(
 	def: SeanceDef,
@@ -295,8 +317,12 @@ function etapeHTML(
 ): string {
 	const info = SEANCE_MODE_INFOS[etape.kind];
 	let cibleInline = ''; // sélecteur compact sur la ligne (leçon)
-	let cibleBloc = ''; // bloc pleine largeur sous la ligne (pool de dictées, #463)
-	if (info.ref === 'lecon') {
+	let cibleBloc = ''; // bloc pleine largeur sous la ligne (pool de dictées #463, repère « à revoir » #464)
+	if (etape.kind === 'aRevoir') {
+		cibleBloc = `<p class="enc-hint enc-seance-arevoir">${escapeHTML(
+			hintARevoir(epingleesProfil(consulte).length),
+		)}</p>`;
+	} else if (info.ref === 'lecon') {
 		cibleInline = `<label class="enc-seance-cible"><span class="sr-only">Leçon visée</span>
         <select class="enc-select-niveau" data-act="seance-ref" data-def="${def.id}" data-etape="${etape.id}">${optionsCibleHTML(
 					lecons,

@@ -192,6 +192,15 @@
 	outline: 3px solid var(--admin-accent);
 	outline-offset: 2px;
 }
+/* Repère d'une étape « Ce qui est à revoir » (#464) : aucune cible à choisir (la file
+   épinglée la fournit), juste l'état de cette file, en pleine largeur sous la ligne. */
+.enc-seance-arevoir {
+	flex: 1 1 100%;
+	margin: 0.1rem 0 0;
+	/* `--grey` (et pas le `--muted` de .enc-hint) : ce repère porte une information
+	   nécessaire — comme son jumeau .enc-seance-dictees-hint juste en dessous. */
+	color: var(--grey);
+}
 .enc-seance-dictees-hint {
 	font-size: 0.8rem;
 	color: var(--grey);

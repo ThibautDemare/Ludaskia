@@ -57,7 +57,8 @@ ci-dessous.
   semaines non vides, semaine en cours distinguée, sans axe ni pourcentage),
   **historique des erreurs récentes** (#391, cf. `encadrant-erreurs.ts`
   ci-dessous) ; handlers `activite-mode`/`epingler`/`imprimer`. Expose aussi
-  `aRevoirHTML` (file « à revoir ensemble ») et `dicteesProposeesHTML`
+  `aRevoirHTML` (file « à revoir ensemble », épinglées + suggestions + **retirées
+  automatiquement** #465, ré-épinglables d'un clic) et `dicteesProposeesHTML`
   (dictées prédéfinies épinglables à l'avance), toutes deux rendues par
   l'orchestrateur dans l'onglet **Programme** (#459) plutôt qu'ici.
 - **`encadrant-revision.ts`** (#423) — **récap du mode Révision espacée** par profil
@@ -86,7 +87,10 @@ ci-dessous.
   + **gestion** réservée à l'adulte (renommer/avatar/réinitialiser/supprimer/créer),
   plus export/import de tous les profils (onglet **Profils**, #459).
 - **`a-revoir-card.ts`** (#234) — carte d'accueil `#aRevoir` (modèle « leçon du jour »)
-  affichant les leçons épinglées « à revoir » par l'encadrant, masquée si vide.
+  affichant les leçons épinglées « à revoir » par l'encadrant, masquée si vide. Chaque
+  rendu déclenche aussi le **désépinglage automatique** (#465,
+  `purgeRevoirSolides`, cf. [Logique pure](core.md)) : les entrées redevenues solides
+  sont retirées de la file **persistée**, pas seulement filtrées à l'affichage.
 
 **Journal des erreurs (#391)** — deux modules distincts, hors des cinq de section
 ci-dessus, plus `core/erreur-representation.ts` (logique pure, cf. [Logique
@@ -117,8 +121,9 @@ pure](core.md)) pour les formats composites :
   groupé par leçon (`<details>` repliés, la plus récemment ratée en tête), dédoublonnage
   « vue N fois », bonne réponse mise en avant (jamais barrée). Le libellé du groupe résout
   d'abord une leçon du catalogue, sinon une liste d'orthographe (`labelLeconOrtho`), sinon
-  l'id brut. Action « Épingler » (`data-act="epingler"`, même mécanique que « à revoir »)
-  **masquée pour un groupe d'orthographe** : la file « à revoir » est catalogue-only.
+  l'id brut. Action « Épingler » (`data-act="epingler"`, même mécanique que « à revoir » —
+  leçon du catalogue **ou** liste d'orthographe, préfixée `orthoRevoirId`, #424) **masquée**
+  seulement pour un groupe dont l'id ne résout ni l'une ni l'autre (groupe orphelin).
 
 ## Modales & effets
 

@@ -175,8 +175,10 @@ function tabPanelHTML(tab: EncTab, consulte: Profile, actif: Profile, profiles: 
 	// Nettoyage DUR de la file « à revoir » AVANT toute lecture (#465) : `progressionProfil`
 	// et les lignes de détail du Suivi portent l'état « épinglée », qui serait périmé d'un
 	// rendu si la purge n'intervenait qu'au moment de rendre « À revoir ensemble ».
-	// Idempotent et sans écriture quand il n'y a rien à retirer → appelé pour tous les onglets.
-	purgeRevoirSolides(consulte, dicteeDisponible(), Date.now());
+	// Restreint aux onglets qui en affichent l'état : Réglages/Profils ne lisent pas la file,
+	// une écriture en localStorage à leur rendu ne ferait que surprendre à la relecture.
+	if (tab === 'suivi' || tab === 'programme')
+		purgeRevoirSolides(consulte, dicteeDisponible(), Date.now());
 	switch (tab) {
 		case 'suivi': {
 			const recap: RecapProfil = progressionProfil(consulte, Date.now());

@@ -53,29 +53,45 @@ un élément à la fois, sans chrono ni record.
 Le **programme du jour** (`#seance`, `startSeance`/`showSeanceView` dans
 `navigation.ts`, rendu par `ui/seance.ts`, logique par `core/seance.ts`) est une
 **séance** (nom interne des types) : une liste d'**étapes**, chacune un mode
-existant (Sprint, Révision espacée, Leçon du jour, une leçon précise, une ou
-plusieurs dictées) demandé un certain nombre de fois (`count`), composée à l'avance par
-l'encadrant pour un profil (cf. [Espace encadrant](espace-encadrant.md)). **Distinct
-de la « leçon du jour »** (#208, `core/lecon-du-jour.ts`) : celle-ci propose *une*
-leçon au fil de la maîtrise, sans intervention adulte, alors que le programme est
-une **liste composée à l'avance**, potentiellement multi-modes, que l'enfant
-réalise **dans l'ordre qu'il veut** (une étape épuisée sort des propositions ;
-« compléter » = tout faire). Au plus un programme s'applique par jour
-(récurrence par **date** ponctuelle ou **jours de semaine**, garde-fou de conflit
-côté composition). **Reset paresseux** à minuit (calculé à la lecture, comme le
-défi du jour) : aucun timer, aucun affichage punitif si le programme n'est pas fini
-à temps.
+existant (Sprint, Révision espacée, **la file « à revoir »** #464, Leçon du jour,
+une leçon précise, une ou plusieurs dictées) demandé un certain nombre de fois
+(`count`), composée à l'avance par l'encadrant pour un profil (cf. [Espace
+encadrant](espace-encadrant.md)). **Distinct de la « leçon du jour »** (#208,
+`core/lecon-du-jour.ts`) : celle-ci propose *une* leçon au fil de la maîtrise,
+sans intervention adulte, alors que le programme est une **liste composée à
+l'avance**, potentiellement multi-modes, que l'enfant réalise **dans l'ordre
+qu'il veut** (une étape épuisée sort des propositions ; « compléter » = tout
+faire). Au plus un programme s'applique par jour (récurrence par **date**
+ponctuelle ou **jours de semaine**, garde-fou de conflit côté composition).
+**Reset paresseux** à minuit (calculé à la lecture, comme le défi du jour) :
+aucun timer, aucun affichage punitif si le programme n'est pas fini à temps.
+
+**Étape « à revoir » et étapes conditionnelles (#464)** : l'encadrant peut ajouter
+une étape qui puise, au lancement, dans la file épinglée « à revoir » (même file
+que la carte d'accueil dédiée, cf. [Espace encadrant](espace-encadrant.md)) plutôt
+que de laisser cette file sur sa seule surface d'accueil. Cette étape est
+**conditionnelle** : sans rien d'épinglé, elle est escamotée du programme du jour
+(jamais affichée vide) ; une définition dont **aucune** étape ne s'applique vaut
+« pas de programme ». Le cœur ne sait pas calculer seul cette condition (l'« acquis »
+d'une dictée dépend de la disponibilité du TTS, connue de l'UI) : c'est `ui/seance.ts`
+qui fournit le `ContexteSeance` à chaque lecture, via sa porte d'entrée unique
+`vueProgramme()` (utilisée aussi par la navigation).
 
 **Attribution sans toucher aux runners** : au lancement d'une étape depuis le
-programme, `marquerEtapeLancee` pose un marqueur « étape en cours » ; au retour
-(carte d'accueil ou écran `#seance`), `rafraichirProgramme` (appelée par
-`showHomeView`/`showSeanceView`) consomme ce marqueur via `resoudrePending`, qui
-cherche dans le **journal d'activité existant** (`loadActivity`, #319) une
-complétion du bon type postérieure au lancement — aucun mode/runner n'est modifié.
-Sans complétion trouvée au retour (abandon en cours d'étape), rien n'est crédité ni
-faussé. La complétion de **tout** le programme déclenche modale + confettis
-(`showCelebration`) et le trophée dédié (cf. [Gamification](gamification.md)),
-**sans XP** (chaque mode a déjà donné le sien).
+programme, `marquerEtapeLancee` pose un marqueur « étape en cours » — pour « à
+revoir », il mémorise aussi le type réellement lancé (leçon ou dictée, selon la
+cible tirée dans la file) ; au retour (carte d'accueil ou écran `#seance`),
+`rafraichirProgramme` (appelée par `showHomeView`/`showSeanceView`) consomme ce
+marqueur via `resoudrePending`, qui cherche dans le **journal d'activité existant**
+(`loadActivity`, #319) une complétion du bon type postérieure au lancement — aucun
+mode/runner n'est modifié. Sans complétion trouvée au retour (abandon en cours
+d'étape), rien n'est crédité ni faussé. Le programme peut aussi se compléter **sans**
+lancement d'étape, quand le contexte fait disparaître la dernière étape restante
+(épinglée retirée par l'adulte, ou travaillée entre-temps depuis la carte d'accueil) :
+`rafraichirProgramme` rattrape ce cas via `consoliderCompletion`. La complétion de
+**tout** le programme déclenche modale + confettis (`showCelebration`) et le trophée
+dédié (cf. [Gamification](gamification.md)), **sans XP** (chaque mode a déjà donné le
+sien).
 
 **Retour en fin d'activité (#461)** : une leçon ou une dictée lancée depuis le
 programme ramène, à sa fin, vers `#seance` (« Retour au programme ») plutôt que vers

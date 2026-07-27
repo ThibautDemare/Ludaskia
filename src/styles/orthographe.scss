@@ -681,6 +681,19 @@
 .atelier-lettre.sel {
 	background: var(--accent-soft); /* surlignage en cours */
 }
+/* Geste qui va EFFACER un entourage déjà tracé (bascule, #462) : les lettres visées
+   passent en fond d'alerte, et l'ENTOURAGE lui-même est mis en pointillé (règle
+   `rect[data-effacer]` plus bas). Le signal de forme est porté par ce rectangle
+   unique — pas par un contour par lettre, qui fragmenterait le groupe visé. */
+.atelier-lettre.sel-effacer {
+	background: var(--warn-bg);
+}
+/* Lettres traversées par un geste qui efface AILLEURS : surface neutre (« ici, rien
+   ne va changer »). Sans elle, le surlignage sous le doigt disparaîtrait d'un coup
+   au passage ajout → effacement, ce qui se lit comme un raté du tracé. */
+.atelier-lettre.sel-neutre {
+	background: var(--track);
+}
 .atelier-lettre[data-diff] {
 	text-decoration: underline wavy var(--warn);
 	text-decoration-thickness: 2px;
@@ -691,6 +704,16 @@
 	left: 0;
 	overflow: visible;
 	pointer-events: none;
+}
+/* Entourage qu'un geste en cours va effacer (#462) : même forme, mais tirettée et
+   presque vidée de sa couleur — « ce rectangle-là va disparaître », visible avant
+   de relâcher. En CSS (et non en attribut de présentation) pour surcharger le
+   `fill-opacity` posé par dessinerEntourages sans dupliquer le tracé. */
+.atelier-svg rect[data-effacer] {
+	stroke-dasharray: 7 5;
+	/* Affaibli mais encore teinté : à 0.06 le rectangle se lit « déjà disparu », alors
+	   que rien n'est effacé avant le relâchement (et l'enfant peut encore renoncer). */
+	fill-opacity: 0.1;
 }
 .atelier-actions {
 	display: flex;

@@ -5,12 +5,15 @@
    contigües : au relâchement, un rectangle arrondi pastel est tracé
    (couleur auto, palette colorblind-safe Okabe-Ito). Un simple tap =
    une lettre. Un entourage ne traverse pas l'espace (borné au mot).
-   Suppression : « effacer le dernier » / « tout effacer ».
+   Un geste qui recouvre un entourage existant le RETIRE (bascule, #462) :
+   pas de superposition. Suppression aussi par « effacer le dernier » /
+   « tout effacer ».
    En contexte correction, les lettres ratées (diff) sont soulignées.
    Voir docs/design-orthographe.md (§ Atelier du mot).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
 import { lettresDuMot } from '../core/orthographe/exercise';
+import { apercuGeste, basculerEntourage } from '../core/orthographe/entourages';
 import type { Entourage, MotOrtho } from '../core/orthographe/types';
 import { uiConfirm } from './ui-modal';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
@@ -50,7 +53,7 @@ export function dessinerEntourages(
 	svg.setAttribute('height', String(h));
 	svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
 	svg.innerHTML = entourages
-		.map((e) => {
+		.map((e, i) => {
 			const a = sp[e.debut];
 			const b = sp[e.fin];
 			if (!a || !b) return ''; // entourage hors-bornes (mot modifié) : on l'ignore
@@ -59,7 +62,10 @@ export function dessinerEntourages(
 			const rw = b.offsetLeft + b.offsetWidth - a.offsetLeft + PAD * 2;
 			const rh = a.offsetHeight + PAD * 2;
 			const col = PALETTE[e.couleur % PALETTE.length];
-			return `<rect x="${x}" y="${y}" width="${rw}" height="${rh}" rx="14" ry="16" fill="${col}" fill-opacity="0.22" stroke="${col}" stroke-width="2.5" />`;
+			// `data-e` = index dans `entourages` : l'atelier s'en sert pour marquer
+			// l'entourage qu'un geste va effacer (#462). Les entourages hors-bornes ne
+			// produisent pas de rect → on ne peut PAS se fier à l'ordre des rects.
+			return `<rect data-e="${i}" x="${x}" y="${y}" width="${rw}" height="${rh}" rx="14" ry="16" fill="${col}" fill-opacity="0.22" stroke="${col}" stroke-width="2.5" />`;
 		})
 		.join('');
 }
@@ -117,7 +123,9 @@ function cleanupResize(): void {
 export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpts): void {
 	cleanupResize();
 	const lettres = lettresDuMot(mot.mot);
-	const entourages: Entourage[] = mot.entourage.map((e) => ({ ...e }));
+	// Réassigné (et non muté) : la bascule et les effacements passent par des
+	// fonctions pures de core/orthographe/entourages.
+	let entourages: Entourage[] = mot.entourage.map((e) => ({ ...e }));
 
 	// Segments de mots : pour chaque lettre non-espace, bornes [start, end] de son mot.
 	const segStart = new Array<number>(lettres.length).fill(-1);
@@ -194,14 +202,31 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 	function setPending(a: number, b: number): void {
 		pend = [Math.min(a, b), Math.max(a, b)];
 		const [plo, phi] = pend;
+		// Ce que le geste ferait (ajout, ou effacement d'un entourage recouvert) est
+		// décidé dans core ; ici on ne fait que peindre. Un espace n'est jamais surligné.
+		const { recouverts, etats } = apercuGeste(entourages, plo, phi);
 		spans().forEach((s) => {
-			const i = Number(s.dataset.i);
-			s.classList.toggle('sel', s.dataset.space !== '1' && i >= plo && i <= phi);
+			const etat = s.dataset.space === '1' ? undefined : etats.get(Number(s.dataset.i));
+			s.classList.toggle('sel', etat === 'ajout');
+			s.classList.toggle('sel-effacer', etat === 'effacement');
+			s.classList.toggle('sel-neutre', etat === 'neutre');
 		});
+		// Le signal de forme (tireté + estompé) porte sur le rectangle condamné lui-même :
+		// UNE forme qui va disparaître, plutôt qu'un contour par lettre.
+		marquerRects(new Set(recouverts));
 	}
 	function clearPending(): void {
 		pend = null;
-		spans().forEach((s) => s.classList.remove('sel'));
+		spans().forEach((s) => s.classList.remove('sel', 'sel-effacer', 'sel-neutre'));
+		marquerRects(new Set());
+	}
+	/* Marque `data-effacer` sur les rects des entourages d'indices `idx` (cf. `data-e`
+	   posé par dessinerEntourages) : simple bascule d'attribut, sans retracer le SVG
+	   (pas de lecture de layout à chaque `pointermove`). */
+	function marquerRects(idx: Set<number>): void {
+		svg.querySelectorAll<SVGRectElement>('rect[data-e]').forEach((r) => {
+			r.toggleAttribute('data-effacer', idx.has(Number(r.dataset.e)));
+		});
 	}
 
 	motEl.addEventListener('pointerdown', (e: PointerEvent) => {
@@ -220,13 +245,8 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 	const finDrag = (): void => {
 		if (!dragging) return;
 		dragging = false;
-		if (pend) {
-			entourages.push({
-				debut: pend[0],
-				fin: pend[1],
-				couleur: entourages.length % PALETTE.length,
-			});
-		}
+		// Bascule : ajoute l'entourage, ou retire celui (ceux) que la plage recouvre.
+		if (pend) entourages = basculerEntourage(entourages, pend[0], pend[1], PALETTE.length);
 		clearPending();
 		redrawSvg();
 	};
@@ -238,7 +258,7 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 	}
 
 	host.querySelector('#atelierUndo')!.addEventListener('click', () => {
-		entourages.pop();
+		entourages = entourages.slice(0, -1);
 		redrawSvg();
 	});
 	host.querySelector('#atelierClear')!.addEventListener('click', async () => {
@@ -254,7 +274,7 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 			});
 			if (!ok) return;
 		}
-		entourages.length = 0;
+		entourages = [];
 		redrawSvg();
 	});
 

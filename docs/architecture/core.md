@@ -6,8 +6,10 @@ Modules **testables sans DOM** (aucun accès DOM au chargement). Regroupés ici 
 thème ; le détail du dossier `src/data/` est dans [Contenu & leçons](contenu-et-lecons.md),
 et les modules `levels.ts` / `level-combinators.ts` / `niveau-actif.ts` dans
 [Niveaux scolaires](niveaux-scolaires.md). Le **moteur d'orthographe**
-(`core/orthographe/` : `store`, `exercise`, `lessons`, `diff`, `types`, verbes) a sa
-propre doc de conception : `docs/design-orthographe.md`.
+(`core/orthographe/` : `store`, `exercise`, `lessons`, `diff`, `types`, `entourages`
+— bascule et couleur des entourages de l'atelier du mot —, verbes) a sa propre
+doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
+`entourages`).
 
 ## Fondations
 

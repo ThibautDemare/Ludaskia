@@ -128,6 +128,16 @@ export const elisionDe = (mot: string) =>
    Ne concerne PAS la correction numérique (calcul). */
 export const normalizeText = (s: string) => s.trim().replace(/\s+/g, ' ').normalize('NFC');
 
+/* Début du jour LOCAL d'un horodatage (ms) — socle de tous les raisonnements en jours
+   CALENDAIRES de l'app (« dernière fois travaillée », graphe d'activité, délai d'ici une
+   révision, filtre de période des erreurs). Passe par `setHours` plutôt qu'un modulo de
+   86400000 : les jours locaux ne durent pas tous 24 h (changement d'heure). Pur. */
+export function startOfDay(ts = Date.now()): number {
+	const d = new Date(ts);
+	d.setHours(0, 0, 0, 0);
+	return d.getTime();
+}
+
 /* Formatage mm:ss d'une durée en millisecondes */
 export function fmt(ms: number) {
 	const s = Math.floor(ms / 1000),

@@ -2,7 +2,7 @@
    Progression persistée : records de bilans, série de jours,
    étoiles et statistiques par leçon. (localStorage via lsGet/lsSet)
    ============================================================ */
-import { fmt } from './utils';
+import { fmt, startOfDay } from './utils';
 import { lsGet, lsSet, lsSetQuiet, lsRemoveQuiet, lsGetRaw, lsSetRaw } from './storage';
 import { getAllLessons, getLessonById } from './catalog';
 import type { SchoolLevel } from './catalog';
@@ -100,10 +100,8 @@ function saveRuns(mode: string, runs: Run[]) {
 /* Bornes de période calendaire (pour les objectifs de régularité, et la frise #397).
    `ts` par défaut = maintenant ; paramétrable pour dater un horodatage arbitraire (frise). */
 export function startOfWeek(ts = Date.now()) {
-	const d = new Date(ts);
-	const day = (d.getDay() + 6) % 7; // lundi = 0
-	d.setHours(0, 0, 0, 0);
-	d.setDate(d.getDate() - day);
+	const d = new Date(startOfDay(ts));
+	d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // lundi = 0
 	return d.getTime();
 }
 export function startOfMonth() {

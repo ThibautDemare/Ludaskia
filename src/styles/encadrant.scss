@@ -699,7 +699,7 @@
    → survit au thème Nuit. $plot-h = hauteur de la zone traçante (axe + plot alignés). */
 $plot-h: 140px;
 
-/* Bascule Total / Par type (boutons-segments). */
+/* Boutons-segments : choix exclusif (radiogroup, cf. ui/segment.ts). */
 .enc-act-modes {
 	display: inline-flex;
 	gap: 0;

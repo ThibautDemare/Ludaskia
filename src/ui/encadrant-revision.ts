@@ -20,6 +20,7 @@ import {
 	type GroupeRevision,
 } from '../core/encadrant-stats';
 import { renderEspace, container } from './encadrant-commun';
+import { segmentHTML } from './segment';
 
 /* ---------- État de la section (module) ---------- */
 let vueRevision: 'categorie' | 'urgence' = 'categorie'; // « Par catégorie » ou « Par urgence »
@@ -99,10 +100,16 @@ export function revisionHTML(consulte: Profile, now: number): string {
 	// Séparateur « , » (et non « → ») : un lecteur d'écran annoncerait chaque flèche
 	// (« flèche vers la droite ») ; la progression est déjà portée par « gravit cet escalier ».
 	const escalier = echelleRevisionLabels().join(', ');
-	const bascule = `<div class="enc-act-modes" role="group" aria-label="Affichage des révisions">
-      <button type="button" class="enc-act-mode${vueRevision === 'categorie' ? ' on' : ''}" data-act="revision-mode" data-mode="categorie" aria-pressed="${vueRevision === 'categorie'}">Par catégorie</button>
-      <button type="button" class="enc-act-mode${vueRevision === 'urgence' ? ' on' : ''}" data-act="revision-mode" data-mode="urgence" aria-pressed="${vueRevision === 'urgence'}">Par urgence</button>
-    </div>`;
+	const bascule = segmentHTML({
+		act: 'revision-mode',
+		valAttr: 'mode',
+		label: 'Affichage des révisions',
+		active: vueRevision,
+		options: [
+			{ val: 'categorie', label: 'Par catégorie' },
+			{ val: 'urgence', label: 'Par urgence' },
+		],
+	});
 	const synthese =
 		`${recap.enRotation} entrée${recap.enRotation > 1 ? 's' : ''} en révision` +
 		(recap.dues > 0 ? `, dont ${recap.dues} à réviser` : '') +

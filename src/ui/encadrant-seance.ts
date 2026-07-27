@@ -47,6 +47,7 @@ import {
 } from '../core/seance';
 import { uiConfirm, uiPrompt, toast } from './ui-modal';
 import { consulteUuid, container, renderEspace } from './encadrant-commun';
+import { segmentHTML } from './segment';
 
 /* ---------- État de la section (module) ---------- */
 /* Message de conflit de récurrence, rattaché à un programme précis d'un profil précis
@@ -259,10 +260,17 @@ function resumeRecurrence(rec: SeanceRecurrence): string {
 
 function recurrenceHTML(def: SeanceDef): string {
 	const estDate = def.recurrence.type === 'date';
-	const bascule = `<div class="enc-act-modes" role="group" aria-label="Quand proposer ce programme">
-      <button type="button" class="enc-act-mode${estDate ? ' on' : ''}" data-act="seance-rec-type" data-def="${def.id}" data-type="date" aria-pressed="${estDate}">Une date</button>
-      <button type="button" class="enc-act-mode${!estDate ? ' on' : ''}" data-act="seance-rec-type" data-def="${def.id}" data-type="hebdo" aria-pressed="${!estDate}">Chaque semaine</button>
-    </div>`;
+	const bascule = segmentHTML({
+		act: 'seance-rec-type',
+		valAttr: 'type',
+		label: 'Quand proposer ce programme',
+		active: estDate ? 'date' : 'hebdo',
+		extra: { def: def.id },
+		options: [
+			{ val: 'date', label: 'Une date' },
+			{ val: 'hebdo', label: 'Chaque semaine' },
+		],
+	});
 	let corps: string;
 	if (def.recurrence.type === 'date') {
 		corps = `<label class="enc-row enc-seance-date-row"><span>Date</span>

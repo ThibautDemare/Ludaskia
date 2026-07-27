@@ -18,7 +18,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`insertAt`/`removeAt`/`moveAt`, #374 — utilisés par les tuiles d'orthographe
   `ui/ortho-runner.ts`, logique agnostique du DOM), `escapeHTML`, `fmt` (mm:ss), et
   `normalizeText` (normalisation **partagée** des réponses texte : trim + espaces
-  internes réduits + NFC).
+  internes réduits + NFC). **`startOfDay(ts)`** — début du jour LOCAL (via `setHours`,
+  robuste au changement d'heure) — est le socle **unique** de tout raisonnement en
+  jours calendaires de l'app : consommé par `progress.ts` (`startOfWeek`),
+  `encadrant-stats.ts` (délai avant échéance, jalons), `ui/render.ts` (`quandRevision`)
+  et le filtre de période du journal d'erreurs (`erreurs-journal.ts`, cf. [Espace
+  encadrant](espace-encadrant.md)).
   **RNG seedable (#41)** : tout l'aléa passe par `randFloat()` (source déroutable) ;
   `withSeed(seed, fn)` la rend déterministe le temps de `fn`, `randomSeed()` tire une
   graine. **Invariant** : les générateurs d'exercices ne doivent JAMAIS appeler
@@ -619,8 +624,14 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`ajouterErreur`, pur, testable sans stockage). **`grouperErreursParLecon`** regroupe par
   leçon (triée par récence de la dernière erreur) et **dédoublonne** (même question + même
   réponse donnée) en une entrée « vue N fois » — les banques QCM se répètent, pas la peine
-  d'afficher N lignes identiques. Consommé par `ui/encadrant-erreurs.ts` ; la capture au
-  moment de la correction (mise en forme de l'énoncé) vit dans `ui/erreur-capture.ts`.
+  d'afficher N lignes identiques. **`filtrerErreursParPeriode(liste, periode, now)`** (#476)
+  borne la liste sur `ts` AVANT ce regroupement, en jours CALENDAIRES locaux, aujourd'hui
+  inclus (`PeriodeErreurs` : `'jour' | 'deux-jours' | 'semaine' | 'tout'`, ce dernier sans
+  borne — seule la rétention `MAX_ERREURS` joue) ; **`periodeParDefaut`** choisit la fenêtre
+  la plus serrée qui contient au moins une erreur, avec repli sur `'semaine'`
+  (`PERIODES_REPLI`) si le journal est vide ou plus ancien. Consommé par
+  `ui/encadrant-erreurs.ts` ; la capture au moment de la correction (mise en forme de
+  l'énoncé) vit dans `ui/erreur-capture.ts`.
   **Couvre tous les runners** (fiche/QCM/sprint, tuiles de numération, rangement, tri,
   résolution de problèmes, dictée d'orthographe) — cf. [Espace encadrant](espace-encadrant.md).
 - **`erreur-representation.ts`** (#391, pur) — mise en forme de la « réponse donnée /

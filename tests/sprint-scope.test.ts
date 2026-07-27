@@ -3,6 +3,8 @@
    Critère « rencontrée » (loadLessonFirstSeen), filtrage et périmètre par
    défaut adaptatif. La plupart des cas injectent une map `vues` → pur, sans
    stockage ; un cas vérifie le branchement réel sur loadLessonFirstSeen.
+   L'AUTRE source de « rencontrée » — la déclaration « vu en classe » (#478) et
+   son union avec le 1er passage — est éprouvée dans `vu-en-classe.test.ts`.
    ============================================================ */
 import { beforeEach, describe, it, expect } from 'vitest';
 import {

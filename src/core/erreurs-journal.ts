@@ -87,6 +87,75 @@ export function chargerErreursFor(uuid: string): ErreurEntry[] {
 	return Array.isArray(v) ? (v.filter(estErreurValide) as ErreurEntry[]) : [];
 }
 
+/* ---------- Filtre de période (#476, pur) ----------
+   Le bloc encadrant dit « récemment » : sans borne temporelle, il montrait en fait
+   « les MAX_ERREURS dernières erreurs », qui peuvent remonter à des semaines pour un
+   profil peu actif. On filtre donc sur `ts` AVANT le regroupement, pour que tous les
+   compteurs (« N erreurs », « dernière fois », « vue N fois ») parlent de la période
+   choisie. Les fenêtres sont des JOURS CALENDAIRES locaux (et non des 24 h glissantes),
+   par cohérence avec le reste de l'espace encadrant (graphe d'activité,
+   `libelleDerniereFois` : « aujourd'hui » = le même jour calendaire). */
+export type PeriodeErreurs = 'jour' | 'deux-jours' | 'semaine' | 'tout';
+
+/* Nombre de jours calendaires couverts, aujourd'hui INCLUS ('semaine' = 7 jours, comme
+   le graphe d'activité). 'tout' n'a pas de borne : seule la rétention MAX_ERREURS joue. */
+const JOURS_PERIODE: Record<Exclude<PeriodeErreurs, 'tout'>, number> = {
+	jour: 1,
+	'deux-jours': 2,
+	semaine: 7,
+};
+
+/* Ordre de repli du choix par défaut : de la fenêtre la plus serrée à la plus large
+   (cf. `periodeParDefaut`). Ne contient PAS 'tout' — le défaut reste « récent ». */
+export const PERIODES_REPLI: readonly Exclude<PeriodeErreurs, 'tout'>[] = [
+	'jour',
+	'deux-jours',
+	'semaine',
+];
+
+/* Début du jour LOCAL, `joursAvant` jours plus tôt. Via `setDate` (et non une
+   soustraction de 86400000 ms) : reste minuit local même en travers d'un changement
+   d'heure. */
+function debutJourLocal(ts: number, joursAvant: number): number {
+	const d = new Date(ts);
+	d.setHours(0, 0, 0, 0);
+	d.setDate(d.getDate() - joursAvant);
+	return d.getTime();
+}
+
+/* Horodatage à partir duquel une erreur tombe dans la période (borne INCLUSIVE).
+   'tout' → aucune borne. */
+function seuilPeriode(periode: PeriodeErreurs, now: number): number {
+	if (periode === 'tout') return -Infinity;
+	return debutJourLocal(now, JOURS_PERIODE[periode] - 1);
+}
+
+/* Erreurs de la période choisie, ordre d'origine préservé (plus récent d'abord).
+   Ne mute pas `liste`. */
+export function filtrerErreursParPeriode(
+	liste: ErreurEntry[],
+	periode: PeriodeErreurs,
+	now: number,
+): ErreurEntry[] {
+	if (periode === 'tout') return liste.slice();
+	const seuil = seuilPeriode(periode, now);
+	return liste.filter((e) => e.ts >= seuil);
+}
+
+/* Période présélectionnée à l'ouverture : la PLUS SERRÉE qui contient au moins une
+   erreur ('aujourd'hui', sinon 2 jours, sinon 1 semaine). Décision produit #476 :
+   répondre d'abord à « sur quoi a-t-il buté aujourd'hui ? », sans faire tomber le
+   parent sur un bloc vide quand la dernière séance date de l'avant-veille. Journal
+   vide ou entièrement plus ancien qu'une semaine → 'semaine' (l'encadrant élargit
+   lui-même à « Tout »). */
+export function periodeParDefaut(liste: ErreurEntry[], now: number): PeriodeErreurs {
+	for (const p of PERIODES_REPLI) {
+		const seuil = seuilPeriode(p, now);
+		if (liste.some((e) => e.ts >= seuil)) return p;
+	}
+	return PERIODES_REPLI[PERIODES_REPLI.length - 1];
+}
+
 /* ---------- Regroupement pour l'affichage (pur) ----------
    L'espace encadrant montre les erreurs GROUPÉES PAR LEÇON, la leçon la plus
    récemment ratée en tête (décision designer #391 : c'est la question du parent,

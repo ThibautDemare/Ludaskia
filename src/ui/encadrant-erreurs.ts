@@ -12,7 +12,9 @@
    - pas de rouge en aplat : la BONNE réponse est mise en avant (positif), la
      réponse donnée reste neutre, jamais barrée ;
    - relié à « À revoir ensemble » : chaque leçon peut être épinglée d'ici (même
-     `data-act="epingler"` → toggleRevoirFor, aiguillé par progressionClick).
+     `data-act="epingler"` → toggleRevoirFor, aiguillé par progressionClick) ;
+   - filtrable par PÉRIODE (#476) : le « récemment » du titre est une vraie fenêtre de
+     temps, choisie par l'encadrant (le filtrage lui-même est pur, côté core).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
 import { icon } from './icon';
@@ -20,18 +22,38 @@ import { getLessonById } from '../core/catalog';
 import type { Profile } from '../core/profiles';
 import {
 	chargerErreursFor,
+	filtrerErreursParPeriode,
 	grouperErreursParLecon,
+	periodeParDefaut,
 	type ErreurAffichee,
 	type GroupeErreursLecon,
+	type PeriodeErreurs,
 } from '../core/erreurs-journal';
 import { libelleDerniereFois, loadRevoirFor, orthoRevoirId } from '../core/encadrant-stats';
 import { lsGetRaw } from '../core/storage';
 import { ORTHO_KEY } from '../core/orthographe/store';
 import { labelLeconOrtho } from '../core/orthographe/lessons';
+import { container, renderEspace } from './encadrant-commun';
 
 /* Nombre d'erreurs (dédoublonnées) montrées par leçon avant le repli « + N plus
    anciennes » (avis designer : 3-5 max pour rester lisible). */
 const MAX_PAR_LECON = 5;
+
+/* ---------- État de la section (module) ---------- */
+/* Période choisie par l'encadrant. `null` = pas encore choisie → défaut ADAPTATIF
+   recalculé à chaque rendu (`periodeParDefaut`). Un choix explicite, lui, est conservé
+   d'un profil consulté à l'autre (on compare deux enfants sur la même fenêtre). */
+let periodeChoisie: PeriodeErreurs | null = null;
+
+/* Les quatre choix, du plus serré au plus large. « Tout » = pas de borne (soit, en
+   pratique, les MAX_ERREURS dernières erreurs conservées). */
+const PERIODES: { id: PeriodeErreurs; label: string }[] = [
+	{ id: 'jour', label: "Aujourd'hui" },
+	{ id: 'deux-jours', label: '2 jours' },
+	{ id: 'semaine', label: '1 semaine' },
+	{ id: 'tout', label: 'Tout' },
+];
+const estPeriode = (v: string | undefined): v is PeriodeErreurs => PERIODES.some((p) => p.id === v);
 
 /* Libellé lisible du mode d'entraînement pour la ligne meta (pas de jargon). */
 const MODE_LABEL: Record<string, string> = {
@@ -115,18 +137,74 @@ function orthoListesFor(uuid: string): { id: string; label: string }[] {
 	);
 }
 
+/* Résultat du filtre, en une phrase — sert de nom accessible au segment actif
+   (cf. `periodesHTML`). */
+function resumePeriode(groupes: GroupeErreursLecon[]): string {
+	if (!groupes.length) return 'aucune erreur sur cette période';
+	const erreurs = groupes.reduce((s, g) => s + g.total, 0);
+	return `${groupes.length} leçon${groupes.length > 1 ? 's' : ''}, ${erreurs} erreur${erreurs > 1 ? 's' : ''}`;
+}
+
+/* Sélecteur de période (#476) — même composant segment que les bascules du récap
+   (`.enc-act-modes`), en variante qui passe à la ligne : quatre libellés ne tiennent
+   pas sur une ligne de smartphone.
+
+   Le segment ACTIF porte un `aria-label` enrichi du résultat (« Aujourd'hui, 3 leçons,
+   12 erreurs ») : changer de période change la liste en dessous SANS y déplacer le focus
+   (SC 4.1.3), et le focus revient justement sur ce bouton après re-rendu — l'annonce est
+   donc garantie, là où une région `aria-live` recréée par un `innerHTML` global ne serait
+   annoncée que de façon inconstante selon le navigateur et l'aide technique. Le libellé
+   visible reste le préfixe exact du nom accessible (SC 2.5.3). */
+function periodesHTML(active: PeriodeErreurs, groupes: GroupeErreursLecon[]): string {
+	const btns = PERIODES.map((p) => {
+		const on = p.id === active;
+		const nom = on
+			? ` aria-label="${escapeHTML(p.label)}, ${escapeHTML(resumePeriode(groupes))}"`
+			: '';
+		return `<button type="button" class="enc-act-mode${on ? ' on' : ''}" data-act="erreurs-periode" data-periode="${p.id}" aria-pressed="${on}"${nom}>${escapeHTML(p.label)}</button>`;
+	}).join('');
+	return `<div class="enc-act-modes enc-act-modes-wrap" role="group" aria-label="Période des erreurs affichées">${btns}</div>`;
+}
+
 /* Bloc « Ce qui a été difficile récemment » du profil consulté (lecture seule).
-   `now` injecté (l'appelant passe Date.now()) — cohérent avec le reste du récap. */
+   `now` injecté (l'appelant passe Date.now()) — cohérent avec le reste du récap.
+   Le filtre de période s'applique AVANT le regroupement : les compteurs affichés
+   décrivent la période choisie, pas tout l'historique. */
 export function erreursHTML(consulte: Profile, now: number): string {
-	const groupes = grouperErreursParLecon(chargerErreursFor(consulte.uuid));
+	const toutes = chargerErreursFor(consulte.uuid);
+	const periode = periodeChoisie ?? periodeParDefaut(toutes, now);
+	const groupes = grouperErreursParLecon(filtrerErreursParPeriode(toutes, periode, now));
 	const epinglees = new Set(loadRevoirFor(consulte.uuid));
 	const orthoListes = orthoListesFor(consulte.uuid);
+	// Deux vides distincts : journal entièrement vide (rien à filtrer → pas de
+	// sélecteur, message rassurant) vs période sans erreur alors qu'il en existe
+	// ailleurs (on invite à élargir plutôt que de laisser croire qu'il n'y a rien).
+	// Même idiome « Rien à signaler » dans les deux cas : c'est la 2e phrase qui
+	// distingue, pas un changement de ton (relecture langue).
 	const corps = groupes.length
 		? `<div class="enc-err-lecons">${groupes.map((g) => groupeHTML(g, epinglees, orthoListes, now)).join('')}</div>`
-		: `<p class="enc-hint">Rien à signaler récemment.</p>`;
+		: toutes.length
+			? `<p class="enc-hint enc-err-vide">Rien à signaler sur cette période. Élargissez-la pour voir les erreurs plus anciennes.</p>`
+			: `<p class="enc-hint">Rien à signaler récemment.</p>`;
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon('clock-clockwise')} Ce qui a été difficile récemment</h3>
       <p class="enc-hint">Voici les dernières questions qui ont posé des difficultés à ${escapeHTML(consulte.name)}, pour cibler votre aide. Dépliez une leçon pour voir le détail, ou épinglez-la pour qu'elle revienne sur l'accueil de ${escapeHTML(consulte.name)}.</p>
+      ${toutes.length ? periodesHTML(periode, groupes) : ''}
       ${corps}
     </div>`;
+}
+
+/* ---------- Handler délégué (aiguillé par l'orchestrateur) ---------- */
+export function erreursClick(act: string, el: HTMLElement): boolean {
+	if (act !== 'erreurs-periode') return false;
+	const p = el.dataset.periode;
+	if (!estPeriode(p)) return true;
+	periodeChoisie = p;
+	renderEspace();
+	// Le re-rendu recrée le DOM → on garde le focus clavier sur le bouton actif
+	// (sélecteur porté par `data-act` : plusieurs segments coexistent dans la page).
+	(container()?.querySelector('[data-act="erreurs-periode"].on') as HTMLElement | null)?.focus({
+		preventScroll: true,
+	});
+	return true;
 }

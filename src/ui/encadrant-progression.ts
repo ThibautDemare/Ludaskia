@@ -33,7 +33,7 @@ import {
 import { getAllLessons, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
 import { dicteeDisponible } from './tts';
 import { printScope } from './session';
-import { erreursHTML } from './encadrant-erreurs';
+import { erreursHTML, erreursClick } from './encadrant-erreurs';
 import { consulteUuid, renderEspace, container } from './encadrant-commun';
 
 /* ---------- État de la section (module) ---------- */
@@ -548,12 +548,18 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 
 /* ---------- Handlers délégués (aiguillés par l'orchestrateur) ---------- */
 export function progressionClick(act: string, el: HTMLElement): boolean {
+	// Le bloc « erreurs » est INSÉRÉ par cette section (cf. recapHTML) : ses actions
+	// passent donc par ici, comme `epingler` — et non par un câblage frère dans
+	// l'orchestrateur, qui ne le compose pas.
+	if (erreursClick(act, el)) return true;
 	switch (act) {
 		case 'activite-mode':
 			vueActivite = el.dataset.mode === 'type' ? 'type' : 'total';
 			renderEspace();
 			// Le re-rendu recrée le DOM → on garde le focus clavier sur le bouton actif.
-			(container()?.querySelector('.enc-act-mode.on') as HTMLElement | null)?.focus({
+			// Sélecteur SCOPÉ par `data-act` : trois segments `.enc-act-mode.on` coexistent
+			// désormais dans l'onglet Suivi (activité, erreurs, révision).
+			(container()?.querySelector('[data-act="activite-mode"].on') as HTMLElement | null)?.focus({
 				preventScroll: true,
 			});
 			return true;

@@ -50,12 +50,12 @@ import {
 	addXP,
 	getXP,
 	niveauDepuisXP,
-	loadLessonFirstSeen,
 } from '../core/progress';
 import {
 	appliquerScope,
 	scopeParDefaut,
 	perimetreChoisissable,
+	loadRencontrees,
 	type SprintScope,
 } from '../core/sprint-scope';
 import { updateGoal, evaluateTrophies } from '../core/rewards';
@@ -179,7 +179,8 @@ export function renderSprintConfigScreen(el: HTMLElement): void {
    basculement du périmètre : les comptes par filtre et les options vides en dépendent. */
 function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 	sprintScope = scope; // mémorisé pour le lancement
-	const vues = loadLessonFirstSeen();
+	// Périmètre « déjà vues » = joué dans l'appli ∪ déclaré vu en classe (#478).
+	const vues = loadRencontrees();
 	// Le choix de périmètre n'est proposé que s'il a un sens (mélange vu / pas-vu).
 	const choisissable = perimetreChoisissable(lessonsForFilter({ type: 'all' }), vues);
 

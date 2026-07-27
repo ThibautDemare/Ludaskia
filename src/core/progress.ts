@@ -3,7 +3,7 @@
    étoiles et statistiques par leçon. (localStorage via lsGet/lsSet)
    ============================================================ */
 import { fmt } from './utils';
-import { lsGet, lsSet, lsSetQuiet, lsRemoveQuiet } from './storage';
+import { lsGet, lsSet, lsSetQuiet, lsRemoveQuiet, lsGetRaw, lsSetRaw } from './storage';
 import { getAllLessons, getLessonById } from './catalog';
 import type { SchoolLevel } from './catalog';
 import { LEVEL_ORDER } from './levels';
@@ -49,8 +49,10 @@ function niveauStockage(lessonId: string): SchoolLevel {
 /* Vue { lessonId: valeur } d'une carte namespacée, restreinte au niveau actif PAR
    MATIÈRE : chaque leçon est lue au niveau actif de sa matière (non clampé) — une
    leçon hors du catalogue actif (ex. CE2-only quand la matière est en CM1) est donc
-   exclue de la vue. Mémoïse le niveau par matière (peu de matières). */
-function scopeActif<V>(raw: Record<string, V>): Record<string, V> {
+   exclue de la vue. Mémoïse le niveau par matière (peu de matières).
+   Exporté pour les cartes par leçon qui vivent HORS de ce module (déclaration
+   « vu en classe », #478) : elles doivent offrir le même contrat de lecture. */
+export function scopeActif<V>(raw: Record<string, V>): Record<string, V> {
 	const cache: Record<string, SchoolLevel> = {};
 	const out: Record<string, V> = {};
 	for (const k in raw) {
@@ -463,6 +465,45 @@ export function backfillLessonRevisions(now: number) {
 	const stats = loadLessonStats();
 	const ids = Object.keys(stats).filter((id) => (stats[id]?.questions ?? 0) > 0);
 	enterLessonsRevision(ids, now);
+}
+
+/* ---------- Rotation de révision d'un profil DONNÉ (espace encadrant, #478) ----------
+   Variantes par UUID de l'entrée en rotation : l'adulte déclare depuis l'espace
+   encadrant des leçons « déjà vues en classe » sur le profil CONSULTÉ, qui n'est pas
+   forcément l'actif — on écrit donc en clé RÉELLE (lsGetRaw/lsSetRaw), sans jamais
+   basculer le profil actif (même invariant que setPrefFor / loadRevoirFor). Les clés
+   sont déjà namespacées par l'appelant : le niveau vient du profil consulté, pas du
+   niveau actif (que `nsKey`/`niveauStockage` utiliseraient). */
+function revisionsFor(uuid: string): Record<string, EtatRevision> {
+	return lsGetRaw(uuid + '/' + LESSON_REVISION_KEY, {}) as Record<string, EtatRevision>;
+}
+export function enterLessonsRevisionFor(uuid: string, cles: string[], now: number): void {
+	const all = revisionsFor(uuid);
+	let changed = false;
+	for (const k of cles) {
+		if (!all[k]) {
+			all[k] = etatNeuf(now);
+			changed = true;
+		}
+	}
+	if (changed) lsSetRaw(uuid + '/' + LESSON_REVISION_KEY, JSON.stringify(all));
+}
+/* Annulation d'une déclaration « vu en classe » : retire l'état SR des clés données,
+   SAUF s'il vient d'un vrai passage dans l'appli — leçon déjà travaillée (stat) ou
+   état déjà re-testé au moins une fois (`dernierTest`). On ne détruit jamais un
+   progrès de révision réel ; on ne défait que ce que la déclaration avait créé. */
+export function retirerRevisionsDeclareesFor(uuid: string, cles: string[]): void {
+	const all = revisionsFor(uuid);
+	const stats = lsGetRaw(uuid + '/' + LESSON_STATS_KEY, {}) as Record<string, LessonStat>;
+	let changed = false;
+	for (const k of cles) {
+		const e = all[k];
+		if (!e || e.dernierTest != null) continue; // absent, ou déjà révisé pour de vrai
+		if ((stats[k]?.questions ?? 0) > 0) continue; // déjà travaillée dans l'appli
+		delete all[k];
+		changed = true;
+	}
+	if (changed) lsSetRaw(uuid + '/' + LESSON_REVISION_KEY, JSON.stringify(all));
 }
 
 /* Met à jour l'état SR d'une leçon après une réponse en révision. */

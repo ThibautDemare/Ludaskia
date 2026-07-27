@@ -200,6 +200,10 @@ import {
 	avancerEtat,
 	PALIER_ACQUIS,
 	REVISION_INTERVALLES,
+	REVISION_PLAFOND,
+	REVISION_PLAFOND_MIN,
+	REVISION_PLAFOND_MAX,
+	REVISION_PLAFOND_CHOIX,
 	JOUR,
 } from '../src/core/revision';
 import {
@@ -207,6 +211,7 @@ import {
 	countDue,
 	prochaineEcheance,
 	aDesRevisions,
+	effortRevisionAffiche,
 } from '../src/core/revision-select';
 import { loadLessonRevisions, backfillLessonRevisions } from '../src/core/progress';
 import { loadOrtho, saveOrtho, backfillMotRevisions } from '../src/core/orthographe/store';
@@ -2940,6 +2945,118 @@ describe('Révision espacée (issue #45)', () => {
 		const ortho = { banque: {}, listes: [], motIdParForme: {} };
 		expect(aDesRevisions(ortho, {})).toBe(false);
 		expect(aDesRevisions(ortho, { 'math-doubles': etatNeuf(T0) })).toBe(true);
+	});
+
+	/* ---------- Ce que la carte Révision ANNONCE à l'enfant (#478) ----------
+	   Spéc : au-delà d'une séance, on annonce l'effort du jour (le plafond) et on
+	   signale le plafonnement ; sinon on annonce le stock réel, non plafonné. Les
+	   attendus sont recalculés ici depuis cette phrase (n = min(dus, plafond),
+	   plafonné SSI dus > plafond) et jamais repris de l'implémentation. */
+	describe('effortRevisionAffiche : compteur de la carte Révision (#478)', () => {
+		test('rien à réviser → 0 annoncé, non plafonné', () => {
+			expect(effortRevisionAffiche(0, REVISION_PLAFOND)).toEqual({ n: 0, plafonne: false });
+			expect(effortRevisionAffiche(0, REVISION_PLAFOND_MIN)).toEqual({ n: 0, plafonne: false });
+		});
+		test('dette qui tient dans une séance → le stock réel, sans mention de plafond', () => {
+			expect(effortRevisionAffiche(1, 12)).toEqual({ n: 1, plafonne: false });
+			expect(effortRevisionAffiche(11, 12)).toEqual({ n: 11, plafonne: false });
+		});
+		test('bord : dus EXACTEMENT égal au plafond → affichage historique, non plafonné', () => {
+			// La séance proposera bien les 12 : rien n'est tronqué, donc rien à signaler.
+			expect(effortRevisionAffiche(12, 12)).toEqual({ n: 12, plafonne: false });
+		});
+		test('bord : un seul élément de trop → on bascule sur le plafond, signalé', () => {
+			expect(effortRevisionAffiche(13, 12)).toEqual({ n: 12, plafonne: true });
+		});
+		test('déclaration « vu en classe » en masse : jamais de compteur à trois chiffres', () => {
+			for (const plafond of REVISION_PLAFOND_CHOIX) {
+				const a = effortRevisionAffiche(137, plafond);
+				expect(a).toEqual({ n: plafond, plafonne: true });
+				expect(a.n).toBeLessThan(100); // l'enfant ne voit jamais le stock brut
+			}
+		});
+		test('plafonds extrêmes du réglage (#439) : bornes basse et haute', () => {
+			const bas = REVISION_PLAFOND_CHOIX[0];
+			const haut = REVISION_PLAFOND_CHOIX[REVISION_PLAFOND_CHOIX.length - 1];
+			expect([bas, haut]).toEqual([REVISION_PLAFOND_MIN, REVISION_PLAFOND_MAX]);
+			expect(effortRevisionAffiche(bas, bas)).toEqual({ n: bas, plafonne: false });
+			expect(effortRevisionAffiche(bas + 1, bas)).toEqual({ n: bas, plafonne: true });
+			expect(effortRevisionAffiche(haut - 1, haut)).toEqual({ n: haut - 1, plafonne: false });
+			expect(effortRevisionAffiche(haut + 1, haut)).toEqual({ n: haut, plafonne: true });
+		});
+		test('balayage : n = min(dus, plafond), plafonné SSI la dette dépasse la séance', () => {
+			for (const plafond of REVISION_PLAFOND_CHOIX) {
+				for (let dus = 0; dus <= 40; dus++) {
+					expect(effortRevisionAffiche(dus, plafond), `dus=${dus} plafond=${plafond}`).toEqual({
+						n: Math.min(dus, plafond),
+						plafonne: dus > plafond,
+					});
+				}
+			}
+		});
+		/* L'invariant qui JUSTIFIE la fonction : le nombre annoncé doit être exactement
+		   celui que la séance proposera pour le même plafond — sinon la carte ment
+		   (« 12 à réviser » puis 9 questions, ou l'inverse). */
+		test('INVARIANT : la valeur annoncée = ce que selectDueGroups propose vraiment', () => {
+			// Deux catégories de leçons dues (sources « petites ») pour un cas mixte.
+			const deuxCategories = (): Record<string, EtatRevision> => {
+				const out: Record<string, EtatRevision> = {};
+				let k = 0;
+				for (const [, ids] of catsLecons()
+					.filter(([, i]) => i.length >= 4)
+					.slice(0, 2))
+					for (const id of ids.slice(0, 4))
+						out[id] = {
+							palier: 0,
+							prochaineRevision: T0 - 2000 - k++,
+							reussites: 0,
+							dernierTest: null,
+						};
+				return out;
+			};
+			// Dette massive : tout le catalogue dû le même jour (cas « tout déclarer »).
+			const toutLeCatalogue = (): Record<string, EtatRevision> => {
+				const out: Record<string, EtatRevision> = {};
+				let k = 0;
+				for (const l of getAllLessons())
+					out[l.id] = {
+						palier: 0,
+						prochaineRevision: T0 - 1000 - k++,
+						reussites: 0,
+						dernierTest: null,
+					};
+				return out;
+			};
+			const scenarios: [string, OrthoState, Record<string, EtatRevision>][] = [
+				['rien de dû', motsDus(0), {}],
+				['3 mots', motsDus(3), {}],
+				['20 mots (une grosse source)', motsDus(20), {}],
+				['mots + 2 catégories', motsDus(8), deuxCategories()],
+				['2 catégories seules', motsDus(0), deuxCategories()],
+				['dette massive', motsDus(30), toutLeCatalogue()],
+			];
+			const regimes = new Set<boolean>();
+			let dusMax = 0;
+			for (const [nom, ortho, lecons] of scenarios) {
+				const dus = countDue(ortho, lecons, T0);
+				dusMax = Math.max(dusMax, dus);
+				for (const plafond of [0, ...REVISION_PLAFOND_CHOIX]) {
+					const annonce = effortRevisionAffiche(dus, plafond);
+					const proposes = selectDueGroups(ortho, lecons, T0, plafond).reduce(
+						(n, g) => n + g.items.length,
+						0,
+					);
+					expect(annonce.n, `${nom} / plafond ${plafond}`).toBe(proposes);
+					// Plafonné = il reste de la dette après la séance.
+					expect(annonce.plafonne, `${nom} / plafond ${plafond}`).toBe(dus > proposes);
+					regimes.add(annonce.plafonne);
+				}
+			}
+			// Anti-test-vide : les deux régimes ont bien été rencontrés, dont une dette
+			// à trois chiffres (le cas qui a motivé la fonction).
+			expect([...regimes].sort()).toEqual([false, true]);
+			expect(dusMax).toBeGreaterThan(99);
+		});
 	});
 });
 

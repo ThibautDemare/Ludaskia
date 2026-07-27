@@ -33,7 +33,12 @@ import {
 } from '../core/progress';
 import { lessonsNiveauActif, niveauActif } from '../core/niveau-actif';
 import { LEVEL_LABEL } from '../core/levels';
-import { countDue, prochaineEcheance, aDesRevisions } from '../core/revision-select';
+import {
+	countDue,
+	prochaineEcheance,
+	aDesRevisions,
+	effortRevisionAffiche,
+} from '../core/revision-select';
 import { JOUR } from '../core/revision';
 import { titreDuNiveau, AVATARS_FORET } from '../core/unlocks';
 import { loadOrtho } from '../core/orthographe/store';
@@ -236,11 +241,10 @@ function fillRevisionRecord(elId: string) {
 	const n = countDue(ortho, revisions, now);
 	document.getElementById('cardRevision')?.classList.toggle('card-inactive', n === 0);
 	if (n) {
-		const plafond = getRevisionPlafond();
-		el.innerHTML =
-			n > plafond
-				? `${icon('repeat')} <strong>${plafond}</strong> à réviser aujourd'hui`
-				: `${icon('repeat')} <strong>${n}</strong> à réviser`;
+		const { n: aFaire, plafonne } = effortRevisionAffiche(n, getRevisionPlafond());
+		el.innerHTML = plafonne
+			? `${icon('repeat')} <strong>${aFaire}</strong> à réviser aujourd'hui`
+			: `${icon('repeat')} <strong>${aFaire}</strong> à réviser`;
 		return;
 	}
 	const echeance = prochaineEcheance(ortho, revisions, now);

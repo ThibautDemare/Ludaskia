@@ -75,7 +75,11 @@ ci-dessous.
   (`checkboxesDicteeHTML`, handler `seance-dictee-toggle`, #463) plutôt qu'un menu
   mono-valeur : le pool coché (`ciblesEtape`) peut compter 0, 1 ou plusieurs dictées ;
   une cible cochée devenue indisponible reste affichée à part (« Cible actuelle »),
-  décochable sans être perdue en silence. Logique + stockage dans `core/seance.ts`
+  décochable sans être perdue en silence. Une étape **« à revoir » (#464)** ne se
+  configure pas — sa cible est la file épinglée du profil (`epingleesProfil`) — mais
+  affiche un repère (`hintARevoir`) pour que l'adulte sache si elle apparaîtra dans le
+  programme (« rien n'est épinglé » / une seule → « ce sera celle-ci » / plusieurs →
+  « une au hasard à chaque lancement »). Logique + stockage dans `core/seance.ts`
   (cf. [Logique pure](core.md)) : ce module ne fait que le rendu et l'aiguillage des
   interactions, persistance immédiate à chaque action.
 - **`encadrant-reglages.ts`** — **réglages** sur le profil consulté (onglet
@@ -166,17 +170,34 @@ pure](core.md)) pour les formats composites :
   `pctColor`, config `REGULARITY`).
 - **`seance.ts`** (#440) — écran `#seance` et carte d'accueil `#cardProgramme` du
   **programme du jour** composé par l'encadrant (cf. [Modes &
-  navigation](modes-et-navigation.md)) : `renderProgrammeCard` (masquée hors
-  programme applicable ce jour) et `renderSeance` (tuiles des étapes restantes en
-  ordre libre, jauge de pastilles, bouton « Choisis pour moi », état terminé
-  célébré). `lancerEtapeProgramme` tire d'abord la cible d'une étape « dictée »
-  (`core/seance.ts:tirerCible`, #463 — sans effet pour les autres modes) puis pose
-  le marqueur d'attribution (`marquerEtapeLancee`, avec cette cible tirée) et délègue
-  au déclencheur du mode existant (`startSprint`/`startRevisionEspacee`/`startLecon`/
-  `startOrthoLecon`) — aucun runner n'est modifié. Un pool de 2+ dictées s'affiche sous
-  un titre générique (« Une dictée ») : l'enfant ne sait laquelle avant de lancer.
-  `rafraichirProgramme` (appelée par la navigation
-  avant l'accueil et l'écran `#seance`) consomme l'attribution au retour et célèbre
+  navigation](modes-et-navigation.md)). `vueProgramme()` est la porte d'entrée UNIQUE
+  de lecture de la séance côté UI (utilisée aussi par `ui/navigation.ts`) : elle
+  construit le `ContexteSeance` (#464, `{aRevoir: n}` — la file épinglée encore à
+  travailler, `revoirActives(dicteeDisponible())` de `core/encadrant-stats.ts`) que le
+  cœur ne peut pas lire seul, puis appelle `vueSeanceDuJour`. `renderProgrammeCard`
+  (masquée hors programme applicable ce jour) et `renderSeance` (tuiles des étapes
+  restantes en ordre libre, jauge de pastilles, bouton « Choisis pour moi », état
+  terminé célébré) en découlent. Une étape « à revoir » se présente comme une tuile
+  « À revoir » (icône marque-page) ; si une seule entrée est épinglée, son libellé est
+  **nommé** directement (comme la carte d'accueil), sinon le titre reste générique et
+  la cible est tirée au lancement.
+
+  `lancerEtapeProgramme` tire d'abord la cible d'une étape à pool (`tirageEtape` :
+  dictée configurée #463 via `core/seance.ts:tirerCible`, ou file épinglée #464 via
+  `tirerParmi` — sans effet pour les autres modes), pose le marqueur d'attribution
+  (`marquerEtapeLancee`, avec cette cible et, pour « à revoir », le type d'activité
+  réellement visé — leçon ou dictée selon la cible tirée) et délègue au déclencheur du
+  mode existant (`startSprint`/`startRevisionEspacee`/`startLecon`/`startOrthoLecon`) —
+  aucun runner n'est modifié. Une entrée épinglée porte sa nature dans son id de file
+  (préfixe `ortho:`) : on la dépréfixe pour choisir le déclencheur, avec l'origine
+  `'programme'` comme les autres lancements de leçon/dictée (#461, `retour-activite.ts`).
+  Un pool de 2+ cibles (dictées ou épinglées) s'affiche sous un titre générique :
+  l'enfant ne sait laquelle avant de lancer.
+  `rafraichirProgramme` (appelée par la navigation avant l'accueil et l'écran `#seance`)
+  consomme l'attribution au retour (`resoudrePending`) **et** rattrape une complétion
+  survenue sans résolution de marqueur (`consoliderCompletion`, #464 : le contexte
+  escamote la dernière étape restante — épinglée retirée par l'adulte, ou travaillée
+  entre-temps depuis la carte d'accueil « à revoir ») ; dans les deux cas, célèbre
   (modale + confettis) la complétion du programme entier, sans XP.
 - **`lecon-du-jour.ts`** — carte **« leçon du jour »** de l'accueil (#208) : `#leconDuJour`
   est la **1re carte** de la rangée `.cards`, sur le **même modèle visuel** que les cartes

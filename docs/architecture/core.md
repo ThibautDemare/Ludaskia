@@ -663,15 +663,37 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `ref?: string` — une cible unique — reste lu pour la rétrocompat des programmes déjà
   configurés) ; `ciblesEtape(etape)` normalise les deux formes, `ciblesValides(etape,
   disponibles)` écarte les cibles devenues introuvables (liste supprimée, hors niveau) et
-  `tirerCible(etape, disponibles, rand?)` tire une cible au hasard parmi les valides
-  (`rand` injectable, déterministe en test) — 1 cible ⇒ toujours la même, 2+ ⇒ tirage à
-  chaque lancement. **Attribution sans toucher aux runners** : `marquerEtapeLancee(etapeId,
-  now, ref?)` pose un marqueur au lancement d'une étape depuis le programme (le 3e
-  paramètre mémorise, pour une dictée, la cible réellement tirée du pool — nécessaire à la
-  métrique puisque le journal d'activité ne porte que le type), `resoudrePending` le
-  consomme au retour en cherchant dans le **journal d'activité existant** (`loadActivity`,
-  #319) une complétion du bon type postérieure au lancement ; sans complétion trouvée,
-  l'étape n'est pas créditée (abandon silencieux). `seancesCompletees` (compteur
-  cumulé) alimente le trophée dédié (cf. [Gamification](gamification.md)). Consommé
-  côté enfant par `ui/seance.ts` et côté encadrant par `ui/encadrant-seance.ts` (cf.
-  [`ui/`](ui.md)).
+  `tirerParmi(pool, rand?)` (généralisé #464, `rand` injectable pour un tirage
+  déterministe en test) tire un élément au hasard dans un pool déjà filtré ;
+  `tirerCible(etape, disponibles, rand?)` l'applique au pool de dictées d'une étape — 1
+  cible ⇒ toujours la même, 2+ ⇒ tirage à chaque lancement.
+
+  **Étapes CONDITIONNELLES « à revoir » (#464)** : le mode `aRevoir` puise dans la file
+  épinglée par l'encadrant (`ludaskia_revoir`, cf. [Espace encadrant](espace-encadrant.md)),
+  que le cœur ne peut pas lire seul (l'« acquis » d'une dictée dépend de la disponibilité
+  du TTS, connue de l'UI seule) : l'appelant fournit un `ContexteSeance` (`{aRevoir:
+  number}` — nombre d'entrées encore à travailler ; `CONTEXTE_VIDE` = défaut PRUDENT
+  « rien d'épinglé »). `etapeApplicable(etape, ctx)` / `etapesApplicables(def, ctx)`
+  filtrent les étapes qui ne s'appliquent pas aujourd'hui (seule `aRevoir` est
+  conditionnelle) : une définition dont **aucune** étape ne s'applique vaut « pas de
+  programme » (`vueSeanceDuJour` renvoie `null`), jamais une étape vide affichée. Le type
+  réellement lancé (leçon ou dictée selon la cible tirée) n'est pas fixé par le mode :
+  `SeancePending.activite` le mémorise pour l'attribution.
+
+  **Attribution sans toucher aux runners** : `marquerEtapeLancee(etapeId, now, ref?,
+  activite?)` pose un marqueur au lancement d'une étape depuis le programme (`ref`
+  mémorise, pour une étape à pool — dictée #463 ou épinglée #464 —, la cible réellement
+  tirée, nécessaire à la métrique puisque le journal d'activité ne porte que le type ;
+  `activite` fixe le type attendu quand le mode n'en impose pas un seul), `resoudrePending
+  (now, ctx?)` le consomme au retour en cherchant dans le **journal d'activité existant**
+  (`loadActivity`, #319) une complétion du bon type postérieure au lancement ; sans
+  complétion trouvée, l'étape n'est pas créditée (abandon silencieux). `VueSeance.complete`
+  est **dérivé** (« plus rien à faire » parmi les étapes applicables aujourd'hui), tandis
+  que `SeanceJour.complete` reste la mémoire **monotone** de la récompense déjà attribuée
+  (ne redescend jamais, même si une étape réapparaît en cours de journée) ;
+  `consoliderCompletion(now, ctx?)` acte cette récompense quand c'est le **contexte**, et
+  non une résolution de `pending`, qui fait disparaître la dernière étape restante (#464).
+  `seancesCompletees` (compteur cumulé) alimente le trophée dédié (cf.
+  [Gamification](gamification.md)). Consommé côté enfant par `ui/seance.ts` (porte
+  d'entrée unique `vueProgramme`, cf. [`ui/`](ui.md)) et côté encadrant par
+  `ui/encadrant-seance.ts`.

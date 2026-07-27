@@ -269,14 +269,19 @@ coexistent sans se recouvrir.
 Bloc de composition (`ui/encadrant-seance.ts` — `seanceHTML`/`seanceClick`/
 `seanceChange`, en tête de l'**onglet Programme**, #459) permettant à l'encadrant de préparer,
 pour le profil **consulté** (par UUID, sans bascule), un ou plusieurs programmes :
-une liste d'**étapes** (Sprint, Révision, Leçon du jour, une leçon précise ou une
-dictée — cible(s) filtrée(s) au **niveau du profil**, comme ce que l'enfant voit) répétées
-`count` fois (paliers fixes 1 à 5, pas de saisie libre), et une
+une liste d'**étapes** (Sprint, Révision, **À revoir** #464, Leçon du jour, une leçon
+précise ou une dictée — cible(s) filtrée(s) au **niveau du profil**, comme ce que
+l'enfant voit) répétées `count` fois (paliers fixes 1 à 5, pas de saisie libre), et une
 **récurrence** (une **date** ponctuelle ou des **jours de semaine**). Une étape
 « dictée » vise un **pool** de dictées cochées via une liste à cases (#463, cf.
 [Logique pure](core.md)) : une seule cochée reste figée, deux ou plus donnent un
 tirage au hasard à chaque lancement (l'enfant ne voit pas laquelle avant de
-commencer). Garde-fou
+commencer). Une étape **« À revoir » (#464)** n'a rien à configurer : sa cible est
+la file épinglée du profil (ci-dessus) — un repère (« rien n'est épinglé » / « ce
+sera celle-ci » / « une au hasard ») prévient l'adulte si elle restera invisible
+tant que rien n'est épinglé. **Choix assumé** : cette étape **s'ajoute** à la carte
+d'accueil « à revoir », elle ne la remplace pas — deux chemins vers la même file
+(l'un toujours disponible, l'autre au fil du programme composé). Garde-fou
 « un seul programme par jour » : `recurrencesEnConflit` (`core/seance.ts`) refuse une
 récurrence qui chevaucherait celle d'un autre programme du même profil (message
 d'erreur affiché dans la carte, jamais de blocage dur du **volume** d'étapes/programmes).

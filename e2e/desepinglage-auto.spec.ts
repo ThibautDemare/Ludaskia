@@ -3,9 +3,14 @@
    ------------------------------------------------------------
    Couvre : le bloc « Retirées automatiquement » de l'espace encadrant
    (onglet Programme, section « À revoir ensemble ») et le ré-épinglage
-   d'une entrée qui vient d'en être retirée ; et le nettoyage DUR déclenché
+   d'une entrée qui vient d'en être retirée ; le nettoyage DUR déclenché
    par la carte « À revoir » de l'accueil enfant (la file persistée perd
-   l'entrée, pas seulement son affichage).
+   l'entrée, pas seulement son affichage) ; et le même nettoyage DUR vu
+   depuis l'onglet Suivi (ligne de détail par catégorie), qui lit lui aussi
+   `RecapNotion.epingle` — la purge vit dans `tabPanelHTML` (encadrant.ts),
+   AVANT le calcul du récap, pour Suivi ET Programme : une régression qui la
+   restreindrait au seul onglet Programme laisserait Suivi afficher
+   « Retirer » pour une entrée déjà purgée de la file.
 
    Scénario déterministe : on seed directement la file `ludaskia_revoir`
    avec une leçon déjà SOLIDE (étoilée). Comme les marques de fragilité
@@ -90,6 +95,31 @@ test("accueil enfant : la carte « À revoir » déclenche le nettoyage DUR de l
 	// … mais tracée dans « Retirées automatiquement » (le rendu de l'accueil a bien
 	// persisté le retrait, pas seulement filtré l'affichage de la carte).
 	await expect(page.locator('.enc-revoir-quand').filter({ hasText: "aujourd'hui" })).toBeVisible();
+
+	expect(errors).toEqual([]);
+});
+
+test("onglet Suivi : la ligne de détail d'une notion purgée propose « Épingler », pas « Retirer »", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_STARS_SOLIDE);
+	await page.addInitScript(SEED_REVOIR_PIN);
+	// Suivi est l'onglet par défaut de #encadrant (pas de suffixe de route).
+	await gotoHash(page, 'encadrant');
+
+	// Déplier chaque catégorie (clic sur son résumé = toggle natif <details>) pour
+	// exposer les lignes de détail par leçon, dont celle de « math-complements ».
+	const resumes = page.locator('.enc-cat-sum');
+	const n = await resumes.count();
+	for (let i = 0; i < n; i++) await resumes.nth(i).click();
+
+	// La purge dure a déjà tourné (dans tabPanelHTML, avant le calcul du récap) :
+	// le récap qui alimente cette ligne de détail voit une file déjà nettoyée,
+	// donc `epingle` est faux et le bouton propose « Épingler ».
+	const btn = page.locator('button[data-act="epingler"][data-lesson="math-complements"]');
+	await expect(btn).toContainText('Épingler');
 
 	expect(errors).toEqual([]);
 });

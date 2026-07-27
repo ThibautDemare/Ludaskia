@@ -17,6 +17,9 @@
      est posé au lancement depuis le programme (`marquerEtapeLancee`) et consommé
      au retour (`resoudrePending`) en lisant le JOURNAL D'ACTIVITÉ existant
      (`loadActivity`, #319) — aucun runner de mode n'a besoin d'être modifié ;
+   - les étapes CONDITIONNELLES (#464) : une étape « à revoir » ne s'applique que
+     s'il y a quelque chose d'épinglé ; ce que le cœur ne sait pas lire seul lui est
+     passé dans un `ContexteSeance` (cf. plus bas) ;
    - les MÉTRIQUES de temps (#440) : chaque étape réalisée est horodatée avec sa
      durée, archivée dans un journal de séances au passage de minuit (base d'un
      futur récap encadrant « durée des séances », visuel différé).
@@ -28,17 +31,24 @@ import { touchProfile } from './profiles';
 /* ---------- Modèle ---------- */
 
 /** Modes qu'une étape de programme peut viser. */
-export type SeanceModeKind = 'sprint' | 'revision' | 'leconDuJour' | 'lecon' | 'dictee';
+export type SeanceModeKind = 'sprint' | 'revision' | 'aRevoir' | 'leconDuJour' | 'lecon' | 'dictee';
 
 /** Métadonnées par mode : libellé (voix encadrant), type d'activité journalisé
     (#319, sert à l'attribution), durée estimée (min, pour le repère encadrant) et
-    nature de la référence à préciser (`lecon` = id de leçon, `dictee` = id de liste). */
+    nature de la référence à préciser (`lecon` = id de leçon, `dictee` = id de liste).
+
+    `activite` de `aRevoir` (#464) est un DÉFAUT : la file épinglée mêle leçons et
+    dictées, le type réellement lancé est donc mémorisé dans le marqueur `pending`
+    (`SeancePending.activite`) et c'est lui qui sert à l'attribution. */
 export const SEANCE_MODE_INFOS: Record<
 	SeanceModeKind,
 	{ label: string; activite: ActivityKind; dureeMin: number; ref: 'lecon' | 'dictee' | null }
 > = {
 	sprint: { label: 'Sprint 5 min', activite: 'sprint', dureeMin: 5, ref: null },
 	revision: { label: 'Révision', activite: 'revision', dureeMin: 8, ref: null },
+	// Même mot que la carte d'accueil et la tuile enfant : un seul vocabulaire, sur tous
+	// les écrans, pour la file épinglée.
+	aRevoir: { label: 'À revoir', activite: 'lecon', dureeMin: 7, ref: null },
 	leconDuJour: { label: 'Leçon du jour', activite: 'lecon', dureeMin: 7, ref: null },
 	lecon: { label: 'Une leçon précise', activite: 'lecon', dureeMin: 7, ref: 'lecon' },
 	dictee: { label: 'Une dictée', activite: 'dictee', dureeMin: 10, ref: 'dictee' },
@@ -70,17 +80,60 @@ export function ciblesValides(etape: SeanceEtape, disponibles: readonly string[]
 	return ciblesEtape(etape).filter((id) => set.has(id));
 }
 
+/** Tire un élément au hasard dans un pool DÉJÀ filtré, ou `undefined` s'il est vide.
+    `rand` ∈ [0,1[ est injectable (défaut `Math.random`) pour un tirage déterministe en
+    test. Sert aux deux pools d'étape : les dictées configurées (#463) et la file
+    épinglée du jour (#464). Pur (hors `rand` par défaut). */
+export function tirerParmi(
+	pool: readonly string[],
+	rand: () => number = Math.random,
+): string | undefined {
+	return pool.length ? pool[Math.floor(rand() * pool.length)] : undefined;
+}
+
 /** Tire une cible valide au hasard dans le pool d'une étape « dictée » (#463), ou
     `undefined` si aucune n'est disponible. 1 cible ⇒ toujours la même (dictée figée) ;
-    2+ ⇒ une au hasard. `rand` ∈ [0,1[ est injectable (défaut `Math.random`) pour un
-    tirage déterministe en test. Pur (hors `rand` par défaut). */
+    2+ ⇒ une au hasard. Pur (hors `rand` par défaut). */
 export function tirerCible(
 	etape: SeanceEtape,
 	disponibles: readonly string[],
 	rand: () => number = Math.random,
 ): string | undefined {
-	const valides = ciblesValides(etape, disponibles);
-	return valides.length ? valides[Math.floor(rand() * valides.length)] : undefined;
+	return tirerParmi(ciblesValides(etape, disponibles), rand);
+}
+
+/* ---------- Étapes CONDITIONNELLES (#464) ---------- */
+/** Contexte du jour : ce qui, HORS de la définition, conditionne la présence d'une
+    étape. Une seule entrée aujourd'hui : `aRevoir` = nombre de leçons/dictées épinglées
+    ENCORE à travailler pour le profil. Le cœur ne peut pas le calculer seul (l'« acquis »
+    d'une dictée dépend de la disponibilité du TTS, connue de l'UI seule) : c'est l'UI qui
+    le fournit (`ui/seance.ts`), ce qui garde ce module pur et testable. */
+export interface ContexteSeance {
+	aRevoir: number;
+}
+/** Contexte NEUTRE (rien d'épinglé) : défaut PRUDENT des lectures de séance — un appelant
+    qui l'omet escamote une étape « à revoir » plutôt que de l'afficher à vide. */
+export const CONTEXTE_VIDE: ContexteSeance = { aRevoir: 0 };
+
+/** Une étape s'applique-t-elle aujourd'hui ? Seules les étapes CONDITIONNELLES peuvent
+    ne pas s'appliquer : « à revoir » disparaît du programme quand rien n'est épinglé —
+    sinon le programme porterait une étape VIDE, impossible à réaliser, qui bloquerait sa
+    complétion (#464). Pur. */
+export function etapeApplicable(etape: SeanceEtape, ctx: ContexteSeance): boolean {
+	return etape.kind === 'aRevoir' ? ctx.aRevoir > 0 : true;
+}
+/** Étapes d'une définition applicables aujourd'hui, dans l'ordre de composition. Pur. */
+export function etapesApplicables(def: SeanceDef, ctx: ContexteSeance): SeanceEtape[] {
+	return def.etapes.filter((e) => etapeApplicable(e, ctx));
+}
+
+/** Nombre de fois requis d'une étape, ASSAINI (entier ≥ 1) — source unique de ce « combien ».
+    Un `count` absent, ≤ 0 ou fractionnaire (stockage importé ou édité à la main) se lirait
+    sinon comme « déjà fait », ou demanderait un nombre de passages impossible à atteindre
+    pile : le programme se dirait terminé sans rien faire, ou jamais. Le compositeur, lui,
+    borne déjà la saisie à 1..5 — d'où l'absence de borne HAUTE ici. Pur. */
+export function countRequis(etape: SeanceEtape): number {
+	return Math.max(1, Math.round(etape.count || 0));
 }
 
 /** Récurrence d'une séance : soit une DATE unique (ponctuelle), soit des JOURS de
@@ -113,7 +166,9 @@ export interface SeancePending {
 	etapeId: string;
 	kind: SeanceModeKind;
 	launchTs: number;
-	ref?: string; // cible RÉELLEMENT lancée (dictée tirée du pool, #463) — pour la métrique
+	ref?: string; // cible RÉELLEMENT lancée (tirée d'un pool, #463/#464) — pour la métrique
+	activite?: ActivityKind; // type RÉELLEMENT lancé quand le mode n'en fixe pas un seul
+	// (étape « à revoir » #464 : leçon ou dictée selon la cible tirée) ; absent ⇒ celui du mode
 }
 
 /** État du jour d'un profil : quelle définition s'applique, ce qui a été fait,
@@ -123,7 +178,9 @@ export interface SeanceJour {
 	defId: string;
 	faits: Record<string, number>; // etapeId -> nombre de fois réalisé aujourd'hui
 	completions: SeanceCompletion[]; // horodatées (métriques)
-	complete: boolean; // séance entièrement réalisée (récompense déjà attribuée)
+	complete: boolean; // RÉCOMPENSE attribuée (monotone : cf. acterCompletion). Depuis #464,
+	// ce n'est plus strictement « toutes les étapes du jour faites » — une étape conditionnelle
+	// peut avoir réapparu après coup ; « ce qu'il reste à faire » se lit dans la vue du jour.
 	debutTs?: number; // horodatage du 1er lancement d'étape (span de la séance)
 	pending?: SeancePending | null;
 }
@@ -207,10 +264,7 @@ export function genDefId(defs: SeanceDef[]): string {
 
 /** Durée estimée d'une séance en minutes (repère non contraignant côté encadrant). */
 export function estimationDureeMin(def: SeanceDef): number {
-	return def.etapes.reduce(
-		(s, e) => s + Math.max(1, e.count) * SEANCE_MODE_INFOS[e.kind].dureeMin,
-		0,
-	);
+	return def.etapes.reduce((s, e) => s + countRequis(e) * SEANCE_MODE_INFOS[e.kind].dureeMin, 0);
 }
 
 /** Deux récurrences se disputent-elles un même jour ? (garde-fou « une par jour ».)
@@ -296,31 +350,45 @@ export interface VueEtape {
 }
 export interface VueSeance {
 	def: SeanceDef;
-	etapes: VueEtape[]; // toutes les étapes, ordre de composition
+	etapes: VueEtape[]; // étapes APPLICABLES aujourd'hui, ordre de composition
 	restantes: VueEtape[]; // étapes encore à faire (propositions actives)
-	complete: boolean;
+	complete: boolean; // plus rien à faire aujourd'hui (DÉRIVÉ de `restantes`)
 	totalRequis: number;
 	totalFait: number;
 	pendingEtapeId: string | null;
 }
-/** Vue de la séance du jour du profil actif (ou `null` si aucune aujourd'hui). */
-export function vueSeanceDuJour(now: number): VueSeance | null {
+/** Vue de la séance du jour du profil actif (ou `null` si aucune aujourd'hui). `ctx`
+    (#464) filtre les étapes conditionnelles : une définition dont AUCUNE étape ne
+    s'applique aujourd'hui vaut « pas de programme » (`null`) — jamais un programme vide.
+
+    `complete` est ici DÉRIVÉ (« plus rien à faire »), pas lu dans l'état stocké : avec des
+    étapes conditionnelles, une étape peut apparaître APRÈS coup (le parent épingle en cours
+    de journée) et le programme redevient alors incomplet à l'écran. Le marqueur stocké
+    `SeanceJour.complete`, lui, reste la mémoire de la RÉCOMPENSE déjà attribuée (jamais
+    deux fois la même célébration). */
+export function vueSeanceDuJour(
+	now: number,
+	ctx: ContexteSeance = CONTEXTE_VIDE,
+): VueSeance | null {
 	const jour = etatSeanceJour(now);
 	if (!jour) return null;
 	const def = defApplicable(chargerSeances(), now);
 	if (!def) return null; // cohérence (jour ⇒ def), défensif
-	const etapes: VueEtape[] = def.etapes.map((etape) => {
+	const applicables = etapesApplicables(def, ctx);
+	if (applicables.length === 0) return null; // aucune étape à proposer ⇒ pas de programme du jour
+	const etapes: VueEtape[] = applicables.map((etape) => {
 		const fait = jour.faits[etape.id] ?? 0;
-		const reste = Math.max(0, etape.count - fait);
+		const reste = Math.max(0, countRequis(etape) - fait);
 		return { etape, fait, reste, epuise: reste === 0 };
 	});
+	const restantes = etapes.filter((v) => v.reste > 0);
 	return {
 		def,
 		etapes,
-		restantes: etapes.filter((v) => v.reste > 0),
-		complete: jour.complete,
-		totalRequis: def.etapes.reduce((s, e) => s + e.count, 0),
-		totalFait: etapes.reduce((s, v) => s + Math.min(v.fait, v.etape.count), 0),
+		restantes,
+		complete: restantes.length === 0,
+		totalRequis: applicables.reduce((s, e) => s + countRequis(e), 0),
+		totalFait: etapes.reduce((s, v) => s + Math.min(v.fait, countRequis(v.etape)), 0),
 		pendingEtapeId: jour.pending?.etapeId ?? null,
 	};
 }
@@ -328,15 +396,22 @@ export function vueSeanceDuJour(now: number): VueSeance | null {
 /* ---------- Attribution ---------- */
 /** Pose le marqueur « étape en cours » au lancement d'un mode DEPUIS le programme.
     Sans effet si aucune séance ne s'applique ou si l'étape est inconnue. `ref` (facultatif,
-    #463) mémorise la cible réellement lancée quand elle est tirée d'un pool (dictée) : elle
-    est reportée telle quelle dans la complétion (la métrique conserve la dictée VUE, pas le
-    pool). Absente ⇒ on retombe sur `etape.ref` (leçon / dictée figée) à la résolution. */
-export function marquerEtapeLancee(etapeId: string, now: number, ref?: string): void {
+    #463) mémorise la cible réellement lancée quand elle est tirée d'un pool (dictée, épinglée) :
+    elle est reportée telle quelle dans la complétion (la métrique conserve la dictée VUE, pas le
+    pool). Absente ⇒ on retombe sur `etape.ref` (leçon / dictée figée) à la résolution.
+    `activite` (facultatif, #464) fixe le type d'activité attendu à l'attribution quand le mode
+    n'en impose pas un seul (une épinglée peut être une leçon OU une dictée). */
+export function marquerEtapeLancee(
+	etapeId: string,
+	now: number,
+	ref?: string,
+	activite?: ActivityKind,
+): void {
 	const jour = etatSeanceJour(now);
 	if (!jour) return;
 	const etape = defApplicable(chargerSeances(), now)?.etapes.find((e) => e.id === etapeId);
 	if (!etape) return;
-	jour.pending = { etapeId, kind: etape.kind, launchTs: now, ref };
+	jour.pending = { etapeId, kind: etape.kind, launchTs: now, ref, activite };
 	if (jour.debutTs == null) jour.debutTs = now;
 	lsSet(SEANCE_JOUR_KEY, jour);
 }
@@ -361,11 +436,16 @@ export interface ResolutionSeance {
     seule étape que l'enfant vient de faire. ⚠️ Si un jour un runner permet d'enchaîner
     un AUTRE exercice sans repasser par l'accueil, cet invariant tombe et il faudrait
     alors vérifier `ref` (que le journal ne porte pas) → à rouvrir à ce moment-là. */
-export function resoudrePending(now: number): ResolutionSeance {
+export function resoudrePending(
+	now: number,
+	ctx: ContexteSeance = CONTEXTE_VIDE,
+): ResolutionSeance {
 	const jour = etatSeanceJour(now);
 	if (!jour || !jour.pending) return { credited: false, etapeId: null, justCompleted: false };
 	const p = jour.pending;
-	const activite = SEANCE_MODE_INFOS[p.kind].activite;
+	// Type attendu : celui RÉELLEMENT lancé s'il a été mémorisé (étape « à revoir », #464),
+	// sinon celui du mode.
+	const activite = p.activite ?? SEANCE_MODE_INFOS[p.kind].activite;
 	// plus ancienne complétion du bon type survenue DEPUIS le lancement (une activité
 	// antérieure à `launchTs` — mode déjà fait plus tôt dans la journée — ne compte pas).
 	const hit = loadActivity()
@@ -379,9 +459,8 @@ export function resoudrePending(now: number): ResolutionSeance {
 	}
 	const def = defApplicable(chargerSeances(), now);
 	const etape = def?.etapes.find((e) => e.id === p.etapeId);
-	const wasComplete = jour.complete;
 	if (etape) {
-		jour.faits[p.etapeId] = Math.min(etape.count, (jour.faits[p.etapeId] ?? 0) + 1);
+		jour.faits[p.etapeId] = Math.min(countRequis(etape), (jour.faits[p.etapeId] ?? 0) + 1);
 		jour.completions.push({
 			etapeId: p.etapeId,
 			kind: p.kind,
@@ -391,11 +470,44 @@ export function resoudrePending(now: number): ResolutionSeance {
 		});
 	}
 	jour.pending = null;
-	jour.complete = !!def && def.etapes.every((e) => (jour.faits[e.id] ?? 0) >= e.count);
-	const justCompleted = jour.complete && !wasComplete;
-	if (justCompleted) lsSet(SEANCES_DONE_KEY, seancesCompletees() + 1);
+	const justCompleted = acterCompletion(jour, def, ctx);
 	lsSet(SEANCE_JOUR_KEY, jour);
 	return { credited: !!etape, etapeId: etape ? p.etapeId : null, justCompleted };
+}
+
+/* Mémoire de RÉCOMPENSE du jour : passe l'état à « complet » s'il l'est devenu et signale
+   la primeur, pour que célébration et trophée n'arrivent qu'une fois. Ne redescend JAMAIS à
+   « incomplet » : une étape qui réapparaît en cours de journée (le parent épingle après coup,
+   #464) rouvre le programme À L'ÉCRAN — la vue le dérive de ce qui reste à faire — mais ne
+   reprend pas une récompense déjà donnée. Complétion calculée sur les seules étapes
+   APPLICABLES : aucune applicable ⇒ rien à célébrer (`every` sur une liste vide vaut `true`,
+   ce qui fêterait un programme sans activité). Mute `jour`, à l'appelant de le persister. */
+function acterCompletion(
+	jour: SeanceJour,
+	def: SeanceDef | null | undefined,
+	ctx: ContexteSeance,
+): boolean {
+	if (jour.complete || !def) return false;
+	const applicables = etapesApplicables(def, ctx);
+	if (applicables.length === 0) return false;
+	if (!applicables.every((e) => (jour.faits[e.id] ?? 0) >= countRequis(e))) return false;
+	jour.complete = true;
+	lsSet(SEANCES_DONE_KEY, seancesCompletees() + 1);
+	return true;
+}
+
+/** Acte la complétion du programme du jour SANS qu'une étape vienne d'être réalisée : le
+    contexte peut changer de lui-même (#464) et escamoter la DERNIÈRE étape restante — une
+    épinglée que l'adulte retire, ou qui redevient solide parce que l'enfant l'a travaillée
+    depuis la carte d'accueil. Le programme est alors terminé sans passer par
+    `resoudrePending`, et sa récompense serait perdue. Renvoie `true` la seule fois où la
+    complétion est actée (⇒ à célébrer). Idempotent, sans effet s'il reste à faire. */
+export function consoliderCompletion(now: number, ctx: ContexteSeance = CONTEXTE_VIDE): boolean {
+	const jour = etatSeanceJour(now);
+	if (!jour || jour.complete) return false;
+	const justCompleted = acterCompletion(jour, defApplicable(chargerSeances(), now), ctx);
+	if (justCompleted) lsSet(SEANCE_JOUR_KEY, jour);
+	return justCompleted;
 }
 
 /** Nombre CUMULÉ de séances complétées (jamais remis à zéro) — base du trophée. */

@@ -14,30 +14,48 @@
    rendre l'accueil et l'écran). La complétion de TOUT le programme déclenche la
    récompense (modale + confettis + trophée), sans XP (chaque mode a déjà donné le
    sien) — cf. décisions #440.
+
+   Contexte du jour (#464) : le cœur ne lit pas seul la file « à revoir » (l'« acquis »
+   d'une dictée dépend de la dispo du TTS, connue d'ici seulement). C'est donc CE module
+   qui construit le `ContexteSeance` et l'unique porte d'entrée de lecture de la séance
+   côté UI (`vueProgramme`, navigation comprise).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
 import { getLessonById, type SubjectId } from '../core/catalog';
 import { leconDuJour } from '../core/lecon-du-jour';
 import { countDue } from '../core/revision-select';
-import { loadLessonRevisions } from '../core/progress';
+import { loadLessonRevisions, type ActivityKind } from '../core/progress';
 import { loadOrtho } from '../core/orthographe/store';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { evaluateTrophies } from '../core/rewards';
 import {
+	revoirActives,
+	orthoRevoirId,
+	isOrthoRevoirId,
+	orthoIdFromRevoir,
+	type RevoirEntry,
+} from '../core/encadrant-stats';
+import {
 	vueSeanceDuJour,
 	marquerEtapeLancee,
 	resoudrePending,
+	consoliderCompletion,
 	ciblesEtape,
 	ciblesValides,
 	tirerCible,
+	tirerParmi,
 	SEANCE_MODE_INFOS,
+	type ContexteSeance,
+	type SeanceEtape,
 	type VueEtape,
+	type VueSeance,
 } from '../core/seance';
 import { icon } from './icon';
 import { subjectIcon } from './cat-visuals';
 import { startRevisionEspacee, startLecon, startOrthoLecon } from './navigation';
 import { startDefaultSprint } from './sprint';
 import { showCelebration } from './effects';
+import { dicteeDisponible } from './tts';
 
 /* ---------- Cibles d'une étape « dictée » (#463) ---------- */
 /* Ids des dictées actuellement proposables au profil actif (prédéfinies du niveau +
@@ -47,14 +65,51 @@ function dicteesDisponibles(): string[] {
 	return listOrthoLecons(loadOrtho()).map((x) => x.id);
 }
 
+/* ---------- Cibles d'une étape « à revoir » (#464) ---------- */
+/* Pool DYNAMIQUE de l'étape « à revoir » : les entrées épinglées par l'encadrant encore
+   à travailler (revoirActives fait l'auto-nettoyage — une notion redevenue solide sort).
+   On garde l'id de FILE (préfixé `ortho:` pour une dictée) : il porte la nature de
+   l'entrée, ce qui suffit à la lancer et à l'attribuer sans re-résoudre le catalogue. */
+function aRevoirEntrees(): RevoirEntry[] {
+	return revoirActives(dicteeDisponible());
+}
+function aRevoirPool(): string[] {
+	return aRevoirEntrees().map((e) => (e.kind === 'ortho' ? orthoRevoirId(e.id) : e.id));
+}
+
+/* Contexte du jour passé à toutes les lectures de la séance (cf. en-tête). */
+function contexteProgramme(): ContexteSeance {
+	return { aRevoir: aRevoirPool().length };
+}
+
+/** Vue du programme du jour, contexte inclus. Porte d'entrée UNIQUE côté UI (la
+    navigation l'utilise aussi pour savoir s'il y a un programme aujourd'hui). */
+export function vueProgramme(): VueSeance | null {
+	return vueSeanceDuJour(Date.now(), contexteProgramme());
+}
+
 /* ---------- Visuels d'une étape ---------- */
-function etapeVisuel(v: VueEtape): { ico: string; titre: string } {
+/* `sous` : repère facultatif affiché SOUS le titre quand celui-ci nomme une cible précise
+   (l'enfant voit ce qu'il va faire ET de quoi il s'agit) ; il cède la place au repère
+   « combien de fois » quand l'étape est demandée plusieurs fois. */
+function etapeVisuel(v: VueEtape): { ico: string; titre: string; sous?: string } {
 	const e = v.etape;
 	switch (e.kind) {
 		case 'sprint':
 			return { ico: icon('run'), titre: SEANCE_MODE_INFOS.sprint.label };
 		case 'revision':
 			return { ico: icon('clock-clockwise'), titre: 'Révision' };
+		case 'aRevoir': {
+			// Icône « marque-page » (épinglé), distincte des deux flèches circulaires déjà
+			// prises par la révision. Une seule épinglée en jeu ⇒ on la NOMME, comme le fait
+			// la carte d'accueil (avis pédagogue : à cet âge, ce qui compte est de voir ce
+			// qu'on va faire, pas de comprendre qui a choisi). Plusieurs ⇒ titre générique,
+			// la cible est tirée au lancement (même parti pris que le pool de dictées).
+			const entrees = aRevoirEntrees();
+			return entrees.length === 1
+				? { ico: icon('bookmark'), titre: entrees[0].label, sous: 'À revoir' }
+				: { ico: icon('bookmark'), titre: 'À revoir' };
+		}
 		case 'leconDuJour':
 			return { ico: icon('star'), titre: 'Leçon du jour' };
 		case 'lecon': {
@@ -95,6 +150,10 @@ function lancable(v: VueEtape): { ok: boolean; raison?: string } {
 			return countDue(loadOrtho(), loadLessonRevisions(), Date.now()) > 0
 				? { ok: true }
 				: { ok: false, raison: "Rien à réviser aujourd'hui" };
+		case 'aRevoir':
+			// Garde-fou : une étape « à revoir » sans rien d'épinglé est déjà escamotée de la
+			// vue (etapeApplicable, #464) — on ne passe ici qu'en cas de contexte désynchronisé.
+			return aRevoirPool().length ? { ok: true } : { ok: false, raison: 'Rien à revoir' };
 		case 'leconDuJour':
 			return leconDuJour() ? { ok: true } : { ok: false, raison: 'Tout est déjà réussi' };
 		case 'lecon':
@@ -108,18 +167,32 @@ function lancable(v: VueEtape): { ok: boolean; raison?: string } {
 	}
 }
 
+/* Tirage de la cible d'une étape à POOL, juste avant son lancement. Deux pools : les
+   dictées CONFIGURÉES par l'encadrant (#463) et la file ÉPINGLÉE du jour (#464). Renvoie
+   la cible à mémoriser dans le marqueur (`ref`, métrique) et, pour « à revoir », le type
+   d'activité réellement visé (`activite`) — une épinglée est une leçon OU une dictée, là
+   où les autres modes ont un type fixe. Les modes sans pool ne tirent rien. */
+function tirageEtape(e: SeanceEtape): { ref?: string; activite?: ActivityKind } {
+	if (e.kind === 'dictee') return { ref: tirerCible(e, dicteesDisponibles()) };
+	if (e.kind === 'aRevoir') {
+		const ref = tirerParmi(aRevoirPool());
+		return { ref, activite: ref && isOrthoRevoirId(ref) ? 'dictee' : 'lecon' };
+	}
+	return {};
+}
+
 /* Lance le mode d'une étape DEPUIS le programme : pose le marqueur d'attribution
    puis délègue au déclencheur du mode. Sans effet si l'étape est épuisée / non
    lançable (garde-fou contre un clic sur une tuile inactive). */
 export function lancerEtapeProgramme(etapeId: string): void {
-	const vue = vueSeanceDuJour(Date.now());
+	const vue = vueProgramme();
 	const v = vue?.etapes.find((x) => x.etape.id === etapeId);
 	if (!v || v.reste <= 0 || !lancable(v).ok) return;
 	const e = v.etape;
-	// Dictée : on TIRE la cible du pool AVANT de poser le marqueur, afin de la mémoriser
-	// (métrique #463) et de la lancer. Les autres modes n'ont pas de cible tirée au lancement.
-	const dicteeCible = e.kind === 'dictee' ? tirerCible(e, dicteesDisponibles()) : undefined;
-	marquerEtapeLancee(etapeId, Date.now(), dicteeCible);
+	// La cible d'une étape à pool est tirée AVANT de poser le marqueur, pour la mémoriser
+	// (métrique) et la lancer.
+	const { ref: cible, activite } = tirageEtape(e);
+	marquerEtapeLancee(etapeId, Date.now(), cible, activite);
 	switch (e.kind) {
 		case 'sprint':
 			// Depuis le programme, l'enfant ne configure pas : lancement direct avec la
@@ -142,7 +215,12 @@ export function lancerEtapeProgramme(etapeId: string): void {
 			if (e.ref) startLecon(e.ref, 'programme');
 			break;
 		case 'dictee':
-			if (dicteeCible) startOrthoLecon(dicteeCible, 'programme');
+			if (cible) startOrthoLecon(cible, 'programme');
+			break;
+		case 'aRevoir':
+			// L'id de file porte la nature de l'entrée tirée : dictée (préfixe) ou leçon.
+			if (cible && isOrthoRevoirId(cible)) startOrthoLecon(orthoIdFromRevoir(cible), 'programme');
+			else if (cible) startLecon(cible, 'programme');
 			break;
 	}
 }
@@ -150,7 +228,7 @@ export function lancerEtapeProgramme(etapeId: string): void {
 /* « Choisis pour moi » : pioche une étape restante LANÇABLE au hasard et la lance
    (lève le blocage d'initiation, avis specialiste-troubles-apprentissage). */
 function lancerHasard(): void {
-	const vue = vueSeanceDuJour(Date.now());
+	const vue = vueProgramme();
 	if (!vue) return;
 	const jouables = vue.restantes.filter((v) => lancable(v).ok);
 	if (!jouables.length) return;
@@ -171,9 +249,9 @@ function pastillesHTML(total: number, fait: number): string {
 }
 
 function tuileHTML(v: VueEtape): string {
-	const { ico, titre } = etapeVisuel(v);
+	const { ico, titre, sous } = etapeVisuel(v);
 	const l = lancable(v);
-	const repere = repereCount(v);
+	const repere = repereCount(v) || sous || '';
 	if (!l.ok) {
 		// Div non focusable (pas un <button disabled> : on veut garder la RAISON dans le
 		// flux de lecture). Pas d'aria-disabled — inerte sur un rôle générique (avis a11y).
@@ -209,7 +287,7 @@ function recapItemHTML(v: VueEtape): string {
 
 /* ---------- Écran #seance ---------- */
 export function renderSeance(el: HTMLElement): void {
-	const vue = vueSeanceDuJour(Date.now());
+	const vue = vueProgramme();
 	if (!vue) {
 		// Aucun programme aujourd'hui : la navigation redirige vers l'accueil.
 		el.innerHTML = '';
@@ -289,8 +367,12 @@ function wire(el: HTMLElement): void {
 /* Consomme un éventuel marqueur « étape en cours » au retour vers l'accueil / le
    programme, et célèbre si le programme ENTIER vient d'être terminé. Idempotent. */
 export function rafraichirProgramme(): void {
-	const res = resoudrePending(Date.now());
-	if (res.justCompleted) {
+	const ctx = contexteProgramme();
+	const res = resoudrePending(Date.now(), ctx);
+	// Le programme peut aussi s'achever SANS étape réalisée : le contexte a escamoté la
+	// dernière étape restante (épinglée retirée, ou travaillée depuis la carte d'accueil,
+	// #464). Sans ce rattrapage, la complétion passerait inaperçue (ni fête, ni trophée).
+	if (res.justCompleted || consoliderCompletion(Date.now(), ctx)) {
 		const nouveaux = evaluateTrophies(); // rattrape le trophée de programme (1/7/30)
 		showCelebration([
 			{ icon: '🎉', text: 'Bravo, tu as fait tout ton programme du jour !' },
@@ -302,7 +384,7 @@ export function rafraichirProgramme(): void {
 /* ---------- Carte d'accueil ---------- */
 export function renderProgrammeCard(el: HTMLElement | null): void {
 	if (!el) return;
-	const vue = vueSeanceDuJour(Date.now());
+	const vue = vueProgramme();
 	if (!vue) {
 		el.style.display = 'none';
 		el.innerHTML = '';

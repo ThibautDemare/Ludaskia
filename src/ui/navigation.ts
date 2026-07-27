@@ -50,6 +50,7 @@ import { renderSeance, rafraichirProgramme } from './seance';
 import { vueSeanceDuJour } from '../core/seance';
 import { leconKey } from '../core/resume';
 import { captureResume, clearResumeCtx, setResumeCtx, maybeRelaunch } from './resume';
+import { setOrigineActivite, origineActivite, type OrigineActivite } from './retour-activite';
 
 // Icône de matière pour les cartes de reprise (#63).
 const SUBJECT_ICON: Record<string, string> = { math: 'calculator', francais: 'book-open' };
@@ -128,7 +129,8 @@ export function goCategories(subjectId: string) {
 export function goCategorie(categoryId: string) {
 	location.hash = 'categorie-' + categoryId;
 }
-export function startOrthoLecon(id: string) {
+export function startOrthoLecon(id: string, origine: OrigineActivite = 'catalogue') {
+	setOrigineActivite(origine); // provenance du lancement (#461) : conditionne le retour de fin
 	// Liste découverte → choix du mode (#69) ; sinon lancement direct (découverte).
 	location.hash = (orthoDiscoveryComplete(id) ? 'ortho-mode-' : 'ortho-') + id;
 }
@@ -150,9 +152,10 @@ export function showEncadrant() {
 export function startSeance() {
 	location.hash = 'seance';
 }
-export function startLecon(id: string) {
+export function startLecon(id: string, origine: OrigineActivite = 'catalogue') {
 	const lesson = getLessonById(id);
 	if (!lesson) return;
+	setOrigineActivite(origine); // provenance du lancement (#461) : conditionne le retour de fin
 	// Plusieurs modes (ex. conjugaison saisie/QCM) → écran de choix (#69).
 	if ((lesson.exerciseType.modes?.length ?? 0) > 1) {
 		location.hash = 'mode-' + id;
@@ -169,8 +172,9 @@ export function showModeChoice(id: string) {
 	const lesson = getLessonById(id);
 	const opts = lesson?.exerciseType.modes;
 	if (!lesson || !opts || opts.length <= 1) {
-		// Pas de choix réel → lancement direct (cohérent avec le mono-mode).
-		startLecon(id);
+		// Pas de choix réel → lancement direct (cohérent avec le mono-mode). On PROPAGE
+		// l'origine (#461) : cet écran est une étape du lancement, pas une nouvelle entrée.
+		startLecon(id, origineActivite());
 		return;
 	}
 	resetSessionUI();

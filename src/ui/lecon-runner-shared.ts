@@ -17,6 +17,7 @@ import { streakSuffix } from '../core/progress';
 import { announceRewards } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import { goCategorie } from './navigation';
+import { retourFinActivite } from './retour-activite';
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -52,7 +53,7 @@ export interface LeconResultOpts {
 	out: LessonRunOutcome; // issue renvoyée par finishLeconRun
 	score: number;
 	total: number;
-	category: string; // catégorie de la leçon (bouton « Retour »)
+	category: string; // catégorie de la leçon (bouton « Retour », hors programme)
 	onAgain: () => void; // relance de la leçon (bouton « Recommencer »)
 	lexique?: ProbLexique; // problème : « problèmes réussis » au lieu de « bonnes réponses »
 }
@@ -63,6 +64,8 @@ export interface LeconResultOpts {
 export function renderLeconResult(opts: LeconResultOpts): void {
 	const { out, score, total, category, onAgain, lexique } = opts;
 	const acc = total ? Math.round((score / total) * 100) : 0;
+	// Retour d'où l'on vient (#461) : le programme du jour s'il a lancé la leçon.
+	const retour = retourFinActivite({ label: 'Retour', aller: () => goCategorie(category) });
 	let extra = '';
 	if (out.starInfo) {
 		if (out.starInfo.perfect)
@@ -90,15 +93,13 @@ export function renderLeconResult(opts: LeconResultOpts): void {
           ${extra}
           <div class="sprint-actions">
             <button class="sprint-btn" id="leconAgain">↻ Recommencer</button>
-            <button class="sprint-btn ghost" id="leconBack">Retour</button>
+            <button class="sprint-btn ghost" id="leconBack">${retour.label}</button>
           </div>
         </div>
       </div>
     </div>`;
 	sheets().querySelector('#leconAgain')!.addEventListener('click', onAgain);
-	sheets()
-		.querySelector('#leconBack')!
-		.addEventListener('click', () => goCategorie(category));
+	sheets().querySelector('#leconBack')!.addEventListener('click', retour.aller);
 	// Récompenses : modale de niveau (puis confettis), comme les autres écrans.
 	announceRewards(out.niveauGagne, out.recompensesNiv, out.celeb);
 }

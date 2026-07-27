@@ -130,16 +130,19 @@ export function lancerEtapeProgramme(etapeId: string): void {
 		case 'revision':
 			startRevisionEspacee();
 			break;
+		// Leçons et dictées reçoivent l'origine « programme » (#461) : leur écran de fin
+		// ramène ici, et non à la catégorie de la leçon. Sprint et révision finissent sur
+		// l'accueil (comportement inchangé), qui re-rend la carte du programme.
 		case 'leconDuJour': {
 			const l = leconDuJour();
-			if (l) startLecon(l.id);
+			if (l) startLecon(l.id, 'programme');
 			break;
 		}
 		case 'lecon':
-			if (e.ref) startLecon(e.ref);
+			if (e.ref) startLecon(e.ref, 'programme');
 			break;
 		case 'dictee':
-			if (dicteeCible) startOrthoLecon(dicteeCible);
+			if (dicteeCible) startOrthoLecon(dicteeCible, 'programme');
 			break;
 	}
 }

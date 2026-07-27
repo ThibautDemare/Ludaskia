@@ -86,7 +86,13 @@ ci-dessous.
 - **`encadrant-reglages.ts`** — **réglages** sur le profil consulté (onglet
   **Réglages**, #459) : classe de référence + niveau par matière, longueur d'une
   séance de Révision (#439, menu à paliers fixes `REVISION_PLAFOND_CHOIX`),
-  aménagements « dys »/attention ; injecte le bloc PIN rendu par `encadrant-pin`.
+  aménagements « dys »/attention, **« Leçons déjà vues en classe »** (#478 — cf.
+  [Espace encadrant](espace-encadrant.md) et `core/vu-ailleurs.ts`) ; injecte le
+  bloc PIN rendu par `encadrant-pin`. Expose `reglagesApresRendu` (hook post-rendu
+  appelé par l'orchestrateur après avoir posé le HTML de l'onglet — pose l'état
+  « indéterminé » des cases de catégorie, impossible en HTML seul) et
+  `reglagesClick` (dépliage d'une catégorie, déclaration groupée) en plus de
+  `reglagesChange`.
 - **`encadrant-profils.ts`** — sélecteur de profils en **consultation** (≠ bascule)
   + **gestion** réservée à l'adulte (renommer/avatar/réinitialiser/supprimer/créer),
   plus export/import de tous les profils (onglet **Profils**, #459).

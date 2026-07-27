@@ -437,11 +437,17 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   révision espacée (avancer vers le neuf ↔ entretenir l'acquis) et du défi du jour.
 - **`sprint-scope.ts`** — **périmètre du sprint** (#208, pure) : `all` (toutes les
   leçons éligibles du niveau) ou `seen` (uniquement les leçons **déjà rencontrées**,
-  `loadLessonFirstSeen` — pas « acquises » : le sprint consolide, y compris le fragile).
-  `appliquerScope` filtre, `scopeParDefaut` donne le défaut **adaptatif** (« déjà vues »
-  tant qu'il reste du non-rencontré, sinon « tout »), `perimetreChoisissable` dit si le
-  choix a un sens. Consommé par `ui/sprint.ts` (sélecteur dans l'écran de config, options
-  vides au périmètre courant désactivées) ; un favori (`lessons`) ignore le périmètre.
+  `loadRencontrees` — pas « acquises » : le sprint consolide, y compris le fragile).
+  « Rencontrée » (#478) = union de `loadLessonFirstSeen` (jouée dans l'appli) **et**
+  de `vu-ailleurs.ts:loadVuAilleurs` (déclarée « vue en classe » par l'adulte, cf.
+  [Espace encadrant](espace-encadrant.md)) — **seul endroit** où les deux cartes sont
+  réunies : les autres consommateurs de la date de 1er passage (objectif « découvre une
+  nouvelle leçon », récap encadrant « notions maîtrisées récemment ») restent aveugles
+  aux déclarations. `appliquerScope` filtre, `scopeParDefaut` donne le défaut
+  **adaptatif** (« déjà vues » tant qu'il reste du non-rencontré, sinon « tout »),
+  `perimetreChoisissable` dit si le choix a un sens. Consommé par `ui/sprint.ts`
+  (sélecteur dans l'écran de config, options vides au périmètre courant désactivées) ;
+  un favori (`lessons`) ignore le périmètre.
 
 ## Contenu maths & génération de fiches/bilans
 
@@ -527,8 +533,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   est plafonné à 2 sources **et** son budget de slots est plafonné pour laisser une
   place au round-robin — ce second garde-fou est indispensable depuis que le plafond est
   réglable et peut descendre bas (#439), sinon une session courte serait entièrement
-  raflée par le vidage. `countDue` et l'affichage de l'accueil restent sur le total non
-  plafonné.
+  raflée par le vidage. `countDue` reste sur le total non plafonné (base du décompte) ;
+  **l'affichage de la carte d'accueil, lui, ne l'est plus depuis #478** : au-delà d'une
+  séance, il annonce l'EFFORT DU JOUR (le plafond, ce que la séance proposera vraiment)
+  plutôt que ce total — une déclaration massive « vu en classe » peut rendre des
+  dizaines de leçons dues d'un coup, et un compteur à trois chiffres qui ne descend pas
+  malgré le travail serait décourageant (`ui/render.ts:fillRevisionRecord`).
 - **`revision-migrate.ts`** — **reprise** de l'historique vers la révision : à
   l'activation d'un profil (`applyActive`), les leçons déjà notées et les mots
   déjà en banque sans état SR entrent en rotation, **datés J-1** → dus dès le jour
@@ -718,3 +728,26 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   [Gamification](gamification.md)). Consommé côté enfant par `ui/seance.ts` (porte
   d'entrée unique `vueProgramme`, cf. [`ui/`](ui.md)) et côté encadrant par
   `ui/encadrant-seance.ts`.
+- **`vu-ailleurs.ts`** (#478, pur) — l'adulte déclare, pour le profil **consulté**,
+  une leçon travaillée **hors de l'application** (rattrapage à l'arrivée sur l'appli,
+  notions vues en classe après un changement de niveau). Carte **dédiée**
+  `ludaskia_lessonVuAilleurs` (`Record<'lessonId@niveau', true>`, cf. [Données &
+  profils](donnees-et-profils.md)), namespacée par niveau comme les autres cartes de
+  progression : `declarerVuAilleursFor(uuid, entrées, vu, now)` écrit par UUID (jamais
+  le profil actif) et bumpe `updatedAt` via `touchProfile` (l'écriture par UUID
+  court-circuite `onDataWrite`). ⚠️ Cette carte NE remplace PAS
+  `progress.ts:LESSON_FIRST_SEEN_KEY` (date de 1er passage) — deux sources distinctes,
+  réunies **uniquement** dans `sprint-scope.ts` (cf. ci-dessus). Effet sur la révision
+  espacée : `declarerVuAilleursFor` appelle la variante par UUID de l'entrée en
+  rotation (`progress.ts:enterLessonsRevisionFor`, même comportement standard qu'un
+  vrai passage — état neuf, 1er re-test à J+1) ; à l'annulation,
+  `progress.ts:retirerRevisionsDeclareesFor` ne retire l'état SR **que** s'il n'a
+  jamais été re-testé (`dernierTest === null`) **et** que la leçon n'a aucune
+  statistique dans l'appli — on ne détruit jamais un progrès issu d'un vrai passage,
+  on ne défait que ce que la déclaration avait créé. **Modèle de l'écran adulte**
+  (`categoriesDeclarables(uuid, niveauDe)`, aucun DOM) : parcourt `CATEGORIES` comme
+  le récap de progression et donne, par catégorie, chaque leçon avec son état
+  (`declaree`/`jouee`) et trois compteurs (`declarables`, `declarees`, `rencontrees` =
+  jouées ∪ déclarées, comptées une seule fois) ; une leçon déjà **jouée** dans l'appli
+  est exclue des `declarables` (la déclarer n'ajouterait rien). Consommé par
+  `ui/encadrant-reglages.ts` (cf. [Espace encadrant](espace-encadrant.md)).

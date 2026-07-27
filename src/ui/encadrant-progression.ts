@@ -265,7 +265,7 @@ function maitriseHTML(recap: RecapProfil): string {
           ${tendanceHTML(l.tendance)}
           <span class="enc-actions">
             <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${l.lessonId}">${l.epingle ? 'Retirer' : 'Épingler'}</button>
-            ${boutonsImpression(l.lessonId)}
+            ${boutonsImpression(l.lessonId, l.label)}
           </span>
         </li>`;
 			})
@@ -305,7 +305,7 @@ function matieresHTML(recap: RecapProfil): string {
       </li>`,
 		)
 		.join('');
-	return `<p class="enc-sub-lab">Couverture par matière</p>
+	return `<h4 class="enc-sub-lab">Couverture par matière</h4>
       <ul class="enc-mat-list">${items}</ul>`;
 }
 
@@ -320,7 +320,7 @@ function frisesHTML(recap: RecapProfil): string {
 	if (recap.frises.length === 0) {
 		// Rien à tracer ; si l'enfant a déjà travaillé, on annonce que la vue viendra.
 		return recap.parMatiere.some((m) => m.travaillees > 0)
-			? `<p class="enc-sub-lab">Évolution récente</p>
+			? `<h4 class="enc-sub-lab">Évolution récente</h4>
          <p class="enc-hint">L'évolution par matière apparaîtra ici après quelques semaines d'entraînement.</p>`
 			: '';
 	}
@@ -332,7 +332,7 @@ function frisesHTML(recap: RecapProfil): string {
 	// Synthèse VISIBLE (pas seulement dans les aria-label des colonnes) : donne le total par
 	// matière d'un coup d'œil, sans devoir parcourir les 12 colonnes (a11y, cf. graphe d'activité).
 	const synthese = recap.frises.map((f) => `${f.total} en ${f.label.toLowerCase()}`).join(', ');
-	return `<p class="enc-sub-lab">Évolution récente</p>
+	return `<h4 class="enc-sub-lab">Évolution récente</h4>
       <p class="enc-hint">Notions ayant franchi un cap sur les ${nbSemaines} dernières semaines : ${synthese}.</p>
       <div class="enc-evol">${frises}</div>
       <p class="enc-evol-cap" aria-hidden="true"><span>sur les ${nbSemaines} dernières semaines</span><span>cette semaine →</span></p>
@@ -459,10 +459,14 @@ export function dicteesProposeesHTML(consulte: Profile): string {
 }
 
 /* Boutons d'impression d'une leçon (au niveau du profil consulté) : fiche vierge +
-   fiche avec corrigé (#41). Réutilisés par le détail des catégories ET « à revoir ». */
-function boutonsImpression(lessonId: string): string {
-	return `<button type="button" class="enc-btn-sec" data-act="imprimer" data-lesson="${lessonId}">${icon('printer')} Fiche</button>
-      <button type="button" class="enc-btn-sec" data-act="imprimer" data-corrige="1" data-lesson="${lessonId}">${icon('printer')} Corrigé</button>`;
+   fiche avec corrigé (#41). Réutilisés par le détail des catégories ET « à revoir ».
+   `label` ne sert QU'aux `aria-label` : l'onglet peut aligner une dizaine de « Fiche » /
+   « Corrigé » identiques, indistinguables pour qui navigue par liste de contrôles (rotor
+   VoiceOver, liste de formulaires NVDA) — le nom accessible doit porter la leçon (a11y). */
+function boutonsImpression(lessonId: string, label: string): string {
+	const nom = `« ${escapeHTML(label)} »`;
+	return `<button type="button" class="enc-btn-sec" data-act="imprimer" data-lesson="${lessonId}" aria-label="Imprimer la fiche de ${nom}">${icon('printer')} Fiche</button>
+      <button type="button" class="enc-btn-sec" data-act="imprimer" data-corrige="1" data-lesson="${lessonId}" aria-label="Imprimer la fiche avec corrigé de ${nom}">${icon('printer')} Corrigé</button>`;
 }
 
 /* Une ligne « à revoir » : libellé + état éventuel + actions (épingler/retirer + impression).
@@ -486,7 +490,7 @@ function ligneRevoir(
       ${badge}
       <span class="enc-actions">
         <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(label)} »">${epingle ? 'Retirer' : 'Épingler'}</button>
-        ${imprimable ? boutonsImpression(entryId) : ''}
+        ${imprimable ? boutonsImpression(entryId, label) : ''}
       </span>
     </li>`;
 }
@@ -515,12 +519,12 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 				.join('')}</ul>`
 		: `<p class="enc-hint">Aucune leçon épinglée pour le moment.</p>`;
 	const blocSuggestions = suggestions.length
-		? `<p class="enc-sub-lab">Suggestions</p>
+		? `<h4 class="enc-sub-lab">Suggestions</h4>
        <p class="enc-hint">Leçons un peu fragiles, qui gagneraient à être revues :</p>
        <ul class="enc-revoir">${suggestions.map((n) => ligneRevoir(n.lessonId, n.label, false, { etat: n.niveau })).join('')}</ul>`
 		: '';
 	const blocRetraits = retraits.length
-		? `<p class="enc-sub-lab">Retirées automatiquement</p>
+		? `<h4 class="enc-sub-lab">Retirées automatiquement</h4>
        <p class="enc-hint">Ces notions ont quitté la liste d'elles-mêmes : ${escapeHTML(consulte.name)} les maîtrise de nouveau. Épinglez-en une si vous voulez quand même y revenir.</p>
        <ul class="enc-revoir">${retraits
 					.map((r) =>
@@ -535,7 +539,7 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon('repeat')} À revoir ensemble</h3>
       <p class="enc-hint">Épinglez une leçon : elle apparaîtra sur l'accueil de ${escapeHTML(consulte.name)} pour qu'il ou elle y revienne. Pour épingler <strong>n'importe quelle leçon</strong> (même pas encore abordée), dépliez une catégorie dans l'onglet <strong>Suivi</strong>.</p>
-      <p class="enc-sub-lab">Épinglées</p>
+      <h4 class="enc-sub-lab">Épinglées</h4>
       ${blocEpinglees}
       ${blocSuggestions}
       ${blocRetraits}

@@ -1006,6 +1006,10 @@ $evol-amorce: #7c8494;
 }
 
 /* ---------- À revoir ensemble ---------- */
+/* Intitulé d'une SOUS-section de bloc (« Épinglées », « Couverture par matière »…) : porté
+   par un `<h4>` sous le `<h3>` du bloc, pour que la navigation par titres d'un lecteur
+   d'écran distingue les sous-groupes (a11y) — la classe neutralise les défauts du h4, le
+   rendu reste celui d'un petit intitulé gris. */
 .enc-sub-lab {
 	font-size: 0.85rem;
 	font-weight: 800;

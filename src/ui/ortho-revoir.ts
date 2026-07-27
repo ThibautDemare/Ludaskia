@@ -15,7 +15,7 @@ import { motsDeLecon, listOrthoLecons } from '../core/orthographe/lessons';
 import type { MotOrtho, OrthoState } from '../core/orthographe/types';
 import { lettresMotHTML, dessinerEntourages, renderAtelier } from './ortho-atelier';
 import { goCategorie } from './navigation';
-import { retourFinActivite } from './retour-activite';
+import { retourFinActivite, activiteDemarree } from './retour-activite';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 
 let st: OrthoState;
@@ -35,6 +35,9 @@ function cleanup(): void {
 
 /** Rend la page de relecture d'une liste dans `host` (typiquement #sheets). */
 export function renderOrthoRevoir(host: HTMLElement, id: string): void {
+	// Même validation de provenance que les runners (#461) : cette page est atteignable
+	// par le routeur sans déclencheur (accès direct au hash, Précédent/Suivant).
+	activiteDemarree(id);
 	hostEl = host;
 	lessonId = id;
 	render();

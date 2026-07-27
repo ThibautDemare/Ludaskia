@@ -12,8 +12,16 @@
    l'écran de fin. L'invariant « chaque lancement pose son origine » évite qu'un
    lancement suivant hérite de la provenance du précédent.
 
-   Volontairement NON persistée : un rechargement de page (ou un accès direct à
-   `#lecon-N`) repart du catalogue, comportement historique.
+   Volontairement NON persistée : au chargement de la page (rechargement, accès direct
+   à `#lecon-N`) on repart du catalogue, comportement historique.
+
+   L'origine est posée avec la CLÉ de l'activité lancée, et l'écran qui démarre
+   réellement l'activité l'annonce (`activiteDemarree`). Sans cela, un retour par le
+   bouton Précédent sur l'entrée d'historique d'une activité lancée PLUS TÔT (le routeur
+   la rejoue sans repasser par un déclencheur) hériterait de l'origine du DERNIER
+   lancement, et son bouton de fin annoncerait la mauvaise destination. Clé qui ne
+   correspond pas ⇒ la provenance n'est pas la nôtre ⇒ retour à la valeur sûre
+   « catalogue ».
 
    Le bouton « Quitter » (accueil) n'est PAS concerné : il garde sa destination,
    et l'accueil re-rend la carte du programme.
@@ -23,10 +31,27 @@
 export type OrigineActivite = 'catalogue' | 'programme';
 
 let origine: OrigineActivite = 'catalogue';
+// Clé (id de leçon / de liste) de l'activité que le dernier lancement a visée. Sert à
+// n'accorder l'origine qu'à CETTE activité — cf. `activiteDemarree`.
+let cleLancee: string | null = null;
 
-/** Pose l'origine du lancement en cours (appelé par les déclencheurs d'activité). */
-export function setOrigineActivite(o: OrigineActivite): void {
+/** Pose l'origine du lancement en cours (appelé par les déclencheurs d'activité).
+    `cle` = id de l'activité visée ; l'omettre (reprise) laisse l'origine sans clé, donc
+    sans effet possible sur une activité future. */
+export function setOrigineActivite(o: OrigineActivite, cle: string | null = null): void {
 	origine = o;
+	cleLancee = cle;
+}
+
+/** Annonce que l'activité `cle` DÉMARRE (appelé par `runLecon` / `startOrthoRun` /
+    la page de relecture, seuls à connaître l'activité réellement rendue). Si ce n'est pas
+    celle que le dernier lancement a posée, on a été rejoué par l'historique et non par un
+    déclencheur : la provenance n'est pas la nôtre → valeur sûre « catalogue ». Idempotent
+    (relancer la même activité — « Recommencer » — conserve son origine). */
+export function activiteDemarree(cle: string): void {
+	if (cle === cleLancee) return;
+	origine = 'catalogue';
+	cleLancee = cle;
 }
 
 /** Origine du lancement en cours (sert à la propager, ex. écran de choix de mode). */

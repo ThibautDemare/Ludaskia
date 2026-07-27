@@ -294,6 +294,26 @@ pure](core.md)) pour les formats composites :
   d'effort qui **ne pose pas** `currentMode` → il ajoute la classe lui-même après
   `setToolbar`. **Écran de choix de mode** (#69) : `showModeChoice` (catalogue) /
   `showOrthoModeView` (ortho) — affiché quand une leçon expose plusieurs modes.
+- **`retour-activite.ts`** (#461) — mémorise l'**origine** du lancement d'une activité
+  (`'catalogue' | 'programme'`, état de module **non persisté** : un rechargement ou un
+  accès direct à `#lecon-N` repart du catalogue), posée **avec la clé de l'activité visée**
+  par chaque déclencheur (`startLecon`/`startOrthoLecon` dans `navigation.ts`, propagée par
+  `showModeChoice`, remise à `'catalogue'` par `restoreResume` — une reprise est un
+  lancement catalogue). L'écran qui démarre réellement l'activité l'annonce
+  (`activiteDemarree(cle)` : `runLecon`, `startOrthoRun`, `renderOrthoRevoir`) ; une clé qui
+  ne correspond pas au dernier lancement ⇒ on a été rejoué par le routeur et non par un
+  déclencheur (Précédent/Suivant sur l'entrée d'historique d'une activité lancée plus tôt)
+  ⇒ retour à la valeur sûre `'catalogue'`, jamais une fausse promesse « Retour au
+  programme ». Idempotent : « Recommencer » la même activité garde son origine.
+  `retourFinActivite(cible, labelProgramme?)` la relit et rend au bouton « Retour » d'un
+  écran de fin d'activité soit la cible **catalogue** de l'appelant, soit une cible
+  **« Retour au programme »** routée vers `#seance` quand l'activité vient du
+  **programme du jour** (cf. [Modes & navigation](modes-et-navigation.md)). Consommé par
+  les écrans de fin — `session.ts` (fiche/saisie, `#btnBackCategorie`),
+  `lecon-runner-shared.ts` (runners « une question à la fois », `#leconBack`),
+  `ortho-runner.ts` (bilan, révision terminée, pause) et `ortho-revoir.ts` (« Je relis mes
+  mots »). INCHANGÉ : le bouton « Quitter » (accueil) et les fins de sprint / révision
+  espacée, qui ramènent à l'accueil (lequel re-rend déjà la carte du programme).
 
 ## Runners d'exercice
 

@@ -21,6 +21,8 @@ import {
 	listesOrthoProfil,
 	dicteesProposees,
 	epingleesProfil,
+	purgeRevoirSolides,
+	retraitsAutoProfil,
 	type RecapProfil,
 	type RecapListeOrtho,
 	type DicteeProposee,
@@ -472,12 +474,14 @@ function ligneRevoir(
 	entryId: string,
 	label: string,
 	epingle: boolean,
-	opts: { etat?: NiveauNotion; imprimable?: boolean } = {},
+	opts: { etat?: NiveauNotion; imprimable?: boolean; quand?: string } = {},
 ): string {
-	const { etat, imprimable = true } = opts;
+	const { etat, imprimable = true, quand } = opts;
 	const badge = etat
 		? `<span class="enc-revoir-etat enc-key-${etat}">${MOT_NIVEAU[etat]}</span>`
-		: '';
+		: quand
+			? `<span class="enc-revoir-quand">Retirée ${escapeHTML(quand)}</span>`
+			: '';
 	return `<li class="enc-revoir-item">
       <span class="enc-revoir-lab">${escapeHTML(label)}</span>
       ${badge}
@@ -489,11 +493,18 @@ function ligneRevoir(
 }
 
 export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
+	// Nettoyage DUR de la file avant lecture (#465) : la liste de gestion ne doit pas garder
+	// d'entrée « fantôme » (notion redevenue solide, déjà invisible côté enfant).
+	const now = Date.now();
+	purgeRevoirSolides(consulte, dicteeDisponible(), now);
 	// Entrées actuellement épinglées (leçons du catalogue ET listes de dictée), résolues.
 	const pinned = epingleesProfil(consulte);
 	const epingleeIds = new Set(pinned.map((e) => e.id));
 	// Suggestions AUTO : leçons « faiblardes » (perf récente < 70 %) non déjà épinglées (max 3).
 	const suggestions = recap.aRevoir.filter((n) => !epingleeIds.has(n.lessonId)).slice(0, 3);
+	// Trace des retraits automatiques (#465) : une épingle ne disparaît pas sans explication,
+	// et se remet d'un clic (« Épingler » → l'entrée est alors conservée, cf. purgeRevoirSolides).
+	const retraits = retraitsAutoProfil(consulte, now);
 
 	const blocEpinglees = pinned.length
 		? `<ul class="enc-revoir">${pinned
@@ -509,6 +520,18 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
        <p class="enc-hint">Leçons un peu fragiles, qui gagneraient à être revues :</p>
        <ul class="enc-revoir">${suggestions.map((n) => ligneRevoir(n.lessonId, n.label, false, { etat: n.niveau })).join('')}</ul>`
 		: '';
+	const blocRetraits = retraits.length
+		? `<p class="enc-sub-lab">Retirées automatiquement</p>
+       <p class="enc-hint">Ces notions ont quitté la liste d'elles-mêmes : ${escapeHTML(consulte.name)} les réussit à nouveau. Épinglez-en une de nouveau si vous voulez quand même y revenir.</p>
+       <ul class="enc-revoir">${retraits
+					.map((r) =>
+						ligneRevoir(r.id, r.label, false, {
+							imprimable: r.kind === 'lecon',
+							quand: libelleDerniereFois(r.at, now),
+						}),
+					)
+					.join('')}</ul>`
+		: '';
 
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon('repeat')} À revoir ensemble</h3>
@@ -516,6 +539,7 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
       <p class="enc-sub-lab">Épinglées</p>
       ${blocEpinglees}
       ${blocSuggestions}
+      ${blocRetraits}
     </div>`;
 }
 

@@ -568,6 +568,172 @@ export function epingleesProfil(profile: Profile): EpingleEntry[] {
 }
 
 /* ============================================================
+   Désépinglage automatique (#465) — la file « à revoir » se nettoie.
+   ------------------------------------------------------------
+   Jusqu'ici seul l'AFFICHAGE enfant se nettoyait (revoirActives filtre les entrées
+   redevenues solides) : la file persistée, elle, gardait l'entrée à vie et l'espace
+   encadrant la listait encore (« entrée fantôme »). purgeRevoirSolides retire donc
+   pour de bon les entrées redevenues solides, avec EXACTEMENT le critère de l'affichage
+   enfant (parité voulue : ce que l'enfant ne voit plus ne traîne pas en file) — leçon
+   étoilée ou perf récente ≥ SEUIL_REVOIR, liste de dictée « acquise ».
+
+   Deux garde-fous, sans quoi le retrait automatique casserait l'existant :
+   - une entrée épinglée ALORS QU'ELLE ÉTAIT DÉJÀ SOLIDE n'est jamais retirée d'office
+     (« épingler n'importe quelle leçon, même déjà acquise » est une capacité assumée de
+     l'espace encadrant) — sinon l'épingle disparaîtrait au rendu suivant et un
+     ré-épinglage manuel serait impossible. D'où la mémoire des entrées VUES fragiles
+     alors qu'épinglées (REVOIR_FRAGILE_KEY) : seules celles-là sont candidates ;
+   - le retrait est TRACÉ (REVOIR_AUTO_KEY) et rendu visible côté encadrant, pour qu'une
+     épingle ne disparaisse pas sans explication et puisse être remise d'un clic.
+
+   Adoption de l'existant : à la toute première passe (clé de marques ABSENTE), toute la
+   file est considérée candidate — c'est ce qui purge les fantômes accumulés avant #465.
+
+   Une cible non résolue (leçon hors catalogue/hors niveau du profil, liste supprimée)
+   n'est JAMAIS retirée : on ne sait pas juger sa solidité, et l'affichage l'ignore déjà.
+   ============================================================ */
+export const REVOIR_AUTO_KEY = 'ludaskia_revoirAuto'; // journal daté des retraits automatiques
+export const REVOIR_FRAGILE_KEY = 'ludaskia_revoirFragile'; // entrées vues fragiles alors qu'épinglées
+
+/* Retrait automatique tracé. Le libellé est FIGÉ à l'instant du retrait : la cible peut
+   disparaître ensuite (liste supprimée, changement de classe) sans rendre la trace muette. */
+export interface RetraitAuto {
+	id: string; // entryId TEL QUEL (préfixe « ortho: » inclus) → ré-épinglage direct
+	kind: 'lecon' | 'ortho';
+	label: string;
+	at: number; // horodatage du retrait
+}
+const RETRAITS_AUTO_MAX = 6; // trace RÉCENTE, pas un historique : l'onglet reste lisible
+const RETRAITS_AUTO_FENETRE_MS = 30 * 86400000; // au-delà, la trace n'apprend plus rien
+
+function loadRetraitsAuto(uuid: string): RetraitAuto[] {
+	const v = lsGetRaw(uuid + '/' + REVOIR_AUTO_KEY, []);
+	if (!Array.isArray(v)) return [];
+	return v.filter(
+		(r): r is RetraitAuto =>
+			!!r &&
+			typeof r.id === 'string' &&
+			typeof r.label === 'string' &&
+			typeof r.at === 'number' &&
+			(r.kind === 'lecon' || r.kind === 'ortho'),
+	);
+}
+/* Marques de fragilité ; `null` = clé jamais écrite (→ adoption de la file existante). */
+function loadFragiles(uuid: string): string[] | null {
+	const v = lsGetRaw(uuid + '/' + REVOIR_FRAGILE_KEY, null);
+	return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : null;
+}
+
+/* Solidité d'une entrée épinglée pour un profil donné ; `null` si la cible n'est pas
+   résolvable (donc intouchable). Contexte de lecture passé par l'appelant : la file
+   entière est jugée sur UNE seule lecture du stockage. */
+interface EtatEpingle {
+	kind: 'lecon' | 'ortho';
+	label: string;
+	solide: boolean;
+}
+interface CtxSolidite {
+	starsRaw: Record<string, number>;
+	statsRaw: Record<string, LessonStat>;
+	ortho: OrthoState | null;
+	dicteeDispo: boolean;
+}
+function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): EtatEpingle | null {
+	if (isOrthoRevoirId(entryId)) {
+		if (!ctx.ortho) return null;
+		const orthoId = orthoIdFromRevoir(entryId);
+		const ref = listOrthoLecons(ctx.ortho).find((l) => l.id === orthoId);
+		if (!ref) return null; // liste supprimée / dictée inconnue
+		return {
+			kind: 'ortho',
+			label: ref.label,
+			// Solide = liste entièrement maîtrisée (même critère que revoirActives).
+			solide: niveauListeOrtho(ctx.ortho, orthoId, ctx.dicteeDispo) === 'acquis',
+		};
+	}
+	const lesson = getLessonById(entryId);
+	if (!lesson) return null;
+	const niveau = niveauProfilMatiere(profile, lesson.subject);
+	if (!lesson.levels.includes(niveau)) return null; // hors niveau du profil → ignorée, pas retirée
+	const k = lesson.id + '@' + niveau; // stats/étoiles namespacées par niveau (#225)
+	const etoilee = (ctx.starsRaw[k] || 0) > 0;
+	const pct = recentAvgPct(ctx.statsRaw[k]) ?? lessonAvgPct(ctx.statsRaw[k]);
+	return {
+		kind: 'lecon',
+		label: lesson.label,
+		// Solide = étoilée OU perf récente au-dessus du seuil ; jamais travaillée (pct null) = fragile.
+		solide: etoilee || (pct != null && pct >= SEUIL_REVOIR),
+	};
+}
+
+/* Nettoie la file « à revoir » d'un profil : retire les entrées redevenues solides
+   (candidates seulement), journalise les retraits et met à jour les marques de fragilité.
+   Renvoie les entryId retirés (vide = rien à faire). `dicteeDispo` (dispo du TTS) vient de
+   l'UI : il conditionne l'« acquis » d'une dictée. `now` injecté (testable).
+   Écritures BRUTES (comme saveRevoirFor) : un nettoyage automatique ne doit pas bumper
+   `updatedAt` du profil, sinon la fusion par récence de l'export/import serait faussée. */
+export function purgeRevoirSolides(profile: Profile, dicteeDispo: boolean, now: number): string[] {
+	const uuid = profile.uuid;
+	const ids = loadRevoirFor(uuid);
+	const marques = loadFragiles(uuid);
+	if (ids.length === 0) {
+		// File vide : on pose la clé de marques pour clore l'adoption (sinon une file
+		// remplie plus tard serait adoptée à tort comme « existante »).
+		if (marques == null) lsSetRaw(uuid + '/' + REVOIR_FRAGILE_KEY, '[]');
+		return [];
+	}
+	const ctx: CtxSolidite = {
+		starsRaw: lsGetRaw(uuid + '/' + STARS_KEY, {}) as Record<string, number>,
+		statsRaw: lsGetRaw(uuid + '/' + LESSON_STATS_KEY, {}) as Record<string, LessonStat>,
+		ortho: ids.some(isOrthoRevoirId) ? loadOrthoFor(uuid) : null,
+		dicteeDispo,
+	};
+	// Clé absente → adoption : toute la file existante est candidate (purge des fantômes).
+	const candidates = new Set(marques ?? ids);
+	const restants: string[] = [];
+	const fragiles: string[] = []; // marques de la passe suivante (les ids partis sont oubliés)
+	const retires: RetraitAuto[] = [];
+	for (const entryId of ids) {
+		const etat = etatEpingle(entryId, profile, ctx);
+		// Retrait SEULEMENT si la cible est résolvable, solide, ET déjà candidate (vue fragile
+		// alors qu'épinglée) : une épingle posée sur une notion solide est un choix du parent.
+		if (etat != null && etat.solide && candidates.has(entryId)) {
+			retires.push({ id: entryId, kind: etat.kind, label: etat.label, at: now });
+			continue; // sortie de la file ET de la mémoire de fragilité
+		}
+		restants.push(entryId);
+		// Reste candidate si elle est fragile maintenant, ou si elle l'était déjà et qu'on ne
+		// peut pas en juger (cible non résolvable — on ne perd pas la marque acquise).
+		if (etat != null ? !etat.solide : candidates.has(entryId)) fragiles.push(entryId);
+	}
+	if (retires.length) {
+		saveRevoirFor(uuid, restants);
+		// Journal : plus récent d'abord, borné en nombre ET en ancienneté.
+		const journal = [...retires, ...loadRetraitsAuto(uuid)]
+			.filter((r) => now - r.at <= RETRAITS_AUTO_FENETRE_MS)
+			.slice(0, RETRAITS_AUTO_MAX);
+		lsSetRaw(uuid + '/' + REVOIR_AUTO_KEY, JSON.stringify(journal));
+	}
+	// Marques réécrites seulement si elles changent : le rendu est idempotent.
+	const inchangees =
+		marques != null &&
+		marques.length === fragiles.length &&
+		fragiles.every((x, i) => marques[i] === x);
+	if (!inchangees) lsSetRaw(uuid + '/' + REVOIR_FRAGILE_KEY, JSON.stringify(fragiles));
+	return retires.map((r) => r.id);
+}
+
+/* Trace des retraits automatiques d'un profil (bloc « Retirées automatiquement » de
+   l'espace encadrant), la plus récente d'abord. Une entrée RÉ-ÉPINGLÉE depuis n'y figure
+   plus (elle est de retour dans la file : la trace serait trompeuse). Lecture pure. */
+export function retraitsAutoProfil(profile: Profile, now: number): RetraitAuto[] {
+	const epinglees = new Set(loadRevoirFor(profile.uuid));
+	return loadRetraitsAuto(profile.uuid)
+		.filter((r) => !epinglees.has(r.id) && now - r.at <= RETRAITS_AUTO_FENETRE_MS)
+		.slice(0, RETRAITS_AUTO_MAX);
+}
+
+/* ============================================================
    Récap du mode Révision espacée (#423) — vue ENCADRANT de la file.
    ------------------------------------------------------------
    Projette, PAR PROFIL (par UUID, sans bascule), l'état de répétition

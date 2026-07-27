@@ -13,12 +13,15 @@
 
    La carte est MASQUÉE tant que rien n'est à revoir, et s'auto-nettoie : on
    n'affiche que les leçons ENCORE faibles / listes non encore acquises (revoirActives)
-   — une notion redevenue solide quitte la boucle. Listener posé une seule fois
-   (élément persistant).
+   — une notion redevenue solide quitte la boucle. Le rendu déclenche en plus le
+   nettoyage DUR de la file (purgeRevoirSolides, #465) : l'entrée redevenue solide est
+   retirée pour de bon, elle ne reste pas listée côté encadrant. Listener posé une seule
+   fois (élément persistant).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
 import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
-import { revoirActives, type RevoirEntry } from '../core/encadrant-stats';
+import { revoirActives, purgeRevoirSolides, type RevoirEntry } from '../core/encadrant-stats';
+import { activeProfile } from '../core/profiles';
 import { icon } from './icon';
 import { subjectTint, subjectIcon } from './cat-visuals';
 import { startLecon, startOrthoLecon } from './navigation';
@@ -62,6 +65,10 @@ function visuel(entree: RevoirEntry): { tint: string; ico: string; sousTitre: st
 /* Rend la carte dans `el`. `cibleId` force une entrée précise (« voir une autre »). */
 export function renderARevoir(el: HTMLElement | null, cibleId?: string): void {
 	if (!el) return;
+	// Nettoyage DUR de la file avant lecture (#465) : l'accueil est le passage obligé après
+	// chaque session, c'est donc ici que la file du profil actif se débarrasse des entrées
+	// redevenues solides (l'affichage, lui, les filtrait déjà — cf. revoirActives).
+	purgeRevoirSolides(activeProfile(), dicteeDisponible(), Date.now());
 	const entrees = actives();
 	// Rien à revoir → carte retirée (display:none, robuste face au `display` de .card).
 	if (entrees.length === 0) {

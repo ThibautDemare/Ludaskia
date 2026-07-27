@@ -1044,6 +1044,14 @@ $evol-amorce: #7c8494;
 	padding-left: 1rem;
 	position: relative;
 }
+/* Date d'un retrait automatique (#465) : info de contexte, pas un état d'acquisition —
+   d'où l'absence de pastille et un poids de texte normal (elle ne doit pas concurrencer
+   le libellé de la notion). */
+.enc-revoir-quand {
+	font-size: 0.78rem;
+	color: var(--grey);
+	white-space: nowrap;
+}
 .enc-revoir-etat::before {
 	content: '';
 	position: absolute;

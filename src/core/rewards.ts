@@ -12,11 +12,13 @@ import {
 	getStreak,
 	loadLessonStats,
 	loadLessonStatsAll,
+	loadLessonReports,
 	loadStars,
 	lessonAvgPct,
 	starsEarned,
 	todayStr,
 } from './progress';
+import { enReport } from './report-lecon';
 import { loadOrtho } from './orthographe/store';
 import type { MotOrtho } from './orthographe/types';
 import { seancesCompletees } from './seance';
@@ -33,10 +35,16 @@ const WEAK_PCT = 70; // en dessous : leçon « à revoir »
 // Leçons actuellement « à revoir » (taux de réussite < 70 %).
 export function weakLessons(): string[] {
 	const stats = loadLessonStats();
+	const reports = loadLessonReports();
+	const now = Date.now();
 	// Périmètre = leçons du niveau actif (les stats sont scopées par matière ; itérer
 	// sur lessonsNiveauActif() rend l'intention explicite — #225).
 	return lessonsNiveauActif()
 		.filter((l) => {
+			// Leçon MISE DE CÔTÉ par la leçon du jour (#485) : ne pas la remettre le jour
+			// même en défi de remédiation, ce serait dire « retente-la » pendant qu'on vient
+			// justement de la laisser reposer. Elle continue de revenir en révision espacée.
+			if (enReport(reports[l.id], now)) return false;
 			const a = lessonAvgPct(stats[l.id]);
 			return a != null && a < WEAK_PCT;
 		})

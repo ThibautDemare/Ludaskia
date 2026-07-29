@@ -10,6 +10,7 @@ import {
 	updateStreak,
 	recordLessonStats,
 	recordLessonResult,
+	recordEssaiLecon,
 	recordMonteesPalier,
 	recordRun,
 	addXP,
@@ -58,10 +59,17 @@ export function recordLessonRun(p: LessonRunInput): LessonRunOutcome {
 
 	let starInfo: LessonRunOutcome['starInfo'] = null;
 	let perfect = false;
+	const lessonPct = p.questionCount ? Math.round((p.ok / p.questionCount) * 100) : 0;
 	if (p.mode === 'lecon') {
-		perfect = p.ok === p.questionCount; // toutes les réponses justes
+		// Un essai SANS question n'est pas un sans-faute : `0 === 0` donnait sinon l'étoile
+		// (donc, depuis #485, une leçon franchie) sur une série vide. Non atteignable par les
+		// runners actuels, mais l'étoile et l'avancement ne doivent pas en dépendre.
+		perfect = p.questionCount > 0 && p.ok === p.questionCount; // toutes les réponses justes
 		const res = recordLessonResult(p.lessonId!, perfect);
 		starInfo = { perfect, newStar: res.newStar, count: res.count };
+		// Avancement / report de la leçon du jour (#485) : SEUL endroit où le score d'un
+		// essai COMPLET est enregistré pour ce calcul (ni sprint ni bilan, cf. report-lecon.ts).
+		if (p.questionCount > 0) recordEssaiLecon(p.lessonId!, lessonPct, Date.now(), res.count > 0);
 	} else {
 		recordRun(p.mode, p.ok, p.questionCount, p.ms);
 	}
@@ -78,7 +86,7 @@ export function recordLessonRun(p: LessonRunInput): LessonRunOutcome {
 		newStar: !!(starInfo && starInfo.newStar),
 		perfect,
 		lessonId: p.lessonId,
-		lessonPct: p.questionCount ? Math.round((p.ok / p.questionCount) * 100) : 0,
+		lessonPct,
 	});
 	const newTrophies = evaluateTrophies();
 

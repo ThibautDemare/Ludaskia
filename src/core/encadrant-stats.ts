@@ -26,6 +26,7 @@ import {
 	LESSON_PALIERS_KEY,
 	ACTIVITY_KEY,
 	LESSON_REVISION_KEY,
+	LESSON_REPORT_KEY,
 	loadLessonStats,
 	loadStars,
 	normalizeActivity,
@@ -56,6 +57,7 @@ import {
 	type SubjectId,
 } from './catalog';
 import { niveauDefautCatalogue } from './levels';
+import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 import { niveauActifMatiere } from './niveau-actif';
 import { touchProfile, type Profile } from './profiles';
 import { loadOrtho, loadOrthoFor, ORTHO_KEY } from './orthographe/store';
@@ -169,6 +171,9 @@ export interface RecapNotion {
 	vues: number; // nombre de sessions travaillées (stat.attempts) ; 0 si jamais abordée
 	derniereFois: number | null; // horodatage (ms) de la dernière session (stat.lastAt), null si inconnue
 	tendance: TendanceNotion | null; // direction récente (recentPct) ; null si trop peu d'essais
+	/** Nombre de JOURS où l'enfant a buté sur cette leçon dans la leçon du jour (#485) —
+	    le 1er ne reporte rien, les suivants la mettent de côté. 0 = jamais butée. */
+	blocages: number;
 }
 export interface RecapProfil {
 	uuid: string;
@@ -331,6 +336,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 	const firstSeenRaw = lsGetRaw(uuid + '/' + LESSON_FIRST_SEEN_KEY, {}) as Record<string, number>;
 	const activity = lsGetRaw(uuid + '/' + ACTIVITY_KEY, []); // brut : normalisé par activiteParJourParType
 	const paliersRaw = lsGetRaw(uuid + '/' + LESSON_PALIERS_KEY, {}) as Record<string, PaliersNotion>;
+	const reportsRaw = lsGetRaw(uuid + '/' + LESSON_REPORT_KEY, {}) as Record<string, EtatReport>;
 	const file = loadRevoirFor(uuid);
 	const fileSet = new Set(file);
 
@@ -376,6 +382,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 				vues: stat?.attempts ?? 0,
 				derniereFois: stat?.lastAt ?? null,
 				tendance: tendanceNotion(stat),
+				blocages: reportsRaw[k]?.jours ?? 0,
 			};
 			rc.lecons.push(notion);
 
@@ -385,11 +392,15 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 				const fs = firstSeenRaw[k];
 				if (typeof fs === 'number' && now - fs <= RECENT_FENETRE_NOUVELLES_MS) nouvellesRecentes++;
 			}
-			// « À revoir » : travaillée (≥ 1 question, sinon rien à suggérer) et pas encore solide.
+			// « À revoir » : travaillée (≥ 1 question, sinon rien à suggérer) et pas encore
+			// solide — OU butée assez de fois dans la leçon du jour (#485) pour que l'adulte
+			// le sache : un mur qui revient trois fois demande une explication humaine, et le
+			// % récent peut le masquer (il agrège aussi sprint et bilans, où la leçon ne pèse
+			// parfois qu'une question). Suggestion seulement, jamais un épinglage d'office.
 			if (
 				stat?.questions &&
 				notion.pctRecent != null &&
-				!estNotionSolide(etoilee, notion.pctRecent)
+				(!estNotionSolide(etoilee, notion.pctRecent) || notion.blocages >= BLOCAGES_SIGNAL_ADULTE)
 			)
 				aRevoir.push(notion);
 		}
@@ -409,8 +420,11 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 		};
 	}).filter((m) => m.total > 0);
 
-	// Les plus fragiles d'abord (l'UI en montre 2-3).
-	aRevoir.sort((a, b) => (a.pctRecent ?? 100) - (b.pctRecent ?? 100));
+	// Les plus fragiles d'abord (l'UI en montre 2-3). Les notions BUTÉES à répétition dans
+	// la leçon du jour passent devant : c'est le signal le plus fort qu'un adulte doit
+	// s'en mêler, et il ne doit pas être évincé de la liste écourtée par un simple % bas.
+	const signale = (n: RecapNotion) => Number(n.blocages >= BLOCAGES_SIGNAL_ADULTE);
+	aRevoir.sort((a, b) => signale(b) - signale(a) || (a.pctRecent ?? 100) - (b.pctRecent ?? 100));
 
 	return {
 		uuid,

@@ -57,7 +57,7 @@ import {
 } from './catalog';
 import { niveauDefautCatalogue } from './levels';
 import { niveauActifMatiere } from './niveau-actif';
-import type { Profile } from './profiles';
+import { touchProfile, type Profile } from './profiles';
 import { loadOrtho, loadOrthoFor, ORTHO_KEY } from './orthographe/store';
 import { listOrthoLecons, labelLeconOrtho, type SourceLecon } from './orthographe/lessons';
 import { niveauListeOrtho, avancementLecon } from './orthographe/progression';
@@ -91,18 +91,26 @@ export function loadRevoirFor(uuid: string): string[] {
 	const v = lsGetRaw(uuid + '/' + REVOIR_KEY, []);
 	return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
 }
+/* Écriture BRUTE dans le profil ciblé (pas l'actif) : on ne bascule pas l'enfant.
+   SILENCIEUSE par nature (comme `lsSetQuiet` face à `lsSet`) : contourner le préfixe actif
+   contourne aussi le hook `onDataWrite`, donc c'est à l'APPELANT de décider s'il marque le
+   profil comme modifié (`touchProfile`). Un geste de l'adulte le fait (toggleRevoirFor),
+   un nettoyage automatique NON (purgeRevoirSolides). */
 function saveRevoirFor(uuid: string, ids: string[]) {
-	// Écriture BRUTE dans le profil ciblé (pas l'actif) : on ne bascule pas l'enfant.
 	lsSetRaw(uuid + '/' + REVOIR_KEY, JSON.stringify(ids));
 }
 /* Épingle/désépingle une leçon pour un profil. Renvoie la nouvelle file.
    `entryId` est soit un id de leçon du catalogue (`LessonDef.id`), soit une entrée de
    liste de dictée préfixée (`orthoRevoirId`). La file reste un simple `string[]` : la
-   nature de chaque entrée est portée par le préfixe (rétro-compatible avec l'existant). */
+   nature de chaque entrée est portée par le préfixe (rétro-compatible avec l'existant).
+   Geste EXPLICITE de l'adulte → on bumpe `updatedAt` du profil : sans ça, un export fait
+   depuis un autre appareil paraîtrait plus récent et la fusion par récence de
+   l'import écraserait silencieusement les épingles posées ici. */
 export function toggleRevoirFor(uuid: string, entryId: string): string[] {
 	const ids = loadRevoirFor(uuid);
 	const next = ids.includes(entryId) ? ids.filter((x) => x !== entryId) : [...ids, entryId];
 	saveRevoirFor(uuid, next);
+	touchProfile(uuid);
 	return next;
 }
 
@@ -671,8 +679,11 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): EtatE
    (candidates seulement), journalise les retraits et met à jour les marques de fragilité.
    Renvoie les entryId retirés (vide = rien à faire). `dicteeDispo` (dispo du TTS) vient de
    l'UI : il conditionne l'« acquis » d'une dictée. `now` injecté (testable).
-   Écritures BRUTES (comme saveRevoirFor) : un nettoyage automatique ne doit pas bumper
-   `updatedAt` du profil, sinon la fusion par récence de l'export/import serait faussée. */
+   Écritures BRUTES **sans `touchProfile`**, contrairement à l'épinglage manuel
+   (`toggleRevoirFor`) : ce nettoyage tourne tout seul à l'ouverture de l'espace, donc
+   bumper `updatedAt` rendrait un profil « plus récent » pour une simple CONSULTATION et
+   fausserait la fusion par récence de l'export/import. La règle est « une modification
+   VOULUE par l'adulte bumpe, un effet automatique non ». */
 export function purgeRevoirSolides(profile: Profile, dicteeDispo: boolean, now: number): string[] {
 	const uuid = profile.uuid;
 	const ids = loadRevoirFor(uuid);

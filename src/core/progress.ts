@@ -471,7 +471,10 @@ export function backfillLessonRevisions(now: number) {
    forcément l'actif — on écrit donc en clé RÉELLE (lsGetRaw/lsSetRaw), sans jamais
    basculer le profil actif (même invariant que setPrefFor / loadRevoirFor). Les clés
    sont déjà namespacées par l'appelant : le niveau vient du profil consulté, pas du
-   niveau actif (que `nsKey`/`niveauStockage` utiliseraient). */
+   niveau actif (que `nsKey`/`niveauStockage` utiliseraient).
+   Écritures SILENCIEUSES : marquer le profil modifié (`touchProfile`) reviendrait à
+   importer `profiles.ts`, qui importe déjà ce module (cycle). C'est donc à l'appelant de
+   le faire — `vu-ailleurs.ts:declarerVuAilleursFor` s'en charge pour ces deux fonctions. */
 function revisionsFor(uuid: string): Record<string, EtatRevision> {
 	return lsGetRaw(uuid + '/' + LESSON_REVISION_KEY, {}) as Record<string, EtatRevision>;
 }

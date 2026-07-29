@@ -85,6 +85,12 @@ export function lsRemoveRaw(realK: string) {
 		localStorage.removeItem(realK);
 	} catch (e) {}
 }
+/* ⚠️ Écrire une clé RÉELLE contourne le préfixe actif ET le hook `onDataWrite` : le profil
+   ciblé n'est donc PAS marqué comme modifié. Une écriture qui traduit une action VOULUE sur
+   un profil (espace encadrant : épingler, composer une séance, déclarer « vu en classe »)
+   doit appeler `touchProfile(uuid)` derrière, sinon la fusion par récence de l'export/import
+   peut l'écraser silencieusement. Un effet AUTOMATIQUE (nettoyage, migration) reste
+   silencieux : bumper ferait passer une simple consultation pour une modification. */
 export function lsSetRaw(realK: string, rawValue: string) {
 	try {
 		localStorage.setItem(realK, rawValue);

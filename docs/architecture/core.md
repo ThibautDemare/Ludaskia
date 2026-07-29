@@ -437,7 +437,11 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   à **son** niveau actif (`niveauActifMatiere` → multi-niveau natif) — en **alternance
   1:1 sur les leçons restant à acquérir** (`sequenceLeconDuJour`), et renvoie la
   **première non acquise** (`leconDuJour`) ; « acquise » = ≥ 1 étoile au niveau actif
-  (`loadStars`). Avance par la **maîtrise**, jamais par calendrier ; `leconSuivante` =
+  (`loadStars`). Le round-robin **part de la matière la moins avancée** (nombre de leçons
+  acquises dans sa séquence ; égalité → ordre du catalogue) : comme l'accueil n'affiche
+  que la **tête** du fil, c'est ce tri qui fait réellement alterner la leçon proposée —
+  sans lui, la tête restait celle de la 1re matière déclarée jusqu'à épuisement de son
+  programme (#484). Avance par la **maîtrise**, jamais par calendrier ; `leconSuivante` =
   contournement « voir une autre leçon » (jamais de mur). Reste **distinct** de la
   révision espacée (avancer vers le neuf ↔ entretenir l'acquis) et du défi du jour.
 - **`sprint-scope.ts`** — **périmètre du sprint** (#208, pure) : `all` (toutes les

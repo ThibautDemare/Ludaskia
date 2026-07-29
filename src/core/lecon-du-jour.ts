@@ -9,6 +9,11 @@
      (`niveauActifMatiere`) → gère nativement le niveau par matière (#225) ;
    - on ENTRELACE les matières en alternance 1:1 sur les leçons RESTANT à acquérir
      (round-robin ; quand une matière n'a plus rien, on déroule l'autre) ;
+   - le round-robin PART de la matière la MOINS AVANCÉE (nombre de leçons déjà
+     acquises dans sa séquence), égalité tranchée par l'ordre du catalogue. Sans ce
+     tri, la tête du fil restait toujours celle de la 1re matière du catalogue : la
+     carte ne proposait jamais l'autre matière avant d'avoir épuisé les maths, et
+     l'alternance n'existait que dans le fil, invisible pour l'enfant (#484) ;
    - « acquise » = au moins une étoile AU NIVEAU ACTIF (`loadStars`, scopé par
      matière) : réussie une fois sans faute. La MAÎTRISE durable reste portée par
      la révision espacée (core/revision.ts), pas par cet avancement.
@@ -27,17 +32,29 @@ function estAcquise(stars: Record<string, number>, id: string): boolean {
 	return (stars[id] ?? 0) > 0;
 }
 
-/* Leçons NON acquises d'une matière, dans l'ordre pédagogique de son niveau actif. */
-function restantesParMatiere(subject: SubjectId, stars: Record<string, number>): LessonDef[] {
-	const niveau = niveauActifMatiere(subject);
-	return getLessonsBySubject(subject, niveau).filter((l) => !estAcquise(stars, l.id));
+/* Avancement d'une matière à SON niveau actif : les leçons restant à acquérir (dans
+   l'ordre pédagogique) et combien sont déjà acquises. Un seul parcours du catalogue. */
+function etatMatiere(
+	subject: SubjectId,
+	stars: Record<string, number>,
+): { restantes: LessonDef[]; acquises: number } {
+	const lessons = getLessonsBySubject(subject, niveauActifMatiere(subject));
+	const restantes = lessons.filter((l) => !estAcquise(stars, l.id));
+	return { restantes, acquises: lessons.length - restantes.length };
 }
 
-/* Séquence entrelacée 1:1 des leçons restant à acquérir, toutes matières (round-robin
-   sur l'ordre des matières du catalogue). C'est le « fil » de la leçon du jour : sa
-   tête est la leçon du jour, et `leconSuivante` y avance pour le contournement. */
+/* Séquence entrelacée 1:1 des leçons restant à acquérir, toutes matières (round-robin).
+   C'est le « fil » de la leçon du jour : sa tête est la leçon du jour, et `leconSuivante`
+   y avance pour le contournement.
+
+   Le round-robin part de la matière la MOINS AVANCÉE (#484) : c'est ce qui fait réellement
+   ALTERNER la leçon proposée, puisque l'accueil n'affiche que la tête du fil. Chaque leçon
+   franchie fait passer sa matière derrière l'autre ; à égalité, l'ordre du catalogue
+   tranche (profil neuf → on démarre sur la 1re matière déclarée). */
 export function sequenceLeconDuJour(stars: Record<string, number> = loadStars()): LessonDef[] {
-	const files = SUBJECTS.map((s) => restantesParMatiere(s.id, stars));
+	const files = SUBJECTS.map((s, i) => ({ i, ...etatMatiere(s.id, stars) }))
+		.sort((a, b) => a.acquises - b.acquises || a.i - b.i)
+		.map((m) => m.restantes);
 	const out: LessonDef[] = [];
 	const max = files.reduce((m, f) => Math.max(m, f.length), 0);
 	for (let i = 0; i < max; i++) {

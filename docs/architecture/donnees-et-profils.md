@@ -106,7 +106,14 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   passer par une écriture de clé de données. Réservé aux écritures **par UUID** qui
   contournent le préfixe actif (donc le hook `onDataWrite`, qui ne bumpe que le
   profil actif) mais doivent quand même compter pour la fusion par récence de
-  l'export/import — utilisé par `enregistrerSeancesFor` (composer/copier un
-  programme du jour pour un profil consulté, cf. [Espace
-  encadrant](espace-encadrant.md)).
+  l'export/import.
+  **Règle** (une écriture `lsSetRaw` sur un profil doit trancher) : une modification
+  **voulue par l'adulte** bumpe — `enregistrerSeancesFor` (composer un programme du
+  jour), `toggleRevoirFor` (épingler/désépingler une leçon ou une dictée),
+  `declarerVuAilleursFor` (déclarer « vu en classe ») ; un effet **automatique** reste
+  silencieux — `purgeRevoirSolides` (désépinglage auto #465) tourne à chaque ouverture
+  de l'espace, bumper y ferait passer une simple **consultation** pour une
+  modification et fausserait la fusion dans l'autre sens. Les deux sens sont
+  verrouillés par `tests/profil-modifie-encadrant.test.ts`. Cf. [Espace
+  encadrant](espace-encadrant.md).
 - Pas de migration de données prévue (on part de profils vierges).

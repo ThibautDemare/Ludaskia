@@ -11,6 +11,7 @@ import { niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
 import { etatNeuf, avancerEtat } from './revision';
 import type { EtatRevision } from './orthographe/types';
 import { RECENT_MAX, niveauNotion, type LessonStat } from './maitrise';
+import { apresEssaiLecon, type EtatReport } from './report-lecon';
 
 /* La forme `LessonStat` et ses dérivations pures (moyennes) vivent dans maitrise.ts
    (socle sans stockage, cf. cycle d'import) ; on les re-expose ici pour les nombreux
@@ -505,6 +506,40 @@ export function retirerRevisionsDeclareesFor(uuid: string, cles: string[]): void
 		changed = true;
 	}
 	if (changed) lsSetRaw(uuid + '/' + LESSON_REVISION_KEY, JSON.stringify(all));
+}
+
+/* ---------- Avancement / report de la leçon du jour (#485) ----------
+   État par leçon de l'avancement « leçon du jour » : meilleur score sur un essai
+   COMPLET en mode leçon (critère d'avancement, cf. report-lecon.ts) et report en
+   cours. Namespacé par niveau comme les étoiles et les stats, donc structure bornée
+   par le nombre de leçons (aucune rétention à gérer).
+
+   Écrit UNIQUEMENT depuis un essai en mode leçon : le sprint et les bilans peuvent
+   ne poser qu'une question sur une leçon, leur score n'est pas comparable à celui
+   d'une série complète (c'est justement pourquoi `LessonStat.recentPct` ne peut pas
+   servir de critère d'avancement). */
+export const LESSON_REPORT_KEY = 'ludaskia_leconReport';
+function loadLessonReportsRaw(): Record<string, EtatReport> {
+	return lsGet(LESSON_REPORT_KEY, {});
+}
+/* Vue scopée au niveau actif (clés = id de leçon nu), comme `loadStars`. */
+export function loadLessonReports(): Record<string, EtatReport> {
+	return scopeActif(loadLessonReportsRaw());
+}
+/* Enregistre un essai complet en mode leçon (`pct` = % de bonnes réponses) et renvoie
+   l'état obtenu. `now` daté par l'appelant (testable). */
+export function recordEssaiLecon(
+	lessonId: string,
+	pct: number,
+	now: number,
+	etoilee = false,
+): EtatReport {
+	const all = loadLessonReportsRaw();
+	const k = nsKey(lessonId, niveauStockage(lessonId));
+	const etat = apresEssaiLecon(all[k], pct, now, etoilee);
+	all[k] = etat;
+	lsSet(LESSON_REPORT_KEY, all);
+	return etat;
 }
 
 /* Met à jour l'état SR d'une leçon après une réponse en révision. */

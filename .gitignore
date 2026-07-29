@@ -19,3 +19,6 @@ notes/
 
 # Worktrees git locaux (sessions agent / parallèles)
 .claude/worktrees/
+
+# Scratchpad de session (brouillons d'agents : corps d'issues/PR, notes jetables)
+.claude/scratch/

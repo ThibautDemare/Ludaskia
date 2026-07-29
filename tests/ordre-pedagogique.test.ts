@@ -161,11 +161,13 @@ describe('leçon du jour', () => {
 		expect(leconDuJour()!.id).toBe('num-comparer');
 	});
 
-	it('avance par la maîtrise : une étoile sur la leçon courante passe à la suivante', () => {
+	it('avance par la maîtrise, en ALTERNANT les matières (#484)', () => {
 		setNiveauReference('ce2');
-		expect(leconDuJour()!.id).toBe('num-comparer');
-		recordLessonResult('num-comparer', true); // étoile @ce2
-		// num-comparer n'est plus dans les restantes → la tête maths avance.
+		expect(leconDuJour()!.id).toBe('num-comparer'); // profil neuf : égalité → catalogue
+		recordLessonResult('num-comparer', true); // étoile @ce2 → maths passe devant en acquis
+		// La matière la moins avancée ouvre le fil : le français prend la main.
+		expect(leconDuJour()!.id).toBe(F_CE2[0]); // fr-gram-ponctuation
+		recordLessonResult(F_CE2[0], true); // 1 acquise partout → égalité, retour aux maths
 		expect(leconDuJour()!.id).toBe(M_CE2[1]); // math-tables-addition
 	});
 

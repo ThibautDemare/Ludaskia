@@ -25,6 +25,14 @@ namespacée `lessonId@niveau` comme stats/étoiles, 2 horodatages max donc born�
 catalogue — écrit par `recordMonteesPalier` en fin de session, APRÈS l'étoile ; base de la
 frise d'évolution de l'espace encadrant, cf. [Espace encadrant](espace-encadrant.md)),
 `ludaskia_lessonRevision` (état SR par leçon),
+`ludaskia_leconReport` (#485 : avancement/report de la **leçon du jour** —
+`Record<'lessonId@niveau', EtatReport>`, namespacée par niveau comme les étoiles et
+les stats — `EtatReport {jours, dernierJour, reporteLe, reprendreLe, meilleurPct}` ;
+`meilleurPct` = meilleur score obtenu sur un essai **complet en mode leçon**, écrit
+UNIQUEMENT depuis ce mode (jamais le sprint ni les bilans) et servant de critère
+d'avancement du fil ; `jours`/`reporteLe`/`reprendreLe` pilotent la mise de côté
+temporaire d'une leçon sur laquelle l'enfant bute — voir `core/report-lecon.ts` et
+[Logique pure](core.md)),
 `ludaskia_goal`, `ludaskia_goalsDone`, `ludaskia_trophies`, `ludaskia_xp`,
 `ludaskia_bilans` (configs de bilans favoris), `ludaskia_resume` (exercices
 grille **en cours**, repris ou abandonnés — #63), `ludaskia_activity` (#234 :

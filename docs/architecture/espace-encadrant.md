@@ -78,6 +78,16 @@ récemment » (jalons datés) ; **2-3** leçons « à revoir » (perf récente <
 d'activité 7 jours (journal `ludaskia_activity`). **Bannis** : moyenne/note globale, XP comme
 niveau scolaire, classement, comparaison entre profils, temps-performance.
 
+**Signal « butée à répétition » (#485)** : une leçon sur laquelle l'enfant a buté ≥
+`BLOCAGES_SIGNAL_ADULTE` (3) **jours** dans la leçon du jour (cf.
+[Logique pure](core.md) ; le 1er blocage ne reporte rien, donc 3 blocages = 2e mise de
+côté) rejoint la file « à revoir » **même si son `%` récent la ferait paraître solide** —
+ce `%` mélange aussi le sprint et les bilans, où la leçon peut ne peser qu'une question,
+alors que le report ne réagit qu'à des essais complets en mode leçon. Une telle notion
+passe aussi **devant** les autres suggestions dans le tri (`RecapNotion.blocages`) : un
+mur qui revient appelle une explication humaine, pas une répétition de plus. Reste une
+**suggestion**, jamais un épinglage automatique.
+
 **Suivi par leçon** : dans le détail dépliable d'une catégorie, chaque leçon affiche
 « travaillée N fois · dernière fois … » — `RecapNotion.vues` (= `LessonStat.attempts`) et
 `RecapNotion.derniereFois` (= `LessonStat.lastAt`, horodatage alimenté par

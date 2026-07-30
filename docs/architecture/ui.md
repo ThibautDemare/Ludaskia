@@ -242,7 +242,9 @@ pure](core.md)) pour les formats composites :
   `renderLeconDuJour` peint la carte du prochain pas (`core/lecon-du-jour.ts`) — pastille à
   la couleur de la matière, libellé de leçon, « matière · catégorie », « C'est parti → » —
   avec un bouton **« Voir une autre leçon »** (contournement `leconSuivante`, jamais de mur)
-  et, tout acquis, une **félicitation + passerelle vers la révision**. La carte est cliquable
+  et, tout **franchi** (#485 — étoilé ou réussi à 70 % en mode leçon, y compris les
+  leçons mises de côté rendues au fil), une **félicitation + passerelle vers la révision**.
+  La carte est cliquable
   (→ `startLecon`/`startRevisionEspacee`) via un listener posé **une seule fois** sur l'élément
   persistant ; l'état (leçon courante, mode) vit dans ses `data-*`, le contournement est
   **éphémère** (revenir sur l'accueil ré-affiche la vraie leçon du jour).

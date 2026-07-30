@@ -2,12 +2,16 @@
    Smoke e2e — carte « leçon du jour » (#208).
    La carte de l'accueil (rangée `.cards`, #leconDuJour) : rendu, lancement de la
    leçon proposée, et contournement « Voir une autre leçon ». Profil neuf (CE2 via
-   helpers) → la 1re leçon de l'ordre est `num-comparer`. Un dernier test couvre la
+   helpers) → la 1re leçon de l'ordre est `num-comparer`. Un test couvre la
    régression #484 (alternance des matières invisible tant que les maths ne sont
-   pas épuisées) sur un profil ayant déjà étoilé cette 1re leçon de maths.
+   pas épuisées) sur un profil ayant déjà étoilé cette 1re leçon de maths. Deux
+   derniers tests couvrent le REPORT (#485, `core/report-lecon.ts`) : une leçon
+   mise de côté quitte la tête du fil, et le repli quand tout est mis de côté ne
+   doit jamais afficher la félicitation de fin de programme.
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
+import { getLessonsBySubject } from '../src/core/catalog';
 
 /* Profil CE2 (niveauReference explicite, cohérent avec l'amorçage de gotoHash)
    ayant déjà une étoile sur la 1re leçon de maths de l'ordre pédagogique
@@ -60,5 +64,76 @@ test('une étoile sur la 1re leçon de maths bascule la tête du fil sur le fran
 	// Maths acquises = 1, français = 0 → le français (moins avancé) prend la tête
 	// du fil dès la 1re étoile, sans attendre l'épuisement des maths (régression #484).
 	await expect(carte).toHaveAttribute('data-lesson', 'fr-gram-ponctuation');
+	expect(errors).toEqual([]);
+});
+
+test('une leçon mise de côté quitte la tête du fil, la carte propose autre chose (#485)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// Tête du fil sur un profil neuf = 1re leçon de maths (`num-comparer`, cf. test
+	// ci-dessus). On la met de côté (report en cours) et on dérive de l'ordre
+	// pédagogique — plutôt que de la fixer de mémoire — ce qui doit prendre sa
+	// place : la 1re leçon de français (le français, à 0 leçon acquittée contre 1
+	// pour les maths une fois `num-comparer` masquée, prend la tête, cf. #484).
+	const mathHead = getLessonsBySubject('math', 'ce2')[0].id;
+	const frHead = getLessonsBySubject('francais', 'ce2')[0].id;
+	await page.addInitScript(`(() => {
+		const now = Date.now();
+		const reports = { ${JSON.stringify(`${mathHead}@ce2`)}: {
+			jours: 2, dernierJour: '', reporteLe: now,
+			reprendreLe: now + 3 * 24 * 60 * 60 * 1000, meilleurPct: 50,
+		} };
+		localStorage.setItem('e2e/ludaskia_leconReport', JSON.stringify(reports));
+	})();`);
+	await gotoHash(page, 'accueil');
+	const carte = page.locator('#leconDuJour');
+	await expect(carte).toBeVisible();
+	await expect(carte).not.toHaveAttribute('data-lesson', mathHead);
+	await expect(carte).toHaveAttribute('data-lesson', frHead);
+	expect(errors).toEqual([]);
+});
+
+test('tout mis de côté : la carte reste utile, jamais la fin de programme (#485)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// Franchit (étoile) tout le programme CE2 des deux matières SAUF la toute
+	// dernière leçon de chacune, et met ces deux dernières de côté (report en
+	// cours) : plus aucune leçon active nulle part → repli du fil (#485). La
+	// française est mise de côté PLUS ANCIENNEMENT que la math (reporteLe plus
+	// ancien) : le repli doit la proposer en premier, quel que soit l'ordre des
+	// matières — ce qui distingue ce test d'une simple coïncidence d'ordre.
+	const mathIds = getLessonsBySubject('math', 'ce2').map((l) => l.id);
+	const frIds = getLessonsBySubject('francais', 'ce2').map((l) => l.id);
+	const mathLast = mathIds[mathIds.length - 1];
+	const frLast = frIds[frIds.length - 1];
+	const stars: Record<string, number> = {};
+	for (const id of mathIds.slice(0, -1)) stars[`${id}@ce2`] = 1;
+	for (const id of frIds.slice(0, -1)) stars[`${id}@ce2`] = 1;
+	await page.addInitScript(`(() => {
+		const now = Date.now();
+		const day = 24 * 60 * 60 * 1000;
+		const stars = ${JSON.stringify(stars)};
+		const reports = {
+			${JSON.stringify(`${mathLast}@ce2`)}: {
+				jours: 2, dernierJour: '', reporteLe: now - 1 * day,
+				reprendreLe: now + 1 * day, meilleurPct: 50,
+			},
+			${JSON.stringify(`${frLast}@ce2`)}: {
+				jours: 2, dernierJour: '', reporteLe: now - 2 * day,
+				reprendreLe: now + 1 * day, meilleurPct: 50,
+			},
+		};
+		localStorage.setItem('e2e/ludaskia_stars', JSON.stringify(stars));
+		localStorage.setItem('e2e/ludaskia_leconReport', JSON.stringify(reports));
+	})();`);
+	await gotoHash(page, 'accueil');
+	const carte = page.locator('#leconDuJour');
+	await expect(carte).toBeVisible();
+	// Jamais la félicitation de fin de programme (`data-mode="revision"`) tant
+	// qu'il reste une leçon, même mise de côté.
+	await expect(carte).toHaveAttribute('data-mode', 'lesson');
+	await expect(carte).toHaveAttribute('data-lesson', frLast);
 	expect(errors).toEqual([]);
 });

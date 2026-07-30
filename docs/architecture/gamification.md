@@ -36,7 +36,10 @@ fantôme jamais cochable).
 
 **Défi du jour** contextuel et « qualité » : jamais un défi impossible
 (remédiation seulement s'il existe une leçon < 70 % ; « bats ton record »
-seulement s'il y a un record).
+seulement s'il y a un record). Le vivier de remédiation (`rewards.ts:weakLessons`)
+exclut une leçon actuellement **mise de côté** par la leçon du jour (#485, report,
+cf. [Logique pure](core.md)) : la reproposer irait à l'encontre du répit qu'elle
+vient de recevoir ; elle continue de revenir via la révision espacée.
 
 ## Série de jours
 

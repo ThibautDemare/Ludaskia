@@ -394,7 +394,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
 - **`lesson-run.ts`** — **`recordLessonRun()`** : enregistrement d'un essai
   (série, stats par leçon, XP, montée de niveau, étoile, objectif, trophées),
   **commun à tous les rendus** (fiche en saisie *et* runner QCM) pour garantir la
-  **parité** entre modes — aucun mode n'est plus rentable qu'un autre (#69).
+  **parité** entre modes — aucun mode n'est plus rentable qu'un autre (#69). En mode
+  `'lecon'`, appelle aussi **`recordEssaiLecon`** (#485, avancement/report de la leçon
+  du jour, cf. `report-lecon.ts`) : **seul** point d'entrée qui enregistre un essai
+  COMPLET en mode leçon, jamais le sprint ni les bilans.
 - **`catalog.ts`** — hiérarchie `SUBJECTS` / `CATEGORIES` / `LessonDef`
   (`id, label, subject, category, levels: SchoolLevel[], exerciseType` — #225). La
   plupart des familles de leçons passent par **`toLessonDefs(inputs, opts)`** (#373) :
@@ -435,15 +438,49 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
 - **`lecon-du-jour.ts`** — la **« leçon du jour »** (#208), pure : le prochain pas à
   travailler, mis en avant sur l'accueil. Entrelace les séquences par matière — chacune
   à **son** niveau actif (`niveauActifMatiere` → multi-niveau natif) — en **alternance
-  1:1 sur les leçons restant à acquérir** (`sequenceLeconDuJour`), et renvoie la
-  **première non acquise** (`leconDuJour`) ; « acquise » = ≥ 1 étoile au niveau actif
-  (`loadStars`). Le round-robin **part de la matière la moins avancée** (nombre de leçons
-  acquises dans sa séquence ; égalité → ordre du catalogue) : comme l'accueil n'affiche
-  que la **tête** du fil, c'est ce tri qui fait réellement alterner la leçon proposée —
-  sans lui, la tête restait celle de la 1re matière déclarée jusqu'à épuisement de son
-  programme (#484). Avance par la **maîtrise**, jamais par calendrier ; `leconSuivante` =
-  contournement « voir une autre leçon » (jamais de mur). Reste **distinct** de la
-  révision espacée (avancer vers le neuf ↔ entretenir l'acquis) et du défi du jour.
+  1:1 sur les leçons restant à franchir** (`sequenceLeconDuJour`), et renvoie la
+  **première franchissable** (`leconDuJour`). **« Franchie » (#485)** = étoilée au
+  niveau actif (`loadStars`) **OU** réussie à `SEUIL_FRANCHIE` (70 %, cf.
+  `report-lecon.ts`) sur un essai **complet en mode leçon** (`loadLessonReports`) : le
+  sans-faute exigé pour AVANCER bloquait indéfiniment un enfant qui n'atteignait jamais
+  l'étoile sur une leçon donnée ; la MAÎTRISE durable, elle, reste portée par la révision
+  espacée (`revision.ts`), pas par cet avancement. **Report** : une leçon travaillée sans
+  être franchie est mise de côté (`enReport`) — au plus `MAX_REPORTEES_MATIERE` (2) à la
+  fois par matière, la plus anciennement reportée revenant d'office au-delà — et compte
+  quand même comme de l'« avancement » de sa matière pour l'alternance (sinon la matière
+  garderait la main et proposerait aussitôt la suite, à l'opposé de l'intérêt du
+  report). Si tout ce qui reste à franchir est reporté, `sequenceLeconDuJour` **replie**
+  sur les leçons mises de côté (la plus anciennement reportée d'abord) plutôt que
+  d'annoncer un programme terminé. Le round-robin **part de la matière la moins avancée**
+  (leçons franchies + reportées dans sa séquence ; égalité → ordre du catalogue) : comme
+  l'accueil n'affiche que la **tête** du fil, c'est ce tri qui fait réellement alterner
+  la leçon proposée — sans lui, la tête restait celle de la 1re matière déclarée jusqu'à
+  épuisement de son programme (#484). `leconSuivante` = contournement « voir une autre
+  leçon » (jamais de mur). Reste **distinct** de la révision espacée (avancer vers le
+  neuf ↔ entretenir l'acquis) et du défi du jour.
+- **`report-lecon.ts`** (#485) — socle **pur** (sans stockage, même rôle que
+  `maitrise.ts`) de l'avancement/report ci-dessus. `EtatReport {jours, dernierJour,
+  reporteLe, reprendreLe, meilleurPct}` : une entrée par leçon, créée au 1er essai en
+  mode leçon et vivant indéfiniment (structure bornée par le catalogue, aucune
+  rétention à gérer). **`estFranchie(etat, etoilee)`** teste étoile OU `meilleurPct ≥
+  SEUIL_FRANCHIE` (= `SEUIL_REVOIR` de `maitrise.ts`, 70 % — un seul seuil de « plus
+  besoin d'insister » réutilisé plutôt qu'un second qui aurait fallu maintenir en
+  synchronisation). **`apresEssaiLecon(etat, pct, now, etoilee)`** (pure, appelée depuis
+  `progress.ts:recordEssaiLecon`) : franchie (score ou étoile) → garde le meilleur
+  score, efface un report en cours ; même jour civil qu'un blocage déjà compté → pas
+  d'escalade (retenter dans la même séance est sain, seul le score peut monter) ; sinon
+  +1 **jour** de blocage et `delaiReport(jours, pct)` calcule le délai à appliquer.
+  **L'escalade compte des JOURS, pas des tentatives** ; `JOURS_AVANT_REPORT` (2) laisse
+  le 1er jour de blocage sans conséquence (distraction, découverte). `delaiReport`
+  réutilise l'escalier de la révision espacée (`REVISION_INTERVALLES`, 1/3/7 j via
+  `CRAN_REPORT_MAX = 2`) — un seul modèle d'espacement dans l'app, pas une échelle
+  parallèle à maintenir ; un score `< SEUIL_NON_ACQUIS` (40 %) fait sauter un cran de
+  plus (la notion n'est pas installée, la marteler tout de suite n'aiderait pas — elle
+  continue par ailleurs de revenir en révision espacée). **`enReport(etat, now)`** dit
+  si la mise de côté court encore à cet instant. `BLOCAGES_SIGNAL_ADULTE` (3) est le
+  seuil de jours de blocage à partir duquel l'espace encadrant signale la leçon (cf.
+  [Espace encadrant](espace-encadrant.md)). Consommé par `lecon-du-jour.ts` (sélection
+  et report) et `progress.ts` (persistance), jamais directement par l'UI.
 - **`sprint-scope.ts`** — **périmètre du sprint** (#208, pure) : `all` (toutes les
   leçons éligibles du niveau) ou `seen` (uniquement les leçons **déjà rencontrées**,
   `loadRencontrees` — pas « acquises » : le sprint consolide, y compris le fragile).
@@ -577,6 +614,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   catalogue, pas de rétention à gérer) ; appelé **après** l'écriture de l'étoile, en fin de
   session, par `lesson-run.ts:recordLessonRun` et le sprint (`ui/sprint.ts`) — source de la
   frise d'évolution de l'espace encadrant (cf. [Espace encadrant](espace-encadrant.md)).
+  **Avancement/report de la leçon du jour** (#485, `ludaskia_leconReport`) :
+  **`recordEssaiLecon(lessonId, pct, now, etoilee)`** enregistre un essai complet en
+  mode leçon (appelé uniquement par `lesson-run.ts`, jamais par le sprint/les bilans) et
+  renvoie l'`EtatReport` obtenu ; **`loadLessonReports()`** expose la vue scopée au
+  niveau actif (`Record<lessonId, EtatReport>`, comme `loadStars`), consommée par
+  `lecon-du-jour.ts` et `rewards.ts:weakLessons`. Logique pure dans `report-lecon.ts`
+  ci-dessus.
   **Journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée,
   #234 ; **entrées typées** `ActivityEntry = {t, k}` avec
   `ActivityKind = 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee'` (+ `'inconnu'`
@@ -593,7 +637,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `{date, target, progress, done, type, label, lesson?}`, `updateGoal(ev: GoalEvent)`)
   et trophées (`TROPHIES`, `tiers()`, `evaluateTrophies`,
   `gSnapshot` — type exporté `GSnapshot`), dont des groupes **par matière** et **par
-  catégorie** générés depuis le catalogue.
+  catégorie** générés depuis le catalogue. **`weakLessons()`** (vivier du défi
+  « remédiation », perf < 70 %) exclut une leçon actuellement **en report** (#485,
+  `report-lecon.ts:enReport`) : la proposer irait à l'encontre du répit que la leçon du
+  jour vient de lui accorder ; elle continue de revenir via la révision espacée.
 - **`eggs.ts`** (#331) — **easter eggs**, module **PUR** (aucun accès DOM, testable
   comme `unlocks.ts`) : catalogue déclaratif `EGGS` (4 eggs v1, familles `EggFamily` =
   `exploration` / `ambient` / **`visible`** — ce dernier (#336) = déclencheur OUVERT et

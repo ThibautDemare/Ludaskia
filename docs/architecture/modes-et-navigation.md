@@ -57,8 +57,10 @@ existant (Sprint, Révision espacée, **la file « à revoir »** #464, Leçon d
 une leçon précise, une ou plusieurs dictées) demandé un certain nombre de fois
 (`count`), composée à l'avance par l'encadrant pour un profil (cf. [Espace
 encadrant](espace-encadrant.md)). **Distinct de la « leçon du jour »** (#208,
-`core/lecon-du-jour.ts`) : celle-ci propose *une* leçon au fil de la maîtrise,
-sans intervention adulte, alors que le programme est une **liste composée à
+`core/lecon-du-jour.ts`) : celle-ci propose *une* leçon au fil de l'**avancement**
+(franchie = étoile OU score ≥ 70 % sur un essai complet en mode leçon, #485 — la
+maîtrise durable, elle, reste portée par la révision espacée), sans intervention
+adulte, alors que le programme est une **liste composée à
 l'avance**, potentiellement multi-modes, que l'enfant réalise **dans l'ordre
 qu'il veut** (une étape épuisée sort des propositions ; « compléter » = tout
 faire). Au plus un programme s'applique par jour (récurrence par **date**

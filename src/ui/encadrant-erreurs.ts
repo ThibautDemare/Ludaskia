@@ -82,6 +82,20 @@ function erreurLigneHTML(e: ErreurAffichee, now: number): string {
     </li>`;
 }
 
+/* Erreurs au-delà de MAX_PAR_LECON : DÉPLIABLES, et non un simple compteur. Le compteur
+   du résumé (« 12 erreurs ») les inclut ; les annoncer sans permettre de les lire donnait
+   un écart inexplicable entre le total et la liste. Second niveau de <details> (imbriqué
+   dans celui de la leçon) : replié par défaut, donc le « mur de fautes » reste évité, mais
+   l'encadrant qui cherche une régularité peut tout voir. */
+function anciennesHTML(anciennes: ErreurAffichee[], now: number): string {
+	if (!anciennes.length) return '';
+	const n = anciennes.length;
+	return `<details class="enc-err-anciennes">
+      <summary class="enc-err-anciennes-sum">${n} erreur${n > 1 ? 's' : ''} plus ancienne${n > 1 ? 's' : ''}</summary>
+      <ul class="enc-err-list">${anciennes.map((e) => erreurLigneHTML(e, now)).join('')}</ul>
+    </details>`;
+}
+
 /* Un groupe-leçon replié : résumé (libellé + compteur discret + dernière fois),
    les MAX_PAR_LECON erreurs les plus récentes, un repli « + N plus anciennes », et
    l'action « Épingler » (l'action est DANS le corps, jamais dans le <summary> :
@@ -99,7 +113,7 @@ function groupeHTML(
 	const label = lesson?.label ?? labelOrtho ?? g.lessonId;
 	const quand = libelleDerniereFois(g.derniereFois, now);
 	const visibles = g.erreurs.slice(0, MAX_PAR_LECON);
-	const reste = g.erreurs.length - visibles.length;
+	const anciennes = g.erreurs.slice(MAX_PAR_LECON);
 	// Entrée « à revoir » : id du catalogue pour une leçon, id de dictée préfixé pour une
 	// liste d'orthographe. On peut désormais épingler l'une comme l'autre ; l'action n'est
 	// masquée que pour un id non résolu (ni leçon, ni liste connue).
@@ -117,11 +131,7 @@ function groupeHTML(
         ${quand ? `<span class="enc-err-quand">dernière fois ${quand}</span>` : ''}
       </summary>
       <ul class="enc-err-list">${visibles.map((e) => erreurLigneHTML(e, now)).join('')}</ul>
-      ${
-				reste > 0
-					? `<p class="enc-hint enc-err-reste">+ ${reste} erreur${reste > 1 ? 's' : ''} plus ancienne${reste > 1 ? 's' : ''}</p>`
-					: ''
-			}
+      ${anciennesHTML(anciennes, now)}
       ${actions}
     </details>`;
 }

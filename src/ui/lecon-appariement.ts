@@ -27,6 +27,8 @@ import {
 import { bindAppariement } from './appariement';
 import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { capterErreur } from './erreur-capture';
+import { pairesErreur } from '../core/erreur-representation';
 
 const NB_MANCHES = 5;
 
@@ -135,6 +137,7 @@ function verifier(): void {
 	const q = manches[idx];
 	const correct = ctrl.verify(); // fige + marque chaque lien (✓/✗)
 	if (correct) score++;
+	else journaliser(q);
 	// « Vérifier » s'efface : seul « Continuer ▶ » reste (pas deux boutons, #153).
 	verif.hidden = true;
 	let feedbackHTML: string;
@@ -159,6 +162,16 @@ function verifier(): void {
 			},
 		},
 	);
+}
+
+/* Journal des erreurs (#391) : une entrée par manche ratée, restreinte aux paires
+   FAUSSES (cf. pairesErreur). Une seule capture par manche : « Vérifier » disparaît
+   juste après la correction. */
+function journaliser(q: MancheAppariement): void {
+	const rep = ctrl.reponse?.();
+	if (rep?.kind !== 'appariement') return; // widget monté sans représentation d'erreur
+	const { donnee, attendue } = pairesErreur(rep.liens, q.paires);
+	capterErreur({ text: q.question, donnee, attendue, lessonId: lesson.id, mode: 'lecon' });
 }
 
 function finish(): void {

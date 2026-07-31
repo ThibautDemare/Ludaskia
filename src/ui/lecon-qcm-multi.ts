@@ -38,6 +38,7 @@ import {
 	renderLeconResult,
 	wireNext,
 } from './lecon-runner-shared';
+import { capterErreur } from './erreur-capture';
 
 // Tour plus court que le QCM mono (8) : anti-empilement d'étoile sur un « tout-ou-rien »
 // conjonctif (gamification-enfant).
@@ -211,6 +212,23 @@ function valider(): void {
 			}
 		});
 	if (correct) score++;
+	// Journal des erreurs (#391) : une entrée par question ratée. Les propositions cochées
+	// sont listées dans l'ORDRE D'AFFICHAGE (stable toute la question), pas dans l'ordre des
+	// clics : le parent relit la grille telle qu'elle était à l'écran. La garde `validated`
+	// ci-dessus assure une seule capture par question.
+	if (!correct) {
+		capterErreur({
+			text: q.consigne,
+			figure: q.figure,
+			donnee: [...selected]
+				.sort((a, b) => a - b)
+				.map((i) => q.propositions[i])
+				.join(' ; '),
+			attendue: q.correctes.join(' ; '),
+			lessonId: lesson.id,
+			mode: 'lecon',
+		});
+	}
 	valBtn.hidden = true; // seul « Continuer ▶ » reste ensuite (pas deux boutons)
 
 	// Badge tout-ou-rien + synthèse (redondante avec les cases marquées). Échec en AMBRE et

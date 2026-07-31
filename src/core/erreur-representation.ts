@@ -47,6 +47,50 @@ export function ordreErreur(
 	return { donnee: propose.join(', '), attendue: ordre.join(', ') };
 }
 
+/* ---------- Tableau de conversion (une case par chiffre) ---------- */
+export interface CelluleTableau {
+	unite: string; // symbole d'unité de la colonne (« m », « cm »…)
+	valeur: string; // chiffre saisi dans la case
+}
+
+/* Nombre écrit par l'enfant dans un tableau de conversion, LU DANS L'UNITÉ CIBLE :
+   les chiffres jusqu'à la colonne de l'unité demandée forment la partie entière, ceux
+   des colonnes suivantes la partie décimale (la virgule se place juste après la colonne
+   cible, comme à l'écran). On lit ainsi TOUTES les cases, y compris celles des unités de
+   transit : un chiffre parasite dans une colonne basse (là où un 0 était attendu) apparaît
+   donc dans la réponse donnée — c'est précisément l'erreur à montrer au parent. Aucune
+   colonne après la cible → pas de virgule. */
+export function nombreTableauSaisi(cells: CelluleTableau[], answerUnit: string): string {
+	const chiffres = cells.map((c) => c.valeur);
+	// Dernière case de la colonne cible (une colonne de tête peut porter 2 chiffres).
+	const fin = cells.reduce((last, c, i) => (c.unite === answerUnit ? i : last), -1);
+	if (fin < 0 || fin >= cells.length - 1) return chiffres.join('');
+	return `${chiffres.slice(0, fin + 1).join('')},${chiffres.slice(fin + 1).join('')}`;
+}
+
+/* ---------- Appariement (paires reliées) ---------- */
+export interface LienPropose {
+	gauche: string;
+	droite: string | null; // null = mot de gauche laissé sans lien
+}
+
+/* Réponse donnée / attendue d'un appariement, RESTREINTES aux liens FAUX : relier 5 paires
+   dont une seule est ratée doit montrer cette paire, pas re-citer les quatre justes (même
+   parti pris que `motsMalClasses`). Repli défensif sur tous les liens si aucun ne ressort
+   comme faux (appelé après un verdict d'échec, donc jamais en pratique). */
+export function pairesErreur(
+	liens: LienPropose[],
+	paires: { gauche: string; droite: string }[],
+): { donnee: string; attendue: string } {
+	const bonne = new Map(paires.map((p) => [p.gauche, p.droite]));
+	const faux = liens.filter((l) => l.droite !== bonne.get(l.gauche));
+	const source = faux.length ? faux : liens;
+	return {
+		donnee: source.map((l) => `${l.gauche} → ${l.droite ?? '(non relié)'}`).join(' ; '),
+		attendue: source.map((l) => `${l.gauche} → ${bonne.get(l.gauche) ?? ''}`).join(' ; '),
+	};
+}
+
 /* ---------- Tri par thème (mots dans deux colonnes) ---------- */
 export interface MotTri {
 	mot: string;

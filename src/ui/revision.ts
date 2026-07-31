@@ -3,6 +3,7 @@
    répétition espacée, REGROUPÉS PAR CATÉGORIE (jamais en alternance
    inter-matières). Un élément à la fois ; chaque réponse met à jour
    l'état SR (et donne 1 XP si réussie). Pas de chrono, pas de record.
+   Chaque erreur est journalisée pour l'espace encadrant (#391, mode 'revision').
    Rendu selon la nature : maths = saisie, conjugaison = QCM,
    orthographe = mot caché (on regarde — avec écoute possible —, puis on écrit ;
    à l'erreur, on rebascule sur l'atelier du mot, comme à l'entraînement).
@@ -51,6 +52,14 @@ import {
 	PROB_STATUS_HTML,
 } from './lecon-probleme';
 import { brouillonHTML, bindBrouillon } from './brouillon';
+import { capterErreur, libelleChoix } from './erreur-capture';
+import {
+	ordreErreur,
+	motsMalClasses,
+	pairesErreur,
+	analyserResultatPosee,
+} from '../core/erreur-representation';
+import { joindrePhrase } from '../data/francais/grammaire-clic-mot';
 import type { ProblemeEtape, ProbLexique } from '../core/exercise';
 
 // `consigne` (#186) : libellé de la leçon, affiché au-dessus de l'exercice pour
@@ -367,6 +376,7 @@ function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
 		const vide = cells.find((c) => c.value.trim() === '');
 		if (vide) return vide.focus();
 		const reussi = cells.every((c) => Number(c.value.trim()) === Number(c.dataset.answer));
+		if (!reussi) journaliserPosee(it, cells);
 		grade(reussi, String(it.item.answer));
 	});
 }
@@ -391,7 +401,16 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;
 		if (inp.value.trim() === '') return inp.focus();
-		grade(checkItemAnswer(it.item, inp.value), String(it.item.answer));
+		const reussi = checkItemAnswer(it.item, inp.value);
+		if (!reussi)
+			capterRev({
+				text: it.item.text,
+				figure: it.item.figure,
+				donnee: inp.value,
+				attendue: String(it.item.answer),
+				lessonId: it.lessonId,
+			});
+		grade(reussi, String(it.item.answer));
 	});
 	(document.getElementById('revInput') as HTMLInputElement).focus();
 }
@@ -434,9 +453,23 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 			})
 			.join('')}</div>`;
 	stage.querySelectorAll<HTMLButtonElement>('.rev-choice').forEach((btn) => {
-		btn.addEventListener('click', () =>
-			grade(checkItemAnswer(it.item, it.choices[Number(btn.dataset.i)]), String(it.item.answer)),
-		);
+		btn.addEventListener('click', () => {
+			const choisi = it.choices[Number(btn.dataset.i)];
+			const reussi = checkItemAnswer(it.item, choisi);
+			// Libellé LISIBLE d'un choix, comme à l'écran : mot de ponctuation (un « . » nu
+			// serait illisible dans le journal), sinon vue riche #200 (fraction empilée).
+			const label = (v: string) =>
+				ponct ? (PONCT_MOTS[v] ?? v) : libelleChoix(it.choices, it.choicesView, v);
+			if (!reussi)
+				capterRev({
+					text: it.item.text,
+					figure: it.item.figure,
+					donnee: label(choisi),
+					attendue: label(String(it.item.answer)),
+					lessonId: it.lessonId,
+				});
+			grade(reussi, String(it.item.answer));
+		});
 	});
 }
 
@@ -493,6 +526,16 @@ function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 			// (parité avec le parcours d'entraînement) au lieu d'afficher le mot correct
 			// sans correction interactive.
 			recordGrade(false);
+			// Énoncé : la phrase à trou du mot si on en a une (la plus parlante pour le
+			// parent), sinon la tâche elle-même. Formulation distincte de celle de la dictée
+			// (« sous la dictée ») : les deux exercices ne se confondent pas dans le journal.
+			const ctx = motDeRevision(it)?.contexte;
+			capterRev({
+				text: ctx ? `${ctx.avant}…${ctx.apres}` : 'Mot à écrire de mémoire',
+				donnee: saisie,
+				attendue: it.mot,
+				lessonId: listeDuMot(it.wordId),
+			});
 			renderWordCorrection(it, saisie);
 		}
 	});
@@ -554,7 +597,17 @@ function renderTuile(it: Extract<RevItem, { kind: 'tuile' }>) {
 	);
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
-		gradeTuile(ctrl.verify(), it.answer);
+		const reussi = ctrl.verify();
+		if (!reussi) {
+			const rep = ctrl.reponse?.();
+			capterRev({
+				text: it.question,
+				donnee: rep?.kind === 'tuile' ? (rep.posee ?? '') : '',
+				attendue: it.answer,
+				lessonId: it.lessonId,
+			});
+		}
+		gradeTuile(reussi, it.answer);
 	});
 }
 
@@ -573,7 +626,13 @@ function renderOrdre(it: Extract<RevItem, { kind: 'ordre' }>) {
 	);
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
-		gradeTuile(ctrl.verify(), it.ordre.join(' · '));
+		const reussi = ctrl.verify();
+		if (!reussi) {
+			const rep = ctrl.reponse?.();
+			const { donnee, attendue } = ordreErreur(rep?.kind === 'ordre' ? rep.propose : [], it.ordre);
+			capterRev({ text: it.question, donnee, attendue, lessonId: it.lessonId });
+		}
+		gradeTuile(reussi, it.ordre.join(' · '));
 	});
 }
 
@@ -592,6 +651,20 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 	);
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
+		const reussi = ctrl.verify();
+		if (!reussi) {
+			// Une entrée par mot MAL CLASSÉ (comme le runner de leçon) : on cible le mot sur
+			// lequel aider, pas « le tri est faux ».
+			const rep = ctrl.reponse?.();
+			if (rep?.kind === 'tri')
+				for (const mal of motsMalClasses(it.mots, it.categories, rep.placement))
+					capterRev({
+						text: `Ranger le mot « ${mal.mot} »`,
+						donnee: mal.donnee,
+						attendue: mal.attendue,
+						lessonId: it.lessonId,
+					});
+		}
 		const bon = ([0, 1] as const)
 			.map(
 				(col) =>
@@ -601,7 +674,7 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 						.join(', ')}`,
 			)
 			.join(' — ');
-		gradeTuile(ctrl.verify(), bon);
+		gradeTuile(reussi, bon);
 	});
 }
 
@@ -625,7 +698,15 @@ function renderAppariement(it: Extract<RevItem, { kind: 'appariement' }>) {
 	);
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
-		gradeTuile(ctrl.verify(), it.paires.map((p) => `${p.gauche} → ${p.droite}`).join(' · '));
+		const reussi = ctrl.verify();
+		if (!reussi) {
+			const rep = ctrl.reponse?.();
+			if (rep?.kind === 'appariement') {
+				const { donnee, attendue } = pairesErreur(rep.liens, it.paires);
+				capterRev({ text: it.question, donnee, attendue, lessonId: it.lessonId });
+			}
+		}
+		gradeTuile(reussi, it.paires.map((p) => `${p.gauche} → ${p.droite}`).join(' · '));
 	});
 }
 
@@ -657,9 +738,17 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 		const vide = inputs.find((c) => c.value.trim() === '');
 		if (vide) return vide.focus();
 		// Correction partagée avec le runner de leçon (#466) : marque chaque étape (✓/✗ +
-		// solution + aria-label) et annonce le résumé dans #probStatus. La révision ne
-		// journalise pas les erreurs (comme ses autres items).
-		const toutJuste = corrigerEtapesProbleme(stage, it.etapes);
+		// solution + aria-label) et annonce le résumé dans #probStatus. Le callback journalise
+		// chaque SOUS-QUESTION ratée (#391), comme à la leçon — une entrée par étape, pas une
+		// pour « le problème est faux » : c'est l'étape qui dit où l'enfant décroche.
+		const toutJuste = corrigerEtapesProbleme(stage, it.etapes, (etape, saisie) =>
+			capterRev({
+				text: etape.question,
+				donnee: saisie,
+				attendue: String(etape.answer),
+				lessonId: it.lessonId,
+			}),
+		);
 		recordGrade(toutJuste);
 		// Explication de stratégie (#252) affichée après la réponse quand la leçon la fournit.
 		const extra = it.explication ? `<p class="lqcm-expl">${escapeHTML(it.explication)}</p>` : '';
@@ -698,6 +787,16 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
 		const reussi = ctrl.verify();
+		if (!reussi) {
+			const motsCible = [...it.cibleIndices].sort((a, b) => a - b).map((i) => it.tokens[i]);
+			const motsChoisis = ctrl.selected().map((i) => it.tokens[i]);
+			capterRev({
+				text: `${it.actionConsigne} « ${joindrePhrase(it.tokens)} »`,
+				donnee: motsChoisis.length ? motsChoisis.join(' ') : '(aucun mot choisi)',
+				attendue: motsCible.join(' '),
+				lessonId: it.lessonId,
+			});
+		}
 		const extra = `<p class="lqcm-expl">${escapeHTML(it.explication)}</p>`;
 		recordGrade(reussi);
 		document.getElementById('revAfter')!.innerHTML = verdictHTML(reussi, undefined, extra);
@@ -739,6 +838,64 @@ function recordGrade(reussi: boolean) {
 		score++;
 		addXP(1);
 	}
+}
+
+/* ---------- Journal des erreurs de la révision (#391) ----------
+   La révision espacée journalise ses erreurs comme les runners d'entraînement, sous le
+   mode 'revision' : c'est justement le moment où l'enfant rejoue ce qu'il rate, donc le
+   signal le plus utile à l'encadrant — il manquait au journal. Chaque `render*` capture
+   lui-même juste avant son `grade` / `gradeTuile` (comme les runners de leçon le font
+   avant `wireNext`) : la réponse DONNÉE n'est connue que là, sous la forme propre au
+   widget, et un tri ou un problème produit PLUSIEURS entrées (une par mot mal classé,
+   une par sous-question ratée) qu'un point d'entrée unique ne saurait pas produire.
+   Aucune capture pour une réussite. */
+function capterRev(o: {
+	text: string;
+	figure?: string;
+	donnee: string;
+	attendue: string;
+	lessonId: string | null;
+}): void {
+	capterErreur({ ...o, mode: 'revision' });
+}
+
+/* Un mot d'orthographe n'est pas une leçon du catalogue : on rattache son erreur à une
+   LISTE du profil qui le contient — le même id que le journal de la dictée, donc les deux
+   se regroupent sous le même libellé côté encadrant. Un mot rattaché à aucune liste (mot
+   d'une leçon prédéfinie, cible de verbe) n'a rien où se ranger : `capterErreur` ignore
+   alors l'entrée (lessonId nul), plutôt que d'inventer un groupe illisible. */
+function listeDuMot(wordId: string): string | null {
+	return ortho.listes.find((l) => l.motIds.includes(wordId))?.id ?? null;
+}
+
+/* Grille posée : UNE entrée pour l'opération (jamais une par chiffre), comme la fiche en
+   saisie. La grille n'a pas d'énoncé textuel → on le reconstruit depuis les opérandes
+   (`item.posed`). Les cellules du RÉSULTAT sont les DERNIÈRES de la grille (les produits
+   partiels d'une multiplication à deux chiffres les précèdent) ; on ne journalise que si
+   leurs chiffres attendus recomposent bien la réponse, garde-fou si la disposition de la
+   grille changeait. Comme la fiche, une erreur portant UNIQUEMENT sur une retenue ou un
+   produit partiel n'est pas journalisée (rien de lisible à montrer au parent) : le résultat
+   final est alors juste. */
+function journaliserPosee(it: Extract<RevItem, { kind: 'num' }>, cells: HTMLInputElement[]): void {
+	const p = it.item.posed;
+	if (!p) return;
+	const attendue = String(it.item.answer);
+	const res = cells.slice(-attendue.length);
+	if (res.map((c) => c.dataset.answer ?? '').join('') !== attendue) return;
+	const analyse = analyserResultatPosee(
+		res.map((c, pos) => ({
+			pos,
+			saisie: c.value.trim(),
+			correct: Number(c.value.trim()) === Number(c.dataset.answer),
+		})),
+	);
+	if (!analyse.journaliser) return;
+	capterRev({
+		text: `${p.a} ${p.op === 'x' ? '×' : p.op} ${p.b}`,
+		donnee: analyse.donnee,
+		attendue,
+		lessonId: it.lessonId,
+	});
 }
 
 /* Verdict + bouton « Continuer / Terminer ». `mathInline` (= échappe + empile les

@@ -31,6 +31,8 @@ import {
 	wireNext,
 } from './lecon-runner-shared';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { capterErreur } from './erreur-capture';
+import { nombreTableauSaisi } from '../core/erreur-representation';
 
 const NB_QUESTIONS = 8;
 
@@ -408,6 +410,23 @@ function verifier(): void {
 		}
 	});
 	if (correct) score++;
+	// Journal des erreurs (#391) : UNE entrée par tableau raté (jamais une par case, illisible
+	// pour le parent), la réponse donnée étant le nombre relu dans l'unité demandée — un
+	// chiffre parasite dans une colonne de transit s'y voit donc. La garde `frozen` ci-dessus
+	// assure une seule capture par question.
+	if (!correct) {
+		const saisi = nombreTableauSaisi(
+			cells.map((c) => ({ unite: c.col.unite, valeur: c.valeur })),
+			ex.answerUnit,
+		);
+		capterErreur({
+			text: ex.question,
+			donnee: `${saisi} ${ex.answerUnit}`,
+			attendue: `${ex.answer} ${ex.answerUnit}`,
+			lessonId: lesson.id,
+			mode: 'lecon',
+		});
+	}
 	const verif = sheets().querySelector('#tcVerif') as HTMLButtonElement;
 	verif.hidden = true; // un seul bouton à la fois (#153) : « Continuer ▶ » prend le relais
 	// Feedback : motive le zéro de transit à l'erreur (pas seulement le geste). Accord

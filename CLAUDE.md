@@ -218,6 +218,25 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
   - **Portée** : tester le contenu **de la branche** ; rester **ciblé et robuste**
     (peu de tests, pas de suite exhaustive fragile). Conventions détaillées dans
     `e2e/README.md`.
+- **Journal d'erreurs systématique : pas de correction sans sa capture.** Tout
+  chemin qui **corrige une réponse d'enfant** doit journaliser ses erreurs pour
+  l'espace encadrant (#391) — **nouveau runner**, **nouveau mode d'un type
+  existant**, **nouveau widget interactif**, chemin de **révision**. Réflexe au
+  même titre que la spec e2e : un mode qui ne journalise pas rend le suivi
+  parental **silencieusement partiel** (le parent croit tout voir), et le trou ne
+  se remarque qu'à l'usage, des semaines plus tard.
+  - **Comment** : appeler `capterErreur` (`src/ui/erreur-capture.ts`) au moment de
+    la correction, avec un **énoncé lisible hors de l'appli**, la réponse donnée et
+    la réponse attendue **déjà mises en forme** (`figure` pour signaler un dessin).
+    Une entrée sans `lessonId` ou sans énoncé est **ignorée** : c'est le piège
+    principal, vérifier que les deux sont fournis.
+  - **Granularité** : une entrée par **erreur ciblable** (un mot mal classé, une
+    sous-question de problème, une paire mal reliée), jamais une par cellule ni un
+    « c'est faux » global. Mise en forme partagée dans
+    `src/core/erreur-representation.ts` (pure, donc testée) ; un widget qui a une
+    réponse composite expose `reponse()` (cf. `TuileController`).
+  - **Vérifier la couverture** : le journal doit se remplir **dans tous les modes**
+    du type touché (une leçon à deux modes = deux chemins de correction).
 - **Commits : aucune attribution Claude** (`Co-Authored-By` / « Generated with
   Claude Code »).
 

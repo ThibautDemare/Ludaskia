@@ -30,6 +30,12 @@ Le serveur de dev est démarré automatiquement par Playwright (`webServer` dans
   `watchErrors` (exceptions non rattrapées + `console.error` applicatifs).
 - Rester **ciblé et robuste** : peu de tests, des sélecteurs stables
   (`#btnVerify`, `.cat-empty`, `.lesson-item`…), pas de suite exhaustive fragile.
+- **Pas d'import de `src/` dans une spec** : une spec reste une boîte noire du rendu,
+  elle ne doit pas rougir parce qu'un module interne a été renommé (l'exactitude du
+  catalogue est éprouvée côté Vitest). Un id de leçon connu s'écrit **en dur**. Seule
+  exception, centralisée dans `helpers.ts` : `leconsDuNiveau(matiere, niveau)`, pour
+  les scénarios qui doivent amorcer le **programme entier** (ex. « toutes les leçons
+  mises de côté », #485) — impossible à figer à la main sans pourrir à chaque ajout.
 - **Sprint déterministe** : le tirage du sprint est aléatoire par nature. Pour tester le
   rendu d'un type de question précis sous sprint, passer par le **composeur de bilan
   personnalisé** scopé à une seule leçon plutôt que mocker l'aléatoire : `bilan-cat-<id>`

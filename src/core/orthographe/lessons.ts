@@ -55,6 +55,15 @@ export function listOrthoLecons(state: OrthoState, niveau?: SchoolLevel): LeconO
 	return [...predef, ...listes];
 }
 
+/** Ordre d'AFFICHAGE des mots d'une leçon dans un aperçu (catalogue enfant ET espace
+    encadrant, #441) : tri alphabétique pour une liste du parent (les mots y sont saisis
+    dans un ordre quelconque), ordre d'origine pour une leçon prédéfinie (l'ordre y est
+    voulu — les nombres, par exemple, doivent rester numériques). Ne modifie pas l'entrée.
+    Pur : c'est ce qui permet aux deux aperçus de rester cohérents sans se recopier. */
+export function motsApercu(mots: readonly string[], source: SourceLecon): string[] {
+	return source === 'liste' ? [...mots].sort((a, b) => a.localeCompare(b, 'fr')) : [...mots];
+}
+
 /** Libellé lisible d'une leçon d'orthographe par id, SANS charger l'état complet :
     d'abord les listes du profil consulté (`listes`, {id,label} suffisent — lues brutes
     par UUID côté encadrant), sinon une leçon prédéfinie (statique). null si inconnu.

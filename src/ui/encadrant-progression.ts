@@ -389,6 +389,27 @@ function friseMatiereHTML(f: FriseMatiere, maxSem: number, lundiCourant: number)
    peut être épinglée (elle rejoint la file « à revoir » de l'enfant, comme une leçon).
    Les dictées PRÉDÉFINIES non commencées sont masquées (cf. listesOrthoProfil). */
 const ORDRE_NIVEAUX_ORTHO: NiveauNotion[] = ['a-decouvrir', 'en-cours', 'acquis'];
+
+/* Mots d'une dictée, consultables depuis l'espace encadrant (#441) : l'adulte doit pouvoir
+   lire la liste sans lancer la dictée lui-même (préparer une aide, comparer à ce qui a été
+   vu en classe). `<details>` natif plutôt que l'infobulle au survol du catalogue enfant
+   (`.ortho-apercu`) : celle-ci est purement décorative (`aria-hidden`) et sans équivalent
+   tactile fiable, alors qu'ici le contenu EST l'information cherchée (avis a11y). Le repli
+   est SCOPÉ aux seuls mots — il n'englobe pas la ligne, sinon le bouton « Épingler », action
+   principale et fréquente, sortirait de l'ordre de tabulation tant que le bloc est fermé.
+   Le résumé porte un `aria-label` enrichi du libellé : une série de « Voir les mots »
+   identiques serait sans repère en navigation au rotor (même parade que enc-err-anciennes).
+   Les mots sont une VRAIE liste (annonce « liste, N éléments », relecture mot à mot), et
+   jamais `aria-hidden`. Texte du résumé invariant : le compte est déjà dans la méta. */
+function motsDicteeHTML(mots: readonly string[], label: string): string {
+	if (!mots.length) return '';
+	const items = mots.map((m) => `<li>${escapeHTML(m)}</li>`).join('');
+	return `<details class="enc-mots">
+      <summary aria-label="Voir les mots de « ${escapeHTML(label)} »">Voir les mots</summary>
+      <ul class="enc-mots-list">${items}</ul>
+    </details>`;
+}
+
 function ligneListeOrtho(l: RecapListeOrtho): string {
 	const entryId = orthoRevoirId(l.id);
 	// « en cours » regroupe « 1 mot commencé » et « 9/10 maîtrisés » : on accole le compte
@@ -398,6 +419,9 @@ function ligneListeOrtho(l: RecapListeOrtho): string {
 			? `${l.maitrises}/${l.nbMots} mot${l.nbMots > 1 ? 's' : ''} maîtrisé${l.maitrises > 1 ? 's' : ''}`
 			: `${l.nbMots} mot${l.nbMots > 1 ? 's' : ''}`;
 	const meta = `${compte}${l.source === 'predefini' ? ' · dictée proposée' : ''}`;
+	// Le repli des mots est le DERNIER enfant : il occupe toute la largeur (flex-basis 100 %),
+	// donc l'ordre du DOM reste l'ordre visuel — et « Épingler » garde sa place dans la
+	// tabulation, avant lui (a11y : ordre de focus = ordre de lecture).
 	return `<li class="enc-detail-item">
       <span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>
       <span class="enc-detail-main">
@@ -408,19 +432,23 @@ function ligneListeOrtho(l: RecapListeOrtho): string {
       <span class="enc-actions">
         <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${l.epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(l.label)} »">${l.epingle ? 'Retirer' : 'Épingler'}</button>
       </span>
+      ${motsDicteeHTML(l.mots, l.label)}
     </li>`;
 }
-/* Une dictée « proposée » (prédéfinie non commencée, épinglable à l'avance) : libellé +
-   nombre de mots + Épingler. Toujours « Épingler » (par construction elle n'est pas épinglée). */
+/* Une dictée « proposée » (prédéfinie non commencée, épinglable à l'avance) : rendue par
+   `ligneRevoir`, le renderer de la famille .enc-revoir-item, et non plus par une copie
+   manuelle qui perdait le badge de niveau (#441). Elle ressemble donc exactement aux
+   autres cartes de son onglet. `etat: 'a-decouvrir'` est constant par construction (une
+   proposée n'est jamais commencée) : ce n'est pas un discriminant entre les lignes, mais
+   il reconduit le code couleur + mot déjà appris ailleurs (avis designer). Toujours
+   « Épingler » (par construction elle n'est pas épinglée), et rien à imprimer. */
 function ligneDicteeProposee(d: DicteeProposee): string {
-	const entryId = orthoRevoirId(d.id);
-	return `<li class="enc-revoir-item">
-      <span class="enc-revoir-lab">${escapeHTML(d.label)}</span>
-      <span class="enc-detail-meta">${d.nbMots} mot${d.nbMots > 1 ? 's' : ''}</span>
-      <span class="enc-actions">
-        <button type="button" class="enc-btn-sec" data-act="epingler" data-lesson="${entryId}" aria-label="Épingler « ${escapeHTML(d.label)} »">Épingler</button>
-      </span>
-    </li>`;
+	return ligneRevoir(orthoRevoirId(d.id), d.label, false, {
+		etat: 'a-decouvrir',
+		imprimable: false,
+		meta: `${d.nbMots} mot${d.nbMots > 1 ? 's' : ''}`,
+		mots: d.mots,
+	});
 }
 function listesOrthoHTML(consulte: Profile): string {
 	const dispo = dicteeDisponible();
@@ -513,26 +541,40 @@ function blocagesParLecon(recap: RecapProfil): Map<string, number> {
    `orthoRevoirId(id)`). `etat` = état d'acquisition affiché (suggestions) ou absent (épinglées).
    `imprimable` = false pour une liste de dictée (pas de fiche à imprimer).
    `blocages` = jours où l'enfant a buté sur la leçon dans la leçon du jour (#485) : au-delà du
-   seuil, la ligne porte un marqueur EN PLUS de l'état (cf. `signalBlocage`). */
+   seuil, la ligne porte un marqueur EN PLUS de l'état (cf. `signalBlocage`).
+   `meta` = ligne secondaire sous le libellé (dictées : « N mots ») ; `mots` = repli
+   consultable des mots d'une dictée (#441). Les deux sont absents pour une leçon du
+   catalogue, qui n'a ni l'un ni l'autre. */
 function ligneRevoir(
 	entryId: string,
 	label: string,
 	epingle: boolean,
-	opts: { etat?: NiveauNotion; imprimable?: boolean; quand?: string; blocages?: number } = {},
+	opts: {
+		etat?: NiveauNotion;
+		imprimable?: boolean;
+		quand?: string;
+		blocages?: number;
+		meta?: string;
+		mots?: readonly string[];
+	} = {},
 ): string {
-	const { etat, imprimable = true, quand, blocages = 0 } = opts;
+	const { etat, imprimable = true, quand, blocages = 0, meta, mots } = opts;
 	const badge = etat
 		? `<span class="enc-revoir-etat enc-key-${etat}">${MOT_NIVEAU[etat]}</span>`
 		: quand
 			? `<span class="enc-revoir-quand">Retirée ${escapeHTML(quand)}</span>`
 			: '';
 	return `<li class="enc-revoir-item">
-      <span class="enc-revoir-lab">${escapeHTML(label)}</span>
+      <span class="enc-revoir-main">
+        <span class="enc-revoir-lab">${escapeHTML(label)}</span>
+        ${meta ? `<span class="enc-detail-meta">${escapeHTML(meta)}</span>` : ''}
+      </span>
       ${badge}${signalBlocage(blocages)}
       <span class="enc-actions">
         <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(label)} »">${epingle ? 'Retirer' : 'Épingler'}</button>
         ${imprimable ? boutonsImpression(entryId, label) : ''}
       </span>
+      ${mots ? motsDicteeHTML(mots, label) : ''}
     </li>`;
 }
 

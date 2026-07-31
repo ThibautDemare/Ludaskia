@@ -18,7 +18,7 @@ import { LEVEL_ORDER, LEVEL_LABEL } from '../core/levels';
 import { LESSONS_CALCUL_MENTAL } from '../core/lessons';
 import { loadStars, loadLessonStats, etoileAuxNiveaux } from '../core/progress';
 import { loadOrtho } from '../core/orthographe/store';
-import { listOrthoLecons, type LeconOrthoRef } from '../core/orthographe/lessons';
+import { listOrthoLecons, motsApercu, type LeconOrthoRef } from '../core/orthographe/lessons';
 import { escapeHTML } from '../core/utils';
 import { lessonCardHTML } from './render';
 import { startCategorySprint } from './sprint';
@@ -258,10 +258,9 @@ function renderOrthoCategorie(el: HTMLElement): void {
 	};
 	const apercu = (l: LeconOrthoRef) => {
 		if (!l.mots.length) return '';
-		// Listes du parent : tri alphabétique (saisie dans un ordre quelconque).
-		// Leçons de base : on garde l'ordre d'origine (les nombres restent numériques).
-		const mots =
-			l.source === 'liste' ? [...l.mots].sort((a, b) => a.localeCompare(b, 'fr')) : l.mots;
+		// Ordre d'affichage partagé avec l'espace encadrant (#441) : alphabétique pour une
+		// liste du parent, ordre d'origine pour une leçon prédéfinie.
+		const mots = motsApercu(l.mots, l.source);
 		return `<div class="ortho-apercu" aria-hidden="true">${mots.map(escapeHTML).join(' · ')}</div>`;
 	};
 	const baseCard = (

@@ -3,6 +3,7 @@ import {
 	expanseVerbe,
 	materialiserVerbes,
 	cibleVerbeId,
+	listeDeCibleVerbe,
 	nbCiblesVerbe,
 	nbCiblesVerbes,
 } from '../src/core/orthographe/verbes';
@@ -109,6 +110,86 @@ describe('materialiserVerbes (lookup LEFFF réel + banque)', () => {
 			[cibleVerbeId('manger', 'present', 0), cibleVerbeId('manger', 'present', 2)].sort(),
 		);
 		expect(Object.values(st.banque).map((m) => m.mot)).toEqual(['mange', 'mange']);
+	});
+});
+
+describe('listeDeCibleVerbe — lien retour cible → liste propriétaire (#391)', () => {
+	const verbe = (infinitif: string): VerbeConfig => ({
+		kind: 'verbe',
+		infinitif,
+		pronoms: [0, 2],
+		temps: ['present'],
+	});
+
+	it('cible matérialisée : renvoie la liste qui porte CE verbe (pas la 1re liste à verbes)', async () => {
+		const st = emptyOrthoState();
+		const autre = createListe(st, 'Semaine 1', [{ mot: 'chat' }], undefined, [verbe('chanter')]);
+		const liste = createListe(st, 'Semaine 2', [{ mot: 'jardin' }], undefined, [verbe('manger')]);
+		const cibles = await materialiserVerbes(st, [verbe('chanter'), verbe('manger')], 1000);
+		expect(cibles.length).toBe(4); // 2 verbes × 2 pronoms
+		for (const c of cibles) {
+			const attendue = c.mot.startsWith('chant') ? autre.id : liste.id;
+			expect(listeDeCibleVerbe(st, c.id)).toBe(attendue);
+		}
+	});
+
+	it('insensible à la casse et aux espaces de la saisie du parent', () => {
+		// La liste et la banque passent par la MÊME clé (normVerbKey) : le parent peut avoir
+		// saisi « Écouter » d'un côté et la cible être née d'une saisie différemment ponctuée.
+		const st = emptyOrthoState();
+		const liste = createListe(st, 'L', [], undefined, [verbe('écouter')]);
+		expect(listeDeCibleVerbe(st, cibleVerbeId('  ÉCOUTER ', 'present', 0))).toBe(liste.id);
+	});
+
+	it('verbe pronominal : « se laver » et « laver » désignent la même cible', () => {
+		// La clé retire le pronominal, des deux côtés → le lien retour fonctionne quelle que
+		// soit la forme saisie (revers assumé : deux listes, l'une « se laver » l'autre
+		// « laver », se disputent la cible ; la première de l'état gagne).
+		const st = emptyOrthoState();
+		const liste = createListe(st, 'L', [], undefined, [verbe('se laver')]);
+		expect(listeDeCibleVerbe(st, cibleVerbeId('se laver', 'present', 0))).toBe(liste.id);
+		expect(listeDeCibleVerbe(st, cibleVerbeId('laver', 'present', 0))).toBe(liste.id);
+	});
+
+	it('un infinitif plus long ne capte pas la cible (comparaison bornée par « # »)', () => {
+		const st = emptyOrthoState();
+		createListe(st, 'L', [], undefined, [verbe('manger')]);
+		expect(listeDeCibleVerbe(st, cibleVerbeId('mangeotter', 'present', 0))).toBeNull();
+	});
+
+	it('id qui n’est pas une cible verbe (mot ordinaire) : null', () => {
+		const st = emptyOrthoState();
+		const liste = createListe(st, 'L', [{ mot: 'chat' }], undefined, [verbe('manger')]);
+		expect(listeDeCibleVerbe(st, liste.motIds[0])).toBeNull();
+	});
+
+	it('cible dont la liste a disparu (ou dont le verbe a été retiré) : null', async () => {
+		const st = emptyOrthoState();
+		const liste = createListe(st, 'L', [], undefined, [verbe('manger')]);
+		const [cible] = await materialiserVerbes(st, [verbe('manger')], 1000);
+		expect(listeDeCibleVerbe(st, cible.id)).toBe(liste.id);
+		// Le verbe retiré de la liste : la cible reste en banque (donc en révision), mais
+		// plus aucun groupe ne la revendique.
+		updateListe(st, liste.id, 'L', [], undefined, []);
+		expect(st.banque[cible.id]).toBeDefined();
+		expect(listeDeCibleVerbe(st, cible.id)).toBeNull();
+	});
+
+	it('état sans liste, ou liste sans verbes : null', () => {
+		const vide = emptyOrthoState();
+		expect(listeDeCibleVerbe(vide, cibleVerbeId('manger', 'present', 0))).toBeNull();
+		const st = emptyOrthoState();
+		createListe(st, 'Sans verbe', [{ mot: 'chat' }]);
+		expect(listeDeCibleVerbe(st, cibleVerbeId('manger', 'present', 0))).toBeNull();
+	});
+
+	it('un infinitif sans accent ne crée AUCUNE cible : la question ne se pose pas', async () => {
+		// La clé n'est pas insensible aux accents (« ecouter » ≠ « écouter »), mais un tel
+		// infinitif est inconnu du lexique → aucune cible en banque, donc rien à rattacher.
+		const st = emptyOrthoState();
+		createListe(st, 'L', [], undefined, [verbe('ecouter')]);
+		expect(await materialiserVerbes(st, [verbe('ecouter')], 1000)).toEqual([]);
+		expect(Object.keys(st.banque)).toHaveLength(0);
 	});
 });
 

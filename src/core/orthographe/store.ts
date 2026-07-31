@@ -201,6 +201,22 @@ export function motsDeListe(state: OrthoState, liste: ListeOrtho): MotOrtho[] {
 	return liste.motIds.map((id) => state.banque[id]).filter((m): m is MotOrtho => !!m);
 }
 
+/** Id d'une liste du profil CONTENANT ce mot, `null` si aucune (#391).
+ *
+ *  Sert à rattacher une erreur de mot à un groupe affichable dans l'espace encadrant : la
+ *  révision espacée travaille des mots (pas des listes), or le journal d'erreurs regroupe par
+ *  leçon / liste. On réutilise ainsi l'id de liste du journal de la dictée, donc les erreurs
+ *  des deux parcours se regroupent sous le même libellé.
+ *
+ *  Un mot peut appartenir à PLUSIEURS listes (les listes référencent des ids de mots, et un mot
+ *  partage tout son historique entre elles) : on retient la PREMIÈRE de `state.listes`, faute de
+ *  critère meilleur — le mot est le même partout, seul le libellé du groupe change. Renvoie
+ *  `null` pour un mot rattaché à aucune liste (mot d'une leçon prédéfinie, cible de verbe
+ *  conjugué) : il n'y a alors aucun groupe où le ranger, et l'appelant n'a rien à journaliser. */
+export function listeContenantMot(state: OrthoState, wordId: string): string | null {
+	return state.listes.find((l) => l.motIds.includes(wordId))?.id ?? null;
+}
+
 /** Reprise : les mots déjà en banque mais sans état de révision (ajoutés avant
     l'arrivée du mode Révision) entrent en rotation. `now` doit être daté de J-1
     par l'appelant → 1er re-test échu dès aujourd'hui, donc dus immédiatement.

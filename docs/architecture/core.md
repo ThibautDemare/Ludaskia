@@ -683,8 +683,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`PERIODES_REPLI`) si le journal est vide ou plus ancien. Consommé par
   `ui/encadrant-erreurs.ts` ; la capture au moment de la correction (mise en forme de
   l'énoncé) vit dans `ui/erreur-capture.ts`.
-  **Couvre tous les runners** (fiche/QCM/sprint, tuiles de numération, rangement, tri,
-  résolution de problèmes, dictée d'orthographe) — cf. [Espace encadrant](espace-encadrant.md).
+  **Couvre tous les runners** (fiche/QCM/QCM multi-sélection/sprint, tuiles de numération,
+  rangement, tri, appariement, tableau de conversion, résolution de problèmes, « Clique sur
+  le mot », dictée d'orthographe) **et la révision espacée** (`ui/revision.ts`, mode dédié
+  `'revision'`, ses 10 formes d'item) — cf. [Espace encadrant](espace-encadrant.md).
 - **`erreur-representation.ts`** (#391, pur) — mise en forme de la « réponse donnée /
   attendue » pour les formats **composites**, à partir des données brutes du runner
   (indépendant de `erreurs-journal.ts`) : **`analyserResultatPosee(cells)`** agrège les
@@ -694,7 +696,16 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `ui/session.ts:verify` ; **`ordreErreur(propose, ordre)`** joint une suite
   proposée/attendue par « , » — consommé par `ui/lecon-ordre.ts` ; **`motsMalClasses(mots,
   categories, placement)`** ne renvoie que les mots MAL classés d'un tri (colonne
-  choisie vs bonne colonne, une entrée par mot) — consommé par `ui/lecon-tri.ts`.
+  choisie vs bonne colonne, une entrée par mot) — consommé par `ui/lecon-tri.ts` ;
+  **`nombreTableauSaisi(cells, answerUnit)`** relit les cases d'un tableau de conversion
+  **dans l'unité cible** (chiffres jusqu'à la colonne demandée = partie entière, ceux
+  d'après = partie décimale, virgule insérée à la bonne place) — consommé par
+  `ui/lecon-tableau.ts` ; **`pairesErreur(liens, paires)`** restreint la réponse
+  donnée/attendue d'un appariement aux **paires fausses** (jamais les correctes, même
+  parti pris que `motsMalClasses`) — consommé par `ui/lecon-appariement.ts`. Les quatre
+  formats composites (posée, ordre, tri, appariement) sont aussi rejoués par la révision
+  espacée (`ui/revision.ts`), seule consommatrice à réutiliser cette mise en forme depuis
+  DEUX runners distincts (leçon et révision).
 - **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
   bascule** (`progressionProfil`, `niveauProfilMatiere`) ; réexporte l'échelle de maîtrise
   (`niveauNotion`/`tendanceNotion`, définie dans `maitrise.ts`) pour les imports

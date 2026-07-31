@@ -54,12 +54,16 @@ export interface CelluleTableau {
 }
 
 /* Nombre écrit par l'enfant dans un tableau de conversion, LU DANS L'UNITÉ CIBLE :
-   les chiffres jusqu'à la colonne de l'unité demandée forment la partie entière, ceux
-   des colonnes suivantes la partie décimale (la virgule se place juste après la colonne
-   cible, comme à l'écran). On lit ainsi TOUTES les cases, y compris celles des unités de
-   transit : un chiffre parasite dans une colonne basse (là où un 0 était attendu) apparaît
-   donc dans la réponse donnée — c'est précisément l'erreur à montrer au parent. Aucune
-   colonne après la cible → pas de virgule. */
+   les chiffres jusqu'à la colonne de l'unité demandée forment la partie entière, ceux des
+   colonnes suivantes la partie décimale. On lit ainsi TOUTES les cases, y compris celles des
+   unités de transit : un chiffre parasite dans une colonne basse (là où un 0 était attendu)
+   apparaît donc dans la réponse donnée — c'est précisément l'erreur à montrer au parent.
+   Aucune colonne après la cible → pas de virgule.
+
+   La virgule est posée dès qu'une colonne suit la cible, y compris quand l'ÉCRAN n'en affiche
+   aucune (il ne la dessine que si la réponse attendue est décimale, cf. `virguleApres`). C'est
+   voulu : sur « 3000 m = @ km », un enfant qui écrit un 7 chez les décamètres a écrit 3,070 km,
+   et le journal doit le dire — rendre « 3070 km » tromperait le parent d'un facteur 1000. */
 export function nombreTableauSaisi(cells: CelluleTableau[], answerUnit: string): string {
 	const chiffres = cells.map((c) => c.valeur);
 	// Dernière case de la colonne cible (une colonne de tête peut porter 2 chiffres).

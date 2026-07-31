@@ -6,8 +6,8 @@
    leçon (en matérialisant les prédéfinis dans la banque à la volée).
    ============================================================ */
 import { ORTHO_PREDEF } from '../../data/francais/orthographe';
-import { ajouterMots, getListe, motsDeListe } from './store';
-import { nbCiblesVerbes } from './verbes';
+import { ajouterMots, getListe, motsDeListe, listeContenantMot, formeNormalisee } from './store';
+import { nbCiblesVerbes, listeDeCibleVerbe } from './verbes';
 import type { MotOrtho, OrthoState } from './types';
 import type { SchoolLevel } from '../catalog';
 import { LEVEL_ORDER } from '../levels';
@@ -68,6 +68,36 @@ export function labelLeconOrtho(
 	if (custom) return custom.label;
 	const predef = ORTHO_PREDEF.find((l) => l.id === id);
 	return predef ? predef.label : null;
+}
+
+/** Groupe d'erreurs affichable pour un MOT d'orthographe (#391) : l'id sous lequel ranger une
+    erreur commise sur ce mot en révision espacée. Un mot n'est pas une leçon du catalogue, et la
+    révision travaille des mots (pas des leçons) alors que le journal regroupe par leçon/liste.
+    On cherche donc, dans l'ordre :
+      1. une LISTE du parent qui référence ce mot (`motIds`) ;
+      2. une leçon PRÉDÉFINIE qui le contient — via le même index de dédup par forme que
+         `progression.ts`, les prédéfinis étant matérialisés en banque sans lien retour ;
+      3. la liste propriétaire d'une CIBLE VERBE (matérialisée hors `motIds`).
+    `null` seulement si rien ne rattache le mot : l'appelant n'a alors aucun groupe où le ranger.
+    Les trois formes d'id sont résolues en libellé par `labelLeconOrtho`. Pur.
+
+    Deux arbitrages ASSUMÉS, faute de provenance : la révision travaille un mot, pas la leçon par
+    laquelle il est entré, et rien n'est mémorisé de ce passage.
+      - Une forme partagée par plusieurs leçons prédéfinies (une quarantaine, ex. « après » ∈
+        mots invariables ET thème de la mer) est rangée sous la PREMIÈRE déclarée : l'encadrant
+        peut donc lire l'erreur sous une leçon que l'enfant n'a jamais ouverte. Le mot et l'erreur
+        restent justes — seul le libellé du groupe peut surprendre.
+      - Un mot dont le groupe a DISPARU (liste supprimée, mot ou verbe retiré d'une liste) reste
+        en rotation de révision mais n'a plus de groupe : son erreur n'est pas journalisée. Il
+        faudrait un groupe « mots de l'année » pour la récupérer (décision produit). */
+export function groupeOrthoDuMot(state: OrthoState, wordId: string): string | null {
+	const liste = listeContenantMot(state, wordId);
+	if (liste) return liste;
+	const predef = ORTHO_PREDEF.find((l) =>
+		l.mots.some((mi) => state.motIdParForme[formeNormalisee(mi.mot)] === wordId),
+	);
+	if (predef) return predef.id;
+	return listeDeCibleVerbe(state, wordId);
 }
 
 /** Résout les mots d'une leçon (liste du profil OU leçon prédéfinie).

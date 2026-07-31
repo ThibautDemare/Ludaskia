@@ -26,6 +26,23 @@ export function cibleVerbeId(infinitif: string, temps: VerbTense, person: number
 	return `v:${normVerbKey(infinitif)}#${temps}#${person}`;
 }
 
+/** Liste du profil qui POSSÈDE cette cible verbe, `null` si aucune (#391).
+ *
+ *  Une cible verbe n'est pas référencée par `motIds` : elle est matérialisée dans la banque au
+ *  lancement du parcours, depuis `liste.verbes`. On la rattache donc à la liste dont un verbe
+ *  REGÉNÈRE le préfixe de son id — la même clé que `cibleVerbeId`, donc insensible aux accents
+ *  et à la casse de la saisie du parent. Sert au journal d'erreurs à donner un groupe
+ *  affichable à un verbe raté en révision. Pur. */
+export function listeDeCibleVerbe(state: OrthoState, wordId: string): string | null {
+	if (!wordId.startsWith('v:')) return null;
+	for (const l of state.listes) {
+		for (const v of l.verbes ?? []) {
+			if (wordId.startsWith(`v:${normVerbKey(v.infinitif)}#`)) return l.id;
+		}
+	}
+	return null;
+}
+
 /** Nombre de cibles d'un verbe = |pronoms| × |temps| (pour le comptage catalogue). */
 export function nbCiblesVerbe(cfg: VerbeConfig): number {
 	return cfg.pronoms.length * cfg.temps.length;

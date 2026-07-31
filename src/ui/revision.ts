@@ -31,6 +31,7 @@ import {
 	TEXT_ANSWER_INPUT_ATTRS,
 } from '../core/items';
 import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
+import { groupeOrthoDuMot } from '../core/orthographe/lessons';
 import { diffCorrect } from '../core/orthographe/diff';
 import type { OrthoState, MotOrtho } from '../core/orthographe/types';
 import {
@@ -525,7 +526,6 @@ function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 			// Erreur : on enregistre l'échec SR, puis on rebascule sur l'atelier du mot
 			// (parité avec le parcours d'entraînement) au lieu d'afficher le mot correct
 			// sans correction interactive.
-			recordGrade(false);
 			// Énoncé : la phrase à trou du mot si on en a une (la plus parlante pour le
 			// parent), sinon la tâche elle-même. Formulation distincte de celle de la dictée
 			// (« sous la dictée ») : les deux exercices ne se confondent pas dans le journal.
@@ -534,8 +534,9 @@ function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 				text: ctx ? `${ctx.avant}…${ctx.apres}` : 'Mot à écrire de mémoire',
 				donnee: saisie,
 				attendue: it.mot,
-				lessonId: listeDuMot(it.wordId),
+				lessonId: groupeOrthoDuMot(ortho, it.wordId),
 			});
+			recordGrade(false);
 			renderWordCorrection(it, saisie);
 		}
 	});
@@ -857,15 +858,6 @@ function capterRev(o: {
 	lessonId: string | null;
 }): void {
 	capterErreur({ ...o, mode: 'revision' });
-}
-
-/* Un mot d'orthographe n'est pas une leçon du catalogue : on rattache son erreur à une
-   LISTE du profil qui le contient — le même id que le journal de la dictée, donc les deux
-   se regroupent sous le même libellé côté encadrant. Un mot rattaché à aucune liste (mot
-   d'une leçon prédéfinie, cible de verbe) n'a rien où se ranger : `capterErreur` ignore
-   alors l'entrée (lessonId nul), plutôt que d'inventer un groupe illisible. */
-function listeDuMot(wordId: string): string | null {
-	return ortho.listes.find((l) => l.motIds.includes(wordId))?.id ?? null;
 }
 
 /* Grille posée : UNE entrée pour l'opération (jamais une par chiffre), comme la fiche en

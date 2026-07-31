@@ -203,7 +203,11 @@ pendant un entraînement est journalisée localement (`core/erreurs-journal.ts`,
 donnée, bonne réponse, leçon, mode, quand. **Groupé par leçon**, la plus récemment ratée en
 tête, replié par défaut (`<details>`) pour ne pas dérouler un « mur de fautes » ; à
 l'intérieur d'une leçon, une même erreur répétée (même question + même réponse donnée) est
-**dédoublonnée** en une seule ligne « vue N fois » plutôt que N lignes identiques. Parti pris
+**dédoublonnée** en une seule ligne « vue N fois » plutôt que N lignes identiques. Dans une
+leçon, seules les **5 erreurs** les plus récentes s'affichent d'emblée ; les suivantes restent
+lisibles via un repli **dépliable** (`<details class="enc-err-anciennes">`, imbriqué dans celui
+de la leçon) plutôt qu'un simple compteur muet — le total annoncé en tête du groupe reste ainsi
+consultable en détail. Parti pris
 (avis designer-ux-enfant) : pas de rouge en aplat, la **bonne réponse** est mise en avant
 (positif), la réponse donnée reste neutre et n'est jamais barrée. Chaque groupe — **leçon du
 catalogue ou liste de dictée** (#424) — peut être **épinglé** depuis ce bloc (même
@@ -234,19 +238,37 @@ re-rendu, ce qui garantit l'annonce.
 
 **Capture — couverture complète** : point d'entrée unique `capterErreur` (`ui/erreur-capture.ts`),
 appelé par **tous les runners** au moment de la correction d'une réponse fausse : la fiche en
-saisie (`ui/session.ts:verify`), le QCM de leçon (`ui/lecon-qcm.ts`), le sprint (`ui/sprint.ts`),
-les tuiles de numération (`ui/lecon-tuiles.ts`), le rangement dans l'ordre (`ui/lecon-ordre.ts`),
-le tri par thème (`ui/lecon-tri.ts`, une entrée par mot mal classé), la résolution de problèmes
-(`ui/lecon-probleme.ts`, une entrée par sous-question ratée) et la dictée d'orthographe
-(`ui/ortho-runner.ts`, le **premier essai raté** d'un mot). Ignore une erreur sans leçon
-rattachée ou sans énoncé affichable (rien à regrouper/montrer). Les formats **composites**
-délèguent leur mise en forme à `core/erreur-representation.ts` (pur) : une opération posée
-agrège les cellules-chiffres du résultat (`Item.posedResult`) en **une** entrée par opération
-(`analyserResultatPosee`) plutôt qu'une par chiffre ; les tuiles, le rangement et le tri lisent
-l'état final du widget via `TuileController.reponse()`. Une erreur de dictée référence l'id d'une **liste**
-d'orthographe (pas une leçon du catalogue) : `encadrant-erreurs.ts` résout son libellé via
-`labelLeconOrtho` (`core/orthographe/lessons.ts`) et épingle sous l'id **préfixé**
-`orthoRevoirId(id)` (#424, cf. « À revoir » ci-dessous) — même geste que pour une leçon.
+saisie (`ui/session.ts:verify`), le QCM de leçon (`ui/lecon-qcm.ts`), le QCM multi-sélection
+(`ui/lecon-qcm-multi.ts`, une entrée par question, propositions cochées dans l'ordre
+d'affichage), le sprint (`ui/sprint.ts`), les tuiles de numération (`ui/lecon-tuiles.ts`), le
+rangement dans l'ordre (`ui/lecon-ordre.ts`), le tri par thème (`ui/lecon-tri.ts`, une entrée par
+mot mal classé), l'appariement (`ui/lecon-appariement.ts`, une entrée par manche ratée,
+restreinte aux paires fausses), le tableau de conversion (`ui/lecon-tableau.ts`, le nombre relu
+dans l'unité cible), la résolution de problèmes (`ui/lecon-probleme.ts`, une entrée par
+sous-question ratée) et la dictée d'orthographe (`ui/ortho-runner.ts`, le **premier essai raté**
+d'un mot). Ignore une erreur sans leçon rattachée ou sans énoncé affichable (rien à
+regrouper/montrer). Les formats **composites** délèguent leur mise en forme à
+`core/erreur-representation.ts` (pur) : une opération posée agrège les cellules-chiffres du
+résultat (`Item.posedResult`) en **une** entrée par opération (`analyserResultatPosee`) plutôt
+qu'une par chiffre, un tableau de conversion se relit **dans l'unité cible** demandée
+(`nombreTableauSaisi`) et un appariement ne montre que les **paires fausses**
+(`pairesErreur`, jamais les correctes) ; les tuiles, le rangement, le tri et l'appariement
+lisent l'état final du widget via `TuileController.reponse()`. Une erreur de dictée référence
+l'id d'une **liste** d'orthographe (pas une leçon du catalogue) : `encadrant-erreurs.ts` résout
+son libellé via `labelLeconOrtho` (`core/orthographe/lessons.ts`) et épingle sous l'id
+**préfixé** `orthoRevoirId(id)` (#424, cf. « À revoir » ci-dessous) — même geste que pour une
+leçon.
+
+**Révision espacée, aussi journalisée** : `ui/revision.ts` capture ses erreurs sous le mode
+dédié **`'revision'`** (déjà prévu dans `MODE_LABEL` d'`encadrant-erreurs.ts`, longtemps
+inatteint faute de capture en amont) — chacune des **10 formes** d'item qu'elle rejoue (saisie,
+QCM, mot d'orthographe, tuile, ordre, tri, appariement, opération posée, problème à
+sous-questions, « clique sur le mot ») capture juste avant son verdict, via un point d'entrée
+local (`capterRev`) qui fixe ce mode et délègue à `capterErreur`. **Limite assumée** : un mot
+d'orthographe raté en révision est rattaché à la **liste** du profil qui le contient (même id
+que le journal de la dictée, donc les deux se regroupent sous le même libellé côté encadrant) ;
+un mot rattaché à **aucune** liste (mot d'une leçon prédéfinie, cible de verbe conjugué) n'est
+**pas journalisé**, faute de groupe où le ranger.
 
 **Détachée du seuil de 60 %** : la capture des erreurs d'une fiche est **indépendante** du seuil
 `enough` qui conditionne l'enregistrement (XP, étoile, record) — une fiche remplie à moins de

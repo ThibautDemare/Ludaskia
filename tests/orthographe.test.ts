@@ -16,6 +16,7 @@ import {
 	deleteListe,
 	getListe,
 	motsDeListe,
+	listeContenantMot,
 	ajouterMots,
 	formeNormalisee,
 	normaliserFormes,
@@ -24,6 +25,8 @@ import { checkAnswer } from '../src/core/exercise';
 import { genExerciseOrtho, orthoType } from '../src/core/orthographe/exercise';
 import { ORTHO_PREDEF } from '../src/data/francais/orthographe';
 import { MODES_ORTHO } from '../src/core/orthographe/types';
+import type { VerbeConfig } from '../src/core/orthographe/types';
+import { materialiserVerbes } from '../src/core/orthographe/verbes';
 import {
 	statutMot,
 	prochaineActivite,
@@ -34,7 +37,12 @@ import {
 	listeEtoilee,
 	decouverteEnCours,
 } from '../src/core/orthographe/runner';
-import { listOrthoLecons, motsDeLecon } from '../src/core/orthographe/lessons';
+import {
+	listOrthoLecons,
+	motsDeLecon,
+	labelLeconOrtho,
+	groupeOrthoDuMot,
+} from '../src/core/orthographe/lessons';
 import { ACCORD_LESSONS } from '../src/data/francais/accords';
 import { diffCorrect } from '../src/core/orthographe/diff';
 import { gSnapshot, evaluateTrophies, loadTrophies } from '../src/core/rewards';
@@ -143,6 +151,226 @@ describe('orthographe — store', () => {
 		const a = addOrGetMot(s, { mot: 'vers', commeDans: 'phrase 1' });
 		addOrGetMot(s, { mot: 'vers', commeDans: 'phrase 2' });
 		expect(s.banque[a.id].commeDans).toBe('phrase 2');
+	});
+});
+
+describe('listeContenantMot — rattachement d’un mot à un groupe du journal (#391)', () => {
+	test('mot d’une seule liste : renvoie l’id de CETTE liste', () => {
+		const s = emptyOrthoState();
+		createListe(s, 'Semaine 1', [{ mot: 'chat' }]);
+		const liste = createListe(s, 'Semaine 2', [{ mot: 'jardin' }, { mot: 'maison' }]);
+		expect(listeContenantMot(s, liste.motIds[1])).toBe(liste.id);
+	});
+
+	test('l’id renvoyé est bien celui d’un GROUPE affichable (même espace que la dictée)', () => {
+		// Le journal encadrant résout le libellé du groupe avec labelLeconOrtho : un id de
+		// liste doit y donner le nom de la liste (sinon l'erreur s'afficherait sans titre).
+		const s = emptyOrthoState();
+		const liste = createListe(s, 'Mots de la semaine', [{ mot: 'jardin' }]);
+		const groupe = listeContenantMot(s, liste.motIds[0]);
+		expect(groupe).not.toBeNull();
+		expect(labelLeconOrtho(groupe!, s.listes)).toBe('Mots de la semaine');
+	});
+
+	test('mot en banque mais dans AUCUNE liste (leçon prédéfinie) : null', () => {
+		const s = emptyOrthoState();
+		const liste = createListe(s, 'Semaine 1', [{ mot: 'chat' }]);
+		// Mots d'une leçon prédéfinie : matérialisés en banque, rattachés à aucune liste.
+		const predef = ajouterMots(s, ORTHO_PREDEF[0].mots, 'predefini');
+		const dansLaListe = new Set(liste.motIds); // un mot du parent peut coïncider (dédup)
+		const horsListe = predef.filter((id) => !dansLaListe.has(id));
+		expect(horsListe.length).toBeGreaterThan(0);
+		for (const id of horsListe) expect(listeContenantMot(s, id)).toBeNull();
+	});
+
+	test('cible de verbe conjugué : en banque, mais rattachée à aucune liste → null', async () => {
+		// Une liste porte ses verbes dans `verbes`, pas dans `motIds` : les cibles dépliées
+		// (une par pronom × temps) vivent en banque sans être référencées par la liste.
+		const s = emptyOrthoState();
+		const verbe: VerbeConfig = {
+			kind: 'verbe',
+			infinitif: 'manger',
+			pronoms: [0],
+			temps: ['present'],
+		};
+		createListe(s, 'Semaine 1', [{ mot: 'chat' }], undefined, [verbe]);
+		const cibles = await materialiserVerbes(s, [verbe], 1000);
+		expect(cibles.length).toBeGreaterThan(0);
+		for (const c of cibles) {
+			expect(s.banque[c.id]).toBeDefined(); // bien en banque (donc en rotation de révision)
+			expect(listeContenantMot(s, c.id)).toBeNull();
+		}
+	});
+
+	test('banque vide / id inconnu : null (pas d’exception)', () => {
+		const s = emptyOrthoState();
+		expect(listeContenantMot(s, 'mot-inexistant')).toBeNull();
+		createListe(s, 'Semaine 1', [{ mot: 'chat' }]);
+		expect(listeContenantMot(s, 'mot-inexistant')).toBeNull();
+	});
+
+	test('liste vide (aucun mot) : ne capte personne', () => {
+		const s = emptyOrthoState();
+		createListe(s, 'Liste vide', []);
+		const liste = createListe(s, 'Semaine 1', [{ mot: 'chat' }]);
+		expect(listeContenantMot(s, liste.motIds[0])).toBe(liste.id);
+	});
+
+	test('mot partagé par PLUSIEURS listes : la première de state.listes', () => {
+		// Un même mot saisi dans deux listes ne fait qu'UN mot en banque (dédup par forme),
+		// donc l'ambiguïté est réelle et fréquente (mot revu d'une semaine sur l'autre).
+		// Contrat retenu : la première liste de l'état. Acceptable car le mot raté est le
+		// même partout — seul le libellé du GROUPE sous lequel le parent le lit change ;
+		// aucune erreur n'est perdue ni dupliquée.
+		const s = emptyOrthoState();
+		const l1 = createListe(s, 'Semaine 1', [{ mot: 'temps' }]);
+		const l2 = createListe(s, 'Semaine 2', [{ mot: 'Temps' }]);
+		const motId = l1.motIds[0];
+		expect(l2.motIds[0]).toBe(motId); // même mot en banque
+		expect(listeContenantMot(s, motId)).toBe(l1.id);
+		// Le choix est POSITIONNEL, pas fondé sur la fraîcheur : re-modifier la 2ᵉ liste
+		// (updatedAt plus récent) ne la fait pas passer devant.
+		updateListe(s, l2.id, 'Semaine 2', [{ mot: 'temps' }]);
+		expect(listeContenantMot(s, motId)).toBe(l1.id);
+		// … et si la 1re liste disparaît, le mot se rattache à celle qui reste.
+		deleteListe(s, l1.id);
+		expect(listeContenantMot(s, motId)).toBe(l2.id);
+	});
+
+	test('référence orpheline : répond sur la RÉFÉRENCE, même si le mot a quitté la banque', () => {
+		// Contrairement à motsDeListe (qui filtre les orphelins), on cherche un groupe, pas
+		// un mot : une désynchro banque/liste ne doit pas masquer le groupe de l'erreur.
+		const s = emptyOrthoState();
+		const liste = createListe(s, 'Semaine 1', [{ mot: 'chat' }]);
+		const motId = liste.motIds[0];
+		delete s.banque[motId];
+		expect(motsDeListe(s, liste)).toEqual([]);
+		expect(listeContenantMot(s, motId)).toBe(liste.id);
+	});
+
+	test('survit à un aller-retour de persistance (état relu du localStorage)', () => {
+		const s = emptyOrthoState();
+		const liste = createListe(s, 'Semaine 1', [{ mot: 'jardin' }]);
+		saveOrtho(s);
+		const relu = loadOrtho();
+		expect(listeContenantMot(relu, liste.motIds[0])).toBe(liste.id);
+	});
+});
+
+describe('groupeOrthoDuMot — groupe d’erreurs d’un mot révisé (#391)', () => {
+	test('mot d’une liste du parent : l’id de la liste', () => {
+		const s = emptyOrthoState();
+		const liste = createListe(s, 'Semaine 1', [{ mot: 'jardin' }]);
+		expect(groupeOrthoDuMot(s, liste.motIds[0])).toBe(liste.id);
+	});
+
+	test('mot d’une leçon PRÉDÉFINIE : la leçon qui le contient, avec un libellé résoluble', () => {
+		const s = emptyOrthoState();
+		const lecon = ORTHO_PREDEF[0];
+		const mots = motsDeLecon(s, lecon.id); // matérialise la leçon en banque
+		expect(mots.length).toBeGreaterThan(0);
+		for (const m of mots) {
+			const groupe = groupeOrthoDuMot(s, m.id);
+			expect(groupe).toBe(lecon.id);
+			// L'argument du rattachement : l'espace encadrant sait déjà nommer ce groupe.
+			expect(labelLeconOrtho(groupe!, s.listes)).toBe(lecon.label);
+		}
+	});
+
+	test('TOUT mot prédéfini a un groupe, et ce groupe le contient vraiment', () => {
+		// Invariant : aucun mot d'une leçon prédéfinie n'entre en révision sans groupe
+		// affichable (c'était le trou : ces erreurs n'étaient jamais journalisées).
+		const s = emptyOrthoState();
+		for (const lecon of ORTHO_PREDEF) motsDeLecon(s, lecon.id);
+		for (const lecon of ORTHO_PREDEF) {
+			for (const mi of lecon.mots) {
+				const forme = formeNormalisee(mi.mot);
+				const groupe = groupeOrthoDuMot(s, s.motIdParForme[forme]);
+				expect(groupe).not.toBeNull();
+				expect(labelLeconOrtho(groupe!, s.listes)).not.toBeNull();
+				// Le groupe désigné contient réellement ce mot (pas un rattachement au hasard).
+				const designee = ORTHO_PREDEF.find((l) => l.id === groupe)!;
+				expect(designee.mots.some((m) => formeNormalisee(m.mot) === forme)).toBe(true);
+			}
+		}
+	});
+
+	test('mot partagé par deux leçons prédéfinies : la première déclarée', () => {
+		// 41 formes sont communes à plusieurs leçons prédéfinies (un mot invariable qui
+		// revient dans une dictée à thème). Contrat : la première de ORTHO_PREDEF. Le parent
+		// peut donc lire l'erreur sous une leçon que l'enfant n'a pas ouverte ; le mot raté,
+		// lui, est le bon — même arbitrage que « la première liste » pour les listes.
+		const s = emptyOrthoState();
+		for (const lecon of ORTHO_PREDEF) motsDeLecon(s, lecon.id);
+		const compte = new Map<string, string[]>();
+		for (const lecon of ORTHO_PREDEF) {
+			for (const mi of lecon.mots) {
+				const f = formeNormalisee(mi.mot);
+				compte.set(f, [...(compte.get(f) ?? []), lecon.id]);
+			}
+		}
+		const partages = [...compte.entries()].filter(([, ids]) => ids.length > 1);
+		expect(partages.length).toBeGreaterThan(0); // le cas existe bel et bien dans les données
+		for (const [forme, ids] of partages) {
+			expect(groupeOrthoDuMot(s, s.motIdParForme[forme])).toBe(ids[0]);
+		}
+	});
+
+	test('priorité : la LISTE du parent gagne sur la leçon prédéfinie', () => {
+		// Mot entré en banque comme mot PRÉDÉFINI, que le parent reprend ensuite dans sa
+		// liste : c'est son libellé à lui qu'il doit lire dans le rapport.
+		const s = emptyOrthoState();
+		const lecon = ORTHO_PREDEF[0];
+		const motPredef = motsDeLecon(s, lecon.id)[0];
+		const liste = createListe(s, 'Ma semaine', [{ mot: motPredef.mot }]);
+		expect(liste.motIds).toContain(motPredef.id); // même mot en banque (dédup par forme)
+		expect(groupeOrthoDuMot(s, motPredef.id)).toBe(liste.id);
+		expect(labelLeconOrtho(liste.id, s.listes)).toBe('Ma semaine');
+	});
+
+	test('cible de verbe conjugué : la liste qui porte ce verbe', async () => {
+		const s = emptyOrthoState();
+		const verbe: VerbeConfig = {
+			kind: 'verbe',
+			infinitif: 'manger',
+			pronoms: [0, 2],
+			temps: ['present'],
+		};
+		const liste = createListe(s, 'Verbes de la semaine', [], undefined, [verbe]);
+		const cibles = await materialiserVerbes(s, [verbe], 1000);
+		expect(cibles.length).toBe(2);
+		for (const c of cibles) {
+			expect(groupeOrthoDuMot(s, c.id)).toBe(liste.id);
+			expect(labelLeconOrtho(liste.id, s.listes)).toBe('Verbes de la semaine');
+		}
+	});
+
+	test('mot vraiment orphelin (ni liste, ni prédéfini, ni verbe) : null', () => {
+		const s = emptyOrthoState();
+		createListe(s, 'Semaine 1', [{ mot: 'jardin' }]);
+		const orphelin = addOrGetMot(s, { mot: 'zzzblurpix' });
+		expect(groupeOrthoDuMot(s, orphelin.id)).toBeNull();
+	});
+
+	test('mot d’une liste SUPPRIMÉE : plus aucun groupe (la banque garde le mot)', () => {
+		// Suppression d'une liste = les mots restent en banque (corpus de l'année) donc en
+		// rotation de révision, mais leur groupe a disparu : l'erreur ne sera pas journalisée.
+		const s = emptyOrthoState();
+		const liste = createListe(s, 'Semaine 1', [{ mot: 'zzzblurpix' }]);
+		const motId = liste.motIds[0];
+		deleteListe(s, liste.id);
+		expect(s.banque[motId]).toBeDefined();
+		expect(groupeOrthoDuMot(s, motId)).toBeNull();
+	});
+
+	test('id inconnu, banque vide, cible verbe sans liste : null (pas d’exception)', () => {
+		const vide = emptyOrthoState();
+		expect(groupeOrthoDuMot(vide, 'inexistant')).toBeNull();
+		expect(groupeOrthoDuMot(vide, 'v:manger#present#0')).toBeNull();
+		const s = emptyOrthoState();
+		createListe(s, 'Semaine 1', [{ mot: 'jardin' }]);
+		expect(groupeOrthoDuMot(s, 'inexistant')).toBeNull();
+		expect(groupeOrthoDuMot(s, 'v:manger#present#0')).toBeNull();
 	});
 });
 

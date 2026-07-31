@@ -87,11 +87,16 @@ function erreurLigneHTML(e: ErreurAffichee, now: number): string {
    un écart inexplicable entre le total et la liste. Second niveau de <details> (imbriqué
    dans celui de la leçon) : replié par défaut, donc le « mur de fautes » reste évité, mais
    l'encadrant qui cherche une régularité peut tout voir. */
-function anciennesHTML(anciennes: ErreurAffichee[], now: number): string {
+function anciennesHTML(anciennes: ErreurAffichee[], now: number, label: string): string {
 	if (!anciennes.length) return '';
 	const n = anciennes.length;
+	const texte = `${n} erreur${n > 1 ? 's' : ''} plus ancienne${n > 1 ? 's' : ''}`;
+	// Nom accessible enrichi de la LEÇON (le libellé visible reste court) : plusieurs groupes
+	// peuvent dépasser MAX_PAR_LECON, et en navigation de bouton en bouton (raccourci NVDA/JAWS,
+	// rotor VoiceOver) une série de « 3 erreurs plus anciennes » identiques serait sans repère.
+	// Même parade que le bouton « Épingler » ci-dessous.
 	return `<details class="enc-err-anciennes">
-      <summary class="enc-err-anciennes-sum">${n} erreur${n > 1 ? 's' : ''} plus ancienne${n > 1 ? 's' : ''}</summary>
+      <summary class="enc-err-anciennes-sum" aria-label="${escapeHTML(`${texte} pour « ${label} »`)}">${texte}</summary>
       <ul class="enc-err-list">${anciennes.map((e) => erreurLigneHTML(e, now)).join('')}</ul>
     </details>`;
 }
@@ -131,7 +136,7 @@ function groupeHTML(
         ${quand ? `<span class="enc-err-quand">dernière fois ${quand}</span>` : ''}
       </summary>
       <ul class="enc-err-list">${visibles.map((e) => erreurLigneHTML(e, now)).join('')}</ul>
-      ${anciennesHTML(anciennes, now)}
+      ${anciennesHTML(anciennes, now, label)}
       ${actions}
     </details>`;
 }

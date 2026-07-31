@@ -131,15 +131,23 @@ pure](core.md)) pour les formats composites :
   d'un choix QCM (`libelleChoix`, vue riche #200 si elle existe), puis délègue à
   `core/erreurs-journal.ts`. Ignore une erreur sans leçon rattachée ou sans énoncé
   affichable. Branché sur la fiche en saisie (`session.ts:verify`), le QCM
-  (`lecon-qcm.ts`), le sprint (`sprint.ts`), les tuiles de numération
-  (`lecon-tuiles.ts` — libellé de la tuile posée via `TuileController.reponse()`), le
-  rangement (`lecon-ordre.ts` — `ordreErreur`), le tri par thème (`lecon-tri.ts` — une
-  entrée par mot mal classé via `motsMalClasses`), la résolution de problèmes
-  (`lecon-probleme.ts` — une entrée par sous-question ratée), « Clique sur le mot »
-  (`lecon-clic-mot.ts` — une entrée par phrase ratée : mots choisis vs bon(s) mot(s)) et la dictée d'orthographe
-  (`ortho-runner.ts` — le **premier essai raté** d'un mot ; libellé résolu via
-  `labelLeconOrtho`, cf. `core/orthographe/lessons.ts`, l'id étant une **liste**
-  d'orthographe et non une leçon du catalogue). Une opération posée (`session.ts`)
+  (`lecon-qcm.ts`), le QCM multi-sélection (`lecon-qcm-multi.ts` — une entrée par
+  question, propositions cochées listées dans l'ordre d'affichage), le sprint
+  (`sprint.ts`), les tuiles de numération (`lecon-tuiles.ts` — libellé de la tuile
+  posée via `TuileController.reponse()`), le rangement (`lecon-ordre.ts` —
+  `ordreErreur`), le tri par thème (`lecon-tri.ts` — une entrée par mot mal classé via
+  `motsMalClasses`), l'appariement (`lecon-appariement.ts` — une entrée par manche
+  ratée, restreinte aux paires fausses via `pairesErreur`), le tableau de conversion
+  (`lecon-tableau.ts` — le nombre relu dans l'unité cible via `nombreTableauSaisi`), la
+  résolution de problèmes (`lecon-probleme.ts` — une entrée par sous-question ratée),
+  « Clique sur le mot » (`lecon-clic-mot.ts` — une entrée par phrase ratée : mots choisis
+  vs bon(s) mot(s)) et la dictée d'orthographe (`ortho-runner.ts` — le **premier essai
+  raté** d'un mot ; libellé résolu via `labelLeconOrtho`, cf.
+  `core/orthographe/lessons.ts`, l'id étant une **liste** d'orthographe et non une leçon
+  du catalogue). La **révision espacée** (`revision.ts`) capture elle aussi, sous un mode
+  dédié `'revision'`, via un point d'entrée local `capterRev` qui délègue ici (cf.
+  [Espace encadrant](espace-encadrant.md) pour le détail de ses 10 formes d'item et la
+  limite propre aux mots d'orthographe sans liste). Une opération posée (`session.ts`)
   est agrégée : les cellules-chiffres du RÉSULTAT (`Item.posedResult`) sont regroupées
   par grille et réduites à **une** entrée via `analyserResultatPosee`, jamais une par
   chiffre. **Détaché du seuil de 60 %** (`enough`, qui conditionne toujours l'XP) : les
@@ -150,7 +158,9 @@ pure](core.md)) pour les formats composites :
   inséré par `encadrant-progression.ts` après les listes de dictée (dernier bloc du récap de
   l'onglet Suivi, juste avant le récap de révision espacée) : groupé par leçon (`<details>`
   repliés, la plus récemment ratée en tête), dédoublonnage « vue N fois », bonne réponse mise
-  en avant (jamais barrée). Le libellé du groupe résout d'abord une leçon du catalogue, sinon
+  en avant (jamais barrée). Au-delà des **5** erreurs les plus récentes d'une leçon, les
+  suivantes rejoignent un second `<details class="enc-err-anciennes">` imbriqué (« N erreurs
+  plus anciennes »), plutôt qu'un simple compteur non consultable. Le libellé du groupe résout d'abord une leçon du catalogue, sinon
   une liste d'orthographe (`labelLeconOrtho`), sinon l'id brut. Action « Épingler »
   (`data-act="epingler"`, même mécanique que « à revoir » — leçon du catalogue **ou** liste
   d'orthographe, préfixée `orthoRevoirId`, #424) **masquée** seulement pour un groupe dont
@@ -404,8 +414,9 @@ pure](core.md)) pour les formats composites :
   `verify()` du contrôleur renvoyé fige le widget, applique les marques ✓/✗ (couleur +
   icône, pour le daltonisme) et renvoie la justesse ; elle est **idempotente**. La méthode
   **`reponse()`** (#391) expose l'état final posé/proposé/placé (`TuileReponse`, discriminé
-  par le même `kind`) — lue par le runner en cas d'échec pour journaliser une réponse
-  lisible (cf. « Journal des erreurs » ci-dessous). La
+  par le même `kind` — plus une 4e variante `'appariement'` produite par le widget du même nom
+  ci-dessous, qui implémente le même contrat sans passer par ce binder) — lue par le runner en
+  cas d'échec pour journaliser une réponse lisible (cf. « Journal des erreurs » ci-dessous). La
   variante `opts.variant` (`'lecon'` | `'revision'`) adapte la classe de l'énoncé et
   l'enveloppe `.bignum` des grands nombres (#240). Ce module est **partagé** par les trois
   runners de leçon (`lecon-tuiles.ts`, `lecon-ordre.ts`, `lecon-tri.ts`) et par la
@@ -420,8 +431,10 @@ pure](core.md)) pour les formats composites :
   SVG de courbes reliant les ancres, dessiné derrière les mots. `bindAppariement(root,
   spec, opts)` **ne passe pas par `tuile-interaction.ts`** (mécanique de tracé propre,
   incompatible avec les trois `kind` du binder mutualisé) — il **réutilise seulement**
-  son contrat public `TuileController`/`TuileOptions` (mêmes `onState`/`verify()`) et
-  la tuile `.tuile`, pour rester interchangeable côté runner. Interaction : **tap en
+  son contrat public `TuileController`/`TuileOptions` (mêmes `onState`/`verify()`/
+  **`reponse()`** #391, qui renvoie la variante `TuileReponse` `'appariement'` — liens
+  posés dans l'ordre d'affichage de la colonne de gauche, `null` pour un mot laissé sans
+  lien) et la tuile `.tuile`, pour rester interchangeable côté runner. Interaction : **tap en
   deux temps** (taper un mot à gauche l'arme, taper un mot à droite trace le lien ;
   retaper un mot relié efface son lien) — fiable au doigt et **nativement clavier**
   (de vrais `<button>`, Entrée/Espace passent par `click`) — et **glisser-déposer en

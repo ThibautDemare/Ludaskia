@@ -29,7 +29,7 @@
    réutilise le contrat `TuileController`/`TuileOptions` et la tuile `.tuile`.
    ============================================================ */
 import { escapeHTML, sample } from '../core/utils';
-import type { TuileController, TuileOptions } from './tuile-interaction';
+import type { TuileController, TuileOptions, TuileReponse } from './tuile-interaction';
 
 export interface AppariementSpec {
 	question: string;
@@ -280,6 +280,15 @@ export function bindAppariement(
 			// fois la manche suivante rendue, ce board est détaché (renderLinks sort tôt sur
 			// width 0) et l'observer devient inatteignable → collecté.
 			return correct;
+		},
+		/* Liens posés, pour le journal d'erreurs (#391). Dans l'ordre d'AFFICHAGE de la
+		   colonne de gauche (celui que l'enfant a sous les yeux) ; un mot laissé sans lien
+		   ressort en `null` plutôt que d'être omis (« non relié » est une erreur à montrer). */
+		reponse(): TuileReponse {
+			return {
+				kind: 'appariement',
+				liens: gauches.map((g) => ({ gauche: g, droite: linkOf[g] ?? null })),
+			};
 		},
 	};
 }

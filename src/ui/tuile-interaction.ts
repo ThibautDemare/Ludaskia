@@ -50,15 +50,18 @@ export interface TuileOptions {
 export type TuileReponse =
 	| { kind: 'tuile'; posee: string | null } // libellé de la tuile placée (null si aucune)
 	| { kind: 'ordre'; propose: string[] } // suite proposée, dans l'ordre des cases
-	| { kind: 'tri'; placement: Record<string, 0 | 1> }; // colonne choisie par mot
+	| { kind: 'tri'; placement: Record<string, 0 | 1> } // colonne choisie par mot
+	// Appariement (#392) : le lien posé pour chaque mot de gauche (null = laissé sans lien).
+	| { kind: 'appariement'; liens: { gauche: string; droite: string | null }[] };
 
 export interface TuileController {
 	/* Fige le widget, applique les marques ✓/✗, renvoie si la réponse est juste.
 	   Idempotent : un second appel renvoie le même verdict sans re-marquer. */
 	verify(): boolean;
 	/* Réponse posée par l'enfant (état courant), pour le journal d'erreurs (#391).
-	   OPTIONNELLE : un contrôleur qui ne journalise pas d'erreur (ex. le widget
-	   d'appariement, #392, qui n'a pas de réponse « tuile/ordre/tri ») peut l'omettre. */
+	   Implémentée par tous les widgets journalisés (tuiles, ordre, tri, appariement) ;
+	   reste OPTIONNELLE pour qu'un futur widget puisse être monté avant d'avoir sa
+	   représentation d'erreur (les appelants gardent donc leur repli). */
 	reponse?(): TuileReponse;
 }
 

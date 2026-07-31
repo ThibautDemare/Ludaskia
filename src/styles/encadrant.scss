@@ -1324,8 +1324,35 @@ $evol-amorce: #7c8494;
 	color: var(--grey);
 	margin: 0.15rem 0 0;
 }
-.enc-err-reste {
+/* Repli de 2ᵉ niveau : les erreurs plus anciennes d'une même leçon, désormais
+   CONSULTABLES (avant : un simple compteur, donc un écart inexpliqué avec le total).
+   Même chrome de chevron que les autres <summary> de l'écran ; détaché de la liste par
+   un filet et laissé discret (c'est un sous-niveau), mais en --ink et sur une cible
+   confortable, puisque c'est une commande. */
+.enc-err-anciennes {
 	margin: 0.35rem 0 0;
+	border-top: 1px solid var(--line);
+}
+.enc-err-anciennes-sum {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-height: 2.75rem;
+	cursor: pointer;
+	list-style: none; /* marqueur natif retiré ; chevron via ::after (comme .enc-err-sum) */
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--ink);
+}
+.enc-err-anciennes-sum::-webkit-details-marker {
+	display: none;
+}
+.enc-err-anciennes-sum::after {
+	content: '▸';
+	color: var(--muted);
+}
+.enc-err-anciennes[open] .enc-err-anciennes-sum::after {
+	content: '▾';
 }
 
 /* ---------- Récap du mode Révision (#423) ----------

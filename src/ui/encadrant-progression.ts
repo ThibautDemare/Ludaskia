@@ -31,6 +31,7 @@ import {
 	type FriseMatiere,
 } from '../core/encadrant-stats';
 import { getAllLessons, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
+import { BLOCAGES_SIGNAL_ADULTE } from '../core/report-lecon';
 import { dicteeDisponible } from './tts';
 import { printScope } from './session';
 import { erreursHTML, erreursClick } from './encadrant-erreurs';
@@ -476,17 +477,50 @@ function boutonsImpression(lessonId: string, label: string): string {
       <button type="button" class="enc-btn-sec" data-act="imprimer" data-corrige="1" data-lesson="${lessonId}" aria-label="Imprimer la fiche avec corrigé de ${nom}">${icon('printer')} Corrigé</button>`;
 }
 
+/* Marqueur « ça bloque » d'une ligne « à revoir » (#492) : sans lui, l'adulte voyait la
+   même carte pour une notion simplement fragile et pour un mur que l'enfant retrouve
+   depuis plusieurs jours — or c'est le second cas qui appelle une explication humaine
+   (avis pédagogue, #485). Il s'ajoute à l'état d'acquisition au lieu de le remplacer :
+   les deux informations sont utiles (« où en est la notion » ≠ « ça coince »).
+
+   Il apparaît AUSSI sur une ligne déjà épinglée : épingler fait passer la notion des
+   suggestions aux épinglées, le signal ne doit pas disparaître au moment où l'adulte
+   agit. Le nombre de jours n'est pas affiché (une donnée chiffrée sur un enfant se lit
+   comme une note) : le `title` donne le détail, la puce dit le fait.
+
+   Libellé « reste un point dur » et non « revient souvent » (avis rédacteur) : « revient »
+   se lit aussi comme « revient souvent dans les exercices », lecture neutre qui annulait
+   le signal. On qualifie la NOTION, jamais l'enfant. Pas d'icône : elle serait redondante
+   avec le texte, et `repeat` — le seul picto qui aurait convenu — sert déjà de titre au
+   bloc « À revoir ensemble » avec un autre sens (avis accessibilité). */
+function signalBlocage(blocages: number): string {
+	if (blocages < BLOCAGES_SIGNAL_ADULTE) return '';
+	return `<span class="enc-revoir-signal" title="Revient depuis plusieurs jours sans être réussie">reste un point dur</span>`;
+}
+
+/* Jours de blocage par leçon, à plat depuis le récap (les suggestions comme les
+   épinglées y puisent). Une liste de dictée n'a pas de compteur → absente de la carte. */
+function blocagesParLecon(recap: RecapProfil): Map<string, number> {
+	const out = new Map<string, number>();
+	for (const cat of recap.parCategorie) {
+		for (const n of cat.lecons) if (n.blocages > 0) out.set(n.lessonId, n.blocages);
+	}
+	return out;
+}
+
 /* Une ligne « à revoir » : libellé + état éventuel + actions (épingler/retirer + impression).
    `entryId` = id transmis au toggle/à l'impression (leçon = `LessonDef.id` ; liste de dictée =
    `orthoRevoirId(id)`). `etat` = état d'acquisition affiché (suggestions) ou absent (épinglées).
-   `imprimable` = false pour une liste de dictée (pas de fiche à imprimer). */
+   `imprimable` = false pour une liste de dictée (pas de fiche à imprimer).
+   `blocages` = jours où l'enfant a buté sur la leçon dans la leçon du jour (#485) : au-delà du
+   seuil, la ligne porte un marqueur EN PLUS de l'état (cf. `signalBlocage`). */
 function ligneRevoir(
 	entryId: string,
 	label: string,
 	epingle: boolean,
-	opts: { etat?: NiveauNotion; imprimable?: boolean; quand?: string } = {},
+	opts: { etat?: NiveauNotion; imprimable?: boolean; quand?: string; blocages?: number } = {},
 ): string {
-	const { etat, imprimable = true, quand } = opts;
+	const { etat, imprimable = true, quand, blocages = 0 } = opts;
 	const badge = etat
 		? `<span class="enc-revoir-etat enc-key-${etat}">${MOT_NIVEAU[etat]}</span>`
 		: quand
@@ -494,7 +528,7 @@ function ligneRevoir(
 			: '';
 	return `<li class="enc-revoir-item">
       <span class="enc-revoir-lab">${escapeHTML(label)}</span>
-      ${badge}
+      ${badge}${signalBlocage(blocages)}
       <span class="enc-actions">
         <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(label)} »">${epingle ? 'Retirer' : 'Épingler'}</button>
         ${imprimable ? boutonsImpression(entryId, label) : ''}
@@ -516,19 +550,25 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 	// et se remet d'un clic (« Épingler » → l'entrée est alors conservée, cf. purgeRevoirSolides).
 	const retraits = retraitsAutoProfil(consulte, now);
 
+	// Jours de blocage (#492) : sert aux DEUX blocs, épinglées comprises.
+	const blocages = blocagesParLecon(recap);
 	const blocEpinglees = pinned.length
 		? `<ul class="enc-revoir">${pinned
 				.map((e) =>
 					e.kind === 'ortho'
 						? ligneRevoir(orthoRevoirId(e.id), e.label, true, { imprimable: false })
-						: ligneRevoir(e.id, e.label, true),
+						: ligneRevoir(e.id, e.label, true, { blocages: blocages.get(e.id) }),
 				)
 				.join('')}</ul>`
 		: `<p class="enc-hint">Aucune leçon épinglée pour le moment.</p>`;
 	const blocSuggestions = suggestions.length
 		? `<h4 class="enc-sub-lab">Suggestions</h4>
-       <p class="enc-hint">Leçons un peu fragiles, qui gagneraient à être revues :</p>
-       <ul class="enc-revoir">${suggestions.map((n) => ligneRevoir(n.lessonId, n.label, false, { etat: n.niveau })).join('')}</ul>`
+       <p class="enc-hint">Leçons qui gagneraient à être revues :</p>
+       <ul class="enc-revoir">${suggestions
+					.map((n) =>
+						ligneRevoir(n.lessonId, n.label, false, { etat: n.niveau, blocages: n.blocages }),
+					)
+					.join('')}</ul>`
 		: '';
 	const blocRetraits = retraits.length
 		? `<h4 class="enc-sub-lab">Retirées automatiquement</h4>

@@ -10,8 +10,7 @@
    doit jamais afficher la félicitation de fin de programme.
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
-import { getLessonsBySubject } from '../src/core/catalog';
+import { watchErrors, gotoHash, leconsDuNiveau } from './helpers';
 
 /* Profil CE2 (niveauReference explicite, cohérent avec l'amorçage de gotoHash)
    ayant déjà une étoile sur la 1re leçon de maths de l'ordre pédagogique
@@ -76,8 +75,8 @@ test('une leçon mise de côté quitte la tête du fil, la carte propose autre c
 	// pédagogique — plutôt que de la fixer de mémoire — ce qui doit prendre sa
 	// place : la 1re leçon de français (le français, à 0 leçon acquittée contre 1
 	// pour les maths une fois `num-comparer` masquée, prend la tête, cf. #484).
-	const mathHead = getLessonsBySubject('math', 'ce2')[0].id;
-	const frHead = getLessonsBySubject('francais', 'ce2')[0].id;
+	const mathHead = leconsDuNiveau('math', 'ce2')[0];
+	const frHead = leconsDuNiveau('francais', 'ce2')[0];
 	await page.addInitScript(`(() => {
 		const now = Date.now();
 		const reports = { ${JSON.stringify(`${mathHead}@ce2`)}: {
@@ -104,8 +103,8 @@ test('tout mis de côté : la carte reste utile, jamais la fin de programme (#48
 	// française est mise de côté PLUS ANCIENNEMENT que la math (reporteLe plus
 	// ancien) : le repli doit la proposer en premier, quel que soit l'ordre des
 	// matières — ce qui distingue ce test d'une simple coïncidence d'ordre.
-	const mathIds = getLessonsBySubject('math', 'ce2').map((l) => l.id);
-	const frIds = getLessonsBySubject('francais', 'ce2').map((l) => l.id);
+	const mathIds = leconsDuNiveau('math', 'ce2');
+	const frIds = leconsDuNiveau('francais', 'ce2');
 	const mathLast = mathIds[mathIds.length - 1];
 	const frLast = frIds[frIds.length - 1];
 	const stars: Record<string, number> = {};

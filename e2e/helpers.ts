@@ -2,6 +2,17 @@
    Helpers partagés des smoke tests e2e (#129).
    ============================================================ */
 import type { Page } from '@playwright/test';
+import { getLessonsBySubject } from '../src/core/catalog';
+import type { SchoolLevel, SubjectId } from '../src/core/catalog';
+
+/* Ids des leçons d'une matière à un niveau, dans l'ORDRE pédagogique. SEUL endroit où
+   les tests e2e importent du code applicatif, et à garder ainsi : certains scénarios
+   doivent amorcer le programme ENTIER (« tout est mis de côté », #485), impossible à
+   figer à la main et qui pourrirait à chaque leçon ajoutée. Une spec qui n'a besoin
+   que d'un id connu le garde en dur, c'est plus lisible. */
+export function leconsDuNiveau(subject: SubjectId, niveau: SchoolLevel): string[] {
+	return getLessonsBySubject(subject, niveau).map((l) => l.id);
+}
 
 /* Messages de console à ignorer (bruits navigateur sans rapport avec l'app :
    favicon manquant, ressources annexes…). */

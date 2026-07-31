@@ -1126,6 +1126,65 @@ $evol-amorce: #7c8494;
 	flex-direction: column;
 	gap: 0.5rem;
 }
+/* ---------- Mots d'une dictée, consultables par l'encadrant (#441) ----------
+   Repli natif <details> posé dans une ligne de dictée (les DEUX familles : .enc-detail-item
+   du suivi et .enc-revoir-item des dictées proposées). `flex-basis: 100%` : il tombe
+   toujours sur sa propre ligne pleine largeur, SOUS le libellé et les actions — et comme
+   il est le dernier enfant du DOM, l'ordre de focus suit l'ordre visuel (a11y). Chrome de
+   chevron des autres <summary> de l'écran, cible tactile 44 px, accent bleu pour signaler
+   l'interactif sans dépendre du seul chevron. */
+.enc-mots {
+	flex-basis: 100%;
+}
+.enc-mots > summary {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-height: 2.75rem;
+	cursor: pointer;
+	list-style: none; /* marqueur natif retiré ; chevron via ::before (comme .enc-gerer) */
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--admin-accent);
+}
+.enc-mots > summary::-webkit-details-marker {
+	display: none;
+}
+.enc-mots > summary::before {
+	content: '▸';
+	color: var(--muted);
+}
+.enc-mots[open] > summary::before {
+	content: '▾';
+}
+/* Règle de focus EXPLICITE : les autres <summary> du fichier s'en remettent au focus par
+   défaut du navigateur, à rebours de tous les autres contrôles de l'espace encadrant
+   (.enc-btn-sec, .enc-vu-expand… en outline --admin-accent). On ne reconduit pas l'angle
+   mort (avis a11y). */
+.enc-mots > summary:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+/* Vraie liste (annonce « liste, N éléments », relecture mot à mot), mais disposée en
+   pastilles qui s'enroulent : 40 mots courts tiennent en quelques lignes au lieu d'une
+   colonne interminable. Texte en --ink sur --paper (contraste maximal) ; la pastille
+   n'est qu'un repère visuel de découpe. */
+.enc-mots-list {
+	list-style: none;
+	margin: 0 0 0.4rem;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 0.3rem;
+}
+.enc-mots-list li {
+	font-size: 0.8rem;
+	color: var(--ink);
+	padding: 0.1rem 0.4rem;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+}
 /* Tendance récente (#265) : mot lisible en --ink ; la couleur (indice secondaire, WCAG 1.4.1)
    n'est portée que par le glyphe fléché, qui redouble le sens par sa FORME (daltonisme). */
 .enc-tendance {
@@ -1178,10 +1237,18 @@ $evol-amorce: #7c8494;
 	border: 1px solid var(--line);
 	border-radius: 10px;
 }
-.enc-revoir-lab {
-	font-weight: 800;
+/* Colonne libellé (+ méta optionnelle sous le libellé, ex. « 20 mots » d'une dictée
+   proposée, #441) : miroir de .enc-detail-main pour l'autre famille de lignes. Porte le
+   flex de la carte, le libellé n'étant plus forcément seul. */
+.enc-revoir-main {
 	flex: 1;
 	min-width: 120px;
+	display: flex;
+	flex-direction: column;
+	gap: 0.05rem;
+}
+.enc-revoir-lab {
+	font-weight: 800;
 }
 /* État d'acquisition : le MOT est en --ink (lisible partout) ; la couleur du niveau
    n'est portée que par une petite pastille (indice secondaire), pas par le texte —

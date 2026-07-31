@@ -61,7 +61,12 @@ import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 import { niveauActifMatiere } from './niveau-actif';
 import { touchProfile, type Profile } from './profiles';
 import { loadOrtho, loadOrthoFor, ORTHO_KEY } from './orthographe/store';
-import { listOrthoLecons, labelLeconOrtho, type SourceLecon } from './orthographe/lessons';
+import {
+	listOrthoLecons,
+	labelLeconOrtho,
+	motsApercu,
+	type SourceLecon,
+} from './orthographe/lessons';
 import { niveauListeOrtho, avancementLecon } from './orthographe/progression';
 import { REVISION_INTERVALLES, PALIER_ACQUIS, JOUR, estAcquis } from './revision';
 import type { EtatRevision, OrthoState } from './orthographe/types';
@@ -498,6 +503,7 @@ export interface RecapListeOrtho {
 	epingle: boolean; // présente dans la file « à revoir » (entrée préfixée)
 	nbMots: number; // mots attendus de la liste
 	maitrises: number; // mots déjà maîtrisés (compte factuel, accolé à « en cours » par l'UI)
+	mots: string[]; // mots de la liste, dans l'ordre d'AFFICHAGE (cf. motsApercu) — #441
 }
 /* `dicteeDispo` fourni par l'UI (dispo du TTS) : conditionne l'« acquis » (mode dictée requis).
    Les dictées PRÉDÉFINIES ne sont listées que si l'enfant en a commencé au moins un mot
@@ -524,6 +530,7 @@ export function listesOrthoProfil(profile: Profile, dicteeDispo = false): RecapL
 			epingle,
 			nbMots: ref.nbMots,
 			maitrises: av.maitrises,
+			mots: motsApercu(ref.mots, ref.source),
 		});
 	}
 	return out;
@@ -538,6 +545,7 @@ export interface DicteeProposee {
 	id: string; // id BRUT (dictée prédéfinie `fr-ortho-*`)
 	label: string;
 	nbMots: number;
+	mots: string[]; // mots de la dictée, dans l'ordre d'AFFICHAGE (cf. motsApercu) — #441
 }
 export function dicteesProposees(profile: Profile, dicteeDispo = false): DicteeProposee[] {
 	const state = loadOrthoFor(profile.uuid);
@@ -548,7 +556,12 @@ export function dicteesProposees(profile: Profile, dicteeDispo = false): DicteeP
 		if (ref.source !== 'predefini') continue;
 		if (epinglees.has(orthoRevoirId(ref.id))) continue;
 		if (niveauListeOrtho(state, ref.id, dicteeDispo) !== 'a-decouvrir') continue;
-		out.push({ id: ref.id, label: ref.label, nbMots: ref.nbMots });
+		out.push({
+			id: ref.id,
+			label: ref.label,
+			nbMots: ref.nbMots,
+			mots: motsApercu(ref.mots, ref.source),
+		});
 	}
 	return out;
 }

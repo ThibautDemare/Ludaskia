@@ -88,6 +88,17 @@ passe aussi **devant** les autres suggestions dans le tri (`RecapNotion.blocages
 mur qui revient appelle une explication humaine, pas une répétition de plus. Reste une
 **suggestion**, jamais un épinglage automatique.
 
+La ligne concernée porte un **marqueur visible** (#492, `signalBlocage` →
+`.enc-revoir-signal`) : puce cerclée « **reste un point dur** », **en plus** du badge
+d'état d'acquisition (« où en est la notion » ≠ « ça coince »). Le **nombre de jours n'est
+jamais affiché** (un chiffre sur un enfant se lit comme une note) : il vit dans le `title`.
+Le marqueur apparaît **aussi sur une ligne déjà épinglée** — épingler fait passer la notion
+des suggestions aux épinglées, le signal ne doit pas disparaître au moment où l'adulte agit.
+Wording « reste un point dur » et non « revient souvent » (avis `redacteur-contenu-francais` :
+« revient » se lisait aussi comme « revient souvent dans les exercices », lecture neutre qui
+annulait le signal) ; liseré en `--warn` plein, seule teinte qui se détache du `--paper` de
+la carte (avis `relecteur-accessibilite`), le texte restant en `--ink`.
+
 **Suivi par leçon** : dans le détail dépliable d'une catégorie, chaque leçon affiche
 « travaillée N fois · dernière fois … » — `RecapNotion.vues` (= `LessonStat.attempts`) et
 `RecapNotion.derniereFois` (= `LessonStat.lastAt`, horodatage alimenté par

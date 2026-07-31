@@ -1211,6 +1211,23 @@ $evol-amorce: #7c8494;
 	border-radius: 3px;
 	background: var(--k);
 }
+/* Marqueur « ça bloque » (#492) : une notion que l'enfant retrouve depuis plusieurs jours
+   (report de la leçon du jour, #485). Il s'AJOUTE à l'état d'acquisition, d'où une forme
+   distincte de la pastille : une petite puce cerclée. Le sens ne repose JAMAIS sur la
+   couleur seule (le texte le dit) et le texte reste en --ink (--warn en texte passe sous
+   AA, cf. .enc-revoir-etat). Liseré en --warn PLEIN et non --warn-bd : la puce doit se
+   voir au scan, or --warn-bg comme --warn-bd frôlent le --paper de la carte (1,1:1 et
+   1,4:1) alors que --warn tient 4,2:1 en clair et 8:1 en thème Nuit (avis a11y). */
+.enc-revoir-signal {
+	font-size: 0.78rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--warn-bg);
+	border: 1px solid var(--warn);
+	border-radius: 999px;
+	padding: 0.05rem 0.45rem;
+	white-space: nowrap;
+}
 .enc-actions {
 	display: flex;
 	gap: 0.4rem;

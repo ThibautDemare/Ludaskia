@@ -15,7 +15,9 @@ import {
 	deleteListe,
 	getListe,
 	motsDeListe,
+	supprimerMot,
 } from '../core/orthographe/store';
+import { motsDevenusOrphelins } from '../core/orthographe/banque';
 import type { MotInput, FormesAccord, VerbeConfig } from '../core/orthographe/types';
 import {
 	lookupConjugatedForms,
@@ -59,6 +61,43 @@ function apercuPhrases(forms: FormesConjuguees, pronoms: number[], complement: s
 function resumeVerbe(infinitif: string, pronoms: number[], temps: VerbTense[]): string {
 	const tps = temps.map((t) => TEMPS_LABEL[t]).join(', ');
 	return `${infinitif || 'verbe'} · ${libellePronoms(pronoms)} · ${tps}`;
+}
+
+/* Mots cités en clair dans la confirmation ; au-delà, on compte (une modale ne doit pas
+   devenir une liste à faire défiler). */
+const MAX_MOTS_CITES = 8;
+
+/* Après l'enregistrement d'une liste : les mots qu'on vient d'en retirer et que plus
+   AUCUNE liste ne référence désormais deviennent invisibles pour l'adulte alors qu'ils
+   restent en rotation de révision (#496). On propose donc de les supprimer pour de bon,
+   en UNE fois — et non ligne à ligne au moment du retrait, où le formulaire n'est pas
+   encore enregistré et où le mot peut encore être remis. Ne rien proposer est un choix
+   valable : le corpus de l'année a du sens (l'orthographe est cumulative, avis pédago),
+   d'où le libellé de refus explicite. Les mots d'une dictée livrée avec l'appli sont
+   écartés par `motsDevenusOrphelins` (les supprimer ne tiendrait pas). */
+async function proposerSuppressionOrphelins(candidats: string[]): Promise<void> {
+	if (candidats.length === 0) return;
+	const orphelins = motsDevenusOrphelins(loadOrtho(), candidats);
+	if (orphelins.length === 0) return;
+	const noms = orphelins.map((e) => `« ${e.contexte ?? e.mot} »`);
+	const cites = noms.slice(0, MAX_MOTS_CITES).join(', ');
+	const reste = noms.length - MAX_MOTS_CITES;
+	const liste = reste > 0 ? `${cites} et ${reste} autre${reste > 1 ? 's' : ''}` : cites;
+	const ok = await uiConfirm({
+		title: noms.length > 1 ? 'Supprimer aussi ces mots ?' : 'Supprimer aussi ce mot ?',
+		message: `${liste} ${noms.length > 1 ? 'ne sont' : "n'est"} plus dans aucune liste. Sans suppression, ${noms.length > 1 ? 'ils continueront' : 'il continuera'} de revenir en révision.`,
+		confirmLabel: noms.length > 1 ? 'Supprimer ces mots' : 'Supprimer ce mot',
+		cancelLabel: 'Non, les garder',
+		destructive: true,
+		confirmIcon: 'trash',
+		emoji: '🗑️',
+	});
+	if (!ok) return;
+	// Relecture au moment d'écrire : la projection ci-dessus a pu être calculée il y a
+	// plusieurs secondes (le temps de la modale).
+	const st = loadOrtho();
+	for (const e of orphelins) supprimerMot(st, e.id);
+	saveOrtho(st);
 }
 
 /** Rend le formulaire dans `el`. listeId null = création ; sinon édition. */
@@ -417,9 +456,18 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 			return;
 		}
 		const st = loadOrtho();
-		if (editing && listeId) updateListe(st, listeId, label, mots, date, verbes);
-		else createListe(st, label, mots, date, verbes);
-		saveOrtho(st);
+		if (editing && listeId) {
+			// Mots référencés AVANT la mise à jour : ceux qu'on vient de retirer du formulaire
+			// n'appartiendront peut-être plus à aucune liste, et resteraient alors en révision
+			// à l'insu de l'adulte (#496) — on lui propose de s'en débarrasser pour de bon.
+			const avant = [...(getListe(st, listeId)?.motIds ?? [])];
+			updateListe(st, listeId, label, mots, date, verbes);
+			saveOrtho(st);
+			await proposerSuppressionOrphelins(avant);
+		} else {
+			createListe(st, label, mots, date, verbes);
+			saveOrtho(st);
+		}
 		goCategorie(ORTHO_CATEGORY_ID);
 	});
 

@@ -11,11 +11,28 @@
    Il héberge aussi `telechargerBlob`, utilitaire de téléchargement partagé par pin
    (clé de récupération) et profils (export) — placé ici, module déjà commun aux deux,
    pour éviter un import croisé pin ↔ profils. ============================================================ */
+import type { NiveauNotion } from '../core/encadrant-stats';
 
 /* Onglets de l'espace (#459) : découpe la page en sections par INTENTION
    (observer / préparer / configurer / gérer). L'état vit ici — transverse à toutes
    les sections, comme le profil consulté — et non dans un module de section. */
 export type EncTab = 'suivi' | 'programme' | 'reglages' | 'profils';
+
+/* Mot affiché pour un niveau d'acquisition (échelle type LSU ; wording validé par
+   pedagogue-primaire / redacteur-contenu-francais — la notion est qualifiée, pas l'enfant).
+   Ici plutôt que dans une section : le suivi des notions (progression) et la banque de mots
+   (#496) parlent la MÊME échelle, et un mot recopié dans deux modules divergerait. */
+export const MOT_NIVEAU: Record<NiveauNotion, string> = {
+	acquis: 'acquis',
+	'en-cours': 'en cours',
+	'non-acquis': 'à renforcer', // ≠ « à consolider » : éviter qu'il sonne plus avancé que « en cours » (avis pédago)
+	'a-decouvrir': 'à découvrir',
+};
+/* Ordre de PROGRESSION (croissant) pour les légendes et les segments (avis pédago :
+   l'échelle doit se lire comme une gradation, pas un ordre arbitraire). L'orthographe n'en
+   utilise que 3 : la validation d'un mode est binaire, il n'y a pas de « à renforcer ». */
+export const ORDRE_NIVEAUX: NiveauNotion[] = ['a-decouvrir', 'non-acquis', 'en-cours', 'acquis'];
+export const ORDRE_NIVEAUX_ORTHO: NiveauNotion[] = ['a-decouvrir', 'en-cours', 'acquis'];
 
 let conteneur: HTMLElement | null = null;
 let consulte: string | null = null; // profil CONSULTÉ (≠ forcément l'actif)

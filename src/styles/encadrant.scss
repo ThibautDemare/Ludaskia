@@ -1521,5 +1521,39 @@ $evol-amorce: #7c8494;
 	height: 1em;
 }
 
+/* ---------- Banque de mots (#496) ----------
+   Barre d'outils du volet « Mots » : en COLONNE pleine largeur par défaut (le champ de
+   recherche et le filtre « orphelins » sont tous deux des cibles tactiles pleine largeur
+   sur téléphone), en ligne dès qu'il y a la place. C'est le seul endroit de l'espace
+   encadrant qui ait besoin d'un point de rupture de ce genre ; 560px reprend celui déjà
+   utilisé ailleurs dans le projet (lecon-mode, seance). */
+.enc-banque-outils {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin: 0.6rem 0;
+}
+.enc-banque-rech {
+	display: block;
+	flex: 1 1 12rem;
+}
+@media (min-width: 560px) {
+	.enc-banque-outils {
+		flex-direction: row;
+		align-items: center;
+	}
+	.enc-banque-orphelins {
+		white-space: nowrap;
+	}
+}
+/* Mot non supprimable (issu d'une dictée livrée avec l'appli) : une MENTION, pas un bouton
+   désactivé — un bouton grisé ne dit pas pourquoi, et disparaît de la navigation par
+   contrôles des lecteurs d'écran. */
+.enc-banque-fige {
+	font-size: 0.72rem;
+	font-style: italic;
+	text-align: right;
+}
+
 /* Les cartes profil (consulter + gérer dépliable) restent en COLONNE à toutes les
    tailles : un dépliage en grille 2 colonnes décalerait les cartes voisines. */

@@ -4,7 +4,7 @@
    Les opérations mutent un OrthoState en mémoire ; l'appelant
    sauvegarde via saveOrtho(). Logique pure, testable sans DOM.
    ============================================================ */
-import { lsGet, lsSet, lsGetRaw } from '../storage';
+import { lsGet, lsSet, lsGetRaw, lsSetRaw } from '../storage';
 import type {
 	MotOrtho,
 	ListeOrtho,
@@ -97,6 +97,15 @@ export function loadOrthoFor(uuid: string): OrthoState {
 
 export function saveOrtho(state: OrthoState): void {
 	lsSet(ORTHO_KEY, state);
+}
+
+/** Écrit l'état orthographe d'un profil DONNÉ par UUID (clé BRUTE), pendant en écriture de
+    `loadOrthoFor` — l'espace encadrant agit sur le profil CONSULTÉ, qui n'est pas forcément
+    l'actif (#496). SILENCIEUSE par nature, comme `saveRevoirFor` (encadrant-stats) : contourner
+    le préfixe actif contourne aussi le hook `onDataWrite`, donc c'est à l'APPELANT de marquer le
+    profil modifié (`touchProfile`) quand l'écriture traduit un geste VOULU de l'adulte. */
+export function saveOrthoFor(uuid: string, state: OrthoState): void {
+	lsSetRaw(uuid + '/' + ORTHO_KEY, JSON.stringify(state));
 }
 
 /** Ajoute (ou retrouve) un mot dans la banque, dédupliqué par forme normalisée.
@@ -217,6 +226,16 @@ export function listeContenantMot(state: OrthoState, wordId: string): string | n
 	return state.listes.find((l) => l.motIds.includes(wordId))?.id ?? null;
 }
 
+/** TOUTES les listes du profil référençant ce mot, dans l'ordre de `state.listes` (#496).
+ *
+ *  Distinct de `listeContenantMot`, qui n'en renvoie qu'UNE (le journal d'erreurs n'a besoin que
+ *  d'un groupe où ranger l'erreur). Ici on montre à l'adulte OÙ vit un mot, et on l'avertit avant
+ *  suppression : les listes qu'on ne nommerait pas seraient amputées sans qu'il le sache. Tableau
+ *  vide = mot ORPHELIN (plus référencé nulle part) — l'état qui motive cette vue. Pur. */
+export function listesContenantMot(state: OrthoState, wordId: string): ListeOrtho[] {
+	return state.listes.filter((l) => l.motIds.includes(wordId));
+}
+
 /** Reprise : les mots déjà en banque mais sans état de révision (ajoutés avant
     l'arrivée du mode Révision) entrent en rotation. `now` doit être daté de J-1
     par l'appelant → 1er re-test échu dès aujourd'hui, donc dus immédiatement.
@@ -250,4 +269,26 @@ export function deleteListe(state: OrthoState, id: string): boolean {
 	const before = state.listes.length;
 	state.listes = state.listes.filter((l) => l.id !== id);
 	return state.listes.length < before;
+}
+
+/** Supprime DÉFINITIVEMENT un mot de la banque du profil (#496) : l'entrée elle-même, son
+    index de dédup par forme, et sa référence dans les `motIds` de toute liste qui le
+    référence encore. Renvoie `true` si un mot a bien été retiré.
+
+    Toute la surface de nettoyage tient ici : rien d'autre en localStorage ne référence un id
+    de mot (la file « à revoir » épingle des LISTES et des leçons, pas des mots, cf.
+    `orthoRevoirId`). L'index est balayé par VALEUR, pas reconstruit depuis `mot.mot` : un état
+    importé peut porter une entrée d'index périmée pointant sur cet id, qui ressusciterait le
+    mot au prochain `addOrGetMot` (dédup sur un id absent de la banque). Mute l'état ;
+    l'appelant sauvegarde. Pur (hors mutation de l'argument). */
+export function supprimerMot(state: OrthoState, wordId: string): boolean {
+	if (!state.banque[wordId]) return false;
+	delete state.banque[wordId];
+	for (const forme in state.motIdParForme) {
+		if (state.motIdParForme[forme] === wordId) delete state.motIdParForme[forme];
+	}
+	for (const l of state.listes) {
+		if (l.motIds.includes(wordId)) l.motIds = l.motIds.filter((id) => id !== wordId);
+	}
+	return true;
 }

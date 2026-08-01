@@ -405,7 +405,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   **parité** entre modes — aucun mode n'est plus rentable qu'un autre (#69). En mode
   `'lecon'`, appelle aussi **`recordEssaiLecon`** (#485, avancement/report de la leçon
   du jour, cf. `report-lecon.ts`) : **seul** point d'entrée qui enregistre un essai
-  COMPLET en mode leçon, jamais le sprint ni les bilans.
+  COMPLET en mode leçon, jamais le sprint ni les bilans. Transmet aussi à
+  `recordLessonStats` la **référence** (#498) de la leçon jouée, mais seulement en
+  mode `'lecon'` — un bilan couvre plusieurs leçons, aucune cible unique à désigner
+  pour l'attribution du programme du jour (cf. `core/seance.ts` ci-dessous).
 - **`catalog.ts`** — hiérarchie `SUBJECTS` / `CATEGORIES` / `LessonDef`
   (`id, label, subject, category, levels: SchoolLevel[], exerciseType` — #225). La
   plupart des familles de leçons passent par **`toLessonDefs(inputs, opts)`** (#373) :
@@ -544,13 +547,20 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
 
 ## Reprise & révision espacée
 
-- **`resume.ts`** — **reprise d'un exercice en cours** (#63), brique **pure** :
-  stockage par profil (`ludaskia_resume`) d'instantanés d'exercices **grille**
-  (leçon, bilans express/complet/personnalisé) — `loadResumes`/`getResume`/
-  `upsertResume`/`removeResume`/`clearResumes`, **clés stables** par identité d'exercice (`leconKey`,
-  `bilanCategoryKey`, `bilanCustomKey` ; relancer écrase), **validation
-  versionnée** (un instantané d'une autre version ou mal formé est ignoré
-  proprement), **expiration silencieuse** (`RESUME_TTL_MS`, 7 j) et **plafond**
+- **`resume.ts`** — **reprise d'un exercice en cours** (#63, étendue aux runners
+  #498), brique **pure** : stockage par profil (`ludaskia_resume`) d'instantanés
+  **`ResumeSnapshot`**, union discriminée par `kind` — **`grille`** (leçon en
+  saisie, bilans express/complet/personnalisé : `sheetsHTML`/`items`/`answers`/
+  `activeId`/`elapsedMs`, l'état tient dans le DOM qu'on rejoue tel quel) ou
+  **`runner`** (#498 : `questions`/`idx`/`score`, l'état LOGIQUE des dix runners
+  « une question à la fois », qui se re-rendent eux-mêmes — granularité : la
+  question **entamée**, jamais celles déjà validées) — `loadResumes`/`getResume`/
+  `upsertResume`/`removeResume`/`clearResumes`, **clés stables** par identité
+  d'exercice (`leconKey`, `bilanCategoryKey`, `bilanCustomKey` ; relancer écrase),
+  **validation versionnée** (un instantané d'une autre version ou mal formé est
+  ignoré proprement ; un instantané D'AVANT #498, sans `kind`, est lu comme une
+  `grille` — seule nature qui existait alors, aucune reprise en cours perdue à la
+  mise à jour), **expiration silencieuse** (`RESUME_TTL_MS`, 7 j) et **plafond**
   de stockage (`RESUME_MAX_STORED`). `now` passé en paramètre (testable sans
   horloge). Sprint et révision espacée **hors périmètre** (le sprint est un défi
   borné ; la révision est déjà persistée item par item, comme l'orthographe).
@@ -630,16 +640,24 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `lecon-du-jour.ts` et `rewards.ts:weakLessons`. Logique pure dans `report-lecon.ts`
   ci-dessus.
   **Journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée,
-  #234 ; **entrées typées** `ActivityEntry = {t, k}` avec
+  #234 ; **entrées typées** `ActivityEntry = {t, k, ref?}` avec
   `ActivityKind = 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee'` (+ `'inconnu'`
-  pour l'ancien format), #319). `recordLessonStats(perLesson, kind = 'lecon')` journalise
-  les leçons/bilans/sprints ; les sessions qui **ne passent pas** par `recordLessonStats`
-  (révision espacée `ui/revision.ts`, dictée d'orthographe `ui/ortho-runner.ts`) appellent
-  **`recordSessionActivity(kind)`**. `normalizeActivity` lit **tolérant** l'ancien `number[]`
-  (chaque horodatage nu → `'inconnu'`) et le réécrit au format objet au prochain passage
-  (migration **lazy, sans perte**). **XP global** (`getXP`/`addXP`, `ludaskia_xp`)
-  et **niveaux dérivés** (`niveauDepuisXP`, `progressionNiveau`, `xpVersSuivant`,
-  `xpPourNiveau`, `NIVEAU_MAX`), périodes calendaires (`startOfWeek/Month`,
+  pour l'ancien format), #319). **`ref`** (#498) = id de la leçon (`'lecon'`) ou de la
+  liste d'orthographe (`'dictee'`) travaillée, **quand la session en vise UNE seule** —
+  absente pour une session multi-cibles (bilan, sprint, tour de révision espacée) : c'est
+  cette référence que le programme du jour consomme pour attribuer une session à une
+  étape (`core/seance.ts:etapeSatisfaite`, cf. [Modes & navigation](modes-et-navigation.md)),
+  sans quoi l'attribution ne pouvait s'appuyer que sur le TYPE de session, donc sur un
+  marqueur posé au lancement (ignorant le travail fait depuis une autre porte).
+  `recordLessonStats(perLesson, kind = 'lecon', ref?)` journalise les leçons/bilans/sprints
+  (`ref` transmis seulement en mode `'lecon'`, cf. `lesson-run.ts` ci-dessus) ; les
+  sessions qui **ne passent pas** par `recordLessonStats` (révision espacée
+  `ui/revision.ts`, dictée d'orthographe `ui/ortho-runner.ts`) appellent
+  **`recordSessionActivity(kind, ref?)`**. `normalizeActivity` lit **tolérant** l'ancien
+  `number[]` (chaque horodatage nu → `'inconnu'`, sans `ref`) et le réécrit au format objet
+  au prochain passage (migration **lazy, sans perte**). **XP global** (`getXP`/`addXP`,
+  `ludaskia_xp`) et **niveaux dérivés** (`niveauDepuisXP`, `progressionNiveau`,
+  `xpVersSuivant`, `xpPourNiveau`, `NIVEAU_MAX`), périodes calendaires (`startOfWeek/Month`,
   `countSince`).
 - **`rewards.ts`** — défi du jour contextuel (`CHALLENGES`, `getGoal` → `Goal`
   `{date, target, progress, done, type, label, lesson?}`, `updateGoal(ev: GoalEvent)`)
@@ -786,32 +804,56 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   **Étapes CONDITIONNELLES « à revoir » (#464)** : le mode `aRevoir` puise dans la file
   épinglée par l'encadrant (`ludaskia_revoir`, cf. [Espace encadrant](espace-encadrant.md)),
   que le cœur ne peut pas lire seul (l'« acquis » d'une dictée dépend de la disponibilité
-  du TTS, connue de l'UI seule) : l'appelant fournit un `ContexteSeance` (`{aRevoir:
-  number}` — nombre d'entrées encore à travailler ; `CONTEXTE_VIDE` = défaut PRUDENT
-  « rien d'épinglé »). `etapeApplicable(etape, ctx)` / `etapesApplicables(def, ctx)`
-  filtrent les étapes qui ne s'appliquent pas aujourd'hui (seule `aRevoir` est
-  conditionnelle) : une définition dont **aucune** étape ne s'applique vaut « pas de
-  programme » (`vueSeanceDuJour` renvoie `null`), jamais une étape vide affichée. Le type
-  réellement lancé (leçon ou dictée selon la cible tirée) n'est pas fixé par le mode :
-  `SeancePending.activite` le mémorise pour l'attribution.
+  du TTS, connue de l'UI seule) : l'appelant fournit un `ContexteSeance` (enrichi #498 :
+  `{aRevoirLecons: string[], aRevoirDictees: string[]}` — ids BRUTS des entrées épinglées
+  encore à travailler, **par nature** plutôt qu'un simple compte ; `CONTEXTE_VIDE` =
+  défaut PRUDENT « rien d'épinglé »). Ces deux listes servent autant à
+  l'**applicabilité** de l'étape (`etapeApplicable(etape, ctx)`, seule `aRevoir` est
+  conditionnelle) qu'à **reconnaître, dans le journal d'activité, quelle épinglée vient
+  d'être travaillée** (`etapeSatisfaite` ci-dessous).
 
-  **Attribution sans toucher aux runners** : `marquerEtapeLancee(etapeId, now, ref?,
-  activite?)` pose un marqueur au lancement d'une étape depuis le programme (`ref`
-  mémorise, pour une étape à pool — dictée #463 ou épinglée #464 —, la cible réellement
-  tirée, nécessaire à la métrique puisque le journal d'activité ne porte que le type ;
-  `activite` fixe le type attendu quand le mode n'en impose pas un seul), `resoudrePending
-  (now, ctx?)` le consomme au retour en cherchant dans le **journal d'activité existant**
-  (`loadActivity`, #319) une complétion du bon type postérieure au lancement ; sans
-  complétion trouvée, l'étape n'est pas créditée (abandon silencieux). `VueSeance.complete`
-  est **dérivé** (« plus rien à faire » parmi les étapes applicables aujourd'hui), tandis
-  que `SeanceJour.complete` reste la mémoire **monotone** de la récompense déjà attribuée
-  (ne redescend jamais, même si une étape réapparaît en cours de journée) ;
-  `consoliderCompletion(now, ctx?)` acte cette récompense quand c'est le **contexte**, et
-  non une résolution de `pending`, qui fait disparaître la dernière étape restante (#464).
-  `seancesCompletees` (compteur cumulé) alimente le trophée dédié (cf.
-  [Gamification](gamification.md)). Consommé côté enfant par `ui/seance.ts` (porte
-  d'entrée unique `vueProgramme`, cf. [`ui/`](ui.md)) et côté encadrant par
-  `ui/encadrant-seance.ts`.
+  **Une étape déjà travaillée reste comptée (#498)** : `etapesEnJeu(def, jour, ctx)`
+  garde, en plus des étapes applicables aujourd'hui, celles **déjà faites** dans la
+  journée même si elles ont cessé de s'appliquer depuis (une épinglée réussie quitte
+  aussitôt la file épinglée) — sans quoi l'enfant lisait « rien de fait » juste après
+  avoir fait. Une définition dont **aucune** étape n'est en jeu vaut « pas de programme »
+  (`vueSeanceDuJour` renvoie `null`), jamais une étape vide affichée. `requisJour(etape,
+  jour, ctx)` en tire l'exigence du jour : une étape non applicable mais déjà faite voit
+  son exigence ramenée à ce qu'elle a reçu, pour que le programme puisse se terminer.
+
+  **Attribution sur ce qui a été fait, pas sur le bouton pris (#498)** :
+  `etapeSatisfaite(etape, activite, epinglees)` est la SOURCE UNIQUE de « ce que vaut »
+  une entrée du journal d'activité (`ActivityEntry`, cf. `progress.ts` ci-dessus) pour
+  chaque mode — un sprint/une révision vaut son étape par le seul TYPE ; une leçon/dictée
+  dont l'`ActivityEntry.ref` correspond vaut l'étape `lecon`/`dictee` ; n'importe quelle
+  leçon vaut « Leçon du jour » (elle change dès qu'elle est réussie, incomparable après
+  coup) ; une leçon/dictée dont la référence figure dans `epinglees` vaut « à revoir ».
+  `resoudreProgramme(now, ctx?)` (remplace l'ancien `resoudrePending`) relit, à chaque
+  appel, les sessions du journal **postérieures à un curseur** (`SeanceJour.vuTs`, avancé
+  à chaque passe — idempotent), et attribue chacune à la meilleure étape restante
+  candidate via `etapeSatisfaite`, arbitrée **du plus spécifique au plus large**
+  (constante `SPECIFICITE` : `lecon`/`dictee` > `aRevoir` > `leconDuJour` >
+  `sprint`/`revision`) si plusieurs conviendraient — sauf si le marqueur `pending`
+  désigne explicitement l'une des candidates, auquel cas il tranche. Le marqueur posé par
+  `marquerEtapeLancee(etapeId, now, ref?)` au lancement d'une étape depuis le programme
+  n'est donc plus ce qui ouvre le droit au crédit : il ne sert qu'à **dater** l'étape
+  (durée réelle, métrique) et à **lever une ambiguïté**. Le mémo `SeanceJour.aRevoirVus`
+  (union des contextes observés au fil de la journée) garde la trace des épinglées
+  **vues** aujourd'hui, y compris après qu'une session les a fait sortir de la file
+  courante — sans lui, une notion réussie via « à revoir » redeviendrait méconnaissable
+  dès l'instant suivant.
+
+  `VueSeance.complete` reste **dérivé** (« plus rien à faire » parmi les étapes en jeu),
+  tandis que `SeanceJour.complete` reste la mémoire **monotone** de la récompense déjà
+  attribuée (ne redescend jamais, même si une étape réapparaît en cours de journée) ;
+  `acterCompletion` (interne, appelée à chaque passage de `resoudreProgramme`) l'acte dès
+  que toutes les étapes en jeu sont satisfaites — qu'une session vienne tout juste d'être
+  créditée ou que ce soit le **contexte** qui ait fait disparaître la dernière étape
+  restante (#464). Un seul appel couvre donc les deux cas : `consoliderCompletion` et
+  `etapesApplicables` ont disparu. `seancesCompletees` (compteur cumulé) alimente le
+  trophée dédié (cf. [Gamification](gamification.md)). Consommé côté enfant par
+  `ui/seance.ts` (porte d'entrée unique `vueProgramme`, cf. [`ui/`](ui.md)) et côté
+  encadrant par `ui/encadrant-seance.ts`.
 - **`vu-ailleurs.ts`** (#478, pur) — l'adulte déclare, pour le profil **consulté**,
   une leçon travaillée **hors de l'application** (rattrapage à l'arrivée sur l'appli,
   notions vues en classe après un changement de niveau). Carte **dédiée**

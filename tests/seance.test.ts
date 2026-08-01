@@ -4,6 +4,11 @@
    de la spec (récurrence, reset paresseux à minuit, attribution via le journal
    d'activité, métriques de temps), jamais recopiés de l'implémentation.
 
+   L'APPARIEMENT lui-même (ce que vaut une session, curseur d'attribution, rôle résiduel du
+   marqueur, arbitrage entre étapes concurrentes) est éprouvé dans
+   tests/seance-attribution.test.ts (#498) ; ici on garde le moteur général : récurrence,
+   état du jour, vue, complétion, archivage.
+
    Repères calendaires (heure LOCALE, vérifiés indépendamment) :
      2026-01-03 = samedi (ISO 6), 2026-01-04 = dimanche (ISO 7),
      2026-01-05 = lundi  (ISO 1), 2026-01-06 = mardi   (ISO 2),
@@ -25,13 +30,14 @@ import {
 	copierSeances,
 	etatSeanceJour,
 	marquerEtapeLancee,
-	resoudrePending,
+	resoudreProgramme,
 	seancesCompletees,
 	vueSeanceDuJour,
 	chargerJournalSeances,
 	SEANCE_KEY,
 	SEANCE_JOUR_KEY,
 	SEANCE_JOURNAL_KEY,
+	type ResolutionSeance,
 	type SeanceDef,
 	type SeanceEtape,
 	type SeanceJour,
@@ -80,16 +86,28 @@ function poserDefs(defs: SeanceDef[]): string {
 	enregistrerSeancesFor(uuid, defs);
 	return uuid;
 }
-/** Sème une entrée dans le journal d'activité (format `{t, k}` de core/progress),
- *  en maîtrisant l'horodatage pour tester `t >= launchTs`. */
-function poserActivite(k: ActivityKind, t: number): void {
-	const a: { t: number; k: ActivityKind }[] = lsGet(ACTIVITY_KEY, []);
-	a.push({ t, k });
+/** Sème une session finalisée dans le journal d'activité (format `{t, k, ref?}` de
+ *  core/progress), en maîtrisant l'horodatage et la cible travaillée. */
+function poserActivite(k: ActivityKind, t: number, ref?: string): void {
+	const a: { t: number; k: ActivityKind; ref?: string }[] = lsGet(ACTIVITY_KEY, []);
+	a.push(ref === undefined ? { t, k } : { t, k, ref });
 	lsSet(ACTIVITY_KEY, a);
 }
 /** Lit l'état du jour PERSISTÉ (clé documentée), pour inspecter debutTs / pending. */
 function jourStocke(): SeanceJour | null {
 	return lsGet(SEANCE_JOUR_KEY, null);
+}
+/** Fil complet d'une réalisation lancée DEPUIS le programme : marqueur (pour la durée) →
+ *  session journalisée avec sa cible → passe d'attribution au retour. */
+function realiser(o: {
+	etape: string;
+	t: number;
+	k: ActivityKind;
+	ref?: string;
+}): ResolutionSeance {
+	marquerEtapeLancee(o.etape, o.t);
+	poserActivite(o.k, o.t + 100, o.ref);
+	return resoudreProgramme(o.t + 200);
 }
 function profilUpdatedAt(uuid: string): number {
 	return loadProfilesMeta()!.list.find((p) => p.uuid === uuid)!.updatedAt;
@@ -279,17 +297,13 @@ describe('etatSeanceJour (reset paresseux)', () => {
 	});
 	it('état FRAIS (même date + defId) : renvoyé tel quel, faits conservés', () => {
 		poserDefs([defHebdo('d1', [1], [etape('e1', 'sprint', 2)])]);
-		marquerEtapeLancee('e1', LUN);
-		poserActivite('sprint', LUN + 100);
-		resoudrePending(LUN + 200);
+		realiser({ etape: 'e1', t: LUN, k: 'sprint' });
 		expect(etatSeanceJour(LUN)!.faits.e1).toBe(1);
 		expect(etatSeanceJour(LUN)!.faits.e1).toBe(1); // relecture même jour → inchangé
 	});
 	it('changement de JOUR : faits remis à zéro (le cumul, lui, est conservé)', () => {
 		poserDefs([defHebdo('d1', [1, 2], [etape('e1', 'sprint', 1)])]);
-		marquerEtapeLancee('e1', LUN);
-		poserActivite('sprint', LUN + 100);
-		resoudrePending(LUN + 200);
+		realiser({ etape: 'e1', t: LUN, k: 'sprint' });
 		expect(etatSeanceJour(LUN)!.faits.e1).toBe(1);
 		expect(seancesCompletees()).toBe(1);
 		// Lendemain (mardi, même def car hebdo [1,2]) : état périmé → reset.
@@ -301,13 +315,11 @@ describe('etatSeanceJour (reset paresseux)', () => {
 	});
 	it('changement de DÉFINITION le même jour (defId différent) → reset', () => {
 		poserDefs([defHebdo('d1', [1], [etape('e1', 'sprint', 1)])]);
-		marquerEtapeLancee('e1', LUN);
-		poserActivite('sprint', LUN + 100);
-		resoudrePending(LUN + 200);
+		realiser({ etape: 'e1', t: LUN, k: 'sprint' });
 		expect(jourStocke()!.faits.e1).toBe(1);
 		// L'adulte remplace la séance du lundi (id différent).
 		poserDefs([defHebdo('d2', [1], [etape('e1', 'revision', 1)])]);
-		const j = etatSeanceJour(LUN)!;
+		const j = etatSeanceJour(LUN + 1_000)!;
 		expect(j.defId).toBe('d2');
 		expect(j.faits).toEqual({});
 	});
@@ -318,6 +330,8 @@ describe('marquerEtapeLancee', () => {
 		poserDefs([defHebdo('d1', [1], [etape('e1', 'sprint'), etape('e2', 'revision')])]);
 		marquerEtapeLancee('e1', LUN);
 		const j1 = jourStocke()!;
+		// Le marqueur ne porte plus de type d'activité attendu (#498) : « ce que vaut une
+		// session » se lit dans `etapeSatisfaite`, pas dans un champ mémorisé au lancement.
 		expect(j1.pending).toEqual({ etapeId: 'e1', kind: 'sprint', launchTs: LUN });
 		expect(j1.debutTs).toBe(LUN);
 		// 2e lancement : pending remplacé, debutTs NE bouge PAS (span de la séance).
@@ -334,19 +348,19 @@ describe('marquerEtapeLancee', () => {
 	});
 });
 
-describe('resoudrePending (attribution via le journal d’activité)', () => {
-	it('crédite l’étape si une activité du BON type existe depuis le lancement', () => {
+describe('resoudreProgramme (attribution via le journal d’activité)', () => {
+	it('crédite l’étape que la session SATISFAIT, et la date si elle a été lancée du programme', () => {
 		poserDefs([defHebdo('d1', [1], [etape('e1', 'sprint', 1)])]);
 		marquerEtapeLancee('e1', LUN);
 		poserActivite('sprint', LUN + 1000);
-		const r = resoudrePending(LUN + 2000);
-		expect(r).toEqual({ credited: true, etapeId: 'e1', justCompleted: true });
+		const r = resoudreProgramme(LUN + 2000);
+		expect(r).toEqual({ etapesCreditees: ['e1'], justCompleted: true });
 		expect(seancesCompletees()).toBe(1);
 		const j = jourStocke()!;
 		expect(j.faits.e1).toBe(1);
 		expect(j.pending).toBeNull();
 		expect(j.completions).toHaveLength(1);
-		// dureeMs = t de l'activité - launchTs (1000), ts = celui du journal.
+		// dureeMs = t de la session - launchTs (1000), ts = celui du journal.
 		expect(j.completions[0]).toMatchObject({
 			etapeId: 'e1',
 			kind: 'sprint',
@@ -354,101 +368,79 @@ describe('resoudrePending (attribution via le journal d’activité)', () => {
 			dureeMs: 1000,
 		});
 	});
-	it('abandon : AUCUNE activité depuis le lancement → pending effacé, rien crédité', () => {
+	it('abandon : AUCUNE session depuis le lancement → pending effacé, rien crédité', () => {
 		poserDefs([defHebdo('d1', [1], [etape('e1', 'sprint', 1)])]);
 		marquerEtapeLancee('e1', LUN);
-		const r = resoudrePending(LUN + 5000);
-		expect(r).toEqual({ credited: false, etapeId: null, justCompleted: false });
+		const r = resoudreProgramme(LUN + 5000);
+		expect(r).toEqual({ etapesCreditees: [], justCompleted: false });
 		const j = jourStocke()!;
 		expect(j.faits).toEqual({});
 		expect(j.pending).toBeNull();
 		expect(seancesCompletees()).toBe(0);
 	});
-	it('activité d’un AUTRE type ne crédite pas', () => {
+	it('session d’un AUTRE type ne crédite pas', () => {
 		poserDefs([defHebdo('d1', [1], [etape('e1', 'sprint', 1)])]);
 		marquerEtapeLancee('e1', LUN);
 		poserActivite('revision', LUN + 1000); // mauvais type (attendu : sprint)
-		const r = resoudrePending(LUN + 2000);
-		expect(r.credited).toBe(false);
+		expect(resoudreProgramme(LUN + 2000).etapesCreditees).toEqual([]);
 		expect(jourStocke()!.faits).toEqual({});
 	});
-	it('activité ANTÉRIEURE au lancement ne crédite pas', () => {
-		poserDefs([defHebdo('d1', [1], [etape('e1', 'sprint', 1)])]);
-		marquerEtapeLancee('e1', LUN + 10_000); // launchTs = LUN+10000
-		poserActivite('sprint', LUN + 5_000); // AVANT le lancement
-		const r = resoudrePending(LUN + 20_000);
-		expect(r.credited).toBe(false);
-		expect(jourStocke()!.faits).toEqual({});
-	});
-	it('sans marqueur : ne fait rien (idempotent)', () => {
+	it('aucune session nouvelle : passe neutre et idempotente', () => {
 		poserDefs([defHebdo('d1', [1], [etape('e1', 'sprint', 1)])]);
 		etatSeanceJour(LUN); // état frais, aucun pending
-		expect(resoudrePending(LUN)).toEqual({ credited: false, etapeId: null, justCompleted: false });
+		expect(resoudreProgramme(LUN + 1000)).toEqual({ etapesCreditees: [], justCompleted: false });
 		expect(seancesCompletees()).toBe(0);
 	});
-	it('étape demandée 2 fois : 2 complétions pour l’épuiser ; jamais de sur-crédit', () => {
+	it('étape demandée 2 fois : 2 sessions pour l’épuiser ; jamais de sur-crédit', () => {
 		poserDefs([defHebdo('d1', [1], [etape('e1', 'sprint', 2)])]);
-		// 1re complétion : créditée mais séance pas terminée.
-		marquerEtapeLancee('e1', LUN);
-		poserActivite('sprint', LUN + 100);
-		let r = resoudrePending(LUN + 200);
-		expect(r.credited).toBe(true);
-		expect(r.justCompleted).toBe(false);
+		// 1re réalisation : créditée mais séance pas terminée.
+		let r = realiser({ etape: 'e1', t: LUN, k: 'sprint' });
+		expect(r).toEqual({ etapesCreditees: ['e1'], justCompleted: false });
 		expect(jourStocke()!.faits.e1).toBe(1);
 		expect(seancesCompletees()).toBe(0);
-		// 2e complétion : épuise l'étape → séance complète.
-		marquerEtapeLancee('e1', LUN + 1000);
-		poserActivite('sprint', LUN + 1100);
-		r = resoudrePending(LUN + 1200);
-		expect(r.credited).toBe(true);
-		expect(r.justCompleted).toBe(true);
+		// 2e réalisation : épuise l'étape → séance complète.
+		r = realiser({ etape: 'e1', t: LUN + 1000, k: 'sprint' });
+		expect(r).toEqual({ etapesCreditees: ['e1'], justCompleted: true });
 		expect(jourStocke()!.faits.e1).toBe(2);
 		expect(seancesCompletees()).toBe(1);
 		// 3e passage : faits plafonné à count, cumul PAS incrémenté une 2e fois.
-		marquerEtapeLancee('e1', LUN + 2000);
-		poserActivite('sprint', LUN + 2100);
-		r = resoudrePending(LUN + 2200);
+		r = realiser({ etape: 'e1', t: LUN + 2000, k: 'sprint' });
+		expect(r.etapesCreditees).toEqual([]);
 		expect(jourStocke()!.faits.e1).toBe(2); // plafonné
 		expect(r.justCompleted).toBe(false); // déjà complète auparavant
 		expect(seancesCompletees()).toBe(1); // jamais 2 fois pour la même séance
 	});
 	it('justCompleted UNIQUEMENT quand TOUTES les étapes atteignent leur count', () => {
 		poserDefs([defHebdo('d1', [1], [etape('e1', 'sprint', 1), etape('e2', 'revision', 1)])]);
-		marquerEtapeLancee('e1', LUN);
-		poserActivite('sprint', LUN + 100);
-		let r = resoudrePending(LUN + 200);
-		expect(r.credited).toBe(true);
+		let r = realiser({ etape: 'e1', t: LUN, k: 'sprint' });
+		expect(r.etapesCreditees).toEqual(['e1']);
 		expect(r.justCompleted).toBe(false); // e2 reste à faire
 		expect(seancesCompletees()).toBe(0);
-		marquerEtapeLancee('e2', LUN + 1000);
-		poserActivite('revision', LUN + 1100);
-		r = resoudrePending(LUN + 1200);
+		r = realiser({ etape: 'e2', t: LUN + 1000, k: 'revision' });
 		expect(r.justCompleted).toBe(true);
 		expect(seancesCompletees()).toBe(1);
 	});
-	it("lecon ET leconDuJour créditent tous deux via l’activité 'lecon'", () => {
-		// lecon (avec ref) → activité 'lecon'
+	it('une leçon crédite `lecon` par sa RÉFÉRENCE, et `leconDuJour` par sa seule nature', () => {
+		// Étape à cible exacte : la leçon journalisée doit être CELLE-LÀ.
 		poserDefs([defHebdo('d1', [1], [etape('e1', 'lecon', 1, 'math-doubles')])]);
-		marquerEtapeLancee('e1', LUN);
-		poserActivite('lecon', LUN + 100);
-		let r = resoudrePending(LUN + 200);
-		expect(r.credited).toBe(true);
+		let r = realiser({ etape: 'e1', t: LUN, k: 'lecon', ref: 'math-doubles' });
+		expect(r.etapesCreditees).toEqual(['e1']);
 		expect(jourStocke()!.completions[0]).toMatchObject({ kind: 'lecon', ref: 'math-doubles' });
-		// leconDuJour (mardi, def neuve) → mappe aussi sur 'lecon'
+		// « Leçon du jour » (mardi, def neuve) : n'importe quelle leçon convient.
 		poserDefs([defHebdo('d2', [2], [etape('e1', 'leconDuJour', 1)])]);
-		marquerEtapeLancee('e1', MAR);
-		poserActivite('lecon', MAR + 100);
-		r = resoudrePending(MAR + 200);
-		expect(r.credited).toBe(true);
-		expect(jourStocke()!.completions[0]).toMatchObject({ kind: 'leconDuJour' });
+		r = realiser({ etape: 'e1', t: MAR, k: 'lecon', ref: 'math-moities' });
+		expect(r.etapesCreditees).toEqual(['e1']);
+		expect(jourStocke()!.completions[0]).toMatchObject({
+			kind: 'leconDuJour',
+			ref: 'math-moities',
+		});
 	});
-	it("type dictee : crédite via l’activité 'dictee' et reporte la ref (id de liste)", () => {
+	it('type dictee : crédité par la liste dictée, reportée dans la complétion', () => {
 		poserDefs([defHebdo('d1', [1], [etape('e1', 'dictee', 1, 'liste-ce2-01')])]);
 		marquerEtapeLancee('e1', LUN);
-		poserActivite('dictee', LUN + 1000);
-		const r = resoudrePending(LUN + 2000);
-		expect(r).toEqual({ credited: true, etapeId: 'e1', justCompleted: true });
-		// La ref (id de liste d'orthographe) visée par l'étape est bien reportée dans la complétion.
+		poserActivite('dictee', LUN + 1000, 'liste-ce2-01');
+		const r = resoudreProgramme(LUN + 2000);
+		expect(r).toEqual({ etapesCreditees: ['e1'], justCompleted: true });
 		expect(jourStocke()!.completions[0]).toMatchObject({
 			etapeId: 'e1',
 			kind: 'dictee',
@@ -456,12 +448,10 @@ describe('resoudrePending (attribution via le journal d’activité)', () => {
 			dureeMs: 1000,
 		});
 	});
-	it('attribution par TYPE, pas par RÉFÉRENCE : c’est l’étape PENDING qui est créditée', () => {
-		// Deux étapes 'lecon' de ref différentes. Le journal d'activité ne porte QUE le type
-		// ('lecon'), jamais l'id de leçon → resoudrePending crédite l'étape PENDING (celle que
-		// l'enfant vient de lancer), quelle que soit la leçon réellement journalisée. C'est VOULU :
-		// le flux garantit qu'un seul pending vit à la fois (retour obligatoire par l'accueil, qui
-		// vide pending avant tout autre mode). Cf. docstring de resoudrePending, src/core/seance.ts.
+	it('attribution par RÉFÉRENCE (#498) : la leçon travaillée décide, pas la tuile cliquée', () => {
+		// Deux étapes 'lecon' de ref différentes. Le journal porte désormais l'id de leçon :
+		// c'est l'étape dont la cible a été travaillée qui est créditée, même si l'enfant avait
+		// lancé l'autre depuis le programme (il a changé d'avis en route).
 		poserDefs([
 			defHebdo(
 				'd1',
@@ -469,15 +459,14 @@ describe('resoudrePending (attribution via le journal d’activité)', () => {
 				[etape('e1', 'lecon', 1, 'math-doubles'), etape('e2', 'lecon', 1, 'math-complements')],
 			),
 		]);
-		marquerEtapeLancee('e1', LUN); // on lance la 1re étape (ref math-doubles)
-		poserActivite('lecon', LUN + 1000); // activité 'lecon' — le journal ne dit PAS quelle leçon
-		const r = resoudrePending(LUN + 2000);
-		expect(r.credited).toBe(true);
-		expect(r.etapeId).toBe('e1'); // l'étape pending, pas e2
+		marquerEtapeLancee('e1', LUN); // tuile de la 1re étape (math-doubles)
+		poserActivite('lecon', LUN + 1000, 'math-complements'); // mais c'est l'AUTRE leçon qui a été faite
+		const r = resoudreProgramme(LUN + 2000);
+		expect(r.etapesCreditees).toEqual(['e2']);
 		const j = jourStocke()!;
-		expect(j.faits.e1).toBe(1);
-		expect(j.faits.e2 ?? 0).toBe(0); // e2 intacte
-		expect(j.completions[0]).toMatchObject({ etapeId: 'e1', ref: 'math-doubles' });
+		expect(j.faits.e2).toBe(1);
+		expect(j.faits.e1 ?? 0).toBe(0); // e1 reste due : sa leçon n'a pas été travaillée
+		expect(j.completions[0]).toMatchObject({ etapeId: 'e2', ref: 'math-complements' });
 	});
 });
 
@@ -491,17 +480,15 @@ describe('vueSeanceDuJour', () => {
 		const v0 = vueSeanceDuJour(LUN)!;
 		expect(v0.totalRequis).toBe(5); // 2 + 3
 		expect(v0.totalFait).toBe(0);
+		expect(v0.etapes.map((e) => e.requis)).toEqual([2, 3]); // exigence du jour = count
 		expect(v0.restantes.map((e) => e.etape.id)).toEqual(['e1', 'e2']);
 		expect(v0.complete).toBe(false);
-		// Épuise e1 (2 complétions).
-		for (const dt of [0, 1000]) {
-			marquerEtapeLancee('e1', LUN + dt);
-			poserActivite('sprint', LUN + dt + 100);
-			resoudrePending(LUN + dt + 200);
-		}
+		// Épuise e1 (2 réalisations).
+		for (const dt of [0, 1000]) realiser({ etape: 'e1', t: LUN + dt, k: 'sprint' });
 		const v1 = vueSeanceDuJour(LUN)!;
 		expect(v1.totalFait).toBe(2);
 		expect(v1.etapes.find((e) => e.etape.id === 'e1')).toMatchObject({
+			requis: 2,
 			fait: 2,
 			reste: 0,
 			epuise: true,
@@ -516,7 +503,7 @@ describe('chargerJournalSeances (archivage au passage de minuit)', () => {
 		poserDefs([defHebdo('d1', [1, 2], [etape('e1', 'sprint', 1)])]);
 		marquerEtapeLancee('e1', LUN); // debutTs = LUN
 		poserActivite('sprint', LUN + 60_000);
-		resoudrePending(LUN + 90_000);
+		resoudreProgramme(LUN + 90_000);
 		expect(vueSeanceDuJour(LUN)!.complete).toBe(true);
 		expect(chargerJournalSeances()).toHaveLength(0); // encore frais aujourd'hui
 		// Lendemain : l'état périmé est archivé.
@@ -536,7 +523,7 @@ describe('chargerJournalSeances (archivage au passage de minuit)', () => {
 		poserDefs([defHebdo('d1', [1, 2], [etape('e1', 'revision', 2)])]);
 		marquerEtapeLancee('e1', LUN + 10_000); // debutTs = LUN+10000
 		poserActivite('revision', LUN + 30_000);
-		resoudrePending(LUN + 40_000); // 1/2 → non complète
+		resoudreProgramme(LUN + 40_000); // 1/2 → non complète
 		expect(vueSeanceDuJour(LUN)!.complete).toBe(false);
 		expect(chargerJournalSeances()).toHaveLength(0);
 		// Lendemain : la séance partielle est quand même capturée.
@@ -555,7 +542,7 @@ describe('chargerJournalSeances (archivage au passage de minuit)', () => {
 		poserDefs([defHebdo('d1', [1, 2], [etape('e1', 'revision', 2)])]);
 		marquerEtapeLancee('e1', LUN);
 		poserActivite('revision', LUN + 5_000);
-		resoudrePending(LUN + 6_000); // 1/2 → séance partielle, archivable
+		resoudreProgramme(LUN + 6_000); // 1/2 → séance partielle, archivable
 		// Le journal est déjà PLEIN (120 réalisations plus anciennes, identifiables par defId).
 		const anciennes: SeanceRealisation[] = Array.from({ length: 120 }, (_, i) => ({
 			date: '2025-01-01',

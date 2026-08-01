@@ -330,7 +330,11 @@ pure](core.md)) pour les formats composites :
   rubrique** — **« Les accords »** (transformation #109), **« Les homophones »**
   (QCM #110) et **« Les règles »** (m/b/p, QCM #111), lancées par le parcours
   standard saisie/QCM — au-dessus de **« Les dictées de mots »** (mots de base
-  prédéfinis + listes du parent, jouées par le runner ortho dédié).
+  prédéfinis + listes du parent, jouées par le runner ortho dédié). L'aperçu au survol
+  d'une carte de dictée (`.ortho-apercu`, décoratif) liste ses mots dans l'ordre rendu
+  par `motsApercu` (`core/orthographe/lessons.ts`, #441) — **même règle** que celle
+  consultée dans l'espace encadrant (cf. [Espace encadrant](espace-encadrant.md), bloc
+  « Listes de dictée »), pour que les deux aperçus ne divergent jamais.
 - **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, categoryId?)`.
   En **global**, les leçons sont organisées **Matière → Catégorie → Rubrique** (#195) :
   matières en **volets repliables** (`<details>`), catégories à pastille/gouttière

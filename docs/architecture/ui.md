@@ -10,14 +10,38 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   accepte un temps initial + un drapeau de visibilité (reprise : on continue de
   mesurer **sans afficher** un compteur déjà avancé), `getElapsed()` expose le
   temps actif courant (capture d'une reprise).
-- **`resume.ts`** — **couche UI de la reprise** (#63) : `captureResume` (lit
-  `#sheets` + chrono et sauvegarde l'exercice en cours quand on le quitte),
-  `restoreResume` (réinjecte l'instantané **sans régénérer** les calculs, chrono
-  repris masqué), `renderReprises` (section **« À continuer »** : barre de
-  progression visuelle, **« Continuer »** mis en avant, **« Effacer »** discret
-  + confirmation), `maybeRelaunch` (à la relance d'un exercice déjà commencé :
-  modale **« Continuer / Recommencer »**), et le **contexte de reprise** posé au
-  lancement (`setResumeCtx`) / nettoyé à la fin (`finishResume`).
+- **`resume.ts`** — **couche UI de la reprise** (#63, étendue aux runners #498) :
+  `captureResume` tente d'abord un instantané **runner** (`snapshotRunner`, cf.
+  `runner-reprise.ts` ci-dessous) ; sans session de runner active, elle lit
+  `#sheets` + chrono et sauvegarde une **grille**. `restoreResume` distingue les
+  deux natures (`snap.kind`) : un runner se **re-rend lui-même**
+  (`restaurerRunner` — instantané orphelin, runner disparu depuis → efface et
+  revient à l'accueil), une grille réinjecte l'instantané **sans régénérer** les
+  calculs, chrono repris masqué. `renderReprises` (section **« À continuer »** :
+  barre de progression visuelle, **« Continuer »** mis en avant, **« Effacer »**
+  discret + confirmation), `maybeRelaunch` (à la relance d'un exercice déjà
+  commencé : modale **« Continuer / Recommencer »**), et le **contexte de
+  reprise** d'une grille posé au lancement (`setResumeCtx`) / nettoyé à la fin
+  (`finishResume`).
+- **`runner-reprise.ts`** (#498) — **reprise des runners « une question à la
+  fois »** : `declarerSessionRunner` (posé par chaque runner au démarrage, neuf
+  ou repris, avec un accès paresseux à son état — questions/idx/score relus au
+  moment de la photo, pas copiés) et `enregistrerRunner(nom, restaurer)` (le
+  runner s'enregistre **au chargement de son module**) alimentent
+  `snapshotRunner`/`restaurerRunner` consommés par `resume.ts`. `quitterSessionRunner`
+  (appelé par `resetSessionUI`, **après** la capture) clôt la session en cours
+  sans effacer l'instantané — sans ça, l'état de module du runner quitté
+  survivait à la sortie d'écran et `captureResume` rephotographiait
+  indéfiniment une session morte, empêchant l'exercice suivant d'être
+  sauvegardé. `finirSessionRunner` (fin d'essai) clôt **et** efface l'instantané
+  stocké : plus rien à continuer. **Module FEUILLE, à dessein** (n'importe
+  uniquement du `core/` et `./cat-visuals`) : les dix runners s'y enregistrent au
+  chargement de leur propre module, donc ce registre doit être prêt avant eux
+  quel que soit le point d'entrée. L'avoir hébergé dans un module participant au
+  cycle d'imports de l'UI (navigation ↔ runners ↔ resume) produisait un
+  `ReferenceError` au démarrage (registre pas encore initialisé, écran blanc) —
+  un test verrouille l'invariant (« il s'importe seul, sans qu'aucun autre
+  module UI ait été chargé avant »).
 
 ## Espace encadrant (rendu)
 
@@ -242,33 +266,35 @@ pure](core.md)) pour les formats composites :
   **programme du jour** composé par l'encadrant (cf. [Modes &
   navigation](modes-et-navigation.md)). `vueProgramme()` est la porte d'entrée UNIQUE
   de lecture de la séance côté UI (utilisée aussi par `ui/navigation.ts`) : elle
-  construit le `ContexteSeance` (#464, `{aRevoir: n}` — la file épinglée encore à
-  travailler, `revoirActives(dicteeDisponible())` de `core/encadrant-stats.ts`) que le
-  cœur ne peut pas lire seul, puis appelle `vueSeanceDuJour`. `renderProgrammeCard`
-  (masquée hors programme applicable ce jour) et `renderSeance` (tuiles des étapes
-  restantes en ordre libre, jauge de pastilles, bouton « Choisis pour moi », état
-  terminé célébré) en découlent. Une étape « à revoir » se présente comme une tuile
-  « À revoir » (icône marque-page) ; si une seule entrée est épinglée, son libellé est
-  **nommé** directement (comme la carte d'accueil), sinon le titre reste générique et
-  la cible est tirée au lancement.
+  construit le `ContexteSeance` via `contexteProgramme()` (#464, enrichi #498 —
+  `{aRevoirLecons, aRevoirDictees}`, les ids **par nature** des entrées épinglées
+  encore à travailler, tirés de `revoirActives(dicteeDisponible())` de
+  `core/encadrant-stats.ts`) que le cœur ne peut pas lire seul, puis appelle
+  `vueSeanceDuJour`. `renderProgrammeCard` (masquée hors programme applicable ce
+  jour) et `renderSeance` (tuiles des étapes restantes en ordre libre, jauge de
+  pastilles, bouton « Choisis pour moi », état terminé célébré) en découlent. Une
+  étape « à revoir » se présente comme une tuile « À revoir » (icône marque-page) ;
+  si une seule entrée est épinglée, son libellé est **nommé** directement (comme la
+  carte d'accueil), sinon le titre reste générique et la cible est tirée au
+  lancement.
 
   `lancerEtapeProgramme` tire d'abord la cible d'une étape à pool (`tirageEtape` :
   dictée configurée #463 via `core/seance.ts:tirerCible`, ou file épinglée #464 via
   `tirerParmi` — sans effet pour les autres modes), pose le marqueur d'attribution
-  (`marquerEtapeLancee`, avec cette cible et, pour « à revoir », le type d'activité
-  réellement visé — leçon ou dictée selon la cible tirée) et délègue au déclencheur du
-  mode existant (`startSprint`/`startRevisionEspacee`/`startLecon`/`startOrthoLecon`) —
-  aucun runner n'est modifié. Une entrée épinglée porte sa nature dans son id de file
+  (`marquerEtapeLancee`, avec cette cible) et délègue au déclencheur du mode existant
+  (`startSprint`/`startRevisionEspacee`/`startLecon`/`startOrthoLecon`) — aucun
+  runner n'est modifié. Une entrée épinglée porte sa nature dans son id de file
   (préfixe `ortho:`) : on la dépréfixe pour choisir le déclencheur, avec l'origine
   `'programme'` comme les autres lancements de leçon/dictée (#461, `retour-activite.ts`).
   Un pool de 2+ cibles (dictées ou épinglées) s'affiche sous un titre générique :
   l'enfant ne sait laquelle avant de lancer.
   `rafraichirProgramme` (appelée par la navigation avant l'accueil et l'écran `#seance`)
-  consomme l'attribution au retour (`resoudrePending`) **et** rattrape une complétion
-  survenue sans résolution de marqueur (`consoliderCompletion`, #464 : le contexte
-  escamote la dernière étape restante — épinglée retirée par l'adulte, ou travaillée
-  entre-temps depuis la carte d'accueil « à revoir ») ; dans les deux cas, célèbre
-  (modale + confettis) la complétion du programme entier, sans XP.
+  délègue **entièrement** à `resoudreProgramme` (#498, remplace l'ancien
+  `resoudrePending` + `consoliderCompletion` : un seul appel attribue les sessions
+  nouvelles du journal d'activité **et** détecte la complétion, y compris celle
+  survenue sans résolution de marqueur — cf. [Modes &
+  navigation](modes-et-navigation.md)) ; célèbre (modale + confettis) la complétion
+  du programme entier, sans XP.
 - **`lecon-du-jour.ts`** — carte **« leçon du jour »** de l'accueil (#208) : `#leconDuJour`
   est la **1re carte** de la rangée `.cards`, sur le **même modèle visuel** que les cartes
   de mode (pastille `.ico`, titre, descriptif, CTA), au contenu **dynamique**.

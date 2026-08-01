@@ -34,15 +34,22 @@ d'avancement du fil ; `jours`/`reporteLe`/`reprendreLe` pilotent la mise de côt
 temporaire d'une leçon sur laquelle l'enfant bute — voir `core/report-lecon.ts` et
 [Logique pure](core.md)),
 `ludaskia_goal`, `ludaskia_goalsDone`, `ludaskia_trophies`, `ludaskia_xp`,
-`ludaskia_bilans` (configs de bilans favoris), `ludaskia_resume` (exercices
-grille **en cours**, repris ou abandonnés — #63), `ludaskia_activity` (#234 :
-journal borné des sessions finalisées — base du graphe d'activité de l'espace
-encadrant, plus complet que les `runs` car il couvre aussi les leçons jouées seules ;
-**entrées typées** `{t: number; k: 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee' | 'inconnu'}`
+`ludaskia_bilans` (configs de bilans favoris), `ludaskia_resume` (exercices **en
+cours**, repris ou abandonnés — #63 ; deux natures d'instantané depuis #498, une
+**grille** — leçon en saisie, bilans — ou un **runner** — l'état logique d'un des
+dix runners « une question à la fois », cf. `core/resume.ts`), `ludaskia_activity`
+(#234 : journal borné des sessions finalisées — base du graphe d'activité de
+l'espace encadrant, plus complet que les `runs` car il couvre aussi les leçons
+jouées seules ; **entrées typées**
+`{t: number; k: 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee' | 'inconnu'; ref?: string}`
 depuis #319, alimentées par `recordLessonStats` (leçons/bilans/sprints) et
 `recordSessionActivity` (révision espacée, dictée d'orthographe) — **migration lazy**
 depuis l'ancien `number[]` : un horodatage nu est lu en `'inconnu'` puis réécrit au
-format objet au prochain passage, sans perte), `ludaskia_revoir`
+format objet au prochain passage, sans perte ; **`ref`** (#498) = id de la leçon ou de
+la liste d'orthographe travaillée, uniquement quand la session en vise UNE seule
+— absente pour un bilan/sprint/tour de révision — base de l'attribution du
+programme du jour à ce qui a été réellement fait, cf. [Modes &
+navigation](modes-et-navigation.md)), `ludaskia_revoir`
 (#234 : ids épinglés « à revoir » par l'encadrant → carte d'accueil de l'enfant — un
 `string[]` mêlant des ids de leçon du catalogue et, depuis #424, des entrées de **liste
 de dictée** d'orthographe **préfixées `ortho:`** — `orthoRevoirId`/`isOrthoRevoirId`,

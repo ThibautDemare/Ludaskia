@@ -77,23 +77,36 @@ que de laisser cette file sur sa seule surface d'accueil. Cette étape est
 « pas de programme ». Le cœur ne sait pas calculer seul cette condition (l'« acquis »
 d'une dictée dépend de la disponibilité du TTS, connue de l'UI) : c'est `ui/seance.ts`
 qui fournit le `ContexteSeance` à chaque lecture, via sa porte d'entrée unique
-`vueProgramme()` (utilisée aussi par la navigation).
+`vueProgramme()` (utilisée aussi par la navigation). Depuis #498, ce contexte porte
+les ids épinglés **par nature** (leçons / listes d'orthographe), et non plus un
+simple compte : il sert autant à décider si l'étape s'applique qu'à reconnaître,
+dans le journal d'activité, laquelle des épinglées vient d'être travaillée.
 
-**Attribution sans toucher aux runners** : au lancement d'une étape depuis le
-programme, `marquerEtapeLancee` pose un marqueur « étape en cours » — pour « à
-revoir », il mémorise aussi le type réellement lancé (leçon ou dictée, selon la
-cible tirée dans la file) ; au retour (carte d'accueil ou écran `#seance`),
-`rafraichirProgramme` (appelée par `showHomeView`/`showSeanceView`) consomme ce
-marqueur via `resoudrePending`, qui cherche dans le **journal d'activité existant**
-(`loadActivity`, #319) une complétion du bon type postérieure au lancement — aucun
-mode/runner n'est modifié. Sans complétion trouvée au retour (abandon en cours
-d'étape), rien n'est crédité ni faussé. Le programme peut aussi se compléter **sans**
-lancement d'étape, quand le contexte fait disparaître la dernière étape restante
-(épinglée retirée par l'adulte, ou travaillée entre-temps depuis la carte d'accueil) :
-`rafraichirProgramme` rattrape ce cas via `consoliderCompletion`. La complétion de
-**tout** le programme déclenche modale + confettis (`showCelebration`) et le trophée
-dédié (cf. [Gamification](gamification.md)), **sans XP** (chaque mode a déjà donné le
-sien).
+**Attribution sur ce qui a été fait, pas sur le bouton pris (#498)** : le journal
+d'activité (`loadActivity`, #319) porte désormais une **référence** par session
+(`ActivityEntry.ref` = id de la leçon ou de la liste d'orthographe travaillée ;
+absente pour une session **multi-cibles**, comme un bilan ou un sprint).
+`resoudreProgramme` (remplace `resoudrePending`, appelée par `rafraichirProgramme`
+via `showHomeView`/`showSeanceView`) relit, à chaque passage, les sessions
+**nouvelles depuis son dernier passage** (curseur `SeanceJour.vuTs`) et cherche,
+pour chacune, l'étape restante qu'elle satisfait (`etapeSatisfaite`, arbitrage **du
+plus spécifique au plus large** en cas d'ambiguïté — une leçon épinglée nourrit
+d'abord « à revoir » plutôt que « Leçon du jour »). Le marqueur posé au lancement
+(`marquerEtapeLancee`) survit mais ne conditionne plus le crédit : il ne sert plus
+qu'à **dater** l'étape (durée réelle, métrique) et à **lever une ambiguïté** quand
+il désigne l'une des étapes candidates. Conséquence directe : une leçon lancée
+depuis la carte « À revoir » de l'accueil, une dictée lancée depuis le catalogue,
+ou une activité **reprise** puis terminée plus tard, créditent leur étape aussi
+bien qu'un lancement depuis le programme lui-même — aucun mode/runner n'est
+modifié pour ça. Sans session satisfaisante trouvée (abandon en cours d'étape),
+rien n'est crédité ni faussé. Une étape déjà travaillée aujourd'hui **reste
+comptée et affichée** même si elle cesse de s'appliquer en cours de journée
+(épinglée retirée par l'adulte, ou redevenue solide) : elle sort seulement des
+propositions. La complétion de **tout** le programme — qu'elle vienne d'une étape
+tout juste créditée ou du contexte qui fait disparaître la dernière étape restante
+— est détectée dans ce même passage et déclenche modale + confettis
+(`showCelebration`) et le trophée dédié (cf. [Gamification](gamification.md)),
+**sans XP** (chaque mode a déjà donné le sien).
 
 **Retour en fin d'activité (#461)** : une leçon ou une dictée lancée depuis le
 programme ramène, à sa fin, vers `#seance` (« Retour au programme ») plutôt que vers
@@ -125,18 +138,33 @@ la liste est découverte avant le moindre entraînement, et le choix de mode n'e
 proposé qu'ensuite. Fin d'exercice : **Recommencer / Quitter** (la pause ortho et
 le runner QCM offrent le même choix).
 
-## Reprise d'un exercice en cours (#63)
+## Reprise d'un exercice en cours (#63, étendue aux runners #498)
 
-Les exercices **grille** (leçon, bilans
-express/complet/personnalisé) sont **sauvegardés automatiquement** quand on les
-quitte (navigation, onglet masqué/fermé, saisie débouncée) et reproposés sur
+Deux **natures** d'exercice sont **sauvegardées automatiquement** quand on les
+quitte (navigation, onglet masqué/fermé, saisie débouncée) et reproposées sur
 l'**accueil** (sous la progression) et l'**écran de catégorie** dans une section
-**« À continuer »**. Reprendre restaure l'état **exact** (calculs posés, réponses,
-temps actif) sans régénérer ; le **chrono repris est masqué** et un exercice repris
-**ne compte pas pour le temps**. Une reprise est **propre au profil**, **unique par
-identité d'exercice** (relancer demande « Continuer / Recommencer »), et **expire**
-en silence après 7 j. Le **sprint** et la **révision espacée** sont hors périmètre
-(on **confirme** avant de quitter ces modes, faute de reprise).
+**« À continuer »** :
+- la **fiche en saisie** et les **bilans** (express/complet/personnalisé) —
+  reprise historique (#63) : l'état tient dans le DOM (champs remplis), on
+  restaure le rendu **exact** (calculs posés, réponses, temps actif) sans
+  régénérer ;
+- depuis #498, les **dix runners « une question à la fois »** (QCM, QCM multi,
+  tri, ordre, tuiles, tableau de conversion, appariement, clic-mot, droite
+  graduée, problème), qui n'avaient jusque-là **aucune** reprise (leur état vit
+  en mémoire, pas dans le DOM). On restaure l'**état logique** (questions déjà
+  tirées, index, score) et c'est le runner qui se **re-rend lui-même**.
+  Granularité : le début de la question **entamée** — les questions déjà
+  validées ne sont jamais rejouées.
+
+Un instantané écrit avant #498 (sans nature déclarée) est lu comme une fiche,
+sans perte de reprise en cours à la mise à jour. Le **chrono repris est masqué**
+et un exercice repris **ne compte pas pour le temps**. Une reprise est **propre
+au profil**, **unique par identité d'exercice** (`startLecon` propose désormais
+« Continuer / Recommencer » **avant** l'écran de choix de mode, #69, les deux
+natures étant reprenables) et **expire** en silence après 7 j. Le **sprint** et
+la **révision espacée** restent hors périmètre (on **confirme** avant de
+quitter ces modes, faute de reprise). Détail des modules côté rendu :
+`ui/resume.ts` et `ui/runner-reprise.ts`, cf. [Rendu & interactions](ui.md).
 
 ## Pipeline multi-matières
 

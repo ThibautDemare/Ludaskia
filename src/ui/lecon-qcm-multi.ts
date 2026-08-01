@@ -37,9 +37,8 @@ import {
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
-	declarerSessionRunner,
-	enregistrerRunner,
 } from './lecon-runner-shared';
+import { declarerSessionRunner, enregistrerRunner } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
 
 // Tour plus court que le QCM mono (8) : anti-empilement d'étoile sur un « tout-ou-rien »

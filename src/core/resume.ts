@@ -133,6 +133,9 @@ function normaliser(s: unknown): ResumeSnapshot | null {
 			return null;
 		return o as unknown as ResumeRunner;
 	}
+	// Nature inconnue (une 3e forme, écrite par une version future puis rétrogradée) : on
+	// l'ignore plutôt que de la lire comme une grille sur la foi de ses seuls champs.
+	if (o.kind !== undefined && o.kind !== 'grille') return null;
 	if (
 		typeof o.sheetsHTML !== 'string' ||
 		typeof o.elapsedMs !== 'number' ||

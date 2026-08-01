@@ -29,9 +29,8 @@ import {
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
-	declarerSessionRunner,
-	enregistrerRunner,
 } from './lecon-runner-shared';
+import { declarerSessionRunner, enregistrerRunner } from './runner-reprise';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 import { capterErreur } from './erreur-capture';
 import { nombreTableauSaisi } from '../core/erreur-representation';

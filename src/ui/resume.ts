@@ -42,7 +42,7 @@ import {
 	getRenderCtx,
 	setRenderCtx,
 } from './navigation';
-import { snapshotRunner, restaurerRunner } from './lecon-runner-shared';
+import { snapshotRunner, restaurerRunner } from './runner-reprise';
 import { setOrigineActivite } from './retour-activite';
 
 const now = () => Date.now();

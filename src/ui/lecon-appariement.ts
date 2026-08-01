@@ -23,9 +23,8 @@ import {
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
-	declarerSessionRunner,
-	enregistrerRunner,
 } from './lecon-runner-shared';
+import { declarerSessionRunner, enregistrerRunner } from './runner-reprise';
 import { bindAppariement } from './appariement';
 import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';

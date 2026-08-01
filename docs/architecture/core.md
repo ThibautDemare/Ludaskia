@@ -15,7 +15,9 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
 
 ## Fondations
 
-- **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`), déduplication
+- **`utils.ts`** — aléatoire (`rnd`, `choice`, `sample`, **`melangerDifferemment`** —
+  mélange garanti **différent** de la suite d'origine, partagé par les rangements de
+  suites #108/#448 : un exercice « déjà rangé » n'aurait aucun intérêt), déduplication
   (`uniqueComm/Exact`, `commKey`), réordonnancement pur d'un tableau d'index
   (`insertAt`/`removeAt`/`moveAt`, #374 — utilisés par les tuiles d'orthographe
   `ui/ortho-runner.ts`, logique agnostique du DOM), `escapeHTML`, `fmt` (mm:ss), et
@@ -235,8 +237,11 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   string[]` — EXACTEMENT 4, ordre stable —, `correctes: string[]` — sous-ensemble
   vrai **stocké**, ≥ 1 et < 4 —, `figure?`, `parle?}` ; correction TOUT-OU-RIEN par
   son runner `lecon-qcm-multi.ts`, `checkAnswer` renvoie `false`) | `tuilesNombre`
-  (numération #98) | `tuilesOrdre` (ordre
-  alphabétique #108 : suite mélangée + suite triée) | `tuilesTri` (champs
+  (numération #98) | `tuilesOrdre` (rangement d'une suite : ordre
+  alphabétique #108, ordre des nombres #448 — suite mélangée + suite triée, plus
+  `nature?: 'mots' | 'nombres'` qui n'accorde que la **formulation** partagée
+  du widget / de l'aide / des listes écrites — séparateur via **`separateurSuite(nature)`**,
+  source unique du repli texte du catalogue ET du journal d'erreurs) | `tuilesTri` (champs
   lexicaux #114 : tuiles + thème correct de chacune) | `appariement` (relier des
   paires #392 : `{question, paires: {gauche, droite}[], intrus?, parle?}` — `paires`
   porte les correspondances correctes, `intrus?` des mots décoys côté droite sans
@@ -365,7 +370,8 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (clic → remplissage, synchro `aria-pressed`) vit dans `ui/pave-signes.ts`.
 - **`aide.ts`** (#272) — **aide contextuelle** des runners à interaction non intuitive,
   module **pur** : porte le **contenu** des aides (`AIDES` : titre + étapes courtes ≤ 3 +
-  voie alternative + filet anti-erreur) pour 9 types (`tuiles`, `ordre`, `tri`, `atelier`,
+  voie alternative + filet anti-erreur) pour 10 types (`tuiles`, `ordre`, `ordreNombres`
+  #448 — même geste que `ordre`, formulation accordée aux nombres —, `tri`, `atelier`,
   `lettres`, `tableau` #394, `appariement` #392, `clicMot`, `droiteGraduee` #256) et la **mémoire « aide déjà
   vue »** par profil (`ludaskia_aide_vue`, via `lsGet/lsSet`). Le rendu vit dans
   `ui/aide-exercice.ts`.
@@ -695,8 +701,11 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   cellules-chiffres du RÉSULTAT d'UNE opération posée en une seule entrée (rien si la
   grille est vierge ou entièrement juste ; `donnee` reconstruit le nombre dans l'ordre
   des positions, ou `'(incomplet)'` si des cellules manquent) — consommé par
-  `ui/session.ts:verify` ; **`ordreErreur(propose, ordre)`** joint une suite
-  proposée/attendue par « , » — consommé par `ui/lecon-ordre.ts` ; **`motsMalClasses(mots,
+  `ui/session.ts:verify` ; **`ordreErreur(propose, ordre, nature?)`** joint une suite
+  proposée/attendue par le séparateur de sa **nature** (#448, `separateurSuite` de
+  `exercise.ts` : « , » pour des mots, « ; » pour des nombres — sinon le parent lisait
+  « donné : 95, 104, 98 », avec l'ambiguïté virgule-décimale que le repli texte évite) —
+  consommé par `ui/lecon-ordre.ts` ; **`motsMalClasses(mots,
   categories, placement)`** ne renvoie que les mots MAL classés d'un tri (colonne
   choisie vs bonne colonne, une entrée par mot) — consommé par `ui/lecon-tri.ts` ;
   **`nombreTableauSaisi(cells, answerUnit)`** relit les cases d'un tableau de conversion

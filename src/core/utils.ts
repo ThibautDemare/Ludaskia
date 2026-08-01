@@ -53,6 +53,23 @@ export function sample<T>(arr: T[], n: number): T[] {
 	}
 	return c.slice(0, n);
 }
+/* Mélange une suite en garantissant un ordre DIFFÉRENT de celui d'origine : un
+   exercice de rangement « déjà rangé » n'aurait aucun intérêt. Partagé par les
+   rangements de suites (mots dans l'ordre alphabétique #108, nombres dans l'ordre
+   croissant/décroissant #448). Repli déterministe (suite inversée) si le tirage
+   retombe 20 fois sur l'ordre d'origine (cas d'une suite de 2 éléments). Une suite
+   de moins de 2 éléments est renvoyée telle quelle (aucun autre ordre possible). */
+export function melangerDifferemment<T>(suite: T[]): T[] {
+	const memeSuite = (a: T[], b: T[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+	if (suite.length < 2) return [...suite];
+	let melange = sample(suite, suite.length);
+	for (let essais = 0; memeSuite(melange, suite) && essais < 20; essais++) {
+		melange = sample(suite, suite.length);
+	}
+	if (memeSuite(melange, suite)) melange = [...suite].reverse();
+	return melange;
+}
+
 export const commKey = (op: string) => {
 	const m = op.match(/(\d+)\s*([+×])\s*(\d+)/);
 	if (m) {

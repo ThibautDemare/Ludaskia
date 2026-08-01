@@ -434,12 +434,17 @@ catégorie **Vocabulaire**, leçons
 **« Ordre alphabétique »** (`fr-vocab-alpha-initiale` tri par 1re lettre,
 `fr-vocab-alpha-deuxieme` tri par 2e lettre à initiale commune). `ordreType`
 fabrique un `ExerciseType` **mono-mode** dont `generate()` produit un `Exercise`
-**`tuilesOrdre`** `{question, tuiles (suite mélangée), ordre (suite triée)}` — la
+**`tuilesOrdre`** `{question, tuiles (suite mélangée), ordre (suite triée), nature?}` — la
 bonne suite est **calculée** par `trierAlpha` (`localeCompare` fr), jamais figée.
 Joué par un runner d'écran dédié `ui/lecon-ordre.ts` ; **exclu du sprint**
 (`isOrderingLesson`, comme la posée), avec un **repli texte** en bilan/fiche
 (genLessonItem : « écris les mots dans l'ordre ») — **en révision**, le vrai widget de
 rangement (`tuile-interaction.ts`, `kind: 'ordre'`) est monté, comme le tri ci-dessous.
+`nature` (#448) dit **ce qu'on range** — `'mots'` (défaut, ce cas) ou `'nombres'`
+(numération CE2 « je range », cf. `maths/ranger-entiers.ts`) : elle n'accorde que la
+**formulation** partagée (consigne du widget, aide contextuelle `ordre` vs
+`ordreNombres`, aria-labels, séparateur du repli texte), jamais l'interaction ni la
+correction.
 
 #### `francais/champs-lexicaux.ts` (#114)
 
@@ -514,6 +519,52 @@ libre — #380, `core/signes.ts` ; même mécanisme, transverse, pour `num-dec-c
 groupés via `core/nombres.ts` (`formatNombre`, classe `.bignum`) ; le champ de réponse
 « grand nombre » (`.ans-grand`, ≥ 10 000) **regroupe aussi sa saisie à la frappe** (écho U+202F,
 `ui/grand-nombre-echo.ts`, #327).
+
+#### `maths/ranger-entiers.ts` (#448, CE2) — « Je range les nombres »
+
+1 leçon `num-ranger` (catégorie `math-numeration`, **CE2 only**) : **ordonner** une
+série d'entiers, 3ᵉ pilier du paragraphe programme « comparer / encadrer / intercaler /
+**ordonner** » (les deux premiers étant `numeration.ts`, #98). L'enfant ne choisit pas
+une suite bien rangée, il la **construit** : `generate()` produit un `Exercise`
+**`tuilesOrdre`** (`nature: 'nombres'`) joué par le runner **déjà existant**
+`ui/lecon-ordre.ts` (celui de l'ordre alphabétique #108) — 4 ou 5 tuiles-nombres à poser
+dans des cases numérotées. Aucun nouveau runner, aucun changement pour le QCM des
+décimaux CM1 (`num-dec-ranger`, ci-dessous, laissé tel quel). Mono-mode ; le **sens**
+(croissant / décroissant) est tiré **par question** et porté par la consigne — ce n'est
+pas un mode (#69 : un mode change le moyen de répondre, pas le fait généré).
+
+Calibrage CE2 (programme : nombres jusqu'à 10 000) — pondération unique dans
+`tireSerie` : 30 % **même tête** (chiffres de tête communs, deux nombres dans la même
+dizaine → comparaison rang par rang ; moitié en base 3 chiffres, moitié en base 4),
+15 % **chiffres permutés** (476 / 746 / 674 — le profil qui exerce le plus finement la
+valeur positionnelle), 20 % + 20 % **cas charnière** franchissant **99/100** et
+**999/1000**, 15 % **longueurs mêlées** (profil LISIBLE : il installe « plus de chiffres
+= plus grand » et **garantit des réussites franches** dans une séance de 6 questions).
+**La taille de série est COUPLÉE au profil**, jamais tirée à part :
+les profils piège (même tête en base 4 chiffres, chiffres permutés, charnières) sont
+plafonnés à **4 tuiles**, les deux profils lisibles (longueurs mêlées, même tête en base
+3 chiffres) sont les seuls à pouvoir aller à **5** — la charge d'un rangement est le
+produit « nombre d'éléments × complexité d'une comparaison » (6 à 10 comparaisons par
+question), et ce cumul ne doit pas être maximal des deux côtés à la fois. C'est ce
+couplage qui traite la CHARGE ; la pondération ne règle donc que la FRÉQUENCE, d'où
+15/15 entre profil lisible et chiffres permutés (arbitrage `pedagogue-primaire`) et non
+20/10. Mesuré sur 12 000 tirages (2 000 séances de 6) : **85 %** de séries à 4 tuiles
+(15 % à 5), franchissement de 99/100 dans **20,7 %** des tirages et de 999/1000 dans
+**19,6 %**, **86,5 %** de séries où le chiffre de tête ne suffit pas ; par séance de 6,
+une charnière dans **95,5 %** des cas, un profil lisible dans **87,5 %**, des chiffres
+permutés dans **62,5 %**. **Plafond effectif 9 999** :
+10 000 est écarté car c'est le seul nombre de la plage que `formatNombre` **groupe**
+(espace fine insécable), ce qui rendrait la saisie du **repli texte** ambiguë — une
+extension CM1 (999 999) devra donc revoir ce repli, pas seulement les plages. La bonne
+suite est **calculée** par tri numérique, jamais figée ; les tuiles sont mélangées avec
+la garantie « jamais déjà rangées » (`melangerDifferemment`, `core/utils.ts`, partagé
+avec #108). **Exclue du sprint** (`isOrderingLesson`) ; **repli texte** en bilan/fiche
+(nombres listés puis suite à écrire, séparateur **`;`** — en français la virgule est le
+séparateur décimal — et toutes les formes de séparateur acceptées à la correction,
+`SEPARATEURS_SUITE`, pour que le bilan et `ExerciseType.check` disent la même chose) ;
+**en révision**, le vrai widget est rejoué. Placée dans `ordre-pedagogique.ts` après
+`num-decompose-10000` : c'est la décomposition d'un nombre à 4 chiffres qui explique
+*pourquoi* « plus de chiffres = plus grand », le cœur des cas charnière.
 
 #### `maths/position.ts` (#94, grands nombres CM1 #240)
 

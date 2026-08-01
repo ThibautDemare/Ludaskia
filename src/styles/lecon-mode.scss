@@ -592,6 +592,15 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
 }
+// Bac du rangement : cible de REPLI du focus quand la rangée est complète (plus aucune
+// tuile à poser, #448). Anneau discret et INTÉRIEUR — le conteneur occupe toute la
+// largeur, un anneau extérieur toucherait les bords de l'écran ; il dit « tu es ici, la
+// tabulation suivante mène à Vérifier ».
+#lordBac:focus-visible {
+	outline: 2px dashed var(--accent);
+	outline-offset: -2px;
+	border-radius: 10px;
+}
 // Le titre de colonne est au ras du bord d'une `.ltri-col` en `overflow: hidden`
 // (arrondi du bandeau) : un anneau EXTÉRIEUR y serait rogné → on le dessine à
 // l'intérieur pour rester visible (#360).
@@ -692,6 +701,22 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 }
 .lord-cell.wrong .lord-mark {
 	background: var(--ko);
+}
+/* Diagnostic « suite rangée à l'envers » (#448) : erreur de SENS (réflexe croissant)
+   et non de comparaison. Encart sobre AU-DESSUS de la révélation du bon rangement (qui
+   reste affichée) : même traitement que la justification pédagogique `.lqcm-expl`, donc
+   le sens est porté par le TEXTE, jamais par la couleur seule. */
+.lord-inverse {
+	display: block;
+	margin: 0 auto 8px;
+	max-width: 520px;
+	padding: 8px 12px;
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 1.4;
+	color: var(--ink);
+	background: var(--accent-soft);
+	border-radius: 10px;
 }
 .lord-tuile {
 	min-width: 72px;

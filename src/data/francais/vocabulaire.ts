@@ -16,7 +16,7 @@
    singulier ; aucune métadonnée — un simple tableau de chaînes suffit.
    ============================================================ */
 import type { Exercise, ExerciseType } from '../../core/exercise';
-import { choice, sample, normalizeText } from '../../core/utils';
+import { choice, sample, normalizeText, melangerDifferemment } from '../../core/utils';
 import type { LessonInput } from '../_shared';
 
 /* Pool de noms communs pour le tri par 1re lettre. On pioche des INITIALES
@@ -106,21 +106,6 @@ const GROUPES_DEUXIEME: string[][] = [
 export const trierAlpha = (mots: string[]): string[] =>
 	[...mots].sort((a, b) => a.localeCompare(b, 'fr'));
 
-const memeSuite = (a: string[], b: string[]): boolean =>
-	a.length === b.length && a.every((x, i) => x === b[i]);
-
-/* Mélange en garantissant un ordre DIFFÉRENT de la suite triée : un exercice
-   « déjà rangé » n'aurait aucun intérêt. */
-function melangerNonTrie(ordre: string[]): string[] {
-	if (ordre.length < 2) return [...ordre];
-	let melange = sample(ordre, ordre.length);
-	for (let essais = 0; memeSuite(melange, ordre) && essais < 20; essais++) {
-		melange = sample(ordre, ordre.length);
-	}
-	if (memeSuite(melange, ordre)) melange = [...ordre].reverse();
-	return melange;
-}
-
 const nbMots = (): number => choice([4, 5]);
 const CONSIGNE = "Range ces mots dans l'ordre alphabétique.";
 
@@ -136,7 +121,7 @@ function genNiveau1(): Exercise {
 	const initiales = sample([...parInitiale.keys()], nbMots());
 	const mots = initiales.map((k) => choice(parInitiale.get(k)!));
 	const ordre = trierAlpha(mots);
-	return { type: 'tuilesOrdre', question: CONSIGNE, tuiles: melangerNonTrie(ordre), ordre };
+	return { type: 'tuilesOrdre', question: CONSIGNE, tuiles: melangerDifferemment(ordre), ordre };
 }
 
 /* Niveau 2 — tri par 2e lettre : mots à 1re lettre commune. */
@@ -146,7 +131,7 @@ function genNiveau2(): Exercise {
 	const mots = sample(groupe, n);
 	const ordre = trierAlpha(mots);
 	const question = `Ces mots commencent par la même lettre. ${CONSIGNE}`;
-	return { type: 'tuilesOrdre', question, tuiles: melangerNonTrie(ordre), ordre };
+	return { type: 'tuilesOrdre', question, tuiles: melangerDifferemment(ordre), ordre };
 }
 
 /* Fabrique un ExerciseType mono-mode « tuiles » (ranger la suite). Le runner

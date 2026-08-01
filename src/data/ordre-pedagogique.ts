@@ -64,6 +64,13 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'mes-contenances',
 			'geo-solides-reconnaitre',
 			'num-decompose-10000',
+			// « Je range les nombres » (#448) : 3ᵉ pilier du paragraphe programme
+			// comparer/encadrer/intercaler/ORDONNER. Placée après `num-situer-10000` (ordonner
+			// = enchaîner des comparaisons, sur des séries qui vont jusqu'à 9 999) ET après
+			// `num-decompose-10000` : c'est la décomposition d'un nombre à 4 chiffres qui
+			// explique POURQUOI « plus de chiffres = plus grand », le cœur des cas charnière
+			// (99/100, 999/1000) qui pèsent 40 % des tirages (avis pedagogue-primaire).
+			'num-ranger',
 			'math-multiplier-4-8',
 			'math-decomposer-multiplication',
 			'calc-multiplication-posee',

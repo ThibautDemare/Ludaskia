@@ -58,6 +58,16 @@ function illustrationHTML(type: TypeAide): string {
 				<span class="an-word an-word--2">balle</span>
 				${FINGER}
 			</div>`;
+		case 'ordreNombres':
+			// Même scène que `ordre` (mêmes cases numérotées, même geste), avec deux NOMBRES
+			// rangés du plus petit au plus grand — l'exemple montre le geste, pas la règle.
+			return `<div class="aide-anim aide-anim--ordre is-anim" id="aideAnim">
+				<span class="an-case an-case--1"><i>1</i></span>
+				<span class="an-case an-case--2"><i>2</i></span>
+				<span class="an-word an-word--1">128</span>
+				<span class="an-word an-word--2">205</span>
+				${FINGER}
+			</div>`;
 		case 'tri':
 			// Le doigt touche « chat », puis sa colonne ; le mot s'y déplace.
 			return `<div class="aide-anim aide-anim--tri is-anim" id="aideAnim">

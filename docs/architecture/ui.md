@@ -431,7 +431,9 @@ pure](core.md)) pour les formats composites :
   discriminé par `kind` :
   - `'tuile'` — amener **la** bonne tuile (signe `<`/`=`/`>` ou nombre) dans la case `@`
     de l'énoncé ;
-  - `'ordre'` — ranger les tuiles-mots dans des **cases numérotées** (ordre alphabétique) ;
+  - `'ordre'` — ranger les tuiles dans des **cases numérotées** : mots (ordre alphabétique
+    #108) ou nombres (ordre croissant/décroissant #448, champ `nature` — formulation
+    seulement) ;
   - `'tri'` — trier les tuiles-mots dans **deux colonnes-thèmes** (champs lexicaux).
   Le binder remplace le placeholder `[data-tuile-mount]` dans `root` (insertion à plat,
   sans wrapper), câble TAP et glisser-déposer, et notifie la complétude via
@@ -443,7 +445,23 @@ pure](core.md)) pour les formats composites :
   ci-dessous, qui implémente le même contrat sans passer par ce binder) — lue par le runner en
   cas d'échec pour journaliser une réponse lisible (cf. « Journal des erreurs » ci-dessous). La
   variante `opts.variant` (`'lecon'` | `'revision'`) adapte la classe de l'énoncé et
-  l'enveloppe `.bignum` des grands nombres (#240). Ce module est **partagé** par les trois
+  l'enveloppe `.bignum` des grands nombres (#240).
+  **Persistance du focus (#360, étendue au rangement par #448)** : les widgets se
+  redessinent par `innerHTML`, ce qui détruit l'élément focalisé — le focus retomberait sur
+  `<body>` à chaque interaction, obligeant l'enfant au clavier à retabuler depuis le haut
+  de la page 4 à 5 fois par question. `'ordre'` et `'tri'` mémorisent donc la cible
+  (`pendingFocus`) et la refocalisent en fin de redraw (`preventScroll`) : après une pose,
+  la **tuile suivante encore au bac** ; après un retrait, la **tuile relâchée** ; rangée
+  complète, le **bac** lui-même (`tabindex="-1"`), d'où **une** tabulation atteint
+  « Vérifier » — le focus n'est jamais posé sur « Vérifier » directement (un enfant qui
+  enchaîne les Entrée validerait sans relire, action irréversible). Dans ce seul état, le
+  bac prend un **nom accessible** (`role="group"` + `aria-label` « Rangée complète. Vérifie
+  ta réponse avant de valider. ») : un conteneur focalisé doit s'annoncer (SC 4.1.2), et
+  c'est le moment où l'enfant a besoin de savoir quoi faire ensuite. Nom **dynamique** :
+  aucun rôle ni libellé tant que des tuiles restent à poser (le focus est alors sur une
+  tuile) ni après validation ; `aria-label` est posé **avec** `role="group"` car ARIA 1.2
+  l'interdit sur un élément générique. Le focus ne dépend que de l'interaction, jamais de la
+  `nature` (invariant testé). Ce module est **partagé** par les trois
   runners de leçon (`lecon-tuiles.ts`, `lecon-ordre.ts`, `lecon-tri.ts`) et par la
   révision (`revision.ts`), qui délèguent tous leur interaction au lieu d'en garder une
   copie locale — la révision affiche désormais les mêmes marques ✓/✗ que les runners
@@ -511,15 +529,29 @@ pure](core.md)) pour les formats composites :
   `recordLessonRun`. Runner d'écran dédié (routé par `runLecon` quand le mode produit
   un `tuilesNombre`) — **n'altère pas** le moteur de tuiles de l'orthographe.
   Délègue l'interaction à `tuile-interaction.ts` (#345, `kind: 'tuile'`).
-- **`lecon-ordre.ts`** — runner **« ranger une suite »** d'une leçon de vocabulaire
-  (#108, ordre alphabétique). Même forme « une question à la fois » : l'enfant
-  **tape** une tuile-mot du bac → elle se place dans la prochaine case **numérotée**
+- **`lecon-ordre.ts`** — runner **« ranger une suite »**, partagé par l'ordre
+  alphabétique (#108, vocabulaire) et l'**ordre des nombres** (#448, numération CE2
+  `num-ranger` — croissant/décroissant tiré par question). Le runner est **agnostique de
+  ce qu'on range** : la `nature` de l'exercice (`'mots'` par défaut / `'nombres'`)
+  n'accorde que la **formulation** (consigne du widget, type d'aide `ordre` vs
+  `ordreNombres`, aria-labels des tuiles).
+  Même forme « une question à la fois » : l'enfant
+  **tape** une tuile du bac → elle se place dans la prochaine case **numérotée**
   de la rangée-réponse ; **taper** une tuile posée la renvoie au bac (les suivantes
   se re-tassent) ; glisser-déposer du bac vers la rangée en appoint. Feedback
   immédiat case par case (✓/✗) + bon ordre montré ; parité `recordLessonRun`. Routé
   par `runLecon` quand le mode produit un `tuilesOrdre`. Interaction validée côté
   UX enfant (tap fiable au doigt, drag en appoint). Délègue l'interaction à
   `tuile-interaction.ts` (#345, `kind: 'ordre'`).
+  **Diagnostic de l'inversion** (#448, avis `pedagogue-primaire`) : quand la suite posée
+  est l'**exact inverse** de la suite attendue, le runner ajoute un message ciblé
+  (`messageInversion`, pur et exporté ; `.lord-inverse`) — au CE2 l'erreur typique est un
+  **réflexe de sens** (« du plus petit au plus grand » par habitude) et non une erreur de
+  comparaison, et les deux ne s'aident pas de la même façon. Le message s'**ajoute** à la
+  révélation du bon rangement (`.lqcm-ko strong`, jamais supprimée : c'est l'information
+  la plus utile, et la spec e2e y lit le sens tiré), et l'inversion **reste journalisée**
+  comme toute autre erreur. Accordé à la `nature` : sens explicite pour des nombres,
+  renvoi à l'ordre alphabétique pour des mots.
 - **`lecon-tri.ts`** — runner **« ranger par thème »** d'une leçon de vocabulaire
   (#114, champs lexicaux). « Une question à la fois » : l'enfant trie des
   tuiles-mots **fournies** dans **deux colonnes-thèmes** par **tap en deux temps**

@@ -285,8 +285,9 @@
 			<div class="printlink"><a id="backHomeBilanCustom">← Retour à l'accueil</a></div>
 		</div>
 
-		<!-- Zone des exercices -->
-		<div class="sheets" id="sheets"></div>
+		<!-- Zone des exercices. `tabindex="-1"` : non atteignable au Tab, mais focusable par
+		     le code, pour qu'une reprise de runner puisse y poser le focus (#498). -->
+		<div class="sheets" id="sheets" tabindex="-1"></div>
 
 		<!-- Modale de récompense (trophée, record, étoile, objectif…) -->
 		<div class="modal-overlay" id="celebrate" style="display: none">

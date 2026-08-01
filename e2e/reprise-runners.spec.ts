@@ -105,6 +105,11 @@ test('QCM (leçon à plusieurs modes) interrompu : la modale de reprise sort ava
 	await expect(page.locator('.mode-btn')).toHaveCount(0); // pas encore passé par l'écran de choix
 	await overlay.locator('.modal-ok').click(); // « Continuer où j'en étais »
 
+	// Le focus ne doit PAS retomber sur <body> : le bouton déclencheur (dans la modale)
+	// vient d'être masqué par le runner, `#sheets` (tabindex=-1) reçoit le focus à sa place.
+	await expect(page.locator('.sprint-choice').first()).toBeVisible();
+	expect(await page.evaluate(() => document.activeElement?.id)).toBe('sheets');
+
 	// On retombe EXACTEMENT sur la question 2 : mêmes choix, même progression — jamais
 	// un nouveau tirage.
 	await expect(page.locator('.lqcm-progress-lab')).toHaveText(progressAvant!);
@@ -170,6 +175,11 @@ test('Appariement (runner à widget) : rien avant la 1re manche validée, et Con
 	await expect(carte.locator('.reprise-count')).toHaveText(`1/${total}`);
 
 	await carte.locator('.reprise-continue').click();
+
+	// Le focus ne doit PAS retomber sur <body> : la carte « À continuer » (déclencheur)
+	// vient d'être masquée par le runner, `#sheets` (tabindex=-1) reçoit le focus à sa place.
+	await expect(page.locator('.lapp-mot').first()).toBeVisible();
+	expect(await page.evaluate(() => document.activeElement?.id)).toBe('sheets');
 
 	await expect(page.locator('.lqcm-progress-lab')).toHaveText(progressAvant!);
 	const motsApres = (await gauche.allTextContents()).map((s) => s.trim()).sort();

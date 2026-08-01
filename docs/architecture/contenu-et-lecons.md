@@ -373,14 +373,18 @@ mots « intrus » côté droite, sans correspondance — neutralise la réussite
 l'exclut du sprint. N'affecte pas `fr-vocab-familles`, qui reste la leçon QCM
 existante.
 
-**Banques découplées (correctif des répétitions)** — `FAMILLES` (exportée, **54**
-entrées) = `[...FAMILLES_QCM (30, privée), ...FAMILLES_RELIER_EXTRA (24, privée)]`. La
-leçon à relier consomme les **54** ; le pool QCM combiné `ITEMS_FAMILLES` (et donc
-`ITEMS_FAMILLES_SEULES`) ne prend que les **30 d'origine** (`FAMILLES_QCM`), pour
-préserver son équilibre ~⅓ familles / ⅓ préfixes / ⅓ suffixes — les 24 familles
-ajoutées n'existent donc que côté appariement. (Un rééquilibrage — verser ces 24 au
-pool QCM après avoir agrandi les banques d'affixes en proportion — est envisagé dans
-une PR ultérieure.)
+**Une seule banque de familles, équilibre par la taille (#453)** — `FAMILLES` (exportée,
+**54** entrées) = `[...FAMILLES_ORIGINE (30, privée), ...FAMILLES_COMPLEMENT (24, privée)]`,
+découpage purement **historique** (le complément vient du correctif anti-répétition #452).
+Les **54** alimentent la leçon à relier **et** le pool QCM combiné `ITEMS_FAMILLES` (via
+`ITEMS_FAMILLES_SEULES`) : plus aucun sous-ensemble n'est réservé à une leçon. L'équilibre
+~⅓ familles / ⅓ préfixes / ⅓ suffixes est désormais tenu par la **taille des banques** :
+**54** familles, **55** préfixes, **54** suffixes, soit un pool de **163** items réparti
+33 % / 34 % / 33 %. Les banques d'affixes ont été agrandies pour cela **sans introduire de
+nouvel affixe** (le programme ne nomme « préfixe / suffixe » comme notion qu'en CM1) : on
+multiplie les mots-exemples sur les **11 familles d'affixes déjà en place**, avec une
+croissance volontairement **inégale** (re-, dé-, in-, -eur, -tion, -ment sont très
+productives ; pré-, sur-, sous-, -ette sont proches de leur plafond CE2).
 
 **Anti-répétition inter-manches** — `appariementType` implémente
 **`generateSession(count, opts)`** (cf. [Logique pure](core.md), `ExerciseType`) via la

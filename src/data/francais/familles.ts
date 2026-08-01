@@ -38,14 +38,15 @@ export interface ItemAffixe {
 	explication: string;
 }
 
-/* Découplage des banques (correctif des répétitions de « Familles de mots à relier »).
-   `FAMILLES_QCM` = les 30 familles D'ORIGINE, seules versées au POOL QCM combiné
-   (`ITEMS_FAMILLES`) pour préserver son équilibre ~⅓ familles / ⅓ préfixes / ⅓ suffixes.
-   `FAMILLES_RELIER_EXTRA` = les 24 familles AJOUTÉES pour l'anti-répétition de la leçon
-   à relier : elles enrichissent uniquement `FAMILLES` (54), donc la leçon d'appariement,
-   sans toucher le QCM. Le versement de ces 24 au QCM + l'agrandissement des affixes pour
-   rééquilibrer viendront dans une PR de rééquilibrage dédiée. */
-const FAMILLES_QCM: ItemFamille[] = [
+/* Banque de familles CE2, découpée en deux blocs pour la LISIBILITÉ de l'historique
+   seulement : `FAMILLES_ORIGINE` = les 30 familles d'origine, `FAMILLES_COMPLEMENT` =
+   les 24 ajoutées par le correctif anti-répétition de « Familles de mots à relier »
+   (#452). Depuis le rééquilibrage (#453) les DEUX blocs alimentent TOUTES les leçons de
+   familles (QCM combiné comme appariement) : plus aucun sous-ensemble n'est réservé à
+   une leçon. L'équilibre ~⅓ familles / ⅓ préfixes / ⅓ suffixes du pool QCM combiné est
+   désormais tenu par la TAILLE des banques (54 familles, 55 préfixes, 54 suffixes), pas
+   par un découpage de la banque de familles. */
+const FAMILLES_ORIGINE: ItemFamille[] = [
 	{
 		mot: 'dent',
 		famille: 'dentiste',
@@ -288,9 +289,9 @@ const FAMILLES_QCM: ItemFamille[] = [
 	},
 ];
 
-/* Familles supplémentaires (correctif anti-répétition) : réservées à la leçon à relier
-   via `FAMILLES` (54). NON versées au pool QCM combiné — voir découplage ci-dessus. */
-const FAMILLES_RELIER_EXTRA: ItemFamille[] = [
+/* Familles ajoutées par le correctif anti-répétition (#452), versées au pool QCM combiné
+   depuis le rééquilibrage (#453) — voir le commentaire du bloc précédent. */
+const FAMILLES_COMPLEMENT: ItemFamille[] = [
 	{
 		mot: 'porte',
 		famille: 'portail',
@@ -485,9 +486,9 @@ const FAMILLES_RELIER_EXTRA: ItemFamille[] = [
 	},
 ];
 
-/* Banque complète (54) : familles d'origine + extra. Utilisée par la leçon à relier
-   (`appariementType(FAMILLES)`) ; le pool QCM combiné, lui, ne prend que `FAMILLES_QCM`. */
-export const FAMILLES: ItemFamille[] = [...FAMILLES_QCM, ...FAMILLES_RELIER_EXTRA];
+/* Banque complète (54) : familles d'origine + complément. Unique source des familles CE2,
+   pour la leçon à relier (`appariementType(FAMILLES)`) COMME pour le pool QCM (#453). */
+export const FAMILLES: ItemFamille[] = [...FAMILLES_ORIGINE, ...FAMILLES_COMPLEMENT];
 
 export const PREFIXES: ItemAffixe[] = [
 	{
@@ -527,6 +528,44 @@ export const PREFIXES: ItemAffixe[] = [
 		explication: 'Le préfixe « ré- » veut dire « à nouveau » : réécrire = écrire à nouveau.',
 	},
 	{
+		mot: 'revoir',
+		sens: 'voir à nouveau',
+		distracteurs: ['voir de loin', 'voir en cachette'],
+		explication: 'Le préfixe « re- » veut dire « à nouveau » : revoir = voir à nouveau.',
+	},
+	{
+		mot: 'reprendre',
+		sens: 'prendre à nouveau',
+		distracteurs: ['prendre trop', 'prendre en photo'],
+		explication: 'Le préfixe « re- » veut dire « à nouveau » : reprendre = prendre à nouveau.',
+	},
+	{
+		mot: 'rebrancher',
+		sens: 'brancher à nouveau',
+		distracteurs: ['brancher très fort', 'brancher au mauvais endroit'],
+		explication:
+			'Le préfixe « re- » veut dire « à nouveau » : rebrancher = brancher à nouveau ce qu’on avait débranché.',
+	},
+	{
+		mot: 'remonter',
+		sens: 'monter à nouveau',
+		distracteurs: ['monter très haut', 'descendre lentement'],
+		explication: 'Le préfixe « re- » veut dire « à nouveau » : remonter = monter à nouveau.',
+	},
+	{
+		mot: 'redescendre',
+		sens: 'descendre à nouveau',
+		distracteurs: ['descendre très vite', 'monter à nouveau'],
+		explication: 'Le préfixe « re- » veut dire « à nouveau » : redescendre = descendre à nouveau.',
+	},
+	{
+		mot: 'recharger',
+		sens: 'charger à nouveau',
+		distracteurs: ['charger très lourd', 'décharger complètement'],
+		explication:
+			'Le préfixe « re- » veut dire « à nouveau » : recharger = charger à nouveau ce qui était déchargé.',
+	},
+	{
 		mot: 'défaire',
 		sens: 'faire le contraire',
 		distracteurs: ['faire en double', 'faire à la fin'],
@@ -555,6 +594,51 @@ export const PREFIXES: ItemAffixe[] = [
 		sens: 'le contraire de coller',
 		distracteurs: ['coller très fort', 'coller deux fois'],
 		explication: 'Le préfixe « dé- » indique le contraire : décoller = enlever ce qui est collé.',
+	},
+	{
+		mot: 'déballer',
+		sens: 'le contraire d’emballer',
+		distracteurs: ['emballer avec soin', 'emballer deux fois'],
+		explication: 'Le préfixe « dé- » indique le contraire : déballer = ouvrir ce qui est emballé.',
+	},
+	{
+		mot: 'décharger',
+		sens: 'le contraire de charger',
+		distracteurs: ['charger très vite', 'recharger à fond'],
+		explication: 'Le préfixe « dé- » indique le contraire : décharger = enlever ce qui est chargé.',
+	},
+	{
+		mot: 'déchausser',
+		sens: 'le contraire de chausser',
+		distracteurs: ['chausser trop grand', 'chausser très vite'],
+		explication: 'Le préfixe « dé- » indique le contraire : déchausser = enlever ses chaussures.',
+	},
+	{
+		mot: 'décrocher',
+		sens: 'le contraire d’accrocher',
+		distracteurs: ['accrocher très haut', 'accrocher deux fois'],
+		explication:
+			'Le préfixe « dé- » indique le contraire : décrocher = enlever ce qui est accroché.',
+	},
+	{
+		mot: 'dégonfler',
+		sens: 'le contraire de gonfler',
+		distracteurs: ['gonfler très fort', 'gonfler à moitié'],
+		explication:
+			'Le préfixe « dé- » indique le contraire : dégonfler = enlever l’air de ce qui est gonflé.',
+	},
+	{
+		mot: 'démêler',
+		sens: 'le contraire d’emmêler',
+		distracteurs: ['mêler deux couleurs', 'emmêler très fort'],
+		explication: 'Le préfixe « dé- » indique le contraire : démêler = séparer ce qui est emmêlé.',
+	},
+	{
+		mot: 'débrancher',
+		sens: 'le contraire de brancher',
+		distracteurs: ['brancher très fort', 'rebrancher aussitôt'],
+		explication:
+			'Le préfixe « dé- » indique le contraire : débrancher = enlever la prise de ce qui est branché.',
 	},
 	{
 		mot: 'désobéir',
@@ -587,6 +671,12 @@ export const PREFIXES: ItemAffixe[] = [
 		explication: 'Le préfixe « im- » veut dire « pas » : immobile = qui ne bouge pas.',
 	},
 	{
+		mot: 'impatient',
+		sens: 'pas patient',
+		distracteurs: ['très patient', 'patient parfois'],
+		explication: 'Le préfixe « im- » veut dire « pas » : impatient = pas patient.',
+	},
+	{
 		mot: 'incorrect',
 		sens: 'pas correct',
 		distracteurs: ['très correct', 'à moitié correct'],
@@ -609,6 +699,24 @@ export const PREFIXES: ItemAffixe[] = [
 		sens: 'pas juste',
 		distracteurs: ['très juste', 'juste un peu'],
 		explication: 'Le préfixe « in- » veut dire « pas » : injuste = pas juste.',
+	},
+	{
+		mot: 'inutile',
+		sens: 'pas utile',
+		distracteurs: ['très utile', 'utile parfois'],
+		explication: 'Le préfixe « in- » veut dire « pas » : inutile = pas utile.',
+	},
+	{
+		mot: 'incapable',
+		sens: 'pas capable',
+		distracteurs: ['très capable', 'capable une fois'],
+		explication: 'Le préfixe « in- » veut dire « pas » : incapable = pas capable.',
+	},
+	{
+		mot: 'inconnu',
+		sens: 'pas connu',
+		distracteurs: ['très connu', 'connu de tous'],
+		explication: 'Le préfixe « in- » veut dire « pas » : inconnu = pas connu.',
 	},
 	{
 		mot: 'prévenir',
@@ -639,6 +747,20 @@ export const PREFIXES: ItemAffixe[] = [
 			'Le préfixe « pré- » veut dire « avant » : préchauffer = chauffer le four avant de cuire.',
 	},
 	{
+		mot: 'prénom',
+		sens: 'le nom placé avant le nom de famille',
+		distracteurs: ['un autre nom donné par des amis', 'le nom de famille lui-même'],
+		explication:
+			'Le préfixe « pré- » veut dire « avant » : prénom = le nom placé avant le nom de famille.',
+	},
+	{
+		mot: 'prédire',
+		sens: 'dire à l’avance',
+		distracteurs: ['dire deux fois', 'dire tout bas'],
+		explication:
+			'Le préfixe « pré- » veut dire « avant » : prédire = dire à l’avance ce qui va arriver.',
+	},
+	{
 		mot: 'survoler',
 		sens: 'voler au-dessus',
 		distracteurs: ['voler très vite', 'voler très bas'],
@@ -663,6 +785,20 @@ export const PREFIXES: ItemAffixe[] = [
 		distracteurs: ['un vêtement chaud', 'un vêtement de dessous'],
 		explication:
 			'Le préfixe « sur- » veut dire « au-dessus » : un survêtement se met par-dessus les autres vêtements.',
+	},
+	{
+		mot: 'surnom',
+		sens: 'un autre nom donné en plus du vrai nom',
+		distracteurs: ['le nom de famille', 'le prénom inscrit à la mairie'],
+		explication:
+			'Le préfixe « sur- » veut dire « en plus » : un surnom s’ajoute au vrai nom d’une personne.',
+	},
+	{
+		mot: 'surligner',
+		sens: 'colorer par-dessus pour faire ressortir un mot',
+		distracteurs: ['écrire par-dessus un mot', 'effacer un mot'],
+		explication:
+			'Le préfixe « sur- » veut dire « au-dessus » : surligner = passer de la couleur par-dessus un mot.',
 	},
 	{
 		mot: 'sous-marin',
@@ -690,6 +826,20 @@ export const PREFIXES: ItemAffixe[] = [
 		distracteurs: ['le toit de la maison', 'le jardin de la maison'],
 		explication:
 			'Le préfixe « sous- » veut dire « en dessous » : sous-sol = la partie de la maison sous le rez-de-chaussée.',
+	},
+	{
+		mot: 'sous-vêtement',
+		sens: 'un vêtement qu’on met sous les autres',
+		distracteurs: ['un vêtement qu’on met par-dessus', 'un vêtement d’hiver'],
+		explication:
+			'Le préfixe « sous- » veut dire « en dessous » : un sous-vêtement se met sous les autres vêtements, à l’inverse d’un survêtement.',
+	},
+	{
+		mot: 'souligner',
+		sens: 'tracer un trait sous un mot',
+		distracteurs: ['tracer un trait au-dessus d’un mot', 'entourer un mot'],
+		explication:
+			'Le préfixe « sous- » veut dire « en dessous » : souligner = tracer un trait sous un mot, à l’inverse de surligner.',
 	},
 ];
 
@@ -751,6 +901,62 @@ export const SUFFIXES: ItemAffixe[] = [
 			'Le suffixe « -euse » désigne celle qui fait l’action : une menteuse, c’est celle qui ment.',
 	},
 	{
+		mot: 'voleur',
+		sens: 'celui qui prend ce qui ne lui appartient pas',
+		distracteurs: ['celui qui trouve un objet perdu', 'celui qui vend des objets'],
+		explication:
+			'Le suffixe « -eur » désigne celui qui fait l’action : un voleur, c’est celui qui vole.',
+	},
+	{
+		mot: 'rêveur',
+		sens: 'celui qui rêve, qui imagine',
+		distracteurs: ['celui qui court', 'celui qui chante'],
+		explication:
+			'Le suffixe « -eur » désigne celui qui fait l’action : un rêveur, c’est celui qui rêve.',
+	},
+	{
+		mot: 'coureur',
+		sens: 'celui qui court',
+		distracteurs: ['celui qui saute', 'celui qui marche'],
+		explication:
+			'Le suffixe « -eur » désigne celui qui fait l’action : un coureur, c’est celui qui court.',
+	},
+	{
+		mot: 'sauteur',
+		sens: 'celui qui saute',
+		distracteurs: ['celui qui court', 'celui qui grimpe'],
+		explication:
+			'Le suffixe « -eur » désigne celui qui fait l’action : un sauteur, c’est celui qui saute.',
+	},
+	{
+		mot: 'grimpeur',
+		sens: 'celui qui grimpe',
+		distracteurs: ['celui qui descend', 'celui qui glisse'],
+		explication:
+			'Le suffixe « -eur » désigne celui qui fait l’action : un grimpeur, c’est celui qui grimpe.',
+	},
+	{
+		mot: 'skieur',
+		sens: 'celui qui skie',
+		distracteurs: ['celui qui nage', 'celui qui patine'],
+		explication:
+			'Le suffixe « -eur » désigne celui qui fait l’action : un skieur, c’est celui qui skie.',
+	},
+	{
+		mot: 'patineur',
+		sens: 'celui qui patine',
+		distracteurs: ['celui qui skie', 'celui qui court'],
+		explication:
+			'Le suffixe « -eur » désigne celui qui fait l’action : un patineur, c’est celui qui patine.',
+	},
+	{
+		mot: 'acheteur',
+		sens: 'celui qui achète',
+		distracteurs: ['celui qui vend', 'celui qui fabrique'],
+		explication:
+			'Le suffixe « -eur » désigne celui qui fait l’action : un acheteur, c’est celui qui achète.',
+	},
+	{
 		mot: 'natation',
 		sens: 'l’action de nager',
 		distracteurs: ['l’action de courir', 'l’action de sauter'],
@@ -778,10 +984,40 @@ export const SUFFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'addition',
-		sens: 'l’action d’additionner',
+		// La réponse ne reprend PAS « additionner » : sinon l'enfant apparie les lettres du
+		// mot interrogé au lieu de décoder le suffixe (cf. garde anti-fuite des tests).
+		sens: 'l’action d’ajouter',
 		distracteurs: ['l’action de retirer', 'l’action de partager'],
 		explication:
 			'Le suffixe « -tion » désigne l’action : une addition, c’est l’action d’ajouter des nombres.',
+	},
+	{
+		mot: 'multiplication',
+		sens: 'l’action de multiplier',
+		distracteurs: ['l’action de diviser', 'l’action de soustraire'],
+		explication:
+			'Le suffixe « -tion » désigne l’action : une multiplication, c’est l’action de multiplier.',
+	},
+	{
+		mot: 'soustraction',
+		sens: 'l’action de soustraire, d’enlever',
+		distracteurs: ['l’action d’additionner', 'l’action de multiplier'],
+		explication:
+			'Le suffixe « -tion » désigne l’action : une soustraction, c’est l’action de soustraire, d’enlever.',
+	},
+	{
+		mot: 'correction',
+		sens: 'l’action de corriger une erreur',
+		distracteurs: ['l’action de recopier', 'l’action d’effacer'],
+		explication:
+			'Le suffixe « -tion » désigne l’action : une correction, c’est l’action de corriger.',
+	},
+	{
+		mot: 'récitation',
+		sens: 'l’action de réciter un texte appris par cœur',
+		distracteurs: ['l’action de lire', 'l’action d’écouter'],
+		explication:
+			'Le suffixe « -tion » désigne l’action : une récitation, c’est l’action de réciter.',
 	},
 	{
 		mot: 'division',
@@ -789,6 +1025,13 @@ export const SUFFIXES: ItemAffixe[] = [
 		distracteurs: ['l’action de multiplier', 'l’action d’ajouter'],
 		explication:
 			'Le suffixe « -sion » désigne l’action : une division, c’est l’action de diviser, de partager.',
+	},
+	{
+		mot: 'description',
+		sens: 'l’action de décrire quelque chose',
+		distracteurs: ['l’action de dessiner', 'l’action de raconter une histoire'],
+		explication:
+			'Le suffixe « -tion » désigne l’action : une description, c’est l’action de décrire.',
 	},
 	{
 		mot: 'lentement',
@@ -835,6 +1078,41 @@ export const SUFFIXES: ItemAffixe[] = [
 		explication: 'Le suffixe « -ment » indique la manière : fortement, c’est d’une manière forte.',
 	},
 	{
+		mot: 'joyeusement',
+		sens: 'd’une manière joyeuse',
+		distracteurs: ['d’une manière triste', 'd’une manière calme'],
+		explication:
+			'Le suffixe « -ment » indique la manière : joyeusement, c’est d’une manière joyeuse.',
+	},
+	{
+		mot: 'simplement',
+		sens: 'd’une manière simple',
+		distracteurs: ['d’une manière compliquée', 'd’une manière rapide'],
+		explication:
+			'Le suffixe « -ment » indique la manière : simplement, c’est d’une manière simple.',
+	},
+	{
+		mot: 'facilement',
+		sens: 'd’une manière facile, sans effort',
+		distracteurs: ['d’une manière difficile', 'd’une manière lente'],
+		explication:
+			'Le suffixe « -ment » indique la manière : facilement, c’est d’une manière facile.',
+	},
+	{
+		mot: 'franchement',
+		sens: 'd’une manière franche, sans mentir',
+		distracteurs: ['d’une manière timide', 'd’une manière moqueuse'],
+		explication:
+			'Le suffixe « -ment » indique la manière : franchement, c’est d’une manière franche.',
+	},
+	{
+		mot: 'sérieusement',
+		sens: 'd’une manière sérieuse, appliquée',
+		distracteurs: ['d’une manière amusante', 'd’une manière rapide'],
+		explication:
+			'Le suffixe « -ment » indique la manière : sérieusement, c’est d’une manière sérieuse.',
+	},
+	{
 		mot: 'lavable',
 		sens: 'qu’on peut laver',
 		distracteurs: ['qu’on peut manger', 'qu’on peut casser'],
@@ -870,6 +1148,27 @@ export const SUFFIXES: ItemAffixe[] = [
 			'Le suffixe « -able » indique ce qui est possible : cassable, c’est qu’on peut casser.',
 	},
 	{
+		mot: 'réparable',
+		sens: 'qu’on peut réparer',
+		distracteurs: ['qu’on peut jeter', 'qu’on peut casser'],
+		explication:
+			'Le suffixe « -able » indique ce qui est possible : réparable, c’est qu’on peut réparer.',
+	},
+	{
+		mot: 'gonflable',
+		sens: 'qu’on peut gonfler',
+		distracteurs: ['qu’on peut plier', 'qu’on peut laver'],
+		explication:
+			'Le suffixe « -able » indique ce qui est possible : gonflable, c’est qu’on peut gonfler, comme une piscine gonflable.',
+	},
+	{
+		mot: 'recyclable',
+		sens: 'qu’on peut recycler',
+		distracteurs: ['qu’on peut manger', 'qu’on peut jeter n’importe où'],
+		explication:
+			'Le suffixe « -able » indique ce qui est possible : recyclable, c’est qu’on peut recycler.',
+	},
+	{
 		mot: 'lisible',
 		sens: 'qu’on peut lire',
 		distracteurs: ['qu’on peut écrire', 'qu’on peut effacer'],
@@ -903,6 +1202,20 @@ export const SUFFIXES: ItemAffixe[] = [
 		distracteurs: ['une grosse tarte', 'un gros gâteau'],
 		explication:
 			'Le suffixe « -ette » indique que c’est petit : une tartelette, c’est une petite tarte.',
+	},
+	{
+		mot: 'clochette',
+		sens: 'une petite cloche',
+		distracteurs: ['une grande cloche', 'un petit tambour'],
+		explication:
+			'Le suffixe « -ette » indique que c’est petit : une clochette, c’est une petite cloche.',
+	},
+	{
+		mot: 'mallette',
+		sens: 'une petite malle',
+		distracteurs: ['une grande valise', 'un grand sac à dos'],
+		explication:
+			'Le suffixe « -ette » indique que c’est petit : une mallette, c’est une petite malle.',
 	},
 ];
 
@@ -1222,10 +1535,10 @@ const itemsAffixe = (arr: ItemAffixe[], type: 'prefixe' | 'suffixe'): ItemVocabQ
 		consigne: 'Que veut dire ce mot ?',
 	}));
 
-/* Sous-pool : familles CE2 seules (pour une leçon « familles » dédiée). Bâti sur les
-   30 familles D'ORIGINE (`FAMILLES_QCM`), PAS la banque complète (54) : le pool QCM
-   combiné reste ainsi à l'équilibre ~⅓ familles (découplage — voir en tête de fichier). */
-export const ITEMS_FAMILLES_SEULES: ItemVocabQcm[] = itemsFamille(FAMILLES_QCM);
+/* Sous-pool : familles CE2 seules (pour une leçon « familles » dédiée). Bâti sur la banque
+   COMPLÈTE (54) depuis le rééquilibrage (#453) : avec 55 préfixes et 54 suffixes, le pool
+   QCM combiné reste à ~⅓ par type tout en couvrant toutes les familles. */
+export const ITEMS_FAMILLES_SEULES: ItemVocabQcm[] = itemsFamille(FAMILLES);
 /* Sous-pool : préfixes + suffixes CE2 (pour une leçon « affixes » dédiée). */
 export const ITEMS_AFFIXES: ItemVocabQcm[] = [
 	...itemsAffixe(PREFIXES, 'prefixe'),

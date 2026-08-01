@@ -7,9 +7,60 @@
    la « réponse attendue » LISIBLES pour un parent, à partir des données brutes des
    runners — sans DOM, donc testable en isolation. La journalisation elle-même
    reste centralisée dans ui/erreur-capture.ts.
+
+   Le module héberge aussi (#446) la FORMULATION d'une réponse attendue NON UNIQUE
+   (intercalation par intervalle) : elle est la même pour le journal encadrant, la révélation
+   de la fiche à l'écran (`data-attendue`) et le corrigé imprimé. Un seul endroit pour la lire
+   et la faire évoluer — l'éparpiller écran par écran est exactement ce qui avait produit des
+   discours contradictoires (« LA bonne réponse » là où douze valeurs étaient acceptées).
    ============================================================ */
 import { separateurSuite } from './exercise';
 import type { NatureOrdre } from './exercise';
+import { formatNombre } from './nombres';
+import type { Item } from './items';
+
+/* ---------- Intercalation (réponse corrigée par intervalle ouvert) ---------- */
+/* La bande elle-même, formulée comme l'énoncé (« Place un nombre entre 450 et 465 ») : mêmes
+   bornes exclues, même groupement des grands nombres. Source unique des deux tournures
+   ci-dessous, pour qu'elles ne divergent jamais. */
+function bandeIntervalle([min, max]: [number, number]): string {
+	return `entre ${formatNombre(min)} et ${formatNombre(max)}`;
+}
+
+/* Réponse attendue LISIBLE d'une intercalation (#446) : la BANDE acceptée, pas un nombre
+   isolé. Sans ça, le parent lit « La bonne réponse : 457 » là où douze valeurs étaient
+   acceptées, et croit son enfant plus loin du but qu'il ne l'est. Sert au journal encadrant
+   ET à la révélation de la fiche à l'écran (`data-attendue`). */
+export function attendueIntervalle(intervalle: [number, number]): string {
+	return `un nombre ${bandeIntervalle(intervalle)}`;
+}
+
+/* Révélation d'une intercalation dans le CORRIGÉ IMPRIMÉ (#446) : « 457 ou tout nombre entre
+   450 et 465 ». L'exemple concret est gardé en tête (l'adulte corrige vite en le comparant),
+   la règle est dite juste après — sans quoi le corrigé papier fait barrer des réponses JUSTES,
+   alors que la fiche, elle, annonce « (plusieurs réponses possibles) ». On ne recopie pas
+   l'énoncé mot pour mot (« un nombre entre… »), qui figure deux lignes plus haut. */
+export function corrigeIntercalation(
+	exemple: number | string,
+	intervalle: [number, number],
+): string {
+	// L'exemple est GROUPÉ comme les bornes (formatNombre) : sans ça la même phrase écrivait le
+	// même ordre de grandeur de deux façons au CM1 (« 8750000 ou tout nombre entre 8 700 000 et
+	// 8 800 000 »). Sans effet au CE2 (pas de séparateur sous 10 000). Repli défensif sur la
+	// valeur brute si elle n'est pas numérique (jamais le cas d'une intercalation).
+	const n = Number(String(exemple).trim());
+	const vu =
+		String(exemple).trim() !== '' && Number.isFinite(n) ? formatNombre(n) : String(exemple);
+	return `${vu} ou tout nombre ${bandeIntervalle(intervalle)}`;
+}
+
+/* Réponse attendue LISIBLE d'un item de fiche / sprint / révision : l'`answer` révélée,
+   SAUF quand l'item est corrigé par intervalle (intercalation) — auquel cas `answer` n'est
+   qu'un EXEMPLE et l'attendu est la bande. Un seul point de vérité pour les trois chemins
+   de correction qui journalisent un `Item`. */
+export function attendueItem(it: Pick<Item, 'answer' | 'intervalle'>): string {
+	return it.intervalle ? attendueIntervalle(it.intervalle) : String(it.answer);
+}
 
 /* ---------- Opération posée (cellules-chiffres du résultat) ---------- */
 export interface CellulePosee {

@@ -11,7 +11,8 @@
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
-import type { ExerciseMode } from '../core/exercise';
+import { depuisTuilesNombre } from '../core/exercise';
+import type { ExerciseMode, TuilesSpec } from '../core/exercise';
 import { commKey, escapeHTML } from '../core/utils';
 import { bindConsigneTts } from './consigne-tts';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
@@ -25,15 +26,17 @@ import { bindTuileInteraction } from './tuile-interaction';
 import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 import { capterErreur } from './erreur-capture';
+import { attendueIntervalle } from '../core/erreur-representation';
+import { intervalleAPlusieursReponses } from '../core/items';
 
 const NB_QUESTIONS = 8;
 
-interface TuilesQuestion {
-	question: string; // énoncé avec `@` = emplacement
-	answer: string; // libellé de la bonne tuile
-	tuiles: string[]; // réponse + distracteurs (déjà mélangés)
-	parle?: string; // texte lu à voix haute si l'énoncé est télégraphique (#42)
-}
+/* Une question de la série = l'exercice « tuiles » tel quel, moins son étiquette `type`
+   (`TuilesSpec`, cf. core/exercise.ts) : énoncé avec `@`, libellé de la bonne tuile, tuiles
+   mélangées, texte lu (#42), et — pour une intercalation — les bornes de la bande acceptée
+   (#446). Alias plutôt que copie de la forme : c'est le mappeur partagé
+   `depuisTuilesNombre` qui remplit tout, sans énumération de champs qu'on pourrait oublier. */
+type TuilesQuestion = TuilesSpec;
 
 let lesson: LessonDef;
 let mode: ExerciseMode;
@@ -59,7 +62,7 @@ function genQuestions(l: LessonDef, m: ExerciseMode, n: number): TuilesQuestion[
 			continue;
 		}
 		seen.add(key);
-		out.push({ question: ex.question, answer: ex.answer, tuiles: ex.tuiles, parle: ex.parle });
+		out.push(depuisTuilesNombre(ex)); // conversion partagée (#446), pas de recopie locale
 		misses = 0;
 	}
 	return out;
@@ -115,6 +118,27 @@ function renderQuestion(): void {
 	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'tuiles'); // bouton « ? » persistant (#272)
 }
 
+/* Correction d'une réponse fausse (#446). Deux réglages, portés par l'intervalle :
+   - l'AMORCE passe au singulier indéfini (« Une réponse possible était X. ») dès que l'item
+     est corrigé par intervalle — même tournure qu'au sprint, en révision et sur la fiche, une
+     seule pour les quatre écrans. « LA bonne réponse était X » suivi de « d'autres auraient
+     convenu » se lisait comme une contradiction à 8-9 ans (avis redacteur-contenu-francais) ;
+     les leçons en tuiles SANS intervalle gardent leur message d'origine ;
+   - la MENTION « D'autres nombres… » dit ce que le mode tuiles cache : la tuile juste était la
+     seule POSABLE, mais la question admettait d'autres nombres. Sans elle, l'enfant qui ne joue
+     qu'en tuiles ne rencontrerait la pluralité dans aucun mode (le suffixe de consigne n'existe
+     qu'en saisie). Seuil de pluriel partagé avec la consigne (`intervalleAPlusieursReponses`) :
+     « d'autres nombres » serait faux quand l'intervalle n'admet que deux valeurs, dont la
+     tuile juste. */
+function correctionHTML(q: TuilesQuestion): string {
+	const amorce = q.intervalle ? 'Une réponse possible était' : 'La bonne réponse était';
+	const autres =
+		q.intervalle && intervalleAPlusieursReponses(q.intervalle)
+			? " D'autres nombres auraient aussi convenu."
+			: '';
+	return `<span class="lqcm-ko">${amorce} <strong>${escapeHTML(q.answer)}</strong>.${autres}</span>`;
+}
+
 function verifier(): void {
 	const verif = sheets().querySelector('#ltuiVerif') as HTMLButtonElement;
 	if (verif.disabled) return; // pas de tuile posée
@@ -128,7 +152,10 @@ function verifier(): void {
 		capterErreur({
 			text: q.question,
 			donnee: rep?.kind === 'tuile' ? (rep.posee ?? '') : '',
-			attendue: q.answer,
+			// Intercalation : la BANDE acceptée (« un nombre entre 450 et 465 »), pas la seule
+			// tuile juste — c'est ce qui explique au parent pourquoi la tuile posée était fausse
+			// sans lui faire croire à une réponse unique (#446).
+			attendue: q.intervalle ? attendueIntervalle(q.intervalle) : q.answer,
 			lessonId: lesson.id,
 			mode: 'lecon',
 		});
@@ -140,9 +167,7 @@ function verifier(): void {
 		sheets().querySelector('#ltuiActions') as HTMLElement,
 		sheets().querySelector('#ltuiFeedback') as HTMLElement,
 		{
-			feedbackHTML: correct
-				? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-				: `<span class="lqcm-ko">La bonne réponse était <strong>${escapeHTML(q.answer)}</strong>.</span>`,
+			feedbackHTML: correct ? `<span class="lqcm-ok">Bravo ! 🎉</span>` : correctionHTML(q),
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;

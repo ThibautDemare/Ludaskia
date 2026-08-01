@@ -496,7 +496,9 @@ fin de fil vocabulaire CM1 dans l'ordre pédagogique (après
 3 leçons « situer un nombre » (catégorie
 `math-numeration`) — `num-comparer` (placer `<`, `=`, `>`), `num-encadrer-intercaler`
 (dizaine/centaine juste avant/après, intercaler par intervalle à écarts variés),
-`num-situer-10000` (idem jusqu'à 9999, encadrement au millier). **Deux modes** par
+`num-situer-10000` (« Je situe les nombres jusqu'à 10 000 » : les **trois** gestes de la
+relation d'ordre — comparer / encadrer au millier / **intercaler** — à parts égales sur la
+plage 4 chiffres, #446). **Deux modes** par
 leçon (#69) : `saisie` (conseillé, compatible fiche/bilan : on tape le signe ou le
 nombre) et `tuiles` (on déplace la bonne tuile parmi des distracteurs). Le mode
 tuiles produit un `Exercise` de type **`tuilesNombre`** (`{question, answer, tuiles}`)
@@ -511,11 +513,24 @@ vers les cas formateurs (zéros intercalaires, charnières de classe). `RANG_MOT
 selon la taille du nombre. **Intercalation** : check **par intervalle** OUVERT (toute
 valeur strictement entre les bornes, via le champ `Exercise.intervalle` propagé jusqu'à
 l'`Item`/`checkItemAnswer`) — au CM1 entre deux multiples ronds consécutifs (#240), au CE2
-(#446) avec des **écarts variés** (~18 % serré 2-4, ~50 % moyen 6-30, ~32 % large 100-900,
-traversant un rang). L'indicateur `Fact.plusieurs` (l'intervalle admet > 1 entier) déclenche
-le suffixe « (plusieurs réponses possibles) » **en SAISIE seulement** (recomposé par
-`generate()` ; jamais en tuiles, où une seule tuile est valide et la correction est au
-singulier). `answer` reste un **exemple** valide (révélation, mode tuiles). **Saisie** : on ne fait jamais taper > 6 chiffres
+(#446) avec des **écarts variés** (~18 % serré 2-4, ~50 % moyen 6-30, ~32 % large 100 à 900
+plafonné par la plage), tirés par les **deux** leçons qui couvrent une plage (999 et 9 999).
+Une moitié environ du palier moyen est un cas **« charnière »** (`borneAvantCharniere`) : les
+bornes encadrent une **centaine** (396 → 405) ou, sur la plage 4 chiffres, un **millier**
+(3 987 → 4 002) — sans quoi « borne basse + 1 » suffit toujours et l'ordre de grandeur n'est
+jamais interrogé. L'indicateur `Fact.plusieurs` (`intervalleAPlusieursReponses` : au moins
+trois entiers dans la bande, écart ≥ 4) déclenche le suffixe « (plusieurs réponses
+possibles) » **en SAISIE seulement** (recomposé par `generate()`). En **TUILES**, une seule
+tuile est valide → pas de suffixe avant de répondre, mais la correction **ajoute** « D'autres
+nombres auraient aussi convenu. » (même seuil de pluriel) : l'enfant qui ne joue qu'en tuiles
+ne rencontrerait sinon la pluralité des réponses dans aucun mode. `answer` reste un
+**exemple** valide (révélation, mode tuiles) : les **six** chemins de correction le disent de
+la même façon — sprint, révision (saisie **et** tuiles), leçon en tuiles annoncent « **une**
+réponse possible », la fiche révèle la **bande** au lieu de l'exemple (`data-attendue`), le
+corrigé **imprimé** ajoute la règle à l'exemple (« 457 ou tout nombre entre 450 et 465 ») et le
+journal encadrant enregistre la bande (`attendueItem`/`attendueIntervalle`/
+`corrigeIntercalation`, cf. [Logique pure](core.md)), jamais un nombre isolé.
+**Saisie** : on ne fait jamais taper > 6 chiffres
 (comparaison = signe, encadrement/intercalation = nombres ronds), et le `check` tolère
 les espaces de groupement (`nettoyerSaisieNombre`). Le signe de comparaison se pose via
 un **pavé de 3 boutons** dédié (`.ans-signe`, sans clavier virtuel) plutôt qu'à la frappe

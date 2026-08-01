@@ -67,8 +67,12 @@ const MODE_LABEL: Record<string, string> = {
 };
 const modeLabel = (m: string): string => MODE_LABEL[m] ?? m;
 
-/* Une entrée d'erreur : énoncé (primaire) + bonne réponse mise en avant (--ok) +
-   réponse donnée (neutre) + ligne meta (mode · quand · « vu N fois »). */
+/* Une entrée d'erreur : énoncé (primaire) + réponse attendue mise en avant (--ok) +
+   réponse donnée (neutre) + ligne meta (mode · quand · « vu N fois »).
+   « Réponse attendue » et non « La bonne réponse » (#446) : depuis l'intercalation, l'attendu
+   peut être une BANDE (« un nombre entre 450 et 465 ») dont le « la » nierait la pluralité.
+   Formulation neutre, symétrique de « Réponse donnée : » juste en dessous, et alignée sur le
+   vocabulaire interne (`attendue`, `attendueItem`) — valable pour TOUTES les leçons. */
 function erreurLigneHTML(e: ErreurAffichee, now: number): string {
 	const quand = libelleDerniereFois(e.ts, now);
 	const meta = [modeLabel(e.mode), quand, e.occurrences > 1 ? `vue ${e.occurrences} fois` : '']
@@ -76,7 +80,7 @@ function erreurLigneHTML(e: ErreurAffichee, now: number): string {
 		.join(' · ');
 	return `<li class="enc-err-item">
       <p class="enc-err-q">${escapeHTML(e.question)}</p>
-      <p class="enc-err-bonne"><span class="enc-err-lab">La bonne réponse :</span> ${escapeHTML(e.attendue)}</p>
+      <p class="enc-err-bonne"><span class="enc-err-lab">Réponse attendue :</span> ${escapeHTML(e.attendue)}</p>
       <p class="enc-err-donnee"><span class="enc-err-lab">Réponse donnée :</span> ${escapeHTML(e.donnee)}</p>
       <p class="enc-err-meta">${escapeHTML(meta)}</p>
     </li>`;

@@ -19,7 +19,7 @@ import {
 	type VerbTense,
 	type FormesConjuguees,
 } from '../../data/francais/verbs-lookup';
-import type { MotOrtho, OrthoState, VerbeConfig } from './types';
+import type { ListeOrtho, MotOrtho, OrthoState, VerbeConfig } from './types';
 
 /** Id stable d'une cible verbe (distinct pour chaque couple temps × personne). */
 export function cibleVerbeId(infinitif: string, temps: VerbTense, person: number): string {
@@ -41,6 +41,21 @@ export function listeDeCibleVerbe(state: OrthoState, wordId: string): string | n
 		}
 	}
 	return null;
+}
+
+/** TOUTES les listes dont un verbe REGÉNÈRE cette cible, dans l'ordre de `state.listes` (#496).
+ *
+ *  Pendant multi-listes de `listeDeCibleVerbe` (qui n'en renvoie qu'une, suffisante au journal
+ *  d'erreurs). Sert à AVERTIR avant suppression : une cible verbe se recrée à l'identique au
+ *  prochain lancement du parcours (`materialiserVerbes`, id déterministe), donc la supprimer ne
+ *  tient que si plus aucune liste ne porte le verbe. L'adulte a besoin de savoir LESQUELLES pour
+ *  aller y retirer le verbe ou le reconfigurer. Tableau vide pour un mot qui n'est pas une cible
+ *  verbe, ou dont plus aucun verbe ne porte le préfixe. Pur. */
+export function listesDeCibleVerbe(state: OrthoState, wordId: string): ListeOrtho[] {
+	if (!wordId.startsWith('v:')) return [];
+	return state.listes.filter((l) =>
+		(l.verbes ?? []).some((v) => wordId.startsWith(`v:${normVerbKey(v.infinitif)}#`)),
+	);
 }
 
 /* ---------- Vocabulaire d'un verbe configuré (partagé formulaire / aperçus) ----------

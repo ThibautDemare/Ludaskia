@@ -105,11 +105,31 @@ export function labelLeconOrtho(
 export function groupeOrthoDuMot(state: OrthoState, wordId: string): string | null {
 	const liste = listeContenantMot(state, wordId);
 	if (liste) return liste;
+	const predef = leconPredefinieDuMot(state, wordId);
+	if (predef) return predef.id;
+	return listeDeCibleVerbe(state, wordId);
+}
+
+/** Leçon PRÉDÉFINIE contenant ce mot (id + libellé), `null` sinon. Les prédéfinis sont
+    matérialisés en banque sans lien retour : on les retrouve par le même index de dédup par
+    forme que `progression.ts`. Une forme partagée par plusieurs leçons est rattachée à la
+    PREMIÈRE déclarée (même arbitrage que `groupeOrthoDuMot`, dont c'est l'étape 2).
+
+    Sert au critère de suppression de la vue banque (#496) : un mot d'une leçon livrée avec
+    l'appli n'est PAS supprimable, parce que rejouer la leçon le recréerait (`motsDeLecon` →
+    `ajouterMots`) — un « Supprimer » qui se contredit à la session suivante tromperait
+    l'adulte (avis pédagogue). Le critère est bien l'APPARTENANCE à une prédéfinie, et non le
+    champ `MotOrtho.origine` : la banque déduplique par forme, donc un mot saisi par le parent
+    ET présent dans une prédéfinie n'a qu'une entrée, dont l'`origine` ne dit que qui l'a
+    créée en premier. Pur. */
+export function leconPredefinieDuMot(
+	state: OrthoState,
+	wordId: string,
+): { id: string; label: string } | null {
 	const predef = ORTHO_PREDEF.find((l) =>
 		l.mots.some((mi) => state.motIdParForme[formeNormalisee(mi.mot)] === wordId),
 	);
-	if (predef) return predef.id;
-	return listeDeCibleVerbe(state, wordId);
+	return predef ? { id: predef.id, label: predef.label } : null;
 }
 
 /** Résout les mots d'une leçon (liste du profil OU leçon prédéfinie).

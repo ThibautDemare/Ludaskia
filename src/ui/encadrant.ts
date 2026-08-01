@@ -50,6 +50,7 @@ import {
 	aRevoirHTML,
 	dicteesProposeesHTML,
 	progressionClick,
+	progressionInput,
 } from './encadrant-progression';
 import { revisionHTML, revisionClick } from './encadrant-revision';
 import { seanceHTML, seanceClick, seanceChange } from './encadrant-seance';
@@ -96,6 +97,7 @@ function wireOnce(el: HTMLElement): void {
 	if (el.dataset.wired) return;
 	el.addEventListener('click', onClick);
 	el.addEventListener('change', onChange);
+	el.addEventListener('input', onInput);
 	el.addEventListener('keydown', onKeydown);
 	el.dataset.wired = '1';
 }
@@ -237,6 +239,13 @@ function onChange(e: Event): void {
 	if (reglagesChange(act, t)) return;
 	if (seanceChange(act, t)) return;
 	pinChange(act, t);
+}
+
+/* Saisie AU FIL DE LA FRAPPE (≠ `change`, qui n'arrive qu'au blur) : la recherche dans la
+   banque de mots doit filtrer à chaque lettre (#496). Seule cette section en a l'usage. */
+function onInput(e: Event): void {
+	const t = e.target as HTMLElement;
+	progressionInput(t.dataset.act ?? '', t);
 }
 
 function onKeydown(e: KeyboardEvent): void {

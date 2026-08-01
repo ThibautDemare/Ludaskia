@@ -35,23 +35,28 @@ import { BLOCAGES_SIGNAL_ADULTE } from '../core/report-lecon';
 import { dicteeDisponible } from './tts';
 import { printScope } from './session';
 import { erreursHTML, erreursClick } from './encadrant-erreurs';
-import { consulteUuid, renderEspace, container } from './encadrant-commun';
+import {
+	consulteUuid,
+	renderEspace,
+	container,
+	MOT_NIVEAU,
+	ORDRE_NIVEAUX,
+	ORDRE_NIVEAUX_ORTHO,
+} from './encadrant-commun';
+import {
+	banqueClick,
+	banqueDuProfil,
+	banqueInput,
+	banqueMotsHTML,
+	vueDictees,
+} from './encadrant-banque';
 import { segmentHTML } from './segment';
 
 /* ---------- État de la section (module) ---------- */
 let vueActivite: 'total' | 'type' = 'total'; // graphe d'activité : « Total » ou « Par type » (#319)
 
-/* Mot affiché pour un niveau d'acquisition (échelle type LSU ; wording validé par
-   pedagogue-primaire / redacteur-contenu-francais — la notion est qualifiée, pas l'enfant). */
-const MOT_NIVEAU: Record<NiveauNotion, string> = {
-	acquis: 'acquis',
-	'en-cours': 'en cours',
-	'non-acquis': 'à renforcer', // ≠ « à consolider » : éviter qu'il sonne plus avancé que « en cours » (avis pédago)
-	'a-decouvrir': 'à découvrir',
-};
-// Ordre de PROGRESSION (croissant) pour la légende et les segments (avis pédago :
-// l'échelle doit se lire comme une gradation, pas un ordre arbitraire).
-const ORDRE_NIVEAUX: NiveauNotion[] = ['a-decouvrir', 'non-acquis', 'en-cours', 'acquis'];
+/* L'échelle d'acquisition (mots + ordre) est partagée avec la banque de mots (#496) :
+   elle vit dans encadrant-commun, module feuille commun aux deux sections. */
 
 /* Tendance récente d'une notion : glyphe + mot, formulés en ACTION et non en verdict
    (avis pédago : « à relancer », jamais « en baisse »). La couleur est un indice SECONDAIRE
@@ -388,8 +393,6 @@ function friseMatiereHTML(f: FriseMatiere, maxSem: number, lundiCourant: number)
    validation d'un mode est binaire, il n'y a pas de perf récente en %). Chaque liste
    peut être épinglée (elle rejoint la file « à revoir » de l'enfant, comme une leçon).
    Les dictées PRÉDÉFINIES non commencées sont masquées (cf. listesOrthoProfil). */
-const ORDRE_NIVEAUX_ORTHO: NiveauNotion[] = ['a-decouvrir', 'en-cours', 'acquis'];
-
 /* Mots d'une dictée, consultables depuis l'espace encadrant (#441) : l'adulte doit pouvoir
    lire la liste sans lancer la dictée lui-même (préparer une aide, comparer à ce qui a été
    vu en classe). `<details>` natif plutôt que l'infobulle au survol du catalogue enfant
@@ -450,18 +453,15 @@ function ligneDicteeProposee(d: DicteeProposee): string {
 		mots: d.mots,
 	});
 }
-function listesOrthoHTML(consulte: Profile): string {
-	const dispo = dicteeDisponible();
-	const listes = listesOrthoProfil(consulte, dispo);
-	const proposees = dicteesProposees(consulte, dispo);
-	// Le suivi ne s'affiche que s'il y a des listes suivies OU des dictées à proposer
-	// (dans ce dernier cas, on garde le renvoi vers l'onglet Programme).
-	if (listes.length === 0 && proposees.length === 0) return '';
-	const catOrtho = CATEGORIES.find((c) => c.id === ORTHO_CATEGORY_ID);
+/* Volet « Listes » : suivi des listes du parent + prédéfinies commencées ou épinglées. */
+function voletListesHTML(
+	consulte: Profile,
+	listes: RecapListeOrtho[],
+	proposees: DicteeProposee[],
+): string {
 	const legende = ORDRE_NIVEAUX_ORTHO.map(
 		(n) => `<span class="enc-key enc-key-${n}">${MOT_NIVEAU[n]}</span>`,
 	).join('');
-	// Suivi : listes du parent + prédéfinies commencées ou épinglées.
 	const suivi = listes.length
 		? `<ul class="enc-detail">${listes.map(ligneListeOrtho).join('')}</ul>`
 		: `<p class="enc-hint">Aucune dictée commencée pour le moment.</p>`;
@@ -471,12 +471,49 @@ function listesOrthoHTML(consulte: Profile): string {
 	const renvoi = proposees.length
 		? `<p class="enc-hint">Proposer une dictée à l'avance ? Rendez-vous dans l'onglet <strong>Programme</strong>.</p>`
 		: '';
-	return `<div class="enc-block">
-      <h3 class="enc-h3">${icon(catOrtho?.icon ?? 'book-open')} Listes de dictée</h3>
-      <p class="enc-legend">${legende}</p>
+	return `<p class="enc-legend">${legende}</p>
       <p class="enc-hint">Les listes de dictée (mots invariables, thèmes, vos propres listes) et leur avancement. Épinglez-en une pour qu'elle revienne sur l'accueil de ${escapeHTML(consulte.name)}.</p>
       ${suivi}
-      ${renvoi}
+      ${renvoi}`;
+}
+
+/* Bloc « Dictées » : deux volets sous une bascule (#496) — les LISTES (avancement,
+   épinglage) et les MOTS (la banque, où l'adulte localise et supprime). Deux angles sur
+   le même corpus, pas deux sections : c'est le même endroit où l'on vient regarder les
+   dictées. Le volet « Listes » reste le défaut — la banque peut faire des centaines de
+   lignes, elle ne s'affiche que si on la demande. Le rendu du volet « Mots » vit dans
+   `encadrant-banque` (état de vue, recherche, suppression). */
+function listesOrthoHTML(consulte: Profile): string {
+	const dispo = dicteeDisponible();
+	const listes = listesOrthoProfil(consulte, dispo);
+	const proposees = dicteesProposees(consulte, dispo);
+	const banque = banqueDuProfil(consulte.uuid);
+	// Rien à montrer ni côté listes ni côté mots. La banque compte dans cette condition :
+	// un parent qui a supprimé toutes ses listes garde des mots en révision, et c'est
+	// PRÉCISÉMENT le cas où il a besoin d'y accéder (le bloc disparaîtrait sinon).
+	if (listes.length === 0 && proposees.length === 0 && banque.length === 0) return '';
+	const catOrtho = CATEGORIES.find((c) => c.id === ORTHO_CATEGORY_ID);
+	// Pas de bascule tant que la banque est vide : un volet vide n'a rien à proposer.
+	const bascule = banque.length
+		? segmentHTML({
+				act: 'dictees-vue',
+				valAttr: 'vue',
+				label: 'Affichage des dictées',
+				active: vueDictees(),
+				options: [
+					{ val: 'listes', label: 'Listes' },
+					{ val: 'mots', label: 'Mots' },
+				],
+			})
+		: '';
+	const corps =
+		banque.length && vueDictees() === 'mots'
+			? banqueMotsHTML(consulte, banque)
+			: voletListesHTML(consulte, listes, proposees);
+	return `<div class="enc-block">
+      <h3 class="enc-h3">${icon(catOrtho?.icon ?? 'book-open')} Dictées</h3>
+      ${bascule}
+      ${corps}
     </div>`;
 }
 
@@ -639,8 +676,10 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 export function progressionClick(act: string, el: HTMLElement): boolean {
 	// Le bloc « erreurs » est INSÉRÉ par cette section (cf. recapHTML) : ses actions
 	// passent donc par ici, comme `epingler` — et non par un câblage frère dans
-	// l'orchestrateur, qui ne le compose pas.
+	// l'orchestrateur, qui ne le compose pas. Même raison pour le volet « Mots » du bloc
+	// Dictées (#496), composé par `listesOrthoHTML`.
 	if (erreursClick(act, el)) return true;
+	if (banqueClick(act, el)) return true;
 	switch (act) {
 		case 'activite-mode':
 			vueActivite = el.dataset.mode === 'type' ? 'type' : 'total';
@@ -674,6 +713,13 @@ export function progressionClick(act: string, el: HTMLElement): boolean {
 			return true;
 	}
 	return false;
+}
+
+/* Saisie au fil de la frappe (événement `input`) : seul le volet « Mots » du bloc Dictées
+   en a besoin, et c'est cette section qui le compose — d'où l'aiguillage ici, comme pour
+   les clics. Distinct de `change`, qui n'arrive qu'au blur. */
+export function progressionInput(act: string, el: HTMLElement): boolean {
+	return banqueInput(act, el);
 }
 
 function onImprimer(lessonId: string, corrige = false): void {

@@ -90,7 +90,12 @@ exploitées par la leçon d'accords. Le même `MotOrtho` (`atelierFait` + `valid
 alimente, depuis #424, l'**avancement par liste** (« à découvrir/en cours/acquis »)
 affiché dans l'espace encadrant — calculé en lecture seule par
 `core/orthographe/progression.ts`, lu par UUID via `loadOrthoFor` (cf.
-[Espace encadrant](espace-encadrant.md)).
+[Espace encadrant](espace-encadrant.md)). Depuis #496, `loadOrthoFor` a un pendant en
+**écriture** par UUID, `saveOrthoFor` — primitive **brute et silencieuse** (elle contourne
+le préfixe actif, donc le hook `onDataWrite`). On ne l'appelle pas directement depuis l'UI :
+la **suppression définitive d'un mot** passe par `supprimerMotFor` (`core/encadrant-stats.ts`),
+opération **atomique** lire → `supprimerMot` → écrire → `touchProfile`, sur le modèle de
+`toggleRevoirFor` — c'est elle qui est testée, et la vue n'a pas à recomposer la séquence.
 Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
 
 ## Profils
@@ -118,7 +123,9 @@ Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
   **Règle** (une écriture `lsSetRaw` sur un profil doit trancher) : une modification
   **voulue par l'adulte** bumpe — `enregistrerSeancesFor` (composer un programme du
   jour), `toggleRevoirFor` (épingler/désépingler une leçon ou une dictée),
-  `declarerVuAilleursFor` (déclarer « vu en classe ») ; un effet **automatique** reste
+  `declarerVuAilleursFor` (déclarer « vu en classe »), `supprimerMotFor` (supprimer un
+  mot de la banque, #496, cf. [Espace encadrant](espace-encadrant.md)) ; un effet
+  **automatique** reste
   silencieux — `purgeRevoirSolides` (désépinglage auto #465) tourne à chaque ouverture
   de l'espace, bumper y ferait passer une simple **consultation** pour une
   modification et fausserait la fusion dans l'autre sens. Les deux sens sont

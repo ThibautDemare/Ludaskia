@@ -43,9 +43,16 @@ import {
 	purgeRevoirSolides,
 	loadRevoirFor,
 	orthoRevoirId,
+	supprimerMotFor,
 	REVOIR_KEY,
 	REVOIR_FRAGILE_KEY,
 } from '../src/core/encadrant-stats';
+import {
+	ORTHO_KEY,
+	createListe,
+	emptyOrthoState,
+	loadOrthoFor,
+} from '../src/core/orthographe/store';
 import { enregistrerSeancesFor, chargerSeancesFor, type SeanceDef } from '../src/core/seance';
 import { declarerVuAilleursFor, loadVuAilleursFor } from '../src/core/vu-ailleurs';
 
@@ -226,6 +233,46 @@ describe('autres écritures par UUID voulues par l’adulte', () => {
 			),
 		).toBe(T0 + MIN);
 		expect(loadVuAilleursFor(vise.uuid)).toEqual({});
+	});
+
+	/** Banque d'un profil : une liste de deux mots, posée en écriture BRUTE (l'arrangement
+	    ne doit rien devoir aux fonctions sous test). Renvoie les ids par forme. */
+	function seedBanque(uuid: string): Record<string, string> {
+		const s = emptyOrthoState();
+		createListe(s, 'Dictée du 12', [{ mot: 'vélo' }, { mot: 'train' }]);
+		seed(uuid, ORTHO_KEY, s);
+		return s.motIdParForme;
+	}
+
+	it('supprimer un mot de la banque (supprimerMotFor) marque le profil consulté', () => {
+		const { vise, autre } = deuxProfils();
+		const ids = seedBanque(vise.uuid);
+
+		expect(updatedApres(vise.uuid, T0, () => supprimerMotFor(vise.uuid, ids['vélo']))).toBe(T0);
+
+		// La séquence est bien allée au bout : mot retiré de la banque ET de sa liste.
+		const relu = loadOrthoFor(vise.uuid);
+		expect(Object.keys(relu.banque)).toEqual([ids['train']]);
+		expect(relu.listes[0].motIds).toEqual([ids['train']]);
+		expect(updatedAt(autre.uuid)).toBe(SENTINELLE);
+		expect(loadProfilesMeta()?.active).toBe(autre.uuid); // aucune bascule d'enfant
+	});
+
+	it('supprimer un mot INCONNU ne réécrit rien et ne marque pas le profil', () => {
+		// Symétrique du cas « déjà cochée » : sans effet, pas de rajeunissement — sinon un
+		// double clic sur un mot déjà parti ferait gagner le local à la fusion par récence.
+		const { vise } = deuxProfils();
+		seedBanque(vise.uuid);
+		const avant = lsGetItemRaw(vise.uuid + '/' + ORTHO_KEY);
+		let retour = true;
+
+		expect(
+			updatedApres(vise.uuid, T0, () => {
+				retour = supprimerMotFor(vise.uuid, 'id-inexistant');
+			}),
+		).toBe(SENTINELLE);
+		expect(retour).toBe(false);
+		expect(lsGetItemRaw(vise.uuid + '/' + ORTHO_KEY)).toBe(avant);
 	});
 
 	it('une déclaration SANS effet (déjà cochée) ne marque pas le profil', () => {

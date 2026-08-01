@@ -60,7 +60,13 @@ import { niveauDefautCatalogue } from './levels';
 import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 import { niveauActifMatiere } from './niveau-actif';
 import { touchProfile, type Profile } from './profiles';
-import { loadOrtho, loadOrthoFor, ORTHO_KEY } from './orthographe/store';
+import {
+	loadOrtho,
+	loadOrthoFor,
+	saveOrthoFor,
+	supprimerMot,
+	ORTHO_KEY,
+} from './orthographe/store';
 import {
 	listOrthoLecons,
 	labelLeconOrtho,
@@ -119,6 +125,22 @@ export function toggleRevoirFor(uuid: string, entryId: string): string[] {
 	saveRevoirFor(uuid, next);
 	touchProfile(uuid);
 	return next;
+}
+
+/* Supprime DÉFINITIVEMENT un mot de la banque d'un profil (#496). Pendant de
+   `toggleRevoirFor` pour la banque : opération ATOMIQUE (lire → muter → écrire → bumper),
+   côté core, testable sans DOM. La couche UI n'a donc pas à recomposer la séquence, ni à se
+   souvenir que l'écriture brute par UUID contourne `onDataWrite` et réclame un `touchProfile`
+   explicite. Renvoie `false` si le mot n'existe pas — et ne bumpe alors RIEN : une
+   consultation ne doit pas rajeunir un profil, sous peine de fausser la fusion par récence de
+   l'import/export. L'état est relu ici, au plus près de l'écriture : l'appelant a pu laisser
+   passer plusieurs secondes dans une modale de confirmation. */
+export function supprimerMotFor(uuid: string, wordId: string): boolean {
+	const state = loadOrthoFor(uuid);
+	if (!supprimerMot(state, wordId)) return false;
+	saveOrthoFor(uuid, state);
+	touchProfile(uuid);
+	return true;
 }
 
 /* ---------- Entrées « liste de dictée » de la file « à revoir » ----------

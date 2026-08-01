@@ -13,8 +13,8 @@
    (`supprimerMot`), l'écriture par profil consulté dans `saveOrthoFor`.
    Pur : aucun accès DOM ni localStorage, `dicteeDispo` injecté.
    ============================================================ */
-import { ORTHO_PREDEF } from '../../data/francais/orthographe';
 import { formeNormalisee, listesContenantMot } from './store';
+import { indexPredef } from './lessons';
 import { listesDeCibleVerbe } from './verbes';
 import { statutMot, type StatutMot } from './runner';
 import type { OrthoState } from './types';
@@ -34,23 +34,6 @@ export interface EntreeBanque {
 }
 
 const ref = (l: { id: string; label: string }) => ({ id: l.id, label: l.label });
-
-/* Index INVERSE des leçons prédéfinies : id de mot → leçon, construit en UN passage.
-   `leconPredefinieDuMot` reste le bon outil pour une recherche isolée, mais l'appeler dans
-   la boucle rescannerait les ~530 mots prédéfinis (et les renormaliserait) pour CHAQUE mot de
-   la banque — quadratique, sur un chemin rendu à chaque affichage de l'onglet Suivi. Même
-   arbitrage que la fonction unitaire : à forme partagée, la PREMIÈRE leçon déclarée gagne,
-   d'où le `has` qui empêche une leçon plus tardive d'écraser l'entrée. */
-function indexPredef(state: OrthoState): Map<string, { id: string; label: string }> {
-	const index = new Map<string, { id: string; label: string }>();
-	for (const l of ORTHO_PREDEF) {
-		for (const mi of l.mots) {
-			const id = state.motIdParForme[formeNormalisee(mi.mot)];
-			if (id && !index.has(id)) index.set(id, { id: l.id, label: l.label });
-		}
-	}
-	return index;
-}
 
 /** Toute la banque d'un profil, triée alphabétiquement (ordre « dictionnaire » : c'est ainsi
     qu'un adulte cherche un mot, par reconnaissance et non par chronologie). */
@@ -90,6 +73,8 @@ export function banqueProfil(state: OrthoState, dicteeDispo: boolean): EntreeBan
    diacritique combinant, que l'on retire (NFC, lui, compose : il ne retirerait rien). */
 function cleRecherche(s: string): string {
 	return formeNormalisee(s)
+		.replace(/œ/g, 'oe')
+		.replace(/æ/g, 'ae') // ligatures : NFD ne les décompose pas (ce ne sont pas des diacritiques)
 		.normalize('NFD')
 		.replace(/\p{Diacritic}/gu, '');
 }

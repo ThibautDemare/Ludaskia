@@ -7,7 +7,9 @@ thème ; le détail du dossier `src/data/` est dans [Contenu & leçons](contenu-
 et les modules `levels.ts` / `level-combinators.ts` / `niveau-actif.ts` dans
 [Niveaux scolaires](niveaux-scolaires.md). Le **moteur d'orthographe**
 (`core/orthographe/` : `store`, `exercise`, `lessons`, `diff`, `types`, `entourages`
-— bascule et couleur des entourages de l'atelier du mot —, verbes) a sa propre
+— bascule et couleur des entourages de l'atelier du mot —, verbes, `banque` —
+projection de la banque d'un profil pour l'espace encadrant, #496, cf. [Espace
+encadrant](espace-encadrant.md)) a sa propre
 doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
 `entourages`).
 

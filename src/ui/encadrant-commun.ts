@@ -60,8 +60,21 @@ export function container(): HTMLElement | null {
 export function consulteUuid(): string | null {
 	return consulte;
 }
+/* Sections à prévenir quand on change de profil consulté. Une section qui garde un état de
+   VUE (recherche, filtre, dépliage, minuteur en vol) doit le remettre à plat : cet état
+   décrit le profil qu'on regardait, pas celui qu'on regarde. Un registre plutôt qu'un appel
+   posé sur chaque site de `setConsulteUuid` — il y en a six, et le prochain ajouté oublierait
+   silencieusement la remise à zéro (le symptôme, lui, est invisible : un filtre hérité fait
+   simplement passer une liste tronquée pour la banque entière du nouvel enfant). */
+const auChangementDeProfil: (() => void)[] = [];
+export function onChangementProfilConsulte(fn: () => void): void {
+	if (!auChangementDeProfil.includes(fn)) auChangementDeProfil.push(fn);
+}
+
 export function setConsulteUuid(uuid: string | null): void {
+	const change = consulte !== uuid;
 	consulte = uuid;
+	if (change) for (const fn of auChangementDeProfil) fn();
 }
 export function activeTab(): EncTab {
 	return tab;

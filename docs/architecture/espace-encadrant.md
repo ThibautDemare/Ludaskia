@@ -155,13 +155,22 @@ est journalisé en amont par `recordLessonRun` (`'lecon'` seule / `'bilan'` expr
 `recordLessonStats` : révision espacée (`ui/revision.ts` → `'revision'`) et dictée
 d'orthographe (`ui/ortho-runner.ts` → `'dictee'`, un point par séance).
 
-## Listes de dictée (#424)
+## Dictées : listes et banque de mots (#424, #496)
 
-**Bloc « Listes de dictée »** (`listesOrthoHTML`, `ui/encadrant-progression.ts`), entre le
-graphe d'activité et l'historique des erreurs : les dictées d'orthographe (store dynamique,
-cf. [Données & profils](donnees-et-profils.md)) ne sont **pas** des `LessonDef` du catalogue,
-donc suivies **à part**, sur la **même échelle d'acquisition** (`NiveauNotion`) mais à **3
-niveaux seulement** — pas de « à renforcer » : la validation d'un mode d'orthographe est
+**Bloc « Dictées »** (`listesOrthoHTML`, `ui/encadrant-progression.ts`), entre le graphe
+d'activité et l'historique des erreurs : les dictées d'orthographe (store dynamique, cf.
+[Données & profils](donnees-et-profils.md)) ne sont **pas** des `LessonDef` du catalogue,
+donc suivies **à part**. Depuis #496, le bloc (autrefois « Listes de dictée ») porte une
+**bascule segment « Listes » / « Mots »** (`data-act="dictees-vue"`, composant segment
+partagé cf. [Rendu & interactions](ui.md)) : le volet **Listes** (ci-dessous) reste le
+défaut, le volet **Mots** — la banque du profil, mot par mot — n'apparaît que sur demande
+(masqué tant que la banque est vide, rien à y montrer). Changer de volet réinitialise les
+filtres du volet Mots plutôt que de les laisser posés hors de vue.
+
+### Volet Listes
+
+Suivi sur la **même échelle d'acquisition** (`NiveauNotion`) mais à **3 niveaux
+seulement** — pas de « à renforcer » : la validation d'un mode d'orthographe est
 **binaire** (validé ou non), il n'existe pas de « perf récente en % » comme pour un QCM.
 `à découvrir` (aucun mot commencé) / `en cours` / `acquis` (tous les mots attendus maîtrisés =
 liste étoilée, cf. `listeEtoilee`, `core/orthographe/runner.ts`).
@@ -210,6 +219,54 @@ formulaire du parent et les deux aperçus décrivent le même objet sans jamais 
 
 Chaque liste peut être **épinglée** (même mécanique que « à revoir », cf. ci-dessous) — elle
 rejoint alors la file de l'enfant comme une leçon.
+
+### Volet Mots — la banque du profil (#496)
+
+Les listes ne **contiennent** pas les mots, elles les **référencent** (`motIds`, cf. l'en-tête
+de `core/orthographe/types.ts`) : supprimer une liste n'en retire aucun de la banque, qui
+continue de revenir en révision espacée **sans qu'aucun affichage n'y donne accès** — et,
+depuis #489, sans même que ses erreurs soient journalisées (cf. « Historique des erreurs »
+ci-dessous). Le volet **Mots** (`banqueMotsHTML`, module dédié `ui/encadrant-banque.ts`,
+calculs purs dans `core/orthographe/banque.ts:banqueProfil`) projette, pour chaque mot de la
+banque du profil consulté : où il vit (les listes du parent **et** les listes dont un verbe
+regénère la cible, `listesContenantMot`/`listesDeCibleVerbe`, #496 — distinctes de
+`listeContenantMot`, qui n'en rend qu'une, réservée au journal d'erreurs), la leçon prédéfinie
+dont il provient s'il en vient, son statut (même échelle à 3 niveaux que le volet Listes) et
+s'il est **supprimable**.
+
+**Recherche** (insensible casse/accents — un enfant sur clavier tactile ne tape pas le
+circonflexe de « être ») et **filtre « plus dans aucune liste »** (compteur cliquable,
+`orphelinsSeuls`, masqué dès qu'il n'y a plus d'orphelin) ; liste **paginée par 50**
+(`data-act="banque-plus"`, SC 2.4.1 — une banque de plusieurs centaines de mots n'impose pas
+de tous les traverser au clavier avant la section suivante).
+
+**Un mot orphelin** = rattaché à **rien** — ni liste, ni verbe, ni leçon prédéfinie
+(`EntreeBanque.orphelin`) : exactement le cas où `core/orthographe/lessons.ts:groupeOrthoDuMot`
+renvoie `null`, donc où une erreur sur ce mot n'est **pas journalisable** (limite documentée en
+« Historique des erreurs » ci-dessous). C'est le motif d'ouverture n°1 de cette vue, d'où le
+filtre dédié plutôt qu'une simple recherche.
+
+**Suppression DÉFINITIVE** — le premier geste **irréversible** de l'onglet Suivi (les autres
+actions du récap, épingler compris, se défont d'un clic) : confirmation `uiConfirm`
+**destructive** qui **nomme** les listes amputées, jamais un tap unique. Règles :
+- un mot d'une **leçon prédéfinie** n'est **pas** supprimable — la relancer le recréerait
+  (`ajouterMots`), un « Supprimer » qui se contredit à la session suivante tromperait
+  l'adulte ; le bouton est remplacé par une mention textuelle (pas de bouton désactivé,
+  invisible aux lecteurs d'écran en navigation par contrôles) ;
+- une **forme conjuguée** (cible de verbe) est supprimable, mais l'adulte est **averti**
+  qu'elle reviendra au prochain lancement du parcours tant que le verbe reste dans la liste
+  qui le porte (id déterministe, `materialiserVerbes` la recrée) — le message nomme cette
+  liste pour qu'il aille y retirer ou reconfigurer le verbe.
+
+Écriture sur le profil **consulté** par UUID (`saveOrthoFor` + `touchProfile`, cf. [Données &
+profils](donnees-et-profils.md)), jamais de bascule du profil actif.
+
+**Nettoyage proposé à l'enregistrement d'une liste** (`ui/ortho-liste.ts`) : après avoir
+enregistré les modifications d'une liste, si des mots viennent d'en être retirés et ne sont
+plus référencés par rien (`motsDevenusOrphelins`), l'adulte se voit proposer de les supprimer
+pour de bon en une fois — sans quoi ils resteraient orphelins et invisibles jusqu'à une visite
+volontaire du volet Mots. Ne rien supprimer reste un choix valable (le corpus de l'année a du
+sens, avis pédagogique) ; les mots d'une dictée prédéfinie sont exclus de cette proposition.
 
 **Épingler une dictée « à l'avance »** : le bloc **« Proposer une dictée à l'avance »**
 (`dicteesProposeesHTML`, exportée par `ui/encadrant-progression.ts`) liste, dans l'**onglet
@@ -301,11 +358,15 @@ dédié **`'revision'`** (déjà prévu dans `MODE_LABEL` d'`encadrant-erreurs.t
 inatteint faute de capture en amont) — chacune des **10 formes** d'item qu'elle rejoue (saisie,
 QCM, mot d'orthographe, tuile, ordre, tri, appariement, opération posée, problème à
 sous-questions, « clique sur le mot ») capture juste avant son verdict, via un point d'entrée
-local (`capterRev`) qui fixe ce mode et délègue à `capterErreur`. **Limite assumée** : un mot
-d'orthographe raté en révision est rattaché à la **liste** du profil qui le contient (même id
-que le journal de la dictée, donc les deux se regroupent sous le même libellé côté encadrant) ;
-un mot rattaché à **aucune** liste (mot d'une leçon prédéfinie, cible de verbe conjugué) n'est
-**pas journalisé**, faute de groupe où le ranger.
+local (`capterRev`) qui fixe ce mode et délègue à `capterErreur`. Le groupe d'un mot raté en
+révision est résolu par `groupeOrthoDuMot` (`core/orthographe/lessons.ts`) — la **liste** du
+profil qui le contient en priorité (même id que le journal de la dictée, donc les deux se
+regroupent sous le même libellé côté encadrant), sinon la **leçon prédéfinie** dont il vient,
+sinon la liste qui porte le **verbe** dont il est une cible conjuguée. **Limite assumée** : un
+mot rattaché à **rien de tout cela** — le cas **orphelin** (typiquement un mot resté en banque
+après suppression de sa liste) — n'est **pas journalisé**, faute de groupe où le ranger ; ce
+même mot orphelin est désormais repérable et supprimable depuis le volet « Mots » du bloc
+Dictées (#496, ci-dessus).
 
 **Détachée du seuil de 60 %** : la capture des erreurs d'une fiche est **indépendante** du seuil
 `enough` qui conditionne l'enregistrement (XP, étoile, record) — une fiche remplie à moins de

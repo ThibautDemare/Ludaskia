@@ -20,8 +20,9 @@
    ============================================================ */
 import { enumererFr, escapeHTML } from '../core/utils';
 import { icon } from './icon';
-import { touchProfile, type Profile } from '../core/profiles';
-import { loadOrthoFor, saveOrthoFor, supprimerMot } from '../core/orthographe/store';
+import { type Profile } from '../core/profiles';
+import { loadOrthoFor } from '../core/orthographe/store';
+import { supprimerMotFor } from '../core/encadrant-stats';
 import { banqueProfil, filtrerBanque, type EntreeBanque } from '../core/orthographe/banque';
 import type { StatutMot } from '../core/orthographe/runner';
 import type { NiveauNotion } from '../core/encadrant-stats';
@@ -30,6 +31,7 @@ import {
 	renderEspace,
 	container,
 	consulteUuid,
+	onChangementProfilConsulte,
 	MOT_NIVEAU,
 	ORDRE_NIVEAUX_ORTHO,
 } from './encadrant-commun';
@@ -242,12 +244,17 @@ export function banqueClick(act: string, el: HTMLElement): boolean {
 		limite += PAS_AFFICHAGE;
 		rafraichir(uuid);
 		// Le bouton vient d'être détruit par le re-rendu de la liste : on donne le focus au
-		// suivant s'il existe (on continue de dérouler), sinon au dernier mot ajouté — jamais
-		// de retour silencieux en tête de document.
+		// suivant s'il existe (on continue de dérouler), sinon au dernier bouton de la liste —
+		// jamais de retour silencieux en tête de document. On prend le DERNIER bouton et non
+		// celui de la dernière ligne : une ligne figée (mot d'une dictée proposée) n'en a pas,
+		// et le repli tomberait dans le vide si elle terminait la liste.
 		const el2 = container();
 		const suite = el2?.querySelector<HTMLElement>('.enc-banque-plus');
-		const dernier = el2?.querySelector<HTMLElement>('.enc-banque-item:last-child button');
-		(suite ?? dernier)?.focus({ preventScroll: true });
+		const boutons = el2?.querySelectorAll<HTMLElement>('.enc-banque-list button');
+		const dernier = boutons?.length ? boutons[boutons.length - 1] : null;
+		(suite ?? dernier ?? el2?.querySelector<HTMLElement>('#encBanqueRech'))?.focus({
+			preventScroll: true,
+		});
 		return true;
 	}
 	if (act === 'banque-supprimer') {
@@ -257,12 +264,22 @@ export function banqueClick(act: string, el: HTMLElement): boolean {
 	return false;
 }
 
-/* Filtres et dépliage remis à zéro d'un bloc (changement de volet, de profil consulté…). */
+/* Filtres et dépliage remis à zéro d'un bloc (changement de volet, de profil consulté…).
+   L'annonce en vol est ANNULÉE au passage : son callback retrouve `#encBanqueResume` au
+   moment de s'exécuter, sans revérifier qui l'on consulte — laissé courir, il écraserait
+   la région live du nouveau profil avec un texte calculé pour l'ancien. */
 function reinitialiserFiltres(): void {
 	recherche = '';
 	orphelinsSeuls = false;
 	limite = PAS_AFFICHAGE;
+	window.clearTimeout(annonceTimer);
 }
+
+/* Changer de profil consulté remet la vue à plat : recherche, filtre et dépliage décrivent
+   l'enfant qu'on REGARDAIT. Hérités tels quels, ils feraient passer une liste tronquée pour
+   la banque entière du nouveau — sans rien d'anormal à l'écran. Enregistré une fois pour
+   toutes plutôt qu'appelé sur chacun des six sites de `setConsulteUuid`. */
+onChangementProfilConsulte(reinitialiserFiltres);
 
 /* Message de confirmation : il doit permettre de DÉCIDER, donc nommer ce qui va être
    amputé (avis designer). Un mot peut vivre dans une liste que l'adulte ne regarde pas
@@ -307,15 +324,9 @@ async function supprimer(uuid: string, wordId: string): Promise<void> {
 		emoji: '🗑️',
 	});
 	if (!ok) return;
-	// Relecture de l'état au moment d'écrire (et non de la projection ci-dessus) : l'enfant
-	// peut avoir joué entre-temps sur un autre onglet, et on n'a pas à réécrire un état périmé.
-	const state = loadOrthoFor(uuid);
-	if (!supprimerMot(state, wordId)) return;
-	saveOrthoFor(uuid, state);
-	// Geste VOULU par l'adulte → on bumpe `updatedAt` (même règle que toggleRevoirFor) :
-	// sans ça, un export fait depuis un autre appareil paraîtrait plus récent et la fusion
-	// par récence ressusciterait le mot supprimé.
-	touchProfile(uuid);
+	// Opération atomique côté core (relecture de l'état comprise, `updatedAt` bumpé) : la vue
+	// n'a pas à recomposer la séquence ni à connaître les règles d'écriture par UUID.
+	if (!supprimerMotFor(uuid, wordId)) return;
 	// Dernier orphelin supprimé alors que le filtre était armé : le bouton qui le relâche
 	// disparaît avec lui, ce qui laisserait une vue vide sans issue. On désarme.
 	if (orphelinsSeuls && !banqueDuProfil(uuid).some((x) => x.orphelin)) orphelinsSeuls = false;

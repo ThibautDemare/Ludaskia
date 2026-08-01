@@ -126,10 +126,25 @@ export function leconPredefinieDuMot(
 	state: OrthoState,
 	wordId: string,
 ): { id: string; label: string } | null {
-	const predef = ORTHO_PREDEF.find((l) =>
-		l.mots.some((mi) => state.motIdParForme[formeNormalisee(mi.mot)] === wordId),
-	);
-	return predef ? { id: predef.id, label: predef.label } : null;
+	return indexPredef(state).get(wordId) ?? null;
+}
+
+/** Index INVERSE des leçons prédéfinies : id de mot → leçon, construit en UN passage.
+    Source UNIQUE de la règle ci-dessus, partagée avec la projection de la banque (#496), qui
+    a besoin du rattachement de CHAQUE mot : l'y résoudre un par un rescannerait les ~530 mots
+    prédéfinis (en les renormalisant) autant de fois qu'il y a de mots en banque — quadratique,
+    sur un chemin rendu à chaque affichage de l'onglet Suivi. Le `has` porte le tie-break
+    « première leçon déclarée gagne » : sans lui, une leçon plus tardive écraserait l'entrée et
+    les deux chemins divergeraient. Pur. */
+export function indexPredef(state: OrthoState): Map<string, { id: string; label: string }> {
+	const index = new Map<string, { id: string; label: string }>();
+	for (const l of ORTHO_PREDEF) {
+		for (const mi of l.mots) {
+			const id = state.motIdParForme[formeNormalisee(mi.mot)];
+			if (id && !index.has(id)) index.set(id, { id: l.id, label: l.label });
+		}
+	}
+	return index;
 }
 
 /** Résout les mots d'une leçon (liste du profil OU leçon prédéfinie).

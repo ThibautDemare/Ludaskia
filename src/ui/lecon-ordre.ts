@@ -33,17 +33,18 @@ import { escapeHTML } from '../core/utils';
 import { parseNombreFr } from '../core/nombres';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
-import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
+import { goHome } from './navigation';
 import {
 	leconProgressHTML,
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	demarrerRunner,
 } from './lecon-runner-shared';
-import { declarerSessionRunner, enregistrerRunner } from './runner-reprise';
+import { enregistrerRunner } from './runner-reprise';
 import { bindTuileInteraction } from './tuile-interaction';
 import type { TuileController } from './tuile-interaction';
-import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { monterBoutonAide } from './aide-exercice';
 import type { TypeAide } from '../core/aide';
 import { capterErreur } from './erreur-capture';
 import { ordreErreur } from '../core/erreur-representation';
@@ -162,21 +163,16 @@ function demarrer(l: LessonDef, m: ExerciseMode, qs: OrdreQuestion[], depart = 0
 	questions = qs;
 	idx = depart;
 	score = pts;
-	setCurrentMode('lecon');
-	setCurrentLessonId(l.id);
-	hideMenus();
-	setToolbar({ verify: false, home: true, profile: false });
-	declarerSessionRunner({
+	demarrerRunner({
 		runner: RUNNER,
 		lesson: l,
-		exerciseMode: m ?? null,
+		mode: m ?? null,
 		etat: () => ({ questions, idx, score }),
+		render: renderQuestion,
+		// Clé d'aide DYNAMIQUE (#448) : ranger des mots et ranger des nombres ne
+		// s'expliquent pas pareil, la nature est portée par la question tirée.
+		aide: typeAide(qs[0]),
 	});
-	renderQuestion();
-	// Clé d'aide DYNAMIQUE (#448) : ranger des mots et ranger des nombres ne
-	// s'expliquent pas pareil, la nature est portée par la question tirée.
-	maybeAutoAide(typeAide(questions[0])); // au 1er lancement (une fois par profil)
-	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function runLeconOrdre(lessonId: string, m: ExerciseMode): void {

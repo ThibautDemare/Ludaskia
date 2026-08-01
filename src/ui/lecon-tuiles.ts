@@ -14,17 +14,18 @@ import { niveauLecon } from '../core/niveau-actif';
 import type { ExerciseMode } from '../core/exercise';
 import { commKey, escapeHTML } from '../core/utils';
 import { bindConsigneTts } from './consigne-tts';
-import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
+import { goHome } from './navigation';
 import {
 	leconProgressHTML,
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	demarrerRunner,
 } from './lecon-runner-shared';
-import { declarerSessionRunner, enregistrerRunner } from './runner-reprise';
+import { enregistrerRunner } from './runner-reprise';
 import { bindTuileInteraction } from './tuile-interaction';
 import type { TuileController } from './tuile-interaction';
-import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { monterBoutonAide } from './aide-exercice';
 import { capterErreur } from './erreur-capture';
 
 const NB_QUESTIONS = 8;
@@ -77,19 +78,14 @@ function demarrer(l: LessonDef, m: ExerciseMode, qs: TuilesQuestion[], depart = 
 	questions = qs;
 	idx = depart;
 	score = pts;
-	setCurrentMode('lecon');
-	setCurrentLessonId(l.id);
-	hideMenus();
-	setToolbar({ verify: false, home: true, profile: false });
-	declarerSessionRunner({
+	demarrerRunner({
 		runner: RUNNER,
 		lesson: l,
-		exerciseMode: m ?? null,
+		mode: m ?? null,
 		etat: () => ({ questions, idx, score }),
+		render: renderQuestion,
+		aide: 'tuiles',
 	});
-	renderQuestion();
-	maybeAutoAide('tuiles'); // bulle d'aide au 1er lancement (une fois par profil)
-	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function runLeconTuiles(lessonId: string, m: ExerciseMode): void {

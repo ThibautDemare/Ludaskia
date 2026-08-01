@@ -17,17 +17,18 @@ import type { ExerciseMode } from '../core/exercise';
 import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
-import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
+import { goHome } from './navigation';
 import {
 	leconProgressHTML,
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	demarrerRunner,
 } from './lecon-runner-shared';
-import { declarerSessionRunner, enregistrerRunner } from './runner-reprise';
+import { enregistrerRunner } from './runner-reprise';
 import { bindAppariement } from './appariement';
 import type { TuileController } from './tuile-interaction';
-import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { monterBoutonAide } from './aide-exercice';
 import { capterErreur } from './erreur-capture';
 import { pairesErreur } from '../core/erreur-representation';
 
@@ -100,19 +101,14 @@ function demarrer(
 	manches = ms;
 	idx = depart;
 	score = pts;
-	setCurrentMode('lecon');
-	setCurrentLessonId(l.id);
-	hideMenus();
-	setToolbar({ verify: false, home: true, profile: false });
-	declarerSessionRunner({
+	demarrerRunner({
 		runner: RUNNER,
 		lesson: l,
-		exerciseMode: m ?? null,
+		mode: m ?? null,
 		etat: () => ({ questions: manches, idx, score }),
+		render: renderManche,
+		aide: 'appariement',
 	});
-	renderManche();
-	maybeAutoAide('appariement'); // bulle d'aide au 1er lancement (une fois par profil)
-	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function runLeconAppariement(lessonId: string, m: ExerciseMode): void {

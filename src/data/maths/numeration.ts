@@ -18,7 +18,10 @@
      comparaison rang par rang).
    - encadrer : « la dizaine / centaine / millier juste avant / juste
      après » (une borne à la fois → réponse unique) ; jamais l'arrondi.
-   - intercaler : bornes serrées de 2 (entre 456 et 458 → 457 unique).
+   - intercaler (#446) : écarts VARIÉS mélangés dans la même leçon et
+     correction PAR INTERVALLE (relation d'ordre OUVERTE a < x < b, comme au
+     CM1) — ~18 % serré (2-4, échauffement successeur/prédécesseur), ~50 %
+     moyen (6-30, le plus formateur), ~32 % large (100-900, traverse un rang).
    - tuiles : 3 à 4 tuiles, distracteurs = erreurs typiques (avant/après
      confondus, saut de rang, nombre non arrondi, recopie d'une borne).
 
@@ -70,6 +73,12 @@ interface Fact {
 	tuiles: string[];
 	parle?: string; // texte lu si l'énoncé affiché est symbolique (#42 ; ex. « 34 @ 56 »)
 	intervalle?: [number, number];
+	// Intercaler (#446) : vrai quand l'intervalle ouvert admet PLUS d'un entier (écart ≥ 3),
+	// donc plusieurs réponses valides. Le suffixe « (plusieurs réponses possibles) » n'est
+	// PAS concaténé ici : il est recomposé sur la consigne AFFICHÉE, en SAISIE seulement, par
+	// numerationType.generate() — jamais en tuiles (une seule tuile valide, correction au
+	// singulier « la bonne réponse était X »).
+	plusieurs?: boolean;
 }
 
 function signe(a: number, b: number): string {
@@ -284,25 +293,71 @@ function encadreFactGrand(): Fact {
 }
 
 /* ---------- Intercaler ---------- */
-/* CE2 : bornes serrées de 2 (entre 456 et 458 → 457 unique). Comportement
-   INCHANGÉ : pas de champ `intervalle`, correction par réponse unique. */
-function intercaleFact(max: number): Fact {
-	const m = rnd(101, max - 1);
-	const a = m - 1,
-		b = m + 1;
-	// Distracteurs : les bornes recopiées, et un voisin hors intervalle.
-	const tuiles = tuilesParmi([a, b, m + 2], m);
+/* Un exemple de réponse SIMPLE strictement à l'intérieur de ]a ; b[ : le 1ᵉʳ multiple
+   rond (centaine puis dizaine) qui y tombe, sinon le milieu entier (toujours interne
+   dès que l'écart ≥ 2). Sert au mode tuiles (bonne tuile) et à la révélation. */
+function exempleInterne(a: number, b: number): number {
+	for (const pas of [100, 10]) {
+		const cand = Math.floor(a / pas) * pas + pas; // 1ᵉʳ multiple de `pas` strictement > a
+		if (cand < b) return cand;
+	}
+	return Math.floor((a + b) / 2);
+}
+
+/* Fait « intercaler » COMMUN aux deux niveaux (#446) — mutualise la mise en forme entre
+   le CE2 (intercaleFact) et le CM1 (intercaleFactGrand). Question de BASE, sans le suffixe
+   « (plusieurs réponses possibles) » : ce suffixe est recomposé PAR MODE dans
+   numerationType.generate() (saisie seulement). Correction PAR INTERVALLE ouvert (champ
+   `intervalle`) ; `plusieurs` vrai quand l'intervalle admet plus d'un entier (écart ≥ 3).
+   `answer` = un exemple valide (révélation + mode tuiles). */
+function makeIntercaleFact(a: number, b: number, exemple: number, tuiles: string[]): Fact {
 	return {
 		question: `Place un nombre entre ${formatNombre(a)} et ${formatNombre(b)} : @`,
-		answer: String(m),
+		answer: String(exemple),
 		tuiles,
+		intervalle: [a, b],
+		plusieurs: b - a >= 3,
 	};
+}
+
+/* CE2 (#446) : écarts VARIÉS et correction PAR INTERVALLE (comme au CM1). Trois paliers
+   mélangés dans la même leçon (pondération façon compareFactPetit) : ~18 % serré (2-4,
+   échauffement), ~50 % moyen (6-30, le plus formateur), ~32 % large (100-900, traverse
+   un rang). L'intervalle est OUVERT : la correction accepte TOUTE valeur strictement
+   entre les bornes (champ `intervalle`, honoré par numerationType.check ET par
+   checkItemAnswer côté fiche/sprint/révision). Bornes et réponse ≤ max (≤ 10 000 au CE2). */
+function intercaleFact(max: number): Fact {
+	const r = rnd(1, 100);
+	let ecart: number;
+	let large = false;
+	if (r <= 18)
+		ecart = rnd(2, 4); // serré : successeur/prédécesseur immédiat (échauffement)
+	else if (r <= 68)
+		ecart = rnd(6, 30); // moyen : plusieurs réponses, même ordre de grandeur
+	else {
+		large = true;
+		ecart = rnd(100, Math.min(900, max - 100)); // large : traverse un rang (dizaine/centaine)
+	}
+	const a = rnd(100, max - ecart); // borne basse (≥ 3 chiffres)
+	const b = a + ecart; // borne haute (≤ max)
+	const exemple = exempleInterne(a, b);
+	// Distracteurs (mode tuiles) couvrant les erreurs typiques : une BORNE (intervalle
+	// ouvert → exclue), une valeur HORS intervalle, et — au palier large — un nombre au
+	// mauvais nombre de chiffres (ordre de grandeur perdu). Toujours de VRAIES formes.
+	const hors = a - rnd(1, 5);
+	const distracteurs = large
+		? [rnd(0, 1) === 0 ? a : b, hors, Math.floor(exemple / 10)]
+		: [a, b, hors];
+	return makeIntercaleFact(a, b, exemple, tuilesParmi(distracteurs, exemple));
 }
 
 /* CM1 « grands nombres » (#240) : intercaler entre deux multiples CONSÉCUTIFS du
    rang adapté (ex. 610 000 < ? < 620 000). La correction (saisie) accepte TOUTE
    valeur strictement dans l'intervalle (champ `intervalle`). `answer` = un exemple
-   simple (le milieu rond, ≤ 6 chiffres saisis) pour la révélation / le mode tuiles. */
+   simple (le milieu rond, ≤ 6 chiffres saisis) pour la révélation / le mode tuiles.
+   Comme le CE2, l'intervalle admet toujours plusieurs entiers (écart = rang ≥ 1000) :
+   le suffixe « (plusieurs réponses possibles) » s'affiche donc en SAISIE (recomposé par
+   generate() via `plusieurs`, calculé par makeIntercaleFact), jamais en tuiles (#446). */
 function intercaleFactGrand(): Fact {
 	const chiffres = tailleAleatoire();
 	// On reste sur le rang « intermédiaire » de la taille pour que les bornes soient
@@ -317,13 +372,18 @@ function intercaleFactGrand(): Fact {
 	const exemple = a + Math.floor(rang / 2);
 	// Distracteurs tuiles : les bornes recopiées (hors intervalle ouvert) et un voisin
 	// au-delà ; la bonne tuile (exemple) est bien dans l'intervalle.
-	const tuiles = tuilesParmi([a, b, b + rang], exemple);
-	return {
-		question: `Place un nombre entre ${formatNombre(a)} et ${formatNombre(b)} : @`,
-		answer: String(exemple),
-		tuiles,
-		intervalle: [a, b],
-	};
+	return makeIntercaleFact(a, b, exemple, tuilesParmi([a, b, b + rang], exemple));
+}
+
+/* Consigne d'intercalation AFFICHÉE en mode SAISIE (#446) : insère « (plusieurs réponses
+   possibles) » avant le trou quand l'intervalle admet plus d'un entier (`plusieurs`).
+   JAMAIS en tuiles (appelée seulement par la branche saisie de generate). Ne touche que
+   les faits « intercaler » : `plusieurs` est absent des faits comparer/encadrer, qui sont
+   donc renvoyés inchangés — l'ancrage ` : @` en fin de consigne cible le seul trou final. */
+function consigneIntercaleSaisie(f: Fact): string {
+	return f.plusieurs
+		? f.question.replace(/ : @$/, ' (plusieurs réponses possibles) : @')
+		: f.question;
 }
 
 /* Vrai si la réponse d'un fait est numérique (encadrer/intercaler) plutôt qu'un
@@ -354,6 +414,9 @@ function numerationType(genFact: () => Fact): ExerciseType {
 				const answerTuile = answerEstNumerique(f.answer)
 					? formatNombre(Number(f.answer))
 					: f.answer;
+				// Consigne NUE (question de base) : une seule tuile est valide et la correction
+				// dit « la bonne réponse était X » au singulier → jamais de suffixe « plusieurs
+				// réponses possibles » ici (#446, avis designer-ux-enfant).
 				return {
 					type: 'tuilesNombre',
 					question: f.question,
@@ -364,7 +427,10 @@ function numerationType(genFact: () => Fact): ExerciseType {
 			}
 			return {
 				type: 'text',
-				question: f.question,
+				// SAISIE : on recompose le suffixe « (plusieurs réponses possibles) » quand
+				// l'intervalle admet plus d'un entier (#446). `parle` restant absent, le TTS
+				// dérive de cette consigne affichée → audio cohérent avec l'écrit, par mode.
+				question: consigneIntercaleSaisie(f),
 				answer: f.answer,
 				parle: f.parle,
 				intervalle: f.intervalle,

@@ -28,6 +28,11 @@ export interface Item {
 	posed?: PosedSpec; // présent si kind === 'posed'
 	figure?: string; // fragment SVG (moteur core/figures.ts), affiché au-dessus de la question (#88)
 	parle?: string; // texte LU à voix haute si l'énoncé est télégraphique (#42 ; cf. tts-text)
+	// Intercaler (#240 CM1, #446 CE2) : la réponse n'est pas unique mais TOUTE valeur
+	// strictement comprise entre deux bornes exclues [min, max] (« un nombre entre 450 et
+	// 465 »). Présent ⇒ checkItemAnswer valide par appartenance à l'intervalle OUVERT ;
+	// `answer` reste un exemple valide (révélation, mode tuiles). Absent ⇒ réponse unique.
+	intervalle?: [number, number];
 	// QCM (#289) : choix conservés pour le rendu PAPIER en cases à cocher. À l'écran, le
 	// QCM est joué par son runner interactif (qui lit l'Exercise, pas l'Item) ; ces champs
 	// ne servent qu'au chemin fiche/bilan IMPRIMÉ. `choicesView` (vue riche) est aligné
@@ -89,6 +94,15 @@ export function checkItemAnswer(it: Item, raw: string): boolean {
 		const v = normalizeText(raw);
 		if (v === normalizeText(String(it.answer))) return true;
 		return (it.answers ?? []).some((a) => normalizeText(a) === v);
+	}
+	// Intercaler par intervalle OUVERT (#240 CM1, #446 CE2) : toute valeur strictement
+	// entre les bornes exclues. Même tolérance de saisie que la comparaison numérique
+	// (parseNombreFr : virgule décimale, séparateurs de milliers).
+	if (it.intervalle) {
+		const v = parseNombreFr(raw);
+		if (Number.isNaN(v)) return false;
+		const [min, max] = it.intervalle;
+		return v > min && v < max;
 	}
 	// Comparaison numérique tolérante (via parseNombreFr) appliquée SYMÉTRIQUEMENT à la
 	// saisie ET à la réponse stockée : neutralise les séparateurs de milliers d'un grand

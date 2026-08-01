@@ -1697,7 +1697,16 @@ describe('Numération : comparer / encadrer / intercaler (#98)', () => {
 			expect(Number.isInteger(ans)).toBe(true);
 			expect(ans).toBeGreaterThan(0);
 			expect(checkItemAnswer(it, String(ans))).toBe(true);
-			expect(checkItemAnswer(it, String(ans + 1))).toBe(false);
+			// Encadrer = réponse UNIQUE (le voisin est faux) ; intercaler (#446) = intervalle
+			// OUVERT (le voisin de l'exemple peut être aussi valide, mais les bornes exclues
+			// sont fausses).
+			if (it.intervalle) {
+				const [min, max] = it.intervalle;
+				expect(checkItemAnswer(it, String(min))).toBe(false);
+				expect(checkItemAnswer(it, String(max))).toBe(false);
+			} else {
+				expect(checkItemAnswer(it, String(ans + 1))).toBe(false);
+			}
 		}
 	});
 	test('jusqu’à 10 000 (CE2) : nombres ≤ 9999 (4 chiffres réservés à cette leçon)', () => {

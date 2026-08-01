@@ -298,11 +298,14 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `data/francais/familles.ts:tirerSessionAppariement` dans [Contenu &
   leçons](contenu-et-lecons.md)).
   Le type `text` porte un champ optionnel **`intervalle`**
-  (#240, intercalation CM1 « grands nombres ») : quand il est présent, la correction
-  accepte **toute valeur strictement comprise** entre les deux bornes (et non plus la
-  seule `answer`) ; absent (cas CE2), comportement de réponse unique **inchangé** — la
-  donnée de l'exercice porte ainsi la règle, le `check` partagé (via `calibrated`,
-  pris sur le plus bas niveau) reste unique.
+  (intercalation par intervalle OUVERT — #240 au CM1, #446 au CE2) : quand il est présent, la
+  correction accepte **toute valeur strictement comprise** entre les deux bornes (et non plus
+  la seule `answer`) ; absent, comportement de réponse unique **inchangé** — la donnée de
+  l'exercice porte ainsi la règle, le `check` partagé (via `calibrated`, pris sur le plus bas
+  niveau) reste unique. Ce champ est **propagé jusqu'à l'`Item`** par `genLessonItem`, et
+  **`checkItemAnswer`** (`items.ts`, la vraie correction fiche/sprint/révision) applique la
+  **même** règle d'intervalle — sans ça, la correction par intervalle serait ignorée hors du
+  `check` de l'`ExerciseType` (non appelé par l'appli en jeu).
 - **`check-helpers.ts`** (#346) — helpers de correction **réutilisables**, module **pur**
   (sans DOM). Centralise la logique jusqu'ici recopiée dans une dizaine de fabriques
   `src/data/maths/` (cercle, division, fractions, géométrie, géométrie-cm1, mesures,

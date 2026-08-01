@@ -24,7 +24,7 @@ export interface EntreeBanque {
 	id: string;
 	mot: string; // forme correcte (ce que l'enfant doit écrire)
 	contexte?: string; // phrase d'une cible verbe (« il mange ») : « mange » seul serait ambigu
-	cle: string; // forme normalisée : clé de tri ET de recherche (insensible casse/accents)
+	cle: string; // forme normalisée : clé de TRI seule (accentuée ; la recherche a la sienne)
 	listes: { id: string; label: string }[]; // listes du parent qui référencent ce mot
 	verbeListes: { id: string; label: string }[]; // listes dont un verbe REGÉNÈRE cette cible
 	leconPredefinie: string | null; // libellé de la leçon livrée avec l'appli, si le mot en vient
@@ -64,18 +64,28 @@ export function banqueProfil(state: OrthoState, dicteeDispo: boolean): EntreeBan
 	return out.sort((a, b) => a.cle.localeCompare(b.cle, 'fr'));
 }
 
-/** Filtre de la vue : recherche texte libre + « orphelins seulement ». La recherche passe par
-    `formeNormalisee` (la clé de dédup de la banque) des DEUX côtés : sur un clavier tactile,
-    taper « etre » doit trouver « être » — exiger le circonflexe rendrait la recherche inutile
-    là où elle sert le plus. Sous-chaîne et non préfixe : l'adulte se souvient rarement du début
-    exact d'un mot qu'il a saisi il y a trois mois. Pur. */
+/* Clé de RECHERCHE : forme normalisée, diacritiques en moins. Distincte de `formeNormalisee`,
+   qui est la clé de DÉDUP de la banque et doit le rester : y replier les accents fusionnerait
+   « cote » et « côté » en une seule entrée. Ici au contraire, sur un clavier tactile où le
+   circonflexe est fastidieux, taper « etre » doit trouver « être » — l'exiger rendrait la
+   recherche inutile là où elle sert le plus. NFD décompose la lettre accentuée en base +
+   diacritique combinant, que l'on retire (NFC, lui, compose : il ne retirerait rien). */
+function cleRecherche(s: string): string {
+	return formeNormalisee(s)
+		.normalize('NFD')
+		.replace(/\p{Diacritic}/gu, '');
+}
+
+/** Filtre de la vue : recherche texte libre + « orphelins seulement ». Comparaison en
+    SOUS-CHAÎNE et non en préfixe : l'adulte se souvient rarement du début exact d'un mot
+    qu'il a saisi il y a trois mois. Pur. */
 export function filtrerBanque(
 	entrees: EntreeBanque[],
 	opts: { recherche?: string; orphelinsSeuls?: boolean } = {},
 ): EntreeBanque[] {
-	const q = formeNormalisee(opts.recherche ?? '');
+	const q = cleRecherche(opts.recherche ?? '');
 	return entrees.filter(
-		(e) => (!opts.orphelinsSeuls || e.orphelin) && (q === '' || e.cle.includes(q)),
+		(e) => (!opts.orphelinsSeuls || e.orphelin) && (q === '' || cleRecherche(e.mot).includes(q)),
 	);
 }
 
@@ -83,8 +93,16 @@ export function filtrerBanque(
     référence et qu'aucune leçon prédéfinie ne recréerait. Sert au formulaire de liste : après
     enregistrement, proposer de supprimer pour de bon les mots que l'adulte vient d'en retirer,
     au lieu de les laisser en révision à son insu. À appeler APRÈS la mise à jour de la liste,
-    l'état devant refléter les références restantes. Pur. */
-export function motsDevenusOrphelins(state: OrthoState, candidats: string[]): EntreeBanque[] {
+    l'état devant refléter les références restantes. `dicteeDispo` n'entre pas dans le tri des
+    orphelins, mais conditionne le `statut` des entrées rendues : il est passé (et non figé)
+    pour qu'aucun appelant n'hérite d'un avancement faux sur un appareil sans voix. Pur. */
+export function motsDevenusOrphelins(
+	state: OrthoState,
+	candidats: string[],
+	dicteeDispo: boolean,
+): EntreeBanque[] {
 	const vus = new Set(candidats);
-	return banqueProfil(state, true).filter((e) => vus.has(e.id) && e.orphelin && e.supprimable);
+	return banqueProfil(state, dicteeDispo).filter(
+		(e) => vus.has(e.id) && e.orphelin && e.supprimable,
+	);
 }

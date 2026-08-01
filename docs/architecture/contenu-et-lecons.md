@@ -335,7 +335,7 @@ sont jouées par le **moteur d'orthographe dédié** (`core/orthographe/`, runne
 `renderOrthoCategorie`. Détail du moteur : `docs/design-orthographe.md`. N'étant pas des
 `LessonDef`, ni les listes prédéfinies ni celles du parent ne bénéficient nativement du
 suivi de maîtrise/épinglage du catalogue : depuis #424, ils sont recréés à part pour
-l'orthographe — cf. [Espace encadrant § Listes de dictée](espace-encadrant.md).
+l'orthographe — cf. [Espace encadrant § Dictées : listes et banque de mots](espace-encadrant.md).
 
 ### Vocabulaire
 

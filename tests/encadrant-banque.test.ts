@@ -467,6 +467,31 @@ describe('banqueProfil', () => {
 		expect(parId.get(cibles[0].id)?.supprimable).toBe(true);
 	});
 
+	it('leconPredefinie applique le même tie-break « première déclarée » que le journal', () => {
+		// La vue et le journal d'erreurs doivent nommer la MÊME leçon : deux chemins qui
+		// divergeraient donneraient à l'adulte deux provenances pour le même mot.
+		const { forme, lecons } = formePartagee();
+		expect(lecons[0].label).not.toBe(lecons[lecons.length - 1].label); // le tie-break est visible
+		const s = emptyOrthoState();
+		const id = addOrGetMot(s, { mot: forme }).id;
+		const e = banqueProfil(s, true).find((x) => x.id === id);
+
+		expect(e?.leconPredefinie).toBe(lecons[0].label);
+		expect(e?.supprimable).toBe(false);
+		expect(groupeOrthoDuMot(s, id)).toBe(lecons[0].id);
+	});
+
+	it('leconPredefinie ne diverge jamais de leconPredefinieDuMot (règle à source unique)', () => {
+		const { s } = etatRiche();
+		const entrees = banqueProfil(s, true);
+
+		expect(entrees.filter((e) => e.leconPredefinie !== null)).not.toHaveLength(0);
+		for (const e of entrees) {
+			const attendu = leconPredefinieDuMot(s, e.id)?.label ?? null;
+			expect([e.mot, e.leconPredefinie]).toEqual([e.mot, attendu]);
+		}
+	});
+
 	it('statut = même échelle que les listes, dictée comptée seulement si le TTS est là', () => {
 		const s = emptyOrthoState();
 		createListe(s, 'Dictée du 12', [{ mot: 'vélo' }, { mot: 'train' }]);
@@ -543,6 +568,40 @@ describe('filtrerBanque', () => {
 		// …sans devenir un « tout passe » : la recherche discrimine toujours.
 		expect(formes(filtrerBanque(entrees(), { recherche: 'etra' }))).toEqual([]);
 		expect(formes(filtrerBanque(entrees(), { recherche: 'être' }))).toEqual(['être']);
+	});
+
+	it('replie les ligatures : taper « coeur » doit trouver « cœur »', () => {
+		// Piège distinct des accents : NFD ne décompose PAS œ/æ (ce ne sont pas des
+		// base + diacritique). Or ces mots sont déjà dans les dictées livrées (« cœur »,
+		// « chœur » en homophones CM1) et personne ne tape « œ » sur un clavier tactile.
+		const s = emptyOrthoState();
+		createListe(s, 'Homophones', [
+			{ mot: 'cœur' },
+			{ mot: 'chœur' },
+			{ mot: 'ex æquo' },
+			{ mot: 'courage' },
+		]);
+		const es = banqueProfil(s, true);
+		expect(formes(es)).toEqual(['chœur', 'cœur', 'courage', 'ex æquo']);
+
+		expect(formes(filtrerBanque(es, { recherche: 'coeur' }))).toEqual(['cœur']);
+		expect(formes(filtrerBanque(es, { recherche: 'choeur' }))).toEqual(['chœur']);
+		expect(formes(filtrerBanque(es, { recherche: 'aequo' }))).toEqual(['ex æquo']);
+		// La ligature tapée telle quelle marche aussi (pliage des DEUX côtés).
+		expect(formes(filtrerBanque(es, { recherche: 'cœur' }))).toEqual(['cœur']);
+		// …et le pliage ne rend pas la recherche floue : « coeur » ne ramène pas « chœur ».
+		expect(formes(filtrerBanque(es, { recherche: 'oeuf' }))).toEqual([]);
+	});
+
+	it('replier les ligatures concerne la RECHERCHE seule, pas la dédup de la banque', () => {
+		// « cœur » et « coeur » sont deux graphies distinctes en banque (un enfant à qui
+		// l'on dicte « cœur » doit écrire la ligature) : le pliage ne doit pas les fusionner.
+		const s = emptyOrthoState();
+		createListe(s, 'Dictée du 12', [{ mot: 'cœur' }, { mot: 'coeur' }]);
+		const es = banqueProfil(s, true);
+
+		expect(es).toHaveLength(2);
+		expect(formes(filtrerBanque(es, { recherche: 'coeur' }))).toEqual(['coeur', 'cœur']);
 	});
 
 	it('replier les accents concerne la RECHERCHE seule, pas la dédup de la banque', () => {

@@ -46,7 +46,10 @@ ci-dessous.
   `encadrant-*`) : état de vue partagé (conteneur DOM, profil **consulté**,
   **onglet actif** `EncTab`/`ENC_TABS`, #459) + registre des callbacks
   `rerender`/`renderEspace` (casse le cycle orchestrateur ↔ sections) +
-  `telechargerBlob` (export, clé de récupération).
+  `telechargerBlob` (export, clé de récupération). Porte aussi le **wording partagé de
+  l'échelle d'acquisition** (`MOT_NIVEAU`, `ORDRE_NIVEAUX`/`ORDRE_NIVEAUX_ORTHO`) : depuis
+  #496, deux sections distinctes (`encadrant-progression.ts` et `encadrant-banque.ts`)
+  affichent la même échelle, d'où son déplacement ici plutôt que dans l'une des deux.
 - **`encadrant-pin.ts`** — **verrou par code** : porte PIN + pavé numérique,
   écran de récupération, bloc « Code d'accès » des réglages ; possède l'état du
   verrou et la vue courante (`pinView()`, lue par l'orchestrateur).
@@ -57,14 +60,32 @@ ci-dessous.
   matière**, #397 — barres-capsules `--ok`, compteur de notions au-dessus des
   semaines non vides, semaine en cours distinguée, sans axe ni pourcentage),
   **historique des erreurs récentes** (#391, filtrable par période #476, cf.
-  `encadrant-erreurs.ts` ci-dessous) ; handlers `activite-mode`/`epingler`/
-  `imprimer`, plus `erreurs-periode` (délégué à `erreursClick`, exporté par
-  `encadrant-erreurs.ts` puisque c'est cette section qui insère son bloc).
+  `encadrant-erreurs.ts` ci-dessous), et le bloc **« Dictées »** (#424 — listes de
+  dictée d'orthographe, échelle à 3 niveaux) qui porte depuis #496 une **bascule
+  « Listes » / « Mots »** : le volet Listes reste ici (`listesOrthoProfil`), le volet
+  Mots (la banque du profil, recherche + suppression) est délégué au module dédié
+  `encadrant-banque.ts` ci-dessous ; handlers `activite-mode`/`epingler`/
+  `imprimer`/`dictees-vue`, plus `erreurs-periode` (délégué à `erreursClick`, exporté par
+  `encadrant-erreurs.ts`) et les actions `banque-*` (délégué à `banqueClick`/`banqueInput`,
+  exportées par `encadrant-banque.ts` — même raison : c'est cette section qui compose leur
+  bloc).
   Expose aussi `aRevoirHTML` (file « à revoir ensemble », épinglées + suggestions
   + **retirées automatiquement** #465, ré-épinglables d'un clic) et
   `dicteesProposeesHTML` (dictées prédéfinies épinglables à l'avance), toutes
   deux rendues par l'orchestrateur dans l'onglet **Programme** (#459) plutôt
   qu'ici.
+- **`encadrant-banque.ts`** (#496) — volet **« Mots »** du bloc Dictées (onglet **Suivi**),
+  composé par `encadrant-progression.ts` (ci-dessus) : la banque d'orthographe du profil
+  consulté, mot par mot — projections pures dans `core/orthographe/banque.ts` (cf. [Logique
+  pure](core.md)), ici l'état de vue (recherche, filtre « plus dans aucune liste », pagination
+  par 50), le rendu et les handlers exportés `banqueClick`/`banqueInput`. Le premier geste
+  **irréversible** de l'onglet Suivi : suppression d'un mot confirmée (`uiConfirm` destructif)
+  par un message qui **nomme** les listes amputées, jamais un tap unique ; un mot d'une leçon
+  prédéfinie n'est pas supprimable (la rejouer le recréerait), une cible de verbe l'est mais
+  avec l'avertissement qu'elle reviendra tant que le verbe reste dans sa liste. Écrit sur le
+  profil **consulté** par UUID (`saveOrthoFor` + `touchProfile`, cf. [Données &
+  profils](donnees-et-profils.md)), jamais de bascule du profil actif. Détail fonctionnel dans
+  [Espace encadrant](espace-encadrant.md).
 - **`encadrant-revision.ts`** (#423) — **récap du mode Révision espacée** par profil
   (onglet **Suivi**, #459), affiché juste après le bloc ci-dessus : projette la file de
   répétition espacée (#45, lue par `core/encadrant-stats.ts:revisionProfil`) — palier
@@ -109,18 +130,18 @@ ci-dessous.
   sont retirées de la file **persistée**, pas seulement filtrées à l'affichage.
 
 **Composant segment partagé** — `segment.ts` (hors des sections ci-dessus, consommé par
-quatre d'entre elles) : `segmentHTML(config)` rend un groupe de boutons **choix exclusif**
+cinq d'entre elles) : `segmentHTML(config)` rend un groupe de boutons **choix exclusif**
 conforme au patron APG **« Radio Group »** (`role="radiogroup"` + `role="radio"`/
 `aria-checked`, **tabindex mobile** — seule l'option cochée est dans l'ordre de
 tabulation), en remplacement de l'ancien rendu à la main en `role="group"` +
 `aria-pressed` (des bascules indépendantes, contrat inadapté à un choix exclusif).
 `segmentKeydown(e)`, câblé une fois dans le `onKeydown` délégué de `encadrant.ts`, déplace
 le focus aux flèches/Home/End ; la sélection **suit le focus** (le handler de la section
-clique l'option visée, gère l'état et le re-rendu). Consommé par `activite-mode`
-(`encadrant-progression.ts`), `revision-mode` (`encadrant-revision.ts`), `seance-rec-type`
-(`encadrant-seance.ts`) et `erreurs-periode` (`encadrant-erreurs.ts`) — les
-`data-act`/`data-mode`/`data-type`/`data-periode` de chaque site restent inchangés
-(sélecteurs e2e stables).
+clique l'option visée, gère l'état et le re-rendu). Consommé par `activite-mode` et
+`dictees-vue` (`encadrant-progression.ts`, ce dernier depuis #496), `revision-mode`
+(`encadrant-revision.ts`), `seance-rec-type` (`encadrant-seance.ts`) et `erreurs-periode`
+(`encadrant-erreurs.ts`) — les `data-act`/`data-mode`/`data-type`/`data-periode`/`data-vue`
+de chaque site restent inchangés (sélecteurs e2e stables).
 
 **Journal des erreurs (#391)** — deux modules distincts, hors des cinq de section
 ci-dessus, plus `core/erreur-representation.ts` (logique pure, cf. [Logique

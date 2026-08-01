@@ -134,14 +134,8 @@ export function restoreResume(snap: ResumeSnapshot): void {
 			goHome();
 			return;
 		}
-		// Focus sur la zone d'exercice. Le bouton qui a déclenché la reprise (carte
-		// « À continuer » ou modale « Tu avais commencé ! ») vient d'être masqué par le
-		// runner : un élément en `display:none` ne garde pas le focus, le navigateur le
-		// rabat sur <body>, et sans skip-link l'enfant au clavier devrait re-tabuler
-		// depuis la barre d'outils pour retrouver sa question. Le chemin grille pose déjà
-		// son focus sur un champ ; ici l'écran est reconstruit par le runner, donc c'est
-		// le conteneur stable qui reçoit le focus.
-		document.getElementById('sheets')?.focus({ preventScroll: true });
+		// Le focus est posé par `demarrerRunner`, sur le conteneur d'exercice : le runner
+		// ouvre son écran de la même façon qu'à un lancement neuf, focus compris.
 		toast("Te revoilà ! On reprend là où tu t'étais arrêté.");
 		return;
 	}
@@ -317,6 +311,12 @@ function openChoiceModal(label: string, onContinue: () => void, onRestart: () =>
 		message: label,
 		confirmLabel: 'Recommencer du début',
 		cancelLabel: "Continuer où j'en étais",
+		// Recommencer JETTE la progression en cours : même geste destructif que « Effacer »
+		// ci-dessous, donc même traitement (bouton en danger + `alertdialog`). Ça comptait peu
+		// tant que seules les grilles passaient par ici ; depuis que les runners sont
+		// reprenables (#498), c'est une leçon entamée que l'enfant perd d'un tap.
+		destructive: true,
+		confirmIcon: 'reset',
 	}).then((recommencer) => (recommencer ? onRestart() : onContinue()));
 }
 

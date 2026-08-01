@@ -92,7 +92,11 @@ test('rendu : groupé par leçon, « vu N fois », et épinglage depuis la secti
 
 	// Déplier la 1re leçon : détail des erreurs.
 	await lecons.first().locator('.enc-err-sum').click();
-	await expect(lecons.first().locator('.enc-err-bonne').first()).toContainText('La bonne réponse');
+	// Libellé « Réponse attendue » (#446 : « La bonne réponse » niait à tort l'unicité
+	// pour une intercalation corrigée par bande). Il a donc déjà bougé une fois — on
+	// ancre ici sur la VALEUR seedée (attendue: '12'), pas sur le mot français, pour ne
+	// pas re-casser ce test au prochain choix de libellé.
+	await expect(lecons.first().locator('.enc-err-bonne').first()).toContainText('12');
 	await expect(lecons.first().locator('.enc-err-donnee').first()).toContainText('Réponse donnée');
 	// L'erreur répétée est dédoublonnée en « vue 2 fois ».
 	await expect(

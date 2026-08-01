@@ -23,6 +23,8 @@ import {
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	declarerSessionRunner,
+	enregistrerRunner,
 } from './lecon-runner-shared';
 import { bindAppariement } from './appariement';
 import type { TuileController } from './tuile-interaction';
@@ -82,29 +84,63 @@ function genManches(l: LessonDef, m: ExerciseMode, n: number): MancheAppariement
 	return out;
 }
 
+/* Nom du runner dans le registre de reprise (#498) — stable, il vit dans les instantanés. */
+const RUNNER = 'appariement';
+
+/* Démarre l'écran sur un jeu de manches donné, à l'index et au score voulus. Chemin
+   COMMUN au lancement neuf (0/0) et à la reprise, pour que les deux ne divergent pas. */
+function demarrer(
+	l: LessonDef,
+	m: ExerciseMode,
+	ms: MancheAppariement[],
+	depart = 0,
+	pts = 0,
+): void {
+	lesson = l;
+	mode = m;
+	manches = ms;
+	idx = depart;
+	score = pts;
+	setCurrentMode('lecon');
+	setCurrentLessonId(l.id);
+	hideMenus();
+	setToolbar({ verify: false, home: true, profile: false });
+	declarerSessionRunner({
+		runner: RUNNER,
+		lesson: l,
+		exerciseMode: m ?? null,
+		etat: () => ({ questions: manches, idx, score }),
+	});
+	renderManche();
+	maybeAutoAide('appariement'); // bulle d'aide au 1er lancement (une fois par profil)
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 export function runLeconAppariement(lessonId: string, m: ExerciseMode): void {
 	const l = getLessonById(lessonId);
 	if (!l) {
 		goHome();
 		return;
 	}
-	lesson = l;
-	mode = m;
-	manches = genManches(l, m, NB_MANCHES);
-	if (!manches.length) {
+	const ms = genManches(l, m, NB_MANCHES);
+	if (!ms.length) {
 		goHome();
 		return;
 	}
-	idx = 0;
-	score = 0;
-	setCurrentMode('lecon');
-	setCurrentLessonId(lessonId);
-	hideMenus();
-	setToolbar({ verify: false, home: true, profile: false });
-	renderManche();
-	maybeAutoAide('appariement'); // bulle d'aide au 1er lancement (une fois par profil)
-	window.scrollTo({ top: 0, behavior: 'smooth' });
+	demarrer(l, m, ms);
 }
+
+/* Reprise (#498) : on rejoue les manches DÉJÀ TIRÉES à l'index sauvegardé, jamais un
+   nouveau tirage — l'enfant retrouve sa leçon, pas une autre. */
+enregistrerRunner(RUNNER, (snap) => {
+	const l = getLessonById(snap.relaunch.lessonId);
+	const ms = snap.questions as MancheAppariement[];
+	if (!l || !ms.length) {
+		goHome();
+		return;
+	}
+	demarrer(l, snap.exerciseMode as ExerciseMode, ms, snap.idx, snap.score);
+});
 
 function renderManche(): void {
 	const q = manches[idx];

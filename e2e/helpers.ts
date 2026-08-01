@@ -15,8 +15,14 @@ export function leconsDuNiveau(subject: SubjectId, niveau: SchoolLevel): string[
 }
 
 /* Messages de console à ignorer (bruits navigateur sans rapport avec l'app :
-   favicon manquant, ressources annexes…). */
-const BENIGN = [/favicon/i, /manifest/i, /net::ERR/i, /Failed to load resource/i];
+   favicon manquant, ressources annexes…). Le 4ᵉ (beforeunload) est un artefact
+   Chromium propre aux specs qui forcent un `page.reload()` pendant un sprint/une
+   révision EN COURS (#63, `quittingLosesProgress`) sans qu'un vrai clic ait encore
+   eu lieu sur la page : Chromium bloque alors SILENCIEUSEMENT la boîte de dialogue
+   native (« pas de geste utilisateur depuis le chargement de la frame ») au lieu de
+   la montrer, et journalise ce constat — la navigation continue normalement, rien à
+   voir avec l'app. */
+const BENIGN = [/favicon/i, /manifest/i, /net::ERR/i, /Failed to load resource/i, /beforeunload/i];
 
 /* Pose un collecteur d'erreurs : exceptions non rattrapées (`pageerror`) — le
    signal d'un crash de rendu/navigation — et `console.error` applicatifs (hors

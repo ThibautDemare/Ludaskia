@@ -6,6 +6,9 @@ import {
 	listeDeCibleVerbe,
 	nbCiblesVerbe,
 	nbCiblesVerbes,
+	libellePronoms,
+	apercuVerbe,
+	TEMPS_LABEL,
 } from '../src/core/orthographe/verbes';
 import {
 	emptyOrthoState,
@@ -75,6 +78,95 @@ describe('expanseVerbe (pur)', () => {
 	it('compte les cibles = |pronoms| × |temps|', () => {
 		expect(nbCiblesVerbe(cfg([0, 1, 2, 3]))).toBe(4);
 		expect(nbCiblesVerbes([cfg([0, 1]), cfg([0, 1, 2], '', 'aimer')])).toBe(5);
+	});
+});
+
+/* ============================================================
+   Vocabulaire d'un verbe configuré (#441) — libellePronoms / apercuVerbe.
+   ------------------------------------------------------------
+   Attendus dérivés de ce que l'adulte doit LIRE : les pronoms tels
+   qu'on les dit à l'école (je, tu, il, nous, vous, ils), une formule
+   courte quand ils y sont tous, et une étiquette qui commence par
+   l'infinitif (c'est elle qui sera triée dans l'aperçu des mots).
+   ============================================================ */
+describe('libellePronoms (pur)', () => {
+	it('un seul pronom : aucun séparateur parasite', () => {
+		expect(libellePronoms([0])).toBe('je');
+		expect(libellePronoms([5])).toBe('ils');
+	});
+
+	it('plusieurs pronoms : énumérés, séparés par une virgule', () => {
+		expect(libellePronoms([0, 2])).toBe('je, il');
+		expect(libellePronoms([3, 4, 5])).toBe('nous, vous, ils');
+	});
+
+	it('CINQ pronoms sur six : toujours énumérés (pas de raccourci prématuré)', () => {
+		expect(libellePronoms([0, 1, 2, 3, 4])).toBe('je, tu, il, nous, vous');
+	});
+
+	it('les SIX pronoms : bascule sur « tous les pronoms »', () => {
+		expect(libellePronoms([0, 1, 2, 3, 4, 5])).toBe('tous les pronoms');
+	});
+
+	it('respecte l’ordre reçu, sans le retrier lui-même', () => {
+		// Le tri canonique est la responsabilité de normaliserVerbes (en amont) : cette
+		// fonction ne fait que mettre en mots ce qu'on lui donne.
+		expect(libellePronoms([2, 0])).toBe('il, je');
+	});
+});
+
+describe('apercuVerbe (pur) — étiquette d’aperçu d’un verbe', () => {
+	it('infinitif puis pronoms et temps entre parenthèses', () => {
+		expect(apercuVerbe(cfg([0, 2]))).toBe('manger (je, il — présent)');
+		expect(apercuVerbe(cfg([0]))).toBe('manger (je — présent)');
+	});
+
+	it('les six pronoms cochés : la formule courte, pas six pronoms d’affilée', () => {
+		expect(apercuVerbe(cfg([0, 1, 2, 3, 4, 5]))).toBe('manger (tous les pronoms — présent)');
+	});
+
+	it('le complément de phrase ne figure PAS dans l’aperçu', () => {
+		// « une pomme » sert la phrase de contexte de la dictée, pas l'identification du
+		// verbe : l'étiquette doit rester la même avec ou sans lui.
+		expect(apercuVerbe(cfg([0, 2], 'une pomme'))).toBe(apercuVerbe(cfg([0, 2])));
+	});
+
+	it('infinitif rendu tel quel (pronominal, apostrophe droite conservée)', () => {
+		expect(apercuVerbe(cfg([0, 1], undefined, "s'enfuir"))).toBe("s'enfuir (je, tu — présent)");
+		expect(apercuVerbe(cfg([0], undefined, 'se laver'))).toBe('se laver (je — présent)');
+	});
+
+	it('commence TOUJOURS par l’infinitif (c’est lui qui décide du tri de l’aperçu)', () => {
+		for (const v of [cfg([0]), cfg([0, 1, 2, 3, 4, 5], 'une pomme'), cfg([3], '', 'aimer')]) {
+			expect(apercuVerbe(v).startsWith(v.infinitif + ' (')).toBe(true);
+			expect(apercuVerbe(v).endsWith(')')).toBe(true);
+		}
+	});
+
+	it('le temps est nommé en clair (et une seule fois après normalisation)', () => {
+		expect(TEMPS_LABEL.present).toBe('présent');
+		// Un temps coché deux fois est dédupliqué en amont : pas de « présent, présent ».
+		const [v] = normaliserVerbes([
+			{ kind: 'verbe', infinitif: 'manger', pronoms: [0], temps: ['present', 'present'] },
+		]);
+		expect(apercuVerbe(v)).toBe('manger (je — présent)');
+	});
+
+	it('chemin réel : l’ordre de cochage du parent ne transparaît pas', () => {
+		const [v] = normaliserVerbes([
+			{ kind: 'verbe', infinitif: 'manger', pronoms: [5, 0, 2], temps: ['present'] },
+		]);
+		expect(apercuVerbe(v)).toBe('manger (je, il, ils — présent)');
+	});
+
+	it('chemin réel : un pronom coché en double ne fait pas croire aux six', () => {
+		// Six ENTRÉES mais un seul pronom distinct : c'est la dédup amont qui protège la
+		// bascule « tous les pronoms » (elle se décide sur le nombre de pronoms).
+		const [v] = normaliserVerbes([
+			{ kind: 'verbe', infinitif: 'manger', pronoms: [0, 0, 0, 0, 0, 0], temps: ['present'] },
+		]);
+		expect(v.pronoms).toEqual([0]);
+		expect(apercuVerbe(v)).toBe('manger (je — présent)');
 	});
 });
 

@@ -12,7 +12,7 @@
      pas en collision avec les mots classiques de la banque).
    ============================================================ */
 import { etatNeuf } from '../revision';
-import { displayPronoun } from '../../data/francais/conjugaison';
+import { displayPronoun, PRONOUNS } from '../../data/francais/conjugaison';
 import {
 	lookupConjugatedForms,
 	normVerbKey,
@@ -41,6 +41,32 @@ export function listeDeCibleVerbe(state: OrthoState, wordId: string): string | n
 		}
 	}
 	return null;
+}
+
+/* ---------- Vocabulaire d'un verbe configuré (partagé formulaire / aperçus) ----------
+   Le formulaire de liste (`ui/ortho-liste.ts`) et les aperçus de mots (catalogue enfant,
+   espace encadrant) décrivent le même objet : un verbe et ses couples pronom × temps.
+   Les libellés vivent donc ici, pas dans l'écran qui les affiche. */
+
+/** Temps d'entraînement en clair. v1 : le présent seul (cf. `VerbTense`). */
+export const TEMPS_LABEL: Record<VerbTense, string> = { present: 'présent' };
+
+/** Pronoms cochés en clair : « je, tu, il » — ou « tous les pronoms » quand ils y sont
+    tous, pour ne pas énumérer six pronoms là où un mot suffit. Pur. */
+export function libellePronoms(pronoms: readonly number[]): string {
+	return pronoms.length === PRONOUNS.length
+		? 'tous les pronoms'
+		: pronoms.map((p) => PRONOUNS[p]).join(', ');
+}
+
+/** Étiquette d'APERÇU d'un verbe configuré : « manger (je, il — présent) ».
+    Un verbe ne se prévisualise qu'une fois, à l'infinitif, alors qu'il vaut autant de
+    dictées que de couples pronom × temps (`nbCiblesVerbe`) : sans cette annotation, une
+    liste annonçant « 3 mots » n'en montrerait que 2, sans rien qui explique l'écart à
+    l'adulte venu lire la liste (#441). Pur. */
+export function apercuVerbe(cfg: VerbeConfig): string {
+	const temps = cfg.temps.map((t) => TEMPS_LABEL[t]).join(', ');
+	return `${cfg.infinitif} (${libellePronoms(cfg.pronoms)} — ${temps})`;
 }
 
 /** Nombre de cibles d'un verbe = |pronoms| × |temps| (pour le comptage catalogue). */

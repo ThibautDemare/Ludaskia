@@ -181,6 +181,26 @@ listes créées par le parent restent toujours visibles**, même « à découvri
 un compte factuel « X/Y mots maîtrisés » est accolé (jamais de %), pour restituer la nuance
 perdue par l'absence de « à renforcer ».
 
+**Mots consultables** (#441) : `RecapListeOrtho` et `DicteeProposee` portent chacune un champ
+`mots: string[]`, déjà dans l'ordre d'**AFFICHAGE** — alphabétique pour une liste du parent
+(mots saisis dans un ordre quelconque), ordre d'origine pour une prédéfinie (des nombres, par
+exemple, doivent rester numériques). Cet ordre est calculé par `motsApercu(mots, source)`
+(`core/orthographe/lessons.ts`, **pure**), **factorisée** depuis l'infobulle du catalogue
+enfant (`ui/catalog-nav.ts:renderOrthoCategorie`, `.ortho-apercu`) : les deux aperçus — celui
+de l'enfant et celui de l'adulte — partagent désormais la même règle et ne peuvent plus
+diverger. Côté encadrant, ces mots sont consultables via un repli natif `<details
+class="enc-mots">` « Voir les mots » (`motsDicteeHTML`), posé dans les **deux** familles de
+lignes de dictée (suivi ci-dessus ET dictées proposées ci-dessous) : contrairement à
+l'infobulle du catalogue (purement décorative, `aria-hidden`), ici le contenu **est**
+l'information cherchée — l'adulte doit pouvoir lire une liste sans lancer la dictée lui-même
+(préparer une aide, comparer à ce qui a été vu en classe). Le repli est **scopé aux seuls
+mots**, jamais à toute la ligne : sinon le bouton « Épingler », action principale et fréquente,
+sortirait de l'ordre de tabulation tant que le bloc reste fermé. **Écart assumé** pour une
+liste contenant des cibles verbe (#261) : `nbMots` compte chaque couple pronom × temps
+réellement dicté, mais `mots` n'affiche l'infinitif **qu'une fois** — la carte peut donc
+annoncer « 3 mots » et n'en montrer que 2 (décision produit, pas un bug de calcul : la
+dictée porte bien « je mange » ET « il mange »).
+
 Chaque liste peut être **épinglée** (même mécanique que « à revoir », cf. ci-dessous) — elle
 rejoint alors la file de l'enfant comme une leçon.
 
@@ -189,9 +209,19 @@ rejoint alors la file de l'enfant comme une leçon.
 Programme** (#459), les dictées **prédéfinies non commencées** (`dicteesProposees`,
 `core/encadrant-stats.ts`), pour que l'encadrant en pousse une **avant** que l'enfant ne la
 rencontre — parité avec « épingler n'importe quelle leçon, même pas encore abordée » du
-catalogue, sans noyer le suivi. Une prédéfinie ainsi épinglée quitte ce bloc et apparaît dans
-le suivi de l'onglet Suivi (état « à découvrir » tant qu'elle n'est pas commencée), qui se
-contente sinon d'un renvoi textuel vers l'onglet Programme.
+catalogue, sans noyer le suivi. Chaque ligne (`ligneDicteeProposee`) délègue désormais au
+**même renderer** que « à revoir ensemble » plus bas (`ligneRevoir`, `etat: 'a-decouvrir'`
+**constant** par construction — une proposée n'est par définition jamais commencée) plutôt
+qu'à une copie manuelle : elle gagne ainsi le **badge d'état d'acquisition** que cette copie
+n'affichait pas (#441), et ressemble désormais exactement aux autres cartes de son onglet.
+**Choix assumé** (arbitrage mainteneur) : cette harmonisation ne **fusionne pas** les deux
+familles de composant — `.enc-detail-item` (ligne dense du bloc de suivi ci-dessus) et
+`.enc-revoir-item` (carte de préparation, ci-dessous et ici) restent deux rendus distincts,
+chacun adapté à l'intention de son onglet (observer vs préparer) ; seul le **langage du
+badge** (vocabulaire des niveaux d'acquisition) est désormais partagé entre les deux. Une
+prédéfinie ainsi épinglée quitte ce bloc et apparaît dans le suivi de l'onglet Suivi (état « à
+découvrir » tant qu'elle n'est pas commencée), qui se contente sinon d'un renvoi textuel vers
+l'onglet Programme.
 
 ## Historique des erreurs (#391)
 

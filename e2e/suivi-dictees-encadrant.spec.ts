@@ -1,7 +1,9 @@
 /* ============================================================
    Suivi des listes de dictée dans l'espace encadrant (#424, #441).
    ------------------------------------------------------------
-   Couvre : le bloc « Listes de dictée » (une liste + son avancement),
+   Couvre : le bloc « Dictées » (une liste + son avancement, volet « Listes »
+   affiché par défaut — le libellé du bloc et la bascule « Listes »/« Mots »
+   sont couverts par encadrant-banque.spec.ts, #496),
    l'épinglage qui la fait rejoindre la file « à revoir » (comme une
    leçon du catalogue), la carte « À revoir » de l'accueil enfant qui
    l'affiche ensuite (`data-kind="ortho"`), et le lancement de la
@@ -80,13 +82,13 @@ test.beforeEach(async ({ page }) => {
 	}, SEED_ORTHO);
 });
 
-test('bloc « Listes de dictée » : la liste et son avancement se rendent dans l’espace encadrant', async ({
+test('bloc « Dictées », volet « Listes » : la liste et son avancement se rendent dans l’espace encadrant', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
 	await gotoHash(page, 'encadrant');
 
-	await expect(page.locator('.enc-h3').filter({ hasText: 'Listes de dictée' })).toBeVisible();
+	await expect(page.locator('.enc-h3').filter({ hasText: 'Dictées' })).toBeVisible();
 
 	const ligne = page.locator(`.enc-detail-item:has([data-lesson="ortho:${LISTE_ID}"])`);
 	await expect(ligne).toBeVisible();
@@ -137,7 +139,7 @@ test('épingler une liste de dictée : rejoint « à revoir », apparaît sur l�
 	const errors = watchErrors(page);
 	await gotoHash(page, 'encadrant');
 
-	// Épingler depuis le bloc « Listes de dictée ».
+	// Épingler depuis le bloc « Dictées » (volet « Listes »).
 	const btnEpingler = page.locator(
 		`.enc-detail-item:has([data-lesson="ortho:${LISTE_ID}"]) button[data-act="epingler"]`,
 	);

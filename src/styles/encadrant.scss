@@ -1548,11 +1548,15 @@ $evol-amorce: #7c8494;
 }
 /* Mot non supprimable (issu d'une dictée livrée avec l'appli) : une MENTION, pas un bouton
    désactivé — un bouton grisé ne dit pas pourquoi, et disparaît de la navigation par
-   contrôles des lecteurs d'écran. */
+   contrôles des lecteurs d'écran. Encre en --grey et NON en --muted (dont hérite .enc-hint) :
+   --muted tombe à ~2,6:1 sur --paper en thème clair, sous AA, alors que cette mention est la
+   SEULE explication de l'absence de bouton sur la ligne. Même piège que .enc-revoir-etat,
+   déjà documenté plus haut. */
 .enc-banque-fige {
 	font-size: 0.72rem;
 	font-style: italic;
 	text-align: right;
+	color: var(--grey);
 }
 
 /* Les cartes profil (consulter + gérer dépliable) restent en COLONNE à toutes les

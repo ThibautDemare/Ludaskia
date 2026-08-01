@@ -4,7 +4,8 @@
    génération QCM 3 options valides pour chaque pool CM1 (sens proche / contraires
    via sensType ; familles / affixes via famillesType), invariants des banques
    (réponse incluse, options distinctes, distracteurs ≠ réponse), NON-régression
-   CE2 (banques et pool ITEMS_FAMILLES inchangés) et DÉDUP CE2↔CM1 du même type.
+   CE2 (le pool ITEMS_FAMILLES reste le combiné des trois banques CE2 — depuis #453,
+   de leur INTÉGRALITÉ) et DÉDUP CE2↔CM1 du même type.
    Pas de DOM.
    ============================================================ */
 import { describe, it, expect } from 'vitest';
@@ -163,13 +164,27 @@ describe('Vocabulaire CM1 — banques « familles / affixes » (#244)', () => {
 
 describe('Vocabulaire CM1 — NON-régression CE2 (#244)', () => {
 	it('la leçon fr-vocab-familles garde le pool combiné familles + préfixes + suffixes', () => {
-		// Découplage : le pool QCM combiné est bâti sur les 30 familles d'ORIGINE (pas les 54
-		// de FAMILLES, dont 24 sont réservées à la leçon à relier) → équilibre ~⅓ préservé.
-		const NB_FAMILLES_QCM = 30;
-		expect(ITEMS_FAMILLES_SEULES.length).toBe(NB_FAMILLES_QCM);
-		expect(FAMILLES.length).toBe(54); // banque complète (relier) = 30 d'origine + 24 extra
+		// Depuis le rééquilibrage (#453), plus aucun sous-ensemble n'est réservé à une leçon :
+		// le pool QCM combiné est l'INTÉGRALITÉ des trois banques CE2 (l'équilibre ~⅓ est tenu
+		// par la taille des banques, cf. la bande d'équilibre de logic.test.ts). On exprime
+		// donc la règle en termes de BANQUES, sans aucun total en dur : un ajout pédagogique
+		// futur ne doit pas faire rougir ce test, mais un re-découpage (pool bâti sur un
+		// sous-ensemble d'une banque) doit le faire rougir.
+		expect(ITEMS_FAMILLES_SEULES.length).toBe(FAMILLES.length);
 		expect(ITEMS_AFFIXES.length).toBe(PREFIXES.length + SUFFIXES.length);
-		expect(ITEMS_FAMILLES.length).toBe(NB_FAMILLES_QCM + PREFIXES.length + SUFFIXES.length);
+		expect(ITEMS_FAMILLES.length).toBe(FAMILLES.length + PREFIXES.length + SUFFIXES.length);
+		// Type par type (le total seul se laisserait berner par un échange entre banques),
+		// et par les RÉPONSES attendues : chaque dérivé / chaque sens est bien dans le pool.
+		const parType = (t: ItemVocabQcm['type']) => ITEMS_FAMILLES.filter((i) => i.type === t);
+		expect(new Set(parType('famille').map((i) => i.reponse))).toEqual(
+			new Set(FAMILLES.map((f) => f.famille)),
+		);
+		expect(new Set(parType('prefixe').map((i) => i.reponse))).toEqual(
+			new Set(PREFIXES.map((a) => a.sens)),
+		);
+		expect(new Set(parType('suffixe').map((i) => i.reponse))).toEqual(
+			new Set(SUFFIXES.map((a) => a.sens)),
+		);
 		// La leçon CE2 utilise bien le pool combiné (et reste taguée CE2).
 		const ce2 = getLessonById('fr-vocab-familles')!;
 		expect(ce2.levels).toEqual(['ce2']);

@@ -3697,16 +3697,21 @@ describe('vocabulaire — familles, préfixes, suffixes (#113)', () => {
 		}
 	});
 
-	test('banque combinée : ≥ 30 items, trois types couverts de façon équilibrée', () => {
+	test('banque combinée : trois types couverts, chacun à ⅓ ± 5 points (#453)', () => {
 		expect(ITEMS_FAMILLES.length).toBeGreaterThanOrEqual(30);
 		const parType = { famille: 0, prefixe: 0, suffixe: 0 };
 		for (const it of ITEMS_FAMILLES) parType[it.type]++;
 		const total = ITEMS_FAMILLES.length;
+		// Équilibre visé par #453 : ~⅓ / ⅓ / ⅓. Bande resserrée à ± 5 points (l'ancienne,
+		// 25-42 %, tolérait qu'un type pèse deux fois un autre — elle n'exprimait plus la
+		// règle). ± 5 points absorbe un ajout pédagogique unilatéral modéré (une banque de
+		// 54 qui passe à 64 reste dedans) mais rejette les deux dérives à éviter : verser les
+		// 54 familles sans agrandir les affixes (46 %) comme re-brancher le pool sur un
+		// sous-ensemble de 30 familles (22 %).
 		for (const t of ['famille', 'prefixe', 'suffixe'] as const) {
 			expect(parType[t], t).toBeGreaterThan(0);
-			// Équilibre : chaque type entre 25 % et 42 % de la banque.
-			expect(parType[t] / total).toBeGreaterThanOrEqual(0.25);
-			expect(parType[t] / total).toBeLessThanOrEqual(0.42);
+			expect(parType[t] / total, t).toBeGreaterThanOrEqual(1 / 3 - 0.05);
+			expect(parType[t] / total, t).toBeLessThanOrEqual(1 / 3 + 0.05);
 		}
 	});
 

@@ -1,13 +1,15 @@
 /* ============================================================
    Étape « dictée » à POOL de cibles (#463) — logique pure de src/core/seance.ts.
-   Auteur des tests DISTINCT de l'auteur du code : les attendus sont dérivés de la
-   spec (pool `refs` prioritaire, rétrocompat de l'ancien `ref` unique, report de la
-   cible RÉELLEMENT tirée dans la métrique de complétion), jamais recopiés du code.
+   Auteur des tests DISTINCT de l'auteur du code : les attendus sont dérivés de la spec
+   (pool `refs` prioritaire, rétrocompat de l'ancien `ref` unique, crédit d'une étape par la
+   liste RÉELLEMENT dictée, report de la cible vue dans la métrique), jamais recopiés du code.
 
-   Le TIRAGE aléatoire (`tirerCibleDictee`, filtrage des dictées valides) vit côté UI
-   (src/ui/seance.ts, dépend de Math.random + loadOrtho) → couvert en e2e. Ici on
-   éprouve UNIQUEMENT le contrat pur de core : `ciblesEtape` et le fil
-   lancement→complétion (`marquerEtapeLancee` avec cible tirée → `resoudrePending`).
+   Depuis #498, l'attribution ne se fait plus « par type » mais sur la RÉFÉRENCE que porte
+   la session journalisée : une dictée ne crédite l'étape que si la liste travaillée fait
+   partie des cibles configurées, quel que soit le chemin de lancement (tuile du programme,
+   catalogue Français > Orthographe, carte d'accueil).
+
+   Le TIRAGE côté UI (dictées disponibles, `Math.random`) vit dans src/ui/seance.ts → e2e.
 
    Repère calendaire (heure LOCALE) : 2026-01-05 = lundi (ISO 1).
    ============================================================ */
@@ -17,7 +19,7 @@ import {
 	ciblesValides,
 	tirerCible,
 	marquerEtapeLancee,
-	resoudrePending,
+	resoudreProgramme,
 	etatSeanceJour,
 	enregistrerSeancesFor,
 	SEANCE_JOUR_KEY,
@@ -55,9 +57,10 @@ function defLundi(etape: SeanceEtape): SeanceDef {
 function poserDef(etape: SeanceEtape): void {
 	enregistrerSeancesFor(activeProfile().uuid, [defLundi(etape)]);
 }
-function poserActivite(k: ActivityKind, t: number): void {
-	const a: { t: number; k: ActivityKind }[] = lsGet(ACTIVITY_KEY, []);
-	a.push({ t, k });
+/** Sème une session finalisée du journal d'activité (`{t, k, ref?}`). */
+function poserActivite(k: ActivityKind, t: number, ref?: string): void {
+	const a: { t: number; k: ActivityKind; ref?: string }[] = lsGet(ACTIVITY_KEY, []);
+	a.push(ref === undefined ? { t, k } : { t, k, ref });
 	lsSet(ACTIVITY_KEY, a);
 }
 function jourStocke(): SeanceJour {
@@ -95,34 +98,74 @@ describe('ciblesEtape (normalisation, #463)', () => {
 });
 
 /* ============================================================
-   2) Rétrocompatibilité : une étape configurée AVANT #463 (seulement `ref`)
-   reste résolue comme une cible unique, jusque dans la métrique de complétion.
+   2) Crédit d'une étape « dictée » : la LISTE dictée doit être une cible de l'étape
    ============================================================ */
-describe('rétrocompatibilité (étape legacy avec seul `ref`)', () => {
-	it('ciblesEtape : cible unique inchangée', () => {
-		expect(ciblesEtape(etapeDictee({ ref: 'liste-ce2-01' }))).toEqual(['liste-ce2-01']);
-	});
-	it('fil complet SANS cible tirée passée → la complétion reprend `etape.ref`', () => {
-		// Un appelant legacy n'a pas de pool et ne passe donc pas de 3e argument.
+describe('crédit par la liste réellement dictée (#498)', () => {
+	it('rétrocompat : étape à cible unique, dictée faite hors programme → créditée', () => {
 		poserDef(etapeDictee({ ref: 'liste-ce2-01' }));
-		marquerEtapeLancee('e1', LUN); // pas de drawnRef
-		poserActivite('dictee', LUN + 1000);
-		const r = resoudrePending(LUN + 2000);
-		expect(r).toEqual({ credited: true, etapeId: 'e1', justCompleted: true });
+		etatSeanceJour(LUN); // le programme du jour existe
+		poserActivite('dictee', LUN + 60_000, 'liste-ce2-01'); // lancée depuis le catalogue
+		const r = resoudreProgramme(LUN + 61_000);
+		expect(r).toEqual({ etapesCreditees: ['e1'], justCompleted: true });
 		expect(jourStocke().completions[0]).toMatchObject({
 			etapeId: 'e1',
 			kind: 'dictee',
-			ref: 'liste-ce2-01', // repli sur etape.ref (aucune cible tirée mémorisée)
-			ts: LUN + 1000,
-			dureeMs: 1000,
+			ref: 'liste-ce2-01',
+			ts: LUN + 60_000,
+			dureeMs: 0, // aucun lancement daté depuis le programme
 		});
+	});
+	it('pool : n’importe quelle liste DU POOL crédite, avec sa propre cible en métrique', () => {
+		poserDef(etapeDictee({ refs: ['liste-a', 'liste-b', 'liste-c'], count: 2 }));
+		etatSeanceJour(LUN);
+		poserActivite('dictee', LUN + 1_000, 'liste-c');
+		expect(resoudreProgramme(LUN + 2_000).etapesCreditees).toEqual(['e1']);
+		poserActivite('dictee', LUN + 3_000, 'liste-a');
+		expect(resoudreProgramme(LUN + 4_000)).toEqual({
+			etapesCreditees: ['e1'],
+			justCompleted: true,
+		});
+		expect(jourStocke().completions.map((c) => c.ref)).toEqual(['liste-c', 'liste-a']);
+	});
+	it('une liste HORS pool ne crédite pas : la consigne de l’adulte reste due', () => {
+		poserDef(etapeDictee({ refs: ['liste-a', 'liste-b'] }));
+		etatSeanceJour(LUN);
+		poserActivite('dictee', LUN + 1_000, 'liste-hors-programme');
+		expect(resoudreProgramme(LUN + 2_000)).toEqual({ etapesCreditees: [], justCompleted: false });
+		expect(jourStocke().faits).toEqual({});
+	});
+	it('une dictée SANS cible journalisée ne crédite pas (cible indéterminable)', () => {
+		poserDef(etapeDictee({ refs: ['liste-a', 'liste-b'] }));
+		etatSeanceJour(LUN);
+		poserActivite('dictee', LUN + 1_000); // entrée d'avant #498, ou session multi-listes
+		expect(resoudreProgramme(LUN + 2_000).etapesCreditees).toEqual([]);
+	});
+	it('le pool prime : la cible legacy `ref` d’une étape à pool ne crédite PAS', () => {
+		// Cohérent avec `ciblesEtape` : dès qu'un pool existe, il définit seul les cibles.
+		poserDef(etapeDictee({ refs: ['liste-a'], ref: 'liste-figee' }));
+		etatSeanceJour(LUN);
+		poserActivite('dictee', LUN + 1_000, 'liste-figee');
+		expect(resoudreProgramme(LUN + 2_000).etapesCreditees).toEqual([]);
+		poserActivite('dictee', LUN + 3_000, 'liste-a');
+		expect(resoudreProgramme(LUN + 4_000).etapesCreditees).toEqual(['e1']);
+	});
+	it('étape SANS aucune cible configurée : jamais créditée (consigne incomplète)', () => {
+		poserDef(etapeDictee({}));
+		etatSeanceJour(LUN);
+		poserActivite('dictee', LUN + 1_000, 'liste-a');
+		expect(resoudreProgramme(LUN + 2_000).etapesCreditees).toEqual([]);
+	});
+	it('une dictée finie AVANT la naissance du programme du jour ne crédite pas', () => {
+		poserDef(etapeDictee({ refs: ['liste-a'] }));
+		poserActivite('dictee', LUN + 5_000, 'liste-a');
+		etatSeanceJour(LUN + 10_000); // le programme naît après la dictée
+		expect(resoudreProgramme(LUN + 20_000).etapesCreditees).toEqual([]);
+		expect(jourStocke().faits).toEqual({});
 	});
 });
 
 /* ============================================================
-   3) Fil « métrique » lancement → complétion avec un pool.
-   La cible RÉELLEMENT tirée (3e arg de marquerEtapeLancee) est mémorisée dans
-   pending.ref puis reportée telle quelle dans la complétion.
+   3) Marqueur : mémorisation de la cible TIRÉE (métrique)
    ============================================================ */
 describe('marquerEtapeLancee : mémorisation de la cible tirée', () => {
 	it('avec cible tirée → pending.ref = cible', () => {
@@ -142,101 +185,44 @@ describe('marquerEtapeLancee : mémorisation de la cible tirée', () => {
 		expect(pending).toEqual({ etapeId: 'e1', kind: 'dictee', launchTs: LUN });
 		expect('ref' in pending).toBe(false);
 	});
-});
-
-describe('resoudrePending : report de la cible tirée du pool (#463)', () => {
-	it('la complétion porte la cible TIRÉE, pas le pool entier', () => {
+	it('lancement depuis la tuile : la complétion porte la cible tirée et la durée réelle', () => {
 		poserDef(etapeDictee({ refs: ['liste-a', 'liste-b', 'liste-c'] }));
 		marquerEtapeLancee('e1', LUN, 'liste-b'); // tirage → liste-b
-		poserActivite('dictee', LUN + 3000);
-		const r = resoudrePending(LUN + 5000);
-		expect(r).toEqual({ credited: true, etapeId: 'e1', justCompleted: true });
-		const comp = jourStocke().completions[0];
-		expect(comp).toMatchObject({
+		poserActivite('dictee', LUN + 3_000, 'liste-b');
+		expect(resoudreProgramme(LUN + 5_000)).toEqual({
+			etapesCreditees: ['e1'],
+			justCompleted: true,
+		});
+		expect(jourStocke().completions[0]).toMatchObject({
 			etapeId: 'e1',
 			kind: 'dictee',
 			ref: 'liste-b', // la dictée VUE, isolée du pool
-			ts: LUN + 3000,
-			dureeMs: 3000, // hit.t - launchTs
+			ts: LUN + 3_000,
+			dureeMs: 3_000, // session - lancement
 		});
 	});
-	it('crédit par TYPE d’activité, indépendant de la cible tirée', () => {
-		// L'attribution reste par ActivityKind='dictee' : le journal ne porte pas l'id de
-		// liste, donc peu importe quelle dictée a été jouée, l'étape pending est créditée.
-		poserDef(etapeDictee({ refs: ['liste-a', 'liste-b'], count: 1 }));
-		marquerEtapeLancee('e1', LUN, 'liste-a');
-		poserActivite('dictee', LUN + 100);
-		expect(resoudrePending(LUN + 200).credited).toBe(true);
-		expect(jourStocke().completions[0].ref).toBe('liste-a');
-	});
-	it('pool SANS cible tirée et sans `ref` → complétion sans cible (repli undefined)', () => {
-		// Cas limite : étape à pool dont marquerEtapeLancee n'a reçu aucune cible (ex. pool
-		// dont aucune dictée n'était disponible côté UI). Le repli `etape.ref` est undefined
-		// → la métrique perd la cible, mais l'étape est tout de même créditée.
+	it('cible du pool changée en route : la liste RÉELLEMENT dictée décide du crédit', () => {
+		// L'enfant lance liste-a depuis la tuile, revient, puis fait liste-b du même pool.
 		poserDef(etapeDictee({ refs: ['liste-a', 'liste-b'] }));
-		marquerEtapeLancee('e1', LUN); // aucune cible tirée
-		poserActivite('dictee', LUN + 1000);
-		const r = resoudrePending(LUN + 2000);
-		expect(r.credited).toBe(true);
-		const comp = jourStocke().completions[0];
-		expect(comp.ref).toBeUndefined();
-		expect('ref' in comp).toBe(false); // undefined non persisté par JSON
+		marquerEtapeLancee('e1', LUN, 'liste-a');
+		expect(resoudreProgramme(LUN + 1_000).etapesCreditees).toEqual([]); // rien de fini
+		poserActivite('dictee', LUN + 5_000, 'liste-b');
+		expect(resoudreProgramme(LUN + 6_000).etapesCreditees).toEqual(['e1']);
+		// Marqueur déjà nettoyé : la métrique reprend la liste de la session, sans durée.
+		expect(jourStocke().completions[0]).toMatchObject({ ref: 'liste-b', dureeMs: 0 });
 	});
-	it('cible tirée fournie sur une étape legacy → elle PRIME sur etape.ref', () => {
-		// p.ref ?? etape.ref : dès qu'une cible tirée est mémorisée, elle l'emporte sur la
-		// cible figée. Cohérent avec « la métrique conserve la dictée réellement vue ».
-		poserDef(etapeDictee({ ref: 'liste-figee' }));
-		marquerEtapeLancee('e1', LUN, 'liste-tiree');
-		poserActivite('dictee', LUN + 100);
-		resoudrePending(LUN + 200);
-		expect(jourStocke().completions[0].ref).toBe('liste-tiree');
-	});
-	it('étape à pool ET ref, sans cible tirée → repli sur etape.ref (comportement documenté)', () => {
-		// refs prime pour les cibles PROPOSÉES (ciblesEtape), mais le repli de la métrique
-		// reste etape.ref quand aucune cible n'a été tirée. On fige ce comportement observé.
-		poserDef(etapeDictee({ refs: ['liste-a', 'liste-b'], ref: 'liste-figee' }));
-		expect(
-			ciblesEtape(
-				defLundi(etapeDictee({ refs: ['liste-a', 'liste-b'], ref: 'liste-figee' })).etapes[0],
-			),
-		).toEqual(['liste-a', 'liste-b']);
-		marquerEtapeLancee('e1', LUN); // pas de cible tirée
-		poserActivite('dictee', LUN + 100);
-		resoudrePending(LUN + 200);
-		expect(jourStocke().completions[0].ref).toBe('liste-figee');
-	});
-	it('count 2 : deux tirages distincts → deux complétions aux cibles respectives', () => {
-		poserDef(etapeDictee({ refs: ['liste-a', 'liste-b', 'liste-c'], count: 2 }));
-		// 1re réalisation : cible liste-c.
-		marquerEtapeLancee('e1', LUN, 'liste-c');
-		poserActivite('dictee', LUN + 100);
-		let r = resoudrePending(LUN + 200);
-		expect(r.justCompleted).toBe(false); // 1/2
-		// 2e réalisation : cible liste-a.
-		marquerEtapeLancee('e1', LUN + 1000, 'liste-a');
-		poserActivite('dictee', LUN + 1100);
-		r = resoudrePending(LUN + 1200);
-		expect(r.justCompleted).toBe(true); // 2/2 → séance complète
-		const comps = jourStocke().completions;
-		expect(comps).toHaveLength(2);
-		expect(comps.map((c) => c.ref)).toEqual(['liste-c', 'liste-a']);
-	});
-	it('abandon d’une étape à pool : aucune activité → rien crédité, pending effacé', () => {
+	it('abandon d’une étape à pool : rien crédité, marqueur effacé, crédit non perdu', () => {
 		poserDef(etapeDictee({ refs: ['liste-a', 'liste-b'] }));
 		marquerEtapeLancee('e1', LUN, 'liste-b');
-		const r = resoudrePending(LUN + 5000); // aucune activité dictée depuis le lancement
-		expect(r).toEqual({ credited: false, etapeId: null, justCompleted: false });
+		const abandon = resoudreProgramme(LUN + 5_000); // aucune dictée finie depuis le lancement
+		expect(abandon).toEqual({ etapesCreditees: [], justCompleted: false });
 		const j = jourStocke();
 		expect(j.faits).toEqual({});
 		expect(j.pending).toBeNull();
 		expect(j.completions).toEqual([]);
-	});
-	it('activité dictée ANTÉRIEURE au lancement ne crédite pas (même avec cible tirée)', () => {
-		poserDef(etapeDictee({ refs: ['liste-a', 'liste-b'] }));
-		marquerEtapeLancee('e1', LUN + 10_000, 'liste-a'); // launchTs = LUN+10000
-		poserActivite('dictee', LUN + 5_000); // AVANT le lancement
-		expect(resoudrePending(LUN + 20_000).credited).toBe(false);
-		expect(jourStocke().faits).toEqual({});
+		// Dictée reprise et finie plus tard dans la journée : l'étape est enfin créditée.
+		poserActivite('dictee', LUN + 600_000, 'liste-b');
+		expect(resoudreProgramme(LUN + 601_000).etapesCreditees).toEqual(['e1']);
 	});
 });
 

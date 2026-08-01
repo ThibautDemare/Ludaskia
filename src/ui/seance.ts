@@ -196,9 +196,17 @@ export function lancerEtapeProgramme(etapeId: string): void {
 	if (!v || v.reste <= 0 || !lancable(v).ok) return;
 	const e = v.etape;
 	// La cible d'une étape à pool est tirée AVANT de poser le marqueur, pour la mémoriser
-	// (métrique) et la lancer.
+	// (métrique) et la lancer. Le TIRAGE parle en ids de FILE (une épinglée peut être une
+	// dictée, préfixée) car c'est ce qui dit quoi lancer ; le MARQUEUR, lui, mémorise l'id
+	// BRUT, comme le journal d'activité. Sans ce dé-préfixage, l'archive des séances
+	// mélangerait deux conventions d'id selon que l'étape a été créditée par le marqueur ou
+	// par le journal, et un futur récap encadrant lirait des cibles incomparables.
 	const cible = tirageEtape(e);
-	marquerEtapeLancee(etapeId, Date.now(), cible);
+	marquerEtapeLancee(
+		etapeId,
+		Date.now(),
+		cible && isOrthoRevoirId(cible) ? orthoIdFromRevoir(cible) : cible,
+	);
 	switch (e.kind) {
 		case 'sprint':
 			// Depuis le programme, l'enfant ne configure pas : lancement direct avec la

@@ -134,6 +134,14 @@ export function restoreResume(snap: ResumeSnapshot): void {
 			goHome();
 			return;
 		}
+		// Focus sur la zone d'exercice. Le bouton qui a déclenché la reprise (carte
+		// « À continuer » ou modale « Tu avais commencé ! ») vient d'être masqué par le
+		// runner : un élément en `display:none` ne garde pas le focus, le navigateur le
+		// rabat sur <body>, et sans skip-link l'enfant au clavier devrait re-tabuler
+		// depuis la barre d'outils pour retrouver sa question. Le chemin grille pose déjà
+		// son focus sur un champ ; ici l'écran est reconstruit par le runner, donc c'est
+		// le conteneur stable qui reçoit le focus.
+		document.getElementById('sheets')?.focus({ preventScroll: true });
 		toast("Te revoilà ! On reprend là où tu t'étais arrêté.");
 		return;
 	}

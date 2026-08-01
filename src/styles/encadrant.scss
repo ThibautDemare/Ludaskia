@@ -1117,7 +1117,9 @@ $evol-amorce: #7c8494;
 }
 /* Liste des dictées proposées (bloc « Proposer une dictée à l'avance », onglet Programme,
    #424/#459) : même reset que .enc-revoir, mais classe DÉDIÉE (ne pas réutiliser .enc-revoir,
-   dont les sélecteurs ciblent la file « À revoir ensemble »). */
+   dont les sélecteurs ciblent la file « À revoir ensemble »). Seule l'ENVELOPPE <ul> est
+   dédiée : depuis #441 les items sont bien des .enc-revoir-item, produits par le renderer
+   partagé `ligneRevoir` — c'est voulu (les cartes de l'onglet doivent se ressembler). */
 .enc-ortho-dispo-list {
 	list-style: none;
 	margin: 0.4rem 0 0;

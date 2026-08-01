@@ -23,6 +23,7 @@ import {
 	type FormesConjuguees,
 } from '../data/francais/verbs-lookup';
 import { PRONOUNS, displayPronoun } from '../data/francais/conjugaison';
+import { TEMPS_LABEL, libellePronoms } from '../core/orthographe/verbes';
 import { goCategorie } from './navigation';
 import { icon } from './icon';
 import { uiAlert, uiConfirm } from './ui-modal';
@@ -36,8 +37,12 @@ interface RowData {
 }
 
 /* Temps proposés pour un verbe (#261). v1 : le présent seul ; la rangée de chips
-   est prête à en accueillir d'autres (futur, imparfait…) sans refonte. */
-const TEMPS_OPTIONS: { id: VerbTense; label: string }[] = [{ id: 'present', label: 'présent' }];
+   est prête à en accueillir d'autres (futur, imparfait…) sans refonte. Les libellés
+   viennent de core (TEMPS_LABEL) : ce formulaire et les aperçus de mots décrivent le
+   même objet, ils ne doivent pas en donner deux vocabulaires (#441). */
+const TEMPS_OPTIONS: { id: VerbTense; label: string }[] = (['present'] as VerbTense[]).map(
+	(id) => ({ id, label: TEMPS_LABEL[id] }),
+);
 
 /* Aperçu : jusqu'à 2 phrases générées pour les pronoms cochés (forme réelle LEFFF). */
 function apercuPhrases(forms: FormesConjuguees, pronoms: number[], complement: string): string {
@@ -48,14 +53,12 @@ function apercuPhrases(forms: FormesConjuguees, pronoms: number[], complement: s
 		.join(' · ');
 }
 
-/* Résumé compact d'un verbe configuré : « manger · je, tu, il · présent ». */
+/* Résumé compact d'un verbe configuré : « manger · je, tu, il · présent ». Même
+   vocabulaire de pronoms et de temps que l'aperçu des mots (core/orthographe/verbes),
+   seule la mise en forme diffère (ce formulaire sépare en « · », l'aperçu parenthèse). */
 function resumeVerbe(infinitif: string, pronoms: number[], temps: VerbTense[]): string {
-	const pron =
-		pronoms.length === PRONOUNS.length
-			? 'tous les pronoms'
-			: pronoms.map((p) => PRONOUNS[p]).join(', ');
-	const tps = temps.map((t) => TEMPS_OPTIONS.find((o) => o.id === t)?.label ?? t).join(', ');
-	return `${infinitif || 'verbe'} · ${pron} · ${tps}`;
+	const tps = temps.map((t) => TEMPS_LABEL[t]).join(', ');
+	return `${infinitif || 'verbe'} · ${libellePronoms(pronoms)} · ${tps}`;
 }
 
 /** Rend le formulaire dans `el`. listeId null = création ; sinon édition. */

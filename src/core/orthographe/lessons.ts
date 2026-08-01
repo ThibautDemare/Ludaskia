@@ -7,7 +7,7 @@
    ============================================================ */
 import { ORTHO_PREDEF } from '../../data/francais/orthographe';
 import { ajouterMots, getListe, motsDeListe, listeContenantMot, formeNormalisee } from './store';
-import { nbCiblesVerbes, listeDeCibleVerbe } from './verbes';
+import { nbCiblesVerbes, listeDeCibleVerbe, apercuVerbe } from './verbes';
 import type { MotOrtho, OrthoState } from './types';
 import type { SchoolLevel } from '../catalog';
 import { LEVEL_ORDER } from '../levels';
@@ -48,7 +48,10 @@ export function listOrthoLecons(state: OrthoState, niveau?: SchoolLevel): LeconO
 		// Un verbe compte pour ses couples (pronoms × temps) réellement dictés (#261).
 		nbMots: l.motIds.length + nbCiblesVerbes(l.verbes),
 		source: 'liste',
-		mots: [...motsDeListe(state, l).map((m) => m.mot), ...(l.verbes ?? []).map((v) => v.infinitif)],
+		// Un verbe s'annonce avec ses couples pronom × temps (« manger (je, il — présent) »)
+		// et non au seul infinitif : il compte pour plusieurs dictées dans `nbMots`, l'aperçu
+		// doit donc dire pourquoi il n'occupe qu'une entrée (#441).
+		mots: [...motsDeListe(state, l).map((m) => m.mot), ...(l.verbes ?? []).map(apercuVerbe)],
 		dateControle: l.dateControle,
 		createdAt: l.createdAt,
 	}));

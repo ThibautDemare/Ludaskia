@@ -603,10 +603,11 @@ describe('listesOrthoProfil — relais des mots vers l’encadrant (#441)', () =
 		expect(r.nbMots).toBe(0);
 	});
 
-	it('ÉCART ASSUMÉ — un verbe compte pour ses couples mais s’affiche à l’infinitif', () => {
-		// Piège de lecture pour l'adulte : la carte annonce « 3 mots » et n'en montre que 2.
-		// Verrouillé ici pour que l'écart ne bouge pas en silence (décision produit, pas bug
-		// de calcul : la dictée dicte bien « je mange » ET « il mange »).
+	/* Un verbe vaut N dictées (pronoms × temps) mais n'occupe qu'UNE entrée d'aperçu :
+	   `mots.length < nbMots` par construction. Ce qui compte n'est donc pas de faire
+	   coïncider les deux nombres, mais que l'entrée DISE d'où vient l'écart — sinon
+	   l'adulte lit « 3 mots » sous une liste qui n'en montre que 2. */
+	it('un verbe n’occupe qu’UNE entrée, mais elle explique l’écart avec nbMots', () => {
 		const p = activeProfile();
 		const s = loadOrtho();
 		const verbes: VerbeConfig[] = [
@@ -617,8 +618,46 @@ describe('listesOrthoProfil — relais des mots vers l’encadrant (#441)', () =
 
 		const r = listesOrthoProfil(p, false).find((x) => x.id === l.id)!;
 		expect(r.nbMots).toBe(3); // 1 mot simple + 2 couples (je / il × présent)
-		expect(r.mots).toEqual(['chat', 'manger']); // l'infinitif ne compte que pour UNE entrée
+		expect(r.mots).toEqual(['chat', 'manger (je, il — présent)']);
+		// L'écart demeure — c'est l'annotation, pas le compte, qui le rend lisible.
 		expect(r.mots.length).not.toBe(r.nbMots);
+		// Le mot simple, lui, reste nu : on n'annote QUE ce qui vaut plusieurs dictées.
+		expect(r.mots[0]).toBe('chat');
+		// Les 2 couples comptés dans nbMots sont les 2 pronoms nommés dans l'entrée.
+		const nomsCites = r.mots[1].split('(')[1].split('—')[0].trim().split(', ');
+		expect(nomsCites).toHaveLength(r.nbMots - 1);
+	});
+
+	it('les six pronoms : une seule entrée couvre 6 dictées sans les énumérer', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		const verbes: VerbeConfig[] = [
+			{ kind: 'verbe', infinitif: 'manger', pronoms: [0, 1, 2, 3, 4, 5], temps: ['present'] },
+		];
+		const l = createListe(s, 'Tous', [], undefined, verbes);
+		saveOrtho(s);
+
+		const r = listesOrthoProfil(p, false).find((x) => x.id === l.id)!;
+		expect(r.nbMots).toBe(6);
+		expect(r.mots).toEqual(['manger (tous les pronoms — présent)']);
+	});
+
+	it('l’annotation ne déplace pas le verbe dans le tri : il reste rangé à son infinitif', () => {
+		// Risque introduit par l'annotation : une étiquette commençant par autre chose que
+		// l'infinitif (« (présent) manger ») se rangerait sous la parenthèse.
+		const p = activeProfile();
+		const s = loadOrtho();
+		const l = createListe(
+			s,
+			'Mix trié',
+			[{ mot: 'zèbre' }, { mot: 'école' }, { mot: 'avion' }],
+			undefined,
+			[{ kind: 'verbe', infinitif: 'manger', pronoms: [0], temps: ['present'] }],
+		);
+		saveOrtho(s);
+
+		const r = listesOrthoProfil(p, false).find((x) => x.id === l.id)!;
+		expect(r.mots).toEqual(['avion', 'école', 'manger (je — présent)', 'zèbre']);
 	});
 });
 

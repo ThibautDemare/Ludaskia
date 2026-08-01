@@ -195,11 +195,18 @@ l'infobulle du catalogue (purement décorative, `aria-hidden`), ici le contenu *
 l'information cherchée — l'adulte doit pouvoir lire une liste sans lancer la dictée lui-même
 (préparer une aide, comparer à ce qui a été vu en classe). Le repli est **scopé aux seuls
 mots**, jamais à toute la ligne : sinon le bouton « Épingler », action principale et fréquente,
-sortirait de l'ordre de tabulation tant que le bloc reste fermé. **Écart assumé** pour une
-liste contenant des cibles verbe (#261) : `nbMots` compte chaque couple pronom × temps
-réellement dicté, mais `mots` n'affiche l'infinitif **qu'une fois** — la carte peut donc
-annoncer « 3 mots » et n'en montrer que 2 (décision produit, pas un bug de calcul : la
-dictée porte bien « je mange » ET « il mange »).
+sortirait de l'ordre de tabulation tant que le bloc reste fermé.
+
+**Une cible verbe s'annonce, elle ne se tait plus** (#261, #441) : un verbe configuré (couples
+pronom × temps) compte pour plusieurs dictées dans `nbMots`, mais reste une **seule** entrée
+dans `mots` — l'écart (« 3 mots » annoncés pour 2 lignes affichées) demeure, mais l'entrée dit
+maintenant pourquoi plutôt que de le taire : `listOrthoLecons` (`core/orthographe/lessons.ts`)
+y place `apercuVerbe(cfg)` (`core/orthographe/verbes.ts`, pure) au lieu du seul infinitif, par
+exemple « manger (je, il — présent) ». Vaut pour les **deux** aperçus (catalogue enfant et
+espace encadrant, même champ `mots`). `apercuVerbe` s'appuie sur `TEMPS_LABEL`
+(temps en clair) et `libellePronoms` (« je, il » ou « tous les pronoms » si tous cochés) — même
+vocabulaire que le **formulaire** de création/édition d'une liste (`ui/ortho-liste.ts:resumeVerbe`) :
+formulaire du parent et les deux aperçus décrivent le même objet sans jamais le nommer différemment.
 
 Chaque liste peut être **épinglée** (même mécanique que « à revoir », cf. ci-dessous) — elle
 rejoint alors la file de l'enfant comme une leçon.

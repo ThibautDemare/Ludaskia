@@ -8,6 +8,8 @@
    runners — sans DOM, donc testable en isolation. La journalisation elle-même
    reste centralisée dans ui/erreur-capture.ts.
    ============================================================ */
+import { separateurSuite } from './exercise';
+import type { NatureOrdre } from './exercise';
 
 /* ---------- Opération posée (cellules-chiffres du résultat) ---------- */
 export interface CellulePosee {
@@ -38,13 +40,18 @@ export function analyserResultatPosee(cells: CellulePosee[]): ResultatPosee {
 }
 
 /* ---------- Rangement dans l'ordre (une rangée de tuiles) ---------- */
-/* Réponse donnée / attendue d'un rangement, jointes par « , » (lisible : une suite
-   de mots séparés par des virgules). */
+/* Réponse donnée / attendue d'un rangement, jointes par le séparateur de la NATURE de
+   la suite (#448, `separateurSuite`) : virgule pour des mots, point-virgule pour des
+   nombres. Sans ce second cas, le parent lisait « donné : 95, 104, 98 » dans l'espace
+   encadrant — soit exactement l'ambiguïté virgule-décimale que le repli texte évite.
+   `nature` absente = mots (comportement d'origine). */
 export function ordreErreur(
 	propose: string[],
 	ordre: string[],
+	nature?: NatureOrdre,
 ): { donnee: string; attendue: string } {
-	return { donnee: propose.join(', '), attendue: ordre.join(', ') };
+	const sep = separateurSuite(nature);
+	return { donnee: propose.join(sep), attendue: ordre.join(sep) };
 }
 
 /* ---------- Tableau de conversion (une case par chiffre) ---------- */

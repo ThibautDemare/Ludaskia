@@ -6,7 +6,9 @@
 
    Neuf types, un par runner d'écran dont la mécanique n'est pas évidente :
    - `tuiles` → numération (ui/lecon-tuiles) : amener LA tuile dans le trou ;
-   - `ordre`  → ranger une suite (ui/lecon-ordre) : tap → case suivante ;
+   - `ordre`  → ranger une suite de MOTS (ui/lecon-ordre) : tap → case suivante ;
+   - `ordreNombres` → même geste, sur des NOMBRES (numération « je range », #448) :
+     même widget, formulation accordée (« le nombre » et non « le mot ») ;
    - `tri`    → ranger par thème (ui/lecon-tri) : tap mot puis tap colonne ;
    - `atelier`→ atelier du mot (ui/ortho-atelier) : glisser pour surligner ;
    - `lettres`→ dictée « remettre les lettres dans l'ordre » (ui/ortho-runner, tuiles) ;
@@ -27,6 +29,7 @@ import { lsGet, lsSet } from './storage';
 export type TypeAide =
 	| 'tuiles'
 	| 'ordre'
+	| 'ordreNombres'
 	| 'tri'
 	| 'atelier'
 	| 'lettres'
@@ -60,6 +63,18 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 			"Continue dans l'ordre.",
 		],
 		reparation: "Tu t'es trompé ? Touche un mot rangé, il revient.",
+	},
+	// Même geste que `ordre`, mais on range des NOMBRES (#448) : on ne dit pas « mot »
+	// à un enfant qui a des nombres sous les yeux. Le sens du rangement (croissant ou
+	// décroissant) reste porté par la consigne de la question, qui change à chaque fois.
+	ordreNombres: {
+		titre: 'Comment ranger les nombres ?',
+		etapes: [
+			'Relis la consigne : du plus petit ou du plus grand ?',
+			'Touche le nombre qui vient en premier.',
+			'Il se range dans la case numéro 1.',
+		],
+		reparation: "Tu t'es trompé ? Touche un nombre rangé, il revient.",
 	},
 	tri: {
 		titre: 'Comment ranger par thème ?',

@@ -46,6 +46,23 @@ export interface ProbLexique {
 	badgeEtape?: boolean; // afficher le badge « Étape N » sur les sous-questions ? (défaut true)
 }
 
+/** Nature des éléments d'un rangement de suite (`tuilesOrdre`, #448) : des mots
+ *  (ordre alphabétique, #108) ou des nombres (ordre croissant/décroissant). Pilote
+ *  la formulation partagée (consigne du widget, aide contextuelle, aria-labels) et
+ *  le séparateur de liste — jamais la logique de correction. */
+export type NatureOrdre = 'mots' | 'nombres';
+
+/** Séparateur de LISTE d'une suite rangée écrite en texte, accordé à sa nature
+ *  (#448) : le POINT-VIRGULE pour des nombres, la virgule pour des mots. En français
+ *  la virgule est le séparateur DÉCIMAL — « 450, 405 » se lirait comme un nombre à
+ *  virgule. Source UNIQUE, partagée par les DEUX endroits où une suite se lit hors du
+ *  widget : le repli texte du catalogue (fiche/bilan, lu par l'enfant) et le journal
+ *  d'erreurs (espace encadrant, lu par le parent). Les avoir divergents faisait dire
+ *  au même contenu deux choses différentes selon l'écran. */
+export function separateurSuite(nature?: NatureOrdre): string {
+	return nature === 'nombres' ? ' ; ' : ', ';
+}
+
 // `parle` (#42) : texte LU à voix haute par le bouton « Écouter », quand
 // l'énoncé affiché est télégraphique/symbolique et ne se lit pas tel quel
 // (ex. « pouvoir · présent — je @ » → « Conjugue le verbe pouvoir au présent,
@@ -134,7 +151,17 @@ export type Exercise =
 	// Vocabulaire (#108) — l'enfant range une SUITE de tuiles-mots dans l'ordre
 	// alphabétique. `tuiles` = la suite mélangée affichée ; `ordre` = la bonne
 	// suite triée (calculée, jamais codée en dur). Mono-mode (runner dédié).
-	| { type: 'tuilesOrdre'; question: string; tuiles: string[]; ordre: string[]; parle?: string }
+	// `nature` (#448) dit CE QU'ON RANGE (des mots, ou des nombres — numération CE2
+	// « je range ») : le widget, l'aide contextuelle et le repli texte du catalogue en
+	// dérivent leur formulation et leur séparateur. Absent = 'mots' (comportement #108).
+	| {
+			type: 'tuilesOrdre';
+			question: string;
+			tuiles: string[];
+			ordre: string[];
+			nature?: NatureOrdre;
+			parle?: string;
+	  }
 	// Vocabulaire (#114) — champs lexicaux : l'enfant range des tuiles-mots FOURNIES
 	// dans deux thèmes (catégories). `mots` porte la catégorie correcte de chaque
 	// tuile (0 ou 1) ; corrigé tuile par tuile par son runner (ui/lecon-tri.ts).

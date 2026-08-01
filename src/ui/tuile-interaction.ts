@@ -12,6 +12,11 @@
    le daltonisme). Les marques étaient absentes en révision (#345, divergence
    active) : elles sont désormais produites pour les deux contextes.
 
+   Les trois widgets se redessinent par `innerHTML`, ce qui DÉTRUIT l'élément focalisé :
+   « ordre » et « tri » restaurent donc le focus après chaque redraw (`pendingFocus`,
+   #360) pour rester utilisables au clavier / au commutateur. « tuile » n'en a pas besoin
+   (une seule pose, puis on valide).
+
    L'appelant garde le « chrome » (libellé de leçon / consigne, bouton Vérifier,
    feedback, enchaînement) : le binder n'expose que `verify()` (qui fige + marque
    + renvoie la justesse) et notifie l'état de complétude via `onState`, pour que
@@ -21,12 +26,17 @@
 import { escapeHTML } from '../core/utils';
 import { wrapGrandsNombres } from '../core/nombres';
 import { ttsAttr } from '../core/tts-text';
+import type { NatureOrdre } from '../core/exercise';
 
 /* Données d'un widget, par nature. Reprend les champs des items générés par le
    moteur (ExerciseType.generate). */
 export type TuileSpec =
 	| { kind: 'tuile'; question: string; answer: string; tuiles: string[]; parle?: string }
-	| { kind: 'ordre'; question: string; ordre: string[]; tuiles: string[] }
+	/* `nature` (#448) : ce qu'on range — des mots (ordre alphabétique) ou des nombres
+	   (ordre croissant/décroissant). Ne change que la FORMULATION (consigne du widget,
+	   aria-labels des tuiles) ; l'interaction et la correction sont identiques. Absent
+	   = 'mots' (comportement #108). */
+	| { kind: 'ordre'; question: string; ordre: string[]; tuiles: string[]; nature?: NatureOrdre }
 	| {
 			kind: 'tri';
 			question: string;
@@ -183,17 +193,72 @@ function bindOrdre(
 	spec: Extract<TuileSpec, { kind: 'ordre' }>,
 	opts: TuileOptions,
 ): TuileController {
+	// Formulation accordée à ce qu'on range (#448) : « les mots » (ordre alphabétique)
+	// ou « les nombres » (ordre croissant/décroissant). Un seul point de vérité pour la
+	// consigne du widget ET les aria-labels des tuiles.
+	const pluriel = spec.nature === 'nombres' ? 'les nombres' : 'les mots';
+	const singulier = spec.nature === 'nombres' ? 'le nombre' : 'le mot';
+	// `tabindex="-1"` sur le bac : cible de repli du focus quand toutes les tuiles sont
+	// posées (cf. `focusApresPose`). Hors ordre de tabulation (jamais atteint par Tab),
+	// focalisable seulement par programme ; il se NOMME dans cet état (cf. `nommerBac`).
 	mountWidget(
 		root,
 		`<div class="lord-seq" id="lordSeq"></div>
-    <p class="ltui-consigne">Tape les mots dans l'ordre (ou glisse-les dans les cases).</p>
-    <div class="ltui-bac" id="lordBac"></div>`,
+    <p class="ltui-consigne">Tape ${pluriel} dans l'ordre (ou glisse-les dans les cases).</p>
+    <div class="ltui-bac" id="lordBac" tabindex="-1"></div>`,
 	);
 	const seq = root.querySelector('#lordSeq') as HTMLElement;
 	const bac = root.querySelector('#lordBac') as HTMLElement;
 
 	const placed: string[] = [];
 	let frozen = false;
+
+	// Restauration du focus après un redraw (#360, même correctif que `bindTri` plus bas) :
+	// `redraw()` reconstruit `seq` ET `bac` par innerHTML, donc l'élément focalisé est
+	// détruit et le focus retombe sur <body> — au clavier, l'enfant devrait retabuler
+	// depuis le haut de la page à CHAQUE tuile posée (4 à 5 fois par question), alors que
+	// la compétence testée (ordonner) n'a rien à voir avec la motricité. Invisible au
+	// tap/souris (`:focus-visible` ne s'affiche pas et `preventScroll` évite tout saut de
+	// défilement). Le focus ne dépend QUE de l'interaction, jamais de la nature de la suite.
+	let pendingFocus: (() => void) | null = null;
+	const focusBacTile = (val: string) =>
+		[...bac.querySelectorAll<HTMLElement>('.lord-tuile')]
+			.find((b) => b.dataset.val === val)
+			?.focus({ preventScroll: true });
+	/* Après une pose : la tuile suivante ENCORE au bac (on cherche vers l'avant puis on
+	   revient au début — le bac ne se réordonne jamais, donc le focus avance dans le sens
+	   de lecture). Rangée complète ⇒ plus aucune tuile disponible : on se replie sur le bac
+	   lui-même, d'où la tabulation suivante atteint « Vérifier » sans repartir du haut. */
+	const focusApresPose = (val: string) => {
+		const i = spec.tuiles.indexOf(val);
+		const suivantes = [...spec.tuiles.slice(i + 1), ...spec.tuiles.slice(0, i)];
+		const restante = suivantes.find((t) => !placed.includes(t));
+		if (restante !== undefined) focusBacTile(restante);
+		else bac.focus({ preventScroll: true });
+	};
+
+	/* Nom accessible du bac (SC 4.1.2) — DYNAMIQUE. Le bac ne reçoit le focus qu'au moment
+	   où il n'y a plus rien à poser (repli de `focusApresPose`) : un conteneur focalisé doit
+	   s'annoncer, et c'est précisément l'instant où l'enfant a besoin de « j'ai fini, que
+	   faire maintenant ? » — la région live du runner, elle, ne parle qu'APRÈS validation.
+	   On y met donc la confirmation de complétude ET le rappel de relire avant de valider
+	   (utile aussi hors lecteur d'écran : dyslexie, TDAH). Un libellé FIXE mentirait tant
+	   que des tuiles restent à poser (et le focus est alors sur une tuile, pas sur le bac) →
+	   on ne nomme QUE dans cet état, sans bruit ailleurs, et plus du tout une fois figé
+	   (« avant de valider » n'aurait plus de sens). `role="group"` est posé avec le libellé :
+	   ARIA 1.2 interdit `aria-label` sur un élément générique (un `div` nu), et un groupe
+	   sans nom reste valide → on ajoute et on retire les deux ensemble. Formulation
+	   AGNOSTIQUE de la nature : elle vaut pour des mots comme pour des nombres. */
+	const LIBELLE_BAC_COMPLET = 'Rangée complète. Vérifie ta réponse avant de valider.';
+	const nommerBac = (complet: boolean) => {
+		if (complet) {
+			bac.setAttribute('role', 'group');
+			bac.setAttribute('aria-label', LIBELLE_BAC_COMPLET);
+		} else {
+			bac.removeAttribute('role');
+			bac.removeAttribute('aria-label');
+		}
+	};
 
 	function redraw() {
 		seq.innerHTML = spec.ordre
@@ -231,7 +296,7 @@ function bindOrdre(
 					used: placed.includes(t),
 					frozen,
 					wrap: false,
-					ariaLabel: `Ranger le mot ${t}`,
+					ariaLabel: `Ranger ${singulier} ${t}`,
 				}),
 			)
 			.join('');
@@ -242,16 +307,26 @@ function bindOrdre(
 				btn.addEventListener('dragstart', (e) => e.dataTransfer?.setData('text/plain', val));
 			});
 		}
+		nommerBac(placed.length === spec.ordre.length && !frozen);
 		if (!frozen) opts.onState(placed.length === spec.ordre.length);
+		// Le focus suit l'action qui vient d'avoir lieu (clavier surtout, #360).
+		if (pendingFocus) {
+			const f = pendingFocus;
+			pendingFocus = null;
+			f();
+		}
 	}
 	function poser(val: string) {
 		if (frozen || placed.length >= spec.ordre.length || placed.includes(val)) return;
 		placed.push(val);
+		pendingFocus = () => focusApresPose(val); // on enchaîne sur la tuile suivante du bac
 		redraw();
 	}
 	function retirer(pos: number) {
 		if (frozen || pos < 0 || pos >= placed.length) return;
+		const val = placed[pos];
 		placed.splice(pos, 1);
+		pendingFocus = () => focusBacTile(val); // la tuile relâchée redevient active au bac
 		redraw();
 	}
 	seq.addEventListener('dragover', (e) => {

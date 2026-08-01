@@ -61,7 +61,7 @@ import {
 	analyserResultatPosee,
 } from '../core/erreur-representation';
 import { joindrePhrase } from '../data/francais/grammaire-clic-mot';
-import type { ProblemeEtape, ProbLexique } from '../core/exercise';
+import type { ProblemeEtape, ProbLexique, NatureOrdre } from '../core/exercise';
 
 // `consigne` (#186) : libellé de la leçon, affiché au-dessus de l'exercice pour
 // dire ce qu'on attend (le HUD ne montre que la catégorie). Absent pour les mots
@@ -97,7 +97,14 @@ type RevItem = { groupLabel: string; consigne?: string } & (
 			tuiles: string[];
 			parle?: string;
 	  }
-	| { kind: 'ordre'; lessonId: string; question: string; ordre: string[]; tuiles: string[] }
+	| {
+			kind: 'ordre';
+			lessonId: string;
+			question: string;
+			ordre: string[];
+			tuiles: string[];
+			nature?: NatureOrdre; // mots (défaut) ou nombres (#448) — formulation du widget
+	  }
 	| {
 			kind: 'tri';
 			lessonId: string;
@@ -215,6 +222,7 @@ export function runRevisionEspacee(): void {
 					question: ex.question,
 					ordre: ex.ordre,
 					tuiles: ex.tuiles,
+					nature: ex.nature,
 				});
 				continue;
 			}
@@ -612,7 +620,8 @@ function renderTuile(it: Extract<RevItem, { kind: 'tuile' }>) {
 	});
 }
 
-/* Ordre alphabétique : ranger les tuiles-mots dans des cases numérotées. */
+/* Rangement d'une suite : ranger les tuiles dans des cases numérotées — mots dans
+   l'ordre alphabétique (#108) ou nombres dans l'ordre demandé (#448, `nature`). */
 function renderOrdre(it: Extract<RevItem, { kind: 'ordre' }>) {
 	const stage = document.getElementById('revStage')!;
 	stage.innerHTML = tuileStageHTML(
@@ -622,7 +631,7 @@ function renderOrdre(it: Extract<RevItem, { kind: 'ordre' }>) {
 	const verif = document.getElementById('revValidate') as HTMLButtonElement;
 	const ctrl = bindTuileInteraction(
 		stage,
-		{ kind: 'ordre', question: it.question, ordre: it.ordre, tuiles: it.tuiles },
+		{ kind: 'ordre', question: it.question, ordre: it.ordre, tuiles: it.tuiles, nature: it.nature },
 		{ variant: 'revision', onState: (complete) => (verif.disabled = !complete) },
 	);
 	verif.addEventListener('click', () => {
@@ -630,7 +639,13 @@ function renderOrdre(it: Extract<RevItem, { kind: 'ordre' }>) {
 		const reussi = ctrl.verify();
 		if (!reussi) {
 			const rep = ctrl.reponse?.();
-			const { donnee, attendue } = ordreErreur(rep?.kind === 'ordre' ? rep.propose : [], it.ordre);
+			// Séparateur accordé à la nature (#448) : « ; » pour des nombres, sinon la virgule
+			// — le parent lit la même chose ici et depuis le runner de leçon.
+			const { donnee, attendue } = ordreErreur(
+				rep?.kind === 'ordre' ? rep.propose : [],
+				it.ordre,
+				it.nature,
+			);
 			capterRev({ text: it.question, donnee, attendue, lessonId: it.lessonId });
 		}
 		gradeTuile(reussi, it.ordre.join(' · '));

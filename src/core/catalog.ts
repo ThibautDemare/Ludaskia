@@ -5,6 +5,7 @@
    génération et la vérification d'un exercice.
    ============================================================ */
 import type { ExerciseType, Exercise } from './exercise';
+import { separateurSuite } from './exercise';
 import type { IconName } from './icon-names';
 import type { Item } from './items';
 import { bilanQ } from './lessons';
@@ -36,6 +37,7 @@ import { NUMERATION_LESSONS, answerEstNumerique } from '../data/maths/numeration
 // #186) sans importer directement un module de données maths.
 export { answerEstNumerique };
 import { POSITION_LESSONS } from '../data/maths/position';
+import { RANGER_LESSONS } from '../data/maths/ranger-entiers';
 import { DECIMAUX_LESSONS } from '../data/maths/decimaux';
 import { DROITE_GRADUEE_LESSONS } from '../data/maths/droite-graduee';
 import { DONNEES_LESSONS } from '../data/maths/donnees';
@@ -445,13 +447,14 @@ const GRANDEURS_LESSONS: LessonDef[] = [
 	}),
 ];
 
-/* ---------- Catalogue des leçons « Numération » (#98, #94) ----------
-   Situer un nombre (#98 : comparer/encadrer/intercaler, modes saisie/tuiles) et
-   valeur de position / décomposition (#94 : mono-mode saisie). Le rendu
+/* ---------- Catalogue des leçons « Numération » (#98, #94, #448) ----------
+   Situer un nombre (#98 : comparer/encadrer/intercaler, modes saisie/tuiles),
+   valeur de position / décomposition (#94 : mono-mode saisie) et ORDONNER une
+   série d'entiers (#448 : mono-mode tuiles, runner ui/lecon-ordre.ts). Le rendu
    fiche/bilan/sprint utilise le mode saisie (item texte ou numérique) ; le mode
    tuiles (#98) est un runner d'écran dédié (ui/lecon-tuiles.ts). */
 const NUMERATION_LESSONS_DEFS: LessonDef[] = toLessonDefs(
-	[...NUMERATION_LESSONS, ...POSITION_LESSONS],
+	[...NUMERATION_LESSONS, ...POSITION_LESSONS, ...RANGER_LESSONS],
 	{
 		subject: 'math',
 		category: 'math-numeration',
@@ -952,6 +955,17 @@ export function getAllLessons(): LessonDef[] {
 	return ALL_LESSONS;
 }
 
+/* Formes ÉQUIVALENTES d'une suite rangée ÉCRITE au clavier (repli texte d'un
+   rangement, #448) : séparateur espace (forme canonique de `answer`), puis virgule et
+   point-virgule, collés ou espacés de chaque côté. `checkItemAnswer` compare des
+   CHAÎNES normalisées (espaces réduits + NFC) et ne sait pas neutraliser un
+   séparateur — sans cette liste, « 95; 98; 102 » était refusé par le chemin de
+   correction du bilan alors que `ExerciseType.check` (qui ne lit que les valeurs)
+   l'acceptait : deux chemins de correction qui ne disent pas la même chose de la même
+   saisie. L'ORDRE reste seul en jeu, donc élargir les séparateurs ne valide jamais une
+   suite fausse. */
+const SEPARATEURS_SUITE = [', ', ' , ', ',', ' ; ', '; ', ' ;', ';'];
+
 /* Génère un Item prêt à rendre pour n'importe quelle leçon du catalogue.
    - math hérité (calcul mental) : générateur numérique existant (bilanQ) ;
    - math moderne (conversions #89, monnaie #96, numération #98…) : item depuis
@@ -965,15 +979,21 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 		return item;
 	}
 	const ex = lesson.exerciseType.generate({ level });
-	// Ordre alphabétique (#108) : l'interaction tuiles vit dans son runner d'écran.
-	// Ici (fiche/bilan), repli TEXTE non interactif : on liste les mots mélangés et on
-	// attend la suite rangée (séparée par des espaces ou virgules). La révision, elle,
-	// rejoue le vrai widget de rangement (#186/#345), pas ce repli.
+	// Rangement d'une suite (ordre alphabétique #108, ordre des nombres #448) :
+	// l'interaction tuiles vit dans son runner d'écran. Ici (fiche/bilan), repli TEXTE
+	// non interactif : on liste les éléments mélangés et on attend la suite rangée. La
+	// révision, elle, rejoue le vrai widget de rangement (#186/#345), pas ce repli.
+	// Séparateur AFFICHÉ : celui de la nature de la suite (#448, `separateurSuite`) — la
+	// virgule pour des mots, le point-virgule pour des nombres (en français la virgule
+	// est le séparateur DÉCIMAL, « 450, 405 » se lirait comme un nombre à virgule).
+	// Formes ACCEPTÉES : la canonique (espaces) plus toutes les combinaisons
+	// virgule/point-virgule collées ou espacées (`SEPARATEURS_SUITE`), quelle que soit la
+	// nature — l'enfant écrit comme il l'entend, et seul l'ORDRE est en jeu.
 	if (ex.type === 'tuilesOrdre') {
 		return {
-			text: `${ex.question} (${ex.tuiles.join(', ')}) @`,
+			text: `${ex.question} (${ex.tuiles.join(separateurSuite(ex.nature))}) @`,
 			answer: ex.ordre.join(' '),
-			answers: [ex.ordre.join(', ')],
+			answers: SEPARATEURS_SUITE.map((sep) => ex.ordre.join(sep)),
 			kind: 'text',
 			_lesson: lesson.id,
 		};

@@ -31,14 +31,15 @@ import { ttsAttr } from '../core/tts-text';
 import { icon } from './icon';
 import { bindConsigneTts, bindItemTts } from './consigne-tts';
 import type { ItemTtsCible } from './consigne-tts';
-import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
+import { goHome } from './navigation';
 import {
 	leconProgressHTML,
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	demarrerRunner,
 } from './lecon-runner-shared';
-import { declarerSessionRunner, enregistrerRunner } from './runner-reprise';
+import { enregistrerRunner } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
 
 // Tour plus court que le QCM mono (8) : anti-empilement d'étoile sur un « tout-ou-rien »
@@ -102,18 +103,13 @@ function demarrer(l: LessonDef, m: ExerciseMode, qs: QuestionMulti[], depart = 0
 	questions = qs;
 	idx = depart;
 	score = pts;
-	setCurrentMode('lecon');
-	setCurrentLessonId(l.id);
-	hideMenus();
-	setToolbar({ verify: false, home: true, profile: false });
-	declarerSessionRunner({
+	demarrerRunner({
 		runner: RUNNER,
 		lesson: l,
-		exerciseMode: m ?? null,
+		mode: m ?? null,
 		etat: () => ({ questions, idx, score }),
+		render: renderQuestion,
 	});
-	renderQuestion();
-	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function runLeconQcmMulti(lessonId: string, m: ExerciseMode): void {

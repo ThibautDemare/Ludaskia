@@ -31,16 +31,17 @@ import {
 	xDeValeur,
 } from '../core/figures/droite';
 import { bindConsigneTts } from './consigne-tts';
-import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
+import { goHome } from './navigation';
 import {
 	leconProgressHTML,
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	demarrerRunner,
 } from './lecon-runner-shared';
-import { declarerSessionRunner, enregistrerRunner } from './runner-reprise';
+import { enregistrerRunner } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
-import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { monterBoutonAide } from './aide-exercice';
 
 const NB_QUESTIONS = 8;
 
@@ -120,19 +121,14 @@ function demarrer(
 	questions = qs;
 	idx = depart;
 	score = pts;
-	setCurrentMode('lecon');
-	setCurrentLessonId(l.id);
-	hideMenus();
-	setToolbar({ verify: false, home: true, profile: false });
-	declarerSessionRunner({
+	demarrerRunner({
 		runner: RUNNER,
 		lesson: l,
-		exerciseMode: m ?? null,
+		mode: m ?? null,
 		etat: () => ({ questions, idx, score }),
+		render: renderQuestion,
+		aide: 'droiteGraduee',
 	});
-	renderQuestion();
-	maybeAutoAide('droiteGraduee'); // bulle d'aide au 1er lancement (jamais sous chrono)
-	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function runLeconDroiteGraduee(lessonId: string, m?: ExerciseMode): void {

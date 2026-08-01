@@ -17,14 +17,15 @@ import { commKey, escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { brouillonHTML, bindBrouillon } from './brouillon';
-import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
+import { goHome } from './navigation';
 import {
 	leconProgressHTML,
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	demarrerRunner,
 } from './lecon-runner-shared';
-import { declarerSessionRunner, enregistrerRunner } from './runner-reprise';
+import { enregistrerRunner } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
 
 const NB_QUESTIONS = 8;
@@ -174,18 +175,13 @@ function demarrer(
 	questions = qs;
 	idx = depart;
 	score = pts;
-	setCurrentMode('lecon');
-	setCurrentLessonId(l.id);
-	hideMenus();
-	setToolbar({ verify: false, home: true, profile: false });
-	declarerSessionRunner({
+	demarrerRunner({
 		runner: RUNNER,
 		lesson: l,
-		exerciseMode: m ?? null,
+		mode: m ?? null,
 		etat: () => ({ questions, idx, score }),
+		render: renderQuestion,
 	});
-	renderQuestion();
-	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function runLeconProbleme(lessonId: string, m?: ExerciseMode): void {

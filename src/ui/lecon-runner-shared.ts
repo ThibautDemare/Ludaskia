@@ -14,14 +14,23 @@
    Le runner « problème » garde son lexique spécifique (`lex.nom` /
    `lex.nomPluriel`) via le paramètre optionnel `lexique`.
    ============================================================ */
-import type { ProbLexique } from '../core/exercise';
+import type { LessonDef } from '../core/catalog';
+import type { ExerciseMode, ProbLexique } from '../core/exercise';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import { streakSuffix } from '../core/progress';
+import type { TypeAide } from '../core/aide';
+import { maybeAutoAide } from './aide-exercice';
 import { announceRewards } from './effects';
-import { finirSessionRunner } from './runner-reprise';
+import { declarerSessionRunner, finirSessionRunner } from './runner-reprise';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
-import { goCategorie } from './navigation';
+import {
+	goCategorie,
+	hideMenus,
+	setToolbar,
+	setCurrentMode,
+	setCurrentLessonId,
+} from './navigation';
 import { retourFinActivite } from './retour-activite';
 
 function sheets(): HTMLElement {
@@ -38,6 +47,47 @@ export function leconProgressHTML(idx: number, total: number, libelle = 'Questio
     <span class="lqcm-progress-lab">${libelle} ${idx + 1} / ${total}</span>
     <div class="lqcm-bar"><div class="lqcm-bar-fill" style="width:${pct}%"></div></div>
   </div>`;
+}
+
+/** Ouverture commune d'un écran de runner : mise en place du chrome, déclaration de la
+    session reprenable, rendu, aide contextuelle et focus. Appelée par le `demarrer(...)`
+    de chaque runner, sur le chemin du lancement neuf COMME de la reprise — ce qui garantit
+    que les deux ouvrent l'écran exactement de la même façon.
+
+    Ce qui DIVERGE d'un runner à l'autre reste chez lui : l'état de module (questions ou
+    manches, index, score, lexique du problème), et le rendu lui-même, passé en `render`.
+
+    Le FOCUS est le point à ne pas perdre de vue : le déclencheur (tuile de leçon, carte
+    « À continuer », bouton de la modale de reprise) vient d'être masqué par `hideMenus()`,
+    et un élément en `display:none` ne garde pas le focus — le navigateur le rabat sur
+    `<body>`. Faute de skip-link, un enfant au clavier devrait alors re-tabuler depuis la
+    barre d'outils pour atteindre sa question. On pose donc le focus sur le conteneur
+    d'exercice (`#sheets`, `tabindex="-1"`), qui est stable d'un rendu à l'autre. */
+export function demarrerRunner(o: {
+	runner: string; // nom stable dans le registre de reprise
+	lesson: LessonDef;
+	mode: ExerciseMode | null;
+	etat: () => { questions: unknown[]; idx: number; score: number };
+	render: () => void;
+	aide?: TypeAide; // clé d'aide contextuelle, pour les runners qui en ont une
+}): void {
+	setCurrentMode('lecon');
+	setCurrentLessonId(o.lesson.id);
+	hideMenus();
+	setToolbar({ verify: false, home: true, profile: false }); // boutons propres au runner
+	declarerSessionRunner({
+		runner: o.runner,
+		lesson: o.lesson,
+		exerciseMode: o.mode,
+		etat: o.etat,
+	});
+	o.render();
+	document.getElementById('sheets')?.focus({ preventScroll: true });
+	// APRÈS le focus, jamais avant : la bulle d'aide est une modale qui prend le focus et
+	// le rend à la fermeture (au bouton « ? » de l'exercice). Focaliser `#sheets` ensuite
+	// le lui volerait et casserait son piège de focus.
+	if (o.aide) maybeAutoAide(o.aide); // au 1er lancement seulement (une fois par profil)
+	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 /* Clôture commune : enregistre l'essai (parité des modes — mêmes XP / étoiles /

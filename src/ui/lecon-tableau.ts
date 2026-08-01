@@ -23,15 +23,16 @@ import type { Exercise, ExerciseMode, TableauColonne } from '../core/exercise';
 import { commKey, escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
-import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
+import { goHome } from './navigation';
 import {
 	leconProgressHTML,
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	demarrerRunner,
 } from './lecon-runner-shared';
-import { declarerSessionRunner, enregistrerRunner } from './runner-reprise';
-import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import { enregistrerRunner } from './runner-reprise';
+import { monterBoutonAide } from './aide-exercice';
 import { capterErreur } from './erreur-capture';
 import { nombreTableauSaisi } from '../core/erreur-representation';
 
@@ -123,19 +124,14 @@ function demarrer(l: LessonDef, m: ExerciseMode, qs: Tableau[], depart = 0, pts 
 	questions = qs;
 	idx = depart;
 	score = pts;
-	setCurrentMode('lecon');
-	setCurrentLessonId(l.id);
-	hideMenus();
-	setToolbar({ verify: false, home: true, profile: false });
-	declarerSessionRunner({
+	demarrerRunner({
 		runner: RUNNER,
 		lesson: l,
-		exerciseMode: m ?? null,
+		mode: m ?? null,
 		etat: () => ({ questions, idx, score }),
+		render: renderQuestion,
+		aide: 'tableau',
 	});
-	renderQuestion();
-	maybeAutoAide('tableau'); // aide illustrative au 1er lancement (une fois par profil)
-	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function runLeconTableau(lessonId: string, m: ExerciseMode): void {

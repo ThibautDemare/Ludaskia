@@ -66,6 +66,34 @@ describe('ordreErreur (rangement d’une suite)', () => {
 			attendue: 'abricot, banane, cerise',
 		});
 	});
+
+	/* Nature « nombres » (#448) : le parent lit ces deux chaînes dans l'espace encadrant,
+	   HORS de l'application. Jointes par la virgule, « donné : 95, 104, 98 » se lit comme
+	   des nombres à virgule — c'est le séparateur DÉCIMAL en français. D'où le
+	   point-virgule. Appelé ici DIRECTEMENT avec la nature : sans ce test, un retour au
+	   séparateur unique ne serait vu par aucune suite (les autres chemins de #448
+	   n'appellent pas `ordreErreur`). */
+	it('nature « nombres » : joint par « ; », jamais par la virgule décimale', () => {
+		const r = ordreErreur(['95', '104', '98'], ['95', '98', '104'], 'nombres');
+		expect(r).toEqual({ donnee: '95 ; 104 ; 98', attendue: '95 ; 98 ; 104' });
+		expect(r.donnee).not.toContain(',');
+		expect(r.attendue).not.toContain(',');
+	});
+
+	it('nature « mots » explicite = comportement par défaut (virgule)', () => {
+		const propose = ['chien', 'chat'];
+		const ordre = ['chat', 'chien'];
+		expect(ordreErreur(propose, ordre, 'mots')).toEqual(ordreErreur(propose, ordre));
+	});
+
+	it('rangée laissée vide (aucune tuile posée) : réponse donnée vide, attendue lisible', () => {
+		// Le runner passe `[]` quand le widget n'expose pas de réponse : pas de plantage,
+		// et le parent voit quand même ce qui était attendu.
+		expect(ordreErreur([], ['95', '98'], 'nombres')).toEqual({
+			donnee: '',
+			attendue: '95 ; 98',
+		});
+	});
 });
 
 describe('nombreTableauSaisi (tableau de conversion relu dans l’unité cible)', () => {

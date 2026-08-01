@@ -29,7 +29,7 @@ import {
 	loadOrtho,
 	loadOrthoFor,
 } from '../src/core/orthographe/store';
-import { motsDeLecon } from '../src/core/orthographe/lessons';
+import { motsDeLecon, motsApercu } from '../src/core/orthographe/lessons';
 import { cibleVerbeId } from '../src/core/orthographe/verbes';
 import { etatNeuf } from '../src/core/revision';
 import { ORTHO_PREDEF } from '../src/data/francais/orthographe';
@@ -353,6 +353,123 @@ describe('revoirActives — entrées de dictée (kind ortho)', () => {
 });
 
 /* ============================================================
+   motsApercu — ordre d'AFFICHAGE des mots d'une leçon (#441)
+   ------------------------------------------------------------
+   Attendus dérivés de la règle annoncée, pas du code : ordre du
+   dictionnaire FRANÇAIS pour une liste du parent (les accents se
+   rangent avec leur lettre de base, la casse ne prime pas sur la
+   lettre), ordre d'origine intact pour une prédéfinie (l'ordre y
+   porte du sens : les nombres se lisent 0, 1, 2… pas c-d-h-n).
+   ============================================================ */
+describe('motsApercu — liste du parent (tri alphabétique français)', () => {
+	it('range les accents avec leur lettre de base, pas après le z', () => {
+		// Un tri par code de caractère rejetterait « école » / « Éléphant » APRÈS « zèbre ».
+		const saisie = ['zèbre', 'école', 'avion', 'Éléphant', 'eau'];
+		expect(motsApercu(saisie, 'liste')).toEqual(['avion', 'eau', 'école', 'Éléphant', 'zèbre']);
+	});
+
+	it('la majuscule ne passe pas devant : c’est la lettre qui décide', () => {
+		// Par code de caractère, toutes les capitales précéderaient toutes les minuscules.
+		expect(motsApercu(['Zèbre', 'abeille', 'Chat', 'chien'], 'liste')).toEqual([
+			'abeille',
+			'Chat',
+			'chien',
+			'Zèbre',
+		]);
+	});
+
+	it('conserve les doublons (aperçu fidèle, pas de dédoublonnage silencieux)', () => {
+		expect(motsApercu(['pomme', 'banane', 'pomme'], 'liste')).toEqual(['banane', 'pomme', 'pomme']);
+	});
+
+	it('ne mute pas l’entrée et renvoie un nouveau tableau', () => {
+		const saisie = ['chien', 'chat'];
+		const sortie = motsApercu(saisie, 'liste');
+		expect(saisie).toEqual(['chien', 'chat']); // l'ordre de saisie du parent reste intact
+		expect(sortie).not.toBe(saisie);
+	});
+
+	it('est une PERMUTATION de l’entrée (rien de perdu ni d’ajouté)', () => {
+		// Échantillon de mots réels : on éprouve la conservation, pas l'ordre.
+		for (const lecon of ORTHO_PREDEF) {
+			const source = lecon.mots.map((mi) => mi.mot);
+			const vu = motsApercu(source, 'liste');
+			expect(vu).toHaveLength(source.length);
+			expect([...vu].sort()).toEqual([...source].sort()); // même multi-ensemble
+		}
+	});
+
+	it('tableau vide → tableau vide (et pas la même référence)', () => {
+		const vide: string[] = [];
+		expect(motsApercu(vide, 'liste')).toEqual([]);
+		expect(motsApercu(vide, 'liste')).not.toBe(vide);
+	});
+});
+
+describe('motsApercu — leçon prédéfinie (ordre d’origine)', () => {
+	it('rend l’ordre de la leçon tel quel, même s’il n’est pas alphabétique', () => {
+		const saisie = ['troisième', 'premier', 'deuxième'];
+		expect(motsApercu(saisie, 'predefini')).toEqual(['troisième', 'premier', 'deuxième']);
+	});
+
+	it('ne mute pas l’entrée et renvoie un nouveau tableau', () => {
+		const saisie = ['b', 'a'];
+		const sortie = motsApercu(saisie, 'predefini');
+		expect(saisie).toEqual(['b', 'a']);
+		expect(sortie).not.toBe(saisie);
+	});
+
+	it('tableau vide → tableau vide (et pas la même référence)', () => {
+		const vide: string[] = [];
+		expect(motsApercu(vide, 'predefini')).toEqual([]);
+		expect(motsApercu(vide, 'predefini')).not.toBe(vide);
+	});
+
+	it('données réelles : « Les nombres (0 à 10) » reste NUMÉRIQUE', () => {
+		const nombres = ORTHO_PREDEF.find((l) => l.id === 'fr-ortho-nombres-1')!.mots.map(
+			(mi) => mi.mot,
+		);
+		// Attendu dérivé du libellé de la leçon (0 → 10), pas du fichier de données.
+		const ordreNumerique = [
+			'zéro',
+			'un',
+			'deux',
+			'trois',
+			'quatre',
+			'cinq',
+			'six',
+			'sept',
+			'huit',
+			'neuf',
+			'dix',
+		];
+		expect(motsApercu(nombres, 'predefini')).toEqual(ordreNumerique);
+		// Et la source CHANGE bien le résultat : en « liste », les mêmes mots passeraient
+		// à l'ordre du dictionnaire — inutilisable pour apprendre à compter.
+		expect(motsApercu(nombres, 'liste')).toEqual([
+			'cinq',
+			'deux',
+			'dix',
+			'huit',
+			'neuf',
+			'quatre',
+			'sept',
+			'six',
+			'trois',
+			'un',
+			'zéro',
+		]);
+	});
+
+	it('données réelles : TOUTES les prédéfinies gardent leur ordre de déclaration', () => {
+		for (const lecon of ORTHO_PREDEF) {
+			const source = lecon.mots.map((mi) => mi.mot);
+			expect(motsApercu(source, 'predefini')).toEqual(source);
+		}
+	});
+});
+
+/* ============================================================
    listesOrthoProfil — récap des dictées d'un profil
    ============================================================ */
 describe('listesOrthoProfil — filtre et champs', () => {
@@ -438,6 +555,73 @@ describe('listesOrthoProfil — filtre et champs', () => {
 	});
 });
 
+describe('listesOrthoProfil — relais des mots vers l’encadrant (#441)', () => {
+	it('liste du parent : les mots arrivent COMPLETS et dans l’ordre du dictionnaire', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		// Saisis dans un ordre quelconque (et non alphabétique) par le parent.
+		const l = createListe(s, 'Semaine 1', [{ mot: 'zèbre' }, { mot: 'école' }, { mot: 'avion' }]);
+		saveOrtho(s);
+
+		const r = listesOrthoProfil(p, false).find((x) => x.id === l.id)!;
+		expect(r.mots).toEqual(['avion', 'école', 'zèbre']);
+		// Liste de mots simples : l'aperçu et le compte annoncé se recoupent.
+		expect(r.mots).toHaveLength(r.nbMots);
+	});
+
+	it('prédéfinie épinglée à l’avance : l’ordre de la leçon est préservé', () => {
+		const p = activeProfile();
+		const predefId = 'fr-ortho-nombres-1'; // CE2 — ordre voulu = ordre de comptage
+		toggleRevoirFor(p.uuid, orthoRevoirId(predefId));
+
+		const r = listesOrthoProfil(p, false).find((x) => x.id === predefId)!;
+		expect(r.mots.slice(0, 4)).toEqual(['zéro', 'un', 'deux', 'trois']);
+		expect(r.mots[r.mots.length - 1]).toBe('dix');
+		expect(r.mots).toHaveLength(r.nbMots);
+	});
+
+	it('prédéfinie COMMENCÉE : les mots suivent aussi (l’état joué ne réordonne rien)', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		const predefId = 'fr-ortho-nombres-1';
+		const mots = motsDeLecon(s, predefId); // matérialise la leçon en banque
+		poser(mots[5], { atelier: true }); // un mot du MILIEU entamé → leçon en-cours
+		saveOrtho(s);
+
+		const r = listesOrthoProfil(p, false).find((x) => x.id === predefId)!;
+		expect(r.niveau).toBe('en-cours');
+		expect(r.mots.slice(0, 4)).toEqual(['zéro', 'un', 'deux', 'trois']);
+	});
+
+	it('liste vide (parent qui n’a encore rien saisi) : mots = []', () => {
+		const p = activeProfile();
+		const s = loadOrtho();
+		const l = createListe(s, 'À remplir', []);
+		saveOrtho(s);
+		const r = listesOrthoProfil(p, false).find((x) => x.id === l.id)!;
+		expect(r.mots).toEqual([]);
+		expect(r.nbMots).toBe(0);
+	});
+
+	it('ÉCART ASSUMÉ — un verbe compte pour ses couples mais s’affiche à l’infinitif', () => {
+		// Piège de lecture pour l'adulte : la carte annonce « 3 mots » et n'en montre que 2.
+		// Verrouillé ici pour que l'écart ne bouge pas en silence (décision produit, pas bug
+		// de calcul : la dictée dicte bien « je mange » ET « il mange »).
+		const p = activeProfile();
+		const s = loadOrtho();
+		const verbes: VerbeConfig[] = [
+			{ kind: 'verbe', infinitif: 'manger', pronoms: [0, 2], temps: ['present'] },
+		];
+		const l = createListe(s, 'Mix', [{ mot: 'chat' }], undefined, verbes);
+		saveOrtho(s);
+
+		const r = listesOrthoProfil(p, false).find((x) => x.id === l.id)!;
+		expect(r.nbMots).toBe(3); // 1 mot simple + 2 couples (je / il × présent)
+		expect(r.mots).toEqual(['chat', 'manger']); // l'infinitif ne compte que pour UNE entrée
+		expect(r.mots.length).not.toBe(r.nbMots);
+	});
+});
+
 /* ============================================================
    dicteesProposees — prédéfinies « à épingler à l'avance »
    ============================================================ */
@@ -491,6 +675,26 @@ describe('dicteesProposees — prédéfinies non commencées et non épinglées'
 		const proposed = dicteesProposees(p, false);
 		expect(proposed.some((d) => d.id === l.id)).toBe(false);
 		expect(proposed.every((d) => d.id.startsWith('fr-ortho-'))).toBe(true);
+	});
+
+	/* ---- Relais des mots (#441) : l'adulte doit pouvoir LIRE la dictée avant de la pousser ---- */
+	it('chaque dictée proposée porte ses mots, dans l’ordre de la leçon', () => {
+		const p = activeProfile();
+		const proposed = dicteesProposees(p, false);
+		expect(proposed.length).toBeGreaterThan(0);
+		for (const d of proposed) {
+			const source = ORTHO_PREDEF.find((l) => l.id === d.id)!.mots.map((mi) => mi.mot);
+			expect(d.mots).toEqual(source); // ordre d'origine, aucun tri
+			expect(d.mots).toHaveLength(d.nbMots); // le compte annoncé = ce qu'on montre
+			expect(d.mots.every((m) => m.trim().length > 0)).toBe(true);
+		}
+	});
+
+	it('« Les nombres (0 à 10) » proposé se lit dans l’ordre de comptage', () => {
+		const p = activeProfile();
+		const d = dicteesProposees(p, false).find((x) => x.id === 'fr-ortho-nombres-1')!;
+		expect(d.mots.slice(0, 4)).toEqual(['zéro', 'un', 'deux', 'trois']);
+		expect(d.mots[d.mots.length - 1]).toBe('dix');
 	});
 });
 

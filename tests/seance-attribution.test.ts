@@ -22,6 +22,7 @@ import {
 	CONTEXTE_VIDE,
 	SEANCE_MODE_INFOS,
 	SEANCE_JOUR_KEY,
+	dateStrDe,
 	etapeSatisfaite,
 	etatSeanceJour,
 	marquerEtapeLancee,
@@ -91,6 +92,21 @@ function jourStocke(): SeanceJour {
 function ouvrirJour(t: number): SeanceJour {
 	return etatSeanceJour(t)!;
 }
+/** État du jour écrit par une version ANTÉRIEURE à #498 : la forme d'alors, SANS curseur
+    d'attribution (le champ n'existait pas). Posé brut dans le stockage — c'est exactement
+    ce qui dort dans le `localStorage` de l'enfant au moment de la mise à jour. */
+function poserJourHerite(over: Record<string, unknown> = {}): void {
+	lsSet(SEANCE_JOUR_KEY, {
+		date: dateStrDe(LUN),
+		defId: 'd1', // = defLundi() par défaut : l'état est bien celui de la définition du jour
+		faits: {},
+		completions: [],
+		complete: false,
+		pending: null,
+		...over,
+	});
+}
+const JOURS = 24 * 3_600_000;
 
 /* ============================================================
    0) Surface d'API : le marqueur n'est plus la porte de l'attribution
@@ -522,5 +538,146 @@ describe('marqueur « étape en cours »', () => {
 		expect(jourStocke().pending).toBeNull();
 		poserActivite('sprint', LUN + 1_000);
 		expect(resoudreProgramme(LUN + 2_000).etapesCreditees).toEqual(['e1']);
+	});
+});
+
+/* ============================================================
+   7) Le JOUR DE LA MISE À JOUR : état du jour écrit avant #498
+
+   Le curseur d'attribution est une nouveauté : un état du jour déjà en place quand
+   l'appli se met à jour n'en a pas. Sans reprise, `resoudreProgramme` repart de zéro
+   (« depuis toujours ») et rend créditable TOUT le journal d'activité — un sprint joué
+   trois semaines plus tôt satisferait l'étape « Sprint 5 min » du jour (ce mode ne
+   regarde que le type), jusqu'à faire fêter un programme auquel l'enfant n'a pas touché.
+   Contrat visé : à la première lecture, l'état hérité prend un curseur « maintenant »,
+   une fois pour toutes. Prix assumé : le travail fait aujourd'hui AVANT la mise à jour
+   n'est pas rattrapé — mieux vaut ne rien créditer que de tout créditer.
+   ============================================================ */
+describe('état du jour hérité (sans curseur d’attribution)', () => {
+	it('l’historique du profil ne devient PAS créditable : rien n’est crédité ni célébré', () => {
+		poserDefs([defLundi([etape('e1', 'sprint', 1)])]);
+		// Le journal d'activité du profil, tel qu'il existe déjà au moment de la mise à jour.
+		poserActivite('sprint', LUN - 21 * JOURS); // sprint d'il y a trois semaines
+		poserActivite('revision', LUN - 5 * JOURS);
+		poserActivite('lecon', LUN - 1 * JOURS, LECON_A); // hier
+		poserJourHerite();
+
+		const r = resoudreProgramme(LUN + 10_000); // 1er retour à l'accueil après la mise à jour
+		expect(r).toEqual({ etapesCreditees: [], justCompleted: false });
+		expect(jourStocke().faits).toEqual({});
+		expect(jourStocke().completions).toEqual([]);
+		expect(jourStocke().complete).toBe(false);
+		expect(seancesCompletees()).toBe(0); // ni fête, ni trophée
+	});
+
+	it('témoin : la même journée avec un curseur permissif crédite bel et bien l’historique', () => {
+		// Contrôle de la portée du test précédent : le montage (définition + journal + étape)
+		// est parfaitement capable de créditer. C'est donc bien la reprise du curseur qui
+		// protège l'enfant, et non un détail du montage qui masquerait le défaut.
+		poserDefs([defLundi([etape('e1', 'sprint', 1)])]);
+		poserActivite('sprint', LUN - 21 * JOURS);
+		poserJourHerite({ vuTs: LUN - 30 * JOURS }); // curseur antérieur au vieux sprint
+		expect(resoudreProgramme(LUN + 10_000)).toEqual({
+			etapesCreditees: ['e1'],
+			justCompleted: true,
+		});
+	});
+
+	it('le travail d’aujourd’hui d’AVANT la mise à jour n’est pas rattrapé (prix assumé)', () => {
+		poserDefs([defLundi([etape('e1', 'sprint', 1)])]);
+		poserActivite('sprint', LUN + 5_000); // fait ce matin, sur l'ancienne version
+		poserJourHerite();
+		expect(resoudreProgramme(LUN + 10_000)).toEqual({ etapesCreditees: [], justCompleted: false });
+		expect(jourStocke().faits).toEqual({});
+	});
+
+	it('le curseur posé à la reprise est PERSISTÉ : une seconde lecture ne repart pas de zéro', () => {
+		poserDefs([defLundi([etape('e1', 'sprint', 1)])]);
+		poserActivite('sprint', LUN - 21 * JOURS);
+		poserJourHerite();
+
+		etatSeanceJour(LUN + 10_000); // 1re lecture : le curseur naît ici…
+		expect(jourStocke().vuTs).toBe(LUN + 10_000); // … et il est écrit dans le stockage
+		// Lectures suivantes : le curseur ne bouge plus (sinon il sauterait en continu le
+		// travail de la journée, et l'enfant ne verrait jamais son programme avancer).
+		etatSeanceJour(LUN + 60_000);
+		etatSeanceJour(LUN + 120_000);
+		expect(jourStocke().vuTs).toBe(LUN + 10_000);
+		expect(resoudreProgramme(LUN + 130_000).etapesCreditees).toEqual([]);
+	});
+
+	it('un curseur nul (état bricolé / partiellement écrit) est repris de la même façon', () => {
+		poserDefs([defLundi([etape('e1', 'sprint', 1)])]);
+		poserActivite('sprint', LUN - 21 * JOURS);
+		poserJourHerite({ vuTs: null });
+		expect(resoudreProgramme(LUN + 10_000).etapesCreditees).toEqual([]);
+		expect(jourStocke().vuTs).toBe(LUN + 10_000);
+	});
+
+	it('l’attribution n’est pas gelée pour la journée : ce qui suit la reprise crédite normalement', () => {
+		poserDefs([defLundi([etape('e1', 'sprint', 1)])]);
+		poserActivite('sprint', LUN + 5_000); // avant la mise à jour → perdu
+		poserJourHerite();
+		expect(resoudreProgramme(LUN + 10_000).etapesCreditees).toEqual([]);
+
+		poserActivite('sprint', LUN + 20_000); // sprint fait APRÈS la mise à jour
+		expect(resoudreProgramme(LUN + 30_000)).toEqual({
+			etapesCreditees: ['e1'],
+			justCompleted: true,
+		});
+		expect(jourStocke().faits.e1).toBe(1);
+		expect(seancesCompletees()).toBe(1);
+	});
+
+	it('la reprise n’efface pas le travail DÉJÀ enregistré dans la journée', () => {
+		// Un « ×2 » à moitié fait avant la mise à jour doit rester à moitié fait : la reprise
+		// ajoute un curseur, elle ne recrée pas l'état du jour.
+		poserDefs([defLundi([etape('e1', 'sprint', 2)])]);
+		poserJourHerite({
+			faits: { e1: 1 },
+			completions: [{ etapeId: 'e1', kind: 'sprint', ts: LUN + 1_000, dureeMs: 300_000 }],
+			debutTs: LUN + 1_000,
+		});
+		const j = etatSeanceJour(LUN + 10_000)!;
+		expect(j.faits).toEqual({ e1: 1 });
+		expect(j.completions).toHaveLength(1);
+		expect(j.debutTs).toBe(LUN + 1_000);
+		expect(j.vuTs).toBe(LUN + 10_000);
+		// Le second passage, fait après la mise à jour, achève le programme.
+		poserActivite('sprint', LUN + 20_000);
+		expect(resoudreProgramme(LUN + 30_000)).toEqual({
+			etapesCreditees: ['e1'],
+			justCompleted: true,
+		});
+		expect(jourStocke().faits.e1).toBe(2);
+	});
+
+	it('un curseur DÉJÀ présent n’est jamais écrasé par la reprise', () => {
+		poserDefs([defLundi([etape('e1', 'sprint', 1)])]);
+		ouvrirJour(LUN); // état créé par la version courante : curseur à sa naissance
+		expect(jourStocke().vuTs).toBe(LUN);
+		etatSeanceJour(LUN + 60_000);
+		expect(jourStocke().vuTs).toBe(LUN); // relecture plus tard : inchangé
+		// Le curseur suit le JOURNAL (dernière session examinée), pas l'horloge de lecture.
+		poserActivite('sprint', LUN + 70_000);
+		resoudreProgramme(LUN + 80_000);
+		expect(jourStocke().vuTs).toBe(LUN + 70_000);
+		etatSeanceJour(LUN + 90_000);
+		expect(jourStocke().vuTs).toBe(LUN + 70_000);
+	});
+
+	it('état hérité PÉRIMÉ (jour précédent) : remplacé, et l’historique reste non créditable', () => {
+		poserDefs([defLundi([etape('e1', 'sprint', 1)])]);
+		poserJourHerite({
+			date: dateStrDe(LUN - 1 * JOURS), // dimanche : l'état d'hier, sans curseur
+			faits: { e1: 1 },
+			completions: [{ etapeId: 'e1', kind: 'sprint', ts: LUN - 20_000, dureeMs: 60_000 }],
+		});
+		poserActivite('sprint', LUN - 10_000); // le sprint d'hier soir
+		expect(resoudreProgramme(LUN + 10_000)).toEqual({ etapesCreditees: [], justCompleted: false });
+		const j = jourStocke();
+		expect(j.date).toBe(dateStrDe(LUN)); // état du jour recréé
+		expect(j.faits).toEqual({}); // le travail d'hier ne suit pas
+		expect(j.vuTs).toBe(LUN + 10_000);
 	});
 });

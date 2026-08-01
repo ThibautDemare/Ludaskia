@@ -277,10 +277,12 @@ export function deleteListe(state: OrthoState, id: string): boolean {
 
     Toute la surface de nettoyage tient ici : rien d'autre en localStorage ne référence un id
     de mot (la file « à revoir » épingle des LISTES et des leçons, pas des mots, cf.
-    `orthoRevoirId`). L'index est balayé par VALEUR, pas reconstruit depuis `mot.mot` : un état
-    importé peut porter une entrée d'index périmée pointant sur cet id, qui ressusciterait le
-    mot au prochain `addOrGetMot` (dédup sur un id absent de la banque). Mute l'état ;
-    l'appelant sauvegarde. Pur (hors mutation de l'argument). */
+    `orthoRevoirId`). L'index est balayé par VALEUR, et non déduit de `mot.mot` : un état
+    importé peut porter PLUSIEURS formes pointant sur le même id, et l'invariant à tenir est
+    « toute entrée d'index vise un mot présent en banque ». Les lecteurs se gardent déjà d'un
+    index périmé (`addOrGetMot` vérifie `state.banque[existingId]`), donc ce balayage ne corrige
+    aucun bug de résurrection : il empêche l'état de dériver. Mute l'état ; l'appelant
+    sauvegarde. Pur (hors mutation de l'argument). */
 export function supprimerMot(state: OrthoState, wordId: string): boolean {
 	if (!state.banque[wordId]) return false;
 	delete state.banque[wordId];

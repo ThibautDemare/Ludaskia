@@ -27,6 +27,7 @@ import {
 import { PRONOUNS, displayPronoun } from '../data/francais/conjugaison';
 import { TEMPS_LABEL, libellePronoms } from '../core/orthographe/verbes';
 import { goCategorie } from './navigation';
+import { dicteeDisponible } from './tts';
 import { icon } from './icon';
 import { uiAlert, uiConfirm } from './ui-modal';
 import { escapeHTML } from '../core/utils';
@@ -77,7 +78,7 @@ const MAX_MOTS_CITES = 8;
    écartés par `motsDevenusOrphelins` (les supprimer ne tiendrait pas). */
 async function proposerSuppressionOrphelins(candidats: string[]): Promise<void> {
 	if (candidats.length === 0) return;
-	const orphelins = motsDevenusOrphelins(loadOrtho(), candidats);
+	const orphelins = motsDevenusOrphelins(loadOrtho(), candidats, dicteeDisponible());
 	if (orphelins.length === 0) return;
 	const noms = orphelins.map((e) => `« ${e.contexte ?? e.mot} »`);
 	const cites = noms.slice(0, MAX_MOTS_CITES).join(', ');

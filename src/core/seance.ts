@@ -357,7 +357,20 @@ export function etatSeanceJour(now: number): SeanceJour | null {
 		if (stored && !frais) lsRemoveQuiet(SEANCE_JOUR_KEY); // nettoie sans bumper (pas de séance)
 		return null;
 	}
-	if (frais) return stored;
+	if (frais) {
+		// MIGRATION (#498) : un état du jour écrit par une version ANTÉRIEURE n'a pas de
+		// curseur. Le laisser absent le ferait lire `?? 0` à l'attribution, donc rendrait
+		// créditable TOUT le journal d'activité — un sprint d'il y a trois semaines suffirait
+		// à satisfaire l'étape du jour, et à déclencher fête et trophée pour un programme
+		// auquel l'enfant n'a pas touché. On le pose donc à maintenant, une seule fois. Prix
+		// assumé : le travail fait aujourd'hui AVANT la mise à jour n'est pas rattrapé, ce qui
+		// vaut mieux qu'un programme faussement terminé.
+		if (stored.vuTs == null) {
+			stored.vuTs = now;
+			lsSet(SEANCE_JOUR_KEY, stored);
+		}
+		return stored;
+	}
 	const neuf: SeanceJour = {
 		date: today,
 		defId: def.id,

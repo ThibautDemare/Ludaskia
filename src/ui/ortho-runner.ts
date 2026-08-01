@@ -728,11 +728,14 @@ function renderTuiles(word: MotOrtho): void {
 }
 
 /* Journalise UNE session d'orthographe (#319) au 1er écran terminal atteint (bilan,
-   révision terminée ou pause) ; le flag évite de re-compter un « Continuer encore ». */
+   révision terminée ou pause) ; le flag évite de re-compter un « Continuer encore ».
+   La LISTE travaillée est jointe (#498) : c'est elle qui permet au programme du jour
+   d'attribuer son étape « dictée » ou « à revoir » à ce qui a réellement été fait, sans
+   dépendre du bouton par lequel l'enfant est arrivé. */
 function journalOrthoSession(): void {
 	if (orthoJournalisee) return;
 	orthoJournalisee = true;
-	recordSessionActivity('dictee');
+	recordSessionActivity('dictee', orthoLessonId || undefined);
 }
 
 /* Retour de fin de séance d'orthographe : le programme du jour si la dictée en a été

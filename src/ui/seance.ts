@@ -9,22 +9,25 @@
      (ordre libre), une jauge de pastilles, un bouton « Choisis pour moi », et un
      état « terminé » célébré. Une étape épuisée sort des propositions.
 
-   Attribution : au lancement d'une étape on pose un marqueur (`marquerEtapeLancee`),
-   consommé au retour par `rafraichirProgramme` (appelé par la navigation avant de
-   rendre l'accueil et l'écran). La complétion de TOUT le programme déclenche la
-   récompense (modale + confettis + trophée), sans XP (chaque mode a déjà donné le
-   sien) — cf. décisions #440.
+   Attribution : `rafraichirProgramme` (appelé par la navigation avant de rendre l'accueil
+   et l'écran) crédite les étapes d'après les sessions RÉELLEMENT faites, lues dans le
+   journal d'activité (#498) — que l'enfant soit passé par les tuiles du programme, par la
+   carte « À revoir » de l'accueil ou par le catalogue. Le marqueur posé au lancement
+   (`marquerEtapeLancee`) ne sert plus qu'à dater l'étape et à lever une ambiguïté. La
+   complétion de TOUT le programme déclenche la récompense (modale + confettis + trophée),
+   sans XP (chaque mode a déjà donné le sien) — cf. décisions #440.
 
-   Contexte du jour (#464) : le cœur ne lit pas seul la file « à revoir » (l'« acquis »
-   d'une dictée dépend de la dispo du TTS, connue d'ici seulement). C'est donc CE module
-   qui construit le `ContexteSeance` et l'unique porte d'entrée de lecture de la séance
-   côté UI (`vueProgramme`, navigation comprise).
+   Contexte du jour (#464, enrichi #498) : le cœur ne lit pas seul la file « à revoir »
+   (l'« acquis » d'une dictée dépend de la dispo du TTS, connue d'ici seulement). C'est donc
+   CE module qui construit le `ContexteSeance` — les ids épinglés par nature, qui servent à
+   l'applicabilité de l'étape ET à reconnaître la session qui la satisfait — et l'unique
+   porte d'entrée de lecture de la séance côté UI (`vueProgramme`, navigation comprise).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
 import { getLessonById, type SubjectId } from '../core/catalog';
 import { leconDuJour } from '../core/lecon-du-jour';
 import { countDue } from '../core/revision-select';
-import { loadLessonRevisions, type ActivityKind } from '../core/progress';
+import { loadLessonRevisions } from '../core/progress';
 import { loadOrtho } from '../core/orthographe/store';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { evaluateTrophies } from '../core/rewards';
@@ -38,8 +41,7 @@ import {
 import {
 	vueSeanceDuJour,
 	marquerEtapeLancee,
-	resoudrePending,
-	consoliderCompletion,
+	resoudreProgramme,
 	ciblesEtape,
 	ciblesValides,
 	tirerCible,
@@ -77,9 +79,15 @@ function aRevoirPool(): string[] {
 	return aRevoirEntrees().map((e) => (e.kind === 'ortho' ? orthoRevoirId(e.id) : e.id));
 }
 
-/* Contexte du jour passé à toutes les lectures de la séance (cf. en-tête). */
+/* Contexte du jour passé à toutes les lectures de la séance (cf. en-tête). Les ids sont
+   fournis par NATURE et sans préfixe de file (#498) : le cœur s'en sert pour reconnaître,
+   dans le journal d'activité, qu'une épinglée vient d'être travaillée. */
 function contexteProgramme(): ContexteSeance {
-	return { aRevoir: aRevoirPool().length };
+	const entrees = aRevoirEntrees();
+	return {
+		aRevoirLecons: entrees.filter((e) => e.kind === 'lecon').map((e) => e.id),
+		aRevoirDictees: entrees.filter((e) => e.kind === 'ortho').map((e) => e.id),
+	};
 }
 
 /** Vue du programme du jour, contexte inclus. Porte d'entrée UNIQUE côté UI (la
@@ -132,10 +140,12 @@ function etapeVisuel(v: VueEtape): { ico: string; titre: string; sous?: string }
 }
 
 /* Repère « combien de fois » : rien si une seule fois, sinon le RESTE à faire
-   (« encore 2 fois »), plus actionnable qu'une fraction à calculer (avis a11y). */
+   (« encore 2 fois »), plus actionnable qu'une fraction à calculer (avis a11y). Lit
+   `v.requis` (exigence assainie du jour) et non `etape.count` brut, qui peut être absent
+   ou nul dans un programme importé — ce qui affichait « undefined fois ». */
 function repereCount(v: VueEtape): string {
-	if (v.etape.count <= 1) return '';
-	if (v.fait === 0) return `${v.etape.count} fois`;
+	if (v.requis <= 1) return '';
+	if (v.fait === 0) return `${v.requis} fois`;
 	return v.reste > 1 ? `encore ${v.reste} fois` : 'encore 1 fois';
 }
 
@@ -169,16 +179,12 @@ function lancable(v: VueEtape): { ok: boolean; raison?: string } {
 
 /* Tirage de la cible d'une étape à POOL, juste avant son lancement. Deux pools : les
    dictées CONFIGURÉES par l'encadrant (#463) et la file ÉPINGLÉE du jour (#464). Renvoie
-   la cible à mémoriser dans le marqueur (`ref`, métrique) et, pour « à revoir », le type
-   d'activité réellement visé (`activite`) — une épinglée est une leçon OU une dictée, là
-   où les autres modes ont un type fixe. Les modes sans pool ne tirent rien. */
-function tirageEtape(e: SeanceEtape): { ref?: string; activite?: ActivityKind } {
-	if (e.kind === 'dictee') return { ref: tirerCible(e, dicteesDisponibles()) };
-	if (e.kind === 'aRevoir') {
-		const ref = tirerParmi(aRevoirPool());
-		return { ref, activite: ref && isOrthoRevoirId(ref) ? 'dictee' : 'lecon' };
-	}
-	return {};
+   la cible, qui sert à la fois à lancer la bonne activité et à la mémoriser dans le marqueur
+   (métrique). Les modes sans pool ne tirent rien. */
+function tirageEtape(e: SeanceEtape): string | undefined {
+	if (e.kind === 'dictee') return tirerCible(e, dicteesDisponibles());
+	if (e.kind === 'aRevoir') return tirerParmi(aRevoirPool());
+	return undefined;
 }
 
 /* Lance le mode d'une étape DEPUIS le programme : pose le marqueur d'attribution
@@ -191,8 +197,8 @@ export function lancerEtapeProgramme(etapeId: string): void {
 	const e = v.etape;
 	// La cible d'une étape à pool est tirée AVANT de poser le marqueur, pour la mémoriser
 	// (métrique) et la lancer.
-	const { ref: cible, activite } = tirageEtape(e);
-	marquerEtapeLancee(etapeId, Date.now(), cible, activite);
+	const cible = tirageEtape(e);
+	marquerEtapeLancee(etapeId, Date.now(), cible);
 	switch (e.kind) {
 		case 'sprint':
 			// Depuis le programme, l'enfant ne configure pas : lancement direct avec la
@@ -280,7 +286,7 @@ function recapItemHTML(v: VueEtape): string {
 	return `<li class="programme-recap-item">
     <span class="programme-recap-ico" aria-hidden="true">${icon('check-circle')}</span>
     <span>${escapeHTML(titre)}${
-			v.etape.count > 1 ? ` <span class="programme-recap-x">×${v.etape.count}</span>` : ''
+			v.requis > 1 ? ` <span class="programme-recap-x">×${v.requis}</span>` : ''
 		}</span>
   </li>`;
 }
@@ -364,15 +370,14 @@ function wire(el: HTMLElement): void {
 }
 
 /* ---------- Résolution + récompense (appelée par la navigation) ---------- */
-/* Consomme un éventuel marqueur « étape en cours » au retour vers l'accueil / le
-   programme, et célèbre si le programme ENTIER vient d'être terminé. Idempotent. */
+/* Attribue les sessions faites depuis le dernier passage et célèbre si le programme ENTIER
+   vient d'être terminé. Idempotent. Une seule porte : `resoudreProgramme` acte aussi la
+   complétion survenue SANS étape réalisée (le contexte a escamoté la dernière étape
+   restante, épinglée retirée ou redevenue solide, #464), cas qui demandait auparavant un
+   second appel de rattrapage. */
 export function rafraichirProgramme(): void {
-	const ctx = contexteProgramme();
-	const res = resoudrePending(Date.now(), ctx);
-	// Le programme peut aussi s'achever SANS étape réalisée : le contexte a escamoté la
-	// dernière étape restante (épinglée retirée, ou travaillée depuis la carte d'accueil,
-	// #464). Sans ce rattrapage, la complétion passerait inaperçue (ni fête, ni trophée).
-	if (res.justCompleted || consoliderCompletion(Date.now(), ctx)) {
+	const res = resoudreProgramme(Date.now(), contexteProgramme());
+	if (res.justCompleted) {
 		const nouveaux = evaluateTrophies(); // rattrape le trophée de programme (1/7/30)
 		showCelebration([
 			{ icon: '🎉', text: 'Bravo, tu as fait tout ton programme du jour !' },

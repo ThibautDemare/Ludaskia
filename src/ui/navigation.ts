@@ -49,6 +49,7 @@ import { enterEncadrant } from './encadrant';
 import { renderSeance, rafraichirProgramme, vueProgramme } from './seance';
 import { leconKey } from '../core/resume';
 import { captureResume, clearResumeCtx, setResumeCtx, maybeRelaunch } from './resume';
+import { quitterSessionRunner } from './runner-reprise';
 import {
 	setOrigineActivite,
 	origineActivite,
@@ -384,6 +385,12 @@ function resetSessionUI() {
 	// Avant d'effacer #sheets : sauvegarder l'exercice en cours s'il y a lieu (#63).
 	captureResume();
 	clearResumeCtx();
+	// L'écran du runner est quitté (#498) : sa session n'est plus « en cours », mais son
+	// instantané reste dans « À continuer ». Sans cette clôture, l'état de module du runner
+	// survivrait à la sortie et `captureResume`, qui l'interroge en premier, continuerait de
+	// photographier une session morte — l'exercice suivant ne serait alors plus jamais
+	// sauvegardé. APRÈS la capture, évidemment : sinon il n'y aurait rien à photographier.
+	quitterSessionRunner();
 	resetChrono();
 	sprintCleanup(); // stoppe un éventuel sprint en cours (compte à rebours)
 	revisionCleanup(); // remet à zéro le drapeau « révision en cours » (#63)

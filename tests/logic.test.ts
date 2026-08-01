@@ -270,7 +270,7 @@ import {
 	upsertResume,
 	removeResume,
 	clearResumes,
-	type ResumeSnapshot,
+	type ResumeGrille,
 } from '../src/core/resume';
 import { loadBilans, saveBilan } from '../src/core/bilans';
 
@@ -3240,9 +3240,12 @@ describe('Sauvegarde (export / import par profil)', () => {
 });
 
 describe("Reprise d'exercice en cours (#63)", () => {
-	// Fabrique un instantané minimal valide.
-	function snap(over: Partial<ResumeSnapshot> = {}): ResumeSnapshot {
+	// Fabrique un instantané de GRILLE minimal valide (la nature « runner », ajoutée
+	// par #498, et la relecture des instantanés hérités sont couvertes à part dans
+	// tests/reprise-runner.test.ts).
+	function snap(over: Partial<ResumeGrille> = {}): ResumeGrille {
 		return {
+			kind: 'grille',
 			key: 'lecon-x',
 			version: RESUME_VERSION,
 			savedAt: 1000,

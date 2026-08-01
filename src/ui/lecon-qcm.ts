@@ -27,9 +27,8 @@ import {
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
-	declarerSessionRunner,
-	enregistrerRunner,
 } from './lecon-runner-shared';
+import { declarerSessionRunner, enregistrerRunner } from './runner-reprise';
 import { capterErreur, libelleChoix } from './erreur-capture';
 
 // Cible de questions ; une leçon offrant moins de variantes en aura moins, sans

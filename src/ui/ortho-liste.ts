@@ -30,7 +30,7 @@ import { goCategorie } from './navigation';
 import { dicteeDisponible } from './tts';
 import { icon } from './icon';
 import { uiAlert, uiConfirm } from './ui-modal';
-import { escapeHTML } from '../core/utils';
+import { enumererFr, escapeHTML } from '../core/utils';
 
 interface RowData {
 	mot: string;
@@ -81,14 +81,19 @@ async function proposerSuppressionOrphelins(candidats: string[]): Promise<void> 
 	const orphelins = motsDevenusOrphelins(loadOrtho(), candidats, dicteeDisponible());
 	if (orphelins.length === 0) return;
 	const noms = orphelins.map((e) => `« ${e.contexte ?? e.mot} »`);
-	const cites = noms.slice(0, MAX_MOTS_CITES).join(', ');
 	const reste = noms.length - MAX_MOTS_CITES;
-	const liste = reste > 0 ? `${cites} et ${reste} autre${reste > 1 ? 's' : ''}` : cites;
+	const liste =
+		reste > 0
+			? `${noms.slice(0, MAX_MOTS_CITES).join(', ')} et ${reste} autre${reste > 1 ? 's' : ''}`
+			: enumererFr(noms);
+	const plur = noms.length > 1;
 	const ok = await uiConfirm({
-		title: noms.length > 1 ? 'Supprimer aussi ces mots ?' : 'Supprimer aussi ce mot ?',
-		message: `${liste} ${noms.length > 1 ? 'ne sont' : "n'est"} plus dans aucune liste. Sans suppression, ${noms.length > 1 ? 'ils continueront' : 'il continuera'} de revenir en révision.`,
-		confirmLabel: noms.length > 1 ? 'Supprimer ces mots' : 'Supprimer ce mot',
-		cancelLabel: 'Non, les garder',
+		title: plur ? 'Supprimer aussi ces mots ?' : 'Supprimer aussi ce mot ?',
+		message: `${liste} ${plur ? 'ne sont' : "n'est"} plus dans aucune liste. Sans suppression, ${plur ? 'ils continueront' : 'il continuera'} de revenir en révision.`,
+		confirmLabel: plur ? 'Supprimer ces mots' : 'Supprimer ce mot',
+		// « Non, je garde » : invariable, et c'est le libellé de refus employé partout ailleurs
+		// dans l'appli (y compris par la suppression de liste, quelques lignes plus bas).
+		cancelLabel: 'Non, je garde',
 		destructive: true,
 		confirmIcon: 'trash',
 		emoji: '🗑️',

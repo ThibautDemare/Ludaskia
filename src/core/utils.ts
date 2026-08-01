@@ -120,6 +120,15 @@ export const escapeHTML = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, 
 export const elisionDe = (mot: string) =>
 	/^[aeiouàâäéèêëïîôöùûüœæ]/i.test(mot) ? `d'${mot}` : `de ${mot}`;
 
+/* Énumération à la française : « A », « A et B », « A, B et C ». Le `join(', ')` brut, qui
+   donnerait « A, B », se lit comme une liste tronquée dans une phrase — or ces énumérations
+   apparaissent dans des messages de confirmation, là où l'adulte doit comprendre du premier
+   coup CE QUI va être touché. Pur. */
+export function enumererFr(items: string[]): string {
+	if (items.length <= 1) return items[0] ?? '';
+	return `${items.slice(0, -1).join(', ')} et ${items[items.length - 1]}`;
+}
+
 /* Normalisation d'une réponse TEXTE pour comparaison (conjugaison, orthographe…) :
    - trim des bords,
    - toute suite d'espaces internes réduite à une seule (une double espace entre

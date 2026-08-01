@@ -1129,6 +1129,10 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 	// `choices` par index. Le runner d'écran n'en dépend pas (il lit l'Exercise).
 	const choices = ex.type === 'qcm' ? ex.choices : undefined;
 	const choicesView = ex.type === 'qcm' ? ex.choicesView : undefined;
+	// Intercaler par intervalle (#240 CM1, #446 CE2) : on fait DESCENDRE les bornes
+	// jusqu'à l'Item pour que la correction fiche/sprint/révision (checkItemAnswer) accepte
+	// toute valeur strictement dedans — sinon seule la valeur-exemple `answer` passerait.
+	const intervalle = ex.type === 'text' ? ex.intervalle : undefined;
 	if (lesson.subject === 'math') {
 		// Saisie de l'heure en 2 champs (#88) ; sinon numérique (calcul) ou texte (signe).
 		const kind =
@@ -1149,6 +1153,7 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 			parle,
 			choices,
 			choicesView,
+			intervalle,
 			_lesson: lesson.id,
 		};
 	}

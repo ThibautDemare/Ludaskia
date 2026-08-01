@@ -4,8 +4,8 @@
      virgule) et nettoyage de la saisie (tolérance aux espaces) ;
    - bornes CM1 (≤ 9 999 999) respectées, CE2 INCHANGÉ (plages gelées) ;
    - encadrement au bon rang aux grandes plages ;
-   - intercalation : CM1 = check par INTERVALLE (accepte dedans, rejette dehors),
-     CE2 = réponse unique (comportement inchangé) ;
+   - intercalation : CM1 ET CE2 (#446) = check par INTERVALLE (accepte dedans,
+     rejette les bornes exclues et le dehors) ;
    - décomposition multiplicative (produit = nombre, chiffre troué juste).
    On génère beaucoup d'items (aléa réel) pour couvrir la pondération.
    ============================================================ */
@@ -177,21 +177,25 @@ describe('Intercalation : CM1 par intervalle, CE2 réponse unique (#240)', () =>
 		expect(vusIntervalle).toBeGreaterThan(0); // l'intercalation par intervalle existe bien en CM1
 	});
 
-	it('CE2 : intercalation = réponse UNIQUE (aucun intervalle, comportement inchangé)', () => {
+	// #446 : l'intercalation CE2 est passée d'une réponse unique à une correction PAR
+	// INTERVALLE (écarts variés). Repère minimal ici (le fichier #240) ; la couverture
+	// détaillée des paliers relève de la suite d'intercalation CE2 (auteur-tests-logique).
+	it('CE2 : intercalation par INTERVALLE (bornes exclues, exemple valide, ≤ 999)', () => {
 		const exType = getLessonById('num-encadrer-intercaler')!.exerciseType;
-		for (let i = 0; i < 1000; i++) {
+		let vus = 0;
+		for (let i = 0; i < 3000 && vus < 60; i++) {
 			const ex = exType.generate({ level: 'ce2' });
-			if (ex.type !== 'text') continue;
-			// AUCUN exercice CE2 ne porte d'intervalle.
-			expect(ex.intervalle).toBeUndefined();
-			if (ex.question.startsWith('Place un nombre entre')) {
-				const rep = Number(ex.answer);
-				expect(exType.check(ex, String(rep))).toBe(true);
-				// Réponse unique : le voisin immédiat est faux (bornes serrées de 2).
-				expect(exType.check(ex, String(rep + 1))).toBe(false);
-				expect(exType.check(ex, String(rep - 1))).toBe(false);
-			}
+			if (ex.type !== 'text' || !ex.intervalle) continue;
+			vus++;
+			const [min, max] = ex.intervalle;
+			expect(min).toBeGreaterThanOrEqual(100);
+			expect(max).toBeLessThanOrEqual(999); // plafond de la leçon CE2
+			// L'exemple (`answer`) est valide ; les bornes (exclues) et le dehors non.
+			expect(exType.check(ex, ex.answer)).toBe(true);
+			expect(exType.check(ex, String(min))).toBe(false);
+			expect(exType.check(ex, String(max))).toBe(false);
 		}
+		expect(vus).toBeGreaterThan(0);
 	});
 });
 

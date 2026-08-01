@@ -495,7 +495,7 @@ fin de fil vocabulaire CM1 dans l'ordre pédagogique (après
 
 3 leçons « situer un nombre » (catégorie
 `math-numeration`) — `num-comparer` (placer `<`, `=`, `>`), `num-encadrer-intercaler`
-(dizaine/centaine juste avant/après, intercaler entre bornes serrées),
+(dizaine/centaine juste avant/après, intercaler par intervalle à écarts variés),
 `num-situer-10000` (idem jusqu'à 9999, encadrement au millier). **Deux modes** par
 leçon (#69) : `saisie` (conseillé, compatible fiche/bilan : on tape le signe ou le
 nombre) et `tuiles` (on déplace la bonne tuile parmi des distracteurs). Le mode
@@ -508,9 +508,14 @@ différentes (cas charnière), distracteurs typés sur les erreurs classiques.
 plages **CE2 sont gelées** (invariant) ; la génération CM1 mêle 5/6/7 chiffres, pondérée
 vers les cas formateurs (zéros intercalaires, charnières de classe). `RANG_MOT` est
 étendu (dizaine/centaine **de mille**, **million**) et l'encadrement choisit le rang
-selon la taille du nombre. **Intercalation CM1** : check **par intervalle** (toute valeur
-strictement entre deux multiples ronds consécutifs, via le champ `Exercise.intervalle`) ;
-le CE2 garde sa **réponse unique**. **Saisie** : on ne fait jamais taper > 6 chiffres
+selon la taille du nombre. **Intercalation** : check **par intervalle** OUVERT (toute
+valeur strictement entre les bornes, via le champ `Exercise.intervalle` propagé jusqu'à
+l'`Item`/`checkItemAnswer`) — au CM1 entre deux multiples ronds consécutifs (#240), au CE2
+(#446) avec des **écarts variés** (~18 % serré 2-4, ~50 % moyen 6-30, ~32 % large 100-900,
+traversant un rang). L'indicateur `Fact.plusieurs` (l'intervalle admet > 1 entier) déclenche
+le suffixe « (plusieurs réponses possibles) » **en SAISIE seulement** (recomposé par
+`generate()` ; jamais en tuiles, où une seule tuile est valide et la correction est au
+singulier). `answer` reste un **exemple** valide (révélation, mode tuiles). **Saisie** : on ne fait jamais taper > 6 chiffres
 (comparaison = signe, encadrement/intercalation = nombres ronds), et le `check` tolère
 les espaces de groupement (`nettoyerSaisieNombre`). Le signe de comparaison se pose via
 un **pavé de 3 boutons** dédié (`.ans-signe`, sans clavier virtuel) plutôt qu'à la frappe

@@ -38,9 +38,11 @@ import {
 	setSessionErreursLoggees,
 	setToolbar,
 	hideMenus,
+	goHome,
 	getRenderCtx,
 	setRenderCtx,
 } from './navigation';
+import { snapshotRunner, restaurerRunner } from './lecon-runner-shared';
 import { setOrigineActivite } from './retour-activite';
 
 const now = () => Date.now();
@@ -65,8 +67,15 @@ export const clearResumeCtx = () => {
 
 /* ---------- Capture (on quitte un exercice en cours) ---------- */
 /* Sauvegarde silencieuse de l'état courant. Ne fait rien si aucun exercice
-   reprenable n'est actif, s'il est déjà terminé, ou si rien n'a été saisi. */
+   reprenable n'est actif, s'il est déjà terminé, ou si rien n'a été saisi.
+   Deux natures d'exercice, deux façons de photographier (#498) : un runner
+   « une question à la fois » livre son état logique, une grille son DOM. */
 export function captureResume(): void {
+	const runnerSnap = snapshotRunner(now());
+	if (runnerSnap) {
+		upsertResume(runnerSnap);
+		return;
+	}
 	if (!ctx || getSessionRecorded()) return;
 	const sheets = document.getElementById('sheets');
 	if (!sheets) return;
@@ -84,6 +93,7 @@ export function captureResume(): void {
 	const active = document.activeElement as HTMLElement | null;
 	const activeId = active && active.classList.contains('ans') ? active.id : null;
 	upsertResume({
+		kind: 'grille',
 		key: ctx.key,
 		version: 1,
 		savedAt: now(),
@@ -114,6 +124,19 @@ export function restoreResume(snap: ResumeSnapshot): void {
 	// Une reprise se lance depuis une carte « À continuer » (accueil / catégorie) : c'est
 	// un lancement CATALOGUE, même si l'exercice venait à l'origine du programme (#461).
 	setOrigineActivite('catalogue');
+	// Runner « une question à la fois » (#498) : il se re-rend lui-même depuis son état
+	// logique, rien à réinjecter ici. Runner inconnu (instantané écrit par une version où
+	// il existait encore) → on efface et on rend la main, plutôt qu'un écran vide.
+	if (snap.kind === 'runner') {
+		ctx = null; // aucune grille en cours : la prochaine capture viendra du runner
+		if (!restaurerRunner(snap)) {
+			removeResume(snap.key);
+			goHome();
+			return;
+		}
+		toast("Te revoilà ! On reprend là où tu t'étais arrêté.");
+		return;
+	}
 	setCurrentMode(snap.mode);
 	setCurrentLessonId(snap.relaunch.type === 'lecon' ? snap.relaunch.lessonId : null);
 	// Réinjecte le rendu exact, puis recâble la table id de champ -> Item.

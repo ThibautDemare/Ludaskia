@@ -20,6 +20,8 @@ import {
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	declarerSessionRunner,
+	enregistrerRunner,
 } from './lecon-runner-shared';
 import { bindTuileInteraction } from './tuile-interaction';
 import type { TuileController } from './tuile-interaction';
@@ -65,29 +67,57 @@ function genQuestions(l: LessonDef, m: ExerciseMode, n: number): TuilesQuestion[
 	return out;
 }
 
+/* Nom du runner dans le registre de reprise (#498) — stable, il vit dans les instantanés. */
+const RUNNER = 'tuiles';
+
+/* Démarre l'écran sur un jeu de questions donné, à l'index et au score voulus. Chemin
+   COMMUN au lancement neuf (0/0) et à la reprise, pour que les deux ne divergent pas. */
+function demarrer(l: LessonDef, m: ExerciseMode, qs: TuilesQuestion[], depart = 0, pts = 0): void {
+	lesson = l;
+	mode = m;
+	questions = qs;
+	idx = depart;
+	score = pts;
+	setCurrentMode('lecon');
+	setCurrentLessonId(l.id);
+	hideMenus();
+	setToolbar({ verify: false, home: true, profile: false });
+	declarerSessionRunner({
+		runner: RUNNER,
+		lesson: l,
+		exerciseMode: m ?? null,
+		etat: () => ({ questions, idx, score }),
+	});
+	renderQuestion();
+	maybeAutoAide('tuiles'); // bulle d'aide au 1er lancement (une fois par profil)
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 export function runLeconTuiles(lessonId: string, m: ExerciseMode): void {
 	const l = getLessonById(lessonId);
 	if (!l) {
 		goHome();
 		return;
 	}
-	lesson = l;
-	mode = m;
-	questions = genQuestions(l, m, NB_QUESTIONS);
-	if (!questions.length) {
+	const qs = genQuestions(l, m, NB_QUESTIONS);
+	if (!qs.length) {
 		goHome();
 		return;
 	}
-	idx = 0;
-	score = 0;
-	setCurrentMode('lecon');
-	setCurrentLessonId(lessonId);
-	hideMenus();
-	setToolbar({ verify: false, home: true, profile: false });
-	renderQuestion();
-	maybeAutoAide('tuiles'); // bulle d'aide au 1er lancement (une fois par profil)
-	window.scrollTo({ top: 0, behavior: 'smooth' });
+	demarrer(l, m, qs);
 }
+
+/* Reprise (#498) : on rejoue les questions DÉJÀ TIRÉES à l'index sauvegardé, jamais un
+   nouveau tirage — l'enfant retrouve sa leçon, pas une autre. */
+enregistrerRunner(RUNNER, (snap) => {
+	const l = getLessonById(snap.relaunch.lessonId);
+	const qs = snap.questions as TuilesQuestion[];
+	if (!l || !qs.length) {
+		goHome();
+		return;
+	}
+	demarrer(l, snap.exerciseMode as ExerciseMode, qs, snap.idx, snap.score);
+});
 
 function renderQuestion(): void {
 	const q = questions[idx];

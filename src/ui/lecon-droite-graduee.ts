@@ -37,6 +37,8 @@ import {
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	declarerSessionRunner,
+	enregistrerRunner,
 } from './lecon-runner-shared';
 import { capterErreur } from './erreur-capture';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
@@ -102,29 +104,63 @@ function genQuestions(l: LessonDef, n: number): QuestionDroite[] {
 	return out;
 }
 
+/* Nom du runner dans le registre de reprise (#498) — stable, il vit dans les instantanés. */
+const RUNNER = 'droiteGraduee';
+
+/* Démarre l'écran sur un jeu de questions donné, à l'index et au score voulus. Chemin
+   COMMUN au lancement neuf (0/0) et à la reprise, pour que les deux ne divergent pas. */
+function demarrer(
+	l: LessonDef,
+	m: ExerciseMode | undefined,
+	qs: QuestionDroite[],
+	depart = 0,
+	pts = 0,
+): void {
+	lesson = l;
+	mode = m;
+	questions = qs;
+	idx = depart;
+	score = pts;
+	setCurrentMode('lecon');
+	setCurrentLessonId(l.id);
+	hideMenus();
+	setToolbar({ verify: false, home: true, profile: false });
+	declarerSessionRunner({
+		runner: RUNNER,
+		lesson: l,
+		exerciseMode: m ?? null,
+		etat: () => ({ questions, idx, score }),
+	});
+	renderQuestion();
+	maybeAutoAide('droiteGraduee'); // bulle d'aide au 1er lancement (jamais sous chrono)
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 export function runLeconDroiteGraduee(lessonId: string, m?: ExerciseMode): void {
 	const l = getLessonById(lessonId);
 	if (!l) {
 		goHome();
 		return;
 	}
-	lesson = l;
-	mode = m;
-	questions = genQuestions(l, NB_QUESTIONS);
-	if (!questions.length) {
+	const qs = genQuestions(l, NB_QUESTIONS);
+	if (!qs.length) {
 		goHome();
 		return;
 	}
-	idx = 0;
-	score = 0;
-	setCurrentMode('lecon');
-	setCurrentLessonId(lessonId);
-	hideMenus();
-	setToolbar({ verify: false, home: true, profile: false });
-	renderQuestion();
-	maybeAutoAide('droiteGraduee'); // bulle d'aide au 1er lancement (jamais sous chrono)
-	window.scrollTo({ top: 0, behavior: 'smooth' });
+	demarrer(l, m, qs);
 }
+
+/* Reprise (#498) : on rejoue les questions DÉJÀ TIRÉES à l'index sauvegardé, jamais un
+   nouveau tirage — l'enfant retrouve sa leçon, pas une autre. */
+enregistrerRunner(RUNNER, (snap) => {
+	const l = getLessonById(snap.relaunch.lessonId);
+	const qs = snap.questions as QuestionDroite[];
+	if (!l || !qs.length) {
+		goHome();
+		return;
+	}
+	demarrer(l, (snap.exerciseMode as ExerciseMode) ?? undefined, qs, snap.idx, snap.score);
+});
 
 function svgEl(): SVGSVGElement {
 	return sheets().querySelector('.dg-interactif') as SVGSVGElement;

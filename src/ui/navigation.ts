@@ -160,14 +160,13 @@ export function startLecon(id: string, origine: OrigineActivite = 'catalogue') {
 	const lesson = getLessonById(id);
 	if (!lesson) return;
 	setOrigineActivite(origine, id); // provenance du lancement (#461) : conditionne le retour de fin
-	// Plusieurs modes (ex. conjugaison saisie/QCM) → écran de choix (#69).
-	if ((lesson.exerciseType.modes?.length ?? 0) > 1) {
-		location.hash = 'mode-' + id;
-		return;
-	}
-	// Mono-mode (ex. maths) : pas de choix. Reprise éventuelle → Continuer / Recommencer.
+	// Reprise éventuelle → Continuer / Recommencer, AVANT l'écran de choix de mode : depuis
+	// #498 les runners « une question à la fois » sont eux aussi reprenables, et leur
+	// instantané porte déjà le mode joué — redemander lequel n'aurait pas de sens.
+	// « Recommencer » repart du parcours normal, écran de choix compris.
 	maybeRelaunch(leconKey(id), lesson.label, () => {
-		location.hash = 'lecon-' + id;
+		// Plusieurs modes (ex. conjugaison saisie/QCM) → écran de choix (#69).
+		location.hash = ((lesson.exerciseType.modes?.length ?? 0) > 1 ? 'mode-' : 'lecon-') + id;
 	});
 }
 /* Écran de choix du sous-exercice / mode (#69) : gros boutons dérivés des modes

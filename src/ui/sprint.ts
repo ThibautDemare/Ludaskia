@@ -73,6 +73,7 @@ import {
 	goHome,
 } from './navigation';
 import { capterErreur } from './erreur-capture';
+import { attendueItem } from '../core/erreur-representation';
 
 const SPRINT_MS = 300000; // 5 minutes
 
@@ -574,11 +575,12 @@ function sprintAnswer(raw: string) {
 			text: sprintCurrent!.text,
 			figure: sprintCurrent!.figure,
 			donnee: val,
-			attendue: String(sprintCurrent!.answer),
+			// Intercalation : la BANDE acceptée, pas l'exemple isolé (#446, cf. attendueItem).
+			attendue: attendueItem(sprintCurrent!),
 			lessonId,
 			mode: 'sprint',
 		});
-		sprintShowCorrection(sprintCurrent!.answer);
+		sprintShowCorrection(sprintCurrent!.answer, !!sprintCurrent!.intervalle);
 	}
 }
 
@@ -593,15 +595,23 @@ function sprintSubmit() {
 }
 
 // Mauvaise réponse : on révèle la solution et on met le chrono en pause.
-function sprintShowCorrection(ans: number | string) {
+// `parIntervalle` (#446) : l'item est corrigé par appartenance à un intervalle (intercaler)
+// → la valeur révélée n'est qu'UN exemple. On passe alors au singulier INDÉFINI (« une
+// réponse possible ») : affirmer « la bonne réponse » là où la consigne annonçait plusieurs
+// réponses possibles se contredit, et laisse croire à l'enfant qu'il devait trouver CE
+// nombre-là.
+function sprintShowCorrection(ans: number | string, parIntervalle = false) {
 	sprintPaused = true;
 	const stage = document.getElementById('sprintStage');
 	if (!stage) return;
 	const sol = escapeHTML(String(ans));
+	const annonce = parIntervalle
+		? `Une réponse possible était <strong>${sol}</strong>.`
+		: `La bonne réponse était <strong>${sol}</strong>.`;
 	stage.innerHTML = `
     <div class="sprint-theme">${sprintCurrentDef ? subjectTag(sprintCurrentDef.subject) : ''}<span class="sprint-lesson">${escapeHTML(sprintCurrentDef?.label ?? '')}</span></div>
     <div class="sprint-q wrong">${escapeHTML(sprintCurrent!.text).replace('@', '<span class="sprint-sol">' + sol + '</span>')}</div>
-    <div class="sprint-correction">La bonne réponse était <strong>${sol}</strong>. Prends le temps de la lire.</div>
+    <div class="sprint-correction">${annonce} Prends le temps de la lire.</div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintContinue">Continuer ▶</button></div>`;
 	const c = document.getElementById('sprintContinue');
 	if (c) {

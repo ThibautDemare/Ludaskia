@@ -7,6 +7,7 @@ import { ttsAttr } from './tts-text';
 import { stackFractions } from './fraction-text';
 import { wrapGrandsNombres, parseNombreFr } from './nombres';
 import { estSigneComparaison, paveSignesHTML } from './signes';
+import { attendueItem, corrigeIntercalation } from './erreur-representation';
 import type { ChoiceView } from './exercise';
 
 /* Opération posée (#97) : décrite par ses opérandes et son opérateur ; le rendu
@@ -81,6 +82,26 @@ export function choiceButtonHTML(value: string, index: number, view?: ChoiceView
 	const inner = view ? view.html : escapeHTML(value);
 	const aria = view ? ` aria-label="${escapeHTML(view.label)}"` : '';
 	return `<button class="sprint-choice" data-i="${index}"${aria}>${inner}</button>`;
+}
+
+/* L'intervalle OUVERT ]min ; max[ admet-il PLUSIEURS réponses au sens du LANGAGE, c.-à-d.
+   au moins TROIS entiers (écart ≥ 4) ? (#446)
+   Seuil volontairement plus haut que « la réponse n'est pas unique » : « plusieurs réponses
+   possibles » (suffixe de consigne) et « d'autres nombres » (correction en mode tuiles) sont
+   des PLURIELS — impropres pour deux valeurs, carrément faux pour une. Source unique partagée
+   par la DONNÉE (Fact.plusieurs, data/maths/numeration.ts) et les ÉCRANS de correction, pour
+   qu'ils ne se contredisent jamais. À ne pas confondre avec la simple PRÉSENCE de `intervalle`
+   (= la correction se fait par appartenance), qui suffit aux tournures indéfinies du type
+   « une réponse possible était X ». */
+export function intervalleAPlusieursReponses([min, max]: [number, number]): boolean {
+	return max - min >= 4;
+}
+
+/* Valeur sûre pour un attribut HTML entre guillemets doubles (les contenus posés en
+   `data-*` par renderItem viennent de l'app, jamais d'une saisie — on neutralise tout de
+   même `&` et `"`, qui casseraient l'attribut). */
+function valeurAttribut(s: string): string {
+	return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 
 /* Vérifie la réponse saisie pour un item, selon son type.
@@ -248,7 +269,16 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	const id = nextInputId(ctx);
 	ctx.items[id] = it;
 	// Réponse exposée pour la révélation après correction (échappée pour les attributs).
-	const ansAttr = String(it.answer).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+	const ansAttr = valeurAttribut(String(it.answer));
+	// Intercalation (#446) : `data-answer` ne porte qu'UN exemple valide. On expose EN PLUS
+	// la BANDE acceptée, déjà rédigée, pour que la révélation d'une erreur (marqueur ✗ de
+	// `ui/session.ts`) annonce « un nombre entre 450 et 465 » au lieu d'un nombre isolé —
+	// même formulation que le journal encadrant (source unique : `attendueItem`). `data-answer`
+	// reste INTACT : c'est toujours la clé de correction de repli (scoring quand l'item n'est
+	// plus en session) et le point d'appui des specs e2e. Attribut posé sur le seul champ
+	// numérique : un item à intervalle est numérique par construction (réponse = un nombre),
+	// et `checkItemAnswer` ne consulte l'intervalle que hors branche texte.
+	const attendueAttr = it.intervalle ? ` data-attendue="${valeurAttribut(attendueItem(it))}"` : '';
 	// Saisie de l'heure (#88) : DEUX champs « [heures] h [minutes] », le « h » en dur.
 	// Seul le champ des heures est `.ans` (noté) et porte la réponse canonique ; il
 	// référence le champ des minutes (`data-min-field`) que session.verify fusionne en
@@ -321,13 +351,21 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	// pas de virgule sur mobile). N'affecte que les champs numériques dont la réponse a une
 	// virgule ; les entiers gardent `numeric`.
 	const inputMode = String(it.answer).includes(',') ? 'decimal' : 'numeric';
+	// Corrigé imprimé d'une intercalation (#446) : « 457 ou tout nombre entre 450 et 465 ».
+	// L'exemple seul faisait BARRER des réponses justes par l'adulte qui corrige sur papier,
+	// alors que la fiche annonce « (plusieurs réponses possibles) ». Les autres corrigés (et
+	// les autres branches corrigeMode : heure, fraction à trou) restent inchangés — seul un
+	// item porteur d'un `intervalle` est concerné.
+	const revelee = it.intervalle
+		? corrigeIntercalation(it.answer, it.intervalle)
+		: String(it.answer);
 	const field = ctx.corrigeMode
-		? `<span class="ans-corrige ${extra}">${escapeHTML(String(it.answer))}</span>`
+		? `<span class="ans-corrige ${extra}">${escapeHTML(revelee)}</span>`
 		: signe
 			? `<input class="ans ans-signe ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" spellcheck="false" maxlength="1" aria-label="signe de comparaison"><span class="mark" data-for="${id}"></span>`
 			: it.kind === 'text'
 				? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
-				: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
+				: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${attendueAttr}${lessonAttr(ctx)} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
 	const place = texte.includes('@') ? texte : ctx.printMode ? `${texte} @` : texte;

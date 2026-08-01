@@ -305,7 +305,32 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   niveau) reste unique. Ce champ est **propagé jusqu'à l'`Item`** par `genLessonItem`, et
   **`checkItemAnswer`** (`items.ts`, la vraie correction fiche/sprint/révision) applique la
   **même** règle d'intervalle — sans ça, la correction par intervalle serait ignorée hors du
-  `check` de l'`ExerciseType` (non appelé par l'appli en jeu).
+  `check` de l'`ExerciseType` (non appelé par l'appli en jeu). Le type `tuilesNombre` porte le
+  même champ à titre **INFORMATIF** (#446) : la correction y reste « le libellé posé ===
+  `answer` » (une seule tuile est dans la bande), mais le runner de tuiles a besoin de savoir
+  que la question admettait d'autres nombres, pour le dire à l'enfant après coup et
+  journaliser la bande. Enfin, **`intervalleAPlusieursReponses([min, max])`** (`items.ts`)
+  tranche le seuil du **pluriel** — au moins trois entiers dans la bande, écart ≥ 4 : « deux
+  réponses » n'est pas « plusieurs ». C'est ce prédicat (et non la simple présence du champ)
+  qui déclenche le suffixe de consigne « (plusieurs réponses possibles) » et la mention
+  « d'autres nombres auraient aussi convenu » du mode tuiles ; la **présence** du champ, elle,
+  suffit aux tournures indéfinies des écrans de correction (« une réponse possible était X »),
+  qui ne s'engagent sur aucun nombre de solutions.
+  **`depuisTuilesNombre(ex)` / `TuilesSpec`** (#446) — conversion **UNIQUE** d'un exercice
+  `tuilesNombre` vers l'état local d'un runner : `TuilesSpec = Omit<ExerciseTuiles, 'type'>`
+  (dérivé du type, jamais re-déclaré) et un mappeur qui renvoie tout sauf `type`, **sans
+  énumérer les champs**. Les deux runners qui gardent un état local — `ui/lecon-tuiles.ts`
+  (série de questions) et `ui/revision.ts` (RevItem `'tuile'`) — l'**étalent** (`...`) au lieu
+  de recopier champ par champ. Motif : cette recopie dispersée est ce qui avait fait tomber
+  l'`intervalle` en révision (verdict « LA bonne réponse » et journal à nombre isolé, en
+  contradiction avec la même leçon hors révision) ; désormais un champ ajouté à `tuilesNombre`
+  atteint les deux runners sans rien toucher. Ne concerne pas la conversion vers
+  `ui/tuile-interaction.ts:TuileSpec` (spec du **widget**), volontairement plus étroite : le
+  widget rend et fige des tuiles, il n'a pas à connaître la règle de correction — `TuileSpec`
+  ignore `intervalle` **délibérément** (frontière de responsabilité, pas un oubli à
+  « rétablir »), et c'est aussi pourquoi la galerie visuelle (`ui/galerie.ts`) construit ce
+  spec-là, et non celui-ci. Le portage plus radical (les états locaux **portent** l'exercice au
+  lieu d'en extraire des champs, pour toutes les familles) est suivi par **#507**.
 - **`check-helpers.ts`** (#346) — helpers de correction **réutilisables**, module **pur**
   (sans DOM). Centralise la logique jusqu'ici recopiée dans une dizaine de fabriques
   `src/data/maths/` (cercle, division, fractions, géométrie, géométrie-cm1, mesures,
@@ -720,6 +745,25 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   formats composites (posée, ordre, tri, appariement) sont aussi rejoués par la révision
   espacée (`ui/revision.ts`), seule consommatrice à réutiliser cette mise en forme depuis
   DEUX runners distincts (leçon et révision).
+  **Intercalation** (#446) : **`attendueIntervalle([min, max])`** rend la BANDE acceptée
+  (« un nombre entre 450 et 465 », bornes exclues, grands nombres groupés) et
+  **`attendueItem(item)`** l'applique dès qu'un `Item` porte `intervalle`, sinon renvoie
+  `String(item.answer)` — un seul point de vérité pour les trois chemins qui journalisent un
+  `Item` (`ui/session.ts:verify`, `ui/sprint.ts`, `ui/revision.ts:renderNum`). Sans ça le
+  parent lisait « La bonne réponse : 457 » là où douze valeurs étaient acceptées, et croyait
+  son enfant plus loin du but qu'il ne l'est. Le runner tuiles (`ui/lecon-tuiles.ts`) appelle
+  directement `attendueIntervalle` (sa réponse est un libellé de tuile, pas un `Item`).
+  **`items.ts:renderItem`** consomme la MÊME fonction pour poser **`data-attendue`** sur le
+  champ dès que l'item porte un `intervalle` : le marqueur ✗ de la fiche
+  (`ui/session.ts`) le préfère alors à `data-answer` et révèle la bande (« → un nombre entre
+  450 et 465 ») au lieu d'un exemple isolé — dans le mode le plus joué. `data-answer` reste
+  intact (clé de correction de repli quand l'item n'est plus en session, point d'appui des
+  specs e2e). Enfin **`corrigeIntercalation(exemple, intervalle)`** rend la variante du
+  **corrigé IMPRIMÉ** — « 457 ou tout nombre entre 450 et 465 », exemple groupé comme les
+  bornes — posée par `renderItem` en `corrigeMode` : l'exemple seul faisait **barrer des
+  réponses justes** par l'adulte qui corrige sur papier, alors que la fiche annonce
+  « (plusieurs réponses possibles) ». Les trois formulations dérivent d'une seule
+  mise en forme de la bande (fonction privée du module).
 - **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
   bascule** (`progressionProfil`, `niveauProfilMatiere`) ; réexporte l'échelle de maîtrise
   (`niveauNotion`/`tendanceNotion`, définie dans `maitrise.ts`) pour les imports

@@ -17,8 +17,8 @@ import { consigneRenforceeHTML } from './consigne-renforcee';
 import { icon } from './icon';
 import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
-import { hasMode } from '../core/exercise';
-import type { ChoiceView, QcmVariante } from '../core/exercise';
+import { hasMode, depuisTuilesNombre } from '../core/exercise';
+import type { ChoiceView, QcmVariante, TuilesSpec } from '../core/exercise';
 import { PONCT_MOTS } from './ponctuation-view';
 import { mathInline } from '../core/fraction-text';
 import type { Item } from '../core/items';
@@ -59,6 +59,8 @@ import {
 	motsMalClasses,
 	pairesErreur,
 	analyserResultatPosee,
+	attendueItem,
+	attendueIntervalle,
 } from '../core/erreur-representation';
 import { joindrePhrase } from '../data/francais/grammaire-clic-mot';
 import type { ProblemeEtape, ProbLexique, NatureOrdre } from '../core/exercise';
@@ -88,15 +90,12 @@ type RevItem = { groupLabel: string; consigne?: string } & (
 			picto?: string;
 	  }
 	| { kind: 'word'; wordId: string; mot: string }
-	// Interactions « tuiles » rejouées telles quelles en révision (#186), sans clavier.
-	| {
-			kind: 'tuile';
-			lessonId: string;
-			question: string;
-			answer: string;
-			tuiles: string[];
-			parle?: string;
-	  }
+	// Interactions « tuiles » rejouées telles quelles en révision (#186), sans clavier. Les
+	// champs venant de l'exercice sont pris en bloc via `TuilesSpec` (énoncé, bonne tuile,
+	// tuiles, texte lu, et l'`intervalle` d'une intercalation) : les énumérer ici avait
+	// justement fait oublier l'intervalle (#446), donc un verdict « LA bonne réponse : 4 002 »
+	// et un journal à nombre isolé là où une BANDE était acceptée.
+	| ({ kind: 'tuile'; lessonId: string } & TuilesSpec)
 	| {
 			kind: 'ordre';
 			lessonId: string;
@@ -293,10 +292,9 @@ export function runRevisionEspacee(): void {
 						consigne,
 						kind: 'tuile',
 						lessonId: it.id,
-						question: tex.question,
-						answer: tex.answer,
-						tuiles: tex.tuiles,
-						parle: tex.parle,
+						// Conversion partagée (#446) : tout ce que porte l'exercice arrive ici, y
+						// compris la bande d'une intercalation (verdict + journal). Pas de recopie.
+						...depuisTuilesNombre(tex),
 					});
 					continue;
 				}
@@ -416,10 +414,12 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 				text: it.item.text,
 				figure: it.item.figure,
 				donnee: inp.value,
-				attendue: String(it.item.answer),
+				// Intercalation : la BANDE acceptée, pas l'exemple isolé (#446, cf. attendueItem).
+				attendue: attendueItem(it.item),
 				lessonId: it.lessonId,
 			});
-		grade(reussi, String(it.item.answer));
+		// Item corrigé par intervalle (intercaler) → verdict au singulier INDÉFINI (#446).
+		grade(reussi, String(it.item.answer), !!it.item.intervalle);
 	});
 	(document.getElementById('revInput') as HTMLInputElement).focus();
 }
@@ -612,11 +612,14 @@ function renderTuile(it: Extract<RevItem, { kind: 'tuile' }>) {
 			capterRev({
 				text: it.question,
 				donnee: rep?.kind === 'tuile' ? (rep.posee ?? '') : '',
-				attendue: it.answer,
+				// Intercalation : la BANDE acceptée, pas la seule tuile juste (#446) — même
+				// formulation que la leçon en tuiles et que la fiche.
+				attendue: it.intervalle ? attendueIntervalle(it.intervalle) : it.answer,
 				lessonId: it.lessonId,
 			});
 		}
-		gradeTuile(reussi, it.answer);
+		// Verdict au singulier INDÉFINI quand la correction se fait par intervalle (#446).
+		gradeTuile(reussi, it.answer, !!it.intervalle);
 	});
 }
 
@@ -908,15 +911,19 @@ function journaliserPosee(it: Extract<RevItem, { kind: 'num' }>, cells: HTMLInpu
 /* Verdict + bouton « Continuer / Terminer ». `mathInline` (= échappe + empile les
    fractions « n/d ») : la bonne réponse révélée s'affiche en barre horizontale comme
    les choix, pas en oblique (#264). Sans effet sur les réponses non fractionnaires. */
-function verdictHTML(reussi: boolean, correct?: string, extra = ''): string {
+function verdictHTML(reussi: boolean, correct?: string, extra = '', parIntervalle = false): string {
 	// `correct` absent (moteurs qui révèlent EUX-MÊMES la bonne réponse en place —
 	// problème marqué étape par étape, clic-mot surligné) → verdict d'échec neutre,
 	// sans ligne « La bonne réponse : … » redondante. `extra` insère un complément
 	// (ex. l'explication de stratégie) entre le verdict et le bouton.
+	// `parIntervalle` (#446) : item corrigé par appartenance à un intervalle (intercaler) →
+	// la valeur montrée n'est qu'UN exemple ; on ne lui donne donc pas le statut de réponse
+	// unique, sinon la correction contredit la consigne (« plusieurs réponses possibles »).
+	const label = parIntervalle ? 'Une réponse possible' : 'La bonne réponse';
 	const verdict = reussi
 		? `<div class="rev-feedback ok">✓ Bravo !</div>`
 		: correct
-			? `<div class="rev-feedback ko">✗ La bonne réponse : <strong>${mathInline(correct)}</strong></div>`
+			? `<div class="rev-feedback ko">✗ ${label} : <strong>${mathInline(correct)}</strong></div>`
 			: `<div class="rev-feedback ko">✗ Regarde la correction, puis continue.</div>`;
 	return `${verdict}${extra}
     <div class="rev-actions"><button class="rev-btn" id="revNext">${idx + 1 < items.length ? 'Continuer ▶' : 'Terminer'}</button></div>`;
@@ -927,19 +934,21 @@ function wireRevNext() {
 	document.getElementById('revNext')!.focus();
 }
 
-/* Saisie / QCM / mot / posée : pas de widget à conserver → le verdict remplace le stage. */
-function grade(reussi: boolean, correct: string) {
+/* Saisie / QCM / mot / posée : pas de widget à conserver → le verdict remplace le stage.
+   `parIntervalle` (#446) : voir verdictHTML (réponse non unique → singulier indéfini). */
+function grade(reussi: boolean, correct: string, parIntervalle = false) {
 	recordGrade(reussi);
-	document.getElementById('revStage')!.innerHTML = verdictHTML(reussi, correct);
+	document.getElementById('revStage')!.innerHTML = verdictHTML(reussi, correct, '', parIntervalle);
 	wireRevNext();
 }
 
 /* Tuiles / ordre / tri : le widget vient d'être figé + marqué (✓/✗) par le binder ;
    on garde ces marques visibles et on insère le verdict EN DESSOUS (#revAfter), au
-   lieu de remplacer tout le stage — sinon l'enfant ne verrait jamais les marques. */
-function gradeTuile(reussi: boolean, correct: string) {
+   lieu de remplacer tout le stage — sinon l'enfant ne verrait jamais les marques.
+   `parIntervalle` (#446) : voir verdictHTML (réponse non unique → singulier indéfini). */
+function gradeTuile(reussi: boolean, correct: string, parIntervalle = false) {
 	recordGrade(reussi);
-	document.getElementById('revAfter')!.innerHTML = verdictHTML(reussi, correct);
+	document.getElementById('revAfter')!.innerHTML = verdictHTML(reussi, correct, '', parIntervalle);
 	wireRevNext();
 }
 

@@ -34,7 +34,11 @@ import {
 import { getLessonById } from '../core/catalog';
 import { retourFinActivite, type RetourCible } from './retour-activite';
 import { capterErreur } from './erreur-capture';
-import { analyserResultatPosee, type CellulePosee } from '../core/erreur-representation';
+import {
+	analyserResultatPosee,
+	attendueItem,
+	type CellulePosee,
+} from '../core/erreur-representation';
 
 /* ---------- Vérification (arrête le chrono) ---------- */
 export function verify() {
@@ -88,7 +92,12 @@ export function verify() {
 			inp.classList.add('wrong');
 			if (mark) {
 				mark.className = 'mark wrong';
-				mark.innerHTML = `✗ <span class="sol">→ ${inp.dataset.answer}</span>`;
+				// Révélation : la BANDE acceptée quand l'item est corrigé par intervalle
+				// (`data-attendue`, posé par renderItem — intercaler #446), sinon la réponse
+				// unique. Sur une intercalation, révéler « → 457 » laissait croire à une réponse
+				// unique dans le mode le plus joué, alors que la consigne annonçait le contraire.
+				const revelee = inp.dataset.attendue ?? inp.dataset.answer;
+				mark.innerHTML = `✗ <span class="sol">→ ${revelee}</span>`;
 			}
 		}
 	});
@@ -150,14 +159,17 @@ export function verify() {
 				text: s.item?.text ?? '',
 				figure: s.item?.figure,
 				donnee: s.saisie,
-				attendue: s.item ? String(s.item.answer) : (s.answer ?? ''),
+				// Intercalation (#446) : la BANDE acceptée (« un nombre entre 450 et 465 »), pas
+				// l'exemple révélé — sinon le parent lit une réponse unique là où douze valeurs
+				// passaient, et croit son enfant plus loin du but qu'il ne l'est (cf. attendueItem).
+				attendue: s.item ? attendueItem(s.item) : (s.answer ?? ''),
 				lessonId: s.lesson ?? currentLessonId,
 				mode: currentMode!,
 			});
 		});
 		// Opérations posées (#391) : on agrège les cellules-chiffres d'une même grille
 		// (`groupe`) en UNE entrée « a op b » dont le résultat est faux — jamais une par
-		// chiffre (illisible pour le parent). L'aggrégation de forme est pure (testée).
+		// chiffre (illisible pour le parent). L'agrégation de forme est pure (testée).
 		const posees = new Map<
 			string,
 			{ operation: string; attendue: string; lessonId: string | null; cells: CellulePosee[] }

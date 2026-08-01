@@ -73,12 +73,15 @@ export type Exercise =
 	// au-dessus de la question — horloge, plus tard rectangle coté, polygone…
 	// `champHeure` (#88) : la réponse est une heure « H h MM » → saisie en 2 champs
 	// [heures] h [minutes] (item `kind: 'heure'`), fusionnés avant correction.
-	// `intervalle` (#240) : numération « intercaler » aux grandes plages (CM1) — la
-	// réponse n'est plus une valeur unique mais TOUTE valeur strictement comprise
-	// entre deux bornes [min, max] exclues (« un nombre entre 610 000 et 620 000 »).
-	// `answer` reste une valeur valide (un exemple : révélation/correction, mode
-	// tuiles). Absent (cas CE2) ⇒ correction par comparaison à `answer` (réponse
-	// unique) : le comportement CE2 est INCHANGÉ.
+	// `intervalle` : numération « intercaler » — au CM1 aux grandes plages (#240) et au
+	// CE2 sur toute sa plage (#446) — la réponse n'est plus une valeur unique mais TOUTE
+	// valeur strictement comprise entre deux bornes [min, max] exclues (« un nombre entre
+	// 610 000 et 620 000 »). `answer` reste une valeur valide (un exemple :
+	// révélation/correction, mode tuiles). Absent ⇒ correction par comparaison à `answer`
+	// (réponse unique) : c'est le cas de tous les autres exercices, intercalation exclue.
+	// Propagé jusqu'à l'`Item` par `genLessonItem` (fiche, sprint, révision) et honoré par
+	// `checkItemAnswer` ; les écrans de correction s'en servent aussi pour parler au
+	// singulier INDÉFINI (« une réponse possible était X ») au lieu d'affirmer l'unicité.
 	| {
 			type: 'text';
 			question: string;
@@ -147,7 +150,19 @@ export type Exercise =
 	  }
 	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
 	// des distracteurs vers l'emplacement `@` de la question. Réponse = `answer`.
-	| { type: 'tuilesNombre'; question: string; answer: string; tuiles: string[]; parle?: string }
+	// `intervalle` (#446) : INFORMATIF ici, pour une intercalation jouée en tuiles. La
+	// correction reste « le libellé posé === answer » (une seule tuile est valide, les
+	// autres sont hors intervalle), mais le runner a besoin de savoir que la question
+	// admettait d'AUTRES nombres : il le dit à l'enfant après coup et journalise la bande
+	// pour le parent, au lieu de laisser croire à une réponse unique.
+	| {
+			type: 'tuilesNombre';
+			question: string;
+			answer: string;
+			tuiles: string[];
+			parle?: string;
+			intervalle?: [number, number];
+	  }
 	// Vocabulaire (#108) — l'enfant range une SUITE de tuiles-mots dans l'ordre
 	// alphabétique. `tuiles` = la suite mélangée affichée ; `ordre` = la bonne
 	// suite triée (calculée, jamais codée en dur). Mono-mode (runner dédié).
@@ -331,6 +346,42 @@ export interface ExerciseType {
 	 *  le runner (qui reste agnostique de la banque). */
 	generateSession?(count: number, opts?: GenerateOpts): Exercise[];
 	check(exercise: Exercise, input: string): boolean;
+}
+
+/** Exercice « tuiles » (#98), forme étroite : sert de paramètre aux helpers ci-dessous. */
+export type ExerciseTuiles = Extract<Exercise, { type: 'tuilesNombre' }>;
+
+/** Sous-ensemble « tuiles » qu'un runner garde dans son état local : TOUT l'exercice sauf
+ *  son étiquette `type` (dont le runner n'a plus rien à faire, il a déjà aiguillé dessus).
+ *  Dérivé de l'`Exercise` par `Omit`, donc jamais à re-déclarer : un champ ajouté à
+ *  `tuilesNombre` apparaît ici tout seul. */
+export type TuilesSpec = Omit<ExerciseTuiles, 'type'>;
+
+/** Conversion UNIQUE « exercice tuiles → état local d'un runner ». À ÉTALER chez l'appelant
+ *  (`{ ...depuisTuilesNombre(ex), … }`), jamais à réénumérer champ par champ.
+ *
+ *  Pourquoi ce mappeur existe : chaque runner recopiait l'exercice CHAMP PAR CHAMP, chacun
+ *  chez soi, si bien que tout nouveau champ devait être re-recopié à N endroits — et l'oubli
+ *  ne se voit pas à la lecture. C'est précisément d'où venait le trou de la révision en mode
+ *  tuiles (#446) : l'`intervalle` d'une intercalation restait à quai, la révision annonçait
+ *  « LA bonne réponse » et journalisait un nombre isolé là où une BANDE de valeurs était
+ *  acceptée — en se contredisant avec la même leçon jouée hors révision. En passant par ici,
+ *  un champ ajouté à `tuilesNombre` atteint les deux runners sans rien toucher.
+ *
+ *  Ne concerne PAS la conversion vers le spec du widget (`ui/tuile-interaction.ts:TuileSpec`),
+ *  volontairement plus étroite : le widget rend et fige des tuiles, il n'a pas à connaître la
+ *  règle de correction. `TuileSpec` ignore donc `intervalle` DÉLIBÉRÉMENT — ce n'est pas un
+ *  oubli du même genre, et il ne faut pas l'y « rétablir » : c'est une frontière de
+ *  responsabilité. Même raison pour la galerie visuelle (`ui/galerie.ts`), qui construit ce
+ *  spec-là et ne corrige rien.
+ *
+ *  Le portage plus radical (que les états locaux PORTENT l'exercice au lieu d'en extraire des
+ *  champs, ce qui supprimerait la classe d'erreur pour toutes les familles) est suivi par
+ *  #507. */
+export function depuisTuilesNombre({ type: _type, ...spec }: ExerciseTuiles): TuilesSpec {
+	// Tout SAUF `type`, sans énumérer les champs restants : c'est ce qui rend l'oubli
+	// impossible (un champ ajouté à `tuilesNombre` passe par le reste `...spec`).
+	return spec;
 }
 
 /** Le type propose-t-il ce mode ? (remplace les `modes.includes(...)` codés en dur.) */

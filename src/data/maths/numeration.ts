@@ -21,7 +21,11 @@
    - intercaler (#446) : écarts VARIÉS mélangés dans la même leçon et
      correction PAR INTERVALLE (relation d'ordre OUVERTE a < x < b, comme au
      CM1) — ~18 % serré (2-4, échauffement successeur/prédécesseur), ~50 %
-     moyen (6-30, le plus formateur), ~32 % large (100-900, traverse un rang).
+     moyen (6-30, le plus formateur, dont la moitié en « charnière » : les
+     bornes traversent une centaine — 396 → 405 — voire un millier sur la
+     plage 4 chiffres), ~32 % large (100 à 900, plafonné par la plage).
+     Tirée par les DEUX leçons qui couvrent une plage (999 et 9999) : le
+     programme CE2 associe comparer/encadrer/intercaler sur toute la plage.
    - tuiles : 3 à 4 tuiles, distracteurs = erreurs typiques (avant/après
      confondus, saut de rang, nombre non arrondi, recopie d'une borne).
 
@@ -45,6 +49,7 @@ import type { SchoolLevel } from '../../core/catalog';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
 import { formatNombre, nettoyerSaisieNombre } from '../../core/nombres';
+import { intervalleAPlusieursReponses } from '../../core/items';
 
 /* Deux modes communs à toutes les leçons de numération. */
 const MODES: ModeOption[] = [
@@ -73,11 +78,13 @@ interface Fact {
 	tuiles: string[];
 	parle?: string; // texte lu si l'énoncé affiché est symbolique (#42 ; ex. « 34 @ 56 »)
 	intervalle?: [number, number];
-	// Intercaler (#446) : vrai quand l'intervalle ouvert admet PLUS d'un entier (écart ≥ 3),
-	// donc plusieurs réponses valides. Le suffixe « (plusieurs réponses possibles) » n'est
-	// PAS concaténé ici : il est recomposé sur la consigne AFFICHÉE, en SAISIE seulement, par
-	// numerationType.generate() — jamais en tuiles (une seule tuile valide, correction au
-	// singulier « la bonne réponse était X »).
+	// Intercaler (#446) : vrai quand l'intervalle ouvert admet PLUSIEURS réponses au sens du
+	// langage (au moins trois entiers, écart ≥ 4 — seuil partagé par le cœur, cf.
+	// `intervalleAPlusieursReponses` : « plusieurs » pour deux valeurs serait impropre). Le
+	// suffixe « (plusieurs réponses possibles) » n'est PAS concaténé ici : il est recomposé
+	// sur la consigne AFFICHÉE, en SAISIE seulement, par numerationType.generate() — jamais
+	// en tuiles, où une seule tuile est valide (le runner tuiles ajoute, lui, une mention
+	// « d'autres nombres auraient aussi convenu » APRÈS la réponse).
 	plusieurs?: boolean;
 }
 
@@ -316,35 +323,72 @@ function makeIntercaleFact(a: number, b: number, exemple: number, tuiles: string
 		answer: String(exemple),
 		tuiles,
 		intervalle: [a, b],
-		plusieurs: b - a >= 3,
+		plusieurs: intervalleAPlusieursReponses([a, b]),
 	};
+}
+
+/* Borne basse d'un cas « CHARNIÈRE » (#446, avis pedagogue-primaire) : les deux bornes
+   encadrent un multiple de `pas`, si bien que l'enfant doit franchir un rang (396 → 405,
+   3 987 → 4 002) au lieu de répondre mécaniquement « borne basse + 1 ». C'est le cas
+   classique des manuels CE2, jusqu'ici laissé au hasard.
+   On tire la charnière `c` (multiple de `pas` strictement entre les bornes possibles), puis
+   on décale la borne basse de `d` sous elle, avec d ≤ écart−1 pour que la borne haute passe
+   au-dessus de `c`. Renvoie null si aucun placement ne tient dans [100 ; max] (repli sur un
+   tirage libre par l'appelant) — jamais en pratique aux plages CE2. */
+function borneAvantCharniere(pas: number, ecart: number, max: number): number | null {
+	// c > a ≥ 100 → c ≥ 101 ; c < b ≤ max → c ≤ max − 1.
+	const kMin = Math.ceil(101 / pas);
+	const kMax = Math.floor((max - 1) / pas);
+	if (kMin > kMax) return null;
+	const c = rnd(kMin, kMax) * pas;
+	const dMin = Math.max(1, c + ecart - max); // b = a + écart ≤ max
+	const dMax = Math.min(ecart - 1, c - 100); // b > c, et a ≥ 100
+	if (dMin > dMax) return null;
+	return c - rnd(dMin, dMax);
+}
+
+/* Rang traversé par un cas « charnière » : la CENTAINE, et le MILLIER dès que la plage de
+   la leçon le permet (num-situer-10000). Pas la dizaine : un écart moyen (6-30) en traverse
+   déjà une presque toujours (systématiquement dès 10) — la difficulté est ailleurs. */
+function pasCharniere(max: number): number {
+	return max >= 1000 ? choice([100, 1000]) : 100;
 }
 
 /* CE2 (#446) : écarts VARIÉS et correction PAR INTERVALLE (comme au CM1). Trois paliers
    mélangés dans la même leçon (pondération façon compareFactPetit) : ~18 % serré (2-4,
-   échauffement), ~50 % moyen (6-30, le plus formateur), ~32 % large (100-900, traverse
-   un rang). L'intervalle est OUVERT : la correction accepte TOUTE valeur strictement
-   entre les bornes (champ `intervalle`, honoré par numerationType.check ET par
-   checkItemAnswer côté fiche/sprint/révision). Bornes et réponse ≤ max (≤ 10 000 au CE2). */
+   échauffement), ~50 % moyen (6-30, le plus formateur), ~32 % large (100 à 900, plafonné
+   par la plage — donc au plus 899 sur une plage de 999). Une moitié environ du palier moyen
+   est tirée en « CHARNIÈRE » (bornes de part et d'autre d'une centaine, voire d'un millier
+   sur la plage 4 chiffres) : sans ça, « borne basse + 1 » suffit toujours et l'ordre de
+   grandeur n'est jamais interrogé. L'intervalle est OUVERT : la correction accepte TOUTE
+   valeur strictement entre les bornes (champ `intervalle`, honoré par numerationType.check
+   ET par checkItemAnswer côté fiche/sprint/révision). Bornes et réponse ≤ max. */
 function intercaleFact(max: number): Fact {
 	const r = rnd(1, 100);
 	let ecart: number;
 	let large = false;
+	let charniere = false;
 	if (r <= 18)
 		ecart = rnd(2, 4); // serré : successeur/prédécesseur immédiat (échauffement)
-	else if (r <= 68)
+	else if (r <= 68) {
 		ecart = rnd(6, 30); // moyen : plusieurs réponses, même ordre de grandeur
-	else {
+		charniere = rnd(0, 1) === 0; // ~la moitié du palier : franchissement de rang garanti
+	} else {
 		large = true;
-		ecart = rnd(100, Math.min(900, max - 100)); // large : traverse un rang (dizaine/centaine)
+		ecart = rnd(100, Math.min(900, max - 100)); // large : franchit un rang par sa taille
 	}
-	const a = rnd(100, max - ecart); // borne basse (≥ 3 chiffres)
+	// Borne basse : placée sous une charnière quand le palier moyen l'a tirée, sinon libre.
+	const aCharniere = charniere ? borneAvantCharniere(pasCharniere(max), ecart, max) : null;
+	const a = aCharniere ?? rnd(100, max - ecart); // borne basse (≥ 3 chiffres)
 	const b = a + ecart; // borne haute (≤ max)
 	const exemple = exempleInterne(a, b);
 	// Distracteurs (mode tuiles) couvrant les erreurs typiques : une BORNE (intervalle
-	// ouvert → exclue), une valeur HORS intervalle, et — au palier large — un nombre au
-	// mauvais nombre de chiffres (ordre de grandeur perdu). Toujours de VRAIES formes.
-	const hors = a - rnd(1, 5);
+	// ouvert → exclue), une valeur HORS intervalle — au-DESSUS comme au-DESSOUS de la bande,
+	// tirée au hasard, pour éprouver les deux sens de débordement (le dépassement par le haut
+	// n'était jamais montré) — et, au palier large, un nombre au mauvais nombre de chiffres
+	// (ordre de grandeur perdu). Toujours de VRAIES formes, et jamais au-delà de la plage.
+	const k = rnd(1, 5);
+	const hors = b + k <= max && rnd(0, 1) === 0 ? b + k : a - k; // a ≥ 100 ⇒ a − k > 0
 	const distracteurs = large
 		? [rnd(0, 1) === 0 ? a : b, hors, Math.floor(exemple / 10)]
 		: [a, b, hors];
@@ -386,6 +430,18 @@ function consigneIntercaleSaisie(f: Fact): string {
 		: f.question;
 }
 
+/* Leçon « situer un nombre jusqu'à 10 000 » au CE2 : les TROIS gestes de la relation
+   d'ordre, à parts égales sur la plage 4 chiffres. L'intercalation y manquait (#446) alors
+   que l'attendu CE2 associe comparer / encadrer / intercaler sur toute la plage : l'enfant
+   n'intercalait jamais un nombre à 4 chiffres, et jamais au-dessus d'un millier
+   (3 987 → 4 002, garanti par le cas « charnière » du palier moyen). */
+function situerFactPetit(): Fact {
+	const r = rnd(1, 3);
+	if (r === 1) return compareFactPetit(9999);
+	if (r === 2) return encadreFact(9999, [10, 100, 1000]);
+	return intercaleFact(9999);
+}
+
 /* Vrai si la réponse d'un fait est numérique (encadrer/intercaler) plutôt qu'un
    signe (comparer). Sert au catalogue à choisir kind 'num' vs 'text'. */
 export function answerEstNumerique(answer: string): boolean {
@@ -399,7 +455,8 @@ export function answerEstNumerique(answer: string): boolean {
      nettoyerSaisieNombre, pour ne pas pénaliser un enfant qui recopie le nombre
      groupé affiché ;
    - accepte TOUTE valeur strictement dans l'intervalle quand l'exercice en porte
-     un (#240, intercaler CM1) ; sinon compare à `answer` (réponse unique, CE2). */
+     un (intercaler : #240 au CM1, #446 au CE2) ; sinon compare à `answer` (réponse
+     unique : comparer, encadrer, valeur de position…). */
 function numerationType(genFact: () => Fact): ExerciseType {
 	return {
 		modes: MODES,
@@ -414,21 +471,24 @@ function numerationType(genFact: () => Fact): ExerciseType {
 				const answerTuile = answerEstNumerique(f.answer)
 					? formatNombre(Number(f.answer))
 					: f.answer;
-				// Consigne NUE (question de base) : une seule tuile est valide et la correction
-				// dit « la bonne réponse était X » au singulier → jamais de suffixe « plusieurs
-				// réponses possibles » ici (#446, avis designer-ux-enfant).
+				// Consigne NUE (question de base) : une seule TUILE est valide → pas de suffixe
+				// « plusieurs réponses possibles » avant de répondre, qui ferait chercher une
+				// seconde tuile juste (#446, avis designer-ux-enfant). L'intervalle est tout de
+				// même transmis, INFORMATIF : le runner de tuiles dit APRÈS coup que d'autres
+				// nombres auraient convenu, et journalise la bande pour le parent.
 				return {
 					type: 'tuilesNombre',
 					question: f.question,
 					answer: answerTuile,
 					tuiles: f.tuiles,
 					parle: f.parle,
+					intervalle: f.intervalle,
 				};
 			}
 			return {
 				type: 'text',
 				// SAISIE : on recompose le suffixe « (plusieurs réponses possibles) » quand
-				// l'intervalle admet plus d'un entier (#446). `parle` restant absent, le TTS
+				// l'intervalle admet plusieurs réponses (#446). `parle` restant absent, le TTS
 				// dérive de cette consigne affichée → audio cohérent avec l'écrit, par mode.
 				question: consigneIntercaleSaisie(f),
 				answer: f.answer,
@@ -447,12 +507,14 @@ function numerationType(genFact: () => Fact): ExerciseType {
 			}
 			const saisi = Number(nettoyerSaisieNombre(input).replace(',', '.'));
 			if (Number.isNaN(saisi)) return false;
-			// Intercaler CM1 (#240) : toute valeur STRICTEMENT dans l'intervalle.
+			// Intercaler en SAISIE (#240 CM1, #446 CE2) : toute valeur STRICTEMENT dans
+			// l'intervalle. En TUILES, l'intervalle n'est qu'informatif : une seule tuile
+			// est valide (les autres sont hors bande) → comparaison de libellés ci-dessous.
 			if (exercise.type === 'text' && exercise.intervalle) {
 				const [min, max] = exercise.intervalle;
 				return saisi > min && saisi < max;
 			}
-			// Sinon réponse unique (encadrer, intercaler CE2, valeur de position…).
+			// Sinon réponse unique (encadrer, comparer, valeur de position…) ou tuile posée.
 			return saisi === Number(aBrut);
 		},
 	};
@@ -476,9 +538,9 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 	{
 		id: 'num-encadrer-intercaler',
 		label: "J'encadre et j'intercale",
-		// CE2 : encadrement dizaine/centaine + intercalation serrée (réponse unique).
-		// CM1 (#240) : grandes plages — encadrement au rang adapté, intercalation par
-		// intervalle (toute valeur strictement entre deux multiples ronds consécutifs).
+		// CE2 : encadrement dizaine/centaine + intercalation à écarts variés, corrigée par
+		// intervalle ouvert (#446). CM1 (#240) : grandes plages — encadrement au rang adapté,
+		// intercalation entre deux multiples ronds consécutifs.
 		levels: ['ce2', 'cm1'],
 		exerciseType: calibrated<'petit' | 'grand'>({ ce2: 'petit', cm1: 'grand' }, (taille) =>
 			numerationType(() =>
@@ -494,7 +556,13 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 	},
 	{
 		id: 'num-situer-10000',
-		label: "Je compare et j'encadre jusqu'à 10 000",
+		// Libellé (#446) : les TROIS verbes du programme (« Comparer, encadrer, intercaler des
+		// nombres entiers », cf. docs/reference/programmes/ce2-maths.md) — « Je compare et
+		// j'encadre… » en annonçait deux sur trois. Pas de verbe chapeau (« je situe ») : il
+		// inventerait un 4ᵉ terme et ferait lire une compétence nouvelle, là où cette leçon
+		// est la SUITE des deux précédentes (mêmes gestes, nombres plus grands). 1ʳᵉ personne
+		// comme ses voisines : une série homogène se survole plus vite.
+		label: "Je compare, j'encadre, j'intercale jusqu'à 10 000",
 		// CE2 : 4 chiffres réservés à cette leçon ; encadrement aussi au millier.
 		// CM1 (#240) : grandes plages (comparer/encadrer jusqu'au million).
 		levels: ['ce2', 'cm1'],
@@ -504,9 +572,7 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 					? rnd(0, 1) === 0
 						? compareFactGrand()
 						: encadreFactGrand()
-					: rnd(0, 1) === 0
-						? compareFactPetit(9999)
-						: encadreFact(9999, [10, 100, 1000]),
+					: situerFactPetit(),
 			),
 		),
 	},

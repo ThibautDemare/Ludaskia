@@ -6,9 +6,10 @@
    banque mot par mot (légende, mention figée pour un mot d'une dictée
    prédéfinie, compteur d'orphelins), la recherche (résumé en région live
    STABLE, annonce différée), le filtre orphelins (bouton muté en place,
-   auto-désarmé si le dernier orphelin disparaît), la pagination à 50
-   (SC 2.4.1), et la suppression définitive (modale destructive puis
-   disparition de la ligne).
+   auto-désarmé si le dernier orphelin disparaît), la remise à plat de cet
+   état de vue au changement de profil consulté (`#encConsulteSel`), la
+   pagination à 50 (SC 2.4.1), et la suppression définitive (modale
+   destructive puis disparition de la ligne).
    Bonus : le formulaire d'édition d'une liste (enfant) propose de supprimer
    pour de bon un mot qui vient d'en être retiré et n'est plus dans aucune
    liste — répercuté jusque dans la banque de l'espace encadrant.
@@ -271,6 +272,103 @@ test('volet « Mots » : supprimer le dernier orphelin alors que le filtre est a
 	// 2 mots restants réapparaissent, et le bouton a disparu (plus aucun orphelin).
 	await expect(page.locator('[data-act="banque-orphelins"]')).toHaveCount(0);
 	await expect(page.locator('.enc-banque-item')).toHaveCount(2);
+	await expect(page.locator('#encBanqueResume')).toHaveText('2 mots affichés sur 2.');
+
+	expect(errors).toEqual([]);
+});
+
+/* Changement de profil consulté (#496, relecture qualité) : l'état de vue du volet « Mots »
+   (recherche, filtre orphelins, dépliage) décrit le profil qu'on REGARDAIT. Hérité tel quel
+   après une bascule du sélecteur « Vous consultez » (#encConsulteSel), il ferait passer une
+   liste filtrée/tronquée pour la banque ENTIÈRE du nouvel enfant, sans rien d'anormal à
+   l'écran pour le signaler. Seed à deux profils, chacun sa propre banque (mots absents des
+   dictées prédéfinies), pour observer un VRAI changement de contenu au changement de profil. */
+const PROFIL_A = 'e2e-a';
+const PROFIL_B = 'e2e-b';
+
+function motSimple(id: string, mot: string) {
+	return {
+		id,
+		mot,
+		entourage: [],
+		atelierFait: true,
+		validation: { motCache: false, tuiles: false, dictee: false },
+		revision: { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null },
+		origine: 'liste',
+	};
+}
+
+const SEED_DEUX_PROFILS = {
+	profils: {
+		list: [
+			{ uuid: PROFIL_A, name: 'Profil A', emoji: '🦊', updatedAt: 1, niveauReference: 'ce2' },
+			{ uuid: PROFIL_B, name: 'Profil B', emoji: '🐨', updatedAt: 1, niveauReference: 'ce2' },
+		],
+		active: PROFIL_A,
+	},
+	// A : « abricot » référencé par une liste (non orphelin), « brioche » orphelin seul.
+	orthoA: {
+		banque: { wa1: motSimple('wa1', 'abricot'), wa2: motSimple('wa2', 'brioche') },
+		listes: [{ id: 'l-a', label: 'Fruits', motIds: ['wa1'], createdAt: 1, updatedAt: 1 }],
+		motIdParForme: { abricot: 'wa1', brioche: 'wa2' },
+	},
+	// B : même forme (1 mot en liste + 1 orphelin), contenu totalement distinct de A.
+	orthoB: {
+		banque: { wb1: motSimple('wb1', 'canard'), wb2: motSimple('wb2', 'dauphin') },
+		listes: [{ id: 'l-b', label: 'Animaux', motIds: ['wb1'], createdAt: 1, updatedAt: 1 }],
+		motIdParForme: { canard: 'wb1', dauphin: 'wb2' },
+	},
+};
+
+test('volet « Mots » : changer de profil consulté remet la vue à plat (recherche, filtre, dépliage)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	// `addInitScript` sérialise la fonction pour l'exécuter dans la page : elle ne peut fermer
+	// sur AUCUNE variable Node externe (PROFIL_A/PROFIL_B compris) — tout doit venir de `seed`.
+	await page.addInitScript((seed) => {
+		localStorage.setItem('ludaskia_profiles', JSON.stringify(seed.profils));
+		localStorage.setItem(
+			`${seed.profils.list[0].uuid}/ludaskia_ortho`,
+			JSON.stringify(seed.orthoA),
+		);
+		localStorage.setItem(
+			`${seed.profils.list[1].uuid}/ludaskia_ortho`,
+			JSON.stringify(seed.orthoB),
+		);
+	}, SEED_DEUX_PROFILS);
+	await gotoHash(page, 'encadrant');
+	await basculeVers(page, 'mots');
+
+	const sel = page.locator('#encConsulteSel');
+	await expect(sel).toHaveValue(PROFIL_A);
+
+	// Sur le profil A : poser une recherche, puis (après l'avoir vidée) le filtre orphelins.
+	const rech = page.locator('#encBanqueRech');
+	await rech.fill('abri');
+	await expect(page.locator('.enc-banque-item')).toHaveCount(1);
+	await rech.fill('');
+	const btnOrphelins = page.locator('[data-act="banque-orphelins"]');
+	await btnOrphelins.click();
+	await expect(btnOrphelins).toHaveAttribute('aria-pressed', 'true');
+	await expect(page.locator('.enc-banque-item')).toHaveCount(1); // seule « brioche » est orpheline
+
+	// Basculer vers le profil B via le sélecteur « Vous consultez ».
+	await sel.selectOption(PROFIL_B);
+	await expect(sel).toHaveValue(PROFIL_B);
+
+	// Le volet « Mots » du second repart propre : champ vide, filtre relâché, liste COMPLÈTE
+	// (et non celle, tronquée, qu'on regardait chez A).
+	await expect(page.locator('#encBanqueRech')).toHaveValue('');
+	await expect(page.locator('[data-act="banque-orphelins"]')).toHaveAttribute(
+		'aria-pressed',
+		'false',
+	);
+	await expect(page.locator('.enc-banque-item')).toHaveCount(2);
+	await expect(page.locator('.enc-banque-item').filter({ hasText: 'canard' })).toBeVisible();
+	await expect(page.locator('.enc-banque-item').filter({ hasText: 'dauphin' })).toBeVisible();
+	await expect(page.locator('.enc-banque-item').filter({ hasText: 'abricot' })).toHaveCount(0);
 	await expect(page.locator('#encBanqueResume')).toHaveText('2 mots affichés sur 2.');
 
 	expect(errors).toEqual([]);

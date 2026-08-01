@@ -22,8 +22,9 @@
      `familles-appariement.test.ts`.
 
    Restent ici les angles morts : plancher de banque, unicité du mot interrogé dans les
-   banques d'affixes (celles que #453 agrandit de 23 entrées chacune), absence de fuite
-   de la réponse dans les options, cohérence explication ↔ affixe annoncé, couverture
+   banques d'affixes (celles que #453 agrandit de 23 entrées chacune), les deux repères
+   qui donnent la réponse sans connaissance (fuite du mot interrogé dans une option, et
+   bonne réponse qui se détache par sa longueur), cohérence explication ↔ affixe, couverture
    EFFECTIVE du pool par la leçon (par tirage, à travers le catalogue) et déterminisme
    du tirage. Pas de DOM.
    ============================================================ */
@@ -42,6 +43,29 @@ import {
    #453 vise ~54 entrées par banque. On ne fige PAS la taille exacte : un ajout
    pédagogique futur ne doit pas faire rougir ce test. */
 const PLANCHER_BANQUE = 50;
+
+/* Marge tolérée, en CARACTÈRES, entre la bonne réponse et le PLUS LONG de ses deux
+   distracteurs (garde « option qui se détache visuellement », #453 relecture langue).
+   MÉTRIQUE : caractères, et référence = le plus long distracteur.
+   - vs la MOYENNE des trois options : mauvaise référence. Une réponse peut dépasser la
+     moyenne de 10 caractères tout en égalant le plus long distracteur (deux options
+     longues, une courte) — aucun repère exploitable ; et inversement.
+   - vs le nombre de MOTS : trop grossier, mesuré sur les banques réelles — « sous-titre »
+     a 0 mot d'écart pour +7 caractères, « survêtement » 1 mot d'écart pour +10 (le mot
+     « par-dessus » pèse à lui seul), alors que « facilement » avant correction avait
+     +2 mots pour +10 caractères. La largeur rendue sur un bouton de QCM suit les
+     caractères, pas les mots.
+   MARGE = 10, mesurée sur l'état corrigé des banques CE2 : maximum observé +10
+   (« survêtement »), puis +9 (« surnom ») ; la banque de suffixes plafonne à +2. Elle
+   rattrape 8 des 9 items corrigés par la relecture (de +11 à +28 : récitation, surligner,
+   voleur, franchement, rêveur, soustraction, correction, sérieusement) ; « facilement »
+   (+10 avant correction) tombe pile sur la marge, tout comme « survêtement » qui, lui,
+   est resté — AUCUN seuil de longueur ne sépare ces deux-là. C'est donc un plancher
+   contre les repères FLAGRANTS, pas une preuve d'absence de repère : le jugement fin
+   reste à la relecture langue. Garde volontairement à sens UNIQUE (un distracteur bien
+   plus long que la réponse n'est pas exploitable : l'heuristique « la plus longue »
+   mène alors à une erreur). */
+const MARGE_LONGUEUR = 10;
 
 /* Tirages d'échantillonnage. 4 000 tirages pour ~163 items : sous graine FIXE le
    résultat est déterministe, et même sous graine libre la probabilité qu'un item
@@ -122,6 +146,26 @@ describe('Familles / affixes CE2 — intégrité des items d’affixes (#453)', 
 			}
 		}
 		expect(fuites).toEqual([]);
+	});
+
+	it('la bonne réponse ne se détache pas par sa longueur (au plus 10 caractères de plus que le plus long distracteur)', () => {
+		// Deuxième famille de repère gratuit, plus grossière que la fuite du mot interrogé :
+		// « l'action de réciter un texte appris par cœur » contre « l'action de lire » et
+		// « l'action d'écouter » se désigne toute seule. Choisir la plus longue ne demande
+		// AUCUNE connaissance — même pas de savoir ce que l'affixe signifie.
+		const repères: string[] = [];
+		for (const { nom, items } of BANQUES_AFFIXES) {
+			for (const a of items) {
+				const plusLongDistracteur = Math.max(...a.distracteurs.map((d) => d.length));
+				const écart = a.sens.length - plusLongDistracteur;
+				if (écart > MARGE_LONGUEUR) {
+					repères.push(
+						`${nom} : « ${a.mot} » +${écart} car. — « ${a.sens} » vs [${a.distracteurs.join(' | ')}]`,
+					);
+				}
+			}
+		}
+		expect(repères).toEqual([]);
 	});
 
 	it('l’explication annonce un affixe, du bon type et réellement porté par le mot', () => {

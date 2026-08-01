@@ -173,9 +173,14 @@ describe('Vocabulaire CM1 — NON-régression CE2 (#244)', () => {
 		expect(ITEMS_FAMILLES_SEULES.length).toBe(FAMILLES.length);
 		expect(ITEMS_AFFIXES.length).toBe(PREFIXES.length + SUFFIXES.length);
 		expect(ITEMS_FAMILLES.length).toBe(FAMILLES.length + PREFIXES.length + SUFFIXES.length);
-		// Type par type (le total seul se laisserait berner par un échange entre banques),
-		// et par les RÉPONSES attendues : chaque dérivé / chaque sens est bien dans le pool.
+		// Type par type (le total seul se laisserait berner par un échange entre banques) :
+		// d'abord le COMPTE brut — un `Set` déduplique, donc la perte d'un item passerait
+		// inaperçue si sa réponse était par ailleurs dupliquée — puis les RÉPONSES attendues
+		// (chaque dérivé / chaque sens est bien dans le pool, aucune réponse étrangère).
 		const parType = (t: ItemVocabQcm['type']) => ITEMS_FAMILLES.filter((i) => i.type === t);
+		expect(parType('famille').length).toBe(FAMILLES.length);
+		expect(parType('prefixe').length).toBe(PREFIXES.length);
+		expect(parType('suffixe').length).toBe(SUFFIXES.length);
 		expect(new Set(parType('famille').map((i) => i.reponse))).toEqual(
 			new Set(FAMILLES.map((f) => f.famille)),
 		);

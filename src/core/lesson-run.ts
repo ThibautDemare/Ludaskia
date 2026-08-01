@@ -50,7 +50,14 @@ export function recordLessonRun(p: LessonRunInput): LessonRunOutcome {
 	const streakDays = updateStreak().days;
 	// Type journalisé pour le graphe d'activité (#319) : 'lecon' (leçon seule) sinon
 	// 'bilan' (express/complet). Le sprint a son propre chemin (ui/sprint.ts).
-	recordLessonStats(p.perLesson, p.mode === 'lecon' ? 'lecon' : 'bilan');
+	// La référence (#498) n'est portée qu'en mode 'lecon' : un bilan couvre plusieurs
+	// leçons, aucune cible unique à désigner pour l'attribution du programme du jour.
+	const kindActivite = p.mode === 'lecon' ? 'lecon' : 'bilan';
+	recordLessonStats(
+		p.perLesson,
+		kindActivite,
+		kindActivite === 'lecon' ? (p.lessonId ?? undefined) : undefined,
+	);
 	const niveauAvant = niveauDepuisXP(getXP());
 	addXP(p.ok);
 	const niveauApres = niveauDepuisXP(getXP());

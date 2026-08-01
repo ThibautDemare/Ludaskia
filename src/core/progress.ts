@@ -261,6 +261,7 @@ export function loadLessonStatsAll(): Record<string, LessonStat> {
 export function recordLessonStats(
 	perLesson: Record<string, { ok: number; total: number }>,
 	kind: ActivityKind = 'lecon', // type journalisé pour le graphe d'activité (#319)
+	ref?: string, // cible travaillée (#498) : id de leçon en mode 'lecon', rien pour un bilan/sprint
 ) {
 	const s = loadLessonStatsRaw();
 	const now = Date.now(); // instant unique de la session (stats, activité, 1re/dernière fois)
@@ -287,8 +288,9 @@ export function recordLessonStats(
 		s[k] = e;
 	}
 	lsSet(LESSON_STATS_KEY, s);
-	// Journal d'activité (#234) : un point par session finalisée, typé par contexte (#319).
-	if (hadActivity) recordActivity(now, kind);
+	// Journal d'activité (#234) : un point par session finalisée, typé par contexte (#319),
+	// référencé quand la session porte sur une seule leçon (#498).
+	if (hadActivity) recordActivity(now, kind, ref);
 	// Première rencontre : on date le premier passage (objectif « nouvelle leçon »)
 	// puis on entre la leçon en révision espacée (cf. #45).
 	markLessonsFirstSeen(premieres, now);
@@ -303,12 +305,22 @@ export function recordLessonStats(
    des Run, qui ne couvrent pas les leçons jouées seules. Par profil (clé préfixée),
    borné aux ACTIVITY_MAX dernières entrées.
 
-   Format : `{ t, k }` — horodatage + TYPE de session (#319 : permet la répartition
-   « par type » dans le graphe). Types : 'lecon' | 'bilan' | 'sprint' (via
-   recordLessonStats) + 'revision' | 'dictee' (sessions qui ne passent PAS par
-   recordLessonStats → journalisées via recordSessionActivity).
+   Format : `{ t, k, ref? }` — horodatage + TYPE de session (#319 : permet la répartition
+   « par type » dans le graphe) + RÉFÉRENCE de ce qui a été travaillé (#498). Types :
+   'lecon' | 'bilan' | 'sprint' (via recordLessonStats) + 'revision' | 'dictee' (sessions
+   qui ne passent PAS par recordLessonStats → journalisées via recordSessionActivity).
+
+   `ref` (#498) = id de la leçon ('lecon') ou de la liste d'orthographe ('dictee') jouée.
+   Il n'a de sens que pour une session portant sur UNE seule cible : un bilan, un sprint
+   ou un tour de révision espacée en couvrent plusieurs et n'en portent donc pas. Sans
+   cette référence, le programme du jour ne peut attribuer une étape que par TYPE, ce qui
+   l'obligeait à s'appuyer sur un marqueur posé au lancement — donc à ignorer le travail
+   fait depuis une autre porte que ses tuiles (cf. core/seance.ts).
+
    MIGRATION : l'ancien format était un simple `number` (horodatage) ; on le lit
-   encore (→ type 'inconnu') et on le réécrit au format objet au prochain passage. */
+   encore (→ type 'inconnu') et on le réécrit au format objet au prochain passage. Les
+   entrées d'avant #498 n'ont pas de `ref` : elles restent lisibles, simplement
+   inattribuables autrement que par type. */
 export const ACTIVITY_KEY = 'ludaskia_activity';
 const ACTIVITY_MAX = 200;
 export type ActivityKind = 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee'; // enregistrables
@@ -317,9 +329,12 @@ const ACTIVITY_KINDS: readonly ActivityKind[] = ['lecon', 'bilan', 'sprint', 're
 export interface ActivityEntry {
 	t: number; // horodatage (ms)
 	k: ActivityKindStored;
+	ref?: string; // cible travaillée (id de leçon / de liste) quand la session n'en a qu'une
 }
 /* Normalise un journal brut (lu en localStorage) en entrées typées, en tolérant
-   l'ANCIEN format `number[]` (chaque nombre → entrée de type 'inconnu'). Pur. */
+   l'ANCIEN format `number[]` (chaque nombre → entrée de type 'inconnu'). Une `ref` vide
+   ou non textuelle est écartée plutôt que propagée : « pas de cible » se lit à l'absence
+   de la clé, un seul cas à traiter côté attribution. Pur. */
 export function normalizeActivity(raw: unknown): ActivityEntry[] {
 	if (!Array.isArray(raw)) return [];
 	const out: ActivityEntry[] = [];
@@ -328,10 +343,13 @@ export function normalizeActivity(raw: unknown): ActivityEntry[] {
 			out.push({ t: e, k: 'inconnu' }); // ancien format : horodatage nu
 		} else if (e && typeof e === 'object' && typeof (e as ActivityEntry).t === 'number') {
 			const k = (e as ActivityEntry).k;
-			out.push({
+			const ref = (e as ActivityEntry).ref;
+			const entry: ActivityEntry = {
 				t: (e as ActivityEntry).t,
 				k: (ACTIVITY_KINDS as readonly string[]).includes(k) ? (k as ActivityKind) : 'inconnu',
-			});
+			};
+			if (typeof ref === 'string' && ref !== '') entry.ref = ref;
+			out.push(entry);
 		}
 	}
 	return out;
@@ -339,16 +357,18 @@ export function normalizeActivity(raw: unknown): ActivityEntry[] {
 export function loadActivity(): ActivityEntry[] {
 	return normalizeActivity(lsGet(ACTIVITY_KEY, []));
 }
-function recordActivity(now: number, kind: ActivityKind) {
+function recordActivity(now: number, kind: ActivityKind, ref?: string) {
 	const a = loadActivity(); // normalisé : réécrit aussi l'éventuel héritage au format objet
-	a.push({ t: now, k: kind });
+	a.push(ref ? { t: now, k: kind, ref } : { t: now, k: kind });
 	if (a.length > ACTIVITY_MAX) a.splice(0, a.length - ACTIVITY_MAX);
 	lsSet(ACTIVITY_KEY, a);
 }
 /* Journalise une session finalisée d'un type qui NE passe PAS par recordLessonStats
-   (révision espacée, dictée d'orthographe) — un point d'activité daté (#319). */
-export function recordSessionActivity(kind: ActivityKind): void {
-	recordActivity(Date.now(), kind);
+   (révision espacée, dictée d'orthographe) — un point d'activité daté (#319). `ref`
+   (#498) = cible travaillée quand la session n'en a qu'une (id de liste pour une dictée) ;
+   omise pour la révision espacée, qui rejoue des items de plusieurs origines. */
+export function recordSessionActivity(kind: ActivityKind, ref?: string): void {
+	recordActivity(Date.now(), kind, ref);
 }
 
 /* ---------- Premier passage par leçon (objectif « nouvelle leçon », #178) ----------

@@ -567,9 +567,10 @@ export const PREFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'défaire',
-		sens: 'faire le contraire',
+		sens: 'le contraire de faire',
 		distracteurs: ['faire en double', 'faire à la fin'],
-		explication: 'Le préfixe « dé- » indique le contraire : défaire = faire le contraire de faire.',
+		explication:
+			'Le préfixe « dé- » indique le contraire : défaire un nœud = le contraire de faire un nœud.',
 	},
 	{
 		mot: 'déplier',
@@ -691,13 +692,13 @@ export const PREFIXES: ItemAffixe[] = [
 	{
 		mot: 'incomplet',
 		sens: 'pas complet',
-		distracteurs: ['bien complet', 'complet deux fois'],
+		distracteurs: ['bien complet', 'presque complet'],
 		explication: 'Le préfixe « in- » veut dire « pas » : incomplet = pas complet.',
 	},
 	{
 		mot: 'injuste',
 		sens: 'pas juste',
-		distracteurs: ['très juste', 'juste un peu'],
+		distracteurs: ['très juste', 'un peu juste'],
 		explication: 'Le préfixe « in- » veut dire « pas » : injuste = pas juste.',
 	},
 	{
@@ -788,15 +789,15 @@ export const PREFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'surnom',
-		sens: 'un autre nom donné en plus du vrai nom',
+		sens: 'un autre nom en plus du vrai',
 		distracteurs: ['le nom de famille', 'le prénom inscrit à la mairie'],
 		explication:
 			'Le préfixe « sur- » veut dire « en plus » : un surnom s’ajoute au vrai nom d’une personne.',
 	},
 	{
 		mot: 'surligner',
-		sens: 'colorer par-dessus pour faire ressortir un mot',
-		distracteurs: ['écrire par-dessus un mot', 'effacer un mot'],
+		sens: 'passer de la couleur sur un mot',
+		distracteurs: ['écrire par-dessus un mot', 'effacer un mot de la phrase'],
 		explication:
 			'Le préfixe « sur- » veut dire « au-dessus » : surligner = passer de la couleur par-dessus un mot.',
 	},
@@ -815,8 +816,10 @@ export const PREFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'sous-titre',
-		sens: 'texte sous l’image',
-		distracteurs: ['un grand titre', 'un titre en haut'],
+		// « texte sous l'image » se confondait avec une légende de photo : le sens dit
+		// maintenant le film, et les distracteurs sont de longueur comparable.
+		sens: 'texte écrit sous les images d’un film',
+		distracteurs: ['titre écrit en haut de la page', 'grand titre au début du livre'],
 		explication:
 			'Le préfixe « sous- » veut dire « en dessous » : sous-titre = texte écrit sous les images d’un film.',
 	},
@@ -902,14 +905,14 @@ export const SUFFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'voleur',
-		sens: 'celui qui prend ce qui ne lui appartient pas',
+		sens: 'celui qui prend sans permission',
 		distracteurs: ['celui qui trouve un objet perdu', 'celui qui vend des objets'],
 		explication:
 			'Le suffixe « -eur » désigne celui qui fait l’action : un voleur, c’est celui qui vole.',
 	},
 	{
 		mot: 'rêveur',
-		sens: 'celui qui rêve, qui imagine',
+		sens: 'celui qui imagine',
 		distracteurs: ['celui qui court', 'celui qui chante'],
 		explication:
 			'Le suffixe « -eur » désigne celui qui fait l’action : un rêveur, c’est celui qui rêve.',
@@ -1000,21 +1003,21 @@ export const SUFFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'soustraction',
-		sens: 'l’action de soustraire, d’enlever',
+		sens: 'l’action d’enlever',
 		distracteurs: ['l’action d’additionner', 'l’action de multiplier'],
 		explication:
 			'Le suffixe « -tion » désigne l’action : une soustraction, c’est l’action de soustraire, d’enlever.',
 	},
 	{
 		mot: 'correction',
-		sens: 'l’action de corriger une erreur',
+		sens: 'l’action de corriger',
 		distracteurs: ['l’action de recopier', 'l’action d’effacer'],
 		explication:
 			'Le suffixe « -tion » désigne l’action : une correction, c’est l’action de corriger.',
 	},
 	{
 		mot: 'récitation',
-		sens: 'l’action de réciter un texte appris par cœur',
+		sens: 'l’action de réciter',
 		distracteurs: ['l’action de lire', 'l’action d’écouter'],
 		explication:
 			'Le suffixe « -tion » désigne l’action : une récitation, c’est l’action de réciter.',
@@ -1093,21 +1096,21 @@ export const SUFFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'facilement',
-		sens: 'd’une manière facile, sans effort',
+		sens: 'd’une manière facile',
 		distracteurs: ['d’une manière difficile', 'd’une manière lente'],
 		explication:
 			'Le suffixe « -ment » indique la manière : facilement, c’est d’une manière facile.',
 	},
 	{
 		mot: 'franchement',
-		sens: 'd’une manière franche, sans mentir',
+		sens: 'd’une manière franche',
 		distracteurs: ['d’une manière timide', 'd’une manière moqueuse'],
 		explication:
 			'Le suffixe « -ment » indique la manière : franchement, c’est d’une manière franche.',
 	},
 	{
 		mot: 'sérieusement',
-		sens: 'd’une manière sérieuse, appliquée',
+		sens: 'd’une manière sérieuse',
 		distracteurs: ['d’une manière amusante', 'd’une manière rapide'],
 		explication:
 			'Le suffixe « -ment » indique la manière : sérieusement, c’est d’une manière sérieuse.',

@@ -751,8 +751,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `String(item.answer)` — un seul point de vérité pour les trois chemins qui journalisent un
   `Item` (`ui/session.ts:verify`, `ui/sprint.ts`, `ui/revision.ts:renderNum`). Sans ça le
   parent lisait « La bonne réponse : 457 » là où douze valeurs étaient acceptées, et croyait
-  son enfant plus loin du but qu'il ne l'est. Le runner tuiles (`ui/lecon-tuiles.ts`) appelle
-  directement `attendueIntervalle` (sa réponse est un libellé de tuile, pas un `Item`).
+  son enfant plus loin du but qu'il ne l'est. Les DEUX runners qui journalisent depuis une
+  `RevItem`/`Exercise` de tuiles plutôt qu'un `Item` — `ui/lecon-tuiles.ts` (leçon en tuiles)
+  et `ui/revision.ts:renderTuile` (révision en mode tuiles) — appellent directement
+  `attendueIntervalle` (leur réponse est un libellé de tuile, pas un `Item`).
   **`items.ts:renderItem`** consomme la MÊME fonction pour poser **`data-attendue`** sur le
   champ dès que l'item porte un `intervalle` : le marqueur ✗ de la fiche
   (`ui/session.ts`) le préfère alors à `data-answer` et révèle la bande (« → un nombre entre

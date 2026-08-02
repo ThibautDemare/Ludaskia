@@ -109,21 +109,27 @@ function valeurAttribut(s: string): string {
      exigés (formes alternatives via answers)
    - calcul : comparaison numérique (virgule tolérée comme séparateur décimal) */
 export function checkItemAnswer(it: Item, raw: string): boolean {
+	// Intercaler par intervalle OUVERT (#240 CM1, #446 CE2) : toute valeur strictement
+	// entre les bornes exclues. Même tolérance de saisie que la comparaison numérique
+	// (parseNombreFr : virgule décimale, séparateurs de milliers).
+	// Testé AVANT le `kind` : la règle est portée par la DONNÉE (présence des bornes), pas par
+	// la matière ni par le type de champ. Sans ça, un item à intervalle rendu en `kind: 'text'`
+	// — ce que produit `genLessonItem` pour toute leçon NON mathématique — serait corrigé par
+	// égalité de chaîne, donc n'accepterait que la valeur-exemple, pendant que la correction
+	// affichée, elle, annoncerait la bande. Inerte pour le contenu actuel (les intercalations
+	// existantes sont `kind: 'num'`, qui n'entrait déjà pas dans la branche texte).
+	if (it.intervalle) {
+		const v = parseNombreFr(raw);
+		if (Number.isNaN(v)) return false;
+		const [min, max] = it.intervalle;
+		return v > min && v < max;
+	}
 	// 'heure' (#88) : saisie en 2 champs, déjà fusionnée en « H h MM » par l'appelant
 	// (session.verify) ; on la compare comme du texte (forme canonique + variantes).
 	if (it.kind === 'text' || it.kind === 'heure') {
 		const v = normalizeText(raw);
 		if (v === normalizeText(String(it.answer))) return true;
 		return (it.answers ?? []).some((a) => normalizeText(a) === v);
-	}
-	// Intercaler par intervalle OUVERT (#240 CM1, #446 CE2) : toute valeur strictement
-	// entre les bornes exclues. Même tolérance de saisie que la comparaison numérique
-	// (parseNombreFr : virgule décimale, séparateurs de milliers).
-	if (it.intervalle) {
-		const v = parseNombreFr(raw);
-		if (Number.isNaN(v)) return false;
-		const [min, max] = it.intervalle;
-		return v > min && v < max;
 	}
 	// Comparaison numérique tolérante (via parseNombreFr) appliquée SYMÉTRIQUEMENT à la
 	// saisie ET à la réponse stockée : neutralise les séparateurs de milliers d'un grand

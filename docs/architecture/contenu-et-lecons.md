@@ -496,9 +496,11 @@ fin de fil vocabulaire CM1 dans l'ordre pédagogique (après
 3 leçons « situer un nombre » (catégorie
 `math-numeration`) — `num-comparer` (placer `<`, `=`, `>`), `num-encadrer-intercaler`
 (dizaine/centaine juste avant/après, intercaler par intervalle à écarts variés),
-`num-situer-10000` (« Je situe les nombres jusqu'à 10 000 » : les **trois** gestes de la
+`num-situer-10000` (« Je compare, j'encadre, j'intercale jusqu'à 10 000 » — libellé qui
+nomme les **trois** verbes du programme, #446 ; l'ancien « Je compare et j'encadre… »
+n'en annonçait que deux) : les trois gestes de la
 relation d'ordre — comparer / encadrer au millier / **intercaler** — à parts égales sur la
-plage 4 chiffres, #446). **Deux modes** par
+plage 4 chiffres. **Deux modes** par
 leçon (#69) : `saisie` (conseillé, compatible fiche/bilan : on tape le signe ou le
 nombre) et `tuiles` (on déplace la bonne tuile parmi des distracteurs). Le mode
 tuiles produit un `Exercise` de type **`tuilesNombre`** (`{question, answer, tuiles}`)

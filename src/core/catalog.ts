@@ -1132,6 +1132,10 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 	// Intercaler par intervalle (#240 CM1, #446 CE2) : on fait DESCENDRE les bornes
 	// jusqu'à l'Item pour que la correction fiche/sprint/révision (checkItemAnswer) accepte
 	// toute valeur strictement dedans — sinon seule la valeur-exemple `answer` passerait.
+	// Propagé pour TOUTES les matières (les deux retours ci-dessous), pas seulement les maths :
+	// le champ vit sur le type `Exercise` général, donc une leçon de français qui s'en servirait
+	// perdrait la bande EN SILENCE si on restreignait la propagation au cas maths — l'oubli ne
+	// se verrait ni à la lecture ni en test. Ne pas « simplifier » en le retirant d'un des deux.
 	const intervalle = ex.type === 'text' ? ex.intervalle : undefined;
 	if (lesson.subject === 'math') {
 		// Saisie de l'heure en 2 champs (#88) ; sinon numérique (calcul) ou texte (signe).
@@ -1166,6 +1170,7 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 		parle,
 		choices,
 		choicesView,
+		intervalle,
 		_lesson: lesson.id,
 	};
 }

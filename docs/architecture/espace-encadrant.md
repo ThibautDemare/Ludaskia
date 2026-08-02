@@ -294,7 +294,7 @@ les notions par catégorie et les listes de dictée, juste avant le récap de r�
 ci-dessous) — `ui/encadrant-erreurs.ts`, inséré par `encadrant-progression.ts` : chaque erreur commise
 pendant un entraînement est journalisée localement (`core/erreurs-journal.ts`, clé
 `ludaskia_erreurs`, 150 entrées les plus récentes par profil) — question posée, réponse
-donnée, bonne réponse, leçon, mode, quand. **Groupé par leçon**, la plus récemment ratée en
+donnée, réponse **attendue**, leçon, mode, quand. **Groupé par leçon**, la plus récemment ratée en
 tête, replié par défaut (`<details>`) pour ne pas dérouler un « mur de fautes » ; à
 l'intérieur d'une leçon, une même erreur répétée (même question + même réponse donnée) est
 **dédoublonnée** en une seule ligne « vue N fois » plutôt que N lignes identiques. Dans une
@@ -302,8 +302,12 @@ leçon, seules les **5 erreurs** les plus récentes s'affichent d'emblée ; les 
 lisibles via un repli **dépliable** (`<details class="enc-err-anciennes">`, imbriqué dans celui
 de la leçon) plutôt qu'un simple compteur muet — le total annoncé en tête du groupe reste ainsi
 consultable en détail. Parti pris
-(avis designer-ux-enfant) : pas de rouge en aplat, la **bonne réponse** est mise en avant
-(positif), la réponse donnée reste neutre et n'est jamais barrée. Chaque groupe — **leçon du
+(avis designer-ux-enfant) : pas de rouge en aplat, la réponse attendue est mise en avant
+(positif), la réponse donnée reste neutre et n'est jamais barrée. Le libellé lit « **Réponse
+attendue :** », et non « La bonne réponse » (#446) : depuis que l'intercalation corrige par
+BANDE plutôt que par valeur unique, un attendu peut être « un nombre entre 450 et 465 » — un
+« LA » y nierait la pluralité. Formulation neutre, valable pour **toutes les leçons**, pas
+seulement l'intercalation. Chaque groupe — **leçon du
 catalogue ou liste de dictée** (#424) — peut être **épinglé** depuis ce bloc (même
 `data-act="epingler"` → `toggleRevoirFor`, mécanique partagée avec « à revoir » ci-dessous) ;
 l'action n'est **masquée** que si l'id ne résout ni l'une ni l'autre (groupe orphelin, cible

@@ -286,6 +286,18 @@ input.frac-num-input:focus-visible {
 .sprint-correction strong {
 	color: var(--ok);
 }
+/* Rappel de la réponse envoyée, sur sa propre ligne AVANT la bonne réponse. Neutre :
+   ni rouge, ni barré (même parti pris que le journal d'erreurs de l'espace encadrant) —
+   ce sont les mots « Tu as répondu » qui portent le sens, jamais la couleur seule. Le
+   sélecteur est plus spécifique que `.sprint-correction strong` pour que le vert reste
+   réservé à la BONNE réponse : deux valeurs en vert côte à côte ne se distingueraient plus. */
+.sprint-donnee {
+	display: block;
+	margin-bottom: 2px;
+}
+.sprint-correction .sprint-donnee strong {
+	color: var(--ink);
+}
 
 .sprint-actions {
 	display: flex;

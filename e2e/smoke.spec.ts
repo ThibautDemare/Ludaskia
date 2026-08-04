@@ -82,3 +82,23 @@ test('Sprint : la touche Entrée enchaîne après la correction', async ({ page 
 	await expect(page.locator('#sprintContinue')).toBeHidden();
 	expect(errors).toEqual([]);
 });
+
+test('Sprint : la correction rappelle la réponse envoyée', async ({ page }) => {
+	// Sans ce rappel, l'énoncé re-rendu avec la solution dans le trou se lit comme la
+	// réponse de l'enfant : l'écran semble refuser une réponse juste, et une erreur de
+	// frappe devient indétectable. Même filtre « Calcul mental » que ci-dessus (100 %
+	// saisie), donc une réponse fausse mène à coup sûr à l'écran de correction.
+	const errors = watchErrors(page);
+	await gotoHash(page, 'sprint-config');
+	await page.locator('.sc-option', { hasText: 'Calcul mental' }).click();
+	await page.locator('#scLaunch').click();
+	await expect(page.locator('#sprintInput')).toBeVisible();
+
+	await page.locator('#sprintInput').fill('999999');
+	await page.locator('#sprintInput').press('Enter');
+
+	// La saisie est rappelée TELLE QUELLE, distincte de la bonne réponse annoncée.
+	await expect(page.locator('.sprint-donnee')).toHaveText('Tu as répondu 999999.');
+	await expect(page.locator('.sprint-correction')).toContainText('La bonne réponse était');
+	expect(errors).toEqual([]);
+});

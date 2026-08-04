@@ -580,7 +580,7 @@ function sprintAnswer(raw: string) {
 			lessonId,
 			mode: 'sprint',
 		});
-		sprintShowCorrection(sprintCurrent!.answer, !!sprintCurrent!.intervalle);
+		sprintShowCorrection(val, sprintCurrent!.answer, !!sprintCurrent!.intervalle);
 	}
 }
 
@@ -595,12 +595,18 @@ function sprintSubmit() {
 }
 
 // Mauvaise réponse : on révèle la solution et on met le chrono en pause.
+// `donnee` : la réponse RÉELLEMENT envoyée par l'enfant, rappelée avant la bonne réponse.
+// Sans elle, l'énoncé re-rendu avec la solution dans le trou se lit comme SA réponse, et
+// l'écran affirme alors « ta réponse est fausse, la bonne réponse était [le même nombre] » :
+// une erreur de frappe (chiffre doublé, frappe perdue) devient indétectable, pour l'enfant
+// comme pour l'encadrant. Même parti pris que le journal d'erreurs (#391) : la réponse
+// donnée reste NEUTRE (jamais barrée, jamais en rouge), la bonne réponse est mise en avant.
 // `parIntervalle` (#446) : l'item est corrigé par appartenance à un intervalle (intercaler)
 // → la valeur révélée n'est qu'UN exemple. On passe alors au singulier INDÉFINI (« une
 // réponse possible ») : affirmer « la bonne réponse » là où la consigne annonçait plusieurs
 // réponses possibles se contredit, et laisse croire à l'enfant qu'il devait trouver CE
 // nombre-là.
-function sprintShowCorrection(ans: number | string, parIntervalle = false) {
+function sprintShowCorrection(donnee: string, ans: number | string, parIntervalle = false) {
 	sprintPaused = true;
 	const stage = document.getElementById('sprintStage');
 	if (!stage) return;
@@ -608,10 +614,15 @@ function sprintShowCorrection(ans: number | string, parIntervalle = false) {
 	const annonce = parIntervalle
 		? `Une réponse possible était <strong>${sol}</strong>.`
 		: `La bonne réponse était <strong>${sol}</strong>.`;
+	// « répondu » et non « écrit » : le sprint valide aussi au TAP (QCM de conjugaison,
+	// signes « < = > »), où rien n'a été saisi au clavier.
 	stage.innerHTML = `
     <div class="sprint-theme">${sprintCurrentDef ? subjectTag(sprintCurrentDef.subject) : ''}<span class="sprint-lesson">${escapeHTML(sprintCurrentDef?.label ?? '')}</span></div>
     <div class="sprint-q wrong">${escapeHTML(sprintCurrent!.text).replace('@', '<span class="sprint-sol">' + sol + '</span>')}</div>
-    <div class="sprint-correction">${annonce} Prends le temps de la lire.</div>
+    <div class="sprint-correction">
+      <span class="sprint-donnee">Tu as répondu <strong>${escapeHTML(donnee)}</strong>.</span>
+      <span>${annonce} Prends le temps de la lire.</span>
+    </div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintContinue">Continuer ▶</button></div>`;
 	const c = document.getElementById('sprintContinue');
 	if (c) {

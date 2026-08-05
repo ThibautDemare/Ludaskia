@@ -29,6 +29,7 @@ import {
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { niveauLecon, niveauActifMatiere } from '../core/niveau-actif';
 import { estSigneComparaison, SIGNES_COMPARAISON, signeView } from '../core/signes';
+import type { SigneComparaison } from '../core/signes';
 import { hasMode } from '../core/exercise';
 import type { ChoiceView } from '../core/exercise';
 import { mathInline } from '../core/fraction-text';
@@ -347,10 +348,15 @@ export function runSprint() {
 	const hud = hudContent
 		? `<div class="sprint-hud${sprintSansPression ? ' sprint-hud--calme' : ''}">${hudContent}</div>`
 		: '';
+	// Région live du lecteur d'écran, créée VIDE et hors du stage : le stage est
+	// réécrit à chaque question, or une région live insérée en même temps que son
+	// texte n'est pas annoncée de façon fiable. Même pattern que le widget
+	// d'appariement et « clique sur le mot ». Remplie par sprintAnnonce.
 	document.getElementById('sheets')!.innerHTML = `
     <div class="sprint">
       ${hud}
       <div class="sprint-stage" id="sprintStage"></div>
+      <p class="sr-only" id="sprintStatus" role="status" aria-live="polite" aria-atomic="true"></p>
     </div>`;
 	sprintRenderTime();
 	sprintLastTick = Date.now();
@@ -431,7 +437,24 @@ function pickSprintDef(): LessonDef {
 // derniers items via une mémoire glissante). Les leçons dont l'ExerciseType
 // propose un mode 'qcm' (conjugaison) sont posées en QCM : sous chrono, la
 // frappe au clavier pénaliserait la vitesse (cf. issue #54).
+/* Écrit (ou vide, avec '') l'annonce destinée au lecteur d'écran. */
+function sprintAnnonce(texte: string): void {
+	const el = document.getElementById('sprintStatus');
+	if (el) el.textContent = texte;
+}
+
+/* Une réponse telle qu'elle se LIT dans une phrase de correction : un signe de
+   comparaison est NOMMÉ (« plus petit que (<) ») au lieu d'être laissé en glyphe nu,
+   comme la ponctuation du runner QCM (#204). Un symbole isolé au milieu d'une phrase
+   ne se lit ni à l'œil ni au lecteur d'écran. Dans l'ÉNONCÉ reconstitué, en revanche,
+   le glyphe reste nu : « 12 < 15 » se lit très bien, « 12 plus petit que (<) 15 » non. */
+function reponseLisible(valeur: string): string {
+	const s = valeur.trim();
+	return estSigneComparaison(s) ? `${signeView(s as SigneComparaison).label} (${s})` : valeur;
+}
+
 function sprintNext() {
+	sprintAnnonce(''); // la correction précédente ne survit pas à la question suivante
 	let q: Item,
 		def: LessonDef,
 		choices: string[] | null,
@@ -610,20 +633,23 @@ function sprintShowCorrection(donnee: string, ans: number | string, parIntervall
 	sprintPaused = true;
 	const stage = document.getElementById('sprintStage');
 	if (!stage) return;
-	const sol = escapeHTML(String(ans));
-	const annonce = parIntervalle
-		? `Une réponse possible était <strong>${sol}</strong>.`
-		: `La bonne réponse était <strong>${sol}</strong>.`;
+	const solBrute = escapeHTML(String(ans)); // dans l'énoncé reconstitué, à la place du champ
+	const solLue = reponseLisible(String(ans)); // dans la phrase de correction
+	const donneeLue = reponseLisible(donnee);
+	const amorce = parIntervalle ? 'Une réponse possible était' : 'La bonne réponse était';
 	// « répondu » et non « écrit » : le sprint valide aussi au TAP (QCM de conjugaison,
 	// signes « < = > »), où rien n'a été saisi au clavier.
 	stage.innerHTML = `
     <div class="sprint-theme">${sprintCurrentDef ? subjectTag(sprintCurrentDef.subject) : ''}<span class="sprint-lesson">${escapeHTML(sprintCurrentDef?.label ?? '')}</span></div>
-    <div class="sprint-q wrong">${escapeHTML(sprintCurrent!.text).replace('@', '<span class="sprint-sol">' + sol + '</span>')}</div>
+    <div class="sprint-q wrong">${escapeHTML(sprintCurrent!.text).replace('@', '<span class="sprint-sol">' + solBrute + '</span>')}</div>
     <div class="sprint-correction">
-      <span class="sprint-donnee">Tu as répondu <strong>${escapeHTML(donnee)}</strong>.</span>
-      <span>${annonce} Prends le temps de la lire.</span>
+      <span class="sprint-donnee">Tu as répondu <strong>${escapeHTML(donneeLue)}</strong>.</span>
+      <span>${amorce} <strong>${escapeHTML(solLue)}</strong>. Prends le temps de la lire.</span>
     </div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintContinue">Continuer ▶</button></div>`;
+	// Le focus part sur « Continuer » (ci-dessous) : un lecteur d'écran n'annonce que
+	// l'élément focalisé, donc sans cette ligne la correction ne serait jamais lue.
+	sprintAnnonce(`Tu as répondu ${donneeLue}. ${amorce} ${solLue}.`);
 	const c = document.getElementById('sprintContinue');
 	if (c) {
 		c.addEventListener('click', sprintContinue);

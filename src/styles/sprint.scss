@@ -326,6 +326,13 @@ input.frac-num-input:focus-visible {
 .sprint-btn:active {
 	transform: translateY(1px);
 }
+/* Focus clavier visible (WCAG 2.4.7), même pattern que `.sprint-choice` / `.sprint-input`.
+   Sur l'écran de correction, ce bouton reçoit le focus PAR SCRIPT (pas seulement au
+   clavier) : c'est là que l'anneau doit être garanti sur tous les thèmes. */
+.sprint-btn:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
 /* Désactivé (#253 : « Valider » tant que 0 case cochée) : atténué, non cliquable, sans
    survol. Utilisé par le runner QCM multi-sélection. */
 .sprint-btn:disabled {

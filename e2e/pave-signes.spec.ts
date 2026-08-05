@@ -119,3 +119,34 @@ test('sprint : une question de comparaison se pose en QCM à 3 choix, pas en cha
 	await expect(page.locator('.sprint-check')).toBeVisible(); // feedback positif immédiat
 	expect(errors).toEqual([]);
 });
+
+test('sprint : la correction NOMME les signes au lieu de laisser un glyphe nu', async ({
+	page,
+}) => {
+	// Un glyphe isolé au milieu d'une phrase (« Tu as répondu <. ») ne se lit ni à l'œil
+	// ni au lecteur d'écran : même parti pris que la ponctuation du runner QCM (#204).
+	const errors = watchErrors(page);
+	await gotoHash(page, 'bilan-cat-math-numeration');
+	await page.locator('#bcSelectNone').click();
+	await page.locator('.bc-lesson-check[value="num-comparer"]').check();
+	await page.locator('.bc-mode-radio[value="sprint"]').check();
+	await page.locator('#bcRun').click();
+	await expect(page.locator('#sprintTime')).toBeVisible();
+
+	const enonce = await page.locator('.sprint-q-qcm').innerText();
+	const m = enonce.match(/(\d+)\D+?(\d+)/);
+	expect(m).not.toBeNull();
+	const a = Number(m![1]),
+		b = Number(m![2]);
+	const bon = a < b ? '<' : a > b ? '>' : '=';
+	const faux = bon === '<' ? '>' : '<'; // n'importe quel autre signe mène à la correction
+	await page.locator(`.sprint-choice[aria-label="${SIGNE_LABELS[faux]}"]`).click();
+
+	await expect(page.locator('.sprint-donnee')).toHaveText(
+		`Tu as répondu ${SIGNE_LABELS[faux]} (${faux}).`,
+	);
+	await expect(page.locator('.sprint-correction')).toContainText(
+		`La bonne réponse était ${SIGNE_LABELS[bon]} (${bon}).`,
+	);
+	expect(errors).toEqual([]);
+});

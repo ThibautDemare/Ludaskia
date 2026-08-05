@@ -100,5 +100,8 @@ test('Sprint : la correction rappelle la réponse envoyée', async ({ page }) =>
 	// La saisie est rappelée TELLE QUELLE, distincte de la bonne réponse annoncée.
 	await expect(page.locator('.sprint-donnee')).toHaveText('Tu as répondu 999999.');
 	await expect(page.locator('.sprint-correction')).toContainText('La bonne réponse était');
+	// Le focus part sur « Continuer », donc la correction doit aussi passer par la région
+	// live (sinon un lecteur d'écran n'annonce que le bouton).
+	await expect(page.locator('#sprintStatus')).toContainText('Tu as répondu 999999.');
 	expect(errors).toEqual([]);
 });

@@ -46,7 +46,12 @@ erreurs d'une session, n'enregistre rien). L'accueil ne propose plus de cartes
 express/complet : on y accède par Matière → Catégorie. Le **mode Révision**
 (accueil, `#revision-espacee`) rejoue les éléments **dus** par répétition espacée
 — mots d'orthographe **et** leçons maths/conjugaison — **regroupés par catégorie**,
-un élément à la fois, sans chrono ni record.
+un élément à la fois, sans chrono ni record. Les exercices à **geste** (tuiles,
+rangement, tri, appariement, « clique sur le mot ») y sont rejoués avec leur **vrai
+widget** (#186/#345/#466) **et leur aide contextuelle** (#272) : bouton « ampoule »
+sur la carte + bulle au 1er geste de ce type jamais vu, comme en leçon — c'est
+souvent ici, longtemps après la leçon, que l'enfant a besoin de retrouver comment se
+rectifier.
 
 ## Programme du jour composé par l'encadrant (#440)
 

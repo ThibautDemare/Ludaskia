@@ -22,6 +22,10 @@
 
    Le bouton « Revoir » (.aide-revoir) est présent sur tous les types
    animés (tuiles, ordre, tri, atelier, lettres), pas seulement l'atelier.
+
+   La 8ᵉ section couvre le mode RÉVISION, qui rejoue les mêmes widgets :
+   l'aide y suit l'item courant (bulle au 1er passage, bouton persistant),
+   et reste absente des items sans geste à apprendre (saisie).
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
@@ -392,6 +396,98 @@ test('aide clicMot : bouton .aide-btn présent et rouvre la modale', async ({ pa
 	// Fermeture via la croix.
 	await page.locator('.aide-close').click();
 	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+/* ================================================================
+   8. Mode RÉVISION — l'aide suit le widget, pas seulement la leçon
+
+   La révision rejoue les mêmes widgets interactifs (#186/#345/#466)
+   mais les servait SANS aide : l'enfant y retrouve un geste appris
+   des semaines plus tôt, sans moyen de se rappeler comment se
+   RECTIFIER (retoucher un mot pour le désélectionner, reprendre une
+   tuile posée…), et une fausse manœuvre devenait une réponse fausse.
+
+   On amorce une leçon « due » sur le profil e2e par défaut (celui que
+   pose gotoHash) pour rester sur le préfixe de clé 'e2e/' utilisé par
+   seedAideVue ci-dessus.
+   ================================================================ */
+
+/* Rend UNE leçon « due » dès maintenant pour le profil e2e (préfixe 'e2e/'). */
+function seedDueLesson(lessonId: string): string {
+	return `localStorage.setItem('e2e/ludaskia_lessonRevision', JSON.stringify({
+    ${JSON.stringify(lessonId)}: { palier: 0, prochaineRevision: 1, reussites: 0, dernierTest: null }
+  }));`;
+}
+
+test('aide en révision : « clique sur le mot » ouvre son aide au 1er passage, puis la garde sous la main', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// Profil neuf (aucune aide vue) + la leçon clic-mot à réviser.
+	await page.addInitScript(seedDueLesson('fr-gram-clic-verbe'));
+	await gotoHash(page, 'revision-espacee');
+	await page.locator('.lclic-mot').first().waitFor();
+
+	// La bulle s'ouvre AUSSI en révision, avec l'aide du geste de l'item courant…
+	await expect(page.locator('#aideOverlay')).toBeVisible();
+	await expect(page.locator('#aideTitle')).toHaveText('Comment cliquer sur le mot ?');
+	// …et surtout la ligne de RÉPARATION, le manque à l'origine de ce câblage.
+	await expect(page.locator('.aide-repar')).toContainText('Retouche le mot');
+	await page.locator('.aide-ok').click();
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	// Le rappel reste disponible à tout moment, dans la carte de l'exercice.
+	const btn = page.locator('.rev-stage button.aide-btn');
+	await expect(btn).toBeVisible();
+	await btn.click();
+	await expect(page.locator('#aideOverlay')).toBeVisible();
+	await page.locator('.aide-close').click();
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	// L'exercice reste jouable derrière (l'aide ne bloque rien une fois fermée).
+	await page.locator('.lclic-mot').first().click();
+	await expect(page.locator('#revValidate')).toBeEnabled();
+
+	expect(errors).toEqual([]);
+});
+
+test('aide en révision : aide déjà vue → pas de bulle, et le bouton porte le geste de l’item', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// Aide des TUILES déjà vue : la comparaison se rejoue en tuiles en révision.
+	await page.addInitScript(seedAideVue(['tuiles']));
+	await page.addInitScript(seedDueLesson('num-comparer'));
+	await gotoHash(page, 'revision-espacee');
+	await page.locator('#ltuiSlot').waitFor();
+
+	// Pas de bulle automatique (déjà vue), mais le bouton est là…
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+	const btn = page.locator('.rev-stage button.aide-btn');
+	await expect(btn).toBeVisible();
+
+	// …et il ouvre l'aide du geste RÉELLEMENT joué ici (tuiles), pas une aide générique.
+	await btn.click();
+	await expect(page.locator('#aideTitle')).toHaveText('Comment jouer ?');
+	await expect(page.locator('.aide-anim--tuiles')).toBeVisible();
+	await page.locator('.aide-ok').click();
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+/* Un item SANS geste à apprendre (saisie) ne doit pas afficher d'ampoule : le bouton
+   suit l'item courant, il ne « colle » pas à la carte une fois posé. */
+test('aide en révision : un item à saisie ne porte pas de bouton d’aide', async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('num-valeur-position'));
+	await gotoHash(page, 'revision-espacee');
+	await expect(page.locator('#revInput')).toBeVisible();
+
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+	await expect(page.locator('button.aide-btn')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });

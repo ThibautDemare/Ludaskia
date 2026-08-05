@@ -29,6 +29,7 @@
 	padding: 4px 14px;
 }
 .rev-stage {
+	position: relative; /* ancre le bouton « ? » d'aide (#272) au coin haut-droit de la carte */
 	background: var(--paper);
 	border-radius: 16px;
 	padding: 36px 24px;

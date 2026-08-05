@@ -60,6 +60,13 @@
 	padding-left: 52px;
 	padding-right: 52px;
 }
+/* Révision : le bouton se cale sur la carte de l'exercice, dont l'en-tête est le
+   premier bloc (libellé de leçon, ou consigne d'action quand il n'y en a pas).
+   Couloir SYMÉTRIQUE : le contenu de la carte est centré, un seul côté le décalerait. */
+.rev-stage--aide > :first-child {
+	padding-left: 44px;
+	padding-right: 44px;
+}
 
 /* ---------- Mini-modale d'aide ---------- */
 .aide-modal {

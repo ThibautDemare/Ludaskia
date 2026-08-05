@@ -24,7 +24,7 @@
    tirage précis.
    ============================================================ */
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { watchErrors, gotoHash, seedAideVue } from './helpers';
+import { watchErrors, gotoHash, seedAideVue, seedAideVueScript } from './helpers';
 
 const NB_QUESTIONS_TUILES = 8;
 
@@ -226,6 +226,7 @@ function seedDueLesson(lessonId: string): string {
     localStorage.setItem('${UUID_REVISION}/ludaskia_lessonRevision', JSON.stringify({
       ${JSON.stringify(lessonId)}: { palier: 0, prochaineRevision: 1, reussites: 0, dernierTest: null }
     }));
+    ${seedAideVueScript(UUID_REVISION)}
   `;
 }
 

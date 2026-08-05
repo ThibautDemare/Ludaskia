@@ -73,13 +73,16 @@ export async function gotoHash(page: Page, hash: string): Promise<void> {
 }
 
 /* Aide contextuelle : masque l'auto-modale pour les runners concernés (dont
-   `ordreNombres`, #448 : même widget que `ordre`, formulation « nombres »).
+   `ordreNombres`, #448 : même widget que `ordre`, formulation « nombres », et
+   `clicMot`, dont la révision monte aussi l'aide).
    À appeler via `addInitScript` AVANT `gotoHash` dans les specs préexistantes
    qui exercent ces runners mais ne testent PAS l'aide elle-même.
-   Clé préfixée par le profil e2e (uuid = 'e2e', préfixe = 'e2e/').
+   Clé préfixée par le profil (uuid par défaut = 'e2e', préfixe = 'e2e/') ; les specs
+   qui amorcent LEUR propre profil (révision : uuid dédié) passent le leur, sinon le
+   masque tomberait à côté et la modale s'ouvrirait quand même.
    Ne PAS utiliser dans aide-exercice.spec.ts (elle gère l'aide elle-même). */
-export function seedAideVueScript(): string {
-	return `localStorage.setItem('e2e/ludaskia_aide_vue', '{"tuiles":true,"ordre":true,"ordreNombres":true,"tri":true,"atelier":true,"lettres":true,"tableau":true,"appariement":true}');`;
+export function seedAideVueScript(uuid = 'e2e'): string {
+	return `localStorage.setItem('${uuid}/ludaskia_aide_vue', '{"tuiles":true,"ordre":true,"ordreNombres":true,"tri":true,"atelier":true,"lettres":true,"tableau":true,"appariement":true,"clicMot":true}');`;
 }
 
 /* Surcharge pratique : injecte directement le script sur la page.

@@ -6,13 +6,18 @@
    état de révision échu) puis on ouvre la révision espacée.
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, seedAideVueScript } from './helpers';
 
 const UUID = 'e2e-revision';
 
 /* Amorce un profil de test et rend UNE leçon « due » dès maintenant. La clé de
    révision est préfixée par le profil actif (uuid + '/'), d'où l'amorçage conjoint
-   de la méta-profil avec un UUID connu. */
+   de la méta-profil avec un UUID connu.
+
+   L'aide contextuelle du geste est marquée « déjà vue » : la révision monte désormais
+   la même aide que les runners de leçon, et sa bulle de 1er lancement recouvrirait le
+   widget (l'overlay intercepte les clics). Ces tests exercent les MÉCANIQUES ; l'aide
+   en révision a ses propres tests (aide-exercice.spec.ts). */
 function seedDueLesson(lessonId: string): string {
 	return `
     localStorage.setItem('ludaskia_profiles', ${JSON.stringify(
@@ -24,6 +29,7 @@ function seedDueLesson(lessonId: string): string {
     localStorage.setItem('${UUID}/ludaskia_lessonRevision', JSON.stringify({
       ${JSON.stringify(lessonId)}: { palier: 0, prochaineRevision: 1, reussites: 0, dernierTest: null }
     }));
+    ${seedAideVueScript(UUID)}
   `;
 }
 

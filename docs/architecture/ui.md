@@ -251,6 +251,17 @@ pure](core.md)) pour les formats composites :
   1er lancement** (une fois par profil, **jamais** en mode chronométré). Mini-modale a11y
   (`activateModal`) avec **animation faite-main** du geste (rejouable, figée sous
   `prefers-reduced-motion`) et TTS à la demande.
+  L'aide suit le **widget**, pas seulement le runner de leçon : la **révision espacée**
+  (`revision.ts`), qui monte les mêmes widgets (#186/#345/#466), pose l'aide du geste de
+  l'item courant (`typeAideItem` : `tuiles`, `ordre`/`ordreNombres`, `tri`, `appariement`,
+  `clicMot` ; rien pour une saisie ou un QCM, qui n'ont pas de geste à apprendre). Le
+  bouton est reposé à chaque item — `#revStage` est réécrit à chaque rendu, donc le bouton
+  ne « colle » pas au type précédent — et la carte porte alors `.rev-stage--aide`, qui
+  réserve le couloir latéral du bouton. Sans ce câblage, la révision servait des gestes
+  appris des semaines plus tôt sans aucun moyen d'y retrouver **comment se rectifier**
+  (retoucher un mot pour le désélectionner, reprendre une tuile posée), et une fausse
+  manœuvre devenait une réponse fausse. L'atelier du mot, lui, était déjà couvert : c'est
+  `renderAtelier` qui pose son aide, y compris quand la révision l'appelle.
 
 ## Accueil, navigation & catalogue
 

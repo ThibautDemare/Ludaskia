@@ -53,6 +53,8 @@ import {
 	PROB_STATUS_HTML,
 } from './lecon-probleme';
 import { brouillonHTML, bindBrouillon } from './brouillon';
+import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import type { TypeAide } from '../core/aide';
 import { capterErreur, libelleChoix } from './erreur-capture';
 import {
 	ordreErreur,
@@ -360,6 +362,45 @@ function renderCurrent() {
 	else if (it.item.kind === 'posed') renderPosed(it);
 	else renderNum(it);
 	bindConsigneTts(document.getElementById('revStage')!); // bouton « Écouter » (#42)
+	monterAide(it);
+}
+
+/* Aide contextuelle du geste (#272) — type d'aide correspondant à l'item, ou `undefined`
+   quand la mécanique n'en demande pas (saisie, QCM, mot d'orthographe : on répond
+   comme on écrit ou on choisit, il n'y a pas de geste à apprendre). */
+function typeAideItem(it: RevItem): TypeAide | undefined {
+	switch (it.kind) {
+		case 'tuile':
+			return 'tuiles';
+		case 'ordre':
+			return it.nature === 'nombres' ? 'ordreNombres' : 'ordre'; // même choix qu'en leçon
+		case 'tri':
+			return 'tri';
+		case 'appariement':
+			return 'appariement';
+		case 'clicMot':
+			return 'clicMot';
+		default:
+			return undefined;
+	}
+}
+
+/* Pose l'aide du geste sur la carte, comme les runners de leçon le font sur la leur.
+   La révision monte les MÊMES widgets (#186/#345/#466), donc les mêmes gestes — mais
+   elle les sert hors de leur leçon, souvent des semaines plus tard : sans ce rappel,
+   l'enfant qui a oublié comment RECTIFIER (retoucher un mot pour le désélectionner,
+   toucher une tuile posée pour la reprendre…) n'a aucun moyen de le retrouver, et une
+   fausse manœuvre devient une réponse fausse. Le bouton « ampoule » est reposé à chaque
+   item (le rendu remplace tout `#revStage`) et suit donc le type de l'item courant ;
+   la bulle automatique ne s'ouvre qu'au 1er geste de ce type jamais vu par le profil. */
+function monterAide(it: RevItem): void {
+	const stage = document.getElementById('revStage')!;
+	const type = typeAideItem(it);
+	// Le couloir réservé au bouton n'a de sens que si le bouton est là (styles).
+	stage.classList.toggle('rev-stage--aide', !!type);
+	if (!type) return;
+	monterBoutonAide(stage, type);
+	maybeAutoAide(type);
 }
 
 /* Consigne (#186) : libellé de la leçon, affiché au-dessus de l'exercice (le HUD

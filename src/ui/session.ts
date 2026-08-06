@@ -12,6 +12,8 @@ import { streakSuffix } from '../core/progress';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import type { Recompense } from '../core/unlocks';
+import { itemEstNumerique } from '../core/items';
+import { saisieEstNombre } from '../core/nombres';
 import { stopChrono } from './chrono';
 import { finishResume } from './resume';
 import { announceRewards } from './effects';
@@ -42,9 +44,25 @@ import {
 
 /* ---------- Vérification (arrête le chrono) ---------- */
 export function verify() {
-	const ms = stopChrono();
 	const inputs = document.querySelectorAll<HTMLInputElement>('#sheets input.ans');
 	const sessionItems = getRenderCtx().items;
+	// Saisie illisible : une réponse qui n'est pas un nombre là où un nombre est attendu
+	// (« 3- ») n'est pas une MAUVAISE réponse, c'est une erreur de FORMAT. On bloque la
+	// vérification AVANT d'arrêter le chrono et de corriger quoi que ce soit, et on renvoie
+	// l'enfant au champ concerné : rien n'est compté, rien n'est journalisé, aucune étoile
+	// ni aucun record ne se joue. Un champ VIDE ne bloque pas — ne pas répondre reste permis
+	// (c'est déjà compté comme « non rempli » par le score).
+	const aCorriger = [...inputs].filter((inp) => {
+		const item = sessionItems[inp.id];
+		return (
+			!!item && itemEstNumerique(item) && inp.value.trim() !== '' && !saisieEstNombre(inp.value)
+		);
+	});
+	if (aCorriger.length) {
+		signalerSaisiesIllisibles(aCorriger);
+		return;
+	}
+	const ms = stopChrono();
 	const currentMode = getCurrentMode();
 	const currentLessonId = getCurrentLessonId();
 	// Lecture DOM → descripteurs purs (#349). Saisie de l'heure (#88) : on FUSIONNE
@@ -298,6 +316,49 @@ export function printScope(scope: PrintScope) {
 	pendingPrintScope = scope;
 	window.print();
 }
+/* Id du message de blocage (unique : un seul message, quel que soit le nombre de champs). */
+const HINT_ILLISIBLE = 'verifyHint';
+
+/* Signale les champs dont la saisie n'est pas un nombre, sans rien corriger.
+   Ni rouge ni croix : ce n'est pas une faute, c'est une réponse qu'on ne sait pas lire.
+   La saisie est conservée telle quelle, l'enfant corrige.
+
+   Annonce au lecteur d'écran, par DEUX canaux complémentaires (WCAG 3.3.1) :
+   - `aria-describedby` sur chaque champ concerné, plus le focus sur le premier : le
+     message est lu en arrivant sur le champ, et reste consultable en y revenant ;
+   - `role="alert"` sur le message : indispensable, car `verify()` est aussi déclenché
+     par Entrée sur le DERNIER champ. Si c'est justement lui qui est refusé, il a déjà
+     le focus, `focus()` ne fait rien, aucun évènement de focus n'est émis et la
+     description ne serait jamais relue — le refus resterait totalement silencieux
+     dans le cas le plus fréquent. */
+function signalerSaisiesIllisibles(champs: HTMLInputElement[]): void {
+	document.getElementById(HINT_ILLISIBLE)?.remove();
+	const hint = document.createElement('p');
+	hint.id = HINT_ILLISIBLE;
+	hint.className = 'verify-hint screen-only';
+	hint.setAttribute('role', 'alert');
+	hint.textContent =
+		champs.length > 1
+			? 'Il y a des réponses qui ne sont pas des nombres. Corrige-les, puis vérifie.'
+			: "Il y a une réponse qui n'est pas un nombre. Corrige-la, puis vérifie.";
+	const sheets = document.getElementById('sheets')!;
+	sheets.insertBefore(hint, sheets.firstChild);
+	champs.forEach((inp) => {
+		inp.classList.add('a-corriger');
+		inp.setAttribute('aria-describedby', HINT_ILLISIBLE);
+	});
+	champs[0].focus();
+}
+
+/* Lève le signalement d'un champ retouché, et retire le message quand il ne reste plus
+   rien à corriger. Appelé par l'écouteur de saisie global (initSession). */
+function leverSignalementIllisible(champ: HTMLElement): void {
+	champ.classList.remove('a-corriger');
+	champ.removeAttribute('aria-describedby');
+	if (!document.querySelector('#sheets input.a-corriger'))
+		document.getElementById(HINT_ILLISIBLE)?.remove();
+}
+
 export function printAll() {
 	window.print();
 }
@@ -314,6 +375,9 @@ export function initSession() {
 	// champ des minutes (.heure-min) efface la marque du champ des heures qui lui est lié.
 	document.addEventListener('input', (e: Event) => {
 		const t = e.target as HTMLElement | null;
+		// Champ signalé comme illisible (saisie non numérique) : le retoucher lève le
+		// signalement, comme une saisie efface son marquage ✓/✗ juste en dessous.
+		if (t?.classList.contains('a-corriger')) leverSignalementIllisible(t);
 		let marked: HTMLElement | null = null;
 		if (t?.classList.contains('ans')) marked = t;
 		else if (t?.classList.contains('heure-min'))

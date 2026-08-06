@@ -727,13 +727,34 @@ pure](core.md)) pour les formats composites :
   leçons **éligibles** (une catégorie entièrement exclue n'est pas proposée). Le
   réglage de profil **« sans pression temporelle »** (#223) masque le minuteur et le
   score ici et bascule la fin en mode doux — détaillé dans la section Accessibilité.
+  **Refus de saisie** (`sprintRefuse`, partagé par deux cas) : `sprintSubmit` refuse un
+  champ **vide** (« Écris ta réponse avant de valider. ») et, là où un nombre est attendu
+  (`itemEstNumerique`), une saisie que `saisieEstNombre` (`core/nombres.ts`) ne reconnaît
+  pas comme un nombre (« Écris seulement un nombre. », ex. « 3- » — un caractère parasite
+  du pavé numérique Android). Dans les deux cas : `sprintAnswer` n'est **jamais appelé** —
+  rien n'est corrigé, compté ni journalisé —, la saisie est **conservée** curseur en fin
+  (redemander toute la frappe multiplierait les occasions de la rater), le message
+  s'affiche dans `#sprintHint` et est annoncé via la région live `#sprintStatus`
+  (`sprintAnnonce`), et se cache dès la retouche du champ (`sprintCacheHint`, sur
+  l'événement `input`). **Écho de frappe** (`.sprint-input.frappe`) : un bref rebond CSS
+  relance à chaque caractère (utile à l'enfant qui regarde le clavier et valide sans
+  relire), neutre (aucune couleur, ce n'est pas un verdict) et coupé sous
+  `prefers-reduced-motion`.
 - **`session.ts`** (#349) — session d'exercice grille : vérification, saisie clavier,
   impression contextuelle (#40). Trois exports :
-  - **`verify()`** — lit les champs `.ans` du DOM (dont la fusion « H h MM » des saisies
-    d'heure, #88), construit une liste de `ScoredInput` (données pures, sans référence DOM),
-    délègue le **calcul du score à `core/scoring.ts`** (`scoreItems`), puis marque les champs
-    selon les `statuses` renvoyés (✓/✗ + révélation de la réponse) et rend le bandeau de
-    résultats et les récompenses.
+  - **`verify()`** — **bloque d'abord** sur toute saisie non vide qui n'est pas un
+    nombre là où un nombre est attendu (`itemEstNumerique` + `saisieEstNombre`,
+    `core/items.ts`/`core/nombres.ts`) : AVANT même l'arrêt du chrono, les champs
+    concernés sont signalés (`signalerSaisiesIllisibles` — teinte d'attention, jamais
+    rouge, ce n'est pas une faute mais une réponse illisible ; message rattaché par
+    `aria-describedby`, WCAG 3.3.1 ; le premier champ reçoit le focus) et la
+    vérification s'arrête là — rien n'est corrigé, rien n'est compté, rien n'est
+    journalisé. Un champ **vide** ne bloque pas (ne pas répondre reste permis). Une
+    fois les champs corrigés, lit les champs `.ans` du DOM (dont la fusion « H h MM »
+    des saisies d'heure, #88), construit une liste de `ScoredInput` (données pures,
+    sans référence DOM), délègue le **calcul du score à `core/scoring.ts`**
+    (`scoreItems`), puis marque les champs selon les `statuses` renvoyés (✓/✗ +
+    révélation de la réponse) et rend le bandeau de résultats et les récompenses.
   - **`printAll()`** / **`printScope(scope)`** — impression contextuelle (#40) : chemin A
     imprime l'écran courant vierge (le CSS print met `.ans` en transparent) ; chemin B pose
     un périmètre que `beforeprint` rend via `buildPrintableDOM(scope)`. Le 🖨 de la barre

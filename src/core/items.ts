@@ -104,6 +104,24 @@ function valeurAttribut(s: string): string {
 	return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 
+/* La réponse de cet item se corrige-t-elle NUMÉRIQUEMENT ? Lecture unique du `kind`,
+   partagée par `checkItemAnswer` (quelle branche de comparaison) et par les runners
+   (faut-il refuser une saisie qui n'est pas un nombre — cf. `saisieEstNombre`). Les deux
+   DOIVENT rester d'accord : refuser une saisie sur un item corrigé en TEXTE interdirait
+   des réponses parfaitement valides (« dix », « 10 h 15 », « < »). D'où la fonction
+   commune plutôt que deux tests jumeaux qui divergeraient au premier `kind` ajouté.
+   L'intervalle (#446) l'emporte sur le `kind` : la règle est portée par la DONNÉE.
+
+   ⚠ Ne dit PAS d'où vient le `kind`. Celui-ci est décidé en amont, à la construction de
+   l'item (`genLessonItem` → `answerEstNumerique`), selon un critère qui DIVERGE de
+   `saisieEstNombre` : il ne neutralise pas les séparateurs de milliers, donc une réponse
+   stockée groupée (« 1 002 050 ») produit un item `text`, corrigé par égalité de chaîne.
+   Inerte sur le contenu actuel, mais à ne pas oublier avant d'ajouter une leçon dont la
+   réponse est mise en forme (constat de l'auteur des tests, cf. tests/saisie-numerique). */
+export function itemEstNumerique(it: Item): boolean {
+	return !!it.intervalle || (it.kind !== 'text' && it.kind !== 'heure');
+}
+
 /* Vérifie la réponse saisie pour un item, selon son type.
    - texte : normalizeText (trim + espaces internes réduits + NFC), accents/apostrophes
      exigés (formes alternatives via answers)
@@ -126,7 +144,7 @@ export function checkItemAnswer(it: Item, raw: string): boolean {
 	}
 	// 'heure' (#88) : saisie en 2 champs, déjà fusionnée en « H h MM » par l'appelant
 	// (session.verify) ; on la compare comme du texte (forme canonique + variantes).
-	if (it.kind === 'text' || it.kind === 'heure') {
+	if (!itemEstNumerique(it)) {
 		const v = normalizeText(raw);
 		if (v === normalizeText(String(it.answer))) return true;
 		return (it.answers ?? []).some((a) => normalizeText(a) === v);

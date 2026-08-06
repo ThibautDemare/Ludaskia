@@ -209,6 +209,35 @@
 	outline: 2px solid var(--ko);
 	outline-offset: 2px;
 }
+/* Saisie qu'on ne sait pas LIRE (pas un nombre là où un nombre est attendu) : état
+   d'ATTENTION, pas un verdict. Jeton `--warn` et jamais `--ko` — rien n'est faux, la
+   vérification n'a même pas eu lieu, et la distinction doit rester nette pour un enfant
+   qui voit du rouge, juste à côté, sur de vraies erreurs. Doublé par une barre inset
+   (indice de forme, pas la couleur seule) et par le message rattaché en aria-describedby.
+   Déclaré APRÈS les états corrigés (même spécificité) : un champ signalé vient d'être
+   retouché, donc son ✓/✗ a été effacé, mais l'ordre lève toute ambiguïté. */
+.ans.a-corriger {
+	border-bottom-color: var(--warn);
+	background: var(--warn-bg);
+	box-shadow: inset 3px 0 0 var(--warn);
+}
+.ans.a-corriger:focus-visible {
+	outline: 2px solid var(--warn);
+	outline-offset: 2px;
+}
+/* Message de blocage de la vérification, en tête de la zone d'exercice. Même gabarit
+   que le bandeau de résultat, teinte d'attention, jamais d'icône d'échec. */
+.verify-hint {
+	max-width: 210mm;
+	margin: 0 auto 16px;
+	padding: 12px 18px;
+	border-radius: 12px;
+	border-left: 4px solid var(--warn-bd);
+	background: var(--warn-bg);
+	color: var(--ink);
+	font-family: var(--ui);
+	font-size: 15px;
+}
 .mark {
 	font-family: var(--ui);
 	font-size: 13px;

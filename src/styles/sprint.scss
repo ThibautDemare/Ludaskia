@@ -275,6 +275,45 @@ input.frac-num-input:focus-visible {
 	font-size: 21px;
 	width: 84px;
 }
+/* Écho de frappe : le champ accuse réception de chaque caractère par un rebond très
+   court. Rôle exact, et unique : ancrer le regard sur le champ au moment où le doigt le
+   quitte, chez un enfant qui regarde le clavier et valide sans relire. Volontairement
+   NEUTRE (aucune couleur) — ce n'est pas un retour juste/faux — et joué PENDANT la
+   frappe, donc sans coûter une seconde au sprint, contrairement à toute étape de
+   relecture ajoutée après coup. `transform` seul : aucune répercussion sur la mise en
+   page de l'énoncé qui entoure le champ. */
+@keyframes sprint-frappe {
+	0% {
+		transform: scale(1);
+	}
+	45% {
+		transform: scale(1.07);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+.sprint-input.frappe {
+	animation: sprint-frappe 110ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+	.sprint-input.frappe {
+		animation: none;
+	}
+}
+
+/* Refus de saisie (réponse vide, ou qui n'est pas un nombre) : teinte d'ATTENTION, pas
+   d'erreur. La question n'est pas corrigée, rien n'est compté — afficher du rouge ici
+   ferait croire à une réponse fausse alors que le calcul de l'enfant était peut-être juste. */
+.sprint-hint {
+	margin: 12px auto 0;
+	max-width: 24em;
+	padding: 8px 14px;
+	border-radius: 10px;
+	background: var(--warn-bg);
+	color: var(--ink);
+	font-size: 16px;
+}
 .sprint-sol {
 	color: var(--ok);
 	font-weight: 700;

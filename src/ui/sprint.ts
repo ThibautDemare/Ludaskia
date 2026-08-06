@@ -38,8 +38,10 @@ import {
 	checkItemAnswer,
 	choiceButtonHTML,
 	figureBlock,
+	itemEstNumerique,
 	TEXT_ANSWER_INPUT_ATTRS,
 } from '../core/items';
+import { saisieEstNombre } from '../core/nombres';
 import type { Item } from '../core/items';
 import {
 	updateStreak,
@@ -524,10 +526,52 @@ function renderSprintTyped(stage: HTMLElement, def: LessonDef, q: Item) {
     <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(def.label)}</span></div>
     ${figureBlock(q.figure)}
     <div class="sprint-q${deco}">${sprintQuestionBody(q)}</div>
+    <p class="sprint-hint" id="sprintHint" hidden></p>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintValidate">Valider</button></div>`;
 	document.getElementById('sprintValidate')?.addEventListener('click', sprintSubmit);
 	stage.addEventListener('keydown', onSprintEnter);
+	const champ = document.getElementById('sprintInput') as HTMLInputElement | null;
+	champ?.addEventListener('input', () => {
+		// Le message de refus disparaît dès que l'enfant retouche sa réponse : il a fait ce
+		// qu'on lui demandait, le laisser affiché le contredirait.
+		sprintCacheHint();
+		sprintEchoFrappe(champ);
+	});
 	stage.querySelector('input')?.focus();
+}
+
+/* Écho de frappe (cf. `.sprint-input.frappe`) : relance le rebond à CHAQUE caractère.
+   Retirer puis reposer la classe dans la même frame ne relancerait rien — le navigateur
+   ne verrait aucun changement — d'où le passage par la frame suivante. Le respect de
+   `prefers-reduced-motion` est porté par la feuille de style, pas ici. */
+function sprintEchoFrappe(champ: HTMLInputElement): void {
+	champ.classList.remove('frappe');
+	requestAnimationFrame(() => champ.classList.add('frappe'));
+}
+
+/* Refus de saisie : la réponse n'est pas exploitable (vide, ou pas un nombre là où un
+   nombre est attendu). Ce n'est PAS une mauvaise réponse — rien n'est compté, rien n'est
+   journalisé, et on n'ouvre surtout pas l'écran de correction, qui affirmerait une erreur
+   de contenu qui n'a pas eu lieu. On GARDE la saisie, curseur en fin : redemander toute la
+   séquence de frappe multiplierait les occasions de la rater (avis dys). Un submit sans
+   effet visible étant vécu comme un bug, le message est aussi annoncé au lecteur d'écran. */
+function sprintRefuse(inp: HTMLInputElement, message: string): void {
+	const hint = document.getElementById('sprintHint');
+	if (hint) {
+		hint.textContent = message;
+		hint.hidden = false;
+	}
+	sprintAnnonce(message);
+	inp.focus();
+	inp.setSelectionRange(inp.value.length, inp.value.length);
+}
+
+function sprintCacheHint(): void {
+	const hint = document.getElementById('sprintHint');
+	if (hint && !hint.hidden) {
+		hint.hidden = true;
+		hint.textContent = '';
+	}
 }
 
 // Question à choix (conjugaison) : un clic sur une proposition vaut réponse.
@@ -611,7 +655,17 @@ function sprintSubmit() {
 	const inp = document.getElementById('sprintInput') as HTMLInputElement | null;
 	if (!inp) return;
 	if (inp.value.trim() === '') {
-		inp.focus(); // garde le focus plutôt que de valider à vide
+		sprintRefuse(inp, 'Écris ta réponse avant de valider.');
+		return;
+	}
+	// Saisie qui n'est pas un nombre là où un nombre est attendu (« 3- » : un caractère
+	// parasite atteignable sur le pavé numérique d'Android). Compter faux mesurerait une
+	// erreur de calcul qui n'a pas eu lieu — l'enfant avait le bon résultat.
+	// Le message NOMME le symptôme (« Ce n'est pas un nombre ») plutôt que la règle, et
+	// dit « corrige » et non « écris » : la saisie est conservée, il s'agit de la retoucher,
+	// pas de la retaper. Même tournure que le message de la fiche (avis rédacteur).
+	if (sprintCurrent && itemEstNumerique(sprintCurrent) && !saisieEstNombre(inp.value)) {
+		sprintRefuse(inp, "Ce n'est pas un nombre. Corrige ta réponse, puis valide.");
 		return;
 	}
 	sprintAnswer(inp.value);

@@ -55,7 +55,15 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   Fabriques math (`add/sub/mul/dbl/half/comp/facteur`), `renderItem` (champ
   numérique, **texte**, ou **grille posée** selon `kind`), `checkItemAnswer`
   (correction numérique **ou** texte via `normalizeText`), `gridHTML`,
-  `ficheHTML`/`ficheHTMLGeneric`, `lessonAttr(ctx)`. Le `kind: 'posed'` (#97) est un
+  `ficheHTML`/`ficheHTMLGeneric`, `lessonAttr(ctx)`.
+  **`itemEstNumerique(it)`** — source UNIQUE de « cet item se corrige-t-il
+  numériquement ? » (`!!it.intervalle` ou `kind` hors `'text'`/`'heure'`) —
+  partagée par `checkItemAnswer` (quelle branche de comparaison) et par les
+  runners `ui/sprint.ts`/`ui/session.ts`, qui s'en servent, combinée à
+  **`saisieEstNombre`** (`nombres.ts` ci-dessous), pour **refuser** — sans la
+  compter fausse — une saisie qui n'est pas un nombre là où un nombre est
+  attendu (cf. [Rendu & interactions](ui.md) pour le comportement côté écran).
+  Le `kind: 'posed'` (#97) est un
   item « conteneur » (`posed: {op, a, b}`) que **`posedGridHTML`** déploie en grille
   de colonnes — plusieurs champs `.ans` (chiffres de résultat / produits partiels,
   notés un à un) + cellules de retenue `.ans-free`. Un champ optionnel
@@ -367,7 +375,14 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   utilisée **symétriquement** sur la saisie ET sur la réponse stockée par
   `checkNumerique`/`checkItemAnswer` (cf. `check-helpers.ts` ci-dessus), pour valider une
   réponse stockée en écriture à virgule (conversions décimales CM1 `mesures.ts`, « 4,56 »)
-  sans jamais passer par un `Number("4,56")` qui vaudrait `NaN`. **`wrapGrandsNombres(escaped)`** enveloppe les
+  sans jamais passer par un `Number("4,56")` qui vaudrait `NaN`. **`saisieEstNombre(saisie)`**
+  répond à une question différente de `parseNombreFr` : pas « combien vaut cette saisie »,
+  mais « est-ce un nombre EXPLOITABLE » (calé sur `parseNombreFr` : une saisie vide, ou dont
+  le parse vaut `NaN`, n'est pas un nombre — tout ce qui est aujourd'hui accepté par la
+  correction reste donc accepté ici). Sert les runners (`ui/sprint.ts`, `ui/session.ts`, via
+  `items.ts:itemEstNumerique` ci-dessus) à **refuser** une saisie illisible (« 3- », un
+  caractère parasite du pavé numérique Android) au lieu de la compter fausse : une erreur de
+  FORMAT n'est pas une erreur de CALCUL. **`wrapGrandsNombres(escaped)`** enveloppe les
   nombres groupés (≥ 10 000) d'un texte **déjà échappé** dans `<span class="bignum">` (rendu
   identique partout : `tabular-nums`, `nowrap`, `clamp` — cf. `styles/lessons.scss`) ;
   appelé par `items.ts → enonceTexte`, donc partagé par tous les rendus (fiche, sprint,

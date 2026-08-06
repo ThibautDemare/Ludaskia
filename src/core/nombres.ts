@@ -59,6 +59,23 @@ export function parseNombreFr(valeur: string): number {
 	return Number(nettoyerSaisieNombre(valeur).replace(',', '.'));
 }
 
+/** La saisie est-elle un NOMBRE exploitable ? Sert aux runners à REFUSER une réponse
+ *  illisible (« 3- », un caractère parasite du pavé numérique d'Android) au lieu de la
+ *  compter fausse : ce n'est pas une erreur de calcul, c'est une erreur de format.
+ *
+ *  Le critère est volontairement calé sur `parseNombreFr`, l'unique parse de la
+ *  correction numérique : est un nombre exactement ce que la correction sait comparer.
+ *  C'est cet alignement qui garantit qu'aucune réponse acceptée aujourd'hui ne devient
+ *  refusée demain — « 3,5 », « ,5 », « 03 », « 1 002 050 » passent tous. Seul ce qui
+ *  vaut NaN, donc ce qui était de toute façon compté faux, est écarté. Ne PAS durcir en
+ *  expression régulière « stricte » : on refuserait des saisies aujourd'hui justes.
+ *
+ *  Une saisie vide n'est pas un nombre : `Number('')` vaut 0, sans ce garde-fou un champ
+ *  vide serait déclaré numérique et comparé à 0. */
+export function saisieEstNombre(saisie: string): boolean {
+	return nettoyerSaisieNombre(saisie) !== '' && Number.isFinite(parseNombreFr(saisie));
+}
+
 /* Un nombre GROUPÉ (≥ 10 000) repéré par sa séquence « classes de 3 » séparées par
    l'espace fine insécable U+202F — caractère qu'on n'introduit QUE via formatNombre,
    donc marqueur fiable et sans effet de bord ailleurs dans un énoncé. */

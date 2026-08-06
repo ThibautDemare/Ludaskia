@@ -178,8 +178,24 @@ planification et l'exécution des gestes. Elle entraîne une **dysgraphie**
 - Ne pas pénaliser la **qualité graphique** d'un tracé (non applicable au
   numérique dans Ludaskia, mais à garder si on implémente un jour un champ de
   tracé libre).
-- Accepter des **variantes de saisie** : un résultat correct avec une faute de
-  frappe isolée (touche adjacente) mérite la tolérance. *(Bonne pratique générale)*
+- Accepter des **variantes de saisie TEXTE** : un mot mal orthographié avec une
+  faute de frappe isolée (touche adjacente) reste reconnaissable — la
+  tolérance s'applique. *(Bonne pratique générale)*
+- **Ne PAS généraliser cette tolérance au NUMÉRIQUE.** Sur un pavé numérique,
+  deux touches adjacentes (1/2, 4/5…) donnent deux réponses **également
+  plausibles** : tolérer « au plus proche » validerait de vraies erreurs de
+  calcul et détruirait la mesure — ce n'est pas la même nature d'erreur qu'un
+  mot déformé mais reconnaissable. La protection accessible pour un champ
+  numérique n'est donc pas la tolérance de frappe, mais la **détection de la
+  saisie invalide avant tout scoring** : une réponse qui n'est pas un nombre
+  là où un nombre est attendu (ex. « 3- », un caractère parasite du pavé
+  numérique) est **refusée** — rien n'est corrigé, rien n'est compté, rien
+  n'est journalisé — et l'enfant corrige sans perdre de point (implémenté :
+  `saisieEstNombre` dans `core/nombres.ts` + `itemEstNumerique` dans
+  `core/items.ts`, vérifiés par `ui/sprint.ts` et `ui/session.ts` avant toute
+  correction). Indispensable pour un enfant **dyspraxique** : sans ce filet, un
+  geste moteur imparfait se traduit en échec scolaire silencieux sur une
+  notion pourtant maîtrisée. *(Avis `specialiste-troubles-apprentissage`)*
 
 ---
 
@@ -259,7 +275,8 @@ fortement le contexte d'apprentissage et peut coexister avec des troubles dys.
 | Interface épurée (peu d'éléments simultanés) | TDAH, dyscalculie, dyspraxie | Bonne pratique générale |
 | Grandes cibles tactiles (≥ 44 px) | Dyspraxie, TDAH (impulsivité motrice) | WCAG 2.5.5 AAA — cible Ludaskia |
 | Pas de double-tâche | Dyspraxie, TDAH | Eduscol EBEP |
-| Tolérance de saisie | Dyslexie, dyspraxie | Bonne pratique générale |
+| Tolérance de saisie **texte** (faute de frappe isolée) | Dyslexie | Bonne pratique générale |
+| Détection de saisie invalide avant scoring (**numérique**, ne PAS tolérer « au plus proche » — §3.3) | Dyspraxie | Implémenté (`saisieEstNombre`/`itemEstNumerique`) |
 | Pas de pénalisation hors sujet | Dyslexie, dysorthographie | Eduscol EBEP |
 | Progression visible dans la session | TDAH, dyscalculie | Bonne pratique générale |
 

@@ -7,7 +7,8 @@
    journalisation et le regroupement vivent dans core/erreurs-journal.ts.
 
    Parti pris (avis designer-ux-enfant) :
-   - GROUPÉ PAR LEÇON, la plus récemment ratée en tête ; replié par défaut
+   - GROUPÉ PAR LEÇON, la PLUS RATÉE en tête (#519 : volume d'erreurs sur la période
+     retenue, la récence ne départageant plus qu'à égalité) ; replié par défaut
      (<details>), pour ne pas dérouler un « mur de fautes » ;
    - pas de rouge en aplat : la BONNE réponse est mise en avant (positif), la
      réponse donnée reste neutre, jamais barrée ;
@@ -193,7 +194,9 @@ function periodesHTML(active: PeriodeErreurs, groupes: GroupeErreursLecon[]): st
 /* Bloc « Ce qui a été difficile récemment » du profil consulté (lecture seule).
    `now` injecté (l'appelant passe Date.now()) — cohérent avec le reste du récap.
    Le filtre de période s'applique AVANT le regroupement : les compteurs affichés
-   décrivent la période choisie, pas tout l'historique. */
+   décrivent la période choisie, pas tout l'historique — et c'est ce qui porte le
+   « récemment » du titre depuis que le classement se fait au volume (#519), le
+   texte d'aide annonçant désormais l'ordre réel (le plus d'erreurs d'abord). */
 export function erreursHTML(consulte: Profile, now: number): string {
 	const toutes = chargerErreursFor(consulte.uuid);
 	const periode = periodeChoisie ?? periodeParDefaut(toutes, now);
@@ -212,7 +215,7 @@ export function erreursHTML(consulte: Profile, now: number): string {
 			: `<p class="enc-hint">Rien à signaler récemment.</p>`;
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon('clock-clockwise')} Ce qui a été difficile récemment</h3>
-      <p class="enc-hint">Voici les dernières questions qui ont posé des difficultés à ${escapeHTML(consulte.name)}, pour cibler votre aide. Dépliez une leçon pour voir le détail, ou épinglez-la pour qu'elle revienne sur l'accueil de ${escapeHTML(consulte.name)}.</p>
+      <p class="enc-hint">Voici les leçons où ${escapeHTML(consulte.name)} a rencontré des difficultés, en commençant par celles qui comptent le plus d'erreurs. Dépliez une leçon pour voir le détail, ou épinglez-la pour qu'elle revienne sur l'accueil de ${escapeHTML(consulte.name)}.</p>
       ${toutes.length ? periodesHTML(periode, groupes) : ''}
       ${corps}
     </div>`;

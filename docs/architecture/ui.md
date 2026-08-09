@@ -202,7 +202,8 @@ pure](core.md)) pour les formats composites :
 - **`encadrant-erreurs.ts`** — bloc « Ce qui a été difficile récemment » (`erreursHTML`),
   inséré par `encadrant-progression.ts` après les listes de dictée (dernier bloc du récap de
   l'onglet Suivi, juste avant le récap de révision espacée) : groupé par leçon (`<details>`
-  repliés, la plus récemment ratée en tête), dédoublonnage « vue N fois », **« Réponse
+  repliés), celle avec le **plus d'erreurs** en tête (#519 ; la récence de la dernière
+  erreur ne sert qu'à départager une égalité de volume), dédoublonnage « vue N fois », **« Réponse
   attendue »** mise en avant (jamais barrée) — et non « La bonne réponse » (#446) : depuis
   l'intercalation, l'attendu peut être une bande (« un nombre entre 450 et 465 »), formulation
   neutre valable pour toutes les leçons. Au-delà des **5** erreurs les plus récentes d'une leçon, les

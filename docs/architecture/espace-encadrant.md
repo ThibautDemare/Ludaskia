@@ -294,8 +294,10 @@ les notions par catégorie et les listes de dictée, juste avant le récap de r�
 ci-dessous) — `ui/encadrant-erreurs.ts`, inséré par `encadrant-progression.ts` : chaque erreur commise
 pendant un entraînement est journalisée localement (`core/erreurs-journal.ts`, clé
 `ludaskia_erreurs`, 150 entrées les plus récentes par profil) — question posée, réponse
-donnée, réponse **attendue**, leçon, mode, quand. **Groupé par leçon**, la plus récemment ratée en
-tête, replié par défaut (`<details>`) pour ne pas dérouler un « mur de fautes » ; à
+donnée, réponse **attendue**, leçon, mode, quand. **Groupé par leçon**, celle avec le **plus
+d'erreurs** en tête (#519 ; le décompte ne porte que sur la période filtrée ci-dessous, et la
+récence de la dernière erreur ne départage plus qu'une égalité de volume), replié par défaut
+(`<details>`) pour ne pas dérouler un « mur de fautes » ; à
 l'intérieur d'une leçon, une même erreur répétée (même question + même réponse donnée) est
 **dédoublonnée** en une seule ligne « vue N fois » plutôt que N lignes identiques. Dans une
 leçon, seules les **5 erreurs** les plus récentes s'affichent d'emblée ; les suivantes restent

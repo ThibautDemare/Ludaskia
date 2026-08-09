@@ -742,9 +742,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   attendue}` (déjà des chaînes LISIBLES — le journal ignore les items/exercices).
   **Rétention** `MAX_ERREURS` (150) : purge des plus anciennes, la plus récente en tête
   (`ajouterErreur`, pur, testable sans stockage). **`grouperErreursParLecon`** regroupe par
-  leçon (triée par récence de la dernière erreur) et **dédoublonne** (même question + même
+  leçon (triée par **volume d'erreurs décroissant**, la récence de la dernière erreur ne
+  départageant que les égalités, #519) et **dédoublonne** (même question + même
   réponse donnée) en une entrée « vue N fois » — les banques QCM se répètent, pas la peine
-  d'afficher N lignes identiques. **`filtrerErreursParPeriode(liste, periode, now)`** (#476)
+  d'afficher N lignes identiques. Le total compté n'est que celui de la **période filtrée**
+  (ci-dessous) : le classement se recalcule à chaque changement de fenêtre.
+  **`filtrerErreursParPeriode(liste, periode, now)`** (#476)
   borne la liste sur `ts` AVANT ce regroupement, en jours CALENDAIRES locaux, aujourd'hui
   inclus (`PeriodeErreurs` : `'jour' | 'deux-jours' | 'semaine' | 'tout'`, ce dernier sans
   borne — seule la rétention `MAX_ERREURS` joue) ; **`periodeParDefaut`** choisit la fenêtre

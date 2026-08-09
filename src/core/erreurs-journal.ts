@@ -157,11 +157,18 @@ export function periodeParDefaut(liste: ErreurEntry[], now: number): PeriodeErre
 }
 
 /* ---------- Regroupement pour l'affichage (pur) ----------
-   L'espace encadrant montre les erreurs GROUPÉES PAR LEÇON, la leçon la plus
-   récemment ratée en tête (décision designer #391 : c'est la question du parent,
-   « sur quoi l'aider ? »). À l'intérieur d'une leçon, on DÉDOUBLONNE la même
-   erreur (même question + même réponse donnée) répétée : une seule ligne « vu N
-   fois » plutôt que N lignes identiques (les banques QCM se répètent). */
+   L'espace encadrant montre les erreurs GROUPÉES PAR LEÇON, la leçon la PLUS RATÉE
+   en tête (#519). Le tri était antéchronologique à l'origine (décision designer
+   #391), mais l'usage réel a montré qu'une leçon ratée une seule fois passait
+   devant celle qui coince vraiment : c'est le VOLUME qui répond à la question du
+   parent, « sur quoi l'aider ? ». À `total` égal, la plus récemment ratée départage
+   — ordre déterministe (donc testable) et le signal de récence n'est pas perdu.
+   La récence, elle, reste portée par le FILTRE DE PÉRIODE (#476) appliqué AVANT le
+   regroupement : `total` ne compte que la fenêtre choisie, donc le classement se
+   recalcule à chaque changement de période. À l'intérieur d'une leçon, on
+   DÉDOUBLONNE la même erreur (même question + même réponse donnée) répétée : une
+   seule ligne « vu N fois » plutôt que N lignes identiques (les banques QCM se
+   répètent), les plus récentes d'abord. */
 export interface ErreurAffichee {
 	question: string;
 	donnee: string;
@@ -212,5 +219,5 @@ export function grouperErreursParLecon(liste: ErreurEntry[]): GroupeErreursLecon
 			erreurs,
 		});
 	}
-	return groupes.sort((a, b) => b.derniereFois - a.derniereFois);
+	return groupes.sort((a, b) => b.total - a.total || b.derniereFois - a.derniereFois);
 }

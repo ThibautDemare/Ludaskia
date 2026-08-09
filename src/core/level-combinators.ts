@@ -15,8 +15,29 @@ import { choice } from './utils';
    fabrique l'ExerciseType pour un jeu de paramètres. L'ExerciseType renvoyé lit
    `generate({ level })` et délègue au type du niveau le plus proche supporté
    (repli/clamp via closestSupported). `levels` (clés de la table) est exposé pour
-   que le catalogue en dérive `LessonDef.levels`. Métadonnées invariantes (modes,
-   consigne, probLexique, check) prises sur le plus bas niveau. */
+   que le catalogue en dérive `LessonDef.levels`.
+
+   Les métadonnées invariantes sont ÉTALÉES depuis le plus bas niveau (`...base`), jamais
+   réénumérées champ par champ : un champ ajouté à `ExerciseType` traverse donc la
+   recalibration tout seul. Cette énumération était un piège réel (#447) — `exerciseKind`
+   y manquait, or c'est lui qui dit au catalogue qu'une leçon se joue dans un runner
+   d'écran dédié (`isDroiteGradueeLesson`, `isPosedLesson`…) : la perdre en recalibrant
+   une leçon la faisait silencieusement retomber dans le sprint « une réponse à la fois »,
+   qui ne sait pas rendre son format.
+
+   Les DEUX points d'entrée génératifs, eux, doivent déléguer par niveau et non venir de
+   `base` : `base` est construit avec les paramètres du plus bas niveau, donc un
+   `generateSession` étalé tel quel resterait figé sur ce niveau — un CM1 recevrait des
+   exercices CE2. `build` étant la même fabrique pour tous les niveaux, la présence de
+   `generateSession` sur `base` vaut pour tous : la tester sur `base` suffit.
+
+   CONTRAINTE sur `check`, qui ne peut PAS être déléguée : sa signature `(exercise, input)` ne
+   porte pas le niveau, donc elle vient forcément de `base`, c'est-à-dire du plus bas niveau.
+   Une fabrique passée à `calibrated` doit donc avoir un `check` INDÉPENDANT du niveau (tout
+   ce qui varie doit voyager dans l'`Exercise`, que `check` reçoit). Une correction qui
+   fermerait sur les paramètres de niveau (tolérance, plage acceptée) corrigerait
+   silencieusement le CM1 avec les règles du CE2 — même classe de piège que ci-dessus, mais
+   qui ne se répare pas ici : elle demanderait de passer le niveau à `check`. */
 export function calibrated<P>(
 	table: Partial<Record<SchoolLevel, P>>,
 	build: (params: P) => ExerciseType,
@@ -34,14 +55,18 @@ export function calibrated<P>(
 	};
 	const base = typePour(levels[0]);
 	return {
+		...base,
 		levels,
-		modes: base.modes,
-		consigne: base.consigne,
-		probLexique: base.probLexique,
 		generate(opts?: GenerateOpts) {
 			return typePour(opts?.level).generate(opts);
 		},
-		check: base.check,
+		...(base.generateSession
+			? {
+					generateSession(count: number, opts?: GenerateOpts) {
+						return typePour(opts?.level).generateSession!(count, opts);
+					},
+				}
+			: {}),
 	};
 }
 

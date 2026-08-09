@@ -1,5 +1,10 @@
 /* ============================================================
-   Droite graduée CM1 (#256) — logique pure.
+   Droite graduée (#256 CM1) — logique pure.
+   NB : ce fichier éprouve les helpers de rendu et les générateurs AU NIVEAU CM1. Ce qui
+   est propre à l'ouverture CE2 de la leçon « entiers » (#447 — fenêtres de 10 et de 100
+   sous 10 000, repli lecture au CE2, non-régression CM1) vit dans
+   `droite-graduee-ce2.test.ts` ; la recalibration elle-même (métadonnées préservées,
+   délégation par niveau des points d'entrée génératifs) dans `level-combinators.test.ts`.
    ------------------------------------------------------------
    Deux volets :
    1. Helpers géométriques PURS (src/core/figures/droite.ts) : nbIntervalles,
@@ -302,14 +307,20 @@ describe('renderDroiteGradueeInteractif : coquille role="radiogroup"', () => {
    ========================================================================= */
 
 describe('Branchement catalogue (#256)', () => {
-	it('les 2 leçons existent, CM1-only, en Numération, exerciseKind droiteGraduee', () => {
+	it('les 2 leçons existent, en Numération, exerciseKind droiteGraduee, niveaux attendus', () => {
+		// Niveaux attendus par leçon : les ENTIERS sont ouverts au CE2 (#447, leçon calibrée
+		// CE2/CM1) ; les DÉCIMAUX restent CM1-only (borne dure du programme).
+		const niveauxAttendus: Record<string, string[]> = {
+			[ENTIERS]: ['ce2', 'cm1'],
+			[DECIMAUX]: ['cm1'],
+		};
 		for (const id of [ENTIERS, DECIMAUX]) {
 			const l = getLessonById(id);
 			expect(l, `leçon ${id}`).toBeDefined();
-			expect(l!.levels).toEqual(['cm1']);
+			expect(l!.levels).toEqual(niveauxAttendus[id]);
 			expect(l!.category).toBe('math-numeration');
 			expect(l!.exerciseType.exerciseKind).toBe('droiteGraduee');
-			expect(l!.exerciseType.levels).toEqual(['cm1']);
+			expect(l!.exerciseType.levels).toEqual(niveauxAttendus[id]);
 		}
 		// La leçon décimaux poursuit la rubrique « Nombres décimaux » ; l'entière reste à plat.
 		expect(getLessonById(DECIMAUX)!.rubrique).toBe('Nombres décimaux');

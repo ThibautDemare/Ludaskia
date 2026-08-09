@@ -341,6 +341,11 @@ function signalerSaisiesIllisibles(champs: HTMLInputElement[]): void {
 		champs.length > 1
 			? 'Il y a des réponses qui ne sont pas des nombres. Corrige-les, puis vérifie.'
 			: "Il y a une réponse qui n'est pas un nombre. Corrige-la, puis vérifie.";
+	// Le bandeau est collant (cf. `.verify-hint`) et doit se caler SOUS la barre d'outils,
+	// elle-même collante : sa hauteur change au point de rupture mobile, on la mesure
+	// plutôt que de la coder en dur.
+	const barre = document.querySelector<HTMLElement>('.toolbar');
+	if (barre) hint.style.top = `${barre.offsetHeight}px`;
 	const sheets = document.getElementById('sheets')!;
 	sheets.insertBefore(hint, sheets.firstChild);
 	champs.forEach((inp) => {

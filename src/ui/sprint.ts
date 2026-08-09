@@ -601,10 +601,13 @@ function renderSprintQcm(
 // Corps de la question : champ unique, sauf leçon 15 où l'on affiche la
 // décomposition avec des champs de brouillon (non corrigés) + le champ final.
 export function sprintQuestionBody(q: Item) {
+	// `enterkeyhint="done"` : la touche d'action du clavier virtuel annonce « OK » au lieu
+	// d'un symbole générique, alors qu'elle VALIDE la réponse (elle ne passe pas au champ
+	// suivant, il n'y en a pas). Une ligne, et un doute de moins sur la touche à utiliser.
 	const main =
 		q.kind === 'text'
-			? `<input id="sprintInput" class="sprint-input sprint-input-text" ${TEXT_ANSWER_INPUT_ATTRS}>`
-			: '<input id="sprintInput" class="sprint-input" inputmode="numeric" autocomplete="off">';
+			? `<input id="sprintInput" class="sprint-input sprint-input-text" enterkeyhint="done" ${TEXT_ANSWER_INPUT_ATTRS}>`
+			: '<input id="sprintInput" class="sprint-input" inputmode="numeric" enterkeyhint="done" autocomplete="off">';
 	if (q._lesson !== 'math-decomposer-multiplication') return escapeHTML(q.text).replace('@', main);
 	const m = q.text.match(/(\d+)\s*×\s*(\d+)/)!;
 	const a = +m[1],

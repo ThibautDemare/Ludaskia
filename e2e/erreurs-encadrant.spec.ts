@@ -83,7 +83,7 @@ test('rendu : groupé par leçon, « vu N fois », et épinglage depuis la secti
 	// test : grouper/dédoublonner/épingler à travers 2 leçons.
 	await page.locator('.enc-act-mode[data-act="erreurs-periode"][data-periode="tout"]').click();
 
-	// Une carte par leçon ; la plus récemment ratée (math-complements) en tête.
+	// Une carte par leçon ; la plus ratée (math-complements, 3 erreurs) en tête (#519).
 	const lecons = page.locator('.enc-err-lecon');
 	await expect(lecons.first()).toBeVisible();
 	expect(await lecons.count()).toBe(2);
@@ -490,6 +490,52 @@ test('erreurs anciennes (> 5 par leçon) : dépliables et lisibles au second niv
 	await resume.click();
 	await expect(itemAncien).toBeVisible();
 	await expect(itemAncien.locator('.enc-err-q')).toContainText('Question n°6');
+
+	expect(errors).toEqual([]);
+});
+
+/* Journal seedé où récence et volume se CONTREDISENT (#519) : math-doubles n'a
+   qu'UNE erreur mais à l'instant présent (la plus récente) ; math-complements en a
+   TROIS, distinctes (pas de dédoublonnage), mais plus anciennes de quelques minutes
+   — dans la même fenêtre de période qu'on ira chercher explicitement (« Tout »). Sous
+   l'ancien tri antéchronologique, math-doubles serait sorti en tête ; le nouveau tri
+   par volume doit mettre math-complements devant. */
+const SEED_TRI = `(() => {
+  const now = Date.now(); const min = 60000;
+  const liste = [
+    { ts: now,           lessonId: 'math-doubles',     mode: 'sprint', question: 'double de 8 = …', donnee: '15', attendue: '16' },
+    { ts: now - 5 * min, lessonId: 'math-complements', mode: 'lecon',  question: '12 + … = 20',     donnee: '7',  attendue: '8' },
+    { ts: now - 6 * min, lessonId: 'math-complements', mode: 'lecon',  question: '15 + … = 25',     donnee: '9',  attendue: '10' },
+    { ts: now - 7 * min, lessonId: 'math-complements', mode: 'lecon',  question: '40 + … = 60',     donnee: '15', attendue: '20' },
+  ];
+  localStorage.setItem('e2e/ludaskia_erreurs', JSON.stringify(liste));
+})();`;
+
+/* 12. Tri par volume (#519) : à récence et volume contradictoires, la leçon la plus
+   RATÉE (3 erreurs, plus ancienne) passe devant la plus RÉCEMMENT ratée (1 erreur) —
+   verrou du rendu réel, puisque les seeds ci-dessus (par coïncidence) n'auraient
+   jamais distingué l'ancien tri antéchronologique du nouveau tri par volume. */
+test('tri des cartes-leçons : la plus ratée passe devant la plus récente (#519)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_TRI);
+	await gotoHash(page, 'encadrant');
+
+	// Bascule explicite sur « Tout » (#476) : la fenêtre adaptative par défaut est la
+	// plus serrée qui contient au moins une erreur, ce qui pourrait exclure une partie
+	// des erreurs seedées (donc fausser le total comparé) indépendamment du tri qu'on
+	// veut vérifier ici.
+	await page.locator('.enc-act-mode[data-act="erreurs-periode"][data-periode="tout"]').click();
+
+	const lecons = page.locator('.enc-err-lecon');
+	await expect(lecons).toHaveCount(2);
+	// math-complements (3 erreurs, plus ancienne) EN TÊTE, devant math-doubles (1
+	// erreur, plus récente) : le volume prime sur la récence, qui ne départage plus
+	// qu'à égalité.
+	await expect(lecons.first().locator('.enc-err-lecon-lab')).toHaveText('Complément à 10/100/1000');
+	await expect(lecons.nth(1).locator('.enc-err-lecon-lab')).toHaveText('Doubles');
 
 	expect(errors).toEqual([]);
 });

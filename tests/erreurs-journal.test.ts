@@ -139,19 +139,77 @@ describe('chargerErreursFor (robustesse)', () => {
 	});
 });
 
-describe('grouperErreursParLecon (regroupement + dédoublonnage)', () => {
-	it('groupe par leçon, la plus récemment ratée en tête', () => {
+/* ============================================================
+   #519 — Classement des groupes par VOLUME d'erreurs.
+   ------------------------------------------------------------
+   Spec éprouvée ici : le bloc encadrant répond à « sur quoi l'aider ? », donc la
+   leçon la PLUS RATÉE passe en tête ; la récence ne sert plus qu'à départager
+   deux leçons à égalité de volume (ordre déterministe). Le signal « récent »
+   reste porté par le filtre de période (#476) appliqué AVANT le regroupement.
+   ============================================================ */
+describe('grouperErreursParLecon (classement par volume + regroupement)', () => {
+	it('met la leçon la PLUS ratée en tête, même si une autre a été ratée plus récemment', () => {
+		// Cœur du changement : « geometrie » vient d'être ratée (ts le plus grand)
+		// mais UNE seule fois ; « calcul » a coincé 3 fois plus tôt. C'est le volume
+		// qui répond à la question du parent, donc « calcul » d'abord.
+		const liste: ErreurEntry[] = [
+			err({ ts: 900, lessonId: 'geometrie', question: 'Combien de côtés ?' }),
+			err({ ts: 300, lessonId: 'calcul', question: '45 + 12 = …' }),
+			err({ ts: 200, lessonId: 'calcul', question: '38 + 7 = …' }),
+			err({ ts: 100, lessonId: 'calcul', question: '56 + 9 = …' }),
+		];
+		const g = grouperErreursParLecon(liste);
+		expect(g.map((x) => x.lessonId)).toEqual(['calcul', 'geometrie']);
+		expect(g.map((x) => x.total)).toEqual([3, 1]);
+		// La récence reste exposée pour l'affichage — elle ne pilote plus le rang.
+		expect(g[0].derniereFois).toBe(300);
+		expect(g[1].derniereFois).toBe(900);
+	});
+
+	it('à volume ÉGAL, la leçon la plus récemment ratée passe devant', () => {
+		// 2 erreurs chacune. « recente » est volontairement rencontrée APRÈS dans le
+		// journal : le rang ne doit pas suivre l'ordre d'apparition.
+		const liste: ErreurEntry[] = [
+			err({ ts: 400, lessonId: 'ancienne', question: 'Q1' }),
+			err({ ts: 100, lessonId: 'ancienne', question: 'Q2' }),
+			err({ ts: 401, lessonId: 'recente', question: 'Q3' }),
+			err({ ts: 50, lessonId: 'recente', question: 'Q4' }),
+		];
+		const g = grouperErreursParLecon(liste);
+		expect(g.map((x) => x.lessonId)).toEqual(['recente', 'ancienne']);
+		expect(g.map((x) => x.total)).toEqual([2, 2]);
+	});
+
+	it('classe sur les occurrences cumulées, pas sur le nombre de lignes affichées', () => {
+		// Piège `total` ≠ `erreurs.length` : « ressassee » = UNE question ratée 3 fois
+		// (1 ligne « vu 3 fois », 3 erreurs) ; « variee » = DEUX questions ratées une
+		// fois (2 lignes, 2 erreurs). L'enfant a buté 3 fois sur la première → elle
+		// passe devant, même si elle affiche moins de lignes et est plus ancienne.
+		const liste: ErreurEntry[] = [
+			err({ ts: 30, lessonId: 'variee', question: 'V1' }),
+			err({ ts: 29, lessonId: 'variee', question: 'V2' }),
+			err({ ts: 12, lessonId: 'ressassee', question: 'R', donnee: '7' }),
+			err({ ts: 11, lessonId: 'ressassee', question: 'R', donnee: '7' }),
+			err({ ts: 10, lessonId: 'ressassee', question: 'R', donnee: '7' }),
+		];
+		const g = grouperErreursParLecon(liste);
+		expect(g.map((x) => x.lessonId)).toEqual(['ressassee', 'variee']);
+		expect(g.map((x) => x.total)).toEqual([3, 2]);
+		expect(g.map((x) => x.erreurs.length)).toEqual([1, 2]); // l'inverse de l'ordre retenu
+		expect(g[0].erreurs[0].occurrences).toBe(3);
+	});
+
+	it('groupe par leçon et garde, à l’intérieur, le plus récent d’abord', () => {
 		const liste: ErreurEntry[] = [
 			err({ ts: 10, lessonId: 'a', question: 'Qa' }),
 			err({ ts: 30, lessonId: 'b', question: 'Qb' }),
 			err({ ts: 20, lessonId: 'a', question: 'Qa2' }),
 		];
 		const g = grouperErreursParLecon(liste);
-		expect(g.map((x) => x.lessonId)).toEqual(['b', 'a']); // b (ts 30) devant a (ts max 20)
-		expect(g[1].total).toBe(2);
-		expect(g[1].derniereFois).toBe(20);
-		// À l’intérieur d’une leçon, plus récent d’abord.
-		expect(g[1].erreurs.map((e) => e.question)).toEqual(['Qa2', 'Qa']);
+		expect(g.map((x) => x.lessonId)).toEqual(['a', 'b']); // a : 2 erreurs, b : 1
+		expect(g[0].total).toBe(2);
+		expect(g[0].derniereFois).toBe(20);
+		expect(g[0].erreurs.map((e) => e.question)).toEqual(['Qa2', 'Qa']);
 	});
 
 	it('dédoublonne la même erreur (question + réponse donnée) en « vu N fois »', () => {
@@ -172,6 +230,47 @@ describe('grouperErreursParLecon (regroupement + dédoublonnage)', () => {
 
 	it('liste vide → []', () => {
 		expect(grouperErreursParLecon([])).toEqual([]);
+	});
+
+	it('invariant sur 200 journaux tirés : totaux décroissants, récence en départage, rien de perdu', () => {
+		// Peu de valeurs distinctes (leçons, ts, questions) → beaucoup d'égalités de
+		// `total` et de doublons : c'est là que le classement et le dédoublonnage
+		// peuvent se contredire, et ça ne se voit que sur un gros échantillon.
+		withSeed(519, () => {
+			for (let tirage = 0; tirage < 200; tirage++) {
+				const liste: ErreurEntry[] = [];
+				const nbLecons = rnd(1, 4);
+				for (let i = rnd(1, 12); i > 0; i--) {
+					liste.push(
+						err({
+							ts: rnd(1, 8) * 1000,
+							lessonId: 'l' + rnd(1, nbLecons),
+							question: 'Q' + rnd(1, 3),
+							donnee: 'D' + rnd(1, 2),
+						}),
+					);
+				}
+				const g = grouperErreursParLecon(liste);
+
+				// Classement : total décroissant, puis récence décroissante.
+				for (let i = 1; i < g.length; i++) {
+					expect(g[i - 1].total).toBeGreaterThanOrEqual(g[i].total);
+					if (g[i - 1].total === g[i].total) {
+						expect(g[i - 1].derniereFois).toBeGreaterThanOrEqual(g[i].derniereFois);
+					}
+				}
+				// Le regroupement ne perd ni ne double aucune erreur.
+				expect(g.reduce((s, x) => s + x.total, 0)).toBe(liste.length);
+				expect(new Set(g.map((x) => x.lessonId)).size).toBe(g.length);
+				for (const groupe of g) {
+					expect(groupe.erreurs.reduce((s, e) => s + e.occurrences, 0)).toBe(groupe.total);
+					expect(groupe.derniereFois).toBe(Math.max(...groupe.erreurs.map((e) => e.ts)));
+					for (let i = 1; i < groupe.erreurs.length; i++) {
+						expect(groupe.erreurs[i - 1].ts).toBeGreaterThanOrEqual(groupe.erreurs[i].ts);
+					}
+				}
+			}
+		});
 	});
 });
 
@@ -449,5 +548,51 @@ describe('filtre + regroupement : les compteurs parlent de la période choisie',
 		const deLaSemaine = grouperErreursParLecon(filtrerErreursParPeriode(liste, 'semaine', NOW));
 		expect(deLaSemaine.map((g) => g.lessonId)).toEqual(['a', 'b']);
 		expect(deLaSemaine[0].total).toBe(2);
+	});
+
+	it('le CLASSEMENT change avec la période : dominante sur la semaine, minoritaire aujourd’hui', () => {
+		// #519 : c'est le filtre de période qui porte la récence, donc changer de
+		// fenêtre doit rebattre l'ordre des leçons, pas seulement leurs compteurs.
+		const liste: ErreurEntry[] = [
+			// « calcul » : 3 erreurs, toutes d'aujourd'hui.
+			err({ ts: jourA(NOW, 0, 11), lessonId: 'calcul', question: 'C1' }),
+			err({ ts: jourA(NOW, 0, 10), lessonId: 'calcul', question: 'C2' }),
+			err({ ts: jourA(NOW, 0, 9), lessonId: 'calcul', question: 'C3' }),
+			// « grammaire » : 1 seule aujourd'hui, mais 5 sur la semaine.
+			err({ ts: jourA(NOW, 0, 8), lessonId: 'grammaire', question: 'G1' }),
+			err({ ts: jourA(NOW, 3, 17), lessonId: 'grammaire', question: 'G2' }),
+			err({ ts: jourA(NOW, 3, 16), lessonId: 'grammaire', question: 'G3' }),
+			err({ ts: jourA(NOW, 4, 15), lessonId: 'grammaire', question: 'G4' }),
+			err({ ts: jourA(NOW, 6, 14), lessonId: 'grammaire', question: 'G5' }),
+		];
+		// « mesures » : le plus gros volume du journal, mais hors de la semaine.
+		for (let i = 0; i < 8; i++) {
+			liste.push(err({ ts: jourA(NOW, 40, 9, i), lessonId: 'mesures', question: 'M' + i }));
+		}
+		const classement = (p: PeriodeErreurs): [string, number][] =>
+			grouperErreursParLecon(filtrerErreursParPeriode(liste, p, NOW)).map((g) => [
+				g.lessonId,
+				g.total,
+			]);
+
+		expect(classement('jour')).toEqual([
+			['calcul', 3],
+			['grammaire', 1],
+		]);
+		expect(classement('deux-jours')).toEqual([
+			['calcul', 3],
+			['grammaire', 1],
+		]);
+		// Sur la semaine, « grammaire » repasse devant : même journal, autre verdict.
+		expect(classement('semaine')).toEqual([
+			['grammaire', 5],
+			['calcul', 3],
+		]);
+		// Sans borne, c'est le vieux gros volume qui domine.
+		expect(classement('tout')).toEqual([
+			['mesures', 8],
+			['grammaire', 5],
+			['calcul', 3],
+		]);
 	});
 });

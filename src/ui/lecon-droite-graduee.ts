@@ -321,8 +321,19 @@ function verifier(): void {
 /* Journal des erreurs (#391) : une entrée par droite ratée. `fige` garantit une seule
    capture par essai. */
 function journaliser(q: QuestionDroite, choisieLabel: string): void {
+	const de = q.bornes[0]?.label ?? String(q.min);
+	const a = q.bornes[q.bornes.length - 1]?.label ?? String(q.max);
 	capterErreur({
-		text: q.consigne,
+		/* La FENÊTRE fait partie de l'énoncé pour le parent : « place 3 470 » ne veut rien dire
+		   sans savoir sur quelle portion de droite. Sans elle, il lit le nombre à placer et la
+		   graduation choisie, mais ne peut pas redessiner la droite où l'enfant s'est trompé. */
+		text: `${q.consigne} La droite va de ${de} à ${a}.`,
+		/* Vide de repère : c'est la droite telle que l'enfant l'a vue, la réponse restant portée
+		   par `attendue`. Seule la PRÉSENCE d'une figure est consommée (marqueur « exercice avec
+		   dessin »), mais on passe la vraie figure pour que ce mode porte le même marqueur que le
+		   chemin de lecture de la MÊME leçon (fiche, révision) — un parent ne doit pas lire deux
+		   mises en forme selon le mode. */
+		figure: renderDroiteGraduee({ min: q.min, max: q.max, pas: q.pas, bornes: q.bornes }),
 		donnee: choisieLabel,
 		attendue: q.cibleLabel,
 		lessonId: lesson.id,

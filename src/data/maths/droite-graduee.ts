@@ -1,10 +1,11 @@
 /* ============================================================
-   Numération — placer un nombre sur la droite graduée (#256, CM1).
+   Numération — placer un nombre sur la droite graduée (#256 CM1, #447 CE2).
    ------------------------------------------------------------
-   Deux leçons CM1 sur la MÊME brique interactive (renderer core/figures/droite.ts,
-   runner ui/lecon-droite-graduee.ts) : placer un ENTIER (grands nombres) et placer un
-   nombre DÉCIMAL. L'enfant pose un repère sur la graduation qui correspond à la valeur
-   demandée (interaction aimantée, auto-correction). Module PUR (aucun DOM).
+   Deux leçons sur la MÊME brique interactive (renderer core/figures/droite.ts,
+   runner ui/lecon-droite-graduee.ts) : placer un ENTIER (CE2 et CM1, recalibrée par
+   niveau) et placer un nombre DÉCIMAL (CM1 seul). L'enfant pose un repère sur la
+   graduation qui correspond à la valeur demandée (interaction aimantée,
+   auto-correction). Module PUR (aucun DOM).
 
    Modèle de rendu ARRÊTÉ (avis designer + pédagogue, #256) :
    - toujours une FENÊTRE zoomée d'une dizaine d'intervalles entre deux bornes rondes
@@ -13,10 +14,17 @@
      traits sont muets ; la cible tombe TOUJOURS sur une graduation NON numérotée (l'enfant
      doit compter les crans depuis un repère chiffré, jamais lire une étiquette).
 
-   Plages ARRÊTÉES (programme CM1) :
-   - ENTIERS (démarquer du CE2 → grands nombres, ordre de grandeur varié d'un item à
-     l'autre) : fenêtre de 100 graduée en dizaines, fenêtre de 1 000 graduée en centaines,
-     fenêtre de 10 000 graduée en milliers ;
+   Plages ARRÊTÉES :
+   - ENTIERS au CE2 (#447 — « savoir placer des nombres et repérer des points sur une
+     demi-droite graduée », programme CE2 2025) : entiers SEULS, jamais au-delà de 10 000
+     (les décimaux sont réservés au CM1) → fenêtre de 10 graduée en unités, fenêtre de 100
+     graduée en dizaines. PAS de fenêtre de 1 000 ni de 10 000 (grands nombres = CM1) ;
+   - ENTIERS au CM1 (grands nombres, ordre de grandeur varié d'un item à l'autre) : fenêtre
+     de 100 graduée en dizaines, fenêtre de 1 000 graduée en centaines, fenêtre de 10 000
+     graduée en milliers. La démarcation avec le CE2 se fait par les DEUX échelles
+     supérieures, pas par la fenêtre de 100, que les deux niveaux partagent : à partir de
+     1 100, une fenêtre de 100 du CM1 est aussi tirable au CE2 (choix assumé — c'est la même
+     compétence, et le CM1 la revoit en la mêlant à des ordres de grandeur plus grands) ;
    - DÉCIMAUX (centièmes AU PLUS, borne dure du programme) : soit un intervalle [n ; n+1]
      gradué en dixièmes (chaque cran = 0,1), soit un ZOOM sur un seul dixième
      [n,d ; n,d+0,1] gradué en centièmes (chaque cran = 0,01) — JAMAIS [n ; n+1] gradué en
@@ -27,6 +35,8 @@
    dérive l'écriture à virgule (nombre de décimales NATUREL : « 3 », « 3,4 », « 3,47 »).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
+import type { SchoolLevel } from '../../core/catalog';
+import { calibrated } from '../../core/level-combinators';
 import { valeursGraduations } from '../../core/figures/droite';
 import type { LessonInput } from '../_shared';
 import { choice, rnd } from '../../core/utils';
@@ -54,15 +64,44 @@ interface FaitDroite {
    depuis une graduation chiffrée. */
 const INDICES_CIBLE = [1, 2, 3, 4, 6, 7, 8, 9] as const;
 
-/* ---------- Entiers (grands nombres) ----------
-   Trois gabarits d'ordre de grandeur croissant ; tiré au hasard par item pour varier. */
-function faitEntiers(): FaitDroite {
-	const gabarit = choice([
-		{ pas: 10, largeur: 100 }, // fenêtre de 100, graduée en dizaines (ex. [3200 ; 3300])
-		{ pas: 100, largeur: 1000 }, // fenêtre de 1 000, graduée en centaines (ex. [45 000 ; 46 000])
-		{ pas: 1000, largeur: 10000 }, // fenêtre de 10 000, graduée en milliers (ex. [230 000 ; 240 000])
-	]);
-	const min = rnd(11, 98) * gabarit.largeur;
+/* ---------- Entiers ----------
+   Un GABARIT = une échelle de fenêtre : `largeur` (= 10 × `pas`, l'invariant « une dizaine
+   d'intervalles ») et la plage des bornes basses, exprimée en multiples de la largeur
+   (`kMin`..`kMax`) — la borne basse est ainsi TOUJOURS un multiple rond de la largeur, et
+   `kMax` borne mécaniquement le plus grand nombre atteignable ((kMax + 1) × largeur). */
+interface GabaritFenetre {
+	pas: number;
+	largeur: number;
+	kMin: number;
+	kMax: number;
+}
+
+/* CE2 (#447) : deux échelles seulement, toutes deux sous 10 000.
+   - fenêtre de 10 graduée en UNITÉS : on compte des unités depuis une dizaine chiffrée.
+     kMin = 2 pour éviter [0 ; 10] et [10 ; 20], où « compter les crans » se confond avec
+     réciter les premiers nombres ; kMax = 99 → nombres de 21 à 999.
+   - fenêtre de 100 graduée en DIZAINES : couvre les nombres à 3 et 4 chiffres jusqu'à
+     9 900, soit toute la plage du programme CE2 sans jamais la dépasser.
+   Chaque échelle porte ainsi sa propre plage de grandeurs : un item ne cumule pas « lire un
+   nombre à 4 chiffres » ET « compter des unités une par une ». */
+const GABARITS_CE2: readonly GabaritFenetre[] = [
+	{ pas: 1, largeur: 10, kMin: 2, kMax: 99 }, // ex. [340 ; 350], graduée en unités
+	{ pas: 10, largeur: 100, kMin: 1, kMax: 98 }, // ex. [3 200 ; 3 300], graduée en dizaines
+];
+
+/* CM1 (#256) : trois échelles d'ordre de grandeur croissant, jusqu'aux centaines de mille
+   (le CE2, lui, ne dépasse pas 10 000). */
+const GABARITS_CM1: readonly GabaritFenetre[] = [
+	{ pas: 10, largeur: 100, kMin: 11, kMax: 98 }, // fenêtre de 100, graduée en dizaines
+	{ pas: 100, largeur: 1000, kMin: 11, kMax: 98 }, // fenêtre de 1 000, graduée en centaines
+	{ pas: 1000, largeur: 10000, kMin: 11, kMax: 98 }, // fenêtre de 10 000, graduée en milliers
+];
+
+/* Tire une fenêtre parmi les gabarits du niveau, puis la cible dans ses graduations
+   muettes. Le milieu (indice 5) vaut min + largeur/2, toujours un multiple du pas. */
+function faitEntiers(gabarits: readonly GabaritFenetre[]): FaitDroite {
+	const gabarit = choice([...gabarits]);
+	const min = rnd(gabarit.kMin, gabarit.kMax) * gabarit.largeur;
 	const max = min + gabarit.largeur;
 	const mid = min + gabarit.largeur / 2; // graduation d'indice 5 (bien un multiple du pas)
 	const cible = min + choice([...INDICES_CIBLE]) * gabarit.pas;
@@ -131,15 +170,22 @@ function construireExercice(f: FaitDroite, format: (v: number) => string): Exerc
    (ui/lecon-droite-graduee.ts) corrige par « graduation choisie === cible ». Le repli
    non interactif (bilan/révision/impression) est produit par genLessonItem (core/catalog),
    qui montre la droite avec le repère à la cible et demande de LIRE le nombre. */
-function droiteType(genFait: () => FaitDroite, format: (v: number) => string): ExerciseType {
-	return {
+function droiteType(
+	genFait: () => FaitDroite,
+	format: (v: number) => string,
+	/* Niveaux déclarés par CE type. Omis dans la branche multi-niveaux (#447) : c'est alors
+	   `calibrated` qui expose l'union des clés de sa table, et ce champ serait ignoré. */
+	niveaux?: SchoolLevel[],
+): ExerciseType {
+	const type: ExerciseType = {
 		modes: MODE_PLACER,
 		consigne: 'Écris le nombre repéré sur la droite graduée.',
 		exerciseKind: 'droiteGraduee',
-		levels: ['cm1'],
 		generate: () => construireExercice(genFait(), format),
 		check: () => false,
 	};
+	if (niveaux) type.levels = niveaux;
+	return type;
 }
 
 /* Le format des décimaux est utilisé par le repli du catalogue (via l'Exercise, qui porte
@@ -152,12 +198,21 @@ export const DROITE_GRADUEE_LESSONS: DroiteLessonInput[] = [
 	{
 		id: 'num-droite-entiers',
 		label: 'Je place un nombre sur la droite graduée',
-		exerciseType: droiteType(faitEntiers, formatNombre),
+		// Multi-niveaux « calibré » (#225, #447) : MÊME leçon, même id, même geste — seules les
+		// échelles de fenêtre changent (CE2 : 10 et 100, sous 10 000 ; CM1 : 100, 1 000 et
+		// 10 000). Aligné sur les leçons de numération voisines (num-comparer,
+		// num-encadrer-intercaler, num-valeur-position…), plutôt qu'un second id CE2 qui
+		// dupliquerait le libellé et ferait perdre sa progression à l'enfant passé au CM1.
+		exerciseType: calibrated<readonly GabaritFenetre[]>(
+			{ ce2: GABARITS_CE2, cm1: GABARITS_CM1 },
+			(gabarits) => droiteType(() => faitEntiers(gabarits), formatNombre),
+		),
 	},
 	{
 		id: 'num-droite-decimaux',
 		label: 'Je place un nombre décimal sur la droite graduée',
-		exerciseType: droiteType(faitDecimaux, afficheDecimal),
+		// Décimaux : CM1 seul (borne dure du programme, le CE2 reste aux entiers).
+		exerciseType: droiteType(faitDecimaux, afficheDecimal, ['cm1']),
 		rubrique: 'Nombres décimaux',
 	},
 ];

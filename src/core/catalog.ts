@@ -487,15 +487,18 @@ const DECIMAUX_ECRITURES_LESSONS_DEFS: LessonDef[] = toLessonDefs(DECIMAUX_ECRIT
 	rubrique: 'Nombres décimaux',
 });
 
-/* ---------- Numération — Droite graduée (#256, CM1) ----------
+/* ---------- Numération — Droite graduée (#256 CM1, #447 CE2) ----------
    Placer un nombre sur une portion de droite graduée (brique interactive, runner dédié
-   ui/lecon-droite-graduee.ts). Deux leçons CM1-only : ENTIERS (grands nombres) à plat, et
-   DÉCIMAUX sous la rubrique « Nombres décimaux » (poursuit le fil #246/#247). Hors sprint
-   (runner dédié, cf. isDroiteGradueeLesson). */
+   ui/lecon-droite-graduee.ts). Deux leçons : ENTIERS à plat, ouverte au CE2 (#447 —
+   objectif explicite du programme CE2 2025) et recalibrée par niveau (fenêtres de 10 et
+   100 sous 10 000 au CE2, grands nombres au CM1) ; DÉCIMAUX CM1-only, sous la rubrique
+   « Nombres décimaux » (poursuit le fil #246/#247). Niveaux DÉRIVÉS du moteur (#225) :
+   la leçon calibrée expose les clés de sa table, la CM1-only son `levels` en dur. Hors
+   sprint (runner dédié, cf. isDroiteGradueeLesson). */
 const DROITE_GRADUEE_LESSONS_DEFS: LessonDef[] = toLessonDefs(DROITE_GRADUEE_LESSONS, {
 	subject: 'math',
 	category: 'math-numeration',
-	levels: ['cm1'],
+	levels: (d) => d.exerciseType.levels ?? ['cm1'],
 	rubrique: (d) => d.rubrique,
 });
 

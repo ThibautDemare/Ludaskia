@@ -34,9 +34,13 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
   **maths** : `maths/problemes.ts` (#255) pose `levels: ['ce2','cm1']` sur 4 de ses
   6 `ExerciseType` (composition, transformation, multiplication, comparaison) **et**
   branche `generate` lui-même sur `opts.level` (CE2 inchangé, CM1 = mix entiers/
-  décimaux) — **sans passer par `calibrated`**, qui ne recopie PAS `exerciseKind` sur
-  l'`ExerciseType` qu'il construit et casserait donc `isProblemeLesson` (classification
-  sans appeler `generate()`, #348) et l'exclusion du sprint qui en dépend.
+  décimaux) — **sans passer par `calibrated`** : à l'époque, le combinateur ne recopiait
+  pas `exerciseKind` et cassait donc `isProblemeLesson` (classification sans appeler
+  `generate()`, #348) et l'exclusion du sprint qui en dépend. **Depuis #447**,
+  `calibrated` **propage `exerciseKind`** (première leçon à runner dédié rendue
+  multi-niveaux : la droite graduée `num-droite-entiers`, CE2 + CM1) : une leçon à
+  runner dédié peut désormais être calibrée sans perdre son aiguillage. `problemes.ts`
+  garde son branchement manuel (rien à y changer).
 - **`niveau-actif.ts`** — résout le niveau au **seam** profil/catalogue (lit la méta
   profil **directement** via `storage`, pour éviter un cycle `progress → niveau-actif →
   profiles`). `niveauActif()` (classe de référence), `niveauActifMatiere(subject)`

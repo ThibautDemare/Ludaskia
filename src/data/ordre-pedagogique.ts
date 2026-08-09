@@ -37,6 +37,13 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'math-tables-addition',
 			'geo-figures-reconnaitre',
 			'num-encadrer-intercaler',
+			// Placer un nombre sur la droite graduée (#447) : juste APRÈS « j'encadre et
+			// j'intercale », pour retrouver la même logique d'ordre sous une autre forme peu
+			// après l'abstrait — encadrer « 340 < ? < 350 » puis pointer le cran entre 340 et
+			// 350, c'est la même comparaison rendue visible. Dépend donc de l'intercalation
+			// (déjà vue juste au-dessus) et de rien d'autre : fenêtres de 10 et de 100 sous
+			// 10 000, aucun grand nombre ni décimal en jeu.
+			'num-droite-entiers',
 			'math-complements',
 			'math-doubles',
 			'mes-longueurs',

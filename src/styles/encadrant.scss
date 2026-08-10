@@ -905,6 +905,62 @@ $plot-h: 140px;
 	border-radius: 3px;
 	background: var(--k);
 }
+/* ---------- Bloc « Travaillé récemment » (#520) ----------
+   Liste nommée de ce qui a été travaillé sur la fenêtre choisie, groupée par matière.
+   Volontairement PLAT et textuel (libellé + méta grise), sans puce d'état ni action :
+   c'est une lecture, et l'écran compte déjà deux graphiques. Le libellé est en 800 comme
+   .enc-revoir-lab / .enc-detail-lab pour que les trois familles de lignes de l'espace se
+   ressemblent, mais la classe est DÉDIÉE — .enc-detail-item porte une puce et des actions
+   dont ce bloc n'a pas besoin. */
+.enc-trav-list {
+	list-style: none;
+	margin: 0.3rem 0 0.5rem;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+.enc-trav-item {
+	display: flex;
+	flex-direction: column;
+	gap: 0.05rem;
+	font-size: 0.85rem;
+}
+.enc-trav-lab {
+	font-weight: 800;
+}
+.enc-trav-meta {
+	font-size: 0.72rem;
+	color: var(--grey);
+}
+/* Repli « + N autres » d'une matière : même chrome que le repli des erreurs plus anciennes
+   (chevron ::after, cible tactile 44 px, texte en --ink) — un seul idiome de repli dans
+   l'onglet plutôt qu'un troisième à décoder. */
+.enc-trav-plus {
+	border-top: 1px solid var(--line);
+}
+.enc-trav-plus-sum {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-height: 2.75rem;
+	cursor: pointer;
+	list-style: none;
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--ink);
+}
+.enc-trav-plus-sum::-webkit-details-marker {
+	display: none;
+}
+.enc-trav-plus-sum::after {
+	content: '▸';
+	color: var(--muted);
+}
+.enc-trav-plus[open] .enc-trav-plus-sum::after {
+	content: '▾';
+}
+
 /* Couverture par matière (roll-up en tête de « Notions par catégorie ») */
 .enc-mat-list {
 	list-style: none;

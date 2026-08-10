@@ -164,6 +164,16 @@ export function startOfDay(ts = Date.now()): number {
 	return d.getTime();
 }
 
+/* Début du jour LOCAL, `joursAvant` jours plus tôt — borne basse INCLUSIVE des fenêtres
+   « N derniers jours » de l'espace encadrant (filtre de période des erreurs, leçons
+   travaillées récemment). Via `setDate` plutôt qu'une soustraction de N × 86400000 :
+   reste minuit local même en travers d'un changement d'heure. Pur. */
+export function debutJourLocal(ts: number, joursAvant: number): number {
+	const d = new Date(startOfDay(ts));
+	d.setDate(d.getDate() - joursAvant);
+	return d.getTime();
+}
+
 /* Formatage mm:ss d'une durée en millisecondes */
 export function fmt(ms: number) {
 	const s = Math.floor(ms / 1000),

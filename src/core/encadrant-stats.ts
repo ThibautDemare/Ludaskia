@@ -440,10 +440,13 @@ export function travailRecent(
 	}));
 }
 
-/* Lecture des stores du profil consulté, puis délégation à `travailRecent` — pendant de
-   `progressionProfil` pour ce bloc. Il ne peut PAS entrer dans `RecapProfil` : la fenêtre
-   est choisie dans l'UI, donc ce calcul se refait à chaque rendu, alors que le récap est
-   calculé une fois pour l'onglet. */
+/* Lecture des stores du profil consulté, puis délégation à `travailRecent` — même patron
+   que `progressionProfil` (clés brutes préfixées par l'UUID).
+   Pourquoi ce calcul n'entre PAS dans `RecapProfil` : `jours` est un choix d'INTERFACE, porté
+   par l'état du widget, pas une donnée du profil. L'y intégrer obligerait soit à calculer les
+   trois fenêtres à chaque fois pour n'en afficher qu'une, soit à faire porter un paramètre de
+   sélection à un calcul qui est une photo de l'état. (Ce n'est pas une question de coût : le
+   récap est lui aussi recalculé à chaque rendu de l'onglet.) */
 export function travailRecentProfil(profile: Profile, jours: number, now: number): GroupeTravail[] {
 	const uuid = profile.uuid;
 	return travailRecent(

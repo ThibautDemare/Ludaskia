@@ -339,7 +339,11 @@ export function echelleActivite(max: number): { top: number; step: number; ticks
 export interface CibleTravaillee {
 	id: string; // leçon du catalogue, ou liste d'orthographe (une dictée)
 	label: string;
-	contexte: string; // catégorie de la leçon (« Calcul mental ») ; 'Dictée' pour une liste
+	/** Nature de la cible. C'est une DONNÉE et non un libellé : l'UI compte les dictées à part
+	    (« 2 leçons et 1 dictée travaillées ») et ne doit pas avoir à reconnaître un mot français
+	    dans `contexte` pour savoir à quoi elle a affaire. */
+	kind: 'lecon' | 'dictee';
+	contexte: string; // catégorie de la leçon (« Calcul mental ») ; vide pour une dictée
 	seances: number | null; // séances attribuables dans la fenêtre ; null = compte inconnu
 	derniereFois: number; // horodatage le plus récent connu dans la fenêtre
 }
@@ -396,6 +400,7 @@ export function travailRecent(
 		pousser(lesson.subject, {
 			id,
 			label: lesson.label,
+			kind: 'lecon',
 			contexte: CATEGORIES.find((c) => c.id === lesson.category)?.label ?? '',
 			seances: parRef.get(id)?.seances ?? null,
 			derniereFois,
@@ -410,7 +415,8 @@ export function travailRecent(
 		pousser('francais', {
 			id,
 			label,
-			contexte: 'Dictée',
+			kind: 'dictee',
+			contexte: '', // une liste d'orthographe n'a pas de catégorie du catalogue
 			seances: acc.seances,
 			derniereFois: acc.derniereFois,
 		});

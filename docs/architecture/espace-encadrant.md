@@ -37,9 +37,9 @@ dans les titres de section (« Progression de … », « Révisions de … »,
 (polish différé).
 
 Répartition des blocs par onglet :
-- **Suivi** — récap de progression (chiffres-clés, activité 7 jours, notions
-  par catégorie + frise, listes de dictée suivies, historique des erreurs),
-  **puis** le récap de révision espacée (#423).
+- **Suivi** — récap de progression (chiffres-clés, activité 7 jours, **leçons
+  travaillées récemment** (#520), notions par catégorie + frise, listes de dictée
+  suivies, historique des erreurs), **puis** le récap de révision espacée (#423).
 - **Programme** — composeur du programme du jour (#440), puis « À revoir
   ensemble » (épinglées + suggestions + retirées automatiquement, #465) et
   « Proposer une dictée à l'avance » :
@@ -156,6 +156,62 @@ est journalisé en amont par `recordLessonRun` (`'lecon'` seule / `'bilan'` expr
 `ui/sprint.ts` (`'sprint'`), et `recordSessionActivity` pour les sessions hors
 `recordLessonStats` : révision espacée (`ui/revision.ts` → `'revision'`) et dictée
 d'orthographe (`ui/ortho-runner.ts` → `'dictee'`, un point par séance).
+
+## Travaillé récemment (#520)
+
+**Travaillé récemment**, entre le graphe d'activité et « Notions par catégorie »
+(`ui/encadrant-travail.ts` — `travailHTML`/`travailClick`, module de section au même
+patron qu'`encadrant-erreurs`/`encadrant-revision`/`encadrant-banque`, composé par
+`recapHTML` d'`encadrant-progression.ts`, aiguillé par `progressionClick`) : nomme
+DIRECTEMENT ce qui a été travaillé sur une fenêtre courte, là où le graphe d'activité
+compte des séances par jour sans nommer une seule leçon et où le détail par leçon reste
+enfermé dans l'accordéon « Notions par catégorie », qu'il fallait déplier catégorie par
+catégorie pour reconstituer la semaine.
+
+Calcul pur dans `core/encadrant-stats.ts` : **`travailRecent(statsRaw, activityRaw, ortho,
+jours, now)`** → `GroupeTravail[]` (un groupe par matière, dans l'ordre de `SUBJECTS`,
+chaque `cibles: CibleTravaillee[]` triée de la plus récente à la plus ancienne), lu pour
+le profil consulté par **`travailRecentProfil(profile, jours, now)`** (mêmes clés brutes
+par UUID que `progressionProfil`).
+
+Chaque **`CibleTravaillee`** combine deux sources distinctes : l'**appartenance** à la
+fenêtre vient de `lastAt` (tous chemins confondus : leçon jouée seule, bilan, sprint),
+tandis que le **compte de séances** (`seances`) vient de la `ref` du journal d'activité
+posée depuis #498. Une leçon vue seulement dans un bilan ou un sprint, qui ne référencent
+pas une cible unique, n'a pas de `ref` attribuable : `seances` vaut alors **`null`**
+(« travaillée, sans compte fiable »), et jamais `0`, qui se lirait « pas travaillée »
+alors qu'on vient de l'affirmer.
+
+Les **dictées** sont collectées depuis le SEUL journal d'activité (`{k:'dictee', ref}`) :
+elles n'ont pas de stats de leçon, et sans elles le bloc annoncerait « aucune leçon
+travaillée » un jour où l'enfant n'a fait que des dictées. `kind: 'lecon' | 'dictee'`
+(`CibleTravaillee`) est une **donnée**, pas un libellé dérivé : l'UI compte les dictées à
+part (« N leçons et M dictées travaillées ») sans avoir à reconnaître un mot français dans
+`contexte`.
+
+**Aucun filtre de niveau** — à la différence de `frisesParMatiere` juste à côté : ce qui a
+été travaillé l'a forcément été à la portée de l'enfant, et l'écarter au prétexte du niveau
+suivi rouvrirait le trou que ce bloc ferme (une leçon CE2 rejouée par un profil CM1,
+favori/révision/épingle, reste rangée `@ce2` par `niveauStockage`). Une leçon travaillée
+sous deux niveaux porte donc deux clés de stats : elle est **dédoublonnée par id**, avec la
+date la plus récente des deux.
+
+Rendu : groupé par MATIÈRE, chaque ligne portant sa catégorie (leçon) ou l'étiquette
+« Dictée » (`kind`), son compte (« N fois », omis quand `null` — jamais « travaillée N
+fois », formule réservée au compte CUMULÉ « depuis toujours » de l'accordéon « Notions par
+catégorie » ci-dessous, pour ne pas afficher deux chiffres différents sous la même phrase
+sur le même écran) et sa date relative (`libelleDerniereFois`). Aucun état d'acquisition par
+ligne (avis pédago) : une notion tout
+juste abordée est normalement encore « à découvrir », un badge afficherait donc un niveau
+bas sur ce qu'il y a de plus récent, alors que c'est une photo d'activité et non un
+jugement. Sélecteur de période à **1 / 2 / 7 jours** (composant segment partagé, cf. [Rendu
+& interactions](ui.md)), défaut 7 jours pour s'aligner sur le graphe d'activité juste
+au-dessus, sans choix « Tout » qui reviendrait à lister le catalogue. Au-delà de 6 lignes
+par matière, le reste rejoint un repli dépliable (même parti pris que les erreurs plus
+anciennes ci-dessous : jamais un simple compteur muet) — son chrome de `<summary>` est
+**factorisé** dans le mixin SCSS `repli-sum` (`styles/encadrant.scss`), partagé avec le
+repli des erreurs plus anciennes plutôt que recopié. État vide : « Aucune session … »
+(le mot déjà employé par le graphe d'activité), jamais un « 0 » en tête de phrase.
 
 ## Dictées : listes et banque de mots (#424, #496)
 

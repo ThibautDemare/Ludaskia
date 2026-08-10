@@ -27,7 +27,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   jours calendaires de l'app : consommé par `progress.ts` (`startOfWeek`),
   `encadrant-stats.ts` (délai avant échéance, jalons), `ui/render.ts` (`quandRevision`)
   et le filtre de période du journal d'erreurs (`erreurs-journal.ts`, cf. [Espace
-  encadrant](espace-encadrant.md)).
+  encadrant](espace-encadrant.md)). **`debutJourLocal(ts, joursAvant)`** — début du jour LOCAL,
+  `joursAvant` jours plus tôt (borne basse INCLUSIVE d'une fenêtre « N derniers jours ») —
+  remontée ici depuis `erreurs-journal.ts` (#520), qui en portait jusque-là une copie privée :
+  son filtre de période et la fenêtre de `travailRecent` (`encadrant-stats.ts`, cf. [Espace
+  encadrant](espace-encadrant.md)) partagent désormais la MÊME définition du jour calendaire
+  local.
   **RNG seedable (#41)** : tout l'aléa passe par `randFloat()` (source déroutable) ;
   `withSeed(seed, fn)` la rend déterministe le temps de `fn`, `randomSeed()` tire une
   graine. **Invariant** : les générateurs d'exercices ne doivent JAMAIS appeler
@@ -879,6 +884,20 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `ludaskia_paliers` ; fenêtre de **12 semaines** (`SEMAINES_FRISE`), matière masquée tant
   que son premier franchissement a moins de **3 semaines** de recul
   (`PALIERS_MIN_SEMAINES`). Exposée dans `RecapProfil.frises`.
+  **Travaillé récemment** (#520) : `travailRecent(statsRaw, activityRaw, ortho, jours, now)`
+  → `GroupeTravail[]` (`{subject, label, cibles: CibleTravaillee[]}`, un groupe par matière
+  dans l'ordre de `SUBJECTS`) et son lecteur de stores `travailRecentProfil(profile, jours,
+  now)` (mêmes clés brutes par UUID que `progressionProfil`). Chaque `CibleTravaillee`
+  combine deux sources : l'**appartenance** à la fenêtre vient de `lastAt` (tous chemins
+  confondus, leçon seule/bilan/sprint), le **compte de séances** (`seances`) vient de la
+  `ref` du journal d'activité posée depuis #498, et vaut `null` (jamais `0`) quand la leçon
+  n'a été vue qu'en bilan ou en sprint, qui ne référencent pas une cible unique. Les dictées
+  sont collectées depuis le SEUL journal d'activité (`kind: 'dictee'` sur `CibleTravaillee`,
+  une DONNÉE plutôt qu'un libellé dérivé). **Aucun filtre de niveau** — à la différence de
+  `frisesParMatiere` ci-dessus : ce qui a été travaillé doit être nommé quel que soit le
+  niveau où c'est rangé (`@niveau`) ; une leçon travaillée sous deux niveaux porte deux clés
+  de stats mais n'est dédoublonnée qu'en une ligne, datée de la plus récente des deux. Détail
+  du rendu dans [Espace encadrant](espace-encadrant.md).
   **Récap du mode Révision espacée** (#423) : `revisionProfil(profile, now)` → `RecapRevision`
   projette la file de répétition espacée (`revision.ts`, #45) du profil consulté — palier
   courant + échéance relative par entrée (`libellePalier`/`libelleEcheanceRevision`), groupée

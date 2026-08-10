@@ -154,6 +154,13 @@ test('épingler une liste de dictée : rejoint « à revoir », apparaît sur l�
 			.filter({ hasText: 'Retirer' }),
 	).toBeVisible();
 
+	// #518 : la ligne épinglée porte AUSSI son badge de niveau (avant #518, seules les
+	// « Suggestions » en affichaient un). Les 3 mots ont leur atelier fait mais aucun
+	// mode validé (seed ci-dessus) -> niveau « en cours » (comme le bloc « Dictées »
+	// du 1er test de ce fichier, même seed).
+	const epinglee = page.locator('.enc-revoir-item').filter({ hasText: 'Ma liste maison' });
+	await expect(epinglee.locator('.enc-revoir-etat.enc-key-en-cours')).toContainText('en cours');
+
 	// Retour à l'accueil enfant : la carte « À revoir » affiche la liste (kind ortho).
 	await page.locator('.enc-back[data-act="retour"]').click();
 	const carte = page.locator('#aRevoir');
@@ -189,7 +196,9 @@ test('« Proposer une dictée à l’avance » : badge « à découvrir », mét
 	await expect(carte).toBeVisible();
 
 	// Badge de niveau (gagné en passant par ligneRevoir, #441) + méta « N mots ».
-	await expect(carte.locator('.enc-revoir-etat.enc-key-a-decouvrir')).toHaveText('à découvrir');
+	// `toContainText`, pas `toHaveText` : le badge porte depuis #518 un préfixe `sr-only`
+	// (« Niveau : ») dans son texte, invisible mais présent dans le contenu textuel.
+	await expect(carte.locator('.enc-revoir-etat.enc-key-a-decouvrir')).toContainText('à découvrir');
 	await expect(carte.locator('.enc-revoir-main .enc-detail-meta')).toHaveText('12 mots');
 
 	// Épingler reste au même endroit et fonctionne (le repli ne l'a pas fait bouger).

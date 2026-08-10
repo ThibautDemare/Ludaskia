@@ -6,6 +6,32 @@
    expressif). Graphes en tokens / currentColor → survivent au thème Nuit.
    ============================================================ */
 
+/* Chrome du <summary> d'un repli « + N … » de second niveau (#520). Deux blocs de l'onglet
+   Suivi en ont un — les erreurs plus anciennes et les leçons travaillées au-delà des
+   premières — et le second en aurait été une copie mot pour mot. Discret (c'est un
+   sous-niveau) mais en --ink et sur une cible tactile confortable, puisque c'est une
+   commande ; chevron via ::after, le marqueur natif étant retiré (comme .enc-err-sum).
+   Un MIXIN et non une classe partagée : le HTML reste inchangé, donc les sélecteurs des
+   specs e2e aussi, et chaque bloc garde ses marges propres. */
+@mixin repli-sum {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-height: 2.75rem;
+	cursor: pointer;
+	list-style: none;
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--ink);
+	&::-webkit-details-marker {
+		display: none;
+	}
+	&::after {
+		content: '▸';
+		color: var(--muted);
+	}
+}
+
 /* ---------- Point d'accès en pied de l'écran Profils ---------- */
 .encadrant-access {
 	margin-top: 1.5rem;
@@ -933,29 +959,13 @@ $plot-h: 140px;
 	font-size: 0.72rem;
 	color: var(--grey);
 }
-/* Repli « + N autres » d'une matière : même chrome que le repli des erreurs plus anciennes
-   (chevron ::after, cible tactile 44 px, texte en --ink) — un seul idiome de repli dans
-   l'onglet plutôt qu'un troisième à décoder. */
+/* Repli « + N autres » d'une matière : chrome partagé (mixin `repli-sum`), pas de filet ici
+   — la liste des lignes visibles fait déjà séparation. */
 .enc-trav-plus {
-	border-top: 1px solid var(--line);
+	margin: 0.1rem 0 0.5rem;
 }
 .enc-trav-plus-sum {
-	display: flex;
-	align-items: center;
-	gap: 0.35rem;
-	min-height: 2.75rem;
-	cursor: pointer;
-	list-style: none;
-	font-size: 0.8rem;
-	font-weight: 600;
-	color: var(--ink);
-}
-.enc-trav-plus-sum::-webkit-details-marker {
-	display: none;
-}
-.enc-trav-plus-sum::after {
-	content: '▸';
-	color: var(--muted);
+	@include repli-sum;
 }
 .enc-trav-plus[open] .enc-trav-plus-sum::after {
 	content: '▾';
@@ -1461,25 +1471,10 @@ $evol-amorce: #7c8494;
    confortable, puisque c'est une commande. */
 .enc-err-anciennes {
 	margin: 0.35rem 0 0;
-	border-top: 1px solid var(--line);
+	border-top: 1px solid var(--line); /* détaché de la liste : c'est un sous-niveau */
 }
 .enc-err-anciennes-sum {
-	display: flex;
-	align-items: center;
-	gap: 0.35rem;
-	min-height: 2.75rem;
-	cursor: pointer;
-	list-style: none; /* marqueur natif retiré ; chevron via ::after (comme .enc-err-sum) */
-	font-size: 0.8rem;
-	font-weight: 600;
-	color: var(--ink);
-}
-.enc-err-anciennes-sum::-webkit-details-marker {
-	display: none;
-}
-.enc-err-anciennes-sum::after {
-	content: '▸';
-	color: var(--muted);
+	@include repli-sum;
 }
 .enc-err-anciennes[open] .enc-err-anciennes-sum::after {
 	content: '▾';

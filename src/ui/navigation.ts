@@ -24,6 +24,8 @@ import { runLeconClicMot } from './lecon-clic-mot';
 import { runLeconDroiteGraduee } from './lecon-droite-graduee';
 import { runLeconProbleme } from './lecon-probleme';
 import { runLeconTableau, leconTableauCleanup } from './lecon-tableau';
+import { labelLecon } from '../core/levels';
+import { niveauLecon } from '../core/niveau-actif';
 import { renderItem, createRenderContext } from '../core/items';
 import type { Item, RenderContext } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
@@ -165,7 +167,7 @@ export function startLecon(id: string, origine: OrigineActivite = 'catalogue') {
 	// #498 les runners « une question à la fois » sont eux aussi reprenables, et leur
 	// instantané porte déjà le mode joué — redemander lequel n'aurait pas de sens.
 	// « Recommencer » repart du parcours normal, écran de choix compris.
-	maybeRelaunch(leconKey(id), lesson.label, () => {
+	maybeRelaunch(leconKey(id), labelLecon(lesson, niveauLecon(lesson)), () => {
 		// Plusieurs modes (ex. conjugaison saisie/QCM) → écran de choix (#69).
 		location.hash = ((lesson.exerciseType.modes?.length ?? 0) > 1 ? 'mode-' : 'lecon-') + id;
 	});
@@ -187,7 +189,7 @@ export function showModeChoice(id: string) {
 	const sheets = document.getElementById('sheets')!;
 	sheets.innerHTML = `<div class="mode-choice">
     <h2 class="mode-choice-title">Comment veux-tu t'entraîner ?</h2>
-    <p class="mode-choice-lesson">${escapeHTML(lesson.label)}</p>
+    <p class="mode-choice-lesson">${escapeHTML(labelLecon(lesson, niveauLecon(lesson)))}</p>
     <div class="mode-choice-list">
       ${opts
 				.map(
@@ -234,7 +236,7 @@ function chooseMode(id: string, mode: ExerciseMode) {
 	) {
 		location.hash = 'lecon-' + id;
 	} else {
-		maybeRelaunch(leconKey(id), lesson.label, () => {
+		maybeRelaunch(leconKey(id), labelLecon(lesson, niveauLecon(lesson)), () => {
 			location.hash = 'lecon-' + id;
 		});
 	}
@@ -671,7 +673,7 @@ export function runLecon(id: string) {
 	setResumeCtx({
 		key: leconKey(id),
 		mode: 'lecon',
-		label: lesson.label,
+		label: labelLecon(lesson, niveauLecon(lesson)),
 		icon: SUBJECT_ICON[lesson.subject] ?? 'book-open',
 		categoryId: lesson.category,
 		relaunch: { type: 'lecon', lessonId: id },

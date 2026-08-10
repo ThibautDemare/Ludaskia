@@ -28,6 +28,7 @@ import {
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { niveauLecon, niveauActifMatiere } from '../core/niveau-actif';
+import { labelLecon } from '../core/levels';
 import { estSigneComparaison, SIGNES_COMPARAISON, signeView } from '../core/signes';
 import type { SigneComparaison } from '../core/signes';
 import { hasMode } from '../core/exercise';
@@ -523,7 +524,7 @@ function onSprintEnter(e: KeyboardEvent) {
 function renderSprintTyped(stage: HTMLElement, def: LessonDef, q: Item) {
 	const deco = def.id === 'math-decomposer-multiplication' ? ' deco' : '';
 	stage.innerHTML = `
-    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(def.label)}</span></div>
+    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(labelLecon(def, niveauLecon(def)))}</span></div>
     ${figureBlock(q.figure)}
     <div class="sprint-q${deco}">${sprintQuestionBody(q)}</div>
     <p class="sprint-hint" id="sprintHint" hidden></p>
@@ -588,7 +589,7 @@ function renderSprintQcm(
 	// `mathInline` : empile les fractions « num/den » de l'énoncé (barre horizontale).
 	const question = mathInline(q.text).replace('@', '<span class="sprint-blank">?</span>');
 	stage.innerHTML = `
-    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(def.label)}</span></div>
+    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(labelLecon(def, niveauLecon(def)))}</span></div>
     ${figureBlock(q.figure)}
     <div class="sprint-q sprint-q-qcm">${question}</div>
     <div class="sprint-choices${sym ? ' lqcm-choices-sym' : ''}">
@@ -697,7 +698,7 @@ function sprintShowCorrection(donnee: string, ans: number | string, parIntervall
 	// « répondu » et non « écrit » : le sprint valide aussi au TAP (QCM de conjugaison,
 	// signes « < = > »), où rien n'a été saisi au clavier.
 	stage.innerHTML = `
-    <div class="sprint-theme">${sprintCurrentDef ? subjectTag(sprintCurrentDef.subject) : ''}<span class="sprint-lesson">${escapeHTML(sprintCurrentDef?.label ?? '')}</span></div>
+    <div class="sprint-theme">${sprintCurrentDef ? subjectTag(sprintCurrentDef.subject) : ''}<span class="sprint-lesson">${escapeHTML(sprintCurrentDef ? labelLecon(sprintCurrentDef, niveauLecon(sprintCurrentDef)) : '')}</span></div>
     <div class="sprint-q wrong">${escapeHTML(sprintCurrent!.text).replace('@', '<span class="sprint-sol">' + solBrute + '</span>')}</div>
     <div class="sprint-correction">
       <span class="sprint-donnee">Tu as répondu <strong>${escapeHTML(donneeLue)}</strong>.</span>

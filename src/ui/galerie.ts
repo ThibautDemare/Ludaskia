@@ -43,6 +43,7 @@
 import '../styles/galerie.scss';
 import { getAllLessons, getLessonById, CATEGORIES, SUBJECTS } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
+import { labelLecon } from '../core/levels';
 import { buildLessonFiche } from '../core/build';
 import { createRenderContext } from '../core/items';
 import { withSeed, escapeHTML } from '../core/utils';
@@ -127,7 +128,7 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 				tuiles: ex.tuiles,
 				parle: ex.parle,
 			};
-			host.innerHTML = sceneWidget(lesson.label, '');
+			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), '');
 			bindTuileInteraction(host, spec, OPTS_INERTES);
 		},
 	},
@@ -144,7 +145,7 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 				tuiles: ex.tuiles,
 			};
 			const consigne = `<p class="sprint-q lord-consigne">${escapeHTML(ex.question)}</p>`;
-			host.innerHTML = sceneWidget(lesson.label, consigne);
+			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), consigne);
 			bindTuileInteraction(host, spec, OPTS_INERTES);
 		},
 	},
@@ -161,7 +162,7 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 				mots: ex.mots,
 			};
 			const consigne = `<p class="sprint-q lord-consigne">${escapeHTML(ex.question)}</p>`;
-			host.innerHTML = sceneWidget(lesson.label, consigne);
+			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), consigne);
 			bindTuileInteraction(host, spec, OPTS_INERTES);
 		},
 	},
@@ -177,7 +178,7 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 				intrus: ex.intrus,
 			};
 			const consigne = `<p class="sprint-q lapp-titre">${escapeHTML(ex.question)}</p>`;
-			host.innerHTML = sceneWidget(lesson.label, consigne);
+			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), consigne);
 			// bindAppariement re-mélange les colonnes via sample() AU BIND → doit rester
 			// dans le withSeed de renderGalerie (garanti : render() y est appelé). La
 			// géométrie SVG se calcule après insertion (host est dans #sheets, donc en page).
@@ -194,7 +195,7 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 			host.innerHTML = `<div class="sprint sprint-lecon">
     <div class="sprint-stage prob-stage">
       <div class="prob-col">
-        <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+        <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(labelLecon(lesson, lesson.levels[0]))}</span></div>
         ${renderProblemeBoardHTML(ex)}
       </div>
     </div>
@@ -212,7 +213,7 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 			const cells = buildCells(ex);
 			host.innerHTML = `<div class="sprint sprint-lecon tc-runner">
     <div class="sprint-stage">
-      <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+      <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(labelLecon(lesson, lesson.levels[0]))}</span></div>
       ${renderTableauBoardHTML(ex, cells)}
     </div>
   </div>`;

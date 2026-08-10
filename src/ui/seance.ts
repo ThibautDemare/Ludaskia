@@ -25,6 +25,8 @@
    ============================================================ */
 import { escapeHTML } from '../core/utils';
 import { getLessonById, type SubjectId } from '../core/catalog';
+import { labelLecon } from '../core/levels';
+import { niveauLecon } from '../core/niveau-actif';
 import { leconDuJour } from '../core/lecon-du-jour';
 import { countDue } from '../core/revision-select';
 import { loadLessonRevisions } from '../core/progress';
@@ -124,7 +126,9 @@ function etapeVisuel(v: VueEtape): { ico: string; titre: string; sous?: string }
 			const l = e.ref ? getLessonById(e.ref) : null;
 			return {
 				ico: icon(subjectIcon((l?.subject ?? 'math') as SubjectId)),
-				titre: l?.label ?? 'Une leçon',
+				// Libellé résolu au niveau joué (#436) : la tuile nomme la leçon comme le fera
+				// l'écran qui s'ouvrira au clic.
+				titre: l ? labelLecon(l, niveauLecon(l)) : 'Une leçon',
 			};
 		}
 		case 'dictee': {

@@ -112,9 +112,10 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 	},
 	clicMot: {
 		titre: 'Comment cliquer sur le mot ?',
-		// « deux mots » sans « collés » : la cible peut être en deux mots NON adjacents
-		// (verbe au passé composé = collés ; sujet composé « Paul … Léa » = séparés, #437).
-		etapes: ['Touche le bon mot.', 'Parfois, il faut toucher deux mots.'],
+		// « plusieurs mots » sans « collés » : la cible peut être en plusieurs mots NON
+		// adjacents (verbe au passé composé = collés ; sujet composé « Paul … Léa » = séparés,
+		// #437 ; TOUS les noms / déterminants d'une phrase au CE2, jusqu'à trois mots, #436).
+		etapes: ['Touche le bon mot.', 'Parfois, il faut toucher plusieurs mots.'],
 		reparation: "Tu t'es trompé ? Retouche le mot, il se désélectionne.",
 	},
 	droiteGraduee: {

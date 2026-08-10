@@ -245,10 +245,22 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-conj-etre-present',
 			'fr-conj-avoir-present',
 			'fr-gram-classes',
-			// « Clique sur le verbe » (#259) : repérer le verbe conjugué DANS une phrase,
-			// juste après avoir nommé les classes de mots (dont le verbe) et conjugué
+			// Natures « clique sur le mot » au CE2 (#436) : repérer une classe de mots DANS
+			// une phrase, juste après l'avoir nommée (fr-gram-classes, au-dessus). Ordre par
+			// dépendances internes : le DÉTERMINANT d'abord (repère le plus visible, il sert
+			// à trouver le nom), puis le NOM (tous les noms de la phrase), puis l'ADJECTIF
+			// (qui se définit par rapport au nom)…
+			'fr-gram-clic-det',
+			'fr-gram-clic-noyau',
+			'fr-gram-clic-adj',
+			// … puis « Clique sur le verbe » (#259) : repérer le verbe conjugué DANS une
+			// phrase, après avoir nommé les classes de mots (dont le verbe) et conjugué
 			// être/avoir au présent. Au CE2 la cible est un seul mot (temps simples).
 			'fr-gram-clic-verbe',
+			// Enfin le PRONOM personnel SUJET (#436) : chercher qui fait l'action vient
+			// naturellement après avoir cherché l'action elle-même (le verbe, juste au-dessus) ;
+			// réinvestit aussi le QCM « pronom sujet » du début d'année.
+			'fr-gram-clic-pron',
 			'fr-conj-aimer-present',
 			'fr-conj-finir-present',
 			'fr-vocab-contraires',

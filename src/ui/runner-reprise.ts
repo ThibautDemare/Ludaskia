@@ -24,6 +24,8 @@
 import { leconKey, removeResume, RESUME_VERSION } from '../core/resume';
 import type { ResumeRunner } from '../core/resume';
 import type { LessonDef } from '../core/catalog';
+import { labelLecon } from '../core/levels';
+import { niveauLecon } from '../core/niveau-actif';
 import { subjectIcon } from './cat-visuals';
 
 /** Ce qu'un runner doit dire de lui-même pour devenir reprenable. La leçon est passée
@@ -81,7 +83,7 @@ export function snapshotRunner(now: number): ResumeRunner | null {
 		version: RESUME_VERSION,
 		savedAt: now,
 		mode: 'lecon',
-		label: s.lesson.label,
+		label: labelLecon(s.lesson, niveauLecon(s.lesson)),
 		icon: subjectIcon(s.lesson.subject),
 		categoryId: s.lesson.category,
 		relaunch: { type: 'lecon', lessonId: s.lesson.id },

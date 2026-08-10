@@ -22,6 +22,7 @@ import {
 	renderLeconResult,
 	wireNext,
 	demarrerRunner,
+	leconTitreHTML,
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { bindTuileInteraction } from './tuile-interaction';
@@ -123,7 +124,7 @@ function renderQuestion(): void {
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
-        <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+        ${leconTitreHTML(lesson)}
         <div data-tuile-mount></div>
         <button class="sprint-btn" id="ltuiVerif" disabled>Vérifier</button>
         <div class="sprint-correction" id="ltuiFeedback" hidden></div>

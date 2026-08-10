@@ -24,6 +24,7 @@
    ============================================================ */
 import type { CategoryId, SchoolLevel, SubjectId } from './catalog';
 import { CATEGORIES, getLessonsByCategory } from './catalog';
+import { labelLecon } from './levels';
 import { lsGet, lsGetRaw, lsSetRaw } from './storage';
 import { touchProfile } from './profiles';
 import {
@@ -162,7 +163,7 @@ export function categoriesDeclarables(
 			const e = { lessonId: l.id, niveau };
 			const jouee = firstSeen[`${l.id}@${niveau}`] != null;
 			const declaree = estVuAilleurs(carte, e);
-			rc.lecons.push({ lessonId: l.id, label: l.label, niveau, declaree, jouee });
+			rc.lecons.push({ lessonId: l.id, label: labelLecon(l, niveau), niveau, declaree, jouee });
 			if (!jouee) {
 				rc.declarables++;
 				if (declaree) rc.declarees++;

@@ -18,6 +18,9 @@ import type { LessonDef } from '../core/catalog';
 import type { ExerciseMode, ProbLexique } from '../core/exercise';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
+import { labelLecon } from '../core/levels';
+import { niveauLecon } from '../core/niveau-actif';
+import { escapeHTML } from '../core/utils';
 import { streakSuffix } from '../core/progress';
 import type { TypeAide } from '../core/aide';
 import { maybeAutoAide } from './aide-exercice';
@@ -47,6 +50,15 @@ export function leconProgressHTML(idx: number, total: number, libelle = 'Questio
     <span class="lqcm-progress-lab">${libelle} ${idx + 1} / ${total}</span>
     <div class="lqcm-bar"><div class="lqcm-bar-fill" style="width:${pct}%"></div></div>
   </div>`;
+}
+
+/** Bandeau de titre d'un runner de leçon : le LIBELLÉ de la leçon, résolu pour le niveau
+    RÉELLEMENT joué (#436 — une leçon peut se nommer autrement selon la classe, cf.
+    `LessonDef.labelNiveau`). Les dix runners rendaient ce même markup chacun chez eux, donc
+    chacun aurait dû penser à résoudre le niveau : un seul endroit désormais. */
+export function leconTitreHTML(lesson: LessonDef): string {
+	const label = labelLecon(lesson, niveauLecon(lesson));
+	return `<div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(label)}</span></div>`;
 }
 
 /** Ouverture commune d'un écran de runner : mise en place du chrome, déclaration de la

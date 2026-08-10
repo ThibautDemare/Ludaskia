@@ -24,6 +24,7 @@ import {
 	renderLeconResult,
 	wireNext,
 	demarrerRunner,
+	leconTitreHTML,
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { bindAppariement } from './appariement';
@@ -143,7 +144,7 @@ function renderManche(): void {
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, manches.length)}
       <div class="sprint-stage">
-        <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+        ${leconTitreHTML(lesson)}
         <p class="sprint-q lapp-titre"${ttsAttr(q.question)}>${escapeHTML(q.question)}</p>
         <div data-tuile-mount></div>
         <button class="sprint-btn" id="lappVerif" disabled>Vérifier</button>

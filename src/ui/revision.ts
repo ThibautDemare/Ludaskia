@@ -17,7 +17,8 @@ import { consigneRenforceeHTML } from './consigne-renforcee';
 import { icon } from './icon';
 import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
-import { hasMode, depuisTuilesNombre } from '../core/exercise';
+import { labelLecon } from '../core/levels';
+import { hasMode, depuisTuilesNombre, consignePourNiveau } from '../core/exercise';
 import type { ChoiceView, QcmVariante, TuilesSpec } from '../core/exercise';
 import { PONCT_MOTS } from './ponctuation-view';
 import { mathInline } from '../core/fraction-text';
@@ -64,7 +65,7 @@ import {
 	attendueItem,
 	attendueIntervalle,
 } from '../core/erreur-representation';
-import { joindrePhrase } from '../data/francais/grammaire-clic-mot';
+import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
 import type { ProblemeEtape, ProbLexique, NatureOrdre } from '../core/exercise';
 
 // `consigne` (#186) : libellé de la leçon, affiché au-dessus de l'exercice pour
@@ -149,6 +150,8 @@ type RevItem = { groupLabel: string; consigne?: string } & (
 			explication: string;
 			parle: string;
 			cibleLabel?: string;
+			// L'explication nomme déjà la cible (#436) → pas de double annonce en live region.
+			explicationNommeCible?: boolean;
 	  }
 );
 
@@ -186,7 +189,8 @@ export function runRevisionEspacee(): void {
 			if (!lesson) continue;
 			const type = lesson.exerciseType;
 			const level = niveauLecon(lesson); // calibrage au niveau effectif (#225)
-			const consigne = lesson.label; // consigne affichée = libellé de la leçon (#186)
+			// Consigne affichée = libellé de la leçon (#186), résolu au niveau joué (#436).
+			const consigne = labelLecon(lesson, level);
 			// QCM (conjugaison, homophones, géométrie…) : inchangé.
 			if (hasMode(type, 'qcm')) {
 				const ex = type.generate({ mode: 'qcm', level });
@@ -280,6 +284,7 @@ export function runRevisionEspacee(): void {
 					explication: ex.explication,
 					parle: ex.parle,
 					cibleLabel: ex.cibleLabel,
+					explicationNommeCible: ex.explicationNommeCible,
 				});
 				continue;
 			}
@@ -309,7 +314,9 @@ export function runRevisionEspacee(): void {
 				kind: 'num',
 				lessonId: it.id,
 				item: genLessonItem(lesson, level),
-				consigneAction: type.consigne, // action « quoi faire » (#265) ; surtout pour la posée
+				// Action « quoi faire » (#265) ; surtout pour la posée. Résolue au niveau joué
+				// (#436) : une leçon multi-niveaux ne formule pas forcément la tâche pareil.
+				consigneAction: consignePourNiveau(type, level),
 			});
 		}
 	}
@@ -841,6 +848,7 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 			// Justification annoncée dans la live region du widget (parité avec le feedback
 			// visuel `extra` ci-dessous, pour un lecteur d'écran) — #466.
 			explication: it.explication,
+			explicationNommeCible: it.explicationNommeCible,
 		},
 		{ onState: (hasSelection) => (verif.disabled = !hasSelection) },
 	);
@@ -848,12 +856,13 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 		if (verif.disabled) return;
 		const reussi = ctrl.verify();
 		if (!reussi) {
-			const motsCible = [...it.cibleIndices].sort((a, b) => a - b).map((i) => it.tokens[i]);
-			const motsChoisis = ctrl.selected().map((i) => it.tokens[i]);
+			// Mots joints par `libelleCible` (source unique, comme le runner d'entraînement) :
+			// une cible NON contiguë se lit « chien et pomme », pas « chien pomme ».
+			const choisis = ctrl.selected();
 			capterRev({
 				text: `${it.actionConsigne} « ${joindrePhrase(it.tokens)} »`,
-				donnee: motsChoisis.length ? motsChoisis.join(' ') : '(aucun mot choisi)',
-				attendue: motsCible.join(' '),
+				donnee: choisis.length ? libelleCible(it.tokens, choisis) : '(aucun mot choisi)',
+				attendue: libelleCible(it.tokens, it.cibleIndices),
 				lessonId: it.lessonId,
 			});
 		}

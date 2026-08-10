@@ -24,6 +24,7 @@ import {
 	renderLeconResult,
 	wireNext,
 	demarrerRunner,
+	leconTitreHTML,
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
@@ -218,7 +219,7 @@ function renderQuestion(): void {
       ${leconProgressHTML(idx, questions.length, lex.nom)}
       <div class="sprint-stage prob-stage">
         <div class="prob-col">
-          <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+          ${leconTitreHTML(lesson)}
           ${renderProblemeBoardHTML(q, lex)}
           ${brouillonHTML()}
           <button class="sprint-btn" id="probVerif">Vérifier</button>

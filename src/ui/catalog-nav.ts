@@ -14,7 +14,7 @@ import {
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { niveauActifMatiere } from '../core/niveau-actif';
-import { LEVEL_ORDER, LEVEL_LABEL } from '../core/levels';
+import { LEVEL_ORDER, LEVEL_LABEL, labelLecon } from '../core/levels';
 import { LESSONS_CALCUL_MENTAL } from '../core/lessons';
 import { loadStars, loadLessonStats, etoileAuxNiveaux } from '../core/progress';
 import { loadOrtho } from '../core/orthographe/store';
@@ -130,7 +130,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 	const ai = LEVEL_ORDER.indexOf(niveau);
 	const cardRow = (def: LessonDef, i: number) => {
 		const rich = LESSONS_CALCUL_MENTAL.find((l) => l.id === def.id);
-		const entry = rich ?? { id: def.id, num: i + 1, title: def.label };
+		const entry = rich ?? { id: def.id, num: i + 1, title: labelLecon(def, niveau) };
 		// Badge « déjà maîtrisée en <classe inférieure> » : même leçon étoilée à un
 		// niveau plus bas que le niveau actif de la matière (#225). On nomme la classe
 		// inférieure maîtrisée la plus haute.
@@ -138,7 +138,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 			.filter((lv) => LEVEL_ORDER.indexOf(lv) < ai)
 			.sort((a, b) => LEVEL_ORDER.indexOf(a) - LEVEL_ORDER.indexOf(b));
 		const badge = bas.length ? LEVEL_LABEL[bas[bas.length - 1]] : undefined;
-		return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats, def.repere, badge)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(def.label)}">${icon('printer')}</button></div>`;
+		return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats, def.repere, badge)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(labelLecon(def, niveau))}">${icon('printer')}</button></div>`;
 	};
 
 	// Regroupement par rubrique (#109), dans l'ordre d'apparition. Une leçon sans
@@ -181,7 +181,14 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 		const printBtn = target.closest('.lz-print') as HTMLElement | null;
 		if (printBtn && printBtn.dataset.print) {
 			const def = lessonDefs.find((l) => l.id === printBtn.dataset.print);
-			printScope({ title: def?.label ?? '', lessonIds: [printBtn.dataset.print], kind: 'fiches' });
+			// Titre résolu au niveau actif (#436), comme l'aria-label du même bouton : le
+			// couvre-fiche ne le consomme pas pour une leçon seule aujourd'hui, mais un titre
+			// brut serait faux le jour où il le fera.
+			printScope({
+				title: def ? labelLecon(def, niveau) : '',
+				lessonIds: [printBtn.dataset.print],
+				kind: 'fiches',
+			});
 			return;
 		}
 		const btn = target.closest('.lesson-item') as HTMLElement | null;
@@ -305,7 +312,7 @@ function renderOrthoCategorie(el: HTMLElement): void {
 				: '';
 		return `<button class="nav-card" data-lecon="${l.id}">
       <span class="cat-ico" style="background:${tint}">${icon(ico)}</span>
-      <div class="nav-card-title">${escapeHTML(l.label)}${etoilee ? ' ⭐' : ''}${repere}</div>
+      <div class="nav-card-title">${escapeHTML(labelLecon(l, niveau))}${etoilee ? ' ⭐' : ''}${repere}</div>
       <div class="nav-card-sub">${hint}</div>
     </button>`;
 	};

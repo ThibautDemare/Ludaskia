@@ -28,6 +28,7 @@ import {
 	renderLeconResult,
 	wireNext,
 	demarrerRunner,
+	leconTitreHTML,
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { capterErreur, libelleChoix } from './erreur-capture';
@@ -167,7 +168,7 @@ function renderQuestion(): void {
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
-        <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+        ${leconTitreHTML(lesson)}
         ${figureBlock(q.item.figure)}
         ${consigneHTML}
         <div class="sprint-q sprint-q-qcm"${q.consigne ? '' : ttsAttr(ttsText)}>${question}</div>

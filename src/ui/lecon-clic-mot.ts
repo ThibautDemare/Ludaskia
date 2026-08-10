@@ -25,7 +25,7 @@ import { niveauLecon } from '../core/niveau-actif';
 import type { ExerciseMode } from '../core/exercise';
 import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
-import { joindrePhrase } from '../data/francais/grammaire-clic-mot';
+import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
 import { bindClicMot, type ClicMotController } from './clic-mot-interaction';
 import { bindConsigneTts } from './consigne-tts';
 import { goHome } from './navigation';
@@ -35,6 +35,7 @@ import {
 	renderLeconResult,
 	wireNext,
 	demarrerRunner,
+	leconTitreHTML,
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
@@ -51,6 +52,9 @@ interface QuestionClicMot {
 	// Nom de la cible au singulier (« le verbe conjugué », « l'article »…) : alimente
 	// les aria-labels de correction. Absent ⇒ repli générique « la bonne réponse ».
 	cibleLabel?: string;
+	// L'explication nomme déjà la cible (#436) → la live region ne la réénumère pas.
+	// Absent (instantané de reprise d'avant #436 compris) ⇒ réponse annoncée.
+	explicationNommeCible?: boolean;
 }
 
 let lesson: LessonDef;
@@ -86,6 +90,7 @@ function genQuestions(l: LessonDef, n: number): QuestionClicMot[] {
 			explication: ex.explication,
 			parle: ex.parle,
 			cibleLabel: ex.cibleLabel,
+			explicationNommeCible: ex.explicationNommeCible,
 		});
 		misses = 0;
 	}
@@ -158,7 +163,7 @@ function renderQuestion(): void {
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage lclic-stage">
         <div class="lclic-col">
-          <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+          ${leconTitreHTML(lesson)}
           <p class="lclic-consigne"${ttsAttr(q.consigne)}>${escapeHTML(q.consigne)}</p>
           <div data-tuile-mount></div>
           <button class="sprint-btn" id="lclicVerif" disabled>Vérifier</button>
@@ -176,6 +181,7 @@ function renderQuestion(): void {
 			parle: q.parle,
 			cibleLabel: q.cibleLabel,
 			explication: q.explication,
+			explicationNommeCible: q.explicationNommeCible,
 		},
 		{ onState: (hasSelection) => (verif.disabled = !hasSelection) },
 	);
@@ -219,14 +225,16 @@ function verifier(): void {
 }
 
 /* Journal des erreurs (#391) : une entrée par phrase ratée (l'énoncé, les mots
-   choisis, le(s) bon(s) mot(s)). `answered` garantit une seule capture par essai. */
+   choisis, le(s) bon(s) mot(s)). `answered` garantit une seule capture par essai.
+   Mots joints par `libelleCible` (source unique, partagée avec l'annonce du widget et le
+   repli du catalogue) : une cible NON contiguë — tous les noms d'une phrase, un sujet
+   composé, « ni … ni » — se lit « chien et pomme » et non « chien pomme », qui ferait
+   passer deux mots séparés pour un groupe. */
 function journaliser(q: QuestionClicMot, choisis: number[]): void {
-	const motsCible = [...q.cibleIndices].sort((a, b) => a - b).map((i) => q.tokens[i]);
-	const motsChoisis = choisis.map((i) => q.tokens[i]);
 	capterErreur({
 		text: `${q.consigne} « ${joindrePhrase(q.tokens)} »`,
-		donnee: motsChoisis.length ? motsChoisis.join(' ') : '(aucun mot juste)',
-		attendue: motsCible.join(' '),
+		donnee: choisis.length ? libelleCible(q.tokens, choisis) : '(aucun mot choisi)',
+		attendue: libelleCible(q.tokens, q.cibleIndices),
 		lessonId: lesson.id,
 		mode: 'lecon',
 	});

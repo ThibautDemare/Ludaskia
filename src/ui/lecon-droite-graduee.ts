@@ -38,6 +38,7 @@ import {
 	renderLeconResult,
 	wireNext,
 	demarrerRunner,
+	leconTitreHTML,
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
@@ -174,7 +175,7 @@ function renderQuestion(): void {
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage dg-stage">
         <div class="dg-col">
-          <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+          ${leconTitreHTML(lesson)}
           <p class="dg-consigne" id="dgConsigne"${ttsAttr(q.parle)}>${escapeHTML(q.consigne)}</p>
           <div class="dg-figure" id="dgFigure">${renderDroiteGradueeInteractif({
 						min: q.min,

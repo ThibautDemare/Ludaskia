@@ -264,11 +264,16 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   #259, généralisé #437 : `{tokens: string[]` — phrase mot à mot, ponctuation comprise —,
   `cibleIndices: number[]` — ensemble EXACT des indices-cibles, **stockés**, adjacents
   ou non (verbe au passé composé = 2 mots adjacents ; « ni…ni »/sujet composé = cible
-  double non adjacente) —, `consigne`, `explication`, `parle`, `cibleLabel?` — nomme la
-  cible au singulier (« le verbe conjugué », « l'article »…), alimente les aria-labels
-  de correction du runner et le repli `genLessonItem` ; absent ⇒ repli générique `}` ;
+  double non adjacente ; **tous** les noms / déterminants d'une phrase au CE2 #436 = 2 à
+  3 mots) —, `consigne`, `explication`, `parle`, `cibleLabel?` — nomme la
+  cible (« le verbe conjugué », « l'article », « les noms »…), alimente les aria-labels
+  de correction du runner et le repli `genLessonItem` ; absent ⇒ repli générique —,
+  `explicationNommeCible?` (#436) — l'`explication` énonce DÉJÀ les mots-cibles, la région
+  live de correction n'y ajoute donc pas son « La bonne réponse : … » ; drapeau porté par la
+  **donnée** (jamais deviné en comparant des textes), absent ⇒ la réponse **est** annoncée
+  (aucun repli silencieux)`}` ;
   corrigé par son runner `lecon-clic-mot.ts` par égalité d'ensembles, `checkAnswer`
-  renvoie `false`, runner **agnostique de la notation grammaticale ciblée** — voir 6
+  renvoie `false`, runner **agnostique de la notation grammaticale ciblée** — voir 7
   leçons dans [Contenu & leçons](contenu-et-lecons.md))
   | `droiteGraduee` (droite graduée #256 : `{min, max, pas, graduations[]` — toutes les
   graduations sélectionnables `{valeur, label}` —, `bornes[]` — sous-ensemble numéroté —,
@@ -317,7 +322,24 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   même champ à titre **INFORMATIF** (#446) : la correction y reste « le libellé posé ===
   `answer` » (une seule tuile est dans la bande), mais le runner de tuiles a besoin de savoir
   que la question admettait d'autres nombres, pour le dire à l'enfant après coup et
-  journaliser la bande. Enfin, **`intervalleAPlusieursReponses([min, max])`** (`items.ts`)
+  journaliser la bande.
+  **`memeListeDeMots(raw, mots)`** (`items.ts`, #436) applique le même parti pris — la règle
+  de correction portée par la DONNÉE de l'item — à une réponse **liste de mots** : l'`Item`
+  porte **`motsAttendus?: string[]`**, posé par `genLessonItem` sur un `clicMot` à cible
+  plurielle **NON CONTIGUË** (tous les noms/déterminants d'une phrase au CE2, sujet composé,
+  ni…ni), et `checkItemAnswer` accepte alors les mots **dans l'ordre** avec un connecteur
+  **libre** — espaces, virgules ou « et » indifféremment (« chien et gamelle » = « chien
+  gamelle » = « chien, gamelle »). Une cible **contiguë** en est exclue (même prédicat
+  `cibleContigue` que la jointure) : « a mangé » est un groupe verbal, pas une liste — il n'a
+  aucun connecteur à ne pas exiger, et la tolérance y accepterait « a et mangé ».
+  La comparaison **replie la casse** — seule exception du moteur, assumée : les mots sont
+  prélevés dans une phrase, dont le premier porte la majuscule initiale (« Le et sa »), qui
+  relève de la phrase source et non de la compétence évaluée. Accents et apostrophes restent
+  exigés. La compétence évaluée est de trouver les bons mots, pas de reproduire la mise en
+  forme ; l'`answer` garde la forme **lisible** (`libelleCible`) et reste la seule affichée,
+  imprimée et journalisée. Tolérance **bornée** aux items qui portent le champ : aucune autre
+  leçon n'est relâchée, ni sur la casse ni sur les séparateurs.
+  Enfin, **`intervalleAPlusieursReponses([min, max])`** (`items.ts`)
   tranche le seuil du **pluriel** — au moins trois entiers dans la bande, écart ≥ 4 : « deux
   réponses » n'est pas « plusieurs ». C'est ce prédicat (et non la simple présence du champ)
   qui déclenche le suffixe de consigne « (plusieurs réponses possibles) » et la mention
@@ -456,10 +478,18 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`id, label, subject, category, levels: SchoolLevel[], exerciseType` — #225). La
   plupart des familles de leçons passent par **`toLessonDefs(inputs, opts)`** (#373) :
   fabrique qui mappe une liste `LessonInput` (#347, cf. [Contenu & leçons](contenu-et-lecons.md))
-  en `LessonDef[]` — `opts.subject`/`category` fixes, et `levels`/`rubrique`/
+  en `LessonDef[]` — `opts.subject`/`category` fixes, et `levels`/`labelNiveau`/`rubrique`/
   `excludeFromSprint`/`repere` optionnels, chacun soit une valeur fixe soit une fonction
   `(input) => valeur` quand il dérive de la donnée ; un champ résolu à `undefined` est
-  omis. Seule la conjugaison (`FRENCH_LESSONS`) reste hors du helper : son `exerciseType`
+  omis. **`labelNiveau?: Partial<Record<SchoolLevel, string>>`** (#436) est le **surcroît
+  optionnel** qui permet à une leçon multi-niveaux de se **nommer** différemment selon la
+  classe (« Clique sur le nom » au CE2, « Clique sur le nom noyau » au CM1, « noyau » étant
+  du vocabulaire CM1) : `label` reste le libellé par défaut et **doit rester juste à tous les
+  niveaux** (les rares écrans sans niveau sous la main l'affichent tel quel — perte de
+  précision, jamais contresens). Résolution à la LECTURE via **`labelLecon(lesson, niveau)`**
+  (`levels.ts`), au seam qui connaît le niveau : `niveauLecon` en UI (helper partagé
+  `leconTitreHTML` pour les runners, cf. [Rendu & interactions](ui.md)), niveau du profil
+  **consulté** dans l'espace encadrant et à l'impression. Seule la conjugaison (`FRENCH_LESSONS`) reste hors du helper : son `exerciseType`
   est **calculé** (`conjugationType(verbId, tense)`), pas porté par l'entrée, donc son
   descripteur n'est pas un `LessonInput`. Helpers
   `getAllLessons/getLessonById/getLessonsBySubject/getLessonsByCategory` (ces deux

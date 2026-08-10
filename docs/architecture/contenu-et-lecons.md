@@ -92,36 +92,58 @@ mots, articles, adverbes »** (`fr-gram-classes`). QCM d'étiquetage, 3 sous-typ
 sur une **banque interne étiquetée** (jamais les listes du parent). Un builder unifie
 les 3 types en items QCM. Relue par l'agent pédagogue.
 
-#### `francais/grammaire-clic-mot.ts` (#259, #437)
+#### `francais/grammaire-clic-mot.ts` (#259, #437, #436)
 
 catégorie **Grammaire**, brique d'interaction **« clique sur le mot »** : une phrase
 est rendue **mot par mot** et l'enfant sélectionne le(s) mot(s) répondant à la
-consigne. **6 leçons** partagent la mécanique (runner `ui/lecon-clic-mot.ts`, désormais
+consigne. **7 leçons** partagent la mécanique (runner `ui/lecon-clic-mot.ts`, désormais
 **agnostique de la notation grammaticale ciblée**, cf. [Rendu & interactions](ui.md)) :
 
-- **« Clique sur le verbe »** (`fr-gram-clic-verbe`, #259) — **CE2 + CM1**, seule
-  leçon multi-niveaux de la brique. `generate({level})` tire dans **`PHRASES_CE2`**
-  (~47 phrases, temps simples → cible = 1 mot) ou **`PHRASES_CM1`** (~74 : les CE2
-  revues + passé composé → cible = 2 mots adjacents auxiliaire + participe, inversion
-  nominale du sujet, complément circonstanciel en tête).
-- **« Clique sur le déterminant »** (`fr-gram-clic-det`, #437, **CM1 seule**) —
-  article / possessif / démonstratif ; consigne et `cibleLabel` **surchargés par
-  item** (même phrase réutilisée pour plusieurs sous-catégories comme distracteurs
-  mutuels, via `detItems`).
+- **« Clique sur le verbe »** (`fr-gram-clic-verbe`, #259) — **CE2 + CM1**.
+  `generate({level})` tire dans **`PHRASES_CE2`** (~47 phrases, temps simples → cible
+  = 1 mot) ou **`PHRASES_CM1`** (~74 : les CE2 revues + passé composé → cible = 2 mots
+  adjacents auxiliaire + participe, inversion nominale du sujet, complément
+  circonstanciel en tête).
+- **« Clique sur le déterminant »** (`fr-gram-clic-det`, #437 CM1, #436 CE2) — au CM1
+  article / possessif / démonstratif, consigne et `cibleLabel` **surchargés par item**
+  (même phrase réutilisée pour plusieurs sous-catégories comme distracteurs mutuels,
+  via `detItems`) ; au CE2 les déterminants **en bloc** (pas de sous-catégorie avant le
+  CM1), cible **plurielle** = **tous** ceux de la phrase (`PHRASES_DET_CE2`, 54).
 - **« Clique sur la conjonction »** (`fr-gram-clic-conj`, #437, CM1) — coordination
   (mais/ou/et/donc/or/ni/car) ; « ni…ni » = cible **double non adjacente** (les deux
   occurrences de « ni »).
-- **« Clique sur le pronom »** (`fr-gram-clic-pron`, #437, CM1) — personnel sujet vs
-  complément ; consigne et `cibleLabel` **surchargés par item** (`pronItems`).
-- **« Clique sur le nom noyau »** (`fr-gram-clic-noyau`, #437, CM1) — nom principal
-  d'un groupe nominal développé (un seul GN par phrase, jamais un second nom).
+- **« Clique sur le pronom »** (`fr-gram-clic-pron`, #437 CM1, #436 CE2) — au CM1
+  personnel sujet vs complément, consigne et `cibleLabel` **surchargés par item**
+  (`pronItems`) ; au CE2 le seul pronom personnel **sujet**, cible unique, **aucun
+  pronom complément** dans la banque (`PHRASES_PRON_CE2`, 54).
+- **« Clique sur le nom »** (`fr-gram-clic-noyau`, #437 CM1, #436 CE2) — au CM1 le nom
+  principal d'un groupe nominal développé (un seul GN par phrase, jamais un second nom) ;
+  au CE2 **tous** les noms de la phrase, cible **plurielle**, nom propre compris
+  (`PHRASES_NOM_CE2`, 55). Seule leçon à **libellé par niveau** (`labelNiveau`, #436) :
+  « Clique sur le nom » au CE2, « Clique sur le nom noyau » au CM1 — « noyau » est le mot du
+  programme CM1, que le CE2 ne doit pas lire.
+- **« Clique sur l'adjectif »** (`fr-gram-clic-adj`, #436, **CE2 seule**) — l'unique
+  adjectif qualificatif de la phrase (`PHRASES_ADJ_CE2`, 60) ; participes passés
+  adjectivaux et nationalités substantivables **exclus**.
 - **« Clique sur le sujet »** (`fr-gram-clic-sujet`, #437, CM1) — noyau du groupe
   sujet, **sujet composé de deux noms propres compris** (« Paul et Léa » → cible
   double, en **sautant** « et », donc non adjacente).
 
-Les 5 leçons #437 sont `levels: ['cm1']` (câblées après `fr-gram-clic-verbe` dans
-`ORDRE_LECONS.francais.cm1`, `data/ordre-pedagogique.ts:405-409`, ordre : déterminant →
-conjonction → pronom → nom noyau → sujet, la dernière synthétisant les précédentes).
+**Niveaux** : conjonction et sujet restent `['cm1']` (câblées après
+`fr-gram-clic-verbe` dans `ORDRE_LECONS.francais.cm1`, ordre : déterminant →
+conjonction → pronom → nom noyau → sujet, la dernière synthétisant les précédentes) ;
+déterminant, pronom et nom sont `['ce2', 'cm1']` et l'adjectif `['ce2']`. Au CE2
+(`ORDRE_LECONS.francais.ce2`), l'ordre est **déterminant → nom → adjectif →
+`fr-gram-clic-verbe` → pronom sujet** : le déterminant sert de repère pour trouver le
+nom, l'adjectif se définit par rapport au nom, et chercher un sujet pronominal vient
+après avoir cherché l'action.
+
+**Cible plurielle au CE2** (décision produit #436) : pour « nom » et « déterminant », la
+consigne demande **tous** les noms / **tous** les déterminants et la réponse est
+l'**ensemble** de ces mots (2 à 3, non adjacents). On ne peut pas exiger à la fois une
+cible unique et une position variée au CE2 : varier la position suppose plusieurs
+groupes nominaux, donc plusieurs noms et déterminants. Le runner corrigeait déjà un
+ensemble non adjacent (sujet composé, ni…ni).
 
 **Modèle de données** : chaque phrase est autorée (texte + mot(s)-cible) via l'une de
 deux fabriques, puis **tokenisée** (mots + ponctuation) — l'ensemble des indices-cibles
@@ -137,23 +159,64 @@ runner :
   `cibles` (répéter un mot dans `cibles` en cible **toutes** ses occurrences — cas
   « ni », « ni »).
 
+**Énoncer une cible de plusieurs mots** : le module **ré-exporte** `enumererFr` de
+`core/utils` (« a », « a et b », « a, b et c ») — une seule implémentation dans l'app, pas
+une copie locale. En dérivent `libelleCible` (mots nus — lus par la région live, recopiés en
+fiche, journalisés pour le parent) et `listeMots` (mots entre guillemets dans les
+explications). Le prédicat **`cibleContigue(cibleIndices)`** départage les deux régimes et
+sert AUSSI à borner la tolérance de recopie : une cible contiguë comme « a mangé » est UN
+groupe (jointure par espace, aucune tolérance de connecteur), une cible dispersée est une
+LISTE. Une leçon dont l'explication
+énumère déjà la cible pose `explicationNommeCible` sur ses phrases : la région live
+n'annonce alors pas la réponse une seconde fois (cf. [Rendu & interactions](ui.md)).
+
+Les banques CE2 (#436) ajoutent leurs **garde-fous de construction** propres, qui lèvent
+à l'import plutôt que de laisser passer un item douteux : au moins deux cibles quand la
+consigne est au pluriel ; pour le nom, chaque cible **introduite par un déterminant** ou
+nom propre **et** réciproquement tout introducteur suivi d'un nom **ciblé** (attrape un
+nom oublié dans l'annotation) ; pour le déterminant, indices **dérivés** de la phrase
+(aucun oubli possible), partitifs/contractés, `leur` singulier et déterminants non
+nommés au CE2 interdits, `ce` jamais suivi d'être/avoir, aucun article collé derrière un
+pronom sujet ; pour l'adjectif, un seul mot de la phrase appartient au lexique
+d'adjectifs de la banque et aucun mot de même radical (adverbe en `-ment`) ; pour le
+pronom, un seul pronom sujet et **aucun** pronom complément ni `il` impersonnel.
+
 **Fabriques d'`ExerciseType`** : `clicVerbeType()` (verbe, CE2+CM1) et la fabrique
-**générique** `clicMotType({banque, consigne, cibleLabel?, levels?})` (#437) —
-paramétrise les 5 leçons de natures sans dupliquer la mécanique (`levels` par défaut
-`['cm1']`). Les deux posent `check: () => false` (le runner corrige lui-même) et
+**générique** `clicMotType({banque, consigne, cibleLabel?, levels?, ce2?})` (#437,
+#436) — paramétrise les leçons de natures sans dupliquer la mécanique (`levels` par
+défaut `['cm1']`). **`ce2`** (`VarianteClicMot` : banque + consigne + `cibleLabel`)
+porte la variante CE2 d'une leçon servie aux deux niveaux ; `generate` choisit la variante
+en résolvant `opts.level` par **`closestSupported`** (le mécanisme du moteur — repli vers le
+bas puis clamp, comme `effectiveLevel`/`labelLecon`), avec **repli sur le plus bas niveau
+déclaré** quand aucun niveau n'est transmis. Passer par le moteur plutôt qu'un
+`level === 'cm1'` ad hoc est ce qui garantit qu'un niveau non déclaré (CM2) reçoive la
+variante vers laquelle le catalogue le replie, et non le contenu d'un niveau que le titre de
+la leçon contredirait. Même patron dans `clicVerbeType`. La **même** variante
+alimente la **consigne de fiche** (`ExerciseType.consigne` sous sa forme fonction,
+`ConsigneFiche` — cf. [Niveaux scolaires](niveaux-scolaires.md)) : sans ça la fiche d'un
+niveau affichait la consigne de l'autre (CM1 sous-catégorisée lue par un CE2, et
+symétriquement pour le verbe). Les deux posent
+`check: () => false` (le runner corrige lui-même) et
 `itemClicMot(phrase, consigneDefaut, cibleLabelDefaut?)` fabrique l'`Exercise` en
 faisant primer `consigne`/`cibleLabel` de la phrase sur les valeurs par défaut du type.
 
 **`cibleLabel?`** (champ de l'`Exercise` `type: 'clicMot'`, cf. [Logique
-pure](core.md)) nomme la cible au singulier (« le verbe conjugué », « l'article », «
-la conjonction de coordination »…) : alimente les aria-labels de correction du runner
-et le repli non interactif de `genLessonItem` (« Recopie ${cibleLabel} : … »). Absent
-⇒ repli générique.
+pure](core.md)) nomme la cible (« le verbe conjugué », « l'article », « les noms »…) :
+alimente les aria-labels de correction du runner et le repli non interactif de
+`genLessonItem` (« Recopie ${cibleLabel} : … »). Absent ⇒ repli générique. Sur une cible
+**plurielle**, le libellé est au pluriel (le repli doit demander « Recopie les noms »),
+donc le widget énonce l'appartenance à la réponse plutôt que d'accorder sa phrase avec
+le libellé — cf. [Rendu & interactions](ui.md). Ce repli en **recopie** accepte les mots
+attendus séparés par des espaces, des virgules ou « et », et **à la casse près**
+(`Item.motsAttendus` + `memeListeDeMots`, #436 — cf. [Logique pure](core.md)) : recopier
+« chien gamelle » au lieu de « chien et gamelle », ou « le et sa » là où la phrase ouvrait
+sur « Le », n'est pas une erreur de grammaire.
 
-Garde-fous pédagogiques communs aux 6 leçons (une seule réponse indiscutable par
-phrase, lexique/longueur CM1, interdits d'ambiguïté propres à chaque nature —
-homographes/homophones exclus, documentés en tête de chaque section de banque dans le
-fichier) : arrêtés en 2025, relus par l'agent pédagogue et le rédacteur FR.
+Garde-fous pédagogiques communs aux 7 leçons (une seule réponse indiscutable par
+phrase — l'**ensemble** des mots quand la cible est plurielle, lexique/longueur du
+niveau, interdits d'ambiguïté propres à chaque nature — homographes/homophones exclus,
+documentés en tête de chaque section de banque dans le fichier) : arrêtés en 2025, relus
+par l'agent pédagogue et le rédacteur FR.
 
 #### `francais/phrases.ts` (#204, CM1 #245)
 

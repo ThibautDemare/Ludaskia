@@ -12,6 +12,8 @@ import {
 	SUBJECTS,
 } from '../core/catalog';
 import type { BilanConfig, LessonDef, Category } from '../core/catalog';
+import { labelLecon } from '../core/levels';
+import { niveauActifMatiere } from '../core/niveau-actif';
 import { subjectIcon, subjectTint, catTint } from './cat-visuals';
 import { loadBilans, saveBilan, deleteBilan } from '../core/bilans';
 import { startCustomSprint } from './sprint';
@@ -147,14 +149,17 @@ function genId(): string {
 
 /* ---------- Écran de configuration ---------- */
 
-/* Liste de cases à cocher (toute la tuile est cliquable) pour un ensemble de leçons. */
+/* Liste de cases à cocher (toute la tuile est cliquable) pour un ensemble de leçons.
+   Le composeur liste TOUTES les leçons (tous niveaux confondus, volontairement) ; le
+   libellé, lui, est celui du niveau actif de la matière (#436) — c'est la classe dans
+   laquelle la leçon sera imprimée/jouée. */
 function lessonChecks(lessons: LessonDef[]): string {
 	return lessons
 		.map(
 			(l) =>
 				`<label class="bc-item">
           <input type="checkbox" class="bc-lesson-check" value="${l.id}" checked>
-          <span>${escapeHTML(l.label)}</span>
+          <span>${escapeHTML(labelLecon(l, niveauActifMatiere(l.subject)))}</span>
         </label>`,
 		)
 		.join('');

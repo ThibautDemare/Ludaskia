@@ -17,6 +17,8 @@
 import { escapeHTML } from '../core/utils';
 import { SUBJECTS, CATEGORIES, getLessonById } from '../core/catalog';
 import { sequenceLeconDuJour, leconSuivante } from '../core/lecon-du-jour';
+import { labelLecon } from '../core/levels';
+import { niveauLecon } from '../core/niveau-actif';
 import { icon } from './icon';
 import { subjectTint, subjectIcon } from './cat-visuals';
 import { startLecon, startRevisionEspacee } from './navigation';
@@ -55,7 +57,7 @@ export function renderLeconDuJour(el: HTMLElement | null, cibleId?: string): voi
       <div class="ico" style="background:${tint}" aria-hidden="true">${ico}</div>
       <h2>Ta prochaine leçon</h2>
       <p>
-        <span class="lj-title">${escapeHTML(lesson.label)}</span>
+        <span class="lj-title">${escapeHTML(labelLecon(lesson, niveauLecon(lesson)))}</span>
         <span class="lj-sub">${sousTitre}</span>
       </p>
       <span class="go">C'est parti <span aria-hidden="true">→</span></span>

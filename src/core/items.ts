@@ -34,6 +34,13 @@ export interface Item {
 	// 465 »). Présent ⇒ checkItemAnswer valide par appartenance à l'intervalle OUVERT ;
 	// `answer` reste un exemple valide (révélation, mode tuiles). Absent ⇒ réponse unique.
 	intervalle?: [number, number];
+	// Réponse = une LISTE de mots à retrouver, DANS L'ORDRE (#436) : cible plurielle d'un
+	// « clique sur le mot » rejouée en recopie (fiche / bilan), où la compétence évaluée est
+	// de TROUVER les bons mots, pas de reproduire le connecteur qui les présente. Présent ⇒
+	// `checkItemAnswer` accepte espaces, virgules et « et » indifféremment entre les mots
+	// (cf. `memeListeDeMots`) ; `answer` garde la forme LISIBLE (« chien et gamelle »), seule
+	// affichée/journalisée/imprimée. Absent ⇒ correction par égalité de chaîne, inchangée.
+	motsAttendus?: string[];
 	// QCM (#289) : choix conservés pour le rendu PAPIER en cases à cocher. À l'écran, le
 	// QCM est joué par son runner interactif (qui lit l'Exercise, pas l'Item) ; ces champs
 	// ne servent qu'au chemin fiche/bilan IMPRIMÉ. `choicesView` (vue riche) est aligné
@@ -122,9 +129,38 @@ export function itemEstNumerique(it: Item): boolean {
 	return !!it.intervalle || (it.kind !== 'text' && it.kind !== 'heure');
 }
 
+/* La saisie énonce-t-elle EXACTEMENT la liste de mots attendue, dans l'ORDRE (#436) ?
+   Le connecteur de présentation est ignoré : espaces, virgules, points-virgules et « et »
+   sont interchangeables (« chien et gamelle » = « chien gamelle » = « chien, gamelle »).
+   L'ordre, lui, reste exigé (celui de la phrase).
+
+   « et » n'est retiré que si son retrait est NÉCESSAIRE pour aligner les longueurs : une
+   liste de mots attendue qui contiendrait « et » se compare d'abord telle quelle, donc
+   reste corrigible.
+
+   EXCEPTION DE CASSE, volontaire et bornée à ce chemin (ne pas la « corriger ») : la
+   comparaison replie la casse, alors que le reste du moteur (`normalizeText`) l'exige.
+   Raison : les mots recopiés sont PRÉLEVÉS DANS UNE PHRASE, et le premier y porte la
+   majuscule de début de phrase (« Le et sa » pour les déterminants de « Le chien mange sa
+   gamelle. ») — une majuscule qui relève de la phrase source, pas de la compétence
+   évaluée, laquelle est de TROUVER les bons mots. Accents et apostrophes restent exigés
+   comme partout : c'est bien la casse seule qu'on relâche, et seulement ici. L'affichage
+   (réponse révélée, corrigé imprimé, journal encadrant) garde la forme de la phrase. */
+export function memeListeDeMots(raw: string, mots: string[]): boolean {
+	const pliee = (s: string) => normalizeText(s).toLocaleLowerCase('fr');
+	const attendus = mots.map(pliee);
+	const decoupe = pliee(raw)
+		.split(/[\s,;]+/)
+		.filter(Boolean);
+	const identique = (liste: string[]) =>
+		liste.length === attendus.length && liste.every((m, i) => m === attendus[i]);
+	return identique(decoupe) || identique(decoupe.filter((m) => m !== 'et'));
+}
+
 /* Vérifie la réponse saisie pour un item, selon son type.
    - texte : normalizeText (trim + espaces internes réduits + NFC), accents/apostrophes
      exigés (formes alternatives via answers)
+   - liste de mots (#436) : mêmes mots dans l'ordre, connecteur libre (`memeListeDeMots`)
    - calcul : comparaison numérique (virgule tolérée comme séparateur décimal) */
 export function checkItemAnswer(it: Item, raw: string): boolean {
 	// Intercaler par intervalle OUVERT (#240 CM1, #446 CE2) : toute valeur strictement
@@ -142,6 +178,9 @@ export function checkItemAnswer(it: Item, raw: string): boolean {
 		const [min, max] = it.intervalle;
 		return v > min && v < max;
 	}
+	// Liste de mots (#436) : même parti pris que `intervalle` juste au-dessus — la règle de
+	// correction est portée par la DONNÉE de l'item, pas par le `kind` ni par la matière.
+	if (it.motsAttendus) return memeListeDeMots(raw, it.motsAttendus);
 	// 'heure' (#88) : saisie en 2 champs, déjà fusionnée en « H h MM » par l'appelant
 	// (session.verify) ; on la compare comme du texte (forme canonique + variantes).
 	if (!itemEstNumerique(it)) {

@@ -97,7 +97,10 @@ ci-dessous.
   + **retirées automatiquement** #465, ré-épinglables d'un clic) et
   `dicteesProposeesHTML` (dictées prédéfinies épinglables à l'avance), toutes
   deux rendues par l'orchestrateur dans l'onglet **Programme** (#459) plutôt
-  qu'ici.
+  qu'ici. Depuis #518, les épinglées portent le même badge d'état d'acquisition
+  (`ligneRevoir`, option `etat`) que les suggestions ; à défaut d'état disponible, un repli
+  « hors du niveau suivi » (`.enc-revoir-hors`, sans pastille de couleur) explique pourquoi
+  l'épingle est inerte plutôt que de laisser la ligne muette.
 - **`encadrant-banque.ts`** (#496) — volet **« Mots »** du bloc Dictées (onglet **Suivi**),
   composé par `encadrant-progression.ts` (ci-dessus) : la banque d'orthographe du profil
   consulté, mot par mot — projections pures dans `core/orthographe/banque.ts` (cf. [Logique

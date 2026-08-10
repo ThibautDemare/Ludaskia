@@ -90,8 +90,10 @@ mur qui revient appelle une explication humaine, pas une répétition de plus. R
 
 La ligne concernée porte un **marqueur visible** (#492, `signalBlocage` →
 `.enc-revoir-signal`) : puce cerclée « **reste un point dur** », **en plus** du badge
-d'état d'acquisition (« où en est la notion » ≠ « ça coince »). Le **nombre de jours n'est
-jamais affiché** (un chiffre sur un enfant se lit comme une note) : il vit dans le `title`.
+d'état d'acquisition et jamais à sa place (« où en est la notion » ≠ « ça coince ») ; ce badge
+est désormais porté par les deux sous-blocs, épinglées comprises (#518). Le **nombre de jours
+n'est jamais affiché** (un chiffre sur un enfant se lit comme une note) : il vit dans le
+`title`.
 Le marqueur apparaît **aussi sur une ligne déjà épinglée** — épingler fait passer la notion
 des suggestions aux épinglées, le signal ne doit pas disparaître au moment où l'adulte agit.
 Wording « reste un point dur » et non « revient souvent » (avis `redacteur-contenu-francais` :
@@ -420,7 +422,22 @@ du programme du jour — c'est un acte de **préparation**, pas d'observation. S
 `epingleesProfil(profile)` (gestion, pas suggestion) ; une cible disparue (leçon hors
 catalogue actif, liste supprimée) en est silencieusement écartée — la purge automatique
 ci-dessus l'a déjà débarrassée des entrées redevenues solides, donc « Épinglées » ne peut plus
-contenir de fantôme. Une troisième sous-section, **« Retirées automatiquement »** (#465,
+contenir de fantôme.
+
+**État d'acquisition sur une épinglée** (#518) : chaque ligne porte le même badge que celles
+des suggestions (`niveauEpingle`, `core/encadrant-stats.ts`) — sans lui, l'adulte ne pouvait
+pas juger s'il fallait désépingler. Une leçon épinglée jamais travaillée n'est pas un trou de
+données : elle est dans le récap à `'a-decouvrir'`, donc affiche « à découvrir » comme
+n'importe quelle notion neuve. Quand aucun état n'est disponible, la ligne affiche à la place
+un repli « **hors du niveau suivi** » (`.enc-revoir-hors`, sans pastille de couleur, pour ne
+pas se lire comme un 5e cran de l'échelle d'acquisition) : la cible n'est pas au programme de
+la classe suivie par le profil, donc l'épingle est **inerte** — `revoirActives` l'écarte, elle
+ne revient jamais sur l'accueil de l'enfant. Elle reste néanmoins listée ici, précisément pour
+que l'adulte puisse la retirer en sachant pourquoi ; le motif (`EpingleEntry.horsNiveau`) est
+calculé par `epingleesProfil`, là où le niveau de la cible est connu, et non déduit d'un état
+absent — les deux auraient pu diverger en silence.
+
+Une troisième sous-section, **« Retirées automatiquement »** (#465,
 `retraitsAutoProfil(profile, now)`), rappelle les entrées que la purge vient de retirer —
 libellé et date **figés** à l'instant du retrait, la cible peut avoir disparu depuis sans que
 la trace devienne muette — pour qu'une épingle ne s'efface jamais sans explication ; un bouton

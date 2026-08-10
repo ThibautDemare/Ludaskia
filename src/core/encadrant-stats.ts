@@ -18,7 +18,7 @@
    et ne sont pas agrégées ici (suivi possible ultérieurement).
    ============================================================ */
 import { lsGet, lsGetRaw, lsGetItemRaw, lsSetRaw } from './storage';
-import { startOfDay } from './utils';
+import { startOfDay, debutJourLocal } from './utils';
 import {
 	STARS_KEY,
 	LESSON_STATS_KEY,
@@ -299,6 +299,154 @@ export function echelleActivite(max: number): { top: number; step: number; ticks
 	const ticks: number[] = [];
 	for (let v = top; v >= 0; v -= step) ticks.push(v);
 	return { top, step, ticks };
+}
+
+/* ---------- « Travaillé récemment » (#520) ----------
+   Le parent avait la donnée sans jamais l'avoir sous les yeux : le graphe d'activité
+   compte les séances par jour sans NOMMER une seule leçon, et le détail par leçon est
+   enfermé dans l'accordéon « Notions par catégorie ». Ce bloc nomme directement ce qui
+   a été travaillé sur une fenêtre courte, en jours CALENDAIRES locaux comme le reste de
+   l'espace encadrant. `jours` = largeur de la fenêtre, aujourd'hui INCLUS (l'UI le tire
+   de son sélecteur) ; on ne propose pas de fenêtre « tout », qui reviendrait à lister le
+   catalogue.
+
+   DEUX sources, complémentaires :
+   - `statsRaw[...].lastAt` décide de l'APPARTENANCE à la fenêtre. Il couvre TOUS les
+     chemins (leçon jouée seule, bilan, sprint), au prix de ne retenir qu'une date, la
+     dernière — il ne peut donc pas dire combien de fois.
+   - le journal d'activité dit COMBIEN de séances sont attribuables à la cible, via la
+     `ref` posée depuis #498. Une leçon travaillée seulement dans un bilan ou un sprint
+     n'en a pas (une telle séance porte sur plusieurs leçons) : `seances` vaut alors
+     `null` — « travaillée, sans compte fiable » — et jamais 0, qui se lirait « pas
+     travaillée » alors qu'on vient de l'affirmer.
+   Les dictées ne passent pas par les stats de leçons : elles n'existent QUE dans le
+   journal d'activité (`{k:'dictee', ref}`), d'où leur collecte à part. Sans elles, le
+   bloc annoncerait « aucune leçon travaillée » un jour où l'enfant n'a fait que des
+   dictées, en contradiction avec le graphe d'activité juste au-dessus.
+
+   AUCUN filtre de niveau, ni sur les leçons ni sur les dictées : ce qui a été travaillé
+   l'a forcément été à la portée de l'enfant, et l'écarter au prétexte du niveau suivi
+   rouvrirait le trou même que ce bloc ferme. Le cas est réel — une leçon CE2 rejouée par
+   un profil CM1 (favori, révision, épingle) est rangée `@ce2` par `niveauStockage`, et la
+   filtrer la ferait compter dans le graphe d'activité sans être nommée nulle part. Une
+   leçon travaillée sous deux niveaux a donc DEUX clés de stats : on dédoublonne par leçon
+   en gardant la date la plus récente, plutôt que de la lister deux fois.
+
+   Pas d'état d'acquisition sur les lignes (avis pédago) : une notion tout juste abordée
+   est normalement encore « à découvrir », un badge par ligne afficherait donc un niveau
+   bas sur ce qu'il y a de plus récent. C'est une photo d'activité, le jugement vit dans
+   l'accordéon. Pur (`now` injecté). */
+export interface CibleTravaillee {
+	id: string; // leçon du catalogue, ou liste d'orthographe (une dictée)
+	label: string;
+	contexte: string; // catégorie de la leçon (« Calcul mental ») ; 'Dictée' pour une liste
+	seances: number | null; // séances attribuables dans la fenêtre ; null = compte inconnu
+	derniereFois: number; // horodatage le plus récent connu dans la fenêtre
+}
+export interface GroupeTravail {
+	subject: SubjectId;
+	label: string; // libellé de matière (« Mathématiques »)
+	cibles: CibleTravaillee[]; // la plus récemment travaillée en tête
+}
+export function travailRecent(
+	statsRaw: Record<string, LessonStat>,
+	activityRaw: unknown,
+	ortho: OrthoState | null,
+	jours: number,
+	now: number,
+): GroupeTravail[] {
+	const seuil = debutJourLocal(now, jours - 1);
+	const activite = normalizeActivity(activityRaw).filter((e) => e.t >= seuil);
+	// Séances attribuables par cible : compte + date la plus récente. `dictee` retient le
+	// type pour distinguer une liste d'orthographe d'une leçon du catalogue (espaces d'ids
+	// disjoints, mais on ne veut pas en dépendre) : il suffit qu'UNE entrée de la cible soit
+	// une dictée, sinon l'ordre des entrées déciderait de l'affichage de la ligne.
+	const parRef = new Map<string, { seances: number; derniereFois: number; dictee: boolean }>();
+	for (const e of activite) {
+		if (!e.ref) continue;
+		const acc = parRef.get(e.ref);
+		if (acc) {
+			acc.seances++;
+			acc.derniereFois = Math.max(acc.derniereFois, e.t);
+			acc.dictee = acc.dictee || e.k === 'dictee';
+		} else {
+			parRef.set(e.ref, { seances: 1, derniereFois: e.t, dictee: e.k === 'dictee' });
+		}
+	}
+
+	const parMatiere = new Map<SubjectId, CibleTravaillee[]>();
+	const pousser = (subject: SubjectId, cible: CibleTravaillee) => {
+		const liste = parMatiere.get(subject);
+		if (liste) liste.push(cible);
+		else parMatiere.set(subject, [cible]);
+	};
+
+	// Leçons du catalogue, dédoublonnées par id : deux clés `@niveau` de la même leçon ne
+	// font qu'une ligne, datée de la plus récente des deux.
+	const derniereFoisLecon = new Map<string, number>();
+	for (const key in statsRaw) {
+		const lastAt = statsRaw[key].lastAt;
+		if (typeof lastAt !== 'number' || lastAt < seuil) continue;
+		const id = lessonOfKey(key);
+		derniereFoisLecon.set(id, Math.max(derniereFoisLecon.get(id) ?? lastAt, lastAt));
+	}
+	for (const [id, derniereFois] of derniereFoisLecon) {
+		const lesson = getLessonById(id);
+		if (!lesson) continue; // leçon retirée du catalogue depuis : plus rien à nommer
+		pousser(lesson.subject, {
+			id,
+			label: lesson.label,
+			contexte: CATEGORIES.find((c) => c.id === lesson.category)?.label ?? '',
+			seances: parRef.get(id)?.seances ?? null,
+			derniereFois,
+		});
+	}
+
+	// Dictées, depuis le seul journal d'activité (aucune stat de leçon ne les couvre).
+	for (const [id, acc] of parRef) {
+		if (!acc.dictee) continue;
+		const label = labelLeconOrtho(id, ortho?.listes ?? []);
+		if (!label) continue; // liste supprimée depuis : rien à afficher
+		pousser('francais', {
+			id,
+			label,
+			contexte: 'Dictée',
+			seances: acc.seances,
+			derniereFois: acc.derniereFois,
+		});
+	}
+
+	// La plus récente en tête ; à horodatage IDENTIQUE (cas courant : un bilan écrit le même
+	// `lastAt` à toutes ses leçons), la plus travaillée, un compte inconnu passant derrière
+	// un compte connu ; puis l'ordre alphabétique, sans quoi l'ordre d'itération des clés de
+	// stats déciderait et deux rendus successifs pourraient différer.
+	return SUBJECTS.filter((s) => parMatiere.has(s.id)).map((s) => ({
+		subject: s.id,
+		label: s.label,
+		cibles: parMatiere
+			.get(s.id)!
+			.sort(
+				(a, b) =>
+					b.derniereFois - a.derniereFois ||
+					(b.seances ?? 0) - (a.seances ?? 0) ||
+					a.label.localeCompare(b.label, 'fr'),
+			),
+	}));
+}
+
+/* Lecture des stores du profil consulté, puis délégation à `travailRecent` — pendant de
+   `progressionProfil` pour ce bloc. Il ne peut PAS entrer dans `RecapProfil` : la fenêtre
+   est choisie dans l'UI, donc ce calcul se refait à chaque rendu, alors que le récap est
+   calculé une fois pour l'onglet. */
+export function travailRecentProfil(profile: Profile, jours: number, now: number): GroupeTravail[] {
+	const uuid = profile.uuid;
+	return travailRecent(
+		lsGetRaw(uuid + '/' + LESSON_STATS_KEY, {}) as Record<string, LessonStat>,
+		lsGetRaw(uuid + '/' + ACTIVITY_KEY, []),
+		loadOrthoFor(uuid),
+		jours,
+		now,
+	);
 }
 
 const SEMAINE_MS = 7 * 86400000;

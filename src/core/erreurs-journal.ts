@@ -19,7 +19,7 @@
    indéfiniment le localStorage.
    ============================================================ */
 import { lsGet, lsSet, lsGetRaw } from './storage';
-import { startOfDay } from './utils';
+import { debutJourLocal } from './utils';
 
 /* Clé de stockage (préfixée par le profil actif en écriture ; lue en brut par UUID). */
 export const ERREURS_KEY = 'ludaskia_erreurs';
@@ -113,15 +113,6 @@ export const PERIODES_REPLI: readonly Exclude<PeriodeErreurs, 'tout'>[] = [
 	'deux-jours',
 	'semaine',
 ];
-
-/* Début du jour LOCAL, `joursAvant` jours plus tôt. Via `setDate` (et non une
-   soustraction de 86400000 ms) : reste minuit local même en travers d'un changement
-   d'heure. */
-function debutJourLocal(ts: number, joursAvant: number): number {
-	const d = new Date(startOfDay(ts));
-	d.setDate(d.getDate() - joursAvant);
-	return d.getTime();
-}
 
 /* Horodatage à partir duquel une erreur tombe dans la période (borne INCLUSIVE).
    'tout' → aucune borne. */

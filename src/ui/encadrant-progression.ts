@@ -9,6 +9,7 @@
    les handlers de la section (bascule, épinglage, impression).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
+import { labelLecon } from '../core/levels';
 import { icon } from './icon';
 import { listProfiles, activeProfile, type Profile } from '../core/profiles';
 import {
@@ -753,5 +754,11 @@ function onImprimer(lessonId: string, corrige = false): void {
 	if (!consulte || !lesson) return;
 	// Impression au niveau du profil CONSULTÉ, sans changer le profil/niveau actif.
 	const level = niveauProfilMatiere(consulte, lesson.subject);
-	printScope({ title: lesson.label, lessonIds: [lessonId], kind: 'fiches', level, corrige });
+	printScope({
+		title: labelLecon(lesson, level),
+		lessonIds: [lessonId],
+		kind: 'fiches',
+		level,
+		corrige,
+	});
 }

@@ -31,6 +31,20 @@ export function effectiveLevel(lesson: LessonDef, niveau: SchoolLevel): SchoolLe
 	return closestSupported(lesson.levels, niveau);
 }
 
+/* Libellé d'une leçon POUR UN NIVEAU (#436) : `labelNiveau[niveau]` s'il existe, sinon
+   le `label` par défaut. Le niveau demandé est d'abord résolu par `effectiveLevel`
+   (repli/clamp), pour qu'une référence hors-filtre — favori, révision, leçon épinglée —
+   reçoive le libellé du niveau RÉELLEMENT joué, comme la génération.
+
+   Même convention que le reste du niveau (#225) : la résolution se fait à la LECTURE, au
+   seam qui connaît le niveau (UI via `niveauLecon`, impression/encadrant via le niveau du
+   profil consulté) ; sans niveau, on rend `label`. Un appelant qui affiche `lesson.label`
+   en direct n'est donc pas cassé — il est seulement moins précis. */
+export function labelLecon(lesson: LessonDef, niveau?: SchoolLevel): string {
+	if (!lesson.labelNiveau || niveau === undefined) return lesson.label;
+	return lesson.labelNiveau[effectiveLevel(lesson, niveau)] ?? lesson.label;
+}
+
 /* Niveau supporté le plus proche d'un niveau demandé, parmi un ensemble :
    - le niveau demandé s'il est supporté ;
    - sinon le plus haut supporté EN-DESSOUS (repli) ;

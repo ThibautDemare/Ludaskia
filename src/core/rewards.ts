@@ -5,7 +5,8 @@
 import { choice } from './utils';
 import { lsGet, lsSet } from './storage';
 import { getAllLessons, getLessonsByCategory, SUBJECTS, CATEGORIES } from './catalog';
-import { lessonsNiveauActif } from './niveau-actif';
+import { lessonsNiveauActif, niveauLecon } from './niveau-actif';
+import { labelLecon } from './levels';
 import {
 	loadRuns,
 	loadRunsAll,
@@ -95,7 +96,9 @@ export const CHALLENGES: Challenge[] = [
 			return {
 				type: 'remediation',
 				lesson: id,
-				label: `Retravaille « ${l!.label} » et réussis-la à 80 %.`,
+				// Libellé résolu au niveau joué (#436) : l'objectif nomme la leçon comme sa
+				// carte et son runner la nomment à l'enfant.
+				label: `Retravaille « ${labelLecon(l!, niveauLecon(l!))} » et réussis-la à 80 %.`,
 			};
 		},
 	},

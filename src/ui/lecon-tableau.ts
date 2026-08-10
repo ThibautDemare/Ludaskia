@@ -30,6 +30,7 @@ import {
 	renderLeconResult,
 	wireNext,
 	demarrerRunner,
+	leconTitreHTML,
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { monterBoutonAide } from './aide-exercice';
@@ -226,7 +227,7 @@ function renderQuestion(): void {
     <div class="sprint sprint-lecon tc-runner">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
-        <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(lesson.label)}</span></div>
+        ${leconTitreHTML(lesson)}
         ${renderTableauBoardHTML(ex, cells)}
         <button class="sprint-btn" id="tcVerif" disabled>Vérifier</button>
         <div class="sprint-correction" id="tcFeedback" hidden></div>

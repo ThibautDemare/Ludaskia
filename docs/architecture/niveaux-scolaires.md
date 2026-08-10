@@ -11,10 +11,10 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
 - **`levels.ts`** (pur) — `LEVEL_ORDER`, `LEVEL_LABEL`, `effectiveLevel(lesson, niveau)`
   et `closestSupported(supported, niveau)` (niveau demandé, sinon plus haut supporté
   **en-dessous**, sinon plus bas — repli/clamp), `availableLevels(lessons)` (union des
-  niveaux présents), `lessonsForLevel(lessons, niveau)`, et
+  niveaux présents), `lessonsForLevel(lessons, niveau)`,
   **`niveauDefautCatalogue(lessons)`** (le plus bas niveau ayant du contenu — **source
   unique** du repli « aucune classe choisie » ; appelé par `niveau-actif.ts` et
-  `encadrant-stats.ts`, #351).
+  `encadrant-stats.ts`, #351) et **`labelLecon(lesson, niveau?)`** (#436, ci-dessous).
 - **`level-combinators.ts`** (pur) — `calibrated(table, build)` : **un seul `id`**
   recalibré par une table de paramètres par niveau (génératif : numération…), expose
   ses `levels`; `bankByLevel(items)` : banque QCM tagguée par item, dérive l'union des
@@ -47,6 +47,32 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
   (= `niveauParMatiere[subject] ?? niveauReference ?? niveauDefautCatalogue(getAllLessons())`), `niveauLecon(lesson)`
   (= `effectiveLevel` sur la matière, **passé à `generate`/`genLessonItem`** par
   `build`/runners/`revision`/`sprint`), `besoinChoixNiveau()`, `lessonsNiveauActif()`.
+
+## Ce qu'une leçon multi-niveaux décline par classe (#436)
+
+Une même leçon servie à deux niveaux ne diffère pas seulement par sa **banque** : son
+**libellé** et sa **consigne de fiche** peuvent aussi devoir changer, parce que le
+vocabulaire de la notion n'est pas le même d'une classe à l'autre. Deux mécanismes,
+même principe : **déclarés par la donnée, résolus à la LECTURE** avec le niveau du
+lecteur — jamais figés à la construction (une valeur figée serait recopiée telle quelle
+par les combinateurs, et un niveau lirait le texte de l'autre).
+
+- **Libellé** — `LessonDef.labelNiveau?: Partial<Record<SchoolLevel, string>>`
+  (surcroît **optionnel** : `label` suffit à la quasi-totalité des leçons), reporté par
+  `toLessonDefs` depuis l'entrée de données, résolu par **`labelLecon(lesson, niveau)`**
+  (`levels.ts`, repli/clamp par `effectiveLevel`). Résolu à l'affichage : runners (helper
+  partagé **`leconTitreHTML`**, `ui/lecon-runner-shared.ts`), cartes de catalogue, leçon du
+  jour, « à revoir », écran de choix de mode, reprise, sprint, révision, fiche/bilan
+  (`core/build.ts`), et espace encadrant / impression **au niveau du profil consulté**.
+  Sans niveau sous la main, `label` s'affiche : il doit donc rester **juste à tous les
+  niveaux** (dégradation = perte de précision, jamais contresens).
+- **Consigne de fiche** — `ExerciseType.consigne` accepte, en plus d'une chaîne, une
+  **fonction** `(level?) => string | undefined` (`ConsigneFiche`, `core/exercise.ts`), lue
+  **uniquement** via **`consignePourNiveau(type, level)`** (lecteurs : `core/build.ts` pour
+  la fiche/bilan, `ui/revision.ts` pour la consigne d'action #265). C'est la forme fonction
+  qui traverse sans effort la **recopie de métadonnées** de `calibrated` (et un futur
+  `...base`) : une consigne fonction doit donc dériver du **niveau reçu en argument**,
+  jamais des `params` capturés à la construction.
 
 ## Progression namespacée `lessonId@niveau`
 

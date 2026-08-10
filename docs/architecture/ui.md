@@ -189,7 +189,8 @@ pure](core.md)) pour les formats composites :
   (`lecon-tableau.ts` — le nombre relu dans l'unité cible via `nombreTableauSaisi`), la
   résolution de problèmes (`lecon-probleme.ts` — une entrée par sous-question ratée),
   « Clique sur le mot » (`lecon-clic-mot.ts` — une entrée par phrase ratée : mots choisis
-  vs bon(s) mot(s)) et la dictée d'orthographe (`ortho-runner.ts` — le **premier essai
+  vs bon(s) mot(s), joints par `libelleCible` pour qu'une cible non adjacente se lise
+  « chien et pomme ») et la dictée d'orthographe (`ortho-runner.ts` — le **premier essai
   raté** d'un mot ; libellé résolu via `labelLeconOrtho`, cf.
   `core/orthographe/lessons.ts`, l'id étant une **liste** d'orthographe et non une leçon
   du catalogue). La **révision espacée** (`revision.ts`) capture elle aussi, sous un mode
@@ -457,7 +458,10 @@ pure](core.md)) pour les formats composites :
 
 - **`lecon-runner-shared.ts`** (#344) — **squelette commun** des cinq runners
   ci-dessous : `leconProgressHTML(idx, total, libellé?)` (barre de progression, libellé
-  surchargeable, ex. « Problème i / n »), `finishLeconRun(lessonId, ok, total)` (enregistre
+  surchargeable, ex. « Problème i / n »), **`leconTitreHTML(lesson)`** (#436 — bandeau
+  `.sprint-theme` / `.sprint-lesson` du titre de leçon, **libellé résolu au niveau joué**
+  via `labelLecon`+`niveauLecon` ; les dix runners rendaient ce markup chacun chez eux, donc
+  chacun aurait dû penser à résoudre le niveau), `finishLeconRun(lessonId, ok, total)` (enregistre
   l'essai via `recordLessonRun` et renvoie l'issue) et `renderLeconResult(opts)` (écran de
   résultat commun — score, étoile, mascotte, récompenses de niveau via `announceRewards`).
   Chaque runner délègue sa fin de session à ce module au lieu de la dupliquer ;
@@ -540,11 +544,18 @@ pure](core.md)) pour les formats composites :
   cliquable (mots en `<button>`, ponctuation en `<span>` inerte) + une live region ;
   sélection **multiple réversible** tant que non figée, notifiée via `opts.onState`.
   `verify()` fige le widget, compare l'ensemble sélectionné à `cibleIndices` par
-  **égalité d'ensembles exacte**, marque ✓/✗ (mot-cible non choisi révélé en vert doux,
-  « l'autre mot » si la cible est double), annonce le verdict dans la live region et
-  renvoie la justesse ; `selected()` expose les indices choisis pour le journal d'erreurs
-  (#391). Consommé par `lecon-clic-mot.ts` (runner de leçon) et par la révision
-  (`revision.ts`, #466).
+  **égalité d'ensembles exacte**, marque ✓/✗ (mot-cible non choisi révélé en vert doux),
+  annonce le verdict dans la live region et renvoie la justesse ; `selected()` expose les
+  indices choisis pour le journal d'erreurs (#391). L'annonce live énonce « La bonne
+  réponse : … » **sauf** si l'exercice déclare `explicationNommeCible` (#436) — son
+  explication nomme déjà les mots, l'annoncer en plus les ferait entendre **deux fois** ;
+  le drapeau vient de la **donnée** et est **ignoré** s'il n'y a pas d'explication à dire
+  (la réponse est alors annoncée : jamais de repli silencieux). Consommé par `lecon-clic-mot.ts`
+  (runner de leçon) et par la révision (`revision.ts`, #466). **Cible multiple** (#436) :
+  les aria-labels énoncent alors l'**appartenance à la réponse** (« ce mot faisait partie
+  de la réponse : les noms ») au lieu d'accorder la phrase avec `cibleLabel` — celui-ci
+  est au pluriel dès que la cible l'est (tous les noms / déterminants d'une phrase au
+  CE2), et la cible peut compter **plus de deux** mots.
 - **`lecon-qcm.ts`** — runner **QCM d'une leçon** (#69) : « une question à la
   fois », **feedback immédiat**, barre de progression, **sans chrono** ; enregistre
   via `recordLessonRun` (parité avec la saisie). Réutilise les composants `.sprint-*`.
@@ -669,12 +680,13 @@ pure](core.md)) pour les formats composites :
   `revision.ts` (#466), qui mutualisent la correction et l'annonce a11y du verdict entre
   la leçon et la révision. La **question finale en gras** passe par la convention `**…**`
   rendue par `enonceTexte` (`core/items.ts`).
-- **`lecon-clic-mot.ts`** (#259, #437) — runner **« Clique sur le mot »**, une phrase
-  à la fois, **agnostique de la notation grammaticale ciblée** : il consomme
+- **`lecon-clic-mot.ts`** (#259, #437, #436) — runner **« Clique sur le mot »**, une
+  phrase à la fois, **agnostique de la notation grammaticale ciblée** : il consomme
   `consigne`, `explication`, `cibleIndices` et le `cibleLabel?` optionnel de
   l'`Exercise` `type: 'clicMot'` (`data/francais/grammaire-clic-mot.ts`), sans rien
-  savoir du verbe/déterminant/pronom/etc. visé — 6 leçons le partagent (verbe #259 +
-  5 natures CM1 #437 : déterminant, conjonction, pronom, nom noyau, sujet). L'`Exercise`
+  savoir du verbe/déterminant/pronom/etc. visé — 7 leçons le partagent (verbe #259 +
+  natures CM1 #437 : déterminant, conjonction, pronom, nom noyau, sujet + natures CE2
+  #436 : déterminant, nom, adjectif, pronom sujet). L'`Exercise`
   porte `tokens[]` (la phrase mot à mot), `cibleIndices[]` (l'ensemble EXACT des
   indices-cibles, **stocké** à la génération, **adjacents ou non**), `consigne`,
   `explication`, `parle`. Chaque MOT est un `<button>` cliquable, la **ponctuation** un
@@ -682,19 +694,22 @@ pure](core.md)) pour les formats composites :
   aucune correction au 1er tap) ; « Vérifier » (désactivé tant qu'aucun mot n'est choisi)
   compare l'ensemble sélectionné à `cibleIndices` par **égalité d'ensembles exacte** —
   cible multi-mots adjacente (verbe au passé composé, 2 mots) OU **non adjacente**
-  (« ni…ni », sujet composé « Paul … Léa » en sautant « et »). Feedback différé : mots
+  (« ni…ni », sujet composé « Paul … Léa » en sautant « et », **tous les noms /
+  déterminants** d'une phrase au CE2 : jusqu'à 3 mots). Feedback différé : mots
   marqués `.correct`/`.wrong` + pastille ✓/✗, **bon(s) mot(s) révélé(s)** dans la phrase
   (`.is-cible`, vert doux) même en cas d'erreur, `explication` sous la phrase ; chaque
   mot marqué `.correct` reçoit un flash `reussite-flash` (par mot, pas conditionné à un
   sans-faute global). Les aria-labels de correction nomment la cible via `cibleLabel`
-  (repli générique « la bonne réponse » si absent) ; cible **double**, l'aria-label du
-  mot-cible révélé non sélectionné dit « l'autre mot » plutôt que de répéter deux fois
-  le même libellé au singulier. L'annonce live (`#lclicStatus`) joint les mots-cibles
-  par « et » quand la cible n'est pas contiguë (évite « Paul Léa » ou « ni ni »).
+  (repli générique « la bonne réponse » si absent) ; cible **multiple**, ils énoncent
+  l'appartenance à la réponse (le libellé peut être au pluriel, cf.
+  `clic-mot-interaction.ts`). L'annonce live (`#lclicStatus`), le **repli fiche/bilan** et le
+  **journal d'erreurs** énoncent une cible non contiguë via `libelleCible` (source unique) :
+  **énumération française** — « Paul et Léa » à deux mots, « cour, enfants et ballon » à
+  trois (jamais « Paul Léa », « ni ni » ni « cour et enfants et ballon »).
   Consigne **persistante** + **TTS** (`bindConsigneTts`) sur la consigne ET la phrase
   entière, journal via `capterErreur`. **Exclu du sprint** (`isClicMotLesson`), **repli
   texte** en bilan/fiche (`genLessonItem` : phrase → « Recopie ${cibleLabel} : … »,
-  consigne neutre valable pour les 6 leçons) — **en révision**, c'est désormais le **vrai
+  consigne neutre valable pour les 7 leçons) — **en révision**, c'est désormais le **vrai
   widget** de sélection qui est monté, via `clic-mot-interaction.ts` (#466, extrait de ce
   runner pour être partagé). Structure calquée sur
   `lecon-appariement.ts`/`lecon-probleme.ts` (état de module + `lecon-runner-shared.ts`).

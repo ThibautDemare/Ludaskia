@@ -19,7 +19,12 @@ import { FAMILLES_LESSONS } from '../data/francais/familles';
 import { CHAMPS_LESSONS } from '../data/francais/champs-lexicaux';
 import { GRAMMAIRE_SUJET_LESSONS } from '../data/francais/grammaire-sujet';
 import { CLASSES_LESSONS } from '../data/francais/classes-mots';
-import { CLIC_MOT_LESSONS, joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
+import {
+	CLIC_MOT_LESSONS,
+	cibleContigue,
+	joindrePhrase,
+	libelleCible,
+} from '../data/francais/grammaire-clic-mot';
 import { PHRASES_LESSONS } from '../data/francais/phrases';
 import { ACCORD_LESSONS, ACCORD_CM1_LESSONS } from '../data/francais/accords';
 import { ACCORD_GN_LESSONS } from '../data/francais/accord-groupe-nominal';
@@ -80,6 +85,15 @@ export interface Category {
 export interface LessonDef {
 	id: string;
 	label: string;
+	// Libellé PAR NIVEAU (#436) — SURCROÎT optionnel : `label` reste le libellé par
+	// défaut (le cas de la quasi-totalité des leçons, aucun champ à renseigner). À ne
+	// remplir que quand la même leçon se NOMME différemment selon la classe, parce que
+	// le vocabulaire de la notion diffère (« Clique sur le nom » au CE2 → « Clique sur le
+	// nom noyau » au CM1, « noyau » étant du programme CM1). Résolu à l'AFFICHAGE par
+	// `labelLecon(lesson, niveau)` (core/levels.ts) ; un site qui n'a pas de niveau sous
+	// la main affiche `label`, qui doit donc rester juste à tous les niveaux (formulation
+	// la plus neutre) — la dégradation est une perte de précision, jamais un contresens.
+	labelNiveau?: Partial<Record<SchoolLevel, string>>;
 	subject: SubjectId;
 	category: CategoryId;
 	// Niveaux scolaires supportés par la leçon (#225). Ensemble explicite : la
@@ -141,6 +155,7 @@ interface LessonDefOptions<I extends LessonInput> {
 	subject: SubjectId;
 	category: CategoryId;
 	levels?: Resolvable<SchoolLevel[], I>; // défaut ['ce2'] (le cas courant)
+	labelNiveau?: Resolvable<Partial<Record<SchoolLevel, string>> | undefined, I>;
 	rubrique?: Resolvable<string | undefined, I>;
 	excludeFromSprint?: Resolvable<boolean | undefined, I>;
 	repere?: Resolvable<'plus-difficile' | undefined, I>;
@@ -166,6 +181,8 @@ function toLessonDefs<I extends LessonInput>(inputs: I[], opts: LessonDefOptions
 			levels: resolve(opts.levels, input) ?? ['ce2'],
 			exerciseType: input.exerciseType,
 		};
+		const labelNiveau = resolve(opts.labelNiveau, input);
+		if (labelNiveau !== undefined) def.labelNiveau = labelNiveau;
 		const rubrique = resolve(opts.rubrique, input);
 		if (rubrique !== undefined) def.rubrique = rubrique;
 		const excludeFromSprint = resolve(opts.excludeFromSprint, input);
@@ -757,17 +774,20 @@ const CLASSES_LESSONS_DEFS: LessonDef[] = toLessonDefs(CLASSES_LESSONS, {
 	category: 'fr-grammaire',
 });
 
-/* ---------- Grammaire — « Clique sur le mot » (#259, #437) ----------
+/* ---------- Grammaire — « Clique sur le mot » (#259, #437, #436) ----------
    Brique « clique sur le mot » : phrase rendue mot à mot, l'enfant sélectionne la
-   cible d'une consigne. « Clique sur le verbe » (CE2 + CM1) plus 5 natures CM1
-   (#437) : déterminant (article/possessif/démonstratif), conjonction de
-   coordination, pronom personnel (sujet/complément), nom noyau du GN et sujet
-   (composé compris). Runner d'écran dédié (ui/lecon-clic-mot.ts), hors sprint.
-   Niveaux DÉRIVÉS du moteur (verbe ['ce2','cm1'], les 5 natures ['cm1']). */
+   cible d'une consigne. « Clique sur le verbe » (CE2 + CM1), les natures partagées
+   CE2 + CM1 (déterminant, pronom personnel, nom : banque et consigne PAR NIVEAU,
+   #436), « Clique sur l'adjectif » (CE2, #436) et les natures CM1 seules (#437 :
+   conjonction de coordination, sujet composé compris). Runner d'écran dédié
+   (ui/lecon-clic-mot.ts), hors sprint. Niveaux DÉRIVÉS du moteur. */
 const CLIC_MOT_LESSONS_DEFS: LessonDef[] = toLessonDefs(CLIC_MOT_LESSONS, {
 	subject: 'francais',
 	category: 'fr-grammaire',
 	levels: (d) => d.exerciseType.levels ?? ['ce2'],
+	// Libellé par niveau porté par la donnée (#436) : « Clique sur le nom » au CE2,
+	// « Clique sur le nom noyau » au CM1 (vocabulaire du programme de chaque classe).
+	labelNiveau: (d) => d.labelNiveau,
 });
 
 /* ---------- Grammaire — les phrases : ponctuation finale & types (#204) ----------
@@ -1059,13 +1079,25 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 		// et une recopie naturelle (« Emma et Chloé ») serait comptée fausse en bilan/fiche.
 		const motsCible = libelleCible(ex.tokens, ex.cibleIndices);
 		const quoi = ex.cibleLabel ?? 'le mot demandé';
-		return {
+		const item: Item = {
 			text: `Recopie ${quoi} : « ${joindrePhrase(ex.tokens)} » @`,
 			answer: motsCible,
 			kind: 'text',
 			parle: `Recopie ${quoi}. ${ex.parle}`,
 			_lesson: lesson.id,
 		};
+		// Cible plurielle NON CONTIGUË (tous les noms/déterminants d'une phrase, sujet composé,
+		// ni…ni) : la compétence est de TROUVER les mots, pas de recopier le « et » qui les
+		// relie — la liste attendue s'ajoute à l'item pour que la correction accepte espaces,
+		// virgules ou « et » (#436). `answer` reste la forme lisible (affichage, corrigé
+		// imprimé, journal parent).
+		// Une cible CONTIGUË en est EXCLUE : « a mangé » est un groupe verbal, pas une liste —
+		// il n'a aucun connecteur à ne pas exiger, et la tolérance y accepterait « a et mangé »,
+		// une forme qui n'existe pas. D'où le même prédicat que la jointure (`cibleContigue`).
+		if (ex.cibleIndices.length > 1 && !cibleContigue(ex.cibleIndices)) {
+			item.motsAttendus = ex.cibleIndices.map((i) => ex.tokens[i]);
+		}
+		return item;
 	}
 	// Droite graduée (#256) : l'interaction (placer un repère) vit dans son runner
 	// (ui/lecon-droite-graduee.ts). Repli LECTURE non interactif pour fiche/bilan/révision :

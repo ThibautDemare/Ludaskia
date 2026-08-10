@@ -7,6 +7,8 @@
    ============================================================ */
 import { getAllLessons, getLessonById, genLessonItem, isLegacyMathLesson } from './catalog';
 import type { LessonDef, SchoolLevel } from './catalog';
+import { consignePourNiveau } from './exercise';
+import { labelLecon } from './levels';
 import { niveauLecon } from './niveau-actif';
 import { LESSONS_CALCUL_MENTAL } from './lessons';
 import {
@@ -67,7 +69,11 @@ export function buildLessonFiche(
 	// Sinon (math moderne : conversions… / matière texte) : 8 questions en liste.
 	// L'item math est numérique, la matière texte est une saisie de chaîne ; la
 	// consigne s'adapte, le `@` de l'item place le champ dans les deux cas.
-	const items = genItems(lesson, 8, level);
+	// Niveau de la fiche : celui imposé par l'appelant (#234), sinon le niveau effectif —
+	// MÊME résolution que `genItems`, pour que le titre, la consigne et le contenu de la
+	// fiche parlent tous du même niveau (#436).
+	const lvl = level ?? niveauLecon(lesson);
+	const items = genItems(lesson, 8, lvl);
 	const inner = withLessonId(
 		ctx,
 		lessonId,
@@ -84,9 +90,9 @@ export function buildLessonFiche(
 	const consigne =
 		ctx.printMode && isQcm
 			? 'Coche la bonne réponse.'
-			: (lesson.exerciseType.consigne ??
+			: (consignePourNiveau(lesson.exerciseType, lvl) ??
 				(lesson.subject === 'math' ? 'Complète.' : 'Écris la forme correcte.'));
-	return ficheHTMLGeneric(lesson.label, '', consigne, inner);
+	return ficheHTMLGeneric(labelLecon(lesson, lvl), '', consigne, inner);
 }
 
 /* Blocs d'un bilan personnalisé : nbQ questions par leçon sélectionnée. `level`
@@ -95,7 +101,11 @@ export function bilanBlocksForIds(lessonIds: string[], nbQ: number, level?: Scho
 	const blocks: { id: string; theme: string; ops: Item[] }[] = [];
 	for (const lesson of getAllLessons()) {
 		if (!lessonIds.includes(lesson.id)) continue;
-		blocks.push({ id: lesson.id, theme: lesson.label, ops: genItems(lesson, nbQ, level) });
+		blocks.push({
+			id: lesson.id,
+			theme: labelLecon(lesson, level ?? niveauLecon(lesson)),
+			ops: genItems(lesson, nbQ, level),
+		});
 	}
 	return blocks;
 }

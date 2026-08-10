@@ -37,7 +37,15 @@ import { choice } from './utils';
    ce qui varie doit voyager dans l'`Exercise`, que `check` reçoit). Une correction qui
    fermerait sur les paramètres de niveau (tolérance, plage acceptée) corrigerait
    silencieusement le CM1 avec les règles du CE2 — même classe de piège que ci-dessus, mais
-   qui ne se répare pas ici : elle demanderait de passer le niveau à `check`. */
+   qui ne se répare pas ici : elle demanderait de passer le niveau à `check`.
+
+   Corollaire pour toute métadonnée qui doit VARIER par niveau (#436) : elle ne peut pas être
+   une valeur figée ici, puisque l'étalement de `base` prendrait celle du plus bas niveau.
+   D'où la FORME FONCTION de la consigne de fiche (`ConsigneFiche`, core/exercise.ts) :
+   `build()` la renvoie, elle traverse l'étalement telle quelle, et c'est le LECTEUR qui la
+   résout avec son niveau (`consignePourNiveau`). Une consigne fonction doit donc dériver du
+   niveau REÇU EN ARGUMENT, jamais des `params` capturés à la construction — c'est la même
+   contrainte que sur `check`, mais celle-ci, la forme fonction sait la satisfaire. */
 export function calibrated<P>(
 	table: Partial<Record<SchoolLevel, P>>,
 	build: (params: P) => ExerciseType,

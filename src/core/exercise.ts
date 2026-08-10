@@ -213,7 +213,12 @@ export type Exercise =
 	// conjugué », « l'article », « le nom noyau », « la conjonction de coordination »…) :
 	// il alimente les aria-labels de correction du runner (« c'était ${cibleLabel} ») et
 	// le repli non interactif du catalogue (« Recopie ${cibleLabel} : … »). Absent ⇒ repli
-	// générique (« la bonne réponse »).
+	// générique (« la bonne réponse »). `explicationNommeCible` (#436) dit que
+	// l'`explication` ÉNONCE DÉJÀ les mots-cibles (« Les noms de la phrase sont « cour »,
+	// « enfants » et « ballon » … ») : la région live de correction n'y ajoute alors pas son
+	// « La bonne réponse : … », qui la répéterait mot pour mot. Porté par la DONNÉE (jamais
+	// deviné en comparant les textes) ; absent ⇒ la bonne réponse est annoncée — le repli
+	// doit toujours DIRE la réponse, jamais se taire.
 	| {
 			type: 'clicMot';
 			tokens: string[];
@@ -222,6 +227,7 @@ export type Exercise =
 			explication: string;
 			parle: string;
 			cibleLabel?: string;
+			explicationNommeCible?: boolean;
 	  }
 	// Droite graduée (#256) — l'enfant PLACE un repère sur la graduation qui correspond
 	// à la valeur cible (numération grands nombres, nombres décimaux). Interaction : une
@@ -320,13 +326,41 @@ export interface ModeOption {
 	recommended?: boolean; // mode par défaut / conseillé (mis en avant, choisi si aucun)
 }
 
+/** Consigne de fiche (#42), éventuellement DÉCLINÉE PAR NIVEAU (#436).
+ *
+ *  Une chaîne pour le cas courant (consigne invariante). La forme FONCTION sert aux
+ *  leçons servies à plusieurs niveaux dont la tâche ne se formule pas pareil selon la
+ *  classe (« Clique sur tous les déterminants » au CE2 vs « Clique sur le déterminant
+ *  demandé » au CM1, qui sous-catégorise) : sans elle, un niveau lit forcément la
+ *  consigne de l'autre.
+ *
+ *  Elle est résolue à la LECTURE (`consignePourNiveau`), pas figée à la construction :
+ *  c'est ce qui lui permet de traverser sans effort les combinateurs qui RECOPIENT ou
+ *  ÉTALENT les métadonnées d'un type de base (`calibrated`) — la fonction voyage, et
+ *  c'est le niveau du lecteur qui la résout. Corollaire à respecter : une consigne
+ *  fonction doit dériver du niveau REÇU EN ARGUMENT, jamais d'un niveau capturé à la
+ *  construction (sinon la recopie la figerait de nouveau). */
+export type ConsigneFiche = string | ((level?: SchoolLevel) => string | undefined);
+
+/** Consigne de fiche d'un type d'exercice, résolue pour un niveau (#436). Point d'entrée
+ *  UNIQUE des lecteurs (fiche/bilan `core/build.ts`, révision) : personne ne lit
+ *  `type.consigne` en direct, sinon la forme fonction s'afficherait telle quelle. */
+export function consignePourNiveau(
+	type: Pick<ExerciseType, 'consigne'>,
+	level?: SchoolLevel,
+): string | undefined {
+	return typeof type.consigne === 'function' ? type.consigne(level) : type.consigne;
+}
+
 export interface ExerciseType {
 	/** Modes proposés, dans l'ordre d'affichage (optionnel ; un type mono-mode l'ignore). */
 	modes?: ModeOption[];
 	/** Consigne de la fiche en saisie (#42) : phrase qui NOMME la tâche, propre à ce
 	 *  type d'exercice (ex. « Conjugue le verbe au temps demandé. »). Remplace le
-	 *  générique « Écris la forme correcte. » quand elle est définie. */
-	consigne?: string;
+	 *  générique « Écris la forme correcte. » quand elle est définie. Déclinable par
+	 *  niveau (#436) sous sa forme fonction — voir `ConsigneFiche` ; à LIRE via
+	 *  `consignePourNiveau`, jamais en direct. */
+	consigne?: ConsigneFiche;
 	/** Lexique d'affichage du runner « problème » (#95) — voir `ProbLexique`. */
 	probLexique?: ProbLexique;
 	/** Niveaux scolaires couverts (#225), renseigné par les combinateurs multi-niveaux

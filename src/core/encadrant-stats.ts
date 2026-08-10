@@ -56,7 +56,7 @@ import {
 	type SchoolLevel,
 	type SubjectId,
 } from './catalog';
-import { niveauDefautCatalogue } from './levels';
+import { niveauDefautCatalogue, labelLecon } from './levels';
 import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 import { niveauActifMatiere } from './niveau-actif';
 import { touchProfile, type Profile } from './profiles';
@@ -402,7 +402,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 			// alimente le dépliage de la catégorie ET, s'il est faible, la file « à revoir ».
 			const notion: RecapNotion = {
 				lessonId: l.id,
-				label: l.label,
+				label: labelLecon(l, niveau),
 				niveau: etat,
 				pctRecent: recentAvgPct(stat) ?? lessonAvgPct(stat),
 				epingle: fileSet.has(l.id),
@@ -501,15 +501,17 @@ export function revoirActives(dicteeDispo = false): RevoirEntry[] {
 			continue;
 		}
 		const lesson = getAllLessons().find((l) => l.id === entryId);
+		if (!lesson) continue;
 		// On n'affiche que des leçons du niveau actif de l'enfant (une leçon épinglée
 		// puis sortie du catalogue actif — ex. changement de classe — est ignorée).
-		if (!lesson || !lesson.levels.includes(niveauActifMatiere(lesson.subject))) continue;
+		const niveau = niveauActifMatiere(lesson.subject);
+		if (!lesson.levels.includes(niveau)) continue;
 		const etoilee = (stars[entryId] || 0) > 0;
 		const stat = stats[entryId];
 		// Encore « à revoir » tant que la notion n'est pas solide (non étoilée ET jamais
 		// re-travaillée ou perf récente sous le seuil) — MÊME prédicat que la purge (#465).
 		if (!estNotionSolide(etoilee, recentAvgPct(stat) ?? lessonAvgPct(stat)))
-			out.push({ kind: 'lecon', id: entryId, label: lesson.label, lesson });
+			out.push({ kind: 'lecon', id: entryId, label: labelLecon(lesson, niveau), lesson });
 	}
 	return out;
 }
@@ -626,7 +628,7 @@ export function epingleesProfil(profile: Profile): EpingleEntry[] {
 			out.push({
 				kind: 'lecon',
 				id: entryId,
-				label: lesson.label,
+				label: labelLecon(lesson, niveauProfilMatiere(profile, lesson.subject)),
 				horsNiveau: !lesson.levels.includes(niveauProfilMatiere(profile, lesson.subject)),
 			});
 	}
@@ -763,7 +765,7 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): EtatE
 	const pct = recentAvgPct(ctx.statsRaw[k]) ?? lessonAvgPct(ctx.statsRaw[k]);
 	return {
 		kind: 'lecon',
-		label: lesson.label,
+		label: labelLecon(lesson, niveau),
 		solide: estNotionSolide(etoilee, pct), // même prédicat que le filtre d'affichage enfant
 	};
 }
@@ -977,7 +979,16 @@ export function revisionProfil(profile: Profile, now: number): RecapRevision {
 		// doublon fantôme « en retard » que le parent ne pourrait jamais résorber. Même
 		// filtre que frisesParMatiere. (Sans objet pour les mots d'ortho, non namespacés.)
 		if (niveauOfKey(k) !== niveauProfilMatiere(profile, lesson.subject)) continue;
-		entrees.push(entreeRevision(k, lesson.label, 'lecon', lesson.category, etat, now));
+		entrees.push(
+			entreeRevision(
+				k,
+				labelLecon(lesson, niveauProfilMatiere(profile, lesson.subject)),
+				'lecon',
+				lesson.category,
+				etat,
+				now,
+			),
+		);
 	}
 	if (ortho && ortho.banque && typeof ortho.banque === 'object') {
 		for (const id in ortho.banque) {

@@ -278,12 +278,46 @@ describe('Garde-fous d’homographes de banque (#437)', () => {
 
 /* ---------- Fabriques ---------- */
 
-const NATURES: Array<{ id: string; label: string; banque: PhraseClicMot[] }> = [
-	{ id: 'fr-gram-clic-det', label: 'Clique sur le déterminant', banque: PHRASES_DET },
-	{ id: 'fr-gram-clic-conj', label: 'Clique sur la conjonction', banque: PHRASES_CONJ },
-	{ id: 'fr-gram-clic-pron', label: 'Clique sur le pronom', banque: PHRASES_PRON },
-	{ id: 'fr-gram-clic-noyau', label: 'Clique sur le nom noyau', banque: PHRASES_NOYAU },
-	{ id: 'fr-gram-clic-sujet', label: 'Clique sur le sujet', banque: PHRASES_SUJET },
+/* `levels` : les natures « déterminant », « pronom » et « nom » sont désormais servies
+   AUSSI au CE2 (#436), avec une banque et une consigne propres à ce niveau — couvertes
+   par leurs propres tests. Ici on continue d'éprouver la banque CM1, donc `generate` est
+   appelé AVEC `{ level: 'cm1' }` dès que l'appartenance à la banque CM1 est en jeu. */
+const NATURES: Array<{
+	id: string;
+	label: string;
+	banque: PhraseClicMot[];
+	levels: Array<'ce2' | 'cm1'>;
+}> = [
+	{
+		id: 'fr-gram-clic-det',
+		label: 'Clique sur le déterminant',
+		banque: PHRASES_DET,
+		levels: ['ce2', 'cm1'],
+	},
+	{
+		id: 'fr-gram-clic-conj',
+		label: 'Clique sur la conjonction',
+		banque: PHRASES_CONJ,
+		levels: ['cm1'],
+	},
+	{
+		id: 'fr-gram-clic-pron',
+		label: 'Clique sur le pronom',
+		banque: PHRASES_PRON,
+		levels: ['ce2', 'cm1'],
+	},
+	{
+		id: 'fr-gram-clic-noyau',
+		label: 'Clique sur le nom',
+		banque: PHRASES_NOYAU,
+		levels: ['ce2', 'cm1'],
+	},
+	{
+		id: 'fr-gram-clic-sujet',
+		label: 'Clique sur le sujet',
+		banque: PHRASES_SUJET,
+		levels: ['cm1'],
+	},
 ];
 
 function typeDe(id: string): ExerciseType {
@@ -293,13 +327,13 @@ function typeDe(id: string): ExerciseType {
 }
 
 describe('Fabrique clicMotType — contrat (#437)', () => {
-	for (const { id } of NATURES) {
-		it(`${id} : generate() → clicMot cohérent, check=false, niveau CM1`, () => {
+	for (const { id, levels } of NATURES) {
+		it(`${id} : generate() → clicMot cohérent, check=false, niveaux déclarés`, () => {
 			const type = typeDe(id);
 			expect(type.exerciseKind).toBe('clicMot');
-			expect(type.levels).toEqual(['cm1']); // les 5 natures sont CM1-only
+			expect(type.levels).toEqual(levels);
 			for (let i = 0; i < 60; i++) {
-				const ex = type.generate();
+				const ex = type.generate({ level: 'cm1' });
 				expect(ex.type).toBe('clicMot');
 				if (ex.type !== 'clicMot') continue;
 				verifieCible(ex, `${id} generate()`);
@@ -357,7 +391,7 @@ describe('Fabrique clicMotType — contrat (#437)', () => {
 		// DÉTERMINANT : la sous-catégorie annoncée par cibleLabel matche le token ciblé.
 		const detType = typeDe('fr-gram-clic-det');
 		for (let i = 0; i < 200; i++) {
-			const ex = detType.generate();
+			const ex = detType.generate({ level: 'cm1' });
 			if (ex.type !== 'clicMot') continue;
 			const cibleTok = lc(ex.tokens[ex.cibleIndices[0]]);
 			const label = lc(ex.cibleLabel ?? '');
@@ -371,7 +405,7 @@ describe('Fabrique clicMotType — contrat (#437)', () => {
 		// PRONOM : le rôle annoncé matche la nature du token ciblé.
 		const pronType = typeDe('fr-gram-clic-pron');
 		for (let i = 0; i < 200; i++) {
-			const ex = pronType.generate();
+			const ex = pronType.generate({ level: 'cm1' });
 			if (ex.type !== 'clicMot') continue;
 			const cibleTok = lc(ex.tokens[ex.cibleIndices[0]]);
 			const label = lc(ex.cibleLabel ?? '');
@@ -411,7 +445,7 @@ describe('Déterminisme du tirage & bornes par échantillonnage (#437)', () => {
 			const type = typeDe(id);
 			const membres = new Set(banque.map(cle));
 			for (let i = 0; i < 400; i++) {
-				const ex = type.generate();
+				const ex = type.generate({ level: 'cm1' });
 				expect(ex.type).toBe('clicMot');
 				if (ex.type !== 'clicMot') continue;
 				verifieCible(ex, `${id} tirage ${i}`);
@@ -421,14 +455,14 @@ describe('Déterminisme du tirage & bornes par échantillonnage (#437)', () => {
 	});
 });
 
-describe('Catalogue : les 5 leçons de nature CM1 (#437)', () => {
-	for (const { id, label } of NATURES) {
-		it(`${id} : grammaire française, CM1 uniquement, format clicMot`, () => {
+describe('Catalogue : les 5 leçons de nature (#437)', () => {
+	for (const { id, label, levels } of NATURES) {
+		it(`${id} : grammaire française, niveaux déclarés, format clicMot`, () => {
 			const def = getLessonById(id);
 			expect(def, `${id} introuvable`).toBeDefined();
 			expect(def!.subject).toBe('francais');
 			expect(def!.category).toBe('fr-grammaire');
-			expect(def!.levels).toEqual(['cm1']);
+			expect(def!.levels).toEqual(levels);
 			expect(def!.label).toBe(label);
 			expect(def!.exerciseType.exerciseKind).toBe('clicMot');
 			expect(isClicMotLesson(def!)).toBe(true);

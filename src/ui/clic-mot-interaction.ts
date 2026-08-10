@@ -34,6 +34,12 @@ export interface ClicMotSpec {
 	/** Justification courte annoncée dans la live region après une erreur (parité avec
 	    le feedback visuel). Optionnelle. */
 	explication?: string;
+	/** L'`explication` ÉNONCE DÉJÀ le(s) mot(s)-cible (#436, drapeau porté par la donnée
+	    de l'exercice) : la live region n'y ajoute pas son « La bonne réponse : … », qui
+	    répéterait la même énumération. Sans explication à annoncer, le drapeau est IGNORÉ —
+	    la bonne réponse est dite quand même (ne jamais laisser un enfant au lecteur d'écran
+	    sans la réponse). */
+	explicationNommeCible?: boolean;
 }
 
 export interface ClicMotOptions {
@@ -120,27 +126,41 @@ export function bindClicMot(
 				btn.removeAttribute('aria-pressed');
 				const estCible = cible.has(i);
 				const estChoisi = selection.has(i);
+				// Cible MULTIPLE (ni…ni, sujet composé, tous les noms / déterminants d'une phrase
+				// au CE2) : un mot n'est pas « la » réponse à lui seul, et le libellé peut être au
+				// PLURIEL (« les noms ») — on énonce alors l'appartenance à la réponse plutôt que
+				// d'accorder la phrase avec le libellé (« ce n'est pas les noms »).
+				const multiple = cible.size > 1;
 				if (estChoisi && estCible) {
 					marquer(btn, 'correct', '✓', `${btn.textContent ?? ''}, correct`);
 				} else if (estChoisi && !estCible) {
-					marquer(btn, 'wrong', '✗', `${btn.textContent ?? ''}, ce n'est pas ${nomCible}`);
+					const dit = multiple
+						? `ce mot ne fait pas partie de la réponse`
+						: `ce n'est pas ${nomCible}`;
+					marquer(btn, 'wrong', '✗', `${btn.textContent ?? ''}, ${dit}`);
 				} else if (!estChoisi && estCible) {
 					// Bonne réponse révélée dans la phrase (surlignage vert doux), sans pastille.
-					// Cible DOUBLE (ni…ni, sujet composé) : signaler « l'autre mot », sinon les deux
-					// mots révélés énoncent isolément deux fois le même libellé au singulier.
 					btn.classList.add('is-cible');
-					const suffixe =
-						cible.size > 1 ? `, avec l'autre mot, c'était ${nomCible}` : `, c'était ${nomCible}`;
+					const suffixe = multiple
+						? `, ce mot faisait partie de la réponse : ${nomCible}`
+						: `, c'était ${nomCible}`;
 					btn.setAttribute('aria-label', `${btn.textContent ?? ''}${suffixe}`);
 				}
 			});
 
 			// Annonce du verdict pour lecteur d'écran (le focus part sur « Continuer »).
+			// L'explication qui NOMME déjà la cible (drapeau de la donnée, #436) tient lieu
+			// d'annonce : on ne fait pas entendre deux fois la même énumération. Sans
+			// explication, le drapeau est ignoré et la réponse est annoncée — le repli DIT
+			// toujours la réponse.
 			if (status) {
-				const motsCible = libelleCible(tokens, cibleIndices);
+				const dejaNommee = !!spec.explicationNommeCible && !!explication;
+				const reponse = dejaNommee
+					? ''
+					: ` La bonne réponse : ${libelleCible(tokens, cibleIndices)}.`;
 				status.textContent = juste
 					? 'Bravo, bonne réponse.'
-					: `Ce n'est pas ça. La bonne réponse : ${motsCible}.${explication ? ` ${explication}` : ''}`;
+					: `Ce n'est pas ça.${reponse}${explication ? ` ${explication}` : ''}`;
 			}
 			return juste;
 		},

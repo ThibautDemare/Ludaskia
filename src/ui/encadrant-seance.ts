@@ -28,6 +28,7 @@ import {
 	type SchoolLevel,
 } from '../core/catalog';
 import { niveauProfilMatiere, epingleesProfil } from '../core/encadrant-stats';
+import { labelLecon } from '../core/levels';
 import { listOrthoLecons, labelLeconOrtho } from '../core/orthographe/lessons';
 import { loadOrthoFor } from '../core/orthographe/store';
 import {
@@ -93,7 +94,7 @@ function groupesLecon(consulte: Profile): Groupe[] {
 				g = { label: `${sub.label} · ${cat ? cat.label : l.category}`, items: [] };
 				parCat.set(l.category, g);
 			}
-			g.items.push({ id: l.id, label: l.label });
+			g.items.push({ id: l.id, label: labelLecon(l, niveau) });
 		}
 		for (const g of parCat.values()) if (g.items.length) groupes.push(g);
 	}
@@ -331,11 +332,17 @@ function etapeHTML(
 			hintARevoir(epingleesProfil(consulte).length),
 		)}</p>`;
 	} else if (info.ref === 'lecon') {
+		// Repli « cible actuelle » (référence sortie des groupes actifs) : libellé résolu au
+		// niveau du profil consulté (#436), comme les options des groupes juste au-dessus.
+		const labelHorsGroupes = (id: string): string | null => {
+			const l = getLessonById(id);
+			return l ? labelLecon(l, niveauProfilMatiere(consulte, l.subject)) : null;
+		};
 		cibleInline = `<label class="enc-seance-cible"><span class="sr-only">Leçon visée</span>
         <select class="enc-select-niveau" data-act="seance-ref" data-def="${def.id}" data-etape="${etape.id}">${optionsCibleHTML(
 					lecons,
 					etape.ref,
-					(id) => getLessonById(id)?.label ?? null,
+					labelHorsGroupes,
 				)}</select></label>`;
 	} else if (info.ref === 'dictee') {
 		cibleBloc = checkboxesDicteeHTML(def, etape, dictees, (id) =>

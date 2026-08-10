@@ -752,12 +752,21 @@ describe('epingleesProfil — résolution des entrées épinglées', () => {
 
 		const ep = epingleesProfil(p);
 		const lecon = ep.find((e) => e.kind === 'lecon');
-		expect(lecon).toEqual({ kind: 'lecon', id: 'math-complements', label: lecon!.label });
+		// `horsNiveau` (#518) fait partie du contrat de l'entrée : ici les trois cibles sont
+		// dans le périmètre du profil (CE2), donc false. Le calcul du motif lui-même est
+		// éprouvé dans encadrant-stats.test.ts (« horsNiveau, le MOTIF d'un état manquant »).
+		expect(lecon).toEqual({
+			kind: 'lecon',
+			id: 'math-complements',
+			label: lecon!.label,
+			horsNiveau: false,
+		});
 		const parent = ep.find((e) => e.kind === 'ortho' && e.id === l.id);
-		expect(parent).toEqual({ kind: 'ortho', id: l.id, label: 'Ma dictée' });
+		expect(parent).toEqual({ kind: 'ortho', id: l.id, label: 'Ma dictée', horsNiveau: false });
 		const pred = ep.find((e) => e.kind === 'ortho' && e.id === 'fr-ortho-invariables-1');
 		expect(pred).toBeTruthy();
 		expect(pred!.label.length).toBeGreaterThan(0); // libellé résolu depuis ORTHO_PREDEF
+		expect(pred!.horsNiveau).toBe(false); // prédéfinie CE2 sur un profil CE2
 	});
 
 	it('entrée dont la cible n’existe plus est écartée (leçon hors catalogue, liste supprimée)', () => {

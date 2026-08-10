@@ -164,8 +164,14 @@ export interface ItemClasseQcm {
 	parle?: string; // texte lu si l'énoncé affiché est télégraphique (#42)
 }
 
+/* Définition du NOM : « une idée » est la 4e catégorie, indispensable (#436) — la banque
+   contient des noms abstraits (« leçon », « date », « surprise »), qu'une définition
+   limitée aux êtres et aux objets ferait passer pour des contre-exemples au moment même
+   où l'appli fait autorité. Formulation IDENTIQUE à celle de la leçon « Clique sur les
+   noms » (data/francais/grammaire-clic-mot.ts) : un enfant qui croise les deux leçons ne
+   doit pas lire deux définitions différentes du nom. */
 const ROLE_CLASSE: Record<Classe, string> = {
-	nom: 'c’est une chose, une personne ou un animal',
+	nom: 'c’est une personne, un animal, une chose ou une idée',
 	verbe: 'c’est une action',
 	adjectif: 'il décrit, il dit comment est quelque chose',
 };

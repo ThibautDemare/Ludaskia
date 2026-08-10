@@ -1264,8 +1264,13 @@ $evol-amorce: #7c8494;
 }
 /* Date d'un retrait automatique (#465) : info de contexte, pas un état d'acquisition —
    d'où l'absence de pastille et un poids de texte normal (elle ne doit pas concurrencer
-   le libellé de la notion). */
-.enc-revoir-quand {
+   le libellé de la notion).
+   Même traitement pour « hors du niveau suivi » (#518), qui occupe la place du badge d'état
+   sur une épinglée dont la cible a quitté le niveau du profil : c'est une explication de
+   contexte, pas un cran de l'échelle — lui donner une pastille la ferait lire comme un 5e
+   niveau d'acquisition. Encre en --grey et NON en --muted, qui passe sous AA sur --paper. */
+.enc-revoir-quand,
+.enc-revoir-hors {
 	font-size: 0.78rem;
 	color: var(--grey);
 	white-space: nowrap;

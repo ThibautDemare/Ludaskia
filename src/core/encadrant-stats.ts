@@ -596,23 +596,67 @@ export interface EpingleEntry {
 	kind: 'lecon' | 'ortho';
 	id: string; // id BRUT (sert au dé-épinglage : lecon → id ; ortho → orthoRevoirId(id))
 	label: string;
+	// Cible absente du niveau suivi par le profil (#518) → l'épingle est INERTE : `revoirActives`
+	// l'écarte, elle ne revient jamais sur l'accueil de l'enfant. Reste dans cette liste de
+	// GESTION, justement pour que l'adulte puisse la retirer en sachant pourquoi. Calculé ici,
+	// là où le niveau de la cible est déjà connu, et non déduit d'une absence dans le récap :
+	// deux façons de répondre à la même question divergeraient en silence.
+	horsNiveau: boolean;
 }
 export function epingleesProfil(profile: Profile): EpingleEntry[] {
 	const ids = loadRevoirFor(profile.uuid);
 	if (ids.length === 0) return [];
 	const ortho = ids.some(isOrthoRevoirId) ? loadOrthoFor(profile.uuid) : null;
+	// Dictées visibles au niveau du profil (filtrage CUMULATIF : un CM1 garde les listes CE2).
+	// Les listes CRÉÉES par le parent ne sont pas taguées par niveau, donc jamais hors niveau.
+	const orthoDuNiveau = ortho
+		? new Set(listOrthoLecons(ortho, niveauProfilMatiere(profile, 'francais')).map((l) => l.id))
+		: null;
 	const out: EpingleEntry[] = [];
 	for (const entryId of ids) {
 		if (isOrthoRevoirId(entryId)) {
 			const orthoId = orthoIdFromRevoir(entryId);
 			const label = labelLeconOrtho(orthoId, ortho?.listes ?? []);
-			if (label) out.push({ kind: 'ortho', id: orthoId, label });
+			if (label)
+				out.push({ kind: 'ortho', id: orthoId, label, horsNiveau: !orthoDuNiveau?.has(orthoId) });
 			continue;
 		}
 		const lesson = getLessonById(entryId);
-		if (lesson) out.push({ kind: 'lecon', id: entryId, label: lesson.label });
+		if (lesson)
+			out.push({
+				kind: 'lecon',
+				id: entryId,
+				label: lesson.label,
+				horsNiveau: !lesson.levels.includes(niveauProfilMatiere(profile, lesson.subject)),
+			});
 	}
 	return out;
+}
+
+/* État d'acquisition à afficher sur une entrée ÉPINGLÉE (#518) — pur, sans DOM.
+   Sans lui, l'adulte voyait une épingle sans savoir où en était l'enfant sur cette notion,
+   donc sans pouvoir juger s'il fallait la retirer. Aucun calcul nouveau : on relit le niveau
+   déjà porté par le récap (leçons) ou par le suivi des dictées (listes) — les deux échelles
+   sont le même `NiveauNotion`, celle des dictées n'en utilisant que 3 crans.
+
+   Une leçon JAMAIS TRAVAILLÉE n'est pas un trou : elle est bien dans le récap, à
+   'a-decouvrir'. Le `null` dit seulement « aucun état disponible » : en pratique la cible est
+   hors du niveau suivi (le récap et `listesOrthoProfil` ne couvrent que le niveau du profil,
+   là où `epingleesProfil` retient une épingle de n'importe quel niveau). Cette RAISON n'est
+   pas déduite ici : elle est portée par `EpingleEntry.horsNiveau`, calculé là où le niveau de
+   la cible est connu. Un `null` sans `horsNiveau` serait donc une incohérence de données, et
+   l'UI n'affiche alors rien plutôt que d'avancer un motif faux. */
+export function niveauEpingle(
+	e: EpingleEntry,
+	recap: RecapProfil,
+	listes: readonly RecapListeOrtho[],
+): NiveauNotion | null {
+	if (e.kind === 'ortho') return listes.find((l) => l.id === e.id)?.niveau ?? null;
+	for (const cat of recap.parCategorie) {
+		const n = cat.lecons.find((x) => x.lessonId === e.id);
+		if (n) return n.niveau;
+	}
+	return null;
 }
 
 /* ============================================================

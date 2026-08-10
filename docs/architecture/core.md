@@ -808,6 +808,16 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   historiques, **activité** et **file « à revoir »** (`loadRevoir`/`loadRevoirFor`/
   `toggleRevoirFor`/`revoirActives`/`epingleesProfil`/`purgeRevoirSolides`/
   `retraitsAutoProfil`). Lit les clés brutes du profil consulté.
+  **État affiché sur une épinglée** (#518) : `EpingleEntry` porte un champ `horsNiveau`
+  (cible hors du niveau suivi par le profil — l'épingle est alors INERTE, `revoirActives`
+  l'écarte et elle ne revient jamais sur l'accueil de l'enfant), calculé par
+  `epingleesProfil` là où le niveau de la cible est déjà connu. `niveauEpingle(entry, recap,
+  listes)` en dérive séparément le `NiveauNotion` à afficher (leçon → depuis le récap ;
+  liste de dictée → depuis `listesOrthoProfil`), ou `null` faute d'état disponible — une
+  leçon épinglée jamais travaillée n'est pas ce cas, elle reste dans le récap à
+  `'a-decouvrir'`. `horsNiveau` n'est jamais déduit d'un `niveauEpingle` à `null` : les deux
+  répondraient à la même question par des chemins distincts et pourraient diverger en
+  silence.
   **Désépinglage automatique** (#465) : `purgeRevoirSolides(profile, dicteeDispo, now)`
   retire pour de bon de `ludaskia_revoir` les entrées redevenues solides, avec
   EXACTEMENT le critère de `revoirActives` (leçon étoilée ou perf récente ≥

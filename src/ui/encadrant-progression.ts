@@ -21,6 +21,7 @@ import {
 	listesOrthoProfil,
 	dicteesProposees,
 	epingleesProfil,
+	niveauEpingle,
 	retraitsAutoProfil,
 	type RecapProfil,
 	type RecapListeOrtho,
@@ -575,7 +576,17 @@ function blocagesParLecon(recap: RecapProfil): Map<string, number> {
 
 /* Une ligne « à revoir » : libellé + état éventuel + actions (épingler/retirer + impression).
    `entryId` = id transmis au toggle/à l'impression (leçon = `LessonDef.id` ; liste de dictée =
-   `orthoRevoirId(id)`). `etat` = état d'acquisition affiché (suggestions) ou absent (épinglées).
+   `orthoRevoirId(id)`). `etat` = état d'acquisition affiché.
+
+   Les épinglées n'affichaient aucun état à l'origine, or l'adulte ne pouvait alors pas juger
+   s'il fallait désépingler (#518). `horsNiveau` prend le relais quand il n'y a pas d'état à
+   montrer : la cible a quitté le niveau suivi, donc l'épingle est inerte (`revoirActives`
+   l'écarte, elle ne revient jamais sur l'accueil de l'enfant) — le motif le plus utile pour
+   décider de la retirer. Il vient de `EpingleEntry`, PAS d'une absence d'`etat` : un état
+   manquant sans `horsNiveau` est une incohérence de données, et on n'affiche alors rien plutôt
+   qu'un motif faux. Une suggestion, elle, sort du récap : son état est là par construction.
+   Les lignes « Retirées automatiquement » n'ont pas d'état : elles affichent `quand`.
+
    `imprimable` = false pour une liste de dictée (pas de fiche à imprimer).
    `blocages` = jours où l'enfant a buté sur la leçon dans la leçon du jour (#485) : au-delà du
    seuil, la ligne porte un marqueur EN PLUS de l'état (cf. `signalBlocage`).
@@ -588,6 +599,7 @@ function ligneRevoir(
 	epingle: boolean,
 	opts: {
 		etat?: NiveauNotion;
+		horsNiveau?: boolean;
 		imprimable?: boolean;
 		quand?: string;
 		blocages?: number;
@@ -595,12 +607,17 @@ function ligneRevoir(
 		mots?: readonly string[];
 	} = {},
 ): string {
-	const { etat, imprimable = true, quand, blocages = 0, meta, mots } = opts;
+	const { etat, horsNiveau = false, imprimable = true, quand, blocages = 0, meta, mots } = opts;
+	// `sr-only` « Niveau : » comme dans `ligneListeOrtho` (même échelle) : depuis que les
+	// épinglées ET les suggestions portent le badge, une navigation à la voix enchaînerait des
+	// « acquis » / « en cours » / « à renforcer » sans savoir de quoi ils parlent (avis a11y).
 	const badge = etat
-		? `<span class="enc-revoir-etat enc-key-${etat}">${MOT_NIVEAU[etat]}</span>`
-		: quand
-			? `<span class="enc-revoir-quand">Retirée ${escapeHTML(quand)}</span>`
-			: '';
+		? `<span class="enc-revoir-etat enc-key-${etat}"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[etat]}</span>`
+		: horsNiveau
+			? `<span class="enc-revoir-hors" title="Pas au programme de la classe suivie : cette épingle ne revient pas sur l'accueil de l'enfant">hors du niveau suivi</span>`
+			: quand
+				? `<span class="enc-revoir-quand">Retirée ${escapeHTML(quand)}</span>`
+				: '';
 	return `<li class="enc-revoir-item">
       <span class="enc-revoir-main">
         <span class="enc-revoir-lab">${escapeHTML(label)}</span>
@@ -631,12 +648,20 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 
 	// Jours de blocage (#492) : sert aux DEUX blocs, épinglées comprises.
 	const blocages = blocagesParLecon(recap);
+	// État d'acquisition des épinglées (#518) — résolu par `niveauEpingle` (core, pur). Le suivi
+	// des dictées n'est relu que si une liste est épinglée : sinon c'est un accès stockage pour rien.
+	const listesOrtho = pinned.some((e) => e.kind === 'ortho')
+		? listesOrthoProfil(consulte, dicteeDisponible())
+		: [];
 	const blocEpinglees = pinned.length
 		? `<ul class="enc-revoir">${pinned
 				.map((e) =>
-					e.kind === 'ortho'
-						? ligneRevoir(orthoRevoirId(e.id), e.label, true, { imprimable: false })
-						: ligneRevoir(e.id, e.label, true, { blocages: blocages.get(e.id) }),
+					ligneRevoir(e.kind === 'ortho' ? orthoRevoirId(e.id) : e.id, e.label, true, {
+						imprimable: e.kind !== 'ortho',
+						blocages: blocages.get(e.id),
+						etat: niveauEpingle(e, recap, listesOrtho) ?? undefined,
+						horsNiveau: e.horsNiveau,
+					}),
 				)
 				.join('')}</ul>`
 		: `<p class="enc-hint">Aucune leçon épinglée pour le moment.</p>`;

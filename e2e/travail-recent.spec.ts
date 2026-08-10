@@ -2,10 +2,16 @@
    Bloc « Travaillé récemment » (#520) — espace encadrant, onglet Suivi.
    ------------------------------------------------------------
    Couvre : le round-trip complet (jouer une VRAIE leçon la fait apparaître
-   NOMMÉE, avec sa méta « catégorie · travaillée N fois · quand »), le
-   sélecteur de période (resserrer la fenêtre retire une leçon devenue trop
-   ancienne, le message dédié apparaît, l'option cochée suit le clic), et
-   l'état vide (aucune leçon travaillée dans la fenêtre).
+   NOMMÉE, avec sa méta « catégorie · N fois · quand »), le sélecteur de
+   période (resserrer la fenêtre retire une leçon devenue trop ancienne, le
+   message dédié apparaît, l'option cochée suit le clic), l'état vide, et le
+   décompte mixte leçons/dictées de la synthèse (relu langue après coup :
+   « N fois » et non « travaillée N fois » — réservé au compte CUMULÉ de
+   l'accordéon « Notions par catégorie », deux chiffres différents sous la
+   même phrase se lisant comme un bug ; « Aucune session … » et non « Aucune
+   leçon travaillée … », le mot déjà employé par le graphe d'activité juste
+   au-dessus ; les dictées comptées À PART dans la synthèse, jamais annoncées
+   comme une « leçon »).
 
    Le bloc partage l'onglet Suivi avec plusieurs AUTRES `.enc-sub-lab`
    (Couverture par matière, Évolution récente, À revoir ensemble) et
@@ -56,12 +62,15 @@ test('jouer une leçon la fait apparaître nommée dans « Travaillé récemment
 	await expect(b.locator('.enc-sub-lab').filter({ hasText: 'Mathématiques' })).toBeVisible();
 
 	// La leçon jouée est NOMMÉE (libellé du catalogue), avec sa méta factuelle :
-	// catégorie (Numération) · travaillée 1 fois (un seul essai) · aujourd'hui.
+	// catégorie (Numération) · 1 fois (un seul essai, PAS « travaillée 1 fois » —
+	// formule réservée au compte CUMULÉ de l'accordéon « Notions par catégorie »,
+	// pour ne pas afficher deux chiffres différents sous la même phrase) · aujourd'hui.
 	const ligne = b.locator('.enc-trav-item').filter({ hasText: 'Je compare les nombres' });
 	await expect(ligne).toBeVisible();
 	await expect(ligne.locator('.enc-trav-lab')).toHaveText('Je compare les nombres');
 	await expect(ligne.locator('.enc-trav-meta')).toContainText('Numération');
-	await expect(ligne.locator('.enc-trav-meta')).toContainText('travaillée 1 fois');
+	await expect(ligne.locator('.enc-trav-meta')).toContainText('1 fois');
+	await expect(ligne.locator('.enc-trav-meta')).not.toContainText('travaillée');
 	await expect(ligne.locator('.enc-trav-meta')).toContainText("aujourd'hui");
 
 	expect(errors).toEqual([]);
@@ -110,7 +119,11 @@ test("sélecteur de période : resserrer sur « Aujourd'hui » retire la leçon 
 	await expect(btn('1')).toHaveAttribute('aria-checked', 'true');
 	await expect(btn('7')).toHaveAttribute('aria-checked', 'false');
 	await expect(b.locator('.enc-trav-item')).toHaveCount(0);
-	await expect(b).toContainText("Aucune leçon travaillée aujourd'hui.");
+	// « Aucune session … », pas « Aucune leçon travaillée … » : le mot déjà employé par
+	// le graphe d'activité juste au-dessus, pour ne pas faire entendre « 0 leçon
+	// travaillée » à un lecteur d'écran (ce texte sert aussi de nom accessible à l'option
+	// de période active).
+	await expect(b).toContainText("Aucune session aujourd'hui.");
 
 	expect(errors).toEqual([]);
 });
@@ -124,8 +137,46 @@ test('état vide : aucune leçon travaillée récemment', async ({ page }) => {
 
 	const b = bloc(page);
 	await expect(b).toBeVisible();
-	await expect(b).toContainText('Aucune leçon travaillée');
+	await expect(b).toContainText('Aucune session sur les 7 derniers jours.');
 	await expect(b.locator('.enc-trav-item')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+/* Une leçon ET une dictée travaillées AUJOURD'HUI : la leçon via les stats (comme
+   SEED_TRAVAIL_ANCIEN), la dictée via le SEUL journal d'activité (`k: 'dictee'`, `ref`
+   = id d'une dictée PRÉDÉFINIE — pas besoin de seeder le store `ludaskia_ortho`,
+   `labelLeconOrtho` la résout seule, cf. suivi-dictees-encadrant.spec.ts). */
+const SEED_MIXTE = `(() => {
+  const now = Date.now();
+  localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({
+    'math-complements@ce2': { attempts: 1, correct: 8, questions: 10, bestPct: 80, lastPct: 80, recentPct: [80], lastAt: now },
+  }));
+  localStorage.setItem('e2e/ludaskia_activity', JSON.stringify([
+    { t: now, k: 'dictee', ref: 'fr-ortho-invariables-1' },
+  ]));
+})();`;
+
+/* 4. Synthèse mixte (relu langue, #520) : une leçon et une dictée sont comptées à part
+   dans la phrase de synthèse (« 1 leçon et 1 dictée travaillées … »), jamais fondues
+   sous « leçon » — c'est précisément la faute corrigée par la relecture. La dictée
+   porte aussi sa propre étiquette de contexte (« Dictée »), fournie par l'UI (le champ
+   `contexte` renvoyé par le calcul core est vide pour une dictée, `kind` porte la
+   nature de la cible). */
+test('synthèse : une leçon et une dictée sont comptées SÉPARÉMENT (pas « 1 leçon » pour une dictée)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_MIXTE);
+	await gotoHash(page, 'encadrant');
+
+	const b = bloc(page);
+	await expect(b).toContainText('1 leçon et 1 dictée travaillées sur les 7 derniers jours.');
+
+	const ligneDictee = b.locator('.enc-trav-item').filter({ hasText: 'Mots invariables (1)' });
+	await expect(ligneDictee).toBeVisible();
+	await expect(ligneDictee.locator('.enc-trav-meta')).toContainText('Dictée');
 
 	expect(errors).toEqual([]);
 });

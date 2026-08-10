@@ -13,7 +13,9 @@
      leçon CE2 rejouée par un profil CM1 (rangée `@ce2`, cf. `niveauStockage`) ou une
      dictée d'un autre niveau. Une leçon présente sous deux clés `@niveau` ne fait
      donc qu'UNE ligne, datée de la plus récente ;
-   - les dictées n'existent que dans le journal et sont rattachées au français ;
+   - les dictées n'existent que dans le journal et sont rattachées au français ; leur
+     NATURE est portée par `kind` (donnée, pas libellé : l'UI compte les dictées à part)
+     et leur `contexte` est vide, une liste n'ayant pas de catégorie du catalogue ;
    - la sortie est un groupe par matière dans l'ordre de SUBJECTS, chaque groupe
      trié du plus récent au plus ancien, de façon DÉTERMINISTE (l'ordre des clés de
      stockage ne doit jamais se voir à l'écran).
@@ -393,7 +395,7 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 });
 
 describe('travailRecent — dictées (journal seul, rattachées au français)', () => {
-	it('dictée prédéfinie : nommée, contexte « Dictée », comptée, sans stats de leçon', () => {
+	it('dictée prédéfinie : nommée, comptée, sans stats de leçon', () => {
 		const predef = predefDeNiveau('ce2');
 		const res = travailRecent(
 			{},
@@ -408,7 +410,8 @@ describe('travailRecent — dictées (journal seul, rattachées au français)', 
 		expect(res[0].cibles[0]).toEqual({
 			id: predef.id,
 			label: predef.label,
-			contexte: 'Dictée',
+			kind: 'dictee',
+			contexte: '', // une liste n'a pas de catégorie du catalogue ; le mot vient de l'UI
 			seances: 2,
 			derniereFois: AUJ(9, 0), // la plus récente des deux séances
 		});
@@ -419,7 +422,7 @@ describe('travailRecent — dictées (journal seul, rattachées au français)', 
 		const liste = createListe(etat, 'Mots du lundi', [{ mot: 'chat' }, { mot: 'chien' }]);
 		const res = travailRecent({}, [seanceDictee(AUJ(9, 0), liste.id)], etat, 2, NOW);
 		expect(labels(res, 'francais')).toEqual(['Mots du lundi']);
-		expect(cible(res, 'francais', liste.id)!.contexte).toBe('Dictée');
+		expect(cible(res, 'francais', liste.id)!.kind).toBe('dictee');
 	});
 
 	it('état orthographe absent : la prédéfinie reste nommée, la liste du parent est écartée', () => {
@@ -517,10 +520,52 @@ describe('travailRecent — groupes par matière', () => {
 		const res = travailRecent({ 'math-doubles@ce2': stat(AUJ(9, 0)) }, [], null, 2, NOW);
 		expect(res.map((g) => g.subject)).toEqual(['math']);
 	});
+});
 
-	it('le contexte d’une leçon est le libellé de sa catégorie', () => {
+/* La paire (`kind`, `contexte`) est ce que l'UI utilise pour ventiler son décompte
+   (« 2 leçons et 1 dictée travaillées ») et pour afficher, ou non, une catégorie. Une
+   inversion se paierait directement à l'écran : une dictée comptée comme leçon, ou une
+   catégorie annoncée là où il n'y en a pas. */
+describe('travailRecent — nature de la cible (kind) et contexte', () => {
+	it('leçon du catalogue → kind « lecon » et contexte = libellé de sa catégorie', () => {
 		const res = travailRecent({ 'math-doubles@ce2': stat(AUJ(9, 0)) }, [], null, 2, NOW);
-		expect(cible(res, 'math', 'math-doubles')!.contexte).toBe('Calcul mental');
+		const doubles = cible(res, 'math', 'math-doubles')!;
+		expect(doubles.kind).toBe('lecon');
+		expect(doubles.contexte).toBe('Calcul mental');
+	});
+
+	it('dictée → kind « dictee » et contexte VIDE (le mot « Dictée » appartient à l’UI)', () => {
+		const predef = predefDeNiveau('ce2');
+		const res = travailRecent({}, [seanceDictee(AUJ(9, 0), predef.id)], null, 2, NOW);
+		const dictee = cible(res, 'francais', predef.id)!;
+		expect(dictee.kind).toBe('dictee');
+		expect(dictee.contexte).toBe('');
+	});
+
+	it('jeu mêlé : le décompte leçons / dictées se lit sur kind seul, et suit le contexte', () => {
+		const predef = predefDeNiveau('ce2');
+		const frCe2 = leconTelleQue(
+			(l) => l.subject === 'francais' && l.levels.includes('ce2'),
+			'de français CE2',
+		);
+		const res = travailRecent(
+			{ 'math-doubles@ce2': stat(AUJ(9, 0)), [frCe2.id + '@ce2']: stat(AUJ(8, 30)) },
+			[seanceDictee(AUJ(9, 30), predef.id)],
+			null,
+			2,
+			NOW,
+		);
+		const toutes = res.flatMap((g) => g.cibles);
+		expect(
+			toutes
+				.filter((c) => c.kind === 'lecon')
+				.map((c) => c.id)
+				.sort(),
+		).toEqual(['math-doubles', frCe2.id].sort());
+		expect(toutes.filter((c) => c.kind === 'dictee').map((c) => c.id)).toEqual([predef.id]);
+		// Les deux champs ne peuvent pas se contredire : une catégorie n'est annoncée que
+		// pour une leçon du catalogue.
+		for (const c of toutes) expect(c.contexte !== '').toBe(c.kind === 'lecon');
 	});
 });
 

@@ -45,7 +45,7 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
 
 ## Espace encadrant (rendu)
 
-Découpé par responsabilité (#234, découpage #354) en un **orchestrateur** + sept
+Découpé par responsabilité (#234, découpage #354) en un **orchestrateur** + huit
 modules de section, en graphe **étoile** : chaque section n'importe que
 `encadrant-commun` (+ le core), sauf `encadrant-profils` qui dépend aussi de
 `encadrant-pin` (referme son sous-panneau au changement de profil consulté) —
@@ -79,8 +79,9 @@ ci-dessous.
   verrou et la vue courante (`pinView()`, lue par l'orchestrateur).
 - **`encadrant-progression.ts`** — **récap** par profil (onglet **Suivi**) :
   chiffres-clés, graphe d'activité 7 jours (#319, bascule Total / Par type —
-  composant segment partagé, cf. `segment.ts` plus bas), maîtrise par catégorie
-  (avec sa **frise d'évolution hebdomadaire par
+  composant segment partagé, cf. `segment.ts` plus bas), le bloc **« Travaillé
+  récemment »** (#520 — module dédié `encadrant-travail.ts` ci-dessous), maîtrise par
+  catégorie (avec sa **frise d'évolution hebdomadaire par
   matière**, #397 — barres-capsules `--ok`, compteur de notions au-dessus des
   semaines non vides, semaine en cours distinguée, sans axe ni pourcentage),
   **historique des erreurs récentes** (#391, filtrable par période #476, cf.
@@ -90,7 +91,8 @@ ci-dessous.
   Mots (la banque du profil, recherche + suppression) est délégué au module dédié
   `encadrant-banque.ts` ci-dessous ; handlers `activite-mode`/`epingler`/
   `imprimer`/`dictees-vue`, plus `erreurs-periode` (délégué à `erreursClick`, exporté par
-  `encadrant-erreurs.ts`) et les actions `banque-*` (délégué à `banqueClick`/`banqueInput`,
+  `encadrant-erreurs.ts`), `travail-periode` (délégué à `travailClick`, exporté par
+  `encadrant-travail.ts`) et les actions `banque-*` (délégué à `banqueClick`/`banqueInput`,
   exportées par `encadrant-banque.ts` — même raison : c'est cette section qui compose leur
   bloc).
   Expose aussi `aRevoirHTML` (file « à revoir ensemble », épinglées + suggestions
@@ -101,6 +103,15 @@ ci-dessous.
   (`ligneRevoir`, option `etat`) que les suggestions ; à défaut d'état disponible, un repli
   « hors du niveau suivi » (`.enc-revoir-hors`, sans pastille de couleur) explique pourquoi
   l'épingle est inerte plutôt que de laisser la ligne muette.
+- **`encadrant-travail.ts`** (#520) — bloc **« Travaillé récemment »** (onglet **Suivi**),
+  composé par `encadrant-progression.ts` (ci-dessus) entre le graphe d'activité et
+  « Notions par catégorie » : nomme directement les leçons et dictées travaillées sur une
+  fenêtre courte, là où le graphe compte des séances sans les nommer — projection pure
+  dans `core/encadrant-stats.ts:travailRecent`/`travailRecentProfil` (cf. [Logique
+  pure](core.md)), ici l'état de la fenêtre (sélecteur **1 / 2 / 7 jours**, défaut 7, sans
+  « Tout »), le rendu groupé par matière et les handlers exportés
+  `travailHTML`/`travailClick`. Détail fonctionnel dans [Espace
+  encadrant](espace-encadrant.md).
 - **`encadrant-banque.ts`** (#496) — volet **« Mots »** du bloc Dictées (onglet **Suivi**),
   composé par `encadrant-progression.ts` (ci-dessus) : la banque d'orthographe du profil
   consulté, mot par mot — projections pures dans `core/orthographe/banque.ts` (cf. [Logique
@@ -166,11 +177,12 @@ tabulation), en remplacement de l'ancien rendu à la main en `role="group"` +
 le focus aux flèches/Home/End ; la sélection **suit le focus** (le handler de la section
 clique l'option visée, gère l'état et le re-rendu). Consommé par `activite-mode` et
 `dictees-vue` (`encadrant-progression.ts`, ce dernier depuis #496), `revision-mode`
-(`encadrant-revision.ts`), `seance-rec-type` (`encadrant-seance.ts`) et `erreurs-periode`
-(`encadrant-erreurs.ts`) — les `data-act`/`data-mode`/`data-type`/`data-periode`/`data-vue`
-de chaque site restent inchangés (sélecteurs e2e stables).
+(`encadrant-revision.ts`), `seance-rec-type` (`encadrant-seance.ts`), `erreurs-periode`
+(`encadrant-erreurs.ts`) et `travail-periode` (`encadrant-travail.ts`, #520) — les
+`data-act`/`data-mode`/`data-type`/`data-periode`/`data-vue`/`data-jours` de chaque site
+restent inchangés (sélecteurs e2e stables).
 
-**Journal des erreurs (#391)** — deux modules distincts, hors des cinq de section
+**Journal des erreurs (#391)** — deux modules distincts, hors des modules de section
 ci-dessus, plus `core/erreur-representation.ts` (logique pure, cf. [Logique
 pure](core.md)) pour les formats composites :
 - **`erreur-capture.ts`** — point d'entrée UNIQUE `capterErreur`, appelé par **tous les

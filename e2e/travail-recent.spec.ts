@@ -11,7 +11,9 @@
    même phrase se lisant comme un bug ; « Aucune session … » et non « Aucune
    leçon travaillée … », le mot déjà employé par le graphe d'activité juste
    au-dessus ; les dictées comptées À PART dans la synthèse, jamais annoncées
-   comme une « leçon »).
+   comme une « leçon »), le compte inconnu d'une leçon vue seulement en bilan/sprint
+   (« null, jamais 0 » vérifié aussi au RENDU, pas seulement côté core), et le repli
+   au-delà de 6 lignes par matière (fermé par défaut, dépliable au clic).
 
    Le bloc partage l'onglet Suivi avec plusieurs AUTRES `.enc-sub-lab`
    (Couverture par matière, Évolution récente, À revoir ensemble) et
@@ -177,6 +179,100 @@ test('synthèse : une leçon et une dictée sont comptées SÉPARÉMENT (pas « 
 	const ligneDictee = b.locator('.enc-trav-item').filter({ hasText: 'Mots invariables (1)' });
 	await expect(ligneDictee).toBeVisible();
 	await expect(ligneDictee.locator('.enc-trav-meta')).toContainText('Dictée');
+
+	expect(errors).toEqual([]);
+});
+
+/* Une leçon travaillée SEULEMENT via un bilan (pas de jeu isolé) : `lastAt` la place
+   dans la fenêtre, mais aucune entrée d'activité ne porte sa `ref` (un bilan porte sur
+   plusieurs leçons, cf. encadrant-stats.ts) → `seances` vaut `null`, jamais 0. */
+const SEED_BILAN_SANS_REF = `(() => {
+  const now = Date.now();
+  localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({
+    'math-complements@ce2': { attempts: 1, correct: 8, questions: 10, bestPct: 80, lastPct: 80, recentPct: [80], lastAt: now },
+  }));
+  localStorage.setItem('e2e/ludaskia_activity', JSON.stringify([
+    { t: now, k: 'bilan' },
+  ]));
+})();`;
+
+/* 5. Compte inconnu (#520) : `ligneTravailHTML` OMET le segment « N fois » quand
+   `seances === null` (leçon vue seulement dans un bilan/sprint) — contrat aujourd'hui
+   vérifié côté core (« null, jamais 0 »), jamais au rendu. Sans cette assertion, un
+   « null fois » ou un « 0 fois » affiché par erreur passerait inaperçu. */
+test('compte inconnu (bilan sans ref) : la ligne apparaît SANS "fois" ni "null"', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_BILAN_SANS_REF);
+	await gotoHash(page, 'encadrant');
+
+	const b = bloc(page);
+	const ligne = b.locator('.enc-trav-item').filter({ hasText: 'Complément à 10/100/1000' });
+	// Assertion positive d'abord : la leçon est bien nommée (sinon les assertions
+	// négatives ci-dessous passeraient aussi si le bloc était vide).
+	await expect(ligne.locator('.enc-trav-lab')).toHaveText('Complément à 10/100/1000');
+	const meta = ligne.locator('.enc-trav-meta');
+	await expect(meta).not.toContainText('fois');
+	await expect(meta).not.toContainText('null');
+	// Le reste de la méta (catégorie, date) reste bien présent malgré le compte omis.
+	await expect(meta).toContainText('Calcul mental');
+	await expect(meta).toContainText("aujourd'hui");
+
+	expect(errors).toEqual([]);
+});
+
+/* Sept leçons de la MÊME matière (math-calcul-mental), horodatées en ordre décroissant
+   pour un tri déterministe : au-delà de MAX_TRAVAIL_PAR_MATIERE (6), la 7e (la plus
+   ancienne, « Table de × ») tombe dans le repli déplié. */
+const SEED_7_MEME_MATIERE = `(() => {
+  const now = Date.now();
+  const ids = [
+    'math-tables-addition', 'math-complements', 'math-doubles', 'math-moities',
+    'math-ajouter-9-19-29', 'math-soustraire-9-19-29', 'math-tables-multiplication',
+  ];
+  const stats = {};
+  ids.forEach((id, i) => {
+    stats[id + '@ce2'] = {
+      attempts: 1, correct: 8, questions: 10, bestPct: 80, lastPct: 80, recentPct: [80],
+      lastAt: now - i * 1000,
+    };
+  });
+  localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify(stats));
+})();`;
+
+/* 6. Repli au-delà de 6 lignes par matière (même idiome que les erreurs plus anciennes,
+   cf. erreurs-encadrant.spec.ts) : fermé par défaut, les lignes cachées deviennent
+   visibles au clic. On teste le COMPORTEMENT, pas le chrome CSS (partagé via le mixin
+   `repli-sum`, déjà vérifié côté styles). */
+test('repli au-delà de 6 lignes par matière : fermé par défaut, se déplie au clic', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_7_MEME_MATIERE);
+	await gotoHash(page, 'encadrant');
+
+	const b = bloc(page);
+	// Les 6 premières (les plus récentes) sont visibles d'emblée, dans la liste DIRECTE
+	// (avant le repli).
+	const listeDirecte = b.locator('ul.enc-trav-list').first();
+	await expect(listeDirecte.locator('.enc-trav-item')).toHaveCount(6);
+
+	// La 7e (la plus ancienne) est repliée : présente dans le DOM, mais cachée.
+	const plus = b.locator('.enc-trav-plus');
+	await expect(plus).toHaveCount(1);
+	const resume = plus.locator('.enc-trav-plus-sum');
+	await expect(resume).toHaveText('1 autre');
+	const itemCache = plus.locator('.enc-trav-item');
+	await expect(itemCache).toHaveCount(1);
+	await expect(itemCache).toBeHidden();
+
+	// Dépliée, elle devient lisible.
+	await resume.click();
+	await expect(itemCache).toBeVisible();
+	await expect(itemCache.locator('.enc-trav-lab')).toHaveText('Table de ×');
 
 	expect(errors).toEqual([]);
 });

@@ -110,8 +110,11 @@ la carte (avis `relecteur-accessibilite`), le texte restant en `--ink`.
 **Couverture par matière** : bloc « Couverture par matière » en tête de « Notions par
 catégorie » (`RecapMatiere`, roll-up dans `RecapProfil.parMatiere` des catégories d'une même
 matière) : « X/total travaillées · Y acquises » par matière, pour équilibrer l'entraînement
-entre matières plutôt que se focaliser sur une seule. Chaque catégorie affiche le même
-dénombrement (`RecapCategorie.travaillees`). Comptage factuel, aucune note.
+entre matières plutôt que se focaliser sur une seule. Depuis #521, la ligne porte aussi
+« N changement(s) récent(s) » (`RecapMatiere.changementsRecents`, cf. `aChangeRecemment` dans
+[Logique pure](core.md)) quand il y en a : seule trace de « ça bouge » lisible sans déplier
+une catégorie, la frise ayant rejoint les lignes de leçon (ci-dessous). Chaque catégorie
+affiche le même dénombrement (`RecapCategorie.travaillees`). Comptage factuel, aucune note.
 
 **Tendance par notion** (signal COURT TERME, pas une note) : puce ↗ « en progrès » / →
 « stable » / ↘ « à relancer » à côté de l'état, dérivée de la fenêtre glissante `recentPct`
@@ -120,25 +123,56 @@ sous 4 essais** — un signal sur trop peu de données serait du bruit lu comme 
 Formulée en action, jamais en verdict (« à relancer », jamais « en baisse ») ; couleur en
 indice **secondaire** porté par le glyphe (`aria-hidden`), mot en `--ink`, libellé `sr-only`
 (« Tendance : … ») pour les lecteurs d'écran. Reste un instantané, sans historique par
-elle-même — l'historique daté vit dans la frise d'évolution ci-dessous (#397).
+elle-même — l'historique daté vit dans la frise d'états ci-dessous (#521).
 
-## Frise d'évolution (#397)
+## Frise d'états par leçon (#521)
 
-**Frise d'évolution** par matière, sous « Notions par catégorie » : une rangée de colonnes
-hebdomadaires par matière (**12 dernières semaines**, `SEMAINES_FRISE`), hauteur = nombre de
-**notions distinctes** ayant franchi un cap (« en cours » ou « acquis ») cette semaine-là
-(`frisesParMatiere`, calculée sur le journal daté `ludaskia_paliers` / `PaliersNotion`).
-Alimentée par `recordMonteesPalier(lessonIds, now)` (`core/progress.ts`), appelé **après**
-l'écriture de l'étoile, en fin de session, par `recordLessonRun` et le sprint
-(`ui/sprint.ts`) — modèle « premier franchissement » **monotone** : une notion qui repasse
-par un palier déjà atteint ne re-loggue pas (pas d'oscillation autour du seuil). La
-dernière colonne (semaine en cours) est visuellement distinguée : partielle, non comparable
-à hauteur égale. **Masquée** tant qu'une matière n'a pas au moins **3 semaines de recul**
-depuis son premier franchissement (`PALIERS_MIN_SEMAINES`) — évite de lire « trop tôt »
-comme « aucun progrès » (avis pédago/designer) ; une amorce textuelle s'affiche si l'enfant
-a déjà travaillé la matière sans encore assez de recul. **Garde-fous** (mêmes principes que
-le reste du récap) : aucun pourcentage ni note affichés, aucune comparaison entre enfants —
-un simple compteur de notions au-dessus des barres non vides.
+**Frise d'états**, sur sa propre ligne sous le libellé de chaque leçon, dans le détail
+dépliable d'une catégorie (remplace la frise par matière de #397 : un compteur hebdomadaire
+de notions ayant franchi un cap, événement rare, laissait la plupart des colonnes à 0 et ne
+nommait aucune leçon). Douze cellules (**12 dernières semaines**, `SEMAINES_FRISE`), une par
+semaine : couleur ET hauteur portent le même rang d'état, le plus haut atteint à cette date
+(`friseNotion(paliers, firstSeen, now)`, cf. [Logique pure](core.md)) — deux canaux
+redondants, la couleur ne portant jamais seule le sens. Gris neutre dédié (`$frise-neutre`,
+distinct de `--muted` qui tombe sous le seuil 3:1 pour un objet graphique de cette taille)
+pour « à découvrir », un filet pointillé (sans hauteur) pour une semaine antérieure au suivi
+(`'inconnu'`, jamais de cellule « à renforcer », ce palier n'étant pas daté), bleu
+`--cat-bleu` pour « en cours » (**relevé en thème Nuit**, en réutilisant le bleu déjà rehaussé
+pour le graphe d'activité plutôt qu'en introduire un troisième) et vert `--ok` pour « acquis » ;
+un filet `box-shadow` sépare deux cellules contiguës (deux états voisins peuvent avoir des
+luminances proches). Ratios mesurés en commentaire dans `styles/encadrant.scss`
+(`tools/contrast/`). La dernière cellule (semaine en cours) porte en plus un contour distinct
+(`.enc-frise-courante`) : l'état qu'elle montre est déjà un fait, mais peut encore changer
+avant dimanche.
+
+**Rendu en un seul `role="img"` par ligne** (`friseNotionHTML`, `ui/encadrant-progression.ts`) :
+les douze cellules sont `aria-hidden`, l'`aria-label`/`title` porte un **récit textuel** des
+changements (« avant le suivi, puis passée en cours le 3 juin 2026, puis acquise hier ») plutôt
+que d'annoncer douze cellules une à une, dont aucune n'est focalisable. La **puce d'état**
+(pastille colorée) de la ligne est **omise** dès qu'une frise s'affiche : elle redirait, en
+plus petit, ce que la dernière cellule montre déjà (avis designer) — le **mot** d'état, lui,
+reste affiché (canal indépendant de la couleur, a11y). La méta de la ligne (« travaillée N
+fois · dernière fois … ») gagne la date du cap le **plus haut** franchi (« acquise le… » /
+« passée en cours le… ») : la trajectoire complète vit dans la frise, la méta n'en retient que
+l'événement marquant. Rien à tracer (aucun franchissement daté) → pas de frise, et la puce
+d'état n'est alors pas omise : la ligne garde sa pastille habituelle.
+
+**Signal de recul** : la frise ne redescend jamais (elle ne date que des montées) — un écart
+entre sa dernière cellule (p. ex. « acquis ») et le **mot** d'état affiché à côté (qui peut
+être retombé à « non acquis »/« à renforcer ») EST le signal à lire, sans qu'aucune cellule ne
+le désigne explicitement.
+
+**Dépliage global par matière** (`deplierHTML`) : un bouton par matière suivie (masqué s'il
+n'y en a qu'une) ouvre ou referme d'un coup toutes les catégories de cette matière, pour
+balayer plusieurs frises sans déplier catégorie par catégorie. Commande, pas un réglage
+persistant : les catégories repartent repliées à l'arrivée sur l'écran. Le handler
+`deplier-matiere` et l'événement natif `toggle` d'un `<details>` (un clic direct sur son
+`<summary>` ne passe par aucun handler — capté en CAPTURE sur `#encadrantContent`,
+`progressionToggle`, `ui/encadrant.ts`) tiennent à jour le même état de vue
+(`categoriesOuvertes`), pour que le bouton reste juste même après une ouverture manuelle.
+**Les catégories dépliées sont désormais retenues** d'un re-rendu à l'autre et réappliquées
+au rendu (comme `vueActivite`) : jusqu'ici, toute action de l'écran (épingler une leçon,
+changer de bascule…) refermait les catégories qu'on venait d'ouvrir.
 
 ## Graphe « Activité des 7 derniers jours » (#319)
 
@@ -189,8 +223,8 @@ travaillée » un jour où l'enfant n'a fait que des dictées. `kind: 'lecon' | 
 part (« N leçons et M dictées travaillées ») sans avoir à reconnaître un mot français dans
 `contexte`.
 
-**Aucun filtre de niveau** — à la différence de `frisesParMatiere` juste à côté : ce qui a
-été travaillé l'a forcément été à la portée de l'enfant, et l'écarter au prétexte du niveau
+**Aucun filtre de niveau** — à la différence des notions par catégorie (et de leur frise)
+juste à côté, scopées au niveau actif : ce qui a été travaillé l'a forcément été à la portée de l'enfant, et l'écarter au prétexte du niveau
 suivi rouvrirait le trou que ce bloc ferme (une leçon CE2 rejouée par un profil CM1,
 favori/révision/épingle, reste rangée `@ce2` par `niveauStockage`). Une leçon travaillée
 sous deux niveaux porte donc deux clés de stats : elle est **dédoublonnée par id**, avec la
@@ -511,7 +545,7 @@ courant** (position dans l'escalier d'intervalles, `libellePalier`) et son **éc
 relative** (« à réviser aujourd'hui / demain / dans N jours », « en retard de N jours »,
 `libelleEcheanceRevision`) — jamais de date brute, dans l'esprit du reste du récap. Une
 entrée ayant atteint le palier maximal reste affichée, avec un badge « acquis » plutôt que
-masquée (elle compte pour la couverture). **Même filtre que la frise d'évolution** : seules
+masquée (elle compte pour la couverture). **Même filtre que la frise d'états** : seules
 les entrées du **niveau actif de la matière** (`niveauProfilMatiere`) sont montrées, pour ne
 pas afficher de fantôme d'un ancien niveau après un changement de classe.
 

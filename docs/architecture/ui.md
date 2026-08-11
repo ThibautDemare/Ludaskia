@@ -81,16 +81,17 @@ ci-dessous.
   chiffres-clés, graphe d'activité 7 jours (#319, bascule Total / Par type —
   composant segment partagé, cf. `segment.ts` plus bas), le bloc **« Travaillé
   récemment »** (#520 — module dédié `encadrant-travail.ts` ci-dessous), maîtrise par
-  catégorie (avec sa **frise d'évolution hebdomadaire par
-  matière**, #397 — barres-capsules `--ok`, compteur de notions au-dessus des
-  semaines non vides, semaine en cours distinguée, sans axe ni pourcentage),
-  **historique des erreurs récentes** (#391, filtrable par période #476, cf.
+  catégorie (chaque leçon du détail dépliable portant désormais sa **frise d'états sur 12
+  semaines**, #521 — un seul `role="img"` par ligne, puce d'état omise sur ces lignes,
+  dépliage global par matière), **historique des erreurs récentes** (#391, filtrable par
+  période #476, cf.
   `encadrant-erreurs.ts` ci-dessous), et le bloc **« Dictées »** (#424 — listes de
   dictée d'orthographe, échelle à 3 niveaux) qui porte depuis #496 une **bascule
   « Listes » / « Mots »** : le volet Listes reste ici (`listesOrthoProfil`), le volet
   Mots (la banque du profil, recherche + suppression) est délégué au module dédié
-  `encadrant-banque.ts` ci-dessous ; handlers `activite-mode`/`epingler`/
-  `imprimer`/`dictees-vue`, plus `erreurs-periode` (délégué à `erreursClick`, exporté par
+  `encadrant-banque.ts` ci-dessous ; handlers `activite-mode`/`epingler`/`imprimer`/
+  `dictees-vue`/`deplier-matiere` (#521, dépliage global des catégories d'une matière — cf.
+  [Espace encadrant](espace-encadrant.md)), plus `erreurs-periode` (délégué à `erreursClick`, exporté par
   `encadrant-erreurs.ts`), `travail-periode` (délégué à `travailClick`, exporté par
   `encadrant-travail.ts`) et les actions `banque-*` (délégué à `banqueClick`/`banqueInput`,
   exportées par `encadrant-banque.ts` — même raison : c'est cette section qui compose leur

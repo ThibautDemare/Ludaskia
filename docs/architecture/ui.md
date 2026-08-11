@@ -167,6 +167,13 @@ ci-dessous.
   rendu déclenche aussi le **désépinglage automatique** (#465,
   `purgeRevoirSolides`, cf. [Logique pure](core.md)) : les entrées redevenues solides
   sont retirées de la file **persistée**, pas seulement filtrées à l'affichage.
+  **Cède le pas à « Ta prochaine leçon » (#516)** : `renderARevoir` évite la tête de
+  file quand elle est aussi la leçon du jour, tant qu'une autre entrée épinglée reste
+  disponible (`core/accueil-propositions.ts:choisirARevoir`), et **renvoie l'id de la
+  leçon retenue** (`null` si carte masquée ou entrée de dictée) pour que l'appelant
+  (`render.ts`) le transmette à l'autre carte. Le défilement (« Voir une autre leçon »)
+  n'est volontairement **pas** dédupliqué : la file épinglée est courte et entièrement
+  voulue par l'encadrant, en faire le tour doit tout montrer.
 
 **Composant segment partagé** — `segment.ts` (hors des sections ci-dessus, consommé par
 cinq d'entre elles) : `segmentHTML(config)` rend un groupe de boutons **choix exclusif**
@@ -284,8 +291,10 @@ pure](core.md)) pour les formats composites :
 ## Accueil, navigation & catalogue
 
 - **`render.ts`** — rendus accueil/sélecteur/profils (`renderHomeStats` — qui
-  appelle aussi `renderLeconDuJour` (#208) et `renderProgrammeCard` (carte
-  « programme du jour », #440) — et favoris, badge **niveau + barre** dans
+  rend `renderARevoir` **avant** `renderLeconDuJour` (#208) et lui passe son résultat,
+  pour que les deux cartes se dédupliquent (#516, cf.
+  `core/accueil-propositions.ts` dans [Logique pure](core.md)) — appelle aussi
+  `renderProgrammeCard` (carte « programme du jour », #440) — et favoris, badge **niveau + barre** dans
   `renderToolbarProfile`, carte de progression `renderProgression` (sa bulle de
   mascotte porte le **défi du jour** : invitation, puis félicitations une fois
   accompli), `renderObjectives`, `renderLessons` + `lessonCardHTML` réutilisable,
@@ -336,6 +345,14 @@ pure](core.md)) pour les formats composites :
   (→ `startLecon`/`startRevisionEspacee`) via un listener posé **une seule fois** sur l'élément
   persistant ; l'état (leçon courante, mode) vit dans ses `data-*`, le contournement est
   **éphémère** (revenir sur l'accueil ré-affiche la vraie leçon du jour).
+  **Cède à son tour (#516)** quand « À revoir » n'a pas pu éviter la leçon du jour (une
+  seule entrée épinglée, et c'est elle) : `renderLeconDuJour` accepte un 3ᵉ paramètre
+  `eviterId`, mémorisé sur l'élément en `data-eviter` (le défilement, lui, repasse par
+  `cibleId` et perdrait sinon l'évitement), et avance d'un cran dans le fil
+  (`core/accueil-propositions.ts:choisirProchaineLecon`) — jamais de carte vidée, repli
+  sur la tête du fil si tout est à éviter. « Voir une autre leçon » saute à son tour la
+  leçon déjà proposée par « À revoir » (le saut est abandonné s'il ne mène nulle part).
+  Arbitrage complet dans `core/accueil-propositions.ts`, cf. [Logique pure](core.md).
 - **`eggs.ts`** (#331) — **rendu et déclencheurs** des easter eggs (logique pure dans
   `core/eggs.ts`). Tous ancrés sur l'**accueil**, jamais pendant un exercice / sprint /
   saisie : egg A « chatouiller la mascotte » (`initEggs` pose un listener délégué sur

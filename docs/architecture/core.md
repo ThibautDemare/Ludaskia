@@ -547,6 +547,25 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   épuisement de son programme (#484). `leconSuivante` = contournement « voir une autre
   leçon » (jamais de mur). Reste **distinct** de la révision espacée (avancer vers le
   neuf ↔ entretenir l'acquis) et du défi du jour.
+- **`accueil-propositions.ts`** (#516) — arbitrage **pur** qui déduplique les deux
+  cartes « à faire » de l'accueil, rendues indépendamment mais capables de proposer
+  la MÊME leçon (une entrée épinglée « à revoir » n'est montrée que tant que la notion
+  est faible, donc encore présente dans le fil de `lecon-du-jour.ts`, dont elle peut
+  très bien être la tête). Deux sélecteurs, dans l'ordre où ils s'appliquent :
+  **`choisirARevoir(entrees, leconDuJourId, cibleId?)`** (consommé par
+  `ui/a-revoir-card.ts`) renvoie la première entrée qui n'est **pas** la leçon du jour
+  (repli sur la tête de file si aucune alternative ; `cibleId` — bouton « voir une
+  autre » — force une entrée et court-circuite la règle) ; **`choisirProchaineLecon(sequence,
+  eviterId)`** (consommé par `ui/lecon-du-jour.ts`) renvoie la première leçon du fil qui
+  n'est pas `eviterId` (même repli). « À revoir » cède donc la première (ses entrées sont
+  toutes des consignes de l'encadrant, aucune ne prime) ; « Ta prochaine leçon » n'avance
+  que si « À revoir » n'a pas pu céder (une seule entrée épinglée, et c'est la leçon du
+  jour). Le doublon ne subsiste que si l'épingle est aussi la DERNIÈRE leçon restante du
+  fil : mieux vaut le doublon qu'une carte qui félicite l'enfant d'avoir « fait le tour »
+  alors qu'il lui reste cette leçon. Seules les entrées `kind === 'lecon'` peuvent entrer
+  en collision (une liste de dictée `kind === 'ortho'` n'est pas dans le catalogue, son id
+  ne se compare pas à une leçon). Les deux sélecteurs vivent ici plutôt que dans chacune
+  des deux cartes, pour que l'arbitrage s'énonce en un seul endroit.
 - **`report-lecon.ts`** (#485) — socle **pur** (sans stockage, même rôle que
   `maitrise.ts`) de l'avancement/report ci-dessus. `EtatReport {jours, dernierJour,
   reporteLe, reprendreLe, meilleurPct}` : une entrée par leçon, créée au 1er essai en

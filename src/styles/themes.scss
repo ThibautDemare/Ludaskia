@@ -160,6 +160,13 @@
 	.enc-act-dictee {
 		--k: #e87bb5;
 	}
+	/* Frise d'états par leçon (#521) : même problème que ci-dessus, les cellules sont des
+	   FONDS posés sur --paper Nuit. Le bleu « en cours » (--cat-bleu, non réécrit par ce
+	   thème) y tombe à ~2,8:1 → on reprend le bleu déjà relevé pour le graphe d'activité,
+	   plutôt que d'en introduire un troisième. Vert « acquis » et gris neutre restent ≥ 3:1. */
+	.enc-frise-en-cours {
+		background: #6ea6ee;
+	}
 	/* Couleurs de famille employées comme TEXTE (catalogue) : rehaussées (WCAG AA)
 	   pour le fond sombre, sans toucher le token (gardé lisible en fond de bouton). */
 	.cat-action-secondary[data-act='custom'] {

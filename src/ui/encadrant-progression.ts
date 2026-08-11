@@ -17,7 +17,7 @@ import {
 	niveauProfilMatiere,
 	echelleActivite,
 	libelleDerniereFois,
-	debutSemaine,
+	lundiDecale,
 	orthoRevoirId,
 	listesOrthoProfil,
 	dicteesProposees,
@@ -30,7 +30,8 @@ import {
 	type NiveauNotion,
 	type TendanceNotion,
 	type JourActivite,
-	type FriseMatiere,
+	type CelluleFrise,
+	type FriseNotion,
 } from '../core/encadrant-stats';
 import { getAllLessons, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
 import { BLOCAGES_SIGNAL_ADULTE } from '../core/report-lecon';
@@ -261,25 +262,45 @@ function maitriseHTML(recap: RecapProfil): string {
 			? `<span class="enc-seg-part enc-key-${n}" style="flex:${v}" title="${v} ${MOT_NIVEAU[n]}"></span>`
 			: '';
 	// Détail d'une catégorie : une ligne par leçon (puce d'état + libellé + suivi
-	// « travaillée N fois · dernière fois … » + mot + actions : épingler/retirer +
-	// imprimer une fiche + imprimer avec corrigé).
+	// « travaillée N fois · dernière fois … · acquise le … » + mot + frise d'états + actions :
+	// épingler/retirer + imprimer une fiche + imprimer avec corrigé).
 	const now = Date.now();
 	const detail = (c: RecapProfil['parCategorie'][number]) =>
 		c.lecons
 			.map((l) => {
 				const quand = libelleDerniereFois(l.derniereFois, now);
-				const suivi =
-					l.vues > 0
-						? `travaillée ${l.vues} fois${quand ? ` · dernière fois ${quand}` : ''}`
-						: 'pas encore travaillée';
+				// Date du cap le PLUS HAUT franchi (#521) : la trajectoire complète est dans la
+				// frise, la méta n'en retient que l'événement marquant, sinon la ligne s'allonge
+				// sans rien apprendre (avis designer).
+				const franchi =
+					l.frise?.acquisDepuis != null
+						? `acquise ${libelleDerniereFois(l.frise.acquisDepuis, now)}`
+						: l.frise?.enCoursDepuis != null
+							? `passée en cours ${libelleDerniereFois(l.frise.enCoursDepuis, now)}`
+							: '';
+				const suivi = [
+					l.vues > 0 ? `travaillée ${l.vues} fois` : 'pas encore travaillée',
+					l.vues > 0 && quand ? `dernière fois ${quand}` : '',
+					franchi,
+				]
+					.filter(Boolean)
+					.join(' · ');
+				// Puce d'état OMISE quand la frise est là : sa dernière cellule dit déjà l'état,
+				// en plus grand et avec la hauteur comme second indice — trois expressions de la
+				// même chose sur une ligne, c'en était une de trop (avis designer). Le MOT, lui,
+				// reste : c'est le canal qui ne dépend pas de la couleur (a11y).
+				const puce = l.frise
+					? ''
+					: `<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
 				return `<li class="enc-detail-item">
-          <span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>
+          ${puce}
           <span class="enc-detail-main">
             <span class="enc-detail-lab">${escapeHTML(l.label)}</span>
             <span class="enc-detail-meta">${suivi}</span>
           </span>
           <span class="enc-detail-mot"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[l.niveau]}</span>
           ${tendanceHTML(l.tendance)}
+          ${friseNotionHTML(l.frise, now)}
           <span class="enc-actions">
             <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${l.lessonId}">${l.epingle ? 'Retirer' : 'Épingler'}</button>
             ${boutonsImpression(l.lessonId, l.label)}
@@ -287,9 +308,10 @@ function maitriseHTML(recap: RecapProfil): string {
         </li>`;
 			})
 			.join('');
+	// `data-subject` : cible du dépliage global par matière (cf. deplierHTML / handler).
 	const cats = recap.parCategorie
 		.map(
-			(c) => `<details class="enc-cat-d">
+			(c) => `<details class="enc-cat-d" data-subject="${c.subject}">
         <summary class="enc-cat-sum">
           <span class="enc-cat-lab">${escapeHTML(c.label)}</span>
           <span class="enc-cat-counts">${c.travaillees}/${c.total} travaillée${c.travaillees > 1 ? 's' : ''} · ${c.acquis} acquise${c.acquis > 1 ? 's' : ''}</span>
@@ -302,93 +324,114 @@ function maitriseHTML(recap: RecapProfil): string {
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon('star')} Notions par catégorie</h3>
       ${matieresHTML(recap)}
-      ${frisesHTML(recap)}
       <p class="enc-legend">${legende}</p>
-      <p class="enc-hint">C'est normal qu'il reste des notions « à découvrir » ou « à renforcer » : ce sont celles qui n'ont pas encore été beaucoup travaillées. Dépliez une catégorie pour voir le détail et épingler une leçon. Les leçons épinglées se retrouvent dans l'onglet Programme.</p>
+      <p class="enc-hint">C'est normal qu'il reste des notions « à découvrir » ou « à renforcer » : ce sont celles qui n'ont pas encore été beaucoup travaillées. Dépliez une catégorie pour voir le détail, la frise des dernières semaines et épingler une leçon. Les leçons épinglées se retrouvent dans l'onglet Programme.</p>
+      ${deplierHTML(recap)}
       <div class="enc-cats">${cats}</div>
+    </div>`;
+}
+
+/* Dépliage GLOBAL par matière : ouvrir d'un coup toutes les catégories de maths ou de
+   français, pour balayer les frises de plusieurs leçons sans cliquer catégorie par catégorie.
+   Les catégories restent repliées à l'arrivée (on ne surcharge pas l'écran de quelqu'un venu
+   voir autre chose) — c'est une commande, pas un réglage persistant. Une seule matière suivie
+   → pas de bascule (elle n'aurait rien à trancher). */
+function deplierHTML(recap: RecapProfil): string {
+	if (recap.parMatiere.length < 2) return '';
+	// Le libellé visuel n'est que le nom de la matière (la mention « Tout déplier » est portée
+	// une fois pour le groupe) : le nom ACCESSIBLE doit donc être complet, et CONTENIR le
+	// libellé visible (SC 2.5.3) — sans quoi un bouton annoncé « Mathématiques » ne dit pas ce
+	// qu'il fait. Même parade que les boutons « Épingler » de la file à revoir.
+	const btns = recap.parMatiere
+		.map(
+			(m) =>
+				`<button type="button" class="enc-btn-sec" data-act="deplier-matiere" data-subject="${m.subject}" aria-expanded="false" aria-label="${escapeHTML(`Tout déplier : ${m.label}`)}">${escapeHTML(m.label)}</button>`,
+		)
+		.join('');
+	return `<div class="enc-deplier">
+      <span class="enc-deplier-lab" aria-hidden="true">Tout déplier :</span>
+      ${btns}
     </div>`;
 }
 
 /* Vue « couverture par matière » : combien de leçons ont déjà été abordées (et acquises)
    sur le total du niveau, matière par matière. Aide à ÉQUILIBRER l'entraînement entre
-   matières. Factuel (dénombrement), sans note ni pourcentage. */
+   matières. Factuel (dénombrement), sans note ni pourcentage.
+   Depuis #521, la ligne porte aussi le nombre de leçons ayant franchi un cap récemment : la
+   frise d'états ayant rejoint les lignes de leçon, c'est la seule trace de « ça bouge » qui
+   reste visible SANS déplier une catégorie. Un total, pas un palmarès : aucune leçon n'est
+   nommée ni mise en avant ici. */
 function matieresHTML(recap: RecapProfil): string {
 	if (recap.parMatiere.length === 0) return '';
 	const items = recap.parMatiere
-		.map(
-			(m) => `<li class="enc-mat-item">
+		.map((m) => {
+			const compteurs = [
+				`${m.travaillees}/${m.total} travaillée${m.travaillees > 1 ? 's' : ''}`,
+				`${m.acquis} acquise${m.acquis > 1 ? 's' : ''}`,
+				m.changementsRecents > 0
+					? `${m.changementsRecents} changement${m.changementsRecents > 1 ? 's' : ''} récent${m.changementsRecents > 1 ? 's' : ''}`
+					: '',
+			].filter(Boolean);
+			return `<li class="enc-mat-item">
         <span class="enc-mat-lab">${escapeHTML(m.label)}</span>
-        <span class="enc-mat-counts">${m.travaillees}/${m.total} travaillée${m.travaillees > 1 ? 's' : ''} · ${m.acquis} acquise${m.acquis > 1 ? 's' : ''}</span>
-      </li>`,
-		)
+        <span class="enc-mat-counts">${compteurs.join(' · ')}</span>
+      </li>`;
+		})
 		.join('');
 	return `<h4 class="enc-sub-lab">Couverture par matière</h4>
       <ul class="enc-mat-list">${items}</ul>`;
 }
 
-/* Frise d'évolution par matière (#397) : petites frises hebdomadaires empilées (une par
-   matière), hauteur = notions ayant franchi un cap cette semaine-là. Sans axe ni pourcentage :
-   juste un compteur de notions au-dessus des barres non nulles (dénombrement, pas une note).
-   Rendu volontairement plus léger que le graphe d'activité (capsules vertes, pas d'axe) pour
-   ne pas être lue comme « le même graphe ». La semaine EN COURS (dernière colonne) est
-   distinguée : partielle, donc non comparable à hauteur égale. Masquée tant qu'aucune matière
-   n'a assez de recul ; amorce textuelle si l'entraînement a commencé mais pas encore assez. */
-function frisesHTML(recap: RecapProfil): string {
-	if (recap.frises.length === 0) {
-		// Rien à tracer ; si l'enfant a déjà travaillé, on annonce que la vue viendra.
-		return recap.parMatiere.some((m) => m.travaillees > 0)
-			? `<h4 class="enc-sub-lab">Évolution récente</h4>
-         <p class="enc-hint">L'évolution par matière apparaîtra ici après quelques semaines d'entraînement.</p>`
-			: '';
-	}
-	// Échelle verticale COMMUNE aux matières (petits multiples comparables entre eux).
-	const maxSem = Math.max(1, ...recap.frises.flatMap((f) => f.semaines));
-	const lundiCourant = debutSemaine(Date.now());
-	const frises = recap.frises.map((f) => friseMatiereHTML(f, maxSem, lundiCourant)).join('');
-	const nbSemaines = recap.frises[0].semaines.length;
-	// Synthèse VISIBLE (pas seulement dans les aria-label des colonnes) : donne le total par
-	// matière d'un coup d'œil, sans devoir parcourir les 12 colonnes (a11y, cf. graphe d'activité).
-	const synthese = recap.frises.map((f) => `${f.total} en ${f.label.toLowerCase()}`).join(', ');
-	return `<h4 class="enc-sub-lab">Évolution récente</h4>
-      <p class="enc-hint">Notions ayant franchi un cap sur les ${nbSemaines} dernières semaines : ${synthese}.</p>
-      <div class="enc-evol">${frises}</div>
-      <p class="enc-evol-cap" aria-hidden="true"><span>sur les ${nbSemaines} dernières semaines</span><span>cette semaine →</span></p>
-      <p class="enc-hint">Chaque marche est une notion qui a franchi un cap (par exemple « en cours » → « acquis »). Une semaine plus calme ne veut pas dire une semaine sans travail : la progression n'est pas régulière.</p>`;
-}
+/* Mot de chaque cellule de frise, pour le libellé accessible. Les trois états repris de
+   l'échelle d'acquisition gardent SES mots (le parent les a déjà appris ailleurs sur l'écran) ;
+   'inconnu' n'en fait pas partie — ce n'est pas un rang, c'est l'absence de donnée. */
+const MOT_CELLULE: Record<CelluleFrise, string> = {
+	inconnu: 'pas encore suivie',
+	'a-decouvrir': MOT_NIVEAU['a-decouvrir'],
+	'en-cours': MOT_NIVEAU['en-cours'],
+	acquis: MOT_NIVEAU.acquis,
+};
 
-/* Une mini-frise (une matière) : libellé + rangée de colonnes hebdomadaires. Chaque colonne
-   réserve toujours l'espace du compteur au-dessus (aligne les barres), puis la barre-capsule
-   dont la hauteur est proportionnelle au max COMMUN. Colonne vide → amorce grise neutre
-   (jamais un trou, jamais un « 0 »). `role="img"` + libellé daté, comme le graphe d'activité. */
-function friseMatiereHTML(f: FriseMatiere, maxSem: number, lundiCourant: number): string {
+/* Frise d'états d'UNE leçon (#521), sur sa propre ligne pleine largeur sous le libellé :
+   une cellule par semaine, couleur = état atteint, HAUTEUR = rang de l'état (second indice,
+   la couleur ne portant jamais seule le sens). Remplace le compteur hebdomadaire par matière
+   de #397, qui ne disait ni où l'enfant progresse ni où il stagne.
+   Colonnes ÉLASTIQUES (`flex: 1`, barre plafonnée) et non à pas fixe : la frise s'adapte à la
+   largeur disponible sans jamais déborder, y compris sur un téléphone étroit.
+   Un seul `role="img"` pour toute la rangée, portant le récit des changements : douze cellules
+   annoncées une à une seraient interminables, et rien n'y est focalisable. La méta de la ligne
+   dit déjà, en texte visible, la date du cap le plus haut.
+   Rien à tracer (aucun franchissement daté) → rien du tout, pas de rangée vide ni de mention
+   d'absence : ça ferait du bruit sur les lignes jamais travaillées, qui sont la majorité. */
+function friseNotionHTML(f: FriseNotion | null, now: number): string {
+	if (!f) return '';
 	const n = f.semaines.length;
-	const cols = f.semaines
-		.map((c, i) => {
-			const enCours = i === n - 1;
-			const lundi = lundiCourant - (n - 1 - i) * 7 * 86400000;
-			const quand = enCours
-				? 'Cette semaine (en cours)'
-				: `Semaine du ${new Date(lundi).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`;
-			const combien =
-				c > 0
-					? `${c} notion${c > 1 ? 's' : ''} ${c > 1 ? 'ont' : 'a'} franchi un cap`
-					: "aucune notion n'a franchi de cap";
-			const aria = `${quand} : ${combien}`;
-			const h = Math.round((c / maxSem) * 100);
-			// `role="img"` + aria-label portent toute l'info → on masque le sous-arbre visuel
-			// (compteur + plot) pour éviter une double annonce selon les couples navigateur/AT.
-			return `<span class="enc-evol-col${enCours ? ' en-cours' : ''}${c > 0 ? ' has-value' : ''}" role="img" aria-label="${aria}" title="${aria}">
-        <span class="enc-evol-num" aria-hidden="true">${c > 0 ? c : ''}</span>
-        <span class="enc-evol-plot" aria-hidden="true"><span class="enc-evol-bar" style="height:${h}%"></span></span>
-      </span>`;
+	// Datation via `lundiDecale` (core) : le MÊME découpage en semaines calendaires que celui
+	// qui a rempli les cellules, changement d'heure compris. Un calcul parallèle ici pourrait
+	// annoncer une date d'une semaine décalée par rapport à la cellule qu'elle décrit.
+	const dateSemaine = (i: number) =>
+		new Date(lundiDecale(now, n - 1 - i)).toLocaleDateString('fr-FR', {
+			day: 'numeric',
+			month: 'long',
+		});
+	// Récit par CHANGEMENT d'état, pas par semaine : le premier segment n'est pas daté (c'est
+	// le début de la fenêtre), les suivants portent la semaine où l'état change.
+	const segments = f.semaines
+		.map((etat, i) => ({ etat, i }))
+		.filter((s, i, tous) => i === 0 || s.etat !== tous[i - 1].etat)
+		.map((s, k) =>
+			k === 0 ? MOT_CELLULE[s.etat] : `${MOT_CELLULE[s.etat]} à partir du ${dateSemaine(s.i)}`,
+		);
+	const aria = `Évolution sur les ${n} dernières semaines : ${segments.join(', puis ')}.`;
+	const cells = f.semaines
+		.map((etat, i) => {
+			const derniere = i === n - 1;
+			return `<span class="enc-frise-cell enc-frise-${etat}${derniere ? ' en-cours' : ''}"></span>`;
 		})
 		.join('');
-	// role="group" + aria-label : rattache les colonnes à leur matière pour une navigation
-	// NON linéaire (saut de graphique en graphique) ; le libellé visuel devient décoratif.
-	return `<div class="enc-evol-mat" role="group" aria-label="${escapeHTML(f.label)}">
-      <span class="enc-evol-mat-lab" aria-hidden="true">${escapeHTML(f.label)}</span>
-      <div class="enc-evol-bars">${cols}</div>
-    </div>`;
+	return `<span class="enc-frise" role="img" aria-label="${escapeHTML(aria)}" title="${escapeHTML(aria)}">
+      <span class="enc-frise-cells" aria-hidden="true">${cells}</span>
+    </span>`;
 }
 
 /* ---------- Bloc « Listes de dictée » ----------
@@ -720,6 +763,25 @@ export function progressionClick(act: string, el: HTMLElement): boolean {
 				preventScroll: true,
 			});
 			return true;
+		case 'deplier-matiere': {
+			const subject = el.dataset.subject;
+			const cibles = subject
+				? [
+						...(container()?.querySelectorAll<HTMLDetailsElement>(
+							`.enc-cat-d[data-subject="${CSS.escape(subject)}"]`,
+						) ?? []),
+					]
+				: [];
+			if (!cibles.length) return true;
+			// Manipulation DOM DIRECTE, sans `renderEspace` : l'ouverture des `<details>` n'est pas
+			// mémorisée, donc un re-rendu refermerait tout ce que l'adulte a déjà ouvert à la main.
+			// Bascule : on referme seulement si TOUT est déjà ouvert, sinon on ouvre le reste.
+			const ouvrir = !cibles.every((d) => d.open);
+			for (const d of cibles) d.open = ouvrir;
+			el.setAttribute('aria-expanded', String(ouvrir));
+			el.classList.toggle('on', ouvrir);
+			return true;
+		}
 		case 'epingler': {
 			const uuid = consulteUuid();
 			const entryId = el.dataset.lesson;

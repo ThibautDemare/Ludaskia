@@ -996,98 +996,90 @@ $plot-h: 140px;
 	color: var(--grey);
 }
 
-/* ---------- Frise d'évolution par matière (paliers franchis, #397) ----------
-   Indicateur SECONDAIRE, volontairement plus léger que le graphe d'activité : capsules
-   vertes (--ok = « progrès de maîtrise », distinct du bleu « effort » du graphe d'activité),
-   sans axe ni lignes de repère. Une frise par matière, empilées (petits multiples). */
-.enc-evol {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
-	margin: 0.2rem 0 0.2rem;
+/* ---------- Frise d'états d'une leçon (#521) ----------
+   Une cellule par semaine dans la ligne de leçon (`.enc-detail-item`) : couleur = état
+   atteint, HAUTEUR = rang de cet état. Deux canaux redondants, la couleur ne portant jamais
+   seule le sens (a11y) — utile ici parce qu'AUCUNE paire de couleurs d'état voisines
+   n'atteint 3:1 entre elles, dans aucun des deux thèmes.
+   Remplace la frise par matière de #397 (capsules comptant les franchissements) : mesurer un
+   événement rare par colonnes hebdomadaires laissait la plupart des colonnes à 0, sans dire
+   quelle leçon bougeait. Colonnes ÉLASTIQUES (comme l'ancienne) : s'adapte à la largeur. */
+.enc-frise {
+	flex-basis: 100%; /* tombe sur sa propre ligne, sous le libellé et le mot d'état */
+	display: block;
+	margin: 0.1rem 0 0.1rem;
 }
-.enc-evol-mat {
-	display: flex;
-	flex-direction: column; /* libellé au-dessus (les noms de matière sont longs) */
-	gap: 0.2rem;
-}
-.enc-evol-mat-lab {
-	font-size: 0.82rem;
-	font-weight: 700;
-	color: var(--grey);
-}
-.enc-evol-bars {
+.enc-frise-cells {
 	display: flex;
 	align-items: flex-end;
-	gap: 0.25rem;
-	height: 48px; /* petit (vs $plot-h:140px du graphe d'activité) : widget secondaire */
+	gap: 2px;
+	height: 22px; /* 4 rangs de hauteur distinguables sans peser dans la ligne */
 }
-.enc-evol-col {
+/* Gris NEUTRE dédié, repris de l'ancienne frise : assez contrasté sur --paper dans les DEUX
+   thèmes (≥ 3:1, WCAG 1.4.11), là où --muted (couleur de l'état « à découvrir ») tombe à
+   ~2,6:1 sur fond clair. Correction LOCALE à ce widget : ailleurs sur l'écran, cette couleur
+   n'est qu'une petite pastille accompagnée de son mot, donc hors du seuil des objets
+   graphiques porteurs de sens. */
+$frise-neutre: #7c8494;
+.enc-frise-cell {
 	flex: 1;
 	min-width: 0;
+	max-width: 14px; /* plafond de lisibilité : au-delà, la cellule devient un pavé */
+	border-radius: 2px;
+	background: $frise-neutre;
+}
+/* Rangs. « à renforcer » n'apparaît jamais : ce palier n'est pas daté (cf. friseNotion). */
+.enc-frise-a-decouvrir {
+	height: 30%;
+}
+.enc-frise-en-cours {
+	height: 65%;
+	background: var(--cat-bleu);
+}
+.enc-frise-acquis {
+	height: 100%;
+	background: var(--ok);
+}
+/* Semaine ANTÉRIEURE au suivi : pas un rang, une absence de donnée. Ni hauteur (elle
+   affirmerait un niveau) ni aplat (il se confondrait avec « à découvrir ») — un filet
+   pointillé au ras de la ligne de base, doublé du mot « pas encore suivie » dans le
+   libellé accessible. */
+.enc-frise-inconnu {
+	height: 3px;
+	border-radius: 0;
+	background: repeating-linear-gradient(
+		90deg,
+		$frise-neutre,
+		$frise-neutre 2px,
+		transparent 2px,
+		transparent 4px
+	);
+}
+/* Semaine EN COURS : contour, pas un motif de remplissage — l'état atteint à ce jour EST un
+   fait (contrairement au COMPTE partiel de l'ancienne frise), on signale seulement qu'il peut
+   encore changer d'ici dimanche. */
+.enc-frise-cell.en-cours {
+	outline: 1px solid var(--grey);
+	outline-offset: 1px;
+}
+/* Filet de séparation entre cellules voisines, comme .enc-seg-bar : deux états contigus
+   peuvent avoir des luminances très proches (en cours / acquis en thème Nuit, ~2,7:1). */
+.enc-frise-cell + .enc-frise-cell {
+	box-shadow: -1px 0 0 var(--paper);
+}
+
+/* Dépliage global par matière (#521) : ouvrir d'un coup toutes les catégories d'une matière
+   pour balayer plusieurs frises. Commande, pas réglage — rien n'est persisté. */
+.enc-deplier {
 	display: flex;
-	flex-direction: column;
+	flex-wrap: wrap;
 	align-items: center;
+	gap: 0.4rem;
+	margin: 0 0 0.6rem;
 }
-/* Compteur : toujours présent (vide si 0) pour réserver l'espace et aligner les barres.
-   En --grey (neutre) : la couleur « progrès » est portée par la barre, pas par le chiffre. */
-.enc-evol-num {
-	height: 0.95rem;
-	line-height: 0.95rem;
-	font-size: 0.7rem;
-	font-weight: 800;
+.enc-deplier-lab {
+	font-size: 0.8rem;
 	color: var(--grey);
-}
-.enc-evol-plot {
-	flex: 1;
-	width: 100%;
-	display: flex;
-	align-items: flex-end;
-	justify-content: center;
-}
-/* Amorce des semaines sans franchissement : gris NEUTRE dédié (jamais --ko/--warn). Assez
-   contrasté sur --paper pour rester visible (WCAG 1.4.11, ≥ 3:1 en clair ET en Nuit) — le
-   token --track, pensé pour --page-bg, y est quasi invisible (~1,2:1). Valeur unique dans
-   les deux thèmes, sur le modèle de .enc-act-inconnu. */
-$evol-amorce: #7c8494;
-.enc-evol-bar {
-	width: 100%;
-	max-width: 14px;
-	min-height: 5px; /* amorce visible même à 0 (jamais de trou) */
-	border-radius: 999px; /* capsule (≠ rectangle à coins arrondis du graphe d'activité) */
-	background: $evol-amorce;
-}
-.enc-evol-col.has-value .enc-evol-bar {
-	background: var(--ok); /* vert « progrès » uniquement si ≥ 1 franchissement */
-}
-/* Semaine EN COURS (partielle) : motif HACHURÉ (indice de FORME, pas seulement de couleur)
-   → « pas encore comparable » aux semaines closes. Distinct de l'amorce pleine même quand la
-   semaine est vide (on ne retombe PAS sur du plein, sinon le signal « en cours » disparaît).
-   Redoublé par le libellé « (en cours) » du aria-label. */
-.enc-evol-col.en-cours .enc-evol-bar {
-	background: repeating-linear-gradient(
-		45deg,
-		$evol-amorce,
-		$evol-amorce 3px,
-		var(--paper) 3px,
-		var(--paper) 6px
-	);
-}
-.enc-evol-col.en-cours.has-value .enc-evol-bar {
-	background: repeating-linear-gradient(
-		45deg,
-		var(--ok),
-		var(--ok) 3px,
-		var(--paper) 3px,
-		var(--paper) 6px
-	);
-}
-.enc-evol-cap {
-	display: flex;
-	justify-content: space-between;
-	font-size: 0.7rem;
-	color: var(--muted);
-	margin: 0.1rem 0 0;
 }
 
 .enc-cats {

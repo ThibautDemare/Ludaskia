@@ -87,8 +87,7 @@ export type { NiveauNotion, TendanceNotion } from './maitrise';
    (L'échelle de maîtrise et ses seuils — SEUIL_NON_ACQUIS, tendance — vivent dans maitrise.ts.) */
 const RECENT_FENETRE_NOUVELLES_MS = 30 * 86400000; // « notions maîtrisées récemment » : 30 jours
 const JOURS_ACTIVITE = 7; // graphe d'activité : 7 derniers jours
-const SEMAINES_FRISE = 12; // frise d'évolution (#397) : 12 dernières semaines (au-delà, le contenu a souvent changé)
-const PALIERS_MIN_SEMAINES = 3; // frise masquée tant que la matière a moins de recul (avis pédago/designer)
+const SEMAINES_FRISE = 12; // frise d'états par leçon (#521) : 12 dernières semaines (au-delà, le contenu a souvent changé)
 
 /* ---------- File « à revoir » (suggestions de l'encadrant) ----------
    IDs de leçons épinglées par l'encadrant ; rendues comme une carte sur l'accueil
@@ -188,6 +187,9 @@ export interface RecapMatiere {
 	travaillees: number; // leçons abordées dans la matière
 	acquis: number; // leçons acquises (étoilées) dans la matière
 	total: number; // leçons du périmètre (niveau du profil) dans la matière
+	/** Leçons ayant franchi un cap dans la fenêtre de la frise (#521, cf. aChangeRecemment).
+	    Seule trace de « ça bouge » lisible sans déplier une catégorie. */
+	changementsRecents: number;
 }
 export interface RecapNotion {
 	lessonId: string;
@@ -201,6 +203,9 @@ export interface RecapNotion {
 	/** Nombre de JOURS où l'enfant a buté sur cette leçon dans la leçon du jour (#485) —
 	    le 1er ne reporte rien, les suivants la mettent de côté. 0 = jamais butée. */
 	blocages: number;
+	/** Trajectoire d'états semaine par semaine (#521, cf. friseNotion) ; `null` quand aucun
+	    franchissement n'est daté, donc qu'il n'y a rien à tracer. */
+	frise: FriseNotion | null;
 }
 export interface RecapProfil {
 	uuid: string;
@@ -211,7 +216,6 @@ export interface RecapProfil {
 	nouvellesRecentes: number; // notions maîtrisées dont la 1re rencontre date de < 30 j
 	aRevoir: RecapNotion[]; // notions faibles (perf récente < 70 %), triées, UI cape à 3
 	activite7j: JourActivite[]; // activité par jour, 7 derniers (index 6 = aujourd'hui), avec répartition par type
-	frises: FriseMatiere[]; // évolution récente par matière (#397) ; vide tant qu'aucune matière n'a assez de recul
 }
 
 /* Activité d'un jour : total + détail par type de session (#319). `inconnu` =
@@ -224,17 +228,6 @@ export interface JourActivite {
 	revision: number;
 	dictee: number;
 	inconnu: number;
-}
-
-/* Frise d'évolution d'une matière (#397) : nombre de NOTIONS DISTINCTES ayant franchi un
-   cap (« en cours » ou « acquis ») par semaine, sur les SEMAINES_FRISE dernières semaines.
-   `semaines` : du plus ancien (index 0) au plus récent ; le DERNIER élément est la semaine
-   EN COURS (partielle) — l'UI la distingue pour ne pas la comparer à hauteur égale. */
-export interface FriseMatiere {
-	subject: SubjectId;
-	label: string;
-	semaines: number[]; // longueur = SEMAINES_FRISE ; count de notions distinctes ayant franchi un cap
-	total: number; // notions distinctes ayant franchi un cap sur toute la fenêtre affichée
 }
 
 /* Libellé « dernière fois travaillée » pour l'espace encadrant, lisible pour un parent :
@@ -458,57 +451,96 @@ export function travailRecentProfil(profile: Profile, jours: number, now: number
 	);
 }
 
-const SEMAINE_MS = 7 * 86400000;
 /* Début de la semaine LOCALE (lundi 00:00) d'un horodatage — base des seaux hebdomadaires
    de la frise. Alias de startOfWeek (progress.ts) : la frise et les objectifs de régularité
    partagent la MÊME notion de « semaine calendaire ». Exporté : l'UI l'utilise pour dater
    les colonnes dans les libellés accessibles. */
 export const debutSemaine = startOfWeek;
 
-/* Frise d'évolution par matière (#397), calculée à partir du journal daté des paliers
-   (LESSON_PALIERS_KEY) du profil consulté. Pour chaque matière (au niveau du profil) :
-   compte, par semaine, les NOTIONS DISTINCTES ayant franchi un cap cette semaine-là.
-   `paliersRaw` : brut (clés `lessonId@niveau`). `now` injecté (pur/testable).
+/* Frise d'états d'UNE notion (#521), reconstruite depuis son journal de paliers daté
+   (LESSON_PALIERS_KEY) : sous quel état d'acquisition la leçon se trouvait, semaine par
+   semaine, sur les SEMAINES_FRISE dernières. Remplace le compteur hebdomadaire par matière
+   de #397, dont l'usage réel a montré qu'il ne disait NI où l'enfant progresse NI où il
+   stagne : franchir un cap est rare, donc la plupart des colonnes valaient 0, et un
+   dénombrement par matière ne nomme aucune leçon. Une trajectoire par leçon, elle, est
+   pleine de bout en bout, et « ça n'a pas bougé depuis six semaines » se voit sans être écrit.
 
-   Une matière n'apparaît que si (a) elle a au moins une marche DANS la fenêtre affichée
-   ET (b) sa toute 1re marche remonte à ≥ PALIERS_MIN_SEMAINES semaines (assez de recul) —
-   sinon on n'affiche rien plutôt qu'une frise trop courte, lue comme « aucun progrès »
-   alors que c'est « trop tôt » (avis pédago/designer). */
-export function frisesParMatiere(
-	paliersRaw: Record<string, PaliersNotion>,
-	profile: Profile,
+   Ce que la donnée permet, et ce qu'elle interdit :
+   - `PaliersNotion` ne date que les MONTÉES vers « en cours » et « acquis », et seulement la
+     première fois. Une cellule ne vaut donc que « l'état le plus haut atteint à cette date ».
+     L'état RÉEL du jour est connu par ailleurs (`RecapNotion.niveau`) et peut être PLUS BAS :
+     c'est l'UI qui met les deux côte à côte, un écart valant signal de recul.
+   - « à renforcer » (< 40 %) n'est JAMAIS daté — entrer là n'est pas un progrès de maîtrise
+     (cf. maitrise.ts) — donc il n'apparaît jamais comme cellule passée. Le rang bas se lit
+     'a-decouvrir' : à la granularité disponible, c'est « aucun cap franchi ».
+   - Le journal des paliers est récent (#397). Pour une leçon plus ancienne, les semaines
+     antérieures à son premier franchissement sont **inconnues** et non « à découvrir » : les
+     peindre au rang le plus bas affirmerait ce qu'on ne sait pas. D'où la cellule 'inconnu'.
+     La date de PREMIÈRE RENCONTRE (LESSON_FIRST_SEEN_KEY, #178, antérieure au journal des
+     paliers) lève le doute quand elle existe : l'historique est alors connu de bout en bout,
+     puisque l'absence de franchissement signifie bien « aucun cap ».
+
+   Renvoie `null` quand aucun franchissement n'est daté : il n'y a alors pas de trajectoire à
+   tracer, seulement l'état courant, que la ligne affiche déjà. `now` injecté (pur/testable). */
+export type CelluleFrise = 'inconnu' | 'a-decouvrir' | 'en-cours' | 'acquis';
+
+/* Lundi de la semaine située `semainesAvant` semaines plus tôt (négatif = plus tard).
+   Passe par un décalage en JOURS CALENDAIRES (`debutJourLocal`) plutôt que par une
+   soustraction de 7 × 86 400 000 ms : sinon les frontières des semaines anciennes dérivent
+   d'une heure de part et d'autre d'un changement d'heure, et un cap franchi un dimanche
+   soir basculerait dans la semaine suivante. Exporté : l'UI date les cellules avec. */
+export function lundiDecale(now: number, semainesAvant: number): number {
+	return debutSemaine(debutJourLocal(now, 7 * semainesAvant));
+}
+/* Horodatage exploitable, ou null. `typeof === 'number'` laisserait passer NaN et Infinity,
+   qui produiraient une frise entière au lieu du `null` promis. Inatteignable via le stockage
+   (JSON les écrit `null`), mais le garde coûte une ligne. */
+const horodatage = (v: unknown): number | null =>
+	typeof v === 'number' && Number.isFinite(v) ? v : null;
+export interface FriseNotion {
+	/** Longueur SEMAINES_FRISE, de la plus ancienne à la plus récente ; la DERNIÈRE est la
+	    semaine EN COURS (partielle), que l'UI distingue. */
+	semaines: CelluleFrise[];
+	enCoursDepuis: number | null; // horodatage du franchissement, s'il est daté
+	acquisDepuis: number | null;
+}
+export function friseNotion(
+	paliers: PaliersNotion | undefined,
+	firstSeen: number | undefined,
 	now: number,
-): FriseMatiere[] {
-	const debutCourante = debutSemaine(now);
-	const out: FriseMatiere[] = [];
-	for (const sub of SUBJECTS) {
-		const niveau = niveauProfilMatiere(profile, sub.id);
-		const semaines = new Array<number>(SEMAINES_FRISE).fill(0);
-		let premiereMarche = Infinity;
-		let totalFenetre = 0;
-		for (const key in paliersRaw) {
-			if (niveauOfKey(key) !== niveau) continue;
-			if (getLessonById(lessonOfKey(key))?.subject !== sub.id) continue;
-			const rec = paliersRaw[key];
-			const marches = [rec.enCours, rec.acquis].filter((t): t is number => typeof t === 'number');
-			if (marches.length === 0) continue;
-			premiereMarche = Math.min(premiereMarche, ...marches);
-			// Une notion ne compte qu'UNE fois par semaine (même si elle franchit « en cours »
-			// puis « acquis » la même semaine) : on dédoublonne ses semaines de franchissement.
-			const indices = new Set<number>();
-			for (const t of marches) {
-				const idx = SEMAINES_FRISE - 1 - Math.round((debutCourante - debutSemaine(t)) / SEMAINE_MS);
-				if (idx >= 0 && idx < SEMAINES_FRISE) indices.add(idx);
-			}
-			for (const idx of indices) semaines[idx]++;
-			if (indices.size > 0) totalFenetre++;
-		}
-		if (premiereMarche === Infinity || totalFenetre === 0) continue; // matière sans marche affichable
-		const reculSemaines = Math.round((debutCourante - debutSemaine(premiereMarche)) / SEMAINE_MS);
-		if (reculSemaines < PALIERS_MIN_SEMAINES) continue; // pas encore assez de recul
-		out.push({ subject: sub.id, label: sub.label, semaines, total: totalFenetre });
+): FriseNotion | null {
+	const enCours = horodatage(paliers?.enCours);
+	const acquis = horodatage(paliers?.acquis);
+	if (enCours === null && acquis === null) return null;
+	const connuDepuis =
+		typeof firstSeen === 'number'
+			? -Infinity // historique connu de bout en bout
+			: Math.min(...[enCours, acquis].filter((t): t is number => t !== null));
+	const semaines: CelluleFrise[] = [];
+	for (let i = 0; i < SEMAINES_FRISE; i++) {
+		// L'état d'une cellule est celui atteint à la FIN de sa semaine, soit le lundi suivant
+		// (exclu). Pour la dernière cellule cette borne est dans le futur : on lit donc l'état
+		// atteint À CE JOUR, ce qui est bien le sens de « semaine en cours ».
+		const finSemaine = lundiDecale(now, SEMAINES_FRISE - 2 - i);
+		if (finSemaine <= connuDepuis) semaines.push('inconnu');
+		else if (acquis !== null && acquis < finSemaine) semaines.push('acquis');
+		else if (enCours !== null && enCours < finSemaine) semaines.push('en-cours');
+		else semaines.push('a-decouvrir');
 	}
-	return out;
+	return { semaines, enCoursDepuis: enCours, acquisDepuis: acquis };
+}
+
+/* La frise montre-t-elle un changement d'état ? Alimente le compteur « N changements récents »
+   de la couverture par matière (#521), seule trace de « ça bouge » lisible SANS déplier une
+   catégorie, maintenant que la frise vit dans les lignes de leçon.
+   Lu SUR LES CELLULES et non recalculé depuis les dates de franchissement : c'est la même
+   définition que ce que le parent voit, donc les deux ne peuvent pas diverger.
+   Le recalcul, lui, se trompait deux fois — il comptait un cap franchi pendant la semaine la
+   plus ancienne, déjà porté par la cellule 0 et donc invisible, et il s'allumait sur une frise
+   plate quand le journal était incohérent (un `acquis` ancien avec un `enCours` récent, forme
+   que `recordMonteesPalier` ne produit pas mais qu'il ne coûte rien d'ignorer). Pur. */
+export function aChangeRecemment(frise: FriseNotion | null): boolean {
+	return frise !== null && new Set(frise.semaines).size > 1;
 }
 
 /* Tableau de bord d'un profil (par UUID), SANS changer le profil actif.
@@ -567,6 +599,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 				derniereFois: stat?.lastAt ?? null,
 				tendance: tendanceNotion(stat),
 				blocages: reportsRaw[k]?.jours ?? 0,
+				frise: friseNotion(paliersRaw[k], firstSeenRaw[k], now),
 			};
 			rc.lecons.push(notion);
 
@@ -595,12 +628,14 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 	// Roll-up par matière (couverture) pour équilibrer entre matières.
 	const parMatiere: RecapMatiere[] = SUBJECTS.map((sub) => {
 		const cats = parCategorie.filter((c) => c.subject === sub.id);
+		const compte = (f: (c: RecapCategorie) => number) => cats.reduce((n, c) => n + f(c), 0);
 		return {
 			subject: sub.id,
 			label: sub.label,
-			travaillees: cats.reduce((n, c) => n + c.travaillees, 0),
-			acquis: cats.reduce((n, c) => n + c.acquis, 0),
-			total: cats.reduce((n, c) => n + c.total, 0),
+			travaillees: compte((c) => c.travaillees),
+			acquis: compte((c) => c.acquis),
+			total: compte((c) => c.total),
+			changementsRecents: compte((c) => c.lecons.filter((l) => aChangeRecemment(l.frise)).length),
 		};
 	}).filter((m) => m.total > 0);
 
@@ -619,7 +654,6 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 		nouvellesRecentes,
 		aRevoir,
 		activite7j: activiteParJourParType(activity, now),
-		frises: frisesParMatiere(paliersRaw, profile, now),
 	};
 }
 

@@ -1015,11 +1015,14 @@ $plot-h: 140px;
 	gap: 2px;
 	height: 22px; /* 4 rangs de hauteur distinguables sans peser dans la ligne */
 }
-/* Gris NEUTRE dédié, repris de l'ancienne frise : assez contrasté sur --paper dans les DEUX
-   thèmes (≥ 3:1, WCAG 1.4.11), là où --muted (couleur de l'état « à découvrir ») tombe à
-   ~2,6:1 sur fond clair. Correction LOCALE à ce widget : ailleurs sur l'écran, cette couleur
-   n'est qu'une petite pastille accompagnée de son mot, donc hors du seuil des objets
-   graphiques porteurs de sens. */
+/* Gris NEUTRE dédié, repris de l'ancienne frise, là où --muted (couleur de l'état « à
+   découvrir ») tombe à 2,60:1 sur fond clair. Correction LOCALE à ce widget : ailleurs sur
+   l'écran, cette couleur n'est qu'une petite pastille accompagnée de son mot, donc hors du
+   seuil des objets graphiques porteurs de sens.
+   Ratios mesurés (tools/contrast/contrast.mjs) contre --paper, seuil 3:1 (WCAG 1.4.11) :
+   3,76:1 en clair, 3,85:1 en Nuit. C'est la marge la plus courte de la frise — à repasser au
+   script si la palette bouge. Les autres cellules : en cours 5,20:1 (clair) / 5,75:1 (Nuit) /
+   4,16:1 (thème Ciel, qui réécrit --cat-bleu), acquis 5,13:1 (clair) / 7,57:1 (Nuit). */
 $frise-neutre: #7c8494;
 .enc-frise-cell {
 	flex: 1;
@@ -1032,6 +1035,9 @@ $frise-neutre: #7c8494;
 .enc-frise-a-decouvrir {
 	height: 30%;
 }
+/* `--cat-bleu` est réécrit par deux thèmes : relevé en Nuit (cf. themes.scss, sinon ~2,8:1
+   contre --paper sombre) et passé en sarcelle #0a8a8f par « Ciel », qui reste à ~4,2:1 sur
+   fond clair. Les deux valeurs sont donc conformes en tant qu'objet graphique (1.4.11). */
 .enc-frise-en-cours {
 	height: 65%;
 	background: var(--cat-bleu);
@@ -1045,7 +1051,7 @@ $frise-neutre: #7c8494;
    pointillé au ras de la ligne de base, doublé du mot « pas encore suivie » dans le
    libellé accessible. */
 .enc-frise-inconnu {
-	height: 3px;
+	height: 4px; /* pas 3 : un filet plus fin devient incertain selon la densité d'écran (avis a11y) */
 	border-radius: 0;
 	background: repeating-linear-gradient(
 		90deg,
@@ -1055,10 +1061,11 @@ $frise-neutre: #7c8494;
 		transparent 4px
 	);
 }
-/* Semaine EN COURS : contour, pas un motif de remplissage — l'état atteint à ce jour EST un
+/* Semaine COURANTE : contour, pas un motif de remplissage — l'état atteint à ce jour EST un
    fait (contrairement au COMPTE partiel de l'ancienne frise), on signale seulement qu'il peut
-   encore changer d'ici dimanche. */
-.enc-frise-cell.en-cours {
+   encore changer d'ici dimanche. Nom `-courante` et non `-en-cours` : « en cours » est déjà
+   l'ÉTAT d'acquisition, et la dernière cellule peut porter les deux sens à la fois. */
+.enc-frise-cell.enc-frise-courante {
 	outline: 1px solid var(--grey);
 	outline-offset: 1px;
 }

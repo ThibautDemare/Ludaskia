@@ -1167,8 +1167,10 @@ export function revisionProfil(profile: Profile, now: number): RecapRevision {
 		// N'afficher que le niveau ACTIF de la matière : le moteur ne révise que celui-là
 		// (loadLessonRevisions → scopeActif). Une clé `@ancien-niveau` laissée après un
 		// changement de classe est DORMANTE (jamais reproposée) — l'afficher créerait un
-		// doublon fantôme « en retard » que le parent ne pourrait jamais résorber. Même
-		// filtre que frisesParMatiere. (Sans objet pour les mots d'ortho, non namespacés.)
+		// doublon fantôme « en retard » que le parent ne pourrait jamais résorber. C'est le
+		// seul endroit qui filtre les clés APRÈS coup : ailleurs, le récap parcourt les leçons
+		// du niveau suivi et construit la clé avec ce niveau, donc n'atteint jamais les autres.
+		// (Sans objet pour les mots d'ortho, non namespacés.)
 		if (niveauOfKey(k) !== niveauProfilMatiere(profile, lesson.subject)) continue;
 		entrees.push(
 			entreeRevision(

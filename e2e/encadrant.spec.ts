@@ -53,14 +53,32 @@ const SEED_STATS_VUES = `(() => {
   localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({ 'math-complements@ce2': stat }));
 })();`;
 
-/* Seed du journal des paliers (#397) : 3 notions de maths ayant franchi un cap, réparties
-   sur les dernières semaines (1re marche à 5 semaines → assez de recul pour afficher la frise). */
+/* Seed du journal des paliers (#397/#521) : 3 notions de maths ayant franchi un cap, réparties
+   sur les dernières semaines. Dès qu'un franchissement est daté, la frise apparaît (pas de
+   seuil de recul minimal). */
 const SEED_PALIERS = `(() => {
   const now = Date.now(); const week = 7 * 86400000;
   localStorage.setItem('e2e/ludaskia_paliers', JSON.stringify({
     'math-complements@ce2': { enCours: now - 5 * week },
     'math-doubles@ce2': { acquis: now - 2 * week },
     'math-moities@ce2': { enCours: now - 1 * week },
+  }));
+})();`;
+
+/* Seed du signal de recul (#521) : « math-tables-multiplication » a franchi le cap « acquis »
+   il y a 3 semaines (journal des paliers, jamais réécrit), mais n'est plus étoilée aujourd'hui
+   et sa perf récente est retombée à 50 % → niveau courant « en cours ». C'est l'écart entre le
+   cap le plus haut de la frise et le mot d'état courant qui sert de signal de recul — le seul
+   trou du design d'après le relecteur qualité, rien d'autre ne le couvre. */
+const SEED_REGRESSION = `(() => {
+  const now = Date.now(); const week = 7 * 86400000;
+  localStorage.setItem('e2e/ludaskia_paliers', JSON.stringify({
+    'math-tables-multiplication@ce2': { enCours: now - 6 * week, acquis: now - 3 * week },
+  }));
+  localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({
+    'math-tables-multiplication@ce2': {
+      attempts: 5, correct: 6, questions: 10, bestPct: 90, lastPct: 50, recentPct: [50], lastAt: now,
+    },
   }));
 })();`;
 
@@ -373,11 +391,12 @@ test("frise d'états : 12 cellules cohérentes avec le seed, puce omise sur ces 
 	await expect(ligneEnCours.locator('.enc-detail-puce')).toHaveCount(0);
 
 	// Palier « acquis » franchi il y a 2 semaines (seed) : dernière cellule acquise,
-	// avec le marqueur « semaine courante » (classe `en-cours` distincte de l'état).
+	// avec le marqueur « semaine courante » (classe `enc-frise-courante`, distincte du nom
+	// de l'état — une cellule « en cours » ET courante ne doit pas porter deux fois le même mot).
 	const ligneAcquis = page.locator('.enc-detail-item:has([data-lesson="math-doubles"])');
 	const derniereCelluleAcquis = ligneAcquis.locator('.enc-frise-cell').last();
 	await expect(derniereCelluleAcquis).toHaveClass(/enc-frise-acquis/);
-	await expect(derniereCelluleAcquis).toHaveClass(/\ben-cours\b/);
+	await expect(derniereCelluleAcquis).toHaveClass(/enc-frise-courante/);
 	await expect(ligneAcquis.locator('.enc-detail-meta')).toContainText('acquise');
 	await expect(ligneAcquis.locator('.enc-detail-puce')).toHaveCount(0);
 
@@ -394,11 +413,40 @@ test("frise d'états : 12 cellules cohérentes avec le seed, puce omise sur ces 
 	expect(errors).toEqual([]);
 });
 
-/* 10bis. Dépliage global par matière (#521) : un bouton par matière ouvre d'un coup
-       toutes ses catégories (`<details class="enc-cat-d">`), sans toucher l'autre
-       matière, et referme tout si tout est déjà ouvert. Manipulation DOM directe
-       (pas de re-rendu) : `aria-expanded` + l'état `open` des `<details>` sont donc
-       le cœur du test. Catégories repliées au chargement. */
+/* 10bis. Signal de recul (#521) : la frise ne redescend jamais (elle ne trace que les
+       montées), donc le seul endroit où un recul se voit est l'écart entre son cap le plus
+       haut et le mot d'état COURANT de la ligne (`.enc-detail-mot`, piloté par les stats/
+       étoiles réelles, pas par le journal des paliers). Signalé par le relecteur qualité
+       comme le seul trou du design : rien d'autre ne couvre ce cas. */
+test("signal de recul : le mot d'état courant peut être plus bas que le cap le plus haut de la frise", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_REGRESSION);
+	await page.addInitScript(SEED_CE2);
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	const resumes = page.locator('.enc-cat-sum');
+	const n = await resumes.count();
+	for (let i = 0; i < n; i++) await resumes.nth(i).click();
+
+	const ligne = page.locator('.enc-detail-item:has([data-lesson="math-tables-multiplication"])');
+	// La frise dit « acquis » (cap le plus haut jamais franchi)…
+	await expect(ligne.locator('.enc-frise-cell').last()).toHaveClass(/enc-frise-acquis/);
+	// … mais le mot d'état courant dit « en cours » : l'écart EST le signal de recul.
+	await expect(ligne.locator('.enc-detail-mot')).toContainText('en cours');
+
+	expect(errors).toEqual([]);
+});
+
+/* 10ter. Dépliage global par matière (#521) : un bouton par matière ouvre d'un coup toutes
+       ses catégories (`<details class="enc-cat-d">`), sans toucher l'autre matière, et
+       referme tout si tout est déjà ouvert. Un état de module retient les catégories
+       ouvertes et RE-REND l'espace à chaque clic — le pli survit donc à toute autre action
+       de l'écran (ex. « Épingler »), un travers corrigé par le relecteur qualité. Le bouton
+       porte aussi un nom accessible dont le verbe bascule (« Tout déplier » / « Tout
+       replier »). Catégories repliées au chargement. */
 test('dépliage global par matière : ouvre puis referme toutes les catégories visées, sans toucher l’autre matière', async ({
 	page,
 }) => {
@@ -417,6 +465,7 @@ test('dépliage global par matière : ouvre puis referme toutes les catégories 
 
 	// Repliées au chargement.
 	await expect(btnMath).toHaveAttribute('aria-expanded', 'false');
+	await expect(btnMath).toHaveAttribute('aria-label', /Tout déplier : Mathématiques/);
 	expect(
 		await catsMath.evaluateAll((els) => els.some((el) => (el as HTMLDetailsElement).open)),
 	).toBe(false);
@@ -424,6 +473,8 @@ test('dépliage global par matière : ouvre puis referme toutes les catégories 
 	// Ouvre TOUTES les catégories de maths, sans toucher le français.
 	await btnMath.click();
 	await expect(btnMath).toHaveAttribute('aria-expanded', 'true');
+	// Le nom accessible bascule aussi (SC 4.1.2) : le verbe annonce désormais l'action inverse.
+	await expect(btnMath).toHaveAttribute('aria-label', /Tout replier : Mathématiques/);
 	expect(
 		await catsMath.evaluateAll((els) => els.every((el) => (el as HTMLDetailsElement).open)),
 	).toBe(true);
@@ -431,13 +482,44 @@ test('dépliage global par matière : ouvre puis referme toutes les catégories 
 		await catsFrancais.evaluateAll((els) => els.some((el) => (el as HTMLDetailsElement).open)),
 	).toBe(false);
 	await expect(btnFrancais).toHaveAttribute('aria-expanded', 'false');
+	await expect(btnFrancais).toHaveAttribute('aria-label', /Tout déplier : Français/);
 
 	// Reclique : tout étant déjà ouvert, la bascule referme tout.
 	await btnMath.click();
 	await expect(btnMath).toHaveAttribute('aria-expanded', 'false');
+	await expect(btnMath).toHaveAttribute('aria-label', /Tout déplier : Mathématiques/);
 	expect(
 		await catsMath.evaluateAll((els) => els.some((el) => (el as HTMLDetailsElement).open)),
 	).toBe(false);
+
+	expect(errors).toEqual([]);
+});
+
+/* 10quater. Le pli survit à une autre action de l'écran (#521) : cliquer « Épingler » sur
+       une leçon d'une catégorie ouverte NE la referme PAS. Avant #521 (manipulation DOM
+       directe sans mémoire), un re-rendu quelconque effaçait tout pli fait à la main — ce qui
+       cassait précisément le contexte de lecture que le dépliage venait de créer. */
+test('dépliage global par matière : le pli survit à une autre action de l’écran (Épingler)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await gotoHash(page, 'encadrant');
+
+	const btnMath = page.locator('[data-act="deplier-matiere"][data-subject="math"]');
+	const catsMath = page.locator('.enc-cat-d[data-subject="math"]');
+
+	await btnMath.click();
+	await expect(btnMath).toHaveAttribute('aria-expanded', 'true');
+
+	// Une action SANS RAPPORT avec le pli (épingler une leçon) re-rend l'espace.
+	await page.locator('[data-act="epingler"][data-lesson="math-complements"]').click();
+
+	// Le pli n'a pas bougé : ni le bouton, ni les catégories.
+	await expect(btnMath).toHaveAttribute('aria-expanded', 'true');
+	expect(
+		await catsMath.evaluateAll((els) => els.every((el) => (el as HTMLDetailsElement).open)),
+	).toBe(true);
 
 	expect(errors).toEqual([]);
 });

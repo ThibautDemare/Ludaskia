@@ -17,7 +17,6 @@ import {
 	niveauProfilMatiere,
 	echelleActivite,
 	libelleDerniereFois,
-	lundiDecale,
 	orthoRevoirId,
 	listesOrthoProfil,
 	dicteesProposees,
@@ -58,6 +57,14 @@ import { segmentHTML } from './segment';
 
 /* ---------- État de la section (module) ---------- */
 let vueActivite: 'total' | 'type' = 'total'; // graphe d'activité : « Total » ou « Par type » (#319)
+
+/* Catégories DÉPLIÉES de « Notions par catégorie », par `categoryId`. `renderEspace` réécrit
+   tout le sous-arbre : sans cet état, n'importe quelle action de l'écran (épingler, changer la
+   vue du graphe…) refermait toutes les catégories ouvertes — travers préexistant, devenu
+   pénalisant avec la frise d'états (#521), dont l'usage même consiste à ouvrir plusieurs
+   catégories puis à agir sur une leçon repérée dedans. Retenu comme `vueActivite` : état de
+   VUE, jamais persisté (on revient replié à la prochaine ouverture de l'espace). */
+const categoriesOuvertes = new Set<string>();
 
 /* L'échelle d'acquisition (mots + ordre) est partagée avec la banque de mots (#496) :
    elle vit dans encadrant-commun, module feuille commun aux deux sections. */
@@ -309,9 +316,14 @@ function maitriseHTML(recap: RecapProfil): string {
 			})
 			.join('');
 	// `data-subject` : cible du dépliage global par matière (cf. deplierHTML / handler).
+	// `data-cat` : identifie la catégorie pour retenir son pli à travers un re-rendu.
+	// `id` : référencé par l'`aria-controls` du bouton de dépliage, qui sinon ne serait relié
+	// à rien programmatiquement.
 	const cats = recap.parCategorie
 		.map(
-			(c) => `<details class="enc-cat-d" data-subject="${c.subject}">
+			(
+				c,
+			) => `<details class="enc-cat-d" id="${idCategorie(c.categoryId)}" data-subject="${c.subject}" data-cat="${c.categoryId}"${categoriesOuvertes.has(c.categoryId) ? ' open' : ''}>
         <summary class="enc-cat-sum">
           <span class="enc-cat-lab">${escapeHTML(c.label)}</span>
           <span class="enc-cat-counts">${c.travaillees}/${c.total} travaillée${c.travaillees > 1 ? 's' : ''} · ${c.acquis} acquise${c.acquis > 1 ? 's' : ''}</span>
@@ -325,7 +337,7 @@ function maitriseHTML(recap: RecapProfil): string {
       <h3 class="enc-h3">${icon('star')} Notions par catégorie</h3>
       ${matieresHTML(recap)}
       <p class="enc-legend">${legende}</p>
-      <p class="enc-hint">C'est normal qu'il reste des notions « à découvrir » ou « à renforcer » : ce sont celles qui n'ont pas encore été beaucoup travaillées. Dépliez une catégorie pour voir le détail, la frise des dernières semaines et épingler une leçon. Les leçons épinglées se retrouvent dans l'onglet Programme.</p>
+      <p class="enc-hint">C'est normal qu'il reste des notions « à découvrir » ou « à renforcer » : ce sont celles qui n'ont pas encore été beaucoup travaillées. Dépliez une catégorie pour voir le détail, épingler une leçon, et suivre son évolution sur les 12 dernières semaines. Les leçons épinglées se retrouvent dans l'onglet Programme.</p>
       ${deplierHTML(recap)}
       <div class="enc-cats">${cats}</div>
     </div>`;
@@ -342,16 +354,58 @@ function deplierHTML(recap: RecapProfil): string {
 	// une fois pour le groupe) : le nom ACCESSIBLE doit donc être complet, et CONTENIR le
 	// libellé visible (SC 2.5.3) — sans quoi un bouton annoncé « Mathématiques » ne dit pas ce
 	// qu'il fait. Même parade que les boutons « Épingler » de la file à revoir.
+	// `aria-controls` liste les catégories pilotées : le lien bouton → contenu n'existe sinon
+	// que dans le code du handler.
 	const btns = recap.parMatiere
-		.map(
-			(m) =>
-				`<button type="button" class="enc-btn-sec" data-act="deplier-matiere" data-subject="${m.subject}" aria-expanded="false" aria-label="${escapeHTML(`Tout déplier : ${m.label}`)}">${escapeHTML(m.label)}</button>`,
-		)
+		.map((m) => {
+			const cats = recap.parCategorie.filter((c) => c.subject === m.subject);
+			const controls = cats.map((c) => idCategorie(c.categoryId)).join(' ');
+			// État à l'instant du rendu : le pli survivant au re-rendu, le bouton doit s'y accorder
+			// (et son verbe avec, sinon « Tout déplier » resterait affiché alors que le clic replie).
+			const tout = cats.length > 0 && cats.every((c) => categoriesOuvertes.has(c.categoryId));
+			return `<button type="button" class="enc-btn-sec${tout ? ' on' : ''}" data-act="deplier-matiere" data-subject="${m.subject}" aria-controls="${controls}" aria-expanded="${tout}" aria-label="${escapeHTML(`${tout ? 'Tout replier' : 'Tout déplier'} : ${m.label}`)}" data-matiere="${escapeHTML(m.label)}">${escapeHTML(m.label)}</button>`;
+		})
 		.join('');
 	return `<div class="enc-deplier">
       <span class="enc-deplier-lab" aria-hidden="true">Tout déplier :</span>
       ${btns}
     </div>`;
+}
+
+const idCategorie = (categoryId: string) => `enc-cat-${categoryId}`;
+
+/* `categoryId` des catégories d'une matière, lus dans le DOM rendu (la seule liste disponible
+   depuis un handler, qui n'a pas le récap sous la main). */
+function catsDeLaMatiere(subject: string | undefined): string[] {
+	if (!subject) return [];
+	return [
+		...(container()?.querySelectorAll<HTMLElement>(
+			`.enc-cat-d[data-subject="${CSS.escape(subject)}"]`,
+		) ?? []),
+	]
+		.map((d) => d.dataset.cat ?? '')
+		.filter(Boolean);
+}
+
+/* Remet un bouton de dépliage en accord avec l'état RÉEL de ses catégories, SANS re-rendre.
+   Indispensable parce qu'un `<details>` s'ouvre aussi par un clic direct sur son `<summary>`,
+   sans passer par aucun handler : sans cette resynchronisation, le bouton resterait annoncé
+   « replié » alors que l'adulte vient d'ouvrir deux catégories à la main (SC 4.1.2 — l'état
+   exposé doit refléter l'état réel). Le verbe du nom accessible suit : quand tout est ouvert,
+   le clic va REPLIER. Pas de re-rendu ici, il serait brutal à chaque pli manuel. */
+function syncDeplier(subject: string): void {
+	const btn = container()?.querySelector<HTMLElement>(
+		`[data-act="deplier-matiere"][data-subject="${CSS.escape(subject)}"]`,
+	);
+	if (!btn) return;
+	const cats = catsDeLaMatiere(subject);
+	const tout = cats.length > 0 && cats.every((id) => categoriesOuvertes.has(id));
+	btn.setAttribute('aria-expanded', String(tout));
+	btn.classList.toggle('on', tout);
+	btn.setAttribute(
+		'aria-label',
+		`${tout ? 'Tout replier' : 'Tout déplier'} : ${btn.dataset.matiere ?? ''}`,
+	);
 }
 
 /* Vue « couverture par matière » : combien de leçons ont déjà été abordées (et acquises)
@@ -382,14 +436,27 @@ function matieresHTML(recap: RecapProfil): string {
       <ul class="enc-mat-list">${items}</ul>`;
 }
 
-/* Mot de chaque cellule de frise, pour le libellé accessible. Les trois états repris de
-   l'échelle d'acquisition gardent SES mots (le parent les a déjà appris ailleurs sur l'écran) ;
-   'inconnu' n'en fait pas partie — ce n'est pas un rang, c'est l'absence de donnée. */
+/* Mot de chaque cellule de frise, pour le libellé accessible. Il s'agit d'une PHRASE, pas
+   d'une étiquette : le sujet implicite est la leçon, donc « acquise » s'y accorde, là où
+   `MOT_NIVEAU.acquis` reste invariable pour ses usages en badge et en légende (avis langue).
+   'inconnu' n'est pas un rang de l'échelle mais l'absence de donnée, d'où une locution de
+   temps et non un participe : « pas encore suivie » se serait confondu à l'oreille avec le
+   « pas encore travaillée » de la méta, qui dit tout autre chose. Il ne peut de toute façon
+   apparaître qu'en tête du récit (les cellules inconnues sont toujours un préfixe). */
 const MOT_CELLULE: Record<CelluleFrise, string> = {
-	inconnu: 'pas encore suivie',
+	inconnu: 'avant le suivi',
 	'a-decouvrir': MOT_NIVEAU['a-decouvrir'],
 	'en-cours': MOT_NIVEAU['en-cours'],
-	acquis: MOT_NIVEAU.acquis,
+	acquis: 'acquise',
+};
+/* Les segments SUIVANTS du récit sont des événements datés, pas des états : ils prennent la
+   même tournure que la méta visible de la ligne (« passée en cours hier », « acquise le 3
+   août »), sinon le récit dirait « puis en cours hier ». Seuls ces deux états peuvent ouvrir
+   un segment après le premier — la frise ne redescend jamais, et 'inconnu' n'est qu'un
+   préfixe ; le repli sur MOT_CELLULE ne couvre donc qu'un cas impossible. */
+const EVENEMENT_CELLULE: Partial<Record<CelluleFrise, string>> = {
+	'en-cours': 'passée en cours',
+	acquis: 'acquise',
 };
 
 /* Frise d'états d'UNE leçon (#521), sur sa propre ligne pleine largeur sous le libellé :
@@ -406,27 +473,31 @@ const MOT_CELLULE: Record<CelluleFrise, string> = {
 function friseNotionHTML(f: FriseNotion | null, now: number): string {
 	if (!f) return '';
 	const n = f.semaines.length;
-	// Datation via `lundiDecale` (core) : le MÊME découpage en semaines calendaires que celui
-	// qui a rempli les cellules, changement d'heure compris. Un calcul parallèle ici pourrait
-	// annoncer une date d'une semaine décalée par rapport à la cellule qu'elle décrit.
-	const dateSemaine = (i: number) =>
-		new Date(lundiDecale(now, n - 1 - i)).toLocaleDateString('fr-FR', {
-			day: 'numeric',
-			month: 'long',
-		});
-	// Récit par CHANGEMENT d'état, pas par semaine : le premier segment n'est pas daté (c'est
-	// le début de la fenêtre), les suivants portent la semaine où l'état change.
+	// Récit par CHANGEMENT d'état, pas par semaine. Le premier segment n'est pas daté : c'est
+	// l'état en début de fenêtre, dont le franchissement peut être bien plus ancien. Les
+	// suivants sont datés par le franchissement LUI-MÊME (`libelleDerniereFois`, le formateur
+	// de la méta visible), et non par le lundi de leur cellule : sinon un cap franchi un
+	// mercredi produisait deux dates différentes pour le même fait, la méta annonçant le jour
+	// exact et la frise le lundi de la semaine (avis a11y). Tout changement à l'intérieur de la
+	// fenêtre correspond forcément à un franchissement daté, donc aucun segment ne reste muet.
+	const dateEtat = (etat: CelluleFrise) =>
+		etat === 'acquis' ? f.acquisDepuis : etat === 'en-cours' ? f.enCoursDepuis : null;
 	const segments = f.semaines
 		.map((etat, i) => ({ etat, i }))
 		.filter((s, i, tous) => i === 0 || s.etat !== tous[i - 1].etat)
-		.map((s, k) =>
-			k === 0 ? MOT_CELLULE[s.etat] : `${MOT_CELLULE[s.etat]} à partir du ${dateSemaine(s.i)}`,
-		);
+		.map((s, k) => {
+			const quand = k === 0 ? '' : libelleDerniereFois(dateEtat(s.etat), now);
+			return quand
+				? `${EVENEMENT_CELLULE[s.etat] ?? MOT_CELLULE[s.etat]} ${quand}`
+				: MOT_CELLULE[s.etat];
+		});
 	const aria = `Évolution sur les ${n} dernières semaines : ${segments.join(', puis ')}.`;
 	const cells = f.semaines
 		.map((etat, i) => {
+			// `enc-frise-courante` et non `en-cours` : cette dernière est déjà le nom de l'ÉTAT
+			// « en cours », et une cellule peut porter les deux sens à la fois.
 			const derniere = i === n - 1;
-			return `<span class="enc-frise-cell enc-frise-${etat}${derniere ? ' en-cours' : ''}"></span>`;
+			return `<span class="enc-frise-cell enc-frise-${etat}${derniere ? ' enc-frise-courante' : ''}"></span>`;
 		})
 		.join('');
 	return `<span class="enc-frise" role="img" aria-label="${escapeHTML(aria)}" title="${escapeHTML(aria)}">
@@ -765,21 +836,21 @@ export function progressionClick(act: string, el: HTMLElement): boolean {
 			return true;
 		case 'deplier-matiere': {
 			const subject = el.dataset.subject;
-			const cibles = subject
-				? [
-						...(container()?.querySelectorAll<HTMLDetailsElement>(
-							`.enc-cat-d[data-subject="${CSS.escape(subject)}"]`,
-						) ?? []),
-					]
-				: [];
-			if (!cibles.length) return true;
-			// Manipulation DOM DIRECTE, sans `renderEspace` : l'ouverture des `<details>` n'est pas
-			// mémorisée, donc un re-rendu refermerait tout ce que l'adulte a déjà ouvert à la main.
+			const cats = catsDeLaMatiere(subject);
+			if (!subject || !cats.length) return true;
 			// Bascule : on referme seulement si TOUT est déjà ouvert, sinon on ouvre le reste.
-			const ouvrir = !cibles.every((d) => d.open);
-			for (const d of cibles) d.open = ouvrir;
-			el.setAttribute('aria-expanded', String(ouvrir));
-			el.classList.toggle('on', ouvrir);
+			const ouvrir = !cats.every((id) => categoriesOuvertes.has(id));
+			for (const id of cats) {
+				if (ouvrir) categoriesOuvertes.add(id);
+				else categoriesOuvertes.delete(id);
+			}
+			renderEspace();
+			// Le re-rendu recrée le DOM → on rend le focus au bouton, comme les autres actions.
+			container()
+				?.querySelector<HTMLElement>(
+					`[data-act="deplier-matiere"][data-subject="${CSS.escape(subject)}"]`,
+				)
+				?.focus({ preventScroll: true });
 			return true;
 		}
 		case 'epingler': {
@@ -804,6 +875,19 @@ export function progressionClick(act: string, el: HTMLElement): boolean {
 			return true;
 	}
 	return false;
+}
+
+/* Ouverture/fermeture d'un `<details>` de catégorie (événement natif `toggle`, capté par
+   l'orchestrateur) : un clic sur un `<summary>` ne passe par AUCUN handler. On y retient le
+   pli — pour qu'il survive au prochain re-rendu — puis on remet le bouton de dépliage global
+   de cette matière en accord avec l'état réel. */
+export function progressionToggle(el: HTMLElement): void {
+	const d = el.closest?.<HTMLDetailsElement>('.enc-cat-d');
+	const cat = d?.dataset.cat;
+	if (!d || !cat) return;
+	if (d.open) categoriesOuvertes.add(cat);
+	else categoriesOuvertes.delete(cat);
+	if (d.dataset.subject) syncDeplier(d.dataset.subject);
 }
 
 /* Saisie au fil de la frappe (événement `input`) : seul le volet « Mots » du bloc Dictées

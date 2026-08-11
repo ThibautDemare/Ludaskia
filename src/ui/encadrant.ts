@@ -51,6 +51,7 @@ import {
 	dicteesProposeesHTML,
 	progressionClick,
 	progressionInput,
+	progressionToggle,
 } from './encadrant-progression';
 import { revisionHTML, revisionClick } from './encadrant-revision';
 import { seanceHTML, seanceClick, seanceChange } from './encadrant-seance';
@@ -99,6 +100,10 @@ function wireOnce(el: HTMLElement): void {
 	el.addEventListener('change', onChange);
 	el.addEventListener('input', onInput);
 	el.addEventListener('keydown', onKeydown);
+	// `toggle` d'un `<details>` : en CAPTURE, cet événement ne remontant pas dans tous les
+	// navigateurs. Sert au bouton « Tout déplier » d'une matière (#521), qui doit refléter
+	// l'état réel de ses catégories même quand elles sont ouvertes une à une à la main.
+	el.addEventListener('toggle', onToggle, true);
 	el.dataset.wired = '1';
 }
 
@@ -225,6 +230,11 @@ function onClick(e: Event): void {
 	if (revisionClick(act, el)) return;
 	if (seanceClick(act, el)) return;
 	progressionClick(act, el);
+}
+
+function onToggle(e: Event): void {
+	const t = e.target;
+	if (t instanceof HTMLElement) progressionToggle(t);
 }
 
 function onChange(e: Event): void {

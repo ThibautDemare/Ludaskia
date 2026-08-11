@@ -8,6 +8,10 @@
    leçon » contourne une leçon qui bloque (jamais de mur, cf. avis pédagogue). Quand
    tout est acquis, la carte félicite et mène à la révision (avancer vs entretenir).
 
+   Elle cède à son tour (#516) quand la carte « À revoir » n'a pas pu éviter la leçon du
+   jour (une seule entrée épinglée, et c'est elle) : `eviterId` la fait avancer d'un cran
+   dans son fil. Arbitrage complet dans core/accueil-propositions.ts.
+
    Re-rendu à chaque affichage de l'accueil (renderHomeStats). Le clic est délégué
    sur l'élément PERSISTANT (#leconDuJour), posé une seule fois : pas d'accumulation
    de listeners malgré les re-rendus. L'état (leçon courante / mode) vit dans les
@@ -15,8 +19,9 @@
    ré-affiche la vraie leçon du jour).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
-import { SUBJECTS, CATEGORIES, getLessonById } from '../core/catalog';
+import { SUBJECTS, CATEGORIES, getLessonById, type LessonDef } from '../core/catalog';
 import { sequenceLeconDuJour, leconSuivante } from '../core/lecon-du-jour';
+import { choisirProchaineLecon } from '../core/accueil-propositions';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
 import { icon } from './icon';
@@ -24,11 +29,28 @@ import { subjectTint, subjectIcon } from './cat-visuals';
 import { startLecon, startRevisionEspacee } from './navigation';
 
 /* Rend la carte dans `el`. `cibleId` (optionnel) force l'affichage d'une leçon
-   précise — utilisé par « Voir une autre leçon » pour avancer dans le fil. */
-export function renderLeconDuJour(el: HTMLElement | null, cibleId?: string): void {
+   précise — utilisé par « Voir une autre leçon » pour avancer dans le fil. `eviterId`
+   (#516) est la leçon déjà proposée par la carte « À revoir » : on avance d'un cran
+   dans le fil pour ne pas la proposer deux fois (sans jamais vider la carte).
+
+   `eviterId` est MÉMORISÉ sur l'élément (comme le reste de l'état de la carte) : le
+   défilement, lui, repasse par `cibleId` et perdrait sinon l'évitement — le doublon
+   réapparaîtrait au premier clic sur « Voir une autre leçon ». Un `eviterId` vide doit
+   EFFACER la trace : l'élément est persistant d'un rendu à l'autre. */
+export function renderLeconDuJour(
+	el: HTMLElement | null,
+	cibleId?: string,
+	eviterId?: string | null,
+): void {
 	if (!el) return;
+	// Rendu coordonné par l'accueil (pas de `cibleId`) : on pose la trace, ou on l'efface
+	// s'il n'y a plus rien à éviter. Défilement : on la garde telle quelle.
+	if (cibleId === undefined) {
+		if (eviterId) el.dataset.eviter = eviterId;
+		else delete el.dataset.eviter;
+	}
 	const seq = sequenceLeconDuJour();
-	const lesson = cibleId ? getLessonById(cibleId) : (seq[0] ?? null);
+	const lesson = cibleId ? getLessonById(cibleId) : choisirProchaineLecon(seq, eviterId ?? null);
 
 	if (!lesson) {
 		// Tout le programme du niveau est acquis : félicitation + passerelle révision.
@@ -71,13 +93,25 @@ export function renderLeconDuJour(el: HTMLElement | null, cibleId?: string): voi
 	}
 }
 
+/* Leçon suivante du fil pour « Voir une autre leçon », en SAUTANT celle que la carte
+   « À revoir » propose déjà (#516) : sans ce saut, le premier clic sur le bouton
+   ramenait le doublon que l'accueil venait d'éviter. Le saut est abandonné s'il ne mène
+   nulle part (elle est la seule autre leçon du fil) — mieux vaut re-proposer la même
+   leçon des deux côtés qu'un bouton qui ne fait rien. */
+function defilement(el: HTMLElement): LessonDef | null {
+	const courante = el.dataset.lesson ?? '';
+	const next = leconSuivante(courante);
+	if (!next || next.id !== el.dataset.eviter) return next;
+	const apres = leconSuivante(next.id);
+	return apres && apres.id !== courante ? apres : next;
+}
+
 /* Clic sur la carte : « Voir une autre leçon » avance dans le fil (intercepté avant
    le lancement) ; sinon on lance la leçon (ou la révision si tout est acquis). */
 function onLeconCardClick(e: Event): void {
 	const el = e.currentTarget as HTMLElement;
 	if ((e.target as HTMLElement).closest('[data-lj="autre"]')) {
-		const next = leconSuivante(el.dataset.lesson ?? '');
-		renderLeconDuJour(el, next ? next.id : undefined);
+		renderLeconDuJour(el, defilement(el)?.id);
 		return;
 	}
 	if (el.dataset.mode === 'revision') startRevisionEspacee();

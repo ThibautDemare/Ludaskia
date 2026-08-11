@@ -297,8 +297,11 @@ export function renderHomeStats() {
 	// Le badge XP vit dans la barre d'outils ; la carte progression sur l'accueil.
 	renderProgression();
 	renderProgrammeCard(document.getElementById('cardProgramme')); // carte « programme du jour » (#440)
-	renderARevoir(document.getElementById('aRevoir')); // carte « à revoir » épinglée par l'encadrant (#234)
-	renderLeconDuJour(document.getElementById('leconDuJour')); // « leçon du jour » (#208)
+	// Les deux cartes « à faire » sont coordonnées (#516) : « à revoir » (#234) est rendue la
+	// première et renvoie la leçon qu'elle a retenue, que « leçon du jour » (#208) évite à son
+	// tour — sinon l'accueil pouvait proposer DEUX FOIS la même leçon (cf. accueil-propositions).
+	const aRevoirLecon = renderARevoir(document.getElementById('aRevoir'));
+	renderLeconDuJour(document.getElementById('leconDuJour'), undefined, aRevoirLecon);
 	renderReprises(document.getElementById('reprises')); // « À continuer » (#63)
 	const recL = document.getElementById('recLecon');
 	if (recL) {

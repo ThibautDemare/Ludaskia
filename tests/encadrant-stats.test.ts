@@ -433,6 +433,10 @@ function notionEp(lessonId: string, niveau: NiveauNotion): RecapNotion {
 		derniereFois: null,
 		tendance: null,
 		blocages: 0,
+		// La frise d'états (#521) est une DONNÉE d'affichage de la ligne, sans influence sur la
+		// résolution de l'état d'une épingle : on la laisse vide ici et on l'éprouve à part
+		// (frise-etats.test.ts).
+		frise: null,
 	};
 }
 function categorieEp(categoryId: string, lecons: RecapNotion[]): RecapCategorie {
@@ -459,7 +463,6 @@ function recapEp(parCategorie: RecapCategorie[]): RecapProfil {
 		nouvellesRecentes: 0,
 		aRevoir: [],
 		activite7j: [],
-		frises: [],
 	};
 }
 function listeEp(id: string, niveau: NiveauNotion): RecapListeOrtho {

@@ -1,13 +1,16 @@
 /* ============================================================
-   Frise d'évolution (#397) — journal daté des paliers franchis + agrégation hebdo.
-   Deux volets :
-   - recordMonteesPalier : ce qui est loggué (modèle « premier franchissement » monotone,
-     « en cours »/« acquis » seulement, pas d'oscillation, saut direct = 1 marche) ;
-   - frisesParMatiere : bucketing hebdomadaire, dédoublonnage par semaine, seuil de recul.
+   Journal daté des paliers franchis (#397) — `recordMonteesPalier`.
+   ------------------------------------------------------------
+   Ce journal est la SEULE source datée de l'évolution d'une notion : c'est lui qui
+   alimente la frise d'états par leçon de l'espace encadrant (#521, éprouvée dans
+   frise-etats.test.ts). On verrouille donc ici son modèle : « premier franchissement »
+   seulement, monotone, « en cours »/« acquis » uniquement (« à renforcer » n'est pas un
+   progrès), pas d'oscillation, saut direct = une seule marche, et dates JAMAIS réécrites
+   (une date qui bouge décalerait toute la frise et le « depuis le … » lu par le parent).
    ============================================================ */
 import { beforeEach, describe, it, expect } from 'vitest';
-import { initProfiles, activeProfile, touchActiveProfile } from '../src/core/profiles';
-import { setOnDataWrite, lsGet, lsSetRaw } from '../src/core/storage';
+import { initProfiles, touchActiveProfile } from '../src/core/profiles';
+import { setOnDataWrite, lsGet } from '../src/core/storage';
 import {
 	recordLessonStats,
 	recordLessonResult,
@@ -15,7 +18,6 @@ import {
 	LESSON_PALIERS_KEY,
 	type PaliersNotion,
 } from '../src/core/progress';
-import { frisesParMatiere, progressionProfil } from '../src/core/encadrant-stats';
 
 beforeEach(() => {
 	localStorage.clear();
@@ -29,6 +31,7 @@ function journal(): Record<string, PaliersNotion> {
 }
 
 const T = 1_700_000_000_000; // instant de référence
+const JOUR = 86_400_000;
 
 describe('recordMonteesPalier (journal des franchissements)', () => {
 	it('« en cours » atteint → une marche datée « enCours »', () => {
@@ -53,8 +56,8 @@ describe('recordMonteesPalier (journal des franchissements)', () => {
 		recordLessonStats({ 'math-moities': { ok: 8, total: 10 } }); // en cours
 		recordMonteesPalier(['math-moities'], T);
 		recordLessonResult('math-moities', true); // étoile → acquis
-		recordMonteesPalier(['math-moities'], T + 5 * 86400000);
-		expect(journal()['math-moities@ce2']).toEqual({ enCours: T, acquis: T + 5 * 86400000 });
+		recordMonteesPalier(['math-moities'], T + 5 * JOUR);
+		expect(journal()['math-moities@ce2']).toEqual({ enCours: T, acquis: T + 5 * JOUR });
 	});
 
 	it('oscillation autour du seuil : ne re-loggue PAS une remontée déjà franchie', () => {
@@ -67,77 +70,17 @@ describe('recordMonteesPalier (journal des franchissements)', () => {
 		// La date d'« enCours » reste la 1re (pas de bruit d'oscillation).
 		expect(journal()['math-moities@ce2']).toEqual({ enCours: T });
 	});
-});
 
-const SEMAINE = 7 * 86400000;
-
-describe('frisesParMatiere (agrégation hebdomadaire par matière)', () => {
-	it('trop récent (< 3 semaines de recul) → matière masquée', () => {
-		const profile = activeProfile();
-		const paliers = { 'math-complements@ce2': { enCours: T - 1 * SEMAINE } };
-		expect(frisesParMatiere(paliers, profile, T)).toEqual([]);
-	});
-
-	it('assez de recul → frise math avec le bon comptage par semaine', () => {
-		const profile = activeProfile();
-		const paliers: Record<string, PaliersNotion> = {
-			'math-complements@ce2': { enCours: T - 5 * SEMAINE },
-			'math-doubles@ce2': { enCours: T - 1 * SEMAINE },
-			'math-moities@ce2': { acquis: T - 2 * SEMAINE },
-		};
-		const frises = frisesParMatiere(paliers, profile, T);
-		expect(frises.length).toBe(1);
-		const math = frises[0];
-		expect(math.subject).toBe('math');
-		expect(math.semaines.length).toBe(12);
-		expect(math.total).toBe(3);
-		// Index 11 = semaine courante ; marches à 5/2/1 semaines → index 6/9/10.
-		expect(math.semaines[6]).toBe(1);
-		expect(math.semaines[9]).toBe(1);
-		expect(math.semaines[10]).toBe(1);
-		expect(math.semaines.reduce((s, x) => s + x, 0)).toBe(3);
-	});
-
-	it('une notion franchissant deux caps la MÊME semaine ne compte qu’une fois', () => {
-		const profile = activeProfile();
-		const paliers = {
-			'math-complements@ce2': { enCours: T - 4 * SEMAINE, acquis: T - 4 * SEMAINE },
-		};
-		const frises = frisesParMatiere(paliers, profile, T);
-		expect(frises.length).toBe(1);
-		expect(frises[0].total).toBe(1);
-		expect(frises[0].semaines.reduce((s, x) => s + x, 0)).toBe(1);
-	});
-
-	it('marche antérieure à la fenêtre (12 sem.) → matière masquée (rien à tracer)', () => {
-		const profile = activeProfile();
-		const paliers = { 'math-complements@ce2': { enCours: T - 20 * SEMAINE } };
-		expect(frisesParMatiere(paliers, profile, T)).toEqual([]);
-	});
-
-	it('scoping par niveau : une marche @cm1 est ignorée pour un profil CE2', () => {
-		const profile = activeProfile(); // niveau par défaut = CE2
-		const paliers = {
-			'math-complements@cm1': { enCours: T - 5 * SEMAINE },
-			'math-doubles@cm1': { acquis: T - 2 * SEMAINE },
-		};
-		expect(frisesParMatiere(paliers, profile, T)).toEqual([]); // clés hors niveau → rien
-	});
-});
-
-describe('progressionProfil : intègre la frise (lecture par UUID)', () => {
-	it('expose recap.frises calculé depuis le journal du profil consulté', () => {
-		const a = activeProfile();
-		lsSetRaw(
-			a.uuid + '/' + LESSON_PALIERS_KEY,
-			JSON.stringify({
-				'math-complements@ce2': { enCours: T - 5 * SEMAINE },
-				'math-doubles@ce2': { acquis: T - 1 * SEMAINE },
-			}),
-		);
-		const recap = progressionProfil(a, T);
-		const math = recap.frises.find((f) => f.subject === 'math');
-		expect(math).toBeTruthy();
-		expect(math!.total).toBe(2);
+	it('dates FIGÉES : rejouer une leçon déjà acquise ne rajeunit aucune marche', () => {
+		// Sans ce verrou, la frise et le « acquis depuis le … » de l'espace encadrant se
+		// décaleraient à chaque nouvelle session réussie de la même leçon.
+		recordLessonStats({ 'math-moities': { ok: 8, total: 10 } });
+		recordMonteesPalier(['math-moities'], T);
+		recordLessonResult('math-moities', true); // étoile
+		recordMonteesPalier(['math-moities'], T + JOUR);
+		const avant = journal()['math-moities@ce2'];
+		recordLessonResult('math-moities', true); // re-réussie 3 semaines plus tard
+		recordMonteesPalier(['math-moities'], T + 22 * JOUR);
+		expect(journal()['math-moities@ce2']).toEqual(avant);
 	});
 });

@@ -334,22 +334,110 @@ test('couverture : vue par matière et compteur « travaillées » par catégori
 	expect(errors).toEqual([]);
 });
 
-/* 10. Frise d'évolution (#397) : paliers franchis par matière (seed du journal). */
-test("frise d'évolution : la frise « Évolution récente » par matière se rend", async ({ page }) => {
+/* 10. Frise d'états par leçon (#521) : remplace la frise « Évolution récente » par
+       matière de #397 (bloc `.enc-evol` disparu). Paliers franchis → 12 cellules dans
+       la ligne de détail, puce d'état omise (la frise porte déjà l'info), méta datée
+       du cap le plus haut, et compteur « changements récents » par matière. Une leçon
+       jamais travaillée garde sa puce et n'a pas de frise. */
+test("frise d'états : 12 cellules cohérentes avec le seed, puce omise sur ces lignes, conservée sur une leçon jamais travaillée", async ({
+	page,
+}) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(CLEAR_PIN);
 	await page.addInitScript(SEED_PALIERS);
 	await page.addInitScript(SEED_CE2);
 	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
 
-	// Le bloc de frises est rendu, avec une mini-frise « Mathématiques ».
-	await expect(page.locator('.enc-evol')).toBeVisible();
+	// L'ancien bloc « Évolution récente » (#397) a disparu.
+	await expect(page.locator('.enc-evol')).toHaveCount(0);
+
+	// Déplier chaque catégorie pour exposer les lignes de détail.
+	const resumes = page.locator('.enc-cat-sum');
+	const n = await resumes.count();
+	for (let i = 0; i < n; i++) await resumes.nth(i).click();
+
+	// Palier « en cours » franchi il y a 5 semaines (seed) : frise de 12 cellules,
+	// 1re semaine « inconnue » (avant tout franchissement connu), dernière « en cours ».
+	const ligneEnCours = page.locator('.enc-detail-item:has([data-lesson="math-complements"])');
+	const friseEnCours = ligneEnCours.locator('.enc-frise');
+	await expect(friseEnCours).toHaveAttribute(
+		'aria-label',
+		/Évolution sur les 12 dernières semaines/,
+	);
+	const cellsEnCours = friseEnCours.locator('.enc-frise-cell');
+	await expect(cellsEnCours).toHaveCount(12);
+	await expect(cellsEnCours.first()).toHaveClass(/enc-frise-inconnu/);
+	await expect(cellsEnCours.last()).toHaveClass(/enc-frise-en-cours/);
+	await expect(ligneEnCours.locator('.enc-detail-meta')).toContainText('passée en cours');
+	// La puce d'état disparaît : la frise porte déjà l'info.
+	await expect(ligneEnCours.locator('.enc-detail-puce')).toHaveCount(0);
+
+	// Palier « acquis » franchi il y a 2 semaines (seed) : dernière cellule acquise,
+	// avec le marqueur « semaine courante » (classe `en-cours` distincte de l'état).
+	const ligneAcquis = page.locator('.enc-detail-item:has([data-lesson="math-doubles"])');
+	const derniereCelluleAcquis = ligneAcquis.locator('.enc-frise-cell').last();
+	await expect(derniereCelluleAcquis).toHaveClass(/enc-frise-acquis/);
+	await expect(derniereCelluleAcquis).toHaveClass(/\ben-cours\b/);
+	await expect(ligneAcquis.locator('.enc-detail-meta')).toContainText('acquise');
+	await expect(ligneAcquis.locator('.enc-detail-puce')).toHaveCount(0);
+
+	// Leçon jamais travaillée (aucun palier seedé) : pas de frise, puce d'état conservée.
+	const ligneVierge = page.locator('.enc-detail-item:has([data-lesson="math-tables-addition"])');
+	await expect(ligneVierge.locator('.enc-frise')).toHaveCount(0);
+	await expect(ligneVierge.locator('.enc-detail-puce')).toBeVisible();
+
+	// Couverture par matière : compteur « changements récents » (3 paliers dans la fenêtre).
 	await expect(
-		page.locator('.enc-evol-mat-lab').filter({ hasText: 'Mathématiques' }).first(),
-	).toBeVisible();
-	// Au moins une semaine avec un franchissement : barre « pleine » + compteur chiffré.
-	await expect(page.locator('.enc-evol-col.has-value').first()).toBeVisible();
-	await expect(page.locator('.enc-evol-num').filter({ hasText: /\d/ }).first()).toBeVisible();
+		page.locator('.enc-mat-item').filter({ hasText: 'Mathématiques' }).locator('.enc-mat-counts'),
+	).toContainText('changement');
+
+	expect(errors).toEqual([]);
+});
+
+/* 10bis. Dépliage global par matière (#521) : un bouton par matière ouvre d'un coup
+       toutes ses catégories (`<details class="enc-cat-d">`), sans toucher l'autre
+       matière, et referme tout si tout est déjà ouvert. Manipulation DOM directe
+       (pas de re-rendu) : `aria-expanded` + l'état `open` des `<details>` sont donc
+       le cœur du test. Catégories repliées au chargement. */
+test('dépliage global par matière : ouvre puis referme toutes les catégories visées, sans toucher l’autre matière', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await gotoHash(page, 'encadrant');
+
+	const btnMath = page.locator('[data-act="deplier-matiere"][data-subject="math"]');
+	const btnFrancais = page.locator('[data-act="deplier-matiere"][data-subject="francais"]');
+	const catsMath = page.locator('.enc-cat-d[data-subject="math"]');
+	const catsFrancais = page.locator('.enc-cat-d[data-subject="francais"]');
+
+	await expect(btnMath).toBeVisible();
+	await expect(btnFrancais).toBeVisible();
+	expect(await catsMath.count()).toBeGreaterThan(1);
+
+	// Repliées au chargement.
+	await expect(btnMath).toHaveAttribute('aria-expanded', 'false');
+	expect(
+		await catsMath.evaluateAll((els) => els.some((el) => (el as HTMLDetailsElement).open)),
+	).toBe(false);
+
+	// Ouvre TOUTES les catégories de maths, sans toucher le français.
+	await btnMath.click();
+	await expect(btnMath).toHaveAttribute('aria-expanded', 'true');
+	expect(
+		await catsMath.evaluateAll((els) => els.every((el) => (el as HTMLDetailsElement).open)),
+	).toBe(true);
+	expect(
+		await catsFrancais.evaluateAll((els) => els.some((el) => (el as HTMLDetailsElement).open)),
+	).toBe(false);
+	await expect(btnFrancais).toHaveAttribute('aria-expanded', 'false');
+
+	// Reclique : tout étant déjà ouvert, la bascule referme tout.
+	await btnMath.click();
+	await expect(btnMath).toHaveAttribute('aria-expanded', 'false');
+	expect(
+		await catsMath.evaluateAll((els) => els.some((el) => (el as HTMLDetailsElement).open)),
+	).toBe(false);
 
 	expect(errors).toEqual([]);
 });

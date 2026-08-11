@@ -878,12 +878,26 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   y est l'**unique frontière de normalisation** de l'ancien/nouveau format) ; `activiteParJour`
   en est **dérivé** (totaux seuls) et `echelleActivite(max)` calcule une échelle Y « ronde »
   (`{top, step, ticks}`). `RecapProfil.activite7j` est désormais un `JourActivite[]`.
-  **Frise d'évolution par matière** (#397) : `frisesParMatiere(paliersRaw, profile, now)`
-  → `FriseMatiere[]` (`{subject, label, semaines: number[], total}`) compte, par semaine et
-  par matière, les notions **distinctes** ayant franchi un cap sur le journal
-  `ludaskia_paliers` ; fenêtre de **12 semaines** (`SEMAINES_FRISE`), matière masquée tant
-  que son premier franchissement a moins de **3 semaines** de recul
-  (`PALIERS_MIN_SEMAINES`). Exposée dans `RecapProfil.frises`.
+  **Frise d'états par leçon** (#521, remplace la frise par matière de #397) :
+  `friseNotion(paliers, firstSeen, now)` → `FriseNotion | null` (`{semaines:
+  CelluleFrise[], enCoursDepuis, acquisDepuis}`) reconstruit, semaine par semaine sur
+  **12 semaines** (`SEMAINES_FRISE`), l'état atteint par **une** leçon depuis son journal
+  `PaliersNotion` (`ludaskia_paliers`) ; `CelluleFrise` = `'inconnu' | 'a-decouvrir' |
+  'en-cours' | 'acquis'`. Une cellule ne vaut que **l'état le plus haut atteint à cette
+  date** (`PaliersNotion` ne date que les montées, jamais les redescentes) : l'état RÉEL du
+  jour vient de `RecapNotion.niveau`, et un écart entre les deux EST le signal de recul.
+  « à renforcer » n'est jamais daté, donc n'apparaît jamais comme cellule passée. Les
+  semaines antérieures au premier franchissement connu sont `'inconnu'` (pas
+  `'a-decouvrir'`, qui affirmerait une absence de progrès qu'on ne connaît pas), sauf si
+  `LESSON_FIRST_SEEN_KEY` (#178, antérieure au journal des paliers) atteste que
+  l'historique est connu de bout en bout. `lundiDecale(now, semainesAvant)` décale en
+  **jours calendaires** (`debutJourLocal`) plutôt que par pas fixe de 7 × 24 h, qui dérivait
+  d'une heure autour d'un changement d'heure. `aChangeRecemment(frise)` dit si la frise
+  montre un changement (≥ 2 états distincts dans ses cellules) en **lisant les cellules**
+  plutôt qu'en recalculant depuis les dates, pour ne jamais diverger de ce que l'UI affiche.
+  Nouveaux champs `RecapNotion.frise` et `RecapMatiere.changementsRecents` (compte de
+  notions ayant changé, roll-up par matière) ; `RecapProfil.frises` a disparu. Détail du
+  rendu dans [Espace encadrant](espace-encadrant.md).
   **Travaillé récemment** (#520) : `travailRecent(statsRaw, activityRaw, ortho, jours, now)`
   → `GroupeTravail[]` (`{subject, label, cibles: CibleTravaillee[]}`, un groupe par matière
   dans l'ordre de `SUBJECTS`) et son lecteur de stores `travailRecentProfil(profile, jours,
@@ -893,8 +907,9 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `ref` du journal d'activité posée depuis #498, et vaut `null` (jamais `0`) quand la leçon
   n'a été vue qu'en bilan ou en sprint, qui ne référencent pas une cible unique. Les dictées
   sont collectées depuis le SEUL journal d'activité (`kind: 'dictee'` sur `CibleTravaillee`,
-  une DONNÉE plutôt qu'un libellé dérivé). **Aucun filtre de niveau** — à la différence de
-  `frisesParMatiere` ci-dessus : ce qui a été travaillé doit être nommé quel que soit le
+  une DONNÉE plutôt qu'un libellé dérivé). **Aucun filtre de niveau** — à la différence des
+  notions par catégorie (et de leur frise) ci-dessus, scopées au niveau actif de la matière :
+  ce qui a été travaillé doit être nommé quel que soit le
   niveau où c'est rangé (`@niveau`) ; une leçon travaillée sous deux niveaux porte deux clés
   de stats mais n'est dédoublonnée qu'en une ligne, datée de la plus récente des deux. Détail
   du rendu dans [Espace encadrant](espace-encadrant.md).

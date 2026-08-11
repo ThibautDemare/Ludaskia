@@ -166,6 +166,63 @@ test('Révision : « ranger par thème » montre les marques ✓/✗ (#345)', as
 	expect(errors).toEqual([]);
 });
 
+/* #471 — Entrée sur le titre-colonne (role="button", pas un vrai <button>) pour
+   poser la DERNIÈRE tuile réactivait #revValidate de façon synchrone (onState),
+   puis la même touche remontait à `bindEnter` (#revStage) qui la détournait vers
+   Valider : la réponse était validée sans que l'enfant ait pu la relire. Le
+   correctif ignore désormais aussi `[role="button"]` dans cette garde. */
+test('Révision : Entrée sur le titre de colonne ne valide pas prématurément (#471)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('fr-vocab-champs-tri'));
+	await gotoHash(page, 'revision-espacee');
+
+	await page.locator('.ltri-tuile').first().waitFor();
+	const total = await page.locator('.ltri-tuile').count();
+	expect(total).toBeGreaterThanOrEqual(2);
+
+	const titre = page.locator('.ltri-col-titre').first();
+	await expect(titre).toHaveAttribute('role', 'button'); // le chemin visé par le bug
+
+	// Range toutes les tuiles SAUF la dernière, au clavier : Entrée sur la tuile du
+	// bac (bouton natif) la sélectionne, puis Entrée sur le titre-colonne la dépose.
+	for (let i = 0; i < total - 1; i++) {
+		await page.locator('.ltri-tuile').first().focus();
+		await page.keyboard.press('Enter');
+		await titre.focus();
+		await page.keyboard.press('Enter');
+	}
+	expect(await page.locator('.ltri-tuile').count()).toBe(1);
+	await expect(page.locator('#revValidate')).toBeDisabled();
+
+	// Pose la DERNIÈRE tuile, toujours au clavier, en terminant sur le titre-colonne :
+	// c'est exactement le geste qui validait prématurément avant le correctif.
+	await page.locator('.ltri-tuile').first().focus();
+	await page.keyboard.press('Enter');
+	await titre.focus();
+	await page.keyboard.press('Enter');
+
+	// Aucune validation n'a eu lieu : pas de verdict, pas de bouton « Continuer »,
+	// le widget n'est pas figé (aucune marque ✓/✗) — et Valider est bien activé.
+	await expect(page.locator('.rev-feedback')).toHaveCount(0);
+	await expect(page.locator('#revNext')).toHaveCount(0);
+	await expect(page.locator('.ltri-posee.correct, .ltri-posee.wrong')).toHaveCount(0);
+	await expect(page.locator('.ltri-posee')).toHaveCount(total);
+	await expect(page.locator('#revValidate')).toBeEnabled();
+
+	// Un clic explicite sur Valider (le vrai geste attendu) valide normalement.
+	await page.locator('#revValidate').click();
+	await expect(page.locator('.rev-feedback')).toBeVisible();
+	await expect(page.locator('#revNext')).toBeVisible();
+
+	// Garde-fou : le raccourci clavier reste opérant sur un VRAI <button> (#revNext).
+	await page.locator('#revNext').press('Enter');
+	await expect(page.locator('.rev-done')).toContainText('terminée');
+
+	expect(errors).toEqual([]);
+});
+
 /* #264 — Le chemin QCM de la révision enrichit désormais l'énoncé (gras + fractions
    empilées) ET les boutons-réponses, comme les runners leçon et sprint. */
 test('Révision QCM : fractions empilées dans l’énoncé ET les choix (#264)', async ({ page }) => {

@@ -886,7 +886,13 @@ function bindEnter() {
 		// ce raccourci ne sert qu'à valider une SAISIE (#revInput, hors <form>) via Entrée.
 		// Sans cette garde, Entrée sur un bouton injecté dans #revStage serait détournée vers
 		// Valider/Continuer — mauvaise réponse enregistrée, boutons de l'atelier morts au clavier.
-		if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+		// Même garde pour un élément qui se comporte en bouton sans en être un
+		// (`role="button"` + son propre handler Entrée/Espace) : le titre de colonne du tri
+		// par thème (#471). Sinon, poser la DERNIÈRE tuile au clavier réactive « Valider »
+		// de façon synchrone, puis l'Entrée qui remonte le déclenche aussitôt — l'enfant
+		// n'a jamais eu la main pour relire sa réponse.
+		const cible = e.target as HTMLElement;
+		if (cible.tagName === 'BUTTON' || cible.getAttribute('role') === 'button') return;
 		e.preventDefault();
 		const btn = document.getElementById('revNext') ?? document.getElementById('revValidate');
 		btn?.dispatchEvent(new Event('click'));

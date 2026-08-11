@@ -437,7 +437,7 @@ function bindTri(
 						retirer(posee.dataset.mot!); // taper une tuile posée la renvoie au bac
 						return;
 					}
-					if (selected) poser(selected, col);
+					deposer(col);
 				});
 				colEl.addEventListener('dragover', (e) => {
 					if (!frozen) e.preventDefault();
@@ -451,7 +451,7 @@ function bindTri(
 				colEl.querySelector<HTMLElement>('.ltri-col-titre')?.addEventListener('keydown', (e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.preventDefault();
-						if (selected) poser(selected, col);
+						deposer(col);
 					}
 				});
 			});
@@ -493,6 +493,14 @@ function bindTri(
 		pendingFocus = () => focusColTitre(col); // on garde le focus sur la colonne-cible
 		announce(`${val} placé dans ${spec.categories[col]}`);
 		redraw();
+	}
+	/* Activer une colonne SANS mot choisi ne peut rien déposer : on le dit, au lieu de ne
+	   rien faire en silence (relecture a11y de #471). Au clavier / au lecteur d'écran,
+	   l'enfant qui presse Entrée sur le titre-bouton n'avait aucun retour lui expliquant
+	   pourquoi rien ne bougeait ; même remarque au doigt sur une colonne. */
+	function deposer(col: 0 | 1) {
+		if (selected) poser(selected, col);
+		else announce("Choisis d'abord un mot, puis son thème.");
 	}
 	function retirer(val: string) {
 		if (frozen || placed[val] === undefined) return;

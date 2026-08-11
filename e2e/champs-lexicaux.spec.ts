@@ -44,6 +44,12 @@ test('« Ranger par thème » : trier les tuiles puis vérifier corrige tuile pa
 	// Vérifier est désactivé tant que toutes les tuiles ne sont pas rangées.
 	await expect(page.locator('#ltriVerif')).toBeDisabled();
 
+	// Taper le titre-colonne SANS mot choisi n'y dépose rien : la colonne l'annonce
+	// dans la région live plutôt qu'un no-op silencieux (relecture a11y de #471).
+	await page.locator('.ltri-col').first().locator('.ltri-col-titre').click();
+	await expect(page.locator('#ltriStatus')).toHaveText("Choisis d'abord un mot, puis son thème.");
+	await expect(page.locator('.ltri-posee')).toHaveCount(0);
+
 	// Interaction tap en deux temps : on sélectionne chaque tuile puis on tape le
 	// titre de la 1re colonne. Tout va dans le thème 0 → résultat déterministe :
 	// les 3 mots de ce thème sont corrects, les 3 autres sont faux.
@@ -100,15 +106,22 @@ test('« Ranger par thème » : sélection + dépôt au clavier (#360)', async (
 	await page.locator('.ltri-tuile').first().waitFor();
 	const avant = await page.locator('.ltri-tuile').count();
 
+	// Entrée sur le titre-colonne SANS mot choisi n'y dépose rien : l'annonce invite
+	// à choisir un mot d'abord (pas de no-op silencieux, relecture a11y de #471).
+	const titre = page.locator('.ltri-col-titre').first();
+	await expect(titre).toHaveAttribute('role', 'button');
+	await titre.focus();
+	await page.keyboard.press('Enter');
+	await expect(page.locator('#ltriStatus')).toHaveText("Choisis d'abord un mot, puis son thème.");
+	await expect(page.locator('.ltri-posee')).toHaveCount(0);
+
 	// Entrée sur une tuile du bac (bouton natif) la sélectionne.
 	await page.locator('.ltri-tuile').first().focus();
 	await page.keyboard.press('Enter');
 	await expect(page.locator('.ltri-tuile.ltri-sel')).toHaveCount(1);
 	await expect(page.locator('.ltri-tuile.ltri-sel')).toHaveAttribute('aria-pressed', 'true');
 
-	// Le titre de colonne est un bouton focalisable ; Entrée y dépose la tuile.
-	const titre = page.locator('.ltri-col-titre').first();
-	await expect(titre).toHaveAttribute('role', 'button');
+	// Le titre de colonne dépose la tuile sélectionnée.
 	await titre.focus();
 	await page.keyboard.press('Enter');
 

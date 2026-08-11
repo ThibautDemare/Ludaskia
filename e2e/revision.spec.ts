@@ -185,6 +185,15 @@ test('Révision : Entrée sur le titre de colonne ne valide pas prématurément 
 	const titre = page.locator('.ltri-col-titre').first();
 	await expect(titre).toHaveAttribute('role', 'button'); // le chemin visé par le bug
 
+	// Entrée sur le titre SANS mot choisi ne dépose rien et ne déclenche AUCUNE
+	// validation (relecture a11y de #471) : l'annonce invite à choisir un mot d'abord.
+	await titre.focus();
+	await page.keyboard.press('Enter');
+	await expect(page.locator('#ltriStatus')).toHaveText("Choisis d'abord un mot, puis son thème.");
+	await expect(page.locator('.ltri-posee')).toHaveCount(0);
+	await expect(page.locator('.rev-feedback')).toHaveCount(0);
+	await expect(page.locator('#revNext')).toHaveCount(0);
+
 	// Range toutes les tuiles SAUF la dernière, au clavier : Entrée sur la tuile du
 	// bac (bouton natif) la sélectionne, puis Entrée sur le titre-colonne la dépose.
 	for (let i = 0; i < total - 1; i++) {

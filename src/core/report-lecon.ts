@@ -19,9 +19,12 @@
       Le premier jour de blocage ne reporte rien.
 
    Le score de référence est écrit UNIQUEMENT depuis un essai en mode leçon
-   (`meilleurPct`) : `LessonStat.recentPct` est alimenté aussi par le sprint et les
-   bilans, où une leçon peut ne peser qu'une seule question — deux questions de
-   sprint réussies suffiraient à « franchir » une leçon jamais travaillée en série.
+   (`meilleurPct`) : la fenêtre récente de `LessonStat` est alimentée aussi par le
+   sprint, les bilans et la révision espacée, où une leçon peut ne peser qu'une seule
+   question — deux questions de sprint réussies suffiraient à « franchir » une leçon
+   jamais travaillée en série. Reste vrai depuis que la fenêtre est PONDÉRÉE (#541) :
+   la pondération corrige le poids d'un item dans une performance moyenne, elle ne
+   fait pas d'un item la preuve qu'une série complète est réussie.
 
    Module SANS dépendance applicative (même rôle de socle que maitrise.ts) : la
    persistance vit dans progress.ts, la sélection dans lecon-du-jour.ts, tous deux

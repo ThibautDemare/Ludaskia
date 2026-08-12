@@ -197,6 +197,37 @@ planification et l'exécution des gestes. Elle entraîne une **dysgraphie**
   geste moteur imparfait se traduit en échec scolaire silencieux sur une
   notion pourtant maîtrisée. *(Avis `specialiste-troubles-apprentissage`)*
 
+### 3.4 Droit de passer / gestion du blocage
+
+- **Sortie de secours pour un blocage par le GESTE, distinct d'un blocage sur la
+  notion** : sur les exercices à interaction (poser une tuile, relier une paire,
+  cliquer un mot, remplir un tableau case par case…), le bouton de validation reste
+  désactivé tant que le geste n'est pas complet (toutes les tuiles posées, tous les
+  liens tracés, toutes les cases remplies). Un enfant dyspraxique qui n'aboutit pas le
+  geste — alors qu'il connaît la réponse — n'avait alors **aucune** issue que quitter
+  l'exercice : la difficulté motrice devenait un échec scolaire silencieux sur une
+  notion pourtant maîtrisée, exactement le défaut relevé en §3.3 pour le numérique.
+  *(Implémenté : « Je ne sais pas, montre-moi », #467 — `ui/revelation-neutre.ts`,
+  `ui/lecon-passer.ts`)*
+- **Le lien reste actif même quand la validation ne l'est pas** — c'est précisément le
+  cas visé — et se présente comme un vrai bouton discret **par le style**, jamais par
+  une cible réduite (même exigence de taille de cible que le reste de l'interface,
+  §3.1). *(Implémenté)*
+- **Traité comme une réponse fausse assumée, jamais un « passer » gratuit et muet** :
+  question comptée (dénominateur d'un essai de leçon, ou recul d'un cran en répétition
+  espacée), 0 XP, et journalisée « n'a pas essayé » plutôt que confondue avec une
+  vraie erreur de raisonnement — pour ne pas fausser le suivi de l'encadrant ni
+  banaliser l'abandon comme un raccourci sans coût. *(Implémenté)*
+- Absent du **sprint** chronométré (un skip gratuit sous chrono romprait l'équité du
+  record entre enfants ; y valider sans rien écrire donne déjà la même sortie de
+  secours) et de la **fiche/du bilan en saisie** (qui tolèrent déjà un champ laissé
+  vide) : deux formats où le blocage par le geste ne se pose pas dans les mêmes
+  termes. *(Choix produit assumé)*
+- Pertinent aussi hors dyspraxie : un enfant TDAH qui persévère sans issue sur un geste
+  raté plusieurs fois s'épuise et décroche (cf. §4.5, découpage des séquences) — la
+  sortie de secours limite ce coût, même si son origine ici reste le geste, pas
+  l'attention.
+
 ---
 
 ## 4. TDAH / Troubles de l'attention
@@ -262,6 +293,10 @@ fortement le contexte d'apprentissage et peut coexister avec des troubles dys.
 - Afficher la **progression** dans la session (ex. : question 3/8) — ancre
   temporelle concrète qui aide l'enfant TDAH à se situer.
 - Possibilité de **pause** sans perdre sa progression. *(Bonne pratique générale)*
+- Un blocage répété (attention qui décroche, persévérance qui s'épuise) profite de la
+  même sortie de secours que le blocage par le geste dyspraxique (cf. §3.4, « Droit de
+  passer / gestion du blocage ») : pouvoir passer à la question suivante plutôt que
+  s'enfermer sur un exercice sans issue.
 
 ---
 
@@ -279,6 +314,7 @@ fortement le contexte d'apprentissage et peut coexister avec des troubles dys.
 | Détection de saisie invalide avant scoring (**numérique**, ne PAS tolérer « au plus proche » — §3.3) | Dyspraxie | Implémenté (`saisieEstNombre`/`itemEstNumerique`) |
 | Pas de pénalisation hors sujet | Dyslexie, dysorthographie | Eduscol EBEP |
 | Progression visible dans la session | TDAH, dyscalculie | Bonne pratique générale |
+| Droit de passer un exercice bloqué (« Je ne sais pas, montre-moi », §3.4) | Dyspraxie (geste), TDAH (persévérance) | Implémenté (#467) |
 
 ---
 

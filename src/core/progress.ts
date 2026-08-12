@@ -294,10 +294,28 @@ export function recordLessonStats(
 	// Première rencontre : on date le premier passage (objectif « nouvelle leçon »)
 	// puis on entre la leçon en révision espacée (cf. #45).
 	markLessonsFirstSeen(premieres, now);
-	enterLessonsRevision(
-		Object.keys(perLesson).filter((id) => perLesson[id].total > 0),
-		now,
-	);
+	const travaillees = Object.keys(perLesson).filter((id) => perLesson[id].total > 0);
+	enterLessonsRevision(travaillees, now);
+	// Franchissements de palier : MÊME liste que ci-dessus, mais l'état « acquis » dépend de
+	// l'étoile, que l'appelant écrit APRÈS ce retour (cf. recordLessonRun). D'où le report à la
+	// fin de la tâche courante — les microtâches s'exécutent quand la session est entièrement
+	// écrite, et avant toute I/O, donc rien ne peut se perdre entre les deux.
+	// Ce report est ce qui rend l'invariant STRUCTUREL, et pas seulement documenté : la frise de
+	// l'espace encadrant déduit l'état d'une semaine de l'ABSENCE d'horodatage (« aucune montée
+	// observée »), ce qui n'est vrai que si TOUT chemin écrivant des stats de leçon journalise
+	// aussi les paliers. Les deux appels étaient jusqu'ici côte à côte chez chaque appelant, sans
+	// rien pour les lier : un futur runner qui aurait oublié le second aurait fait mentir la frise
+	// des semaines durant, sans que rien ne le signale (relecture qualité de PR #540).
+	// Prix du report, à connaître avant de bâtir dessus : un lecteur du journal situé dans la MÊME
+	// tâche que la session y verrait l'état d'AVANT. Aucun consommateur ne s'y trouve aujourd'hui
+	// (l'espace encadrant s'atteint par navigation, donc dans une autre tâche), et la persistance
+	// elle-même ne risque rien puisque les microtâches précèdent toute I/O — mais l'une n'implique
+	// pas l'autre. Même remarque pour un changement de profil intra-tâche, hors d'atteinte via l'UI.
+	// La marche porte l'instant du DÉBUT de cette fonction, celui de `lastAt` et du journal
+	// d'activité, plutôt qu'un `Date.now()` relu en fin de session comme le faisaient les
+	// appelants : une seule date pour toute la session, donc trois journaux qui l'attribuent à la
+	// même semaine.
+	queueMicrotask(() => recordMonteesPalier(travaillees, now));
 }
 /* ---------- Journal d'activité : sessions finalisées (#234, typé #319) ----------
    Une entrée par session d'entraînement finalisée (tout ce qui passe par
@@ -358,6 +376,13 @@ export function loadActivity(): ActivityEntry[] {
 	return normalizeActivity(lsGet(ACTIVITY_KEY, []));
 }
 function recordActivity(now: number, kind: ActivityKind, ref?: string) {
+	// Toute session finalisée, de n'importe quel type, atteste que le journal des paliers tourne
+	// (cf. marquerDebutSuivi) : sans ça, un enfant qui ne ferait que des dictées et de la révision
+	// espacée n'aurait aucune borne, et l'espace encadrant afficherait « aucun suivi » sur toutes
+	// ses leçons alors qu'il travaille. La déduction reste juste, ces chemins n'écrivant aucune
+	// stat de leçon et l'étoile ne s'obtenant que par celui qui en écrit (cf. recordLessonRun) :
+	// entre une telle borne et la première session de leçon, aucun état ne peut avoir bougé.
+	marquerDebutSuivi(now);
 	const a = loadActivity(); // normalisé : réécrit aussi l'éventuel héritage au format objet
 	a.push(ref ? { t: now, k: kind, ref } : { t: now, k: kind });
 	if (a.length > ACTIVITY_MAX) a.splice(0, a.length - ACTIVITY_MAX);
@@ -424,18 +449,27 @@ export interface PaliersNotion {
    repli (il PROUVE que le journal tournait déjà), mais il reste muet tant qu'aucun cap n'est
    franchi, c'est-à-dire précisément chez l'enfant qui débute. */
 export const PALIERS_DEBUT_KEY = 'ludaskia_paliersDepuis';
+/* Pose la borne si elle manque, jamais deux fois : ce qu'elle date, c'est le journal EN SERVICE,
+   pas un franchissement. Appelée par toute session finalisée (`recordActivity`) et par
+   `recordMonteesPalier`, qui couvre en plus la session sans aucune question. */
+function marquerDebutSuivi(now: number) {
+	if (lsGet(PALIERS_DEBUT_KEY, null) == null) lsSet(PALIERS_DEBUT_KEY, now);
+}
 function loadPaliersRaw(): Record<string, PaliersNotion> {
 	return lsGet(LESSON_PALIERS_KEY, {});
 }
 /* Enregistre les franchissements de palier pour les leçons TRAVAILLÉES dans une session
-   (profil ACTIF). À appeler APRÈS l'écriture des stats ET de l'étoile (l'état « acquis »
-   dépend de l'étoile), en fin de session — cf. recordLessonRun et le sprint. `now` daté
-   par l'appelant (testable). Un saut direct « à renforcer » → « acquis » ne compte qu'UNE
-   marche (« acquis ») : on ne fabrique pas rétroactivement un palier « en cours ». */
+   (profil ACTIF). Appelé par `recordLessonStats` LUI-MÊME, en microtâche, une fois l'étoile
+   écrite (dont dépend l'état « acquis ») : aucun appelant applicatif n'a donc à s'en soucier,
+   et c'est voulu — cf. le commentaire du report là-bas. Reste exporté parce que les tests
+   l'exercent directement, la règle de franchissement méritant d'être éprouvée sans monter
+   une session entière. `now` daté par l'appelant (testable). Un saut direct « à renforcer » →
+   « acquis » ne compte qu'UNE marche (« acquis ») : on ne fabrique pas rétroactivement un
+   palier « en cours ». */
 export function recordMonteesPalier(lessonIds: string[], now: number) {
-	// Borne de mise en service : posée même si cette session ne franchit aucun palier, et même
-	// si la liste est vide — ce qu'elle date, c'est le journal qui tourne, pas un franchissement.
-	if (lsGet(PALIERS_DEBUT_KEY, null) == null) lsSet(PALIERS_DEBUT_KEY, now);
+	// Borne de mise en service : posée même si cette session ne franchit aucun palier, et même si
+	// la liste est vide — cas qu'aucun point d'activité ne couvre, faute de session à journaliser.
+	marquerDebutSuivi(now);
 	const paliers = loadPaliersRaw();
 	const stars = loadStarsRaw();
 	const stats = loadLessonStatsRaw();

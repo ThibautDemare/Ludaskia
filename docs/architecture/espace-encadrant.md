@@ -141,31 +141,35 @@ borne **par profil** (pas par leçon, cf. [Logique pure](core.md) pour `debutSui
 qui gouverne toutes les lignes de la même façon : une première rencontre ne vaut
 « à découvrir » que si sa semaine tombe à cette borne ou après.
 
-Cinq rangs, mais **quatre rendus visuels** : gris neutre dédié (`$frise-neutre`, distinct de
+Cinq rangs, chacun avec son rendu : gris neutre dédié (`$frise-neutre`, distinct de
 `--muted` qui tombe sous le seuil 3:1 pour un objet graphique de cette taille) au rang le
-plus bas pour « à découvrir » **et** pour une semaine antérieure à `debutSuivi` (`'inconnu'`)
-— les deux partagent désormais exactement le même bloc, **décision du mainteneur** contre
-l'avis a11y d'origine (qui distinguait `'inconnu'` par un filet fin sans hauteur) : « on doit
-avoir uniquement 12 blocs, un pour chaque semaine prévue, pas un seul de plus, pas un seul de
-moins » — à 4px de haut, neuf cellules `'inconnu'` contiguës se lisaient comme un seul trait
-continu et la frise n'était plus dénombrable. Coût assumé : le rang le plus bas **affirme**
-« à découvrir » sur des semaines dont l'état est en réalité inconnu ; la distinction ne
-survit que dans le **récit accessible** (`aria-label`/`title`, ci-dessous), qui dit « avant
-le suivi » et non « à découvrir » pour ces semaines-là. Puis `--warn` pour « à renforcer » —
-jamais **daté** (ce palier n'est pas un progrès de maîtrise) mais **déduit** dès que la leçon
-est suivie sans cap franchi, ce qui donne désormais une frise aux leçons n'ayant jamais
-dépassé 40 % —, bleu `--cat-bleu` pour « en cours » (**relevé en thème Nuit**, en réutilisant
-le bleu déjà rehaussé pour le graphe d'activité plutôt qu'en introduire un troisième) et vert
-`--ok` pour « acquis » ; un filet `box-shadow` sépare deux cellules contiguës (deux états
-voisins peuvent avoir des luminances proches). Ratios mesurés en commentaire dans
-`styles/encadrant.scss` (`tools/contrast/`) ; `styles/print.scss` relève aussi `--warn` en
-thème Nuit pour l'impression, dont ces cellules dépendent désormais également. La dernière
-cellule (semaine en cours) porte en plus un contour distinct (`.enc-frise-courante`) :
-l'état qu'elle montre est déjà un fait, mais peut encore changer avant dimanche.
+plus bas pour « à découvrir » (bloc **plein**) ; au même rang, une semaine antérieure à
+`debutSuivi` (`'inconnu'`) est un bloc **creux** — contour `$frise-neutre`, fond transparent.
+Rendu retenu après deux essais écartés (raisonnement détaillé dans `styles/encadrant.scss`,
+trois contraintes) : un filet fin sans hauteur (l'origine) passait, à l'usage, pour un bug
+d'affichage plutôt que pour une absence de donnée, et neuf cellules contiguës à 4px se
+lisaient comme un seul trait continu, rompant la dénombrabilité des douze semaines ; un bloc
+plein identique à « à découvrir » (essayé ensuite) **affirmerait** « pas encore commencée »
+sur des semaines dont l'état est en réalité inconnu ; une cinquième couleur pleine
+introduirait un état de plus alors que la couleur code ici l'ÉTAT, sans compter qu'un gris
+assez clair pour se lire « vide » tomberait sous 3:1 (1.4.11). Le bloc creux tient les trois
+contraintes à la fois : douze blocs dénombrables, aucune affirmation sur l'inconnu, et un
+contraste porté par le contour, aux mêmes ratios que l'aplat. Puis `--warn` pour « à
+renforcer » — jamais **daté** (ce palier n'est pas un progrès de maîtrise) mais **déduit**
+dès que la leçon est suivie sans cap franchi, ce qui donne désormais une frise aux leçons
+n'ayant jamais dépassé 40 % —, bleu `--cat-bleu` pour « en cours » (**relevé en thème Nuit**,
+en réutilisant le bleu déjà rehaussé pour le graphe d'activité plutôt qu'en introduire un
+troisième) et vert `--ok` pour « acquis » ; un filet `box-shadow` sépare deux cellules
+contiguës (deux états voisins peuvent avoir des luminances proches). Ratios mesurés en
+commentaire dans `styles/encadrant.scss` (`tools/contrast/`) ; `styles/print.scss` relève
+aussi `--warn` en thème Nuit pour l'impression, dont les cellules « à renforcer » dépendent
+désormais également. La dernière cellule (semaine en cours) porte en plus un contour distinct
+(`.enc-frise-courante`) : l'état qu'elle montre est déjà un fait, mais peut encore changer
+avant dimanche.
 
 **Rendu en un seul `role="img"` par ligne** (`friseNotionHTML`, `ui/encadrant-progression.ts`) :
 les douze cellules sont `aria-hidden`, l'`aria-label`/`title` porte un **récit textuel** des
-changements (« avant le suivi, puis passée en cours le 3 juin 2026, puis acquise hier ») plutôt
+changements (« statut inconnu, puis passée en cours le 3 juin 2026, puis acquise hier ») plutôt
 que d'annoncer douze cellules une à une, dont aucune n'est focalisable. La **puce d'état**
 (pastille colorée) de la ligne est **omise** dès qu'une frise s'affiche : elle redirait, en
 plus petit, ce que la dernière cellule montre déjà (avis designer) — le **mot** d'état, lui,
@@ -173,7 +177,7 @@ reste affiché (canal indépendant de la couleur, a11y). La méta de la ligne (�
 fois · dernière fois … ») gagne la date du cap le **plus haut** franchi (« acquise le… » /
 « passée en cours le… ») : la trajectoire complète vit dans la frise, la méta n'en retient que
 l'événement marquant. Un segment « à renforcer » reste volontairement **muet** (pas de date,
-ce palier n'en a pas) — « avant le suivi, puis à renforcer » se lit donc sans date pour ce
+ce palier n'en a pas) — « statut inconnu, puis à renforcer » se lit donc sans date pour ce
 second segment. Rien à tracer (leçon jamais travaillée : encore « à découvrir » et aucun cap
 franchi) → pas de frise, et la puce d'état n'est alors pas omise : la ligne garde sa pastille
 habituelle.

@@ -6,6 +6,11 @@
    - mauvaise réponse → on révèle la bonne réponse et on MET LE
      CHRONO EN PAUSE jusqu'à ce que l'élève passe à la suite
      (clic « Continuer » OU touche Entrée)
+   - validation à VIDE = réponse fausse assumée (#467) : même
+     révélation, question comptée, aucun point ni XP. Le sprint n'a
+     PAS de bouton « Je ne sais pas » (un passe-droit gratuit sous
+     chrono gonflerait le record) : valider sans rien écrire est la
+     sortie de secours de l'enfant coincé, au même prix qu'une erreur.
    - validation sur Entrée OU bouton « Valider »
    - un sprint ne compte que s'il va au bout des 5 minutes
    ============================================================ */
@@ -515,6 +520,11 @@ function sprintNext() {
 function onSprintEnter(e: KeyboardEvent) {
 	if (e.key !== 'Enter') return;
 	e.preventDefault();
+	// Auto-répétition du clavier (touche MAINTENUE) avalée, après le preventDefault : depuis
+	// #467, une validation à vide compte une question et révèle la réponse. Sans ce filtre,
+	// une touche Entrée gardée enfoncée enchaînerait « Continuer » puis un envoi à vide sur la
+	// question suivante, et brûlerait des questions à la volée sans que l'enfant les ait vues.
+	if (e.repeat) return;
 	if (sprintPaused) sprintContinue();
 	else sprintSubmit();
 }
@@ -549,8 +559,9 @@ function sprintEchoFrappe(champ: HTMLInputElement): void {
 	requestAnimationFrame(() => champ.classList.add('frappe'));
 }
 
-/* Refus de saisie : la réponse n'est pas exploitable (vide, ou pas un nombre là où un
-   nombre est attendu). Ce n'est PAS une mauvaise réponse — rien n'est compté, rien n'est
+/* Refus de saisie : la réponse n'est pas exploitable — pas un nombre là où un nombre est
+   attendu (le champ VIDE, lui, n'est plus refusé : c'est la sortie de secours de #467).
+   Ce n'est PAS une mauvaise réponse — rien n'est compté, rien n'est
    journalisé, et on n'ouvre surtout pas l'écran de correction, qui affirmerait une erreur
    de contenu qui n'a pas eu lieu. On GARDE la saisie, curseur en fin : redemander toute la
    séquence de frappe multiplierait les occasions de la rater (avis dys). Un submit sans
@@ -617,15 +628,23 @@ export function sprintQuestionBody(q: Item) {
 }
 
 // Cœur de la validation, commun à la saisie (maths) et au QCM (conjugaison).
-function sprintAnswer(raw: string) {
+// `sansTentative` (#467) : validation à VIDE assumée — l'enfant n'a rien proposé, donc
+// demande de fait à voir la réponse. Traitée comme une réponse fausse (question comptée,
+// aucun point, aucun XP, révélation), mais journalisée « passé sans essayer » pour
+// l'encadrant. Seul `sprintSubmit` lève ce drapeau : un choix de QCM n'est jamais vide.
+function sprintAnswer(raw: string, sansTentative = false) {
 	if (!sprintActive || sprintPaused) return;
 	const val = (raw || '').trim();
-	if (val === '') return; // pas de validation à vide
+	// Une valeur vide ne vaut réponse que par le chemin explicite de `sprintSubmit` : ailleurs
+	// (choix de QCM vide, appel défensif), il n'y a rien à corriger et rien à compter.
+	if (val === '' && !sansTentative) return;
 	sprintAnswered++;
 	const lessonId = sprintCurrent!._lesson!;
 	const b = sprintPerLesson[lessonId] || (sprintPerLesson[lessonId] = { ok: 0, total: 0 });
 	b.total++;
-	if (checkItemAnswer(sprintCurrent!, val)) {
+	// Rien de proposé ⇒ faux par construction : on n'interroge pas la correction avec une
+	// chaîne vide (un item dont la réponse attendue serait vide la validerait).
+	if (!sansTentative && checkItemAnswer(sprintCurrent!, val)) {
 		sprintScore++;
 		b.ok++;
 		addXP(1);
@@ -640,25 +659,35 @@ function sprintAnswer(raw: string) {
 		}, 600);
 	} else {
 		// Journal des erreurs (#391) : une réponse fausse du sprint, pour l'espace encadrant.
-		// Une fois par question (sprintAnswer n'est appelé qu'une fois par item non vide).
+		// Une fois par question (sprintAnswer n'est appelé qu'une fois par item).
 		capterErreur({
 			text: sprintCurrent!.text,
 			figure: sprintCurrent!.figure,
-			donnee: val,
+			// Item passé (#467) : aucune réponse donnée. Avec le marqueur, l'encadrant remplace
+			// la ligne « Réponse donnée » par « N'a pas essayé », au lieu d'afficher un vide.
+			donnee: sansTentative ? '' : val,
 			// Intercalation : la BANDE acceptée, pas l'exemple isolé (#446, cf. attendueItem).
 			attendue: attendueItem(sprintCurrent!),
 			lessonId,
 			mode: 'sprint',
+			sansTentative,
 		});
-		sprintShowCorrection(val, sprintCurrent!.answer, !!sprintCurrent!.intervalle);
+		sprintShowCorrection(val, sprintCurrent!.answer, {
+			parIntervalle: !!sprintCurrent!.intervalle,
+			sansTentative,
+		});
 	}
 }
 
 function sprintSubmit() {
 	const inp = document.getElementById('sprintInput') as HTMLInputElement | null;
 	if (!inp) return;
+	// Validation à VIDE (#467) : ne plus la refuser. Un enfant coincé n'avait aucune issue
+	// (message de refus en boucle, ou abandon du sprint) ; elle vaut maintenant réponse fausse
+	// assumée — révélation, question comptée, aucun point. Testée AVANT le filtre numérique
+	// ci-dessous : un champ vide n'étant pas un nombre, il y serait sinon refusé.
 	if (inp.value.trim() === '') {
-		sprintRefuse(inp, 'Écris ta réponse avant de valider.');
+		sprintAnswer('', true);
 		return;
 	}
 	// Saisie qui n'est pas un nombre là où un nombre est attendu (« 3- » : un caractère
@@ -674,6 +703,14 @@ function sprintSubmit() {
 	sprintAnswer(inp.value);
 }
 
+/* Rappel affiché à la place de « Tu as répondu … » quand l'enfant a validé sans rien
+   écrire (#467). Constat NEUTRE, sans « tu » ni reproche : ce chemin sert de sortie de
+   secours, l'y sermonner ferait payer deux fois un enfant déjà coincé. « cette fois »
+   borne le constat à la question, et annonce implicitement qu'il y en a une autre après.
+   Une seule constante, pour que le texte affiché et celui annoncé au lecteur d'écran ne
+   puissent pas diverger. */
+const RAPPEL_SANS_REPONSE = 'Pas de réponse cette fois.';
+
 // Mauvaise réponse : on révèle la solution et on met le chrono en pause.
 // `donnee` : la réponse RÉELLEMENT envoyée par l'enfant, rappelée avant la bonne réponse.
 // Sans elle, l'énoncé re-rendu avec la solution dans le trou se lit comme SA réponse, et
@@ -686,7 +723,17 @@ function sprintSubmit() {
 // réponse possible ») : affirmer « la bonne réponse » là où la consigne annonçait plusieurs
 // réponses possibles se contredit, et laisse croire à l'enfant qu'il devait trouver CE
 // nombre-là.
-function sprintShowCorrection(donnee: string, ans: number | string, parIntervalle = false) {
+// `sansTentative` (#467) : validation à vide → il n'y a AUCUNE réponse donnée à rappeler.
+// Le rappel devient un constat neutre (cf. RAPPEL_SANS_REPONSE) ; sans lui, la phrase
+// « Tu as répondu . » s'afficherait avec un blanc à la place de la réponse.
+function sprintShowCorrection(
+	donnee: string,
+	ans: number | string,
+	{
+		parIntervalle = false,
+		sansTentative = false,
+	}: { parIntervalle?: boolean; sansTentative?: boolean } = {},
+) {
 	sprintPaused = true;
 	const stage = document.getElementById('sprintStage');
 	if (!stage) return;
@@ -696,17 +743,21 @@ function sprintShowCorrection(donnee: string, ans: number | string, parIntervall
 	const amorce = parIntervalle ? 'Une réponse possible était' : 'La bonne réponse était';
 	// « répondu » et non « écrit » : le sprint valide aussi au TAP (QCM de conjugaison,
 	// signes « < = > »), où rien n'a été saisi au clavier.
+	const rappelHTML = sansTentative
+		? RAPPEL_SANS_REPONSE
+		: `Tu as répondu <strong>${escapeHTML(donneeLue)}</strong>.`;
 	stage.innerHTML = `
     <div class="sprint-theme">${sprintCurrentDef ? subjectTag(sprintCurrentDef.subject) : ''}<span class="sprint-lesson">${escapeHTML(sprintCurrentDef ? labelLecon(sprintCurrentDef, niveauLecon(sprintCurrentDef)) : '')}</span></div>
     <div class="sprint-q wrong">${escapeHTML(sprintCurrent!.text).replace('@', '<span class="sprint-sol">' + solBrute + '</span>')}</div>
     <div class="sprint-correction">
-      <span class="sprint-donnee">Tu as répondu <strong>${escapeHTML(donneeLue)}</strong>.</span>
+      <span class="sprint-donnee">${rappelHTML}</span>
       <span>${amorce} <strong>${escapeHTML(solLue)}</strong>. Prends le temps de la lire.</span>
     </div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintContinue">Continuer ▶</button></div>`;
 	// Le focus part sur « Continuer » (ci-dessous) : un lecteur d'écran n'annonce que
 	// l'élément focalisé, donc sans cette ligne la correction ne serait jamais lue.
-	sprintAnnonce(`Tu as répondu ${donneeLue}. ${amorce} ${solLue}.`);
+	const rappelLu = sansTentative ? RAPPEL_SANS_REPONSE : `Tu as répondu ${donneeLue}.`;
+	sprintAnnonce(`${rappelLu} ${amorce} ${solLue}.`);
 	const c = document.getElementById('sprintContinue');
 	if (c) {
 		c.addEventListener('click', sprintContinue);
@@ -763,7 +814,7 @@ function renderSprintResults(medalInfo: RunResult, streakDays: number) {
       ${mascotteBulleHTML(encouragementMascotte())}
       <div class="sprint-done-big">${sprintScore}</div>
       <div class="sprint-done-lab">bonne${sprintScore > 1 ? 's' : ''} réponse${sprintScore > 1 ? 's' : ''} en 5 min</div>
-      <div class="sprint-done-sub">${sprintAnswered} question${sprintAnswered > 1 ? 's' : ''} tentée${sprintAnswered > 1 ? 's' : ''} · ${acc}% de réussite</div>
+      <div class="sprint-done-sub">${sprintAnswered} question${sprintAnswered > 1 ? 's' : ''} posée${sprintAnswered > 1 ? 's' : ''} · ${acc}% de réussite</div>
       ${extra}
       <div class="sprint-actions">
         <button class="sprint-btn" id="sprintAgain">↻ Recommencer</button>

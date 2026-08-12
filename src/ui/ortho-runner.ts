@@ -26,6 +26,7 @@ import {
 import type { MotOrtho, OrthoState, ModeOrtho } from '../core/orthographe/types';
 import { diffCorrect } from '../core/orthographe/diff';
 import { addXP, getXP, niveauDepuisXP, recordSessionActivity } from '../core/progress';
+import { journaliserPaliersOrtho } from '../core/orthographe/paliers';
 import { evaluateTrophies } from '../core/rewards';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 import { goCategorie, goOrthoRevoir } from './navigation';
@@ -735,7 +736,12 @@ function renderTuiles(word: MotOrtho): void {
 function journalOrthoSession(): void {
 	if (orthoJournalisee) return;
 	orthoJournalisee = true;
+	const now = Date.now(); // un seul instant pour les deux journaux de cette session
 	recordSessionActivity('dictee', orthoLessonId || undefined);
+	// Franchissements d'état des listes (#541) : ce qui donne à une dictée la frise d'évolution
+	// des leçons. Toutes les listes sont réévaluées, pas seulement celle jouée — les mots sont
+	// partagés (cf. journaliserPaliersOrtho). `dispoDictee` = ce que l'enfant avait vraiment.
+	journaliserPaliersOrtho(dispoDictee, now);
 }
 
 /* Retour de fin de séance d'orthographe : le programme du jour si la dictée en a été

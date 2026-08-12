@@ -12,6 +12,8 @@
      (<details>), pour ne pas dérouler un « mur de fautes » ;
    - pas de rouge en aplat : la BONNE réponse est mise en avant (positif), la
      réponse donnée reste neutre, jamais barrée ;
+   - un item PASSÉ sans essayer (#467) n'est pas présenté comme une faute : phrase
+     explicite à la place de la réponse donnée, et liseré neutre ;
    - relié à « À revoir ensemble » : chaque leçon peut être épinglée d'ici (même
      `data-act="epingler"` → toggleRevoirFor, aiguillé par progressionClick) ;
    - filtrable par PÉRIODE (#476) : le « récemment » du titre est une vraie fenêtre de
@@ -79,16 +81,35 @@ const modeLabel = (m: string): string => MODE_LABEL[m] ?? m;
    « Réponse attendue » et non « La bonne réponse » (#446) : depuis l'intercalation, l'attendu
    peut être une BANDE (« un nombre entre 450 et 465 ») dont le « la » nierait la pluralité.
    Formulation neutre, symétrique de « Réponse donnée : » juste en dessous, et alignée sur le
-   vocabulaire interne (`attendue`, `attendueItem`) — valable pour TOUTES les leçons. */
+   vocabulaire interne (`attendue`, `attendueItem`) — valable pour TOUTES les leçons.
+
+   « Passé sans essayer » (#467) : quand l'enfant a demandé à voir la réponse, la ligne
+   « Réponse donnée » est REMPLACÉE par une phrase en toutes lettres. Trois raisons :
+   il n'y a pas de réponse à montrer (le libellé suivi du vide serait une ligne cassée),
+   ce n'est pas une faute (donc pas d'accent « écart » : cf. .enc-err-item--passe), et
+   c'est l'information que le parent cherche — savoir si l'enfant a cherché ou renoncé.
+   Le sens tient dans le TEXTE, pas dans la couleur ni dans l'icône (décorative). */
 function erreurLigneHTML(e: ErreurAffichee, now: number): string {
 	const quand = libelleDerniereFois(e.ts, now);
 	const meta = [modeLabel(e.mode), quand, e.occurrences > 1 ? `vue ${e.occurrences} fois` : '']
 		.filter(Boolean)
 		.join(' · ');
-	return `<li class="enc-err-item">
+	// Deux gestes différents portent le même marqueur (#467) : le clic sur « Je ne sais pas,
+	// montre-moi », et la validation à VIDE du sprint (seul mode où elle vaut réponse fausse,
+	// le sprint n'ayant délibérément pas ce bouton). Écrire « a demandé à voir la réponse »
+	// pour une validation vide raconterait au parent un geste qui n'a pas eu lieu : la phrase
+	// se déduit donc du mode, plutôt que d'ajouter un second champ au journal.
+	const passeTexte =
+		e.mode === 'sprint'
+			? "N'a pas essayé : a validé sans répondre."
+			: "N'a pas essayé : a demandé à voir la réponse.";
+	const reponse = e.sansTentative
+		? `<p class="enc-err-passe">${icon('eye')}<span>${passeTexte}</span></p>`
+		: `<p class="enc-err-donnee"><span class="enc-err-lab">Réponse donnée :</span> ${escapeHTML(e.donnee)}</p>`;
+	return `<li class="enc-err-item${e.sansTentative ? ' enc-err-item--passe' : ''}">
       <p class="enc-err-q">${escapeHTML(e.question)}</p>
       <p class="enc-err-bonne"><span class="enc-err-lab">Réponse attendue :</span> ${escapeHTML(e.attendue)}</p>
-      <p class="enc-err-donnee"><span class="enc-err-lab">Réponse donnée :</span> ${escapeHTML(e.donnee)}</p>
+      ${reponse}
       <p class="enc-err-meta">${escapeHTML(meta)}</p>
     </li>`;
 }

@@ -40,10 +40,20 @@ export interface ErreurEntry {
 	question: string; // énoncé posé (lisible)
 	donnee: string; // réponse donnée par l'enfant
 	attendue: string; // réponse attendue
+	/* AUCUNE tentative (#467) : l'enfant a demandé à voir la réponse (« Je ne sais
+	   pas, montre-moi ») ou validé à vide, au lieu de répondre. La répétition espacée
+	   traite ce cas comme une réponse fausse, mais l'encadrant doit pouvoir distinguer
+	   « raté après tentative » de « passé sans essayer ».
+	   OPTIONNEL et écrit UNIQUEMENT quand il vaut `true` : les entrées déjà stockées
+	   (sans le champ) restent valides, et le journal ne se charge pas d'un `false`
+	   répété sur des centaines d'entrées. Absent ⇒ tentative faite. */
+	sansTentative?: true;
 }
 
 /* Garde de forme : n'accepte qu'une entrée bien formée (défensif à la lecture
-   d'un localStorage potentiellement corrompu / issu d'une autre version). */
+   d'un localStorage potentiellement corrompu / issu d'une autre version).
+   `sansTentative` n'est PAS exigé (les entrées d'avant #467 n'en ont pas) : on ne
+   valide son type que s'il est présent. */
 function estErreurValide(e: unknown): e is ErreurEntry {
 	if (!e || typeof e !== 'object') return false;
 	const o = e as Record<string, unknown>;
@@ -53,7 +63,8 @@ function estErreurValide(e: unknown): e is ErreurEntry {
 		typeof o.mode === 'string' &&
 		typeof o.question === 'string' &&
 		typeof o.donnee === 'string' &&
-		typeof o.attendue === 'string'
+		typeof o.attendue === 'string' &&
+		(o.sansTentative === undefined || o.sansTentative === true)
 	);
 }
 
@@ -159,7 +170,9 @@ export function periodeParDefaut(liste: ErreurEntry[], now: number): PeriodeErre
    recalcule à chaque changement de période. À l'intérieur d'une leçon, on
    DÉDOUBLONNE la même erreur (même question + même réponse donnée) répétée : une
    seule ligne « vu N fois » plutôt que N lignes identiques (les banques QCM se
-   répètent), les plus récentes d'abord. */
+   répètent), les plus récentes d'abord. `sansTentative` (#467) entre dans la clé de
+   dédoublonnage : un item PASSÉ et le même item RATÉ ne sont pas la même chose pour
+   le parent, les fusionner en « vu 2 fois » lui mentirait. */
 export interface ErreurAffichee {
 	question: string;
 	donnee: string;
@@ -167,6 +180,7 @@ export interface ErreurAffichee {
 	mode: string;
 	ts: number; // horodatage de l'occurrence la plus récente
 	occurrences: number; // nombre de fois cette même erreur (≥ 1)
+	sansTentative?: true; // item passé sans essayer (cf. ErreurEntry)
 }
 export interface GroupeErreursLecon {
 	lessonId: string;
@@ -186,7 +200,10 @@ export function grouperErreursParLecon(liste: ErreurEntry[]): GroupeErreursLecon
 	for (const [lessonId, entries] of parLecon) {
 		const parCle = new Map<string, ErreurAffichee>();
 		for (const e of entries) {
-			const cle = JSON.stringify([e.question, e.donnee]); // clé sans risque de collision de séparateur
+			// Clé sans risque de collision de séparateur. Le marqueur est NORMALISÉ en
+			// booléen : une entrée sans le champ et une entrée `sansTentative: true`
+			// doivent former deux lignes distinctes, mais deux entrées passées la même.
+			const cle = JSON.stringify([e.question, e.donnee, e.sansTentative === true]);
 			const existe = parCle.get(cle);
 			if (existe) {
 				existe.occurrences++;
@@ -199,6 +216,7 @@ export function grouperErreursParLecon(liste: ErreurEntry[]): GroupeErreursLecon
 					mode: e.mode,
 					ts: e.ts,
 					occurrences: 1,
+					sansTentative: e.sansTentative,
 				});
 			}
 		}

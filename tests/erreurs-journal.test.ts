@@ -596,3 +596,320 @@ describe('filtre + regroupement : les compteurs parlent de la période choisie',
 		]);
 	});
 });
+
+/* ============================================================
+   #467 — « Passé sans essayer » (marqueur `sansTentative`).
+   ------------------------------------------------------------
+   Spec éprouvée ici, dérivée du BESOIN (issue #467 : « côté encadrant, distinguer
+   raté après tentative de passé sans essayer ») et non de l'implémentation :
+   - un journal DÉJÀ stocké (aucune de ses entrées ne porte le champ) doit rester
+     lisible à l'identique, et « champ absent » vaut « tentative faite » ;
+   - le champ n'est un marqueur que s'il vaut `true` : toute autre valeur trouvée en
+     stockage est une corruption, jamais un « passé » ;
+   - à l'affichage, un item PASSÉ et le même item RATÉ ne se fondent JAMAIS dans une
+     ligne « vu 2 fois » (le parent y lirait une seule histoire là où il s'est passé
+     deux choses) ; deux passages du MÊME item, eux, se dédoublonnent bien ;
+   - le marqueur ne change ni les totaux, ni le classement, ni la rétention : le
+     journal reste la liste de ce qui n'était pas su.
+   ============================================================ */
+
+/* Entrée « passé sans essayer » : aucune réponse donnée + marqueur posé, comme
+   l'écrivent les chemins « Je ne sais pas, montre-moi » / validation à vide. */
+function passe(over: Partial<ErreurEntry> = {}): ErreurEntry {
+	return { ...err({ donnee: '', ...over }), sansTentative: true };
+}
+
+/* Écrit un journal BRUT (tel qu'il serait sur le disque d'un utilisateur) sur le
+   profil actif, sans passer par la journalisation — pour simuler l'existant. */
+function ecrireJournalBrut(uuid: string, entrees: unknown[]): void {
+	localStorage.setItem(uuid + '/' + ERREURS_KEY, JSON.stringify(entrees));
+}
+
+describe('#467 — compatibilité ascendante (journaux stockés avant le marqueur)', () => {
+	it('une entrée SANS le champ reste valide et vaut « tentative faite »', () => {
+		const uuid = activeProfile().uuid;
+		const ancienne: ErreurEntry = {
+			ts: 7,
+			lessonId: 'vocab-contraires',
+			mode: 'revision',
+			question: 'Quel est le contraire de « grand » ?',
+			donnee: 'gros',
+			attendue: 'petit',
+		};
+		ecrireJournalBrut(uuid, [ancienne]);
+
+		const journal = chargerErreursFor(uuid);
+		expect(journal).toEqual([ancienne]); // relue à l'identique, champ par champ
+		expect(journal[0].sansTentative).toBeUndefined();
+		// Et l'affichage ne la présente pas comme un item passé.
+		expect(grouperErreursParLecon(journal)[0].erreurs[0].sansTentative).toBeFalsy();
+	});
+
+	it('journaliser un « passé » ne purge pas les entrées d’avant le marqueur', () => {
+		// Le chemin d'écriture RE-FILTRE tout le journal existant avant d'ajouter :
+		// si la garde de forme rejetait les entrées sans le champ, des centaines
+		// d'erreurs disparaîtraient au premier « je ne sais pas ».
+		const uuid = activeProfile().uuid;
+		ecrireJournalBrut(uuid, [
+			err({ ts: 2, question: 'vieux-2' }),
+			err({ ts: 1, question: 'vieux-1' }),
+		]);
+
+		journaliserErreur(passe({ question: 'Q passée' }));
+
+		expect(chargerErreursFor(uuid).map((e) => e.question)).toEqual([
+			'Q passée',
+			'vieux-2',
+			'vieux-1',
+		]);
+	});
+
+	it('un journal mixte (avec et sans le champ) se relit intégralement', () => {
+		const uuid = activeProfile().uuid;
+		ecrireJournalBrut(uuid, [
+			passe({ ts: 3, question: 'Q3' }),
+			err({ ts: 2, question: 'Q2' }),
+			passe({ ts: 1, question: 'Q1' }),
+		]);
+		const journal = chargerErreursFor(uuid);
+		expect(journal.map((e) => e.question)).toEqual(['Q3', 'Q2', 'Q1']);
+		expect(journal.map((e) => e.sansTentative)).toEqual([true, undefined, true]);
+	});
+});
+
+describe('#467 — garde de forme du marqueur', () => {
+	/* Valeurs qu'aucun chemin d'écriture ne produit : stockage bricolé à la main,
+	   autre version, JSON corrompu. */
+	const valeursInattendues: ReadonlyArray<readonly [string, unknown]> = [
+		['false', false],
+		['0', 0],
+		['1', 1],
+		['la chaîne "true"', 'true'],
+		['la chaîne "oui"', 'oui'],
+		['null', null],
+		['un objet', { passe: true }],
+		['un tableau', [true]],
+	];
+
+	it('aucune valeur inattendue ne produit un item présenté comme « passé »', () => {
+		// La garantie qui compte pour le parent : jamais de « n'a pas essayé » affiché
+		// à cause d'une valeur douteuse en stockage (que l'entrée soit écartée ou
+		// ramenée à « tentative faite »).
+		const uuid = activeProfile().uuid;
+		for (const [nom, valeur] of valeursInattendues) {
+			ecrireJournalBrut(uuid, [{ ...err({ ts: 42 }), sansTentative: valeur }]);
+			const journal = chargerErreursFor(uuid);
+			expect(
+				journal.filter((e) => e.sansTentative),
+				nom,
+			).toEqual([]);
+			for (const groupe of grouperErreursParLecon(journal)) {
+				for (const ligne of groupe.erreurs) expect(ligne.sansTentative, nom).toBeFalsy();
+			}
+		}
+	});
+
+	it('schéma strict : le champ vaut `true` ou est absent, sinon l’entrée est écartée', () => {
+		// Arbitrage assumé du projet : une entrée dont le marqueur porte une autre
+		// valeur est traitée comme un stockage CORROMPU (elle disparaît) plutôt que
+		// « réparée » en tentative faite. Prix à connaître sur `false` : on perd une
+		// erreur par ailleurs bien formée (cf. compte rendu).
+		const uuid = activeProfile().uuid;
+		for (const [nom, valeur] of valeursInattendues) {
+			ecrireJournalBrut(uuid, [{ ...err({ ts: 42 }), sansTentative: valeur }]);
+			expect(chargerErreursFor(uuid), nom).toEqual([]);
+		}
+	});
+
+	it('une entrée corrompue n’emporte pas ses voisines valides', () => {
+		const uuid = activeProfile().uuid;
+		const valide = err({ ts: 9, question: 'valide' });
+		const passee = passe({ ts: 8, question: 'passée' });
+		ecrireJournalBrut(uuid, [
+			valide,
+			{ ...err({ ts: 7, question: 'corrompue' }), sansTentative: 'oui' },
+			passee,
+		]);
+		expect(chargerErreursFor(uuid)).toEqual([valide, passee]);
+	});
+
+	it('accepte `true` avec une réponse donnée VIDE (cas normal d’un item passé)', () => {
+		const uuid = activeProfile().uuid;
+		ecrireJournalBrut(uuid, [passe({ ts: 5 })]);
+		const journal = chargerErreursFor(uuid);
+		expect(journal).toHaveLength(1);
+		expect(journal[0]).toMatchObject({ donnee: '', sansTentative: true });
+	});
+});
+
+describe('#467 — regroupement : « passé » et « raté » ne fusionnent jamais', () => {
+	it('même énoncé, l’un raté avec une réponse, l’autre passé → DEUX lignes', () => {
+		const liste: ErreurEntry[] = [
+			err({ ts: 20, lessonId: 'a', question: 'Q', donnee: 'gros' }),
+			passe({ ts: 10, lessonId: 'a', question: 'Q' }),
+		];
+		const g = grouperErreursParLecon(liste);
+		expect(g).toHaveLength(1);
+		expect(g[0].total).toBe(2);
+		expect(g[0].erreurs).toHaveLength(2);
+		expect(g[0].erreurs.map((e) => e.occurrences)).toEqual([1, 1]);
+		// Plus récent d'abord, et le drapeau suit chaque ligne jusqu'à l'affichage.
+		expect(g[0].erreurs.map((e) => e.sansTentative)).toEqual([undefined, true]);
+		expect(g[0].erreurs.map((e) => e.donnee)).toEqual(['gros', '']);
+	});
+
+	it('même énoncé ET même réponse vide : seul le marqueur diffère → DEUX lignes', () => {
+		// Cas le plus tricky : un champ validé à vide SANS marqueur (erreur classique)
+		// et un « je ne sais pas » ont exactement le même couple question/réponse. Si
+		// le marqueur ne comptait pas dans la clé, le parent lirait « vue 2 fois ».
+		const liste: ErreurEntry[] = [
+			err({ ts: 30, lessonId: 'a', question: 'Q', donnee: '' }),
+			passe({ ts: 31, lessonId: 'a', question: 'Q' }),
+		];
+		const g = grouperErreursParLecon(liste);
+		expect(g[0].erreurs).toHaveLength(2);
+		expect(g[0].erreurs.every((e) => e.occurrences === 1)).toBe(true);
+		expect(g[0].erreurs.map((e) => e.sansTentative)).toEqual([true, undefined]);
+	});
+
+	it('deux passages du MÊME item → UNE ligne « vu 2 fois », horodatage le plus récent', () => {
+		const liste: ErreurEntry[] = [
+			passe({ ts: 4, lessonId: 'a', question: 'Q' }),
+			passe({ ts: 12, lessonId: 'a', question: 'Q' }),
+		];
+		const g = grouperErreursParLecon(liste);
+		expect(g[0].erreurs).toHaveLength(1);
+		expect(g[0].erreurs[0]).toMatchObject({ occurrences: 2, ts: 12, sansTentative: true });
+		expect(g[0].total).toBe(2);
+		expect(g[0].derniereFois).toBe(12);
+	});
+
+	it('les passages comptent dans le total du groupe (le journal = ce qui n’était pas su)', () => {
+		const liste: ErreurEntry[] = [
+			err({ ts: 3, lessonId: 'a', question: 'Q1', donnee: 'x' }),
+			passe({ ts: 2, lessonId: 'a', question: 'Q2' }),
+			passe({ ts: 1, lessonId: 'a', question: 'Q3' }),
+		];
+		const g = grouperErreursParLecon(liste);
+		expect(g[0].total).toBe(3);
+		expect(g[0].erreurs.reduce((s, e) => s + e.occurrences, 0)).toBe(3);
+	});
+
+	it('le marqueur ne change pas le classement des leçons (volume, puis récence)', () => {
+		// « passee » : 3 passages du même item → 1 seule LIGNE mais 3 erreurs.
+		// « ratee » : 2 erreurs distinctes → 2 lignes. Le volume décide, donc
+		// « passee » en tête : le dédoublonnage ne doit pas peser sur le rang.
+		const liste: ErreurEntry[] = [
+			passe({ ts: 10, lessonId: 'passee', question: 'P' }),
+			passe({ ts: 11, lessonId: 'passee', question: 'P' }),
+			passe({ ts: 12, lessonId: 'passee', question: 'P' }),
+			err({ ts: 90, lessonId: 'ratee', question: 'R1' }),
+			err({ ts: 91, lessonId: 'ratee', question: 'R2' }),
+		];
+		const g = grouperErreursParLecon(liste);
+		expect(g.map((x) => x.lessonId)).toEqual(['passee', 'ratee']);
+		expect(g.map((x) => x.total)).toEqual([3, 2]);
+		expect(g.map((x) => x.erreurs.length)).toEqual([1, 2]);
+	});
+
+	it('le tri interne reste antéchronologique quand passé et raté se mélangent', () => {
+		const liste: ErreurEntry[] = [
+			passe({ ts: 100, lessonId: 'a', question: 'Q-passée' }),
+			err({ ts: 200, lessonId: 'a', question: 'Q-ratée' }),
+			passe({ ts: 50, lessonId: 'a', question: 'Q-vieille' }),
+		];
+		const g = grouperErreursParLecon(liste);
+		expect(g[0].erreurs.map((e) => e.question)).toEqual(['Q-ratée', 'Q-passée', 'Q-vieille']);
+	});
+
+	it('invariant sur 150 journaux tirés : aucune ligne ne mélange passé et raté', () => {
+		// Peu de valeurs distinctes (leçons, énoncés, réponses) → beaucoup de collisions
+		// « même question, même réponse vide », exactement là où passé et raté peuvent
+		// fusionner à tort. Ne se voit que sur un gros échantillon.
+		withSeed(467, () => {
+			for (let tirage = 0; tirage < 150; tirage++) {
+				const liste: ErreurEntry[] = [];
+				for (let i = rnd(1, 10); i > 0; i--) {
+					const sansEssai = rnd(0, 1) === 1;
+					// Une réponse vide est tirée AUSSI pour les erreurs ordinaires : sans ça,
+					// `donnee` suffirait à séparer les deux familles et le test ne prouverait rien.
+					const base = err({
+						ts: rnd(1, 5) * 1000,
+						lessonId: 'l' + rnd(1, 3),
+						question: 'Q' + rnd(1, 2),
+						donnee: rnd(0, 1) === 1 ? '' : 'D' + rnd(1, 2),
+					});
+					liste.push(sansEssai ? { ...base, donnee: '', sansTentative: true } : base);
+				}
+				const g = grouperErreursParLecon(liste);
+
+				for (const groupe of g) {
+					// Chaque ligne compte EXACTEMENT les entrées qui partagent son triplet
+					// (question, réponse donnée, statut d'essai) : rien n'est fusionné à tort.
+					for (const ligne of groupe.erreurs) {
+						const attendues = liste.filter(
+							(e) =>
+								e.lessonId === groupe.lessonId &&
+								e.question === ligne.question &&
+								e.donnee === ligne.donnee &&
+								(e.sansTentative === true) === (ligne.sansTentative === true),
+						);
+						expect(ligne.occurrences).toBe(attendues.length);
+						expect(ligne.ts).toBe(Math.max(...attendues.map((e) => e.ts)));
+					}
+					// Pas deux lignes pour le même triplet non plus.
+					const cles = groupe.erreurs.map((e) =>
+						JSON.stringify([e.question, e.donnee, e.sansTentative === true]),
+					);
+					expect(new Set(cles).size).toBe(cles.length);
+					expect(groupe.erreurs.reduce((s, e) => s + e.occurrences, 0)).toBe(groupe.total);
+				}
+				// Le classement garde sa règle (#519) malgré le marqueur.
+				for (let i = 1; i < g.length; i++) {
+					expect(g[i - 1].total).toBeGreaterThanOrEqual(g[i].total);
+					if (g[i - 1].total === g[i].total) {
+						expect(g[i - 1].derniereFois).toBeGreaterThanOrEqual(g[i].derniereFois);
+					}
+				}
+				expect(g.reduce((s, x) => s + x.total, 0)).toBe(liste.length);
+			}
+		});
+	});
+});
+
+describe('#467 — un « passé » est une entrée comme les autres (rétention, période)', () => {
+	it('ajouterErreur applique la même rétention, marqueur ou pas', () => {
+		let liste: ErreurEntry[] = [];
+		liste = ajouterErreur(liste, err({ ts: 1, question: 'raté-vieux' }), 2);
+		liste = ajouterErreur(liste, passe({ ts: 2, question: 'passé' }), 2);
+		liste = ajouterErreur(liste, err({ ts: 3, question: 'raté-neuf' }), 2);
+		expect(liste.map((e) => e.question)).toEqual(['raté-neuf', 'passé']);
+		expect(liste[1].sansTentative).toBe(true); // le marqueur survit au décalage
+	});
+
+	it('MAX_ERREURS purge les passages comme les ratés', () => {
+		const uuid = activeProfile().uuid;
+		for (let i = 0; i < MAX_ERREURS; i++) journaliserErreur(err({ question: 'raté-' + i }));
+		for (let i = 0; i < 3; i++) journaliserErreur(passe({ question: 'passé-' + i }));
+
+		const journal = chargerErreursFor(uuid);
+		expect(journal).toHaveLength(MAX_ERREURS);
+		// Les 3 passages survivent (les plus récents) au round-trip JSON…
+		expect(journal.slice(0, 3).map((e) => e.question)).toEqual(['passé-2', 'passé-1', 'passé-0']);
+		expect(journal.filter((e) => e.sansTentative === true)).toHaveLength(3);
+		// …et ce sont bien 3 ratés anciens qui sont sortis.
+		expect(journal.some((e) => e.question === 'raté-2')).toBe(false);
+		expect(journal.some((e) => e.question === 'raté-3')).toBe(true);
+	});
+
+	it('le filtre de période ignore le marqueur', () => {
+		const liste: ErreurEntry[] = [
+			passe({ ts: NOW, question: 'aujourd’hui' }),
+			passe({ ts: jourA(NOW, 40, 12), question: 'très vieux' }),
+		];
+		expect(filtrerErreursParPeriode(liste, 'jour', NOW).map((e) => e.question)).toEqual([
+			'aujourd’hui',
+		]);
+		expect(periodeParDefaut(liste, NOW)).toBe('jour');
+	});
+});

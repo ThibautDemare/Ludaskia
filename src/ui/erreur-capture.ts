@@ -7,6 +7,10 @@
    la mise en forme (énoncé lisible, marqueur de figure) et la délégation à
    `core/erreurs-journal`, pour ne pas réécrire la capture dans chaque runner.
 
+   Sert aussi de porte d'entrée au marqueur « passé sans essayer » (#467,
+   `sansTentative`) : les chemins « Je ne sais pas, montre-moi » et « validation à
+   vide » journalisent par ici, comme une erreur, mais signalée comme telle.
+
    Ne journalise QUE des erreurs rattachées à une leçon et à un énoncé lisible :
    une entrée sans leçon (ex. calcul mental non rattaché) ou sans question
    affichable (ex. cellule d'opération posée, énoncé vide) est ignorée — rien à
@@ -49,6 +53,11 @@ export interface CaptureErreurOpts {
 	attendue: string; // réponse attendue (déjà lisible)
 	lessonId: string | null; // leçon rattachée ; null → non journalisé
 	mode: string; // mode d'entraînement ('lecon' | 'express' | 'complet' | 'sprint' | 'dictee'…)
+	/* AUCUNE tentative (#467) : « Je ne sais pas, montre-moi » ou validation à vide.
+	   Booléen (et non `true` seul) pour que l'appelant puisse passer directement son
+	   drapeau ; `capterErreur` normalise et ne journalise le marqueur que s'il est
+	   vrai. Un item passé n'a pas de réponse donnée : passer `donnee: ''`. */
+	sansTentative?: boolean;
 }
 
 /* Journalise une erreur depuis un runner (profil actif). Sans-effet si la leçon
@@ -64,5 +73,8 @@ export function capterErreur(opts: CaptureErreurOpts): void {
 		question,
 		donnee: opts.donnee,
 		attendue: opts.attendue,
+		// Marqueur écrit seulement s'il est vrai (`undefined` disparaît du JSON stocké) :
+		// absent ⇒ tentative faite, cf. ErreurEntry.sansTentative.
+		sansTentative: opts.sansTentative ? true : undefined,
 	});
 }

@@ -1479,6 +1479,30 @@ $frise-neutre: #7c8494;
 .enc-err-lab {
 	font-weight: 700;
 }
+/* Item « passé sans essayer » (#467) : l'enfant a demandé à voir la réponse. Ce n'est
+   PAS une faute → le liseré perd l'accent « écart » (--warn) pour un filet neutre, et
+   la ligne « Réponse donnée » est remplacée par une phrase (cf. erreurLigneHTML).
+   Encre en --grey comme .enc-err-donnee et NON en --muted (sous AA en texte sur
+   --paper clair, ~2,6:1 — même piège que .enc-banque-fige) : c'est ici la SEULE
+   explication de l'absence de réponse. L'icône œil ne fait que redoubler le texte
+   (décorative, aria-hidden) : la distinction ne repose ni sur elle ni sur la couleur. */
+.enc-err-item--passe {
+	border-left-color: var(--muted);
+}
+.enc-err-passe {
+	display: flex;
+	align-items: baseline;
+	gap: 0.3rem;
+	color: var(--grey);
+	font-style: italic;
+	margin: 0.05rem 0 0;
+}
+.enc-err-passe svg {
+	width: 1em;
+	height: 1em;
+	flex: 0 0 auto;
+	transform: translateY(0.1em); /* aligne l'œil sur la ligne de base du texte */
+}
 .enc-err-meta {
 	font-size: 0.72rem;
 	color: var(--grey);

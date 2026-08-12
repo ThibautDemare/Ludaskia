@@ -1064,20 +1064,18 @@ $frise-neutre: #7c8494;
 	height: 100%;
 	background: var(--ok);
 }
-/* Semaine ANTÉRIEURE au suivi : pas un rang, une absence de donnée. Ni hauteur (elle
-   affirmerait un niveau) ni aplat (il se confondrait avec « à découvrir ») — un filet
-   pointillé au ras de la ligne de base, doublé du mot « pas encore suivie » dans le
-   libellé accessible. */
+/* Semaine ANTÉRIEURE au suivi : rendue comme « à découvrir », bloc gris au rang le plus bas.
+   DÉCISION DU MAINTENEUR, contre l'avis que défendait ce fichier : « on doit avoir uniquement
+   12 blocs, un pour chaque semaine prévue, pas un seul de plus, pas un seul de moins ». Le
+   filet pointillé qui marquait l'absence de donnée était bien plus lisible en tant que rien
+   qu'en tant que douze semaines : à 4px de haut, neuf cellules contiguës se lisaient comme UN
+   trait continu, et la frise n'était plus dénombrable.
+   Ce que ça coûte, pour le prochain lecteur qui s'en étonnerait : le rang le plus bas AFFIRME
+   « à découvrir » sur des semaines dont l'état est en réalité inconnu (cf. friseNotion, une
+   leçon travaillée avant la mise en service du journal). La distinction survit dans le récit
+   accessible, où ces semaines se disent « avant le suivi » et non « à découvrir ». */
 .enc-frise-inconnu {
-	height: 4px; /* pas 3 : un filet plus fin devient incertain selon la densité d'écran (avis a11y) */
-	border-radius: 0;
-	background: repeating-linear-gradient(
-		90deg,
-		$frise-neutre,
-		$frise-neutre 2px,
-		transparent 2px,
-		transparent 4px
-	);
+	height: 32%;
 }
 /* Semaine COURANTE : contour, pas un motif de remplissage — l'état atteint à ce jour EST un
    fait (contrairement au COMPTE partiel de l'ancienne frise), on signale seulement qu'il peut

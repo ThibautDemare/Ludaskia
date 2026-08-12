@@ -1013,7 +1013,11 @@ $plot-h: 140px;
 	display: flex;
 	align-items: flex-end;
 	gap: 2px;
-	height: 22px; /* 4 rangs de hauteur distinguables sans peser dans la ligne */
+	/* Relevé de 22px à l'arrivée du 4e rang (#521 bis) : les deux relectures convergent — plutôt
+	   que comprimer l'échelle, on lui donne 4px de plus, dont le coût vertical est marginal.
+	   Contrainte dure retenue de l'avis a11y : le rang le PLUS BAS doit rester à au moins
+	   filet + 2 × gap (soit 8px) du filet « donnée absente », qui partage sa couleur. */
+	height: 26px;
 }
 /* Gris NEUTRE dédié, repris de l'ancienne frise, là où --muted (couleur de l'état « à
    découvrir ») tombe à 2,60:1 sur fond clair. Correction LOCALE à ce widget : ailleurs sur
@@ -1031,15 +1035,29 @@ $frise-neutre: #7c8494;
 	border-radius: 2px;
 	background: $frise-neutre;
 }
-/* Rangs. « à renforcer » n'apparaît jamais : ce palier n'est pas daté (cf. friseNotion). */
+/* Rangs : les QUATRE niveaux de l'échelle d'acquisition, à pas RÉGULIERS en pixels absolus
+   (8,3 / 14 / 20 / 26px, soit ~6px d'écart partout) et non en pourcentage relatif. Raison
+   mesurée par la relecture de rendu : aucune paire de couleurs d'état voisines n'atteint 3:1
+   entre elles (1,13:1 gris/warn, 1,23:1 warn/bleu, 1,02:1 bleu/vert en thème clair), donc la
+   hauteur porte SEULE la distinction des quatre frontières — rien ne justifie de compresser
+   plus en haut de l'échelle qu'en bas.
+   « à renforcer » figure ici depuis #521 bis (il était escamoté, ce qui privait de frise les
+   leçons n'ayant jamais dépassé 40 %) et reprend var(--warn), sa couleur dans la légende et les
+   barres empilées du même écran : un même état ne peut pas changer de couleur d'un widget à
+   l'autre. Ratios mesurés (tools/contrast) contre --paper : 4,24:1 en clair (#b26a00), 8,04:1 en
+   Nuit (#f0b850). Aucun thème ne réécrit --warn, donc aucun override à ajouter. */
 .enc-frise-a-decouvrir {
-	height: 30%;
+	height: 32%;
+}
+.enc-frise-non-acquis {
+	height: 54%;
+	background: var(--warn);
 }
 /* `--cat-bleu` est réécrit par deux thèmes : relevé en Nuit (cf. themes.scss, sinon ~2,8:1
    contre --paper sombre) et passé en sarcelle #0a8a8f par « Ciel », qui reste à ~4,2:1 sur
    fond clair. Les deux valeurs sont donc conformes en tant qu'objet graphique (1.4.11). */
 .enc-frise-en-cours {
-	height: 65%;
+	height: 77%;
 	background: var(--cat-bleu);
 }
 .enc-frise-acquis {

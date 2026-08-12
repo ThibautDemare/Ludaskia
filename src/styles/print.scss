@@ -24,6 +24,10 @@
 		--on-accent: #ffffff !important;
 		--ok: #2e7d32 !important;
 		--ko: #c62828 !important;
+		/* Oublié de cette liste jusqu'ici : le thème Nuit relève --warn en ambre clair (#f0b850),
+		   qui tombe à ~1,9:1 sur du blanc. Visible dès qu'on imprime l'espace encadrant en Nuit
+		   (légende « à renforcer », barres empilées, et depuis #521 bis les cellules de frise). */
+		--warn: #b26a00 !important;
 		--line: #e4e8ef !important;
 		--track: #e7ebf1 !important;
 	}

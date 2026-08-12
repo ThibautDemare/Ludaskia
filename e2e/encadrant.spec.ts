@@ -82,6 +82,62 @@ const SEED_REGRESSION = `(() => {
   }));
 })();`;
 
+/* Seed de la frise « à renforcer » (fix/frise-etats-uniformes) : une leçon TRAVAILLÉE dont
+   la perf récente reste sous le seuil de 40 % (jamais franchi aucun palier vers le haut), et
+   qui n'a donc AUCUNE entrée dans le journal des paliers pour elle-même. Avant ce correctif,
+   ce palier était escamoté et la ligne n'avait aucune frise ; elle doit désormais en avoir une,
+   avec au moins une cellule « non acquis ». Borne de mise en service posée à 6 semaines pour
+   que la fenêtre de 12 semaines ne soit pas entièrement 'inconnu' (cf. friseNotion : sans
+   borne datée, aucune semaine n'est déductible). */
+const SEED_NON_ACQUIS = `(() => {
+  const now = Date.now(); const week = 7 * 86400000;
+  localStorage.setItem('e2e/ludaskia_paliersDepuis', String(now - 6 * week));
+  localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({
+    'num-comparer@ce2': { attempts: 2, correct: 5, questions: 20, bestPct: 30, lastPct: 30, recentPct: [20, 30], lastAt: now },
+  }));
+})();`;
+
+/* Seed d'un historique DÉJÀ PROUVÉ (fix/frise-etats-uniformes) : AUCUNE borne stockée
+   (`ludaskia_paliersDepuis`) au premier chargement, mais un franchissement daté d'une AUTRE
+   leçon du profil (math-doubles, 3 semaines) qui PROUVE que le journal tournait déjà à cette
+   date (cf. debutSuiviPaliers : le PLUS ANCIEN entre la borne stockée et tout franchissement
+   déjà daté, PAS la borne seule). La leçon sous test (num-encadrer-intercaler) n'a, elle, aucun
+   palier propre (aucunCap) : sa frise dépend donc entièrement du début de suivi retenu. Le test
+   pose ensuite une borne PLUS RÉCENTE que ce franchissement, pour vérifier qu'elle ne l'efface
+   pas (l'historique déjà prouvé continue de faire foi). */
+const SEED_FRISE_HISTORIQUE = `(() => {
+  const now = Date.now(); const week = 7 * 86400000;
+  localStorage.setItem('e2e/ludaskia_paliers', JSON.stringify({
+    'math-doubles@ce2': { enCours: now - 3 * week },
+  }));
+  localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({
+    'num-encadrer-intercaler@ce2': { attempts: 3, correct: 7, questions: 15, bestPct: 50, lastPct: 50, recentPct: [45, 50], lastAt: now },
+  }));
+})();`;
+
+/* Seed d'UNIFORMITÉ (fix/frise-etats-uniformes) : DEUX leçons voisines, avec le MÊME
+   franchissement daté (« en cours » il y a 2 semaines) et la MÊME borne de suivi (4 semaines) —
+   seule différence, `num-encadrer-intercaler` a une première rencontre ANCIENNE (10 semaines,
+   donc ANTÉRIEURE à la borne), `num-droite-entiers` n'en a aucune. Avant le correctif, la
+   première rencontre effaçait tout le préfixe « inconnu » d'un côté et pas de l'autre : deux
+   lignes voisines s'affichaient selon deux règles. Les deux frises doivent désormais être
+   IDENTIQUES. */
+const SEED_UNIFORMITE = `(() => {
+  const now = Date.now(); const week = 7 * 86400000;
+  localStorage.setItem('e2e/ludaskia_paliersDepuis', String(now - 4 * week));
+  localStorage.setItem('e2e/ludaskia_paliers', JSON.stringify({
+    'num-encadrer-intercaler@ce2': { enCours: now - 2 * week },
+    'num-droite-entiers@ce2': { enCours: now - 2 * week },
+  }));
+  localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({
+    'num-encadrer-intercaler@ce2': { attempts: 3, correct: 7, questions: 15, bestPct: 50, lastPct: 50, recentPct: [45, 50], lastAt: now },
+    'num-droite-entiers@ce2': { attempts: 3, correct: 7, questions: 15, bestPct: 50, lastPct: 50, recentPct: [45, 50], lastAt: now },
+  }));
+  localStorage.setItem('e2e/ludaskia_lessonFirstSeen', JSON.stringify({
+    'num-encadrer-intercaler@ce2': now - 10 * week,
+  }));
+})();`;
+
 /* ----- Tests ----- */
 
 /* 1. Accès depuis Profils : #btnEncadrant visible → clic → espace visible */
@@ -520,6 +576,131 @@ test('dépliage global par matière : le pli survit à une autre action de l’�
 	expect(
 		await catsMath.evaluateAll((els) => els.every((el) => (el as HTMLDetailsElement).open)),
 	).toBe(true);
+
+	expect(errors).toEqual([]);
+});
+
+/* 10quinquies. Frise « à renforcer » (fix/frise-etats-uniformes) : ce palier était escamoté
+       (aucune frise pour les leçons n'ayant jamais dépassé 40 %, alors que ce sont celles qui
+       intéressent le plus l'adulte). Une leçon travaillée mais toujours sous le seuil doit
+       désormais afficher une frise, avec au moins une cellule `enc-frise-non-acquis`, et sa
+       puce d'état omise comme les autres lignes à frise. */
+test('frise d’états : une leçon jamais montée au-dessus du seuil affiche désormais une frise « non acquis »', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_NON_ACQUIS);
+	await page.addInitScript(SEED_CE2);
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	const resumes = page.locator('.enc-cat-sum');
+	const n = await resumes.count();
+	for (let i = 0; i < n; i++) await resumes.nth(i).click();
+
+	const ligne = page.locator('.enc-detail-item:has([data-lesson="num-comparer"])');
+	const frise = ligne.locator('.enc-frise');
+	await expect(frise).toBeVisible();
+	await expect(frise.locator('.enc-frise-cell')).toHaveCount(12);
+	await expect(frise.locator('.enc-frise-non-acquis').first()).toBeVisible();
+	// La puce d'état disparaît : la frise porte déjà l'info (même règle que les autres paliers).
+	await expect(ligne.locator('.enc-detail-puce')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+/* 10sexies. Mise en service du journal (fix/frise-etats-uniformes) : `debutSuiviPaliers` retient
+       le PLUS ANCIEN entre la borne stockée (`ludaskia_paliersDepuis`) et tout franchissement déjà
+       daté du profil — PAS la borne en priorité. Raison (cf. encadrant-stats.ts) : la borne n'est
+       posée qu'à la première fin de session SUIVANT son arrivée dans le code, donc un profil qui
+       journalise depuis des semaines la reçoit datée d'AUJOURD'HUI ; la prendre en priorité
+       effacerait à tort tout l'historique déjà PROUVÉ par un franchissement plus ancien.
+       Ici, un franchissement ancien (3 semaines, sur une autre leçon) fixe le début de suivi, d'où
+       8 cellules « inconnu » (12 − 3 − 1 semaines suivies). Poser ensuite une borne PLUS RÉCENTE
+       (1 semaine) sur ce même profil NE DOIT RIEN CHANGER : sous la règle « borne prioritaire »,
+       le préfixe se serait allongé à 10 cellules (12 − 1 − 1, l'historique prouvé effacé) ; sous la
+       règle correcte (le plus ancien des deux), il reste à 8. */
+test('frise d’états : le début de suivi retient le PLUS ANCIEN entre la borne stockée et l’historique déjà daté', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_FRISE_HISTORIQUE);
+	await page.addInitScript(SEED_CE2);
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	const resumes = page.locator('.enc-cat-sum');
+	const n = await resumes.count();
+	for (let i = 0; i < n; i++) await resumes.nth(i).click();
+
+	const ligne = page.locator('.enc-detail-item:has([data-lesson="num-encadrer-intercaler"])');
+	await expect(ligne.locator('.enc-frise-cell')).toHaveCount(12);
+	// Aucune borne stockée : le seul franchissement daté du profil (3 semaines) fixe le début de
+	// suivi.
+	await expect(ligne.locator('.enc-frise-inconnu')).toHaveCount(8);
+
+	// Poser une borne PLUS RÉCENTE (1 semaine) que ce franchissement, puis re-rendre depuis zéro.
+	await page.evaluate(() => {
+		localStorage.setItem('e2e/ludaskia_paliersDepuis', String(Date.now() - 1 * 7 * 86400000));
+	});
+	await page.evaluate(() => {
+		location.hash = 'accueil';
+	});
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	const resumes2 = page.locator('.enc-cat-sum');
+	const n2 = await resumes2.count();
+	for (let i = 0; i < n2; i++) await resumes2.nth(i).click();
+	const ligne2 = page.locator('.enc-detail-item:has([data-lesson="num-encadrer-intercaler"])');
+	// Le franchissement plus ancien continue de faire foi : le préfixe NE bouge PAS (il se serait
+	// allongé à 10 cellules si la borne, plus récente, avait pris le pas dessus).
+	await expect(ligne2.locator('.enc-frise-inconnu')).toHaveCount(8);
+
+	expect(errors).toEqual([]);
+});
+
+/* 10septies. Uniformité de la frise (fix/frise-etats-uniformes) — LE test qui garde le bug
+       fermé : deux leçons voisines, même franchissement daté, même borne de suivi, mais l'une a
+       une première rencontre (`ludaskia_lessonFirstSeen`) ANTÉRIEURE à la borne et l'autre pas.
+       Avant le correctif, cette première rencontre effaçait tout le préfixe « inconnu » d'un
+       côté sans toucher l'autre : deux lignes voisines s'affichaient selon deux règles
+       différentes, départagées par un critère invisible pour le lecteur. Les deux frises
+       doivent désormais être RIGOUREUSEMENT identiques. */
+test('frise d’états : deux leçons aux paliers identiques restent identiques, 1re rencontre antérieure à la borne ou pas', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_UNIFORMITE);
+	await page.addInitScript(SEED_CE2);
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	const resumes = page.locator('.enc-cat-sum');
+	const n = await resumes.count();
+	for (let i = 0; i < n; i++) await resumes.nth(i).click();
+
+	const ligneAvecRencontre = page.locator(
+		'.enc-detail-item:has([data-lesson="num-encadrer-intercaler"])',
+	);
+	const ligneSansRencontre = page.locator(
+		'.enc-detail-item:has([data-lesson="num-droite-entiers"])',
+	);
+
+	const cellulesAvecRencontre = await ligneAvecRencontre
+		.locator('.enc-frise-cell')
+		.evaluateAll((els) => els.map((el) => el.className));
+	const cellulesSansRencontre = await ligneSansRencontre
+		.locator('.enc-frise-cell')
+		.evaluateAll((els) => els.map((el) => el.className));
+	// Comparaison cellule par cellule (pas seulement un décompte global) : les deux frises
+	// doivent porter EXACTEMENT le même récit, dans le même ordre.
+	expect(cellulesAvecRencontre).toEqual(cellulesSansRencontre);
+
+	// Sanity : la frise n'est ni entièrement inconnue ni entièrement connue (sinon la
+	// comparaison ci-dessus serait vraie par construction, sans rien démontrer).
+	const inconnuAvecRencontre = await ligneAvecRencontre.locator('.enc-frise-inconnu').count();
+	expect(inconnuAvecRencontre).toBeGreaterThan(0);
+	expect(inconnuAvecRencontre).toBeLessThan(12);
 
 	expect(errors).toEqual([]);
 });

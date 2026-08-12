@@ -726,14 +726,24 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `PaliersNotion {enCours?, acquis?}`, namespacée `lessonId@niveau` — `recordMonteesPalier
   (lessonIds, now)`, #397) : marque le **premier** franchissement vers « en cours » puis
   « acquis » par notion — modèle **monotone** (2 horodatages max, structure bornée par le
-  catalogue, pas de rétention à gérer) ; appelé **après** l'écriture de l'étoile, en fin de
-  session, par `lesson-run.ts:recordLessonRun` et le sprint (`ui/sprint.ts`) — source de la
-  frise d'évolution de l'espace encadrant (cf. [Espace encadrant](espace-encadrant.md)).
-  `recordMonteesPalier` pose aussi, à sa toute première exécution pour un profil,
-  `PALIERS_DEBUT_KEY` (`ludaskia_paliersDepuis`, #521) : la **mise en service** du journal
-  ci-dessus, base de `debutSuiviPaliers`/`friseNotion` (`encadrant-stats.ts` ci-dessous) —
-  posée même si la session ne franchit aucun palier, pour dater le journal qui tourne et
-  non un franchissement.
+  catalogue, pas de rétention à gérer).
+  **Câblage STRUCTUREL, plus porté par la vigilance de chaque appelant** : depuis le
+  câblage PR #540, c'est `recordLessonStats` **lui-même** qui appelle
+  `recordMonteesPalier`, en `queueMicrotask` — `lesson-run.ts:recordLessonRun` et le sprint
+  (`ui/sprint.ts`) n'appellent plus rien. Le report en microtâche laisse l'étoile s'écrire
+  d'abord (l'appelant l'écrit APRÈS le retour de `recordLessonStats`, dont dépend l'état
+  « acquis ») ; les microtâches s'exécutent avant toute I/O, donc rien ne se perd entre les
+  deux. Raison d'être : la frise déduit l'état d'une semaine de l'ABSENCE d'horodatage, ce
+  qui n'est vrai que si TOUT chemin écrivant des stats de leçon journalise aussi les
+  paliers — les deux appels étaient jusqu'ici côte à côte chez chaque appelant, sans rien
+  pour les lier, et un futur runner qui aurait oublié le second aurait fait mentir la frise
+  sans que rien ne le signale. Deux limites à connaître avant de bâtir dessus : un lecteur
+  du journal situé dans la MÊME tâche que la session y verrait l'état d'AVANT (aucun
+  consommateur aujourd'hui — l'espace encadrant s'atteint par navigation, donc dans une
+  autre tâche) ; et la marche porte l'instant du DÉBUT de `recordLessonStats`, le même que
+  `lastAt` et le journal d'activité, plutôt qu'un `Date.now()` relu en fin de session comme
+  le faisaient les appelants — source de la frise d'évolution de l'espace encadrant (cf.
+  [Espace encadrant](espace-encadrant.md)).
   **Avancement/report de la leçon du jour** (#485, `ludaskia_leconReport`) :
   **`recordEssaiLecon(lessonId, pct, now, etoilee)`** enregistre un essai complet en
   mode leçon (appelé uniquement par `lesson-run.ts`, jamais par le sprint/les bilans) et
@@ -757,7 +767,18 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `ui/revision.ts`, dictée d'orthographe `ui/ortho-runner.ts`) appellent
   **`recordSessionActivity(kind, ref?)`**. `normalizeActivity` lit **tolérant** l'ancien
   `number[]` (chaque horodatage nu → `'inconnu'`, sans `ref`) et le réécrit au format objet
-  au prochain passage (migration **lazy, sans perte**). **XP global** (`getXP`/`addXP`,
+  au prochain passage (migration **lazy, sans perte**).
+  **Borne de mise en service du journal des paliers, posée par TOUTE session** (PR #540) :
+  `recordActivity`, le point commun à `recordLessonStats` et `recordSessionActivity`,
+  appelle `marquerDebutSuivi(now)`, qui pose `PALIERS_DEBUT_KEY` (`ludaskia_paliersDepuis`)
+  si elle manque encore, **jamais deux fois**. Sans ça, un enfant qui ne ferait que des
+  dictées et de la révision espacée (chemins qui n'écrivent aucune stat de leçon) n'aurait
+  aucune borne, et l'espace encadrant afficherait « aucun suivi » sur toutes ses leçons
+  alors qu'il travaille — la déduction reste juste, l'étoile ne s'obtenant que par celui qui
+  écrit des stats. Contrairement aux franchissements de palier ci-dessus, cette borne est
+  posée **synchroniquement** (elle ne dépend pas de l'étoile). `recordMonteesPalier` la pose
+  aussi, pour le seul cas qu'aucun point d'activité ne couvre : la session sans aucune
+  question. **XP global** (`getXP`/`addXP`,
   `ludaskia_xp`) et **niveaux dérivés** (`niveauDepuisXP`, `progressionNiveau`,
   `xpVersSuivant`, `xpPourNiveau`, `NIVEAU_MAX`), périodes calendaires (`startOfWeek/Month`,
   `countSince`).
@@ -915,8 +936,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
 
   **`debutSuivi`** (`debutSuiviPaliers(depuis, paliers)`) est une borne calculée **UNE
   fois par profil**, pas par leçon : le plus ancien entre `PALIERS_DEBUT_KEY`
-  (`ludaskia_paliersDepuis`, posée une seule fois par `recordMonteesPalier` à sa première
-  exécution pour ce profil) et le franchissement daté le plus ancien du profil (qui PROUVE
+  (`ludaskia_paliersDepuis`, posée par `marquerDebutSuivi` — appelée par TOUTE session
+  finalisée via `recordActivity`, donc aussi révision espacée et dictée, et par
+  `recordMonteesPalier` pour la session sans aucune question, cf. `progress.ts` ci-dessus)
+  et le franchissement daté le plus ancien du profil (qui PROUVE
   que le journal tournait déjà, et fait donc foi contre une borne posée tardivement) ;
   `Infinity` si le profil n'a ni l'un ni l'autre. Appliquée à toutes les leçons de la même
   façon, elle remplace l'ancienne règle (avant cette correction) qui jugeait une leçon
@@ -930,14 +953,25 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   **« à renforcer » (`'non-acquis'`) n'est jamais daté** (entrer sous 40 % n'est pas un
   progrès de maîtrise, cf. `maitrise.ts`) mais se **DÉDUIT**, ce qui repose sur un
   invariant : depuis `debutSuivi`, **tout** chemin qui écrit des stats de leçon journalise
-  aussi ses franchissements (`recordLessonRun` et le sprint appellent tous deux
-  `recordMonteesPalier`) — un horodatage absent signifie donc « aucune montée observée »,
+  aussi ses franchissements — depuis PR #540 c'est `recordLessonStats` qui s'en charge
+  **lui-même** (cf. ci-dessus), l'invariant est donc STRUCTUREL et non plus laissé à la
+  vigilance de chaque appelant — un horodatage absent signifie donc « aucune montée
+  observée »,
   et les semaines suivies sans cap daté valent `'non-acquis'`. C'est le second défaut
   corrigé : la version précédente escamotait ce palier, laissant sans frise les leçons
   n'ayant jamais dépassé 40 % — les plus fragiles, donc celles qui intéressent le plus
   l'adulte. Sans aucun cap daté du tout, l'état COURANT (`niveau`) tient lieu de plancher
   depuis `debutSuivi` (l'échelle ne redescend jamais d'elle-même), ce qui donne aussi une
   frise à une leçon acquise **avant** la mise en service du journal.
+
+  **Limite connue** (#541) : la révision espacée (`ui/revision.ts`) pose la borne
+  `debutSuivi` (elle passe par `recordActivity`, cf. `progress.ts` ci-dessus) mais n'écrit
+  ni stat de leçon ni étoile — seul un chemin qui écrit des stats peut faire monter un
+  palier. Sur une semaine de pure révision espacée, la frise affiche donc l'état déduit des
+  stats **antérieures**, inchangé, plutôt qu'un rattrapage de ce qui vient d'être rejoué.
+  Cohérent avec le modèle (la maîtrise ne se nourrit que des sessions qui écrivent des
+  stats) mais pas forcément avec l'intuition d'un lecteur de la frise ; le fond — la
+  révision doit-elle alimenter le niveau de maîtrise — reste ouvert, cf. issue #541.
 
   **Invariant** : les cellules `'inconnu'` forment TOUJOURS un préfixe de la rangée (une
   rangée commence par `'a-decouvrir'` ou par `'inconnu'`, jamais les deux) — une cellule

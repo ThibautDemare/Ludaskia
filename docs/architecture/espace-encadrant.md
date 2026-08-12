@@ -187,6 +187,16 @@ entre sa dernière cellule (p. ex. « acquis ») et le **mot** d'état affiché 
 être retombé à « non acquis »/« à renforcer ») EST le signal à lire, sans qu'aucune cellule ne
 le désigne explicitement.
 
+**Limite connue** (#541) : la révision espacée pose la borne de mise en service du journal
+(elle atteste que le suivi tourne, cf. [Logique pure](core.md)) mais ne met à jour ni les
+stats de la leçon ni son étoile — seul un chemin qui écrit des stats peut faire monter un
+palier. Sur une semaine de **pure** révision espacée, la frise affiche donc l'état déduit
+des stats **antérieures**, inchangé, plutôt qu'un rattrapage de ce qui vient d'être rejoué.
+Pas incohérent avec le modèle (la maîtrise ne se nourrit que des sessions qui écrivent des
+stats, et le **mot** d'état à côté de la frise dit déjà la même chose) mais un lecteur
+pressé de la frise peut s'y attendre autrement ; le fond — la révision doit-elle alimenter
+le niveau de maîtrise — reste ouvert, cf. issue #541.
+
 **Dépliage global par matière** (`deplierHTML`) : un bouton par matière suivie (masqué s'il
 n'y en a qu'une) ouvre ou referme d'un coup toutes les catégories de cette matière, pour
 balayer plusieurs frises sans déplier catégorie par catégorie. Commande, pas un réglage

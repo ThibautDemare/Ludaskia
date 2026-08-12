@@ -22,11 +22,16 @@ pure](core.md) ; une déclaration fait aussi entrer la leçon en rotation de
 révision espacée), `ludaskia_paliers` (#397 : journal daté des
 **premiers** franchissements de palier par notion — `PaliersNotion {enCours?, acquis?}`,
 namespacée `lessonId@niveau` comme stats/étoiles, 2 horodatages max donc bornée par le
-catalogue — écrit par `recordMonteesPalier` en fin de session, APRÈS l'étoile ; base de la
+catalogue — depuis PR #540 journalisé par `recordLessonStats` **lui-même** (en
+`queueMicrotask`, une fois l'étoile écrite par l'appelant : aucun appelant applicatif
+n'appelle plus `recordMonteesPalier`) ; base de la
 frise d'évolution de l'espace encadrant, cf. [Espace encadrant](espace-encadrant.md)),
 `ludaskia_paliersDepuis` (#521 : **mise en service**, par profil, du journal ci-dessus — un
-horodatage **unique**, écrit une seule fois par `recordMonteesPalier` à sa toute première
-exécution pour ce profil, même si la session ne franchit aucun palier ; base de la borne
+horodatage **unique**, posé par `marquerDebutSuivi` (PR #540), appelée
+**synchroniquement** par TOUTE session finalisée (`recordActivity` — donc aussi révision
+espacée et dictée, qui n'écrivent pourtant aucune stat de leçon) et par
+`recordMonteesPalier` pour le seul cas qu'aucun point d'activité ne couvre (la session sans
+aucune question) ; base de la borne
 `debutSuiviPaliers` qui uniformise la frise d'états entre toutes les leçons d'un même profil
 — avant elle, une leçon était jugée « connue de bout en bout » dès qu'une
 `ludaskia_lessonFirstSeen` existait, si bien que deux leçons voisines travaillées la même

@@ -425,14 +425,24 @@ donnée, réponse **attendue**, leçon, mode, quand. **Groupé par leçon**, cel
 d'erreurs** en tête (#519 ; le décompte ne porte que sur la période filtrée ci-dessous, et la
 récence de la dernière erreur ne départage plus qu'une égalité de volume), replié par défaut
 (`<details>`) pour ne pas dérouler un « mur de fautes » ; à
-l'intérieur d'une leçon, une même erreur répétée (même question + même réponse donnée) est
-**dédoublonnée** en une seule ligne « vue N fois » plutôt que N lignes identiques. Dans une
+l'intérieur d'une leçon, une même erreur répétée (même question + même réponse donnée + même
+statut « passé ») est **dédoublonnée** en une seule ligne « vue N fois » plutôt que N lignes
+identiques. Dans une
 leçon, seules les **5 erreurs** les plus récentes s'affichent d'emblée ; les suivantes restent
 lisibles via un repli **dépliable** (`<details class="enc-err-anciennes">`, imbriqué dans celui
 de la leçon) plutôt qu'un simple compteur muet — le total annoncé en tête du groupe reste ainsi
 consultable en détail. Parti pris
 (avis designer-ux-enfant) : pas de rouge en aplat, la réponse attendue est mise en avant
-(positif), la réponse donnée reste neutre et n'est jamais barrée. Le libellé lit « **Réponse
+(positif), la réponse donnée reste neutre et n'est jamais barrée. **« Passé sans essayer »**
+(#467) : une entrée marquée `sansTentative` (l'enfant a demandé à voir la réponse, ou validé à
+vide au sprint) n'est pas présentée comme une faute — la ligne « Réponse donnée » cède la
+place à une phrase explicite **déduite du mode** (« N'a pas essayé : a demandé à voir la
+réponse. » partout, sauf au sprint — seul mode où une validation vide vaut ce marqueur, faute
+de bouton « Je ne sais pas, montre-moi » sous chrono — « N'a pas essayé : a validé sans
+répondre. », `.enc-err-passe`, icône œil décorative) et
+le liseré de l'item perd son accent « écart » pour un filet neutre (`.enc-err-item--passe`). Le
+sens tient dans le texte, jamais dans la couleur seule. Ces entrées **comptent** en revanche
+dans le « N erreurs » du groupe : le journal reste la liste de ce qui n'était pas su. Le libellé lit « **Réponse
 attendue :** », et non « La bonne réponse » (#446) : depuis que l'intercalation corrige par
 BANDE plutôt que par valeur unique, un attendu peut être « un nombre entre 450 et 465 » — un
 « LA » y nierait la pluralité. Formulation neutre, valable pour **toutes les leçons**, pas

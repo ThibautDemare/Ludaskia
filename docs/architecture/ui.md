@@ -198,7 +198,27 @@ pure](core.md)) pour les formats composites :
   (`questionPourJournal` — `@` → « … », marqueur « exercice avec dessin ») et le libellé
   d'un choix QCM (`libelleChoix`, vue riche #200 si elle existe), puis délègue à
   `core/erreurs-journal.ts`. Ignore une erreur sans leçon rattachée ou sans énoncé
-  affichable. Branché sur la fiche en saisie (`session.ts:verify`), le QCM
+  affichable. Option **`sansTentative`** (#467, booléen côté appelant, normalisé en
+  marqueur `true` seulement s'il est vrai) : marque l'entrée « passée sans essayer » —
+  « Je ne sais pas, montre-moi » ou validation à vide — avec `donnee: ''` (il n'y a pas
+  de réponse à montrer côté encadrant). **Une tentative COMMENCÉE n'est pas un « pas
+  d'essai »** : quand l'enfant a laissé une trace avant de demander la réponse, le journal
+  retient ce qu'il avait proposé. Même règle en trois cas pour les trois formats concernés —
+  rien de saisi → entrée `sansTentative` ; saisi et **faux** → **vraie** entrée d'erreur avec
+  la réponse donnée ; saisi et **juste** → **aucune** entrée (on ne fabrique pas une erreur
+  là où l'enfant avait bon). Elle est écrite **une seule fois**, en logique pure
+  (`core/erreur-representation.ts: entreeTentativePassee`) ; les trois appelants ne
+  fournissent que les faits, avec leur propre comparaison, et routent l'entrée obtenue :
+  sous-questions d'un problème (`core/probleme-etapes.ts: entreesEtapesPassees`), repère déjà
+  placé sur la droite graduée (`lecon-droite-graduee.ts:journaliserPasse`, faits lus par
+  `tentativePosee`) et cases déjà cochées d'un QCM multi
+  (`lecon-qcm-multi.ts:journaliserPasseMulti`, verdict tout-ou-rien via `selectionJuste`).
+  Les helpers de ces deux runners reçoivent l'état coché / sélectionné **en paramètre** (et ne
+  lisent plus une variable de module) : la même lecture sert à l'écran et au journal, et ne
+  peut plus se dédoubler. **Exception assumée** : le tableau de conversion (`lecon-tableau.ts`)
+  reste `sansTentative` inconditionnel — sa réponse est la **lecture de toutes les cases
+  ensemble**, donc inexistante tant qu'il en manque une, et un nombre reconstruit sur des
+  cases vides ferait croire à une conversion fausse jamais proposée. Branché sur la fiche en saisie (`session.ts:verify`), le QCM
   (`lecon-qcm.ts`), le QCM multi-sélection (`lecon-qcm-multi.ts` — une entrée par
   question, propositions cochées listées dans l'ordre d'affichage), le sprint
   (`sprint.ts`), les tuiles de numération (`lecon-tuiles.ts` — libellé de la tuile
@@ -230,7 +250,9 @@ pure](core.md)) pour les formats composites :
   erreur ne sert qu'à départager une égalité de volume), dédoublonnage « vue N fois », **« Réponse
   attendue »** mise en avant (jamais barrée) — et non « La bonne réponse » (#446) : depuis
   l'intercalation, l'attendu peut être une bande (« un nombre entre 450 et 465 »), formulation
-  neutre valable pour toutes les leçons. Au-delà des **5** erreurs les plus récentes d'une leçon, les
+  neutre valable pour toutes les leçons. Une entrée **`sansTentative`** (#467) échange sa ligne
+  « Réponse donnée » contre une phrase explicite (`.enc-err-passe`) et prend un liseré neutre
+  (`.enc-err-item--passe`) : « passé sans essayer » ne se lit pas comme une faute. Au-delà des **5** erreurs les plus récentes d'une leçon, les
   suivantes rejoignent un second `<details class="enc-err-anciennes">` imbriqué (« N erreurs
   plus anciennes »), plutôt qu'un simple compteur non consultable. Le libellé du groupe résout d'abord une leçon du catalogue, sinon
   une liste d'orthographe (`labelLeconOrtho`), sinon l'id brut. Action « Épingler »
@@ -502,6 +524,47 @@ pure](core.md)) pour les formats composites :
   n'a plus d'id propre (résolu via `actions.querySelector('button')`) — seuls les
   conteneurs `#…Actions` / `#…Feedback` de chaque runner restent des sélecteurs stables
   (repris par les specs e2e).
+- **`revelation-neutre.ts`** (#467) — **fond commun de « Je ne sais pas, montre-moi »**,
+  partagé par le mode leçon (`lecon-passer.ts`) et le mode Révision (`revision.ts`) : le
+  libellé du lien (`PASSER_LABEL`, `lienPasserHTML(classe, id)` — un `<button>`, jamais un
+  `<a>`), le ton du verdict (`REVEAL_LAB`, `ligneRevelation(libelle, solutionHTML?)`,
+  `REVELATION_EN_PLACE`), un **3ᵉ état de verdict NEUTRE** — ni ✓ ni ✗, aucune animation,
+  l'enfant n'a pas échoué, il a demandé à voir (`.lecon-reveal` côté leçon,
+  `.rev-feedback.reveal` côté révision) —, l'entrée de journal marquée « n'a pas essayé »
+  (`capterPasse({…, mode})`), le désarmement du widget sans jamais appeler `verify()`
+  (`neutraliserScene({scene, classeFige, apres})`) et l'**annonce non visuelle**
+  (`annoncerRevelation({scope, message, repli?})`). Ne varient que des **sélecteurs DOM** et
+  le **mode** du journal, passés en paramètres — les deux écrans sont deux habillages, pas
+  deux implémentations. Le choix de la région live vit dans **`annoncerStatut({scope, message,
+  repli?})`**, dont `annoncerRevelation` n'est que l'habillage (il préfixe `REVEAL_LAB`) :
+  d'abord la live region **du widget** monté (`#ltriStatus`, `#lappStatus`, `#lclicStatus`,
+  `#probStatus` — contenu plus riche, et pas de doublon avec ce qu'elle dit déjà), sinon la
+  région **fixe** de l'écran (`repli`, exclu de la première recherche pour ne pas dépendre de
+  l'ordre du markup). C'est le seul canal d'un lecteur d'écran sur une question révélée (le
+  focus part sur « Continuer ▶ ») : les deux copies indépendantes d'origine avaient laissé six
+  formats de révision **muets** alors que les runners de leçon étaient déjà corrigés. La même
+  fonction porte désormais les verdicts **ORDINAIRES** de la révision (cf.
+  `revision.ts: annoncerVerdict` plus bas) — une seule règle de repli, quelle que soit l'issue
+  de la question.
+- **`lecon-passer.ts`** (#467) — habillage **mode leçon** du module ci-dessus, partagé par
+  les neuf runners d'écran dédié (cinq à widget, quatre à saisie contrainte) : bloc de
+  décision `decisionHTML(verifId, opts?)` (« Vérifier » + le lien `#leconPasser` en dessous,
+  toujours actif même quand « Vérifier » est `disabled`), `wirePasser`, `masquerDecision`
+  (#153), `capterPasse` (mode `'lecon'`) et `revelerSolution(opts)` (verdict NEUTRE, widget
+  figé mais visible via `.lecon-fige`, annonce, puis `wireNext`). Une question révélée compte
+  au **dénominateur** sans compter au score (0 XP, étoile perdue comme après une erreur) et
+  n'est pas rejouée. Côté révision, l'équivalent vit dans `revision.ts` (`decideHTML`,
+  `passerItem`, région fixe `#revStatus` posée **hors** de `#revStage`, que le verdict d'une
+  saisie ou d'un QCM remplace en entier). Cette région porte aussi les verdicts
+  **ORDINAIRES** de la révision (`revision.ts: annoncerVerdict`, appelé par `grade` et par le
+  chemin d'échec d'un mot d'orthographe) : « Bravo, c'est juste. » ou « Ce n'est pas ça. La
+  bonne réponse : X. » (« Une réponse possible » sur un item corrigé par intervalle, #446 —
+  libellé lu par `labelReponse`, commun au verdict affiché et à son annonce). Les quatre
+  formats dont le verdict remplace toute la carte — saisie, QCM, mot, opération posée —
+  n'annonçaient rien du tout : le focus part sur « Continuer ▶ », donc un enfant qui n'y voit
+  pas ne savait pas s'il avait eu juste ou faux. Trou antérieur à #467, corrigé avec lui
+  puisque l'infrastructure était là. Les formats à widget bavard (tri, appariement, clic-mot,
+  problème) gardent leur propre annonce, `annoncerStatut` visant leur région en priorité.
 - **`tuile-interaction.ts`** (#345) — **widget « tuiles » mutualisé** pour les trois
   formats interactifs sans clavier. Point d'entrée unique :
   `bindTuileInteraction(root, spec, opts) → TuileController`. `spec` est un `TuileSpec`
@@ -776,11 +839,19 @@ pure](core.md)) pour les formats composites :
   leçons **éligibles** (une catégorie entièrement exclue n'est pas proposée). Le
   réglage de profil **« sans pression temporelle »** (#223) masque le minuteur et le
   score ici et bascule la fin en mode doux — détaillé dans la section Accessibilité.
-  **Refus de saisie** (`sprintRefuse`, partagé par deux cas) : `sprintSubmit` refuse un
-  champ **vide** (« Écris ta réponse avant de valider. ») et, là où un nombre est attendu
-  (`itemEstNumerique`), une saisie que `saisieEstNombre` (`core/nombres.ts`) ne reconnaît
-  pas comme un nombre (« Écris seulement un nombre. », ex. « 3- » — un caractère parasite
-  du pavé numérique Android). Dans les deux cas : `sprintAnswer` n'est **jamais appelé** —
+  **Validation à VIDE = réponse fausse assumée** (#467) : `sprintSubmit` ne refuse plus
+  un champ vide — `sprintAnswer('', true)` la traite comme n'importe quelle réponse
+  fausse (révélation de la solution, question comptée, aucun point ni XP), journalisée
+  avec le marqueur `sansTentative` (cf. [Espace encadrant](espace-encadrant.md)). Le
+  sprint n'a **délibérément pas** de bouton « Je ne sais pas, montre-moi » (un skip
+  gratuit sous chrono gonflerait le record sans coût) : valider sans rien écrire EST sa
+  sortie de secours pour l'enfant coincé, au même prix qu'une erreur.
+  `sprintShowCorrection` affiche alors un rappel neutre (« Pas de réponse cette fois. »,
+  `RAPPEL_SANS_REPONSE`) à la place de « Tu as répondu … ». **Refus de saisie**
+  (`sprintRefuse`) : subsiste seulement là où un nombre est attendu (`itemEstNumerique`),
+  pour une saisie que `saisieEstNombre` (`core/nombres.ts`) ne reconnaît pas comme un
+  nombre (« Ce n'est pas un nombre. Corrige ta réponse, puis valide. », ex. « 3- » — un
+  caractère parasite du pavé numérique Android) : `sprintAnswer` n'est **jamais appelé** —
   rien n'est corrigé, compté ni journalisé —, la saisie est **conservée** curseur en fin
   (redemander toute la frappe multiplierait les occasions de la rater), le message
   s'affiche dans `#sprintHint` et est annoncé via la région live `#sprintStatus`
@@ -790,7 +861,7 @@ pure](core.md)) pour les formats composites :
   relire), neutre (aucune couleur, ce n'est pas un verdict) et coupé sous
   `prefers-reduced-motion`.
 - **`session.ts`** (#349) — session d'exercice grille : vérification, saisie clavier,
-  impression contextuelle (#40). Trois exports :
+  impression contextuelle (#40). Quatre exports :
   - **`verify()`** — **bloque d'abord** sur toute saisie non vide qui n'est pas un
     nombre là où un nombre est attendu (`itemEstNumerique` + `saisieEstNombre`,
     `core/items.ts`/`core/nombres.ts`) : AVANT même l'arrêt du chrono, les champs
@@ -804,6 +875,26 @@ pure](core.md)) pour les formats composites :
     sans référence DOM), délègue le **calcul du score à `core/scoring.ts`**
     (`scoreItems`), puis marque les champs selon les `statuses` renvoyés (✓/✗ +
     révélation de la réponse) et rend le bandeau de résultats et les récompenses.
+    Retire aussi l'astuce ci-dessous (`#astuceReponseVide`) : le verdict posé, elle
+    n'a plus d'objet et contredirait l'avertissement des 60 % qui invite à remplir.
+  - **`afficherAstuceReponseVide()`** (#467) — pose en tête de `#sheets` un message
+    **découvrabilité** du droit de laisser une réponse vide (« Tu ne sais pas quoi
+    répondre ? Tu peux laisser la réponse vide et continuer. ») : la fiche/le bilan en
+    saisie tolèrent déjà un champ vide (neutre à la correction, essai compté dès 60 %
+    de champs remplis), mais rien ne le disait — un enfant pouvait se croire obligé de
+    tout remplir et rester bloqué sans autre issue que d'abandonner la séance. Posée
+    par `afterStart` (`ui/navigation.ts`), donc lue AVANT le blocage, sur tous les
+    écrans à champs qui y passent (leçon en saisie, bilan express/complet, reprise des
+    erreurs). Information, pas alerte (ni `role="alert"` ni teinte `--warn`), **non
+    collante** (contrairement à `.verify-hint`) et **`screen-only`** (le markup de
+    fiche est partagé avec l'impression). **Volontairement sans `data-tts`** — choix
+    du mainteneur : `bindConsigneTts` lit le **premier** `[data-tts]` de l'écran en
+    lecture auto, et l'astuce placée en tête volerait cette lecture à la vraie
+    consigne de l'exercice ; elle reste donc **inaudible** par le bouton « Écouter »,
+    contrairement au reste des consignes (#42). Posée **dans** `#sheets` (pas en frère,
+    comme `#resultBanner`) : elle est ainsi capturée par l'instantané de reprise
+    (`captureResume`) et réapparaît à la reprise d'une fiche interrompue, qui ne
+    repasse pas par `afterStart`.
   - **`printAll()`** / **`printScope(scope)`** — impression contextuelle (#40) : chemin A
     imprime l'écran courant vierge (le CSS print met `.ans` en transparent) ; chemin B pose
     un périmètre que `beforeprint` rend via `buildPrintableDOM(scope)`. Le 🖨 de la barre

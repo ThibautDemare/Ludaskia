@@ -191,6 +191,16 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
     muettes** : leur `aria-label` ne révèle jamais la valeur (ce serait souffler la
     réponse) — elles s'annoncent par position relative (« N graduations après {borne
     chiffrée} »), le même comptage de crans que fait l'enfant voyant.
+    **Deux repères sur la même droite** (#467 — correction d'une erreur, ou révélation
+    gardant visible le repère que l'enfant avait posé) : `renderDroiteGraduee` gère seul
+    leur cohabitation, aucun runner n'a de cas particulier à écrire. Un repère à **une
+    seule graduation** du repère `correct` voit sa **tige raccourcie** (`repereMarkup(…,
+    abaisse)`) : sa tête retombe plus bas, jamais de côté — l'abscisse EST l'information
+    de valeur. Et quand **deux têtes PLEINES** coexistent (`correct` + `neutre`), la
+    figure est enveloppée dans `.figure-avec-legende` avec une **légende** « ton repère /
+    le bon repère » (moule `.clock-legend` / `.cl-dot` de l'horloge) : deux disques pleins
+    ne se distingueraient que par la couleur. Le couple `correct` + `faux` n'en a pas
+    besoin (tête creuse vs pleine).
   - **`decimaux.ts`** — **`renderGrilleCentiemes(parts)`** (#247 — grille 10×10 des
     centièmes : `parts` cases coloriées **contiguës, ligne par ligne** depuis le
     haut-gauche (1 ligne pleine = 1 dixième) ; maillage des centièmes, séparateurs de
@@ -819,13 +829,20 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   le profil ACTIF (`journaliserErreur`, clé préfixée `ludaskia_erreurs`) ; lecture côté
   encadrant **par UUID sans bascule** (`chargerErreursFor`, même pattern brut que
   `loadRevoirFor` ci-dessous). `ErreurEntry` = `{ts, lessonId, mode, question, donnee,
-  attendue}` (déjà des chaînes LISIBLES — le journal ignore les items/exercices).
+  attendue}` (déjà des chaînes LISIBLES — le journal ignore les items/exercices), plus
+  le marqueur **optionnel** `sansTentative?: true` (#467) : l'enfant a demandé à voir la
+  réponse (« Je ne sais pas, montre-moi ») ou validé à vide, au lieu de répondre. Écrit
+  **seulement** quand il est vrai (absent ⇒ tentative faite), pour que les journaux déjà
+  stockés restent valides — `estErreurValide` ne l'**exige** pas, il n'en valide le type
+  que s'il est présent.
   **Rétention** `MAX_ERREURS` (150) : purge des plus anciennes, la plus récente en tête
   (`ajouterErreur`, pur, testable sans stockage). **`grouperErreursParLecon`** regroupe par
   leçon (triée par **volume d'erreurs décroissant**, la récence de la dernière erreur ne
   départageant que les égalités, #519) et **dédoublonne** (même question + même
-  réponse donnée) en une entrée « vue N fois » — les banques QCM se répètent, pas la peine
-  d'afficher N lignes identiques. Le total compté n'est que celui de la **période filtrée**
+  réponse donnée + même `sansTentative`) en une entrée « vue N fois » — les banques QCM se
+  répètent, pas la peine d'afficher N lignes identiques. Le marqueur entre dans la clé (et
+  est propagé dans `ErreurAffichee`) : un item **passé** et le même item **raté** ne
+  fusionnent pas en « vue 2 fois », ce qui mentirait au parent. Le total compté n'est que celui de la **période filtrée**
   (ci-dessous) : le classement se recalcule à chaque changement de fenêtre.
   **`filtrerErreursParPeriode(liste, periode, now)`** (#476)
   borne la liste sur `ts` AVANT ce regroupement, en jours CALENDAIRES locaux, aujourd'hui
@@ -882,6 +899,36 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   réponses justes** par l'adulte qui corrige sur papier, alors que la fiche annonce
   « (plusieurs réponses possibles) ». Les trois formulations dérivent d'une seule
   mise en forme de la bande (fonction privée du module).
+  **Question PASSÉE** (#467) : **`entreeTentativePassee({tentee, juste, donnee})`** décide
+  s'il y a une entrée à écrire, et avec quel drapeau — rien de posé → `{donnee: '',
+  sansTentative: true}` ; posé et faux → `{donnee, sansTentative: false}` ; posé et juste →
+  `null` (on ne fabrique pas une erreur là où l'enfant avait bon). L'**ordre** des deux tests
+  fait partie de la règle (« rien de posé » l'emporte sur « juste »). Les appelants ne
+  fournissent que les **faits**, chacun avec SA comparaison : `core/probleme-etapes.ts`
+  (`entreesEtapesPassees`, une case de problème), `ui/lecon-droite-graduee.ts`
+  (`tentativePosee` + `journaliserPasse`, un repère placé) et `ui/lecon-qcm-multi.ts`
+  (`journaliserPasseMulti`, une grille tout-ou-rien). La règle avait été **recopiée** dans
+  ces deux runners — exactement la divergence que l'extraction du module problème devait
+  empêcher.
+- **`probleme-etapes.ts`** (#467, pur) — verdict d'**UNE sous-question** de problème, extrait
+  de la correction DOM `ui/lecon-probleme.ts:corrigerEtapesProbleme` le jour où un second
+  chemin en a eu besoin. **`etatEtape(saisie, attendu)`** rend trois états — `'vide'`,
+  `'juste'`, `'faux'` — la virgule française étant tolérée (#255) et le test du VIDE passant
+  **avant** la comparaison (`Number('')` vaut 0 : sans lui, une case vide serait « juste » sur
+  une étape dont la réponse est 0) ; **`etapeJuste`** est le raccourci du chemin de correction
+  ordinaire (deux issues à peindre) et **`attenduEtapeTexte(attendu)`** écrit la réponse
+  attendue à la française (« 4,5 »), affichée à côté de la case dans les deux chemins.
+  **`entreesEtapesPassees(etapes, saisies)`** en dérive ce qu'un problème **passé**
+  (« Je ne sais pas, montre-moi ») laisse au journal encadrant, sous-question par
+  sous-question : case vide → entrée `sansTentative` sans réponse donnée, case remplie et
+  fausse → **vraie** entrée d'erreur avec ce que l'enfant avait écrit, case remplie et juste →
+  **aucune** entrée. Journaliser « n'a pas essayé » sur toutes les cases d'un problème
+  partiellement rempli était faux — et le journal est ce que le parent lit. La règle des trois
+  cas elle-même n'est PAS écrite ici : elle vient de `erreur-representation.ts:
+  entreeTentativePassee` (ci-dessus), partagée avec la droite graduée et le QCM multi ; ce
+  module ne traduit que l'état d'une CASE en faits. Consommé par
+  `ui/lecon-probleme.ts` (`corrigerEtapesProbleme`, `revelerEtapesProbleme`), donc par le
+  runner de leçon ET par la révision espacée, qui appellent ces deux fonctions.
 - **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
   bascule** (`progressionProfil`, `niveauProfilMatiere`) ; réexporte l'échelle de maîtrise
   (`niveauNotion`/`tendanceNotion`, définie dans `maitrise.ts`) pour les imports

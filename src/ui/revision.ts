@@ -34,6 +34,7 @@ import {
 	TEXT_ANSWER_INPUT_ATTRS,
 } from '../core/items';
 import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
+import { journaliserPaliersOrtho } from '../core/orthographe/paliers';
 import { groupeOrthoDuMot } from '../core/orthographe/lessons';
 import { diffCorrect } from '../core/orthographe/diff';
 import type { OrthoState, MotOrtho } from '../core/orthographe/types';
@@ -42,6 +43,7 @@ import {
 	avancerLessonRevision,
 	addXP,
 	recordRun,
+	recordLessonStats,
 	recordSessionActivity,
 } from '../core/progress';
 import { selectDueGroups } from '../core/revision-select';
@@ -177,6 +179,10 @@ type RevItem = { groupLabel: string; consigne?: string } & (
 let items: RevItem[] = [];
 let idx = 0;
 let score = 0;
+// Réponses de la session agrégées par leçon (#541) : alimentent la fenêtre de performance
+// récente en fin de session, comme le fait le sprint. Ne concerne que les items de LEÇON —
+// les mots d'orthographe ont leur propre modèle d'acquisition (validation par mode).
+let perLesson: Record<string, { ok: number; total: number }> = {};
 let ortho: OrthoState;
 let active = false; // une révision est-elle EN COURS ? (garde-fou de sortie, #63)
 let startTs = 0; // début de la session (durée enregistrée à la fin, #178)
@@ -341,6 +347,7 @@ export function runRevisionEspacee(): void {
 	}
 	idx = 0;
 	score = 0;
+	perLesson = {};
 	active = false;
 	const sheets = document.getElementById('sheets')!;
 	if (!items.length) {
@@ -1190,6 +1197,13 @@ function recordGrade(reussi: boolean) {
 		saveOrtho(ortho);
 	} else {
 		avancerLessonRevision(it.lessonId, reussi, now);
+		// Fenêtre de performance récente (#541) : un rappel différé est le meilleur indicateur
+		// de ce qui est RETENU, il doit donc compter dans l'état d'acquisition. Il ne le faisait
+		// pas, ce que rien n'argumentait ; l'y injecter n'était toutefois pas possible avant que
+		// la fenêtre soit comptée en questions (un item par leçon aurait pesé un essai entier).
+		const b = perLesson[it.lessonId] || (perLesson[it.lessonId] = { ok: 0, total: 0 });
+		b.total++;
+		if (reussi) b.ok++;
 	}
 	if (reussi) {
 		score++;
@@ -1382,7 +1396,18 @@ function renderDone() {
 	// (objectif de régularité #178). Pas de classement ni de médaille : ce run
 	// n'alimente aucun podium, il sert seulement au comptage via countSince.
 	recordRun('revision-espacee', score, items.length, Date.now() - startTs);
-	recordSessionActivity('revision'); // un point dans le graphe d'activité encadrant (#319)
+	// Stats de leçon (#541) + point d'activité (#319). `recordLessonStats` journalise lui-même
+	// l'activité et les franchissements de palier : c'est pourquoi on ne l'appelle PAS en plus de
+	// recordSessionActivity, qui ferait un doublon dans le graphe. Une session composée
+	// uniquement de MOTS d'orthographe n'a, elle, aucune stat de leçon à écrire (donc rien qui
+	// journalise l'activité) — d'où le repli explicite, sans quoi elle disparaîtrait du graphe.
+	if (Object.keys(perLesson).length) recordLessonStats(perLesson, 'revision');
+	else recordSessionActivity('revision');
+	// Franchissements d'état des listes de dictée (#541) : la révision rejoue des MOTS, elle peut
+	// donc faire basculer une liste sans qu'aucune dictée n'ait été lancée. Appelé même sans item
+	// de mot dans la session : ce qui compte aussi ici, c'est de dater la mise en service du
+	// journal pour ce profil (cf. journaliserPaliersOrtho).
+	journaliserPaliersOrtho(dicteeDisponible(), Date.now());
 	const stage = document.getElementById('revStage')!;
 	if (!stage) return;
 	document.querySelector('.rev-hud')?.remove();

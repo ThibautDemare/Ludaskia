@@ -446,14 +446,21 @@ function matieresHTML(recap: RecapProfil): string {
 const MOT_CELLULE: Record<CelluleFrise, string> = {
 	inconnu: 'avant le suivi',
 	'a-decouvrir': MOT_NIVEAU['a-decouvrir'],
+	'non-acquis': MOT_NIVEAU['non-acquis'],
 	'en-cours': MOT_NIVEAU['en-cours'],
 	acquis: 'acquise',
 };
-/* Les segments SUIVANTS du récit sont des événements datés, pas des états : ils prennent la
-   même tournure que la méta visible de la ligne (« passée en cours hier », « acquise le 3
-   août »), sinon le récit dirait « puis en cours hier ». Seuls ces deux états peuvent ouvrir
-   un segment après le premier — la frise ne redescend jamais, et 'inconnu' n'est qu'un
-   préfixe ; le repli sur MOT_CELLULE ne couvre donc qu'un cas impossible. */
+/* Les segments SUIVANTS du récit sont des événements DATÉS quand une date existe : ils prennent
+   alors la même tournure que la méta visible de la ligne (« passée en cours hier », « acquise le
+   3 août »), sinon le récit dirait « puis en cours hier ». Seuls ces deux paliers sont datés par
+   le journal ; « à renforcer » ouvre un segment sans date, et c'est voulu — il suit soit « à
+   découvrir » (le début du travail, date affichée nulle part ailleurs sur la ligne), soit
+   « avant le suivi », dont la frontière est l'entrée dans le suivi et non un progrès de
+   l'enfant : la dater laisserait croire que quelque chose s'est passé ce jour-là.
+   C'est donc le premier segment non initial et non daté du récit, ce que la relecture de langue
+   signale comme lisible en lacune. Un « puis ENFIN acquise le 30 juillet » sur les récits à trois
+   segments a été proposé pour recadrer les segments muets en cheminement ; écarté, parce que
+   « enfin » félicite, et que cet écran s'abstient partout de juger la trajectoire de l'enfant. */
 const EVENEMENT_CELLULE: Partial<Record<CelluleFrise, string>> = {
 	'en-cours': 'passée en cours',
 	acquis: 'acquise',
@@ -468,7 +475,7 @@ const EVENEMENT_CELLULE: Partial<Record<CelluleFrise, string>> = {
    Un seul `role="img"` pour toute la rangée, portant le récit des changements : douze cellules
    annoncées une à une seraient interminables, et rien n'y est focalisable. La méta de la ligne
    dit déjà, en texte visible, la date du cap le plus haut.
-   Rien à tracer (aucun franchissement daté) → rien du tout, pas de rangée vide ni de mention
+   Rien à tracer (leçon jamais travaillée) → rien du tout, pas de rangée vide ni de mention
    d'absence : ça ferait du bruit sur les lignes jamais travaillées, qui sont la majorité. */
 function friseNotionHTML(f: FriseNotion | null, now: number): string {
 	if (!f) return '';
@@ -478,8 +485,8 @@ function friseNotionHTML(f: FriseNotion | null, now: number): string {
 	// suivants sont datés par le franchissement LUI-MÊME (`libelleDerniereFois`, le formateur
 	// de la méta visible), et non par le lundi de leur cellule : sinon un cap franchi un
 	// mercredi produisait deux dates différentes pour le même fait, la méta annonçant le jour
-	// exact et la frise le lundi de la semaine (avis a11y). Tout changement à l'intérieur de la
-	// fenêtre correspond forcément à un franchissement daté, donc aucun segment ne reste muet.
+	// exact et la frise le lundi de la semaine (avis a11y). Un segment « à renforcer » reste
+	// volontairement muet (cf. EVENEMENT_CELLULE) : sa frontière n'est pas un cap franchi.
 	const dateEtat = (etat: CelluleFrise) =>
 		etat === 'acquis' ? f.acquisDepuis : etat === 'en-cours' ? f.enCoursDepuis : null;
 	const segments = f.semaines

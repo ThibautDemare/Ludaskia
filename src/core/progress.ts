@@ -417,6 +417,13 @@ export interface PaliersNotion {
 	enCours?: number; // ms de la 1re fois où la notion a atteint « en cours »
 	acquis?: number; // ms de la 1re fois où la notion a atteint « acquis »
 }
+/* MISE EN SERVICE du journal pour ce profil : horodatage écrit une seule fois, à la première
+   fin de session qui passe par recordMonteesPalier. Sans cette borne, un horodatage ABSENT est
+   ambigu — « aucun cap franchi » ou « rien n'était encore journalisé » — et l'espace encadrant
+   ne peut rien affirmer d'une semaine ancienne. Le plus ancien franchissement du profil sert de
+   repli (il PROUVE que le journal tournait déjà), mais il reste muet tant qu'aucun cap n'est
+   franchi, c'est-à-dire précisément chez l'enfant qui débute. */
+export const PALIERS_DEBUT_KEY = 'ludaskia_paliersDepuis';
 function loadPaliersRaw(): Record<string, PaliersNotion> {
 	return lsGet(LESSON_PALIERS_KEY, {});
 }
@@ -426,6 +433,9 @@ function loadPaliersRaw(): Record<string, PaliersNotion> {
    par l'appelant (testable). Un saut direct « à renforcer » → « acquis » ne compte qu'UNE
    marche (« acquis ») : on ne fabrique pas rétroactivement un palier « en cours ». */
 export function recordMonteesPalier(lessonIds: string[], now: number) {
+	// Borne de mise en service : posée même si cette session ne franchit aucun palier, et même
+	// si la liste est vide — ce qu'elle date, c'est le journal qui tourne, pas un franchissement.
+	if (lsGet(PALIERS_DEBUT_KEY, null) == null) lsSet(PALIERS_DEBUT_KEY, now);
 	const paliers = loadPaliersRaw();
 	const stars = loadStarsRaw();
 	const stats = loadLessonStatsRaw();

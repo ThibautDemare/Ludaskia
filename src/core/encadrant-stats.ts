@@ -24,6 +24,7 @@ import {
 	LESSON_STATS_KEY,
 	LESSON_FIRST_SEEN_KEY,
 	LESSON_PALIERS_KEY,
+	PALIERS_DEBUT_KEY,
 	ACTIVITY_KEY,
 	LESSON_REVISION_KEY,
 	LESSON_REPORT_KEY,
@@ -187,8 +188,8 @@ export interface RecapMatiere {
 	travaillees: number; // leçons abordées dans la matière
 	acquis: number; // leçons acquises (étoilées) dans la matière
 	total: number; // leçons du périmètre (niveau du profil) dans la matière
-	/** Leçons ayant franchi un cap dans la fenêtre de la frise (#521, cf. aChangeRecemment).
-	    Seule trace de « ça bouge » lisible sans déplier une catégorie. */
+	/** Leçons dont la frise montre au moins deux états dans la fenêtre (#521, cf.
+	    aChangeRecemment). Seule trace de « ça bouge » lisible sans déplier une catégorie. */
 	changementsRecents: number;
 }
 export interface RecapNotion {
@@ -203,8 +204,8 @@ export interface RecapNotion {
 	/** Nombre de JOURS où l'enfant a buté sur cette leçon dans la leçon du jour (#485) —
 	    le 1er ne reporte rien, les suivants la mettent de côté. 0 = jamais butée. */
 	blocages: number;
-	/** Trajectoire d'états semaine par semaine (#521, cf. friseNotion) ; `null` quand aucun
-	    franchissement n'est daté, donc qu'il n'y a rien à tracer. */
+	/** Trajectoire d'états semaine par semaine (#521, cf. friseNotion) ; `null` quand la leçon
+	    n'a jamais été travaillée, donc qu'il n'y a rien à tracer. */
 	frise: FriseNotion | null;
 }
 export interface RecapProfil {
@@ -465,24 +466,51 @@ export const debutSemaine = startOfWeek;
    dénombrement par matière ne nomme aucune leçon. Une trajectoire par leçon, elle, est
    pleine de bout en bout, et « ça n'a pas bougé depuis six semaines » se voit sans être écrit.
 
+   INVARIANT sur lequel tout repose : depuis la mise en service du journal, TOUTE session
+   susceptible de faire monter une leçon enregistre ses franchissements — les deux seuls
+   chemins qui écrivent des stats de leçon (`recordLessonRun` et le sprint) appellent
+   `recordMonteesPalier`. Passé cette borne (PALIERS_DEBUT_KEY), un horodatage ABSENT signifie
+   donc « aucune montée observée », et l'état d'une semaine se déduit. Avant la borne, rien ne
+   se déduit : les cellules valent 'inconnu'.
+
    Ce que la donnée permet, et ce qu'elle interdit :
    - `PaliersNotion` ne date que les MONTÉES vers « en cours » et « acquis », et seulement la
      première fois. Une cellule ne vaut donc que « l'état le plus haut atteint à cette date ».
      L'état RÉEL du jour est connu par ailleurs (`RecapNotion.niveau`) et peut être PLUS BAS :
      c'est l'UI qui met les deux côte à côte, un écart valant signal de recul.
-   - « à renforcer » (< 40 %) n'est JAMAIS daté — entrer là n'est pas un progrès de maîtrise
-     (cf. maitrise.ts) — donc il n'apparaît jamais comme cellule passée. Le rang bas se lit
-     'a-decouvrir' : à la granularité disponible, c'est « aucun cap franchi ».
-   - Le journal des paliers est récent (#397). Pour une leçon plus ancienne, les semaines
-     antérieures à son premier franchissement sont **inconnues** et non « à découvrir » : les
-     peindre au rang le plus bas affirmerait ce qu'on ne sait pas. D'où la cellule 'inconnu'.
-     La date de PREMIÈRE RENCONTRE (LESSON_FIRST_SEEN_KEY, #178, antérieure au journal des
-     paliers) lève le doute quand elle existe : l'historique est alors connu de bout en bout,
-     puisque l'absence de franchissement signifie bien « aucun cap ».
+   - « à renforcer » n'est jamais daté (entrer là n'est pas un progrès de maîtrise, cf.
+     maitrise.ts) mais il se DÉDUIT : une leçon travaillée, suivie, sans cap franchi, était à
+     renforcer. C'est ce qui manquait à la version précédente, qui escamotait ce palier et
+     laissait donc SANS frise les leçons n'ayant jamais dépassé 40 % — les plus fragiles, donc
+     celles qui intéressent le plus l'adulte.
+   - Sans aucun cap daté, l'état COURANT vaut pour toute la période suivie : aucune montée n'a
+     été observée, et l'échelle ne redescend pas d'elle-même (l'étoile n'est jamais retirée).
+     C'est ce qui rend sa frise à une leçon acquise AVANT le journal.
+   - Un cap daté sur une leçon plus ANCIENNE que la borne ne se déduit pas vers l'arrière : le
+     tampon peut n'être que la première observation d'un état déjà atteint (une leçon étoilée en
+     juin fait tamponner « acquis » à sa première session de juillet, `recordMonteesPalier` ne
+     posant l'horodatage qu'au premier passage où il constate le palier). Les semaines qui
+     précèdent restent donc 'inconnu' : « à renforcer » y affirmerait moins de 40 % sur une
+     leçon peut-être déjà maîtrisée.
+   - « à découvrir » n'est un FAIT que si la première rencontre (LESSON_FIRST_SEEN_KEY, #178)
+     est POSTÉRIEURE à la borne. Sinon la leçon était déjà travaillée hors suivi et son état
+     d'alors est inconnu. C'est le défaut corrigé ici : #178 précédant #397, l'ancienne règle
+     tenait l'historique pour complet dès qu'une première rencontre existait, si bien que deux
+     leçons voisines travaillées la même semaine s'affichaient selon deux règles différentes,
+     départagées par la version de l'appli au moment du premier passage — critère invisible
+     pour le lecteur, et affirmation fausse pour les leçons rencontrées entre les deux.
+     Coût assumé : la borne est celle du journal des PALIERS, pas celle de firstSeen (#178, plus
+     ancienne). Une leçon rencontrée entre les deux a donc une date fiable à laquelle on refuse
+     son préfixe « à découvrir ». Lui rendre justice demanderait une SECONDE borne, donc deux
+     règles possibles pour deux lignes voisines : ce qu'on vient de supprimer.
+   - Les cellules 'inconnu' sont TOUJOURS un préfixe de la rangée (une rangée commence soit par
+     'a-decouvrir', soit par 'inconnu', jamais les deux) : une cellule sans rang au milieu
+     dessinerait un creux, que la hauteur ferait lire comme une régression.
 
-   Renvoie `null` quand aucun franchissement n'est daté : il n'y a alors pas de trajectoire à
-   tracer, seulement l'état courant, que la ligne affiche déjà. `now` injecté (pur/testable). */
-export type CelluleFrise = 'inconnu' | 'a-decouvrir' | 'en-cours' | 'acquis';
+   Renvoie `null` pour une leçon jamais travaillée : rien à tracer, et une rangée de cellules
+   « à découvrir » sur chaque leçon du catalogue noierait celles qui disent quelque chose.
+   `now` injecté (pur/testable). */
+export type CelluleFrise = 'inconnu' | NiveauNotion;
 
 /* Lundi de la semaine située `semainesAvant` semaines plus tôt (négatif = plus tard).
    Passe par un décalage en JOURS CALENDAIRES (`debutJourLocal`) plutôt que par une
@@ -504,28 +532,84 @@ export interface FriseNotion {
 	enCoursDepuis: number | null; // horodatage du franchissement, s'il est daté
 	acquisDepuis: number | null;
 }
+/* Mise en service du journal des paliers pour un profil : le PLUS ANCIEN entre la borne stockée
+   (PALIERS_DEBUT_KEY) et les franchissements déjà datés, toutes leçons confondues.
+   Les deux, et pas seulement la borne : celle-ci n'est posée qu'à la première fin de session
+   SUIVANT son arrivée dans le code, donc un profil qui journalise depuis des semaines la
+   recevra datée d'aujourd'hui. Un franchissement plus ancien PROUVE que le journal tournait
+   déjà, et fait donc foi contre elle. Et pas seulement les franchissements : chez l'enfant qui
+   débute, aucun cap n'est franchi et seule la borne existe.
+   `Infinity` quand le profil ne fournit ni l'un ni l'autre : aucune semaine n'est alors
+   déductible, et toute la frise reste 'inconnu' plutôt que d'affirmer un état par défaut. Pur. */
+export function debutSuiviPaliers(depuis: unknown, paliers: Record<string, PaliersNotion>): number {
+	let debut = horodatage(depuis) ?? Infinity;
+	for (const p of Object.values(paliers ?? {}))
+		for (const t of [horodatage(p?.enCours), horodatage(p?.acquis)])
+			if (t !== null && t < debut) debut = t;
+	return debut;
+}
+/* `niveau` = état courant de la notion (`niveauNotion`), qui sert deux fois : il dit si la
+   leçon a été travaillée (sinon pas de frise) et il tient lieu d'état des semaines suivies
+   quand aucun cap n'est daté. `debutSuivi` vient de `debutSuiviPaliers`, calculé UNE fois par
+   profil (il ne dépend pas de la leçon). */
 export function friseNotion(
 	paliers: PaliersNotion | undefined,
 	firstSeen: number | undefined,
+	niveau: NiveauNotion,
+	debutSuivi: number,
 	now: number,
 ): FriseNotion | null {
 	const enCours = horodatage(paliers?.enCours);
 	const acquis = horodatage(paliers?.acquis);
-	if (enCours === null && acquis === null) return null;
-	const connuDepuis =
-		typeof firstSeen === 'number'
-			? -Infinity // historique connu de bout en bout
-			: Math.min(...[enCours, acquis].filter((t): t is number => t !== null));
+	const aucunCap = enCours === null && acquis === null;
+	if (niveau === 'a-decouvrir' && aucunCap) return null; // jamais travaillée
+	const rencontre = horodatage(firstSeen);
+	// Première rencontre POSTÉRIEURE à la borne : avant elle, la leçon n'était pas commencée,
+	// et « à découvrir » est un fait, pas une supposition. Antérieure : des semaines entières ont
+	// été travaillées hors suivi, et leur état reste inconnu. Comparaison à la SEMAINE, granularité
+	// de la frise : la rencontre est datée quelques millisecondes avant la borne dans une même fin
+	// de session (deux `Date.now()`, cf. recordLessonRun), ce qui aurait fait juger « antérieures
+	// au journal » les leçons de la toute première session d'un profil — le même critère invisible
+	// que celui corrigé ici. Une borne inconnue (Infinity) rend la comparaison fausse, donc pas de
+	// préfixe « à découvrir » : sans borne, aucune semaine n'est déductible, et une rangée
+	// « à découvrir » puis 'inconnu' romprait le préfixe et dessinerait un creux. */
+	const avantRencontre =
+		rencontre !== null && debutSemaine(rencontre) >= debutSemaine(debutSuivi)
+			? rencontre
+			: -Infinity;
+	// Semaines suivies, avant tout cap daté. Trois situations, et une seule des trois autorise
+	// « à renforcer » :
+	// - aucun cap daté du tout : rien n'est monté sous l'œil du journal, donc l'état courant tient
+	//   depuis la borne (une montée aurait été datée, et l'étoile ne se retire pas). Ce cas passe
+	//   AVANT le suivant : le plancher couvre alors jusqu'à la dernière cellule, qui ne peut donc
+	//   pas se retrouver SOUS le mot d'état de la ligne — un faux signal de recul si un chemin
+	//   d'écriture des stats oubliait un jour d'appeler recordMonteesPalier ;
+	// - rencontrée APRÈS la borne : toute sa trajectoire est journalisée, donc avant son premier
+	//   cap elle était bien travaillée sous les 40 %, soit « à renforcer » ;
+	// - un cap daté, mais un historique antérieur au journal : le tampon peut n'être que la
+	//   PREMIÈRE OBSERVATION d'un état déjà atteint avant la borne — une leçon étoilée en juin
+	//   fait tamponner « acquis » à sa première session de juillet. Affirmer « à renforcer »
+	//   avant ce tampon reviendrait à déclarer sous les 40 % une leçon peut-être déjà maîtrisée.
+	const plancher: CelluleFrise = aucunCap
+		? niveau
+		: avantRencontre !== -Infinity
+			? 'non-acquis'
+			: 'inconnu';
 	const semaines: CelluleFrise[] = [];
 	for (let i = 0; i < SEMAINES_FRISE; i++) {
 		// L'état d'une cellule est celui atteint à la FIN de sa semaine, soit le lundi suivant
 		// (exclu). Pour la dernière cellule cette borne est dans le futur : on lit donc l'état
 		// atteint À CE JOUR, ce qui est bien le sens de « semaine en cours ».
 		const finSemaine = lundiDecale(now, SEMAINES_FRISE - 2 - i);
-		if (finSemaine <= connuDepuis) semaines.push('inconnu');
-		else if (acquis !== null && acquis < finSemaine) semaines.push('acquis');
+		// Les caps datés passent AVANT « à découvrir » : sur données saines l'ordre est
+		// indifférent (aucun cap ne précède la première rencontre), mais un journal abîmé
+		// (horloge faussée, import bancal) daterait sinon 12 semaines « à découvrir » sur une
+		// leçon dont la ligne annonce par ailleurs, en texte, la date d'acquisition.
+		if (acquis !== null && acquis < finSemaine) semaines.push('acquis');
 		else if (enCours !== null && enCours < finSemaine) semaines.push('en-cours');
-		else semaines.push('a-decouvrir');
+		else if (finSemaine <= avantRencontre) semaines.push('a-decouvrir');
+		else if (finSemaine <= debutSuivi) semaines.push('inconnu');
+		else semaines.push(plancher);
 	}
 	return { semaines, enCoursDepuis: enCours, acquisDepuis: acquis };
 }
@@ -540,7 +624,22 @@ export function friseNotion(
    plate quand le journal était incohérent (un `acquis` ancien avec un `enCours` récent, forme
    que `recordMonteesPalier` ne produit pas mais qu'il ne coûte rien d'ignorer). Pur. */
 export function aChangeRecemment(frise: FriseNotion | null): boolean {
-	return frise !== null && new Set(frise.semaines).size > 1;
+	if (frise === null) return false;
+	// Deux états CONNUS dans la fenêtre : la frise change de rang sous les yeux du lecteur.
+	if (new Set(frise.semaines.filter((c) => c !== 'inconnu')).size > 1) return true;
+	// Un seul état connu, précédé de pointillé : c'en est un changement si et seulement si un CAP
+	// DATÉ l'a produit — c'est alors le passage du pointillé à la couleur, visible lui aussi.
+	// Sans cap daté, la frise ne fait que sortir de l'ignorance à la borne de suivi : ce qui a
+	// changé est le SUIVI, pas l'enfant, et compter ça allumerait le compteur sur chaque leçon
+	// travaillée du profil.
+	// Ce compteur ne se lit donc PLUS entièrement sur les cellules, contrairement à la première
+	// version : deux rangées au dessin identique (pointillé puis un seul état) répondent
+	// différemment selon qu'un cap est daté ou non, parce que le dessin ne peut pas montrer un
+	// franchissement dont les semaines antérieures sont inconnues. L'inverse, lui, reste vrai —
+	// pas de changement compté sans deux états visibles ou un cap daté — et c'est le sens qui
+	// compte : le compteur ne promet jamais un mouvement inexistant. Verrouillé par un test.
+	const premierEtatConnu = frise.semaines.findIndex((c) => c !== 'inconnu');
+	return premierEtatConnu > 0 && (frise.enCoursDepuis !== null || frise.acquisDepuis !== null);
 }
 
 /* Tableau de bord d'un profil (par UUID), SANS changer le profil actif.
@@ -552,6 +651,9 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 	const firstSeenRaw = lsGetRaw(uuid + '/' + LESSON_FIRST_SEEN_KEY, {}) as Record<string, number>;
 	const activity = lsGetRaw(uuid + '/' + ACTIVITY_KEY, []); // brut : normalisé par activiteParJourParType
 	const paliersRaw = lsGetRaw(uuid + '/' + LESSON_PALIERS_KEY, {}) as Record<string, PaliersNotion>;
+	// Borne de suivi : la MÊME pour toutes les leçons du profil, sinon deux lignes voisines
+	// s'afficheraient selon deux règles (cf. friseNotion).
+	const debutSuivi = debutSuiviPaliers(lsGetRaw(uuid + '/' + PALIERS_DEBUT_KEY, null), paliersRaw);
 	const reportsRaw = lsGetRaw(uuid + '/' + LESSON_REPORT_KEY, {}) as Record<string, EtatReport>;
 	const file = loadRevoirFor(uuid);
 	const fileSet = new Set(file);
@@ -599,7 +701,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 				derniereFois: stat?.lastAt ?? null,
 				tendance: tendanceNotion(stat),
 				blocages: reportsRaw[k]?.jours ?? 0,
-				frise: friseNotion(paliersRaw[k], firstSeenRaw[k], now),
+				frise: friseNotion(paliersRaw[k], firstSeenRaw[k], etat, debutSuivi, now),
 			};
 			rc.lecons.push(notion);
 

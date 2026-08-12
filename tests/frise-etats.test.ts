@@ -1,64 +1,67 @@
 /* ============================================================
-   Frise d'états par leçon (#521) — `friseNotion` / `aChangeRecemment`, et leur
-   branchement dans `progressionProfil`.
+   Frise d'états par leçon (espace encadrant) — `debutSuiviPaliers`, `friseNotion`,
+   `aChangeRecemment`, et leur branchement dans `progressionProfil`.
    ------------------------------------------------------------
-   Remplace la frise d'évolution par matière (#397, `frisesParMatiere`, supprimée).
    Le contrat éprouvé ici, tel qu'il est annoncé :
    - 12 cellules, de la plus ANCIENNE à la plus récente, la dernière = semaine EN COURS ;
-   - l'état d'une cellule est le plus haut atteint à la FIN de sa semaine — un cap franchi
-     le mercredi colore la semaine qui le contient, pas la suivante ;
-   - le journal des paliers ne datant que les MONTÉES, une frise ne redescend jamais ;
-   - sans date de première rencontre, les semaines antérieures au premier cap sont
-     'inconnu' (on ne SAIT pas) ; avec elle, elles valent 'a-decouvrir' (on sait qu'aucun
-     cap n'a été franchi). C'est la seule différence entre les deux frises d'un même
-     journal, et la subtilité centrale de la fonction ;
-   - `null` quand aucun cap n'est daté : il n'y a pas de trajectoire à tracer ;
-   - `aChangeRecemment(frise)` ne signale que ce qui est VISIBLE dans la frise : une frise
-     plate n'annonce rien. Comme le code lit les CELLULES, l'attendu est ici dérivé des DATES
-     (`compteurAttendu`) pour rester un second modèle : le compteur s'allume quand le cap le
-     plus HAUT (« acquis » s'il est daté, sinon « en cours ») est tombé dans les 11 dernières
-     semaines — un cap plus ancien est déjà porté par la cellule 0, donc invisible.
+     semaines CALENDAIRES (lundi premier jour), état d'une cellule = état atteint à la FIN
+     de sa semaine (un cap franchi le mercredi colore la semaine qui le contient) ;
+   - `null` si et seulement si la leçon n'a JAMAIS été travaillée (état courant
+     « à découvrir » ET aucun franchissement daté) ;
+   - trois sources, et une hiérarchie stricte entre elles : la première rencontre ne vaut
+     « à découvrir » que si elle est POSTÉRIEURE (ou égale) à la borne de suivi ; un cap daté
+     impose son état à partir de sa semaine (« acquis » l'emporte) ; avant la borne, rien ne
+     se déduit ('inconnu') ; après elle et avant tout cap, « à renforcer » ne s'affirme que
+     si la leçon est entrée dans le suivi (sinon l'état courant, ou 'inconnu') ;
+   - `debutSuiviPaliers` = le PLUS ANCIEN entre la borne stockée et tous les franchissements
+     datés du profil : la borne n'arrive qu'à la première fin de session suivant sa mise en
+     service, donc un cap plus ancien fait foi contre elle (il PROUVE que le journal
+     tournait) ; `Infinity` si le profil ne fournit ni l'un ni l'autre ;
+   - `aChangeRecemment` = deux états CONNUS distincts dans la rangée, ou bien un seul état
+     connu précédé de pointillé À CONDITION qu'un cap soit daté (le passage du pointillé à la
+     couleur est alors un franchissement, pas la simple entrée dans le suivi).
 
-   Les attendus sont dérivés de ce contrat, en INDEX DE SEMAINE (`friseAttendue`), là où le
-   code raisonne en horodatages de fin de semaine : les deux modèles doivent coïncider.
+   Ce que ces tests ne recopient PAS :
+   - les attendus des scénarios sont écrits à la main en RUNS de cellules (`rangee`), pas
+     recalculés par un modèle qui redirait la cascade du code ;
+   - la grille de semaines du test est une arithmétique de CALENDRIER écrite ici, pas
+     `lundiDecale` ; si l'une des deux dérive, les attendus ne coïncident plus ;
+   - les invariants (préfixe 'inconnu' contigu, jamais de redescente, uniformité, fenêtre
+     glissante) sont éprouvés sur ~7 000 journaux, INCOHÉRENTS compris, sans modèle.
 
-   DEUX repères temporels, chacun un mercredi à 15 h 30 (heure locale) :
-   - `NOW` = 12 août 2026, dont la fenêtre de 12 semaines (fin mai → mi-août) ne contient
-     aucun changement d'heure, sous quelque fuseau que ce soit : le gros des attendus s'y lit
-     sans réserve. Les marches injectées y restent à ≥ 2 h de toute frontière de semaine,
-     sauf dans les tests de BORNE, qui les visent exprès ;
-   - `NOW_DST` = 13 mai 2026, dont la fenêtre est à cheval sur la bascule d'heure d'été de
-     l'hémisphère nord (29 mars 2026 en Europe). Le pas hebdomadaire passant par un décalage
-     en jours CALENDAIRES, les frontières des semaines anciennes ne dérivent pas d'une heure
-     et un cap franchi le dimanche à 23 h 30 reste dans SA semaine. Dans un fuseau sans heure
-     d'été (UTC, comme la CI), ce bloc dégénère en cas nominal — il mord sur la machine du
-     mainteneur.
+   TROIS repères temporels, chacun un mercredi à 15 h 30 (heure locale) :
+   - `NOW` = 12 août 2026, dont la fenêtre (25 mai → 16 août) ne contient aucun changement
+     d'heure : le gros des attendus s'y lit sans réserve ;
+   - `NOW_PRINTEMPS` = 13 mai 2026 et `NOW_AUTOMNE` = 11 novembre 2026, dont les fenêtres
+     enjambent les bascules d'heure d'été européennes (29 mars / 25 octobre 2026). Dans un
+     fuseau sans heure d'été (UTC, comme la CI), ces cas dégénèrent en cas nominaux — la
+     prémisse qui le dit est un test à part, sauté sous ce fuseau.
    ============================================================ */
 import { beforeEach, describe, it, expect } from 'vitest';
-import {
-	initProfiles,
-	activeProfile,
-	touchActiveProfile,
-	type Profile,
-} from '../src/core/profiles';
+import { initProfiles, activeProfile, touchActiveProfile } from '../src/core/profiles';
 import { setOnDataWrite, lsSetRaw } from '../src/core/storage';
 import {
 	LESSON_PALIERS_KEY,
 	LESSON_FIRST_SEEN_KEY,
+	PALIERS_DEBUT_KEY,
+	markLessonsFirstSeen,
+	recordLessonResult,
+	recordLessonStats,
+	recordMonteesPalier,
 	type PaliersNotion,
 } from '../src/core/progress';
 import {
+	debutSuiviPaliers,
 	friseNotion,
 	aChangeRecemment,
-	debutSemaine,
 	progressionProfil,
 	niveauProfilMatiere,
 	type CelluleFrise,
-	type FriseNotion,
-	type RecapCategorie,
 	type RecapMatiere,
+	type RecapNotion,
 	type RecapProfil,
 } from '../src/core/encadrant-stats';
+import type { NiveauNotion } from '../src/core/maitrise';
 import type { SubjectId } from '../src/core/catalog';
 
 beforeEach(() => {
@@ -73,388 +76,715 @@ const HEURE = 60 * MINUTE;
 const JOUR = 24 * HEURE;
 
 const NOW = new Date(2026, 7, 12, 15, 30).getTime(); // mercredi 12 août 2026, 15 h 30
-const NOW_DST = new Date(2026, 4, 13, 15, 30).getTime(); // mercredi 13 mai 2026 (fenêtre à cheval)
+const NOW_PRINTEMPS = new Date(2026, 4, 13, 15, 30).getTime(); // fenêtre à cheval sur le 29 mars
+const NOW_AUTOMNE = new Date(2026, 10, 11, 15, 30).getTime(); // fenêtre à cheval sur le 25 octobre
 
-/* Grille de semaines d'un instant, en JOURS CALENDAIRES : c'est la définition « semaine
-   calendaire locale » du contrat, et surtout PAS l'arithmétique du code (`lundiDecale`),
-   qu'on ne veut pas recopier — si l'une des deux dérive, les attendus ne coïncident plus. */
+/* ---------- Grille de semaines du TEST, en jours de CALENDRIER ----------
+   Écrite ici plutôt qu'empruntée au code : c'est la définition « semaine calendaire locale,
+   lundi premier jour » du contrat. Une soustraction de 7 × 86 400 000 ms donnerait autre
+   chose de part et d'autre d'un changement d'heure — c'est précisément ce qu'on veut pouvoir
+   opposer au code. */
+function lundiDe(ts: number): number {
+	const d = new Date(ts);
+	d.setHours(0, 0, 0, 0);
+	d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // dimanche (0) → 6 jours en arrière
+	return d.getTime();
+}
+function joursApres(ts: number, jours: number): number {
+	const d = new Date(ts);
+	d.setDate(d.getDate() + jours);
+	return d.getTime();
+}
 function grille(now: number) {
-	/* Lundi 00:00 de la semaine portée par la cellule d'index `i` (0 = la plus ancienne de la
-	   frise, NB_SEMAINES-1 = la semaine en cours) ; un index négatif désigne une semaine
-	   ANTÉRIEURE à la fenêtre. */
-	const lundiCellule = (i: number): number => {
-		const d = new Date(debutSemaine(now));
-		d.setDate(d.getDate() - 7 * (NB_SEMAINES - 1 - i));
-		return d.getTime();
-	};
-	/* Horodatage situé DANS la semaine de la cellule `i` (`jour` : 0 = lundi). */
+	/* Lundi 00:00 de la semaine portée par la cellule `i` (0 = la plus ancienne de la frise,
+	   11 = la semaine en cours) ; un index hors [0, 11] désigne une semaine hors fenêtre. */
+	const lundiCellule = (i: number): number => joursApres(lundiDe(now), 7 * (i - (NB_SEMAINES - 1)));
+	/* Fin (exclue) de la semaine de la cellule `i` : le lundi 00:00 de la suivante. */
+	const finDe = (i: number): number => lundiCellule(i + 1);
+	/* Instant SITUÉ dans la semaine de la cellule `i` (`jour` : 0 = lundi). */
 	const dans = (i: number, jour = 2, heure = 10, minute = 0): number =>
-		lundiCellule(i) + jour * JOUR + heure * HEURE + minute * MINUTE;
-	return { lundiCellule, dans };
+		joursApres(lundiCellule(i), jour) + heure * HEURE + minute * MINUTE;
+	return { lundiCellule, finDe, dans };
 }
-const { lundiCellule, dans: dansSemaine } = grille(NOW);
-const LUNDI = lundiCellule(NB_SEMAINES - 1); // lundi 00:00 de la semaine EN COURS
+const { lundiCellule, finDe, dans: dansSemaine } = grille(NOW);
 
-/* Frise ATTENDUE, exprimée en index de semaine : chaque cellule porte le cap le plus haut
-   franchi au plus tard pendant sa semaine ; avant le premier cap, 'a-decouvrir' si
-   l'historique est connu (première rencontre datée), 'inconnu' sinon. Un index `null` =
-   cap jamais franchi ; un index négatif = cap antérieur à la fenêtre. */
-function friseAttendue(
-	idxEnCours: number | null,
-	idxAcquis: number | null,
-	connu: boolean,
-): CelluleFrise[] {
-	return Array.from({ length: NB_SEMAINES }, (_, i): CelluleFrise => {
-		if (idxAcquis !== null && i >= idxAcquis) return 'acquis';
-		if (idxEnCours !== null && i >= idxEnCours) return 'en-cours';
-		return connu ? 'a-decouvrir' : 'inconnu';
-	});
+/* Rangée ATTENDUE, écrite en RUNS explicites : `rangee(['inconnu', 4], ['non-acquis', 8])`
+   = 4 cellules 'inconnu' puis 8 'non-acquis'. Les scénarios posent leurs attendus ainsi,
+   à la main, plutôt que par un modèle qui rejouerait la cascade du code. */
+function rangee(...runs: [CelluleFrise, number][]): CelluleFrise[] {
+	const out = runs.flatMap(([etat, n]) => Array.from({ length: n }, (): CelluleFrise => etat));
+	if (out.length !== NB_SEMAINES)
+		throw new Error(`rangée de ${out.length} cellules au lieu de ${NB_SEMAINES}`);
+	return out;
 }
 
-/* Compteur ATTENDU, dérivé des seules DATES de franchissement (le code, lui, relit les
-   cellules) : une transition n'est visible que si le cap le plus HAUT — « acquis » s'il est
-   daté, sinon « en cours » — tombe dans l'une des 11 dernières semaines. Plus tôt, la
-   cellule 0 le porte déjà et la frise est plate, y compris quand le journal est incohérent
-   (un « acquis » ancien sous un « en cours » récent : c'est « acquis » qui tient partout). */
-function compteurAttendu(idxEnCours: number | null, idxAcquis: number | null): boolean {
-	const plusHaut = idxAcquis ?? idxEnCours;
-	return plusHaut !== null && plusHaut >= 1 && plusHaut <= NB_SEMAINES - 1;
-}
-
-/* Rangs de l'échelle, pour la monotonie. 'inconnu' et 'a-decouvrir' ne coexistent jamais
-   dans une même frise (cf. contrat), leur ordre relatif est donc sans effet ici. */
-const RANG: Record<CelluleFrise, number> = {
-	inconnu: 0,
-	'a-decouvrir': 1,
+/* Échelle du contrat : 'a-decouvrir' < 'non-acquis' < 'en-cours' < 'acquis'. 'inconnu' est
+   HORS échelle (absence de donnée) : il n'a de rang que pour être écarté. */
+const ECHELLE: NiveauNotion[] = ['a-decouvrir', 'non-acquis', 'en-cours', 'acquis'];
+const RANG: Record<NiveauNotion, number> = {
+	'a-decouvrir': 0,
+	'non-acquis': 1,
 	'en-cours': 2,
 	acquis: 3,
 };
+const rang = (c: CelluleFrise): number => (c === 'inconnu' ? -1 : RANG[c]);
 
-/* Donnée relue du STOCKAGE (JSON, non typée) : le cast est l'objet même du test — on
-   éprouve la tolérance de la fonction à une valeur hors du type. */
+/* Donnée relue du STOCKAGE (JSON, non typée) : le cast est l'objet même du test — on éprouve
+   la tolérance des fonctions à une valeur hors du type. */
 const brut = <T>(v: unknown): T => v as T;
 
-const FIRST_SEEN = dansSemaine(3); // date de première rencontre, quand on en fournit une
-
-describe('prémisse du fichier — la grille de semaines du test est calendaire', () => {
-	it('les 12 frontières sont des lundis 00:00, sur les deux repères temporels', () => {
-		// Les attendus ci-dessous sont posés sur cette grille : on la vérifie plutôt que de
-		// l'espérer, sous les deux repères — dont un à cheval sur un changement d'heure.
-		for (const [quoi, g] of [
-			['repère nominal', grille(NOW)],
-			['repère à cheval sur un changement d’heure', grille(NOW_DST)],
-		] as const)
+describe('prémisses de la grille du test', () => {
+	it('les 12 frontières sont des lundis 00:00, sur les trois repères temporels', () => {
+		for (const [quoi, now] of [
+			['fenêtre nominale', NOW],
+			['fenêtre à cheval sur la bascule de printemps', NOW_PRINTEMPS],
+			['fenêtre à cheval sur la bascule d’automne', NOW_AUTOMNE],
+		] as const) {
+			expect(new Date(now).getDay(), quoi).toBe(3); // les trois repères sont des mercredis
+			const g = grille(now);
 			for (let i = 0; i < NB_SEMAINES; i++) {
 				const d = new Date(g.lundiCellule(i));
 				expect([d.getDay(), d.getHours(), d.getMinutes()], `${quoi}, cellule ${i}`).toEqual([
 					1, 0, 0,
 				]);
 			}
+			expect(g.lundiCellule(NB_SEMAINES - 1), quoi).toBe(lundiDe(now)); // la dernière = en cours
+		}
+	});
+});
+
+describe('debutSuiviPaliers (borne de suivi du profil)', () => {
+	const paliers = (m: Record<string, PaliersNotion>) => m;
+
+	it('borne stockée seule (enfant qui débute, aucun cap franchi) → la borne', () => {
+		expect(debutSuiviPaliers(dansSemaine(3), {})).toBe(dansSemaine(3));
+	});
+
+	it('borne stockée RÉCENTE contre franchissement ANCIEN → le franchissement gagne', () => {
+		// Cas qui compte : la borne n'arrive qu'à la première fin de session suivant sa mise en
+		// service, alors que le journal, lui, datait déjà des caps. Prendre la borne telle quelle
+		// rendrait 'inconnu' des semaines déjà éclairées — l'historique s'effacerait à la
+		// prochaine session de l'enfant.
+		expect(
+			debutSuiviPaliers(
+				dansSemaine(10),
+				paliers({
+					'a@ce2': { enCours: dansSemaine(2), acquis: dansSemaine(7) },
+					'b@ce2': { acquis: dansSemaine(-4) }, // le plus ancien de tous, hors fenêtre
+				}),
+			),
+		).toBe(dansSemaine(-4));
+	});
+
+	it('borne stockée ANCIENNE contre franchissements récents → la borne gagne', () => {
+		expect(
+			debutSuiviPaliers(dansSemaine(1), paliers({ 'a@ce2': { enCours: dansSemaine(9) } })),
+		).toBe(dansSemaine(1));
+	});
+
+	it('aucune borne stockée → le plus ancien franchissement, toutes leçons et deux caps confondus', () => {
+		expect(
+			debutSuiviPaliers(
+				null,
+				paliers({
+					'a@ce2': { enCours: dansSemaine(5), acquis: dansSemaine(6) },
+					'b@ce2': { enCours: dansSemaine(3) },
+					'c@cm1': { acquis: dansSemaine(4) }, // autre niveau : la borne est celle du PROFIL
+				}),
+			),
+		).toBe(dansSemaine(3));
+	});
+
+	it('ni borne ni franchissement → Infinity (aucune semaine déductible)', () => {
+		expect(debutSuiviPaliers(null, {})).toBe(Infinity);
+		expect(debutSuiviPaliers(undefined, brut(null))).toBe(Infinity); // journal illisible
+		expect(debutSuiviPaliers(null, paliers({ 'a@ce2': {}, 'b@ce2': brut(null) }))).toBe(Infinity);
+	});
+
+	it('horodatage non exploitable (chaîne, objet, NaN, ±Infinity) → traité comme absent', () => {
+		for (const v of ['1700000000000', {}, [], NaN, Infinity, -Infinity, true])
+			expect(debutSuiviPaliers(brut(v), {}), String(v)).toBe(Infinity);
+		// Idem à l'intérieur du journal : une valeur pourrie n'écrase pas une bonne.
+		expect(
+			debutSuiviPaliers(
+				null,
+				paliers({ 'a@ce2': brut({ enCours: 'hier', acquis: dansSemaine(6) }) }),
+			),
+		).toBe(dansSemaine(6));
+	});
+
+	it('l’epoch (0) est une borne VALIDE, pas une absence de borne', () => {
+		// Piège du falsy : un `if (!borne)` la remplacerait par Infinity et rendrait toute la
+		// frise 'inconnu'.
+		expect(debutSuiviPaliers(0, {})).toBe(0);
+		expect(debutSuiviPaliers(null, paliers({ 'a@ce2': { acquis: 0 } }))).toBe(0);
+		expect(debutSuiviPaliers(dansSemaine(3), paliers({ 'a@ce2': { enCours: 0 } }))).toBe(0);
 	});
 });
 
 describe('friseNotion — rien à tracer', () => {
-	it('aucun palier daté → null (l’état courant est déjà dit par la ligne)', () => {
-		expect(friseNotion(undefined, undefined, NOW)).toBeNull();
-		expect(friseNotion({}, undefined, NOW)).toBeNull();
+	it('jamais travaillée (« à découvrir » + aucun cap daté) → null', () => {
+		expect(friseNotion(undefined, undefined, 'a-decouvrir', dansSemaine(2), NOW)).toBeNull();
+		expect(friseNotion({}, undefined, 'a-decouvrir', Infinity, NOW)).toBeNull();
+		// Une première rencontre datée ne crée pas une trajectoire : sans stat, il n'y a rien.
+		expect(friseNotion({}, dansSemaine(4), 'a-decouvrir', dansSemaine(2), NOW)).toBeNull();
 	});
 
-	it('une première rencontre SEULE ne fait pas une trajectoire → null', () => {
-		// Connaître le début de l'historique ne crée aucun cap : il n'y a qu'un rang bas à
-		// afficher, ce que la ligne dit déjà.
-		expect(friseNotion({}, FIRST_SEEN, NOW)).toBeNull();
-	});
-
-	it('valeurs non numériques (journal corrompu) → traitées comme absentes', () => {
-		const p = (v: unknown) => brut<PaliersNotion>(v);
-		expect(friseNotion(p({ enCours: '1700000000000' }), undefined, NOW)).toBeNull();
-		expect(friseNotion(p({ enCours: null, acquis: null }), undefined, NOW)).toBeNull();
-		// Une seule valeur exploitable suffit à tracer, l'autre est ignorée.
-		const f = friseNotion(p({ enCours: {}, acquis: dansSemaine(8) }), undefined, NOW);
+	it('cap daté sur une leçon « à découvrir » (journal incohérent) → frise quand même', () => {
+		// Forme que l'appli ne produit pas (un cap suppose une stat), mais qui contient une
+		// trajectoire : la taire perdrait la seule donnée datée disponible.
+		const f = friseNotion(
+			{ acquis: dansSemaine(6) },
+			undefined,
+			'a-decouvrir',
+			dansSemaine(1),
+			NOW,
+		);
 		expect(f).not.toBeNull();
-		expect(f!.enCoursDepuis).toBeNull();
-		expect(f!.semaines).toEqual(friseAttendue(null, 8, false));
+		expect(f!.semaines).toEqual(rangee(['inconnu', 6], ['acquis', 6]));
 	});
 
-	it('horodatage non FINI (NaN, ±Infinity) → traité comme absent', () => {
-		// Injoignable via le stockage (`JSON.stringify` écrit `null`), mais sans ce garde un NaN
-		// produirait une frise ENTIÈRE de cellules basses au lieu du `null` promis, et un
-		// Infinity douze cellules « inconnu ».
-		expect(friseNotion({ acquis: NaN }, undefined, NOW)).toBeNull();
-		expect(friseNotion({ enCours: Infinity, acquis: -Infinity }, FIRST_SEEN, NOW)).toBeNull();
-		// Une valeur exploitable à côté d'une valeur non finie continue de tracer.
-		const f = friseNotion({ enCours: NaN, acquis: dansSemaine(6) }, undefined, NOW);
-		expect(f!.enCoursDepuis).toBeNull();
-		expect(f!.semaines).toEqual(friseAttendue(null, 6, false));
+	it('caps non exploitables (chaîne, null, NaN, Infinity) → traités comme absents', () => {
+		const p = (v: unknown) => brut<PaliersNotion>(v);
+		// Sur une leçon jamais travaillée, il ne reste rien à tracer…
+		expect(
+			friseNotion(p({ enCours: '1700000000000' }), undefined, 'a-decouvrir', 0, NOW),
+		).toBeNull();
+		expect(
+			friseNotion({ enCours: NaN, acquis: Infinity }, undefined, 'a-decouvrir', 0, NOW),
+		).toBeNull();
+		// …et sur une leçon travaillée, la valeur pourrie ne colore aucune cellule.
+		const f = friseNotion(p({ enCours: {} }), undefined, 'non-acquis', dansSemaine(4), NOW)!;
+		expect(f.enCoursDepuis).toBeNull();
+		expect(f.semaines).toEqual(rangee(['inconnu', 4], ['non-acquis', 8]));
+		// Une valeur exploitable à côté d'une valeur pourrie continue de tracer.
+		const g = friseNotion({ enCours: NaN, acquis: dansSemaine(6) }, undefined, 'acquis', 0, NOW)!;
+		expect(g.enCoursDepuis).toBeNull();
+		expect(g.acquisDepuis).toBe(dansSemaine(6));
+		expect(g.semaines).toEqual(rangee(['inconnu', 6], ['acquis', 6]));
 	});
 
-	it('une première rencontre non numérique laisse l’historique INCONNU', () => {
-		const f = friseNotion({ enCours: dansSemaine(6) }, brut<number>('hier'), NOW);
-		expect(f!.semaines).toEqual(friseAttendue(6, null, false));
+	it('une première rencontre non exploitable laisse l’historique INCONNU', () => {
+		const f = friseNotion(
+			{ enCours: dansSemaine(6) },
+			brut<number>('hier'),
+			'en-cours',
+			dansSemaine(1),
+			NOW,
+		)!;
+		expect(f.semaines).toEqual(rangee(['inconnu', 6], ['en-cours', 6]));
 	});
 });
 
-describe('friseNotion — forme et bornes de semaine', () => {
+describe('friseNotion — les cas qui ont changé', () => {
+	it('« à renforcer » sans aucun franchissement : une frise, et non plus rien', () => {
+		// Ces leçons-là — jamais passées au-dessus de 40 % — sont les plus fragiles, donc celles
+		// qui intéressent le plus l'adulte ; elles n'avaient pas de frise du tout.
+		const f = friseNotion({}, undefined, 'non-acquis', dansSemaine(4), NOW);
+		expect(f).not.toBeNull();
+		expect(f!.semaines).toEqual(rangee(['inconnu', 4], ['non-acquis', 8]));
+		expect(f!.enCoursDepuis).toBeNull();
+		expect(f!.acquisDepuis).toBeNull();
+	});
+
+	it('acquise sans aucun franchissement daté (étoile posée avant le journal)', () => {
+		// Rien n'est monté sous l'œil du journal et l'étoile ne se retire pas : l'état courant
+		// tient sur toute la période suivie.
+		const f = friseNotion({}, undefined, 'acquis', dansSemaine(4), NOW)!;
+		expect(f.semaines).toEqual(rangee(['inconnu', 4], ['acquis', 8]));
+		// Aucun cap daté : le passage du pointillé à la couleur ne fait que dater le SUIVI, pas
+		// une réussite de l'enfant — le compteur reste éteint.
+		expect(aChangeRecemment(f)).toBe(false);
+	});
+
+	it('découverte APRÈS la borne : « à découvrir », puis « à renforcer », puis ses caps', () => {
+		// Trajectoire journalisée de bout en bout : c'est le seul cas où « à renforcer » peut
+		// s'affirmer avant tout cap (la leçon était travaillée sous les 40 %).
+		const f = friseNotion(
+			{ enCours: dansSemaine(6), acquis: dansSemaine(9) },
+			dansSemaine(3),
+			'acquis',
+			dansSemaine(1),
+			NOW,
+		)!;
+		expect(f.semaines).toEqual(
+			rangee(['a-decouvrir', 3], ['non-acquis', 3], ['en-cours', 3], ['acquis', 3]),
+		);
+		expect(f.semaines).not.toContain('inconnu'); // historique complet : aucune ignorance
+	});
+
+	it('profil sans borne ET sans franchissement → 12 cellules « inconnu », jamais un état par défaut', () => {
+		const borne = debutSuiviPaliers(null, {}); // Infinity
+		for (const niveau of ['non-acquis', 'en-cours', 'acquis'] as const) {
+			const f = friseNotion({}, undefined, niveau, borne, NOW)!;
+			expect(f.semaines, niveau).toEqual(rangee(['inconnu', 12]));
+			expect(aChangeRecemment(f), niveau).toBe(false);
+		}
+		// Une première rencontre ne suffit pas à ouvrir le suivi : sans borne, elle ne prouve
+		// pas que le journal tournait.
+		expect(friseNotion({}, dansSemaine(3), 'en-cours', borne, NOW)!.semaines).toEqual(
+			rangee(['inconnu', 12]),
+		);
+	});
+
+	it('un cap daté ne colore PAS les semaines qui le précèdent quand la leçon est plus ancienne que le journal', () => {
+		// Le tampon peut n'être que la première OBSERVATION d'un état déjà atteint (une leçon
+		// étoilée en juin fait tamponner « acquis » à sa première session de juillet) : affirmer
+		// « à renforcer » en amont déclarerait sous les 40 % une leçon peut-être maîtrisée.
+		const f = friseNotion(
+			{ acquis: dansSemaine(8) },
+			dansSemaine(-3),
+			'acquis',
+			dansSemaine(1),
+			NOW,
+		)!;
+		expect(f.semaines).toEqual(rangee(['inconnu', 8], ['acquis', 4]));
+		expect(f.semaines).not.toContain('non-acquis');
+		expect(f.semaines).not.toContain('a-decouvrir');
+	});
+});
+
+describe('friseNotion — bornes de semaine', () => {
+	const BORNE = dansSemaine(-6); // journal en service bien avant la fenêtre
+
 	it('12 cellules, la DERNIÈRE est la semaine en cours', () => {
-		const f = friseNotion({ acquis: dansSemaine(11) }, undefined, NOW);
-		expect(f!.semaines).toHaveLength(NB_SEMAINES);
-		// Le cap est tombé cette semaine : seule la dernière cellule le porte.
-		expect(f!.semaines[NB_SEMAINES - 1]).toBe('acquis');
-		expect(f!.semaines.slice(0, NB_SEMAINES - 1).every((c) => c === 'inconnu')).toBe(true);
+		const f = friseNotion({ acquis: dansSemaine(11) }, undefined, 'acquis', BORNE, NOW)!;
+		expect(f.semaines).toHaveLength(NB_SEMAINES);
+		expect(f.semaines).toEqual(rangee(['inconnu', 11], ['acquis', 1]));
 	});
 
 	it('un cap franchi le MERCREDI colore la semaine qui le contient, pas la suivante', () => {
-		const f = friseNotion({ enCours: dansSemaine(4, 2, 14) }, FIRST_SEEN, NOW);
-		expect(f!.semaines).toEqual(friseAttendue(4, null, true));
-		expect(f!.semaines[4]).toBe('en-cours'); // la semaine du franchissement…
-		expect(f!.semaines[3]).toBe('a-decouvrir'); // …et pas la précédente
+		const f = friseNotion({ enCours: dansSemaine(4, 2, 14) }, undefined, 'en-cours', BORNE, NOW)!;
+		expect(f.semaines).toEqual(rangee(['inconnu', 4], ['en-cours', 8]));
 	});
 
-	it('dimanche soir, dernier millisecondes de la semaine passée → la semaine passée', () => {
-		const f = friseNotion({ enCours: LUNDI - 1 }, undefined, NOW);
-		expect(f!.semaines).toEqual(friseAttendue(10, null, false));
+	it('dimanche 23:59:59.999 → la semaine qui se termine ; lundi 00:00:00.000 → celle qui ouvre', () => {
+		const dimancheSoir = friseNotion({ enCours: finDe(4) - 1 }, undefined, 'en-cours', BORNE, NOW)!;
+		expect(dimancheSoir.semaines).toEqual(rangee(['inconnu', 4], ['en-cours', 8]));
+		const lundiPile = friseNotion({ enCours: finDe(4) }, undefined, 'en-cours', BORNE, NOW)!;
+		expect(lundiPile.semaines).toEqual(rangee(['inconnu', 5], ['en-cours', 7]));
 	});
 
-	it('lundi 00:00:00.000 pile → la semaine qui OUVRE, pas celle qui se termine', () => {
-		const f = friseNotion({ enCours: LUNDI }, undefined, NOW);
-		expect(f!.semaines).toEqual(friseAttendue(11, null, false));
-		expect(f!.semaines[10]).toBe('inconnu'); // rien n'était encore franchi dimanche soir
-	});
-
-	it('cap ANTÉRIEUR à la fenêtre → la cellule la plus ancienne porte déjà l’état', () => {
-		const f = friseNotion({ enCours: dansSemaine(-4) }, undefined, NOW);
-		expect(f!.semaines).toEqual(friseAttendue(-4, null, false)); // aucune cellule 'inconnu'
-		expect(f!.semaines[0]).toBe('en-cours');
-		expect(new Set(f!.semaines).size).toBe(1); // frise plate : « ça n'a pas bougé »
+	it('cap ANTÉRIEUR à la fenêtre → toute la rangée porte déjà l’état', () => {
+		const f = friseNotion({ enCours: dansSemaine(-4) }, undefined, 'en-cours', BORNE, NOW)!;
+		expect(f.semaines).toEqual(rangee(['en-cours', 12]));
+		expect(aChangeRecemment(f)).toBe(false); // frise plate : « ça n'a pas bougé »
 	});
 
 	it('la première cellule ne distingue pas « tout début de fenêtre » et « avant »', () => {
-		const debutFenetre = lundiCellule(0);
-		// Premier instant de la fenêtre → la cellule 0 porte l'état…
-		expect(friseNotion({ acquis: debutFenetre }, FIRST_SEEN, NOW)!.semaines).toEqual(
-			friseAttendue(null, 0, true),
+		// La fenêtre ne recule pas : à un millième de seconde près, la frise est la même. C'est
+		// pour ça qu'un cap tombé dans la cellule 0 ne s'annonce pas comme un changement.
+		for (const t of [lundiCellule(0), lundiCellule(0) - 1])
+			expect(friseNotion({ acquis: t }, undefined, 'acquis', BORNE, NOW)!.semaines).toEqual(
+				rangee(['acquis', 12]),
+			);
+	});
+
+	it('la frontière rencontre / borne est la SEMAINE, pas la milliseconde', () => {
+		// Ce que la borne sert à détecter, c'est l'existence de SEMAINES ENTIÈRES travaillées hors
+		// suivi : deux horodatages d'une même semaine n'en délimitent aucune. La comparaison joue
+		// donc à la semaine, granularité de la frise.
+		const borne = dansSemaine(5, 3, 9); // mise en service : jeudi de la semaine 5
+		const cap = { enCours: dansSemaine(8) };
+		// Rencontrée le LUNDI de cette même semaine — donc AVANT la borne à la milliseconde près,
+		// mais sans qu'aucune semaine complète ait échappé au journal.
+		const memeSemaine = friseNotion(cap, dansSemaine(5, 0, 8), 'en-cours', borne, NOW)!;
+		expect(memeSemaine.semaines).toEqual(
+			rangee(['a-decouvrir', 5], ['non-acquis', 3], ['en-cours', 4]),
 		);
-		// …et un millième de seconde plus tôt, la frise est RIGOUREUSEMENT la même (la fenêtre
-		// ne recule pas). C'est précisément pour ça que le compteur de changements récents
-		// démarre à la deuxième cellule : ici, il n'y a rien à voir.
-		expect(friseNotion({ acquis: debutFenetre - 1 }, FIRST_SEEN, NOW)!.semaines).toEqual(
-			friseAttendue(null, 0, true),
+		// Rencontrée le DIMANCHE précédent : la semaine 4 a bel et bien été travaillée hors suivi,
+		// et son état — comme celui des précédentes — reste inconnu.
+		const semaineAvant = friseNotion(cap, dansSemaine(4, 6, 20), 'en-cours', borne, NOW)!;
+		expect(semaineAvant.semaines).toEqual(rangee(['inconnu', 8], ['en-cours', 4]));
+		// Et cette rencontre-là ne vaut alors pas mieux que pas de date du tout (uniformité).
+		expect(semaineAvant.semaines).toEqual(
+			friseNotion(cap, undefined, 'en-cours', borne, NOW)!.semaines,
 		);
 	});
+
+	it('profil TOUT NEUF : sa première session est dans le suivi, pas avant', () => {
+		// Cas d'usage derrière la comparaison à la semaine. La 1re rencontre est datée au DÉBUT de
+		// la leçon, la borne à la FIN de la session : quelques minutes d'écart, deux Date.now()
+		// différents. À la milliseconde, les leçons de la toute première session d'un profil
+		// passaient pour « antérieures au journal » et la frise n'affirmait rien (11 cellules
+		// 'inconnu') alors qu'on sait pertinemment qu'elles n'étaient pas commencées : le profil
+		// n'existait pas.
+		const debutLecon = dansSemaine(11, 1, 17); // mardi 17 h, première leçon du profil
+		const finSession = debutLecon + 12 * MINUTE; // borne posée à la fin de cette session
+		const f = friseNotion({ enCours: finSession }, debutLecon, 'en-cours', finSession, NOW)!;
+		expect(f.semaines).toEqual(rangee(['a-decouvrir', 11], ['en-cours', 1]));
+		expect(f.semaines).not.toContain('inconnu');
+	});
 });
+
+/* Une grille en millisecondes fixes (7 × 86 400 000 ms) dérive-t-elle d'une heure sur cette
+   fenêtre, sous le fuseau de la machine ? Si oui, les deux cas ci-dessous MORDENT (une telle
+   grille les fait échouer). Sous un fuseau sans heure d'été (UTC, comme la CI), ils
+   dégénèrent en cas nominaux. */
+function deriveEnMsFixes(now: number, i: number): boolean {
+	return grille(now).lundiCellule(i) !== lundiDe(now) - 7 * (NB_SEMAINES - 1 - i) * JOUR;
+}
+const BASCULE_VISIBLE = deriveEnMsFixes(NOW_PRINTEMPS, 2) || deriveEnMsFixes(NOW_AUTOMNE, 7);
 
 describe('friseNotion — la grille tient à travers un changement d’heure', () => {
-	// Régression : un pas hebdomadaire en millisecondes fixes (7 × 86 400 000) décale d'une
-	// heure les frontières des semaines situées de l'autre côté d'une bascule, et fait alors
-	// basculer dans la semaine SUIVANTE un cap franchi le dimanche soir.
-	const g = grille(NOW_DST);
+	it.skipIf(!BASCULE_VISIBLE)(
+		'prémisse : sous ce fuseau, une grille en ms fixes se tromperait bien d’une heure',
+		() => {
+			expect(deriveEnMsFixes(NOW_PRINTEMPS, 2)).toBe(true); // frontière repoussée à dimanche 23:00
+			expect(deriveEnMsFixes(NOW_AUTOMNE, 7)).toBe(true); // frontière repoussée à lundi 01:00
+		},
+	);
 
-	it('un cap le dimanche à 23 h 30 reste dans SA semaine', () => {
-		const f = friseNotion({ enCours: g.dans(3, 6, 23, 30) }, undefined, NOW_DST)!;
-		expect(f.semaines).toEqual(friseAttendue(3, null, false));
+	it('printemps : un cap le dimanche à 23 h 30 reste dans SA semaine', () => {
+		const g = grille(NOW_PRINTEMPS);
+		const f = friseNotion(
+			{ enCours: g.dans(2, 6, 23, 30) },
+			undefined,
+			'en-cours',
+			g.dans(-6),
+			NOW_PRINTEMPS,
+		)!;
+		expect(f.semaines).toEqual(rangee(['inconnu', 2], ['en-cours', 10]));
 	});
 
-	it('le lundi 00 h 30 qui suit appartient bien à la semaine d’après', () => {
-		const f = friseNotion({ enCours: g.dans(4, 0, 0, 30) }, undefined, NOW_DST)!;
-		expect(f.semaines).toEqual(friseAttendue(4, null, false));
-	});
-
-	it('le compteur de changements hérite de la même grille', () => {
-		// Un cap le dimanche soir de la semaine la plus ANCIENNE est invisible (cellule 0 déjà
-		// peinte) ; 1 h plus tard, le lundi, il se voit. Une grille dérivant d'une heure
-		// inverserait les deux réponses et ferait annoncer un changement introuvable.
-		const frise = (t: number) => friseNotion({ acquis: t }, undefined, NOW_DST);
-		expect(aChangeRecemment(frise(g.dans(0, 6, 23, 30)))).toBe(false);
-		expect(aChangeRecemment(frise(g.dans(1, 0, 0, 30)))).toBe(true);
-	});
-});
-
-describe('friseNotion — « inconnu » contre « à découvrir »', () => {
-	const paliers: PaliersNotion = { enCours: dansSemaine(6), acquis: dansSemaine(9) };
-
-	it('le MÊME journal produit deux frises selon que la 1re rencontre est datée', () => {
-		const sans = friseNotion(paliers, undefined, NOW)!;
-		const avec = friseNotion(paliers, FIRST_SEEN, NOW)!;
-		expect(sans.semaines).toEqual(friseAttendue(6, 9, false));
-		expect(avec.semaines).toEqual(friseAttendue(6, 9, true));
-		expect(avec.semaines).not.toEqual(sans.semaines);
-		// Seule la lecture du PASSÉ change : la substitution 'inconnu' → 'a-decouvrir' suffit
-		// à passer d'une frise à l'autre. Dater la 1re rencontre n'invente aucun cap.
-		expect(sans.semaines.map((c) => (c === 'inconnu' ? 'a-decouvrir' : c))).toEqual(avec.semaines);
-		expect(sans.semaines).not.toContain('a-decouvrir');
-		expect(avec.semaines).not.toContain('inconnu');
-	});
-
-	it('les semaines antérieures à la 1re rencontre valent « à découvrir », pas « inconnu »', () => {
-		// Choix assumé : une fois l'historique connu, une leçon pas encore rencontrée est bien
-		// « à découvrir » — c'est un état, pas une ignorance.
-		const f = friseNotion({ enCours: dansSemaine(10) }, dansSemaine(8), NOW)!;
-		expect(f.semaines).toEqual(friseAttendue(10, null, true));
-		expect(f.semaines[0]).toBe('a-decouvrir'); // bien avant la 1re rencontre (semaine 8)
+	it('automne : un cap le lundi à 00 h 30 n’est pas rattaché à la semaine précédente', () => {
+		const g = grille(NOW_AUTOMNE);
+		const f = friseNotion(
+			{ enCours: g.dans(7, 0, 0, 30) },
+			undefined,
+			'en-cours',
+			g.dans(-6),
+			NOW_AUTOMNE,
+		)!;
+		expect(f.semaines).toEqual(rangee(['inconnu', 7], ['en-cours', 5]));
 	});
 });
 
-describe('friseNotion — combinaisons de paliers', () => {
-	it('« en cours » seul : jamais de cellule « acquis », et acquisDepuis reste null', () => {
-		const f = friseNotion({ enCours: dansSemaine(5) }, FIRST_SEEN, NOW)!;
-		expect(f.semaines).toEqual(friseAttendue(5, null, true));
-		expect(f.semaines).not.toContain('acquis');
-		expect(f.acquisDepuis).toBeNull();
-		expect(f.enCoursDepuis).toBe(dansSemaine(5));
-	});
+/* ---------- Invariants, sur des milliers de journaux (incohérents compris) ---------- */
 
-	it('« acquis » seul (étoile au 1er coup) : aucune cellule « en cours » intermédiaire', () => {
-		const f = friseNotion({ acquis: dansSemaine(7) }, FIRST_SEEN, NOW)!;
-		expect(f.semaines).toEqual(friseAttendue(null, 7, true));
-		expect(f.semaines).not.toContain('en-cours');
-		expect(f.enCoursDepuis).toBeNull();
-	});
+const CAPS_EN_COURS = [
+	null,
+	dansSemaine(-3),
+	finDe(2) - 1,
+	finDe(2),
+	dansSemaine(5),
+	dansSemaine(11),
+];
+const CAPS_ACQUIS = [
+	null,
+	dansSemaine(-3),
+	finDe(2),
+	dansSemaine(6),
+	dansSemaine(8),
+	dansSemaine(11),
+];
+/* `finDe(1)` (lundi 00:00 de la semaine 2) et `dansSemaine(2, 0)` encadrent la borne
+   `dansSemaine(2)` DANS SA SEMAINE : c'est la frontière hebdomadaire du contrat, celle où un
+   retour à la comparaison à la milliseconde se verrait. */
+const RENCONTRES = [
+	null,
+	dansSemaine(-5),
+	lundiCellule(0),
+	finDe(1),
+	finDe(3),
+	dansSemaine(3),
+	dansSemaine(11),
+];
+const BORNES = [
+	Infinity,
+	0,
+	dansSemaine(-8),
+	lundiCellule(0),
+	finDe(3),
+	dansSemaine(2),
+	dansSemaine(7),
+	NOW,
+];
 
-	it('les deux caps la MÊME semaine : la cellule porte le plus haut (« acquis »)', () => {
-		const t = dansSemaine(8);
-		const f = friseNotion({ enCours: t, acquis: t }, FIRST_SEEN, NOW)!;
-		expect(f.semaines).toEqual(friseAttendue(null, 8, true));
-		expect(f.semaines).not.toContain('en-cours'); // pas de semaine « en cours » fabriquée
-	});
+interface Cas {
+	enCours: number | null;
+	acquis: number | null;
+	rencontre: number | null;
+	borne: number;
+	niveau: NiveauNotion;
+	etiquette: string;
+}
+function* tousLesCas(): Generator<Cas> {
+	for (const enCours of CAPS_EN_COURS)
+		for (const acquis of CAPS_ACQUIS)
+			for (const rencontre of RENCONTRES)
+				for (const borne of BORNES)
+					for (const niveau of ECHELLE)
+						yield {
+							enCours,
+							acquis,
+							rencontre,
+							borne,
+							niveau,
+							etiquette: `enCours=${enCours} acquis=${acquis} rencontre=${rencontre} borne=${borne} niveau=${niveau}`,
+						};
+}
+function frise(c: Cas) {
+	const paliers: PaliersNotion = {};
+	if (c.enCours !== null) paliers.enCours = c.enCours;
+	if (c.acquis !== null) paliers.acquis = c.acquis;
+	return friseNotion(paliers, c.rencontre ?? undefined, c.niveau, c.borne, NOW);
+}
 
-	it('donnée INCOHÉRENTE (« acquis » antérieur à « en cours ») → « acquis » tient, frise monotone', () => {
-		// Le journal ne peut normalement pas produire ça (une notion acquise ne redescend pas).
-		// Rendu défendable : c'est le cap le plus HAUT atteint qui est affiché, donc « acquis »
-		// dès sa date, et la frise ne redescend jamais. Les deux horodatages restent exposés
-		// tels quels (l'UI date le cap le plus haut).
-		const f = friseNotion({ enCours: dansSemaine(9), acquis: dansSemaine(4) }, FIRST_SEEN, NOW)!;
-		expect(f.semaines).toEqual(friseAttendue(null, 4, true));
-		expect(f.semaines).not.toContain('en-cours');
-		expect(f.enCoursDepuis).toBe(dansSemaine(9));
-		expect(f.acquisDepuis).toBe(dansSemaine(4));
-	});
-});
-
-describe('friseNotion — INVARIANTS sur toutes les combinaisons de semaines', () => {
-	// Énumération EXHAUSTIVE (déterministe, aucun tirage) : chaque cap posé sur l'une des
-	// semaines repères — hors fenêtre, première, dernière, milieu — × jamais franchi ×
-	// trois positions dans la semaine × historique connu ou non.
-	const INDICES = [-2, -1, 0, 1, 4, 7, 10, 11];
-	const POSITIONS = [
-		{ jour: 0, heure: 2 }, // lundi, 2 h après l'ouverture de la semaine
-		{ jour: 2, heure: 10 }, // mercredi, en plein milieu
-		{ jour: 6, heure: 21 }, // dimanche soir, 3 h avant la bascule
-	];
-
-	it('la frise vaut ce que le contrat prédit, ne redescend jamais, et finit sur le cap le plus haut', () => {
+describe('friseNotion — INVARIANTS sur tous les journaux, incohérents compris', () => {
+	it('null si et seulement si la leçon n’a jamais été travaillée', () => {
 		let cas = 0;
-		for (const pos of POSITIONS)
-			for (const idxEnCours of [...INDICES, null])
-				for (const idxAcquis of [...INDICES, null]) {
-					if (idxEnCours === null && idxAcquis === null) continue; // rien à tracer (testé à part)
-					const ts = (i: number | null) =>
-						i === null ? null : dansSemaine(i, pos.jour, pos.heure);
-					const tEnCours = ts(idxEnCours);
-					const tAcquis = ts(idxAcquis);
-					if ((tEnCours ?? 0) > NOW || (tAcquis ?? 0) > NOW) continue; // pas de cap dans le futur
-					const paliers: PaliersNotion = {};
-					if (tEnCours !== null) paliers.enCours = tEnCours;
-					if (tAcquis !== null) paliers.acquis = tAcquis;
-					const etiquette = `enCours=${idxEnCours} acquis=${idxAcquis} j${pos.jour}h${pos.heure}`;
+		for (const c of tousLesCas()) {
+			const jamais = c.niveau === 'a-decouvrir' && c.enCours === null && c.acquis === null;
+			expect(frise(c) === null, c.etiquette).toBe(jamais);
+			cas++;
+		}
+		expect(cas).toBeGreaterThan(5000); // l'énumération n'a pas été vidée
+	});
 
-					const sans = friseNotion(paliers, undefined, NOW);
-					const avec = friseNotion(paliers, FIRST_SEEN, NOW);
-					expect(sans, etiquette).not.toBeNull();
-					expect(avec, etiquette).not.toBeNull();
-					for (const [connu, f] of [
-						[false, sans!],
-						[true, avec!],
-					] as const) {
-						// 1. Chaque cellule porte l'état prédit par le contrat.
-						expect(f.semaines, `${etiquette} connu=${connu}`).toEqual(
-							friseAttendue(idxEnCours, idxAcquis, connu),
-						);
-						expect(f.semaines, etiquette).toHaveLength(NB_SEMAINES);
-						// 2. Monotonie : les paliers ne datant que les montées, aucune redescente.
-						for (let i = 1; i < f.semaines.length; i++)
-							expect(RANG[f.semaines[i]], `${etiquette} cellule ${i}`).toBeGreaterThanOrEqual(
-								RANG[f.semaines[i - 1]],
-							);
-						// 3. La dernière cellule porte le cap le plus haut jamais franchi.
-						expect(f.semaines[NB_SEMAINES - 1], etiquette).toBe(
-							tAcquis !== null ? 'acquis' : 'en-cours',
-						);
-						// 4. Les deux lectures du passé ne se mélangent jamais.
-						expect(f.semaines, etiquette).not.toContain(connu ? 'inconnu' : 'a-decouvrir');
-						// 5. Les horodatages sont re-exposés tels quels (l'UI les date).
-						expect(f.enCoursDepuis, etiquette).toBe(tEnCours);
-						expect(f.acquisDepuis, etiquette).toBe(tAcquis);
-						// 6. Le compteur par matière suit les franchissements DATÉS : allumé quand le cap
-						//    le plus haut tombe dans les 11 dernières semaines, éteint sinon — et jamais
-						//    influencé par la date de première rencontre, qui ne change aucun cap.
-						expect(aChangeRecemment(f), etiquette).toBe(compteurAttendu(idxEnCours, idxAcquis));
+	it('les cellules « inconnu » forment toujours un préfixe, jamais mêlé à « à découvrir »', () => {
+		// Une cellule sans rang au MILIEU de la rangée dessinerait un creux, que la hauteur
+		// ferait lire comme une régression ; deux lectures du passé sur la même rangée
+		// ('inconnu' = on ne sait pas / « à découvrir » = pas encore commencée) seraient
+		// illisibles. On cherche ici un journal, même absurde, qui casse l'un ou l'autre.
+		for (const c of tousLesCas()) {
+			const f = frise(c);
+			if (f === null) continue;
+			const premierConnu = f.semaines.findIndex((x) => x !== 'inconnu');
+			const prefixe = premierConnu === -1 ? NB_SEMAINES : premierConnu;
+			expect(f.semaines.slice(prefixe), c.etiquette).not.toContain('inconnu');
+			if (prefixe > 0) expect(f.semaines, c.etiquette).not.toContain('a-decouvrir');
+		}
+	});
+
+	it('la frise ne redescend JAMAIS d’une cellule à la suivante', () => {
+		for (const c of tousLesCas()) {
+			const f = frise(c);
+			if (f === null) continue;
+			for (let i = 1; i < f.semaines.length; i++)
+				expect(rang(f.semaines[i]), `${c.etiquette} — cellule ${i}`).toBeGreaterThanOrEqual(
+					rang(f.semaines[i - 1]),
+				);
+		}
+	});
+
+	it('la dernière cellule ne descend JAMAIS sous l’état courant de la ligne', () => {
+		// La frise montre le plus haut état ATTEINT : elle peut dépasser l'état du jour (c'est le
+		// signal de recul que l'UI met en regard), jamais rester en dessous — sinon la ligne
+		// annoncerait « acquis » en texte au-dessus d'une frise qui finit plus bas, soit un faux
+		// recul. 'inconnu' est admis : il n'affirme rien.
+		// Seule restriction : un état courant PLUS HAUT que le plus haut cap daté est hors de ce
+		// que l'appli peut produire (l'étoile passe toujours par le journal), et la frise n'a alors
+		// aucune date pour le porter. Ni la première rencontre ni la borne n'ont besoin d'être
+		// filtrées : l'ordre des branches les rend inoffensives.
+		let verifies = 0;
+		for (const c of tousLesCas()) {
+			const plusHaut: NiveauNotion | null =
+				c.acquis !== null ? 'acquis' : c.enCours !== null ? 'en-cours' : null;
+			if (plusHaut !== null && RANG[c.niveau] > RANG[plusHaut]) continue;
+			const f = frise(c);
+			if (f === null) continue;
+			const derniere = f.semaines[NB_SEMAINES - 1];
+			expect(
+				derniere === 'inconnu' || rang(derniere) >= RANG[c.niveau],
+				`${c.etiquette} — dernière cellule ${derniere}`,
+			).toBe(true);
+			verifies++;
+		}
+		expect(verifies).toBeGreaterThan(3000);
+	});
+
+	it('aChangeRecemment : deux états connus, ou un seul sorti du pointillé grâce à un cap', () => {
+		// Second modèle, écrit autrement que la fonction : la frise étant monotone, « deux états
+		// distincts » se lit « la queue ne commence pas comme elle finit », et « précédé de
+		// pointillé » se lit « la queue est plus courte que la rangée ». L'existence d'un cap est
+		// prise sur les ENTRÉES du cas, pas sur la frise renvoyée.
+		let allumes = 0;
+		for (const c of tousLesCas()) {
+			const f = frise(c);
+			const parlantes = (f?.semaines ?? []).filter((x) => x !== 'inconnu');
+			const capDate = c.enCours !== null || c.acquis !== null;
+			const attendu =
+				(parlantes.length > 0 && parlantes[0] !== parlantes[parlantes.length - 1]) ||
+				(parlantes.length > 0 && parlantes.length < NB_SEMAINES && capDate);
+			expect(aChangeRecemment(f), c.etiquette).toBe(attendu);
+			if (attendu) allumes++;
+		}
+		expect(allumes).toBeGreaterThan(500); // les deux branches sont bien parcourues
+	});
+
+	it('les horodatages sont ré-exposés tels quels (l’UI date les caps avec)', () => {
+		for (const c of tousLesCas()) {
+			const f = frise(c);
+			if (f === null) continue;
+			expect(f.enCoursDepuis, c.etiquette).toBe(c.enCours);
+			expect(f.acquisDepuis, c.etiquette).toBe(c.acquis);
+		}
+	});
+
+	it('UNIFORMITÉ : une rencontre d’une semaine STRICTEMENT antérieure à la borne ne change RIEN', () => {
+		// Le défaut corrigé : deux leçons travaillées la même semaine, l'une datée par #178,
+		// l'autre non, s'affichaient selon deux règles — départagées par la version de l'appli au
+		// moment du premier passage, critère invisible pour le lecteur. Dès qu'une semaine
+		// entière a été travaillée hors suivi, la date de première rencontre ne doit plus rien
+		// pouvoir changer : la frise n'a aucune raison de départager ces deux leçons.
+		let compares = 0;
+		for (const enCours of CAPS_EN_COURS)
+			for (const acquis of CAPS_ACQUIS)
+				for (const borne of BORNES)
+					for (const niveau of ECHELLE) {
+						const base: Omit<Cas, 'rencontre' | 'etiquette'> = { enCours, acquis, borne, niveau };
+						const sans = frise({ ...base, rencontre: null, etiquette: '' });
+						for (const rencontre of RENCONTRES) {
+							// Semaine de la rencontre >= semaine de la borne : la leçon est dans le suivi,
+							// sa date PARLE et doit au contraire changer la lecture — hors sujet ici.
+							if (rencontre === null || lundiDe(rencontre) >= lundiDe(borne)) continue;
+							const avec = frise({ ...base, rencontre, etiquette: '' });
+							expect(
+								avec,
+								`enCours=${enCours} acquis=${acquis} borne=${borne} niveau=${niveau} rencontre=${rencontre}`,
+							).toEqual(sans);
+							compares++;
+						}
 					}
-					// 7. Dater la 1re rencontre ne change QUE la lecture des semaines passées.
-					expect(
-						sans!.semaines.map((c) => (c === 'inconnu' ? 'a-decouvrir' : c)),
-						etiquette,
-					).toEqual(avec!.semaines);
-					cas++;
+		expect(compares).toBeGreaterThan(500);
+	});
+
+	it('FENÊTRE GLISSANTE : une semaine plus tard, chaque cellule a reculé d’un cran', () => {
+		// L'état d'une cellule ne dépend que de la FIN de sa semaine : la frise de la semaine
+		// suivante doit donc être la même rangée décalée. Un off-by-one dans l'indexation des
+		// semaines se voit ici et nulle part ailleurs.
+		for (const maintenant of [NOW, NOW_PRINTEMPS, NOW_AUTOMNE]) {
+			const g = grille(maintenant);
+			const journaux: [PaliersNotion, NiveauNotion][] = [
+				[{}, 'non-acquis'],
+				[{ enCours: g.dans(4) }, 'en-cours'],
+				[{ enCours: g.dans(2), acquis: g.dans(9) }, 'acquis'],
+				[{ acquis: g.dans(11) }, 'acquis'],
+				[{ enCours: g.dans(-2) }, 'en-cours'],
+			];
+			for (const [paliers, niveau] of journaux)
+				for (const rencontre of [undefined, g.dans(3)]) {
+					const etiquette = `${new Date(maintenant).toDateString()} ${JSON.stringify(paliers)} rencontre=${rencontre}`;
+					const borne = g.dans(1);
+					const avant = friseNotion(paliers, rencontre, niveau, borne, maintenant)!;
+					const apres = friseNotion(paliers, rencontre, niveau, borne, joursApres(maintenant, 7))!;
+					expect(apres.semaines.slice(0, NB_SEMAINES - 1), etiquette).toEqual(
+						avant.semaines.slice(1),
+					);
 				}
-		expect(cas).toBeGreaterThan(200); // l'énumération n'a pas été vidée par les filtres
+		}
 	});
 });
 
 describe('aChangeRecemment (compteur « N changements récents » par matière)', () => {
-	const frise = (paliers: PaliersNotion) => friseNotion(paliers, undefined, NOW);
-	const plate = (f: FriseNotion | null) => new Set(f!.semaines).size === 1;
-
-	it('pas de frise (aucun cap daté) → false', () => {
+	it('pas de frise → false', () => {
 		expect(aChangeRecemment(null)).toBe(false);
 	});
 
-	it('cap dans la semaine en cours → true', () => {
-		expect(aChangeRecemment(frise({ enCours: dansSemaine(11) }))).toBe(true);
-	});
-
-	it('cap dans la semaine la plus ANCIENNE → éteint, la frise étant plate', () => {
-		// Ce qu'on annonce doit se voir : la cellule 0 porte déjà l'état (son état est celui
-		// atteint à la FIN de sa semaine), donc un parent qui déplie ne verrait rien bouger.
-		const f = frise({ acquis: dansSemaine(0, 3, 12) });
-		expect(f!.semaines).toEqual(friseAttendue(null, 0, false));
-		expect(plate(f)).toBe(true);
-		expect(aChangeRecemment(f)).toBe(false);
-		// La semaine suivante, elle, se voit : la cellule 0 reste basse.
-		expect(aChangeRecemment(frise({ acquis: dansSemaine(1, 3, 12) }))).toBe(true);
-	});
-
-	it('tous les caps hors fenêtre → false, alors que la frise existe bel et bien', () => {
-		const f = frise({ enCours: dansSemaine(-6), acquis: dansSemaine(-3) });
-		expect(f).not.toBeNull(); // il y a une trajectoire à tracer…
-		expect(aChangeRecemment(f)).toBe(false); // …mais rien n'a bougé récemment
-	});
-
-	it('un seul cap récent suffit (l’ancien « en cours » n’annule pas le nouvel « acquis »)', () => {
-		expect(aChangeRecemment(frise({ enCours: dansSemaine(-8), acquis: dansSemaine(5) }))).toBe(
-			true,
-		);
-		// Symétrique : le cap récent peut être « en cours » et l'ancien… inexistant.
-		expect(aChangeRecemment(frise({ enCours: dansSemaine(2) }))).toBe(true);
-	});
-
-	it('journal INCOHÉRENT (« acquis » ancien, « en cours » récent) → éteint', () => {
-		// Forme que `recordMonteesPalier` ne produit pas (une notion acquise ne redescend pas),
-		// mais qui ne doit pas allumer le compteur : « acquis » tient sur toute la frise, donc
-		// elle est plate et il n'y a rien à annoncer.
-		const f = frise({ enCours: dansSemaine(9), acquis: dansSemaine(-2) });
-		expect(plate(f)).toBe(true);
+	it('l’entrée dans le SUIVI n’est pas un changement de l’enfant', () => {
+		// Sinon le compteur s'allumerait sur toutes les leçons travaillées du profil, alors que
+		// ce qui a changé est le journal, pas l'enfant.
+		const f = friseNotion({}, undefined, 'en-cours', dansSemaine(5), NOW)!;
+		expect(f.semaines).toEqual(rangee(['inconnu', 5], ['en-cours', 7]));
 		expect(aChangeRecemment(f)).toBe(false);
 	});
 
-	it('la date de 1re rencontre ne change PAS le compteur (elle ne crée aucun cap)', () => {
-		const paliers: PaliersNotion = { enCours: dansSemaine(6) };
-		expect(aChangeRecemment(friseNotion(paliers, undefined, NOW))).toBe(true);
-		expect(aChangeRecemment(friseNotion(paliers, FIRST_SEEN, NOW))).toBe(true);
-		// Idem quand il n'y a rien à signaler : la substitution du rang bas ne crée pas de
-		// transition (la frise reste plate).
-		const vieux: PaliersNotion = { acquis: dansSemaine(-3) };
-		expect(aChangeRecemment(friseNotion(vieux, undefined, NOW))).toBe(false);
-		expect(aChangeRecemment(friseNotion(vieux, FIRST_SEEN, NOW))).toBe(false);
+	it('deux rangées IDENTIQUES, réponses opposées : seul un cap daté fait le changement', () => {
+		// C'est toute la subtilité de la règle, et sa limite : le compteur ne se déduit PAS des
+		// seules cellules. Deux frises au dessin rigoureusement identique — pointillé puis un seul
+		// état — s'annoncent différemment selon que le passage à la couleur a été produit par un
+		// franchissement (visible, on le compte) ou par l'entrée dans le suivi (rien n'a bougé).
+		const parCap = friseNotion(
+			{ enCours: dansSemaine(5) },
+			undefined,
+			'en-cours',
+			dansSemaine(-4),
+			NOW,
+		)!;
+		const parLaBorne = friseNotion({}, undefined, 'en-cours', dansSemaine(5), NOW)!;
+		const dessin = rangee(['inconnu', 5], ['en-cours', 7]);
+		expect(parCap.semaines).toEqual(dessin);
+		expect(parLaBorne.semaines).toEqual(dessin);
+		expect(aChangeRecemment(parCap)).toBe(true);
+		expect(aChangeRecemment(parLaBorne)).toBe(false);
+	});
+
+	it('deux états visibles → true, même si le plus ancien est hors fenêtre', () => {
+		const f = friseNotion(
+			{ enCours: dansSemaine(-8), acquis: dansSemaine(5) },
+			undefined,
+			'acquis',
+			dansSemaine(-9),
+			NOW,
+		)!;
+		expect(f.semaines).toEqual(rangee(['en-cours', 5], ['acquis', 7]));
+		expect(aChangeRecemment(f)).toBe(true);
+	});
+
+	it('cap tombé dans la cellule 0 → éteint : la rangée est plate, le parent ne verrait rien', () => {
+		// Leçon suivie de bout en bout (rencontrée après la borne) : la cellule 0 porte déjà
+		// l'état atteint à la FIN de sa semaine, donc un cap qui y tombe ne se voit pas…
+		const suivie = (cap: number) =>
+			friseNotion({ acquis: cap }, dansSemaine(-1), 'acquis', dansSemaine(-2), NOW)!;
+		const dedans = suivie(dansSemaine(0));
+		expect(dedans.semaines).toEqual(rangee(['acquis', 12]));
+		expect(aChangeRecemment(dedans)).toBe(false);
+		// …alors qu'une semaine plus tard, la marche est visible.
+		const apres = suivie(dansSemaine(1));
+		expect(apres.semaines).toEqual(rangee(['non-acquis', 1], ['acquis', 11]));
+		expect(aChangeRecemment(apres)).toBe(true);
+	});
+
+	it('journal INCOHÉRENT (« acquis » ancien sous un « en cours » récent) → éteint', () => {
+		// « acquis » tient sur toute la rangée : elle est plate, il n'y a rien à annoncer.
+		const f = friseNotion(
+			{ enCours: dansSemaine(9), acquis: dansSemaine(-2) },
+			undefined,
+			'acquis',
+			dansSemaine(-4),
+			NOW,
+		)!;
+		expect(f.semaines).toEqual(rangee(['acquis', 12]));
+		expect(aChangeRecemment(f)).toBe(false);
+	});
+
+	it('premier cap d’une leçon plus ancienne que le journal → allumé, quelle que soit sa semaine', () => {
+		// Sur ces leçons (toutes celles d'un profil antérieur à la borne), les cellules qui
+		// précèdent le premier cap valent 'inconnu' : la rangée ne montre qu'un seul état. C'est
+		// pourtant le changement le plus évident qui soit — pointillé, puis couleur. L'écarter
+		// mettrait le compteur à 0 sur un profil où plusieurs leçons viennent de franchir un cap.
+		for (const semaine of [1, 5, 10, 11]) {
+			const f = friseNotion(
+				{ enCours: dansSemaine(semaine) },
+				undefined,
+				'en-cours',
+				dansSemaine(-4),
+				NOW,
+			)!;
+			expect(f.semaines, `semaine ${semaine}`).toEqual(
+				rangee(['inconnu', semaine], ['en-cours', NB_SEMAINES - semaine]),
+			);
+			expect(aChangeRecemment(f), `semaine ${semaine}`).toBe(true);
+		}
+		// Mais un cap ANTÉRIEUR à toute la fenêtre ne laisse aucun pointillé : rangée pleine d'un
+		// seul état, rien n'a bougé pendant les 12 semaines.
+		const vieux = friseNotion(
+			{ enCours: dansSemaine(-2) },
+			undefined,
+			'en-cours',
+			dansSemaine(-4),
+			NOW,
+		)!;
+		expect(vieux.semaines).toEqual(rangee(['en-cours', 12]));
+		expect(aChangeRecemment(vieux)).toBe(false);
+	});
+
+	it('rencontrée après la borne, sans aucun cap → allumé (deux états connus)', () => {
+		// « à découvrir » puis « à renforcer » : la leçon est entrée dans le paysage du parent.
+		const f = friseNotion({}, dansSemaine(8), 'non-acquis', dansSemaine(2), NOW)!;
+		expect(f.semaines).toEqual(rangee(['a-decouvrir', 8], ['non-acquis', 4]));
+		expect(aChangeRecemment(f)).toBe(true);
 	});
 });
 
@@ -463,114 +793,142 @@ describe('aChangeRecemment (compteur « N changements récents » par matière)'
 function ecrire(uuid: string, key: string, valeur: unknown): void {
 	lsSetRaw(uuid + '/' + key, JSON.stringify(valeur));
 }
-/* Catégorie non vide du récap, choisie DYNAMIQUEMENT (des ids en dur mentiraient au premier
-   remaniement du catalogue). `mini` = nombre de leçons nécessaires au test. */
-function categorie(
-	recap: RecapProfil,
-	subject: SubjectId,
-	mini = 1,
-	sauf?: string,
-): RecapCategorie {
-	const c = recap.parCategorie.find(
-		(x) => x.subject === subject && x.categoryId !== sauf && x.lecons.length >= mini,
-	);
-	if (!c) throw new Error(`aucune catégorie ${subject} de ${mini} leçon(s) ou plus`);
-	return c;
-}
-/* Clé de stockage d'une leçon pour le profil (stats/étoiles/paliers sont namespacés par
-   niveau, cf. #225) : c'est ce que le récap va relire. */
-function cle(p: Profile, cat: RecapCategorie, i: number): string {
-	return cat.lecons[i].lessonId + '@' + niveauProfilMatiere(p, cat.subject);
+function notion(recap: RecapProfil, lessonId: string): RecapNotion {
+	const n = recap.parCategorie.flatMap((c) => c.lecons).find((l) => l.lessonId === lessonId);
+	if (!n) throw new Error('leçon absente du récap : ' + lessonId);
+	return n;
 }
 function matiere(recap: RecapProfil, subject: SubjectId): RecapMatiere {
 	const m = recap.parMatiere.find((x) => x.subject === subject);
 	if (!m) throw new Error('matière absente du récap : ' + subject);
 	return m;
 }
-function notion(recap: RecapProfil, lessonId: string) {
-	const n = recap.parCategorie.flatMap((c) => c.lecons).find((l) => l.lessonId === lessonId);
-	if (!n) throw new Error('leçon absente du récap : ' + lessonId);
-	return n;
+function frisesTracees(recap: RecapProfil): string[] {
+	return recap.parCategorie
+		.flatMap((c) => c.lecons)
+		.filter((l) => l.frise !== null)
+		.map((l) => l.lessonId);
 }
 
-describe('progressionProfil — frise par leçon et changements récents', () => {
-	it('journal vide → aucune frise, et 0 changement récent partout', () => {
+describe('progressionProfil — branchement de la frise', () => {
+	/* Deux leçons de maths du catalogue, stockées `@ce2` pour un profil par défaut. */
+	const A = 'math-doubles';
+	const B = 'math-moities';
+	/* `recordLessonStats` date la 1re rencontre à l'horloge RÉELLE (Date.now()) : sans la fixer
+	   d'abord, les attendus dépendraient du jour où l'on lance les tests. On la pose donc
+	   explicitement, comme l'aurait fait l'appli le jour du premier passage. */
+	const rencontreeLe = (lessonId: string, t: number) => markLessonsFirstSeen([lessonId], t);
+
+	it('prémisse : le profil par défaut lit bien les clés @ce2', () => {
+		expect(niveauProfilMatiere(activeProfile(), 'math')).toBe('ce2');
+	});
+
+	it('journal vide : la leçon travaillée a une frise entièrement « inconnu », les autres aucune', () => {
 		const p = activeProfile();
+		rencontreeLe(A, dansSemaine(3)); // datée, mais sans borne cette date ne prouve rien
+		recordLessonStats({ [A]: { ok: 2, total: 10 } }); // 20 % → « à renforcer », aucune montée
 		const recap = progressionProfil(p, NOW);
-		expect(recap.parCategorie.flatMap((c) => c.lecons).every((l) => l.frise === null)).toBe(true);
+		expect(frisesTracees(recap)).toEqual([A]);
+		expect(notion(recap, A).niveau).toBe('non-acquis');
+		expect(notion(recap, A).frise!.semaines).toEqual(rangee(['inconnu', 12]));
 		expect(recap.parMatiere.every((m) => m.changementsRecents === 0)).toBe(true);
 		expect(recap.parMatiere.length).toBeGreaterThan(0); // l'assertion n'est pas creuse
 	});
 
-	it('compte les leçons ayant bougé, par matière, en agrégeant les catégories', () => {
+	it('journal écrit par les vraies fonctions : même frise que l’appel direct', () => {
 		const p = activeProfile();
-		const base = progressionProfil(p, NOW);
-		const mathA = categorie(base, 'math', 2);
-		const mathB = categorie(base, 'math', 1, mathA.categoryId);
-		const fr = categorie(base, 'francais', 1);
-		ecrire(p.uuid, LESSON_PALIERS_KEY, {
-			[cle(p, mathA, 0)]: { enCours: dansSemaine(9) },
-			[cle(p, mathA, 1)]: { acquis: dansSemaine(11) },
-			[cle(p, mathB, 0)]: { enCours: dansSemaine(2), acquis: dansSemaine(7) },
-			[cle(p, fr, 0)]: { enCours: dansSemaine(5) },
-		});
-
+		rencontreeLe(A, dansSemaine(1)); // travaillée avant la mise en service du journal
+		recordLessonStats({ [A]: { ok: 8, total: 10 } }); // 80 % → « en cours »
+		recordMonteesPalier([A], dansSemaine(4)); // mise en service + 1re marche
+		recordLessonResult(A, true); // étoile → « acquis »
+		recordMonteesPalier([A], dansSemaine(9)); // 2de marche
 		const recap = progressionProfil(p, NOW);
-		expect(matiere(recap, 'math').changementsRecents).toBe(3); // 2 catégories agrégées
-		expect(matiere(recap, 'francais').changementsRecents).toBe(1);
-		// Une leçon = un changement, même si elle a franchi DEUX caps dans la fenêtre.
-		expect(notion(recap, mathB.lecons[0].lessonId).frise!.semaines).toEqual(
-			friseAttendue(2, 7, false),
+		expect(notion(recap, A).frise!.semaines).toEqual(
+			rangee(['inconnu', 4], ['en-cours', 5], ['acquis', 3]),
 		);
-		// Les leçons sans palier gardent une frise nulle (rien à tracer).
-		expect(
-			recap.parCategorie.flatMap((c) => c.lecons).filter((l) => l.frise !== null),
-		).toHaveLength(4);
+		expect(notion(recap, A).frise).toEqual(
+			friseNotion(
+				{ enCours: dansSemaine(4), acquis: dansSemaine(9) },
+				dansSemaine(1),
+				'acquis',
+				dansSemaine(4),
+				NOW,
+			),
+		);
+		expect(matiere(recap, 'math').changementsRecents).toBe(1); // une leçon, deux caps = 1
+		expect(matiere(recap, 'francais').changementsRecents).toBe(0);
 	});
 
-	it('cap hors fenêtre : la frise est tracée, mais ne compte pas comme changement récent', () => {
+	it('la borne est celle du PROFIL : un cap ancien sur une leçon éclaire les autres', () => {
 		const p = activeProfile();
-		const cat = categorie(progressionProfil(p, NOW), 'math', 1);
-		ecrire(p.uuid, LESSON_PALIERS_KEY, { [cle(p, cat, 0)]: { acquis: dansSemaine(-5) } });
+		// Leçon A : un cap daté bien avant la borne stockée (profil qui journalisait déjà).
+		ecrire(p.uuid, LESSON_PALIERS_KEY, { [A + '@ce2']: { acquis: dansSemaine(-6) } });
+		// Leçon B : travaillée de longue date, jamais montée — sa fin de session pose la borne
+		// (tardive) à la semaine 10.
+		rencontreeLe(B, dansSemaine(-9));
+		recordLessonStats({ [B]: { ok: 2, total: 10 } });
+		recordMonteesPalier([B], dansSemaine(10));
 		const recap = progressionProfil(p, NOW);
-		expect(notion(recap, cat.lecons[0].lessonId).frise).not.toBeNull();
+		// Si la borne stockée l'emportait, B serait 'inconnu' jusqu'à la semaine 10 : l'historique
+		// déjà visible s'effacerait à la première session de l'enfant.
+		expect(notion(recap, B).frise!.semaines).toEqual(rangee(['non-acquis', 12]));
+		// Et A, dont le cap précède la fenêtre, la porte de bout en bout (état courant
+		// « à découvrir » faute de stats : la trajectoire datée est tracée quand même).
+		expect(notion(recap, A).niveau).toBe('a-decouvrir');
+		expect(notion(recap, A).frise!.semaines).toEqual(rangee(['acquis', 12]));
+	});
+
+	it('deux leçons au même journal ne se départagent pas sur la date de 1re rencontre', () => {
+		const p = activeProfile();
+		recordLessonStats({ [A]: { ok: 8, total: 10 }, [B]: { ok: 8, total: 10 } });
+		// Situation historique du stockage : #178 a daté A, B est passée avant lui et n'a pas de
+		// date du tout. C'est la seule différence entre les deux leçons.
+		ecrire(p.uuid, LESSON_FIRST_SEEN_KEY, { [A + '@ce2']: dansSemaine(1) });
+		recordMonteesPalier([], dansSemaine(6)); // mise en service, sans franchissement
+		recordMonteesPalier([A, B], dansSemaine(8)); // les deux passent « en cours » ensemble
+		const recap = progressionProfil(p, NOW);
+		const attendue = rangee(['inconnu', 8], ['en-cours', 4]);
+		expect(notion(recap, A).frise!.semaines).toEqual(attendue);
+		expect(notion(recap, B).frise!.semaines).toEqual(attendue);
+		// Les deux ont franchi leur cap dans la fenêtre : le compteur les voit toutes les deux,
+		// et surtout ne les départage pas non plus.
+		expect(matiere(recap, 'math').changementsRecents).toBe(2);
+	});
+
+	it('paire de migration : la clé legacy ne fabrique pas d’état, elle peut seulement reculer la borne', () => {
+		const p = activeProfile();
+		ecrire(p.uuid, LESSON_PALIERS_KEY, {
+			[A]: { acquis: dansSemaine(-20) }, // clé LEGACY (sans niveau), jamais écrite par l'appli
+			[A + '@ce2']: { acquis: dansSemaine(9) },
+		});
+		rencontreeLe(B, dansSemaine(-25)); // travaillée de longue date, aucun cap
+		recordLessonStats({ [B]: { ok: 2, total: 10 } });
+		const recap = progressionProfil(p, NOW);
+		// A ne lit QUE son entrée namespacée : son « acquis » date de la semaine 9.
+		expect(notion(recap, A).frise!.semaines).toEqual(rangee(['inconnu', 9], ['acquis', 3]));
+		// La clé legacy compte en revanche pour la borne du profil (elle prouve que le journal
+		// tournait) : B est donc suivie sur toute la fenêtre, et non 'inconnu' jusqu'à la semaine 9.
+		expect(notion(recap, B).frise!.semaines).toEqual(rangee(['non-acquis', 12]));
+	});
+
+	it('scoping par niveau : un palier @cm1 n’ouvre aucune frise pour un profil CE2', () => {
+		const p = activeProfile();
+		ecrire(p.uuid, LESSON_PALIERS_KEY, { [A + '@cm1']: { acquis: dansSemaine(6) } });
+		const recap = progressionProfil(p, NOW);
+		expect(frisesTracees(recap)).toEqual([]);
 		expect(matiere(recap, 'math').changementsRecents).toBe(0);
 	});
 
-	it('la date de 1re rencontre du MÊME profil est bien branchée (« à découvrir » au lieu d’« inconnu »)', () => {
+	it('journal illisible / leçon disparue du catalogue → aucune frise, aucun plantage', () => {
 		const p = activeProfile();
-		const cat = categorie(progressionProfil(p, NOW), 'math', 1);
-		const k = cle(p, cat, 0);
-		ecrire(p.uuid, LESSON_PALIERS_KEY, { [k]: { enCours: dansSemaine(9) } });
-		expect(notion(progressionProfil(p, NOW), cat.lecons[0].lessonId).frise!.semaines).toEqual(
-			friseAttendue(9, null, false),
-		);
-		ecrire(p.uuid, LESSON_FIRST_SEEN_KEY, { [k]: dansSemaine(8) });
-		expect(notion(progressionProfil(p, NOW), cat.lecons[0].lessonId).frise!.semaines).toEqual(
-			friseAttendue(9, null, true),
-		);
-	});
-
-	it('scoping par niveau : un palier @cm1 est ignoré pour un profil CE2', () => {
-		const p = activeProfile(); // niveau par défaut = CE2
-		const cat = categorie(progressionProfil(p, NOW), 'math', 1);
-		const lessonId = cat.lecons[0].lessonId;
-		expect(niveauProfilMatiere(p, 'math')).toBe('ce2'); // prémisse du test
-		ecrire(p.uuid, LESSON_PALIERS_KEY, { [lessonId + '@cm1']: { acquis: dansSemaine(6) } });
-		const recap = progressionProfil(p, NOW);
-		expect(notion(recap, lessonId).frise).toBeNull();
-		expect(matiere(recap, 'math').changementsRecents).toBe(0);
-	});
-
-	it('journal illisible / clé inconnue → aucune frise, aucun plantage', () => {
-		const p = activeProfile();
-		const cat = categorie(progressionProfil(p, NOW), 'math', 1);
 		ecrire(p.uuid, LESSON_PALIERS_KEY, {
-			[cle(p, cat, 0)]: { enCours: 'la semaine dernière' }, // valeur hors type
-			'lecon-supprimee@ce2': { acquis: dansSemaine(4) }, // leçon absente du catalogue
+			[A + '@ce2']: { enCours: 'la semaine dernière' }, // valeur hors type
+			'lecon-supprimee@ce2': { acquis: dansSemaine(4) },
 		});
+		ecrire(p.uuid, LESSON_FIRST_SEEN_KEY, { [A + '@ce2']: 'jeudi' });
+		ecrire(p.uuid, PALIERS_DEBUT_KEY, 'depuis toujours');
 		const recap = progressionProfil(p, NOW);
-		expect(notion(recap, cat.lecons[0].lessonId).frise).toBeNull();
+		expect(frisesTracees(recap)).toEqual([]);
 		expect(matiere(recap, 'math').changementsRecents).toBe(0);
 	});
 });

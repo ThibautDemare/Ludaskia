@@ -21,6 +21,13 @@
      connu précédé de pointillé À CONDITION qu'un cap soit daté (le passage du pointillé à la
      couleur est alors un franchissement, pas la simple entrée dans le suivi).
 
+   ÉCRITURE, dans le dernier describe : une fin de session journalise ses paliers d'elle-même,
+   report DIFFÉRÉ à la fin de la tâche (câblage et ordre éprouvés dans
+   `paliers-cablage.test.ts`). Un test qui monte une vraie session la DATE donc (`auMoment`)
+   et laisse tourner ce report (`finDeSession`) avant de lire ; ceux qui stampent une marche
+   à la main (`recordMonteesPalier`, exporté pour ça) le font dans la même tâche, avant que la
+   session ne reporte la sienne.
+
    Ce que ces tests ne recopient PAS :
    - les attendus des scénarios sont écrits à la main en RUNS de cellules (`rangee`), pas
      recalculés par un modèle qui redirait la cascade du code ;
@@ -37,7 +44,7 @@
      fuseau sans heure d'été (UTC, comme la CI), ces cas dégénèrent en cas nominaux — la
      prémisse qui le dit est un test à part, sauté sous ce fuseau.
    ============================================================ */
-import { beforeEach, describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { initProfiles, activeProfile, touchActiveProfile } from '../src/core/profiles';
 import { setOnDataWrite, lsSetRaw } from '../src/core/storage';
 import {
@@ -809,6 +816,18 @@ function frisesTracees(recap: RecapProfil): string[] {
 		.filter((l) => l.frise !== null)
 		.map((l) => l.lessonId);
 }
+/* Session datée à un instant FIGÉ : une vraie fin de session lit l'horloge, or les attendus
+   d'ici sont ancrés sur NOW (12 août 2026). */
+function auMoment<T>(t: number, geste: () => T): T {
+	const spy = vi.spyOn(Date, 'now').mockReturnValue(t);
+	try {
+		return geste();
+	} finally {
+		spy.mockRestore();
+	}
+}
+/* Fin de la tâche courante : laisse tourner le report de franchissements de la session. */
+const finDeSession = (): Promise<void> => Promise.resolve();
 
 describe('progressionProfil — branchement de la frise', () => {
 	/* Deux leçons de maths du catalogue, stockées `@ce2` pour un profil par défaut. */
@@ -823,14 +842,20 @@ describe('progressionProfil — branchement de la frise', () => {
 		expect(niveauProfilMatiere(activeProfile(), 'math')).toBe('ce2');
 	});
 
-	it('journal vide : la leçon travaillée a une frise entièrement « inconnu », les autres aucune', () => {
+	it('session qui ne franchit rien : sa borne ouvre le suivi à sa semaine, et rien avant', async () => {
+		// Une fin de session pose la borne d'elle-même, même sans franchir de palier : à 20 % la
+		// leçon reste « à renforcer », mais le suivi démarre, et la frise l'affirme à partir de
+		// cette semaine-là. Les semaines antérieures, elles, restent 'inconnu' — et la date de 1re
+		// rencontre, plus ancienne d'une semaine ENTIÈRE, ne les rattrape pas (uniformité : une
+		// semaine travaillée hors suivi ne se déduit pas). Les autres leçons n'ont pas de frise.
 		const p = activeProfile();
-		rencontreeLe(A, dansSemaine(3)); // datée, mais sans borne cette date ne prouve rien
-		recordLessonStats({ [A]: { ok: 2, total: 10 } }); // 20 % → « à renforcer », aucune montée
+		rencontreeLe(A, dansSemaine(3)); // travaillée avant la mise en service du journal
+		auMoment(dansSemaine(6), () => recordLessonStats({ [A]: { ok: 2, total: 10 } }));
+		await finDeSession(); // c'est le report de la session qui pose la borne
 		const recap = progressionProfil(p, NOW);
 		expect(frisesTracees(recap)).toEqual([A]);
 		expect(notion(recap, A).niveau).toBe('non-acquis');
-		expect(notion(recap, A).frise!.semaines).toEqual(rangee(['inconnu', 12]));
+		expect(notion(recap, A).frise!.semaines).toEqual(rangee(['inconnu', 6], ['non-acquis', 6]));
 		expect(recap.parMatiere.every((m) => m.changementsRecents === 0)).toBe(true);
 		expect(recap.parMatiere.length).toBeGreaterThan(0); // l'assertion n'est pas creuse
 	});

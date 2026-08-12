@@ -11,7 +11,6 @@ import {
 	recordLessonStats,
 	recordLessonResult,
 	recordEssaiLecon,
-	recordMonteesPalier,
 	recordRun,
 	addXP,
 	getXP,
@@ -81,12 +80,10 @@ export function recordLessonRun(p: LessonRunInput): LessonRunOutcome {
 		recordRun(p.mode, p.ok, p.questionCount, p.ms);
 	}
 
-	// Franchissements de palier (frise d'évolution, #397) : APRÈS l'étoile (l'état « acquis »
-	// en dépend), sur les leçons réellement travaillées dans cette session.
-	recordMonteesPalier(
-		Object.keys(p.perLesson).filter((id) => p.perLesson[id].total > 0),
-		Date.now(),
-	);
+	// Franchissements de palier (frise d'évolution, #397) : plus rien à appeler ici. C'est
+	// `recordLessonStats` qui les journalise lui-même, en microtâche, donc APRÈS l'étoile écrite
+	// juste au-dessus (dont dépend l'état « acquis ») — l'ordre reste celui-ci, il n'est
+	// simplement plus à la charge de l'appelant, qui ne peut donc plus l'oublier.
 
 	const goalRes = updateGoal({
 		mode: p.mode,

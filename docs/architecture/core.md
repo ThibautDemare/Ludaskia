@@ -729,6 +729,11 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   catalogue, pas de rétention à gérer) ; appelé **après** l'écriture de l'étoile, en fin de
   session, par `lesson-run.ts:recordLessonRun` et le sprint (`ui/sprint.ts`) — source de la
   frise d'évolution de l'espace encadrant (cf. [Espace encadrant](espace-encadrant.md)).
+  `recordMonteesPalier` pose aussi, à sa toute première exécution pour un profil,
+  `PALIERS_DEBUT_KEY` (`ludaskia_paliersDepuis`, #521) : la **mise en service** du journal
+  ci-dessus, base de `debutSuiviPaliers`/`friseNotion` (`encadrant-stats.ts` ci-dessous) —
+  posée même si la session ne franchit aucun palier, pour dater le journal qui tourne et
+  non un franchissement.
   **Avancement/report de la leçon du jour** (#485, `ludaskia_leconReport`) :
   **`recordEssaiLecon(lessonId, pct, now, etoilee)`** enregistre un essai complet en
   mode leçon (appelé uniquement par `lesson-run.ts`, jamais par le sprint/les bilans) et
@@ -898,22 +903,57 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   en est **dérivé** (totaux seuls) et `echelleActivite(max)` calcule une échelle Y « ronde »
   (`{top, step, ticks}`). `RecapProfil.activite7j` est désormais un `JourActivite[]`.
   **Frise d'états par leçon** (#521, remplace la frise par matière de #397) :
-  `friseNotion(paliers, firstSeen, now)` → `FriseNotion | null` (`{semaines:
-  CelluleFrise[], enCoursDepuis, acquisDepuis}`) reconstruit, semaine par semaine sur
-  **12 semaines** (`SEMAINES_FRISE`), l'état atteint par **une** leçon depuis son journal
-  `PaliersNotion` (`ludaskia_paliers`) ; `CelluleFrise` = `'inconnu' | 'a-decouvrir' |
-  'en-cours' | 'acquis'`. Une cellule ne vaut que **l'état le plus haut atteint à cette
-  date** (`PaliersNotion` ne date que les montées, jamais les redescentes) : l'état RÉEL du
-  jour vient de `RecapNotion.niveau`, et un écart entre les deux EST le signal de recul.
-  « à renforcer » n'est jamais daté, donc n'apparaît jamais comme cellule passée. Les
-  semaines antérieures au premier franchissement connu sont `'inconnu'` (pas
-  `'a-decouvrir'`, qui affirmerait une absence de progrès qu'on ne connaît pas), sauf si
-  `LESSON_FIRST_SEEN_KEY` (#178, antérieure au journal des paliers) atteste que
-  l'historique est connu de bout en bout. `lundiDecale(now, semainesAvant)` décale en
-  **jours calendaires** (`debutJourLocal`) plutôt que par pas fixe de 7 × 24 h, qui dérivait
-  d'une heure autour d'un changement d'heure. `aChangeRecemment(frise)` dit si la frise
-  montre un changement (≥ 2 états distincts dans ses cellules) en **lisant les cellules**
-  plutôt qu'en recalculant depuis les dates, pour ne jamais diverger de ce que l'UI affiche.
+  `friseNotion(paliers, firstSeen, niveau, debutSuivi, now)` → `FriseNotion | null`
+  (`{semaines: CelluleFrise[], enCoursDepuis, acquisDepuis}`) reconstruit, semaine par
+  semaine sur **12 semaines** (`SEMAINES_FRISE`), l'état atteint par **une** leçon depuis
+  son journal `PaliersNotion` (`ludaskia_paliers`) ; `CelluleFrise` = `'inconnu' |
+  'a-decouvrir' | 'non-acquis' | 'en-cours' | 'acquis'`. Une cellule ne vaut que **l'état
+  le plus haut atteint à cette date** (`PaliersNotion` ne date que les montées, jamais les
+  redescentes) : l'état RÉEL du jour vient de `RecapNotion.niveau`, et un écart entre les
+  deux EST le signal de recul. Renvoie `null` seulement pour une leçon jamais travaillée
+  (`niveau === 'a-decouvrir'` ET aucun cap daté) : rien à tracer.
+
+  **`debutSuivi`** (`debutSuiviPaliers(depuis, paliers)`) est une borne calculée **UNE
+  fois par profil**, pas par leçon : le plus ancien entre `PALIERS_DEBUT_KEY`
+  (`ludaskia_paliersDepuis`, posée une seule fois par `recordMonteesPalier` à sa première
+  exécution pour ce profil) et le franchissement daté le plus ancien du profil (qui PROUVE
+  que le journal tournait déjà, et fait donc foi contre une borne posée tardivement) ;
+  `Infinity` si le profil n'a ni l'un ni l'autre. Appliquée à toutes les leçons de la même
+  façon, elle remplace l'ancienne règle (avant cette correction) qui jugeait une leçon
+  « connue de bout en bout » dès qu'une `LESSON_FIRST_SEEN_KEY` (#178) existait : #178
+  précédant le journal des paliers (#397), deux leçons voisines travaillées la même
+  semaine pouvaient alors suivre deux règles différentes, départagées par la version de
+  l'appli au moment du premier passage. Désormais une première rencontre ne vaut
+  `'a-decouvrir'` que si sa **semaine** (`debutSemaine`) tombe à `debutSuivi` ou après ;
+  sinon, ou sans borne connue, les semaines correspondantes restent `'inconnu'`.
+
+  **« à renforcer » (`'non-acquis'`) n'est jamais daté** (entrer sous 40 % n'est pas un
+  progrès de maîtrise, cf. `maitrise.ts`) mais se **DÉDUIT**, ce qui repose sur un
+  invariant : depuis `debutSuivi`, **tout** chemin qui écrit des stats de leçon journalise
+  aussi ses franchissements (`recordLessonRun` et le sprint appellent tous deux
+  `recordMonteesPalier`) — un horodatage absent signifie donc « aucune montée observée »,
+  et les semaines suivies sans cap daté valent `'non-acquis'`. C'est le second défaut
+  corrigé : la version précédente escamotait ce palier, laissant sans frise les leçons
+  n'ayant jamais dépassé 40 % — les plus fragiles, donc celles qui intéressent le plus
+  l'adulte. Sans aucun cap daté du tout, l'état COURANT (`niveau`) tient lieu de plancher
+  depuis `debutSuivi` (l'échelle ne redescend jamais d'elle-même), ce qui donne aussi une
+  frise à une leçon acquise **avant** la mise en service du journal.
+
+  **Invariant** : les cellules `'inconnu'` forment TOUJOURS un préfixe de la rangée (une
+  rangée commence par `'a-decouvrir'` ou par `'inconnu'`, jamais les deux) — une cellule
+  sans rang au milieu dessinerait un creux que la hauteur ferait lire comme une régression.
+
+  `lundiDecale(now, semainesAvant)` décale en **jours calendaires** (`debutJourLocal`)
+  plutôt que par pas fixe de 7 × 24 h, qui dérivait d'une heure autour d'un changement
+  d'heure. `aChangeRecemment(frise)` dit si la frise montre un changement : ≥ 2 états
+  distincts **lus sur les cellules**, OU un seul état connu précédé de semaines `'inconnu'`
+  **si son franchissement est daté** (`enCoursDepuis`/`acquisDepuis` non nuls) — sans cap
+  daté, ce qui a changé est le SUIVI et non l'enfant. **Ce compteur ne se lit donc plus
+  entièrement sur le dessin** (les cellules `'inconnu'` étant rendues comme « à découvrir »,
+  cf. `styles/encadrant.scss`) : deux rangées au tracé identique (semaines `'inconnu'` puis
+  un seul état) peuvent répondre différemment selon qu'un cap est daté ou non, un dessin ne
+  pouvant pas montrer un franchissement dont les semaines antérieures restent inconnues.
+
   Nouveaux champs `RecapNotion.frise` et `RecapMatiere.changementsRecents` (compte de
   notions ayant changé, roll-up par matière) ; `RecapProfil.frises` a disparu. Détail du
   rendu dans [Espace encadrant](espace-encadrant.md).

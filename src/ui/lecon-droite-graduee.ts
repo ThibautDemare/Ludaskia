@@ -13,8 +13,9 @@
 
    Feedback DIFFÉRÉ à la validation : la coquille interactive est remplacée par une figure
    STATIQUE de RÉVÉLATION (repère juste en vert plein ; en cas d'erreur, le repère de
-   l'enfant en rouge à tête creuse en plus). Verdict annoncé en live region (a11y). À la
-   fin : recordLessonRun → mêmes XP / étoiles / objectifs (parité des modes).
+   l'enfant en rouge à tête creuse en plus — et, sur une droite PASSÉE via « Je ne sais pas,
+   montre-moi », son repère corail tel qu'il l'avait posé, pour comparer). Verdict annoncé en
+   live region (a11y). À la fin : recordLessonRun → mêmes XP / étoiles / objectifs (parité).
 
    Hors sprint (runner d'écran dédié). Structure calquée sur ui/lecon-clic-mot.ts.
    ============================================================ */
@@ -42,6 +43,15 @@ import {
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
+import { entreeTentativePassee } from '../core/erreur-representation';
+import {
+	capterPasse,
+	decisionHTML,
+	ligneRevelation,
+	masquerDecision,
+	revelerSolution,
+	wirePasser,
+} from './lecon-passer';
 import { monterBoutonAide } from './aide-exercice';
 
 const NB_QUESTIONS = 8;
@@ -185,7 +195,7 @@ function renderQuestion(): void {
 						bornes: q.bornes,
 						ariaLabel: q.consigne,
 					})}</div>
-          <button class="sprint-btn" id="dgVerify" disabled>Vérifier</button>
+          ${decisionHTML('dgVerify')}
           <p class="sr-only" id="dgStatus" role="status" aria-live="polite" aria-atomic="true"></p>
           <div class="sprint-correction" id="dgFeedback" hidden></div>
           <div class="sprint-actions" id="dgActions" hidden></div>
@@ -202,6 +212,7 @@ function renderQuestion(): void {
 	);
 	svg.addEventListener('keydown', (e) => onKeydown(e));
 	verif.addEventListener('click', () => verifier());
+	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
 	bindConsigneTts(sheets()); // bouton « Écouter » de la consigne (#42)
 	monterBoutonAide(sheets().querySelector('.dg-col'), 'droiteGraduee');
 	window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -268,27 +279,11 @@ function verifier(): void {
 	const juste = choisie.valeur === q.cible;
 	if (juste) score++;
 
-	// Révélation : figure STATIQUE (plus interactive). Repère juste en vert ; si erreur,
-	// le repère de l'enfant en rouge (tête creuse) en plus — double codage forme + couleur.
-	const reperes = juste
-		? [{ valeur: q.cible, etat: 'correct' as const }]
-		: [
-				{ valeur: q.cible, etat: 'correct' as const },
-				{ valeur: choisie.valeur, etat: 'faux' as const },
-			];
-	(sheets().querySelector('#dgFigure') as HTMLElement).innerHTML = renderDroiteGraduee({
-		min: q.min,
-		max: q.max,
-		pas: q.pas,
-		bornes: q.bornes,
-		reperes,
-		desc: juste
-			? 'La droite graduée avec le repère au bon endroit.'
-			: 'La droite graduée avec le bon repère en vert et ton repère en rouge.',
-	});
+	afficherFigureRevelation(q, juste ? undefined : { valeur: choisie.valeur, etat: 'faux' });
 
-	// « Vérifier » s'efface : seul « Continuer ▶ » reste (#153).
-	(sheets().querySelector('#dgVerify') as HTMLButtonElement).hidden = true;
+	// Le bloc de décision s'efface : seul « Continuer ▶ » reste (#153) — et pas de
+	// « Je ne sais pas, montre-moi » cliquable sur une droite déjà corrigée.
+	masquerDecision(sheets());
 
 	// Annonce du verdict pour lecteur d'écran (le focus part sur « Continuer »).
 	const statusEl = sheets().querySelector('#dgStatus');
@@ -319,26 +314,157 @@ function verifier(): void {
 	);
 }
 
+/* Remplace la coquille interactive par une figure STATIQUE (plus de sélection possible) :
+   repère juste en vert plein, et — quand l'enfant avait posé un repère AILLEURS — le sien
+   à côté, pour qu'il puisse comparer les deux positions. Son état de rendu dit ce qui s'est
+   passé, sans se contredire d'un chemin à l'autre :
+     - « Vérifier » sur un placement faux → tête CREUSE rouge : la réponse a été jugée, la
+       forme double la couleur (daltonisme) ;
+     - « Je ne sais pas, montre-moi » (#467) → état 'neutre', exactement le repère corail
+       qu'il avait sous les yeux avant de valider. On le FIGE tel quel : il n'a pas échoué,
+       il a demandé à voir — lui coller ici la tête creuse du « faux » serait un verdict sur
+       une réponse jamais validée. La légende (« ton repère » / « le bon repère ») est posée
+       par le moteur de figures, les deux têtes étant pleines.
+   Aucun repère de l'enfant quand il avait visé la BONNE graduation : deux têtes pleines à la
+   même abscisse s'occulteraient totalement (on lirait un bug), et il n'y a rien à comparer. */
+function afficherFigureRevelation(
+	q: QuestionDroite,
+	enfant?: { valeur: number; etat: 'faux' | 'neutre' },
+): void {
+	const reperes: { valeur: number; etat: 'correct' | 'faux' | 'neutre' }[] = [
+		{ valeur: q.cible, etat: 'correct' },
+	];
+	if (enfant) reperes.push(enfant);
+	(sheets().querySelector('#dgFigure') as HTMLElement).innerHTML = renderDroiteGraduee({
+		min: q.min,
+		max: q.max,
+		pas: q.pas,
+		bornes: q.bornes,
+		reperes,
+		// Description a11y : les RÔLES des repères, jamais un verdict ni une couleur (une
+		// couleur ne dit rien à qui ne voit pas la figure, et « ton repère en rouge » ferait
+		// dire à la figure ce que la région live annonce déjà). Deux branches, exactement
+		// celles du rendu : un repère, ou deux.
+		desc: enfant
+			? 'La droite graduée avec le bon repère, et à côté, le repère que tu avais posé, pour comparer.'
+			: 'La droite graduée avec le repère au bon endroit.',
+	});
+}
+
+/* Énoncé du journal : la FENÊTRE fait partie de l'énoncé pour le parent : « place 3 470 » ne
+   veut rien dire sans savoir sur quelle portion de droite. Sans elle, il lit le nombre à
+   placer et la graduation choisie, mais ne peut pas redessiner la droite où l'enfant s'est
+   trompé. Partagé par l'erreur et la question passée (#467). */
+function enonceJournal(q: QuestionDroite): string {
+	const de = q.bornes[0]?.label ?? String(q.min);
+	const a = q.bornes[q.bornes.length - 1]?.label ?? String(q.max);
+	return `${q.consigne} La droite va de ${de} à ${a}.`;
+}
+
+/* Figure du journal : droite VIDE de repère, telle que l'enfant l'a vue, la réponse restant
+   portée par `attendue`. Seule la PRÉSENCE d'une figure est consommée (marqueur « exercice
+   avec dessin »), mais on passe la vraie figure pour que ce mode porte le même marqueur que
+   le chemin de lecture de la MÊME leçon (fiche, révision) — un parent ne doit pas lire deux
+   mises en forme selon le mode. */
+function figureJournal(q: QuestionDroite): string {
+	return renderDroiteGraduee({ min: q.min, max: q.max, pas: q.pas, bornes: q.bornes });
+}
+
 /* Journal des erreurs (#391) : une entrée par droite ratée. `fige` garantit une seule
    capture par essai. */
 function journaliser(q: QuestionDroite, choisieLabel: string): void {
-	const de = q.bornes[0]?.label ?? String(q.min);
-	const a = q.bornes[q.bornes.length - 1]?.label ?? String(q.max);
 	capterErreur({
-		/* La FENÊTRE fait partie de l'énoncé pour le parent : « place 3 470 » ne veut rien dire
-		   sans savoir sur quelle portion de droite. Sans elle, il lit le nombre à placer et la
-		   graduation choisie, mais ne peut pas redessiner la droite où l'enfant s'est trompé. */
-		text: `${q.consigne} La droite va de ${de} à ${a}.`,
-		/* Vide de repère : c'est la droite telle que l'enfant l'a vue, la réponse restant portée
-		   par `attendue`. Seule la PRÉSENCE d'une figure est consommée (marqueur « exercice avec
-		   dessin »), mais on passe la vraie figure pour que ce mode porte le même marqueur que le
-		   chemin de lecture de la MÊME leçon (fiche, révision) — un parent ne doit pas lire deux
-		   mises en forme selon le mode. */
-		figure: renderDroiteGraduee({ min: q.min, max: q.max, pas: q.pas, bornes: q.bornes }),
+		text: enonceJournal(q),
+		figure: figureJournal(q),
 		donnee: choisieLabel,
 		attendue: q.cibleLabel,
 		lessonId: lesson.id,
 		mode: 'lecon',
+	});
+}
+
+/* Ce que l'enfant avait posé au moment de demander à voir : la graduation choisie (`null` s'il
+   n'a rien posé) et si elle visait la cible. L'index de sélection arrive en PARAMÈTRE (et non
+   lu dans l'état du module) : la lecture est ainsi éprouvable sur une droite donnée, et surtout
+   la figure et le journal parlent du MÊME placement, avec la MÊME condition « au bon endroit »
+   — deux lectures parallèles finiraient par se contredire (un repère montré comme faux à
+   l'écran, absent du suivi encadrant). */
+function tentativePosee(
+	q: QuestionDroite,
+	sel: number | null,
+): { choisie: { valeur: number; label: string } | null; juste: boolean } {
+	const choisie = sel === null ? null : q.graduations[sel];
+	return { choisie, juste: choisie !== null && choisie.valeur === q.cible };
+}
+
+/* Ce qu'une droite passée laisse au journal encadrant (#467). La règle des trois cas (rien de
+   posé / posé et faux / posé et juste) n'est PAS réécrite ici : elle vit dans
+   `entreeTentativePassee` (core/erreur-representation.ts), avec les sous-questions d'un
+   problème et le QCM multi. On ne fournit que les faits propres au format — un repère posé est
+   une tentative, et c'est l'écart entre son repère et la cible qui dit au parent ce qui coince
+   (lecture des graduations, décalage d'un cran…).
+   Le score, lui, ne bouge dans aucun cas : demander la réponse n'est pas y répondre. */
+function journaliserPasse(
+	q: QuestionDroite,
+	choisie: { valeur: number; label: string } | null,
+	juste: boolean,
+): void {
+	const entree = entreeTentativePassee({
+		tentee: choisie !== null,
+		juste,
+		donnee: choisie?.label ?? '',
+	});
+	if (!entree) return;
+	if (entree.sansTentative) {
+		capterPasse({
+			text: enonceJournal(q),
+			figure: figureJournal(q),
+			attendue: q.cibleLabel,
+			lessonId: lesson.id,
+		});
+		return;
+	}
+	journaliser(q, entree.donnee);
+}
+
+/* « Je ne sais pas, montre-moi » (#467) : la droite se rejoue en figure statique avec le repère
+   juste (en vert) — et, si l'enfant avait déjà posé le sien ailleurs, ce repère-là reste visible
+   à côté pour qu'il compare les deux positions. La réponse est redite en texte et l'explication
+   s'affiche : c'est là qu'elle sert le plus. Pas de `verifier()` : « Vérifier » est justement
+   encore inactif à ce stade (aucune graduation choisie), et une graduation éventuellement posée
+   n'a pas été validée — elle ne mérite donc ni ✗ rouge ni point au score. La droite compte au
+   dénominateur (score inchangé ⇒ 0 XP) et n'est pas rejouée. */
+function passer(): void {
+	if (fige) return;
+	fige = true;
+	const q = questions[idx];
+	// Une seule lecture du placement pour les deux usages qui en dépendent (cf. tentativePosee).
+	const { choisie, juste } = tentativePosee(q, selection);
+	// Le journal dit ce qui s'est PASSÉ : un repère déjà placé est une tentative, et non un
+	// « n'a pas essayé » (cf. journaliserPasse).
+	journaliserPasse(q, choisie, juste);
+	// Le repère de l'enfant est FIGÉ tel qu'il le voyait (corail, état 'neutre'), à son abscisse
+	// exacte : la position sur l'axe est toute l'information pédagogique. Rien à montrer s'il
+	// visait déjà la bonne graduation (même condition que le journal).
+	afficherFigureRevelation(
+		q,
+		choisie !== null && !juste ? { valeur: choisie.valeur, etat: 'neutre' } : undefined,
+	);
+	// L'index avance AVANT tout affichage : la photo de reprise (#498) est prise quand
+	// l'enfant quitte l'écran, et une droite déjà révélée ne doit jamais lui être reposée.
+	idx++;
+	revelerSolution({
+		root: sheets(),
+		feedback: sheets().querySelector('#dgFeedback') as HTMLElement,
+		actions: sheets().querySelector('#dgActions') as HTMLElement,
+		repHTML: ligneRevelation('la réponse', escapeHTML(q.cibleLabel)),
+		extraHTML: `<p class="lqcm-expl">${escapeHTML(q.explication)}</p>`,
+		annonce: `La réponse : ${q.cibleLabel}.`,
+		isLast: idx >= questions.length,
+		onNext: () => {
+			if (idx >= questions.length) finish();
+			else renderQuestion();
+		},
 	});
 }
 

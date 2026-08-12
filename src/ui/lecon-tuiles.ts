@@ -29,6 +29,14 @@ import { bindTuileInteraction } from './tuile-interaction';
 import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide } from './aide-exercice';
 import { capterErreur } from './erreur-capture';
+import {
+	capterPasse,
+	decisionHTML,
+	ligneRevelation,
+	masquerDecision,
+	revelerSolution,
+	wirePasser,
+} from './lecon-passer';
 import { attendueIntervalle } from '../core/erreur-representation';
 import { intervalleAPlusieursReponses } from '../core/items';
 
@@ -47,6 +55,10 @@ let questions: TuilesQuestion[] = [];
 let idx = 0;
 let score = 0;
 let ctrl: TuileController; // widget « tuiles » mutualisé (#345)
+// Question TRANCHÉE (validée ou révélée via « Je ne sais pas, montre-moi », #467) : garde
+// contre un second enregistrement, et surtout contre une réactivation de « Vérifier » par
+// le `onState` du widget, qui reste bavard tant que `verify()` n'a pas figé le widget.
+let tranchee = false;
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -120,13 +132,19 @@ enregistrerRunner(RUNNER, (snap) => {
 
 function renderQuestion(): void {
 	const q = questions[idx];
+	tranchee = false;
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
         ${leconTitreHTML(lesson)}
         <div data-tuile-mount></div>
-        <button class="sprint-btn" id="ltuiVerif" disabled>Vérifier</button>
+        ${decisionHTML('ltuiVerif')}
+        <!-- Région live (#467) : porte la RÉVÉLATION d'une question passée. Le widget
+             « tuiles » n'annonce rien de son côté (son verdict est visuel : case ✓/✗),
+             mais une question révélée à la demande n'a AUCUN autre canal — le focus part
+             sur « Continuer ▶ », qui ne dit que « Continuer ». -->
+        <p class="sr-only" id="ltuiStatus" role="status" aria-live="polite" aria-atomic="true"></p>
         <div class="sprint-correction" id="ltuiFeedback" hidden></div>
         <div class="sprint-actions" id="ltuiActions" hidden></div>
       </div>
@@ -137,9 +155,15 @@ function renderQuestion(): void {
 	ctrl = bindTuileInteraction(
 		sheets(),
 		{ kind: 'tuile', question: q.question, answer: q.answer, tuiles: q.tuiles, parle: q.parle },
-		{ variant: 'lecon', onState: (complete) => (verif.disabled = !complete) },
+		{
+			variant: 'lecon',
+			onState: (complete) => {
+				if (!tranchee) verif.disabled = !complete;
+			},
+		},
 	);
 	verif.addEventListener('click', () => verifier());
+	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
 	bindConsigneTts(sheets()); // bouton « Écouter » sur l'énoncé (#42)
 	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'tuiles'); // bouton « ? » persistant (#272)
 }
@@ -158,16 +182,21 @@ function renderQuestion(): void {
      tuile juste. */
 function correctionHTML(q: TuilesQuestion): string {
 	const amorce = q.intervalle ? 'Une réponse possible était' : 'La bonne réponse était';
-	const autres =
-		q.intervalle && intervalleAPlusieursReponses(q.intervalle)
-			? " D'autres nombres auraient aussi convenu."
-			: '';
-	return `<span class="lqcm-ko">${amorce} <strong>${escapeHTML(q.answer)}</strong>.${autres}</span>`;
+	return `<span class="lqcm-ko">${amorce} <strong>${escapeHTML(q.answer)}</strong>.${mentionAutresNombres(q)}</span>`;
+}
+
+/* Mention « D'autres nombres… » : partagée par la correction d'une erreur et la révélation
+   d'une question passée (#467) — le mode tuiles cache la pluralité dans les deux cas. */
+function mentionAutresNombres(q: TuilesQuestion): string {
+	return q.intervalle && intervalleAPlusieursReponses(q.intervalle)
+		? " D'autres nombres auraient aussi convenu."
+		: '';
 }
 
 function verifier(): void {
 	const verif = sheets().querySelector('#ltuiVerif') as HTMLButtonElement;
-	if (verif.disabled) return; // pas de tuile posée
+	if (tranchee || verif.disabled) return; // déjà tranchée, ou pas de tuile posée
+	tranchee = true;
 	const q = questions[idx];
 	const correct = ctrl.verify(); // fige + marque la case (✓/✗)
 	if (correct) score++;
@@ -186,9 +215,9 @@ function verifier(): void {
 			mode: 'lecon',
 		});
 	}
-	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
+	// Une fois la réponse validée, le bloc de décision s'efface : seul « Continuer ▶ »
 	// (#ltuiActions) reste, pour ne pas afficher deux boutons à la fois (#153).
-	verif.hidden = true;
+	masquerDecision(sheets());
 	wireNext(
 		sheets().querySelector('#ltuiActions') as HTMLElement,
 		sheets().querySelector('#ltuiFeedback') as HTMLElement,
@@ -202,6 +231,40 @@ function verifier(): void {
 			},
 		},
 	);
+}
+
+/* « Je ne sais pas, montre-moi » (#467) : la bonne tuile est révélée en TEXTE et le bac est
+   désarmé, sans passer par `ctrl.verify()` — « Vérifier » est justement encore inactif à ce
+   stade (aucune tuile posée), et le figeage marquerait une case vide ✗ en rouge. La question
+   compte au dénominateur (score inchangé ⇒ 0 XP) et n'est pas rejouée. */
+function passer(): void {
+	if (tranchee) return;
+	tranchee = true;
+	const q = questions[idx];
+	// Même énoncé et même attendu que pour une erreur — intercalation comprise : la BANDE
+	// acceptée, pas la seule tuile juste (#446). Seule la réponse donnée manque.
+	capterPasse({
+		text: q.question,
+		attendue: q.intervalle ? attendueIntervalle(q.intervalle) : q.answer,
+		lessonId: lesson.id,
+	});
+	// L'index avance AVANT tout affichage : la photo de reprise (#498) est prise quand
+	// l'enfant quitte l'écran, et une question déjà révélée ne doit jamais lui être reposée.
+	idx++;
+	revelerSolution({
+		root: sheets(),
+		feedback: sheets().querySelector('#ltuiFeedback') as HTMLElement,
+		actions: sheets().querySelector('#ltuiActions') as HTMLElement,
+		repHTML:
+			ligneRevelation(q.intervalle ? 'une réponse possible' : 'la réponse', escapeHTML(q.answer)) +
+			mentionAutresNombres(q),
+		annonce: `${q.intervalle ? 'Une réponse possible' : 'La réponse'} : ${q.answer}.`,
+		isLast: idx >= questions.length,
+		onNext: () => {
+			if (idx >= questions.length) finish();
+			else renderQuestion();
+		},
+	});
 }
 
 function finish(): void {

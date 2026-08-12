@@ -39,6 +39,14 @@ import {
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
+import {
+	capterPasse,
+	decisionHTML,
+	ligneRevelation,
+	masquerDecision,
+	revelerSolution,
+	wirePasser,
+} from './lecon-passer';
 import { monterBoutonAide } from './aide-exercice';
 
 const NB_QUESTIONS = 8;
@@ -62,7 +70,10 @@ let mode: ExerciseMode | undefined;
 let questions: QuestionClicMot[] = [];
 let idx = 0;
 let score = 0;
-let answered = false; // vrai après « Vérifier » : évite un double comptage du score
+// Vrai dès que la question est TRANCHÉE — « Vérifier » ou « Je ne sais pas, montre-moi »
+// (#467) : évite un double comptage du score et empêche le `onState` du widget de réactiver
+// « Vérifier » après une révélation (le widget n'est muet qu'une fois `verify()` appelé).
+let answered = false;
 let ctrl: ClicMotController; // widget de sélection dans la phrase (mutualisé, #466)
 
 function sheets(): HTMLElement {
@@ -166,7 +177,7 @@ function renderQuestion(): void {
           ${leconTitreHTML(lesson)}
           <p class="lclic-consigne"${ttsAttr(q.consigne)}>${escapeHTML(q.consigne)}</p>
           <div data-tuile-mount></div>
-          <button class="sprint-btn" id="lclicVerif" disabled>Vérifier</button>
+          ${decisionHTML('lclicVerif')}
           <div class="sprint-correction" id="lclicFeedback" hidden></div>
           <div class="sprint-actions" id="lclicActions" hidden></div>
         </div>
@@ -183,9 +194,14 @@ function renderQuestion(): void {
 			explication: q.explication,
 			explicationNommeCible: q.explicationNommeCible,
 		},
-		{ onState: (hasSelection) => (verif.disabled = !hasSelection) },
+		{
+			onState: (hasSelection) => {
+				if (!answered) verif.disabled = !hasSelection;
+			},
+		},
 	);
 	verif.addEventListener('click', () => verifier());
+	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
 	bindConsigneTts(sheets()); // boutons « Écouter » : consigne (auto) + phrase entière (#42)
 	// Bouton « ? » d'aide (#272) : renderQuestion() reconstruit tout le sheets() à chaque
 	// question, donc on le re-monte à chaque rendu (l'appel est idempotent).
@@ -200,8 +216,8 @@ function verifier(): void {
 	answered = true;
 	if (juste) score++;
 
-	// « Vérifier » s'efface : seul « Continuer ▶ » reste (pas deux boutons, #153).
-	(sheets().querySelector('#lclicVerif') as HTMLButtonElement).hidden = true;
+	// Le bloc de décision s'efface : seul « Continuer ▶ » reste (pas deux boutons, #153).
+	masquerDecision(sheets());
 
 	if (!juste) journaliser(q, ctrl.selected());
 
@@ -222,6 +238,43 @@ function verifier(): void {
 			},
 		},
 	);
+}
+
+/* « Je ne sais pas, montre-moi » (#467) : le(s) mot(s) attendu(s) sont révélés en TEXTE et
+   la phrase est désarmée. Pas de `ctrl.verify()` : il marquerait ✗ en rouge les mots
+   éventuellement sélectionnés et figerait la phrase comme après une erreur. L'explication,
+   elle, est bien affichée — c'est le moment où elle sert le plus. La question compte au
+   dénominateur (score inchangé ⇒ 0 XP) et n'est pas rejouée. */
+function passer(): void {
+	if (answered) return;
+	answered = true;
+	const q = questions[idx];
+	// Même énoncé et même attendu que pour une erreur (cf. journaliser) : les mots sont joints
+	// par `libelleCible`, donc une cible non contiguë se lit « chien et pomme ».
+	const solution = libelleCible(q.tokens, q.cibleIndices);
+	capterPasse({
+		text: `${q.consigne} « ${joindrePhrase(q.tokens)} »`,
+		attendue: solution,
+		lessonId: lesson.id,
+	});
+	// L'index avance AVANT tout affichage : la photo de reprise (#498) est prise quand
+	// l'enfant quitte l'écran, et une question déjà révélée ne doit jamais lui être reposée.
+	idx++;
+	revelerSolution({
+		root: sheets(),
+		feedback: sheets().querySelector('#lclicFeedback') as HTMLElement,
+		actions: sheets().querySelector('#lclicActions') as HTMLElement,
+		repHTML: ligneRevelation('la réponse', escapeHTML(solution)),
+		extraHTML: `<p class="lqcm-expl">${escapeHTML(q.explication)}</p>`,
+		// L'explication est annoncée AUSSI : elle est affichée à l'écran, et la live region est
+		// le seul canal d'un lecteur d'écran (le focus part sur « Continuer ▶ »).
+		annonce: `La réponse : ${solution}. ${q.explication}`,
+		isLast: idx >= questions.length,
+		onNext: () => {
+			if (idx >= questions.length) finish();
+			else renderQuestion();
+		},
+	});
 }
 
 /* Journal des erreurs (#391) : une entrée par phrase ratée (l'énoncé, les mots

@@ -13,11 +13,55 @@
    de la fiche à l'écran (`data-attendue`) et le corrigé imprimé. Un seul endroit pour la lire
    et la faire évoluer — l'éparpiller écran par écran est exactement ce qui avait produit des
    discours contradictoires (« LA bonne réponse » là où douze valeurs étaient acceptées).
+
+   Et (#467) la règle qui décide s'il y a une entrée à écrire du tout quand une question est
+   PASSÉE, selon ce que l'enfant avait déjà posé — voir la section ci-dessous.
    ============================================================ */
 import { separateurSuite } from './exercise';
 import type { NatureOrdre } from './exercise';
 import { formatNombre } from './nombres';
 import type { Item } from './items';
+
+/* ---------- Question PASSÉE : ce qu'une tentative laisse au journal (#467) ---------- */
+
+/** Ce qu'on sait de la tentative au moment où l'enfant demande à voir la réponse. */
+export interface TentativePassee {
+	/* A-t-il posé quelque chose ? (case de problème remplie, repère placé sur la droite,
+	   au moins une case cochée d'un QCM multi). */
+	tentee: boolean;
+	/* Ce qu'il avait posé était-il exactement la bonne réponse ? Lu par l'appelant avec SA
+	   règle de comparaison (numérique à virgule française, valeur de graduation, grille
+	   tout-ou-rien) : c'est la seule chose qui diffère d'un format à l'autre. */
+	juste: boolean;
+	/* Sa proposition, déjà LISIBLE pour un parent (« 9 », « 3,50 », « rectangle ; carré »). */
+	donnee: string;
+}
+
+/** Entrée de journal à écrire pour une question passée : réponse donnée + drapeau. */
+export interface EntreeTentative {
+	donnee: string; // '' quand rien n'avait été tenté
+	sansTentative: boolean; // rien tenté → « N'a pas essayé », pas une faute de raisonnement
+}
+
+/** Décrit l'entrée de journal d'une tentative sur une question PASSÉE (#467). Trois cas,
+    une seule règle — pour les sous-questions d'un problème, la droite graduée et le QCM
+    multi, qui l'avaient chacun recopiée :
+      - RIEN de posé → entrée marquée `sansTentative`, sans réponse donnée (aveu
+        d'ignorance) ;
+      - posé et FAUX → vraie entrée d'erreur, avec ce que l'enfant avait proposé : il a bien
+        tenté, le marquer « n'a pas essayé » serait un mensonge, et c'est justement sa
+        proposition qui dit au parent ce qui coince ;
+      - posé et JUSTE → AUCUNE entrée (`null`) : on ne fabrique pas une erreur là où l'enfant
+        avait bon (il a pu demander à voir par manque de confiance), et une entrée dont la
+        réponse donnée égale la réponse attendue se lirait comme un bug côté encadrant.
+    L'ORDRE des deux tests fait partie de la règle : « rien de posé » l'emporte sur « juste »,
+    sinon une case vide serait déclarée juste sur une réponse attendue de 0 (`Number('')`
+    vaut 0) et disparaîtrait du journal. */
+export function entreeTentativePassee(t: TentativePassee): EntreeTentative | null {
+	if (!t.tentee) return { donnee: '', sansTentative: true };
+	if (t.juste) return null;
+	return { donnee: t.donnee, sansTentative: false };
+}
 
 /* ---------- Intercalation (réponse corrigée par intervalle ouvert) ---------- */
 /* La bande elle-même, formulée comme l'énoncé (« Place un nombre entre 450 et 465 ») : mêmes

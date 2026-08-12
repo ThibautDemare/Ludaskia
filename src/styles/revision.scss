@@ -131,11 +131,97 @@
 .rev-feedback.ko strong {
 	color: var(--ok);
 }
+/* 3e état de verdict (#467) : question RÉVÉLÉE à la demande (« Je ne sais pas,
+   montre-moi »). Ni succès ni échec → ni le vert du ✓ ni le rouge du ✗, aucune
+   animation : c'est un moment calme, pas un ratage. Deux lignes, la rassurante
+   d'abord (plus petite, en gris) puis la réponse, seule mise en valeur (--ok). */
+.rev-feedback.reveal {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	color: var(--ink);
+	font-size: 20px;
+}
+.rev-feedback.reveal .rev-reveal-lab {
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--grey);
+}
+.rev-feedback.reveal strong {
+	color: var(--ok);
+}
+/* Problème passé (#467) : la solution de chaque sous-question s'affiche à côté de sa
+   case, dans la marque habituelle mais en ton NEUTRE — la classe .wrong de la
+   correction y mettrait un ✗ rouge sur des cases jamais remplies. */
+.rev-probleme .prob-mark.reveal {
+	color: var(--ok);
+}
 .rev-actions {
 	display: flex;
 	gap: 12px;
 	justify-content: center;
 	flex-wrap: wrap;
+}
+/* Bloc de décision d'une question (#467) : « Valider » puis, EN DESSOUS et nettement
+   détaché (≥ 16 px), le lien de déblocage. Un seul bloc pour les deux contextes de la
+   révision (carte entière ou zone #revAfter des widgets), donc un écart identique
+   partout, indépendant du `gap` du conteneur. */
+.rev-decide {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 18px;
+}
+/* « Je ne sais pas, montre-moi » : sortie de secours ASSUMÉE, jamais un second bouton
+   d'action. Identité sobre (aucun remplissage --accent, texte gris souligné, corps plus
+   petit que « Valider ») pour ne pas concurrencer la validation — mais cible tactile
+   pleine (44 px) et libellé complet : un enfant coincé doit pouvoir la viser au doigt,
+   pas la chercher. */
+.rev-giveup {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 44px;
+	padding: 8px 16px;
+	font-family: var(--ui);
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--grey);
+	background: none;
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	transition:
+		color 0.12s ease,
+		background 0.12s ease;
+}
+.rev-giveup:hover {
+	color: var(--ink);
+	background: var(--accent-soft);
+}
+.rev-giveup:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.rev-giveup .ph-icon {
+	width: 20px;
+	height: 20px;
+	flex: none;
+}
+/* Widget neutralisé après une révélation (#467) : il reste visible (l'enfant compare ce
+   qu'il avait commencé avec la solution) mais n'est plus manipulable. Les éléments
+   focalisables sont désarmés côté DOM ; le `pointer-events` coupe en plus les cibles de
+   DÉPÔT du glisser-déposer, sans quoi un dépôt relancerait le widget. Restent
+   opérables : les actions d'après-verdict, l'aide du geste et les boutons « Écouter ». */
+.rev-stage--fige > *:not(#revAfter):not(.aide-btn) {
+	pointer-events: none;
+}
+.rev-stage--fige .consigne-tts,
+.rev-stage--fige .item-tts {
+	pointer-events: auto;
 }
 .rev-btn {
 	font-family: var(--ui);

@@ -35,6 +35,14 @@ import {
 import { enregistrerRunner } from './runner-reprise';
 import { monterBoutonAide } from './aide-exercice';
 import { capterErreur } from './erreur-capture';
+import {
+	capterPasse,
+	decisionHTML,
+	ligneRevelation,
+	masquerDecision,
+	revelerSolution,
+	wirePasser,
+} from './lecon-passer';
 import { nombreTableauSaisi } from '../core/erreur-representation';
 
 const NB_QUESTIONS = 8;
@@ -229,7 +237,7 @@ function renderQuestion(): void {
       <div class="sprint-stage">
         ${leconTitreHTML(lesson)}
         ${renderTableauBoardHTML(ex, cells)}
-        <button class="sprint-btn" id="tcVerif" disabled>Vérifier</button>
+        ${decisionHTML('tcVerif')}
         <div class="sprint-correction" id="tcFeedback" hidden></div>
         <div class="sprint-actions" id="tcActions" hidden></div>
         <p class="sr-only" id="tcStatus" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -288,6 +296,7 @@ function wireInteraction(): void {
 		});
 	const verif = sheets().querySelector('#tcVerif') as HTMLButtonElement;
 	verif.addEventListener('click', () => verifier());
+	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
 	// Clavier physique (l'inputmode ne s'applique pas ; les cases ne sont pas des champs
 	// texte) : chiffres, effacement et navigation ← →. Retiré au re-rendu / à la sortie.
 	detachKeys();
@@ -453,24 +462,18 @@ function verifier(): void {
 			mode: 'lecon',
 		});
 	}
-	const verif = sheets().querySelector('#tcVerif') as HTMLButtonElement;
-	verif.hidden = true; // un seul bouton à la fois (#153) : « Continuer ▶ » prend le relais
-	// Feedback : motive le zéro de transit à l'erreur (pas seulement le geste). Accord
-	// singulier/pluriel selon le nombre de colonnes de transit.
-	const transit = ex.colonnes.filter((c) => c.transit);
-	const explication =
-		transit.length === 0
-			? ''
-			: transit.length === 1
-				? ` Pense au 0 de l'unité intermédiaire (le ${transit[0].nom}) pour marquer le rang vide.`
-				: ` Pense aux 0 des unités intermédiaires (${transit.map((c) => pluriel(c.nom)).join(', ')}) pour marquer les rangs vides.`;
+	// Un seul bouton à la fois (#153) : le bloc de décision s'efface (les DEUX boutons — un
+	// « Je ne sais pas » cliquable sur un tableau déjà corrigé n'aurait plus de sens) et
+	// « Continuer ▶ » prend le relais.
+	masquerDecision(sheets());
+	const explication = explicationTransit(ex);
 	wireNext(
 		sheets().querySelector('#tcActions') as HTMLElement,
 		sheets().querySelector('#tcFeedback') as HTMLElement,
 		{
 			feedbackHTML: correct
 				? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-				: `<span class="lqcm-ko">La bonne réponse était <strong>${escapeHTML(ex.answer)} ${escapeHTML(ex.answerUnit)}</strong>.${escapeHTML(explication)}</span>`,
+				: `<span class="lqcm-ko">La bonne réponse était <strong>${escapeHTML(ex.answer)} ${escapeHTML(ex.answerUnit)}</strong>.${explication ? ` ${escapeHTML(explication)}` : ''}</span>`,
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;
@@ -479,6 +482,62 @@ function verifier(): void {
 			},
 		},
 	);
+}
+
+/* Ce que le tableau enseigne au-delà du geste : le 0 qui MARQUE un rang vide. Affiché quand
+   la réponse n'est pas donnée — erreur ou question passée (#467), les deux cas où l'enfant a
+   justement besoin de l'explication. Accord singulier/pluriel selon le nombre de colonnes de
+   transit ; chaîne vide s'il n'y en a aucune. */
+function explicationTransit(ex: Tableau): string {
+	const transit = ex.colonnes.filter((c) => c.transit);
+	if (transit.length === 0) return '';
+	return transit.length === 1
+		? `Pense au 0 de l'unité intermédiaire (le ${transit[0].nom}) pour marquer le rang vide.`
+		: `Pense aux 0 des unités intermédiaires (${transit.map((c) => pluriel(c.nom)).join(', ')}) pour marquer les rangs vides.`;
+}
+
+/* « Je ne sais pas, montre-moi » (#467) : la réponse est révélée en TEXTE (« 3 000 m »),
+   comme après une erreur, sans corriger les cases — « Vérifier » est justement encore inactif
+   à ce stade (le tableau n'est pas rempli) et marquer ✗ des cases jamais remplies serait faux.
+   Les cases déjà écrites restent VISIBLES, à comparer avec la réponse, mais plus modifiables
+   (`frozen` + désarmement du DOM par `revelerSolution`). Le tableau compte au dénominateur
+   (score inchangé ⇒ 0 XP) et n'est pas rejoué. */
+function passer(): void {
+	if (frozen) return;
+	frozen = true;
+	const ex = questions[idx];
+	// Une entrée « n'a pas essayé » pour le tableau, jamais le nombre relu dans les cases : un
+	// tableau incomplet ne se relit pas en nombre (il manque des chiffres), et un « 3,07 km »
+	// reconstruit sur des cases vides ferait croire à une erreur de conversion inexistante.
+	// EXCEPTION ASSUMÉE, et non un oubli : les autres formats à saisie contrainte journalisent
+	// bien la tentative commencée (un repère déjà placé sur la droite graduée, des cases déjà
+	// cochées d'un QCM multi, une sous-question de problème déjà remplie — cf.
+	// core/probleme-etapes.ts). Ici la réponse n'est pas une case mais la LECTURE de toutes les
+	// cases ensemble : elle n'existe pas tant qu'il en manque une, donc il n'y a aucune réponse
+	// donnée à montrer au parent, même partielle.
+	capterPasse({
+		text: ex.question,
+		attendue: `${ex.answer} ${ex.answerUnit}`,
+		lessonId: lesson.id,
+	});
+	paintAll(); // retire la surbrillance de la case active (plus de saisie en cours)
+	const explication = explicationTransit(ex);
+	// L'index avance AVANT tout affichage : la photo de reprise (#498) est prise quand
+	// l'enfant quitte l'écran, et un tableau déjà révélé ne doit jamais lui être reposé.
+	idx++;
+	revelerSolution({
+		root: sheets(),
+		feedback: sheets().querySelector('#tcFeedback') as HTMLElement,
+		actions: sheets().querySelector('#tcActions') as HTMLElement,
+		repHTML: ligneRevelation('la réponse', `${escapeHTML(ex.answer)} ${escapeHTML(ex.answerUnit)}`),
+		extraHTML: explication ? `<p class="lqcm-expl">${escapeHTML(explication)}</p>` : '',
+		annonce: `La réponse : ${ex.answer} ${ex.answerUnit}.`,
+		isLast: idx >= questions.length,
+		onNext: () => {
+			if (idx >= questions.length) finish();
+			else renderQuestion();
+		},
+	});
 }
 
 function finish(): void {

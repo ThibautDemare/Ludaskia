@@ -223,6 +223,9 @@ export function verify() {
 	// Bandeau résultat en tête de la zone
 	const old = document.getElementById('resultBanner');
 	if (old) old.remove();
+	// Le verdict est posé : l'astuce « tu peux laisser la réponse vide » (#467) n'a plus
+	// d'objet, et elle contredirait l'avertissement des 60 % qui renvoie justement remplir.
+	document.getElementById(ASTUCE_VIDE)?.remove();
 	const banner = document.createElement('div');
 	banner.className = 'result-banner screen-only';
 	banner.id = 'resultBanner';
@@ -362,6 +365,49 @@ function leverSignalementIllisible(champ: HTMLElement): void {
 	champ.removeAttribute('aria-describedby');
 	if (!document.querySelector('#sheets input.a-corriger'))
 		document.getElementById(HINT_ILLISIBLE)?.remove();
+}
+
+/* Id du message « on peut laisser une réponse vide » (unique par écran d'exercice). */
+const ASTUCE_VIDE = 'astuceReponseVide';
+
+/* Découvrabilité du droit de passer (#467).
+
+   Laisser une réponse vide est DÉJÀ toléré sur une fiche (un champ vide reste neutre à
+   la correction, cf. scoreItems, et l'essai compte dès 60 % de champs remplis) : ce qui
+   manquait, c'est que l'enfant le SACHE. Sans ça, il peut se croire obligé de remplir et
+   rester bloqué sur une case, sans autre issue que d'abandonner la séance.
+
+   Choix de rendu :
+   - posé à l'OUVERTURE de la fiche (appelé par `afterStart`), donc lu avec la consigne,
+     AVANT le blocage : une aide qui n'apparaîtrait qu'après coup arriverait trop tard —
+     l'enfant bloqué ne valide pas, il attend ;
+   - information, pas alerte : ni `role="alert"` ni `aria-live` (rien ne survient), ni
+     teinte `--warn` (réservée à l'attention, cf. `.ans.a-corriger`) ;
+   - NON collant, contrairement à `.verify-hint` : un bandeau permanent mangerait de la
+     hauteur utile pendant toute la fiche, sur tablette en particulier ;
+   - AUCUN `data-tts` : `bindConsigneTts` lit automatiquement le PREMIER `[data-tts]` de
+     l'écran quand le profil active la lecture auto — l'astuce, posée en tête, volerait la
+     lecture de la vraie consigne ;
+   - `screen-only` : le markup de fiche est partagé avec l'impression (`ficheHTMLGeneric`,
+     `buildPrintableDOM`) et une feuille papier n'a pas de règle du jeu à l'écran.
+
+   Placé DANS `#sheets` (et non en frère, comme `#resultBanner`) : c'est ce qui le fait
+   suivre l'instantané de reprise (`captureResume` sérialise `sheets.innerHTML`), donc
+   réapparaître à la reprise d'une fiche interrompue — `restoreResume` ne repasse pas par
+   `afterStart`. Retiré à la vérification (cf. `verify`). */
+export function afficherAstuceReponseVide(): void {
+	const sheets = document.getElementById('sheets');
+	if (!sheets) return;
+	document.getElementById(ASTUCE_VIDE)?.remove(); // idempotent (re-rendu de fiche)
+	// Rien à dire sur un écran sans champ à remplir.
+	if (!sheets.querySelector('input.ans')) return;
+	const astuce = document.createElement('p');
+	astuce.id = ASTUCE_VIDE;
+	astuce.className = 'astuce-vide screen-only';
+	astuce.innerHTML =
+		`${icon('feather')}<span><strong>Tu ne sais pas quoi répondre ?</strong> ` +
+		`Tu peux laisser la réponse vide et continuer.</span>`;
+	sheets.insertBefore(astuce, sheets.firstChild);
 }
 
 export function printAll() {

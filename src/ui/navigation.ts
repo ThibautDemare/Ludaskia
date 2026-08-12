@@ -29,6 +29,10 @@ import { niveauLecon } from '../core/niveau-actif';
 import { renderItem, createRenderContext } from '../core/items';
 import type { Item, RenderContext } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
+// Message d'ouverture de fiche (#467). Cycle d'import assumé avec session.ts (qui lit
+// l'état de session exporté ici) : usage uniquement dans un corps de fonction, comme
+// pour sprint.ts / bilan.ts.
+import { afficherAstuceReponseVide } from './session';
 import { bindConsigneTts } from './consigne-tts';
 import { stopTts } from './tts';
 import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
@@ -708,6 +712,11 @@ export function afterStart() {
 	setToolbar({ verify: true, home: true, profile: false, print: true }); // exercice : pas de profil, 🖨 dispo
 	startChrono();
 	window.scrollTo({ top: 0, behavior: 'smooth' });
+	// Droit de passer (#467) : rappelle en tête de fiche qu'une réponse peut rester vide.
+	// Vaut pour TOUS les écrans à champs qui passent par ici — leçon en saisie, bilan
+	// express, bilan complet, reprise des erreurs. Posé AVANT `bindConsigneTts` : l'astuce
+	// ne porte volontairement pas de `data-tts` (sinon elle capterait la lecture auto).
+	afficherAstuceReponseVide();
 	bindConsigneTts(document.getElementById('sheets')!); // bouton « Écouter » sur la consigne (#42)
 	// Confort de saisie : on place le curseur sur le premier calcul.
 	const first = document.querySelector('#sheets input') as HTMLInputElement | null;

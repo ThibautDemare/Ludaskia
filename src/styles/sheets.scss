@@ -247,6 +247,36 @@
 	font-family: var(--ui);
 	font-size: 15px;
 }
+/* Astuce d'ouverture de fiche (#467) : « tu peux laisser la réponse vide ». Même gabarit
+   que `.verify-hint` (largeur de la page, en tête de la zone d'exercice) mais DEUX écarts
+   assumés, parce que ce n'est pas une alerte :
+   - teinte ACCENT douce, jamais `--warn` (réservé à l'attention : saisie illisible) ni
+     `--ko` — rien ne va mal, on informe avant tout blocage ;
+   - NON collante : elle se lit avec la consigne au démarrage puis laisse toute la hauteur
+     à l'exercice (un bandeau collant en permanence coûte cher sur tablette).
+   `screen-only` (posé par le JS) : jamais imprimée. */
+.astuce-vide {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	max-width: 210mm;
+	margin: 0 auto 14px;
+	padding: 10px 16px;
+	border-radius: 12px;
+	border-left: 4px solid var(--accent);
+	background: var(--accent-soft);
+	color: var(--ink);
+	font-family: var(--ui);
+	font-size: 15px;
+	line-height: 1.4;
+}
+/* Le picto (plume = « à ton rythme », comme le mode Tranquille) est décoratif : il double
+   le texte, il ne le remplace pas. Un cran plus grand que le texte, jamais écrasé. */
+.astuce-vide .ph-icon {
+	width: var(--icon-lg);
+	height: var(--icon-lg);
+	color: var(--accent-dark);
+}
 .mark {
 	font-family: var(--ui);
 	font-size: 13px;

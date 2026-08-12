@@ -439,12 +439,14 @@ function matieresHTML(recap: RecapProfil): string {
 /* Mot de chaque cellule de frise, pour le libellé accessible. Il s'agit d'une PHRASE, pas
    d'une étiquette : le sujet implicite est la leçon, donc « acquise » s'y accorde, là où
    `MOT_NIVEAU.acquis` reste invariable pour ses usages en badge et en légende (avis langue).
-   'inconnu' n'est pas un rang de l'échelle mais l'absence de donnée, d'où une locution de
-   temps et non un participe : « pas encore suivie » se serait confondu à l'oreille avec le
-   « pas encore travaillée » de la méta, qui dit tout autre chose. Il ne peut de toute façon
-   apparaître qu'en tête du récit (les cellules inconnues sont toujours un préfixe). */
+   'inconnu' n'est pas un rang de l'échelle mais l'absence de donnée, d'où « statut inconnu »
+   (choix du mainteneur, à l'usage) : ni « pas encore suivie », qui se confondait à l'oreille
+   avec le « pas encore travaillée » de la méta et dit tout autre chose, ni « avant le suivi »,
+   qui nommait la CAUSE de l'ignorance quand le lecteur veut d'abord savoir ce que la cellule
+   vaut. C'est aussi le seul canal qui distingue encore ces semaines de « à découvrir », les
+   deux partageant l'emplacement le plus bas de la frise (cf. encadrant.scss). */
 const MOT_CELLULE: Record<CelluleFrise, string> = {
-	inconnu: 'avant le suivi',
+	inconnu: 'statut inconnu',
 	'a-decouvrir': MOT_NIVEAU['a-decouvrir'],
 	'non-acquis': MOT_NIVEAU['non-acquis'],
 	'en-cours': MOT_NIVEAU['en-cours'],
@@ -455,7 +457,7 @@ const MOT_CELLULE: Record<CelluleFrise, string> = {
    3 août »), sinon le récit dirait « puis en cours hier ». Seuls ces deux paliers sont datés par
    le journal ; « à renforcer » ouvre un segment sans date, et c'est voulu — il suit soit « à
    découvrir » (le début du travail, date affichée nulle part ailleurs sur la ligne), soit
-   « avant le suivi », dont la frontière est l'entrée dans le suivi et non un progrès de
+   « statut inconnu », dont la frontière est l'entrée dans le suivi et non un progrès de
    l'enfant : la dater laisserait croire que quelque chose s'est passé ce jour-là.
    C'est donc le premier segment non initial et non daté du récit, ce que la relecture de langue
    signale comme lisible en lacune. Un « puis ENFIN acquise le 30 juillet » sur les récits à trois

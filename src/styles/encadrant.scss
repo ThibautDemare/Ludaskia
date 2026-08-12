@@ -1064,18 +1064,23 @@ $frise-neutre: #7c8494;
 	height: 100%;
 	background: var(--ok);
 }
-/* Semaine ANTÉRIEURE au suivi : rendue comme « à découvrir », bloc gris au rang le plus bas.
-   DÉCISION DU MAINTENEUR, contre l'avis que défendait ce fichier : « on doit avoir uniquement
-   12 blocs, un pour chaque semaine prévue, pas un seul de plus, pas un seul de moins ». Le
-   filet pointillé qui marquait l'absence de donnée était bien plus lisible en tant que rien
-   qu'en tant que douze semaines : à 4px de haut, neuf cellules contiguës se lisaient comme UN
-   trait continu, et la frise n'était plus dénombrable.
-   Ce que ça coûte, pour le prochain lecteur qui s'en étonnerait : le rang le plus bas AFFIRME
-   « à découvrir » sur des semaines dont l'état est en réalité inconnu (cf. friseNotion, une
-   leçon travaillée avant la mise en service du journal). La distinction survit dans le récit
-   accessible, où ces semaines se disent « avant le suivi » et non « à découvrir ». */
+/* Semaine dont l'état RÉEL est inconnu : un bloc CREUX, au rang le plus bas comme
+   « à découvrir » mais vide au lieu d'être rempli. Trois contraintes qui ne laissaient que ça.
+   - Un bloc, et non le filet pointillé d'origine : à 4px de haut, neuf cellules contiguës se
+     lisaient comme un seul trait continu, la frise n'était plus dénombrable, et l'usage réel a
+     montré que ça passait pour un bug d'affichage plutôt que pour une absence de donnée.
+   - Pas un aplat gris identique à « à découvrir » (essayé, écarté par le mainteneur) : le rang
+     le plus bas AFFIRMERAIT « pas encore commencée » sur des semaines dont on ne sait rien.
+   - Pas une cinquième couleur pleine : la couleur code l'ÉTAT dans ce widget, une teinte de
+     plus se lirait comme un état de plus. Et un gris assez clair pour se lire « vide » tombe
+     sous les 3:1 de 1.4.11 sur fond blanc — c'est déjà pourquoi $frise-neutre existe.
+   Reste le vide, qui ne prétend à aucun rang. Contraste porté par le contour (mêmes 3,76:1 en
+   clair et 3,85:1 en Nuit que l'aplat). `border` et non `box-shadow` : le filet de séparation
+   entre cellules voisines occupe déjà `box-shadow` avec une spécificité plus forte. */
 .enc-frise-inconnu {
 	height: 32%;
+	background: transparent;
+	border: 1px solid $frise-neutre;
 }
 /* Semaine COURANTE : contour, pas un motif de remplissage — l'état atteint à ce jour EST un
    fait (contrairement au COMPTE partiel de l'ancienne frise), on signale seulement qu'il peut

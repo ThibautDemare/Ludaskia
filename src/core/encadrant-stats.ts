@@ -75,6 +75,7 @@ import {
 	type SourceLecon,
 } from './orthographe/lessons';
 import { niveauListeOrtho, avancementLecon } from './orthographe/progression';
+import { ORTHO_PALIERS_KEY, ORTHO_PALIERS_DEBUT_KEY } from './orthographe/paliers';
 import { REVISION_INTERVALLES, PALIER_ACQUIS, JOUR, estAcquis } from './revision';
 import type { EtatRevision, OrthoState } from './orthographe/types';
 
@@ -200,7 +201,7 @@ export interface RecapNotion {
 	epingle: boolean; // présente dans la file « à revoir »
 	vues: number; // nombre de sessions travaillées (stat.attempts) ; 0 si jamais abordée
 	derniereFois: number | null; // horodatage (ms) de la dernière session (stat.lastAt), null si inconnue
-	tendance: TendanceNotion | null; // direction récente (recentPct) ; null si trop peu d'essais
+	tendance: TendanceNotion | null; // direction récente ; null si trop peu de questions (#541)
 	/** Nombre de JOURS où l'enfant a buté sur cette leçon dans la leçon du jour (#485) —
 	    le 1er ne reporte rien, les suivants la mettent de côté. 0 = jamais butée. */
 	blocages: number;
@@ -602,6 +603,26 @@ export function friseNotion(
 	if (niveau === 'a-decouvrir' && aucunCap) return null; // jamais travaillée
 	const finDecouv = finDecouverte(horodatage(firstSeen), debutSuivi);
 	const plancher = plancherSuivi(niveau, aucunCap, finDecouv !== -Infinity);
+	return {
+		semaines: cellulesFrise(acquis, enCours, finDecouv, plancher, debutSuivi, now),
+		enCoursDepuis: enCours,
+		acquisDepuis: acquis,
+	};
+}
+
+/* Cellules d'une frise, à partir des caps datés, de la fin de la période « à découvrir » et de
+   l'état à supposer sur les semaines SUIVIES qu'aucun cap ne couvre encore. Cœur commun aux deux
+   frises (leçon du catalogue, liste de dictée), qui ne diffèrent que par la façon d'établir ces
+   trois éléments — la fenêtre, l'ordre de priorité et le sens d'une cellule, eux, sont les mêmes
+   et ne doivent pas pouvoir diverger. */
+function cellulesFrise(
+	acquis: number | null,
+	enCours: number | null,
+	finDecouv: number,
+	plancher: CelluleFrise,
+	debutSuivi: number,
+	now: number,
+): CelluleFrise[] {
 	const semaines: CelluleFrise[] = [];
 	for (let i = 0; i < SEMAINES_FRISE; i++) {
 		// L'état d'une cellule est celui atteint à la FIN de sa semaine, soit le lundi suivant
@@ -618,7 +639,41 @@ export function friseNotion(
 		else if (finSemaine <= debutSuivi) semaines.push('inconnu');
 		else semaines.push(plancher);
 	}
-	return { semaines, enCoursDepuis: enCours, acquisDepuis: acquis };
+	return semaines;
+}
+
+/* Frise d'états d'UNE LISTE de dictée (#541) : même journal daté (ORTHO_PALIERS_KEY), même
+   fenêtre, même lecture des cellules que pour une leçon — avec une DÉDUCTION de plus.
+
+   L'échelle des listes ne compte que trois valeurs (cf. orthographe/progression.ts) : « en cours »
+   y signifie « au moins un mot commencé », et « à renforcer » n'existe pas, l'acquisition d'un mot
+   étant binaire. Une semaine SUIVIE antérieure au tampon « en cours » était donc forcément
+   « à découvrir » — rien n'était commencé. La frise d'une liste ne montre ainsi de creux
+   qu'AVANT la mise en service du journal, jamais après ; là où celle d'une leçon doit rester dans
+   le doute, l'état d'avant son premier cap pouvant aussi bien avoir été « à renforcer ».
+
+   `niveau` = état courant (`niveauListeOrtho`) : il dit si la liste a été commencée (sinon pas de
+   frise) et tient lieu d'état des semaines suivies quand AUCUN cap n'est daté — cas d'un profil
+   qui travaillait ses listes avant l'arrivée de ce journal. `debutSuivi` vient de
+   `debutSuiviPaliers` appliqué à la borne PROPRE à ce journal (ORTHO_PALIERS_DEBUT_KEY). */
+export function friseListeOrtho(
+	paliers: PaliersNotion | undefined,
+	niveau: NiveauNotion,
+	debutSuivi: number,
+	now: number,
+): FriseNotion | null {
+	const enCours = horodatage(paliers?.enCours);
+	const acquis = horodatage(paliers?.acquis);
+	const aucunCap = enCours === null && acquis === null;
+	if (niveau === 'a-decouvrir' && aucunCap) return null; // jamais commencée
+	const plancher: CelluleFrise = aucunCap ? niveau : 'a-decouvrir';
+	// Pas de date de « première rencontre » pour une liste (aucun équivalent de firstSeen) : la
+	// période « à découvrir » n'est pas bornée par une date mais déduite du plancher ci-dessus.
+	return {
+		semaines: cellulesFrise(acquis, enCours, -Infinity, plancher, debutSuivi, now),
+		enCoursDepuis: enCours,
+		acquisDepuis: acquis,
+	};
 }
 
 /* La frise montre-t-elle un changement d'état ? Alimente le compteur « N changements récents »
@@ -828,15 +883,33 @@ export interface RecapListeOrtho {
 	nbMots: number; // mots attendus de la liste
 	maitrises: number; // mots déjà maîtrisés (compte factuel, accolé à « en cours » par l'UI)
 	mots: string[]; // mots de la liste, dans l'ordre d'AFFICHAGE (cf. motsApercu) — #441
+	/** Trajectoire d'états semaine par semaine (#541, cf. friseListeOrtho) ; `null` quand la
+	    liste n'a jamais été commencée, donc qu'il n'y a rien à tracer. */
+	frise: FriseNotion | null;
 }
 /* `dicteeDispo` fourni par l'UI (dispo du TTS) : conditionne l'« acquis » (mode dictée requis).
    Les dictées PRÉDÉFINIES ne sont listées que si l'enfant en a commencé au moins un mot
    (≠ « à découvrir ») — sinon les ~45 prédéfinies noieraient les listes du parent. Les listes
    CRÉÉES par le parent restent toujours visibles. */
-export function listesOrthoProfil(profile: Profile, dicteeDispo = false): RecapListeOrtho[] {
+export function listesOrthoProfil(
+	profile: Profile,
+	dicteeDispo = false,
+	now = Date.now(),
+): RecapListeOrtho[] {
 	const state = loadOrthoFor(profile.uuid);
 	const niveau = niveauProfilMatiere(profile, 'francais');
 	const epinglees = new Set(loadRevoirFor(profile.uuid));
+	const paliersRaw = lsGetRaw(profile.uuid + '/' + ORTHO_PALIERS_KEY, {}) as Record<
+		string,
+		PaliersNotion
+	>;
+	// Borne de suivi : la MÊME pour toutes les listes du profil, comme pour les leçons (deux
+	// lignes voisines ne doivent pas s'afficher selon deux règles). Le plus ancien franchissement
+	// sert de repli, ce qu'assure `debutSuiviPaliers` : il PROUVE que le journal tournait déjà.
+	const debutSuivi = debutSuiviPaliers(
+		lsGetRaw(profile.uuid + '/' + ORTHO_PALIERS_DEBUT_KEY, null),
+		paliersRaw,
+	);
 	const out: RecapListeOrtho[] = [];
 	for (const ref of listOrthoLecons(state, niveau)) {
 		const av = avancementLecon(state, ref.id, dicteeDispo);
@@ -855,6 +928,7 @@ export function listesOrthoProfil(profile: Profile, dicteeDispo = false): RecapL
 			nbMots: ref.nbMots,
 			maitrises: av.maitrises,
 			mots: motsApercu(ref.mots, ref.source),
+			frise: friseListeOrtho(paliersRaw[ref.id], av.niveau, debutSuivi, now),
 		});
 	}
 	return out;

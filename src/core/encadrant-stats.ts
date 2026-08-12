@@ -548,6 +548,43 @@ export function debutSuiviPaliers(depuis: unknown, paliers: Record<string, Palie
 			if (t !== null && t < debut) debut = t;
 	return debut;
 }
+/* Fin de la période « à découvrir » d'une leçon : la date de sa première rencontre quand celle-ci
+   est un fait exploitable, `-Infinity` sinon (aucune semaine ne vaudra « à découvrir »).
+   Elle ne l'est que si elle tombe à la borne de suivi ou après : avant la borne, des semaines
+   entières ont été travaillées hors suivi et leur état reste inconnu.
+   Comparaison à la SEMAINE, granularité de la frise : la rencontre est datée quelques
+   millisecondes avant la borne au sein d'une même fin de session (deux `Date.now()`, cf.
+   recordLessonRun), ce qui aurait fait juger « antérieures au journal » les leçons de la toute
+   première session d'un profil — le même critère invisible que celui corrigé ici.
+   Une borne inconnue (Infinity) rend la comparaison fausse, donc pas de période « à découvrir » :
+   sans borne aucune semaine n'est déductible, et une rangée « à découvrir » puis 'inconnu'
+   romprait le préfixe et dessinerait un creux. */
+function finDecouverte(rencontre: number | null, debutSuivi: number): number {
+	return rencontre !== null && debutSemaine(rencontre) >= debutSemaine(debutSuivi)
+		? rencontre
+		: -Infinity;
+}
+/* État des semaines SUIVIES tant qu'aucun cap n'est encore franchi. Trois situations, et une
+   seule des trois autorise « à renforcer » :
+   - aucun cap daté du tout : rien n'est monté sous l'œil du journal, donc l'état courant tient
+     depuis la borne (une montée aurait été datée, et l'étoile ne se retire pas). Ce cas est
+     testé EN PREMIER : le plancher couvre alors jusqu'à la dernière cellule, qui ne peut donc
+     pas se retrouver SOUS le mot d'état de la ligne — un faux signal de recul, si un chemin
+     d'écriture des stats oubliait un jour d'appeler recordMonteesPalier ;
+   - première rencontre datée (donc postérieure à la borne) : toute la trajectoire est
+     journalisée, donc avant son premier cap la leçon était travaillée sous les 40 % ;
+   - un cap daté, mais un historique antérieur au journal : le tampon peut n'être que la PREMIÈRE
+     OBSERVATION d'un état déjà atteint avant la borne — une leçon étoilée en juin fait tamponner
+     « acquis » à sa première session de juillet. Affirmer « à renforcer » avant ce tampon
+     reviendrait à déclarer sous les 40 % une leçon peut-être déjà maîtrisée. */
+function plancherSuivi(
+	niveau: NiveauNotion,
+	aucunCap: boolean,
+	decouverteDatee: boolean,
+): CelluleFrise {
+	if (aucunCap) return niveau;
+	return decouverteDatee ? 'non-acquis' : 'inconnu';
+}
 /* `niveau` = état courant de la notion (`niveauNotion`), qui sert deux fois : il dit si la
    leçon a été travaillée (sinon pas de frise) et il tient lieu d'état des semaines suivies
    quand aucun cap n'est daté. `debutSuivi` vient de `debutSuiviPaliers`, calculé UNE fois par
@@ -563,38 +600,8 @@ export function friseNotion(
 	const acquis = horodatage(paliers?.acquis);
 	const aucunCap = enCours === null && acquis === null;
 	if (niveau === 'a-decouvrir' && aucunCap) return null; // jamais travaillée
-	const rencontre = horodatage(firstSeen);
-	// Première rencontre POSTÉRIEURE à la borne : avant elle, la leçon n'était pas commencée,
-	// et « à découvrir » est un fait, pas une supposition. Antérieure : des semaines entières ont
-	// été travaillées hors suivi, et leur état reste inconnu. Comparaison à la SEMAINE, granularité
-	// de la frise : la rencontre est datée quelques millisecondes avant la borne dans une même fin
-	// de session (deux `Date.now()`, cf. recordLessonRun), ce qui aurait fait juger « antérieures
-	// au journal » les leçons de la toute première session d'un profil — le même critère invisible
-	// que celui corrigé ici. Une borne inconnue (Infinity) rend la comparaison fausse, donc pas de
-	// préfixe « à découvrir » : sans borne, aucune semaine n'est déductible, et une rangée
-	// « à découvrir » puis 'inconnu' romprait le préfixe et dessinerait un creux. */
-	const avantRencontre =
-		rencontre !== null && debutSemaine(rencontre) >= debutSemaine(debutSuivi)
-			? rencontre
-			: -Infinity;
-	// Semaines suivies, avant tout cap daté. Trois situations, et une seule des trois autorise
-	// « à renforcer » :
-	// - aucun cap daté du tout : rien n'est monté sous l'œil du journal, donc l'état courant tient
-	//   depuis la borne (une montée aurait été datée, et l'étoile ne se retire pas). Ce cas passe
-	//   AVANT le suivant : le plancher couvre alors jusqu'à la dernière cellule, qui ne peut donc
-	//   pas se retrouver SOUS le mot d'état de la ligne — un faux signal de recul si un chemin
-	//   d'écriture des stats oubliait un jour d'appeler recordMonteesPalier ;
-	// - rencontrée APRÈS la borne : toute sa trajectoire est journalisée, donc avant son premier
-	//   cap elle était bien travaillée sous les 40 %, soit « à renforcer » ;
-	// - un cap daté, mais un historique antérieur au journal : le tampon peut n'être que la
-	//   PREMIÈRE OBSERVATION d'un état déjà atteint avant la borne — une leçon étoilée en juin
-	//   fait tamponner « acquis » à sa première session de juillet. Affirmer « à renforcer »
-	//   avant ce tampon reviendrait à déclarer sous les 40 % une leçon peut-être déjà maîtrisée.
-	const plancher: CelluleFrise = aucunCap
-		? niveau
-		: avantRencontre !== -Infinity
-			? 'non-acquis'
-			: 'inconnu';
+	const finDecouv = finDecouverte(horodatage(firstSeen), debutSuivi);
+	const plancher = plancherSuivi(niveau, aucunCap, finDecouv !== -Infinity);
 	const semaines: CelluleFrise[] = [];
 	for (let i = 0; i < SEMAINES_FRISE; i++) {
 		// L'état d'une cellule est celui atteint à la FIN de sa semaine, soit le lundi suivant
@@ -607,7 +614,7 @@ export function friseNotion(
 		// leçon dont la ligne annonce par ailleurs, en texte, la date d'acquisition.
 		if (acquis !== null && acquis < finSemaine) semaines.push('acquis');
 		else if (enCours !== null && enCours < finSemaine) semaines.push('en-cours');
-		else if (finSemaine <= avantRencontre) semaines.push('a-decouvrir');
+		else if (finSemaine <= finDecouv) semaines.push('a-decouvrir');
 		else if (finSemaine <= debutSuivi) semaines.push('inconnu');
 		else semaines.push(plancher);
 	}

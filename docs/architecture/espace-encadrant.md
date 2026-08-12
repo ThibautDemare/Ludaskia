@@ -113,8 +113,11 @@ matière) : « X/total travaillées · Y acquises » par matière, pour équilib
 entre matières plutôt que se focaliser sur une seule. Depuis #521, la ligne porte aussi
 « N changement(s) récent(s) » (`RecapMatiere.changementsRecents`, cf. `aChangeRecemment` dans
 [Logique pure](core.md)) quand il y en a : seule trace de « ça bouge » lisible sans déplier
-une catégorie, la frise ayant rejoint les lignes de leçon (ci-dessous). Chaque catégorie
-affiche le même dénombrement (`RecapCategorie.travaillees`). Comptage factuel, aucune note.
+une catégorie, la frise ayant rejoint les lignes de leçon (ci-dessous). Ce chiffre ne se
+déduit pas entièrement du dessin de la frise (un cap daté derrière un seul état visible
+compte, un simple passage sous le suivi non) — cf. `aChangeRecemment` pour le détail. Chaque
+catégorie affiche le même dénombrement (`RecapCategorie.travaillees`). Comptage factuel,
+aucune note.
 
 **Tendance par notion** (signal COURT TERME, pas une note) : puce ↗ « en progrès » / →
 « stable » / ↘ « à relancer » à côté de l'état, dérivée de la fenêtre glissante `recentPct`
@@ -132,18 +135,33 @@ dépliable d'une catégorie (remplace la frise par matière de #397 : un compteu
 de notions ayant franchi un cap, événement rare, laissait la plupart des colonnes à 0 et ne
 nommait aucune leçon). Douze cellules (**12 dernières semaines**, `SEMAINES_FRISE`), une par
 semaine : couleur ET hauteur portent le même rang d'état, le plus haut atteint à cette date
-(`friseNotion(paliers, firstSeen, now)`, cf. [Logique pure](core.md)) — deux canaux
-redondants, la couleur ne portant jamais seule le sens. Gris neutre dédié (`$frise-neutre`,
-distinct de `--muted` qui tombe sous le seuil 3:1 pour un objet graphique de cette taille)
-pour « à découvrir », un filet pointillé (sans hauteur) pour une semaine antérieure au suivi
-(`'inconnu'`, jamais de cellule « à renforcer », ce palier n'étant pas daté), bleu
-`--cat-bleu` pour « en cours » (**relevé en thème Nuit**, en réutilisant le bleu déjà rehaussé
-pour le graphe d'activité plutôt qu'en introduire un troisième) et vert `--ok` pour « acquis » ;
-un filet `box-shadow` sépare deux cellules contiguës (deux états voisins peuvent avoir des
-luminances proches). Ratios mesurés en commentaire dans `styles/encadrant.scss`
-(`tools/contrast/`). La dernière cellule (semaine en cours) porte en plus un contour distinct
-(`.enc-frise-courante`) : l'état qu'elle montre est déjà un fait, mais peut encore changer
-avant dimanche.
+(`friseNotion(paliers, firstSeen, niveau, debutSuivi, now)`, cf. [Logique pure](core.md)) —
+deux canaux redondants, la couleur ne portant jamais seule le sens. `debutSuivi` est une
+borne **par profil** (pas par leçon, cf. [Logique pure](core.md) pour `debutSuiviPaliers`)
+qui gouverne toutes les lignes de la même façon : une première rencontre ne vaut
+« à découvrir » que si sa semaine tombe à cette borne ou après.
+
+Cinq rangs, mais **quatre rendus visuels** : gris neutre dédié (`$frise-neutre`, distinct de
+`--muted` qui tombe sous le seuil 3:1 pour un objet graphique de cette taille) au rang le
+plus bas pour « à découvrir » **et** pour une semaine antérieure à `debutSuivi` (`'inconnu'`)
+— les deux partagent désormais exactement le même bloc, **décision du mainteneur** contre
+l'avis a11y d'origine (qui distinguait `'inconnu'` par un filet fin sans hauteur) : « on doit
+avoir uniquement 12 blocs, un pour chaque semaine prévue, pas un seul de plus, pas un seul de
+moins » — à 4px de haut, neuf cellules `'inconnu'` contiguës se lisaient comme un seul trait
+continu et la frise n'était plus dénombrable. Coût assumé : le rang le plus bas **affirme**
+« à découvrir » sur des semaines dont l'état est en réalité inconnu ; la distinction ne
+survit que dans le **récit accessible** (`aria-label`/`title`, ci-dessous), qui dit « avant
+le suivi » et non « à découvrir » pour ces semaines-là. Puis `--warn` pour « à renforcer » —
+jamais **daté** (ce palier n'est pas un progrès de maîtrise) mais **déduit** dès que la leçon
+est suivie sans cap franchi, ce qui donne désormais une frise aux leçons n'ayant jamais
+dépassé 40 % —, bleu `--cat-bleu` pour « en cours » (**relevé en thème Nuit**, en réutilisant
+le bleu déjà rehaussé pour le graphe d'activité plutôt qu'en introduire un troisième) et vert
+`--ok` pour « acquis » ; un filet `box-shadow` sépare deux cellules contiguës (deux états
+voisins peuvent avoir des luminances proches). Ratios mesurés en commentaire dans
+`styles/encadrant.scss` (`tools/contrast/`) ; `styles/print.scss` relève aussi `--warn` en
+thème Nuit pour l'impression, dont ces cellules dépendent désormais également. La dernière
+cellule (semaine en cours) porte en plus un contour distinct (`.enc-frise-courante`) :
+l'état qu'elle montre est déjà un fait, mais peut encore changer avant dimanche.
 
 **Rendu en un seul `role="img"` par ligne** (`friseNotionHTML`, `ui/encadrant-progression.ts`) :
 les douze cellules sont `aria-hidden`, l'`aria-label`/`title` porte un **récit textuel** des
@@ -154,8 +172,11 @@ plus petit, ce que la dernière cellule montre déjà (avis designer) — le **m
 reste affiché (canal indépendant de la couleur, a11y). La méta de la ligne (« travaillée N
 fois · dernière fois … ») gagne la date du cap le **plus haut** franchi (« acquise le… » /
 « passée en cours le… ») : la trajectoire complète vit dans la frise, la méta n'en retient que
-l'événement marquant. Rien à tracer (aucun franchissement daté) → pas de frise, et la puce
-d'état n'est alors pas omise : la ligne garde sa pastille habituelle.
+l'événement marquant. Un segment « à renforcer » reste volontairement **muet** (pas de date,
+ce palier n'en a pas) — « avant le suivi, puis à renforcer » se lit donc sans date pour ce
+second segment. Rien à tracer (leçon jamais travaillée : encore « à découvrir » et aucun cap
+franchi) → pas de frise, et la puce d'état n'est alors pas omise : la ligne garde sa pastille
+habituelle.
 
 **Signal de recul** : la frise ne redescend jamais (elle ne date que des montées) — un écart
 entre sa dernière cellule (p. ex. « acquis ») et le **mot** d'état affiché à côté (qui peut

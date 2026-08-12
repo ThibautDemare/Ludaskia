@@ -24,6 +24,13 @@ révision espacée), `ludaskia_paliers` (#397 : journal daté des
 namespacée `lessonId@niveau` comme stats/étoiles, 2 horodatages max donc bornée par le
 catalogue — écrit par `recordMonteesPalier` en fin de session, APRÈS l'étoile ; base de la
 frise d'évolution de l'espace encadrant, cf. [Espace encadrant](espace-encadrant.md)),
+`ludaskia_paliersDepuis` (#521 : **mise en service**, par profil, du journal ci-dessus — un
+horodatage **unique**, écrit une seule fois par `recordMonteesPalier` à sa toute première
+exécution pour ce profil, même si la session ne franchit aucun palier ; base de la borne
+`debutSuiviPaliers` qui uniformise la frise d'états entre toutes les leçons d'un même profil
+— avant elle, une leçon était jugée « connue de bout en bout » dès qu'une
+`ludaskia_lessonFirstSeen` existait, si bien que deux leçons voisines travaillées la même
+semaine pouvaient suivre deux règles différentes, cf. [Logique pure](core.md)),
 `ludaskia_lessonRevision` (état SR par leçon),
 `ludaskia_leconReport` (#485 : avancement/report de la **leçon du jour** —
 `Record<'lessonId@niveau', EtatReport>`, namespacée par niveau comme les étoiles et

@@ -58,6 +58,29 @@ test('Révision : la comparaison se joue en tuiles (pas de clavier) + consigne',
 	await expect(page.locator('#ltuiSlot')).toHaveText(signe);
 	await page.locator('#revValidate').click();
 	await expect(page.locator('.rev-feedback.ok')).toBeVisible(); // « ✓ Bravo ! »
+	// Verdict ORDINAIRE annoncé : la comparaison en tuiles n'a pas de région live à elle
+	// (contrairement au tri/appariement/clique-sur-le-mot/problème) → #revStatus le porte.
+	await expect(page.locator('#revStatus')).toHaveText("Bravo, c'est juste.");
+	expect(errors).toEqual([]);
+});
+
+test('Révision : un verdict FAUX en saisie est annoncé dans #revStatus', async ({ page }) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('num-valeur-position'));
+	await gotoHash(page, 'revision-espacee');
+
+	const input = page.locator('#revInput');
+	await expect(input).toBeVisible();
+	await input.fill('999999'); // jamais le chiffre d'un rang (0-9) : faux à coup sûr
+	await input.press('Enter');
+
+	await expect(page.locator('.rev-feedback.ko')).toBeVisible();
+	// Même format « sans région propre » que la comparaison en tuiles ci-dessus : le
+	// verdict (et la bonne réponse révélée) est annoncé dans #revStatus.
+	const bonneReponse = await page.locator('.rev-feedback.ko strong').innerText();
+	await expect(page.locator('#revStatus')).toHaveText(
+		`Ce n'est pas ça. La bonne réponse : ${bonneReponse}.`,
+	);
 	expect(errors).toEqual([]);
 });
 
@@ -140,6 +163,9 @@ test("Révision : l'ordre alphabétique se joue en tuiles-mots", async ({ page }
 	// #345 : le widget figé reste visible avec ses marques ✓/✗ (la révision les
 	// affiche désormais, comme les runners de leçon — correction de la divergence).
 	expect(await page.locator('.lord-cell.correct').count()).toBe(ordre.length);
+	// Le rangement d'une suite n'a pas de région live à lui (à la différence du tri, de
+	// l'appariement, de « clique sur le mot » et du problème) : le verdict passe par #revStatus.
+	await expect(page.locator('#revStatus')).toHaveText("Bravo, c'est juste.");
 	expect(errors).toEqual([]);
 });
 
@@ -163,6 +189,11 @@ test('Révision : « ranger par thème » montre les marques ✓/✗ (#345)', as
 	expect(await page.locator('.ltri-posee.wrong').count()).toBe(3);
 	await expect(page.locator('.rev-feedback')).toBeVisible();
 	await expect(page.locator('#revNext')).toBeVisible();
+	// Le tri a SA PROPRE région live (#ltriStatus, déjà porteuse d'une annonce de dépôt) :
+	// le résumé global ne doit pas s'y superposer — #revStatus reste vide, contrairement
+	// aux formats « muets » (saisie, QCM, tuile, rangement) testés plus haut.
+	await expect(page.locator('#revStatus')).toHaveText('');
+	await expect(page.locator('#ltriStatus')).not.toHaveText('');
 	expect(errors).toEqual([]);
 });
 

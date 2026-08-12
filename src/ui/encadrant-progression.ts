@@ -117,7 +117,7 @@ export function recapHTML(recap: RecapProfil, consulte: Profile): string {
       ${activiteHTML(recap)}
       ${travailHTML(consulte)}
       ${maitriseHTML(recap)}
-      ${listesOrthoHTML(consulte)}
+      ${listesOrthoHTML(consulte, Date.now())}
       ${erreursHTML(consulte, Date.now())}
     </section>`;
 }
@@ -540,7 +540,7 @@ function motsDicteeHTML(mots: readonly string[], label: string): string {
     </details>`;
 }
 
-function ligneListeOrtho(l: RecapListeOrtho): string {
+function ligneListeOrtho(l: RecapListeOrtho, now: number): string {
 	const entryId = orthoRevoirId(l.id);
 	// « en cours » regroupe « 1 mot commencé » et « 9/10 maîtrisés » : on accole le compte
 	// factuel de mots maîtrisés pour restituer la nuance (avis pédago), jamais de %.
@@ -548,17 +548,34 @@ function ligneListeOrtho(l: RecapListeOrtho): string {
 		l.niveau === 'en-cours'
 			? `${l.maitrises}/${l.nbMots} mot${l.nbMots > 1 ? 's' : ''} maîtrisé${l.maitrises > 1 ? 's' : ''}`
 			: `${l.nbMots} mot${l.nbMots > 1 ? 's' : ''}`;
-	const meta = `${compte}${l.source === 'predefini' ? ' · dictée proposée' : ''}`;
+	// Date du cap le PLUS HAUT franchi, comme sur une ligne de leçon (#541) : la trajectoire
+	// complète est dans la frise, la méta n'en retient que l'événement marquant.
+	const franchi =
+		l.frise?.acquisDepuis != null
+			? `acquise ${libelleDerniereFois(l.frise.acquisDepuis, now)}`
+			: l.frise?.enCoursDepuis != null
+				? `commencée ${libelleDerniereFois(l.frise.enCoursDepuis, now)}`
+				: '';
+	const meta = [compte, l.source === 'predefini' ? 'dictée proposée' : '', franchi]
+		.filter(Boolean)
+		.join(' · ');
+	// Puce d'état omise quand la frise est là, pour la même raison que sur une ligne de leçon :
+	// sa dernière cellule dit déjà l'état, en plus grand. Le MOT reste (canal indépendant de la
+	// couleur, a11y).
+	const puce = l.frise
+		? ''
+		: `<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
 	// Le repli des mots est le DERNIER enfant : il occupe toute la largeur (flex-basis 100 %),
 	// donc l'ordre du DOM reste l'ordre visuel — et « Épingler » garde sa place dans la
 	// tabulation, avant lui (a11y : ordre de focus = ordre de lecture).
 	return `<li class="enc-detail-item">
-      <span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>
+      ${puce}
       <span class="enc-detail-main">
         <span class="enc-detail-lab">${escapeHTML(l.label)}</span>
         <span class="enc-detail-meta">${meta}</span>
       </span>
       <span class="enc-detail-mot"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[l.niveau]}</span>
+      ${friseNotionHTML(l.frise, now)}
       <span class="enc-actions">
         <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${l.epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(l.label)} »">${l.epingle ? 'Retirer' : 'Épingler'}</button>
       </span>
@@ -585,12 +602,13 @@ function voletListesHTML(
 	consulte: Profile,
 	listes: RecapListeOrtho[],
 	proposees: DicteeProposee[],
+	now: number,
 ): string {
 	const legende = ORDRE_NIVEAUX_ORTHO.map(
 		(n) => `<span class="enc-key enc-key-${n}">${MOT_NIVEAU[n]}</span>`,
 	).join('');
 	const suivi = listes.length
-		? `<ul class="enc-detail">${listes.map(ligneListeOrtho).join('')}</ul>`
+		? `<ul class="enc-detail">${listes.map((l) => ligneListeOrtho(l, now)).join('')}</ul>`
 		: `<p class="enc-hint">Aucune dictée commencée pour le moment.</p>`;
 	// « À l'avance » (parcourir/épingler une dictée non commencée) est déplacé dans l'onglet
 	// Programme (#459) : c'est un acte de préparation, pas d'observation. On laisse ici un
@@ -610,9 +628,9 @@ function voletListesHTML(
    dictées. Le volet « Listes » reste le défaut — la banque peut faire des centaines de
    lignes, elle ne s'affiche que si on la demande. Le rendu du volet « Mots » vit dans
    `encadrant-banque` (état de vue, recherche, suppression). */
-function listesOrthoHTML(consulte: Profile): string {
+function listesOrthoHTML(consulte: Profile, now: number): string {
 	const dispo = dicteeDisponible();
-	const listes = listesOrthoProfil(consulte, dispo);
+	const listes = listesOrthoProfil(consulte, dispo, now);
 	const proposees = dicteesProposees(consulte, dispo);
 	const banque = banqueDuProfil(consulte.uuid);
 	// Rien à montrer ni côté listes ni côté mots. La banque compte dans cette condition :
@@ -636,7 +654,7 @@ function listesOrthoHTML(consulte: Profile): string {
 	const corps =
 		banque.length && vueDictees() === 'mots'
 			? banqueMotsHTML(consulte, banque)
-			: voletListesHTML(consulte, listes, proposees);
+			: voletListesHTML(consulte, listes, proposees, now);
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon(catOrtho?.icon ?? 'book-open')} Dictées</h3>
       ${bascule}
@@ -777,7 +795,7 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 	// État d'acquisition des épinglées (#518) — résolu par `niveauEpingle` (core, pur). Le suivi
 	// des dictées n'est relu que si une liste est épinglée : sinon c'est un accès stockage pour rien.
 	const listesOrtho = pinned.some((e) => e.kind === 'ortho')
-		? listesOrthoProfil(consulte, dicteeDisponible())
+		? listesOrthoProfil(consulte, dicteeDisponible(), now)
 		: [];
 	const blocEpinglees = pinned.length
 		? `<ul class="enc-revoir">${pinned

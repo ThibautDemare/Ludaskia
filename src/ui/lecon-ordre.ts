@@ -48,6 +48,14 @@ import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide } from './aide-exercice';
 import type { TypeAide } from '../core/aide';
 import { capterErreur } from './erreur-capture';
+import {
+	capterPasse,
+	decisionHTML,
+	ligneRevelation,
+	masquerDecision,
+	revelerSolution,
+	wirePasser,
+} from './lecon-passer';
 import { ordreErreur } from '../core/erreur-representation';
 
 const NB_QUESTIONS = 6;
@@ -65,6 +73,10 @@ let questions: OrdreQuestion[] = [];
 let idx = 0;
 let score = 0;
 let ctrl: TuileController; // widget « ranger une suite » mutualisé (#345)
+// Question TRANCHÉE (validée ou révélée via « Je ne sais pas, montre-moi », #467) : garde
+// contre un second enregistrement, et surtout contre une réactivation de « Vérifier » par
+// le `onState` du widget, qui reste bavard tant que `verify()` n'a pas figé le widget.
+let tranchee = false;
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -204,6 +216,7 @@ enregistrerRunner(RUNNER, (snap) => {
 
 function renderQuestion(): void {
 	const q = questions[idx];
+	tranchee = false;
 	sheets().innerHTML = `
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
@@ -211,7 +224,7 @@ function renderQuestion(): void {
         ${leconTitreHTML(lesson)}
         <p class="sprint-q lord-consigne"${ttsAttr(q.question)}>${escapeHTML(q.question)}</p>
         <div data-tuile-mount></div>
-        <button class="sprint-btn" id="lordVerif" disabled>Vérifier</button>
+        ${decisionHTML('lordVerif')}
         <p class="sr-only" id="lordStatus" role="status" aria-live="polite" aria-atomic="true"></p>
         <div class="sprint-correction" id="lordFeedback" hidden></div>
         <div class="sprint-actions" id="lordActions" hidden></div>
@@ -223,16 +236,23 @@ function renderQuestion(): void {
 	ctrl = bindTuileInteraction(
 		sheets(),
 		{ kind: 'ordre', question: q.question, ordre: q.ordre, tuiles: q.tuiles, nature: q.nature },
-		{ variant: 'lecon', onState: (complete) => (verif.disabled = !complete) },
+		{
+			variant: 'lecon',
+			onState: (complete) => {
+				if (!tranchee) verif.disabled = !complete;
+			},
+		},
 	);
 	verif.addEventListener('click', () => verifier());
+	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
 	monterBoutonAide(sheets().querySelector('.sprint-stage'), typeAide(q)); // bouton « ? » persistant (#272)
 }
 
 function verifier(): void {
 	const verif = sheets().querySelector('#lordVerif') as HTMLButtonElement;
-	if (verif.disabled) return; // rangée incomplète
+	if (tranchee || verif.disabled) return; // déjà tranchée, ou rangée incomplète
+	tranchee = true;
 	const q = questions[idx];
 	const correct = ctrl.verify(); // fige + marque chaque case (✓/✗)
 	// Ordre réellement posé par l'enfant : il sert à DEUX choses, le journal d'erreurs
@@ -253,9 +273,9 @@ function verifier(): void {
 	// Diagnostic ciblé de l'inversion : il s'AJOUTE à la révélation du bon rangement
 	// (qui reste l'information la plus utile), il ne la remplace pas.
 	const inversion = correct ? null : messageInversion(propose, q.ordre, q.nature);
-	// Une fois la réponse validée, « Vérifier » s'efface : seul « Continuer ▶ »
+	// Une fois la réponse validée, le bloc de décision s'efface : seul « Continuer ▶ »
 	// (#lordActions) reste, pour ne pas afficher deux boutons à la fois (#153).
-	verif.hidden = true;
+	masquerDecision(sheets());
 	// Annonce vocale du verdict (SC 4.1.3) : `#lordFeedback` n'est PAS une région live et
 	// `wireNext` pose le focus sur « Continuer ▶ » — sans ça, un lecteur d'écran passe
 	// par-dessus le diagnostic d'inversion ET la révélation du bon rangement. Peuplé AVANT
@@ -278,6 +298,38 @@ function verifier(): void {
 			},
 		},
 	);
+}
+
+/* « Je ne sais pas, montre-moi » (#467) : la suite attendue est révélée en TEXTE et le
+   rangement commencé reste visible, mais figé — jamais `ctrl.verify()`, qui marquerait ✗ des
+   cases vides. La question compte au dénominateur (score inchangé ⇒ 0 XP) et n'est pas
+   rejouée. Pas de diagnostic d'inversion ici : sans rangée complète, il n'y a rien à
+   diagnostiquer. */
+function passer(): void {
+	if (tranchee) return;
+	tranchee = true;
+	const q = questions[idx];
+	// Attendu formaté comme pour une erreur (séparateur accordé à la nature, #448), avec une
+	// proposition vide puisqu'il n'y a pas eu d'essai. Il sert aussi d'annonce vocale.
+	const attendue = ordreErreur([], q.ordre, q.nature).attendue;
+	capterPasse({ text: q.question, attendue, lessonId: lesson.id });
+	// L'index avance AVANT tout affichage : la photo de reprise (#498) est prise quand
+	// l'enfant quitte l'écran, et une question déjà révélée ne doit jamais lui être reposée.
+	idx++;
+	revelerSolution({
+		root: sheets(),
+		feedback: sheets().querySelector('#lordFeedback') as HTMLElement,
+		actions: sheets().querySelector('#lordActions') as HTMLElement,
+		repHTML: ligneRevelation('le bon rangement', q.ordre.map(escapeHTML).join(' · ')),
+		// La suite est énumérée avec le séparateur de sa NATURE (#448) : le point-virgule des
+		// nombres se lit comme une pause, pas comme une virgule décimale.
+		annonce: `Le bon rangement : ${attendue}.`,
+		isLast: idx >= questions.length,
+		onNext: () => {
+			if (idx >= questions.length) finish();
+			else renderQuestion();
+		},
+	});
 }
 
 function finish(): void {

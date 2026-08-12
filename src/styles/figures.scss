@@ -42,7 +42,21 @@
 	flex-direction: column;
 	align-items: center;
 }
-/* Légende (jamais l'info par la seule couleur) : rôle des deux aiguilles. */
+/* Figure + sa légende empilées et centrées : même moule que `.figure-horloge`, réutilisé par
+   la droite graduée à deux repères (#467). Le conteneur d'écran peut être une rangée flex
+   (`.dg-figure`), auquel cas la légende se poserait À CÔTÉ du SVG sans cette enveloppe. */
+.figure-avec-legende {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	/* Largeur PLEINE (le SVG reste borné par son propre max-width) : sans elle, l'enveloppe se
+	   réduirait au contenu, et un SVG sans attribut width — le cas général du moteur, cf.
+	   `svgCanvas` — retomberait sur la largeur par défaut d'un remplacé (300 px). La figure
+	   rétrécirait donc en apparaissant, juste sous les yeux de l'enfant. */
+	width: 100%;
+}
+/* Légende sous une figure (jamais l'info par la seule couleur) : rôle des deux aiguilles de
+   l'horloge, rôle des deux repères d'une droite graduée révélée (#467). */
 .clock-legend {
 	margin: 0.35rem 0 0;
 	color: var(--grey);
@@ -58,6 +72,11 @@
 }
 .cl-m {
 	color: var(--clock-min);
+}
+/* Pastille du repère JUSTE d'une droite graduée révélée (#467) : même vert que la tête du
+   repère dans le SVG. Purement redondante (`aria-hidden`), le rôle étant dit en texte. */
+.cl-ok {
+	color: var(--ok);
 }
 
 /* ---------- Angle (#202) ---------- */

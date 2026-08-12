@@ -7,6 +7,8 @@
    Rendu selon la nature : maths = saisie, conjugaison = QCM,
    orthographe = mot caché (on regarde — avec écoute possible —, puis on écrit ;
    à l'erreur, on rebascule sur l'atelier du mot, comme à l'entraînement).
+   Chaque question offre en outre une SORTIE DE SECOURS assumée — « Je ne sais pas,
+   montre-moi » (#467) — traitée comme une réponse fausse (cf. plus bas).
    ============================================================ */
 import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
@@ -51,12 +53,29 @@ import { bindClicMot } from './clic-mot-interaction';
 import {
 	renderProblemeBoardHTML,
 	corrigerEtapesProbleme,
+	revelerEtapesProbleme,
 	PROB_STATUS_HTML,
 } from './lecon-probleme';
 import { brouillonHTML, bindBrouillon } from './brouillon';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 import type { TypeAide } from '../core/aide';
 import { capterErreur, libelleChoix } from './erreur-capture';
+/* « Je ne sais pas, montre-moi » (#467) : fond COMMUN avec le mode leçon
+   (ui/lecon-passer.ts, mêmes fonctions) — libellé du lien, ton du verdict, désarmement du
+   widget, annonce non visuelle, entrée de journal « n'a pas essayé ». La révision n'en est
+   qu'un habillage (`.rev-*`, `#revAfter`), pas une seconde implémentation : c'est la
+   divergence des deux copies qui avait laissé cinq de ses formats MUETS pour un lecteur
+   d'écran alors que les runners de leçon étaient déjà corrigés. */
+import {
+	annoncerRevelation,
+	annoncerStatut,
+	capterPasse as capterPasseNeutre,
+	lienPasserHTML,
+	ligneRevelation,
+	neutraliserScene,
+	REVEAL_LAB,
+	REVELATION_EN_PLACE,
+} from './revelation-neutre';
 import {
 	ordreErreur,
 	motsMalClasses,
@@ -342,6 +361,14 @@ export function runRevisionEspacee(): void {
       <span class="rev-cat" id="revCat"></span>
     </div>
     <div class="rev-stage" id="revStage"></div>
+    <!-- Région live FIXE (#467) : elle porte le VERDICT d'un item — révélé à la demande comme
+         juste ou faux — pour les formats dont le widget n'annonce rien (saisie, QCM, mot,
+         opération posée, tuile, rangement).
+         Posée ici, HORS de #revStage : le verdict d'une saisie ou d'un QCM remplace tout le
+         stage, donc une région rendue dans la question serait détruite dans le même souffle
+         que son texte — rien ne serait annoncé, exactement le défaut qu'on corrige. Un seul
+         nœud pour toute la séance (id fixe, vidé à chaque question par renderCurrent). -->
+    <p class="sr-only" id="revStatus" role="status" aria-live="polite" aria-atomic="true"></p>
   </div>`;
 	bindEnter(); // une seule fois : #revStage persiste d'une question à l'autre
 	renderCurrent();
@@ -355,8 +382,18 @@ function updateHud() {
 	if (cat) cat.textContent = items[idx].groupLabel;
 }
 
+/* Vide la région live fixe (#revStatus). Elle survit à la question (elle vit hors de
+   #revStage) : sans ce nettoyage, un lecteur d'écran qui explore la page relirait la réponse
+   révélée à la question PRÉCÉDENTE. La vider garantit aussi que le prochain message soit un
+   vrai CHANGEMENT (deux annonces identiques d'affilée seraient avalées). */
+function viderStatut(): void {
+	const statut = document.getElementById('revStatus');
+	if (statut) statut.textContent = '';
+}
+
 function renderCurrent() {
 	updateHud();
+	viderStatut();
 	const it = items[idx];
 	if (it.kind === 'qcm') renderQcm(it);
 	else if (it.kind === 'word') renderWordLook(it);
@@ -416,6 +453,94 @@ function consigneHTML(it: RevItem): string {
 	return it.consigne ? `<div class="rev-consigne">${escapeHTML(it.consigne)}</div>` : '';
 }
 
+/* ---------- « Je ne sais pas, montre-moi » (#467) ----------
+   Sortie de secours de la révision : l'enfant coincé peut demander à VOIR la réponse,
+   au lieu de subir la question ou d'abandonner toute la séance (seule issue jusqu'ici).
+   Ce n'est PAS un « passer » gratuit : le chemin d'enregistrement est exactement celui
+   d'une réponse fausse — recul d'un cran en répétition espacée et 0 XP via
+   `recordGrade(false)`, appelé UNE fois — l'item n'est pas rejoué dans la séance
+   (`items` est figé au lancement) et l'erreur est journalisée pour l'encadrant, mais
+   marquée « n'a pas essayé » (`sansTentative`) : un aveu d'ignorance n'est pas une
+   faute de raisonnement, et le distinguer évite de faire croire à une confusion qui
+   n'existe pas. Seul le VERDICT change : un 3e état NEUTRE, ni ✓ ni ✗ (cf. verdictHTML).
+
+   Présent sur tous les chemins où l'on peut rester coincé — QCM compris (un « je ne
+   sais pas » honnête renseigne mieux la répétition espacée qu'une devinette qui simule
+   la maîtrise) et surtout sur les widgets, dont « Valider » reste inactif tant que le
+   geste n'est pas complet : on peut être bloqué par le GESTE et pas par la notion.
+   Exclu des deux seules phases où il n'a pas de sens : la phase « on regarde le mot »
+   (le mot est sous les yeux) et l'atelier de correction (déjà une correction). */
+
+/* Le lien de déblocage : markup et libellé communs aux deux écrans (lienPasserHTML), la
+   révision n'y met que sa classe (.rev-giveup, discret par le style et non par la taille de
+   cible) et son id, repère des specs e2e. C'est un `<button type="button">`, JAMAIS un
+   `<a>` : le raccourci Entrée de #revStage ferait un preventDefault sur un lien et
+   détournerait la touche vers Valider/Continuer. */
+function giveUpHTML(): string {
+	return lienPasserHTML('rev-giveup', 'revGiveUp');
+}
+
+/* Bloc de décision d'une question : « Valider », puis EN DESSOUS le lien de déblocage —
+   dans cet ordre en DOM comme au clavier, la validation restant la première action
+   atteinte. `validerInactif` : les widgets démarrent avec « Valider » désactivé (réponse
+   incomplète) ; le lien, lui, est TOUJOURS actif, c'est tout son intérêt. */
+function decideHTML(validerInactif = false): string {
+	return `<div class="rev-decide">
+      <div class="rev-actions"><button class="rev-btn" id="revValidate"${validerInactif ? ' disabled' : ''}>Valider</button></div>
+      ${giveUpHTML()}
+    </div>`;
+}
+
+/* Câble le lien rendu par `decideHTML` / `giveUpHTML`. `reveler` fait le travail propre
+   au format : journaliser, neutraliser le widget, composer le panneau de révélation. */
+function wireGiveUp(reveler: () => void): void {
+	document.getElementById('revGiveUp')?.addEventListener('click', reveler);
+}
+
+/* Journalise un item PASSÉ, sous le mode 'revision' (cf. revelation-neutre.ts pour la
+   règle : réponse donnée vide + marqueur `sansTentative`). */
+function capterPasse(o: {
+	text: string;
+	figure?: string;
+	attendue: string;
+	lessonId: string | null;
+}): void {
+	capterPasseNeutre({ ...o, mode: 'revision' });
+}
+
+/* Scène à désarmer côté révision : la carte de la question. `#revAfter` (verdict +
+   « Continuer ») en est exclu. La mécanique elle-même (et sa raison d'être : ne JAMAIS
+   appeler `ctrl.verify()`) est dans `neutraliserScene`. */
+function neutraliserWidget(stage: HTMLElement): void {
+	neutraliserScene({ scene: stage, classeFige: 'rev-stage--fige', apres: '#revAfter' });
+}
+
+/* Enregistre le passage et affiche le verdict NEUTRE. `cible` : 'stage' pour les formats
+   dont le verdict remplace toute la carte (saisie, QCM, posée, mot), 'after' pour ceux
+   qui gardent leur widget visible à côté de la solution (#revAfter). */
+function passerItem(o: {
+	cible: 'stage' | 'after';
+	correct?: string;
+	extra?: string;
+	parIntervalle?: boolean;
+}): void {
+	recordGrade(false); // recul d'un cran en répétition espacée + 0 XP, exactement une fois
+	// Annonce non visuelle : la région du WIDGET si l'item en monte une (tri, appariement,
+	// clic-mot, problème — leur contenu est plus riche), sinon la région fixe #revStatus.
+	// La priorité et le repli vivent dans le module partagé : c'est ce qui garantit qu'un
+	// format sans widget bavard ne redevienne pas muet ici tout en restant annoncé en leçon.
+	annoncerRevelation({
+		scope: document.querySelector('.revision'),
+		repli: '#revStatus',
+		message: o.correct
+			? `${o.parIntervalle ? 'Une réponse possible' : 'La réponse'} : ${o.correct}.`
+			: REVELATION_EN_PLACE, // même phrase que celle affichée, pas une version tronquée
+	});
+	const html = verdictHTML('reveal', o.correct, o.extra ?? '', o.parIntervalle ?? false);
+	document.getElementById(o.cible === 'stage' ? 'revStage' : 'revAfter')!.innerHTML = html;
+	wireRevNext(); // le focus part sur « Continuer », comme après une réponse
+}
+
 /* Révision d'une opération posée (#97) : la grille de cellules, validée d'un coup
    (toutes les cellules-résultat justes = réussi). */
 function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
@@ -425,7 +550,7 @@ function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
 	// Contexte de rendu jetable (#352) : la révision valide les cellules via le DOM
 	// (`.posee-input` + data-answer), pas via la table id→Item — inutile de la conserver.
 	stage.innerHTML = `${consigneHTML(it)}${actionHTML}<div class="rev-q rev-posee">${renderItem(it.item, createRenderContext())}</div>
-    <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
+    ${decideHTML()}`;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const cells = [...stage.querySelectorAll<HTMLInputElement>('.posee-input')];
 		const vide = cells.find((c) => c.value.trim() === '');
@@ -433,6 +558,19 @@ function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
 		const reussi = cells.every((c) => Number(c.value.trim()) === Number(c.dataset.answer));
 		if (!reussi) journaliserPosee(it, cells);
 		grade(reussi, String(it.item.answer));
+	});
+	// Passé (#467) : la grille n'ayant pas d'énoncé, le journal reçoit l'opération
+	// reconstruite — la même que pour une erreur, mais sans analyse des cellules (une
+	// grille non tentée n'a aucun chiffre à montrer).
+	wireGiveUp(() => {
+		const p = it.item.posed;
+		if (p)
+			capterPasse({
+				text: enoncePosee(p),
+				attendue: String(it.item.answer),
+				lessonId: it.lessonId,
+			});
+		passerItem({ cible: 'stage', correct: String(it.item.answer) });
 	});
 }
 
@@ -452,7 +590,7 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 	const actionHTML = consigneRenforceeHTML(it.consigneAction, undefined, it.consigneAction ?? '');
 	const enonceTts = it.consigneAction ? '' : ttsAttr(it.item.parle ?? it.item.text);
 	stage.innerHTML = `${consigneHTML(it)}${actionHTML}${figureBlock(it.item.figure)}<div class="rev-q"${enonceTts}>${q}</div>
-    <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
+    ${decideHTML()}`;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;
 		if (inp.value.trim() === '') return inp.focus();
@@ -468,6 +606,21 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 			});
 		// Item corrigé par intervalle (intercaler) → verdict au singulier INDÉFINI (#446).
 		grade(reussi, String(it.item.answer), !!it.item.intervalle);
+	});
+	// Passé (#467) : même énoncé et même attendu (bande d'intercalation comprise) que
+	// pour une erreur ; seule la réponse donnée manque, puisqu'il n'y a pas eu d'essai.
+	wireGiveUp(() => {
+		capterPasse({
+			text: it.item.text,
+			figure: it.item.figure,
+			attendue: attendueItem(it.item),
+			lessonId: it.lessonId,
+		});
+		passerItem({
+			cible: 'stage',
+			correct: String(it.item.answer),
+			parIntervalle: !!it.item.intervalle,
+		});
 	});
 	(document.getElementById('revInput') as HTMLInputElement).focus();
 }
@@ -508,15 +661,16 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 						: '';
 				return `<button class="rev-choice" data-i="${i}"${aria}>${inner}</button>`;
 			})
-			.join('')}</div>`;
+			.join('')}</div>
+    ${giveUpHTML()}`;
+	// Libellé LISIBLE d'un choix, comme à l'écran : mot de ponctuation (un « . » nu
+	// serait illisible dans le journal), sinon vue riche #200 (fraction empilée).
+	const label = (v: string) =>
+		ponct ? (PONCT_MOTS[v] ?? v) : libelleChoix(it.choices, it.choicesView, v);
 	stage.querySelectorAll<HTMLButtonElement>('.rev-choice').forEach((btn) => {
 		btn.addEventListener('click', () => {
 			const choisi = it.choices[Number(btn.dataset.i)];
 			const reussi = checkItemAnswer(it.item, choisi);
-			// Libellé LISIBLE d'un choix, comme à l'écran : mot de ponctuation (un « . » nu
-			// serait illisible dans le journal), sinon vue riche #200 (fraction empilée).
-			const label = (v: string) =>
-				ponct ? (PONCT_MOTS[v] ?? v) : libelleChoix(it.choices, it.choicesView, v);
 			if (!reussi)
 				capterRev({
 					text: it.item.text,
@@ -527,6 +681,18 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 				});
 			grade(reussi, String(it.item.answer));
 		});
+	});
+	// Passé (#467) : le QCM en fait partie — un « je ne sais pas » honnête est un meilleur
+	// signal pour la répétition espacée qu'une devinette au hasard, qui simule la maîtrise
+	// une fois sur trois et retarde d'autant le retour de la notion.
+	wireGiveUp(() => {
+		capterPasse({
+			text: it.item.text,
+			figure: it.item.figure,
+			attendue: label(String(it.item.answer)),
+			lessonId: it.lessonId,
+		});
+		passerItem({ cible: 'stage', correct: String(it.item.answer) });
 	});
 }
 
@@ -570,8 +736,16 @@ function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 	stage.innerHTML = `<div class="rev-consigne">Écris le mot.</div>
     ${ecouteMotHTML(m)}
     <div class="rev-q"><input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}></div>
-    <div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div>`;
+    ${decideHTML()}`;
 	bindEcouteMot(m);
+	// Énoncé du journal : la phrase à trou du mot si on en a une (la plus parlante pour le
+	// parent), sinon la tâche elle-même. Formulation distincte de celle de la dictée
+	// (« sous la dictée ») : les deux exercices ne se confondent pas dans le journal.
+	// Partagé par l'erreur et le passage (#467), qui parlent du même exercice.
+	const enonceJournal = (): string => {
+		const ctx = motDeRevision(it)?.contexte;
+		return ctx ? `${ctx.avant}…${ctx.apres}` : 'Mot à écrire de mémoire';
+	};
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;
 		if (inp.value.trim() === '') return inp.focus();
@@ -582,12 +756,8 @@ function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 			// Erreur : on enregistre l'échec SR, puis on rebascule sur l'atelier du mot
 			// (parité avec le parcours d'entraînement) au lieu d'afficher le mot correct
 			// sans correction interactive.
-			// Énoncé : la phrase à trou du mot si on en a une (la plus parlante pour le
-			// parent), sinon la tâche elle-même. Formulation distincte de celle de la dictée
-			// (« sous la dictée ») : les deux exercices ne se confondent pas dans le journal.
-			const ctx = motDeRevision(it)?.contexte;
 			capterRev({
-				text: ctx ? `${ctx.avant}…${ctx.apres}` : 'Mot à écrire de mémoire',
+				text: enonceJournal(),
 				donnee: saisie,
 				attendue: it.mot,
 				lessonId: groupeOrthoDuMot(ortho, it.wordId),
@@ -595,6 +765,16 @@ function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 			recordGrade(false);
 			renderWordCorrection(it, saisie);
 		}
+	});
+	// Passé (#467) : on montre le mot, sans passer par l'atelier de correction — il n'y a
+	// aucune saisie à comparer, donc rien à souligner ni à ré-entourer.
+	wireGiveUp(() => {
+		capterPasse({
+			text: enonceJournal(),
+			attendue: it.mot,
+			lessonId: groupeOrthoDuMot(ortho, it.wordId),
+		});
+		passerItem({ cible: 'stage', correct: it.mot });
 	});
 	(document.getElementById('revInput') as HTMLInputElement).focus();
 }
@@ -607,8 +787,13 @@ function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 function renderWordCorrection(it: Extract<RevItem, { kind: 'word' }>, saisie: string) {
 	const stage = document.getElementById('revStage')!;
 	const m = motDeRevision(it);
+	// Verdict annoncé ici aussi : ce chemin ne passe pas par `grade` (il ouvre l'atelier au lieu
+	// d'afficher un verdict), et l'atelier ne dit « Presque ! » qu'en TEXTE, sans région live —
+	// l'enfant qui n'y voit pas ne saurait donc pas que son mot était faux. Le mot correct est
+	// bien à l'écran (en grand, lettres ratées soulignées) : l'annoncer ne dévoile rien de plus.
+	annoncerVerdict(false, it.mot, false);
 	if (!m) {
-		stage.innerHTML = verdictHTML(false, it.mot);
+		stage.innerHTML = verdictHTML('ko', it.mot);
 		wireRevNext();
 		return;
 	}
@@ -633,13 +818,15 @@ function renderWordCorrection(it: Extract<RevItem, { kind: 'word' }>, saisie: st
    le verdict s'insère EN DESSOUS (#revAfter), comme les runners — c'est ce qui
    fait apparaître les marques ✓/✗ en révision (correction de la divergence #345). */
 
-/* Squelette commun aux trois interactions : consigne, point de montage du widget,
+/* Squelette commun aux cinq interactions : consigne, point de montage du widget,
    et zone d'après-validation (Valider → verdict). `extra` insère la consigne-énoncé
-   propre à l'ordre/au tri (la « tuile » porte la sienne dans son énoncé). */
+   propre à l'ordre/au tri (la « tuile » porte la sienne dans son énoncé).
+   C'est aussi l'unique endroit où le lien « Je ne sais pas, montre-moi » (#467) est posé
+   pour les cinq widgets — dans #revAfter, donc effacé avec « Valider » par le verdict. */
 function tuileStageHTML(it: RevItem, extra = ''): string {
 	return `${consigneHTML(it)}${extra}
     <div data-tuile-mount></div>
-    <div id="revAfter"><div class="rev-actions"><button class="rev-btn" id="revValidate" disabled>Valider</button></div></div>`;
+    <div id="revAfter">${decideHTML(true)}</div>`;
 }
 
 /* Comparaison : amener LA bonne tuile (signe <, =, >) dans la case, sans clavier. */
@@ -668,6 +855,17 @@ function renderTuile(it: Extract<RevItem, { kind: 'tuile' }>) {
 		}
 		// Verdict au singulier INDÉFINI quand la correction se fait par intervalle (#446).
 		gradeTuile(reussi, it.answer, !!it.intervalle);
+	});
+	// Passé (#467) : la bonne tuile est révélée en TEXTE et le bac est désarmé — « Valider »
+	// est encore inactif à ce stade (aucune tuile posée), c'est justement le cas visé.
+	wireGiveUp(() => {
+		capterPasse({
+			text: it.question,
+			attendue: it.intervalle ? attendueIntervalle(it.intervalle) : it.answer,
+			lessonId: it.lessonId,
+		});
+		neutraliserWidget(stage);
+		passerItem({ cible: 'after', correct: it.answer, parIntervalle: !!it.intervalle });
 	});
 }
 
@@ -701,6 +899,18 @@ function renderOrdre(it: Extract<RevItem, { kind: 'ordre' }>) {
 		}
 		gradeTuile(reussi, it.ordre.join(' · '));
 	});
+	// Passé (#467) : la suite attendue est révélée en TEXTE, le rangement commencé reste
+	// visible mais figé. Attendu du journal formaté comme pour une erreur (séparateur de
+	// la nature, #448), avec une proposition vide puisqu'il n'y a pas eu d'essai.
+	wireGiveUp(() => {
+		capterPasse({
+			text: it.question,
+			attendue: ordreErreur([], it.ordre, it.nature).attendue,
+			lessonId: it.lessonId,
+		});
+		neutraliserWidget(stage);
+		passerItem({ cible: 'after', correct: it.ordre.join(' · ') });
+	});
 }
 
 /* Ranger par thème (champs lexicaux) : tap en deux temps (mot puis thème) ou glisser. */
@@ -716,6 +926,17 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 		{ kind: 'tri', question: it.question, categories: it.categories, mots: it.mots },
 		{ variant: 'revision', onState: (complete) => (verif.disabled = !complete) },
 	);
+	// Tri complet révélé, lisible d'une ligne (« thème : mots — thème : mots ») : sert de
+	// verdict après une erreur ET après un passage (#467).
+	const solution = ([0, 1] as const)
+		.map(
+			(col) =>
+				`${it.categories[col]} : ${it.mots
+					.filter((m) => m.cat === col)
+					.map((m) => m.mot)
+					.join(', ')}`,
+		)
+		.join(' — ');
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
 		const reussi = ctrl.verify();
@@ -732,16 +953,17 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 						lessonId: it.lessonId,
 					});
 		}
-		const bon = ([0, 1] as const)
-			.map(
-				(col) =>
-					`${it.categories[col]} : ${it.mots
-						.filter((m) => m.cat === col)
-						.map((m) => m.mot)
-						.join(', ')}`,
-			)
-			.join(' — ');
-		gradeTuile(reussi, bon);
+		gradeTuile(reussi, solution);
+	});
+	// Passé (#467) : UNE entrée pour l'exercice, contrairement à l'erreur qui en produit une
+	// par mot mal classé. Sans tentative il n'y a pas de mot mal classé à cibler (l'enfant
+	// peut même en avoir déjà bien rangé quelques-uns) : une entrée par mot ferait peser un
+	// seul « je ne sais pas » comme huit erreurs dans le suivi, en désignant au hasard des
+	// mots qu'on n'a aucune raison de croire acquis ou non.
+	wireGiveUp(() => {
+		capterPasse({ text: it.question, attendue: solution, lessonId: it.lessonId });
+		neutraliserWidget(stage);
+		passerItem({ cible: 'after', correct: solution });
 	});
 }
 
@@ -763,6 +985,7 @@ function renderAppariement(it: Extract<RevItem, { kind: 'appariement' }>) {
 		{ question: it.question, paires: it.paires, intrus: it.intrus },
 		{ variant: 'revision', onState: (complete) => (verif.disabled = !complete) },
 	);
+	const solution = it.paires.map((p) => `${p.gauche} → ${p.droite}`).join(' · ');
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
 		const reussi = ctrl.verify();
@@ -773,7 +996,23 @@ function renderAppariement(it: Extract<RevItem, { kind: 'appariement' }>) {
 				capterRev({ text: it.question, donnee, attendue, lessonId: it.lessonId });
 			}
 		}
-		gradeTuile(reussi, it.paires.map((p) => `${p.gauche} → ${p.droite}`).join(' · '));
+		gradeTuile(reussi, solution);
+	});
+	// Passé (#467) : les paires attendues sont révélées en TEXTE et le board est désarmé —
+	// surtout PAS `ctrl.verify()`, qui marquerait « non relié, incorrect » chaque lien jamais
+	// tenté (et poserait `.is-decoy` partout). Attendu du journal formaté comme pour une
+	// erreur (`pairesErreur`), avec des liens vides puisqu'il n'y a pas eu d'essai.
+	wireGiveUp(() => {
+		capterPasse({
+			text: it.question,
+			attendue: pairesErreur(
+				it.paires.map((p) => ({ gauche: p.gauche, droite: null })),
+				it.paires,
+			).attendue,
+			lessonId: it.lessonId,
+		});
+		neutraliserWidget(stage);
+		passerItem({ cible: 'after', correct: solution });
 	});
 }
 
@@ -798,7 +1037,7 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 	stage.innerHTML = `${consigneHTML(it)}<div class="rev-q rev-probleme">${board}</div>
     ${brouillonHTML()}
     ${PROB_STATUS_HTML}
-    <div id="revAfter"><div class="rev-actions"><button class="rev-btn" id="revValidate">Valider</button></div></div>`;
+    <div id="revAfter">${decideHTML()}</div>`;
 	bindBrouillon(stage); // ardoise de dessin repliable (#199) — l'énoncé garde sa lecture TTS
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inputs = [...stage.querySelectorAll<HTMLInputElement>('.prob-input')];
@@ -817,13 +1056,42 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 			}),
 		);
 		recordGrade(toutJuste);
-		// Explication de stratégie (#252) affichée après la réponse quand la leçon la fournit.
-		const extra = it.explication ? `<p class="lqcm-expl">${escapeHTML(it.explication)}</p>` : '';
-		document.getElementById('revAfter')!.innerHTML = verdictHTML(toutJuste, undefined, extra);
+		document.getElementById('revAfter')!.innerHTML = verdictHTML(
+			toutJuste ? 'ok' : 'ko',
+			undefined,
+			explicationHTML(it.explication),
+		);
 		wireRevNext();
+	});
+	// Passé (#467) : UNE entrée par SOUS-QUESTION, comme pour une erreur — chacune a son
+	// énoncé lisible et sa réponse, donc le parent voit exactement où l'enfant décroche (une
+	// entrée globale « le problème est passé » ne le dirait pas). Et par sous-question, ce que
+	// le journal dit est ce qui s'est PASSÉ, pas un raccourci : une case vide compte comme
+	// « n'a pas essayé », une case remplie et fausse comme une vraie erreur avec sa réponse,
+	// une case remplie et JUSTE ne produit rien — un enfant coincé à l'étape 2 avait pu
+	// réussir l'étape 1. Règle et mise en forme partagées avec le runner de leçon
+	// (`revelerEtapesProbleme`, cf. core/probleme-etapes.ts) : les solutions apparaissent à
+	// côté de chaque case, en ton neutre.
+	wireGiveUp(() => {
+		revelerEtapesProbleme(stage, it.etapes, (e) =>
+			capterRev({
+				text: e.etape.question,
+				donnee: e.donnee,
+				attendue: String(e.etape.answer),
+				lessonId: it.lessonId,
+				sansTentative: e.sansTentative,
+			}),
+		);
+		passerItem({ cible: 'after', extra: explicationHTML(it.explication) });
 	});
 	const first = stage.querySelector<HTMLInputElement>('.prob-input');
 	if (first) first.focus();
+}
+
+/* Explication de stratégie (#252) affichée après la réponse quand la leçon la fournit —
+   qu'on ait répondu, raté, ou demandé à voir (#467 : c'est justement là qu'elle sert). */
+function explicationHTML(explication?: string): string {
+	return explication ? `<p class="lqcm-expl">${escapeHTML(explication)}</p>` : '';
 }
 
 /* « Clique sur le mot » (#259) : le vrai widget de sélection dans la phrase, monté
@@ -852,24 +1120,38 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 		},
 		{ onState: (hasSelection) => (verif.disabled = !hasSelection) },
 	);
+	// Mots joints par `libelleCible` (source unique, comme le runner d'entraînement) :
+	// une cible NON contiguë se lit « chien et pomme », pas « chien pomme ».
+	const enonceJournal = `${it.actionConsigne} « ${joindrePhrase(it.tokens)} »`;
+	const solution = libelleCible(it.tokens, it.cibleIndices);
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
 		const reussi = ctrl.verify();
 		if (!reussi) {
-			// Mots joints par `libelleCible` (source unique, comme le runner d'entraînement) :
-			// une cible NON contiguë se lit « chien et pomme », pas « chien pomme ».
 			const choisis = ctrl.selected();
 			capterRev({
-				text: `${it.actionConsigne} « ${joindrePhrase(it.tokens)} »`,
+				text: enonceJournal,
 				donnee: choisis.length ? libelleCible(it.tokens, choisis) : '(aucun mot choisi)',
-				attendue: libelleCible(it.tokens, it.cibleIndices),
+				attendue: solution,
 				lessonId: it.lessonId,
 			});
 		}
-		const extra = `<p class="lqcm-expl">${escapeHTML(it.explication)}</p>`;
 		recordGrade(reussi);
-		document.getElementById('revAfter')!.innerHTML = verdictHTML(reussi, undefined, extra);
+		document.getElementById('revAfter')!.innerHTML = verdictHTML(
+			reussi ? 'ok' : 'ko',
+			undefined,
+			explicationHTML(it.explication),
+		);
 		wireRevNext();
+	});
+	// Passé (#467) : le(s) mot(s) attendu(s) sont révélés en TEXTE et la phrase est désarmée.
+	// Pas de `ctrl.verify()` : il marquerait ✗ en rouge les mots éventuellement sélectionnés
+	// et figerait la phrase comme après une erreur. L'explication, elle, est bien affichée —
+	// c'est le moment où elle sert le plus.
+	wireGiveUp(() => {
+		capterPasse({ text: enonceJournal, attendue: solution, lessonId: it.lessonId });
+		neutraliserWidget(stage);
+		passerItem({ cible: 'after', correct: solution, extra: explicationHTML(it.explication) });
 	});
 }
 
@@ -923,13 +1205,16 @@ function recordGrade(reussi: boolean) {
    avant `wireNext`) : la réponse DONNÉE n'est connue que là, sous la forme propre au
    widget, et un tri ou un problème produit PLUSIEURS entrées (une par mot mal classé,
    une par sous-question ratée) qu'un point d'entrée unique ne saurait pas produire.
-   Aucune capture pour une réussite. */
+   Aucune capture pour une réussite. `sansTentative` (#467) sert au problème PASSÉ, qui
+   mêle sur la même question des cases vides (« n'a pas essayé ») et des cases remplies et
+   fausses (vraies erreurs) ; un item passé SANS aucune saisie passe par `capterPasse`. */
 function capterRev(o: {
 	text: string;
 	figure?: string;
 	donnee: string;
 	attendue: string;
 	lessonId: string | null;
+	sansTentative?: boolean;
 }): void {
 	capterErreur({ ...o, mode: 'revision' });
 }
@@ -957,28 +1242,86 @@ function journaliserPosee(it: Extract<RevItem, { kind: 'num' }>, cells: HTMLInpu
 	);
 	if (!analyse.journaliser) return;
 	capterRev({
-		text: `${p.a} ${p.op === 'x' ? '×' : p.op} ${p.b}`,
+		text: enoncePosee(p),
 		donnee: analyse.donnee,
 		attendue,
 		lessonId: it.lessonId,
 	});
 }
 
+/* Énoncé lisible d'une opération posée (la grille n'a pas d'énoncé textuel) : partagé par
+   la journalisation d'une erreur et celle d'un item passé (#467). */
+function enoncePosee(p: NonNullable<Item['posed']>): string {
+	return `${p.a} ${p.op === 'x' ? '×' : p.op} ${p.b}`;
+}
+
+/* Trois issues possibles pour une question : réussie, ratée, ou RÉVÉLÉE à la demande
+   (#467, « Je ne sais pas, montre-moi ») — un état à part entière, ni succès ni échec. */
+type EtatVerdict = 'ok' | 'ko' | 'reveal';
+
+/* Comment on nomme la réponse montrée. `parIntervalle` (#446) : la valeur affichée n'est
+   qu'UN exemple parmi les acceptées → singulier indéfini. Lu par le verdict à l'écran ET par
+   son annonce non visuelle, qui doivent dire la même chose. */
+function labelReponse(parIntervalle: boolean): string {
+	return parIntervalle ? 'Une réponse possible' : 'La bonne réponse';
+}
+
+/* Annonce non visuelle d'un verdict ORDINAIRE (juste / faux). Les formats dont le verdict
+   remplace toute la carte — saisie, QCM, mot d'orthographe, opération posée — ne l'annonçaient
+   NULLE PART : leur widget n'a pas de région live, le texte du verdict remplace la question
+   sans être lu, et le focus part sur « Continuer ▶ », qui ne dit que « Continuer ». Un enfant
+   qui n'y voit pas ne savait donc pas s'il avait eu juste ou faux. On passe par la MÊME région
+   et le MÊME repli que la révélation (`annoncerStatut`) : une seule règle pour les deux issues.
+   Le message dit le verdict, puis la bonne réponse quand elle est révélée à l'écran — jamais
+   plus que ce que l'enfant voyant lit au même moment. */
+function annoncerVerdict(reussi: boolean, correct: string, parIntervalle: boolean): void {
+	annoncerStatut({
+		scope: document.querySelector('.revision'),
+		repli: '#revStatus',
+		// Un widget qui a sa propre région vient d'y annoncer son verdict, paire par paire ou
+		// mot par mot (tri, appariement, clic-mot, problème) : ce résumé global l'écraserait
+		// par quelque chose de moins précis. On ne parle donc que pour les formats muets.
+		seulementRepli: true,
+		message: reussi
+			? "Bravo, c'est juste."
+			: `Ce n'est pas ça. ${labelReponse(parIntervalle)} : ${correct}.`,
+	});
+}
+
 /* Verdict + bouton « Continuer / Terminer ». `mathInline` (= échappe + empile les
    fractions « n/d ») : la bonne réponse révélée s'affiche en barre horizontale comme
    les choix, pas en oblique (#264). Sans effet sur les réponses non fractionnaires. */
-function verdictHTML(reussi: boolean, correct?: string, extra = '', parIntervalle = false): string {
+function verdictHTML(
+	etat: EtatVerdict,
+	correct?: string,
+	extra = '',
+	parIntervalle = false,
+): string {
 	// `correct` absent (moteurs qui révèlent EUX-MÊMES la bonne réponse en place —
-	// problème marqué étape par étape, clic-mot surligné) → verdict d'échec neutre,
-	// sans ligne « La bonne réponse : … » redondante. `extra` insère un complément
+	// problème marqué étape par étape, clic-mot surligné) → verdict sans ligne
+	// « La bonne réponse : … » redondante. `extra` insère un complément
 	// (ex. l'explication de stratégie) entre le verdict et le bouton.
 	// `parIntervalle` (#446) : item corrigé par appartenance à un intervalle (intercaler) →
 	// la valeur montrée n'est qu'UN exemple ; on ne lui donne donc pas le statut de réponse
 	// unique, sinon la correction contredit la consigne (« plusieurs réponses possibles »).
-	const label = parIntervalle ? 'Une réponse possible' : 'La bonne réponse';
-	const verdict = reussi
-		? `<div class="rev-feedback ok">✓ Bravo !</div>`
-		: correct
+	const label = labelReponse(parIntervalle);
+	let verdict: string;
+	if (etat === 'ok') verdict = `<div class="rev-feedback ok">✓ Bravo !</div>`;
+	else if (etat === 'reveal') {
+		// Ton NEUTRE (#467) : ni rouge ni ✗ — l'enfant n'a pas échoué, il a demandé à voir —
+		// et aucune animation (ni célébration, ni signal d'erreur). La réponse reste mise en
+		// valeur en --ok comme dans les autres verdicts : c'est bien la bonne qu'il regarde.
+		// Formulation issue du module partagé (source unique) : d'un écran à l'autre, l'enfant
+		// lit exactement la même phrase. `parIntervalle` (#446) → singulier INDÉFINI.
+		const rep = correct
+			? ligneRevelation(parIntervalle ? 'une réponse possible' : 'la réponse', mathInline(correct))
+			: REVELATION_EN_PLACE;
+		verdict = `<div class="rev-feedback reveal">
+        <span class="rev-reveal-lab">${REVEAL_LAB}</span>
+        <span class="rev-reveal-rep">${rep}</span>
+      </div>`;
+	} else
+		verdict = correct
 			? `<div class="rev-feedback ko">✗ ${label} : <strong>${mathInline(correct)}</strong></div>`
 			: `<div class="rev-feedback ko">✗ Regarde la correction, puis continue.</div>`;
 	return `${verdict}${extra}
@@ -994,7 +1337,15 @@ function wireRevNext() {
    `parIntervalle` (#446) : voir verdictHTML (réponse non unique → singulier indéfini). */
 function grade(reussi: boolean, correct: string, parIntervalle = false) {
 	recordGrade(reussi);
-	document.getElementById('revStage')!.innerHTML = verdictHTML(reussi, correct, '', parIntervalle);
+	document.getElementById('revStage')!.innerHTML = verdictHTML(
+		reussi ? 'ok' : 'ko',
+		correct,
+		'',
+		parIntervalle,
+	);
+	// Annonce APRÈS le remplacement du stage : la région visée est bien celle qui survit à la
+	// question (`#revStatus`, posée hors de #revStage), et non un reste de la question effacée.
+	annoncerVerdict(reussi, correct, parIntervalle);
 	wireRevNext();
 }
 
@@ -1004,7 +1355,18 @@ function grade(reussi: boolean, correct: string, parIntervalle = false) {
    `parIntervalle` (#446) : voir verdictHTML (réponse non unique → singulier indéfini). */
 function gradeTuile(reussi: boolean, correct: string, parIntervalle = false) {
 	recordGrade(reussi);
-	document.getElementById('revAfter')!.innerHTML = verdictHTML(reussi, correct, '', parIntervalle);
+	document.getElementById('revAfter')!.innerHTML = verdictHTML(
+		reussi ? 'ok' : 'ko',
+		correct,
+		'',
+		parIntervalle,
+	);
+	// Même annonce que `grade` : la comparaison en tuiles et le rangement d'une suite
+	// n'ont pas de région live à eux (seuls tri, appariement, clic-mot et problème en
+	// montent une), donc leur verdict ne se lisait QUE dans les marques ✓/✗ du widget.
+	// `annoncerStatut` cède la place à la région du widget quand elle existe : les quatre
+	// formats bavards continuent d'annoncer eux-mêmes, sans doublon.
+	annoncerVerdict(reussi, correct, parIntervalle);
 	wireRevNext();
 }
 
@@ -1024,6 +1386,7 @@ function renderDone() {
 	const stage = document.getElementById('revStage')!;
 	if (!stage) return;
 	document.querySelector('.rev-hud')?.remove();
+	viderStatut(); // l'écran de fin ne doit pas garder la dernière réponse révélée en sr-only
 	stage.innerHTML = `<div class="rev-done">
     <div class="rev-done-big">${score}/${items.length}</div>
     <div class="rev-done-lab">révision terminée</div>

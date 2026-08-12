@@ -232,6 +232,101 @@ html.anim-reduced .sprint-choice.correct {
 	padding: 10px 14px;
 }
 
+/* ---- « Je ne sais pas, montre-moi » (#467) : runners de leçon à widget ----
+   Transposition des règles actées en révision (.rev-decide / .rev-giveup /
+   .rev-feedback.reveal, cf. revision.scss) aux styles du mode leçon. */
+/* Bloc de décision d'une question : « Vérifier » puis, EN DESSOUS et nettement détaché
+   (≥ 16 px), le lien de déblocage. L'écart est porté par ce bloc et non par le `gap` du
+   conteneur, donc identique dans les cinq runners. */
+.lecon-decide {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 18px;
+}
+/* L'attribut [hidden] doit l'emporter sur display:flex (règle d'auteur, sinon la règle par
+   défaut du navigateur perd) : `masquerDecision` efface le bloc une fois la question
+   tranchée, et sans ceci « Vérifier » et le lien de déblocage resteraient affichés à côté
+   de « Continuer ▶ ». Même précaution qu'aux autres blocs masquables du projet. */
+.lecon-decide[hidden] {
+	display: none;
+}
+/* Runners « Clique sur le mot » et « Problème » : leur colonne est alignée à GAUCHE (sens de
+   lecture, un problème se LIT avant de se résoudre) et leur bouton « Vérifier » l'était donc
+   aussi — le bloc de décision suit cet alignement au lieu de recentrer les deux boutons. */
+.lclic-col .lecon-decide,
+.prob-col .lecon-decide {
+	align-items: flex-start;
+}
+/* Le lien de déblocage : sortie de secours ASSUMÉE, jamais un second bouton d'action.
+   Identité sobre (aucun remplissage --accent, texte gris souligné, corps plus petit que
+   « Vérifier ») pour ne pas concurrencer la validation — mais cible tactile pleine (44 px)
+   et libellé complet : un enfant coincé doit pouvoir la viser au doigt, pas la chercher. */
+.lecon-passer {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 44px;
+	padding: 8px 16px;
+	font-family: var(--ui);
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--grey);
+	background: none;
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	transition:
+		color 0.12s ease,
+		background 0.12s ease;
+}
+.lecon-passer:hover {
+	color: var(--ink);
+	background: var(--accent-soft);
+}
+.lecon-passer:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.lecon-passer .ph-icon {
+	width: 20px;
+	height: 20px;
+	flex: none;
+}
+/* Verdict de RÉVÉLATION : 3e état, ni succès ni échec → ni le vert du ✓ ni le rouge du ✗
+   (jamais .lqcm-ko), aucune animation. Deux lignes, la rassurante d'abord (plus petite, en
+   gris) puis la réponse — seule mise en valeur, en --ok via `.sprint-correction strong`,
+   qui habille déjà toutes les solutions révélées de ces runners. */
+.lecon-reveal {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	color: var(--ink);
+}
+.lecon-reveal-lab {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--grey);
+}
+/* Widget neutralisé après une révélation : il reste visible (l'enfant compare ce qu'il
+   avait commencé avec la solution) mais n'est plus manipulable. Les éléments focalisables
+   sont désarmés côté DOM (cf. lecon-passer.ts) ; `pointer-events` coupe en plus les cibles
+   de DÉPÔT du glisser-déposer, sans quoi un dépôt relancerait le widget. Restent opérables :
+   l'après-verdict, l'aide du geste et les boutons « Écouter ». */
+.lecon-fige {
+	pointer-events: none;
+}
+.lecon-fige .sprint-correction,
+.lecon-fige .sprint-actions,
+.lecon-fige .aide-btn,
+.lecon-fige .consigne-tts,
+.lecon-fige .item-tts {
+	pointer-events: auto;
+}
+
 /* ---- Consigne renforcée + options « parlantes » (contraires / sens proche, #203) ---- */
 /* Consigne-question en gras, précédée d'un picto décoratif (↔ contraire, = sens
    proche) posé dans une pastille. Le picto DOUBLE le sens : il n'en est pas l'unique
@@ -497,16 +592,18 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 .lqcm-multi-choice.is-false .lqcm-multi-box {
 	color: var(--ko);
 }
-/* Bouton « Valider » : centré sous les options ; collant en bas sur petit écran (figure +
-   4 lignes + bouton peuvent dépasser en portrait). */
-.lqcm-multi-valider {
-	align-self: center;
-}
+/* Bloc de décision (« Valider » + « Je ne sais pas, montre-moi ») : collant en bas sur petit
+   écran (figure + 4 lignes + boutons peuvent dépasser en portrait). C'est le BLOC qui est
+   collant, et non le seul bouton (#467) : un `position: sticky` posé sur « Valider » ne
+   pourrait plus sortir de son conteneur, donc ne collerait plus à rien. Fond opaque : le lien
+   de déblocage n'a pas de remplissage, les propositions défileraient sous son texte. */
 @media (max-width: 600px) {
-	.lqcm-multi-valider {
+	.lqcm-multi-decide {
 		position: sticky;
 		bottom: 8px;
 		z-index: 3;
+		padding-top: 6px;
+		background: var(--paper);
 	}
 }
 /* Badge global TOUT-OU-RIEN + synthèse (redondante avec les cases marquées). */

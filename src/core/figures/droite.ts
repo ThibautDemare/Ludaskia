@@ -15,7 +15,8 @@
 
    Deux sorties :
    - `renderDroiteGraduee` : figure STATIQUE `role="img"` (repli bilan/révision/impression,
-     révélation de correction, dispatch `FigureSpec`) ;
+     révélation de correction, dispatch `FigureSpec`) — enveloppée d'une LÉGENDE quand deux
+     repères à tête pleine coexistent (« ton repère » / « le bon repère », #467) ;
    - `renderDroiteGradueeInteractif` : coquille INTERACTIVE `role="radiogroup"` (une
      graduation = un `radio` sélectionnable, cible tactile aimantée par pavage de bandes
      verticales). Le runner (ui/lecon-droite-graduee.ts) y branche les événements et
@@ -32,6 +33,12 @@ const DG_AXIS_Y = 74; // ordonnée de l'axe horizontal
 const DG_TICK_BORNE = 16; // longueur d'un trait de borne numérotée (vers le haut)
 const DG_TICK_MUET = 10; // longueur d'un trait intermédiaire muet
 const DG_MARK_STEM = 32; // hauteur de la tige du repère
+/* Tige RACCOURCIE d'un repère voisin d'un autre (#467) : deux repères à une seule graduation
+   d'écart posent leurs têtes à ~13 unités l'une de l'autre, soit deux disques presque jointifs
+   sur la même ligne — l'œil les lit comme une seule tache. On fait retomber la tête du repère
+   de l'enfant à mi-tige : les deux têtes se décalent en HAUTEUR (jamais en abscisse, qui porte
+   l'information de valeur), la tête restant franchement au-dessus de l'axe. */
+const DG_MARK_STEM_BAS = 14;
 const DG_MARK_R = 7; // rayon de la tête du repère
 const DG_LABEL_DY = 24; // décalage vertical du libellé de borne (sous l'axe)
 
@@ -135,10 +142,12 @@ function couleurEtat(etat: DroiteEtat): string {
 
 /** Marque (tige + tête) d'un repère à l'abscisse `x`. Tête PLEINE pour « neutre »/
     « correct », CREUSE (fond papier + contour) pour « faux » : la forme double la couleur
-    (robuste au daltonisme). Exporté : le runner l'injecte dans le groupe `.dg-repere`. */
-export function repereMarkup(x: number, etat: DroiteEtat = 'neutre'): string {
+    (robuste au daltonisme). Exporté : le runner l'injecte dans le groupe `.dg-repere`.
+    `abaisse` raccourcit la TIGE (tête plus basse, même abscisse et même épaisseur de trait) :
+    c'est le dégagement d'un repère voisin, décidé par `renderDroiteGraduee`. */
+export function repereMarkup(x: number, etat: DroiteEtat = 'neutre', abaisse = false): string {
 	const couleur = couleurEtat(etat);
-	const cy = DG_AXIS_Y - DG_MARK_STEM;
+	const cy = DG_AXIS_Y - (abaisse ? DG_MARK_STEM_BAS : DG_MARK_STEM);
 	const tige = line(r2(x), DG_AXIS_Y, r2(x), cy, {
 		stroke: couleur,
 		'stroke-width': 3,
@@ -187,14 +196,58 @@ function corpsAxe(min: number, max: number, pas: number, bornes: DroiteGraduatio
 
 const DESC_DEFAUT = 'Une droite graduée : quelques valeurs sont écrites, un repère est posé.';
 
+/** Tête PLEINE ? « neutre » et « correct » le sont, « faux » est creux. Sert à décider si la
+    figure a besoin d'une légende (cf. `legendeReperes`). */
+function tetePleine(etat: DroiteEtat): boolean {
+	return etat !== 'faux';
+}
+
+/* Légende posée sous la figure quand DEUX têtes PLEINES coexistent (#467) : le repère juste
+   (vert) et celui que l'enfant avait posé (corail, état « neutre »). Deux disques pleins ne se
+   distinguent alors que par leur COULEUR, ce que le projet n'accepte pas comme unique canal —
+   la légende nomme les deux rôles en texte. Elle reste absente des autres cas : un repère seul
+   n'a rien à distinguer, et le couple juste/faux d'une correction est déjà doublé par la FORME
+   de la tête (pleine vs creuse).
+   Même moule que la légende de l'horloge (`.clock-legend` / `.cl-dot`, cf. horloge.ts) :
+   texte discret en `--grey` (le corail ne tient le contraste que sur du grand texte), pastilles
+   colorées `aria-hidden` (la description de la figure porte déjà les rôles). */
+function legendeReperes(): string {
+	return (
+		`<p class="clock-legend">` +
+		`<span class="cl-dot cl-m" aria-hidden="true">●</span> ton repère ` +
+		`· <span class="cl-dot cl-ok" aria-hidden="true">●</span> le bon repère</p>`
+	);
+}
+
 /** Figure STATIQUE `role="img"` : axe gradué + repère(s) éventuel(s). Sert au repli
     (bilan / révision / impression), à la révélation de correction et au dispatch
-    `FigureSpec`. La description ne révèle JAMAIS la valeur repérée (position à lire). */
+    `FigureSpec`. La description ne révèle JAMAIS la valeur repérée (position à lire).
+
+    Deux repères À UNE SEULE GRADUATION d'écart (correction ou révélation) : la tige de celui
+    qui n'est pas le repère JUSTE est raccourcie, pour que les deux têtes ne se confondent pas
+    (règle portée ici, et non dans un runner : les deux chemins qui dessinent une paire de
+    repères ont le même besoin). Le repère juste garde toujours sa hauteur, c'est le point de
+    référence du regard. */
 export function renderDroiteGraduee(spec: DroiteGradueeSpec): string {
-	const reperes = (spec.reperes ?? [])
-		.map((rp) => repereMarkup(xDeValeur(rp.valeur, spec.min, spec.max), rp.etat ?? 'neutre'))
+	const liste = spec.reperes ?? [];
+	const juste = liste.find((rp) => (rp.etat ?? 'neutre') === 'correct');
+	// Voisin immédiat du repère juste (un pas d'écart) : `Math.round` sur le nombre de pas,
+	// comme `nbIntervalles` — les valeurs des clients décimaux sont des entiers d'unité interne,
+	// mais le quotient reste float-sensible.
+	const voisinDuJuste = (rp: DroiteRepere): boolean =>
+		juste !== undefined &&
+		rp !== juste &&
+		Math.round(Math.abs(rp.valeur - juste.valeur) / spec.pas) === 1;
+	const reperes = liste
+		.map((rp) =>
+			repereMarkup(
+				xDeValeur(rp.valeur, spec.min, spec.max),
+				rp.etat ?? 'neutre',
+				voisinDuJuste(rp),
+			),
+		)
 		.join('');
-	return svgCanvas(
+	const svg = svgCanvas(
 		DG_W,
 		DG_H,
 		'Droite graduée',
@@ -202,6 +255,8 @@ export function renderDroiteGraduee(spec: DroiteGradueeSpec): string {
 		corpsAxe(spec.min, spec.max, spec.pas, spec.bornes) + reperes,
 		'figure-droite-graduee',
 	);
+	if (liste.filter((rp) => tetePleine(rp.etat ?? 'neutre')).length < 2) return svg;
+	return `<div class="figure-avec-legende">${svg}${legendeReperes()}</div>`;
 }
 
 /** Coquille INTERACTIVE `role="radiogroup"` : chaque graduation est un `radio`

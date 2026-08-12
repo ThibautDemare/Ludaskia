@@ -10,7 +10,7 @@ import { LEVEL_ORDER } from './levels';
 import { niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
 import { etatNeuf, avancerEtat } from './revision';
 import type { EtatRevision } from './orthographe/types';
-import { RECENT_MAX, niveauNotion, type LessonStat } from './maitrise';
+import { ajouterEssaiRecent, essaisRecents, niveauNotion, type LessonStat } from './maitrise';
 import { apresEssaiLecon, type EtatReport } from './report-lecon';
 
 /* La forme `LessonStat` et ses dérivations pures (moyennes) vivent dans maitrise.ts
@@ -276,14 +276,21 @@ export function recordLessonStats(
 		const k = nsKey(num, niveauStockage(num));
 		if (!s[k]) premieres.push(num);
 		const e = s[k] || { attempts: 0, correct: 0, questions: 0, bestPct: 0, lastPct: 0 };
+		// Fenêtre AVANT mise à jour des compteurs : la conversion de l'ancienne forme estime le
+		// nombre de questions par essai depuis `questions / attempts`, qui ne doit pas déjà
+		// inclure l'essai en cours (il tirerait l'estimation vers la taille de CE seul essai).
+		const fenetre = essaisRecents(e);
 		e.attempts++;
 		e.correct += ok;
 		e.questions += total;
 		const pct = Math.round((ok / total) * 100);
 		e.bestPct = Math.max(e.bestPct, pct);
 		e.lastPct = pct;
-		// Fenêtre glissante des derniers % (#234) : base de la performance « récente ».
-		e.recentPct = [...(e.recentPct ?? []), pct].slice(-RECENT_MAX);
+		// Fenêtre glissante (#234), comptée en QUESTIONS depuis #541 : base de la performance
+		// « récente ». L'ancienne forme est convertie puis retirée — les garder toutes deux
+		// laisserait deux sources de vérité divergentes pour la même fenêtre.
+		e.recents = ajouterEssaiRecent(fenetre, { ok, total });
+		delete e.recentPct;
 		e.lastAt = now; // dernière fois travaillée (suivi de l'espace encadrant)
 		s[k] = e;
 	}

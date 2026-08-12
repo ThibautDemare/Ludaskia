@@ -11,11 +11,15 @@
    1. Sprint — saisie non numérique refusée (pas de correction ouverte).
    2. Sprint — le message se lève à la retouche, une saisie numérique valide
       repart normalement dans le circuit de correction.
-   3. Sprint — valider un champ vide affiche aussi un message.
-   4. Fiche (plusieurs champs) — une saisie non numérique dans UN champ
+   3. Fiche (plusieurs champs) — une saisie non numérique dans UN champ
       bloque TOUTE la vérification, jusqu'à la retouche ; un champ vide ne
       bloque pas.
-   5. Écho de frappe du champ du sprint (classe `frappe`).
+   4. Écho de frappe du champ du sprint (classe `frappe`).
+
+   Un champ VIDE, en revanche, n'est plus un refus depuis « Je ne sais pas,
+   montre-moi » (#467) : valider à vide vaut réponse fausse ASSUMÉE (révélation,
+   question comptée, aucun point) — cf. e2e/je-ne-sais-pas.spec.ts. Rien à voir
+   avec ce fichier, qui ne couvre que le vrai REFUS (« ce n'est pas un nombre »).
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
@@ -77,19 +81,6 @@ test('Sprint : le message se lève à la retouche, une saisie numérique repart 
 	// (chrono en pause, écran de correction avec « Continuer »).
 	await page.locator('#sprintInput').press('Enter');
 	await expect(page.locator('#sprintContinue')).toBeVisible();
-
-	expect(errors).toEqual([]);
-});
-
-test('Sprint : valider un champ vide affiche aussi un message', async ({ page }) => {
-	const errors = watchErrors(page);
-	await lancerSprintCalculMental(page);
-
-	await page.locator('#sprintInput').press('Enter'); // rien saisi
-
-	await expect(page.locator('#sprintContinue')).toBeHidden();
-	await expect(page.locator('#sprintHint')).toBeVisible();
-	await expect(page.locator('#sprintHint')).toHaveText('Écris ta réponse avant de valider.');
 
 	expect(errors).toEqual([]);
 });

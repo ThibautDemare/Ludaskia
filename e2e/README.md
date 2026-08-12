@@ -42,6 +42,16 @@ Le serveur de dev est démarré automatiquement par Playwright (`webServer` dans
   → `#bcSelectNone` → cocher la leçon visée (`.bc-lesson-check[value=…]`) → mode `sprint`
   (`.bc-mode-radio[value="sprint"]`) → `#bcRun` (#64, `ui/bilan.ts`). Le sprint ne tire
   plus que sur cette leçon. Exemple : `e2e/pave-signes.spec.ts`.
+- **Atteindre le bilan du sprint sans attendre 5 minutes réelles** : le chrono du sprint
+  tourne sur `Date.now()` + `setInterval`, donc rien de plus fiable qu'une horloge
+  truquée pour le faire s'écouler — jamais un `waitForTimeout` (non déterministe, et
+  bien trop long pour un smoke test). Utiliser l'API `page.clock` de Playwright :
+  `await page.clock.install()` **avant** de lancer le sprint (avant le clic sur
+  `#scLaunch`/l'appel à `runSprint`, donc avant la création du `setInterval` qui décrémente
+  le temps restant), puis `await page.clock.fastForward('05:01')` une fois la dernière
+  question répondue pour atteindre `.sprint-done`. Installer l'horloge APRÈS le lancement
+  ne fonctionne pas (l'intervalle déjà créé tourne sur l'horloge réelle). Exemple :
+  `e2e/je-ne-sais-pas.spec.ts` (« Sprint : valider un champ vide… »).
 
 ## Scan a11y automatique (axe-core, #411)
 

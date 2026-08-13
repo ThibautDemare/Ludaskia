@@ -602,12 +602,20 @@ export function friseNotion(
 	if (niveau === 'a-decouvrir' && aucunCap) return null; // jamais travaillée
 	const finDecouv = finDecouverte(horodatage(firstSeen), debutSuivi);
 	const plancher = plancherSuivi(niveau, aucunCap, finDecouv !== -Infinity);
-	return {
-		semaines: cellulesFrise(acquis, enCours, finDecouv, plancher, debutSuivi, now),
-		enCoursDepuis: enCours,
-		acquisDepuis: acquis,
-	};
+	const semaines = cellulesFrise(acquis, enCours, finDecouv, plancher, debutSuivi, now);
+	if (aucuneSemaineConnue(semaines)) return null;
+	return { semaines, enCoursDepuis: enCours, acquisDepuis: acquis };
 }
+
+/* Une frise dont AUCUNE semaine n'est connue n'est PAS dessinée. Douze blocs creux côte à côte
+   n'apprennent rien et se lisent comme un défaut d'affichage — le reproche même qui avait fait
+   abandonner le pointillé (#540). La ligne retombe alors sur sa puce d'état et son mot, comme
+   avant qu'elle ait une frise, et la frise apparaît le jour où une semaine se déduit.
+   Le cas est RÉEL, pas théorique : à la mise en service d'un journal, tant qu'aucune session n'a
+   posé la borne de suivi, rien n'est déductible d'aucune semaine. C'est l'état de TOUTES les
+   listes de dictée d'un profil existant le jour où le journal des listes arrive (#541). */
+const aucuneSemaineConnue = (semaines: CelluleFrise[]): boolean =>
+	semaines.every((c) => c === 'inconnu');
 
 /* Cellules d'une frise, à partir des caps datés, de la fin de la période « à découvrir » et de
    l'état à supposer sur les semaines SUIVIES qu'aucun cap ne couvre encore. Cœur commun aux deux
@@ -689,11 +697,9 @@ export function friseListeOrtho(
 	const plancher: CelluleFrise = aucunCap ? niveau : 'a-decouvrir';
 	// Pas de date de « première rencontre » pour une liste (aucun équivalent de firstSeen) : la
 	// période « à découvrir » n'est pas bornée par une date mais déduite du plancher ci-dessus.
-	return {
-		semaines: cellulesFrise(acquis, enCours, -Infinity, plancher, debutSuivi, now),
-		enCoursDepuis: enCours,
-		acquisDepuis: acquis,
-	};
+	const semaines = cellulesFrise(acquis, enCours, -Infinity, plancher, debutSuivi, now);
+	if (aucuneSemaineConnue(semaines)) return null;
+	return { semaines, enCoursDepuis: enCours, acquisDepuis: acquis };
 }
 
 /* La frise montre-t-elle un changement d'état ? Alimente le compteur « N changements récents »

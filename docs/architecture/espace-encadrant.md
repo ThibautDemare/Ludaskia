@@ -183,7 +183,10 @@ l'événement marquant. Un segment « à renforcer » reste volontairement **mue
 ce palier n'en a pas) — « statut inconnu, puis à renforcer » se lit donc sans date pour ce
 second segment. Rien à tracer (leçon jamais travaillée : encore « à découvrir » et aucun cap
 franchi) → pas de frise, et la puce d'état n'est alors pas omise : la ligne garde sa pastille
-habituelle.
+habituelle. **Même verdict** pour une leçon (ou une liste) déjà travaillée dont pourtant AUCUNE
+semaine ne serait déductible (#541 : douze cases `'inconnu'`, cf. [Logique pure](core.md)) —
+un dessin entièrement creux se lit comme un bug d'affichage, pas comme une absence de donnée,
+la ligne retombe donc sur sa pastille comme si la frise n'existait pas encore.
 
 **Signal de recul** : la frise ne redescend jamais (elle ne date que des montées) — un écart
 entre sa dernière cellule (p. ex. « acquis ») et le **mot** d'état affiché à côté (qui peut
@@ -315,16 +318,31 @@ listes créées par le parent restent toujours visibles**, même « à découvri
 un compte factuel « X/Y mots maîtrisés » est accolé (jamais de %), pour restituer la nuance
 perdue par l'absence de « à renforcer ».
 
-**Frise d'états** (#541) : chaque ligne de liste porte désormais la **même frise** que les
-leçons du catalogue (cf. « Frise d'états par leçon » ci-dessus, `friseNotionHTML` partagé),
-sur un journal daté **dédié** (`ludaskia_paliersOrtho` / `ludaskia_paliersOrthoDepuis`, cf.
+**Frise d'états** (#541) : chaque ligne de liste porte la **même frise** que les leçons du
+catalogue (cf. « Frise d'états par leçon » ci-dessus, `friseNotionHTML` partagé), sur un
+journal daté **dédié** (`ludaskia_paliersOrtho` / `ludaskia_paliersOrthoDepuis`, cf.
 `core/orthographe/paliers.ts` et [Données & profils](donnees-et-profils.md)) — écrit en fin de
 dictée ET de révision espacée, qui rejoue aussi des mots et peut donc faire franchir un cap à
 une liste sans qu'aucune dictée n'ait été lancée. Déduction propre aux listes
 (`friseListeOrtho`, [Logique pure](core.md)) : l'échelle à 3 niveaux n'ayant pas de « à
 renforcer », une semaine suivie avant le 1er cap « en cours » ne peut avoir été que
-« à découvrir » — la frise d'une liste ne montre donc de creux qu'avant la mise en service de
-ce journal, jamais après.
+« à découvrir » — la frise d'une liste ne montre donc de creux qu'avant sa borne de suivi,
+jamais après.
+
+**Amorçage par l'historique de dictée** : à la mise en service de ce journal, un profil déjà
+actif n'a par construction AUCUNE donnée datée pour ses listes déjà travaillées — sans
+rattrapage, chacune afficherait donc douze cases creuses, lues comme un bug plutôt que comme
+une absence de suivi (d'où le choix de ne rendre AUCUNE frise dans ce cas, cf. « Frise d'états
+par leçon » ci-dessus). `friseListeOrtho` compense en relisant le graphe d'activité
+(`premieresSeancesDictee`, sur les entrées `{k:'dictee', ref}`, #498) : la 1re séance **datée**
+d'une liste devient son cap « en cours » quand le journal n'en a pas de plus ancien, et la
+borne de suivi de **cette ligne** (avant cette séance, rien n'est prouvable). Trois limites à
+connaître : l'amorçage ne date **jamais** une acquisition (rien dans le stockage ne le
+permet) — une liste déjà maîtrisée avant ce journal reste sans frise jusqu'à sa **prochaine**
+séance ; le journal d'activité est borné aux **200** dernières séances et ne porte de `ref`
+que depuis #498 ; et une liste travaillée **seulement** en révision espacée n'y a aucune
+entrée à son nom (un tour de révision ne référence aucune cible unique, cf. [Logique
+pure](core.md)).
 
 **Mots consultables** (#441) : `RecapListeOrtho` et `DicteeProposee` portent chacune un champ
 `mots: string[]`, déjà dans l'ordre d'**AFFICHAGE** — alphabétique pour une liste du parent

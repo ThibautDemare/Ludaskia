@@ -1061,8 +1061,8 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `RecapProfil.frises` a disparu. Détail du rendu dans [Espace encadrant](espace-encadrant.md).
 
   **Frise d'une LISTE de dictée** (#541, pendant du bloc ci-dessus) :
-  `friseListeOrtho(paliers, niveau, debutSuivi, now)` réutilise la même boucle de cellules
-  (`cellulesFrise`, factorisée avec `friseNotion`) sur un journal DÉDIÉ
+  `friseListeOrtho(paliers, niveau, debutSuivi, now, premiereSeance)` réutilise la même boucle
+  de cellules (`cellulesFrise`, factorisée avec `friseNotion`) sur un journal DÉDIÉ
   (`ORTHO_PALIERS_KEY`/`ORTHO_PALIERS_DEBUT_KEY`, `core/orthographe/paliers.ts`, cf. [Données
   & profils](donnees-et-profils.md)), écrit par `journaliserPaliersOrtho(dicteeDispo, now)` en
   fin de dictée (`ui/ortho-runner.ts`) ET de révision espacée (`ui/revision.ts`, qui rejoue
@@ -1070,10 +1070,27 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   celle jouée). Déduction propre aux listes : l'échelle n'a que 3 niveaux (pas de « à
   renforcer », cf. `orthographe/progression.ts`), donc une semaine suivie avant le 1er cap
   « en cours » ne peut avoir été que « à découvrir » — la frise d'une liste ne montre de creux
-  (`'inconnu'`) qu'AVANT la mise en service de ce journal, jamais après, à la différence de
-  celle d'une leçon qui reste dans le doute sur ses semaines non datées. Consommée par
-  `listesOrthoProfil` → `RecapListeOrtho.frise`, rendue par la même `friseNotionHTML` que les
-  leçons (cf. [Espace encadrant](espace-encadrant.md)).
+  (`'inconnu'`) qu'AVANT sa borne de suivi, jamais après, à la différence de celle d'une leçon
+  qui reste dans le doute sur ses semaines non datées.
+
+  **Amorçage par l'historique de dictée** (#541) : sans lui, un profil déjà actif au moment où
+  ce journal entre en service n'a AUCUNE donnée datée pour ses listes déjà travaillées — le
+  cas qui déclenche justement l'invariant « toutes `'inconnu'` → pas de frise » ci-dessus, pour
+  chacune de ses listes. `premieresSeancesDictee(activityRaw)` (pure) relit `ludaskia_activity`
+  et rend, par id de liste, l'horodatage de sa 1re séance `{k: 'dictee', ref}` (#498) — une
+  PREUVE que la liste était « en cours » à cette date, déjà stockée, pas une reconstitution.
+  `friseListeOrtho` s'en sert comme cap « en cours » quand le journal n'en a pas de plus
+  ANCIEN (l'amorce prime, sinon la première séance jouée sur la nouvelle version écraserait
+  l'histoire connue) et comme BORNE DE SUIVI propre à cette ligne (avant cette séance, rien
+  n'est prouvable) — à la condition que le sommet accessible soit « en cours » ou un « acquis »
+  déjà daté par le journal (`sommetAtteignable`) : l'amorçage ne date **jamais** une
+  acquisition, faute de le pouvoir depuis le seul stockage, et une liste maîtrisée avant ce
+  journal reste donc sans frise jusqu'à sa PROCHAINE séance. Deux limites supplémentaires : le
+  journal d'activité est borné aux `ACTIVITY_MAX` (200) dernières séances et ne porte de `ref`
+  que depuis #498 ; une liste travaillée seulement en révision espacée n'y a aucune entrée à
+  son nom (un tour de révision ne référence aucune cible unique, cf. `progress.ts` ci-dessus).
+  Consommée par `listesOrthoProfil` → `RecapListeOrtho.frise`, rendue par la même
+  `friseNotionHTML` que les leçons (cf. [Espace encadrant](espace-encadrant.md)).
   **Travaillé récemment** (#520) : `travailRecent(statsRaw, activityRaw, ortho, jours, now)`
   → `GroupeTravail[]` (`{subject, label, cibles: CibleTravaillee[]}`, un groupe par matière
   dans l'ordre de `SUBJECTS`) et son lecteur de stores `travailRecentProfil(profile, jours,

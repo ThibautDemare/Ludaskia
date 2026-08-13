@@ -1,8 +1,10 @@
 /* ============================================================
-   #234 — performance RÉCENTE (recentPct) et journal d'activité.
-   recentPct = fenêtre glissante des derniers essais (base de « à revoir » et de
-   l'état d'acquisition) ; le journal d'activité date CHAQUE session finalisée
-   (toutes, pas seulement les bilans/sprints).
+   #234 — performance RÉCENTE et journal d'activité.
+   Fenêtre glissante des derniers essais (base de « à revoir » et de l'état
+   d'acquisition), comptée en QUESTIONS et pondérée depuis #541 — sa mécanique propre
+   (bornage, migration, planchers) est éprouvée dans fenetre-ponderee.test.ts ; le
+   journal d'activité date CHAQUE session finalisée (toutes, pas seulement les
+   bilans/sprints).
    ============================================================ */
 import { beforeEach, describe, it, expect } from 'vitest';
 import {
@@ -24,19 +26,27 @@ beforeEach(() => {
 	initProfiles();
 });
 
-describe('recentPct (fenêtre glissante)', () => {
-	it('ne conserve que les 5 derniers essais', () => {
-		// 7 sessions de math-doubles, pct = 0,10,20,…,60 (ok = i sur 10).
+describe('fenêtre glissante', () => {
+	it('ne conserve que les derniers essais (bornés à 40 QUESTIONS, #541)', () => {
+		// 7 sessions de math-doubles, ok = i sur 10. La fenêtre se compte en questions depuis
+		// #541 : 4 essais de 10 la remplissent, les plus anciens en sortent — et le couple
+		// {ok, total} remplace le seul pourcentage, désormais retiré.
 		for (let i = 0; i <= 6; i++) recordLessonStats({ 'math-doubles': { ok: i, total: 10 } });
 		const stat = loadLessonStats()['math-doubles'];
-		expect(stat.recentPct).toEqual([20, 30, 40, 50, 60]); // les 5 derniers
+		expect(stat.recents).toEqual([
+			{ ok: 3, total: 10 },
+			{ ok: 4, total: 10 },
+			{ ok: 5, total: 10 },
+			{ ok: 6, total: 10 },
+		]);
+		expect(stat.recentPct).toBeUndefined();
 		expect(stat.attempts).toBe(7); // le cumul, lui, garde tout
 	});
 
-	it('recentAvgPct = moyenne des derniers ; null sans historique', () => {
+	it('recentAvgPct = bonnes réponses sur questions posées ; null sans historique', () => {
 		recordLessonStats({ 'math-doubles': { ok: 8, total: 10 } });
 		recordLessonStats({ 'math-doubles': { ok: 6, total: 10 } });
-		expect(recentAvgPct(loadLessonStats()['math-doubles'])).toBe(70); // (80+60)/2
+		expect(recentAvgPct(loadLessonStats()['math-doubles'])).toBe(70); // 14 justes sur 20
 		expect(
 			recentAvgPct({ attempts: 1, correct: 5, questions: 10, bestPct: 50, lastPct: 50 }),
 		).toBeNull();

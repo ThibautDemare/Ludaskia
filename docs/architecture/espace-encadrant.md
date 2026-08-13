@@ -120,9 +120,12 @@ catégorie affiche le même dénombrement (`RecapCategorie.travaillees`). Compta
 aucune note.
 
 **Tendance par notion** (signal COURT TERME, pas une note) : puce ↗ « en progrès » / →
-« stable » / ↘ « à relancer » à côté de l'état, dérivée de la fenêtre glissante `recentPct`
-(`tendanceNotion` : compare la moyenne de la 1re et de la 2de moitié de la fenêtre). **Masquée
-sous 4 essais** — un signal sur trop peu de données serait du bruit lu comme une régression.
+« stable » / ↘ « à relancer » à côté de l'état, dérivée de la fenêtre glissante `recents`
+(`tendanceNotion` : compare la performance pondérée de la 1re et de la 2de moitié de la
+fenêtre, coupées en **questions** et non en essais depuis #541). **Masquée sous 24 questions**
+(`TENDANCE_MIN_QUESTIONS`), et aussi si l'une des deux moitiés en compte moins de 8
+(`TENDANCE_MIN_MOITIE`, une moitié trop maigre ne se compare pas à l'autre) — un signal sur
+trop peu de données serait du bruit lu comme une régression.
 Formulée en action, jamais en verdict (« à relancer », jamais « en baisse ») ; couleur en
 indice **secondaire** porté par le glyphe (`aria-hidden`), mot en `--ink`, libellé `sr-only`
 (« Tendance : … ») pour les lecteurs d'écran. Reste un instantané, sans historique par
@@ -187,15 +190,10 @@ entre sa dernière cellule (p. ex. « acquis ») et le **mot** d'état affiché 
 être retombé à « non acquis »/« à renforcer ») EST le signal à lire, sans qu'aucune cellule ne
 le désigne explicitement.
 
-**Limite connue** (#541) : la révision espacée pose la borne de mise en service du journal
-(elle atteste que le suivi tourne, cf. [Logique pure](core.md)) mais ne met à jour ni les
-stats de la leçon ni son étoile — seul un chemin qui écrit des stats peut faire monter un
-palier. Sur une semaine de **pure** révision espacée, la frise affiche donc l'état déduit
-des stats **antérieures**, inchangé, plutôt qu'un rattrapage de ce qui vient d'être rejoué.
-Pas incohérent avec le modèle (la maîtrise ne se nourrit que des sessions qui écrivent des
-stats, et le **mot** d'état à côté de la frise dit déjà la même chose) mais un lecteur
-pressé de la frise peut s'y attendre autrement ; le fond — la révision doit-elle alimenter
-le niveau de maîtrise — reste ouvert, cf. issue #541.
+**La révision espacée alimente la frise** (#541) : dès qu'une session rejoue au moins un item
+du catalogue, elle met à jour les stats de la leçon (et son étoile éventuelle) exactement
+comme une leçon jouée seule, cf. [Logique pure](core.md) — une semaine de révision peut donc
+faire monter un palier, sans attendre qu'une leçon soit relancée ailleurs.
 
 **Dépliage global par matière** (`deplierHTML`) : un bouton par matière suivie (masqué s'il
 n'y en a qu'une) ouvre ou referme d'un coup toutes les catégories de cette matière, pour
@@ -316,6 +314,17 @@ noierait les listes du parent), **sauf si elles ont été épinglées** (suivi a
 listes créées par le parent restent toujours visibles**, même « à découvrir ». Pour « en cours »,
 un compte factuel « X/Y mots maîtrisés » est accolé (jamais de %), pour restituer la nuance
 perdue par l'absence de « à renforcer ».
+
+**Frise d'états** (#541) : chaque ligne de liste porte désormais la **même frise** que les
+leçons du catalogue (cf. « Frise d'états par leçon » ci-dessus, `friseNotionHTML` partagé),
+sur un journal daté **dédié** (`ludaskia_paliersOrtho` / `ludaskia_paliersOrthoDepuis`, cf.
+`core/orthographe/paliers.ts` et [Données & profils](donnees-et-profils.md)) — écrit en fin de
+dictée ET de révision espacée, qui rejoue aussi des mots et peut donc faire franchir un cap à
+une liste sans qu'aucune dictée n'ait été lancée. Déduction propre aux listes
+(`friseListeOrtho`, [Logique pure](core.md)) : l'échelle à 3 niveaux n'ayant pas de « à
+renforcer », une semaine suivie avant le 1er cap « en cours » ne peut avoir été que
+« à découvrir » — la frise d'une liste ne montre donc de creux qu'avant la mise en service de
+ce journal, jamais après.
 
 **Mots consultables** (#441) : `RecapListeOrtho` et `DicteeProposee` portent chacune un champ
 `mots: string[]`, déjà dans l'ordre d'**AFFICHAGE** — alphabétique pour une liste du parent

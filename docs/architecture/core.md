@@ -718,11 +718,22 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
 
 ## Progression, gamification & déblocages
 
-- **`maitrise.ts`** (#397) — socle **pur** (sans stockage) de l'échelle de maîtrise d'une
-  notion (type LSU) : forme `LessonStat`, `lessonAvgPct` (moyenne cumulée) /
-  `recentAvgPct` (perf **récente**, fenêtre glissante `recentPct` bornée par
-  `RECENT_MAX`), seuils d'acquisition (`SEUIL_NON_ACQUIS`/`SEUIL_REVOIR`) et de tendance
-  (`TENDANCE_MIN_ESSAIS`/`TENDANCE_SEUIL`), `niveauNotion`/`tendanceNotion`. Extrait de
+- **`maitrise.ts`** (#397, fenêtre recomptée en QUESTIONS par #541) — socle **pur** (sans
+  stockage) de l'échelle de maîtrise d'une notion (type LSU) : forme `LessonStat`,
+  `lessonAvgPct` (moyenne cumulée) / `recentAvgPct` (perf **récente** `Σok/Σtotal`, fenêtre
+  glissante `LessonStat.recents: EssaiRecent[]` — un couple `{ok, total}` par essai, PONDÉRÉ
+  par son nombre de questions plutôt que moyenné à poids égal — bornée à `FENETRE_QUESTIONS`
+  = 40 questions, pas 5 essais : une question isolée de sprint ne pèse plus autant qu'une série
+  complète de huit). L'ancienne forme `recentPct?` (un % par essai, impondérable) n'est **plus
+  jamais écrite** mais reste lue en repli et CONVERTIE (`essaisRecents`, questions par essai
+  estimées depuis `questions / attempts`), pour ne pas remettre à zéro l'historique des
+  profils existants. `perfRecente` renvoie perf + taille d'échantillon ensemble (repli sur
+  `lessonAvgPct` si la fenêtre est vide). Seuils d'acquisition (`SEUIL_NON_ACQUIS`/
+  `SEUIL_REVOIR`, inchangés), plancher d'échantillon **`MIN_QUESTIONS_ETAT_BAS`** (6
+  questions, calé sur la plus petite série de leçon) sous lequel `niveauNotion` ne descend
+  plus à « non acquis » faute de matière, et seuils de tendance comptés en questions
+  (`TENDANCE_MIN_QUESTIONS` = 24 + `TENDANCE_MIN_MOITIE` = 8, remplacent l'ancien
+  `TENDANCE_MIN_ESSAIS`) / `TENDANCE_SEUIL`, `niveauNotion`/`tendanceNotion`. Extrait de
   `progress.ts`/`encadrant-stats.ts` pour **casser le cycle d'import** entre les deux : ce
   module ne dépend d'aucun autre module de l'app. `progress.ts` (écriture) et
   `encadrant-stats.ts` (lecture) le réexportent pour les imports historiques.
@@ -772,20 +783,23 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   sans quoi l'attribution ne pouvait s'appuyer que sur le TYPE de session, donc sur un
   marqueur posé au lancement (ignorant le travail fait depuis une autre porte).
   `recordLessonStats(perLesson, kind = 'lecon', ref?)` journalise les leçons/bilans/sprints
-  (`ref` transmis seulement en mode `'lecon'`, cf. `lesson-run.ts` ci-dessus) ; les
-  sessions qui **ne passent pas** par `recordLessonStats` (révision espacée
-  `ui/revision.ts`, dictée d'orthographe `ui/ortho-runner.ts`) appellent
-  **`recordSessionActivity(kind, ref?)`**. `normalizeActivity` lit **tolérant** l'ancien
+  (`ref` transmis seulement en mode `'lecon'`, cf. `lesson-run.ts` ci-dessus) ; **depuis #541,
+  la révision espacée l'appelle aussi** (`ui/revision.ts`, `kind = 'revision'`) dès qu'elle a
+  rejoué au moins un item du catalogue — une session composée UNIQUEMENT de mots
+  d'orthographe n'a, elle, aucune stat de leçon à écrire. La dictée d'orthographe
+  (`ui/ortho-runner.ts`), qui ne porte jamais de leçon du catalogue, et une révision
+  purement lexicale appellent alors **`recordSessionActivity(kind, ref?)`**.
+  `normalizeActivity` lit **tolérant** l'ancien
   `number[]` (chaque horodatage nu → `'inconnu'`, sans `ref`) et le réécrit au format objet
   au prochain passage (migration **lazy, sans perte**).
   **Borne de mise en service du journal des paliers, posée par TOUTE session** (PR #540) :
   `recordActivity`, le point commun à `recordLessonStats` et `recordSessionActivity`,
   appelle `marquerDebutSuivi(now)`, qui pose `PALIERS_DEBUT_KEY` (`ludaskia_paliersDepuis`)
   si elle manque encore, **jamais deux fois**. Sans ça, un enfant qui ne ferait que des
-  dictées et de la révision espacée (chemins qui n'écrivent aucune stat de leçon) n'aurait
-  aucune borne, et l'espace encadrant afficherait « aucun suivi » sur toutes ses leçons
-  alors qu'il travaille — la déduction reste juste, l'étoile ne s'obtenant que par celui qui
-  écrit des stats. Contrairement aux franchissements de palier ci-dessus, cette borne est
+  dictées et des révisions purement lexicales (chemins qui n'écrivent aucune stat de leçon,
+  cf. #541 ci-dessous) n'aurait aucune borne, et l'espace encadrant afficherait « aucun suivi »
+  sur toutes ses leçons alors qu'il travaille — la déduction reste juste, l'étoile ne
+  s'obtenant que par celui qui écrit des stats. Contrairement aux franchissements de palier ci-dessus, cette borne est
   posée **synchroniquement** (elle ne dépend pas de l'étoile). `recordMonteesPalier` la pose
   aussi, pour le seul cas qu'aucun point d'activité ne couvre : la session sans aucune
   question. **XP global** (`getXP`/`addXP`,
@@ -1011,14 +1025,16 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   depuis `debutSuivi` (l'échelle ne redescend jamais d'elle-même), ce qui donne aussi une
   frise à une leçon acquise **avant** la mise en service du journal.
 
-  **Limite connue** (#541) : la révision espacée (`ui/revision.ts`) pose la borne
-  `debutSuivi` (elle passe par `recordActivity`, cf. `progress.ts` ci-dessus) mais n'écrit
-  ni stat de leçon ni étoile — seul un chemin qui écrit des stats peut faire monter un
-  palier. Sur une semaine de pure révision espacée, la frise affiche donc l'état déduit des
-  stats **antérieures**, inchangé, plutôt qu'un rattrapage de ce qui vient d'être rejoué.
-  Cohérent avec le modèle (la maîtrise ne se nourrit que des sessions qui écrivent des
-  stats) mais pas forcément avec l'intuition d'un lecteur de la frise ; le fond — la
-  révision doit-elle alimenter le niveau de maîtrise — reste ouvert, cf. issue #541.
+  **La révision espacée alimente désormais les stats de leçon** (#541) : dès qu'une session
+  rejoue au moins un item du catalogue (distinct des mots d'orthographe, cf. ci-dessous),
+  `ui/revision.ts` appelle `recordLessonStats(perLesson, 'revision')` en fin de session,
+  exactement comme une leçon jouée seule — étoile, performance récente ET franchissement de
+  palier en découlent donc de la même façon, la frise rattrapant la semaine sans attendre
+  qu'une leçon soit relancée ailleurs. Une session composée UNIQUEMENT de mots d'orthographe
+  n'a aucune stat de leçon à écrire (`recordSessionActivity('revision')` journalise alors
+  seule l'activité) ; ces mots suivent leur propre trajectoire, cf. « Frise d'une LISTE de
+  dictée » ci-dessous. Ce câblage n'était possible qu'une fois la fenêtre comptée en
+  questions (ci-dessus) : un item de révision, isolé, aurait sinon pesé un essai entier.
 
   **Invariant** : les cellules `'inconnu'` forment TOUJOURS un préfixe de la rangée (une
   rangée commence par `'a-decouvrir'` ou par `'inconnu'`, jamais les deux) — une cellule
@@ -1035,9 +1051,24 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   un seul état) peuvent répondre différemment selon qu'un cap est daté ou non, un dessin ne
   pouvant pas montrer un franchissement dont les semaines antérieures restent inconnues.
 
-  Nouveaux champs `RecapNotion.frise` et `RecapMatiere.changementsRecents` (compte de
-  notions ayant changé, roll-up par matière) ; `RecapProfil.frises` a disparu. Détail du
-  rendu dans [Espace encadrant](espace-encadrant.md).
+  Nouveaux champs `RecapNotion.frise`, `RecapListeOrtho.frise` (#541, cf. ci-dessous) et
+  `RecapMatiere.changementsRecents` (compte de notions ayant changé, roll-up par matière) ;
+  `RecapProfil.frises` a disparu. Détail du rendu dans [Espace encadrant](espace-encadrant.md).
+
+  **Frise d'une LISTE de dictée** (#541, pendant du bloc ci-dessus) :
+  `friseListeOrtho(paliers, niveau, debutSuivi, now)` réutilise la même boucle de cellules
+  (`cellulesFrise`, factorisée avec `friseNotion`) sur un journal DÉDIÉ
+  (`ORTHO_PALIERS_KEY`/`ORTHO_PALIERS_DEBUT_KEY`, `core/orthographe/paliers.ts`, cf. [Données
+  & profils](donnees-et-profils.md)), écrit par `journaliserPaliersOrtho(dicteeDispo, now)` en
+  fin de dictée (`ui/ortho-runner.ts`) ET de révision espacée (`ui/revision.ts`, qui rejoue
+  aussi des mots — toutes les listes contenant un mot rejoué sont réévaluées, pas seulement
+  celle jouée). Déduction propre aux listes : l'échelle n'a que 3 niveaux (pas de « à
+  renforcer », cf. `orthographe/progression.ts`), donc une semaine suivie avant le 1er cap
+  « en cours » ne peut avoir été que « à découvrir » — la frise d'une liste ne montre de creux
+  (`'inconnu'`) qu'AVANT la mise en service de ce journal, jamais après, à la différence de
+  celle d'une leçon qui reste dans le doute sur ses semaines non datées. Consommée par
+  `listesOrthoProfil` → `RecapListeOrtho.frise`, rendue par la même `friseNotionHTML` que les
+  leçons (cf. [Espace encadrant](espace-encadrant.md)).
   **Travaillé récemment** (#520) : `travailRecent(statsRaw, activityRaw, ortho, jours, now)`
   → `GroupeTravail[]` (`{subject, label, cibles: CibleTravaillee[]}`, un groupe par matière
   dans l'ordre de `SUBJECTS`) et son lecteur de stores `travailRecentProfil(profile, jours,

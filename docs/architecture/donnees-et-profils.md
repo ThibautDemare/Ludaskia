@@ -92,11 +92,13 @@ navigation](modes-et-navigation.md) et [Espace encadrant](espace-encadrant.md)),
 `ludaskia_seanceJournal` (journal **borné** des réalisations, y compris **partielles**,
 base d'un futur récap encadrant « durée des séances », visuel encore différé) et
 `ludaskia_seancesDone` (compteur **cumulé**, jamais remis à zéro, base du trophée
-dédié, cf. [Gamification](gamification.md)). Un `LessonStat` porte aussi `recentPct?` (#234 : fenêtre glissante des
-derniers % d'une leçon — base de la performance **récente**, distincte du cumul
-historique de `lessonAvgPct`) et `lastAt?` (horodatage ms de la dernière session
-travaillée, écrit par `recordLessonStats` — base du « dernière fois travaillée » et
-de la tendance par notion de l'espace encadrant, cf.
+dédié, cf. [Gamification](gamification.md)). Un `LessonStat` porte aussi `recents?` (#541 : fenêtre glissante d'`EssaiRecent {ok, total}`,
+bornée à `FENETRE_QUESTIONS` = 40 QUESTIONS et non plus 5 essais — base de la performance
+**récente** `Σok/Σtotal`, distincte du cumul historique de `lessonAvgPct` ; remplace
+l'ancienne forme `recentPct?`, un % par essai non pondérable, qui n'est plus jamais écrite
+mais reste lue en repli et convertie, cf. `core/maitrise.ts`) et `lastAt?` (horodatage ms de
+la dernière session travaillée, écrit par `recordLessonStats` — base du « dernière fois
+travaillée » et de la tendance par notion de l'espace encadrant, cf.
 [Espace encadrant](espace-encadrant.md)). **Clé GLOBALE** (non préfixée profil), comme
 `ludaskia_profiles` : `ludaskia_encadrant_lock` (#234 : `{pinHash, recoveryHash}`
 du verrou optionnel de l'espace encadrant — verrou de l'ESPACE, pas d'un profil,
@@ -116,6 +118,16 @@ la **suppression définitive d'un mot** passe par `supprimerMotFor` (`core/encad
 opération **atomique** lire → `supprimerMot` → écrire → `touchProfile`, sur le modèle de
 `toggleRevoirFor` — c'est elle qui est testée, et la vue n'a pas à recomposer la séquence.
 Les étoiles et stats sont désormais indexées par **id de leçon (chaîne)**.
+
+Pendant du journal des paliers pour les **listes** de dictée (#541, `core/orthographe/paliers.ts`) :
+`ludaskia_paliersOrtho` (même forme `PaliersNotion` que `ludaskia_paliers`, mais namespacée
+par id de LISTE plutôt que de leçon) et `ludaskia_paliersOrthoDepuis` (borne de mise en
+service, sur le modèle de `ludaskia_paliersDepuis`, mais **propre à ce journal** : celle des
+leçons est posée par toute session finalisée — dictée et révision comprises — et la reprendre
+ici ferait croire une liste suivie depuis une séance de maths qui n'a jamais touché ce
+journal-ci). Écrits en fin de dictée (`ui/ortho-runner.ts`) et de révision espacée
+(`ui/revision.ts`, qui rejoue aussi des mots) ; base de la frise d'évolution des listes de
+l'espace encadrant, cf. [Espace encadrant](espace-encadrant.md).
 
 ## Profils
 

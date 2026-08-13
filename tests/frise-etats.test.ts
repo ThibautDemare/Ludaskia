@@ -6,8 +6,11 @@
    - 12 cellules, de la plus ANCIENNE à la plus récente, la dernière = semaine EN COURS ;
      semaines CALENDAIRES (lundi premier jour), état d'une cellule = état atteint à la FIN
      de sa semaine (un cap franchi le mercredi colore la semaine qui le contient) ;
-   - `null` si et seulement si la leçon n'a JAMAIS été travaillée (état courant
-     « à découvrir » ET aucun franchissement daté) ;
+   - `null` pour DEUX motifs distincts : la leçon n'a JAMAIS été travaillée (état courant
+     « à découvrir » ET aucun franchissement daté), ou bien AUCUNE semaine n'est
+     déductible — douze blocs creux n'apprennent rien et se lisent comme un défaut
+     d'affichage, donc la frise n'est pas dessinée du tout et la ligne retombe sur sa puce
+     d'état et son mot (même reproche qui avait fait abandonner le pointillé) ;
    - trois sources, et une hiérarchie stricte entre elles : la première rencontre ne vaut
      « à découvrir » que si elle est POSTÉRIEURE (ou égale) à la borne de suivi ; un cap daté
      impose son état à partir de sa semaine (« acquis » l'emporte) ; avant la borne, rien ne
@@ -320,17 +323,23 @@ describe('friseNotion — les cas qui ont changé', () => {
 		expect(f.semaines).not.toContain('inconnu'); // historique complet : aucune ignorance
 	});
 
-	it('profil sans borne ET sans franchissement → 12 cellules « inconnu », jamais un état par défaut', () => {
+	it('profil sans borne ET sans franchissement → AUCUNE frise, jamais un état par défaut', () => {
+		// Ce qui est proscrit, c'est une rangée PEINTE que rien n'affirme : douze cellules
+		// « en cours » sur la seule foi de l'état du jour, alors qu'aucune semaine n'est
+		// déductible. Le silence est une réponse acceptable à ça — il n'affirme rien, et la ligne
+		// garde sa puce d'état et son mot ; une rangée peinte, non.
 		const borne = debutSuiviPaliers(null, {}); // Infinity
 		for (const niveau of ['non-acquis', 'en-cours', 'acquis'] as const) {
-			const f = friseNotion({}, undefined, niveau, borne, NOW)!;
-			expect(f.semaines, niveau).toEqual(rangee(['inconnu', 12]));
-			expect(aChangeRecemment(f), niveau).toBe(false);
+			expect(friseNotion({}, undefined, niveau, borne, NOW), niveau).toBeNull();
+			expect(aChangeRecemment(friseNotion({}, undefined, niveau, borne, NOW)), niveau).toBe(false);
 		}
 		// Une première rencontre ne suffit pas à ouvrir le suivi : sans borne, elle ne prouve
-		// pas que le journal tournait.
-		expect(friseNotion({}, dansSemaine(3), 'en-cours', borne, NOW)!.semaines).toEqual(
-			rangee(['inconnu', 12]),
+		// pas que le journal tournait — et ne peint donc pas davantage la rangée.
+		expect(friseNotion({}, dansSemaine(3), 'en-cours', borne, NOW)).toBeNull();
+		// La frise apparaît le jour où UNE semaine se déduit : ici la borne posée par la première
+		// fin de session, dans la semaine en cours.
+		expect(friseNotion({}, undefined, 'en-cours', dansSemaine(11), NOW)!.semaines).toEqual(
+			rangee(['inconnu', 11], ['en-cours', 1]),
 		);
 	});
 
@@ -539,14 +548,46 @@ function frise(c: Cas) {
 }
 
 describe('friseNotion — INVARIANTS sur tous les journaux, incohérents compris', () => {
-	it('null si et seulement si la leçon n’a jamais été travaillée', () => {
+	it('null pour DEUX motifs qu’on tient séparés : jamais travaillée, ou rien de déductible', () => {
+		// Prémisses de l'énumération, qui rendent le second motif calculable sans rejouer la
+		// cascade du code : aucune borne ni aucun cap n'y est postérieur à aujourd'hui — une mise
+		// en service à VENIR rendrait elle aussi toute la fenêtre inconnue.
+		expect(BORNES.every((b) => b === Infinity || b <= NOW)).toBe(true);
+		expect([...CAPS_EN_COURS, ...CAPS_ACQUIS].every((t) => t === null || t <= NOW)).toBe(true);
 		let cas = 0;
+		let jamaisHorsPorteeDuSecond = 0;
+		let muettes = 0;
 		for (const c of tousLesCas()) {
-			const jamais = c.niveau === 'a-decouvrir' && c.enCours === null && c.acquis === null;
-			expect(frise(c) === null, c.etiquette).toBe(jamais);
+			const jamaisTravaillee =
+				c.niveau === 'a-decouvrir' && c.enCours === null && c.acquis === null;
+			// Aucune des sources ne situe une semaine dans le suivi : ni borne exploitable
+			// (Infinity = « aucune semaine déductible »), ni cap daté — et la date de 1re
+			// rencontre, seule, ne prouve pas que le journal tournait.
+			const rienDeDeductible = c.borne === Infinity && c.enCours === null && c.acquis === null;
+			expect(frise(c) === null, c.etiquette).toBe(jamaisTravaillee || rienDeDeductible);
+			if (jamaisTravaillee && !rienDeDeductible) jamaisHorsPorteeDuSecond++;
+			if (rienDeDeductible && !jamaisTravaillee) muettes++;
 			cas++;
 		}
 		expect(cas).toBeGreaterThan(5000); // l'énumération n'a pas été vidée
+		// Les deux motifs sont peuplés, et surtout le PREMIER est éprouvé LÀ OÙ le second ne
+		// s'applique pas : une régression qui cesserait de taire les leçons jamais travaillées ne
+		// pourrait pas se cacher derrière « rien de déductible ».
+		expect(jamaisHorsPorteeDuSecond).toBeGreaterThan(40); // 7 rencontres × 7 bornes exploitables
+		expect(muettes).toBeGreaterThan(10);
+	});
+
+	it('une frise DESSINÉE porte toujours au moins une semaine connue', () => {
+		// Formulation directe du nouveau contrat, sans prédicat à dériver : ce qui est refusé,
+		// c'est la rangée entièrement creuse.
+		for (const c of tousLesCas()) {
+			const f = frise(c);
+			if (f === null) continue;
+			expect(
+				f.semaines.some((x) => x !== 'inconnu'),
+				c.etiquette,
+			).toBe(true);
+		}
 	});
 
 	it('les cellules « inconnu » forment toujours un préfixe, jamais mêlé à « à découvrir »', () => {

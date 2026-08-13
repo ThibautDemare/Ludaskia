@@ -668,6 +668,7 @@ export function friseListeOrtho(
 	niveau: NiveauNotion,
 	debutSuivi: number,
 	now: number,
+	premiereSeance: number | null = null,
 ): FriseNotion | null {
 	// Le journal est MONOTONE, l'état d'une liste ne l'est PAS. AUCUN cap n'est donc lu si l'état
 	// courant ne le porte plus : sans ce plafonnement, une cellule annoncerait un état que le mot
@@ -684,7 +685,36 @@ export function friseListeOrtho(
 	const enCoursStocke = horodatage(paliers?.enCours);
 	const acquisStocke = horodatage(paliers?.acquis);
 	const acquis = niveau === 'acquis' ? acquisStocke : null;
-	const enCours = niveau === 'acquis' || niveau === 'en-cours' ? enCoursStocke : null;
+	let enCours = niveau === 'acquis' || niveau === 'en-cours' ? enCoursStocke : null;
+	// AMORÇAGE pour les profils d'avant ce journal (#541). Le graphe d'activité garde des séances
+	// DATÉES par liste (`{k:'dictee', ref}`, #498) : une séance sur cette liste le T PROUVE qu'à T
+	// au moins un de ses mots était commencé, donc qu'elle était « en cours ». C'est une observation
+	// déjà stockée, pas une reconstitution — sans quoi un enfant qui fait des dictées depuis des
+	// mois n'aurait AUCUNE frise avant sa prochaine séance, alors que la donnée existe.
+	// Deux conséquences, dans cet ordre :
+	// - la séance sert de cap « en cours » quand le journal n'en a pas de plus ANCIEN. Elle prime
+	//   donc sur un tampon posé après coup : sinon la première séance jouée sur la nouvelle version
+	//   écraserait l'histoire connue et ferait dire « à découvrir » à des semaines travaillées ;
+	// - et elle devient la BORNE DE SUIVI de cette ligne, car avant T elle ne prouve rien, et la
+	//   borne du profil (posée plus tard, ou pas encore) ne dit rien de cette liste-là.
+	// Ce que l'amorçage NE fait PAS : dater une ACQUISITION. Rien dans le stockage ne le permet, et
+	// l'inventer peindrait « acquise » sur une semaine choisie au hasard. D'où la condition
+	// ci-dessous : on n'amorce que si le sommet de la rangée atteindra l'état courant (« en cours »,
+	// ou « acquis » déjà daté par le journal). Une liste maîtrisée avant ce journal reste donc sans
+	// frise jusqu'à sa prochaine séance, qui la datera pour de bon.
+	// PORTÉE de l'amorçage, à connaître : le graphe d'activité est borné aux 200 dernières séances
+	// et ne porte de `ref` que depuis #498 ; une liste travaillée seulement en révision espacée n'y
+	// a pas d'entrée à son nom (un tour de révision couvre plusieurs cibles, il n'en réfère aucune).
+	let borne = debutSuivi;
+	const sommetAtteignable = niveau === 'en-cours' || (niveau === 'acquis' && acquis !== null);
+	if (
+		premiereSeance !== null &&
+		sommetAtteignable &&
+		(enCours === null || premiereSeance < enCours)
+	) {
+		enCours = premiereSeance;
+		borne = premiereSeance;
+	}
 	// « Jamais commencée » se juge sur le journal TEL QU'IL EST STOCKÉ, pas sur la lecture
 	// plafonnée : un cap daté prouve que la liste a été travaillée, et doit donner une frise même
 	// si l'état courant dit « à découvrir » (liste que le parent a depuis vidée de ses mots). Même
@@ -697,9 +727,23 @@ export function friseListeOrtho(
 	const plancher: CelluleFrise = aucunCap ? niveau : 'a-decouvrir';
 	// Pas de date de « première rencontre » pour une liste (aucun équivalent de firstSeen) : la
 	// période « à découvrir » n'est pas bornée par une date mais déduite du plancher ci-dessus.
-	const semaines = cellulesFrise(acquis, enCours, -Infinity, plancher, debutSuivi, now);
+	const semaines = cellulesFrise(acquis, enCours, -Infinity, plancher, borne, now);
 	if (aucuneSemaineConnue(semaines)) return null;
 	return { semaines, enCoursDepuis: enCours, acquisDepuis: acquis };
+}
+
+/* Première séance de dictée DATÉE de chaque liste, tirée du graphe d'activité (`{k:'dictee', ref}`,
+   #498). Alimente l'amorçage de `friseListeOrtho` ci-dessus, où l'on trouve ce que cette date
+   prouve et ce qu'elle ne prouve pas. `activityRaw` est le journal BRUT (lu en localStorage) :
+   `normalizeActivity` tolère l'ancien format, comme partout ailleurs. Pur. */
+export function premieresSeancesDictee(activityRaw: unknown): Map<string, number> {
+	const out = new Map<string, number>();
+	for (const e of normalizeActivity(activityRaw)) {
+		if (e.k !== 'dictee' || !e.ref) continue;
+		const connue = out.get(e.ref);
+		if (connue === undefined || e.t < connue) out.set(e.ref, e.t);
+	}
+	return out;
 }
 
 /* La frise montre-t-elle un changement d'état ? Alimente le compteur « N changements récents »
@@ -936,6 +980,10 @@ export function listesOrthoProfil(
 		lsGetRaw(profile.uuid + '/' + ORTHO_PALIERS_DEBUT_KEY, null),
 		paliersRaw,
 	);
+	// Séances de dictée datées : elles amorcent la frise des listes travaillées AVANT ce journal
+	// (cf. friseListeOrtho). Sans elles, un enfant qui fait des dictées depuis des mois n'aurait
+	// aucune trajectoire à montrer tant qu'il n'en a pas rejoué une.
+	const premieres = premieresSeancesDictee(lsGetRaw(profile.uuid + '/' + ACTIVITY_KEY, []));
 	const out: RecapListeOrtho[] = [];
 	for (const ref of listOrthoLecons(state, niveau)) {
 		const av = avancementLecon(state, ref.id, dicteeDispo);
@@ -954,7 +1002,13 @@ export function listesOrthoProfil(
 			nbMots: ref.nbMots,
 			maitrises: av.maitrises,
 			mots: motsApercu(ref.mots, ref.source),
-			frise: friseListeOrtho(paliersRaw[ref.id], av.niveau, debutSuivi, now),
+			frise: friseListeOrtho(
+				paliersRaw[ref.id],
+				av.niveau,
+				debutSuivi,
+				now,
+				premieres.get(ref.id) ?? null,
+			),
 		});
 	}
 	return out;

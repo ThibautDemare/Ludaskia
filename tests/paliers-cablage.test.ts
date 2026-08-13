@@ -469,14 +469,15 @@ describe('bout en bout — la frise montre la session, au lieu de 12 pointillés
 
 	it('profil d’avant le journal : une simple dictée lui rend ses frises', async () => {
 		// Le cas qui motive la borne posée par TOUTE session. Un enfant qui ne fait que des dictées
-		// et de la révision espacée n'écrit aucune stat de leçon : sans borne, la frise ne déduit
-		// rien et l'espace encadrant affiche « aucun suivi » sur toutes ses leçons alors qu'il
-		// travaille. La dictée n'affirme rien sur les leçons — elle atteste que le journal tourne,
-		// et c'est ce qui rend leur état déductible.
+		// et de la révision espacée n'écrit aucune stat de leçon : sans borne, aucune semaine n'est
+		// déductible, donc la ligne n'a AUCUNE frise (une rangée entièrement creuse ne se dessine
+		// pas, elle se lirait comme un défaut d'affichage) et l'espace encadrant ne montre rien de
+		// l'évolution alors que l'enfant travaille. La dictée n'affirme rien sur les leçons — elle
+		// atteste que le journal tourne, et c'est ce qui rend leur état déductible.
 		const p = activeProfile();
 		await historiqueAvantLeJournal(dansSemaine(2), { [A]: { ok: 2, total: 10 } });
 		expect(borne()).toBeNull();
-		expect(frise(progressionProfil(p, NOW), A)).toEqual(rangee(['inconnu', 12]));
+		expect(frise(progressionProfil(p, NOW), A)).toBeNull();
 		auMoment(dansSemaine(7), () => recordSessionActivity('dictee', 'fr-ortho-invariables-1'));
 		await finDeSession();
 		expect(borne()).toBe(dansSemaine(7));

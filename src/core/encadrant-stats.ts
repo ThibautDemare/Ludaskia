@@ -707,13 +707,20 @@ export function friseListeOrtho(
 	// PORTÉE de l'amorçage, à connaître : le graphe d'activité est borné aux 200 dernières séances
 	// et ne porte de `ref` que depuis #498 ; une liste travaillée seulement en révision espacée n'y
 	// a pas d'entrée à son nom (un tour de révision couvre plusieurs cibles, il n'en réfère aucune).
+	// L'amorce ne sert que si elle est PLUS ANCIENNE que tout cap déjà daté. Sur `enCours`, c'est la
+	// non-régression décrite ci-dessus. Sur `acquis`, c'est une cohérence interne : une liste
+	// tamponnée « acquis » par un tour de révision espacée (qui journalise, mais dont l'entrée
+	// d'activité ne réfère aucune cible) n'a pas de tampon « en cours » ; la première dictée venue
+	// serait alors postérieure à l'acquisition, et l'installer comme début rendrait le couple
+	// (commencée, acquise) non monotone — la donnée fausse en attente d'un lecteur, exactement ce
+	// que le journal lui-même s'interdit de produire (cf. orthographe/paliers.ts).
 	let borne = debutSuivi;
 	const sommetAtteignable = niveau === 'en-cours' || (niveau === 'acquis' && acquis !== null);
-	if (
+	const plusAncienneQueTout =
 		premiereSeance !== null &&
-		sommetAtteignable &&
-		(enCours === null || premiereSeance < enCours)
-	) {
+		(enCours === null || premiereSeance < enCours) &&
+		(acquis === null || premiereSeance < acquis);
+	if (premiereSeance !== null && sommetAtteignable && plusAncienneQueTout) {
 		enCours = premiereSeance;
 		borne = premiereSeance;
 	}

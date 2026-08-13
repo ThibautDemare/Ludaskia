@@ -55,6 +55,12 @@ et **par catégorie** (`subjectCorrect/Stars`, `categoryCorrect/Stars`) ; des
 groupes de trophées par matière/catégorie sont **générés depuis le catalogue**
 (ils s'étendent automatiquement avec les nouvelles matières).
 
+Ces compteurs d'effort agrègent `LessonStat.correct/questions`, donc **toutes** les
+réponses enregistrées comme stats de leçon — y compris, depuis #541, celles de la
+révision espacée, qui n'écrivait auparavant qu'un run de régularité. Un même
+entraînement compte donc un peu plus qu'avant vers ces trophées ; c'est cohérent
+avec l'XP, gagnée « tous modes confondus » de longue date.
+
 ## Trophée « programme du jour » (#440)
 
 Le **programme du jour** composé par l'encadrant (cf. [Modes &

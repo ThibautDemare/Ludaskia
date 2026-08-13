@@ -67,7 +67,16 @@ export function journaliserPaliersOrtho(dicteeDispo: boolean, now: number): void
 			rec.acquis = now;
 			paliers[ref.id] = rec;
 			changed = true;
-		} else if (niveau === 'en-cours' && rec.enCours == null) {
+			// `rec.acquis == null` : sans cette garde, une liste DÉJÀ acquise qui redescend se
+			// faisait tamponner un « en cours » POSTÉRIEUR à son « acquis » — journal incohérent,
+			// et contraire au modèle monotone annoncé en tête de module. Deux chemins réels : le
+			// parent ajoute un mot à une liste acquise, et surtout, sans aucun changement de
+			// donnée, la voix de synthèse se charge en asynchrone (cf. ui/tts.ts) — `dicteeDispo`
+			// passe de `false` à `true` en cours de session et remet la dictée au rang des modes
+			// requis. Le journal des leçons a le même code sans en avoir besoin : leur « acquis »
+			// repose sur l'étoile, qui ne se retire jamais. Copier le modèle a hérité du code sans
+			// l'invariant qui le protégeait.
+		} else if (niveau === 'en-cours' && rec.enCours == null && rec.acquis == null) {
 			rec.enCours = now;
 			paliers[ref.id] = rec;
 			changed = true;

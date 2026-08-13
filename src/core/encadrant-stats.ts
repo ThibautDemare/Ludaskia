@@ -56,7 +56,7 @@ import {
 	type SchoolLevel,
 	type SubjectId,
 } from './catalog';
-import { niveauDefautCatalogue, labelLecon } from './levels';
+import { niveauDefautCatalogue, labelLecon, niveauInferieurImmediat } from './levels';
 import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 import { niveauActifMatiere } from './niveau-actif';
 import { touchProfile, type Profile } from './profiles';
@@ -1328,6 +1328,15 @@ export interface EntreeRevision {
 	echeance: string; // libellé relatif de l'échéance ('' si acquis)
 	du: boolean; // échue (aujourd'hui ou en retard) et pas encore acquise
 	joursRestants: number | null; // jours calendaires jusqu'à l'échéance (<0 = en retard) ; null si acquis
+	/* Niveau d'ORIGINE, renseigné seulement pour une notion entretenue depuis le niveau
+	   inférieur (#232). Deux raisons de l'exposer, toutes deux côté ADULTE uniquement :
+	   rendre visible ce que la séance entretient (« il reste X notions CE2 en
+	   consolidation », info que l'architecture rendait invisible), et LEVER une ambiguïté
+	   — une leçon multi-niveaux a une entrée par niveau, donc son libellé peut apparaître
+	   deux fois dans la même catégorie. Rien de tel n'est montré à l'ENFANT : lui coller
+	   une étiquette de niveau en pleine séance ajoute une charge métacognitive (« est-ce
+	   que je régresse ? ») sans bénéfice d'apprentissage. */
+	niveauOrigine?: SchoolLevel;
 }
 
 export interface GroupeRevision {
@@ -1389,6 +1398,7 @@ function entreeRevision(
 	categoryId: string,
 	etat: EtatRevision,
 	now: number,
+	niveauOrigine?: SchoolLevel,
 ): EntreeRevision {
 	const acquis = estAcquis(etat);
 	const joursRestants =
@@ -1410,6 +1420,7 @@ function entreeRevision(
 		// déjà annoncé « à réviser aujourd'hui » ici, même si le moteur ne le proposera qu'à l'heure dite.
 		du: !acquis && joursRestants != null && joursRestants <= 0,
 		joursRestants,
+		niveauOrigine,
 	};
 }
 
@@ -1436,22 +1447,28 @@ export function revisionProfil(profile: Profile, now: number): RecapRevision {
 		if (!etat || !Number.isFinite(etat.palier)) continue;
 		const lesson = getLessonById(lessonOfKey(k));
 		if (!lesson) continue; // leçon sortie du catalogue (ex. après un changement de version) → ignorée
-		// N'afficher que le niveau ACTIF de la matière : le moteur ne révise que celui-là
-		// (loadLessonRevisions → scopeActif). Une clé `@ancien-niveau` laissée après un
-		// changement de classe est DORMANTE (jamais reproposée) — l'afficher créerait un
-		// doublon fantôme « en retard » que le parent ne pourrait jamais résorber. C'est le
-		// seul endroit qui filtre les clés APRÈS coup : ailleurs, le récap parcourt les leçons
-		// du niveau suivi et construit la clé avec ce niveau, donc n'atteint jamais les autres.
+		// Afficher ce que le moteur RÉVISE VRAIMENT : le niveau actif de la matière, plus le
+		// niveau immédiatement inférieur depuis que la séance l'entretient (#232). Ces clés-là
+		// ne sont plus dormantes — les masquer rendrait le suivi faux, le parent ne verrait pas
+		// ce qui est reproposé. Tout le reste (au-dessus du niveau actif, ou à plus d'un niveau
+		// en dessous) est bien DORMANT et reste masqué : l'afficher créerait un doublon fantôme
+		// « en retard » que le parent ne pourrait jamais résorber. C'est le seul endroit qui
+		// filtre les clés APRÈS coup : ailleurs, le récap parcourt les leçons du niveau suivi et
+		// construit la clé avec ce niveau, donc n'atteint jamais les autres.
 		// (Sans objet pour les mots d'ortho, non namespacés.)
-		if (niveauOfKey(k) !== niveauProfilMatiere(profile, lesson.subject)) continue;
+		const actif = niveauProfilMatiere(profile, lesson.subject);
+		const niveau = niveauOfKey(k) as SchoolLevel;
+		const entretien = niveau !== actif;
+		if (entretien && niveau !== niveauInferieurImmediat(actif)) continue;
 		entrees.push(
 			entreeRevision(
 				k,
-				labelLecon(lesson, niveauProfilMatiere(profile, lesson.subject)),
+				labelLecon(lesson, niveau), // libellé du niveau de l'ENTRÉE, pas du niveau suivi (#436)
 				'lecon',
 				lesson.category,
 				etat,
 				now,
+				entretien ? niveau : undefined,
 			),
 		);
 	}

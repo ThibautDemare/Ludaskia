@@ -28,8 +28,8 @@ import { getLessonById, type SubjectId } from '../core/catalog';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
 import { leconDuJour } from '../core/lecon-du-jour';
-import { countDue } from '../core/revision-select';
-import { loadLessonRevisions } from '../core/progress';
+import { countDusSeance } from '../core/progress';
+import { getRevisionPlafond } from '../core/profiles';
 import { loadOrtho } from '../core/orthographe/store';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { evaluateTrophies } from '../core/rewards';
@@ -161,7 +161,7 @@ function lancable(v: VueEtape): { ok: boolean; raison?: string } {
 		case 'sprint':
 			return { ok: true };
 		case 'revision':
-			return countDue(loadOrtho(), loadLessonRevisions(), Date.now()) > 0
+			return countDusSeance(loadOrtho(), Date.now(), getRevisionPlafond()) > 0
 				? { ok: true }
 				: { ok: false, raison: "Rien à réviser aujourd'hui" };
 		case 'aRevoir':

@@ -19,6 +19,7 @@ import {
 	type EntreeRevision,
 	type GroupeRevision,
 } from '../core/encadrant-stats';
+import { LEVEL_LABEL } from '../core/levels';
 import { renderEspace, container } from './encadrant-commun';
 import { segmentHTML } from './segment';
 
@@ -34,12 +35,20 @@ function entreeHTML(e: EntreeRevision, catLabel?: string): string {
        <span class="enc-rev-echeance${e.du ? ' du' : ''}">${escapeHTML(e.echeance)}</span>`;
 	// La catégorie n'est répétée qu'en vue à plat (en vue groupée, c'est l'en-tête).
 	const cat = catLabel ? `<span class="enc-rev-cat">${escapeHTML(catLabel)}</span>` : '';
+	// Notion entretenue depuis le niveau inférieur (#232) : on la NOMME, côté adulte
+	// seulement. Sans ça, une leçon multi-niveaux apparaîtrait deux fois sous le même
+	// libellé dans la même catégorie, et le parent ne saurait pas ce qui est entretenu.
+	// Réutilise la pastille de catégorie (même rôle visuel, aucun style à ajouter) ; le
+	// préfixe non visuel évite un « CE2 » énigmatique au lecteur d'écran.
+	const niveau = e.niveauOrigine
+		? `<span class="enc-rev-cat"><span class="sr-only">Niveau d'origine : </span>${escapeHTML(LEVEL_LABEL[e.niveauOrigine])}</span>`
+		: '';
 	// Nomme la nature « mot » pour les lecteurs d'écran (un mot isolé serait ambigu).
 	const natureSr = e.nature === 'mot' ? '<span class="sr-only">Mot : </span>' : '';
 	return `<li class="enc-rev-item${e.acquis ? ' acquis' : ''}">
       <span class="enc-rev-main">
         <span class="enc-rev-lab">${natureSr}${escapeHTML(e.label)}</span>
-        ${cat}
+        ${niveau}${cat}
       </span>
       <span class="enc-rev-etat">${etat}</span>
     </li>`;

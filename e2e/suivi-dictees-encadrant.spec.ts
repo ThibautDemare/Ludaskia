@@ -92,7 +92,12 @@ test('bloc « Dictées », volet « Listes » : la liste et son avancement se re
 
 	const ligne = page.locator(`.enc-detail-item:has([data-lesson="ortho:${LISTE_ID}"])`);
 	await expect(ligne).toBeVisible();
-	await expect(ligne.locator('.enc-detail-puce.enc-key-en-cours')).toBeVisible();
+	// Depuis la frise des listes de dictée (#541), la puce d'état est omise dès qu'une liste
+	// a été commencée (une frise existe alors, cf. friseListeOrtho) — même règle que pour une
+	// leçon (encadrant.spec.ts). Le MOT d'état, lui, reste (canal indépendant de la couleur).
+	await expect(ligne.locator('.enc-detail-puce')).toHaveCount(0);
+	await expect(ligne.locator('.enc-detail-mot')).toContainText('en cours');
+	await expect(ligne.locator('.enc-frise')).toBeVisible();
 	await expect(ligne.locator('.enc-detail-meta')).toContainText('maîtrisé');
 	await expect(ligne.locator('button[data-act="epingler"]')).toContainText('Épingler');
 

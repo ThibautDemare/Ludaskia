@@ -687,6 +687,28 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`selectionEquilibree`, `revision-select.ts`) a été **adapté** au passage : son budget
   de vidage suit désormais le plafond pour qu'un plafond bas (6/8) n'affame plus une
   source pourtant due (cf. ci-dessous).
+  **Entretien du niveau INFÉRIEUR (#232)** : une séance peut aussi ressortir, en dose
+  plafonnée, des notions encore en rotation à un niveau immédiatement inférieur (un CM1
+  qui entretient son CE2 — le cycle 3 REPREND explicitement des compétences du cycle 2 :
+  technique opératoire posée, faits numériques mémorisés, conjugaison d'être/avoir et du
+  1er groupe). **`plafondBasNiveau(plafond)`** dérive la dose du **plafond de séance**,
+  pas d'un pourcentage (avis pédagogue : l'objet est « ne pas laisser tomber à zéro », pas
+  « représenter le passé à proportion ») : `< 8 → 0` (entretien SUSPENDU sur la plus petite
+  séance — le coût du changement de registre y pèserait plus que le bénéfice), `8-11 → 1`,
+  `12-19 → 2`, `≥ 20 → REVISION_BAS_NIVEAU_MAX` (3, plafond dur). Ces éléments prennent des
+  slots **DANS** le plafond, jamais en plus (la charge d'une séance ne change pas).
+  Périmètre borné à **un seul niveau d'écart** — **`niveauInferieurImmediat(reference)`**
+  (`levels.ts`) : rien au-dessus du niveau actif (dormant), rien à deux niveaux d'écart ou
+  plus (dette gardée en stock, jamais plus retirée). Le producteur de ces entrées
+  (`progress.ts:loadLessonRevisionsBasNiveau`, seul à savoir lire la clé namespacée
+  `lessonId@niveau` du profil) et leur consommation (`revision-select.ts`) sont détaillés
+  ci-dessous. La réécriture de l'état après une réponse — **`avancerLessonRevision(lessonId,
+  reussi, now, niveau?)`** — prend ce niveau explicitement : sans lui, une réussite
+  d'entretien s'inscrirait sur la clé du niveau actif et l'entrée basse resterait due à
+  jamais. Le décompte partagé par les trois écrans qui posent « y a-t-il à réviser ? »
+  (carte d'accueil, tuile de séance, rappel de navigation) — **`progress.ts:countDusSeance`**
+  — inclut cette dose depuis #232, pour rester d'accord avec ce que la séance sert
+  vraiment.
 - **`revision-select.ts`** — sélection des éléments **dus** (mots + leçons),
   **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`) ;
   `prochaineEcheance`/`aDesRevisions` alimentent l'état « rien à réviser » de
@@ -710,6 +732,28 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   plutôt que ce total — une déclaration massive « vu en classe » peut rendre des
   dizaines de leçons dues d'un coup, et un compteur à trois chiffres qui ne descend pas
   malgré le travail serait décourageant (`ui/render.ts:fillRevisionRecord`).
+  **Entretien du niveau inférieur (#232)** : `selectDueGroups`/`countDue`/`prochaineEcheance`/
+  `aDesRevisions` prennent tous un dernier paramètre optionnel **`bas: LeconBasNiveau[]`**
+  (`{lessonId, niveau, etat}`, contrat porté ici, produit par
+  `progress.ts:loadLessonRevisionsBasNiveau`) — absent ou vide ⇒ comportement V1 strictement
+  inchangé (niveau actif seul). **`budgetEntretien(nbActifs, plafond)`** borne la dose de
+  `plafondBasNiveau` par ce que le NIVEAU ACTIF apporte vraiment (jamais plus que son nombre
+  d'éléments dus, sauf s'il n'y en a aucun : la dose est alors bornée à 2, pour qu'une séance
+  ne RÉTRÉCISSE jamais le jour où la dette active augmente). **`collectBasNiveau`** sélectionne
+  les éléments dus du lot : ni équilibrage entre sources (le budget, ≤ 3, est trop petit pour
+  un round-robin), ni compétition de retard avec le niveau actif — après des mois au-dessus,
+  une échéance basse est systématiquement plus en retard et raflerait tout sur un tri commun,
+  le retard n'est donc JAMAIS comparé entre niveaux — mais un tri interne par « le plus
+  longtemps SANS TEST RÉEL » (`dernierTest`), pour faire tourner le stock plutôt que laisser
+  un élément moisir (jamais testé passe d'abord). **`insererEntretien`** glisse chaque élément
+  dans la séance déjà GROUPÉE (jamais avant : une insertion à plat serait de toute façon
+  recollée au bloc de sa catégorie une fois groupée, donc ne déciderait de rien) selon deux
+  règles ordonnées : **jamais en clôture de séance** (un échec recule d'un palier — clore sur
+  une notion presque acquise la ferait échouer par fatigue, pas par méconnaissance) prime sur
+  **après les éléments actifs de sa catégorie** sinon. Cas assumé : avec une seule catégorie
+  active, un entretien d'une AUTRE catégorie ouvre forcément la séance (il ne peut être ni
+  premier ni dernier d'une liste de deux) — préféré à une clôture, au prix d'un lot
+  identifiable en tête.
 - **`revision-migrate.ts`** — **reprise** de l'historique vers la révision : à
   l'activation d'un profil (`applyActive`), les leçons déjà notées et les mots
   déjà en banque sans état SR entrent en rotation, **datés J-1** → dus dès le jour

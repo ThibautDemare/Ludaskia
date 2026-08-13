@@ -617,9 +617,18 @@ courant** (position dans l'escalier d'intervalles, `libellePalier`) et son **éc
 relative** (« à réviser aujourd'hui / demain / dans N jours », « en retard de N jours »,
 `libelleEcheanceRevision`) — jamais de date brute, dans l'esprit du reste du récap. Une
 entrée ayant atteint le palier maximal reste affichée, avec un badge « acquis » plutôt que
-masquée (elle compte pour la couverture). **Même filtre que la frise d'états** : seules
-les entrées du **niveau actif de la matière** (`niveauProfilMatiere`) sont montrées, pour ne
-pas afficher de fantôme d'un ancien niveau après un changement de classe.
+masquée (elle compte pour la couverture). **Filtre aligné sur ce que le moteur révise
+VRAIMENT** (pas seulement la frise d'états, qui reste scopée au seul niveau actif) : les
+entrées du **niveau actif de la matière** (`niveauProfilMatiere`) **et**, depuis l'entretien
+du niveau inférieur en révision espacée (#232), celles du niveau **immédiatement en
+dessous** sont montrées — ces clés ne sont plus dormantes, les masquer rendrait le suivi
+faux. Chaque entrée d'entretien porte son **niveau d'origine** en pastille (`entreeHTML`,
+`ui/encadrant-revision.ts` — elle réutilise la pastille de catégorie, `.enc-rev-cat`, plutôt
+que d'ajouter un style : même rôle visuel), pour ne pas se confondre avec la même leçon
+suivie au niveau actif dans la même catégorie. Tout le reste (au-dessus du niveau actif, ou à plus d'un
+niveau en dessous) reste dormant et masqué : l'afficher créerait un doublon fantôme « en
+retard » que le parent ne pourrait jamais résorber. Cette distinction de niveau d'origine
+est réservée à l'espace encadrant — rien n'en est montré à l'enfant.
 
 Deux visualisations, bascule au même patron que le graphe d'activité (module
 `ui/encadrant-revision.ts`) : **« Par catégorie »** (regroupement dépliable, même chrome que

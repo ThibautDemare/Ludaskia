@@ -1039,6 +1039,11 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   **Invariant** : les cellules `'inconnu'` forment TOUJOURS un préfixe de la rangée (une
   rangée commence par `'a-decouvrir'` ou par `'inconnu'`, jamais les deux) — une cellule
   sans rang au milieu dessinerait un creux que la hauteur ferait lire comme une régression.
+  Et une frise dont **toutes** les semaines seraient `'inconnu'` n'est pas rendue du tout
+  (`null`, donc la ligne retombe sur sa puce d'état et son mot) : douze blocs creux
+  n'apprennent rien et se lisent comme un défaut d'affichage. Le cas n'est pas théorique,
+  c'est l'état de toutes les listes de dictée d'un profil existant le jour où leur journal
+  entre en service (#541).
 
   `lundiDecale(now, semainesAvant)` décale en **jours calendaires** (`debutJourLocal`)
   plutôt que par pas fixe de 7 × 24 h, qui dérivait d'une heure autour d'un changement

@@ -125,9 +125,11 @@ export const SEUIL_REVOIR = 70; // perf récente < 70 % → proposé « à revoi
 // sur la foi d'une ou deux questions croisées en sprint ou en révision. Le code appliquait déjà
 // cette prudence à la TENDANCE (ci-dessous) mais pas au mot d'état, celui que le parent lit —
 // l'incohérence a été relevée par le pédagogue, pas seulement le principe.
-// Calé sur la PLUS PETITE série de leçon (6 questions : lecon-ordre, lecon-tri, lecon-qcm-multi) :
-// une série complète, même courte, DOIT pouvoir dire « à renforcer » — la masquer cacherait une
-// vraie difficulté ; deux items isolés, non. Ne protège que l'état affiché : la performance
+// Calé sur la PLUS PETITE série de leçon d'aujourd'hui (les `NB_QUESTIONS` des runners vont de 6 à
+// 8) : une série complète, même courte, DOIT pouvoir dire « à renforcer » — la masquer cacherait
+// une vraie difficulté ; deux items isolés, non. DÉPENDANCE À CONNAÎTRE, qu'aucun test ne peut
+// verrouiller d'ici (ces constantes vivent dans `ui/lecon-*.ts`) : un futur runner qui poserait
+// moins de 6 questions verrait ses séries complètes muselées, et ce plancher serait à rebaisser. Ne protège que l'état affiché : la performance
 // récente elle-même reste lue telle quelle par « à revoir » (estNotionSolide), qui a le droit
 // d'être plus réactif qu'un mot montré au parent.
 export const MIN_QUESTIONS_ETAT_BAS = 6;

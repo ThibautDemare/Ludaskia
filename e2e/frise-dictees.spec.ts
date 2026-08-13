@@ -18,10 +18,13 @@ import { watchErrors, gotoHash } from './helpers';
 
 const CLEAR_PIN = `localStorage.removeItem('ludaskia_encadrant_lock');`;
 
-/* Deux listes « maison » (source 'liste', toujours visibles) : l'une dont l'atelier
-   est fait mais aucun mode validé (niveau réel « en cours »), l'autre entièrement
-   validée (niveau réel « acquis » — dictée exclue des modes requis en Chromium
-   headless, sans voix FR, cf. modesRequis/dicteeDisponible). */
+/* Quatre listes « maison » (source 'liste', toujours visibles) : deux pour les paliers
+   datés (l'une dont l'atelier est fait mais aucun mode validé, niveau réel « en cours » ;
+   l'autre entièrement validée, niveau réel « acquis » — dictée exclue des modes requis en
+   Chromium headless, sans voix FR, cf. modesRequis/dicteeDisponible), et deux de plus pour
+   l'AMORÇAGE depuis le graphe d'activité (#541) : une « en cours » et une « acquise »,
+   toutes deux SANS aucun palier stocké — c'est justement le cas qu'amorce ou pas
+   `friseListeOrtho` selon que le sommet visé est atteignable. */
 const SEED_ORTHO_ETATS = {
 	banque: {
 		w1: {
@@ -36,6 +39,24 @@ const SEED_ORTHO_ETATS = {
 		w2: {
 			id: 'w2',
 			mot: 'tableau',
+			entourage: [],
+			atelierFait: true,
+			validation: { motCache: true, tuiles: true, dictee: false },
+			revision: { palier: 4, prochaineRevision: null, reussites: 3, dernierTest: null },
+			origine: 'liste',
+		},
+		w3: {
+			id: 'w3',
+			mot: 'domino',
+			entourage: [],
+			atelierFait: true,
+			validation: { motCache: false, tuiles: false, dictee: false },
+			revision: { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null },
+			origine: 'liste',
+		},
+		w4: {
+			id: 'w4',
+			mot: 'ballon',
 			entourage: [],
 			atelierFait: true,
 			validation: { motCache: true, tuiles: true, dictee: false },
@@ -58,8 +79,22 @@ const SEED_ORTHO_ETATS = {
 			createdAt: 1,
 			updatedAt: 1,
 		},
+		{
+			id: 'l-e2e-frise-amorce-encours',
+			label: 'Liste amorcée en cours',
+			motIds: ['w3'],
+			createdAt: 1,
+			updatedAt: 1,
+		},
+		{
+			id: 'l-e2e-frise-amorce-acquis',
+			label: 'Liste amorcée acquise',
+			motIds: ['w4'],
+			createdAt: 1,
+			updatedAt: 1,
+		},
 	],
-	motIdParForme: { cahier: 'w1', tableau: 'w2' },
+	motIdParForme: { cahier: 'w1', tableau: 'w2', domino: 'w3', ballon: 'w4' },
 };
 
 /* Journal des paliers de dictée (#541) : un franchissement daté par liste + la
@@ -145,6 +180,69 @@ test("sans borne de mise en service, une liste déjà commencée n'affiche PAS d
 	await expect(ligne.locator('.enc-detail-puce.enc-key-en-cours')).toBeVisible();
 	// … et le mot, qui porte la même information en texte (a11y).
 	await expect(ligne.locator('.enc-detail-mot')).toContainText('en cours');
+
+	expect(errors).toEqual([]);
+});
+
+/* Amorçage depuis le graphe d'activité (#541) : le cas RÉEL qui l'a motivé — un profil
+   déjà utilisateur des dictées au moment où ce journal arrive, sans aucun palier stocké
+   ni borne posée. `ludaskia_activity` garde pourtant des séances DATÉES par liste
+   (`{k:'dictee', ref}`, #498) : une séance sur cette liste PROUVE qu'elle était « en
+   cours » à cette date. `friseListeOrtho` s'en sert pour amorcer le cap « en cours » ET
+   la borne de suivi de CETTE ligne — la frise apparaît dès le premier chargement, sans
+   attendre une prochaine séance. */
+const SEED_ACTIVITE_AMORCE = `(() => {
+  const now = Date.now(); const week = 7 * 86400000;
+  localStorage.setItem('e2e/ludaskia_activity', JSON.stringify([
+    { t: now - 3 * week, k: 'dictee', ref: 'l-e2e-frise-amorce-encours' },
+    { t: now - 3 * week, k: 'dictee', ref: 'l-e2e-frise-amorce-acquis' },
+  ]));
+})();`;
+
+test("amorçage depuis le graphe d'activité : une liste « en cours » sans palier stocké affiche une frise dès la première séance datée", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// Aucun `ludaskia_paliersOrtho` ni borne : seul le graphe d'activité connaît cette liste.
+	await page.addInitScript(SEED_ACTIVITE_AMORCE);
+	await gotoHash(page, 'encadrant');
+
+	const ligne = page.locator(
+		'.enc-detail-item:has([data-lesson="ortho:l-e2e-frise-amorce-encours"])',
+	);
+	const frise = ligne.locator('.enc-frise');
+	await expect(frise).toBeVisible();
+
+	const cells = frise.locator('.enc-frise-cell');
+	await expect(cells).toHaveCount(12);
+	// Les semaines ANTÉRIEURES à cette première séance (il y a 3 semaines) restent creuses :
+	// l'amorçage ne prouve rien avant la date qu'il fournit.
+	await expect(cells.first()).toHaveClass(/enc-frise-inconnu/);
+	await expect(cells.last()).toHaveClass(/enc-frise-en-cours/);
+	await expect(cells.last()).toHaveClass(/enc-frise-courante/);
+
+	expect(errors).toEqual([]);
+});
+
+/* Ce que l'amorçage ne fait JAMAIS : dater une acquisition. Une liste déjà maîtrisée avant
+   ce journal (état courant « acquis ») n'a AUCUN tampon `acquis` stocké — rien ne permet de
+   dater CE franchissement-là, et l'inventer peindrait une semaine au hasard. Elle reste donc
+   sans frise (repli sur la puce et le mot), même avec des séances de dictée datées ; elle en
+   aura une après sa prochaine séance, qui posera pour de bon le tampon `acquis`. */
+test("amorçage depuis le graphe d'activité : une liste déjà « acquise » sans tampon reste sans frise", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(SEED_ACTIVITE_AMORCE);
+	await gotoHash(page, 'encadrant');
+
+	const ligne = page.locator(
+		'.enc-detail-item:has([data-lesson="ortho:l-e2e-frise-amorce-acquis"])',
+	);
+	await expect(ligne).toBeVisible();
+	await expect(ligne.locator('.enc-frise')).toHaveCount(0);
+	await expect(ligne.locator('.enc-detail-puce.enc-key-acquis')).toBeVisible();
+	await expect(ligne.locator('.enc-detail-mot')).toContainText('acquis');
 
 	expect(errors).toEqual([]);
 });

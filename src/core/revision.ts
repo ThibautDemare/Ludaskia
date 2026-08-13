@@ -45,6 +45,30 @@ export const REVISION_PLAFOND_MAX = 24;
    plus large sur les grandes (moins perçu) ; 20/24 = usage intensif assumé (rattrapage). */
 export const REVISION_PLAFOND_CHOIX: readonly number[] = [6, 8, 10, 12, 15, 20, 24];
 
+/* Entretien du niveau INFÉRIEUR (#232) : une séance peut ressortir des notions d'un
+   niveau plus bas encore en cours de consolidation (un CM1 qui entretient son CE2 — le
+   programme du cycle 3 REPREND explicitement des compétences du cycle 2 : technique
+   opératoire posée, faits numériques mémorisés, conjugaison d'être/avoir et du 1er groupe).
+
+   Dose = un petit NOMBRE ABSOLU par palier de plafond, délibérément pas un pourcentage
+   (avis pédagogue) : l'objet est « ne pas laisser tomber à zéro », pas « représenter le
+   passé à proportion ». Une seule réussite repousse l'échéance de plusieurs semaines à
+   plusieurs mois (cf. REVISION_INTERVALLES) — une dose minuscule suffit à entretenir, une
+   dose qui grossit avec le plafond ne ferait que grignoter le temps du niveau actif. Et
+   sur la séance la plus courte (6, celle qu'un adulte règle pour un enfant fatigable),
+   l'entretien est carrément SUSPENDU : le coût du changement de registre y pèserait plus
+   lourd que le bénéfice. Plafond → dose : < 8 → 0, 8-11 → 1, 12-19 → 2, ≥ 20 → 3.
+   Le maximum de 3 est un plafond dur : au-delà on n'entretient plus, on refait du niveau
+   inférieur. Ces éléments prennent des slots DANS le plafond, jamais en plus : la charge
+   d'une séance ne change pas. */
+export const REVISION_BAS_NIVEAU_MAX = 3;
+export function plafondBasNiveau(plafond: number): number {
+	if (plafond < 8) return 0;
+	if (plafond < 12) return 1;
+	if (plafond < 20) return 2;
+	return REVISION_BAS_NIVEAU_MAX;
+}
+
 /* Paramètres de la sélection équilibrée d'une session (algo dans
    `selectionEquilibree`, revision-select.ts) : une source surreprésentée — l'ortho,
    où chaque mot compte pour un élément — ne doit pas rafler toute la session. */

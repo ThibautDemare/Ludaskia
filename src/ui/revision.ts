@@ -19,7 +19,8 @@ import { consigneRenforceeHTML } from './consigne-renforcee';
 import { icon } from './icon';
 import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
-import { labelLecon } from '../core/levels';
+import { labelLecon, effectiveLevel } from '../core/levels';
+import type { SchoolLevel } from '../core/catalog';
 import { hasMode, depuisTuilesNombre, consignePourNiveau } from '../core/exercise';
 import type { ChoiceView, QcmVariante, TuilesSpec } from '../core/exercise';
 import { PONCT_MOTS } from './ponctuation-view';
@@ -40,6 +41,7 @@ import { diffCorrect } from '../core/orthographe/diff';
 import type { OrthoState, MotOrtho } from '../core/orthographe/types';
 import {
 	loadLessonRevisions,
+	loadLessonRevisionsBasNiveau,
 	avancerLessonRevision,
 	addXP,
 	recordRun,
@@ -95,7 +97,14 @@ import type { ProblemeEtape, ProbLexique, NatureOrdre } from '../core/exercise';
 // `consigneAction` (#265, cas `num`/posé) : consigne d'ACTION du type d'exercice
 // (ExerciseType.consigne, ex. « Pose l'addition et calcule. »), propagée du repli
 // fiche jusqu'en révision — indispensable à la posée, qui n'a pas d'énoncé textuel.
-type RevItem = { groupLabel: string; consigne?: string } & (
+// `niveau` (#232) : niveau de STOCKAGE de l'état SR, présent seulement pour un élément
+// d'entretien du niveau inférieur (un CE2 encore en consolidation chez un CM1). Il
+// commande la GÉNÉRATION (l'exercice doit sortir au niveau où la notion est entretenue,
+// pas au niveau actif) ET la réécriture de l'état (`avancerLessonRevision`) : sans lui, la
+// réussite s'inscrirait sur la clé du niveau actif et l'entrée basse resterait due à jamais.
+// Volontairement porté par le tronc commun du RevItem, pas par chaque variante : tous les
+// formats sont concernés, et l'oublier dans une seule aurait suffi à casser l'invariant.
+type RevItem = { groupLabel: string; consigne?: string; niveau?: SchoolLevel } & (
 	| { kind: 'num'; lessonId: string; item: Item; consigneAction?: string }
 	| {
 			kind: 'qcm';
@@ -200,27 +209,45 @@ export function runRevisionEspacee(): void {
 	setToolbar({ verify: false, home: true, profile: false });
 	ortho = loadOrtho();
 	// Plafond réglé par profil dans l'espace encadrant (#439) ; défaut 12 si non réglé
-	// (fallback + bornage assurés par getRevisionPlafond).
-	const groups = selectDueGroups(ortho, loadLessonRevisions(), Date.now(), getRevisionPlafond());
+	// (fallback + bornage assurés par getRevisionPlafond). Le 5e argument ouvre l'entretien
+	// du niveau inférieur (#232) : une dose plafonnée de notions encore en consolidation au
+	// niveau précédent, prise DANS le plafond (la charge d'une séance ne change pas).
+	const groups = selectDueGroups(
+		ortho,
+		loadLessonRevisions(),
+		Date.now(),
+		getRevisionPlafond(),
+		loadLessonRevisionsBasNiveau(),
+	);
 	items = [];
+	// Niveau de stockage de l'élément en cours de construction (#232) : `pousser` l'attache à
+	// TOUT format empilé, pour qu'aucune branche ne puisse l'oublier — un seul oubli suffirait
+	// à faire avancer la mauvaise clé et à laisser l'entrée du niveau inférieur due à jamais.
+	let niveauDu: SchoolLevel | undefined;
+	const pousser = (r: RevItem) => items.push(niveauDu ? { ...r, niveau: niveauDu } : r);
 	for (const g of groups) {
 		for (const it of g.items) {
+			niveauDu = it.kind === 'lesson' ? it.niveau : undefined;
 			if (it.kind === 'word') {
 				const m = ortho.banque[it.id];
-				if (m) items.push({ groupLabel: g.label, kind: 'word', wordId: it.id, mot: m.mot });
+				if (m) pousser({ groupLabel: g.label, kind: 'word', wordId: it.id, mot: m.mot });
 				continue;
 			}
 			const lesson = getLessonById(it.id);
 			if (!lesson) continue;
 			const type = lesson.exerciseType;
-			const level = niveauLecon(lesson); // calibrage au niveau effectif (#225)
+			// Calibrage au niveau effectif (#225). Un élément d'entretien sort au niveau où la
+			// notion est entretenue (#232), pas au niveau actif : le rejouer plus dur n'entretient
+			// pas le niveau inférieur, et son état SR avancerait sur une échelle qui n'est pas la
+			// sienne. `effectiveLevel` garde le clamp habituel (leçon dont les niveaux ont changé).
+			const level = it.niveau ? effectiveLevel(lesson, it.niveau) : niveauLecon(lesson);
 			// Consigne affichée = libellé de la leçon (#186), résolu au niveau joué (#436).
 			const consigne = labelLecon(lesson, level);
 			// QCM (conjugaison, homophones, géométrie…) : inchangé.
 			if (hasMode(type, 'qcm')) {
 				const ex = type.generate({ mode: 'qcm', level });
 				if (ex.type === 'qcm')
-					items.push({
+					pousser({
 						groupLabel: g.label,
 						consigne,
 						kind: 'qcm',
@@ -244,7 +271,7 @@ export function runRevisionEspacee(): void {
 			// ranger une suite (ordre alpha) et ranger par thème (champs lexicaux).
 			const ex = type.generate({ level });
 			if (ex.type === 'tuilesOrdre') {
-				items.push({
+				pousser({
 					groupLabel: g.label,
 					consigne,
 					kind: 'ordre',
@@ -257,7 +284,7 @@ export function runRevisionEspacee(): void {
 				continue;
 			}
 			if (ex.type === 'tuilesTri') {
-				items.push({
+				pousser({
 					groupLabel: g.label,
 					consigne,
 					kind: 'tri',
@@ -271,7 +298,7 @@ export function runRevisionEspacee(): void {
 			// Moteurs « riches » : rejoués tels quels (widget interactif) plutôt que dégradés
 			// en champ texte via genLessonItem (#466).
 			if (ex.type === 'appariement') {
-				items.push({
+				pousser({
 					groupLabel: g.label,
 					consigne,
 					kind: 'appariement',
@@ -283,7 +310,7 @@ export function runRevisionEspacee(): void {
 				continue;
 			}
 			if (ex.type === 'probleme') {
-				items.push({
+				pousser({
 					groupLabel: g.label,
 					consigne,
 					kind: 'probleme',
@@ -298,7 +325,7 @@ export function runRevisionEspacee(): void {
 				continue;
 			}
 			if (ex.type === 'clicMot') {
-				items.push({
+				pousser({
 					groupLabel: g.label,
 					consigne,
 					kind: 'clicMot',
@@ -319,7 +346,7 @@ export function runRevisionEspacee(): void {
 			if (ex.type === 'text' && !answerEstNumerique(String(ex.answer)) && hasMode(type, 'tuiles')) {
 				const tex = type.generate({ mode: 'tuiles', level });
 				if (tex.type === 'tuilesNombre') {
-					items.push({
+					pousser({
 						groupLabel: g.label,
 						consigne,
 						kind: 'tuile',
@@ -333,7 +360,7 @@ export function runRevisionEspacee(): void {
 			}
 			// Repli saisie (num / texte / heure / posé) : genLessonItem gère figure, heure et
 			// l'opération posée.
-			items.push({
+			pousser({
 				groupLabel: g.label,
 				consigne,
 				kind: 'num',
@@ -1196,7 +1223,9 @@ function recordGrade(reussi: boolean) {
 		avancerMotRevision(ortho, it.wordId, reussi, now);
 		saveOrtho(ortho);
 	} else {
-		avancerLessonRevision(it.lessonId, reussi, now);
+		// `it.niveau` (#232) : présent pour un élément d'entretien du niveau inférieur — c'est
+		// SA clé qu'il faut faire avancer, pas celle du niveau actif.
+		avancerLessonRevision(it.lessonId, reussi, now, it.niveau);
 		// Fenêtre de performance récente (#541) : un rappel différé est le meilleur indicateur
 		// de ce qui est RETENU, il doit donc compter dans l'état d'acquisition. Il ne le faisait
 		// pas, ce que rien n'argumentait ; l'y injecter n'était toutefois pas possible avant que

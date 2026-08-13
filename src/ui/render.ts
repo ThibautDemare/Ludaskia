@@ -30,15 +30,12 @@ import {
 	progressionNiveau,
 	niveauDepuisXP,
 	loadLessonRevisions,
+	loadLessonRevisionsBasNiveau,
+	countDusSeance,
 } from '../core/progress';
 import { lessonsNiveauActif, niveauActif } from '../core/niveau-actif';
 import { LEVEL_LABEL } from '../core/levels';
-import {
-	countDue,
-	prochaineEcheance,
-	aDesRevisions,
-	effortRevisionAffiche,
-} from '../core/revision-select';
+import { prochaineEcheance, aDesRevisions, effortRevisionAffiche } from '../core/revision-select';
 import { JOUR } from '../core/revision';
 import { titreDuNiveau, AVATARS_FORET } from '../core/unlocks';
 import { loadOrtho } from '../core/orthographe/store';
@@ -232,20 +229,24 @@ function fillRevisionRecord(elId: string) {
 	if (!el) return;
 	const ortho = loadOrtho();
 	const revisions = loadLessonRevisions();
+	// Entretien du niveau inférieur (#232) : compté dans ce qui est dû, et dans l'horizon
+	// annoncé quand plus rien n'est dû — une échéance basse est redevenue un vrai rendez-vous.
+	const bas = loadLessonRevisionsBasNiveau();
 	const now = Date.now();
-	const n = countDue(ortho, revisions, now);
+	const plafond = getRevisionPlafond();
+	const n = countDusSeance(ortho, now, plafond);
 	document.getElementById('cardRevision')?.classList.toggle('card-inactive', n === 0);
 	if (n) {
-		const { n: aFaire, plafonne } = effortRevisionAffiche(n, getRevisionPlafond());
+		const { n: aFaire, plafonne } = effortRevisionAffiche(n, plafond);
 		el.innerHTML = plafonne
 			? `${icon('repeat')} <strong>${aFaire}</strong> à réviser aujourd'hui`
 			: `${icon('repeat')} <strong>${aFaire}</strong> à réviser`;
 		return;
 	}
-	const echeance = prochaineEcheance(ortho, revisions, now);
+	const echeance = prochaineEcheance(ortho, revisions, now, bas);
 	if (echeance != null) {
 		el.innerHTML = `<span class="rev-ok">${icon('check-circle')} Bravo, tu es à jour !</span><span class="rev-next">Prochaine révision ${quandRevision(echeance, now)}.</span>`;
-	} else if (aDesRevisions(ortho, revisions)) {
+	} else if (aDesRevisions(ortho, revisions, bas)) {
 		el.innerHTML = `<span class="rev-ok">${icon('check-circle')} Bravo, tu as tout révisé !</span>`;
 	} else {
 		el.innerHTML = `<span class="rev-empty">Tes révisions apparaîtront ici dès que tu auras travaillé quelques leçons.</span>`;

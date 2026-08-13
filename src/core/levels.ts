@@ -61,6 +61,21 @@ export function closestSupported(supported: SchoolLevel[], niveau: SchoolLevel):
 	return LEVEL_ORDER[best];
 }
 
+/* Niveau immédiatement en dessous d'un niveau donné sur l'échelle scolaire, `undefined`
+   pour le plus bas (rien en dessous) ou un niveau hors échelle.
+   Périmètre de l'entretien du niveau inférieur en révision (#232) : on n'entretient
+   qu'UN SEUL niveau d'écart. Un CM2 ne se voit pas reproposer du CE2 — au-delà d'un
+   niveau, la dette non acquise est abandonnée (gardée en stock, plus jamais tirée),
+   sinon l'entretien devient une traîne multi-niveaux qui grossit indéfiniment et grignote
+   la classe suivie (avis pédagogue). Ce qui est stocké AU-DESSUS du niveau actif reste
+   dormant lui aussi : on ne re-sert jamais du contenu plus dur que la classe suivie.
+   L'appelant compare ce résultat au niveau LU dans une clé `lessonId@niveau`, non garanti
+   valide : une comparaison d'égalité écarte d'elle-même un niveau corrompu. */
+export function niveauInferieurImmediat(reference: SchoolLevel): SchoolLevel | undefined {
+	const i = LEVEL_ORDER.indexOf(reference);
+	return i > 0 ? LEVEL_ORDER[i - 1] : undefined;
+}
+
 /* Niveaux réellement présents dans un ensemble de leçons (union des `levels`),
    triés par ordre scolaire. Alimente la popup de choix de classe : on ne propose
    que des niveaux qui ont du contenu (un seul niveau dispo ⇒ pas de choix utile). */

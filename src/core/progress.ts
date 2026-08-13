@@ -6,10 +6,12 @@ import { fmt, startOfDay } from './utils';
 import { lsGet, lsSet, lsSetQuiet, lsRemoveQuiet, lsGetRaw, lsSetRaw } from './storage';
 import { getAllLessons, getLessonById } from './catalog';
 import type { SchoolLevel } from './catalog';
-import { LEVEL_ORDER } from './levels';
+import { LEVEL_ORDER, niveauInferieurImmediat } from './levels';
 import { niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
 import { etatNeuf, avancerEtat } from './revision';
-import type { EtatRevision } from './orthographe/types';
+import { countDue } from './revision-select';
+import type { LeconBasNiveau } from './revision-select';
+import type { EtatRevision, OrthoState } from './orthographe/types';
 import { ajouterEssaiRecent, essaisRecents, niveauNotion, type LessonStat } from './maitrise';
 import { apresEssaiLecon, type EtatReport } from './report-lecon';
 
@@ -509,6 +511,38 @@ function loadLessonRevisionsRaw(): Record<string, EtatRevision> {
 export function loadLessonRevisions(): Record<string, EtatRevision> {
 	return scopeActif(loadLessonRevisionsRaw());
 }
+/* Leçons en rotation au niveau immédiatement INFÉRIEUR au niveau actif de leur matière
+   (#232). `loadLessonRevisions` (vue scopée) les exclut par construction : leur état
+   restait stocké mais n'était plus jamais reproposé — un CM1 cessait d'entretenir ses
+   notions CE2 encore en cours de consolidation, qui se dégradaient alors que le CM1
+   s'appuie dessus. Ce loader les expose SÉPARÉMENT, avec leur niveau de stockage, parce
+   que la séance les traite comme une source secondaire PLAFONNÉE (cf. `plafondBasNiveau`) :
+   les fondre dans la vue scopée les aurait mises en concurrence directe avec le niveau
+   actif sur le retard, que leurs mois d'échéances dépassées leur font gagner d'office.
+   Le niveau porté ici est celui de la CLÉ, pas un niveau recalculé : c'est lui qui doit
+   servir à générer l'exercice ET à réécrire l'état, sinon la réussite s'inscrirait sur la
+   clé du niveau actif et l'entrée basse resterait due à jamais.
+   Un seul niveau d'écart, et rien au-dessus du niveau actif (cf. niveauInferieurImmediat).
+   La forme `LeconBasNiveau` appartient à `revision-select.ts` (contrat de la sélection,
+   pur) ; ce module en est seulement le producteur — lui seul sait lire le profil. */
+export function loadLessonRevisionsBasNiveau(): LeconBasNiveau[] {
+	const raw = loadLessonRevisionsRaw();
+	const cache: Record<string, SchoolLevel | undefined> = {};
+	const out: LeconBasNiveau[] = [];
+	for (const k in raw) {
+		const lessonId = lessonOfKey(k);
+		const lesson = getLessonById(lessonId);
+		if (!lesson) continue; // leçon sortie du catalogue → ignorée, comme dans la sélection
+		const subject = lesson.subject;
+		if (!(subject in cache)) {
+			cache[subject] = niveauInferieurImmediat(niveauActifMatiere(subject));
+		}
+		const attendu = cache[subject];
+		if (attendu === undefined || niveauOfKey(k) !== attendu) continue;
+		out.push({ lessonId, niveau: attendu, etat: raw[k] });
+	}
+	return out;
+}
 function saveLessonRevisions(r: Record<string, EtatRevision>) {
 	lsSet(LESSON_REVISION_KEY, r);
 }
@@ -535,6 +569,18 @@ export function backfillLessonRevisions(now: number) {
 	const stats = loadLessonStats();
 	const ids = Object.keys(stats).filter((id) => (stats[id]?.questions ?? 0) > 0);
 	enterLessonsRevision(ids, now);
+}
+
+/* Éléments dus AUJOURD'HUI pour le profil actif, tels que la séance les proposera : mots
+   d'orthographe + leçons du niveau actif + la dose d'entretien du niveau inférieur (#232).
+   Point de passage UNIQUE des trois écrans qui posent la même question (carte d'accueil,
+   tuile de séance, rappel de navigation) : ils doivent rester d'accord entre eux ET avec la
+   séance. Depuis #232 la réponse dépend du plafond (l'entretien y est proportionné) —
+   reconstruire l'appel dans chaque écran laisserait le premier oubli dire « rien à réviser »
+   alors que la séance a de quoi tourner. `ortho` et `plafond` viennent de l'appelant : les
+   lire ici créerait un cycle d'imports (profiles.ts importe déjà ce module). */
+export function countDusSeance(ortho: OrthoState, now: number, plafond: number): number {
+	return countDue(ortho, loadLessonRevisions(), now, plafond, loadLessonRevisionsBasNiveau());
 }
 
 /* ---------- Rotation de révision d'un profil DONNÉ (espace encadrant, #478) ----------
@@ -615,10 +661,20 @@ export function recordEssaiLecon(
 	return etat;
 }
 
-/* Met à jour l'état SR d'une leçon après une réponse en révision. */
-export function avancerLessonRevision(lessonId: string, reussi: boolean, now: number) {
+/* Met à jour l'état SR d'une leçon après une réponse en révision. `niveau` force le
+   niveau de la clé écrite : la séance peut proposer une leçon en rotation à un niveau
+   INFÉRIEUR au niveau actif (#232), et c'est ce niveau-là qu'il faut faire avancer.
+   Sans lui, `niveauStockage` renverrait le niveau actif et la réussite s'inscrirait sur
+   une AUTRE clé — l'entrée basse resterait éternellement due, et une entrée fantôme
+   apparaîtrait au niveau actif. Absent = niveau de stockage habituel. */
+export function avancerLessonRevision(
+	lessonId: string,
+	reussi: boolean,
+	now: number,
+	niveau?: SchoolLevel,
+) {
 	const all = loadLessonRevisionsRaw();
-	const k = nsKey(lessonId, niveauStockage(lessonId));
+	const k = nsKey(lessonId, niveau ?? niveauStockage(lessonId));
 	all[k] = avancerEtat(all[k] ?? etatNeuf(now), reussi, now);
 	saveLessonRevisions(all);
 }

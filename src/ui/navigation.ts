@@ -42,8 +42,8 @@ import { renderBilanConfigScreen } from './bilan';
 import { renderSubjects, renderCategories, renderCategorie } from './catalog-nav';
 import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
 import { loadOrtho } from '../core/orthographe/store';
-import { loadLessonRevisions } from '../core/progress';
-import { countDue } from '../core/revision-select';
+import { countDusSeance } from '../core/progress';
+import { getRevisionPlafond } from '../core/profiles';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { renderOrthoListeForm } from './ortho-liste';
 import { renderOrthoRevoir } from './ortho-revoir';
@@ -257,7 +257,7 @@ export function goCategorieBilan(categoryId: string) {
 export function startRevisionEspacee() {
 	// Carte non actionnable quand rien n'est dû : on n'envoie pas l'enfant sur un
 	// écran cul-de-sac (cf. état « rien à réviser » sur l'accueil).
-	if (!countDue(loadOrtho(), loadLessonRevisions(), Date.now())) return;
+	if (!countDusSeance(loadOrtho(), Date.now(), getRevisionPlafond())) return;
 	location.hash = 'revision-espacee';
 }
 export function startRevision() {

@@ -661,27 +661,30 @@ export function friseListeOrtho(
 	debutSuivi: number,
 	now: number,
 ): FriseNotion | null {
-	const enCours = horodatage(paliers?.enCours);
-	// Le journal est MONOTONE, l'état d'une liste ne l'est PAS : une liste acquise peut
-	// redescendre (le parent y ajoute un mot ; ou la voix de synthèse, chargée en asynchrone,
-	// réapparaît et remet la dictée au rang des modes requis — cf. ui/tts.ts). On lit donc le cap
-	// « acquis » À TRAVERS l'état courant, seul à faire foi : sinon la dernière cellule
-	// annoncerait « acquis » pendant que le mot de la même ligne dit « en cours », juste à côté.
-	// Le tampon lui-même n'est pas touché : si la voix vient de nouveau à manquer, la date
-	// d'acquisition d'origine réapparaît telle quelle au lieu d'avoir été réécrite. Ce que la
-	// frise perd alors, c'est l'épisode « acquis » du passé, rendu « en cours » — elle sous-dit,
-	// et ne prétend jamais au parent un acquis que la ligne démentirait.
+	// Le journal est MONOTONE, l'état d'une liste ne l'est PAS. AUCUN cap n'est donc lu si l'état
+	// courant ne le porte plus : sans ce plafonnement, une cellule annoncerait un état que le mot
+	// de la même ligne démentirait, juste à côté. Deux redescentes réelles, une par cap :
+	// - « acquis » perdu : le parent ajoute un mot à une liste acquise ; ou, sans aucun changement
+	//   de donnée, la voix de synthèse (chargée en asynchrone, cf. ui/tts.ts) réapparaît et remet
+	//   la dictée au rang des modes requis ;
+	// - « en cours » perdu : le parent retire de la liste les mots déjà commencés, ne laissant que
+	//   des mots neufs — la liste retombe à « à découvrir ».
+	// Les tampons eux-mêmes ne sont pas touchés : si la voix vient de nouveau à manquer, la date
+	// d'acquisition d'origine réapparaît telle quelle au lieu d'avoir été réécrite. Ce que la frise
+	// perd alors, c'est l'épisode passé du cap démenti — elle sous-dit, et ne prétend jamais au
+	// parent un état que la ligne contredirait.
+	const enCoursStocke = horodatage(paliers?.enCours);
 	const acquisStocke = horodatage(paliers?.acquis);
 	const acquis = niveau === 'acquis' ? acquisStocke : null;
+	const enCours = niveau === 'acquis' || niveau === 'en-cours' ? enCoursStocke : null;
 	// « Jamais commencée » se juge sur le journal TEL QU'IL EST STOCKÉ, pas sur la lecture
 	// plafonnée : un cap daté prouve que la liste a été travaillée, et doit donner une frise même
 	// si l'état courant dit « à découvrir » (liste que le parent a depuis vidée de ses mots). Même
 	// robustesse que pour une leçon, où les caps datés passent avant « à découvrir ».
-	if (niveau === 'a-decouvrir' && enCours === null && acquisStocke === null) return null;
-	// Plancher établi sur la lecture PLAFONNÉE, elle : quand le seul cap du journal est un
-	// « acquis » que l'état courant démentit, il ne reste rien de daté, et c'est donc l'état
-	// courant qui tient lieu d'état des semaines suivies — sinon la frise afficherait
-	// « à découvrir » sous un mot qui dit « en cours ».
+	if (niveau === 'a-decouvrir' && enCoursStocke === null && acquisStocke === null) return null;
+	// Plancher établi sur la lecture PLAFONNÉE, elle : quand tous les caps du journal sont démentis
+	// par l'état courant, il ne reste rien de daté, et c'est donc cet état qui tient lieu d'état des
+	// semaines suivies — sinon la frise afficherait « à découvrir » sous un mot disant « en cours ».
 	const aucunCap = enCours === null && acquis === null;
 	const plancher: CelluleFrise = aucunCap ? niveau : 'a-decouvrir';
 	// Pas de date de « première rencontre » pour une liste (aucun équivalent de firstSeen) : la

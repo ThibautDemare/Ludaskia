@@ -123,12 +123,13 @@ test("frise d'une liste de dictée « acquise » : dernière cellule acquise et 
 	expect(errors).toEqual([]);
 });
 
-/* Nuance documentée par friseListeOrtho/debutSuiviPaliers (#541) : SANS borne de mise
+/* Nuance documentée par friseListeOrtho/aucuneSemaineConnue (#541) : SANS borne de mise
    en service (`ludaskia_paliersOrthoDepuis` absente) et sans aucun cap déjà daté, rien
-   n'est déductible — la frise reste ENTIÈREMENT « inconnu », même si l'état RÉEL de la
-   liste (`avancementLecon`) est déjà « en cours ». C'est le cas d'un profil qui
-   travaillait ses listes avant l'arrivée de ce journal. */
-test("sans borne de mise en service, la frise d'une liste déjà commencée reste entièrement « inconnu »", async ({
+   n'est déductible d'aucune semaine — plutôt que d'affirmer douze cellules « inconnu »
+   (lu comme un défaut d'affichage sur TOUTES les listes d'un profil existant, le jour de
+   la mise en service du journal), la frise n'est PAS DESSINÉE. La ligne retombe alors sur
+   sa puce d'état et son mot, exactement comme avant qu'elle ait une frise. */
+test("sans borne de mise en service, une liste déjà commencée n'affiche PAS de frise (repli sur la puce et le mot)", async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -137,10 +138,13 @@ test("sans borne de mise en service, la frise d'une liste déjà commencée rest
 	await gotoHash(page, 'encadrant');
 
 	const ligne = page.locator('.enc-detail-item:has([data-lesson="ortho:l-e2e-frise-encours"])');
-	const frise = ligne.locator('.enc-frise');
-	await expect(frise).toBeVisible();
-	await expect(frise.locator('.enc-frise-cell')).toHaveCount(12);
-	await expect(frise.locator('.enc-frise-inconnu')).toHaveCount(12);
+	await expect(ligne).toBeVisible();
+	// Rien à affirmer d'aucune semaine → pas de frise du tout (pas douze blocs creux).
+	await expect(ligne.locator('.enc-frise')).toHaveCount(0);
+	// La ligne retombe sur ce qu'elle montrait avant d'avoir une frise : la puce d'état…
+	await expect(ligne.locator('.enc-detail-puce.enc-key-en-cours')).toBeVisible();
+	// … et le mot, qui porte la même information en texte (a11y).
+	await expect(ligne.locator('.enc-detail-mot')).toContainText('en cours');
 
 	expect(errors).toEqual([]);
 });

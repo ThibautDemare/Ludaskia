@@ -84,6 +84,29 @@ function collectDue(
 	return due.sort((a, b) => a.due - b.due);
 }
 
+/* Dose d'entretien réellement servie : celle du plafond (`plafondBasNiveau`), mais bornée
+   par ce que le NIVEAU ACTIF apporte vraiment. Sans cette borne, un stock actif famélique se
+   faisait noyer par une dose calibrée pour une séance pleine : un seul élément actif dû et
+   trois notions basses à plafond 20 donnaient trois quarts de séance venus de l'année passée.
+   L'entretien ne DÉPASSE donc jamais le nombre d'éléments actifs dus. S'il n'y a rien de dû au
+   niveau actif, la séance est entièrement d'entretien, mais pas plus grosse que celle d'une
+   file active à un seul élément (soit deux) : sinon une file vide proposait trois éléments à
+   plafond 20/24 quand le lendemain, une leçon devenue due n'en proposait plus que deux — la
+   séance rétrécissait alors que la dette montait. La taille d'une séance ne décroît jamais
+   quand la dette du niveau actif augmente.
+
+   C'est la lecture retenue du critère « le niveau actif reste majoritaire » (#232) : il vise
+   la COLONISATION d'une séance de travail courant, pas l'arithmétique d'une séance de deux
+   éléments. Une borne strictement majoritaire (dose ≤ actifs − 1) a été essayée et écartée :
+   elle rendait la taille de séance non monotone — 4 notions basses dues sans rien d'actif
+   donnaient 2 éléments, et la séance RÉTRÉCISSAIT à 1 le jour où une leçon du niveau actif
+   devenait due, l'entretien disparaissant d'un coup. Incohérent pour l'enfant qui compare
+   deux jours de suite, et incohérent avec le cas « rien d'actif » qu'on sert quand même. */
+function budgetEntretien(nbActifs: number, plafond: number): number {
+	const dose = plafondBasNiveau(plafond);
+	return Math.min(dose, nbActifs === 0 ? 2 : nbActifs);
+}
+
 /* Éléments dus du niveau INFÉRIEUR retenus pour la séance (#232), dans la limite d'un
    budget. Trois différences assumées avec le niveau actif :
    - ils ne passent PAS par l'équilibrage entre sources (`selectionEquilibree`) : leur
@@ -123,46 +146,6 @@ function collectBasNiveau(bas: LeconBasNiveau[], now: number, budget: number): D
 	// ne doit pas dépendre de l'ordre d'énumération du stockage.
 	dus.sort((a, b) => (a.teste !== b.teste ? a.teste - b.teste : a.it.id.localeCompare(b.it.id)));
 	return dus.slice(0, budget).map((x) => x.it);
-}
-
-/* Place les éléments d'entretien DANS la séance du niveau actif (#232). Chacun est glissé
-   APRÈS le dernier élément actif de SA catégorie : il est ainsi révisé au sein du bloc de
-   sa notion (numération avec la numération — le `categoryId` n'est pas namespacé par
-   niveau, donc le regroupement existant s'en charge), sans jamais passer DEVANT les
-   éléments du niveau actif de ce bloc (avis pédagogue : un CE2 en retard de 90 jours n'est
-   pas plus urgent qu'un CM1 en retard de 2). À défaut de catégorie commune, l'élément est
-   glissé juste après le PREMIER élément actif de la séance : son groupe naît en deuxième
-   position, jamais en ouverture.
-   Deux bornes viennent de l'avis « troubles des apprentissages » : ouvrir la séance sur les
-   notions de l'année passée la fait identifier comme telle (vécu « on me fait refaire du
-   bébé »), et la CLORE par elles fait échouer par fatigue une notion presque acquise — or
-   un échec recule d'un palier, donc le dispositif punirait un faux échec et laisserait
-   l'enfant sur ce raté. D'où le clamp, qui PRIME sur la règle de catégorie : jamais après le
-   dernier élément actif. Deux conséquences assumées quand la catégorie de l'élément
-   d'entretien se trouve fermer la séance : il passe juste avant ce dernier actif (donc en
-   tête de son bloc si celui-ci n'a qu'un élément — un bloc d'un seul élément n'a de toute
-   façon pas d'ordre à préserver). Et une séance sans élément actif, ou d'un seul, ne peut
-   pas à la fois ne pas commencer et ne pas finir par de l'entretien. */
-function fusionnerBasNiveau(actifs: DueItem[], bas: DueItem[]): DueItem[] {
-	if (!bas.length) return actifs;
-	if (!actifs.length) return bas;
-	const apres = new Map<number, DueItem[]>(); // index d'actif → éléments à insérer derrière
-	for (const it of bas) {
-		let i = -1;
-		for (let k = 0; k < actifs.length; k++) if (actifs[k].categoryId === it.categoryId) i = k;
-		if (i < 0) i = 0; // aucune catégorie commune → derrière le premier actif
-		i = Math.max(0, Math.min(i, actifs.length - 2)); // jamais derrière le dernier actif
-		const file = apres.get(i);
-		if (file) file.push(it);
-		else apres.set(i, [it]);
-	}
-	const out: DueItem[] = [];
-	for (let k = 0; k < actifs.length; k++) {
-		out.push(actifs[k]);
-		const file = apres.get(k);
-		if (file) out.push(...file);
-	}
-	return out;
 }
 
 /* Date (ms) du prochain re-test À VENIR parmi les éléments en rotation (mots +
@@ -220,10 +203,8 @@ export function countDue(
 	plafond = REVISION_PLAFOND,
 	bas: LeconBasNiveau[] = [],
 ): number {
-	return (
-		collectDue(ortho, lessonRevisions, now).length +
-		collectBasNiveau(bas, now, plafondBasNiveau(plafond)).length
-	);
+	const dus = collectDue(ortho, lessonRevisions, now);
+	return dus.length + collectBasNiveau(bas, now, budgetEntretien(dus.length, plafond)).length;
 }
 
 /* Ce que la carte Révision de l'accueil ANNONCE à l'enfant : au-delà d'une séance, on
@@ -302,30 +283,11 @@ function selectionEquilibree(due: DueItem[], plafond: number): DueItem[] {
 	return picked;
 }
 
-/* Sélection plafonnée et regroupée par catégorie (ordre d'apparition) : on
-   révise une catégorie avant de passer à la suivante, jamais en alternance. La
-   composition est équilibrée entre sources (cf. selectionEquilibree) ; l'ordre
-   d'affichage reste « le plus en retard d'abord ».
-   `bas` = leçons en rotation au niveau INFÉRIEUR (#232) : une dose plafonnée
-   (`plafondBasNiveau`) prend des slots DANS le plafond — la charge d'une séance ne change
-   pas — et se glisse dans le bloc de sa catégorie (cf. fusionnerBasNiveau). Absent ou vide
-   ⇒ comportement V1 strictement inchangé (niveau actif seul). */
-export function selectDueGroups(
-	ortho: OrthoState,
-	lessonRevisions: Record<string, EtatRevision>,
-	now: number,
-	plafond = REVISION_PLAFOND,
-	bas: LeconBasNiveau[] = [],
-): DueGroup[] {
-	const entretien = collectBasNiveau(bas, now, plafondBasNiveau(plafond));
-	// Re-tri par retard : selectionEquilibree ne garantit pas l'ordre global.
-	const actifs = selectionEquilibree(
-		collectDue(ortho, lessonRevisions, now),
-		plafond - entretien.length,
-	).sort((a, b) => a.due - b.due);
-	const capped = fusionnerBasNiveau(actifs, entretien);
+/* Regroupement par catégorie, dans l'ordre d'apparition (une catégorie est révisée en
+   entier avant de passer à la suivante, jamais en alternance). */
+function grouper(items: DueItem[]): DueGroup[] {
 	const groups: DueGroup[] = [];
-	for (const it of capped) {
+	for (const it of items) {
 		let g = groups.find((x) => x.categoryId === it.categoryId);
 		if (!g) {
 			const cat = CATEGORIES.find((c) => c.id === it.categoryId);
@@ -334,5 +296,69 @@ export function selectDueGroups(
 		}
 		g.items.push(it);
 	}
+	return groups;
+}
+
+/* Nouveau groupe pour une catégorie (même libellé que `grouper`). */
+function groupeDe(it: DueItem): DueGroup {
+	const cat = CATEGORIES.find((c) => c.id === it.categoryId);
+	return { categoryId: it.categoryId, label: cat?.label ?? it.categoryId, items: [it] };
+}
+
+/* Glisse un élément d'entretien (niveau inférieur, #232) dans une séance déjà GROUPÉE.
+   Le placement se décide sur les GROUPES, pas sur une liste plate : ce que l'enfant joue,
+   c'est la concaténation des groupes, donc un élément inséré au milieu d'une liste plate
+   est de toute façon recollé dans le bloc de sa catégorie — placer avant de grouper ne
+   décide de rien (c'était le défaut de la 1re version : la séance pouvait finir sur
+   l'entretien alors que le code croyait l'avoir évité).
+   Deux règles, dans cet ordre :
+   1. `jamais en clôture de séance` PRIME. Clore par une notion presque acquise, c'est la
+      faire échouer par FATIGUE — or un échec recule d'un palier : le dispositif punirait un
+      faux échec et laisserait l'enfant sur ce raté (avis « troubles des apprentissages »).
+      Un groupe créé pour l'entretien est donc inséré AVANT le dernier groupe, et dans le
+      dernier groupe l'entretien passe avant son dernier élément. Invariant : dès qu'il
+      existe un élément actif, la séance se termine sur un élément actif.
+   2. sinon, l'entretien va APRÈS les éléments actifs de sa catégorie (avis pédagogue : un
+      CE2 en retard de 90 jours n'est pas plus urgent qu'un CM1 en retard de 2), au sein du
+      bloc de sa notion — le `categoryId` n'étant pas namespacé par niveau, numération est
+      révisée avec numération.
+   Cas irréductible, assumé : avec une seule catégorie active, un entretien d'une AUTRE
+   catégorie ouvre forcément la séance (il ne peut être ni premier ni dernier d'une liste de
+   deux). On préfère l'ouverture : elle place l'entretien loin de la fatigue de fin, et le
+   seul reproche qu'on lui fait est de rendre le lot identifiable. */
+function insererEntretien(groups: DueGroup[], it: DueItem): void {
+	const i = groups.findIndex((g) => g.categoryId === it.categoryId);
+	if (i < 0) {
+		groups.splice(Math.max(0, groups.length - 1), 0, groupeDe(it));
+		return;
+	}
+	const items = groups[i].items;
+	const dernierGroupe = i === groups.length - 1;
+	items.splice(dernierGroupe ? Math.max(0, items.length - 1) : items.length, 0, it);
+}
+
+/* Sélection plafonnée et regroupée par catégorie. La composition est équilibrée entre
+   sources (cf. selectionEquilibree) ; l'ordre d'affichage reste « le plus en retard
+   d'abord ».
+   `bas` = leçons en rotation au niveau INFÉRIEUR (#232) : une dose plafonnée
+   (`plafondBasNiveau`) prend des slots DANS le plafond — la charge d'une séance ne change
+   pas — et se glisse dans la séance groupée (cf. insererEntretien). Absent ou vide ⇒
+   comportement V1 strictement inchangé (niveau actif seul). */
+export function selectDueGroups(
+	ortho: OrthoState,
+	lessonRevisions: Record<string, EtatRevision>,
+	now: number,
+	plafond = REVISION_PLAFOND,
+	bas: LeconBasNiveau[] = [],
+): DueGroup[] {
+	const dus = collectDue(ortho, lessonRevisions, now);
+	const entretien = collectBasNiveau(bas, now, budgetEntretien(dus.length, plafond));
+	// Re-tri par retard : selectionEquilibree ne garantit pas l'ordre global.
+	const actifs = selectionEquilibree(dus, plafond - entretien.length).sort((a, b) => a.due - b.due);
+	// Rien d'actif : il ne reste que l'entretien, dans son propre ordre (les règles de
+	// placement n'ont plus d'objet, elles se définissent par rapport aux éléments actifs).
+	if (!actifs.length) return grouper(entretien);
+	const groups = grouper(actifs);
+	for (const it of entretien) insererEntretien(groups, it);
 	return groups;
 }

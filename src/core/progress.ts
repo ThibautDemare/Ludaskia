@@ -585,10 +585,12 @@ export function retirerRevisionsDeclareesFor(uuid: string, cles: string[]): void
    cours. Namespacé par niveau comme les étoiles et les stats, donc structure bornée
    par le nombre de leçons (aucune rétention à gérer).
 
-   Écrit UNIQUEMENT depuis un essai en mode leçon : le sprint et les bilans peuvent
-   ne poser qu'une question sur une leçon, leur score n'est pas comparable à celui
-   d'une série complète (c'est justement pourquoi `LessonStat.recentPct` ne peut pas
-   servir de critère d'avancement). */
+   Écrit UNIQUEMENT depuis un essai en mode leçon : le sprint, les bilans et la révision
+   espacée peuvent ne poser qu'une question sur une leçon, leur score n'est pas comparable
+   à celui d'une série complète (c'est justement pourquoi la fenêtre récente de `LessonStat`
+   ne peut pas servir de critère d'avancement — et ça reste vrai depuis qu'elle est
+   PONDÉRÉE (#541) : pondérer corrige le poids d'un item dans une moyenne, ça ne fait pas
+   d'un item la preuve qu'une série complète est réussie). */
 export const LESSON_REPORT_KEY = 'ludaskia_leconReport';
 function loadLessonReportsRaw(): Record<string, EtatReport> {
 	return lsGet(LESSON_REPORT_KEY, {});

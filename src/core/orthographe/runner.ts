@@ -49,7 +49,17 @@ export function marquerAtelierFait(mot: MotOrtho): void {
 	mot.atelierFait = true;
 }
 
-/** Valide un mode après une réussite (v1 : une réussite suffit). */
+/** Valide un mode après une réussite (v1 : une réussite suffit).
+ *
+ *  À SAVOIR si vous ajoutez un chemin qui appelle ceci : c'est ici qu'un mot progresse, donc
+ *  qu'une LISTE peut franchir un cap. La fin de séance doit alors appeler `journaliserPaliersOrtho`
+ *  (`orthographe/paliers.ts`), sinon la frise d'évolution de l'espace encadrant rate le
+ *  franchissement — sans que rien ne le signale, et pour des semaines. Deux chemins le font
+ *  aujourd'hui : la dictée (`ui/ortho-runner.ts`) et la révision espacée (`ui/revision.ts`).
+ *  Ce rappel est ici, et pas seulement dans `paliers.ts`, parce qu'un futur auteur regarde
+ *  l'endroit où l'état change, pas le module qui l'observe. Le pendant côté leçons, lui, est
+ *  STRUCTUREL (`recordLessonStats` journalise de lui-même, cf. PR #540) ; ça ne l'est pas ici,
+ *  faute de pouvoir décider sans `dicteeDispo`, que seule l'UI connaît. */
 export function validerMode(mot: MotOrtho, mode: ModeOrtho): void {
 	mot.validation[mode] = true;
 }

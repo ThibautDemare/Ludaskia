@@ -355,15 +355,19 @@ describe('revisionProfil', () => {
 	});
 });
 
-/* ---------- Filtrage par niveau actif de la matière (#423, non-régression) ----------
-   Les clés de `ludaskia_lessonRevision` sont namespacées `lessonId@niveau`. Le moteur
-   ne révise que le niveau ACTIF de la matière (scopeActif). Une leçon révisée aux deux
-   niveaux (ou une clé restée après changement de classe) doit donc n'apparaître qu'UNE
-   fois dans le récap, au niveau actif — sinon doublon / entrée « fantôme » jamais
-   reproposable. Les mots d'ortho ne sont pas namespacés → hors périmètre du filtre. */
-describe('revisionProfil : filtre par niveau actif de la matière (#423)', () => {
+/* ---------- Filtrage par niveau de la matière (#423, étendu par #232) ----------
+   Les clés de `ludaskia_lessonRevision` sont namespacées `lessonId@niveau`. Le récap doit
+   montrer ce que le moteur RÉVISE VRAIMENT, ni plus ni moins :
+     - le niveau ACTIF de la matière ;
+     - depuis #232, le niveau immédiatement INFÉRIEUR, qu'une séance entretient à dose
+       plafonnée (ces clés ne sont plus dormantes) — marquées par `niveauOrigine` ;
+     - tout le reste (au-dessus du niveau suivi, ou à plus d'un niveau en dessous) reste
+       masqué : ce sont de vrais fantômes, « en retard » à jamais et jamais reproposés.
+   Les mots d'ortho ne sont pas namespacés → hors périmètre du filtre. */
+describe('revisionProfil : filtre par niveau de la matière (#423 / #232)', () => {
 	const NOW = new Date(2026, 5, 15, 12, 0, 0, 0).getTime();
 	const BI = 'num-comparer'; // leçon maths multi-niveaux (numération)
+	const NOYAU = 'fr-gram-clic-noyau'; // leçon FR multi-niveaux à libellé PAR NIVEAU (#436)
 
 	it('pré-condition : num-comparer déclare bien ce2 ET cm1', () => {
 		const lesson = getLessonById(BI)!;
@@ -373,31 +377,66 @@ describe('revisionProfil : filtre par niveau actif de la matière (#423)', () =>
 		expect(lesson.levels).toContain('cm1');
 	});
 
-	it('leçon révisée aux DEUX niveaux → une seule entrée, celle du niveau actif (cm1)', () => {
+	it('leçon révisée aux DEUX niveaux → deux entrées distinctes, dont l’entretien @ce2', () => {
 		const a = activeProfile();
 		const profilCm1: Profile = { ...a, niveauParMatiere: { math: 'cm1' } };
 		seed(a.uuid, LESSON_REVISION_KEY, {
-			[BI + '@ce2']: etat(1, NOW - 2 * JOUR), // clé DORMANTE (ancien niveau) = fantôme à écarter
-			[BI + '@cm1']: etat(3, NOW + 4 * JOUR), // niveau actif = seule à garder
+			[BI + '@ce2']: etat(1, NOW - 2 * JOUR), // niveau inférieur = entretenu (#232) → affiché
+			[BI + '@cm1']: etat(3, NOW + 4 * JOUR), // niveau actif
 		});
 		const recap = revisionProfil(profilCm1, NOW);
 
-		expect(recap.total).toBe(1); // pas de doublon
-		expect(recap.parUrgence.map((e) => e.cle)).toEqual([BI + '@cm1']);
-		// C'est bien l'entrée @cm1 (palier 3 → « 2 semaines », dans 4 j) qui survit, pas la
-		// @ce2 (palier 1, en retard) : le filtre garde le niveau actif, pas le premier venu.
+		// Les deux entrées sont là (l'entretien n'est plus dormant), et restent distinguables :
+		// même libellé de leçon, mais une seule porte un niveau d'origine.
+		expect(recap.total).toBe(2);
+		// Tri par urgence : l'entrée @ce2 est en retard de 2 j, la @cm1 est due dans 4 j.
+		expect(recap.parUrgence.map((e) => e.cle)).toEqual([BI + '@ce2', BI + '@cm1']);
 		expect(recap.parUrgence[0]).toMatchObject({
+			palier: 1,
+			palierLabel: '3 jours',
+			echeance: 'en retard de 2 jours',
+			du: true,
+			niveauOrigine: 'ce2', // seule marque visible de l'entretien (côté adulte only)
+		});
+		expect(recap.parUrgence[1]).toMatchObject({
 			palier: 3,
 			palierLabel: '2 semaines',
 			echeance: 'à réviser dans 4 jours',
+			du: false,
 		});
-		expect(recap.parUrgence.some((e) => e.cle === BI + '@ce2')).toBe(false);
+		expect(recap.parUrgence[1].niveauOrigine).toBeUndefined(); // niveau actif → pas de marque
+		// Une seule catégorie : l'entretien se lit DANS le bloc de sa notion, comme en séance.
 		expect(recap.groupes).toHaveLength(1);
 		expect(recap.groupes[0].categoryId).toBe('math-numeration');
-		expect(recap.groupes[0].entrees.map((e) => e.cle)).toEqual([BI + '@cm1']);
+		expect(recap.groupes[0].entrees.map((e) => e.cle)).toEqual([BI + '@ce2', BI + '@cm1']);
+		expect([recap.groupes[0].enRotation, recap.groupes[0].dues]).toEqual([2, 1]);
+	});
+
+	it('l’entretien porte le libellé de SON niveau, pas celui de la classe suivie', () => {
+		// Le cas qui rend `niveauOrigine` indispensable : deux entrées de la même leçon dans
+		// la même catégorie. Ici les libellés diffèrent (#436), ce qui lève l'ambiguïté.
+		const lesson = getLessonById(NOYAU)!;
+		expect(lesson.labelNiveau).toEqual({
+			ce2: 'Clique sur le nom',
+			cm1: 'Clique sur le nom noyau',
+		});
+		const a = activeProfile();
+		const profilCm1: Profile = { ...a, niveauParMatiere: { francais: 'cm1' } };
+		seed(a.uuid, LESSON_REVISION_KEY, {
+			[NOYAU + '@ce2']: etat(0, NOW - JOUR), // entretien
+			[NOYAU + '@cm1']: etat(2, NOW - 3 * JOUR), // niveau actif, plus en retard
+		});
+		const recap = revisionProfil(profilCm1, NOW);
+		expect(recap.parUrgence.map((e) => [e.cle, e.label, e.niveauOrigine])).toEqual([
+			[NOYAU + '@cm1', 'Clique sur le nom noyau', undefined],
+			[NOYAU + '@ce2', 'Clique sur le nom', 'ce2'],
+		]);
 	});
 
 	it('leçon présente uniquement à l’ANCIEN niveau (@cm1) sous un profil ce2 → exclue', () => {
+		// Toujours vrai après #232 : on n'entretient QUE vers le bas. Une clé au-dessus du
+		// niveau suivi (enfant redescendu en CE2) ne sera jamais reproposée → elle reste
+		// masquée, sinon le parent verrait un « en retard » qu'il ne peut pas résorber.
 		const a = activeProfile(); // niveau maths par défaut = ce2
 		seed(a.uuid, LESSON_REVISION_KEY, { [BI + '@cm1']: etat(2, NOW - JOUR) });
 		const recap = revisionProfil(a, NOW);
@@ -406,19 +445,45 @@ describe('revisionProfil : filtre par niveau actif de la matière (#423)', () =>
 		expect(recap.parUrgence).toEqual([]);
 	});
 
+	it('à plus d’UN niveau d’écart, la dette est abandonnée → entrée masquée', () => {
+		const a = activeProfile();
+		const profilCm2: Profile = { ...a, niveauParMatiere: { math: 'cm2' } };
+		seed(a.uuid, LESSON_REVISION_KEY, {
+			[BI + '@cm1']: etat(1, NOW - JOUR), // -1 niveau → entretenu
+			[BI + '@ce2']: etat(1, NOW - 30 * JOUR), // -2 niveaux → abandonné, masqué
+		});
+		const recap = revisionProfil(profilCm2, NOW);
+		expect(recap.parUrgence.map((e) => e.cle)).toEqual([BI + '@cm1']);
+		expect(recap.parUrgence[0].niveauOrigine).toBe('cm1');
+	});
+
 	it('le filtre par niveau n’affecte PAS les mots d’orthographe (non namespacés)', () => {
 		const a = activeProfile();
 		const profilCm1: Profile = { ...a, niveauParMatiere: { math: 'cm1' } };
-		seed(a.uuid, LESSON_REVISION_KEY, { [BI + '@ce2']: etat(1, NOW - JOUR) }); // leçon @ce2 dormante → écartée
 		const ortho: OrthoState = {
 			...emptyOrthoState(),
 			banque: { w1: motOrtho('w1', 'chateau', etat(2, NOW + JOUR)) },
 		};
 		seed(a.uuid, ORTHO_KEY, ortho);
-		const recap = revisionProfil(profilCm1, NOW);
-
-		expect(recap.total).toBe(1); // leçon @ce2 filtrée, mot conservé
+		// Deux clés de leçon RÉELLEMENT dormantes (au-dessus du niveau suivi, et à 2 niveaux
+		// en dessous) : le filtre les écarte, le mot n'est jamais concerné.
+		seed(a.uuid, LESSON_REVISION_KEY, {
+			[BI + '@cm2']: etat(1, NOW - JOUR),
+			[BI + '@ce1']: etat(1, NOW - JOUR),
+		});
+		let recap = revisionProfil(profilCm1, NOW);
+		expect(recap.total).toBe(1); // les 2 leçons filtrées, mot conservé
 		expect(recap.parUrgence.map((e) => e.cle)).toEqual(['mot:w1']);
 		expect(recap.groupes.map((g) => g.categoryId)).toEqual([ORTHO_CATEGORY_ID]);
+
+		// Et le mot reste exactement le même quand une leçon d'entretien s'ajoute : lui seul
+		// n'a pas de niveau, donc jamais de `niveauOrigine`.
+		seed(a.uuid, LESSON_REVISION_KEY, { [BI + '@ce2']: etat(1, NOW - JOUR) });
+		recap = revisionProfil(profilCm1, NOW);
+		expect(recap.total).toBe(2);
+		const mot = recap.parUrgence.find((e) => e.cle === 'mot:w1')!;
+		expect(mot.niveauOrigine).toBeUndefined();
+		expect(mot).toMatchObject({ nature: 'mot', label: 'chateau', du: false });
+		expect(recap.parUrgence.find((e) => e.cle === BI + '@ce2')!.niveauOrigine).toBe('ce2');
 	});
 });

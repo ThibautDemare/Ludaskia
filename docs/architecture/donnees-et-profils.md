@@ -36,7 +36,9 @@ aucune question) ; base de la borne
 — avant elle, une leçon était jugée « connue de bout en bout » dès qu'une
 `ludaskia_lessonFirstSeen` existait, si bien que deux leçons voisines travaillées la même
 semaine pouvaient suivre deux règles différentes, cf. [Logique pure](core.md)),
-`ludaskia_lessonRevision` (état SR par leçon),
+`ludaskia_lessonRevision` (état SR par leçon, namespacée `lessonId@niveau` — la vue scopée
+lit le niveau actif, sauf pour l'entretien du niveau immédiatement inférieur en révision
+espacée, #232, cf. [Logique pure](core.md)),
 `ludaskia_leconReport` (#485 : avancement/report de la **leçon du jour** —
 `Record<'lessonId@niveau', EtatReport>`, namespacée par niveau comme les étoiles et
 les stats — `EtatReport {jours, dernierJour, reporteLe, reprendreLe, meilleurPct}` ;

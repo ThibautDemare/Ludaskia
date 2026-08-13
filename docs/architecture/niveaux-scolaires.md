@@ -14,7 +14,10 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
   niveaux présents), `lessonsForLevel(lessons, niveau)`,
   **`niveauDefautCatalogue(lessons)`** (le plus bas niveau ayant du contenu — **source
   unique** du repli « aucune classe choisie » ; appelé par `niveau-actif.ts` et
-  `encadrant-stats.ts`, #351) et **`labelLecon(lesson, niveau?)`** (#436, ci-dessous).
+  `encadrant-stats.ts`, #351), **`labelLecon(lesson, niveau?)`** (#436, ci-dessous) et
+  **`niveauInferieurImmediat(reference)`** (#232 — niveau juste en dessous sur l'échelle,
+  `undefined` pour le plus bas ou hors échelle : périmètre de l'entretien du niveau
+  inférieur en révision espacée, cf. [Logique pure](core.md)).
 - **`level-combinators.ts`** (pur) — `calibrated(table, build)` : **un seul `id`**
   recalibré par une table de paramètres par niveau (génératif : numération…), expose
   ses `levels`; `bankByLevel(items)` : banque QCM tagguée par item, dérive l'union des
@@ -80,7 +83,11 @@ par les combinateurs, et un niveau lirait le texte de l'autre).
 premier passage, **état SR**. Les `load*` renvoient une **vue scopée** au niveau actif
 **par matière** (clés `lessonId` simples → consommateurs inchangés) ; les `load*All`
 / `starsEarnedAll` agrègent **tous niveaux** (effort, cumul « trésor » qui ne baisse
-jamais). Écriture clampée via `niveauLecon`. Migration unique `migrateNiveauNamespacing`
+jamais). **Seule exception** : l'état SR expose aussi, À PART (`loadLessonRevisionsBasNiveau`,
+avec son niveau de clé), les entrées du niveau immédiatement inférieur pour l'entretien en
+révision espacée (#232, cf. [Logique pure](core.md)) — un croisement volontaire de la règle
+« vue scopée = niveau actif seul », borné à un seul niveau d'écart. Écriture clampée via
+`niveauLecon`. Migration unique `migrateNiveauNamespacing`
 (legacy → `@ce2`, via `lsSetQuiet` pour ne pas bumper `updatedAt`). Même patron pour la
 carte de déclarations « vues en classe » (`core/vu-ailleurs.ts`, #478) : clés
 `lessonId@niveau`, vue scopée au niveau actif via `scopeActif` (`loadVuAilleurs`) —
@@ -111,4 +118,7 @@ record de sprint » reste, lui, scopé au niveau actif (pas un trophée).
 `besoinChoixNiveau()`), filtrage catalogue/sprint par `niveauActifMatiere`, **réglage
 parent** par matière (`ui/preferences.ts`), compteur d'accueil (cumul + objectif
 scopé), badge « déjà maîtrisée en \<classe\> » (`etoileAuxNiveaux`). **V1 = niveau
-actif seul** dans les pools ; mélange bas-niveau + entretien révision = **V2** (piste).
+actif seul dans les pools de tirage** (sprint/révision), toujours vrai aujourd'hui — le
+**mélange biaisé vers le bas** de ces pools reste une piste (cf. [Piste
+d'évolution](pistes-d-evolution.md)). L'**entretien du niveau inférieur en révision
+espacée**, lui, est sorti de cette piste : livré (#232, cf. [Logique pure](core.md)).

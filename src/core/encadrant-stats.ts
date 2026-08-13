@@ -37,8 +37,7 @@ import {
 	type PaliersNotion,
 } from './progress';
 import {
-	lessonAvgPct,
-	recentAvgPct,
+	perfRecente,
 	niveauNotion,
 	tendanceNotion,
 	estNotionSolide,
@@ -663,9 +662,27 @@ export function friseListeOrtho(
 	now: number,
 ): FriseNotion | null {
 	const enCours = horodatage(paliers?.enCours);
-	const acquis = horodatage(paliers?.acquis);
+	// Le journal est MONOTONE, l'état d'une liste ne l'est PAS : une liste acquise peut
+	// redescendre (le parent y ajoute un mot ; ou la voix de synthèse, chargée en asynchrone,
+	// réapparaît et remet la dictée au rang des modes requis — cf. ui/tts.ts). On lit donc le cap
+	// « acquis » À TRAVERS l'état courant, seul à faire foi : sinon la dernière cellule
+	// annoncerait « acquis » pendant que le mot de la même ligne dit « en cours », juste à côté.
+	// Le tampon lui-même n'est pas touché : si la voix vient de nouveau à manquer, la date
+	// d'acquisition d'origine réapparaît telle quelle au lieu d'avoir été réécrite. Ce que la
+	// frise perd alors, c'est l'épisode « acquis » du passé, rendu « en cours » — elle sous-dit,
+	// et ne prétend jamais au parent un acquis que la ligne démentirait.
+	const acquisStocke = horodatage(paliers?.acquis);
+	const acquis = niveau === 'acquis' ? acquisStocke : null;
+	// « Jamais commencée » se juge sur le journal TEL QU'IL EST STOCKÉ, pas sur la lecture
+	// plafonnée : un cap daté prouve que la liste a été travaillée, et doit donner une frise même
+	// si l'état courant dit « à découvrir » (liste que le parent a depuis vidée de ses mots). Même
+	// robustesse que pour une leçon, où les caps datés passent avant « à découvrir ».
+	if (niveau === 'a-decouvrir' && enCours === null && acquisStocke === null) return null;
+	// Plancher établi sur la lecture PLAFONNÉE, elle : quand le seul cap du journal est un
+	// « acquis » que l'état courant démentit, il ne reste rien de daté, et c'est donc l'état
+	// courant qui tient lieu d'état des semaines suivies — sinon la frise afficherait
+	// « à découvrir » sous un mot qui dit « en cours ».
 	const aucunCap = enCours === null && acquis === null;
-	if (niveau === 'a-decouvrir' && aucunCap) return null; // jamais commencée
 	const plancher: CelluleFrise = aucunCap ? niveau : 'a-decouvrir';
 	// Pas de date de « première rencontre » pour une liste (aucun équivalent de firstSeen) : la
 	// période « à découvrir » n'est pas bornée par une date mais déduite du plancher ci-dessus.
@@ -757,7 +774,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 				lessonId: l.id,
 				label: labelLecon(l, niveau),
 				niveau: etat,
-				pctRecent: recentAvgPct(stat) ?? lessonAvgPct(stat),
+				pctRecent: perfRecente(stat)?.pct ?? null,
 				epingle: fileSet.has(l.id),
 				vues: stat?.attempts ?? 0,
 				derniereFois: stat?.lastAt ?? null,
@@ -865,7 +882,7 @@ export function revoirActives(dicteeDispo = false): RevoirEntry[] {
 		const stat = stats[entryId];
 		// Encore « à revoir » tant que la notion n'est pas solide (non étoilée ET jamais
 		// re-travaillée ou perf récente sous le seuil) — MÊME prédicat que la purge (#465).
-		if (!estNotionSolide(etoilee, recentAvgPct(stat) ?? lessonAvgPct(stat)))
+		if (!estNotionSolide(etoilee, perfRecente(stat)?.pct ?? null))
 			out.push({ kind: 'lecon', id: entryId, label: labelLecon(lesson, niveau), lesson });
 	}
 	return out;
@@ -1136,7 +1153,7 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): EtatE
 	if (!lesson.levels.includes(niveau)) return null; // hors niveau du profil → ignorée, pas retirée
 	const k = lesson.id + '@' + niveau; // stats/étoiles namespacées par niveau (#225)
 	const etoilee = (ctx.starsRaw[k] || 0) > 0;
-	const pct = recentAvgPct(ctx.statsRaw[k]) ?? lessonAvgPct(ctx.statsRaw[k]);
+	const pct = perfRecente(ctx.statsRaw[k])?.pct ?? null;
 	return {
 		kind: 'lecon',
 		label: labelLecon(lesson, niveau),

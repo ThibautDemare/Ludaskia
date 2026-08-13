@@ -1201,6 +1201,13 @@ function recordGrade(reussi: boolean) {
 		// de ce qui est RETENU, il doit donc compter dans l'état d'acquisition. Il ne le faisait
 		// pas, ce que rien n'argumentait ; l'y injecter n'était toutefois pas possible avant que
 		// la fenêtre soit comptée en questions (un item par leçon aurait pesé un essai entier).
+		// « Je ne sais pas, montre-moi » (#467) arrive ici comme une réponse fausse, `passerItem`
+		// appelant `recordGrade(false)` : il compte donc dans la fenêtre. C'est cohérent avec
+		// l'arbitrage de #467 — même chemin d'enregistrement qu'une faute, seul le VERDICT montré
+		// à l'enfant diffère — et avec l'escalier de répétition espacée, qui recule pareil. Ne pas
+		// le compter dirait qu'une notion est sue alors que l'enfant vient de demander la réponse.
+		// Le journal d'erreurs, lui, garde la nuance (`sansTentative`) : elle sert à ne pas faire
+		// croire au parent à une confusion de raisonnement, pas à excuser un rappel manqué.
 		const b = perLesson[it.lessonId] || (perLesson[it.lessonId] = { ok: 0, total: 0 });
 		b.total++;
 		if (reussi) b.ok++;

@@ -202,7 +202,7 @@ describe('purgeRevoirSolides — critère de retrait', () => {
 		const p = activeProfile();
 		toggleRevoirFor(p.uuid, 'math-complements');
 		// 5 essais parfaits puis 5 essais ratés : cumul 50 %, mais la fenêtre récente
-		// (5 derniers essais) est à 0 % → la leçon est bien encore à revoir.
+		// (les 40 dernières questions, #541) est à 0 % → la leçon est bien encore à revoir.
 		for (let i = 0; i < 5; i++) recordLessonStats({ 'math-complements': { ok: 10, total: 10 } });
 		for (let i = 0; i < 5; i++) recordLessonStats({ 'math-complements': { ok: 0, total: 10 } });
 
@@ -474,7 +474,7 @@ describe('purgeRevoirSolides — garde-fou du choix du parent', () => {
 		passeInitiale(p); // adoption close, file encore vide
 		toggleRevoirFor(p.uuid, 'math-complements'); // épinglée ALORS QU'ELLE EST FRAGILE
 		expect(purgeRevoirSolides(p, false, NOW - JOUR)).toEqual([]); // marque la fragilité
-		// Remontée : 5 essais parfaits chassent le 20 % de la fenêtre récente (5 essais) → 100 %.
+		// Remontée : 5 essais parfaits de 10 questions chassent le 20 % de la fenêtre → 100 %.
 		for (let i = 0; i < 5; i++) recordLessonStats({ 'math-complements': { ok: 10, total: 10 } });
 		expect(purgeRevoirSolides(p, false, NOW)).toEqual(['math-complements']);
 	});

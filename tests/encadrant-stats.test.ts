@@ -261,24 +261,30 @@ function recap0LeconVierge(recap: ReturnType<typeof progressionProfil>) {
 }
 
 describe('tendanceNotion (direction récente)', () => {
+	/* Fenêtre en ANCIENNE forme (un % par essai), avec un VOLUME cohérent : depuis #541 la
+	   fenêtre se compte en questions, donc une stat qui annoncerait 4 essais pour 10 questions
+	   au total décrirait 4 essais de 2 ou 3 questions — sous le seuil de silence, et à raison.
+	   Ici chaque essai est une série de 10 questions (`questions = 10 × essais`), taille que la
+	   reconversion retrouve exactement. Le détail de la coupe en moitiés de QUESTIONS et les
+	   deux planchers sont éprouvés dans fenetre-ponderee.test.ts. */
 	const statAvec = (recentPct?: number[]) => ({
 		attempts: recentPct?.length ?? 0,
 		correct: 0,
-		questions: 10,
+		questions: (recentPct?.length ?? 0) * 10,
 		bestPct: 0,
 		lastPct: 0,
 		recentPct,
 	});
-	it('null tant qu’il y a moins de 4 essais (le silence n’est pas un signal négatif)', () => {
+	it('null tant que la fenêtre porte moins de 24 questions (le silence n’est pas un signal négatif)', () => {
 		expect(tendanceNotion(undefined)).toBeNull();
-		expect(tendanceNotion(statAvec([50, 60, 70]))).toBeNull();
+		expect(tendanceNotion(statAvec([50, 60]))).toBeNull(); // 2 séries de 10 = 20 questions
 	});
 	it('progresse quand la 2de moitié de la fenêtre dépasse la 1re d’au moins le seuil', () => {
-		expect(tendanceNotion(statAvec([40, 50, 80, 90]))).toBe('progresse');
+		expect(tendanceNotion(statAvec([40, 50, 80, 90]))).toBe('progresse'); // 45 % → 85 %
 	});
-	it('gère la fenêtre max de 5 essais (découpage asymétrique 2 / 3)', () => {
-		expect(tendanceNotion(statAvec([40, 50, 60, 70, 80]))).toBe('progresse'); // 45 → 70
-		expect(tendanceNotion(statAvec([80, 80, 78, 76, 80]))).toBe('stable'); // 80 → 78
+	it('gère un découpage asymétrique (1 essai contre 2) quand la fenêtre ne se coupe pas en deux', () => {
+		expect(tendanceNotion(statAvec([40, 60, 80]))).toBe('progresse'); // 40 % → 70 %
+		expect(tendanceNotion(statAvec([80, 80, 70]))).toBe('stable'); // 80 % → 75 %
 	});
 	it('à relancer quand la 2de moitié chute d’au moins le seuil', () => {
 		expect(tendanceNotion(statAvec([90, 80, 50, 40]))).toBe('a-relancer');
@@ -475,6 +481,10 @@ function listeEp(id: string, niveau: NiveauNotion): RecapListeOrtho {
 		nbMots: 0,
 		maitrises: 0,
 		mots: [],
+		// La frise de la liste (#541) est, comme celle d'une leçon, une DONNÉE d'affichage de la
+		// ligne : elle n'entre pas dans la résolution de l'état d'une épingle. Laissée vide ici,
+		// éprouvée à part (frise-liste-ortho.test.ts).
+		frise: null,
 	};
 }
 /* `horsNiveau` est le MOTIF d'un état manquant (#518), pas une clé de recherche :

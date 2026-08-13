@@ -655,14 +655,16 @@ function cellulesFrise(
    L'échelle des listes ne compte que trois valeurs (cf. orthographe/progression.ts) : « en cours »
    y signifie « au moins un mot commencé », et « à renforcer » n'existe pas, l'acquisition d'un mot
    étant binaire. Une semaine SUIVIE antérieure au tampon « en cours » était donc forcément
-   « à découvrir » — rien n'était commencé. La frise d'une liste ne montre ainsi de creux
-   qu'AVANT la mise en service du journal, jamais après ; là où celle d'une leçon doit rester dans
-   le doute, l'état d'avant son premier cap pouvant aussi bien avoir été « à renforcer ».
+   « à découvrir » — rien n'était commencé. La frise d'une liste ne montre ainsi de creux qu'AVANT
+   sa borne de suivi, jamais après ; là où celle d'une leçon doit rester dans le doute, l'état
+   d'avant son premier cap pouvant aussi bien avoir été « à renforcer ».
 
    `niveau` = état courant (`niveauListeOrtho`) : il dit si la liste a été commencée (sinon pas de
    frise) et tient lieu d'état des semaines suivies quand AUCUN cap n'est daté — cas d'un profil
    qui travaillait ses listes avant l'arrivée de ce journal. `debutSuivi` vient de
-   `debutSuiviPaliers` appliqué à la borne PROPRE à ce journal (ORTHO_PALIERS_DEBUT_KEY). */
+   `debutSuiviPaliers` appliqué à la borne PROPRE à ce journal (ORTHO_PALIERS_DEBUT_KEY) ; la ligne
+   peut ensuite se donner une borne plus ANCIENNE que celle du profil, si une séance datée le
+   prouve (cf. amorçage ci-dessous). */
 export function friseListeOrtho(
 	paliers: PaliersNotion | undefined,
 	niveau: NiveauNotion,

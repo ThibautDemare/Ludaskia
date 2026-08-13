@@ -8,6 +8,7 @@ import {
 	LEVEL_LABEL,
 	effectiveLevel,
 	niveauDefautCatalogue,
+	niveauInferieurImmediat,
 } from '../src/core/levels';
 import { getAllLessons, genLessonItem } from '../src/core/catalog';
 import type { LessonDef, SchoolLevel } from '../src/core/catalog';
@@ -53,6 +54,38 @@ describe('effectiveLevel', () => {
 		expect(effectiveLevel(lessonWith(['ce2']), 'cp')).toBe('ce2');
 		expect(effectiveLevel(lessonWith(['ce2', 'cm1']), 'ce1')).toBe('ce2');
 		expect(effectiveLevel(lessonWith(['cm1']), 'ce2')).toBe('cm1');
+	});
+});
+
+/* Périmètre de l'entretien du niveau inférieur en révision (#232) : UN seul niveau
+   d'écart, rien au-dessus. La fonction est comparée à un niveau LU dans une clé de
+   stockage, donc son résultat doit être comparable par égalité stricte. */
+describe('niveauInferieurImmediat', () => {
+	it('renvoie le voisin immédiat du dessous sur l’échelle scolaire', () => {
+		expect(niveauInferieurImmediat('cm1')).toBe('ce2'); // le cas de #232 (un CM1 entretient son CE2)
+		expect(niveauInferieurImmediat('ce1')).toBe('cp');
+		expect(niveauInferieurImmediat('6e')).toBe('cm2');
+	});
+
+	it('renvoie undefined pour le niveau le plus bas (rien en dessous)', () => {
+		expect(niveauInferieurImmediat('cp')).toBeUndefined();
+	});
+
+	it('ne saute JAMAIS un niveau (un CM2 n’entretient pas du CE2)', () => {
+		// Composée deux fois, elle descend de deux crans : le CE2 n'est donc pas
+		// atteignable depuis le CM2 en un seul appel — la dette y est abandonnée.
+		expect(niveauInferieurImmediat('cm2')).toBe('cm1');
+		expect(niveauInferieurImmediat(niveauInferieurImmediat('cm2')!)).toBe('ce2');
+	});
+
+	it('INVARIANT : suit LEVEL_ORDER de bout en bout, sans trou', () => {
+		LEVEL_ORDER.forEach((niveau, i) => {
+			expect(niveauInferieurImmediat(niveau), niveau).toBe(i > 0 ? LEVEL_ORDER[i - 1] : undefined);
+		});
+	});
+
+	it('niveau hors échelle (donnée corrompue) → undefined, donc aucun entretien', () => {
+		expect(niveauInferieurImmediat('cm3' as SchoolLevel)).toBeUndefined();
 	});
 });
 

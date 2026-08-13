@@ -137,6 +137,10 @@ export const MIN_QUESTIONS_ETAT_BAS = 6;
 // de sprint suffisaient à atteindre : exactement le bruit qu'il devait taire. 24 questions ≈ 3 à 4
 // séries. Seuil = écart de % entre 1re et 2de moitié de la fenêtre, moitiés comptées en questions.
 export const TENDANCE_MIN_QUESTIONS = 24;
+// Et une MOITIÉ trop maigre ne se compare pas à l'autre, même quand le total suffit : une fenêtre
+// de deux essais de 1 et 30 questions atteint les 24 sans qu'un « recul » sur la première veuille
+// dire quoi que ce soit. Plancher par moitié = une série pleine (les runners posent 6 à 8).
+export const TENDANCE_MIN_MOITIE = 8;
 export const TENDANCE_SEUIL = 10;
 
 export type NiveauNotion = 'a-decouvrir' | 'non-acquis' | 'en-cours' | 'acquis';
@@ -188,13 +192,25 @@ export function tendanceNotion(stat: LessonStat | undefined): TendanceNotion | n
 	const f = essaisRecents(stat);
 	const q = f.reduce((s, x) => s + x.total, 0);
 	if (f.length < 2 || q < TENDANCE_MIN_QUESTIONS) return null;
-	let coupe = 0;
-	let cumul = 0;
-	while (coupe < f.length - 1 && cumul + f[coupe].total <= q / 2) cumul += f[coupe++].total;
-	// Premier essai à lui seul plus gros que la moitié : il forme la 1re moitié. Sans cette
-	// garde, la 1re moitié serait vide et la comparaison partirait de 0 % — donc « progresse »
-	// systématique dès qu'un gros essai ouvre la fenêtre.
-	if (coupe === 0) coupe = 1;
+	// Coupe au point qui s'approche le PLUS PRÈS de la moitié des questions. Avancer « tant qu'on
+	// reste sous la moitié » laissait un premier essai d'une seule question former à lui seul la
+	// 1re moitié (fenêtre [1, 15, 15] : une question comparée à trente) : la direction se décidait
+	// alors sur cette question isolée, précisément le bruit que ces seuils existent pour taire.
+	// À écart égal, la coupe la plus précoce gagne. La 1re moitié n'est jamais vide, ce qui ferait
+	// partir la comparaison de 0 % — donc « progresse » dès qu'un gros essai ouvre la fenêtre.
+	let coupe = 1;
+	let cumul = f[0].total;
+	let ecart = Math.abs(cumul - q / 2);
+	for (let i = 1; i < f.length - 1; i++) {
+		cumul += f[i].total;
+		const e = Math.abs(cumul - q / 2);
+		if (e < ecart) {
+			ecart = e;
+			coupe = i + 1;
+		}
+	}
+	const q1 = f.slice(0, coupe).reduce((s, x) => s + x.total, 0);
+	if (Math.min(q1, q - q1) < TENDANCE_MIN_MOITIE) return null;
 	const perf = (xs: EssaiRecent[]) => {
 		const t = xs.reduce((s, x) => s + x.total, 0);
 		return t ? (xs.reduce((s, x) => s + x.ok, 0) / t) * 100 : 0;

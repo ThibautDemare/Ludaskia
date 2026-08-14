@@ -409,17 +409,25 @@ export function renderProgrammeCard(el: HTMLElement | null): void {
 	}
 	el.style.display = '';
 	if (vue.complete) {
-		el.classList.add('programme-card--fini');
+		// Plus rien à faire aujourd'hui : la carte reste en place pour le repère spatial
+		// mais devient un CONSTAT — ni pastille d'action, ni clic. Même règle que la carte
+		// Révision quand rien n'est dû (`card-inactive`, cf. render.ts) : derrière, l'écran
+		// #seance n'offrirait qu'un récapitulatif non actionnable, et on n'envoie pas
+		// l'enfant sur un écran cul-de-sac. Retirer la pastille SANS retirer le clic serait
+		// le pire des deux (une carte d'apparence inerte qui navigue quand même) : à cet
+		// âge « pastille verte = bouton » est une règle apprise sur les six cartes (#517,
+		// avis designer-ux-enfant, arbitrage du mainteneur). L'emoji festif est inline dans
+		// le titre, pas dans la pastille d'icône (système monochrome commun aux six cartes).
+		el.classList.add('programme-card--fini', 'card-inactive');
 		el.innerHTML = `
       <div class="ico" aria-hidden="true">${icon('check-circle')}</div>
       <h2>Ton programme du jour</h2>
       <p>
-        <span class="lj-title">Terminé, bravo !</span>
+        <span class="lj-title">Terminé, bravo ! <span aria-hidden="true">🎉</span></span>
         <span class="lj-sub">Tu as fait tout ton programme.</span>
-      </p>
-      <span class="go">Revoir <span aria-hidden="true">→</span></span>`;
+      </p>`;
 	} else {
-		el.classList.remove('programme-card--fini');
+		el.classList.remove('programme-card--fini', 'card-inactive');
 		const reste = vue.totalRequis - vue.totalFait;
 		el.innerHTML = `
       <div class="ico" aria-hidden="true">${icon('list')}</div>
@@ -434,6 +442,18 @@ export function renderProgrammeCard(el: HTMLElement | null): void {
 	}
 	if (!el.dataset.wired) {
 		el.addEventListener('click', () => {
+			// La carte peut avoir SURVÉCU à l'état qui l'a produite : l'accueil est rendu une
+			// fois, et l'onglet peut rester ouvert des heures (tablette en veille, passage de
+			// minuit, épinglée retirée entre-temps). On recalcule donc avant de naviguer.
+			// Sans ce garde-fou, le clic posait `#seance`, d'où `showSeanceView` renvoyait
+			// aussitôt à l'accueil faute de programme applicable : vu de l'écran, un clic sans
+			// aucun effet (#517). Un programme fini est traité pareil — la carte est alors
+			// inerte, mais elle a pu se terminer ailleurs depuis le rendu.
+			const frais = vueProgramme();
+			if (!frais || frais.complete) {
+				renderProgrammeCard(el); // l'accueil se corrige, au lieu de ne rien faire
+				return;
+			}
 			location.hash = 'seance';
 		});
 		el.dataset.wired = '1';

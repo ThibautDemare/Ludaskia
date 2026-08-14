@@ -1051,6 +1051,19 @@ pure](core.md)) pour les formats composites :
   Icône dédiée **`math-operations`** (`core/icon-names.ts`/`ui/icon.ts`), distincte de
   l'ampoule de l'aide au geste. Styles dans `styles/etayage.scss`.
 
+  **Lisibilité non visuelle du déroulé** (relecture a11y) : le compteur d'étapes est sa
+  propre région live et PRÉCÈDE la phrase — l'enfant qui n'y voit pas entend d'abord où
+  il en est, puis quoi faire —, la barre de progression ne fait que le redire en image
+  et est donc `aria-hidden`, et la grille de démonstration l'est aussi : ses cellules
+  sont des `<span>` qui se remplissent, et tout ce qu'elles montrent est déjà DIT par la
+  narration (l'étiqueter à moitié ferait entendre une grille de chiffres nus en plus de
+  l'explication). Compteur et première phrase sont rendus **déjà remplis** : une région
+  live armée dans le même battement que l'insertion de la modale avale sa première
+  annonce, et l'étape 0 est justement celle qu'aucun geste n'annonce. Le texte lu passe
+  par `core/tts-text.ts:texteParle`, comme toutes les consignes — sans quoi le fait
+  numérique qui fait tout l'intérêt du panneau (« 7 × 6 = 42 ») serait rendu au moteur
+  vocal avec ses symboles bruts, souvent muets.
+
 ## Menu, préférences, thèmes & accessibilité
 
 - **`menu.ts`** — liste déroulante de profils (`open/close/toggleProfileMenu`),

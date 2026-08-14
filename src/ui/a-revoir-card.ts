@@ -107,7 +107,7 @@ export function renderARevoir(el: HTMLElement | null, cibleId?: string): string 
       <span class="lj-title">${escapeHTML(entree.label)}</span>
       <span class="lj-sub">${sousTitre}</span>
     </p>
-    <span class="go">On y retourne <span aria-hidden="true">→</span></span>
+    <button type="button" class="go" aria-label="À revoir : on y retourne">On y retourne <span aria-hidden="true">→</span></button>
     ${autre}`;
 
 	if (!el.dataset.wired) {

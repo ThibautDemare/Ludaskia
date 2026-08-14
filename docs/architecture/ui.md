@@ -332,6 +332,15 @@ pure](core.md)) pour les formats composites :
   masqué (un autre écran occupe la place, la prochaine navigation rendra du frais) et
   accueil `inert` (une modale est ouverte et ne masque pas `#home` : re-rendre dessous
   détruirait le déclencheur mémorisé pour la restauration du focus).
+  **Activation clavier des cartes (#517)** : la carte entière reste cliquable pour le
+  doigt et la souris, mais l'action focusable est sa pastille `.go`, un vrai `<button>`
+  (dans `app.html` pour les quatre cartes statiques, dans `seance.ts` /
+  `lecon-du-jour.ts` / `a-revoir-card.ts` pour les trois dynamiques). Chaque pastille
+  porte un `aria-label` qui reprend son libellé visible ET nomme sa carte
+  (« Sprint 5 min : c'est parti ») : « c'est parti » seul ne dit rien hors contexte.
+  Pas de `role="button"` sur la carte : il aplatirait son `<h2>` et avalerait les
+  boutons `.lj-autre` imbriqués. Corollaire gratuit : une carte `card-inactive` masque
+  sa pastille en CSS, donc sort du parcours clavier sans réglage dynamique.
 - **`seance.ts`** (#440) — écran `#seance` et carte d'accueil `#cardProgramme` du
   **programme du jour** composé par l'encadrant (cf. [Modes &
   navigation](modes-et-navigation.md)). `vueProgramme()` est la porte d'entrée UNIQUE

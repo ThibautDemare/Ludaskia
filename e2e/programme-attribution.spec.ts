@@ -172,12 +172,18 @@ test('programme du jour : réduit à une étape « à revoir » faite hors progr
 	const carteProgramme = page.locator('#cardProgramme');
 	await expect(carteProgramme).toBeVisible();
 	await expect(carteProgramme).toHaveClass(/programme-card--fini/);
-	await expect(carteProgramme.locator('.lj-title')).toHaveText('Terminé, bravo !');
+	await expect(carteProgramme.locator('.lj-title')).toContainText('Terminé, bravo !');
 
+	// Carte « fini » : plus de pastille d'action (#517) — le clic ne navigue
+	// plus vers #seance, ce serait un écran cul-de-sac. On reste sur l'accueil.
 	await carteProgramme.click();
-	// Pas de retour silencieux à l'accueil : l'écran #seance se rend bien, en
-	// état « terminé ».
-	await expect(page).toHaveURL(/#seance$/);
+	await expect(page).not.toHaveURL(/#seance/);
+	await expect(page.locator('#home')).toBeVisible();
+
+	// L'écran #seance en état « terminé » reste atteignable par le hash (pas
+	// un écran mort, juste plus la cible du clic sur la carte) : il se rend
+	// bien, sans « rien de fait ».
+	await gotoHash(page, 'seance');
 	await fermerModalesRecompense(page);
 	await expect(page.locator('.programme-fini')).toBeVisible();
 	await expect(page.locator('.programme-recap .programme-recap-item')).toHaveCount(1);

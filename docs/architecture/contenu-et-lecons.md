@@ -838,6 +838,15 @@ générateur produit un `Exercise` `posed` (op + opérandes) ; le catalogue en f
 verify() corrige chaque cellule (sans-faute = toutes justes). Exclu du sprint
 (multi-cellules), pris en charge en bilans/impression/révision.
 
+**Pilote de l'étayage de la notion** (#490, cf. [Logique pure](core.md) et [Rendu &
+interactions](ui.md)) : ces 3 leçons sont les seules à porter un champ `etayage`
+(idée-force en une phrase + un exemple canonique **fixe**, un par leçon — deux
+retenues franches pour l'addition, deux emprunts nets pour la soustraction, un
+déroulé complet à deux produits partiels pour la multiplication). La méthode elle-même
+n'est pas rédigée ici : elle est **calculée** colonne par colonne par
+`core/etayage-posee.ts` à partir de l'exemple (ou de l'opération que l'enfant vient de
+rater).
+
 ### Calcul mental
 
 Catégorie `math-calcul-mental`. Quatre origines :

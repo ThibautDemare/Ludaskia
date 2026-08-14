@@ -47,6 +47,11 @@ UNIQUEMENT depuis ce mode (jamais le sprint ni les bilans) et servant de critèr
 d'avancement du fil ; `jours`/`reporteLe`/`reprendreLe` pilotent la mise de côté
 temporaire d'une leçon sur laquelle l'enfant bute — voir `core/report-lecon.ts` et
 [Logique pure](core.md)),
+`ludaskia_etayageVu` (#490 : mémoire, namespacée par niveau comme la clé
+précédente, de l'ÉPISODE de blocage déjà couvert par l'exemple d'avant-série du
+panneau d'étayage — `Record<'lessonId@niveau', number>`, la valeur étant
+l'horodatage `reporteLe` de `EtatReport` qui a ouvert l'épisode ; voir
+`core/etayage.ts` et [Logique pure](core.md)),
 `ludaskia_goal`, `ludaskia_goalsDone`, `ludaskia_trophies`, `ludaskia_xp`,
 `ludaskia_bilans` (configs de bilans favoris), `ludaskia_resume` (exercices **en
 cours**, repris ou abandonnés — #63 ; deux natures d'instantané depuis #498, une
@@ -68,7 +73,11 @@ navigation](modes-et-navigation.md)), `ludaskia_revoir`
 `string[]` mêlant des ids de leçon du catalogue et, depuis #424, des entrées de **liste
 de dictée** d'orthographe **préfixées `ortho:`** — `orthoRevoirId`/`isOrthoRevoirId`,
 `core/encadrant-stats.ts` — id opaque pour une liste du parent, `fr-ortho-*` pour une
-dictée prédéfinie ; rétro-compatible, la nature de chaque entrée tient au seul préfixe),
+dictée prédéfinie ; rétro-compatible, la nature de chaque entrée tient au seul préfixe ;
+depuis #490, l'ENFANT peut aussi y ajouter une entrée — la leçon prérequise que lui
+propose de mettre de côté le panneau d'étayage (`ui/etayage-panneau.ts:epinglerPrerequis`,
+même `toggleRevoirFor`) — et la file ne distingue pas la provenance d'une entrée : cf.
+[Espace encadrant](espace-encadrant.md)),
 `ludaskia_revoirFragile` (#465 : mémoire des entrées de `ludaskia_revoir` **vues
 fragiles depuis qu'elles sont épinglées** — seules celles-là sont candidates au retrait
 automatique ; clé **ABSENTE** = jamais encore purgée pour ce profil, ce qui déclenche

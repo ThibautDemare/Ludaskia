@@ -76,7 +76,15 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   cellules du RÉSULTAT (pas les retenues ni les produits partiels) : `posedGridHTML`
   y pose un `groupe` stable (id de grille dérivé du compteur de rendu) que le journal
   d'erreurs (`ui/session.ts`) regroupe en **une** entrée par opération plutôt qu'une
-  par chiffre (cf. `erreur-representation.ts` ci-dessous). Le champ **`figure`** (#88) porte
+  par chiffre (cf. `erreur-representation.ts` ci-dessous). **Disposition extraite**
+  (#490) : `dispositionPosee(spec)` calcule cette grille par RÔLE de cellule
+  (`CellulePosee`/`RangeePosee`/`DispositionPosee`, sans une ligne de HTML) et
+  **`poseeGrilleHTML`** l'enveloppe — factorisation qui permet au panneau d'étayage
+  de rendre une grille de DÉMONSTRATION rigoureusement alignée sur la grille jouable
+  (cf. « Étayage de la notion » plus bas). `poseeGrilleHTML` pose aussi, sur la
+  grille jouable, les attributs `data-pose-op/a/b` : c'est par eux que l'étayage
+  d'une erreur retrouve l'opération que l'enfant vient de rater, sans alourdir
+  chaque cellule d'une copie de l'opération. Le champ **`figure`** (#88) porte
   un fragment SVG (moteur `figures/`) que **`figureBlock`** affiche AU-DESSUS de la
   question ; `renderItem` l'ajoute, et les runners « une question à la fois » (QCM,
   sprint, révision) appellent `figureBlock` au même endroit pour un rendu identique
@@ -496,7 +504,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   en `LessonDef[]` — `opts.subject`/`category` fixes, et `levels`/`labelNiveau`/`rubrique`/
   `excludeFromSprint`/`repere` optionnels, chacun soit une valeur fixe soit une fonction
   `(input) => valeur` quand il dérive de la donnée ; un champ résolu à `undefined` est
-  omis. **`labelNiveau?: Partial<Record<SchoolLevel, string>>`** (#436) est le **surcroît
+  omis. **`etayage?: EtayageEntree[]`** (#490) est remonté TEL QUEL depuis
+  `LessonInput` — aucune résolution fixe/fonction comme les champs ci-dessus, juste le
+  contenu d'étayage rédigé au plus près de la leçon (cf. « Étayage de la notion »
+  plus bas) ; absent = pas de panneau pour cette leçon. **`labelNiveau?: Partial<Record<SchoolLevel, string>>`** (#436) est le **surcroît
   optionnel** qui permet à une leçon multi-niveaux de se **nommer** différemment selon la
   classe (« Clique sur le nom » au CE2, « Clique sur le nom noyau » au CM1, « noyau » étant
   du vocabulaire CM1) : `label` reste le libellé par défaut et **doit rester juste à tous les
@@ -585,9 +596,14 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   besoin d'insister » réutilisé plutôt qu'un second qui aurait fallu maintenir en
   synchronisation). **`apresEssaiLecon(etat, pct, now, etoilee)`** (pure, appelée depuis
   `progress.ts:recordEssaiLecon`) : franchie (score ou étoile) → garde le meilleur
-  score, efface un report en cours ; même jour civil qu'un blocage déjà compté → pas
-  d'escalade (retenter dans la même séance est sain, seul le score peut monter) ; sinon
-  +1 **jour** de blocage et `delaiReport(jours, pct)` calcule le délai à appliquer.
+  score, efface un report en cours **et REMET LE COMPTEUR DE JOURS DE BLOCAGE À ZÉRO**
+  (#490 : `jours`/`dernierJour` repartent à `0`/`''`) — ce compteur pilote l'escalier
+  de report ET le signal à l'adulte (`BLOCAGES_SIGNAL_ADULTE` ci-dessous) ; cumulé à
+  vie, il rendait ce signal définitif, une notion butée puis maîtrisée restant
+  signalée « point dur » le reste de l'année (constat `pedagogue-primaire`) : il
+  décrit une difficulté COURANTE, pas un passé ; même jour civil qu'un blocage déjà
+  compté → pas d'escalade (retenter dans la même séance est sain, seul le score peut
+  monter) ; sinon +1 **jour** de blocage et `delaiReport(jours, pct)` calcule le délai à appliquer.
   **L'escalade compte des JOURS, pas des tentatives** ; `JOURS_AVANT_REPORT` (2) laisse
   le 1er jour de blocage sans conséquence (distraction, découverte). `delaiReport`
   réutilise l'escalier de la révision espacée (`REVISION_INTERVALLES`, 1/3/7 j via
@@ -597,8 +613,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   continue par ailleurs de revenir en révision espacée). **`enReport(etat, now)`** dit
   si la mise de côté court encore à cet instant. `BLOCAGES_SIGNAL_ADULTE` (3) est le
   seuil de jours de blocage à partir duquel l'espace encadrant signale la leçon (cf.
-  [Espace encadrant](espace-encadrant.md)). Consommé par `lecon-du-jour.ts` (sélection
-  et report) et `progress.ts` (persistance), jamais directement par l'UI.
+  [Espace encadrant](espace-encadrant.md)) — c'est aussi le même seuil qui éteint
+  l'exemple d'étayage automatique (#490, `core/etayage.ts:episodeEtayable` ci-dessous) :
+  passé ce point, l'appli cesse de s'auto-expliquer au moment même où l'espace
+  encadrant se met à signaler la leçon, l'un et l'autre lisant le même `EtatReport`.
+  Consommé par `lecon-du-jour.ts` (sélection et report), `progress.ts` (persistance)
+  et `core/etayage.ts` (déclencheur de l'exemple d'avant-série), jamais directement
+  par l'UI.
 - **`sprint-scope.ts`** — **périmètre du sprint** (#208, pure) : `all` (toutes les
   leçons éligibles du niveau) ou `seen` (uniquement les leçons **déjà rencontrées**,
   `loadRencontrees` — pas « acquises » : le sprint consolide, y compris le fragile).
@@ -816,6 +837,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   niveau actif (`Record<lessonId, EtatReport>`, comme `loadStars`), consommée par
   `lecon-du-jour.ts` et `rewards.ts:weakLessons`. Logique pure dans `report-lecon.ts`
   ci-dessus.
+  **Mémoire de l'exemple d'avant-série** (#490, `ludaskia_etayageVu`) :
+  **`loadEtayagesVus()`**/**`marquerEtayageVu(lessonId, episode)`** — namespacée par
+  niveau comme `ludaskia_leconReport`, dont elle dépend (l'épisode mémorisé est
+  l'horodatage `reporteLe` du report en cours, cf. `core/etayage.ts:episodeEtayable`
+  ci-dessous) ; consommée par `ui/etayage-panneau.ts:maybeEtayageAvantSerie`, jamais
+  directement par l'UI.
   **Journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée,
   #234 ; **entrées typées** `ActivityEntry = {t, k, ref?}` avec
   `ActivityKind = 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee'` (+ `'inconnu'`
@@ -880,6 +907,84 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   fait dans `profiles.ts` pour éviter un cycle), **thèmes de couleur** (`THEMES`,
   `themesDebloques` — tous clairs, débloqués par palier), et récompenses de palier
   (`recompensesNiveau`, `recompensesEntre` qui agrège un saut de plusieurs niveaux).
+
+## Étayage de la notion (#490)
+
+L'aide au geste (#272, `aide.ts` ci-dessus) explique la MANIPULATION d'un widget
+(glisser une tuile, où saisir) ; elle ne dit rien du SAVOIR en jeu. Un enfant qui n'a
+pas compris la retenue refera la même erreur avec d'autres nombres — « varier la
+surface » (items régénérés) ne suffit pas. Deux modules purs portent ce second
+niveau, sans DOM ni stockage :
+
+- **`etayage.ts`** — socle : la **sélection** du contenu d'une leçon
+  (**`etayagePour(lesson, niveau, mode)`**), qui cherche l'entrée `LessonDef.etayage`
+  la plus SPÉCIFIQUE (niveau puis mode ; une entrée qui précise un niveau/mode
+  DIFFÉRENT est écartée, jamais dégradée) et renvoie `undefined` en son absence —
+  **invariant central du module** : sans entrée pour CETTE leçon, il n'y a **pas** de
+  panneau, jamais de repli sur un exemple générique de la même famille de moteur (un
+  exemple « clique sur un nom, CE2 » servi sur « clique sur l'adjectif, CM1 » serait
+  pire que rien). La granularité de la clé est donc **(leçon, niveau, mode)**, jamais
+  « famille de moteur » — les moteurs sont réutilisés par plusieurs leçons et
+  plusieurs niveaux. `EtayageContenu` porte un `titre`, une `regle?` (l'idée-force en
+  UNE phrase, affichée en PERMANENCE pendant tout le déroulé — ce qu'un enfant à
+  faible mémoire de travail retient d'un écran à l'autre, avis
+  `specialiste-troubles-apprentissage`), des `etapes?` rédigées (≤ 3) et/ou un
+  `exemple?` (`EtayageExemple`, union à une seule branche pour l'instant :
+  `{moteur: 'posee', spec}`, le calcul posé, pilote de #490). Le module expose aussi
+  **`leconPrerequise(lesson, niveau)`** — la leçon PRÉCÉDENTE de sa catégorie dans
+  l'ordre pédagogique (`ordre.ts`/`getLessonsByCategory`, déjà trié) —, seul contenu
+  entièrement MÉCANISABLE, donc affichable même sans rien de rédigé. Enfin,
+  **`episodeEtayable(etat, now)`** identifie l'ÉPISODE de blocage dont l'enfant
+  REVIENT (signature stable : l'horodatage `reporteLe` du report qui l'a ouvert, `0` =
+  aucun) — un report ÉCHU (`reprendreLe` passé) signe le retour dans le fil, le
+  moment où l'exemple d'avant-série a sa place — et **`doitEtayerAvantSerie(etat, vu,
+  now)`** compare cet épisode à celui déjà couvert (`vu`, mémorisé par
+  `progress.ts:loadEtayagesVus`, cf. ci-dessus) : relancer la même leçon dix fois le
+  même jour ne redonne pas dix panneaux, mais un nouveau blocage en vaut un nouveau.
+  **Borne haute partagée avec le signal encadrant** : dès
+  `BLOCAGES_SIGNAL_ADULTE` (`report-lecon.ts` ci-dessus, 3 jours) atteint,
+  `episodeEtayable` renvoie `0` — l'appli cesse de s'auto-expliquer au moment même
+  où l'espace encadrant se met à signaler la leçon (cf. [Espace
+  encadrant](espace-encadrant.md)) : un dispositif auto-corrigé ne répare pas une
+  incompréhension persistante par la répétition, c'est alors à l'adulte de prendre
+  le relais.
+- **`etayage-posee.ts`** — l'un des deux contenus possibles d'une notion (cf.
+  `etayage.ts`) : la **résolution GÉNÉRÉE** d'une opération posée, du CODE et non de
+  l'éditorial (la méthode est mécanique). **`resolutionPosee(spec: PosedSpec)`**
+  découpe le calcul en `LignePosee[]` (une addition/soustraction/multiplication ×1
+  chiffre n'en a qu'une ; une multiplication à 2 chiffres en a trois — les deux
+  produits partiels puis leur addition, `role: 'produit-partiel' |
+  'produit-partiel-dizaines' | 'somme-partiels'`), chacune en `EtapePosee[]` — une
+  étape = **une colonne**, l'unité de décision de l'algorithme posé (chiffres lus,
+  retenue entrante/sortante, chiffre écrit, `emprunt?` en soustraction).
+  **`phrasePosee(etape, op, ligne)`** met une étape en mots : ce qu'on lit (retenue
+  comprise), le FAIT NUMÉRIQUE isolé (« 3 + 8 + 1 = 12 »), puis ce qu'on écrit et
+  **pourquoi** — la VALEUR DE POSITION (« 12, c'est 1 dizaine et 2 unités ») plutôt
+  que le seul geste (« écris 2, retiens 1 »), qui enseignerait la
+  manipulation sans la notion (avis `specialiste-troubles-apprentissage`).
+  **Soustraction : la retenue se NOTE en case** (méthode par emprunt, celle des
+  manuels CE2 et celle que la grille sait écrire), jamais en barrant le chiffre du
+  haut — **point laissé ouvert par le mainteneur**, pas une méthode validée à
+  l'exclusion des autres. `chapeauLigne(ligne, spec)` annonce une ligne quand il y en
+  a plusieurs (« D'abord, je multiplie… »), posée en tête de sa première colonne, pas
+  comme une étape de plus (le volume d'une multiplication à deux chiffres est déjà à
+  la limite haute du suivable). Testable seul, utilisable indifféremment sur
+  l'opération que l'enfant vient de rater ou sur l'exemple canonique **fixe** d'une
+  leçon (`data/maths/posee.ts`, cf. [Contenu & leçons](contenu-et-lecons.md)) —
+  jamais un tirage, qui donnerait tantôt un cas sans retenue qui ne montre rien,
+  tantôt le pire cas au pire moment.
+
+Deux contenus, à ne pas confondre : la résolution **générée** ci-dessus (du code) et
+le texte **RÉDIGÉ** de la notion, écrit à la main dans le module de données de sa
+leçon (`etayage?: EtayageEntree[]` sur `LessonInput`, remonté tel quel en `LessonDef`
+par `toLessonDefs`, cf. `catalog.ts` ci-dessus) — pas de table centrale à cent
+entrées, qui dériverait de la leçon qu'elle décrit et serait un nid de conflits.
+
+`core/items.ts` (Fondations ci-dessus) porte le tiers restant, PARTAGÉ par la grille
+jouable et par la grille de DÉMONSTRATION du panneau : `dispositionPosee(spec)` /
+`poseeGrilleHTML` et les attributs `data-pose-op/a/b` qu'elle pose sur la grille
+jouable. La couche UI (`ui/etayage-panneau.ts`, cinq points d'entrée) est décrite
+dans [Rendu & interactions](ui.md).
 
 ## Espace encadrant (logique pure)
 

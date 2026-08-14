@@ -425,9 +425,24 @@ function viderStatut(): void {
 	if (statut) statut.textContent = '';
 }
 
+/* Lève le figeage posé par une révélation précédente (#467). Indispensable, et propre à la
+   révision : `#revStage` SURVIT d'une question à l'autre (seul son contenu est remplacé —
+   c'est ce qui permet de câbler Entrée une seule fois, cf. bindEnter), donc une classe
+   d'ÉTAT posée sur la carte reste collée pour toute la séance. Le mode leçon n'a pas ce
+   défaut : sa scène (`.sprint-stage`) est reconstruite à chaque question, `.lecon-fige`
+   part avec. Sans ce nettoyage, un « Je ne sais pas, montre-moi » sur un widget (le seul
+   chemin qui appelle `neutraliserWidget`) rendait TOUTES les questions suivantes
+   inertes — `pointer-events: none` sur tout ce qui n'est pas `#revAfter` : plus un choix
+   de QCM ni même le lien de déblocage cliquables, seuls les boutons « Écouter » (exclus
+   du figeage) répondant encore. L'enfant n'avait plus qu'à quitter la séance. */
+function degelerStage(): void {
+	document.getElementById('revStage')?.classList.remove('rev-stage--fige');
+}
+
 function renderCurrent() {
 	updateHud();
 	viderStatut();
+	degelerStage();
 	const it = items[idx];
 	if (it.kind === 'qcm') renderQcm(it);
 	else if (it.kind === 'word') renderWordLook(it);

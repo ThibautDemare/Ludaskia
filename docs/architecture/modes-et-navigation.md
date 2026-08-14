@@ -123,7 +123,15 @@ re-rend déjà la carte du programme.
 **Deux surfaces enfant** : la carte d'accueil `#cardProgramme` (`renderProgrammeCard`,
 masquée hors programme applicable ce jour) et l'écran dédié `#seance` (`renderSeance`)
 — tuiles des étapes restantes en ordre libre, jauge de pastilles, bouton « Choisis
-pour moi ». Vocabulaire à l'écran, des **deux côtés** (enfant et encadrant) :
+pour moi ». **Programme terminé (#517)** : la carte reste affichée comme repère
+spatial mais devient un constat sans call-to-action (`card-inactive`, ni pastille ni
+clic), même règle que la carte Révision quand rien n'est dû — derrière, l'écran
+`#seance` complet n'offrirait qu'un récapitulatif non actionnable, donc on n'y envoie
+pas l'enfant. Le clic de la carte **recalcule** l'état avant de naviguer plutôt que de
+poser `#seance` inconditionnellement : la carte peut avoir survécu au programme qui
+l'a produite (onglet resté ouvert, minuit passé, épinglée retirée) ; sans ce garde-fou
+le clic posait `#seance` d'où la route renvoyait aussitôt à l'accueil, un clic sans
+effet visible. Vocabulaire à l'écran, des **deux côtés** (enfant et encadrant) :
 toujours « programme » / « programme du jour » ; « séance » ne subsiste que dans les
 noms internes du code (`SeanceDef`, `core/seance.ts`…).
 

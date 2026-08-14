@@ -60,7 +60,7 @@ export function renderLeconDuJour(
       <div class="ico" aria-hidden="true">${icon('star')}</div>
       <h2>Bravo&nbsp;!</h2>
       <p>Tu as fait le tour des leçons de ta classe.</p>
-      <span class="go">Réviser <span aria-hidden="true">→</span></span>`;
+      <button type="button" class="go" aria-label="Réviser tes leçons">Réviser <span aria-hidden="true">→</span></button>`;
 	} else {
 		el.dataset.mode = 'lesson';
 		el.dataset.lesson = lesson.id;
@@ -82,7 +82,7 @@ export function renderLeconDuJour(
         <span class="lj-title">${escapeHTML(labelLecon(lesson, niveauLecon(lesson)))}</span>
         <span class="lj-sub">${sousTitre}</span>
       </p>
-      <span class="go">C'est parti <span aria-hidden="true">→</span></span>
+      <button type="button" class="go" aria-label="Ta prochaine leçon : c'est parti">C'est parti <span aria-hidden="true">→</span></button>
       ${autre}`;
 	}
 

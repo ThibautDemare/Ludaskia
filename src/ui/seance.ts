@@ -438,7 +438,7 @@ export function renderProgrammeCard(el: HTMLElement | null): void {
 					vue.totalFait > 1 ? 's' : ''
 				}</span>
       </p>
-      <span class="go">On y va <span aria-hidden="true">→</span></span>`;
+      <button type="button" class="go" aria-label="Ton programme du jour : on y va">On y va <span aria-hidden="true">→</span></button>`;
 	}
 	if (!el.dataset.wired) {
 		el.addEventListener('click', () => {

@@ -120,6 +120,15 @@
 				</div>
 				<!-- Colonne droite : accès aux modes + favoris -->
 				<div class="home-col home-col-right">
+					<!-- Cartes de l'accueil. La carte entière est cliquable (confort du doigt),
+					     mais l'ACTION focusable est la pastille `.go` : un vrai <button>, donc
+					     activable au clavier (Entrée/Espace) et annoncée comme bouton, dont le clic
+					     remonte au listener de la carte. Pas de `role="button"` sur la carte
+					     elle-même : il aplatirait son <h2> et avalerait les boutons imbriqués
+					     (« Voir une autre leçon »). Une carte sans action (`card-inactive`) masque
+					     sa pastille, donc sort du parcours clavier sans autre réglage. Chaque
+					     pastille porte un `aria-label` qui reprend son libellé visible ET nomme sa
+					     carte : « c'est parti » seul ne dit rien hors contexte. -->
 					<div class="cards">
 						<!-- Programme du jour (#440) : carte d'entrée vers l'écran #seance, affichée
 						     seulement quand l'encadrant a programmé une séance applicable aujourd'hui
@@ -142,7 +151,9 @@
 								de bonnes réponses possibles !
 							</p>
 							<div class="card-record" id="recSprint"></div>
-							<span class="go">C'est parti →</span>
+							<button type="button" class="go" aria-label="Sprint 5 min : c'est parti">
+								C'est parti →
+							</button>
 						</div>
 						<div class="card" id="cardRevision">
 							<div class="ico"></div>
@@ -152,14 +163,16 @@
 								temps.
 							</p>
 							<div class="card-record" id="recRevision"></div>
-							<span class="go">Réviser →</span>
+							<button type="button" class="go" aria-label="Révision : réviser">Réviser →</button>
 						</div>
 						<div class="card" id="cardLecon">
 							<div class="ico"></div>
 							<h2>Une leçon à la fois</h2>
 							<p>Choisis un seul thème et vise le sans-faute pour décrocher son étoile.</p>
 							<div class="card-record" id="recLecon"></div>
-							<span class="go">Choisir →</span>
+							<button type="button" class="go" aria-label="Une leçon à la fois : choisir">
+								Choisir →
+							</button>
 						</div>
 						<div class="card" id="cardBilanCustom">
 							<div class="ico"></div>
@@ -168,7 +181,9 @@
 								Choisis les leçons et le nombre de questions. Sauvegarde tes configurations
 								préférées comme favoris.
 							</p>
-							<span class="go">Configurer →</span>
+							<button type="button" class="go" aria-label="Bilan personnalisé : configurer">
+								Configurer →
+							</button>
 						</div>
 					</div>
 					<div id="favoris"></div>

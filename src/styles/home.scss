@@ -236,6 +236,9 @@
 	margin: 0 0 18px;
 	font-family: var(--ui);
 }
+/* Pastille d'action de la carte. C'est un vrai <button> (activation clavier, rôle
+   annoncé) : d'où la remise à zéro de la bordure et du curseur du navigateur, et le
+   `line-height` hérité pour garder EXACTEMENT la hauteur qu'avait le <span>. */
 .card .go {
 	display: inline-block;
 	background: var(--accent);
@@ -243,8 +246,18 @@
 	font-weight: 700;
 	font-family: var(--ui);
 	font-size: 14px;
+	line-height: inherit;
 	padding: 10px 20px;
+	border: 0;
 	border-radius: 8px;
+	cursor: pointer;
+}
+/* Anneau de focus posé HORS de la pastille (offset) : sur le fond `--paper` de la
+   carte, où `--accent` contraste, et pas sur la pastille elle-même dont il porte la
+   couleur. Même motif que `.lj-autre` plus bas. */
+.card .go:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
 }
 .home .printlink {
 	margin-top: 40px;

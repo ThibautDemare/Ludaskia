@@ -940,7 +940,14 @@ niveau, sans DOM ni stockage :
   moment où l'exemple d'avant-série a sa place — et **`doitEtayerAvantSerie(etat, vu,
   now)`** compare cet épisode à celui déjà couvert (`vu`, mémorisé par
   `progress.ts:loadEtayagesVus`, cf. ci-dessus) : relancer la même leçon dix fois le
-  même jour ne redonne pas dix panneaux, mais un nouveau blocage en vaut un nouveau.
+  même jour ne redonne pas dix panneaux. **Ce que le calibrage actuel rend
+  atteignable est plus étroit que cette mécanique** : il faut un report (`jours ≥ 2`)
+  et `jours < 3`, soit exactement `jours = 2`, or `jours` ne redescend qu'au
+  franchissement — lequel interdit tout report ultérieur. En pratique, **un seul
+  exemple d'avant-série par leçon et par niveau, à vie**, et la mémoire d'épisode se
+  comporte comme un booléen. Conservateur par construction (les autres points d'entrée
+  restent, eux, toujours offerts et sans mémoire) ; élargir demanderait de bouger la
+  borne, pas ce module — d'où la mécanique laissée générale.
   **Borne haute partagée avec le signal encadrant** : dès
   `BLOCAGES_SIGNAL_ADULTE` (`report-lecon.ts` ci-dessus, 3 jours) atteint,
   `episodeEtayable` renvoie `0` — l'appli cesse de s'auto-expliquer au moment même

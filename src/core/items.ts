@@ -440,61 +440,72 @@ export function gridHTML(items: Item[], cols: number, ctx: RenderContext) {
 	return `<div class="grid ${cls}">${items.map((it) => `<div class="op">${renderItem(it, ctx)}</div>`).join('')}</div>`;
 }
 
-/* Grille d'une opération posée (#97) : grille CSS de C+1 colonnes (1 pour le signe
-   + C colonnes de chiffres alignées à droite). Les chiffres du résultat (et des
-   produits partiels en ×2 chiffres) sont des champs `.ans` NOTÉS un par un ; une
-   rangée de retenues `.ans-free` (non notée) sert d'aide visible. verify() corrige
-   chaque cellule via son data-answer ; un sans-faute = toutes les cellules justes. */
-function posedGridHTML(spec: PosedSpec, ctx: RenderContext): string {
+/* ---------- Disposition d'une opération posée (#97, extraite en #490) ----------
+   La grille posée se rend maintenant à DEUX endroits : jouable ici (champs `.ans`
+   corrigés cellule par cellule) et en DÉMONSTRATION dans le panneau d'étayage
+   (cellules figées, remplies une colonne à la fois pendant qu'on explique la méthode).
+   L'alignement des chiffres devant être RIGOUREUSEMENT le même des deux côtés — un
+   enfant en difficulté ne doit pas avoir à réapprendre un format visuel en plus de la
+   méthode —, la disposition est calculée une seule fois ici, et rendue deux fois. */
+
+/** Une cellule de la grille posée, décrite par son rôle (pas par son HTML). */
+export type CellulePosee =
+	| { role: 'vide' }
+	| { role: 'signe'; texte: string }
+	/** Chiffre DONNÉ d'un opérande. */
+	| { role: 'chiffre'; chiffre: string }
+	/** Case de retenue : aide visible, jamais notée. */
+	| { role: 'retenue' }
+	/** Le 0 FOURNI du 2ᵉ produit partiel (porte le décalage, #154). */
+	| { role: 'zeroDecalage' }
+	/** Chiffre à TROUVER. `resultat` marque les cellules du résultat final (#391) et
+	    donne le rang du chiffre ; absent = cellule d'un produit partiel. */
+	| { role: 'saisie'; chiffre: string; resultat?: { pos: number } };
+
+/** Une rangée de la grille : la colonne du signe puis `colonnes` cellules alignées à
+    droite. `barre` = trait horizontal de l'opération (pas de cellules). */
+export interface RangeePosee {
+	barre?: boolean;
+	cellules: CellulePosee[];
+}
+
+export interface DispositionPosee {
+	/** Nombre de colonnes de CHIFFRES (la colonne du signe est en plus, à gauche). */
+	colonnes: number;
+	rangees: RangeePosee[];
+	/** L'opération, lisible (« 347 + 285 ») — la grille n'a pas d'énoncé. */
+	operation: string;
+	resultat: number;
+}
+
+/** Disposition d'une opération posée : rangées et cellules, sans une ligne de HTML.
+    Multiplicateur à 2 chiffres → deux produits partiels puis leur addition. */
+export function dispositionPosee(spec: PosedSpec): DispositionPosee {
 	const { op, a, b } = spec;
-	const result = op === '+' ? a + b : op === '-' ? a - b : a * b;
-	const sign = op === '+' ? '+' : op === '-' ? '−' : '×';
+	const resultat = op === '+' ? a + b : op === '-' ? a - b : a * b;
+	const signe = op === '+' ? '+' : op === '-' ? '−' : '×';
 	const digits = (n: number) => String(n).split('');
-	// Journal d'erreurs (#391) : descripteur partagé par les cellules-chiffres du RÉSULTAT
-	// (agrégées en UNE entrée par opération dans session.verify, cf. erreur-representation).
-	// `groupe` = id unique de la grille dans le contexte (compteur figé AVANT tout champ,
-	// donc stable pour la reprise) ; `pos` = rang du chiffre dans le résultat.
-	const groupe = 'posee-' + ctx.counter;
-	const operation = `${a} ${sign} ${b}`;
-	const attendue = String(result);
-
-	const empty = () => `<span class="posee-cell"></span>`;
-	const opCell = (s: string) => `<span class="posee-cell posee-op">${s}</span>`;
-	const digitCell = (d: string) => `<span class="posee-cell posee-digit">${d}</span>`;
-	// Zéro FOURNI (grisé, non saisi) du 2ᵉ produit partiel : on multiplie par les
-	// dizaines, donc le produit se termine par 0 — ce 0 explique le décalage et
-	// réaligne la ligne sous la somme (#154, avis pedagogue-primaire).
-	const zeroCell = () =>
-		`<span class="posee-cell posee-digit posee-zero" aria-label="zéro du décalage">0</span>`;
-	const carryCell = () =>
-		`<input class="ans-free posee-cell posee-carry" maxlength="1" inputmode="numeric" autocomplete="off" aria-label="retenue">`;
-	const inputCell = (d: string, posed?: Item['posedResult']) => {
-		// Corrigé (#41) : le chiffre du résultat révélé dans la cellule (au lieu du champ).
-		if (ctx.corrigeMode) return `<span class="posee-cell posee-input posee-corrige">${d}</span>`;
-		const id = nextInputId(ctx);
-		const item: Item = { text: '', answer: Number(d), kind: 'num' };
-		if (posed) item.posedResult = posed; // seules les cellules du RÉSULTAT sont taguées (#391)
-		ctx.items[id] = item;
-		return `<input class="ans posee-cell posee-input" id="${id}" data-answer="${d}"${lessonAttr(ctx)} maxlength="1" inputmode="numeric" autocomplete="off" aria-label="chiffre du résultat">`;
-	};
-	// Cellule d'un chiffre du RÉSULTAT : porte le descripteur d'agrégation (#391).
-	const resultCell = (d: string, pos: number) => inputCell(d, { groupe, operation, attendue, pos });
-
-	// Une rangée = signe (ou vide) + C cellules alignées à droite, décalées de `shift`.
-	const rule = (C: number) => `<span class="posee-rule" style="grid-column: 1 / ${C + 2}"></span>`;
-	const row = (C: number, signHTML: string, cells: string[], shift = 0): string => {
-		const slots = Array.from({ length: C }, empty);
-		const start = C - shift - cells.length;
-		for (let i = 0; i < cells.length; i++) slots[start + i] = cells[i];
-		return signHTML + slots.join('');
-	};
-
-	const C =
+	const chiffres = (n: number): CellulePosee[] =>
+		digits(n).map((chiffre) => ({ role: 'chiffre', chiffre }));
+	const colonnes =
 		op === 'x' && b >= 10
-			? digits(result).length
-			: Math.max(digits(a).length, digits(b).length, digits(result).length);
+			? digits(resultat).length
+			: Math.max(digits(a).length, digits(b).length, digits(resultat).length);
 
-	const parts: string[] = [];
+	// Une rangée = signe (ou vide) + C cellules alignées à DROITE.
+	const rangee = (cellules: CellulePosee[], signeCell?: CellulePosee): RangeePosee => {
+		const slots: CellulePosee[] = Array.from({ length: colonnes }, () => ({ role: 'vide' }));
+		const start = colonnes - cellules.length;
+		for (let i = 0; i < cellules.length; i++) slots[start + i] = cellules[i];
+		return { cellules: [signeCell ?? { role: 'vide' }, ...slots] };
+	};
+	const retenues = (): RangeePosee =>
+		rangee(Array.from({ length: colonnes }, () => ({ role: 'retenue' })));
+	const barre = (): RangeePosee => ({ barre: true, cellules: [] });
+	const resultatCells = (): CellulePosee[] =>
+		digits(resultat).map((chiffre, pos) => ({ role: 'saisie', chiffre, resultat: { pos } }));
+
+	const rangees: RangeePosee[] = [];
 	if (op === 'x' && b >= 10) {
 		// Multiplication à 2 chiffres : deux produits partiels + addition finale.
 		// Retenues des produits partiels « dans la tête » (multiplicateurs doux, cf.
@@ -505,35 +516,109 @@ function posedGridHTML(spec: PosedSpec, ctx: RenderContext): string {
 		// marqueur « + » devant le 2ᵉ produit partiel signale l'addition (#300/#307).
 		const pp1 = a * (b % 10);
 		const pp2 = a * Math.floor(b / 10);
-		parts.push(row(C, empty(), digits(a).map(digitCell)));
-		parts.push(row(C, opCell(sign), digits(b).map(digitCell)));
-		parts.push(rule(C));
-		// Retenues de l'addition finale, au-dessus de ses opérandes (les produits partiels).
-		parts.push(row(C, empty(), Array.from({ length: C }, carryCell)));
-		// Produits partiels : cellules NOTÉES mais NON taguées (#391) — seul le résultat final
-		// est agrégé en erreur (« dont le résultat est faux »).
-		parts.push(
-			row(
-				C,
-				empty(),
-				digits(pp1).map((d) => inputCell(d)),
+		rangees.push(rangee(chiffres(a)));
+		rangees.push(rangee(chiffres(b), { role: 'signe', texte: signe }));
+		rangees.push(barre());
+		rangees.push(retenues());
+		// Produits partiels : cellules à trouver mais NON taguées (#391) — seul le résultat
+		// final est agrégé en erreur (« dont le résultat est faux »).
+		rangees.push(rangee(digits(pp1).map((chiffre) => ({ role: 'saisie', chiffre }))));
+		// 2ᵉ produit partiel suivi de son 0 fourni (× dizaines) : le décalage est porté par
+		// ce 0, donc la ligne s'aligne sur la somme sans décalage spatial. Le « + » marque
+		// l'addition des deux produits partiels.
+		rangees.push(
+			rangee(
+				[
+					...digits(pp2).map((chiffre): CellulePosee => ({ role: 'saisie', chiffre })),
+					{ role: 'zeroDecalage' },
+				],
+				{ role: 'signe', texte: '+' },
 			),
 		);
-		// 2ᵉ produit partiel suivi de son 0 fourni (× dizaines) : le décalage est
-		// porté par ce 0, plus besoin de `shift` spatial → la ligne s'aligne sur la somme.
-		// Le « + » marque l'addition des deux produits partiels.
-		parts.push(row(C, opCell('+'), [...digits(pp2).map((d) => inputCell(d)), zeroCell()]));
-		parts.push(rule(C));
-		parts.push(row(C, empty(), digits(result).map(resultCell)));
+		rangees.push(barre());
+		rangees.push(rangee(resultatCells()));
 	} else {
 		// Addition, soustraction, multiplication ×1 chiffre.
-		parts.push(row(C, empty(), Array.from({ length: C }, carryCell))); // retenues (aide)
-		parts.push(row(C, empty(), digits(a).map(digitCell)));
-		parts.push(row(C, opCell(sign), digits(b).map(digitCell)));
-		parts.push(rule(C));
-		parts.push(row(C, empty(), digits(result).map(resultCell)));
+		rangees.push(retenues()); // retenues (aide)
+		rangees.push(rangee(chiffres(a)));
+		rangees.push(rangee(chiffres(b), { role: 'signe', texte: signe }));
+		rangees.push(barre());
+		rangees.push(rangee(resultatCells()));
 	}
-	return `<div class="posee" style="grid-template-columns: repeat(${C + 1}, var(--posee-col, 2.1rem))">${parts.join('')}</div>`;
+	return { colonnes, rangees, operation: `${a} ${signe} ${b}`, resultat };
+}
+
+/** Enveloppe de la grille posée : la grille CSS de C+1 colonnes (1 pour le signe + C
+    colonnes de chiffres). Partagée par la grille jouable et par la démonstration du
+    panneau d'étayage, pour que les deux aient la MÊME largeur de colonne.
+    `spec` : les opérandes exposés en `data-*` sur la grille JOUABLE (#490). L'étayage
+    d'une erreur doit dérouler L'OPÉRATION QUE L'ENFANT VIENT DE RATER, et la fiche ne
+    garde en mémoire que les cellules, pas leur grille — les retrouver par le DOM évite
+    d'alourdir chaque cellule d'une copie de l'opération. */
+export function poseeGrilleHTML(
+	disposition: DispositionPosee,
+	cellules: string,
+	classe = '',
+	spec?: PosedSpec,
+): string {
+	// `data-pose-*` et non `data-posee-*` : ce dernier contiendrait la sous-chaîne
+	// « posee-op », qui sert de repère de comptage des opérateurs dans les tests.
+	const data = spec
+		? ` data-pose-op="${spec.op}" data-pose-a="${spec.a}" data-pose-b="${spec.b}"`
+		: '';
+	return `<div class="posee${classe ? ' ' + classe : ''}"${data} style="grid-template-columns: repeat(${disposition.colonnes + 1}, var(--posee-col, 2.1rem))">${cellules}</div>`;
+}
+
+/* Grille d'une opération posée (#97) : les chiffres du résultat (et des produits
+   partiels en ×2 chiffres) sont des champs `.ans` NOTÉS un par un ; la rangée de
+   retenues `.ans-free` (non notée) sert d'aide visible. verify() corrige chaque cellule
+   via son data-answer ; un sans-faute = toutes les cellules justes. */
+function posedGridHTML(spec: PosedSpec, ctx: RenderContext): string {
+	const disposition = dispositionPosee(spec);
+	// Journal d'erreurs (#391) : descripteur partagé par les cellules-chiffres du RÉSULTAT
+	// (agrégées en UNE entrée par opération dans session.verify, cf. erreur-representation).
+	// `groupe` = id unique de la grille dans le contexte (compteur figé AVANT tout champ,
+	// donc stable pour la reprise) ; `pos` = rang du chiffre dans le résultat.
+	const groupe = 'posee-' + ctx.counter;
+	const operation = disposition.operation;
+	const attendue = String(disposition.resultat);
+
+	const celluleHTML = (c: CellulePosee): string => {
+		switch (c.role) {
+			case 'vide':
+				return `<span class="posee-cell"></span>`;
+			case 'signe':
+				return `<span class="posee-cell posee-op">${c.texte}</span>`;
+			case 'chiffre':
+				return `<span class="posee-cell posee-digit">${c.chiffre}</span>`;
+			// Zéro FOURNI (grisé, non saisi) du 2ᵉ produit partiel : on multiplie par les
+			// dizaines, donc le produit se termine par 0 — ce 0 explique le décalage et
+			// réaligne la ligne sous la somme (#154, avis pedagogue-primaire).
+			case 'zeroDecalage':
+				return `<span class="posee-cell posee-digit posee-zero" aria-label="zéro du décalage">0</span>`;
+			case 'retenue':
+				return `<input class="ans-free posee-cell posee-carry" maxlength="1" inputmode="numeric" autocomplete="off" aria-label="retenue">`;
+			case 'saisie': {
+				// Corrigé (#41) : le chiffre du résultat révélé dans la cellule (au lieu du champ).
+				if (ctx.corrigeMode)
+					return `<span class="posee-cell posee-input posee-corrige">${c.chiffre}</span>`;
+				const id = nextInputId(ctx);
+				const item: Item = { text: '', answer: Number(c.chiffre), kind: 'num' };
+				// Seules les cellules du RÉSULTAT sont taguées pour le journal (#391).
+				if (c.resultat) item.posedResult = { groupe, operation, attendue, pos: c.resultat.pos };
+				ctx.items[id] = item;
+				return `<input class="ans posee-cell posee-input" id="${id}" data-answer="${c.chiffre}"${lessonAttr(ctx)} maxlength="1" inputmode="numeric" autocomplete="off" aria-label="chiffre du résultat">`;
+			}
+		}
+	};
+	const cellules = disposition.rangees
+		.map((r) =>
+			r.barre
+				? `<span class="posee-rule" style="grid-column: 1 / ${disposition.colonnes + 2}"></span>`
+				: r.cellules.map(celluleHTML).join(''),
+		)
+		.join('');
+	return poseeGrilleHTML(disposition, cellules, '', spec);
 }
 /* L'en-tête de fiche : le champ "Temps : ___ min" est print-only */
 export function ficheHTML(

@@ -58,7 +58,7 @@ import {
 	setNiveauMatiere,
 } from '../src/core/profiles';
 import { setOnDataWrite, lsGet, lsSet } from '../src/core/storage';
-import { getLessonById, ORTHO_CATEGORY_ID } from '../src/core/catalog';
+import { getAllLessons, getLessonById, ORTHO_CATEGORY_ID } from '../src/core/catalog';
 import type { EtatRevision, OrthoState } from '../src/core/orthographe/types';
 
 beforeEach(() => {
@@ -479,6 +479,77 @@ describe('placement de l’entretien dans la séance', () => {
 		expect(cat('num-comparer')).toBe('math-numeration');
 	});
 
+	/* Le cas du CM1 qui travaille géométrie et problèmes pendant que sa dette CE2 porte sur
+	   d'autres notions : PLUSIEURS catégories d'entretien, AUCUNE en commun avec la séance.
+	   Chaque insertion crée un groupe, et l'enjeu est que ces insertions répétées ne poussent
+	   jamais l'ancien dernier groupe de sa place. Les leçons sont tirées du catalogue par
+	   catégorie (l'ordre attendu est dérivé des RÔLES, pas d'ids figés). */
+	const leconsDe = (categoryId: string, n: number): string[] => {
+		const ids = getAllLessons()
+			.filter((l) => l.category === categoryId)
+			.slice(0, n)
+			.map((l) => l.id);
+		if (ids.length < n) throw new Error(`catalogue : ${categoryId} a moins de ${n} leçons`);
+		return ids;
+	};
+
+	it('trois catégories d’entretien sans correspondance → trois groupes, tous avant le dernier', () => {
+		const [geo1, geo2] = leconsDe('math-geometrie', 2);
+		const [prob1, prob2] = leconsDe('math-problemes', 2);
+		const [mcm] = leconsDe('math-calcul-mental', 1);
+		const [conj] = leconsDe('fr-conjugaison', 1);
+		const [num] = leconsDe('math-numeration', 1);
+		// 4 actifs (géométrie la plus en retard, puis problèmes) → 2 blocs ; plafond 20 → dose 3.
+		const groups = selectDueGroups(orthoVide(), lecons([geo1, geo2, prob1, prob2]), T0, 20, [
+			basNiveau(mcm, etatDu(null)), // jamais testé → 1er du lot
+			basNiveau(conj, etatDu(T0 - 100 * JOUR)), // 2e
+			basNiveau(num, etatDu(T0 - 10 * JOUR)), // 3e
+		]);
+		// Attendu recalculé : chaque groupe créé s'insère avant le dernier groupe, donc ils
+		// s'empilent dans l'ordre du lot entre la géométrie et les problèmes, qui reste dernier.
+		expect(groups.map((g) => g.categoryId)).toEqual([
+			'math-geometrie',
+			'math-calcul-mental',
+			'fr-conjugaison',
+			'math-numeration',
+			'math-problemes',
+		]);
+		const items = aplati(groups);
+		expect(items.map((it) => it.id)).toEqual([geo1, geo2, mcm, conj, num, prob1, prob2]);
+		expect(estEntretien(items[0])).toBe(false); // 2 catégories actives → pas d'ouverture
+		expect(estEntretien(items[items.length - 1])).toBe(false); // et surtout pas de clôture
+		// L'invariant tient à travers les 3 insertions : le dernier groupe est resté actif.
+		expect(groups[groups.length - 1].items.some(estEntretien)).toBe(false);
+	});
+
+	it('deux notions d’entretien d’une même catégorie absente → un seul groupe créé', () => {
+		const [geo1, geo2] = leconsDe('math-geometrie', 2);
+		const [prob1, prob2] = leconsDe('math-problemes', 2);
+		const [mcmA, mcmB] = leconsDe('math-calcul-mental', 2);
+		const [conj] = leconsDe('fr-conjugaison', 1);
+		const groups = selectDueGroups(orthoVide(), lecons([geo1, geo2, prob1, prob2]), T0, 20, [
+			basNiveau(mcmA, etatDu(null)), // 1er du lot → crée le groupe
+			basNiveau(mcmB, etatDu(T0 - 100 * JOUR)), // 2e → rejoint le groupe créé
+			basNiveau(conj, etatDu(T0 - 10 * JOUR)), // 3e → nouveau groupe
+		]);
+		expect(groups.map((g) => g.categoryId)).toEqual([
+			'math-geometrie',
+			'math-calcul-mental',
+			'fr-conjugaison',
+			'math-problemes',
+		]);
+		expect(aplati(groups).map((it) => it.id)).toEqual([
+			geo1,
+			geo2,
+			mcmA,
+			mcmB, // les deux notions restent groupées sous leur catégorie
+			conj,
+			prob1,
+			prob2,
+		]);
+		expect(groups[groups.length - 1].items.some(estEntretien)).toBe(false);
+	});
+
 	it('chaque élément est glissé derrière le DERNIER actif de sa catégorie, jamais en clôture', () => {
 		// 6 actifs : 3 en calcul mental (les plus en retard) puis 3 en conjugaison.
 		// Dose 2 à plafond 12 : une notion basse par catégorie.
@@ -609,63 +680,84 @@ describe('placement de l’entretien dans la séance', () => {
 			'num-comparer',
 			'fr-conj-aimer-present',
 		];
-		const stockBas = [
-			'math-tables-addition',
-			'math-decompo-60',
-			'fr-conj-etre-imparfait',
-			'math-multiples-25',
+		// Deux profils de dette basse : l'un RECOUVRE les catégories actives (l'entretien
+		// rejoint des blocs existants), l'autre en est totalement DISJOINT (chaque élément crée
+		// son groupe — insertions répétées, cas du CM1 qui travaille autre chose que sa dette).
+		const stocksBas: [string, string[]][] = [
+			[
+				'recouvrant',
+				['math-tables-addition', 'math-decompo-60', 'fr-conj-etre-imparfait', 'math-multiples-25'],
+			],
+			[
+				'disjoint',
+				[
+					leconsDe('math-geometrie', 1)[0],
+					leconsDe('math-problemes', 1)[0],
+					leconsDe('math-grandeurs-mesures', 1)[0],
+					leconsDe('fr-vocabulaire', 1)[0],
+				],
+			],
 		];
 		let avecEntretien = 0;
 		let ouverturesEntretien = 0; // combien de séances paient l'arbitrage
 		let placesInterieures = 0; // combien avaient une place intérieure disponible
-		for (let nbActifs = 1; nbActifs <= catalogueActif.length; nbActifs++) {
-			for (let nbMots = 0; nbMots <= 12; nbMots += 4) {
-				for (let nbBas = 1; nbBas <= stockBas.length; nbBas++) {
-					for (const plafond of REVISION_PLAFOND_CHOIX) {
-						const bas = stockBas
-							.slice(0, nbBas)
-							.map((id, i) => basNiveau(id, etatDu(i % 2 ? T0 - (i + 1) * JOUR : null)));
-						const groups = selectDueGroups(
-							motsDus(nbMots),
-							lecons(catalogueActif.slice(0, nbActifs)),
-							T0,
-							plafond,
-							bas,
-						);
-						const items = aplati(groups);
-						const ctx = `actifs=${nbActifs} mots=${nbMots} bas=${nbBas} plafond=${plafond}`;
-						expect(items.length, ctx).toBeLessThanOrEqual(plafond);
-						const entretien = items.filter(estEntretien);
-						expect(entretien.length, ctx).toBeLessThanOrEqual(plafondBasNiveau(plafond));
-						if (entretien.length) {
-							avecEntretien++;
-							const actifs = items.filter((it) => !estEntretien(it));
-							// Garantie FORTE : dès qu'il reste du niveau actif, la séance FINIT dessus —
-							// on ne laisse jamais l'enfant sur un échec de l'année passée — et le niveau
-							// actif y reste majoritaire.
-							expect(actifs.length, ctx).toBeGreaterThan(0);
-							expect(actifs.length, ctx).toBeGreaterThanOrEqual(entretien.length);
-							expect(estEntretien(items[items.length - 1]), ctx).toBe(false);
-							// « Pas en ouverture » ne tient plus partout : il faut qu'une place intérieure
-							// existe, c'est-à-dire au moins DEUX catégories actives (avec une seule, le bloc
-							// d'entretien n'a que le début ou la fin à sa disposition).
-							if (new Set(actifs.map((it) => it.categoryId)).size >= 2) {
-								placesInterieures++;
-								expect(estEntretien(items[0]), ctx).toBe(false);
-							} else if (estEntretien(items[0])) ouverturesEntretien++;
-							// Chaque élément d'entretien est révisé sous l'intitulé de SA catégorie.
-							for (const g of groups)
-								for (const it of g.items) expect(it.categoryId, ctx).toBe(g.categoryId);
-							// Et il porte bien son niveau de stockage.
-							for (const it of entretien) expect(it.kind === 'lesson' && it.niveau).toBe('ce2');
+		let groupesCrees = 0; // combien de groupes nés d'un entretien seul
+		for (const [profil, stockBas] of stocksBas)
+			for (let nbActifs = 1; nbActifs <= catalogueActif.length; nbActifs++) {
+				for (let nbMots = 0; nbMots <= 12; nbMots += 4) {
+					for (let nbBas = 1; nbBas <= stockBas.length; nbBas++) {
+						for (const plafond of REVISION_PLAFOND_CHOIX) {
+							const bas = stockBas
+								.slice(0, nbBas)
+								.map((id, i) => basNiveau(id, etatDu(i % 2 ? T0 - (i + 1) * JOUR : null)));
+							const groups = selectDueGroups(
+								motsDus(nbMots),
+								lecons(catalogueActif.slice(0, nbActifs)),
+								T0,
+								plafond,
+								bas,
+							);
+							const items = aplati(groups);
+							const ctx = `${profil} actifs=${nbActifs} mots=${nbMots} bas=${nbBas} plafond=${plafond}`;
+							expect(items.length, ctx).toBeLessThanOrEqual(plafond);
+							const entretien = items.filter(estEntretien);
+							expect(entretien.length, ctx).toBeLessThanOrEqual(plafondBasNiveau(plafond));
+							if (entretien.length) {
+								avecEntretien++;
+								const actifs = items.filter((it) => !estEntretien(it));
+								// Garantie FORTE : dès qu'il reste du niveau actif, la séance FINIT dessus —
+								// on ne laisse jamais l'enfant sur un échec de l'année passée — et le niveau
+								// actif y reste majoritaire.
+								expect(actifs.length, ctx).toBeGreaterThan(0);
+								expect(actifs.length, ctx).toBeGreaterThanOrEqual(entretien.length);
+								expect(estEntretien(items[items.length - 1]), ctx).toBe(false);
+								// Même chose vue par GROUPES : quel que soit le nombre de groupes créés par
+								// l'entretien, aucun groupe fait UNIQUEMENT d'entretien ne finit dernier (les
+								// insertions successives ne poussent pas le dernier groupe de sa place).
+								const dernier = groups[groups.length - 1];
+								expect(dernier.items.every(estEntretien), ctx).toBe(false);
+								groupesCrees += groups.filter((g) => g.items.every(estEntretien)).length;
+								// « Pas en ouverture » ne tient plus partout : il faut qu'une place intérieure
+								// existe, c'est-à-dire au moins DEUX catégories actives (avec une seule, le bloc
+								// d'entretien n'a que le début ou la fin à sa disposition).
+								if (new Set(actifs.map((it) => it.categoryId)).size >= 2) {
+									placesInterieures++;
+									expect(estEntretien(items[0]), ctx).toBe(false);
+								} else if (estEntretien(items[0])) ouverturesEntretien++;
+								// Chaque élément d'entretien est révisé sous l'intitulé de SA catégorie.
+								for (const g of groups)
+									for (const it of g.items) expect(it.categoryId, ctx).toBe(g.categoryId);
+								// Et il porte bien son niveau de stockage.
+								for (const it of entretien) expect(it.kind === 'lesson' && it.niveau).toBe('ce2');
+							}
 						}
 					}
 				}
 			}
-		}
-		expect(avecEntretien).toBeGreaterThan(100); // anti-test-vide
+		expect(avecEntretien).toBeGreaterThan(200); // anti-test-vide
 		expect(placesInterieures).toBeGreaterThan(50); // la garantie d'ouverture est vraiment exercée…
 		expect(ouverturesEntretien).toBeGreaterThan(0); // …et son exception aussi (arbitrage assumé)
+		expect(groupesCrees).toBeGreaterThan(200); // …et des groupes ont bien été créés de toutes pièces
 	});
 });
 

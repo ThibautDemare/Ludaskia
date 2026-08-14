@@ -149,10 +149,12 @@
 	border-top: 1px solid var(--accent-soft);
 	text-align: left;
 }
+/* `--grey` et NON `--muted` : ce dernier ne tient pas le 4,5:1 sur `--paper` dans cinq
+   thèmes sur six, et c'est ici du texte de lecture continue, pas une mention décorative. */
 .etay-prerequis-txt {
 	margin: 0;
 	font: 600 14px/1.4 var(--ui);
-	color: var(--muted);
+	color: var(--grey);
 }
 .etay-epingler {
 	display: inline-flex;
@@ -250,8 +252,11 @@
 		background 0.15s ease,
 		box-shadow 0.15s ease;
 }
+/* Cohabitation avec l'ampoule : on se décale de la largeur de cible PLUS un vrai écart
+   (12 px), pas juste de quoi ne pas se superposer — deux cercles de 44 px collés à 8 px
+   l'un de l'autre se visent mal avec un doigt d'enfant. */
 .aide-btn ~ .etayage-btn {
-	right: 62px;
+	right: 66px;
 }
 .etayage-btn .ph-icon {
 	width: 24px;
@@ -278,6 +283,13 @@
 .a-etayage .fiche-head {
 	padding-left: 52px;
 	padding-right: 52px;
+}
+/* Sur un runner, le titre est `.sprint-theme`, dont le couloir (40 px, cf.
+   aide-exercice.scss) ne suffit plus dès que les DEUX boutons ronds cohabitent : le
+   second finirait sur le libellé de leçon en petit écran. Aucune leçon à runner ne porte
+   encore d'étayage — la règle est là pour que la première ne découvre pas le chevauchement. */
+.sprint-stage:has(.aide-btn):has(.etayage-btn) .sprint-theme {
+	padding-right: 110px;
 }
 
 /* ---------- Mouvement réduit ---------- */

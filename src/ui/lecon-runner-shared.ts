@@ -96,22 +96,24 @@ export function demarrerRunner(o: {
 	});
 	o.render();
 	document.getElementById('sheets')?.focus({ preventScroll: true });
-	// Étayage de la notion (#490) : bouton persistant, puis exemple d'avant-série au retour
-	// d'une mise de côté. Posés AVANT l'aide au geste, qui est prioritaire quand les deux
-	// se présentent (savoir MANIPULER l'écran passe avant la méthode) : `maybeAutoAide`
-	// ouvre alors sa modale et l'exemple, qui refuse de s'empiler, reviendra au lancement
-	// suivant. Sans contenu d'étayage pour la leçon, ces deux appels ne font rien.
+	// Bouton persistant de l'étayage de la notion (#490) : ne fait rien si la leçon n'a pas
+	// de contenu d'étayage. Posé avant les modales, qui lui rendent le focus.
 	monterBoutonEtayage(
 		document.querySelector<HTMLElement>('#sheets .sprint-stage'),
 		o.lesson,
 		niveauLecon(o.lesson),
 		o.mode ?? undefined,
 	);
-	maybeEtayageAvantSerie(o.lesson, o.mode ?? undefined);
 	// APRÈS le focus, jamais avant : la bulle d'aide est une modale qui prend le focus et
 	// le rend à la fermeture (au bouton « ? » de l'exercice). Focaliser `#sheets` ensuite
 	// le lui volerait et casserait son piège de focus.
 	if (o.aide) maybeAutoAide(o.aide); // au 1er lancement seulement (une fois par profil)
+	// PUIS l'exemple d'avant-série (#490), jamais avant : l'aide au GESTE est prioritaire
+	// quand les deux se présentent (savoir manipuler l'écran précède la méthode), et c'est
+	// dans cet ordre — et seulement dans cet ordre — que la garde anti-empilement de
+	// `maybeEtayageAvantSerie` voit la modale d'aide et s'abstient. L'exemple reviendra alors
+	// au lancement suivant, son épisode n'ayant pas été marqué vu.
+	maybeEtayageAvantSerie(o.lesson, o.mode ?? undefined);
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

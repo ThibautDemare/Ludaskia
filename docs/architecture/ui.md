@@ -331,7 +331,10 @@ pure](core.md)) pour les formats composites :
   rendu via `todayStr`), pas la reprise : trois abstentions, jour inchangé, accueil
   masqué (un autre écran occupe la place, la prochaine navigation rendra du frais) et
   accueil `inert` (une modale est ouverte et ne masque pas `#home` : re-rendre dessous
-  détruirait le déclencheur mémorisé pour la restauration du focus).
+  détruirait le déclencheur mémorisé pour la restauration du focus). **Limite assumée** :
+  un onglet qui ne passe JAMAIS par `hidden` (écran qui ne s'éteint pas) ne déclenche
+  aucun rafraîchissement, et l'accueil reste périmé jusqu'à la prochaine navigation ; le
+  garde-fou du clic de la carte joue quand même, donc aucun clic ne meurt.
   **Activation clavier des cartes (#517)** : la carte entière reste cliquable pour le
   doigt et la souris, mais l'action focusable est sa pastille `.go`, un vrai `<button>`
   (dans `app.html` pour les quatre cartes statiques, dans `seance.ts` /

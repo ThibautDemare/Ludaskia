@@ -37,24 +37,24 @@ const CLEAR_PIN = `localStorage.removeItem('ludaskia_encadrant_lock');`;
    se vide dès que la leçon devient solide — pas ce qu'on veut tester ici). */
 const LESSON_ID = 'math-complements';
 
-/* Horloge décalable depuis le test : simule un onglet resté ouvert au-delà de
-   minuit SANS jamais être rechargé (tablette en veille). `page.clock` (cf.
-   e2e/README.md) ne convient pas ici : il avance les TIMERS (setInterval), pas
-   `Date.now()` relu à la demande par un clic ultérieur. On pose donc un décalage
-   lisible depuis la page (`window.__decalage`, nul au départ), ajusté ensuite
-   par `page.evaluate` une fois l'état de départ observé. À poser via
-   `addInitScript`, AVANT le premier chargement. */
-const CLOCK = `(() => {
-	window.__decalage = 0;
-	const N = Date.now.bind(Date);
-	Date.now = () => N() + (window.__decalage || 0);
-	const D = Date;
-	window.Date = class extends D {
-		constructor(...a) { if (!a.length) super(D.now() + (window.__decalage || 0)); else super(...a); }
-		static now() { return D.now() + (window.__decalage || 0); }
-	};
-})();`;
 const JOUR_MS = 24 * 60 * 60 * 1000;
+
+/* Avance l'horloge de LA PAGE d'un jour civil complet, simulant un onglet
+   resté ouvert au-delà de minuit sans jamais être rechargé (tablette en
+   veille) — sans déclencher le moindre timer de l'appli (confettis retirés à
+   +4,2 s dans ui/effects.ts, sauvegarde débouncée à la saisie dans main.ts) :
+   `page.clock.setSystemTime` est documenté pour ça (« sets system time, but
+   does not trigger any timers »), c'est la convention déjà en place côté projet
+   (cf. e2e/README.md, `page.clock.fastForward` dans je-ne-sais-pas.spec.ts).
+   Appelé TARD (après avoir terminé le programme, pas avant l'ouverture de la
+   page) : tout ce qui précède — confettis, modales de récompense — tourne sur
+   l'horloge RÉELLE du navigateur ; seul l'instant du clic ou du retour au
+   premier plan qui suit est décalé. Pas de `clock.install`, qui FIGERAIT en plus
+   les timers de la page : on ne veut décaler que la date lue. */
+async function avancerDUnJour(page: Page): Promise<void> {
+	const maintenant = await page.evaluate(() => Date.now());
+	await page.clock.setSystemTime(maintenant + JOUR_MS);
+}
 
 /* Ferme les éventuelles modales de récompense (étoile / niveau / fête de fin de
    programme) qui intercepteraient le clic suivant (même pattern que
@@ -152,7 +152,6 @@ test('carte programme périmée (jour de récurrence passé) : le clic la corrig
 	page,
 }) => {
 	const errors = watchErrors(page);
-	await page.addInitScript(CLOCK);
 	// Récurrence sur le SEUL jour d'aujourd'hui : demain, le programme ne
 	// s'applique plus (jour différent) — la carte périme sans jamais être re-rendue.
 	const jsDay = new Date().getDay(); // 0 = dimanche
@@ -164,10 +163,7 @@ test('carte programme périmée (jour de récurrence passé) : le clic la corrig
 
 	// L'onglet reste ouvert : on passe minuit SANS re-rendre l'accueil (la carte
 	// affiche encore l'état d'hier, « fini »).
-	await page.evaluate(
-		(d) => ((window as unknown as { __decalage: number }).__decalage = d),
-		JOUR_MS,
-	);
+	await avancerDUnJour(page);
 
 	await carte.click();
 	// Le programme d'hier ne s'applique plus aujourd'hui : le clic recalcule
@@ -203,7 +199,6 @@ test('retour au premier plan après minuit (jour civil changé) : l’accueil se
 	page,
 }) => {
 	const errors = watchErrors(page);
-	await page.addInitScript(CLOCK);
 	// Récurrence tous les jours : encore applicable demain, mais avec une
 	// journée fraîche (rien fait) — le cas qui doit se corriger tout seul.
 	await creerProgrammeLecon(page, [1, 2, 3, 4, 5, 6, 7]);
@@ -212,10 +207,7 @@ test('retour au premier plan après minuit (jour civil changé) : l’accueil se
 	const carte = page.locator('#cardProgramme');
 	await expect(carte).toHaveClass(/programme-card--fini/);
 
-	await page.evaluate(
-		(d) => ((window as unknown as { __decalage: number }).__decalage = d),
-		JOUR_MS,
-	);
+	await avancerDUnJour(page);
 	await simulerRetourPremierPlan(page);
 
 	// Nouvelle journée, rien fait : la carte redevient « à faire » SANS le
@@ -231,7 +223,8 @@ test('retour au premier plan LE MÊME JOUR : l’accueil ne se régénère pas �
 	page,
 }) => {
 	const errors = watchErrors(page);
-	await page.addInitScript(CLOCK); // décalage nul : aucun changement de jour civil
+	// Aucune horloge truquée ici : le jour civil ne change pas, c'est justement
+	// le point du test (pas besoin de simuler quoi que ce soit pour ça).
 	await creerProgrammeLecon(page, [1, 2, 3, 4, 5, 6, 7]);
 	await terminerLeProgrammeEtRevenir(page);
 

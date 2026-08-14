@@ -360,6 +360,88 @@ describe('INVARIANT : seul un essai en mode leçon peut franchir (#485)', () => 
 	});
 });
 
+/* ============================================================
+   Le compteur de BLOCAGES décrit une difficulté COURANTE (#490).
+   ------------------------------------------------------------
+   Règle (dérivée du besoin, pas du code) : `jours` sert à DEUX décisions — l'escalier
+   de report et le signal à l'adulte (« reste un point dur » dans l'espace encadrant).
+   Les deux parlent du présent. Cumulé à vie, il rendait le signal définitif : une
+   notion butée trois fois en octobre puis franchie restait signalée toute l'année, et
+   le parent lisait un mur là où il n'y avait plus qu'un souvenir. Franchir la leçon
+   remet donc le compteur (et sa garde de jour) à zéro.
+   Ce qui ne doit PAS changer : le meilleur score reste monotone (ce que l'enfant a
+   montré une fois ne se reperd pas), et franchir n'attribue aucune étoile.
+   ============================================================ */
+describe('blocages : un compteur de la difficulté courante (#490)', () => {
+	it('franchir remet le compteur de jours de blocage à zéro', () => {
+		let etat = apresEssaiLecon(undefined, 30, J(10));
+		etat = apresEssaiLecon(etat, 30, J(11));
+		expect(etat.jours).toBe(2);
+		etat = apresEssaiLecon(etat, SEUIL, J(12));
+		expect(estFranchie(etat, false)).toBe(true);
+		expect(etat.jours).toBe(0);
+		expect(etat.dernierJour).toBe(''); // la garde anti double-compte repart neuve
+		expect(etat.reporteLe).toBe(0);
+		expect(etat.reprendreLe).toBe(0);
+	});
+
+	it('même à 3 blocages (le seuil du signal à l’adulte), franchir efface le compteur', () => {
+		let etat: EtatReport | undefined;
+		for (let i = 0; i < BLOCAGES_SIGNAL_ADULTE; i++) etat = apresEssaiLecon(etat, 30, J(10 + i));
+		expect(etat?.jours).toBe(BLOCAGES_SIGNAL_ADULTE);
+		etat = apresEssaiLecon(etat, 100, J(20));
+		expect(etat.jours).toBe(0);
+		expect(etat.meilleurPct).toBe(100); // le score, lui, ne s'oublie pas
+	});
+
+	it('l’étoile efface aussi le compteur, même sur un essai bas', () => {
+		// Étoilée = sans-faute ailleurs (révision, bilan) : la leçon n'est plus un mur.
+		let etat = apresEssaiLecon(undefined, 30, J(10));
+		etat = apresEssaiLecon(etat, 30, J(11));
+		etat = apresEssaiLecon(etat, 20, J(12), true);
+		expect(etat.jours).toBe(0);
+		expect(etat.meilleurPct).toBe(30); // le meilleur score reste celui des essais
+	});
+
+	it('le meilleur score reste monotone, et un échec après un franchissement ne recompte rien', () => {
+		// Le franchissement est définitif (meilleur score monotone) : une leçon franchie ne
+		// peut donc plus être mise de côté NI accumuler de jour de blocage, quels que soient
+		// les essais suivants. L'escalier de report ne repart jamais de son 3e cran.
+		let etat = apresEssaiLecon(undefined, 80, J(10));
+		expect(etat.jours).toBe(0);
+		for (const jour of [11, 12, 13, 40]) {
+			etat = apresEssaiLecon(etat, 10, J(jour));
+			expect(etat.meilleurPct, `jour ${jour}`).toBe(80);
+			expect(estFranchie(etat, false), `jour ${jour}`).toBe(true);
+			expect(etat.jours, `jour ${jour}`).toBe(0);
+			expect(etat.reprendreLe, `jour ${jour}`).toBe(0);
+			expect(enReport(etat, J(jour)), `jour ${jour}`).toBe(false);
+		}
+	});
+
+	it('espace encadrant : un mur FRANCHI n’est plus signalé « reste un point dur »', () => {
+		const profil = activeProfile();
+		const now = J(20);
+		// Même mise en scène que le test du signal : % récent flatteur, 3 jours de blocage.
+		recordLessonStats({ [LECON]: { ok: 1, total: 1 } }, 'sprint');
+		recordLessonStats({ [LECON]: { ok: 1, total: 1 } }, 'bilan');
+		recordEssaiLecon(LECON, 30, J(10));
+		recordEssaiLecon(LECON, 30, J(11));
+		recordEssaiLecon(LECON, 30, J(12));
+		let notion = progressionProfil(profil, now).aRevoir.find((n) => n.lessonId === LECON);
+		expect(notion?.blocages).toBe(BLOCAGES_SIGNAL_ADULTE);
+
+		// La leçon est ensuite franchie : le mur appartient au passé, l'adulte ne doit plus
+		// le lire comme un point dur courant.
+		recordEssaiLecon(LECON, SEUIL, J(13));
+		expect(loadLessonReports()[LECON].jours).toBe(0);
+		const recap = progressionProfil(profil, now);
+		expect(recap.aRevoir.map((n) => n.lessonId)).not.toContain(LECON);
+		notion = recap.parCategorie.flatMap((c) => c.lecons).find((n) => n.lessonId === LECON);
+		expect(notion?.blocages).toBe(0);
+	});
+});
+
 describe('effets de bord du report', () => {
 	it('weakLessons : une leçon mise de côté sort du vivier du défi, et y revient à échéance', () => {
 		recordLessonStats({ [LECON]: { ok: 3, total: 10 } }); // 30 % → « à revoir »

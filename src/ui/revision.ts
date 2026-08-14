@@ -1237,9 +1237,18 @@ function recordGrade(reussi: boolean) {
 		// le compter dirait qu'une notion est sue alors que l'enfant vient de demander la réponse.
 		// Le journal d'erreurs, lui, garde la nuance (`sansTentative`) : elle sert à ne pas faire
 		// croire au parent à une confusion de raisonnement, pas à excuser un rappel manqué.
-		const b = perLesson[it.lessonId] || (perLesson[it.lessonId] = { ok: 0, total: 0 });
-		b.total++;
-		if (reussi) b.ok++;
+		// EXCLU : un élément d'entretien du niveau inférieur (#232). `recordLessonStats` range ses
+		// entrées au niveau de STOCKAGE de la leçon, c'est-à-dire au niveau ACTIF : y verser la
+		// réussite d'un exercice sorti au niveau d'en dessous ferait lire au parent une acquisition
+		// CM1 flattée par des questions CE2. La bonne cible serait la fenêtre du niveau entretenu,
+		// mais `recordLessonStats` ne sait pas encore recevoir un niveau sans journaliser une
+		// SECONDE activité pour la même séance. Le palier de répétition espacée, lui, avance bien
+		// (ci-dessus) : c'est ce qui pilote l'entretien.
+		if (!it.niveau) {
+			const b = perLesson[it.lessonId] || (perLesson[it.lessonId] = { ok: 0, total: 0 });
+			b.total++;
+			if (reussi) b.ok++;
+		}
 	}
 	if (reussi) {
 		score++;

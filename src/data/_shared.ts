@@ -7,6 +7,7 @@
    alourdissait la maintenance. On les centralise ici.
    ============================================================ */
 import type { ExerciseType, ModeOption } from '../core/exercise';
+import type { EtayageEntree } from '../core/etayage';
 
 /* ---------- Mode QCM ----------
    Descripteur du mode « je choisis parmi des propositions », de loin le plus
@@ -47,4 +48,8 @@ export interface LessonInput {
 	id: string;
 	label: string;
 	exerciseType: ExerciseType;
+	// Étayage de la notion (#490) : le contenu qui explique le SAVOIR en jeu, écrit au
+	// plus près de la leçon qu'il décrit. Remonté tel quel en `LessonDef` par
+	// `toLessonDefs`. Absent = pas de panneau d'étayage pour cette leçon.
+	etayage?: EtayageEntree[];
 }

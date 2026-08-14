@@ -27,6 +27,7 @@ import './styles/version-update.scss';
 import './styles/foret.scss';
 import './styles/accessibility.scss';
 import './styles/aide-exercice.scss';
+import './styles/etayage.scss';
 import './styles/encadrant.scss';
 import './styles/encadrant-seance.scss';
 import './styles/eggs.scss';

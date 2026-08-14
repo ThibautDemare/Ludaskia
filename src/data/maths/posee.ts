@@ -63,20 +63,74 @@ function posedType(gen: () => PosedGen, consigne: string): ExerciseType {
 	};
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   Ces trois leçons sont le PILOTE de l'étayage : leur méthode est mécanique, donc la
+   résolution est CALCULÉE (core/etayage-posee.ts) au lieu d'être rédigée cas par cas.
+   Ne reste ici que ce qui ne se calcule pas :
+
+   - `regle` : l'idée-force en UNE phrase, affichée en permanence pendant le déroulé —
+     la seule chose qu'un enfant à faible mémoire de travail emporte d'un écran au
+     suivant, et elle redonne le SENS (valeur de position) avant la mécanique ;
+   - `exemple` : l'opération déroulée quand l'enfant n'en a pas sous les yeux (panneau
+     d'avant-série). FIXE et choisie, jamais tirée au hasard : un tirage donnerait
+     tantôt un cas sans retenue qui ne montre rien, tantôt le pire cas au pire moment
+     (avis `pedagogue-primaire`, même parti pris que l'exemple figé de l'aide au
+     tableau de conversion). Chacune montre proprement UNE fois le mécanisme qui coince,
+     sans être un piège : deux retenues franches, deux emprunts nets, un déroulé complet
+     à deux produits partiels.
+
+   ⚠ Dépendance implicite au calibrage ci-dessus : l'étayage ne tient en une passe
+   suivable que parce que les opérandes sont bornés (3 chiffres, et multiplicande ≤ 2
+   chiffres quand le multiplicateur en a 2). Relâcher ce calibrage — une multiplication
+   CM1 par un multiplicande à 3 chiffres, par exemple — allongerait la résolution au-delà
+   du suivable et demanderait de revoir le modèle d'interaction, pas juste le texte. */
 export const POSEE_LESSONS: LessonInput[] = [
 	{
 		id: 'calc-addition-posee',
 		label: "L'addition posée",
 		exerciseType: posedType(additionGen, "Pose l'addition et calcule."),
+		etayage: [
+			{
+				contenu: {
+					titre: "L'addition posée, pas à pas",
+					regle:
+						'Dans une colonne, si le total dépasse 9, tu écris les unités et tu ' +
+						"retiens les dizaines pour la colonne d'à côté.",
+					exemple: { moteur: 'posee', spec: { op: '+', a: 347, b: 285 } },
+				},
+			},
+		],
 	},
 	{
 		id: 'calc-soustraction-posee',
 		label: 'La soustraction posée',
 		exerciseType: posedType(soustractionGen, 'Pose la soustraction et calcule.'),
+		etayage: [
+			{
+				contenu: {
+					titre: 'La soustraction posée, pas à pas',
+					regle:
+						'Si le chiffre du haut est trop petit, tu empruntes une dizaine à la ' +
+						"colonne d'à côté : il faudra la lui rendre.",
+					exemple: { moteur: 'posee', spec: { op: '-', a: 452, b: 178 } },
+				},
+			},
+		],
 	},
 	{
 		id: 'calc-multiplication-posee',
 		label: 'La multiplication posée',
 		exerciseType: posedType(multiplicationGen, 'Pose la multiplication et calcule.'),
+		etayage: [
+			{
+				contenu: {
+					titre: 'La multiplication posée, pas à pas',
+					regle:
+						'Tu multiplies chaque chiffre en partant des unités ; par un nombre à ' +
+						'deux chiffres, tu fais deux lignes, puis tu les additionnes.',
+					exemple: { moteur: 'posee', spec: { op: 'x', a: 47, b: 26 } },
+				},
+			},
+		],
 	},
 ];

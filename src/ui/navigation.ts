@@ -24,6 +24,7 @@ import { runLeconClicMot } from './lecon-clic-mot';
 import { runLeconDroiteGraduee } from './lecon-droite-graduee';
 import { runLeconProbleme } from './lecon-probleme';
 import { runLeconTableau, leconTableauCleanup } from './lecon-tableau';
+import { maybeEtayageAvantSerie, monterBoutonEtayage } from './etayage-panneau';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
 import { renderItem, createRenderContext } from '../core/items';
@@ -688,6 +689,16 @@ export function runLecon(id: string) {
 	document.getElementById('sheets')!.innerHTML =
 		`<div class="page">${fiche}<p class="foot print-only">Ludaskia</p></div>`;
 	afterStart();
+	// Étayage de la notion (#490). Le bouton persistant d'abord : l'exemple d'avant-série
+	// lui rend le focus à sa fermeture, il doit donc exister avant. Les deux ne font rien
+	// si la leçon n'a pas de contenu d'étayage.
+	monterBoutonEtayage(
+		document.querySelector<HTMLElement>('#sheets .fiche'),
+		lesson,
+		niveauLecon(lesson),
+		mode,
+	);
+	maybeEtayageAvantSerie(lesson, mode);
 }
 /* Révision : on rejoue uniquement les items ratés (aucun enregistrement). */
 export function runRevision(items: Item[]) {

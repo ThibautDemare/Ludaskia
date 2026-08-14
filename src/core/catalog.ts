@@ -63,6 +63,9 @@ import { DIVISIBILITE_LESSONS } from '../data/maths/divisibilite';
 import { ORDRE_GRANDEUR_LESSONS } from '../data/maths/ordre-grandeur';
 import type { LessonInput } from '../data/_shared';
 import { trierParOrdre } from './ordre';
+// Type SEUL (effacé à la compilation) : `core/etayage.ts` consomme, lui, les valeurs de
+// ce module (`getLessonsByCategory`) — l'import croisé ne devient donc pas un cycle réel.
+import type { EtayageEntree } from './etayage';
 
 /* ---------- Types ---------- */
 
@@ -113,6 +116,13 @@ export interface LessonDef {
 	// plus exigeante (charge cognitive élevée, notion vue en avance). La navigation
 	// pose un badge « plus dur » ; n'influe pas sur la génération.
 	repere?: 'plus-difficile';
+	// Étayage de la NOTION (#490) : ce qu'on montre à un enfant qui bute — contenu
+	// rédigé et/ou exemple à dérouler, par niveau et par mode. Porté par la DONNÉE de
+	// la leçon (`src/data/<matiere>/`) et remonté tel quel par `toLessonDefs`, comme
+	// `exerciseType` : pas de table centrale, qui dériverait des leçons qu'elle décrit.
+	// Absent = pas de panneau du tout pour cette leçon (dégradation propre voulue :
+	// jamais de repli sur un exemple générique de la famille de moteur).
+	etayage?: EtayageEntree[];
 }
 
 export interface BilanConfig {
@@ -189,6 +199,9 @@ function toLessonDefs<I extends LessonInput>(inputs: I[], opts: LessonDefOptions
 		if (excludeFromSprint !== undefined) def.excludeFromSprint = excludeFromSprint;
 		const repere = resolve(opts.repere, input);
 		if (repere !== undefined) def.repere = repere;
+		// Étayage (#490) : recopié de l'ENTRÉE, comme id/label/exerciseType — il décrit la
+		// notion d'UNE leçon, donc jamais une valeur commune à toute une famille.
+		if (input.etayage !== undefined) def.etayage = input.etayage;
 		return def;
 	});
 }

@@ -88,6 +88,16 @@ passe aussi **devant** les autres suggestions dans le tri (`RecapNotion.blocages
 mur qui revient appelle une explication humaine, pas une répétition de plus. Reste une
 **suggestion**, jamais un épinglage automatique.
 
+Compteur **remis à zéro dès que la leçon est franchie** (#490,
+`core/report-lecon.ts:apresEssaiLecon`, cf. [Logique pure](core.md)) : ce signal
+décrit une difficulté COURANTE, pas un passé — une notion butée en octobre puis
+maîtrisée ne reste donc pas signalée « point dur » le reste de l'année. Le même
+seuil éteint aussi, côté enfant, l'exemple d'étayage automatique de la leçon (#490,
+« Étayage de la notion », cf. [Logique pure](core.md) et [Rendu &
+interactions](ui.md)) : passé ce point, l'appli cesse de s'auto-expliquer au moment
+même où l'espace encadrant se met à signaler la leçon — c'est alors à l'adulte de
+prendre le relais, pas à une répétition de plus.
+
 La ligne concernée porte un **marqueur visible** (#492, `signalBlocage` →
 `.enc-revoir-signal`) : puce cerclée « **reste un point dur** », **en plus** du badge
 d'état d'acquisition et jamais à sa place (« où en est la notion » ≠ « ça coince ») ; ce badge
@@ -574,6 +584,15 @@ liste de dictée (#424) — `toggleRevoirFor(uuid, entryId)` → `ludaskia_revoi
 dictée s'y distingue par le préfixe `ortho:` (`orthoRevoirId`/`isOrthoRevoirId`/
 `orthoIdFromRevoir`, `core/encadrant-stats.ts`) — id opaque pour une liste du parent, `fr-ortho-*`
 pour une dictée prédéfinie.
+
+**Depuis #490, l'ENFANT peut aussi y ajouter une entrée** : le panneau d'étayage de la
+notion (cf. [Rendu & interactions](ui.md)), quand il renvoie à une leçon prérequise,
+propose de la mettre de côté — même mécanique (`toggleRevoirFor`), mais à l'initiative
+de l'enfant plutôt que de l'adulte (l'épinglage était jusqu'ici un geste d'adulte
+exclusif). **La file ne distingue pas la provenance d'une entrée** : côté espace
+encadrant, une leçon mise de côté par l'enfant apparaît dans « Épinglées » exactement
+comme une leçon épinglée par l'adulte, sans aucun marquage — état ASSUMÉ pour cette
+1re livraison (arbitrage mainteneur), pas nécessairement définitif.
 
 Au retour de l'enfant sur son accueil, `ui/a-revoir-card.ts` affiche une carte (`#aRevoir`,
 modèle « leçon du jour ») qui **boucle** sur `revoirActives(dicteeDispo)` — union `RevoirEntry`

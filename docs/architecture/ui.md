@@ -554,7 +554,11 @@ pure](core.md)) pour les formats composites :
   mon résultat ▶ » (`opts.isLast`) et câble son clic (`opts.onNext`) + le focus. Le bouton
   n'a plus d'id propre (résolu via `actions.querySelector('button')`) — seuls les
   conteneurs `#…Actions` / `#…Feedback` de chaque runner restent des sélecteurs stables
-  (repris par les specs e2e).
+  (repris par les specs e2e). Pose aussi, pour la leçon en cours, les deux points
+  d'entrée AUTOMATIQUE/persistant de l'étayage de la notion (#490) —
+  `monterBoutonEtayage` (bouton de l'en-tête) et `maybeEtayageAvantSerie` (exemple au
+  retour d'une mise de côté), tous deux no-op sans contenu d'étayage pour la leçon ;
+  cf. « Étayage de la notion » plus bas.
 - **`revelation-neutre.ts`** (#467) — **fond commun de « Je ne sais pas, montre-moi »**,
   partagé par le mode leçon (`lecon-passer.ts`) et le mode Révision (`revision.ts`) : le
   libellé du lien (`PASSER_LABEL`, `lienPasserHTML(classe, id)` — un `<button>`, jamais un
@@ -915,6 +919,9 @@ pure](core.md)) pour les formats composites :
     révélation de la réponse) et rend le bandeau de résultats et les récompenses.
     Retire aussi l'astuce ci-dessous (`#astuceReponseVide`) : le verdict posé, elle
     n'a plus d'objet et contredirait l'avertissement des 60 % qui invite à remplir.
+    Pose enfin, sous chaque grille posée ratée, le lien d'étayage de la notion (#490,
+    `poserLiensEtayagePosee`, cf. « Étayage de la notion » plus bas) — jamais sur un
+    simple champ texte/numérique.
   - **`afficherAstuceReponseVide()`** (#467) — pose en tête de `#sheets` un message
     **découvrabilité** du droit de laisser une réponse vide (« Tu ne sais pas quoi
     répondre ? Tu peux laisser la réponse vide et continuer. ») : la fiche/le bilan en
@@ -978,6 +985,71 @@ pure](core.md)) pour les formats composites :
 - Les runners d'**orthographe** (`ui/ortho-atelier.ts`, `ortho-liste.ts`, `ortho-revoir.ts`,
   `ortho-runner.ts`) et leur moteur (`core/orthographe/`) sont décrits dans
   `docs/design-orthographe.md`.
+
+## Étayage de la notion (#490)
+
+- **`etayage-panneau.ts`** — couche **UI** du socle pur `core/etayage.ts`/
+  `core/etayage-posee.ts` (cf. [Logique pure](core.md)) : **un seul panneau, cinq
+  points d'entrée**, sur le modèle déjà pris pour la révélation neutre
+  (`revelation-neutre.ts`) — un fond commun, des habillages. Forme : la mini-modale
+  a11y de l'aide au geste (#272, `activateModal` — piège de focus, arrière-plan
+  `inert`, Échap, tap-dehors, mascotte, TTS à la demande), mais un CORPS différent et
+  délibéré : l'aide au geste montre trois phrases sans état, une résolution a un
+  ÉTAT qui s'accumule (la grille se remplit). D'où un déroulé **pas à pas** piloté
+  par l'enfant — jamais un pavé, jamais d'avance automatique — une SEULE colonne
+  active à la fois, nommée en mots ET surlignée (jamais la couleur seule), en
+  `--accent` (jamais `--ok`/`--ko`, qui disent « ta réponse est juste/fausse » : ce
+  panneau EXPLIQUE, il ne corrige rien — aucun nouveau chemin de correction, donc
+  aucune obligation côté journal d'erreurs #391).
+  **`ouvrirEtayage(demande: EtayageDemande)`** compose l'overlay : une grille de
+  DÉMONSTRATION (`grilleDemoHTML`, même disposition que la grille jouable via
+  `core/items.ts:dispositionPosee`, cellules figées et vides ciblées par
+  `data-cible`/`data-retenue`) + le déroulé des pas (`pasDe`, aplatit les lignes de
+  `resolutionPosee` en une liste de pas, chapeau de ligne en tête de sa 1re colonne)
+  + une barre de progression + le renvoi à la **leçon prérequise** (`prerequisHTML`,
+  `core/etayage.ts:leconPrerequise` — jamais un lien de NAVIGATION, on ne propose pas
+  à un enfant de quitter la série qu'il vient de commencer ; il peut en revanche la
+  **mettre de côté** : `epinglerPrerequis` l'ajoute à la file « à revoir » du profil
+  ACTIF via `toggleRevoirFor`, le même geste que l'épinglage de l'espace encadrant
+  mais à l'initiative de l'enfant, cf. [Espace encadrant](espace-encadrant.md)).
+  **`etayageDisponible(lesson, niveau, mode?)`** conditionne tout affichage — jamais
+  sous chronomètre (sprint/express/complet, comme l'aide au geste), jamais sans
+  entrée `etayagePour` pour la leçon. Sans contenu pour cette leçon, `ouvrirEtayage`
+  n'ouvre RIEN mais appelle quand même `onFerme` : l'appelant n'a pas à savoir si le
+  panneau existe.
+
+  **Cinq points d'entrée**, tous conditionnés par `etayageDisponible` :
+  - le **bouton persistant** de l'en-tête (`monterBoutonEtayage`), posé à la fois par
+    `ui/navigation.ts:runLecon` (leçon en fiche, ancré sur `#sheets .fiche`) et par
+    `ui/lecon-runner-shared.ts` (les runners d'écran dédié, ancré sur
+    `#sheets .sprint-stage`, cf. « Runners d'exercice » ci-dessus) — rouvre la
+    méthode à tout moment de la série, pour l'enfant qui a oublié dès la 2ᵉ question ;
+  - l'**exemple d'avant-série** (`maybeEtayageAvantSerie`, posé aux MÊMES deux
+    endroits) : SEUL point d'entrée AUTOMATIQUE, donc seul à porter une mémoire
+    (`core/progress.ts:loadEtayagesVus`/`marquerEtayageVu`) et une borne
+    (`core/etayage.ts`) ; ne s'affiche jamais par-dessus l'aide au GESTE (#272) si les
+    deux se présentent au même lancement — deux modales empilées avant la question 1
+    seraient un péage ;
+  - le **lien posé sous une grille posée ratée** de la fiche
+    (`poserLiensEtayagePosee`, appelé par `ui/session.ts:verify()` après correction,
+    cf. ci-dessous) : une offre par GRILLE plutôt que par chiffre, et déclenchée plus
+    largement que le journal d'erreurs (#391, qui n'agrège que les résultats faux) —
+    une retenue ou un produit partiel raté est justement ce que l'étayage explique le
+    mieux, même quand le résultat final est juste ;
+  - en **révision espacée**, le lien posé au **verdict d'une erreur**
+    (`ui/revision.ts:verdictHTML`, `lienEtayageHTML`) : APRÈS la bonne réponse, AVANT
+    « Continuer ▶ » — l'enfant lit d'abord ce qu'il cherchait, choisit ensuite
+    d'approfondir (un lien aussi lourd que « Continuer » serait cliqué par réflexe) ;
+  - toujours en révision, **« Je ne sais pas, montre-moi »** (`ui/revision.ts:passerItem`) :
+    seul point d'entrée où le panneau passe **AVANT** le verdict — sinon l'enfant lit
+    le résultat neutre de #467 et saute l'explication. Le panneau franchi (ou
+    absent), `verdictPasse` reprend le verdict habituel de #467, inchangé. Intégration
+    **propre à la révision** : le mode leçon n'a pas de « Je ne sais pas, montre-moi »
+    sur une opération posée (elle se joue en fiche, pas dans un runner à widget), donc
+    rien à brancher côté `ui/lecon-passer.ts`.
+
+  Icône dédiée **`math-operations`** (`core/icon-names.ts`/`ui/icon.ts`), distincte de
+  l'ampoule de l'aide au geste. Styles dans `styles/etayage.scss`.
 
 ## Menu, préférences, thèmes & accessibilité
 

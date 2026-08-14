@@ -100,14 +100,20 @@ export function leconPrerequise(lesson: LessonDef, niveau: SchoolLevel): LessonD
 /** Épisode de blocage dont l'enfant REVIENT, identifié par l'horodatage du report qui
     l'a ouvert (0 = aucun). Un report échu (`reprendreLe` passé) signe le retour dans le
     fil : c'est là que l'exemple d'avant-série a sa place, et `reporteLe` en est la
-    signature stable — deux blocages successifs sont deux épisodes, un enfant qui rebute
-    des semaines plus tard remérite donc son exemple.
+    signature stable — deux blocages successifs seraient deux épisodes distincts.
 
-    Borne haute : au-delà de `BLOCAGES_SIGNAL_ADULTE`, l'espace encadrant alerte l'adulte
+    Borne haute : dès `BLOCAGES_SIGNAL_ADULTE` atteint, l'espace encadrant alerte l'adulte
     et l'appli cesse d'expliquer d'elle-même — un dispositif auto-corrigé ne répare pas
-    une incompréhension persistante par la répétition. (Une leçon FRANCHIE ne peut plus
-    être reportée du tout, cf. `apresEssaiLecon` : ce module ne voit donc que des leçons
-    encore en travail, et le compteur cumulé `jours` y reste celui de l'épisode en cours.) */
+    une incompréhension persistante par la répétition.
+
+    ⚠ CE QUE LE CALIBRAGE ACTUEL REND ATTEIGNABLE, et qui est plus étroit que la mécanique
+    ci-dessus : il faut un report (donc `jours ≥ 2`) et `jours < 3`, soit exactement
+    `jours = 2` ; or `jours` ne redescend qu'au franchissement (`apresEssaiLecon`), lequel
+    interdit tout report ultérieur. Une leçon ne donne donc, en pratique, qu'UN SEUL exemple
+    d'avant-série par niveau, à vie, et la mémoire d'épisode se comporte comme un booléen.
+    C'est volontairement conservateur (les autres points d'entrée, eux, restent toujours
+    offerts et sans mémoire), mais si l'on veut un second passage il faudra élargir la
+    borne, pas ce module — d'où la mécanique laissée générale. */
 export function episodeEtayable(etat: EtatReport | undefined, now: number): number {
 	if (!etat || etat.reprendreLe <= 0 || etat.reprendreLe > now) return 0;
 	if (etat.jours >= BLOCAGES_SIGNAL_ADULTE) return 0;

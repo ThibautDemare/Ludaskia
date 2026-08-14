@@ -245,10 +245,15 @@ export function phrasePosee(e: EtapePosee, op: PosedSpec['op'], ligne: LignePose
 	const rang = e.colonne + (ligne.decalage ?? 0);
 	const enTete = !retenueDansLaGrille(ligne);
 	const colonne = `Colonne des ${nomColonne(rang)}`;
+	// C'est la LIGNE qui commande le calcul raconté, pas l'opération : l'addition finale d'une
+	// multiplication à deux chiffres est une ADDITION, et la raconter comme une multiplication
+	// (elle n'a pas de multiplicateur) énonçait un fait numérique faux — « 8 × undefined = 0 »
+	// —, dans l'exemple canonique servi à l'enfant qui vient de buter comme ailleurs.
+	const calculDe = ligne.role === 'somme-partiels' ? '+' : op;
 	// Dernière colonne d'une addition ou d'une multiplication : il ne reste que la retenue,
 	// qui devient le chiffre de gauche de la ligne (elle n'est donc pas reportée plus loin).
 	if (!e.chiffres.length) return `Il reste la retenue : j'écris ${e.ecrit} tout à gauche.`;
-	if (op === 'x') {
+	if (calculDe === 'x') {
 		const chiffre = e.chiffres[0];
 		const produit = chiffre * (ligne.multiplicateur ?? 0);
 		const calcul = e.retenueEntrante
@@ -257,7 +262,7 @@ export function phrasePosee(e: EtapePosee, op: PosedSpec['op'], ligne: LignePose
 		return `${colonne} : ${calcul} ${phraseEcriture(e, produit + e.retenueEntrante, rang, enTete)}`;
 	}
 	const [haut, bas] = e.chiffres;
-	if (op === '+') {
+	if (calculDe === '+') {
 		const somme = haut + bas + e.retenueEntrante;
 		const calcul = e.retenueEntrante
 			? `${haut} + ${bas} + ${e.retenueEntrante} (la retenue) = ${somme}.`
@@ -267,21 +272,45 @@ export function phrasePosee(e: EtapePosee, op: PosedSpec['op'], ligne: LignePose
 	// SOUSTRACTION. La retenue vaut « 1 de plus à retirer à la colonne suivante » — la
 	// méthode par emprunt, celle que montrent les manuels CE2 et celle que la grille sait
 	// écrire (une case de retenue, pas un chiffre du haut barré).
+	// UNE IDÉE PAR PHRASE, y compris dans les cas durs : ce qu'il faut retirer, puis
+	// l'obstacle, puis l'emprunt et son calcul, puis ce qu'on écrit. Quatre phrases COURTES
+	// se suivent mieux qu'une seule qui empile tout.
 	const aRetirer = bas + e.retenueEntrante;
 	const retirer = e.retenueEntrante
-		? `il faut retirer ${bas} plus la retenue de ${e.retenueEntrante}, donc ${aRetirer}`
-		: `il faut retirer ${bas}`;
-	if (!e.emprunt)
-		return `${colonne} : ${retirer}. ${haut} − ${aRetirer} = ${e.ecrit}. J'écris ${e.ecrit}.`;
-	const empruntee = UNITES[rang + 1]?.[0] ?? 'unité';
-	const suite = `${haut + 10} − ${aRetirer} = ${e.ecrit}. J'écris ${e.ecrit} et je retiens 1 à retirer aux ${nomColonne(rang + 1)}.`;
-	// Emprunt EN CASCADE à travers un zéro (503 − 287, cas explicitement prévu par le
-	// générateur) : la colonne doit prêter alors qu'elle n'a rien. C'est LE point dur du
-	// CE2 sur cette notion, il mérite sa phrase et pas celle de l'emprunt ordinaire.
-	if (haut === 0) {
-		return `${colonne} : ${retirer}, et il n'y a rien ici (0). J'emprunte une ${empruntee} plus loin. ${suite}`;
+		? `il faut retirer ${bas}, plus la retenue de 1 : ça fait ${aRetirer}.`
+		: `il faut retirer ${bas}.`;
+	// Colonne dont le chiffre écrit serait un ZÉRO DE TÊTE : la grille n'a pas de case pour
+	// lui (105 − 100 s'écrit « 5 », pas « 005 »), donc « j'écris 0 » désignerait une case qui
+	// ne s'allume pas. On change la CONCLUSION, pas le calcul : dans 99,5 % de ces colonnes il
+	// y a un vrai fait à énoncer, et une fois sur deux c'est même là que la dizaine empruntée
+	// est RENDUE — le seul moment que la règle affichée en permanence promet (constat chiffré
+	// de l'auteur des tests). Le taire laissait l'enfant croire l'arrêt sur parole.
+	const rienAEcrire = rang >= String(ligne.valeur).length;
+	const finRien = "Il ne reste rien à écrire : le résultat s'arrête ici.";
+	if (!e.emprunt) {
+		const fin = rienAEcrire ? finRien : `J'écris ${e.ecrit}.`;
+		return `${colonne} : ${retirer} ${haut} − ${aRetirer} = ${e.ecrit}. ${fin}`;
 	}
-	return `${colonne} : ${retirer}, et ${haut} est trop petit. J'emprunte une ${empruntee} : ${suite}`;
+	// On dit À QUI on emprunte — la colonne d'à côté, jamais la sienne — puis ce que le
+	// chiffre DEVIENT : c'est le dégroupement en base 10 rendu concret (« le 2 devient 12 »),
+	// précisément la notion qui échappe à l'enfant, et non un tour de main. Deux phrases
+	// courtes plutôt qu'une longue, et la colonne source nommée avant tout le reste.
+	const emprunt = UNITES[rang + 1]
+		? `J'emprunte 1 aux ${nomColonne(rang + 1)} : le ${haut} devient ${haut + 10}.`
+		: `J'emprunte 10 : le ${haut} devient ${haut + 10}.`;
+	const fin = rienAEcrire
+		? finRien
+		: `J'écris ${e.ecrit} et je retiens 1 à retirer aux ${nomColonne(rang + 1)}.`;
+	const suite = `${emprunt} ${haut + 10} − ${aRetirer} = ${e.ecrit}. ${fin}`;
+	// Emprunt à travers un ZÉRO (503 − 287, cas explicitement prévu par le générateur) : la
+	// colonne n'a rien du tout, pas seulement « trop peu ». C'est LE point dur du CE2 sur
+	// cette notion, il mérite sa phrase et pas celle de l'emprunt ordinaire. Pas de « plus
+	// loin » : on emprunte toujours à la colonne d'à côté, la cascade se poursuit d'elle-même
+	// par la retenue. (Ni de « (0) » : ce texte est aussi LU à voix haute.)
+	if (haut === 0) {
+		return `${colonne} : ${retirer} Mais ici il n'y a rien du tout : c'est un zéro. ${suite}`;
+	}
+	return `${colonne} : ${retirer} Mais ${haut} est trop petit. ${suite}`;
 }
 
 /** Annonce d'une LIGNE, quand il y en a plusieurs : sans ce chapeau, l'enfant perd le fil
@@ -291,10 +320,12 @@ export function phrasePosee(e: EtapePosee, op: PosedSpec['op'], ligne: LignePose
     étape de plus : le volume est déjà à la limite haute du suivable. */
 export function chapeauLigne(ligne: LignePosee, spec: PosedSpec): string | undefined {
 	switch (ligne.role) {
+		// « de ${spec.b} » : sans lui, le référent du « chiffre des unités » n'est porté que par
+		// le titre du panneau, qu'un enfant qui a perdu le fil ne relie plus au calcul.
 		case 'produit-partiel':
-			return `D'abord, je multiplie ${spec.a} par ${ligne.multiplicateur}, le chiffre des unités.`;
+			return `D'abord, je multiplie ${spec.a} par ${ligne.multiplicateur}, le chiffre des unités de ${spec.b}.`;
 		case 'produit-partiel-dizaines':
-			return `Maintenant, je multiplie ${spec.a} par ${ligne.multiplicateur}, le chiffre des dizaines. Le 0 est déjà écrit : c'est lui qui décale la ligne.`;
+			return `Maintenant, je multiplie ${spec.a} par ${ligne.multiplicateur}, le chiffre des dizaines de ${spec.b}. Le 0 est déjà écrit : c'est lui qui décale la ligne.`;
 		case 'somme-partiels':
 			return `Il ne reste plus qu'à additionner mes deux lignes.`;
 		default:

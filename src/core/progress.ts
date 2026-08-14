@@ -662,9 +662,10 @@ export function recordEssaiLecon(
 }
 
 /* ---------- Mémoire de l'exemple d'avant-série (#490) ----------
-   « Une fois par ÉPISODE de blocage », et NON « une fois pour toujours » comme la mémoire
-   des aides au geste (`AIDE_VUE_KEY`, core/aide.ts) : un enfant qui rebute des semaines
-   plus tard remérite son exemple. On mémorise donc, par leçon, l'ÉPISODE déjà couvert —
+   « Une fois par ÉPISODE de blocage », et non « une fois pour toujours » comme la mémoire
+   des aides au geste (`AIDE_VUE_KEY`, core/aide.ts) — même si le calibrage actuel ne rend
+   qu'un seul épisode atteignable par leçon et par niveau (cf. `episodeEtayable`, qui porte
+   le raisonnement). On mémorise donc, par leçon, l'ÉPISODE déjà couvert —
    l'horodatage du report qui l'a ouvert (`episodeEtayable`, core/etayage.ts) : une
    signature stable et directement comparable, là où un booléen ne saurait pas distinguer
    deux blocages et une date demanderait une règle d'expiration de plus.

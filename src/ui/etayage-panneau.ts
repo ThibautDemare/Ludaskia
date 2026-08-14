@@ -40,9 +40,10 @@ import {
 	type ResolutionPosee,
 } from '../core/etayage-posee';
 import { dispositionPosee, poseeGrilleHTML, type PosedSpec } from '../core/items';
+import { loadRevoir, revoirActives, toggleRevoirFor } from '../core/encadrant-stats';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
-import { lectureConsigneAuto } from '../core/profiles';
+import { activeProfile, lectureConsigneAuto } from '../core/profiles';
 import { loadEtayagesVus, loadLessonReports, marquerEtayageVu } from '../core/progress';
 import { escapeHTML } from '../core/utils';
 import { icon } from './icon';
@@ -316,6 +317,11 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 	});
 	overlay.querySelector('.aide-close')!.addEventListener('click', fermer);
 	overlay.querySelector('#etayFiler')?.addEventListener('click', fermer);
+	// Mettre de côté la leçon d'avant : le panneau reste ouvert (l'enfant n'a rien à quitter).
+	const prerequis = overlay.querySelector<HTMLElement>('.etay-prerequis');
+	overlay
+		.querySelector('#etayEpingler')
+		?.addEventListener('click', () => prerequis && epinglerPrerequis(prerequis));
 	// Tap en dehors de la carte : le panneau s'écarte d'un geste (jamais un péage).
 	overlay.addEventListener('click', (e) => {
 		if (e.target === overlay) fermer();
@@ -383,6 +389,10 @@ export function monterBoutonEtayage(
 ): void {
 	if (!conteneur || conteneur.querySelector('.etayage-btn')) return;
 	if (!etayageDisponible(lesson, niveau, mode)) return;
+	// Marque l'hôte : c'est elle qui porte l'ancrage et le couloir réservé au bouton. Sans
+	// elle, toute fiche de l'appli paierait ce couloir, y compris celles qui n'ont rien à
+	// étayer (l'immense majorité aujourd'hui).
+	conteneur.classList.add('a-etayage');
 	const btn = document.createElement('button');
 	btn.type = 'button';
 	btn.className = 'etayage-btn';
@@ -436,10 +446,47 @@ function etapesFixesHTML(contenu: EtayageContenu): string {
 }
 
 /* Renvoi à la leçon prérequise : le seul contenu entièrement MÉCANISABLE (l'ordre
-   pédagogique le donne), donc affichable même là où rien n'est rédigé. Mention seule, sans
-   navigation : on ne propose pas à un enfant de quitter la série qu'il vient de commencer. */
+   pédagogique le donne), donc affichable même là où rien n'est rédigé.
+
+   Jamais un lien de NAVIGATION : on ne propose pas à un enfant de quitter la série qu'il
+   vient de commencer. L'enfant peut en revanche la METTRE DE CÔTÉ — elle rejoint la file
+   « à revoir », donc la carte de son accueil, et il la retrouvera quand il aura fini.
+   C'est le même geste que l'épinglage de l'espace encadrant, ici à l'initiative de
+   l'enfant : rien à quitter, rien à retenir. */
 function prerequisHTML(d: EtayageDemande): string {
 	const avant = leconPrerequise(d.lesson, d.niveau);
 	if (!avant) return '';
-	return `<p class="etay-prerequis">Si c'est encore trop dur, tu peux revoir « ${escapeHTML(labelLecon(avant, d.niveau))} ».</p>`;
+	const deja = loadRevoir().includes(avant.id);
+	return `<div class="etay-prerequis" data-prerequis="${escapeHTML(avant.id)}">
+			<p class="etay-prerequis-txt">Si c'est encore trop dur, tu peux revoir « ${escapeHTML(labelLecon(avant, d.niveau))} ».</p>
+			${
+				deja
+					? `<p class="etay-prerequis-ok">${PREREQUIS_ATTEND}</p>`
+					: `<button type="button" class="etay-epingler" id="etayEpingler">${icon('bookmark')}<span>Mets-la de côté pour moi</span></button>`
+			}
+		</div>`;
+}
+
+/* Ce qu'on répond quand l'enfant met la leçon d'avant de côté. Deux issues, et il faut dire
+   la vraie : la file « à revoir » n'affiche que ce qui est ENCORE fragile (`revoirActives`,
+   qui s'auto-nettoie), donc épingler une leçon que l'appli juge déjà réussie ne la fera pas
+   apparaître sur l'accueil. Promettre l'inverse serait un mensonge que l'enfant vérifierait
+   tout seul en rentrant. */
+const PREREQUIS_ATTEND = "C'est noté : tu la retrouveras sur ton accueil.";
+const PREREQUIS_DEJA_SUE = 'Tu la réussis déjà ! Tu peux la relancer quand tu veux.';
+
+/* Met la leçon prérequise dans la file « à revoir » du profil actif et dit ce qui va se
+   passer. Ajoute seulement (le bouton n'est rendu que si la leçon n'y est pas) : le
+   dés-épinglage reste un geste de l'adulte, dans l'espace encadrant. */
+function epinglerPrerequis(zone: HTMLElement): void {
+	const id = zone.dataset.prerequis;
+	const uuid = activeProfile()?.uuid;
+	if (!id || !uuid) return;
+	toggleRevoirFor(uuid, id);
+	const actif = revoirActives(dicteeDisponible()).some((e) => e.id === id);
+	const dit = document.createElement('p');
+	dit.className = 'etay-prerequis-ok';
+	dit.setAttribute('role', 'status');
+	dit.textContent = actif ? PREREQUIS_ATTEND : PREREQUIS_DEJA_SUE;
+	zone.querySelector('.etay-epingler')?.replaceWith(dit);
 }

@@ -125,7 +125,7 @@ export function enReport(etat: EtatReport | undefined, now: number): boolean {
 
 /** État après un essai COMPLET en mode leçon (`pct` = % de bonnes réponses).
     - franchie (par le score ou par l'étoile) → plus rien à mettre de côté, on garde
-      la mémoire du meilleur score ;
+      la mémoire du meilleur score et on REMET LE COMPTEUR DE BLOCAGES À ZÉRO ;
     - même jour civil qu'un blocage déjà compté → on n'escalade pas (retenter est sain),
       seul le meilleur score peut monter ;
     - nouveau jour de blocage → +1 jour et report selon l'escalier.
@@ -139,7 +139,15 @@ export function apresEssaiLecon(
 	const base = assainir(etat);
 	const meilleurPct = Math.max(base.meilleurPct, pct);
 	if (estFranchie({ ...base, meilleurPct }, etoilee)) {
-		return { ...base, meilleurPct, reporteLe: 0, reprendreLe: 0 };
+		// Compteur de blocages REMIS À ZÉRO au franchissement. Il décrit une difficulté
+		// COURANTE, pas un passé : il commande l'escalier de report ET le signal à l'adulte
+		// (`BLOCAGES_SIGNAL_ADULTE` → puce « reste un point dur » de l'espace encadrant). Cumulé
+		// à vie, il rendait ce signal définitif — une notion butée trois fois en octobre puis
+		// maîtrisée restait signalée « point dur » toute l'année, et le parent lisait un mur
+		// jamais résolu là où il n'y avait plus qu'un souvenir. Plus l'appli servait longtemps,
+		// moins le signal disait quelque chose (constat du `pedagogue-primaire`, #490).
+		// `dernierJour` repart avec lui : le compteur qu'il protège du double-compte est neuf.
+		return { ...base, jours: 0, dernierJour: '', meilleurPct, reporteLe: 0, reprendreLe: 0 };
 	}
 	const jour = jourDe(now);
 	if (jour === base.dernierJour) return { ...base, meilleurPct };

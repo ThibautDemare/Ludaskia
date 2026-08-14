@@ -141,12 +141,50 @@
 	text-underline-offset: 3px;
 }
 
-/* Renvoi à la leçon d'avant : discret, en fin de panneau. */
+/* Renvoi à la leçon d'avant : discret, en fin de panneau. L'enfant peut la mettre de côté
+   (elle rejoint sa carte « à revoir ») sans quitter la série en cours. */
 .etay-prerequis {
-	margin: 10px 0 0;
+	margin: 12px 0 0;
+	padding-top: 10px;
+	border-top: 1px solid var(--accent-soft);
+	text-align: left;
+}
+.etay-prerequis-txt {
+	margin: 0;
 	font: 600 14px/1.4 var(--ui);
 	color: var(--muted);
-	text-align: left;
+}
+.etay-epingler {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 6px;
+	min-height: 44px;
+	padding: 8px 14px;
+	border: 1px solid var(--accent-soft);
+	border-radius: 12px;
+	background: none;
+	color: var(--accent-dark);
+	font: 700 14.5px/1 var(--ui);
+	cursor: pointer;
+	transition: background 0.12s ease;
+}
+.etay-epingler:hover {
+	background: var(--accent-soft);
+}
+.etay-epingler:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.etay-epingler .ph-icon {
+	width: 18px;
+	height: 18px;
+	flex: none;
+}
+.etay-prerequis-ok {
+	margin: 8px 0 0;
+	font: 700 14px/1.4 var(--ui);
+	color: var(--accent-dark);
 }
 
 /* ---------- Le lien d'accès, à côté d'un verdict ---------- */
@@ -230,12 +268,14 @@
 		0 0 0 2px var(--paper),
 		0 0 0 5px var(--accent);
 }
-/* La fiche en saisie porte ce bouton dans son en-tête : il lui faut un ancrage. */
-.fiche {
+/* Hôte du bouton (classe posée par `monterBoutonEtayage`, jamais dans le markup) : elle
+   porte l'ancrage et le couloir réservé. Scopée ainsi, une fiche sans étayage — la
+   quasi-totalité aujourd'hui — ne paie aucun décalage. */
+.a-etayage {
 	position: relative;
 }
 /* Couloir réservé (le titre de fiche est centré : on décale des DEUX côtés). */
-.fiche .fiche-head {
+.a-etayage .fiche-head {
 	padding-left: 52px;
 	padding-right: 52px;
 }

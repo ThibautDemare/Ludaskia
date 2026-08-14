@@ -32,6 +32,7 @@ import {
 	loadLessonRevisions,
 	loadLessonRevisionsBasNiveau,
 	countDusSeance,
+	todayStr,
 } from '../core/progress';
 import { lessonsNiveauActif, niveauActif } from '../core/niveau-actif';
 import { LEVEL_LABEL } from '../core/levels';
@@ -294,7 +295,33 @@ export function boardHTML(mode: string, label: string) {
     <p class="lb-count">${runs.length} essai${runs.length > 1 ? 's' : ''} enregistré${runs.length > 1 ? 's' : ''}</p>
   </div>`;
 }
+/* Jour civil du dernier rendu de l'accueil. Tout ce que l'accueil annonce « du jour »
+   (programme du jour, leçon du jour, révisions dues, objectifs) est daté de ce rendu :
+   un accueil affiché la veille et jamais re-rendu MENT le lendemain — et l'enfant
+   clique alors une carte qui renvoie à un programme qui n'existe plus (#517). */
+let jourAccueil = '';
+
+/* Re-rend l'accueil s'il est à l'écran et que le jour civil a changé depuis son rendu.
+   Appelé au retour au premier plan (`visibilitychange`, main.ts) : une tablette dort
+   toute la nuit et rouvre l'app le lendemain sans jamais recharger la page. Trois
+   abstentions volontaires :
+   - jour inchangé ⇒ rien n'a pu se périmer, et régénérer l'accueil à chaque réveil de
+     tablette ferait retomber sur <body> le focus d'un enfant en train de naviguer au
+     clavier, pour rien (avis relecteur a11y) ;
+   - accueil masqué ⇒ une session ou un autre écran occupe la place, rien à faire ici
+     (la prochaine navigation rendra un accueil frais) ;
+   - accueil `inert` ⇒ une modale est ouverte (modal-a11y rend inertes les frères de
+     l'overlay, et une modale ne masque PAS l'accueil) : re-rendre dessous détruirait
+     le déclencheur que la modale a mémorisé pour restaurer le focus à sa fermeture. */
+export function rafraichirAccueilSiJourChange(): void {
+	const home = document.getElementById('home');
+	if (!home || home.style.display === 'none' || home.hasAttribute('inert')) return;
+	if (jourAccueil === todayStr()) return;
+	renderHomeStats();
+}
+
 export function renderHomeStats() {
+	jourAccueil = todayStr();
 	// Le badge XP vit dans la barre d'outils ; la carte progression sur l'accueil.
 	renderProgression();
 	renderProgrammeCard(document.getElementById('cardProgramme')); // carte « programme du jour » (#440)

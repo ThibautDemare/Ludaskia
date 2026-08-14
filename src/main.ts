@@ -45,7 +45,13 @@ import {
 	listProfiles,
 } from './core/profiles';
 import { uiConfirm, uiPrompt } from './ui/ui-modal';
-import { renderProfiles, toggleEmojiPicker, closeEmojiPicker, paintStaticIcons } from './ui/render';
+import {
+	renderProfiles,
+	toggleEmojiPicker,
+	closeEmojiPicker,
+	paintStaticIcons,
+	rafraichirAccueilSiJourChange,
+} from './ui/render';
 import {
 	applyPreferences,
 	renderPreferences,
@@ -311,11 +317,19 @@ function wireDOM() {
 		}
 	});
 
-	// Sauvegarde de l'exercice en cours quand l'app passe en arrière-plan ou se
-	// ferme (onglet masqué, app quittée sur tablette) — le cas « interruption »
-	// le plus fréquent pour un CE2 (#63).
+	// Passage en arrière-plan : sauvegarde de l'exercice en cours (onglet masqué, app
+	// quittée sur tablette) — le cas « interruption » le plus fréquent pour un CE2 (#63).
+	// Retour au premier plan : rafraîchissement d'un accueil périmé (#517).
 	document.addEventListener('visibilitychange', () => {
-		if (document.visibilityState === 'hidden') captureResume();
+		if (document.visibilityState === 'hidden') {
+			captureResume();
+			return;
+		}
+		// Un accueil affiché la veille et jamais re-rendu ment sur tout ce qu'il annonce
+		// « du jour » : c'est la cause du clic sans effet de #517, où une carte « programme
+		// terminé » périmée renvoyait vers un programme qui n'existait plus. La politique
+		// (jour changé ? accueil à l'écran ? modale ouverte ?) vit avec le rendu de l'accueil.
+		rafraichirAccueilSiJourChange();
 	});
 	window.addEventListener('pagehide', captureResume);
 	// Sauvegarde débouncée à la saisie : couvre aussi une coupure brutale

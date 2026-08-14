@@ -586,7 +586,14 @@ pure](core.md)) pour les formats composites :
   au **dénominateur** sans compter au score (0 XP, étoile perdue comme après une erreur) et
   n'est pas rejouée. Côté révision, l'équivalent vit dans `revision.ts` (`decideHTML`,
   `passerItem`, région fixe `#revStatus` posée **hors** de `#revStage`, que le verdict d'une
-  saisie ou d'un QCM remplace en entier). Cette région porte aussi les verdicts
+  saisie ou d'un QCM remplace en entier). Le figeage y a une contrainte propre : la classe
+  `rev-stage--fige` est posée sur **`#revStage`**, qui **survit** d'une question à l'autre
+  (seul son contenu est remplacé — c'est ce qui permet de câbler Entrée une seule fois).
+  `renderCurrent` doit donc **dégeler** la carte (`degelerStage`) à chaque question ; sans
+  quoi le `pointer-events: none` du figeage déteint sur **toute la suite de la séance** :
+  plus un choix de QCM ni même le lien de déblocage cliquables, seuls les boutons
+  « Écouter » (exclus du figeage) répondant encore. Le mode leçon n'a pas ce besoin, sa
+  scène `.sprint-stage` étant reconstruite à chaque question. Cette région porte aussi les verdicts
   **ORDINAIRES** de la révision (`revision.ts: annoncerVerdict`, appelé par `grade` et par le
   chemin d'échec d'un mot d'orthographe) : « Bravo, c'est juste. » ou « Ce n'est pas ça. La
   bonne réponse : X. » (« Une réponse possible » sur un item corrigé par intervalle, #446 —

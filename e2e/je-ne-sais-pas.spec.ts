@@ -9,6 +9,11 @@
    Couvre :
    1. Révision (format à saisie libre) : révélation en verdict neutre, pas
       de rejeu de la même question.
+   1 bis. Régression verrouillée : la révélation d'un WIDGET fige la carte
+      (`rev-stage--fige`), or `#revStage` survit d'une question à l'autre —
+      sans dégel au rendu suivant, toute la suite de la séance devenait
+      inerte (`pointer-events: none`), seuls les boutons « Écouter »
+      répondant encore.
    2. Un widget dont « Vérifier »/« Valider » est encore désactivé (rien
       posé/relié) : la révélation ne marque AUCUNE erreur sur le widget.
    3. Régression verrouillée : le bloc de décision entier (`.lecon-decide`,
@@ -79,6 +84,59 @@ test('Révision (saisie libre) : « Je ne sais pas » révèle en verdict neutre
 	await expect(page.locator('.rev-consigne')).toBeVisible();
 	const consigneApres = (await page.locator('.rev-consigne').innerText()).trim();
 	expect(consigneApres).not.toBe(consigneAvant);
+
+	expect(errors).toEqual([]);
+});
+
+/* ---------- 1 bis. La carte figée par une révélation ne doit pas déteindre ---------- */
+
+/* Mêmes deux leçons, ÉCHÉANCES INVERSÉES : `num-comparer` passe en premier. Sa réponse
+   est un SIGNE (< = >), donc la révision la rend en WIDGET de tuiles (jamais en saisie),
+   ce qui est le cas visé : seuls les widgets appellent `neutraliserWidget`, donc seuls
+   eux figent la carte. La 2e (num-valeur-position, réponse numérique) revient en saisie
+   libre — un format sans `#revAfter`, celui où le figeage résiduel ne laissait plus RIEN
+   d'opérable. */
+function seedWidgetPuisSaisie(): string {
+	return `
+    localStorage.setItem('ludaskia_profiles', ${JSON.stringify(
+			JSON.stringify({
+				list: [{ uuid: UUID_REV, name: 'Test', emoji: '🦊', updatedAt: 1 }],
+				active: UUID_REV,
+			}),
+		)});
+    localStorage.setItem('${UUID_REV}/ludaskia_lessonRevision', JSON.stringify({
+      'num-comparer': { palier: 0, prochaineRevision: 1, reussites: 0, dernierTest: null },
+      'num-valeur-position': { palier: 0, prochaineRevision: 2, reussites: 0, dernierTest: null }
+    }));
+    ${seedAideVueScript(UUID_REV)}
+  `;
+}
+
+test('Révision : une révélation sur un widget ne fige pas les questions suivantes', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedWidgetPuisSaisie());
+	await gotoHash(page, 'revision-espacee');
+
+	// 1re question : le widget de tuiles, révélé sans rien poser (« Valider » désactivé).
+	await expect(page.locator('.tuile').first()).toBeVisible();
+	await page.locator('#revGiveUp').click();
+	await expect(page.locator('.rev-feedback.reveal')).toBeVisible();
+	await expect(page.locator('#revStage')).toHaveClass(/rev-stage--fige/); // carte figée, attendu
+	await page.locator('#revNext').click();
+
+	// 2e question : la carte doit être DÉGELÉE. `#revStage` n'est pas recréé (seul son
+	// contenu l'est), donc la classe de figeage y restait collée pour toute la séance.
+	await expect(page.locator('#revInput')).toBeVisible();
+	await expect(page.locator('#revStage')).not.toHaveClass(/rev-stage--fige/);
+
+	// Vérification par le GESTE, pas seulement par la classe : Playwright refuse de cliquer
+	// un élément qui ne reçoit pas les événements de pointeur — exactement le symptôme
+	// constaté (plus un seul bouton cliquable, seul « Écouter » répondait).
+	await page.locator('#revInput').fill('1');
+	await page.locator('#revValidate').click();
+	await expect(page.locator('#revNext')).toBeVisible();
 
 	expect(errors).toEqual([]);
 });

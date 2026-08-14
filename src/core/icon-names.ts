@@ -63,4 +63,8 @@ export type IconName =
 	| 'feather'
 	| 'lightbulb'
 	// Aide / guide de première visite (bouton « ? » de l'accueil)
-	| 'question';
+	| 'question'
+	// Étayage de la notion (#490) : « comprendre ce calcul ». Volontairement DISTINCTE de
+	// l'œil (= révéler la réponse, #467), de l'ampoule (= comment on joue, #272) et du
+	// cerveau (= catégorie « Calcul mental ») : trois sens déjà pris, à ne pas brouiller.
+	| 'math-operations';

@@ -62,6 +62,12 @@ import {
 } from './lecon-probleme';
 import { brouillonHTML, bindBrouillon } from './brouillon';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
+import {
+	etayageDisponible,
+	lienEtayageHTML,
+	ouvrirEtayage,
+	type EtayageDemande,
+} from './etayage-panneau';
 import type { TypeAide } from '../core/aide';
 import { capterErreur, libelleChoix } from './erreur-capture';
 /* « Je ne sais pas, montre-moi » (#467) : fond COMMUN avec le mode leçon
@@ -568,6 +574,24 @@ function neutraliserWidget(stage: HTMLElement): void {
    dont le verdict remplace toute la carte (saisie, QCM, posée, mot), 'after' pour ceux
    qui gardent leur widget visible à côté de la solution (#revAfter). */
 function passerItem(o: {
+	cible: 'stage' | 'after';
+	correct?: string;
+	extra?: string;
+	parIntervalle?: boolean;
+}): void {
+	// Étayage de la notion (#490) : c'est ici que l'enfant RÉCLAME de l'aide — le meilleur
+	// moment, et celui où la méthode doit passer AVANT la réponse nue, sinon il lit le
+	// résultat et saute l'explication. Le panneau franchi (ou absent, ou écarté d'un geste),
+	// on reprend le verdict habituel de #467, inchangé.
+	const demande = etayageDemande();
+	if (demande) {
+		ouvrirEtayage({ ...demande, onFerme: () => verdictPasse(o) });
+		return;
+	}
+	verdictPasse(o);
+}
+
+function verdictPasse(o: {
 	cible: 'stage' | 'after';
 	correct?: string;
 	extra?: string;
@@ -1398,12 +1422,36 @@ function verdictHTML(
 		verdict = correct
 			? `<div class="rev-feedback ko">✗ ${label} : <strong>${mathInline(correct)}</strong></div>`
 			: `<div class="rev-feedback ko">✗ Regarde la correction, puis continue.</div>`;
-	return `${verdict}${extra}
+	// Étayage de la notion (#490) : proposé sur une erreur ou une révélation, jamais sur une
+	// réussite. Placé APRÈS la bonne réponse et AVANT « Continuer ▶ » : l'enfant lit d'abord
+	// ce qu'il cherchait, puis choisit d'approfondir. Placé avant la réponse, ou aussi lourd
+	// que « Continuer », il serait cliqué par réflexe sans être lu.
+	const etay = etat !== 'ok' && etayageDemande() ? lienEtayageHTML('etay-lien', 'revEtayage') : '';
+	return `${verdict}${extra}${etay}
     <div class="rev-actions"><button class="rev-btn" id="revNext">${idx + 1 < items.length ? 'Continuer ▶' : 'Terminer'}</button></div>`;
+}
+
+/* De quoi étayer l'élément courant, ou `null`. Un seul endroit pour la question, posée à
+   l'identique par le rendu du lien et par son câblage : les deux ne peuvent donc pas
+   diverger et laisser un lien mort. `posed` fait dérouler L'OPÉRATION QUE L'ENFANT VIENT DE
+   RATER (un mot d'orthographe, lui, n'appartient à aucune leçon du catalogue). */
+function etayageDemande(): EtayageDemande | null {
+	const it = items[idx];
+	const lesson = it.kind === 'word' ? undefined : getLessonById(it.lessonId);
+	if (!lesson) return null;
+	const niveau = it.niveau ? effectiveLevel(lesson, it.niveau) : niveauLecon(lesson);
+	if (!etayageDisponible(lesson, niveau)) return null;
+	return { lesson, niveau, posed: it.kind === 'num' ? it.item.posed : undefined };
 }
 
 function wireRevNext() {
 	document.getElementById('revNext')!.addEventListener('click', next);
+	// Étayage (#490) : câblé ici, où passent TOUS les verdicts de la révision (réponse,
+	// révélation, widget figé) — un seul point de câblage pour un seul point de rendu.
+	const etay = document.getElementById('revEtayage');
+	const demande = etay ? etayageDemande() : null;
+	if (etay && demande)
+		etay.addEventListener('click', () => ouvrirEtayage({ ...demande, trigger: etay }));
 	document.getElementById('revNext')!.focus();
 }
 

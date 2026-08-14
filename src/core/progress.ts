@@ -661,6 +661,26 @@ export function recordEssaiLecon(
 	return etat;
 }
 
+/* ---------- Mémoire de l'exemple d'avant-série (#490) ----------
+   « Une fois par ÉPISODE de blocage », et NON « une fois pour toujours » comme la mémoire
+   des aides au geste (`AIDE_VUE_KEY`, core/aide.ts) : un enfant qui rebute des semaines
+   plus tard remérite son exemple. On mémorise donc, par leçon, l'ÉPISODE déjà couvert —
+   l'horodatage du report qui l'a ouvert (`episodeEtayable`, core/etayage.ts) : une
+   signature stable et directement comparable, là où un booléen ne saurait pas distinguer
+   deux blocages et une date demanderait une règle d'expiration de plus.
+   Namespacé par niveau comme le report dont il dépend, donc borné par le nombre de
+   leçons (aucune rétention à gérer). */
+export const ETAYAGE_VU_KEY = 'ludaskia_etayageVu';
+/* Vue scopée au niveau actif (clés = id de leçon nu), comme `loadLessonReports`. */
+export function loadEtayagesVus(): Record<string, number> {
+	return scopeActif(lsGet(ETAYAGE_VU_KEY, {}) as Record<string, number>);
+}
+export function marquerEtayageVu(lessonId: string, episode: number): void {
+	const all = lsGet(ETAYAGE_VU_KEY, {}) as Record<string, number>;
+	all[nsKey(lessonId, niveauStockage(lessonId))] = episode;
+	lsSet(ETAYAGE_VU_KEY, all);
+}
+
 /* Met à jour l'état SR d'une leçon après une réponse en révision. `niveau` force le
    niveau de la clé écrite : la séance peut proposer une leçon en rotation à un niveau
    INFÉRIEUR au niveau actif (#232), et c'est ce niveau-là qu'il faut faire avancer.

@@ -36,6 +36,7 @@ import {
 import { getLessonById } from '../core/catalog';
 import { retourFinActivite, type RetourCible } from './retour-activite';
 import { capterErreur } from './erreur-capture';
+import { poserLiensEtayagePosee } from './etayage-panneau';
 import {
 	analyserResultatPosee,
 	attendueItem,
@@ -120,6 +121,11 @@ export function verify() {
 		}
 	});
 	setLastErrors(errors);
+	// Étayage de la notion (#490) : à côté de chaque grille posée ratée, l'offre d'expliquer
+	// LE calcul qui vient d'être raté. Proposé, jamais imposé ni automatique — un affichage
+	// systématique s'apprendrait à ignorer par réflexe. Sans contenu pour la leçon, rien ne
+	// s'affiche (dégradation propre).
+	poserLiensEtayagePosee(document.getElementById('sheets')!, currentLessonId);
 	// L'exercice est vérifié (corrections révélées) : la reprise n'a plus lieu d'être (#63).
 	finishResume();
 	const lastErrors = getLastErrors();

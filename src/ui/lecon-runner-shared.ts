@@ -24,6 +24,7 @@ import { escapeHTML } from '../core/utils';
 import { streakSuffix } from '../core/progress';
 import type { TypeAide } from '../core/aide';
 import { maybeAutoAide } from './aide-exercice';
+import { maybeEtayageAvantSerie, monterBoutonEtayage } from './etayage-panneau';
 import { announceRewards } from './effects';
 import { declarerSessionRunner, finirSessionRunner } from './runner-reprise';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
@@ -95,6 +96,18 @@ export function demarrerRunner(o: {
 	});
 	o.render();
 	document.getElementById('sheets')?.focus({ preventScroll: true });
+	// Étayage de la notion (#490) : bouton persistant, puis exemple d'avant-série au retour
+	// d'une mise de côté. Posés AVANT l'aide au geste, qui est prioritaire quand les deux
+	// se présentent (savoir MANIPULER l'écran passe avant la méthode) : `maybeAutoAide`
+	// ouvre alors sa modale et l'exemple, qui refuse de s'empiler, reviendra au lancement
+	// suivant. Sans contenu d'étayage pour la leçon, ces deux appels ne font rien.
+	monterBoutonEtayage(
+		document.querySelector<HTMLElement>('#sheets .sprint-stage'),
+		o.lesson,
+		niveauLecon(o.lesson),
+		o.mode ?? undefined,
+	);
+	maybeEtayageAvantSerie(o.lesson, o.mode ?? undefined);
 	// APRÈS le focus, jamais avant : la bulle d'aide est une modale qui prend le focus et
 	// le rend à la fermeture (au bouton « ? » de l'exercice). Focaliser `#sheets` ensuite
 	// le lui volerait et casserait son piège de focus.

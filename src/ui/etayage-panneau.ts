@@ -44,6 +44,7 @@ import { loadRevoir, revoirActives, toggleRevoirFor } from '../core/encadrant-st
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
 import { activeProfile, lectureConsigneAuto } from '../core/profiles';
+import { texteParle } from '../core/tts-text';
 import { loadEtayagesVus, loadLessonReports, marquerEtayageVu } from '../core/progress';
 import { escapeHTML } from '../core/utils';
 import { icon } from './icon';
@@ -145,7 +146,11 @@ function grilleDemoHTML(spec: PosedSpec): string {
 				.join('');
 		})
 		.join('');
-	return poseeGrilleHTML(disposition, cellules, 'posee-demo');
+	// Grille MASQUÉE aux technologies d'assistance : ses cellules sont des `<span>` qui se
+	// remplissent, et tout ce qu'elles montrent est déjà DIT par la narration (« j'écris 2 et
+	// je retiens 1 pour les dizaines »). L'étiqueter à moitié ferait entendre une grille de
+	// chiffres nus en plus de l'explication ; la taire est plus lisible que la décrire.
+	return `<div class="etay-grille" aria-hidden="true">${poseeGrilleHTML(disposition, cellules, 'posee-demo')}</div>`;
 }
 
 /** Y a-t-il de quoi étayer cette leçon ? Sans entrée pour elle, il n'y a PAS de panneau —
@@ -214,9 +219,16 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 			${etapesFixesHTML(contenu)}
 			${
 				pas.length
-					? `<p class="etay-compteur" id="etayCompteur"></p>
-						 <div class="etay-bar"><div class="etay-bar-fill" id="etayBarFill"></div></div>
-						 <p class="etay-phrase" id="etayPhrase" role="status"></p>`
+					? // Le compteur est une région live À PART, et il précède la phrase : l'enfant
+						// qui n'y voit pas entend d'abord OÙ il en est, puis ce qu'il y a à faire. La
+						// barre ne fait que redire le compteur en image → masquée aux technologies
+						// d'assistance. Les deux textes sont rendus DÉJÀ REMPLIS pour l'étape 0 :
+						// beaucoup de lecteurs d'écran n'observent une région live qu'après un
+						// battement, et la première étape — la seule qu'aucun geste n'annonce —
+						// serait restée muette.
+						`<p class="etay-compteur" id="etayCompteur" aria-live="polite">${compteurTexte(0, pas.length)}</p>
+						 <div class="etay-bar" aria-hidden="true"><div class="etay-bar-fill" id="etayBarFill"></div></div>
+						 <p class="etay-phrase" id="etayPhrase" role="status">${escapeHTML(pas[0].phrase)}</p>`
 					: ''
 			}
 			${prerequisHTML(d)}
@@ -279,7 +291,7 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 			}
 		}
 		if (phrase) phrase.textContent = pas[i].phrase;
-		if (compteur) compteur.textContent = `Étape ${i + 1} sur ${pas.length}`;
+		if (compteur) compteur.textContent = compteurTexte(i, pas.length);
 		if (barre) barre.style.width = `${Math.round(((i + 1) / pas.length) * 100)}%`;
 		if (precedent) precedent.hidden = i === 0;
 		suivant.textContent = i + 1 < pas.length ? 'Suivant ▶' : sortie;
@@ -302,7 +314,11 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 			.join(' ');
 		const bouton = overlay.querySelector<HTMLButtonElement>('.etay-listen');
 		bouton?.classList.add('speaking');
-		dicterConsigne(texte, () => bouton?.classList.remove('speaking'));
+		// `texteParle` avant de dicter, comme partout ailleurs : ce texte est écrit pour l'ŒIL
+		// et il est bourré d'opérateurs (« 7 × 6 = 42 »), que les moteurs vocaux rendent mal ou
+		// pas du tout. Sans ça, le fait numérique isolé — le cœur de l'explication — serait
+		// précisément ce qu'un enfant qui écoute n'entendrait pas.
+		dicterConsigne(texteParle(texte), () => bouton?.classList.remove('speaking'));
 	}
 
 	suivant.addEventListener('click', () => {
@@ -410,8 +426,11 @@ export function monterBoutonEtayage(
 
     Jamais par-dessus l'aide au GESTE, qui peut s'auto-afficher au même moment : deux
     modales empilées avant la question 1 seraient un péage, exactement ce que ce panneau
-    doit éviter. On laisse alors passer ce lancement ; l'épisode n'étant pas marqué vu,
-    l'exemple reviendra au suivant. */
+    doit éviter — et deux `activateModal` concurrents s'inertent l'un l'autre, si bien que
+    fermer la seconde ferait réapparaître la première, focus perdu. On laisse alors passer ce
+    lancement ; l'épisode n'étant pas marqué vu, l'exemple reviendra au suivant. C'est
+    l'aide au geste qui passe d'abord (savoir MANIPULER l'écran précède la méthode), donc
+    tout appelant doit l'avoir déclenchée AVANT d'arriver ici, sinon la garde ne voit rien. */
 export function maybeEtayageAvantSerie(lesson: LessonDef, mode?: string): void {
 	if (document.getElementById('aideOverlay')) return;
 	const niveau = niveauLecon(lesson);
@@ -425,10 +444,18 @@ export function maybeEtayageAvantSerie(lesson: LessonDef, mode?: string): void {
 		niveau,
 		mode,
 		avantSerie: true,
-		// Ouverture sans déclencheur : à la fermeture, on rend le focus au bouton persistant
-		// de l'écran plutôt qu'au <body> (contexte préservé au clavier / lecteur d'écran).
+		// Ouverture sans déclencheur : `activateModal` prend alors l'élément ACTIF comme
+		// pivot de focus — le premier champ de la fiche, ou le conteneur d'exercice — et c'est
+		// exactement là que l'enfant doit revenir en fermant. Le repli ci-dessous ne sert donc
+		// que si cet élément a disparu entre-temps (jamais le <body>, qui ferait perdre le
+		// contexte à un lecteur d'écran).
 		restoreFocusTo: () => document.querySelector<HTMLElement>('.etayage-btn'),
 	});
+}
+
+/* Où on en est du déroulé. Rendu à l'ouverture ET à chaque pas, donc une seule formulation. */
+function compteurTexte(i: number, total: number): string {
+	return `Étape ${i + 1} sur ${total}`;
 }
 
 /* Titre du panneau : l'OPÉRATION elle-même, pour que l'enfant voie tout de suite que ce

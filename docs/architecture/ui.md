@@ -321,7 +321,17 @@ pure](core.md)) pour les formats composites :
   mascotte porte le **défi du jour** : invitation, puis félicitations une fois
   accompli), `renderObjectives`, `renderLessons` + `lessonCardHTML` réutilisable,
   `renderProfileMenu`, `renderProfiles`, `boardHTML`/`sprintBoardHTML`,
-  `pctColor`, config `REGULARITY`).
+  `pctColor`, config `REGULARITY`). **Rejouée quand le jour change sous un accueil
+  affiché (#517)** : l'écouteur `visibilitychange` de `main.ts` (qui porte déjà la
+  sauvegarde de reprise en arrière-plan, #63) appelle au retour au premier plan
+  `rafraichirAccueilSiJourChange`, qui vit ici avec le rendu. Tout ce que l'accueil dit
+  « du jour » (programme, leçon du jour, révisions dues, objectifs) est daté de son
+  rendu, et une tablette dort la nuit puis rouvre l'app le lendemain sans jamais
+  recharger la page. Le déclencheur est le **changement de jour civil** (mémorisé au
+  rendu via `todayStr`), pas la reprise : trois abstentions, jour inchangé, accueil
+  masqué (un autre écran occupe la place, la prochaine navigation rendra du frais) et
+  accueil `inert` (une modale est ouverte et ne masque pas `#home` : re-rendre dessous
+  détruirait le déclencheur mémorisé pour la restauration du focus).
 - **`seance.ts`** (#440) — écran `#seance` et carte d'accueil `#cardProgramme` du
   **programme du jour** composé par l'encadrant (cf. [Modes &
   navigation](modes-et-navigation.md)). `vueProgramme()` est la porte d'entrée UNIQUE
@@ -332,8 +342,17 @@ pure](core.md)) pour les formats composites :
   `core/encadrant-stats.ts`) que le cœur ne peut pas lire seul, puis appelle
   `vueSeanceDuJour`. `renderProgrammeCard` (masquée hors programme applicable ce
   jour) et `renderSeance` (tuiles des étapes restantes en ordre libre, jauge de
-  pastilles, bouton « Choisis pour moi », état terminé célébré) en découlent. Une
-  étape « à revoir » se présente comme une tuile « À revoir » (icône marque-page) ;
+  pastilles, bouton « Choisis pour moi », état terminé célébré) en découlent.
+  **Programme terminé (#517)** : la carte porte alors `programme-card--fini` **et**
+  `card-inactive` (même classe que la carte Révision sans rien de dû, posée par
+  `render.ts`) — plus de pastille d'action ni de clic, et « Terminé, bravo ! 🎉 »
+  (emoji inline `aria-hidden`) là où l'ancien CTA « Revoir → » restait invisible
+  faute de contraste. Le listener de clic
+  **recalcule** `vueProgramme()` avant de naviguer au lieu de poser `#seance`
+  inconditionnellement : la carte peut avoir survécu au programme qui l'a produite
+  (onglet resté ouvert, minuit passé, épinglée retirée depuis le dernier rendu) —
+  sans ce garde-fou la route renvoyait aussitôt à l'accueil, clic sans effet visible.
+  Une étape « à revoir » se présente comme une tuile « À revoir » (icône marque-page) ;
   si une seule entrée est épinglée, son libellé est **nommé** directement (comme la
   carte d'accueil), sinon le titre reste générique et la cible est tirée au
   lancement.

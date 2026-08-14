@@ -208,9 +208,13 @@
 }
 
 /* ---------- Carte d'accueil « terminé » ---------- */
-/* La carte reprend .card (home.scss) ; l'état « fini » adoucit juste le call-to-action. */
-.card.programme-card--fini .go {
-	color: var(--ok);
+/* La carte reprend .card (home.scss). L'état « fini » n'a plus de call-to-action du tout :
+   il porte `card-inactive` (home.scss), qui retire curseur main, survol et pastille — la
+   carte devient un constat. Voir renderProgrammeCard (#517). Reste à reprendre la marge
+   basse du paragraphe, qui n'existait que pour séparer le texte de la pastille : sans
+   elle, la carte se terminerait sur un vide de 48 px. */
+.card.programme-card--fini p {
+	margin-bottom: 0;
 }
 
 /* Tablette : deux colonnes de tuiles si la place le permet. */

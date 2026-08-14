@@ -70,7 +70,10 @@ function posedType(gen: () => PosedGen, consigne: string): ExerciseType {
 
    - `regle` : l'idée-force en UNE phrase, affichée en permanence pendant le déroulé —
      la seule chose qu'un enfant à faible mémoire de travail emporte d'un écran au
-     suivant, et elle redonne le SENS (valeur de position) avant la mécanique ;
+     suivant, et elle redonne le SENS (valeur de position) avant la mécanique. Elle ne
+     nomme AUCUNE unité de position : restant sous les yeux à toutes les colonnes, une
+     règle qui dirait « tu retiens les dizaines » contredirait la narration dès la
+     deuxième colonne (« je retiens 1 pour les centaines ») ;
    - `exemple` : l'opération déroulée quand l'enfant n'en a pas sous les yeux (panneau
      d'avant-série). FIXE et choisie, jamais tirée au hasard : un tirage donnerait
      tantôt un cas sans retenue qui ne montre rien, tantôt le pire cas au pire moment
@@ -94,8 +97,8 @@ export const POSEE_LESSONS: LessonInput[] = [
 				contenu: {
 					titre: "L'addition posée, pas à pas",
 					regle:
-						'Dans une colonne, si le total dépasse 9, tu écris les unités et tu ' +
-						"retiens les dizaines pour la colonne d'à côté.",
+						'Dans une colonne, si le total dépasse 9, tu écris seulement son ' +
+						"dernier chiffre et tu retiens 1 pour la colonne d'à côté.",
 					exemple: { moteur: 'posee', spec: { op: '+', a: 347, b: 285 } },
 				},
 			},
@@ -110,8 +113,8 @@ export const POSEE_LESSONS: LessonInput[] = [
 				contenu: {
 					titre: 'La soustraction posée, pas à pas',
 					regle:
-						'Si le chiffre du haut est trop petit, tu empruntes une dizaine à la ' +
-						"colonne d'à côté : il faudra la lui rendre.",
+						"Si le chiffre du haut est trop petit, tu empruntes 10 à la colonne d'à " +
+						'côté : il faudra lui rendre 1.',
 					exemple: { moteur: 'posee', spec: { op: '-', a: 452, b: 178 } },
 				},
 			},

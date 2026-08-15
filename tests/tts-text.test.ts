@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { texteParle, ttsAttr } from '../src/core/tts-text';
 import { formatNombre } from '../src/core/nombres';
+import { escapeHTML } from '../src/core/utils';
 
 describe('texteParle', () => {
 	it('retire le marqueur @ du trou à remplir (silence, pas « arobase »)', () => {
@@ -31,6 +32,65 @@ describe('texteParle', () => {
 			'Quel est le contraire de grand ?',
 		);
 		expect(texteParle('Pierre &amp; Paul')).toBe('Pierre & Paul');
+	});
+
+	/* Décodage des entités — éprouvé SUR `texteParle` SEUL. Passer par `ttsAttr` combinerait
+	   décodage et ré-échappement : une régression du décodage y serait invisible (l'entité
+	   ressortirait telle quelle et personne ne le verrait), alors que le TTS, lui, épellerait
+	   « et dièse trente-neuf point-virgule ». Les attendus sont dérivés du RÉSULTAT visé —
+	   « ce que l'énoncé AFFICHE doit être ce qu'on entend » — et non de la chaîne de `replace`. */
+	it('décode les CINQ entités, chacune prise isolément', () => {
+		expect(texteParle('Pierre &amp; Paul')).toBe('Pierre & Paul');
+		expect(texteParle('3 &lt; 7')).toBe('3 < 7');
+		expect(texteParle('7 &gt; 3')).toBe('7 > 3');
+		expect(texteParle('Dis &quot;bonjour&quot;')).toBe('Dis "bonjour"');
+		expect(texteParle('l&#39;école')).toBe("l'école");
+		// Aucune entité ne doit SURVIVRE dans le texte remis au moteur vocal.
+		expect(texteParle('&amp; &lt; &gt; &quot; &#39;')).not.toMatch(/&(amp|lt|gt|quot|#39);/);
+	});
+
+	it('l’esperluette est décodée en DERNIER : « &amp;lt; » reste « &lt; » et non « < »', () => {
+		// Cas discriminant de l'ORDRE. Une esperluette LITTÉRALE suivie de « lt; » (ce que
+		// produit `escapeHTML` sur le texte « &lt; ») ne doit perdre qu'UNE couche : l'énoncé
+		// affiche « &lt; », on doit entendre « &lt; ». Décoder `&amp;` en premier ferait
+		// réapparaître un chevron jamais affiché.
+		expect(texteParle('&amp;lt;')).toBe('&lt;');
+		expect(texteParle('Tape &amp;lt; pour un chevron')).toBe('Tape &lt; pour un chevron');
+		// Même garde pour les quatre autres : une seule couche retirée, jamais deux.
+		expect(texteParle('&amp;gt;')).toBe('&gt;');
+		expect(texteParle('&amp;quot;')).toBe('&quot;');
+		expect(texteParle('&amp;#39;')).toBe('&#39;');
+		expect(texteParle('&amp;amp;')).toBe('&amp;');
+	});
+
+	it('le décodage vient APRÈS le retrait des balises : une balise échappée est LUE, pas retirée', () => {
+		// Contraste : `<strong>` réel = mise en forme, il disparaît ; « &lt;strong&gt; » est du
+		// texte AFFICHÉ à l'écran, il doit s'entendre. L'inverse (décoder d'abord) rendrait
+		// muet un énoncé qui montre une balise.
+		expect(texteParle('Le <strong>mot</strong> compte')).toBe('Le mot compte');
+		expect(texteParle('Écris &lt;strong&gt; en entier')).toBe('Écris <strong> en entier');
+	});
+
+	it('les caractères décodés ne retombent pas dans les règles suivantes', () => {
+		// Chevrons : aucune règle d'opérateur ne les verbalise (seul « = » entouré d'espaces
+		// devient un mot) — ils traversent tels quels. Cf. rapport : ce n'est PAS « plus petit
+		// que » à l'oreille.
+		expect(texteParle('12 &gt; 5 et 5 &lt; 12')).toBe('12 > 5 et 5 < 12');
+		// Une apostrophe décodée ne casse pas la frontière de mot des unités.
+		expect(texteParle('l&#39;objet mesure 24 cm')).toBe("l'objet mesure 24 centimètres");
+		// Ni l'épellation des décimales (le guillemet décodé encadre sans interférer).
+		expect(texteParle('&quot;3,04&quot;')).toBe('"3 virgule zéro quatre"');
+		// Un « = » voisin d'entités reste converti, et le collapse final absorbe le trou du @.
+		expect(texteParle('3 + 4 = @ &amp; c&#39;est tout')).toBe("3 plus 4 égale & c'est tout");
+	});
+
+	it('aller-retour : tout ce que `escapeHTML` produit revient au caractère d’origine', () => {
+		// Contrat de bout en bout entre les deux modules : c'est LUI qui doit tenir quand
+		// l'échappement évolue (il a déjà gagné trois caractères). Chaînes sans espace double
+		// ni bord blanc, que `texteParle` normalise par ailleurs.
+		for (const s of ['&', '<', '>', '"', "'", '5 < 7 & 7 > 5', 'l\'élève dit "oui"', '<b>']) {
+			expect(texteParle(escapeHTML(s)), s).toBe(s);
+		}
 	});
 
 	it('neutralise les séparateurs purement visuels (puce, tirets longs, flèche)', () => {
@@ -90,5 +150,28 @@ describe('ttsAttr', () => {
 	it('renvoie une chaîne vide quand il n’y a rien à lire', () => {
 		expect(ttsAttr('@')).toBe('');
 		expect(ttsAttr('   ')).toBe('');
+	});
+
+	/* Le module n'a plus sa copie privée d'échappement : la valeur d'attribut est protégée
+	   par `escapeHTML` (core/utils). On l'éprouve donc par PARSING — ce que le navigateur
+	   reconstruit — et non par comparaison de chaînes, qui ne dirait rien de l'attribut réel
+	   et se contenterait de recopier la table d'échappement du jour. */
+	it('guillemet et apostrophe : l’attribut se relit intact une fois parsé', () => {
+		const hote = document.createElement('div');
+		hote.innerHTML = `<span class="consigne"${ttsAttr('Le mot "chat" s\'écrit : @')}>x</span>`;
+		const span = hote.querySelector('span');
+		expect(span).toBeTruthy();
+		// Attendu dérivé à la main : `@` (le trou à remplir) devient un silence, le reste est
+		// lu tel quel — guillemets droits et apostrophe compris.
+		expect(span!.getAttribute('data-tts')).toBe('Le mot "chat" s\'écrit :');
+		expect([...span!.getAttributeNames()].sort()).toEqual(['class', 'data-tts']);
+	});
+
+	it('une consigne hostile ne peut plus refermer l’attribut ni en fabriquer un autre', () => {
+		const hote = document.createElement('div');
+		hote.innerHTML = `<span${ttsAttr('Dis " onmouseover=alert(1) et \' oups')}></span>`;
+		const span = hote.querySelector('span')!;
+		expect(span.getAttributeNames()).toEqual(['data-tts']);
+		expect(span.getAttribute('data-tts')).toBe('Dis " onmouseover=alert(1) et \' oups');
 	});
 });

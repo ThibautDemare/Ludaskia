@@ -30,16 +30,11 @@ import {
 	etayagePour,
 	leconPrerequise,
 	type EtayageContenu,
+	type EtayageExemple,
 } from '../core/etayage';
-import {
-	chapeauLigne,
-	phrasePosee,
-	resolutionPosee,
-	retenueDansLaGrille,
-	type EtapePosee,
-	type ResolutionPosee,
-} from '../core/etayage-posee';
-import { dispositionPosee, poseeGrilleHTML, type PosedSpec } from '../core/items';
+import { derouleMontrable, type PasEtayage } from '../core/etayage-deroule';
+import { moteurEtayage, type MoteurEtayage } from './etayage-visuels';
+import type { PosedSpec } from '../core/items';
 import { loadRevoir, revoirActives, toggleRevoirFor } from '../core/encadrant-stats';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
@@ -71,88 +66,6 @@ const SORTIE_AVANT_SERIE = 'Je me lance !';
 
 let ouvert = false; // un seul panneau à la fois (évite l'empilement automatique + clic)
 
-/** Un pas du déroulé : la colonne à écrire et ce qu'on en dit. */
-interface PasEtayage {
-	/** Index de la ligne de chiffres concernée (0 = la première ligne à écrire). */
-	ligne: number;
-	/** Colonne À L'ÉCRAN (décalage de la ligne compris, cf. `LignePosee.decalage`). */
-	rang: number;
-	etape: EtapePosee;
-	phrase: string;
-	/** La retenue sortante a-t-elle une case dans la grille ? (Non pour un produit
-	    partiel : sa retenue se garde en tête, la rangée de cases est celle de l'addition
-	    finale.) */
-	retenueVisible: boolean;
-}
-
-/* Déroulé à plat : les colonnes de chaque ligne, dans l'ordre où l'enfant les traite.
-   L'annonce d'une ligne (« d'abord par les unités… ») est mise en TÊTE de sa première
-   colonne plutôt qu'en pas de plus : le volume d'une multiplication à deux chiffres est
-   déjà à la limite haute du suivable. */
-function pasDe(resolution: ResolutionPosee, spec: PosedSpec): PasEtayage[] {
-	const pas: PasEtayage[] = [];
-	resolution.lignes.forEach((ligne, i) => {
-		const chapeau = chapeauLigne(ligne, spec);
-		const retenueVisible = retenueDansLaGrille(ligne);
-		ligne.etapes.forEach((etape, j) => {
-			const phrase = phrasePosee(etape, spec.op, ligne);
-			pas.push({
-				ligne: i,
-				rang: etape.colonne + (ligne.decalage ?? 0),
-				etape,
-				phrase: chapeau && j === 0 ? `${chapeau} ${phrase}` : phrase,
-				retenueVisible,
-			});
-		});
-	});
-	return pas;
-}
-
-/* Grille de DÉMONSTRATION : la même disposition que la grille jouable (même largeur de
-   colonne, même alignement — un enfant en difficulté ne doit pas avoir à réapprendre un
-   format visuel en plus de la méthode), mais figée et VIDE de ce qui reste à trouver.
-   Chaque cellule à remplir porte sa cible (`data-cible` = « ligne{i}-{rang} », `data-retenue`
-   = rang) : c'est ce qui permet de la remplir au bon moment sans redéduire la géométrie. */
-function grilleDemoHTML(spec: PosedSpec): string {
-	const disposition = dispositionPosee(spec);
-	let ligne = -1; // index de la ligne de chiffres À ÉCRIRE en cours (ordre des rangées)
-	const cellules = disposition.rangees
-		.map((rangee) => {
-			if (rangee.barre)
-				return `<span class="posee-rule" style="grid-column: 1 / ${disposition.colonnes + 2}"></span>`;
-			// La rangée porte-t-elle des cellules à trouver ? (les rangées de saisie se
-			// succèdent dans le même ordre que les lignes de la résolution.)
-			if (rangee.cellules.some((c) => c.role === 'saisie')) ligne++;
-			return rangee.cellules
-				.map((c, i) => {
-					// `i === 0` est la colonne du signe ; les suivantes sont les colonnes de
-					// chiffres, alignées à droite → rang = distance à la colonne des unités.
-					const rang = disposition.colonnes - i;
-					switch (c.role) {
-						case 'signe':
-							return `<span class="posee-cell posee-op">${c.texte}</span>`;
-						case 'chiffre':
-							return `<span class="posee-cell posee-digit">${c.chiffre}</span>`;
-						case 'zeroDecalage':
-							return `<span class="posee-cell posee-digit posee-zero" aria-label="zéro du décalage">0</span>`;
-						case 'retenue':
-							return `<span class="posee-cell posee-carry etay-cell" data-retenue="${rang}"></span>`;
-						case 'saisie':
-							return `<span class="posee-cell posee-input etay-cell" data-cible="ligne${ligne}-${rang}"></span>`;
-						case 'vide':
-							return `<span class="posee-cell"></span>`;
-					}
-				})
-				.join('');
-		})
-		.join('');
-	// Grille MASQUÉE aux technologies d'assistance : ses cellules sont des `<span>` qui se
-	// remplissent, et tout ce qu'elles montrent est déjà DIT par la narration (« j'écris 2 et
-	// je retiens 1 pour les dizaines »). L'étiqueter à moitié ferait entendre une grille de
-	// chiffres nus en plus de l'explication ; la taire est plus lisible que la décrire.
-	return `<div class="etay-grille" aria-hidden="true">${poseeGrilleHTML(disposition, cellules, 'posee-demo')}</div>`;
-}
-
 /** Y a-t-il de quoi étayer cette leçon ? Sans entrée pour elle, il n'y a PAS de panneau —
     et surtout aucun repli sur un exemple générique de la famille de moteur, qui servirait
     à un enfant une notion voisine de la sienne (pire que rien, cf. core/etayage.ts).
@@ -177,10 +90,14 @@ export interface EtayageDemande {
 	lesson: LessonDef;
 	niveau: SchoolLevel;
 	mode?: string;
-	/** Opération à dérouler — celle que l'enfant vient de rater. À défaut, l'exemple
-	    canonique de la leçon : un exemple FIXE, jamais un tirage (l'aléatoire donnerait
-	    tantôt un cas sans retenue qui ne montre rien, tantôt le pire cas au pire moment). */
-	posed?: PosedSpec;
+	/** Ce qu'il faut dérouler — l'exercice que l'enfant vient de rater, quand l'écran sait
+	    le décrire. À défaut, l'exemple canonique de la leçon : un exemple FIXE, jamais un
+	    tirage (l'aléatoire donnerait tantôt un cas sans difficulté qui ne montre rien,
+	    tantôt le pire cas au pire moment).
+	    JAMAIS renseigné par un point d'entrée qui s'ouvre AVANT la réponse (le bouton
+	    persistant de l'en-tête, l'exemple d'avant-série) : ce serait souffler la solution
+	    de la question en cours. */
+	exemple?: EtayageExemple;
 	/** Panneau AUTOMATIQUE d'avant-série : l'enfant n'a rien demandé, il vient de lancer sa
 	    leçon. L'accueil et la sortie changent de ton, et on lui offre de partir tout de
 	    suite — sinon le panneau devient un péage avant de pouvoir jouer. */
@@ -197,7 +114,8 @@ export interface EtayageDemande {
 function panneauHTML(
 	d: EtayageDemande,
 	contenu: EtayageContenu,
-	spec: PosedSpec | undefined,
+	titre: string,
+	moteur: MoteurEtayage | undefined,
 	pas: PasEtayage[],
 	sortie: string,
 ): string {
@@ -205,9 +123,17 @@ function panneauHTML(
 		<div class="modal aide-modal etay-modal" role="dialog" aria-modal="true" aria-labelledby="etayTitle">
 			<button type="button" class="modal-close aide-close" aria-label="Fermer l'explication">${icon('x')}</button>
 			${mascotteBulleHTML(d.avantSerie ? 'Un petit rappel avant de commencer.' : MASCOTTE_LIGNE)}
-			<h2 class="modal-title aide-titre" id="etayTitle">${escapeHTML(spec ? titreOperation(spec) : contenu.titre)}</h2>
+			<h2 class="modal-title aide-titre" id="etayTitle">${escapeHTML(titre)}</h2>
 			${contenu.regle ? `<p class="etay-regle">${escapeHTML(contenu.regle)}</p>` : ''}
-			${spec ? grilleDemoHTML(spec) : ''}
+			${
+				// Visuel MASQUÉ aux technologies d'assistance : tout ce qu'il montre est déjà DIT
+				// par la narration (« j'écris 2 et je retiens 1 pour les dizaines »). L'étiqueter à
+				// moitié ferait entendre une grille de chiffres nus en plus de l'explication ; le
+				// taire est plus lisible que le décrire.
+				moteur && pas.length
+					? `<div class="etay-grille" id="etayVisuel" aria-hidden="true">${moteur.visuel(0)}</div>`
+					: ''
+			}
 			${etapesFixesHTML(contenu)}
 			${
 				pas.length
@@ -247,19 +173,26 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 		return;
 	}
 	ouvert = true;
-	const spec = d.posed ?? (contenu.exemple?.moteur === 'posee' ? contenu.exemple.spec : undefined);
-	const pas = spec ? pasDe(resolutionPosee(spec), spec) : [];
+	const exemple = d.exemple ?? contenu.exemple;
+	const moteurBrut = exemple ? moteurEtayage(exemple) : undefined;
+	// Déroulé injouable (vide, ou plus long que le plafond) : on garde le panneau — sa règle,
+	// ses étapes rédigées, son renvoi au prérequis valent mieux que rien — mais sans le
+	// pas-à-pas. C'est la même dégradation que pour une leçon sans contenu, un cran plus bas.
+	const moteur = moteurBrut && derouleMontrable(moteurBrut.deroule) ? moteurBrut : undefined;
+	const pas = moteur?.deroule.pas ?? [];
+	const titre = moteur?.deroule.titre || contenu.titre;
 	const sortie = d.avantSerie ? SORTIE_AVANT_SERIE : SORTIE_DEMANDE;
 
 	const overlay = document.createElement('div');
 	overlay.className = 'modal-overlay';
 	overlay.id = 'etayageOverlay';
-	overlay.innerHTML = panneauHTML(d, contenu, spec, pas, sortie);
+	overlay.innerHTML = panneauHTML(d, contenu, titre, moteur, pas, sortie);
 	document.body.appendChild(overlay);
 
 	const suivant = overlay.querySelector<HTMLButtonElement>('#etaySuivant')!;
 	const precedent = overlay.querySelector<HTMLButtonElement>('#etayPrec');
 	const phrase = overlay.querySelector<HTMLElement>('#etayPhrase');
+	const visuel = overlay.querySelector<HTMLElement>('#etayVisuel');
 	const compteur = overlay.querySelector<HTMLElement>('#etayCompteur');
 	const barre = overlay.querySelector<HTMLElement>('#etayBarFill');
 	const release = activateModal(overlay, {
@@ -277,31 +210,12 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 		d.onFerme?.();
 	}
 
-	/* Rend l'état du déroulé à l'index `i` : la grille remplie jusque-là, la phrase de
-	   l'étape, et la surbrillance de la SEULE colonne active. On rejoue depuis le début à
-	   chaque fois (les états sont peu nombreux et le rendu est idempotent) : « Précédent »
-	   n'a ainsi rien à défaire, donc rien à oublier de défaire. */
+	/* Rend l'état du déroulé à l'index `i` : le visuel du moteur (grille remplie jusque-là,
+	   tableau, droite…), la phrase du pas, et la surbrillance de la SEULE chose dont on parle.
+	   Le visuel est redessiné en entier plutôt que retouché (les états sont peu nombreux, le
+	   rendu est pur) : « Précédent » n'a ainsi rien à défaire, donc rien à oublier de défaire. */
 	function afficher(i: number): void {
-		for (const cell of overlay.querySelectorAll<HTMLElement>('.etay-cell')) {
-			cell.textContent = '';
-			cell.classList.remove('etay-actif');
-		}
-		for (let k = 0; k <= i; k++) {
-			const { ligne, rang, etape, retenueVisible } = pas[k];
-			const cible = overlay.querySelector<HTMLElement>(`[data-cible="ligne${ligne}-${rang}"]`);
-			// Colonne sans cellule dans la grille : un zéro de tête que le résultat n'écrit
-			// pas (105 − 100 = 5). L'étape se raconte quand même, elle n'a rien à remplir.
-			if (cible) cible.textContent = String(etape.ecrit);
-			const retenue =
-				etape.retenueSortante && retenueVisible
-					? overlay.querySelector<HTMLElement>(`[data-retenue="${rang + 1}"]`)
-					: null;
-			if (retenue) retenue.textContent = String(etape.retenueSortante);
-			if (k === i) {
-				cible?.classList.add('etay-actif');
-				retenue?.classList.add('etay-actif');
-			}
-		}
+		if (visuel && moteur) visuel.innerHTML = moteur.visuel(i);
 		if (phrase) phrase.textContent = pas[i].phrase;
 		if (compteur) compteur.textContent = compteurTexte(i, pas.length);
 		if (barre) barre.style.width = `${Math.round(((i + 1) / pas.length) * 100)}%`;
@@ -397,7 +311,7 @@ export function poserLiensEtayagePosee(racine: ParentNode, lessonParDefaut: stri
 		const bouton = hote.querySelector<HTMLButtonElement>('button')!;
 		bouton.removeAttribute('id'); // plusieurs grilles par fiche : pas d'id à dupliquer
 		bouton.addEventListener('click', () =>
-			ouvrirEtayage({ lesson, niveau, posed: spec, trigger: bouton }),
+			ouvrirEtayage({ lesson, niveau, exemple: { moteur: 'posee', spec }, trigger: bouton }),
 		);
 		grille.insertAdjacentElement('afterend', hote);
 	}
@@ -482,12 +396,6 @@ export function maybeEtayageAvantSerie(lesson: LessonDef, mode?: string): void {
 /* Où on en est du déroulé. Rendu à l'ouverture ET à chaque pas, donc une seule formulation. */
 function compteurTexte(i: number, total: number): string {
 	return `Étape ${i + 1} sur ${total}`;
-}
-
-/* Titre du panneau : l'OPÉRATION elle-même, pour que l'enfant voie tout de suite que ce
-   n'est pas l'aide habituelle (qui titre, elle, le nom du type d'exercice). */
-function titreOperation(spec: PosedSpec): string {
-	return `${spec.a} ${spec.op === 'x' ? '×' : spec.op === '-' ? '−' : '+'} ${spec.b}`;
 }
 
 /* Étapes RÉDIGÉES d'une notion qui n'a pas d'exemple à dérouler (à venir : les leçons

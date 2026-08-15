@@ -49,21 +49,137 @@
 	}
 }
 /* Cellules à remplir : le cadre reste visible dès le départ (l'enfant voit combien de
-   chiffres sont à trouver), le contenu arrive au fil des étapes. */
+   chiffres sont à trouver), le contenu arrive au fil des étapes. Aucune transition : le
+   visuel est REDESSINÉ à chaque pas (cf. ui/etayage-visuels.ts), donc rien à animer — une
+   transition déclarée ici ne ferait que mentir sur ce qui se passe. */
 .posee-demo .etay-cell {
 	color: var(--ink);
-	transition: background 0.15s ease;
 }
 .posee-demo .posee-carry {
 	color: var(--grey);
 }
-/* La colonne qu'on vient d'écrire — UNE seule à la fois. Le halo s'éteint dès qu'on
+/* Ce dont on parle À CE PAS — UNE seule chose à la fois, quel que soit le moteur (case de
+   grille, colonne du tableau, rang du nombre, morceau de verbe). Le halo s'éteint dès qu'on
    avance : au bout de six étapes, une demi-grille allumée distrairait plus qu'elle
-   n'aiderait. Doublé du NOM de la colonne dans la phrase (jamais la couleur seule). */
-.posee-demo .etay-actif {
+   n'aiderait. Doublé du NOM de la chose dans la phrase (jamais la couleur seule). */
+.etay-grille .etay-actif {
 	background: var(--accent-soft);
 	border-color: var(--accent);
 	box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ---------- Tableau de conversion ---------- */
+/* Mêmes classes que le runner (.tc-*), donc même géométrie : ce qu'on démontre a
+   exactement l'aspect de ce qu'on remplira. Seules deux choses changent — les cases sont
+   des `span` (rien à cliquer) et l'ensemble se resserre pour tenir dans la modale. */
+.etay-tc {
+	justify-content: center;
+	gap: 8px;
+	margin: 4px 0 10px;
+}
+.etay-tc .tc-cell {
+	cursor: default;
+}
+@media (max-width: 420px) {
+	.etay-tc {
+		gap: 5px;
+	}
+	.etay-tc .tc-cell {
+		width: 2rem;
+		height: 2.4rem;
+		font-size: 1.15rem;
+	}
+}
+
+/* ---------- Numération : le nombre posé rang par rang ---------- */
+/* Le tableau de numération de la classe, construit sur le nombre que l'enfant a sous les
+   yeux — et non un tableau de plus à apprendre. Le NOM du rang est sous chaque chiffre :
+   c'est lui qui porte la notion, la case seule ne dirait rien. */
+.etay-rangs {
+	display: flex;
+	justify-content: center;
+	gap: 5px;
+	margin: 4px 0 10px;
+}
+.etay-rang {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	min-width: 2.4rem;
+	max-width: 3.4rem;
+	padding: 4px 5px;
+	border: 2px solid var(--accent);
+	border-radius: 8px;
+	background: var(--paper);
+}
+.etay-rang-chiffre {
+	font: 800 1.35rem/1 var(--ui);
+	font-variant-numeric: tabular-nums;
+	color: var(--ink);
+}
+.etay-rang-nom {
+	font: 600 0.58rem/1.15 var(--ui);
+	color: var(--ink);
+	text-align: center;
+}
+/* « Je cache tout ce qui est à droite » : le chiffre disparaît, sa CASE reste. Le rang ne
+   s'évapore pas, on cesse seulement de le compter — c'est exactement ce que la phrase dit,
+   et l'inverse du « on enlève les chiffres » qui ferait croire à un autre nombre. */
+.etay-masque {
+	border-style: dashed;
+	border-color: var(--grey);
+}
+.etay-masque .etay-rang-chiffre {
+	visibility: hidden;
+}
+@media (max-width: 420px) {
+	.etay-rangs {
+		gap: 3px;
+	}
+	.etay-rang {
+		min-width: 1.9rem;
+		padding: 3px;
+	}
+	.etay-rang-chiffre {
+		font-size: 1.1rem;
+	}
+}
+
+/* ---------- Conjugaison : les deux morceaux qu'on assemble ---------- */
+/* Les cases arrivent VIDES et se remplissent : l'enfant voit qu'une forme conjuguée se
+   fabrique en deux morceaux avant même de savoir lesquels. */
+.etay-conj {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 4px 0 12px;
+}
+.etay-conj-pronom {
+	font: 700 1.2rem/1 var(--ui);
+	color: var(--grey);
+}
+.etay-morceau {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 3.2rem;
+	min-height: 2.6rem;
+	padding: 4px 10px;
+	border: 2px dashed var(--grey);
+	border-radius: 8px;
+	background: var(--paper);
+	font: 800 1.2rem/1 var(--ui);
+	color: var(--ink);
+}
+
+/* ---------- Le lien proposé sous le verdict d'un runner ---------- */
+/* Le lien vit DANS la zone de feedback (après la bonne réponse, avant « Continuer ▶ ») :
+   l'enfant lit d'abord ce qu'il cherchait, puis choisit d'approfondir. */
+.etay-apres-verdict {
+	margin-top: 4px;
 }
 
 /* Où on en est. Barre fine plutôt que des pastilles : une multiplication à deux
@@ -303,14 +419,12 @@
 /* ---------- Mouvement réduit ---------- */
 /* Aucun mouvement imposé : le halo et la barre s'affichent d'emblée dans leur état final. */
 @media (prefers-reduced-motion: reduce) {
-	.posee-demo .etay-cell,
 	.etay-bar-fill,
 	.etay-lien,
 	.etay-prec {
 		transition: none;
 	}
 }
-html.anim-reduced .posee-demo .etay-cell,
 html.anim-reduced .etay-bar-fill,
 html.anim-reduced .etay-lien,
 html.anim-reduced .etay-prec {

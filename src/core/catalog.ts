@@ -620,6 +620,8 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 	levels: d.levels,
 	exerciseType: conjugationType(d.verbId, d.tense),
 	rubrique: d.rubrique, // regroupement par temps (#109)
+	// Étayage (#490) : dérivé du corpus verbe par verbe, absent là où le déroulé mentirait.
+	...(d.etayage ? { etayage: d.etayage } : {}),
 }));
 
 /* ---------- Conjugaison CE2/CM1 — trois QCM « méta » (#239) ----------

@@ -1441,7 +1441,12 @@ function etayageDemande(): EtayageDemande | null {
 	if (!lesson) return null;
 	const niveau = it.niveau ? effectiveLevel(lesson, it.niveau) : niveauLecon(lesson);
 	if (!etayageDisponible(lesson, niveau)) return null;
-	return { lesson, niveau, posed: it.kind === 'num' ? it.item.posed : undefined };
+	const posed = it.kind === 'num' ? it.item.posed : undefined;
+	return {
+		lesson,
+		niveau,
+		...(posed ? { exemple: { moteur: 'posee' as const, spec: posed } } : {}),
+	};
 }
 
 function wireRevNext() {

@@ -74,6 +74,12 @@ export interface DroiteGradueeSpec {
 	bornes: DroiteGraduation[]; // graduations NUMÉROTÉES (sous-ensemble des graduations)
 	reperes?: DroiteRepere[];
 	desc?: string; // description a11y — JAMAIS la réponse (position à lire/deviner)
+	/** Portion d'axe MISE EN AVANT, de `de` à `a` (étayage #490) : le chemin qu'on vient de
+	    compter, depuis une graduation chiffrée jusqu'à la cible. Sans ce relais visuel, un
+	    enfant qui décroche du texte n'a plus aucun moyen de voir « où j'en suis » — c'est le
+	    vrai écart avec le calcul posé, où la grille qui se remplit EST l'avancement (avis
+	    `pedagogue-primaire`). Tracé SUR l'axe, sous les graduations, jamais à leur place. */
+	parcours?: { de: number; a: number };
 }
 
 /** Description d'une droite graduée INTERACTIVE (coquille `role="radiogroup"`). */
@@ -170,10 +176,29 @@ export function repereMarkup(x: number, etat: DroiteEtat = 'neutre', abaisse = f
 /** Corps commun : axe + graduations (bornes renforcées / intermédiaires muettes) +
     libellés des bornes. `min`/`max`/`pas` fixent le pavage, `bornes` les graduations
     numérotées. */
-function corpsAxe(min: number, max: number, pas: number, bornes: DroiteGraduation[]): string {
+function corpsAxe(
+	min: number,
+	max: number,
+	pas: number,
+	bornes: DroiteGraduation[],
+	parcours?: { de: number; a: number },
+): string {
 	const n = nbIntervalles(min, max, pas);
 	const bornesVals = new Set(bornes.map((b) => b.valeur));
 	const parts: string[] = [line(DG_X0, DG_AXIS_Y, DG_X1, DG_AXIS_Y, AXE_ATTRS)];
+	// Le chemin parcouru, posé sur l'axe AVANT les graduations : les traits restent lisibles
+	// par-dessus (c'est eux qu'on compte), le trajet ne fait que les colorer.
+	if (parcours) {
+		parts.push(
+			line(
+				r2(xDeValeur(parcours.de, min, max)),
+				DG_AXIS_Y,
+				r2(xDeValeur(parcours.a, min, max)),
+				DG_AXIS_Y,
+				{ stroke: 'var(--accent)', 'stroke-width': 6, 'stroke-linecap': 'round' },
+			),
+		);
+	}
 	for (let i = 0; i <= n; i++) {
 		const v = min + i * pas;
 		const x = DG_X0 + (i * DG_SPAN) / n;
@@ -252,7 +277,7 @@ export function renderDroiteGraduee(spec: DroiteGradueeSpec): string {
 		DG_H,
 		'Droite graduée',
 		spec.desc ?? DESC_DEFAUT,
-		corpsAxe(spec.min, spec.max, spec.pas, spec.bornes) + reperes,
+		corpsAxe(spec.min, spec.max, spec.pas, spec.bornes, spec.parcours) + reperes,
 		'figure-droite-graduee',
 	);
 	if (liste.filter((rp) => tetePleine(rp.etat ?? 'neutre')).length < 2) return svg;

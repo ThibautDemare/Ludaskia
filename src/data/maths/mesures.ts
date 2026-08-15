@@ -396,6 +396,40 @@ const DUREE_FACTS: Fact[] = [
 	{ left: 'une heure et quart', answerUnit: 'min', answer: 75 },
 ];
 
+/* ---------- Étayage de la notion (#490) ----------
+   Réservé au mode TABLEAU : c'est lui qui rend la méthode mécanisable (des rangs, un
+   chiffre par case), et le déroulé montre exactement le tableau que l'enfant remplit. Le
+   mode SAISIE, lui, ne se ramène pas à une seule méthode (repères mémorisés, ×10 ou ÷10
+   selon le sens) : il relèvera d'un texte rédigé, pas d'une résolution générée.
+
+   L'exemple est FIXE et va de la GRANDE unité vers la petite : c'est le sens où les
+   colonnes intermédiaires sont vides, donc celui où se joue la seule vraie difficulté (le
+   0 qui tient un rang, cf. `explicationTransit` côté runner). Les colonnes hors des paires
+   étudiées sont marquées `transit`, comme dans l'exercice réel — même géométrie, mêmes
+   codes visuels. */
+function etayageTableau(
+	titre: string,
+	colonnes: { unite: string; nom: string; chiffres: string; transit?: boolean }[],
+	depart: string,
+	cible: string,
+): NonNullable<LessonInput['etayage']> {
+	return [
+		{
+			mode: 'tableau',
+			contenu: {
+				titre,
+				// L'idée-force, sous les yeux à chaque pas. Elle ne dit ni « ajoute des zéros » ni
+				// « décale la virgule » : ces raccourcis marchent sur les entiers et cassent au
+				// premier décimal (3,2 km = 3 200 m, pas 32 000).
+				regle:
+					'Chaque colonne est une unité : tu écris un chiffre par colonne, et un 0 ' +
+					"quand il n'y a rien à compter dans cette unité-là.",
+				exemple: { moteur: 'conversion', spec: { colonnes, depart, cible } },
+			},
+		},
+	];
+}
+
 /* ---------- Descripteurs des quatre leçons (#89) ---------- */
 
 export const MESURE_LESSONS: LessonInput[] = [
@@ -432,6 +466,18 @@ export const MESURE_LESSONS: LessonInput[] = [
 			},
 			conversionType,
 		),
+		// 3 km = 3 000 m : trois colonnes à remplir de 0, dont deux de transit.
+		etayage: etayageTableau(
+			'Le tableau de conversion des longueurs',
+			[
+				{ unite: 'km', nom: 'kilomètre', chiffres: '3' },
+				{ unite: 'hm', nom: 'hectomètre', chiffres: '0', transit: true },
+				{ unite: 'dam', nom: 'décamètre', chiffres: '0', transit: true },
+				{ unite: 'm', nom: 'mètre', chiffres: '0' },
+			],
+			'km',
+			'm',
+		),
 	},
 	{
 		id: 'mes-masses',
@@ -457,6 +503,18 @@ export const MESURE_LESSONS: LessonInput[] = [
 				},
 			},
 			conversionType,
+		),
+		// 2 kg = 2 000 g : mêmes trois colonnes vides, sur une autre grandeur.
+		etayage: etayageTableau(
+			'Le tableau de conversion des masses',
+			[
+				{ unite: 'kg', nom: 'kilogramme', chiffres: '2' },
+				{ unite: 'hg', nom: 'hectogramme', chiffres: '0', transit: true },
+				{ unite: 'dag', nom: 'décagramme', chiffres: '0', transit: true },
+				{ unite: 'g', nom: 'gramme', chiffres: '0' },
+			],
+			'kg',
+			'g',
 		),
 	},
 	{
@@ -485,6 +543,19 @@ export const MESURE_LESSONS: LessonInput[] = [
 				},
 			},
 			conversionType,
+		),
+		// 5 L = 500 cL : deux colonnes vides, toutes deux ÉTUDIÉES (aucune de transit dans
+		// cet empan) — l'exemple montre donc le 0 de rang sans le mêler au code « unité pas
+		// encore vue en classe ».
+		etayage: etayageTableau(
+			'Le tableau de conversion des contenances',
+			[
+				{ unite: 'L', nom: 'litre', chiffres: '5' },
+				{ unite: 'dL', nom: 'décilitre', chiffres: '0' },
+				{ unite: 'cL', nom: 'centilitre', chiffres: '0' },
+			],
+			'L',
+			'cL',
 		),
 	},
 	{

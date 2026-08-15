@@ -22,6 +22,7 @@
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
+import { droiteDepuisExercice } from '../core/etayage-droite';
 import type { ExerciseMode } from '../core/exercise';
 import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
@@ -67,6 +68,7 @@ interface QuestionDroite {
 	consigne: string;
 	explication: string;
 	parle: string;
+	pasLabel: string; // ce que vaut une graduation (#490) — premier pas de l'étayage
 }
 
 let lesson: LessonDef;
@@ -109,6 +111,7 @@ function genQuestions(l: LessonDef, n: number): QuestionDroite[] {
 			consigne: ex.consigne,
 			explication: ex.explication,
 			parle: ex.parle,
+			pasLabel: ex.pasLabel,
 		});
 		misses = 0;
 	}
@@ -305,6 +308,17 @@ function verifier(): void {
 					? `<span class="lqcm-ok">Bravo ! 🎉</span>`
 					: `<span class="lqcm-ko">Regarde le bon repère en vert, puis continue.</span>`) + expl,
 			isLast: idx >= questions.length - 1,
+			// Étayage (#490) : proposé sur un placement raté, et déroulé sur CETTE droite —
+			// l'échelle change à chaque question, un exemple voisin ne montrerait pas la sienne.
+			...(juste
+				? {}
+				: {
+						etayage: {
+							lesson,
+							niveau: niveauLecon(lesson),
+							exemple: { moteur: 'droite' as const, spec: droiteDepuisExercice(q) },
+						},
+					}),
 			onNext: () => {
 				idx++;
 				if (idx >= questions.length) finish();

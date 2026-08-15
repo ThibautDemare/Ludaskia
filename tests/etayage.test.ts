@@ -176,7 +176,9 @@ describe('étayage des opérations posées — la donnée de la leçon (#490)', 
 	it('chaque exemple MONTRE le mécanisme qui coince (sinon il n’apprend rien)', () => {
 		const exemple = (id: string) => {
 			const ex = etayagePour(lecon(id), 'ce2')?.exemple;
-			if (!ex) throw new Error(`pas d'exemple pour ${id}`);
+			// Les trois pilotes sont des calculs POSÉS : on le vérifie au lieu de le supposer,
+			// l'exemple d'une leçon pouvant relever d'un autre moteur (#490 PR 2).
+			if (ex?.moteur !== 'posee') throw new Error(`pas d'exemple posé pour ${id}`);
 			return ex.spec;
 		};
 		// Addition : au moins deux retenues franches.
@@ -207,7 +209,7 @@ describe('étayage des opérations posées — la donnée de la leçon (#490)', 
 	it('chaque exemple reste suivable en une passe (opérandes bornés, déroulé court)', () => {
 		for (const id of PILOTES) {
 			const ex = etayagePour(lecon(id), 'ce2')?.exemple;
-			if (!ex) throw new Error(`pas d'exemple pour ${id}`);
+			if (ex?.moteur !== 'posee') throw new Error(`pas d'exemple posé pour ${id}`);
 			const { op, a, b } = ex.spec;
 			expect(String(a).length, id).toBeLessThanOrEqual(3);
 			// Multiplicateur à deux chiffres → multiplicande à deux chiffres au plus, sinon le

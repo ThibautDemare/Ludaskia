@@ -24,7 +24,7 @@ import { escapeHTML } from '../core/utils';
 import { streakSuffix } from '../core/progress';
 import type { TypeAide } from '../core/aide';
 import { maybeAutoAide } from './aide-exercice';
-import { maybeEtayageAvantSerie, monterBoutonEtayage } from './etayage-panneau';
+import { brancherEtayageEcran } from './etayage-panneau';
 import { announceRewards } from './effects';
 import { declarerSessionRunner, finirSessionRunner } from './runner-reprise';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
@@ -96,24 +96,17 @@ export function demarrerRunner(o: {
 	});
 	o.render();
 	document.getElementById('sheets')?.focus({ preventScroll: true });
-	// Bouton persistant de l'étayage de la notion (#490) : ne fait rien si la leçon n'a pas
-	// de contenu d'étayage. Posé avant les modales, qui lui rendent le focus.
-	monterBoutonEtayage(
-		document.querySelector<HTMLElement>('#sheets .sprint-stage'),
-		o.lesson,
-		niveauLecon(o.lesson),
-		o.mode ?? undefined,
-	);
 	// APRÈS le focus, jamais avant : la bulle d'aide est une modale qui prend le focus et
 	// le rend à la fermeture (au bouton « ? » de l'exercice). Focaliser `#sheets` ensuite
 	// le lui volerait et casserait son piège de focus.
 	if (o.aide) maybeAutoAide(o.aide); // au 1er lancement seulement (une fois par profil)
-	// PUIS l'exemple d'avant-série (#490), jamais avant : l'aide au GESTE est prioritaire
-	// quand les deux se présentent (savoir manipuler l'écran précède la méthode), et c'est
-	// dans cet ordre — et seulement dans cet ordre — que la garde anti-empilement de
-	// `maybeEtayageAvantSerie` voit la modale d'aide et s'abstient. L'exemple reviendra alors
-	// au lancement suivant, son épisode n'ayant pas été marqué vu.
-	maybeEtayageAvantSerie(o.lesson, o.mode ?? undefined);
+	// PUIS l'étayage de la notion (#490), jamais avant : l'aide au GESTE est prioritaire
+	// quand les deux se présentent (savoir manipuler l'écran précède la méthode).
+	brancherEtayageEcran(
+		document.querySelector<HTMLElement>('#sheets .sprint-stage'),
+		o.lesson,
+		o.mode ?? undefined,
+	);
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

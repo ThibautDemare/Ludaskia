@@ -191,25 +191,17 @@ export interface EtayageDemande {
 	onFerme?: () => void;
 }
 
-/** Ouvre le panneau d'étayage. Sans contenu pour cette leçon, n'ouvre RIEN et appelle
-    tout de même `onFerme` : l'appelant n'a pas à savoir si le panneau existe (c'est ce qui
-    rend la dégradation propre sans dupliquer le test chez chaque point d'entrée). */
-export function ouvrirEtayage(d: EtayageDemande): void {
-	const contenu = etayagePour(d.lesson, d.niveau, d.mode);
-	if (ouvert || !contenu) {
-		d.onFerme?.();
-		return;
-	}
-	ouvert = true;
-	const spec = d.posed ?? (contenu.exemple?.moteur === 'posee' ? contenu.exemple.spec : undefined);
-	const pas = spec ? pasDe(resolutionPosee(spec), spec) : [];
-	const ttsDispo = dicteeDisponible();
-	const sortie = d.avantSerie ? SORTIE_AVANT_SERIE : SORTIE_DEMANDE;
-
-	const overlay = document.createElement('div');
-	overlay.className = 'modal-overlay';
-	overlay.id = 'etayageOverlay';
-	overlay.innerHTML = `
+/* Markup du panneau, séparé de son câblage (convention maison `xxxHTML` + `bindXxx`, cf.
+   `brouillonHTML`/`bindBrouillon`) : le template se relit et se fait évoluer sans traverser
+   les écouteurs, et `ouvrirEtayage` ne garde que ce qui bouge dans le temps. */
+function panneauHTML(
+	d: EtayageDemande,
+	contenu: EtayageContenu,
+	spec: PosedSpec | undefined,
+	pas: PasEtayage[],
+	sortie: string,
+): string {
+	return `
 		<div class="modal aide-modal etay-modal" role="dialog" aria-modal="true" aria-labelledby="etayTitle">
 			<button type="button" class="modal-close aide-close" aria-label="Fermer l'explication">${icon('x')}</button>
 			${mascotteBulleHTML(d.avantSerie ? 'Un petit rappel avant de commencer.' : MASCOTTE_LIGNE)}
@@ -233,7 +225,7 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 			}
 			${prerequisHTML(d)}
 			${
-				ttsDispo
+				dicteeDisponible()
 					? `<button type="button" class="modal-listen aide-listen etay-listen" aria-label="Écouter l'explication" title="Écouter l'explication">${icon('speaker')}<span class="aide-listen-lab">Écouter</span></button>`
 					: ''
 			}
@@ -243,6 +235,26 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 			</div>
 			${d.avantSerie && pas.length ? `<button type="button" class="etay-filer" id="etayFiler">Je me lance tout de suite</button>` : ''}
 		</div>`;
+}
+
+/** Ouvre le panneau d'étayage. Sans contenu pour cette leçon, n'ouvre RIEN et appelle
+    tout de même `onFerme` : l'appelant n'a pas à savoir si le panneau existe (c'est ce qui
+    rend la dégradation propre sans dupliquer le test chez chaque point d'entrée). */
+export function ouvrirEtayage(d: EtayageDemande): void {
+	const contenu = etayagePour(d.lesson, d.niveau, d.mode);
+	if (ouvert || !contenu) {
+		d.onFerme?.();
+		return;
+	}
+	ouvert = true;
+	const spec = d.posed ?? (contenu.exemple?.moteur === 'posee' ? contenu.exemple.spec : undefined);
+	const pas = spec ? pasDe(resolutionPosee(spec), spec) : [];
+	const sortie = d.avantSerie ? SORTIE_AVANT_SERIE : SORTIE_DEMANDE;
+
+	const overlay = document.createElement('div');
+	overlay.className = 'modal-overlay';
+	overlay.id = 'etayageOverlay';
+	overlay.innerHTML = panneauHTML(d, contenu, spec, pas, sortie);
 	document.body.appendChild(overlay);
 
 	const suivant = overlay.querySelector<HTMLButtonElement>('#etaySuivant')!;
@@ -417,6 +429,20 @@ export function monterBoutonEtayage(
 	btn.innerHTML = icon('math-operations');
 	btn.addEventListener('click', () => ouvrirEtayage({ lesson, niveau, mode, trigger: btn }));
 	conteneur.appendChild(btn);
+}
+
+/** Branche l'étayage sur un écran d'exercice : le bouton persistant, puis l'exemple
+    d'avant-série. UN seul appelant possible par écran, et une seule copie de l'ordre à
+    respecter — à appeler APRÈS l'éventuelle aide au geste (`maybeAutoAide`), qui est
+    prioritaire et dont l'exemple d'avant-série refuse de doubler la modale.
+    Ne fait rien si la leçon n'a pas de contenu d'étayage. */
+export function brancherEtayageEcran(
+	conteneur: HTMLElement | null,
+	lesson: LessonDef,
+	mode?: string,
+): void {
+	monterBoutonEtayage(conteneur, lesson, niveauLecon(lesson), mode);
+	maybeEtayageAvantSerie(lesson, mode);
 }
 
 /** Exemple d'avant-série : le SEUL point d'entrée AUTOMATIQUE, donc le seul à porter une

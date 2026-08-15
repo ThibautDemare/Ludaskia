@@ -52,6 +52,16 @@ Le serveur de dev est démarré automatiquement par Playwright (`webServer` dans
   question répondue pour atteindre `.sprint-done`. Installer l'horloge APRÈS le lancement
   ne fonctionne pas (l'intervalle déjà créé tourne sur l'horloge réelle). Exemple :
   `e2e/je-ne-sais-pas.spec.ts` (« Sprint : valider un champ vide… »).
+- **Forcer une fenêtre de course de façon déterministe** : un scénario qui ne reproduit un bug
+  que si une action retardée (un `setTimeout` de débounce, par ex.) retombe **pendant** un
+  autre événement ne doit pas dépendre du temps réel écoulé entre deux clics Playwright — ce
+  temps varie avec la machine, et le test ne perd la course qu'une fois sur N. Enchaîner les
+  gestes qui doivent tomber dans la même fenêtre au sein d'un **seul `page.evaluate`** (même
+  tour de boucle d'évènements JS : leurs suites en microtâche se rejouent à temps réel quasi
+  nul, forcément avant qu'une macrotâche de type `setTimeout` ne puisse se déclencher), puis
+  avancer une horloge truquée (`page.clock`) pour faire retomber le minuteur en vol soi-même.
+  La fenêtre du bug est ainsi heurtée à chaque run. Exemple : `e2e/encadrant-banque.spec.ts`
+  (« un re-rendu complet pendant la fenêtre d'annonce… », #527).
 
 ## Scan a11y automatique (axe-core, #411)
 

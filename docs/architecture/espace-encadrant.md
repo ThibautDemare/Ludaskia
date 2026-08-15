@@ -394,6 +394,18 @@ circonflexe de « être ») et **filtre « plus dans aucune liste »** (compteur
 (`data-act="banque-plus"`, SC 2.4.1 — une banque de plusieurs centaines de mots n'impose pas
 de tous les traverser au clavier avant la section suivante).
 
+**Résumé annoncé, avec un différé** (#527) : le compte affiché (« N mots affichés sur Total »)
+vit dans une région live `#encBanqueResume` (`role="status"`) que le filtrage à la frappe
+**mute** au lieu de la remplacer (un nœud recréé à chaque lettre n'est plus annoncé du tout),
+écrite avec un délai de 350 ms (`DELAI_ANNONCE`) après chaque frappe ou bascule de filtre —
+la réécrire à chaque lettre ferait qu'une synthèse vocale s'interrompt elle-même en boucle. Le
+texte est **recalculé au moment de retomber**, jamais transporté depuis l'appel : un re-rendu
+**complet** de l'espace (`renderEspace`, typiquement une suppression confirmée) peut survenir
+dans cette fenêtre et réécrire lui-même le nœud avec le compte à jour ; un texte figé au moment
+de l'appel retomberait alors par-dessus et y recollerait pour de bon un compte **périmé**, plus
+rien ne le corrigeant ensuite. Recalculer rend cet écart impossible à exprimer, plutôt que de
+compter sur chaque futur site de re-rendu pour penser à annuler le minuteur.
+
 **Un mot orphelin** = rattaché à **rien** — ni liste, ni verbe, ni leçon prédéfinie
 (`EntreeBanque.orphelin`) : exactement le cas où `core/orthographe/lessons.ts:groupeOrthoDuMot`
 renvoie `null`, donc où une erreur sur ce mot n'est **pas journalisable** (limite documentée en
@@ -411,6 +423,16 @@ actions du récap, épingler compris, se défont d'un clic) : confirmation `uiCo
   qu'elle reviendra au prochain lancement du parcours tant que le verbe reste dans la liste
   qui le porte (id déterministe, `materialiserVerbes` la recrée) — le message nomme cette
   liste pour qu'il aille y retirer ou reconfigurer le verbe.
+
+**Focus rendu au résumé après suppression** (a11y, #527) : la modale de confirmation rend le
+focus au bouton « Supprimer » de la ligne, qui existe encore à cet instant — mais le re-rendu
+**complet** qui suit (`renderEspace`) le détruit aussitôt, et le navigateur rabattrait sinon le
+focus sur `<body>` (même piège que `demarrerRunner`/`#sheets`, cf. [Rendu &
+interactions](ui.md)). `supprimer()` pose donc le focus sur `#encBanqueResume`
+(`tabindex="-1"`) juste après le re-rendu : l'adulte au clavier garde son contexte, et c'est
+aussi ce qui **fait dire** le nouveau compte à un lecteur d'écran — une région `role="status"`
+recréée déjà remplie n'est annoncée de façon fiable par aucun moteur (même constat que pour le
+filtre de période de l'historique des erreurs, ci-dessous).
 
 Écriture sur le profil **consulté** par UUID (`saveOrthoFor` + `touchProfile`, cf. [Données &
 profils](donnees-et-profils.md)), jamais de bascule du profil actif.

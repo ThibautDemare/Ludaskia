@@ -169,7 +169,7 @@ export function banqueMotsHTML(consulte: Profile, entrees: EntreeBanque[]): stri
       </label>
       ${orphelinsHTML(entrees)}
     </div>
-    <p class="enc-hint" id="encBanqueResume" role="status" aria-live="polite">${texteResume(entrees, filtres)}</p>
+    <p class="enc-hint" id="encBanqueResume" role="status" aria-live="polite" tabindex="-1">${texteResume(entrees, filtres)}</p>
     <div id="encBanqueCorps">${listeHTML(filtres)}</div>`;
 }
 
@@ -185,18 +185,36 @@ function rafraichir(uuid: string): void {
 	const entrees = banqueDuProfil(uuid);
 	const filtres = filtrerBanque(entrees, { recherche, orphelinsSeuls });
 	corps.innerHTML = listeHTML(filtres);
-	annoncer(texteResume(entrees, filtres));
+	annoncer();
 }
 
 /* L'annonce est DIFFÉRÉE, contrairement au filtrage visuel : réécrire la région live à
    chaque lettre fait qu'une synthèse vocale s'interrompt elle-même avant d'avoir fini, et
    le dernier compte entendu peut n'être pas le bon. Le texte visible suit le même délai —
-   il resterait sinon en désaccord avec la liste déjà filtrée sous les yeux. */
-function annoncer(texte: string): void {
+   il resterait sinon en désaccord avec la liste déjà filtrée sous les yeux.
+
+   Le texte est RECALCULÉ au moment de retomber, et non transporté depuis l'appel (#527) :
+   un re-rendu complet de l'espace peut survenir dans les 350 ms (une suppression confirmée,
+   ou une action d'une autre section de l'onglet), et il réécrit le résumé lui-même. Une
+   phrase calculée AVANT ce re-rendu retombait alors par-dessus, et la région live gardait
+   pour de bon un compte contredisant la liste sous les yeux — plus rien ne la réécrivant.
+   Recalculer rend l'écart impossible à exprimer, au lieu de compter sur chaque futur site
+   de re-rendu pour penser à annuler le minuteur.
+
+   On écrit même quand le texte affiché est DÉJÀ le bon, et c'est délibéré (avis a11y) : ce
+   cas est précisément celui du re-rendu complet, qui a RECRÉÉ le nœud avec son texte dedans.
+   Une région `role="status"` qui naît déjà remplie n'est annoncée par personne de façon
+   fiable (cf. le même constat dans `encadrant-erreurs.ts`) ; cette écriture tardive est la
+   seule MUTATION authentique dont l'aide technique dispose alors. Économiser la réécriture
+   « puisque le texte est identique » troquait un silence probable contre un silence certain. */
+function annoncer(): void {
 	window.clearTimeout(annonceTimer);
 	annonceTimer = window.setTimeout(() => {
 		const p = container()?.querySelector('#encBanqueResume');
-		if (p) p.textContent = texte;
+		const uuid = consulteUuid();
+		if (!p || !uuid) return;
+		const entrees = banqueDuProfil(uuid);
+		p.textContent = texteResume(entrees, filtrerBanque(entrees, { recherche, orphelinsSeuls }));
 	}, DELAI_ANNONCE);
 }
 
@@ -265,9 +283,10 @@ export function banqueClick(act: string, el: HTMLElement): boolean {
 }
 
 /* Filtres et dépliage remis à zéro d'un bloc (changement de volet, de profil consulté…).
-   L'annonce en vol est ANNULÉE au passage : son callback retrouve `#encBanqueResume` au
-   moment de s'exécuter, sans revérifier qui l'on consulte — laissé courir, il écraserait
-   la région live du nouveau profil avec un texte calculé pour l'ancien. */
+   L'annonce en vol est ANNULÉE au passage : une annonce programmée pour la vue qu'on quitte
+   n'a rien à dire sur celle qui la remplace. Depuis #527 elle ne pourrait plus mentir (elle
+   recalcule en retombant, cf. `annoncer`), mais la laisser courir ferait relire au parent un
+   compte qu'il n'a pas demandé. */
 function reinitialiserFiltres(): void {
 	recherche = '';
 	orphelinsSeuls = false;
@@ -334,4 +353,13 @@ async function supprimer(uuid: string, wordId: string): Promise<void> {
 	// de « Révisions de … », rendus sur la même page — le laisser affiché ailleurs donnerait
 	// une page qui se contredit.
 	renderEspace();
+	// La modale vient de rendre le focus au bouton « Supprimer » de la ligne (il existait
+	// encore : `restoreFocusTo` n'aurait donc jamais été consulté), et le re-rendu vient de le
+	// détruire — le navigateur rabat alors le focus sur `<body>`, le piège que `demarrerRunner`
+	// évite déjà de la même manière (cf. `lecon-runner-shared.ts`). On le pose sur le résumé,
+	// qui porte le nouveau compte : l'adulte au clavier garde son contexte, et c'est aussi ce
+	// qui FAIT DIRE ce compte à un lecteur d'écran — la région live, recréée déjà remplie par
+	// le re-rendu, n'est annoncée de façon fiable par aucun moteur (avis a11y). C'est le geste
+	// IRRÉVERSIBLE de l'écran : il ne doit pas se conclure en silence.
+	container()?.querySelector<HTMLElement>('#encBanqueResume')?.focus({ preventScroll: true });
 }

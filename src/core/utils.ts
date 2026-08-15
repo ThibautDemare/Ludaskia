@@ -126,7 +126,25 @@ export function moveAt(arr: number[], from: number, to: number): number[] {
 	return insertAt(removeAt(arr, from), to, arr[from]);
 }
 
-export const escapeHTML = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+/* Échappement HTML : les CINQ caractères qui changent le sens du markup, et pas seulement
+   `&` et `<`. Les guillemets comptent autant que le reste, parce qu'une bonne part des appels
+   interpolent dans une VALEUR D'ATTRIBUT (`aria-label="…"`, `value="…"`, `title="…"`) : un `"`
+   y referme l'attribut, et tout ce qui suit est relu comme de NOUVEAUX attributs (un
+   `onmouseover=`, au hasard) sans avoir eu besoin du moindre `<`. Le cas se produit sans
+   malveillance — une liste nommée « Mots "difficiles" » suffit à casser le libellé accessible
+   d'un bouton — et l'espace encadrant IMPORTE des sauvegardes JSON (`importProfiles`) dont le
+   contenu n'est pas nécessairement le nôtre.
+   L'apostrophe part en `&#39;` et non `&apos;` : cette entité n'existe pas en HTML 4, et rien
+   n'oblige à parier sur le mode de rendu. Ordre garanti par le remplacement en UN passage :
+   traiter `&` séparément le ferait réécrire les `&` produits par les autres. */
+const ECHAPPEMENTS_HTML: Record<string, string> = {
+	'&': '&amp;',
+	'<': '&lt;',
+	'>': '&gt;',
+	'"': '&quot;',
+	"'": '&#39;',
+};
+export const escapeHTML = (s: string) => s.replace(/[&<>"']/g, (c) => ECHAPPEMENTS_HTML[c]);
 
 /* Élision de la préposition « de » devant un mot à initiale vocalique : « d'images »,
    « d'arêtes », « d'œufs » — sinon « de billes », « de faces ». Classe = voyelles simples,

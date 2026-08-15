@@ -6,6 +6,7 @@
    DOM, en produit une version pour l'OREILLE. Réutilisée par tout bouton
    « Écouter la consigne ». Voir docs/design-orthographe.md (§ Accessibilité).
    ============================================================ */
+import { escapeHTML } from './utils';
 
 // Signes d'opération entourés d'espaces (les énoncés calcul sont « 7 + 8 = @ »)
 // → mots. On exige l'espacement pour ne pas toucher un tiret interne (« porte-clé »).
@@ -78,8 +79,20 @@ export function texteParle(raw: string): string {
 	if (!raw) return '';
 	let t = raw
 		.replace(/<[^>]*>/g, ' ') // une consigne peut contenir du HTML (gras…)
-		.replace(/&amp;/g, '&')
+		// Les entités que `escapeHTML` sait produire, ramenées à leur caractère : sans ça, le
+		// moteur vocal reçoit « &amp;amp; » et lit la suite de lettres au lieu du signe. Les
+		// cinq, donc, et non les deux d'origine : ce jeu appariait l'ancienne version de
+		// `escapeHTML`, et l'écart se serait vu au premier énoncé portant une des trois autres.
+		// Ramener au caractère n'est pas le VERBALISER : seule la table OPERATEURS le fait, et
+		// elle ne couvre pas `<`/`>` (un énoncé de comparaison affiché avec des chevrons serait
+		// donc muet à l'écoute — limite connue, verrouillée dans tests/tts-text.test.ts).
+		// `&amp;` en DERNIER, sinon « &amp;lt; » (une esperluette littérale suivie de « lt; »)
+		// se décoderait deux fois et ressortirait en « < ».
 		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&quot;/g, '"')
+		.replace(/&#39;/g, "'")
+		.replace(/&amp;/g, '&')
 		.replace(/[·—–]/g, ' ') // séparateurs purement visuels (puce, tirets longs)
 		.replace(/→/g, ' ') // flèche « devient » : muette (souvent suivie du trou)
 		.replace(/@/g, ' ') // le trou à remplir : silence, pas « arobase »
@@ -90,18 +103,11 @@ export function texteParle(raw: string): string {
 	return t.replace(/\s+/g, ' ').trim();
 }
 
-/** Échappement pour une valeur d'attribut HTML (escapeHTML n'échappe pas `"`). */
-function escAttr(s: string): string {
-	return s
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;');
-}
-
 /** Attribut `data-tts` prêt à coller dans un template (vide si rien à lire) :
- *  l'élément de consigne le porte, le composant ui/consigne-tts greffe le bouton. */
+ *  l'élément de consigne le porte, le composant ui/consigne-tts greffe le bouton.
+ *  L'échappement passe par `escapeHTML`, qui couvre désormais les guillemets : ce module
+ *  gardait sa propre copie faute de quoi la valeur d'attribut se serait refermée. */
 export function ttsAttr(raw: string): string {
 	const t = texteParle(raw);
-	return t ? ` data-tts="${escAttr(t)}"` : '';
+	return t ? ` data-tts="${escapeHTML(t)}"` : '';
 }

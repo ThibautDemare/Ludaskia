@@ -20,7 +20,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   suites #108/#448 : un exercice « déjà rangé » n'aurait aucun intérêt), déduplication
   (`uniqueComm/Exact`, `commKey`), réordonnancement pur d'un tableau d'index
   (`insertAt`/`removeAt`/`moveAt`, #374 — utilisés par les tuiles d'orthographe
-  `ui/ortho-runner.ts`, logique agnostique du DOM), `escapeHTML`, `fmt` (mm:ss), et
+  `ui/ortho-runner.ts`, logique agnostique du DOM), **`escapeHTML`** — les **cinq**
+  caractères qui changent le sens du markup (`& < > " '`), donc bon en contenu comme en
+  **valeur d'attribut**, où un `"` refermerait l'attribut et laisserait en écrire de
+  nouveaux sans avoir besoin d'un `<` ; c'est le **seul** échappement du projet, les copies
+  locales partielles (`tts-text.ts`, `items.ts`) ont été supprimées et rien ne justifie d'en
+  réécrire une —, `fmt` (mm:ss), et
   `normalizeText` (normalisation **partagée** des réponses texte : trim + espaces
   internes réduits + NFC). **`startOfDay(ts)`** — début du jour LOCAL (via `setHours`,
   robuste au changement d'heure) — est le socle **unique** de tout raisonnement en

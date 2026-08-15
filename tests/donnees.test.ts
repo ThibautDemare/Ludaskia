@@ -52,9 +52,29 @@ function genText(id: string): TextEx {
 
 /* ---------- Extraction black-box des figures ---------- */
 
-/** Contenus de tous les <text> d'un SVG (étiquettes + titre). */
+/** Texte RESTITUÉ d'un fragment de markup : ce que l'œil (et le lecteur d'écran) reçoit une
+    fois les entités décodées. Le décodage est confié au parseur du DOM, jamais à une table
+    écrite à la main — qui recopierait l'échappement du code testé et le figerait. Nécessaire
+    depuis que `escapeHTML` couvre l'apostrophe : « Nombre d'images » est SÉRIALISÉ en
+    « Nombre d&#39;images », et lire le markup brut ferait passer le « 39 » de l'entité pour
+    un nombre AFFICHÉ. */
+function texteRendu(markup: string): string {
+	const hote = document.createElement('div');
+	hote.innerHTML = markup;
+	return hote.textContent ?? '';
+}
+
+/** Contenus de tous les <text> d'un SVG (étiquettes + titre), tels qu'AFFICHÉS. */
 function textesSvg(svg: string): string[] {
-	return [...svg.matchAll(/<text[^>]*>(.*?)<\/text>/g)].map((m) => m[1]);
+	return [...svg.matchAll(/<text[^>]*>(.*?)<\/text>/g)].map((m) => texteRendu(m[1]));
+}
+
+/** Nombres LUS dans le `<desc>` d'un SVG (description accessible), entités décodées. Sert à
+    prouver que la description ne souffle pas la hauteur à lire : la compétence testée par la
+    leçon est de LIRE la barre sur l'axe. */
+function nombresDuDesc(svg: string): Set<number> {
+	const desc = texteRendu(svg.match(/<desc>(.*?)<\/desc>/)?.[1] ?? '');
+	return new Set([...desc.matchAll(/\d+/g)].map((m) => Number(m[0])));
 }
 
 /** Valeurs des graduations LUES sur l'axe (étiquettes purement chiffrées), triées croissant.
@@ -250,12 +270,24 @@ describe('renderDiagrammeBarres : SVG accessible role="img"', () => {
 	});
 
 	it('le <desc> ne divulgue PAS les hauteurs à lire : uniquement la structure {n, 0, max, pas}', () => {
-		const svg = renderDiagrammeBarres(spec);
-		const desc = svg.match(/<desc>(.*?)<\/desc>/)?.[1] ?? '';
-		const nums = new Set([...desc.matchAll(/\d+/g)].map((m) => Number(m[0])));
+		const nums = nombresDuDesc(renderDiagrammeBarres(spec));
 		expect(nums).toEqual(new Set([spec.barres.length, 0, spec.max, spec.pas]));
 		// Aucune hauteur de barre ne figure dans le desc (aucune coïncidence ici avec la structure).
 		for (const b of spec.barres) expect(nums.has(b.valeur)).toBe(false);
+	});
+
+	it('contre-épreuve : une hauteur glissée dans le <desc> EST repérée par l’extraction', () => {
+		// Le test précédent ne vaut que si l'extraction sait voir une fuite. On rend le MÊME
+		// diagramme avec un `desc` volontairement bavard — il annonce la hauteur d'Emma (10,
+		// absente de la structure {4, 0, 30, 5}) — et on vérifie que ce 10 remonte, et LUI
+		// SEUL : l'apostrophe de « c'est », sérialisée en `&#39;`, ne doit pas ajouter de 39
+		// fantôme (sans quoi le garde-fou crierait au loup et finirait par être relâché).
+		const fautif = renderDiagrammeBarres({
+			...spec,
+			desc: "Emma a 10 billes, c'est la barre la plus courte.",
+		});
+		expect(nombresDuDesc(fautif)).toEqual(new Set([10]));
+		expect(nombresDuDesc(fautif)).not.toEqual(new Set([spec.barres.length, 0, spec.max, spec.pas]));
 	});
 });
 
@@ -458,8 +490,7 @@ describe('Générateur donnees-barres-lire (échantillon)', () => {
 			const pas = grads[1] - grads[0];
 			const max = grads[grads.length - 1];
 			const nBarres = (svg.match(/<path/g) ?? []).length;
-			const desc = svg.match(/<desc>(.*?)<\/desc>/)?.[1] ?? '';
-			const nums = new Set([...desc.matchAll(/\d+/g)].map((m) => Number(m[0])));
+			const nums = nombresDuDesc(svg);
 			// Seuls la structure (nombre de barres, 0, max, pas) apparaît.
 			expect(nums).toEqual(new Set([nBarres, 0, max, pas]));
 			// La réponse ne fuit pas, sauf coïncidence avec une valeur structurelle (ex. barre = max).

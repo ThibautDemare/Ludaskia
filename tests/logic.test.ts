@@ -422,6 +422,115 @@ describe('Utilitaires', () => {
 	});
 });
 
+/* escapeHTML — le contrat est éprouvé sur le RÉSULTAT côté navigateur (ce que le parseur
+   reconstruit du markup produit), pas sur la table de correspondance du code : pour toute
+   chaîne, l'interpoler puis la relire doit rendre la chaîne D'ORIGINE, en contenu de balise
+   comme en valeur d'attribut, sans qu'aucun nœud ni aucun attribut n'ait été fabriqué au
+   passage. Un test qui recopierait la table passerait aussi bien sur un échappement
+   incomplet (celui d'avant, qui laissait filer `"`). */
+describe('escapeHTML : les cinq caractères qui changent le sens du markup', () => {
+	/* Chaînes d'épreuve : les cinq caractères isolés puis mêlés, des cas RÉELS de l'appli
+	   (nom de liste saisi par un adulte, énoncé français à apostrophe, comparaison « 5 < 7 »)
+	   et des charges qui exploitent chaque vecteur de sortie d'attribut. */
+	const HOSTILES = [
+		'',
+		'&',
+		'<',
+		'>',
+		'"',
+		"'",
+		'&<>"\'',
+		'Mots "difficiles"',
+		"point d'exclamation",
+		'a & b < c > d',
+		'&lt;',
+		'&amp;',
+		'<img src=x onerror=alert(1)>',
+		'" onmouseover="alert(1)',
+		"' onfocus='alert(1)",
+		'5 < 7 et 7 > 5',
+		'Nombre d’images', // apostrophe TYPOGRAPHIQUE : rien à échapper
+	];
+
+	const hote = () => document.createElement('div');
+
+	test('les cinq caractères, un par un', () => {
+		expect(api.escapeHTML('&')).toBe('&amp;');
+		expect(api.escapeHTML('<')).toBe('&lt;');
+		expect(api.escapeHTML('>')).toBe('&gt;');
+		expect(api.escapeHTML('"')).toBe('&quot;');
+		// `&#39;` et non `&apos;` : cette entité n'existe pas en HTML 4, la forme numérique
+		// est comprise partout.
+		expect(api.escapeHTML("'")).toBe('&#39;');
+	});
+
+	test('chaîne vide, et chaîne sans caractère de markup laissée intacte', () => {
+		expect(api.escapeHTML('')).toBe('');
+		expect(api.escapeHTML('Nombre de billes')).toBe('Nombre de billes');
+		// Guillemets français et apostrophe typographique ne sont PAS du markup : les toucher
+		// abîmerait les énoncés (« l’élève ») sans rien protéger.
+		expect(api.escapeHTML('« l’élève a 12 € »')).toBe('« l’élève a 12 € »');
+	});
+
+	test('un seul passage : le & produit par un autre remplacement n’est pas ré-échappé', () => {
+		// `<` doit donner `&lt;`, surtout PAS `&amp;lt;` — qui afficherait le texte « &lt; »
+		// à l'écran au lieu du chevron. C'est le piège d'un échappement en deux `replace`.
+		expect(api.escapeHTML('<b>')).toBe('&lt;b&gt;');
+		expect(api.escapeHTML('&<>"\'')).toBe('&amp;&lt;&gt;&quot;&#39;');
+		// Symétriquement, une entrée qui contient DÉJÀ le texte « &lt; » doit ressortir en
+		// `&amp;lt;` : c'est du texte littéral à préserver, pas un chevron.
+		expect(api.escapeHTML('&lt;')).toBe('&amp;lt;');
+	});
+
+	test('round-trip en CONTENU de balise : le texte affiché est la chaîne d’origine', () => {
+		for (const s of HOSTILES) {
+			const d = hote();
+			d.innerHTML = `<p>${api.escapeHTML(s)}</p>`;
+			expect(d.textContent, s).toBe(s);
+			expect(d.children.length, s).toBe(1); // aucun élément fabriqué par la chaîne
+		}
+	});
+
+	test('round-trip en VALEUR D’ATTRIBUT : aucun attribut fabriqué (le cas qui motive les 5)', () => {
+		for (const s of HOSTILES) {
+			const d = hote();
+			d.innerHTML = `<button class="b" aria-label="${api.escapeHTML(s)}" data-fin="1"></button>`;
+			const b = d.querySelector('button');
+			expect(b, s).toBeTruthy();
+			expect(b!.getAttribute('aria-label'), s).toBe(s);
+			// Exactement les trois attributs du gabarit : la valeur n'a rien pu ajouter, et
+			// `data-fin` prouve que la fin du gabarit n'a pas été avalée par la valeur.
+			expect([...b!.getAttributeNames()].sort(), s).toEqual(['aria-label', 'class', 'data-fin']);
+		}
+	});
+
+	test('contre-épreuve : SANS échappement, la valeur d’attribut se referme et injecte', () => {
+		// Sans elle, le test précédent passerait aussi avec une fonction qui n'échappe rien —
+		// il prouve donc que le parsing SAIT voir l'injection quand elle a lieu. C'est
+		// exactement l'état d'avant pour `"` : le `<` n'est pas nécessaire pour injecter.
+		const d = hote();
+		const brut = 'Mots " onmouseover="alert(1)';
+		d.innerHTML = `<button class="b" aria-label="${brut}" data-fin="1"></button>`;
+		const b = d.querySelector('button')!;
+		expect(b.getAttributeNames()).toContain('onmouseover');
+		expect(b.getAttribute('aria-label')).toBe('Mots ');
+		expect(b.getAttribute('aria-label')).not.toBe(brut);
+	});
+
+	test('appliquée DEUX fois elle ré-échappe : ce n’est PAS une opération idempotente', () => {
+		// Comportement RÉEL constaté (et normal) : la sortie contient des `&`, qui sont du
+		// texte à échapper au tour suivant. Conséquence pratique : ne jamais échapper une
+		// chaîne déjà échappée — l'utilisateur lirait « &quot; » à l'écran.
+		expect(api.escapeHTML(api.escapeHTML('a & b'))).toBe('a &amp;amp; b');
+		expect(api.escapeHTML(api.escapeHTML('"'))).toBe('&amp;quot;');
+		const d = hote();
+		d.innerHTML = `<p>${api.escapeHTML(api.escapeHTML('a & b'))}</p>`;
+		expect(d.textContent).toBe('a &amp; b'); // une couche de trop, visible à l'écran
+		// En revanche, une chaîne sans aucun des cinq caractères est un point fixe.
+		expect(api.escapeHTML(api.escapeHTML('rien à échapper'))).toBe('rien à échapper');
+	});
+});
+
 describe('Items', () => {
 	test('opérations correctes', () => {
 		expect(api.add(3, 4).answer).toBe(7);

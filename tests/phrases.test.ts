@@ -24,6 +24,14 @@ import { PONCT_MOTS, ponctView } from '../src/ui/ponctuation-view';
 
 const TIRAGES = 400;
 
+/** Texte RESTITUÉ d'un fragment de markup (entités décodées par le parseur du DOM) : ce que
+    l'enfant voit, indépendamment de la table d'échappement de `escapeHTML`. */
+function texteRendu(markup: string): string {
+	const hote = document.createElement('div');
+	hote.innerHTML = markup;
+	return hote.textContent ?? '';
+}
+
 // Marqueurs interrogatifs : mot interrogatif EN TÊTE (suivi d'une espace/fin —
 // on n'utilise pas \b qui, en JS ASCII, casse après l'accent de « où »), ou
 // inversion verbe-sujet (trait d'union + pronom).
@@ -263,8 +271,12 @@ describe('Présentation des signes (ponctuation-view, partagée runner/révision
 		const v = ponctView('!');
 		expect(v.label).toBe("point d'exclamation");
 		expect(v.html).toContain('lqcm-sym-glyph');
-		expect(v.html).toContain("point d'exclamation");
-		expect(v.html).toContain('!');
+		// Ce que l'enfant LIT sur le bouton, entités décodées : l'apostrophe est sérialisée
+		// en `&#39;` par `escapeHTML`, donc chercher la sous-chaîne dans le markup brut ne
+		// dirait rien de l'affichage réel (et casserait au prochain changement de table).
+		const affiche = texteRendu(v.html);
+		expect(affiche).toContain("point d'exclamation");
+		expect(affiche).toContain('!');
 		// Le point reçoit la classe modificatrice (grossi) ; pas les autres.
 		expect(ponctView('.').html).toContain('lqcm-sym-glyph--point');
 		expect(ponctView('?').html).not.toContain('lqcm-sym-glyph--point');

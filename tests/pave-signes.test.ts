@@ -21,6 +21,16 @@ const itemSigne = (answer: string): Item => ({
 	kind: 'text',
 });
 
+/** Parse un markup en élément hôte (happy-dom). Les attributs s'y lisent DÉCODÉS, comme le
+    fera le navigateur : c'est la valeur RÉELLE que `ui/pave-signes` recopiera dans le champ.
+    Comparer les entités à la main verrouillerait la table d'échappement de `escapeHTML`
+    (qui a déjà changé) au lieu du contenu, seul attendu qui compte ici. */
+function parse(html: string): HTMLElement {
+	const hote = document.createElement('div');
+	hote.innerHTML = html;
+	return hote;
+}
+
 describe('estSigneComparaison (#380)', () => {
 	test('reconnaît les trois signes (espaces tolérés)', () => {
 		for (const s of SIGNES_COMPARAISON) expect(estSigneComparaison(s)).toBe(true);
@@ -41,15 +51,38 @@ describe('rendu du champ signe et du pavé (#380)', () => {
 		expect(html).toContain('inputmode="none"');
 		expect(html).toContain('class="pave-signes screen-only"');
 		expect(html.match(/class="pave-signe"/g)).toHaveLength(3);
-		// Ordre FIGÉ « < = > » (même ancrage spatial que les tuiles). escapeHTML du
-		// projet n'échappe pas « > » (sans risque en valeur d'attribut).
-		const ordre = [...html.matchAll(/data-signe="([^"]+)"/g)].map((m) => m[1]);
-		expect(ordre).toEqual(['&lt;', '=', '>']);
+		// Ordre FIGÉ « < = > » (même ancrage spatial que les tuiles), lu sur les attributs
+		// tels que le navigateur les reconstruit. `escapeHTML` échappe les cinq caractères de
+		// markup : « < » et « > » sont tous deux sérialisés (`&lt;`, `&gt;`) et redonnent le
+		// signe nu au parsing — c'est ce signe-là que le tap écrira dans le champ.
+		const ordre = [...parse(html).querySelectorAll('button.pave-signe')].map((b) =>
+			b.getAttribute('data-signe'),
+		);
+		expect(ordre).toEqual(['<', '=', '>']);
 		// Libellés accessibles complets (registre CE2), boutons non pressés au rendu.
 		expect(html).toContain('aria-label="plus petit que"');
 		expect(html).toContain('aria-label="égal à"');
 		expect(html).toContain('aria-label="plus grand que"');
 		expect(html).not.toContain('aria-pressed="true"');
+	});
+
+	test('la réponse-signe part échappée dans data-answer (valeur décodée intacte)', () => {
+		// `renderItem` posait ses `data-*` via un échappement PARTIEL (`&` et `"` seulement),
+		// qui laissait passer un chevron NU en valeur d'attribut : toléré par le parseur HTML5,
+		// mais non conforme et fatal à toute relecture XML (les figures sont du markup
+		// sérialisé). Ce que lit le pipeline de correction ne change pas pour autant : c'est la
+		// valeur DÉCODÉE, seul contrat qui compte pour `session.verify` et les specs e2e.
+		const chevronNu = /="[^"]*[<>][^"]*"/;
+		// Contre-épreuve du détecteur : il DOIT voir un chevron nu là où il y en a un.
+		expect('<input class="ans" data-answer="<">').toMatch(chevronNu);
+		for (const signe of SIGNES_COMPARAISON) {
+			const html = renderItem(itemSigne(signe), createRenderContext());
+			const champ = parse(html).querySelector('input.ans');
+			expect(champ, signe).toBeTruthy();
+			expect(champ!.getAttribute('data-answer'), signe).toBe(signe);
+			// Le contenu de balise, lui, a parfaitement le droit de porter un chevron échappé.
+			expect(html, signe).not.toMatch(chevronNu);
+		}
 	});
 
 	test('les boutons du pavé sont rattachés au champ rendu (data-for = id)', () => {

@@ -24,7 +24,13 @@ import { escapeHTML } from '../core/utils';
 import { streakSuffix } from '../core/progress';
 import type { TypeAide } from '../core/aide';
 import { maybeAutoAide } from './aide-exercice';
-import { brancherEtayageEcran } from './etayage-panneau';
+import {
+	brancherEtayageEcran,
+	etayageDisponible,
+	lienEtayageHTML,
+	ouvrirEtayage,
+	type EtayageDemande,
+} from './etayage-panneau';
 import { announceRewards } from './effects';
 import { declarerSessionRunner, finirSessionRunner } from './runner-reprise';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
@@ -185,6 +191,11 @@ export interface WireNextOpts {
 	feedbackHTML: string; // HTML du feedback, déjà échappé par l'appelant (injecté via innerHTML)
 	isLast: boolean; // dernière question → « Voir mon résultat ▶ », sinon « Continuer ▶ »
 	onNext: () => void; // enchaînement (question suivante ou écran de résultat)
+	/** Étayage à PROPOSER sous le verdict (#490) : un lien discret, jamais un affichage
+	    automatique. À ne fournir que lorsque l'enfant s'est trompé (ou a demandé la réponse) —
+	    on n'explique pas une réussite —, et avec l'exercice raté quand le runner sait le
+	    décrire, pour dérouler CELUI-LÀ plutôt que l'exemple de la leçon. */
+	etayage?: EtayageDemande;
 }
 
 /* Fin de question commune aux cinq runners (#344) : révèle la zone de feedback,
@@ -195,6 +206,18 @@ export interface WireNextOpts {
 export function wireNext(actions: HTMLElement, feedback: HTMLElement, opts: WireNextOpts): void {
 	feedback.hidden = false;
 	feedback.innerHTML = opts.feedbackHTML;
+	// Étayage (#490) : APRÈS la bonne réponse et AVANT « Continuer ▶ ». Placé avant la
+	// réponse, ou aussi lourd que « Continuer », il serait cliqué par réflexe sans être lu.
+	// Même ordre qu'en révision, où le lien vit déjà au même endroit du verdict.
+	const demande = opts.etayage;
+	if (demande && etayageDisponible(demande.lesson, demande.niveau, demande.mode)) {
+		const hote = document.createElement('div');
+		hote.className = 'etay-apres-verdict';
+		hote.innerHTML = lienEtayageHTML('etay-lien', 'runEtayage');
+		const bouton = hote.querySelector('button')!;
+		bouton.addEventListener('click', () => ouvrirEtayage({ ...demande, trigger: bouton }));
+		feedback.appendChild(hote);
+	}
 	actions.hidden = false;
 	actions.innerHTML = `<button class="sprint-btn">${opts.isLast ? 'Voir mon résultat ▶' : 'Continuer ▶'}</button>`;
 	const next = actions.querySelector<HTMLButtonElement>('button')!;

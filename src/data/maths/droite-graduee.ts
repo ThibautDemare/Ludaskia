@@ -147,8 +147,9 @@ function construireExercice(f: FaitDroite, format: (v: number) => string): Exerc
 	// Explication après correction : borne chiffrée juste avant la cible + nombre de crans.
 	const borneInf = Math.max(...f.bornesVals.filter((v) => v <= f.cible));
 	const crans = Math.round((f.cible - borneInf) / f.pas);
+	const pasLabel = format(f.pas);
 	const explication =
-		`Chaque graduation vaut ${format(f.pas)}. ` +
+		`Chaque graduation vaut ${pasLabel}. ` +
 		`${cibleLabel} se place ${crans} ${crans > 1 ? 'graduations' : 'graduation'} après ${format(borneInf)}.`;
 	const consigne = `Place le nombre ${cibleLabel} sur la droite graduée.`;
 	return {
@@ -163,6 +164,7 @@ function construireExercice(f: FaitDroite, format: (v: number) => string): Exerc
 		consigne,
 		explication,
 		parle: consigne,
+		pasLabel,
 	};
 }
 
@@ -194,6 +196,18 @@ export interface DroiteLessonInput extends LessonInput {
 	rubrique?: string;
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   Trois pas, jamais plus : placer un nombre n'est pas une accumulation (comme une grille
+   qui se remplit) mais une décision, quasi immédiate une fois l'échelle comprise. Ce que
+   l'exemple doit installer, c'est donc l'ORDRE du raisonnement — ce que vaut un cran,
+   d'où l'on part, combien de sauts — et non un enchaînement de gestes.
+
+   Exemples FIXES, comme partout ailleurs, et choisis pour ne pas être des cas dégénérés :
+   la cible tombe sur une graduation muette, à plusieurs crans d'une borne chiffrée, dans
+   une fenêtre où le pas ne vaut pas 1 par hasard. */
+const ETAYAGE_REGLE =
+	"Avant de compter, regarde ce que vaut UNE graduation : ce n'est pas toujours 1.";
+
 export const DROITE_GRADUEE_LESSONS: DroiteLessonInput[] = [
 	{
 		id: 'num-droite-entiers',
@@ -207,6 +221,32 @@ export const DROITE_GRADUEE_LESSONS: DroiteLessonInput[] = [
 			{ ce2: GABARITS_CE2, cm1: GABARITS_CM1 },
 			(gabarits) => droiteType(() => faitEntiers(gabarits), formatNombre),
 		),
+		// Fenêtre [340 ; 350] graduée en unités, cible 347 : deux crans après le milieu
+		// chiffré (345), donc un comptage court mais réel, et une échelle qui se déduit.
+		etayage: [
+			{
+				contenu: {
+					titre: 'Placer un nombre sur la droite graduée',
+					regle: ETAYAGE_REGLE,
+					exemple: {
+						moteur: 'droite',
+						spec: {
+							min: 340,
+							max: 350,
+							pas: 1,
+							bornes: [
+								{ valeur: 340, label: '340' },
+								{ valeur: 345, label: '345' },
+								{ valeur: 350, label: '350' },
+							],
+							cible: 347,
+							cibleLabel: '347',
+							pasLabel: '1',
+						},
+					},
+				},
+			},
+		],
 	},
 	{
 		id: 'num-droite-decimaux',
@@ -214,5 +254,31 @@ export const DROITE_GRADUEE_LESSONS: DroiteLessonInput[] = [
 		// Décimaux : CM1 seul (borne dure du programme, le CE2 reste aux entiers).
 		exerciseType: droiteType(faitDecimaux, afficheDecimal, ['cm1']),
 		rubrique: 'Nombres décimaux',
+		// Fenêtre [3 ; 4] graduée en dixièmes (valeurs en CENTIÈMES entiers, comme le
+		// générateur), cible 3,7 : c'est ici que « une graduation ne vaut pas 1 » se joue.
+		etayage: [
+			{
+				contenu: {
+					titre: 'Placer un nombre décimal sur la droite graduée',
+					regle: ETAYAGE_REGLE,
+					exemple: {
+						moteur: 'droite',
+						spec: {
+							min: 300,
+							max: 400,
+							pas: 10,
+							bornes: [
+								{ valeur: 300, label: '3' },
+								{ valeur: 350, label: '3,5' },
+								{ valeur: 400, label: '4' },
+							],
+							cible: 370,
+							cibleLabel: '3,7',
+							pasLabel: '0,1',
+						},
+					},
+				},
+			},
+		],
 	},
 ];

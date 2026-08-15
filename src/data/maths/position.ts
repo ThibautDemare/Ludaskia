@@ -161,6 +161,33 @@ export interface PositionLessonDef extends LessonInput {
 	levels?: SchoolLevel[];
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   ⚠ Ces leçons montrent leur exemple CANONIQUE, jamais l'item que l'enfant vient de rater,
+   et c'est structurel : `genFact` ne rend qu'une chaîne déjà formatée (« 3 472 = 3 milliers
+   + @ centaines + … ») — ni le nombre, ni le rang troué, ni même LEQUEL des quatre gestes
+   était demandé n'en ressortent. Reconstruire tout ça en relisant l'énoncé serait fragile
+   au premier changement de formulation, et se tromper de geste ferait expliquer la mauvaise
+   méthode. On préfère un exemple juste à un item deviné.
+
+   Les nombres choisis ne sont pas neutres : `305` porte un zéro intercalaire (le point dur
+   du rang vide), `3 472` a quatre rangs distincts, et l'exemple de « la valeur des chiffres »
+   déroule le geste « combien EN TOUT » — celui qu'on rate — en le confrontant explicitement
+   au « chiffre des », que les enfants lui substituent. */
+function etayagePosition(
+	titre: string,
+	regle: string,
+	spec: { genre: 'chiffre' | 'entout' | 'rangs' | 'multiplicative'; n: number; rang: number },
+	niveau?: SchoolLevel,
+): NonNullable<LessonInput['etayage']>[number] {
+	return {
+		...(niveau ? { niveau } : {}),
+		contenu: { titre, regle, exemple: { moteur: 'position', spec } },
+	};
+}
+
+const REGLE_RANGS =
+	'Chaque chiffre vaut selon sa place : dans 3 472, le 4 ne vaut pas 4, il vaut 4 centaines.';
+
 export const POSITION_LESSONS: PositionLessonDef[] = [
 	{
 		id: 'num-valeur-position',
@@ -170,16 +197,39 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		exerciseType: calibrated<number>({ ce2: 3, cm1: 6 }, (maxRang) =>
 			positionType(() => valeurPositionFact(maxRang)),
 		),
+		etayage: [
+			etayagePosition(
+				'Le chiffre des centaines, et les centaines en tout',
+				'« Le chiffre des centaines » est UNE case. « Combien de centaines en tout » compte tous les paquets de cent du nombre.',
+				{ genre: 'entout', n: 3472, rang: 2 },
+			),
+		],
 	},
 	{
 		id: 'num-decompose-100',
 		label: 'Je décompose jusqu’à 100',
 		exerciseType: positionType(() => decomposeFact(1)),
+		etayage: [
+			etayagePosition('Décomposer un nombre à deux chiffres', REGLE_RANGS, {
+				genre: 'rangs',
+				n: 47,
+				rang: 1,
+			}),
+		],
 	},
 	{
 		id: 'num-decompose-1000',
 		label: 'Je décompose jusqu’à 1 000',
 		exerciseType: positionType(() => decomposeFact(2)),
+		// 305 : le zéro intercalaire, point dur de la décomposition (« il n'y a rien » n'est
+		// pas « il n'y a pas de rang »).
+		etayage: [
+			etayagePosition('Décomposer un nombre à trois chiffres', REGLE_RANGS, {
+				genre: 'rangs',
+				n: 305,
+				rang: 2,
+			}),
+		],
 	},
 	{
 		id: 'num-decompose-10000',
@@ -189,6 +239,22 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		exerciseType: calibrated<number>({ ce2: 3, cm1: 6 }, (maxIdx) =>
 			positionType(() => decomposeFact(maxIdx)),
 		),
+		// Deux entrées : la leçon change de plage selon la classe (4 chiffres au CE2, jusqu'au
+		// million au CM1), et un exemple à 4 chiffres n'apprendrait rien à un CM1 qui bute sur
+		// les dizaines de mille. C'est exactement ce que la dimension `niveau` sert à faire.
+		etayage: [
+			etayagePosition('Décomposer un nombre à quatre chiffres', REGLE_RANGS, {
+				genre: 'rangs',
+				n: 3472,
+				rang: 2,
+			}),
+			etayagePosition(
+				'Décomposer un grand nombre',
+				'Chaque chiffre vaut selon sa place, y compris au-delà du millier : dizaines de mille, centaines de mille, millions.',
+				{ genre: 'rangs', n: 48205, rang: 3 },
+				'cm1',
+			),
+		],
 	},
 	{
 		// Nouvelle leçon CM1 (#240) : décomposition MULTIPLICATIVE « chiffre × valeur
@@ -197,5 +263,12 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		label: 'Je décompose avec les multiplications',
 		levels: ['cm1'],
 		exerciseType: positionType(decomposeMultiplicativeFact),
+		etayage: [
+			etayagePosition(
+				'Décomposer avec des multiplications',
+				"Un chiffre vaut sa valeur multipliée par son rang : le 4 des centaines, c'est 4 × 100.",
+				{ genre: 'multiplicative', n: 48205, rang: 3 },
+			),
+		],
 	},
 ];

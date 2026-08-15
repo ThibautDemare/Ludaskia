@@ -14,6 +14,8 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
+import type { EtayageEntree } from '../../core/etayage';
+import { derouleConjugaison, type ConjugaisonSpec } from '../../core/etayage-conjugaison';
 import { rnd, sample } from '../../core/utils';
 import type { SchoolLevel } from '../../core/catalog';
 import { MODE_QCM_CHECK } from '../_shared';
@@ -299,6 +301,54 @@ export interface ConjLessonDesc {
 	tense: Tense;
 	levels: SchoolLevel[];
 	rubrique: string;
+	etayage?: EtayageEntree[];
+}
+
+/* ---------- Étayage de la notion (#490) ----------
+   Une entrée par (verbe × temps), FABRIQUÉE depuis le corpus : 52 leçons, zéro texte
+   écrit à la main, et un verbe ajouté demain sera traité pour ce qu'il est.
+
+   L'entrée n'est déclarée QUE si le moteur sait vraiment dérouler ce verbe à ce temps
+   (`derouleConjugaison` vérifie la régularité sur les six personnes avant de raconter quoi
+   que ce soit). Conséquence assumée et VOULUE : les verbes irréguliers au présent n'ont pas
+   de panneau, parce qu'il n'y a rien d'honnête à y dérouler — « je vais / nous allons » ne
+   se fabrique pas, il s'apprend. Mieux vaut pas de panneau qu'une méthode inventée.
+
+   Personne de l'exemple : « nous ». Jamais élidée (donc le pronom s'écrit tel quel), et
+   c'est la personne où la terminaison s'entend le plus nettement — au singulier, « j'aime »
+   et « il aime » ne distinguent rien à l'oreille. */
+const ETAYAGE_PERSONNE = 3;
+
+const ETAYAGE_REGLE: Record<Tense, string> = {
+	present: "Au présent, le radical ne bouge pas : c'est la terminaison qui change.",
+	futur:
+		"Au futur, la terminaison est la même pour tous les verbes ; c'est le radical qu'il faut connaître.",
+	imparfait:
+		"À l'imparfait, tous les verbes prennent les mêmes terminaisons : -ais, -ais, -ait, -ions, -iez, -aient.",
+	passe_compose:
+		"Le passé composé s'écrit en deux morceaux : l'auxiliaire conjugué, puis le participe passé.",
+};
+
+function etayageConjugaison(verb: VerbDef, tense: Tense): EtayageEntree[] | undefined {
+	const formes = verb.forms[tense];
+	const spec: ConjugaisonSpec = {
+		infinitif: verb.infinitif,
+		temps: tense,
+		personne: ETAYAGE_PERSONNE,
+		pronom: displayPronoun(ETAYAGE_PERSONNE, formes[ETAYAGE_PERSONNE]),
+		formes: [...formes],
+		formesPresent: [...verb.forms.present],
+	};
+	if (!derouleConjugaison(spec).pas.length) return undefined;
+	return [
+		{
+			contenu: {
+				titre: `${verb.infinitif} ${TENSE_PHRASE[tense]}`,
+				regle: ETAYAGE_REGLE[tense],
+				exemple: { moteur: 'conjugaison', spec },
+			},
+		},
+	];
 }
 
 /* Libellé dédié des auxiliaires : ils ne relèvent pas d'un groupe, donc ils
@@ -340,12 +390,18 @@ function verbeLabel(v: VerbDef): string {
    simple et le plus-que-parfait (attendus CM2) ne sont pas dans le corpus, donc non
    concernés. Les 3 QCM méta CM1 (conjugaison-meta.ts) tirent dans tout VERBS. */
 export const CONJ_LESSONS: ConjLessonDesc[] = VERBS.flatMap((v) =>
-	TENSES.map((tense) => ({
-		id: `fr-conj-${v.id}-${tense}`,
-		label: `${verbeLabel(v)} ${TENSE_PHRASE[tense]}`,
-		verbId: v.id,
-		tense,
-		levels: ['ce2', 'cm1'] as SchoolLevel[],
-		rubrique: TENSE_RUBRIQUE[tense],
-	})),
+	TENSES.map((tense) => {
+		// `undefined` = ce verbe à ce temps ne se déroule pas honnêtement → pas d'entrée du
+		// tout, donc pas de panneau (et surtout pas une entrée vide qui en promettrait un).
+		const etayage = etayageConjugaison(v, tense);
+		return {
+			id: `fr-conj-${v.id}-${tense}`,
+			label: `${verbeLabel(v)} ${TENSE_PHRASE[tense]}`,
+			verbId: v.id,
+			tense,
+			levels: ['ce2', 'cm1'] as SchoolLevel[],
+			rubrique: TENSE_RUBRIQUE[tense],
+			...(etayage ? { etayage } : {}),
+		};
+	}),
 );

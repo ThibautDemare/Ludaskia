@@ -141,6 +141,35 @@ export function nombreEnMots(n: number): string {
 	return u === 0 ? 'quatre-vingts' : `quatre-vingt-${UNITES_MOTS[u]}`;
 }
 
+/** Noms des rangs de la numération décimale, du plus petit au plus grand : singulier puis
+ *  pluriel. Une seule table pour toute l'appli — les deux moteurs d'étayage (#490) nomment
+ *  les colonnes d'un calcul posé et les rangs d'un nombre décomposé, et deux tables auraient
+ *  fini par diverger sur le pluriel de « dizaine de mille » (invariable sur « mille »). */
+export const NOMS_RANGS: readonly (readonly [string, string])[] = [
+	['unité', 'unités'],
+	['dizaine', 'dizaines'],
+	['centaine', 'centaines'],
+	['millier', 'milliers'],
+	['dizaine de mille', 'dizaines de mille'],
+	['centaine de mille', 'centaines de mille'],
+	['million', 'millions'],
+];
+
+/** Nom du rang `rang` (0 = les unités), au pluriel par défaut. `undefined` au-delà de la
+ *  table : à l'appelant de décider ce qu'il dit d'un rang qu'aucun enfant n'a encore
+ *  rencontré, plutôt que d'inventer un mot. */
+export function nomRang(rang: number, pluriel = true): string | undefined {
+	const noms = NOMS_RANGS[rang];
+	return noms ? noms[pluriel ? 1 : 0] : undefined;
+}
+
+/** « 1 dizaine », « 7 dizaines » : une quantité et son unité de position, accordées.
+ *  Repli sur le nombre seul au-delà de la table. */
+export function quantiteRang(n: number, rang: number): string {
+	const nom = nomRang(rang, n > 1);
+	return nom ? `${n} ${nom}` : String(n);
+}
+
 /** Groupe une CHAÎNE DE CHIFFRES par classes de 3 depuis la droite, séparées par
  *  U+202F — pour l'écho de saisie en temps réel des grands nombres (#327, leçons
  *  « millions » CM1). Travaille sur les chiffres BRUTS (pas via `Number`) pour

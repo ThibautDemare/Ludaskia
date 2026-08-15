@@ -21,7 +21,9 @@
    utilisable indifféremment sur l'opération que l'enfant vient de rater ou sur
    l'exemple canonique de sa leçon (avant-série, où il n'y a pas encore d'item).
    ============================================================ */
+import type { DerouleEtayage, EcritureEtayage, PasEtayage } from './etayage-deroule';
 import type { PosedSpec } from './items';
+import { nomRang, quantiteRang } from './nombres';
 
 /** Une colonne de l'opération, du point de vue de l'enfant qui la traite. */
 export interface EtapePosee {
@@ -68,6 +70,16 @@ export interface LignePosee {
     calibrés doux — cf. data/maths/posee.ts et `dispositionPosee`). */
 export function retenueDansLaGrille(ligne: LignePosee): boolean {
 	return ligne.role === 'total' || ligne.role === 'somme-partiels';
+}
+
+/** Cette ligne écrit-elle un chiffre dans la colonne d'ÉCRAN `rang` ? Non pour un zéro de
+    tête que le résultat n'écrit pas (105 − 100 s'écrit « 5 », pas « 005 ») : la grille n'a
+    pas de case pour lui, et la narration ne doit donc pas y envoyer l'enfant. Le décalage
+    de la ligne entre dans le compte — un produit partiel décalé commence une colonne plus à
+    gauche, et sa dernière case est d'autant plus à gauche. */
+export function ligneEcritEn(ligne: LignePosee, rang: number): boolean {
+	const decalage = ligne.decalage ?? 0;
+	return rang >= decalage && rang < decalage + String(ligne.valeur).length;
 }
 
 export interface ResolutionPosee {
@@ -198,26 +210,11 @@ function etapesMultiplication(a: number, chiffre: number): EtapePosee[] {
       `specialiste-troubles-apprentissage`) ;
    4. où part la retenue, nommée. */
 
-/* Nom de l'unité d'une colonne, au singulier puis au pluriel. Les opérations posées de
-   l'appli (cf. data/maths/posee.ts) ne dépassent pas les milliers ; au-delà, on ne nomme
-   plus la colonne plutôt que d'inventer un nom que l'enfant n'a pas encore rencontré. */
-const UNITES: [string, string][] = [
-	['unité', 'unités'],
-	['dizaine', 'dizaines'],
-	['centaine', 'centaines'],
-	['millier', 'milliers'],
-];
-
-/** Nom de la colonne de rang `rang` (0 = les unités), au pluriel : « les dizaines ». */
+/** Nom de la colonne de rang `rang` (0 = les unités), au pluriel : « les dizaines ». Les
+    noms viennent de la table commune (core/nombres.ts) ; au-delà d'elle, on ne nomme plus la
+    colonne plutôt que d'inventer un mot que l'enfant n'a pas encore rencontré. */
 export function nomColonne(rang: number): string {
-	return UNITES[rang]?.[1] ?? 'colonne suivante';
-}
-
-/* « 1 dizaine », « 7 dizaines » : la quantité et son unité de position, accordées. */
-function quantite(n: number, rang: number): string {
-	const nom = UNITES[rang];
-	if (!nom) return String(n);
-	return `${n} ${n > 1 ? nom[1] : nom[0]}`;
+	return nomRang(rang) ?? 'colonne suivante';
 }
 
 /* Ce qu'on écrit, et pourquoi : la décomposition en valeur de position quand il y a une
@@ -232,7 +229,7 @@ function phraseEcriture(e: EtapePosee, total: number, rang: number, enTete: bool
 		? `je garde ${e.retenueSortante} dans ma tête pour la suite.`
 		: `je retiens ${e.retenueSortante} pour les ${nomColonne(rang + 1)}.`;
 	return (
-		`${total}, c'est ${quantite(e.retenueSortante, rang + 1)} et ${quantite(e.ecrit, rang)} : ` +
+		`${total}, c'est ${quantiteRang(e.retenueSortante, rang + 1)} et ${quantiteRang(e.ecrit, rang)} : ` +
 		`j'écris ${e.ecrit} et ${suite}`
 	);
 }
@@ -285,7 +282,7 @@ export function phrasePosee(e: EtapePosee, op: PosedSpec['op'], ligne: LignePose
 	// y a un vrai fait à énoncer, et une fois sur deux c'est même là que la dizaine empruntée
 	// est RENDUE — le seul moment que la règle affichée en permanence promet (constat chiffré
 	// de l'auteur des tests). Le taire laissait l'enfant croire l'arrêt sur parole.
-	const rienAEcrire = rang >= String(ligne.valeur).length;
+	const rienAEcrire = !ligneEcritEn(ligne, rang);
 	const finRien = "Il ne reste rien à écrire : le résultat s'arrête ici.";
 	if (!e.emprunt) {
 		const fin = rienAEcrire ? finRien : `J'écris ${e.ecrit}.`;
@@ -295,7 +292,7 @@ export function phrasePosee(e: EtapePosee, op: PosedSpec['op'], ligne: LignePose
 	// chiffre DEVIENT : c'est le dégroupement en base 10 rendu concret (« le 2 devient 12 »),
 	// précisément la notion qui échappe à l'enfant, et non un tour de main. Deux phrases
 	// courtes plutôt qu'une longue, et la colonne source nommée avant tout le reste.
-	const emprunt = UNITES[rang + 1]
+	const emprunt = nomRang(rang + 1)
 		? `J'emprunte 1 aux ${nomColonne(rang + 1)} : le ${haut} devient ${haut + 10}.`
 		: `J'emprunte 10 : le ${haut} devient ${haut + 10}.`;
 	const fin = rienAEcrire
@@ -392,4 +389,59 @@ export function resolutionPosee(spec: PosedSpec): ResolutionPosee {
 			{ role: 'somme-partiels', valeur: resultat, etapes: etapesAddition(pp1, pp2 * 10) },
 		],
 	};
+}
+
+/* ---------- Déroulé (contrat commun des moteurs, cf. core/etayage-deroule.ts) ---------- */
+
+/** Clé de la case où la ligne `ligne` écrit son chiffre de la colonne d'écran `rang`. */
+export function cibleChiffrePosee(ligne: number, rang: number): string {
+	return `l${ligne}c${rang}`;
+}
+
+/** Clé de la case de retenue posée AU-DESSUS de la colonne d'écran `rang`. */
+export function cibleRetenuePosee(rang: number): string {
+	return `r${rang}`;
+}
+
+/** Titre du panneau : l'OPÉRATION elle-même, pour que l'enfant voie tout de suite que ce
+    n'est pas l'aide habituelle (qui titre, elle, le nom du type d'exercice). */
+export function titreOperation(spec: PosedSpec): string {
+	return `${spec.a} ${signePosee(spec.op)} ${spec.b}`;
+}
+
+/** Déroulé d'une opération posée : les colonnes de chaque ligne, à plat, dans l'ordre où
+    l'enfant les traite. L'annonce d'une ligne (« d'abord par les unités… ») est mise en TÊTE
+    de sa première colonne plutôt qu'en pas de plus : le volume d'une multiplication à deux
+    chiffres est déjà à la limite haute du suivable. */
+export function deroulePosee(spec: PosedSpec): DerouleEtayage {
+	const resolution = resolutionPosee(spec);
+	const pas: PasEtayage[] = [];
+	resolution.lignes.forEach((ligne, i) => {
+		const chapeau = chapeauLigne(ligne, spec);
+		ligne.etapes.forEach((etape, j) => {
+			const rang = etape.colonne + (ligne.decalage ?? 0);
+			const ecritures: EcritureEtayage[] = [];
+			// Une colonne peut n'avoir RIEN à écrire (zéro de tête que le résultat n'écrit pas) :
+			// elle se raconte quand même — son calcul existe, et c'est souvent là que la dizaine
+			// empruntée est rendue — mais elle ne désigne aucune case.
+			if (ligneEcritEn(ligne, rang)) {
+				ecritures.push({ cible: cibleChiffrePosee(i, rang), texte: String(etape.ecrit) });
+			}
+			// Les retenues d'un produit partiel se gardent « dans la tête » : la grille n'a
+			// qu'une rangée de retenues, celle de l'addition finale.
+			if (etape.retenueSortante && retenueDansLaGrille(ligne)) {
+				ecritures.push({
+					cible: cibleRetenuePosee(rang + 1),
+					texte: String(etape.retenueSortante),
+				});
+			}
+			const phrase = phrasePosee(etape, spec.op, ligne);
+			pas.push({
+				phrase: chapeau && j === 0 ? `${chapeau} ${phrase}` : phrase,
+				ecritures,
+				actifs: ecritures.map((e) => e.cible),
+			});
+		});
+	});
+	return { titre: titreOperation(spec), pas };
 }

@@ -44,6 +44,8 @@ import {
 	wirePasser,
 } from './lecon-passer';
 import { nombreTableauSaisi } from '../core/erreur-representation';
+import { conversionDepuisTableau } from '../core/etayage-conversion';
+import type { EtayageDemande } from './etayage-panneau';
 
 const NB_QUESTIONS = 8;
 
@@ -475,6 +477,9 @@ function verifier(): void {
 				? `<span class="lqcm-ok">Bravo ! 🎉</span>`
 				: `<span class="lqcm-ko">La bonne réponse était <strong>${escapeHTML(ex.answer)} ${escapeHTML(ex.answerUnit)}</strong>.${explication ? ` ${escapeHTML(explication)}` : ''}</span>`,
 			isLast: idx >= questions.length - 1,
+			// Étayage (#490) : proposé sur un tableau raté, jamais sur un tableau juste, et
+			// déroulé sur LA conversion qui vient d'échouer (pas l'exemple de la leçon).
+			...(correct ? {} : etayageTableauRate(ex)),
 			onNext: () => {
 				idx++;
 				if (idx >= questions.length) finish();
@@ -482,6 +487,22 @@ function verifier(): void {
 			},
 		},
 	);
+}
+
+/* De quoi étayer le tableau courant, quand sa structure se laisse décrire (invariant du
+   générateur, cf. `conversionDepuisTableau`). Rien à proposer sinon : pas de lien plutôt
+   qu'un lien qui ouvrirait une démonstration à côté de la plaque. */
+function etayageTableauRate(ex: Tableau): { etayage?: EtayageDemande } {
+	const spec = conversionDepuisTableau(ex);
+	if (!spec) return {};
+	return {
+		etayage: {
+			lesson,
+			niveau: niveauLecon(lesson),
+			mode,
+			exemple: { moteur: 'conversion', spec },
+		},
+	};
 }
 
 /* Ce que le tableau enseigne au-delà du geste : le 0 qui MARQUE un rang vide. Affiché quand

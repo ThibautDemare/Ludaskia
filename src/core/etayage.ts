@@ -29,13 +29,31 @@
    ============================================================ */
 import type { LessonDef, SchoolLevel } from './catalog';
 import { getLessonsByCategory } from './catalog';
+import type { ConjugaisonSpec } from './etayage-conjugaison';
+import type { ConversionSpec } from './etayage-conversion';
+import type { DroiteSpec } from './etayage-droite';
+import type { PositionSpec } from './etayage-position';
 import type { PosedSpec } from './items';
 import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 
-/** Exemple entièrement résolu, décrit par la DONNÉE de la leçon et déroulé par le
-    moteur de résolution correspondant. Union à une seule branche pour l'instant (le
-    calcul posé, pilote de #490) : les autres moteurs mécanisables s'y ajouteront. */
-export type EtayageExemple = { moteur: 'posee'; spec: PosedSpec };
+/** Exemple entièrement résolu, décrit par la DONNÉE de la leçon et déroulé par le moteur
+    de résolution correspondant (`core/etayage-<moteur>.ts`, tous purs et tous rendant le
+    même `DerouleEtayage`). Une branche par famille MÉCANISABLE — celles dont la méthode
+    est un algorithme, donc du code sans arriéré éditorial. Les autres notions relèvent du
+    texte rédigé, pas de cette union.
+
+    Ce qui n'y figure pas, et pourquoi : les PROBLÈMES à étapes. Leur modèle
+    (`ProblemeEtape`, core/exercise.ts) ne retient que l'intitulé de la sous-question et sa
+    réponse numérique — ni l'opération, ni ses opérandes. Un déroulé généré n'y saurait
+    donc dire que les réponses, c'est-à-dire exactement ce que la révélation (#467) montre
+    déjà. Et le vrai obstacle d'un problème n'est pas le calcul mais le CHOIX de
+    l'opération, qui demande la structure sémantique de l'énoncé — absente elle aussi. */
+export type EtayageExemple =
+	| { moteur: 'posee'; spec: PosedSpec }
+	| { moteur: 'conversion'; spec: ConversionSpec }
+	| { moteur: 'droite'; spec: DroiteSpec }
+	| { moteur: 'position'; spec: PositionSpec }
+	| { moteur: 'conjugaison'; spec: ConjugaisonSpec };
 
 /** Contenu d'étayage d'une leçon : ce qu'on montre à un enfant qui bute sur la NOTION.
     Rédaction calée sur la charte des aides au geste (#272) : tutoiement, une idée par

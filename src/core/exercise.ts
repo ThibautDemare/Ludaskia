@@ -251,6 +251,11 @@ export type Exercise =
 			consigne: string;
 			explication: string;
 			parle: string;
+			// Ce que vaut UNE graduation, déjà écrit comme l'enfant l'écrirait (« 1 », « 0,1 »).
+			// Stocké plutôt que recalculé : `pas` est en unité interne (centièmes entiers pour
+			// les décimaux) et seul le générateur connaît le format de sa leçon. L'étayage (#490)
+			// en fait son premier pas, et l'explication d'après-coup la même phrase.
+			pasLabel: string;
 	  }
 	// Calcul posé (#97) — opération en colonnes ; le catalogue en fait un Item
 	// `posed` (cellules-chiffres notées une à une). Pas de champ `answer` unique.

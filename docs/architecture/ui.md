@@ -1018,7 +1018,10 @@ pure](core.md)) pour les formats composites :
   n'ouvre RIEN mais appelle quand même `onFerme` : l'appelant n'a pas à savoir si le
   panneau existe.
 
-  **Cinq points d'entrée**, tous conditionnés par `etayageDisponible` :
+  **Cinq points d'entrée**, tous conditionnés par `etayageDisponible`. Les deux qui
+  s'attachent à un ÉCRAN d'exercice passent par **`brancherEtayageEcran(conteneur,
+  lesson, mode?)`** — un seul appel par écran, qui tient l'ordre (bouton d'abord, puis
+  l'exemple, lui-même après l'aide au geste) au lieu de le laisser recopier :
   - le **bouton persistant** de l'en-tête (`monterBoutonEtayage`), posé à la fois par
     `ui/navigation.ts:runLecon` (leçon en fiche, ancré sur `#sheets .fiche`) et par
     `ui/lecon-runner-shared.ts` (les runners d'écran dédié, ancré sur

@@ -12,8 +12,16 @@
    ============================================================ */
 
 /* ---------- Le panneau ---------- */
+/* `max-height` + défilement PROPRE, comme `.modal-wide` : c'est le seul panneau de l'appli
+   dont le contenu grandit avec la donnée (une multiplication à deux chiffres empile trois
+   lignes de grille, sa règle et son renvoi au prérequis, ~930 px). Sans lui, sur un
+   téléphone, « Suivant ▶ » passait sous le pli SANS recours : la modale verrouille le
+   défilement de la page (`lockBackground`) et ne défilait pas elle-même — l'enfant restait
+   coincé, panneau ouvert. */
 .etay-modal {
 	max-width: 460px;
+	max-height: 85vh;
+	overflow-y: auto;
 }
 
 /* L'idée-force, visible en PERMANENCE pendant tout le déroulé : c'est la seule chose

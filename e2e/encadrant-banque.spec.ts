@@ -8,8 +8,10 @@
    STABLE, annonce différée), le filtre orphelins (bouton muté en place,
    auto-désarmé si le dernier orphelin disparaît), la remise à plat de cet
    état de vue au changement de profil consulté (`#encConsulteSel`), la
-   pagination à 50 (SC 2.4.1), et la suppression définitive (modale
-   destructive puis disparition de la ligne).
+   pagination à 50 (SC 2.4.1), la suppression définitive (modale destructive
+   puis disparition de la ligne, focus rendu au résumé — a11y), et la
+   régression #527 (l'annonce différée du résumé ne recolle plus un compte
+   périmé quand un re-rendu complet survient dans sa fenêtre de 350ms).
    Bonus : le formulaire d'édition d'une liste (enfant) propose de supprimer
    pour de bon un mot qui vient d'en être retiré et n'est plus dans aucune
    liste — répercuté jusque dans la banque de l'espace encadrant.
@@ -27,6 +29,30 @@
    périmée (elle « collerait » par coïncidence) — on choisit donc des
    recherches dont les résumés successifs diffèrent, plutôt que de se fier au
    seul texte final.
+
+   Note focus après suppression (a11y, préexistant) : la modale rend le focus au bouton
+   « Supprimer » de la ligne (il existe encore à cet instant), mais le re-rendu COMPLET qui
+   suit (`renderEspace`) le détruit tout de suite après — sans rattrapage, le navigateur
+   rabat le focus sur `<body>`, un piège déjà connu (`demarrerRunner`/`#sheets`, cf.
+   `lecon-runner-shared.ts` et `reprise-runners.spec.ts`). Le résumé (`#encBanqueResume`,
+   `tabindex="-1"`) le reçoit à sa place : garde le contexte clavier ET fait dire le nouveau
+   compte (une région live recréée déjà remplie n'est annoncée seule par aucun moteur). Les
+   deux tests de suppression vérifient le focus RÉEL (`toBeFocused()`), jamais la seule
+   présence de l'attribut `tabindex`.
+
+   Note régression #527 (course déterministe) : le bug ne se manifestait que si un re-rendu
+   COMPLET (`renderEspace`, ex. une suppression confirmée) survenait PENDANT la fenêtre de
+   350ms d'une annonce déjà programmée — sinon le minuteur avait déjà retombé (correctement,
+   à l'époque) avant que le re-rendu n'écrive sa propre version, correcte elle aussi. Trois
+   clics Playwright successifs (filtre → Supprimer → confirmer) prennent chacun un temps RÉEL
+   variable, qui dépasse ou non les 350ms selon la machine : le test qui les enchaînait ainsi
+   ne perdait la course qu'environ une fois sur trois. Le test dédié à cette régression
+   enchaîne donc les trois clics dans un SEUL `page.evaluate` (même tour de boucle
+   d'évènements : la suite de `supprimer()` après la confirmation — `supprimerMotFor` +
+   `renderEspace()` — se rejoue en microtâche, à temps réel quasi nul, donc forcément AVANT
+   qu'aucun minuteur ne puisse se déclencher), puis avance une horloge truquée (`page.clock`)
+   de 400ms pour faire retomber le minuteur en vol lui-même, sans attendre de temps réel. La
+   fenêtre du bug est ainsi heurtée à CHAQUE run.
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
@@ -246,6 +272,13 @@ test('volet « Mots » : supprimer un mot supprimable ouvre une modale destructi
 	await expect(page.locator('.enc-banque-item').filter({ hasText: 'framboise' })).toHaveCount(0);
 	await expect(page.locator('#encBanqueResume')).toHaveText('2 mots affichés sur 2.');
 
+	// A11y (préexistant, corrigé dans la même PR) : le bouton « Supprimer » qui avait reçu le
+	// focus à la fermeture de la modale vient d'être détruit par le re-rendu complet — sans
+	// rattrapage, le focus retomberait sur <body>. Le résumé (tabindex="-1") le reçoit à sa
+	// place : l'adulte au clavier garde son contexte, ET c'est ce qui fait dire le nouveau
+	// compte à un lecteur d'écran (région live recréée déjà remplie, jamais annoncée seule).
+	await expect(page.locator('#encBanqueResume')).toBeFocused();
+
 	expect(errors).toEqual([]);
 });
 
@@ -273,6 +306,82 @@ test('volet « Mots » : supprimer le dernier orphelin alors que le filtre est a
 	await expect(page.locator('[data-act="banque-orphelins"]')).toHaveCount(0);
 	await expect(page.locator('.enc-banque-item')).toHaveCount(2);
 	await expect(page.locator('#encBanqueResume')).toHaveText('2 mots affichés sur 2.');
+
+	// Même a11y que la suppression « simple » (ci-dessus) : ce chemin re-rend en plus le
+	// bouton orphelins (désarmé) — même geste `supprimer()`, même filet de focus attendu.
+	await expect(page.locator('#encBanqueResume')).toBeFocused();
+
+	expect(errors).toEqual([]);
+});
+
+/* Régression #527 (verrou déterministe, cf. la note en tête de fichier) : `annoncer`
+   recalcule désormais le résumé au moment de retomber, plutôt que de transporter un texte
+   figé au moment de l'appel. Avant le correctif, un re-rendu COMPLET (`renderEspace`, ici
+   déclenché par une suppression confirmée) survenu PENDANT la fenêtre de 350ms
+   (`DELAI_ANNONCE`) écrivait d'abord le bon texte, puis le minuteur en vol — programmé
+   PLUS TÔT, sur l'état d'AVANT la suppression — retombait par-dessus avec un compte périmé
+   que plus rien ne corrigeait ensuite (symptôme observé : « 1 mot affiché sur 3. » alors que
+   2 mots restent listés et que « 2 mots affichés sur 2. » est la phrase juste).
+
+   Le même scénario, joué avec trois clics Playwright successifs (filtre → Supprimer →
+   confirmer la modale), ne perdait la course qu'environ une fois sur trois : chacun de ces
+   clics prend un temps RÉEL variable (localisation de l'élément, dispatch, tour de la boucle
+   d'évènements du navigateur…), qui dépasse ou non les 350ms selon la machine. Ici, les trois
+   gestes sont enchaînés dans un SEUL `page.evaluate` : en JS, tout se déroule dans le MÊME
+   tour de boucle (le clic sur `.modal-danger` résout la Promesse de `uiConfirm`, et sa suite
+   — `supprimerMotFor` + `renderEspace()` — se rejoue en MICROTÂCHE, à temps réel quasi nul,
+   donc forcément AVANT que le minuteur de 350ms — une macrotâche — ne puisse se déclencher).
+   La fenêtre du bug est ainsi heurtée à CHAQUE run, sans dépendre de la vitesse de la
+   machine. L'horloge est ensuite avancée « à la main » (`page.clock`) de 400ms pour faire
+   retomber le minuteur en vol nous-mêmes, sans attente réelle ni `waitForTimeout`.
+
+   Piège à éviter : vérifier le résumé tout de suite après l'évaluate serait trompeur — le
+   re-rendu vient juste d'écrire le BON texte, l'assertion passerait qu'il y ait bug ou non
+   (le minuteur périmé n'a pas encore eu l'occasion de retomber). C'est seulement APRÈS avoir
+   fait s'écouler la fenêtre de 350ms que le compte périmé, s'il existe, s'y recolle pour de
+   bon — d'où la vérification en deux temps ci-dessous. */
+test('volet « Mots » : un re-rendu complet pendant la fenêtre d’annonce ne recolle pas un compte périmé (#527)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'encadrant');
+	await basculeVers(page, 'mots');
+
+	const resume = page.locator('#encBanqueResume');
+	const items = page.locator('.enc-banque-item');
+
+	// Horloge truquée AVANT de poser le filtre, donc avant que le clic ne programme le
+	// minuteur d'annonce : seul moyen de faire s'écouler les 350ms nous-mêmes, sans jamais
+	// dépendre du temps réel (cf. la note en tête de fichier et e2e/README.md, page.clock).
+	await page.clock.install();
+
+	// Les trois gestes en une seule tâche JS : voir le commentaire ci-dessus pour le pourquoi.
+	await page.evaluate(async () => {
+		const clic = (sel: string) => (document.querySelector(sel) as HTMLElement | null)?.click();
+		// Programme l'annonce sur l'état d'AVANT suppression (« 1 mot sur 3 » — PÉRIMÉ après coup).
+		clic('[data-act="banque-orphelins"]');
+		// Ouvre la modale de suppression du dernier orphelin.
+		clic('button[data-act="banque-supprimer"][data-mot="w3"]');
+		// Confirme -> supprimerMotFor() + renderEspace() (texte à jour écrit tout de suite).
+		clic('.modal-overlay:not([id]) .modal-danger');
+		// Laisse la continuation de `supprimer()` (après le `await uiConfirm`) se rejouer en
+		// microtâche avant de rendre la main à Playwright.
+		await Promise.resolve();
+		await Promise.resolve();
+	});
+
+	// Le re-rendu complet a déjà eu lieu (même tâche) : le résumé est déjà juste. Ça ne prouve
+	// PAS l'absence de régression — voir le piège documenté plus haut.
+	await expect(items).toHaveCount(2);
+	await expect(resume).toHaveText('2 mots affichés sur 2.');
+
+	// On fait s'écouler la fenêtre des 350ms (DELAI_ANNONCE) : le minuteur en vol se déclenche
+	// ICI. Sans le correctif, il écrase le résumé avec le texte périmé calculé au moment du
+	// clic « orphelins » (« 1 mot affiché sur 3. ») — rien ne le réécrit ensuite.
+	await page.clock.fastForward(400);
+
+	await expect(items).toHaveCount(2);
+	await expect(resume).toHaveText('2 mots affichés sur 2.');
 
 	expect(errors).toEqual([]);
 });

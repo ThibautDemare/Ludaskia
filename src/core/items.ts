@@ -104,13 +104,6 @@ export function intervalleAPlusieursReponses([min, max]: [number, number]): bool
 	return max - min >= 4;
 }
 
-/* Valeur sûre pour un attribut HTML entre guillemets doubles (les contenus posés en
-   `data-*` par renderItem viennent de l'app, jamais d'une saisie — on neutralise tout de
-   même `&` et `"`, qui casseraient l'attribut). */
-function valeurAttribut(s: string): string {
-	return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-}
-
 /* La réponse de cet item se corrige-t-elle NUMÉRIQUEMENT ? Lecture unique du `kind`,
    partagée par `checkItemAnswer` (quelle branche de comparaison) et par les runners
    (faut-il refuser une saisie qui n'est pas un nombre — cf. `saisieEstNombre`). Les deux
@@ -332,7 +325,7 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	const id = nextInputId(ctx);
 	ctx.items[id] = it;
 	// Réponse exposée pour la révélation après correction (échappée pour les attributs).
-	const ansAttr = valeurAttribut(String(it.answer));
+	const ansAttr = escapeHTML(String(it.answer));
 	// Intercalation (#446) : `data-answer` ne porte qu'UN exemple valide. On expose EN PLUS
 	// la BANDE acceptée, déjà rédigée, pour que la révélation d'une erreur (marqueur ✗ de
 	// `ui/session.ts`) annonce « un nombre entre 450 et 465 » au lieu d'un nombre isolé —
@@ -341,7 +334,7 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	// plus en session) et le point d'appui des specs e2e. Attribut posé sur le seul champ
 	// numérique : un item à intervalle est numérique par construction (réponse = un nombre),
 	// et `checkItemAnswer` ne consulte l'intervalle que hors branche texte.
-	const attendueAttr = it.intervalle ? ` data-attendue="${valeurAttribut(attendueItem(it))}"` : '';
+	const attendueAttr = it.intervalle ? ` data-attendue="${escapeHTML(attendueItem(it))}"` : '';
 	// Saisie de l'heure (#88) : DEUX champs « [heures] h [minutes] », le « h » en dur.
 	// Seul le champ des heures est `.ans` (noté) et porte la réponse canonique ; il
 	// référence le champ des minutes (`data-min-field`) que session.verify fusionne en

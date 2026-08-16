@@ -44,7 +44,7 @@
      l'intervalle, le nombre rond du milieu reste ≤ 6 chiffres en saisie).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
-import type { LessonInput } from '../_shared';
+import { etayageRedige, type LessonInput } from '../_shared';
 import type { SchoolLevel } from '../../core/catalog';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
@@ -534,6 +534,21 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 		exerciseType: calibrated<'petit' | 'grand'>({ ce2: 'petit', cm1: 'grand' }, (taille) =>
 			numerationType(() => (taille === 'grand' ? compareFactGrand() : compareFactPetit(999))),
 		),
+		// Une seule entrée pour les deux niveaux : du CE2 au million, la méthode ne change
+		// pas d'un pouce (longueur, puis rang par rang depuis la gauche) — seule la plage
+		// s'élargit. Le 3ᵉ pas porte le SENS du signe, qui est l'erreur la plus fréquente et
+		// n'a rien à voir avec la comparaison elle-même.
+		etayage: [
+			etayageRedige(
+				'Comparer deux nombres',
+				'Un nombre plus long est toujours plus grand ; à longueur égale, ce sont les chiffres de gauche qui décident.',
+				[
+					'Compte les chiffres de chaque nombre : le plus long est le plus grand.',
+					'Même longueur ? Compare de gauche à droite : dans 989 et 932, les 9 sont pareils, puis 8 est plus grand que 3.',
+					"Écris le signe : il s'ouvre du côté du plus grand nombre (989 > 932).",
+				],
+			),
+		],
 	},
 	{
 		id: 'num-encadrer-intercaler',
@@ -553,6 +568,20 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 						: intercaleFact(999),
 			),
 		),
+		// Deux gestes dans une seule leçon (encadrer, intercaler) et trois pas seulement :
+		// intercaler passe en tête, parce que c'est sa consigne (« plusieurs réponses
+		// possibles ») qui déroute le plus — un enfant qui cherche LA réponse s'y bloque.
+		etayage: [
+			etayageRedige(
+				'Encadrer et intercaler',
+				"Encadrer, c'est trouver le nombre rond juste avant ou juste après ; intercaler, c'est se glisser entre deux nombres.",
+				[
+					'Pour intercaler, choisis un nombre plus grand que le premier et plus petit que le second : entre 572 et 715, 600 va très bien.',
+					"Pour encadrer, repère le rang demandé, puis remplace par des 0 ce qui est à sa droite : la dizaine juste avant 851, c'est 850.",
+					"La dizaine juste après, c'est celle-là plus 10 : 860.",
+				],
+			),
+		],
 	},
 	{
 		id: 'num-situer-10000',
@@ -575,5 +604,19 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 					: situerFactPetit(),
 			),
 		),
+		// Leçon-somme des deux précédentes : la sienne redit les trois gestes en un pas
+		// chacun plutôt que d'en détailler un seul — un enfant qui la rate ne sait pas
+		// TOUJOURS lequel des trois lui échappe.
+		etayage: [
+			etayageRedige(
+				'Comparer, encadrer, intercaler',
+				'Ces trois questions se règlent en regardant les chiffres de GAUCHE à droite, jamais au hasard.',
+				[
+					'Comparer : le nombre le plus long gagne ; à longueur égale, compare de gauche à droite.',
+					"Encadrer : le millier juste avant 3 239, c'est 3 000 ; le millier juste après, c'est 4 000.",
+					'Intercaler : choisis un nombre plus grand que le premier et plus petit que le second.',
+				],
+			),
+		],
 	},
 ];

@@ -31,7 +31,7 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { propQExercise, propQType, type PropQ } from './_shared';
 import { checkNumerique, checkNumeriqueOuTexte } from '../../core/check-helpers';
@@ -520,30 +520,108 @@ export const GEOMETRIE_CM1_LESSONS: LessonInput[] = [
 		id: 'geo-cm1-triangles',
 		label: 'Je reconnais les triangles',
 		exerciseType: trianglesRecoType(),
+		// Ces figures-là sont CODÉES (`codage: true`, #326) : les pas renvoient donc aux
+		// marques (petits traits, petit carré) plutôt qu'à l'œil, qui se trompe sur un
+		// triangle presque équilatéral. C'est aussi ce que le codage est censé apprendre.
+		etayage: [
+			etayageRedige(
+				'Reconnaître les triangles',
+				"On classe un triangle d'après ses côtés de même longueur et son éventuel angle droit : le codage de la figure te le dit.",
+				[
+					'Trois côtés marqués du même petit trait : un triangle équilatéral.',
+					'Deux côtés seulement marqués pareil : un triangle isocèle.',
+					'Un petit carré dans un angle : un triangle rectangle. Aucune marque : un triangle quelconque.',
+				],
+			),
+		],
 	},
 	{
 		id: 'geo-cm1-triangles-prop',
 		label: 'Les propriétés des triangles',
 		exerciseType: propQType(TRI_PROPRIETES, MODE_QCM_SEUL),
+		etayage: [
+			etayageRedige(
+				'Les propriétés des triangles',
+				'Chaque nom de triangle dit quelque chose de précis sur ses côtés ou sur ses angles.',
+				[
+					'Équilatéral : ses 3 côtés sont égaux, et ses 3 angles aussi.',
+					'Isocèle : 2 côtés égaux, et les 2 angles de la base égaux.',
+					'Rectangle : exactement 1 angle droit.',
+				],
+			),
+		],
 	},
 	{
 		id: 'geo-cm1-quadrilateres',
 		label: 'Je reconnais les quadrilatères',
 		exerciseType: quadrilateresRecoType(),
+		etayage: [
+			etayageRedige(
+				'Reconnaître les quadrilatères',
+				'Quatre côtés, oui, mais ce sont les angles droits et les côtés égaux qui donnent le nom.',
+				[
+					'4 angles droits ET 4 côtés égaux : un carré.',
+					'4 angles droits seulement : un rectangle.',
+					'4 côtés égaux sans angle droit : un losange ; côtés parallèles deux à deux : un parallélogramme.',
+				],
+			),
+		],
 	},
 	{
 		id: 'geo-cm1-solides',
 		label: 'Je reconnais les solides',
 		exerciseType: solidesRecoType(),
+		// La perspective est la difficulté propre à cette leçon (un carré vu de biais n'a
+		// plus l'air d'un carré), d'où une règle qui porte sur le DESSIN et non sur le solide.
+		// Le 2ᵉ pas nomme cube, pavé et prisme SÉPARÉMENT : le QCM les traite comme trois
+		// réponses exclusives, et dire « le cube est un prisme » — vrai en mathématiques —
+		// ferait répondre « prisme » devant un cube, réponse comptée fausse (constat croisé
+		// du `pedagogue-primaire` et du `redacteur-contenu-francais`).
+		etayage: [
+			etayageRedige(
+				'Reconnaître un solide en perspective',
+				"Le dessin déforme les faces : un carré vu de biais devient un losange, mais c'est toujours un carré.",
+				[
+					"Compte toutes les faces, y compris celles qu'on devine derrière.",
+					'6 faces carrées : un cube. 6 faces rectangulaires : un pavé droit. Deux triangles reliés par des rectangles : un prisme.',
+					'Une seule base et une pointe : une pyramide. Une surface ronde : un cylindre ou un cône.',
+				],
+			),
+		],
 	},
 	{
 		id: 'geo-cm1-polyedre',
 		label: 'Polyèdre ou non ?',
 		exerciseType: polyedreType(),
+		etayage: [
+			etayageRedige(
+				'Polyèdre ou non ?',
+				"Un polyèdre n'a QUE des faces plates : dès qu'une surface est ronde, ce n'en est pas un.",
+				[
+					'Cherche une surface courbe sur le solide.',
+					'La boule, le cylindre et le cône en ont une : ce ne sont pas des polyèdres.',
+					'Le cube, le pavé, le prisme et la pyramide ont des faces plates : ce sont des polyèdres.',
+				],
+			),
+		],
 	},
 	{
 		id: 'geo-cm1-solides-comptage',
 		label: 'Compter faces, arêtes et sommets',
 		exerciseType: comptageType(),
+		// Compter « par familles » plutôt qu'en tournant autour du dessin : sur un schéma en
+		// perspective, la moitié des arêtes est cachée, et un comptage à l'œil en oublie
+		// toujours. Les deux solides des pas 2 et 3 sont ceux que la leçon interroge le plus.
+		etayage: [
+			etayageRedige(
+				'Compter faces, arêtes et sommets',
+				"La face est une surface, l'arête est un trait entre deux faces, le sommet est un coin pointu.",
+				[
+					'Compte par familles pour ne rien oublier : le dessus, le dessous, puis les côtés.',
+					'Le cube : 6 faces, 12 arêtes, 8 sommets.',
+					'La pyramide à base carrée : 1 base + 4 triangles = 5 faces, 8 arêtes, 5 sommets.',
+				],
+			),
+		],
 	},
 ];

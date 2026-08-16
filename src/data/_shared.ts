@@ -6,6 +6,7 @@
    les risques de divergence (icône oubliée, champ ajouté à un seul endroit) et
    alourdissait la maintenance. On les centralise ici.
    ============================================================ */
+import type { SchoolLevel } from '../core/catalog';
 import type { ExerciseType, ModeOption } from '../core/exercise';
 import type { EtayageEntree } from '../core/etayage';
 
@@ -37,6 +38,32 @@ export const MODE_QCM_CHECK: ModeOption = {
 	icon: 'check-circle',
 	recommended: true,
 };
+
+/* ---------- Étayage RÉDIGÉ d'une notion (#490) ----------
+   Raccourci du cas de loin le plus fréquent : une notion dont la méthode s'ÉCRIT, faute
+   d'algorithme à dérouler (reconnaître une figure, lire un tableau, comparer deux
+   fractions). Là où les familles mécanisables décrivent un `exemple` que leur moteur
+   narre pas à pas, celles-ci portent trois champs de texte et rien d'autre.
+
+   La charte est celle des aides au geste (#272), et elle est CONTRAIGNANTE :
+   - `regle` en UNE phrase — l'idée-force, la seule chose qu'un enfant à faible mémoire
+     de travail emporte d'un écran au suivant ; elle dit le SENS, pas le geste ;
+   - `etapes` au plus TROIS, à l'impératif, une idée par phrase ;
+   - tutoiement, aucun ton punitif, et jamais la réponse d'une question à venir.
+   Les exemples chiffrés y sont volontairement CANONIQUES (toujours les mêmes) : un enfant
+   qui rouvre le panneau doit y retrouver ce qu'il a déjà lu, pas un nouvel énoncé.
+
+   `niveau` ne se renseigne que pour une leçon dont la TÂCHE change avec la classe (les
+   angles : nommer au CE2, comparer deux ouvertures au CM1) — pas pour un simple
+   élargissement de plage, où la méthode ne bouge pas. */
+export function etayageRedige(
+	titre: string,
+	regle: string,
+	etapes: string[],
+	niveau?: SchoolLevel,
+): EtayageEntree {
+	return { ...(niveau ? { niveau } : {}), contenu: { titre, regle, etapes } };
+}
 
 /* ---------- Descripteur « source » d'une leçon ----------
    Forme minimale d'une leçon dans un fichier de données, AVANT que

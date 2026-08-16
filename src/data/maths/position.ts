@@ -207,7 +207,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 	},
 	{
 		id: 'num-decompose-100',
-		label: 'Je décompose jusqu’à 100',
+		label: "Je décompose jusqu'à 100",
 		exerciseType: positionType(() => decomposeFact(1)),
 		etayage: [
 			etayagePosition('Décomposer un nombre à deux chiffres', REGLE_RANGS, {
@@ -219,7 +219,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 	},
 	{
 		id: 'num-decompose-1000',
-		label: 'Je décompose jusqu’à 1 000',
+		label: "Je décompose jusqu'à 1 000",
 		exerciseType: positionType(() => decomposeFact(2)),
 		// 305 : le zéro intercalaire, point dur de la décomposition (« il n'y a rien » n'est
 		// pas « il n'y a pas de rang »).
@@ -233,7 +233,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 	},
 	{
 		id: 'num-decompose-10000',
-		label: 'Je décompose jusqu’à 10 000',
+		label: "Je décompose jusqu'à 10 000",
 		// CE2 : décomposition « en rangs » jusqu'à 10 000 ; CM1 (#240) : jusqu'au million.
 		levels: ['ce2', 'cm1'],
 		exerciseType: calibrated<number>({ ce2: 3, cm1: 6 }, (maxIdx) =>

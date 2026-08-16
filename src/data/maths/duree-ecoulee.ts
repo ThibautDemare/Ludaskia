@@ -34,7 +34,7 @@
 import { rnd, sample } from '../../core/utils';
 import { nombreEnMots } from '../../core/nombres';
 import type { Exercise } from '../../core/exercise';
-import type { LessonInput } from '../_shared';
+import { etayageRedige, type LessonInput } from '../_shared';
 import { deuxSousQuestionsType } from './_probleme-deux-sous-questions';
 
 const PAS_MINUTE = 5; // minutes toujours multiples de 5
@@ -290,5 +290,20 @@ export const DUREE_ECOULEE_LESSONS: DureeEcouleeLessonDef[] = [
 		}),
 		// Deux champs (heures + minutes) + lecture d'énoncé : hors chrono.
 		excludeFromSprint: true,
+		// Le déroulé suit EXACTEMENT le découpage des trois bonds (heure ronde, heures
+		// entières, minutes restantes), donc l'ordre des deux champs de la leçon. La règle
+		// dit d'emblée pourquoi on ne pose pas 5 h 55 - 3 h 50 : en base 60, la soustraction
+		// posée demande une retenue à 60 que le CM1 n'a pas.
+		etayage: [
+			etayageRedige(
+				'Calculer une durée',
+				"On avance par bonds en passant par l'heure ronde : les heures ne se soustraient pas comme des nombres ordinaires.",
+				[
+					"Va d'abord jusqu'à l'heure ronde suivante : de 3 h 50 à 4 h, il y a 10 min.",
+					'Compte les heures entières : de 4 h à 5 h, il y a 1 h.',
+					'Ajoute les minutes qui restent : de 5 h à 5 h 55, il y a 55 min. En tout, 2 h 5 min.',
+				],
+			),
+		],
 	},
 ];

@@ -957,8 +957,22 @@ niveau, sans DOM ni stockage :
   faible mémoire de travail retient d'un écran à l'autre, avis
   `specialiste-troubles-apprentissage`), des `etapes?` rédigées (≤ 3) et/ou un
   `exemple?` (`EtayageExemple`, une branche par famille MÉCANISABLE : `posee`,
-  `conversion`, `droite`, `position`, `conjugaison`, `probleme`). Le module expose aussi
-  **`leconPrerequise(lesson, niveau)`** — la leçon PRÉCÉDENTE de sa catégorie dans
+  `conversion`, `droite`, `position`, `conjugaison`, `probleme`).
+
+  **Cas RÉDIGÉ** (#490 PR 3, de loin le plus fréquent — une notion dont la méthode
+  s'écrit, faute d'algorithme à dérouler) : le raccourci
+  **`etayageRedige(titre, regle, etapes, niveau?)`** (`src/data/_shared.ts`, cf.
+  [Contenu & leçons](contenu-et-lecons.md)) construit l'entrée sans `exemple`. Charte
+  CONTRAIGNANTE, celle des aides au geste (#272) : `regle` en UNE phrase (le sens, pas
+  le geste), `etapes` à l'impératif et au plus TROIS, exemples chiffrés CANONIQUES
+  (toujours les mêmes — un enfant qui rouvre le panneau doit y retrouver ce qu'il a
+  déjà lu). **Exception de rangement** : les 17 leçons de calcul mental du moteur
+  historique (`bilanQ`, `core/lessons.ts`) n'ont pas de module `src/data/` où loger
+  leur entrée — ce sont des `LessonDef` littéraux de `core/catalog.ts` — ; leurs
+  étayages vivent regroupés dans `src/data/maths/calcul-mental-etayage.ts` et sont
+  posés après coup, par id, par `avecEtayage()` (`core/catalog.ts`).
+
+  Le module expose aussi **`leconPrerequise(lesson, niveau)`** — la leçon PRÉCÉDENTE de sa catégorie dans
   l'ordre pédagogique (`ordre.ts`/`getLessonsByCategory`, déjà trié) —, seul contenu
   entièrement MÉCANISABLE, donc affichable même sans rien de rédigé. Enfin,
   **`episodeEtayable(etat, now)`** identifie l'ÉPISODE de blocage dont l'enfant

@@ -72,10 +72,18 @@
 .aide-modal {
 	max-width: 440px;
 }
-/* Mascotte qui « présente » l'aide (emoji + bulle, cf. gamification.scss). */
+/* Mascotte qui « présente » l'aide (emoji + bulle, cf. gamification.scss).
+   Couloir réservé à DROITE : la bulle est POSITIONNÉE (`.mascotte-bulle`, position:
+   relative) et vient APRÈS la croix dans le DOM, donc elle peint par-dessus. Sur un écran
+   étroit, une phrase un peu plus longue suffit à ce qu'elle atteigne le coin haut-droit et
+   absorbe le clic de fermeture : le panneau ne se ferme alors plus qu'à Échap ou au
+   tap-dehors (constaté en e2e sur le panneau d'étayage #490, dont la phrase change selon
+   la forme du contenu). Même couloir que celui déjà réservé au bouton d'aide sur la carte
+   de révision (`.rev-stage--aide`, plus haut) — et non un z-index, qui laisserait la bulle
+   passer SOUS la croix, donc du texte illisible sous un bouton opaque. */
 .aide-modal .mascotte-scene {
 	margin: 2px auto 8px;
-	padding: 0 8px;
+	padding: 0 44px 0 8px;
 }
 .aide-titre {
 	margin-top: 0;

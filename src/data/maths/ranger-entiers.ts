@@ -40,6 +40,7 @@ import type { Exercise, ExerciseType } from '../../core/exercise';
 // (core/catalog.ts), qui lit `d.levels` — un descripteur sans ce champ casserait le
 // typage de l'union. `num-ranger` reste CE2-only : elle ne le renseigne pas (défaut).
 import type { NumerationLessonDef } from './numeration';
+import { etayageRedige } from '../_shared';
 import { rnd, choice, sample, melangerDifferemment } from '../../core/utils';
 import { formatNombre } from '../../core/nombres';
 
@@ -211,5 +212,19 @@ export const RANGER_LESSONS: NumerationLessonDef[] = [
 		id: 'num-ranger',
 		label: 'Je range les nombres',
 		exerciseType: rangerType(),
+		// Ranger n'est pas une notion de plus : c'est comparer, répété. Les deux premiers pas
+		// reprennent donc mot pour mot ceux de `num-comparer` (l'enfant doit reconnaître qu'il
+		// sait déjà faire) et seul le troisième ajoute la méthode propre au rangement.
+		etayage: [
+			etayageRedige(
+				'Ranger des nombres',
+				"Ranger, c'est comparer deux par deux : on cherche le plus petit de tous, puis le plus petit de ceux qui restent.",
+				[
+					'Regarde la longueur : 62 est plus court que 340, donc plus petit.',
+					'À longueur égale, compare de gauche à droite : dans 238 et 283, les 2 sont pareils, puis 3 est plus petit que 8.',
+					'Place le plus petit, mets-le de côté, et recommence avec ceux qui restent.',
+				],
+			),
+		],
 	},
 ];

@@ -31,7 +31,7 @@ import {
 } from '../src/core/etayage';
 import { apresEssaiLecon, BLOCAGES_SIGNAL_ADULTE } from '../src/core/report-lecon';
 import type { EtatReport } from '../src/core/report-lecon';
-import { getLessonById } from '../src/core/catalog';
+import { getAllLessons, getLessonById } from '../src/core/catalog';
 import type { LessonDef } from '../src/core/catalog';
 import type { Exercise } from '../src/core/exercise';
 import { resolutionPosee } from '../src/core/etayage-posee';
@@ -220,11 +220,30 @@ describe('étayage des opérations posées — la donnée de la leçon (#490)', 
 		}
 	});
 
-	it('une leçon sans entrée d’étayage n’en reçoit aucune d’une autre (pas de repli par moteur)', () => {
-		// « Je range les nombres » et « Les tables d'addition » n'ont pas de contenu rédigé :
-		// aucune ne doit hériter de celui d'une voisine, même de la même catégorie.
-		expect(etayagePour(lecon('math-tables-addition'), 'ce2')).toBeUndefined();
-		expect(etayagePour(lecon('num-ranger'), 'ce2')).toBeUndefined();
+	it('aucune leçon ne sert le contenu d’une AUTRE (pas de repli par moteur ni par catégorie)', () => {
+		/* Le corollaire central de #490, éprouvé sur TOUT le catalogue et par IDENTITÉ de
+		   référence : le contenu servi est forcément l'un des objets déclarés par CETTE
+		   leçon — ni celui d'une voisine, ni un générique fabriqué pour la famille de moteur.
+		   Volontairement sans leçon témoin « qui n'a pas d'entrée » : les maths sont
+		   couvertes depuis #490 PR 3 et le français le sera, donc tout témoin cité par son
+		   id se périmerait à la PR suivante — et tomberait pour une bonne nouvelle. */
+		const fautes: string[] = [];
+		for (const lesson of getAllLessons()) {
+			const siens = (lesson.etayage ?? []).map((e) => e.contenu);
+			for (const niveau of lesson.levels) {
+				for (const mode of [undefined, ...(lesson.exerciseType.modes ?? []).map((m) => m.id)]) {
+					const c = etayagePour(lesson, niveau, mode);
+					if (c && !siens.includes(c))
+						fautes.push(`${lesson.id}/${niveau}/${mode ?? '-'} → « ${c.titre} »`);
+				}
+			}
+		}
+		expect(fautes).toEqual([]);
+		// Et là où la tentation du repli serait la plus forte : « Les tables d'addition »
+		// porte un texte rédigé, pas le déroulé de l'addition POSÉE de sa voisine.
+		const tables = etayagePour(lecon('math-tables-addition'), 'ce2');
+		expect(tables?.exemple).toBeUndefined();
+		expect(tables).not.toBe(etayagePour(lecon('calc-addition-posee'), 'ce2'));
 	});
 });
 

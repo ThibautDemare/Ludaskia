@@ -23,7 +23,7 @@
 import { choice, rnd, sample } from '../../core/utils';
 import { checkNumerique } from '../../core/check-helpers';
 import type { Exercise, ExerciseType } from '../../core/exercise';
-import type { LessonInput } from '../_shared';
+import { etayageRedige, type LessonInput } from '../_shared';
 import { calibrated } from '../../core/level-combinators';
 import { deuxSousQuestionsType } from './_probleme-deux-sous-questions';
 import { renderFigure } from '../../core/figures';
@@ -380,11 +380,39 @@ export const DIVISION_LESSONS: DivisionLessonDef[] = [
 			},
 			moitieQuartType,
 		),
+		// Le quart passe par la moitié de la moitié, et non par une division par 4 : c'est
+		// la procédure de calcul mental du programme, et la seule qui reste tenable de tête
+		// quand la collection dépasse la table (le quart de 44).
+		etayage: [
+			etayageRedige(
+				'La moitié et le quart',
+				"La moitié, c'est partager en 2 ; le quart, c'est partager en 4, donc prendre la moitié de la moitié.",
+				[
+					'Coupe le nombre en dizaines et unités : 34 = 30 + 4.',
+					'Prends la moitié de chaque morceau : 15 + 2 = 17.',
+					"Pour le quart, recommence une fois : le quart de 44, c'est la moitié de 22, donc 11.",
+				],
+			),
+		],
 	},
 	{
 		id: 'math-div-partage',
 		label: 'Je partage',
 		exerciseType: partageType(),
+		// Le 1ᵉʳ pas est un pas de LECTURE, pas de calcul : la leçon alterne « combien dans
+		// chaque part » et « combien de parts », deux questions que le même 6 ÷ 3 sépare.
+		// L'enfant qui se trompe ici a bien calculé, mais pas répondu à la question posée.
+		etayage: [
+			etayageRedige(
+				'Partager en parts égales',
+				"Partager, c'est donner autant à chacun, jusqu'à ce qu'il n'y ait plus rien à distribuer.",
+				[
+					'Lis la question : on demande combien dans chaque part, ou combien de parts ?',
+					'Partage 6 jetons en 3 paniers : 2 jetons dans chaque panier.',
+					'Vérifie avec une multiplication : 3 paniers × 2 jetons = 6 jetons.',
+				],
+			),
+		],
 		// Lecture d'énoncé + figure de découverte : incompatible avec le chrono.
 		excludeFromSprint: true,
 	},
@@ -392,6 +420,22 @@ export const DIVISION_LESSONS: DivisionLessonDef[] = [
 		id: 'math-div-reste',
 		label: 'Je découvre le reste',
 		exerciseType: resteType(),
+		// ⚠ La leçon tire DEUX sens (partage en paniers ET groupement par paquets, cf.
+		// `genResteProbleme`). Le contrôle du reste se dit donc par le nombre qui SERT à
+		// partager, jamais « le nombre de parts » : en groupement, « 8 jetons par paquets de
+		// 5 » donne 1 paquet et 3 de reste, où le reste est plus GRAND que le nombre de parts
+		// (constat de l'`auteur-tests-logique`).
+		etayage: [
+			etayageRedige(
+				"Le reste d'un partage",
+				'Quand le partage ne tombe pas juste, ce qui ne peut plus être distribué reste sur le côté.',
+				[
+					'Place le plus possible : 31 jetons dans 6 paniers, cela fait 5 jetons par panier, donc 30 jetons placés.',
+					'Compte ce qui reste dans ta main : 31 - 30 = 1.',
+					'Le reste doit être plus petit que le nombre par lequel tu partages : sinon, tu pouvais encore en placer.',
+				],
+			),
+		],
 		// Deux champs (résultat + reste) + lecture d'énoncé + figure : hors chrono.
 		excludeFromSprint: true,
 	},
@@ -405,6 +449,20 @@ export const DIVISION_EUCLIDIENNE_LESSONS: DivisionLessonDef[] = [
 		id: 'math-division-euclidienne',
 		label: 'Quotient et reste',
 		exerciseType: euclidienneType(),
+		// Version CM1, abstraite, de `math-div-reste` : mêmes deux champs, mais on nomme les
+		// deux résultats (quotient, reste) et on s'appuie sur la table de multiplication au
+		// lieu de distribuer objet par objet.
+		etayage: [
+			etayageRedige(
+				'Quotient et reste',
+				"On enlève des paquets entiers tant qu'on peut ; ce qui ne fait plus un paquet, c'est le reste.",
+				[
+					'Cherche combien de fois le paquet tient : dans 26 crayons, il y a 4 boîtes de 6, car 4 × 6 = 24.',
+					"Le reste, c'est ce qui n'est pas entré : 26 - 24 = 2.",
+					'Vérifie : le reste doit être plus petit que 6, sinon il restait une boîte à remplir.',
+				],
+			),
+		],
 		// Deux champs (quotient + reste) + lecture d'énoncé : hors chrono.
 		excludeFromSprint: true,
 	},

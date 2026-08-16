@@ -150,14 +150,42 @@ describe('derouleConversion — l’exemple de la leçon (mode tableau)', () => 
 		return contenu.exemple.spec;
 	};
 
-	it('l’étayage des mesures n’est servi QU’EN mode tableau (la saisie n’a pas cette méthode)', () => {
+	it('le DÉROULÉ du tableau ne sort jamais du mode tableau (la saisie a son texte à elle)', () => {
+		/* Deux entrées par leçon, et c'est la plus spécifique qui gagne : en mode `tableau`,
+		   l'exemple déroulé ; partout ailleurs, le texte rédigé de la conversion. Ce qu'on
+		   verrouille ici, c'est qu'aucun des deux ne déborde sur l'autre — montrer la grille
+		   de colonnes à un enfant qui tape « 300 cm = ? m » lui expliquerait un écran qu'il
+		   n'a pas sous les yeux. */
 		for (const id of ['mes-longueurs', 'mes-masses', 'mes-contenances']) {
-			expect(etayagePour(lecon(id), 'ce2', 'tableau'), id).toBeDefined();
-			expect(etayagePour(lecon(id), 'ce2', 'saisie'), id).toBeUndefined();
-			expect(etayagePour(lecon(id), 'ce2'), id).toBeUndefined();
+			expect(etayagePour(lecon(id), 'ce2', 'tableau')?.exemple, id).toBeDefined();
+			const saisie = etayagePour(lecon(id), 'ce2', 'saisie');
+			expect(saisie, id).toBeDefined();
+			expect(saisie?.exemple, id).toBeUndefined();
+			expect(saisie?.etapes?.length, id).toBeGreaterThan(0);
+			// Sans mode (appel générique) : le texte rédigé aussi, jamais le déroulé.
+			expect(etayagePour(lecon(id), 'ce2'), id).toBe(saisie);
 		}
-		// Les durées (base 60) n'ont pas de tableau, donc pas d'étayage de conversion.
-		expect(etayagePour(lecon('mes-durees'), 'ce2', 'tableau')).toBeUndefined();
+	});
+
+	it('les DURÉES font exception : un texte rédigé, valable dans tous les modes', () => {
+		/* Base 60 : il n'y a pas de tableau de rangs à remplir (1 h ne vaut pas 10 min), donc
+		   rien à dérouler — l'entrée est rédigée et n'est PAS scopée au mode tableau, sans
+		   quoi cette leçon mono-mode n'aurait aucun panneau du tout. Ce qu'on verrouille
+		   surtout : elle ne doit jamais devenir un exemple de conversion, qui montrerait à
+		   l'enfant le tableau décimal des longueurs appliqué aux heures. */
+		const durees = lecon('mes-durees');
+		const contenu = etayagePour(durees, 'ce2');
+		expect(contenu).toBeDefined();
+		expect(contenu?.exemple).toBeUndefined();
+		expect(contenu?.etapes?.length).toBeGreaterThan(0);
+		// Le même contenu, quel que soit le mode : la leçon n'en déclare aucun (pas d'échelle
+		// décimale → pas de mode tableau), mais un appel avec un mode ne doit pas l'écarter.
+		expect(durees.exerciseType.modes).toBeUndefined();
+		expect(etayagePour(durees, 'ce2', 'tableau')).toBe(contenu);
+		expect(etayagePour(durees, 'cm1', 'saisie')).toBe(contenu);
+		// Et il dit le nombre qui relie les deux unités : une méthode de durée qui ne nomme
+		// jamais le 60 laisserait l'enfant appliquer le ×10 de ses trois voisines.
+		expect([contenu?.regle, ...(contenu?.etapes ?? [])].join(' ')).toContain('60');
 	});
 
 	it('3 km = 3 000 m : un pas d’ancrage, une colonne vide à la fois, puis la lecture', () => {

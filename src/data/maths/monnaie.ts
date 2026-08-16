@@ -23,7 +23,7 @@
    mono-niveau (CE2), inchangée.
    ============================================================ */
 import type { Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
-import type { LessonInput } from '../_shared';
+import { etayageRedige, type LessonInput } from '../_shared';
 import { checkNumerique } from '../../core/check-helpers';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice } from '../../core/utils';
@@ -122,6 +122,20 @@ export const MONNAIE_LESSONS: LessonInput[] = [
 		id: 'mes-monnaie-calcul',
 		label: 'Je calcule avec les euros',
 		exerciseType: monnaieType([euroTotal, euroReste, centTotal, centReste]),
+		// La difficulté n'est pas le calcul (des additions et soustractions déjà sues) mais
+		// le CHOIX de l'opération à partir de l'énoncé : les deux pas centraux donnent donc
+		// les deux formulations telles qu'elles apparaissent dans les questions.
+		etayage: [
+			etayageRedige(
+				'Calculer avec les euros',
+				'Un prix se calcule comme un nombre ordinaire : ce sont les mots de la question qui disent quelle opération faire.',
+				[
+					'« Combien en tout ? » demande une addition : 3 € + 15 € = 18 €.',
+					'« Combien te reste-t-il ? » demande une soustraction : 13 € - 2 € = 11 €.',
+					"N'additionne que ce qui va ensemble : des euros avec des euros, des centimes avec des centimes.",
+				],
+			),
+		],
 	},
 	{
 		id: 'mes-monnaie-rendu',
@@ -135,5 +149,19 @@ export const MONNAIE_LESSONS: LessonInput[] = [
 			},
 			renduType,
 		),
+		// « Compter en avançant » plutôt que « poser 20 - 17 » : c'est le geste réel du
+		// commerçant, il évite la soustraction à retenue, et il se vérifie tout seul (le
+		// 3ᵉ pas). Vrai aux deux niveaux, y compris quand le prix devient décimal au CM1.
+		etayage: [
+			etayageRedige(
+				'Rendre la monnaie',
+				"Rendre la monnaie, c'est chercher ce qui MANQUE entre le prix et le billet donné.",
+				[
+					'Repère les deux nombres : le prix (17 €) et le billet (20 €).',
+					'Compte en avançant à partir du prix : de 17 à 20, il y a 3.',
+					'Vérifie en ajoutant : 17 + 3 = 20, on te rend donc 3 €.',
+				],
+			),
+		],
 	},
 ];

@@ -36,7 +36,7 @@
 import type { Exercise, ExerciseType, GenerateOpts, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import type { SchoolLevel } from '../../core/catalog';
-import type { LessonInput } from '../_shared';
+import { etayageRedige, type LessonInput } from '../_shared';
 import type { PlaneShape } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
 import { choice, sample } from '../../core/utils';
@@ -341,6 +341,20 @@ export const FIGURES_PROPRIETES_LESSONS: FigureLessonDef[] = [
 		id: 'geo-cm1-figures-proprietes',
 		label: 'Reconnaître une figure par ses propriétés',
 		exerciseType: figuresProprietesType(),
+		// Les trois marques du codage #326, une par pas, dans l'ordre où on les cherche.
+		// La leçon ne demande que des faits DIRECTEMENT lisibles sur ce codage : l'étayage
+		// apprend donc à le lire, ce qui est exactement la compétence évaluée.
+		etayage: [
+			etayageRedige(
+				"Lire le codage d'une figure",
+				"Le codage dit la vérité même quand l'œil se trompe : c'est lui qu'il faut regarder, pas l'allure de la figure.",
+				[
+					'Compte les côtés en premier : trois, quatre, ou davantage ?',
+					'Repère les petits traits identiques : ces côtés-là ont la même longueur.',
+					'Repère les petits carrés (des angles droits) et les chevrons (des côtés parallèles).',
+				],
+			),
+		],
 		// Le mode par défaut est un vrai/faux devinable à 50 % : sous la pression du chrono,
 		// le sprint récompenserait le spam → exclue du sprint (comme les QCM oui/non).
 		excludeFromSprint: true,

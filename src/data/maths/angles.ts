@@ -39,7 +39,7 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { renderFigure } from '../../core/figures';
 import type { AngleSpec } from '../../core/figures';
@@ -397,5 +397,35 @@ export const ANGLES_LESSONS: LessonInput[] = [
 			},
 			anglesType,
 		),
+		// DEUX entrées, une par niveau : c'est ici le cas prévu par `etayageRedige`, où la
+		// TÂCHE change de classe en classe et pas seulement la plage. Le CE2 nomme un angle
+		// (droit, aigu, obtus) en le comparant au coin d'une feuille ; le CM1 compare deux
+		// ouvertures entre elles. Servir la méthode du CE2 à un CM1 qui bute sur « lequel est
+		// le plus ouvert ? » ne l'aiderait pas ; c'est exactement le décalage que #490 refuse.
+		// Le 3ᵉ pas CM1 couvre la famille `notation` (~15 % des tirages CM1, « quel point est
+		// le sommet de AÔB ? »), que les deux premiers, tout entiers sur la comparaison,
+		// laissaient sans réponse.
+		etayage: [
+			etayageRedige(
+				'Les angles',
+				"Un angle, c'est l'ouverture entre deux traits : plus ils s'écartent, plus l'angle est grand.",
+				[
+					"Compare avec le coin d'une feuille : si ça se superpose, c'est un angle droit.",
+					"Plus fermé que le coin de la feuille : c'est un angle aigu.",
+					"Plus ouvert que le coin de la feuille : c'est un angle obtus.",
+				],
+				'ce2',
+			),
+			etayageRedige(
+				'Comparer deux angles',
+				"Ce qui compte, c'est l'ouverture entre les deux traits, jamais leur longueur.",
+				[
+					'Ne te fie pas à la longueur des traits : un trait plus long ne fait pas un angle plus grand.',
+					"Imagine les deux angles posés sommet sur sommet, un premier trait sur l'autre : celui dont le second trait s'écarte le plus est le plus ouvert.",
+					'Et quand un angle est nommé, par exemple AÔB, son sommet est la lettre du milieu, celle qui porte le petit chapeau.',
+				],
+				'cm1',
+			),
+		],
 	},
 ];

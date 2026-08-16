@@ -21,7 +21,7 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ExerciseMode, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { rnd, choice, sample } from '../../core/utils';
 import { renderFigure } from '../../core/figures';
@@ -190,5 +190,20 @@ export const HEURE_LESSONS: LessonInput[] = [
 		id: 'mes-lecture-heure',
 		label: "Je lis l'heure",
 		exerciseType: heureType(),
+		// « Le chiffre qu'elle vient de DÉPASSER » : la petite aiguille est presque toujours
+		// entre deux chiffres, et lire le plus proche donne une heure de trop dès la demie.
+		// Le comptage de 5 en 5 est ensuite la seule façon de lire les minutes sans les
+		// confondre avec le chiffre pointé (la grande sur le 9, ce n'est pas 9 minutes).
+		etayage: [
+			etayageRedige(
+				"Lire l'heure",
+				"La petite aiguille donne les heures, la grande donne les minutes, et elle avance de 5 en 5 d'un chiffre au suivant.",
+				[
+					"Regarde la petite aiguille : l'heure est le chiffre qu'elle vient de dépasser.",
+					'Regarde la grande aiguille et compte de 5 en 5 depuis le 12.',
+					'La grande sur le 9 : 5, 10, 15, 20, 25, 30, 35, 40, 45. Il est donc 5 h 45.',
+				],
+			),
+		],
 	},
 ];

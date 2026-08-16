@@ -30,7 +30,7 @@
 import type { Exercise, ExerciseType, GenerateOpts, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import type { LessonInput } from '../_shared';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import { rnd, choice, sample } from '../../core/utils';
 import { checkNumerique, checkNumeriqueOuTexte } from '../../core/check-helpers';
 
@@ -363,25 +363,88 @@ export const DECIMAUX_LESSONS: LessonInput[] = [
 		id: 'num-dec-position',
 		label: 'Le chiffre des dixièmes et des centièmes',
 		exerciseType: positionType(),
+		etayage: [
+			etayageRedige(
+				'Les rangs après la virgule',
+				'Après la virgule, les rangs continuent : dixièmes, puis centièmes.',
+				[
+					"Trouve la virgule : juste à sa gauche, c'est le chiffre des unités.",
+					'Juste à sa droite, le chiffre des dixièmes ; encore un cran à droite, celui des centièmes.',
+					'Dans 17,01 : 7 unités, 0 dixième, 1 centième.',
+				],
+			),
+		],
 	},
 	{
 		id: 'num-dec-egales',
 		label: 'Le même nombre ?',
 		exerciseType: qcmDecType(egalesFact, 'Je choisis oui ou non'),
+		// Les deux pièges sont montrés CÔTE À CÔTE, et c'est le point : pris isolément, « le
+		// zéro final ne compte pas » se généralise aussitôt en « les zéros ne comptent pas »,
+		// qui fait lire 6,03 comme 6,3.
+		etayage: [
+			etayageRedige(
+				'Deux écritures, un seul nombre ?',
+				'Un zéro tout à la fin ne change rien ; un zéro juste après la virgule change tout.',
+				[
+					'Regarde rang par rang : combien de dixièmes, combien de centièmes ?',
+					"11,2 et 11,20 : 2 dixièmes et 0 centième des deux côtés, c'est donc le même nombre.",
+					"6,3 et 6,03 : 3 dixièmes d'un côté, 0 dixième de l'autre, ce ne sont pas les mêmes nombres.",
+				],
+			),
+		],
 	},
 	{
 		id: 'num-dec-comparer',
 		label: 'Je compare les nombres décimaux',
 		exerciseType: situerDecType(compareDecFact),
+		// La règle nomme l'erreur au lieu de la contourner : comparer 8 et 67 comme deux
+		// entiers est le réflexe de tous les enfants, et il donne juste assez souvent
+		// (0,84 < 11,2) pour ne pas se corriger tout seul.
+		etayage: [
+			etayageRedige(
+				'Comparer deux nombres décimaux',
+				"On compare d'abord la partie entière ; ce n'est qu'à égalité qu'on regarde après la virgule.",
+				[
+					'Compare les parties entières : 0 est plus petit que 11, donc 0,84 est plus petit que 11,2.',
+					'Même partie entière ? Compare les dixièmes : 8 dixièmes contre 6, donc 7,8 est plus grand que 7,67.',
+					'Mêmes dixièmes ? Compare alors les centièmes.',
+				],
+			),
+		],
 	},
 	{
 		id: 'num-dec-encadrer',
 		label: "J'encadre entre deux entiers",
 		exerciseType: situerDecType(encadreDecFact),
+		etayage: [
+			etayageRedige(
+				'Encadrer un décimal entre deux entiers',
+				'Un nombre à virgule est toujours coincé entre deux entiers qui se suivent.',
+				[
+					"Regarde la partie entière, à gauche de la virgule : dans 7,97, c'est 7.",
+					"L'entier juste avant, c'est cette partie entière : 7.",
+					"L'entier juste après, c'est elle plus 1 : 8.",
+				],
+			),
+		],
 	},
 	{
 		id: 'num-dec-ranger',
 		label: 'Je range les nombres décimaux',
 		exerciseType: qcmDecType(rangerFact, 'Je choisis la bonne suite'),
+		// Le 3ᵉ pas est propre au QCM : les distracteurs ne sont faux que par UNE paire mal
+		// placée, donc une suite jugée sur ses deux premiers nombres se choisit au hasard.
+		etayage: [
+			etayageRedige(
+				'Ranger des nombres décimaux',
+				"Croissant, c'est du plus petit au plus grand ; décroissant, c'est le contraire.",
+				[
+					'Lis bien le mot de la question : croissant (ça monte) ou décroissant (ça descend) ?',
+					'Compare les nombres deux par deux : la partie entière, puis les dixièmes.',
+					'Vérifie toute la suite : une seule paire mal placée suffit à éliminer la proposition.',
+				],
+			),
+		],
 	},
 ];

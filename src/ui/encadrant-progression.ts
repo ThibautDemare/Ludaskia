@@ -757,17 +757,24 @@ function blocagesParLecon(recap: RecapProfil): Map<string, number> {
    le SENS se lit déjà dans ce que la ligne affiche (état d'acquisition d'un côté, compte-rendu
    factuel de l'autre), et l'écrire se répéterait sur chaque épingle du cas courant. */
 const INFOBULLE_ORIGINE: Record<Exclude<OrigineLecon['direction'], 'classe-suivie'>, string> = {
+	// « pour cette classe-là », jamais « à ce niveau-là » : le badge d'état voisin porte déjà
+	// un « Niveau : » non visuel, et une navigation à la voix enchaînerait les deux sens du
+	// mot sur la même ligne (classe scolaire / cran d'acquisition).
 	'en-dessous':
-		"Leçon d'une classe précédente : épinglée volontairement, elle revient bien sur l'accueil de l'enfant, et son avancement se lit à ce niveau-là.",
+		"Leçon d'une classe précédente : épinglée volontairement, elle revient bien sur l'accueil de l'enfant, et son avancement se lit pour cette classe-là.",
 	'au-dessus':
 		"Leçon d'une classe suivante : on montre ce qui s'est passé le jour de l'essai, sans en tirer un niveau d'acquisition sur une notion pas encore travaillée en classe.",
 };
 
-/* Compte-rendu FACTUEL d'une leçon prise au-dessus de la classe suivie : ce qui s'est passé,
-   sans jugement. Pas de date pour une dictée (le store d'orthographe ne les date pas). */
-function texteEssai(essai: { at: number | null; reussi: boolean }): string {
+/* Compte-rendu FACTUEL d'une leçon prise dans une classe suivante : ce qui s'est passé, sans
+   jugement. Jamais essayée ⇒ on le dit avec les mots que l'écran emploie déjà ailleurs (« pas
+   encore travaillée ») : « pas encore réussie » se lirait comme « tentée sans succès », ce qui
+   serait faux — le cas le plus courant est celui d'une leçon qu'on vient d'épingler. Pas de
+   date pour une dictée (le suivi d'orthographe ne date pas ses essais). */
+function texteEssai(essai: { essaye: boolean; at: number | null; reussi: boolean }): string {
+	if (!essai.essaye) return 'Pas encore travaillée';
 	const quand = essai.at != null ? libelleDerniereFois(essai.at, Date.now()) : '';
-	if (!quand) return essai.reussi ? 'Déjà réussie' : 'Pas encore réussie';
+	if (!quand) return essai.reussi ? 'Déjà réussie' : 'Déjà commencée';
 	return essai.reussi ? `Réussie ${quand}` : `Essayée ${quand}`;
 }
 
@@ -777,7 +784,7 @@ function ligneRevoir(
 	epingle: boolean,
 	opts: {
 		etat?: NiveauNotion;
-		essai?: { at: number | null; reussi: boolean };
+		essai?: { essaye: boolean; at: number | null; reussi: boolean };
 		origine?: OrigineLecon | null;
 		imprimable?: boolean;
 		quand?: string;
@@ -840,7 +847,7 @@ function epinglerHTML(consulte: Profile, epinglees: ReadonlySet<string>): string
 		return p ? { consulte: p, action } : null;
 	});
 	return `<h4 class="enc-sub-lab">Épingler une leçon</h4>
-     <p class="enc-hint">N'importe quelle leçon du catalogue, même pas encore abordée et même d'une autre classe que celle que suit ${escapeHTML(consulte.name)} : sa classe ne change pas, seule cette leçon est proposée.</p>
+     <p class="enc-hint">Choisissez n'importe quelle leçon du catalogue, même pas encore abordée, même d'une autre classe que celle que suit ${escapeHTML(consulte.name)} : sa classe ne change pas, seule cette leçon est proposée.</p>
      ${selecteurLeconHTML({ id: ID_SELECTEUR_EPINGLE, consulte, action })}`;
 }
 

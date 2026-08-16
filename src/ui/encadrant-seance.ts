@@ -104,7 +104,7 @@ const INFOBULLE_ORIGINE: Record<
 	(nom: string) => string
 > = {
 	'en-dessous': (nom) =>
-		`Leçon d'une classe précédente : ${nom} la travaillera telle qu'elle est prévue à ce niveau, sans que la classe suivie change.`,
+		`Leçon d'une classe précédente : ${nom} la travaillera telle qu'elle est prévue pour cette classe, sans que la classe suivie change.`,
 	'au-dessus': (nom) =>
 		`Leçon d'une classe suivante : ${nom} la découvrira en avance, sans que la classe suivie change.`,
 };
@@ -349,7 +349,10 @@ function cibleLeconHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): 
 	}
 	// `aria-expanded` sur le bouton qui ouvre le sélecteur : c'est un dévoilement, pas une
 	// navigation — l'adulte doit savoir, à la voix, si le panneau est déjà ouvert.
-	const bouton = `<button type="button" class="enc-btn-sec${ouvert ? ' on' : ''}" data-act="seance-cible-ouvrir" data-def="${def.id}" data-etape="${etape.id}" aria-expanded="${ouvert}" aria-controls="${idSelecteur(def, etape)}">${etape.ref ? 'Changer' : 'Choisir une leçon'}</button>`;
+	// `aria-controls` seulement quand le panneau EXISTE : replié, il n'est pas rendu du tout,
+	// et l'attribut pointerait vers un identifiant absent du document (IDREF invalide).
+	const controls = ouvert ? ` aria-controls="${idSelecteur(def, etape)}"` : '';
+	const bouton = `<button type="button" class="enc-btn-sec${ouvert ? ' on' : ''}" data-act="seance-cible-ouvrir" data-def="${def.id}" data-etape="${etape.id}" aria-expanded="${ouvert}"${controls}>${etape.ref ? 'Changer' : 'Choisir une leçon'}</button>`;
 	return `<span class="enc-seance-cible">${nom}${bouton}</span>`;
 }
 
@@ -558,7 +561,10 @@ export function seanceClick(act: string, el: HTMLElement): boolean {
 			// L'étape supprimée pouvait porter le sélecteur ouvert : le laisser « ouvert » sur
 			// une étape disparue garderait un état de vue orphelin jusqu'au prochain profil.
 			if (estOuvert(uuid, el.dataset.def ?? '', el.dataset.etape ?? '')) fermerSelecteur();
-			rendre();
+			// Le bouton cliqué disparaît avec sa ligne : sans cible de repli, le navigateur
+			// rabat le focus sur `<body>` et l'adulte au clavier retraverse toute la page. On le
+			// pose sur l'ajout d'activité de la MÊME carte, l'action la plus probable ensuite.
+			rendre(`select[data-act="seance-etape-add"][data-def="${el.dataset.def}"]`);
 			return true;
 		}
 		case 'seance-cible-ouvrir': {

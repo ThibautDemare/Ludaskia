@@ -13,6 +13,9 @@ import {
 	echelleRevisionLabels,
 	libelleEcheanceRevision,
 	revisionProfil,
+	niveauProfilMatiere,
+	type RecapRevision,
+	type EntreeRevision,
 } from '../src/core/encadrant-stats';
 import {
 	initProfiles,
@@ -24,7 +27,12 @@ import {
 import { setOnDataWrite, lsSetRaw } from '../src/core/storage';
 import { LESSON_REVISION_KEY } from '../src/core/progress';
 import { ORTHO_KEY, emptyOrthoState } from '../src/core/orthographe/store';
-import { ORTHO_CATEGORY_ID, getLessonsByCategory, getLessonById } from '../src/core/catalog';
+import {
+	ORTHO_CATEGORY_ID,
+	getLessonsByCategory,
+	getLessonById,
+	getAllLessons,
+} from '../src/core/catalog';
 import { JOUR, PALIER_ACQUIS } from '../src/core/revision';
 import type { EtatRevision, MotOrtho, OrthoState } from '../src/core/orthographe/types';
 
@@ -33,6 +41,11 @@ beforeEach(() => {
 	setOnDataWrite(touchActiveProfile);
 	initProfiles();
 });
+
+/* Les six marches de l'escalier, EN CLAIR : recalculées à la main depuis
+   REVISION_INTERVALLES = [1, 3, 7, 16, 35, 75] jours (cf. describe ci-dessous), pour servir
+   de référence indépendante aux tests qui croisent libellé de ligne et en-tête d'étage. */
+const MARCHES = ['1 jour', '3 jours', '1 semaine', '2 semaines', '1 mois', '3 mois'] as const;
 
 /* ---------- libellePalier : intervalle courant, dérivé des intervalles ----------
    REVISION_INTERVALLES (jours) = [1, 3, 7, 16, 35, 75] ; règle du code de conversion
@@ -55,6 +68,34 @@ describe('libellePalier', () => {
 		expect(libellePalier(6)).toBe('');
 		expect(libellePalier(7)).toBe(''); // au-delà de l'escalier
 		expect(libellePalier(PALIER_ACQUIS)).toBe('');
+	});
+
+	/* PALIERS CORROMPUS (import d'un profil, écriture concurrente) : le garde
+	   `Number.isFinite` du récap les laisse passer jusqu'ici, donc ce libellé s'affiche tel
+	   quel à l'adulte (« Palier : … » dans les vues Catégorie et Urgence). Ma dérivation du
+	   contrat : sous l'escalier → la première marche (rien n'est moins ancré que le pied) ;
+	   entre deux marches → la marche COMMENCÉE, celle du dessous (on n'est au 6e étage qu'une
+	   fois arrivé) ; au niveau du sommet ou au-dessus → '' (acquis, badge dédié). */
+	it('palier corrompu → toujours une marche de l’escalier (jamais de calcul sur du vide)', () => {
+		expect(libellePalier(-3)).toBe('1 jour'); // sous l'escalier → pied
+		expect(libellePalier(-0.5)).toBe('1 jour');
+		expect(libellePalier(0.5)).toBe('1 jour'); // marche 0 commencée
+		expect(libellePalier(2.4)).toBe('1 semaine'); // marche 2 (7 j), pas la 3
+		expect(libellePalier(3.9)).toBe('2 semaines'); // marche 3 (16 j), pas la 4
+		expect(libellePalier(5.5)).toBe('3 mois'); // dernière marche : PAS encore acquis
+		expect(libellePalier(5.999)).toBe('3 mois');
+		expect(libellePalier(6.7)).toBe(''); // au-delà du sommet → acquis
+	});
+
+	it('ÉCHANTILLON : aucun palier, même absurde, ne produit « NaN »', () => {
+		const admissibles: string[] = [...MARCHES, ''];
+		for (const p of [-1e6, -100, -7.5, -1, -0.001, 0, 0.999, 1.5, 4.5, 5.999, 6, 42, 1e6]) {
+			const label = libellePalier(p);
+			expect(label).not.toContain('NaN'); // « Palier : NaN mois » était affiché à l'adulte
+			expect(admissibles).toContain(label);
+		}
+		// Et l'escalier de la légende reste exactement les 6 marches + le sommet nommé.
+		expect(echelleRevisionLabels()).toEqual([...MARCHES, 'acquis']);
 	});
 });
 
@@ -485,5 +526,369 @@ describe('revisionProfil : filtre par niveau de la matière (#423 / #232)', () =
 		expect(mot.niveauOrigine).toBeUndefined();
 		expect(mot).toMatchObject({ nature: 'mot', label: 'chateau', du: false });
 		expect(recap.parUrgence.find((e) => e.cle === BI + '@ce2')!.niveauOrigine).toBe('ce2');
+	});
+});
+
+/* ---------- Vue « par palier » (#555) : les étages de l'escalier ----------
+   Troisième projection de la MÊME file : un étage par palier, du moins ancré au sommet.
+   Les attendus sont dérivés de la sémantique #45 (escalier 1 j → 3 j → 1 sem → 2 sem →
+   1 mois → 3 mois → acquis, PALIER_ACQUIS = 6) et des paliers posés dans les scénarios,
+   recalculés à la main — jamais lus dans l'implémentation. */
+describe('revisionProfil : vue par palier (#555)', () => {
+	const NOW = new Date(2026, 5, 15, 12, 0, 0, 0).getTime();
+
+	/* L'INVARIANT le plus important du bloc : les trois vues décrivent la même file.
+	   Une entrée qui disparaîtrait d'une vue — ou y serait comptée deux fois — rendrait
+	   le suivi silencieusement faux (le parent croirait tout voir). */
+	function memesEntreesDansLesTroisVues(recap: RecapRevision): void {
+		const cles = (es: EntreeRevision[]) => es.map((e) => e.cle).sort();
+		const desGroupes = recap.groupes.flatMap((g) => g.entrees);
+		const desPaliers = recap.parPalier.flatMap((p) => p.entrees);
+		expect(cles(desPaliers)).toEqual(cles(recap.parUrgence));
+		expect(cles(desGroupes)).toEqual(cles(recap.parUrgence));
+		// Aucun doublon : un étage ne « repêche » pas une entrée déjà classée ailleurs.
+		expect(new Set(desPaliers.map((e) => e.cle)).size).toBe(desPaliers.length);
+		expect(desPaliers).toHaveLength(recap.total);
+		// Et les mêmes OBJETS d'entrée (mêmes champs), pas des copies recalculées à part.
+		for (const e of desPaliers) expect(recap.parUrgence).toContain(e);
+	}
+	const sommeEtages = (
+		recap: RecapRevision,
+		f: (p: RecapRevision['parPalier'][number]) => number,
+	) => recap.parPalier.reduce((n, p) => n + f(p), 0);
+
+	it('un étage par palier PRÉSENT, du bas de l’escalier vers l’acquis ; étages vides omis', () => {
+		const { recap } = scenario(NOW);
+		// Paliers posés par le scénario : 0 (doubles), 1 (complements, avion, zebre),
+		// 2 (moitiés), 3 (chateau), 4 (numération), 6 (2 acquises). Le palier 5 n'a
+		// aucune entrée → pas d'étage émis (comme une catégorie sans entrée).
+		expect(recap.parPalier.map((p) => p.palier)).toEqual([0, 1, 2, 3, 4, 6]);
+		expect(recap.parPalier.map((p) => p.label)).toEqual([
+			'1 jour',
+			'3 jours',
+			'1 semaine',
+			'2 semaines',
+			'1 mois',
+			'acquis', // le sommet est NOMMÉ (libellePalier y rend '') : sinon en-tête vide
+		]);
+		expect(recap.parPalier.map((p) => p.acquis)).toEqual([false, false, false, false, false, true]);
+		// Ordre strictement croissant (pas seulement « trié ») : un étage par palier, pas deux.
+		const paliers = recap.parPalier.map((p) => p.palier);
+		expect(paliers.every((v, i) => i === 0 || v > paliers[i - 1])).toBe(true);
+	});
+
+	it('à l’intérieur d’un étage : leçons et mots mélangés, tri par urgence, égalité → alpha', () => {
+		const { recap } = scenario(NOW);
+		const etage1 = recap.parPalier.find((p) => p.palier === 1)!;
+		// Palier 1 = 1 leçon (en retard de 2 j) + 2 mots (dans 2 j) : le retard d'abord,
+		// puis « avion » avant « zebre » à échéance égale. Les mots ne sont pas relégués
+		// après les leçons : l'étage est une file unique, comme la vue par urgence.
+		expect(etage1.entrees.map((e) => e.label)).toEqual([
+			'Complément à 10/100/1000',
+			'avion',
+			'zebre',
+		]);
+		expect(etage1.entrees.map((e) => e.nature)).toEqual(['lecon', 'mot', 'mot']);
+		// Et l'ordre relatif d'un étage est celui de la vue à plat, restreinte à cet étage.
+		const attendu = recap.parUrgence.filter((e) => e.palier === 1).map((e) => e.cle);
+		expect(etage1.entrees.map((e) => e.cle)).toEqual(attendu);
+	});
+
+	it('chaque entrée est rangée sur SON étage, dont elle porte le libellé d’intervalle', () => {
+		const { recap } = scenario(NOW);
+		for (const p of recap.parPalier) {
+			for (const e of p.entrees) {
+				expect(e.palier).toBe(p.palier);
+				expect(e.acquis).toBe(p.acquis);
+				// Non acquis : l'en-tête d'étage porte l'intervalle que la ligne affichait
+				// dans les autres vues (l'UI masque alors le palier ligne à ligne).
+				if (!p.acquis) expect(e.palierLabel).toBe(p.label);
+				else expect(e.palierLabel).toBe(''); // acquis : plus d'intervalle courant
+			}
+		}
+	});
+
+	it('dues par étage = entrées échues, et les sommes recollent aux compteurs globaux', () => {
+		const { recap } = scenario(NOW);
+		// Échéances du scénario : doubles échu ce matin (étage 0), complements en retard
+		// de 2 j (étage 1), chateau en retard de 5 j (étage 3). Les autres sont futures.
+		expect(recap.parPalier.map((p) => [p.palier, p.dues])).toEqual([
+			[0, 1],
+			[1, 1],
+			[2, 0],
+			[3, 1],
+			[4, 0],
+			[6, 0], // un acquis n'est jamais « à réviser »
+		]);
+		expect(sommeEtages(recap, (p) => p.dues)).toBe(recap.dues);
+		expect(sommeEtages(recap, (p) => p.entrees.length)).toBe(recap.total);
+		// Rotation vs acquis : l'étage sommital porte exactement les acquises.
+		const sommet = recap.parPalier.find((p) => p.acquis)!;
+		expect(sommet.entrees).toHaveLength(recap.acquises);
+		expect(sommeEtages(recap, (p) => (p.acquis ? 0 : p.entrees.length))).toBe(recap.enRotation);
+		// Et chaque `dues` d'étage est bien un dénombrement de ses propres entrées.
+		for (const p of recap.parPalier) expect(p.dues).toBe(p.entrees.filter((e) => e.du).length);
+	});
+
+	it('INVARIANT : les trois vues contiennent exactement les mêmes entrées', () => {
+		const { recap } = scenario(NOW);
+		memesEntreesDansLesTroisVues(recap);
+	});
+
+	/* Échantillon large : tout le catalogue jouable par le profil, chaque palier et chaque
+	   position d'échéance représentés. C'est le filet qui attrape une entrée qui se
+	   perdrait dans UNE seule vue (ex. une leçon dont la catégorie ne serait pas dans
+	   CATEGORIES disparaîtrait de `groupes` sans que rien ne le signale). */
+	it('ÉCHANTILLON (catalogue entier) : aucune entrée perdue ni dupliquée, 7 étages peuplés', () => {
+		const p = activeProfile();
+		const store: Record<string, EtatRevision> = {};
+		let i = 0;
+		for (const lesson of getAllLessons()) {
+			const niveau = niveauProfilMatiere(p, lesson.subject);
+			if (!lesson.levels.includes(niveau)) continue; // seules les clés que le moteur écrit
+			const palier = i % (PALIER_ACQUIS + 1); // 0..6, tous les étages
+			const decalage = ((i * 5) % 21) - 10; // -10..+10 j : retard, aujourd'hui, futur
+			store[lesson.id + '@' + niveau] =
+				palier >= PALIER_ACQUIS ? etatAcquis() : etat(palier, NOW + decalage * JOUR);
+			i++;
+		}
+		expect(Object.keys(store).length).toBeGreaterThan(20); // échantillon significatif
+		seed(p.uuid, LESSON_REVISION_KEY, store);
+
+		const recap = revisionProfil(p, NOW);
+		expect(recap.total).toBe(Object.keys(store).length); // aucune leçon du catalogue perdue
+		memesEntreesDansLesTroisVues(recap);
+		// Escalier complet et ordonné ; les en-têtes d'étages disent la même chose que la
+		// légende affichée juste au-dessus dans le panneau.
+		expect(recap.parPalier.map((x) => x.palier)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+		expect(recap.parPalier.map((x) => x.label)).toEqual(echelleRevisionLabels());
+		expect(sommeEtages(recap, (x) => x.entrees.length)).toBe(recap.total);
+		expect(sommeEtages(recap, (x) => x.dues)).toBe(recap.dues);
+		// Chaque étage est trié comme la vue à plat restreinte à cet étage.
+		for (const etage of recap.parPalier) {
+			expect(etage.entrees.map((e) => e.cle)).toEqual(
+				recap.parUrgence.filter((e) => e.palier === etage.palier).map((e) => e.cle),
+			);
+		}
+	});
+
+	/* États CORROMPUS : `Number.isFinite` laisse passer un palier négatif, hors escalier ou
+	   non entier (import d'un profil, écriture concurrente, régression). L'exigence n'est
+	   pas de les réparer, mais qu'ils ne fassent NI disparaître une entrée, NI ouvrir un
+	   étage fantôme : l'escalier n'a que 7 marches. */
+	it('palier corrompu (négatif, hors escalier, non entier) : atterrit sur un étage existant', () => {
+		const p = activeProfile();
+		seed(p.uuid, LESSON_REVISION_KEY, {
+			'math-complements@ce2': etat(-3, NOW - JOUR), // sous l'escalier → pied de l'escalier
+			'math-doubles@ce2': etat(2.4, NOW + 3 * JOUR), // entre deux marches → une seule marche
+			'math-moities@ce2': etat(9, NOW - 40 * JOUR), // au-dessus du sommet → déjà « acquis »
+		});
+		const recap = revisionProfil(p, NOW);
+
+		expect(recap.total).toBe(3); // aucune n'est écartée
+		memesEntreesDansLesTroisVues(recap);
+		expect(recap.parPalier.map((x) => [x.palier, x.entrees.map((e) => e.cle)])).toEqual([
+			[0, ['math-complements@ce2']],
+			[2, ['math-doubles@ce2']],
+			[PALIER_ACQUIS, ['math-moities@ce2']],
+		]);
+		expect(recap.parPalier.map((x) => x.label)).toEqual(['1 jour', '1 semaine', 'acquis']);
+		// Un palier au-dessus du sommet est acquis pour le moteur (palier ≥ 6) : il sort de la
+		// rotation, son retard de 40 j n'est plus une dette.
+		expect(recap.acquises).toBe(1);
+		expect(recap.enRotation).toBe(2);
+		expect(recap.dues).toBe(1); // seule l'entrée en retard de 1 jour reste due
+		expect(sommeEtages(recap, (x) => x.dues)).toBe(recap.dues);
+		// Aucun étage hors de l'escalier, quoi qu'on lise dans le stockage.
+		for (const x of recap.parPalier) {
+			expect(Number.isInteger(x.palier)).toBe(true);
+			expect(x.palier).toBeGreaterThanOrEqual(0);
+			expect(x.palier).toBeLessThanOrEqual(PALIER_ACQUIS);
+		}
+	});
+
+	/* FRONTIÈRE du sommet, de part et d'autre. Le moteur tranche « acquis » sur
+	   `palier >= PALIER_ACQUIS` (revision.ts) : 5,5 est encore EN ROTATION (échéance, retard
+	   possible), 6,7 est acquis. L'étage doit dire la MÊME chose que ce verdict, sinon
+	   l'en-tête « Acquis » annonce « dont 1 à réviser » et la même entrée s'affiche
+	   « Palier : 3 mois » dans la vue voisine. */
+	it('frontière du sommet : 5,5 reste sur la dernière marche, 6,7 monte au sommet', () => {
+		const p = activeProfile();
+		seed(p.uuid, LESSON_REVISION_KEY, {
+			'math-complements@ce2': etat(5.5, NOW - JOUR), // en retard, mais pas acquis
+			'math-doubles@ce2': etat(6.7, NOW - 40 * JOUR), // au-dessus du sommet → acquis
+		});
+		const recap = revisionProfil(p, NOW);
+		memesEntreesDansLesTroisVues(recap);
+
+		expect(recap.parPalier.map((x) => [x.palier, x.label, x.acquis, x.dues])).toEqual([
+			[5, '3 mois', false, 1], // dernière marche : l'entrée y est encore due
+			[PALIER_ACQUIS, 'acquis', true, 0], // sommet : plus aucune dette
+		]);
+		expect(recap.parPalier[0].entrees.map((e) => e.cle)).toEqual(['math-complements@ce2']);
+		expect(recap.parPalier[0].entrees[0]).toMatchObject({
+			acquis: false,
+			du: true,
+			palierLabel: '3 mois', // la ligne dit la même chose que son en-tête
+		});
+		expect(recap.parPalier[1].entrees[0]).toMatchObject({
+			acquis: true,
+			du: false,
+			prochaineRevision: null, // le retard de 40 j n'est plus une dette
+		});
+		expect([recap.total, recap.enRotation, recap.acquises, recap.dues]).toEqual([2, 1, 1, 1]);
+	});
+
+	/* L'invariant qui verrouille l'équivalence étage sommital ↔ `estAcquis`, sur un
+	   échantillon qui balaie les deux côtés de CHAQUE marche (valeurs corrompues comprises).
+	   Sans lui, un simple arrondi suffit à ranger sous « Acquis » une notion encore en
+	   rotation — le parent lit « acquis » là où l'enfant a encore du travail. */
+	it('ÉCHANTILLON (paliers tordus) : sommet ⟺ acquis, et chaque ligne dit son en-tête', () => {
+		// Ma dérivation, indépendante du code : ≥ sommet → sommet ; ≤ 0 → pied ; sinon la
+		// marche commencée (partie entière).
+		const etageAttendu = (palier: number) =>
+			palier >= PALIER_ACQUIS ? PALIER_ACQUIS : palier <= 0 ? 0 : Math.trunc(palier);
+		const TORDUS = [-5, -0.5, 0, 0.5, 1, 2.4, 3, 4.99, 5, 5.5, 5.999, 6, 6.7, 9];
+
+		const p = activeProfile();
+		const store: Record<string, EtatRevision> = {};
+		const attendu: Record<string, number> = {}; // clé → étage que JE prédis
+		let i = 0;
+		for (const lesson of getAllLessons()) {
+			const niveau = niveauProfilMatiere(p, lesson.subject);
+			if (!lesson.levels.includes(niveau)) continue;
+			const palier = TORDUS[i % TORDUS.length];
+			const cle = lesson.id + '@' + niveau;
+			store[cle] = etat(palier, NOW + (((i * 3) % 13) - 6) * JOUR); // retard / du jour / futur
+			attendu[cle] = etageAttendu(palier);
+			i++;
+		}
+		expect(i).toBeGreaterThan(TORDUS.length * 2); // chaque palier tordu tiré plusieurs fois
+		seed(p.uuid, LESSON_REVISION_KEY, store);
+
+		const recap = revisionProfil(p, NOW);
+		memesEntreesDansLesTroisVues(recap);
+
+		// 1. Chaque entrée est sur l'étage prédit — la répartition entière, pas un invariant mou.
+		for (const etage of recap.parPalier) {
+			for (const e of etage.entrees) expect([e.cle, etage.palier]).toEqual([e.cle, attendu[e.cle]]);
+		}
+		// 2. Sommet ⟺ acquis : l'étage sommital porte TOUTES les acquises et RIEN d'autre.
+		const sommet = recap.parPalier.find((x) => x.acquis)!;
+		expect(sommet.palier).toBe(PALIER_ACQUIS);
+		expect(sommet.entrees).toHaveLength(recap.acquises);
+		expect(sommet.entrees.every((e) => e.acquis)).toBe(true);
+		expect(sommet.dues).toBe(0);
+		for (const etage of recap.parPalier) {
+			if (etage.acquis) continue;
+			expect(etage.entrees.some((e) => e.acquis)).toBe(false); // aucune acquise ailleurs
+			// 3. Cohérence ligne ↔ en-tête : hors sommet, la ligne affiche l'intervalle de
+			//    son étage (l'UI masque le palier ligne à ligne en se fiant à cette égalité).
+			expect(etage.label).toBe(MARCHES[etage.palier]);
+			for (const e of etage.entrees) expect(e.palierLabel).toBe(etage.label);
+		}
+		// 4. Et au sommet, le libellé de ligne est vide (badge « acquis » à la place).
+		expect(sommet.entrees.every((e) => e.palierLabel === '')).toBe(true);
+		// 5. Aucun libellé dégradé nulle part.
+		for (const e of recap.parUrgence) expect(e.palierLabel).not.toContain('NaN');
+		expect(recap.parPalier.every((x) => x.label !== '')).toBe(true);
+	});
+
+	it('entrée en rotation SANS échéance : gardée sur son étage, en fin de file, pas due', () => {
+		// État incohérent plausible (palier avancé mais `prochaineRevision` perdue) : elle ne
+		// doit ni passer devant une entrée en retard, ni se faire compter comme à réviser.
+		const p = activeProfile();
+		seed(p.uuid, LESSON_REVISION_KEY, {
+			'math-complements@ce2': etat(2, NOW - JOUR), // en retard
+			'math-doubles@ce2': etat(2, NOW + 3 * JOUR), // future
+			'math-moities@ce2': etat(2, null), // sans échéance
+		});
+		const recap = revisionProfil(p, NOW);
+		const etage = recap.parPalier[0];
+		expect(recap.parPalier).toHaveLength(1);
+		expect(etage.entrees.map((e) => e.cle)).toEqual([
+			'math-complements@ce2',
+			'math-doubles@ce2',
+			'math-moities@ce2',
+		]);
+		expect(etage.dues).toBe(1);
+		expect(etage.entrees[2]).toMatchObject({ echeance: '', du: false, joursRestants: null });
+		expect(etage.acquis).toBe(false); // toujours en rotation, malgré l'absence d'échéance
+	});
+
+	it('égalité de palier ET d’échéance → ordre alphabétique français (les accents ne partent pas en fin)', () => {
+		const p = activeProfile();
+		const ortho: OrthoState = {
+			...emptyOrthoState(),
+			banque: {
+				w1: motOrtho('w1', 'zebre', etat(1, NOW + 2 * JOUR)),
+				w2: motOrtho('w2', 'école', etat(1, NOW + 2 * JOUR)),
+				w3: motOrtho('w3', 'avion', etat(1, NOW + 2 * JOUR)),
+			},
+		};
+		seed(p.uuid, ORTHO_KEY, ortho);
+		const recap = revisionProfil(p, NOW);
+		// Un tri sur les codes d'unité mettrait « école » APRÈS « zebre » (é > z en UTF-16).
+		expect(recap.parPalier[0].entrees.map((e) => e.label)).toEqual(['avion', 'école', 'zebre']);
+	});
+
+	it('entretien du niveau inférieur (#232) : la même leçon se range sur DEUX étages distincts', () => {
+		const a = activeProfile();
+		const profilCm1: Profile = { ...a, niveauParMatiere: { math: 'cm1' } };
+		seed(a.uuid, LESSON_REVISION_KEY, {
+			'num-comparer@ce2': etat(4, NOW - JOUR), // entretenu, presque ancré
+			'num-comparer@cm1': etat(0, NOW - JOUR), // niveau actif, encore au pied
+		});
+		const recap = revisionProfil(profilCm1, NOW);
+		// Deux entrées de la MÊME leçon : la vue par palier est justement celle qui montre
+		// qu'elles n'en sont pas au même point (là où la vue par catégorie les colle).
+		expect(recap.parPalier.map((x) => [x.label, x.entrees.map((e) => e.cle)])).toEqual([
+			['1 jour', ['num-comparer@cm1']],
+			['1 mois', ['num-comparer@ce2']],
+		]);
+		expect(recap.parPalier[1].entrees[0].niveauOrigine).toBe('ce2');
+		expect(recap.parPalier[0].entrees[0].niveauOrigine).toBeUndefined();
+		expect(recap.parPalier.map((x) => x.dues)).toEqual([1, 1]);
+		memesEntreesDansLesTroisVues(recap);
+	});
+
+	it('toutes les entrées sur le MÊME étage → un seul étage, leçons et mots réunis', () => {
+		const p = activeProfile();
+		seed(p.uuid, LESSON_REVISION_KEY, {
+			'math-complements@ce2': etat(3, NOW + JOUR),
+			'math-doubles@ce2': etat(3, NOW + JOUR),
+		});
+		seed(p.uuid, ORTHO_KEY, {
+			...emptyOrthoState(),
+			banque: { w1: motOrtho('w1', 'chateau', etat(3, NOW + JOUR)) },
+		} satisfies OrthoState);
+		const recap = revisionProfil(p, NOW);
+		expect(recap.parPalier).toHaveLength(1);
+		expect(recap.parPalier[0]).toMatchObject({ palier: 3, label: '2 semaines', dues: 0 });
+		expect(recap.parPalier[0].entrees).toHaveLength(3);
+		expect(recap.groupes).toHaveLength(2); // 2 catégories, mais un seul étage
+		memesEntreesDansLesTroisVues(recap);
+	});
+
+	it('profil sans aucune donnée → aucun étage (pas sept étages vides)', () => {
+		const recap = revisionProfil(activeProfile(), NOW);
+		expect(recap.parPalier).toEqual([]);
+	});
+
+	it('toutes les entrées acquises → un seul étage, celui du sommet', () => {
+		const p = activeProfile();
+		seed(p.uuid, LESSON_REVISION_KEY, {
+			'math-complements@ce2': etatAcquis(),
+			'math-doubles@ce2': etatAcquis(),
+		});
+		const recap = revisionProfil(p, NOW);
+		expect(recap.parPalier).toHaveLength(1);
+		expect(recap.parPalier[0]).toMatchObject({
+			palier: PALIER_ACQUIS,
+			label: 'acquis',
+			acquis: true,
+			dues: 0,
+		});
+		expect(recap.enRotation).toBe(0);
 	});
 });

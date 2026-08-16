@@ -49,14 +49,20 @@ function calculTexte(calcul: CalculEtape, answer: number): string {
 	return `${a} ${SIGNES[calcul.op]} ${b} = ${attenduEtapeTexte(answer)}`;
 }
 
-/** L'opérande `valeur` est-il le résultat d'une sous-question PRÉCÉDENTE ? C'est le
+/** La sous-question dont PROVIENT un opérande du calcul de l'étape `i`, ou -1. C'est le
     chaînage d'un problème à étapes : le seul raisonnement que ces données permettent
-    d'expliquer honnêtement. Renvoie l'index de cette sous-question, ou -1. */
-export function etapeSource(etapes: ProblemeEtape[], i: number, valeur: number): number {
-	for (let k = 0; k < i; k++) {
-		if (etapes[k].answer === valeur) return k;
-	}
-	return -1;
+    d'expliquer honnêtement, et le seul que l'enfant perd vraiment.
+
+    Il est LU sur ce que le générateur a déclaré (`deA`/`deB`), jamais retrouvé en
+    comparant les valeurs : un opérande de l'énoncé qui vaudrait par hasard la réponse
+    précédente serait annoncé comme en venant, et un résultat réutilisé transformé (converti,
+    divisé) ne serait pas reconnu du tout. Un index hors de portée (≥ `i`, négatif) est
+    ignoré : on ne renvoie jamais l'enfant à une question qu'il n'a pas encore traitée. */
+export function etapeSource(etapes: ProblemeEtape[], i: number): number {
+	const calcul = etapes[i]?.calcul;
+	const source = calcul?.deA ?? calcul?.deB;
+	if (source === undefined || source < 0 || source >= i) return -1;
+	return source;
 }
 
 /** Déroulé d'un problème : on relit l'énoncé, puis on traite les sous-questions dans
@@ -87,12 +93,14 @@ export function derouleProbleme(spec: ProblemeSpec): DerouleEtayage {
 		}
 		// Chaînage : un opérande qui vient d'une sous-question précédente se dit, sans quoi
 		// l'enfant voit un nombre tomber du ciel là où il devait réutiliser son résultat.
-		const source = [etape.calcul.a, etape.calcul.b]
-			.map((v) => etapeSource(etapes, i, v))
-			.find((k) => k >= 0);
+		// « La question d'avant » n'est dit que si c'est bien la précédente — au-delà de deux
+		// étapes, on nomme laquelle plutôt que d'affirmer une position fausse.
+		const source = etapeSource(etapes, i);
 		const reprise =
-			source !== undefined && source >= 0
-				? ` Le ${attenduEtapeTexte(etapes[source].answer)} vient de la question d'avant : je m'en sers ici.`
+			source >= 0
+				? ` Le ${attenduEtapeTexte(etapes[source].answer)} vient de la ${
+						source === i - 1 ? "question d'avant" : `question ${source + 1}`
+					} : je m'en sers ici.`
 				: '';
 		pas.push({
 			phrase: `${intitule} Je calcule ${calculTexte(etape.calcul, etape.answer)}.${reprise}`,

@@ -619,7 +619,11 @@ function genDeuxEtapes(): Exercise {
 			{
 				question: `Combien lui rend-on ?`,
 				answer: billet - cout,
-				calcul: { op: '-', a: billet, b: cout },
+				// `deB: 0` : le coût n'est pas dans l'énoncé, c'est la réponse de la 1re
+				// sous-question. C'est LE point que l'étayage (#490) sait expliquer d'un
+				// problème à deux étapes, et il faut le lui dire — le deviner par égalité de
+				// valeur tiendrait du hasard.
+				calcul: { op: '-', a: billet, b: cout, deB: 0 },
 			},
 		],
 	);

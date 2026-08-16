@@ -45,6 +45,14 @@ export interface CalculEtape {
 	op: '+' | '-' | 'x' | ':';
 	a: number;
 	b: number;
+	/** Index de la sous-question DONT PROVIENT l'opérande, quand celui-ci n'est pas un
+	    nombre de l'énoncé mais le résultat d'une étape précédente. C'est le chaînage d'un
+	    problème à étapes, et il se DÉCLARE plutôt qu'il ne se devine : le retrouver en
+	    comparant les valeurs marcherait par chance du calibrage actuel, annoncerait un
+	    chaînage inexistant à la première coïncidence, et raterait celui d'un résultat
+	    réutilisé transformé (constat de l'`auteur-tests-logique`). */
+	deA?: number;
+	deB?: number;
 }
 
 /** Une sous-question d'un problème (#199) : son intitulé, sa réponse numérique, et le

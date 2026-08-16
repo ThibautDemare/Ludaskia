@@ -10,13 +10,15 @@
 import { test, expect, type Page } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
 
-/* Nombre de cellules-cible (`[data-cible]`) déjà écrites dans le panneau ouvert,
-   c-à-d celles dont la démonstration a déjà rempli le chiffre. Une seule par pas
-   (contrairement à la case de retenue, qui n'existe pas à chaque colonne) : c'est
-   donc le compteur robuste, indépendant de l'opération tirée au hasard. */
+/* Nombre de cellules de RÉSULTAT (`.posee-input`) déjà écrites dans le panneau ouvert.
+   Une seule par pas, alors que la case de retenue n'existe pas à chaque colonne : c'est
+   donc le compteur robuste, indépendant de l'opération tirée au hasard. Les deux sortes de
+   cases portent un `data-cible` (le sélecteur stable des démonstrations, cf.
+   `ui/etayage-visuels.ts`) — les compter ensemble rendrait CE test dépendant du nombre de
+   retenues tirées, ce qu'il ne cherche pas à vérifier. */
 async function cellesRemplies(page: Page): Promise<number> {
 	return page
-		.locator('#etayageOverlay [data-cible]')
+		.locator('#etayageOverlay .posee-input[data-cible]')
 		.evaluateAll((els) => els.filter((el) => (el.textContent ?? '').trim() !== '').length);
 }
 

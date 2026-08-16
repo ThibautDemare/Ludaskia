@@ -79,7 +79,9 @@ export function niveauInferieurImmediat(reference: SchoolLevel): SchoolLevel | u
 /* Niveaux réellement présents dans un ensemble de leçons (union des `levels`),
    triés par ordre scolaire. Alimente la popup de choix de classe : on ne propose
    que des niveaux qui ont du contenu (un seul niveau dispo ⇒ pas de choix utile). */
-export function availableLevels(lessons: { levels: SchoolLevel[] }[]): SchoolLevel[] {
+export function availableLevels(
+	lessons: readonly { levels: readonly SchoolLevel[] }[],
+): SchoolLevel[] {
 	const set = new Set<SchoolLevel>();
 	for (const l of lessons) for (const lv of l.levels) set.add(lv);
 	return LEVEL_ORDER.filter((lv) => set.has(lv));

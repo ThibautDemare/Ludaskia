@@ -1,0 +1,71 @@
+/* ============================================================
+   Espace encadrant (#556) — sélecteur de leçon, tous niveaux.
+   Registre visuel ADULTE neutre : réutilise les briques .enc-* de encadrant.scss
+   (bouton secondaire, champ, chrome de dépliage .enc-cat-d / .enc-cat-sum, segment
+   .enc-act-modes). Ci-dessous, seules les particularités du composant : la barre
+   d'outils, le cadre de l'arbre et ses lignes. Tout en tokens → survit au thème Nuit.
+   ============================================================ */
+
+.enc-sel {
+	flex: 1 1 100%;
+	margin: 0.3rem 0 0.2rem;
+	padding: 0.5rem 0.6rem 0.6rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--paper);
+}
+
+/* Barre d'outils : jetons de classe (segment, qui passe à la ligne) puis recherche.
+   En colonne : sur un smartphone en portrait, les deux côte à côte réduiraient le champ
+   de recherche à quelques caractères. */
+.enc-sel-outils {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	margin-bottom: 0.3rem;
+}
+.enc-sel-rech {
+	display: block;
+}
+
+/* Cadre de l'arbre : hauteur bornée + défilement, sinon déplier « Français » pousserait
+   hors de l'écran le bouton qui ferme le sélecteur. */
+.enc-sel-corps {
+	max-height: 320px;
+	overflow-y: auto;
+	border-top: 1px solid var(--line);
+}
+/* Catégories en retrait sous leur matière : le décalage EST ce qui rend l'arbre lisible
+   d'un coup d'œil (deux paliers, pas une liste à plat). */
+.enc-sel-cats {
+	padding-left: 0.7rem;
+}
+/* Le chrome de dépliage vient de .enc-cat-d ; ici, seulement la densité (l'arbre est plus
+   compact que le suivi par catégorie, il en montre bien plus à la fois). */
+.enc-sel-d {
+	padding: 0.25rem 0;
+}
+
+.enc-sel-list {
+	list-style: none;
+	margin: 0.15rem 0 0.2rem;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+/* Une ligne = un libellé + son bouton d'action, cible tactile 44 px (le bouton .enc-btn-sec
+   la porte déjà) et libellé qui peut passer à la ligne : les titres de leçon sont longs. */
+.enc-sel-item {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.3rem 0.5rem;
+	padding: 0.15rem 0.1rem;
+}
+.enc-sel-lab {
+	flex: 1;
+	min-width: 140px;
+	font-size: 0.88rem;
+	color: var(--ink);
+}

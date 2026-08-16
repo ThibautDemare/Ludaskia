@@ -399,6 +399,156 @@ body.vitrine {
 }
 
 /* ============================================================
+   Espace encadrants (versant adulte)
+   `v-encadrant` et NON `v-parents` : cette dernière est prise par le bloc
+   vie privée ci-dessous. Même vocabulaire visuel que la gamification
+   (texte + mini-démo reconstituée), puis la rangée de cartes.
+   ============================================================ */
+.v-enc-top {
+	display: grid;
+	gap: 28px;
+	align-items: center;
+	margin-bottom: 28px;
+}
+.v-enc-head {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-bottom: 14px;
+}
+.v-enc-head h2 {
+	margin: 0;
+}
+.v-enc-ico {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 52px;
+	height: 52px;
+	flex: none;
+	border-radius: 14px;
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+}
+.v-enc-ico .ph-icon {
+	width: 28px;
+	height: 28px;
+}
+.v-enc-text p {
+	color: var(--grey);
+	max-width: 560px;
+	margin: 0;
+}
+
+/* Mini-reconstitution du suivi (décorative, aria-hidden). */
+.v-enc-demo {
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	padding: 22px;
+	box-shadow: 0 2px 12px rgb(0 0 0 / 7%);
+}
+.v-enc-demo-title {
+	margin: 0 0 14px;
+	font-size: 0.8rem;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--grey);
+}
+.v-enc-notions {
+	list-style: none;
+	margin: 0 0 20px;
+	padding: 0;
+	display: grid;
+	gap: 12px;
+}
+.v-enc-notions li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+.v-enc-notion {
+	font-weight: 700;
+	font-size: 0.98rem;
+	color: var(--ink);
+}
+.v-enc-badge {
+	flex: none;
+	border-radius: 999px;
+	padding: 4px 12px;
+	font-size: 0.82rem;
+	font-weight: 700;
+	white-space: nowrap;
+}
+/* Les deux états sont portés par le MOT autant que par la teinte (la couleur
+   seule ne doit jamais être l'unique indice — même règle que dans l'app). */
+.v-enc-badge--acquis {
+	background: var(--ok-soft);
+	color: var(--accent-dark);
+}
+/* Texte assombri (#8a5200, ≈ 5,8:1 sur --warn-bg) pour passer WCAG AA en petite
+   taille — var(--warn) seul (#b26a00) n'atteint que ~3,9:1. Même correctif que
+   `.lz-level` (lessons.scss) et les badges de lecon-mode.scss. */
+.v-enc-badge--encours {
+	background: var(--warn-bg);
+	color: #8a5200;
+}
+.v-enc-demo-sub {
+	margin: 0 0 8px;
+	font-size: 0.85rem;
+	color: var(--grey);
+}
+/* Frise des 12 dernières semaines : intensité croissante de la teinte de marque. */
+.v-enc-frise {
+	display: flex;
+	gap: 4px;
+}
+.v-enc-week {
+	flex: 1;
+	height: 22px;
+	border-radius: 5px;
+	background: var(--track);
+}
+.v-enc-week--1 {
+	background: #cfe4d7;
+}
+.v-enc-week--2 {
+	background: #8dbfa1;
+}
+.v-enc-week--3 {
+	background: var(--accent);
+}
+
+/* Cartes de la section : même gabarit que `.v-card`, en plus compact
+   (quatre cartes de texte, sans liste de tags). */
+.v-card--enc h3 {
+	font-size: 1.15rem;
+}
+.v-card--enc p {
+	margin: 0;
+}
+.v-ico--enc {
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+}
+
+.v-enc-more {
+	margin: 24px 0 0;
+	color: var(--grey);
+	max-width: 760px;
+}
+.v-enc-doctrine {
+	margin: 14px 0 0;
+	max-width: 760px;
+	color: var(--grey);
+}
+.v-enc-doctrine strong {
+	color: var(--ink);
+}
+
+/* ============================================================
    Bloc confiance / vie privée (différenciateur n°1)
    ============================================================ */
 .v-trust {
@@ -747,11 +897,13 @@ body.vitrine {
 		grid-template-columns: 1fr 1fr;
 		gap: 24px;
 	}
+	.v-cards--3,
 	.v-cards--4 {
 		grid-template-columns: 1fr 1fr;
 		gap: 20px;
 	}
-	.v-gamif-grid {
+	.v-gamif-grid,
+	.v-enc-top {
 		grid-template-columns: 1.1fr 0.9fr;
 		gap: 40px;
 	}
@@ -768,6 +920,11 @@ body.vitrine {
 }
 
 @media (min-width: 1024px) {
+	/* Six modes : trois colonnes (deux rangées pleines), pas quatre — sinon la
+	   seconde rangée n'en porterait que deux et paraîtrait tronquée. */
+	.v-cards--3 {
+		grid-template-columns: repeat(3, 1fr);
+	}
 	.v-cards--4 {
 		grid-template-columns: repeat(4, 1fr);
 	}

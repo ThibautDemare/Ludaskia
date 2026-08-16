@@ -155,19 +155,24 @@ function matiereHTML(id: string, e: EtatSelecteur, m: MatiereArbre, action: Acti
     </details>`;
 }
 
-/* Corps de l'arbre seul : c'est le nœud que la recherche remplace en place. */
-function corpsHTML(id: string, consulte: Profile, action: ActionLigne): string {
+/* L'arbre courant d'un sélecteur : filtre et recherche viennent de son état de vue. Un seul
+   point de calcul pour le corps ET le résumé — les recalculer séparément les laisserait
+   diverger le jour où l'un des deux oublierait un critère. */
+function arbreCourant(id: string, consulte: Profile): MatiereArbre[] {
 	const e = etat(id);
-	const arbre = arbreCatalogue(consulte, { filtre: e.filtre, recherche: e.recherche });
-	if (arbre.length === 0) return '';
+	return arbreCatalogue(consulte, { filtre: e.filtre, recherche: e.recherche });
+}
+
+/* Corps de l'arbre seul : c'est le nœud que la recherche remplace en place. */
+function corpsHTML(id: string, arbre: readonly MatiereArbre[], action: ActionLigne): string {
+	const e = etat(id);
 	return arbre.map((m) => matiereHTML(id, e, m, action)).join('');
 }
 
-function texteResume(id: string, consulte: Profile): string {
-	const e = etat(id);
-	const n = compterLecons(arbreCatalogue(consulte, { filtre: e.filtre, recherche: e.recherche }));
+function texteResume(id: string, arbre: readonly MatiereArbre[]): string {
+	const n = compterLecons(arbre);
 	if (n === 0)
-		return e.recherche.trim() === ''
+		return etat(id).recherche.trim() === ''
 			? 'Aucune leçon dans cette classe.'
 			: 'Aucune leçon ne correspond à cette recherche.';
 	return `${compteLabel(n)} à choisir.`;
@@ -177,6 +182,7 @@ function texteResume(id: string, consulte: Profile): string {
 export function selecteurLeconHTML(o: OptionsSelecteur): string {
 	const { id, consulte, action } = o;
 	const e = etat(id);
+	const arbre = arbreCourant(id, consulte);
 	const jetons = segmentHTML({
 		act: 'sel-niveau',
 		valAttr: 'niveau',
@@ -194,8 +200,8 @@ export function selecteurLeconHTML(o: OptionsSelecteur): string {
           <input type="search" class="enc-input" id="sel-rech-${escapeHTML(id)}" data-act="sel-recherche" data-sel="${escapeHTML(id)}" placeholder="Rechercher une leçon…" value="${escapeHTML(e.recherche)}" autocomplete="off" />
         </label>
       </div>
-      <p class="enc-hint" id="sel-resume-${escapeHTML(id)}" role="status" aria-live="polite">${escapeHTML(texteResume(id, consulte))}</p>
-      <div class="enc-sel-corps" id="sel-corps-${escapeHTML(id)}">${corpsHTML(id, consulte, action)}</div>
+      <p class="enc-hint" id="sel-resume-${escapeHTML(id)}" role="status" aria-live="polite">${escapeHTML(texteResume(id, arbre))}</p>
+      <div class="enc-sel-corps" id="sel-corps-${escapeHTML(id)}">${corpsHTML(id, arbre, action)}</div>
     </div>`;
 }
 
@@ -216,7 +222,7 @@ function rafraichirCorps(id: string): void {
 	const f = fournisseurs.get(id)?.();
 	const corps = container()?.querySelector(`#sel-corps-${CSS.escape(id)}`);
 	if (!f || !corps) return;
-	corps.innerHTML = corpsHTML(id, f.consulte, f.action);
+	corps.innerHTML = corpsHTML(id, arbreCourant(id, f.consulte), f.action);
 	annoncer(id);
 }
 
@@ -229,7 +235,7 @@ function annoncer(id: string): void {
 	annonceTimer = window.setTimeout(() => {
 		const p = container()?.querySelector(`#sel-resume-${CSS.escape(id)}`);
 		const f = fournisseurs.get(id)?.();
-		if (p && f) p.textContent = texteResume(id, f.consulte);
+		if (p && f) p.textContent = texteResume(id, arbreCourant(id, f.consulte));
 	}, DELAI_ANNONCE);
 }
 

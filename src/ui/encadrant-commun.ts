@@ -8,10 +8,15 @@
    les modules de section (pin / progression / réglages / profils, qui DÉCLENCHENT un
    re-rendu). L'orchestrateur enregistre ses fonctions via `initEncadrantCommun` ;
    les sections appellent `rerender()` / `renderEspace()` sans importer l'orchestrateur.
-   Il héberge aussi `telechargerBlob`, utilitaire de téléchargement partagé par pin
-   (clé de récupération) et profils (export) — placé ici, module déjà commun aux deux,
-   pour éviter un import croisé pin ↔ profils. ============================================================ */
+   Il héberge aussi les BRIQUES transverses aux sections, pour la même raison qu'il porte
+   `MOT_NIVEAU` : recopiées de section en section, elles divergeraient. À ce jour le badge
+   « classe d'origine » (#556, programme + à revoir) et `telechargerBlob`, utilitaire de
+   téléchargement partagé par pin (clé de récupération) et profils (export).
+   ============================================================ */
+import type { SchoolLevel } from '../core/catalog';
 import type { NiveauNotion } from '../core/encadrant-stats';
+import { LEVEL_LABEL } from '../core/levels';
+import { escapeHTML } from '../core/utils';
 
 /* Onglets de l'espace (#459) : découpe la page en sections par INTENTION
    (observer / préparer / configurer / gérer). L'état vit ici — transverse à toutes
@@ -33,6 +38,23 @@ export const MOT_NIVEAU: Record<NiveauNotion, string> = {
    utilise que 3 : la validation d'un mode est binaire, il n'y a pas de « à renforcer ». */
 export const ORDRE_NIVEAUX: NiveauNotion[] = ['a-decouvrir', 'non-acquis', 'en-cours', 'acquis'];
 export const ORDRE_NIVEAUX_ORTHO: NiveauNotion[] = ['a-decouvrir', 'en-cours', 'acquis'];
+
+/* Badge « classe d'origine » (#556) — le nom de la classe SEUL, précédé d'un préfixe non
+   visuel. Il ne s'affiche que côté ADULTE, et seulement là où l'on voit une leçon DÉJÀ
+   CHOISIE : la ligne d'une épingle, et l'étape « une leçon précise » d'un programme une fois
+   la cible retenue. Pas dans le sélecteur (le jeton de filtre actif dit déjà la classe), pas
+   dans « Suggestions » ni « Retirées automatiquement » (leurs lignes viennent du récap scopé,
+   donc toujours de la classe suivie). L'enfant, lui, ne voit JAMAIS d'étiquette de niveau
+   (règle #232) — d'où sa place dans le module commun aux SECTIONS de l'espace encadrant.
+
+   Même forme que le badge d'entretien du niveau inférieur de la vue Révision : rien à
+   inventer, même besoin, même lecteur. Le préfixe évite un « CE2 » énigmatique à la voix, et
+   la DIRECTION de l'écart n'est pas dans le texte — elle est redondante avec le régime
+   d'affichage de la ligne, et se répéterait sur chaque épingle du cas courant. Elle porte en
+   revanche l'infobulle, que chaque site rédige selon ce qu'il montre. */
+export function badgeClasseOrigine(niveau: SchoolLevel, infobulle: string): string {
+	return `<span class="enc-classe-origine" title="${escapeHTML(infobulle)}"><span class="sr-only">Classe d'origine : </span>${escapeHTML(LEVEL_LABEL[niveau])}</span>`;
+}
 
 let conteneur: HTMLElement | null = null;
 let consulte: string | null = null; // profil CONSULTÉ (≠ forcément l'actif)

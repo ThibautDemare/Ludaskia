@@ -53,6 +53,7 @@ import {
 	banqueMotsHTML,
 	vueDictees,
 } from './encadrant-banque';
+import { enregistrerSelecteur, selecteurLeconHTML, type ActionLigne } from './selecteur-lecon';
 import { segmentHTML } from './segment';
 
 /* ---------- État de la section (module) ---------- */
@@ -776,6 +777,33 @@ function ligneRevoir(
     </li>`;
 }
 
+/* Sous-bloc « Épingler une leçon » (#556) : le MÊME sélecteur que le composeur du programme,
+   avec « Épingler » pour action de ligne. Il ouvre à l'adulte tout le catalogue, y compris
+   les classes que l'enfant ne suit pas — c'est ici qu'on va chercher la notion d'un niveau
+   inférieur à consolider. Il COEXISTE avec l'épinglage inline de l'onglet Suivi, qui reste le
+   geste naturel quand on vient de lire l'état d'une notion : les deux écrivent la même file. */
+const ID_SELECTEUR_EPINGLE = 'revoir-epingler';
+
+function epinglerHTML(consulte: Profile, epinglees: ReadonlySet<string>): string {
+	// `data-act` propre au sélecteur, alors que le geste est le même que `epingler` : une leçon
+	// déjà épinglée porte DEUX boutons sur la page (sa ligne en haut, sa ligne dans l'arbre), et
+	// un `data-act` commun renverrait le focus au premier des deux — donc en haut de bloc, à
+	// chaque clic dans l'arbre.
+	const action: ActionLigne = {
+		act: 'epingler-selecteur',
+		etat: (l) => ({ label: epinglees.has(l.id) ? 'Retirer' : 'Épingler', on: epinglees.has(l.id) }),
+	};
+	// Ré-enregistré à chaque rendu : l'action de ligne capture la file épinglée du moment,
+	// et c'est elle que le sélecteur rejoue quand il re-rend son arbre à la frappe.
+	enregistrerSelecteur(ID_SELECTEUR_EPINGLE, () => {
+		const p = listProfiles().find((x) => x.uuid === consulteUuid());
+		return p ? { consulte: p, action } : null;
+	});
+	return `<h4 class="enc-sub-lab">Épingler une leçon</h4>
+     <p class="enc-hint">N'importe quelle leçon du catalogue, même pas encore abordée et même d'une autre classe que celle que suit ${escapeHTML(consulte.name)} : sa classe ne change pas, seule cette leçon est proposée.</p>
+     ${selecteurLeconHTML({ id: ID_SELECTEUR_EPINGLE, consulte, action })}`;
+}
+
 export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 	// La file a déjà été nettoyée (purgeRevoirSolides, appelé par l'orchestrateur AVANT le
 	// calcul du récap, #465) : la liste de gestion ne peut donc plus contenir de « fantôme »
@@ -833,11 +861,12 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 
 	return `<div class="enc-block">
       <h3 class="enc-h3">${icon('repeat')} À revoir ensemble</h3>
-      <p class="enc-hint">Épinglez une leçon : elle apparaîtra sur l'accueil de ${escapeHTML(consulte.name)} pour qu'il ou elle y revienne. Pour épingler <strong>n'importe quelle leçon</strong> (même pas encore abordée), dépliez une catégorie dans l'onglet <strong>Suivi</strong>.</p>
+      <p class="enc-hint">Épinglez une leçon : elle apparaîtra sur l'accueil de ${escapeHTML(consulte.name)} pour qu'il ou elle y revienne.</p>
       <h4 class="enc-sub-lab">Épinglées</h4>
       ${blocEpinglees}
       ${blocSuggestions}
       ${blocRetraits}
+      ${epinglerHTML(consulte, new Set(pinned.filter((e) => e.kind === 'lecon').map((e) => e.id)))}
     </div>`;
 }
 
@@ -878,6 +907,23 @@ export function progressionClick(act: string, el: HTMLElement): boolean {
 					`[data-act="deplier-matiere"][data-subject="${CSS.escape(subject)}"]`,
 				)
 				?.focus({ preventScroll: true });
+			return true;
+		}
+		case 'epingler-selecteur': {
+			const uuid = consulteUuid();
+			const entryId = el.dataset.lesson;
+			if (uuid && entryId) {
+				toggleRevoirFor(uuid, entryId);
+				renderEspace();
+				// Focus rendu au bouton de la MÊME leçon DANS l'arbre : la ligne existe aussi, une
+				// fois épinglée, dans le bloc « Épinglées » juste au-dessus — y renvoyer ferait
+				// perdre sa place dans l'arbre à qui en épingle plusieurs d'affilée.
+				container()
+					?.querySelector<HTMLElement>(
+						`#sel-corps-${CSS.escape(ID_SELECTEUR_EPINGLE)} [data-act="epingler-selecteur"][data-lesson="${CSS.escape(entryId)}"]`,
+					)
+					?.focus({ preventScroll: true });
+			}
 			return true;
 		}
 		case 'epingler': {

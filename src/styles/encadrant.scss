@@ -1375,6 +1375,17 @@ $frise-neutre: #7c8494;
 	color: var(--grey);
 	white-space: nowrap;
 }
+/* Badge « classe d'origine » (#556) : la classe d'où vient une leçon assignée hors de celle
+   que suit l'enfant. Même traitement que la pastille de niveau de la vue Révision
+   (.enc-rev-cat) — même besoin, même lecteur, aucun vocabulaire visuel neuf à apprendre. Ni
+   fond ni cadre : ce n'est pas un état, et le mettre en valeur le ferait lire comme une
+   alerte, alors que c'est un choix assumé de l'adulte. Encre en --grey (--muted passe sous
+   AA sur --paper). */
+.enc-classe-origine {
+	font-size: 0.72rem;
+	color: var(--grey);
+	white-space: nowrap;
+}
 .enc-revoir-etat::before {
 	content: '';
 	position: absolute;

@@ -134,12 +134,30 @@
 	color: var(--admin-accent);
 	flex: none;
 }
+/* Cible d'une étape « une leçon précise » (#556) : la leçon retenue (ou son absence), son
+   badge de classe d'origine, et le bouton qui déploie le sélecteur. */
 .enc-seance-cible {
 	flex: 1 1 160px;
 	min-width: 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.25rem 0.5rem;
 }
-.enc-seance-cible select {
-	width: 100%;
+.enc-seance-cible-nom {
+	font-size: 0.85rem;
+	color: var(--ink);
+}
+/* Absence de cible : dit en toutes lettres, jamais une zone vide (qui se lit « pas chargé »).
+   `--grey` et non `--muted`, qui passe sous AA sur `--paper`. */
+.enc-seance-cible-vide {
+	font-size: 0.85rem;
+	font-style: italic;
+	color: var(--grey);
+}
+/* Sélecteur déployé sous la ligne d'activité, pleine largeur (comme le pool de dictées). */
+.enc-seance-selecteur {
+	flex: 1 1 100%;
 }
 .enc-seance-count select {
 	min-width: 4.2rem;

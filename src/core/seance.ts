@@ -135,12 +135,24 @@ export function nbARevoir(ctx: ContexteSeance): number {
 	return ctx.aRevoirLecons.length + ctx.aRevoirDictees.length;
 }
 
-/** Une étape s'applique-t-elle aujourd'hui ? Seules les étapes CONDITIONNELLES peuvent
-    ne pas s'appliquer : « à revoir » disparaît du programme quand rien n'est épinglé —
-    sinon le programme porterait une étape VIDE, impossible à réaliser, qui bloquerait sa
-    complétion (#464). Pur. */
+/** Une étape a-t-elle de quoi être lancée ? Une étape « une leçon précise » NAÎT sans cible
+    depuis #556 (le catalogue n'a plus de « première leçon » évidente une fois tous les
+    niveaux sélectionnables, et présélectionner poserait une consigne que l'adulte n'a pas
+    donnée) : tant qu'aucune leçon n'est choisie, il n'y a rien à proposer à l'enfant.
+
+    Ne dépend que de la DÉFINITION (≠ `etapeApplicable`, qui regarde en plus le contexte du
+    jour), ce qui la rend utilisable côté encadrant pour ne compter ni dans le nombre
+    d'activités ni dans la durée estimée une étape qui disparaîtra au lancement. Pur. */
+export function etapeConfiguree(etape: SeanceEtape): boolean {
+	return etape.kind === 'lecon' ? !!etape.ref : true;
+}
+
+/** Une étape s'applique-t-elle aujourd'hui ? Deux cas d'escamotage : « à revoir » disparaît
+    du programme quand rien n'est épinglé, et « une leçon précise » tant qu'aucune leçon n'est
+    choisie (#556) — sinon le programme porterait une étape VIDE, impossible à réaliser, qui
+    bloquerait sa complétion (#464). Pur. */
 export function etapeApplicable(etape: SeanceEtape, ctx: ContexteSeance): boolean {
-	return etape.kind === 'aRevoir' ? nbARevoir(ctx) > 0 : true;
+	return etape.kind === 'aRevoir' ? nbARevoir(ctx) > 0 : etapeConfiguree(etape);
 }
 
 /** Nombre de fois requis d'une étape, ASSAINI (entier ≥ 1) — source unique de ce « combien ».
@@ -291,9 +303,14 @@ export function genDefId(defs: SeanceDef[]): string {
 	return 'd' + (max + 1);
 }
 
-/** Durée estimée d'une séance en minutes (repère non contraignant côté encadrant). */
+/** Durée estimée d'une séance en minutes (repère non contraignant côté encadrant). Une étape
+    non CONFIGURÉE n'y entre pas : elle disparaîtra au lancement, la compter promettrait à
+    l'adulte un temps que l'enfant ne passera pas (#556). */
 export function estimationDureeMin(def: SeanceDef): number {
-	return def.etapes.reduce((s, e) => s + countRequis(e) * SEANCE_MODE_INFOS[e.kind].dureeMin, 0);
+	return def.etapes.reduce(
+		(s, e) => s + (etapeConfiguree(e) ? countRequis(e) * SEANCE_MODE_INFOS[e.kind].dureeMin : 0),
+		0,
+	);
 }
 
 /** Deux récurrences se disputent-elles un même jour ? (garde-fou « une par jour ».)

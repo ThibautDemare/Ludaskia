@@ -130,9 +130,11 @@ ci-dessous.
   répétition espacée (#45, lue par `core/encadrant-stats.ts:revisionProfil`) — palier
   courant + échéance relative par entrée, badge « acquis » pour les entrées sorties de
   rotation. Bascule **« Par catégorie »** (regroupement dépliable, même chrome que
-  « Notions par catégorie ») / **« Par urgence »** (liste à plat, plus en retard
-  d'abord) ; handler `revision-mode` (composant segment partagé, cf. `segment.ts`
-  plus bas).
+  « Notions par catégorie »), **« Par urgence »** (liste à plat, plus en retard
+  d'abord) et **« Par palier »** (#555 — étages de l'escalier de répétition espacée,
+  du moins ancré au plus ancré, en-têtes de section `<h3>` NON repliables, étages
+  vides omis) ; handler `revision-mode` (composant segment partagé — variante `wrap`
+  depuis cette 3e option, cf. `segment.ts` plus bas).
 - **`encadrant-seance.ts`** (#440) — **compositeur** du « programme du jour » du
   profil consulté, en tête de l'onglet **Programme** (#459) : programmes (nom, étapes +
   `count`, récurrence date/hebdo — bascule `seance-rec-type`, composant segment

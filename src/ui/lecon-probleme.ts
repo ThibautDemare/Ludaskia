@@ -324,6 +324,22 @@ function verifier(): void {
 					? `<span class="lqcm-ok">Bravo ! 🎉</span>`
 					: `<span class="lqcm-ko">Regarde la bonne réponse, puis continue.</span>`) + expl,
 			isLast: idx >= questions.length - 1,
+			// Étayage (#490) : proposé sur un problème raté, et déroulé sur CELUI-LÀ — un
+			// problème ne se ramène pas à un exemple canonique, c'est son énoncé qui fait la
+			// difficulté. Le déroulé se tait de lui-même si aucune sous-question ne porte son
+			// calcul (durées, division avec reste).
+			...(toutJuste
+				? {}
+				: {
+						etayage: {
+							lesson,
+							niveau: niveauLecon(lesson),
+							exemple: {
+								moteur: 'probleme' as const,
+								spec: { enonce: q.enonce, etapes: q.etapes },
+							},
+						},
+					}),
 			onNext: () => {
 				idx++;
 				if (idx >= questions.length) finish();

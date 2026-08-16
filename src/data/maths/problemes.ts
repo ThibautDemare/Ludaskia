@@ -60,6 +60,12 @@ const PRENOMS: Prenom[] = [
 ];
 
 // Objets dénombrables, pluriel régulier, neutres.
+/* Élision devant une voyelle : « de billes », mais « d'images ». Deux objets de la liste
+   ci-dessous commencent par une voyelle, et les sous-questions écrivaient « de images » /
+   « de autocollants » — visible à l'écrit, et audible depuis que l'étayage (#490) relit ces
+   intitulés à voix haute. */
+const deObjet = (mot: string) => (/^[aeiouâêîôûéèh]/i.test(mot) ? `d'${mot}` : `de ${mot}`);
+
 const OBJETS = [
 	'billes',
 	'images',
@@ -142,7 +148,11 @@ function genCompositionEnt(): Exercise {
 		const a = rnd(5, 50),
 			b = rnd(5, 50);
 		return probleme(`Dans ${lieu}, il y a ${a} ${obj} ${c1} et ${b} ${obj} ${c2}.`, [
-			{ question: `Combien y a-t-il de ${obj} en tout ?`, answer: a + b },
+			{
+				question: `Combien y a-t-il ${deObjet(obj)} en tout ?`,
+				answer: a + b,
+				calcul: { op: '+', a, b },
+			},
 		]);
 	}
 	// 3B — recherche d'une partie : on ÉTABLIT qu'il n'y a que DEUX sortes (sinon
@@ -150,7 +160,7 @@ function genCompositionEnt(): Exercise {
 	const t = rnd(20, 90),
 		a = rnd(5, t - 5);
 	return probleme(`Dans ${lieu}, il y a ${t} ${obj} : des ${c1} et des ${c2}. ${a} sont ${c1}.`, [
-		{ question: `Combien sont ${c2} ?`, answer: t - a },
+		{ question: `Combien sont ${c2} ?`, answer: t - a, calcul: { op: '-', a: t, b: a } },
 	]);
 }
 
@@ -173,8 +183,9 @@ function genTransformationEnt(): Exercise {
 			b = gain ? rnd(5, 80) : rnd(5, a);
 		return probleme(`${p.nom} a ${a} ${obj}. ${cap(il(p.genre))} en ${verbe} ${b}.`, [
 			{
-				question: `Combien ${p.nom} a-t-${il(p.genre)} de ${obj} maintenant ?`,
+				question: `Combien ${p.nom} a-t-${il(p.genre)} ${deObjet(obj)} maintenant ?`,
 				answer: gain ? a + b : a - b,
+				calcul: { op: gain ? '+' : '-', a, b },
 			},
 		]);
 	}
@@ -186,6 +197,8 @@ function genTransformationEnt(): Exercise {
 			{
 				question: `Combien ${p.nom} en a-t-${il(p.genre)} ${verbePasse} ?`,
 				answer: Math.abs(c - a),
+				// L'écart entre les deux états : on retire toujours le plus petit du plus grand.
+				calcul: { op: '-', a: Math.max(a, c), b: Math.min(a, c) },
 			},
 		]);
 	}
@@ -197,6 +210,8 @@ function genTransformationEnt(): Exercise {
 		{
 			question: `Combien ${p.nom} en avait-${il(p.genre)} au début ?`,
 			answer: gain ? c - b : c + b,
+			// PIÈGE LOYAL : « gagné » se remonte en RETIRANT, « donné » en AJOUTANT.
+			calcul: gain ? { op: '-', a: c, b } : { op: '+', a: c, b },
 		},
 	]);
 }
@@ -216,12 +231,20 @@ function genMultiplicationEnt(): Exercise {
 		const p = prenom();
 		const ct = choice(CONTENANTS);
 		return probleme(`${p.nom} a ${n} ${ct.p}. Dans chaque ${ct.s}, il y a ${m} ${obj}.`, [
-			{ question: `Combien y a-t-il de ${obj} en tout ?`, answer: n * m },
+			{
+				question: `Combien y a-t-il ${deObjet(obj)} en tout ?`,
+				answer: n * m,
+				calcul: { op: 'x', a: n, b: m },
+			},
 		]);
 	}
 	// 4B — configuration en rangées (même opération, image « addition réitérée »).
 	return probleme(`Il y a ${n} rangées de ${m} ${obj}.`, [
-		{ question: `Combien y a-t-il de ${obj} en tout ?`, answer: n * m },
+		{
+			question: `Combien y a-t-il ${deObjet(obj)} en tout ?`,
+			answer: n * m,
+			calcul: { op: 'x', a: n, b: m },
+		},
 	]);
 }
 
@@ -235,14 +258,24 @@ function genPartage(): Exercise {
 	if (rnd(0, 1) === 0) {
 		// 5A — partage équitable : recherche de la valeur d'une part.
 		return probleme(`${p.nom} partage ${t} ${obj} entre ${d} enfants.`, [
-			{ question: `Combien chaque enfant reçoit-il de ${obj} ?`, answer: q },
+			{
+				question: `Combien chaque enfant reçoit-il ${deObjet(obj)} ?`,
+				answer: q,
+				calcul: { op: ':', a: t, b: d },
+			},
 		]);
 	}
 	// 5B — groupement : recherche du nombre de groupes.
 	const ct = choice(CONTENANTS);
 	return probleme(
 		`${p.nom} a ${t} ${obj}. ${cap(il(p.genre))} les range par ${d} dans des ${ct.p}.`,
-		[{ question: `Combien de ${ct.p} ${p.nom} remplit-${il(p.genre)} ?`, answer: q }],
+		[
+			{
+				question: `Combien de ${ct.p} ${p.nom} remplit-${il(p.genre)} ?`,
+				answer: q,
+				calcul: { op: ':', a: t, b: d },
+			},
+		],
 	);
 }
 
@@ -263,8 +296,9 @@ function genComparaisonEnt(): Exercise {
 			b = rnd(5, a - 5);
 		return probleme(`${p1.nom} a ${a} ${obj}. ${p2.nom} a ${b} ${obj}.`, [
 			{
-				question: `Combien ${p1.nom} a-t-${il(p1.genre)} de ${obj} de plus que ${p2.nom} ?`,
+				question: `Combien ${p1.nom} a-t-${il(p1.genre)} ${deObjet(obj)} de plus que ${p2.nom} ?`,
 				answer: a - b,
+				calcul: { op: '-', a, b },
 			},
 		]);
 	}
@@ -274,8 +308,9 @@ function genComparaisonEnt(): Exercise {
 			d = rnd(5, 40);
 		return probleme(`${p1.nom} a ${a} ${obj}. ${p2.nom} a ${d} ${obj} de plus que ${p1.nom}.`, [
 			{
-				question: `Combien ${p2.nom} a-t-${il(p2.genre)} de ${obj} ?`,
+				question: `Combien ${p2.nom} a-t-${il(p2.genre)} ${deObjet(obj)} ?`,
 				answer: a + d,
+				calcul: { op: '+', a, b: d },
 			},
 		]);
 	}
@@ -284,8 +319,10 @@ function genComparaisonEnt(): Exercise {
 		d = rnd(5, a - 5);
 	return probleme(`${p1.nom} a ${a} ${obj}. ${p1.nom} a ${d} ${obj} de plus que ${p2.nom}.`, [
 		{
-			question: `Combien ${p2.nom} a-t-${il(p2.genre)} de ${obj} ?`,
+			question: `Combien ${p2.nom} a-t-${il(p2.genre)} ${deObjet(obj)} ?`,
 			answer: a - d,
+			// PIÈGE DUR : « de plus » désigne ici l'AUTRE enfant → soustraction.
+			calcul: { op: '-', a, b: d },
 		},
 	]);
 }
@@ -391,7 +428,7 @@ function compositionMesureTout(): Exercise {
 	const a = mesureDixiemes(s.entMin, s.entMax);
 	const b = mesureDixiemes(s.entMin, s.entMax);
 	return mesureProbleme(s.m, (u) => s.deux(u, a, b, p.nom), [
-		{ question: s.tout, answer: (a + b) / 10 },
+		{ question: s.tout, answer: (a + b) / 10, calcul: { op: '+', a: a / 10, b: b / 10 } },
 	]);
 }
 
@@ -403,14 +440,24 @@ function compositionArgent(): Exercise {
 	if (rnd(1, 10) <= 6) {
 		// Recherche du tout (addition) : deux prix → total payé.
 		return probleme(`${p.nom} achète un ${a1.s} à ${euros(c1)} € et un ${a2.s} à ${euros(c2)} €.`, [
-			{ question: `Combien ${p.nom} paie-t-${il(p.genre)} en tout ?`, answer: (c1 + c2) / 100 },
+			{
+				question: `Combien ${p.nom} paie-t-${il(p.genre)} en tout ?`,
+				answer: (c1 + c2) / 100,
+				calcul: { op: '+', a: c1 / 100, b: c2 / 100 },
+			},
 		]);
 	}
 	// Recherche d'une partie (soustraction) : total et un prix connus → l'autre prix.
 	const total = c1 + c2;
 	return probleme(
 		`${p.nom} paie ${euros(total)} € pour un ${a1.s} et un ${a2.s}. Le ${a1.s} coûte ${euros(c1)} €.`,
-		[{ question: `Combien coûte le ${a2.s} ?`, answer: c2 / 100 }],
+		[
+			{
+				question: `Combien coûte le ${a2.s} ?`,
+				answer: c2 / 100,
+				calcul: { op: '-', a: total / 100, b: c1 / 100 },
+			},
+		],
 	);
 }
 
@@ -431,7 +478,13 @@ function genTransformationDec(): Exercise {
 		return probleme(
 			`${p.nom} a ${euros(avoir)} €. ${cap(il(p.genre))} achète un ${art.s} à ${euros(prix)} €.`,
 			// « rester » est impersonnel → toujours « il » (jamais accordé au prénom).
-			[{ question: `Combien lui reste-t-il ?`, answer: reste / 100 }],
+			[
+				{
+					question: `Combien lui reste-t-il ?`,
+					answer: reste / 100,
+					calcul: { op: '-', a: avoir / 100, b: prix / 100 },
+				},
+			],
 		);
 	}
 	if (cas <= 7) {
@@ -440,7 +493,13 @@ function genTransformationDec(): Exercise {
 		const don = prixCentimes(1, 15);
 		return probleme(
 			`${p.nom} a ${euros(avoir)} € dans sa tirelire. On lui donne ${euros(don)} €.`,
-			[{ question: `Combien a-t-${il(p.genre)} maintenant ?`, answer: (avoir + don) / 100 }],
+			[
+				{
+					question: `Combien a-t-${il(p.genre)} maintenant ?`,
+					answer: (avoir + don) / 100,
+					calcul: { op: '+', a: avoir / 100, b: don / 100 },
+				},
+			],
 		);
 	}
 	// Recherche de la transformation (soustraction) : deux états connus → le coût.
@@ -449,7 +508,13 @@ function genTransformationDec(): Exercise {
 	const avant = cout + apres;
 	return probleme(
 		`${p.nom} avait ${euros(avant)} €. Après avoir acheté un ${art.s}, il lui reste ${euros(apres)} €.`,
-		[{ question: `Combien a coûté le ${art.s} ?`, answer: cout / 100 }],
+		[
+			{
+				question: `Combien a coûté le ${art.s} ?`,
+				answer: cout / 100,
+				calcul: { op: '-', a: avant / 100, b: apres / 100 },
+			},
+		],
 	);
 }
 
@@ -467,6 +532,7 @@ function genComparaisonDec(): Exercise {
 				{
 					question: `Combien ${p1.nom} a-t-${il(p1.genre)} d'argent de plus que ${p2.nom} ?`,
 					answer: ecart / 100,
+					calcul: { op: '-', a: grand / 100, b: petit / 100 },
 				},
 			]);
 		}
@@ -476,7 +542,13 @@ function genComparaisonDec(): Exercise {
 		return mesureProbleme(
 			MASSE,
 			(u) => `Le sac de ${p1.nom} pèse ${u(grand)}. Celui de ${p2.nom} pèse ${u(petit)}.`,
-			[{ question: `Combien le sac de ${p1.nom} pèse-t-il de plus ?`, answer: ecart / 10 }],
+			[
+				{
+					question: `Combien le sac de ${p1.nom} pèse-t-il de plus ?`,
+					answer: ecart / 10,
+					calcul: { op: '-', a: grand / 10, b: petit / 10 },
+				},
+			],
 		);
 	}
 	// « de plus » loyal (addition) : on connaît une valeur et l'écart, on cherche l'autre.
@@ -489,6 +561,7 @@ function genComparaisonDec(): Exercise {
 				{
 					question: `Combien ${p2.nom} a-t-${il(p2.genre)} d'argent ?`,
 					answer: (base + deplus) / 100,
+					calcul: { op: '+', a: base / 100, b: deplus / 100 },
 				},
 			],
 		);
@@ -499,7 +572,13 @@ function genComparaisonDec(): Exercise {
 		LONGUEUR,
 		(u) =>
 			`Le ruban de ${p1.nom} mesure ${u(base)}. Celui de ${p2.nom} mesure ${u(deplus)} de plus.`,
-		[{ question: `Quelle est la longueur du ruban de ${p2.nom} ?`, answer: (base + deplus) / 10 }],
+		[
+			{
+				question: `Quelle est la longueur du ruban de ${p2.nom} ?`,
+				answer: (base + deplus) / 10,
+				calcul: { op: '+', a: base / 10, b: deplus / 10 },
+			},
+		],
 	);
 }
 
@@ -511,7 +590,11 @@ function genMultiplicationDec(): Exercise {
 	// Prix unitaire petit (partie entière ≤ 5 €) → produit ≲ 25 € (décimal × entier < 10).
 	const prix = prixCentimes(1, Math.min(5, Math.floor(20 / n)));
 	return probleme(`${p.nom} achète ${n} ${art.p} à ${euros(prix)} € chacun.`, [
-		{ question: `Combien ${p.nom} paie-t-${il(p.genre)} en tout ?`, answer: (n * prix) / 100 },
+		{
+			question: `Combien ${p.nom} paie-t-${il(p.genre)} en tout ?`,
+			answer: (n * prix) / 100,
+			calcul: { op: 'x', a: n, b: prix / 100 },
+		},
 	]);
 }
 
@@ -528,8 +611,16 @@ function genDeuxEtapes(): Exercise {
 	return probleme(
 		`${p.nom} achète ${n} ${art.p} à ${m} € chacun. ${cap(il(p.genre))} paie avec un billet de ${billet} €.`,
 		[
-			{ question: `Combien coûtent les ${n} ${art.p} ?`, answer: cout },
-			{ question: `Combien lui rend-on ?`, answer: billet - cout },
+			{
+				question: `Combien coûtent les ${n} ${art.p} ?`,
+				answer: cout,
+				calcul: { op: 'x', a: n, b: m },
+			},
+			{
+				question: `Combien lui rend-on ?`,
+				answer: billet - cout,
+				calcul: { op: '-', a: billet, b: cout },
+			},
 		],
 	);
 }
@@ -557,31 +648,73 @@ const monoMode = (
 // Quatre structures ouvertes au CM1 en décimal (#255) → levels ['ce2','cm1']. Partage
 // (quotient décimal = CM2) et « deux étapes » (hors « à une étape ») restent CE2-only.
 const CE2_CM1: SchoolLevel[] = ['ce2', 'cm1'];
+
+/* ---------- Étayage de la notion (#490) ----------
+   Ces leçons n'ont PAS d'exemple canonique, et c'est délibéré : la difficulté d'un problème
+   tient à SON énoncé, pas à une structure qu'un exemple figé illustrerait. Le déroulé se
+   fait donc sur le problème que l'enfant vient de rater (le runner le passe au panneau) ; le
+   bouton persistant, lui, n'ouvre que la règle — jamais l'énoncé en cours, dont il donnerait
+   la réponse.
+
+   La règle, elle, dit la STRUCTURE de la leçon, pas une recette de mots-clés : « de plus »
+   n'annonce pas une addition, et c'est justement ce que la leçon « comparer » teste. */
+function etayageProbleme(titre: string, regle: string): NonNullable<LessonInput['etayage']> {
+	return [{ contenu: { titre, regle } }];
+}
+
 export const PROBLEMES_LESSONS: LessonInput[] = [
 	{
 		id: 'math-prob-composition',
 		label: 'Parties et tout',
 		exerciseType: monoMode(genComposition, CE2_CM1),
+		etayage: etayageProbleme(
+			'Parties et tout',
+			'Si tu connais les parties, tu les ajoutes pour trouver le tout ; si tu connais le tout et une partie, tu retires.',
+		),
 	},
 	{
 		id: 'math-prob-transformation',
 		label: 'Gagner ou perdre',
 		exerciseType: monoMode(genTransformation, CE2_CM1),
+		etayage: etayageProbleme(
+			'Gagner ou perdre',
+			"Ce qu'on gagne s'ajoute, ce qu'on perd se retire. Mais pour retrouver le DÉBUT, il faut faire le contraire.",
+		),
 	},
 	{
 		id: 'math-prob-multiplication',
 		label: 'Des groupes égaux',
 		exerciseType: monoMode(genMultiplication, CE2_CM1),
+		etayage: etayageProbleme(
+			'Des groupes égaux',
+			'Quand tous les groupes ont la même taille, tu multiplies le nombre de groupes par ce que contient un groupe.',
+		),
 	},
-	{ id: 'math-prob-partage', label: 'Partager et grouper', exerciseType: monoMode(genPartage) },
+	{
+		id: 'math-prob-partage',
+		label: 'Partager et grouper',
+		exerciseType: monoMode(genPartage),
+		etayage: etayageProbleme(
+			'Partager et grouper',
+			"Partager en parts égales et faire des paquets identiques, c'est la même opération : une division.",
+		),
+	},
 	{
 		id: 'math-prob-comparaison',
 		label: 'Comparer (plus ou moins)',
 		exerciseType: monoMode(genComparaison, CE2_CM1),
+		etayage: etayageProbleme(
+			'Comparer (plus ou moins)',
+			'« De plus » ne veut pas toujours dire « on ajoute » : regarde bien de QUI on parle avant de choisir ton opération.',
+		),
 	},
 	{
 		id: 'math-prob-deux-etapes',
 		label: 'Problèmes en deux étapes',
 		exerciseType: monoMode(genDeuxEtapes),
+		etayage: etayageProbleme(
+			'Problèmes en deux étapes',
+			"Tu réponds d'abord à la première question, puis tu te sers de son résultat pour répondre à la seconde.",
+		),
 	},
 ];

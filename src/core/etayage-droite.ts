@@ -113,7 +113,7 @@ export function derouleDroite(spec: DroiteSpec): DerouleDroite {
 		{
 			phrase:
 				`Je cherche ${spec.cibleLabel}. Je pars du nombre écrit juste avant lui : ${depart.label}. ` +
-				`Partir de plus loin ferait compter beaucoup plus de graduations pour rien.`,
+				`Pas du début de la droite : du nombre écrit le plus proche.`,
 			repere: depart.valeur,
 		},
 		{

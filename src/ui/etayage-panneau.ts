@@ -51,7 +51,14 @@ import { mascotteBulleHTML } from './unlocks-view';
 /* Libellé du point d'entrée. « Comprendre » et non « voir » (déjà le sens de « montre-moi »,
    #467) ni « comment on joue » (déjà celui de l'ampoule d'aide au geste, #272) : trois
    promesses distinctes, trois mots distincts. */
-export const ETAYAGE_LABEL = 'Comprendre ce calcul';
+export const ETAYAGE_LABEL = 'Comprendre la méthode';
+
+/* Icône du point d'entrée : NEUTRE quant à la matière. « math-operations » (les signes
+   + − × ÷) allait tant que l'étayage n'existait que pour le calcul posé ; il s'affiche
+   désormais aussi sur une leçon de conjugaison, où une calculatrice ne veut rien dire.
+   Même raison pour le libellé : « ce calcul » est devenu faux le jour où l'on a expliqué
+   « nous viendrons » (constat du `redacteur-contenu-francais`). */
+const ETAYAGE_ICONE = 'brain';
 
 /* Phrase de la mascotte : elle annonce un déroulé À DEUX, pas une démonstration à
    regarder (« Je te montre, regarde bien ! » est déjà la phrase de l'aide au geste). */
@@ -83,7 +90,7 @@ export function etayageDisponible(lesson: LessonDef, niveau: SchoolLevel, mode?:
     par réflexe sur ce qui pèse plus lourd que « Continuer ». `classe` et `id` restent
     propres à l'écran (styles, repères des specs e2e). */
 export function lienEtayageHTML(classe: string, id: string): string {
-	return `<button type="button" class="${classe}" id="${id}">${icon('math-operations')}<span>${ETAYAGE_LABEL}</span></button>`;
+	return `<button type="button" class="${classe}" id="${id}">${icon(ETAYAGE_ICONE)}<span>${ETAYAGE_LABEL}</span></button>`;
 }
 
 export interface EtayageDemande {
@@ -120,11 +127,11 @@ function panneauHTML(
 	sortie: string,
 ): string {
 	return `
-		<div class="modal aide-modal etay-modal" role="dialog" aria-modal="true" aria-labelledby="etayTitle">
+		<div class="modal aide-modal etay-modal" role="dialog" aria-modal="true" aria-labelledby="etayTitle" aria-describedby="etayRegle etayPhrase">
 			<button type="button" class="modal-close aide-close" aria-label="Fermer l'explication">${icon('x')}</button>
 			${mascotteBulleHTML(d.avantSerie ? 'Un petit rappel avant de commencer.' : MASCOTTE_LIGNE)}
 			<h2 class="modal-title aide-titre" id="etayTitle">${escapeHTML(titre)}</h2>
-			${contenu.regle ? `<p class="etay-regle">${escapeHTML(contenu.regle)}</p>` : ''}
+			${contenu.regle ? `<p class="etay-regle" id="etayRegle">${escapeHTML(contenu.regle)}</p>` : ''}
 			${
 				// Visuel MASQUÉ aux technologies d'assistance : tout ce qu'il montre est déjà DIT
 				// par la narration (« j'écris 2 et je retiens 1 pour les dizaines »). L'étiqueter à
@@ -143,7 +150,11 @@ function panneauHTML(
 						// d'assistance. Les deux textes sont rendus DÉJÀ REMPLIS pour l'étape 0 :
 						// beaucoup de lecteurs d'écran n'observent une région live qu'après un
 						// battement, et la première étape — la seule qu'aucun geste n'annonce —
-						// serait restée muette.
+						// serait restée muette. Le préremplissage ne SUFFIT pas pour autant : une
+						// région live rendue déjà pleine n'est en général pas annoncée (elle n'a pas
+						// muté). C'est `aria-describedby` sur le dialogue qui fait entendre la règle
+						// et la première phrase à l'ouverture ; la région live prend le relais aux pas
+						// suivants, où il y a bien mutation (constat du `relecteur-accessibilite`).
 						`<p class="etay-compteur" id="etayCompteur" aria-live="polite">${compteurTexte(0, pas.length)}</p>
 						 <div class="etay-bar" aria-hidden="true"><div class="etay-bar-fill" id="etayBarFill"></div></div>
 						 <p class="etay-phrase" id="etayPhrase" role="status">${escapeHTML(pas[0].phrase)}</p>`
@@ -219,7 +230,14 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 		if (phrase) phrase.textContent = pas[i].phrase;
 		if (compteur) compteur.textContent = compteurTexte(i, pas.length);
 		if (barre) barre.style.width = `${Math.round(((i + 1) / pas.length) * 100)}%`;
-		if (precedent) precedent.hidden = i === 0;
+		// Le bouton qu'on vient de cliquer ne doit pas disparaître SOUS le focus : un élément
+		// caché le rend au `<body>`, et l'enfant au clavier se retrouve nulle part jusqu'au
+		// prochain Tab. On le repasse à « Suivant », la seule action qui reste.
+		if (precedent) {
+			const perdLeFocus = i === 0 && document.activeElement === precedent;
+			precedent.hidden = i === 0;
+			if (perdLeFocus) suivant.focus();
+		}
 		suivant.textContent = i + 1 < pas.length ? 'Suivant ▶' : sortie;
 		// Lecture auto : c'est un réglage du profil, donc on suit chaque étape. Sinon, seul
 		// le bouton « Écouter » lit — et il lit l'étape COURANTE, pas tout le panneau.
@@ -287,7 +305,7 @@ function specDeGrille(grille: HTMLElement): PosedSpec | undefined {
 	return { op, a, b };
 }
 
-/** Pose le lien « Comprendre ce calcul » sous chaque grille posée où l'enfant s'est trompé,
+/** Pose le lien « Comprendre la méthode » sous chaque grille posée où l'enfant s'est trompé,
     après correction d'une fiche. UNE offre par GRILLE, jamais par chiffre : dix opérations
     justes ne doivent pas donner dix liens sur une page déjà dense.
 
@@ -340,7 +358,7 @@ export function monterBoutonEtayage(
 	btn.className = 'etayage-btn';
 	btn.setAttribute('aria-label', ETAYAGE_LABEL);
 	btn.title = ETAYAGE_LABEL;
-	btn.innerHTML = icon('math-operations');
+	btn.innerHTML = icon(ETAYAGE_ICONE);
 	btn.addEventListener('click', () => ouvrirEtayage({ lesson, niveau, mode, trigger: btn }));
 	conteneur.appendChild(btn);
 }

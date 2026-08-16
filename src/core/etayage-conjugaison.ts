@@ -177,9 +177,10 @@ export function derouleConjugaison(spec: ConjugaisonSpec): DerouleEtayage {
 		// Participe qui varie d'une personne à l'autre = accord avec « être ». C'est une
 		// notion à part entière : on la nomme au lieu de laisser croire à une irrégularité.
 		const varie = new Set(decoupe.participes).size > 1;
-		pas.push({
-			phrase: `Le passé composé s'écrit en DEUX morceaux : un auxiliaire conjugué, puis le participe passé.`,
-		});
+		// Pas d'étape « le passé composé s'écrit en deux morceaux » : c'est mot pour mot la
+		// règle affichée en permanence au-dessus (cf. data/francais/conjugaison.ts). La répéter
+		// coûtait un clic pour zéro information neuve — contrairement à l'imparfait et au
+		// futur, dont l'étape équivalente APPLIQUE la règle à la personne demandée.
 		pas.push({
 			phrase: `L'auxiliaire est « ${auxiliaire} », conjugué au présent avec « ${PERSONNES[spec.personne]} » : ${decoupe.auxiliaires[spec.personne]}.`,
 			ecritures: [{ cible: CIBLE_MORCEAU_1, texte: decoupe.auxiliaires[spec.personne] }],
@@ -242,10 +243,16 @@ export function derouleConjugaison(spec: ConjugaisonSpec): DerouleEtayage {
 	// PRÉSENT : on ne déroule que ce qui se reconstruit vraiment (1er et 2ᵉ groupes
 	// réguliers). Partout ailleurs, la forme est à connaître, et aucune méthode ne
 	// l'engendre — mieux vaut pas de panneau qu'une règle inventée.
+	// La régularité des SIX FORMES ne suffit pas à nommer un groupe : « ouvrir » suit le
+	// patron du 1er groupe au présent (j'ouvre, nous ouvrons) tout en étant du 3ᵉ. On croise
+	// donc avec la terminaison de l'INFINITIF — et « aller », en -er mais irrégulier, est
+	// écarté avant par le patron lui-même (vais / allons). Absent du corpus aujourd'hui, mais
+	// c'est exactement la promesse de ce module : ce qu'on affirme, on l'a vérifié.
 	const groupe = [
-		{ fins: PRESENT_1ER, nom: '1er groupe' },
-		{ fins: PRESENT_2E, nom: '2e groupe' },
+		{ fins: PRESENT_1ER, nom: '1er groupe', infinitifEn: 'er' },
+		{ fins: PRESENT_2E, nom: '2e groupe', infinitifEn: 'ir' },
 	]
+		.filter((g) => spec.infinitif.endsWith(g.infinitifEn))
 		.map((g) => ({ ...g, radical: radicalCommun(spec.formes, g.fins) }))
 		.find((g) => g.radical);
 	if (!groupe?.radical) return vide;

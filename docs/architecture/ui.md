@@ -988,8 +988,8 @@ pure](core.md)) pour les formats composites :
 
 ## Étayage de la notion (#490)
 
-- **`etayage-panneau.ts`** — couche **UI** du socle pur `core/etayage.ts`/
-  `core/etayage-posee.ts` (cf. [Logique pure](core.md)) : **un seul panneau, cinq
+- **`etayage-panneau.ts`** — couche **UI** du socle pur `core/etayage.ts` et de ses six
+  moteurs de résolution (cf. [Logique pure](core.md)) : **un seul panneau, six
   points d'entrée**, sur le modèle déjà pris pour la révélation neutre
   (`revelation-neutre.ts`) — un fond commun, des habillages. Forme : la mini-modale
   a11y de l'aide au geste (#272, `activateModal` — piège de focus, arrière-plan
@@ -1001,12 +1001,10 @@ pure](core.md)) pour les formats composites :
   `--accent` (jamais `--ok`/`--ko`, qui disent « ta réponse est juste/fausse » : ce
   panneau EXPLIQUE, il ne corrige rien — aucun nouveau chemin de correction, donc
   aucune obligation côté journal d'erreurs #391).
-  **`ouvrirEtayage(demande: EtayageDemande)`** compose l'overlay : une grille de
-  DÉMONSTRATION (`grilleDemoHTML`, même disposition que la grille jouable via
-  `core/items.ts:dispositionPosee`, cellules figées et vides ciblées par
-  `data-cible`/`data-retenue`) + le déroulé des pas (`pasDe`, aplatit les lignes de
-  `resolutionPosee` en une liste de pas, chapeau de ligne en tête de sa 1re colonne)
-  + une barre de progression + le renvoi à la **leçon prérequise** (`prerequisHTML`,
+  **`ouvrirEtayage(demande: EtayageDemande)`** compose l'overlay : le VISUEL de
+  démonstration du moteur + le déroulé de ses pas (les deux fournis par
+  **`moteurEtayage(exemple)`**, cf. `etayage-visuels.ts` ci-dessous) + une barre de
+  progression + le renvoi à la **leçon prérequise** (`prerequisHTML`,
   `core/etayage.ts:leconPrerequise` — jamais un lien de NAVIGATION, on ne propose pas
   à un enfant de quitter la série qu'il vient de commencer ; il peut en revanche la
   **mettre de côté** : `epinglerPrerequis` l'ajoute à la file « à revoir » du profil
@@ -1018,7 +1016,7 @@ pure](core.md)) pour les formats composites :
   n'ouvre RIEN mais appelle quand même `onFerme` : l'appelant n'a pas à savoir si le
   panneau existe.
 
-  **Cinq points d'entrée**, tous conditionnés par `etayageDisponible`. Les deux qui
+  **Six points d'entrée**, tous conditionnés par `etayageDisponible`. Les deux qui
   s'attachent à un ÉCRAN d'exercice passent par **`brancherEtayageEcran(conteneur,
   lesson, mode?)`** — un seul appel par écran, qui tient l'ordre (bouton d'abord, puis
   l'exemple, lui-même après l'aide au geste) au lieu de le laisser recopier :
@@ -1039,6 +1037,16 @@ pure](core.md)) pour les formats composites :
     largement que le journal d'erreurs (#391, qui n'agrège que les résultats faux) —
     une retenue ou un produit partiel raté est justement ce que l'étayage explique le
     mieux, même quand le résultat final est juste ;
+  - le **lien posé sous le verdict d'un runner** (`lecon-runner-shared.ts:wireNext`,
+    paramètre optionnel `etayage`) : le pendant, pour les écrans dédiés, du lien de la
+    fiche. Fourni SEULEMENT quand l'enfant s'est trompé (on n'explique pas une
+    réussite), et avec l'exercice raté quand le runner sait le décrire — le tableau de
+    conversion (`conversionDepuisTableau`), la droite graduée (`droiteDepuisExercice`) et
+    le problème (son énoncé et ses sous-questions) déroulent ainsi CELUI-LÀ, pas
+    l'exemple de la leçon. Le lien vit dans la zone de feedback, donc AVANT
+    « Continuer ▶ » dans l'ordre de tabulation, et porte `role="status"` : le focus part
+    sur « Continuer », et sans région live un enfant au lecteur d'écran n'apprendrait
+    jamais que l'offre existe ;
   - en **révision espacée**, le lien posé au **verdict d'une erreur**
     (`ui/revision.ts:verdictHTML`, `lienEtayageHTML`) : APRÈS la bonne réponse, AVANT
     « Continuer ▶ » — l'enfant lit d'abord ce qu'il cherchait, choisit ensuite
@@ -1051,8 +1059,26 @@ pure](core.md)) pour les formats composites :
     sur une opération posée (elle se joue en fiche, pas dans un runner à widget), donc
     rien à brancher côté `ui/lecon-passer.ts`.
 
-  Icône dédiée **`math-operations`** (`core/icon-names.ts`/`ui/icon.ts`), distincte de
-  l'ampoule de l'aide au geste. Styles dans `styles/etayage.scss`.
+  Libellé **« Comprendre la méthode »** et icône **`brain`**, tous deux NEUTRES quant à
+  la matière : le panneau s'ouvre aussi bien sur une conjugaison que sur un calcul, et
+  l'ancien « Comprendre ce calcul » sous une icône de signes opératoires devenait faux
+  dès qu'il expliquait « nous viendrons ». Distincts, là encore, de l'ampoule de l'aide
+  au geste. Styles dans `styles/etayage.scss`.
+
+- **`etayage-visuels.ts`** — un DESSIN par moteur, et le seul endroit à changer quand un
+  moteur s'ajoute : **`moteurEtayage(exemple)`** aiguille (un `switch`, pour que chaque
+  branche garde le type CONCRET de son moteur — le déroulé de la droite porte un état que
+  les autres n'ont pas) et rend `{deroule, visuel(i)}`. Le panneau redessine le visuel EN
+  ENTIER à chaque pas plutôt que de le retoucher : les états sont peu nombreux, le rendu
+  est pur, et « Précédent » n'a ainsi rien à défaire — donc rien à oublier de défaire.
+  Règle commune aux six visuels, plus importante que leur code : la démonstration a la
+  MÊME géométrie que l'exercice réel (`.posee-*` du calcul posé, `.tc-*` du tableau de
+  conversion, la figure `core/figures/droite.ts`), un enfant en difficulté n'ayant pas à
+  réapprendre un format visuel en plus de la méthode. Les cases portent leur clé en
+  `data-cible` — pas pour le rendu, mais comme sélecteur stable des specs Playwright.
+  Le visuel entier est `aria-hidden` : tout ce qu'il montre est déjà DIT par la
+  narration, et l'étiqueter à moitié ferait entendre une grille de chiffres nus en plus
+  de l'explication.
 
   **Lisibilité non visuelle du déroulé** (relecture a11y) : le compteur d'étapes est sa
   propre région live et PRÉCÈDE la phrase — l'enfant qui n'y voit pas entend d'abord où
@@ -1062,7 +1088,13 @@ pure](core.md)) pour les formats composites :
   narration (l'étiqueter à moitié ferait entendre une grille de chiffres nus en plus de
   l'explication). Compteur et première phrase sont rendus **déjà remplis** : une région
   live armée dans le même battement que l'insertion de la modale avale sa première
-  annonce, et l'étape 0 est justement celle qu'aucun geste n'annonce. Le texte lu passe
+  annonce, et l'étape 0 est justement celle qu'aucun geste n'annonce. Le préremplissage
+  ne suffit pourtant PAS — une région live rendue déjà pleine n'a pas muté, donc n'est en
+  général pas annoncée : c'est **`aria-describedby="etayRegle etayPhrase"`** sur le
+  dialogue qui fait entendre la règle et la première phrase à l'ouverture, la région live
+  ne prenant le relais qu'aux pas suivants. Dans le même esprit, cacher « Précédent » en
+  revenant à l'étape 0 lui reprendrait le focus qu'il détient encore (un élément caché le
+  rend au `<body>`) : `afficher` le repasse alors explicitement à « Suivant ». Le texte lu passe
   par `core/tts-text.ts:texteParle`, comme toutes les consignes — sans quoi le fait
   numérique qui fait tout l'intérêt du panneau (« 7 × 6 = 42 ») serait rendu au moteur
   vocal avec ses symboles bruts, souvent muets.

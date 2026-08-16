@@ -288,7 +288,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   son runner, comme `posed`) | `probleme` (résolution de problèmes #199 :
   `enonce`, `etapes[]` — 1 ou 2 sous-questions corrigées indépendamment —,
   `parle`, `figure?` #95, `explication?` #252 — stratégie affichée APRÈS la
-  réponse, ex. le « pont » d'un calcul de durée) | `clicMot` (« clique sur le mot »
+  réponse, ex. le « pont » d'un calcul de durée) — chaque étape porte aussi un
+  `calcul?: CalculEtape` optionnel (`{op, a, b}`, dans les valeurs AFFICHÉES de
+  l'énoncé, ajouté pour l'étayage de la notion #490) : RENSEIGNÉ seulement quand le
+  résultat de l'étape EST `a op b`, et **absent par refus explicite** pour une
+  division avec reste ou une durée décomposée en heures/minutes, qui n'entrent pas
+  dans ce moule (cf. « Étayage de la notion » plus bas) | `clicMot` (« clique sur le mot »
   #259, généralisé #437 : `{tokens: string[]` — phrase mot à mot, ponctuation comprise —,
   `cibleIndices: number[]` — ensemble EXACT des indices-cibles, **stockés**, adjacents
   ou non (verbe au passé composé = 2 mots adjacents ; « ni…ni »/sujet composé = cible
@@ -305,7 +310,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   leçons dans [Contenu & leçons](contenu-et-lecons.md))
   | `droiteGraduee` (droite graduée #256 : `{min, max, pas, graduations[]` — toutes les
   graduations sélectionnables `{valeur, label}` —, `bornes[]` — sous-ensemble numéroté —,
-  `cible` **stockée** ∈ graduations, `cibleLabel`, `consigne`, `explication`, `parle}` ;
+  `cible` **stockée** ∈ graduations, `cibleLabel`, `consigne`, `explication`, `parle`,
+  `pasLabel` — ce que vaut UNE graduation, déjà écrit comme l'enfant l'écrirait (« 1 »,
+  « 0,1 ») ; stocké plutôt que recalculé (`pas` est en unité interne, centièmes entiers
+  pour les décimaux), et repris tel quel par l'étayage de la notion (#490) comme premier
+  pas de son déroulé, cf. « Étayage de la notion » plus bas`}` ;
+
   corrigé par son runner `lecon-droite-graduee.ts` — placer un repère, `check` renvoie
   `false` — ; repli LECTURE de `genLessonItem` : lire le nombre repéré)
   | interactions ortho), interface
@@ -446,7 +456,17 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   lettres (conventions FR scolaires : « et » à 21/31…/51/61/71, traits d'union
   ailleurs, « quatre-vingts » invariable) — repli sur les chiffres au-delà de 99
   (jamais atteint en pratique, les numérateurs de fractions plafonnent à ~69) ; sert
-  `fraction-text.ts` pour les numérateurs impropres > 9.
+  `fraction-text.ts` pour les numérateurs impropres > 9. **`NOMS_RANGS`** (#490) —
+  table UNIQUE des noms de rang de la numération décimale, de l'unité au million :
+  singulier, pluriel, GENRE. **`nomRang(rang, pluriel?)`** (`undefined` au-delà de la
+  table plutôt que d'inventer un mot), **`quantiteRang(n, rang)`** (« 1 dizaine », « 7
+  dizaines », accordé), **`genreRang(rang)`** (« aucune dizaine » mais « aucun
+  millier »). Table PARTAGÉE par les moteurs de résolution de l'étayage de la notion
+  qui nomment des rangs — le calcul posé (`core/etayage-posee.ts:nomColonne`) et la
+  numération (`core/etayage-position.ts`, cf. « Étayage de la notion » plus bas) —,
+  jamais redéduite par index chez le consommateur : elle divergerait au premier rang
+  ajouté (constat du `redacteur-contenu-francais`, sur le pluriel de « dizaine de
+  mille », invariable sur « mille »).
 - **`signes.ts`** (#380) — module **pur** : signes de comparaison `< = >`
   (`SIGNES_COMPARAISON`, type `SigneComparaison`), **`estSigneComparaison(answer)`** (une
   réponse texte est-elle un signe ? — aiguille `items.ts` et `ui/sprint.ts`),
@@ -934,8 +954,8 @@ niveau, sans DOM ni stockage :
   UNE phrase, affichée en PERMANENCE pendant tout le déroulé — ce qu'un enfant à
   faible mémoire de travail retient d'un écran à l'autre, avis
   `specialiste-troubles-apprentissage`), des `etapes?` rédigées (≤ 3) et/ou un
-  `exemple?` (`EtayageExemple`, union à une seule branche pour l'instant :
-  `{moteur: 'posee', spec}`, le calcul posé, pilote de #490). Le module expose aussi
+  `exemple?` (`EtayageExemple`, une branche par famille MÉCANISABLE : `posee`,
+  `conversion`, `droite`, `position`, `conjugaison`, `probleme`). Le module expose aussi
   **`leconPrerequise(lesson, niveau)`** — la leçon PRÉCÉDENTE de sa catégorie dans
   l'ordre pédagogique (`ordre.ts`/`getLessonsByCategory`, déjà trié) —, seul contenu
   entièrement MÉCANISABLE, donc affichable même sans rien de rédigé. Enfin,
@@ -960,6 +980,20 @@ niveau, sans DOM ni stockage :
   encadrant](espace-encadrant.md)) : un dispositif auto-corrigé ne répare pas une
   incompréhension persistante par la répétition, c'est alors à l'adulte de prendre
   le relais.
+- **`etayage-deroule.ts`** — le CONTRAT que remplit chaque moteur de résolution, et la
+  seule chose que le panneau connaisse d'eux. Un **`DerouleEtayage`** = un `titre` et une
+  suite de **`PasEtayage`** : une `phrase` (ce qu'on dit), des `ecritures?`
+  (`{cible, texte}` — ce que le pas écrit, désigné par une CLÉ stable, jamais par une
+  géométrie d'écran : la géométrie appartient au rendu, et un moteur pur reste testable
+  sans DOM) et des `actifs?` (ce qu'on met en avant). **`PAS_MAX`** (12) borne la
+  longueur : ce que la charte des « trois étapes » borne, c'est le texte d'une RÈGLE, pas
+  une résolution dont la longueur est dictée par la donnée — le volume à l'écran, lui, est
+  réglé par le déroulé pas à pas lui-même. **`derouleMontrable(d)`** refuse un déroulé
+  vide ou plus long que le plafond, et l'abandonne EN ENTIER plutôt que de le tronquer
+  (une méthode qui s'arrête au milieu vaut moins que la règle seule, servie à sa place).
+  Un moteur qui a besoin d'un état plus riche qu'une écriture étend `PasEtayage` chez lui
+  (la droite graduée porte un repère et un chemin, la numération des cases masquées) :
+  ce sont des DONNÉES pures, le panneau n'a jamais à en savoir plus.
 - **`etayage-posee.ts`** — l'un des deux contenus possibles d'une notion (cf.
   `etayage.ts`) : la **résolution GÉNÉRÉE** d'une opération posée, du CODE et non de
   l'éditorial (la méthode est mécanique). **`resolutionPosee(spec: PosedSpec)`**
@@ -984,19 +1018,76 @@ niveau, sans DOM ni stockage :
   l'opération que l'enfant vient de rater ou sur l'exemple canonique **fixe** d'une
   leçon (`data/maths/posee.ts`, cf. [Contenu & leçons](contenu-et-lecons.md)) —
   jamais un tirage, qui donnerait tantôt un cas sans retenue qui ne montre rien,
-  tantôt le pire cas au pire moment.
+  tantôt le pire cas au pire moment. **`deroulePosee(spec)`** met tout ça au format
+  commun (une colonne = un pas, l'annonce de ligne en tête de sa première colonne).
+- **`etayage-conversion.ts`** — le tableau de conversion, frère du calcul posé : des
+  RANGS, un chiffre par case, et un zéro qui tient une place. Un pas = **une colonne**.
+  **`lireDansUnite(colonnes, i)`** porte la notion entière en une fonction (le même
+  tableau donne « 3 » en kilomètres et « 3 000 » en mètres) et sert autant à retrouver le
+  nombre donné qu'à énoncer la réponse ; **`conversionDepuisTableau(ex)`** tire la
+  spécification de l'exercice RATÉ en déduisant l'unité de départ d'un invariant du
+  générateur (le tableau couvre exactement l'empan de la paire convertie, l'unité
+  cherchée est l'une de ses deux extrémités). La narration nomme l'unité de chaque
+  colonne vide et ne dit JAMAIS « on ajoute des zéros » ni « on décale la virgule » —
+  raccourcis qui marchent sur les entiers et cassent au premier décimal.
+- **`etayage-droite.ts`** — le placement sur la droite graduée. Trois pas, jamais plus :
+  la tâche est une décision perceptive, pas une accumulation, et la découper davantage
+  produirait du bavardage (avis `pedagogue-primaire`). L'ordre est celui du raisonnement
+  réel : ce que vaut une graduation (le fait numérique isolé de cette famille — l'échelle
+  CHANGE à chaque item), d'où l'on part (**`borneAvant`**, le nombre écrit juste avant la
+  cible, pas la borne de gauche), puis le comptage des sauts, avec son piège nommé. Le
+  pas porte l'état de la FIGURE (`repere`, `parcours`), la droite n'ayant pas de case qui
+  se remplit.
+- **`etayage-position.ts`** — les quatre questions de numération, que le déroulé doit
+  SÉPARER parce que les confondre est l'erreur même que ces leçons testent : `chiffre`
+  (une lecture), `entout` (on masque tout ce qui est à droite du rang et on lit ce qui
+  reste — dans 3 472, 34 centaines, et non 4), `rangs` et `multiplicative`. Le zéro
+  intercalaire a sa phrase. Le générateur ne rendant qu'une chaîne déjà formatée (ni le
+  nombre, ni le rang troué, ni le geste demandé n'en ressortent), ces leçons déroulent
+  leur exemple CANONIQUE et non l'item raté — un exemple juste vaut mieux qu'un item
+  deviné.
+- **`etayage-conjugaison.ts`** — la forme conjuguée. Le risque propre à cette famille
+  n'est pas de mal expliquer mais de **mentir** : le corpus ne stocke que des formes
+  pleines, et découper au jugé fabriquerait des radicaux inventés (« pouvoir » en a trois
+  au présent). Règle du module : **on ne raconte que ce qu'on a vérifié sur les six
+  personnes** (`radicalCommun`, `decoupePasseCompose`) ; sinon le déroulé est vide et il
+  n'y a pas de panneau. Aucune liste de verbes en dur — c'est le corpus qui décide.
+  Passé composé : uniforme (auxiliaire + participe ; un participe qui varie signale
+  l'accord avec « être », qu'on nomme). Imparfait : terminaisons communes à tous, radical
+  retrouvé par le « nous » du présent — « être » sort de la règle sans mystère (« nous
+  sommes » ne finit pas par -ons) et on le dit. Futur : terminaison invariable, radical
+  « à connaître » quand il ne se déduit pas de l'infinitif. Présent : rien à dérouler
+  hors 1er et 2ᵉ groupes réguliers (croisés avec la terminaison de l'infinitif, un verbe
+  en -ir conjugué comme le 1er groupe n'étant pas du 1er groupe).
+- **`etayage-probleme.ts`** — le problème à étapes, seule famille dont la DONNÉE a dû
+  s'élargir : `ProblemeEtape` ne portait qu'un intitulé et une réponse, de quoi réciter
+  ce que la révélation (#467) montre déjà. Le `calcul?` ajouté (cf. `exercise.ts`
+  ci-dessus) permet d'énoncer l'opération qui répond à chaque sous-question ; sans aucun
+  calcul, le déroulé reste vide. Ce que le module ne prétend PAS faire : justifier le
+  CHOIX de l'opération, qui demanderait la structure sémantique de l'énoncé (absente, et
+  non déductible). Ce qu'il sait vraiment expliquer, il le dit — le **chaînage**
+  (`etapeSource`) : quand une sous-question reprend le résultat de la précédente, il le
+  nomme, et c'est précisément ce qui se perd dans un problème à deux étapes.
 
-Deux contenus, à ne pas confondre : la résolution **générée** ci-dessus (du code) et
+Deux contenus, à ne pas confondre : les résolutions **générées** ci-dessus (du code) et
 le texte **RÉDIGÉ** de la notion, écrit à la main dans le module de données de sa
 leçon (`etayage?: EtayageEntree[]` sur `LessonInput`, remonté tel quel en `LessonDef`
 par `toLessonDefs`, cf. `catalog.ts` ci-dessus) — pas de table centrale à cent
 entrées, qui dériverait de la leçon qu'elle décrit et serait un nid de conflits.
 
+**La dégradation est une propriété du dispositif, pas un manque.** Elle joue à trois
+niveaux : pas d'entrée pour la leçon → pas de panneau ; entrée mais déroulé non
+montrable → panneau réduit à sa règle et au renvoi vers la leçon prérequise ; et, dans
+chaque moteur, refus de raconter ce qui n'a pas été vérifié. C'est ce qui laisse
+volontairement SANS panneau les verbes irréguliers au présent (aucune méthode honnête à
+dérouler), les divisions avec reste et les durées (leur calcul ne s'écrit pas en une
+opération : « 17 ÷ 5 » ne fait pas 3).
+
 `core/items.ts` (Fondations ci-dessus) porte le tiers restant, PARTAGÉ par la grille
 jouable et par la grille de DÉMONSTRATION du panneau : `dispositionPosee(spec)` /
 `poseeGrilleHTML` et les attributs `data-pose-op/a/b` qu'elle pose sur la grille
-jouable. La couche UI (`ui/etayage-panneau.ts`, cinq points d'entrée) est décrite
-dans [Rendu & interactions](ui.md).
+jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
+`ui/etayage-visuels.ts`) est décrite dans [Rendu & interactions](ui.md).
 
 ## Espace encadrant (logique pure)
 

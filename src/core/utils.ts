@@ -172,6 +172,26 @@ export function enumererFr(items: string[]): string {
    Ne concerne PAS la correction numérique (calcul). */
 export const normalizeText = (s: string) => s.trim().replace(/\s+/g, ' ').normalize('NFC');
 
+/* Clé de RECHERCHE d'un texte libre (banque de mots #496, sélecteur de leçon #556) :
+   minuscules, espaces normalisés, ligatures dépliées, diacritiques retirés. Sur un clavier
+   tactile où le circonflexe est fastidieux, taper « etre » doit trouver « être » et
+   « geometrie » « Géométrie » — l'exiger rendrait la recherche inutile là où elle sert le
+   plus. NFD décompose la lettre accentuée en base + diacritique combinant, que l'on retire
+   (NFC, lui, COMPOSE : il ne retirerait rien) ; les ligatures ne sont pas des diacritiques,
+   d'où leur dépliage explicite avant.
+
+   À NE PAS confondre avec `normalizeText`, qui sert la CORRECTION des réponses et doit, elle,
+   exiger les accents — ni avec `formeNormalisee` (orthographe), clé de DÉDUP de la banque :
+   y replier les accents fusionnerait « cote » et « côté » en une seule entrée. Pur. */
+export function cleRecherche(s: string): string {
+	return normalizeText(s)
+		.toLocaleLowerCase('fr')
+		.replace(/œ/g, 'oe')
+		.replace(/æ/g, 'ae')
+		.normalize('NFD')
+		.replace(/\p{Diacritic}/gu, '');
+}
+
 /* Début du jour LOCAL d'un horodatage (ms) — socle de tous les raisonnements en jours
    CALENDAIRES de l'app (« dernière fois travaillée », graphe d'activité, délai d'ici une
    révision, filtre de période des erreurs). Passe par `setHours` plutôt qu'un modulo de

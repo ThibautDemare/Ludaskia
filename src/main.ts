@@ -30,6 +30,7 @@ import './styles/aide-exercice.scss';
 import './styles/etayage.scss';
 import './styles/encadrant.scss';
 import './styles/encadrant-seance.scss';
+import './styles/encadrant-selecteur.scss';
 import './styles/eggs.scss';
 import './styles/tour.scss';
 import './styles/footer.scss';

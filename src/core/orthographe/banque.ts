@@ -13,6 +13,7 @@
    (`supprimerMot`), l'écriture par profil consulté dans `saveOrthoFor`.
    Pur : aucun accès DOM ni localStorage, `dicteeDispo` injecté.
    ============================================================ */
+import { cleRecherche } from '../utils';
 import { formeNormalisee, listesContenantMot } from './store';
 import { indexPredef } from './lessons';
 import { listesDeCibleVerbe } from './verbes';
@@ -65,19 +66,10 @@ export function banqueProfil(state: OrthoState, dicteeDispo: boolean): EntreeBan
 	return out.sort((a, b) => a.cle.localeCompare(b.cle, 'fr'));
 }
 
-/* Clé de RECHERCHE : forme normalisée, diacritiques en moins. Distincte de `formeNormalisee`,
-   qui est la clé de DÉDUP de la banque et doit le rester : y replier les accents fusionnerait
-   « cote » et « côté » en une seule entrée. Ici au contraire, sur un clavier tactile où le
-   circonflexe est fastidieux, taper « etre » doit trouver « être » — l'exiger rendrait la
-   recherche inutile là où elle sert le plus. NFD décompose la lettre accentuée en base +
-   diacritique combinant, que l'on retire (NFC, lui, compose : il ne retirerait rien). */
-function cleRecherche(s: string): string {
-	return formeNormalisee(s)
-		.replace(/œ/g, 'oe')
-		.replace(/æ/g, 'ae') // ligatures : NFD ne les décompose pas (ce ne sont pas des diacritiques)
-		.normalize('NFD')
-		.replace(/\p{Diacritic}/gu, '');
-}
+/* La clé de RECHERCHE (accents et casse en moins) vit dans `core/utils` : le sélecteur de
+   leçon (#556) applique la MÊME règle de langue, et deux copies divergeraient. Elle reste
+   distincte de `formeNormalisee`, clé de DÉDUP de la banque, qui doit le rester : y replier
+   les accents fusionnerait « cote » et « côté » en une seule entrée. */
 
 /** Filtre de la vue : recherche texte libre + « orphelins seulement ». Comparaison en
     SOUS-CHAÎNE et non en préfixe : l'adulte se souvient rarement du début exact d'un mot

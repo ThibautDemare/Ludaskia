@@ -62,6 +62,7 @@ import {
 	reglagesApresRendu,
 } from './encadrant-reglages';
 import { profilsHTML, sauvegardeHTML, profilsClick } from './encadrant-profils';
+import { selecteurClick, selecteurInput, selecteurToggle } from './selecteur-lecon';
 import { segmentKeydown } from './segment';
 
 /* Onglets de l'espace (#459), dans l'ordre de fréquence d'usage décroissante :
@@ -228,6 +229,10 @@ function onClick(e: Event): void {
 		onTab(el.dataset.tab ?? '');
 		return;
 	}
+	// Le sélecteur de leçon (#556) est composé par DEUX sections (programme, à revoir) :
+	// ses actions internes (jetons de classe, recherche, plis) sont donc aiguillées ici,
+	// avant elles — sinon chaque section devrait relayer les mêmes trois handlers.
+	if (selecteurClick(act, el)) return;
 	if (pinClick(act, el)) return;
 	if (reglagesClick(act, el)) return;
 	if (profilsClick(act, el)) return;
@@ -238,7 +243,9 @@ function onClick(e: Event): void {
 
 function onToggle(e: Event): void {
 	const t = e.target;
-	if (t instanceof HTMLElement) progressionToggle(t);
+	if (!(t instanceof HTMLElement)) return;
+	if (selecteurToggle(t)) return; // groupe d'un sélecteur : son pli lui appartient
+	progressionToggle(t);
 }
 
 function onChange(e: Event): void {
@@ -255,11 +262,13 @@ function onChange(e: Event): void {
 	pinChange(act, t);
 }
 
-/* Saisie AU FIL DE LA FRAPPE (≠ `change`, qui n'arrive qu'au blur) : la recherche dans la
-   banque de mots doit filtrer à chaque lettre (#496). Seule cette section en a l'usage. */
+/* Saisie AU FIL DE LA FRAPPE (≠ `change`, qui n'arrive qu'au blur) : les recherches — banque
+   de mots (#496), sélecteur de leçon (#556) — doivent filtrer à chaque lettre. */
 function onInput(e: Event): void {
 	const t = e.target as HTMLElement;
-	progressionInput(t.dataset.act ?? '', t);
+	const act = t.dataset.act ?? '';
+	if (selecteurInput(act, t)) return;
+	progressionInput(act, t);
 }
 
 function onKeydown(e: KeyboardEvent): void {

@@ -293,7 +293,9 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   l'énoncé, ajouté pour l'étayage de la notion #490) : RENSEIGNÉ seulement quand le
   résultat de l'étape EST `a op b`, et **absent par refus explicite** pour une
   division avec reste ou une durée décomposée en heures/minutes, qui n'entrent pas
-  dans ce moule (cf. « Étayage de la notion » plus bas) | `clicMot` (« clique sur le mot »
+  dans ce moule ; `deA`/`deB` y déclarent l'étape d'où PROVIENT un opérande quand il
+  n'est pas un nombre de l'énoncé mais le résultat d'une sous-question précédente
+  (cf. « Étayage de la notion » plus bas) | `clicMot` (« clique sur le mot »
   #259, généralisé #437 : `{tokens: string[]` — phrase mot à mot, ponctuation comprise —,
   `cibleIndices: number[]` — ensemble EXACT des indices-cibles, **stockés**, adjacents
   ou non (verbe au passé composé = 2 mots adjacents ; « ni…ni »/sujet composé = cible
@@ -1066,8 +1068,12 @@ niveau, sans DOM ni stockage :
   calcul, le déroulé reste vide. Ce que le module ne prétend PAS faire : justifier le
   CHOIX de l'opération, qui demanderait la structure sémantique de l'énoncé (absente, et
   non déductible). Ce qu'il sait vraiment expliquer, il le dit — le **chaînage**
-  (`etapeSource`) : quand une sous-question reprend le résultat de la précédente, il le
-  nomme, et c'est précisément ce qui se perd dans un problème à deux étapes.
+  (`etapeSource`) : quand une sous-question reprend le résultat d'une précédente, il le
+  nomme, et c'est précisément ce qui se perd dans un problème à deux étapes. Ce lien est
+  **déclaré** par le générateur (`deA`/`deB` sur `CalculEtape`), jamais retrouvé en
+  comparant les valeurs : un opérande de l'énoncé qui vaudrait par hasard la réponse
+  précédente serait annoncé comme en venant, et un résultat réutilisé transformé ne serait
+  pas reconnu du tout.
 
 Deux contenus, à ne pas confondre : les résolutions **générées** ci-dessus (du code) et
 le texte **RÉDIGÉ** de la notion, écrit à la main dans le module de données de sa

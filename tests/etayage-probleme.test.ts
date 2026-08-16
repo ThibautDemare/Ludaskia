@@ -109,7 +109,9 @@ describe('derouleProbleme — relire, puis une sous-question à la fois', () => 
 			enonce: 'Léa achète 4 cahiers à 3 € chacun. Elle paie avec un billet de 20 €.',
 			etapes: [
 				etape('Combien coûtent les 4 cahiers ?', 12, { op: 'x', a: 4, b: 3 }),
-				etape('Combien lui rend-on ?', 8, { op: '-', a: 20, b: 12 }),
+				// `deB: 0` : le 12 est DÉCLARÉ comme venant de la 1re sous-question, il n'est pas
+				// deviné par égalité de valeur (cf. le bloc « etapeSource » plus bas).
+				etape('Combien lui rend-on ?', 8, { op: '-', a: 20, b: 12, deB: 0 }),
 			],
 		});
 		expect(d.pas.length).toBe(3);
@@ -202,30 +204,33 @@ describe('derouleProbleme — se taire plutôt que réciter les réponses', () =
    3. LE CHAÎNAGE, ISOLÉ
    ============================================================ */
 describe('etapeSource — d’où vient ce nombre ?', () => {
-	const etapes = [etape('q1', 12), etape('q2', 8), etape('q3', 12)];
+	/* La source est DÉCLARÉE par le générateur (`deA`/`deB`), plus déduite d'une égalité de
+	   valeurs : la déduction annonçait un chaînage à la première coïncidence et manquait
+	   celui d'un résultat réutilisé transformé. Ces tests éprouvent donc la lecture de la
+	   déclaration, ET son refus des index qui n'ont pas de sens. */
+	const chaine = (deB: number) => etape('q', 8, { op: '-', a: 20, b: 12, deB });
 
-	it('trouve la sous-question précédente dont c’est la réponse', () => {
-		expect(etapeSource(etapes, 1, 12)).toBe(0);
-		expect(etapeSource(etapes, 2, 8)).toBe(1);
+	it('lit l’étape déclarée comme source d’un opérande', () => {
+		const etapes = [etape('q1', 12), chaine(0)];
+		expect(etapeSource(etapes, 1)).toBe(0);
 	});
 
-	it('ne regarde QUE vers l’arrière (une réponse à venir n’est pas une source)', () => {
-		expect(etapeSource(etapes, 0, 8)).toBe(-1); // 8 est la réponse d'APRÈS
-		expect(etapeSource(etapes, 1, 12)).not.toBe(2);
-		expect(etapeSource(etapes, 0, 12)).toBe(-1); // sa propre réponse n'est pas une source
+	it('sans déclaration, aucun chaînage — même si la valeur coïncide', () => {
+		// 12 est bien la réponse de la 1re sous-question, et l'opérande vaut 12 : l'ancienne
+		// détection par égalité aurait annoncé une reprise qui n'existe pas.
+		const etapes = [etape('q1', 12), etape('q2', 3, { op: ':', a: 36, b: 12 })];
+		expect(etapeSource(etapes, 1)).toBe(-1);
 	});
 
-	it('un nombre qui n’est la réponse de personne ne vient d’aucune étape', () => {
-		expect(etapeSource(etapes, 2, 5)).toBe(-1);
-		expect(etapeSource([], 0, 12)).toBe(-1);
+	it('ne regarde QUE vers l’arrière : un index à venir ou le sien sont ignorés', () => {
+		expect(etapeSource([chaine(1), etape('q2', 12)], 0)).toBe(-1);
+		expect(etapeSource([etape('q1', 12), chaine(1)], 1)).toBe(-1);
+		expect(etapeSource([etape('q1', 12), chaine(-1)], 1)).toBe(-1);
 	});
 
-	it('deux sous-questions de MÊME réponse : c’est la première qui est désignée', () => {
-		// Coïncidence de valeurs : la détection se fait par égalité, elle ne peut pas
-		// distinguer laquelle des deux a servi. Sans conséquence tant qu'un problème n'a que
-		// deux étapes (cf. le garde-fou plus bas) : la valeur nommée est la même.
-		const memes = [etape('q1', 6), etape('q2', 6), etape('q3', 12)];
-		expect(etapeSource(memes, 2, 6)).toBe(0);
+	it('une étape sans calcul, ou une liste vide, ne vient de nulle part', () => {
+		expect(etapeSource([etape('q1', 12), etape('q2', 8)], 1)).toBe(-1);
+		expect(etapeSource([], 0)).toBe(-1);
 	});
 });
 

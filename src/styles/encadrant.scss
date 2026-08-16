@@ -1365,12 +1365,14 @@ $frise-neutre: #7c8494;
 /* Date d'un retrait automatique (#465) : info de contexte, pas un état d'acquisition —
    d'où l'absence de pastille et un poids de texte normal (elle ne doit pas concurrencer
    le libellé de la notion).
-   Même traitement pour « hors du niveau suivi » (#518), qui occupe la place du badge d'état
-   sur une épinglée dont la cible a quitté le niveau du profil : c'est une explication de
-   contexte, pas un cran de l'échelle — lui donner une pastille la ferait lire comme un 5e
-   niveau d'acquisition. Encre en --grey et NON en --muted, qui passe sous AA sur --paper. */
+   Même traitement pour le compte-rendu factuel d'une leçon prise dans une classe SUIVANTE
+   (#556, « Réussie hier ») : il occupe la place du badge d'état sans en être un — sur une
+   notion pas encore travaillée en classe, un cran d'acquisition mentirait dans les deux sens
+   (échec sur du non-enseigné, « acquis » sur un seul essai). Lui donner une pastille le
+   ferait lire comme un 5e niveau de l'échelle. Encre en --grey et NON en --muted, qui passe
+   sous AA sur --paper. */
 .enc-revoir-quand,
-.enc-revoir-hors {
+.enc-revoir-essai {
 	font-size: 0.78rem;
 	color: var(--grey);
 	white-space: nowrap;

@@ -21,8 +21,12 @@ import { icon } from './icon';
 import type { IconName } from '../core/icon-names';
 import { listProfiles, type Profile } from '../core/profiles';
 import { getLessonById, type SchoolLevel } from '../core/catalog';
-import { origineLecon } from '../core/catalogue-arbre';
-import { niveauProfilMatiere, epingleesProfil } from '../core/encadrant-stats';
+import {
+	niveauProfilMatiere,
+	epingleesProfil,
+	origineLecon,
+	type DirectionNiveau,
+} from '../core/encadrant-stats';
 import { labelLecon } from '../core/levels';
 import { listOrthoLecons, labelLeconOrtho } from '../core/orthographe/lessons';
 import { loadOrthoFor } from '../core/orthographe/store';
@@ -95,7 +99,10 @@ onChangementProfilConsulte(fermerSelecteur);
    que la classe : c'est le régime d'affichage de la ligne qui porte déjà le sens, et la
    mention se répéterait sur chaque activité du cas courant. L'infobulle a le droit d'être
    plus explicite — elle ne coûte rien à qui ne la sollicite pas. */
-const INFOBULLE_ORIGINE: Record<'en-dessous' | 'au-dessus', (nom: string) => string> = {
+const INFOBULLE_ORIGINE: Record<
+	Exclude<DirectionNiveau, 'classe-suivie'>,
+	(nom: string) => string
+> = {
 	'en-dessous': (nom) =>
 		`Leçon d'une classe précédente : ${nom} la travaillera telle qu'elle est prévue à ce niveau, sans que la classe suivie change.`,
 	'au-dessus': (nom) =>

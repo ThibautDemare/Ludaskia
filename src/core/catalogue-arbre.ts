@@ -7,13 +7,12 @@
    niveau du profil (`getLessonsBySubject`, `lessonsForLevel`) : ce module est la vue qui
    ne filtre pas, et où le niveau redevient un FILTRE qu'on choisit, pas une frontière.
 
-   Trois responsabilités, toutes PURES (ni DOM ni stockage — le rendu vit dans
-   `ui/selecteur-lecon.ts`) :
-   - construire l'arbre `matière → catégorie → leçons`, filtre de niveau et recherche
-     appliqués ;
-   - calculer la barre de jetons de niveau (« Sa classe » + un jeton par niveau pourvu) ;
-   - dire, pour une leçon et un profil, sa CLASSE D'ORIGINE et la DIRECTION de l'écart,
-     dont dépend tout l'affichage adulte d'une leçon assignée hors classe.
+   Deux responsabilités, PURES (ni DOM ni stockage — le rendu vit dans
+   `ui/selecteur-lecon.ts`) : construire l'arbre `matière → catégorie → leçons` (filtre de
+   niveau et recherche appliqués), et calculer la barre de jetons de niveau (« Sa classe »
+   plus un jeton par niveau pourvu en contenu). La CLASSE D'ORIGINE d'une leçon pour un
+   profil, elle, vit dans `encadrant-stats` aux côtés de `niveauProfilMatiere` — l'y laisser
+   évite un cycle d'imports entre les deux modules.
 
    Le niveau reste une DONNÉE (#225) : rien ici ne connaît de liste de classes en dur, tout
    se dérive du catalogue (`availableLevels`) et du profil (`niveauProfilMatiere`).
@@ -26,7 +25,7 @@ import {
 	type SchoolLevel,
 	type SubjectId,
 } from './catalog';
-import { LEVEL_LABEL, LEVEL_ORDER, availableLevels, effectiveLevel, labelLecon } from './levels';
+import { LEVEL_LABEL, LEVEL_ORDER, availableLevels, labelLecon } from './levels';
 import { niveauProfilMatiere } from './encadrant-stats';
 import type { Profile } from './profiles';
 import { cleRecherche } from './utils';
@@ -41,15 +40,6 @@ export const FILTRE_DEFAUT: FiltreNiveau = 'sa-classe';
 export interface JetonNiveau {
 	val: FiltreNiveau;
 	label: string;
-}
-
-/* ---------- Position d'une leçon par rapport à la classe suivie ---------- */
-export type DirectionNiveau = 'en-dessous' | 'classe-suivie' | 'au-dessus';
-export interface OrigineLecon {
-	/** Niveau auquel la leçon sera RÉELLEMENT jouée et stockée pour ce profil (cf.
-	    `niveauStockage`) : c'est lui que nomme le badge « classe d'origine ». */
-	niveau: SchoolLevel;
-	direction: DirectionNiveau;
 }
 
 /* ---------- Arbre ---------- */
@@ -108,26 +98,6 @@ export function jetonsNiveau(
 		jetons.push({ val: lv, label: LEVEL_LABEL[lv] });
 	}
 	return jetons;
-}
-
-/* Classe d'origine d'une leçon pour un profil, et le sens de l'écart.
-
-   Le niveau rendu est celui de la GÉNÉRATION et du STOCKAGE (`effectiveLevel` : le niveau
-   suivi si la leçon le supporte, sinon le plus proche en dessous, sinon le plus bas) — le
-   même que `niveauStockage` côté progression. Le badge nomme donc la classe sous laquelle
-   l'enfant va réellement travailler la leçon, pas une étiquette décorative.
-
-   La direction, elle, ne s'affiche jamais en toutes lettres : elle commande le RÉGIME
-   d'affichage de la ligne (état d'acquisition en dessous, compte-rendu factuel au-dessus)
-   et porte l'infobulle. */
-export function origineLecon(lesson: LessonDef, profile: Profile): OrigineLecon {
-	const suivi = niveauProfilMatiere(profile, lesson.subject);
-	const niveau = effectiveLevel(lesson, suivi);
-	const ecart = LEVEL_ORDER.indexOf(niveau) - LEVEL_ORDER.indexOf(suivi);
-	return {
-		niveau,
-		direction: ecart === 0 ? 'classe-suivie' : ecart < 0 ? 'en-dessous' : 'au-dessus',
-	};
 }
 
 /* Niveau sous lequel une leçon est proposée par un filtre donné : le filtre lui-même quand

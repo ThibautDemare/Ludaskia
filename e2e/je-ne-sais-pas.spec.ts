@@ -70,6 +70,18 @@ test('Révision (saisie libre) : « Je ne sais pas » révèle en verdict neutre
 
 	await page.locator('#revGiveUp').click();
 
+	// Depuis #490, « Je ne sais pas » ouvre d'abord l'étayage de la notion quand la leçon en
+	// porte un — et `num-valeur-position` en porte un depuis la généralisation (PR 2). C'est
+	// le seul point d'entrée où le panneau PRÉCÈDE la réponse : l'enfant a réclamé
+	// l'explication, la lui servir après le verdict reviendrait à ne pas la lui servir. Le
+	// panneau franchi, la révélation neutre de #467 reprend, inchangée — c'est ce que la
+	// suite de ce test vérifie.
+	const panneau = page.locator('#etayageOverlay');
+	if (await panneau.isVisible().catch(() => false)) {
+		await page.locator('#etayageOverlay .aide-close').click();
+		await expect(panneau).toHaveCount(0);
+	}
+
 	// Verdict NEUTRE : ni le vert du ✓, ni le rouge du ✗.
 	await expect(page.locator('.rev-feedback.reveal')).toBeVisible();
 	await expect(page.locator('.rev-feedback.ok')).toHaveCount(0);

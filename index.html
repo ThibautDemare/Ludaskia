@@ -4,9 +4,12 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Ludaskia — entraînement en maths et en français (CE2, CM1)</title>
+		<!-- La description porte AUSSI le versant adulte (« espace parents », « suivi
+		     des progrès », « dictée ») : ce sont de vraies requêtes de recherche, que
+		     la seule promesse « jeu d'entraînement » ne capte pas. -->
 		<meta
 			name="description"
-			content="Ludaskia est un jeu d'entraînement gratuit en maths et en français pour le CE2 et le CM1. Sans compte, sans publicité : les données restent sur l'appareil."
+			content="Entraînement gratuit en maths et en français (CE2, CM1), sans compte ni publicité, données sur l'appareil. Espace parents : suivi des progrès, dictées, fiches à imprimer."
 		/>
 		<!-- Favicon + icône d'application (logo « arbre »). Fichiers dans public/ ;
 		     chemins SANS la base : Vite préfixe lui-même /Ludaskia/. -->
@@ -184,7 +187,28 @@
 			<section class="v-section v-modes" aria-labelledby="vModesTitle">
 				<div class="v-wrap">
 					<h2 id="vModesTitle">Plusieurs façons de s'entraîner</h2>
-					<div class="v-cards v-cards--4">
+					<div class="v-cards v-cards--3">
+						<article class="v-mode">
+							<span class="v-mode-ico">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M184,28H72A20,20,0,0,0,52,48V224a12,12,0,0,0,18.36,10.18l57.63-36,57.65,36A12,12,0,0,0,204,224V48A20,20,0,0,0,184,28Zm-4,174.35-45.65-28.53a12,12,0,0,0-12.72,0L76,202.35V52H180Z"
+									/>
+								</svg>
+							</span>
+							<h3>Leçon du jour</h3>
+							<p>
+								La prochaine étape à travailler, mise en avant dès l'accueil. La progression avance
+								à la maîtrise, pas au calendrier.
+							</p>
+						</article>
 						<article class="v-mode">
 							<span class="v-mode-ico">
 								<svg
@@ -263,10 +287,32 @@
 									/>
 								</svg>
 							</span>
-							<h3>Bilan personnalisé</h3>
+							<h3>Bilan</h3>
 							<p>
-								Choisissez les leçons et le nombre de questions, et enregistrez vos réglages
-								préférés.
+								Faire le point sur une catégorie entière (en version complète ou express), ou
+								composer son propre bilan&nbsp;: vos leçons, votre nombre de questions, enregistrés
+								pour la fois d'après.
+							</p>
+						</article>
+						<article class="v-mode">
+							<span class="v-mode-ico">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M214.67,68H204V40a12,12,0,0,0-12-12H64A12,12,0,0,0,52,40V68H41.33C25.16,68,12,80.56,12,96v80a12,12,0,0,0,12,12H52v28a12,12,0,0,0,12,12H192a12,12,0,0,0,12-12V188h28a12,12,0,0,0,12-12V96C244,80.56,230.84,68,214.67,68ZM76,52H180V68H76ZM180,204H76V172H180Zm40-40H204v-4a12,12,0,0,0-12-12H64a12,12,0,0,0-12,12v4H36V96c0-2.17,2.44-4,5.33-4H214.67c2.89,0,5.33,1.83,5.33,4Zm-16-44a16,16,0,1,1-16-16A16,16,0,0,1,204,120Z"
+									/>
+								</svg>
+							</span>
+							<h3>Sur papier</h3>
+							<p>
+								Imprimer une fiche ou un bilan, corrigé compris&nbsp;: pour s'entraîner au crayon,
+								en voyage ou loin des écrans.
 							</p>
 						</article>
 					</div>
@@ -303,6 +349,183 @@
 							<span class="v-reward v-reward--mascotte">🦊</span>
 						</div>
 					</div>
+				</div>
+			</section>
+
+			<!-- ===== ESPACE ENCADRANTS (versant adulte) =====
+			   La classe `v-parents` est DÉJÀ prise par le bloc vie privée ci-dessous :
+			   celle-ci s'appelle donc `v-encadrant`. Placée ici, entre « ce que l'enfant
+			   peut faire » et « où vont les données », elle donne à l'adulte une raison de
+			   lire au-delà des sections destinées à l'enfant.
+			   Cadrage : la promesse de la page reste « on ouvre et on commence » — le texte
+			   pose donc explicitement que rien de tout cela n'est à régler pour démarrer.
+			   Comme partout ici, l'illustration est RECONSTITUÉE en HTML/CSS et non une
+			   capture d'écran (l'espace encadrant bouge vite : une capture serait de la dette).
+			   ============================================================ -->
+			<section class="v-section v-encadrant" aria-labelledby="vEncTitle">
+				<div class="v-wrap">
+					<div class="v-enc-top">
+						<div class="v-enc-text">
+							<div class="v-enc-head">
+								<span class="v-enc-ico">
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 256 256"
+										fill="currentColor"
+										class="ph-icon ph-lg"
+										focusable="false"
+										aria-hidden="true"
+									>
+										<path
+											d="M125.18,156.94a64,64,0,1,0-82.36,0,100.23,100.23,0,0,0-39.49,32,12,12,0,0,0,19.35,14.2,76,76,0,0,1,122.64,0,12,12,0,0,0,19.36-14.2A100.33,100.33,0,0,0,125.18,156.94ZM44,108a40,40,0,1,1,40,40A40,40,0,0,1,44,108Zm206.1,97.67a12,12,0,0,1-16.78-2.57A76.31,76.31,0,0,0,172,172a12,12,0,0,1,0-24,40,40,0,1,0-10.3-78.67,12,12,0,1,1-6.16-23.19,64,64,0,0,1,57.64,110.8,100.23,100.23,0,0,1,39.49,32A12,12,0,0,1,250.1,205.67Z"
+										/>
+									</svg>
+								</span>
+								<h2 id="vEncTitle">Un espace pour vous, si vous voulez suivre</h2>
+							</div>
+							<p>
+								Rien à préparer pour démarrer&nbsp;: votre enfant ouvre Ludaskia et s'entraîne seul,
+								sans qu'un adulte ait quoi que ce soit à régler. L'espace encadrants n'est là que si
+								vous voulez suivre, préparer ou adapter&nbsp;— il s'ouvre depuis l'application,
+								quand vous en avez envie.
+							</p>
+						</div>
+						<!-- Mini-reconstitution du suivi (CSS) : deux notions avec leur état,
+						     et la frise des douze dernières semaines. -->
+						<div class="v-enc-demo" aria-hidden="true">
+							<p class="v-enc-demo-title">Suivi</p>
+							<ul class="v-enc-notions">
+								<li>
+									<span class="v-enc-notion">Tables de multiplication</span>
+									<span class="v-enc-badge v-enc-badge--acquis">acquis</span>
+								</li>
+								<li>
+									<span class="v-enc-notion">Homophones a / à</span>
+									<span class="v-enc-badge v-enc-badge--encours">en cours</span>
+								</li>
+							</ul>
+							<p class="v-enc-demo-sub">12 dernières semaines</p>
+							<div class="v-enc-frise">
+								<span class="v-enc-week v-enc-week--0"></span>
+								<span class="v-enc-week v-enc-week--0"></span>
+								<span class="v-enc-week v-enc-week--1"></span>
+								<span class="v-enc-week v-enc-week--1"></span>
+								<span class="v-enc-week v-enc-week--2"></span>
+								<span class="v-enc-week v-enc-week--1"></span>
+								<span class="v-enc-week v-enc-week--2"></span>
+								<span class="v-enc-week v-enc-week--2"></span>
+								<span class="v-enc-week v-enc-week--3"></span>
+								<span class="v-enc-week v-enc-week--2"></span>
+								<span class="v-enc-week v-enc-week--3"></span>
+								<span class="v-enc-week v-enc-week--3"></span>
+							</div>
+						</div>
+					</div>
+
+					<div class="v-cards v-cards--4">
+						<article class="v-card v-card--enc">
+							<span class="v-card-ico v-ico--enc">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M251,123.13c-.37-.81-9.13-20.26-28.48-39.61C196.63,57.67,164,44,128,44S59.37,57.67,33.51,83.52C14.16,102.87,5.4,122.32,5,123.13a12.08,12.08,0,0,0,0,9.75c.37.82,9.13,20.26,28.49,39.61C59.37,198.34,92,212,128,212s68.63-13.66,94.48-39.51c19.36-19.35,28.12-38.79,28.49-39.61A12.08,12.08,0,0,0,251,123.13Zm-46.06,33C183.47,177.27,157.59,188,128,188s-55.47-10.73-76.91-31.88A130.36,130.36,0,0,1,29.52,128,130.45,130.45,0,0,1,51.09,99.89C72.54,78.73,98.41,68,128,68s55.46,10.73,76.91,31.89A130.36,130.36,0,0,1,226.48,128,130.45,130.45,0,0,1,204.91,156.12ZM128,84a44,44,0,1,0,44,44A44.05,44.05,0,0,0,128,84Zm0,64a20,20,0,1,1,20-20A20,20,0,0,1,128,148Z"
+									/>
+								</svg>
+							</span>
+							<h3>Voir où il en est</h3>
+							<p>
+								Chaque notion travaillée est rangée dans un de ces états&nbsp;: à découvrir, à
+								renforcer, en cours, acquis. Avec l'activité des douze dernières semaines et ce qui
+								a été travaillé ces derniers jours.
+							</p>
+						</article>
+						<article class="v-card v-card--enc">
+							<span class="v-card-ico v-ico--enc">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M232.49,215.51,185,168a92.12,92.12,0,1,0-17,17l47.53,47.54a12,12,0,0,0,17-17ZM44,112a68,68,0,1,1,68,68A68.07,68.07,0,0,1,44,112Z"
+									/>
+								</svg>
+							</span>
+							<h3>Savoir sur quoi ça a coincé</h3>
+							<p>
+								Les erreurs récentes sont conservées avec la question posée, la réponse donnée et
+								celle qui était attendue. De quoi reprendre à deux sur le bon point, plutôt que de
+								tout refaire.
+							</p>
+						</article>
+						<article class="v-card v-card--enc">
+							<span class="v-card-ico v-ico--enc">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M208,28H188V24a12,12,0,0,0-24,0v4H92V24a12,12,0,0,0-24,0v4H48A20,20,0,0,0,28,48V208a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V48A20,20,0,0,0,208,28ZM68,52a12,12,0,0,0,24,0h72a12,12,0,0,0,24,0h16V76H52V52ZM52,204V100H204V204Zm60-80v56a12,12,0,0,1-24,0V143.32a12,12,0,0,1-9.37-22l16-8A12,12,0,0,1,112,124Zm61.49,33.88L163.9,168H168a12,12,0,0,1,0,24H136a12,12,0,0,1-8.71-20.25L155.45,142a4,4,0,0,0,.55-2,4,4,0,0,0-7.47-2,12,12,0,0,1-20.78-12A28,28,0,0,1,180,140a27.77,27.77,0,0,1-5.64,16.86A10.63,10.63,0,0,1,173.49,157.88Z"
+									/>
+								</svg>
+							</span>
+							<h3>Préparer sa séance</h3>
+							<p>
+								Composez un programme pour un jour donné ou pour chaque semaine&nbsp;: un sprint,
+								une révision, une leçon précise, une dictée. Ou posez simplement une leçon «&nbsp;à
+								revoir&nbsp;», qui l'attendra sur son accueil.
+							</p>
+						</article>
+						<article class="v-card v-card--enc">
+							<span class="v-card-ico v-ico--enc">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M224.11,31.92A68,68,0,0,0,128,31.87l-70.12,69.3A19.91,19.91,0,0,0,52,115.31V187L23.52,215.51a12,12,0,0,0,17,17L69,204H140.7a19.87,19.87,0,0,0,14.15-5.86l.05,0,69.21-70A68.06,68.06,0,0,0,224.11,31.92Zm-79.21,17A44,44,0,0,1,210,108H165l27.52-27.51a12,12,0,0,0-17-17L124,115V69.54ZM76,117l24-23.72V139L76,163Zm63,63H93l48-48h45.5Z"
+									/>
+								</svg>
+							</span>
+							<h3>Ses dictées à vous</h3>
+							<p>
+								Saisissez la liste de mots de la semaine, celle du cahier, et proposez-la à votre
+								enfant comme n'importe quelle autre leçon.
+							</p>
+						</article>
+					</div>
+
+					<p class="v-enc-more">
+						On y règle aussi la classe de chaque enfant, les aménagements pour les troubles
+						«&nbsp;dys&nbsp;» et pour l'attention, les leçons déjà vues en classe et la longueur des
+						séances de révision. Plusieurs profils cohabitent sur le même appareil, chacun avec sa
+						progression et sa sauvegarde&nbsp;; un code à 4&nbsp;chiffres peut garder tout cela hors
+						de portée des curieux.
+					</p>
+					<p class="v-enc-doctrine">
+						<strong
+							>Aucune note, aucune moyenne, aucun classement, aucune comparaison entre
+							enfants.</strong
+						>
+						C'est un outil pour accompagner, pas un bulletin.
+					</p>
 				</div>
 			</section>
 
@@ -432,6 +655,12 @@
 							s'entraîner sans pression, et l'affichage (police, couleurs, animations) s'ajuste pour
 							rester lisible et confortable.
 						</p>
+						<p>
+							D'autres aménagements se posent une fois pour toutes depuis l'espace encadrants&nbsp;:
+							lecture automatique des consignes, minuteur définitivement masqué, apparitions
+							surprises désactivées, séances de révision plus courtes. De quoi accompagner un enfant
+							«&nbsp;dys&nbsp;» ou vite distrait sans rien lui demander de régler lui-même.
+						</p>
 					</div>
 				</div>
 			</section>
@@ -501,11 +730,17 @@
 								perdue&nbsp;— vous pouvez en faire une sauvegarde depuis l'application.
 							</p>
 						</div>
+						<!-- #563 : ne promettre QUE la session en cours. Sans service worker, une
+						     réouverture ultérieure hors réseau n'est pas garantie (seul le cache HTTP
+						     du navigateur peut jouer, de façon aléatoire). À rouvrir quand #306
+						     (service worker / PWA) sera livrée : on pourra alors promettre l'usage
+						     différé, du type « en voiture ou en voyage ». -->
 						<div class="v-faq-item">
 							<h3>Ça marche sans connexion&nbsp;?</h3>
 							<p>
-								Oui, une fois la page chargée. Vous pouvez ensuite vous entraîner hors connexion,
-								par exemple en voiture ou en voyage.
+								Oui, pour la session en cours&nbsp;: une fois la page ouverte, l'entraînement
+								continue même si la connexion se coupe. En revanche, rouvrir Ludaskia plus tard sans
+								réseau n'est pas encore garanti.
 							</p>
 						</div>
 						<div class="v-faq-item">
@@ -514,6 +749,30 @@
 								Le CE2 et le CM1 pour le moment&nbsp;: on choisit la classe au démarrage pour avoir
 								les bons exercices. D'autres classes&nbsp;— et d'autres matières&nbsp;— viendront
 								s'ajouter au fil du temps.
+							</p>
+						</div>
+						<div class="v-faq-item">
+							<h3>Puis-je suivre les progrès de mon enfant&nbsp;?</h3>
+							<p>
+								Oui, depuis l'espace encadrants de l'application. Vous y voyez où en est chaque
+								notion, l'activité des dernières semaines et les erreurs récentes avec la réponse
+								donnée et celle qui était attendue. Ni note, ni moyenne, ni classement, ni
+								comparaison entre enfants&nbsp;: c'est fait pour accompagner, pas pour évaluer.
+							</p>
+						</div>
+						<div class="v-faq-item">
+							<h3>Puis-je entrer la liste de mots de la dictée&nbsp;?</h3>
+							<p>
+								Oui. Depuis l'espace encadrants, vous saisissez la liste de la semaine, celle du
+								cahier, et elle devient une leçon que votre enfant travaille comme les autres.
+							</p>
+						</div>
+						<div class="v-faq-item">
+							<h3>Plusieurs enfants sur le même appareil&nbsp;?</h3>
+							<p>
+								Oui, un profil par enfant&nbsp;: chacun garde sa progression, ses réglages et son
+								avatar, et on passe de l'un à l'autre en deux touches. Chaque progression peut être
+								sauvegardée dans un fichier, puis reprise sur un autre appareil.
 							</p>
 						</div>
 					</div>

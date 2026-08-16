@@ -838,14 +838,28 @@ générateur produit un `Exercise` `posed` (op + opérandes) ; le catalogue en f
 verify() corrige chaque cellule (sans-faute = toutes justes). Exclu du sprint
 (multi-cellules), pris en charge en bilans/impression/révision.
 
-**Pilote de l'étayage de la notion** (#490, cf. [Logique pure](core.md) et [Rendu &
-interactions](ui.md)) : ces 3 leçons sont les seules à porter un champ `etayage`
-(idée-force en une phrase + un exemple canonique **fixe**, un par leçon — deux
-retenues franches pour l'addition, deux emprunts nets pour la soustraction, un
-déroulé complet à deux produits partiels pour la multiplication). La méthode elle-même
-n'est pas rédigée ici : elle est **calculée** colonne par colonne par
-`core/etayage-posee.ts` à partir de l'exemple (ou de l'opération que l'enfant vient de
-rater).
+**Étayage de la notion** (#490, cf. [Logique pure](core.md) et [Rendu &
+interactions](ui.md)) : ces 3 leçons portent un champ `etayage` (idée-force en une
+phrase + un exemple canonique **fixe**, un par leçon — deux retenues franches pour
+l'addition, deux emprunts nets pour la soustraction, un déroulé complet à deux produits
+partiels pour la multiplication). La méthode elle-même n'est pas rédigée ici : elle est
+**calculée** colonne par colonne par `core/etayage-posee.ts` à partir de l'exemple (ou
+de l'opération que l'enfant vient de rater).
+
+**Les autres leçons qui en portent un**, avec le moteur qui les déroule :
+
+| Leçons | Moteur | Ce que l'exemple montre |
+| --- | --- | --- |
+| `mes-longueurs`, `mes-masses`, `mes-contenances` (mode `tableau` **seulement**) | `conversion` | une conversion grande → petite unité, celle où les colonnes intermédiaires sont vides (le 0 qui tient un rang) |
+| `num-droite-entiers` (une entrée **par niveau**), `num-droite-decimaux` | `droite` | une fenêtre dont un cran ne vaut pas 1 — au CM1 l'échelle n'est jamais l'unité, d'où l'entrée dédiée |
+| `num-valeur-position`, `num-decompose-100/1000/10000` (deux entrées : CE2 et CM1), `num-decompose-multiplicative` | `position` | le geste « combien EN TOUT » opposé au « chiffre des », et le zéro intercalaire |
+| les 52 `fr-conj-<verbe>-<temps>`, **moins les 11 présents irréguliers** | `conjugaison` | l'assemblage en deux morceaux, dérivé du corpus verbe par verbe (aucun texte écrit à la main) |
+| les 6 `math-prob-*` | `probleme` | rien de canonique : une règle de STRUCTURE seulement, le déroulé se faisant sur le problème que l'enfant vient de rater |
+
+Les absences sont voulues : le mode `saisie` des conversions (pas de méthode unique),
+`mes-durees` (base 60, pas de tableau décimal), les présents irréguliers, les divisions
+avec reste et les durées (leur calcul ne s'écrit pas en une opération). Sans entrée, il
+n'y a pas de panneau — jamais de repli sur l'exemple d'une leçon voisine.
 
 ### Calcul mental
 

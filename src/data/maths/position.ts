@@ -266,7 +266,9 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		etayage: [
 			etayagePosition(
 				'Décomposer avec des multiplications',
-				"Un chiffre vaut sa valeur multipliée par son rang : le 4 des centaines, c'est 4 × 100.",
+				// « son rang » désignait l'INDEX (2 pour les centaines) dans le vocabulaire du code :
+				// la phrase disait donc « 4 × 2 ». C'est la valeur de la PLACE qu'on multiplie.
+				"Un chiffre vaut sa valeur multipliée par la valeur de sa place : le 4 des centaines, c'est 4 × 100.",
 				{ genre: 'multiplicative', n: 48205, rang: 3 },
 			),
 		],

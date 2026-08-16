@@ -24,7 +24,7 @@
    données : ces leçons montrent leur exemple canonique, pas l'item raté.
    ============================================================ */
 import type { DerouleEtayage, PasEtayage } from './etayage-deroule';
-import { formatNombre, nomRang, quantiteRang } from './nombres';
+import { formatNombre, genreRang, nomRang, quantiteRang } from './nombres';
 
 /** Les quatre questions de la famille, dans les termes de `data/maths/position.ts`. */
 export type GenrePosition = 'chiffre' | 'entout' | 'rangs' | 'multiplicative';
@@ -75,6 +75,14 @@ function termes(n: number, produit: boolean): string[] {
 	return out;
 }
 
+/* « aucune dizaine », mais « aucun millier » : le genre vient de la table commune des rangs
+   (core/nombres.ts), jamais d'une liste d'index recopiée ici — elle divergerait au premier
+   rang ajouté. Sans cet accord, la phrase du zéro intercalaire disait « aucune millier »
+   (constat du `redacteur-contenu-francais`, sur un cas encore dormant). */
+function aucun(rang: number): string {
+	return genreRang(rang) === 'm' ? 'aucun' : 'aucune';
+}
+
 /* Le rang d'un zéro INTERCALAIRE (jamais celui de tête, qui n'existe pas), ou -1. On ne
    nomme que le premier : deux phrases sur deux zéros diraient deux fois la même chose. */
 function zeroIntercalaire(n: number): number {
@@ -102,7 +110,7 @@ export function deroulePosition(spec: PositionSpec): DeroulePosition {
 	//    qui le montre d'un coup d'œil ; l'énumérer en toutes lettres jusqu'au million
 	//    ferait une phrase que personne ne suit.
 	pas.push({
-		phrase: `Je pose ${nombre} rang par rang, en partant de la droite : le dernier chiffre est celui des unités.`,
+		phrase: `Je pose ${nombre} rang par rang : je commence par la droite, c'est la colonne des unités.`,
 		actifs: chiffres.map((_, r) => cibleRang(r)),
 	});
 
@@ -110,7 +118,7 @@ export function deroulePosition(spec: PositionSpec): DeroulePosition {
 	const zero = zeroIntercalaire(n);
 	if (zero >= 0) {
 		pas.push({
-			phrase: `Le 0 des ${nomRang(zero)} n'est pas un trou : il dit qu'il n'y a aucune ${nomRang(zero, false)}, et il garde la place pour que les autres chiffres restent à leur rang.`,
+			phrase: `Le 0 des ${nomRang(zero)} n'est pas un trou : il dit qu'il n'y a ${aucun(zero)} ${nomRang(zero, false)}, et il garde la place pour que les autres chiffres restent à leur rang.`,
 			actifs: [cibleRang(zero)],
 		});
 	}
@@ -131,9 +139,11 @@ export function deroulePosition(spec: PositionSpec): DeroulePosition {
 			actifs: [cibleRang(rang)],
 		});
 		pas.push({
+			// `quantiteRang` et non `${total} ${nom}` : le total peut valoir 1 (dans 105, il y a
+			// UNE centaine en tout), et « 1 centaines » est faux.
 			phrase:
 				`Je cache tout ce qui est à droite des ${nom}. Il reste ${formatNombre(total)} : ` +
-				`il y a ${formatNombre(total)} ${nom} en tout dans ${nombre}.`,
+				`il y a ${quantiteRang(total, rang)} en tout dans ${nombre}.`,
 			masques: droite,
 			actifs: chiffres.slice(rang).map((_, i) => cibleRang(rang + i)),
 		});

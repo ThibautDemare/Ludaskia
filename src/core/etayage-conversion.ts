@@ -147,10 +147,17 @@ export function derouleConversion(spec: ConversionSpec): DerouleEtayage {
 	// 1. Ancrage : où va le nombre qu'on me donne, et dans quel sens se lit le tableau.
 	const sens = 'Dans le tableau, les grandes unités sont à gauche et les petites à droite.';
 	const ancrage: PasEtayage = {
+		// Trois cas, et pas un seul gabarit : le nombre donné tient dans une case, s'étale vers
+		// la GAUCHE (un entier de plusieurs chiffres) ou déborde vers la DROITE (un décimal).
+		// Un texte unique aurait envoyé l'enfant du mauvais côté deux fois sur trois. Et jamais
+		// « le chiffre des unités » ici : le mot « unité » désigne déjà l'unité de MESURE dans
+		// la même phrase, et c'est précisément la confusion que la leçon combat.
 		phrase:
 			posees.length === 1
 				? `On me donne ${valeurDepart} ${spec.depart}. ${sens} J'écris ${valeurDepart} dans la colonne des ${pluriel(nomDepart)}.`
-				: `On me donne ${valeurDepart} ${spec.depart}. ${sens} Je place ses chiffres un par un, celui des unités dans la colonne des ${pluriel(nomDepart)}.`,
+				: finDepart > iDepart
+					? `On me donne ${valeurDepart} ${spec.depart}. ${sens} Le chiffre juste avant la virgule va dans la colonne des ${pluriel(nomDepart)}, les suivants à sa droite.`
+					: `On me donne ${valeurDepart} ${spec.depart}. ${sens} Son dernier chiffre va dans la colonne des ${pluriel(nomDepart)}, les autres vers la gauche.`,
 		ecritures: posees.map((_, i) => ecrit(i)),
 		actifs: posees.map((_, i) => cibleColonne(i)),
 	};
@@ -164,7 +171,7 @@ export function derouleConversion(spec: ConversionSpec): DerouleEtayage {
 		// mètres). Ce qui est vrai des deux, c'est le RANG : rien à cette place-là, donc un 0
 		// pour la tenir. C'est aussi le mot du runner (« marquer le rang vide »).
 		pas.push({
-			phrase: `La colonne des ${pluriel(colonnes[i].nom)} reste vide : j'écris 0 pour marquer ce rang.`,
+			phrase: `Rien à compter dans la colonne des ${pluriel(colonnes[i].nom)} : j'écris 0 pour qu'elle garde sa place.`,
 			ecritures: [ecrit(i)],
 			actifs: [cibleColonne(i)],
 		});

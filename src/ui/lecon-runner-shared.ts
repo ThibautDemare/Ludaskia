@@ -213,6 +213,10 @@ export function wireNext(actions: HTMLElement, feedback: HTMLElement, opts: Wire
 	if (demande && etayageDisponible(demande.lesson, demande.niveau, demande.mode)) {
 		const hote = document.createElement('div');
 		hote.className = 'etay-apres-verdict';
+		// Le focus part sur « Continuer ▶ » juste après (voir plus bas) : sans région live, un
+		// enfant au lecteur d'écran n'apprendrait JAMAIS que l'offre existe — au moment précis
+		// où elle lui sert. On l'annonce sans la lui imposer (le focus ne bouge pas).
+		hote.setAttribute('role', 'status');
 		hote.innerHTML = lienEtayageHTML('etay-lien', 'runEtayage');
 		const bouton = hote.querySelector('button')!;
 		bouton.addEventListener('click', () => ouvrirEtayage({ ...demande, trigger: bouton }));

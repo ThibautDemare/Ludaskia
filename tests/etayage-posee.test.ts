@@ -32,15 +32,21 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 import {
 	chapeauLigne,
+	cibleChiffrePosee,
+	cibleRetenuePosee,
+	deroulePosee,
+	ligneEcritEn,
 	nomColonne,
 	phrasePosee,
 	resolutionPosee,
 	resultatPosee,
 	retenueDansLaGrille,
+	titreOperation,
 	type EtapePosee,
 	type LignePosee,
 	type ResolutionPosee,
 } from '../src/core/etayage-posee';
+import { PAS_MAX, derouleMontrable } from '../src/core/etayage-deroule';
 import { dispositionPosee, type PosedSpec } from '../src/core/items';
 import { genLessonItem, getLessonById } from '../src/core/catalog';
 import { withSeed } from '../src/core/utils';
@@ -343,6 +349,51 @@ describe('retenueDansLaGrille — seules les retenues qui ont une case', () => {
 			expect(ecrites, nb(spec)).toBe(1);
 			expect(rangees, nb(spec)).toBe(ecrites);
 		}
+	});
+});
+
+/* ============================================================
+   4 bis. QUELLES COLONNES UNE LIGNE ÉCRIT-ELLE VRAIMENT ?
+   ------------------------------------------------------------
+   `ligneEcritEn` répond à la question que la grille pose et que le calcul ignore : la
+   ligne a-t-elle une case dans cette colonne ? Deux pièges, et ce sont les deux seules
+   raisons d'exister de cette fonction — le ZÉRO DE TÊTE qu'un résultat n'écrit pas
+   (105 − 100 s'écrit « 5 »), et le DÉCALAGE du 2ᵉ produit partiel, qui déplace toutes ses
+   cases d'un cran vers la gauche.
+   ============================================================ */
+describe('ligneEcritEn — la colonne a-t-elle une case sur cette ligne ?', () => {
+	it('un résultat occupe exactement les colonnes de ses chiffres', () => {
+		// 347 + 285 = 632 : trois chiffres, donc les rangs 0, 1 et 2 — et rien au-delà.
+		const [ligne] = resolutionPosee({ op: '+', a: 347, b: 285 }).lignes;
+		expect([0, 1, 2, 3, 4].map((rang) => ligneEcritEn(ligne, rang))).toEqual([
+			true,
+			true,
+			true,
+			false,
+			false,
+		]);
+	});
+
+	it('zéro de tête : le résultat est plus court que l’opération (105 − 100 = 5)', () => {
+		// Trois colonnes calculées, un seul chiffre écrit : la grille n'a pas de case pour
+		// « 005 », et la démonstration ne doit pas y envoyer l'enfant.
+		const [ligne] = resolutionPosee({ op: '-', a: 105, b: 100 }).lignes;
+		expect(ligne.valeur).toBe(5);
+		expect([0, 1, 2].map((rang) => ligneEcritEn(ligne, rang))).toEqual([true, false, false]);
+		// Un résultat nul n'écrit qu'un seul 0, aux unités.
+		const [zero] = resolutionPosee({ op: '-', a: 340, b: 340 }).lignes;
+		expect([0, 1, 2].map((rang) => ligneEcritEn(zero, rang))).toEqual([true, false, false]);
+	});
+
+	it('produit partiel DÉCALÉ : ses cases commencent une colonne plus à gauche', () => {
+		// 47 × 26 : le 2ᵉ produit partiel vaut 94 et s'écrit sur les dizaines et les centaines
+		// (les unités portent le 0 fourni par la grille).
+		const [pp1, pp2, somme] = resolutionPosee({ op: 'x', a: 47, b: 26 }).lignes;
+		expect(pp2.valeur).toBe(94);
+		expect([0, 1, 2, 3].map((rang) => ligneEcritEn(pp2, rang))).toEqual([false, true, true, false]);
+		// Le 1er produit partiel (282), lui, n'est pas décalé ; la somme couvre quatre rangs.
+		expect([0, 1, 2, 3].map((rang) => ligneEcritEn(pp1, rang))).toEqual([true, true, true, false]);
+		expect([0, 1, 2, 3].map((rang) => ligneEcritEn(somme, rang))).toEqual([true, true, true, true]);
 	});
 });
 
@@ -722,6 +773,80 @@ describe('INVARIANTS sur un large échantillon des vrais générateurs', () => {
 			familles: [...new Set(violations.map((v) => v.split(' — ')[1].split(' : ')[0]))],
 			premieres: violations.slice(0, 2),
 		}).toEqual({ nombre: 0, familles: [], premieres: [] });
+	});
+
+	it('DÉROULÉ : un pas par colonne, chacun écrivant dans une case qui existe', () => {
+		// `deroulePosee` (#490 PR 2) met la résolution au format COMMUN des moteurs : une suite
+		// de pas, chacun avec sa phrase et ce qu'il écrit, désigné par des clés. Ce que ce test
+		// éprouve, et que les précédents ne couvrent pas : les CLÉS écrites correspondent
+		// vraiment à des cases de la grille (recalculées ici depuis `dispositionPosee`, comme
+		// le fait le rendu), les chiffres écrits recomposent la ligne, et les retenues ne sont
+		// écrites que là où la grille a une rangée pour elles.
+		const fautes: string[] = [];
+		for (const spec of specs) {
+			const d = deroulePosee(spec);
+			const res = resolutionPosee(spec);
+			const dispo = dispositionPosee(spec);
+			const faute = (raison: string) => fautes.push(`${nb(spec)} — ${raison}`);
+			// Les cases que la grille possède réellement, avec les mêmes clés que le rendu.
+			const cases = new Set<string>();
+			let ligne = -1;
+			for (const rangee of dispo.rangees) {
+				if (rangee.cellules.some((c) => c.role === 'saisie')) ligne++;
+				rangee.cellules.forEach((c, k) => {
+					const rang = dispo.colonnes - k;
+					if (c.role === 'saisie') cases.add(cibleChiffrePosee(ligne, rang));
+					if (c.role === 'retenue') cases.add(cibleRetenuePosee(rang));
+				});
+			}
+			if (d.titre !== titreOperation(spec)) faute(`titre « ${d.titre} »`);
+			if (!derouleMontrable(d)) faute(`${d.pas.length} pas (plafond ${PAS_MAX})`);
+			// Un pas par colonne traitée, toutes lignes confondues.
+			const colonnes = res.lignes.reduce((n, l) => n + l.etapes.length, 0);
+			if (d.pas.length !== colonnes) faute(`${d.pas.length} pas pour ${colonnes} colonnes`);
+			// Chaque annonce de ligne apparaît UNE fois, en tête de sa première colonne.
+			res.lignes.forEach((l, i) => {
+				const chapeau = chapeauLigne(l, spec);
+				if (!chapeau) return;
+				const debut = res.lignes.slice(0, i).reduce((n, x) => n + x.etapes.length, 0);
+				const portant = d.pas.filter((p) => p.phrase.includes(chapeau));
+				if (portant.length !== 1) faute(`annonce « ${chapeau} » vue ${portant.length} fois`);
+				if (!d.pas[debut].phrase.startsWith(chapeau)) faute(`annonce pas en tête de sa ligne`);
+			});
+			// Écritures : des cases réelles, une valeur par case, et ce qu'on surligne est ce
+			// qu'on vient d'écrire.
+			const parLigne = res.lignes.map(() => 0);
+			let k = 0;
+			res.lignes.forEach((l, i) => {
+				for (const etape of l.etapes) {
+					const pas = d.pas[k++];
+					if (!pas) return;
+					for (const e of pas.ecritures ?? []) {
+						if (!cases.has(e.cible)) faute(`écrit dans « ${e.cible} », absente de la grille`);
+						if (e.cible === cibleChiffrePosee(i, etape.colonne + (l.decalage ?? 0))) {
+							if (e.texte !== String(etape.ecrit)) faute(`chiffre « ${e.texte} » ≠ ${etape.ecrit}`);
+							parLigne[i] += etape.ecrit * 10 ** etape.colonne;
+						}
+					}
+					const cibles = (pas.ecritures ?? []).map((e) => e.cible);
+					if (JSON.stringify(pas.actifs ?? []) !== JSON.stringify(cibles))
+						faute('surligne autre chose que ce qu’il écrit');
+					// Retenue « dans la tête » (produit partiel) : aucune case, donc aucune écriture.
+					const retenues = cibles.filter((c) => c.startsWith('r'));
+					if (retenues.length && !retenueDansLaGrille(l)) faute('écrit une retenue sans case');
+					if (etape.retenueSortante && retenueDansLaGrille(l) && !retenues.length)
+						faute(`retenue ${etape.retenueSortante} non écrite`);
+				}
+				// Les chiffres réellement écrits par la ligne font sa valeur (les zéros de tête
+				// qu'aucune case ne porte ne changent rien : 005 = 5).
+				if (parLigne[i] !== l.valeur)
+					faute(`${l.role} : écrit ${parLigne[i]} au lieu de ${l.valeur}`);
+			});
+		}
+		expect({ nombre: fautes.length, premieres: fautes.slice(0, 3) }).toEqual({
+			nombre: 0,
+			premieres: [],
+		});
 	});
 
 	it('grille de démonstration : une case pour chaque chiffre annoncé (seuls des zéros de tête peuvent manquer)', () => {

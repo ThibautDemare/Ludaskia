@@ -54,7 +54,7 @@ async function suivantAtteignable(page: Page): Promise<void> {
       L'OPÉRATION RATÉE, déroulé pas à pas, sortie.
    ================================================================ */
 
-test('addition posée : lien « Comprendre ce calcul » sous la grille ratée, pas sous une grille juste', async ({
+test('addition posée : lien « Comprendre la méthode » sous la grille ratée, pas sous une grille juste', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -267,7 +267,7 @@ function seedDueLesson(lessonId: string): string {
   }));`;
 }
 
-test('révision : lien « Comprendre ce calcul » au verdict d’une addition posée ratée', async ({
+test('révision : lien « Comprendre la méthode » au verdict d’une addition posée ratée', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);

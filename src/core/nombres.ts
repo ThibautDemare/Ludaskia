@@ -141,19 +141,27 @@ export function nombreEnMots(n: number): string {
 	return u === 0 ? 'quatre-vingts' : `quatre-vingt-${UNITES_MOTS[u]}`;
 }
 
-/** Noms des rangs de la numération décimale, du plus petit au plus grand : singulier puis
- *  pluriel. Une seule table pour toute l'appli — les deux moteurs d'étayage (#490) nomment
- *  les colonnes d'un calcul posé et les rangs d'un nombre décomposé, et deux tables auraient
- *  fini par diverger sur le pluriel de « dizaine de mille » (invariable sur « mille »). */
-export const NOMS_RANGS: readonly (readonly [string, string])[] = [
-	['unité', 'unités'],
-	['dizaine', 'dizaines'],
-	['centaine', 'centaines'],
-	['millier', 'milliers'],
-	['dizaine de mille', 'dizaines de mille'],
-	['centaine de mille', 'centaines de mille'],
-	['million', 'millions'],
+/** Noms des rangs de la numération décimale, du plus petit au plus grand : singulier,
+ *  pluriel, GENRE. Une seule table pour toute l'appli — les moteurs d'étayage (#490)
+ *  nomment les colonnes d'un calcul posé et les rangs d'un nombre décomposé, et deux tables
+ *  auraient fini par diverger sur le pluriel de « dizaine de mille » (invariable sur
+ *  « mille »). Le genre y figure pour la même raison : « aucune dizaine » mais « aucun
+ *  millier », et un consommateur qui le redéduirait par index se tromperait au premier
+ *  rang ajouté (milliard). */
+export const NOMS_RANGS: readonly (readonly [string, string, 'm' | 'f'])[] = [
+	['unité', 'unités', 'f'],
+	['dizaine', 'dizaines', 'f'],
+	['centaine', 'centaines', 'f'],
+	['millier', 'milliers', 'm'],
+	['dizaine de mille', 'dizaines de mille', 'f'],
+	['centaine de mille', 'centaines de mille', 'f'],
+	['million', 'millions', 'm'],
 ];
+
+/** Genre grammatical du nom d'un rang, `undefined` au-delà de la table. */
+export function genreRang(rang: number): 'm' | 'f' | undefined {
+	return NOMS_RANGS[rang]?.[2];
+}
 
 /** Nom du rang `rang` (0 = les unités), au pluriel par défaut. `undefined` au-delà de la
  *  table : à l'appelant de décider ce qu'il dit d'un rang qu'aucun enfant n'a encore

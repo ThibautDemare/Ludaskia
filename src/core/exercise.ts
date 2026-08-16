@@ -31,10 +31,28 @@ export interface TableauColonne {
 	// La colonne de tête est TOUJOURS la première (index 0) — inutile de la marquer.
 }
 
-/** Une sous-question d'un problème (#199) : son intitulé et sa réponse numérique. */
+/** Le calcul qui répond à une sous-question, dans les valeurs AFFICHÉES de l'énoncé
+    (euros, mètres… — jamais les centimes ou les dixièmes internes). Ajouté pour l'étayage
+    (#490) : sans lui, une résolution générée ne saurait que réciter les réponses, ce que la
+    révélation (#467) montre déjà.
+
+    OPTIONNEL, et c'est un refus explicite plutôt qu'un oubli : on ne le renseigne QUE
+    lorsque le calcul est bien une opération à deux nombres dont le résultat EST la réponse
+    de l'étape. Une division avec reste (« 17 ÷ 5 » ne fait pas 3) ou une durée décomposée
+    en heures et minutes n'entrent pas dans ce moule ; leur étape reste sans calcul, et
+    l'étayage se tait plutôt que d'énoncer une égalité fausse. */
+export interface CalculEtape {
+	op: '+' | '-' | 'x' | ':';
+	a: number;
+	b: number;
+}
+
+/** Une sous-question d'un problème (#199) : son intitulé, sa réponse numérique, et le
+    calcul qui y mène quand il s'exprime simplement (#490). */
 export interface ProblemeEtape {
 	question: string; // ex. « Combien Léo a-t-il de billes maintenant ? »
 	answer: number;
+	calcul?: CalculEtape;
 }
 
 /** Lexique d'affichage du runner « problème » (#95). Permet à une leçon qui réutilise

@@ -76,6 +76,8 @@
 	justify-content: center;
 	gap: 8px;
 	margin: 4px 0 10px;
+	padding: 2px;
+	overflow-x: auto;
 }
 .etay-tc .tc-cell {
 	cursor: default;
@@ -95,11 +97,17 @@
 /* Le tableau de numération de la classe, construit sur le nombre que l'enfant a sous les
    yeux — et non un tableau de plus à apprendre. Le NOM du rang est sous chaque chiffre :
    c'est lui qui porte la notion, la case seule ne dirait rien. */
+/* `overflow-x` LOCAL, sur la rangée et non sur le panneau : un nombre de sept rangs tient
+   tout juste à 320 px, et sans ce filet c'est la modale entière qui se mettrait à défiler
+   latéralement (titre et boutons compris) le jour où un exemple dépasse. Même raison pour
+   le tableau de conversion, dont le vrai runner a déjà son `.tc-wrap`. */
 .etay-rangs {
 	display: flex;
 	justify-content: center;
 	gap: 5px;
 	margin: 4px 0 10px;
+	padding: 2px;
+	overflow-x: auto;
 }
 .etay-rang {
 	display: flex;
@@ -118,8 +126,11 @@
 	font-variant-numeric: tabular-nums;
 	color: var(--ink);
 }
+/* 0,66rem (~10,5 px) : le nom du rang PORTE la notion, ce n'est pas une légende décorative
+   qu'on peut réduire jusqu'à l'illisible. La rangée défile désormais si elle déborde, ce
+   qui laisse la place de le lire au lieu de le comprimer. */
 .etay-rang-nom {
-	font: 600 0.58rem/1.15 var(--ui);
+	font: 600 0.66rem/1.15 var(--ui);
 	color: var(--ink);
 	text-align: center;
 }
@@ -136,9 +147,10 @@
 @media (max-width: 420px) {
 	.etay-rangs {
 		gap: 3px;
+		justify-content: flex-start;
 	}
 	.etay-rang {
-		min-width: 1.9rem;
+		min-width: 2.1rem;
 		padding: 3px;
 	}
 	.etay-rang-chiffre {
@@ -172,6 +184,59 @@
 	border-radius: 8px;
 	background: var(--paper);
 	font: 800 1.2rem/1 var(--ui);
+	color: var(--ink);
+}
+
+/* ---------- Problème à étapes ---------- */
+/* L'énoncé reste sous les yeux pendant tout le déroulé : c'est là que sont les nombres
+   dont on parle, et un enfant qui perd le fil doit pouvoir y revenir sans quitter
+   l'explication. Les réponses s'écrivent en face de leur sous-question, comme sur l'écran
+   du runner. */
+.etay-prob {
+	margin: 4px 0 12px;
+	text-align: left;
+}
+.etay-prob-enonce {
+	margin: 0 0 8px;
+	padding: 8px 10px;
+	border: 2px solid transparent;
+	border-radius: 10px;
+	font: 600 14.5px/1.35 var(--ui);
+	color: var(--ink);
+}
+.etay-prob-liste {
+	margin: 0;
+	padding-left: 1.1em;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.etay-prob-q {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 4px 6px;
+	border: 2px solid transparent;
+	border-radius: 8px;
+}
+.etay-prob-txt {
+	font: 600 14px/1.3 var(--ui);
+	color: var(--ink);
+}
+.etay-prob-rep {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 3rem;
+	min-height: 2rem;
+	padding: 2px 8px;
+	border: 2px dashed var(--grey);
+	border-radius: 8px;
+	background: var(--paper);
+	font: 800 1.05rem/1 var(--ui);
+	font-variant-numeric: tabular-nums;
 	color: var(--ink);
 }
 

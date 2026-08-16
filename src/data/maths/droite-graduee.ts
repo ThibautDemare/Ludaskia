@@ -246,6 +246,34 @@ export const DROITE_GRADUEE_LESSONS: DroiteLessonInput[] = [
 					},
 				},
 			},
+			// Entrée CM1 dédiée : les gabarits de ce niveau ne descendent JAMAIS à un cran de 1
+			// (100, 1 000 et 10 000 de fenêtre, cf. GABARITS_CM1). Servir l'exemple ci-dessus à
+			// un CM1 lui montrerait le seul cas qu'il ne rencontre pas — alors que la règle
+			// affichée lui dit justement de se méfier des crans qui ne valent pas 1. Fenêtre
+			// [3 400 ; 3 500] graduée en dizaines, cible 3 470 (constat de l'`auteur-tests-logique`).
+			{
+				niveau: 'cm1',
+				contenu: {
+					titre: 'Placer un nombre sur la droite graduée',
+					regle: ETAYAGE_REGLE,
+					exemple: {
+						moteur: 'droite',
+						spec: {
+							min: 3400,
+							max: 3500,
+							pas: 10,
+							bornes: [
+								{ valeur: 3400, label: '3400' },
+								{ valeur: 3450, label: '3450' },
+								{ valeur: 3500, label: '3500' },
+							],
+							cible: 3470,
+							cibleLabel: '3470',
+							pasLabel: '10',
+						},
+					},
+				},
+			},
 		],
 	},
 	{

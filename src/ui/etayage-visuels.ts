@@ -34,6 +34,7 @@ import {
 	type PositionSpec,
 } from '../core/etayage-position';
 import { cibleChiffrePosee, cibleRetenuePosee, deroulePosee } from '../core/etayage-posee';
+import { cibleEtape, derouleProbleme, type ProblemeSpec } from '../core/etayage-probleme';
 import { renderDroiteGraduee } from '../core/figures/droite';
 import { dispositionPosee, poseeGrilleHTML, type PosedSpec } from '../core/items';
 import { nomRang } from '../core/nombres';
@@ -58,9 +59,18 @@ function actifsDu(pas: PasEtayage[], i: number): Set<string> {
 	return new Set(pas[i]?.actifs ?? []);
 }
 
-/* Classes d'une case de démonstration : la marque commune, plus l'état du pas. */
-function classesCase(cible: string, actifs: Set<string>, base = ''): string {
-	return `${base} etay-cell${actifs.has(cible) ? ' etay-actif' : ''}`.trim();
+/* Attributs communs d'une case de démonstration : ses classes (marque commune + état du
+   pas) ET sa clé, exposée en `data-cible`.
+
+   La clé n'est pas là pour le rendu : c'est le SÉLECTEUR STABLE des specs Playwright, qui
+   comptent les cases déjà remplies sans avoir à connaître la géométrie de chaque moteur.
+   Le passage d'un remplissage impératif à un rendu déclaratif l'avait fait disparaître, ce
+   qui cassait deux tests de la PR pilote (constat de l'`auteur-tests-e2e`) — d'où sa
+   réintroduction ICI, en un seul endroit pour les cinq visuels qui ont des cases, plutôt
+   qu'au cas par cas. */
+function marqueCase(cible: string, actifs: Set<string>, base = ''): string {
+	const classes = `${base} etay-cell${actifs.has(cible) ? ' etay-actif' : ''}`.trim();
+	return `class="${classes}" data-cible="${cible}"`;
 }
 
 /* ---------- Calcul posé ---------- */
@@ -94,11 +104,11 @@ function visuelPosee(spec: PosedSpec, deroule: DerouleEtayage, i: number): strin
 							return `<span class="posee-cell posee-digit posee-zero">0</span>`;
 						case 'retenue': {
 							const cible = cibleRetenuePosee(rang);
-							return `<span class="posee-cell posee-carry ${classesCase(cible, actifs)}">${ecrites.get(cible) ?? ''}</span>`;
+							return `<span ${marqueCase(cible, actifs, 'posee-cell posee-carry')}>${ecrites.get(cible) ?? ''}</span>`;
 						}
 						case 'saisie': {
 							const cible = cibleChiffrePosee(ligne, rang);
-							return `<span class="posee-cell posee-input ${classesCase(cible, actifs)}">${ecrites.get(cible) ?? ''}</span>`;
+							return `<span ${marqueCase(cible, actifs, 'posee-cell posee-input')}>${ecrites.get(cible) ?? ''}</span>`;
 						}
 						case 'vide':
 							return `<span class="posee-cell"></span>`;
@@ -127,7 +137,7 @@ function visuelConversion(spec: ConversionSpec, deroule: DerouleEtayage, i: numb
 					<span class="tc-sym">${escapeHTML(col.unite)}</span>
 					<span class="tc-nom">${escapeHTML(`${col.nom}s`)}</span>
 				</div>
-				<div class="tc-col-cells"><span class="tc-cell${col.transit ? ' tc-cell--transit' : ''} ${classesCase(cible, actifs)}">${escapeHTML(ecrites.get(cible) ?? '')}</span></div>
+				<div class="tc-col-cells"><span ${marqueCase(cible, actifs, `tc-cell${col.transit ? ' tc-cell--transit' : ''}`)}>${escapeHTML(ecrites.get(cible) ?? '')}</span></div>
 			</div>`;
 		})
 		.join('');
@@ -148,7 +158,8 @@ function visuelDroite(spec: DroiteSpec, deroule: DerouleDroite, i: number): stri
 		bornes: spec.bornes,
 		...(pas?.repere !== undefined ? { reperes: [{ valeur: pas.repere }] } : {}),
 		...(pas?.parcours ? { parcours: pas.parcours } : {}),
-		desc: 'Démonstration : une droite graduée où le repère se place pas à pas.',
+		// Pas de `desc` : le conteneur du visuel est `aria-hidden` (la narration dit déjà tout),
+		// une description y serait du texte que personne n'entend jamais.
 	});
 }
 
@@ -166,7 +177,7 @@ function visuelPosition(spec: PositionSpec, deroule: DeroulePosition, i: number)
 	for (let rang = chiffres.length - 1; rang >= 0; rang--) {
 		const cible = cibleRang(rang);
 		const masque = masques.has(cible) ? ' etay-masque' : '';
-		cases.push(`<div class="etay-rang ${classesCase(cible, actifs)}${masque}">
+		cases.push(`<div ${marqueCase(cible, actifs, `etay-rang${masque}`)}>
 			<span class="etay-rang-chiffre">${chiffres[rang]}</span>
 			<span class="etay-rang-nom">${escapeHTML(nomRang(rang) ?? '')}</span>
 		</div>`);
@@ -183,10 +194,34 @@ function visuelConjugaison(deroule: DerouleEtayage, i: number): string {
 	const ecrites = ecritesJusqua(deroule.pas, i);
 	const actifs = actifsDu(deroule.pas, i);
 	const morceau = (cible: string) =>
-		`<span class="etay-morceau ${classesCase(cible, actifs)}">${escapeHTML(ecrites.get(cible) ?? '')}</span>`;
+		`<span ${marqueCase(cible, actifs, 'etay-morceau')}>${escapeHTML(ecrites.get(cible) ?? '')}</span>`;
 	return `<div class="etay-conj">
-		<span class="etay-conj-pronom ${classesCase(CIBLE_PRONOM, actifs)}">${escapeHTML(ecrites.get(CIBLE_PRONOM) ?? '')}</span>
+		<span ${marqueCase(CIBLE_PRONOM, actifs, 'etay-conj-pronom')}>${escapeHTML(ecrites.get(CIBLE_PRONOM) ?? '')}</span>
 		${morceau(CIBLE_MORCEAU_1)}${morceau(CIBLE_MORCEAU_2)}
+	</div>`;
+}
+
+/* ---------- Problème à étapes ---------- */
+
+/* L'énoncé et ses sous-questions, comme sur l'écran du runner : les réponses arrivent une
+   par une, à leur place. Montrer l'énoncé EN ENTIER pendant tout le déroulé n'est pas du
+   décor — c'est là que se trouvent les nombres dont on parle, et un enfant qui a perdu le
+   fil doit pouvoir y revenir sans quitter l'explication. */
+function visuelProbleme(spec: ProblemeSpec, deroule: DerouleEtayage, i: number): string {
+	const ecrites = ecritesJusqua(deroule.pas, i);
+	const actifs = actifsDu(deroule.pas, i);
+	const questions = spec.etapes
+		.map((etape, k) => {
+			const cible = cibleEtape(k);
+			return `<li ${marqueCase(cible, actifs, 'etay-prob-q')}>
+				<span class="etay-prob-txt">${escapeHTML(etape.question)}</span>
+				<span class="etay-prob-rep">${escapeHTML(ecrites.get(cible) ?? '')}</span>
+			</li>`;
+		})
+		.join('');
+	return `<div class="etay-prob">
+		<p class="etay-prob-enonce${actifs.has('enonce') ? ' etay-actif' : ''}">${escapeHTML(spec.enonce)}</p>
+		<ol class="etay-prob-liste">${questions}</ol>
 	</div>`;
 }
 
@@ -222,6 +257,10 @@ export function moteurEtayage(exemple: EtayageExemple): MoteurEtayage {
 		case 'conjugaison': {
 			const deroule = derouleConjugaison(exemple.spec);
 			return { deroule, visuel: (i) => visuelConjugaison(deroule, i) };
+		}
+		case 'probleme': {
+			const deroule = derouleProbleme(exemple.spec);
+			return { deroule, visuel: (i) => visuelProbleme(exemple.spec, deroule, i) };
 		}
 	}
 }

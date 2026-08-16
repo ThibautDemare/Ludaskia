@@ -68,6 +68,24 @@ export function scopeActif<V>(raw: Record<string, V>): Record<string, V> {
 	return out;
 }
 
+/* Vue { lessonId: valeur } d'une carte namespacée où chaque leçon est lue à SON niveau de
+   STOCKAGE (`niveauStockage`), et non au niveau actif de sa matière. C'est le contrat de
+   lecture d'une référence assumée HORS FILTRE : une leçon assignée hors de la classe suivie
+   (#556) est jouée et stockée au niveau qui est le sien, là où `scopeActif` l'exclut par
+   construction — elle passerait alors pour « jamais travaillée » à chaque lecture.
+
+   Les deux vues coïncident pour tout ce qui appartient au niveau actif. C'est celle-ci qu'il
+   faut prendre pour une leçon DÉSIGNÉE (épingle, cible de programme) ; `scopeActif` reste
+   celle des PÉRIMÈTRES (récap, complétude), qui doivent s'arrêter à la classe suivie. */
+export function scopeStockage<V>(raw: Record<string, V>): Record<string, V> {
+	const out: Record<string, V> = {};
+	for (const k in raw) {
+		const id = lessonOfKey(k);
+		if (niveauOfKey(k) === niveauStockage(id)) out[id] = raw[k];
+	}
+	return out;
+}
+
 /* ---------- Records de bilans (classement), SCOPÉS par niveau (#233) ----------
    Un record CM1 (nombres plus grands, contenu plus dur) n'est pas comparable à un
    record CE2 : chaque mode est rangé PAR NIVEAU sous `ludaskia_runs_<mode>@<niveau>`.
@@ -199,6 +217,11 @@ function loadStarsRaw(): Record<string, number> {
 function loadStars(): Record<string, number> {
 	return scopeActif(loadStarsRaw());
 }
+/* Étoiles vues au niveau de STOCKAGE de chaque leçon (cf. `scopeStockage`) : la lecture des
+   références désignées hors de la classe suivie (#556). */
+export function loadStarsStockage(): Record<string, number> {
+	return scopeStockage(loadStarsRaw());
+}
 function saveStars(s: Record<string, number>) {
 	lsSet(STARS_KEY, s);
 }
@@ -221,6 +244,33 @@ export function starsEarnedAll(): number {
 	const raw = loadStarsRaw();
 	return Object.keys(raw).filter((k) => (raw[k] || 0) > 0).length;
 }
+/* Étoiles gagnées PAR NIVEAU (chaque leçon@niveau étoilée compte une fois), dans l'ordre
+   scolaire, niveaux vides omis. Détail du cumul `starsEarnedAll`, réservé à l'espace
+   ENCADRANT (#556) : il dit à l'adulte quelle part du travail se fait hors de la classe
+   suivie, donc si une assignation hors classe reste un coup de pouce ponctuel ou devient le
+   mode par défaut. Côté enfant, rien ne change : le « trésor » reste un total unique, sans
+   détail par niveau (avis gamification, #225).
+
+   Pur, la carte brute étant passée par l'appelant — l'espace encadrant lit par UUID, sans
+   jamais basculer le profil actif. Un niveau inconnu dans une clé (stockage édité à la main)
+   est ignoré, l'ordre scolaire servant de liste blanche. */
+export interface EtoilesNiveau {
+	niveau: SchoolLevel;
+	etoiles: number;
+}
+export function etoilesParNiveau(raw: Record<string, number>): EtoilesNiveau[] {
+	const compte = new Map<string, number>();
+	for (const k in raw) {
+		if ((raw[k] || 0) <= 0) continue;
+		const lv = niveauOfKey(k);
+		compte.set(lv, (compte.get(lv) ?? 0) + 1);
+	}
+	return LEVEL_ORDER.filter((lv) => compte.has(lv)).map((lv) => ({
+		niveau: lv,
+		etoiles: compte.get(lv) as number,
+	}));
+}
+
 /* Niveaux auxquels une leçon est étoilée (≥1 sans-faute). Sert au badge « déjà
    maîtrisée en CE2 » quand l'enfant retrouve la même leçon à un niveau supérieur. */
 export function etoileAuxNiveaux(lessonId: string): SchoolLevel[] {
@@ -240,6 +290,11 @@ function loadLessonStatsRaw(): Record<string, LessonStat> {
 }
 export function loadLessonStats() {
 	return scopeActif(loadLessonStatsRaw());
+}
+/* Stats vues au niveau de STOCKAGE de chaque leçon (cf. `scopeStockage`), pendant de
+   `loadStarsStockage` : les deux vont toujours ensemble (état d'une notion = étoile + perf). */
+export function loadLessonStatsStockage(): Record<string, LessonStat> {
+	return scopeStockage(loadLessonStatsRaw());
 }
 /* Stats CUMULÉES par leçon, TOUS niveaux confondus (clé `lessonId` simple). Sert
    aux agrégats GLOBAUX d'effort (total de réponses, bonnes réponses par matière),

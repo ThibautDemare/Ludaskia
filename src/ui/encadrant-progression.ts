@@ -8,8 +8,8 @@
    Les calculs (recap, échelle) vivent dans core/encadrant-stats ; ici, le rendu et
    les handlers de la section (bascule, épinglage, impression).
    ============================================================ */
-import { escapeHTML } from '../core/utils';
-import { labelLecon } from '../core/levels';
+import { enumererFr, escapeHTML } from '../core/utils';
+import { LEVEL_LABEL, labelLecon } from '../core/levels';
 import { icon } from './icon';
 import { listProfiles, activeProfile, type Profile } from '../core/profiles';
 import {
@@ -21,7 +21,7 @@ import {
 	listesOrthoProfil,
 	dicteesProposees,
 	epingleesProfil,
-	niveauEpingle,
+	type OrigineLecon,
 	retraitsAutoProfil,
 	type RecapProfil,
 	type RecapListeOrtho,
@@ -39,6 +39,7 @@ import { printScope } from './session';
 import { erreursHTML, erreursClick } from './encadrant-erreurs';
 import { travailHTML, travailClick } from './encadrant-travail';
 import {
+	badgeClasseOrigine,
 	consulteUuid,
 	renderEspace,
 	container,
@@ -434,7 +435,21 @@ function matieresHTML(recap: RecapProfil): string {
 		})
 		.join('');
 	return `<h4 class="enc-sub-lab">Couverture par matière</h4>
-      <ul class="enc-mat-list">${items}</ul>`;
+      <ul class="enc-mat-list">${items}</ul>
+      ${etoilesNiveauHTML(recap)}`;
+}
+
+/* Étoiles cumulées PAR CLASSE (#556), sous la couverture par matière. Ne s'affiche qu'à
+   partir de DEUX classes : sur une seule, la ligne répéterait le total sans rien apprendre.
+   Elle existe pour une question précise — « quelle part du travail se fait hors de la classe
+   suivie ? » —, à laquelle la couverture par matière, scopée à cette classe, ne peut pas
+   répondre. Cumul DEPUIS TOUJOURS, comme le « trésor » de l'enfant : il ne baisse jamais,
+   même après un changement de classe. Côté enfant, rien de tout ceci n'apparaît : le total
+   reste unique et sans détail (avis gamification, #225). */
+function etoilesNiveauHTML(recap: RecapProfil): string {
+	if (recap.etoilesParNiveau.length < 2) return '';
+	const parts = recap.etoilesParNiveau.map((e) => `${e.etoiles} en ${LEVEL_LABEL[e.niveau]}`);
+	return `<p class="enc-hint">Étoiles gagnées depuis toujours : ${escapeHTML(enumererFr(parts))}.</p>`;
 }
 
 /* Mot de chaque cellule de frise, pour le libellé accessible. Il s'agit d'une PHRASE, pas
@@ -724,13 +739,13 @@ function blocagesParLecon(recap: RecapProfil): Map<string, number> {
    `orthoRevoirId(id)`). `etat` = état d'acquisition affiché.
 
    Les épinglées n'affichaient aucun état à l'origine, or l'adulte ne pouvait alors pas juger
-   s'il fallait désépingler (#518). `horsNiveau` prend le relais quand il n'y a pas d'état à
-   montrer : la cible a quitté le niveau suivi, donc l'épingle est inerte (`revoirActives`
-   l'écarte, elle ne revient jamais sur l'accueil de l'enfant) — le motif le plus utile pour
-   décider de la retirer. Il vient de `EpingleEntry`, PAS d'une absence d'`etat` : un état
-   manquant sans `horsNiveau` est une incohérence de données, et on n'affiche alors rien plutôt
-   qu'un motif faux. Une suggestion, elle, sort du récap : son état est là par construction.
-   Les lignes « Retirées automatiquement » n'ont pas d'état : elles affichent `quand`.
+   s'il fallait désépingler (#518). Depuis #556, une épingle d'une AUTRE classe n'est plus
+   inerte : elle revient bien sur l'accueil de l'enfant, et sa ligne l'affiche selon d'où elle
+   vient (cf. `EtatEpingle`, résolu par le cœur) — état d'acquisition pour la classe suivie et
+   pour une classe en dessous, compte-rendu FACTUEL (`essai`) pour une classe au-dessus, où un
+   état d'acquisition mentirait dans les deux sens. `origine` porte le badge de classe.
+   Une suggestion, elle, sort du récap : son état est là par construction. Les lignes
+   « Retirées automatiquement » n'ont pas d'état : elles affichent `quand`.
 
    `imprimable` = false pour une liste de dictée (pas de fiche à imprimer).
    `blocages` = jours où l'enfant a buté sur la leçon dans la leçon du jour (#485) : au-delà du
@@ -738,13 +753,32 @@ function blocagesParLecon(recap: RecapProfil): Map<string, number> {
    `meta` = ligne secondaire sous le libellé (dictées : « N mots ») ; `mots` = repli
    consultable des mots d'une dictée (#441). Les deux sont absents pour une leçon du
    catalogue, qui n'a ni l'un ni l'autre. */
+/* Infobulle du badge de classe d'origine, par sens de l'écart. Le badge ne dit que la classe :
+   le SENS se lit déjà dans ce que la ligne affiche (état d'acquisition d'un côté, compte-rendu
+   factuel de l'autre), et l'écrire se répéterait sur chaque épingle du cas courant. */
+const INFOBULLE_ORIGINE: Record<Exclude<OrigineLecon['direction'], 'classe-suivie'>, string> = {
+	'en-dessous':
+		"Leçon d'une classe précédente : épinglée volontairement, elle revient bien sur l'accueil de l'enfant, et son avancement se lit à ce niveau-là.",
+	'au-dessus':
+		"Leçon d'une classe suivante : on montre ce qui s'est passé le jour de l'essai, sans en tirer un niveau d'acquisition sur une notion pas encore travaillée en classe.",
+};
+
+/* Compte-rendu FACTUEL d'une leçon prise au-dessus de la classe suivie : ce qui s'est passé,
+   sans jugement. Pas de date pour une dictée (le store d'orthographe ne les date pas). */
+function texteEssai(essai: { at: number | null; reussi: boolean }): string {
+	const quand = essai.at != null ? libelleDerniereFois(essai.at, Date.now()) : '';
+	if (!quand) return essai.reussi ? 'Déjà réussie' : 'Pas encore réussie';
+	return essai.reussi ? `Réussie ${quand}` : `Essayée ${quand}`;
+}
+
 function ligneRevoir(
 	entryId: string,
 	label: string,
 	epingle: boolean,
 	opts: {
 		etat?: NiveauNotion;
-		horsNiveau?: boolean;
+		essai?: { at: number | null; reussi: boolean };
+		origine?: OrigineLecon | null;
 		imprimable?: boolean;
 		quand?: string;
 		blocages?: number;
@@ -752,23 +786,29 @@ function ligneRevoir(
 		mots?: readonly string[];
 	} = {},
 ): string {
-	const { etat, horsNiveau = false, imprimable = true, quand, blocages = 0, meta, mots } = opts;
+	const { etat, essai, origine, imprimable = true, quand, blocages = 0, meta, mots } = opts;
 	// `sr-only` « Niveau : » comme dans `ligneListeOrtho` (même échelle) : depuis que les
 	// épinglées ET les suggestions portent le badge, une navigation à la voix enchaînerait des
 	// « acquis » / « en cours » / « à renforcer » sans savoir de quoi ils parlent (avis a11y).
 	const badge = etat
 		? `<span class="enc-revoir-etat enc-key-${etat}"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[etat]}</span>`
-		: horsNiveau
-			? `<span class="enc-revoir-hors" title="Pas au programme de la classe suivie : cette épingle ne revient pas sur l'accueil de l'enfant">hors du niveau suivi</span>`
+		: essai
+			? `<span class="enc-revoir-essai">${escapeHTML(texteEssai(essai))}</span>`
 			: quand
 				? `<span class="enc-revoir-quand">Retirée ${escapeHTML(quand)}</span>`
 				: '';
+	// Classe d'origine : seulement quand la leçon vient d'ailleurs que la classe suivie, et
+	// AVANT l'état — on lit d'abord d'où vient la notion, puis où en est l'enfant dessus.
+	const classe =
+		origine && origine.direction !== 'classe-suivie'
+			? badgeClasseOrigine(origine.niveau, INFOBULLE_ORIGINE[origine.direction])
+			: '';
 	return `<li class="enc-revoir-item">
       <span class="enc-revoir-main">
         <span class="enc-revoir-lab">${escapeHTML(label)}</span>
         ${meta ? `<span class="enc-detail-meta">${escapeHTML(meta)}</span>` : ''}
       </span>
-      ${badge}${signalBlocage(blocages)}
+      ${classe}${badge}${signalBlocage(blocages)}
       <span class="enc-actions">
         <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(label)} »">${epingle ? 'Retirer' : 'Épingler'}</button>
         ${imprimable ? boutonsImpression(entryId, label) : ''}
@@ -810,7 +850,7 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 	// (notion redevenue solide, déjà invisible côté enfant).
 	const now = Date.now();
 	// Entrées actuellement épinglées (leçons du catalogue ET listes de dictée), résolues.
-	const pinned = epingleesProfil(consulte);
+	const pinned = epingleesProfil(consulte, dicteeDisponible());
 	const epingleeIds = new Set(pinned.map((e) => e.id));
 	// Suggestions AUTO : leçons « faiblardes » (perf récente < 70 %) non déjà épinglées (max 3).
 	const suggestions = recap.aRevoir.filter((n) => !epingleeIds.has(n.lessonId)).slice(0, 3);
@@ -820,19 +860,19 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 
 	// Jours de blocage (#492) : sert aux DEUX blocs, épinglées comprises.
 	const blocages = blocagesParLecon(recap);
-	// État d'acquisition des épinglées (#518) — résolu par `niveauEpingle` (core, pur). Le suivi
-	// des dictées n'est relu que si une liste est épinglée : sinon c'est un accès stockage pour rien.
-	const listesOrtho = pinned.some((e) => e.kind === 'ortho')
-		? listesOrthoProfil(consulte, dicteeDisponible(), now)
-		: [];
 	const blocEpinglees = pinned.length
 		? `<ul class="enc-revoir">${pinned
 				.map((e) =>
 					ligneRevoir(e.kind === 'ortho' ? orthoRevoirId(e.id) : e.id, e.label, true, {
 						imprimable: e.kind !== 'ortho',
+						// Une leçon prise AU-DESSUS n'entre pas dans les compteurs de maîtrise ni dans
+						// le signal « reste un point dur » (#492), qui supposent du contenu de la classe
+						// suivie : `blocages` vient du récap scopé, il est donc vide pour elle par
+						// construction, et son état est un compte-rendu factuel, jamais un cran.
 						blocages: blocages.get(e.id),
-						etat: niveauEpingle(e, recap, listesOrtho) ?? undefined,
-						horsNiveau: e.horsNiveau,
+						etat: e.etat?.kind === 'acquisition' ? e.etat.niveau : undefined,
+						essai: e.etat?.kind === 'essai' ? e.etat : undefined,
+						origine: e.origine,
 					}),
 				)
 				.join('')}</ul>`

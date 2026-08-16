@@ -28,8 +28,10 @@ import {
 	ACTIVITY_KEY,
 	LESSON_REVISION_KEY,
 	LESSON_REPORT_KEY,
-	loadLessonStats,
-	loadStars,
+	loadLessonStatsStockage,
+	loadStarsStockage,
+	etoilesParNiveau,
+	type EtoilesNiveau,
 	normalizeActivity,
 	lessonOfKey,
 	niveauOfKey,
@@ -56,7 +58,13 @@ import {
 	type SchoolLevel,
 	type SubjectId,
 } from './catalog';
-import { niveauDefautCatalogue, labelLecon, niveauInferieurImmediat } from './levels';
+import {
+	LEVEL_ORDER,
+	effectiveLevel,
+	niveauDefautCatalogue,
+	labelLecon,
+	niveauInferieurImmediat,
+} from './levels';
 import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 import { niveauActifMatiere } from './niveau-actif';
 import { touchProfile, type Profile } from './profiles';
@@ -83,6 +91,9 @@ import type { EtatRevision, OrthoState } from './orthographe/types';
    importent « depuis encadrant-stats ». */
 export { niveauNotion, tendanceNotion } from './maitrise';
 export type { NiveauNotion, TendanceNotion } from './maitrise';
+/* Le cumul d'étoiles par classe est calculé par `progress` (qui connaît le namespacing des
+   clés) et consommé par l'espace encadrant : on re-expose son type avec le récap qui le porte. */
+export type { EtoilesNiveau } from './progress';
 
 /* ---------- Seuils propres à l'espace encadrant ----------
    (L'échelle de maîtrise et ses seuils — SEUIL_NON_ACQUIS, tendance — vivent dans maitrise.ts.) */
@@ -165,6 +176,31 @@ export function niveauProfilMatiere(profile: Profile, subject: SubjectId): Schoo
 		niveauDefautCatalogue(getAllLessons())
 	);
 }
+/* ---------- Position d'une leçon par rapport à la classe suivie (#556) ----------
+   Vit ici, aux côtés de `niveauProfilMatiere`, et non dans `catalogue-arbre` (qui l'expose
+   au sélecteur) : ce module est celui qui résout « niveau d'un profil », et l'y placer
+   éviterait un cycle d'imports entre les deux. */
+export type DirectionNiveau = 'en-dessous' | 'classe-suivie' | 'au-dessus';
+export interface OrigineLecon {
+	/** Niveau auquel la leçon sera RÉELLEMENT jouée et stockée pour ce profil (le même que
+	    `niveauStockage` côté progression) : c'est lui que nomme le badge « classe d'origine ».
+	    Le badge dit donc sous quelle classe l'enfant va travailler, pas une étiquette. */
+	niveau: SchoolLevel;
+	/** Sens de l'écart. Ne s'affiche JAMAIS en toutes lettres : il commande le RÉGIME
+	    d'affichage de la ligne (état d'acquisition en dessous, compte-rendu factuel
+	    au-dessus) et porte l'infobulle. */
+	direction: DirectionNiveau;
+}
+export function origineLecon(lesson: LessonDef, profile: Profile): OrigineLecon {
+	const suivi = niveauProfilMatiere(profile, lesson.subject);
+	const niveau = effectiveLevel(lesson, suivi);
+	const ecart = LEVEL_ORDER.indexOf(niveau) - LEVEL_ORDER.indexOf(suivi);
+	return {
+		niveau,
+		direction: ecart === 0 ? 'classe-suivie' : ecart < 0 ? 'en-dessous' : 'au-dessus',
+	};
+}
+
 /* ---------- Récap par profil ---------- */
 export interface RecapCategorie {
 	categoryId: string;
@@ -217,6 +253,11 @@ export interface RecapProfil {
 	nouvellesRecentes: number; // notions maîtrisées dont la 1re rencontre date de < 30 j
 	aRevoir: RecapNotion[]; // notions faibles (perf récente < 70 %), triées, UI cape à 3
 	activite7j: JourActivite[]; // activité par jour, 7 derniers (index 6 = aujourd'hui), avec répartition par type
+	/** Étoiles cumulées PAR CLASSE, tous niveaux confondus (#556). Contrepartie adulte du
+	    « trésor » cumulé de l'enfant : elle dit quelle part du travail se fait hors de la
+	    classe suivie, donc si les assignations hors classe restent ponctuelles. Vide tant que
+	    rien n'est étoilé ; un seul niveau ⇒ l'UI n'a rien d'utile à comparer. */
+	etoilesParNiveau: EtoilesNiveau[];
 }
 
 /* Activité d'un jour : total + détail par type de session (#319). `inconnu` =
@@ -897,6 +938,9 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 		nouvellesRecentes,
 		aRevoir,
 		activite7j: activiteParJourParType(activity, now),
+		// Aucune lecture de plus : la carte d'étoiles brute est déjà en main, et c'est le seul
+		// endroit qui la voit TOUS niveaux confondus (le reste du récap est scopé à la classe).
+		etoilesParNiveau: etoilesParNiveau(starsRaw),
 	};
 }
 
@@ -913,13 +957,20 @@ export type RevoirEntry =
    - leçon du catalogue : non étoilée ET (jamais re-travaillée OU perf récente < seuil) ;
    - liste de dictée : pas encore « acquise » (tous les mots maîtrisés).
    Sert à la carte d'accueil de l'enfant (ui/a-revoir-card.ts). Lit le profil actif.
-   `dicteeDispo` (dispo du TTS, fourni par l'UI) conditionne l'« acquis » d'une dictée. */
+   `dicteeDispo` (dispo du TTS, fourni par l'UI) conditionne l'« acquis » d'une dictée.
+
+   Une leçon d'une AUTRE classe que celle suivie est rendue comme les autres (#556) : c'est
+   l'objet même de l'assignation hors classe, l'adulte l'a désignée pour qu'elle revienne sur
+   l'accueil. Ce qu'elle change, c'est le NIVEAU DE LECTURE de son état — il faut la lire là
+   où elle est jouée et stockée (`scopeStockage`), sinon une leçon CE2 épinglée pour un CM1
+   paraîtrait éternellement « jamais travaillée » et ne quitterait jamais la boucle. L'enfant,
+   lui, ne voit aucune étiquette de classe : la carte d'accueil est identique (#232). */
 export function revoirActives(dicteeDispo = false): RevoirEntry[] {
 	const ids = loadRevoir();
 	if (ids.length === 0) return [];
-	// Vues SCOPÉES au profil et au niveau actifs (clés `lessonId` simples).
-	const stats = loadLessonStats() as Record<string, LessonStat>;
-	const stars = loadStars();
+	// Vues du profil ACTIF, chaque leçon lue à SON niveau de stockage (clés `lessonId` simples).
+	const stats = loadLessonStatsStockage();
+	const stars = loadStarsStockage();
 	// État orthographe du profil actif, chargé une seule fois si au moins une dictée est épinglée.
 	const ortho = ids.some(isOrthoRevoirId) ? loadOrtho() : null;
 	const out: RevoirEntry[] = [];
@@ -935,11 +986,10 @@ export function revoirActives(dicteeDispo = false): RevoirEntry[] {
 			continue;
 		}
 		const lesson = getAllLessons().find((l) => l.id === entryId);
-		if (!lesson) continue;
-		// On n'affiche que des leçons du niveau actif de l'enfant (une leçon épinglée
-		// puis sortie du catalogue actif — ex. changement de classe — est ignorée).
-		const niveau = niveauActifMatiere(lesson.subject);
-		if (!lesson.levels.includes(niveau)) continue;
+		if (!lesson) continue; // cible sortie du catalogue (mise à jour de l'appli) → ignorée
+		// Niveau auquel l'enfant va RÉELLEMENT la jouer : celui de la classe suivie si la leçon
+		// l'a, sinon le plus proche (repli/clamp) — le même que la génération et le stockage.
+		const niveau = effectiveLevel(lesson, niveauActifMatiere(lesson.subject));
 		const etoilee = (stars[entryId] || 0) > 0;
 		const stat = stats[entryId];
 		// Encore « à revoir » tant que la notion n'est pas solide (non étoilée ET jamais
@@ -1061,41 +1111,113 @@ export interface EpingleEntry {
 	kind: 'lecon' | 'ortho';
 	id: string; // id BRUT (sert au dé-épinglage : lecon → id ; ortho → orthoRevoirId(id))
 	label: string;
-	// Cible absente du niveau suivi par le profil (#518) → l'épingle est INERTE : `revoirActives`
-	// l'écarte, elle ne revient jamais sur l'accueil de l'enfant. Reste dans cette liste de
-	// GESTION, justement pour que l'adulte puisse la retirer en sachant pourquoi. Calculé ici,
-	// là où le niveau de la cible est déjà connu, et non déduit d'une absence dans le récap :
-	// deux façons de répondre à la même question divergeraient en silence.
-	horsNiveau: boolean;
+	/** Classe d'où vient la cible et sens de l'écart avec celle que suit le profil (#556) —
+	    `null` quand on ne sait pas la nommer (listes de dictée du parent, non taguées par
+	    niveau). Calculé ici, là où le niveau de la cible est déjà connu, et non déduit d'une
+	    absence ailleurs : deux façons de répondre à la même question divergeraient en silence.
+	    Un booléen « hors niveau » ne suffit plus depuis que l'assignation hors classe est le
+	    cas NOMINAL : l'affichage a besoin de la classe (pour le badge) ET du sens (les deux
+	    n'appellent pas le même régime, cf. `EtatEpingle`). */
+	origine: OrigineLecon | null;
+	/** Ce que la ligne doit montrer de l'avancement, déjà résolu (cf. `EtatEpingle`). */
+	etat: EtatEpingle;
 }
-export function epingleesProfil(profile: Profile): EpingleEntry[] {
+
+/** Ce qu'une ligne épinglée dit de l'avancement, selon d'où vient la leçon (#556) :
+
+    - classe suivie, ou classe EN DESSOUS : l'état d'acquisition habituel, lu au niveau de
+      STOCKAGE de la cible. Une consolidation part d'un état bas, c'est normal et non une
+      alerte — la masquer priverait l'adulte de la seule mesure du progrès ;
+    - classe AU-DESSUS : un compte-rendu FACTUEL, jamais un état d'acquisition (avis
+      pédagogue). Un échec afficherait « à renforcer » sur une notion pas encore enseignée,
+      une réussite « acquis » sur un seul essai. Cet essai ne compte donc ni dans les
+      compteurs de maîtrise, ni dans les suggestions « à revoir », ni dans le signal « reste
+      un point dur » (#492), qui supposent tous du contenu de la classe suivie ;
+    - `null` : aucun état disponible (cible non résolue). L'UI n'affiche alors rien plutôt
+      que d'avancer un motif faux. */
+export type EtatEpingle =
+	| { kind: 'acquisition'; niveau: NiveauNotion }
+	| { kind: 'essai'; at: number | null; reussi: boolean }
+	| null;
+
+/* État d'une leçon lu à un niveau DONNÉ, depuis les cartes brutes d'un profil. Même calcul
+   que le récap (`progressionProfil`), à ceci près que le niveau est imposé au lieu d'être
+   celui de la classe suivie : c'est ce qui permet de lire une cible assignée hors classe. */
+function etatLeconAuNiveau(
+	lesson: LessonDef,
+	niveau: SchoolLevel,
+	starsRaw: Record<string, number>,
+	statsRaw: Record<string, LessonStat>,
+): { etoilee: boolean; stat: LessonStat | undefined } {
+	const k = lesson.id + '@' + niveau;
+	return { etoilee: (starsRaw[k] || 0) > 0, stat: statsRaw[k] };
+}
+
+export function epingleesProfil(profile: Profile, dicteeDispo = false): EpingleEntry[] {
 	const ids = loadRevoirFor(profile.uuid);
 	if (ids.length === 0) return [];
 	const ortho = ids.some(isOrthoRevoirId) ? loadOrthoFor(profile.uuid) : null;
 	// Dictées visibles au niveau du profil (filtrage CUMULATIF : un CM1 garde les listes CE2).
-	// Les listes CRÉÉES par le parent ne sont pas taguées par niveau, donc jamais hors niveau.
+	// Les listes CRÉÉES par le parent ne sont pas taguées par niveau : jamais hors classe.
 	const orthoDuNiveau = ortho
 		? new Set(listOrthoLecons(ortho, niveauProfilMatiere(profile, 'francais')).map((l) => l.id))
 		: null;
+	const starsRaw = lsGetRaw(profile.uuid + '/' + STARS_KEY, {}) as Record<string, number>;
+	const statsRaw = lsGetRaw(profile.uuid + '/' + LESSON_STATS_KEY, {}) as Record<
+		string,
+		LessonStat
+	>;
 	const out: EpingleEntry[] = [];
 	for (const entryId of ids) {
 		if (isOrthoRevoirId(entryId)) {
 			const orthoId = orthoIdFromRevoir(entryId);
 			const label = labelLeconOrtho(orthoId, ortho?.listes ?? []);
-			if (label)
-				out.push({ kind: 'ortho', id: orthoId, label, horsNiveau: !orthoDuNiveau?.has(orthoId) });
+			if (!label) continue;
+			// Une dictée prédéfinie d'une classe SUIVANTE sort du cumul visible au niveau du
+			// profil : même régime « au-dessus » que les leçons, mais sans classe à nommer (le
+			// store d'orthographe n'expose pas le niveau d'une référence).
+			const auDessus = !orthoDuNiveau?.has(orthoId);
+			out.push({
+				kind: 'ortho',
+				id: orthoId,
+				label,
+				origine: null,
+				etat: etatOrthoEpingle(ortho, orthoId, auDessus, dicteeDispo),
+			});
 			continue;
 		}
 		const lesson = getLessonById(entryId);
-		if (lesson)
-			out.push({
-				kind: 'lecon',
-				id: entryId,
-				label: labelLecon(lesson, niveauProfilMatiere(profile, lesson.subject)),
-				horsNiveau: !lesson.levels.includes(niveauProfilMatiere(profile, lesson.subject)),
-			});
+		if (!lesson) continue;
+		const origine = origineLecon(lesson, profile);
+		const { etoilee, stat } = etatLeconAuNiveau(lesson, origine.niveau, starsRaw, statsRaw);
+		out.push({
+			kind: 'lecon',
+			id: entryId,
+			label: labelLecon(lesson, origine.niveau),
+			origine,
+			etat:
+				origine.direction === 'au-dessus'
+					? { kind: 'essai', at: stat?.lastAt ?? null, reussi: etoilee }
+					: { kind: 'acquisition', niveau: niveauNotion(stat, etoilee) },
+		});
 	}
 	return out;
+}
+
+/* État d'une liste de dictée épinglée. Une liste d'une classe suivante suit le même parti
+   pris que les leçons prises au-dessus : pas d'état d'acquisition, un compte-rendu factuel.
+   Le store d'orthographe ne date pas les essais par liste — le compte-rendu se réduit donc à
+   « déjà réussie ou pas », sans date, plutôt qu'à un état qui se lirait comme un jugement. */
+function etatOrthoEpingle(
+	ortho: OrthoState | null,
+	orthoId: string,
+	auDessus: boolean,
+	dicteeDispo: boolean,
+): EtatEpingle {
+	if (!ortho) return null;
+	const niveau = niveauListeOrtho(ortho, orthoId, dicteeDispo);
+	if (!auDessus) return { kind: 'acquisition', niveau };
+	return { kind: 'essai', at: null, reussi: niveau === 'acquis' };
 }
 
 /* État d'acquisition à afficher sur une entrée ÉPINGLÉE (#518) — pur, sans DOM.
@@ -1191,7 +1313,7 @@ function loadFragiles(uuid: string): string[] | null {
 /* Solidité d'une entrée épinglée pour un profil donné ; `null` si la cible n'est pas
    résolvable (donc intouchable). Contexte de lecture passé par l'appelant : la file
    entière est jugée sur UNE seule lecture du stockage. */
-interface EtatEpingle {
+interface SoliditeEpingle {
 	kind: 'lecon' | 'ortho';
 	label: string;
 	solide: boolean;
@@ -1202,7 +1324,7 @@ interface CtxSolidite {
 	ortho: OrthoState | null;
 	dicteeDispo: boolean;
 }
-function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): EtatEpingle | null {
+function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): SoliditeEpingle | null {
 	if (isOrthoRevoirId(entryId)) {
 		if (!ctx.ortho) return null;
 		const orthoId = orthoIdFromRevoir(entryId);
@@ -1221,8 +1343,12 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): EtatE
 	}
 	const lesson = getLessonById(entryId);
 	if (!lesson) return null;
-	const niveau = niveauProfilMatiere(profile, lesson.subject);
-	if (!lesson.levels.includes(niveau)) return null; // hors niveau du profil → ignorée, pas retirée
+	// Niveau où la leçon est jouée et STOCKÉE — la classe suivie si elle l'a, sinon la sienne
+	// (#556). Une épingle d'une autre classe se juge donc comme les autres : depuis qu'elle
+	// atteint l'accueil de l'enfant, l'écarter ici la laisserait dans la file à vie, alors que
+	// l'affichage enfant, lui, cesserait de la montrer une fois redevenue solide. Le
+	// désépinglage automatique doit rester le MIROIR exact de cet affichage.
+	const niveau = effectiveLevel(lesson, niveauProfilMatiere(profile, lesson.subject));
 	const k = lesson.id + '@' + niveau; // stats/étoiles namespacées par niveau (#225)
 	const etoilee = (ctx.starsRaw[k] || 0) > 0;
 	const pct = perfRecente(ctx.statsRaw[k])?.pct ?? null;

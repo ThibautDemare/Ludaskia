@@ -183,16 +183,27 @@ test('segment radiogroup : contrat ARIA/tabindex en place sur le graphe d’acti
 	await expect(parType).toHaveAttribute('aria-checked', 'false');
 	await expect(parType).toHaveAttribute('tabindex', '-1');
 
-	// Révisions (2 options, défaut « Par catégorie »).
+	// Révisions (3 options depuis #555, défaut « Par catégorie »).
 	await expect(
 		page.locator('.enc-act-modes[role="radiogroup"][aria-label="Affichage des révisions"]'),
 	).toBeVisible();
 	const categorie = page.locator('.enc-act-mode[data-act="revision-mode"][data-mode="categorie"]');
 	const urgence = page.locator('.enc-act-mode[data-act="revision-mode"][data-mode="urgence"]');
+	const palier = page.locator('.enc-act-mode[data-act="revision-mode"][data-mode="palier"]');
 	await expect(categorie).toHaveAttribute('aria-checked', 'true');
 	await expect(categorie).toHaveAttribute('tabindex', '0');
 	await expect(urgence).toHaveAttribute('aria-checked', 'false');
 	await expect(urgence).toHaveAttribute('tabindex', '-1');
+	// La 3e option (« Par palier », #555) porte le même contrat radio et n'est pas
+	// cochée au départ, dans le MÊME radiogroup que les deux autres.
+	await expect(palier).toHaveAttribute('role', 'radio');
+	await expect(palier).toHaveAttribute('aria-checked', 'false');
+	await expect(palier).toHaveAttribute('tabindex', '-1');
+	await expect(
+		page.locator(
+			'.enc-act-modes[role="radiogroup"][aria-label="Affichage des révisions"] .enc-act-mode[data-mode="palier"]',
+		),
+	).toHaveCount(1);
 
 	// Le clic reste fonctionnel (le contrat clavier n'a pas remplacé l'activation souris).
 	await urgence.click();

@@ -20,13 +20,8 @@ import { escapeHTML } from '../core/utils';
 import { icon } from './icon';
 import type { IconName } from '../core/icon-names';
 import { listProfiles, type Profile } from '../core/profiles';
-import {
-	SUBJECTS,
-	CATEGORIES,
-	getLessonsBySubject,
-	getLessonById,
-	type SchoolLevel,
-} from '../core/catalog';
+import { getLessonById, type SchoolLevel } from '../core/catalog';
+import { origineLecon } from '../core/catalogue-arbre';
 import { niveauProfilMatiere, epingleesProfil } from '../core/encadrant-stats';
 import { labelLecon } from '../core/levels';
 import { listOrthoLecons, labelLeconOrtho } from '../core/orthographe/lessons';
@@ -40,6 +35,7 @@ import {
 	genEtapeId,
 	genDefId,
 	estimationDureeMin,
+	etapeConfiguree,
 	recurrencesEnConflit,
 	type SeanceDef,
 	type SeanceEtape,
@@ -47,7 +43,19 @@ import {
 	type SeanceRecurrence,
 } from '../core/seance';
 import { uiConfirm, uiPrompt, toast } from './ui-modal';
-import { consulteUuid, container, renderEspace } from './encadrant-commun';
+import {
+	badgeClasseOrigine,
+	consulteUuid,
+	container,
+	renderEspace,
+	onChangementProfilConsulte,
+} from './encadrant-commun';
+import {
+	enregistrerSelecteur,
+	oublierSelecteur,
+	selecteurLeconHTML,
+	type ActionLigne,
+} from './selecteur-lecon';
 import { segmentHTML } from './segment';
 
 /* ---------- État de la section (module) ---------- */
@@ -55,6 +63,44 @@ import { segmentHTML } from './segment';
    (les identifiants `d1`, `d2`… se répètent d'un profil à l'autre) : affiché en `.enc-warn`
    dans la carte concernée, effacé à la première action réussie. */
 let conflit: { uuid: string; defId: string; msg: string } | null = null;
+/* Étape dont le sélecteur de leçon est DÉPLOYÉ (#556). Une seule à la fois : deux arbres
+   ouverts sur la même carte noieraient la liste des activités, et l'adulte ne choisit qu'une
+   cible à la fois. Rattaché au profil consulté comme le message de conflit — les
+   identifiants `d1`/`e1` se répètent d'un profil à l'autre. */
+let cibleOuverte: { uuid: string; defId: string; etapeId: string } | null = null;
+
+function idSelecteur(def: SeanceDef, etape: SeanceEtape): string {
+	return `seance-${def.id}-${etape.id}`;
+}
+function estOuvert(uuid: string, defId: string, etapeId: string): boolean {
+	return (
+		!!cibleOuverte &&
+		cibleOuverte.uuid === uuid &&
+		cibleOuverte.defId === defId &&
+		cibleOuverte.etapeId === etapeId
+	);
+}
+/* Referme le sélecteur ouvert et OUBLIE sa vue (filtre, recherche, plis) : le rouvrir plus
+   tard, pour une autre leçon, doit repartir d'une vue neutre. */
+function fermerSelecteur(): void {
+	if (!cibleOuverte) return;
+	oublierSelecteur(`seance-${cibleOuverte.defId}-${cibleOuverte.etapeId}`);
+	cibleOuverte = null;
+}
+/* Changer de profil consulté referme le sélecteur : ses identifiants d'étape désignent les
+   programmes du profil qu'on REGARDAIT, et « Sa classe » ne veut plus dire la même chose. */
+onChangementProfilConsulte(fermerSelecteur);
+
+/* Infobulle du badge de classe d'origine, par sens de l'écart (#556). Le badge, lui, ne dit
+   que la classe : c'est le régime d'affichage de la ligne qui porte déjà le sens, et la
+   mention se répéterait sur chaque activité du cas courant. L'infobulle a le droit d'être
+   plus explicite — elle ne coûte rien à qui ne la sollicite pas. */
+const INFOBULLE_ORIGINE: Record<'en-dessous' | 'au-dessus', (nom: string) => string> = {
+	'en-dessous': (nom) =>
+		`Leçon d'une classe précédente : ${nom} la travaillera telle qu'elle est prévue à ce niveau, sans que la classe suivie change.`,
+	'au-dessus': (nom) =>
+		`Leçon d'une classe suivante : ${nom} la découvrira en avance, sans que la classe suivie change.`,
+};
 
 /* Ordre d'affichage des modes dans le sélecteur « Ajouter une activité ». */
 const MODES: SeanceModeKind[] = ['sprint', 'revision', 'aRevoir', 'leconDuJour', 'lecon', 'dictee'];
@@ -72,33 +118,14 @@ const PALIERS = [1, 2, 3, 4, 5];
 const JOURS_COURTS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const JOURS_LONGS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
-/* ---------- Cibles sélectionnables (leçons / dictées) ----------
-   Un groupe = un `<optgroup>` (libellé) + ses options {id, label}. */
+/* ---------- Cibles sélectionnables (dictées) ----------
+   Un groupe = un `<optgroup>` (libellé) + ses options {id, label}. Les LEÇONS, elles, ne
+   passent plus par une liste d'options : elles sont choisies dans le sélecteur tous niveaux
+   (#556, `ui/selecteur-lecon.ts`), un `<select>` ne pouvant pas porter à la fois un filtre
+   de classe, une recherche et un arbre repliable. */
 interface Groupe {
 	label: string;
 	items: { id: string; label: string }[];
-}
-
-/* Leçons du catalogue proposables comme cible d'une étape « Une leçon précise »,
-   filtrées AU NIVEAU du profil (par matière) et regroupées par catégorie — la même
-   sélection, dans le même ordre pédagogique, que ce que l'enfant voit. */
-function groupesLecon(consulte: Profile): Groupe[] {
-	const groupes: Groupe[] = [];
-	for (const sub of SUBJECTS) {
-		const niveau = niveauProfilMatiere(consulte, sub.id);
-		const parCat = new Map<string, Groupe>();
-		for (const l of getLessonsBySubject(sub.id, niveau)) {
-			let g = parCat.get(l.category);
-			if (!g) {
-				const cat = CATEGORIES.find((c) => c.id === l.category);
-				g = { label: `${sub.label} · ${cat ? cat.label : l.category}`, items: [] };
-				parCat.set(l.category, g);
-			}
-			g.items.push({ id: l.id, label: labelLecon(l, niveau) });
-		}
-		for (const g of parCat.values()) if (g.items.length) groupes.push(g);
-	}
-	return groupes;
 }
 
 /* Listes d'orthographe proposables comme cible d'une étape « Une dictée » :
@@ -117,40 +144,12 @@ function groupesDictee(uuid: string, niveauFr: SchoolLevel, nom: string): Groupe
 	return groupes;
 }
 
-/* Première cible disponible (défaut à la création d'une étape à référence). */
+/* Première cible disponible (défaut à la création d'une étape « dictée »). Une étape
+   « une leçon précise » naît au contraire SANS cible depuis #556 : présélectionner la
+   première leçon du catalogue posait une consigne que l'adulte n'a pas donnée, et le
+   sélecteur ne montre plus une liste dont il y aurait un « premier » évident. */
 function premiereRef(groupes: Groupe[]): string | undefined {
 	return groupes[0]?.items[0]?.id;
-}
-
-/* Options d'un sélecteur de cible. Si la cible stockée n'est plus dans la liste (leçon
-   hors niveau, liste supprimée), on la préserve dans un groupe « Cible actuelle » avec son
-   libellé résolu (ou l'identifiant), pour ne jamais afficher une sélection fausse. */
-function optionsCibleHTML(
-	groupes: Groupe[],
-	selected: string | undefined,
-	resoudreLabel: (id: string) => string | null,
-): string {
-	const present = !!selected && groupes.some((g) => g.items.some((it) => it.id === selected));
-	const tete =
-		selected && !present
-			? `<optgroup label="Cible actuelle"><option value="${escapeHTML(selected)}" selected>${escapeHTML(
-					resoudreLabel(selected) ?? selected,
-				)}</option></optgroup>`
-			: '';
-	const corps = groupes
-		.map(
-			(g) =>
-				`<optgroup label="${escapeHTML(g.label)}">${g.items
-					.map(
-						(it) =>
-							`<option value="${escapeHTML(it.id)}"${it.id === selected ? ' selected' : ''}>${escapeHTML(
-								it.label,
-							)}</option>`,
-					)
-					.join('')}</optgroup>`,
-		)
-		.join('');
-	return tete + corps;
 }
 
 /* Cases à cocher des dictées visées par une étape « Une dictée » (#463) : le pool
@@ -316,34 +315,84 @@ function hintARevoir(n: number): string {
 	return `${file} Une épinglée redevenue solide n'est plus proposée.`;
 }
 
+/* ---------- Étape « Une leçon précise » (#556) ----------
+   La cible n'est plus prise dans une liste filtrée au niveau du profil : l'adulte ouvre le
+   sélecteur tous niveaux et en retient UNE leçon, affichée ensuite seule sur la ligne. Le
+   badge de classe d'origine n'apparaît qu'une fois la cible retenue, et seulement si elle
+   vient d'une autre classe que celle suivie pour sa matière.
+
+   Une cible qui n'est plus au catalogue (leçon retirée d'une version à l'autre) est signalée
+   telle quelle : c'est le seul motif restant de l'ancien repli « Cible actuelle », puisqu'une
+   cible hors de la classe suivie est désormais légale. Afficher son identifiant nu sans le
+   dire laisserait croire à un libellé. */
+function cibleLeconHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): string {
+	const lesson = etape.ref ? getLessonById(etape.ref) : undefined;
+	const ouvert = estOuvert(consulte.uuid, def.id, etape.id);
+	let nom: string;
+	if (!etape.ref) nom = `<span class="enc-seance-cible-vide">Aucune leçon choisie</span>`;
+	else if (!lesson)
+		nom = `<span class="enc-seance-cible-vide">Leçon introuvable (${escapeHTML(etape.ref)})</span>`;
+	else {
+		const origine = origineLecon(lesson, consulte);
+		const badge =
+			origine.direction === 'classe-suivie'
+				? ''
+				: badgeClasseOrigine(origine.niveau, INFOBULLE_ORIGINE[origine.direction](consulte.name));
+		nom = `<span class="enc-seance-cible-nom">${escapeHTML(labelLecon(lesson, origine.niveau))}</span>${badge}`;
+	}
+	// `aria-expanded` sur le bouton qui ouvre le sélecteur : c'est un dévoilement, pas une
+	// navigation — l'adulte doit savoir, à la voix, si le panneau est déjà ouvert.
+	const bouton = `<button type="button" class="enc-btn-sec${ouvert ? ' on' : ''}" data-act="seance-cible-ouvrir" data-def="${def.id}" data-etape="${etape.id}" aria-expanded="${ouvert}" aria-controls="${idSelecteur(def, etape)}">${etape.ref ? 'Changer' : 'Choisir une leçon'}</button>`;
+	return `<span class="enc-seance-cible">${nom}${bouton}</span>`;
+}
+
+/* Le sélecteur déployé sous une étape. L'action de ligne est « Choisir », et la ligne DÉJÀ
+   retenue se marque comme telle plutôt que de disparaître : on doit pouvoir voir, dans
+   l'arbre, laquelle est la cible actuelle. */
+function selecteurEtapeHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): string {
+	const id = idSelecteur(def, etape);
+	const action: ActionLigne = {
+		act: 'seance-cible-choisir',
+		extra: { def: def.id, etape: etape.id },
+		etat: (l) => ({ label: l.id === etape.ref ? 'Choisie' : 'Choisir', on: l.id === etape.ref }),
+	};
+	// Le fournisseur permet au sélecteur de re-rendre son seul arbre à la frappe (sans quoi
+	// le champ de recherche perdrait focus et curseur à chaque lettre) : il est ré-enregistré
+	// à CHAQUE rendu, l'action de ligne dépendant de la cible du moment.
+	enregistrerSelecteur(id, () => {
+		const p = profilConsulte();
+		return p ? { consulte: p, action } : null;
+	});
+	return `<div class="enc-seance-selecteur" id="${id}">
+      ${selecteurLeconHTML({ id, consulte, action })}
+      <button type="button" class="enc-btn-sec" data-act="seance-cible-fermer" data-def="${def.id}" data-etape="${etape.id}">Fermer</button>
+    </div>`;
+}
+
 /* ---------- Étapes ---------- */
 function etapeHTML(
 	def: SeanceDef,
 	etape: SeanceEtape,
 	consulte: Profile,
-	lecons: Groupe[],
 	dictees: Groupe[],
 ): string {
 	const info = SEANCE_MODE_INFOS[etape.kind];
-	let cibleInline = ''; // sélecteur compact sur la ligne (leçon)
+	let cibleInline = ''; // cible compacte sur la ligne (leçon)
 	let cibleBloc = ''; // bloc pleine largeur sous la ligne (pool de dictées #463, repère « à revoir » #464)
 	if (etape.kind === 'aRevoir') {
 		cibleBloc = `<p class="enc-hint enc-seance-arevoir">${escapeHTML(
 			hintARevoir(epingleesProfil(consulte).length),
 		)}</p>`;
 	} else if (info.ref === 'lecon') {
-		// Repli « cible actuelle » (référence sortie des groupes actifs) : libellé résolu au
-		// niveau du profil consulté (#436), comme les options des groupes juste au-dessus.
-		const labelHorsGroupes = (id: string): string | null => {
-			const l = getLessonById(id);
-			return l ? labelLecon(l, niveauProfilMatiere(consulte, l.subject)) : null;
-		};
-		cibleInline = `<label class="enc-seance-cible"><span class="sr-only">Leçon visée</span>
-        <select class="enc-select-niveau" data-act="seance-ref" data-def="${def.id}" data-etape="${etape.id}">${optionsCibleHTML(
-					lecons,
-					etape.ref,
-					labelHorsGroupes,
-				)}</select></label>`;
+		cibleInline = cibleLeconHTML(def, etape, consulte);
+		// Une étape sans cible ne MENT pas : elle disparaît au lancement (`etapeConfiguree`),
+		// donc elle le dit, ne compte pas dans le nombre d'activités et n'entre pas dans la
+		// durée estimée — même parti pris que le repère de l'étape « à revoir » sans épingle.
+		cibleBloc = etape.ref
+			? ''
+			: `<p class="enc-hint enc-seance-arevoir">Tant qu'aucune leçon n'est choisie, cette activité n'apparaîtra pas dans le programme.</p>`;
+		if (estOuvert(consulte.uuid, def.id, etape.id))
+			cibleBloc += selecteurEtapeHTML(def, etape, consulte);
 	} else if (info.ref === 'dictee') {
 		cibleBloc = checkboxesDicteeHTML(def, etape, dictees, (id) =>
 			labelLeconOrtho(id, loadOrthoFor(consulte.uuid).listes),
@@ -363,16 +412,20 @@ function etapeHTML(
 }
 
 /* ---------- Une définition (carte) ---------- */
-function defHTML(def: SeanceDef, consulte: Profile, lecons: Groupe[], dictees: Groupe[]): string {
+function defHTML(def: SeanceDef, consulte: Profile, dictees: Groupe[]): string {
 	const nom = def.nom ? escapeHTML(def.nom) : 'Programme sans nom';
 	const duree = estimationDureeMin(def);
-	const nb = def.etapes.length;
+	// Le décompte ne retient que les étapes CONFIGURÉES : une activité « une leçon précise »
+	// sans cible disparaît au lancement (#556), l'annoncer à l'adulte serait un mensonge.
+	const nb = def.etapes.filter(etapeConfiguree).length;
 	const warn =
 		conflit && conflit.uuid === consulte.uuid && conflit.defId === def.id
 			? `<p class="enc-warn" role="alert">${escapeHTML(conflit.msg)}</p>`
 			: '';
-	const etapes = nb
-		? `<ul class="enc-seance-etapes">${def.etapes.map((e) => etapeHTML(def, e, consulte, lecons, dictees)).join('')}</ul>`
+	// La LISTE montre toutes les étapes, configurées ou non : une étape sans cible doit
+	// rester sous les yeux, c'est là qu'on lui en donne une. Seul le décompte les distingue.
+	const etapes = def.etapes.length
+		? `<ul class="enc-seance-etapes">${def.etapes.map((e) => etapeHTML(def, e, consulte, dictees)).join('')}</ul>`
 		: `<p class="enc-hint">Aucune activité pour l'instant : ajoutez-en une ci-dessous.</p>`;
 	const ajout = `<label class="enc-seance-add-etape">
       <span class="sr-only">Ajouter une activité</span>
@@ -419,7 +472,6 @@ function copieHTML(consulte: Profile, aDesProgrammes: boolean): string {
 /* ---------- Bloc principal (composé par l'orchestrateur) ---------- */
 export function seanceHTML(consulte: Profile): string {
 	const defs = chargerSeancesFor(consulte.uuid);
-	const lecons = groupesLecon(consulte);
 	const dictees = groupesDictee(
 		consulte.uuid,
 		niveauProfilMatiere(consulte, 'francais'),
@@ -427,7 +479,7 @@ export function seanceHTML(consulte: Profile): string {
 	);
 	const titre = `<h2 class="enc-h2">${icon('calendar')} Programme du jour de ${escapeHTML(consulte.name)}</h2>`;
 	const cartes = defs.length
-		? defs.map((d) => defHTML(d, consulte, lecons, dictees)).join('')
+		? defs.map((d) => defHTML(d, consulte, dictees)).join('')
 		: `<p class="enc-hint">${escapeHTML(consulte.name)} n'a pas encore de programme du jour.</p>`;
 	return `<section class="enc-section enc-seance-section">
       ${titre}
@@ -496,7 +548,44 @@ export function seanceClick(act: string, el: HTMLElement): boolean {
 			def.etapes = def.etapes.filter((e) => e.id !== el.dataset.etape);
 			enregistrerSeancesFor(uuid, defs);
 			conflit = null;
+			// L'étape supprimée pouvait porter le sélecteur ouvert : le laisser « ouvert » sur
+			// une étape disparue garderait un état de vue orphelin jusqu'au prochain profil.
+			if (estOuvert(uuid, el.dataset.def ?? '', el.dataset.etape ?? '')) fermerSelecteur();
 			rendre();
+			return true;
+		}
+		case 'seance-cible-ouvrir': {
+			const defId = el.dataset.def ?? '';
+			const etapeId = el.dataset.etape ?? '';
+			const dejaOuvert = estOuvert(uuid, defId, etapeId);
+			fermerSelecteur(); // un seul sélecteur déployé à la fois
+			if (!dejaOuvert) cibleOuverte = { uuid, defId, etapeId };
+			// Focus rendu au bouton qui vient de basculer : le re-rendu l'a recréé, et c'est
+			// lui qui porte `aria-expanded` — l'adulte au clavier entend l'état qu'il a changé.
+			rendre(`[data-act="seance-cible-ouvrir"][data-def="${defId}"][data-etape="${etapeId}"]`);
+			return true;
+		}
+		case 'seance-cible-choisir': {
+			const defId = el.dataset.def ?? '';
+			const etapeId = el.dataset.etape ?? '';
+			const defs = chargerSeancesFor(uuid);
+			const etape = defs.find((d) => d.id === defId)?.etapes.find((e) => e.id === etapeId);
+			if (!etape) return true;
+			etape.ref = el.dataset.lesson || undefined;
+			enregistrerSeancesFor(uuid, defs);
+			conflit = null;
+			// Sélection UNIQUE : le choix fait, le sélecteur se referme et la ligne montre la
+			// cible retenue. Le focus va au bouton « Changer », qui a pris la place du bouton
+			// cliqué — sans quoi il retomberait sur `<body>`.
+			fermerSelecteur();
+			rendre(`[data-act="seance-cible-ouvrir"][data-def="${defId}"][data-etape="${etapeId}"]`);
+			return true;
+		}
+		case 'seance-cible-fermer': {
+			fermerSelecteur();
+			rendre(
+				`[data-act="seance-cible-ouvrir"][data-def="${el.dataset.def}"][data-etape="${el.dataset.etape}"]`,
+			);
 			return true;
 		}
 		case 'seance-copy':
@@ -521,8 +610,10 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			if (!def) return true;
 			const etape: SeanceEtape = { id: genEtapeId(def), kind, count: 1 };
 			const ref = SEANCE_MODE_INFOS[kind].ref;
-			if (ref === 'lecon') etape.ref = premiereRef(groupesLecon(consulte));
-			else if (ref === 'dictee') {
+			// Une étape « une leçon précise » naît SANS cible (#556) : le catalogue n'a plus de
+			// « première leçon » évidente une fois tous les niveaux visibles, et présélectionner
+			// poserait une consigne que l'adulte n'a pas donnée.
+			if (ref === 'dictee') {
 				// Pool de dictées (#463) : par défaut la 1re dictée cochée (⇒ comportement figé).
 				const first = premiereRef(
 					groupesDictee(uuid, niveauProfilMatiere(consulte, 'francais'), consulte.name),
@@ -547,16 +638,8 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			);
 			return true;
 		}
-		case 'seance-ref': {
-			const defs = chargerSeancesFor(uuid);
-			const etape = defs.find((d) => d.id === defId)?.etapes.find((e) => e.id === t.dataset.etape);
-			if (!etape) return true;
-			etape.ref = t.value || undefined;
-			enregistrerSeancesFor(uuid, defs);
-			conflit = null;
-			rendre(`select[data-act="seance-ref"][data-def="${defId}"][data-etape="${t.dataset.etape}"]`);
-			return true;
-		}
+		/* (La cible d'une étape « leçon » ne passe plus par un `change` de `<select>` : elle est
+		   posée au clic dans le sélecteur tous niveaux — cf. `seance-cible-choisir`.) */
 		case 'seance-dictee-toggle': {
 			const defs = chargerSeancesFor(uuid);
 			const etape = defs.find((d) => d.id === defId)?.etapes.find((e) => e.id === t.dataset.etape);

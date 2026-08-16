@@ -28,6 +28,14 @@
 	display: block;
 }
 
+/* Résumé du filtrage (« 7 leçons à choisir. ») : `--grey` et NON le `--muted` de `.enc-hint`,
+   qui passe sous AA sur `--paper` (2,6:1). Ce texte porte une information NÉCESSAIRE — c'est
+   le seul retour du nombre de résultats, et le contenu même de la région live annoncée aux
+   aides techniques. Même override, pour la même raison, que `.enc-seance-arevoir`. */
+.enc-sel-resume {
+	color: var(--grey);
+}
+
 /* Cadre de l'arbre : hauteur bornée + défilement, sinon déplier « Français » pousserait
    hors de l'écran le bouton qui ferme le sélecteur. */
 .enc-sel-corps {
@@ -41,9 +49,14 @@
 	padding-left: 0.7rem;
 }
 /* Le chrome de dépliage vient de .enc-cat-d ; ici, seulement la densité (l'arbre est plus
-   compact que le suivi par catégorie, il en montre bien plus à la fois). */
+   compact que le suivi par catégorie, il en montre bien plus à la fois). L'en-tête garde
+   malgré tout une cible de 44 px : c'est le geste le plus répété de l'écran, sur un appareil
+   tactile, et le padding réduit du bloc le ramenait sinon sous le confort visé ailleurs. */
 .enc-sel-d {
 	padding: 0.25rem 0;
+}
+.enc-sel-d > .enc-cat-sum {
+	min-height: 44px;
 }
 
 .enc-sel-list {

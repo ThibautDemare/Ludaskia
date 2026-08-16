@@ -1134,10 +1134,16 @@ export interface EpingleEntry {
       compteurs de maîtrise, ni dans les suggestions « à revoir », ni dans le signal « reste
       un point dur » (#492), qui supposent tous du contenu de la classe suivie ;
     - `null` : aucun état disponible (cible non résolue). L'UI n'affiche alors rien plutôt
-      que d'avancer un motif faux. */
+      que d'avancer un motif faux.
+
+    `essaye` distingue « pas encore travaillée » de « essayée sans succès » : une leçon d'une
+    classe suivante vient le plus souvent d'être épinglée et n'a encore jamais été jouée. Le
+    déduire d'une absence de date ou d'un `reussi` faux ferait dire à la ligne qu'elle a été
+    tentée et ratée, ce qui n'est PAS un fait — or c'est tout ce que ce régime prétend dire.
+    `at` peut manquer même après un essai : le suivi des dictées ne date pas les siens. */
 export type EtatEpingle =
 	| { kind: 'acquisition'; niveau: NiveauNotion }
-	| { kind: 'essai'; at: number | null; reussi: boolean }
+	| { kind: 'essai'; essaye: boolean; at: number | null; reussi: boolean }
 	| null;
 
 /* État d'une leçon lu à un niveau DONNÉ, depuis les cartes brutes d'un profil. Même calcul
@@ -1197,7 +1203,7 @@ export function epingleesProfil(profile: Profile, dicteeDispo = false): EpingleE
 			origine,
 			etat:
 				origine.direction === 'au-dessus'
-					? { kind: 'essai', at: stat?.lastAt ?? null, reussi: etoilee }
+					? { kind: 'essai', essaye: !!stat?.attempts, at: stat?.lastAt ?? null, reussi: etoilee }
 					: { kind: 'acquisition', niveau: niveauNotion(stat, etoilee) },
 		});
 	}
@@ -1217,33 +1223,7 @@ function etatOrthoEpingle(
 	if (!ortho) return null;
 	const niveau = niveauListeOrtho(ortho, orthoId, dicteeDispo);
 	if (!auDessus) return { kind: 'acquisition', niveau };
-	return { kind: 'essai', at: null, reussi: niveau === 'acquis' };
-}
-
-/* État d'acquisition à afficher sur une entrée ÉPINGLÉE (#518) — pur, sans DOM.
-   Sans lui, l'adulte voyait une épingle sans savoir où en était l'enfant sur cette notion,
-   donc sans pouvoir juger s'il fallait la retirer. Aucun calcul nouveau : on relit le niveau
-   déjà porté par le récap (leçons) ou par le suivi des dictées (listes) — les deux échelles
-   sont le même `NiveauNotion`, celle des dictées n'en utilisant que 3 crans.
-
-   Une leçon JAMAIS TRAVAILLÉE n'est pas un trou : elle est bien dans le récap, à
-   'a-decouvrir'. Le `null` dit seulement « aucun état disponible » : en pratique la cible est
-   hors du niveau suivi (le récap et `listesOrthoProfil` ne couvrent que le niveau du profil,
-   là où `epingleesProfil` retient une épingle de n'importe quel niveau). Cette RAISON n'est
-   pas déduite ici : elle est portée par `EpingleEntry.horsNiveau`, calculé là où le niveau de
-   la cible est connu. Un `null` sans `horsNiveau` serait donc une incohérence de données, et
-   l'UI n'affiche alors rien plutôt que d'avancer un motif faux. */
-export function niveauEpingle(
-	e: EpingleEntry,
-	recap: RecapProfil,
-	listes: readonly RecapListeOrtho[],
-): NiveauNotion | null {
-	if (e.kind === 'ortho') return listes.find((l) => l.id === e.id)?.niveau ?? null;
-	for (const cat of recap.parCategorie) {
-		const n = cat.lecons.find((x) => x.lessonId === e.id);
-		if (n) return n.niveau;
-	}
-	return null;
+	return { kind: 'essai', essaye: niveau !== 'a-decouvrir', at: null, reussi: niveau === 'acquis' };
 }
 
 /* ============================================================

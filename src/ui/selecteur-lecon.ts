@@ -200,7 +200,7 @@ export function selecteurLeconHTML(o: OptionsSelecteur): string {
           <input type="search" class="enc-input" id="sel-rech-${escapeHTML(id)}" data-act="sel-recherche" data-sel="${escapeHTML(id)}" placeholder="Rechercher une leçon…" value="${escapeHTML(e.recherche)}" autocomplete="off" />
         </label>
       </div>
-      <p class="enc-hint" id="sel-resume-${escapeHTML(id)}" role="status" aria-live="polite">${escapeHTML(texteResume(id, arbre))}</p>
+      <p class="enc-hint enc-sel-resume" id="sel-resume-${escapeHTML(id)}" role="status" aria-live="polite">${escapeHTML(texteResume(id, arbre))}</p>
       <div class="enc-sel-corps" id="sel-corps-${escapeHTML(id)}">${corpsHTML(id, arbre, action)}</div>
     </div>`;
 }

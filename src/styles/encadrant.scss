@@ -1549,10 +1549,37 @@ $frise-neutre: #7c8494;
 .enc-rev-flat {
 	margin-top: 0.2rem;
 }
-.enc-rev-flat .enc-rev-item {
+.enc-rev-flat .enc-rev-item,
+.enc-rev-etage-l .enc-rev-item {
 	padding: 0.45rem 0.6rem;
 	border: 1px solid var(--line);
 	border-radius: 10px;
+}
+/* Vue « Par palier » (#555) : la distribution sur l'escalier doit se lire SANS interaction
+   — d'où des en-têtes d'étage NON repliables, là où la vue par catégorie garde ses
+   <details> (le parent y consulte une catégorie à la fois). Chrome délibérément léger :
+   ni chevron ni bordure empruntés à .enc-cat-sum, qui promettraient un dépliage inexistant. */
+.enc-rev-etage + .enc-rev-etage {
+	margin-top: 0.9rem;
+}
+.enc-rev-etage-t {
+	display: flex;
+	flex-wrap: wrap; /* sur téléphone, le compteur passe sous le libellé d'étage */
+	align-items: baseline;
+	gap: 0.1rem 0.5rem;
+	margin: 0 0 0.35rem;
+}
+/* Le <h3> n'est qu'un item de cette ligne : marges natives annulées, taille alignée sur
+   le reste de la liste (il titre un étage, pas une sous-section entière comme .enc-h3). */
+.enc-rev-etage-lab {
+	margin: 0;
+	font-size: 0.85rem;
+	font-weight: 800;
+	color: var(--ink);
+}
+.enc-rev-etage-n {
+	font-size: 0.78rem;
+	color: var(--grey);
 }
 .enc-rev-item {
 	display: flex;

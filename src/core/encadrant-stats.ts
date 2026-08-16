@@ -1349,6 +1349,19 @@ export interface GroupeRevision {
 	dues: number; // non acquises et échues (aujourd'hui ou en retard)
 }
 
+/* Un étage de l'escalier de répétition espacée (#555), pour la vue « Par palier ».
+   Répond à « qu'est-ce qui stagne en bas / qu'est-ce qui est presque ancré ? », lecture
+   qu'aucune des deux autres vues ne donne : la catégorie mélange les paliers, et
+   l'urgence trie sur l'échéance, qui DÉCOULE du palier sans le dire (deux notions dues
+   aujourd'hui peuvent être l'une au 1er étage, l'autre au 5e). */
+export interface PalierRevision {
+	palier: number; // 0..PALIER_ACQUIS (index d'étage)
+	label: string; // intervalle courant (« 1 semaine ») ; « acquis » au sommet
+	acquis: boolean; // étage sommital (sorti de la rotation)
+	entrees: EntreeRevision[]; // triées par urgence
+	dues: number; // non acquises et échues
+}
+
 export interface RecapRevision {
 	total: number;
 	enRotation: number;
@@ -1356,14 +1369,20 @@ export interface RecapRevision {
 	dues: number;
 	groupes: GroupeRevision[]; // vue « par catégorie » (ordre du catalogue)
 	parUrgence: EntreeRevision[]; // vue « par urgence » (plus en retard d'abord, acquises en fin)
+	parPalier: PalierRevision[]; // vue « par palier » (bas de l'escalier d'abord, acquis en fin)
 }
 
 /* Libellé d'un palier = intervalle de re-test correspondant, en langage courant, DÉRIVÉ
    de REVISION_INTERVALLES (source unique — pas de valeurs recopiées). '' pour l'acquis
-   (rendu par un badge dédié côté UI). Pur. */
+   (rendu par un badge dédié côté UI). Pur.
+   L'index est BORNÉ à l'escalier, et entier : un palier corrompu dans le stockage (négatif,
+   fractionnaire) sortait sinon du tableau et affichait « Palier : NaN mois » à l'adulte.
+   Même bornage que `etagePalier`, pour qu'une ligne ne puisse pas contredire l'en-tête de
+   l'étage sous lequel elle est rangée. */
 export function libellePalier(palier: number): string {
 	if (palier >= PALIER_ACQUIS) return '';
-	const jours = REVISION_INTERVALLES[Math.min(palier, REVISION_INTERVALLES.length - 1)] / JOUR;
+	const i = Math.min(Math.max(Math.floor(palier), 0), REVISION_INTERVALLES.length - 1);
+	const jours = REVISION_INTERVALLES[i] / JOUR;
 	if (jours < 7) return `${jours} jour${jours > 1 ? 's' : ''}`;
 	if (jours < 30) {
 		const s = Math.round(jours / 7);
@@ -1422,6 +1441,19 @@ function entreeRevision(
 		joursRestants,
 		niveauOrigine,
 	};
+}
+
+/* Étage d'escalier d'une entrée, BORNÉ à [0, PALIER_ACQUIS] et entier. Les trois vues
+   doivent contenir exactement les mêmes entrées : un palier corrompu (négatif, au-dessus
+   du sommet, non entier) doit atterrir sur un étage existant plutôt qu'en ouvrir un à lui
+   ou disparaître de la vue.
+   `floor` et NON `round` : c'est ce qui rend l'étage sommital équivalent à `estAcquis`
+   (`palier >= PALIER_ACQUIS`) sur toute la plage. Avec un arrondi, un palier de 5,5 serait
+   rangé sous « Acquis » tout en restant en rotation — l'en-tête annoncerait « 1 entrée,
+   dont 1 à réviser » sous le mot « acquis », et la même entrée s'afficherait « Palier :
+   3 mois » en vue Urgence. */
+function etagePalier(e: EntreeRevision): number {
+	return Math.min(Math.max(Math.floor(e.palier), 0), PALIER_ACQUIS);
 }
 
 /* Tri par urgence : les plus en retard d'abord (jour restant le plus petit/négatif),
@@ -1496,6 +1528,26 @@ export function revisionProfil(profile: Profile, now: number): RecapRevision {
 		});
 	}
 
+	// Regroupement par PALIER (#555), du bas de l'escalier vers le sommet : ce qui stagne
+	// au pied d'abord, l'acquis en fin (comme les deux autres vues). Les étages VIDES sont
+	// omis, exactement comme une catégorie sans entrée : sept en-têtes dont cinq à zéro se
+	// lisent moins bien que trois pleins.
+	const parPalier: PalierRevision[] = [];
+	for (let p = 0; p <= PALIER_ACQUIS; p++) {
+		const es = entrees.filter((e) => etagePalier(e) === p).sort(compareUrgence);
+		if (es.length === 0) continue;
+		const acquis = p >= PALIER_ACQUIS;
+		parPalier.push({
+			palier: p,
+			// Le sommet n'a pas d'intervalle (libellePalier rend '') : on le NOMME, sinon
+			// l'en-tête de son étage serait vide. Même mot que la légende de l'escalier.
+			label: acquis ? 'acquis' : libellePalier(p),
+			acquis,
+			entrees: es,
+			dues: es.filter((e) => e.du).length,
+		});
+	}
+
 	return {
 		total: entrees.length,
 		enRotation: entrees.filter((e) => !e.acquis).length,
@@ -1503,5 +1555,6 @@ export function revisionProfil(profile: Profile, now: number): RecapRevision {
 		dues: entrees.filter((e) => e.du).length,
 		groupes,
 		parUrgence: [...entrees].sort(compareUrgence),
+		parPalier,
 	};
 }

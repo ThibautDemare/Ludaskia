@@ -76,10 +76,12 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
   (« a-t-on déjà ce moteur ? », « où est géré l'XP ? », « comment marche X ? ») :
   il explore lui-même `src/` (qui fait foi) et la doc, et répond de façon sourcée.
   Et en **fin de dev**, il vérifie que le changement se reflète dans la doc « état
-  courant » (`docs/ARCHITECTURE.md` + `docs/architecture/*`, READMEs) et **édite
-  la doc** pour combler l'écart. **Édite la doc, jamais le code** (renvoie à
+  courant » (`docs/ARCHITECTURE.md` + `docs/architecture/*`, READMEs de test) **et
+  dans les surfaces utilisateur** (`README.md`, page vitrine `index.html`), puis
+  **édite** pour combler l'écart. **Édite la doc, jamais le code** (renvoie à
   `relecteur-qualite` / `integrateur-lecon` / `auteur-tests-e2e` /
-  `auteur-tests-logique`).
+  `auteur-tests-logique`) — seule exception, le **contenu rédactionnel**
+  d'`index.html`, dont il ne touche ni le JS ni le SCSS.
 - **`gestionnaire-github`** — issues / PR / milestones (voir Workflow Git plus bas).
 
 ### Comment orchestrer les agents (réflexes, pas optionnels)
@@ -113,6 +115,14 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
   « état courant » (`docs/ARCHITECTURE.md` + `docs/architecture/*`) reste fidèle au
   code et la met à jour. C'est aussi l'agent à interroger en amont pour savoir si
   une capacité **existe déjà** avant de la réimplémenter.
+  - **Le réflexe vaut aussi pour ce que voit l'utilisateur.** Dès que le dev
+    ajoute une capacité **visible** (mode, catégorie, niveau, mécanique, fonction
+    de l'espace encadrants, option d'accessibilité, export/impression), le même
+    passage doit vérifier **`README.md`** et la **vitrine `index.html`**. Ces deux
+    pages se périment plus vite que la doc technique : personne ne les relit en
+    écrivant du code, et l'écart ne se voit qu'après des mois. Si l'édition change
+    une structure comptée par `e2e/vitrine.spec.ts` (sections, entrées de FAQ),
+    la spec suit via **`auteur-tests-e2e`**.
 
 ## Style de réponse (Claude et agents)
 - **Direct et concis.** Aller droit au but : pas de phrase d'introduction, pas de

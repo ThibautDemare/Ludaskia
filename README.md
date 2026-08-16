@@ -72,10 +72,16 @@ sa propre progression, son avatar, son thème et ses réglages de confort. La
 progression d'un profil peut être **exportée** dans un fichier puis **réimportée**
 (sauvegarde ou transfert vers un autre appareil).
 
-Un **espace encadrants** (parents / enseignants), éventuellement protégé par un
-code, réunit le **suivi des progrès** par enfant, le réglage de la **classe** de
-chaque profil, les **sauvegardes** et la possibilité d'**épingler des leçons à
-revoir**.
+L'**espace encadrants** réunit ce qui s'adresse à l'adulte, sans rien rendre
+obligatoire : l'enfant peut s'entraîner sans qu'un adulte ait quoi que ce soit à
+régler. On y **suit** où en est chaque notion et sur quoi ça a coincé, on
+**prépare** une séance ou une leçon « à revoir », on **saisit la liste de mots de
+la dictée** de la semaine, et on **adapte** l'application (classe, aménagements
+« dys » / attention). Un **code d'accès** optionnel garde le tout hors de portée.
+
+Par principe : ni note, ni moyenne, ni classement, ni comparaison entre enfants —
+un outil d'accompagnement, pas un bulletin. Le détail est dans
+[`docs/architecture/espace-encadrant.md`](docs/architecture/espace-encadrant.md).
 
 ## Accessibilité & confort
 Chacun ajuste son expérience : **lecture à voix haute** des consignes
@@ -83,11 +89,15 @@ Chacun ajuste son expérience : **lecture à voix haute** des consignes
 réglages d'**affichage** (police, couleurs, animations réduites). Une attention
 particulière est portée aux profils « dys » et à la lisibilité.
 
+D'autres **aménagements se posent depuis l'espace encadrants** et ne bougent
+plus, pour que l'enfant n'ait rien à régler lui-même.
+
 ## Utilisation
 Le plus simple : [jouer en ligne](https://thibautdemare.github.io/Ludaskia/).
 Toute la progression est enregistrée **localement** dans le navigateur (rien
-n'est envoyé sur un serveur), et l'entraînement **fonctionne hors connexion** une
-fois la page chargée.
+n'est envoyé sur un serveur), et l'entraînement **continue de fonctionner si la
+connexion se coupe** une fois la page ouverte. Rouvrir l'application plus tard
+sans réseau n'est en revanche pas encore garanti (service worker à venir).
 
 ## Pour les développeurs
 - **Stack** : HTML + **SCSS** et **TypeScript** (`strict`), bundle par **Vite**

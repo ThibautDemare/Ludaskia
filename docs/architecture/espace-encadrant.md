@@ -671,10 +671,22 @@ niveau en dessous) reste dormant et masqué : l'afficher créerait un doublon fa
 retard » que le parent ne pourrait jamais résorber. Cette distinction de niveau d'origine
 est réservée à l'espace encadrant — rien n'en est montré à l'enfant.
 
-Deux visualisations, bascule au même patron que le graphe d'activité (module
-`ui/encadrant-revision.ts`) : **« Par catégorie »** (regroupement dépliable, même chrome que
-« Notions par catégorie ») et **« Par urgence »** (liste à plat, les plus en retard d'abord,
-`compareUrgence`). Seul chiffre affiché : un dénombrement (« X en révision, dont Y à réviser
+Trois visualisations, bascule au même patron que le graphe d'activité (module
+`ui/encadrant-revision.ts`, composant segment en variante `wrap` depuis cette 3e option —
+trois libellés de cette longueur ne tiennent pas sur une ligne de téléphone) : **« Par
+catégorie »** (regroupement dépliable, même chrome que « Notions par catégorie »), **« Par
+urgence »** (liste à plat, les plus en retard d'abord, `compareUrgence`) et **« Par palier »**
+(#555, `PalierRevision[]`, `core/encadrant-stats.ts:revisionProfil`). Cette dernière répond à
+« qu'est-ce qui stagne en bas de l'escalier, qu'est-ce qui est presque ancré ? », une lecture
+qu'aucune des deux autres ne donne : la catégorie mélange les paliers, et l'urgence trie sur
+l'échéance, qui DÉCOULE du palier sans le dire (deux entrées dues aujourd'hui peuvent être
+l'une au 1er étage, l'autre au 5e). Un étage par palier occupé, du moins ancré au plus ancré,
+« acquis » en dernier ; **les étages vides ne sont pas rendus**. En-têtes d'étage en **vrai
+`<h3>` NON repliable** (contrairement aux `<details>` de la vue par catégorie) : la question
+posée ici est une lecture panoramique, que des accordéons fermés cacheraient précisément (avis
+designer). Le palier de chaque entrée est alors porté par l'en-tête de son étage et n'est plus
+répété sur la ligne — reste l'échéance, seule information qui varie encore d'une ligne à
+l'autre à palier égal. Seul chiffre affiché : un dénombrement (« X en révision, dont Y à réviser
 · Z déjà acquises »), aucun pourcentage ni note.
 
 **Distinct de « à revoir » ci-dessus** : cette file reflète le moteur de révision espacée

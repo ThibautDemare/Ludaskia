@@ -1367,8 +1367,15 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   **Récap du mode Révision espacée** (#423) : `revisionProfil(profile, now)` → `RecapRevision`
   projette la file de répétition espacée (`revision.ts`, #45) du profil consulté — palier
   courant + échéance relative par entrée (`libellePalier`/`libelleEcheanceRevision`), groupée
-  par catégorie (`GroupeRevision`) et triée par urgence (`parUrgence`) ; même filtre de niveau
-  actif que la frise. Détail dans [Espace encadrant](espace-encadrant.md).
+  par catégorie (`GroupeRevision`), triée par urgence (`parUrgence`) et regroupée **par palier**
+  (`parPalier: PalierRevision[]`, #555 — les étages de l'escalier de répétition espacée, du
+  moins ancré au plus ancré, étages vides omis) ; même filtre de niveau actif que la frise.
+  `etagePalier` **borne et TRONQUE** (`Math.floor`, pas `Math.round`) l'index de chaque entrée
+  vers son étage — c'est ce qui rend l'étage sommital strictement équivalent à `estAcquis`
+  (un arrondi rangerait une entrée à 5,5 sous « Acquis » tout en la laissant en rotation) ;
+  `libellePalier` borne aussi son index, pour ne plus produire « Palier : NaN mois » sur un
+  palier corrompu en stockage (négatif, fractionnaire, hors plage). Détail dans [Espace
+  encadrant](espace-encadrant.md).
 - **`encadrant-lock.ts`** (#234) — verrou optionnel de l'espace encadrant : PIN haché
   (SHA-256 `crypto.subtle`) + récupération par secret (GUID) ; clé GLOBALE
   `ludaskia_encadrant_lock` (`pinActif`/`definirPin`/`verifierPin`/`reinitViaRecuperation`/

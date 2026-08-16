@@ -1101,6 +1101,26 @@ pure](core.md)) pour les formats composites :
   numérique qui fait tout l'intérêt du panneau (« 7 × 6 = 42 ») serait rendu au moteur
   vocal avec ses symboles bruts, souvent muets.
 
+  **Cas RÉDIGÉ, sans déroulé** (#490 PR 3, désormais la forme la PLUS fréquente — la
+  majorité des leçons de maths n'ont que `regle` + `etapes`, sans `exemple`) : le
+  panneau tient sur un seul écran, sans rien de ce qui précède — ni visuel, ni
+  compteur ni barre de progression, ni bouton « Précédent » (une seule sortie,
+  directe). La mascotte change de phrase en conséquence : `MASCOTTE_DEROULE` (« On y
+  va ensemble, étape par étape. ») promet un pas-à-pas qui n'existe QUE si un moteur
+  déroule un exemple ; `MASCOTTE_REDIGE` (« Voilà comment on fait, tranquillement. »)
+  évite d'annoncer un bouton Suivant introuvable (constat `relecteur-accessibilite`).
+  Le bouton « Écouter » lit alors la `regle` ET les `etapes` ensemble
+  (`etayage-panneau.ts`) : sur du contenu rédigé, les étapes SONT la méthode, pas un
+  supplément qu'on pourrait taire.
+
+  **Contrainte d'écriture** pour tout contenu RÉDIGÉ, présent et à venir (français
+  compris, #490 PR 4) — parce que ce texte est lu à voix haute par `texteParle` autant
+  qu'à l'œil : les milliers se séparent par l'espace fine insécable U+202F (la seule
+  que le moteur vocal recolle en un seul nombre), et jamais de flèche « → » —
+  `texteParle` (`core/tts-text.ts`) la rend SILENCIEUSE (elle marque un trou dans
+  « X → @ »), ce qui romprait le connecteur d'une phrase énoncée ; on l'écrit en
+  toutes lettres.
+
 ## Menu, préférences, thèmes & accessibilité
 
 - **`menu.ts`** — liste déroulante de profils (`open/close/toggleProfileMenu`),

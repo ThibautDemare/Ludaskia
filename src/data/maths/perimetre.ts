@@ -22,7 +22,7 @@
    - formules : carré côté 2–12, rectangle L≠l avec L+l ≤ 30.
    ============================================================ */
 import type { Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
-import type { LessonInput } from '../_shared';
+import { etayageRedige, type LessonInput } from '../_shared';
 import { checkNumerique } from '../../core/check-helpers';
 import { renderFigure, boundaryEdges } from '../../core/figures';
 import { rnd } from '../../core/utils';
@@ -170,15 +170,52 @@ export const PERIMETRE_LESSONS: LessonInput[] = [
 		id: 'mes-perimetre-cotes',
 		label: 'Je calcule le périmètre',
 		exerciseType: perimetreType(cotesFact),
+		// Les trois leçons de périmètre partagent la même idée-force (le TOUR) et diffèrent
+		// par le geste : additionner les côtés notés, compter des côtés de carreaux, ou
+		// utiliser la régularité du rectangle. Trois entrées distinctes, donc, et non une
+		// entrée commune : c'est le geste qui échoue, pas la définition.
+		etayage: [
+			etayageRedige(
+				'Le périmètre, le tour de la figure',
+				"Le périmètre, c'est la longueur du tour : on additionne TOUS les côtés, sans en oublier ni en compter deux fois.",
+				[
+					'Choisis un côté pour commencer et fais le tour toujours dans le même sens.',
+					'Note chaque longueur au passage, une par côté.',
+					'Additionne-les toutes : 5 + 3 + 5 + 3 = 16 cm.',
+				],
+			),
+		],
 	},
 	{
 		id: 'mes-perimetre-quadrillage',
 		label: 'Le périmètre sur quadrillage',
 		exerciseType: perimetreType(quadrillageFact),
+		etayage: [
+			etayageRedige(
+				'Le périmètre sur quadrillage',
+				'On compte les CÔTÉS de carreaux du contour, pas les carreaux eux-mêmes.',
+				[
+					'Pose ton doigt sur un coin de la figure.',
+					'Suis le contour et compte 1 pour chaque côté de carreau parcouru.',
+					'Arrête-toi quand tu es revenu au point de départ.',
+				],
+			),
+		],
 	},
 	{
 		id: 'mes-perimetre-formule',
 		label: 'Périmètre du carré et du rectangle',
 		exerciseType: perimetreType(formuleFact),
+		etayage: [
+			etayageRedige(
+				'Le périmètre du carré et du rectangle',
+				'Dans un rectangle, les côtés sont égaux deux à deux : la longueur et la largeur suffisent.',
+				[
+					'Additionne une longueur et une largeur : 11 + 7 = 18.',
+					'Double le résultat, car il y a deux fois chaque côté : 18 × 2 = 36 cm.',
+					'Pour un carré, les 4 côtés sont égaux : côté × 4, donc 10 × 4 = 40 cm.',
+				],
+			),
+		],
 	},
 ];

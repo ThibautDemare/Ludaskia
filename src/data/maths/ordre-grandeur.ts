@@ -44,7 +44,7 @@ import type { Exercise, ExerciseType, GenerateOpts, ModeOption } from '../../cor
 import { checkAnswer } from '../../core/exercise';
 import type { SchoolLevel } from '../../core/catalog';
 import { bankByLevel, pickFromBank } from '../../core/level-combinators';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { sample } from '../../core/utils';
 
@@ -196,5 +196,19 @@ export const ORDRE_GRANDEUR_LESSONS: LessonInput[] = [
 		id: 'math-ordre-grandeur-produit',
 		label: "Ordre de grandeur d'un produit",
 		exerciseType: ordreGrandeurType(),
+		// Le 1ᵉʳ pas dit ce que la leçon demande VRAIMENT (une taille, pas un résultat) :
+		// l'enfant qui pose l'opération en entier ne se trompe pas de calcul, il se trompe
+		// de tâche — et il y passe trois fois plus de temps pour rien.
+		etayage: [
+			etayageRedige(
+				"L'ordre de grandeur d'un produit",
+				'On ne cherche pas le résultat exact, seulement sa TAILLE : combien de chiffres aura-t-il ?',
+				[
+					'Arrondis chaque nombre à la dizaine : 58 devient 60, et 35 monte à 40.',
+					'Multiplie les arrondis sans leurs zéros : 4 × 6 = 24, puis remets les zéros, donc 2 400.',
+					'Compte les chiffres du résultat : 2 400 en a 4, on est donc dans les milliers.',
+				],
+			),
+		],
 	},
 ];

@@ -23,7 +23,7 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { propQType, type PropQ } from './_shared';
 import type { Solid, SolidOrient } from '../../core/figures';
@@ -176,10 +176,37 @@ export const SOLIDE_LESSONS: LessonInput[] = [
 		id: 'geo-solides-reconnaitre',
 		label: 'Je reconnais les solides',
 		exerciseType: reconnaitreType(),
+		// Un tri en deux temps (faces rondes d'abord, faces plates ensuite) plutôt qu'une
+		// liste de six noms à reconnaître d'un coup : c'est ce qui rend la question décidable
+		// pour un CE2, sur un schéma en perspective où l'on ne voit pas toutes les faces.
+		etayage: [
+			etayageRedige(
+				'Reconnaître les solides',
+				'Un solide se reconnaît à ses faces : rondes ou plates, carrées ou triangulaires.',
+				[
+					'Cherche une surface ronde : la boule, le cylindre et le cône en ont une.',
+					'Sinon, compte les faces plates : 6 carrés, un cube ; 6 rectangles, un pavé droit.',
+					'Une seule base et une pointe : une pyramide.',
+				],
+			),
+		],
 	},
 	{
 		id: 'geo-solides-proprietes',
 		label: 'Les propriétés des solides',
 		exerciseType: propQType(PROPRIETES),
+		// Les questions passent par des objets du quotidien (le dé, la boîte de conserve) :
+		// l'étayage reprend ces mêmes objets plutôt que d'en inventer d'autres.
+		etayage: [
+			etayageRedige(
+				'Les propriétés des solides',
+				'Chaque solide ressemble à un objet que tu connais déjà.',
+				[
+					'Le cube : 6 faces carrées, comme un dé.',
+					'Le cylindre : deux disques et un tour, comme une boîte de conserve.',
+					"La boule n'a aucune face plate ; le cône a un disque et une pointe.",
+				],
+			),
+		],
 	},
 ];

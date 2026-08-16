@@ -25,7 +25,7 @@
 import type { Exercise, ExerciseType, GenerateOpts, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import type { SchoolLevel } from '../../core/catalog';
-import type { LessonInput } from '../_shared';
+import { etayageRedige, type LessonInput } from '../_shared';
 import { renderFigure, boundaryEdges } from '../../core/figures';
 import { rnd, sample, choice } from '../../core/utils';
 
@@ -223,6 +223,21 @@ export const AIRE_PERIMETRE_LESSONS: AirePerimetreLessonDef[] = [
 		id: 'mes-aire-perimetre',
 		label: 'Aire et périmètre',
 		exerciseType: airePerimetreType(),
+		// Toute la leçon tient dans la distinction des deux mots : le 1ᵉʳ pas est donc un pas
+		// de LECTURE de la question. La règle reste courte (c'est le repère affiché en
+		// permanence) et c'est le pas qui porte l'indépendance des deux grandeurs, sans quoi
+		// l'enfant croit que « plus grand tour » veut dire « plus grande surface ».
+		etayage: [
+			etayageRedige(
+				'Aire ou périmètre ?',
+				"Le périmètre mesure le TOUR, l'aire mesure la SURFACE couverte.",
+				[
+					'Lis la question : parle-t-elle du tour (périmètre) ou de la surface (aire) ? Même tour ne veut pas dire même surface.',
+					"Pour une AIRE, compte les carreaux à l'intérieur de la figure.",
+					'Pour un PÉRIMÈTRE, compte les côtés de carreaux qui font le contour.',
+				],
+			),
+		],
 		// Comptage visuel soigné + items vrai/faux et oui/non devinables à 50 % : incompatible
 		// avec la pression du chrono → exclue du sprint (comme la symétrie et la divisibilité).
 		excludeFromSprint: true,

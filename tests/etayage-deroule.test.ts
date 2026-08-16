@@ -150,17 +150,31 @@ describe('les exemples déclarés par les leçons — jamais un panneau vide', (
 		});
 	});
 
-	it('une leçon sans entrée n’ouvre aucun panneau (pas de repli par famille de moteur)', () => {
-		// Corollaire central de #490 : un exemple voisin servi « faute de mieux » est PIRE que
-		// rien. On le vérifie là où la tentation serait la plus forte : une leçon de calcul
-		// posé sans étayage n'hérite pas de celui de l'addition, et un présent irrégulier
-		// n'hérite pas du présent d'« aimer ».
-		const sans = ['math-tables-addition', 'num-ranger', 'fr-conj-aller-present'];
-		for (const id of sans) {
+	it('aucune leçon n’ouvre le déroulé d’une AUTRE (pas de repli par famille de moteur)', () => {
+		/* Corollaire central de #490 : un exemple voisin servi « faute de mieux » est PIRE que
+		   rien. Formulé sans leçon témoin — depuis #490 PR 3 les maths portent toutes un
+		   contenu et le français suivra, donc un témoin « leçon sans entrée » désigné par son
+		   id se périmerait à chaque PR. Ce qui reste vrai pour toujours : l'exemple déroulé
+		   est un objet déclaré par CETTE leçon (identité de référence). */
+		const fautes: string[] = [];
+		for (const { lesson, niveau, mode } of situations()) {
+			const contenu = etayagePour(lesson, niveau, mode);
+			if (!contenu?.exemple) continue;
+			const siens = (lesson.etayage ?? []).map((e) => e.contenu.exemple);
+			if (!siens.includes(contenu.exemple))
+				fautes.push(
+					`${lesson.id}/${niveau}/${mode ?? '-'} — exemple « ${contenu.exemple.moteur} »`,
+				);
+		}
+		expect(fautes).toEqual([]);
+		// Les deux voisinages les plus tentants : une leçon de calcul MENTAL (texte rédigé)
+		// n'ouvre pas le déroulé de l'addition posée, et un présent irrégulier — qui n'a rien
+		// d'honnête à dérouler — n'ouvre pas celui d'« aimer ».
+		for (const id of ['math-tables-addition', 'fr-conj-aller-present']) {
 			const lesson = getAllLessons().find((l) => l.id === id);
 			if (!lesson) throw new Error(`leçon absente du catalogue : ${id}`);
 			for (const niveau of NIVEAUX)
-				expect(etayagePour(lesson, niveau, 'saisie'), id).toBeUndefined();
+				expect(etayagePour(lesson, niveau, 'saisie')?.exemple, id).toBeUndefined();
 		}
 	});
 });

@@ -19,7 +19,7 @@
    ============================================================ */
 import type { ChoiceView, Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import type { SymAxis, SymMotif, SymShape, SymTransform } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
@@ -209,5 +209,20 @@ export const SYMETRIE_LESSONS: SymetrieLessonDef[] = [
 		label: 'Le miroir magique (symétrie)',
 		exerciseType: symetrieType(),
 		excludeFromSprint: true,
+		// Les deux questions de la leçon (« est-ce un axe ? », « quel est le vrai reflet ? »)
+		// se règlent avec la même méthode : la distance à l'axe, reportée de l'autre côté. Le
+		// 3ᵉ pas donne le test du PLI, qui est le geste que fait la classe avec du calque —
+		// et le seul contrôle qu'un enfant puisse faire seul sur écran, en imagination.
+		etayage: [
+			etayageRedige(
+				'Le miroir de la symétrie',
+				"Dans un miroir, l'image est retournée, et chaque point se retrouve à la même distance de l'axe, de l'autre côté.",
+				[
+					'Choisis un point bien reconnaissable de la figure, un coin par exemple.',
+					"Compte sa distance à l'axe, puis reporte la même distance de l'autre côté.",
+					"Imagine que tu plies la feuille sur l'axe : si tout se superpose, c'est bien symétrique.",
+				],
+			),
+		],
 	},
 ];

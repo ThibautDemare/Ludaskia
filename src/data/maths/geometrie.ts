@@ -23,7 +23,7 @@
      pas de double négation ; une propriété observable et tranchée.
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { propQType, type PropQ } from './_shared';
 import type { PlaneShape } from '../../core/figures';
@@ -250,10 +250,40 @@ export const GEOMETRIE_LESSONS: LessonInput[] = [
 		id: 'geo-figures-reconnaitre',
 		label: 'Je reconnais les figures',
 		exerciseType: reconnaitreType(),
+		// La règle vise l'erreur propre au CE2 : un carré posé sur la pointe n'est plus
+		// reconnu comme un carré. Les figures de cette leçon ne sont PAS codées (le codage
+		// #326 est réservé au CM1), d'où des pas qui font compter et regarder, pas lire des
+		// marques. Le 3ᵉ pas est là parce que la leçon ne fait pas que NOMMER : une question
+		// sur trois demande de DÉNOMBRER une forme dans une scène (« combien de cercles ? »),
+		// et une aide qui n'aurait parlé que du nommage l'aurait laissée sans réponse.
+		etayage: [
+			etayageRedige(
+				'Reconnaître les figures',
+				'On reconnaît une figure à ses côtés et à ses angles, jamais à la façon dont elle est posée.',
+				[
+					'Compte les côtés : 3 côtés, un triangle ; 4 côtés, un carré, un rectangle ou un losange ; aucun côté droit, un cercle.',
+					"Cherche les angles droits, comme le coin d'une feuille : 4 angles droits, c'est un carré ou un rectangle.",
+					"Si on demande COMBIEN il y en a, repère d'abord la forme, puis pointe-les une par une du doigt pour n'en oublier aucune.",
+				],
+			),
+		],
 	},
 	{
 		id: 'geo-figures-proprietes',
 		label: 'Les propriétés des figures',
 		exerciseType: propQType(PROPRIETES),
+		// Une carte d'identité par figure, une par pas : c'est exactement ce que le QCM
+		// interroge (nombre de côtés, côtés égaux, angles droits).
+		etayage: [
+			etayageRedige(
+				'Les propriétés des figures',
+				"Chaque figure a sa carte d'identité : un nombre de côtés, des côtés égaux ou non, des angles droits ou non.",
+				[
+					'Le carré : 4 côtés égaux et 4 angles droits.',
+					'Le rectangle : 4 angles droits, et les côtés égaux deux à deux.',
+					'Le triangle rectangle : 3 côtés, et exactement 1 angle droit.',
+				],
+			),
+		],
 	},
 ];

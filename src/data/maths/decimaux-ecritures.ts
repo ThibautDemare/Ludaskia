@@ -34,7 +34,7 @@
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import type { LessonInput } from '../_shared';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import { rnd, sample } from '../../core/utils';
 import { checkNumerique } from '../../core/check-helpers';
 import { nomFraction, fractionChoiceViews } from '../../core/fraction-text';
@@ -301,11 +301,36 @@ export const DECIMAUX_ECRITURES_LESSONS: LessonInput[] = [
 		id: 'num-dec-grille',
 		label: 'Une fraction, une écriture à virgule',
 		exerciseType: qcmType(grilleFact),
+		// Compter le TOTAL des cases avant les cases coloriées, et pas l'inverse : les
+		// distracteurs opposent 4/10 à 4/100 (et 0,4 à 0,04), donc c'est le dénominateur qui
+		// tranche — un enfant qui commence par compter le colorié a déjà choisi sa réponse.
+		etayage: [
+			etayageRedige(
+				'De la grille à la virgule',
+				'Une grille de 10 cases montre des dixièmes, une grille de 100 cases des centièmes.',
+				[
+					'Compte les cases de toute la grille : 10 ou 100 ?',
+					'Compte les cases coloriées : ce nombre passe au-dessus du trait.',
+					'4 cases coloriées sur 10, ça fait 4/10, et ça se lit 0,4.',
+				],
+			),
+		],
 	},
 	{
 		id: 'num-dec-frac-superieure',
 		label: 'Une fraction décimale plus grande que 1',
 		exerciseType: qcmType(fracSuperieureFact),
+		etayage: [
+			etayageRedige(
+				'Une fraction décimale plus grande que 1',
+				"96 dixièmes, c'est 9 unités entières et il reste 6 dixièmes.",
+				[
+					'Regarde le nombre du bas : 10 pour des dixièmes, 100 pour des centièmes.',
+					'Avec des dixièmes, sépare le dernier chiffre : 96 se coupe en 9 et 6, donc 9,6.',
+					'Avec des centièmes, sépare les deux derniers : 482 se coupe en 4 et 82, donc 4,82.',
+				],
+			),
+		],
 	},
 	{
 		id: 'num-dec-decomposer',
@@ -313,10 +338,36 @@ export const DECIMAUX_ECRITURES_LESSONS: LessonInput[] = [
 		// Mono-mode saisie (rendu fiche/bilan/sprint via le chemin « math moderne » :
 		// item numérique). Réponse = un entier → checkNumerique.
 		exerciseType: { generate: () => decomposeDecFact(), check: checkNumerique },
+		etayage: [
+			etayageRedige(
+				'Décomposer un nombre décimal',
+				'Chaque chiffre après la virgule dit combien il y a de dixièmes, puis de centièmes.',
+				[
+					"À gauche de la virgule, la partie entière : dans 44,37, c'est 44.",
+					'Le premier chiffre après la virgule donne les dixièmes : le 3 vaut 3/10.',
+					'Le deuxième donne les centièmes : le 7 vaut 7/100.',
+				],
+			),
+		],
 	},
 	{
 		id: 'num-dec-recomposer',
 		label: 'Je recompose un nombre décimal',
 		exerciseType: qcmType(recomposeDecFact),
+		// Le zéro des dixièmes est le point dur (seul écart entre 33,08 et 33,8, et les
+		// distracteurs du QCM proposent précisément les deux) : il est donc DÉMONTRÉ au
+		// dernier pas, pas seulement annoncé par la règle — sinon l'enfant bloqué là-dessus
+		// lit un exemple (70,34) qui ne contient pas sa difficulté.
+		etayage: [
+			etayageRedige(
+				'Recomposer un nombre décimal',
+				"Chaque morceau a sa place, et un zéro de dixièmes s'écrit quand même : 33 + 0/10 + 8/100 = 33,08.",
+				[
+					'Écris la partie entière, puis la virgule : 70,',
+					'Le nombre de dixièmes vient juste après la virgule : 70,3',
+					"Puis les centièmes : 70,34. Et s'il y a 0 dixième, il s'écrit quand même : 33 + 0/10 + 8/100 = 33,08.",
+				],
+			),
+		],
 	},
 ];

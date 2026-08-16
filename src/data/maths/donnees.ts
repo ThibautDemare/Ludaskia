@@ -15,7 +15,7 @@
    (rnd/choice/sample via `randFloat`).
    ============================================================ */
 import type { Exercise, ExerciseType } from '../../core/exercise';
-import type { LessonInput } from '../_shared';
+import { etayageRedige, type LessonInput } from '../_shared';
 import { renderFigure } from '../../core/figures';
 import { checkNumerique } from '../../core/check-helpers';
 import { choice, rnd, sample, elisionDe } from '../../core/utils';
@@ -167,10 +167,35 @@ export const DONNEES_LESSONS: LessonInput[] = [
 			genererBarres,
 			'Lis le diagramme en barres et réponds à la question.',
 		),
+		// Le 3ᵉ pas dit la difficulté réelle de la leçon : l'échelle n'est pas toujours 1
+		// (pas ∈ {1, 2, 5, 10}, cf. ECHELLES). Un enfant qui compte les graduations au lieu
+		// de les LIRE répond 4 là où la barre vaut 40, et son erreur est invisible pour lui.
+		etayage: [
+			etayageRedige(
+				'Lire un diagramme en barres',
+				"La hauteur d'une barre se lit sur les nombres de l'axe, jamais à l'œil.",
+				[
+					'Trouve la barre qui porte le bon nom, écrit en dessous.',
+					"Suis son sommet vers la gauche jusqu'à l'axe.",
+					'Lis le nombre en face : attention, un cran ne vaut pas toujours 1.',
+				],
+			),
+		],
 	},
 	{
 		id: 'donnees-tableau-lire',
 		label: 'Je lis un tableau à double entrée',
 		exerciseType: donneesType(genererTableau, 'Lis le tableau et réponds à la question.'),
+		etayage: [
+			etayageRedige(
+				'Lire un tableau à double entrée',
+				'La réponse est à la CROISÉE : la ligne du prénom et la colonne de la chose demandée.',
+				[
+					'Trouve la ligne : les prénoms sont écrits à gauche.',
+					'Trouve la colonne : les objets sont écrits en haut.',
+					'Descends la colonne jusque sur la ligne : la case où elles se croisent est la réponse.',
+				],
+			),
+		],
 	},
 ];

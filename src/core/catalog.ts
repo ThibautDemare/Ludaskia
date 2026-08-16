@@ -59,6 +59,7 @@ import { SYMETRIE_LESSONS } from '../data/maths/symetrie-axiale';
 import { ANGLES_LESSONS } from '../data/maths/angles';
 import { PROBLEMES_LESSONS } from '../data/maths/problemes';
 import { DIVISION_LESSONS, DIVISION_EUCLIDIENNE_LESSONS } from '../data/maths/division';
+import { ETAYAGES_CALCUL_MENTAL } from '../data/maths/calcul-mental-etayage';
 import { DIVISIBILITE_LESSONS } from '../data/maths/divisibilite';
 import { ORDRE_GRANDEUR_LESSONS } from '../data/maths/ordre-grandeur';
 import type { LessonInput } from '../data/_shared';
@@ -292,7 +293,19 @@ export const CATEGORIES: Category[] = [
 
 /* ---------- Catalogue des leçons math ---------- */
 
-const MATH_LESSONS: LessonDef[] = [
+/* Étayage de la notion (#490) des leçons du moteur historique : posé APRÈS coup, par id,
+   plutôt qu'inscrit dans chaque littéral. Ces leçons n'ont pas de module de données où
+   loger leur contenu (elles vivent ici), et dix-sept blocs de prose transformeraient cet
+   index en fichier de contenu. Une leçon absente de la table n'a simplement pas de
+   panneau — la dégradation propre voulue par #490, rien à écrire pour l'obtenir. */
+function avecEtayage(defs: LessonDef[]): LessonDef[] {
+	return defs.map((d) => {
+		const etayage = ETAYAGES_CALCUL_MENTAL[d.id];
+		return etayage ? { ...d, etayage } : d;
+	});
+}
+
+const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-tables-addition',
 		label: "Tables d'addition",
@@ -413,14 +426,14 @@ const MATH_LESSONS: LessonDef[] = [
 		levels: ['ce2'],
 		exerciseType: mathType(15),
 	},
-];
+]);
 
 /* ---------- Calcul mental CM1 (#241) ----------
    Deux leçons CM1 sur le moteur historique (bilanQ) : « Les multiples de 50 »
    (clone CM1 des multiples de 25) et « Diviser par 10, par 100 » (symétrique de
    « Multiplier par 10, par 100 », quotients ENTIERS uniquement). Distinctes des
    leçons CE2 (numéros bilanQ 16/17), taguées CM1 — visibles quand la classe est CM1. */
-const MATH_LESSONS_CM1: LessonDef[] = [
+const MATH_LESSONS_CM1: LessonDef[] = avecEtayage([
 	{
 		id: 'math-multiples-50',
 		label: 'Multiples de 50',
@@ -437,7 +450,7 @@ const MATH_LESSONS_CM1: LessonDef[] = [
 		levels: ['cm1'],
 		exerciseType: mathType(17),
 	},
-];
+]);
 
 /* ---------- Catalogue des leçons « Grandeurs et mesures » (#89, #96) ----------
    Moteur moderne (ExerciseType), hors du pipeline bilanQ : le rendu passe par

@@ -46,7 +46,7 @@ import type {
 	GenerateOpts,
 	TableauColonne,
 } from '../../core/exercise';
-import type { LessonInput } from '../_shared';
+import { etayageRedige, type LessonInput } from '../_shared';
 import { checkNumerique } from '../../core/check-helpers';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice } from '../../core/utils';
@@ -397,21 +397,27 @@ const DUREE_FACTS: Fact[] = [
 ];
 
 /* ---------- Étayage de la notion (#490) ----------
-   Réservé au mode TABLEAU : c'est lui qui rend la méthode mécanisable (des rangs, un
-   chiffre par case), et le déroulé montre exactement le tableau que l'enfant remplit. Le
-   mode SAISIE, lui, ne se ramène pas à une seule méthode (repères mémorisés, ×10 ou ÷10
-   selon le sens) : il relèvera d'un texte rédigé, pas d'une résolution générée.
+   DEUX entrées par leçon, une par mode, parce que ce ne sont pas les mêmes méthodes.
 
-   L'exemple est FIXE et va de la GRANDE unité vers la petite : c'est le sens où les
-   colonnes intermédiaires sont vides, donc celui où se joue la seule vraie difficulté (le
-   0 qui tient un rang, cf. `explicationTransit` côté runner). Les colonnes hors des paires
-   étudiées sont marquées `transit`, comme dans l'exercice réel — même géométrie, mêmes
-   codes visuels. */
-function etayageTableau(
+   Mode TABLEAU (entrée la plus spécifique, elle gagne quand ce mode est actif) : la
+   méthode y est mécanisable (des rangs, un chiffre par case) et le déroulé montre
+   exactement le tableau que l'enfant remplit. L'exemple est FIXE et va de la GRANDE unité
+   vers la petite : c'est le sens où les colonnes intermédiaires sont vides, donc celui où
+   se joue la seule vraie difficulté (le 0 qui tient un rang, cf. `explicationTransit` côté
+   runner). Les colonnes hors des paires étudiées sont marquées `transit`, comme dans
+   l'exercice réel — même géométrie, mêmes codes visuels.
+
+   Mode SAISIE (entrée sans `mode`, donc servie partout ailleurs) : pas de tableau à
+   remplir, donc rien à dérouler ; c'est le texte rédigé annoncé par #490. Il fallait
+   l'écrire, et pas seulement le prévoir : `saisie` est le mode RECOMMANDÉ de ces trois
+   leçons, si bien que l'entrée « tableau » seule laissait sans panneau le mode où les
+   enfants travaillent le plus (constat de l'`auteur-tests-logique`). */
+function etayageConversion(
 	titre: string,
 	colonnes: { unite: string; nom: string; chiffres: string; transit?: boolean }[],
 	depart: string,
 	cible: string,
+	saisie: { titre: string; regle: string; etapes: string[] },
 ): NonNullable<LessonInput['etayage']> {
 	return [
 		{
@@ -427,6 +433,7 @@ function etayageTableau(
 				exemple: { moteur: 'conversion', spec: { colonnes, depart, cible } },
 			},
 		},
+		etayageRedige(saisie.titre, saisie.regle, saisie.etapes),
 	];
 }
 
@@ -467,7 +474,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 			conversionType,
 		),
 		// 3 km = 3 000 m : trois colonnes à remplir de 0, dont deux de transit.
-		etayage: etayageTableau(
+		etayage: etayageConversion(
 			'Le tableau de conversion des longueurs',
 			[
 				{ unite: 'km', nom: 'kilomètre', chiffres: '3' },
@@ -477,6 +484,15 @@ export const MESURE_LESSONS: LessonInput[] = [
 			],
 			'km',
 			'm',
+			{
+				titre: 'Convertir une longueur',
+				regle: 'Une grande unité contient plusieurs petites : il faut savoir combien.',
+				etapes: [
+					'Retiens les repères : 1 km = 1 000 m, 1 m = 100 cm, 1 cm = 10 mm.',
+					'Vers la PETITE unité, multiplie : 3 km, cela fait 3 × 1 000 = 3 000 m.',
+					'Vers la GRANDE unité, divise : 300 cm, cela fait 300 ÷ 100 = 3 m.',
+				],
+			},
 		),
 	},
 	{
@@ -505,7 +521,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 			conversionType,
 		),
 		// 2 kg = 2 000 g : mêmes trois colonnes vides, sur une autre grandeur.
-		etayage: etayageTableau(
+		etayage: etayageConversion(
 			'Le tableau de conversion des masses',
 			[
 				{ unite: 'kg', nom: 'kilogramme', chiffres: '2' },
@@ -515,6 +531,15 @@ export const MESURE_LESSONS: LessonInput[] = [
 			],
 			'kg',
 			'g',
+			{
+				titre: 'Convertir une masse',
+				regle: 'Une grande unité contient plusieurs petites : il faut savoir combien.',
+				etapes: [
+					'Retiens les repères : 1 kg = 1 000 g, et 1 g = 1 000 mg.',
+					'Vers la PETITE unité, multiplie : 2 kg, cela fait 2 × 1 000 = 2 000 g.',
+					'Vers la GRANDE unité, divise : 3 000 g, cela fait 3 000 ÷ 1 000 = 3 kg.',
+				],
+			},
 		),
 	},
 	{
@@ -547,7 +572,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 		// 5 L = 500 cL : deux colonnes vides, toutes deux ÉTUDIÉES (aucune de transit dans
 		// cet empan) — l'exemple montre donc le 0 de rang sans le mêler au code « unité pas
 		// encore vue en classe ».
-		etayage: etayageTableau(
+		etayage: etayageConversion(
 			'Le tableau de conversion des contenances',
 			[
 				{ unite: 'L', nom: 'litre', chiffres: '5' },
@@ -556,6 +581,15 @@ export const MESURE_LESSONS: LessonInput[] = [
 			],
 			'L',
 			'cL',
+			{
+				titre: 'Convertir une contenance',
+				regle: 'Une grande unité contient plusieurs petites : il faut savoir combien.',
+				etapes: [
+					'Retiens les repères : 1 L = 10 dL, 1 L = 100 cL, 1 L = 1 000 mL.',
+					'Vers la PETITE unité, multiplie : 5 L, cela fait 5 × 100 = 500 cL.',
+					'Vers la GRANDE unité, divise : 300 cL, cela fait 300 ÷ 100 = 3 L.',
+				],
+			},
 		),
 	},
 	{
@@ -587,5 +621,20 @@ export const MESURE_LESSONS: LessonInput[] = [
 			},
 			conversionType,
 		),
+		// La seule leçon de conversion SANS tableau (cf. `etayageConversion` plus haut) : les
+		// durées ne sont pas décimales, donc il n'y a pas de colonne à décaler. Son étayage
+		// est donc rédigé, et il dit d'abord ce qui la distingue de ses trois voisines —
+		// un enfant qui applique le tableau des longueurs aux heures trouve 1 h = 100 min.
+		etayage: [
+			etayageRedige(
+				'Convertir des durées',
+				'Les durées ne se comptent pas par 10 : 1 h = 60 min, 1 jour = 24 h, 1 an = 12 mois.',
+				[
+					'Repère les deux unités et le nombre qui les relie (des heures en minutes : 60).',
+					'Vers la PETITE unité, on multiplie : 4 h = 4 × 60 = 240 min.',
+					'Vers la GRANDE unité, on divise : 180 min = 180 ÷ 60 = 3 h.',
+				],
+			),
+		],
 	},
 ];

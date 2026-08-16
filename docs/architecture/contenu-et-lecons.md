@@ -39,7 +39,7 @@ réglage part de la constante et surcharge par diffusion :
 La règle maths / français est historique ; l'unifier serait une décision UX distincte.
 Le contrat des deux constantes est verrouillé par `tests/data-shared.test.ts`.
 
-**Type source d'une leçon** — **`LessonInput { id; label; exerciseType }`** : forme
+**Type source d'une leçon** — **`LessonInput { id; label; exerciseType; etayage? }`** : forme
 minimale d'un descripteur de leçon dans `src/data/`, **avant** que `core/catalog.ts`
 ne la mappe en `LessonDef` complet — mapping fait, pour la plupart des familles, par
 la fabrique **`toLessonDefs(inputs, opts)`** (#373, cf. [Logique pure](core.md)). Les
@@ -47,6 +47,8 @@ listes `XXX_LESSONS` sont typées `LessonInput[]`. Un fichier qui porte des cham
 propres (rubrique, niveaux, exclusion du sprint) **étend** ce type plutôt que de le
 redéclarer : `extends LessonInput`. `ConjLessonDesc` (`conjugaison.ts`, sans
 `exerciseType`) reste hors de ce type — et hors de `toLessonDefs`, en conséquence.
+`etayage?` (#490) porte le contenu qui explique la NOTION et remonte tel quel en
+`LessonDef` ; absent = pas de panneau pour cette leçon (cf. « Étayage de la notion »).
 
 ### `src/data/maths/_shared.ts` (#347, #372)
 
@@ -846,20 +848,36 @@ partiels pour la multiplication). La méthode elle-même n'est pas rédigée ici
 **calculée** colonne par colonne par `core/etayage-posee.ts` à partir de l'exemple (ou
 de l'opération que l'enfant vient de rater).
 
-**Les autres leçons qui en portent un**, avec le moteur qui les déroule :
+**Les autres leçons qui portent un déroulé MÉCANISÉ**, avec le moteur qui les anime :
 
 | Leçons | Moteur | Ce que l'exemple montre |
 | --- | --- | --- |
-| `mes-longueurs`, `mes-masses`, `mes-contenances` (mode `tableau` **seulement**) | `conversion` | une conversion grande → petite unité, celle où les colonnes intermédiaires sont vides (le 0 qui tient un rang) |
+| `mes-longueurs`, `mes-masses`, `mes-contenances` (mode `tableau` ; le mode `saisie` a son **texte rédigé**, cf. plus bas) | `conversion` | une conversion grande → petite unité, celle où les colonnes intermédiaires sont vides (le 0 qui tient un rang) |
 | `num-droite-entiers` (une entrée **par niveau**), `num-droite-decimaux` | `droite` | une fenêtre dont un cran ne vaut pas 1 — au CM1 l'échelle n'est jamais l'unité, d'où l'entrée dédiée |
 | `num-valeur-position`, `num-decompose-100/1000/10000` (deux entrées : CE2 et CM1), `num-decompose-multiplicative` | `position` | le geste « combien EN TOUT » opposé au « chiffre des », et le zéro intercalaire |
 | les 52 `fr-conj-<verbe>-<temps>`, **moins les 11 présents irréguliers** | `conjugaison` | l'assemblage en deux morceaux, dérivé du corpus verbe par verbe (aucun texte écrit à la main) |
 | les 6 `math-prob-*` | `probleme` | rien de canonique : une règle de STRUCTURE seulement, le déroulé se faisant sur le problème que l'enfant vient de rater |
 
-Les absences sont voulues : le mode `saisie` des conversions (pas de méthode unique),
-`mes-durees` (base 60, pas de tableau décimal), les présents irréguliers, les divisions
-avec reste et les durées (leur calcul ne s'écrit pas en une opération). Sans entrée, il
-n'y a pas de panneau — jamais de repli sur l'exemple d'une leçon voisine.
+**Les 70 leçons de maths qui n'avaient ni l'un ni l'autre portent désormais un panneau
+RÉDIGÉ** (#490 PR 3, `etayageRedige`, cf. [Logique pure](core.md)) : un titre, une
+`regle` en une phrase, ≤ 3 `etapes` — et aucun exemple à dérouler. C'est le cas,
+notamment, des trois familles longtemps citées ici comme dépourvues de panneau :
+`mes-durees` (base 60, pas de tableau décimal), les divisions avec reste
+(`math-div-reste`, `math-division-euclidienne`) et la durée écoulée
+(`mes-duree-ecoulee`) ont chacune la leur — simplement sans déroulé mécanisé, leur
+calcul ne s'écrivant pas en une opération générique. **Plus aucune leçon de maths n'est
+sans panneau.**
+
+Les trois conversions à tableau portent **deux** entrées, une par mode : le déroulé en
+mode `tableau`, un texte rédigé partout ailleurs (`etayageConversion`, `mesures.ts`).
+Sans cette seconde entrée, le mode **conseillé** de ces leçons — `saisie` — n'aurait eu
+aucun panneau, soit six situations (3 leçons × 2 niveaux) muettes là où les enfants
+travaillent le plus. Ce qui reste sans déroulé mécanisé, ce sont les présents
+irréguliers. Le **français**, lui, reste sans aucun
+contenu d'étayage rédigé en dehors de la conjugaison régulière : grammaire,
+orthographe, vocabulaire n'ont pas encore de panneau — chantier séparé et déjà
+planifié (#490 PR 4), pas un oubli. Sans entrée, il n'y a pas de panneau — jamais de
+repli sur l'exemple d'une leçon voisine.
 
 ### Calcul mental
 

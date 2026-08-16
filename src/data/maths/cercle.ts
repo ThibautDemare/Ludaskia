@@ -20,7 +20,7 @@
    déploiement du cursus séparé).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { calibrated } from '../../core/level-combinators';
 import { renderFigure } from '../../core/figures';
@@ -168,5 +168,19 @@ export const CERCLE_LESSONS: LessonInput[] = [
 			},
 			cercleType,
 		),
+		// Les deux sens sont donnés (rayon → diamètre ET diamètre → rayon) parce que la
+		// leçon pose les deux questions : ne montrer que le doublement ferait doubler aussi
+		// dans l'autre sens, qui est l'erreur la plus fréquente ici.
+		etayage: [
+			etayageRedige(
+				'Le rayon et le diamètre',
+				'Le diamètre traverse le cercle en passant par le centre : il vaut deux rayons.',
+				[
+					"Regarde ce que l'énoncé donne : le rayon ou le diamètre ?",
+					'Du rayon au diamètre, multiplie par 2 : un rayon de 6 cm donne un diamètre de 12 cm.',
+					'Du diamètre au rayon, prends la moitié : un diamètre de 28 cm donne un rayon de 14 cm.',
+				],
+			),
+		],
 	},
 ];

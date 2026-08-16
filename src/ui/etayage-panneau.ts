@@ -61,8 +61,14 @@ export const ETAYAGE_LABEL = 'Comprendre la méthode';
 const ETAYAGE_ICONE = 'brain';
 
 /* Phrase de la mascotte : elle annonce un déroulé À DEUX, pas une démonstration à
-   regarder (« Je te montre, regarde bien ! » est déjà la phrase de l'aide au geste). */
-const MASCOTTE_LIGNE = 'On y va ensemble, étape par étape.';
+   regarder (« Je te montre, regarde bien ! » est déjà la phrase de l'aide au geste).
+   Deux formulations, parce qu'il y a deux panneaux : « étape par étape » promet un
+   pas-à-pas et des boutons qui n'existent QUE si un moteur déroule l'exemple. Sur une
+   notion au contenu rédigé (la majorité depuis #490 PR 3), le panneau tient sur un seul
+   écran ; annoncer une navigation absente ferait chercher un bouton Suivant introuvable
+   (constat du `relecteur-accessibilite`). */
+const MASCOTTE_DEROULE = 'On y va ensemble, étape par étape.';
+const MASCOTTE_REDIGE = 'Voilà comment on fait, tranquillement.';
 
 /* Sorties du panneau. Jamais « J'ai compris ! » (celle de l'aide au geste) : ce serait
    faire certifier à l'enfant une maîtrise qu'une seule explication ne donne pas. Et
@@ -127,9 +133,9 @@ function panneauHTML(
 	sortie: string,
 ): string {
 	return `
-		<div class="modal aide-modal etay-modal" role="dialog" aria-modal="true" aria-labelledby="etayTitle" aria-describedby="etayRegle etayPhrase">
+		<div class="modal aide-modal etay-modal" role="dialog" aria-modal="true" aria-labelledby="etayTitle" aria-describedby="etayRegle etayEtapes etayPhrase">
 			<button type="button" class="modal-close aide-close" aria-label="Fermer l'explication">${icon('x')}</button>
-			${mascotteBulleHTML(d.avantSerie ? 'Un petit rappel avant de commencer.' : MASCOTTE_LIGNE)}
+			${mascotteBulleHTML(d.avantSerie ? 'Un petit rappel avant de commencer.' : pas.length ? MASCOTTE_DEROULE : MASCOTTE_REDIGE)}
 			<h2 class="modal-title aide-titre" id="etayTitle">${escapeHTML(titre)}</h2>
 			${contenu.regle ? `<p class="etay-regle" id="etayRegle">${escapeHTML(contenu.regle)}</p>` : ''}
 			${
@@ -212,6 +218,16 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 		initialFocus: suivant,
 		restoreFocusTo: d.restoreFocusTo,
 	});
+	// ⚠ Point ouvert (constat du `relecteur-accessibilite`) : le focus initial va sur le
+	// bouton de sortie, tout en BAS de la carte, et le navigateur fait défiler la modale
+	// jusqu'à lui — un panneau plus haut que l'écran s'ouvre donc sur son dernier bouton,
+	// le texte déjà passé. Anodin tant que le panneau tenait en trois lignes, devenu le cas
+	// courant avec la règle et les étapes rédigées. Remonter le `scrollTop` après coup a été
+	// essayé et ÉCARTÉ : cela entre en concurrence avec le défilement que le navigateur
+	// déclenche lui-même, au point de rendre la croix de fermeture non cliquable (échec
+	// reproductible de `e2e/etayage-redige.spec.ts`). Le vrai correctif est un
+	// `focus({ preventScroll: true })` dans `activateModal` — donc dans du code partagé par
+	// TOUTES les modales de l'appli, à traiter à part.
 
 	function fermer(): void {
 		stopTts();
@@ -246,13 +262,17 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 	}
 
 	let index = 0;
-	// Repli de lecture quand il n'y a pas de déroulé : l'idée-force. (Capturée ici : TS ne
-	// garde pas l'affinement de `contenu` dans une fonction hoistée.)
-	const regle = contenu.regle;
+	// Ce qu'on lit quand il n'y a PAS de déroulé : l'idée-force ET les étapes rédigées.
+	// Les étapes ne sont pas un supplément — pour une notion sans moteur (la quasi-totalité
+	// du contenu rédigé, #490 PR 3/4), elles SONT la méthode. Les taire ferait entendre
+	// « le périmètre, c'est le tour » et rien de la façon de le calculer, à l'enfant qui
+	// écoute justement parce qu'il lit mal. (Capturées ici : TS ne garde pas l'affinement
+	// de `contenu` dans une fonction hoistée.)
+	const sansDeroule = [contenu.regle, ...(contenu.etapes ?? [])].filter(Boolean).join(' ');
 	function lire(): void {
 		const texte = [
 			overlay.querySelector('#etayTitle')?.textContent,
-			pas.length ? pas[index].phrase : regle,
+			pas.length ? pas[index].phrase : sansDeroule,
 		]
 			.filter(Boolean)
 			.join(' ');
@@ -416,12 +436,16 @@ function compteurTexte(i: number, total: number): string {
 	return `Étape ${i + 1} sur ${total}`;
 }
 
-/* Étapes RÉDIGÉES d'une notion qui n'a pas d'exemple à dérouler (à venir : les leçons
-   sans moteur mécanisable). Même rendu que les aides au geste : l'enfant y retrouve une
-   présentation qu'il connaît. */
+/* Étapes RÉDIGÉES d'une notion qui n'a pas de moteur pour la dérouler — le cas de la
+   plupart des leçons depuis #490 PR 3. Même rendu que les aides au geste : l'enfant y
+   retrouve une présentation qu'il connaît.
+
+   `id` porté pour l'`aria-describedby` du dialogue : sans lui, un lecteur d'écran
+   annoncerait le titre et la règle à l'ouverture, et tairait la MÉTHODE — la liste reste
+   lisible en navigant, mais il faut savoir qu'elle est là pour aller la chercher. */
 function etapesFixesHTML(contenu: EtayageContenu): string {
 	if (!contenu.etapes?.length) return '';
-	return `<ol class="aide-etapes">${contenu.etapes.map((e) => `<li>${escapeHTML(e)}</li>`).join('')}</ol>`;
+	return `<ol class="aide-etapes" id="etayEtapes">${contenu.etapes.map((e) => `<li>${escapeHTML(e)}</li>`).join('')}</ol>`;
 }
 
 /* Renvoi à la leçon prérequise : le seul contenu entièrement MÉCANISABLE (l'ordre

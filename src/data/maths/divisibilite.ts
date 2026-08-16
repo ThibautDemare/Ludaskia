@@ -30,7 +30,7 @@ import type { Exercise, ExerciseType, GenerateOpts, ModeOption } from '../../cor
 import { checkAnswer } from '../../core/exercise';
 import type { SchoolLevel } from '../../core/catalog';
 import { bankByLevel, pickFromBank } from '../../core/level-combinators';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { formatNombre } from '../../core/nombres';
 
@@ -186,6 +186,19 @@ export const DIVISIBILITE_LESSONS: DivisibiliteLessonDef[] = [
 		id: 'math-divisibilite-2-5-10',
 		label: 'Divisible par 2, 5 et 10',
 		exerciseType: divisibiliteType(),
+		// Les trois critères tiennent en trois pas et ne se démontrent pas au CM1 : on les
+		// donne comme des règles à connaître, pas comme un raisonnement à reconstruire.
+		etayage: [
+			etayageRedige(
+				'Divisible par 2, par 5, par 10',
+				'Il suffit de regarder le DERNIER chiffre : lui seul décide, même si le nombre est très grand.',
+				[
+					'Par 2 : le dernier chiffre est 0, 2, 4, 6 ou 8 (le nombre est pair).',
+					'Par 5 : le dernier chiffre est 0 ou 5.',
+					'Par 10 : le dernier chiffre est 0.',
+				],
+			),
+		],
 		// QCM oui/non devinable à 50 % : sous la pression du chrono, le sprint
 		// récompenserait le spam → exclue du sprint (comme les QCM homophones/verbes).
 		excludeFromSprint: true,

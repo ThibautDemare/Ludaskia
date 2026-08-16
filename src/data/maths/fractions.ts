@@ -53,7 +53,7 @@
    pour le TTS (#42) — on ne dira jamais « deux sur quatre ».
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { checkAnswer } from '../../core/exercise';
 import { checkNumerique } from '../../core/check-helpers';
@@ -607,7 +607,27 @@ function cm1Only(base: ExerciseType): ExerciseType {
 
 export const FRACTIONS_LESSONS: LessonInput[] = [
 	// Leçon 1 (sens) : NON calibrée — purement visuelle, barre ≤ 8 parts (cf. DENS_SENS).
-	{ id: 'num-frac-sens', label: 'Lire une fraction', exerciseType: qcmType(genSens) },
+	// Vocabulaire de TOUTE la catégorie : « le nombre du bas / du haut », jamais
+	// « dénominateur / numérateur ». Ces deux mots n'apparaissent nulle part dans l'appli
+	// côté enfant (ils ne vivent que dans les commentaires de code), et les introduire ICI —
+	// dans le panneau qu'on lit justement parce qu'on n'a pas compris — ajouterait une
+	// difficulté de langue à une difficulté de notion.
+	{
+		id: 'num-frac-sens',
+		label: 'Lire une fraction',
+		exerciseType: qcmType(genSens),
+		etayage: [
+			etayageRedige(
+				'Lire une fraction',
+				'Le nombre du bas dit en combien de parts ÉGALES on a partagé ; celui du haut, combien de parts on a prises.',
+				[
+					'Compte toutes les parts de la figure : ce nombre va en bas.',
+					'Compte seulement les parts coloriées : ce nombre va en haut.',
+					'3 parts coloriées sur 4 parts en tout, ça se lit 3/4.',
+				],
+			),
+		],
+	},
 	{
 		id: 'num-frac-collection',
 		label: "Fraction d'une collection",
@@ -615,6 +635,20 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 			{ ce2: COLLECTION_CE2, cm1: COLLECTION_CM1 },
 			(config) => saisieNumType(() => genCollection(config)),
 		),
+		// L'ordre des deux opérations est la difficulté entière : diviser PUIS multiplier.
+		// L'inverse (2 × 30 = 60, puis 60 ÷ 5) donne le bon résultat mais ne se raconte plus
+		// en objets, et il tombe en panne dès que le partage ne se voit plus sur la figure.
+		etayage: [
+			etayageRedige(
+				"La fraction d'une collection",
+				"Prendre 2/5 d'une collection, c'est la partager en 5 parts égales et en prendre 2.",
+				[
+					'Partage : divise le total par le nombre du bas (30 ÷ 5 = 6).',
+					'Une part vaut donc 6 objets.',
+					'Prends autant de parts que le nombre du haut : 2 × 6 = 12.',
+				],
+			),
+		],
 	},
 	{
 		id: 'num-frac-bande',
@@ -622,12 +656,52 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		exerciseType: calibrated<number[]>({ ce2: DENS_BANDE_CE2, cm1: DENS_BANDE_CM1 }, (dens) =>
 			qcmType(() => genBande(dens)),
 		),
+		// « On compte les morceaux, pas les traits » : sur une bande graduée, l'enfant compte
+		// les graduations (il en trouve une de trop ou une de moins) au lieu des intervalles.
+		// C'est la même erreur que sur la droite graduée, et elle mérite son pas à elle.
+		etayage: [
+			etayageRedige(
+				'Une fraction sur une bande',
+				'La bande entière vaut 1 ; le nombre du bas, ce sont les morceaux égaux qui la composent.',
+				[
+					'Compte les morceaux de toute la bande : ce nombre va en bas.',
+					"Compte les morceaux depuis le début jusqu'à la marque : ce nombre va en haut.",
+					'Compte bien les MORCEAUX, pas les traits qui les séparent.',
+				],
+			),
+		],
 	},
-	{ id: 'num-frac-egalites', label: 'Fractions égales', exerciseType: qcmType(genEgalites) },
+	{
+		id: 'num-frac-egalites',
+		label: 'Fractions égales',
+		exerciseType: qcmType(genEgalites),
+		etayage: [
+			etayageRedige(
+				'Deux fractions qui valent pareil',
+				'Deux fractions écrites différemment peuvent couvrir exactement la même longueur.',
+				[
+					'Regarde la LONGUEUR coloriée de chaque barre, pas le nombre de morceaux.',
+					"Si les deux parties coloriées s'arrêtent au même endroit, les fractions sont égales.",
+					'1/2 = 2/4 = 3/6 : deux fois plus de morceaux, mais deux fois plus de parts prises.',
+				],
+			),
+		],
+	},
 	{
 		id: 'num-frac-comparaison',
 		label: 'Comparer des fractions',
 		exerciseType: qcmType(genComparaison),
+		etayage: [
+			etayageRedige(
+				'Comparer deux fractions',
+				'Plus on partage en morceaux, plus les morceaux sont petits : 1/8 est plus petit que 1/3.',
+				[
+					'Même nombre du bas ? Le plus grand nombre du haut gagne : 3/6 est plus grand que 1/6.',
+					'Même nombre du haut ? Le plus PETIT nombre du bas gagne : 2/3 est plus grand que 2/5.',
+					'Dans les autres cas, compare les surfaces coloriées des deux figures.',
+				],
+			),
+		],
 	},
 	{
 		id: 'num-frac-addition',
@@ -635,21 +709,68 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		exerciseType: calibrated<number[]>({ ce2: DENS_SOMME_CE2, cm1: DENS_SOMME_CM1 }, (dens) =>
 			qcmType(() => genSomme(dens)),
 		),
+		// Le distracteur du QCM est toujours la somme des DEUX lignes (2/8 + 5/8 = 7/16) :
+		// le 3ᵉ pas dit donc explicitement que le nombre du bas ne bouge pas, au lieu de se
+		// contenter de donner le résultat.
+		etayage: [
+			etayageRedige(
+				'Additionner deux fractions',
+				'Quand les morceaux sont de la même taille, on additionne seulement combien on en prend.',
+				[
+					'Vérifie que le nombre du bas est le même des deux côtés.',
+					'Additionne les nombres du haut : 2 + 5 = 7.',
+					'Garde le même nombre du bas : 2/8 + 5/8 = 7/8, jamais 7/16.',
+				],
+			),
+		],
 	},
 	// ---- Fractions comme NOMBRES (#249) : CM1-only (fractions ≥ 1, hors programme CE2). ----
 	{
 		id: 'num-frac-superieure',
 		label: 'Une fraction plus grande que 1',
 		exerciseType: cm1Only(qcmType(genSuperieure)),
+		etayage: [
+			etayageRedige(
+				'Une fraction plus grande que 1',
+				"Quand on prend plus de parts qu'il n'en faut pour un entier, la fraction dépasse 1.",
+				[
+					'Regarde combien de parts fait UN entier : 8 huitièmes font 1.',
+					'Compte les parts coloriées de toutes les figures, pas seulement de la dernière.',
+					'2 figures entières et 5 parts : 8 + 8 + 5 = 21 parts, donc 21/8.',
+				],
+			),
+		],
 	},
 	{
 		id: 'num-frac-decomposer',
 		label: 'Je décompose une fraction',
 		exerciseType: cm1Only(saisieNumType(genDecomposer)),
+		etayage: [
+			etayageRedige(
+				'Décomposer une fraction',
+				"On sort les entiers cachés dans la fraction : 15 dixièmes, c'est 1 entier et 5 dixièmes.",
+				[
+					'Le nombre du bas dit combien de parts font 1 entier : ici 10.',
+					'Cherche combien de fois il tient dans le nombre du haut : 15 = 10 + 5, donc 1 entier.',
+					"Écris l'entier, puis les parts qui restent : 15/10 = 1 + 5/10.",
+				],
+			),
+		],
 	},
 	{
 		id: 'num-frac-encadrer',
 		label: 'Encadrer une fraction',
 		exerciseType: cm1Only(qcmType(genEncadrer)),
+		etayage: [
+			etayageRedige(
+				'Encadrer une fraction entre deux entiers',
+				'Il faut savoir combien de parts font 1 entier : 3 tiers font 1, 6 tiers font 2.',
+				[
+					'Regarde le nombre du bas : il dit combien de parts valent 1 entier.',
+					'Compte de là en là : 3/3 = 1, puis 6/3 = 2.',
+					'5/3 est entre 3/3 et 6/3, donc entre 1 et 2.',
+				],
+			),
+		],
 	},
 ];

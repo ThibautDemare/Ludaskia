@@ -99,7 +99,10 @@
 		<div class="toolbar-scrim" id="toolbarScrim" hidden></div>
 
 		<!-- Écran d'accueil (interactif) -->
-		<div class="home screen-only home-wide" id="home">
+		<!-- `tabindex="-1"` : cible de report du focus quand l'encart « Pour les parents »
+		     se ferme (#306). Sans lui, le focus retomberait sur <body> et un utilisateur
+		     clavier repartirait du haut de la page. Non atteignable au Tab. -->
+		<div class="home screen-only home-wide" id="home" tabindex="-1">
 			<!-- Titre de page sémantique (#277) : l'accueil n'a pas de titre VISUEL (juste
 			     le logo, aria-hidden) → un <h1> réservé au lecteur d'écran identifie la page. -->
 			<h1 class="sr-only">Accueil</h1>

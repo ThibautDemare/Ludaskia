@@ -378,7 +378,11 @@ export function exportProfiles(uuids: string[]) {
 	const m = loadProfilesMeta();
 	if (!m) return null;
 	const list = m.list.filter((p) => uuids.includes(p.uuid));
-	enregistrerExport(Date.now());
+	// Seulement si l'export couvre TOUS les profils. Les deux appelants actuels le font,
+	// mais un futur export mono-profil remettrait sinon à zéro le risque de TOUTE la
+	// fratrie alors qu'un seul enfant serait sauvegardé — un faux sentiment de sécurité
+	// qui ne se remarquerait qu'au moment où les données manquent.
+	if (m.list.length > 0 && list.length === m.list.length) enregistrerExport(Date.now());
 	return {
 		app: EXPORT_APP,
 		version: 2,

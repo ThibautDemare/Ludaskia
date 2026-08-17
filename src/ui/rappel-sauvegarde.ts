@@ -117,10 +117,20 @@ function marquerFermeeSession(): void {
 	}
 }
 
+/* Retire l'encart. Les trois chemins de fermeture (le bouton, un export réussi,
+   une installation détectée) passent par ici, et tous suppriment du DOM l'élément qui
+   a le focus : sans rien faire, celui-ci retomberait sur `<body>` et l'utilisateur
+   clavier ou lecteur d'écran repartirait du début de la page au `Tab` suivant. On le
+   reporte donc sur l'accueil — mais SEULEMENT s'il était dans l'encart, pour ne pas
+   voler le focus à quelqu'un qui était ailleurs. */
 function masquer(): void {
-	document.getElementById(ID)?.remove();
+	const el = document.getElementById(ID);
+	const avaitFocus = !!el && el.contains(document.activeElement);
+	el?.remove();
+	const home = document.getElementById('home');
 	// La marge haute de l'accueil est rendue au conteneur (cf. la feuille de style).
-	document.getElementById('home')?.classList.remove('home-rappel');
+	home?.classList.remove('home-rappel');
+	if (avaitFocus) home?.focus();
 }
 
 /* Export EN UN GESTE, et TOUJOURS tous les profils. On réutilise exactement le
@@ -152,16 +162,25 @@ function installer(): void {
 function gabarit(installerVisible: boolean): string {
 	const actions = [
 		installerVisible
-			? `<button type="button" class="rappel-cta" data-act="installer">Installer l'application</button>`
+			? `<button type="button" class="rappel-cta" data-act="installer">Installer l'application<span class="sr-only"> (peut ouvrir un nouvel onglet)</span></button>`
 			: '',
-		`<button type="button" class="rappel-cta" data-act="exporter">Télécharger la sauvegarde (tous les profils)</button>`,
+		// « (tous les profils) » est obligatoire : sans lui, un adulte croirait avoir
+		// sauvegardé toute la famille alors qu'il n'a qu'un enfant dans son fichier.
+		// Le verbe est court pour que les deux actions tiennent sur une seule ligne
+		// sur mobile — c'est ce qui fait la différence entre un bandeau fin et une
+		// pile de deux boutons.
+		`<button type="button" class="rappel-cta" data-act="exporter">Sauvegarder (tous les profils)</button>`,
 	]
 		.filter(Boolean)
 		.join('');
-	// Le texte reste au CONSTAT, sans dramatisation ni décompte, et court : le
-	// bandeau doit rester fin (une ligne ou deux sur mobile). Le « pourquoi » complet
-	// est dans l'espace encadrants et le guide, pas sur l'écran de l'enfant.
-	const texte = 'La progression vit dans ce navigateur : une copie la met à l’abri.';
+	// CONSTAT + option, sans dramatisation ni décompte, et court (le bandeau doit rester
+	// fin). Écrit pour l'adulte, mais relu du point de vue de l'enfant qui passe dessus :
+	// pas de champ lexical du danger — ni « à l'abri » (on ne met à l'abri que de quelque
+	// chose, et un enfant anxieux cherche alors la menace), ni « perdre », ni « risque ».
+	// « Sauvegarde » plutôt que « copie » pour parler comme le bouton et comme le reste
+	// de l'application. Le « pourquoi » complet est dans l'espace encadrants et le guide.
+	const texte =
+		'La progression est enregistrée dans ce navigateur. Une sauvegarde permet de la garder ailleurs.';
 	return `
     <p class="rappel-etiquette">${icon('export')} Pour les parents</p>
     <p class="rappel-texte">${texte}</p>
@@ -212,7 +231,12 @@ export function rafraichirRappelSauvegarde(): void {
 		else if (act === 'installer') installer();
 		else if (act === 'fermer') {
 			marquerFermeeSession();
-			ecrireEtatRappel(reporter(lireEtatRappel(Date.now()), Date.now()));
+			const t = Date.now();
+			const actuel = lireEtatRappel(t);
+			// Un export a pu avoir lieu dans un AUTRE onglet depuis l'affichage : cet
+			// encart-ci ne parle alors plus de rien, et le fermer ne doit pas défaire la
+			// remise à zéro que l'export vient d'obtenir.
+			if (actuel.dernierExport === etat.dernierExport) ecrireEtatRappel(reporter(actuel, t));
 			masquer();
 		}
 	});

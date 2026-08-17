@@ -877,8 +877,8 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 						// suivie : `blocages` vient du récap scopé, il est donc vide pour elle par
 						// construction, et son état est un compte-rendu factuel, jamais un cran.
 						blocages: blocages.get(e.id),
-						etat: e.etat?.kind === 'acquisition' ? e.etat.niveau : undefined,
-						essai: e.etat?.kind === 'essai' ? e.etat : undefined,
+						etat: e.etat.kind === 'acquisition' ? e.etat.niveau : undefined,
+						essai: e.etat.kind === 'essai' ? e.etat : undefined,
 						origine: e.origine,
 					}),
 				)

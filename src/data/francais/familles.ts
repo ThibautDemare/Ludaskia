@@ -1703,11 +1703,12 @@ export interface FamillesLessonDef extends LessonInput {
    le mot de base, mesurer ce que l'ajout change), qui est ce qui manque à l'enfant
    bloqué — il connaît le mot de base, il ne pense pas à l'isoler.
 
-   ⚠ Les CATÉGORIES de sens citées en exemple sont celles de la banque que la leçon sert
-   VRAIMENT, pas celles du français en général : au CM1 (`PREFIXES_CM1`/`SUFFIXES_CM1`)
-   ce sont le lieu, la distance, le nombre, l'action, l'état — la répétition (« re- ») et
-   la négation, elles, ne vivent que dans la banque CE2. Citer les mauvaises enverrait
-   l'enfant chercher un sens qui ne sortira jamais dans cette leçon. */
+   ⚠ Les CATÉGORIES de sens citées en exemple viennent de la banque que la leçon sert
+   VRAIMENT, pas du français en général : la répétition (« re- ») ne vit que dans la banque
+   CE2, tandis que le CM1 (`PREFIXES_CM1`/`SUFFIXES_CM1`) tourne autour du lieu et de la
+   distance, du nombre, de l'opposition et de l'action. La liste du panneau ÉCHANTILLONNE
+   ces catégories (d'où les points de suspension), elle ne les épuise pas — mais citer
+   celles de l'autre niveau enverrait l'enfant chercher un sens qui ne sortira jamais. */
 const ETAYAGE_FAMILLES_CE2 = etayageRedige(
 	'Familles, préfixes et suffixes',
 	"Les mots d'une même famille partagent un morceau commun, qui porte leur sens.",
@@ -1743,7 +1744,7 @@ const ETAYAGE_AFFIXES_CM1 = etayageRedige(
 	'Un préfixe se colle devant le mot, un suffixe derrière : chacun en change le sens.',
 	[
 		'Retrouve le mot de base, sans le morceau ajouté.',
-		'Demande-toi ce que ce morceau apporte : un lieu, une distance, un nombre, une action, un état…',
+		'Demande-toi ce que ce morceau apporte : un lieu, un nombre, une opposition, une action…',
 		"Choisis le sens qui garde l'idée du mot de base.",
 	],
 );

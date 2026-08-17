@@ -40,7 +40,7 @@ import {
 import { recompensesEntre } from '../core/unlocks';
 import { announceRewards, showLevelUp } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
-import { dicteeDisponible, dicter } from './tts';
+import { dicteeDisponible, dicter, raisonSansVoix } from './tts';
 import { icon, iconOr } from './icon';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 import { capterErreur } from './erreur-capture';
@@ -110,10 +110,11 @@ function phraseVerbe(word: MotOrtho): string {
 }
 
 /* Écoute d'une cible : phrase complète pour un verbe (lève l'ambiguïté), sinon
-   « mot. Comme dans : … » pour un mot classique. */
-function ecouterCible(word: MotOrtho): void {
-	if (word.contexte) dicter(phraseVerbe(word));
-	else dicter(word.mot, word.commeDans);
+   « mot. Comme dans : … » pour un mot classique. `onErreur` remonte le silence
+   (voix absente ou énoncé en échec) à l'appelant — cf. `dicteeMuette`. */
+function ecouterCible(word: MotOrtho, onErreur?: () => void): void {
+	if (word.contexte) dicter(phraseVerbe(word), undefined, onErreur);
+	else dicter(word.mot, word.commeDans, onErreur);
 }
 
 function ecouterLabel(word: MotOrtho): string {
@@ -275,8 +276,51 @@ function prochainNonMaitrise(): MotOrtho | null {
 	return null;
 }
 
+/* La voix peut DISPARAÎTRE en cours de séance : il suffit de passer hors ligne sur
+   un appareil dont la seule voix française est distante (#306 §5). On revérifie donc
+   avant chaque activité — et jamais dans l'autre sens : une séance ne se remet pas à
+   exiger la dictée en cours de route, sinon l'étoile s'éloignerait sous les pieds de
+   l'enfant au gré du réseau. */
+function reviserDisponibiliteDictee(): void {
+	if (dispoDictee && !dicteeDisponible()) dispoDictee = false;
+}
+
+/* Écran de sortie quand la dictée ne peut pas parler. Pour une dictée, le TTS n'est
+   pas un confort, c'est l'exercice : sans voix la leçon n'est pas dégradée, elle est
+   inutilisable. On ne laisse donc pas l'enfant devant un champ muet — il saisirait
+   n'importe quoi, et ces réponses partiraient dans le journal de l'espace encadrant
+   comme autant de fautes d'orthographe qui n'en sont pas (#391). Le message reprend
+   le patron de l'espace encadrant plutôt que d'en inventer un. */
+function renderDicteeMuette(): void {
+	const retour = retourOrtho("Retour à l'orthographe", 'Retour au programme');
+	const raison = raisonSansVoix();
+	const explication =
+		raison === 'horsLigne'
+			? "Lecture vocale indisponible sans connexion sur cet appareil (sa voix française a besoin d'Internet)."
+			: 'Lecture vocale indisponible sur cet appareil (aucune voix française).';
+	sheets().innerHTML = `
+    <div class="page ortho-run ortho-bilan">
+      <h2>La dictée a besoin du son</h2>
+      <p>${icon('speaker')} ${explication}</p>
+      <p>Tu peux travailler tes mots autrement : en les regardant, ou avec les lettres à remettre dans l'ordre.</p>
+      <div class="ortho-pause-actions">
+        <button class="btn-primary" id="btnAutrementDictee">Travailler autrement</button>
+        <button class="atelier-undo" id="btnStopDictee">${retour.label}</button>
+      </div>
+    </div>`;
+	const b = sheets().querySelector('#btnAutrementDictee') as HTMLButtonElement;
+	// `dispoDictee` est déjà retombé à false : le parcours proposera un autre mode.
+	b.addEventListener('click', () => {
+		actes = Math.max(0, actes - 1); // l'activité muette ne compte pas dans la séance
+		renderNext();
+	});
+	sheets().querySelector('#btnStopDictee')!.addEventListener('click', retour.aller);
+	b.focus();
+}
+
 function renderNext(): void {
 	cleanupMotCacheResize(); // on quitte un éventuel mot affiché : plus rien à retracer
+	reviserDisponibiliteDictee();
 	const word = prochainNonMaitrise();
 	if (!word) {
 		if (revisionRun) renderRevisionFin();
@@ -290,6 +334,12 @@ function renderNext(): void {
 	actes++;
 	// Mode ciblé : on impose ce mode ; sinon le parcours choisit l'activité due.
 	const act = seanceMode ?? prochaineActivite(word, dispoDictee);
+	// Le parcours complet a déjà écarté la dictée si elle est muette (`dispoDictee`) ;
+	// une séance CIBLÉE sur la dictée, elle, l'impose — c'est ici qu'on l'arrête.
+	if (act === 'dictee' && !dispoDictee) {
+		renderDicteeMuette();
+		return;
+	}
 	if (act === 'atelier') {
 		renderAtelier(sheets(), word, {
 			contexteHTML: contexteHTML(word),
@@ -426,11 +476,24 @@ function renderDictee(word: MotOrtho): void {
 	const fb = sheets().querySelector('#fb') as HTMLElement;
 	renderAccentKb(sheets().querySelector('#accentKb') as HTMLElement, input);
 
-	const ecouter = () => ecouterCible(word);
+	// Filet de sécurité (#306 §5) : l'énoncé peut échouer alors que la voix semblait
+	// utilisable (voix distante coupée en plein vol, moteur en panne). L'enfant se
+	// retrouverait à écrire sans avoir rien entendu — et sa saisie au hasard finirait
+	// dans le journal de l'espace encadrant. On coupe court : plus de dictée pour
+	// cette séance, aucune journalisation, et l'écran de sortie prend la main.
+	let muette = false;
+	const surSilence = (): void => {
+		if (muette) return;
+		muette = true;
+		dispoDictee = false;
+		renderDicteeMuette();
+	};
+	const ecouter = () => ecouterCible(word, surSilence);
 	sheets().querySelector('#btnEcouter')!.addEventListener('click', ecouter);
 	ecouter(); // tentative de lecture auto (peut être bloquée tant qu'il n'y a pas eu de geste)
 
 	const verifier = () => {
+		if (muette) return; // dictée silencieuse : on ne corrige ni ne journalise
 		if (checkAnswer(ex, input.value)) {
 			reussiteMode(word, 'dictee');
 			// Réussite : « Vérifier » s'efface, seul « Continuer → » reste (pas deux boutons, #153).

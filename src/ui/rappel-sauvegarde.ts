@@ -43,9 +43,8 @@ import {
 import type { ContexteRappel } from '../core/rappel-sauvegarde';
 import { engagementReel } from '../core/engagement';
 import { exportProfiles, listProfiles } from '../core/profiles';
-import { canReloadNow } from '../core/version';
-import type { ReloadThresholds } from '../core/version';
-import { etatCalme } from './app-calme';
+import { momentCalme } from './app-calme';
+import type { SeuilsCalme } from './app-calme';
 import { telechargerBlob } from './encadrant-commun';
 import { icon } from './icon';
 
@@ -59,10 +58,10 @@ const CLE_SESSION = 'ludaskia_rappel_ferme';
 /* Seuils du « moment calme » propres à l'encart. Le risque n'est pas d'interrompre
    un geste — un bandeau en tête d'un écran de menu n'interrompt rien — mais
    d'apparaître PENDANT un exercice. C'est donc la moitié « écran de menu, hors
-   sprint ou révision » de `canReloadNow` qui compte ici, et les délais sont mis à
+   sprint ou révision » de `momentCalme` qui compte ici, et les délais sont mis à
    zéro délibérément : les exiger empêcherait l'encart de s'afficher à l'arrivée
    sur l'accueil, seul moment où il a une chance d'être vu. */
-const SEUILS: ReloadThresholds = { minIdleMs: 0, minVisibleMs: 0 };
+const SEUILS: SeuilsCalme = { minIdleMs: 0, minVisibleMs: 0 };
 
 /* Invite d'installation native, quand le navigateur l'expose (`beforeinstallprompt`,
    Chromium). Là où elle existe, le bouton l'ouvre — une installation en un geste
@@ -209,7 +208,7 @@ export function rafraichirRappelSauvegarde(): void {
 		now,
 	};
 	if (!doitAfficherRappel(etat, ctx)) return;
-	if (!canReloadNow(etatCalme(), SEUILS)) return;
+	if (!momentCalme(SEUILS)) return;
 
 	// Installée ET rien à sauvegarder : il ne resterait rien à dire. La condition de
 	// sauvegarde est portée par `doitAfficherRappel` (risque accumulé), on n'a donc

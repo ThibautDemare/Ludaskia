@@ -37,9 +37,8 @@
    comprises.
    ============================================================ */
 import { registerSW } from 'virtual:pwa-register';
-import { canReloadNow } from '../core/version';
-import type { ReloadThresholds } from '../core/version';
-import { etatCalme, onRetourSurOnglet } from './app-calme';
+import { momentCalme, onRetourSurOnglet } from './app-calme';
+import type { SeuilsCalme } from './app-calme';
 import { signalerVersionEnAttente } from './mise-a-jour';
 import { engagementReel } from '../core/engagement';
 
@@ -57,7 +56,7 @@ const RECHAUFFE_MS = 20_000;
 /* Seuils plus exigeants que ceux de la mise à jour (4 s / 1,5 s) : recharger est
    instantané, télécharger occupe le réseau un moment. On attend un écran
    franchement posé, pas une simple pause entre deux gestes. */
-const SEUILS_RECHAUFFE: ReloadThresholds = { minIdleMs: 8000, minVisibleMs: 3000 };
+const SEUILS_RECHAUFFE: SeuilsCalme = { minIdleMs: 8000, minVisibleMs: 3000 };
 
 let registration: ServiceWorkerRegistration | undefined;
 let rechargement = false;
@@ -125,7 +124,7 @@ function demander<T>(message: object): Promise<T | null> {
 async function tourDeRechauffement(): Promise<void> {
 	if (couvertureComplete || rechauffeEnCours) return;
 	if (economieDeDonnees() || !engagementReel()) return;
-	if (!canReloadNow(etatCalme(), SEUILS_RECHAUFFE)) return;
+	if (!momentCalme(SEUILS_RECHAUFFE)) return;
 	demanderPersistance();
 	rechauffeEnCours = true;
 	try {

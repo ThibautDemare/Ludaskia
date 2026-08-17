@@ -18,9 +18,9 @@
    logique de mise à jour qu'on cherche à éviter : le fichier `version.json` et
    son sondage ont donc disparu. Tout le comportement, lui, est intact.
    ============================================================ */
-import { APP_VERSION, canReloadNow } from '../core/version';
-import type { ReloadThresholds } from '../core/version';
-import { etatCalme } from './app-calme';
+import { APP_VERSION } from '../core/version';
+import type { SeuilsCalme } from './app-calme';
+import { momentCalme } from './app-calme';
 import { mascotteBulleHTML } from './unlocks-view';
 import { dicter } from './tts';
 import { activateModal } from './modal-a11y';
@@ -31,7 +31,7 @@ const MESSAGE = 'Je me mets à jour… je reviens tout de suite !';
 
 const TICK_MS = 1000; // cadence de la « surveillance de reload »
 const RELOAD_DELAY_MS = 2400; // durée d'affichage du voile avant la bascule
-const THRESHOLDS: ReloadThresholds = { minIdleMs: 4000, minVisibleMs: 1500 };
+const THRESHOLDS: SeuilsCalme = { minIdleMs: 4000, minVisibleMs: 1500 };
 const STORAGE_KEY = 'ludaskia_update_reloaded'; // anti-boucle (par onglet)
 
 let updatePending = false;
@@ -63,10 +63,10 @@ function stopWatcher(): void {
 	}
 }
 
-/** Bascule si, et seulement si, le moment est sûr (cf. `canReloadNow`). */
+/** Bascule si, et seulement si, le moment est sûr (cf. `momentCalme`). */
 function tryReload(): void {
 	if (reloading || !updatePending) return;
-	if (canReloadNow(etatCalme(updatePending, dejaBascule()), THRESHOLDS)) doReload();
+	if (momentCalme(THRESHOLDS, updatePending, dejaBascule())) doReload();
 }
 
 function doReload(): void {

@@ -629,8 +629,8 @@
 										/></svg
 								></span>
 								<span
-									><strong>Fonctionne hors-ligne.</strong> Une fois la page ouverte, l'entraînement
-									marche sans connexion.</span
+									><strong>Fonctionne hors-ligne.</strong> Une fois installée, l'application se
+									rouvre et s'utilise sans connexion.</span
 								>
 							</li>
 						</ul>
@@ -738,17 +738,26 @@
 								perdue&nbsp;— vous pouvez en faire une sauvegarde depuis l'application.
 							</p>
 						</div>
-						<!-- #563 : ne promettre QUE la session en cours. Sans service worker, une
-						     réouverture ultérieure hors réseau n'est pas garantie (seul le cache HTTP
-						     du navigateur peut jouer, de façon aléatoire). À rouvrir quand #306
-						     (service worker / PWA) sera livrée : on pourra alors promettre l'usage
-						     différé, du type « en voiture ou en voyage ». -->
+						<!-- #306 : la promesse hors-ligne est de nouveau large (service worker +
+						     manifeste), mais elle reste HONNÊTE. La couverture est PROGRESSIVE :
+						     l'application ne récupère pas tout d'un coup, elle complète en fond aux
+						     moments calmes. On promet donc « après quelques utilisations », pas un
+						     hors-ligne inconditionnel dès la première seconde. La nuance iOS
+						     (Safari efface les données d'un site non installé après ~7 jours sans
+						     ouverture) fait partie de l'honnêteté : d'où le renvoi à l'installation. -->
 						<div class="v-faq-item">
 							<h3>Ça marche sans connexion&nbsp;?</h3>
 							<p>
-								Oui, pour la session en cours&nbsp;: une fois la page ouverte, l'entraînement
-								continue même si la connexion se coupe. En revanche, rouvrir Ludaskia plus tard sans
-								réseau n'est pas encore garanti.
+								Oui. Après quelques utilisations, Ludaskia s'enregistre sur l'appareil et se rouvre
+								sans réseau&nbsp;— en voiture, en voyage, ou simplement quand la connexion lâche.
+								L'application complète ce qu'elle a mis de côté petit à petit, en
+								arrière-plan&nbsp;: laissez-lui quelques passages avant de compter dessus.
+							</p>
+							<p>
+								Pour que ce soit durable, mieux vaut l'<strong>ajouter à l'écran d'accueil</strong>
+								(le <a href="guide.html#installer">guide pour les parents</a> explique comment,
+								selon l'appareil). C'est surtout vrai sur iPhone et iPad&nbsp;: sans cela, Safari
+								finit par effacer les données d'un site resté longtemps sans être ouvert.
 							</p>
 						</div>
 						<div class="v-faq-item">

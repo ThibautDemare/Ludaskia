@@ -90,3 +90,46 @@ export function seedAideVueScript(uuid = 'e2e'): string {
 export async function seedAideVue(page: Page): Promise<void> {
 	await page.addInitScript(seedAideVueScript());
 }
+
+/* Amorçage des TROIS VERROUS de l'encart « Pour les parents » (#306 §7,
+   `core/rappel-sauvegarde.ts`) : engagement réel (au moins `activites`
+   entrées, comparé au seuil MIN_ACTIVITES = 3 côté source, non importé ici —
+   cf. la remarque sur les imports `src/` en tête de fichier), plus de 48 h
+   depuis le premier lancement, jamais exporté récemment. Réutilisé par
+   `rappel-sauvegarde.spec.ts` (comportement) ET `a11y-axe.spec.ts` (scan de
+   l'encart, qui sinon ne s'affiche jamais dans un profil frais). */
+export interface SeedRappelOptions {
+	uuid?: string;
+	now?: number;
+	/** Nombre d'activités enregistrées, une par jour dans le passé (déf. 3, le seuil). */
+	activites?: number;
+	/** Ancienneté du dernier export (ou de l'origine si jamais exporté), en ms (déf. 3 jours). */
+	depuisSauvegardeMs?: number;
+}
+
+export function seedRappelSauvegardeScript(opts: SeedRappelOptions = {}): string {
+	const DAY = 24 * 60 * 60 * 1000;
+	const uuid = opts.uuid ?? 'e2e';
+	const now = opts.now ?? Date.now();
+	const nActivites = opts.activites ?? 3;
+	const depuis = now - (opts.depuisSauvegardeMs ?? 3 * DAY);
+	const seed: Record<string, unknown> = {
+		ludaskia_profiles: {
+			list: [{ uuid, name: 'E2E', emoji: '🦊', updatedAt: 1, niveauReference: 'ce2' }],
+			active: uuid,
+		},
+		[`${uuid}/ludaskia_tour_seen`]: true,
+		[`${uuid}/ludaskia_parents_seen`]: true,
+		[`${uuid}/ludaskia_activity`]: Array.from({ length: nActivites }, (_, i) => ({
+			t: now - (i + 1) * DAY,
+			k: 'exo',
+		})),
+		ludaskia_sauvegarde: { depuis, palier: 0 },
+	};
+	// Une seule ligne de script : chaque valeur est sérialisée en JSON, ce que
+	// `lsGet`/`lsGetRaw` (JSON.parse tolérant) attendent aussi bien pour les
+	// booléens (`"true"`) que pour les objets/tableaux.
+	return `(function(){var seed=${JSON.stringify(
+		seed,
+	)};Object.keys(seed).forEach(function(k){localStorage.setItem(k, JSON.stringify(seed[k]));});})();`;
+}

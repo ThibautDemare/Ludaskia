@@ -22,10 +22,11 @@
    - Espace encadrant             → écran adulte dense (stats, réglages, contrôles).
    - Modale « nouveau profil »     → dialog de saisie superposé (rôle, focus, contraste).
    - Modale Récompenses           → dialog de gamification (couleurs des récompenses).
+   - Encart « Pour les parents »  → bandeau du registre encadrant sur l'accueil enfant (#306 §7).
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { watchErrors, gotoHash, seedAideVue } from './helpers';
+import { watchErrors, gotoHash, seedAideVue, seedRappelSauvegardeScript } from './helpers';
 import { scanA11y, formatA11yReport } from './axe';
 
 /* Gate désactivé par défaut (cf. en-tête) ; `A11Y_GATE=1` le passe en bloquant. */
@@ -133,6 +134,20 @@ const VIEWS: View[] = [
 			await page.locator('[data-act="open-recompenses"]').click();
 			await page.locator('#recompenses').waitFor({ state: 'visible' });
 			await settleAnimations(page, '#recompenses .modal');
+		},
+	},
+	{
+		// Un profil frais (sans amorçage) ne réunit jamais les trois verrous qui
+		// commandent l'apparition de cet encart (#306 §7) : il ne serait donc JAMAIS
+		// scanné sans amorcer ces signaux ici (relecture accessibilité). Pas
+		// d'animation d'entrée (cf. rappel-sauvegarde.scss) : un simple repère suffit.
+		name: 'Encart « Pour les parents » (rappel de sauvegarde)',
+		hash: 'accueil',
+		include: '#rappelSauvegarde',
+		open: async (page) => {
+			await page.addInitScript(seedRappelSauvegardeScript());
+			await gotoHash(page, 'accueil');
+			await page.locator('#rappelSauvegarde').waitFor({ state: 'visible' });
 		},
 	},
 ];

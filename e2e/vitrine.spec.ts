@@ -101,19 +101,23 @@ test('vitrine : FAQ avec 8 items .v-faq-item', async ({ page }) => {
 	expect(errors).toEqual([]);
 });
 
-test('vitrine : FAQ « sans connexion » ne promet que la session en cours', async ({ page }) => {
+test('vitrine : FAQ « sans connexion » promet une couverture progressive, et renvoie à l’installation (iOS)', async ({
+	page,
+}) => {
 	const errors = watchErrors(page);
 	await page.goto('./', { waitUntil: 'networkidle' });
 
-	// #563 : sans service worker, seule la session déjà ouverte est garantie hors-ligne ;
-	// la réponse ne doit plus laisser entendre qu'une réouverture ultérieure marche
-	// (ex-promesse « en voiture ou en voyage »).
+	// #306 : le service worker rend la promesse hors-ligne à nouveau large (elle
+	// n'est plus limitée à la session en cours, ex-#563) — mais elle reste HONNÊTE :
+	// la couverture est PROGRESSIVE (« après quelques utilisations », pas dès la
+	// première seconde), et le renvoi vers l'ajout à l'écran d'accueil est la nuance
+	// qui compte le plus (c'est ce qui évite la purge de Safari sur iOS/iPadOS).
 	const item = page.locator('.v-faq-item', { hasText: /sans\s*connexion/i });
 	await expect(item).toBeVisible();
 	const text = await item.innerText();
-	expect(text).toMatch(/session en cours/i);
-	expect(text).not.toMatch(/voiture/i);
-	expect(text).not.toMatch(/voyage/i);
+	expect(text).toMatch(/quelques utilisations/i);
+	expect(text).toMatch(/écran d'accueil/i);
+	expect(text).toMatch(/iphone|ipad|safari/i);
 
 	expect(errors).toEqual([]);
 });

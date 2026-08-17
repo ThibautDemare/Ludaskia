@@ -20,9 +20,12 @@
    erreur, ouvrant la démonstration de CET exercice-là (tableau, droite graduée :
    les deux seuls moteurs ici rendus par un runner dédié qui sait décrire l'item
    raté ; numération et conjugaison montrent leur exemple canonique, structurellement
-   incapables de reconstruire l'item — cf. core/etayage-position.ts). Et la
-   dégradation : un verbe irrégulier au présent n'a AUCUN contenu d'étayage, donc
-   aucun bouton ni lien.
+   incapables de reconstruire l'item — cf. core/etayage-position.ts). Et le contraste,
+   section 5 : un verbe irrégulier au présent (radical supplétif) ne déroule toujours
+   RIEN de mécanisé, mais reçoit depuis #490 PR 4 un contenu RÉDIGÉ (titre + règle +
+   étapes, sans exemple ni compteur ni visuel) — plus la dégradation totale d'avant
+   cette PR (aucun bouton, aucun panneau), cf. etayage-redige.spec.ts pour la forme
+   rédigée en détail.
    ============================================================ */
 import { test, expect, type Page } from '@playwright/test';
 import { watchErrors, gotoHash, seedAideVue } from './helpers';
@@ -372,19 +375,51 @@ test('conjugaison (aimer, présent) : le bouton persistant ouvre l’exemple can
 });
 
 /* ================================================================
-   5. Dégradation : un verbe irrégulier au présent (« aller ») n'a AUCUN contenu
-      d'étayage — `derouleConjugaison` refuse d'inventer un découpage. Ni bouton
-      persistant, ni lien, ni panneau : la leçon se joue normalement.
+   5. Contraste : même leçon de conjugaison, deux verbes, deux formes de panneau.
+      « aller » au présent a un radical supplétif (« je vais / nous allons ») :
+      `derouleConjugaison` refuse toujours d'en inventer un découpage, donc AUCUN
+      exemple mécanisé — mais depuis #490 PR 4 la leçon n'est plus dégradée à rien
+      du tout. Elle reçoit un contenu RÉDIGÉ (`etayagePresentRedige`, data/francais/
+      conjugaison.ts) : titre, règle en une phrase, au plus trois étapes écrites,
+      aucun déroulé. Le bouton persistant apparaît donc désormais, là où il était
+      absent avant cette PR.
+
+      `etayage-redige.spec.ts` et `etayage-francais.spec.ts` couvrent déjà la forme
+      rédigée en général (fiche, runner QCM générique, trois runners dédiés) : ce
+      test n'y fait pas doublon, il apporte le contraste DANS la même famille de
+      leçons — même écran, même mode « saisie » — entre « aimer » (section 4,
+      déroulé complet, pas à pas) et « aller » (ici, rédigé, sans déroulé). C'est
+      la preuve que le choix de forme suit le VERBE, pas le type de leçon.
    ================================================================ */
 
-test('conjugaison (aller, présent — irrégulier) : aucun bouton ni lien d’étayage, dégradation propre', async ({
+test('conjugaison (aller, présent — irrégulier) : le même bouton ouvre un contenu rédigé, sans déroulé (contraste avec aimer)', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'lecon-fr-conj-aller-present');
-	await page.locator('.ans-text').first().waitFor(); // la fiche se rend normalement
-	await expect(page.locator('.etayage-btn')).toHaveCount(0);
-	await expect(page.locator('.etay-lien')).toHaveCount(0);
+	await gotoHash(page, 'lecon-fr-conj-aller-present'); // mode par défaut ('saisie') → fiche directe
+
+	const btn = page.locator('.etayage-btn');
+	await expect(btn).toBeVisible(); // contrairement à la dégradation totale d'avant #490 PR 4
+	await btn.click();
+
+	await expect(page.locator('#etayageOverlay')).toBeVisible();
+	await expect(page.locator('#etayTitle')).toHaveText('aller au présent');
+	await expect(page.locator('.etay-regle')).toBeVisible();
+	await expect(page.locator('.etay-regle')).not.toHaveText('');
+
+	const etapes = page.locator('#etayEtapes li');
+	const n = await etapes.count();
+	expect(n).toBeGreaterThan(0);
+	expect(n).toBeLessThanOrEqual(3);
+
+	// Rien de ce qui portait « aimer » en section 4 : ni compteur, ni visuel, ni
+	// bouton « Précédent » — la différence observable entre les deux verbes.
+	await expect(page.locator('.etay-compteur')).toHaveCount(0);
+	await expect(page.locator('#etayVisuel')).toHaveCount(0);
+	await expect(page.locator('#etayPrec')).toHaveCount(0);
+
+	await expect(page.locator('#etaySuivant')).toHaveText("D'accord, à moi de jouer !");
+	await page.locator('#etaySuivant').click();
 	await expect(page.locator('#etayageOverlay')).toHaveCount(0);
 
 	expect(errors).toEqual([]);

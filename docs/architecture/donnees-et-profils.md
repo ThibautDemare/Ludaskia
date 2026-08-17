@@ -110,10 +110,16 @@ l'ancienne forme `recentPct?`, un % par essai non pondérable, qui n'est plus ja
 mais reste lue en repli et convertie, cf. `core/maitrise.ts`) et `lastAt?` (horodatage ms de
 la dernière session travaillée, écrit par `recordLessonStats` — base du « dernière fois
 travaillée » et de la tendance par notion de l'espace encadrant, cf.
-[Espace encadrant](espace-encadrant.md)). **Clé GLOBALE** (non préfixée profil), comme
+[Espace encadrant](espace-encadrant.md)). **Clés GLOBALES** (non préfixées profil), comme
 `ludaskia_profiles` : `ludaskia_encadrant_lock` (#234 : `{pinHash, recoveryHash}`
 du verrou optionnel de l'espace encadrant — verrou de l'ESPACE, pas d'un profil,
-donc non exporté et survit à la réinitialisation/suppression d'un profil).
+donc non exporté et survit à la réinitialisation/suppression d'un profil) et
+`ludaskia_sauvegarde` (#306 : état du rappel de sauvegarde de l'accueil —
+`EtatRappel {depuis?, dernierExport?, palier, prochain?}` — global comme
+l'export dont il dépend (il couvre TOUS les profils), donc lui aussi non
+exporté et survivant à la suppression d'un profil ; horodaté par `exportProfiles`
+à chaque export réussi qui couvre l'intégralité des profils, cf. `core/rappel-sauvegarde.ts`
+et [Logique pure](core.md)).
 L'état SR des **mots**
 d'orthographe vit dans `ludaskia_ortho` (`MotOrtho.revision`). Un `MotOrtho`
 porte aussi des **formes fléchies** optionnelles (`formes?: FormesAccord` — masc/fém
@@ -155,6 +161,10 @@ l'espace encadrant, cf. [Espace encadrant](espace-encadrant.md).
 - **Export/import par profil** (`exportProfiles`/`importProfiles`, dans l'espace
   encadrants) : fusion par **UUID**, écrase un profil existant **seulement si la
   sauvegarde est plus récente** (`updatedAt`), ajoute si l'UUID est inconnu.
+  Depuis #306, `exportProfiles` horodate aussi le dernier export **réussi**
+  (`ludaskia_sauvegarde`, cf. ci-dessus) — mais seulement quand l'export couvre
+  TOUS les profils, condition que respectent ses deux appelants actuels
+  (l'espace encadrants et l'encart de rappel de l'accueil).
 - **Réglages par UUID** (#234) : l'encadrant règle un profil CONSULTÉ via
   `setNiveauReferenceFor`/`setNiveauMatiereFor`/`setPrefFor` (jamais `m.active`).
 - **`touchProfile(uuid)`** (#440) : bump `updatedAt` d'un profil **donné** sans

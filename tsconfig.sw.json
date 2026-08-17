@@ -1,0 +1,22 @@
+{
+	/* Projet SÉPARÉ pour le service worker (#306). Il tourne dans un worker, pas dans
+	   une page : ses globales sont celles de `lib.webworker` (ExtendableEvent,
+	   FetchEvent, ServiceWorkerGlobalScope…), pas celles du DOM. Mélanger les deux
+	   bibliothèques dans un seul projet TypeScript produit des déclarations en double
+	   (`self`, `fetch`, `location`…) — d'où ce second tsconfig, lancé par `npm run
+	   typecheck` en plus du principal, qui exclut `src/sw.ts`. */
+	"compilerOptions": {
+		"target": "ES2020",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"strict": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"isolatedModules": true,
+		"resolveJsonModule": true,
+		"noEmit": true,
+		"lib": ["ES2020", "WebWorker"],
+		"types": []
+	},
+	"include": ["src/sw.ts", "src/core/pwa-cache.ts"]
+}

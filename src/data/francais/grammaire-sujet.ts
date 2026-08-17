@@ -15,7 +15,7 @@ import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
 import { getVerb } from './conjugaison';
-import { MODE_QCM_CHECK } from '../_shared';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 /** Personne grammaticale : index dans les formes de conjugaison (je…ils). */
@@ -137,11 +137,49 @@ export function accordSujetVerbeType(): ExerciseType {
 	};
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   Deux notions liées mais distinctes, d'où deux panneaux : REMPLACER un groupe sujet
+   par son pronom, et ACCORDER le verbe avec ce sujet. Le pronom est justement le pivot
+   du second (« remplace le sujet par un pronom, puis choisis la forme qui va avec »),
+   ce qui rend l'ordre des deux leçons lisible.
+
+   Aucun groupe sujet de la banque n'est cité : elle est fermée (une trentaine de
+   sujets curés) et un exemple emprunté servirait de réponse à un tirage futur.
+
+   L'accord ne commence PAS par « trouve le sujet » : l'énoncé l'affiche déjà seul
+   (« Les oiseaux (voir) → @ »), il n'y a aucune phrase où le chercher. L'étape aurait
+   eu l'air d'une méthode tout en ne demandant rien. */
+const ETAYAGE_PRONOM_SUJET = etayageRedige(
+	'Quel pronom remplace le sujet ?',
+	"Un pronom sujet remplace le groupe de mots qui fait l'action.",
+	[
+		'Regarde si le groupe désigne une seule personne ou plusieurs.',
+		"S'il contient « moi », le pronom est « nous » ; s'il contient « toi » sans « moi », c'est « vous ».",
+		'Sinon, suis le genre du nom : le, un donnent il ou ils ; la, une donnent elle ou elles.',
+	],
+);
+
+const ETAYAGE_ACCORD_SUJET_VERBE = etayageRedige(
+	'Comment accorder le verbe avec son sujet ?',
+	"Le verbe s'accorde avec son sujet : c'est le sujet qui commande sa terminaison.",
+	[
+		"Lis le sujet affiché : parle-t-il d'un seul, ou de plusieurs ?",
+		'Remplace-le par son pronom : il, elle, ils, elles, nous ou vous.',
+		'Choisis la forme du verbe qui va avec ce pronom.',
+	],
+);
+
 export const GRAMMAIRE_SUJET_LESSONS: LessonInput[] = [
-	{ id: 'fr-gram-pronom-sujet', label: 'Le pronom sujet', exerciseType: pronomSujetType() },
+	{
+		id: 'fr-gram-pronom-sujet',
+		label: 'Le pronom sujet',
+		exerciseType: pronomSujetType(),
+		etayage: [ETAYAGE_PRONOM_SUJET],
+	},
 	{
 		id: 'fr-gram-accord-sujet-verbe',
 		label: 'L’accord du verbe avec le sujet',
 		exerciseType: accordSujetVerbeType(),
+		etayage: [ETAYAGE_ACCORD_SUJET_VERBE],
 	},
 ];

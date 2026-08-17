@@ -32,7 +32,7 @@ import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import type { SchoolLevel } from '../../core/catalog';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
-import { MODE_QCM_CHECK } from '../_shared';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 /** Ponctuation finale possible (la palette de boutons de F1). */
@@ -810,24 +810,84 @@ export interface PhraseLessonDef extends LessonInput {
 // Ordre imposé par l'issue : la ponctuation d'abord, le type ensuite. CM1 (#245) :
 // le « type » s'ouvre au CM1 (3 types inchangés, B.O. 2025) ; deux leçons CM1 sur l'axe
 // FORME s'ajoutent (identification puis transformation négative).
+/* ---------- Étayage de la notion (#490) ----------
+   Quatre panneaux pour quatre tâches, alignés sur ce que les banques opposent
+   RÉELLEMENT. Deux points méritent d'être notés, parce qu'ils viennent d'un choix de
+   conception de ces banques et pas d'une préférence de rédaction :
+   - « Quel type de phrase ? » mélange VOLONTAIRE point final et type (des impératifs
+     au point, des déclaratives au « ! ») pour forcer le raisonnement sur le sens : sa
+     règle dit donc explicitement de ne pas se fier au point ;
+   - « Mets à la forme négative » a pour distracteurs une négation MAL PLACÉE, une
+     négation ORPHELINE et une élision OUBLIÉE : les trois étapes traitent ces trois
+     pièges, dans cet ordre.
+   « Quel type de phrase ? » sert deux niveaux avec la MÊME tâche (les trois types ne
+   bougent pas au CM1) : une seule entrée, sans `niveau`. */
+const ETAYAGE_PONCTUATION = etayageRedige(
+	'Quel point mettre à la fin ?',
+	'Le point de la fin dit ce que fait la phrase.',
+	[
+		"Elle pose une question ? Mets un point d'interrogation.",
+		"Elle montre une émotion forte ? Mets un point d'exclamation.",
+		'Elle raconte simplement quelque chose ? Mets un point.',
+	],
+);
+
+const ETAYAGE_TYPE_PHRASE = etayageRedige(
+	'Quel type de phrase ?',
+	"Ce qui donne le type, c'est ce que FAIT la phrase, jamais le point à la fin.",
+	[
+		'Elle raconte quelque chose : elle est déclarative.',
+		'Elle demande quelque chose : elle est interrogative.',
+		'Elle donne un ordre ou un conseil : elle est impérative.',
+	],
+);
+
+const ETAYAGE_FORME = etayageRedige(
+	'Affirmative ou négative ?',
+	'Une phrase négative porte des mots de négation qui vont par deux, autour du verbe.',
+	[
+		"Cherche « ne » ou « n' » juste devant le verbe.",
+		'Cherche son deuxième morceau juste après : pas, plus, jamais, rien, personne.',
+		"Si tu n'en trouves pas, la phrase dit oui : elle est affirmative.",
+	],
+);
+
+const ETAYAGE_TRANSFO_NEGATIVE = etayageRedige(
+	'Comment mettre une phrase à la forme négative ?',
+	'Pour dire non, on encadre le verbe conjugué avec « ne… pas ».',
+	[
+		'Trouve le verbe conjugué.',
+		'Place « ne » juste devant lui, et « pas » juste après : les deux morceaux, jamais un seul.',
+		"Devant une voyelle, « ne » devient « n' ».",
+	],
+);
+
 export const PHRASES_LESSONS: PhraseLessonDef[] = [
-	{ id: 'fr-gram-ponctuation', label: 'Quel point à la fin ?', exerciseType: ponctuationType() },
+	{
+		id: 'fr-gram-ponctuation',
+		label: 'Quel point à la fin ?',
+		exerciseType: ponctuationType(),
+		etayage: [ETAYAGE_PONCTUATION],
+	},
 	{
 		id: 'fr-gram-type-phrase',
 		label: 'Quel type de phrase ?',
 		exerciseType: typePhraseType(),
 		levels: ['ce2', 'cm1'],
+		etayage: [ETAYAGE_TYPE_PHRASE],
 	},
 	{
 		id: 'fr-gram-forme',
 		label: 'Affirmative ou négative ?',
 		exerciseType: formePhraseType(),
 		levels: ['cm1'],
+		etayage: [ETAYAGE_FORME],
 	},
 	{
 		id: 'fr-gram-transfo-negative',
 		label: 'Mets à la forme négative',
 		exerciseType: transfoNegativeType(),
 		levels: ['cm1'],
+		etayage: [ETAYAGE_TRANSFO_NEGATIVE],
 	},
 ];

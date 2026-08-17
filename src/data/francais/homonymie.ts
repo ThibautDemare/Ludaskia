@@ -39,7 +39,7 @@ import { checkAnswer } from '../../core/exercise';
 import type { SchoolLevel } from '../../core/catalog';
 import { bankByLevel, pickFromBank } from '../../core/level-combinators';
 import { choice, sample } from '../../core/utils';
-import { MODE_QCM_CHECK } from '../_shared';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 const NIVEAUX: SchoolLevel[] = ['cm1'];
@@ -407,10 +407,25 @@ function homonymieType(): ExerciseType {
 	};
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   Toutes les options sont de VRAIS sens du mot (contrainte dure de la banque) : il n'y
+   a donc aucune réponse à éliminer parce qu'elle serait absurde en soi, et la seule
+   méthode qui marche est de faire parler le CONTEXTE. Le panneau ne dit rien d'autre. */
+const ETAYAGE_HOMONYMES = etayageRedige(
+	'Les homonymes',
+	"Un homonyme s'écrit toujours pareil, mais il a plusieurs sens : la phrase choisit lequel.",
+	[
+		'Ne regarde pas le mot tout seul : lis la phrase autour de lui.',
+		'Cherche les indices : de quoi parle-t-on, où est-on ?',
+		'Toutes les réponses sont de vrais sens du mot ; garde celle qui rend CETTE phrase logique.',
+	],
+);
+
 export const HOMONYMIE_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-vocab-homonymes-cm1',
 		label: 'Les homonymes',
 		exerciseType: homonymieType(),
+		etayage: [ETAYAGE_HOMONYMES],
 	},
 ];

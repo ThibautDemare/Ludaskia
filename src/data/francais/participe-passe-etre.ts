@@ -33,7 +33,7 @@
 import type { ChoiceView, Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, escapeHTML, sample } from '../../core/utils';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 /** Genre × nombre du participe. */
@@ -230,11 +230,28 @@ export interface ParticipeLessonDef extends LessonInput {
 }
 
 /* Leçon unique, rubrique « Les accords » (à côté des accords pluriel/féminin #109). */
+/* ---------- Étayage de la notion (#490) ----------
+   La méthode est une PROCÉDURE en trois temps (trouver le donneur d'accord, lire son
+   genre et son nombre, reporter la marque), et c'est bien elle qu'il faut donner : la
+   décrire n'est pas résoudre l'exercice tant que le panneau ne l'applique pas à la
+   phrase affichée. La leçon est signalée « plus difficile » au catalogue, d'où une
+   étape 3 qui NOMME les deux marques plutôt que de les supposer connues. */
+const ETAYAGE_PARTICIPE_ETRE = etayageRedige(
+	'Accorder le participe passé avec être',
+	"Avec « être », le participe passé s'accorde avec le sujet, comme un adjectif.",
+	[
+		'Trouve le sujet de la phrase.',
+		'Demande-toi : masculin ou féminin ? un seul ou plusieurs ?',
+		'Reporte la marque sur le participe : e pour le féminin, s pour le pluriel, les deux ensemble si besoin.',
+	],
+);
+
 export const PARTICIPE_LESSONS: ParticipeLessonDef[] = [
 	{
 		id: 'fr-accords-participe-etre',
 		label: 'Le participe passé avec être',
 		rubrique: 'Les accords',
 		exerciseType: participeType(),
+		etayage: [ETAYAGE_PARTICIPE_ETRE],
 	},
 ];

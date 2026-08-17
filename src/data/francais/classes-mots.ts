@@ -14,7 +14,7 @@
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
-import { MODE_QCM_CHECK } from '../_shared';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 type Classe = 'nom' | 'verbe' | 'adjectif';
@@ -236,10 +236,30 @@ export function classesMotsType(): ExerciseType {
 	};
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   UNE leçon pour TROIS formes de question (classe, article, adverbe), tirées
+   uniformément : le panneau doit donc couvrir les trois, à raison d'une étape chacune,
+   sous une règle qui les réunit (« un mot a une classe, elle dit son rôle »). Le
+   découper en trois panneaux supposerait trois leçons, ce que le catalogue ne dit pas.
+
+   L'étape de l'article renvoie à l'oreille plutôt qu'à une règle : le genre d'un nom
+   ne se déduit de rien, il se sait (ou s'entend). C'est la seule chose honnête à dire
+   à un CE2 qui bute là-dessus. */
+const ETAYAGE_CLASSES = etayageRedige(
+	'À quelle classe appartient ce mot ?',
+	'Chaque mot appartient à une classe, qui dit son rôle dans la phrase.',
+	[
+		"Le nom désigne une personne, un animal, une chose ou une idée. Le verbe dit une action. L'adjectif décrit.",
+		"Pour l'article, dis le mot à voix haute avec le, la, puis les : celui qui sonne juste est le bon.",
+		"L'adverbe dit comment, quand ou combien, et ne change jamais de forme.",
+	],
+);
+
 export const CLASSES_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-gram-classes',
 		label: 'Classes de mots, articles, adverbes',
 		exerciseType: classesMotsType(),
+		etayage: [ETAYAGE_CLASSES],
 	},
 ];

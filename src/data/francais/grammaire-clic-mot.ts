@@ -46,7 +46,7 @@ import type { Exercise, ExerciseType, GenerateOpts, ModeOption } from '../../cor
 import type { SchoolLevel } from '../../core/catalog';
 import { choice, enumererFr } from '../../core/utils';
 import { LEVEL_ORDER, closestSupported } from '../../core/levels';
-import type { LessonInput } from '../_shared';
+import { etayageRedige, type LessonInput } from '../_shared';
 
 /** Une phrase annotée prête à jouer. `tokens` = la phrase mot à mot (mots +
     ponctuation) ; `cibleIndices` = l'ensemble EXACT des indices attendus (1, 2 ou
@@ -1685,6 +1685,164 @@ export const PHRASES_PRON_CE2: PhraseClicMot[] = [
 	pronSujetCE2('Comme le bus est en retard, elle attend sur le trottoir.', 'elle'),
 ];
 
+/* ============================================================
+   Étayage de la notion (#490) — les sept natures.
+   ------------------------------------------------------------
+   Ces leçons demandent de RECONNAÎTRE une classe de mots : rien à dérouler, donc du
+   texte rédigé (`etayageRedige`). Chaque panneau donne la MANIPULATION qui identifie
+   la classe (changer le moment pour le verbe, supprimer l'adjectif, poser « qui
+   est-ce qui » pour le sujet), jamais un mot de la banque : les phrases sont écrites
+   une à une et un exemple emprunté ici servirait de réponse à un tirage futur.
+
+   Les quatre leçons servies aux DEUX niveaux portent DEUX entrées, parce que la
+   TÂCHE change avec la classe et pas seulement sa difficulté : au CE2 on clique sur
+   TOUS les noms / TOUS les déterminants d'une phrase, au CM1 sur le seul nom noyau
+   ou sur la sous-catégorie demandée ; le verbe gagne au CM1 le passé composé (cible
+   en deux mots) et le pronom, la distinction sujet / complément. Un panneau CE2
+   servi à un CM1 décrirait donc un autre exercice.
+
+   Classes FERMÉES énoncées en toutes lettres (les sept conjonctions de coordination,
+   les neuf pronoms personnels sujets) : c'est la notion elle-même, celle que l'école
+   fait apprendre par cœur, pas un item de la banque. Les taire rendrait le panneau
+   creux.
+
+   Deux formulations sont CONTRAINTES et ne se retouchent pas isolément :
+   - la définition du nom reprend mot pour mot celle de `ROLE_CLASSE` (classes-mots.ts),
+     déjà alignée sur cette leçon par #436 — « une idée » comprise, sans quoi les noms
+     abstraits de la banque passeraient pour des contre-exemples ;
+   - la définition du verbe reprend celle des `explication` de `phrase()` ci-dessus.
+   Un enfant qui croise deux leçons ne doit pas y lire deux définitions différentes.
+
+   Le « toujours » des deux leçons CE2 à cible plurielle (tous les noms, tous les
+   déterminants) n'est pas une facilité de rédaction : les deux banques l'imposent à la
+   CONSTRUCTION (`nomsCE2` lève en dessous de deux noms, la fabrique des déterminants en
+   dessous de deux déterminants). Si ces garde-fous tombaient, ces deux étapes
+   deviendraient fausses.
+
+   Les tests proposés valent pour TOUTE la banque de leur leçon, ce qui a écarté deux
+   grands classiques : le changement de temps (« hier… demain… ») ne marche pas sur les
+   impératifs, nombreux au CE2, d'où l'encadrement par « ne… pas » ; et la suppression
+   de l'adjectif casse la phrase quand il est attribut (« le ciel est bleu »), d'où un
+   repère de POSITION à la place.
+   ============================================================ */
+const ETAYAGE_VERBE_CE2 = etayageRedige(
+	'Comment reconnaître le verbe ?',
+	"Le verbe, c'est le mot qui dit l'action ou l'état : ce qu'on fait, ou ce qui se passe.",
+	[
+		'Lis toute la phrase et demande-toi ce qui se passe.',
+		"Encadre le mot que tu soupçonnes par « ne… pas » : ça ne marche qu'avec le verbe.",
+		'Cherche partout : le verbe peut être au début, au milieu ou à la fin de la phrase.',
+	],
+	'ce2',
+);
+
+const ETAYAGE_VERBE_CM1 = etayageRedige(
+	'Comment reconnaître le verbe ?',
+	"Le verbe, c'est le mot qui dit l'action ou l'état : ce qu'on fait, ou ce qui se passe.",
+	[
+		"Encadre le mot que tu soupçonnes par « ne… pas » : ça ne marche qu'avec le verbe.",
+		'Au passé composé, le verbe est en deux mots : le petit mot placé devant en fait partie.',
+		'Cherche partout : le verbe peut être au début, au milieu ou à la fin de la phrase.',
+	],
+	'cm1',
+);
+
+const ETAYAGE_DET_CE2 = etayageRedige(
+	'Comment reconnaître un déterminant ?',
+	"Le déterminant est le petit mot placé devant le nom : il l'accompagne partout.",
+	[
+		'Repère les petits mots comme le, la, les, un, une, des, mon, ta, ce.',
+		"Vérifie que chacun annonce un nom, même si un mot s'est glissé entre les deux.",
+		"N'en oublie aucun : la phrase en contient toujours plusieurs.",
+	],
+	'ce2',
+);
+
+const ETAYAGE_DET_CM1 = etayageRedige(
+	'Article, possessif ou démonstratif ?',
+	"Tous les déterminants accompagnent un nom ; ce qui les sépare, c'est ce qu'ils ajoutent.",
+	[
+		"L'article accompagne le nom sans rien dire de plus.",
+		"Le déterminant possessif dit à qui c'est.",
+		'Le déterminant démonstratif sert à montrer de quel nom on parle.',
+	],
+	'cm1',
+);
+
+const ETAYAGE_ADJ = etayageRedige(
+	'Comment reconnaître un adjectif ?',
+	"L'adjectif dit comment est le nom : il le décrit.",
+	[
+		'Trouve le nom de la phrase.',
+		'Demande-toi quel mot dit comment il est.',
+		'Il peut être collé au nom, ou séparé de lui juste après le verbe être.',
+	],
+);
+
+const ETAYAGE_CONJ = etayageRedige(
+	'Comment reconnaître une conjonction de coordination ?',
+	'Une conjonction de coordination relie deux mots, deux groupes ou deux phrases.',
+	[
+		"Cherche l'endroit où la phrase se coupe en deux morceaux.",
+		'Le petit mot qui fait la jonction est la conjonction.',
+		'Elles ne sont que sept : mais, ou, et, donc, or, ni, car.',
+	],
+);
+
+const ETAYAGE_PRON_CE2 = etayageRedige(
+	'Comment reconnaître le pronom sujet ?',
+	"Le pronom personnel sujet remplace le nom de celui qui fait l'action.",
+	[
+		'Trouve le verbe conjugué.',
+		"Demande-toi qui fait l'action.",
+		'Les pronoms sujets sont : je, tu, il, elle, on, nous, vous, ils, elles.',
+	],
+	'ce2',
+);
+
+const ETAYAGE_PRON_CM1 = etayageRedige(
+	'Pronom sujet ou pronom complément ?',
+	"Le pronom sujet fait l'action ; le pronom complément la reçoit.",
+	[
+		'Trouve le verbe conjugué.',
+		"Demande-toi qui fait l'action : ce pronom-là est le sujet.",
+		'Demande-toi ensuite à qui elle est faite : ce pronom-là est le complément.',
+	],
+	'cm1',
+);
+
+const ETAYAGE_NOM_CE2 = etayageRedige(
+	'Comment reconnaître un nom ?',
+	'Le nom désigne une personne, un animal, une chose ou une idée.',
+	[
+		'Cherche les petits mots comme le, la, les, un, une, mon, ce — ou un prénom, qui est un nom tout seul.',
+		'Le nom vient juste après, parfois derrière un ou deux mots qui le décrivent.',
+		"N'en oublie aucun : la phrase en contient toujours plusieurs.",
+	],
+	'ce2',
+);
+
+const ETAYAGE_NOYAU_CM1 = etayageRedige(
+	'Comment trouver le nom noyau ?',
+	"Le nom noyau est le nom principal du groupe : c'est de lui qu'on parle.",
+	[
+		'Repère le groupe de mots qui commence par un déterminant.',
+		'Enlève les mots qui décrivent : il reste le nom noyau.',
+		'Vérifie : sans lui, le groupe ne veut plus rien dire.',
+	],
+	'cm1',
+);
+
+const ETAYAGE_SUJET = etayageRedige(
+	'Comment trouver le sujet ?',
+	"Le sujet, c'est qui fait l'action du verbe.",
+	[
+		'Trouve le verbe conjugué.',
+		'Pose la question « qui est-ce qui » juste devant lui.',
+		'Clique sur le nom principal de la réponse ; si le sujet en compte deux, clique sur les deux.',
+	],
+);
+
 /** Entrée de leçon « clique sur le mot » : une leçon servie à deux niveaux peut se NOMMER
     différemment selon la classe (#436, cf. `LessonDef.labelNiveau`). Le catalogue reporte
     `labelNiveau` tel quel ; les autres familles de leçons n'ont rien à déclarer. */
@@ -1693,7 +1851,12 @@ export interface ClicMotLessonInput extends LessonInput {
 }
 
 export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
-	{ id: 'fr-gram-clic-verbe', label: 'Clique sur le verbe', exerciseType: clicVerbeType() },
+	{
+		id: 'fr-gram-clic-verbe',
+		label: 'Clique sur le verbe',
+		exerciseType: clicVerbeType(),
+		etayage: [ETAYAGE_VERBE_CE2, ETAYAGE_VERBE_CM1],
+	},
 	{
 		id: 'fr-gram-clic-det',
 		label: 'Clique sur le déterminant',
@@ -1707,6 +1870,7 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 				cibleLabel: CIBLE_DET_CE2,
 			},
 		}),
+		etayage: [ETAYAGE_DET_CE2, ETAYAGE_DET_CM1],
 	},
 	{
 		// Leçon NEUVE (#436), CE2 uniquement : au CM1 l'adjectif est déjà travaillé comme
@@ -1719,6 +1883,7 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 			cibleLabel: CIBLE_ADJ_CE2,
 			levels: ['ce2'],
 		}),
+		etayage: [ETAYAGE_ADJ],
 	},
 	{
 		id: 'fr-gram-clic-conj',
@@ -1728,6 +1893,7 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 			consigne: CONSIGNE_CONJ,
 			cibleLabel: CIBLE_CONJ,
 		}),
+		etayage: [ETAYAGE_CONJ],
 	},
 	{
 		id: 'fr-gram-clic-pron',
@@ -1742,6 +1908,7 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 				cibleLabel: CIBLE_PRON_CE2,
 			},
 		}),
+		etayage: [ETAYAGE_PRON_CE2, ETAYAGE_PRON_CM1],
 	},
 	{
 		// Libellé PAR NIVEAU (#436) : « noyau » est du vocabulaire CM1, que le CE2 ne doit
@@ -1762,6 +1929,7 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 				cibleLabel: CIBLE_NOM_CE2,
 			},
 		}),
+		etayage: [ETAYAGE_NOM_CE2, ETAYAGE_NOYAU_CM1],
 	},
 	{
 		id: 'fr-gram-clic-sujet',
@@ -1771,5 +1939,6 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 			consigne: CONSIGNE_SUJET,
 			cibleLabel: CIBLE_SUJET,
 		}),
+		etayage: [ETAYAGE_SUJET],
 	},
 ];

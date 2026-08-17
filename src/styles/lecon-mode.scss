@@ -236,13 +236,20 @@ html.anim-reduced .sprint-choice.correct {
    Transposition des règles actées en révision (.rev-decide / .rev-giveup /
    .rev-feedback.reveal, cf. revision.scss) aux styles du mode leçon. */
 /* Bloc de décision d'une question : « Vérifier » puis, EN DESSOUS et nettement détaché
-   (≥ 16 px), le lien de déblocage. L'écart est porté par ce bloc et non par le `gap` du
-   conteneur, donc identique dans les cinq runners. */
+   (32 px), le lien de déblocage. L'écart est porté par ce bloc et non par le `gap` du
+   conteneur, donc identique dans les cinq runners.
+   Écart passé de 18 à 32 px après usage réel : les deux cibles étant CENTRÉES l'une
+   sous l'autre, le lien tient tout entier sous l'empreinte horizontale de « Vérifier », et
+   un appui qui dépasse vers le BAS y tombe droit — la géométrie canalisait le raté au lieu
+   de le disperser à côté. Un lien dont l'effet est IRRÉVERSIBLE (réponse révélée, question
+   comptée ratée, sans-faute perdu) mérite plus que le vide minimal entre deux boutons dont
+   les conséquences se valent. Valeur à réévaluer à l'usage plutôt qu'à la norme : aucun
+   repère chiffré ne couvre le pouce d'un enfant de 8-9 ans. */
 .lecon-decide {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 18px;
+	gap: 32px;
 }
 /* L'attribut [hidden] doit l'emporter sur display:flex (règle d'auteur, sinon la règle par
    défaut du navigateur perd) : `masquerDecision` efface le bloc une fois la question
@@ -596,11 +603,14 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
    écran (figure + 4 lignes + boutons peuvent dépasser en portrait). C'est le BLOC qui est
    collant, et non le seul bouton (#467) : un `position: sticky` posé sur « Valider » ne
    pourrait plus sortir de son conteneur, donc ne collerait plus à rien. Fond opaque : le lien
-   de déblocage n'a pas de remplissage, les propositions défileraient sous son texte. */
+   de déblocage n'a pas de remplissage, les propositions défileraient sous son texte.
+   `bottom` remonté de 8 à 16 px : c'est le SEUL endroit où le lien de déblocage se
+   retrouve collé au bord bas de l'écran, donc dans la zone où reposent le pouce et la paume
+   sur un téléphone tenu à une main — le contexte le plus exposé au clic non voulu. */
 @media (max-width: 600px) {
 	.lqcm-multi-decide {
 		position: sticky;
-		bottom: 8px;
+		bottom: 16px;
 		z-index: 3;
 		padding-top: 6px;
 		background: var(--paper);

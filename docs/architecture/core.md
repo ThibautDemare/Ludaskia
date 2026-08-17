@@ -27,7 +27,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   locales partielles (`tts-text.ts`, `items.ts`) ont été supprimées et rien ne justifie d'en
   réécrire une —, `fmt` (mm:ss), et
   `normalizeText` (normalisation **partagée** des réponses texte : trim + espaces
-  internes réduits + NFC). **`startOfDay(ts)`** — début du jour LOCAL (via `setHours`,
+  internes réduits + NFC). **`cleRecherche(s)`** (#496, partagée #556) — clé de recherche
+  d'un texte libre **insensible casse/accents** (minuscules, ligatures dépliées,
+  diacritiques retirés) — DISTINCTE de `normalizeText`, qui sert la **correction** et doit,
+  elle, exiger les accents : partagée par la banque de mots d'orthographe
+  (`core/orthographe/banque.ts`, cf. [Espace encadrant](espace-encadrant.md)) et par l'arbre
+  de sélection de leçon de l'espace encadrant (`core/catalogue-arbre.ts`, #556, ci-dessous).
+  **`startOfDay(ts)`** — début du jour LOCAL (via `setHours`,
   robuste au changement d'heure) — est le socle **unique** de tout raisonnement en
   jours calendaires de l'app : consommé par `progress.ts` (`startOfWeek`),
   `encadrant-stats.ts` (délai avant échéance, jalons), `ui/render.ts` (`quandRevision`)
@@ -1215,22 +1221,59 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   module ne traduit que l'état d'une CASE en faits. Consommé par
   `ui/lecon-probleme.ts` (`corrigerEtapesProbleme`, `revelerEtapesProbleme`), donc par le
   runner de leçon ET par la révision espacée, qui appellent ces deux fonctions.
+- **`catalogue-arbre.ts`** (#556, pur) — **arbre du catalogue pour la SÉLECTION d'une
+  leçon côté adulte**, sans stockage ni DOM (le rendu vit dans `ui/selecteur-lecon.ts`).
+  `arbreCatalogue(profile, opts)` → `MatiereArbre[]` (matière → catégorie → leçons)
+  applique un **`FiltreNiveau`** (`'sa-classe' | SchoolLevel` — « sa classe » n'est pas un
+  niveau pré-résolu : elle se lit PAR MATIÈRE via `niveauProfilMatiere`, un enfant pouvant
+  suivre des classes différentes selon la matière) et une recherche (`cleRecherche`
+  ci-dessus, sur le libellé de la leçon ET celui de sa catégorie). Contrairement aux points
+  d'exposition existants (`getLessonsBySubject`, `lessonsForLevel`), qui filtrent
+  STRICTEMENT sur le niveau du profil, cette vue ne filtre pas par défaut : le niveau y est
+  un FILTRE qu'on choisit, jamais une frontière. `jetonsNiveau(profile, lessons?)` calcule
+  la barre de jetons du sélecteur — « Sa classe » puis un jeton par niveau **pourvu en
+  contenu** (dérivé de `availableLevels`, jamais d'une liste de classes en dur), dédupliqué
+  seulement pour un profil MONO-niveau (sinon « Sa classe » et un jeton nommé diraient tous
+  deux « CM1 » alors que retirer ce dernier rendrait le CE2 d'une autre matière
+  inatteignable). La classe D'ORIGINE d'une leçon pour un profil (`origineLecon`), elle,
+  reste dans `encadrant-stats.ts` ci-dessous : l'y déplacer créerait un cycle d'imports
+  entre les deux modules.
 - **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
   bascule** (`progressionProfil`, `niveauProfilMatiere`) ; réexporte l'échelle de maîtrise
   (`niveauNotion`/`tendanceNotion`, définie dans `maitrise.ts`) pour les imports
   historiques, **activité** et **file « à revoir »** (`loadRevoir`/`loadRevoirFor`/
   `toggleRevoirFor`/`revoirActives`/`epingleesProfil`/`purgeRevoirSolides`/
   `retraitsAutoProfil`). Lit les clés brutes du profil consulté.
-  **État affiché sur une épinglée** (#518) : `EpingleEntry` porte un champ `horsNiveau`
-  (cible hors du niveau suivi par le profil — l'épingle est alors INERTE, `revoirActives`
-  l'écarte et elle ne revient jamais sur l'accueil de l'enfant), calculé par
-  `epingleesProfil` là où le niveau de la cible est déjà connu. `niveauEpingle(entry, recap,
-  listes)` en dérive séparément le `NiveauNotion` à afficher (leçon → depuis le récap ;
-  liste de dictée → depuis `listesOrthoProfil`), ou `null` faute d'état disponible — une
-  leçon épinglée jamais travaillée n'est pas ce cas, elle reste dans le récap à
-  `'a-decouvrir'`. `horsNiveau` n'est jamais déduit d'un `niveauEpingle` à `null` : les deux
-  répondraient à la même question par des chemins distincts et pourraient diverger en
-  silence.
+  **Position d'une leçon par rapport à la classe suivie (#556)** : `origineLecon(lesson,
+  profile)` → `OrigineLecon {niveau, direction}` — `niveau` est celui où la leçon sera
+  RÉELLEMENT jouée et stockée pour ce profil (`effectiveLevel` sur la classe suivie de sa
+  matière, le même que `niveauStockage` côté `progress.ts`), **`direction: DirectionNiveau`**
+  (`'en-dessous' | 'classe-suivie' | 'au-dessus'`) compare ce niveau à la classe suivie et
+  commande le RÉGIME d'affichage de la ligne — jamais écrit en toutes lettres à l'écran (cf.
+  [Espace encadrant](espace-encadrant.md) pour les trois régimes).
+  **`RecapProfil.etoilesParNiveau`** (#556) ajoute au récap les étoiles cumulées PAR CLASSE
+  (`progress.ts:etoilesParNiveau` appliqué à la carte brute d'étoiles du profil, cf.
+  [Niveaux scolaires](niveaux-scolaires.md)) — contrepartie adulte du « trésor » unique de
+  l'enfant, sans lecture de plus (la carte brute est déjà en main).
+  **État affiché sur une épinglée (#518, révisé #556)** : `EpingleEntry` porte
+  **`origine: OrigineLecon | null`** (`null` pour une liste de dictée du parent, non taguée
+  par niveau) et **`etat: EtatEpingle`** — `{kind:'acquisition', niveau}` pour une cible de
+  la classe suivie ou d'une classe EN DESSOUS (lue au niveau de STOCKAGE de la cible via
+  `etatLeconAuNiveau`, un état d'acquisition ordinaire), `{kind:'essai', essaye, at, reussi}`
+  pour une classe AU-DESSUS (compte-rendu FACTUEL — essayée/réussie ou non — jamais un cran
+  d'acquisition, qui mentirait sur une notion pas encore enseignée), ou `null` faute d'état
+  disponible. Les deux sont calculés par `epingleesProfil`, là où le niveau de la cible est
+  déjà connu — jamais déduits d'un état absent, qui pourrait diverger en silence. Une
+  épingle hors classe n'est plus INERTE comme avant #556 (l'ancien champ `horsNiveau` et la
+  fonction `niveauEpingle` ont disparu) : `revoirActives` ci-dessous la traite désormais
+  normalement.
+  **`revoirActives(dicteeDispo)`** ne filtre plus sur le niveau (#556, ferme #535 comme
+  sous-cas) : une leçon d'une autre classe que celle suivie y est rendue comme les autres,
+  lue à son niveau de STOCKAGE via `scopeStockage`/`loadStarsStockage`/
+  `loadLessonStatsStockage` (`progress.ts`, cf. [Niveaux scolaires](niveaux-scolaires.md))
+  plutôt que via la vue scopée `scopeActif` habituelle — sans ce changement de lecture, une
+  leçon assignée hors classe paraîtrait éternellement « jamais travaillée » et ne
+  quitterait jamais la boucle. `epingleesProfil(profile, dicteeDispo)` lit la MÊME vue.
   **Désépinglage automatique** (#465) : `purgeRevoirSolides(profile, dicteeDispo, now)`
   retire pour de bon de `ludaskia_revoir` les entrées redevenues solides, avec
   EXACTEMENT le critère de `revoirActives` (leçon étoilée ou perf récente ≥
@@ -1413,6 +1456,18 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   déterministe en test) tire un élément au hasard dans un pool déjà filtré ;
   `tirerCible(etape, disponibles, rand?)` l'applique au pool de dictées d'une étape — 1
   cible ⇒ toujours la même, 2+ ⇒ tirage à chaque lancement.
+
+  **Une étape « une leçon précise » NAÎT SANS CIBLE (#556)** : depuis que la cible se
+  choisit dans tout le catalogue (cf. `catalogue-arbre.ts`/`ui/selecteur-lecon.ts`
+  ci-dessus/[`ui/`](ui.md)), il n'y a plus de « première leçon » évidente à présélectionner
+  — ce serait poser une consigne que l'adulte n'a pas donnée. **`etapeConfiguree(etape)`**
+  (pure, ne dépend que de la DÉFINITION, contrairement à `etapeApplicable` ci-dessous qui
+  regarde aussi le contexte du jour) répond `!!etape.ref` pour une leçon, `true` pour tout
+  autre type : une étape non configurée ne compte ni dans le nombre d'activités du
+  composeur ni dans `estimationDureeMin` (elle disparaîtra au lancement, la compter
+  promettrait un temps que l'enfant ne passera pas), et `etapeApplicable` l'escamote du
+  programme au même titre qu'un « à revoir » sans rien d'épinglé — un programme ne peut pas
+  porter une étape VIDE qui bloquerait sa complétion (#464).
 
   **Étapes CONDITIONNELLES « à revoir » (#464)** : le mode `aRevoir` puise dans la file
   épinglée par l'encadrant (`ludaskia_revoir`, cf. [Espace encadrant](espace-encadrant.md)),

@@ -93,6 +93,20 @@ carte de déclarations « vues en classe » (`core/vu-ailleurs.ts`, #478) : clé
 `lessonId@niveau`, vue scopée au niveau actif via `scopeActif` (`loadVuAilleurs`) —
 une déclaration faite au CE2 ne rend pas la leçon rencontrée au CM1.
 
+**Deuxième contrat de lecture, pour une référence DÉSIGNÉE (#556)** : `scopeActif` exclut
+par construction ce qui n'est pas au niveau actif de la matière — juste pour un PÉRIMÈTRE
+(récap, complétude), faux pour une leçon qu'un adulte a délibérément assignée hors de la
+classe suivie (épingle « à revoir », cible d'une étape de programme), jouée et stockée au
+niveau qui est le SIEN. `scopeStockage` lit donc chaque leçon à son niveau de STOCKAGE
+(`niveauStockage`, celui de sa clé) plutôt qu'au niveau actif ; les deux vues coïncident
+pour tout ce qui appartient déjà au niveau actif. `loadStarsStockage`/
+`loadLessonStatsStockage` en sont les pendants de `loadStars`/`loadLessonStats` — consommés
+par `revoirActives` ([Espace encadrant](espace-encadrant.md)), qui ne filtre plus sur le
+niveau depuis #556. `etoilesParNiveau(raw)` (pur) détaille, à l'inverse, le cumul « trésor »
+PAR CLASSE (une fois par `lessonId@niveau` étoilée, ordre scolaire) : réservé à l'espace
+encadrant (`RecapProfil.etoilesParNiveau`), pour dire à l'adulte quelle part du travail se
+fait hors de la classe suivie — côté enfant, le trésor reste un total unique, sans détail.
+
 ## Scoping gamification
 
 **Scoping gamification** (`rewards.ts`) — **complétude** (`starsAll`, `allgreen`, par
@@ -122,3 +136,10 @@ actif seul dans les pools de tirage** (sprint/révision), toujours vrai aujourd'
 **mélange biaisé vers le bas** de ces pools reste une piste (cf. [Piste
 d'évolution](pistes-d-evolution.md)). L'**entretien du niveau inférieur en révision
 espacée**, lui, est sorti de cette piste : livré (#232, cf. [Logique pure](core.md)).
+
+**Exception côté ADULTE (#556)** : le sélecteur de leçon de l'espace encadrant
+(`core/catalogue-arbre.ts`/`ui/selecteur-lecon.ts`, cf. [Espace
+encadrant](espace-encadrant.md)) ne filtre PAS par défaut sur le niveau — il expose tout le
+catalogue, la classe devenant un filtre parmi d'autres (barre de jetons) plutôt qu'une
+frontière. Ce renversement reste réservé à l'adulte qui DÉSIGNE une leçon précise : les
+pools de tirage de l'enfant ci-dessus (sprint/révision) restent scopés à sa classe.

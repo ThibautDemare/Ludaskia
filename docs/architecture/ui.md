@@ -101,9 +101,14 @@ ci-dessous.
   `dicteesProposeesHTML` (dictées prédéfinies épinglables à l'avance), toutes
   deux rendues par l'orchestrateur dans l'onglet **Programme** (#459) plutôt
   qu'ici. Depuis #518, les épinglées portent le même badge d'état d'acquisition
-  (`ligneRevoir`, option `etat`) que les suggestions ; à défaut d'état disponible, un repli
-  « hors du niveau suivi » (`.enc-revoir-hors`, sans pastille de couleur) explique pourquoi
-  l'épingle est inerte plutôt que de laisser la ligne muette.
+  (`ligneRevoir`, option `etat`) que les suggestions ; depuis #556, une cible d'une autre
+  classe que celle suivie porte en plus le badge « classe d'origine » (`origine`, avant
+  l'état) et, si elle vient d'une classe AU-DESSUS, un compte-rendu FACTUEL
+  (`essai`) plutôt qu'un état d'acquisition — cf. [Espace encadrant](espace-encadrant.md)
+  pour les trois régimes. `aRevoirHTML` compose enfin le sous-bloc **« Épingler une
+  leçon »** (`epinglerHTML`) : le sélecteur de leçon partagé (ci-dessus), même action que
+  l'épinglage inline du récap, mais ouvrant TOUT le catalogue — y compris les classes que
+  l'enfant ne suit pas.
 - **`encadrant-travail.ts`** (#520) — bloc **« Travaillé récemment »** (onglet **Suivi**),
   composé par `encadrant-progression.ts` (ci-dessus) entre le graphe d'activité et
   « Notions par catégorie » : nomme directement les leçons et dictées travaillées sur une
@@ -138,13 +143,20 @@ ci-dessous.
 - **`encadrant-seance.ts`** (#440) — **compositeur** du « programme du jour » du
   profil consulté, en tête de l'onglet **Programme** (#459) : programmes (nom, étapes +
   `count`, récurrence date/hebdo — bascule `seance-rec-type`, composant segment
-  partagé — avec garde-fou de conflit `recurrencesEnConflit`),
-  cible d'étape (leçon, ou dictée) filtrée au niveau du profil, estimation de durée,
-  copie vers un autre profil. Une étape « dictée » se cible via une **liste à cocher**
-  (`checkboxesDicteeHTML`, handler `seance-dictee-toggle`, #463) plutôt qu'un menu
-  mono-valeur : le pool coché (`ciblesEtape`) peut compter 0, 1 ou plusieurs dictées ;
-  une cible cochée devenue indisponible reste affichée à part (« Cible actuelle »),
-  décochable sans être perdue en silence. Une étape **« à revoir » (#464)** ne se
+  partagé — avec garde-fou de conflit `recurrencesEnConflit`), estimation de durée, copie
+  vers un autre profil. Une étape « dictée » se cible via une **liste à cocher**
+  (`checkboxesDicteeHTML`, handler `seance-dictee-toggle`, #463, cibles filtrées au niveau
+  du profil) plutôt qu'un menu mono-valeur : le pool coché (`ciblesEtape`) peut compter 0,
+  1 ou plusieurs dictées ; une cible cochée devenue indisponible reste affichée à part
+  (« Cible actuelle »), décochable sans être perdue en silence. Une étape **« une leçon
+  précise » (#556)**, elle, cible TOUT le catalogue via le sélecteur de leçon partagé
+  (`cibleLeconHTML`/`selecteurEtapeHTML`, cf. `ui/selecteur-lecon.ts` ci-dessus) plutôt
+  qu'un menu filtré au niveau du profil : elle NAÎT sans cible (`etapeConfiguree`, cf.
+  [Logique pure](core.md)) et affiche, une fois une cible retenue d'une autre classe que
+  celle suivie, le badge « classe d'origine » (`badgeClasseOrigine`, `encadrant-commun.ts`).
+  Une cible qui n'est plus au catalogue (leçon retirée d'une version à l'autre) reste
+  signalée telle quelle plutôt que muette — seul motif restant de ce repli, une cible hors
+  de la classe suivie étant désormais légale. Une étape **« à revoir » (#464)** ne se
   configure pas — sa cible est la file épinglée du profil (`epingleesProfil`) — mais
   affiche un repère (`hintARevoir`) pour que l'adulte sache si elle apparaîtra dans le
   programme (« rien n'est épinglé » / une seule → « ce sera celle-ci » / plusieurs →
@@ -188,9 +200,35 @@ le focus aux flèches/Home/End ; la sélection **suit le focus** (le handler de 
 clique l'option visée, gère l'état et le re-rendu). Consommé par `activite-mode` et
 `dictees-vue` (`encadrant-progression.ts`, ce dernier depuis #496), `revision-mode`
 (`encadrant-revision.ts`), `seance-rec-type` (`encadrant-seance.ts`), `erreurs-periode`
-(`encadrant-erreurs.ts`) et `travail-periode` (`encadrant-travail.ts`, #520) — les
-`data-act`/`data-mode`/`data-type`/`data-periode`/`data-vue`/`data-jours` de chaque site
-restent inchangés (sélecteurs e2e stables).
+(`encadrant-erreurs.ts`), `travail-periode` (`encadrant-travail.ts`, #520) et `sel-niveau`
+(#556, ci-dessous, composé DANS les deux sections qui montent le sélecteur de leçon) — les
+`data-act`/`data-mode`/`data-type`/`data-periode`/`data-vue`/`data-jours`/`data-niveau` de
+chaque site restent inchangés (sélecteurs e2e stables).
+
+**Composant sélecteur de leçon partagé** — `selecteur-lecon.ts` (#556, hors des sections
+ci-dessus, consommé par DEUX d'entre elles) : `selecteurLeconHTML(opts)` rend l'arbre
+`matière → catégorie` du catalogue (`core/catalogue-arbre.ts`, cf. [Logique
+pure](core.md)) en `<details>` natifs repliés — même chrome que « Notions par catégorie »
+(`.enc-cat-d`/`.enc-cat-sum`), aucun pattern ARIA maison à inventer — précédé d'une barre
+de jetons de niveau (`segmentHTML`, ci-dessus) et d'un champ de recherche. Remplace le
+`<select>` filtré au niveau du profil qui rendait une leçon d'une autre classe littéralement
+inatteignable : ici le niveau est un jeton de FILTRE, l'arbre couvrant tout le catalogue.
+Contrat **`ActionLigne`** (`{act, extra?, etat}`) : le consommateur définit ce que fait le
+bouton en bout de ligne et son libellé/état pressé (« Choisir » pour la cible d'une étape de
+programme, « Épingler »/« Retirer » pour « à revoir ») — le sélecteur ignore ce qu'on fait de
+la leçon choisie. État de vue (jeton actif, recherche, plis) en **état de module par
+instance** (`Map` clée par `id`), et non dans le DOM : l'espace encadrant recrée tout son DOM
+à la moindre action, l'état y serait sinon remis à plat à chaque clic (même parti pris que
+`categoriesOuvertes`). La recherche filtre À LA FRAPPE en ne remplaçant QUE le corps de
+l'arbre (`rafraichirCorps`, région live `role="status"` mutée avec un délai, même motif que
+la banque de mots #496/#527) et déplie d'office ce qui reste. `enregistrerSelecteur(id, f)`
+déclare, à CHAQUE rendu du consommateur, comment re-rendre le corps du sélecteur (l'action
+de ligne capture un état qui change d'un rendu à l'autre — étape visée, file épinglée) ;
+`oublierSelecteur(id)` oublie l'état à la fermeture, et un changement de profil consulté
+remet TOUS les sélecteurs à plat (`onChangementProfilConsulte`). Deux consommateurs :
+la cible d'une étape « une leçon précise » du programme (`encadrant-seance.ts`) et
+l'épinglage « à revoir » (`encadrant-progression.ts`, bloc « Épingler une leçon », cf.
+[Espace encadrant](espace-encadrant.md) pour le détail fonctionnel des deux).
 
 **Journal des erreurs (#391)** — deux modules distincts, hors des modules de section
 ci-dessus, plus `core/erreur-representation.ts` (logique pure, cf. [Logique

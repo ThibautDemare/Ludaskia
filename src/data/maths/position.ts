@@ -186,7 +186,7 @@ function etayagePosition(
 }
 
 const REGLE_RANGS =
-	'Chaque chiffre vaut selon sa place : dans 3 472, le 4 ne vaut pas 4, il vaut 4 centaines.';
+	'Chaque chiffre vaut selon sa place : dans 3â€¯472, le 4 ne vaut pas 4, il vaut 4 centaines.';
 
 export const POSITION_LESSONS: PositionLessonDef[] = [
 	{

@@ -21,6 +21,9 @@
       possible d'un caractère près, et personne ne le verrait (un panneau s'ouvre, il est
       plein, il est faux). Les attendus sont dérivés de la TÂCHE que la leçon pose à chaque
       niveau — lue dans ses propres tirages, pas dans le texte de l'étayage.
+   4. la LECTURE À VOIX HAUTE. Ce texte est aussi un texte PARLÉ (`texteParle`, #42) : deux
+      caractères y changent de sens à l'oreille, et rien ne le signale à l'écrit. Cette
+      contrainte-là ne se voit ni au diff, ni à l'écran, ni en jouant la leçon sans le son.
    ============================================================ */
 import { beforeEach, describe, it, expect } from 'vitest';
 import { etayagePour, type EtayageContenu } from '../src/core/etayage';
@@ -28,6 +31,8 @@ import { CATEGORIES, getAllLessons, getLessonById, isProblemeLesson } from '../s
 import type { LessonDef, SchoolLevel } from '../src/core/catalog';
 import { defaultMode } from '../src/core/exercise';
 import { etayageRedige } from '../src/data/_shared';
+import { ESPACE_FINE } from '../src/core/nombres';
+import { texteParle } from '../src/core/tts-text';
 import { withSeed } from '../src/core/utils';
 import { initProfiles, touchActiveProfile } from '../src/core/profiles';
 import { setOnDataWrite } from '../src/core/storage';
@@ -296,5 +301,62 @@ describe('etayageRedige — ce que le raccourci garantit à ses 70 appels', () =
 			etapes: ['Un pas.', 'Un autre.'],
 		});
 		expect(entree.niveau).toBeUndefined();
+	});
+});
+
+/* ============================================================
+   5. CE QUE LE PANNEAU DIT À VOIX HAUTE (#42)
+   ------------------------------------------------------------
+   Le panneau se LIT (bouton « Écouter », et lecture automatique si le profil l'a réglée) :
+   `ui/etayage-panneau.ts` passe le titre, puis la règle et les étapes, à `texteParle`. Deux
+   signes y changent de sens à l'oreille, et l'écrit ne le laisse pas deviner — c'est donc
+   une contrainte d'ÉCRITURE, qui n'a aucune chance de survivre à la prochaine vague de
+   contenu si rien ne la vérifie. Les deux comportements sont d'abord constatés sur
+   `texteParle` (ils pourraient changer : le jour où la flèche se verbalise, la règle
+   ci-dessous n'a plus lieu d'être), puis appliqués à la donnée.
+   ============================================================ */
+describe('lecture à voix haute — le texte du panneau est aussi un texte parlé', () => {
+	/* Tous les champs que `lire()` envoie à la synthèse : le titre à chaque ouverture, la
+	   règle et les étapes dès qu'il n'y a pas de déroulé (le cas de tout le contenu rédigé). */
+	const CHAMPS = getAllLessons().flatMap((l) =>
+		(l.etayage ?? []).flatMap((e, i) =>
+			[
+				{ ou: `${l.id}[${i}].titre`, texte: e.contenu.titre },
+				...(e.contenu.regle ? [{ ou: `${l.id}[${i}].regle`, texte: e.contenu.regle }] : []),
+				...(e.contenu.etapes ?? []).map((s, k) => ({ ou: `${l.id}[${i}].etape${k}`, texte: s })),
+			].filter((c) => c.texte),
+		),
+	);
+
+	it('ce que le moteur de lecture fait des deux signes en question', () => {
+		// La flèche est MUETTE : elle marque le trou d'un énoncé (« 8 × 9 → @ »), pas une
+		// conséquence. Employée comme connecteur, elle laisse deux morceaux sans lien.
+		expect(texteParle('Arrondis : 35 → 40.')).toBe('Arrondis : 35 40.');
+		// Un grand nombre n'est recollé que si ses classes sont séparées par l'espace fine
+		// insécable (ou l'insécable) : avec une espace ordinaire, il reste deux nombres.
+		expect(texteParle(`11 × 100 = 1${ESPACE_FINE}100.`)).toBe('11 fois 100 égale 1100.');
+		expect(texteParle('11 × 100 = 1 100.')).toBe('11 fois 100 égale 1 100.');
+	});
+
+	it('aucun grand nombre ne se casse en deux à l’oreille', () => {
+		/* « 1 100 » écrit avec une espace ordinaire s'entend « un » puis « cent » : le fait
+		   numérique que l'étape existe pour montrer est exactement ce qui devient inaudible.
+		   Vérifié APRÈS `texteParle`, donc sur ce qui est réellement dit — l'insécable
+		   U+00A0 est accepté au même titre que la fine, c'est le moteur qui en décide. */
+		const fautes = CHAMPS.filter((c) => /[0-9] [0-9]/.test(texteParle(c.texte))).map(
+			(c) => `${c.ou} — « ${c.texte} » (séparateur de milliers : ESPACE_FINE, pas une espace)`,
+		);
+		expect(fautes).toEqual([]);
+	});
+
+	it('la flèche ne sert jamais de connecteur', () => {
+		/* Elle est légitime dans un ÉNONCÉ, où elle désigne le trou à remplir. Dans une phrase
+		   d'explication (« 35 → 40 », « dixièmes → 3/10 »), elle porte le lien logique — et
+		   c'est justement ce lien qui disparaît à l'écoute. Un mot le porte mieux : « donne »,
+		   « devient », « c'est ». */
+		const fautes = CHAMPS.filter((c) => c.texte.includes('→')).map(
+			(c) => `${c.ou} — « ${c.texte} »`,
+		);
+		expect(fautes).toEqual([]);
 	});
 });

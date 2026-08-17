@@ -57,6 +57,21 @@ export function dicteeDisponible(): boolean {
    Deux causes bien distinctes, deux actions différentes pour l'adulte. */
 export type RaisonSansVoix = 'aucune' | 'horsLigne';
 
+/* Le message correspondant, EN UN SEUL ENDROIT. Il est affiché à deux endroits très
+   différents (les réglages de l'espace encadrant et l'écran d'une dictée devenue
+   muette) : deux formulations concurrentes pour la même cause finiraient par diverger,
+   et l'une des deux oublierait de dire que ce n'est pas définitif. */
+export function messageSansVoix(): string {
+	switch (raisonSansVoix()) {
+		case 'horsLigne':
+			return "Lecture vocale indisponible sans connexion : la voix française de cet appareil a besoin d'Internet. Elle revient dès que la connexion est rétablie.";
+		case 'aucune':
+			return 'Lecture vocale indisponible sur cet appareil (aucune voix française).';
+		default:
+			return 'Lecture vocale disponible sur cet appareil.';
+	}
+}
+
 export function raisonSansVoix(): RaisonSansVoix | null {
 	if (dicteeDisponible()) return null;
 	if (typeof speechSynthesis === 'undefined') return 'aucune';

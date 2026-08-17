@@ -149,6 +149,13 @@
 	text-decoration: underline;
 	text-underline-offset: 2px;
 }
+/* `#donnees-abri` et `#installer` portent `tabindex="-1"` pour être des cibles
+   d'ancre : sans cette règle, leur anneau de focus retomberait sur celui du
+   navigateur, seul endroit de la page où le focus ne serait pas stylé. */
+.g-note:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 2px;
+}
 .g-note a:focus-visible {
 	outline: 3px solid var(--accent-dark);
 	outline-offset: 2px;

@@ -25,7 +25,7 @@ import {
 	type CategorieDeclarable,
 	type LeconNiveau,
 } from '../core/vu-ailleurs';
-import { dicteeDisponible } from './tts';
+import { dicteeDisponible, messageSansVoix } from './tts';
 import { consulteUuid, renderEspace } from './encadrant-commun';
 
 /* La section « Réglages » : classe + aménagements + déjà vu en classe + bloc PIN
@@ -80,11 +80,7 @@ function amenagementsHTML(consulte: Profile): string {
         <input type="checkbox" data-act="set-amenagement" data-pref="lectureConsigneAuto"${prefs.lectureConsigneAuto ? ' checked' : ''}${voix ? '' : ' disabled'} />
         <span>Lire la consigne à voix haute automatiquement</span>
       </label>
-      <p class="enc-hint">${
-				voix
-					? `${icon('speaker')} Lecture vocale disponible sur cet appareil.`
-					: `${icon('speaker')} Lecture vocale indisponible sur cet appareil (aucune voix française).`
-			}</p>
+      <p class="enc-hint">${icon('speaker')} ${messageSansVoix()}</p>
       <label class="enc-toggle">
         <input type="checkbox" data-act="set-amenagement" data-pref="sansApparitionsSurprises"${prefs.sansApparitionsSurprises ? ' checked' : ''} />
         <span>Désactiver les apparitions surprises <small class="enc-hint">(petites surprises qui passent parfois à l'écran, ex. une luciole — à couper pour un enfant qu'un mouvement inattendu déconcentre)</small></span>

@@ -123,13 +123,15 @@
 	outline: 3px solid var(--admin-accent);
 	outline-offset: -2px;
 }
-/* Mobile : une seule ligne de texte, l'étiquette passe au-dessus. Le bandeau
-   reste fin — un adulte à qui on tend une tablette ne fait pas défiler. */
 /* Mobile : le bandeau doit rester FIN — un adulte à qui on tend une tablette ne
-   fait pas défiler, et ce qui dépasse le premier écran n'existe pas. On resserre
-   donc au maximum : étiquette et texte sur la même ligne, actions sur une
-   deuxième, cible de 44px obtenue sans grandir la ligne (padding vertical réduit,
-   compensé par le `min-height` du bouton lui-même). */
+   fait pas défiler, et ce qui dépasse le premier écran n'existe pas.
+   Composition retenue : l'étiquette sur sa ligne, puis le texte pleine largeur,
+   puis les actions. Accoler l'étiquette au texte ne gagnerait rien : « POUR LES
+   PARENTS » mange ~140px des ~330 disponibles, la phrase déborderait quand même
+   sur plusieurs lignes, mais en escalier contre un label d'une seule ligne —
+   moins lisible que l'empilement actuel.
+   La cible de 44px vient du `min-height` des boutons, pas d'un padding qui
+   ferait grossir la ligne. */
 @media (max-width: 720px) {
 	.rappel-sauvegarde {
 		gap: 0 8px;

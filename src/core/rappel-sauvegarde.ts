@@ -55,10 +55,25 @@ import { lsGetRaw, lsSetRaw } from './storage';
    machine) et survit à la suppression d'un profil. */
 export const RAPPEL_SAUVEGARDE_KEY = 'ludaskia_sauvegarde';
 
-/** Nombre d'activités (tous profils) à accumuler depuis le dernier export. */
+/* Nombre d'activités (tous profils) à accumuler depuis le dernier export.
+
+   ⚠ À RECALIBRER, constat de relecture (gamification-enfant) : ce compteur compte des
+   SESSIONS terminées (`recordActivity` : une leçon, un bilan, un sprint, une révision
+   ou une dictée menés à leur terme), pas des exercices. Pour l'utilisateur ponctuel —
+   celui que le verrou des 7 jours cherche justement à protéger, une dictée toutes les
+   deux ou trois semaines — trois sessions peuvent demander quatre à six semaines, soit
+   deux fenêtres de purge iOS traversées avant le premier rappel. Les deux verrous
+   travaillent alors l'un contre l'autre pour la population qu'ils visent.
+   Baisser à 2 ne changerait rien aux familles actives (elles saturent le compteur en
+   une soirée, et ce sont les 48 h puis les 7 jours qui les protègent). Le chiffre
+   restant celui arrêté au cadrage, on le garde tel quel et on le remonte. */
 export const MIN_ACTIVITES = 3;
-/** Le « mot aux parents » du premier lancement promet « sans aucune pression » :
- *  y superposer un message inquiétant dans la même minute le contredirait. */
+/* Le « mot aux parents » du premier lancement promet « sans aucune pression » : y
+   superposer un message inquiétant dans la même minute le contredirait.
+   Nuance : cette justification ne vaut que pour un NOUVEAU venu. Une installation qui
+   tournait déjà avant cette version hérite quand même du délai (l'origine est posée à
+   la première lecture de la clé, faute de date de création sur les profils), alors
+   qu'elle ne reverra jamais ce mot. Le retard est borné à 48 h, une seule fois. */
 export const DELAI_PREMIER_JOUR_MS = 48 * 60 * 60 * 1000;
 /** Troisième verrou : on ne sollicite pas quelqu'un qui vient de sauvegarder. */
 export const DELAI_MIN_EXPORT_MS = 7 * 24 * 60 * 60 * 1000;
@@ -132,8 +147,9 @@ export function contenuRappel(ctx: ContexteRappel): {
 /** Fermeture : on monte d'un cran et on repousse la fois suivante d'autant. */
 export function reporter(etat: EtatRappel, now: number): EtatRappel {
 	const palier = Math.min(etat.palier + 1, REPORTS_JOURS.length - 1);
-	// Le délai posé est celui du cran qu'on VIENT d'atteindre : fermer une première
-	// fois renvoie au lendemain, le fermer encore trois jours plus tard, etc.
+	// Le délai posé est celui du cran QUITTÉ (`etat.palier`, lu avant incrément), pas
+	// du nouveau : la première fermeture renvoie donc au lendemain (1 jour), la
+	// deuxième à trois jours, etc. Suite effective : 1, 3, 7, 14, 30, 30…
 	return { ...etat, palier, prochain: now + delaiReportMs(etat.palier) };
 }
 
@@ -164,11 +180,17 @@ function normaliser(v: unknown, now: number): EtatRappel {
 
 /* Lit l'état, en POSANT l'origine au premier appel si elle manque. C'est ce qui
    date le « 48 h » sans exiger un champ de création sur les profils : pour un
-   nouvel arrivant, ce premier appel a lieu au premier lancement. */
+   nouvel arrivant, ce premier appel a lieu au premier lancement.
+
+   La réparation est RÉÉCRITE sur disque dès qu'elle change quelque chose, et pas
+   seulement gardée en mémoire. Sinon une valeur d'un type inattendu (`depuis` en
+   chaîne, par exemple) serait renormalisée en `now` à CHAQUE lecture : l'origine
+   n'avancerait jamais, le verrou des 48 h ne tomberait jamais, et l'encart resterait
+   silencieux à vie sans que rien ne le signale. */
 export function lireEtatRappel(now: number): EtatRappel {
 	const brut = lsGetRaw(RAPPEL_SAUVEGARDE_KEY, null);
 	const etat = normaliser(brut, now);
-	if (!brut || (brut as Partial<EtatRappel>).depuis == null) ecrireEtatRappel(etat);
+	if (!brut || JSON.stringify(brut) !== JSON.stringify(etat)) ecrireEtatRappel(etat);
 	return etat;
 }
 

@@ -40,7 +40,7 @@ import {
 import { recompensesEntre } from '../core/unlocks';
 import { announceRewards, showLevelUp } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
-import { dicteeDisponible, dicter, raisonSansVoix } from './tts';
+import { dicteeDisponible, dicter, messageSansVoix } from './tts';
 import { icon, iconOr } from './icon';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 import { capterErreur } from './erreur-capture';
@@ -293,11 +293,10 @@ function reviserDisponibiliteDictee(): void {
    le patron de l'espace encadrant plutôt que d'en inventer un. */
 function renderDicteeMuette(): void {
 	const retour = retourOrtho("Retour à l'orthographe", 'Retour au programme');
-	const raison = raisonSansVoix();
-	const explication =
-		raison === 'horsLigne'
-			? "Lecture vocale indisponible sans connexion sur cet appareil (sa voix française a besoin d'Internet)."
-			: 'Lecture vocale indisponible sur cet appareil (aucune voix française).';
+	// Message partagé avec les réglages de l'espace encadrant (cf. `messageSansVoix`) :
+	// une seule formulation par cause, et celle du hors-ligne dit bien que la voix
+	// revient — un enfant ne doit pas croire que c'est cassé pour de bon.
+	const explication = messageSansVoix();
 	sheets().innerHTML = `
     <div class="page ortho-run ortho-bilan">
       <h2>La dictée a besoin du son</h2>

@@ -37,6 +37,7 @@ import { afficherAstuceReponseVide } from './session';
 import { bindConsigneTts } from './consigne-tts';
 import { stopTts } from './tts';
 import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
+import { rafraichirRappelSauvegarde } from './rappel-sauvegarde';
 import { runSprint, sprintCleanup, renderSprintConfigScreen } from './sprint';
 import { runRevisionEspacee, revisionCleanup } from './revision';
 import { renderBilanConfigScreen } from './bilan';
@@ -442,6 +443,10 @@ export function showHomeView() {
 	// rendre l'accueil (carte à jour), et célèbre si le programme entier vient d'être fini.
 	rafraichirProgramme();
 	renderHomeStats();
+	// Encart « Pour les parents » (#306 §7). Rendu ICI et nulle part ailleurs :
+	// l'accueil est le seul écran où il a le droit d'apparaître, ce qui garantit à
+	// lui seul qu'il ne surgira jamais pendant un exercice.
+	rafraichirRappelSauvegarde();
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 /* Écran « Programme du jour » (#440) : parcours composé par l'encadrant. Au retour

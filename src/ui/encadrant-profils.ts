@@ -76,7 +76,11 @@ export function profilsHTML(profiles: Profile[], consulte: Profile, actif: Profi
     </section>`;
 }
 
-/* Sauvegarde : export de TOUS les profils / import (fusion par UUID, par récence). */
+/* Sauvegarde : export de TOUS les profils / import (fusion par UUID, par récence).
+   Ici vit la version COMPLÈTE du message que l'encart de l'accueil ne fait qu'effleurer
+   (#306 §7) : l'accueil est l'écran de l'enfant, il doit rester sobre et non anxiogène,
+   alors qu'ici on s'adresse à un adulte venu de son plein gré — on peut donc tout
+   expliquer, y compris ce qui fait vraiment perdre des données. */
 export function sauvegardeHTML(): string {
 	return `<section class="enc-section">
       <h2 class="enc-h2">Sauvegarde</h2>
@@ -85,6 +89,10 @@ export function sauvegardeHTML(): string {
         <button type="button" class="enc-btn-sec" data-act="enc-export">${icon('export')} Exporter les profils</button>
         <button type="button" class="enc-btn-sec" data-act="enc-import">${icon('import')} Importer une sauvegarde</button>
       </div>
+      <h3 class="enc-h3">Où vivent les données, et comment les mettre à l'abri</h3>
+      <p class="enc-hint">Ludaskia n'a ni compte ni serveur : toute la progression est enregistrée dans <strong>ce navigateur, sur cet appareil</strong>. Rien n'est envoyé nulle part, et rien n'est récupérable ailleurs. Vider les données du navigateur, changer d'appareil ou réinstaller le système efface donc la progression.</p>
+      <p class="enc-hint">Sur iPhone et iPad, il y a un cas de plus : si l'application <strong>n'est pas installée sur l'écran d'accueil</strong>, Safari efface de lui-même les données d'un site resté environ <strong>sept jours sans être ouvert</strong>. Chaque utilisation remet ce compteur à zéro, donc cela ne concerne qu'un usage très espacé — typiquement une dictée toutes les deux ou trois semaines.</p>
+      <p class="enc-hint">Deux gestes suffisent, et ils sont complémentaires. <strong>Installer l'application</strong> sur l'écran d'accueil lève complètement ce délai de sept jours (et rend l'application utilisable sans connexion) : le mode d'emploi appareil par appareil est dans le <a href="${import.meta.env.BASE_URL}guide.html#installer" target="_blank" rel="noopener">guide pour les parents</a>. <strong>Exporter une sauvegarde</strong> de temps en temps est le filet de secours : le fichier obtenu contient tous les profils et se réimporte ici même, sur n'importe quel appareil.</p>
     </section>`;
 }
 

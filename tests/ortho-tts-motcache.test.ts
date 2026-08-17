@@ -25,13 +25,17 @@ beforeEach(() => {
 		cancel: () => {},
 		speak,
 	};
+	// Un vrai `SpeechSynthesisUtterance` est un EventTarget : `dicter` y pose un
+	// écouteur `error` (filet de sécurité #306 §5), et `dicterConsigne` `end`/`error`.
+	// Le stub doit donc en hériter, sinon il modélise une API qui n'existe pas.
 	(globalThis as unknown as { SpeechSynthesisUtterance: unknown }).SpeechSynthesisUtterance =
-		class {
+		class extends EventTarget {
 			text: string;
 			voice: unknown = null;
 			lang = '';
 			rate = 1;
 			constructor(t: string) {
+				super();
 				this.text = t;
 			}
 		};

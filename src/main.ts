@@ -84,7 +84,8 @@ import { closeProfileMenu, toggleProfileMenu, toggleDrawer, closeDrawer } from '
 import { initTts } from './ui/tts';
 import { maybeShowClassChoice } from './ui/onboarding';
 import { lancerTour, maybeOnboarding } from './ui/tour';
-import { initVersionCheck } from './ui/version-check';
+import { initAppCalme } from './ui/app-calme';
+import { initPwa } from './ui/pwa';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 import { installGroupedNumberEcho } from './ui/grand-nombre-echo';
 import { installPaveSignes } from './ui/pave-signes';
@@ -423,7 +424,8 @@ setOnDataWrite(touchActiveProfile);
 initProfiles();
 applyPreferences(); // thème + animations du profil actif, dès avant le 1er rendu
 initTts(); // précharge les voix de synthèse (dictée best-effort)
-initVersionCheck(); // auto-actualisation : recharge l'onglet quand un nouveau déploiement est en ligne
+initAppCalme(); // observe « l'app est-elle calme ? » (mise à jour, cache hors-ligne, rappels)
+initPwa(); // service worker : hors-ligne + auto-actualisation quand un déploiement est en ligne
 // Les scripts type="module" sont différés : si le DOM est déjà prêt, on câble
 // immédiatement, sinon on attend DOMContentLoaded (parité avec l'ancien main.js).
 if (document.readyState !== 'loading') wireDOM();

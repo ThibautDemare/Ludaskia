@@ -10,7 +10,7 @@
 		"resolveJsonModule": true,
 		"noEmit": true,
 		"lib": ["ES2020", "DOM", "DOM.Iterable"],
-		"types": ["vite/client", "vitest/globals"]
+		"types": ["vite/client", "vitest/globals", "vite-plugin-pwa/client"]
 	},
 	/* `src/sw.ts` est vérifié à part (tsconfig.sw.json) : c'est un worker, ses globales
 	   viennent de `lib.webworker` et non du DOM. */

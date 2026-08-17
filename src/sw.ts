@@ -34,7 +34,7 @@ import {
 	manques,
 	obsoletes,
 	partitionner,
-	rebaser,
+	normaliserManifeste,
 	type EntreePrecache,
 } from './core/pwa-cache';
 
@@ -50,15 +50,19 @@ const CACHE = 'ludaskia-offline-v1';
    en dur : elle change entre GitHub Pages et un serveur local. */
 const BASE = new URL(self.registration.scope).pathname;
 
-const MANIFESTE: EntreePrecache[] = rebaser(self.__WB_MANIFEST ?? [], BASE);
+const MANIFESTE: EntreePrecache[] = normaliserManifeste(self.__WB_MANIFEST ?? [], BASE);
 const { immediat, differe } = partitionner(MANIFESTE);
 
 /* Index url → entrée : le fetch reçoit une URL nue et doit retrouver la clé de cache
    correspondante (qui, pour un fichier à nom stable, porte la révision). */
 const PAR_URL = new Map(MANIFESTE.map((e) => [e.url, e]));
 
-/* Messages échangés avec l'app (cf. src/ui/pwa.ts). */
-const MSG_BASCULER = 'ludaskia-basculer'; // « tu peux prendre la main » (fin d'attente)
+/* Messages échangés avec l'app (cf. src/ui/pwa.ts).
+   `SKIP_WAITING` n'est pas de notre cru : c'est le message que `workbox-window`
+   envoie quand l'app décide enfin de laisser la nouvelle version prendre la main.
+   Ne pas le reconnaître donnerait un mécanisme silencieusement inerte — le voile
+   s'afficherait, et la page ne basculerait jamais. */
+const MSG_BASCULER = 'SKIP_WAITING';
 const MSG_RECHAUFFER = 'ludaskia-rechauffer'; // « récupère quelques manques »
 const MSG_ETAT = 'ludaskia-etat'; // « où en est la couverture ? »
 

@@ -1,27 +1,16 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
-import type { Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // Version du build : SHA court du commit en CI (GitHub Actions fournit GITHUB_SHA),
-// sinon un horodatage local. Sert à l'auto-actualisation (cf. src/ui/version-check.ts) :
-// la valeur est injectée dans l'app (__APP_VERSION__) ET écrite dans un petit
-// version.json publié à la racine du site, que l'app interroge pour se savoir périmée.
+// sinon un horodatage local. Injectée dans l'app (`__APP_VERSION__`) pour l'affichage,
+// le diagnostic et l'anti-boucle de l'auto-actualisation.
+// Ce n'est PLUS le déclencheur de la mise à jour : depuis #306, c'est le service worker
+// qui signale une nouvelle version (une version installée reste « en attente » jusqu'à
+// ce que l'app la laisse prendre la main). Le `version.json` publié et son sondage ont
+// disparu avec lui — les garder aurait recréé deux mécanismes de mise à jour
+// concurrents (cf. src/ui/pwa.ts et src/ui/mise-a-jour.ts).
 const buildVersion = process.env.GITHUB_SHA?.slice(0, 12) || `dev-${Date.now()}`;
-
-// Émet dist/version.json à côté du bundle (interrogé à l'exécution, sans cache).
-function emitVersionFile(): Plugin {
-	return {
-		name: 'ludaskia-version-file',
-		generateBundle() {
-			this.emitFile({
-				type: 'asset',
-				fileName: 'version.json',
-				source: JSON.stringify({ version: buildVersion }) + '\n',
-			});
-		},
-	};
-}
 
 /* Service worker (#306) — DÉSACTIVÉ par défaut hors production.
    Un SW enregistré en dev/preview empoisonne la suite e2e : il sert d'un test à
@@ -50,7 +39,6 @@ export default defineConfig({
 	},
 	define: { __APP_VERSION__: JSON.stringify(buildVersion) },
 	plugins: [
-		emitVersionFile(),
 		VitePWA({
 			// `injectManifest` (et non `generateSW`) : le service worker est ÉCRIT à la main
 			// (`src/sw.ts`), Workbox n'y injecte que la liste des fichiers du build. C'est

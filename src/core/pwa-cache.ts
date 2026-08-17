@@ -32,15 +32,32 @@ export interface EntreePrecache {
 	revision?: string | null;
 }
 
-/* Workbox émet des URL RELATIVES à la racine du site publié (`assets/app-x.js`,
-   `index.html`), alors que le worker travaille sur des chemins absolus
-   (`/Ludaskia/assets/app-x.js`). On les rebase une fois pour toutes au démarrage.
-   Une URL déjà absolue est laissée telle quelle. */
-export function rebaser(manifeste: EntreePrecache[], base: string): EntreePrecache[] {
+/* Le manifeste tel qu'injecté n'est pas directement exploitable, pour deux raisons.
+
+   1. Ses URL sont RELATIVES à la racine du site publié (`assets/app-x.js`,
+      `index.html`), alors que le worker travaille sur des chemins absolus
+      (`/Ludaskia/assets/app-x.js`). On les rebase une fois pour toutes.
+   2. Il contient des DOUBLONS : les icônes du manifeste web y figurent deux fois
+      (une fois ramassées dans `public/`, une fois déclarées comme icônes). Sans
+      dédoublonnage, le réchauffement les télécharge deux fois et le décompte de
+      couverture annonce plus d'entrées qu'il n'y a de fichiers.
+
+   On identifie un doublon par sa CLÉ DE CACHE, pas par son URL : deux entrées de
+   même URL mais de révisions différentes sont bien deux choses distinctes. */
+export function normaliserManifeste(manifeste: EntreePrecache[], base: string): EntreePrecache[] {
 	const prefixe = base.endsWith('/') ? base : `${base}/`;
-	return manifeste.map((e) =>
-		e.url.startsWith('/') ? e : { ...e, url: prefixe + e.url.replace(/^\.?\//, '') },
-	);
+	const vues = new Set<string>();
+	const out: EntreePrecache[] = [];
+	for (const e of manifeste) {
+		const absolue = e.url.startsWith('/')
+			? e
+			: { ...e, url: prefixe + e.url.replace(/^\.?\//, '') };
+		const cle = cleCache(absolue);
+		if (vues.has(cle)) continue;
+		vues.add(cle);
+		out.push(absolue);
+	}
+	return out;
 }
 
 /* Marqueur de révision dans la clé de cache. Nom volontairement distinct de celui de

@@ -148,7 +148,7 @@ import {
 } from '../src/core/figures';
 import { checkAnswer } from '../src/core/exercise';
 import type { Exercise } from '../src/core/exercise';
-import { isNewerVersion, canReloadNow } from '../src/core/version';
+import { canReloadNow } from '../src/core/version';
 import type { ReloadState, ReloadThresholds } from '../src/core/version';
 import { genItems, buildLessonFiche } from '../src/core/build';
 import {
@@ -4236,15 +4236,6 @@ describe('grammaire — classes de mots, articles, adverbes (#116)', () => {
 });
 
 describe('auto-actualisation (core/version)', () => {
-	test('isNewerVersion : différence stricte sur une chaîne non vide', () => {
-		expect(isNewerVersion('abc', 'def')).toBe(true);
-		expect(isNewerVersion('abc', 'abc')).toBe(false); // identique → pas neuf
-		expect(isNewerVersion('abc', '')).toBe(false); // chaîne vide ignorée
-		expect(isNewerVersion('abc', null)).toBe(false);
-		expect(isNewerVersion('abc', undefined)).toBe(false);
-		expect(isNewerVersion('abc', 42)).toBe(false); // type non-chaîne ignoré
-	});
-
 	const THR: ReloadThresholds = { minIdleMs: 4000, minVisibleMs: 1500 };
 	// État « moment sûr » de référence : tout est réuni pour recharger.
 	const sain = (): ReloadState => ({

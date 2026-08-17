@@ -12,5 +12,8 @@
 		"lib": ["ES2020", "DOM", "DOM.Iterable"],
 		"types": ["vite/client", "vitest/globals"]
 	},
-	"include": ["src", "tests", "vite.config.ts"]
+	/* `src/sw.ts` est vérifié à part (tsconfig.sw.json) : c'est un worker, ses globales
+	   viennent de `lib.webworker` et non du DOM. */
+	"include": ["src", "tests", "vite.config.ts"],
+	"exclude": ["src/sw.ts"]
 }

@@ -9,6 +9,10 @@
 		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
 		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<!-- Application installable (#306). Le <link rel="manifest"> est injecté au build
+		     par vite-plugin-pwa ; la couleur de thème, elle, se déclare ici (barre système
+		     de l'app installée) et reprend --accent, la couleur de la barre d'outils. -->
+		<meta name="theme-color" content="#2f7d52" />
 		<!-- Open Graph / Twitter Card — aperçu lors du partage du lien (WhatsApp,
 		     Messenger, Facebook, X, Slack…). URL ABSOLUES obligatoires : les crawlers
 		     ne résolvent pas les chemins relatifs (et Vite ne réécrit pas le `content`

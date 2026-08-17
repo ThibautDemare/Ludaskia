@@ -872,6 +872,12 @@ a.v-brand:focus-visible {
 .v-footer a {
 	color: var(--accent-dark);
 	font-weight: 600;
+	/* Cible tactile : à 0,95rem et line-height 1.55, la hauteur de ligne tombe à
+	   ≈ 23,6 px, sous le plancher de 24 px — et ces liens sont seuls dans leur
+	   paragraphe, donc l'exception « lien au fil d'une phrase » ne joue pas. */
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
 }
 /* Lien « Voir le code » : icône GitHub alignée au libellé. */
 .v-gh {

@@ -95,9 +95,16 @@ plus, pour que l'enfant n'ait rien à régler lui-même.
 ## Utilisation
 Le plus simple : [jouer en ligne](https://thibautdemare.github.io/Ludaskia/).
 Toute la progression est enregistrée **localement** dans le navigateur (rien
-n'est envoyé sur un serveur), et l'entraînement **continue de fonctionner si la
-connexion se coupe** une fois la page ouverte. Rouvrir l'application plus tard
-sans réseau n'est en revanche pas encore garanti (service worker à venir).
+n'est envoyé sur un serveur), et l'application **fonctionne sans connexion** :
+un service worker met le site en cache et le complète en arrière-plan, aux
+moments calmes, jusqu'à couverture complète. La promesse est donc réelle mais
+**progressive** — après quelques utilisations, pas dès la première seconde.
+
+Elle est aussi **installable** (« Ajouter à l'écran d'accueil »). Sur iPhone et
+iPad, ce n'est pas qu'un confort : Safari efface les données d'un site **non
+installé** resté environ sept jours sans être ouvert, progression comprise.
+L'installation lève ce délai, et l'export de sauvegarde (espace encadrants) sert
+de filet.
 
 ## Pour les développeurs
 - **Stack** : HTML + **SCSS** et **TypeScript** (`strict`), bundle par **Vite**

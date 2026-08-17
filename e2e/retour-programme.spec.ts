@@ -36,6 +36,28 @@ import { watchErrors, gotoHash } from './helpers';
 
 const CLEAR_PIN = `localStorage.removeItem('ludaskia_encadrant_lock');`;
 
+/* Choisit `lessonId` comme cible de l'étape (def/étape donnés) via le sélecteur tous
+   niveaux (#556, remplace l'ancien `<select data-act="seance-ref">`) : ouvre le
+   panneau, déplie TOUT l'arbre (plus robuste qu'une recherche par libellé, qui
+   recouplerait ce helper de mise en place aux intitulés du catalogue) puis clique
+   la ligne de la cible. */
+async function choisirLeconViaSelecteur(
+	page: Page,
+	defId: string,
+	etapeId: string,
+	lessonId: string,
+): Promise<void> {
+	await page
+		.locator(`[data-act="seance-cible-ouvrir"][data-def="${defId}"][data-etape="${etapeId}"]`)
+		.click();
+	await page.evaluate(() => {
+		document
+			.querySelectorAll<HTMLDetailsElement>('.enc-seance-selecteur .enc-sel-d')
+			.forEach((d) => (d.open = true));
+	});
+	await page.locator(`[data-act="seance-cible-choisir"][data-lesson="${lessonId}"]`).click();
+}
+
 /* Crée, via l'UI réelle du compositeur, un programme (d1) avec UNE étape
    « Une leçon précise » (e1) ciblant `lessonId`, comptée `count` fois, et une
    récurrence hebdomadaire sur les 7 jours (s'applique quel que soit le jour
@@ -49,9 +71,7 @@ async function creerProgrammeLeconTousLesJours(
 	await gotoHash(page, 'encadrant/programme');
 	await page.locator('[data-act="seance-add"]').click();
 	await page.locator('select[data-act="seance-etape-add"][data-def="d1"]').selectOption('lecon');
-	await page
-		.locator('select[data-act="seance-ref"][data-def="d1"][data-etape="e1"]')
-		.selectOption(lessonId);
+	await choisirLeconViaSelecteur(page, 'd1', 'e1', lessonId);
 	if (count !== 1) {
 		await page
 			.locator('select[data-act="seance-count"][data-def="d1"][data-etape="e1"]')

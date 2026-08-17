@@ -75,6 +75,28 @@ async function fermerModalesRecompense(page: Page): Promise<void> {
 	}
 }
 
+/* Choisit LESSON_ID comme cible de l'étape (def/étape donnés) via le sélecteur tous
+   niveaux (#556, remplace l'ancien `<select data-act="seance-ref">`) : ouvre le
+   panneau, déplie TOUT l'arbre (plus robuste qu'une recherche par libellé, qui
+   recouplerait ce helper de mise en place aux intitulés du catalogue) puis clique
+   la ligne de la cible. */
+async function choisirLeconViaSelecteur(
+	page: Page,
+	defId: string,
+	etapeId: string,
+	lessonId: string,
+): Promise<void> {
+	await page
+		.locator(`[data-act="seance-cible-ouvrir"][data-def="${defId}"][data-etape="${etapeId}"]`)
+		.click();
+	await page.evaluate(() => {
+		document
+			.querySelectorAll<HTMLDetailsElement>('.enc-seance-selecteur .enc-sel-d')
+			.forEach((d) => (d.open = true));
+	});
+	await page.locator(`[data-act="seance-cible-choisir"][data-lesson="${lessonId}"]`).click();
+}
+
 /* Crée, via l'UI réelle du compositeur, un programme (d1) réduit à UNE étape
    « Une leçon précise » ciblant LESSON_ID, récurrente sur les `jours` demandés
    (1 = lundi … 7 = dimanche). Laisse la page sur l'accueil enfant. */
@@ -83,9 +105,7 @@ async function creerProgrammeLecon(page: Page, jours: number[]): Promise<void> {
 	await gotoHash(page, 'encadrant/programme');
 	await page.locator('[data-act="seance-add"]').click();
 	await page.locator('select[data-act="seance-etape-add"][data-def="d1"]').selectOption('lecon');
-	await page
-		.locator('select[data-act="seance-ref"][data-def="d1"][data-etape="e1"]')
-		.selectOption(LESSON_ID);
+	await choisirLeconViaSelecteur(page, 'd1', 'e1', LESSON_ID);
 	for (const jour of jours) {
 		await page
 			.locator(`input[data-act="seance-rec-jour"][data-def="d1"][data-jour="${jour}"]`)

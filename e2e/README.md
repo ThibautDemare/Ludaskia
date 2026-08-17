@@ -16,9 +16,26 @@ npx playwright test --ui    # mode interactif (debug)
 
 Au premier usage, installer le navigateur : `npx playwright install chromium`.
 
-Le serveur de dev est démarré automatiquement par Playwright (`webServer` dans
-`playwright.config.ts`) sur le port **4173**, l'app étant servie sous
-`/Ludaskia/`. En local, un serveur déjà lancé est réutilisé.
+Playwright démarre **deux** serveurs (`webServer` dans `playwright.config.ts`),
+l'app étant servie sous `/Ludaskia/` dans les deux cas. En local, un serveur déjà
+lancé sur le port visé est réutilisé.
+
+| Port | Quoi | Pour qui |
+| --- | --- | --- |
+| **4173** | `npm run dev` | toutes les specs, via `gotoHash` |
+| **4174** | `npm run build` + `vite preview` (export `PROD_URL`) | `offline.spec.ts` |
+
+Pourquoi deux : le **service worker est volontairement désactivé sous le serveur
+de dev** (#306). Un SW enregistré là sert d'un test à l'autre les assets mis en
+cache par le précédent, et les échecs qui en découlent sont différés et
+incompréhensibles. La spec hors-ligne a pourtant besoin d'un vrai worker : elle
+vise donc le **build de production**, où elle exerce le vrai précache et non une
+approximation. Elle navigue en URL absolue (`PROD_URL`), pas via `gotoHash`.
+
+⚠️ `reuseExistingServer` est actif hors CI : si un serveur de dev tourne déjà sur
+4173 **depuis un autre dépôt ou un autre worktree**, Playwright le réutilise et
+vous testez du code périmé (404 inexplicables). Vérifier que le port est libre,
+sinon lancer avec une config temporaire sur des ports isolés.
 
 ## Conventions
 

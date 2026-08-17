@@ -22,14 +22,17 @@
 | `npm run dev` | serveur de dev + HMR |
 | `npm run build` | build de production → `dist/` |
 | `npm test` | tests Vitest |
-| `npm run typecheck` | `tsc --noEmit` (strict) |
+| `npm run typecheck` | `tsc --noEmit` (strict) **+** `tsc --noEmit -p tsconfig.sw.json` (le service worker, #306 — projet séparé, globales worker) |
 | `npm run lint` | ESLint |
 | `npm run format` / `format:check` | Prettier |
 | `npm run test:e2e` | smoke tests Playwright (`e2e/`) |
 
 En complément, des **scripts de génération** d'assets/données (hors cycle de dev courant) :
 `npm run verbs:gen` (shards de conjugaison LEFFF, cf. `verbs-lookup.ts`), `npm run forest:gen`
-(SVG de la forêt d'accueil) et `npm run og:gen` (image Open Graph de la vitrine).
+(SVG de la forêt d'accueil), `npm run og:gen` (image Open Graph de la vitrine) et
+`npm run pwa:icons` (icônes du manifeste PWA dans `public/`, #306 —
+`tools/pwa-icons/generate.mjs`, à relancer après un changement de logo ou de
+couleur d'accent).
 
 ## Intégration continue (CI)
 

@@ -43,6 +43,55 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   un test verrouille l'invariant (« il s'importe seul, sans qu'aucun autre
   module UI ait été chargé avant »).
 
+## Hors-ligne, mise à jour & rappel de sauvegarde (#306)
+
+- **`app-calme.ts`** — **observateur PARTAGÉ** de « l'application est-elle
+  calme ? », la même question que doivent se poser trois mécanismes bien
+  distincts : la mise à jour (`mise-a-jour.ts`, qui recharge la page), le
+  réchauffement du cache hors-ligne (`pwa.ts`, qui télécharge en fond) et le
+  rappel de sauvegarde (`rappel-sauvegarde.ts`, qui affiche un encart).
+  `ecranCalme()` (un conteneur « menu » est affiché — pas un exercice),
+  `occupe()` (sprint/révision en cours), `inactifDepuisMs()`/`visibleDepuisMs()`
+  s'assemblent en `etatCalme(enAttente?, dejaFait?)`, l'état que
+  `canReloadNow` (`core/version.ts`, cf. [Build & déploiement](build-et-deploiement.md))
+  attend — chaque appelant y applique SES propres seuils. `initAppCalme()`
+  (appelé depuis `main.ts`, **avant** ses trois consommateurs) pose les
+  écouteurs d'interaction/visibilité ; `onRetourSurOnglet(fn)` abonne un
+  callback au retour sur l'onglet (le moment où l'enfant revient jouer).
+- **`pwa.ts`** — enregistrement du service worker (`src/sw.ts`, via
+  `virtual:pwa-register`/`workbox-window`) et **réchauffement de fond** du
+  cache hors-ligne. `initPwa()` enregistre le worker, relance
+  `registration.update()` périodiquement et au retour sur l'onglet (pour qu'un
+  onglet resté ouvert longtemps découvre un nouveau déploiement), et programme
+  `tourDeRechauffement()` (toutes les 20 s, par tranches de 3 fichiers) tant
+  que la couverture n'est pas complète — sous réserve d'un **engagement réel**
+  (`core/engagement.ts`), d'une application **calme** (seuils
+  `SEUILS_RECHAUFFE`, plus exigeants que ceux de la mise à jour : télécharger
+  occupe le réseau, pas juste recharger) et hors `saveData`. `onNeedRefresh`
+  (événement `waiting` de `workbox-window` : une nouvelle version est
+  installée et attend) relaie à `ui/mise-a-jour.ts:signalerVersionEnAttente` —
+  cf. [Build & déploiement](build-et-deploiement.md) pour le mécanisme complet
+  de bascule. Demande aussi, best-effort, la persistance du stockage
+  (`navigator.storage.persist`, sans effet sur Safari/iOS).
+- **`rappel-sauvegarde.ts`** — l'encart **« Pour les parents »** de l'accueil
+  (installer sur l'écran d'accueil / exporter une sauvegarde), en **premier
+  enfant** de `#home` (prolongement de la barre d'outils, jamais dans la grille
+  de cartes), réglé sur le registre visuel de l'espace encadrant — jamais les
+  couleurs/icônes d'alerte des exercices, jamais la mascotte, aucun décompte de
+  jours visible (ce que ces trois choix pourraient laisser lire par-dessus
+  l'épaule d'un enfant est explicitement écarté, cf. commentaire d'en-tête du
+  module). `initInstallationPWA()` capte `beforeinstallprompt` (Chromium) pour
+  proposer une installation en un geste ; ailleurs (iOS notamment), le bouton
+  renvoie vers `guide.html#installer`. `rafraichirRappelSauvegarde()` (appelée
+  à chaque arrivée sur l'accueil, **seul** écran où l'encart a le droit
+  d'apparaître — ce qui garantit à lui seul le « jamais pendant un exercice »)
+  applique la cadence de `core/rappel-sauvegarde.ts` et rend les trois actions
+  (`masquer`/`exporter`/`installer`). La fermeture ferme pour le reste de la
+  **session** (`sessionStorage`, clé `ludaskia_rappel_ferme`) sans condition, et
+  fait monter d'un cran le report **durable** (`localStorage`) — sauf si un
+  export a eu lieu entre-temps dans un autre onglet, auquel cas fermer ne
+  défait pas la remise à zéro que l'export vient d'obtenir.
+
 ## Espace encadrant (rendu)
 
 Découpé par responsabilité (#234, découpage #354) en un **orchestrateur** + huit
@@ -317,7 +366,7 @@ pure](core.md)) pour les formats composites :
   amener chaque bloc surligné à l'écran (`scrollIntoView`). Source unique consommée par
   `ui-modal.ts` (uiAlert/Confirm/Prompt) **et** par toutes les modales statiques à contenu
   sur-mesure (`effects.ts`, `unlocks-view.ts`, `onboarding.ts`, `tour.ts`, voile de
-  `version-check.ts`).
+  `mise-a-jour.ts`).
 - **`ui-modal.ts`** (#230) — modales **custom accessibles** qui remplacent les dialogues
   natifs du navigateur : `uiAlert` → `Promise<void>`, `uiConfirm` → `Promise<boolean>`,
   `uiPrompt` → `Promise<string|null>` (remplacent **1:1** les appels bloquants

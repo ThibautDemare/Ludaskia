@@ -10,6 +10,8 @@ de chargement est géré par le bundler, pas par l'ordre des `<script>`.
 src/
   main.ts        # entrée de l'APPLICATION (chargée par app.html)
   vitrine.ts     # entrée de la VITRINE publique (chargée par index.html, #271)
+  sw.ts          # entrée du SERVICE WORKER (#306), projet TypeScript séparé
+                 # (tsconfig.sw.json) — cf. Build & déploiement
   core/          # logique pure (aucun accès DOM au chargement)
   ui/            # rendu et interactions DOM
   data/          # contenus statiques par matière (ex. francais/conjugaison.ts)
@@ -31,8 +33,13 @@ Importe les feuilles SCSS, puis initialise **dans cet ordre** :
 2. `initProfiles()`,
 3. `applyPreferences()` (thème `data-theme` + classes a11y),
 4. `initTts()` (synthèse vocale),
-5. `initVersionCheck()` (auto-actualisation),
-6. câblage du DOM + `route()` initiale — exécuté immédiatement si le DOM est
+5. `initAppCalme()` (#306 — observateur partagé « l'app est-elle calme ? »,
+   posé AVANT ses trois consommateurs),
+6. `initPwa()` (#306 — service worker : hors-ligne + auto-actualisation quand
+   un déploiement est en ligne),
+7. `initInstallationPWA()` (#306 — capte `beforeinstallprompt`, émis une seule
+   fois donc posé tôt),
+8. câblage du DOM + `route()` initiale — exécuté immédiatement si le DOM est
    prêt, sinon sur `DOMContentLoaded` (les modules sont différés).
 
 Le câblage DOM (`wireDOM`) pose ensuite — dans cet ordre — `paintStaticIcons`,

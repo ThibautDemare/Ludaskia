@@ -1121,6 +1121,51 @@ jouable et par la grille de DÉMONSTRATION du panneau : `dispositionPosee(spec)`
 jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
 `ui/etayage-visuels.ts`) est décrite dans [Rendu & interactions](ui.md).
 
+## Hors-ligne, engagement & rappel de sauvegarde (#306)
+
+- **`pwa-cache.ts`** — arithmétique **pure** du précache du service worker
+  (`src/sw.ts`, cf. [Build & déploiement](build-et-deploiement.md)) :
+  `cleCache` (clé de cache = URL + révision Workbox pour les fichiers à nom
+  stable), `normaliserManifeste` (rebase des URL sous la base de publication +
+  dédoublonnage des entrées du manifeste), `partitionner` (coquille immédiate
+  vs shards de verbes différés), `manques`/`obsoletes` (ce qui manque encore au
+  cache, ce qui n'appartient plus au build courant — seul mécanisme de purge)
+  et `couverture` (present/total/complet). Aucune API navigateur : testable
+  sans service worker, et importé **tel quel** par `src/sw.ts` — le seul module
+  `core/` consommé par un contexte worker plutôt qu'une page, d'où son propre
+  projet TypeScript `tsconfig.sw.json`.
+- **`engagement.ts`** — `engagementReel()` répond à « quelqu'un se sert-il
+  VRAIMENT de l'application ? », tous profils confondus. Piège explicitement
+  évité : ne pas se fier à la simple existence d'un profil ou aux drapeaux du
+  premier lancement (`ludaskia_tour_seen`, `ludaskia_parents_seen`,
+  `ludaskia_eggs`), qui sont présents chez le visiteur de passage qu'on veut
+  justement exclure. La détection cherche une **trace de travail** — l'enfant a
+  répondu (`ludaskia_lessonStats`/`ludaskia_activity`), l'adulte a posé une
+  décision (`ludaskia_revoir`/`ludaskia_seance`/`ludaskia_lessonVuAilleurs`, un
+  aménagement de profil, une liste de dictée créée, ou la clé globale
+  `ludaskia_encadrant_lock`). Consommé par le réchauffement du cache hors-ligne
+  (`ui/pwa.ts`, cf. [Rendu & interactions](ui.md) — ne pas imposer 850 Ko à un
+  visiteur qui ne reviendra pas) et par le rappel de sauvegarde ci-dessous.
+- **`rappel-sauvegarde.ts`** — cadence de l'encart **« Pour les parents »** de
+  l'accueil (rendu dans `ui/rappel-sauvegarde.ts`, cf. [Rendu &
+  interactions](ui.md)). `doitAfficherRappel` cumule TROIS verrous : du risque
+  réellement accumulé (`MIN_ACTIVITES` = 3 activités terminées, tous profils,
+  depuis le dernier export), un délai depuis la première installation
+  (`DELAI_PREMIER_JOUR_MS`, 48 h — laisse respirer le « mot aux parents » du
+  premier lancement) et depuis le dernier export (`DELAI_MIN_EXPORT_MS`,
+  7 jours — protège justement l'utilisateur ponctuel que la purge iOS menace).
+  Par-dessus, un **report** croissant à chaque fermeture
+  (`REPORTS_JOURS = [1, 3, 7, 14, 30]`, `reporter`/`delaiReportMs`) qui plafonne
+  sans jamais désactiver le message — volontairement **aucune minuterie fixe**,
+  le déclencheur reste le risque, le report n'est qu'un plancher.
+  `apresExport` remet le compteur d'activités à zéro et le report au premier
+  cran ; `compterActivites` lit `ludaskia_activity` par UUID sur tous les
+  profils. État persisté sous la clé **globale** `ludaskia_sauvegarde`
+  (`EtatRappel`, cf. [Données & profils](donnees-et-profils.md)), écrit par
+  `enregistrerExport` (appelé depuis `core/profiles.ts:exportProfiles`).
+  Module **feuille** (n'importe que `storage`) : les UUID de profils lui sont
+  passés par l'appelant, jamais lus en important `profiles.ts`.
+
 ## Espace encadrant (logique pure)
 
 - **`erreurs-journal.ts`** (#391, pur) — **journal des erreurs par profil**. Écriture sur

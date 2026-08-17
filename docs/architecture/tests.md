@@ -50,6 +50,15 @@ catégorie vide, démarrage du sprint, **absence d'erreur de rendu**
 `main`, pas une leçon en cours de PR. `vitest` est restreint à `tests/` pour ne
 pas ramasser les specs Playwright. Détails : `e2e/README.md`.
 
+**Deux serveurs webServer** (`playwright.config.ts`, #306) : le serveur de dev
+habituel (`npm run dev`, port 4173), et un second qui sert le **build de
+production** via `npm run build && npm run preview` (port 4174, export
+`PROD_URL`). Le service worker est volontairement **désactivé** sous le serveur
+de dev — enregistré, il servirait d'un test à l'autre les assets mis en cache
+par le précédent, avec des échecs différés et incompréhensibles. Seule
+`e2e/offline.spec.ts` cible le second serveur, où elle exerce le **vrai**
+précache du build plutôt qu'une approximation.
+
 À part, `a11y-axe.spec.ts` fait tourner un **scan axe-core** (WCAG A/AA) sur un
 échantillon de vues plutôt que des assertions de rendu ciblées — signal
 automatisé, **non bloquant** par défaut, complémentaire du jugement de l'agent

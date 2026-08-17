@@ -75,9 +75,9 @@ progression d'un profil peut être **exportée** dans un fichier puis **réimpor
 L'**espace encadrants** réunit ce qui s'adresse à l'adulte, sans rien rendre
 obligatoire : l'enfant peut s'entraîner sans qu'un adulte ait quoi que ce soit à
 régler. On y **suit** où en est chaque notion et sur quoi ça a coincé, on
-**prépare** une séance ou une leçon « à revoir », on **saisit la liste de mots de
-la dictée** de la semaine, et on **adapte** l'application (classe, aménagements
-« dys » / attention). Un **code d'accès** optionnel garde le tout hors de portée.
+**prépare** une séance ou une leçon « à revoir », on **adapte** l'application
+(classe, aménagements « dys » / attention), et on épingle les **listes de dictée**
+saisies pour l'enfant. Un **code d'accès** optionnel garde le tout hors de portée.
 
 Par principe : ni note, ni moyenne, ni classement, ni comparaison entre enfants —
 un outil d'accompagnement, pas un bulletin. Le détail est dans

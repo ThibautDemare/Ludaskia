@@ -489,7 +489,6 @@ function renderDictee(word: MotOrtho): void {
 	};
 	const ecouter = () => ecouterCible(word, surSilence);
 	sheets().querySelector('#btnEcouter')!.addEventListener('click', ecouter);
-	ecouter(); // tentative de lecture auto (peut être bloquée tant qu'il n'y a pas eu de geste)
 
 	const verifier = () => {
 		if (muette) return; // dictée silencieuse : on ne corrige ni ne journalise
@@ -528,6 +527,11 @@ function renderDictee(word: MotOrtho): void {
 	input.addEventListener('keydown', (e) => {
 		if (e.key === 'Enter') verifier();
 	});
+	// Lecture auto EN DERNIER (peut être bloquée tant qu'il n'y a pas eu de geste).
+	// Après le câblage, et pas avant : en cas d'échec, `surSilence` remplace tout le DOM
+	// de l'écran par celui de la dictée muette. Déclenchée plus haut, elle laisserait les
+	// `querySelector(...)!` suivants chercher des éléments qui n'existent plus.
+	ecouter();
 }
 
 /* ---------- Tuiles ---------- */

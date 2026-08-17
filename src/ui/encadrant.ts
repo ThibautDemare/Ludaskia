@@ -136,7 +136,7 @@ function renderEspace(): void {
     </div>
     <h1 class="enc-title">Espace encadrants</h1>
     <p class="enc-guide-link">
-      Première visite&nbsp;? Le <a href="guide.html" target="_blank" rel="noopener">guide pour les parents</a>
+      Première visite&nbsp;? Le <a href="guide.html" target="_blank" rel="noopener">guide pour les parents<span class="sr-only"> (nouvel onglet)</span></a>
       explique à quoi sert chaque onglet.
     </p>
     ${contexteHTML(profiles, consulte, actif)}

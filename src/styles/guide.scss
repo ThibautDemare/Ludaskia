@@ -10,6 +10,17 @@
    vitrine s'appliquent, `.g-*` ne fait que compléter.
    ============================================================ */
 
+/* Les 9 sections portent `tabindex="-1"` pour que le saut depuis le sommaire
+   déplace VRAIMENT le focus (sinon le navigateur scrolle mais laisse le focus sur
+   le lien : au `Tab` suivant, un utilisateur clavier repart du haut de la page et
+   le sommaire perd toute utilité pour lui). Elles deviennent donc focusables par
+   programme, d'où un anneau de focus rentré à l'intérieur de la bande — un
+   `outline` posé sur une section pleine largeur déborderait de l'écran. */
+.guide .v-section:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: -4px;
+}
+
 /* Un guide se lit en colonne : pas de mise en page à deux temps comme la
    vitrine. On resserre la mesure de ligne pour la lisibilité d'un texte long. */
 .guide .v-section p,
@@ -130,6 +141,19 @@
 .g-note p + p {
 	margin-top: 10px;
 }
+/* Sans cette règle, un lien dans un encart retombe sur le bleu par défaut du
+   navigateur — dissonant avec le reste de la page, et focus non maîtrisé. */
+.g-note a {
+	color: var(--accent-dark);
+	font-weight: 600;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+.g-note a:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
 
 /* ---- Légende des états d'acquisition ----
    Reprend les quatre mots de l'application (encadrant-commun.ts) : la teinte
@@ -166,9 +190,15 @@
 	background: var(--warn-bg);
 	color: #8a5200;
 }
+/* « en cours » est BLEU dans l'application (`--cat-bleu`, cf. `.enc-key-en-cours`
+   dans encadrant.scss), pas vert : le reprendre en vert clair ici l'aurait rendu
+   indiscernable de « acquis » (les deux fonds ne diffèrent que d'une ou deux
+   unités RVB) ET aurait fait mentir la légende. Fond bleu très clair local
+   (`--cat-bleu` n'a pas de variante douce en token) et texte `--admin-accent`,
+   ≈ 5,6:1 — AA en petite taille. */
 .g-badge--encours {
-	background: var(--accent-soft);
-	color: var(--accent-dark);
+	background: #e3ecf8;
+	color: var(--admin-accent);
 }
 .g-badge--acquis {
 	background: var(--ok-soft);

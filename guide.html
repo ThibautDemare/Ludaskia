@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="fr">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Guide pour les parents — Ludaskia</title>
+		<meta
+			name="description"
+			content="Mode d'emploi de Ludaskia pour les parents : créer un profil, suivre les progrès, préparer une séance, saisir la dictée de la semaine, adapter l'application, imprimer une fiche."
+		/>
+		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<!-- Open Graph : le guide est fait pour être PARTAGÉ (lien envoyé à un autre
+		     parent, posté sur un forum), donc il a son propre aperçu. URL absolues
+		     obligatoires, comme sur la vitrine. -->
+		<meta property="og:type" content="article" />
+		<meta property="og:site_name" content="Ludaskia" />
+		<meta property="og:title" content="Ludaskia — guide pour les parents" />
+		<meta
+			property="og:description"
+			content="Comment accompagner un enfant sur Ludaskia : suivre ses progrès, préparer une séance, saisir la dictée de la semaine, adapter l'application, imprimer une fiche."
+		/>
+		<meta property="og:url" content="https://thibautdemare.github.io/Ludaskia/guide.html" />
+		<meta property="og:image" content="https://thibautdemare.github.io/Ludaskia/og-image.png" />
+		<meta property="og:image:type" content="image/png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta
+			property="og:image:alt"
+			content="Logo de Ludaskia : un arbre dans une pastille blanche, à côté du nom de l'application."
+		/>
+		<meta property="og:locale" content="fr_FR" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:image" content="https://thibautdemare.github.io/Ludaskia/og-image.png" />
+	</head>
+	<body class="vitrine guide">
+		<!-- ============================================================
+		   GUIDE PARENTS (#562) — troisième page du build multi-page, à côté
+		   de la vitrine (index.html) et de l'application (app.html).
+		   Audience adulte, voix « vous », 100 % statique.
+
+		   Organisé par INTENTION et non écran par écran : c'est ce qui le rend
+		   durable. L'interface de l'espace encadrant bouge beaucoup plus vite
+		   que les raisons qu'on a de l'ouvrir — un guide calqué sur les écrans
+		   serait périmé à la PR suivante.
+
+		   Exigence propre à cette page : ne décrire que des parcours RÉELS.
+		   Un parent qui ne trouve pas le bouton décrit ici perd confiance dans
+		   tout le reste. En particulier : les listes de dictée se créent dans
+		   le catalogue (Français → Orthographe), PAS dans l'espace encadrants,
+		   qui ne fait que les suivre et les épingler.
+
+		   Décision arbitrée : PAS de section « pour les enseignants ». Motif en
+		   #562 — le modèle de données (tout dans le localStorage d'un navigateur)
+		   ne peut pas tenir la promesse. La question est traitée en FAQ, sans
+		   détour, et le mot « enseignant » y reste pour la recherche.
+		   ============================================================ -->
+		<header class="v-header">
+			<div class="v-header-in">
+				<a class="v-brand" href="./">
+					<span class="v-brand-logo"><img src="/logo.png" alt="" aria-hidden="true" /></span>
+					<span class="v-brand-name">Ludaskia</span>
+				</a>
+				<a class="v-cta v-cta--sm" href="app.html">Ouvrir l'application</a>
+			</div>
+		</header>
+
+		<main class="v-main">
+			<div class="g-intro">
+				<p class="g-breadcrumb"><a href="./">← Retour à la présentation</a></p>
+				<h1>Guide pour les parents</h1>
+				<p>
+					Ludaskia s'utilise sans mode d'emploi&nbsp;: votre enfant peut ouvrir l'application et
+					s'entraîner sans que personne ait rien préparé. Cette page est là pour l'autre moitié, la
+					vôtre&nbsp;— suivre où il en est, lui préparer une séance, saisir la dictée de la semaine,
+					adapter l'application à ses besoins.
+				</p>
+				<p>Rien de tout cela n'est obligatoire. Prenez ce qui vous sert.</p>
+
+				<nav class="g-toc" aria-labelledby="gTocTitle">
+					<h2 id="gTocTitle">Sur cette page</h2>
+					<ol>
+						<li><a href="#demarrer">En 5 minutes</a></li>
+						<li><a href="#espace">Où est l'espace encadrants</a></li>
+						<li><a href="#suivre">Suivre, sans en faire un bulletin</a></li>
+						<li><a href="#preparer">Préparer une séance</a></li>
+						<li><a href="#dictee">La dictée de la semaine</a></li>
+						<li><a href="#adapter">Adapter à votre enfant</a></li>
+						<li><a href="#enfants">Plusieurs enfants à la maison</a></li>
+						<li><a href="#papier">Sur papier</a></li>
+						<li><a href="#faq">Questions fréquentes</a></li>
+					</ol>
+				</nav>
+			</div>
+
+			<!-- ===== 1. EN 5 MINUTES ===== -->
+			<section class="v-section" id="demarrer" aria-labelledby="gDemarrerTitle">
+				<div class="v-wrap">
+					<h2 id="gDemarrerTitle">1. En 5 minutes, c'est en place</h2>
+					<ol class="g-steps">
+						<li>
+							<strong>Ouvrez le lien</strong> dans le navigateur de l'appareil que votre enfant
+							utilisera. Il n'y a rien à installer, rien à télécharger, aucun compte à créer.
+						</li>
+						<li>
+							<strong>Mettez-le en favori</strong>, ou ajoutez-le à l'écran d'accueil de la tablette
+							(menu du navigateur, «&nbsp;Ajouter à l'écran d'accueil&nbsp;»). C'est ce qui évitera
+							de le chercher à chaque fois.
+						</li>
+						<li>
+							<strong>Créez un profil</strong>&nbsp;: un prénom, un avatar. Pas d'adresse e-mail,
+							pas de mot de passe.
+						</li>
+						<li>
+							<strong>Choisissez la classe</strong> (CE2 ou CM1). Elle détermine les exercices
+							proposés et se change à tout moment.
+						</li>
+					</ol>
+					<p>
+						C'est fini. À partir de là, votre enfant a de quoi travailler seul&nbsp;: l'accueil lui
+						propose une leçon du jour, un sprint de cinq minutes, une séance de révision.
+					</p>
+					<div class="g-note g-note--attention">
+						<p>
+							<strong>À savoir dès maintenant.</strong> Toute la progression est enregistrée dans le
+							navigateur de cet appareil, et nulle part ailleurs. C'est ce qui permet à Ludaskia de
+							n'avoir ni compte ni serveur&nbsp;; c'est aussi ce qui fait que
+							<strong
+								>vider les données du navigateur efface tout, sans récupération possible</strong
+							>. La sauvegarde prend dix secondes et se trouve en
+							<a href="#enfants">Plusieurs enfants à la maison</a>.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== 2. L'ESPACE ENCADRANTS ===== -->
+			<section class="v-section v-section--soft" id="espace" aria-labelledby="gEspaceTitle">
+				<div class="v-wrap">
+					<h2 id="gEspaceTitle">2. Où est l'espace encadrants</h2>
+					<p>
+						C'est la zone qui vous est destinée&nbsp;: on y consulte et on y règle, on n'y fait pas
+						d'exercice. Deux chemins y mènent, au choix&nbsp;:
+					</p>
+					<ul class="g-list">
+						<li>
+							le <strong>menu du bouton de profil</strong>, en haut à droite de la barre&nbsp;:
+							entrée «&nbsp;Espace encadrants&nbsp;»&nbsp;;
+						</li>
+						<li>
+							l'écran <strong>«&nbsp;Mon espace&nbsp;»</strong>, tout en bas&nbsp;: bouton
+							«&nbsp;Espace encadrants&nbsp;».
+						</li>
+					</ul>
+					<p>
+						Il n'y a volontairement pas de bouton permanent dans la barre de l'enfant. L'espace se
+						découpe en quatre onglets, qui suivent les quatre raisons d'y venir&nbsp;:
+						<strong>Suivi</strong>, <strong>Programme</strong>, <strong>Réglages</strong>,
+						<strong>Profils</strong>.
+					</p>
+
+					<h3>Poser un code d'accès</h3>
+					<p>
+						Dans <em>Réglages</em>, le bloc «&nbsp;Code d'accès&nbsp;» permet d'exiger
+						<strong>quatre chiffres</strong> à l'entrée. Il est désactivé par défaut.
+					</p>
+					<div class="g-note g-note--attention">
+						<p>
+							<strong>Soyons clairs sur ce que ça protège.</strong> Ce code est un garde-fou contre
+							les manipulations accidentelles et la curiosité d'un enfant&nbsp;— pas une sécurité.
+							Les données restent dans le navigateur&nbsp;; quelqu'un qui sait s'y prendre y accède
+							sans le code. Ne comptez pas dessus pour garder un secret.
+						</p>
+						<p>
+							Au moment où vous l'activez, un <strong>secret de récupération</strong> s'affiche
+							<strong>une seule fois</strong>. Copiez-le ou téléchargez-le, et rangez-le ailleurs
+							que sur l'appareil. Si vous oubliez le code, le lien «&nbsp;J'ai oublié mon
+							code&nbsp;» vous demande ce secret et retire le verrou. Si vous perdez les deux,
+							l'accès à l'espace encadrants est définitivement perdu&nbsp;— la progression de
+							l'enfant, elle, continue de fonctionner normalement.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== 3. SUIVRE ===== -->
+			<section class="v-section" id="suivre" aria-labelledby="gSuivreTitle">
+				<div class="v-wrap">
+					<h2 id="gSuivreTitle">3. Suivre, sans en faire un bulletin</h2>
+					<p>
+						L'onglet <em>Suivi</em> situe chaque notion que votre enfant a travaillée dans un de ces
+						quatre états&nbsp;:
+					</p>
+					<ul class="g-etats">
+						<li>
+							<span class="g-badge g-badge--decouvrir">à découvrir</span>
+							<span>pas encore rencontrée dans l'application.</span>
+						</li>
+						<li>
+							<span class="g-badge g-badge--renforcer">à renforcer</span>
+							<span>rencontrée, mais ça résiste encore.</span>
+						</li>
+						<li>
+							<span class="g-badge g-badge--encours">en cours</span>
+							<span>en train de s'installer.</span>
+						</li>
+						<li>
+							<span class="g-badge g-badge--acquis">acquis</span>
+							<span>solide&nbsp;; la notion revient de loin en loin, pour ne pas s'effacer.</span>
+						</li>
+					</ul>
+					<p>
+						À côté, une frise des <strong>douze dernières semaines</strong> montre comment ça a
+						évolué dans le temps, et une tendance dit si ça progresse ou si ça stagne.
+					</p>
+					<p>
+						Le plus utile est ailleurs&nbsp;: l'<strong>historique des erreurs</strong> garde, pour
+						chaque erreur récente, la question posée, ce que votre enfant a répondu et ce qui était
+						attendu. C'est ce qui transforme «&nbsp;il a du mal en conjugaison&nbsp;» en un point
+						précis qu'on peut reprendre à deux en dix minutes.
+					</p>
+					<div class="g-note">
+						<p>
+							<strong>Ce que vous n'y trouverez pas, volontairement&nbsp;:</strong> aucune note,
+							aucune moyenne, aucun classement, aucune comparaison entre enfants. Une notion
+							«&nbsp;à renforcer&nbsp;» n'est pas un mauvais résultat&nbsp;: c'est une indication de
+							ce qui mérite un peu d'attention cette semaine. Lue comme un bulletin, cette page
+							ferait exactement le contraire de ce pour quoi elle existe.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== 4. PRÉPARER ===== -->
+			<section class="v-section v-section--soft" id="preparer" aria-labelledby="gPreparerTitle">
+				<div class="v-wrap">
+					<h2 id="gPreparerTitle">4. Préparer une séance</h2>
+					<p>
+						L'onglet <em>Programme</em> sert à décider à l'avance ce que votre enfant trouvera en
+						arrivant, plutôt que de le lui dire par-dessus l'épaule. Deux outils, du plus léger au
+						plus construit.
+					</p>
+
+					<h3>Épingler une leçon «&nbsp;à revoir&nbsp;»</h3>
+					<p>
+						Le bloc «&nbsp;À revoir ensemble&nbsp;» vous propose déjà des
+						<strong>suggestions</strong>
+						(les leçons où votre enfant est en dessous de 70&nbsp;%). Épinglez-en une&nbsp;: elle
+						apparaît sur son accueil, dans une carte «&nbsp;À revoir&nbsp;». Le même bouton existe
+						sur chaque notion du suivi et sur chaque ligne de l'historique des erreurs.
+					</p>
+					<p>
+						Une épingle se retire toute seule quand la notion redevient solide, et le retrait est
+						tracé&nbsp;: rien ne disparaît en silence. Votre enfant peut aussi mettre une leçon de
+						côté lui-même, depuis l'aide qui lui est proposée en cas de difficulté.
+					</p>
+
+					<h3>Composer le programme du jour</h3>
+					<p>
+						Un programme est une suite d'étapes, chacune répétable une à cinq fois. Vous choisissez
+						parmi&nbsp;: un <strong>sprint</strong>, une <strong>séance de révision</strong>, les
+						leçons <strong>à revoir</strong>, la <strong>leçon du jour</strong>,
+						<strong>une leçon précise</strong>, ou <strong>une dictée</strong> (si vous en cochez
+						plusieurs, l'application en tire une au hasard le jour venu).
+					</p>
+					<p>
+						Un programme vaut <strong>soit pour une date</strong>, soit pour des
+						<strong>jours de la semaine</strong> qui reviennent&nbsp;— pas les deux à la fois, et un
+						seul programme par jour. Votre enfant le voit sur son accueil, puis sur un écran dédié
+						où il fait les étapes dans l'ordre qu'il veut&nbsp;; un bouton «&nbsp;Choisis pour
+						moi&nbsp;» tranche à sa place s'il hésite.
+					</p>
+					<div class="g-note">
+						<p>
+							<strong>Deux ou trois étapes suffisent.</strong> Un programme trop long se solde par
+							un abandon en cours de route, et c'est l'abandon que l'enfant retient. Mieux vaut un
+							petit programme terminé qu'un grand programme entamé.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== 5. LA DICTÉE DE LA SEMAINE ===== -->
+			<section class="v-section" id="dictee" aria-labelledby="gDicteeTitle">
+				<div class="v-wrap">
+					<h2 id="gDicteeTitle">5. La dictée de la semaine</h2>
+					<p>
+						C'est sans doute ce pour quoi vous reviendrez le plus souvent&nbsp;: la liste de mots
+						collée dans le cahier devient une leçon de l'application, que votre enfant travaille
+						comme les autres.
+					</p>
+					<div class="g-note">
+						<p>
+							<strong>Attention au chemin</strong>&nbsp;: une liste se crée dans le catalogue, pas
+							dans l'espace encadrants. Ce dernier sert ensuite à en suivre l'avancement et à
+							l'épingler.
+						</p>
+					</div>
+					<ol class="g-steps">
+						<li>
+							Depuis l'accueil, allez dans <strong>Français</strong>, puis
+							<strong>Orthographe</strong>, puis <strong>«&nbsp;Les dictées de mots&nbsp;»</strong>.
+						</li>
+						<li>
+							Dans la colonne <strong>«&nbsp;Mes listes&nbsp;»</strong>, choisissez
+							<strong>«&nbsp;Ajouter une liste&nbsp;»</strong>.
+						</li>
+						<li>
+							Donnez-lui un nom que votre enfant reconnaîtra («&nbsp;Dictée du 12 mars&nbsp;»), et
+							la date du contrôle si vous la connaissez.
+						</li>
+						<li>
+							Saisissez les mots, un par ligne. C'est le seul moment un peu long, et il ne se refait
+							pas&nbsp;: la liste reste disponible ensuite.
+						</li>
+						<li>
+							Enregistrez. La liste est immédiatement travaillable&nbsp;; depuis l'espace
+							encadrants, vous pouvez l'épingler pour qu'elle attende votre enfant sur son accueil.
+						</li>
+					</ol>
+					<p>
+						L'application lit chaque mot à voix haute et corrige la saisie. L'avancement de la liste
+						se suit avec les mêmes états qu'une notion, et les mots que votre enfant a travaillés
+						reviennent en révision espacée bien après le contrôle&nbsp;— c'est tout l'intérêt par
+						rapport au cahier.
+					</p>
+				</div>
+			</section>
+
+			<!-- ===== 6. ADAPTER ===== -->
+			<section class="v-section v-section--soft" id="adapter" aria-labelledby="gAdapterTitle">
+				<div class="v-wrap">
+					<h2 id="gAdapterTitle">6. Adapter à votre enfant</h2>
+					<p>Tout ce qui suit se règle dans l'onglet <em>Réglages</em>, enfant par enfant.</p>
+					<ul class="g-list">
+						<li>
+							<strong>La classe</strong>&nbsp;— globale, et si besoin différente par matière. Un
+							enfant peut être en CM1 en maths et rester au CE2 en français, sans que ça se voie
+							nulle part de son côté.
+						</li>
+						<li>
+							<strong>Les aménagements</strong>&nbsp;— masquer le minuteur pendant les sprints,
+							faire lire la consigne à voix haute automatiquement, désactiver les apparitions
+							surprises. Ils sont posés par vous et l'enfant ne peut pas les défaire&nbsp;: c'est
+							voulu, un aménagement qui saute au premier tapotement ne sert à rien.
+						</li>
+						<li>
+							<strong>La longueur des séances de révision</strong>&nbsp;— le nombre de questions, à
+							baisser pour un enfant qui décroche vite.
+						</li>
+						<li>
+							<strong>Les leçons déjà vues en classe</strong>&nbsp;— cochez ce que l'enseignant a
+							traité&nbsp;; ces notions entrent alors dans le sprint et en révision, au lieu
+							d'attendre que l'application les découvre.
+						</li>
+					</ul>
+					<div class="g-note">
+						<p>
+							<strong>Sur les leçons vues en classe, cochez au fil de l'eau.</strong> Tout déclarer
+							d'un coup fait grimper d'autant ce qu'il y a à réviser. Et une erreur à la première
+							révision est normale&nbsp;: c'est la première fois que l'application interroge votre
+							enfant là-dessus.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== 7. PLUSIEURS ENFANTS ===== -->
+			<section class="v-section" id="enfants" aria-labelledby="gEnfantsTitle">
+				<div class="v-wrap">
+					<h2 id="gEnfantsTitle">7. Plusieurs enfants à la maison</h2>
+					<p>
+						Un <strong>profil par enfant</strong> sur le même appareil&nbsp;: chacun garde sa
+						progression, son avatar, son thème et ses réglages, et on bascule de l'un à l'autre
+						depuis le bouton de profil. Depuis l'espace encadrants, vous consultez n'importe lequel
+						d'entre eux <strong>sans changer celui qui est actif</strong>&nbsp;— pas de risque de
+						laisser la tablette sur le mauvais profil.
+					</p>
+
+					<h3>Sauvegarder, et passer d'un appareil à l'autre</h3>
+					<p>
+						L'onglet <em>Profils</em> permet d'<strong>exporter</strong> une progression dans un
+						fichier, et de la <strong>réimporter</strong> ailleurs. C'est la même manipulation pour
+						deux besoins&nbsp;: garder une sauvegarde, ou reprendre sur un autre appareil&nbsp;— la
+						tablette du salon un soir, l'ordinateur du bureau le lendemain.
+					</p>
+					<div class="g-note g-note--attention">
+						<p>
+							<strong>C'est la seule sauvegarde qui existe.</strong> Vider les données du
+							navigateur, changer d'appareil ou réinstaller le système efface la progression
+							définitivement&nbsp;: sans compte ni serveur, personne ne peut la restaurer. Un export
+							de temps en temps, rangé quelque part, coûte dix secondes.
+						</p>
+						<p>
+							Les deux appareils ne se synchronisent pas entre eux. Importer remplace la
+							progression&nbsp;: c'est un transfert, pas une fusion.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== 8. SUR PAPIER ===== -->
+			<section class="v-section v-section--soft" id="papier" aria-labelledby="gPapierTitle">
+				<div class="v-wrap">
+					<h2 id="gPapierTitle">8. Sur papier</h2>
+					<p>
+						Pour un trajet, des vacances, un moment sans écran, ou simplement un enfant qui accroche
+						mieux au crayon&nbsp;: les exercices s'impriment. Trois chemins, qui ne donnent pas la
+						même chose.
+					</p>
+					<ul class="g-list">
+						<li>
+							<strong>Le plus rapide</strong>&nbsp;— l'icône d'imprimante posée sur chaque leçon du
+							catalogue&nbsp;: une fiche de huit questions, sans corrigé.
+						</li>
+						<li>
+							<strong>Avec le corrigé</strong>&nbsp;— depuis l'espace encadrants, chaque leçon porte
+							deux boutons, «&nbsp;Fiche&nbsp;» et «&nbsp;Corrigé&nbsp;». Le corrigé reprend les
+							mêmes questions avec les réponses.
+						</li>
+						<li>
+							<strong>Sur mesure</strong>&nbsp;— le <strong>bilan personnalisé</strong>, depuis
+							l'accueil&nbsp;: vous choisissez les leçons et le nombre de questions, puis vous
+							imprimez, en cochant si vous voulez le corrigé avec.
+						</li>
+					</ul>
+					<p>
+						Depuis la boîte d'impression du navigateur, vous pouvez enregistrer en PDF plutôt
+						qu'imprimer. Les listes de dictée font exception&nbsp;: elles reposent sur la voix,
+						elles ne s'impriment pas.
+					</p>
+				</div>
+			</section>
+
+			<!-- ===== 9. FAQ ===== -->
+			<section class="v-section v-faq" id="faq" aria-labelledby="gFaqTitle">
+				<div class="v-wrap">
+					<h2 id="gFaqTitle">9. Questions fréquentes</h2>
+					<div class="v-faq-list">
+						<div class="v-faq-item">
+							<h3>Combien de temps par jour&nbsp;?</h3>
+							<p>
+								Dix à quinze minutes suffisent, et valent mieux qu'une heure le dimanche. Ludaskia
+								entraîne des automatismes&nbsp;: c'est la régularité qui les installe, pas la durée.
+							</p>
+						</div>
+						<div class="v-faq-item">
+							<h3>Mon enfant se trompe beaucoup, c'est grave&nbsp;?</h3>
+							<p>
+								Non, et c'est même l'usage prévu&nbsp;: chaque erreur est corrigée tout de suite, la
+								bonne réponse est affichée, et la notion revient plus tard. Ce qui compte n'est pas
+								le score d'aujourd'hui mais le fait que la notion finisse par tenir.
+							</p>
+						</div>
+						<div class="v-faq-item">
+							<h3>Faut-il rester à côté de lui&nbsp;?</h3>
+							<p>
+								Non. L'application se corrige seule et n'a besoin de personne pour tourner. Votre
+								place utile est ailleurs&nbsp;: dix minutes sur une erreur précise, repérée dans
+								l'historique, valent mieux qu'une demi-heure à surveiller.
+							</p>
+						</div>
+						<div class="v-faq-item">
+							<h3>Et pour une utilisation en classe&nbsp;?</h3>
+							<p>
+								Ludaskia peut servir en autonomie sur une tablette (atelier, fond de classe, APC),
+								avec un profil par élève. En revanche il n'y a ni compte, ni liste de classe, ni
+								tableau de bord collectif&nbsp;: la progression reste attachée à l'appareil et au
+								navigateur, et disparaît s'ils sont nettoyés ou changés. C'est un outil
+								d'entraînement individuel, pas un outil de gestion de classe.
+							</p>
+						</div>
+						<div class="v-faq-item">
+							<h3>Est-ce que ça remplace les devoirs&nbsp;?</h3>
+							<p>
+								Non. C'est un complément d'entraînement, sur des automatismes qui gagnent à être
+								répétés&nbsp;: tables, conjugaison, orthographe des mots courants. La leçon, la
+								compréhension et le travail de fond restent du côté de l'école.
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== CTA FINAL ===== -->
+			<section class="v-section v-final" aria-labelledby="gFinalTitle">
+				<div class="v-wrap v-final-wrap">
+					<h2 id="gFinalTitle">Prêt à essayer&nbsp;?</h2>
+					<p class="v-final-sub">Gratuit, sans compte, directement dans le navigateur.</p>
+					<a class="v-cta v-cta--lg" href="app.html">Ouvrir Ludaskia</a>
+				</div>
+			</section>
+		</main>
+
+		<div class="home-foret" id="guideForet" aria-hidden="true"></div>
+
+		<footer class="v-footer">
+			<p class="v-footer-copy">
+				© <span data-footer-year>2026</span> Ludaskia — tous droits réservés.
+			</p>
+			<p><a href="./">Retour à la présentation de Ludaskia</a></p>
+			<p>
+				Ce site n'utilise pas de cookies. Sauf les bons&nbsp;!
+				<button
+					type="button"
+					class="cookie-egg"
+					id="footerCookie"
+					aria-label="Faire tomber une pluie de cookies"
+				>
+					🍪
+				</button>
+			</p>
+		</footer>
+
+		<script type="module" src="/src/guide.ts"></script>
+	</body>
+</html>

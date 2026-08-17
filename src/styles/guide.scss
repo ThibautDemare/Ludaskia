@@ -1,0 +1,208 @@
+/* ============================================================
+   GUIDE PARENTS (#562) — guide.html. Complément de `vitrine.scss`,
+   qui fournit déjà le chrome (en-tête, CTA, `.v-section`, `.v-card`,
+   `.v-faq-item`, pied de page). On n'ajoute ici que ce qu'un mode
+   d'emploi demande en plus de la page de présentation :
+   un sommaire ancré, des suites d'étapes numérotées, des encarts
+   d'avertissement et la légende des états d'acquisition.
+
+   Le `<body>` porte `vitrine guide` : toutes les règles `.v-*` de la
+   vitrine s'appliquent, `.g-*` ne fait que compléter.
+   ============================================================ */
+
+/* Un guide se lit en colonne : pas de mise en page à deux temps comme la
+   vitrine. On resserre la mesure de ligne pour la lisibilité d'un texte long. */
+.guide .v-section p,
+.guide .v-section ul,
+.guide .v-section ol {
+	max-width: 680px;
+}
+
+/* ---- En-tête de la page ---- */
+.g-intro {
+	background: var(--page-bg);
+	padding: 32px 20px 8px;
+}
+.g-intro h1 {
+	margin: 0 0 14px;
+	font-size: clamp(1.8rem, 6.5vw, 2.2rem);
+	font-weight: 800;
+	line-height: 1.15;
+	color: var(--ink);
+}
+.g-intro p {
+	margin: 0 0 8px;
+	font-size: 1.1rem;
+	color: var(--grey);
+	max-width: 680px;
+}
+
+/* ---- Sommaire ancré ---- */
+.g-toc {
+	margin: 24px 0 0;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	padding: 20px 22px;
+	box-shadow: 0 2px 10px rgb(0 0 0 / 5%);
+}
+.g-toc h2 {
+	margin: 0 0 12px;
+	font-size: 1rem;
+	font-weight: 800;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	color: var(--grey);
+}
+.g-toc ol {
+	margin: 0;
+	padding: 0 0 0 22px;
+	display: grid;
+	gap: 2px;
+}
+.g-toc a {
+	display: inline-flex;
+	align-items: center;
+	/* Cible tactile : un sommaire se tape au doigt sur tablette. */
+	min-height: 44px;
+	color: var(--accent-dark);
+	font-weight: 600;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+.g-toc a:hover {
+	color: var(--ink);
+}
+.g-toc a:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+
+/* ---- Suites d'étapes ---- */
+.g-steps {
+	margin: 0 0 18px;
+	padding: 0 0 0 24px;
+	display: grid;
+	gap: 12px;
+}
+.g-steps li {
+	font-size: 1.05rem;
+	color: var(--grey);
+}
+.g-steps li strong,
+.g-list li strong {
+	color: var(--ink);
+}
+.g-list {
+	margin: 0 0 18px;
+	padding: 0 0 0 22px;
+	display: grid;
+	gap: 10px;
+}
+.g-list li {
+	font-size: 1.05rem;
+	color: var(--grey);
+}
+
+/* ---- Encart (précision, mise en garde) ----
+   Bordure latérale plutôt qu'un fond coloré : l'encart se distingue sans
+   crier, et l'information n'est jamais portée par la seule couleur (il
+   commence toujours par un mot qui dit ce que c'est). */
+.g-note {
+	margin: 0 0 18px;
+	padding: 14px 18px;
+	border-left: 4px solid var(--accent);
+	background: var(--accent-soft);
+	border-radius: 0 12px 12px 0;
+	color: var(--grey);
+}
+.g-note strong {
+	color: var(--ink);
+}
+.g-note--attention {
+	border-left-color: #8a5200;
+	background: var(--warn-bg);
+}
+.g-note p {
+	margin: 0;
+}
+.g-note p + p {
+	margin-top: 10px;
+}
+
+/* ---- Légende des états d'acquisition ----
+   Reprend les quatre mots de l'application (encadrant-commun.ts) : la teinte
+   n'est qu'un appui, l'état est TOUJOURS écrit. */
+.g-etats {
+	list-style: none;
+	margin: 0 0 18px;
+	padding: 0;
+	display: grid;
+	gap: 10px;
+}
+.g-etats li {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	flex-wrap: wrap;
+	color: var(--grey);
+}
+.g-badge {
+	flex: none;
+	border-radius: 999px;
+	padding: 4px 12px;
+	font-size: 0.85rem;
+	font-weight: 700;
+	white-space: nowrap;
+}
+.g-badge--decouvrir {
+	background: var(--track);
+	color: var(--grey);
+}
+/* #8a5200 (≈ 5,8:1 sur --warn-bg) et non var(--warn) (~3,9:1, échec AA en
+   petite taille) — même correctif que `.lz-level` dans lessons.scss. */
+.g-badge--renforcer {
+	background: var(--warn-bg);
+	color: #8a5200;
+}
+.g-badge--encours {
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+}
+.g-badge--acquis {
+	background: var(--ok-soft);
+	color: var(--accent-dark);
+}
+
+/* ---- Fil de retour vers la vitrine, sous l'en-tête ---- */
+.g-breadcrumb {
+	margin: 0 0 10px;
+	font-size: 0.95rem;
+}
+.g-breadcrumb a {
+	color: var(--accent-dark);
+	font-weight: 600;
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+.g-breadcrumb a:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+
+@media (min-width: 768px) {
+	.g-intro {
+		max-width: 1080px;
+		margin: 0 auto;
+		padding: 56px 20px 8px;
+	}
+	.g-toc ol {
+		grid-template-columns: 1fr 1fr;
+		gap: 2px 32px;
+	}
+}

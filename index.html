@@ -62,7 +62,12 @@
 					<span class="v-brand-logo"><img src="/logo.png" alt="" aria-hidden="true" /></span>
 					<span class="v-brand-name">Ludaskia</span>
 				</span>
-				<a class="v-cta v-cta--sm" href="app.html">Commencer</a>
+				<!-- Un seul CTA proéminent (le vert) : le guide parents (#562) est un
+				     lien texte, pas un second bouton, pour ne pas diviser l'attention. -->
+				<div class="v-header-nav">
+					<a class="v-header-link" href="guide.html">Guide parents</a>
+					<a class="v-cta v-cta--sm" href="app.html">Commencer</a>
+				</div>
 			</div>
 		</header>
 
@@ -799,6 +804,10 @@
 		<footer class="v-footer">
 			<p class="v-footer-copy">
 				© <span data-footer-year>2026</span> Ludaskia — tous droits réservés.
+			</p>
+			<p>
+				Vous accompagnez un enfant&nbsp;?
+				<a href="guide.html">Lire le guide pour les parents</a>.
 			</p>
 			<p>
 				Ce site n'utilise pas de cookies. Sauf les bons&nbsp;!

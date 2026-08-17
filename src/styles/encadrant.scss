@@ -99,6 +99,20 @@
 	color: var(--ink);
 	margin: 0.3rem 0 1rem;
 }
+/* Renvoi vers le guide parents (#562). Discret : celui qui connaît l'espace n'a
+   pas besoin de le relire, mais un primo-arrivant doit trouver l'explication
+   sans quitter la page à l'aveugle. Ouvert dans un nouvel onglet — l'espace
+   encadrants est une page de l'app, on ne veut pas la remplacer. */
+.enc-guide-link {
+	margin: -0.6rem 0 1rem;
+	font-size: 0.95rem;
+	color: var(--grey);
+}
+.enc-guide-link a {
+	color: var(--admin-accent);
+	font-weight: 700;
+	text-underline-offset: 3px;
+}
 .enc-topbar {
 	margin-bottom: 0.4rem;
 }

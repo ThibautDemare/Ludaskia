@@ -192,7 +192,9 @@ export function ouvrirMotParents(
 				</p>
 				<p>
 					Vous suivez ses progrès dans l'<strong>espace encadrants</strong>, accessible depuis
-					le menu, en haut à droite.
+					le menu, en haut à droite. Le
+					<a href="guide.html" target="_blank" rel="noopener">guide pour les parents</a>
+					explique tout ce qu'on peut y faire.
 				</p>
 				<p>Nous allons maintenant présenter l'application à votre enfant, en quelques étapes.</p>
 			</div>

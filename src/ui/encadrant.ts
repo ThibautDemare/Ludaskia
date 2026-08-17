@@ -135,6 +135,10 @@ function renderEspace(): void {
       </button>
     </div>
     <h1 class="enc-title">Espace encadrants</h1>
+    <p class="enc-guide-link">
+      Première visite&nbsp;? Le <a href="guide.html" target="_blank" rel="noopener">guide pour les parents</a>
+      explique à quoi sert chaque onglet.
+    </p>
     ${contexteHTML(profiles, consulte, actif)}
     ${tabsNavHTML(tab)}
     <div class="enc-tabpanel" id="encTabPanel">${tabPanelHTML(tab, consulte, actif, profiles)}</div>`;

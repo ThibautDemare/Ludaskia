@@ -27,12 +27,15 @@ export default defineConfig({
 	build: {
 		outDir: 'dist',
 		// Build multi-page (#271) : `index.html` = page vitrine (atterrissage public),
-		// `app.html` = l'application elle-même (que l'utilisateur régulier met en favori).
-		// Vite émet les deux pages ; les chemins absolus restent préfixés par `base`.
+		// `app.html` = l'application elle-même (que l'utilisateur régulier met en favori),
+		// `guide.html` = le mode d'emploi destiné aux parents (#562), page statique et
+		// partageable, lisible AVANT d'avoir essayé l'application.
+		// Vite émet les trois pages ; les chemins absolus restent préfixés par `base`.
 		rollupOptions: {
 			input: {
 				main: fileURLToPath(new URL('./index.html', import.meta.url)),
 				app: fileURLToPath(new URL('./app.html', import.meta.url)),
+				guide: fileURLToPath(new URL('./guide.html', import.meta.url)),
 			},
 		},
 	},

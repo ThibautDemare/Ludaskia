@@ -52,6 +52,11 @@ body.vitrine {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	/* Depuis l'ajout du lien « Guide parents » (#562), la barre peut ne plus tenir
+	   sur un petit téléphone : on la laisse passer à la ligne plutôt que d'écraser
+	   le CTA ou de masquer le lien (le guide doit rester atteignable sur mobile,
+	   qui est le cœur de cible). Sans effet tant que tout tient sur une ligne. */
+	flex-wrap: wrap;
 	gap: 12px;
 	padding: 12px 20px;
 	max-width: 1080px;
@@ -65,10 +70,45 @@ body.vitrine {
 .v-header .v-cta:hover {
 	background: #f1f6f2;
 }
+/* Lien secondaire de l'en-tête (guide parents, #562) : volontairement un lien
+   texte et non un second bouton — la page ne doit garder QU'UN seul CTA
+   proéminent. Blanc sur le bandeau vert (même traitement que .v-brand-name). */
+.v-header-nav {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.v-header-link {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	padding: 0 10px;
+	color: var(--on-accent);
+	font-weight: 700;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+.v-header-link:hover {
+	text-decoration-thickness: 2px;
+}
+.v-header-link:focus-visible {
+	outline: 3px solid var(--paper);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
 .v-brand {
 	display: inline-flex;
 	align-items: center;
 	gap: 10px;
+	/* Sur le guide (#562), la marque est un LIEN de retour vers la vitrine : on
+	   neutralise le soulignement par défaut (elle reste un repère, pas un appel
+	   à l'action). Sans effet sur index.html, où c'est un simple <span>. */
+	text-decoration: none;
+}
+a.v-brand:focus-visible {
+	outline: 3px solid var(--paper);
+	outline-offset: 3px;
+	border-radius: 12px;
 }
 .v-brand-logo {
 	display: inline-flex;
@@ -850,7 +890,8 @@ body.vitrine {
 }
 
 /* La bande forêt en pied : pas de marge basse résiduelle. */
-#vitrineForet {
+#vitrineForet,
+#guideForet {
 	margin-top: 0;
 }
 

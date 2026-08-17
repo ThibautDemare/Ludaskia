@@ -25,6 +25,7 @@ import { PAS_MAX, derouleMontrable, type DerouleEtayage } from '../src/core/etay
 import { etayagePour, type EtayageExemple } from '../src/core/etayage';
 import { getAllLessons, type LessonDef, type SchoolLevel } from '../src/core/catalog';
 import { moteurEtayage } from '../src/ui/etayage-visuels';
+import { texteParle } from '../src/core/tts-text';
 import { initProfiles, touchActiveProfile } from '../src/core/profiles';
 import { setOnDataWrite } from '../src/core/storage';
 
@@ -140,6 +141,13 @@ describe('les exemples déclarés par les leçons — jamais un panneau vide', (
 				if (/undefined|NaN|\[object/.test(p.phrase)) faute(`pas ${i} : « ${p.phrase} »`);
 				if (p.phrase !== p.phrase.trim() || /\s{2}/.test(p.phrase))
 					faute(`pas ${i} : espaces parasites — « ${p.phrase} »`);
+				// Chaque pas est LU à voix haute (le panneau dicte le titre puis la phrase du pas,
+				// via `texteParle`). Un grand nombre dont les classes sont séparées par une espace
+				// ordinaire n'y est pas recollé : « 3 000 » s'entend « trois » puis « mille » —
+				// deux nombres, au moment précis où l'on montre le résultat. Le séparateur est
+				// l'espace fine insécable (`ESPACE_FINE`, ce que produit `formatNombre`).
+				if (/[0-9] [0-9]/.test(texteParle(p.phrase)))
+					faute(`pas ${i} : nombre coupé à l'oreille — « ${p.phrase} »`);
 				for (const e of p.ecritures ?? [])
 					if (!e.texte.trim()) faute(`pas ${i} : écriture vide dans « ${e.cible} »`);
 			});

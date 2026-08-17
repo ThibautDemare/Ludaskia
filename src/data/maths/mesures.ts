@@ -488,8 +488,8 @@ export const MESURE_LESSONS: LessonInput[] = [
 				titre: 'Convertir une longueur',
 				regle: 'Une grande unité contient plusieurs petites : il faut savoir combien.',
 				etapes: [
-					'Retiens les repères : 1 km = 1 000 m, 1 m = 100 cm, 1 cm = 10 mm.',
-					'Vers la PETITE unité, multiplie : 3 km, cela fait 3 × 1 000 = 3 000 m.',
+					'Retiens les repères : 1 km = 1 000 m, 1 m = 100 cm, 1 cm = 10 mm.',
+					'Vers la PETITE unité, multiplie : 3 km, cela fait 3 × 1 000 = 3 000 m.',
 					'Vers la GRANDE unité, divise : 300 cm, cela fait 300 ÷ 100 = 3 m.',
 				],
 			},
@@ -535,9 +535,9 @@ export const MESURE_LESSONS: LessonInput[] = [
 				titre: 'Convertir une masse',
 				regle: 'Une grande unité contient plusieurs petites : il faut savoir combien.',
 				etapes: [
-					'Retiens les repères : 1 kg = 1 000 g, et 1 g = 1 000 mg.',
-					'Vers la PETITE unité, multiplie : 2 kg, cela fait 2 × 1 000 = 2 000 g.',
-					'Vers la GRANDE unité, divise : 3 000 g, cela fait 3 000 ÷ 1 000 = 3 kg.',
+					'Retiens les repères : 1 kg = 1 000 g, et 1 g = 1 000 mg.',
+					'Vers la PETITE unité, multiplie : 2 kg, cela fait 2 × 1 000 = 2 000 g.',
+					'Vers la GRANDE unité, divise : 3 000 g, cela fait 3 000 ÷ 1 000 = 3 kg.',
 				],
 			},
 		),
@@ -585,7 +585,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 				titre: 'Convertir une contenance',
 				regle: 'Une grande unité contient plusieurs petites : il faut savoir combien.',
 				etapes: [
-					'Retiens les repères : 1 L = 10 dL, 1 L = 100 cL, 1 L = 1 000 mL.',
+					'Retiens les repères : 1 L = 10 dL, 1 L = 100 cL, 1 L = 1 000 mL.',
 					'Vers la PETITE unité, multiplie : 5 L, cela fait 5 × 100 = 500 cL.',
 					'Vers la GRANDE unité, divise : 300 cL, cela fait 300 ÷ 100 = 3 L.',
 				],

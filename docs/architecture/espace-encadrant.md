@@ -129,6 +129,15 @@ compte, un simple passage sous le suivi non) — cf. `aChangeRecemment` pour le 
 catégorie affiche le même dénombrement (`RecapCategorie.travaillees`). Comptage factuel,
 aucune note.
 
+**Étoiles cumulées par classe (#556)** : sous ce bloc, « Étoiles gagnées depuis toujours :
+N en CE2, M en CM1. » (`RecapProfil.etoilesParNiveau`, cf. [Logique pure](core.md)) —
+n'apparaît qu'à partir de **deux** classes (sur une seule, la ligne répéterait le total sans
+rien apprendre). Contrepartie ADULTE du « trésor » cumulé de l'enfant, qui reste lui un total
+unique et sans détail : elle répond à « quelle part du travail se fait hors de la classe
+suivie ? », question à laquelle la couverture par matière ci-dessus — scopée à cette classe —
+ne peut pas répondre. Cumul DEPUIS TOUJOURS, comme le trésor : ne baisse jamais, même après un
+changement de classe.
+
 **Tendance par notion** (signal COURT TERME, pas une note) : puce ↗ « en progrès » / →
 « stable » / ↘ « à relancer » à côté de l'état, dérivée de la fenêtre glissante `recents`
 (`tendanceNotion` : compare la performance pondérée de la 1re et de la 2de moitié de la
@@ -576,6 +585,62 @@ Dictées (#496, ci-dessus).
 décroche, la donnée la plus utile au parent). Garde dédiée « une fois par essai »
 (`sessionErreursLoggees`, `ui/navigation.ts`), distincte de `sessionRecorded`.
 
+## Assigner une leçon d'une autre classe (#556)
+
+Un adulte peut désigner, pour un profil, une leçon d'une classe **autre** que celle qu'il
+suit — typiquement une notion CE2 à consolider pour un CM1 — **sans faire reculer toute la
+matière**. Le niveau reste une donnée transversale ([Niveaux
+scolaires](niveaux-scolaires.md), #225) ; ce qui change, ce sont les points
+d'**exposition** : deux endroits où l'adulte DÉSIGNE une leçon précise partagent le même
+sélecteur tous niveaux (`ui/selecteur-lecon.ts`, cf. [Rendu &
+interactions](ui.md)) — l'épinglage « à revoir » (sous-bloc « Épingler une leçon »,
+ci-dessous) et la cible d'une étape « une leçon précise » du programme du jour (« Composition
+du programme du jour », plus bas). Là où le catalogue de l'enfant (et les pools de tirage,
+sprint/révision) restent strictement scopés à sa classe, ce sélecteur ouvre TOUT le
+catalogue : le niveau y redevient un FILTRE (barre de jetons « Sa classe » / par classe,
+recherche) plutôt qu'une frontière.
+
+**Trois régimes d'affichage**, selon d'où vient la cible retenue par rapport à la classe
+suivie par le profil pour la matière de la leçon (`core/encadrant-stats.ts:origineLecon` →
+`OrigineLecon {niveau, direction}`, cf. [Logique pure](core.md)) :
+- **classe suivie** — état d'acquisition habituel, sans rien de plus ;
+- **classe EN DESSOUS** — badge « classe d'origine » + état d'acquisition, lu au niveau de
+  **stockage** de la cible (`scopeStockage`, [Niveaux scolaires](niveaux-scolaires.md)) : une
+  consolidation part souvent d'un état bas, ce qui est normal et non une alerte ;
+- **classe AU-DESSUS** — badge « classe d'origine » + **compte-rendu FACTUEL** (« Pas encore
+  travaillée » / « Essayée … » / « Réussie … »), **jamais** un état d'acquisition (avis
+  pédagogue) : un échec afficherait « à renforcer » sur une notion pas encore enseignée, une
+  réussite « acquis » sur un seul essai. Cet essai ne compte ni dans les compteurs de
+  maîtrise, ni dans les suggestions « à revoir », ni dans le signal « reste un point dur »
+  (#492), qui supposent tous du contenu de la classe suivie.
+
+**Le badge « classe d'origine »** (`badgeClasseOrigine`, `ui/encadrant-commun.ts`) ne
+s'affiche que côté ADULTE, et seulement là où l'on voit une leçon **déjà choisie** : la ligne
+d'une épingle (suggestions et « Retirées automatiquement » exclues — leurs lignes viennent
+du récap scopé, donc toujours de la classe suivie) et l'étape « une leçon précise » d'un
+programme, une fois sa cible retenue. Il ne s'affiche jamais dans le sélecteur lui-même (le
+jeton de filtre actif dit déjà la classe). L'ancien libellé « hors du niveau suivi » et la
+classe CSS `.enc-revoir-hors` — qui marquaient une épingle hors classe comme **inerte** —
+ont disparu avec #556 : une telle épingle n'est plus inerte, elle revient normalement sur
+l'accueil de l'enfant (cf. « À revoir » ci-dessous).
+
+**Asymétrie voulue avec la révision espacée** : une leçon assignée **en dessous** entre
+normalement en révision espacée, à son niveau de stockage, comme n'importe quelle leçon
+jouée. Une leçon assignée **au-dessus**, elle, reste un essai PONCTUEL qui n'entre jamais en
+révision — et cela **ne demande aucun code nouveau** : l'état de répétition espacée
+n'AVANCE (`core/progress.ts:avancerLessonRevision`) que depuis le mode Révision
+(`ui/revision.ts`), dont le pool de sélection se limite à la vue scopée à la classe suivie
+plus, au maximum, un niveau en dessous (#232, cf. [Logique pure](core.md) et « Récap du mode
+Révision espacée » ci-dessous) — jamais au-dessus. Une leçon prise en avance ne peut donc
+jamais y être tirée, ni y voir son état avancer.
+
+**L'enfant ne voit AUCUNE étiquette de classe, nulle part** : la carte d'accueil, la file « à
+revoir » et le programme du jour lui présentent la leçon exactement comme les autres — seule
+la lecture de son état, côté adulte, change selon d'où elle vient.
+
+Ferme #535 comme sous-cas (une épingle hors classe qui ne revenait jamais sur l'accueil de
+l'enfant).
+
 ## « À revoir » → carte d'accueil
 
 **« À revoir » → carte d'accueil** : l'encadrant **épingle** une leçon du catalogue **ou** une
@@ -627,18 +692,22 @@ catalogue actif, liste supprimée) en est silencieusement écartée — la purge
 ci-dessus l'a déjà débarrassée des entrées redevenues solides, donc « Épinglées » ne peut plus
 contenir de fantôme.
 
-**État d'acquisition sur une épinglée** (#518) : chaque ligne porte le même badge que celles
-des suggestions (`niveauEpingle`, `core/encadrant-stats.ts`) — sans lui, l'adulte ne pouvait
-pas juger s'il fallait désépingler. Une leçon épinglée jamais travaillée n'est pas un trou de
-données : elle est dans le récap à `'a-decouvrir'`, donc affiche « à découvrir » comme
-n'importe quelle notion neuve. Quand aucun état n'est disponible, la ligne affiche à la place
-un repli « **hors du niveau suivi** » (`.enc-revoir-hors`, sans pastille de couleur, pour ne
-pas se lire comme un 5e cran de l'échelle d'acquisition) : la cible n'est pas au programme de
-la classe suivie par le profil, donc l'épingle est **inerte** — `revoirActives` l'écarte, elle
-ne revient jamais sur l'accueil de l'enfant. Elle reste néanmoins listée ici, précisément pour
-que l'adulte puisse la retirer en sachant pourquoi ; le motif (`EpingleEntry.horsNiveau`) est
-calculé par `epingleesProfil`, là où le niveau de la cible est connu, et non déduit d'un état
-absent — les deux auraient pu diverger en silence.
+**État d'acquisition sur une épinglée** (#518, révisé #556) : chaque ligne porte le même
+badge que celles des suggestions (`EpingleEntry.etat`, `core/encadrant-stats.ts`) — sans lui,
+l'adulte ne pouvait pas juger s'il fallait désépingler. Une leçon épinglée jamais travaillée
+n'est pas un trou de données : elle est dans le récap à `'a-decouvrir'`, donc affiche
+« à découvrir » comme n'importe quelle notion neuve. Une cible d'une AUTRE classe que celle
+suivie porte en plus le badge « classe d'origine » (`EpingleEntry.origine`) et suit l'un des
+deux régimes hors classe détaillés dans « Assigner une leçon d'une autre classe » plus haut —
+dont un compte-rendu FACTUEL pour une cible prise dans une classe au-dessus, jamais un état
+d'acquisition.
+
+**Épingler une leçon** (#556, `epinglerHTML`) : sous-bloc qui ouvre le sélecteur de leçon
+partagé (`ui/selecteur-lecon.ts`, cf. [Rendu & interactions](ui.md)) avec « Épingler » pour
+action de ligne — tout le catalogue, y compris les classes que l'enfant ne suit pas. Il
+COEXISTE avec l'épinglage inline des « Notions par catégorie » et du signal « reste un point
+dur » ci-dessus, qui reste le geste naturel quand on vient de lire l'état d'une notion DÉJÀ
+au programme de la classe suivie : les deux écrivent la même file `ludaskia_revoir`.
 
 Une troisième sous-section, **« Retirées automatiquement »** (#465,
 `retraitsAutoProfil(profile, now)`), rappelle les entrées que la purge vient de retirer —
@@ -668,7 +737,9 @@ faux. Chaque entrée d'entretien porte son **niveau d'origine** en pastille (`en
 que d'ajouter un style : même rôle visuel), pour ne pas se confondre avec la même leçon
 suivie au niveau actif dans la même catégorie. Tout le reste (au-dessus du niveau actif, ou à plus d'un
 niveau en dessous) reste dormant et masqué : l'afficher créerait un doublon fantôme « en
-retard » que le parent ne pourrait jamais résorber. Cette distinction de niveau d'origine
+retard » que le parent ne pourrait jamais résorber — c'est aussi, depuis #556, ce qui
+garantit qu'une leçon assignée dans une classe au-dessus n'entre jamais en rotation (cf.
+« Assigner une leçon d'une autre classe » plus haut). Cette distinction de niveau d'origine
 est réservée à l'espace encadrant — rien n'en est montré à l'enfant.
 
 Trois visualisations, bascule au même patron que le graphe d'activité (module
@@ -700,20 +771,27 @@ Bloc de composition (`ui/encadrant-seance.ts` — `seanceHTML`/`seanceClick`/
 `seanceChange`, en tête de l'**onglet Programme**, #459) permettant à l'encadrant de préparer,
 pour le profil **consulté** (par UUID, sans bascule), un ou plusieurs programmes :
 une liste d'**étapes** (Sprint, Révision, **À revoir** #464, Leçon du jour, une leçon
-précise ou une dictée — cible(s) filtrée(s) au **niveau du profil**, comme ce que
-l'enfant voit) répétées `count` fois (paliers fixes 1 à 5, pas de saisie libre), et une
-**récurrence** (une **date** ponctuelle ou des **jours de semaine**). Une étape
+précise ou une dictée) répétées `count` fois (paliers fixes 1 à 5, pas de saisie libre),
+et une **récurrence** (une **date** ponctuelle ou des **jours de semaine**). Une étape
 « dictée » vise un **pool** de dictées cochées via une liste à cases (#463, cf.
-[Logique pure](core.md)) : une seule cochée reste figée, deux ou plus donnent un
-tirage au hasard à chaque lancement (l'enfant ne voit pas laquelle avant de
-commencer). Une étape **« À revoir » (#464)** n'a rien à configurer : sa cible est
-la file épinglée du profil (ci-dessus) — un repère (« rien n'est épinglé » / « ce
-sera celle-ci » / « une au hasard ») prévient l'adulte si elle restera invisible
-tant que rien n'est épinglé. **Choix assumé** : cette étape **s'ajoute** à la carte
-d'accueil « à revoir », elle ne la remplace pas — deux chemins vers la même file
-(l'un toujours disponible, l'autre au fil du programme composé). Garde-fou
-« un seul programme par jour » : `recurrencesEnConflit` (`core/seance.ts`) refuse une
-récurrence qui chevaucherait celle d'un autre programme du même profil (message
+[Logique pure](core.md)), filtrées au **niveau du profil** comme ce que l'enfant voit :
+une seule cochée reste figée, deux ou plus donnent un tirage au hasard à chaque lancement
+(l'enfant ne voit pas laquelle avant de commencer). Une étape **« une leçon précise »
+(#556)** cible, elle, TOUT le catalogue via le sélecteur de leçon partagé (cf. « Assigner
+une leçon d'une autre classe » plus haut, et [Rendu & interactions](ui.md)) : elle NAÎT
+sans cible (aucune présélection, ce serait poser une consigne que l'adulte n'a pas donnée)
+et n'entre ni dans le nombre d'activités du composeur ni dans `estimationDureeMin` tant
+qu'aucune leçon n'est choisie — elle disparaîtrait sinon au lancement, ce qui aurait promis
+un temps que l'enfant ne passera pas (`etapeConfiguree`, cf. [Logique pure](core.md)). Une
+fois une cible retenue, elle est affichée seule sur la ligne, avec le badge « classe
+d'origine » si elle vient d'une autre classe que celle suivie. Une étape **« À revoir »
+(#464)** n'a rien à configurer : sa cible est la file épinglée du profil (ci-dessus) — un
+repère (« rien n'est épinglé » / « ce sera celle-ci » / « une au hasard ») prévient
+l'adulte si elle restera invisible tant que rien n'est épinglé. **Choix assumé** : cette
+étape **s'ajoute** à la carte d'accueil « à revoir », elle ne la remplace pas — deux
+chemins vers la même file (l'un toujours disponible, l'autre au fil du programme composé).
+Garde-fou « un seul programme par jour » : `recurrencesEnConflit` (`core/seance.ts`)
+refuse une récurrence qui chevaucherait celle d'un autre programme du même profil (message
 d'erreur affiché dans la carte, jamais de blocage dur du **volume** d'étapes/programmes).
 `estimationDureeMin` affiche une durée indicative, avec un repère « 2 à 3 activités,
 10 à 15 min » (non contraignant). Persistance **immédiate** à chaque action

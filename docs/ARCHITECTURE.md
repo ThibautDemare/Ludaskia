@@ -70,7 +70,8 @@ de conception initial est `docs/design-multi-subject.md`.
   régularité, XP & niveaux, déblocages.
 - [Espace encadrant (#234)](architecture/espace-encadrant.md) — **organisée en
   onglets** (#459), consultation sans bascule, récap d'accompagnement,
-  **composition du programme du jour** (#440), verrou PIN optionnel.
+  **composition du programme du jour** (#440), **assignation d'une leçon d'une autre
+  classe** (#556), verrou PIN optionnel.
 - [Niveaux scolaires (#225)](architecture/niveaux-scolaires.md) — classe par
   matière, namespacing de progression `@niveau`.
 

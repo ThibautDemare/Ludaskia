@@ -27,7 +27,13 @@ import {
 	type LeconArbre,
 	type MatiereArbre,
 } from '../src/core/catalogue-arbre';
-import { CATEGORIES, getAllLessons, type LessonDef, type SchoolLevel } from '../src/core/catalog';
+import {
+	CATEGORIES,
+	getAllLessons,
+	getLessonsByCategory,
+	type LessonDef,
+	type SchoolLevel,
+} from '../src/core/catalog';
 import type { ExerciseType } from '../src/core/exercise';
 import { availableLevels } from '../src/core/levels';
 import type { Profile } from '../src/core/profiles';
@@ -306,6 +312,89 @@ describe('arbreCatalogue — filtre de niveau', () => {
 		// Sous « Sa classe », c'est la classe SUIVIE pour la matière qui décide.
 		expect(sous('sa-classe', CE2)).toBe(l.labelNiveau!.ce2);
 		expect(sous('sa-classe', CM1)).toBe(l.labelNiveau!.cm1);
+	});
+});
+
+/* ============================================================
+   arbreCatalogue — ordre des leçons
+   ------------------------------------------------------------
+   L'adulte désigne une leçon pour l'enfant : les deux doivent voir la MÊME progression,
+   sinon l'adulte qui cherche « la suite de ce qu'il a vu en classe » ne la trouve pas là
+   où l'enfant l'a rencontrée. L'ordre de référence est donc l'ordre PÉDAGOGIQUE du niveau
+   affiché (#208), celui que sert `getLessonsByCategory(cat, niveau)` à l'écran de l'enfant
+   — et NON l'ordre de déclaration du catalogue, dont il diffère réellement (la conjugaison
+   se déclare verbe par verbe et s'enseigne temps par temps).
+   ============================================================ */
+describe('arbreCatalogue — ordre des leçons', () => {
+	/* Ordre de DÉCLARATION du catalogue, restreint à un niveau : le repli qu'on obtiendrait
+	   sans tri. Sert de témoin — un attendu qui lui serait égal ne prouverait rien. */
+	const ordreDeclaration = (categoryId: string, niveau: SchoolLevel): string[] =>
+		getAllLessons()
+			.filter((l) => l.category === categoryId && l.levels.includes(niveau))
+			.map((l) => l.id);
+	const ordrePedagogique = (categoryId: string, niveau: SchoolLevel): string[] =>
+		getLessonsByCategory(categoryId, niveau).map((l) => l.id);
+	const memeSuite = (a: readonly string[], b: readonly string[]): boolean =>
+		a.length === b.length && a.every((x, i) => x === b[i]);
+
+	it('prémisse : les deux ordres divergent bel et bien, sur plusieurs catégories', () => {
+		const divergentes = CATEGORIES.filter((c) =>
+			(['ce2', 'cm1'] as SchoolLevel[]).some(
+				(niveau) => !memeSuite(ordrePedagogique(c.id, niveau), ordreDeclaration(c.id, niveau)),
+			),
+		);
+		// Sans cette prémisse, tout le reste de ce bloc passerait aussi sans le tri.
+		expect(divergentes.length).toBeGreaterThan(1);
+	});
+
+	it('chaque catégorie sort dans l’ordre pédagogique du niveau AFFICHÉ, comme l’écran enfant', () => {
+		let divergences = 0;
+		for (const p of [CE2, CM1, MELE]) {
+			for (const filtre of ['sa-classe', 'ce2', 'cm1'] as FiltreNiveau[]) {
+				for (const m of arbreCatalogue(p, { filtre })) {
+					for (const c of m.categories) {
+						// Toutes les leçons d'une catégorie relèvent de la même matière, donc du même
+						// niveau affiché : celui que la ligne porte déjà.
+						const niveau = c.lecons[0].niveau;
+						const attendu = ordrePedagogique(c.categoryId, niveau);
+						expect(
+							c.lecons.map((l) => l.id),
+							`${c.categoryId} @${niveau}`,
+						).toEqual(attendu);
+						if (!memeSuite(attendu, ordreDeclaration(c.categoryId, niveau))) divergences++;
+					}
+				}
+			}
+		}
+		// Le verrou n'est pas creux : le tri a bien changé quelque chose dans ce balayage.
+		expect(divergences).toBeGreaterThan(0);
+	});
+
+	it('cas concret : la conjugaison est rangée par TEMPS, pas verbe par verbe', () => {
+		const cat = arbreCatalogue(CE2, { filtre: 'ce2' })
+			.flatMap((m) => m.categories)
+			.find((c) => c.categoryId === 'fr-conjugaison');
+		if (!cat) throw new Error('catalogue sans conjugaison CE2 : test à réviser');
+		const obtenu = cat.lecons.map((l) => l.id);
+		// La déclaration groupe les temps d'un même verbe ; la progression balaie tous les
+		// verbes à un temps avant de passer au suivant. Les deux suites diffèrent donc dès
+		// leur 2e élément, ce qui rend ce test impossible à satisfaire sans tri.
+		const declaration = ordreDeclaration('fr-conjugaison', 'ce2');
+		expect(obtenu).not.toEqual(declaration);
+		expect(obtenu[0]).toBe(declaration[0]); // même point de départ…
+		expect(obtenu[1]).not.toBe(declaration[1]); // …et déjà plus la même suite
+		expect(obtenu).toEqual(ordrePedagogique('fr-conjugaison', 'ce2'));
+	});
+
+	it('une recherche ne réordonne rien (le sous-ensemble garde l’ordre pédagogique)', () => {
+		for (const c of arbreCatalogue(CM1, { filtre: 'cm1', recherche: 'e' }).flatMap(
+			(m) => m.categories,
+		)) {
+			const complet = ordrePedagogique(c.categoryId, 'cm1');
+			const trouves = c.lecons.map((l) => l.id);
+			// Sous-suite de l'ordre complet : mêmes éléments dans le même ordre relatif.
+			expect(trouves).toEqual(complet.filter((id) => trouves.includes(id)));
+		}
 	});
 });
 

@@ -18,7 +18,7 @@
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, rnd, sample } from '../../core/utils';
-import { MODE_QCM_CHECK } from '../_shared';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 import {
 	VERBS,
@@ -181,12 +181,69 @@ export function infinitifType(): ExerciseType {
 /* ------------------------------------------------------------
    Descripteurs de leçons (branchés au catalogue par catalog.ts).
    ------------------------------------------------------------ */
+/* ---------- Étayage de la notion (#490) ----------
+   Trois panneaux qui donnent la MANIPULATION du manuel, et écartent au passage la
+   fausse règle qui traîne sur chaque notion (avis `pedagogue-primaire`) :
+   - le groupe ne se lit PAS sur la terminaison de l'infinitif (« venir » est en -ir et
+     du 3e groupe) : le test est « nous » au présent, et l'entendre en -issons ;
+   - l'infinitif se retrouve par « il faut + verbe », qui s'appuie sur l'oreille plutôt
+     que sur une morphologie que l'enfant n'a pas ;
+   - un temps composé, ce n'est pas « avoir/être devant » (« il est content » n'a rien
+     d'un temps composé) mais avoir/être suivi d'un PARTICIPE PASSÉ.
+
+   ⚠ Les exemples cités sont pris HORS CORPUS (chanter, rougir, dormir). Le corpus des
+   trois QCM est fixe et énumérable — 13 verbes —, et le groupe ou l'infinitif d'un
+   verbe n'est pas retiré à chaque tirage : nommer ici le groupe d'un verbe du corpus
+   donnerait la réponse à TOUS ses tirages futurs, pas seulement à la question du jour.
+   Même raison pour laquelle le piège enseigné du verbe en -er qui n'est pas du 1er
+   groupe est signalé sans être nommé : c'est un item de la banque. */
+const ETAYAGE_SIMPLE_COMPOSE = etayageRedige(
+	'Temps simple ou temps composé ?',
+	"Un temps composé s'écrit en deux morceaux : « avoir » ou « être », puis le participe passé du verbe.",
+	[
+		'Regarde si le verbe est tout seul : alors le temps est simple.',
+		"Regarde s'il y a « avoir » ou « être » juste devant, suivi du participe passé (chanté, rougi, dormi).",
+		"Attention : « avoir » ou « être » suivi d'un mot qui n'est pas un participe passé, ce n'est pas un temps composé.",
+	],
+);
+
+const ETAYAGE_GROUPE = etayageRedige(
+	'1er, 2e ou 3e groupe ?',
+	"Le groupe ne se devine pas sur la fin de l'infinitif : il se trouve en conjuguant.",
+	[
+		'Conjugue le verbe avec « nous » au présent : si tu entends -issons (nous rougissons), il est du 2e groupe.',
+		'Sinon, un infinitif en -er (chanter) est du 1er groupe.',
+		'Sinon, choisis le 3e groupe. Attention : quelques verbes en -er ne suivent pas cette règle, apprends-les à part.',
+	],
+);
+
+const ETAYAGE_INFINITIF = etayageRedige(
+	"Comment retrouver l'infinitif ?",
+	"L'infinitif, c'est le nom du verbe : sa forme dans le dictionnaire, avant d'être conjugué.",
+	[
+		"Redis la phrase avec « il faut » : le mot qui suit est l'infinitif (il chantait : il faut chanter).",
+		"Vérifie qu'il ne porte aucune marque de personne ni de temps.",
+		'Si tu ne reconnais pas le verbe, essaie chaque réponse avec « il faut » : une seule sonne juste.',
+	],
+);
+
 export const CONJ_META_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-conj-simple-compose',
 		label: 'Temps simple ou composé ?',
 		exerciseType: simpleComposeType(),
+		etayage: [ETAYAGE_SIMPLE_COMPOSE],
 	},
-	{ id: 'fr-conj-groupe', label: '1er, 2e ou 3e groupe ?', exerciseType: groupeType() },
-	{ id: 'fr-conj-infinitif', label: "Quel est l'infinitif ?", exerciseType: infinitifType() },
+	{
+		id: 'fr-conj-groupe',
+		label: '1er, 2e ou 3e groupe ?',
+		exerciseType: groupeType(),
+		etayage: [ETAYAGE_GROUPE],
+	},
+	{
+		id: 'fr-conj-infinitif',
+		label: "Quel est l'infinitif ?",
+		exerciseType: infinitifType(),
+		etayage: [ETAYAGE_INFINITIF],
+	},
 ];

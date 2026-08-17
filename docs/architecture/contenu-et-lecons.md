@@ -872,12 +872,29 @@ Les trois conversions à tableau portent **deux** entrées, une par mode : le d�
 mode `tableau`, un texte rédigé partout ailleurs (`etayageConversion`, `mesures.ts`).
 Sans cette seconde entrée, le mode **conseillé** de ces leçons — `saisie` — n'aurait eu
 aucun panneau, soit six situations (3 leçons × 2 niveaux) muettes là où les enfants
-travaillent le plus. Ce qui reste sans déroulé mécanisé, ce sont les présents
-irréguliers. Le **français**, lui, reste sans aucun
-contenu d'étayage rédigé en dehors de la conjugaison régulière : grammaire,
-orthographe, vocabulaire n'ont pas encore de panneau — chantier séparé et déjà
-planifié (#490 PR 4), pas un oubli. Sans entrée, il n'y a pas de panneau — jamais de
-repli sur l'exemple d'une leçon voisine.
+travaillent le plus. Ce qui reste sans déroulé mécanisé, ce sont les onze présents à
+radical supplétif (« je vais / nous allons » ne se fabrique pas) : ils gardent malgré
+tout un panneau RÉDIGÉ (`etayagePresentRedige`, `conjugaison.ts`), qui pointe vers la
+récupération en mémoire (réciter le verbe depuis le début) plutôt que vers une
+méthode de fabrication — sans jamais donner une forme qui répondrait à la question
+posée.
+
+**Le français porte désormais un panneau sur chacune de ses leçons** (#490 PR 4) :
+53 leçons qui n'en avaient aucun — les quatre catégories (grammaire, conjugaison,
+orthographe, vocabulaire), 17 modules de `src/data/francais/` — reçoivent un contenu
+RÉDIGÉ (`etayageRedige`) : titre, `regle` en une phrase, ≤ 3 `etapes`, aucun exemple à
+dérouler. **Plus aucune leçon du catalogue, toutes matières confondues, n'est sans
+étayage.** Les listes de dictée de l'atelier d'orthographe (`ORTHO_PREDEF`,
+`orthographe.ts`) restent hors de ce compte : ce ne sont pas des `LessonDef` du
+catalogue (cf. `core/orthographe/lessons.ts`), mais des mots à mémoriser, sans méthode
+à expliquer.
+
+Quatre leçons servies aux deux niveaux (`fr-gram-clic-verbe`, `fr-gram-clic-det`,
+`fr-gram-clic-pron`, `fr-gram-clic-noyau`, `grammaire-clic-mot.ts`) portent **deux**
+entrées d'étayage plutôt qu'une : la tâche change avec la classe (tous les
+noms/déterminants d'une phrase au CE2, le seul nom noyau ou une sous-catégorie
+demandée au CM1), donc le texte qui l'explique aussi. Sans entrée, il n'y a pas de
+panneau — jamais de repli sur l'exemple d'une leçon voisine.
 
 ### Calcul mental
 

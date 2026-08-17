@@ -13,7 +13,7 @@
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
-import { MODE_QCM_CHECK } from '../_shared';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 type Sens = 'propre' | 'figuré';
@@ -340,10 +340,26 @@ export function sensFigureType(): ExerciseType {
 	};
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   Les options ne sont pas les étiquettes « propre » et « figuré » mais deux
+   DÉFINITIONS (plus un distracteur) : l'enfant ne classe pas, il choisit un sens. Le
+   panneau vise donc l'erreur réelle, qui est de répondre avec le sens le plus familier
+   du mot sans lire la phrase. */
+const ETAYAGE_SENS_FIGURE = etayageRedige(
+	'Sens propre ou sens figuré ?',
+	'Un même mot peut garder son sens habituel, ou prendre un sens imagé : là, il ne dit pas ce que tu crois.',
+	[
+		"Lis toute la phrase : c'est elle qui décide du sens.",
+		"Demande-toi si ce que dit le mot peut arriver pour de vrai, ou si c'est une image.",
+		'Choisis la définition qui va avec cette phrase, pas celle que tu connais le mieux.',
+	],
+);
+
 export const SENS_FIGURE_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-vocab-sens',
 		label: 'Sens propre / sens figuré',
 		exerciseType: sensFigureType(),
+		etayage: [ETAYAGE_SENS_FIGURE],
 	},
 ];

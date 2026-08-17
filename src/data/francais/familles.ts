@@ -18,7 +18,7 @@ import type { SchoolLevel } from '../../core/catalog';
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
-import { MODE_QCM_CHECK } from '../_shared';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 /** Famille de mots : un mot de la famille, un faux-ami, un mot sans rapport. */
@@ -1692,12 +1692,69 @@ export interface FamillesLessonDef extends LessonInput {
 	levels: SchoolLevel[];
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   Quatre leçons, trois notions : la FAMILLE (le morceau commun et son piège, le
+   faux-ami), l'AFFIXE (ce que le morceau ajouté apporte au mot de base), et le geste
+   propre à l'appariement (relier, donc chercher dans une colonne).
+
+   Ce que les panneaux d'affixes ne font PAS : donner la table des préfixes et des
+   suffixes. Le sens de « re- » ou de « -eur » est justement ce que la question demande,
+   et la banque est fermée : la liste vaudrait corrigé. Ils donnent le geste (retrouver
+   le mot de base, mesurer ce que l'ajout change), qui est ce qui manque à l'enfant
+   bloqué — il connaît le mot de base, il ne pense pas à l'isoler.
+
+   ⚠ Les CATÉGORIES de sens citées en exemple sont celles de la banque que la leçon sert
+   VRAIMENT, pas celles du français en général : au CM1 (`PREFIXES_CM1`/`SUFFIXES_CM1`)
+   ce sont le lieu, la distance, le nombre, l'action, l'état — la répétition (« re- ») et
+   la négation, elles, ne vivent que dans la banque CE2. Citer les mauvaises enverrait
+   l'enfant chercher un sens qui ne sortira jamais dans cette leçon. */
+const ETAYAGE_FAMILLES_CE2 = etayageRedige(
+	'Familles, préfixes et suffixes',
+	"Les mots d'une même famille partagent un morceau commun, qui porte leur sens.",
+	[
+		'Cherche le morceau qui revient dans les mots proposés.',
+		'Vérifie le sens : deux mots peuvent se ressembler par hasard sans être de la même famille.',
+		"Quand un morceau est ajouté devant ou derrière, demande-toi ce qu'il change au mot de base.",
+	],
+);
+
+const ETAYAGE_FAMILLES_RELIER = etayageRedige(
+	"Relier les mots d'une même famille",
+	'Deux mots de la même famille ont un morceau commun ET une idée commune.',
+	[
+		'Prends un mot de gauche et repère son morceau commun.',
+		'Cherche à droite le mot construit sur ce même morceau.',
+		'Avant de relier, vérifie que les deux parlent bien de la même chose.',
+	],
+);
+
+const ETAYAGE_FAMILLES_CM1 = etayageRedige(
+	'Les familles de mots',
+	"Les mots d'une même famille sont construits sur le même mot de base.",
+	[
+		'Repère le mot de base caché dans chaque proposition.',
+		"Vérifie que le sens suit : la famille, ce n'est pas seulement la ressemblance.",
+		'Écarte les mots qui se ressemblent par hasard.',
+	],
+);
+
+const ETAYAGE_AFFIXES_CM1 = etayageRedige(
+	'Préfixes et suffixes',
+	'Un préfixe se colle devant le mot, un suffixe derrière : chacun en change le sens.',
+	[
+		'Retrouve le mot de base, sans le morceau ajouté.',
+		'Demande-toi ce que ce morceau apporte : un lieu, une distance, un nombre, une action, un état…',
+		"Choisis le sens qui garde l'idée du mot de base.",
+	],
+);
+
 export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 	{
 		id: 'fr-vocab-familles',
 		label: 'Familles, préfixes et suffixes',
 		levels: ['ce2'],
 		exerciseType: famillesType(ITEMS_FAMILLES),
+		etayage: [ETAYAGE_FAMILLES_CE2],
 	},
 	{
 		// Appariement (#392) : relier chaque mot de base à son dérivé. Nouvelle leçon
@@ -1708,17 +1765,20 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 		label: 'Familles de mots à relier',
 		levels: ['ce2'],
 		exerciseType: appariementType(FAMILLES),
+		etayage: [ETAYAGE_FAMILLES_RELIER],
 	},
 	{
 		id: 'fr-vocab-familles-cm1',
 		label: 'Familles de mots (CM1)',
 		levels: ['cm1'],
 		exerciseType: famillesType(ITEMS_FAMILLES_CM1),
+		etayage: [ETAYAGE_FAMILLES_CM1],
 	},
 	{
 		id: 'fr-vocab-affixes-cm1',
 		label: 'Préfixes et suffixes (CM1)',
 		levels: ['cm1'],
 		exerciseType: famillesType(ITEMS_AFFIXES_CM1),
+		etayage: [ETAYAGE_AFFIXES_CM1],
 	},
 ];

@@ -1151,8 +1151,8 @@ pure](core.md)) pour les formats composites :
   (`etayage-panneau.ts`) : sur du contenu rédigé, les étapes SONT la méthode, pas un
   supplément qu'on pourrait taire.
 
-  **Contrainte d'écriture** pour tout contenu RÉDIGÉ, présent et à venir (français
-  compris, #490 PR 4) — parce que ce texte est lu à voix haute par `texteParle` autant
+  **Contrainte d'écriture** pour tout contenu RÉDIGÉ, quelle que soit la matière
+  (maths et français, #490 PR 3/PR 4) — parce que ce texte est lu à voix haute par `texteParle` autant
   qu'à l'œil : les milliers se séparent par l'espace fine insécable U+202F (la seule
   que le moteur vocal recolle en un seul nombre), et jamais de flèche « → » —
   `texteParle` (`core/tts-text.ts`) la rend SILENCIEUSE (elle marque un trou dans

@@ -23,7 +23,7 @@
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
-import { MODE_QCM_CHECK } from '../_shared';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { choice, sample } from '../../core/utils';
 
@@ -285,7 +285,42 @@ export function triType(): ExerciseType {
 	};
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   « Le mot juste » tire DEUX formes de question (définition → mot, et intrus) : son
+   panneau leur consacre une étape chacune, sous la règle qui les réunit. « Ranger par
+   thème » est un geste de tri, avec sa stratégie propre (placer d'abord ce dont on est
+   sûr, ce qui réduit d'autant le champ des hésitations) : deux leçons, deux panneaux. */
+const ETAYAGE_MOT_JUSTE = etayageRedige(
+	'Trouver le mot juste',
+	'Les mots qui parlent du même thème forment une famille de sens : un champ lexical.',
+	[
+		"Pour une définition, lis-la jusqu'au bout : chaque détail compte.",
+		"Écarte les mots qui ne collent qu'à moitié.",
+		"Pour l'intrus, cherche celui qui ne parle pas du même thème que les autres.",
+	],
+);
+
+const ETAYAGE_TRI_THEME = etayageRedige(
+	'Ranger les mots par thème',
+	'Chaque mot va dans le thème dont il parle.',
+	[
+		'Lis les deux thèmes avant de déplacer un seul mot.',
+		'Pour chaque mot, demande-toi de quoi il parle.',
+		"Place d'abord ceux dont tu es sûr : les autres deviennent plus faciles.",
+	],
+);
+
 export const CHAMPS_LESSONS: LessonInput[] = [
-	{ id: 'fr-vocab-champs-mots', label: 'Le mot juste', exerciseType: motJusteType() },
-	{ id: 'fr-vocab-champs-tri', label: 'Ranger par thème', exerciseType: triType() },
+	{
+		id: 'fr-vocab-champs-mots',
+		label: 'Le mot juste',
+		exerciseType: motJusteType(),
+		etayage: [ETAYAGE_MOT_JUSTE],
+	},
+	{
+		id: 'fr-vocab-champs-tri',
+		label: 'Ranger par thème',
+		exerciseType: triType(),
+		etayage: [ETAYAGE_TRI_THEME],
+	},
 ];

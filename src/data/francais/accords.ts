@@ -25,7 +25,7 @@ import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
 import type { FormesAccord } from '../../core/orthographe/types';
 import { loadOrtho } from '../../core/orthographe/store';
-import { MODE_QCM_CHECK } from '../_shared';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 export interface AccordLessonDef extends LessonInput {
@@ -274,18 +274,69 @@ function accordType(config: AccordConfig): ExerciseType {
 
 const RUBRIQUE_ACCORDS = 'Les accords';
 
+/* ---------- Étayage de la notion (#490) ----------
+   Trois leçons sur le même moteur, mais trois notions différentes, donc trois
+   panneaux : la marque qui s'AJOUTE (CE2 réguliers), la fin qui CHANGE (CE2
+   irréguliers), et la terminaison qui commande sa propre transformation (CM1). Le
+   panneau des réguliers est le seul à pouvoir énoncer une règle unique ; les deux
+   autres disent d'abord de ne PAS l'appliquer par réflexe, ce qui est l'erreur que
+   la leçon travaille.
+
+   Une seule entrée par leçon, valable dans les deux modes : saisie et QCM demandent
+   la même chose (la forme transformée), l'un en l'écrivant, l'autre en la
+   reconnaissant.
+
+   Deux détails que la BANQUE impose, et qu'une rédaction « de mémoire » raterait :
+   - `transfosDisponibles` génère aussi le masculin PLURIEL → féminin pluriel (un bon
+     quart des tirages des réguliers) : « ajoute un e à la fin » y donnerait « voisinse ».
+     D'où le e du féminin placé AVANT le s, et pas « à la fin » ;
+   - au CM1, les mots en -al/-aux pèsent autant que les autres familles et portent en
+     plus l'exception délibérée (« festival »). Les taire priverait l'étape 3 de la règle
+     dont cette exception est l'exception. */
+const ETAYAGE_REGULIERS = etayageRedige(
+	'Mettre un mot au pluriel ou au féminin',
+	'On garde le mot entier, et on lui ajoute la marque qui manque.',
+	[
+		"Regarde ce qu'on te demande : le pluriel, ou le féminin ?",
+		'Écris le mot sans rien changer à son début.',
+		'Ajoute le e du féminin avant le s du pluriel quand il y en a déjà un, sinon tout à la fin.',
+	],
+);
+
+const ETAYAGE_IRREGULIERS = etayageRedige(
+	'Les pluriels et les féminins qui changent',
+	"Certains mots ne se contentent pas d'un s ou d'un e : c'est leur fin qui change.",
+	[
+		"N'ajoute pas un s par réflexe : regarde d'abord la fin du mot.",
+		'Une fin en -al devient souvent -aux, une fin en -eau prend un x.',
+		"Les autres changements s'apprennent un par un ; dis le mot à voix haute pour t'aider.",
+	],
+);
+
+const ETAYAGE_ACCORDS_CM1 = etayageRedige(
+	'Pluriels et féminins au CM1',
+	"C'est la fin du mot qui commande sa transformation.",
+	[
+		'Regarde bien la fin du mot avant de le transformer.',
+		'Un mot en -er fait -ère, un mot en -f fait -ve, un mot en -al fait -aux au pluriel.',
+		"Méfie-toi : quelques mots ne suivent pas leur famille, ceux-là s'apprennent par cœur.",
+	],
+);
+
 export const ACCORD_LESSONS: AccordLessonDef[] = [
 	{
 		id: 'fr-accords-reguliers',
 		label: 'Pluriel et féminin — réguliers',
 		rubrique: RUBRIQUE_ACCORDS,
 		exerciseType: accordType({ banque: ACCORDS_REGULIERS, inclureFlechies: true }),
+		etayage: [ETAYAGE_REGULIERS],
 	},
 	{
 		id: 'fr-accords-irreguliers',
 		label: 'Pluriel et féminin — irréguliers',
 		rubrique: RUBRIQUE_ACCORDS,
 		exerciseType: accordType({ banque: ACCORDS_IRREGULIERS }),
+		etayage: [ETAYAGE_IRREGULIERS],
 	},
 ];
 
@@ -299,6 +350,7 @@ export const ACCORD_CM1_LESSONS: AccordLessonDef[] = [
 		label: 'Pluriel et féminin — au CM1',
 		rubrique: RUBRIQUE_ACCORDS,
 		exerciseType: accordType({ banque: ACCORDS_CM1 }),
+		etayage: [ETAYAGE_ACCORDS_CM1],
 	},
 ];
 

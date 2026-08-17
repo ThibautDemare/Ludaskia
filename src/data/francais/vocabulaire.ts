@@ -17,7 +17,7 @@
    ============================================================ */
 import type { Exercise, ExerciseType } from '../../core/exercise';
 import { choice, sample, normalizeText, melangerDifferemment } from '../../core/utils';
-import type { LessonInput } from '../_shared';
+import { etayageRedige, type LessonInput } from '../_shared';
 
 /* Pool de noms communs pour le tri par 1re lettre. On pioche des INITIALES
    toutes différentes (une par lettre), puis un mot au hasard pour chacune :
@@ -163,15 +163,42 @@ function ordreType(gen: () => Exercise): ExerciseType {
 	};
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   Deux leçons, deux panneaux, parce que la deuxième n'est pas « la même en plus dur » :
+   la première se joue entièrement sur l'initiale, la seconde sur des mots qui commencent
+   TOUS par la même lettre — le geste utile n'y est plus le même (passer à la lettre
+   suivante), et c'est exactement là que l'enfant bute. */
+const ETAYAGE_ALPHA_INITIALE = etayageRedige(
+	"Ranger des mots dans l'ordre alphabétique",
+	"L'ordre alphabétique, c'est l'ordre des lettres de l'alphabet, de a à z.",
+	[
+		'Regarde la première lettre de chaque mot.',
+		"Récite l'alphabet dans ta tête pour savoir laquelle vient avant.",
+		'Commence par le mot dont la lettre est la plus proche de a.',
+	],
+);
+
+const ETAYAGE_ALPHA_DEUXIEME = etayageRedige(
+	'Ranger des mots qui commencent pareil',
+	"Quand deux mots commencent par la même lettre, c'est la deuxième lettre qui décide.",
+	[
+		'Vérifie : ici, tous les mots commencent par la même lettre.',
+		'Regarde alors leur deuxième lettre, et elle seule.',
+		"Range ces deuxièmes lettres dans l'ordre de l'alphabet.",
+	],
+);
+
 export const VOCAB_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-vocab-alpha-initiale',
 		label: 'Ordre alphabétique — la 1re lettre',
 		exerciseType: ordreType(genNiveau1),
+		etayage: [ETAYAGE_ALPHA_INITIALE],
 	},
 	{
 		id: 'fr-vocab-alpha-deuxieme',
 		label: 'Ordre alphabétique — la 2e lettre',
 		exerciseType: ordreType(genNiveau2),
+		etayage: [ETAYAGE_ALPHA_DEUXIEME],
 	},
 ];

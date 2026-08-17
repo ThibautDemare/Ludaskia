@@ -1072,8 +1072,13 @@ niveau, sans DOM ni stockage :
   n'est pas de mal expliquer mais de **mentir** : le corpus ne stocke que des formes
   pleines, et découper au jugé fabriquerait des radicaux inventés (« pouvoir » en a trois
   au présent). Règle du module : **on ne raconte que ce qu'on a vérifié sur les six
-  personnes** (`radicalCommun`, `decoupePasseCompose`) ; sinon le déroulé est vide et il
-  n'y a pas de panneau. Aucune liste de verbes en dur — c'est le corpus qui décide.
+  personnes** (`radicalCommun`, `decoupePasseCompose`) ; sinon le déroulé est vide.
+  Aucune liste de verbes en dur — c'est le corpus qui décide. **Au présent**, un
+  déroulé vide n'est plus synonyme de « pas de panneau » :
+  `data/francais/conjugaison.ts:etayagePresentRedige` y substitue un texte RÉDIGÉ pour
+  les onze verbes à radical supplétif (« je vais / nous allons » ne se fabrique pas —
+  ce qui aide, c'est la mémorisation, pas une méthode) ; aux autres temps, un déroulé
+  vide laisse encore la leçon sans rien (cas non rencontré dans le corpus actuel).
   Passé composé : uniforme (auxiliaire + participe ; un participe qui varie signale
   l'accord avec « être », qu'on nomme). Imparfait : terminaisons communes à tous, radical
   retrouvé par le « nous » du présent — « être » sort de la règle sans mystère (« nous
@@ -1102,12 +1107,13 @@ par `toLessonDefs`, cf. `catalog.ts` ci-dessus) — pas de table centrale à cen
 entrées, qui dériverait de la leçon qu'elle décrit et serait un nid de conflits.
 
 **La dégradation est une propriété du dispositif, pas un manque.** Elle joue à trois
-niveaux : pas d'entrée pour la leçon → pas de panneau ; entrée mais déroulé non
-montrable → panneau réduit à sa règle et au renvoi vers la leçon prérequise ; et, dans
-chaque moteur, refus de raconter ce qui n'a pas été vérifié. C'est ce qui laisse
-volontairement SANS panneau les verbes irréguliers au présent (aucune méthode honnête à
-dérouler), les divisions avec reste et les durées (leur calcul ne s'écrit pas en une
-opération : « 17 ÷ 5 » ne fait pas 3).
+niveaux : pas d'entrée pour la leçon → pas de panneau ; entrée sans exemple montrable →
+panneau réduit à sa règle et ses étapes rédigées (renvoi vers la leçon prérequise en
+prime) ; et, dans chaque moteur, refus de raconter ce qui n'a pas été vérifié — c'est ce
+refus qui prive de déroulé MÉCANISÉ les divisions avec reste, les durées (leur calcul ne
+s'écrit pas en une opération : « 17 ÷ 5 » ne fait pas 3) et les onze présents à radical
+supplétif (« je vais / nous allons » ne se fabrique pas). Ces trois familles gardent
+malgré tout leur panneau, RÉDIGÉ plutôt que déroulé — jamais sans rien.
 
 `core/items.ts` (Fondations ci-dessus) porte le tiers restant, PARTAGÉ par la grille
 jouable et par la grille de DÉMONSTRATION du panneau : `dispositionPosee(spec)` /

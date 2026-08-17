@@ -30,7 +30,8 @@ import type { SchoolLevel } from '../../core/catalog';
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
-import { MODE_QCM_CHECK } from '../_shared';
+import type { EtayageEntree } from '../../core/etayage';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 /** Une entrée de banque : une phrase avec le mot-cible en **gras**, le bon mot
@@ -1004,29 +1005,66 @@ export interface SensLessonDef extends LessonInput {
 
 /* Ordre pédagogique (#203, #244) : pour chaque niveau, les contraires AVANT les
    mots de sens proche. Le CE2 reste inchangé ; le CM1 (#244) ajoute deux leçons. */
+/* ---------- Étayage de la notion (#490) ----------
+   Deux notions (le contraire, le sens proche), quatre leçons : le CM1 reprend la MÊME
+   tâche sur un lexique plus exigeant. La méthode ne bouge donc pas d'un niveau à
+   l'autre, et le texte non plus — d'où deux FABRIQUES plutôt que deux constantes
+   partagées entre leçons : chaque leçon porte son propre contenu, comme le veut le
+   principe « une entrée par leçon » (rien de commun à deux leçons ne doit se
+   partager par référence, sinon la frontière entre elles n'est plus vérifiable).
+
+   Les deux textes se répondent volontairement : le contraire se teste en cherchant
+   l'inverse, le sens proche en SUBSTITUANT dans la phrase. C'est la différence de
+   geste qui sépare les deux leçons, pas leur difficulté. */
+const etayageContraires = (): EtayageEntree =>
+	etayageRedige(
+		"Trouver le contraire d'un mot",
+		"Le contraire d'un mot dit exactement l'inverse.",
+		[
+			'Lis la phrase entière et repère le mot en gras.',
+			"Demande-toi quel mot dirait tout l'inverse.",
+			"Essaie chaque réponse : une seule dit vraiment le contraire, les autres parlent d'autre chose.",
+		],
+	);
+
+const etayageSensProche = (): EtayageEntree =>
+	etayageRedige(
+		'Trouver un mot de sens proche',
+		'Deux mots de sens proche veulent dire presque la même chose.',
+		[
+			'Lis la phrase entière et repère le mot en gras.',
+			'Remplace-le par chaque réponse, dans ta tête.',
+			'Garde celle qui ne change presque rien au sens de la phrase.',
+		],
+	);
+
 export const SENS_LESSONS: SensLessonDef[] = [
 	{
 		id: 'fr-vocab-contraires',
 		label: 'Les contraires',
 		levels: ['ce2'],
 		exerciseType: sensType(ITEMS_CONTRAIRES),
+		etayage: [etayageContraires()],
 	},
 	{
 		id: 'fr-vocab-sens-proche',
 		label: 'Les mots de sens proche',
 		levels: ['ce2'],
 		exerciseType: sensType(ITEMS_SENS_PROCHE),
+		etayage: [etayageSensProche()],
 	},
 	{
 		id: 'fr-vocab-contraires-cm1',
 		label: 'Les contraires (CM1)',
 		levels: ['cm1'],
 		exerciseType: sensType(ITEMS_CONTRAIRES_CM1),
+		etayage: [etayageContraires()],
 	},
 	{
 		id: 'fr-vocab-sens-proche-cm1',
 		label: 'Les mots de sens proche (CM1)',
 		levels: ['cm1'],
 		exerciseType: sensType(ITEMS_SENS_PROCHE_CM1),
+		etayage: [etayageSensProche()],
 	},
 ];

@@ -56,10 +56,87 @@ const modesDe = (l: LessonDef): (string | undefined)[] => [
 	...(l.exerciseType.modes ?? []).map((m) => m.id),
 ];
 
-/* Tout le texte d'un contenu, en un seul bloc minuscule (les assertions de charte et de
-   vocabulaire portent sur ce que l'enfant LIT, titre compris). */
-const texteDe = (c: EtayageContenu): string =>
-	[c.titre, c.regle ?? '', ...(c.etapes ?? [])].join(' ').toLowerCase();
+/* Tout le texte d'un contenu, en un seul bloc (les assertions de charte et de vocabulaire
+   portent sur ce que l'enfant LIT, titre compris) — brut, puis en minuscules. */
+const texteBrut = (c: EtayageContenu): string =>
+	[c.titre, c.regle ?? '', ...(c.etapes ?? [])].join(' ');
+const texteDe = (c: EtayageContenu): string => texteBrut(c).toLowerCase();
+
+/* ---------- Tutoiement : « vous » est aussi une PERSONNE GRAMMATICALE ----------
+   Interdire le mot « vous » revient à interdire de parler de la 2e personne du pluriel,
+   c'est-à-dire l'objet même de plusieurs leçons (le pronom sujet, l'accord du verbe, le
+   « vous » atypique de « faire » et « dire »). Le vouvoiement ne se reconnaît donc pas au
+   MOT mais à son EMPLOI : l'appli qui s'adresse à l'adulte met « vous » en syntaxe
+   courante (« vous pouvez », « aidez-vous de », « votre enfant »), tandis qu'un panneau
+   qui parle de la langue le CITE. Deux façons de citer, et deux seulement :
+   - entre guillemets — « vous », comme tous les mots dont le contenu parle ;
+   - dans une ÉNUMÉRATION de personnes (« … nous ou vous », « nous, vous, ils »), où le
+     voisin immédiat est lui-même une forme de personne.
+   Tout le reste est du vouvoiement. Deux limites connues et assumées, symétriques : une
+   phrase qui ouvrirait par une énumération avant de vouvoyer (« Nous, vous devez… »)
+   passerait, et une énumération relâchée par une préposition (« avec nous, ou avec vous »)
+   serait signalée à tort. C'est le prix d'une règle qui tient sur un VOISIN immédiat ; la
+   sortie de secours, dans ce dernier cas, est de mettre le mot cité entre guillemets —
+   ce que le contenu fait déjà partout ailleurs. */
+const FORMES_PERSONNE = [
+	'je',
+	'tu',
+	'il',
+	'elle',
+	'on',
+	'nous',
+	'vous',
+	'ils',
+	'elles',
+	'me',
+	'te',
+	'se',
+	'moi',
+	'toi',
+	'lui',
+	'eux',
+	'leur',
+	'mon',
+	'ma',
+	'mes',
+	'ton',
+	'ta',
+	'tes',
+	'son',
+	'sa',
+	'ses',
+	'notre',
+	'nos',
+	'votre',
+	'vos',
+].join('|');
+
+/* Séparateur d'énumération à la française : virgule, « ou », « et ». */
+const LIEN = String.raw`(?:,|\bou\b|\bet\b)`;
+const PERSONNE_AVANT = new RegExp(`(?:^|[^\\p{L}])(?:${FORMES_PERSONNE})\\s*${LIEN}\\s*$`, 'u');
+const PERSONNE_APRES = new RegExp(`^\\s*${LIEN}\\s*(?:${FORMES_PERSONNE})(?:[^\\p{L}]|$)`, 'u');
+
+/* L'occurrence est-elle entre guillemets ? Le dernier chevron ouvert avant elle n'est
+   pas encore refermé. */
+function dansGuillemets(texte: string, i: number): boolean {
+	return texte.lastIndexOf('«', i) > texte.lastIndexOf('»', i);
+}
+
+/** Les occurrences de « vous / votre / vos » qui S'ADRESSENT au lecteur (donc à un adulte)
+    plutôt que de citer la personne grammaticale. Chaîne rendue avec son contexte, pour que
+    l'échec montre la phrase fautive et non le seul mot. */
+function vouvoiements(texte: string): string[] {
+	const fautes: string[] = [];
+	for (const m of texte.matchAll(/\b(?:vous|votre|vos)\b/giu)) {
+		const i = m.index;
+		if (dansGuillemets(texte, i)) continue;
+		const fin = i + m[0].length;
+		if (PERSONNE_AVANT.test(texte.slice(Math.max(0, i - 30), i))) continue;
+		if (PERSONNE_APRES.test(texte.slice(fin, fin + 30))) continue;
+		fautes.push(texte.slice(Math.max(0, i - 20), fin + 20).trim());
+	}
+	return fautes;
+}
 
 const MATHS = CATEGORIES.filter((c) => c.subject === 'math').map((c) => c.id);
 
@@ -191,15 +268,43 @@ describe('charte des panneaux (#490 / #272) — sur chaque entrée déclarée', 
 	it('on parle À l’enfant, avec l’apostrophe droite du projet', () => {
 		const fautes: string[] = [];
 		for (const { ou, contenu } of ENTREES) {
-			const texte = texteDe(contenu);
 			// Tutoiement : le vouvoiement s'adresse à l'adulte, et le panneau ne s'ouvre que
-			// devant un enfant qui vient d'échouer.
-			if (/\bvous\b|\bvotre\b|\bvos\b/.test(texte)) fautes.push(`${ou} — vouvoiement`);
+			// devant un enfant qui vient d'échouer. « vous » CITÉ comme personne grammaticale
+			// est en revanche la notion de plusieurs leçons (cf. `vouvoiements` plus haut).
+			for (const f of vouvoiements(texteBrut(contenu))) fautes.push(`${ou} — vouvoiement : ${f}`);
 			// Apostrophe droite (convention projet, cf. CLAUDE.md et les bulles d'aide des
 			// figures) : deux apostrophes différentes dans un même panneau se voient.
-			if (texte.includes('’')) fautes.push(`${ou} — apostrophe typographique`);
+			if (texteDe(contenu).includes('’')) fautes.push(`${ou} — apostrophe typographique`);
 		}
 		expect(fautes).toEqual([]);
+	});
+
+	it('le garde-fou du tutoiement attrape un vrai vouvoiement, et laisse passer la citation', () => {
+		/* Le test ci-dessus ne prouve rien tout seul : une règle trop permissive le ferait
+		   passer aussi. On l'éprouve donc sur des phrases FABRIQUÉES — d'un côté celles qu'un
+		   panneau ne doit jamais contenir, de l'autre les cinq tournures réellement employées
+		   par les leçons qui parlent de la 2e personne du pluriel. */
+		const aAttraper = [
+			'Vous pouvez relire la phrase ensemble.',
+			'Aidez-vous du tableau si besoin.',
+			'Cela vous aidera à trouver le sujet.',
+			'Notez vos réponses avant de vérifier.',
+			'Expliquez la règle à votre enfant.',
+			'Si vous le souhaitez, montrez un autre exemple.',
+		];
+		for (const phrase of aAttraper) expect(vouvoiements(phrase), phrase).not.toEqual([]);
+
+		const aLaisserPasser = [
+			"Méfie-toi de « vous » : pour ce verbe, la terminaison n'est pas -ez.",
+			"S'il contient « toi » sans « moi », c'est « vous ».",
+			'Remplace ce sujet par un pronom : il, elle, ils, elles, nous ou vous.',
+			'Les pronoms sujets sont : je, tu, il, elle, on, nous, vous, ils, elles.',
+			// Deux formes de citation que le contenu n'emploie pas encore : la règle les couvre
+			// parce qu'elle décrit la CITATION, pas les phrases déjà écrites.
+			'Le pronom « vous » désigne plusieurs personnes.',
+			'Tu peux dire nous ou vous.',
+		];
+		for (const phrase of aLaisserPasser) expect(vouvoiements(phrase), phrase).toEqual([]);
 	});
 });
 

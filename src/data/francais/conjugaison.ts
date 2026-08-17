@@ -308,11 +308,14 @@ export interface ConjLessonDesc {
    Une entrée par (verbe × temps), FABRIQUÉE depuis le corpus : 52 leçons, zéro texte
    écrit à la main, et un verbe ajouté demain sera traité pour ce qu'il est.
 
-   L'entrée n'est déclarée QUE si le moteur sait vraiment dérouler ce verbe à ce temps
-   (`derouleConjugaison` vérifie la régularité sur les six personnes avant de raconter quoi
-   que ce soit). Conséquence assumée et VOULUE : les verbes irréguliers au présent n'ont pas
-   de panneau, parce qu'il n'y a rien d'honnête à y dérouler — « je vais / nous allons » ne
-   se fabrique pas, il s'apprend. Mieux vaut pas de panneau qu'une méthode inventée.
+   L'exemple DÉROULÉ n'est déclaré que si le moteur sait vraiment dérouler ce verbe à ce
+   temps (`derouleConjugaison` vérifie la régularité sur les six personnes avant de raconter
+   quoi que ce soit). Les verbes irréguliers au présent n'en reçoivent donc pas : il n'y a
+   rien d'honnête à y dérouler — « je vais / nous allons » ne se fabrique pas, il s'apprend,
+   et mieux vaut pas de méthode qu'une méthode inventée. Ce qu'ils reçoivent à la place,
+   depuis #490 PR 4, c'est un panneau RÉDIGÉ (`etayagePresentRedige` plus bas), qui vise la
+   mémorisation au lieu de la fabrication. Aux autres temps, un déroulé impossible laisse
+   toujours la leçon sans panneau du tout.
 
    Personne de l'exemple : « nous ». Jamais élidée (donc le pronom s'écrit tel quel), et
    c'est la personne où la terminaison s'entend le plus nettement — au singulier, « j'aime »
@@ -329,6 +332,58 @@ const ETAYAGE_REGLE: Record<Tense, string> = {
 		"Le passé composé s'écrit en deux morceaux : l'auxiliaire conjugué, puis le participe passé.",
 };
 
+/* ---------- Le présent irrégulier : du texte là où le moteur se tait (#490) ----------
+   Onze verbes n'ont pas de déroulé au présent (radical supplétif : « je vais / nous
+   allons » ne se fabrique pas). Ne rien afficher du tout, comme le faisait la PR des
+   résolutions générées, laissait pourtant l'enfant devant une question sans aucune
+   aide — alors qu'il y a bien quelque chose de vrai à lui dire (avis
+   `pedagogue-primaire`) : son erreur typique n'est pas « je n'ai pas trouvé la règle »
+   mais la SURRÉGULARISATION (« il pouve », « ils veules »), et ce qui la traite est une
+   stratégie de RÉCUPÉRATION EN MÉMOIRE, pas une méthode de fabrication.
+
+   Interdit structurant : le contenu est fixé PAR LEÇON, pas par personne tirée. Une
+   étape qui réciterait tout ou partie du paradigme donnerait donc la réponse à une
+   partie des tirages. Aucune des formes du verbe n'apparaît ici, y compris dans les
+   étapes propres à un verbe.
+
+   Cantonné au PRÉSENT : la règle et l'étape 2 parlent des terminaisons du 1er groupe,
+   qui n'ont de sens qu'à ce temps. Un autre temps qui perdrait son déroulé resterait
+   donc sans panneau — dégradation propre, comme avant. */
+const ETAYAGE_PRESENT_REGLE =
+	"Ce verbe ne se fabrique pas avec une règle : ses formes se retiennent par cœur, comme les paroles d'une chanson.";
+
+const ETAYAGE_PRESENT_ETAPES = [
+	"Récite le verbe depuis le début (je, tu, il…) jusqu'à la personne qu'on te demande.",
+	'Ne lui donne pas les terminaisons des verbes en -er : elles ne marchent pas pour celui-là.',
+];
+
+/* Troisième étape PROPRE à un verbe, quand il y a mieux à dire qu'une généralité — et
+   seulement là : deux étapes justes valent mieux qu'une troisième de remplissage.
+   Les auxiliaires renvoient à l'oral (ce sont les deux verbes que l'enfant dit le plus
+   souvent) ; « faire » et « dire » signalent leur « vous » atypique SANS le donner ;
+   « pouvoir » et « vouloir » se confondent l'un l'autre, d'où le rappel de sens. */
+const ETAYAGE_PRESENT_ETAPE_VERBE: Record<string, string> = {
+	etre: 'Tu dis ce verbe tous les jours : dis-le à voix haute, puis écris ce que tu entends.',
+	avoir: 'Tu dis ce verbe tous les jours : dis-le à voix haute, puis écris ce que tu entends.',
+	faire: "Méfie-toi de « vous » : pour ce verbe, la terminaison n'est pas -ez.",
+	dire: "Méfie-toi de « vous » : pour ce verbe, la terminaison n'est pas -ez.",
+	pouvoir: "Vérifie le sens : « pouvoir », c'est être capable de faire quelque chose.",
+	vouloir: "Vérifie le sens : « vouloir », c'est avoir envie de quelque chose.",
+};
+
+function etayagePresentRedige(verb: VerbDef): EtayageEntree[] {
+	const propre = ETAYAGE_PRESENT_ETAPE_VERBE[verb.id];
+	return [
+		{
+			contenu: {
+				titre: `${verb.infinitif} ${TENSE_PHRASE.present}`,
+				regle: ETAYAGE_PRESENT_REGLE,
+				etapes: propre ? [...ETAYAGE_PRESENT_ETAPES, propre] : [...ETAYAGE_PRESENT_ETAPES],
+			},
+		},
+	];
+}
+
 function etayageConjugaison(verb: VerbDef, tense: Tense): EtayageEntree[] | undefined {
 	const formes = verb.forms[tense];
 	const spec: ConjugaisonSpec = {
@@ -339,7 +394,9 @@ function etayageConjugaison(verb: VerbDef, tense: Tense): EtayageEntree[] | unde
 		formes: [...formes],
 		formesPresent: [...verb.forms.present],
 	};
-	if (!derouleConjugaison(spec).pas.length) return undefined;
+	if (!derouleConjugaison(spec).pas.length) {
+		return tense === 'present' ? etayagePresentRedige(verb) : undefined;
+	}
 	return [
 		{
 			contenu: {

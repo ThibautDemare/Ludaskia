@@ -22,7 +22,7 @@ import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { sample, randFloat } from '../../core/utils';
 import { ORTHO_PREDEF } from './orthographe';
-import { MODE_QCM_CHECK } from '../_shared';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 export type TypeMbp = 'regle' | 'contre' | 'exception';
@@ -193,11 +193,31 @@ export interface MbpLessonDef extends LessonInput {
 	rubrique: string;
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   La banque mêle trois types de mots, et le panneau doit les couvrir tous les trois,
+   sinon il enseigne la sur-généralisation que la leçon combat : la règle (m devant
+   m/b/p), les CONTRE-EXEMPLES (lettre suivante autre → n) et les EXCEPTIONS.
+
+   Les trois exceptions ne sont pas nommées : elles sont SUR-PONDÉRÉES dans le tirage
+   (elles sortent souvent), donc les citer reviendrait à donner la réponse pour de bon.
+   Ce que l'étape 3 donne, c'est leur EXISTENCE et leur petit nombre — de quoi ne pas
+   répondre « m » les yeux fermés devant un b. */
+const ETAYAGE_MBP = etayageRedige(
+	'La règle du m devant m, b, p',
+	'Devant les lettres m, b et p, on écrit m à la place de n.',
+	[
+		'Regarde la lettre qui suit tout de suite la lettre manquante.',
+		"Si c'est m, b ou p, écris m ; sinon, écris n.",
+		'Trois mots seulement font exception et gardent leur n : ceux-là se retiennent par cœur.',
+	],
+);
+
 export const MBP_LESSONS: MbpLessonDef[] = [
 	{
 		id: 'fr-mbp',
 		label: 'm devant m, b, p',
 		rubrique: 'Les règles',
 		exerciseType: mbpType(),
+		etayage: [ETAYAGE_MBP],
 	},
 ];

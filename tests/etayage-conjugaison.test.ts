@@ -20,7 +20,8 @@
    - l'AUXILIAIRE nommé est celui qu'on lit dans les formes, et l'accord du participe n'est
      annoncé que lorsqu'il varie vraiment d'une personne à l'autre ;
    - le REFUS : présent irrégulier, découpage impossible, personne hors bornes → déroulé
-     vide, donc pas de panneau — et l'entrée d'étayage absente du catalogue en face ;
+     vide, donc aucun exemple à montrer — et, en face, une leçon qui ne déclare AUCUN
+     exemple (le présent supplétif reçoit à la place un panneau rédigé, cf. §4) ;
    - la LANGUE : élision (« d'aller », « de finir ») et groupe annoncé conforme à celui que
      les données déclarent.
    ============================================================ */
@@ -392,37 +393,71 @@ describe('derouleConjugaison — plutôt pas de panneau qu’une méthode invent
 });
 
 /* ============================================================
-   4. CATALOGUE — une entrée seulement là où le déroulé tient
-   ============================================================ */
-describe('les 52 leçons de conjugaison et leur étayage', () => {
-	it('une entrée pour chaque (verbe × temps) déroulable, aucune ailleurs', () => {
-		const sans: string[] = [];
-		const avec: string[] = [];
-		for (const verb of VERBS)
-			for (const temps of TENSES) {
-				const id = `fr-conj-${verb.id}-${temps}`;
-				const contenu = etayagePour(lecon(id), 'ce2');
-				(contenu ? avec : sans).push(id);
-			}
-		expect(avec.length + sans.length).toBe(52);
-		// Les 11 verbes dont le présent ne se reconstruit pas n'ont pas de panneau à ce temps :
-		// c'est le seul trou, et il est volontaire.
-		expect(sans.sort()).toEqual(
-			VERBS.filter((v) => !PRESENT_DEROULABLE.includes(v.infinitif))
-				.map((v) => `fr-conj-${v.id}-present`)
-				.sort(),
-		);
-		expect(avec.length).toBe(41);
-	});
+   4. CATALOGUE — la FORME du panneau suit ce que le moteur sait faire
+   ------------------------------------------------------------
+   La règle a changé (#490, contenu rédigé du français) et le changement est le fond du
+   sujet : le présent supplétif ne reste PLUS sans rien. Ce qui ne change pas, et que ces
+   tests continuent de tenir, c'est l'ADOSSEMENT — chaque leçon reçoit la forme de
+   panneau que sa notion autorise, jamais une autre :
+   - déroulé possible → un exemple MÉCANISÉ, et il est montrable ;
+   - présent supplétif → un texte RÉDIGÉ, sans exemple (rien à dérouler à montrer) ;
+   - nulle part un panneau vide, nulle part un exemple là où le moteur se tait.
 
-	it('chaque entrée déclare un exemple montrable, à la personne « nous »', () => {
+   Le second garde-fou déplace donc son objet : autrefois « aucune entrée sans exemple »,
+   il devient « aucune entrée mécanisée sans exemple montrable » PLUS « aucun panneau
+   rédigé qui récite le paradigme ». Le contenu du présent supplétif est fixé PAR LEÇON
+   alors que la PERSONNE, elle, est tirée à chaque question : une forme citée dans ce
+   texte serait donnée d'avance à une part des tirages — le même interdit que partout
+   ailleurs, seulement plus facile à enfreindre ici, puisque le sujet du panneau EST le
+   paradigme.
+   ============================================================ */
+/* Les (verbe × temps) sans déroulé possible : le présent des 11 verbes à radical
+   supplétif. Dérivé de PRESENT_DEROULABLE ci-dessus (liste établie forme par forme), et
+   des trois autres temps qui se déroulent tous. */
+const PRESENT_SUPPLETIF = VERBS.filter((v) => !PRESENT_DEROULABLE.includes(v.infinitif));
+
+/* Tout le texte lisible d'un panneau (titre + règle + étapes). */
+const texteContenu = (c: { titre: string; regle?: string; etapes?: string[] }): string =>
+	[c.titre, c.regle ?? '', ...(c.etapes ?? [])].join(' ');
+
+/* `mot` apparaît-il comme MOT ENTIER ? Les bornes `\b` de JS ne connaissent pas les
+   lettres accentuées (« être » collé à « peut-être » passerait) : on encadre par
+   « pas une lettre », en Unicode. */
+const citeLeMot = (texte: string, mot: string): boolean =>
+	new RegExp(`(^|[^\\p{L}])${mot}([^\\p{L}]|$)`, 'iu').test(texte);
+
+describe('les 52 leçons de conjugaison et leur étayage', () => {
+	it('un panneau pour chaque (verbe × temps), mécanisé ou rédigé selon ce qui se déroule', () => {
+		const mecanise: string[] = [];
+		const redige: string[] = [];
+		const sans: string[] = [];
 		for (const verb of VERBS)
 			for (const temps of TENSES) {
 				const contenu = etayagePour(lecon(`fr-conj-${verb.id}-${temps}`), 'ce2');
-				if (!contenu) continue;
+				const cle = `${verb.id}/${temps}`;
+				if (!contenu) sans.push(cle);
+				else if (contenu.exemple) mecanise.push(cle);
+				else redige.push(cle);
+			}
+		expect(mecanise.length + redige.length + sans.length).toBe(52);
+		// Plus aucun trou : c'est ce que la PR revendique, et c'est ce qui se casserait
+		// silencieusement (une leçon sans panneau ne lève rien, elle n'affiche rien).
+		expect(sans).toEqual([]);
+		// Le texte rédigé est exactement le présent des verbes à radical supplétif — ni un
+		// temps de plus (les autres temps se déroulent : y trouver du texte signalerait un
+		// déroulé perdu), ni un verbe de moins.
+		expect(redige.sort()).toEqual(PRESENT_SUPPLETIF.map((v) => `${v.id}/present`).sort());
+		expect(mecanise.length).toBe(41);
+	});
+
+	it('chaque entrée MÉCANISÉE déclare un exemple montrable, à la personne « nous »', () => {
+		for (const verb of VERBS)
+			for (const temps of TENSES) {
+				const contenu = etayagePour(lecon(`fr-conj-${verb.id}-${temps}`), 'ce2');
+				if (!contenu?.exemple) continue;
 				const ou = `${verb.id}/${temps}`;
-				expect(contenu.exemple?.moteur, ou).toBe('conjugaison');
-				if (contenu.exemple?.moteur !== 'conjugaison') throw new Error(ou);
+				expect(contenu.exemple.moteur, ou).toBe('conjugaison');
+				if (contenu.exemple.moteur !== 'conjugaison') throw new Error(ou);
 				const s = contenu.exemple.spec;
 				// « nous » : jamais élidé, et la terminaison s'y entend (contrairement à
 				// « j'aime » / « il aime », indistinguables à l'oreille).
@@ -430,9 +465,45 @@ describe('les 52 leçons de conjugaison et leur étayage', () => {
 				expect(s.pronom.trim(), ou).toBe('nous');
 				expect(s.formes, ou).toEqual([...verb.forms[temps]]);
 				expect(derouleMontrable(derouleConjugaison(s)), ou).toBe(true);
+				// Un exemple déroulé PORTE la méthode : des étapes en plus feraient lire deux
+				// méthodes concurrentes au même endroit du panneau.
+				expect(contenu.etapes, ou).toBeUndefined();
 				// La règle affichée en permanence est une phrase, au niveau de l'enfant.
 				expect(contenu.regle?.length, ou).toBeGreaterThan(0);
 				expect(contenu.titre, ou).toContain(verb.infinitif);
 			}
+	});
+
+	it('chaque panneau RÉDIGÉ du présent supplétif dit une méthode, sans exemple à dérouler', () => {
+		for (const verb of PRESENT_SUPPLETIF) {
+			const ou = `${verb.id}/present`;
+			const contenu = etayagePour(lecon(`fr-conj-${verb.id}-present`), 'ce2');
+			if (!contenu) throw new Error(`panneau attendu pour ${ou}`);
+			// Pas d'exemple : le moteur ne sait rien dérouler ici, et un exemple sur une
+			// notion sans déroulé enverrait le panneau chercher une résolution inexistante.
+			expect(contenu.exemple, ou).toBeUndefined();
+			// Une méthode, donc des étapes — sinon le panneau se réduit à sa règle et redit
+			// la fiche. Plafond de trois (mémoire de travail, charte #272).
+			expect(contenu.etapes?.length, ou).toBeGreaterThan(0);
+			expect(contenu.etapes?.length, ou).toBeLessThanOrEqual(3);
+			expect(contenu.regle?.length, ou).toBeGreaterThan(0);
+			expect(contenu.titre, ou).toContain(verb.infinitif);
+		}
+	});
+
+	it('un panneau rédigé ne récite AUCUNE forme du verbe qu’il explique', () => {
+		/* Le texte est fixé par LEÇON, la personne est tirée à chaque question : citer
+		   « nous allons » donnerait la réponse à un sixième des tirages de la leçon, pour
+		   toujours. On éprouve les six formes du présent — celles que la leçon demande — et
+		   pas seulement celles qu'on croirait tentantes. */
+		const fautes: string[] = [];
+		for (const verb of PRESENT_SUPPLETIF) {
+			const contenu = etayagePour(lecon(`fr-conj-${verb.id}-present`), 'ce2');
+			if (!contenu) continue;
+			const texte = texteContenu(contenu);
+			for (const forme of verb.forms.present)
+				if (citeLeMot(texte, forme)) fautes.push(`${verb.id}/present — « ${forme} » cité`);
+		}
+		expect([...new Set(fautes)]).toEqual([]);
 	});
 });

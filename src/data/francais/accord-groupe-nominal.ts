@@ -36,7 +36,7 @@
 import type { ChoiceView, Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, escapeHTML, sample } from '../../core/utils';
-import { MODE_QCM_POINT } from '../_shared';
+import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 /** Sens de la transformation demandée à l'enfant. */
@@ -345,11 +345,27 @@ export interface AccordGNLessonDef extends LessonInput {
 }
 
 /* Leçon unique, rubrique « Les accords » (à côté des autres leçons d'accords). */
+/* ---------- Étayage de la notion (#490) ----------
+   Chaque distracteur casse EXACTEMENT UNE marque en laissant les autres correctes :
+   l'enfant qui répond au premier coup d'œil « ça a l'air accordé » se fait prendre à
+   tous les coups. L'étape 3 vise donc précisément ce piège (relire le groupe ENTIER),
+   plutôt que de répéter la règle de l'étape 1. */
+const ETAYAGE_ACCORD_GN = etayageRedige(
+	'Accorder tout le groupe nominal',
+	"Dans un groupe nominal, tous les mots s'accordent avec le nom : aucun ne reste en arrière.",
+	[
+		"Repère le nom : c'est lui qui donne le genre et le nombre.",
+		"Accorde le déterminant, puis le nom, puis l'adjectif s'il y en a un.",
+		"Relis le groupe en entier : il suffit qu'un seul mot ait oublié sa marque pour que ce soit faux.",
+	],
+);
+
 export const ACCORD_GN_LESSONS: AccordGNLessonDef[] = [
 	{
 		id: 'fr-accords-groupe-nominal',
 		label: 'Accorder tout le groupe',
 		rubrique: 'Les accords',
 		exerciseType: accordGNType(),
+		etayage: [ETAYAGE_ACCORD_GN],
 	},
 ];

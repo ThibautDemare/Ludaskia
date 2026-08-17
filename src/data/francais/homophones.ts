@@ -16,7 +16,8 @@
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
-import { MODE_QCM_CHECK } from '../_shared';
+import type { EtayageEntree } from '../../core/etayage';
+import { etayageRedige, MODE_QCM_CHECK } from '../_shared';
 import type { LessonInput } from '../_shared';
 
 export interface PaireHomophone {
@@ -620,9 +621,76 @@ function homophoneType(paire: PaireHomophone): ExerciseType {
 	};
 }
 
+/* ---------- Étayage de la notion (#490) ----------
+   Ici la méthode EST la manipulation qui donne la réponse : remplacer par « avait »,
+   par « était », par « il ». Ce n'est pas un contournement de l'interdit « jamais la
+   réponse de la question à venir » — c'est l'outil que l'école fait automatiser
+   (manipulation syntaxique par substitution, au programme du CM1), et le taire
+   viderait le panneau (avis `pedagogue-primaire`). La limite tient à ceci : le
+   panneau décrit le test à EXÉCUTER, il ne l'exécute jamais sur la phrase affichée,
+   et il n'emprunte aucune phrase à la banque (~100 par paire, donc réutilisées).
+
+   Chaque paire garde la même structure en trois temps (remplace / si ça marche /
+   sinon), pour qu'un enfant qui passe d'une leçon d'homophones à l'autre retrouve le
+   même geste. Le critère d'une paire est aussi rappelé APRÈS la réponse, par
+   `explication` : les deux textes disent la même chose, l'un avant, l'autre après. */
+const ETAYAGE_ETAPES: Record<string, [string, string, string]> = {
+	'fr-homophones-a': [
+		'Relis la phrase en remplaçant le mot par « avait ».',
+		'Si la phrase veut encore dire quelque chose, écris « a ».',
+		'Sinon, écris « à » : il indique où on va, ou à qui on parle.',
+	],
+	'fr-homophones-et': [
+		'Relis la phrase en remplaçant le mot par « était ».',
+		'Si la phrase veut encore dire quelque chose, écris « est ».',
+		'Sinon, essaie « et puis » : si ça marche, écris « et ».',
+	],
+	'fr-homophones-on': [
+		'Relis la phrase en remplaçant le mot par « avaient ».',
+		'Si la phrase veut encore dire quelque chose, écris « ont ».',
+		'Sinon, essaie « il » : si ça marche, écris « on ».',
+	],
+	'fr-homophones-son': [
+		'Relis la phrase en remplaçant le mot par « étaient ».',
+		'Si la phrase veut encore dire quelque chose, écris « sont ».',
+		'Sinon, essaie « mon » ou « ton » : si ça marche, écris « son ».',
+	],
+	'fr-homophones-ou': [
+		'Relis la phrase en remplaçant le mot par « ou bien ».',
+		'Si la phrase veut encore dire quelque chose, écris « ou ».',
+		"Sinon, c'est qu'on parle d'un endroit : écris « où ».",
+	],
+};
+
+/* La règle en une phrase : ce que chaque graphie EST — le sens que le test de
+   substitution vient vérifier ; sans elle, l'enfant applique une recette sans savoir ce
+   qu'il distingue. Le remplaçant proposé doit être de la MÊME classe que le mot remplacé,
+   puisque toutes les étapes d'ici substituent MOT À MOT : « son » se teste avec « mon »
+   ou « ton » (déterminants), jamais avec « le sien », qui est un pronom et remplacerait
+   tout le groupe (« cherche le sien ballon »). C'est d'ailleurs ce que dit déjà
+   l'`explication` de la paire, affichée après la réponse. */
+const ETAYAGE_REGLE: Record<string, string> = {
+	'fr-homophones-a': '« a » est le verbe avoir ; « à » est un petit mot qui ne change jamais.',
+	'fr-homophones-et': '« est » est le verbe être ; « et » relie deux mots ou deux groupes.',
+	'fr-homophones-on': "« ont » est le verbe avoir ; « on » désigne quelqu'un, comme « il ».",
+	'fr-homophones-son': '« sont » est le verbe être ; « son » dit à qui appartient la chose.',
+	'fr-homophones-ou': "« ou » propose un choix ; « où » parle d'un endroit.",
+};
+
+function etayageHomophone(p: PaireHomophone): EtayageEntree[] {
+	return [
+		etayageRedige(
+			`Comment choisir entre « ${p.options[0]} » et « ${p.options[1]} » ?`,
+			ETAYAGE_REGLE[p.id],
+			[...ETAYAGE_ETAPES[p.id]],
+		),
+	];
+}
+
 export const HOMOPHONE_LESSONS: HomophoneLessonDef[] = HOMOPHONE_PAIRS.map((p) => ({
 	id: p.id,
 	label: p.label,
 	rubrique: RUBRIQUE,
 	exerciseType: homophoneType(p),
+	etayage: etayageHomophone(p),
 }));

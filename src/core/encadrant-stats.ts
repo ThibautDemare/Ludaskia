@@ -1323,12 +1323,13 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): Solid
 	}
 	const lesson = getLessonById(entryId);
 	if (!lesson) return null;
-	// Niveau où la leçon est jouée et STOCKÉE — la classe suivie si elle l'a, sinon la sienne
-	// (#556). Une épingle d'une autre classe se juge donc comme les autres : depuis qu'elle
+	// Niveau où la leçon est jouée et STOCKÉE, par la MÊME formule que l'affichage adulte
+	// (#556) : une épingle d'une autre classe se juge donc comme les autres. Depuis qu'elle
 	// atteint l'accueil de l'enfant, l'écarter ici la laisserait dans la file à vie, alors que
-	// l'affichage enfant, lui, cesserait de la montrer une fois redevenue solide. Le
-	// désépinglage automatique doit rester le MIROIR exact de cet affichage.
-	const niveau = effectiveLevel(lesson, niveauProfilMatiere(profile, lesson.subject));
+	// l'affichage enfant, lui, cesserait de la montrer une fois redevenue solide — le
+	// désépinglage automatique doit rester le MIROIR exact de cet affichage, jusqu'au niveau
+	// auquel il lit l'état.
+	const niveau = origineLecon(lesson, profile).niveau;
 	const k = lesson.id + '@' + niveau; // stats/étoiles namespacées par niveau (#225)
 	const etoilee = (ctx.starsRaw[k] || 0) > 0;
 	const pct = perfRecente(ctx.statsRaw[k])?.pct ?? null;

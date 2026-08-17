@@ -13,7 +13,8 @@
 
    PARITÉ avec l'affichage enfant (revoirActives) : elle est éprouvée dans les
    deux sens pour les leçons du catalogue (ce que l'enfant ne voit plus ne reste
-   pas en file, et rien de ce qu'il voit encore n'est retiré). Pour les dictées,
+   pas en file, et rien de ce qu'il voit encore n'est retiré) — y compris pour une
+   épingle d'une AUTRE classe depuis #556, jugée là où elle se joue. Pour les dictées,
    le retrait est volontairement PLUS PRUDENT que l'affichage : un retrait est
    définitif, donc il exige la dispo du TTS et le jeu de modes COMPLET, là où le
    filtre d'affichage (réversible) se contente des modes requis du moment.
@@ -169,6 +170,11 @@ function leconMultiNiveau(): string {
 function leconCm1Seulement(): string {
 	const l = getAllLessons().find((x) => x.levels.includes('cm1') && !x.levels.includes('ce2'));
 	if (!l) throw new Error('catalogue sans leçon CM1-only : test à réviser');
+	return l.id;
+}
+function leconCe2Seulement(): string {
+	const l = getAllLessons().find((x) => x.levels.includes('ce2') && !x.levels.includes('cm1'));
+	if (!l) throw new Error('catalogue sans leçon CE2-only : test à réviser');
 	return l.id;
 }
 
@@ -418,15 +424,6 @@ describe('purgeRevoirSolides — cible non résolvable, jamais retirée', () => 
 		expect(loadRevoirFor(p.uuid)).toEqual([orthoRevoirId(id)]);
 	});
 
-	it('leçon HORS du niveau du profil : conservée même étoilée à son niveau', () => {
-		const p = activeProfile(); // profil CE2 par défaut
-		const cm1 = leconCm1Seulement();
-		seed(p.uuid, STARS_KEY, { [cm1 + '@cm1']: 1 }); // acquise en CM1
-		seed(p.uuid, REVOIR_KEY, [cm1]);
-		expect(purgeRevoirSolides(p, false, NOW)).toEqual([]);
-		expect(loadRevoirFor(p.uuid)).toEqual([cm1]);
-	});
-
 	it('leçon multi-niveaux : l’étoile d’un AUTRE niveau ne la rend pas solide', () => {
 		const uuid = activeProfile().uuid;
 		setNiveauReferenceFor(uuid, 'cm1'); // l'enfant passe en CM1
@@ -441,6 +438,75 @@ describe('purgeRevoirSolides — cible non résolvable, jamais retirée', () => 
 		// Étoilée cette fois AU niveau du profil → retirée.
 		seed(uuid, STARS_KEY, { [lecon + '@ce2']: 1, [lecon + '@cm1']: 1 });
 		expect(purgeRevoirSolides(profil(uuid), false, NOW)).toEqual([lecon]);
+	});
+});
+
+/* ============================================================
+   2 bis. Épingle d'une AUTRE classe (#556) — jugée là où elle se joue
+   ------------------------------------------------------------
+   Renversement par rapport à #518 : une cible hors de la classe suivie n'est plus
+   « intouchable ». Depuis qu'elle atteint l'accueil de l'enfant, l'écarter de la purge
+   la laisserait en file À VIE, alors que l'affichage enfant, lui, cesse de la montrer
+   une fois la notion redevenue solide — soit exactement l'« entrée fantôme » que #465
+   voulait supprimer. La parité doit donc tenir DANS LES DEUX SENS d'écart.
+   ============================================================ */
+describe('purgeRevoirSolides — épingle hors de la classe suivie', () => {
+	it('classe SUIVANTE : jugée à SA classe, et retirée une fois réussie', () => {
+		const p = activeProfile(); // profil CE2 par défaut
+		const cm1 = leconCm1Seulement();
+		seed(p.uuid, REVOIR_KEY, [cm1]);
+		// Prémisse : tant que rien n'est fait, l'enfant la voit et la file la garde.
+		expect(revoirActives(true).map((e) => e.id)).toEqual([cm1]);
+		expect(purgeRevoirSolides(p, false, NOW)).toEqual([]);
+
+		seed(p.uuid, STARS_KEY, { [cm1 + '@cm1']: 1 }); // réussie, là où elle se joue
+		expect(revoirActives(true)).toEqual([]); // l'enfant ne la voit plus…
+		expect(purgeRevoirSolides(p, false, NOW)).toEqual([cm1]); // …la file ne la garde pas
+		expect(loadRevoirFor(p.uuid)).toEqual([]);
+	});
+
+	it('classe PRÉCÉDENTE : idem, et une étoile rangée sous la classe suivie ne compte pas', () => {
+		const uuid = activeProfile().uuid;
+		setNiveauReferenceFor(uuid, 'cm1'); // l'enfant est en CM1
+		const ce2 = leconCe2Seulement(); // notion de l'an dernier, à consolider
+		seed(uuid, REVOIR_KEY, [ce2]);
+
+		// Étoile rangée @cm1, une classe où cette leçon n'est pas au programme : sans effet
+		// des deux côtés (sinon la purge retirerait une épingle que l'enfant voit encore).
+		seed(uuid, STARS_KEY, { [ce2 + '@cm1']: 1 });
+		expect(revoirActives(true).map((e) => e.id)).toEqual([ce2]);
+		expect(purgeRevoirSolides(profil(uuid), false, NOW)).toEqual([]);
+
+		// Réussie là où elle se joue (@ce2) → les deux la lâchent ensemble.
+		seed(uuid, STARS_KEY, { [ce2 + '@ce2']: 1 });
+		expect(revoirActives(true)).toEqual([]);
+		expect(purgeRevoirSolides(profil(uuid), false, NOW)).toEqual([ce2]);
+	});
+
+	/* Le même invariant de parité que pour les leçons de la classe suivie, éprouvé sur une
+	   file qui MÊLE une cible de la classe suivie et une cible d'ailleurs : ce que l'enfant
+	   ne voit plus ne traîne pas en file, et rien de ce qu'il voit encore n'est retiré. Deux
+	   passes, une par sens d'écart — le catalogue n'ayant que deux classes, aucun profil n'a
+	   simultanément une classe au-dessus ET une classe en dessous. */
+	it('INVARIANT de parité, file mêlant classe suivie et classe d’ailleurs (les deux sens)', () => {
+		const scenario = (niveau: 'ce2' | 'cm1', ailleurs: string, niveauAilleurs: 'ce2' | 'cm1') => {
+			localStorage.clear();
+			initProfiles();
+			const u = activeProfile().uuid;
+			setNiveauReferenceFor(u, niveau);
+			const suivie = leconMultiNiveau();
+			seed(u, REVOIR_KEY, [ailleurs, suivie]);
+			// La cible d'ailleurs est redevenue solide À SA classe ; celle de la classe suivie
+			// n'a jamais été travaillée.
+			seed(u, STARS_KEY, { [ailleurs + '@' + niveauAilleurs]: 1 });
+
+			const vues = revoirActives(true).map((e) => e.id);
+			expect(vues).toEqual([suivie]); // prémisse : l'affichage a déjà lâché la solide
+			expect(purgeRevoirSolides(profil(u), true, NOW)).toEqual([ailleurs]);
+			expect(loadRevoirFor(u)).toEqual(vues); // la file persistée rejoint l'affichage
+		};
+		scenario('cm1', leconCe2Seulement(), 'ce2'); // consolidation d'une classe précédente
+		scenario('ce2', leconCm1Seulement(), 'cm1'); // notion prise dans la classe suivante
 	});
 });
 

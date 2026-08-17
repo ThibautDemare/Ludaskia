@@ -1,0 +1,158 @@
+/* ============================================================
+   Encart « Pour les parents » : installer, et sauvegarder (#306 §7).
+   Cf. ui/rappel-sauvegarde.ts pour le POURQUOI de chaque parti pris.
+
+   L'idée directrice du rendu : ce bandeau est du CHROME, pas du contenu
+   d'accueil. Il prolonge la barre d'outils (bord à bord, sans rayon ni ombre
+   colorée) au lieu de ressembler à une carte, et emprunte le registre
+   encadrant (--admin-bg / --admin-accent) que l'app a déjà appris à l'enfant
+   à lire comme « pas pour moi ». La vraie rupture vient du saut entre le vert
+   vif de .toolbar et ce gris institutionnel — même mécanisme que l'écran
+   encadrant.
+
+   INTERDITS assumés : --ko, --warn, --warn-bg et toute icône d'alerte. Ce sont
+   les couleurs qui disent « tu t'es trompé » dans les exercices ; les
+   réutiliser ici associerait l'accueil au sentiment d'échec.
+
+   Contrastes mesurés (tools/contrast) sur --admin-bg, thème clair puis sombre :
+   --admin-accent 5,98:1 / 7,15:1 ; --grey 6,68:1 / 8,88:1 ; --ink 15,35:1 /
+   15,30:1 — tous ≥ AA. Le croquis d'origine plaçait le glyphe de fermeture en
+   --muted : à 2,30:1 il ne passait pas, on garde --grey. L'intention est tenue
+   (cible large, glyphe discret) sans la payer en lisibilité.
+   ============================================================ */
+/* Le bandeau se colle SOUS la barre d'outils. Plutôt qu'une marge négative
+   « au jugé » pour annuler celle de .home — la barre est `sticky`, et le moindre
+   pixel de trop passe DERRIÈRE elle et rogne l'étiquette — c'est le conteneur
+   qui renonce à sa marge haute quand le bandeau est là. La classe est posée par
+   ui/rappel-sauvegarde.ts en même temps que l'encart, donc les deux ne peuvent
+   pas se désynchroniser. */
+.home.home-rappel {
+	margin-top: 0;
+}
+.rappel-sauvegarde {
+	position: relative;
+	/* Bord à bord : on annule le padding latéral de .home. */
+	margin: 0 -20px 24px;
+	padding: 6px 52px 6px 20px; /* la réserve à droite = la cible de fermeture */
+	min-height: 48px;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0 14px;
+	text-align: left;
+	background: var(--admin-bg);
+	color: var(--ink);
+	border-bottom: 2px solid var(--admin-accent);
+}
+/* Étiquette : elle DIT à qui le message s'adresse. Icône monochrome (jamais
+   d'emoji : les emojis sont la signature du registre enfant partout ailleurs). */
+.rappel-etiquette {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+	flex: none;
+	color: var(--admin-accent);
+	font-size: 13px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+.rappel-etiquette .ph-icon {
+	font-size: 1.1em;
+}
+.rappel-texte {
+	margin: 0;
+	flex: 1 1 260px;
+	font-size: 14px;
+	line-height: 1.35;
+}
+.rappel-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 14px;
+	flex: none;
+}
+/* CTA : bouton TEXTE souligné, jamais la pilule verte à flèche des `.go` —
+   celle-ci appartient au vocabulaire « jouer / avancer », qui n'est pas le sujet
+   ici. Cible tactile ≥ 44px de haut par le padding, sans poids visuel ajouté. */
+.rappel-cta {
+	border: 0;
+	background: transparent;
+	padding: 10px 0;
+	min-height: 44px;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--admin-accent);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	cursor: pointer;
+}
+.rappel-cta:hover {
+	color: var(--ink);
+}
+.rappel-cta:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+/* Fermeture : motif .modal-close. La cible doit être grande (≥ 44×44 par le
+   padding), rien n'oblige à la rendre visuellement attirante — glyphe petit et
+   gris, pour qu'un enfant n'ait pas envie d'aller le chercher. */
+.rappel-fermer {
+	position: absolute;
+	top: 0;
+	right: 4px;
+	width: 44px;
+	height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 0;
+	background: transparent;
+	font-size: 18px;
+	line-height: 1;
+	color: var(--grey);
+	cursor: pointer;
+}
+.rappel-fermer:hover {
+	color: var(--ink);
+}
+.rappel-fermer:focus-visible {
+	outline: 3px solid var(--admin-accent);
+	outline-offset: -2px;
+}
+/* Mobile : une seule ligne de texte, l'étiquette passe au-dessus. Le bandeau
+   reste fin — un adulte à qui on tend une tablette ne fait pas défiler. */
+/* Mobile : le bandeau doit rester FIN — un adulte à qui on tend une tablette ne
+   fait pas défiler, et ce qui dépasse le premier écran n'existe pas. On resserre
+   donc au maximum : étiquette et texte sur la même ligne, actions sur une
+   deuxième, cible de 44px obtenue sans grandir la ligne (padding vertical réduit,
+   compensé par le `min-height` du bouton lui-même). */
+@media (max-width: 720px) {
+	.rappel-sauvegarde {
+		gap: 0 8px;
+		padding: 4px 48px 4px 16px;
+	}
+	.rappel-etiquette {
+		font-size: 11.5px;
+	}
+	.rappel-texte {
+		flex: 1 1 100%;
+		font-size: 13px;
+	}
+	.rappel-actions {
+		flex: 1 1 100%;
+		gap: 0 16px;
+	}
+	.rappel-cta {
+		padding: 8px 0;
+		font-size: 13px;
+	}
+}
+@media print {
+	.rappel-sauvegarde {
+		display: none;
+	}
+}

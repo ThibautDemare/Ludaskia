@@ -23,6 +23,7 @@ import { XP_KEY, niveauDepuisXP, migrateNiveauNamespacing } from './progress';
 import { niveauRequisAvatar } from './unlocks';
 import { migrateRevisions } from './revision-migrate';
 import { REVISION_PLAFOND, REVISION_PLAFOND_MIN, REVISION_PLAFOND_MAX } from './revision';
+import { enregistrerExport } from './rappel-sauvegarde';
 import type { SchoolLevel } from './catalog';
 
 /* Réglages d'accessibilité par profil (#42). Vivent dans la MÉTA de profil (pas
@@ -369,10 +370,15 @@ function writeProfileData(prefix: string, data: Record<string, string>) {
 }
 
 // Exporte les profils désignés (par UUID).
+// Horodate au passage le dernier export RÉUSSI (#306 §7), hors profil : c'est ce qui
+// fait taire le rappel de sauvegarde pour la période et remet son compteur à zéro.
+// Ici plutôt que chez les appelants — il y en a deux (l'espace encadrant et l'encart
+// de l'accueil), et un troisième oublierait silencieusement de le faire.
 export function exportProfiles(uuids: string[]) {
 	const m = loadProfilesMeta();
 	if (!m) return null;
 	const list = m.list.filter((p) => uuids.includes(p.uuid));
+	enregistrerExport(Date.now());
 	return {
 		app: EXPORT_APP,
 		version: 2,

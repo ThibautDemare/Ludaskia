@@ -24,6 +24,7 @@ import './styles/catalog.scss';
 import './styles/francais.scss';
 import './styles/orthographe.scss';
 import './styles/version-update.scss';
+import './styles/rappel-sauvegarde.scss';
 import './styles/foret.scss';
 import './styles/accessibility.scss';
 import './styles/aide-exercice.scss';
@@ -86,6 +87,7 @@ import { maybeShowClassChoice } from './ui/onboarding';
 import { lancerTour, maybeOnboarding } from './ui/tour';
 import { initAppCalme } from './ui/app-calme';
 import { initPwa } from './ui/pwa';
+import { initInstallationPWA } from './ui/rappel-sauvegarde';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 import { installGroupedNumberEcho } from './ui/grand-nombre-echo';
 import { installPaveSignes } from './ui/pave-signes';
@@ -426,6 +428,7 @@ applyPreferences(); // thème + animations du profil actif, dès avant le 1er re
 initTts(); // précharge les voix de synthèse (dictée best-effort)
 initAppCalme(); // observe « l'app est-elle calme ? » (mise à jour, cache hors-ligne, rappels)
 initPwa(); // service worker : hors-ligne + auto-actualisation quand un déploiement est en ligne
+initInstallationPWA(); // capte `beforeinstallprompt` (émis une seule fois, très tôt)
 // Les scripts type="module" sont différés : si le DOM est déjà prêt, on câble
 // immédiatement, sinon on attend DOMContentLoaded (parité avec l'ancien main.js).
 if (document.readyState !== 'loading') wireDOM();

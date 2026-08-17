@@ -752,21 +752,31 @@ describe('epingleesProfil — résolution des entrées épinglées', () => {
 
 		const ep = epingleesProfil(p);
 		const lecon = ep.find((e) => e.kind === 'lecon');
-		// `horsNiveau` (#518) fait partie du contrat de l'entrée : ici les trois cibles sont
-		// dans le périmètre du profil (CE2), donc false. Le calcul du motif lui-même est
-		// éprouvé dans encadrant-stats.test.ts (« horsNiveau, le MOTIF d'un état manquant »).
+		// `origine` et `etat` (#556) font partie du contrat de l'entrée : ici les trois cibles
+		// sont dans la classe du profil (CE2), donc aucune classe d'origine à signaler et un
+		// état d'acquisition ordinaire. Les trois régimes d'état eux-mêmes sont éprouvés dans
+		// tests/lecon-hors-niveau.test.ts.
 		expect(lecon).toEqual({
 			kind: 'lecon',
 			id: 'math-complements',
 			label: lecon!.label,
-			horsNiveau: false,
+			origine: { niveau: 'ce2', direction: 'classe-suivie' },
+			etat: { kind: 'acquisition', niveau: 'a-decouvrir' },
 		});
 		const parent = ep.find((e) => e.kind === 'ortho' && e.id === l.id);
-		expect(parent).toEqual({ kind: 'ortho', id: l.id, label: 'Ma dictée', horsNiveau: false });
+		expect(parent).toEqual({
+			kind: 'ortho',
+			id: l.id,
+			label: 'Ma dictée',
+			// Une liste du parent n'appartient à aucune classe : rien à nommer.
+			origine: null,
+			etat: { kind: 'acquisition', niveau: 'a-decouvrir' },
+		});
 		const pred = ep.find((e) => e.kind === 'ortho' && e.id === 'fr-ortho-invariables-1');
 		expect(pred).toBeTruthy();
 		expect(pred!.label.length).toBeGreaterThan(0); // libellé résolu depuis ORTHO_PREDEF
-		expect(pred!.horsNiveau).toBe(false); // prédéfinie CE2 sur un profil CE2
+		// Prédéfinie CE2 sur un profil CE2 : dans le périmètre, donc jugée comme sa classe.
+		expect(pred!.etat?.kind).toBe('acquisition');
 	});
 
 	it('entrée dont la cible n’existe plus est écartée (leçon hors catalogue, liste supprimée)', () => {

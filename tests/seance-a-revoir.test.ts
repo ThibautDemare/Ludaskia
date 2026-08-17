@@ -181,15 +181,31 @@ describe('etapeApplicable (#464)', () => {
 		expect(CONTEXTE_VIDE.aRevoirDictees).toEqual([]);
 		expect(etapeApplicable(etape('e1', 'aRevoir'), CONTEXTE_VIDE)).toBe(false);
 	});
-	it('les autres modes sont INCONDITIONNELS (quel que soit le contexte)', () => {
+	it('les autres modes ne dépendent JAMAIS du contexte du jour', () => {
 		const autres = (Object.keys(SEANCE_MODE_INFOS) as SeanceModeKind[]).filter(
 			(k) => k !== 'aRevoir',
 		);
 		expect(autres.length).toBeGreaterThan(0);
 		for (const k of autres) {
-			expect(etapeApplicable(etape('e1', k), RIEN_EPINGLE)).toBe(true);
-			expect(etapeApplicable(etape('e1', k), epinglees([LECON_A], [LISTE_A]))).toBe(true);
+			// Cible posée quand le mode en réclame une (#556) : on isole ici la dépendance au
+			// CONTEXTE, pas la configuration de l'étape (éprouvée juste après).
+			const e = SEANCE_MODE_INFOS[k].ref === 'lecon' ? etape('e1', k, 1, LECON_A) : etape('e1', k);
+			expect(etapeApplicable(e, RIEN_EPINGLE), k).toBe(true);
+			expect(etapeApplicable(e, epinglees([LECON_A], [LISTE_A])), k).toBe(true);
 		}
+	});
+
+	/* Second cas d'escamotage, ajouté par #556 : une étape « une leçon précise » naît sans
+	   cible. Tant qu'aucune leçon n'est choisie, elle ne doit pas figurer au programme du
+	   jour — sinon elle y serait VIDE, impossible à réaliser, et bloquerait la complétion
+	   exactement comme l'étape « à revoir » sans épingle (#464). */
+	it('« une leçon précise » sans cible : jamais applicable, quel que soit le contexte', () => {
+		const sansCible = etape('e1', 'lecon');
+		expect(etapeApplicable(sansCible, RIEN_EPINGLE)).toBe(false);
+		expect(etapeApplicable(sansCible, epinglees([LECON_A], [LISTE_A]))).toBe(false);
+		// Le contexte n'y peut rien : ce n'est pas une condition du jour, c'est un trou de
+		// configuration — une leçon épinglée ne « remplace » pas la cible manquante.
+		expect(etapeApplicable(etape('e1', 'lecon', 1, LECON_B), RIEN_EPINGLE)).toBe(true);
 	});
 });
 

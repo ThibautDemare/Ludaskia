@@ -20,13 +20,8 @@ import {
 	revoirActives,
 	epingleesProfil,
 	listesOrthoProfil,
-	niveauEpingle,
 	orthoRevoirId,
 	type NiveauNotion,
-	type RecapProfil,
-	type RecapCategorie,
-	type RecapNotion,
-	type RecapListeOrtho,
 	type EpingleEntry,
 } from '../src/core/encadrant-stats';
 import { getAllLessons, type LessonDef, type SchoolLevel } from '../src/core/catalog';
@@ -401,184 +396,23 @@ describe('file « à revoir » (épinglage par UUID)', () => {
 });
 
 /* ============================================================
-   Entrée ÉPINGLÉE (#518) — état d'acquisition affiché, et motif quand il manque.
+   Entrée ÉPINGLÉE — ce que la ligne de gestion dit de l'avancement (#518, revu par #556).
    ------------------------------------------------------------
-   Attendus dérivés du BESOIN (« l'adulte doit pouvoir juger s'il retire
-   l'épingle »), pas de l'implémentation. Deux responsabilités DISTINCTES :
-   - `niveauEpingle` rend l'état que le suivi porte DÉJÀ pour la cible (récap pour
-     une leçon, suivi des dictées pour une liste) ; son `null` dit seulement
-     « aucun état disponible » — jamais « pas encore travaillée », qui est un état
-     à part entière ('a-decouvrir') ;
-   - `EpingleEntry.horsNiveau` porte le MOTIF de cette absence, calculé là où le
-     niveau de la cible est connu. C'est lui qui autorise l'UI à écrire « hors
-     niveau » ; un `null` sans `horsNiveau` reste muet côté UI.
+   Le BESOIN de #518 est intact : l'adulte voit une épingle, il doit pouvoir juger s'il la
+   retire — donc savoir où en est l'enfant sur cette notion. Ce que #556 change, c'est la
+   SOURCE. L'état n'est plus cherché après coup dans le récap (qui s'arrête à la classe
+   suivie, et laissait donc muette toute cible d'une autre classe) : il est RÉSOLU par
+   `epingleesProfil`, là où le niveau de la cible est déjà connu, et livré sur la ligne
+   (`EpingleEntry.etat`). Une seule source, donc plus de divergence silencieuse possible
+   entre « la ligne n'affiche rien » et « la cible manque au récap ».
 
-   Trois familles de cas :
-   - résolution pure de `niveauEpingle`, sur des récaps MINIMAUX construits à la
-     main (la fonction est pure : inutile de passer par le stockage) ;
-   - `horsNiveau` posé par `epingleesProfil`, cibles choisies DYNAMIQUEMENT dans le
-     catalogue (les deux espaces n'ont pas la même règle de niveau : membership
-     EXACTE pour une leçon, filtrage CUMULATIF pour une dictée prédéfinie) ;
-   - branchement RÉEL des trois vues, où l'on vérifie que les deux mécanismes ne
-     divergent pas : état manquant ⇔ hors niveau.
+   Ce fichier garde l'invariant de #518 : aucune épingle résolue ne reste MUETTE, et ce
+   qu'elle dit suit ce que l'enfant a réellement fait. Le détail des trois régimes d'état
+   (classe suivie / classe en dessous / classe au-dessus) est éprouvé à part, dans
+   tests/lecon-hors-niveau.test.ts.
    ============================================================ */
 
 const NOW_EP = 1_700_000_000_000; // instant fixe (aucune dépendance à l'horloge)
-
-/* Les 4 crans de l'échelle de maîtrise (maitrise.ts) : aucun ne doit être avalé. */
-const CRANS: NiveauNotion[] = ['a-decouvrir', 'non-acquis', 'en-cours', 'acquis'];
-
-function notionEp(lessonId: string, niveau: NiveauNotion): RecapNotion {
-	return {
-		lessonId,
-		label: 'Leçon ' + lessonId,
-		niveau,
-		pctRecent: null,
-		epingle: true,
-		vues: 0,
-		derniereFois: null,
-		tendance: null,
-		blocages: 0,
-		// La frise d'états (#521) est une DONNÉE d'affichage de la ligne, sans influence sur la
-		// résolution de l'état d'une épingle : on la laisse vide ici et on l'éprouve à part
-		// (frise-etats.test.ts).
-		frise: null,
-	};
-}
-function categorieEp(categoryId: string, lecons: RecapNotion[]): RecapCategorie {
-	return {
-		categoryId,
-		label: 'Catégorie ' + categoryId,
-		subject: 'math',
-		acquis: 0,
-		enCours: 0,
-		nonAcquis: 0,
-		aDecouvrir: 0,
-		total: lecons.length,
-		travaillees: 0,
-		lecons,
-	};
-}
-function recapEp(parCategorie: RecapCategorie[]): RecapProfil {
-	return {
-		uuid: 'uuid-test',
-		parMatiere: [],
-		parCategorie,
-		totalMaitrisees: 0,
-		totalLecons: 0,
-		nouvellesRecentes: 0,
-		aRevoir: [],
-		activite7j: [],
-	};
-}
-function listeEp(id: string, niveau: NiveauNotion): RecapListeOrtho {
-	return {
-		id,
-		label: 'Liste ' + id,
-		source: 'liste',
-		niveau,
-		epingle: true,
-		nbMots: 0,
-		maitrises: 0,
-		mots: [],
-		// La frise de la liste (#541) est, comme celle d'une leçon, une DONNÉE d'affichage de la
-		// ligne : elle n'entre pas dans la résolution de l'état d'une épingle. Laissée vide ici,
-		// éprouvée à part (frise-liste-ortho.test.ts).
-		frise: null,
-	};
-}
-/* `horsNiveau` est le MOTIF d'un état manquant (#518), pas une clé de recherche :
-   niveauEpingle ne le lit pas. On le laisse donc à false par défaut ici, et on éprouve
-   sa valeur là où elle se calcule (epingleesProfil, plus bas). */
-const epLecon = (id: string, horsNiveau = false): EpingleEntry => ({
-	kind: 'lecon',
-	id,
-	label: 'Leçon ' + id,
-	horsNiveau,
-});
-const epOrtho = (id: string, horsNiveau = false): EpingleEntry => ({
-	kind: 'ortho',
-	id,
-	label: 'Liste ' + id,
-	horsNiveau,
-});
-
-describe('niveauEpingle — résolution d’une leçon dans le récap', () => {
-	it('rend l’état porté par le récap, pour CHACUN des 4 crans', () => {
-		for (const cran of CRANS) {
-			const recap = recapEp([categorieEp('math-calcul', [notionEp('math-x', cran)])]);
-			expect(niveauEpingle(epLecon('math-x'), recap, [])).toBe(cran);
-		}
-	});
-
-	it('cherche à travers TOUTES les catégories, pas seulement la première', () => {
-		const recap = recapEp([
-			categorieEp('cat-1', [notionEp('math-a', 'acquis')]),
-			categorieEp('cat-2', [notionEp('math-b', 'en-cours')]),
-			categorieEp('cat-3', [notionEp('math-c', 'non-acquis')]),
-		]);
-		expect(niveauEpingle(epLecon('math-c'), recap, [])).toBe('non-acquis');
-		// Et la 1re catégorie ne « gagne » pas par position : chaque cible garde son état.
-		expect(niveauEpingle(epLecon('math-a'), recap, [])).toBe('acquis');
-		expect(niveauEpingle(epLecon('math-b'), recap, [])).toBe('en-cours');
-	});
-
-	it('leçon absente du récap → null', () => {
-		const recap = recapEp([categorieEp('cat-1', [notionEp('math-a', 'acquis')])]);
-		expect(niveauEpingle(epLecon('math-inconnue'), recap, [])).toBeNull();
-	});
-
-	it('cas dégénérés : récap sans catégorie, catégorie sans leçon → null', () => {
-		expect(niveauEpingle(epLecon('math-a'), recapEp([]), [])).toBeNull();
-		expect(niveauEpingle(epLecon('math-a'), recapEp([categorieEp('vide', [])]), [])).toBeNull();
-		// Une catégorie vide en tête n'interrompt pas la recherche dans les suivantes.
-		const recap = recapEp([
-			categorieEp('vide', []),
-			categorieEp('cat', [notionEp('math-a', 'acquis')]),
-		]);
-		expect(niveauEpingle(epLecon('math-a'), recap, [])).toBe('acquis');
-	});
-});
-
-describe('niveauEpingle — résolution d’une liste de dictée', () => {
-	it('rend le niveau de la liste (échelle des dictées : 3 crans sur 4)', () => {
-		// L'échelle des dictées n'émet jamais 'non-acquis' (cf. avancementLecon).
-		for (const cran of ['a-decouvrir', 'en-cours', 'acquis'] as NiveauNotion[]) {
-			expect(niveauEpingle(epOrtho('l-1'), recapEp([]), [listeEp('l-1', cran)])).toBe(cran);
-		}
-	});
-
-	it('liste absente des listes suivies → null ; listes vides → null', () => {
-		expect(niveauEpingle(epOrtho('l-1'), recapEp([]), [listeEp('l-2', 'acquis')])).toBeNull();
-		expect(niveauEpingle(epOrtho('l-1'), recapEp([]), [])).toBeNull();
-	});
-
-	it('trouve la liste où qu’elle soit dans la collection (dernière position)', () => {
-		const listes = [
-			listeEp('l-1', 'acquis'),
-			listeEp('l-2', 'a-decouvrir'),
-			listeEp('l-3', 'en-cours'),
-		];
-		expect(niveauEpingle(epOrtho('l-3'), recapEp([]), listes)).toBe('en-cours');
-	});
-});
-
-describe('niveauEpingle — les deux espaces d’identifiants ne se marchent pas dessus', () => {
-	it('un id présent des DEUX côtés : c’est le kind qui décide', () => {
-		const recap = recapEp([categorieEp('cat', [notionEp('doublon', 'acquis')])]);
-		const listes = [listeEp('doublon', 'a-decouvrir')];
-		expect(niveauEpingle(epLecon('doublon'), recap, listes)).toBe('acquis');
-		expect(niveauEpingle(epOrtho('doublon'), recap, listes)).toBe('a-decouvrir');
-	});
-
-	it('une entrée ortho ne pioche JAMAIS dans le récap des leçons (et l’inverse)', () => {
-		const recap = recapEp([categorieEp('cat', [notionEp('math-a', 'acquis')])]);
-		// 'math-a' existe comme leçon, mais l'entrée se dit dictée → aucune liste ne matche.
-		expect(niveauEpingle(epOrtho('math-a'), recap, [])).toBeNull();
-		// Symétrique : une liste de dictée n'est pas résolue comme leçon du catalogue.
-		expect(niveauEpingle(epLecon('l-1'), recapEp([]), [listeEp('l-1', 'acquis')])).toBeNull();
-	});
-});
 
 /* Profil RELU depuis la méta : un changement de niveau ne rétro-agit pas sur l'objet
    déjà en main, et toutes les vues encadrant lisent le profil qu'on leur passe. */
@@ -600,8 +434,16 @@ function predefDeNiveau(niveau: SchoolLevel) {
 	return d;
 }
 
-describe('epingleesProfil — horsNiveau, le MOTIF d’un état manquant', () => {
-	it('leçon du niveau suivi → false, qu’elle soit travaillée ou jamais ouverte', () => {
+/* Entrée épinglée résolue, ou `throw` explicite : une cible qui disparaît de la liste de
+   gestion est un échec en soi (l'adulte ne pourrait plus la retirer). */
+function epingleDe(uuid: string, id: string): EpingleEntry {
+	const e = epingleesProfil(profilRelu(uuid)).find((x) => x.id === id);
+	if (!e) throw new Error('épingle absente de la liste de gestion : ' + id);
+	return e;
+}
+
+describe('epingleesProfil — origine, la classe d’où vient la cible', () => {
+	it('leçon de la classe suivie → « classe-suivie », qu’elle soit travaillée ou jamais ouverte', () => {
 		const p = activeProfile();
 		expect(niveauProfilMatiere(p, 'math')).toBe('ce2'); // prémisse : profil par défaut
 		const vierge = leconTelleQue((l) => l.levels.includes('ce2'), 'de niveau CE2');
@@ -613,25 +455,32 @@ describe('epingleesProfil — horsNiveau, le MOTIF d’un état manquant', () =>
 		toggleRevoirFor(p.uuid, vierge.id);
 		toggleRevoirFor(p.uuid, travaillee.id);
 
-		const ep = epingleesProfil(profilRelu(p.uuid));
-		// « Jamais travaillée » n'est PAS « hors niveau » : c'est tout le piège de #518.
-		expect(ep.find((x) => x.id === vierge.id)!.horsNiveau).toBe(false);
-		expect(ep.find((x) => x.id === travaillee.id)!.horsNiveau).toBe(false);
+		// « Jamais travaillée » n'est PAS « venue d'ailleurs » : c'est tout le piège de #518,
+		// et la confusion resterait invisible (une ligne muette ne se plaint pas).
+		expect(epingleDe(p.uuid, vierge.id).origine).toEqual({
+			niveau: 'ce2',
+			direction: 'classe-suivie',
+		});
+		expect(epingleDe(p.uuid, travaillee.id).origine).toEqual({
+			niveau: 'ce2',
+			direction: 'classe-suivie',
+		});
 	});
 
-	it('leçon dont levels EXCLUT le niveau du profil → true', () => {
+	it('leçon dont levels EXCLUT la classe suivie, par le haut → « au-dessus » + sa classe', () => {
 		const p = activeProfile(); // CE2
 		const cm1Seule = leconTelleQue(
 			(l) => !l.levels.includes('ce2') && l.levels.includes('cm1'),
 			'CM1 absente du CE2',
 		);
 		toggleRevoirFor(p.uuid, cm1Seule.id);
-		expect(epingleesProfil(profilRelu(p.uuid)).find((x) => x.id === cm1Seule.id)!.horsNiveau).toBe(
-			true,
-		);
+		expect(epingleDe(p.uuid, cm1Seule.id).origine).toEqual({
+			niveau: 'cm1',
+			direction: 'au-dessus',
+		});
 	});
 
-	it('profil CM1 : une leçon CE2 SEULE devient hors niveau (membership EXACTE, pas cumulative)', () => {
+	it('profil CM1 : une leçon CE2 SEULE vient d’« en-dessous » (appartenance EXACTE)', () => {
 		// Asymétrie ASSUMÉE avec les dictées (cumulatives) : une leçon qui reste utile en CM1
 		// porte les deux niveaux dans le catalogue, donc l'appartenance exacte suffit.
 		const p = activeProfile();
@@ -647,12 +496,17 @@ describe('epingleesProfil — horsNiveau, le MOTIF d’un état manquant', () =>
 		toggleRevoirFor(p.uuid, ce2Seule.id);
 		toggleRevoirFor(p.uuid, deuxNiveaux.id);
 
-		const ep = epingleesProfil(profilRelu(p.uuid));
-		expect(ep.find((x) => x.id === ce2Seule.id)!.horsNiveau).toBe(true);
-		expect(ep.find((x) => x.id === deuxNiveaux.id)!.horsNiveau).toBe(false);
+		expect(epingleDe(p.uuid, ce2Seule.id).origine).toEqual({
+			niveau: 'ce2',
+			direction: 'en-dessous',
+		});
+		expect(epingleDe(p.uuid, deuxNiveaux.id).origine).toEqual({
+			niveau: 'cm1',
+			direction: 'classe-suivie',
+		});
 	});
 
-	it('le niveau lu est celui de la MATIÈRE de la cible, pas la classe de référence', () => {
+	it('la classe lue est celle de la MATIÈRE de la cible, pas la classe de référence', () => {
 		// Ajustement par matière (#225) : français en CM1, maths laissées en CE2.
 		const p = activeProfile();
 		setNiveauMatiereFor(p.uuid, 'francais', 'cm1');
@@ -667,12 +521,18 @@ describe('epingleesProfil — horsNiveau, le MOTIF d’un état manquant', () =>
 		toggleRevoirFor(p.uuid, frCm1.id);
 		toggleRevoirFor(p.uuid, mathCe2.id);
 
-		const ep = epingleesProfil(profilRelu(p.uuid));
-		expect(ep.find((x) => x.id === frCm1.id)!.horsNiveau).toBe(false); // français suivi en CM1
-		expect(ep.find((x) => x.id === mathCe2.id)!.horsNiveau).toBe(false); // maths toujours en CE2
+		// Les deux sont « à leur place » alors qu'elles ne sont pas dans la même classe.
+		expect(epingleDe(p.uuid, frCm1.id).origine).toEqual({
+			niveau: 'cm1',
+			direction: 'classe-suivie',
+		});
+		expect(epingleDe(p.uuid, mathCe2.id).origine).toEqual({
+			niveau: 'ce2',
+			direction: 'classe-suivie',
+		});
 	});
 
-	it('dictée prédéfinie de niveau INFÉRIEUR ou égal → false (filtrage cumulatif)', () => {
+	it('dictée prédéfinie de niveau INFÉRIEUR ou égal → état d’acquisition (filtrage cumulatif)', () => {
 		const p = activeProfile();
 		setNiveauReferenceFor(p.uuid, 'cm1');
 		const ce2 = predefDeNiveau('ce2');
@@ -680,34 +540,38 @@ describe('epingleesProfil — horsNiveau, le MOTIF d’un état manquant', () =>
 		toggleRevoirFor(p.uuid, orthoRevoirId(ce2.id));
 		toggleRevoirFor(p.uuid, orthoRevoirId(cm1.id));
 
-		const ep = epingleesProfil(profilRelu(p.uuid));
-		// Révision spiralaire (#243) : un CM1 garde les dictées CE2 dans son périmètre.
-		expect(ep.find((x) => x.id === ce2.id)!.horsNiveau).toBe(false);
-		expect(ep.find((x) => x.id === cm1.id)!.horsNiveau).toBe(false);
+		// Révision spiralaire (#243) : un CM1 garde les dictées CE2 dans son périmètre, donc
+		// les deux se jugent comme du contenu de sa classe.
+		expect(epingleDe(p.uuid, ce2.id).etat?.kind).toBe('acquisition');
+		expect(epingleDe(p.uuid, cm1.id).etat?.kind).toBe('acquisition');
+		// Le store d'orthographe n'expose pas la classe d'une référence : rien à nommer.
+		expect(epingleDe(p.uuid, ce2.id).origine).toBeNull();
 	});
 
-	it('dictée prédéfinie de niveau SUPÉRIEUR → true', () => {
+	it('dictée prédéfinie de niveau SUPÉRIEUR → compte-rendu factuel, jamais d’acquisition', () => {
 		const p = activeProfile(); // français en CE2
 		const cm1 = predefDeNiveau('cm1');
 		toggleRevoirFor(p.uuid, orthoRevoirId(cm1.id));
-		expect(epingleesProfil(profilRelu(p.uuid)).find((x) => x.id === cm1.id)!.horsNiveau).toBe(true);
+		const e = epingleDe(p.uuid, cm1.id);
+		expect(e.origine).toBeNull();
+		expect(e.etat).toEqual({ kind: 'essai', essaye: false, at: null, reussi: false });
 	});
 
-	it('liste CRÉÉE par le parent → jamais hors niveau, même après un changement de classe', () => {
+	it('liste CRÉÉE par le parent → jamais « hors classe », même après un changement de classe', () => {
 		const p = activeProfile();
 		const s = loadOrtho();
 		const l = createListe(s, 'Semaine 1', [{ mot: 'chat' }]);
 		saveOrtho(s);
 		toggleRevoirFor(p.uuid, orthoRevoirId(l.id));
-		expect(epingleesProfil(profilRelu(p.uuid)).find((x) => x.id === l.id)!.horsNiveau).toBe(false);
+		expect(epingleDe(p.uuid, l.id).etat?.kind).toBe('acquisition');
 		// Aucun niveau ne tague une liste du parent : elle ne « sort » pas du périmètre.
 		setNiveauReferenceFor(p.uuid, 'cm1');
-		expect(epingleesProfil(profilRelu(p.uuid)).find((x) => x.id === l.id)!.horsNiveau).toBe(false);
+		expect(epingleDe(p.uuid, l.id).etat?.kind).toBe('acquisition');
 	});
 });
 
-describe('entrée épinglée — branchement réel des trois vues', () => {
-	/* Les trois vues telles que l'espace encadrant les assemble. */
+describe('entrée épinglée — branchement réel des vues', () => {
+	/* Les vues telles que l'espace encadrant les assemble sur la même page. */
 	function vues(uuid: string) {
 		const p = profilRelu(uuid);
 		return {
@@ -716,16 +580,22 @@ describe('entrée épinglée — branchement réel des trois vues', () => {
 			listes: listesOrthoProfil(p, false),
 		};
 	}
+	/* Cran d'acquisition d'une entrée, ou `null` si la ligne dit autre chose (compte-rendu
+	   factuel, état absent) : c'est ce que l'UI affiche comme badge de niveau. */
+	function cran(e: EpingleEntry): NiveauNotion | null {
+		return e.etat?.kind === 'acquisition' ? e.etat.niveau : null;
+	}
 
-	it('leçon JAMAIS travaillée → « à découvrir », et surtout PAS null', () => {
+	it('leçon JAMAIS travaillée → « à découvrir », et surtout PAS un état absent', () => {
 		const p = activeProfile(); // aucune session enregistrée
 		toggleRevoirFor(p.uuid, 'math-complements');
 		const v = vues(p.uuid);
 		const e = v.epinglees.find((x) => x.id === 'math-complements')!;
 		expect(e.kind).toBe('lecon');
-		const n = niveauEpingle(e, v.recap, v.listes);
-		expect(n).not.toBeNull(); // le trou serait un bug : la leçon EST dans le périmètre suivi
-		expect(n).toBe('a-decouvrir');
+		// Le trou serait un bug : la leçon EST dans le périmètre suivi, et « pas encore
+		// travaillée » est un état à part entière, pas une absence d'information.
+		expect(e.etat).not.toBeNull();
+		expect(cran(e)).toBe('a-decouvrir');
 		// Prémisse du test : la leçon figure bien au récap, à 0 vue.
 		const notion = v.recap.parCategorie
 			.flatMap((c) => c.lecons)
@@ -740,17 +610,15 @@ describe('entrée épinglée — branchement réel des trois vues', () => {
 		toggleRevoirFor(p.uuid, 'math-complements');
 		toggleRevoirFor(p.uuid, 'math-doubles'); // on peut épingler une leçon déjà acquise
 		const v = vues(p.uuid);
-		const etat = (id: string) =>
-			niveauEpingle(
-				v.epinglees.find((x) => x.id === id)!,
-				v.recap,
-				v.listes,
-			);
+		const etat = (id: string) => cran(v.epinglees.find((x) => x.id === id)!);
 		expect(etat('math-complements')).toBe('non-acquis');
 		expect(etat('math-doubles')).toBe('acquis');
 	});
 
-	it('leçon HORS du niveau suivi → aucun état, et le motif est porté par horsNiveau', () => {
+	/* Le renversement de #556, à l'endroit exact où l'ancien contrat disait l'inverse : une
+	   épingle d'une autre classe n'est plus ni muette ni inerte. Le récap, lui, reste scopé
+	   à la classe suivie — c'est justement pourquoi l'état ne peut plus en venir. */
+	it('leçon HORS de la classe suivie → absente du récap, mais la ligne parle ET l’enfant la revoit', () => {
 		const p = activeProfile();
 		const hors = leconTelleQue(
 			(l) => !l.levels.includes(niveauProfilMatiere(p, l.subject)),
@@ -758,20 +626,21 @@ describe('entrée épinglée — branchement réel des trois vues', () => {
 		);
 		toggleRevoirFor(p.uuid, hors.id);
 		const v = vues(p.uuid);
-		// Prémisses : l'épingle est bien conservée (getLessonById ne filtre pas par niveau)…
 		const e = v.epinglees.find((x) => x.id === hors.id);
 		expect(e).toBeTruthy();
-		// …mais la leçon n'est pas au récap (scopé au niveau du profil).
+		// Prémisse : la leçon n'est pas au récap (scopé à la classe suivie).
 		expect(v.recap.parCategorie.flatMap((c) => c.lecons).some((l) => l.lessonId === hors.id)).toBe(
 			false,
 		);
-		expect(niveauEpingle(e!, v.recap, v.listes)).toBeNull(); // « aucun état disponible »
-		expect(e!.horsNiveau).toBe(true); // …et la RAISON, seule à autoriser l'UI à l'écrire
-		// L'épingle ne revient jamais devant l'enfant : elle est bien inerte.
-		expect(revoirActives().some((x) => x.id === hors.id)).toBe(false);
+		// …et pourtant la ligne dit quelque chose, et nomme la classe d'où vient la notion.
+		expect(e!.etat).not.toBeNull();
+		expect(e!.origine).not.toBeNull();
+		expect(e!.origine!.direction).not.toBe('classe-suivie');
+		// L'épingle revient bien devant l'enfant : c'est tout l'objet de l'assignation.
+		expect(revoirActives().some((x) => x.id === hors.id)).toBe(true);
 	});
 
-	it('liste de dictée du parent, jamais commencée → « à découvrir » (pas null)', () => {
+	it('liste de dictée du parent, jamais commencée → « à découvrir » (pas un état absent)', () => {
 		const p = activeProfile();
 		const s = loadOrtho();
 		const l = createListe(s, 'Semaine 1', [{ mot: 'chat' }, { mot: 'chien' }]);
@@ -779,28 +648,27 @@ describe('entrée épinglée — branchement réel des trois vues', () => {
 		toggleRevoirFor(p.uuid, orthoRevoirId(l.id));
 		const v = vues(p.uuid);
 		const e = v.epinglees.find((x) => x.kind === 'ortho' && x.id === l.id)!;
-		expect(niveauEpingle(e, v.recap, v.listes)).toBe('a-decouvrir');
+		expect(cran(e)).toBe('a-decouvrir');
 	});
 
-	it('dictée prédéfinie HORS niveau (CM1 sur un profil CE2) → aucun état + horsNiveau', () => {
+	it('dictée prédéfinie d’une classe suivante : hors du suivi, mais la ligne rend compte', () => {
 		const p = activeProfile(); // niveau français par défaut = CE2
 		const cm1 = predefDeNiveau('cm1');
 		toggleRevoirFor(p.uuid, orthoRevoirId(cm1.id));
 		const v = vues(p.uuid);
-		// L'entrée est résolue (le libellé d'une prédéfinie ne dépend pas du niveau)…
 		const e = v.epinglees.find((x) => x.kind === 'ortho' && x.id === cm1.id);
 		expect(e).toBeTruthy();
-		// …mais le suivi des dictées ne couvre que le niveau du profil.
+		// Prémisse : le suivi des dictées ne couvre que la classe du profil.
 		expect(v.listes.some((x) => x.id === cm1.id)).toBe(false);
-		expect(niveauEpingle(e!, v.recap, v.listes)).toBeNull();
-		expect(e!.horsNiveau).toBe(true);
+		// La ligne ne se tait pas pour autant — elle change seulement de registre.
+		expect(e!.etat?.kind).toBe('essai');
 	});
 
-	/* Le verrou qui remplace la déduction supprimée : les DEUX mécanismes (état lu dans les
-	   vues d'un côté, motif calculé depuis le niveau de la cible de l'autre) doivent dire la
-	   même chose de la même épingle. S'ils divergent, l'UI affiche soit un badge vide sans
-	   explication, soit « hors niveau » sur une notion du bon niveau — les deux silencieux. */
-	it('INVARIANT : état manquant ⇔ horsNiveau, sur une file mêlant tous les cas', () => {
+	/* Le verrou qui remplace l'ancien « état manquant ⇔ hors niveau » : puisque l'état est
+	   désormais résolu par le cœur, plus AUCUNE entrée résolue ne doit rester muette, quelle
+	   que soit sa classe. Une ligne sans état est un badge vide sans explication, et
+	   personne ne s'en plaint — c'est exactement le genre de trou qui survit des mois. */
+	it('INVARIANT : aucune entrée muette sur une file mêlant tous les cas', () => {
 		const p = activeProfile();
 		const s = loadOrtho();
 		const maListe = createListe(s, 'Semaine 1', [{ mot: 'chat' }]);
@@ -821,10 +689,33 @@ describe('entrée épinglée — branchement réel des trois vues', () => {
 
 		const v = vues(p.uuid);
 		expect(v.epinglees).toHaveLength(5); // les 5 cibles se résolvent, aucune n'est écartée
-		for (const e of v.epinglees)
-			expect(niveauEpingle(e, v.recap, v.listes) === null).toBe(e.horsNiveau);
-		// L'invariant n'est pas creux : la file contient bien les deux situations.
-		expect(v.epinglees.filter((e) => e.horsNiveau)).toHaveLength(2); // leçon CM1 + dictée CM1
-		expect(v.epinglees.filter((e) => !e.horsNiveau)).toHaveLength(3);
+		for (const e of v.epinglees) expect(e.etat, e.id).not.toBeNull();
+		// L'invariant n'est pas creux : les DEUX registres sont représentés dans la file.
+		expect(v.epinglees.filter((e) => e.etat?.kind === 'essai')).toHaveLength(2); // CM1 × 2
+		expect(v.epinglees.filter((e) => e.etat?.kind === 'acquisition')).toHaveLength(3);
+	});
+
+	/* Là où les deux calculs se recouvrent (une leçon de la classe suivie), ils doivent dire
+	   la même chose : le récap et `epingleesProfil` lisent le même stockage par deux chemins
+	   distincts, et une divergence se lirait comme deux avis contradictoires sur la même
+	   notion, à deux endroits de la même page. */
+	it('ACCORD avec le récap sur les leçons de la classe suivie', () => {
+		const p = activeProfile();
+		const vierge = leconTelleQue((l) => l.levels.includes('ce2'), 'de niveau CE2');
+		const faible = leconTelleQue(
+			(l) => l.levels.includes('ce2') && l.id !== vierge.id,
+			'de niveau CE2 (2de)',
+		);
+		recordLessonStats({ [faible.id]: { ok: 2, total: 10 } });
+		recordLessonResult('math-doubles', true);
+		for (const id of [vierge.id, faible.id, 'math-doubles']) toggleRevoirFor(p.uuid, id);
+
+		const v = vues(p.uuid);
+		const auRecap = new Map(
+			v.recap.parCategorie.flatMap((c) => c.lecons).map((n) => [n.lessonId, n.niveau]),
+		);
+		const suivies = v.epinglees.filter((e) => e.origine?.direction === 'classe-suivie');
+		expect(suivies).toHaveLength(3); // prémisse : les 3 cibles sont bien dans la classe
+		for (const e of suivies) expect(cran(e), e.id).toBe(auRecap.get(e.id));
 	});
 });

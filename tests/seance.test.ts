@@ -22,6 +22,7 @@ import {
 	isoJourSemaine,
 	defApplicable,
 	recurrencesEnConflit,
+	etapeConfiguree,
 	estimationDureeMin,
 	genEtapeId,
 	genDefId,
@@ -186,6 +187,33 @@ describe('recurrencesEnConflit', () => {
 	});
 });
 
+/* Une étape « une leçon précise » NAÎT sans cible depuis #556 (le sélecteur ouvre tout le
+   catalogue, il n'y a plus de « première leçon » évidente à présélectionner). Tant qu'aucune
+   leçon n'est choisie, il n'y a rien à proposer à l'enfant : l'étape ne doit ni être promise
+   à l'adulte, ni bloquer la complétion du programme. */
+describe('etapeConfiguree (#556)', () => {
+	it('« une leçon précise » : configurée SEULEMENT si une leçon est retenue', () => {
+		expect(etapeConfiguree(etape('e1', 'lecon'))).toBe(false);
+		expect(etapeConfiguree(etape('e1', 'lecon', 1, 'math-doubles'))).toBe(true);
+		// Cible vide (donnée importée / champ effacé) : une chaîne vide n'est pas un choix.
+		expect(etapeConfiguree(etape('e1', 'lecon', 1, ''))).toBe(false);
+	});
+
+	it('les modes sans cible à choisir sont toujours configurés', () => {
+		for (const k of ['sprint', 'revision', 'aRevoir', 'leconDuJour'] as SeanceModeKind[])
+			expect(etapeConfiguree(etape('e1', k)), k).toBe(true);
+	});
+
+	/* Comportement RÉEL verrouillé, et signalé comme tel : une étape « dictée » sans AUCUNE
+	   cible (pool vidé case par case, ou profil sans dictée disponible à la création) passe
+	   pour configurée alors qu'elle n'a rien à tirer au lancement — l'asymétrie avec l'étape
+	   « leçon » est à trancher côté produit, pas ici. */
+	it('« une dictée » compte comme configurée même sans cible (asymétrie assumée ?)', () => {
+		expect(etapeConfiguree(etape('e1', 'dictee'))).toBe(true);
+		expect(etapeConfiguree({ id: 'e1', kind: 'dictee', count: 1, refs: [] })).toBe(true);
+	});
+});
+
 describe('estimationDureeMin', () => {
 	// Durées documentées (spec #440) : sprint 5, revision 8, leconDuJour 7, lecon 7, dictee 10.
 	it('somme des count × durée du mode', () => {
@@ -196,7 +224,7 @@ describe('estimationDureeMin', () => {
 		);
 		expect(
 			estimationDureeMin(
-				defHebdo('d2', [1], [etape('e1', 'revision', 1), etape('e2', 'lecon', 2)]),
+				defHebdo('d2', [1], [etape('e1', 'revision', 1), etape('e2', 'lecon', 2, 'math-doubles')]),
 			),
 		).toBe(
 			8 + 2 * 7, // 22
@@ -212,6 +240,27 @@ describe('estimationDureeMin', () => {
 	});
 	it('un count < 1 compte pour 1', () => {
 		expect(estimationDureeMin(defHebdo('d1', [1], [etape('e1', 'sprint', 0)]))).toBe(5);
+	});
+
+	/* #556 : l'étape sans cible disparaîtra au lancement. La compter promettrait à l'adulte
+	   un temps que l'enfant ne passera pas — et l'écart serait d'autant plus trompeur que
+	   l'étape reste visible dans la carte de programme. */
+	it('une étape « une leçon précise » SANS cible n’entre pas dans la durée', () => {
+		const sansCible = defHebdo('d1', [1], [etape('e1', 'sprint', 1), etape('e2', 'lecon', 2)]);
+		expect(estimationDureeMin(sansCible)).toBe(5); // le sprint seul
+		// La même, cible choisie : les 2 × 7 min s'ajoutent.
+		const avecCible = defHebdo(
+			'd1',
+			[1],
+			[etape('e1', 'sprint', 1), etape('e2', 'lecon', 2, 'math-doubles')],
+		);
+		expect(estimationDureeMin(avecCible)).toBe(5 + 2 * 7);
+	});
+
+	it('un programme entièrement non configuré est estimé à 0 min (rien ne sera proposé)', () => {
+		expect(
+			estimationDureeMin(defHebdo('d1', [1], [etape('e1', 'lecon', 3), etape('e2', 'lecon', 1)])),
+		).toBe(0);
 	});
 });
 

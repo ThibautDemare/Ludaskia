@@ -163,14 +163,17 @@
 	flex-wrap: wrap;
 }
 /* Bloc de décision d'une question (#467) : « Valider » puis, EN DESSOUS et nettement
-   détaché (≥ 16 px), le lien de déblocage. Un seul bloc pour les deux contextes de la
+   détaché (32 px), le lien de déblocage. Un seul bloc pour les deux contextes de la
    révision (carte entière ou zone #revAfter des widgets), donc un écart identique
-   partout, indépendant du `gap` du conteneur. */
+   partout, indépendant du `gap` du conteneur. L'écart suit celui du mode leçon
+   (`.lecon-decide`, cf. lecon-mode.scss, où il est justifié) : c'est le MÊME lien, au même
+   endroit, avec le même coût irréversible — les deux valeurs se modifient ensemble, sinon
+   les deux écrans divergent en silence comme ils l'avaient déjà fait. */
 .rev-decide {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 18px;
+	gap: 32px;
 }
 /* « Je ne sais pas, montre-moi » : sortie de secours ASSUMÉE, jamais un second bouton
    d'action. Identité sobre (aucun remplissage --accent, texte gris souligné, corps plus

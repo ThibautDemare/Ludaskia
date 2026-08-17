@@ -1133,8 +1133,9 @@ export interface EpingleEntry {
       une réussite « acquis » sur un seul essai. Cet essai ne compte donc ni dans les
       compteurs de maîtrise, ni dans les suggestions « à revoir », ni dans le signal « reste
       un point dur » (#492), qui supposent tous du contenu de la classe suivie ;
-    - `null` : aucun état disponible (cible non résolue). L'UI n'affiche alors rien plutôt
-      que d'avancer un motif faux.
+    Toujours renseigné : une entrée dont la cible n'est pas résolvable n'est pas rendue du tout
+    par `epingleesProfil`, il n'y a donc pas de troisième cas « état inconnu » — l'UI n'a jamais
+    à choisir entre afficher un motif faux et n'afficher rien.
 
     `essaye` distingue « pas encore travaillée » de « essayée sans succès » : une leçon d'une
     classe suivante vient le plus souvent d'être épinglée et n'a encore jamais été jouée. Le
@@ -1143,8 +1144,7 @@ export interface EpingleEntry {
     `at` peut manquer même après un essai : le suivi des dictées ne date pas les siens. */
 export type EtatEpingle =
 	| { kind: 'acquisition'; niveau: NiveauNotion }
-	| { kind: 'essai'; essaye: boolean; at: number | null; reussi: boolean }
-	| null;
+	| { kind: 'essai'; essaye: boolean; at: number | null; reussi: boolean };
 
 /* État d'une leçon lu à un niveau DONNÉ, depuis les cartes brutes d'un profil. Même calcul
    que le récap (`progressionProfil`), à ceci près que le niveau est imposé au lieu d'être
@@ -1176,8 +1176,9 @@ export function epingleesProfil(profile: Profile, dicteeDispo = false): EpingleE
 	const out: EpingleEntry[] = [];
 	for (const entryId of ids) {
 		if (isOrthoRevoirId(entryId)) {
+			if (!ortho) continue; // état d'orthographe illisible : cible non résolvable
 			const orthoId = orthoIdFromRevoir(entryId);
-			const label = labelLeconOrtho(orthoId, ortho?.listes ?? []);
+			const label = labelLeconOrtho(orthoId, ortho.listes);
 			if (!label) continue;
 			// Une dictée prédéfinie d'une classe SUIVANTE sort du cumul visible au niveau du
 			// profil : même régime « au-dessus » que les leçons, mais sans classe à nommer (le
@@ -1215,12 +1216,11 @@ export function epingleesProfil(profile: Profile, dicteeDispo = false): EpingleE
    Le store d'orthographe ne date pas les essais par liste — le compte-rendu se réduit donc à
    « déjà réussie ou pas », sans date, plutôt qu'à un état qui se lirait comme un jugement. */
 function etatOrthoEpingle(
-	ortho: OrthoState | null,
+	ortho: OrthoState,
 	orthoId: string,
 	auDessus: boolean,
 	dicteeDispo: boolean,
 ): EtatEpingle {
-	if (!ortho) return null;
 	const niveau = niveauListeOrtho(ortho, orthoId, dicteeDispo);
 	if (!auDessus) return { kind: 'acquisition', niveau };
 	return { kind: 'essai', essaye: niveau !== 'a-decouvrir', at: null, reussi: niveau === 'acquis' };

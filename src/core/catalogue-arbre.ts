@@ -28,6 +28,7 @@ import {
 import { LEVEL_LABEL, LEVEL_ORDER, availableLevels, labelLecon } from './levels';
 import { niveauProfilMatiere } from './encadrant-stats';
 import type { Profile } from './profiles';
+import { trierParOrdre } from './ordre';
 import { cleRecherche } from './utils';
 
 /* ---------- Filtre de niveau ----------
@@ -100,16 +101,21 @@ export function jetonsNiveau(
 	return jetons;
 }
 
-/* Niveau sous lequel une leçon est proposée par un filtre donné : le filtre lui-même quand
-   c'est un niveau, sinon la classe suivie pour la matière de la leçon. Sert au libellé
-   (#436, `labelLecon`) autant qu'au tri. */
-function niveauSousFiltre(lesson: LessonDef, profile: Profile, filtre: FiltreNiveau): SchoolLevel {
-	return filtre === 'sa-classe' ? niveauProfilMatiere(profile, lesson.subject) : filtre;
+/* Niveau sous lequel les leçons d'une MATIÈRE sont proposées par un filtre donné : le filtre
+   lui-même quand c'est un niveau, sinon la classe suivie pour cette matière. Sert au libellé
+   (#436, `labelLecon`) autant qu'au tri pédagogique. */
+function niveauSousFiltre(subject: SubjectId, profile: Profile, filtre: FiltreNiveau): SchoolLevel {
+	return filtre === 'sa-classe' ? niveauProfilMatiere(profile, subject) : filtre;
 }
 
 /* Arbre `matière → catégorie → leçons` du catalogue, filtre de niveau et recherche appliqués.
-   L'ordre est celui du catalogue (matières, puis catégories, puis leçons) : c'est l'ordre
-   pédagogique, le même que celui que l'enfant voit.
+   Matières et catégories suivent l'ordre du catalogue ; les leçons d'une catégorie sont triées
+   par l'ORDRE PÉDAGOGIQUE du niveau sous lequel elles sont proposées (`trierParOrdre`, #208),
+   exactement comme `getLessonsByCategory` le fait pour l'écran de l'enfant. L'ordre de
+   déclaration ne convient pas : il groupe par exemple la conjugaison par verbe alors que la
+   progression va par temps, et l'adulte qui compose y perdrait le fil que l'enfant suit.
+   Toutes les leçons d'une catégorie partageant une matière, elles partagent aussi ce niveau —
+   un seul tri par catégorie suffit.
 
    Le filtre est une APPARTENANCE stricte au niveau demandé (`levels.includes`), comme
    l'écran de l'enfant : le sélecteur montre ce que ce niveau contient, pas ce qu'il
@@ -127,15 +133,16 @@ export function arbreCatalogue(profile: Profile, opts: OptionsArbre = {}): Matie
 		let total = 0;
 		for (const cat of CATEGORIES.filter((c) => c.subject === sub.id)) {
 			const catMatche = q !== '' && cleRecherche(cat.label).includes(q);
-			const lecons: LeconArbre[] = [];
-			for (const l of lessons) {
-				if (l.category !== cat.id) continue;
-				const niveau = niveauSousFiltre(l, profile, filtre);
-				if (!l.levels.includes(niveau)) continue;
-				const label = labelLecon(l, niveau);
-				if (q !== '' && !catMatche && !cleRecherche(label).includes(q)) continue;
-				lecons.push({ id: l.id, label, niveau });
-			}
+			const niveau = niveauSousFiltre(sub.id, profile, filtre);
+			const retenues = lessons.filter((l) => {
+				if (l.category !== cat.id || !l.levels.includes(niveau)) return false;
+				return q === '' || catMatche || cleRecherche(labelLecon(l, niveau)).includes(q);
+			});
+			const lecons: LeconArbre[] = trierParOrdre(retenues, niveau).map((l) => ({
+				id: l.id,
+				label: labelLecon(l, niveau),
+				niveau,
+			}));
 			if (lecons.length) {
 				categories.push({ categoryId: cat.id, label: cat.label, lecons });
 				total += lecons.length;

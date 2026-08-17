@@ -20,7 +20,8 @@
    qui, lui, se mesure sans rien demander au navigateur. (`saveData` reste
    consulté, en bonus, là où il change quelque chose — cf. `pwa.ts`.)
    ============================================================ */
-import type { ReloadState } from '../core/version';
+import { canReloadNow } from '../core/version';
+import type { ReloadState, ReloadThresholds } from '../core/version';
 import { isSprintRunning } from './sprint';
 import { isRevisionRunning } from './revision';
 
@@ -70,7 +71,7 @@ export function visibleDepuisMs(): number {
 /* État observable à passer à `canReloadNow`. `enAttente` = « il y a quelque chose
    à faire » (une version qui attend, un manque à réchauffer, un rappel à montrer) ;
    `dejaFait` = le garde-fou anti-répétition propre à l'appelant. */
-export function etatCalme(enAttente = true, dejaFait = false): ReloadState {
+function etatCalme(enAttente = true, dejaFait = false): ReloadState {
 	return {
 		updatePending: enAttente,
 		calmScreen: ecranCalme(),
@@ -79,6 +80,18 @@ export function etatCalme(enAttente = true, dejaFait = false): ReloadState {
 		idleMs: inactifDepuisMs(),
 		visibleMs: visibleDepuisMs(),
 	};
+}
+
+/* La question, posée dans le vocabulaire de CE module. `canReloadNow` et ses seuils
+   viennent de l'époque où recharger était le seul usage : deux des trois appelants
+   ne rechargent plus rien (l'un télécharge en fond, l'autre affiche un encart), et
+   leur faire manipuler un `alreadyReloaded` les obligerait à traduire mentalement à
+   chaque lecture. La décision reste la même — c'est la logique pure de
+   `core/version.ts`, inchangée — seul le nom sous lequel on l'appelle change. */
+export type SeuilsCalme = ReloadThresholds;
+
+export function momentCalme(seuils: SeuilsCalme, enAttente = true, dejaFait = false): boolean {
+	return canReloadNow(etatCalme(enAttente, dejaFait), seuils);
 }
 
 /** S'abonner au retour sur l'onglet (moment clé : l'enfant revient jouer). */

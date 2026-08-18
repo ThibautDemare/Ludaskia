@@ -1353,6 +1353,17 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   `ui/a-revoir-card.ts` (accueil enfant) et `ui/encadrant.ts:tabPanelHTML` (AVANT le
   calcul du récap, pour tous les onglets) — cf. [Espace
   encadrant](espace-encadrant.md).
+  **Motif du retrait (#571)** : `RetraitAuto` porte en plus **`motif?: MotifRetrait`**
+  (`'maitrise' | 'essai'`), calculé par `etatEpingle` (la même fonction interne qui juge la
+  solidité) et FIGÉ à l'instant du retrait, pour la même raison que `label` : la trace
+  explique un événement PASSÉ, décidé sous la classe suivie de ce moment-là, pas à recalculer
+  au fil des changements de classe. `'essai'` quand la cible venait d'une classe SUIVANTE
+  (leçon : `origineLecon(...).direction === 'au-dessus'` ; dictée prédéfinie : absente du
+  filtrage cumulatif au niveau du profil), `'maitrise'` sinon — **le prédicat de retrait
+  reste identique dans les deux cas** (même `solide`), seul ce que la trace ANNONCE diffère
+  (cf. [Espace encadrant](espace-encadrant.md)). `loadRetraitsAuto` tolère l'absence de
+  `motif` (entrées d'avant #571) mais écarte l'entrée entière si sa valeur est inconnue,
+  plutôt que de la lire comme `'maitrise'` par défaut.
   Le graphe d'activité (#319) repose sur **`activiteParJourParType(activity, now, n)`** → `JourActivite[]`
   (`{total, lecon, bilan, sprint, revision, dictee, inconnu}`, index `n-1` = aujourd'hui ; `normalizeActivity`
   y est l'**unique frontière de normalisation** de l'ancien/nouveau format) ; `activiteParJour`

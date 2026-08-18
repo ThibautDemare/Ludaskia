@@ -160,7 +160,11 @@ ci-dessous.
   classe que celle suivie porte en plus le badge « classe d'origine » (`origine`, avant
   l'état) et, si elle vient d'une classe AU-DESSUS, un compte-rendu FACTUEL
   (`essai`) plutôt qu'un état d'acquisition — cf. [Espace encadrant](espace-encadrant.md)
-  pour les trois régimes. `aRevoirHTML` compose enfin le sous-bloc **« Épingler une
+  pour les trois régimes. Depuis #571, chaque ligne **retirée automatiquement** porte de
+  même son propre motif (`quandRetrait`, `RetraitAuto.motif`) plutôt qu'une phrase d'en-tête
+  unique annonçant une maîtrise pour toutes : « de nouveau maîtrisée » / « essai réussi » /
+  rien (trace d'avant #571) — cf. [Espace encadrant](espace-encadrant.md). `aRevoirHTML`
+  compose enfin le sous-bloc **« Épingler une
   leçon »** (`epinglerHTML`) : le sélecteur de leçon partagé (ci-dessus), même action que
   l'épinglage inline du récap, mais ouvrant TOUT le catalogue — y compris les classes que
   l'enfant ne suit pas.

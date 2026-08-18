@@ -22,7 +22,9 @@ import {
 	compterLecons,
 	jetonsNiveau,
 	niveauxSuivis,
+	tronquerArbre,
 	FILTRE_DEFAUT,
+	type CategorieArbre,
 	type FiltreNiveau,
 	type LeconArbre,
 	type MatiereArbre,
@@ -472,5 +474,184 @@ describe('arbreCatalogue — recherche', () => {
 			const sansRecherche = idsSousFiltre(CM1, 'cm1');
 			for (const id of ids(arbre)) expect(sansRecherche.has(id)).toBe(true);
 		}
+	});
+});
+
+/* ============================================================
+   tronquerArbre — borne l'arbre aux N premières leçons (#571)
+   ------------------------------------------------------------
+   Sert la recherche du sélecteur (#556) : un mot courant déplie tout ce qu'il retient, et
+   sans borne l'adulte au clavier ou par contacteur traverserait des dizaines de boutons
+   avant la suite de l'écran (SC 2.4.1). Les attendus ci-dessous sont dérivés du CONTRAT lu
+   dans le commentaire de la fonction (parcours matière → catégorie → leçon, nœuds vidés
+   non rendus, `total` recalculé sur ce qui reste), jamais recopiés de son code.
+
+   Le risque qu'on verrouille : un off-by-one au moment où la borne tombe PILE sur une
+   frontière (fin de catégorie, fin de matière) est la faute la plus facile à commettre
+   ici — elle laisserait un nœud rendu VIDE (catégorie sans leçon, matière sans catégorie),
+   ce que #556 interdit explicitement partout ailleurs dans ce fichier. */
+describe('tronquerArbre', () => {
+	function leconFab(id: string): LeconArbre {
+		return { id, label: id, niveau: 'ce2' };
+	}
+	function categorieFab(categoryId: string, n: number): CategorieArbre {
+		return {
+			categoryId,
+			label: categoryId,
+			lecons: Array.from({ length: n }, (_, i) => leconFab(`${categoryId}-${i}`)),
+		};
+	}
+	function matiereFab(subject: string, categories: CategorieArbre[]): MatiereArbre {
+		return {
+			subject,
+			label: subject,
+			total: categories.reduce((n, c) => n + c.lecons.length, 0),
+			categories,
+		};
+	}
+
+	/* Fixture unique qui porte TOUTES les frontières demandées : m1 a deux catégories (2 puis
+	   2 leçons), m2 en a une (3 leçons) — total 7. Ordre de parcours calculé à la main :
+	   m1-a-0, m1-a-1, m1-b-0, m1-b-1, m2-a-0, m2-a-1, m2-a-2. */
+	const m1 = matiereFab('m1', [categorieFab('m1-a', 2), categorieFab('m1-b', 2)]);
+	const m2 = matiereFab('m2', [categorieFab('m2-a', 3)]);
+	const arbre = [m1, m2];
+	const ORDRE = ['m1-a-0', 'm1-a-1', 'm1-b-0', 'm1-b-1', 'm2-a-0', 'm2-a-1', 'm2-a-2'];
+	const TOTAL = 7;
+
+	it('prémisse : la fixture totalise bien 7 leçons, dans l’ordre attendu', () => {
+		expect(compterLecons(arbre)).toBe(TOTAL);
+		expect(ids(arbre)).toEqual(ORDRE);
+	});
+
+	it('limite <= 0 vaut « pas de borne » : arbre inchangé, restant nul', () => {
+		for (const limite of [0, -1, -100]) {
+			const r = tronquerArbre(arbre, limite);
+			expect(r.restant).toBe(0);
+			expect(r.arbre).toEqual(arbre);
+		}
+	});
+
+	it('arbre déjà sous la borne (total, total + 1, une très grande limite) : inchangé', () => {
+		for (const limite of [TOTAL, TOTAL + 1, 1_000_000]) {
+			const r = tronquerArbre(arbre, limite);
+			expect(r.restant).toBe(0);
+			expect(r.arbre).toEqual(arbre);
+		}
+	});
+
+	it('limite = total − 1 : seule la DERNIÈRE leçon du parcours est laissée de côté', () => {
+		const r = tronquerArbre(arbre, TOTAL - 1);
+		expect(r.restant).toBe(1);
+		expect(ids(r.arbre)).toEqual(ORDRE.slice(0, TOTAL - 1));
+	});
+
+	it('limite = 1 : seule la toute première leçon du parcours est gardée', () => {
+		const r = tronquerArbre(arbre, 1);
+		expect(r.restant).toBe(TOTAL - 1);
+		expect(ids(r.arbre)).toEqual(['m1-a-0']);
+		expect(r.arbre).toHaveLength(1);
+		expect(r.arbre[0].categories).toHaveLength(1);
+	});
+
+	it('borne pile à une frontière de CATÉGORIE : la suivante, vidée, ne paraît pas (pas de nœud vide)', () => {
+		const r = tronquerArbre(arbre, 2); // consomme exactement m1-a
+		expect(r.restant).toBe(TOTAL - 2);
+		expect(ids(r.arbre)).toEqual(['m1-a-0', 'm1-a-1']);
+		expect(r.arbre[0].categories.map((c) => c.categoryId)).toEqual(['m1-a']); // m1-b absente
+		expect(r.arbre[0].total).toBe(2); // recalculé, pas le total (4) de m1 au complet
+	});
+
+	it('catégorie partiellement atteinte : elle garde ses PREMIÈRES leçons, la suivante n’apparaît pas', () => {
+		const r = tronquerArbre(arbre, 3); // m1-a entière + 1re leçon de m1-b
+		expect(r.restant).toBe(TOTAL - 3);
+		expect(ids(r.arbre)).toEqual(['m1-a-0', 'm1-a-1', 'm1-b-0']);
+		const [ca, cb] = r.arbre[0].categories;
+		expect(ca.lecons).toHaveLength(2);
+		expect(cb.categoryId).toBe('m1-b');
+		expect(cb.lecons.map((l) => l.id)).toEqual(['m1-b-0']);
+		expect(r.arbre[0].total).toBe(3);
+		expect(r.arbre).toHaveLength(1); // m2 pas encore atteinte
+	});
+
+	it('borne pile à une frontière de MATIÈRE : la suivante, vidée, ne paraît pas du tout', () => {
+		const r = tronquerArbre(arbre, 4); // consomme exactement m1 (ses deux catégories)
+		expect(r.restant).toBe(TOTAL - 4);
+		expect(ids(r.arbre)).toEqual(['m1-a-0', 'm1-a-1', 'm1-b-0', 'm1-b-1']);
+		expect(r.arbre).toHaveLength(1);
+		expect(r.arbre[0].subject).toBe('m1');
+		expect(r.arbre.some((m) => m.subject === 'm2')).toBe(false); // pas de m2 à catégories vides
+	});
+
+	it('matière partiellement atteinte après une matière complète : ordre respecté entre les deux', () => {
+		const r = tronquerArbre(arbre, 5); // m1 entière (4) + 1re leçon de m2
+		expect(r.restant).toBe(TOTAL - 5);
+		expect(ids(r.arbre)).toEqual(['m1-a-0', 'm1-a-1', 'm1-b-0', 'm1-b-1', 'm2-a-0']);
+		expect(r.arbre).toHaveLength(2);
+		expect(r.arbre[1].total).toBe(1);
+		expect(r.arbre[1].categories[0].lecons.map((l) => l.id)).toEqual(['m2-a-0']);
+	});
+
+	it('matière à une seule catégorie et une seule leçon : totalement écartée par la borne, sans nœud vide', () => {
+		const mono = matiereFab('mono', [categorieFab('mono-cat', 1)]);
+		const r = tronquerArbre([...arbre, mono], TOTAL); // budget épuisé avant d'atteindre « mono »
+		expect(r.restant).toBe(1);
+		expect(r.arbre).toHaveLength(2); // m1, m2 — jamais `mono`
+		expect(r.arbre.some((m) => m.subject === 'mono')).toBe(false);
+	});
+
+	it('arbre vide : reste vide quelle que soit la limite', () => {
+		for (const limite of [0, 1, -1, 100]) {
+			const r = tronquerArbre([], limite);
+			expect(r.arbre).toEqual([]);
+			expect(r.restant).toBe(0);
+		}
+	});
+
+	it('invariant sur toute la plage de limites : compterLecons(résultat) = min(limite, total), restant = total − limite', () => {
+		for (let limite = 1; limite <= TOTAL + 3; limite++) {
+			const r = tronquerArbre(arbre, limite);
+			expect(compterLecons(r.arbre)).toBe(Math.min(limite, TOTAL));
+			expect(r.restant).toBe(Math.max(0, TOTAL - limite));
+		}
+	});
+
+	it('n’est pas une mutation : l’entrée reste intacte, et le résultat ne partage pas ses tableaux avec elle', () => {
+		const catA = categorieFab('mut-a', 2);
+		const catB = categorieFab('mut-b', 3);
+		const matiere = matiereFab('mut', [catA, catB]);
+		const entree = [matiere];
+
+		const r = tronquerArbre(entree, 3); // catA entière + 1re leçon de catB
+
+		// Muter le résultat ne doit rien répercuter sur l'entrée : preuve que `categories`
+		// et `lecons` sont de nouvelles instances, pas des vues sur l'original.
+		r.arbre[0].categories[0].lecons.push({ id: 'intrus', label: 'intrus', niveau: 'ce2' });
+		r.arbre[0].categories.push(categorieFab('intrus-cat', 1));
+
+		expect(entree[0].categories).toHaveLength(2);
+		expect(entree[0].categories[0].lecons).toHaveLength(2);
+		expect(entree[0].categories[1].lecons).toHaveLength(3);
+		expect(entree[0].total).toBe(5);
+	});
+
+	describe('croisement avec un arbre réel (arbreCatalogue)', () => {
+		it('sur le catalogue CE2 réel : garde les N premières leçons dans l’ordre de parcours', () => {
+			const reel = arbreCatalogue(CE2);
+			const total = compterLecons(reel);
+			expect(total).toBeGreaterThan(50); // prémisse : un catalogue substantiel (≈142 attendues)
+			const limite = total - 5;
+
+			const r = tronquerArbre(reel, limite);
+
+			expect(r.restant).toBe(5);
+			expect(compterLecons(r.arbre)).toBe(limite);
+			expect(ids(r.arbre)).toEqual(ids(reel).slice(0, limite));
+			for (const m of r.arbre) {
+				expect(m.categories.length).toBeGreaterThan(0);
+				for (const c of m.categories) expect(c.lecons.length).toBeGreaterThan(0);
+				expect(m.total).toBe(m.categories.reduce((n, c) => n + c.lecons.length, 0));
+			}
+		});
 	});
 });

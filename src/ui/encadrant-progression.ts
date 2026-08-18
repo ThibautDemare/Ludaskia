@@ -23,6 +23,7 @@ import {
 	epingleesProfil,
 	type OrigineLecon,
 	retraitsAutoProfil,
+	type RetraitAuto,
 	type RecapProfil,
 	type RecapListeOrtho,
 	type DicteeProposee,
@@ -753,6 +754,20 @@ function blocagesParLecon(recap: RecapProfil): Map<string, number> {
    `meta` = ligne secondaire sous le libellé (dictées : « N mots ») ; `mots` = repli
    consultable des mots d'une dictée (#441). Les deux sont absents pour une leçon du
    catalogue, qui n'a ni l'un ni l'autre. */
+/* Quand un retrait automatique a eu lieu, et POURQUOI (#571). Le motif est porté par la
+   LIGNE et non plus par la phrase du bloc : celle-ci annonçait une maîtrise pour tout le
+   monde, y compris pour une leçon d'une classe suivante réussie une seule fois — le verdict
+   même que la ligne d'épingle refuse de prononcer sur une notion pas encore enseignée, deux
+   blocs plus haut. Un motif ABSENT (trace d'avant #571) n'affiche que la date : on ne
+   suppose pas une maîtrise dont on n'a pas gardé la trace.
+   « de nouveau maîtrisée » qualifie la NOTION et non l'enfant, comme partout dans cet écran. */
+function quandRetrait(r: RetraitAuto, now: number): string {
+	const quand = libelleDerniereFois(r.at, now);
+	if (r.motif === 'maitrise') return `${quand}, de nouveau maîtrisée`;
+	if (r.motif === 'essai') return `${quand}, essai réussi`;
+	return quand;
+}
+
 /* Infobulle du badge de classe d'origine, par sens de l'écart. Le badge ne dit que la classe :
    le SENS se lit déjà dans ce que la ligne affiche (état d'acquisition d'un côté, compte-rendu
    factuel de l'autre), et l'écrire se répéterait sur chaque épingle du cas courant. */
@@ -895,12 +910,12 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 		: '';
 	const blocRetraits = retraits.length
 		? `<h4 class="enc-sub-lab">Retirées automatiquement</h4>
-       <p class="enc-hint">Ces notions ont quitté la liste d'elles-mêmes : ${escapeHTML(consulte.name)} les maîtrise de nouveau. Épinglez-en une si vous voulez quand même y revenir.</p>
+       <p class="enc-hint">Ces notions ont quitté la liste d'elles-mêmes. Épinglez-en une si vous voulez quand même y revenir.</p>
        <ul class="enc-revoir">${retraits
 					.map((r) =>
 						ligneRevoir(r.id, r.label, false, {
 							imprimable: r.kind === 'lecon',
-							quand: libelleDerniereFois(r.at, now),
+							quand: quandRetrait(r, now),
 						}),
 					)
 					.join('')}</ul>`

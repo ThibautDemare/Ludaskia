@@ -17,6 +17,11 @@
    (`levels: ['ce2']`, cf. `core/catalog.ts`) — hors classe pour un profil CM1,
    déjà utilisée par `programme-a-revoir.spec.ts` pour sa fiche de 12 items à
    verdict déterministe (`data-answer`).
+
+   #571 (suivi de #556) ajoute, dans les deux premiers tests : la phrase de classe
+   d'origine exposée aux aides techniques (en clair sous l'activité côté composeur,
+   en `aria-label` sur le badge côté épingle) — et, en fin de fichier, le plafond de
+   30 leçons sous recherche (bouton de suite, annonce différée, focus conservé).
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
@@ -104,12 +109,36 @@ test('composeur du programme : choisir une leçon d’une classe précédente, f
 	await expect(cible.locator('.enc-seance-cible-nom')).toHaveText(LABEL);
 	await expect(cible.locator('.enc-classe-origine')).toContainText('CE2');
 
+	// Le badge de la cible n'a PAS d'infobulle ici (#571) : la phrase vit en clair sous
+	// l'activité (`.enc-seance-arevoir`), pour ne pas se faire annoncer deux fois.
+	await expect(cible.locator('.enc-classe-origine')).not.toHaveAttribute('title');
+	await expect(cible.locator('.enc-classe-origine')).not.toHaveAttribute('aria-label');
+	const etapeLi = page.locator('.enc-seance-etape');
+	await expect(etapeLi.locator('.enc-seance-arevoir')).toContainText(
+		"Leçon d'une classe précédente : Test la travaillera telle qu'elle est prévue pour cette classe",
+	);
+
 	const btnChanger = page.locator('[data-act="seance-cible-ouvrir"]');
 	await expect(btnChanger).toHaveText('Changer');
 	await expect(btnChanger).toBeFocused();
 
 	// L'activité configurée compte désormais.
 	await expect(page.locator('.enc-hint').filter({ hasText: /^1 activité/ })).toBeVisible();
+
+	// Reprendre une leçon de la classe SUIVIE (CM1, celle du profil) : la phrase et le
+	// badge disparaissent (#571 : réservés à une classe AUTRE que celle suivie).
+	await btnChanger.click();
+	const selecteur2 = page.locator('.enc-seance-selecteur .enc-sel');
+	await expect(selecteur2).toBeVisible();
+	await selecteur2.locator('input[data-act="sel-recherche"]').fill('Quotient et reste');
+	await selecteur2
+		.locator('.enc-sel-item')
+		.filter({ hasText: 'Quotient et reste' })
+		.locator('[data-act="seance-cible-choisir"]')
+		.click();
+	await expect(cible.locator('.enc-seance-cible-nom')).toHaveText('Quotient et reste');
+	await expect(etapeLi.locator('.enc-classe-origine')).toHaveCount(0);
+	await expect(etapeLi.locator('.enc-seance-arevoir')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });
@@ -146,6 +175,15 @@ test('sous-bloc « Épingler une leçon » : épingler une classe précédente, 
 	await expect(itemEpingle).toBeVisible();
 	await expect(itemEpingle.locator('.enc-classe-origine')).toContainText('CE2');
 	await expect(itemEpingle.locator('[data-act="epingler"]')).toHaveText('Retirer');
+
+	// Ici, avec infobulle (#571) : nom accessible = préfixe + classe + phrase ; le `title`
+	// reste posé, pour la souris.
+	await expect(itemEpingle.locator('.enc-classe-origine')).toHaveAttribute('role', 'img');
+	await expect(itemEpingle.locator('.enc-classe-origine')).toHaveAttribute('title');
+	await expect(itemEpingle.locator('.enc-classe-origine')).toHaveAttribute(
+		'aria-label',
+		/^Classe d'origine : CE2\. Leçon d'une classe précédente : épinglée volontairement/,
+	);
 
 	expect(errors).toEqual([]);
 });
@@ -191,6 +229,78 @@ test('accueil enfant : une épingle hors classe apparaît (carte « À revoir »
 	// Aucune étiquette de niveau ne fuite dans l'écran de leçon non plus.
 	await expect(page.locator('#sheets')).not.toContainText('CE2');
 	await expect(page.locator('#sheets')).not.toContainText('CM1');
+
+	expect(errors).toEqual([]);
+});
+
+test('recherche du sélecteur : résultats plafonnés à 30, annonce différée, focus conservé après « Afficher la suite » (#571)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await gotoHash(page, 'encadrant/programme'); // profil e2e par défaut, CE2 seule classe suivie
+
+	// Sous-bloc toujours rendu : pas besoin de composer un programme pour l'atteindre.
+	const sousBloc = page.locator('.enc-block').filter({ hasText: 'Épingler une leçon' });
+	await expect(sousBloc).toBeVisible();
+	const selecteur = sousBloc.locator('.enc-sel');
+	const resume = selecteur.locator('.enc-sel-resume');
+	const recherche = selecteur.locator('input[data-act="sel-recherche"]');
+	const suite = selecteur.locator('[data-act="sel-plus"]');
+
+	// Sans recherche : l'arbre est replié, rien à borner — pas de bouton de suite.
+	await expect(resume).toHaveText(/^\d+ leçons? à choisir\.$/);
+	await expect(suite).toHaveCount(0);
+
+	// Recherche large (lettre courante, sûre de dépasser 30 résultats) : le résumé annonce
+	// la troncature, mais DIFFÉRÉ de 350 ms (#571) — on l'attend (`toHaveText` retente)
+	// plutôt que de le lire juste après la frappe, sous peine de lire le texte précédent.
+	await recherche.fill('e');
+	await expect(resume).toHaveText(
+		/^\d+ leçons? affichées? sur \d+\. Les premières seulement sont listées\.$/,
+	);
+	const texte1 = (await resume.textContent()) ?? '';
+	const [, shownStr, totalStr] = texte1.match(/^(\d+) leçons? affichées? sur (\d+)\./) ?? [];
+	const shown = Number(shownStr);
+	const total = Number(totalStr);
+	expect(shown).toBe(30); // PAS_AFFICHAGE : plafond exact
+	expect(total).toBeGreaterThan(shown); // sinon le catalogue ne couvre plus ce scénario
+
+	await expect(selecteur.locator('.enc-sel-item')).toHaveCount(shown);
+	const pas1 = Math.min(total - shown, 30);
+	await expect(suite).toHaveText(
+		pas1 > 1 ? `Afficher les ${pas1} leçons suivantes` : 'Afficher la leçon suivante',
+	);
+
+	// Clic sur la suite : le lot suivant s'ajoute, le focus reste sur le bouton (recréé par
+	// le re-rendu) s'il en reste encore, sinon il va au dernier bouton de l'arbre.
+	await suite.click();
+	const shown2 = Math.min(total, shown + pas1);
+	await expect(selecteur.locator('.enc-sel-item')).toHaveCount(shown2);
+	if (shown2 < total) {
+		const pas2 = Math.min(total - shown2, 30);
+		await expect(resume).toHaveText(new RegExp(`^${shown2} leçons? affichées? sur ${total}\\.`));
+		await expect(suite).toHaveText(
+			pas2 > 1 ? `Afficher les ${pas2} leçons suivantes` : 'Afficher la leçon suivante',
+		);
+		await expect(suite).toBeFocused();
+	} else {
+		await expect(resume).toHaveText(new RegExp(`^${shown2} leçons? à choisir\\.$`));
+		await expect(suite).toHaveCount(0);
+		await expect(selecteur.locator('.enc-sel-item button').last()).toBeFocused();
+	}
+
+	// Nouvelle frappe : la borne repart de 30 (pas un dépliage hérité du clic précédent).
+	await recherche.fill('');
+	await recherche.fill('e');
+	await expect(selecteur.locator('.enc-sel-item')).toHaveCount(Math.min(total, 30));
+
+	// Changement de jeton de classe, sous la MÊME recherche : la borne repart aussi de 30.
+	await selecteur.locator('[data-act="sel-niveau"]').filter({ hasText: 'CM1' }).click();
+	const texteCM1 = (await resume.textContent()) ?? '';
+	const shownCM1 = Number(texteCM1.match(/^(\d+) leçons?/)?.[1] ?? NaN);
+	await expect(selecteur.locator('.enc-sel-item')).toHaveCount(shownCM1);
+	if (texteCM1.includes('affichée')) expect(shownCM1).toBe(30);
 
 	expect(errors).toEqual([]);
 });

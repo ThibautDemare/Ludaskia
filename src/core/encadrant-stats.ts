@@ -1261,6 +1261,14 @@ export interface RetraitAuto {
 	kind: 'lecon' | 'ortho';
 	label: string;
 	at: number; // horodatage du retrait
+	/** Ce que le retrait a le droit d'annoncer (#571, cf. `MotifRetrait`). FIGÉ à l'instant du
+	    retrait, comme le libellé, et pour la même raison : la trace explique un ÉVÉNEMENT
+	    PASSÉ, survenu sous la classe suivie de ce moment-là — la recalculer plus tard la ferait
+	    changer d'explication si l'adulte change de classe entre-temps.
+	    ABSENT sur les entrées d'avant #571 : la ligne n'annonce alors aucun motif, plutôt que
+	    d'en supposer un. C'est le repli prudent — on ne prononce pas une maîtrise dont on n'a
+	    pas la trace. Ces entrées sortent d'elles-mêmes en 30 jours. */
+	motif?: MotifRetrait;
 }
 // Trace RÉCENTE, pas un historique : l'onglet reste lisible. Dimensionné pour absorber la
 // passe d'ADOPTION (celle qui purge d'un coup les fantômes d'avant #465) — c'est le moment
@@ -1277,7 +1285,10 @@ function loadRetraitsAuto(uuid: string): RetraitAuto[] {
 			typeof r.id === 'string' &&
 			typeof r.label === 'string' &&
 			typeof r.at === 'number' &&
-			(r.kind === 'lecon' || r.kind === 'ortho'),
+			(r.kind === 'lecon' || r.kind === 'ortho') &&
+			// `motif` n'est PAS exigé (entrées d'avant #571) ; une valeur inconnue est refusée
+			// avec toute l'entrée plutôt que silencieusement lue comme « maîtrise ».
+			(r.motif === undefined || r.motif === 'maitrise' || r.motif === 'essai'),
 	);
 }
 /* Marques de fragilité ; `null` = clé JAMAIS écrite, seul cas qui déclenche l'adoption.
@@ -1293,10 +1304,23 @@ function loadFragiles(uuid: string): string[] | null {
 /* Solidité d'une entrée épinglée pour un profil donné ; `null` si la cible n'est pas
    résolvable (donc intouchable). Contexte de lecture passé par l'appelant : la file
    entière est jugée sur UNE seule lecture du stockage. */
+/** Ce qu'un retrait automatique a le droit d'annoncer (#571). Le retrait lui-même ne
+    distingue pas les cas — c'est le même prédicat de solidité pour tous, et c'est voulu (cf.
+    `etatEpingle`) — mais ce qu'on en DIT, oui :
+
+    - `'maitrise'` : la notion est redevenue solide, ce que l'écran peut affirmer ;
+    - `'essai'` : la cible venait d'une classe SUIVANTE, et l'essai a réussi. On ne parle
+      alors pas de maîtrise. La ligne d'épingle refuse déjà d'écrire « acquis » sur un seul
+      essai d'une notion pas encore enseignée (cf. `EtatEpingle`) ; l'annoncer ici serait un
+      verdict plus fort encore, sur le même contenu, à deux blocs d'écart. Et « de nouveau »
+      supposerait une maîtrise antérieure qui n'a jamais existé. */
+export type MotifRetrait = 'maitrise' | 'essai';
+
 interface SoliditeEpingle {
 	kind: 'lecon' | 'ortho';
 	label: string;
 	solide: boolean;
+	motif: MotifRetrait;
 }
 interface CtxSolidite {
 	starsRaw: Record<string, number>;
@@ -1310,9 +1334,16 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): Solid
 		const orthoId = orthoIdFromRevoir(entryId);
 		const ref = listOrthoLecons(ctx.ortho).find((l) => l.id === orthoId);
 		if (!ref) return null; // liste supprimée / dictée inconnue
+		// Dictée prédéfinie d'une classe SUIVANTE : absente du cumul visible au niveau du
+		// profil (filtrage cumulatif — un CM1 garde les listes CE2). Même régime que les
+		// leçons prises au-dessus, cf. `MotifRetrait`.
+		const auDessus = !listOrthoLecons(ctx.ortho, niveauProfilMatiere(profile, 'francais')).some(
+			(l) => l.id === orthoId,
+		);
 		return {
 			kind: 'ortho',
 			label: ref.label,
+			motif: auDessus ? 'essai' : 'maitrise',
 			// Solide = liste entièrement maîtrisée (même critère que revoirActives), MAIS on
 			// exige la dispo du TTS : sans elle, le mode dictée n'est pas requis (modesRequis)
 			// et « acquis » devient plus FACILE. Le filtre d'affichage peut se le permettre (il
@@ -1329,7 +1360,8 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): Solid
 	// l'affichage enfant, lui, cesserait de la montrer une fois redevenue solide — le
 	// désépinglage automatique doit rester le MIROIR exact de cet affichage, jusqu'au niveau
 	// auquel il lit l'état.
-	const niveau = origineLecon(lesson, profile).niveau;
+	const origine = origineLecon(lesson, profile);
+	const niveau = origine.niveau;
 	const k = lesson.id + '@' + niveau; // stats/étoiles namespacées par niveau (#225)
 	const etoilee = (ctx.starsRaw[k] || 0) > 0;
 	const pct = perfRecente(ctx.statsRaw[k])?.pct ?? null;
@@ -1337,6 +1369,7 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): Solid
 		kind: 'lecon',
 		label: labelLecon(lesson, niveau),
 		solide: estNotionSolide(etoilee, pct), // même prédicat que le filtre d'affichage enfant
+		motif: origine.direction === 'au-dessus' ? 'essai' : 'maitrise',
 	};
 }
 
@@ -1375,7 +1408,13 @@ export function purgeRevoirSolides(profile: Profile, dicteeDispo: boolean, now: 
 		// Retrait SEULEMENT si la cible est résolvable, solide, ET déjà candidate (vue fragile
 		// alors qu'épinglée) : une épingle posée sur une notion solide est un choix du parent.
 		if (etat != null && etat.solide && candidates.has(entryId)) {
-			retires.push({ id: entryId, kind: etat.kind, label: etat.label, at: now });
+			retires.push({
+				id: entryId,
+				kind: etat.kind,
+				label: etat.label,
+				at: now,
+				motif: etat.motif,
+			});
 			continue; // sortie de la file ET de la mémoire de fragilité
 		}
 		restants.push(entryId);

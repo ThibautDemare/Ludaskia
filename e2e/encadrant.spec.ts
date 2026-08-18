@@ -443,8 +443,11 @@ test("frise d'états : 12 cellules cohérentes avec le seed, puce omise sur ces 
 	await expect(cellsEnCours.first()).toHaveClass(/enc-frise-inconnu/);
 	await expect(cellsEnCours.last()).toHaveClass(/enc-frise-en-cours/);
 	await expect(ligneEnCours.locator('.enc-detail-meta')).toContainText('passée en cours');
-	// La puce d'état disparaît : la frise porte déjà l'info.
-	await expect(ligneEnCours.locator('.enc-detail-puce')).toHaveCount(0);
+	// La puce d'état disparaît : la frise porte déjà l'info. Sa GOUTTIÈRE reste réservée
+	// (placeholder sans couleur), sinon le libellé de cette ligne partirait ~19 px à
+	// gauche de ses voisines — on verrouille l'absence de COULEUR, pas l'absence d'élément.
+	await expect(ligneEnCours.locator('.enc-detail-puce.enc-detail-puce--reserve')).toHaveCount(1);
+	await expect(ligneEnCours.locator('.enc-detail-puce[class*="enc-key-"]')).toHaveCount(0);
 
 	// Palier « acquis » franchi il y a 2 semaines (seed) : dernière cellule acquise,
 	// avec le marqueur « semaine courante » (classe `enc-frise-courante`, distincte du nom
@@ -454,7 +457,9 @@ test("frise d'états : 12 cellules cohérentes avec le seed, puce omise sur ces 
 	await expect(derniereCelluleAcquis).toHaveClass(/enc-frise-acquis/);
 	await expect(derniereCelluleAcquis).toHaveClass(/enc-frise-courante/);
 	await expect(ligneAcquis.locator('.enc-detail-meta')).toContainText('acquise');
-	await expect(ligneAcquis.locator('.enc-detail-puce')).toHaveCount(0);
+	// Même règle : gouttière réservée, jamais de pastille COLORÉE (cf. commentaire ci-dessus).
+	await expect(ligneAcquis.locator('.enc-detail-puce.enc-detail-puce--reserve')).toHaveCount(1);
+	await expect(ligneAcquis.locator('.enc-detail-puce[class*="enc-key-"]')).toHaveCount(0);
 
 	// Leçon jamais travaillée (aucun palier seedé) : pas de frise, puce d'état conservée.
 	const ligneVierge = page.locator('.enc-detail-item:has([data-lesson="math-tables-addition"])');
@@ -603,8 +608,10 @@ test('frise d’états : une leçon jamais montée au-dessus du seuil affiche d�
 	await expect(frise).toBeVisible();
 	await expect(frise.locator('.enc-frise-cell')).toHaveCount(12);
 	await expect(frise.locator('.enc-frise-non-acquis').first()).toBeVisible();
-	// La puce d'état disparaît : la frise porte déjà l'info (même règle que les autres paliers).
-	await expect(ligne.locator('.enc-detail-puce')).toHaveCount(0);
+	// La puce d'état disparaît : la frise porte déjà l'info (même règle que les autres paliers) —
+	// gouttière réservée, jamais de pastille colorée.
+	await expect(ligne.locator('.enc-detail-puce.enc-detail-puce--reserve')).toHaveCount(1);
+	await expect(ligne.locator('.enc-detail-puce[class*="enc-key-"]')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });

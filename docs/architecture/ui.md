@@ -123,6 +123,12 @@ ci-dessous.
   l'échelle d'acquisition** (`MOT_NIVEAU`, `ORDRE_NIVEAUX`/`ORDRE_NIVEAUX_ORTHO`) : depuis
   #496, deux sections distinctes (`encadrant-progression.ts` et `encadrant-banque.ts`)
   affichent la même échelle, d'où son déplacement ici plutôt que dans l'une des deux.
+  **`badgeClasseOrigine(niveau, infobulle?)`** (#556, révisé #571) — badge « classe
+  d'origine » dont l'infobulle est **optionnelle** : fournie, le badge passe en
+  `role="img"` + `aria-label` (préfixe, classe ET phrase), `title` conservé pour la souris ;
+  absente, il reste **nu** (préfixe `sr-only` seul) pour les sites qui rendent déjà la
+  phrase en clair à côté (cf. `encadrant-seance.ts` ci-dessous) — l'annoncer deux fois
+  serait redondant.
 - **`encadrant-pin.ts`** — **verrou par code** : porte PIN + pavé numérique,
   écran de récupération, bloc « Code d'accès » des réglages ; possède l'état du
   verrou et la vue courante (`pinView()`, lue par l'orchestrateur).
@@ -202,8 +208,11 @@ ci-dessous.
   (`cibleLeconHTML`/`selecteurEtapeHTML`, cf. `ui/selecteur-lecon.ts` ci-dessus) plutôt
   qu'un menu filtré au niveau du profil : elle NAÎT sans cible (`etapeConfiguree`, cf.
   [Logique pure](core.md)) et affiche, une fois une cible retenue d'une autre classe que
-  celle suivie, le badge « classe d'origine » (`badgeClasseOrigine`, `encadrant-commun.ts`).
-  Une cible qui n'est plus au catalogue (leçon retirée d'une version à l'autre) reste
+  celle suivie, le badge « classe d'origine » **sans infobulle** (`badgeClasseOrigine`,
+  `encadrant-commun.ts` ci-dessus) — ici le badge est seul sur sa ligne, donc la phrase qui
+  l'explique est rendue **en clair juste en dessous** (`noteOrigineHTML`, #571) plutôt que
+  réservée à une infobulle qu'une tablette n'ouvre pas au doigt. Une cible qui n'est plus au
+  catalogue (leçon retirée d'une version à l'autre) reste
   signalée telle quelle plutôt que muette — seul motif restant de ce repli, une cible hors
   de la classe suivie étant désormais légale. Une étape **« à revoir » (#464)** ne se
   configure pas — sa cible est la file épinglée du profil (`epingleesProfil`) — mais
@@ -274,7 +283,20 @@ la banque de mots #496/#527) et déplie d'office ce qui reste. `enregistrerSelec
 déclare, à CHAQUE rendu du consommateur, comment re-rendre le corps du sélecteur (l'action
 de ligne capture un état qui change d'un rendu à l'autre — étape visée, file épinglée) ;
 `oublierSelecteur(id)` oublie l'état à la fermeture, et un changement de profil consulté
-remet TOUS les sélecteurs à plat (`onChangementProfilConsulte`). Deux consommateurs :
+remet TOUS les sélecteurs à plat (`onChangementProfilConsulte`).
+
+**Résultats de recherche plafonnés (#571)** : sous recherche seulement, le corps est
+borné à `PAS_AFFICHAGE` (30) leçons (`core/catalogue-arbre.ts:tronquerArbre`, cf. [Logique
+pure](core.md)) — une recherche déplie tout ce qu'elle retient, et un mot courant
+alignerait sinon des dizaines de boutons à traverser avant la suite de l'écran (SC 2.4.1,
+même motif que le plafond de la banque de mots). Un bouton « Afficher les N leçons
+suivantes » (`data-act="sel-plus"`, `.enc-sel-plus`) lève la borne d'un pas, focus rendu au
+bouton suivant qui apparaît (ou, à défaut, au dernier bouton de l'arbre, ou au champ de
+recherche) ; la troncature est **annoncée** dans le résumé (région live déjà en place) et
+remise à zéro à chaque frappe et à chaque changement de jeton de niveau. Hors recherche,
+pas de borne : les groupes restent repliés, rien n'est focalisable à traverser.
+
+Deux consommateurs :
 la cible d'une étape « une leçon précise » du programme (`encadrant-seance.ts`) et
 l'épinglage « à revoir » (`encadrant-progression.ts`, bloc « Épingler une leçon », cf.
 [Espace encadrant](espace-encadrant.md) pour le détail fonctionnel des deux).

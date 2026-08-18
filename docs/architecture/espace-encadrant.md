@@ -624,6 +624,19 @@ classe CSS `.enc-revoir-hors` — qui marquaient une épingle hors classe comme 
 ont disparu avec #556 : une telle épingle n'est plus inerte, elle revient normalement sur
 l'accueil de l'enfant (cf. « À revoir » ci-dessous).
 
+**Son explication a deux formes selon le site (#571)** : `badgeClasseOrigine(niveau,
+infobulle?)` prend l'infobulle en paramètre **optionnel**. Sur la ligne d'une épingle —
+où l'état d'acquisition ou le compte-rendu factuel juste à côté laisse deviner le SENS de
+l'écart (consolidation ou avance) — le badge PORTE l'infobulle : `role="img"` avec un
+`aria-label` qui enchaîne le préfixe, la classe ET la phrase, `title` conservé pour la
+souris. Sur l'étape « une leçon précise » du programme, où le badge est **seul** sur sa
+ligne (rien d'autre n'indique le sens de l'écart), il est rendu **nu** (préfixe `sr-only`
+seulement) et la phrase est affichée **en clair sous l'activité** par une fonction dédiée
+(`noteOrigineHTML`, `ui/encadrant-seance.ts`) — jamais les deux à la fois, pour ne pas
+l'annoncer en double. Le motif du choix : un `title` sur un `<span>` non focusable ne
+s'ouvre **jamais** au doigt, or cet écran est fait pour la tablette, et sur un rôle
+générique sa restitution vocale reste inconstante.
+
 **Asymétrie voulue avec la révision espacée** : une leçon assignée **en dessous** entre
 normalement en révision espacée, à son niveau de stockage, comme n'importe quelle leçon
 jouée. Une leçon assignée **au-dessus**, elle, reste un essai PONCTUEL qui n'entre jamais en

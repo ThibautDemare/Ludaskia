@@ -1288,7 +1288,15 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   deux « CM1 » alors que retirer ce dernier rendrait le CE2 d'une autre matière
   inatteignable). La classe D'ORIGINE d'une leçon pour un profil (`origineLecon`), elle,
   reste dans `encadrant-stats.ts` ci-dessous : l'y déplacer créerait un cycle d'imports
-  entre les deux modules.
+  entre les deux modules. **`tronquerArbre(arbre, limite)`** (#571) borne un arbre déjà
+  construit aux `limite` premières leçons, dans l'ordre où il les présente, et renvoie à
+  part le nombre laissé de côté (`restant`) ; catégories et matières vidées par la borne ne
+  sont pas rendues, et `total` est recalculé sur ce qui reste — le compte affiché doit
+  décrire ce qu'on voit, pas ce que la recherche a trouvé. Réservé à l'usage **sous
+  recherche** du sélecteur (`ui/selecteur-lecon.ts`, ci-dessous), où l'arbre est déplié
+  d'office et chaque leçon rendue est un bouton dans l'ordre de tabulation (SC 2.4.1, même
+  motif que la banque de mots) : hors recherche, les groupes restent repliés et rien n'a
+  besoin d'être borné. `limite <= 0` vaut « pas de borne ».
 - **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
   bascule** (`progressionProfil`, `niveauProfilMatiere`) ; réexporte l'échelle de maîtrise
   (`niveauNotion`/`tendanceNotion`, définie dans `maitrise.ts`) pour les imports

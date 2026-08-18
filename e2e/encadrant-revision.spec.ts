@@ -8,7 +8,7 @@
    (aucune révision seedée).
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, leconsDuNiveau } from './helpers';
 
 /* Deux leçons réelles du catalogue CE2 (labels tels que rendus par le
    catalogue — cf. `label` dans src/core/catalog.ts / src/data). */
@@ -109,6 +109,13 @@ test('récap Révision : vue « Par palier » — étages du plus fragile au plu
 	await expect(etages.nth(1)).toContainText(LABEL_MID);
 	await expect(etages.nth(2)).toContainText(LABEL_ACQUIS);
 
+	// Seul l'étage sommital porte la classe qui déclenche le filet de couleur distinct
+	// (`.enc-rev-etage + .enc-rev-etage--acquis`, encadrant.scss) : verrouille le lien
+	// entre le rendu et la règle CSS, comme `enc-frise-acquis` ailleurs sur cet écran.
+	await expect(etages.nth(0)).not.toHaveClass(/enc-rev-etage--acquis/);
+	await expect(etages.nth(1)).not.toHaveClass(/enc-rev-etage--acquis/);
+	await expect(etages.nth(2)).toHaveClass(/enc-rev-etage--acquis/);
+
 	// L'étage du bas garde l'échéance échue sur sa ligne, mais ne répète PAS son
 	// palier (déjà porté par l'en-tête « Palier : 1 jour »).
 	const itemBas = etages.nth(0).locator('.enc-rev-item').filter({ hasText: LABEL_DUE });
@@ -123,6 +130,230 @@ test('récap Révision : vue « Par palier » — étages du plus fragile au plu
 
 	// Le focus clavier revient sur le bouton actif après le re-rendu complet de la bascule.
 	await expect(page.locator(':focus')).toHaveAttribute('data-mode', 'palier');
+
+	expect(errors).toEqual([]);
+});
+
+/* ---------- Plafonnement des vues « Par palier » / « Par urgence » ----------
+   Rien ne borne le nombre d'entrées d'un profil chargé : au-delà de MAX_PAR_ETAGE (6)
+   sur un même étage, ou de MAX_URGENCE (20) au total, les deux vues à plat plafonnent
+   l'affichage et rangent le reliquat dans un <details> replié (la vue « Par catégorie »
+   n'a pas ce problème, ses <details> par catégorie étant déjà repliés). Seed via de
+   VRAIES leçons du catalogue CE2 (`leconsDuNiveau`, seul import de `src/` toléré ici,
+   cf. e2e/README.md) : le volume importe, pas l'identité précise des leçons — un id ou
+   un niveau qui n'existerait pas serait silencieusement ignoré au rendu, d'où la
+   vérification de la synthèse (`.enc-hint`) contre le nombre RÉELLEMENT seedé. */
+interface GroupeSeed {
+	ids: string[];
+	palier: number;
+	joursRetard: number;
+}
+function seedRevisionGroupes(groupes: GroupeSeed[]) {
+	return {
+		fn: (gs: GroupeSeed[]) => {
+			const now = Date.now();
+			const day = 86400000;
+			const rev: Record<string, unknown> = {};
+			for (const g of gs) {
+				for (const id of g.ids) {
+					rev[id + '@ce2'] = {
+						palier: g.palier,
+						prochaineRevision: now - g.joursRetard * day,
+						reussites: 3,
+						dernierTest: now - 5 * day,
+					};
+				}
+			}
+			localStorage.setItem('e2e/ludaskia_lessonRevision', JSON.stringify(rev));
+		},
+		arg: groupes,
+	};
+}
+function seedRevisionEnMasse(ids: string[], palier: number, joursRetard: number) {
+	return seedRevisionGroupes([{ ids, palier, joursRetard }]);
+}
+
+test('récap Révision : vue « Par palier » plafonne un étage chargé (compteur sur le total, reliquat accessible)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// 9 leçons CE2 réelles, toutes au même palier (2 → « 1 semaine ») et toutes échues :
+	// un seul étage, qui dépasse MAX_PAR_ETAGE = 6.
+	const ids = leconsDuNiveau('math', 'ce2').slice(0, 9);
+	expect(ids.length).toBeGreaterThan(6); // le catalogue CE2 doit dépasser le plafond pour que ce test ait un sens
+	const seed = seedRevisionEnMasse(ids, 2, 1);
+	await page.addInitScript(seed.fn, seed.arg);
+	await gotoHash(page, 'encadrant');
+
+	const section = page.locator('.enc-rev-section');
+	// Le nombre d'entrées RENDUES correspond au nombre semé (aucune clé perdue en route).
+	await expect(section.locator('.enc-hint')).toHaveText(
+		`${ids.length} entrées en révision, dont ${ids.length} à réviser.`,
+	);
+
+	await section.locator('[data-act="revision-mode"][data-mode="palier"]').click();
+
+	const etage = section.locator('.enc-rev-etage');
+	await expect(etage).toHaveCount(1); // toutes les entrées au même palier → un seul étage
+
+	// En-tête d'étage NON plafonné : le compteur annonce le total complet, jamais la
+	// tranche affichée — l'invariant qui justifie tout le plafonnement.
+	const titre = etage.locator('h3.enc-rev-etage-lab');
+	await expect(titre).toHaveText('Palier : 1 semaine');
+	await expect(etage.locator('.enc-rev-etage-n')).toHaveText(
+		`${ids.length} entrées, dont ${ids.length} à réviser`,
+	);
+	// La <section> d'étage est nommée par son <h3>.
+	const titreId = await titre.getAttribute('id');
+	expect(titreId).toBeTruthy();
+	await expect(etage).toHaveAttribute('aria-labelledby', titreId!);
+
+	// Lignes plafonnées à MAX_PAR_ETAGE = 6, visibles sans interaction.
+	const visibles = etage.locator('> ul.enc-rev-etage-l > li.enc-rev-item');
+	await expect(visibles).toHaveCount(6);
+
+	// Le reliquat (3 lignes) est replié par défaut, avec le libellé « N autres »... Le texte
+	// du repli redit aussi les dues cachées (texteRepli, partagé avec la vue « Par urgence » :
+	// contrairement à ce que documente le commentaire de vuePalierHTML, la fonction commune
+	// applique la même règle « , dont N à réviser » aux deux vues — cf. compte-rendu).
+	const repli = etage.locator('details.enc-rev-etage-plus');
+	const resume = repli.locator('summary.enc-rev-etage-plus-sum');
+	const plus = resume.locator('.enc-repli-plus');
+	const moins = resume.locator('.enc-repli-moins');
+	await expect(plus).toHaveText('3 autres, dont 3 à réviser');
+	await expect(plus).toBeVisible();
+	await expect(moins).toBeHidden();
+	const caches = repli.locator('ul.enc-rev-etage-l > li.enc-rev-item');
+	await expect(caches).toHaveCount(3);
+	await expect(caches.first()).toBeHidden();
+
+	// ...devient accessible une fois ouvert, et le libellé bascule vers « Voir moins ».
+	await resume.click();
+	await expect(caches.first()).toBeVisible();
+	await expect(plus).toBeHidden();
+	await expect(moins).toBeVisible();
+
+	// Le bouton de PIED du reliquat (absent tant que replié, existe uniquement DANS le
+	// <details>) referme et rend le focus à son <summary> — pensé pour un reliquat de
+	// plusieurs centaines de lignes, où le résumé est loin en haut de l'écran.
+	const finBouton = repli.locator('button.enc-repli-fin[data-act="revision-replier"]');
+	await expect(finBouton).toBeVisible();
+	await finBouton.click();
+	await expect(plus).toBeVisible();
+	await expect(moins).toBeHidden();
+	await expect(caches.first()).toBeHidden();
+	await expect(resume).toBeFocused();
+
+	expect(errors).toEqual([]);
+});
+
+test('récap Révision : vue « Par urgence » plafonne à 20 entrées (reliquat annonce les dues cachées, accessible après ouverture)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// 25 leçons CE2 réelles (disjointes du test précédent), toutes échues au même jour :
+	// dépasse MAX_URGENCE = 20, et le tri alphabétique (à égalité d'urgence) rend le
+	// découpage visible/replié déterministe.
+	const ids = leconsDuNiveau('math', 'ce2').slice(9, 34);
+	expect(ids.length).toBeGreaterThan(20); // idem : le catalogue doit dépasser largement le plafond
+	const seed = seedRevisionEnMasse(ids, 1, 1);
+	await page.addInitScript(seed.fn, seed.arg);
+	await gotoHash(page, 'encadrant');
+
+	const section = page.locator('.enc-rev-section');
+	await expect(section.locator('.enc-hint')).toHaveText(
+		`${ids.length} entrées en révision, dont ${ids.length} à réviser.`,
+	);
+
+	await section.locator('[data-act="revision-mode"][data-mode="urgence"]').click();
+
+	// Plafonnée à MAX_URGENCE = 20, visible sans interaction.
+	const visibles = section.locator('.enc-block > ul.enc-rev-flat > li.enc-rev-item');
+	await expect(visibles).toHaveCount(20);
+
+	const repli = section.locator('details.enc-rev-plus');
+	const resume = repli.locator('summary.enc-rev-plus-sum');
+	const plus = resume.locator('.enc-repli-plus');
+	const moins = resume.locator('.enc-repli-moins');
+	const reste = ids.length - 20;
+	// Toutes les entrées seedées sont dues : le repli le redit, pas seulement le compte.
+	await expect(plus).toHaveText(`${reste} autres, dont ${reste} à réviser`);
+	await expect(plus).toBeVisible();
+	await expect(moins).toBeHidden();
+
+	const caches = repli.locator('ul.enc-rev-flat > li.enc-rev-item');
+	await expect(caches).toHaveCount(reste);
+	await expect(caches.first()).toBeHidden();
+
+	await resume.click();
+	await expect(caches.first()).toBeVisible();
+	await expect(plus).toBeHidden();
+	await expect(moins).toBeVisible();
+
+	// Même bouton de pied, même effet dans cette vue (présent dans les DEUX vues plafonnées).
+	const finBouton = repli.locator('button.enc-repli-fin[data-act="revision-replier"]');
+	await expect(finBouton).toBeVisible();
+	await finBouton.click();
+	await expect(plus).toBeVisible();
+	await expect(moins).toBeHidden();
+	await expect(caches.first()).toBeHidden();
+	await expect(resume).toBeFocused();
+
+	expect(errors).toEqual([]);
+});
+
+/* Le handler (`revisionClick`, revision-replier) referme le SEUL <details> englobant le
+   bouton cliqué, SANS appeler `renderEspace()` (cf. commentaire du handler) : re-rendre
+   toute la vue recréerait chaque <details> à l'état FERMÉ par défaut, refermant du même
+   coup n'importe quel AUTRE repli resté ouvert par l'adulte. Deux étages distincts, tous
+   deux au-delà de MAX_PAR_ETAGE, permettent de le vérifier : si un renderEspace() venait
+   à être ajouté plus tard par erreur, ce test le verrait (le second repli se refermerait
+   avec le premier). */
+test('récap Révision : le bouton de pied referme SON repli sans affecter les autres ni re-rendre la vue « Par palier »', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	const math = leconsDuNiveau('math', 'ce2');
+	const idsA = math.slice(0, 9);
+	const idsB = math.slice(34, 43);
+	expect(idsA.length).toBeGreaterThan(6);
+	expect(idsB.length).toBeGreaterThan(6);
+	const seed = seedRevisionGroupes([
+		{ ids: idsA, palier: 0, joursRetard: 1 },
+		{ ids: idsB, palier: 2, joursRetard: 1 },
+	]);
+	await page.addInitScript(seed.fn, seed.arg);
+	await gotoHash(page, 'encadrant');
+
+	const section = page.locator('.enc-rev-section');
+	await section.locator('[data-act="revision-mode"][data-mode="palier"]').click();
+
+	const etages = section.locator('.enc-rev-etage');
+	await expect(etages).toHaveCount(2);
+	const etageA = etages.nth(0); // palier 0 → « 1 jour »
+	const etageB = etages.nth(1); // palier 2 → « 1 semaine »
+
+	// Ouvre les DEUX reliquats.
+	const resumeA = etageA.locator('summary.enc-rev-etage-plus-sum');
+	const resumeB = etageB.locator('summary.enc-rev-etage-plus-sum');
+	await resumeA.click();
+	await resumeB.click();
+	const moinsA = resumeA.locator('.enc-repli-moins');
+	const moinsB = resumeB.locator('.enc-repli-moins');
+	await expect(moinsA).toBeVisible();
+	await expect(moinsB).toBeVisible();
+
+	// Referme SEULEMENT le premier, par son bouton de pied.
+	await etageA.locator('button.enc-repli-fin[data-act="revision-replier"]').click();
+
+	// Le premier repli est refermé, le focus revient sur SON <summary>...
+	await expect(resumeA.locator('.enc-repli-plus')).toBeVisible();
+	await expect(moinsA).toBeHidden();
+	await expect(resumeA).toBeFocused();
+
+	// ...mais le SECOND reste ouvert : la vue n'a pas été re-rendue en entier.
+	await expect(moinsB).toBeVisible();
+	await expect(resumeB.locator('.enc-repli-plus')).toBeHidden();
 
 	expect(errors).toEqual([]);
 });

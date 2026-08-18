@@ -135,6 +135,10 @@ test("frise d'une liste de dictée « en cours » : 12 cellules, préfixe inconn
 	await expect(cells.first()).toHaveClass(/enc-frise-inconnu/);
 	await expect(cells.last()).toHaveClass(/enc-frise-en-cours/);
 	await expect(cells.last()).toHaveClass(/enc-frise-courante/);
+	// Puce d'état omise mais sa gouttière réservée, même règle que sur une ligne de leçon
+	// (cf. encadrant.spec.ts, test 10) — seul le placeholder subsiste, jamais de pastille COLORÉE.
+	await expect(ligne.locator('.enc-detail-puce.enc-detail-puce--reserve')).toHaveCount(1);
+	await expect(ligne.locator('.enc-detail-puce[class*="enc-key-"]')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });
@@ -154,6 +158,8 @@ test("frise d'une liste de dictée « acquise » : dernière cellule acquise et 
 	await expect(cells).toHaveCount(12);
 	await expect(cells.last()).toHaveClass(/enc-frise-acquis/);
 	await expect(cells.last()).toHaveClass(/enc-frise-courante/);
+	await expect(ligne.locator('.enc-detail-puce.enc-detail-puce--reserve')).toHaveCount(1);
+	await expect(ligne.locator('.enc-detail-puce[class*="enc-key-"]')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });

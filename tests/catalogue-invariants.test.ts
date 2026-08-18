@@ -46,6 +46,10 @@ import { withSeed } from '../src/core/utils';
      catalogue est structurellement trivial (comparaison numérique de la réponse à
      elle-même — la vraie correction est cellule par cellule) ; il ne vaut que comme
      garde « ne lève pas / réponse présente ».
+
+   Le harnais porte aussi un LINTER MÉTIER sur la typographie des réponses attendues
+   (#578) : voir `REGLES_TYPO` plus bas. Il s'applique aux deux chemins, donc à tous
+   les niveaux ET tous les modes.
    ============================================================ */
 
 const LESSONS = getAllLessons();
@@ -66,6 +70,54 @@ const CORRECTION_DELEGUEE = new Set([
 	'tableauConversion',
 ]);
 
+/* ------------------------------------------------------------
+   Linter métier : typographie des RÉPONSES ATTENDUES (#578).
+
+   Une seule de ces règles garde la CORRECTION : l'apostrophe typographique.
+   `normalizeText` (src/core/utils.ts) trime, réduit les blancs internes et normalise
+   en NFC, mais ne replie PAS `’` (U+2019) vers `'` — choix acté, l'apostrophe droite
+   est celle du clavier. Une réponse attendue qui porte `’` est donc INCORRIGIBLE dès
+   qu'elle est saisie. Le défaut est invisible en relecture (src/data/ compte des
+   centaines de `’` dans du texte AFFICHÉ, où ils sont légitimes) et en e2e (les specs
+   ne couvrent qu'un échantillon de leçons) : d'où un gate sur la seule surface qui
+   compte, ce que l'enfant doit produire.
+
+   Les trois autres règles ne cassent pas la correction (normalizeText neutralise les
+   blancs des DEUX côtés). Elles sont verrouillées parce que la réponse attendue est
+   affichée telle quelle ailleurs : révélation, corrigé imprimé, journal d'erreurs de
+   l'espace encadrant. Forme unique, coût nul.
+
+   EXEMPTION documentée : l'espace fine insécable U+202F ENTRE DEUX CHIFFRES est le
+   séparateur de milliers produit par `formatNombre`, et le mode « tuiles » de la
+   numération stocke volontairement la réponse groupée pour qu'elle corresponde au
+   libellé de la tuile (cf. data/maths/numeration.ts). Interdire U+202F sans cette
+   exemption rejetterait du contenu correct. U+00A0, lui, n'est jamais produit par le
+   moteur : il reste en faute partout.
+   ------------------------------------------------------------ */
+const REGLES_TYPO: { nom: string; enFaute: (s: string) => boolean }[] = [
+	{
+		nom: "apostrophe typographique U+2019 (l'enfant tape ' au clavier : réponse incorrigible)",
+		enFaute: (s) => s.includes('’'),
+	},
+	{
+		nom: 'espace insécable hors séparateur de milliers (U+00A0, ou U+202F pas entre deux chiffres)',
+		// Écrits en ÉCHAPPEMENTS : ces caractères sont invisibles en littéral, donc
+		// indétectables à la relecture et faciles à écraser par un copier-coller.
+		enFaute: (s) => s.includes('\u00a0') || /\u202f/.test(s.replace(/(\d)\u202f(?=\d)/g, '$1')),
+	},
+	{ nom: 'double espace', enFaute: (s) => / {2}/.test(s) },
+	{ nom: 'espace en tête ou en fin', enFaute: (s) => s !== s.trim() },
+];
+
+function assertTypographie(valeur: unknown, où: string): void {
+	if (typeof valeur !== 'string') return;
+	for (const regle of REGLES_TYPO) {
+		expect(regle.enFaute(valeur), `${où} : réponse attendue « ${valeur} » — ${regle.nom}`).toBe(
+			false,
+		);
+	}
+}
+
 /* Bonne formation d'un exercice BRUT (moteur), + round-trip quand la correction n'est
    pas déléguée à un runner. Sert à éprouver CHAQUE mode déclaré d'un ExerciseType. */
 function assertExercise(type: ExerciseType, ex: Exercise, où: string): void {
@@ -73,9 +125,15 @@ function assertExercise(type: ExerciseType, ex: Exercise, où: string): void {
 	if ('answer' in ex) {
 		const ans = String(ex.answer);
 		expect(ans.trim(), `${où} : réponse vide`).not.toBe('');
+		assertTypographie(ex.answer, où);
 		if (!CORRECTION_DELEGUEE.has(ex.type)) {
 			expect(type.check(ex, ans), `${où} : round-trip — check() rejette « ${ans} »`).toBe(true);
 		}
+	}
+	// Formes équivalentes acceptées (type 'text') : mêmes exigences typographiques que la
+	// réponse canonique — ce sont des réponses que l'enfant peut avoir à saisir.
+	if ('answers' in ex) {
+		for (const alt of ex.answers ?? []) assertTypographie(alt, où);
 	}
 	if (ex.type === 'qcm') {
 		expect(ex.choices.length, `${où} : QCM à moins de 2 choix`).toBeGreaterThanOrEqual(2);
@@ -120,11 +178,14 @@ function assertItem(item: Item, où: string): void {
 	const ans = String(item.answer);
 	expect(ans.trim(), `${où} : réponse vide`).not.toBe('');
 
+	assertTypographie(item.answer, où);
+
 	expect(
 		checkItemAnswer(item, ans),
 		`${où} : round-trip — réponse canonique « ${ans} » rejetée`,
 	).toBe(true);
 	for (const alt of item.answers ?? []) {
+		assertTypographie(alt, où);
 		expect(checkItemAnswer(item, alt), `${où} : forme équivalente « ${alt} » rejetée`).toBe(true);
 	}
 

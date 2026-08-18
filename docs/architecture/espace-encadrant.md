@@ -789,6 +789,22 @@ répété sur la ligne — reste l'échéance, seule information qui varie encor
 l'autre à palier égal. Seul chiffre affiché : un dénombrement (« X en révision, dont Y à réviser
 · Z déjà acquises »), aucun pourcentage ni note.
 
+**« Par palier » et « Par urgence » sont plafonnées** : rien ne borne le nombre d'entrées d'un
+profil (une par leçon travaillée et par mot d'orthographe en rotation), et les deux vues à plat
+devenaient un mur illisible sur un profil réel chargé. **6 lignes** visibles par étage
+(`MAX_PAR_ETAGE`) et **20 lignes** au total en « Par urgence » (`MAX_URGENCE`, module
+`ui/encadrant-revision.ts`) ; le tri par urgence plaçant déjà les plus pressantes en tête, le
+plafond ne coupe que la queue la moins urgente. Le reliquat rejoint un repli `<details>` (même
+geste que « Travaillé récemment » et l'historique des erreurs plus haut) dont le libellé redit
+aussi les entrées DUES qu'il cache (« N autres, dont M à réviser »), avec un contrôle « Voir
+moins » en tête ET en pied (le second vise un reliquat de plusieurs centaines de lignes, où le
+résumé d'ouverture est loin en haut de l'écran). **Invariant** : l'en-tête d'un étage
+(`resumeEtage`) et la synthèse du bloc comptent toujours la liste COMPLÈTE, jamais la tranche
+affichée — c'est ce qui permet de plafonner sans mentir sur ce que contient la file. Un filet
+coloré (`--admin-accent`, `--ok` pour l'étage « Acquis ») sépare deux étages consécutifs. La vue
+« Par catégorie » n'a pas ce plafond : ses `<details>` par catégorie sont déjà repliés par
+défaut.
+
 **Distinct de « à revoir » ci-dessus** : cette file reflète le moteur de révision espacée
 (#45), automatique et alimentée par le passage en session ; la file « à revoir »
 (`ludaskia_revoir`) reste un mécanisme **manuel**, épinglé par l'encadrant. Les deux

@@ -195,10 +195,13 @@ ci-dessous.
   courant + échéance relative par entrée, badge « acquis » pour les entrées sorties de
   rotation. Bascule **« Par catégorie »** (regroupement dépliable, même chrome que
   « Notions par catégorie »), **« Par urgence »** (liste à plat, plus en retard
-  d'abord) et **« Par palier »** (#555 — étages de l'escalier de répétition espacée,
-  du moins ancré au plus ancré, en-têtes de section `<h3>` NON repliables, étages
-  vides omis) ; handler `revision-mode` (composant segment partagé — variante `wrap`
-  depuis cette 3e option, cf. `segment.ts` plus bas).
+  d'abord, plafonnée à 20 lignes) et **« Par palier »** (#555 — étages de l'escalier
+  de répétition espacée, du moins ancré au plus ancré, en-têtes de section `<h3>` NON
+  repliables comptant toujours la liste complète, étages vides omis, chaque étage
+  plafonné à 6 lignes) ; les deux vues à plat renvoient leur reliquat dans un repli
+  dépliable. Handler `revision-mode` (composant segment partagé — variante `wrap`
+  depuis cette 3e option, cf. `segment.ts` plus bas). Détail fonctionnel dans [Espace
+  encadrant](espace-encadrant.md).
 - **`encadrant-seance.ts`** (#440) — **compositeur** du « programme du jour » du
   profil consulté, en tête de l'onglet **Programme** (#459) : programmes (nom, étapes +
   `count`, récurrence date/hebdo — bascule `seance-rec-type`, composant segment

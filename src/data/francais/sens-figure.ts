@@ -171,7 +171,7 @@ export const GROUPES_SENS: GroupeSens[] = [
 	},
 	{
 		propre: 'faire une chute',
-		figure: 'changer d’état (devenir)',
+		figure: "changer d'état (devenir)",
 		distracteur: "s'envoler",
 		phrases: [
 			{ phrase: 'Il tombe de vélo.', mot: 'tombe', sens: 'propre' },

@@ -598,7 +598,7 @@ export const PREFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'déballer',
-		sens: 'le contraire d’emballer',
+		sens: "le contraire d'emballer",
 		distracteurs: ['emballer avec soin', 'emballer deux fois'],
 		explication: 'Le préfixe « dé- » indique le contraire : déballer = ouvrir ce qui est emballé.',
 	},
@@ -616,7 +616,7 @@ export const PREFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'décrocher',
-		sens: 'le contraire d’accrocher',
+		sens: "le contraire d'accrocher",
 		distracteurs: ['accrocher très haut', 'accrocher deux fois'],
 		explication:
 			'Le préfixe « dé- » indique le contraire : décrocher = enlever ce qui est accroché.',
@@ -630,7 +630,7 @@ export const PREFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'démêler',
-		sens: 'le contraire d’emmêler',
+		sens: "le contraire d'emmêler",
 		distracteurs: ['mêler deux couleurs', 'emmêler très fort'],
 		explication: 'Le préfixe « dé- » indique le contraire : démêler = séparer ce qui est emmêlé.',
 	},
@@ -643,14 +643,14 @@ export const PREFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'désobéir',
-		sens: 'le contraire d’obéir',
+		sens: "le contraire d'obéir",
 		distracteurs: ['obéir tout de suite', 'obéir en silence'],
 		explication: 'Le préfixe « dés- » indique le contraire : désobéir = ne pas obéir.',
 	},
 	{
 		mot: 'désordre',
-		sens: 'le contraire de l’ordre',
-		distracteurs: ['beaucoup d’ordre', 'un ordre donné'],
+		sens: "le contraire de l'ordre",
+		distracteurs: ["beaucoup d'ordre", 'un ordre donné'],
 		explication: 'Le préfixe « dés- » indique le contraire : désordre = absence d’ordre.',
 	},
 	{
@@ -722,20 +722,20 @@ export const PREFIXES: ItemAffixe[] = [
 	{
 		mot: 'prévenir',
 		sens: 'avertir avant',
-		distracteurs: ['aider après', 'punir d’abord'],
+		distracteurs: ['aider après', "punir d'abord"],
 		explication:
 			'Le préfixe « pré- » veut dire « avant » : prévenir = avertir avant que ça arrive.',
 	},
 	{
 		mot: 'préhistoire',
-		sens: 'l’époque avant l’histoire',
-		distracteurs: ['une très longue histoire', 'la fin de l’histoire'],
+		sens: "l'époque avant l'histoire",
+		distracteurs: ['une très longue histoire', "la fin de l'histoire"],
 		explication:
 			'Le préfixe « pré- » veut dire « avant » : préhistoire = le temps avant l’écriture de l’histoire.',
 	},
 	{
 		mot: 'prévoir',
-		sens: 'voir à l’avance',
+		sens: "voir à l'avance",
 		distracteurs: ['voir très loin', 'voir très bien'],
 		explication:
 			'Le préfixe « pré- » veut dire « avant » : prévoir = imaginer avant ce qui va arriver.',
@@ -756,7 +756,7 @@ export const PREFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'prédire',
-		sens: 'dire à l’avance',
+		sens: "dire à l'avance",
 		distracteurs: ['dire deux fois', 'dire tout bas'],
 		explication:
 			'Le préfixe « pré- » veut dire « avant » : prédire = dire à l’avance ce qui va arriver.',
@@ -782,7 +782,7 @@ export const PREFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'survêtement',
-		sens: 'un vêtement qu’on met par-dessus',
+		sens: "un vêtement qu'on met par-dessus",
 		distracteurs: ['un vêtement chaud', 'un vêtement de dessous'],
 		explication:
 			'Le préfixe « sur- » veut dire « au-dessus » : un survêtement se met par-dessus les autres vêtements.',
@@ -818,7 +818,7 @@ export const PREFIXES: ItemAffixe[] = [
 		mot: 'sous-titre',
 		// « texte sous l'image » se confondait avec une légende de photo : le sens dit
 		// maintenant le film, et les distracteurs sont de longueur comparable.
-		sens: 'texte écrit sous les images d’un film',
+		sens: "texte écrit sous les images d'un film",
 		distracteurs: ['titre écrit en haut de la page', 'grand titre au début du livre'],
 		explication:
 			'Le préfixe « sous- » veut dire « en dessous » : sous-titre = texte écrit sous les images d’un film.',
@@ -832,15 +832,15 @@ export const PREFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'sous-vêtement',
-		sens: 'un vêtement qu’on met sous les autres',
-		distracteurs: ['un vêtement qu’on met par-dessus', 'un vêtement d’hiver'],
+		sens: "un vêtement qu'on met sous les autres",
+		distracteurs: ["un vêtement qu'on met par-dessus", "un vêtement d'hiver"],
 		explication:
 			'Le préfixe « sous- » veut dire « en dessous » : un sous-vêtement se met sous les autres vêtements, à l’inverse d’un survêtement.',
 	},
 	{
 		mot: 'souligner',
 		sens: 'tracer un trait sous un mot',
-		distracteurs: ['tracer un trait au-dessus d’un mot', 'entourer un mot'],
+		distracteurs: ["tracer un trait au-dessus d'un mot", 'entourer un mot'],
 		explication:
 			'Le préfixe « sous- » veut dire « en dessous » : souligner = tracer un trait sous un mot, à l’inverse de surligner.',
 	},
@@ -961,27 +961,27 @@ export const SUFFIXES: ItemAffixe[] = [
 	},
 	{
 		mot: 'natation',
-		sens: 'l’action de nager',
-		distracteurs: ['l’action de courir', 'l’action de sauter'],
+		sens: "l'action de nager",
+		distracteurs: ["l'action de courir", "l'action de sauter"],
 		explication: 'Le suffixe « -tion » désigne l’action : la natation, c’est l’action de nager.',
 	},
 	{
 		mot: 'punition',
-		sens: 'l’action de punir',
-		distracteurs: ['l’action de récompenser', 'l’action de pardonner'],
+		sens: "l'action de punir",
+		distracteurs: ["l'action de récompenser", "l'action de pardonner"],
 		explication: 'Le suffixe « -tion » désigne l’action : une punition, c’est l’action de punir.',
 	},
 	{
 		mot: 'décoration',
-		sens: 'l’action de décorer',
-		distracteurs: ['l’action de salir', 'l’action de casser'],
+		sens: "l'action de décorer",
+		distracteurs: ["l'action de salir", "l'action de casser"],
 		explication:
 			'Le suffixe « -tion » désigne l’action : la décoration, c’est l’action de décorer.',
 	},
 	{
 		mot: 'plantation',
-		sens: 'l’action de planter',
-		distracteurs: ['l’action de couper', 'l’action d’arroser'],
+		sens: "l'action de planter",
+		distracteurs: ["l'action de couper", "l'action d'arroser"],
 		explication:
 			'Le suffixe « -tion » désigne l’action : une plantation, c’est l’action de planter.',
 	},
@@ -989,192 +989,192 @@ export const SUFFIXES: ItemAffixe[] = [
 		mot: 'addition',
 		// La réponse ne reprend PAS « additionner » : sinon l'enfant apparie les lettres du
 		// mot interrogé au lieu de décoder le suffixe (cf. garde anti-fuite des tests).
-		sens: 'l’action d’ajouter',
-		distracteurs: ['l’action de retirer', 'l’action de partager'],
+		sens: "l'action d'ajouter",
+		distracteurs: ["l'action de retirer", "l'action de partager"],
 		explication:
 			'Le suffixe « -tion » désigne l’action : une addition, c’est l’action d’ajouter des nombres.',
 	},
 	{
 		mot: 'multiplication',
-		sens: 'l’action de multiplier',
-		distracteurs: ['l’action de diviser', 'l’action de soustraire'],
+		sens: "l'action de multiplier",
+		distracteurs: ["l'action de diviser", "l'action de soustraire"],
 		explication:
 			'Le suffixe « -tion » désigne l’action : une multiplication, c’est l’action de multiplier.',
 	},
 	{
 		mot: 'soustraction',
-		sens: 'l’action d’enlever',
-		distracteurs: ['l’action d’additionner', 'l’action de multiplier'],
+		sens: "l'action d'enlever",
+		distracteurs: ["l'action d'additionner", "l'action de multiplier"],
 		explication:
 			'Le suffixe « -tion » désigne l’action : une soustraction, c’est l’action de soustraire, d’enlever.',
 	},
 	{
 		mot: 'correction',
-		sens: 'l’action de corriger',
-		distracteurs: ['l’action de recopier', 'l’action d’effacer'],
+		sens: "l'action de corriger",
+		distracteurs: ["l'action de recopier", "l'action d'effacer"],
 		explication:
 			'Le suffixe « -tion » désigne l’action : une correction, c’est l’action de corriger.',
 	},
 	{
 		mot: 'récitation',
-		sens: 'l’action de réciter',
-		distracteurs: ['l’action de lire', 'l’action d’écouter'],
+		sens: "l'action de réciter",
+		distracteurs: ["l'action de lire", "l'action d'écouter"],
 		explication:
 			'Le suffixe « -tion » désigne l’action : une récitation, c’est l’action de réciter.',
 	},
 	{
 		mot: 'division',
-		sens: 'l’action de diviser',
-		distracteurs: ['l’action de multiplier', 'l’action d’ajouter'],
+		sens: "l'action de diviser",
+		distracteurs: ["l'action de multiplier", "l'action d'ajouter"],
 		explication:
 			'Le suffixe « -sion » désigne l’action : une division, c’est l’action de diviser, de partager.',
 	},
 	{
 		mot: 'description',
-		sens: 'l’action de décrire quelque chose',
-		distracteurs: ['l’action de dessiner', 'l’action de raconter une histoire'],
+		sens: "l'action de décrire quelque chose",
+		distracteurs: ["l'action de dessiner", "l'action de raconter une histoire"],
 		explication:
 			'Le suffixe « -tion » désigne l’action : une description, c’est l’action de décrire.',
 	},
 	{
 		mot: 'lentement',
-		sens: 'd’une manière lente',
-		distracteurs: ['d’une manière rapide', 'd’une manière forte'],
+		sens: "d'une manière lente",
+		distracteurs: ["d'une manière rapide", "d'une manière forte"],
 		explication: 'Le suffixe « -ment » indique la manière : lentement, c’est d’une manière lente.',
 	},
 	{
 		mot: 'doucement',
-		sens: 'd’une manière douce',
-		distracteurs: ['d’une manière brutale', 'd’une manière bruyante'],
+		sens: "d'une manière douce",
+		distracteurs: ["d'une manière brutale", "d'une manière bruyante"],
 		explication: 'Le suffixe « -ment » indique la manière : doucement, c’est d’une manière douce.',
 	},
 	{
 		mot: 'rapidement',
-		sens: 'd’une manière rapide',
-		distracteurs: ['d’une manière lente', 'd’une manière calme'],
+		sens: "d'une manière rapide",
+		distracteurs: ["d'une manière lente", "d'une manière calme"],
 		explication:
 			'Le suffixe « -ment » indique la manière : rapidement, c’est d’une manière rapide.',
 	},
 	{
 		mot: 'calmement',
-		sens: 'd’une manière calme',
-		distracteurs: ['d’une manière énervée', 'd’une manière rapide'],
+		sens: "d'une manière calme",
+		distracteurs: ["d'une manière énervée", "d'une manière rapide"],
 		explication: 'Le suffixe « -ment » indique la manière : calmement, c’est d’une manière calme.',
 	},
 	{
 		mot: 'poliment',
-		sens: 'd’une manière polie',
-		distracteurs: ['d’une manière méchante', 'd’une manière triste'],
+		sens: "d'une manière polie",
+		distracteurs: ["d'une manière méchante", "d'une manière triste"],
 		explication: 'Le suffixe « -ment » indique la manière : poliment, c’est d’une manière polie.',
 	},
 	{
 		mot: 'tristement',
-		sens: 'd’une manière triste',
-		distracteurs: ['d’une manière joyeuse', 'd’une manière forte'],
+		sens: "d'une manière triste",
+		distracteurs: ["d'une manière joyeuse", "d'une manière forte"],
 		explication:
 			'Le suffixe « -ment » indique la manière : tristement, c’est d’une manière triste.',
 	},
 	{
 		mot: 'fortement',
-		sens: 'd’une manière forte',
-		distracteurs: ['d’une manière faible', 'd’une manière douce'],
+		sens: "d'une manière forte",
+		distracteurs: ["d'une manière faible", "d'une manière douce"],
 		explication: 'Le suffixe « -ment » indique la manière : fortement, c’est d’une manière forte.',
 	},
 	{
 		mot: 'joyeusement',
-		sens: 'd’une manière joyeuse',
-		distracteurs: ['d’une manière triste', 'd’une manière calme'],
+		sens: "d'une manière joyeuse",
+		distracteurs: ["d'une manière triste", "d'une manière calme"],
 		explication:
 			'Le suffixe « -ment » indique la manière : joyeusement, c’est d’une manière joyeuse.',
 	},
 	{
 		mot: 'simplement',
-		sens: 'd’une manière simple',
-		distracteurs: ['d’une manière compliquée', 'd’une manière rapide'],
+		sens: "d'une manière simple",
+		distracteurs: ["d'une manière compliquée", "d'une manière rapide"],
 		explication:
 			'Le suffixe « -ment » indique la manière : simplement, c’est d’une manière simple.',
 	},
 	{
 		mot: 'facilement',
-		sens: 'd’une manière facile',
-		distracteurs: ['d’une manière difficile', 'd’une manière lente'],
+		sens: "d'une manière facile",
+		distracteurs: ["d'une manière difficile", "d'une manière lente"],
 		explication:
 			'Le suffixe « -ment » indique la manière : facilement, c’est d’une manière facile.',
 	},
 	{
 		mot: 'franchement',
-		sens: 'd’une manière franche',
-		distracteurs: ['d’une manière timide', 'd’une manière moqueuse'],
+		sens: "d'une manière franche",
+		distracteurs: ["d'une manière timide", "d'une manière moqueuse"],
 		explication:
 			'Le suffixe « -ment » indique la manière : franchement, c’est d’une manière franche.',
 	},
 	{
 		mot: 'sérieusement',
-		sens: 'd’une manière sérieuse',
-		distracteurs: ['d’une manière amusante', 'd’une manière rapide'],
+		sens: "d'une manière sérieuse",
+		distracteurs: ["d'une manière amusante", "d'une manière rapide"],
 		explication:
 			'Le suffixe « -ment » indique la manière : sérieusement, c’est d’une manière sérieuse.',
 	},
 	{
 		mot: 'lavable',
-		sens: 'qu’on peut laver',
-		distracteurs: ['qu’on peut manger', 'qu’on peut casser'],
+		sens: "qu'on peut laver",
+		distracteurs: ["qu'on peut manger", "qu'on peut casser"],
 		explication:
 			'Le suffixe « -able » indique ce qui est possible : lavable, c’est qu’on peut laver.',
 	},
 	{
 		mot: 'mangeable',
-		sens: 'qu’on peut manger',
-		distracteurs: ['qu’on peut boire', 'qu’on peut laver'],
+		sens: "qu'on peut manger",
+		distracteurs: ["qu'on peut boire", "qu'on peut laver"],
 		explication:
 			'Le suffixe « -able » indique ce qui est possible : mangeable, c’est qu’on peut manger.',
 	},
 	{
 		mot: 'buvable',
-		sens: 'qu’on peut boire',
-		distracteurs: ['qu’on peut manger', 'qu’on peut verser'],
+		sens: "qu'on peut boire",
+		distracteurs: ["qu'on peut manger", "qu'on peut verser"],
 		explication:
 			'Le suffixe « -able » indique ce qui est possible : buvable, c’est qu’on peut boire.',
 	},
 	{
 		mot: 'pliable',
-		sens: 'qu’on peut plier',
-		distracteurs: ['qu’on peut couper', 'qu’on peut peindre'],
+		sens: "qu'on peut plier",
+		distracteurs: ["qu'on peut couper", "qu'on peut peindre"],
 		explication:
 			'Le suffixe « -able » indique ce qui est possible : pliable, c’est qu’on peut plier.',
 	},
 	{
 		mot: 'cassable',
-		sens: 'qu’on peut casser',
-		distracteurs: ['qu’on peut réparer', 'qu’on peut ranger'],
+		sens: "qu'on peut casser",
+		distracteurs: ["qu'on peut réparer", "qu'on peut ranger"],
 		explication:
 			'Le suffixe « -able » indique ce qui est possible : cassable, c’est qu’on peut casser.',
 	},
 	{
 		mot: 'réparable',
-		sens: 'qu’on peut réparer',
-		distracteurs: ['qu’on peut jeter', 'qu’on peut casser'],
+		sens: "qu'on peut réparer",
+		distracteurs: ["qu'on peut jeter", "qu'on peut casser"],
 		explication:
 			'Le suffixe « -able » indique ce qui est possible : réparable, c’est qu’on peut réparer.',
 	},
 	{
 		mot: 'gonflable',
-		sens: 'qu’on peut gonfler',
-		distracteurs: ['qu’on peut plier', 'qu’on peut laver'],
+		sens: "qu'on peut gonfler",
+		distracteurs: ["qu'on peut plier", "qu'on peut laver"],
 		explication:
 			'Le suffixe « -able » indique ce qui est possible : gonflable, c’est qu’on peut gonfler, comme une piscine gonflable.',
 	},
 	{
 		mot: 'recyclable',
-		sens: 'qu’on peut recycler',
-		distracteurs: ['qu’on peut manger', 'qu’on peut jeter n’importe où'],
+		sens: "qu'on peut recycler",
+		distracteurs: ["qu'on peut manger", "qu'on peut jeter n'importe où"],
 		explication:
 			'Le suffixe « -able » indique ce qui est possible : recyclable, c’est qu’on peut recycler.',
 	},
 	{
 		mot: 'lisible',
-		sens: 'qu’on peut lire',
-		distracteurs: ['qu’on peut écrire', 'qu’on peut effacer'],
+		sens: "qu'on peut lire",
+		distracteurs: ["qu'on peut écrire", "qu'on peut effacer"],
 		explication:
 			'Le suffixe « -ible » indique ce qui est possible : lisible, c’est qu’on peut lire facilement.',
 	},
@@ -1354,7 +1354,7 @@ export const PREFIXES_CM1: ItemAffixe[] = [
 	},
 	{
 		mot: 'transporter',
-		sens: 'porter d’un endroit à un autre',
+		sens: "porter d'un endroit à un autre",
 		distracteurs: ['porter très lourd', 'poser quelque chose'],
 		explication:
 			'Le préfixe « trans- » veut dire « d’un côté à l’autre » : transporter = porter d’un endroit à un autre.',
@@ -1369,7 +1369,7 @@ export const PREFIXES_CM1: ItemAffixe[] = [
 	{
 		mot: 'bicolore',
 		sens: 'qui a deux couleurs',
-		distracteurs: ['qui a beaucoup de couleurs', 'qui n’a pas de couleur'],
+		distracteurs: ['qui a beaucoup de couleurs', "qui n'a pas de couleur"],
 		explication: 'Le préfixe « bi- » veut dire « deux » : bicolore = qui a deux couleurs.',
 	},
 	{
@@ -1427,41 +1427,41 @@ export const PREFIXES_CM1: ItemAffixe[] = [
 export const SUFFIXES_CM1: ItemAffixe[] = [
 	{
 		mot: 'lavage',
-		sens: 'l’action de laver',
-		distracteurs: ['l’endroit pour se laver', 'ce qui sert à laver'],
+		sens: "l'action de laver",
+		distracteurs: ["l'endroit pour se laver", 'ce qui sert à laver'],
 		explication: 'Le suffixe « -age » indique l’action : le lavage, c’est l’action de laver.',
 	},
 	{
 		mot: 'passage',
-		sens: 'l’action de passer',
-		distracteurs: ['l’endroit pour dormir', 'l’action de rester'],
+		sens: "l'action de passer",
+		distracteurs: ["l'endroit pour dormir", "l'action de rester"],
 		explication:
 			'Le suffixe « -age » indique l’action ou l’endroit : le passage, c’est l’action de passer.',
 	},
 	{
 		mot: 'bricolage',
-		sens: 'l’action de bricoler',
-		distracteurs: ['l’action de construire une grande maison', 'l’action de réparer une voiture'],
+		sens: "l'action de bricoler",
+		distracteurs: ["l'action de construire une grande maison", "l'action de réparer une voiture"],
 		explication: 'Le suffixe « -age » indique l’action : le bricolage, c’est l’action de bricoler.',
 	},
 	{
 		mot: 'grandeur',
 		sens: 'la qualité de ce qui est grand',
-		distracteurs: ['celui qui est grand', 'l’action de grandir'],
+		distracteurs: ['celui qui est grand', "l'action de grandir"],
 		explication:
 			'Le suffixe « -eur » désigne ici une qualité : la grandeur, c’est la qualité de ce qui est grand.',
 	},
 	{
 		mot: 'douceur',
 		sens: 'la qualité de ce qui est doux',
-		distracteurs: ['celui qui est doux', 'l’action d’adoucir'],
+		distracteurs: ['celui qui est doux', "l'action d'adoucir"],
 		explication:
 			'Le suffixe « -eur » désigne ici une qualité : la douceur, c’est la qualité de ce qui est doux.',
 	},
 	{
 		mot: 'fraîcheur',
 		sens: 'la qualité de ce qui est frais',
-		distracteurs: ['l’action de refroidir', 'celui qui a froid'],
+		distracteurs: ["l'action de refroidir", 'celui qui a froid'],
 		explication:
 			'Le suffixe « -eur » désigne ici une qualité : la fraîcheur, c’est la qualité de ce qui est frais.',
 	},
@@ -1481,28 +1481,28 @@ export const SUFFIXES_CM1: ItemAffixe[] = [
 	},
 	{
 		mot: 'cerisier',
-		sens: 'l’arbre qui donne des cerises',
+		sens: "l'arbre qui donne des cerises",
 		distracteurs: ['celui qui vend des cerises', 'un panier pour les cerises'],
 		explication:
 			'Le suffixe « -ier » désigne souvent l’arbre : un cerisier, c’est l’arbre qui donne des cerises.',
 	},
 	{
 		mot: 'oranger',
-		sens: 'l’arbre qui donne des oranges',
-		distracteurs: ['celui qui vend des oranges', 'un jus d’orange'],
+		sens: "l'arbre qui donne des oranges",
+		distracteurs: ['celui qui vend des oranges', "un jus d'orange"],
 		explication:
 			'Le suffixe « -er » désigne souvent l’arbre : un oranger, c’est l’arbre qui donne des oranges.',
 	},
 	{
 		mot: 'solitude',
-		sens: 'l’état d’être seul',
-		distracteurs: ['l’action d’aider les autres', 'le fait d’avoir beaucoup d’amis'],
+		sens: "l'état d'être seul",
+		distracteurs: ["l'action d'aider les autres", "le fait d'avoir beaucoup d'amis"],
 		explication: 'Le suffixe « -itude » indique un état : la solitude, c’est l’état d’être seul.',
 	},
 	{
 		mot: 'exactitude',
 		sens: 'la qualité de ce qui est exact',
-		distracteurs: ['l’action de se tromper', 'le fait d’être en retard'],
+		distracteurs: ["l'action de se tromper", "le fait d'être en retard"],
 		explication:
 			'Le suffixe « -itude » indique ici une qualité : l’exactitude, c’est la qualité de ce qui est exact.',
 	},

@@ -29,6 +29,16 @@ import { segmentHTML } from './segment';
 type VueRevision = 'categorie' | 'urgence' | 'palier';
 let vueRevision: VueRevision = 'categorie';
 
+/* Lignes visibles avant repli dans les deux vues qui listent SANS accordéon (avis designer).
+   Deux plafonds distincts parce que les deux listes n'ont pas la même portée : un étage est
+   un sous-niveau parmi sept, la liste à plat est le corps entier de la vue. La vue « Par
+   catégorie » n'en a pas besoin — ses <details> sont déjà repliés par défaut.
+   Les compteurs affichés (synthèse du bloc, résumé d'étage) restent calculés sur les
+   tableaux COMPLETS, jamais sur la tranche rendue : c'est la condition pour plafonner sans
+   mentir sur ce que contient la file. */
+const MAX_PAR_ETAGE = 6;
+const MAX_URGENCE = 20;
+
 interface RenduEntree {
 	catLabel?: string; // catégorie rappelée sur la ligne (vues à plat, sans en-tête de catégorie)
 	palierDejaAffiche?: boolean; // porté par l'en-tête d'étage, à ne pas répéter (vue « Par palier »)
@@ -115,13 +125,60 @@ function labelsCategories(recap: RecapRevision): Record<string, string> {
 	return labels;
 }
 
+/* Le reliquat d'une liste plafonnée, dans un <details> replié. On annonce un nombre ET on
+   permet de le lire : annoncer des lignes sans donner le moyen d'y accéder crée un écart
+   inexplicable (même parti pris que les leçons travaillées et les erreurs plus anciennes).
+   Le libellé BASCULE une fois ouvert (« 12 autres » → « Voir moins ») : replier est déjà
+   possible en recliquant le <summary>, mais rien ne le disait, et un libellé qui décrit
+   encore l'action d'ouvrir sous une liste déjà ouverte se lit comme un cul-de-sac.
+   La bascule est en CSS sur [open] (deux libellés dans le DOM, un seul rendu) plutôt qu'en
+   JS : l'état d'un <details> n'a pas de « changement » à écouter côté rendu, et le nom
+   accessible du bouton reste ainsi son texte visible dans les deux états.
+   Le SECOND « Voir moins », en pied de liste, n'est pas un doublon décoratif : le reliquat
+   peut faire plusieurs centaines de lignes (profil réel observé à 247), et le <summary>
+   est alors hors écran depuis longtemps quand on finit de lire. Il n'existe que déplié
+   (il est dans le <details>), donc il ne parasite pas l'état fermé. */
+function repliHTML(cls: string, clsSum: string, texte: string, liste: string) {
+	return `<details class="${cls}">
+        <summary class="${clsSum}">
+          <span class="enc-repli-plus">${escapeHTML(texte)}</span>
+          <span class="enc-repli-moins">Voir moins</span>
+        </summary>
+        ${liste}
+        <button type="button" class="enc-repli-fin" data-act="revision-replier">Voir moins</button>
+      </details>`;
+}
+
+/* Libellé d'un repli : combien de lignes il cache, ET combien d'entrées DUES parmi elles.
+   Les taire serait le seul vrai risque du plafonnement — un adulte qui voit « 12 autres »
+   n'a aucune raison de supposer qu'il reste du travail en retard dessous. Le tri par urgence
+   place les dues en tête, donc le cas n'arrive qu'au-delà du plafond de lignes dues ; c'est
+   précisément le profil chargé que ce plafonnement vise (avis a11y). Même formulation que
+   `resumeEtage`, pour que deux comptes lus l'un sous l'autre ne se contredisent pas. */
+function texteRepli(reste: EntreeRevision[]): string {
+	const dues = reste.filter((e) => e.du).length;
+	return (
+		`${reste.length} autre${reste.length > 1 ? 's' : ''}` +
+		(dues > 0 ? `, dont ${dues} à réviser` : '')
+	);
+}
+
 /* Vue « Par urgence » : liste à plat, les plus en retard d'abord ; la catégorie est
-   rappelée sur chaque ligne puisqu'il n'y a plus d'en-tête de groupe. */
+   rappelée sur chaque ligne puisqu'il n'y a plus d'en-tête de groupe.
+   Plafonnée : rien ne borne le nombre d'entrées d'un profil (une par leçon travaillée et
+   par mot d'orthographe en rotation), et la liste devenait un mur au bout de quelques
+   semaines d'usage. Le tri place déjà les plus en retard en tête, donc le plafond ne coupe
+   que la queue la moins urgente. */
 function vueUrgenceHTML(recap: RecapRevision): string {
 	const labels = labelsCategories(recap);
-	return `<ul class="enc-rev-list enc-rev-flat">${recap.parUrgence
-		.map((e) => entreeHTML(e, { catLabel: labels[e.categoryId] }))
-		.join('')}</ul>`;
+	const ligne = (e: EntreeRevision) => entreeHTML(e, { catLabel: labels[e.categoryId] });
+	const liste = (es: EntreeRevision[]) =>
+		`<ul class="enc-rev-list enc-rev-flat">${es.map(ligne).join('')}</ul>`;
+	const reste = recap.parUrgence.slice(MAX_URGENCE);
+	const repli = reste.length
+		? repliHTML('enc-rev-plus', 'enc-rev-plus-sum', texteRepli(reste), liste(reste))
+		: '';
+	return `${liste(recap.parUrgence.slice(0, MAX_URGENCE))}${repli}`;
 }
 
 /* Résumé chiffré d'un étage. Même unité que la synthèse du bloc (« entrée »), qui couvre
@@ -139,22 +196,45 @@ function resumeEtage(p: PalierRevision): string {
    balaie les intertitres. Le compteur reste HORS du titre (le titre ne nomme que l'étage,
    sinon la navigation par titres annonce « Palier : 1 semaine 2 entrées, dont 1 à réviser »
    d'une traite) ; c'est le conteneur en ligne qui les tient côte à côte.
-   Les étages vides ne sont pas rendus (revisionProfil les omet). */
+   Les étages vides ne sont pas rendus (revisionProfil les omet).
+   Ce qui est plafonné, ce sont les LIGNES sous un étage, jamais l'étage lui-même : le
+   panorama est porté par les sept couples <h3> + compteur, qui restent visibles sans
+   interaction et comptent toujours la liste COMPLÈTE (cf. resumeEtage). Replier l'étage
+   entier cacherait justement ce compteur ; plafonner la liste ne cache qu'un second niveau
+   de détail. Les entrées étant triées par urgence, les lignes visibles sont les plus
+   pressantes de l'étage. */
 function vuePalierHTML(recap: RecapRevision): string {
 	const labels = labelsCategories(recap);
-	return recap.parPalier
-		.map(
-			(p) => `<section class="enc-rev-etage">
+	return recap.parPalier.map((p) => etageHTML(p, labels)).join('');
+}
+
+/* Un étage : son en-tête, ses lignes visibles, et le reliquat replié. Fonction nommée et non
+   un callback dans le `.map()` ci-dessus, comme tous les autres rendus d'item du fichier et
+   des blocs voisins (`groupeTravailHTML`, `groupeHTML` des erreurs). */
+function etageHTML(p: PalierRevision, labels: Record<string, string>): string {
+	const liste = (es: EntreeRevision[]) =>
+		`<ul class="enc-rev-list enc-rev-etage-l">${es
+			.map((e) => entreeHTML(e, { catLabel: labels[e.categoryId], palierDejaAffiche: true }))
+			.join('')}</ul>`;
+	const reste = p.entrees.slice(MAX_PAR_ETAGE);
+	const repli = reste.length
+		? repliHTML('enc-rev-etage-plus', 'enc-rev-etage-plus-sum', texteRepli(reste), liste(reste))
+		: '';
+	// L'étage est une région NOMMÉE par son <h3> : les sept « 12 autres » de la vue sont
+	// alors distingués par le titre annoncé à l'entrée dans la région, sans allonger un
+	// libellé visible qui doit tenir sur une ligne de téléphone.
+	const idT = `enc-rev-etage-lab-${p.palier}`;
+	// Classe dédiée à l'étage sommital : c'est la seule frontière de l'escalier qui
+	// change de couleur (cf. encadrant.scss), l'acquis n'étant pas un cran de plus.
+	const acquis = p.acquis ? ' enc-rev-etage--acquis' : '';
+	return `<section class="enc-rev-etage${acquis}" aria-labelledby="${idT}">
         <div class="enc-rev-etage-t">
-          <h3 class="enc-rev-etage-lab">${p.acquis ? 'Acquis' : `Palier : ${escapeHTML(p.label)}`}</h3>
+          <h3 class="enc-rev-etage-lab" id="${idT}">${p.acquis ? 'Acquis' : `Palier : ${escapeHTML(p.label)}`}</h3>
           <span class="enc-rev-etage-n">${resumeEtage(p)}</span>
         </div>
-        <ul class="enc-rev-list enc-rev-etage-l">${p.entrees
-					.map((e) => entreeHTML(e, { catLabel: labels[e.categoryId], palierDejaAffiche: true }))
-					.join('')}</ul>
-      </section>`,
-		)
-		.join('');
+        ${liste(p.entrees.slice(0, MAX_PAR_ETAGE))}
+        ${repli}
+      </section>`;
 }
 
 /* ---------- Bloc principal (composé par l'orchestrateur, après le récap) ---------- */
@@ -216,6 +296,22 @@ export function revisionHTML(consulte: Profile, now: number): string {
 
 /* ---------- Handler délégué (aiguillé par l'orchestrateur) ---------- */
 export function revisionClick(act: string, el: HTMLElement): boolean {
+	// Repli depuis le PIED du reliquat : on referme le <details> englobant, puis on ramène
+	// le curseur sur son <summary>. Deux raisons de le faire à la main. Le focus, d'abord :
+	// le bouton qu'on vient d'activer disparaît avec le contenu replié, et un focus perdu
+	// repart sur <body>, c'est-à-dire en haut de page pour la navigation clavier suivante.
+	// Le défilement ensuite : replier plusieurs centaines de lignes fait remonter tout ce
+	// qui suit, et sans ce recentrage l'adulte se retrouve à un endroit qu'il n'a pas
+	// choisi. `focus()` sans `preventScroll` fait les deux d'un coup.
+	// Pas de renderEspace() ici, contrairement à la bascule de vue : re-rendre l'espace
+	// entier refermerait TOUS les autres replis et perdrait la position de lecture.
+	if (act === 'revision-replier') {
+		const bloc = el.closest('details');
+		if (!bloc) return true;
+		bloc.open = false;
+		(bloc.querySelector('summary') as HTMLElement | null)?.focus();
+		return true;
+	}
 	if (act !== 'revision-mode') return false;
 	const mode = el.dataset.mode;
 	vueRevision = mode === 'urgence' || mode === 'palier' ? mode : 'categorie';

@@ -724,9 +724,25 @@ au programme de la classe suivie : les deux écrivent la même file `ludaskia_re
 
 Une troisième sous-section, **« Retirées automatiquement »** (#465,
 `retraitsAutoProfil(profile, now)`), rappelle les entrées que la purge vient de retirer —
-libellé et date **figés** à l'instant du retrait, la cible peut avoir disparu depuis sans que
-la trace devienne muette — pour qu'une épingle ne s'efface jamais sans explication ; un bouton
-« Épingler » la remet dans la file d'un clic (elle sort alors de cette trace).
+libellé, date et **motif** (#571, ci-dessous) **figés** à l'instant du retrait, la cible peut
+avoir disparu depuis sans que la trace devienne muette — pour qu'une épingle ne s'efface
+jamais sans explication ; un bouton « Épingler » la remet dans la file d'un clic (elle sort
+alors de cette trace).
+
+**Ce que la ligne a le droit d'annoncer (#571)** : la phrase d'en-tête du bloc reste
+factuelle (« Ces notions ont quitté la liste d'elles-mêmes. Épinglez-en une si vous voulez
+quand même y revenir. »), sans jugement — jusqu'ici elle affirmait, pour TOUTE entrée,
+« … les maîtrise de nouveau », y compris pour une leçon d'une classe suivante réussie une
+seule fois, verdict que la ligne d'une épingle « au-dessus » refuse déjà de prononcer sur
+cette même notion deux blocs plus haut. Chaque ligne porte désormais son propre motif
+(`RetraitAuto.motif`, `MotifRetrait = 'maitrise' | 'essai'`, calculé et FIGÉ au moment du
+retrait comme le libellé, cf. [Logique pure](core.md)) : « de nouveau maîtrisée » pour une
+cible de la classe suivie (ou en dessous), « essai réussi » pour une cible venue d'une classe
+au-dessus — jamais une maîtrise, et jamais « de nouveau » (aucune maîtrise antérieure n'a
+existé). Motif ABSENT sur une trace d'avant #571 : la ligne n'affiche que la date, sans en
+supposer un. **Le retrait lui-même ne change pas** : même critère de solidité pour toutes les
+entrées (mêmes « Deux garde-fous » ci-dessus) — le motif ne s'ajoute PAS comme un troisième
+garde-fou, il ne change que ce que la trace en DIT, jamais si l'entrée est retirée.
 
 ## Récap du mode Révision espacée (#423)
 

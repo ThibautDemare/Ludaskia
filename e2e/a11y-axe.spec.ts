@@ -111,6 +111,26 @@ const VIEWS: View[] = [
 		},
 	},
 	{
+		// Onglet PROGRAMME, sélecteur de leçon déployé et recherche posée (#571). L'échantillon
+		// s'arrêtait à l'onglet Suivi, alors que le sélecteur tous niveaux (#556) vit ici et
+		// n'était scanné par rien : cinquième site du radiogroup partagé, arbre de `<details>`
+		// à deux étages, région live différée, badge de classe conditionnel. La recherche force
+		// l'ouverture des groupes, donc scanne l'arbre DÉPLIÉ — l'état où il porte le plus de
+		// contrôles, et le seul où sa borne d'affichage entre en jeu.
+		name: 'Espace encadrant — sélecteur de leçon (onglet Programme)',
+		hash: 'encadrant/programme',
+		open: async (page) => {
+			await page.addInitScript(CLEAR_PIN);
+			await gotoHash(page, 'encadrant/programme');
+			// Le sous-bloc « Épingler une leçon » porte un sélecteur toujours rendu : pas besoin
+			// de composer un programme pour en avoir un à scanner.
+			const selecteur = page.locator('.enc-sel').first();
+			await selecteur.waitFor({ state: 'visible' });
+			await selecteur.locator('input[data-act="sel-recherche"]').fill('e');
+			await selecteur.locator('.enc-sel-item').first().waitFor({ state: 'visible' });
+		},
+	},
+	{
 		name: 'Modale « nouveau profil »',
 		hash: 'encadrant/profils',
 		include: '.modal-overlay:not([id])',

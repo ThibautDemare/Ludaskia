@@ -158,3 +158,43 @@ export function arbreCatalogue(profile: Profile, opts: OptionsArbre = {}): Matie
 export function compterLecons(arbre: readonly MatiereArbre[]): number {
 	return arbre.reduce((n, m) => n + m.total, 0);
 }
+
+/* Arbre BORNÉ aux `limite` premières leçons, dans l'ordre où il les présente, et nombre de
+   leçons laissées de côté (#571).
+
+   À quoi ça sert : une recherche déplie d'office tout ce qu'elle retient (des résultats
+   cachés dans des groupes repliés ne serviraient à rien), et un mot courant en retient
+   beaucoup. Sans borne, l'adulte au clavier ou en accès par contacteur doit alors traverser
+   des dizaines de boutons avant d'atteindre la suite de l'écran (SC 2.4.1) — c'est le même
+   constat qui fait plafonner la banque de mots (`core/orthographe/banque.ts` + son volet).
+   Hors recherche, l'appelant ne borne PAS : les groupes y sont repliés, donc leurs boutons
+   ne sont ni focalisables ni annoncés, et écourter le catalogue le ferait passer pour
+   incomplet.
+
+   Les catégories et matières vidées par la borne ne sont pas rendues, et `total` est
+   recalculé sur ce qui reste : le compte affiché doit décrire ce qu'on voit, pas ce que la
+   recherche a trouvé. Le RESTE, lui, est renvoyé à part — une liste écourtée en silence se
+   lit comme la liste entière. `limite <= 0` vaut « pas de borne ». Pur. */
+export function tronquerArbre(
+	arbre: readonly MatiereArbre[],
+	limite: number,
+): { arbre: MatiereArbre[]; restant: number } {
+	const total = compterLecons(arbre);
+	if (limite <= 0 || total <= limite) return { arbre: arbre.slice(), restant: 0 };
+	let reste = limite;
+	const out: MatiereArbre[] = [];
+	for (const m of arbre) {
+		if (reste === 0) break;
+		const categories: CategorieArbre[] = [];
+		let n = 0;
+		for (const c of m.categories) {
+			if (reste === 0) break;
+			const lecons = c.lecons.slice(0, reste);
+			reste -= lecons.length;
+			n += lecons.length;
+			categories.push({ ...c, lecons });
+		}
+		out.push({ ...m, total: n, categories });
+	}
+	return { arbre: out, restant: total - limite };
+}

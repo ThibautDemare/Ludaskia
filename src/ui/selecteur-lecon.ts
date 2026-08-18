@@ -31,6 +31,7 @@ import {
 	arbreCatalogue,
 	compterLecons,
 	jetonsNiveau,
+	tronquerArbre,
 	type FiltreNiveau,
 	type LeconArbre,
 	type MatiereArbre,
@@ -46,8 +47,16 @@ interface EtatSelecteur {
 	filtre: FiltreNiveau;
 	recherche: string;
 	ouverts: Set<string>; // clés de pli (« m:maths », « c:maths-numeration »)
+	limite: number; // leçons rendues SOUS RECHERCHE (cf. PAS_AFFICHAGE)
 }
 const etats = new Map<string, EtatSelecteur>();
+
+/* Leçons rendues d'un coup sous recherche, et pas de « Afficher la suite » (#571). Assez
+   pour couvrir une recherche ordinaire sans clic, assez peu pour ne pas noyer l'ordre de
+   tabulation — une recherche déplie tout ce qu'elle retient, donc chaque leçon rendue est un
+   bouton à traverser. Même parti pris que la banque de mots, avec un palier plus bas : ici
+   les lignes portent un bouton et vivent dans un cadre à hauteur bornée. */
+const PAS_AFFICHAGE = 30;
 
 /* Délai avant l'annonce du résumé aux aides techniques : réécrire une région live à chaque
    lettre fait qu'une synthèse vocale s'interrompt elle-même (même constat que la banque de
@@ -58,7 +67,7 @@ let annonceTimer: number | undefined;
 function etat(id: string): EtatSelecteur {
 	let e = etats.get(id);
 	if (!e) {
-		e = { filtre: FILTRE_DEFAUT, recherche: '', ouverts: new Set() };
+		e = { filtre: FILTRE_DEFAUT, recherche: '', ouverts: new Set(), limite: PAS_AFFICHAGE };
 		etats.set(id, e);
 	}
 	return e;
@@ -155,26 +164,47 @@ function matiereHTML(id: string, e: EtatSelecteur, m: MatiereArbre, action: Acti
     </details>`;
 }
 
-/* L'arbre courant d'un sélecteur : filtre et recherche viennent de son état de vue. Un seul
-   point de calcul pour le corps ET le résumé — les recalculer séparément les laisserait
-   diverger le jour où l'un des deux oublierait un critère. */
-function arbreCourant(id: string, consulte: Profile): MatiereArbre[] {
-	const e = etat(id);
-	return arbreCatalogue(consulte, { filtre: e.filtre, recherche: e.recherche });
+interface VueSelecteur {
+	arbre: MatiereArbre[]; // borné SOUS RECHERCHE (cf. `tronquerArbre`)
+	restant: number; // leçons laissées de côté par la borne (0 = tout est là)
 }
 
-/* Corps de l'arbre seul : c'est le nœud que la recherche remplace en place. */
-function corpsHTML(id: string, arbre: readonly MatiereArbre[], action: ActionLigne): string {
+/* La vue courante d'un sélecteur : filtre, recherche ET borne d'affichage viennent de son
+   état de vue. Un seul point de calcul pour le corps ET le résumé — les recalculer
+   séparément les laisserait diverger le jour où l'un des deux oublierait un critère.
+
+   La borne ne s'applique QUE sous recherche (#571) : là, l'arbre est déplié d'office et
+   chaque leçon rendue est un bouton dans l'ordre de tabulation. Hors recherche, les groupes
+   sont repliés — rien à borner, et écourter le catalogue le ferait passer pour incomplet. */
+function vueCourante(id: string, consulte: Profile): VueSelecteur {
 	const e = etat(id);
-	return arbre.map((m) => matiereHTML(id, e, m, action)).join('');
+	const arbre = arbreCatalogue(consulte, { filtre: e.filtre, recherche: e.recherche });
+	return tronquerArbre(arbre, e.recherche.trim() === '' ? 0 : e.limite);
 }
 
-function texteResume(id: string, arbre: readonly MatiereArbre[]): string {
-	const n = compterLecons(arbre);
+/* Corps de l'arbre seul : c'est le nœud que la recherche remplace en place. Le bouton de
+   suite en fait partie — il naît et meurt avec la troncature. */
+function corpsHTML(id: string, vue: VueSelecteur, action: ActionLigne): string {
+	const e = etat(id);
+	const groupes = vue.arbre.map((m) => matiereHTML(id, e, m, action)).join('');
+	if (vue.restant === 0) return groupes;
+	const pas = Math.min(vue.restant, PAS_AFFICHAGE);
+	const lab = pas > 1 ? `Afficher les ${pas} leçons suivantes` : 'Afficher la leçon suivante';
+	return `${groupes}<button type="button" class="enc-btn-sec enc-sel-plus" data-act="sel-plus" data-sel="${escapeHTML(id)}">${lab}</button>`;
+}
+
+function texteResume(id: string, vue: VueSelecteur): string {
+	const n = compterLecons(vue.arbre);
 	if (n === 0)
 		return etat(id).recherche.trim() === ''
 			? 'Aucune leçon dans cette classe.'
 			: 'Aucune leçon ne correspond à cette recherche.';
+	// Troncature ANNONCÉE : une liste écourtée en silence se lit comme la liste entière, et
+	// l'adulte croirait sa recherche plus étroite qu'elle ne l'est.
+	if (vue.restant > 0) {
+		const s = n > 1 ? 's' : '';
+		return `${n} leçon${s} affichée${s} sur ${n + vue.restant}. Les premières seulement sont listées.`;
+	}
 	return `${compteLabel(n)} à choisir.`;
 }
 
@@ -182,7 +212,7 @@ function texteResume(id: string, arbre: readonly MatiereArbre[]): string {
 export function selecteurLeconHTML(o: OptionsSelecteur): string {
 	const { id, consulte, action } = o;
 	const e = etat(id);
-	const arbre = arbreCourant(id, consulte);
+	const vue = vueCourante(id, consulte);
 	const jetons = segmentHTML({
 		act: 'sel-niveau',
 		valAttr: 'niveau',
@@ -200,8 +230,8 @@ export function selecteurLeconHTML(o: OptionsSelecteur): string {
           <input type="search" class="enc-input" id="sel-rech-${escapeHTML(id)}" data-act="sel-recherche" data-sel="${escapeHTML(id)}" placeholder="Rechercher une leçon…" value="${escapeHTML(e.recherche)}" autocomplete="off" />
         </label>
       </div>
-      <p class="enc-hint enc-sel-resume" id="sel-resume-${escapeHTML(id)}" role="status" aria-live="polite">${escapeHTML(texteResume(id, arbre))}</p>
-      <div class="enc-sel-corps" id="sel-corps-${escapeHTML(id)}">${corpsHTML(id, arbre, action)}</div>
+      <p class="enc-hint enc-sel-resume" id="sel-resume-${escapeHTML(id)}" role="status" aria-live="polite">${escapeHTML(texteResume(id, vue))}</p>
+      <div class="enc-sel-corps" id="sel-corps-${escapeHTML(id)}">${corpsHTML(id, vue, action)}</div>
     </div>`;
 }
 
@@ -222,7 +252,7 @@ function rafraichirCorps(id: string): void {
 	const f = fournisseurs.get(id)?.();
 	const corps = container()?.querySelector(`#sel-corps-${CSS.escape(id)}`);
 	if (!f || !corps) return;
-	corps.innerHTML = corpsHTML(id, arbreCourant(id, f.consulte), f.action);
+	corps.innerHTML = corpsHTML(id, vueCourante(id, f.consulte), f.action);
 	annoncer(id);
 }
 
@@ -235,8 +265,28 @@ function annoncer(id: string): void {
 	annonceTimer = window.setTimeout(() => {
 		const p = container()?.querySelector(`#sel-resume-${CSS.escape(id)}`);
 		const f = fournisseurs.get(id)?.();
-		if (p && f) p.textContent = texteResume(id, arbreCourant(id, f.consulte));
+		if (p && f) p.textContent = texteResume(id, vueCourante(id, f.consulte));
 	}, DELAI_ANNONCE);
+}
+
+/* « Afficher les N leçons suivantes » : lève la borne d'un pas et ne re-rend que l'arbre.
+   Le bouton qu'on vient d'activer disparaît avec ce re-rendu — on donne alors le focus au
+   suivant s'il existe (on continue de dérouler), sinon au dernier bouton de l'arbre, sinon
+   au champ de recherche. Jamais de retour silencieux en tête de document. */
+function onPlus(id: string | undefined): boolean {
+	if (!id) return true;
+	etat(id).limite += PAS_AFFICHAGE;
+	rafraichirCorps(id);
+	const corps = container()?.querySelector<HTMLElement>(`#sel-corps-${CSS.escape(id)}`);
+	const suite = corps?.querySelector<HTMLElement>('.enc-sel-plus');
+	const boutons = corps?.querySelectorAll<HTMLElement>('.enc-sel-item button');
+	const dernier = boutons?.length ? boutons[boutons.length - 1] : null;
+	(
+		suite ??
+		dernier ??
+		container()?.querySelector<HTMLElement>(`#sel-rech-${CSS.escape(id)}`)
+	)?.focus({ preventScroll: true });
+	return true;
 }
 
 /** Frappe dans la recherche (`input`, pas `change` : `change` n'arrive qu'au blur). */
@@ -244,12 +294,15 @@ export function selecteurInput(act: string, el: HTMLElement): boolean {
 	if (act !== 'sel-recherche') return false;
 	const id = el.dataset.sel;
 	if (!id) return true;
-	etat(id).recherche = (el as HTMLInputElement).value;
+	const e = etat(id);
+	e.recherche = (el as HTMLInputElement).value;
+	e.limite = PAS_AFFICHAGE; // nouvelle recherche → on repart du haut, pas d'un dépliage hérité
 	rafraichirCorps(id);
 	return true;
 }
 
 export function selecteurClick(act: string, el: HTMLElement): boolean {
+	if (act === 'sel-plus') return onPlus(el.dataset.sel);
 	if (act !== 'sel-niveau') return false;
 	const id = el.dataset.sel;
 	const val = el.dataset.niveau;
@@ -259,6 +312,7 @@ export function selecteurClick(act: string, el: HTMLElement): boolean {
 	// Changer de classe change ce que l'arbre contient : les plis d'avant ne désignent plus
 	// les mêmes groupes, et une catégorie vidée par le filtre resterait ouverte pour rien.
 	e.ouverts.clear();
+	e.limite = PAS_AFFICHAGE; // et la borne d'affichage repart du haut, comme à la frappe
 	renderEspace();
 	// Le re-rendu recrée le DOM : on rend le focus au jeton coché (contrat radiogroup),
 	// sans quoi la navigation clavier repartirait du haut de la page.

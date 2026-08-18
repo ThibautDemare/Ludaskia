@@ -341,10 +341,10 @@ function cibleLeconHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): 
 		nom = `<span class="enc-seance-cible-vide">Leçon introuvable (${escapeHTML(etape.ref)})</span>`;
 	else {
 		const origine = origineLecon(lesson, consulte);
-		const badge =
-			origine.direction === 'classe-suivie'
-				? ''
-				: badgeClasseOrigine(origine.niveau, INFOBULLE_ORIGINE[origine.direction](consulte.name));
+		// Badge SANS infobulle : la conséquence est rendue en clair sous l'activité
+		// (`noteOrigineHTML`), la répéter dans le nom accessible du badge la ferait annoncer
+		// deux fois de suite.
+		const badge = origine.direction === 'classe-suivie' ? '' : badgeClasseOrigine(origine.niveau);
 		nom = `<span class="enc-seance-cible-nom">${escapeHTML(labelLecon(lesson, origine.niveau))}</span>${badge}`;
 	}
 	// `aria-expanded` sur le bouton qui ouvre le sélecteur : c'est un dévoilement, pas une
@@ -354,6 +354,24 @@ function cibleLeconHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): 
 	const controls = ouvert ? ` aria-controls="${idSelecteur(def, etape)}"` : '';
 	const bouton = `<button type="button" class="enc-btn-sec${ouvert ? ' on' : ''}" data-act="seance-cible-ouvrir" data-def="${def.id}" data-etape="${etape.id}" aria-expanded="${ouvert}"${controls}>${etape.ref ? 'Changer' : 'Choisir une leçon'}</button>`;
 	return `<span class="enc-seance-cible">${nom}${bouton}</span>`;
+}
+
+/* Ce qu'implique une cible prise dans une autre classe, EN CLAIR sous l'activité (#571).
+   Sur cette ligne, le badge de classe est SEUL : rien d'autre ne dit si la leçon est un
+   prérequis qu'on retravaille ou une notion découverte en avance — là où une ligne d'épingle
+   le laisse deviner par son régime d'affichage (état d'acquisition d'un côté, compte-rendu
+   factuel de l'autre). Réservée à l'infobulle, la phrase n'atteignait personne : une
+   infobulle native ne s'ouvre pas au doigt, et cet écran est fait pour la tablette.
+   Rien du tout quand la cible est de la classe suivie : ce serait du bruit sur le cas
+   courant, qui est aussi le plus fréquent. */
+function noteOrigineHTML(etape: SeanceEtape, consulte: Profile): string {
+	const lesson = etape.ref ? getLessonById(etape.ref) : undefined;
+	if (!lesson) return '';
+	const origine = origineLecon(lesson, consulte);
+	if (origine.direction === 'classe-suivie') return '';
+	return `<p class="enc-hint enc-seance-arevoir">${escapeHTML(
+		INFOBULLE_ORIGINE[origine.direction](consulte.name),
+	)}</p>`;
 }
 
 /* Le sélecteur déployé sous une étape. L'action de ligne est « Choisir », et la ligne DÉJÀ
@@ -399,7 +417,7 @@ function etapeHTML(
 		// donc elle le dit, ne compte pas dans le nombre d'activités et n'entre pas dans la
 		// durée estimée — même parti pris que le repère de l'étape « à revoir » sans épingle.
 		cibleBloc = etape.ref
-			? ''
+			? noteOrigineHTML(etape, consulte)
 			: `<p class="enc-hint enc-seance-arevoir">Tant qu'aucune leçon n'est choisie, cette activité n'apparaîtra pas dans le programme.</p>`;
 		if (estOuvert(consulte.uuid, def.id, etape.id))
 			cibleBloc += selecteurEtapeHTML(def, etape, consulte);

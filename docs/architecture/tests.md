@@ -34,6 +34,20 @@ vérifications à la main, mais reste soumis aux tests **spécifiques** à sa pr
 logique (cf. les fichiers dédiés existants — `fractions.test.ts`,
 `mesures.test.ts`…) et à sa spec e2e si elle est visuelle.
 
+**Linter métier — typographie des réponses attendues (#578).** Le même harnais
+refuse toute réponse générée (`answer`, `answers`) qui porte une apostrophe
+typographique (`’`), une espace insécable hors séparateur de milliers, un double
+espace, ou une espace en tête/fin — sur les **deux** chemins éprouvés, donc pour
+tous les niveaux et tous les modes. Seule la règle de l'apostrophe garde la
+**correction** : `normalizeText` ne replie pas `’` vers `'`, donc une réponse
+attendue qui en contient est incorrigible dès qu'un enfant la saisit au clavier.
+Les trois autres verrouillent la **forme affichée** (réponse révélée, corrigé
+imprimé, journal d'erreurs de l'espace encadrant). Exemption documentée : l'espace
+fine U+202F **entre deux chiffres** reste légale — c'est le séparateur de milliers
+de `formatNombre`, et le mode « tuiles » de la numération stocke volontairement sa
+réponse groupée pour qu'elle corresponde au libellé de la tuile. Le texte
+**affiché** (énoncés, explications) n'est pas concerné : il est lu, pas tapé.
+
 **Hors périmètre, volontairement** : le plancher « 50-100 items distincts par
 banque » n'est **pas** un invariant universel — environ la moitié du catalogue
 produit, par conception, moins de 50 items distincts (conjugaison = un verbe × un

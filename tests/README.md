@@ -31,3 +31,7 @@ défaut et le préfixe actif. Le **rendu** n'a plus d'état de module à réinit
   leçon du catalogue, sous des graines variées via `fast-check` (property-based). N'écrire
   un test dédié que pour la **logique propre** à la leçon (calculs spécifiques, cas
   limites) ; voir `docs/architecture/tests.md`.
+- **Réponses attendues** : le même harnais porte un linter de typographie (#578) —
+  pas d'apostrophe typographique (`’`) dans une `answer`/`answers`, ni d'espace
+  parasite. Une leçon dont la réponse s'écrit `l’action de…` échoue : l'enfant tape
+  l'apostrophe droite de son clavier et `normalizeText` ne replie pas les deux formes.

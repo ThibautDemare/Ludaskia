@@ -32,6 +32,45 @@
 	}
 }
 
+/* Libellé BASCULANT d'un repli (#555 suite) : les deux textes cohabitent dans le DOM, un
+   seul est rendu selon [open]. Le bouton annonce donc toujours ce qu'il VA faire, et jamais
+   l'état où l'on se trouve déjà — « 12 autres » fermé, « Voir moins » ouvert. En CSS et non
+   en JS : le nom accessible reste le texte visible dans les deux états (pas d'aria-label à
+   resynchroniser), et le clavier natif du <summary> suffit.
+   Classes volontairement génériques : les autres replis de l'écran (leçons travaillées,
+   erreurs plus anciennes) peuvent les adopter sans nouveau sélecteur. */
+.enc-repli-moins,
+details[open] > summary .enc-repli-plus {
+	display: none;
+}
+details[open] > summary .enc-repli-moins {
+	display: inline;
+}
+/* Second « Voir moins », en PIED du reliquat déplié. Un reliquat peut faire plusieurs
+   centaines de lignes : le <summary> qui l'a ouvert est alors hors écran depuis longtemps,
+   et refermer imposait de tout remonter. Même chrome que le <summary> (c'est le même geste)
+   mais un vrai <button> — il n'a pas d'état à porter, il agit ; et un <summary> ne se
+   duplique pas. Chevron vers le HAUT : il replie ET ramène en haut du bloc. */
+.enc-repli-fin {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-height: 2.75rem;
+	margin: 0.1rem 0 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	cursor: pointer;
+	font: inherit;
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--ink);
+	&::after {
+		content: '▴';
+		color: var(--muted);
+	}
+}
+
 /* ---------- Point d'accès en pied de l'écran Profils ---------- */
 .encadrant-access {
 	margin-top: 1.5rem;
@@ -1018,8 +1057,14 @@ $plot-h: 140px;
    Remplace la frise par matière de #397 (capsules comptant les franchissements) : mesurer un
    événement rare par colonnes hebdomadaires laissait la plupart des colonnes à 0, sans dire
    quelle leçon bougeait. Colonnes ÉLASTIQUES (comme l'ancienne) : s'adapte à la largeur. */
+/* La frise tombe sur sa propre ligne. Elle est donc placée APRÈS les actions dans le DOM,
+   et non avant : posée avant, son `flex-basis: 100%` coupait la ligne entre le mot d'état
+   et le bouton, qui se retrouvait seul sur une troisième ligne avec une large bande vide à
+   sa gauche — alors que les lignes sans frise gardent tout sur une seule ligne. Après les
+   actions, elle passe dessous sans rien scinder, et l'ordre du DOM reste l'ordre visuel
+   (donc l'ordre de lecture, cf. le repli des mots qui suit sur le même principe). */
 .enc-frise {
-	flex-basis: 100%; /* tombe sur sa propre ligne, sous le libellé et le mot d'état */
+	flex-basis: 100%;
 	display: block;
 	margin: 0.1rem 0 0.1rem;
 }
@@ -1192,12 +1237,29 @@ $frise-neutre: #7c8494;
 	gap: 0.35rem 0.5rem;
 	font-size: 0.85rem;
 }
+/* Les actions d'une ligne de suivi ne sont pas un bloc d'actions autonome mais une COLONNE
+   de la ligne, alors qu'elles héritaient telles quelles du `margin: 0.5rem 0` de .enc-actions.
+   Deux conséquences, toutes deux visibles sur les listes de dictée : 16 px de hauteur morte
+   sur CHAQUE ligne (le bouton fait déjà 44 px, il n'a besoin d'aucune marge pour être une
+   cible), et, quand la frise pousse les actions à la ligne suivante, un bouton « Épingler »
+   collé à gauche alors que tous ses voisins sans frise sont alignés à droite. `margin-left:
+   auto` règle le second cas sans effet sur le premier : sur une ligne partagée, .enc-detail-main
+   (flex: 1) a déjà absorbé l'espace libre. */
+.enc-detail-item > .enc-actions {
+	margin: 0 0 0 auto;
+}
 .enc-detail-puce {
 	flex: none;
 	width: 0.7rem;
 	height: 0.7rem;
 	border-radius: 3px;
 	background: var(--k);
+}
+/* Ligne à frise : la pastille d'état est retirée (la frise et le mot disent déjà l'état),
+   mais sa gouttière reste, sinon le libellé de ces lignes-là démarre seul à la marge.
+   Un vide, et non une pastille pâle ou grise, qui serait un quatrième état inventé. */
+.enc-detail-puce--reserve {
+	background: none;
 }
 .enc-detail-main {
 	flex: 1;
@@ -1586,8 +1648,24 @@ $frise-neutre: #7c8494;
    — d'où des en-têtes d'étage NON repliables, là où la vue par catégorie garde ses
    <details> (le parent y consulte une catégorie à la fois). Chrome délibérément léger :
    ni chevron ni bordure empruntés à .enc-cat-sum, qui promettraient un dépliage inexistant. */
+/* Rupture entre deux étages : un filet PLEIN dans l'accent de la zone adulte, et non un
+   fond de couleur ni un dégradé le long de l'escalier (avis designer). Le fond est écarté
+   parce que --track et --line sont quasi identiques en luminance : poser l'un sous des
+   lignes bordées de l'autre effacerait les bordures des entrées. Le dégradé est écarté
+   pour le sens autant que pour le contraste — il ferait lire « bas de l'escalier = alerte »,
+   alors qu'une notion vue hier au palier « 1 jour » est dans son état normal.
+   Le premier étage n'a pas de filet (sélecteur `+`) : il est déjà borné par le cadre du
+   bloc. Seule la frontière de l'étage « Acquis » change de couleur, parce que ce n'est pas
+   un cran de plus mais une rupture catégorielle, déjà portée par --ok partout ailleurs sur
+   cet écran (badge, légende, frise) ; une seule frontière teintée, donc pas de dégradé
+   reconstitué par la bande. */
 .enc-rev-etage + .enc-rev-etage {
-	margin-top: 0.9rem;
+	margin-top: 1rem;
+	padding-top: 0.6rem;
+	border-top: 2px solid var(--admin-accent);
+}
+.enc-rev-etage + .enc-rev-etage--acquis {
+	border-top-color: var(--ok);
 }
 .enc-rev-etage-t {
 	display: flex;
@@ -1607,6 +1685,30 @@ $frise-neutre: #7c8494;
 .enc-rev-etage-n {
 	font-size: 0.78rem;
 	color: var(--grey);
+}
+/* Reliquat au-delà du plafond de lignes, dans les deux vues qui listent sans accordéon.
+   Même chrome que les leçons travaillées et les erreurs plus anciennes (mixin repli-sum) :
+   c'est le troisième usage du même geste dans cet écran, il doit se reconnaître. Le repli
+   d'étage est indenté comme les lignes qu'il prolonge, et les deux se présentent à
+   l'identique : le geste est le même, un filet de séparation sur l'un seulement le faisait
+   passer pour autre chose. Libellé basculant : cf. .enc-repli-* en tête de fichier. */
+.enc-rev-etage-plus {
+	margin: 0.1rem 0 0;
+}
+.enc-rev-etage-plus-sum {
+	@include repli-sum;
+}
+.enc-rev-etage-plus[open] .enc-rev-etage-plus-sum::after {
+	content: '▾';
+}
+.enc-rev-plus {
+	margin: 0.2rem 0 0;
+}
+.enc-rev-plus-sum {
+	@include repli-sum;
+}
+.enc-rev-plus[open] .enc-rev-plus-sum::after {
+	content: '▾';
 }
 .enc-rev-item {
 	display: flex;

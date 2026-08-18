@@ -299,8 +299,12 @@ function maitriseHTML(recap: RecapProfil): string {
 				// en plus grand et avec la hauteur comme second indice — trois expressions de la
 				// même chose sur une ligne, c'en était une de trop (avis designer). Le MOT, lui,
 				// reste : c'est le canal qui ne dépend pas de la couleur (a11y).
+				// Omise, mais sa PLACE est gardée : sans ça le libellé de cette ligne démarre à la
+				// marge, ~19 px à gauche de tous ses voisins, et la colonne des titres part en
+				// dents de scie. Un vide plutôt qu'une pastille pâle : réserver la place n'est pas
+				// réintroduire le signal qu'on vient d'enlever.
 				const puce = l.frise
-					? ''
+					? '<span class="enc-detail-puce enc-detail-puce--reserve" aria-hidden="true"></span>'
 					: `<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
 				return `<li class="enc-detail-item">
           ${puce}
@@ -310,11 +314,11 @@ function maitriseHTML(recap: RecapProfil): string {
           </span>
           <span class="enc-detail-mot"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[l.niveau]}</span>
           ${tendanceHTML(l.tendance)}
-          ${friseNotionHTML(l.frise, now)}
           <span class="enc-actions">
             <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${l.lessonId}">${l.epingle ? 'Retirer' : 'Épingler'}</button>
             ${boutonsImpression(l.lessonId, l.label)}
           </span>
+          ${friseNotionHTML(l.frise, now)}
         </li>`;
 			})
 			.join('');
@@ -578,9 +582,9 @@ function ligneListeOrtho(l: RecapListeOrtho, now: number): string {
 		.join(' · ');
 	// Puce d'état omise quand la frise est là, pour la même raison que sur une ligne de leçon :
 	// sa dernière cellule dit déjà l'état, en plus grand. Le MOT reste (canal indépendant de la
-	// couleur, a11y).
+	// couleur, a11y). Sa PLACE, elle, est gardée, pour que la colonne des libellés reste droite.
 	const puce = l.frise
-		? ''
+		? '<span class="enc-detail-puce enc-detail-puce--reserve" aria-hidden="true"></span>'
 		: `<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
 	// Le repli des mots est le DERNIER enfant : il occupe toute la largeur (flex-basis 100 %),
 	// donc l'ordre du DOM reste l'ordre visuel — et « Épingler » garde sa place dans la
@@ -592,10 +596,10 @@ function ligneListeOrtho(l: RecapListeOrtho, now: number): string {
         <span class="enc-detail-meta">${meta}</span>
       </span>
       <span class="enc-detail-mot"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[l.niveau]}</span>
-      ${friseNotionHTML(l.frise, now)}
       <span class="enc-actions">
         <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${l.epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(l.label)} »">${l.epingle ? 'Retirer' : 'Épingler'}</button>
       </span>
+      ${friseNotionHTML(l.frise, now)}
       ${motsDicteeHTML(l.mots, l.label)}
     </li>`;
 }

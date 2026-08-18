@@ -18,6 +18,17 @@
    seedée est « adoptée » (cf. core/encadrant-stats.ts, purgeRevoirSolides)
    et toute entrée solide est retirée dès CE premier rendu — pas besoin de
    deux passages successifs pour observer le retrait.
+
+   #571 (suivi de #556) retire l'affirmation « X les maîtrise de nouveau » de
+   la phrase du bloc (elle prononçait une maîtrise pour TOUTE entrée retirée,
+   y compris une leçon d'une classe suivante réussie une seule fois) et porte
+   désormais le motif du retrait sur CHAQUE ligne (`.enc-revoir-quand`) : « de
+   nouveau maîtrisée » pour une classe suivie/précédente, « essai réussi »
+   pour une classe suivante — jamais de maîtrise sur un contenu pas encore
+   enseigné. Dernier test du fichier : le CONTRASTE entre les deux motifs sur
+   le même écran, profil CE2 par défaut, `math-complements` (CE2, classe
+   suivie) face à `num-dec-comparer` (CM1 seule, classe suivante — même leçon
+   que `programme-revoir-etat.spec.ts` pour le cas « au-dessus »).
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
@@ -120,6 +131,58 @@ test("onglet Suivi : la ligne de détail d'une notion purgée propose « Épingl
 	// donc `epingle` est faux et le bouton propose « Épingler ».
 	const btn = page.locator('button[data-act="epingler"][data-lesson="math-complements"]');
 	await expect(btn).toContainText('Épingler');
+
+	expect(errors).toEqual([]);
+});
+
+/* `num-dec-comparer` (rubrique « Nombres décimaux », CM1 SEULE, cf.
+   `programme-revoir-etat.spec.ts`) : pour le profil CE2 par défaut (helpers.ts), c'est une
+   classe SUIVANTE — le scénario que #571 corrige. Solidité étoilée au niveau de STOCKAGE
+   réel de la leçon (`@cm1`, cf. `origineLecon`/`etatEpingle`), comme `math-complements@ce2`
+   ci-dessus pour le cas « classe suivie ». */
+const LABEL_AU_DESSUS = 'Je compare les nombres décimaux';
+const SEED_STARS_SOLIDE_CONTRASTE = `(() => {
+  localStorage.setItem('e2e/ludaskia_stars', JSON.stringify({
+    'math-complements@ce2': 1,
+    'num-dec-comparer@cm1': 1,
+  }));
+})();`;
+const SEED_REVOIR_PIN_CONTRASTE = `(() => {
+  localStorage.setItem('e2e/ludaskia_revoir', JSON.stringify(['math-complements', 'num-dec-comparer']));
+})();`;
+
+test('bloc « Retirées automatiquement » : motif « essai réussi » pour une classe suivante, jamais une maîtrise (#571)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_STARS_SOLIDE_CONTRASTE);
+	await page.addInitScript(SEED_REVOIR_PIN_CONTRASTE);
+	await gotoHash(page, 'encadrant/programme');
+
+	// La phrase du bloc n'affirme plus aucune maîtrise (elle vaut pour toutes les entrées,
+	// y compris celle d'une classe suivante juste en dessous).
+	const hint = page
+		.locator('.enc-hint')
+		.filter({ hasText: "Ces notions ont quitté la liste d'elles-mêmes" });
+	await expect(hint).toHaveText(
+		"Ces notions ont quitté la liste d'elles-mêmes. Épinglez-en une si vous voulez quand même y revenir.",
+	);
+	await expect(hint).not.toContainText('maîtrise de nouveau');
+
+	// Contraste sur la MÊME liste : classe suivie → motif de maîtrise…
+	const ligneSuivie = page
+		.locator('.enc-revoir-item')
+		.filter({ hasText: 'Complément à 10/100/1000' });
+	await expect(ligneSuivie.locator('.enc-revoir-quand')).toHaveText(
+		"Retirée aujourd'hui, de nouveau maîtrisée",
+	);
+
+	// … classe suivante → compte-rendu d'essai, jamais une maîtrise.
+	const ligneAuDessus = page.locator('.enc-revoir-item').filter({ hasText: LABEL_AU_DESSUS });
+	const quandAuDessus = ligneAuDessus.locator('.enc-revoir-quand');
+	await expect(quandAuDessus).toHaveText("Retirée aujourd'hui, essai réussi");
+	await expect(quandAuDessus).not.toContainText('maîtris');
 
 	expect(errors).toEqual([]);
 });

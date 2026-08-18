@@ -82,3 +82,13 @@
 	font-size: 0.88rem;
 	color: var(--ink);
 }
+
+/* Bouton de suite, quand la recherche est écourtée (#571). Pleine largeur et détaché des
+   lignes : il ne désigne aucune leçon en particulier, et le confondre avec une action de
+   ligne serait le pire des deux. Il vit DANS le cadre défilant, à la fin de l'arbre, là où
+   l'adulte arrive en déroulant. */
+.enc-sel-plus {
+	display: block;
+	width: 100%;
+	margin: 0.4rem 0 0.1rem;
+}

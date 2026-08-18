@@ -51,9 +51,23 @@ export const ORDRE_NIVEAUX_ORTHO: NiveauNotion[] = ['a-decouvrir', 'en-cours', '
    inventer, même besoin, même lecteur. Le préfixe évite un « CE2 » énigmatique à la voix, et
    la DIRECTION de l'écart n'est pas dans le texte — elle est redondante avec le régime
    d'affichage de la ligne, et se répéterait sur chaque épingle du cas courant. Elle porte en
-   revanche l'infobulle, que chaque site rédige selon ce qu'il montre. */
-export function badgeClasseOrigine(niveau: SchoolLevel, infobulle: string): string {
-	return `<span class="enc-classe-origine" title="${escapeHTML(infobulle)}"><span class="sr-only">Classe d'origine : </span>${escapeHTML(LEVEL_LABEL[niveau])}</span>`;
+   revanche l'infobulle, que chaque site rédige selon ce qu'il montre.
+
+   L'infobulle est exposée aux aides techniques, et pas seulement en `title` (#571) : un
+   `title` ne s'ouvre JAMAIS au doigt, or cet écran est fait pour la tablette, et sur un
+   `<span>` au rôle générique sa restitution vocale est inconstante. Un site qui rend déjà la
+   phrase EN CLAIR à côté du badge l'omet ici, pour ne pas la faire annoncer deux fois. */
+export function badgeClasseOrigine(niveau: SchoolLevel, infobulle?: string): string {
+	const classe = LEVEL_LABEL[niveau];
+	if (!infobulle) {
+		return `<span class="enc-classe-origine"><span class="sr-only">Classe d'origine : </span>${escapeHTML(classe)}</span>`;
+	}
+	// `role="img"` + `aria-label` : le nom accessible porte alors le préfixe, la classe ET la
+	// conséquence. Même parade que la frise d'états, dont le récit est aussi porté par un
+	// `aria-label` sur `role="img"`. Le `title` reste, pour la souris.
+	return `<span class="enc-classe-origine" role="img" title="${escapeHTML(infobulle)}" aria-label="${escapeHTML(
+		`Classe d'origine : ${classe}. ${infobulle}`,
+	)}">${escapeHTML(classe)}</span>`;
 }
 
 let conteneur: HTMLElement | null = null;

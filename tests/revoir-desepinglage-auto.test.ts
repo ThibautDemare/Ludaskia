@@ -676,8 +676,8 @@ describe('retraitsAutoProfil — trace lisible par l’encadrant', () => {
 		purgeRevoirSolides(p, true, NOW);
 
 		expect(retraitsAutoProfil(p, NOW)).toEqual([
-			{ id: 'math-doubles', kind: 'lecon', label: 'Doubles', at: NOW },
-			{ id: orthoRevoirId(liste), kind: 'ortho', label: 'Ma dictée', at: NOW },
+			{ id: 'math-doubles', kind: 'lecon', label: 'Doubles', at: NOW, motif: 'maitrise' },
+			{ id: orthoRevoirId(liste), kind: 'ortho', label: 'Ma dictée', at: NOW, motif: 'maitrise' },
 		]);
 	});
 
@@ -709,7 +709,13 @@ describe('retraitsAutoProfil — trace lisible par l’encadrant', () => {
 		deleteListe(s, id); // le parent supprime la liste après coup
 		saveOrtho(s);
 		expect(retraitsAutoProfil(p, NOW)).toEqual([
-			{ id: orthoRevoirId(id), kind: 'ortho', label: 'Dictée de la semaine', at: NOW },
+			{
+				id: orthoRevoirId(id),
+				kind: 'ortho',
+				label: 'Dictée de la semaine',
+				at: NOW,
+				motif: 'maitrise',
+			},
 		]);
 	});
 
@@ -776,6 +782,123 @@ describe('retraitsAutoProfil — trace lisible par l’encadrant', () => {
 		]);
 		expect(retraitsAutoProfil(p, NOW)).toEqual([
 			{ id: 'z', kind: 'lecon', label: 'Valide', at: NOW },
+		]);
+	});
+});
+
+/* ============================================================
+   5 bis. Motif du retrait (#571) — ce que la trace a le droit d'annoncer
+   ------------------------------------------------------------
+   Le prédicat de retrait NE CHANGE PAS (section 2 bis) : une épingle solide
+   d'une classe suivante est retirée exactement comme les autres. Seul ce que
+   la trace EN DIT diffère — « maîtrise » suppose une notion déjà enseignée,
+   ce qu'un seul essai réussi sur une classe suivante ne prouve pas.
+   ============================================================ */
+describe('retraitsAutoProfil — motif du retrait (#571)', () => {
+	it('leçon de la classe suivie : motif « maitrise »', () => {
+		const p = activeProfile(); // CE2 par défaut ; math-doubles est une leçon CE2
+		recordLessonResult('math-doubles', true);
+		seed(p.uuid, REVOIR_KEY, ['math-doubles']);
+		expect(purgeRevoirSolides(p, false, NOW)).toEqual(['math-doubles']);
+		expect(retraitsAutoProfil(p, NOW).map((r) => r.motif)).toEqual(['maitrise']);
+	});
+
+	it('leçon d’une classe PRÉCÉDENTE (consolidation) : motif « maitrise » aussi', () => {
+		const uuid = activeProfile().uuid;
+		setNiveauReferenceFor(uuid, 'cm1'); // l'enfant est en CM1
+		const ce2 = leconCe2Seulement(); // notion de l'an dernier
+		seed(uuid, REVOIR_KEY, [ce2]);
+		seed(uuid, STARS_KEY, { [ce2 + '@ce2']: 1 }); // réussie là où elle se joue
+
+		expect(purgeRevoirSolides(profil(uuid), false, NOW)).toEqual([ce2]);
+		expect(retraitsAutoProfil(profil(uuid), NOW).map((r) => r.motif)).toEqual(['maitrise']);
+	});
+
+	it('leçon d’une classe SUIVANTE (cas central de #571) : motif « essai », retrait INCHANGÉ', () => {
+		const p = activeProfile(); // CE2 par défaut : la classe suivie est SOUS la leçon
+		const cm1 = leconCm1Seulement();
+		seed(p.uuid, REVOIR_KEY, [cm1]);
+		seed(p.uuid, STARS_KEY, { [cm1 + '@cm1']: 1 }); // réussie une seule fois, là où elle se joue
+
+		// Le prédicat de retrait est bien celui d'avant #571 : pas de garde-fou déguisé,
+		// l'épingle sort de la file comme n'importe quelle autre notion redevenue solide.
+		expect(purgeRevoirSolides(p, false, NOW)).toEqual([cm1]);
+		expect(loadRevoirFor(p.uuid)).toEqual([]);
+		// Mais la trace ne prononce pas « maîtrise » sur un seul essai d'une notion pas
+		// encore enseignée — exactement ce que la ligne d'épingle refuse déjà d'affirmer.
+		expect(retraitsAutoProfil(p, NOW).map((r) => r.motif)).toEqual(['essai']);
+	});
+
+	it('dictée prédéfinie d’une classe SUIVANTE : motif « essai »', () => {
+		const p = activeProfile(); // CE2 par défaut
+		const predefCm1 = 'fr-ortho-cm1-invariables'; // prédéfinie CM1, hors du cumul CE2
+		seed(p.uuid, REVOIR_KEY, [orthoRevoirId(predefCm1)]);
+		const s = loadOrtho();
+		motsDeLecon(s, predefCm1).forEach((m) => poser(m, complet)); // tous les mots maîtrisés
+		saveOrtho(s);
+
+		expect(purgeRevoirSolides(p, true, NOW)).toEqual([orthoRevoirId(predefCm1)]);
+		expect(retraitsAutoProfil(p, NOW).map((r) => r.motif)).toEqual(['essai']);
+	});
+
+	it('dictée prédéfinie du niveau, ou d’une classe précédente (cumul #556) : motif « maitrise »', () => {
+		const predefCe2 = 'fr-ortho-invariables-1'; // prédéfinie CE2
+		// Cas 1 : la classe suivie EST celle de la dictée.
+		const p = activeProfile();
+		seed(p.uuid, REVOIR_KEY, [orthoRevoirId(predefCe2)]);
+		let s = loadOrtho();
+		motsDeLecon(s, predefCe2).forEach((m) => poser(m, complet));
+		saveOrtho(s);
+		expect(purgeRevoirSolides(p, true, NOW)).toEqual([orthoRevoirId(predefCe2)]);
+		expect(retraitsAutoProfil(p, NOW).map((r) => r.motif)).toEqual(['maitrise']);
+
+		// Cas 2 : même dictée CE2, profil passé en CM1 (classe précédente, cumul cf. #556) —
+		// une dictée CE2 reste dans le cumul visible d'un CM1, ce n'est pas « au-dessus ».
+		localStorage.clear();
+		initProfiles();
+		const uuid = activeProfile().uuid;
+		setNiveauReferenceFor(uuid, 'cm1');
+		seed(uuid, REVOIR_KEY, [orthoRevoirId(predefCe2)]);
+		s = loadOrtho();
+		motsDeLecon(s, predefCe2).forEach((m) => poser(m, complet));
+		saveOrtho(s);
+		expect(purgeRevoirSolides(profil(uuid), true, NOW)).toEqual([orthoRevoirId(predefCe2)]);
+		expect(retraitsAutoProfil(profil(uuid), NOW).map((r) => r.motif)).toEqual(['maitrise']);
+	});
+
+	it('motif FIGÉ au retrait : changer la classe suivie APRÈS coup ne le fait pas basculer', () => {
+		const uuid = activeProfile().uuid; // CE2
+		const cm1 = leconCm1Seulement();
+		seed(uuid, REVOIR_KEY, [cm1]);
+		seed(uuid, STARS_KEY, { [cm1 + '@cm1']: 1 });
+		expect(purgeRevoirSolides(profil(uuid), false, NOW)).toEqual([cm1]);
+		expect(retraitsAutoProfil(profil(uuid), NOW).map((r) => r.motif)).toEqual(['essai']);
+
+		// L'enfant passe en CM1 : la leçon devient RÉTROSPECTIVEMENT « classe suivie »…
+		setNiveauReferenceFor(uuid, 'cm1');
+		// …mais la trace, déjà écrite, ne recalcule pas son motif : elle explique l'événement
+		// PASSÉ, survenu sous la classe suivie DE CE MOMENT-LÀ, pas l'état courant du profil.
+		expect(retraitsAutoProfil(profil(uuid), NOW).map((r) => r.motif)).toEqual(['essai']);
+	});
+
+	it('loadRetraitsAuto : une trace SANS `motif` (antérieure à #571) reste lue', () => {
+		const p = activeProfile();
+		seed(p.uuid, REVOIR_AUTO_KEY, [
+			{ id: 'math-doubles', kind: 'lecon', label: 'Doubles', at: NOW },
+		]);
+		expect(retraitsAutoProfil(p, NOW)).toEqual([
+			{ id: 'math-doubles', kind: 'lecon', label: 'Doubles', at: NOW },
+		]);
+	});
+
+	it('un `motif` INCONNU écarte l’entrée ENTIÈRE, pas seulement le champ', () => {
+		const p = activeProfile();
+		seed(p.uuid, REVOIR_AUTO_KEY, [
+			{ id: 'a', kind: 'lecon', label: 'Motif inconnu', at: NOW, motif: 'n_importe_quoi' },
+			{ id: 'b', kind: 'lecon', label: 'Motif valide', at: NOW, motif: 'essai' },
+		]);
+		expect(retraitsAutoProfil(p, NOW)).toEqual([
+			{ id: 'b', kind: 'lecon', label: 'Motif valide', at: NOW, motif: 'essai' },
 		]);
 	});
 });

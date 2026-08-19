@@ -99,6 +99,11 @@
 	--warn-bg: #3a2f12;
 	--warn-bd: #6b5512;
 	--line: #353d4a;
+	/* Ligne de base des champs de réponse (#386) : le #333 clair y était quasi invisible
+	   (1,14:1 sur --paper). Reprend la valeur de --grey Nuit, plutôt qu'un gris de plus :
+	   7,1:1 sur --paper, très au-dessus des 3:1 exigés, et cohérent avec le reste de la
+	   rampe. Écrit en dur et non `var(--grey)` pour rester mesurable par le gate. */
+	--field-line: #aeb7c4;
 	--track: #2c3543;
 	--ok-soft: #1d3326;
 	--ko-soft: #3b2222;

@@ -45,7 +45,15 @@
 	   Les composants doivent les utiliser plutôt que des couleurs en dur, pour
 	   suivre le thème d'affichage. */
 	--on-accent: #ffffff; /* texte/icône posé SUR une surface --accent (inversé en sombre) */
-	--line: #e4e8ef; /* filets et séparateurs fins */
+	--line: #e4e8ef; /* filets et séparateurs fins (DÉCORATIFS : exemptés du 3:1, cf. --field-line) */
+	/* Ligne de base d'un champ de réponse (.ans et dérivés, sheets.scss). À ne pas
+	   confondre avec --line : celle-ci n'est pas décorative, c'est la seule chose qui
+	   dit à l'enfant OÙ écrire → composant d'interface, seuil 3:1 (WCAG 1.4.11).
+	   La valeur claire est l'ancien #333 codé en dur, à l'identique : le rendu des
+	   5 thèmes clairs ne bouge pas. Le token existe pour le thème Nuit (#386), où
+	   ce #333 sur --paper (#222a36) tombait à 1,14:1 — le champ devenait invisible
+	   tant qu'on n'avait pas cliqué dedans (seul le :focus restait visible). */
+	--field-line: #333333;
 	--track: #e7ebf1; /* surface neutre pleine : jauge, bouton « fantôme » */
 	--ok-soft: #e4f1ea; /* fond de retour « réussite » (doublé par l'icône, pas la couleur seule) */
 	--ko-soft: #fbe4e4; /* fond de retour « erreur » */

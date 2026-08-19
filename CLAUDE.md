@@ -218,6 +218,13 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
   Lancer `npm test` après toute modif de logique.
 - Ces deux règles ne sont plus à vérifier à l'œil : **ESLint les fait échouer**
   (#579, `eslint.config.js`), y compris un `window.localStorage` détourné.
+- **Couleurs : mesurer, jamais contourner feuille par feuille.** Une couleur qui
+  passe mal se rattrape trop facilement par un override local — c'est comme ça
+  qu'un `--muted` sous AA a survécu des années (#576). Avant de poser une valeur :
+  `node tools/contrast/contrast.mjs "#xxxxxx" "#yyyyyy"`. Les couples de tokens
+  constatés dans les feuilles sont tenus **sur les six thèmes** par
+  `tests/contraste-tokens.test.ts` (#582) ; un **nouveau** couple (texte sur une
+  surface, bordure de composant) n'est gardé que si on l'**ajoute à sa table**.
 - **Tests e2e systématiques pour toute fonctionnalité visuelle.** Dès qu'on
   ajoute du visible/navigable — **nouvelle leçon**, **nouveau type d'exercice
   ou mode**, **nouvel écran/vue** — on écrit **dans la même PR** une **spec

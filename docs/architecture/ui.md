@@ -1286,6 +1286,24 @@ c'est `--grey` traversé par l'opacité. Aucun token ne peut corriger ça (même
 signal fort. Les deux règles sont tenues par `tests/contraste-tokens.test.ts`, thème par
 thème (cf. [Tests](tests.md)).
 
+**Table de paires de tokens (#582).** Le même test éprouve désormais **tous** les couples
+(texte, surface) constatés dans les feuilles — pas seulement la rampe — au seuil 4,5:1 pour
+du texte et 3:1 pour un composant d'interface, sur les six thèmes. **Réflexe à avoir avant
+de poser une couleur** : la mesurer avec `node tools/contrast/contrast.mjs`, qui partage sa
+formule avec le gate ; et si un nouveau couple apparaît, l'**ajouter à la table** — sinon il
+n'est gardé par rien. Les défauts connus non corrigés y sont déclarés en dérogation avec
+leur issue (#385, #438, #600, #601) ; ces dérogations **échouent le jour où le défaut est
+corrigé**, pour forcer leur retrait.
+
+Token associé, introduit à cette occasion : **`--field-line`** (#386), la ligne de base d'un
+champ de réponse (`.ans` et dérivés). Elle était en `#333` **codé en dur**, donc jamais
+réécrite par les thèmes : en Nuit, `#333` sur `--paper` (`#222a36`) tombait à 1,14:1 et
+l'enfant ne voyait plus **où écrire** tant qu'il n'avait pas cliqué dedans (seul le `:focus`
+restait visible). À ne pas confondre avec `--line`, qui reste **décoratif** (filets,
+séparateurs) et exempté du 3:1 : `--field-line` est le seul indice de l'emplacement de
+saisie, donc un composant d'interface. Valeur claire inchangée (`#333333`, rendu identique
+sur les cinq thèmes clairs), `#aeb7c4` en Nuit (7,1:1).
+
 ### Accessibilité (#42)
 
 **Accessibilité (#42)** — deux aides transverses, réglées **dans la méta de profil**

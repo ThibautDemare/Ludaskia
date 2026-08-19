@@ -216,6 +216,8 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
   sauf accès bruts dédiés dans `src/core/storage.ts`).
 - **Séparation** logique (`src/core/`, testable sans DOM) / rendu (`src/ui/`).
   Lancer `npm test` après toute modif de logique.
+- Ces deux règles ne sont plus à vérifier à l'œil : **ESLint les fait échouer**
+  (#579, `eslint.config.js`), y compris un `window.localStorage` détourné.
 - **Tests e2e systématiques pour toute fonctionnalité visuelle.** Dès qu'on
   ajoute du visible/navigable — **nouvelle leçon**, **nouveau type d'exercice
   ou mode**, **nouvel écran/vue** — on écrit **dans la même PR** une **spec

@@ -12,6 +12,13 @@
   sur un échantillon de vues — ce dernier **non bloquant** par défaut. Détail
   dans `e2e/README.md`.
 - Qualité : **ESLint** (flat config + `typescript-eslint`) et **Prettier**.
+  ESLint porte aussi les **contraintes d'architecture** du projet (#579), pour
+  qu'une régression casse la CI au lieu d'attendre une relecture : `src/core/**`
+  et `src/data/**` ne peuvent pas importer `src/ui/**` ni toucher
+  `document`/`window`, et `localStorage` est réservé à `src/core/storage.ts`
+  (accès direct comme `window.localStorage`). Seule exception, déclarée dans
+  `eslint.config.js` et non par un `eslint-disable` isolé : `src/vitrine.ts`, qui
+  lit brutalement la clé des profils sans charger la couche stockage de l'app.
 - Déploiement : **GitHub Pages** via GitHub Actions (build Vite → `dist/`).
 
 ## Commandes

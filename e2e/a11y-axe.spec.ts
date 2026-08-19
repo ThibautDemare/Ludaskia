@@ -4,7 +4,9 @@
    Signal AUTOMATISÉ en complément de l'agent-conseil `relecteur-accessibilite`
    (qui reste utile pour tout ce qu'axe ne mesure pas : sémantique, TTS, contexte).
    Chaque vue est amenée à un état stable (attente d'un élément repère PUIS de la
-   fin des animations d'entrée, cf. `settleAnimations`), puis scannée en WCAG A/AA.
+   fin des animations d'entrée, cf. `settleAnimations`, partagé dans `helpers.ts` avec
+   etayage-redige.spec.ts — même défaut d'actionnabilité sous `modal-pop`), puis scannée
+   en WCAG A/AA.
    Le rapport groupé par règle/élément est imprimé dans les logs (exploitable tel
    quel par un agent) et le détail JSON complet est attaché au rapport Playwright.
 
@@ -26,7 +28,13 @@
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { watchErrors, gotoHash, seedAideVue, seedRappelSauvegardeScript } from './helpers';
+import {
+	watchErrors,
+	gotoHash,
+	seedAideVue,
+	seedRappelSauvegardeScript,
+	settleAnimations,
+} from './helpers';
 import { scanA11y, formatA11yReport } from './axe';
 
 /* Gate désactivé par défaut (cf. en-tête) ; `A11Y_GATE=1` le passe en bloquant. */
@@ -34,28 +42,6 @@ const GATE = !!process.env.A11Y_GATE;
 
 /* Supprime un éventuel verrou PIN persistant avant d'ouvrir l'espace encadrant. */
 const CLEAR_PIN = `localStorage.removeItem('ludaskia_encadrant_lock');`;
-
-/* Attend la fin des animations d'ENTRÉE (finies, non infinies) du sous-arbre visé
-   avant de scanner : `.modal` a une animation `modal-pop` 0.25s (opacité 0→1), et
-   scanner à mi-fondu rend le contraste NON déterministe sous CI série (#411,
-   relecture qualité). Règle générale : sur une vue animée, attendre la fin des
-   animations, pas seulement un élément repère. On écarte les animations infinies
-   (ambiance) pour ne pas bloquer. */
-async function settleAnimations(page: Page, selector: string): Promise<void> {
-	await page
-		.locator(selector)
-		.first()
-		.evaluate((el) =>
-			Promise.all(
-				el
-					.getAnimations({ subtree: true })
-					.filter(
-						(a) => (a.effect as KeyframeEffect | null)?.getComputedTiming().iterations !== Infinity,
-					)
-					.map((a) => a.finished.catch(() => undefined)),
-			),
-		);
-}
 
 interface View {
 	name: string;

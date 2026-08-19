@@ -71,10 +71,19 @@ test('CM1 décomposer : le trou d’un rang décimal se rend en fraction empilé
 	page,
 }) => {
 	const errors = watchErrors(page);
-	// Le rang troué varie (entier / dixième / centième) ; on recharge jusqu'à tomber sur un
-	// trou de rang décimal (≈ 75 %), qui se rend comme un champ DANS le numérateur d'une fraction.
+	// Le rang troué varie (entier / dixième / centième, cf. decomposeDecFact dans
+	// data/maths/decimaux-ecritures.ts) ; on recharge jusqu'à tomber sur un trou de rang
+	// décimal (dixième OU centième, 6/8 ≈ 75 % par tirage), qui se rend comme un champ DANS
+	// le numérateur d'une fraction.
+	// `page.goto` vers une URL IDENTIQUE à l'URL courante est un no-op côté Chromium (aucune
+	// navigation, aucun re-rendu, cf. mesures-decimaux.spec.ts et helpers.ts/gotoHash) : sans
+	// `.reload()` explicite, les « relances » ci-dessous revoyaient TOUTES le tirage du tout
+	// premier chargement — la boucle ne retirait donc jamais qu'UN seul tirage réel, à ~25 %
+	// de risque d'échec par run (l'inverse du taux de succès du rang décimal). Avec un vrai
+	// rechargement à chaque tentative, 12 tentatives ramènent le résidu à 0,25¹² ≈ 6×10⁻⁸.
 	for (let i = 0; i < 12; i++) {
 		await page.goto('app.html#lecon-num-dec-decomposer', { waitUntil: 'networkidle' });
+		await page.reload({ waitUntil: 'networkidle' });
 		if (await page.locator('.frac .frac-num-input').count()) break;
 	}
 	const num = page.locator('.frac .frac-num-input').first();

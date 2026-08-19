@@ -26,12 +26,19 @@
      de branchement différent des trois autres.
    ============================================================ */
 import { test, expect, type Page } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, settleAnimations, estAtteignable } from './helpers';
 
 /* Assertions communes à la forme RÉDIGÉE, quel que soit le point d'entrée : la règle et
    les étapes sont là, rien de ce qui appartient au déroulé ne l'est. */
 async function verifierFormeRedigee(page: Page): Promise<void> {
 	await expect(page.locator('#etayageOverlay')).toBeVisible();
+	// Attend la fin de l'animation d'ouverture (`modal-pop`, 250 ms) AVANT tout clic sur une
+	// commande de la modale (croix, « Suivant ») : les quatre témoins de ce fichier convergent
+	// ici, donc un seul point de vérité protège tous les clics qui suivent. Sans ça, un clic
+	// pouvait tomber PENDANT le zoom d'ouverture (scale 0.85 → 1) au lieu d'après, perdant
+	// l'actionnabilité de Playwright par intermittence — la modale (CM1) était la seule
+	// observée en défaut, mais rien ne protégeait les autres, restées vertes par chance.
+	await settleAnimations(page, '#etayageOverlay .modal');
 	await expect(page.locator('.etay-regle')).toBeVisible();
 	await expect(page.locator('.etay-regle')).not.toHaveText('');
 
@@ -125,7 +132,25 @@ test('lire un tableau à double entrée (CM1) : contenu rédigé identique, nive
 	await btn.click();
 	await verifierFormeRedigee(page);
 
-	await page.locator('.aide-close').click();
+	// Fermeture par la CROIX, mesurée plutôt que cliquée à l'aveugle (#490). Mesure faite : la
+	// bulle mascotte ne chevauche JAMAIS la croix ici (couloir de 44 px de `.aide-modal
+	// .mascotte-scene`, qui fait son travail — la trace Playwright qui semblait l'accuser était
+	// trompeuse). Le vrai risque est ailleurs : la modale est un conteneur défilant (`.modal
+	// { overflow-y: auto }`) et la croix y est en `position: absolute`, donc un `.click()`
+	// classique la fait déplacer PAR le défilement synthétique que Playwright déclenche avant
+	// tout clic (« scrolling into view if needed »), même quand l'élément est déjà stable et
+	// entièrement visible — le point calculé plus tôt atterrit alors sur ce qui a pris sa
+	// place. `estAtteignable` (helpers.ts, même lecture brute que modales.spec.ts test 8)
+	// contourne ce défilement : elle constate que la croix est bien l'élément AU CENTRE de son
+	// propre point cliquable — le contrat géométrique qu'un enfant qui tape là doit trouver.
+	// Le `.click()` natif qui suit, dispatché depuis la page, active le MÊME gestionnaire
+	// qu'un vrai clic (`fermer`, etayage-panneau.ts) sans repasser par le défilement qui casse
+	// l'actionnabilité de Playwright.
+	expect(
+		await estAtteignable(page, '#etayageOverlay .aide-close'),
+		'croix de fermeture couverte ou hors écran au moment de fermer',
+	).toBe(true);
+	await page.locator('#etayageOverlay .aide-close').evaluate((el: HTMLElement) => el.click());
 	await expect(page.locator('#etayageOverlay')).toHaveCount(0);
 
 	expect(errors).toEqual([]);

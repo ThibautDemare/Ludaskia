@@ -66,9 +66,33 @@ const ENSURE_NIVEAU = `(() => {
 
 /* Navigue vers une vue routée par hash (#accueil, #categorie-..., #lecon-...).
    L'application vit sur `app.html` (#271 : `index.html` est la page vitrine) ;
-   le `#hash` est résolu contre la baseURL (…/Ludaskia/app.html). */
+   le `#hash` est résolu contre la baseURL (…/Ludaskia/app.html).
+
+   Piège Chromium (constaté sur mesures-decimaux.spec.ts et impression-rendu.spec.ts, tous
+   deux intermittents en suite complète alors que verts en isolation) : un `page.goto` vers
+   une URL IDENTIQUE à l'URL courante — même hash — est un NO-OP silencieux, sans navigation
+   ni re-rendu. Une spec qui rappelle `gotoHash` sur LE MÊME hash pour forcer un nouveau
+   tirage (fiche aléatoire, question suivante d'une série…) revoit alors indéfiniment l'écran
+   du tout premier appel : la boucle « on relance jusqu'à N fois » ne relance en réalité
+   qu'UNE fois, et échoue dès que ce premier tirage est défavorable. On détecte ce cas précis
+   (même hash que l'URL courante) et on force un `.reload()` — SEULEMENT alors : recharger
+   systématiquement, y compris quand le hash change, ajouterait une navigation par appel sur
+   les 561 tests de la suite, pour un gain nul dans l'immense majorité des cas où le hash
+   change réellement. */
 export async function gotoHash(page: Page, hash: string): Promise<void> {
 	await page.addInitScript(ENSURE_NIVEAU);
+	const dejaSurCetHash = (() => {
+		try {
+			const u = new URL(page.url());
+			return u.pathname.endsWith('/app.html') && u.hash === `#${hash}`;
+		} catch {
+			return false;
+		}
+	})();
+	if (dejaSurCetHash) {
+		await page.reload({ waitUntil: 'networkidle' });
+		return;
+	}
 	await page.goto(`app.html#${hash}`, { waitUntil: 'networkidle' });
 }
 
@@ -132,4 +156,51 @@ export function seedRappelSauvegardeScript(opts: SeedRappelOptions = {}): string
 	return `(function(){var seed=${JSON.stringify(
 		seed,
 	)};Object.keys(seed).forEach(function(k){localStorage.setItem(k, JSON.stringify(seed[k]));});})();`;
+}
+
+/* Attend la fin des animations d'ENTRÉE (finies, non infinies) du sous-arbre visé, AVANT
+   d'interagir avec son contenu ou de le scanner : le gabarit `.modal` porte une animation
+   `modal-pop` (250 ms, `scale(0.85) → scale(1)`) qui déplace ses coins de plusieurs dizaines
+   de pixels pendant son déroulé — un clic sur une commande DEDANS (croix de fermeture,
+   bouton d'action) tombe alors pendant le mouvement plutôt qu'après, et l'actionnabilité de
+   Playwright s'y perd par intermittence (#490, flake d'etayage-redige.spec.ts). Aucun humain
+   ne clique dans les 250 ms qui suivent l'ouverture : attendre la fin de l'animation est le
+   pendant, côté clic, de ce que fait déjà ce helper côté scan a11y (contraste non déterministe
+   à mi-fondu). On écarte les animations infinies (ambiance) pour ne jamais bloquer dessus. */
+export async function settleAnimations(page: Page, selector: string): Promise<void> {
+	await page
+		.locator(selector)
+		.first()
+		.evaluate((el) =>
+			Promise.all(
+				el
+					.getAnimations({ subtree: true })
+					.filter(
+						(a) => (a.effect as KeyframeEffect | null)?.getComputedTiming().iterations !== Infinity,
+					)
+					.map((a) => a.finished.catch(() => undefined)),
+			),
+		);
+}
+
+/* Un point cliquable est-il bien l'élément AU-DESSUS en son propre centre géométrique ?
+   Lecture BRUTE du rendu (`elementFromPoint`), sans passer par l'actionnabilité complète de
+   Playwright : son étape « scrolling into view if needed » défile le conteneur AVANT chaque
+   `.click()`, y compris quand l'élément est déjà entièrement visible — et un élément en
+   `position: absolute` DANS un conteneur défilant (`.modal { overflow-y: auto }`) se déplace
+   avec ce défilement. Le point de clic, calculé plus tôt, atterrit alors sur ce qui a pris sa
+   place (constaté sur `.aide-close` : « element is visible, enabled and stable » PUIS
+   « scrolling into view if needed » PUIS interception, #490). Cette lecture-ci n'a rien à
+   faire défiler, donc rien ne peut se déplacer entre le calcul du point et sa mesure. */
+export async function estAtteignable(page: Page, selector: string): Promise<boolean> {
+	return page.evaluate((sel) => {
+		const el = document.querySelector(sel) as HTMLElement | null;
+		if (!el) return false;
+		const r = el.getBoundingClientRect();
+		if (r.width === 0 || r.height === 0) return false; // masqué (display:none, etc.)
+		const cx = r.left + r.width / 2;
+		const cy = r.top + r.height / 2;
+		const top = document.elementFromPoint(cx, cy);
+		return !!top && (top === el || el.contains(top));
+	}, selector);
 }

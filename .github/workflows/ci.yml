@@ -15,6 +15,11 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Même garde-fou que le job `e2e` (cf. son commentaire) : ce job-ci n'a jamais gelé
+    # — il tourne en ~2 min — mais il télécharge lui aussi depuis un miroir (`npm ci`),
+    # donc il est exposé à la même panne. Laisser un seul job sans borne, c'est le
+    # trou par lequel la prochaine attente de six heures passera.
+    timeout-minutes: 15
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v7
@@ -46,6 +51,15 @@ jobs:
   # requis de la branche protégée `main` (réglage du dépôt, côté mainteneur).
   e2e:
     runs-on: ubuntu-latest
+    # Garde-fou : sans limite explicite, GitHub laisse tourner un job SIX HEURES. Le
+    # 19/08/2026, trois jobs bloqués sur le téléchargement d'un paquet apt ont brûlé un
+    # runner jusqu'à ce timeout par défaut, en affichant « pending » tout du long — donc
+    # sans jamais dire qu'il fallait relancer. Une étape gelée doit échouer VITE et
+    # bruyamment. 25 min laissent une marge large : la suite tourne en ~13 min (dont
+    # ~11,5 min de tests, `workers=1` + `retries: 1`), et l'installation du navigateur
+    # est quasi instantanée sur cache chaud. Si la suite s'approche un jour de cette
+    # borne, c'est le signe qu'il faut la découper, pas relever le nombre.
+    timeout-minutes: 25
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v7

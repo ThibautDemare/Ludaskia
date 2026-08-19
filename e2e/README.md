@@ -228,3 +228,10 @@ tests) et trois jobs sont morts au timeout de 6 h.
 doivent installer le navigateur de la **même façon** : le second GÉNÈRE les baselines que
 le premier COMPARE au pixel près. Des polices système présentes d'un côté et absentes de
 l'autre suffiraient à faire échouer une comparaison sur un rendu pourtant inchangé.
+
+**Garde-fou de durée.** Chaque job porte un `timeout-minutes` (15 pour `test`, 25 pour
+`e2e`, 30 pour la régénération des baselines). Sans limite explicite, GitHub laisse tourner
+un job **six heures** : c'est ce qui est arrivé le 19/08/2026 à trois jobs gelés sur un
+téléchargement apt, qui affichaient « pending » tout du long sans jamais signaler qu'il
+fallait relancer. Une étape bloquée doit échouer vite et bruyamment. Si la suite s'approche
+un jour de sa borne, la découper — pas relever le nombre.

@@ -37,6 +37,11 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       contains(github.event.head_commit.message, '[update-snapshots]')
     runs-on: ubuntu-latest
+    # Même garde-fou que le job `e2e` de ci.yml (cf. le commentaire là-bas) : sans
+    # limite, un job gelé tourne six heures. Plus large ici parce que la régénération
+    # RÉÉCRIT chaque PNG (encodage, plus lent que la comparaison) — d'où aussi le
+    # `--timeout=300000` par test ci-dessous.
+    timeout-minutes: 30
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v7

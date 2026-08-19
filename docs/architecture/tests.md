@@ -117,6 +117,40 @@ comparaison » satisfont la règle `label` sans rien résoudre. Les tests exigen
 champs d'une même fiche se **distinguent** (conjugaison : un pronom par champ ; comparaison :
 les deux nombres comparés). Cf. `nomChampReponse` dans [Cœur logique](core.md).
 
+### Préfixe `ludaskia_` des clés de stockage (#597)
+
+`tests/cles-stockage-gate.test.ts` lit `src/` comme du texte. Le préfixe n'est pas une
+préférence de nommage : `appKeys()` filtre sur lui, donc c'est **lui qui décide** qu'une
+donnée entre dans l'export de sauvegarde du parent et disparaît avec le profil supprimé.
+Une clé hors convention fonctionne pourtant parfaitement — `lsGet`/`lsSet` la préfixent par
+le profil comme les autres — si bien que l'oubli ne se voit qu'au moment où un parent
+restaure une sauvegarde amputée, des mois plus tard.
+
+Deux filets qui se rattrapent l'un l'autre :
+
+- **Les déclarations** — toute constante nommée comme une clé (`*_KEY`, `CLE_*`, listes
+  `CLES_*`) doit valoir un littéral préfixé. Attrape la clé écrite hors convention avant
+  même qu'elle soit branchée. S'en tenir au suffixe `_KEY` aurait laissé passer
+  `CLE_GLOBALE` et `CLES_PROFIL`, qui sont exactement des clés de stockage.
+- **Les sites d'appel** — le premier argument de chaque appel aux huit helpers de
+  `storage.ts` doit se ramener à une clé conforme : littéral préfixé, ou constante
+  conforme mentionnée dans l'expression (`uuid + '/' + STARS_KEY`). Attrape la clé écrite
+  en dur au vol, que le premier filet ne voit pas.
+
+Deux détails de méthode qui font la différence entre un gate et une illusion de gate :
+
+- **Les indirections sont listées avec une PREUVE.** Là où la clé passe par une variable
+  locale ou une fonction constructrice (`runsKey`, la boucle de `engagement.ts`, les clés
+  issues d'`appKeys()`), l'exception porte une expression régulière que le fichier doit
+  encore satisfaire. Réécrire `runsKey` sans le préfixe fait tomber la preuve : le silence
+  ne gagne pas par défaut.
+- **Le gate vérifie sa propre raison d'être.** Un test relit `appKeys()` et exige qu'il
+  filtre toujours sur `ludaskia_`. Si ce filtre change, ce n'est plus la même convention
+  qu'on garde, et mieux vaut relire le gate que le laisser vérifier une règle morte.
+
+Le seuil anti-liste-vide est double (≥ 30 clés, ≥ 60 sites d'appel) : un scan cassé rendrait
+sinon le gate vert en n'examinant plus rien.
+
 ### Contraste AA des tokens de couleur (#576, #582)
 
 `tests/contraste-tokens.test.ts` lit les tokens dans `base.scss`/`themes.scss` et éprouve

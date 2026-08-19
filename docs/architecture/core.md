@@ -55,6 +55,11 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `appKeys`), `setActivePrefix`, constante `PROFILES_KEY`, et `setOnDataWrite(fn)`
   (hook appelé après chaque écriture de donnée de profil — branché depuis
   `main.ts`).
+  **Toute clé doit commencer par `ludaskia_`** — pas une préférence de nommage : c'est
+  le filtre d'`appKeys()`, donc ce qui décide qu'une donnée entre dans l'export de
+  sauvegarde du parent et disparaît avec le profil supprimé. Une clé hors convention
+  fonctionne parfaitement à l'usage, ce qui rend l'oubli invisible ; d'où le gate
+  `tests/cles-stockage-gate.test.ts` (#597), cf. [Tests](tests.md).
 - **`profiles.ts`** — profils (UUID, préfixe, `updatedAt`), `initProfiles`,
   export/import. La **méta de profil** porte aussi `prefs` (a11y #42, dont
   `sansApparitionsSurprises` #331 — accesseur `apparitionsSurprises()`, vrai par défaut,

@@ -1,6 +1,11 @@
 /*
  * Génère les icônes du manifeste PWA (#306) → `public/pwa-192.png`,
- * `public/pwa-512.png`, `public/pwa-maskable-512.png`.
+ * `public/pwa-512.png`, `public/pwa-maskable-192.png`, `public/pwa-maskable-512.png`.
+ *
+ * Les DEUX tailles en maskable : une implémentation qui cherche une maskable à
+ * 192 et n'en trouve qu'en 512 ne redimensionne pas toujours — elle se rabat sur
+ * l'icône `any`, qu'elle recadre alors sans zone de sécurité (logo rogné), voire
+ * n'affiche rien.
  *
  * Même parti pris que la bannière sociale (tools/og-image/) : plutôt qu'un PNG
  * dessiné à la main et qui se désynchronise du site, on compose un petit HTML
@@ -35,6 +40,7 @@ const logoB64 = readFileSync(resolve(REPO, 'public', 'logo.png')).toString('base
 const GABARITS = [
 	{ nom: 'pwa-192.png', taille: 192, pastille: 80, logo: 58 },
 	{ nom: 'pwa-512.png', taille: 512, pastille: 80, logo: 58 },
+	{ nom: 'pwa-maskable-192.png', taille: 192, pastille: 72, logo: 52 },
 	{ nom: 'pwa-maskable-512.png', taille: 512, pastille: 72, logo: 52 },
 ];
 

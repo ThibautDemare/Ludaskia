@@ -75,7 +75,11 @@ export default defineConfig({
 				dir: 'ltr',
 				// L'installation doit ouvrir l'APPLICATION, pas la page vitrine : quelqu'un qui
 				// pose l'icône sur son écran d'accueil veut jouer, pas relire l'argumentaire.
-				start_url: 'app.html',
+				// Chemins ABSOLUS ici comme pour les icônes, alignés sur `scope`/`id` : un chemin
+				// relatif se résout contre l'URL du manifeste, ce que Chrome fait correctement
+				// mais que toutes les implémentations ne font pas de la même façon. Le manifeste
+				// mélangeait les deux styles, ce qui n'aidait personne à s'y retrouver.
+				start_url: '/Ludaskia/app.html',
 				scope: '/Ludaskia/',
 				display: 'standalone',
 				orientation: 'any',
@@ -83,12 +87,21 @@ export default defineConfig({
 				theme_color: '#2f7d52', // --accent (barre d'outils)
 				categories: ['education', 'kids'],
 				icons: [
-					{ src: 'pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-					{ src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+					{ src: '/Ludaskia/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+					{ src: '/Ludaskia/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
 					// `maskable` = icône que le système RECADRE à sa propre forme ; son gabarit
 					// garde le motif dans la zone sûre (cf. tools/pwa-icons/generate.mjs).
+					// Déclarée aux DEUX tailles : une implémentation qui cherche une maskable en
+					// 192 et n'en trouve qu'en 512 ne la redimensionne pas toujours — elle se
+					// rabat sur l'icône `any` et la recadre sans zone sûre, ou n'affiche rien.
 					{
-						src: 'pwa-maskable-512.png',
+						src: '/Ludaskia/pwa-maskable-192.png',
+						sizes: '192x192',
+						type: 'image/png',
+						purpose: 'maskable',
+					},
+					{
+						src: '/Ludaskia/pwa-maskable-512.png',
 						sizes: '512x512',
 						type: 'image/png',
 						purpose: 'maskable',

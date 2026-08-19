@@ -15,6 +15,11 @@
 		     chemins SANS la base : Vite préfixe lui-même /Ludaskia/. -->
 		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
 		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+		<!-- Icône de GRANDE taille dans le slot standard : un navigateur qui ne lit pas le
+		     manifeste pour fabriquer un raccourci (Firefox Android) se rabat sur `rel="icon"`,
+		     et n'y trouvait que du 16 et du 32 px — un lanceur qui en réclame ~192 refuse une
+		     source aussi petite et met son icône générique à la place. -->
+		<link rel="icon" type="image/png" sizes="192x192" href="/pwa-192.png" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 		<!-- Application installable (#306) : cf. app.html. -->
 		<meta name="theme-color" content="#2f7d52" />

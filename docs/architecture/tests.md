@@ -117,6 +117,26 @@ comparaison » satisfont la règle `label` sans rien résoudre. Les tests exigen
 champs d'une même fiche se **distinguent** (conjugaison : un pronom par champ ; comparaison :
 les deux nombres comparés). Cf. `nomChampReponse` dans [Cœur logique](core.md).
 
+### Contraste AA des tokens de couleur (#576)
+
+`tests/contraste-tokens.test.ts` lit les tokens dans `base.scss`/`themes.scss` et éprouve
+le contraste WCAG de la **rampe de gris** (`--ink`, `--grey`, `--muted`) sur chaque surface
+(`--paper`, `--page-bg`, `--accent-soft`), **thème par thème** — les sept, en quelques
+millisecondes. Complète le scan axe, qui ne visite que 9 vues, ne voit qu'**un** thème (celui
+rendu) et reste **non bloquant**. Deux gardes de plus, qui font la différence entre un gate
+utile et un gate contournable :
+
+- **`--muted` doit rester visiblement plus clair que `--grey`.** Sans elle, la façon la plus
+  simple de faire passer le test serait d'aligner les deux tokens — ce qui supprimerait un
+  niveau de hiérarchie visuelle au lieu de corriger le contraste.
+- **L'opacité d'un trophée verrouillé est recalculée, pas figée.** Le test compose la couleur
+  comme le fait le navigateur et vérifie le résultat ; un nombre magique (« ≥ 0,85 ») ne
+  dirait pas pourquoi et se périmerait au premier changement de palette.
+
+Hors périmètre, **mesuré** et écrit dans l'en-tête du test : `--accent` employé comme TEXTE
+sur `--accent-soft` échoue dans quatre thèmes clairs sur cinq (3,59:1 à 4,40:1). Le corriger
+demande de déplacer cinq couleurs de marque — décision de design, pas de token.
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent

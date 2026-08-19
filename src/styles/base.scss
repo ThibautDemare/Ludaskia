@@ -20,7 +20,19 @@
 	--clock-min: #e8662a; /* aiguille des minutes (#88) — corail, distinct de l'accent des heures ; 1er token du moteur de figures */
 	--ink: #1a1a1a;
 	--grey: #545454;
-	--muted: #9aa1ac;
+	/* Gris TERTIAIRE (sous --grey), pour un texte discret. Assombri (#576) : à
+	   #9aa1ac il plafonnait à 2,6:1 sur --paper, très en dessous des 4,5:1 AA, et
+	   ressortait tel quel sur cinq vues. Teinte et saturation d'origine conservées
+	   (bleu-gris ~215°, 10 %) — seule la clarté descend, pour que le token reste
+	   VISIBLEMENT plus clair que --grey (5,6:1 contre 7,6:1) et garde son rôle de
+	   troisième niveau de hiérarchie.
+	   La valeur est calée sur le fond le plus SERRÉ où ce texte atterrit vraiment, et
+	   ce fond n'est PAS le blanc : c'est l'--accent-soft du thème « fruit rouge »
+	   (#f9e0db, 4,76:1 ici). La piste #6b7280 de l'issue ne passait AA que sur --paper
+	   et laissait échouer les éléments posés sur --accent-soft et sur le fond de
+	   l'espace encadrant. Tenu par tests/contraste-tokens.test.ts, thème par thème ;
+	   « Nuit » a sa propre valeur (themes.scss). */
+	--muted: #5c6470;
 	--paper: #ffffff;
 	--page-bg: #eef3ee; /* fond de page (réécrit par les thèmes ; jamais --paper, gardé blanc) */
 	--ok: #2e7d32;

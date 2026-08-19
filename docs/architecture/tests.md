@@ -40,6 +40,28 @@ produit, par conception, moins de 50 items distincts (conjugaison = un verbe × 
 temps = 6 formes, ~4 types de triangles…). Il reste une cible pour les **banques
 de contenu** (vocabulaire, homophones), pas un gate sur l'ensemble du catalogue.
 
+### Gate statique du journal d'erreurs (#580)
+
+`tests/erreurs-journal-gate.test.ts` fait respecter la règle « pas de correction sans
+sa capture » (#391) au lieu de la laisser à la mémoire de qui écrit le code. Il lit les
+fichiers de `src/ui` comme du **texte** (pas de DOM, pas de rendu — quelques
+millisecondes) et exige que chaque module correctif importe `capterErreur` : tous les
+`src/ui/lecon-*.ts`, plus `session.ts`, `sprint.ts`, `revision.ts`, `ortho-runner.ts`
+et `revelation-neutre.ts`. Les exceptions sont **écrites dans le test avec leur
+raison** (`lecon-du-jour.ts` et `lecon-runner-shared.ts` ne corrigent rien ;
+`lecon-passer.ts` journalise par délégation à `revelation-neutre.ts`, ce qu'un test
+dédié vérifie), et le test rejette une exception devenue caduque — un module exempté
+qui se met à capturer doit sortir de la liste.
+
+Un dernier test croise la convention de nommage avec l'**aiguillage réel** : chaque
+`runLeconXxx` appelé dans `navigation.ts` doit venir d'un module du périmètre. Un
+runner branché sous un nom hors convention échoue au lieu de passer inaperçu.
+
+**Ce que ce gate ne prouve pas** : que l'appel est au bon endroit, avec un énoncé
+lisible et un `lessonId` (sans l'un des deux, `capterErreur` ignore l'entrée en
+silence), ni qu'il couvre **tous les modes** d'un type. C'est l'objet de la table de
+couverture (#581).
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent

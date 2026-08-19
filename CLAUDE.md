@@ -250,6 +250,11 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
     réponse composite expose `reponse()` (cf. `TuileController`).
   - **Vérifier la couverture** : le journal doit se remplir **dans tous les modes**
     du type touché (une leçon à deux modes = deux chemins de correction).
+  - Un **gate statique** tient la première moitié de la règle (#580,
+    `tests/erreurs-journal-gate.test.ts`) : un runner `lecon-*.ts` qui n'importe pas
+    `capterErreur` fait échouer `npm test`, et toute exception doit être écrite dans
+    le test avec sa raison. Il ne contrôle **ni les arguments ni les modes** : ça,
+    c'est encore à toi.
 - **Commits : aucune attribution Claude** (`Co-Authored-By` / « Generated with
   Claude Code »).
 

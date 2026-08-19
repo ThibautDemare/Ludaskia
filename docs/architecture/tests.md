@@ -73,8 +73,35 @@ runner branché sous un nom hors convention échoue au lieu de passer inaperçu.
 
 **Ce que ce gate ne prouve pas** : que l'appel est au bon endroit, avec un énoncé
 lisible et un `lessonId` (sans l'un des deux, `capterErreur` ignore l'entrée en
-silence), ni qu'il couvre **tous les modes** d'un type. C'est l'objet de la table de
-couverture (#581).
+silence). C'est l'objet de la table de couverture ci-dessous.
+
+### Couverture du journal par format d'exercice (#581)
+
+Le gate précédent travaille au niveau **module** ; celui-ci travaille au niveau
+**format d'exercice**. `e2e/journal-couverture.ts` déclare, pour chaque `type` de
+l'union `Exercise` (`src/core/exercise.ts`), une leçon d'exemple, le mode joué et le
+**geste** qui produit une erreur — source unique de deux vérifications :
+
+- `tests/journal-couverture.test.ts` (Vitest) est le **gate**. Un format sans entrée
+  fait échouer le build **deux fois** : à la compilation (la table est typée
+  `Record<Exercise['type'], …>`, et l'import depuis `tests/` la fait entrer dans le
+  programme TypeScript alors que `e2e/` n'est pas dans `tsconfig.include`) et à
+  l'exécution, par relecture du source. Le test confronte en plus chaque entrée au
+  catalogue réel : la leçon existe, le mode est déclaré, et elle produit bien **ce**
+  format sous 24 graines — sans quoi une leçon renommée laisserait une entrée qui
+  rassure sans rien couvrir. Une exception doit s'écrire (`{ couvert: false, raison }`)
+  et sa raison être substantielle ; il n'y en a aucune aujourd'hui.
+- `e2e/journal-couverture.spec.ts` est la **preuve par l'usage** : une seule spec
+  paramétrée (la suite tourne en `workers: 1`, un fichier par format coûterait cher)
+  qui joue chaque entrée dans le navigateur et vérifie le round-trip complet. Elle
+  verrouille ce qu'aucune analyse statique ne voit : la capture a lieu **au bon
+  moment**, avec un énoncé lisible (sinon l'entrée est ignorée en silence, donc zéro
+  carte côté encadrant) et des réponses **non vides des deux côtés** — une entrée
+  « Réponse attendue : » suivie de rien ne dit rien au parent.
+
+C'est ce fichier qui porte les round-trips de correction ; `erreurs-encadrant.spec.ts`
+ne garde que l'**affichage** (regroupement, période, tri, dépliage) plus les deux
+scénarios hors couverture-par-format (seuil détaché, révision espacée).
 
 ## Smoke tests e2e (Playwright)
 

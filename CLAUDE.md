@@ -252,11 +252,18 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
     réponse composite expose `reponse()` (cf. `TuileController`).
   - **Vérifier la couverture** : le journal doit se remplir **dans tous les modes**
     du type touché (une leçon à deux modes = deux chemins de correction).
-  - Un **gate statique** tient la première moitié de la règle (#580,
-    `tests/erreurs-journal-gate.test.ts`) : un runner `lecon-*.ts` qui n'importe pas
-    `capterErreur` fait échouer `npm test`, et toute exception doit être écrite dans
-    le test avec sa raison. Il ne contrôle **ni les arguments ni les modes** : ça,
-    c'est encore à toi.
+  - **Deux gates** tiennent désormais la règle, et il faut nourrir les deux.
+    (1) **Statique, au niveau module** (#580, `tests/erreurs-journal-gate.test.ts`) :
+    un runner `lecon-*.ts` qui n'importe pas `capterErreur` fait échouer `npm test`,
+    et toute exception doit être écrite dans le test avec sa raison.
+    (2) **Table de couverture par FORMAT** (#581, `e2e/journal-couverture.ts`) : un
+    nouveau `type` dans l'union `Exercise` doit y déclarer sa leçon d'exemple et le
+    geste qui produit une erreur, sinon `npm run typecheck` **et** `npm test`
+    échouent ; la spec paramétrée `e2e/journal-couverture.spec.ts` joue ensuite ce
+    geste pour de vrai et exige que l'erreur remonte côté encadrant, avec un énoncé
+    et **deux réponses non vides**.
+    Ce que les gates ne contrôlent toujours pas : que **tous les modes** d'un type
+    soient couverts (la table en déclare un par format) — ça, c'est encore à toi.
 - **Commits : aucune attribution Claude** (`Co-Authored-By` / « Generated with
   Claude Code »).
 

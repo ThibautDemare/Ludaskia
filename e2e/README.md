@@ -80,6 +80,29 @@ sinon lancer avec une config temporaire sur des ports isolés.
   La fenêtre du bug est ainsi heurtée à chaque run. Exemple : `e2e/encadrant-banque.spec.ts`
   (« un re-rendu complet pendant la fenêtre d'annonce… », #527).
 
+## Couverture du journal d'erreurs (#581)
+
+`journal-couverture.ts` (une **table**, pas une spec) déclare pour chaque format
+d'exercice une leçon, un mode et le geste qui produit une erreur ;
+`journal-couverture.spec.ts` boucle dessus et rejoue le même round-trip pour chacun
+(produire l'erreur par une vraie interaction → la retrouver dans l'espace encadrant).
+**Ajouter un format d'exercice = ajouter son entrée**, sinon `npm run typecheck` et
+`npm test` échouent (le gate est côté Vitest, `tests/journal-couverture.test.ts` —
+détails dans [docs/architecture/tests.md](../docs/architecture/tests.md)).
+
+Deux points de méthode si tu touches à cette table :
+
+- **Elle importe `src/`, et c'est délibéré** (dérogation à la règle ci-dessus) : elle
+  n'importe que des **types** (`Exercise['type']`, `SchoolLevel`, `ModeOrtho`), et
+  c'est justement ce couplage qui fait le gate — une union d'exercices qui s'étend
+  sans que la table suive doit rougir. Le fichier n'est pas une spec : il est lu par
+  la spec **et** par le test Vitest, d'où sa position à part.
+- **Aucun `expect` dans les gestes** : la table est importée par Vitest, donc rien de
+  `@playwright/test` ne doit y entrer à l'exécution (`import type` seulement). Un
+  geste utilise `Page`/`Locator` (`waitFor`, `click`, `fill`) et lève une `Error`
+  explicite s'il ne peut pas produire l'erreur attendue ; les assertions vivent dans
+  la spec.
+
 ## Scan a11y automatique (axe-core, #411)
 
 `a11y-axe.spec.ts` injecte **axe-core** (`@axe-core/playwright`) dans les vues

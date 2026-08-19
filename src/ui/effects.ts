@@ -4,6 +4,7 @@
 import { getXP, progressionNiveau, NIVEAU_MAX } from '../core/progress';
 import type { Recompense } from '../core/unlocks';
 import { activateModal } from './modal-a11y';
+import { animationsReduites } from './preferences';
 
 /* Mini-courbe SVG de la progression (score % au fil des essais) */
 export function sparkline(vals: number[], w = 260, h = 46) {
@@ -24,8 +25,25 @@ export function sparkline(vals: number[], w = 260, h = 46) {
     <polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${pts}"/>${dots}</svg>`;
 }
 
-/* Petite pluie de confettis */
+/* Petite pluie de confettis.
+   Coupée en MOUVEMENT RÉDUIT, par le réglage in-app comme par la préférence système. C'est
+   l'effet le plus massif de l'appli — 90 éléments traversant tout l'écran pendant ~3 s — et
+   il accompagne précisément les deux modales dont l'animation d'ouverture est déjà
+   neutralisée : la couper aussi est la moitié qui manquait, sans quoi on soignait l'emballage
+   en gardant le contenu.
+   Le filtre est ici, en amont, plutôt qu'en CSS : une règle `animation: none` laisserait
+   quand même 90 <span> se créer et se détruire pour rien. Même garde que les eggs ambiants
+   (`ui/eggs.ts`) et le clin d'œil du pied de page. */
+function mouvementReduit(): boolean {
+	return (
+		animationsReduites() ||
+		(typeof window !== 'undefined' &&
+			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true)
+	);
+}
+
 export function confetti() {
+	if (mouvementReduit()) return;
 	const colors = ['#336CBF', '#ffd54f', '#2e7d32', '#c62828', '#00acc1', '#ff8f00'];
 	const layer = document.createElement('div');
 	layer.className = 'confetti-layer';

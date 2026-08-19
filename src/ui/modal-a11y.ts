@@ -132,7 +132,17 @@ export function activateModal(overlay: HTMLElement, opts: ModalA11yOptions = {})
 	document.addEventListener('keydown', onKeydown, true);
 
 	// Focus initial : l'élément désigné, sinon le 1er focusable de la modale.
-	(opts.initialFocus ?? overlay.querySelector<HTMLElement>(FOCUSABLE))?.focus();
+	// `preventScroll` : donner le focus fait normalement défiler le navigateur jusqu'à
+	// l'élément. Sur une modale plus haute que l'écran dont le focus initial est en bas de
+	// carte (le panneau d'étayage vise son bouton de sortie), elle s'ouvrait donc DÉJÀ
+	// défilée à son pied — texte passé, et croix de fermeture sortie de l'écran, au point
+	// d'être injoignable au doigt comme à la souris (échec intermittent de
+	// `e2e/etayage-redige.spec.ts`). Une modale est déjà positionnée là où on veut la lire :
+	// elle n'a aucune raison de bouger à l'ouverture. On ne le met QUE sur le focus initial ;
+	// les focus de la boucle Tab, eux, doivent bien amener l'élément à l'écran.
+	(opts.initialFocus ?? overlay.querySelector<HTMLElement>(FOCUSABLE))?.focus({
+		preventScroll: true,
+	});
 
 	let released = false;
 	return function release(): void {

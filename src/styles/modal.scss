@@ -268,6 +268,25 @@ html.anim-reduced .levelup-unlock--mascotte .levelup-unlock-ico {
 	animation: none;
 }
 
+/* `modal-pop` sur le GABARIT lui-même : les deux jeux de règles ci-dessus couvraient les
+   ornements du passage de niveau, mais pas le zoom d'ouverture commun à TOUTES les modales
+   de l'appli — donc un enfant qui demande moins d'animations (ou dont le système le demande)
+   se le prenait quand même, à chaque ouverture. C'est précisément le public visé par le
+   réglage : sensibilité vestibulaire, attention, fatigue visuelle.
+   Effet de bord utile : sur un panneau plus haut que l'écran, la carte grandit pendant 250 ms
+   et sa cible tactile se déplace d'une quarantaine de pixels pendant ce temps ; la supprimer
+   rend la croix de fermeture immédiatement stable au lieu d'atteignable « une fois posée ». */
+@media (prefers-reduced-motion: reduce) {
+	.modal,
+	.levelup-card {
+		animation: none;
+	}
+}
+html.anim-reduced .modal,
+html.anim-reduced .levelup-card {
+	animation: none;
+}
+
 /* Confettis (déclenchés via la modale de récompense) */
 .confetti-layer {
 	position: fixed;

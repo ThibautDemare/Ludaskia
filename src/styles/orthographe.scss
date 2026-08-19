@@ -569,6 +569,12 @@
 		animation: none; // trait fixe coloré, sans clignotement
 	}
 }
+/* Seule animation en boucle INFINIE du dépôt : elle doit aussi tomber sous le réglage
+   in-app, pas seulement sous le média système. Un clignotement perpétuel est exactement
+   ce qu'un enfant qui coche « Réduire les animations » cherche à faire taire. */
+html.anim-reduced .tuile-slot.is-caret .tuile-curseur {
+	animation: none;
+}
 
 /* Tuile sélectionnée + contrôles ← → / enlever (couche 2) */
 .tuile-cell {

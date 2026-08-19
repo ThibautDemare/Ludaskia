@@ -213,3 +213,18 @@ Job `e2e` séparé dans `.github/workflows/ci.yml`, **bloquant** (#413) : la sui
 est fiabilisée (exécution en série `workers=1`, `retries: 1`, `trace:
 on-first-retry`) et gèle le merge en cas d'échec. Reste à l'ajouter aux status
 checks requis de la branche protégée `main` (réglage du dépôt, côté mainteneur).
+
+**Installation du navigateur : `npx playwright install chromium`, sans `--with-deps`.**
+Mesure du 19/08/2026 : sur l'image `ubuntu-latest`, toutes les bibliothèques de Chromium
+sont déjà présentes (y compris `fonts-noto-color-emoji`, donc les emojis de l'appli
+s'affichent pareil). `--with-deps` n'installait réellement que **21 Mo de polices**
+japonaises, chinoises, thaï et X11 historiques — sans usage pour une appli française dont
+la police d'interface est embarquée dans le dépôt. Et le cache Playwright ne couvre que le
+**binaire du navigateur**, jamais les paquets apt : ces 21 Mo se retéléchargeaient à chaque
+run. Le jour où le miroir Ubuntu a ralenti, l'étape est passée à **24 min** (pour 11 min de
+tests) et trois jobs sont morts au timeout de 6 h.
+
+⚠ Les **deux** workflows qui lancent Playwright (`ci.yml` et `update-snapshots.yml`)
+doivent installer le navigateur de la **même façon** : le second GÉNÈRE les baselines que
+le premier COMPARE au pixel près. Des polices système présentes d'un côté et absentes de
+l'autre suffiraient à faire échouer une comparaison sur un rendu pourtant inchangé.

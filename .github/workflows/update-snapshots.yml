@@ -56,8 +56,13 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
+      # Sans `--with-deps`, comme `ci.yml` — et il est ESSENTIEL que les deux restent
+      # identiques : ce workflow GÉNÈRE les baselines que `ci.yml` COMPARE au pixel près.
+      # Des polices système présentes ici et absentes là-bas (ou l'inverse) suffiraient à
+      # faire diverger le rendu du texte, et donc à faire échouer une comparaison sur un
+      # rendu pourtant inchangé. Toute modification ici doit être reportée là-bas.
       - name: Installer Chromium (Playwright)
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Régénérer les baselines de la galerie
         # `=all` : régénère explicitement (surcharge `updateSnapshots: 'none'` de la

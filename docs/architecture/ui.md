@@ -1267,6 +1267,25 @@ le thème (fonds de cartes en `var(--paper)`, etc.). **Clair-obscur** n'est pas 
 `@media (prefers-color-scheme: dark)` applique la palette sombre à `[data-theme='auto']`,
 d'où une bascule **en direct** sans rechargement.
 
+**Rampe de gris et contraste AA (#576).** Trois niveaux de texte : `--ink` (principal),
+`--grey` (secondaire), `--muted` (discret). `--muted` a longtemps été **sous AA**
+(`#9aa1ac` ≈ 2,6:1 sur `--paper`) et se contournait à la main, feuille par feuille — quatre
+overrides `--grey` avaient fini par exister, chacun redécouvrant le problème. Corrigé à la
+source (`#5c6470`) : la valeur est calée sur la surface la plus **serrée** où ce texte
+atterrit vraiment, l'`--accent-soft` du thème « fruit rouge », **pas** sur le blanc — un
+token qui ne passe AA que sur `--paper` laisse échouer tout ce qui est posé sur un fond
+teinté. Les overrides existants sont **conservés** (y revenir éclaircirait ces textes sans
+rien gagner, et deux d'entre eux portent une autre raison : une région live et un alignement
+sur les sous-lignes voisines) ; seuls leurs commentaires ont été remis à jour.
+
+Piège associé, corrigé au même endroit : **une `opacity` sur un conteneur dilue tout son
+contenu**. La carte d'un trophée verrouillé était à `0.55`, ce qui faisait tomber son titre
+à 3,9:1 et sa description à 2,6:1 — le « gris `#a1a1a1` » vu par axe n'est écrit nulle part,
+c'est `--grey` traversé par l'opacité. Aucun token ne peut corriger ça (même `--ink`, à
+17:1, y retombe à 3,9:1) : l'opacité est remontée à `0.85`, la désaturation restant le
+signal fort. Les deux règles sont tenues par `tests/contraste-tokens.test.ts`, thème par
+thème (cf. [Tests](tests.md)).
+
 ### Accessibilité (#42)
 
 **Accessibilité (#42)** — deux aides transverses, réglées **dans la méta de profil**

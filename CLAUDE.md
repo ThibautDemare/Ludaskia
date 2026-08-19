@@ -213,7 +213,10 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
 - **TypeScript `strict`** ; passer par **ESLint + Prettier** (`npm run lint` /
   `format`). La CI vérifie `format:check → lint → typecheck → test`.
 - **Stockage** : toujours via `lsGet/lsSet` (jamais `localStorage` directement,
-  sauf accès bruts dédiés dans `src/core/storage.ts`).
+  sauf accès bruts dédiés dans `src/core/storage.ts`), et **toute clé commence par
+  `ludaskia_`** — c'est le filtre d'`appKeys()`, donc ce qui fait entrer la donnée
+  dans l'export de sauvegarde et la fait disparaître avec le profil supprimé. Tenu
+  par `tests/cles-stockage-gate.test.ts` (#597).
 - **Séparation** logique (`src/core/`, testable sans DOM) / rendu (`src/ui/`).
   Lancer `npm test` après toute modif de logique.
 - Ces deux règles ne sont plus à vérifier à l'œil : **ESLint les fait échouer**

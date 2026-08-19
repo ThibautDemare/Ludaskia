@@ -312,7 +312,8 @@ l'épinglage « à revoir » (`encadrant-progression.ts`, bloc « Épingler une 
 ci-dessus, plus `core/erreur-representation.ts` (logique pure, cf. [Logique
 pure](core.md)) pour les formats composites :
 - **`erreur-capture.ts`** — point d'entrée UNIQUE `capterErreur`, appelé par **tous les
-  runners** à la correction d'une réponse fausse : met en forme l'énoncé lisible
+  runners** à la correction d'une réponse fausse (fait respecter par un **gate
+  statique**, #580 — cf. [Tests](tests.md)) : met en forme l'énoncé lisible
   (`questionPourJournal` — `@` → « … », marqueur « exercice avec dessin ») et le libellé
   d'un choix QCM (`libelleChoix`, vue riche #200 si elle existe), puis délègue à
   `core/erreurs-journal.ts`. Ignore une erreur sans leçon rattachée ou sans énoncé

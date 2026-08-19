@@ -391,6 +391,16 @@ input.frac-num-input:focus-visible {
 	color: var(--ok);
 	animation: sprint-pop 0.3s ease;
 }
+/* Ni le média système ni le réglage in-app ne le coupaient, alors que la frappe juste
+   au-dessus, bien plus discrète, l'est déjà. */
+@media (prefers-reduced-motion: reduce) {
+	.sprint-check {
+		animation: none;
+	}
+}
+html.anim-reduced .sprint-check {
+	animation: none;
+}
 @keyframes sprint-pop {
 	0% {
 		transform: scale(0.4);

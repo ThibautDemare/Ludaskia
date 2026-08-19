@@ -218,16 +218,13 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 		initialFocus: suivant,
 		restoreFocusTo: d.restoreFocusTo,
 	});
-	// ⚠ Point ouvert (constat du `relecteur-accessibilite`) : le focus initial va sur le
-	// bouton de sortie, tout en BAS de la carte, et le navigateur fait défiler la modale
-	// jusqu'à lui — un panneau plus haut que l'écran s'ouvre donc sur son dernier bouton,
-	// le texte déjà passé. Anodin tant que le panneau tenait en trois lignes, devenu le cas
-	// courant avec la règle et les étapes rédigées. Remonter le `scrollTop` après coup a été
-	// essayé et ÉCARTÉ : cela entre en concurrence avec le défilement que le navigateur
-	// déclenche lui-même, au point de rendre la croix de fermeture non cliquable (échec
-	// reproductible de `e2e/etayage-redige.spec.ts`). Le vrai correctif est un
-	// `focus({ preventScroll: true })` dans `activateModal` — donc dans du code partagé par
-	// TOUTES les modales de l'appli, à traiter à part.
+	// Le focus initial vise le bouton de sortie, tout en BAS de la carte. C'était sans
+	// conséquence tant que le panneau tenait en trois lignes ; avec la règle et les étapes
+	// rédigées, un panneau plus haut que l'écran s'ouvrait défilé à son pied — texte déjà
+	// passé, croix de fermeture hors écran. La cause était le défilement automatique du
+	// navigateur au moment du focus, corrigée depuis dans `activateModal` (`preventScroll`),
+	// donc pour toutes les modales : ne pas rétablir ici un `scrollTop` de compensation, qui
+	// entrerait de nouveau en concurrence avec le navigateur.
 
 	function fermer(): void {
 		stopTts();

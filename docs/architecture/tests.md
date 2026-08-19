@@ -103,6 +103,20 @@ C'est ce fichier qui porte les round-trips de correction ; `erreurs-encadrant.sp
 ne garde que l'**affichage** (regroupement, période, tri, dépliage) plus les deux
 scénarios hors couverture-par-format (seuil détaché, révision espacée).
 
+### Nom accessible des champs de réponse (#577)
+
+`tests/champs-libelles.test.ts` balaie le catalogue et exige qu'aucun `<input class="ans…">`
+d'une fiche ne parte **sans `aria-label`** — un champ anonyme est annoncé « zone de saisie »
+par un lecteur d'écran, et axe le classe `critical`. Ce balayage vaut mieux qu'un scan axe
+seul : celui-ci ne visite que **9 vues** échantillons, et c'est le gate qui a trouvé la
+leçon `math-decomposer-multiplication`, qui construit ses champs à la main hors de
+`renderItem` et n'était couverte par aucune vue scannée.
+
+Il verrouille aussi ce qu'axe **ne sait pas voir** : huit champs tous nommés « signe de
+comparaison » satisfont la règle `label` sans rien résoudre. Les tests exigent donc que les
+champs d'une même fiche se **distinguent** (conjugaison : un pronom par champ ; comparaison :
+les deux nombres comparés). Cf. `nomChampReponse` dans [Cœur logique](core.md).
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent

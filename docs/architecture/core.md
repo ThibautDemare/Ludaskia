@@ -79,6 +79,18 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   **`saisieEstNombre`** (`nombres.ts` ci-dessous), pour **refuser** — sans la
   compter fausse — une saisie qui n'est pas un nombre là où un nombre est
   attendu (cf. [Rendu & interactions](ui.md) pour le comportement côté écran).
+  **`nomChampReponse(it)` / `ariaChamp(it, role?)`** (#577) — nom accessible du champ,
+  posé en `aria-label` par **toute** branche de `renderItem` qui rend un `<input>`.
+  Sans lui, un lecteur d'écran annonçait « zone de saisie » six fois de suite sur une
+  fiche de conjugaison, sans jamais dire la personne. Le nom est dérivé de
+  **`texteParle`** (`tts-text.ts`) appliqué à `parle ?? text` — donc le MÊME énoncé que
+  celui du bouton « Écouter », jamais un libellé écrit à la main par leçon (qui
+  divergerait). `role` ajoute, APRÈS l'énoncé, le format attendu quand le champ n'accepte
+  pas n'importe quoi (« signe de comparaison », « chiffre manquant »). Deux exceptions
+  assumées : les champs d'heure gardent « heures »/« minutes » (le nom doit y distinguer
+  les deux champs entre eux, et ce qui change d'une horloge à l'autre est dans le dessin),
+  et les cellules d'une grille posée gardent « chiffre du résultat » / « retenue ». Gate :
+  `tests/champs-libelles.test.ts` balaie tout le catalogue et échoue en nommant la leçon.
   Le `kind: 'posed'` (#97) est un
   item « conteneur » (`posed: {op, a, b}`) que **`posedGridHTML`** déploie en grille
   de colonnes — plusieurs champs `.ans` (chiffres de résultat / produits partiels,

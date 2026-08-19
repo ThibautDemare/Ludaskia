@@ -2,6 +2,49 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
 
+/* ============================================================
+   Contraintes d'architecture EXÉCUTABLES (#579).
+
+   Trois conventions du CLAUDE.md étaient tenues par la seule discipline de
+   relecture : `core`/`data` ne dépendent pas du rendu, le noyau logique ne touche
+   pas au DOM, et la persistance passe exclusivement par `lsGet`/`lsSet`. Mesure du
+   19/08/2026 : zéro violation dans le code. Ces règles ne corrigent donc rien —
+   elles empêchent la régression, et retirent trois points de la checklist mentale
+   du relecteur à chaque PR.
+
+   `no-restricted-globals` ne se CUMULE pas d'un bloc de config à l'autre : le
+   dernier bloc qui matche un fichier remplace la valeur de la règle. D'où trois
+   blocs disjoints (core/data, storage.ts, le reste de src/) plutôt qu'un bloc
+   général plus des exceptions — chaque bloc énumère TOUT ce qu'il interdit.
+   ============================================================ */
+
+const SANS_DOM = [
+	{
+		name: 'document',
+		message:
+			'`src/core` et `src/data` doivent rester testables sans navigateur : passer par `src/ui` pour le rendu.',
+	},
+	{
+		name: 'window',
+		message:
+			'`src/core` et `src/data` doivent rester testables sans navigateur : passer par `src/ui` pour le rendu.',
+	},
+];
+
+const MESSAGE_STOCKAGE =
+	'Passer par `lsGet`/`lsSet` (src/core/storage.ts) : le préfixe de profil actif y est appliqué, un accès direct écrirait hors du profil.';
+
+const STOCKAGE_CONFINE = { name: 'localStorage', message: MESSAGE_STOCKAGE };
+
+/* `no-restricted-globals` ne voit que l'identifiant NU. `window.localStorage` est une
+   écriture aussi banale que `localStorage` tout court, et passerait à travers — d'autant
+   que `window` reste autorisé dans `src/ui`. On ferme donc l'accès par membre, quel que
+   soit le porteur (`window`, `globalThis`). */
+const STOCKAGE_PAR_MEMBRE = {
+	selector: "MemberExpression[property.name='localStorage']",
+	message: MESSAGE_STOCKAGE,
+};
+
 export default tseslint.config(
 	// `.claude/` (worktrees, configs d'agents) hors périmètre de lint. NB : en flat
 	// config, `.eslintignore` n'est PAS lu — l'ignore doit vivre ici.
@@ -18,6 +61,50 @@ export default tseslint.config(
 				'error',
 				{ argsIgnorePattern: '^_', caughtErrors: 'none' },
 			],
+		},
+	},
+
+	// Noyau logique et données : ni rendu, ni DOM, ni stockage direct.
+	{
+		files: ['src/core/**/*.ts', 'src/data/**/*.ts'],
+		ignores: ['src/core/storage.ts'],
+		rules: {
+			'no-restricted-globals': ['error', ...SANS_DOM, STOCKAGE_CONFINE],
+			'no-restricted-syntax': ['error', STOCKAGE_PAR_MEMBRE],
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['**/ui/*', '**/ui/**'],
+							message:
+								'Dépendance interdite : `src/core` et `src/data` ne connaissent pas le rendu. Inverser la dépendance (c’est `src/ui` qui importe le noyau).',
+						},
+					],
+				},
+			],
+		},
+	},
+
+	// La seule porte du stockage : elle a le droit de toucher `localStorage`, et
+	// c'est précisément sa raison d'être. Le reste des interdits du noyau tient.
+	{
+		files: ['src/core/storage.ts'],
+		rules: { 'no-restricted-globals': ['error', ...SANS_DOM] },
+	},
+
+	// Reste de `src/` (rendu, points d'entrée) : le DOM est légitime, le stockage
+	// direct non. EXCEPTION déclarée ici plutôt qu'en `eslint-disable` isolé :
+	// `src/vitrine.ts` lit BRUTEMENT la clé des profils pour décider d'afficher le
+	// lien « Continuer ». La vitrine est une page à part, qui ne charge pas la
+	// couche stockage de l'app — l'y forcer alourdirait la page d'accueil pour une
+	// seule lecture booléenne.
+	{
+		files: ['src/**/*.ts'],
+		ignores: ['src/core/**', 'src/data/**', 'src/vitrine.ts'],
+		rules: {
+			'no-restricted-globals': ['error', STOCKAGE_CONFINE],
+			'no-restricted-syntax': ['error', STOCKAGE_PAR_MEMBRE],
 		},
 	},
 );

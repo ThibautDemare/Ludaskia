@@ -4,6 +4,12 @@
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"strict": true,
+		/* Un seul JS entre dans le programme : `tools/contrast/wcag.js`, importé par
+		   `tests/contraste-tokens.test.ts` (#582). Il reste en JS parce que l'autre
+		   appelant, `tools/contrast/contrast.mjs`, s'exécute sans build ; ses types
+		   viennent de ses annotations JSDoc. `checkJs` reste à false : on TYPE ce
+		   fichier, on ne le type-vérifie pas. Aucun autre .js sous `src/` ni `tests/`. */
+		"allowJs": true,
 		"skipLibCheck": true,
 		"esModuleInterop": true,
 		"isolatedModules": true,

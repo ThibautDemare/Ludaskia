@@ -131,7 +131,7 @@
 	vertical-align: middle;
 	padding: 2px 4px;
 	border: 0;
-	border-bottom: 1.5px solid #333;
+	border-bottom: 1.5px solid var(--field-line); /* thématisé (#386) : #333 disparaissait en Nuit */
 	background: transparent;
 	color: var(--ink);
 }

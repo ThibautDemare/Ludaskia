@@ -65,8 +65,20 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
+      # Le navigateur SEUL, sans `--with-deps` (mesure du 19/08/2026). Sur l'image
+      # `ubuntu-latest`, les bibliothèques dont Chromium a besoin sont DÉJÀ là : le log
+      # de `--with-deps` les listait toutes en « already the newest version », y compris
+      # `fonts-noto-color-emoji` (les emojis de l'appli s'affichent donc pareil). Les
+      # seuls paquets réellement installés étaient 21 Mo de polices japonaises, chinoises,
+      # thaï et X11 historiques — inutiles pour une appli française dont la police
+      # d'interface (Nunito) est embarquée dans le dépôt. Et le cache ci-dessus ne couvre
+      # QUE le binaire du navigateur, jamais apt : ces 21 Mo se retéléchargeaient à chaque
+      # run. Le jour où le miroir Ubuntu a ralenti, cette étape est passée à 24 min (pour
+      # 11 min de tests) et a fait mourir trois jobs au timeout de 6 h.
+      # Si un jour le navigateur ne se lance plus (« missing dependencies » au démarrage),
+      # c'est que l'image du runner a changé : remettre `--with-deps` et rouvrir le sujet.
       - name: Installer Chromium (Playwright)
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Lancer les tests e2e
         run: npm run test:e2e

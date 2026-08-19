@@ -159,22 +159,35 @@ test('addition posée : le bouton persistant de l’en-tête ouvre le panneau su
 
 /* État de report ÉCHU (`reprendreLe` déjà passé) avec moins de blocages que
    BLOCAGES_SIGNAL_ADULTE (3) : c'est la condition de `episodeEtayable`
-   (core/etayage.ts). Namespacé comme dans lecon-du-jour.spec.ts. */
-const SEED_REPORT_ECHU = `(() => {
-	const now = Date.now();
+   (core/etayage.ts). Namespacé comme dans lecon-du-jour.spec.ts.
+
+   `now` est calculé UNE SEULE FOIS ici, côté Node, et figé dans le script injecté —
+   jamais un `Date.now()` À L'INTÉRIEUR du texte passé à `page.addInitScript` (même
+   patron que `seedRappelSauvegardeScript`, helpers.ts). Un tel script est REJOUÉ à
+   chaque navigation de la page, y compris le rechargement forcé par `gotoHash` sur un
+   hash déjà courant (#…) : un `Date.now()` interne y recalculerait un `reporteLe`
+   différent à chaque rejeu, changeant la signature d'épisode (`episodeEtayable`,
+   dérivée de `reporteLe`) entre la fermeture du panneau et la relance de ce test — le
+   panneau se rouvrait alors à tort, l'app ayant l'air de voir un NOUVEL épisode. */
+function seedReportEchuScript(now = Date.now()): string {
 	const day = 24 * 60 * 60 * 1000;
-	const reports = { 'calc-addition-posee@ce2': {
-		jours: 2, dernierJour: '', reporteLe: now - 3 * day,
-		reprendreLe: now - 1000, meilleurPct: 40,
-	} };
-	localStorage.setItem('e2e/ludaskia_leconReport', JSON.stringify(reports));
-})();`;
+	const reports = {
+		'calc-addition-posee@ce2': {
+			jours: 2,
+			dernierJour: '',
+			reporteLe: now - 3 * day,
+			reprendreLe: now - 1000,
+			meilleurPct: 40,
+		},
+	};
+	return `localStorage.setItem('e2e/ludaskia_leconReport', ${JSON.stringify(JSON.stringify(reports))});`;
+}
 
 test('addition posée : l’exemple d’avant-série s’ouvre seul sur un report échu, et ne revient pas au lancement suivant', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
-	await page.addInitScript(SEED_REPORT_ECHU);
+	await page.addInitScript(seedReportEchuScript());
 	await gotoHash(page, 'lecon-calc-addition-posee');
 
 	// Ouverture AUTOMATIQUE, sans le moindre clic.

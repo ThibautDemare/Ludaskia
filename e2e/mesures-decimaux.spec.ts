@@ -31,10 +31,23 @@ test('CM1 longueurs : un résultat décimal se rend en virgule et une saisie dé
 	const errors = watchErrors(page);
 	// Le trou décimal varie (les paires ×10 décimales et m↔cm petite→grande) ; on recharge
 	// jusqu'à obtenir un champ dont la réponse (data-answer) est en écriture à VIRGULE.
+	// Probabilité PAR TIRAGE (fiche de 8 items, cf. data/maths/mesures.ts) : pour une paire
+	// 'deux-sens' (cm↔mm, dm↔cm, m↔dm) comme pour m↔cm ('vers-grande'), seul le sens
+	// petite→grande produit une réponse décimale — l'autre sens rend une CONSIGNE à virgule
+	// mais une réponse entière. Sur 6 conversions CM1, P(item décimal) = 1/6 × 4 × 0,4 ≈
+	// 26,7 %, donc P(aucun des 8 items décimal) = (1 − 0,267)^8 ≈ 8,4 % : pas un cas rare,
+	// une seule fiche ne suffit donc pas à fiabiliser le test.
+	// `page.goto` vers un hash IDENTIQUE au hash courant est un no-op côté Chromium (pas de
+	// rechargement réel, cf. clic-verbe.spec.ts/gotoCM1 et intercaler-ce2.spec.ts) : sans
+	// `.reload()` explicite, les « relances » ci-dessous revoyaient TOUTES la même fiche (celle
+	// du tout premier chargement) — la boucle ne retirait donc jamais qu'UN seul tirage réel,
+	// d'où l'échec intermittent observé (~8,4 % de chances, retrouvé en usage). Avec un vrai
+	// rechargement à chaque tentative, 6 tentatives ramènent le résidu à 0,084^6 ≈ 3×10⁻⁷.
 	const champDecimal = page.locator('.ans[data-answer*=","]').first();
 	let trouve = false;
-	for (let i = 0; i < 15 && !trouve; i++) {
+	for (let i = 0; i < 6 && !trouve; i++) {
 		await page.goto('app.html#lecon-mes-longueurs', { waitUntil: 'networkidle' });
+		await page.reload({ waitUntil: 'networkidle' });
 		// Attendre que la fiche soit RENDUE (un champ présent) avant de chercher la variante
 		// décimale : sinon, sous charge parallèle, `networkidle` peut précéder le rendu du SPA
 		// et le comptage tomber sur 0 alors que la fiche existera un instant plus tard.

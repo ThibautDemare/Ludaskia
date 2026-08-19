@@ -191,7 +191,10 @@ html.anim-reduced .item-tts.speaking .ph-icon {
 	line-height: 1.35;
 }
 .pref-hint {
-	color: var(--grey); /* lisible (AA) : --muted (#9aa1ac ≈ 2,6:1 sur blanc) échouait */
+	/* `--grey` et non `--muted` : c'était à l'origine un contournement d'AA, --muted
+	   est désormais conforme (#576). On garde --grey quand même — revenir en arrière
+	   ÉCLAIRCIRAIT ce texte sans rien gagner. */
+	color: var(--grey);
 	font-weight: 400;
 }
 .pref-toggle-off {

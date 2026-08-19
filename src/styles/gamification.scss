@@ -398,8 +398,17 @@ html.anim-reduced .mascotte-static {
 	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 	font-family: var(--ui);
 }
+/* Trophée pas encore débloqué : désaturé ET légèrement estompé. L'opacité a été
+   REMONTÉE de 0,55 à 0,85 (#576). À 0,55 elle diluait tout le contenu de la carte
+   vers le fond : le titre tombait à 3,9:1 et la description à 2,6:1 — c'est de là
+   que venait le « gris #a1a1a1 » relevé par axe, qui n'est écrit nulle part (c'est
+   --grey vu à travers l'opacité). Aucun changement de token n'aurait pu le corriger,
+   l'opacité rediluant ce qu'on met dessous : même --ink, à 21:1, retombait à 3,9:1.
+   0,85 laisse la carte visiblement en retrait (le signal fort restant la
+   désaturation) tout en gardant titre et description au-dessus d'AA, en clair
+   comme en Nuit (11,0:1 et 5,1:1 sur blanc ; 9,3:1 et 5,6:1 sur la carte Nuit). */
 .trophy.off {
-	opacity: 0.55;
+	opacity: 0.85;
 	filter: grayscale(0.7);
 }
 .trophy-ico {

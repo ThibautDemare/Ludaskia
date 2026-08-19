@@ -149,7 +149,8 @@
 	color: var(--ink);
 }
 /* Absence de cible : dit en toutes lettres, jamais une zone vide (qui se lit « pas chargé »).
-   `--grey` et non `--muted`, qui passe sous AA sur `--paper`. */
+   `--grey` et non `--muted` : c'était un contournement d'AA, --muted est désormais
+   conforme (#576) — on garde --grey, y revenir éclaircirait ce texte pour rien. */
 .enc-seance-cible-vide {
 	font-size: 0.85rem;
 	font-style: italic;

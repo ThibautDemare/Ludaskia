@@ -28,10 +28,12 @@
 	display: block;
 }
 
-/* Résumé du filtrage (« 7 leçons à choisir. ») : `--grey` et NON le `--muted` de `.enc-hint`,
-   qui passe sous AA sur `--paper` (2,6:1). Ce texte porte une information NÉCESSAIRE — c'est
-   le seul retour du nombre de résultats, et le contenu même de la région live annoncée aux
-   aides techniques. Même override, pour la même raison, que `.enc-seance-arevoir`. */
+/* Résumé du filtrage (« 7 leçons à choisir. ») : `--grey` et NON le `--muted` de `.enc-hint`.
+   La raison d'origine (--muted sous AA) a disparu avec #576, mais l'override RESTE, et pour
+   la seconde raison, qui elle tient toujours : ce texte porte une information NÉCESSAIRE —
+   c'est le seul retour du nombre de résultats, et le contenu même de la région live annoncée
+   aux aides techniques. Il ne doit donc pas retomber au niveau « discret ». Même override,
+   pour la même raison, que `.enc-seance-arevoir`. */
 .enc-sel-resume {
 	color: var(--grey);
 }

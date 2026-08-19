@@ -15,6 +15,12 @@ Avant de fetcher w3.org, consulter ce fichier. Compléter en ligne uniquement si
 Pour **mesurer un contraste** (plutôt qu'un outil web), utiliser l'outil local :
 `node tools/contrast/contrast.mjs "#1a2b3c" "#ffffff"` — il rend le ratio + le verdict AA/AAA (texte, grand texte, non-texte).
 
+Et pour ne pas dépendre du fait qu'on ait *pensé* à le lancer : les couples de tokens
+constatés dans les feuilles sont vérifiés **sur les six thèmes** par
+`tests/contraste-tokens.test.ts` (#582), qui partage sa formule avec cet outil. Une nouvelle
+couleur de token qui casse un couple existant fait échouer `npm test` ; un nouveau couple,
+lui, n'est gardé que s'il est **ajouté à la table** du test.
+
 ---
 
 ## 1. Contraste — texte (SC 1.4.3, niveau AA)

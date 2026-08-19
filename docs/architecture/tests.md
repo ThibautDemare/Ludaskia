@@ -117,14 +117,17 @@ comparaison » satisfont la règle `label` sans rien résoudre. Les tests exigen
 champs d'une même fiche se **distinguent** (conjugaison : un pronom par champ ; comparaison :
 les deux nombres comparés). Cf. `nomChampReponse` dans [Cœur logique](core.md).
 
-### Contraste AA des tokens de couleur (#576)
+### Contraste AA des tokens de couleur (#576, #582)
 
 `tests/contraste-tokens.test.ts` lit les tokens dans `base.scss`/`themes.scss` et éprouve
-le contraste WCAG de la **rampe de gris** (`--ink`, `--grey`, `--muted`) sur chaque surface
-(`--paper`, `--page-bg`, `--accent-soft`), **thème par thème** — les sept, en quelques
+leur contraste WCAG **thème par thème** — les six (cinq clairs + Nuit ; « Clair-obscur »
+n'est pas résolu en JS et applique la palette Nuit, déjà couverte), en quelques
 millisecondes. Complète le scan axe, qui ne visite que 9 vues, ne voit qu'**un** thème (celui
-rendu) et reste **non bloquant**. Deux gardes de plus, qui font la différence entre un gate
-utile et un gate contournable :
+rendu) et reste **non bloquant**.
+
+**La rampe de gris (#576)** — `--ink`, `--grey`, `--muted` sur `--paper`, `--page-bg`,
+`--accent-soft` — avec deux gardes de plus, qui font la différence entre un gate utile et un
+gate contournable :
 
 - **`--muted` doit rester visiblement plus clair que `--grey`.** Sans elle, la façon la plus
   simple de faire passer le test serait d'aligner les deux tokens — ce qui supprimerait un
@@ -133,9 +136,36 @@ utile et un gate contournable :
   comme le fait le navigateur et vérifie le résultat ; un nombre magique (« ≥ 0,85 ») ne
   dirait pas pourquoi et se périmerait au premier changement de palette.
 
-Hors périmètre, **mesuré** et écrit dans l'en-tête du test : `--accent` employé comme TEXTE
-sur `--accent-soft` échoue dans quatre thèmes clairs sur cinq (3,59:1 à 4,40:1). Le corriger
-demande de déplacer cinq couleurs de marque — décision de design, pas de token.
+**La table de paires (#582)** étend le principe à tous les autres couples : ~18 paires de
+**texte** (4,5:1, SC 1.4.3) et 4 paires **non textuelles** (3:1, SC 1.4.11), soit ~130 cas.
+Trois choix de conception structurent la table :
+
+- **On ne teste que les couples qu'on peut montrer du doigt.** Chaque entrée porte l'endroit
+  où le couple existe vraiment dans les feuilles. Un couple plausible mais inexistant produit
+  soit une garde vide, soit une dérogation à justifier — du bruit qui décrédibilise le gate.
+  Deux couples ont ainsi été **écartés après mesure** : `--on-accent` sur `--admin-fill` (les
+  boutons de l'espace encadrant écrivent `#fff` en dur) et `--accent` sur `--page-bg`.
+- **Le décoratif est explicitement hors périmètre**, avec la raison écrite : `--line` et
+  `--track` sur `--paper` (~1,2:1), `--warn-bd` sur `--warn-bg`. SC 1.4.11 ne vise que les
+  composants d'interface et les objets graphiques porteurs d'information ; soumettre les
+  filets aux 3:1 obligerait à tout déroger, donc à ne plus rien garder.
+- **Un même couple peut relever des deux régimes.** `--accent` sur `--paper` est du texte
+  (4,5:1) quand c'est un libellé et un composant (3:1) quand c'est une bordure de bouton : la
+  nature fait partie de l'identité d'un cas, sinon une dérogation posée sur l'un déborde en
+  silence sur l'autre.
+
+**Les dérogations s'auto-périment.** Un défaut connu mais non corrigé (#385, #438, #600,
+#601) est déclaré avec son issue et son motif, et le test correspondant est **inversé** : il
+exige que le couple soit *encore* en échec. Le jour où quelqu'un corrige la couleur, `npm
+test` échoue tant que l'entrée n'est pas retirée. C'est volontaire : une allow-list qui
+survit à ce qu'elle justifiait finit par masquer une vraie régression.
+
+**La formule vit dans `tools/contrast/wcag.js`**, partagé avec l'outil interactif
+`tools/contrast/contrast.mjs` (qui n'en est plus que l'habillage CLI). Celui qu'on lance pour
+**choisir** une couleur et celui qui fait **échouer** `npm test` mesurent la même chose par
+construction. Le module a ses propres ancres testées (21:1, 1:1, les deux gris qui encadrent
+le seuil AA à un cran près) : si la formule dérive, ce sont elles qui tombent d'abord. C'est
+le seul JS du programme TypeScript (`allowJs`), parce que le CLI s'exécute sans build.
 
 ## Smoke tests e2e (Playwright)
 

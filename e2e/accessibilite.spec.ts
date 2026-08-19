@@ -52,6 +52,28 @@ test('Consigne de conjugaison : nomme la tâche, et le texte lu est une phrase',
 	expect(errors).toEqual([]);
 });
 
+test('Champs de conjugaison : chaque saisie a un nom accessible, et ils diffèrent', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'lecon-fr-conj-etre-present');
+	const champs = page.locator('#sheets input.ans');
+	await champs.first().waitFor();
+
+	// Sans nom accessible, un lecteur d'écran annonçait six fois « zone de saisie »
+	// sans dire de quelle personne il s'agissait (#577, axe : règle `label`, critical).
+	const noms = await champs.evaluateAll((els) =>
+		els.map((el) => el.getAttribute('aria-label') ?? ''),
+	);
+	expect(noms.length).toBeGreaterThanOrEqual(6);
+	for (const nom of noms) expect(nom).toContain('Conjugue');
+
+	// Et surtout : ils se DISTINGUENT. Six noms identiques satisferaient axe sans rien
+	// résoudre — c'est le pronom qui manquait, pas l'attribut.
+	expect(new Set(noms.slice(0, 6)).size).toBe(6);
+	expect(errors).toEqual([]);
+});
+
 test('Aménagements (espace encadrants) : lecture auto + statut de la lecture vocale', async ({
 	page,
 }) => {

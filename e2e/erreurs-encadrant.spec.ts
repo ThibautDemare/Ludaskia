@@ -1,21 +1,23 @@
 /* ============================================================
    Historique des erreurs (#391) — espace encadrant, section
-   « Ce qui a été difficile récemment ».
-   Couvre : le round-trip capture → affichage (rater une fiche fait
-   remonter l'erreur côté encadrant), le rendu groupé par leçon avec
-   dédoublonnage « vu N fois », l'épinglage depuis la section, et l'état
-   vide. Tout reste local ; l'invariant « consulter ne bascule pas le
-   profil actif » est déjà couvert par encadrant.spec.ts.
+   « Ce qui a été difficile récemment ». Ce fichier couvre l'AFFICHAGE :
+   regroupement par leçon, dédoublonnage « vu N fois », épinglage depuis la
+   section, état vide, sélecteur de période, tri par volume, dépliage des
+   erreurs anciennes (> 5 par leçon). Tout reste local ; l'invariant
+   « consulter ne bascule pas le profil actif » est déjà couvert par
+   encadrant.spec.ts.
 
-   Couverture des chemins de correction (155f145) qui ne journalisaient
-   AUCUNE erreur avant #391-bis : la révision espacée (toutes formes
-   d'items confondues, testée sur l'opération posée), le mode « Je remplis
-   le tableau » des conversions, le mode « Coche les bonnes propriétés »,
-   et la leçon « Familles de mots à relier ». Chaque round-trip force une
-   vraie erreur via l'interaction réelle (pas un seed direct du journal :
-   c'est justement le CODE de capture qu'on verrouille), puis vérifie sa
-   remontée côté encadrant. Complète aussi le rendu des erreurs anciennes
-   (> 5 par leçon), désormais dépliables plutôt qu'un simple compteur.
+   Le round-trip « produire une erreur → la retrouver ici » a déménagé (#581)
+   dans `journal-couverture.spec.ts`, qui le joue POUR CHAQUE FORMAT d'exercice
+   à partir d'une table de couverture — un format sans entrée y fait échouer le
+   build. Les cinq round-trips qui vivaient ici (fiche, opération posée, tableau
+   de conversion, QCM multi, appariement) y sont repris tels quels : les garder
+   en double aurait fait payer deux fois le même scénario à une suite qui tourne
+   en `workers: 1`.
+
+   Restent ici deux scénarios qui ne relèvent PAS de la couverture par format :
+   le seuil détaché (valider à vide puis en faux journalise quand même) et la
+   révision espacée, qui journalise sous un mode distinct.
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash, seedAideVue } from './helpers';
@@ -37,38 +39,7 @@ const SEED_ERREURS = `(() => {
   localStorage.setItem('e2e/ludaskia_erreurs', JSON.stringify(liste));
 })();`;
 
-/* 1. Round-trip : rater une fiche journalise l'erreur, qui remonte côté encadrant. */
-test('round-trip : une fiche ratée fait remonter l’erreur dans l’espace encadrant', async ({
-	page,
-}) => {
-	const errors = watchErrors(page);
-	await page.addInitScript(CLEAR_PIN);
-	await seedAideVue(page);
-	// Leçon « comparer » en saisie (fiche → session.verify, le point de capture).
-	await gotoHash(page, 'lecon-num-comparer');
-
-	const fields = page.locator('#sheets input.ans');
-	const n = await fields.count();
-	expect(n).toBeGreaterThan(0);
-	// Remplit CHAQUE champ avec un signe FAUX (≠ réponse) → toutes les réponses fausses.
-	for (let i = 0; i < n; i++) {
-		const f = fields.nth(i);
-		const ans = await f.getAttribute('data-answer');
-		await f.fill(ans === '<' ? '>' : '<');
-	}
-	await page.locator('#btnVerify').click();
-	await expect(page.locator('.mark.wrong').first()).toBeVisible();
-
-	// Espace encadrant : la section liste la leçon ratée.
-	await gotoHash(page, 'encadrant');
-	const lecon = page.locator('.enc-err-lecon').first();
-	await expect(lecon).toBeVisible();
-	await lecon.locator('.enc-err-sum').click(); // déplie
-	await expect(lecon.locator('.enc-err-bonne').first()).toBeVisible();
-	expect(errors).toEqual([]);
-});
-
-/* 2. Rendu seedé : groupé par leçon, dédoublonnage « vu N fois », épinglage. */
+/* 1. Rendu seedé : groupé par leçon, dédoublonnage « vu N fois », épinglage. */
 test('rendu : groupé par leçon, « vu N fois », et épinglage depuis la section', async ({
 	page,
 }) => {
@@ -113,7 +84,7 @@ test('rendu : groupé par leçon, « vu N fois », et épinglage depuis la secti
 	expect(errors).toEqual([]);
 });
 
-/* 3. État vide : message positif quand aucune erreur récente. */
+/* 2. État vide : message positif quand aucune erreur récente. */
 test('état vide : message rassurant quand rien à signaler', async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(CLEAR_PIN);
@@ -133,39 +104,7 @@ test('état vide : message rassurant quand rien à signaler', async ({ page }) =
 	expect(errors).toEqual([]);
 });
 
-/* 4. Round-trip opération posée : une grille ratée remonte comme UNE entrée « a + b »
-   (agrégation des cellules-chiffres, pas une erreur par chiffre). Valide le chemin
-   le plus délicat (tag posedResult dans items.ts + agrégation dans session.verify). */
-test('round-trip posé : une opération posée ratée remonte comme une seule erreur', async ({
-	page,
-}) => {
-	const errors = watchErrors(page);
-	await page.addInitScript(CLEAR_PIN);
-	await gotoHash(page, 'lecon-calc-addition-posee');
-	await expect(page.locator('.posee').first()).toBeVisible();
-
-	// Remplit CHAQUE cellule-résultat avec un chiffre FAUX (≠ data-answer).
-	const cells = page.locator('.posee-input');
-	const n = await cells.count();
-	expect(n).toBeGreaterThan(0);
-	for (let i = 0; i < n; i++) {
-		const c = cells.nth(i);
-		const ans = Number((await c.getAttribute('data-answer')) ?? '0');
-		await c.fill(String((ans + 1) % 10));
-	}
-	await page.locator('#btnVerify').click();
-	await expect(page.locator('.posee-input.wrong').first()).toBeVisible();
-
-	// Espace encadrant : l'opération apparaît comme UNE entrée « … + … ».
-	await gotoHash(page, 'encadrant');
-	const lecon = page.locator('.enc-err-lecon').first();
-	await expect(lecon).toBeVisible();
-	await lecon.locator('.enc-err-sum').click();
-	await expect(lecon.locator('.enc-err-q').first()).toContainText('+');
-	expect(errors).toEqual([]);
-});
-
-/* 5. Seuil détaché : une 1re validation À VIDE (aucune faute → avertissement « 60 % »)
+/* 3. Seuil détaché : une 1re validation À VIDE (aucune faute → avertissement « 60 % »)
    ne doit PAS empêcher de journaliser les erreurs d'une validation ULTÉRIEURE du même
    essai (régression du garde « une fois par essai » qui ne se consomme que s'il y a une faute). */
 test('seuil détaché : valider à vide puis en faux journalise quand même les erreurs', async ({
@@ -220,7 +159,7 @@ const SEED_PERIODES = `(() => {
   localStorage.setItem('e2e/ludaskia_erreurs', JSON.stringify(liste));
 })();`;
 
-/* 6. Sélecteur de période (#476) : défaut adaptatif, bascule qui change contenu ET
+/* 4. Sélecteur de période (#476) : défaut adaptatif, bascule qui change contenu ET
    compteurs, « Tout » qui retrouve l'historique ancien, et message dédié quand la
    période choisie est vide alors que le journal ne l'est pas. */
 test('sélecteur de période : défaut adaptatif, bascule change contenu et compteurs, « Tout » retrouve l’historique', async ({
@@ -270,7 +209,7 @@ test('sélecteur de période : défaut adaptatif, bascule change contenu et comp
 	expect(errors).toEqual([]);
 });
 
-/* 7. Round-trip RÉVISION (155f145) : la révision espacée ne journalisait RIEN — le
+/* 5. Round-trip RÉVISION (155f145) : la révision espacée ne journalisait RIEN — le
    trou le plus important, puisque c'est justement le moment où l'enfant rejoue ce
    qu'il rate. On amorce une opération posée « due » (comme revision.spec.ts), on la
    rate volontairement, et on vérifie qu'elle remonte côté encadrant sous le mode
@@ -314,128 +253,6 @@ test('round-trip révision : une opération posée ratée en révision remonte s
 	expect(errors).toEqual([]);
 });
 
-/* 8. Round-trip TABLEAU (155f145) : le mode « Je remplis le tableau » des conversions
-   (pavé de chiffres, jamais de clavier) ne journalisait rien — seul le mode « saisie »
-   de la même leçon remontait. Une case fausse doit désormais remonter côté encadrant. */
-test('round-trip tableau : une case fausse en mode « Je remplis le tableau » remonte côté encadrant', async ({
-	page,
-}) => {
-	const errors = watchErrors(page);
-	await page.addInitScript(CLEAR_PIN);
-	await seedAideVue(page);
-	await gotoHash(page, 'mode-mes-longueurs');
-	await page.locator('.mode-btn[data-mode="tableau"]').click();
-	await expect(page.locator('#tcTable')).toBeVisible();
-
-	// Remplit toutes les cases juste, sauf la première qu'on trompe volontairement
-	// (même recette que tableau-conversion.spec.ts).
-	const cellules = page.locator('.tc-cell');
-	const n = await cellules.count();
-	expect(n).toBeGreaterThan(0);
-	for (let i = 0; i < n; i++) {
-		const cellule = page.locator(`.tc-cell[data-i="${i}"]`);
-		const bon = await cellule.getAttribute('data-answer');
-		const chiffre = i === 0 ? String((Number(bon) + 1) % 10) : (bon ?? '0');
-		await page.locator(`.tc-pave-btn[data-chiffre="${chiffre}"]`).click();
-	}
-	await expect(page.locator('#tcVerif')).toBeEnabled();
-	await page.locator('#tcVerif').click();
-	await expect(page.locator('.tc-cell[data-i="0"]')).toHaveClass(/wrong/);
-
-	await gotoHash(page, 'encadrant');
-	const lecon = page.locator('.enc-err-lecon').first();
-	await expect(lecon).toBeVisible();
-	await lecon.locator('.enc-err-sum').click();
-	// La réponse donnée porte l'unité (nombreTableauSaisi + unité, ex. « 301 cm »),
-	// pas juste les chiffres bruts d'une case.
-	await expect(lecon.locator('.enc-err-donnee').first()).not.toBeEmpty();
-	expect(errors).toEqual([]);
-});
-
-/* Profil CM1 (comme geo-cm1-figures-proprietes.spec.ts) : la leçon « Reconnaître une
-   figure par ses propriétés » n'existe qu'à ce niveau. */
-const SEED_CM1 = `(() => {
-  localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: 'e2e', name: 'E2E', emoji: '\\uD83E\\uDD8A', updatedAt: 1, niveauReference: 'cm1' }], active: 'e2e' }));
-  localStorage.setItem('e2e/ludaskia_tour_seen', 'true');
-  localStorage.setItem('e2e/ludaskia_parents_seen', 'true');
-})();`;
-
-/* 9. Round-trip QCM MULTI (155f145) : le mode « Coche les bonnes propriétés » ne
-   journalisait rien. Cocher LES 4 propositions garantit une correction fausse : le
-   pool ne compte jamais plus de 3 propriétés vraies parmi les 4 (figures-proprietes.ts,
-   `choisirK` borné à 3), donc au moins une case cochée est forcément fausse. */
-test('round-trip QCM multi : cocher toutes les propriétés (au moins une fausse) remonte côté encadrant', async ({
-	page,
-}) => {
-	const errors = watchErrors(page);
-	await page.addInitScript(CLEAR_PIN);
-	await page.addInitScript(SEED_CM1);
-	await gotoHash(page, 'mode-geo-cm1-figures-proprietes');
-	await page.locator('.mode-btn[data-mode="coche"]').click();
-
-	const choices = page.locator('.lqcm-multi-choice');
-	await expect(choices).toHaveCount(4);
-	for (let i = 0; i < 4; i++) await choices.nth(i).click();
-	await page.locator('#lqmValider').click();
-	await expect(page.locator('.lqm-badge--revoir')).toBeVisible();
-
-	await gotoHash(page, 'encadrant');
-	const lecon = page.locator('.enc-err-lecon').first();
-	await expect(lecon).toBeVisible();
-	await lecon.locator('.enc-err-sum').click();
-	// Réponse donnée = les 4 propositions cochées, jointes ; bonne réponse = les
-	// propriétés vraies seules (capterErreur dans lecon-qcm-multi.ts).
-	await expect(lecon.locator('.enc-err-donnee').first()).not.toBeEmpty();
-	await expect(lecon.locator('.enc-err-bonne').first()).not.toBeEmpty();
-	expect(errors).toEqual([]);
-});
-
-/* 10. Round-trip APPARIEMENT (155f145) : la leçon « Familles de mots à relier » ne
-   journalisait rien (le widget n'avait pas de `reponse()` exploitable). La bonne
-   réponse n'est PAS exposée dans le DOM avant Vérifier (voulu, a11y, cf.
-   appariement.spec.ts) : on relie le i-ème mot de gauche au i-ème mot de droite
-   (ordre DOM), sans garantie de justesse. Sur les 5 manches de la session, la
-   probabilité qu'une manche entière tombe juste par hasard est d'environ 1/24 : on
-   avance de manche en manche jusqu'à en trouver une ratée (quasi certain avant la
-   fin de la session ; (1/24)^5 pour les 5 manches justes par hasard). */
-test('round-trip appariement : une manche « Familles de mots à relier » ratée remonte côté encadrant', async ({
-	page,
-}) => {
-	const errors = watchErrors(page);
-	await page.addInitScript(CLEAR_PIN);
-	await seedAideVue(page);
-	await gotoHash(page, 'lecon-fr-vocab-familles-relier');
-	await page.locator('.lapp-mot').first().waitFor();
-
-	let ratee = false;
-	for (let manche = 0; manche < 5 && !ratee; manche++) {
-		const gauche = page.locator('.lapp-mot[data-side="g"]');
-		const droite = page.locator('.lapp-mot[data-side="d"]');
-		const n = await gauche.count();
-		for (let i = 0; i < n; i++) {
-			await gauche.nth(i).click();
-			await droite.nth(i).click();
-		}
-		await page.locator('#lappVerif').click();
-		await expect(page.locator('.lqcm-ok, .lqcm-ko')).toBeVisible();
-		if (await page.locator('.lqcm-ko').isVisible()) {
-			ratee = true;
-		} else {
-			await page.locator('#lappActions button').click();
-			await page.locator('.lapp-mot').first().waitFor();
-		}
-	}
-	expect(ratee).toBe(true);
-
-	await gotoHash(page, 'encadrant');
-	const lecon = page.locator('.enc-err-lecon').first();
-	await expect(lecon).toBeVisible();
-	await lecon.locator('.enc-err-sum').click();
-	// Restreint aux paires FAUSSES (pairesErreur), formatées « gauche → droite ».
-	await expect(lecon.locator('.enc-err-donnee').first()).toContainText('→');
-	expect(errors).toEqual([]);
-});
-
 /* Journal seedé avec 6 erreurs DISTINCTES (question+donnee différents → pas de
    dédoublonnage) sur UNE seule leçon, pour dépasser MAX_PAR_LECON (5) et faire
    apparaître le repli « + N plus anciennes ». */
@@ -452,7 +269,7 @@ const SEED_ANCIENNES = `(() => {
   localStorage.setItem('e2e/ludaskia_erreurs', JSON.stringify(liste));
 })();`;
 
-/* 11. Erreurs anciennes (> 5 par leçon) DÉPLIABLES (155f145) : avant, le « + N plus
+/* 6. Erreurs anciennes (> 5 par leçon) DÉPLIABLES (155f145) : avant, le « + N plus
    anciennes » au-delà de MAX_PAR_LECON était un simple texte, illisible — un écart
    inexplicable entre le compteur total et la liste affichée. Repliées par défaut
    (mur de fautes évité), mais dépliables pour qui cherche une régularité. */
@@ -511,7 +328,7 @@ const SEED_TRI = `(() => {
   localStorage.setItem('e2e/ludaskia_erreurs', JSON.stringify(liste));
 })();`;
 
-/* 12. Tri par volume (#519) : à récence et volume contradictoires, la leçon la plus
+/* 7. Tri par volume (#519) : à récence et volume contradictoires, la leçon la plus
    RATÉE (3 erreurs, plus ancienne) passe devant la plus RÉCEMMENT ratée (1 erreur) —
    verrou du rendu réel, puisque les seeds ci-dessus (par coïncidence) n'auraient
    jamais distingué l'ancien tri antéchronologique du nouveau tri par volume. */

@@ -3,7 +3,7 @@
    et fabrique de champs / grilles / fiches.
    ============================================================ */
 import { escapeHTML, normalizeText } from './utils';
-import { ttsAttr } from './tts-text';
+import { ttsAttr, texteParle } from './tts-text';
 import { stackFractions } from './fraction-text';
 import { wrapGrandsNombres, parseNombreFr } from './nombres';
 import { estSigneComparaison, paveSignesHTML } from './signes';
@@ -254,6 +254,32 @@ export const nextInputId = (ctx: RenderContext) => 'a' + ctx.counter++;
 export const lessonAttr = (ctx: RenderContext) =>
 	ctx.lessonId != null ? ` data-lesson="${ctx.lessonId}"` : '';
 
+/* Nom accessible d'un champ de réponse (#577). Sans lui, un lecteur d'écran annonce
+   « zone de saisie » — six fois de suite sur une fiche de conjugaison, sans jamais dire
+   de quelle personne il s'agit : la leçon devient inutilisable sans la vue. L'énoncé qui
+   entoure le champ EST son libellé visuel ; il ne manquait que le lien programmatique.
+
+   On dérive ce nom de `texteParle` (« comment cet énoncé se lit à voix haute ») plutôt
+   que d'écrire un libellé à la main par leçon : elle sait déjà taire le `@`, verbaliser
+   opérateurs et unités, et honore `parle` pour les énoncés télégraphiques
+   (« être · présent — je @ » → « être présent je »). Un libellé par leçon serait à
+   réécrire à chaque leçon ajoutée et divergerait, à terme, de ce que dit le bouton
+   « Écouter » — deux versions du même énoncé qui se contredisent.
+
+   Repli « réponse » si l'énoncé ne donne rien à lire (item à figure seule) : un nom
+   générique reste préférable à l'absence de nom, qu'axe classe `critical`. */
+export function nomChampReponse(it: Item): string {
+	return texteParle(it.parle ?? it.text) || 'réponse';
+}
+
+/* Attribut `aria-label` prêt à coller sur un champ de réponse. `role` précise le FORMAT
+   attendu quand le champ n'accepte pas n'importe quelle réponse (un signe, un chiffre
+   unique) — utile à qui ne voit ni le pavé de signes ni la fraction empilée. Il vient
+   APRÈS l'énoncé : c'est l'énoncé qui distingue ce champ de ses voisins, et un lecteur
+   d'écran annonce le début du nom en premier. */
+export const ariaChamp = (it: Item, role?: string) =>
+	` aria-label="${escapeHTML(role ? `${nomChampReponse(it)} — ${role}` : nomChampReponse(it))}"`;
+
 /* Rend un fragment en rattachant ses champs à `lessonId` (attribut data-lesson), puis
    détache — sans toucher au compteur d'id ni à la table `items`, qui persistent pour
    garder des ids uniques dans un document multi-bloc. Centralise le motif tag→rendu→
@@ -339,6 +365,12 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	// Seul le champ des heures est `.ans` (noté) et porte la réponse canonique ; il
 	// référence le champ des minutes (`data-min-field`) que session.verify fusionne en
 	// « H h MM » avant correction → checkItemAnswer inchangé (comparaison texte).
+	// Leurs aria-label restent « heures »/« minutes », DÉLIBÉRÉMENT (#577) : ici le nom
+	// doit distinguer les deux champs l'un de l'autre, ce qu'il fait. Y préfixer l'énoncé
+	// ne distinguerait rien d'une horloge à l'autre — l'énoncé est le même partout
+	// (« Quelle heure est-il ? ») et ce qui change est DANS LE DESSIN. Rendre une horloge
+	// SVG lisible à l'oreille est un autre sujet, qui ne se règle pas par un aria-label
+	// de champ.
 	if (it.kind === 'heure') {
 		// Corrigé (#41) : l'heure complète révélée à la place des deux champs « h ».
 		if (ctx.corrigeMode) {
@@ -374,7 +406,7 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 		} else {
 			numHTML =
 				`<input class="ans frac-num-input ${extra}" id="${id}" data-answer="${ansAttr}"` +
-				`${lessonAttr(ctx)} inputmode="numeric" maxlength="1" autocomplete="off" aria-label="chiffre manquant">`;
+				`${lessonAttr(ctx)} inputmode="numeric" maxlength="1" autocomplete="off"${ariaChamp(it, 'chiffre manquant')}>`;
 			markHTML = `<span class="mark" data-for="${id}"></span>`;
 		}
 		const fracHTML =
@@ -418,10 +450,10 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	const field = ctx.corrigeMode
 		? `<span class="ans-corrige ${extra}">${escapeHTML(revelee)}</span>`
 		: signe
-			? `<input class="ans ans-signe ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" spellcheck="false" maxlength="1" aria-label="signe de comparaison"><span class="mark" data-for="${id}"></span>`
+			? `<input class="ans ans-signe ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" spellcheck="false" maxlength="1"${ariaChamp(it, 'signe de comparaison')}><span class="mark" data-for="${id}"></span>`
 			: it.kind === 'text'
-				? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
-				: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${attendueAttr}${lessonAttr(ctx)} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
+				? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)}${ariaChamp(it)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
+				: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${attendueAttr}${lessonAttr(ctx)}${ariaChamp(it)} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
 	const place = texte.includes('@') ? texte : ctx.printMode ? `${texte} @` : texte;

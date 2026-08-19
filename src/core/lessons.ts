@@ -20,6 +20,7 @@ import {
 	lessonAttr,
 	estItemQcm,
 	nextInputId,
+	ariaChamp,
 	createRenderContext,
 	withLessonId,
 } from './items';
@@ -376,10 +377,26 @@ export const LESSONS = [
 			}
 			const lines = d
 				.map(([a, b]) => {
-					const free = () => `<input class="ans-free" inputmode="numeric" autocomplete="off">`;
+					// Nom accessible de chaque case (#577) : cette leçon construit ses champs à la
+					// main, hors `renderItem`, donc elle n'a pas hérité du nom que celui-ci pose.
+					// Sans nom, un lecteur d'écran annonce SEPT « zone de saisie » par ligne, toutes
+					// identiques, alors que la ligne écrite dit exactement où l'on est.
+					// `(□ × □) + (□ × □) = □ + □`, dans l'ordre du rendu :
+					const ETAPES = [
+						'premier produit, premier nombre',
+						'premier produit, second nombre',
+						'second produit, premier nombre',
+						'second produit, second nombre',
+						'résultat du premier produit',
+						'résultat du second produit',
+					];
+					let etape = 0;
+					const free = () =>
+						`<input class="ans-free" inputmode="numeric" autocomplete="off" aria-label="${a} × ${b} — ${ETAPES[etape++]}">`;
 					const finalId = nextInputId(ctx);
-					ctx.items[finalId] = { text: `${a} × ${b} = @`, answer: a * b };
-					const finalField = `<input class="ans" id="${finalId}" data-answer="${a * b}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"><span class="mark" data-for="${finalId}"></span>`;
+					const item: Item = { text: `${a} × ${b} = @`, answer: a * b };
+					ctx.items[finalId] = item;
+					const finalField = `<input class="ans" id="${finalId}" data-answer="${a * b}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"${ariaChamp(item)}><span class="mark" data-for="${finalId}"></span>`;
 					return `<div class="op">${a} × ${b} = (${free()} × ${free()}) + (${free()} × ${free()}) = ${free()} + ${free()} = ${finalField}</div>`;
 				})
 				.join('');

@@ -394,19 +394,38 @@ de `ui/lecon-tableau.ts`) — de sorte qu'un snapshot détecte les régressions 
 portent les effets de bord : toolbar, aide, storage, listener `document` du
 tableau).
 
-**La comparaison de pixels est DE-GATÉE (#458), et il faut le savoir avant de compter
-dessus.** La hauteur des articles de leçon est non déterministe au sous-pixel d'un run
-CI à l'autre (scaling SVG `width:100%/height:auto`, reflow de texte) : aucune baseline
-ne tient, et le jeu de leçons fautives varie d'un run à l'autre — une liste
-d'exclusion ne converge donc pas. Le test est `test.fixme` **sur toutes les
-plateformes**, et le dépôt ne contient **aucune baseline**. Ce qui tourne réellement
-et garde quelque chose, c'est le **premier** test de la spec : il rend toutes les
-fiches et tous les écrans de runner, et exige zéro erreur JS.
+**La comparaison de pixels agrandit le viewport avant de capturer, et c'est la seule
+chose à comprendre de cette spec (#458).** **185 des 189 éléments capturés** — 179 des
+183 fiches, plus les 6 écrans de runner — sont **plus hauts que le viewport** du profil
+mobile (393×727). Playwright ne sait capturer un élément plus grand que le viewport
+qu'en **défilant et en assemblant** plusieurs prises, et cet assemblage n'est pas
+reproductible : deux captures consécutives de la même fiche diffèrent, animations
+désactivées et hauteur stable au centième de pixel. Mesuré : **178 fiches instables sur
+183** au viewport nominal, **0 sur 183** dès que le viewport dépasse la plus grande
+fiche.
 
-Le reste de la mécanique — ancrage des baselines sur l'environnement CI (ubuntu +
-Chromium, le moteur de texte différant d'un OS à l'autre) et régénération via
-`.github/workflows/update-snapshots.yml` — est **en sommeil** : décrit parce qu'il
-redeviendra nécessaire quand #458 aura rendu le rendu déterministe, pas parce qu'il
-protège aujourd'hui. Un commit `[update-snapshots]` déclenche bien le workflow, mais
-celui-ci ne régénère rien (le test à régénérer est `fixme`) et passe au vert en une
-trentaine de secondes. Détails et procédure : `e2e/README.md`.
+C'est ce qui a de-gaté ce test pendant des mois. Le diagnostic d'origine — arrondi
+sous-pixel du scaling SVG `width:100%/height:auto` — était **faux**, et l'a envoyé
+chercher au mauvais endroit : les hauteurs sont stables (3562,25 px sur douze prises
+sur `num-dec-grille`), le DPR fractionnaire du profil mobile n'y est pour rien (sonde
+CI à `deviceScaleFactor: 1` : même leçon en échec), et ce n'est pas un écart local ↔ CI
+(l'échec se reproduit dans un seul run, sur une seule machine). Trace de la
+rectification : commentaire daté sur #458.
+
+La spec mesure donc les hauteurs, agrandit le viewport **une seule fois**, puis
+**vérifie l'invariant dont elle dépend** — plus aucune capture ne déborde —, avec la
+liste des fautives en message d'échec, un garde-fou contre la limite de texture du
+compositeur, et un refus de passer sur un sélecteur vide. Rien du rendu n'est épinglé
+ni arrondi : la largeur ne change pas, donc la mise en page des fiches non plus.
+
+**Ce que ce régime ne voit plus, écrit noir sur blanc** : tout ce qui ne s'exprime qu'à
+viewport court — règles en `vh`, `position: sticky`, media queries de hauteur
+(`@media (orientation: landscape) and (max-height: 540px)` sur `.figure-svg`). Aucune
+ne s'applique aujourd'hui à la galerie (barre d'outils et pied de page y sont masqués,
+cf. `galerie.scss`) et ces régressions relèvent des specs de leçon, pas de la galerie.
+
+Les baselines restent **ancrées sur l'environnement CI** (ubuntu + Chromium, le moteur
+de texte différant d'un OS à l'autre) et régénérées via
+`.github/workflows/update-snapshots.yml`. Corollaire retenu de #458 : après une
+régénération, **deux runs CI** avant de conclure — l'instabilité qu'on vient de fermer
+ne se voyait justement pas sur un run unique. Détails et procédure : `e2e/README.md`.

@@ -126,6 +126,13 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
     l'édition change une structure comptée par `e2e/vitrine.spec.ts` ou
     `e2e/guide.spec.ts` (sections, entrées de FAQ), la spec suit via
     **`auteur-tests-e2e`**.
+  - **Un gate en tient désormais une moitié** (#599,
+    `tests/libelles-cites-gate.test.ts`) : tout libellé cité entre guillemets
+    dans `guide.html` / `index.html` doit encore exister dans `src/`, et **toute
+    citation ajoutée doit être classée** (libellé d'interface, ou citation de
+    langue avec sa raison) — sinon `npm test` échoue. Ce qu'il ne voit pas, et
+    qui reste à ta charge : le **parcours** décrit (« Français, puis
+    Orthographe, puis… ») quand un écran change de place.
 
 ## Style de réponse (Claude et agents)
 - **Direct et concis.** Aller droit au but : pas de phrase d'introduction, pas de

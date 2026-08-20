@@ -7,7 +7,8 @@
 - Tests : **Vitest** (logique pure, `happy-dom`, + **fast-check** pour le harnais
   d'invariants du catalogue #410) + **Playwright** (smoke e2e navigation/rendu,
   dossier `e2e/`, #129), complété par des **snapshots visuels** du catalogue
-  (`toHaveScreenshot`, #412, baselines ancrées sur l'environnement CI) et un
+  (`toHaveScreenshot`, #412, baselines ancrées sur l'environnement CI — comparaison
+  **de-gatée** aujourd'hui, cf. #458) et un
   **scan d'accessibilité automatique axe-core** (`@axe-core/playwright`, #411)
   sur un échantillon de 14 vues — ce dernier **bloquant** depuis #583, avec des
   dérogations déclarées par couple de couleurs (issue + mesure + date) qui
@@ -51,5 +52,7 @@ lint → typecheck → test` (bloquant), et `e2e` lance les smoke tests Playwrig
 Un workflow séparé, `.github/workflows/update-snapshots.yml` (#412), régénère et
 recommite les baselines de screenshots de la galerie (`e2e/galerie.spec.ts`) sur
 l'environnement ubuntu — déclenché manuellement (`workflow_dispatch`) ou par un
-commit dont le message contient `[update-snapshots]` (hors `main`). Détail :
+commit dont le message contient `[update-snapshots]` (hors `main`). **En sommeil** :
+la comparaison de pixels est de-gatée (#458, `test.fixme`) et aucune baseline n'est
+commitée, donc ce workflow se déclenche mais ne régénère rien. Détail :
 `e2e/README.md`.

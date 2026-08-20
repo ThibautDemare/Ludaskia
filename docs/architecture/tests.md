@@ -103,6 +103,47 @@ C'est ce fichier qui porte les round-trips de correction ; `erreurs-encadrant.sp
 ne garde que l'**affichage** (regroupement, période, tri, dépliage) plus les deux
 scénarios hors couverture-par-format (seuil détaché, révision espacée).
 
+### Couverture e2e par surface de rendu (#598)
+
+`tests/couverture-e2e-gate.test.ts` fait respecter « pas de fonctionnalité visuelle sans sa
+spec » (CLAUDE.md), qui ne tenait jusque-là qu'au réflexe de qui écrivait le code.
+
+**Le choix de la maille décide de tout.** Sur ~170 ids de leçon, 47 seulement apparaissent
+en dur dans un `gotoHash` de spec : un gate « une spec par leçon » demanderait une centaine
+d'exceptions et mourrait sur son propre critère. C'est aussi la mauvaise unité — une 172ᵉ
+leçon de vocabulaire sur un moteur déjà couvert ne risque rien ; un runner neuf, si. Trois
+surfaces, énumérables et petites :
+
+- **Les modes** (`type.modes`, #69) — **9 ids** dans tout le catalogue, tous couverts, zéro
+  exception. C'est le trou que le CLAUDE.md nommait explicitement : la table de #581 ne
+  déclarant qu'**un** mode par format, rien ne garantissait que le second mode d'un type
+  soit joué un jour. Un mode compte comme couvert s'il est cliqué
+  (`.mode-btn[data-mode="…"]`) dans une spec, ou déclaré dans la table de #581.
+- **Les runners** (`src/ui/lecon-*.ts`, 13 fichiers) — dix sont aiguillés par
+  `navigation.ts` selon le type d'exercice, donc couverts via leur type. Les trois autres
+  (`lecon-du-jour`, `lecon-passer`, `lecon-runner-shared`) portent chacun une **signature
+  CSS** que le test exige de retrouver **à la fois dans le module** (sinon la preuve ne
+  prouve rien) **et dans au moins une spec** (sinon le runner n'est pas exercé).
+- **Les types** — **délégués** à la table de #581, qui fait mieux qu'un scan de texte :
+  typée `Record<Exercise['type'], …>`, elle casse la compilation sur un type neuf, et sa
+  spec paramétrée *joue* chaque entrée. Ce gate ne la recopie pas, il **vérifie que la
+  délégation est réelle** : chaque type aiguillé par `navigation.ts` doit y avoir son
+  entrée. En reconstruire une version par scan aurait donné une garde plus faible avec
+  l'apparence du contraire.
+
+Le critère « exclure les specs qui amorcent tout le programme via `leconsDuNiveau()` » est
+satisfait **par construction** : aucun signal de couverture ne vient d'une énumération d'ids
+de leçon, seulement de gestes ciblés. Un test le vérifie tout de même, en refusant qu'un
+mode n'ait pour seuls témoins ces quatre specs.
+
+Détail appris en éprouvant le gate par mutation : la présence d'une signature se teste **au
+token près** (`lqcm-progress-lab(?![\w-])`). En simple sous-chaîne, renommer
+`.lqcm-progress` restait « prouvé » par `.lqcm-progress-lab`.
+
+**Ce qu'il ne prouve pas** : que la spec soit bonne. Un `data-mode` cliqué sans rien vérifier
+derrière satisfait le gate ; il garde l'**existence** d'un chemin e2e par surface, la
+profondeur du round-trip restant l'affaire de `e2e/journal-couverture.spec.ts`.
+
 ### Nom accessible des champs de réponse (#577)
 
 `tests/champs-libelles.test.ts` balaie le catalogue et exige qu'aucun `<input class="ans…">`

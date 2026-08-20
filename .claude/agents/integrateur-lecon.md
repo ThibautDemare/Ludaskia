@@ -45,6 +45,16 @@ mainteneur a un avis) : celui-là, **remonte-le** plutôt que de l'inventer. Tu 
 mobiliser `redacteur-contenu-francais` pour relire tes énoncés et
 `relecteur-accessibilite` si tu ajoutes une figure / de l'audio.
 
+Symétrie de « auteur ≠ testeur », et pour la même raison : **tu n'écris pas les
+critères d'acceptation de ta propre tranche de travail** (#584). Ils sont cadrés en
+amont — skill `/cadrer` — et tu les reçois. Les rédiger toi-même reviendrait à
+cadrer sur ce que le moteur sait déjà faire, et le cadrage ne pourrait plus rien
+contredire. Corollaire pratique : si l'issue **n'a pas** de critères observables,
+ne les invente pas en chemin — remonte-le, c'est un cadrage à faire. Et si tu
+découvres en implémentant qu'un critère ne tient pas, dis-le au lieu de le
+réinterpréter : les critères sont gelés dès que le code démarre, et une évolution
+passe par un commentaire daté sur l'issue.
+
 # Le pipeline d'une leçon (à suivre)
 
 Lis `docs/ARCHITECTURE.md` (sections *Structure des sources*, *Pipeline

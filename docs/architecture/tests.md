@@ -103,6 +103,41 @@ C'est ce fichier qui porte les round-trips de correction ; `erreurs-encadrant.sp
 ne garde que l'**affichage** (regroupement, période, tri, dépliage) plus les deux
 scénarios hors couverture-par-format (seuil détaché, révision espacée).
 
+### Voix des libellés : tu à l'enfant, vous à l'adulte (#586)
+
+`tests/voix-libelles-gate.test.ts` tient la part **mécanisable** de la convention #278
+(cf. [Conventions rédactionnelles](conventions-redaction.md)) : pas de tutoiement dans
+`**/encadrant*.ts`, pas de vouvoiement ailleurs. Le basculement tu → vous est, avec le
+retrait du vert de marque, le signal de rupture « on a quitté l'espace de l'enfant » ; un
+« votre » égaré l'abîme sans rien casser.
+
+C'est le seul gate **heuristique** du lot, et sa forme découle de cet aveu :
+
+- **Pronoms et possessifs seulement, jamais la conjugaison.** L'impératif d'un écran
+  enfant (« Choisis », « Clique ») est lexicalement indistinguable d'autre chose. Le
+  défaut qui a motivé #278 — un titre posé par l'interface mais rédigé à la première
+  personne — relève du jugement et n'est **pas** attrapé ; l'étendre pour l'attraper
+  reviendrait à écrire un correcteur grammatical.
+- **`src/data/` hors périmètre, mesure à l'appui** : 47 occurrences de « vous/votre/vos »
+  y vivent, toutes légitimes (leçons de conjugaison, pronoms sujets, phrases de
+  grammaire). Ce sont des contenus d'exercice, pas la voix de l'interface — les inclure
+  demanderait 47 exceptions, et un gate à 47 exceptions ne garde plus rien.
+- **Les commentaires sont retirés** avant analyse : le dépôt discute abondamment la
+  convention dans ses commentaires, et les lire comme des libellés punirait exactement le
+  bon réflexe.
+- **Un littéral qui vaut exactement un pronom est écarté par une RÈGLE**, pas par une
+  exception : sans sujet ni verbe, il n'y a personne à qui parler. C'est ce qui dispense
+  d'exempter la liste des six personnes de la conjugaison.
+- **Les exceptions sont ancrées sur un littéral ET sur un compte.** Excuser un fichier
+  laisserait passer la faute suivante au même endroit ; excuser un littéral sans compter
+  laisserait absorber une occurrence de plus glissée dans le même bloc. Vérifié par
+  mutation : ajouter « Tes » dans le bloc déjà excusé fait échouer le compte.
+
+Deux exceptions aujourd'hui, quatre occurrences : l'espace encadrant **cite** un libellé
+enfant entre guillemets (« ce que tu connais déjà »), et « Un mot pour les parents »
+(`ui/tour.ts`, #330) est une **seconde surface adulte** hors espace encadrant — nuance que
+la mesure a fait apparaître, et que la convention mentionne désormais.
+
 ### Libellés cités par le guide parents et la vitrine (#599)
 
 `tests/libelles-cites-gate.test.ts` s'attaque à la surface la plus périssable du dépôt.

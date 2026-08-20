@@ -109,6 +109,25 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
     principal — ne rédige pas ses propres tests), pour garder **auteur ≠ testeur**.
   Plusieurs dimensions touchées → plusieurs relecteurs (ex. une nouvelle leçon à
   figure avec énoncés FR = qualité **+** accessibilité **+** langue).
+- **Règle de sortie de relecture (#585) — toute remontée retenue finit dans l'un
+  de trois destins, jamais ailleurs :**
+  1. **Gate** — la règle est mécanisable → un **test dans la même PR**, ou une
+     **issue liée créée tout de suite** si le coût dépasse la PR en cours.
+  2. **Checklist** — la règle relève du **jugement** → une ligne ajoutée au
+     prompt de l'agent concerné (`.claude/agents/…`) ou à la convention
+     pertinente (`docs/architecture/conventions-redaction.md`, `ui.md`…).
+  3. **Rejet écrit** — la remontée est **écartée** → consignée **une fois** dans
+     la doc d'architecture concernée, pour que le prochain relecteur ne la
+     re-remonte pas (modèle : le plancher « 50-100 items par banque », écarté
+     noir sur blanc dans `docs/architecture/tests.md`).
+
+  Le destin **interdit** est le quatrième : « corrigé sur place, sans trace ».
+  Cas d'école, mesuré : le token `--muted` a échoué AA pendant des années ; le
+  constat était écrit **trois fois** dans trois feuilles SCSS distinctes, chacune
+  contournant le problème à la main, pendant que le token racine restait
+  inchangé et ressortait tel quel sur une trentaine d'éléments ailleurs.
+  Corrigé depuis (#576), mais ce n'était pas une inattention : c'est ce qui
+  arrive quand une remontée n'a pas de sortie obligatoire.
 - **Doc — resync en fin de dev.** Quand un dev touche l'architecture (nouveau
   module/type/convention, nouvelle leçon/catégorie, mode, mécanique, clé de
   stockage…), passer le diff à **`expert-documentation`** : il vérifie que la doc

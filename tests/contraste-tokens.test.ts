@@ -65,7 +65,7 @@ import { contraste, melange, SEUIL_NON_TEXTE_AA, SEUIL_TEXTE_AA } from '../tools
  *  mesurer du vide. D'où la consigne, dans themes.scss, d'écrire la valeur en dur. */
 function tokens(bloc: string): Record<string, string> {
 	const t: Record<string, string> = {};
-	for (const m of bloc.matchAll(/(--[\w-]+):\s*(#[0-9a-fA-F]{6})\s*;/g))
+	for (const m of bloc.matchAll(/(--[\w-]+):\s*(#[0-9a-fA-F]{6})\s*(?:!important)?\s*;/g))
 		t[m[1]] = m[2].toLowerCase();
 	return t;
 }
@@ -318,17 +318,6 @@ const DEROGATIONS: Derogation[] = [
 		motif: '4,16:1 sur les états sélectionnés (QCM multiple, tri, appariement, tuiles).',
 	},
 	{
-		avant: '--ok',
-		arriere: '--ok-soft',
-		ou: '',
-		nature: 'texte',
-		themes: ['defaut', 'ciel', 'automne', 'lagon', 'fruit-rouge'],
-		issue: '#601',
-		motif:
-			"4,41:1 — ni --ok ni --ok-soft ne sont réécrits par les thèmes clairs, d'où le " +
-			'même écart partout. Nuit est conforme (7,07:1).',
-	},
-	{
 		avant: '--accent-soft',
 		arriere: '--paper',
 		ou: '',
@@ -450,6 +439,61 @@ describe('Contraste des paires de tokens, tous thèmes (#582)', () => {
 					`La dérogation ${d.issue} vise le thème « ${t} », qui n'existe plus.`,
 				).toContain(t);
 		}
+	});
+});
+
+/* ============================================================
+   La palette d'IMPRESSION doit refléter la palette claire (#601)
+   ============================================================ */
+
+const PRINT = readFileSync('src/styles/print.scss', 'utf8');
+
+/** Tokens forcés dans `@media print { :root { … !important } }`. */
+const PALETTE_IMPRESSION = (() => {
+	const m = PRINT.match(/@media print \{[\s\S]*?:root \{([\s\S]*?)\n\t\}/);
+	return m ? tokens(m[1]) : {};
+})();
+
+/** Tokens que l'impression diverge VOLONTAIREMENT, avec la raison. */
+const DIVERGENCES_ASSUMEES: Record<string, string> = {
+	'--page-bg':
+		"le papier est blanc : imprimer le fond de page teinté gâcherait de l'encre pour un aplat que personne ne veut.",
+};
+
+describe("Palette d'impression, miroir de la palette claire (#601)", () => {
+	/* Pourquoi ce test existe : cette liste est une COPIE À LA MAIN de la palette claire,
+	   écrite pour rétablir les couleurs d'écran clair quel que soit le thème d'affichage
+	   (le Nuit rendrait un corrigé illisible sur papier). Une copie ne suit pas sa source.
+	   Constaté en corrigeant #601 : elle forçait encore `--muted: #9aa1ac`, la valeur
+	   d'AVANT #576 — celle qui plafonnait à 2,6:1. Le token avait été corrigé à la source
+	   huit mois plus tard, sa copie non, et rien ne pouvait le voir : le gate de contraste
+	   ne lisait que base.scss et themes.scss. Le papier n'est pas moins exigeant que
+	   l'écran ; c'est même là que le parent lit le corrigé. */
+	it("la liste d'impression est bien lue (garde contre un test à vide)", () => {
+		expect(
+			Object.keys(PALETTE_IMPRESSION).length,
+			'aucun token forcé trouvé dans le bloc @media print : sa forme a changé, ce test ne garde plus rien.',
+		).toBeGreaterThanOrEqual(10);
+	});
+
+	it.each(Object.entries(PALETTE_IMPRESSION))('%s vaut la valeur claire', (nom, valeur) => {
+		const assumee = DIVERGENCES_ASSUMEES[nom];
+		if (assumee) {
+			expect(
+				valeur === RACINE[nom],
+				`${nom} est déclaré comme divergeant volontairement (${assumee}), mais il vaut ` +
+					`maintenant la même chose qu'à l'écran : retirer l'entrée de DIVERGENCES_ASSUMEES.`,
+			).toBe(false);
+			return;
+		}
+		expect(
+			valeur,
+			`print.scss force ${nom} = ${valeur}, alors que base.scss vaut ${RACINE[nom]}.\n` +
+				`Cette liste rétablit la palette CLAIRE sur papier : elle doit suivre la source. Une ` +
+				`valeur figée ici survit à la correction du token, sans que rien ne le signale — c'est ` +
+				`exactement ce qui est arrivé à --muted entre #576 et #601.\n` +
+				`Si la divergence est voulue, l'écrire dans DIVERGENCES_ASSUMEES avec sa raison.`,
+		).toBe(RACINE[nom]);
 	});
 });
 

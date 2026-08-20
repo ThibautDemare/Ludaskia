@@ -26,7 +26,12 @@ dès la création d'un libellé :
   votre code à 4 chiffres », « Vous regardez les progrès de Léa », « Conservez bien
   cette clé ». Ce basculement « tu → vous » est, avec le retrait du vert de marque,
   le principal signal de rupture « on a quitté l'espace de l'enfant ». Le vouvoiement
-  ne déborde **jamais** hors de cet espace.
+  ne déborde **jamais** hors de cet espace — à une exception près, relevée en
+  mesurant #586 : **« Un mot pour les parents »** (`ui/tour.ts`, #330), la fenêtre du
+  premier lancement, est une **seconde surface adulte** et vouvoie donc elle aussi.
+  C'est la seule ; elle est déclarée comme telle dans
+  `tests/voix-libelles-gate.test.ts`, qui fait échouer `npm test` sur tout autre
+  débordement.
 
 Le défaut à corriger = un cas (a) **déguisé en (b)** : un titre/une question posés
 par l'interface mais rédigés en « je ». Règle mnémotechnique : si on peut préfixer

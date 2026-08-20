@@ -177,23 +177,26 @@ lisible). On écarte les règles « best-practice » (bruit non normatif).
 
 ## Snapshots visuels de la galerie (#412)
 
-> ⚠️ **État réel, à lire avant le reste de cette section.** La comparaison de pixels
-> est **DE-GATÉE depuis #458** (`test.fixme`, sur **toutes** les plateformes) et le
-> dépôt ne contient **aucune baseline**. Autrement dit : aujourd'hui, rien ici
-> n'attrape une régression graphique. Ce qui tourne réellement, c'est le **premier**
-> test de la spec — « la galerie se rend sans erreur et expose ses sections » —, qui
-> est gatant, tourne partout, et vaut déjà quelque chose : il rend **toutes** les
-> fiches et **tous** les écrans de runner et exige zéro erreur JS.
+> ⚠️ **Le viewport est agrandi avant les captures, et ce n'est pas un détail (#458).**
+> **185 des 189 éléments capturés** — 179 des 183 fiches, plus les 6 écrans de runner
+> — sont **plus hauts que le viewport** du profil mobile (393×727). Playwright ne sait
+> capturer un élément plus grand que le viewport qu'en **défilant et en assemblant**
+> plusieurs prises, et cet assemblage n'est **pas reproductible** : deux captures
+> consécutives de la même fiche diffèrent, animations désactivées et hauteur stable au
+> centième. Mesuré : **178 fiches instables sur 183** au viewport nominal, **0 sur
+> 183** dès que le viewport dépasse la plus grande fiche. C'est ce qui a de-gaté la
+> comparaison pendant des mois — pas un arrondi sous-pixel des figures SVG, pas un
+> écart entre le rendu local et celui de la CI.
 >
-> Tout ce qui suit (ancrage CI des baselines, procédure de régénération, workflow
-> `update-snapshots.yml`) est donc **en sommeil** : la mécanique est décrite parce
-> qu'elle redeviendra nécessaire quand #458 rendra le rendu déterministe, pas parce
-> qu'elle protège quoi que ce soit maintenant. Ne pas la lire comme un garde-fou en
-> place. Conséquence pratique immédiate : pousser un commit `[update-snapshots]`
-> déclenche bien le workflow, mais il ne régénère **rien** (le test à régénérer est
-> `fixme`) — le job passe au vert en une trentaine de secondes sans rien produire.
+> La spec mesure donc les hauteurs, **agrandit le viewport une seule fois**, puis
+> **vérifie l'invariant dont elle dépend** : plus aucune capture ne déborde. Rien du
+> rendu n'est épinglé ni arrondi (la largeur ne change pas). **Contrepartie** : ce
+> régime ne voit plus ce qui ne s'exprime qu'à viewport court — règles en `vh`,
+> `position: sticky`, media queries de hauteur. Aucune ne s'applique à la galerie
+> aujourd'hui (barre d'outils et pied de page y sont masqués) et ces régressions
+> relèvent des specs de leçon.
 
-`galerie.spec.ts` compare — **quand elle est active** — le rendu du catalogue à des
+`galerie.spec.ts` compare le rendu du catalogue à des
 **baselines de screenshots** commitées, pour attraper les régressions purement
 **graphiques** (mise en page cassée, figure SVG mal rendue, couleur qui change) que
 les smoke tests (absence d'erreur JS + interaction) ne voient pas. Complète — sans le
@@ -221,7 +224,7 @@ n'attrape ici que les régressions **mécaniques**.
   conversion). Ces écrans sont rendus par le **même code** que le runner live, pas par
   une maquette — cf. `docs/architecture/tests.md`.
 
-### Baselines : ancrées sur la CI, jamais générées en local — **en sommeil (#458)**
+### Baselines : ancrées sur la CI, jamais générées en local
 
 Le **moteur de rendu de texte** dépend de l'OS (FreeType sous Linux, DirectWrite
 sous Windows, CoreText sous macOS) : même police (Nunito est auto-hébergée,
@@ -229,23 +232,13 @@ identique partout), l'anti-crénelage diffère → une baseline générée sous
 Windows/macOS ne correspondrait jamais au rendu **ubuntu + Chromium** du runner CI.
 Les baselines sont donc **ancrées sur l'environnement de la CI**.
 
-Ce n'est pas ce qui a de-gaté la comparaison. La cause est autre, et plus tenace
-(#458) : la hauteur des articles de leçon est **non déterministe au sous-pixel** d'un
-run CI à l'autre — scaling SVG `width:100%/height:auto` des figures, reflow de texte
-—, si bien qu'aucune baseline ne tient et que le jeu de leçons fautives **varie d'un
-run à l'autre** (donc même une liste d'exclusion ne converge pas). Le test de
-comparaison est marqué `test.fixme` **partout**, plus seulement hors Linux, et aucune
-baseline n'est commitée.
+Conséquence directe : **lancer `galerie.spec.ts` en local échoue**, et c'est voulu.
+Playwright cherche un fichier suffixé `-win32` / `-darwin` qui n'existe pas, et
+`updateSnapshots: 'none'` interdit de l'écrire au passage (sinon un run sur une
+branche sans baseline passerait au vert après retry). Pour vérifier la galerie en
+local, s'en tenir au **premier** test de la spec, qui ne dépend d'aucune baseline.
 
-Le 1er test de la spec (rendu sans erreur + présence des sections) tourne, lui, sur
-toutes les plateformes : il valide la galerie sans dépendre des baselines. C'est
-aujourd'hui **le seul** garde-fou de cette spec.
-
-### Régénérer les baselines (rendu volontairement modifié) — **procédure dormante**
-
-Rien à régénérer tant que #458 n'est pas résolu : le test que régénérerait le workflow
-est `fixme`, donc il ne produit aucun PNG. La procédure ci-dessous est conservée parce
-qu'elle redeviendra la bonne — pas parce qu'elle sert aujourd'hui.
+### Régénérer les baselines (rendu volontairement modifié)
 
 **Quand** : uniquement après une **évolution VOLONTAIRE du rendu** (nouvelle leçon,
 refonte d'un composant, changement de couleur/figure assumé). Un diff **inattendu**
@@ -270,8 +263,11 @@ modifiés sur la branche via le `GITHUB_TOKEN`.
   place.
 
 **Ne jamais** régénérer en local : sur une machine Linux le rendu diffère encore du
-runner CI, et ailleurs le moteur de texte n'est même pas le même. (Aujourd'hui la
-commande ne produit de toute façon rien, le test étant `fixme`.)
+runner CI, et ailleurs le moteur de texte n'est même pas le même.
+
+**Un seul run vert ne suffit pas à valider une régénération.** Ce qui a de-gaté la
+comparaison pendant des mois n'était pas reproductible d'un run à l'autre (#458) :
+après une régénération, faire tourner `ci.yml` **deux fois** avant de conclure.
 
 ## CI
 

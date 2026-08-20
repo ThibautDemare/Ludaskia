@@ -103,6 +103,43 @@ C'est ce fichier qui porte les round-trips de correction ; `erreurs-encadrant.sp
 ne garde que l'**affichage** (regroupement, période, tri, dépliage) plus les deux
 scénarios hors couverture-par-format (seuil détaché, révision espacée).
 
+### Libellés cités par le guide parents et la vitrine (#599)
+
+`tests/libelles-cites-gate.test.ts` s'attaque à la surface la plus périssable du dépôt.
+`guide.html` décrit des parcours en citant des libellés entre guillemets français
+(« allez dans Français, puis Orthographe, puis "Les dictées de mots" »). Un bouton renommé
+rend ces phrases **fausses** sans rien casser, et l'écart ne se voit qu'au moment où un
+parent cherche un bouton qui n'existe plus.
+
+Les deux pistes suggérées par l'issue ont été **écartées après mesure** :
+
+- « restreindre aux citations dans `<strong>` » : sur les 56 `<strong>` du guide, **un
+  seul** contient une citation — le `<strong>` sert à l'emphase, pas à marquer un libellé.
+  Le filtre aurait couvert 1 citation sur 22.
+- « vérifier que la chaîne existe dans `src/` » : trop faible pour les mots courts.
+  « vous », « dys », « arbre », « vent » se trouvent tous dans `src/` sans rapport avec un
+  libellé — un gate qui les valide rassure sans rien garder.
+
+Trois choix à la place :
+
+- **Les commentaires HTML sont retirés** avant extraction. Les en-têtes du guide et de la
+  vitrine documentent leurs arbitrages en citant abondamment : **19 des 41** citations du
+  dépôt vivent là. Un commentaire n'est pas une promesse faite au lecteur.
+- **Chaque citation restante doit être classée**, en libellé d'interface (vérifié contre
+  `src/`) ou en citation de langue (avec sa raison). C'est le cœur du gate : le classement
+  ne peut pas s'automatiser — « à revoir » est un état affiché, « il a du mal en
+  conjugaison » est une phrase de parent — mais l'**oubli** de classer, si. Une citation
+  ajoutée demain ne peut plus passer inaperçue.
+- **La présence d'un libellé se prouve par sa POSITION** : il doit terminer le texte d'un
+  élément ou la valeur d'un attribut (`>Mes listes<`, `aria-label="Écouter"`). La règle
+  passe sur les 15 libellés actuels et réduit fortement le bruit — « Fiche » tombe de 10
+  fichiers à 1, et ce fichier est bien celui que le guide décrit.
+
+Éprouvé par mutation, l'**élargissement** d'un libellé est bien attrapé (« Mes listes » →
+« Mes listes de mots », « Fiche » → « Fiche à imprimer »). Ce qui passe encore : le
+**déplacement** (le libellé existe, mais plus là où le guide l'annonce — le parcours n'est
+pas vérifié) et le renommage d'**un** porteur quand il y en a plusieurs.
+
 ### Couverture e2e par surface de rendu (#598)
 
 `tests/couverture-e2e-gate.test.ts` fait respecter « pas de fonctionnalité visuelle sans sa

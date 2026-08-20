@@ -1278,6 +1278,12 @@ teinté. Les overrides existants sont **conservés** (y revenir éclaircirait ce
 rien gagner, et deux d'entre eux portent une autre raison : une région live et un alignement
 sur les sous-lignes voisines) ; seuls leurs commentaires ont été remis à jour.
 
+Ce paragraphe **est** le rejet écrit de ces quatre overrides, au sens de la règle de sortie
+de relecture (#585, cf. `CLAUDE.md`) : ils sont conservés **délibérément**, pas par oubli.
+Inutile de les re-remonter en relecture — et c'est précisément ce cas qui a servi de cas
+d'école à la règle, puisque le défaut de token avait été constaté trois fois, contourné trois
+fois, et corrigé zéro fois.
+
 Piège associé, corrigé au même endroit : **une `opacity` sur un conteneur dilue tout son
 contenu**. La carte d'un trophée verrouillé était à `0.55`, ce qui faisait tomber son titre
 à 3,9:1 et sa description à 2,6:1 — le « gris `#a1a1a1` » vu par axe n'est écrit nulle part,

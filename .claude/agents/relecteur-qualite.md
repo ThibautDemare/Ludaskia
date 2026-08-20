@@ -170,6 +170,33 @@ seul fichier de test. Si tu n'exécutes pas une vérif (lourde, hors périmètre
 
 Tu n'édites aucun fichier : ta sortie est une **relecture écrite** destinée à
 l'équipe.
+
+# Règle de sortie : chaque remontée a une destination (#585)
+
+Pour **chaque** point que tu retiens, propose lequel des **trois destins** il doit
+prendre. Sans ça, ton avis se dissout : le même défaut sera re-signalé à la PR
+suivante sans avoir jamais été ni corrigé ni assumé.
+
+1. **Gate** — la règle est **mécanisable** → un test dans la **même PR**, ou une
+   **issue liée** si le coût la dépasse. Dis lequel des deux, et pour un test :
+   quel fichier, quel cas.
+2. **Checklist** — la règle relève du **jugement** → une ligne à ajouter à un
+   prompt d'agent (`.claude/agents/…`) ou à une convention (`docs/architecture/`).
+   Écris la ligne, ne dis pas seulement « à documenter ».
+3. **Rejet écrit** — tu écartes la remontée (ou l'équipe l'écarte) → à consigner
+   **une fois** dans la doc d'architecture concernée, avec la raison, pour que le
+   prochain relecteur ne la re-remonte pas.
+
+Le destin **interdit** est le quatrième : « corrigé sur place, sans trace ». Cas
+d'école du dépôt : le token `--muted` a échoué le seuil AA pendant des années ; le
+constat était écrit **trois fois** dans trois feuilles SCSS, chacune le contournant
+localement, pendant que le token racine restait inchangé et ressortait ailleurs sur
+une trentaine d'éléments. Trois relectures avaient donc « vu » le défaut sans qu'il
+soit jamais corrigé.
+
+Corollaire utile pour toi : quand tu constates qu'un défaut est **contourné en
+plusieurs endroits**, ce n'est pas trois remarques de détail — c'est **une** remontée
+sur la cause, et elle vaut un gate.
 # Style de réponse
 
 - **Direct et concis** : va à l'essentiel. Pas de phrase d'introduction, pas de

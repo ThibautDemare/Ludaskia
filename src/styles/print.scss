@@ -15,14 +15,17 @@
 	:root {
 		--ink: #1a1a1a !important;
 		--grey: #545454 !important;
-		--muted: #9aa1ac !important;
+		/* #5c6470 et non #9aa1ac : cette liste avait gardé la valeur d'AVANT #576, celle qui
+		   plafonnait à 2,6:1 — le token a été corrigé à la source, pas sa copie ici. Le papier
+		   n'est pas moins exigeant que l'écran. Divergence désormais tenue par un test. */
+		--muted: #5c6470 !important;
 		--paper: #ffffff !important;
 		--page-bg: #ffffff !important;
 		--accent: #2f7d52 !important;
 		--accent-dark: #225c3c !important;
 		--accent-soft: #e4f0e8 !important;
 		--on-accent: #ffffff !important;
-		--ok: #2e7d32 !important;
+		--ok: #2b7430 !important;
 		--ko: #c62828 !important;
 		/* Oublié de cette liste jusqu'ici : le thème Nuit relève --warn en ambre clair (#f0b850),
 		   qui tombe à ~1,9:1 sur du blanc. Visible dès qu'on imprime l'espace encadrant en Nuit

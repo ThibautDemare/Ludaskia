@@ -35,7 +35,12 @@
 	--muted: #5c6470;
 	--paper: #ffffff;
 	--page-bg: #eef3ee; /* fond de page (réécrit par les thèmes ; jamais --paper, gardé blanc) */
-	--ok: #2e7d32;
+	/* Vert « réussite ». Assombri (#601) : à #2e7d32 il plafonnait à 4,41:1 sur --ok-soft,
+	   juste sous AA, alors que ce couple porte le retour positif lui-même (pastille de mode,
+	   bon choix révélé après correction) — donc du texte lu vite, au moment qui compte.
+	   L'écart de clarté est de l'ordre de 3 % : c'est le même vert à l'œil. Tenu par
+	   tests/contraste-tokens.test.ts. */
+	--ok: #2b7430;
 	--ko: #c62828;
 	--warn: #b26a00;
 	--warn-bg: #fff3d6;

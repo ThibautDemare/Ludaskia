@@ -57,6 +57,13 @@ code », mais **« ne pas dériver l'attendu depuis l'implémentation »** :
   `pedagogue-primaire` pour le fond).
 - Teste le **contrat / comportement observable**, pas les détails internes : ce
   qui doit rester vrai même si l'implémentation est réécrite.
+- **Si l'issue porte des critères d'acceptation numérotés** (cf. skill `/cadrer`),
+  ils sont ta source : traduis-les en tests, un par un, et **avant** que
+  l'implémentation existe si l'ordre le permet — un test écrit après coup passe du
+  premier coup, ce qui ne prouve que sa propre complaisance. Nomme le critère dans
+  le test (« critère 3 : … ») pour qu'un échec dise ce qui n'est pas tenu. Un
+  critère que tu n'arrives pas à traduire en test est une information à remonter,
+  pas à contourner.
 
 # Ce que tu éprouves en priorité (les cas tricky)
 

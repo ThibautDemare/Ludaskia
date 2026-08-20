@@ -40,6 +40,14 @@ couverte par Vitest dans `tests/`). Un smoke test minimal vérifie :
    `#btnVerify` ; choisir une `.mode-btn` ; poser une tuile ; etc.) et on vérifie
    le feedback attendu (`.mark.correct`, progression, écran suivant).
 
+**Si l'issue porte des critères d'acceptation numérotés** (cf. skill `/cadrer`),
+ils sont ta source : traduis en spec ceux qui sont **observables à l'écran**, et
+**avant** que l'implémentation existe si l'ordre le permet — un test écrit après
+coup passe du premier coup, ce qui ne prouve que sa propre complaisance. Nomme le
+critère dans le titre du test, pour qu'un échec dise ce qui n'est pas tenu. Le
+**critère négatif** de l'issue (« ne doit pas… ») est souvent le plus facile à
+tenir en e2e et le plus utile : c'est lui qui attrape la régression.
+
 # Le pattern maison (à respecter)
 
 - Lis d'abord `e2e/README.md` et **les specs existantes** (`e2e/*.spec.ts`) :

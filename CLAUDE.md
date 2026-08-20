@@ -272,8 +272,11 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
     échouent ; la spec paramétrée `e2e/journal-couverture.spec.ts` joue ensuite ce
     geste pour de vrai et exige que l'erreur remonte côté encadrant, avec un énoncé
     et **deux réponses non vides**.
-    Ce que les gates ne contrôlent toujours pas : que **tous les modes** d'un type
-    soient couverts (la table en déclare un par format) — ça, c'est encore à toi.
+    La table de #581 ne déclarant **qu'un mode par format**, un troisième gate
+    (#598, `tests/couverture-e2e-gate.test.ts`) tient l'autre moitié : **chaque id
+    de mode** du catalogue et **chaque runner** `src/ui/lecon-*.ts` doit être joué
+    par une spec. Ajouter un mode à un type existant, ou un runner, sans le
+    couvrir en e2e fait donc échouer `npm test`.
 - **Commits : aucune attribution Claude** (`Co-Authored-By` / « Generated with
   Claude Code »).
 

@@ -103,6 +103,25 @@ Deux points de méthode si tu touches à cette table :
   explicite s'il ne peut pas produire l'erreur attendue ; les assertions vivent dans
   la spec.
 
+## Couverture par surface de rendu (#598)
+
+La règle « pas de fonctionnalité visuelle sans sa spec » est tenue par un gate Vitest,
+`tests/couverture-e2e-gate.test.ts`, qui lit `e2e/*.spec.ts` comme du texte : chaque **id
+de mode** du catalogue (9 aujourd'hui) et chaque **runner** `src/ui/lecon-*.ts` doit être
+exercé. Deux conséquences pour qui écrit une spec ici :
+
+- **Un mode compte comme couvert** s'il est cliqué via `.mode-btn[data-mode="…"]` dans une
+  spec, ou déclaré dans `journal-couverture.ts`. Un mode qu'on se contente de laisser par
+  défaut ne compte pas — c'est précisément le trou visé.
+- **Un runner sans aiguillage par type** (`lecon-du-jour`, `lecon-passer`,
+  `lecon-runner-shared`) est prouvé couvert par une **signature CSS** que le gate cherche
+  dans les specs (`.lj-title`, `.lecon-reveal`, `.lqcm-progress-lab`). Renommer une de ces
+  classes sans toucher la spec fait échouer `npm test` : c'est voulu, la spec ne testerait
+  plus rien.
+
+Le gate garde l'**existence** d'un chemin, pas sa qualité. Détails et raisons :
+[docs/architecture/tests.md](../docs/architecture/tests.md).
+
 ## Scan a11y automatique (axe-core, #411)
 
 `a11y-axe.spec.ts` injecte **axe-core** (`@axe-core/playwright`) dans les vues

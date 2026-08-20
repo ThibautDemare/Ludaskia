@@ -29,9 +29,14 @@ import { contraste, melange, SEUIL_NON_TEXTE_AA, SEUIL_TEXTE_AA } from '../tools
    teste ceux qu'on peut montrer du doigt. Un couple inventé produit soit une garde
    qui ne garde rien, soit une dérogation de plus à justifier — dans les deux cas du
    bruit qui décrédibilise le gate. Deux exemples de couples ÉCARTÉS pour cette
-   raison : `--on-accent` sur `--admin-fill` (les boutons de l'espace encadrant
-   écrivent `#fff` en dur, pas `--on-accent` — le couple mesuré n'existe pas) et
-   `--accent` sur `--page-bg` (l'accent en texte est toujours posé sur une carte).
+   raison : `--on-accent` sur `--admin-fill` — les boutons de l'espace encadrant écrivent
+   `#fff` en dur, pas `--on-accent`, donc le couple mesuré n'existe pas.
+   ERREUR CORRIGÉE (#583) : `--accent` sur `--page-bg` avait été écarté de la même façon,
+   au motif que « l'accent en texte est toujours posé sur une carte ». C'était faux. Le
+   scan axe l'a trouvé sur cinq éléments réels (titre de filtre du sprint, boutons de
+   retour, titres de rubrique du catalogue). La leçon vaut d'être gardée : écarter un
+   couple parce qu'on n'a pas su le trouver n'est pas la même chose que l'écarter parce
+   qu'il n'existe pas — dans le doute, chercher plus, ou l'inclure.
 
    La formule vient de `tools/contrast/wcag.js`, partagé avec l'outil interactif
    `tools/contrast/contrast.mjs` : celui qu'on lance pour CHOISIR une couleur et celui
@@ -206,6 +211,11 @@ const PAIRES_TEXTE: Paire[] = [
 	{ avant: '--accent', arriere: '--paper', ou: 'sprint.scss, titres et libellés dans une carte' },
 	{
 		avant: '--accent',
+		arriere: '--page-bg',
+		ou: 'sprint-config (#scFilterTitle), boutons de retour, titres de rubrique du catalogue',
+	},
+	{
+		avant: '--accent',
 		arriere: '--accent-soft',
 		ou: 'revision.scss .rev-cat, lecon-mode.scss .ltri-col-titre',
 	},
@@ -275,6 +285,17 @@ const DEROGATIONS: Derogation[] = [
 		motif:
 			'3,59:1 à 4,50:1 selon le thème. Corriger veut dire déplacer CINQ couleurs de ' +
 			'marque (ou leurs surfaces douces) : décision de design, pas réglage de token.',
+	},
+	{
+		avant: '--accent',
+		arriere: '--page-bg',
+		ou: '',
+		nature: 'texte',
+		themes: ['defaut', 'automne', 'lagon'],
+		issue: '#600',
+		motif:
+			'4,48 / 4,27 / 3,80:1 — même cause que le couple ci-dessus, sur le fond de page. ' +
+			'Trouvé par le scan axe en basculant le gate a11y (#583), après avoir été écarté à tort.',
 	},
 	{
 		avant: '--accent',

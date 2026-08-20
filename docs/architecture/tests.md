@@ -269,8 +269,8 @@ sinon le gate vert en n'examinant plus rien.
 `tests/contraste-tokens.test.ts` lit les tokens dans `base.scss`/`themes.scss` et éprouve
 leur contraste WCAG **thème par thème** — les six (cinq clairs + Nuit ; « Clair-obscur »
 n'est pas résolu en JS et applique la palette Nuit, déjà couverte), en quelques
-millisecondes. Complète le scan axe, qui ne visite que 9 vues, ne voit qu'**un** thème (celui
-rendu) et reste **non bloquant**.
+millisecondes. Complète le scan axe qui, même devenu bloquant (#583), ne visite que 14 vues
+et ne voit qu'**un** thème — celui rendu.
 
 **La rampe de gris (#576)** — `--ink`, `--grey`, `--muted` sur `--paper`, `--page-bg`,
 `--accent-soft` — avec deux gardes de plus, qui font la différence entre un gate utile et un
@@ -334,9 +334,38 @@ par le précédent, avec des échecs différés et incompréhensibles. Seule
 précache du build plutôt qu'une approximation.
 
 À part, `a11y-axe.spec.ts` fait tourner un **scan axe-core** (WCAG A/AA) sur un
-échantillon de vues plutôt que des assertions de rendu ciblées — signal
-automatisé, **non bloquant** par défaut, complémentaire du jugement de l'agent
+échantillon de **14 vues** plutôt que des assertions de rendu ciblées — signal
+automatisé et **bloquant** depuis #583, complémentaire du jugement de l'agent
 `relecteur-accessibilite`. Détails : `e2e/README.md`.
+
+**La bascule s'est faite sur mesure, pas sur intention.** Le scan avait atterri non
+bloquant (#411) pour ne pas figer le merge sur la dette existante : 6 vues en échec sur 9,
+2 règles (`color-contrast`, `label`), le 19/08/2026. Après #576 (token `--muted`), #577
+(champs sans nom accessible), #386 (ligne de champ invisible en Nuit) et le gate de paires
+de tokens #582 : **2 vues, 1 règle**, la règle `label` ayant entièrement disparu. Ce qui
+restait est **déclaré en dérogation** — par couple de couleurs, avec issue, mesure et date
+— plutôt que corrigé à la va-vite, parce que les deux causes restantes (#600, #609) sont
+des décisions de design.
+
+Deux choix qui font la différence entre ce gate et une allow-list qui s'endort :
+
+- **La maille est la cause, pas l'élément.** Les 38 éléments signalés en août ne
+  correspondaient qu'à 4 causes racines ; une liste par sélecteur aurait grossi à chaque
+  vue ajoutée sans rien dire de plus. Une dérogation déclare le couple de couleurs
+  **mesuré par axe** — donc la couleur réellement rendue, composition alpha comprise. C'est
+  ce qui permet de nommer `#50926e`, qui n'est écrit dans aucune feuille : c'est un voile
+  blanc à 16 % posé sur l'accent (la pastille du chronomètre, #609).
+- **Une dérogation qui n'excuse plus rien fait échouer le test.** Corriger le défaut oblige
+  à retirer l'entrée. Sans ça, l'allow-list survit à ce qu'elle justifiait et finit par
+  couvrir une vraie régression.
+
+L'échantillon est passé de 9 à 14 vues, **décidé sur mesure** : sept candidates scannées,
+cinq retenues, deux écartées (« Révision espacée », « Séance » rendent un écran vide sur un
+profil neuf — un gate sur un écran vide ne garde rien). Les cinq ajoutées n'ont apporté
+**aucune cause racine nouvelle** : élargir était de la couverture gratuite. Elles ont en
+revanche montré que `--accent` sur `--page-bg` est un couple **réel**, alors que le gate de
+#582 l'avait écarté au motif que « l'accent en texte est toujours posé sur une carte » — le
+couple a été ajouté à la table, et l'erreur consignée là-bas.
 
 Autre famille, `galerie.spec.ts` (#412) compare le rendu du catalogue à des
 **baselines de screenshots** (`toHaveScreenshot`) via la route **DEV-only**

@@ -153,12 +153,27 @@ lisible). On écarte les règles « best-practice » (bruit non normatif).
   règles `incomplete` (qu'axe n'a pas pu trancher). Imprimé dans les logs
   (exploitable tel quel par un agent) ; le détail JSON complet est **attaché** au
   rapport Playwright (`axe-<hash>.json`).
-- **Atterrissage NON bloquant** : par défaut les violations sont **remontées mais
-  ne font pas échouer** le test — on ne fige pas le merge sur la dette a11y
-  existante (suivie en #385/#386/#387). La bascule en **gate bloquant** est un
-  suivi séparé, une fois la dette soldée. Pour prévisualiser ce que le gate
-  bloquerait : `A11Y_GATE=1 npx playwright test e2e/a11y-axe.spec.ts` (le scan
-  échoue alors sur toute violation, avec le rapport en message d'assertion).
+- **Gate BLOQUANT** (#583) : toute violation fait échouer le build. Le scan avait
+  atterri non bloquant (#411) pour ne pas figer le merge sur la dette existante ;
+  celle-ci est soldée (#576, #577, #386) ou déclarée. Le drapeau `A11Y_GATE` n'existe
+  plus — un gate qu'il faut penser à activer n'est pas un gate.
+- **Dérogations par CAUSE, pas par élément** : ce qui reste est déclaré dans le
+  fichier par **couple de couleurs** (celles que mesure axe, composition alpha
+  comprise), avec son issue, sa mesure et sa date, et la liste des vues où il se
+  manifeste. C'est la bonne maille : les 38 éléments signalés en août ne
+  correspondaient qu'à **4 causes racines**, et une liste par sélecteur aurait grossi
+  à chaque vue ajoutée sans rien dire de plus.
+  Une dérogation qui **n'excuse plus rien** fait échouer le test : corriger le défaut
+  oblige à retirer l'entrée, sinon l'allow-list survit à ce qu'elle justifiait.
+- **`incomplete` reste informatif** : axe y dit qu'il n'a pas su trancher (ex.
+  `target-size` sur un élément partiellement masqué). Faire échouer un build sur un
+  « je ne sais pas » ne se corrige pas, ça se contourne.
+- **Ajouter une vue** : lui donner un **repère stable** à attendre (pas un
+  `waitForTimeout`), et vérifier ensuite quelles dérogations elle déclenche — chacune
+  doit lister cette vue, sinon le scan échoue. Deux vues ont été **écartées**
+  délibérément (« Révision espacée », « Séance ») : leur contenu dépend de
+  l'historique du profil et, sur un profil neuf, elles rendent un écran vide. Un gate
+  sur un écran vide ne garde rien.
 
 ## Snapshots visuels de la galerie (#412)
 

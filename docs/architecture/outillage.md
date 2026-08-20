@@ -9,8 +9,9 @@
   dossier `e2e/`, #129), complété par des **snapshots visuels** du catalogue
   (`toHaveScreenshot`, #412, baselines ancrées sur l'environnement CI) et un
   **scan d'accessibilité automatique axe-core** (`@axe-core/playwright`, #411)
-  sur un échantillon de vues — ce dernier **non bloquant** par défaut. Détail
-  dans `e2e/README.md`.
+  sur un échantillon de 14 vues — ce dernier **bloquant** depuis #583, avec des
+  dérogations déclarées par couple de couleurs (issue + mesure + date) qui
+  échouent dès qu'elles n'excusent plus rien. Détail dans `e2e/README.md`.
 - Qualité : **ESLint** (flat config + `typescript-eslint`) et **Prettier**.
   ESLint porte aussi les **contraintes d'architecture** du projet (#579), pour
   qu'une régression casse la CI au lieu d'attendre une relecture : `src/core/**`

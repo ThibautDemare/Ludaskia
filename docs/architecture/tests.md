@@ -380,8 +380,21 @@ fonctions de rendu **pures** extraites des runners pour être réutilisées
 de `ui/lecon-tableau.ts`) — de sorte qu'un snapshot détecte les régressions du
 **vrai** rendu ; la galerie n'appelle **jamais** les entrées `runLeconXxx` (qui
 portent les effets de bord : toolbar, aide, storage, listener `document` du
-tableau). Chaque section porte un `data-gallery` → une **capture dédiée** (une
-nouvelle section est donc snapshotée automatiquement). Les baselines sont
-**ancrées sur l'environnement de la CI** (ubuntu + Chromium) — comparaison
-ignorée hors Linux — et se régénèrent via le workflow
-`.github/workflows/update-snapshots.yml`. Détails et procédure : `e2e/README.md`.
+tableau).
+
+**La comparaison de pixels est DE-GATÉE (#458), et il faut le savoir avant de compter
+dessus.** La hauteur des articles de leçon est non déterministe au sous-pixel d'un run
+CI à l'autre (scaling SVG `width:100%/height:auto`, reflow de texte) : aucune baseline
+ne tient, et le jeu de leçons fautives varie d'un run à l'autre — une liste
+d'exclusion ne converge donc pas. Le test est `test.fixme` **sur toutes les
+plateformes**, et le dépôt ne contient **aucune baseline**. Ce qui tourne réellement
+et garde quelque chose, c'est le **premier** test de la spec : il rend toutes les
+fiches et tous les écrans de runner, et exige zéro erreur JS.
+
+Le reste de la mécanique — ancrage des baselines sur l'environnement CI (ubuntu +
+Chromium, le moteur de texte différant d'un OS à l'autre) et régénération via
+`.github/workflows/update-snapshots.yml` — est **en sommeil** : décrit parce qu'il
+redeviendra nécessaire quand #458 aura rendu le rendu déterministe, pas parce qu'il
+protège aujourd'hui. Un commit `[update-snapshots]` déclenche bien le workflow, mais
+celui-ci ne régénère rien (le test à régénérer est `fixme`) et passe au vert en une
+trentaine de secondes. Détails et procédure : `e2e/README.md`.

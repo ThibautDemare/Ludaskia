@@ -177,12 +177,28 @@ lisible). On écarte les règles « best-practice » (bruit non normatif).
 
 ## Snapshots visuels de la galerie (#412)
 
-`galerie.spec.ts` compare le rendu du catalogue à des **baselines de screenshots**
-commitées, pour attraper les régressions purement **graphiques** (mise en page
-cassée, figure SVG mal rendue, couleur qui change) que les smoke tests (absence
-d'erreur JS + interaction) ne voient pas. Complète — sans le remplacer — le
-jugement esthétique/émotionnel de l'agent `designer-ux-enfant` : on n'attrape ici
-que les régressions **mécaniques**.
+> ⚠️ **État réel, à lire avant le reste de cette section.** La comparaison de pixels
+> est **DE-GATÉE depuis #458** (`test.fixme`, sur **toutes** les plateformes) et le
+> dépôt ne contient **aucune baseline**. Autrement dit : aujourd'hui, rien ici
+> n'attrape une régression graphique. Ce qui tourne réellement, c'est le **premier**
+> test de la spec — « la galerie se rend sans erreur et expose ses sections » —, qui
+> est gatant, tourne partout, et vaut déjà quelque chose : il rend **toutes** les
+> fiches et **tous** les écrans de runner et exige zéro erreur JS.
+>
+> Tout ce qui suit (ancrage CI des baselines, procédure de régénération, workflow
+> `update-snapshots.yml`) est donc **en sommeil** : la mécanique est décrite parce
+> qu'elle redeviendra nécessaire quand #458 rendra le rendu déterministe, pas parce
+> qu'elle protège quoi que ce soit maintenant. Ne pas la lire comme un garde-fou en
+> place. Conséquence pratique immédiate : pousser un commit `[update-snapshots]`
+> déclenche bien le workflow, mais il ne régénère **rien** (le test à régénérer est
+> `fixme`) — le job passe au vert en une trentaine de secondes sans rien produire.
+
+`galerie.spec.ts` compare — **quand elle est active** — le rendu du catalogue à des
+**baselines de screenshots** commitées, pour attraper les régressions purement
+**graphiques** (mise en page cassée, figure SVG mal rendue, couleur qui change) que
+les smoke tests (absence d'erreur JS + interaction) ne voient pas. Complète — sans le
+remplacer — le jugement esthétique/émotionnel de l'agent `designer-ux-enfant` : on
+n'attrape ici que les régressions **mécaniques**.
 
 - **Route galerie** (`src/ui/galerie.ts`) : la route **DEV** `#galerie` rend en une
   page la **fiche de chaque leçon**, groupée par catégorie. Elle est **absente du
@@ -194,26 +210,42 @@ que les régressions **mécaniques**.
   fixe) et chaque leçon calibrée à son premier niveau (`levels[0]`), donc contenu
   **identique d'un run à l'autre**, indépendant du profil/niveau actif — condition
   d'une comparaison de pixels stable.
-- **Une capture par catégorie** (`toHaveScreenshot` sur chaque `[data-gallery]`,
-  `animations: 'disabled'`) : diff localisé, PNG de taille raisonnable. Une seule
-  route/spec couvre tout le catalogue visuel.
-- **Périmètre v1** : les **fiches** (saisie, QCM en cases à cocher, opérations
-  posées, **figures SVG**, listes). Les écrans de **runner** interactifs (tuiles,
-  tri, appariement, problème, tableau de conversion), couplés à `#sheets`/au chrono
-  et à l'enregistrement d'un essai, sont un autre type de rendu → suivi séparé.
+- **Une capture par LEÇON** (`toHaveScreenshot` sur chaque `[data-gallery-lesson]`),
+  plus une par écran de runner, `animations: 'disabled'`. Pas par catégorie : une
+  section catégorie empile toutes ses fiches (des dizaines de milliers de pixels pour
+  la numération), impossible à stabiliser au screenshot. Un article de leçon est
+  petit, et le diff est localisé à la leçon fautive.
+- **Périmètre** : les **fiches** (saisie, QCM en cases à cocher, opérations posées,
+  **figures SVG**, listes) **et**, depuis #419, un exemplaire de chaque écran de
+  **runner** interactif (tuiles, ordre, tri, appariement, problème, tableau de
+  conversion). Ces écrans sont rendus par le **même code** que le runner live, pas par
+  une maquette — cf. `docs/architecture/tests.md`.
 
-### Baselines : ancrées sur la CI, jamais générées en local
+### Baselines : ancrées sur la CI, jamais générées en local — **en sommeil (#458)**
 
 Le **moteur de rendu de texte** dépend de l'OS (FreeType sous Linux, DirectWrite
 sous Windows, CoreText sous macOS) : même police (Nunito est auto-hébergée,
 identique partout), l'anti-crénelage diffère → une baseline générée sous
 Windows/macOS ne correspondrait jamais au rendu **ubuntu + Chromium** du runner CI.
-Les baselines sont donc **ancrées sur l'environnement de la CI** et le test de
-comparaison est **ignoré hors Linux** (`test.skip`, visible « skipped » en local).
-Le 1er test de la spec (rendu sans erreur + présence des sections) tourne, lui, sur
-toutes les plateformes : il valide la galerie en local sans dépendre des baselines.
+Les baselines sont donc **ancrées sur l'environnement de la CI**.
 
-### Régénérer les baselines (rendu volontairement modifié)
+Ce n'est pas ce qui a de-gaté la comparaison. La cause est autre, et plus tenace
+(#458) : la hauteur des articles de leçon est **non déterministe au sous-pixel** d'un
+run CI à l'autre — scaling SVG `width:100%/height:auto` des figures, reflow de texte
+—, si bien qu'aucune baseline ne tient et que le jeu de leçons fautives **varie d'un
+run à l'autre** (donc même une liste d'exclusion ne converge pas). Le test de
+comparaison est marqué `test.fixme` **partout**, plus seulement hors Linux, et aucune
+baseline n'est commitée.
+
+Le 1er test de la spec (rendu sans erreur + présence des sections) tourne, lui, sur
+toutes les plateformes : il valide la galerie sans dépendre des baselines. C'est
+aujourd'hui **le seul** garde-fou de cette spec.
+
+### Régénérer les baselines (rendu volontairement modifié) — **procédure dormante**
+
+Rien à régénérer tant que #458 n'est pas résolu : le test que régénérerait le workflow
+est `fixme`, donc il ne produit aucun PNG. La procédure ci-dessous est conservée parce
+qu'elle redeviendra la bonne — pas parce qu'elle sert aujourd'hui.
 
 **Quand** : uniquement après une **évolution VOLONTAIRE du rendu** (nouvelle leçon,
 refonte d'un composant, changement de couleur/figure assumé). Un diff **inattendu**
@@ -237,9 +269,9 @@ modifiés sur la branche via le `GITHUB_TOKEN`.
   par le bot (`git fetch`), ouvrir la PR → `ci.yml` compare avec les baselines en
   place.
 
-**Ne jamais** régénérer en local : `npx playwright test galerie --update-snapshots`
-sous Windows/macOS est ignoré (`test.skip` hors Linux) et ne produit rien
-d'exploitable ; sur une machine Linux le rendu diffère encore du runner CI.
+**Ne jamais** régénérer en local : sur une machine Linux le rendu diffère encore du
+runner CI, et ailleurs le moteur de texte n'est même pas le même. (Aujourd'hui la
+commande ne produit de toute façon rien, le test étant `fixme`.)
 
 ## CI
 

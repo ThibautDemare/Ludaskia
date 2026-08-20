@@ -152,6 +152,23 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
     langue avec sa raison) — sinon `npm test` échoue. Ce qu'il ne voit pas, et
     qui reste à ta charge : le **parcours** décrit (« Français, puis
     Orthographe, puis… ») quand un écran change de place.
+- **Cadrage — les critères AVANT le code (#584).** Un critère d'acceptation
+  rédigé après l'implémentation ne fait que décrire ce que le code fait déjà : il
+  ne garde plus rien. D'où la skill **`/cadrer`** (`.claude/skills/cadrer/`), qui
+  produit la trame — problème, critères numérotés et observables, **au moins un
+  critère négatif**, hors périmètre explicite — et refuse de clore tant qu'un
+  critère n'a pas de **cas d'échec identifiable**. Trois règles qui en découlent :
+  - **`integrateur-lecon` n'écrit jamais les critères de sa propre tranche.**
+    Même angle mort que « auteur ≠ testeur » : on cadre alors sur ce que le
+    moteur sait déjà faire, et le cadrage ne contredit plus rien.
+  - **Les tests traduisent les critères AVANT l'implémentation, et ils sont
+    rouges.** `auteur-tests-logique` / `auteur-tests-e2e` partent de l'issue, pas
+    du code. Un test écrit après coup passe du premier coup — ce qui ne prouve
+    rien d'autre que sa propre complaisance.
+  - **Les critères sont GELÉS dès que le code démarre.** Toute évolution passe
+    par un **commentaire daté** sur l'issue, qui dit ce qui change et pourquoi.
+    Sans cette trace, réduire le périmètre en cours de route est indiscernable
+    d'avoir livré ce qui était prévu.
 
 ## Style de réponse (Claude et agents)
 - **Direct et concis.** Aller droit au but : pas de phrase d'introduction, pas de

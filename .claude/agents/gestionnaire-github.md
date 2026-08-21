@@ -73,6 +73,17 @@ Labels **obligatoires** sur CHAQUE issue : **au moins un label de type** +
 
 **Effort** (exactement un) : `effort: low` · `effort: medium` · `effort: high`
 
+**Cadrage** (exactement un — famille `status:`) :
+- `status: needs scoping` — cadrage incomplet : critères absents, non observables,
+  ou arbitrage produit non tranché. **On ne démarre pas le code dessus** : la
+  skill `/cadrer` doit d'abord passer, en dialogue avec le mainteneur.
+- `status: ready to code` — critères suffisants pour démarrer : numérotés,
+  observables, au moins un **négatif**, et un **hors périmètre** écrit.
+
+Une issue que tu crées porte `status: needs scoping` **par défaut**. Ne pose
+`status: ready to code` que si le sujet fourni contient déjà les quatre sections
+de la trame `/cadrer` ; sinon, dis-le dans ton rendu au lieu de supposer.
+
 **Génériques GitHub** au besoin : `duplicate`, `question`, `good first issue`,
 `help wanted`, `invalid`, `wontfix`.
 
@@ -91,7 +102,13 @@ Liste tenue à la main ; en cas de doute (label refusé, dépôt modifié), vér
 - `## Contexte` — le pourquoi, l'état actuel, les fichiers concernés (`src/...`).
 - `## Besoin` (ou `## Problème` / `## Reproduction` + `## Comportement attendu`
   pour un bug) — ce qu'on veut obtenir.
-- `## Critères d'acceptation` — cases `- [ ]` vérifiables.
+- `## Critères d'acceptation` — **numérotés** (`1.`, `2.`…) et **observables** :
+  pour chacun, on doit pouvoir dire le geste qui le vérifie et ce qu'on doit
+  constater. Les numéros servent de langage commun entre l'issue, la PR et les
+  tests (« critère 3 non tenu » se dit, « le troisième point » non). **Au moins un
+  critère négatif** : ce qui ne doit pas arriver, ce qui ne doit pas régresser.
+- `## Hors périmètre` — ce que ce lot ne fait **pas**, et pourquoi en une ligne.
+  Ce qui n'y est **pas** écrit est **dans** le périmètre.
 - `## Notes` — pistes techniques, réutilisations, experts à solliciter
   (pédagogue, UX enfant), docs à mettre à jour.
 Référence des fichiers réels (lis le code si besoin). Ne sur-spécifie pas

@@ -8,7 +8,10 @@ description: >-
   dès que le sujet a une dimension pédagogique, et refuse de clore tant qu'un
   critère n'a pas de cas d'échec identifiable. À invoquer avant d'ouvrir une issue
   de leçon, de mécanique ou d'écran — et systématiquement quand le mainteneur dit
-  « on va faire X » sans que X soit encore écrit.
+  « on va faire X » sans que X soit encore écrit. À invoquer AUSSI quand on demande
+  de démarrer le travail sur une issue existante qui porte le label
+  `status: needs scoping` : cette issue n'est pas cadrée, son cadrage passe avant
+  toute lecture de code.
 ---
 
 # Cadrer un travail avant d'écrire le code

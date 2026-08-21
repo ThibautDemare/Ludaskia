@@ -169,6 +169,14 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
     par un **commentaire daté** sur l'issue, qui dit ce qui change et pourquoi.
     Sans cette trace, réduire le périmètre en cours de route est indiscernable
     d'avoir livré ce qui était prévu.
+  - **Le cadrage se lit sur l'issue AVANT d'ouvrir un fichier.** Chaque issue
+    porte exactement un label de la famille `status:` (cf. Workflow Git/GitHub).
+    Une issue `status: needs scoping` **ne se code pas** : on passe la skill
+    `/cadrer` avec le mainteneur d'abord, on écrit la trame dans l'issue, et
+    seulement alors le label bascule sur `status: ready to code`. Réflexe : quand
+    on te demande de « travailler sur l'issue #N », **regarde son label d'abord**
+    (`gh issue view N`), pas après avoir commencé à explorer le code. La skill ne
+    se déclenche pas toute seule sur ce genre de demande.
 
 ## Style de réponse (Claude et agents)
 - **Direct et concis.** Aller droit au but : pas de phrase d'introduction, pas de
@@ -240,6 +248,11 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
     `gamification` (trophées, XP, objectifs, récompenses), `documentation`.
   - **Priorité** (un seul) : `priority: high` / `priority: medium` / `priority: low`.
   - **Effort** (un seul) : `effort: low` / `effort: medium` / `effort: high`.
+  - **Cadrage** (un seul, famille `status:`) : `status: needs scoping` /
+    `status: ready to code`. À la création, c'est `status: needs scoping` **par
+    défaut**, sauf si le corps porte déjà la trame `/cadrer` complète (problème,
+    critères numérotés observables, au moins un critère négatif, hors périmètre).
+    Voir § Conventions, « Cadrage — les critères AVANT le code ».
   - **Niveau scolaire** (optionnel — **complète** les labels obligatoires, ne les
     remplace pas) : tag transversal de **classe** pour le contenu multi-niveaux
     (#225), aussi destiné à étiqueter les **leçons** par classe. Existants :

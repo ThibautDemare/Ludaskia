@@ -2053,11 +2053,16 @@ describe('Trophées', () => {
 		// Persistant : rien de nouveau au passage suivant.
 		expect(api.evaluateTrophies().map((t) => t.id)).not.toContain('bilanLong');
 	});
-	test('trophées à paliers compilés (metric/n → test)', () => {
+	test('trophées à paliers compilés (metric/n → test), branchés sur le cumul (#559)', () => {
 		const def = api.TROPHIES.find((t) => t.id === 'stars5')!;
 		expect(typeof def.test === 'function').toBe(true);
-		expect(def.test!({ stars: 5 } as GSnapshot)).toBe(true);
-		expect(def.test!({ stars: 4 } as GSnapshot)).toBe(false);
+		// Le palier suit le CUMUL tous niveaux, celui que l'accueil met en avant, et non
+		// plus le compte scopé au niveau actif (sinon deux chiffres, deux histoires).
+		expect(def.metric).toBe('starsTousNiveaux');
+		expect(def.test!({ starsTousNiveaux: 5, stars: 0 } as GSnapshot)).toBe(true);
+		expect(def.test!({ starsTousNiveaux: 4, stars: 4 } as GSnapshot)).toBe(false);
+		// Et c'est bien le cumul qui tranche, pas la métrique scopée.
+		expect(def.test!({ starsTousNiveaux: 4, stars: 30 } as GSnapshot)).toBe(false);
 	});
 	test('trophée « Sans faute partout » : seuil dynamique = nb réel de leçons (#39)', () => {
 		const def = api.TROPHIES.find((t) => t.id === 'starsAll')!;
@@ -2071,6 +2076,11 @@ describe('Trophées', () => {
 		expect(def.test!({ stars: 15, totalLessons: 67 } as GSnapshot)).toBe(false);
 		// Garde-fou : aucun déclenchement à 0 leçon.
 		expect(def.test!({ stars: 0, totalLessons: 0 } as GSnapshot)).toBe(false);
+		// #559 : le cumul tous niveaux ne change RIEN ici — « partout » se mesure sur le
+		// catalogue de la classe suivie, donc une classe incomplète le reste, même avec un
+		// trésor d'étoiles gagné dans une autre classe.
+		expect(def.test!({ stars: 4, totalLessons: 5, starsTousNiveaux: 99 } as GSnapshot)).toBe(false);
+		expect(def.test!({ stars: 5, totalLessons: 5, starsTousNiveaux: 5 } as GSnapshot)).toBe(true);
 	});
 	test('gSnapshot expose totalLessons (= catalogue du niveau actif)', () => {
 		// totalLessons est SCOPÉ au niveau actif (complétude « partout », #225/#233). Le

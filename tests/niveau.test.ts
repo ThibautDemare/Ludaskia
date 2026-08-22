@@ -46,7 +46,13 @@ import {
 	STARS_KEY,
 	RUNS_KEY,
 } from '../src/core/progress';
-import { gSnapshot } from '../src/core/rewards';
+import {
+	gSnapshot,
+	evaluateTrophies,
+	loadTrophies,
+	TROPHIES,
+	TROPHIES_KEY,
+} from '../src/core/rewards';
 
 beforeEach(() => {
 	localStorage.clear();
@@ -266,6 +272,148 @@ describe('records de sprint scopés par niveau (#233)', () => {
 		// Idempotent : un second passage ne change rien.
 		migrateNiveauNamespacing();
 		expect(loadRuns('sprint').length).toBe(1);
+	});
+});
+
+/* Leçons dont le stockage est garanti hors du scope CM1 : elles ne sont pas
+   disponibles au CM1, donc leur étoile reste rangée @ce2 même une fois la classe
+   changée (niveauStockage = niveau de JEU de la leçon). */
+const leconsCe2Seulement = () =>
+	getAllLessons().filter((l) => l.levels.includes('ce2') && !l.levels.includes('cm1'));
+
+describe('trophées « étoiles » sur le cumul tous niveaux (#559)', () => {
+	it('gSnapshot expose le cumul tous niveaux À CÔTÉ du compte scopé au niveau actif', () => {
+		const ce2Seulement = leconsCe2Seulement();
+		expect(ce2Seulement.length).toBeGreaterThanOrEqual(5);
+		setNiveauReference('ce2');
+		for (const l of ce2Seulement.slice(0, 5)) recordLessonResult(l.id, true);
+		expect(gSnapshot().stars).toBe(5);
+		expect(gSnapshot().starsTousNiveaux).toBe(5);
+		// Passage au CM1 : le compte scopé retombe à 0 (catalogue CM1 vierge)…
+		setNiveauReference('cm1');
+		expect(gSnapshot().stars).toBe(0);
+		// …mais le cumul « trésor », lui, est celui que l'accueil met en avant.
+		expect(gSnapshot().starsTousNiveaux).toBe(5);
+	});
+
+	it('critère 5 : un palier ⭐ se débloque sur le cumul alors que le niveau actif est à zéro', () => {
+		setNiveauReference('ce2');
+		for (const l of leconsCe2Seulement().slice(0, 5)) recordLessonResult(l.id, true);
+		setNiveauReference('cm1');
+		// L'enfant lit « ⭐ 5 étoiles gagnées » sur son accueil : « Étoile montante »
+		// (5 étoiles) doit être acquise, sans quoi deux chiffres racontent deux histoires.
+		expect(gSnapshot().stars).toBe(0);
+		expect(evaluateTrophies().map((t) => t.id)).toContain('stars5');
+	});
+
+	it('le palier compte les étoiles de TOUTES les classes, pas celles de la meilleure', () => {
+		const cm1Seulement = getAllLessons().filter(
+			(l) => l.levels.includes('cm1') && !l.levels.includes('ce2'),
+		);
+		expect(cm1Seulement.length).toBeGreaterThanOrEqual(2);
+		// 3 étoiles au CE2 + 2 au CM1 : aucune classe n'atteint 5 à elle seule, le cumul si.
+		setNiveauReference('ce2');
+		for (const l of leconsCe2Seulement().slice(0, 3)) recordLessonResult(l.id, true);
+		setNiveauReference('cm1');
+		for (const l of cm1Seulement.slice(0, 2)) recordLessonResult(l.id, true);
+		expect(gSnapshot().stars).toBe(2);
+		expect(gSnapshot().starsTousNiveaux).toBe(5);
+		expect(evaluateTrophies().map((t) => t.id)).toContain('stars5');
+	});
+
+	it('rattrapage d’un profil existant : plusieurs paliers ⭐ franchis en UN seul appel', () => {
+		// Brancher les paliers sur le cumul les rend plus faciles : un profil déjà ancien,
+		// jamais réévalué depuis, peut franchir 5 ET 15 d'un coup. Aucun appel à
+		// evaluateTrophies avant, pour reproduire ce rattrapage.
+		const cm1Seulement = getAllLessons().filter(
+			(l) => l.levels.includes('cm1') && !l.levels.includes('ce2'),
+		);
+		expect(leconsCe2Seulement().length).toBeGreaterThanOrEqual(10);
+		expect(cm1Seulement.length).toBeGreaterThanOrEqual(6);
+		setNiveauReference('ce2');
+		for (const l of leconsCe2Seulement().slice(0, 10)) recordLessonResult(l.id, true);
+		setNiveauReference('cm1');
+		for (const l of cm1Seulement.slice(0, 6)) recordLessonResult(l.id, true);
+		// 16 au cumul, dont 6 seulement au niveau actif : aucun niveau n'atteint 15 seul.
+		expect(gSnapshot().stars).toBe(6);
+		expect(gSnapshot().starsTousNiveaux).toBe(16);
+		const nouveaux = evaluateTrophies().map((t) => t.id);
+		// Les DEUX paliers franchis sont annoncés, pas seulement le plus haut ni le plus bas.
+		expect(nouveaux).toContain('stars5');
+		expect(nouveaux).toContain('stars15');
+		expect(nouveaux).not.toContain('stars30'); // 30 non atteint
+		// Et les deux sont persistés : c'est ce qui empêche de les re-annoncer ensuite.
+		expect(loadTrophies()).toContain('stars5');
+		expect(loadTrophies()).toContain('stars15');
+		const encore = evaluateTrophies().map((t) => t.id);
+		expect(encore).not.toContain('stars5');
+		expect(encore).not.toContain('stars15');
+	});
+
+	it('critère 1 : les trois paliers ⭐ sont branchés sur le cumul, ids inchangés (critère 6)', () => {
+		const surLeCumul = TROPHIES.filter((t) => t.metric === 'starsTousNiveaux');
+		expect(surLeCumul.map((t) => t.id)).toEqual(['stars5', 'stars15', 'stars30']);
+		expect(surLeCumul.map((t) => t.n)).toEqual([5, 15, 30]);
+		// Plus aucun palier ne reste sur la métrique scopée au niveau actif.
+		expect(TROPHIES.filter((t) => t.metric === 'stars').map((t) => t.id)).toEqual([]);
+	});
+
+	it('les descriptions des trois paliers ⭐ parlent d’étoiles, et non de leçons', () => {
+		// La métrique compte des paires (leçon, niveau) : « 5 leçons réussies sans faute »
+		// serait faux, la même leçon étoilée au CE2 puis au CM1 comptant deux fois.
+		const surLeCumul = TROPHIES.filter((t) => t.metric === 'starsTousNiveaux');
+		expect(surLeCumul.length).toBe(3);
+		for (const t of surLeCumul) {
+			expect(t.desc).toMatch(/étoiles/);
+			expect(t.desc).not.toMatch(/leçons?/);
+		}
+		// Le seuil annoncé reste celui du palier (courbe 5/15/30 inchangée).
+		expect(surLeCumul.map((t) => t.desc.match(/\d+/)?.[0])).toEqual(['5', '15', '30']);
+	});
+
+	it('critère 6 : un palier ⭐ acquis ne se re-verrouille pas au changement de classe', () => {
+		setNiveauReference('ce2');
+		for (const l of leconsCe2Seulement().slice(0, 5)) recordLessonResult(l.id, true);
+		expect(evaluateTrophies().map((t) => t.id)).toContain('stars5');
+		setNiveauReference('cm1');
+		const nouveaux = evaluateTrophies();
+		expect(nouveaux.map((t) => t.id)).not.toContain('stars5');
+		expect(nouveaux.map((t) => t.title)).not.toContain('Étoile montante');
+		expect(loadTrophies()).toContain('stars5');
+	});
+
+	it('critère 6 : un trophée déjà stocké sous « stars5 » n’est jamais re-annoncé (id stable)', () => {
+		// Profil existant, acquis AVANT le changement de métrique : si l'id du palier
+		// changeait, ce trophée redeviendrait « nouveau » et serait re-célébré.
+		lsSet(TROPHIES_KEY, ['stars5']);
+		setNiveauReference('ce2');
+		for (const l of leconsCe2Seulement().slice(0, 5)) recordLessonResult(l.id, true);
+		const nouveaux = evaluateTrophies();
+		expect(nouveaux.map((t) => t.title)).not.toContain('Étoile montante');
+		expect(nouveaux.map((t) => t.id)).not.toContain('stars5');
+	});
+
+	it('critère 3 : « Sans faute partout » se débloque quand TOUT le catalogue de la classe est étoilé', () => {
+		setNiveauReference('ce2');
+		for (const l of getAllLessons().filter((l) => l.levels.includes('ce2')))
+			recordLessonResult(l.id, true);
+		const g = gSnapshot();
+		expect(g.stars).toBe(g.totalLessons);
+		expect(evaluateTrophies().map((t) => t.id)).toContain('starsAll');
+	});
+
+	it('critère 3 : un cumul supérieur au catalogue ne débloque PAS « Sans faute partout »', () => {
+		// Tout le CE2 étoilé, puis passage au CM1 : le trésor dépasse le catalogue CM1…
+		setNiveauReference('ce2');
+		for (const l of getAllLessons().filter((l) => l.levels.includes('ce2')))
+			recordLessonResult(l.id, true);
+		setNiveauReference('cm1');
+		const g = gSnapshot();
+		expect(g.starsTousNiveaux).toBeGreaterThan(g.totalLessons);
+		// …mais aucune leçon de la classe suivie n'est étoilée : « partout » reste faux.
+		expect(g.stars).toBe(0);
+		expect(evaluateTrophies().map((t) => t.id)).not.toContain('starsAll');
+		expect(loadTrophies()).not.toContain('starsAll');
 	});
 });
 

@@ -17,6 +17,7 @@ import {
 	loadStars,
 	lessonAvgPct,
 	starsEarned,
+	starsEarnedAll,
 	todayStr,
 } from './progress';
 import { enReport } from './report-lecon';
@@ -241,10 +242,20 @@ export const TROPHIES: Trophy[] = [
 		{ n: 3, title: 'Sérieux', desc: 'Une série de 3 jours.' },
 		{ n: 7, title: 'En feu', desc: 'Une série de 7 jours.' },
 	]),
-	...tiers('stars', '⭐', 'stars', [
-		{ n: 5, title: 'Étoile montante', desc: '5 leçons réussies sans faute.' },
-		{ n: 15, title: "Chasseur d'étoiles", desc: '15 leçons réussies sans faute.' },
-		{ n: 30, title: 'Pluie d’étoiles', desc: '30 leçons réussies sans faute.' },
+	// Paliers ⭐ sur le CUMUL tous niveaux (#559), et non sur les étoiles du niveau actif :
+	// c'est le cumul que l'accueil met en avant, et un enfant ne peut pas comprendre de lire
+	// « 8 étoiles gagnées » sans avoir décroché « Étoile montante », qui n'en demande que 5.
+	// Même principe que les trophées de bilans et de sprints (#233) : un trophée acquis ne se
+	// reverrouille pas au changement de classe. Le préfixe d'id reste `stars` — le renommer
+	// rendrait invisible tout palier déjà acquis et en re-annoncerait un « nouveau ».
+	// Les descriptions disent « étoiles » et non « leçons » : le cumul compte des paires
+	// (leçon, niveau), donc une même leçon étoilée en CE2 puis en CM1 vaut deux étoiles pour
+	// une seule leçon. Corrigé au-delà du cadrage de #559, qui gelait ces formulations, parce
+	// que le branchement ci-dessus les rendait fausses (arbitrage du mainteneur).
+	...tiers('stars', '⭐', 'starsTousNiveaux', [
+		{ n: 5, title: 'Étoile montante', desc: '5 étoiles gagnées.' },
+		{ n: 15, title: "Chasseur d'étoiles", desc: '15 étoiles gagnées.' },
+		{ n: 30, title: "Pluie d'étoiles", desc: '30 étoiles gagnées.' },
 	]),
 	{
 		// Seuil dynamique : « toutes les leçons étoilées », dérivé du catalogue
@@ -253,7 +264,11 @@ export const TROPHIES: Trophy[] = [
 		id: 'starsAll',
 		icon: '🌟',
 		title: 'Sans faute partout',
-		desc: 'Décrocher l’étoile de toutes les leçons.',
+		desc: "Décrocher l'étoile de toutes les leçons.",
+		// SEUL trophée de la famille ⭐ à rester sur la métrique SCOPÉE (#559) : il se compare
+		// à `totalLessons`, le catalogue du niveau actif. Le brancher sur le cumul le
+		// débloquerait avec des étoiles gagnées dans une autre classe, sur un catalogue qui
+		// n'est pas celui-là.
 		test: (g: GSnapshot) => g.totalLessons > 0 && g.stars >= g.totalLessons,
 	},
 	{
@@ -284,7 +299,7 @@ export const TROPHIES: Trophy[] = [
 		id: 'bilanLong',
 		icon: '🌲',
 		title: 'Grande exploration',
-		desc: 'Terminer un grand bilan de 30 questions d’une traite.',
+		desc: "Terminer un grand bilan de 30 questions d'une traite.",
 		test: (g: GSnapshot) => g.bestBilanCount >= 30,
 	},
 	{
@@ -441,7 +456,8 @@ export function gSnapshot() {
 	).length;
 	return {
 		totalRuns: all.length,
-		stars: starsEarned(),
+		stars: starsEarned(), // étoiles du niveau ACTIF (seuil « Sans faute partout », complétude scopée)
+		starsTousNiveaux: starsEarnedAll(), // cumul « trésor » (#559) : paliers ⭐, jamais reverrouillés
 		totalLessons: lessonsActif.length, // leçons du niveau actif (seuil « partout », complétude scopée)
 		maxStreak: s.max || s.days || 0,
 		bestExpressMs: re.length ? Math.min(...re.map((r) => r.ms)) : Infinity,

@@ -24,6 +24,7 @@ import { momentCalme } from './app-calme';
 import { mascotteBulleHTML } from './unlocks-view';
 import { dicter } from './tts';
 import { activateModal } from './modal-a11y';
+import { html } from '../core/html';
 
 // Message porté par la mascotte (1re personne, concret, annonce le « flash »).
 // « version » évité (mot d'adulte) ; ton « bonne nouvelle », pas alerte.
@@ -96,7 +97,7 @@ function showOverlay(): void {
 	el.className = 'update-overlay';
 	el.setAttribute('role', 'status');
 	el.setAttribute('aria-live', 'polite');
-	el.innerHTML = `<div class="update-card">${mascotteBulleHTML(MESSAGE)}</div>`;
+	el.innerHTML = html`<div class="update-card">${mascotteBulleHTML(MESSAGE)}</div>`.balisage;
 	document.body.appendChild(el);
 	// Le voile masque l'app juste avant le rechargement : on rend l'arrière-plan
 	// inerte (Tab et lecteurs d'écran ne s'y promènent plus). Pas de fermeture par

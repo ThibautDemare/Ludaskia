@@ -27,6 +27,7 @@
    ============================================================ */
 import { icon } from './icon';
 import { capterErreur } from './erreur-capture';
+import { html, type SafeHtml } from '../core/html';
 
 /* Libellé retenu (#467) : jamais « Passer » seul, qui sonne comme un raccourci gratuit
    et ne dit pas ce qu'on obtient en échange. Un seul libellé pour les deux écrans :
@@ -43,14 +44,14 @@ export const REVEAL_LAB = 'Pas grave, on la reverra bientôt.';
 /* Forme de révélation des moteurs qui révèlent EUX-MÊMES leurs solutions EN PLACE (un
    problème les écrit à côté de chaque case) : le verdict n'a alors aucune réponse à
    répéter, il oriente le regard. */
-export const REVELATION_EN_PLACE = 'Regarde les réponses, puis continue.';
+export const REVELATION_EN_PLACE = html`Regarde les réponses, puis continue.`;
 
 /** Lien de déblocage. Un vrai `<button type="button">`, JAMAIS un `<a>` (rien à
     naviguer, et le raccourci Entrée des deux écrans détournerait la touche). Discret par
     le STYLE, jamais par la taille de cible : `classe` et `id` restent propres à l'écran
     (styles, et repères des specs e2e), l'icône et le libellé sont communs. */
-export function lienPasserHTML(classe: string, id: string): string {
-	return `<button type="button" class="${classe}" id="${id}">${icon('eye')}<span>${PASSER_LABEL}</span></button>`;
+export function lienPasserHTML(classe: string, id: string): SafeHtml {
+	return html`<button type="button" class="${classe}" id="${id}">${icon('eye')}<span>${PASSER_LABEL}</span></button>`;
 }
 
 /** Ligne de révélation du verdict neutre. Deux formes, selon que la solution tient sur la
@@ -59,11 +60,15 @@ export function lienPasserHTML(classe: string, id: string): string {
     ligne l'annonce alors et s'arrête sur « : ». `libelle` porte la formulation propre au
     format (« la réponse c'est », « le bon rangement »…), reprise de la branche d'échec du
     format pour que l'enfant lise la même chose qu'après une erreur.
-    `solutionHTML` est injecté tel quel : à l'appelant de l'échapper. */
-export function ligneRevelation(libelle: string, solutionHTML?: string): string {
-	return solutionHTML
-		? `Regarde, ${libelle} : <strong>${solutionHTML}</strong>.`
-		: `Regarde, ${libelle} :`;
+    `solutionHTML` est un FRAGMENT (#614) : à l'appelant de le construire par le
+    gabarit, ce que le type impose désormais.
+    On teste son BALISAGE et non le fragment lui-même : un fragment vide est un objet,
+    donc truthy, là où l'ancienne chaîne vide était falsy. Sans ça, une solution vide
+    ferait réapparaître le « <strong></strong>. » que cette forme existe pour éviter. */
+export function ligneRevelation(libelle: string, solutionHTML?: SafeHtml): SafeHtml {
+	return solutionHTML?.balisage
+		? html`Regarde, ${libelle} : <strong>${solutionHTML}</strong>.`
+		: html`Regarde, ${libelle} :`;
 }
 
 /** Journalise une question PASSÉE : même entrée qu'une erreur (donc visible dans l'espace
@@ -73,7 +78,7 @@ export function ligneRevelation(libelle: string, solutionHTML?: string): string 
     journal ('lecon' / 'revision'), rien d'autre. */
 export function capterPasse(o: {
 	text: string;
-	figure?: string;
+	figure?: SafeHtml;
 	attendue: string;
 	lessonId: string | null;
 	mode: string;

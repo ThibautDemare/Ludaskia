@@ -15,9 +15,10 @@ import {
 	reinitViaRecuperation,
 	desactiverPin,
 } from '../core/encadrant-lock';
-import { escapeHTML } from '../core/utils';
+
 import { uiConfirm } from './ui-modal';
 import { container, rerender, renderEspace, telechargerBlob } from './encadrant-commun';
+import { html, type SafeHtml, joindre, drapeau } from '../core/html';
 
 /* ---------- État du verrou (module) ---------- */
 let deverrouille = false; // PIN validé pour cette session de page
@@ -84,15 +85,19 @@ function restoreKpFocus(preferD?: string): void {
 }
 
 /* ---------- Pavé numérique (porte + définition de code) ---------- */
-function keypadHTML(): string {
-	const dots = Array.from(
-		{ length: 4 },
-		(_, i) => `<span class="kp-dot${i < pinBuffer.length ? ' filled' : ''}"></span>`,
-	).join('');
-	const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
-		.map((d) => `<button type="button" class="kp-key" data-act="kp" data-d="${d}">${d}</button>`)
-		.join('');
-	return `<div class="kp">
+function keypadHTML(): SafeHtml {
+	const dots = joindre(
+		Array.from(
+			{ length: 4 },
+			(_, i) => html`<span class="kp-dot${i < pinBuffer.length ? drapeau('filled') : ''}"></span>`,
+		),
+	);
+	const keys = joindre(
+		['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(
+			(d) => html`<button type="button" class="kp-key" data-act="kp" data-d="${d}">${d}</button>`,
+		),
+	);
+	return html`<div class="kp">
       <div class="kp-dots${pinErreur ? ' kp-shake' : ''}" role="status" aria-live="polite" aria-label="${pinBuffer.length} chiffre${pinBuffer.length > 1 ? 's' : ''} sur 4">${dots}</div>
       <div class="kp-grid">
         ${keys}
@@ -107,16 +112,16 @@ function keypadHTML(): string {
 export function renderGate(): void {
 	const el = container();
 	if (!el) return;
-	el.innerHTML = `<div class="enc-gate">
+	el.innerHTML = html`<div class="enc-gate">
       <h1 class="enc-title">Espace encadrants</h1>
       <p class="enc-gate-hint">Entrez votre code à 4 chiffres.</p>
-      ${pinErreur ? `<p class="enc-gate-err" role="alert">Ce n'est pas le bon code.</p>` : ''}
+      ${pinErreur ? html`<p class="enc-gate-err" role="alert">Ce n'est pas le bon code.</p>` : ''}
       ${keypadHTML()}
       <div class="enc-gate-links">
         <button type="button" class="enc-link" data-act="oubli">J'ai oublié mon code</button>
         <button type="button" class="enc-link" data-act="retour">Retour</button>
       </div>
-    </div>`;
+    </div>`.balisage;
 	// Focus initial dans le pavé : la saisie au clavier physique marche d'emblée.
 	if (!pinBuffer)
 		(el.querySelector('.kp-key') as HTMLElement | null)?.focus({ preventScroll: true });
@@ -125,39 +130,39 @@ export function renderGate(): void {
 export function renderRecovery(): void {
 	const el = container();
 	if (!el) return;
-	el.innerHTML = `<div class="enc-gate">
+	el.innerHTML = html`<div class="enc-gate">
       <h1 class="enc-title">Réinitialiser le code</h1>
       <p class="enc-gate-hint">Saisissez votre clé de récupération (fournie quand vous avez créé le code).</p>
-      ${recoveryErreur ? `<p class="enc-gate-err" role="alert">Cette clé ne correspond pas.</p>` : ''}
+      ${recoveryErreur ? html`<p class="enc-gate-err" role="alert">Cette clé ne correspond pas.</p>` : ''}
       <input type="text" class="enc-input" id="encRecovery" placeholder="Clé de récupération" aria-label="Clé de récupération" autocomplete="off" spellcheck="false" />
       <div class="enc-gate-links">
         <button type="button" class="enc-btn" data-act="recovery-valider">Valider</button>
         <button type="button" class="enc-link" data-act="gate-retour">Annuler</button>
       </div>
-    </div>`;
+    </div>`.balisage;
 	(el.querySelector('#encRecovery') as HTMLInputElement | null)?.focus();
 }
 
 /* ---------- Bloc « Code d'accès » des réglages ---------- */
-export function pinPanelHTML(): string {
+export function pinPanelHTML(): SafeHtml {
 	// Sous-panneau « secret de récupération » (après définition d'un code).
 	if (pinPanel === 'secret' && pinSecret) {
-		return `<div class="enc-block enc-pin">
+		return html`<div class="enc-block enc-pin">
         <h3 class="enc-h3">Votre clé de récupération</h3>
         <p class="enc-warn"><strong>Conservez bien cette clé.</strong> Si vous perdez à la fois votre code
           <em>et</em> cette clé, l'accès à cet espace sera définitivement perdu (aucune autre façon de le rouvrir).</p>
-        <code class="enc-secret">${escapeHTML(pinSecret)}</code>
+        <code class="enc-secret">${pinSecret}</code>
         <div class="enc-actions">
           <button type="button" class="enc-btn-sec" data-act="secret-copier">Copier</button>
           <button type="button" class="enc-btn-sec" data-act="secret-telecharger">Télécharger (.txt)</button>
         </div>
-        <label class="enc-check"><input type="checkbox" data-act="secret-conserve"${secretConserve ? ' checked' : ''} /> J'ai conservé ma clé de récupération.</label>
-        <button type="button" class="enc-btn" data-act="pin-terminer"${secretConserve ? '' : ' disabled'}>Terminer</button>
+        <label class="enc-check"><input type="checkbox" data-act="secret-conserve"${secretConserve ? drapeau('checked') : ''} /> J'ai conservé ma clé de récupération.</label>
+        <button type="button" class="enc-btn" data-act="pin-terminer"${secretConserve ? '' : drapeau('disabled')}>Terminer</button>
       </div>`;
 	}
 	// Sous-panneau « choisir un code » (pavé numérique).
 	if (pinPanel === 'saisie') {
-		return `<div class="enc-block enc-pin">
+		return html`<div class="enc-block enc-pin">
         <h3 class="enc-h3">Choisissez un code à 4 chiffres</h3>
         ${keypadHTML()}
         <button type="button" class="enc-link" data-act="pin-annuler">Annuler</button>
@@ -165,13 +170,13 @@ export function pinPanelHTML(): string {
 	}
 	// État courant du verrou.
 	if (pinActif()) {
-		return `<div class="enc-block enc-pin">
+		return html`<div class="enc-block enc-pin">
         <h3 class="enc-h3">Code d'accès</h3>
         <p class="enc-hint">Un code à 4 chiffres est demandé pour entrer dans cet espace.</p>
         <button type="button" class="enc-btn-sec" data-act="pin-desactiver">Désactiver le code</button>
       </div>`;
 	}
-	return `<div class="enc-block enc-pin">
+	return html`<div class="enc-block enc-pin">
       <h3 class="enc-h3">Code d'accès (optionnel)</h3>
       <p class="enc-hint">Vous pouvez exiger un code à 4 chiffres pour entrer ici. C'est un garde-fou contre une
         modification accidentelle par l'enfant, pas une protection forte : pour verrouiller vraiment l'appareil,

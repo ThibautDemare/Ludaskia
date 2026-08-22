@@ -28,8 +28,9 @@
    Modèle calqué sur les widgets à tuiles (ui/tuile-interaction.ts) dont il
    réutilise le contrat `TuileController`/`TuileOptions` et la tuile `.tuile`.
    ============================================================ */
-import { escapeHTML, sample } from '../core/utils';
+import { sample } from '../core/utils';
 import type { TuileController, TuileOptions, TuileReponse } from './tuile-interaction';
+import { html, type SafeHtml, joindre } from '../core/html';
 
 export interface AppariementSpec {
 	question: string;
@@ -72,21 +73,21 @@ export function bindAppariement(
 
 	const mount = root.querySelector('[data-tuile-mount]');
 	if (mount) {
-		mount.outerHTML = `
+		mount.outerHTML = html`
     <p class="lapp-consigne">Touche un mot, puis le mot qui va avec. Un trait les relie.</p>
     <div class="lapp-board" id="lappBoard">
       <svg class="lapp-links" id="lappLinks" aria-hidden="true" focusable="false"></svg>
       <div class="lapp-marks" id="lappMarks" aria-hidden="true"></div>
       <div class="lapp-cols">
         <div class="lapp-col lapp-col--g" role="group" aria-label="Mots à relier">
-          ${gauches.map((g) => motBtn(g, 'g')).join('')}
+          ${joindre(gauches.map((g) => motBtn(g, 'g')))}
         </div>
         <div class="lapp-col lapp-col--d" role="group" aria-label="Mots proposés">
-          ${droites.map((d) => motBtn(d, 'd')).join('')}
+          ${joindre(droites.map((d) => motBtn(d, 'd')))}
         </div>
       </div>
     </div>
-    <p class="sr-only" id="lappStatus" role="status" aria-live="polite" aria-atomic="true"></p>`;
+    <p class="sr-only" id="lappStatus" role="status" aria-live="polite" aria-atomic="true"></p>`.balisage;
 	}
 
 	const board = root.querySelector('#lappBoard') as HTMLElement;
@@ -157,8 +158,8 @@ export function bindAppariement(
 				y: r.top - boardRect.top + r.height / 2,
 			};
 		};
-		let paths = '';
-		let marksHTML = '';
+		const paths: SafeHtml[] = [];
+		const marksHTML: SafeHtml[] = [];
 		for (const g of gauches) {
 			const d = linkOf[g];
 			if (d === undefined) continue;
@@ -169,16 +170,20 @@ export function bindAppariement(
 			const b = anchor(bd, 'd');
 			const dx = (b.x - a.x) * 0.5; // sortie/entrée horizontales (courbe de Bézier)
 			const cls = frozen ? (bonneDroite.get(g) === d ? 'correct' : 'wrong') : '';
-			paths += `<path class="lapp-link ${cls}" d="M ${a.x} ${a.y} C ${a.x + dx} ${a.y} ${b.x - dx} ${b.y} ${b.x} ${b.y}" />`;
+			paths.push(
+				html`<path class="lapp-link ${cls}" d="M ${a.x} ${a.y} C ${a.x + dx} ${a.y} ${b.x - dx} ${b.y} ${b.x} ${b.y}" />`,
+			);
 			if (frozen) {
 				const ok = bonneDroite.get(g) === d;
 				const mx = (a.x + b.x) / 2;
 				const my = (a.y + b.y) / 2;
-				marksHTML += `<span class="lapp-mark ${ok ? 'correct' : 'wrong'}" style="left:${mx}px;top:${my}px">${ok ? '✓' : '✗'}</span>`;
+				marksHTML.push(
+					html`<span class="lapp-mark ${ok ? 'correct' : 'wrong'}" style="left:${mx}px;top:${my}px">${ok ? '✓' : '✗'}</span>`,
+				);
 			}
 		}
-		svg.innerHTML = paths;
-		marks.innerHTML = marksHTML;
+		svg.innerHTML = joindre(paths).balisage;
+		marks.innerHTML = joindre(marksHTML).balisage;
 	}
 
 	function redraw(): void {
@@ -295,6 +300,6 @@ export function bindAppariement(
 
 /* Un bouton-mot d'une colonne (réutilise la tuile `.tuile`). L'aria-label est posé
    dynamiquement par refreshButtons (état + verdict) ; ici on ne met que le texte. */
-function motBtn(mot: string, side: 'g' | 'd'): string {
-	return `<button type="button" class="tuile lapp-mot lapp-mot--${side}" data-side="${side}" data-id="${escapeHTML(mot)}">${escapeHTML(mot)}</button>`;
+function motBtn(mot: string, side: 'g' | 'd'): SafeHtml {
+	return html`<button type="button" class="tuile lapp-mot lapp-mot--${side}" data-side="${side}" data-id="${mot}">${mot}</button>`;
 }

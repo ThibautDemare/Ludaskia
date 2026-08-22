@@ -42,6 +42,7 @@ import {
 	wirePasser,
 } from './lecon-passer';
 import { motsMalClasses } from '../core/erreur-representation';
+import { html, type SafeHtml, joindre } from '../core/html';
 
 const NB_QUESTIONS = 6;
 
@@ -137,18 +138,18 @@ enregistrerRunner(RUNNER, (snap) => {
 function renderQuestion(): void {
 	const q = questions[idx];
 	tranchee = false;
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
         ${leconTitreHTML(lesson)}
-        <p class="sprint-q lord-consigne"${ttsAttr(q.question)}>${escapeHTML(q.question)}</p>
+        <p class="sprint-q lord-consigne"${ttsAttr(q.question)}>${q.question}</p>
         <div data-tuile-mount></div>
         ${decisionHTML('ltriVerif')}
         <div class="sprint-correction" id="ltriFeedback" hidden></div>
         <div class="sprint-actions" id="ltriActions" hidden></div>
       </div>
-    </div>`;
+    </div>`.balisage;
 	const verif = sheets().querySelector('#ltriVerif') as HTMLButtonElement;
 	// Widget « ranger par thème » mutualisé (#345) : deux colonnes + bac, tap en deux
 	// temps / glisser, figeage et marques ✓/✗ par tuile à la validation.
@@ -175,16 +176,17 @@ function motsDuTheme(q: TriQuestion, col: 0 | 1): string[] {
 
 /* Bon classement RÉVÉLÉ (une ligne par thème) : servi après une erreur ET après un passage
    (#467), pour que l'enfant lise la même solution dans les deux cas. */
-function classementHTML(q: TriQuestion): string {
-	const bon = ([0, 1] as const)
-		.map(
+function classementHTML(q: TriQuestion): SafeHtml {
+	const bon = joindre(
+		([0, 1] as const).map(
 			(col) =>
-				`<strong>${escapeHTML(q.categories[col])}</strong> : ${motsDuTheme(q, col)
+				html`<strong>${q.categories[col]}</strong> : ${motsDuTheme(q, col)
 					.map(escapeHTML)
 					.join(' · ')}`,
-		)
-		.join('<br>');
-	return `<div class="ltri-solution">${bon}</div>`;
+		),
+		'<br>',
+	);
+	return html`<div class="ltri-solution">${bon}</div>`;
 }
 
 /* Même classement en TEXTE, d'une seule ligne, pour la live region et le journal. */
@@ -221,8 +223,8 @@ function verifier(): void {
 	// (#ltriActions) reste, pour ne pas afficher deux boutons à la fois (#153).
 	masquerDecision(sheets());
 	const feedbackHTML = correct
-		? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-		: `<span class="lqcm-ko">Le bon classement :</span>${classementHTML(q)}`;
+		? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
+		: html`<span class="lqcm-ko">Le bon classement :</span>${classementHTML(q)}`;
 	wireNext(
 		sheets().querySelector('#ltriActions') as HTMLElement,
 		sheets().querySelector('#ltriFeedback') as HTMLElement,

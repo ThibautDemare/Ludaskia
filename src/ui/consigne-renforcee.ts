@@ -12,18 +12,19 @@
    l'appelant retire alors le `data-tts` de l'énoncé pour éviter un second bouton
    « Écouter ».
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+
 import { ttsAttr } from '../core/tts-text';
+import { html, type SafeHtml, VIDE } from '../core/html';
 
 /** Markup de la consigne renforcée, ou '' si la leçon n'en fournit pas. */
 export function consigneRenforceeHTML(
 	consigne: string | undefined,
 	picto: string | undefined,
 	ttsText: string,
-): string {
-	if (!consigne) return '';
+): SafeHtml {
+	if (!consigne) return VIDE;
 	const pictoHTML = picto
-		? `<span class="lqcm-picto" aria-hidden="true">${escapeHTML(picto)}</span>`
-		: '';
-	return `<div class="lqcm-consigne"${ttsAttr(ttsText)}>${pictoHTML}<span class="lqcm-consigne-txt">${escapeHTML(consigne)}</span></div>`;
+		? html`<span class="lqcm-picto" aria-hidden="true">${picto}</span>`
+		: VIDE;
+	return html`<div class="lqcm-consigne"${ttsAttr(ttsText)}>${pictoHTML}<span class="lqcm-consigne-txt">${consigne}</span></div>`;
 }

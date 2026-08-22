@@ -21,29 +21,30 @@ import { fichesPagesHTML } from '../core/lessons';
 import { bilanBlocksForIds, buildFichesForIds } from '../core/build';
 import { renderItem, createRenderContext, withLessonId } from '../core/items';
 import type { RenderContext } from '../core/items';
-import { escapeHTML } from '../core/utils';
+
 import { setCurrentMode, setCurrentLessonId, afterStart, setRenderCtx } from './navigation';
 import { printScope } from './session';
 import { bilanCategoryKey, bilanCustomKey } from '../core/resume';
 import { setResumeCtx, clearResumeCtx, maybeRelaunch, type ResumeCtx } from './resume';
 import { icon } from './icon';
 import { uiConfirm } from './ui-modal';
+import { html, type SafeHtml, VIDE, joindre, drapeau } from '../core/html';
 
 /* ---------- Génération de bilan express personnalisé ---------- */
 
-function bilanCustomExpressHTML(config: BilanConfig, ctx: RenderContext): string {
+function bilanCustomExpressHTML(config: BilanConfig, ctx: RenderContext): SafeHtml {
 	const blocks = bilanBlocksForIds(config.lessonIds, config.questionsPerLesson as number);
-	const cells = blocks
-		.map((b) => {
+	const cells = joindre(
+		blocks.map((b) => {
 			const ops = withLessonId(ctx, b.id, () =>
-				b.ops.map((o) => `<div class="bop">${renderItem(o, ctx)}</div>`).join(''),
+				joindre(b.ops.map((o) => html`<div class="bop">${renderItem(o, ctx)}</div>`)),
 			);
-			return `<div class="bloc"><span class="btheme">${escapeHTML(b.theme)}</span>${ops}</div>`;
-		})
-		.join('');
+			return html`<div class="bloc"><span class="btheme">${b.theme}</span>${ops}</div>`;
+		}),
+	);
 	const nbq = config.questionsPerLesson as number;
-	return `<div class="page">
-    <p class="bilan-title">${escapeHTML(config.label)}</p>
+	return html`<div class="page">
+    <p class="bilan-title">${config.label}</p>
     <p class="bilan-sub">${nbq} question${nbq > 1 ? 's' : ''} par leçon · ${config.lessonIds.length} leçon${config.lessonIds.length > 1 ? 's' : ''}</p>
     <div class="bilan-grid">${cells}</div>
     <p class="foot print-only">Ludaskia</p>
@@ -56,13 +57,13 @@ export function runBilanConfig(config: BilanConfig, ctx?: ResumeCtx | null): voi
 	if (!config.lessonIds.length) return;
 	const renderCtx = createRenderContext();
 	setRenderCtx(renderCtx);
-	let html: string;
+	let contenu: SafeHtml;
 	if (config.questionsPerLesson === 'all') {
-		html = fichesPagesHTML(buildFichesForIds(config.lessonIds, undefined, renderCtx));
+		contenu = fichesPagesHTML(buildFichesForIds(config.lessonIds, undefined, renderCtx));
 	} else {
-		html = bilanCustomExpressHTML(config, renderCtx);
+		contenu = bilanCustomExpressHTML(config, renderCtx);
 	}
-	document.getElementById('sheets')!.innerHTML = html;
+	document.getElementById('sheets')!.innerHTML = contenu.balisage;
 	// Un bilan compte pour les objectifs de régularité : « complet » quand toutes
 	// les questions sont demandées, « express » sinon (#35). Ces essais ne sont
 	// pas classés (cf. session.ts) car les leçons varient d'un bilan à l'autre.
@@ -153,22 +154,22 @@ function genId(): string {
    Le composeur liste TOUTES les leçons (tous niveaux confondus, volontairement) ; le
    libellé, lui, est celui du niveau actif de la matière (#436) — c'est la classe dans
    laquelle la leçon sera imprimée/jouée. */
-function lessonChecks(lessons: LessonDef[]): string {
-	return lessons
-		.map(
+function lessonChecks(lessons: LessonDef[]): SafeHtml {
+	return joindre(
+		lessons.map(
 			(l) =>
-				`<label class="bc-item">
+				html`<label class="bc-item">
           <input type="checkbox" class="bc-lesson-check" value="${l.id}" checked>
-          <span>${escapeHTML(labelLecon(l, niveauActifMatiere(l.subject)))}</span>
+          <span>${labelLecon(l, niveauActifMatiere(l.subject))}</span>
         </label>`,
-		)
-		.join('');
+		),
+	);
 }
 
 /* Case parent d'un groupe (matière/catégorie/rubrique) : coche/décoche tout son
    périmètre, et reflète un état partiel (indéterminé) — câblé dans le JS. */
-function groupCheck(label: string): string {
-	return `<input type="checkbox" class="bc-group-check" aria-label="Tout choisir : ${escapeHTML(label)}">`;
+function groupCheck(label: string): SafeHtml {
+	return html`<input type="checkbox" class="bc-group-check" aria-label="Tout choisir : ${label}">`;
 }
 
 /* Regroupe des leçons par rubrique (#109), dans leur ordre d'apparition. Une
@@ -190,37 +191,38 @@ function groupByRubrique(lessons: LessonDef[]): { rubrique: string; lessons: Les
 /* Corps d'une catégorie : leçons regroupées par rubrique si la catégorie en a
    (même présentation que l'écran de catégorie, #109), sinon grille à plat. Les
    leçons sans rubrique d'une catégorie mixte restent à plat (sans en-tête). */
-function categoryBody(lessons: LessonDef[]): string {
+function categoryBody(lessons: LessonDef[]): SafeHtml {
 	const groups = groupByRubrique(lessons);
 	const aRubriques = groups.some((g) => g.rubrique !== '');
-	if (!aRubriques) return `<div class="bc-lessons-grid">${lessonChecks(lessons)}</div>`;
-	return groups
-		.map((g) => {
-			if (g.rubrique === '') return `<div class="bc-lessons-grid">${lessonChecks(g.lessons)}</div>`;
-			return `<div class="bc-group bc-rubrique">
+	if (!aRubriques) return html`<div class="bc-lessons-grid">${lessonChecks(lessons)}</div>`;
+	return joindre(
+		groups.map((g) => {
+			if (g.rubrique === '')
+				return html`<div class="bc-lessons-grid">${lessonChecks(g.lessons)}</div>`;
+			return html`<div class="bc-group bc-rubrique">
         <label class="bc-group-head bc-rubrique-head">
           ${groupCheck(g.rubrique)}
-          <span class="bc-group-title bc-rubrique-title">${escapeHTML(g.rubrique)}</span>
+          <span class="bc-group-title bc-rubrique-title">${g.rubrique}</span>
           <span class="bc-group-count" aria-hidden="true"></span>
         </label>
         <div class="bc-lessons-grid">${lessonChecks(g.lessons)}</div>
       </div>`;
-		})
-		.join('');
+		}),
+	);
 }
 
 /* Bloc d'une catégorie (configurateur global) : en-tête à pastille colorée +
    case parent + compteur, puis corps groupé par rubrique. La teinte (cyclée)
    et l'icône reprennent celles des cartes de navigation (cf. cat-visuals). */
-function categoryBlock(cat: Category, lessons: LessonDef[], tint: string): string {
+function categoryBlock(cat: Category, lessons: LessonDef[], tint: string): SafeHtml {
 	const ico = cat.icon
-		? `<span class="cat-ico bc-cat-ico" style="background:${tint}">${icon(cat.icon)}</span>`
-		: '';
-	return `<div class="bc-group bc-category" style="--bc-cat-tint:${tint}">
+		? html`<span class="cat-ico bc-cat-ico" style="background:${tint}">${icon(cat.icon)}</span>`
+		: VIDE;
+	return html`<div class="bc-group bc-category" style="--bc-cat-tint:${tint}">
       <label class="bc-group-head bc-cat-head">
         ${groupCheck(cat.label)}
         ${ico}
-        <span class="bc-group-title bc-cat-title">${escapeHTML(cat.label)}</span>
+        <span class="bc-group-title bc-cat-title">${cat.label}</span>
         <span class="bc-group-count" aria-hidden="true"></span>
       </label>
       <div class="bc-cat-body">${categoryBody(lessons)}</div>
@@ -237,36 +239,36 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 	const category = categoryId ? CATEGORIES.find((c) => c.id === categoryId) : null;
 	const scoped = !!category;
 
-	let lessonsMarkup: string;
+	let lessonsMarkup: SafeHtml;
 	if (scoped) {
 		// Écran scopé : une seule catégorie, déjà nommée par `.bc-scope`. On
 		// regroupe simplement ses leçons par rubrique (#109) ; le « Tout choisir »
 		// global du haut couvre le niveau catégorie.
-		lessonsMarkup = `<div class="bc-scoped-lessons">${categoryBody(getLessonsByCategory(category!.id))}</div>`;
+		lessonsMarkup = html`<div class="bc-scoped-lessons">${categoryBody(getLessonsByCategory(category!.id))}</div>`;
 	} else {
 		// Écran global : Matière (volet repliable) → Catégorie → Rubrique. Volets
 		// repliés par défaut (109 leçons) — les compteurs « x/y » par matière disent
 		// l'état sans déplier (cf. avis UX enfant).
 		const lessons = getAllLessons();
-		lessonsMarkup = SUBJECTS.map((subj) => {
-			const catBlocks = CATEGORIES.filter((c) => c.subject === subj.id)
-				.map((cat, i) => {
+		lessonsMarkup = joindre(
+			SUBJECTS.map((subj) => {
+				const catBlocks = CATEGORIES.filter((c) => c.subject === subj.id).map((cat, i) => {
 					const catLessons = lessons.filter((l) => l.category === cat.id);
-					return catLessons.length ? categoryBlock(cat, catLessons, catTint(i)) : '';
-				})
-				.join('');
-			if (!catBlocks) return '';
-			return `<details class="bc-group bc-subject">
+					return catLessons.length ? categoryBlock(cat, catLessons, catTint(i)) : VIDE;
+				});
+				if (!catBlocks.length) return VIDE;
+				return html`<details class="bc-group bc-subject">
         <summary class="bc-group-head bc-subject-head">
-          <span class="bc-check-wrap"><input type="checkbox" class="bc-group-check" aria-label="Tout choisir : ${escapeHTML(subj.label)}"></span>
+          <span class="bc-check-wrap"><input type="checkbox" class="bc-group-check" aria-label="Tout choisir : ${subj.label}"></span>
           <span class="cat-ico bc-subject-ico" style="background:${subjectTint(subj.id)}">${icon(subjectIcon(subj.id))}</span>
-          <span class="bc-group-title bc-subject-title">${escapeHTML(subj.label)}</span>
+          <span class="bc-group-title bc-subject-title">${subj.label}</span>
           <span class="bc-group-count" aria-hidden="true"></span>
           <span class="bc-chevron" aria-hidden="true">${icon('caret-down')}</span>
         </summary>
         <div class="bc-subject-body">${catBlocks}</div>
       </details>`;
-		}).join('');
+			}),
+		);
 	}
 
 	// Défaut : « Moyen » sur un écran scopé (révision pour de vrai), « Un peu » sinon.
@@ -274,9 +276,9 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 	// Carte verticale : icône (agrandie) au-dessus du libellé et du nombre, pour
 	// un picto lisible et tapable au doigt (cf. avis UX enfant). Le bouton radio
 	// est masqué visuellement (l'état coché est porté par la carte).
-	const nbqItem = (value: string, ico: string, intent: string, num: string) =>
-		`<label class="bc-nbq-item">
-      <input type="radio" name="bcNbq" class="bc-nbq-radio" value="${value}"${value === defaultNbq ? ' checked' : ''}>
+	const nbqItem = (value: string, ico: SafeHtml, intent: string, num: string) =>
+		html`<label class="bc-nbq-item">
+      <input type="radio" name="bcNbq" class="bc-nbq-radio" value="${value}"${value === defaultNbq ? drapeau('checked') : ''}>
       <span class="bc-nbq-ico">${ico}</span>
       <span class="bc-nbq-label">${intent}</span>
       <span class="bc-nbq-num">${num || '&nbsp;'}</span>
@@ -289,15 +291,15 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 	const runLabel = scoped ? `Bilan — ${category!.label}` : 'Bilan personnalisé';
 	const sprintLabel = scoped ? `Sprint — ${category!.label}` : 'Sprint personnalisé';
 
-	const modeItem = (value: string, ico: string, title: string, sub: string) =>
-		`<label class="bc-mode-item">
-      <input type="radio" name="bcMode" class="bc-mode-radio" value="${value}"${value === 'bilan' ? ' checked' : ''}>
+	const modeItem = (value: string, ico: SafeHtml, title: string, sub: string) =>
+		html`<label class="bc-mode-item">
+      <input type="radio" name="bcMode" class="bc-mode-radio" value="${value}"${value === 'bilan' ? drapeau('checked') : ''}>
       <span>${ico} ${title} <span class="bc-mode-sub">${sub}</span></span>
     </label>`;
 
-	el.innerHTML = `
+	el.innerHTML = html`
     <div class="bilan-config" id="bilanConfigForm">
-      ${scoped ? `<p class="bc-scope">Catégorie : <strong>${escapeHTML(category!.label)}</strong></p>` : ''}
+      ${scoped ? html`<p class="bc-scope">Catégorie : <strong>${category!.label}</strong></p>` : ''}
       <div class="bc-section-title">Que veux-tu faire ?</div>
       <div class="bc-mode">
         ${modeItem('bilan', icon('feather'), 'Tranquille', 'à ton rythme')}
@@ -333,13 +335,13 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
       <details class="bc-save">
         <summary>${icon('bookmark')} Garder pour plus tard</summary>
         <div class="bc-save-row">
-          <input id="bcLabel" class="bc-label-input" type="text" placeholder="Nom du bilan" maxlength="60" value="${escapeHTML(defaultName)}">
+          <input id="bcLabel" class="bc-label-input" type="text" placeholder="Nom du bilan" maxlength="60" value="${defaultName}">
           <button id="bcSave" class="bc-btn bc-btn-save">${icon('bookmark')} Garder</button>
         </div>
         <div class="bc-saved" id="bcSaved" role="status"></div>
       </details>
       <div class="bc-err" id="bcErr"></div>
-    </div>`;
+    </div>`.balisage;
 
 	const form = el.querySelector<HTMLElement>('#bilanConfigForm')!;
 	const errEl = el.querySelector<HTMLElement>('#bcErr')!;
@@ -491,7 +493,7 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 
 /* ---------- Section favoris (accueil et catégorie) ---------- */
 
-function favoriItemHTML(b: BilanConfig): string {
+function favoriItemHTML(b: BilanConfig): SafeHtml {
 	const nLessons = `${b.lessonIds.length} leçon${b.lessonIds.length > 1 ? 's' : ''}`;
 	// Un favori sprint (#64) affiche son chrono ; un bilan, ses questions/leçon.
 	const detail =
@@ -502,9 +504,9 @@ function favoriItemHTML(b: BilanConfig): string {
 						? 'toutes les questions'
 						: `${b.questionsPerLesson} question${(b.questionsPerLesson as number) > 1 ? 's' : ''}/leçon`
 				}`;
-	return `<div class="favori-item">
+	return html`<div class="favori-item">
         <div class="favori-info">
-          <div class="favori-name">${escapeHTML(b.label)}</div>
+          <div class="favori-name">${b.label}</div>
           <div class="favori-meta">${detail}</div>
         </div>
         <div class="favori-btns">
@@ -525,8 +527,8 @@ export function renderFavoris(el: HTMLElement | null, categoryId?: string): void
 		el.innerHTML = '';
 		return;
 	}
-	el.innerHTML = `<h3 class="favoris-title">Mes bilans favoris</h3>
-    <div class="favori-list">${bilans.map(favoriItemHTML).join('')}</div>`;
+	el.innerHTML = html`<h3 class="favoris-title">Mes bilans favoris</h3>
+    <div class="favori-list">${joindre(bilans.map(favoriItemHTML))}</div>`.balisage;
 
 	el.querySelectorAll<HTMLButtonElement>('[data-run]').forEach((btn) => {
 		btn.addEventListener('click', () => {

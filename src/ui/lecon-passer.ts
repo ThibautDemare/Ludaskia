@@ -45,6 +45,7 @@ import {
 	neutraliserScene,
 	REVEAL_LAB,
 } from './revelation-neutre';
+import { html, type SafeHtml, drapeau } from '../core/html';
 
 /* Fond commun réexporté tel quel : les runners n'ont qu'un import pour tout ce qui touche
    à « Je ne sais pas, montre-moi », et la formulation de la ligne de révélation reste la
@@ -75,10 +76,10 @@ export interface DecisionOpts {
 
     Le lien est un vrai `<button type="button">`, JAMAIS un `<a>` (rien à naviguer), et il
     est TOUJOURS actif, même quand « Vérifier » est `disabled` : c'est tout son intérêt. */
-export function decisionHTML(verifId: string, o: DecisionOpts = {}): string {
+export function decisionHTML(verifId: string, o: DecisionOpts = {}): SafeHtml {
 	const bloc = o.classeBloc ? ` ${o.classeBloc}` : '';
-	return `<div class="lecon-decide${bloc}">
-        <button class="sprint-btn" id="${verifId}"${o.actif ? '' : ' disabled'}>Vérifier</button>
+	return html`<div class="lecon-decide${bloc}">
+        <button class="sprint-btn" id="${verifId}"${o.actif ? '' : drapeau('disabled')}>Vérifier</button>
         ${lienPasserHTML('lecon-passer', PASSER_ID)}
       </div>`;
 }
@@ -101,7 +102,7 @@ export function masquerDecision(root: ParentNode): void {
     règle : réponse donnée vide + marqueur `sansTentative`). */
 export function capterPasse(o: {
 	text: string;
-	figure?: string;
+	figure?: SafeHtml;
 	attendue: string;
 	lessonId: string;
 }): void {
@@ -123,8 +124,8 @@ export interface RevelationOpts {
 	root: HTMLElement; // conteneur de l'écran du runner (#sheets)
 	feedback: HTMLElement; // zone de correction du runner (#…Feedback)
 	actions: HTMLElement; // zone d'enchaînement du runner (#…Actions)
-	repHTML: string; // ligne de révélation, cf. ligneRevelation
-	extraHTML?: string; // complément affiché dessous (solution en bloc, explication)
+	repHTML: SafeHtml; // ligne de révélation, cf. ligneRevelation
+	extraHTML?: SafeHtml; // complément affiché dessous (solution en bloc, explication)
 	annonce: string; // même contenu, en TEXTE, pour la live region
 	isLast: boolean; // dernière question de la série → « Voir mon résultat ▶ »
 	onNext: () => void; // enchaînement (question suivante ou écran de résultat)
@@ -153,7 +154,7 @@ export function revelerSolution(o: RevelationOpts): void {
 		message: o.annonce,
 	});
 	wireNext(o.actions, o.feedback, {
-		feedbackHTML: `<div class="lecon-reveal">
+		feedbackHTML: html`<div class="lecon-reveal">
         <span class="lecon-reveal-lab">${REVEAL_LAB}</span>
         <span class="lecon-reveal-rep">${o.repHTML}</span>
       </div>${o.extraHTML ?? ''}`,

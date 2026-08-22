@@ -23,10 +23,11 @@
    l'appelant active/désactive son propre bouton. Le runner affiche alors son
    résultat local ; la révision enregistre le grade dans sa session SR.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
 import { wrapGrandsNombres } from '../core/nombres';
 import { ttsAttr } from '../core/tts-text';
 import type { NatureOrdre } from '../core/exercise';
+import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
+import { poserAuTrou } from '../core/items';
 
 /* Données d'un widget, par nature. Reprend les champs des items générés par le
    moteur (ExerciseType.generate). */
@@ -95,9 +96,9 @@ export function bindTuileInteraction(
 
 /* Insère le markup du widget à la place du placeholder, à plat (outerHTML →
    pas de div d'emballage qui perturberait la mise en page existante). */
-function mountWidget(root: HTMLElement, html: string): void {
+function mountWidget(root: HTMLElement, fragment: SafeHtml): void {
 	const mount = root.querySelector('[data-tuile-mount]');
-	if (mount) mount.outerHTML = html;
+	if (mount) mount.outerHTML = fragment.balisage;
 }
 
 /* Une tuile du bac (réutilisée par les trois widgets). `cls` = classes propres au
@@ -108,12 +109,12 @@ function tuileBtn(
 	val: string,
 	cls: string,
 	opts: { used: boolean; frozen: boolean; wrap: boolean; ariaLabel?: string },
-): string {
-	const inner = opts.wrap ? wrapGrandsNombres(escapeHTML(val)) : escapeHTML(val);
+): SafeHtml {
+	const inner = opts.wrap ? wrapGrandsNombres(html`${val}`) : html`${val}`;
 	const usedCls = opts.used ? ' tuile-used' : '';
-	const attrs = opts.used || opts.frozen ? ' disabled' : ' draggable="true"';
-	const aria = opts.ariaLabel ? ` aria-label="${escapeHTML(opts.ariaLabel)}"` : '';
-	return `<button type="button" class="tuile ${cls}${usedCls}" data-val="${escapeHTML(val)}"${aria}${attrs}>${inner}</button>`;
+	const attrs = opts.used || opts.frozen ? drapeau('disabled') : attribut('draggable', 'true');
+	const aria = opts.ariaLabel ? attribut('aria-label', opts.ariaLabel) : VIDE;
+	return html`<button type="button" class="tuile ${cls}${usedCls}" data-val="${val}"${aria}${attrs}>${inner}</button>`;
 }
 
 /* ---------- « tuile » : amener LA bonne tuile dans la case ---------- */
@@ -124,15 +125,14 @@ function bindSlot(
 ): TuileController {
 	const wrap = opts.variant === 'lecon';
 	const qClass = opts.variant === 'lecon' ? 'sprint-q' : 'rev-q';
-	const enonceInner = (
-		wrap ? wrapGrandsNombres(escapeHTML(spec.question)) : escapeHTML(spec.question)
-	).replace(
+	const enonceInner = poserAuTrou(
+		wrap ? wrapGrandsNombres(html`${spec.question}`) : html`${spec.question}`,
 		'@',
-		'<button type="button" class="ltui-slot" id="ltuiSlot" aria-label="Emplacement de la réponse"></button>',
+		html`<button type="button" class="ltui-slot" id="ltuiSlot" aria-label="Emplacement de la réponse"></button>`,
 	);
 	mountWidget(
 		root,
-		`<p class="ltui-consigne">Amène la bonne tuile dans la case (tape-la ou glisse-la).</p>
+		html`<p class="ltui-consigne">Amène la bonne tuile dans la case (tape-la ou glisse-la).</p>
     <div class="${qClass} ltui-enonce"${ttsAttr(spec.parle ?? spec.question)}>${enonceInner}</div>
     <div class="ltui-bac" id="ltuiBac"></div>`,
 	);
@@ -148,9 +148,11 @@ function bindSlot(
 		slot.classList.toggle('rempli', placed !== null);
 		slot.classList.toggle('correct', verdict === true);
 		slot.classList.toggle('wrong', verdict === false);
-		bac.innerHTML = spec.tuiles
-			.map((t) => tuileBtn(t, 'ltui-tuile', { used: t === placed, frozen: frozen(), wrap }))
-			.join('');
+		bac.innerHTML = joindre(
+			spec.tuiles.map((t) =>
+				tuileBtn(t, 'ltui-tuile', { used: t === placed, frozen: frozen(), wrap }),
+			),
+		).balisage;
 		bac.querySelectorAll<HTMLButtonElement>('.ltui-tuile').forEach((btn) => {
 			const val = btn.dataset.val!;
 			btn.addEventListener('click', () => place(val));
@@ -203,7 +205,7 @@ function bindOrdre(
 	// focalisable seulement par programme ; il se NOMME dans cet état (cf. `nommerBac`).
 	mountWidget(
 		root,
-		`<div class="lord-seq" id="lordSeq"></div>
+		html`<div class="lord-seq" id="lordSeq"></div>
     <p class="ltui-consigne">Tape ${pluriel} dans l'ordre (ou glisse-les dans les cases).</p>
     <div class="ltui-bac" id="lordBac" tabindex="-1"></div>`,
 	);
@@ -261,45 +263,45 @@ function bindOrdre(
 	};
 
 	function redraw() {
-		seq.innerHTML = spec.ordre
-			.map((_, i) => {
+		seq.innerHTML = joindre(
+			spec.ordre.map((_, i) => {
 				const mot = placed[i];
 				const rempli = mot !== undefined;
 				const ok = rempli && mot === spec.ordre[i];
 				const etat = frozen && rempli ? (ok ? ' correct' : ' wrong') : '';
 				const mark =
 					frozen && rempli
-						? `<span class="lord-mark" aria-hidden="true">${ok ? '✓' : '✗'}</span>`
-						: '';
+						? html`<span class="lord-mark" aria-hidden="true">${ok ? '✓' : '✗'}</span>`
+						: VIDE;
 				// Une fois figée, l'aria-label porte le verdict juste/faux (les marques ✓/✗
 				// sont en aria-hidden) → un lecteur d'écran peut relire case par case (#358).
 				const label = !rempli
 					? `Position ${i + 1}, vide`
 					: frozen
-						? `Position ${i + 1} : ${escapeHTML(mot)}, ${ok ? 'correct' : 'incorrect'}`
-						: `Position ${i + 1} : ${escapeHTML(mot)}, taper pour retirer`;
-				const dis = !rempli || frozen ? ' disabled' : '';
-				return `<button type="button" class="lord-cell${rempli ? ' rempli' : ''}${etat}" data-pos="${i}" aria-label="${label}"${dis}>
+						? `Position ${i + 1} : ${mot}, ${ok ? 'correct' : 'incorrect'}`
+						: `Position ${i + 1} : ${mot}, taper pour retirer`;
+				const dis = !rempli || frozen ? drapeau('disabled') : '';
+				return html`<button type="button" class="lord-cell${rempli ? ' rempli' : ''}${etat}" data-pos="${i}" aria-label="${label}"${dis}>
         <span class="lord-num" aria-hidden="true">${i + 1}</span>
-        <span class="lord-mot">${rempli ? escapeHTML(mot) : ''}</span>${mark}
+        <span class="lord-mot">${rempli ? mot : ''}</span>${mark}
       </button>`;
-			})
-			.join('');
+			}),
+		).balisage;
 		if (!frozen) {
 			seq.querySelectorAll<HTMLButtonElement>('.lord-cell.rempli').forEach((cell) => {
 				cell.addEventListener('click', () => retirer(Number(cell.dataset.pos)));
 			});
 		}
-		bac.innerHTML = spec.tuiles
-			.map((t) =>
+		bac.innerHTML = joindre(
+			spec.tuiles.map((t) =>
 				tuileBtn(t, 'lord-tuile', {
 					used: placed.includes(t),
 					frozen,
 					wrap: false,
 					ariaLabel: `Ranger ${singulier} ${t}`,
 				}),
-			)
-			.join('');
+			),
+		).balisage;
 		if (!frozen) {
 			bac.querySelectorAll<HTMLButtonElement>('.lord-tuile:not(.tuile-used)').forEach((btn) => {
 				const val = btn.dataset.val!;
@@ -359,7 +361,7 @@ function bindTri(
 ): TuileController {
 	mountWidget(
 		root,
-		`<p class="ltui-consigne">Tape un mot, puis tape son thème (ou glisse-le dans la colonne).</p>
+		html`<p class="ltui-consigne">Tape un mot, puis tape son thème (ou glisse-le dans la colonne).</p>
     <div class="ltri-cols" id="ltriCols"></div>
     <div class="ltui-bac" id="ltriBac"></div>
     <p class="sr-only" id="ltriStatus" role="status" aria-live="polite" aria-atomic="true"></p>`,
@@ -396,38 +398,41 @@ function bindTri(
 			?.focus({ preventScroll: true });
 
 	function redraw() {
-		cols.innerHTML = ([0, 1] as const)
-			.map((col) => {
-				const tuiles = motsDeColonne(col)
-					.map((mot) => {
+		cols.innerHTML = joindre(
+			([0, 1] as const).map((col) => {
+				const tuiles = joindre(
+					motsDeColonne(col).map((mot) => {
 						const m = spec.mots.find((x) => x.mot === mot)!;
 						const ok = m.cat === col;
 						const etat = frozen ? (ok ? ' correct' : ' wrong') : '';
 						const mark = frozen
-							? `<span class="ltri-mark" aria-hidden="true">${ok ? '✓' : '✗'}</span>`
-							: '';
+							? html`<span class="ltri-mark" aria-hidden="true">${ok ? '✓' : '✗'}</span>`
+							: VIDE;
 						// Une fois figée, l'aria-label porte le verdict juste/faux (marque ✓/✗ en
 						// aria-hidden) → relecture au lecteur d'écran, tuile par tuile (#358).
 						const label = frozen
-							? `${escapeHTML(mot)}, ${ok ? 'correct' : 'incorrect'}`
-							: `Retirer ${escapeHTML(mot)} du thème ${escapeHTML(spec.categories[col])}`;
-						return `<button type="button" class="tuile ltri-posee${etat}" data-mot="${escapeHTML(mot)}"
-            aria-label="${label}"${frozen ? ' disabled' : ''}>${escapeHTML(mot)}${mark}</button>`;
-					})
-					.join('');
+							? `${mot}, ${ok ? 'correct' : 'incorrect'}`
+							: `Retirer ${mot} du thème ${spec.categories[col]}`;
+						return html`<button type="button" class="tuile ltri-posee${etat}" data-mot="${mot}"
+            aria-label="${label}"${frozen ? drapeau('disabled') : ''}>${mot}${mark}</button>`;
+					}),
+				);
 				// Le titre de colonne est la cible de dépôt opérable au clavier (#360) : on en
 				// fait un bouton (role + tabindex) plutôt que la <div> colonne elle-même, qui
 				// contient les tuiles posées (boutons) — un role=button sur la colonne
 				// imbriquerait des boutons (ARIA invalide). Désactivé une fois figé.
 				const titreAttrs = frozen
-					? ''
-					: ` role="button" tabindex="0" aria-label="Déposer dans ${escapeHTML(spec.categories[col])}"`;
-				return `<div class="ltri-col" data-col="${col}">
-        <div class="ltri-col-titre"${titreAttrs}>${escapeHTML(spec.categories[col])}</div>
+					? VIDE
+					: html`${attribut('role', 'button')}${attribut('tabindex', '0')}${attribut(
+							'aria-label',
+							`Déposer dans ${spec.categories[col]}`,
+						)}`;
+				return html`<div class="ltri-col" data-col="${col}">
+        <div class="ltri-col-titre"${titreAttrs}>${spec.categories[col]}</div>
         <div class="ltri-zone" data-col="${col}">${tuiles}</div>
       </div>`;
-			})
-			.join('');
+			}),
+		).balisage;
 		if (!frozen) {
 			cols.querySelectorAll<HTMLElement>('.ltri-col').forEach((colEl) => {
 				const col = Number(colEl.dataset.col) as 0 | 1;
@@ -456,15 +461,13 @@ function bindTri(
 				});
 			});
 		}
-		bac.innerHTML = spec.mots
-			.map((m) => {
-				if (placed[m.mot] !== undefined) return ''; // déjà rangée → hors du bac
+		bac.innerHTML = joindre(
+			spec.mots.map((m) => {
+				if (placed[m.mot] !== undefined) return VIDE; // déjà rangée → hors du bac
 				const sel = selected === m.mot ? ' ltri-sel' : '';
-				return `<button type="button" class="tuile lord-tuile ltri-tuile${sel}"
-        data-mot="${escapeHTML(m.mot)}" draggable="true"
-        aria-label="Choisir le mot ${escapeHTML(m.mot)}"${selected === m.mot ? ' aria-pressed="true"' : ''}>${escapeHTML(m.mot)}</button>`;
-			})
-			.join('');
+				return html`<button type="button" class="tuile lord-tuile ltri-tuile${sel}" data-mot="${m.mot}" draggable="true" aria-label="Choisir le mot ${m.mot}"${selected === m.mot ? attribut('aria-pressed', 'true') : VIDE}>${m.mot}</button>`;
+			}),
+		).balisage;
 		if (!frozen) {
 			bac.querySelectorAll<HTMLButtonElement>('.ltri-tuile').forEach((btn) => {
 				const val = btn.dataset.mot!;

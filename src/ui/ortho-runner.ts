@@ -8,7 +8,7 @@
      version SVG (entourer les pièges) est une étape suivante.
    - La dictée n'est pas proposée tant que le TTS n'est pas branché.
    ============================================================ */
-import { escapeHTML, insertAt, moveAt, removeAt } from '../core/utils';
+import { insertAt, moveAt, removeAt } from '../core/utils';
 import { loadOrtho, saveOrtho, getListe } from '../core/orthographe/store';
 import { materialiserVerbes } from '../core/orthographe/verbes';
 import { motsDeLecon } from '../core/orthographe/lessons';
@@ -44,6 +44,7 @@ import { dicteeDisponible, dicter, messageSansVoix } from './tts';
 import { icon, iconOr } from './icon';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 import { capterErreur } from './erreur-capture';
+import { html, drapeau, type SafeHtml, joindre, VIDE } from '../core/html';
 
 const ACCENTS = ['é', 'è', 'ê', 'à', 'â', 'ç', 'ô', 'î', 'ï', 'û', 'ù', 'œ', '-', "'"];
 const SEANCE_MAX = 8; // activités par séance avant de proposer une pause (rythme CE2)
@@ -94,13 +95,13 @@ function sheets(): HTMLElement {
    lit la phrase complète en TTS. Un mot classique (`contexte` absent) est inchangé. */
 
 /* Phrase à trou. `reveal` montre la forme (phase « affiché » du mot caché). */
-function contexteHTML(word: MotOrtho, reveal = false): string {
-	if (!word.contexte) return '';
+function contexteHTML(word: MotOrtho, reveal = false): SafeHtml {
+	if (!word.contexte) return VIDE;
 	const { avant, apres } = word.contexte;
 	const creux = reveal
-		? `<span class="ortho-trou is-rempli">${escapeHTML(word.mot)}</span>`
-		: `<span class="ortho-trou"><span aria-hidden="true">______</span><span class="sr-only">le verbe à écrire</span></span>`;
-	return `<p class="ortho-contexte" lang="fr">${escapeHTML(avant)}${creux}${escapeHTML(apres)}</p>`;
+		? html`<span class="ortho-trou is-rempli">${word.mot}</span>`
+		: html`<span class="ortho-trou"><span aria-hidden="true">______</span><span class="sr-only">le verbe à écrire</span></span>`;
+	return html`<p class="ortho-contexte" lang="fr">${avant}${creux}${apres}</p>`;
 }
 
 /* Phrase complète lue par le TTS pour une cible verbe : « il mange une pomme ». */
@@ -182,11 +183,11 @@ export async function startOrthoRun(lessonId: string): Promise<void> {
 /* Écran d'attente bref pendant la résolution des formes verbales (chargement
    paresseux d'un shard). Évite un écran vide le temps de l'import dynamique. */
 function renderPreparation(): void {
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="page ortho-run ortho-bilan">
       <div class="ortho-bilan-emoji">⏳</div>
       <p>Un instant, je prépare tes mots…</p>
-    </div>`;
+    </div>`.balisage;
 }
 
 /* La découverte de la liste est-elle terminée (tous les mots vus à l'atelier) ?
@@ -206,9 +207,9 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
 		setPendingOrthoMode(mode);
 		location.hash = 'ortho-' + lessonId;
 	};
-	host.innerHTML = `<div class="mode-choice">
+	host.innerHTML = html`<div class="mode-choice">
     <h2 class="mode-choice-title">Comment veux-tu t'entraîner ?</h2>
-    <p class="mode-choice-lesson">${escapeHTML(label)}</p>
+    <p class="mode-choice-lesson">${label}</p>
     <div class="mode-choice-list">
       <button class="mode-btn recommended" data-mode="">
         <span class="mode-btn-ico">${icon('star', { cls: 'ph-star' })}</span>
@@ -217,17 +218,17 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
           <span class="mode-btn-badge">conseillé · donne l'étoile</span>
         </span>
       </button>
-      ${cibles
-				.map(
-					(m) => `<button class="mode-btn" data-mode="${m.id}">
+      ${joindre(
+				cibles.map(
+					(m) => html`<button class="mode-btn" data-mode="${m.id}">
         <span class="mode-btn-ico">${iconOr(m.icon)}</span>
         <span class="mode-btn-txt">
-          <span class="mode-btn-label">${escapeHTML(m.label)}</span>
+          <span class="mode-btn-label">${m.label}</span>
           <span class="mode-btn-hint">pour t'entraîner</span>
         </span>
       </button>`,
-				)
-				.join('')}
+				),
+			)}
     </div>
     <div class="mode-choice-etude">
       <p class="mode-choice-etude-sep">Ou pour réviser tranquillement</p>
@@ -239,7 +240,7 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
         </span>
       </button>
     </div>
-  </div>`;
+  </div>`.balisage;
 	host.querySelectorAll<HTMLButtonElement>('.mode-btn').forEach((btn) => {
 		const m = btn.dataset.mode;
 		btn.addEventListener('click', () => go(m ? (m as ModeOrtho) : null));
@@ -297,7 +298,7 @@ function renderDicteeMuette(): void {
 	// une seule formulation par cause, et celle du hors-ligne dit bien que la voix
 	// revient — un enfant ne doit pas croire que c'est cassé pour de bon.
 	const explication = messageSansVoix();
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="page ortho-run ortho-bilan">
       <h2>La dictée a besoin du son</h2>
       <p>${icon('speaker')} ${explication}</p>
@@ -306,7 +307,7 @@ function renderDicteeMuette(): void {
         <button class="btn-primary" id="btnAutrementDictee">Travailler autrement</button>
         <button class="atelier-undo" id="btnStopDictee">${retour.label}</button>
       </div>
-    </div>`;
+    </div>`.balisage;
 	const b = sheets().querySelector('#btnAutrementDictee') as HTMLButtonElement;
 	// `dispoDictee` est déjà retombé à false : le parcours proposera un autre mode.
 	b.addEventListener('click', () => {
@@ -358,11 +359,11 @@ function renderNext(): void {
 function renderMotCache(word: MotOrtho): void {
 	const ex = genExerciseOrtho(word, 'motCache');
 	let essais = 0;
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="page ortho-run">
       <p class="ortho-run-consigne">${word.contexte ? 'Regarde bien le verbe, puis cache-le et écris-le.' : 'Regarde bien ce mot, puis cache-le et écris-le.'}</p>
       ${contexteHTML(word)}
-      ${dispoDictee ? `<div><button class="btn-primary ortho-ecouter" id="btnEcouterMot">${icon('speaker')} ${ecouterLabel(word)}</button></div>` : ''}
+      ${dispoDictee ? html`<div><button class="btn-primary ortho-ecouter" id="btnEcouterMot">${icon('speaker')} ${ecouterLabel(word)}</button></div>` : ''}
       <div class="atelier-stage" id="motStage">
         <div class="ortho-mot-affiche" id="motAffiche">${lettresMotHTML(word.mot)}</div>
         <svg class="atelier-svg" id="motSvg" aria-hidden="true"></svg>
@@ -375,7 +376,7 @@ function renderMotCache(word: MotOrtho): void {
         <button class="btn-primary" id="btnVerifMot">✓ Vérifier</button>
       </div>
       <div class="ortho-feedback" id="fb"></div>
-    </div>`;
+    </div>`.balisage;
 	const motStage = sheets().querySelector('#motStage') as HTMLElement;
 	const motAffiche = sheets().querySelector('#motAffiche') as HTMLElement;
 	const motSvg = sheets().querySelector('#motSvg') as unknown as SVGSVGElement;
@@ -427,7 +428,8 @@ function renderMotCache(word: MotOrtho): void {
 			if (essais === 0) journalErreurOrtho(word, input.value); // 1er essai raté
 			essais++;
 			if (essais < 2) {
-				fb.innerHTML = `<span class="fb-ko">Presque ! Regarde bien et réessaie.</span>`;
+				fb.innerHTML =
+					html`<span class="fb-ko">Presque ! Regarde bien et réessaie.</span>`.balisage;
 				input.value = '';
 				input.focus();
 			} else {
@@ -458,7 +460,7 @@ function renderMotCache(word: MotOrtho): void {
 function renderDictee(word: MotOrtho): void {
 	const ex = genExerciseOrtho(word, 'dictee');
 	let essais = 0;
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="page ortho-run">
       <p class="ortho-run-consigne">${word.contexte ? 'Écoute la phrase, puis écris seulement le verbe.' : 'Écoute le mot, puis écris-le.'}</p>
       ${contexteHTML(word)}
@@ -470,7 +472,7 @@ function renderDictee(word: MotOrtho): void {
         <button class="btn-primary" id="btnVerifMot">✓ Vérifier</button>
       </div>
       <div class="ortho-feedback" id="fb"></div>
-    </div>`;
+    </div>`.balisage;
 	const input = sheets().querySelector('#orthoInput') as HTMLInputElement;
 	const fb = sheets().querySelector('#fb') as HTMLElement;
 	renderAccentKb(sheets().querySelector('#accentKb') as HTMLElement, input);
@@ -502,7 +504,7 @@ function renderDictee(word: MotOrtho): void {
 			if (essais === 0) journalErreurOrtho(word, input.value); // 1er essai raté
 			essais++;
 			if (essais < 2) {
-				fb.innerHTML = `<span class="fb-ko">Presque ! Réécoute et réessaie.</span>`;
+				fb.innerHTML = html`<span class="fb-ko">Presque ! Réécoute et réessaie.</span>`.balisage;
 				input.value = '';
 				input.focus();
 				ecouter();
@@ -548,22 +550,22 @@ function renderTuiles(word: MotOrtho): void {
 	let assembled: number[] = []; // indices dans `lettres`, dans l'ordre posé
 	let caret = 0; // position d'insertion (0..assembled.length) ; défaut = fin du mot
 	let sel: number | null = null; // tuile posée sélectionnée (exclusif avec le curseur)
-	const label = (l: string) => (l === ' ' ? '␣' : escapeHTML(l));
+	const label = (l: string) => (l === ' ' ? '␣' : l);
 	const glyph = (l: string) => (l === ' ' ? '␣' : l); // pour textContent (fantôme)
 
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="page ortho-run">
       <p class="ortho-run-consigne">${word.contexte ? 'Remets les lettres du verbe dans le bon ordre.' : 'Remets les lettres dans le bon ordre.'}
         <span class="ortho-run-astuce">Tape entre deux lettres pour choisir où écrire.</span></p>
       ${contexteHTML(word)}
-      ${dispoDictee ? `<div><button class="btn-primary ortho-ecouter" id="btnEcouterTuiles">${icon('speaker')} ${ecouterLabel(word)}</button></div>` : ''}
+      ${dispoDictee ? html`<div><button class="btn-primary ortho-ecouter" id="btnEcouterTuiles">${icon('speaker')} ${ecouterLabel(word)}</button></div>` : ''}
       <p class="tuiles-titre">${word.contexte ? 'Le verbe' : 'Ton mot'}</p>
       <div class="tuiles-construction" id="construction"></div>
       <p class="tuiles-titre">Les lettres</p>
       <div class="tuiles-bac" id="bac"></div>
       <button class="btn-primary" id="btnVerifTuiles">✓ Vérifier</button>
       <div class="ortho-feedback" id="fb"></div>
-    </div>`;
+    </div>`.balisage;
 	const construction = sheets().querySelector('#construction') as HTMLElement;
 	const bac = sheets().querySelector('#bac') as HTMLElement;
 	const fb = sheets().querySelector('#fb') as HTMLElement;
@@ -575,22 +577,22 @@ function renderTuiles(word: MotOrtho): void {
 	monterBoutonAide(sheets().querySelector('.ortho-run'), 'lettres'); // bouton « ? » persistant (#272)
 
 	// --- Rendu ---
-	function slotHTML(pos: number): string {
+	function slotHTML(pos: number): SafeHtml {
 		const actif = sel === null && caret === pos;
-		return `<button type="button" class="tuile-slot${actif ? ' is-caret' : ''}" data-slot="${pos}" aria-label="Insérer ici"><span class="tuile-curseur"></span></button>`;
+		return html`<button type="button" class="tuile-slot${actif ? ' is-caret' : ''}" data-slot="${pos}" aria-label="Insérer ici"><span class="tuile-curseur"></span></button>`;
 	}
-	function poseHTML(posLettre: number): string {
+	function poseHTML(posLettre: number): SafeHtml {
 		const i = assembled[posLettre];
 		if (sel !== posLettre) {
-			return `<button type="button" class="tuile tuile-pose" data-pos="${posLettre}">${label(lettres[i])}</button>`;
+			return html`<button type="button" class="tuile tuile-pose" data-pos="${posLettre}">${label(lettres[i])}</button>`;
 		}
 		const auDebut = posLettre === 0;
 		const aLaFin = posLettre === assembled.length - 1;
-		return `
+		return html`
       <span class="tuile-cell sel">
         <span class="tuile-controls">
-          <button type="button" class="tuile-fleche${auDebut ? ' is-disabled' : ''}" data-act="left" aria-label="Déplacer à gauche"${auDebut ? ' disabled' : ''}>◀</button>
-          <button type="button" class="tuile-fleche${aLaFin ? ' is-disabled' : ''}" data-act="right" aria-label="Déplacer à droite"${aLaFin ? ' disabled' : ''}>▶</button>
+          <button type="button" class="tuile-fleche${auDebut ? ' is-disabled' : ''}" data-act="left" aria-label="Déplacer à gauche"${auDebut ? drapeau('disabled') : ''}>◀</button>
+          <button type="button" class="tuile-fleche${aLaFin ? ' is-disabled' : ''}" data-act="right" aria-label="Déplacer à droite"${aLaFin ? drapeau('disabled') : ''}>▶</button>
           <button type="button" class="tuile-retirer" data-act="remove">↩ enlever</button>
         </span>
         <button type="button" class="tuile tuile-pose sel" data-pos="${posLettre}">${label(lettres[i])}</button>
@@ -598,18 +600,19 @@ function renderTuiles(word: MotOrtho): void {
 	}
 	function redraw(): void {
 		// Mot en construction : slot, tuile, slot, tuile, …, slot final.
-		let html = slotHTML(0);
-		for (let p = 0; p < assembled.length; p++) html += poseHTML(p) + slotHTML(p + 1);
-		construction.innerHTML = html;
+		let contenu = slotHTML(0);
+		for (let p = 0; p < assembled.length; p++)
+			contenu = html`${contenu}${poseHTML(p)}${slotHTML(p + 1)}`;
+		construction.innerHTML = contenu.balisage;
 		construction.classList.toggle('vide', assembled.length === 0);
 		// Bac : lettres encore disponibles (les posées restent là mais masquées).
-		bac.innerHTML = lettres
-			.map((l, i) =>
+		bac.innerHTML = joindre(
+			lettres.map((l, i) =>
 				assembled.includes(i)
-					? `<button type="button" class="tuile tuile-used" disabled>${label(l)}</button>`
-					: `<button type="button" class="tuile" data-i="${i}">${label(l)}</button>`,
-			)
-			.join('');
+					? html`<button type="button" class="tuile tuile-used" disabled>${label(l)}</button>`
+					: html`<button type="button" class="tuile" data-i="${i}">${label(l)}</button>`,
+			),
+		).balisage;
 	}
 
 	// --- Actions (taps : souris, clavier et tap tactile passent par le click) ---
@@ -786,7 +789,7 @@ function renderTuiles(word: MotOrtho): void {
 				journalErreurOrtho(word, built); // 1er essai raté
 				erreurLoggee = true;
 			}
-			fb.innerHTML = `<span class="fb-ko">Pas tout à fait, réessaie.</span>`;
+			fb.innerHTML = html`<span class="fb-ko">Pas tout à fait, réessaie.</span>`.balisage;
 		}
 	};
 	sheets().querySelector('#btnVerifTuiles')!.addEventListener('click', verifier);
@@ -825,14 +828,14 @@ function renderBilan(): void {
 	journalOrthoSession();
 	const total = mots.length;
 	const retour = retourOrtho("Retour à l'orthographe");
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="page ortho-run ortho-bilan">
       ${mascotteBulleHTML(encouragementMascotte())}
       <div class="ortho-bilan-emoji">🎉</div>
       <h2>Liste prête !</h2>
-      <p>Tu as bien travaillé ${total > 1 ? `les <b>${total}</b> mots` : 'le mot'} de cette liste.</p>
+      <p>Tu as bien travaillé ${total > 1 ? html`les <b>${total}</b> mots` : 'le mot'} de cette liste.</p>
       <button class="btn-primary" id="btnBilanRetour">${retour.label}</button>
-    </div>`;
+    </div>`.balisage;
 	sheets().querySelector('#btnBilanRetour')!.addEventListener('click', retour.aller);
 
 	// Récompenses : l'étoile « Liste prête », plus trophées éventuels + montée de niveau.
@@ -848,14 +851,14 @@ function renderRevisionFin(): void {
 	journalOrthoSession();
 	const total = mots.length;
 	const retour = retourOrtho("Retour à l'orthographe");
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="page ortho-run ortho-bilan">
       ${mascotteBulleHTML(encouragementMascotte())}
       <div class="ortho-bilan-emoji">✅</div>
       <h2>Révision terminée !</h2>
-      <p>Tu as révisé ${total > 1 ? `les <b>${total}</b> mots` : 'le mot'} de cette liste.</p>
+      <p>Tu as révisé ${total > 1 ? html`les <b>${total}</b> mots` : 'le mot'} de cette liste.</p>
       <button class="btn-primary" id="btnBilanRetour">${retour.label}</button>
-    </div>`;
+    </div>`.balisage;
 	sheets().querySelector('#btnBilanRetour')!.addEventListener('click', retour.aller);
 	annoncerRecompensesFin([]); // pas d'étoile : seulement trophées/niveau réellement gagnés
 }
@@ -883,7 +886,7 @@ function renderPause(): void {
 	// Bouton d'arrêt : garde son libellé « intention » hors programme ; depuis le
 	// programme, il annonce où il ramène (#461).
 	const retour = retourOrtho('Revenir une autre fois', 'Revenir au programme');
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="page ortho-run ortho-bilan">
       <div class="ortho-bilan-emoji">👏</div>
       <h2>Bonne séance !</h2>
@@ -892,7 +895,7 @@ function renderPause(): void {
         <button class="btn-primary" id="btnContinuerSeance">Continuer encore un peu</button>
         <button class="atelier-undo" id="btnStopSeance">${retour.label}</button>
       </div>
-    </div>`;
+    </div>`.balisage;
 	const b = sheets().querySelector('#btnContinuerSeance') as HTMLButtonElement;
 	b.addEventListener('click', () => {
 		actes = 0;
@@ -928,7 +931,7 @@ function annoncerNiveauSiGagne(): void {
 
 function reussite(fb: HTMLElement, xpGagne = false): void {
 	const xp = xpGagne ? ' <span class="fb-xp">+1 XP</span>' : '';
-	fb.innerHTML = `<span class="fb-ok">Bravo ! 🎉</span>${xp} `;
+	fb.innerHTML = html`<span class="fb-ok">Bravo ! 🎉</span>${xp} `.balisage;
 	boutonContinuer(fb);
 }
 
@@ -942,9 +945,9 @@ function boutonContinuer(fb: HTMLElement): void {
 }
 
 function renderAccentKb(container: HTMLElement, input: HTMLInputElement): void {
-	container.innerHTML = ACCENTS.map(
-		(c) => `<button type="button" class="accent-key" data-c="${c}">${c}</button>`,
-	).join('');
+	container.innerHTML = joindre(
+		ACCENTS.map((c) => html`<button type="button" class="accent-key" data-c="${c}">${c}</button>`),
+	).balisage;
 	container
 		.querySelectorAll<HTMLButtonElement>('.accent-key')
 		.forEach((b) => b.addEventListener('click', () => insertAtCursor(input, b.dataset.c ?? '')));

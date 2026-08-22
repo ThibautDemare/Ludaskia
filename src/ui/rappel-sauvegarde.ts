@@ -47,6 +47,7 @@ import { momentCalme } from './app-calme';
 import type { SeuilsCalme } from './app-calme';
 import { telechargerBlob } from './encadrant-commun';
 import { icon } from './icon';
+import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 
 const ID = 'rappelSauvegarde';
 /* Fermeture, deux échelles (motif déjà en place pour la mise à jour, qui sépare
@@ -158,20 +159,20 @@ function installer(): void {
 	window.open(`${import.meta.env.BASE_URL}guide.html#installer`, '_blank', 'noopener');
 }
 
-function gabarit(installerVisible: boolean): string {
-	const actions = [
-		installerVisible
-			? `<button type="button" class="rappel-cta" data-act="installer">Installer l'application<span class="sr-only"> (peut ouvrir un nouvel onglet)</span></button>`
-			: '',
-		// « (tous les profils) » est obligatoire : sans lui, un adulte croirait avoir
-		// sauvegardé toute la famille alors qu'il n'a qu'un enfant dans son fichier.
-		// Le verbe est court pour que les deux actions tiennent sur une seule ligne
-		// sur mobile — c'est ce qui fait la différence entre un bandeau fin et une
-		// pile de deux boutons.
-		`<button type="button" class="rappel-cta" data-act="exporter">Sauvegarder (tous les profils)</button>`,
-	]
-		.filter(Boolean)
-		.join('');
+function gabarit(installerVisible: boolean): SafeHtml {
+	const actions = joindre(
+		[
+			installerVisible
+				? html`<button type="button" class="rappel-cta" data-act="installer">Installer l'application<span class="sr-only"> (peut ouvrir un nouvel onglet)</span></button>`
+				: VIDE,
+			// « (tous les profils) » est obligatoire : sans lui, un adulte croirait avoir
+			// sauvegardé toute la famille alors qu'il n'a qu'un enfant dans son fichier.
+			// Le verbe est court pour que les deux actions tiennent sur une seule ligne
+			// sur mobile — c'est ce qui fait la différence entre un bandeau fin et une
+			// pile de deux boutons.
+			html`<button type="button" class="rappel-cta" data-act="exporter">Sauvegarder (tous les profils)</button>`,
+		].filter(Boolean),
+	);
 	// CONSTAT + option, sans dramatisation ni décompte, et court (le bandeau doit rester
 	// fin). Écrit pour l'adulte, mais relu du point de vue de l'enfant qui passe dessus :
 	// pas de champ lexical du danger — ni « à l'abri » (on ne met à l'abri que de quelque
@@ -180,7 +181,7 @@ function gabarit(installerVisible: boolean): string {
 	// de l'application. Le « pourquoi » complet est dans l'espace encadrants et le guide.
 	const texte =
 		'La progression est enregistrée dans ce navigateur. Une sauvegarde permet de la garder ailleurs.';
-	return `
+	return html`
     <p class="rappel-etiquette">${icon('export')} Pour les parents</p>
     <p class="rappel-texte">${texte}</p>
     <div class="rappel-actions">${actions}</div>
@@ -220,7 +221,7 @@ export function rafraichirRappelSauvegarde(): void {
 	// alerte — rien ici n'est urgent, et `role="alert"` volerait le focus à l'enfant.
 	el.setAttribute('role', 'region');
 	el.setAttribute('aria-label', 'Message pour les parents');
-	el.innerHTML = gabarit(!ctx.installee);
+	el.innerHTML = gabarit(!ctx.installee).balisage;
 	// Le fond du bandeau n'est PAS cliquable : rupture volontaire avec la convention
 	// « la carte entière est cliquable » de l'accueil, pour qu'un enfant ne l'explore
 	// pas en tapotant partout. Seuls les trois boutons réagissent.

@@ -43,6 +43,7 @@ import {
 	attendueItem,
 	type CellulePosee,
 } from '../core/erreur-representation';
+import { html, brut } from '../core/html';
 
 /* ---------- Vérification (arrête le chrono) ---------- */
 export function verify() {
@@ -117,7 +118,7 @@ export function verify() {
 				// unique. Sur une intercalation, révéler « → 457 » laissait croire à une réponse
 				// unique dans le mode le plus joué, alors que la consigne annonçait le contraire.
 				const revelee = inp.dataset.attendue ?? inp.dataset.answer;
-				mark.innerHTML = `✗ <span class="sol">→ ${revelee}</span>`;
+				mark.innerHTML = html`✗ <span class="sol">→ ${revelee}</span>`.balisage;
 			}
 		}
 	});
@@ -238,33 +239,31 @@ export function verify() {
 	banner.id = 'resultBanner';
 	const note = total > 0 ? Math.round((ok / total) * 100) : 0;
 	// La mascotte félicite l'effort (hors chrono, jamais de réaction négative).
-	let html =
-		mascotteBulleHTML(encouragementMascotte()) +
-		`<span class="rb-big">${ok}/${total}</span>
+	let banniere = html`${mascotteBulleHTML(encouragementMascotte())}<span class="rb-big">${ok}/${total}</span>
     <span class="rb-sub">bonnes réponses (${note}%)${vides > 0 ? ` · ${vides} non remplie${vides > 1 ? 's' : ''}` : ''}<br>
     Temps : <strong>${fmt(ms)}</strong></span>`;
 	if (notEnough) {
-		html += `<div class="rb-warn">⚠️ Réponds à au moins 60 % des calculs pour valider ton temps et gagner des récompenses.</div>`;
+		banniere = html`${banniere}<div class="rb-warn">⚠️ Réponds à au moins 60 % des calculs pour valider ton temps et gagner des récompenses.</div>`;
 	}
 	if (starInfo) {
 		if (starInfo.perfect) {
-			html += `<div class="rb-medal"><span class="rb-medal-ico">⭐</span><span class="rb-medal-txt">${starInfo.newStar ? 'Étoile gagnée !' : 'Encore sans faute !'}</span></div>`;
+			banniere = html`${banniere}<div class="rb-medal"><span class="rb-medal-ico">⭐</span><span class="rb-medal-txt">${starInfo.newStar ? 'Étoile gagnée !' : 'Encore sans faute !'}</span></div>`;
 		}
 		let msg = starInfo.perfect
 			? `Leçon réussie sans faute${starInfo.count > 1 ? ` (${starInfo.count}×)` : ''}. Bravo !`
 			: `Il faut un sans-faute pour décrocher l'étoile de cette leçon. Réessaie ⭐`;
 		msg += streakSuffix(streakDays);
-		html += `<div class="rb-rank">${msg}</div>`;
+		banniere = html`${banniere}<div class="rb-rank">${msg}</div>`;
 	}
 	if (newTrophies.length) {
 		const libelle = newTrophies.length > 1 ? 'Nouveaux trophées' : 'Nouveau trophée';
-		html += `<div class="rb-trophies">🏆 ${libelle} : ${newTrophies.map((t) => `${t.icon} ${t.title}`).join(' · ')} !</div>`;
+		banniere = html`${banniere}<div class="rb-trophies">🏆 ${libelle} : ${newTrophies.map((t) => `${t.icon} ${t.title}`).join(' · ')} !</div>`;
 	}
 	if (goalRes) {
 		if (goalRes.justDone)
-			html += `<div class="rb-goal">🎯 Objectif du jour réussi : ${goalRes.goal.label}</div>`;
+			banniere = html`${banniere}<div class="rb-goal">🎯 Objectif du jour réussi : ${goalRes.goal.label}</div>`;
 		else if (!goalRes.goal.done)
-			html += `<div class="rb-goal">🎯 Objectif du jour : ${goalRes.goal.label} (${goalRes.goal.progress}/${goalRes.goal.target})</div>`;
+			banniere = html`${banniere}<div class="rb-goal">🎯 Objectif du jour : ${goalRes.goal.label} (${goalRes.goal.progress}/${goalRes.goal.target})</div>`;
 	}
 	// Récap éphémère de fin de séance (#537) : un bilan a traversé PLUSIEURS leçons, et
 	// l'enfant n'en repart qu'avec un pourcentage. On nomme donc ce qu'il vient de
@@ -273,28 +272,28 @@ export function verify() {
 	// l'étoile est son retour (critère 10). Construit depuis `perLesson`, en mémoire —
 	// aucune lecture de stockage.
 	if (currentMode === 'express' || currentMode === 'complet') {
-		html += recapHTML(notionsDepuisPerLesson(perLesson), 'rb-recap');
+		banniere = html`${banniere}${recapHTML(notionsDepuisPerLesson(perLesson), 'rb-recap')}`;
 	}
 	if (lastErrors.length) {
-		html += `<button class="rb-redo" id="btnRedo">↻ Réviser mes erreurs (${lastErrors.length})</button>`;
+		banniere = html`${banniere}<button class="rb-redo" id="btnRedo">↻ Réviser mes erreurs (${lastErrors.length})</button>`;
 	}
 	// Fin de leçon : recommencer un tour (s'entraîner encore) ou quitter (#69).
 	// Le retour ramène d'où l'on vient (#461) : le programme du jour si la leçon en a
 	// été lancée, sinon sa catégorie.
 	let retour: RetourCible | null = null;
 	if (currentMode === 'lecon' && currentLessonId) {
-		html += `<button class="rb-redo" id="btnRecommencer">↻ Recommencer</button>`;
+		banniere = html`${banniere}<button class="rb-redo" id="btnRecommencer">↻ Recommencer</button>`;
 		const cat = getLessonById(currentLessonId)?.category;
 		if (cat) {
 			retour = retourFinActivite({
 				label: 'Retour à la catégorie',
 				aller: () => goCategorie(cat),
 			});
-			html += `<button class="backlink-top" id="btnBackCategorie">← ${retour.label}</button>`;
+			banniere = html`${banniere}<button class="backlink-top" id="btnBackCategorie">← ${retour.label}</button>`;
 		}
-		html += `<button class="rb-quit" id="btnQuitter">${icon('house')} Quitter</button>`;
+		banniere = html`${banniere}<button class="rb-quit" id="btnQuitter">${icon('house')} Quitter</button>`;
 	}
-	banner.innerHTML = html;
+	banner.innerHTML = banniere.balisage;
 	const redo = banner.querySelector('#btnRedo');
 	if (redo) redo.addEventListener('click', startRevision);
 	const recommencer = banner.querySelector('#btnRecommencer');
@@ -421,8 +420,7 @@ export function afficherAstuceReponseVide(): void {
 	astuce.id = ASTUCE_VIDE;
 	astuce.className = 'astuce-vide screen-only';
 	astuce.innerHTML =
-		`${icon('feather')}<span><strong>Tu ne sais pas quoi répondre ?</strong> ` +
-		`Tu peux laisser la réponse vide et continuer.</span>`;
+		html`${icon('feather')}<span><strong>Tu ne sais pas quoi répondre ?</strong> Tu peux laisser la réponse vide et continuer.</span>`.balisage;
 	sheets.insertBefore(astuce, sheets.firstChild);
 }
 
@@ -505,16 +503,17 @@ export function initSession() {
 			banner: banner ? banner.outerHTML : null,
 		};
 		if (banner) banner.remove();
-		sheets.innerHTML = buildPrintableDOM(pendingPrintScope);
+		sheets.innerHTML = buildPrintableDOM(pendingPrintScope).balisage;
 	});
 	window.addEventListener('afterprint', () => {
 		pendingPrintScope = null;
 		if (!printSnapshot) return;
 		const sheets = document.getElementById('sheets')!;
-		sheets.innerHTML = printSnapshot.sheets;
+		// Instantané pris juste avant l'impression : balisage produit par l'application.
+		sheets.innerHTML = brut(printSnapshot.sheets).balisage;
 		if (printSnapshot.banner) {
 			const tmp = document.createElement('div');
-			tmp.innerHTML = printSnapshot.banner;
+			tmp.innerHTML = brut(printSnapshot.banner).balisage;
 			const restored = tmp.firstChild as HTMLElement | null;
 			if (restored) {
 				sheets.parentNode!.insertBefore(restored, sheets);

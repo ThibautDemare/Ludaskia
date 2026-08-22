@@ -5,7 +5,8 @@
    glyphe → mot, pour éviter toute désynchronisation.
    ============================================================ */
 import type { ChoiceView } from '../core/exercise';
-import { escapeHTML } from '../core/utils';
+
+import { html } from '../core/html';
 
 /** Mot de chaque signe : libellé accessible des boutons-symboles ET libellé
  *  lisible affiché en révision (un « . » nu serait quasi invisible). */
@@ -22,7 +23,7 @@ export function ponctView(c: string): ChoiceView {
 	const mot = PONCT_MOTS[c] ?? c;
 	const glyphCls = c === '.' ? 'lqcm-sym-glyph lqcm-sym-glyph--point' : 'lqcm-sym-glyph';
 	return {
-		html: `<span class="${glyphCls}" aria-hidden="true">${escapeHTML(c)}</span><span class="lqcm-sym-mot">${escapeHTML(mot)}</span>`,
+		html: html`<span class="${glyphCls}" aria-hidden="true">${c}</span><span class="lqcm-sym-mot">${mot}</span>`,
 		label: mot,
 	};
 }

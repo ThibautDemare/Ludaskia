@@ -3,7 +3,7 @@
    ce qui permet de jouer une leçon seule OU le bilan complet.
    build() régénère des items frais à chaque appel.
    ============================================================ */
-import { rnd, choice, sample, commKey, escapeHTML, withSeed, randomSeed } from './utils';
+import { rnd, choice, sample, commKey, withSeed, randomSeed } from './utils';
 import { uniqueComm, uniqueExact } from './utils';
 import {
 	add,

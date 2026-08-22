@@ -18,6 +18,7 @@
    ============================================================ */
 import { journaliserErreur } from '../core/erreurs-journal';
 import type { ChoiceView } from '../core/exercise';
+import { type SafeHtml } from '../core/html';
 
 /* Suffixe signalant qu'un énoncé s'appuie sur un dessin : hors de l'appli, la
    question textuelle seule (« Quelle heure est-il ? ») serait énigmatique — on
@@ -48,7 +49,7 @@ export function libelleChoix(
 
 export interface CaptureErreurOpts {
 	text: string; // énoncé BRUT de l'item (peut contenir '@')
-	figure?: string; // fragment SVG éventuel → marqueur « exercice avec dessin »
+	figure?: SafeHtml; // fragment SVG éventuel → marqueur « exercice avec dessin »
 	donnee: string; // réponse donnée (déjà lisible : libellé de choix pour un QCM)
 	attendue: string; // réponse attendue (déjà lisible)
 	lessonId: string | null; // leçon rattachée ; null → non journalisé
@@ -65,7 +66,7 @@ export interface CaptureErreurOpts {
    l'appelant (les runners corrigent une réponse une seule fois). */
 export function capterErreur(opts: CaptureErreurOpts): void {
 	if (!opts.lessonId) return;
-	const question = questionPourJournal(opts.text, !!opts.figure);
+	const question = questionPourJournal(opts.text, !!opts.figure?.balisage);
 	if (!question) return;
 	journaliserErreur({
 		lessonId: opts.lessonId,

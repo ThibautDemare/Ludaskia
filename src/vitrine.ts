@@ -13,6 +13,7 @@ import './styles/foret.scss'; // bande forêt full-bleed + animation « vent » 
 import './styles/vitrine.scss';
 import './styles/footer.scss'; // pied de page partagé + pluie de cookies (#336)
 import { fillFooterYear, initFooterCookie } from './ui/footer';
+import { brut } from './core/html';
 
 // Bande décorative « forêt » : même SVG pré-généré que l'accueil de l'app,
 // inséré dans le DOM (pour que l'oscillation respecte « animations réduites »).
@@ -21,7 +22,9 @@ if (foretEl) {
 	fetch(`${import.meta.env.BASE_URL}foret-pied.svg`)
 		.then((r) => (r.ok ? r.text() : ''))
 		.then((svg) => {
-			if (svg) foretEl.innerHTML = svg;
+			// SVG d’ILLUSTRATION servi par le site lui-même (`public/foret-pied.svg`), pas une
+			// donnée : `brut` le déclare de confiance, et la source est celle du déploiement.
+			if (svg) foretEl.innerHTML = brut(svg).balisage;
 		})
 		.catch(() => {}); // décoration non critique : on ignore l'échec
 }

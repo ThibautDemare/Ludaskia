@@ -1,7 +1,7 @@
 /* ============================================================
    Rendu de l'écran d'accueil et du sélecteur de leçons
    ============================================================ */
-import { escapeHTML, fmt, startOfDay } from '../core/utils';
+import { fmt, startOfDay } from '../core/utils';
 import {
 	activeProfile,
 	loadProfilesMeta,
@@ -51,6 +51,7 @@ import { renderProgrammeCard } from './seance';
 import { renderRewardNav, mascotteBulleHTML } from './unlocks-view';
 import { onHomeShown } from './eggs';
 import { icon, type IconName } from './icon';
+import { html, VIDE, type SafeHtml, joindre } from '../core/html';
 
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
 export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
@@ -59,23 +60,23 @@ export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' 
    leur libellé vit dans app.html, mais l'icône est injectée ici pour garder
    UNE seule source des SVG (cf. ui/icon.ts). Appelé une fois au câblage. */
 export function paintStaticIcons() {
-	const set = (id: string, html: string) => {
+	const set = (id: string, fragment: SafeHtml) => {
 		const el = document.getElementById(id);
-		if (el) el.innerHTML = html;
+		if (el) el.innerHTML = fragment.balisage;
 	};
-	set('btnVerify', `${icon('check')} Vérifier`);
-	set('btnHome', `${icon('house')} Accueil`);
-	set('btnGuide', `${icon('question')} Guide`); // rejeu du guide de 1re visite (#330)
-	set('btnPrint', `${icon('printer')} Imprimer / PDF`);
+	set('btnVerify', html`${icon('check')} Vérifier`);
+	set('btnHome', html`${icon('house')} Accueil`);
+	set('btnGuide', html`${icon('question')} Guide`); // rejeu du guide de 1re visite (#330)
+	set('btnPrint', html`${icon('printer')} Imprimer / PDF`);
 	// Déclencheur du tiroir mobile (caché en desktop par CSS) : icône hamburger.
 	set('toolbarBurger', icon('list'));
-	set('btnExport', `${icon('export')} Exporter les profils cochés`);
-	set('btnImport', `${icon('import')} Importer une sauvegarde`);
+	set('btnExport', html`${icon('export')} Exporter les profils cochés`);
+	set('btnImport', html`${icon('import')} Importer une sauvegarde`);
 	set('encadrantAccessIco', icon('gear')); // accès à l'espace encadrant (#234)
 	// Grosses icônes d'entrée des cartes d'accueil (mode = rôle fonctionnel).
-	const setIco = (cardId: string, html: string) => {
+	const setIco = (cardId: string, fragment: SafeHtml) => {
 		const el = document.querySelector(`#${cardId} .ico`);
-		if (el) el.innerHTML = html;
+		if (el) el.innerHTML = fragment.balisage;
 	};
 	setIco('cardSprint', icon('run'));
 	setIco('cardRevision', icon('repeat'));
@@ -95,14 +96,13 @@ export function renderToolbarProfile() {
 			: `${pr.xpDansNiveau} / ${pr.xpRequisPalier} XP vers le niveau ${pr.niveau + 1} (${xp} XP au total)`;
 		xpEl.title = `Rang : ${rang.titre} — ${progressTitle}`;
 		xpEl.innerHTML =
-			`<span class="lvl-num">${rang.icone} Niveau ${pr.niveau}</span>` +
-			`<span class="lvl-bar"><span class="lvl-bar-fill" style="width:${pr.pct}%"></span></span>`;
+			html`<span class="lvl-num">${rang.icone} Niveau ${pr.niveau}</span><span class="lvl-bar"><span class="lvl-bar-fill" style="width:${pr.pct}%"></span></span>`.balisage;
 	}
 	const el = document.getElementById('toolbarProfile');
 	if (!el) return;
 	const p = activeProfile();
 	if (!p) return;
-	el.innerHTML = `${p.emoji} ${escapeHTML(p.name)} <span class="btn-profile-caret">▾</span>`;
+	el.innerHTML = html`${p.emoji} ${p.name} <span class="btn-profile-caret">▾</span>`.balisage;
 }
 
 /* Carte « progression » de l'accueil : mascotte + rang + niveau + barre.
@@ -122,7 +122,7 @@ export function renderProgression() {
 	const bulle = g.done
 		? `🎉 Bravo ! Tu as réussi ton défi du jour ! Reviens demain pour une nouvelle mission.`
 		: `🎯 Effectue ton défi du jour : ${g.label}`;
-	el.innerHTML = `<div class="progress-card">
+	el.innerHTML = html`<div class="progress-card">
     ${mascotteBulleHTML(bulle, true)}
     <span class="progress-head">
       <span class="progress-rang"><span class="progress-rang-ico">${rang.icone}</span> ${rang.titre}</span>
@@ -130,7 +130,7 @@ export function renderProgression() {
     </span>
     <span class="lvl-bar"><span class="lvl-bar-fill" style="width:${pr.pct}%"></span></span>
     <span class="progress-sub">${sub}</span>
-  </div>`;
+  </div>`.balisage;
 }
 /* Menu déroulant : liste des profils (clic = bascule) + accès à la gestion */
 export function renderProfileMenu() {
@@ -138,18 +138,17 @@ export function renderProfileMenu() {
 	if (!el) return;
 	const m = loadProfilesMeta();
 	if (!m) return;
-	el.innerHTML =
-		m.list
-			.map(
-				(p) =>
-					`<button class="pm-item${p.uuid === m.active ? ' active' : ''}" data-uuid="${p.uuid}">${p.emoji} ${escapeHTML(p.name)}${p.uuid === m.active ? ` <span class="pm-check">${icon('check', { label: 'profil actif' })}</span>` : ''}</button>`,
-			)
-			.join('') +
+	el.innerHTML = html`${joindre(
+		m.list.map(
+			(p) =>
+				html`<button class="pm-item${p.uuid === m.active ? ' active' : ''}" data-uuid="${p.uuid}">${p.emoji} ${p.name}${p.uuid === m.active ? html` <span class="pm-check">${icon('check', { label: 'profil actif' })}</span>` : ''}</button>`,
+		),
+	)}${
 		// « Mon espace » : l'enfant personnalise SON profil (avatar / thème / confort).
 		// « Espace encadrants » : zone adulte (gestion des profils, suivi, réglages) —
 		// gris + cadenas pour la décrocher visuellement et la rendre peu tentante.
-		`<button class="pm-item pm-mine" id="pmMine">${icon('palette')} Mon espace</button>` +
-		`<button class="pm-item pm-manage" id="pmManage">${icon('lock')} Espace encadrants</button>`;
+		html`<button class="pm-item pm-mine" id="pmMine">${icon('palette')} Mon espace</button>`
+	}${html`<button class="pm-item pm-manage" id="pmManage">${icon('lock')} Espace encadrants</button>`}`.balisage;
 }
 /* Profil dont la palette d'avatars est ouverte (null = aucune). Géré ici car
    l'écran de gestion se re-rend entièrement via renderProfiles(). */
@@ -167,16 +166,18 @@ export function closeEmojiPicker() {
    `niveau` est celui du profil édité (pas forcément l'actif). */
 export function emojiPaletteHTML(current: string, niveau: number) {
 	const dispo = (e: string) =>
-		`<button class="emoji-opt${e === current ? ' current' : ''}" data-act="set-emoji" data-emoji="${e}"${
+		html`<button class="emoji-opt${e === current ? ' current' : ''}" data-act="set-emoji" data-emoji="${e}"${
 			e === current ? ' aria-current="true"' : ''
 		} title="${e === current ? 'Avatar actuel' : 'Choisir cet avatar'}">${e}</button>`;
-	const base = PROFILE_EMOJIS.map(dispo).join('');
-	const foret = AVATARS_FORET.map((a) =>
-		niveau >= a.niveau
-			? dispo(a.emoji)
-			: `<span class="emoji-opt locked" title="Débloqué au niveau ${a.niveau}">${a.emoji}<span class="emoji-lock">${icon('lock')} ${a.niveau}</span></span>`,
-	).join('');
-	return `<div class="emoji-palette" role="listbox" aria-label="Choisir un avatar">${base}${foret}</div>`;
+	const base = joindre(PROFILE_EMOJIS.map(dispo));
+	const foret = joindre(
+		AVATARS_FORET.map((a) =>
+			niveau >= a.niveau
+				? dispo(a.emoji)
+				: html`<span class="emoji-opt locked" title="Débloqué au niveau ${a.niveau}">${a.emoji}<span class="emoji-lock">${icon('lock')} ${a.niveau}</span></span>`,
+		),
+	);
+	return html`<div class="emoji-palette" role="listbox" aria-label="Choisir un avatar">${base}${foret}</div>`;
 }
 /* Écran « Mon espace » (#234) : carte de SON profil uniquement (avatar + prénom).
    La gestion des AUTRES profils (créer / réinitialiser / supprimer / export) a migré
@@ -187,16 +188,16 @@ export function renderProfiles() {
 	const p = activeProfile();
 	if (!p) return;
 	if (emojiPickerFor && emojiPickerFor !== p.uuid) emojiPickerFor = null;
-	el.innerHTML = `
+	el.innerHTML = html`
     <div class="profile-row active mine" data-uuid="${p.uuid}">
       <span class="profile-emoji">${p.emoji}</span>
-      <span class="profile-name">${escapeHTML(p.name)}</span>
+      <span class="profile-name">${p.name}</span>
       <span class="profile-tools">
         <button data-act="emoji" title="Changer mon avatar"${p.uuid === emojiPickerFor ? ' aria-expanded="true"' : ''}>${icon('palette', { cls: 'ph-lg', label: 'Changer mon avatar' })}</button>
         <button data-act="rename" title="Changer mon prénom">${icon('pencil', { cls: 'ph-lg', label: 'Changer mon prénom' })}</button>
       </span>
       ${p.uuid === emojiPickerFor ? emojiPaletteHTML(p.emoji, niveauDepuisXP(getXPFor(p.uuid))) : ''}
-    </div>`;
+    </div>`.balisage;
 	renderToolbarProfile(); // garde le bouton de la barre synchronisé
 }
 
@@ -206,10 +207,11 @@ function fillSprintRecord(elId: string) {
 	if (!el) return;
 	const runs = loadRuns('sprint');
 	if (!runs.length) {
-		el.innerHTML = `<span class="muted">Aucun sprint — à toi de jouer !</span>`;
+		el.innerHTML = html`<span class="muted">Aucun sprint — à toi de jouer !</span>`.balisage;
 		return;
 	}
-	el.innerHTML = `🏅 Record : <strong>${[...runs].sort(cmpRun)[0].ok} bonnes réponses</strong>`;
+	el.innerHTML =
+		html`🏅 Record : <strong>${[...runs].sort(cmpRun)[0].ok} bonnes réponses</strong>`.balisage;
 }
 /* Délai d'ici une échéance, en langage d'enfant (calé sur les jours calendaires). */
 function quandRevision(echeance: number, now: number): string {
@@ -240,32 +242,37 @@ function fillRevisionRecord(elId: string) {
 	document.getElementById('cardRevision')?.classList.toggle('card-inactive', n === 0);
 	if (n) {
 		const { n: aFaire, plafonne } = effortRevisionAffiche(n, plafond);
-		el.innerHTML = plafonne
-			? `${icon('repeat')} <strong>${aFaire}</strong> à réviser aujourd'hui`
-			: `${icon('repeat')} <strong>${aFaire}</strong> à réviser`;
+		el.innerHTML = (
+			plafonne
+				? html`${icon('repeat')} <strong>${aFaire}</strong> à réviser aujourd'hui`
+				: html`${icon('repeat')} <strong>${aFaire}</strong> à réviser`
+		).balisage;
 		return;
 	}
 	const echeance = prochaineEcheance(ortho, revisions, now, bas);
 	if (echeance != null) {
-		el.innerHTML = `<span class="rev-ok">${icon('check-circle')} Bravo, tu es à jour !</span><span class="rev-next">Prochaine révision ${quandRevision(echeance, now)}.</span>`;
+		el.innerHTML =
+			html`<span class="rev-ok">${icon('check-circle')} Bravo, tu es à jour !</span><span class="rev-next">Prochaine révision ${quandRevision(echeance, now)}.</span>`.balisage;
 	} else if (aDesRevisions(ortho, revisions, bas)) {
-		el.innerHTML = `<span class="rev-ok">${icon('check-circle')} Bravo, tu as tout révisé !</span>`;
+		el.innerHTML =
+			html`<span class="rev-ok">${icon('check-circle')} Bravo, tu as tout révisé !</span>`.balisage;
 	} else {
-		el.innerHTML = `<span class="rev-empty">Tes révisions apparaîtront ici dès que tu auras travaillé quelques leçons.</span>`;
+		el.innerHTML =
+			html`<span class="rev-empty">Tes révisions apparaîtront ici dès que tu auras travaillé quelques leçons.</span>`.balisage;
 	}
 }
-export function sprintBoardHTML() {
+export function sprintBoardHTML(): SafeHtml {
 	const runs = loadRuns('sprint');
-	if (!runs.length) return '';
+	if (!runs.length) return VIDE;
 	const medals = ['🥇', '🥈', '🥉'];
 	const top = [...runs].sort(cmpRun).slice(0, 3);
-	const lis = top
-		.map(
+	const lis = joindre(
+		top.map(
 			(r, i) =>
-				`<li>${medals[i]} <strong>${r.ok}</strong> bonnes <span class="lb-mut">(${r.ok}/${r.count})</span></li>`,
-		)
-		.join('');
-	return `<div class="lb">
+				html`<li>${medals[i]} <strong>${r.ok}</strong> bonnes <span class="lb-mut">(${r.ok}/${r.count})</span></li>`,
+		),
+	);
+	return html`<div class="lb">
     <h3>Sprint 5 min</h3>
     <ol class="podium">${lis}</ol>
     <p class="lb-count">${runs.length} sprint${runs.length > 1 ? 's' : ''}</p>
@@ -277,19 +284,21 @@ export function boardHTML(mode: string, label: string) {
 	if (!runs.length) return '';
 	const medals = ['🥇', '🥈', '🥉'];
 	const top = [...runs].sort(cmpRun).slice(0, 3);
-	const lis = top
-		.map((r, i) => `<li>${medals[i]} <strong>${r.ok}/${r.count}</strong> · ${fmt(r.ms)}</li>`)
-		.join('');
+	const lis = joindre(
+		top.map(
+			(r, i) => html`<li>${medals[i]} <strong>${r.ok}/${r.count}</strong> · ${fmt(r.ms)}</li>`,
+		),
+	);
 	const reste = 3 - runs.length;
 	const note =
 		reste > 0
-			? `<p class="lb-note">Encore ${reste} essai${reste > 1 ? 's' : ''} pour débloquer les médailles.</p>`
-			: '';
+			? html`<p class="lb-note">Encore ${reste} essai${reste > 1 ? 's' : ''} pour débloquer les médailles.</p>`
+			: VIDE;
 	const spark =
 		runs.length >= 2
-			? `<div class="spark-wrap"><span class="spark-lab">Progression (score %)</span>${sparkline(runs.map(runPct))}</div>`
-			: '';
-	return `<div class="lb">
+			? html`<div class="spark-wrap"><span class="spark-lab">Progression (score %)</span>${sparkline(runs.map(runPct))}</div>`
+			: VIDE;
+	return html`<div class="lb">
     <h3>${label}</h3>
     <ol class="podium">${lis}</ol>
     ${note}${spark}
@@ -349,7 +358,7 @@ export function renderHomeStats() {
 	const boards = document.getElementById('boards');
 	// Seul le sprint a un classement comparable (ensemble stable). Les bilans
 	// express/complet varient d'un essai à l'autre → pas de podium (#35).
-	if (boards) boards.innerHTML = sprintBoardHTML();
+	if (boards) boards.innerHTML = sprintBoardHTML().balisage;
 	evaluateTrophies(); // rattrape d'éventuels trophées acquis (sans célébration ici)
 	renderRewardNav(); // boutons « Récompenses » / « Trophées » (ouvrent leurs modales)
 	renderFavoris(document.getElementById('favoris'));
@@ -394,23 +403,25 @@ function aLeconInedite(): boolean {
 export function renderObjectives() {
 	const el = document.getElementById('objectives');
 	if (!el) return;
-	const rows = REGULARITY.flatMap((o) => {
-		const since = o.period === 'week' ? startOfWeek() : startOfMonth();
-		const n = o.metric === 'newLessons' ? countNewLessonsSince(since) : countSince(o.mode, since);
-		const done = n >= o.target;
-		// « Nouvelle leçon » non atteinte et plus aucune leçon inédite : on masque
-		// l'objectif plutôt que d'afficher une cible impossible à cocher.
-		if (o.metric === 'newLessons' && !done && !aLeconInedite()) return [];
-		return [
-			`<div class="obj ${done ? 'done' : ''}">
+	const rows = joindre(
+		REGULARITY.flatMap((o) => {
+			const since = o.period === 'week' ? startOfWeek() : startOfMonth();
+			const n = o.metric === 'newLessons' ? countNewLessonsSince(since) : countSince(o.mode, since);
+			const done = n >= o.target;
+			// « Nouvelle leçon » non atteinte et plus aucune leçon inédite : on masque
+			// l'objectif plutôt que d'afficher une cible impossible à cocher.
+			if (o.metric === 'newLessons' && !done && !aLeconInedite()) return [];
+			return [
+				html`<div class="obj ${done ? 'done' : ''}">
       <span class="obj-ico">${icon(o.icon)}</span>
       <span class="obj-lab">${o.label}</span>
       <span class="obj-prog">${Math.min(n, o.target)}/${o.target} <span class="obj-per">${PERIOD_LABEL[o.period]}</span></span>
       <span class="obj-check">${done ? icon('check') : ''}</span>
     </div>`,
-		];
-	}).join('');
-	el.innerHTML = `<h3 class="obj-h">Mes objectifs</h3>${rows}`;
+			];
+		}),
+	);
+	el.innerHTML = html`<h3 class="obj-h">Mes objectifs</h3>${rows}`.balisage;
 }
 
 /* Carte d'une leçon (étoile + taux de réussite). Réutilisée par le sélecteur
@@ -427,30 +438,30 @@ export function lessonCardHTML(
 	// à un niveau inférieur. Reconnaissance d'un acquis (texte, ton « validé »), JAMAIS
 	// une fausse étoile pleine — l'étoile de CE niveau se gagne à part.
 	const prevBadge = badge
-		? `<span class="lz-prev" title="Déjà réussie sans faute en ${badge}">✓ ${badge}</span>`
-		: '';
+		? html`<span class="lz-prev" title="Déjà réussie sans faute en ${badge}">✓ ${badge}</span>`
+		: VIDE;
 	// Repère « plus difficile » (#205) : badge texte ambre (un défi, pas un échec) —
 	// l'info passe par le LIBELLÉ, jamais la seule couleur.
 	const repereBadge =
 		repere === 'plus-difficile'
-			? `<span class="lz-level" title="Leçon plus difficile">plus dur</span>`
-			: '';
+			? html`<span class="lz-level" title="Leçon plus difficile">plus dur</span>`
+			: VIDE;
 	const starBadge =
 		c > 0
-			? `<span class="lz-star" title="${c} sans-faute${c > 1 ? 's' : ''}">⭐${c > 1 ? `<small>×${c}</small>` : ''}</span>`
-			: `<span class="lz-star empty" title="Pas encore réussie sans faute">☆</span>`;
+			? html`<span class="lz-star" title="${c} sans-faute${c > 1 ? 's' : ''}">⭐${c > 1 ? html`<small>×${c}</small>` : ''}</span>`
+			: html`<span class="lz-star empty" title="Pas encore réussie sans faute">☆</span>`;
 	const avg = lessonAvgPct(lstats[l.id]);
 	let stat;
 	if (avg == null) {
-		stat = `<span class="lz-stat lz-stat-empty">Pas encore travaillée</span>`;
+		stat = html`<span class="lz-stat lz-stat-empty">Pas encore travaillée</span>`;
 	} else {
 		const col = pctColor(avg);
-		const flag = avg < 70 ? `<span class="lz-flag">à revoir</span>` : '';
-		stat = `<span class="lz-stat">
+		const flag = avg < 70 ? html`<span class="lz-flag">à revoir</span>` : VIDE;
+		stat = html`<span class="lz-stat">
       <span class="lz-bar"><span class="lz-bar-fill" style="width:${avg}%;background:${col}"></span></span>
       <span class="lz-pct" style="color:${col}">${avg}%</span>${flag}</span>`;
 	}
-	return `<button class="lesson-item" data-id="${l.id}">
+	return html`<button class="lesson-item" data-id="${l.id}">
     <span class="lz-num">${l.num}</span>
     <span class="lz-main"><span class="lz-titleline"><span class="lz-title">${l.title}</span>${repereBadge}${prevBadge}</span>${stat}</span>
     ${starBadge}</button>`;
@@ -462,7 +473,7 @@ export function renderLessons() {
 	const lstats = loadLessonStats();
 	const list = document.getElementById('lessonList');
 	if (list) {
-		list.innerHTML = LESSONS.map((l) => lessonCardHTML(l, stars, lstats)).join('');
+		list.innerHTML = joindre(LESSONS.map((l) => lessonCardHTML(l, stars, lstats))).balisage;
 	}
 	const sum = document.getElementById('starsSummary');
 	if (sum) {
@@ -472,8 +483,10 @@ export function renderLessons() {
 			const a = lessonAvgPct(lstats[l.id]);
 			return a != null && a < 70;
 		}).map((l) => l.num);
-		sum.innerHTML =
-			`⭐ ${n} / ${total} leçons réussies sans faute` +
-			(weak.length ? ` · <span class="weak-hint">à revoir : leçons ${weak.join(', ')}</span>` : '');
+		sum.innerHTML = html`⭐ ${n} / ${total} leçons réussies sans faute${
+			weak.length
+				? html` · <span class="weak-hint">à revoir : leçons ${weak.join(', ')}</span>`
+				: VIDE
+		}`.balisage;
 	}
 }

@@ -14,7 +14,6 @@ import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import type { ExerciseMode } from '../core/exercise';
-import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { goHome } from './navigation';
@@ -40,6 +39,7 @@ import {
 	wirePasser,
 } from './lecon-passer';
 import { pairesErreur } from '../core/erreur-representation';
+import { html, type SafeHtml, joindre } from '../core/html';
 
 const NB_MANCHES = 5;
 
@@ -153,18 +153,18 @@ enregistrerRunner(RUNNER, (snap) => {
 function renderManche(): void {
 	const q = manches[idx];
 	tranchee = false;
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, manches.length)}
       <div class="sprint-stage">
         ${leconTitreHTML(lesson)}
-        <p class="sprint-q lapp-titre"${ttsAttr(q.question)}>${escapeHTML(q.question)}</p>
+        <p class="sprint-q lapp-titre"${ttsAttr(q.question)}>${q.question}</p>
         <div data-tuile-mount></div>
         ${decisionHTML('lappVerif')}
         <div class="sprint-correction" id="lappFeedback" hidden></div>
         <div class="sprint-actions" id="lappActions" hidden></div>
       </div>
-    </div>`;
+    </div>`.balisage;
 	const verif = sheets().querySelector('#lappVerif') as HTMLButtonElement;
 	ctrl = bindAppariement(
 		sheets(),
@@ -184,9 +184,12 @@ function renderManche(): void {
 
 /* Bonnes paires RÉVÉLÉES (une par ligne) : servies après une erreur ET après un passage
    (#467), pour que l'enfant lise la même solution dans les deux cas. */
-function pairesHTML(q: MancheAppariement): string {
-	const bon = q.paires.map((p) => `${escapeHTML(p.gauche)} → ${escapeHTML(p.droite)}`).join('<br>');
-	return `<div class="lapp-solution">${bon}</div>`;
+function pairesHTML(q: MancheAppariement): SafeHtml {
+	const bon = joindre(
+		q.paires.map((p) => html`${p.gauche} → ${p.droite}`),
+		html`<br>`.balisage,
+	);
+	return html`<div class="lapp-solution">${bon}</div>`;
 }
 
 function verifier(): void {
@@ -200,8 +203,8 @@ function verifier(): void {
 	// Le bloc de décision s'efface : seul « Continuer ▶ » reste (pas deux boutons, #153).
 	masquerDecision(sheets());
 	const feedbackHTML = correct
-		? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-		: `<span class="lqcm-ko">Les bonnes paires :</span>${pairesHTML(q)}`;
+		? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
+		: html`<span class="lqcm-ko">Les bonnes paires :</span>${pairesHTML(q)}`;
 	wireNext(
 		sheets().querySelector('#lappActions') as HTMLElement,
 		sheets().querySelector('#lappFeedback') as HTMLElement,

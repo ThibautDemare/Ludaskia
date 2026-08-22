@@ -20,7 +20,7 @@ import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import type { Exercise, ExerciseMode, TableauColonne } from '../core/exercise';
-import { commKey, escapeHTML } from '../core/utils';
+import { commKey } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { goHome } from './navigation';
@@ -46,6 +46,8 @@ import {
 import { nombreTableauSaisi } from '../core/erreur-representation';
 import { conversionDepuisTableau } from '../core/etayage-conversion';
 import type { EtayageDemande } from './etayage-panneau';
+import { html, type SafeHtml, VIDE, joindre } from '../core/html';
+import { poserAuTrou } from '../core/items';
 
 const NB_QUESTIONS = 8;
 
@@ -181,20 +183,24 @@ function colonneHTML(
 	colIndex: number,
 	offset: number,
 	cellsArg: Cellule[],
-): string {
+): SafeHtml {
 	const tCls = col.transit ? ' tc-col--transit' : '';
 	const nb = col.chiffres.length;
-	const cases = Array.from({ length: nb }, (_, k) => {
-		const i = offset + k;
-		return `<button type="button" class="tc-cell${col.transit ? ' tc-cell--transit' : ''}" data-i="${i}" data-answer="${escapeHTML(cellsArg[i].attendu)}" aria-label="${escapeHTML(cellsArg[i].aria)}"></button>`;
-	}).join('');
+	const cases = joindre(
+		Array.from({ length: nb }, (_, k) => {
+			const i = offset + k;
+			return html`<button type="button" class="tc-cell${col.transit ? ' tc-cell--transit' : ''}" data-i="${i}" data-answer="${cellsArg[i].attendu}" aria-label="${cellsArg[i].aria}"></button>`;
+		}),
+	);
 	// Virgule fixe (posée par l'app en v1) : élément décoratif entre deux colonnes.
 	const virgule =
-		ex.virguleApres === colIndex ? `<span class="tc-virgule" aria-hidden="true">,</span>` : '';
-	return `<div class="tc-col${tCls}">
+		ex.virguleApres === colIndex
+			? html`<span class="tc-virgule" aria-hidden="true">,</span>`
+			: VIDE;
+	return html`<div class="tc-col${tCls}">
       <div class="tc-head${col.transit ? ' tc-head--transit' : ''}">
-        <span class="tc-sym">${escapeHTML(col.unite)}</span>
-        <span class="tc-nom">${escapeHTML(pluriel(col.nom))}</span>
+        <span class="tc-sym">${col.unite}</span>
+        <span class="tc-nom">${pluriel(col.nom)}</span>
       </div>
       <div class="tc-col-cells">${cases}</div>
     </div>${virgule}`;
@@ -206,25 +212,25 @@ function colonneHTML(
    (ui/galerie.ts) — même markup des deux côtés, donc un snapshot détecte les régressions
    du VRAI rendu. NE CÂBLE RIEN (pas de `wireInteraction`, donc aucun listener `document`) :
    l'entrée live ajoute l'interaction autour. */
-export function renderTableauBoardHTML(ex: Tableau, cellsArg: Cellule[]): string {
+export function renderTableauBoardHTML(ex: Tableau, cellsArg: Cellule[]): SafeHtml {
 	let offset = 0;
-	const colonnes = ex.colonnes
-		.map((col, colIndex) => {
-			const html = colonneHTML(ex, col, colIndex, offset, cellsArg);
+	const colonnes = joindre(
+		ex.colonnes.map((col, colIndex) => {
+			const colonne = colonneHTML(ex, col, colIndex, offset, cellsArg);
 			offset += col.chiffres.length;
-			return html;
-		})
-		.join('');
-	const enonce = escapeHTML(ex.question).replace('@', '<span class="tc-trou">?</span>');
+			return colonne;
+		}),
+	);
+	const enonce = poserAuTrou(html`${ex.question}`, '@', html`<span class="tc-trou">?</span>`);
 	// Repli du texte parlé aligné sur les autres runners (jamais chaîne vide) : `parle`
 	// est toujours fourni ici, mais on retombe sur l'énoncé si un futur générateur l'omet.
 	const ttsTexte = `${CONSIGNE} ${ex.parle ?? ex.question}`.trim();
-	return `<p class="tc-consigne"${ttsAttr(ttsTexte)}>${escapeHTML(CONSIGNE)}</p>
+	return html`<p class="tc-consigne"${ttsAttr(ttsTexte)}>${CONSIGNE}</p>
         <p class="tc-enonce">${enonce}</p>
         <div class="tc-wrap">
           <div class="tc-table" id="tcTable" role="group" aria-describedby="tcLegende" aria-label="Tableau de conversion">${colonnes}</div>
         </div>
-        <p class="tc-legende" id="tcLegende">${escapeHTML(LEGENDE)}</p>
+        <p class="tc-legende" id="tcLegende">${LEGENDE}</p>
         ${paveHTML()}`;
 }
 
@@ -233,7 +239,7 @@ function renderQuestion(): void {
 	cells = buildCells(ex); // état mutable de saisie (le board pur ci-dessous consomme LES MÊMES cases)
 	active = 0;
 	frozen = false;
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="sprint sprint-lecon tc-runner">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
@@ -244,7 +250,7 @@ function renderQuestion(): void {
         <div class="sprint-actions" id="tcActions" hidden></div>
         <p class="sr-only" id="tcStatus" role="status" aria-live="polite" aria-atomic="true"></p>
       </div>
-    </div>`;
+    </div>`.balisage;
 	wireInteraction();
 	paintAll();
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
@@ -254,11 +260,11 @@ function renderQuestion(): void {
 /* Pavé de chiffres externe (façon pave-signes.ts) : gros boutons ≥ 56 px, aucune ouverture
    de clavier natif. 1–9, puis effacer + 0. (La virgule reste posée par l'app en v1 ; pour
    l'ouvrir plus tard, ajouter ici un bouton `data-pave="virgule"` — cf. #394.) */
-function paveHTML(): string {
+function paveHTML(): SafeHtml {
 	const btn = (d: number) =>
-		`<button type="button" class="tc-pave-btn" data-chiffre="${d}">${d}</button>`;
-	const chiffres = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(btn).join('');
-	return `<div class="tc-pave" role="group" aria-label="Pavé de chiffres">
+		html`<button type="button" class="tc-pave-btn" data-chiffre="${d}">${d}</button>`;
+	const chiffres = joindre([1, 2, 3, 4, 5, 6, 7, 8, 9].map(btn));
+	return html`<div class="tc-pave" role="group" aria-label="Pavé de chiffres">
       ${chiffres}
       <button type="button" class="tc-pave-btn tc-pave-back" data-pave="effacer" aria-label="Effacer">⌫</button>
       ${btn(0)}
@@ -474,8 +480,8 @@ function verifier(): void {
 		sheets().querySelector('#tcFeedback') as HTMLElement,
 		{
 			feedbackHTML: correct
-				? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-				: `<span class="lqcm-ko">La bonne réponse était <strong>${escapeHTML(ex.answer)} ${escapeHTML(ex.answerUnit)}</strong>.${explication ? ` ${escapeHTML(explication)}` : ''}</span>`,
+				? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
+				: html`<span class="lqcm-ko">La bonne réponse était <strong>${ex.answer} ${ex.answerUnit}</strong>.${explication ? html` ${explication}` : ''}</span>`,
 			isLast: idx >= questions.length - 1,
 			// Étayage (#490) : proposé sur un tableau raté, jamais sur un tableau juste, et
 			// déroulé sur LA conversion qui vient d'échouer (pas l'exemple de la leçon).
@@ -550,8 +556,8 @@ function passer(): void {
 		root: sheets(),
 		feedback: sheets().querySelector('#tcFeedback') as HTMLElement,
 		actions: sheets().querySelector('#tcActions') as HTMLElement,
-		repHTML: ligneRevelation('la réponse', `${escapeHTML(ex.answer)} ${escapeHTML(ex.answerUnit)}`),
-		extraHTML: explication ? `<p class="lqcm-expl">${escapeHTML(explication)}</p>` : '',
+		repHTML: ligneRevelation('la réponse', html`${ex.answer} ${ex.answerUnit}`),
+		extraHTML: explication ? html`<p class="lqcm-expl">${explication}</p>` : VIDE,
 		annonce: `La réponse : ${ex.answer} ${ex.answerUnit}.`,
 		isLast: idx >= questions.length,
 		onNext: () => {

@@ -16,7 +16,7 @@
    Ce composant reste DISTINCT de la barre d'onglets `.enc-tabs` (navigation de
    section, cf. encadrant.ts) et des `.mode-btn` côté enfant.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+import { html, type SafeHtml, joindre, attribut, VIDE } from '../core/html';
 
 /* Une option du segment. `ariaLabel` remplace le nom accessible quand le libellé
    visible seul ne suffit pas (il doit alors le CONTENIR — SC 2.5.3) : le bloc des
@@ -37,20 +37,18 @@ export interface SegmentConfig {
 	wrap?: boolean; // variante qui passe à la ligne (au-delà de 2-3 segments)
 }
 
-export function segmentHTML(c: SegmentConfig): string {
-	const extra = Object.entries(c.extra ?? {})
-		.map(([k, v]) => ` data-${k}="${escapeHTML(v)}"`)
-		.join('');
-	const btns = c.options
-		.map((o) => {
+export function segmentHTML(c: SegmentConfig): SafeHtml {
+	const extra = joindre(Object.entries(c.extra ?? {}).map(([k, v]) => attribut(`data-${k}`, v)));
+	const btns = joindre(
+		c.options.map((o) => {
 			const on = o.val === c.active;
-			const nom = o.ariaLabel ? ` aria-label="${escapeHTML(o.ariaLabel)}"` : '';
+			const nom = o.ariaLabel ? attribut('aria-label', o.ariaLabel) : VIDE;
 			// tabindex mobile : seule l'option cochée est dans l'ordre de tabulation,
 			// les autres s'atteignent aux flèches (cf. segmentKeydown).
-			return `<button type="button" role="radio" class="enc-act-mode${on ? ' on' : ''}" data-act="${c.act}" data-${c.valAttr}="${escapeHTML(o.val)}"${extra} aria-checked="${on}" tabindex="${on ? '0' : '-1'}"${nom}>${escapeHTML(o.label)}</button>`;
-		})
-		.join('');
-	return `<div class="enc-act-modes${c.wrap ? ' enc-act-modes-wrap' : ''}" role="radiogroup" aria-label="${escapeHTML(c.label)}">${btns}</div>`;
+			return html`<button type="button" role="radio" class="enc-act-mode${on ? ' on' : ''}" data-act="${c.act}" data-${c.valAttr}="${o.val}"${extra} aria-checked="${String(on)}" tabindex="${on ? '0' : '-1'}"${nom}>${o.label}</button>`;
+		}),
+	);
+	return html`<div class="enc-act-modes${c.wrap ? ' enc-act-modes-wrap' : ''}" role="radiogroup" aria-label="${c.label}">${btns}</div>`;
 }
 
 const SUIVANT = ['ArrowRight', 'ArrowDown'];

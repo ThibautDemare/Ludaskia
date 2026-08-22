@@ -11,13 +11,14 @@
    En contexte correction, les lettres ratées (diff) sont soulignées.
    Voir docs/design-orthographe.md (§ Atelier du mot).
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+
 import { lettresDuMot } from '../core/orthographe/exercise';
 import { apercuGeste, basculerEntourage } from '../core/orthographe/entourages';
 import type { Entourage, MotOrtho } from '../core/orthographe/types';
 import { uiConfirm } from './ui-modal';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 import { icon } from './icon';
+import { html, type SafeHtml, joindre, VIDE } from '../core/html';
 
 // Palette colorblind-safe (Okabe-Ito).
 const PALETTE = ['#E69F00', '#56B4E9', '#009E73', '#0072B2', '#CC79A7', '#D55E00'];
@@ -27,14 +28,14 @@ const MIN_PX = 20; // plancher de police d'un mot rétréci (sous ça : pivoter 
 /* Lettres d'un mot en spans `.atelier-lettre` (indices alignés sur lettresDuMot,
    espaces inclus → les index d'entourage restent valides). Partagé entre l'atelier
    et la page de relecture (#80). `diff` souligne les lettres ratées (correction). */
-export function lettresMotHTML(mot: string, diff?: boolean[]): string {
-	return lettresDuMot(mot)
-		.map((l, i) =>
+export function lettresMotHTML(mot: string, diff?: boolean[]): SafeHtml {
+	return joindre(
+		lettresDuMot(mot).map((l, i) =>
 			l === ' '
-				? `<span class="atelier-lettre atelier-espace" data-i="${i}" data-space="1">&nbsp;</span>`
-				: `<span class="atelier-lettre" data-i="${i}"${diff?.[i] ? ' data-diff="1"' : ''}>${escapeHTML(l)}</span>`,
-		)
-		.join('');
+				? html`<span class="atelier-lettre atelier-espace" data-i="${i}" data-space="1">&nbsp;</span>`
+				: html`<span class="atelier-lettre" data-i="${i}"${diff?.[i] ? ' data-diff="1"' : ''}>${l}</span>`,
+		),
+	);
 }
 
 /* Trace les entourages (lecture seule) dans `svg`, calés sur les lettres de `motEl`.
@@ -52,11 +53,11 @@ export function dessinerEntourages(
 	svg.setAttribute('width', String(w));
 	svg.setAttribute('height', String(h));
 	svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-	svg.innerHTML = entourages
-		.map((e, i) => {
+	svg.innerHTML = joindre(
+		entourages.map((e, i) => {
 			const a = sp[e.debut];
 			const b = sp[e.fin];
-			if (!a || !b) return ''; // entourage hors-bornes (mot modifié) : on l'ignore
+			if (!a || !b) return VIDE; // entourage hors-bornes (mot modifié) : on l'ignore
 			const x = a.offsetLeft - PAD;
 			const y = a.offsetTop - PAD;
 			const rw = b.offsetLeft + b.offsetWidth - a.offsetLeft + PAD * 2;
@@ -65,9 +66,9 @@ export function dessinerEntourages(
 			// `data-e` = index dans `entourages` : l'atelier s'en sert pour marquer
 			// l'entourage qu'un geste va effacer (#462). Les entourages hors-bornes ne
 			// produisent pas de rect → on ne peut PAS se fier à l'ordre des rects.
-			return `<rect data-e="${i}" x="${x}" y="${y}" width="${rw}" height="${rh}" rx="14" ry="16" fill="${col}" fill-opacity="0.22" stroke="${col}" stroke-width="2.5" />`;
-		})
-		.join('');
+			return html`<rect data-e="${i}" x="${x}" y="${y}" width="${rw}" height="${rh}" rx="14" ry="16" fill="${col}" fill-opacity="0.22" stroke="${col}" stroke-width="2.5" />`;
+		}),
+	).balisage;
 }
 
 /* Rétrécit la police de `motEl` (en `white-space: nowrap`) pour qu'il tienne dans la
@@ -106,7 +107,7 @@ interface AtelierOpts {
 	onDone: () => void; // appelé au « Continuer » (après mise à jour de mot.entourage)
 	diff?: boolean[]; // contexte correction : lettres (du mot) ratées à souligner
 	consigne?: string;
-	contexteHTML?: string; // phrase à trou d'une cible verbe (#261), affichée en légende
+	contexteHTML?: SafeHtml; // phrase à trou d'une cible verbe (#261), affichée en légende
 	// Bouton « Écouter » : l'atelier devient audible comme les autres modes du parcours.
 	// Fourni par le runner (voix dispo) ; absent sinon (pas de voix → pas de bouton).
 	ecoute?: { label: string; onClick: () => void };
@@ -148,11 +149,11 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
 		opts.consigne ??
 		'Surligne les pièges : passe le doigt (ou la souris) sur les lettres où on pourrait se tromper.';
 
-	host.innerHTML = `
+	host.innerHTML = html`
     <div class="page ortho-run">
-      <p class="ortho-run-consigne">${escapeHTML(consigne)}</p>
+      <p class="ortho-run-consigne">${consigne}</p>
       ${opts.contexteHTML ?? ''}
-      ${opts.ecoute ? `<div><button type="button" class="btn-primary ortho-ecouter" id="btnEcouterAtelier">${icon('speaker')} ${escapeHTML(opts.ecoute.label)}</button></div>` : ''}
+      ${opts.ecoute ? html`<div><button type="button" class="btn-primary ortho-ecouter" id="btnEcouterAtelier">${icon('speaker')} ${opts.ecoute.label}</button></div>` : ''}
       <div class="atelier-stage">
         <div class="atelier-mot" id="atelierMot">${lettresMotHTML(mot.mot, opts.diff)}</div>
         <svg class="atelier-svg" id="atelierSvg" aria-hidden="true"></svg>
@@ -162,7 +163,7 @@ export function renderAtelier(host: HTMLElement, mot: MotOrtho, opts: AtelierOpt
         <button type="button" class="atelier-undo" id="atelierClear">🧹 Tout effacer</button>
       </div>
       <div class="atelier-done"><button class="btn-primary" id="btnAtelierDone">Continuer →</button></div>
-    </div>`;
+    </div>`.balisage;
 
 	monterBoutonAide(host.querySelector('.ortho-run'), 'atelier'); // bouton « ? » persistant (#272)
 	if (opts.ecoute) {

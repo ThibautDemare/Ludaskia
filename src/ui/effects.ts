@@ -5,6 +5,7 @@ import { getXP, progressionNiveau, NIVEAU_MAX } from '../core/progress';
 import type { Recompense } from '../core/unlocks';
 import { activateModal } from './modal-a11y';
 import { animationsReduites } from './preferences';
+import { html, joindre } from '../core/html';
 
 /* Mini-courbe SVG de la progression (score % au fil des essais) */
 export function sparkline(vals: number[], w = 260, h = 46) {
@@ -15,13 +16,13 @@ export function sparkline(vals: number[], w = 260, h = 46) {
 	const x = (i: number) => pad + (i / (vals.length - 1)) * iw;
 	const y = (v: number) => pad + ih - (v / 100) * ih;
 	const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-	const dots = vals
-		.map(
+	const dots = joindre(
+		vals.map(
 			(v, i) =>
-				`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.5" fill="var(--accent)"/>`,
-		)
-		.join('');
-	return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Progression des scores">
+				html`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.5" fill="var(--accent)"/>`,
+		),
+	);
+	return html`<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Progression des scores">
     <polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${pts}"/>${dots}</svg>`;
 }
 
@@ -66,9 +67,9 @@ export function showCelebration(items: { icon: string; text: string }[]) {
 	if (!items || !items.length) return;
 	const list = document.getElementById('celebrateList');
 	if (list)
-		list.innerHTML = items
-			.map((i) => `<li><span class="modal-li-ico">${i.icon}</span> ${i.text}</li>`)
-			.join('');
+		list.innerHTML = joindre(
+			items.map((i) => html`<li><span class="modal-li-ico">${i.icon}</span> ${i.text}</li>`),
+		).balisage;
 	const ov = document.getElementById('celebrate');
 	if (ov) {
 		ov.style.display = '';
@@ -112,12 +113,12 @@ export function showLevelUp(niveau: number, recompenses: Recompense[] = [], then
 	// Déblocages du palier (rang, et plus tard mascotte/avatar/thème).
 	const unlocks = document.getElementById('levelupUnlocks');
 	if (unlocks) {
-		unlocks.innerHTML = recompenses
-			.map(
+		unlocks.innerHTML = joindre(
+			recompenses.map(
 				(r) =>
-					`<li class="levelup-unlock levelup-unlock--${r.type}"><span class="levelup-unlock-ico">${r.icone}</span> ${r.texte}</li>`,
-			)
-			.join('');
+					html`<li class="levelup-unlock levelup-unlock--${r.type}"><span class="levelup-unlock-ico">${r.icone}</span> ${r.texte}</li>`,
+			),
+		).balisage;
 		unlocks.style.display = recompenses.length ? '' : 'none';
 	}
 	levelUpThen = then ?? null;

@@ -57,6 +57,7 @@ import {
 	wirePasser,
 } from './lecon-passer';
 import { ordreErreur } from '../core/erreur-representation';
+import { html, joindre } from '../core/html';
 
 const NB_QUESTIONS = 6;
 
@@ -217,19 +218,19 @@ enregistrerRunner(RUNNER, (snap) => {
 function renderQuestion(): void {
 	const q = questions[idx];
 	tranchee = false;
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
         ${leconTitreHTML(lesson)}
-        <p class="sprint-q lord-consigne"${ttsAttr(q.question)}>${escapeHTML(q.question)}</p>
+        <p class="sprint-q lord-consigne"${ttsAttr(q.question)}>${q.question}</p>
         <div data-tuile-mount></div>
         ${decisionHTML('lordVerif')}
         <p class="sr-only" id="lordStatus" role="status" aria-live="polite" aria-atomic="true"></p>
         <div class="sprint-correction" id="lordFeedback" hidden></div>
         <div class="sprint-actions" id="lordActions" hidden></div>
       </div>
-    </div>`;
+    </div>`.balisage;
 	const verif = sheets().querySelector('#lordVerif') as HTMLButtonElement;
 	// Widget « ranger une suite » mutualisé (#345) : rangée numérotée + bac, tap/glisser,
 	// figeage et marques ✓/✗ par case à la validation.
@@ -288,8 +289,8 @@ function verifier(): void {
 		sheets().querySelector('#lordFeedback') as HTMLElement,
 		{
 			feedbackHTML: correct
-				? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-				: `${inversion ? `<span class="lord-inverse">${escapeHTML(inversion)}</span>` : ''}<span class="lqcm-ko">Le bon rangement : <strong>${q.ordre.map(escapeHTML).join(' · ')}</strong></span>`,
+				? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
+				: html`${inversion ? html`<span class="lord-inverse">${inversion}</span>` : ''}<span class="lqcm-ko">Le bon rangement : <strong>${q.ordre.map(escapeHTML).join(' · ')}</strong></span>`,
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;
@@ -320,7 +321,13 @@ function passer(): void {
 		root: sheets(),
 		feedback: sheets().querySelector('#lordFeedback') as HTMLElement,
 		actions: sheets().querySelector('#lordActions') as HTMLElement,
-		repHTML: ligneRevelation('le bon rangement', q.ordre.map(escapeHTML).join(' · ')),
+		repHTML: ligneRevelation(
+			'le bon rangement',
+			joindre(
+				q.ordre.map((m) => html`${m}`),
+				' · ',
+			),
+		),
 		// La suite est énumérée avec le séparateur de sa NATURE (#448) : le point-virgule des
 		// nombres se lit comme une pause, pas comme une virgule décimale.
 		annonce: `Le bon rangement : ${attendue}.`,

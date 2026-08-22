@@ -19,7 +19,7 @@
    - filtrable par PÉRIODE (#476) : le « récemment » du titre est une vraie fenêtre de
      temps, choisie par l'encadrant (le filtrage lui-même est pur, côté core).
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+
 import { icon } from './icon';
 import { getLessonById } from '../core/catalog';
 import type { Profile } from '../core/profiles';
@@ -44,6 +44,7 @@ import { ORTHO_KEY } from '../core/orthographe/store';
 import { labelLeconOrtho } from '../core/orthographe/lessons';
 import { container, renderEspace } from './encadrant-commun';
 import { segmentHTML } from './segment';
+import { html, VIDE, type SafeHtml, joindre } from '../core/html';
 
 /* Nombre d'erreurs (dédoublonnées) montrées par leçon avant le repli « + N plus
    anciennes » (avis designer : 3-5 max pour rester lisible). */
@@ -89,7 +90,7 @@ const modeLabel = (m: string): string => MODE_LABEL[m] ?? m;
    ce n'est pas une faute (donc pas d'accent « écart » : cf. .enc-err-item--passe), et
    c'est l'information que le parent cherche — savoir si l'enfant a cherché ou renoncé.
    Le sens tient dans le TEXTE, pas dans la couleur ni dans l'icône (décorative). */
-function erreurLigneHTML(e: ErreurAffichee, now: number): string {
+function erreurLigneHTML(e: ErreurAffichee, now: number): SafeHtml {
 	const quand = libelleDerniereFois(e.ts, now);
 	const meta = [modeLabel(e.mode), quand, e.occurrences > 1 ? `vue ${e.occurrences} fois` : '']
 		.filter(Boolean)
@@ -104,13 +105,13 @@ function erreurLigneHTML(e: ErreurAffichee, now: number): string {
 			? "N'a pas essayé : a validé sans répondre."
 			: "N'a pas essayé : a demandé à voir la réponse.";
 	const reponse = e.sansTentative
-		? `<p class="enc-err-passe">${icon('eye')}<span>${passeTexte}</span></p>`
-		: `<p class="enc-err-donnee"><span class="enc-err-lab">Réponse donnée :</span> ${escapeHTML(e.donnee)}</p>`;
-	return `<li class="enc-err-item${e.sansTentative ? ' enc-err-item--passe' : ''}">
-      <p class="enc-err-q">${escapeHTML(e.question)}</p>
-      <p class="enc-err-bonne"><span class="enc-err-lab">Réponse attendue :</span> ${escapeHTML(e.attendue)}</p>
+		? html`<p class="enc-err-passe">${icon('eye')}<span>${passeTexte}</span></p>`
+		: html`<p class="enc-err-donnee"><span class="enc-err-lab">Réponse donnée :</span> ${e.donnee}</p>`;
+	return html`<li class="enc-err-item${e.sansTentative ? ' enc-err-item--passe' : ''}">
+      <p class="enc-err-q">${e.question}</p>
+      <p class="enc-err-bonne"><span class="enc-err-lab">Réponse attendue :</span> ${e.attendue}</p>
       ${reponse}
-      <p class="enc-err-meta">${escapeHTML(meta)}</p>
+      <p class="enc-err-meta">${meta}</p>
     </li>`;
 }
 
@@ -119,17 +120,17 @@ function erreurLigneHTML(e: ErreurAffichee, now: number): string {
    un écart inexplicable entre le total et la liste. Second niveau de <details> (imbriqué
    dans celui de la leçon) : replié par défaut, donc le « mur de fautes » reste évité, mais
    l'encadrant qui cherche une régularité peut tout voir. */
-function anciennesHTML(anciennes: ErreurAffichee[], now: number, label: string): string {
-	if (!anciennes.length) return '';
+function anciennesHTML(anciennes: ErreurAffichee[], now: number, label: string): SafeHtml {
+	if (!anciennes.length) return VIDE;
 	const n = anciennes.length;
 	const texte = `${n} erreur${n > 1 ? 's' : ''} plus ancienne${n > 1 ? 's' : ''}`;
 	// Nom accessible enrichi de la LEÇON (le libellé visible reste court) : plusieurs groupes
 	// peuvent dépasser MAX_PAR_LECON, et en navigation de bouton en bouton (raccourci NVDA/JAWS,
 	// rotor VoiceOver) une série de « 3 erreurs plus anciennes » identiques serait sans repère.
 	// Même parade que le bouton « Épingler » ci-dessous.
-	return `<details class="enc-err-anciennes">
-      <summary class="enc-err-anciennes-sum" aria-label="${escapeHTML(`${texte} pour « ${label} »`)}">${texte}</summary>
-      <ul class="enc-err-list">${anciennes.map((e) => erreurLigneHTML(e, now)).join('')}</ul>
+	return html`<details class="enc-err-anciennes">
+      <summary class="enc-err-anciennes-sum" aria-label="${`${texte} pour « ${label} »`}">${texte}</summary>
+      <ul class="enc-err-list">${joindre(anciennes.map((e) => erreurLigneHTML(e, now)))}</ul>
     </details>`;
 }
 
@@ -143,7 +144,7 @@ function groupeHTML(
 	orthoListes: readonly { id: string; label: string }[],
 	now: number,
 	consulte: Profile,
-): string {
+): SafeHtml {
 	// Résolution du libellé : leçon du catalogue, sinon liste d'orthographe (prédéfinie
 	// ou du profil consulté), sinon l'id brut en dernier recours. Le libellé de leçon est
 	// résolu AU NIVEAU DU PROFIL CONSULTÉ (#436, `labelNiveau`), comme le récap de
@@ -163,17 +164,17 @@ function groupeHTML(
 	const entryId = lesson ? g.lessonId : labelOrtho ? orthoRevoirId(g.lessonId) : null;
 	const epingle = entryId ? epinglees.has(entryId) : false;
 	const actions = entryId
-		? `<div class="enc-actions">
-        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(label)} »">${epingle ? 'Retirer' : 'Épingler'}</button>
+		? html`<div class="enc-actions">
+        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${label} »">${epingle ? 'Retirer' : 'Épingler'}</button>
       </div>`
-		: '';
-	return `<details class="enc-err-lecon">
+		: VIDE;
+	return html`<details class="enc-err-lecon">
       <summary class="enc-err-sum">
-        <span class="enc-err-lecon-lab">${escapeHTML(label)}</span>
+        <span class="enc-err-lecon-lab">${label}</span>
         <span class="enc-err-count">${g.total} erreur${g.total > 1 ? 's' : ''}</span>
-        ${quand ? `<span class="enc-err-quand">dernière fois ${quand}</span>` : ''}
+        ${quand ? html`<span class="enc-err-quand">dernière fois ${quand}</span>` : ''}
       </summary>
-      <ul class="enc-err-list">${visibles.map((e) => erreurLigneHTML(e, now)).join('')}</ul>
+      <ul class="enc-err-list">${joindre(visibles.map((e) => erreurLigneHTML(e, now)))}</ul>
       ${anciennesHTML(anciennes, now, label)}
       ${actions}
     </details>`;
@@ -209,7 +210,7 @@ function resumePeriode(groupes: GroupeErreursLecon[]): string {
    donc garantie, là où une région `aria-live` recréée par un `innerHTML` global ne serait
    annoncée que de façon inconstante selon le navigateur et l'aide technique. Le libellé
    visible reste le préfixe exact du nom accessible (SC 2.5.3). */
-function periodesHTML(active: PeriodeErreurs, groupes: GroupeErreursLecon[]): string {
+function periodesHTML(active: PeriodeErreurs, groupes: GroupeErreursLecon[]): SafeHtml {
 	return segmentHTML({
 		act: 'erreurs-periode',
 		valAttr: 'periode',
@@ -230,7 +231,7 @@ function periodesHTML(active: PeriodeErreurs, groupes: GroupeErreursLecon[]): st
    décrivent la période choisie, pas tout l'historique — et c'est ce qui porte le
    « récemment » du titre depuis que le classement se fait au volume (#519), le
    texte d'aide annonçant désormais l'ordre réel (le plus d'erreurs d'abord). */
-export function erreursHTML(consulte: Profile, now: number): string {
+export function erreursHTML(consulte: Profile, now: number): SafeHtml {
 	const toutes = chargerErreursFor(consulte.uuid);
 	const periode = periodeChoisie ?? periodeParDefaut(toutes, now);
 	const groupes = grouperErreursParLecon(filtrerErreursParPeriode(toutes, periode, now));
@@ -242,13 +243,13 @@ export function erreursHTML(consulte: Profile, now: number): string {
 	// Même idiome « Rien à signaler » dans les deux cas : c'est la 2e phrase qui
 	// distingue, pas un changement de ton (relecture langue).
 	const corps = groupes.length
-		? `<div class="enc-err-lecons">${groupes.map((g) => groupeHTML(g, epinglees, orthoListes, now, consulte)).join('')}</div>`
+		? html`<div class="enc-err-lecons">${joindre(groupes.map((g) => groupeHTML(g, epinglees, orthoListes, now, consulte)))}</div>`
 		: toutes.length
-			? `<p class="enc-hint enc-err-vide">Rien à signaler sur cette période. Élargissez-la pour voir les erreurs plus anciennes.</p>`
-			: `<p class="enc-hint">Rien à signaler récemment.</p>`;
-	return `<div class="enc-block">
+			? html`<p class="enc-hint enc-err-vide">Rien à signaler sur cette période. Élargissez-la pour voir les erreurs plus anciennes.</p>`
+			: html`<p class="enc-hint">Rien à signaler récemment.</p>`;
+	return html`<div class="enc-block">
       <h3 class="enc-h3">${icon('clock-clockwise')} Ce qui a été difficile récemment</h3>
-      <p class="enc-hint">Voici les leçons où ${escapeHTML(consulte.name)} a rencontré des difficultés, en commençant par celles qui comptent le plus d'erreurs. Dépliez une leçon pour voir le détail, ou épinglez-la pour qu'elle revienne sur l'accueil de ${escapeHTML(consulte.name)}.</p>
+      <p class="enc-hint">Voici les leçons où ${consulte.name} a rencontré des difficultés, en commençant par celles qui comptent le plus d'erreurs. Dépliez une leçon pour voir le détail, ou épinglez-la pour qu'elle revienne sur l'accueil de ${consulte.name}.</p>
       ${toutes.length ? periodesHTML(periode, groupes) : ''}
       ${corps}
     </div>`;

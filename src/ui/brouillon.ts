@@ -10,10 +10,11 @@
    page au lieu de tracer) et mise à l'échelle `devicePixelRatio` (trait net).
    ============================================================ */
 import { icon } from './icon';
+import { html, type SafeHtml } from '../core/html';
 
 /** Markup du brouillon (bouton-bascule + panneau masqué) à insérer dans la carte. */
-export function brouillonHTML(): string {
-	return `<div class="brouillon">
+export function brouillonHTML(): SafeHtml {
+	return html`<div class="brouillon">
     <button type="button" class="brouillon-toggle" aria-expanded="false">${icon('pencil')}<span>J'ai besoin d'un brouillon</span></button>
     <div class="brouillon-panel" hidden>
       <canvas class="brouillon-canvas" aria-label="Zone de brouillon pour poser ton calcul"></canvas>

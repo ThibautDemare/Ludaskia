@@ -69,7 +69,7 @@ interface ResumeCommun {
 /** Exercice « grille » (#63) : tout l'état utile est dans le DOM, on le rejoue tel quel. */
 export interface ResumeGrille extends ResumeCommun {
 	kind: 'grille';
-	sheetsHTML: string; // rendu exact de #sheets (préserve la mise en page riche)
+	sheetsHTML: string; // rendu exact de #sheets, SÉRIALISÉ dans le stockage (donc string)
 	items: Record<string, Item>; // sessionItems (id de champ -> Item) pour la correction
 	answers: Record<string, string>; // réponses saisies (id de champ -> valeur)
 	activeId: string | null; // champ ayant le focus (calcul « courant »)

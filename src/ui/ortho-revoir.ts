@@ -9,7 +9,7 @@
    l'atelier pour ce mot, puis revient ici avec l'entourage mis à jour).
    Voir docs/design-orthographe.md (§ Relecture).
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+
 import { loadOrtho, saveOrtho } from '../core/orthographe/store';
 import { motsDeLecon, listOrthoLecons } from '../core/orthographe/lessons';
 import type { MotOrtho, OrthoState } from '../core/orthographe/types';
@@ -17,6 +17,7 @@ import { lettresMotHTML, dessinerEntourages, renderAtelier } from './ortho-ateli
 import { goCategorie } from './navigation';
 import { retourFinActivite, activiteDemarree } from './retour-activite';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
+import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 
 let st: OrthoState;
 let mots: MotOrtho[];
@@ -52,11 +53,11 @@ function render(): void {
 	mots = motsDeLecon(st, lessonId);
 	label = listOrthoLecons(st).find((l) => l.id === lessonId)?.label ?? 'Mes mots';
 
-	const cartes = mots.map((mot, i) => carteHTML(mot, i)).join('');
+	const cartes = joindre(mots.map((mot, i) => carteHTML(mot, i)));
 
 	const corps = mots.length
-		? `<div class="relecture-grille">${cartes}</div>`
-		: `<p class="relecture-vide">Cette liste n'a pas encore de mots.</p>`;
+		? html`<div class="relecture-grille">${cartes}</div>`
+		: html`<p class="relecture-vide">Cette liste n'a pas encore de mots.</p>`;
 
 	// Relire est un détour d'une liste lancée depuis le catalogue OU depuis le programme
 	// du jour : le retour suit la provenance (#461).
@@ -65,14 +66,14 @@ function render(): void {
 		aller: () => goCategorie(ORTHO_CATEGORY_ID),
 	});
 
-	hostEl.innerHTML = `
+	hostEl.innerHTML = html`
     <div class="page relecture">
       <button type="button" class="relecture-retour" id="relRetour">← ${retour.label}</button>
       <h2 class="relecture-titre">📖 Je relis mes mots</h2>
-      <p class="relecture-sous">${escapeHTML(label)}</p>
+      <p class="relecture-sous">${label}</p>
       <p class="relecture-consigne">Regarde bien chaque mot et ses pièges, et essaie de les retenir dans ta tête.</p>
       ${corps}
-    </div>`;
+    </div>`.balisage;
 
 	hostEl.querySelector('#relRetour')!.addEventListener('click', () => {
 		cleanup();
@@ -101,18 +102,18 @@ function render(): void {
 	}
 }
 
-function carteHTML(mot: MotOrtho, i: number): string {
+function carteHTML(mot: MotOrtho, i: number): SafeHtml {
 	const vide = mot.entourage.length === 0;
 	const crayonLabel = vide
 		? `Entourer les pièges de ${mot.mot}`
 		: `Corriger les pièges de ${mot.mot}`;
 	const comme = mot.commeDans
-		? `<p class="relecture-comme">comme dans <i>${escapeHTML(mot.commeDans)}</i></p>`
-		: '';
-	const aide = vide ? `<p class="relecture-aide">Pas encore de pièges marqués</p>` : '';
-	return `<div class="relecture-carte" data-i="${i}">
+		? html`<p class="relecture-comme">comme dans <i>${mot.commeDans}</i></p>`
+		: VIDE;
+	const aide = vide ? html`<p class="relecture-aide">Pas encore de pièges marqués</p>` : VIDE;
+	return html`<div class="relecture-carte" data-i="${i}">
       <button type="button" class="relecture-crayon" data-edit="${i}"
-              aria-label="${escapeHTML(crayonLabel)}" title="${escapeHTML(crayonLabel)}">✏️</button>
+              aria-label="${crayonLabel}" title="${crayonLabel}">✏️</button>
       <div class="atelier-stage relecture-stage">
         <div class="relecture-mot" data-mot="${i}">${lettresMotHTML(mot.mot)}</div>
         <svg class="atelier-svg" data-svg="${i}" aria-hidden="true"></svg>

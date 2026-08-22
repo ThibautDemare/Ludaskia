@@ -37,6 +37,7 @@ import {
 	goOrthoNew,
 	goOrthoEdit,
 } from './navigation';
+import { html, VIDE, joindre } from '../core/html';
 
 /* Dernier tirage d'express par catégorie (rotation : on évite de
    refaire tomber le même échantillon de leçons d'un express à l'autre). */
@@ -47,16 +48,18 @@ const lastExpressByCat: Record<string, string[]> = {};
 
 /* ---------- Écran : liste des matières ---------- */
 export function renderSubjects(el: HTMLElement): void {
-	el.innerHTML = `<div class="nav-cards">
-    ${SUBJECTS.map((s) => {
-			const n = getLessonsBySubject(s.id, niveauActifMatiere(s.id)).length;
-			return `<button class="nav-card" data-subject="${s.id}">
+	el.innerHTML = html`<div class="nav-cards">
+    ${joindre(
+			SUBJECTS.map((s) => {
+				const n = getLessonsBySubject(s.id, niveauActifMatiere(s.id)).length;
+				return html`<button class="nav-card" data-subject="${s.id}">
         <span class="cat-ico" style="background:${subjectTint(s.id)}">${icon(subjectIcon(s.id))}</span>
-        <div class="nav-card-title">${escapeHTML(s.label)}</div>
+        <div class="nav-card-title">${s.label}</div>
         <div class="nav-card-sub">${n} leçon${n > 1 ? 's' : ''}</div>
       </button>`;
-		}).join('')}
-  </div>`;
+			}),
+		)}
+  </div>`.balisage;
 	el.querySelectorAll<HTMLButtonElement>('[data-subject]').forEach((btn) => {
 		btn.addEventListener('click', () => goCategories(btn.dataset.subject!));
 	});
@@ -68,9 +71,9 @@ export function renderCategories(el: HTMLElement, subjectId: string, titleEl: HT
 	if (titleEl && subject) titleEl.textContent = subject.label;
 	const cats = CATEGORIES.filter((c) => c.subject === subjectId);
 	const niveau = niveauActifMatiere(subjectId);
-	el.innerHTML = `<div class="nav-cards">
-    ${cats
-			.map((c, i) => {
+	el.innerHTML = html`<div class="nav-cards">
+    ${joindre(
+			cats.map((c, i) => {
 				const n =
 					c.id === ORTHO_CATEGORY_ID
 						? listOrthoLecons(loadOrtho(), niveau).length +
@@ -80,16 +83,16 @@ export function renderCategories(el: HTMLElement, subjectId: string, titleEl: HT
 				// couleur cycle pour varier ; elle double l'icône, jamais l'info seule).
 				const tint = catTint(i);
 				const ico = c.icon
-					? `<span class="cat-ico" style="background:${tint}">${icon(c.icon)}</span>`
+					? html`<span class="cat-ico" style="background:${tint}">${icon(c.icon)}</span>`
 					: '';
-				return `<button class="nav-card" data-category="${c.id}">
+				return html`<button class="nav-card" data-category="${c.id}">
           ${ico}
-          <div class="nav-card-title">${escapeHTML(c.label)}</div>
+          <div class="nav-card-title">${c.label}</div>
           <div class="nav-card-sub">${n} leçon${n > 1 ? 's' : ''}</div>
         </button>`;
-			})
-			.join('')}
-  </div>`;
+			}),
+		)}
+  </div>`.balisage;
 	el.querySelectorAll<HTMLButtonElement>('[data-category]').forEach((btn) => {
 		btn.addEventListener('click', () => goCategorie(btn.dataset.category!));
 	});
@@ -112,11 +115,11 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 	// contenu, #92) : on évite d'afficher des bilans/sprints qui ne tireraient
 	// rien. Un message rassurant tient lieu d'écran.
 	if (!lessonDefs.length) {
-		el.innerHTML = `<div class="cat-empty">
+		el.innerHTML = html`<div class="cat-empty">
       <div class="cat-empty-ico" aria-hidden="true">🌱</div>
       <p class="cat-empty-title">Bientôt disponible&nbsp;!</p>
       <p class="cat-empty-sub">Les leçons de cette catégorie arrivent prochainement.</p>
-    </div>`;
+    </div>`.balisage;
 		return;
 	}
 
@@ -138,7 +141,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 			.filter((lv) => LEVEL_ORDER.indexOf(lv) < ai)
 			.sort((a, b) => LEVEL_ORDER.indexOf(a) - LEVEL_ORDER.indexOf(b));
 		const badge = bas.length ? LEVEL_LABEL[bas[bas.length - 1]] : undefined;
-		return `<div class="lesson-row">${lessonCardHTML(entry, stars, lstats, def.repere, badge)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${escapeHTML(labelLecon(def, niveau))}">${icon('printer')}</button></div>`;
+		return html`<div class="lesson-row">${lessonCardHTML(entry, stars, lstats, def.repere, badge)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${labelLecon(def, niveau)}">${icon('printer')}</button></div>`;
 	};
 
 	// Regroupement par rubrique (#109), dans l'ordre d'apparition. Une leçon sans
@@ -154,16 +157,16 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 		g.defs.push(def);
 	});
 	const aRubriques = groupes.some((g) => g.rubrique !== '');
-	const listHTML = groupes
-		.map((g) => {
+	const listHTML = joindre(
+		groupes.map((g) => {
 			const head =
-				g.rubrique && aRubriques ? `<h3 class="cat-rubrique">${escapeHTML(g.rubrique)}</h3>` : '';
-			const rows = g.defs.map((def) => cardRow(def, lessonDefs.indexOf(def))).join('');
-			return `${head}<div class="lesson-list">${rows}</div>`;
-		})
-		.join('');
+				g.rubrique && aRubriques ? html`<h3 class="cat-rubrique">${g.rubrique}</h3>` : VIDE;
+			const rows = joindre(g.defs.map((def) => cardRow(def, lessonDefs.indexOf(def))));
+			return html`${head}<div class="lesson-list">${rows}</div>`;
+		}),
+	);
 
-	el.innerHTML = `
+	el.innerHTML = html`
     <div id="catReprises" class="reprises reprises-cat"></div>
     <div class="cat-actions">
       <button class="cat-action" data-act="express"><span class="cat-action-line">${icon('timer')} Bilan express</span><small>rapide · ~20 questions</small></button>
@@ -173,7 +176,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
       <button class="cat-action cat-action-secondary" data-act="print"><span class="cat-action-line">${icon('printer')} Imprimer les fiches</span><small>toute la catégorie</small></button>
     </div>
     <div id="catLessons">${listHTML}</div>
-    <div id="catFavoris" class="favoris favoris-cat"></div>`;
+    <div id="catFavoris" class="favoris favoris-cat"></div>`.balisage;
 
 	// Délégation : 🖨 d'une leçon (impression, chemin B) ou clic sur la carte (lancer).
 	el.querySelector('#catLessons')!.addEventListener('click', (e: Event) => {
@@ -268,21 +271,21 @@ function renderOrthoCategorie(el: HTMLElement): void {
 		// Ordre d'affichage partagé avec l'espace encadrant (#441) : alphabétique pour une
 		// liste du parent, ordre d'origine pour une leçon prédéfinie.
 		const mots = motsApercu(l.mots, l.source);
-		return `<div class="ortho-apercu" aria-hidden="true">${mots.map(escapeHTML).join(' · ')}</div>`;
+		return html`<div class="ortho-apercu" aria-hidden="true">${mots.map(escapeHTML).join(' · ')}</div>`;
 	};
 	const baseCard = (
 		l: LeconOrthoRef,
 		tint: string,
-	) => `<button class="nav-card" data-ortho="${l.id}">
+	) => html`<button class="nav-card" data-ortho="${l.id}">
       <span class="cat-ico" style="background:${tint}">${icon('book-open')}</span>
-      <div class="nav-card-title">${escapeHTML(l.label)}</div>
+      <div class="nav-card-title">${l.label}</div>
       <div class="nav-card-sub">${sub(l)}</div>
       ${apercu(l)}
     </button>`;
-	const listCard = (l: LeconOrthoRef, tint: string) => `<div class="nav-card-group">
+	const listCard = (l: LeconOrthoRef, tint: string) => html`<div class="nav-card-group">
       <button class="nav-card" data-ortho="${l.id}">
         <span class="cat-ico" style="background:${tint}">${icon('cards')}</span>
-        <div class="nav-card-title">${escapeHTML(l.label)}</div>
+        <div class="nav-card-title">${l.label}</div>
         <div class="nav-card-sub">${sub(l)}</div>
         ${apercu(l)}
       </button>
@@ -310,9 +313,9 @@ function renderOrthoCategorie(el: HTMLElement): void {
 			l.repere === 'plus-difficile'
 				? ' <span class="lz-level" title="Leçon plus difficile">plus dur</span>'
 				: '';
-		return `<button class="nav-card" data-lecon="${l.id}">
+		return html`<button class="nav-card" data-lecon="${l.id}">
       <span class="cat-ico" style="background:${tint}">${icon(ico)}</span>
-      <div class="nav-card-title">${escapeHTML(labelLecon(l, niveau))}${etoilee ? ' ⭐' : ''}${repere}</div>
+      <div class="nav-card-title">${labelLecon(l, niveau)}${etoilee ? ' ⭐' : ''}${repere}</div>
       <div class="nav-card-sub">${hint}</div>
     </button>`;
 	};
@@ -328,22 +331,22 @@ function renderOrthoCategorie(el: HTMLElement): void {
 		}
 		g.lecons.push(l);
 	});
-	const moteurSections = rubriques
-		.map(
-			(r) => `<section class="ortho-rubrique">
-        <h3 class="cat-rubrique">${escapeHTML(r.nom)}</h3>
-        <div class="nav-cards ortho-cards">${r.lecons.map(moteurCard).join('')}</div>
+	const moteurSections = joindre(
+		rubriques.map(
+			(r) => html`<section class="ortho-rubrique">
+        <h3 class="cat-rubrique">${r.nom}</h3>
+        <div class="nav-cards ortho-cards">${joindre(r.lecons.map(moteurCard))}</div>
       </section>`,
-		)
-		.join('');
+		),
+	);
 
-	el.innerHTML = `${moteurSections}
+	el.innerHTML = html`${moteurSections}
     <section class="ortho-rubrique">
       <h3 class="cat-rubrique">Les dictées de mots</h3>
       <div class="ortho-cols">
         <section class="ortho-col">
           <h4 class="ortho-col-title">${icon('book-open')} Mots de base</h4>
-          <div class="nav-cards ortho-cards">${predef.map((l) => baseCard(l, 'var(--cat-bleu)')).join('')}</div>
+          <div class="nav-cards ortho-cards">${joindre(predef.map((l) => baseCard(l, 'var(--cat-bleu)')))}</div>
         </section>
         <section class="ortho-col">
           <h4 class="ortho-col-title">${icon('cards')} Mes listes</h4>
@@ -353,11 +356,11 @@ function renderOrthoCategorie(el: HTMLElement): void {
               <div class="nav-card-title">Ajouter une liste</div>
               <div class="nav-card-sub">les mots de la semaine</div>
             </button>
-            ${listes.map((l) => listCard(l, 'var(--accent)')).join('')}
+            ${joindre(listes.map((l) => listCard(l, 'var(--accent)')))}
           </div>
         </section>
       </div>
-    </section>`;
+    </section>`.balisage;
 	el.querySelectorAll<HTMLButtonElement>('[data-lecon]').forEach((btn) => {
 		btn.addEventListener('click', () => startLecon(btn.dataset.lecon!));
 	});

@@ -24,7 +24,7 @@ import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import { droiteDepuisExercice } from '../core/etayage-droite';
 import type { ExerciseMode } from '../core/exercise';
-import { escapeHTML } from '../core/utils';
+
 import { ttsAttr } from '../core/tts-text';
 import {
 	renderDroiteGraduee,
@@ -54,6 +54,7 @@ import {
 	wirePasser,
 } from './lecon-passer';
 import { monterBoutonAide } from './aide-exercice';
+import { html, type SafeHtml, brut } from '../core/html';
 
 const NB_QUESTIONS = 8;
 
@@ -183,13 +184,13 @@ function renderQuestion(): void {
 	focusIndex = 0;
 	fige = false;
 	const q = questions[idx];
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage dg-stage">
         <div class="dg-col">
           ${leconTitreHTML(lesson)}
-          <p class="dg-consigne" id="dgConsigne"${ttsAttr(q.parle)}>${escapeHTML(q.consigne)}</p>
+          <p class="dg-consigne" id="dgConsigne"${ttsAttr(q.parle)}>${q.consigne}</p>
           <div class="dg-figure" id="dgFigure">${renderDroiteGradueeInteractif({
 						min: q.min,
 						max: q.max,
@@ -204,7 +205,7 @@ function renderQuestion(): void {
           <div class="sprint-actions" id="dgActions" hidden></div>
         </div>
       </div>
-    </div>`;
+    </div>`.balisage;
 	const verif = sheets().querySelector('#dgVerify') as HTMLButtonElement;
 	const svg = svgEl();
 	hitEls().forEach((el) =>
@@ -237,7 +238,10 @@ function selectGraduation(i: number, focus: boolean): void {
 	if (focus) els[i].focus();
 	// Repère mobile corail à la graduation choisie.
 	const g = svgEl().querySelector('.dg-repere') as SVGGElement;
-	g.innerHTML = repereMarkup(xDeValeur(q.graduations[i].valeur, q.min, q.max), 'neutre');
+	// Fragment SVG du moteur de figures (cf. sa frontière typée) : composé de nombres.
+	g.innerHTML = brut(
+		repereMarkup(xDeValeur(q.graduations[i].valeur, q.min, q.max), 'neutre'),
+	).balisage;
 	(sheets().querySelector('#dgVerify') as HTMLButtonElement).disabled = false;
 }
 
@@ -298,15 +302,16 @@ function verifier(): void {
 
 	if (!juste) journaliser(q, choisie.label);
 
-	const expl = `<p class="lqcm-expl">${escapeHTML(q.explication)}</p>`;
+	const expl = html`<p class="lqcm-expl">${q.explication}</p>`;
 	wireNext(
 		sheets().querySelector('#dgActions') as HTMLElement,
 		sheets().querySelector('#dgFeedback') as HTMLElement,
 		{
-			feedbackHTML:
-				(juste
-					? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-					: `<span class="lqcm-ko">Regarde le bon repère en vert, puis continue.</span>`) + expl,
+			feedbackHTML: html`${
+				juste
+					? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
+					: html`<span class="lqcm-ko">Regarde le bon repère en vert, puis continue.</span>`
+			}${expl}`,
 			isLast: idx >= questions.length - 1,
 			// Étayage (#490) : proposé sur un placement raté, et déroulé sur CETTE droite —
 			// l'échelle change à chaque question, un exemple voisin ne montrerait pas la sienne.
@@ -349,20 +354,23 @@ function afficherFigureRevelation(
 		{ valeur: q.cible, etat: 'correct' },
 	];
 	if (enfant) reperes.push(enfant);
-	(sheets().querySelector('#dgFigure') as HTMLElement).innerHTML = renderDroiteGraduee({
-		min: q.min,
-		max: q.max,
-		pas: q.pas,
-		bornes: q.bornes,
-		reperes,
-		// Description a11y : les RÔLES des repères, jamais un verdict ni une couleur (une
-		// couleur ne dit rien à qui ne voit pas la figure, et « ton repère en rouge » ferait
-		// dire à la figure ce que la région live annonce déjà). Deux branches, exactement
-		// celles du rendu : un repère, ou deux.
-		desc: enfant
-			? 'La droite graduée avec le bon repère, et à côté, le repère que tu avais posé, pour comparer.'
-			: 'La droite graduée avec le repère au bon endroit.',
-	});
+	// Fragment SVG du moteur de figures (cf. sa frontière typée) : composé de nombres.
+	(sheets().querySelector('#dgFigure') as HTMLElement).innerHTML = brut(
+		renderDroiteGraduee({
+			min: q.min,
+			max: q.max,
+			pas: q.pas,
+			bornes: q.bornes,
+			reperes,
+			// Description a11y : les RÔLES des repères, jamais un verdict ni une couleur (une
+			// couleur ne dit rien à qui ne voit pas la figure, et « ton repère en rouge » ferait
+			// dire à la figure ce que la région live annonce déjà). Deux branches, exactement
+			// celles du rendu : un repère, ou deux.
+			desc: enfant
+				? 'La droite graduée avec le bon repère, et à côté, le repère que tu avais posé, pour comparer.'
+				: 'La droite graduée avec le repère au bon endroit.',
+		}),
+	).balisage;
 }
 
 /* Énoncé du journal : la FENÊTRE fait partie de l'énoncé pour le parent : « place 3 470 » ne
@@ -380,8 +388,10 @@ function enonceJournal(q: QuestionDroite): string {
    avec dessin »), mais on passe la vraie figure pour que ce mode porte le même marqueur que
    le chemin de lecture de la MÊME leçon (fiche, révision) — un parent ne doit pas lire deux
    mises en forme selon le mode. */
-function figureJournal(q: QuestionDroite): string {
-	return renderDroiteGraduee({ min: q.min, max: q.max, pas: q.pas, bornes: q.bornes });
+function figureJournal(q: QuestionDroite): SafeHtml {
+	// Fragment SVG du moteur de figures : construit à partir de nombres, jamais
+	// d'une saisie (cf. la frontière typée de core/figures/index.ts).
+	return brut(renderDroiteGraduee({ min: q.min, max: q.max, pas: q.pas, bornes: q.bornes }));
 }
 
 /* Journal des erreurs (#391) : une entrée par droite ratée. `fige` garantit une seule
@@ -471,8 +481,8 @@ function passer(): void {
 		root: sheets(),
 		feedback: sheets().querySelector('#dgFeedback') as HTMLElement,
 		actions: sheets().querySelector('#dgActions') as HTMLElement,
-		repHTML: ligneRevelation('la réponse', escapeHTML(q.cibleLabel)),
-		extraHTML: `<p class="lqcm-expl">${escapeHTML(q.explication)}</p>`,
+		repHTML: ligneRevelation('la réponse', html`${q.cibleLabel}`),
+		extraHTML: html`<p class="lqcm-expl">${q.explication}</p>`,
 		annonce: `La réponse : ${q.cibleLabel}.`,
 		isLast: idx >= questions.length,
 		onNext: () => {

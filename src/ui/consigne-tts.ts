@@ -18,6 +18,7 @@
 import { dicteeDisponible, dicterConsigne } from './tts';
 import { lectureConsigneAuto } from '../core/profiles';
 import { icon } from './icon';
+import { html } from '../core/html';
 
 const MARQUE = 'ttsDone'; // dataset flag : élément déjà équipé de son bouton
 
@@ -32,7 +33,7 @@ function fabriquerBouton(texte: string): HTMLButtonElement {
 	btn.className = 'consigne-tts';
 	btn.setAttribute('aria-label', 'Écouter la consigne');
 	btn.title = 'Écouter la consigne';
-	btn.innerHTML = `${icon('speaker')}<span class="consigne-tts-lab">Écouter</span>`;
+	btn.innerHTML = html`${icon('speaker')}<span class="consigne-tts-lab">Écouter</span>`.balisage;
 	btn.addEventListener('click', () => parler(btn, texte));
 	return btn;
 }
@@ -83,7 +84,7 @@ export function bindItemTts(cibles: ItemTtsCible[]): void {
 		btn.className = 'item-tts';
 		btn.setAttribute('aria-label', `Écouter le mot ${texte}`);
 		btn.title = `Écouter le mot ${texte}`;
-		btn.innerHTML = icon('speaker');
+		btn.innerHTML = icon('speaker').balisage;
 		btn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();

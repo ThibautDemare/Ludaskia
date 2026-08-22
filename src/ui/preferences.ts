@@ -11,7 +11,7 @@
    Le thème automatique « Clair-obscur » (`auto`) n'est pas résolu en JS : on pose
    `data-theme="auto"` et c'est `@media (prefers-color-scheme: dark)` (themes.scss)
    qui bascule clair/sombre en direct, sans rechargement ni listener. */
-import { escapeHTML } from '../core/utils';
+
 import { lsGet, lsSet } from '../core/storage';
 import { getXP, niveauDepuisXP } from '../core/progress';
 import { THEMES, themesDebloques, type Theme } from '../core/unlocks';
@@ -23,6 +23,7 @@ import {
 	sansPressionTemporelle,
 } from '../core/profiles';
 import { icon } from './icon';
+import { html, type SafeHtml, VIDE, joindre, drapeau } from '../core/html';
 
 export const THEME_KEY = 'ludaskia_theme';
 export const ANIM_KEY = 'ludaskia_anim';
@@ -67,19 +68,19 @@ const HINT_AUTO_ID = 'theme-hint-auto';
 // verrouillée avec son palier. Le conteneur est un role="radiogroup" (choix
 // exclusif d'un thème) ; chaque option porte aria-checked. Les thèmes de confort
 // sont niv 1 → toujours débloqués, donc jamais de cadenas (réservé aux récompenses).
-function themeSwatch(t: Theme, courant: string, debloques: string[]): string {
+function themeSwatch(t: Theme, courant: string, debloques: string[]): SafeHtml {
 	if (!debloques.includes(t.id)) {
-		return `<span class="theme-opt theme-${t.id} locked" role="radio" aria-checked="false" aria-disabled="true" title="Débloqué au niveau ${t.niveau}">
+		return html`<span class="theme-opt theme-${t.id} locked" role="radio" aria-checked="false" aria-disabled="true" title="Débloqué au niveau ${t.niveau}">
         <span class="theme-dot"></span><span class="theme-lab">${t.label}</span>
         <span class="theme-lock">${icon('lock')} Niv ${t.niveau}</span></span>`;
 	}
 	const actif = t.id === courant;
 	// Thème actif : la coche double l'indice de bordure colorée (pas de signal par
 	// la seule couleur — a11y / daltonisme).
-	const coche = actif ? `<span class="theme-check">${icon('check')}</span>` : '';
+	const coche = actif ? html`<span class="theme-check">${icon('check')}</span>` : VIDE;
 	// Le thème automatique pointe vers sa ligne d'aide (comportement non évident).
 	const describedby = t.id === 'auto' ? ` aria-describedby="${HINT_AUTO_ID}"` : '';
-	return `<button class="theme-opt theme-${t.id}${actif ? ' current' : ''}" role="radio" aria-checked="${actif ? 'true' : 'false'}" data-act="set-theme" data-theme="${t.id}"${describedby} title="${actif ? 'Thème actuel' : 'Choisir ce thème'}">
+	return html`<button class="theme-opt theme-${t.id}${actif ? ' current' : ''}" role="radio" aria-checked="${actif ? 'true' : 'false'}" data-act="set-theme" data-theme="${t.id}"${describedby} title="${actif ? 'Thème actuel' : 'Choisir ce thème'}">
       <span class="theme-dot"></span><span class="theme-lab">${t.label}</span>${coche}</button>`;
 }
 
@@ -98,33 +99,33 @@ export function renderPreferences() {
 	const recompenses = THEMES.filter((t) => !t.confort).map((t) =>
 		themeSwatch(t, courant, debloques),
 	);
-	el.innerHTML = `<h3 class="pref-h">Préférences de ${escapeHTML(p.name)}</h3>
+	el.innerHTML = html`<h3 class="pref-h">Préférences de ${p.name}</h3>
     <div class="pref-block">
       <span class="pref-lab">${icon('palette')} Thème</span>
       <div class="theme-section">
         <span class="theme-section-lab">Apparence</span>
-        <div class="theme-palette" role="radiogroup" aria-label="Choisir un thème d'apparence">${confort.join('')}</div>
+        <div class="theme-palette" role="radiogroup" aria-label="Choisir un thème d'apparence">${joindre(confort)}</div>
         <p class="pref-hint theme-hint" id="${HINT_AUTO_ID}"><strong>Clair-obscur</strong> suit ton appareil : il devient clair ou sombre tout seul.</p>
       </div>
       <div class="theme-section">
         <span class="theme-section-lab">${icon('lock')} Thèmes à débloquer</span>
-        <div class="theme-palette" role="radiogroup" aria-label="Choisir un thème de couleur à débloquer">${recompenses.join('')}</div>
+        <div class="theme-palette" role="radiogroup" aria-label="Choisir un thème de couleur à débloquer">${joindre(recompenses)}</div>
       </div>
     </div>
     <div class="pref-block">
       <span class="pref-lab">${icon('eye')} Mon confort</span>
       <div class="pref-toggles">
         <label class="pref-toggle">
-          <input type="checkbox" id="prefAnim"${animationsReduites() ? ' checked' : ''} />
+          <input type="checkbox" id="prefAnim"${animationsReduites() ? drapeau('checked') : ''} />
           <span>Réduire les animations</span>
         </label>
         <label class="pref-toggle">
-          <input type="checkbox" id="prefConfort"${confortLecture() ? ' checked' : ''} />
+          <input type="checkbox" id="prefConfort"${confortLecture() ? drapeau('checked') : ''} />
           <span>Confort de lecture <small class="pref-hint">(texte plus grand et plus aéré)</small></span>
         </label>
       </div>
       ${amenagementsInfoHTML()}
-    </div>`;
+    </div>`.balisage;
 }
 
 /* Aménagements posés par l'adulte dans l'espace encadrants (#234) : masquer le
@@ -132,7 +133,7 @@ export function renderPreferences() {
    comprend pourquoi son app se comporte ainsi sans pouvoir le désactiver par jeu.
    Rien n'est affiché si aucun aménagement n'est posé. L'écoute « à la demande »
    (bouton « Écouter ») reste, elle, toujours disponible côté enfant. */
-function amenagementsInfoHTML(): string {
+function amenagementsInfoHTML(): SafeHtml {
 	const lignes: string[] = [];
 	if (sansPressionTemporelle())
 		lignes.push('Le minuteur est masqué pendant les sprints (réglé par un adulte).');
@@ -141,8 +142,8 @@ function amenagementsInfoHTML(): string {
 	if (!apparitionsSurprises())
 		lignes.push('Les apparitions surprises sont désactivées (réglé par un adulte).');
 	return lignes.length
-		? `<div class="pref-amenagements">${lignes
-				.map((l) => `<p class="pref-hint">${icon('lock')} ${l}</p>`)
-				.join('')}</div>`
-		: '';
+		? html`<div class="pref-amenagements">${joindre(
+				lignes.map((l) => html`<p class="pref-hint">${icon('lock')} ${l}</p>`),
+			)}</div>`
+		: VIDE;
 }

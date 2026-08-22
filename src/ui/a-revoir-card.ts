@@ -24,7 +24,6 @@
    et `renderARevoir` RENVOIE la leçon retenue pour que l'appelant (render.ts) la passe à
    l'autre carte, qui cède à son tour si celle-ci n'avait pas d'alternative.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
 import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
 import { revoirActives, purgeRevoirSolides, type RevoirEntry } from '../core/encadrant-stats';
 import { choisirARevoir } from '../core/accueil-propositions';
@@ -34,6 +33,7 @@ import { icon } from './icon';
 import { subjectTint, subjectIcon } from './cat-visuals';
 import { startLecon, startOrthoLecon } from './navigation';
 import { dicteeDisponible } from './tts';
+import { html, VIDE, type SafeHtml } from '../core/html';
 
 /* Entrées « à revoir » actives (dispo TTS passée au core pour l'« acquis » d'une dictée). */
 function actives(): RevoirEntry[] {
@@ -50,14 +50,14 @@ function suivante(apresId: string): RevoirEntry | null {
 
 /* Icône + sous-titre d'une entrée : matière/catégorie pour une leçon du catalogue ;
    « Français · Orthographe » (dictée) pour une liste. */
-function visuel(entree: RevoirEntry): { tint: string; ico: string; sousTitre: string } {
+function visuel(entree: RevoirEntry): { tint: string; ico: SafeHtml; sousTitre: string } {
 	if (entree.kind === 'ortho') {
 		const cat = CATEGORIES.find((c) => c.id === ORTHO_CATEGORY_ID);
 		const subject = SUBJECTS.find((s) => s.id === 'francais');
 		return {
 			tint: subjectTint('francais'),
 			ico: icon(cat?.icon ?? subjectIcon('francais')),
-			sousTitre: `${escapeHTML(subject?.label ?? 'Français')} · ${escapeHTML(cat?.label ?? 'Orthographe')}`,
+			sousTitre: `${subject?.label ?? 'Français'} · ${cat?.label ?? 'Orthographe'}`,
 		};
 	}
 	const lesson = entree.lesson;
@@ -66,7 +66,7 @@ function visuel(entree: RevoirEntry): { tint: string; ico: string; sousTitre: st
 	return {
 		tint: subjectTint(lesson.subject),
 		ico: icon(cat?.icon ?? subjectIcon(lesson.subject)),
-		sousTitre: `${escapeHTML(subject?.label ?? '')}${cat ? ' · ' + escapeHTML(cat.label) : ''}`,
+		sousTitre: `${subject?.label ?? ''}${cat ? ' · ' + cat.label : ''}`,
 	};
 }
 
@@ -98,17 +98,17 @@ export function renderARevoir(el: HTMLElement | null, cibleId?: string): string 
 	// « Voir une autre » n'a de sens que s'il reste plus d'une entrée à revoir.
 	const autre =
 		entrees.length > 1
-			? `<button class="lj-autre" type="button" data-ar="autre">Voir une autre leçon</button>`
-			: '';
-	el.innerHTML = `
+			? html`<button class="lj-autre" type="button" data-ar="autre">Voir une autre leçon</button>`
+			: VIDE;
+	el.innerHTML = html`
     <div class="ico" style="background:${tint}" aria-hidden="true">${ico}</div>
     <h2>À revoir</h2>
     <p>
-      <span class="lj-title">${escapeHTML(entree.label)}</span>
+      <span class="lj-title">${entree.label}</span>
       <span class="lj-sub">${sousTitre}</span>
     </p>
     <button type="button" class="go" aria-label="À revoir : on y retourne">On y retourne <span aria-hidden="true">→</span></button>
-    ${autre}`;
+    ${autre}`.balisage;
 
 	if (!el.dataset.wired) {
 		el.addEventListener('click', onARevoirClick);

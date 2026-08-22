@@ -23,11 +23,11 @@
      uiPrompt(opts)  -> Promise<string | null>   (null = annulé)
    + toast(message) : notification non bloquante (info légère), centralisée ici.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
 import { icon, type IconName } from './icon';
 import { dicteeDisponible, dicterConsigne, stopTts } from './tts';
 import { lectureConsigneAuto } from '../core/profiles';
 import { activateModal, FOCUSABLE } from './modal-a11y';
+import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
 
 /* Une seule modale ouverte à la fois : ouvrir par-dessus une autre casserait le
    focus-trap et le scroll-lock. Les appels sont normalement séquentiels (chacun
@@ -56,7 +56,7 @@ interface ModalConfig {
 	emoji?: string; // symbole décoratif en tête (cohérent avec les modales existantes)
 	title: string;
 	message?: string;
-	fieldHTML?: string; // bloc de saisie optionnel (uiPrompt)
+	fieldHTML?: SafeHtml; // bloc de saisie optionnel (uiPrompt)
 	buttons: ModalButton[];
 	ttsText: string; // texte lu à voix haute (« Écouter » / lecture auto)
 	cancelValue: unknown; // valeur résolue par ESC / clic extérieur
@@ -86,10 +86,10 @@ function openModal(cfg: ModalConfig): Promise<unknown> {
 
 	const describedby = cfg.message ? ` aria-describedby="${DESC_ID}"` : '';
 	const listenHTML = dicteeDisponible()
-		? `<button type="button" class="modal-listen" aria-label="Écouter">${icon('speaker')}<span class="modal-listen-lab">Écouter</span></button>`
-		: '';
-	const buttonsHTML = cfg.buttons
-		.map((b) => {
+		? html`<button type="button" class="modal-listen" aria-label="Écouter">${icon('speaker')}<span class="modal-listen-lab">Écouter</span></button>`
+		: VIDE;
+	const buttonsHTML = joindre(
+		cfg.buttons.map((b) => {
 			const cls =
 				b.variant === 'primary'
 					? 'modal-ok'
@@ -97,23 +97,23 @@ function openModal(cfg: ModalConfig): Promise<unknown> {
 						? 'modal-danger'
 						: 'modal-secondary';
 			const ic = b.icon ? `${icon(b.icon)} ` : '';
-			return `<button type="${b.submit ? 'submit' : 'button'}" class="${cls}"${
-				b.initialFocus ? ' data-initial-focus' : ''
-			}>${ic}${escapeHTML(b.label)}</button>`;
-		})
-		.join('');
+			return html`<button type="${b.submit ? 'submit' : 'button'}" class="${cls}"${
+				b.initialFocus ? drapeau('data-initial-focus') : ''
+			}>${ic}${b.label}</button>`;
+		}),
+	);
 
-	overlay.innerHTML = `
+	overlay.innerHTML = html`
 		<div class="modal modal-dialog" role="${cfg.role}" aria-modal="true" aria-labelledby="${TITLE_ID}"${describedby}>
-			${cfg.emoji ? `<div class="modal-emoji" aria-hidden="true">${cfg.emoji}</div>` : ''}
-			<h2 class="modal-title" id="${TITLE_ID}">${escapeHTML(cfg.title)}</h2>
-			${cfg.message ? `<p class="modal-msg" id="${DESC_ID}">${escapeHTML(cfg.message)}</p>` : ''}
+			${cfg.emoji ? html`<div class="modal-emoji" aria-hidden="true">${cfg.emoji}</div>` : ''}
+			<h2 class="modal-title" id="${TITLE_ID}">${cfg.title}</h2>
+			${cfg.message ? html`<p class="modal-msg" id="${DESC_ID}">${cfg.message}</p>` : ''}
 			${listenHTML}
 			<form class="modal-form" novalidate>
 				${cfg.fieldHTML ?? ''}
 				<div class="modal-actions">${buttonsHTML}</div>
 			</form>
-		</div>`;
+		</div>`.balisage;
 	document.body.appendChild(overlay);
 	const modal = overlay.querySelector<HTMLElement>('.modal')!;
 	const form = modal.querySelector<HTMLFormElement>('.modal-form')!;
@@ -280,13 +280,13 @@ export function uiPrompt(opts: UiPromptOptions): Promise<string | null> {
 	const okLabel = opts.okLabel ?? 'Valider';
 	const cancelLabel = opts.cancelLabel ?? 'Annuler';
 	const emptyError = opts.emptyError ?? 'Écris quelque chose.';
-	const fieldHTML = `
+	const fieldHTML = html`
 		<input
 			type="text"
 			id="${INPUT_ID}"
 			class="modal-field"
-			value="${escapeHTML(opts.defaultValue ?? '')}"
-			${opts.placeholder ? `placeholder="${escapeHTML(opts.placeholder)}"` : ''}
+			value="${opts.defaultValue ?? ''}"
+			${opts.placeholder ? attribut('placeholder', opts.placeholder) : ''}
 			autocapitalize="words"
 			autocomplete="off"
 			autocorrect="off"

@@ -18,7 +18,6 @@
    data-attributs de l'élément ; le contournement est éphémère (revenir sur l'accueil
    ré-affiche la vraie leçon du jour).
    ============================================================ */
-import { escapeHTML } from '../core/utils';
 import { SUBJECTS, CATEGORIES, getLessonById, type LessonDef } from '../core/catalog';
 import { sequenceLeconDuJour, leconSuivante } from '../core/lecon-du-jour';
 import { varianteTourFait, TEXTE_ENTRETIEN_TOUR } from '../core/carte-tour-fait';
@@ -28,6 +27,7 @@ import { niveauLecon } from '../core/niveau-actif';
 import { icon } from './icon';
 import { subjectTint, subjectIcon } from './cat-visuals';
 import { startLecon, startRevisionEspacee } from './navigation';
+import { html, VIDE } from '../core/html';
 
 /* Rend la carte dans `el`. `cibleId` (optionnel) force l'affichage d'une leçon
    précise — utilisé par « Voir une autre leçon » pour avancer dans le fil. `eviterId`
@@ -64,11 +64,11 @@ export function renderLeconDuJour(
 		el.dataset.mode = 'revision';
 		delete el.dataset.lesson;
 		const v = varianteTourFait(new Date(Date.now()).getDate());
-		el.innerHTML = `
+		el.innerHTML = html`
       <div class="ico" aria-hidden="true">${icon('star')}</div>
-      <h2>${escapeHTML(v.titre)}</h2>
-      <p>${escapeHTML(v.texte)} ${escapeHTML(TEXTE_ENTRETIEN_TOUR)}</p>
-      <button type="button" class="go" aria-label="Réviser tes leçons">Réviser <span aria-hidden="true">→</span></button>`;
+      <h2>${v.titre}</h2>
+      <p>${v.texte} ${TEXTE_ENTRETIEN_TOUR}</p>
+      <button type="button" class="go" aria-label="Réviser tes leçons">Réviser <span aria-hidden="true">→</span></button>`.balisage;
 	} else {
 		el.dataset.mode = 'lesson';
 		el.dataset.lesson = lesson.id;
@@ -77,21 +77,21 @@ export function renderLeconDuJour(
 		const tint = subjectTint(lesson.subject);
 		// Repli sur l'icône de la matière si la catégorie n'en a pas (pas de pastille vide).
 		const ico = icon(cat?.icon ?? subjectIcon(lesson.subject));
-		const sousTitre = `${escapeHTML(subject?.label ?? '')}${cat ? ' · ' + escapeHTML(cat.label) : ''}`;
+		const sousTitre = `${subject?.label ?? ''}${cat ? ' · ' + cat.label : ''}`;
 		// « Voir une autre leçon » n'a de sens que s'il reste plus d'une leçon à faire.
 		const autre =
 			seq.length > 1
-				? `<button class="lj-autre" type="button" data-lj="autre">Voir une autre leçon</button>`
-				: '';
-		el.innerHTML = `
+				? html`<button class="lj-autre" type="button" data-lj="autre">Voir une autre leçon</button>`
+				: VIDE;
+		el.innerHTML = html`
       <div class="ico" style="background:${tint}" aria-hidden="true">${ico}</div>
       <h2>Ta prochaine leçon</h2>
       <p>
-        <span class="lj-title">${escapeHTML(labelLecon(lesson, niveauLecon(lesson)))}</span>
+        <span class="lj-title">${labelLecon(lesson, niveauLecon(lesson))}</span>
         <span class="lj-sub">${sousTitre}</span>
       </p>
       <button type="button" class="go" aria-label="Ta prochaine leçon : c'est parti">C'est parti <span aria-hidden="true">→</span></button>
-      ${autre}`;
+      ${autre}`.balisage;
 	}
 
 	// Listener posé UNE fois sur l'élément persistant (pas sur le contenu re-rendu).

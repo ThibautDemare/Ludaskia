@@ -2,8 +2,8 @@
    Items {text, answer}  (@ = emplacement du champ de réponse)
    et fabrique de champs / grilles / fiches.
    ============================================================ */
-import { escapeHTML, normalizeText } from './utils';
-import { attribut, brut, html, joindre, VIDE, type SafeHtml } from './html';
+import { normalizeText } from './utils';
+import { attribut, brut, html, joindre, VIDE, type SafeHtml, drapeau } from './html';
 import { ttsAttr, texteParle } from './tts-text';
 import { stackFractions } from './fraction-text';
 import { wrapGrandsNombres, parseNombreFr } from './nombres';
@@ -65,7 +65,9 @@ export const estItemQcm = (it: Item): boolean => !!(it.choices && it.choices.len
    affichent la figure de la même façon — appelée par renderItem et par les
    runners « une question à la fois ». Le fragment SVG n'est PAS échappé. */
 export function figureBlock(figure?: SafeHtml): SafeHtml {
-	return figure ? html`<div class="figure">${figure}</div>` : VIDE;
+	// On teste le BALISAGE : un fragment vide est un objet, donc truthy — sans ça une
+	// `figure` vide produirait un conteneur vide au lieu de rien.
+	return figure?.balisage ? html`<div class="figure">${figure}</div>` : VIDE;
 }
 
 /* Énoncé d'un item, échappé puis enrichi : GRAS léger via `**…**` (#199 : question
@@ -353,7 +355,7 @@ function qcmCheckboxHTML(it: Item, ctx: RenderContext): SafeHtml {
    donc plus rien ne se glisse au milieu sans être passé par le gabarit. Le
    remplacement est une FONCTION, pour que les `$&` / `$1` d'un champ ne soient pas
    réinterprétés par `String.replace`. */
-const poserAuTrou = (texte: SafeHtml, motif: string | RegExp, champ: SafeHtml): SafeHtml =>
+export const poserAuTrou = (texte: SafeHtml, motif: string | RegExp, champ: SafeHtml): SafeHtml =>
 	brut(texte.balisage.replace(motif, () => champ.balisage));
 
 export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
@@ -433,7 +435,7 @@ export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
 	const valeurNum = parseNombreFr(String(it.answer));
 	const grand =
 		it.kind !== 'text' && Number.isFinite(valeurNum) && Math.abs(valeurNum) >= 10000
-			? ' ans-grand'
+			? drapeau('ans-grand')
 			: '';
 	// Réponse = signe de comparaison (#380) : champ dédié `.ans-signe`, SANS clavier
 	// virtuel (`inputmode="none"` — le pavé de boutons le remplace au doigt ; la frappe
@@ -463,11 +465,7 @@ export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
 				: html`<input class="ans${grand} ${extra}" id="${id}"${ansAttr}${attendueAttr}${lessonAttr(ctx)}${ariaChamp(it)} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
-	const place = texte.balisage.includes('@')
-		? texte
-		: ctx.printMode
-			? html`${texte} @`
-			: texte;
+	const place = texte.balisage.includes('@') ? texte : ctx.printMode ? html`${texte} @` : texte;
 	const pave = signe && !ctx.printMode && !ctx.corrigeMode ? paveSignesHTML(id) : VIDE;
 	return html`${figureBlock(it.figure)}${poserAuTrou(place, '@', field)}${pave}`;
 }

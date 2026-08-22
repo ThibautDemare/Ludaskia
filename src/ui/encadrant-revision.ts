@@ -10,7 +10,6 @@
    Les entrées ACQUISES restent affichées, marquées d'un badge. Les calculs vivent
    dans core/encadrant-stats (revisionProfil) ; ici, le rendu et la bascule.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
 import { icon } from './icon';
 import type { Profile } from '../core/profiles';
 import {
@@ -24,6 +23,7 @@ import {
 import { LEVEL_LABEL } from '../core/levels';
 import { renderEspace, container } from './encadrant-commun';
 import { segmentHTML } from './segment';
+import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 
 /* ---------- État de la section (module) ---------- */
 type VueRevision = 'categorie' | 'urgence' | 'palier';
@@ -46,41 +46,39 @@ interface RenduEntree {
 
 /* Une entrée de la file : libellé (+ catégorie en vue à plat) et, à droite, son état
    dans le flux — badge « acquis », ou palier courant + échéance relative. */
-function entreeHTML(e: EntreeRevision, o: RenduEntree = {}): string {
+function entreeHTML(e: EntreeRevision, o: RenduEntree = {}): SafeHtml {
 	// En vue « Par palier », l'en-tête d'étage porte déjà le palier (et le mot « acquis ») :
 	// le répéter sur chaque ligne du même étage n'ajouterait rien et alourdirait la liste —
 	// même principe que la catégorie, jamais répétée sous son propre en-tête. Reste
 	// l'échéance, seule information qui varie d'une ligne à l'autre à palier égal. Un état
 	// vide n'émet pas de conteneur (une coquille à styler pour rien).
-	const bouts: string[] = [];
+	const bouts: SafeHtml[] = [];
 	if (!o.palierDejaAffiche) {
 		bouts.push(
 			e.acquis
-				? `<span class="enc-rev-badge">${icon('check-circle')} acquis</span>`
-				: `<span class="enc-rev-palier">Palier : ${escapeHTML(e.palierLabel)}</span>`,
+				? html`<span class="enc-rev-badge">${icon('check-circle')} acquis</span>`
+				: html`<span class="enc-rev-palier">Palier : ${e.palierLabel}</span>`,
 		);
 	}
 	if (!e.acquis) {
-		bouts.push(
-			`<span class="enc-rev-echeance${e.du ? ' du' : ''}">${escapeHTML(e.echeance)}</span>`,
-		);
+		bouts.push(html`<span class="enc-rev-echeance${e.du ? ' du' : ''}">${e.echeance}</span>`);
 	}
-	const etat = bouts.length ? `<span class="enc-rev-etat">${bouts.join('')}</span>` : '';
+	const etat = bouts.length ? html`<span class="enc-rev-etat">${bouts}</span>` : VIDE;
 	// La catégorie n'est répétée qu'en vue à plat (en vue groupée, c'est l'en-tête).
-	const cat = o.catLabel ? `<span class="enc-rev-cat">${escapeHTML(o.catLabel)}</span>` : '';
+	const cat = o.catLabel ? html`<span class="enc-rev-cat">${o.catLabel}</span>` : VIDE;
 	// Notion entretenue depuis le niveau inférieur (#232) : on la NOMME, côté adulte
 	// seulement. Sans ça, une leçon multi-niveaux apparaîtrait deux fois sous le même
 	// libellé dans la même catégorie, et le parent ne saurait pas ce qui est entretenu.
 	// Réutilise la pastille de catégorie (même rôle visuel, aucun style à ajouter) ; le
 	// préfixe non visuel évite un « CE2 » énigmatique au lecteur d'écran.
 	const niveau = e.niveauOrigine
-		? `<span class="enc-rev-cat"><span class="sr-only">Niveau d'origine : </span>${escapeHTML(LEVEL_LABEL[e.niveauOrigine])}</span>`
-		: '';
+		? html`<span class="enc-rev-cat"><span class="sr-only">Niveau d'origine : </span>${LEVEL_LABEL[e.niveauOrigine]}</span>`
+		: VIDE;
 	// Nomme la nature « mot » pour les lecteurs d'écran (un mot isolé serait ambigu).
 	const natureSr = e.nature === 'mot' ? '<span class="sr-only">Mot : </span>' : '';
-	return `<li class="enc-rev-item${e.acquis ? ' acquis' : ''}">
+	return html`<li class="enc-rev-item${e.acquis ? ' acquis' : ''}">
       <span class="enc-rev-main">
-        <span class="enc-rev-lab">${natureSr}${escapeHTML(e.label)}</span>
+        <span class="enc-rev-lab">${natureSr}${e.label}</span>
         ${niveau}${cat}
       </span>
       ${etat}
@@ -101,19 +99,19 @@ function resumeGroupe(g: GroupeRevision): string {
 
 /* Vue « Par catégorie » : un <details> dépliable par catégorie (clavier natif),
    réutilise le chrome de « Notions par catégorie » (.enc-cat-d / .enc-cat-sum). */
-function vueCategorieHTML(recap: RecapRevision): string {
-	const cats = recap.groupes
-		.map(
-			(g) => `<details class="enc-cat-d enc-rev-d">
+function vueCategorieHTML(recap: RecapRevision): SafeHtml {
+	const cats = joindre(
+		recap.groupes.map(
+			(g) => html`<details class="enc-cat-d enc-rev-d">
         <summary class="enc-cat-sum">
-          <span class="enc-cat-lab">${escapeHTML(g.label)}</span>
+          <span class="enc-cat-lab">${g.label}</span>
           <span class="enc-cat-counts">${resumeGroupe(g)}</span>
         </summary>
-        <ul class="enc-detail enc-rev-list">${g.entrees.map((e) => entreeHTML(e)).join('')}</ul>
+        <ul class="enc-detail enc-rev-list">${joindre(g.entrees.map((e) => entreeHTML(e)))}</ul>
       </details>`,
-		)
-		.join('');
-	return `<div class="enc-cats">${cats}</div>`;
+		),
+	);
+	return html`<div class="enc-cats">${cats}</div>`;
 }
 
 /* Libellé de catégorie par id : les vues à plat n'ont plus d'en-tête de groupe, elles
@@ -138,10 +136,10 @@ function labelsCategories(recap: RecapRevision): Record<string, string> {
    peut faire plusieurs centaines de lignes (profil réel observé à 247), et le <summary>
    est alors hors écran depuis longtemps quand on finit de lire. Il n'existe que déplié
    (il est dans le <details>), donc il ne parasite pas l'état fermé. */
-function repliHTML(cls: string, clsSum: string, texte: string, liste: string) {
-	return `<details class="${cls}">
+function repliHTML(cls: string, clsSum: string, texte: string, liste: SafeHtml) {
+	return html`<details class="${cls}">
         <summary class="${clsSum}">
-          <span class="enc-repli-plus">${escapeHTML(texte)}</span>
+          <span class="enc-repli-plus">${texte}</span>
           <span class="enc-repli-moins">Voir moins</span>
         </summary>
         ${liste}
@@ -169,16 +167,16 @@ function texteRepli(reste: EntreeRevision[]): string {
    par mot d'orthographe en rotation), et la liste devenait un mur au bout de quelques
    semaines d'usage. Le tri place déjà les plus en retard en tête, donc le plafond ne coupe
    que la queue la moins urgente. */
-function vueUrgenceHTML(recap: RecapRevision): string {
+function vueUrgenceHTML(recap: RecapRevision): SafeHtml {
 	const labels = labelsCategories(recap);
 	const ligne = (e: EntreeRevision) => entreeHTML(e, { catLabel: labels[e.categoryId] });
 	const liste = (es: EntreeRevision[]) =>
-		`<ul class="enc-rev-list enc-rev-flat">${es.map(ligne).join('')}</ul>`;
+		html`<ul class="enc-rev-list enc-rev-flat">${joindre(es.map(ligne))}</ul>`;
 	const reste = recap.parUrgence.slice(MAX_URGENCE);
 	const repli = reste.length
 		? repliHTML('enc-rev-plus', 'enc-rev-plus-sum', texteRepli(reste), liste(reste))
 		: '';
-	return `${liste(recap.parUrgence.slice(0, MAX_URGENCE))}${repli}`;
+	return html`${liste(recap.parUrgence.slice(0, MAX_URGENCE))}${repli}`;
 }
 
 /* Résumé chiffré d'un étage. Même unité que la synthèse du bloc (« entrée »), qui couvre
@@ -203,19 +201,19 @@ function resumeEtage(p: PalierRevision): string {
    entier cacherait justement ce compteur ; plafonner la liste ne cache qu'un second niveau
    de détail. Les entrées étant triées par urgence, les lignes visibles sont les plus
    pressantes de l'étage. */
-function vuePalierHTML(recap: RecapRevision): string {
+function vuePalierHTML(recap: RecapRevision): SafeHtml {
 	const labels = labelsCategories(recap);
-	return recap.parPalier.map((p) => etageHTML(p, labels)).join('');
+	return joindre(recap.parPalier.map((p) => etageHTML(p, labels)));
 }
 
 /* Un étage : son en-tête, ses lignes visibles, et le reliquat replié. Fonction nommée et non
    un callback dans le `.map()` ci-dessus, comme tous les autres rendus d'item du fichier et
    des blocs voisins (`groupeTravailHTML`, `groupeHTML` des erreurs). */
-function etageHTML(p: PalierRevision, labels: Record<string, string>): string {
+function etageHTML(p: PalierRevision, labels: Record<string, string>): SafeHtml {
 	const liste = (es: EntreeRevision[]) =>
-		`<ul class="enc-rev-list enc-rev-etage-l">${es
-			.map((e) => entreeHTML(e, { catLabel: labels[e.categoryId], palierDejaAffiche: true }))
-			.join('')}</ul>`;
+		html`<ul class="enc-rev-list enc-rev-etage-l">${joindre(
+			es.map((e) => entreeHTML(e, { catLabel: labels[e.categoryId], palierDejaAffiche: true })),
+		)}</ul>`;
 	const reste = p.entrees.slice(MAX_PAR_ETAGE);
 	const repli = reste.length
 		? repliHTML('enc-rev-etage-plus', 'enc-rev-etage-plus-sum', texteRepli(reste), liste(reste))
@@ -227,9 +225,9 @@ function etageHTML(p: PalierRevision, labels: Record<string, string>): string {
 	// Classe dédiée à l'étage sommital : c'est la seule frontière de l'escalier qui
 	// change de couleur (cf. encadrant.scss), l'acquis n'étant pas un cran de plus.
 	const acquis = p.acquis ? ' enc-rev-etage--acquis' : '';
-	return `<section class="enc-rev-etage${acquis}" aria-labelledby="${idT}">
+	return html`<section class="enc-rev-etage${acquis}" aria-labelledby="${idT}">
         <div class="enc-rev-etage-t">
-          <h3 class="enc-rev-etage-lab" id="${idT}">${p.acquis ? 'Acquis' : `Palier : ${escapeHTML(p.label)}`}</h3>
+          <h3 class="enc-rev-etage-lab" id="${idT}">${p.acquis ? 'Acquis' : `Palier : ${p.label}`}</h3>
           <span class="enc-rev-etage-n">${resumeEtage(p)}</span>
         </div>
         ${liste(p.entrees.slice(0, MAX_PAR_ETAGE))}
@@ -238,14 +236,14 @@ function etageHTML(p: PalierRevision, labels: Record<string, string>): string {
 }
 
 /* ---------- Bloc principal (composé par l'orchestrateur, après le récap) ---------- */
-export function revisionHTML(consulte: Profile, now: number): string {
+export function revisionHTML(consulte: Profile, now: number): SafeHtml {
 	const recap = revisionProfil(consulte, now);
-	const titre = `<h2 class="enc-h2">${icon('clock-clockwise')} Révisions de ${escapeHTML(consulte.name)}</h2>`;
+	const titre = html`<h2 class="enc-h2">${icon('clock-clockwise')} Révisions de ${consulte.name}</h2>`;
 
 	if (recap.total === 0) {
-		return `<section class="enc-section enc-rev-section">
+		return html`<section class="enc-section enc-rev-section">
       ${titre}
-      <p class="enc-rev-frame">Le mode Révision propose de revoir, à intervalles de plus en plus espacés, ce que ${escapeHTML(consulte.name)} a déjà travaillé.</p>
+      <p class="enc-rev-frame">Le mode Révision propose de revoir, à intervalles de plus en plus espacés, ce que ${consulte.name} a déjà travaillé.</p>
       <p class="enc-hint">Aucune révision n'est programmée pour l'instant : les révisions apparaîtront après les premières leçons et dictées.</p>
     </section>`;
 	}
@@ -283,9 +281,9 @@ export function revisionHTML(consulte: Profile, now: number): string {
 				? vuePalierHTML(recap)
 				: vueCategorieHTML(recap);
 
-	return `<section class="enc-section enc-rev-section">
+	return html`<section class="enc-section enc-rev-section">
       ${titre}
-      <p class="enc-rev-frame">Le mode Révision propose de revoir, à intervalles de plus en plus espacés, ce que ${escapeHTML(consulte.name)} a déjà travaillé. Chaque entrée gravit cet escalier : ${escapeHTML(escalier)} ; plus le palier est haut, mieux la notion est ancrée.</p>
+      <p class="enc-rev-frame">Le mode Révision propose de revoir, à intervalles de plus en plus espacés, ce que ${consulte.name} a déjà travaillé. Chaque entrée gravit cet escalier : ${escalier} ; plus le palier est haut, mieux la notion est ancrée.</p>
       <div class="enc-block">
         <p class="enc-hint">${synthese}</p>
         ${bascule}

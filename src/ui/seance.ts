@@ -62,6 +62,7 @@ import { showCelebration } from './effects';
 import { contenuRecap, type NotionRecap } from '../core/recap-notions';
 import { notionLecon, notionsNotees } from './recap-seance';
 import { dicteeDisponible } from './tts';
+import { html, type SafeHtml, joindre, drapeau } from '../core/html';
 
 /* ---------- Cibles d'une étape « dictée » (#463) ---------- */
 /* Ids des dictées actuellement proposables au profil actif (prédéfinies du niveau +
@@ -104,7 +105,7 @@ export function vueProgramme(): VueSeance | null {
 /* `sous` : repère facultatif affiché SOUS le titre quand celui-ci nomme une cible précise
    (l'enfant voit ce qu'il va faire ET de quoi il s'agit) ; il cède la place au repère
    « combien de fois » quand l'étape est demandée plusieurs fois. */
-function etapeVisuel(v: VueEtape): { ico: string; titre: string; sous?: string } {
+function etapeVisuel(v: VueEtape): { ico: SafeHtml; titre: string; sous?: string } {
 	const e = v.etape;
 	switch (e.kind) {
 		case 'sprint':
@@ -257,39 +258,39 @@ function lancerHasard(): void {
 }
 
 /* ---------- Rendu des morceaux ---------- */
-function pastillesHTML(total: number, fait: number): string {
+function pastillesHTML(total: number, fait: number): SafeHtml {
 	let s = '';
 	for (let i = 0; i < total; i++) {
-		s += `<span class="programme-pastille${i < fait ? ' faite' : ''}" aria-hidden="true">${
+		s += html`<span class="programme-pastille${i < fait ? drapeau('faite') : ''}" aria-hidden="true">${
 			i < fait ? icon('check') : ''
 		}</span>`;
 	}
 	const lbl = `${fait} activité${fait > 1 ? 's' : ''} sur ${total} faite${fait > 1 ? 's' : ''}`;
-	return `<div class="programme-pastilles" role="img" aria-label="${lbl}">${s}</div>`;
+	return html`<div class="programme-pastilles" role="img" aria-label="${lbl}">${s}</div>`;
 }
 
-function tuileHTML(v: VueEtape): string {
+function tuileHTML(v: VueEtape): SafeHtml {
 	const { ico, titre, sous } = etapeVisuel(v);
 	const l = lancable(v);
 	const repere = repereCount(v) || sous || '';
 	if (!l.ok) {
 		// Div non focusable (pas un <button disabled> : on veut garder la RAISON dans le
 		// flux de lecture). Pas d'aria-disabled — inerte sur un rôle générique (avis a11y).
-		return `<div class="programme-tuile programme-tuile--inactive">
+		return html`<div class="programme-tuile programme-tuile--inactive">
       <span class="programme-tuile-ico" aria-hidden="true">${ico}</span>
       <span class="programme-tuile-txt">
-        <span class="programme-tuile-titre">${escapeHTML(titre)}</span>
-        <span class="programme-tuile-hint">${escapeHTML(l.raison ?? '')}</span>
+        <span class="programme-tuile-titre">${titre}</span>
+        <span class="programme-tuile-hint">${l.raison ?? ''}</span>
       </span>
     </div>`;
 	}
-	return `<button type="button" class="programme-tuile" data-act="lancer" data-etape="${escapeHTML(
-		v.etape.id,
-	)}">
+	return html`<button type="button" class="programme-tuile" data-act="lancer" data-etape="${
+		v.etape.id
+	}">
     <span class="programme-tuile-ico" aria-hidden="true">${ico}</span>
     <span class="programme-tuile-txt">
-      <span class="programme-tuile-titre">${escapeHTML(titre)}</span>
-      ${repere ? `<span class="programme-tuile-hint">${escapeHTML(repere)}</span>` : ''}
+      <span class="programme-tuile-titre">${titre}</span>
+      ${repere ? html`<span class="programme-tuile-hint">${repere}</span>` : ''}
     </span>
     <span class="programme-tuile-go" aria-hidden="true">→</span>
   </button>`;
@@ -361,7 +362,7 @@ export function renderSeance(el: HTMLElement): void {
 	}
 	const pastilles = pastillesHTML(vue.totalRequis, vue.totalFait);
 	if (vue.complete) {
-		el.innerHTML = `
+		el.innerHTML = html`
       <button type="button" class="backlink-top" data-act="accueil">← Retour à l'accueil</button>
       <h1 class="big">Ton programme du jour</h1>
       <div class="programme-fini">
@@ -369,7 +370,7 @@ export function renderSeance(el: HTMLElement): void {
         <p class="programme-fini-txt">Bravo, tu as fait tout ton programme du jour !</p>
         ${pastilles}
       </div>
-      <ul class="programme-recap">${recapListeHTML(vue.etapes)}</ul>`;
+      <ul class="programme-recap">${recapListeHTML(vue.etapes)}</ul>`.balisage;
 		wire(el);
 		return;
 	}
@@ -380,7 +381,7 @@ export function renderSeance(el: HTMLElement): void {
 				}. Tu commences par laquelle ?`
 			: "Continue quand tu veux, dans l'ordre que tu préfères.";
 	const faites = vue.etapes.filter((v) => v.epuise);
-	el.innerHTML = `
+	el.innerHTML = html`
     <button type="button" class="backlink-top" data-act="accueil">← Retour à l'accueil</button>
     <h1 class="big">Ton programme du jour</h1>
     <p class="tagline">${intro}</p>
@@ -388,26 +389,26 @@ export function renderSeance(el: HTMLElement): void {
       ${pastilles}
       ${
 				vue.totalFait > 0
-					? `<p class="programme-progress-txt">Tu as fait ${vue.totalFait} activité${
+					? html`<p class="programme-progress-txt">Tu as fait ${vue.totalFait} activité${
 							vue.totalFait > 1 ? 's' : ''
 						} sur ${vue.totalRequis}.</p>`
 					: ''
 			}
     </div>
-    <div class="programme-tuiles">${vue.restantes.map(tuileHTML).join('')}</div>
+    <div class="programme-tuiles">${joindre(vue.restantes.map(tuileHTML))}</div>
     ${
 			vue.restantes.filter((v) => lancable(v).ok).length > 1
-				? `<button type="button" class="programme-hasard" data-act="hasard"><span aria-hidden="true">🎲</span> Choisis pour moi</button>`
+				? html`<button type="button" class="programme-hasard" data-act="hasard"><span aria-hidden="true">🎲</span> Choisis pour moi</button>`
 				: ''
 		}
     ${
 			faites.length
-				? `<div class="programme-deja">
+				? html`<div class="programme-deja">
         <p class="programme-deja-titre">Déjà fait aujourd'hui</p>
         <ul class="programme-recap">${recapListeHTML(faites)}</ul>
       </div>`
 				: ''
-		}`;
+		}`.balisage;
 	wire(el);
 }
 
@@ -467,17 +468,17 @@ export function renderProgrammeCard(el: HTMLElement | null): void {
 		// avis designer-ux-enfant, arbitrage du mainteneur). L'emoji festif est inline dans
 		// le titre, pas dans la pastille d'icône (système monochrome commun aux six cartes).
 		el.classList.add('programme-card--fini', 'card-inactive');
-		el.innerHTML = `
+		el.innerHTML = html`
       <div class="ico" aria-hidden="true">${icon('check-circle')}</div>
       <h2>Ton programme du jour</h2>
       <p>
         <span class="lj-title">Terminé, bravo ! <span aria-hidden="true">🎉</span></span>
         <span class="lj-sub">Tu as fait tout ton programme.</span>
-      </p>`;
+      </p>`.balisage;
 	} else {
 		el.classList.remove('programme-card--fini', 'card-inactive');
 		const reste = vue.totalRequis - vue.totalFait;
-		el.innerHTML = `
+		el.innerHTML = html`
       <div class="ico" aria-hidden="true">${icon('list')}</div>
       <h2>Ton programme du jour</h2>
       <p>
@@ -486,7 +487,7 @@ export function renderProgrammeCard(el: HTMLElement | null): void {
 					vue.totalFait > 1 ? 's' : ''
 				}</span>
       </p>
-      <button type="button" class="go" aria-label="Ton programme du jour : on y va">On y va <span aria-hidden="true">→</span></button>`;
+      <button type="button" class="go" aria-label="Ton programme du jour : on y va">On y va <span aria-hidden="true">→</span></button>`.balisage;
 	}
 	if (!el.dataset.wired) {
 		el.addEventListener('click', () => {

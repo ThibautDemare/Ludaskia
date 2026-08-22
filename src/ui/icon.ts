@@ -18,7 +18,6 @@
    (type IconName) vivent dans core/icon-names.ts (module pur).
    ============================================================ */
 import type { IconName } from '../core/icon-names';
-import { escapeHTML } from '../core/utils';
 
 export type { IconName };
 
@@ -80,6 +79,7 @@ import quantity1 from '@phosphor-icons/core/assets/bold/cell-signal-low-bold.svg
 import quantity2 from '@phosphor-icons/core/assets/bold/cell-signal-medium-bold.svg?raw';
 import quantity3 from '@phosphor-icons/core/assets/bold/cell-signal-high-bold.svg?raw';
 import quantityAll from '@phosphor-icons/core/assets/bold/stack-bold.svg?raw';
+import { html, brut, type SafeHtml, attribut } from '../core/html';
 
 const SVGS: Record<IconName, string> = {
 	check,
@@ -146,18 +146,23 @@ export interface IconOptions {
 }
 
 /** Renvoie le markup SVG inline d'une icône, intégrable dans un `innerHTML`. */
-export function icon(name: IconName, opts: IconOptions = {}): string {
+export function icon(name: IconName, opts: IconOptions = {}): SafeHtml {
+	// Fragment d'ATTRIBUTS : construit par `attribut`/`drapeau`, qui posent eux-mêmes
+	// la position d'insertion (le gabarit, lui, commencerait en contexte texte).
 	const a11y = opts.label
-		? `role="img" aria-label="${escapeHTML(opts.label)}"`
-		: 'aria-hidden="true"';
+		? html`${attribut('role', 'img')}${attribut('aria-label', opts.label)}`
+		: attribut('aria-hidden', 'true');
 	const cls = opts.cls ? `ph-icon ${opts.cls}` : 'ph-icon';
 	// On n'injecte que la classe, l'accessibilité et focusable=false : le reste
-	// (viewBox, fill="currentColor") est déjà dans le SVG source.
-	return SVGS[name].replace('<svg ', `<svg class="${cls}" focusable="false" ${a11y} `);
+	// (viewBox, fill="currentColor") est déjà dans le SVG source. SVGS est une table de
+	// constantes du module (aucune donnée d'exécution), d'où le `brut` sur le tout.
+	return brut(
+		SVGS[name].replace('<svg ', html`<svg class="${cls}" focusable="false"${a11y} `.balisage),
+	);
 }
 
 /** Variante tolérante pour une valeur d'origine DONNÉE (ModeOption.icon) :
  *  rend l'icône si le nom est connu, sinon une icône de repli (`play`). */
-export function iconOr(name: string | undefined, opts: IconOptions = {}): string {
+export function iconOr(name: string | undefined, opts: IconOptions = {}): SafeHtml {
 	return name && name in SVGS ? icon(name as IconName, opts) : icon('play', opts);
 }

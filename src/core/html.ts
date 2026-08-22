@@ -274,6 +274,11 @@ function refuserSchema(valeur: string): void {
 
 function rendre(valeur: ValeurHtml, position: Position): string {
 	if (valeur === false || valeur === null || valeur === undefined) return '';
+	// La chaîne VIDE ne peut rien injecter, quelle que soit la position — y compris
+	// entre deux attributs, où le gabarit refuse pourtant les chaînes. C'est la branche
+	// « rien à ajouter » du motif `${condition ? drapeau('checked') : ''}`, et la
+	// refuser n'apporterait aucune sûreté : elle ferait seulement du bruit.
+	if (valeur === '') return '';
 	if (Array.isArray(valeur)) return valeur.map((v) => rendre(v, position)).join('');
 	// Déjà un fragment : construit ici (ou déclaré via brut), on ne le réécrit PAS.
 	// C'est ce qui évite le DOUBLE ÉCHAPPEMENT — un `<strong>` réaffiché en clair à

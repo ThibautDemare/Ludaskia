@@ -19,7 +19,7 @@
      - `encadrant-profils`   : liste, gestion, sauvegarde.
    La logique de données vit dans core/ (encadrant-stats.ts, encadrant-lock.ts).
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+
 import { listProfiles, activeProfile, type Profile } from '../core/profiles';
 import { progressionProfil, purgeRevoirSolides, type RecapProfil } from '../core/encadrant-stats';
 import { icon } from './icon';
@@ -64,6 +64,7 @@ import {
 import { profilsHTML, sauvegardeHTML, profilsClick } from './encadrant-profils';
 import { selecteurClick, selecteurInput, selecteurToggle } from './selecteur-lecon';
 import { segmentKeydown } from './segment';
+import { html, type SafeHtml, joindre, drapeau } from '../core/html';
 
 /* Onglets de l'espace (#459), dans l'ordre de fréquence d'usage décroissante :
    observer (Suivi) → préparer (Programme) → configurer (Réglages) → gérer (Profils). */
@@ -128,11 +129,11 @@ function renderEspace(): void {
 	const consulte = profiles.find((p) => p.uuid === consulteUuid()) ?? actif;
 	if (!consulte || !actif) return;
 	const tab = activeTab();
-	el.innerHTML = `
+	el.innerHTML = html`
     <div class="enc-topbar">
       <button type="button" class="enc-back" data-act="retour">
-        <span aria-hidden="true">←</span> Retour à ${escapeHTML(actif.name)}
-        <span class="enc-back-emoji" aria-hidden="true">${escapeHTML(actif.emoji)}</span>
+        <span aria-hidden="true">←</span> Retour à ${actif.name}
+        <span class="enc-back-emoji" aria-hidden="true">${actif.emoji}</span>
       </button>
     </div>
     <h1 class="enc-title">Espace encadrants</h1>
@@ -142,7 +143,7 @@ function renderEspace(): void {
     </p>
     ${contexteHTML(profiles, consulte, actif)}
     ${tabsNavHTML(tab)}
-    <div class="enc-tabpanel" id="encTabPanel">${tabPanelHTML(tab, consulte, actif, profiles)}</div>`;
+    <div class="enc-tabpanel" id="encTabPanel">${tabPanelHTML(tab, consulte, actif, profiles)}</div>`.balisage;
 	// Sections dont le rendu demande une finition JS sur le DOM fraîchement posé
 	// (état « indéterminé » des cases parentes, #478) : impossible en HTML seul.
 	if (tab === 'reglages') reglagesApresRendu();
@@ -155,23 +156,23 @@ function renderEspace(): void {
    commutateur PRINCIPAL (transverse aux onglets) ; les cartes de l'onglet Profils gardent
    leur bouton « Voir le suivi » comme affordance secondaire dans la liste de gestion
    (double affordance assumée en v1, cf. #459). */
-function contexteHTML(profiles: Profile[], consulte: Profile, actif: Profile): string {
+function contexteHTML(profiles: Profile[], consulte: Profile, actif: Profile): SafeHtml {
 	const nomActif = (p: Profile) => (p.uuid === actif.uuid ? ' (joue en ce moment)' : '');
 	if (profiles.length <= 1) {
-		return `<div class="enc-context">
+		return html`<div class="enc-context">
       <span class="enc-context-lab">Vous consultez :</span>
-      <span class="enc-context-solo"><span aria-hidden="true">${escapeHTML(consulte.emoji)}</span> ${escapeHTML(consulte.name)}</span>
+      <span class="enc-context-solo"><span aria-hidden="true">${consulte.emoji}</span> ${consulte.name}</span>
     </div>`;
 	}
-	const opts = profiles
-		.map(
+	const opts = joindre(
+		profiles.map(
 			(p) =>
-				`<option value="${escapeHTML(p.uuid)}"${p.uuid === consulte.uuid ? ' selected' : ''}>${escapeHTML(
-					p.emoji,
-				)} ${escapeHTML(p.name)}${nomActif(p)}</option>`,
-		)
-		.join('');
-	return `<div class="enc-context">
+				html`<option value="${p.uuid}"${p.uuid === consulte.uuid ? drapeau('selected') : ''}>${
+					p.emoji
+				} ${p.name}${nomActif(p)}</option>`,
+		),
+	);
+	return html`<div class="enc-context">
       <label class="enc-context-lab" for="encConsulteSel">Vous consultez :</label>
       <select id="encConsulteSel" class="enc-select-niveau enc-context-sel" data-act="set-consulte">${opts}</select>
     </div>`;
@@ -181,18 +182,25 @@ function contexteHTML(profiles: Profile[], consulte: Profile, actif: Profile): s
    distincte du composant segment interne (`.enc-act-modes`) — cf. encadrant.scss :
    ici l'actif est souligné, pas rempli. `<nav>` + `aria-current` (et non un widget
    tablist, dont le contrat clavier flèches serait plus lourd pour un gain nul). */
-function tabsNavHTML(active: EncTab): string {
-	const btns = TABS.map(
-		(t) =>
-			`<button type="button" class="enc-tab${t.id === active ? ' active' : ''}" data-act="enc-tab" data-tab="${t.id}"${
-				t.id === active ? ' aria-current="page"' : ''
-			}>${icon(t.icon)}<span class="enc-tab-lab">${t.label}</span></button>`,
-	).join('');
-	return `<nav class="enc-tabs" aria-label="Sections de l'espace encadrant">${btns}</nav>`;
+function tabsNavHTML(active: EncTab): SafeHtml {
+	const btns = joindre(
+		TABS.map(
+			(t) =>
+				html`<button type="button" class="enc-tab${t.id === active ? ' active' : ''}" data-act="enc-tab" data-tab="${t.id}"${
+					t.id === active ? ' aria-current="page"' : ''
+				}>${icon(t.icon)}<span class="enc-tab-lab">${t.label}</span></button>`,
+		),
+	);
+	return html`<nav class="enc-tabs" aria-label="Sections de l'espace encadrant">${btns}</nav>`;
 }
 
 /* Contenu de l'onglet actif. `recap` n'est calculé que pour les onglets qui l'utilisent. */
-function tabPanelHTML(tab: EncTab, consulte: Profile, actif: Profile, profiles: Profile[]): string {
+function tabPanelHTML(
+	tab: EncTab,
+	consulte: Profile,
+	actif: Profile,
+	profiles: Profile[],
+): SafeHtml {
 	// Nettoyage DUR de la file « à revoir » AVANT toute lecture (#465) : `progressionProfil`
 	// et les lignes de détail du Suivi portent l'état « épinglée », qui serait périmé d'un
 	// rendu si la purge n'intervenait qu'au moment de rendre « À revoir ensemble ».
@@ -203,16 +211,16 @@ function tabPanelHTML(tab: EncTab, consulte: Profile, actif: Profile, profiles: 
 	switch (tab) {
 		case 'suivi': {
 			const recap: RecapProfil = progressionProfil(consulte, Date.now());
-			return `${recapHTML(recap, consulte)}${revisionHTML(consulte, Date.now())}`;
+			return html`${recapHTML(recap, consulte)}${revisionHTML(consulte, Date.now())}`;
 		}
 		case 'programme': {
 			const recap: RecapProfil = progressionProfil(consulte, Date.now());
-			return `${seanceHTML(consulte)}${aRevoirHTML(recap, consulte)}${dicteesProposeesHTML(consulte)}`;
+			return html`${seanceHTML(consulte)}${aRevoirHTML(recap, consulte)}${dicteesProposeesHTML(consulte)}`;
 		}
 		case 'reglages':
 			return reglagesHTML(consulte, pinPanelHTML());
 		case 'profils':
-			return `${profilsHTML(profiles, consulte, actif)}${sauvegardeHTML()}`;
+			return html`${profilsHTML(profiles, consulte, actif)}${sauvegardeHTML()}`;
 	}
 }
 

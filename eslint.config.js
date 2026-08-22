@@ -45,6 +45,39 @@ const STOCKAGE_PAR_MEMBRE = {
 	message: MESSAGE_STOCKAGE,
 };
 
+/* Échappement HTML par construction (#614).
+
+   `.innerHTML` accepte n'importe quelle chaîne, et le typechecker ne distingue pas
+   un fragment de balisage d'un texte saisi par un enfant. La règle exige donc que la
+   valeur affectée soit lue sur un `SafeHtml` — c'est-à-dire de la forme `X.balisage`,
+   la seule façon d'extraire le balisage d'un fragment construit par `html` ou déclaré
+   par `brut`. Une chaîne, un littéral gabarit, une concaténation : refusés.
+
+   La règle est plus stricte que « pas de littéral gabarit sur .innerHTML » : elle
+   ferme aussi le cas d'une variable `string` fabriquée trois lignes plus haut, qui
+   aurait passé un contrôle limité à la forme littérale. Sa liste d'exemptions est
+   VIDE — décision de cadrage : la conversion est faite en un seul lot.
+
+   Ce qu'elle ne couvre pas : `insertAdjacentHTML`, `outerHTML`, `document.write`.
+   Aucun n'est utilisé dans `src/` aujourd'hui ; les ajouter reviendrait à interdire
+   des formes que personne n'écrit. */
+const MESSAGE_ECHAPPEMENT =
+	'Affecter un SafeHtml à `.innerHTML` : `el.innerHTML = html`<p>${valeur}</p>`.balisage`. ' +
+	'Le gabarit `html` (src/core/html.ts) échappe chaque interpolation SELON SA POSITION ' +
+	"(texte, valeur d'attribut, URL). Une chaîne construite à la main n'offre aucune de ces " +
+	'garanties : le `${}` qu’on oublie ne fait rougir ni le typechecker ni les tests, et ' +
+	"n'apparaît qu'à l'exécution. Fragment de confiance : `brut()`, avec sa raison en commentaire.";
+
+const ECHAPPEMENT_INNERHTML = {
+	selector:
+		"AssignmentExpression[left.type='MemberExpression'][left.property.name='innerHTML']" +
+		":not([right.type='MemberExpression'][right.property.name='balisage'])" +
+		// `el.innerHTML = ''` VIDE l'élément : rien n'y est injecté, donc rien à garder.
+		// L'interdire n'apporterait aucune sûreté et forcerait un `VIDE.balisage` illisible.
+		":not([right.type='Literal'][right.value=''])",
+	message: MESSAGE_ECHAPPEMENT,
+};
+
 export default tseslint.config(
 	// `.claude/` (worktrees, configs d'agents) hors périmètre de lint. NB : en flat
 	// config, `.eslintignore` n'est PAS lu — l'ignore doit vivre ici.
@@ -104,7 +137,18 @@ export default tseslint.config(
 		ignores: ['src/core/**', 'src/data/**', 'src/vitrine.ts'],
 		rules: {
 			'no-restricted-globals': ['error', STOCKAGE_CONFINE],
-			'no-restricted-syntax': ['error', STOCKAGE_PAR_MEMBRE],
+			'no-restricted-syntax': ['error', STOCKAGE_PAR_MEMBRE, ECHAPPEMENT_INNERHTML],
+		},
+	},
+
+	// L'échappement vaut pour TOUT `src/`, y compris les points d'entrée que la
+	// section précédente écarte pour le stockage (`src/vitrine.ts`) et le noyau,
+	// qui n'a pas le droit au DOM mais dont la règle doit quand même mordre si
+	// quelqu'un l'y ramenait.
+	{
+		files: ['src/core/**/*.ts', 'src/data/**/*.ts', 'src/vitrine.ts'],
+		rules: {
+			'no-restricted-syntax': ['error', STOCKAGE_PAR_MEMBRE, ECHAPPEMENT_INNERHTML],
 		},
 	},
 );

@@ -20,18 +20,19 @@
    animations » (cf. styles) : la scène se fige alors sur l'état final, lisible.
    ============================================================ */
 import { AIDES, aideVue, marquerAideVue, texteTtsAide, type TypeAide } from '../core/aide';
-import { escapeHTML } from '../core/utils';
+
 import { icon } from './icon';
 import { activateModal } from './modal-a11y';
 import { dicteeDisponible, dicterConsigne, stopTts } from './tts';
 import { lectureConsigneAuto } from '../core/profiles';
 import { mascotteBulleHTML } from './unlocks-view';
 import { getCurrentMode } from './navigation';
+import { html, type SafeHtml, joindre } from '../core/html';
 
 let ouverte = false; // une seule aide à la fois (évite l'empilement auto + clic)
 
 // Le doigt qui exécute le geste dans les animations (icône Phosphor).
-const FINGER = `<span class="an-finger" aria-hidden="true">${icon('hand-pointing')}</span>`;
+const FINGER = html`<span class="an-finger" aria-hidden="true">${icon('hand-pointing')}</span>`;
 // Phrase de la mascotte qui accompagne l'enfant (elle « présente » l'aide).
 const MASCOTTE_LIGNE = 'Je te montre, regarde bien !';
 
@@ -40,18 +41,18 @@ const MASCOTTE_LIGNE = 'Je te montre, regarde bien !';
    à pas, jouée UNE fois (classe `is-anim`) et rejouable via « Revoir » ; figée sur
    l'état final sous mouvement réduit (cf. styles). Éléments en position absolue dans
    une scène de taille fixe pour un placement net. Un seul `#aideAnim` par modale. */
-function illustrationHTML(type: TypeAide): string {
+function illustrationHTML(type: TypeAide): SafeHtml {
 	switch (type) {
 		case 'tuiles':
 			// Le doigt prend la tuile « 7 » et la pose dans la case vide.
-			return `<div class="aide-anim aide-anim--tuiles is-anim" id="aideAnim">
+			return html`<div class="aide-anim aide-anim--tuiles is-anim" id="aideAnim">
 				<span class="an-slot"></span>
 				<span class="an-tile">7</span>
 				${FINGER}
 			</div>`;
 		case 'ordre':
 			// Le doigt range deux mots dans les cases numérotées, dans l'ordre.
-			return `<div class="aide-anim aide-anim--ordre is-anim" id="aideAnim">
+			return html`<div class="aide-anim aide-anim--ordre is-anim" id="aideAnim">
 				<span class="an-case an-case--1"><i>1</i></span>
 				<span class="an-case an-case--2"><i>2</i></span>
 				<span class="an-word an-word--1">arbre</span>
@@ -61,7 +62,7 @@ function illustrationHTML(type: TypeAide): string {
 		case 'ordreNombres':
 			// Même scène que `ordre` (mêmes cases numérotées, même geste), avec deux NOMBRES
 			// rangés du plus petit au plus grand — l'exemple montre le geste, pas la règle.
-			return `<div class="aide-anim aide-anim--ordre is-anim" id="aideAnim">
+			return html`<div class="aide-anim aide-anim--ordre is-anim" id="aideAnim">
 				<span class="an-case an-case--1"><i>1</i></span>
 				<span class="an-case an-case--2"><i>2</i></span>
 				<span class="an-word an-word--1">128</span>
@@ -70,7 +71,7 @@ function illustrationHTML(type: TypeAide): string {
 			</div>`;
 		case 'tri':
 			// Le doigt touche « chat », puis sa colonne ; le mot s'y déplace.
-			return `<div class="aide-anim aide-anim--tri is-anim" id="aideAnim">
+			return html`<div class="aide-anim aide-anim--tri is-anim" id="aideAnim">
 				<span class="an-col an-col--a"><b>Animaux</b></span>
 				<span class="an-col an-col--b"><b>Fruits</b></span>
 				<span class="an-word an-chat">chat</span>
@@ -80,7 +81,7 @@ function illustrationHTML(type: TypeAide): string {
 			// Lettres du bac MÉLANGÉES (a · t · r) : le doigt les touche dans le bon
 			// ordre (r → a → t), le mot « rat » se construit, PUIS le doigt touche une
 			// lettre posée (« a ») qui se sélectionne et montre ses contrôles ◀ ▶ ↩.
-			return `<div class="aide-anim aide-anim--lettres is-anim" id="aideAnim">
+			return html`<div class="aide-anim aide-anim--lettres is-anim" id="aideAnim">
 				<span class="an-edit"><span>◀</span><span>▶</span><span>↩</span></span>
 				<span class="an-built an-built--1">r</span>
 				<span class="an-built an-built--2">a</span>
@@ -92,7 +93,7 @@ function illustrationHTML(type: TypeAide): string {
 			</div>`;
 		case 'atelier':
 			// « bateau », piège « eau » : le doigt glisse sur le groupe, le surlignage se trace.
-			return `<div class="aide-anim aide-anim--atelier is-anim" id="aideAnim">
+			return html`<div class="aide-anim aide-anim--atelier is-anim" id="aideAnim">
 				<div class="aide-demo-mot">
 					<span>b</span><span>a</span><span>t</span><span class="aide-demo-grp">
 						<span class="aide-demo-hl"></span>
@@ -105,7 +106,7 @@ function illustrationHTML(type: TypeAide): string {
 			// Exemple ILLUSTRATIF, non interactif (avis specialiste-troubles-apprentissage :
 			// ne jamais pré-remplir la vraie question) : « 3 km = 3000 m » déjà rempli, les
 			// zéros de transit (hm, dam) bien visibles dans des cases en pointillés.
-			return `<div class="aide-anim aide-anim--tableau" id="aideAnim">
+			return html`<div class="aide-anim aide-anim--tableau" id="aideAnim">
 				<p class="tc-demo-q">3 km = 3000 m</p>
 				<div class="tc-demo">
 					<span class="tc-demo-cell"><b>km</b>3</span>
@@ -116,7 +117,7 @@ function illustrationHTML(type: TypeAide): string {
 			</div>`;
 		case 'appariement':
 			// Le doigt touche « dent » à gauche, puis « dentiste » à droite : un trait les relie.
-			return `<div class="aide-anim aide-anim--appariement is-anim" id="aideAnim">
+			return html`<div class="aide-anim aide-anim--appariement is-anim" id="aideAnim">
 				<span class="an-mot an-mot--g">dent</span>
 				<span class="an-mot an-mot--d">dentiste</span>
 				<span class="an-lien"></span>
@@ -126,7 +127,7 @@ function illustrationHTML(type: TypeAide): string {
 			// Mini-phrase « Léa a chanté hier » : le doigt tape « a » puis « chanté » (le verbe
 			// au passé composé = 2 mots collés). Les deux jetons restent sélectionnés ENSEMBLE
 			// (moment « deux mots »), « Léa »/« hier » restent inchangés (décoys avant/après).
-			return `<div class="aide-anim aide-anim--clicmot is-anim" id="aideAnim">
+			return html`<div class="aide-anim aide-anim--clicmot is-anim" id="aideAnim">
 				<span class="an-clicmot-tok an-clicmot-tok--1">Léa</span>
 				<span class="an-clicmot-tok an-clicmot-tok--2">a</span>
 				<span class="an-clicmot-tok an-clicmot-tok--3">chanté</span>
@@ -136,7 +137,7 @@ function illustrationHTML(type: TypeAide): string {
 		case 'droiteGraduee':
 			// Une mini-droite graduée : le doigt touche une graduation, le repère corail
 			// s'y pose (métaphore du placement aimanté).
-			return `<div class="aide-anim aide-anim--droite is-anim" id="aideAnim">
+			return html`<div class="aide-anim aide-anim--droite is-anim" id="aideAnim">
 				<span class="an-droite-axe"></span>
 				<span class="an-droite-tick an-droite-tick--0"></span>
 				<span class="an-droite-tick an-droite-tick--1"></span>
@@ -163,23 +164,23 @@ export function ouvrirAide(
 	const overlay = document.createElement('div');
 	overlay.className = 'modal-overlay';
 	overlay.id = 'aideOverlay';
-	overlay.innerHTML = `
+	overlay.innerHTML = html`
 		<div class="modal aide-modal" role="dialog" aria-modal="true" aria-labelledby="aideTitle">
 			<button type="button" class="modal-close aide-close" aria-label="Fermer l'aide">${icon('x')}</button>
 			${mascotteBulleHTML(MASCOTTE_LIGNE)}
-			<h2 class="modal-title aide-titre" id="aideTitle">${escapeHTML(a.titre)}</h2>
+			<h2 class="modal-title aide-titre" id="aideTitle">${a.titre}</h2>
 			<div class="aide-illu-wrap" aria-hidden="true">${illustrationHTML(type)}</div>
 			<button type="button" class="aide-revoir" aria-hidden="true" tabindex="-1">${icon('repeat')}<span>Revoir</span></button>
-			<ol class="aide-etapes">${a.etapes.map((e) => `<li>${escapeHTML(e)}</li>`).join('')}</ol>
-			${a.alternative ? `<p class="aide-alt">${escapeHTML(a.alternative)}</p>` : ''}
-			${a.reparation ? `<p class="aide-repar">${escapeHTML(a.reparation)}</p>` : ''}
+			<ol class="aide-etapes">${joindre(a.etapes.map((e) => html`<li>${e}</li>`))}</ol>
+			${a.alternative ? html`<p class="aide-alt">${a.alternative}</p>` : ''}
+			${a.reparation ? html`<p class="aide-repar">${a.reparation}</p>` : ''}
 			${
 				ttsDispo
-					? `<button type="button" class="modal-listen aide-listen" aria-label="Écouter l'aide" title="Écouter l'aide">${icon('speaker')}<span class="aide-listen-lab">Écouter</span></button>`
+					? html`<button type="button" class="modal-listen aide-listen" aria-label="Écouter l'aide" title="Écouter l'aide">${icon('speaker')}<span class="aide-listen-lab">Écouter</span></button>`
 					: ''
 			}
 			<button type="button" class="modal-ok aide-ok">J'ai compris !</button>
-		</div>`;
+		</div>`.balisage;
 	document.body.appendChild(overlay);
 
 	const ok = overlay.querySelector<HTMLButtonElement>('.aide-ok')!;
@@ -234,7 +235,7 @@ export function monterBoutonAide(conteneur: HTMLElement | null, type: TypeAide):
 	// L'étiquette reprend le titre du type (le lecteur d'écran annonce l'aide précise).
 	btn.setAttribute('aria-label', `Aide : ${AIDES[type].titre}`);
 	btn.title = 'Comment jouer ?';
-	btn.innerHTML = icon('lightbulb');
+	btn.innerHTML = icon('lightbulb').balisage;
 	btn.addEventListener('click', () => ouvrirAide(type, { trigger: btn }));
 	conteneur.appendChild(btn);
 }

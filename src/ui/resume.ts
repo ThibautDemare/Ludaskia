@@ -16,7 +16,7 @@
    au lancement (runLecon / runBilanConfig / restore) et nettoyé à la fin
    (verify) ou en quittant vers un menu.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+
 import { icon, iconOr } from './icon';
 import { uiConfirm, toast } from './ui-modal';
 import {
@@ -44,6 +44,7 @@ import {
 } from './navigation';
 import { snapshotRunner, restaurerRunner } from './runner-reprise';
 import { setOrigineActivite } from './retour-activite';
+import { html, type SafeHtml, joindre, brut } from '../core/html';
 
 const now = () => Date.now();
 const MAX_CARDS = 3; // plafond d'affichage (le reste replié sous « voir tout »)
@@ -143,7 +144,9 @@ export function restoreResume(snap: ResumeSnapshot): void {
 	setCurrentLessonId(snap.relaunch.type === 'lecon' ? snap.relaunch.lessonId : null);
 	// Réinjecte le rendu exact, puis recâble la table id de champ -> Item.
 	const sheets = document.getElementById('sheets')!;
-	sheets.innerHTML = snap.sheetsHTML;
+	// Instantané SÉRIALISÉ de la page (stockage de reprise) : c'est du balisage que
+	// l'application a elle-même produit à la session précédente, relu tel quel.
+	sheets.innerHTML = brut(snap.sheetsHTML).balisage;
 	// Contexte de session reconstitué (#352) : items restaurés et compteur repositionné
 	// APRÈS le plus grand id capturé, pour éviter toute collision si un futur rendu de
 	// cette session (rare) mintait de nouveaux champs.
@@ -224,18 +227,18 @@ function progressLabel(s: ResumeSnapshot): string {
 	return 'Bientôt fini !';
 }
 
-function cardHTML(s: ResumeSnapshot): string {
+function cardHTML(s: ResumeSnapshot): SafeHtml {
 	const pct = s.total ? Math.round((s.answered / s.total) * 100) : 0;
-	return `<div class="reprise-card" data-key="${escapeHTML(s.key)}">
+	return html`<div class="reprise-card" data-key="${s.key}">
     <div class="reprise-ico" aria-hidden="true">${iconOr(s.icon)}</div>
     <div class="reprise-main">
-      <div class="reprise-title">${escapeHTML(s.label)}</div>
+      <div class="reprise-title">${s.label}</div>
       <div class="reprise-prog-lab">${progressLabel(s)} <span class="reprise-count">${s.answered}/${s.total}</span></div>
       <div class="lvl-bar reprise-bar"><div class="lvl-bar-fill" style="width:${pct}%"></div></div>
     </div>
     <div class="reprise-actions">
-      <button class="reprise-continue" data-act="continue" data-key="${escapeHTML(s.key)}">Continuer →</button>
-      <button class="reprise-erase" data-act="erase" data-key="${escapeHTML(s.key)}" title="Effacer cet exercice" aria-label="Effacer : ${escapeHTML(s.label)}">${icon('trash')} Effacer</button>
+      <button class="reprise-continue" data-act="continue" data-key="${s.key}">Continuer →</button>
+      <button class="reprise-erase" data-act="erase" data-key="${s.key}" title="Effacer cet exercice" aria-label="Effacer : ${s.label}">${icon('trash')} Effacer</button>
     </div>
   </div>`;
 }
@@ -255,15 +258,15 @@ export function renderReprises(el: HTMLElement | null, categoryId?: string): voi
 	const shown = list.slice(0, MAX_CARDS);
 	const extra = list.length - shown.length;
 	const expandable = extra > 0;
-	el.innerHTML = `<div class="reprises-box">
+	el.innerHTML = html`<div class="reprises-box">
     <h3 class="reprises-h">▶ À continuer</h3>
-    <div class="reprises-list">${shown.map(cardHTML).join('')}${
+    <div class="reprises-list">${joindre(shown.map(cardHTML))}${
 			expandable
-				? `<div class="reprises-more" hidden>${list.slice(MAX_CARDS).map(cardHTML).join('')}</div>`
+				? html`<div class="reprises-more" hidden>${joindre(list.slice(MAX_CARDS).map(cardHTML))}</div>`
 				: ''
 		}</div>
-    ${expandable ? `<button class="reprises-toggle" data-act="toggle">+ ${extra} autre${extra > 1 ? 's' : ''} exercice${extra > 1 ? 's' : ''} à continuer</button>` : ''}
-  </div>`;
+    ${expandable ? html`<button class="reprises-toggle" data-act="toggle">+ ${extra} autre${extra > 1 ? 's' : ''} exercice${extra > 1 ? 's' : ''} à continuer</button>` : ''}
+  </div>`.balisage;
 	wireReprises(el, categoryId);
 }
 

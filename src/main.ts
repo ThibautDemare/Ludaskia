@@ -94,6 +94,7 @@ import { installGroupedNumberEcho } from './ui/grand-nombre-echo';
 import { installPaveSignes } from './ui/pave-signes';
 import { initEggs, mountForestEgg, recordCookieEgg } from './ui/eggs';
 import { fillFooterYear, initFooterCookie } from './ui/footer';
+import { brut } from './core/html';
 
 // Quitter ces modes (non reprenables) perd la progression → on confirme (#63).
 const quittingLosesProgress = () => isSprintRunning() || isRevisionRunning();
@@ -414,7 +415,8 @@ function wireDOM() {
 			.then((r) => (r.ok ? r.text() : ''))
 			.then((svg) => {
 				if (svg) {
-					foretEl.innerHTML = svg;
+					// SVG d’illustration servi par le site (`public/foret-pied.svg`), pas une donnée.
+					foretEl.innerHTML = brut(svg).balisage;
 					mountForestEgg(); // egg « animal de la forêt » (#331), APRÈS l'injection (sinon écrasé)
 				}
 			})

@@ -41,12 +41,13 @@ import { niveauLecon } from '../core/niveau-actif';
 import { activeProfile, lectureConsigneAuto } from '../core/profiles';
 import { texteParle } from '../core/tts-text';
 import { loadEtayagesVus, loadLessonReports, marquerEtayageVu } from '../core/progress';
-import { escapeHTML } from '../core/utils';
+
 import { icon } from './icon';
 import { activateModal } from './modal-a11y';
 import { getCurrentMode } from './navigation';
 import { dicteeDisponible, dicterConsigne, stopTts } from './tts';
 import { mascotteBulleHTML } from './unlocks-view';
+import { html, type SafeHtml, joindre, VIDE } from '../core/html';
 
 /* Libellé du point d'entrée. « Comprendre » et non « voir » (déjà le sens de « montre-moi »,
    #467) ni « comment on joue » (déjà celui de l'ampoule d'aide au geste, #272) : trois
@@ -95,8 +96,8 @@ export function etayageDisponible(lesson: LessonDef, niveau: SchoolLevel, mode?:
     montre-moi ») : un enfant de 8-9 ans ne clique pas sur ce qu'il ne voit pas, et clique
     par réflexe sur ce qui pèse plus lourd que « Continuer ». `classe` et `id` restent
     propres à l'écran (styles, repères des specs e2e). */
-export function lienEtayageHTML(classe: string, id: string): string {
-	return `<button type="button" class="${classe}" id="${id}">${icon(ETAYAGE_ICONE)}<span>${ETAYAGE_LABEL}</span></button>`;
+export function lienEtayageHTML(classe: string, id: string): SafeHtml {
+	return html`<button type="button" class="${classe}" id="${id}">${icon(ETAYAGE_ICONE)}<span>${ETAYAGE_LABEL}</span></button>`;
 }
 
 export interface EtayageDemande {
@@ -131,20 +132,20 @@ function panneauHTML(
 	moteur: MoteurEtayage | undefined,
 	pas: PasEtayage[],
 	sortie: string,
-): string {
-	return `
+): SafeHtml {
+	return html`
 		<div class="modal aide-modal etay-modal" role="dialog" aria-modal="true" aria-labelledby="etayTitle" aria-describedby="etayRegle etayEtapes etayPhrase">
 			<button type="button" class="modal-close aide-close" aria-label="Fermer l'explication">${icon('x')}</button>
 			${mascotteBulleHTML(d.avantSerie ? 'Un petit rappel avant de commencer.' : pas.length ? MASCOTTE_DEROULE : MASCOTTE_REDIGE)}
-			<h2 class="modal-title aide-titre" id="etayTitle">${escapeHTML(titre)}</h2>
-			${contenu.regle ? `<p class="etay-regle" id="etayRegle">${escapeHTML(contenu.regle)}</p>` : ''}
+			<h2 class="modal-title aide-titre" id="etayTitle">${titre}</h2>
+			${contenu.regle ? html`<p class="etay-regle" id="etayRegle">${contenu.regle}</p>` : ''}
 			${
 				// Visuel MASQUÉ aux technologies d'assistance : tout ce qu'il montre est déjà DIT
 				// par la narration (« j'écris 2 et je retiens 1 pour les dizaines »). L'étiqueter à
 				// moitié ferait entendre une grille de chiffres nus en plus de l'explication ; le
 				// taire est plus lisible que le décrire.
 				moteur && pas.length
-					? `<div class="etay-grille" id="etayVisuel" aria-hidden="true">${moteur.visuel(0)}</div>`
+					? html`<div class="etay-grille" id="etayVisuel" aria-hidden="true">${moteur.visuel(0)}</div>`
 					: ''
 			}
 			${etapesFixesHTML(contenu)}
@@ -161,22 +162,22 @@ function panneauHTML(
 						// muté). C'est `aria-describedby` sur le dialogue qui fait entendre la règle
 						// et la première phrase à l'ouverture ; la région live prend le relais aux pas
 						// suivants, où il y a bien mutation (constat du `relecteur-accessibilite`).
-						`<p class="etay-compteur" id="etayCompteur" aria-live="polite">${compteurTexte(0, pas.length)}</p>
+						html`<p class="etay-compteur" id="etayCompteur" aria-live="polite">${compteurTexte(0, pas.length)}</p>
 						 <div class="etay-bar" aria-hidden="true"><div class="etay-bar-fill" id="etayBarFill"></div></div>
-						 <p class="etay-phrase" id="etayPhrase" role="status">${escapeHTML(pas[0].phrase)}</p>`
+						 <p class="etay-phrase" id="etayPhrase" role="status">${pas[0].phrase}</p>`
 					: ''
 			}
 			${prerequisHTML(d)}
 			${
 				dicteeDisponible()
-					? `<button type="button" class="modal-listen aide-listen etay-listen" aria-label="Écouter l'explication" title="Écouter l'explication">${icon('speaker')}<span class="aide-listen-lab">Écouter</span></button>`
+					? html`<button type="button" class="modal-listen aide-listen etay-listen" aria-label="Écouter l'explication" title="Écouter l'explication">${icon('speaker')}<span class="aide-listen-lab">Écouter</span></button>`
 					: ''
 			}
 			<div class="etay-nav">
-				${pas.length > 1 ? `<button type="button" class="etay-prec" id="etayPrec">◀ Précédent</button>` : ''}
-				<button type="button" class="modal-ok aide-ok etay-suivant" id="etaySuivant">${escapeHTML(pas.length ? 'Suivant ▶' : sortie)}</button>
+				${pas.length > 1 ? html`<button type="button" class="etay-prec" id="etayPrec">◀ Précédent</button>` : ''}
+				<button type="button" class="modal-ok aide-ok etay-suivant" id="etaySuivant">${pas.length ? 'Suivant ▶' : sortie}</button>
 			</div>
-			${d.avantSerie && pas.length ? `<button type="button" class="etay-filer" id="etayFiler">Je me lance tout de suite</button>` : ''}
+			${d.avantSerie && pas.length ? html`<button type="button" class="etay-filer" id="etayFiler">Je me lance tout de suite</button>` : ''}
 		</div>`;
 }
 
@@ -203,7 +204,7 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 	const overlay = document.createElement('div');
 	overlay.className = 'modal-overlay';
 	overlay.id = 'etayageOverlay';
-	overlay.innerHTML = panneauHTML(d, contenu, titre, moteur, pas, sortie);
+	overlay.innerHTML = panneauHTML(d, contenu, titre, moteur, pas, sortie).balisage;
 	document.body.appendChild(overlay);
 
 	const suivant = overlay.querySelector<HTMLButtonElement>('#etaySuivant')!;
@@ -239,7 +240,7 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 	   Le visuel est redessiné en entier plutôt que retouché (les états sont peu nombreux, le
 	   rendu est pur) : « Précédent » n'a ainsi rien à défaire, donc rien à oublier de défaire. */
 	function afficher(i: number): void {
-		if (visuel && moteur) visuel.innerHTML = moteur.visuel(i);
+		if (visuel && moteur) visuel.innerHTML = moteur.visuel(i).balisage;
 		if (phrase) phrase.textContent = pas[i].phrase;
 		if (compteur) compteur.textContent = compteurTexte(i, pas.length);
 		if (barre) barre.style.width = `${Math.round(((i + 1) / pas.length) * 100)}%`;
@@ -342,7 +343,7 @@ export function poserLiensEtayagePosee(racine: ParentNode, lessonParDefaut: stri
 		if (!etayageDisponible(lesson, niveau)) continue;
 		const hote = document.createElement('div');
 		hote.className = 'etay-lien-posee';
-		hote.innerHTML = lienEtayageHTML('etay-lien', '');
+		hote.innerHTML = lienEtayageHTML('etay-lien', '').balisage;
 		const bouton = hote.querySelector<HTMLButtonElement>('button')!;
 		bouton.removeAttribute('id'); // plusieurs grilles par fiche : pas d'id à dupliquer
 		bouton.addEventListener('click', () =>
@@ -375,7 +376,7 @@ export function monterBoutonEtayage(
 	btn.className = 'etayage-btn';
 	btn.setAttribute('aria-label', ETAYAGE_LABEL);
 	btn.title = ETAYAGE_LABEL;
-	btn.innerHTML = icon(ETAYAGE_ICONE);
+	btn.innerHTML = icon(ETAYAGE_ICONE).balisage;
 	btn.addEventListener('click', () => ouvrirEtayage({ lesson, niveau, mode, trigger: btn }));
 	conteneur.appendChild(btn);
 }
@@ -440,9 +441,9 @@ function compteurTexte(i: number, total: number): string {
    `id` porté pour l'`aria-describedby` du dialogue : sans lui, un lecteur d'écran
    annoncerait le titre et la règle à l'ouverture, et tairait la MÉTHODE — la liste reste
    lisible en navigant, mais il faut savoir qu'elle est là pour aller la chercher. */
-function etapesFixesHTML(contenu: EtayageContenu): string {
-	if (!contenu.etapes?.length) return '';
-	return `<ol class="aide-etapes" id="etayEtapes">${contenu.etapes.map((e) => `<li>${escapeHTML(e)}</li>`).join('')}</ol>`;
+function etapesFixesHTML(contenu: EtayageContenu): SafeHtml {
+	if (!contenu.etapes?.length) return VIDE;
+	return html`<ol class="aide-etapes" id="etayEtapes">${joindre(contenu.etapes.map((e) => html`<li>${e}</li>`))}</ol>`;
 }
 
 /* Renvoi à la leçon prérequise : le seul contenu entièrement MÉCANISABLE (l'ordre
@@ -453,16 +454,16 @@ function etapesFixesHTML(contenu: EtayageContenu): string {
    « à revoir », donc la carte de son accueil, et il la retrouvera quand il aura fini.
    C'est le même geste que l'épinglage de l'espace encadrant, ici à l'initiative de
    l'enfant : rien à quitter, rien à retenir. */
-function prerequisHTML(d: EtayageDemande): string {
+function prerequisHTML(d: EtayageDemande): SafeHtml {
 	const avant = leconPrerequise(d.lesson, d.niveau);
-	if (!avant) return '';
+	if (!avant) return VIDE;
 	const deja = loadRevoir().includes(avant.id);
-	return `<div class="etay-prerequis" data-prerequis="${escapeHTML(avant.id)}">
-			<p class="etay-prerequis-txt">Si c'est encore trop dur, tu peux revoir « ${escapeHTML(labelLecon(avant, d.niveau))} ».</p>
+	return html`<div class="etay-prerequis" data-prerequis="${avant.id}">
+			<p class="etay-prerequis-txt">Si c'est encore trop dur, tu peux revoir « ${labelLecon(avant, d.niveau)} ».</p>
 			${
 				deja
-					? `<p class="etay-prerequis-ok">${PREREQUIS_ATTEND}</p>`
-					: `<button type="button" class="etay-epingler" id="etayEpingler">${icon('bookmark')}<span>Mets-la de côté pour moi</span></button>`
+					? html`<p class="etay-prerequis-ok">${PREREQUIS_ATTEND}</p>`
+					: html`<button type="button" class="etay-epingler" id="etayEpingler">${icon('bookmark')}<span>Mets-la de côté pour moi</span></button>`
 			}
 		</div>`;
 }

@@ -22,7 +22,8 @@ import { activateModal } from './modal-a11y';
 import { animationsReduites } from './preferences';
 import { apparitionsSurprises } from '../core/profiles';
 import { foundEggs, markEggFound, decideAmbient, type EggDef } from '../core/eggs';
-import { escapeHTML } from '../core/utils';
+
+import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 
 /* ---------- Garde-fous d'animation ---------- */
 // Mouvement réduit : réglage in-app du profil OU préférence système. Les eggs
@@ -177,29 +178,31 @@ export function renderEggAlbumNav(): void {
 	const el = document.getElementById('eggAlbumNav');
 	if (!el) return;
 	const eggs = foundEggs();
-	el.innerHTML = eggs.length
-		? `<button class="reward-btn egg-album-btn" data-act="open-egg-album">✨ Mon album de surprises</button>`
-		: '';
+	el.innerHTML = (
+		eggs.length
+			? html`<button class="reward-btn egg-album-btn" data-act="open-egg-album">✨ Mon album de surprises</button>`
+			: VIDE
+	).balisage;
 }
 
-function eggCardHTML(e: EggDef): string {
+function eggCardHTML(e: EggDef): SafeHtml {
 	// `data-egg` (id de l'egg) : sélecteur stable pour les tests e2e (cf. e2e/).
-	return `<button type="button" class="egg-card" data-egg="${escapeHTML(e.id)}" title="Revoir cette surprise">
+	return html`<button type="button" class="egg-card" data-egg="${e.id}" title="Revoir cette surprise">
     <span class="egg-card-scene" aria-hidden="true">${e.emoji}</span>
-    <span class="egg-card-title">${escapeHTML(e.titre)}</span>
+    <span class="egg-card-title">${e.titre}</span>
   </button>`;
 }
 
-function albumContentHTML(): string {
-	const cards = foundEggs().map(eggCardHTML).join('');
-	return `<p class="rewards-sub">Les petites surprises que tu as découvertes.</p>
+function albumContentHTML(): SafeHtml {
+	const cards = joindre(foundEggs().map(eggCardHTML));
+	return html`<p class="rewards-sub">Les petites surprises que tu as découvertes.</p>
     <div class="egg-album-grid">${cards}</div>`;
 }
 
 let albumRelease: (() => void) | null = null;
 export function openEggAlbum(): void {
 	const content = document.getElementById('eggAlbumContent');
-	if (content) content.innerHTML = albumContentHTML();
+	if (content) content.innerHTML = albumContentHTML().balisage;
 	const ov = document.getElementById('eggAlbum');
 	if (!ov) return;
 	ov.style.display = '';

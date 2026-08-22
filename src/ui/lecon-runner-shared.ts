@@ -20,7 +20,7 @@ import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
-import { escapeHTML } from '../core/utils';
+
 import { streakSuffix } from '../core/progress';
 import type { TypeAide } from '../core/aide';
 import { maybeAutoAide } from './aide-exercice';
@@ -42,6 +42,7 @@ import {
 	setCurrentLessonId,
 } from './navigation';
 import { retourFinActivite } from './retour-activite';
+import { html, type SafeHtml } from '../core/html';
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -51,9 +52,9 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /* Barre de progression « Question i / n ». Le libellé est surchargeable
    (« Problème i / n », « Calcul i / n »… pour le runner problème). */
-export function leconProgressHTML(idx: number, total: number, libelle = 'Question'): string {
+export function leconProgressHTML(idx: number, total: number, libelle = 'Question'): SafeHtml {
 	const pct = Math.round((idx / total) * 100);
-	return `<div class="lqcm-progress">
+	return html`<div class="lqcm-progress">
     <span class="lqcm-progress-lab">${libelle} ${idx + 1} / ${total}</span>
     <div class="lqcm-bar"><div class="lqcm-bar-fill" style="width:${pct}%"></div></div>
   </div>`;
@@ -63,9 +64,9 @@ export function leconProgressHTML(idx: number, total: number, libelle = 'Questio
     RÉELLEMENT joué (#436 — une leçon peut se nommer autrement selon la classe, cf.
     `LessonDef.labelNiveau`). Les dix runners rendaient ce même markup chacun chez eux, donc
     chacun aurait dû penser à résoudre le niveau : un seul endroit désormais. */
-export function leconTitreHTML(lesson: LessonDef): string {
+export function leconTitreHTML(lesson: LessonDef): SafeHtml {
 	const label = labelLecon(lesson, niveauLecon(lesson));
-	return `<div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(label)}</span></div>`;
+	return html`<div class="sprint-theme"><span class="sprint-lesson">${label}</span></div>`;
 }
 
 /** Ouverture commune d'un écran de runner : mise en place du chrome, déclaration de la
@@ -152,7 +153,7 @@ export function renderLeconResult(opts: LeconResultOpts): void {
 	let extra = '';
 	if (out.starInfo) {
 		if (out.starInfo.perfect)
-			extra += `<div class="rb-medal"><span class="rb-medal-ico">⭐</span><span class="rb-medal-txt">${out.starInfo.newStar ? 'Étoile gagnée !' : 'Encore sans faute !'}</span></div>`;
+			extra += html`<div class="rb-medal"><span class="rb-medal-ico">⭐</span><span class="rb-medal-txt">${out.starInfo.newStar ? 'Étoile gagnée !' : 'Encore sans faute !'}</span></div>`;
 		const succes = lexique
 			? `${cap(lexique.nomPluriel)} réussis sans faute`
 			: 'Leçon réussie sans faute';
@@ -161,12 +162,12 @@ export function renderLeconResult(opts: LeconResultOpts): void {
 				? `${succes}${out.starInfo.count > 1 ? ` (${out.starInfo.count}×)` : ''}. Bravo !`
 				: `Il faut un sans-faute pour décrocher l'étoile. Réessaie ⭐`) +
 			streakSuffix(out.streakDays);
-		extra += `<div class="sprint-done-sub">${msg}</div>`;
+		extra += html`<div class="sprint-done-sub">${msg}</div>`;
 	}
 	const labTexte = lexique
 		? `${score > 1 ? lexique.nomPluriel : lexique.nom.toLowerCase()} réussi${score > 1 ? 's' : ''} (${acc}%)`
 		: `bonne${score > 1 ? 's' : ''} réponse${score > 1 ? 's' : ''} (${acc}%)`;
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       <div class="sprint-stage">
         <div class="sprint-done">
@@ -180,7 +181,7 @@ export function renderLeconResult(opts: LeconResultOpts): void {
           </div>
         </div>
       </div>
-    </div>`;
+    </div>`.balisage;
 	sheets().querySelector('#leconAgain')!.addEventListener('click', onAgain);
 	sheets().querySelector('#leconBack')!.addEventListener('click', retour.aller);
 	// Récompenses : modale de niveau (puis confettis), comme les autres écrans.
@@ -188,7 +189,7 @@ export function renderLeconResult(opts: LeconResultOpts): void {
 }
 
 export interface WireNextOpts {
-	feedbackHTML: string; // HTML du feedback, déjà échappé par l'appelant (injecté via innerHTML)
+	feedbackHTML: SafeHtml; // fragment du feedback (injecté via innerHTML)
 	isLast: boolean; // dernière question → « Voir mon résultat ▶ », sinon « Continuer ▶ »
 	onNext: () => void; // enchaînement (question suivante ou écran de résultat)
 	/** Étayage à PROPOSER sous le verdict (#490) : un lien discret, jamais un affichage
@@ -205,7 +206,7 @@ export interface WireNextOpts {
    e2e ; le bouton lui-même n'a pas besoin d'id propre. */
 export function wireNext(actions: HTMLElement, feedback: HTMLElement, opts: WireNextOpts): void {
 	feedback.hidden = false;
-	feedback.innerHTML = opts.feedbackHTML;
+	feedback.innerHTML = opts.feedbackHTML.balisage;
 	// Étayage (#490) : APRÈS la bonne réponse et AVANT « Continuer ▶ ». Placé avant la
 	// réponse, ou aussi lourd que « Continuer », il serait cliqué par réflexe sans être lu.
 	// Même ordre qu'en révision, où le lien vit déjà au même endroit du verdict.
@@ -217,13 +218,14 @@ export function wireNext(actions: HTMLElement, feedback: HTMLElement, opts: Wire
 		// enfant au lecteur d'écran n'apprendrait JAMAIS que l'offre existe — au moment précis
 		// où elle lui sert. On l'annonce sans la lui imposer (le focus ne bouge pas).
 		hote.setAttribute('role', 'status');
-		hote.innerHTML = lienEtayageHTML('etay-lien', 'runEtayage');
+		hote.innerHTML = lienEtayageHTML('etay-lien', 'runEtayage').balisage;
 		const bouton = hote.querySelector('button')!;
 		bouton.addEventListener('click', () => ouvrirEtayage({ ...demande, trigger: bouton }));
 		feedback.appendChild(hote);
 	}
 	actions.hidden = false;
-	actions.innerHTML = `<button class="sprint-btn">${opts.isLast ? 'Voir mon résultat ▶' : 'Continuer ▶'}</button>`;
+	actions.innerHTML =
+		html`<button class="sprint-btn">${opts.isLast ? 'Voir mon résultat ▶' : 'Continuer ▶'}</button>`.balisage;
 	const next = actions.querySelector<HTMLButtonElement>('button')!;
 	next.addEventListener('click', opts.onNext);
 	next.focus();

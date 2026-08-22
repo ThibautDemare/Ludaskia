@@ -25,7 +25,6 @@
    La logique — arbre, filtre, recherche, jetons — est pure et vit dans
    `core/catalogue-arbre.ts` ; ici, le rendu, l'état de vue et les handlers.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
 import {
 	FILTRE_DEFAUT,
 	arbreCatalogue,
@@ -41,6 +40,7 @@ import { LEVEL_ORDER } from '../core/levels';
 import type { Profile } from '../core/profiles';
 import { onChangementProfilConsulte, container, renderEspace } from './encadrant-commun';
 import { segmentHTML } from './segment';
+import { html, type SafeHtml, joindre, drapeau, attribut } from '../core/html';
 
 /* ---------- État de vue, par instance de sélecteur (module) ---------- */
 interface EtatSelecteur {
@@ -124,16 +124,16 @@ function compteLabel(n: number): string {
 	return n > 1 ? `${n} leçons` : `${n} leçon`;
 }
 
-function ligneHTML(lecon: LeconArbre, action: ActionLigne): string {
+function ligneHTML(lecon: LeconArbre, action: ActionLigne): SafeHtml {
 	const { label, on } = action.etat(lecon);
-	const extra = Object.entries(action.extra ?? {})
-		.map(([k, v]) => ` data-${k}="${escapeHTML(v)}"`)
-		.join('');
+	const extra = joindre(
+		Object.entries(action.extra ?? {}).map(([k, v]) => attribut(`data-${k}`, v)),
+	);
 	// Le nom accessible reprend le libellé VISIBLE de la leçon (SC 2.5.3) : « Choisir » seul,
 	// répété sur des dizaines de lignes, ne dirait rien en navigation par contrôles.
-	return `<li class="enc-sel-item">
-      <span class="enc-sel-lab">${escapeHTML(lecon.label)}</span>
-      <button type="button" class="enc-btn-sec${on ? ' on' : ''}" data-act="${escapeHTML(action.act)}" data-lesson="${escapeHTML(lecon.id)}"${extra} aria-label="${escapeHTML(`${label} « ${lecon.label} »`)}">${escapeHTML(label)}</button>
+	return html`<li class="enc-sel-item">
+      <span class="enc-sel-lab">${lecon.label}</span>
+      <button type="button" class="enc-btn-sec${on ? ' on' : ''}" data-act="${action.act}" data-lesson="${lecon.id}"${extra} aria-label="${`${label} « ${lecon.label} »`}">${label}</button>
     </li>`;
 }
 
@@ -142,25 +142,25 @@ function categorieHTML(
 	e: EtatSelecteur,
 	cat: MatiereArbre['categories'][number],
 	action: ActionLigne,
-): string {
+): SafeHtml {
 	const cle = cleCategorie(cat.categoryId);
-	return `<details class="enc-cat-d enc-sel-d enc-sel-cat" data-sel="${escapeHTML(id)}" data-selcle="${escapeHTML(cle)}"${ouvert(e, cle) ? ' open' : ''}>
+	return html`<details class="enc-cat-d enc-sel-d enc-sel-cat" data-sel="${id}" data-selcle="${cle}"${ouvert(e, cle) ? drapeau('open') : ''}>
       <summary class="enc-cat-sum">
-        <span class="enc-cat-lab">${escapeHTML(cat.label)}</span>
+        <span class="enc-cat-lab">${cat.label}</span>
         <span class="enc-cat-counts">${compteLabel(cat.lecons.length)}</span>
       </summary>
-      <ul class="enc-sel-list">${cat.lecons.map((l) => ligneHTML(l, action)).join('')}</ul>
+      <ul class="enc-sel-list">${joindre(cat.lecons.map((l) => ligneHTML(l, action)))}</ul>
     </details>`;
 }
 
-function matiereHTML(id: string, e: EtatSelecteur, m: MatiereArbre, action: ActionLigne): string {
+function matiereHTML(id: string, e: EtatSelecteur, m: MatiereArbre, action: ActionLigne): SafeHtml {
 	const cle = cleMatiere(m.subject);
-	return `<details class="enc-cat-d enc-sel-d enc-sel-mat" data-sel="${escapeHTML(id)}" data-selcle="${escapeHTML(cle)}"${ouvert(e, cle) ? ' open' : ''}>
+	return html`<details class="enc-cat-d enc-sel-d enc-sel-mat" data-sel="${id}" data-selcle="${cle}"${ouvert(e, cle) ? drapeau('open') : ''}>
       <summary class="enc-cat-sum">
-        <span class="enc-cat-lab">${escapeHTML(m.label)}</span>
+        <span class="enc-cat-lab">${m.label}</span>
         <span class="enc-cat-counts">${compteLabel(m.total)}</span>
       </summary>
-      <div class="enc-sel-cats">${m.categories.map((c) => categorieHTML(id, e, c, action)).join('')}</div>
+      <div class="enc-sel-cats">${joindre(m.categories.map((c) => categorieHTML(id, e, c, action)))}</div>
     </details>`;
 }
 
@@ -184,13 +184,13 @@ function vueCourante(id: string, consulte: Profile): VueSelecteur {
 
 /* Corps de l'arbre seul : c'est le nœud que la recherche remplace en place. Le bouton de
    suite en fait partie — il naît et meurt avec la troncature. */
-function corpsHTML(id: string, vue: VueSelecteur, action: ActionLigne): string {
+function corpsHTML(id: string, vue: VueSelecteur, action: ActionLigne): SafeHtml {
 	const e = etat(id);
-	const groupes = vue.arbre.map((m) => matiereHTML(id, e, m, action)).join('');
+	const groupes = joindre(vue.arbre.map((m) => matiereHTML(id, e, m, action)));
 	if (vue.restant === 0) return groupes;
 	const pas = Math.min(vue.restant, PAS_AFFICHAGE);
 	const lab = pas > 1 ? `Afficher les ${pas} leçons suivantes` : 'Afficher la leçon suivante';
-	return `${groupes}<button type="button" class="enc-btn-sec enc-sel-plus" data-act="sel-plus" data-sel="${escapeHTML(id)}">${lab}</button>`;
+	return html`${groupes}<button type="button" class="enc-btn-sec enc-sel-plus" data-act="sel-plus" data-sel="${id}">${lab}</button>`;
 }
 
 function texteResume(id: string, vue: VueSelecteur): string {
@@ -209,7 +209,7 @@ function texteResume(id: string, vue: VueSelecteur): string {
 }
 
 /** Le sélecteur complet : barre de jetons de niveau, recherche, puis l'arbre replié. */
-export function selecteurLeconHTML(o: OptionsSelecteur): string {
+export function selecteurLeconHTML(o: OptionsSelecteur): SafeHtml {
 	const { id, consulte, action } = o;
 	const e = etat(id);
 	const vue = vueCourante(id, consulte);
@@ -222,16 +222,16 @@ export function selecteurLeconHTML(o: OptionsSelecteur): string {
 		wrap: true,
 		options: jetonsNiveau(consulte).map((j) => ({ val: j.val, label: j.label })),
 	});
-	return `<div class="enc-sel" data-sel="${escapeHTML(id)}">
+	return html`<div class="enc-sel" data-sel="${id}">
       <div class="enc-sel-outils">
         ${jetons}
         <label class="enc-sel-rech">
           <span class="sr-only">Rechercher une leçon</span>
-          <input type="search" class="enc-input" id="sel-rech-${escapeHTML(id)}" data-act="sel-recherche" data-sel="${escapeHTML(id)}" placeholder="Rechercher une leçon…" value="${escapeHTML(e.recherche)}" autocomplete="off" />
+          <input type="search" class="enc-input" id="sel-rech-${id}" data-act="sel-recherche" data-sel="${id}" placeholder="Rechercher une leçon…" value="${e.recherche}" autocomplete="off" />
         </label>
       </div>
-      <p class="enc-hint enc-sel-resume" id="sel-resume-${escapeHTML(id)}" role="status" aria-live="polite">${escapeHTML(texteResume(id, vue))}</p>
-      <div class="enc-sel-corps" id="sel-corps-${escapeHTML(id)}">${corpsHTML(id, vue, action)}</div>
+      <p class="enc-hint enc-sel-resume" id="sel-resume-${id}" role="status" aria-live="polite">${texteResume(id, vue)}</p>
+      <div class="enc-sel-corps" id="sel-corps-${id}">${corpsHTML(id, vue, action)}</div>
     </div>`;
 }
 
@@ -252,7 +252,7 @@ function rafraichirCorps(id: string): void {
 	const f = fournisseurs.get(id)?.();
 	const corps = container()?.querySelector(`#sel-corps-${CSS.escape(id)}`);
 	if (!f || !corps) return;
-	corps.innerHTML = corpsHTML(id, vueCourante(id, f.consulte), f.action);
+	corps.innerHTML = corpsHTML(id, vueCourante(id, f.consulte), f.action).balisage;
 	annoncer(id);
 }
 

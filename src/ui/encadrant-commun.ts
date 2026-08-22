@@ -16,7 +16,8 @@
 import type { SchoolLevel } from '../core/catalog';
 import type { NiveauNotion } from '../core/encadrant-stats';
 import { LEVEL_LABEL } from '../core/levels';
-import { escapeHTML } from '../core/utils';
+
+import { html, type SafeHtml } from '../core/html';
 
 /* Onglets de l'espace (#459) : découpe la page en sections par INTENTION
    (observer / préparer / configurer / gérer). L'état vit ici — transverse à toutes
@@ -57,17 +58,15 @@ export const ORDRE_NIVEAUX_ORTHO: NiveauNotion[] = ['a-decouvrir', 'en-cours', '
    `title` ne s'ouvre JAMAIS au doigt, or cet écran est fait pour la tablette, et sur un
    `<span>` au rôle générique sa restitution vocale est inconstante. Un site qui rend déjà la
    phrase EN CLAIR à côté du badge l'omet ici, pour ne pas la faire annoncer deux fois. */
-export function badgeClasseOrigine(niveau: SchoolLevel, infobulle?: string): string {
+export function badgeClasseOrigine(niveau: SchoolLevel, infobulle?: string): SafeHtml {
 	const classe = LEVEL_LABEL[niveau];
 	if (!infobulle) {
-		return `<span class="enc-classe-origine"><span class="sr-only">Classe d'origine : </span>${escapeHTML(classe)}</span>`;
+		return html`<span class="enc-classe-origine"><span class="sr-only">Classe d'origine : </span>${classe}</span>`;
 	}
 	// `role="img"` + `aria-label` : le nom accessible porte alors le préfixe, la classe ET la
 	// conséquence. Même parade que la frise d'états, dont le récit est aussi porté par un
 	// `aria-label` sur `role="img"`. Le `title` reste, pour la souris.
-	return `<span class="enc-classe-origine" role="img" title="${escapeHTML(infobulle)}" aria-label="${escapeHTML(
-		`Classe d'origine : ${classe}. ${infobulle}`,
-	)}">${escapeHTML(classe)}</span>`;
+	return html`<span class="enc-classe-origine" role="img" title="${infobulle}" aria-label="${`Classe d'origine : ${classe}. ${infobulle}`}">${classe}</span>`;
 }
 
 let conteneur: HTMLElement | null = null;

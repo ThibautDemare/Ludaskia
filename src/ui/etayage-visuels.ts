@@ -38,7 +38,8 @@ import { cibleEtape, derouleProbleme, type ProblemeSpec } from '../core/etayage-
 import { renderDroiteGraduee } from '../core/figures/droite';
 import { dispositionPosee, poseeGrilleHTML, type PosedSpec } from '../core/items';
 import { nomRang } from '../core/nombres';
-import { escapeHTML } from '../core/utils';
+
+import { html, type SafeHtml, joindre, brut, drapeau } from '../core/html';
 
 /* ---------- Outils communs ---------- */
 
@@ -78,45 +79,45 @@ function marqueCase(cible: string, actifs: Set<string>, base = ''): string {
 /* La grille jouable, à l'identique (même disposition, même largeur de colonne), mais figée
    et vide de ce qui reste à trouver : l'enfant voit d'emblée COMBIEN de chiffres sont à
    écrire, et les voit arriver un par un. */
-function visuelPosee(spec: PosedSpec, deroule: DerouleEtayage, i: number): string {
+function visuelPosee(spec: PosedSpec, deroule: DerouleEtayage, i: number): SafeHtml {
 	const disposition = dispositionPosee(spec);
 	const ecrites = ecritesJusqua(deroule.pas, i);
 	const actifs = actifsDu(deroule.pas, i);
 	let ligne = -1; // index de la ligne de chiffres À ÉCRIRE (ordre des rangées)
-	const cellules = disposition.rangees
-		.map((rangee) => {
+	const cellules = joindre(
+		disposition.rangees.map((rangee) => {
 			if (rangee.barre)
-				return `<span class="posee-rule" style="grid-column: 1 / ${disposition.colonnes + 2}"></span>`;
+				return html`<span class="posee-rule" style="grid-column: 1 / ${disposition.colonnes + 2}"></span>`;
 			// La rangée porte-t-elle des cases à trouver ? (les rangées de saisie se succèdent
 			// dans le même ordre que les lignes de la résolution.)
 			if (rangee.cellules.some((c) => c.role === 'saisie')) ligne++;
-			return rangee.cellules
-				.map((c, k) => {
+			return joindre(
+				rangee.cellules.map((c, k) => {
 					// `k === 0` est la colonne du signe ; les suivantes sont les colonnes de
 					// chiffres, alignées à droite → rang = distance à la colonne des unités.
 					const rang = disposition.colonnes - k;
 					switch (c.role) {
 						case 'signe':
-							return `<span class="posee-cell posee-op">${c.texte}</span>`;
+							return html`<span class="posee-cell posee-op">${c.texte}</span>`;
 						case 'chiffre':
-							return `<span class="posee-cell posee-digit">${c.chiffre}</span>`;
+							return html`<span class="posee-cell posee-digit">${c.chiffre}</span>`;
 						case 'zeroDecalage':
-							return `<span class="posee-cell posee-digit posee-zero">0</span>`;
+							return html`<span class="posee-cell posee-digit posee-zero">0</span>`;
 						case 'retenue': {
 							const cible = cibleRetenuePosee(rang);
-							return `<span ${marqueCase(cible, actifs, 'posee-cell posee-carry')}>${ecrites.get(cible) ?? ''}</span>`;
+							return html`<span ${marqueCase(cible, actifs, 'posee-cell posee-carry')}>${ecrites.get(cible) ?? ''}</span>`;
 						}
 						case 'saisie': {
 							const cible = cibleChiffrePosee(ligne, rang);
-							return `<span ${marqueCase(cible, actifs, 'posee-cell posee-input')}>${ecrites.get(cible) ?? ''}</span>`;
+							return html`<span ${marqueCase(cible, actifs, 'posee-cell posee-input')}>${ecrites.get(cible) ?? ''}</span>`;
 						}
 						case 'vide':
-							return `<span class="posee-cell"></span>`;
+							return html`<span class="posee-cell"></span>`;
 					}
-				})
-				.join('');
-		})
-		.join('');
+				}),
+			);
+		}),
+	);
 	return poseeGrilleHTML(disposition, cellules, 'posee-demo');
 }
 
@@ -125,23 +126,23 @@ function visuelPosee(spec: PosedSpec, deroule: DerouleEtayage, i: number): strin
 /* Le tableau du runner, mêmes classes et même ordre de colonnes (grande unité à gauche) :
    c'est cet alignement-là que la méthode utilise, et le réapprendre coûterait plus que la
    notion elle-même. Les cases se remplissent au fil des pas. */
-function visuelConversion(spec: ConversionSpec, deroule: DerouleEtayage, i: number): string {
+function visuelConversion(spec: ConversionSpec, deroule: DerouleEtayage, i: number): SafeHtml {
 	const ecrites = ecritesJusqua(deroule.pas, i);
 	const actifs = actifsDu(deroule.pas, i);
-	const colonnes = spec.colonnes
-		.map((col, k) => {
+	const colonnes = joindre(
+		spec.colonnes.map((col, k) => {
 			const cible = cibleColonne(k);
 			const transit = col.transit ? ' tc-head--transit' : '';
-			return `<div class="tc-col">
+			return html`<div class="tc-col">
 				<div class="tc-head${transit}">
-					<span class="tc-sym">${escapeHTML(col.unite)}</span>
-					<span class="tc-nom">${escapeHTML(`${col.nom}s`)}</span>
+					<span class="tc-sym">${col.unite}</span>
+					<span class="tc-nom">${`${col.nom}s`}</span>
 				</div>
-				<div class="tc-col-cells"><span ${marqueCase(cible, actifs, `tc-cell${col.transit ? ' tc-cell--transit' : ''}`)}>${escapeHTML(ecrites.get(cible) ?? '')}</span></div>
+				<div class="tc-col-cells"><span ${marqueCase(cible, actifs, `tc-cell${col.transit ? drapeau('tc-cell--transit') : ''}`)}>${ecrites.get(cible) ?? ''}</span></div>
 			</div>`;
-		})
-		.join('');
-	return `<div class="tc-table etay-tc">${colonnes}</div>`;
+		}),
+	);
+	return html`<div class="tc-table etay-tc">${colonnes}</div>`;
 }
 
 /* ---------- Droite graduée ---------- */
@@ -149,18 +150,22 @@ function visuelConversion(spec: ConversionSpec, deroule: DerouleEtayage, i: numb
 /* La figure du renderer commun, redessinée à chaque pas : repère posé, chemin parcouru.
    C'est le seul moteur dont l'avancement n'est pas une case qui se remplit — d'où l'état
    porté par le pas lui-même (cf. core/etayage-droite.ts). */
-function visuelDroite(spec: DroiteSpec, deroule: DerouleDroite, i: number): string {
+function visuelDroite(spec: DroiteSpec, deroule: DerouleDroite, i: number): SafeHtml {
 	const pas = deroule.pas[i];
-	return renderDroiteGraduee({
-		min: spec.min,
-		max: spec.max,
-		pas: spec.pas,
-		bornes: spec.bornes,
-		...(pas?.repere !== undefined ? { reperes: [{ valeur: pas.repere }] } : {}),
-		...(pas?.parcours ? { parcours: pas.parcours } : {}),
-		// Pas de `desc` : le conteneur du visuel est `aria-hidden` (la narration dit déjà tout),
-		// une description y serait du texte que personne n'entend jamais.
-	});
+	// Fragment SVG du moteur de figures (cf. sa frontière typée) : composé à partir
+	// de nombres et de libellés de leçon, jamais d'une saisie.
+	return brut(
+		renderDroiteGraduee({
+			min: spec.min,
+			max: spec.max,
+			pas: spec.pas,
+			bornes: spec.bornes,
+			...(pas?.repere !== undefined ? { reperes: [{ valeur: pas.repere }] } : {}),
+			...(pas?.parcours ? { parcours: pas.parcours } : {}),
+			// Pas de `desc` : le conteneur du visuel est `aria-hidden` (la narration dit déjà
+			// tout), une description y serait du texte que personne n'entend jamais.
+		}),
+	);
 }
 
 /* ---------- Numération (valeur de position, décomposition) ---------- */
@@ -169,20 +174,20 @@ function visuelDroite(spec: DroiteSpec, deroule: DerouleDroite, i: number): stri
    le tableau de numération de la classe, construit à partir du nombre que l'enfant a sous
    les yeux — et non un tableau de plus à apprendre. Les chiffres sont là dès le départ
    (le nombre est DONNÉ) ; ce qui bouge, c'est ce qu'on regarde et ce qu'on cache. */
-function visuelPosition(spec: PositionSpec, deroule: DeroulePosition, i: number): string {
+function visuelPosition(spec: PositionSpec, deroule: DeroulePosition, i: number): SafeHtml {
 	const actifs = actifsDu(deroule.pas, i);
 	const masques = new Set(deroule.pas[i]?.masques ?? []);
 	const chiffres = chiffresParRang(spec.n);
-	const cases: string[] = [];
+	const cases: SafeHtml[] = [];
 	for (let rang = chiffres.length - 1; rang >= 0; rang--) {
 		const cible = cibleRang(rang);
 		const masque = masques.has(cible) ? ' etay-masque' : '';
-		cases.push(`<div ${marqueCase(cible, actifs, `etay-rang${masque}`)}>
+		cases.push(html`<div ${marqueCase(cible, actifs, `etay-rang${masque}`)}>
 			<span class="etay-rang-chiffre">${chiffres[rang]}</span>
-			<span class="etay-rang-nom">${escapeHTML(nomRang(rang) ?? '')}</span>
+			<span class="etay-rang-nom">${nomRang(rang) ?? ''}</span>
 		</div>`);
 	}
-	return `<div class="etay-rangs">${cases.join('')}</div>`;
+	return html`<div class="etay-rangs">${cases}</div>`;
 }
 
 /* ---------- Conjugaison ---------- */
@@ -190,13 +195,13 @@ function visuelPosition(spec: PositionSpec, deroule: DeroulePosition, i: number)
 /* Les deux morceaux qu'on assemble (radical + terminaison, ou auxiliaire + participe),
    posés à côté du pronom. Le même dessin sert aux quatre temps : c'est justement le geste
    commun — une forme conjuguée se FABRIQUE en deux morceaux — que l'enfant doit voir. */
-function visuelConjugaison(deroule: DerouleEtayage, i: number): string {
+function visuelConjugaison(deroule: DerouleEtayage, i: number): SafeHtml {
 	const ecrites = ecritesJusqua(deroule.pas, i);
 	const actifs = actifsDu(deroule.pas, i);
 	const morceau = (cible: string) =>
-		`<span ${marqueCase(cible, actifs, 'etay-morceau')}>${escapeHTML(ecrites.get(cible) ?? '')}</span>`;
-	return `<div class="etay-conj">
-		<span ${marqueCase(CIBLE_PRONOM, actifs, 'etay-conj-pronom')}>${escapeHTML(ecrites.get(CIBLE_PRONOM) ?? '')}</span>
+		html`<span ${marqueCase(cible, actifs, 'etay-morceau')}>${ecrites.get(cible) ?? ''}</span>`;
+	return html`<div class="etay-conj">
+		<span ${marqueCase(CIBLE_PRONOM, actifs, 'etay-conj-pronom')}>${ecrites.get(CIBLE_PRONOM) ?? ''}</span>
 		${morceau(CIBLE_MORCEAU_1)}${morceau(CIBLE_MORCEAU_2)}
 	</div>`;
 }
@@ -207,20 +212,20 @@ function visuelConjugaison(deroule: DerouleEtayage, i: number): string {
    par une, à leur place. Montrer l'énoncé EN ENTIER pendant tout le déroulé n'est pas du
    décor — c'est là que se trouvent les nombres dont on parle, et un enfant qui a perdu le
    fil doit pouvoir y revenir sans quitter l'explication. */
-function visuelProbleme(spec: ProblemeSpec, deroule: DerouleEtayage, i: number): string {
+function visuelProbleme(spec: ProblemeSpec, deroule: DerouleEtayage, i: number): SafeHtml {
 	const ecrites = ecritesJusqua(deroule.pas, i);
 	const actifs = actifsDu(deroule.pas, i);
-	const questions = spec.etapes
-		.map((etape, k) => {
+	const questions = joindre(
+		spec.etapes.map((etape, k) => {
 			const cible = cibleEtape(k);
-			return `<li ${marqueCase(cible, actifs, 'etay-prob-q')}>
-				<span class="etay-prob-txt">${escapeHTML(etape.question)}</span>
-				<span class="etay-prob-rep">${escapeHTML(ecrites.get(cible) ?? '')}</span>
+			return html`<li ${marqueCase(cible, actifs, 'etay-prob-q')}>
+				<span class="etay-prob-txt">${etape.question}</span>
+				<span class="etay-prob-rep">${ecrites.get(cible) ?? ''}</span>
 			</li>`;
-		})
-		.join('');
-	return `<div class="etay-prob">
-		<p class="etay-prob-enonce${actifs.has('enonce') ? ' etay-actif' : ''}">${escapeHTML(spec.enonce)}</p>
+		}),
+	);
+	return html`<div class="etay-prob">
+		<p class="etay-prob-enonce${actifs.has('enonce') ? ' etay-actif' : ''}">${spec.enonce}</p>
 		<ol class="etay-prob-liste">${questions}</ol>
 	</div>`;
 }
@@ -233,7 +238,7 @@ function visuelProbleme(spec: ProblemeSpec, deroule: DerouleEtayage, i: number):
     une seule conversion de type à l'aveugle. */
 export interface MoteurEtayage {
 	deroule: DerouleEtayage;
-	visuel: (i: number) => string;
+	visuel: (i: number) => SafeHtml;
 }
 
 export function moteurEtayage(exemple: EtayageExemple): MoteurEtayage {

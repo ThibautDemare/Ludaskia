@@ -32,7 +32,7 @@
    ============================================================ */
 import type { ChoiceView, Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { checkAnswer } from '../../core/exercise';
-import { choice, escapeHTML, sample } from '../../core/utils';
+import { choice, sample } from '../../core/utils';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { html } from '../../core/html';

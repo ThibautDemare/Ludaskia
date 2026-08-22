@@ -30,7 +30,8 @@ import { goCategorie } from './navigation';
 import { dicteeDisponible } from './tts';
 import { icon } from './icon';
 import { uiAlert, uiConfirm } from './ui-modal';
-import { enumererFr, escapeHTML } from '../core/utils';
+import { enumererFr } from '../core/utils';
+import { html, joindre, drapeau } from '../core/html';
 
 interface RowData {
 	mot: string;
@@ -123,7 +124,7 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 			]
 		: [];
 
-	el.innerHTML = `
+	el.innerHTML = html`
     <div class="ortho-form">
       <label class="ortho-field">
         <span>Nom de la liste</span>
@@ -138,9 +139,9 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
       <p class="ortho-hint">Astuce : tu peux coller une liste de mots (un par ligne) dans la case « Mot ». Le bouton ✍️ d'une ligne ajoute, en option, le pluriel et le féminin (leçon « Les accords »). Si tu saisis un <b>verbe</b>, l'application te proposera de régler sa conjugaison (pronoms, temps, complément) pour le travailler dans une phrase.</p>
       <div class="ortho-form-actions">
         <button class="btn-primary" id="orthoSave">${icon('check')} Enregistrer</button>
-        ${editing ? `<button class="ortho-del" id="orthoDelete">${icon('trash')} Supprimer la liste</button>` : ''}
+        ${editing ? html`<button class="ortho-del" id="orthoDelete">${icon('trash')} Supprimer la liste</button>` : ''}
       </div>
-    </div>`;
+    </div>`.balisage;
 
 	(el.querySelector('#orthoLabel') as HTMLInputElement).value = liste?.label ?? '';
 	(el.querySelector('#orthoDate') as HTMLInputElement).value = liste?.dateControle ?? '';
@@ -172,7 +173,7 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 		);
 
 		const toggle = document.createElement('button');
-		toggle.className = 'ortho-formes-toggle' + (aFormes ? ' actif' : '');
+		toggle.className = 'ortho-formes-toggle' + (aFormes ? drapeau('actif') : '');
 		toggle.type = 'button';
 		toggle.textContent = '✍️';
 		toggle.title = 'Pluriel et féminin (facultatif)';
@@ -194,7 +195,7 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 		const mkForme = (cls: string, label: string, ph: string, val?: string) => {
 			const f = document.createElement('label');
 			f.className = 'ortho-forme';
-			f.innerHTML = `<span>${label}</span>`;
+			f.innerHTML = html`<span>${label}</span>`.balisage;
 			const inp = document.createElement('input');
 			inp.className = cls;
 			inp.type = 'text';
@@ -233,23 +234,27 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 		const verbePanel = document.createElement('div');
 		verbePanel.className = 'ortho-verbe';
 		verbePanel.hidden = true;
-		verbePanel.innerHTML = `
+		verbePanel.innerHTML = html`
       <div class="ortho-verbe-grp">
         <span class="ortho-verbe-grp-label">Pronoms à entraîner</span>
         <div class="ortho-chips" role="group" aria-label="Pronoms à entraîner">
-          ${PRONOUNS.map(
-						(lbl, i) =>
-							`<button type="button" class="ortho-chip ortho-chip-pronom${pronomsSel.has(i) ? ' actif' : ''}" data-p="${i}" aria-pressed="${pronomsSel.has(i)}">${lbl}</button>`,
-					).join('')}
+          ${joindre(
+						PRONOUNS.map(
+							(lbl, i) =>
+								html`<button type="button" class="ortho-chip ortho-chip-pronom${pronomsSel.has(i) ? ' actif' : ''}" data-p="${i}" aria-pressed="${String(pronomsSel.has(i))}">${lbl}</button>`,
+						),
+					)}
         </div>
       </div>
       <div class="ortho-verbe-grp">
         <span class="ortho-verbe-grp-label">Temps</span>
         <div class="ortho-chips" role="group" aria-label="Temps">
-          ${TEMPS_OPTIONS.map(
-						(t) =>
-							`<button type="button" class="ortho-chip ortho-chip-temps${tempsSel.has(t.id) ? ' actif' : ''}" data-t="${t.id}" aria-pressed="${tempsSel.has(t.id)}">${t.label}</button>`,
-					).join('')}
+          ${joindre(
+						TEMPS_OPTIONS.map(
+							(t) =>
+								html`<button type="button" class="ortho-chip ortho-chip-temps${tempsSel.has(t.id) ? ' actif' : ''}" data-t="${t.id}" aria-pressed="${String(tempsSel.has(t.id))}">${t.label}</button>`,
+						),
+					)}
         </div>
       </div>
       <label class="ortho-verbe-comp">
@@ -258,7 +263,7 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
       </label>
       <p class="ortho-hint ortho-verbe-aide">Choisis un complément qui marche avec tous les pronoms : « une pomme », « à la balle »… (évite « ma… », « notre… »). Tu peux le laisser vide.</p>
       <p class="ortho-verbe-apercu" aria-live="polite"></p>
-      <button type="button" class="ortho-verbe-notverb">Ce n'est pas un verbe</button>`;
+      <button type="button" class="ortho-verbe-notverb">Ce n'est pas un verbe</button>`.balisage;
 		(verbePanel.querySelector('.ortho-complement') as HTMLInputElement).value =
 			data.verbe?.complement ?? '';
 
@@ -309,7 +314,8 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 		}
 		function showSuggest(): void {
 			const v = inMot.value.trim();
-			suggest.innerHTML = `${icon('lightbulb')} « ${escapeHTML(v)} » est un verbe — Régler la conjugaison`;
+			suggest.innerHTML =
+				html`${icon('lightbulb')} « ${v} » est un verbe — Régler la conjugaison`.balisage;
 			suggest.hidden = false;
 		}
 

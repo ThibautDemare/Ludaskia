@@ -31,6 +31,7 @@ import { lectureConsigneAuto } from '../core/profiles';
 import { activateModal } from './modal-a11y';
 import { dicteeDisponible, dicterConsigne, stopTts } from './tts';
 import { icon } from './icon';
+import { html, joindre } from '../core/html';
 
 /** Mouvement réduit : réglage in-app (`html.anim-reduced`) OU préférence système.
     On couvre les DEUX (cf. styles) pour ne jamais imposer de défilement animé. */
@@ -57,7 +58,7 @@ export function lancerTour(opts: { trigger?: HTMLElement | null } = {}): void {
 	const overlay = document.createElement('div');
 	overlay.className = 'tour';
 	overlay.id = 'tourOverlay';
-	overlay.innerHTML = `
+	overlay.innerHTML = html`
 		<div class="tour-card" role="dialog" aria-modal="true" aria-label="Découvre ton accueil">
 			<button type="button" class="tour-skip" aria-label="Quitter le guide">${icon('x')}<span>Passer</span></button>
 			<div class="tour-say" aria-live="polite" aria-atomic="true">
@@ -72,13 +73,13 @@ export function lancerTour(opts: { trigger?: HTMLElement | null } = {}): void {
 				<span class="tour-foot-btns">
 					${
 						ttsDispo
-							? `<button type="button" class="modal-listen tour-listen" aria-label="Écouter">${icon('speaker')}<span>Écouter</span></button>`
+							? html`<button type="button" class="modal-listen tour-listen" aria-label="Écouter">${icon('speaker')}<span>Écouter</span></button>`
 							: ''
 					}
 					<button type="button" class="modal-ok tour-next"></button>
 				</span>
 			</div>
-		</div>`;
+		</div>`.balisage;
 	document.body.appendChild(overlay);
 
 	const card = overlay.querySelector<HTMLElement>('.tour-card')!;
@@ -125,9 +126,9 @@ export function lancerTour(opts: { trigger?: HTMLElement | null } = {}): void {
 		titleEl.textContent = e.titre;
 		textEl.textContent = e.texte;
 		next.textContent = dernier ? "C'est parti !" : 'Suivant';
-		dotsEl.innerHTML = TOUR_ETAPES.map(
-			(_, i) => `<span class="tour-dot${i === idx ? ' on' : ''}"></span>`,
-		).join('');
+		dotsEl.innerHTML = joindre(
+			TOUR_ETAPES.map((_, i) => html`<span class="tour-dot${i === idx ? ' on' : ''}"></span>`),
+		).balisage;
 		// Petit « pop » de la mascotte à chaque étape (neutralisé sous mouvement réduit, cf. styles).
 		mascEl.classList.remove('pop');
 		void mascEl.offsetWidth; // force le reflow pour relancer l'animation CSS
@@ -180,7 +181,7 @@ export function ouvrirMotParents(
 	const overlay = document.createElement('div');
 	overlay.className = 'modal-overlay';
 	overlay.id = 'motParentsOverlay';
-	overlay.innerHTML = `
+	overlay.innerHTML = html`
 		<div class="modal parents-modal" role="dialog" aria-modal="true" aria-labelledby="parentsTitle">
 			<button type="button" class="modal-close" aria-label="Fermer">${icon('x')}</button>
 			<div class="modal-emoji" aria-hidden="true">👋</div>
@@ -201,7 +202,7 @@ export function ouvrirMotParents(
 				<p>Nous allons maintenant présenter l'application à votre enfant, en quelques étapes.</p>
 			</div>
 			<button type="button" class="modal-ok parents-ok">Montrer à mon enfant</button>
-		</div>`;
+		</div>`.balisage;
 	document.body.appendChild(overlay);
 
 	const ok = overlay.querySelector<HTMLButtonElement>('.parents-ok')!;

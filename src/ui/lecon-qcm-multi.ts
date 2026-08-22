@@ -26,7 +26,6 @@ import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import type { ExerciseMode } from '../core/exercise';
 import { figureBlock } from '../core/items';
-import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { icon } from './icon';
 import { bindConsigneTts, bindItemTts } from './consigne-tts';
@@ -51,13 +50,14 @@ import {
 	revelerSolution,
 	wirePasser,
 } from './lecon-passer';
+import { html, joindre, type SafeHtml, brut } from '../core/html';
 
 // Tour plus court que le QCM mono (8) : anti-empilement d'étoile sur un « tout-ou-rien »
 // conjonctif (gamification-enfant).
 const NB_QUESTIONS = 6;
 
 interface QuestionMulti {
-	figure?: string;
+	figure?: SafeHtml;
 	propositions: string[]; // ordre STABLE (jamais réordonné)
 	correctes: string[]; // sous-ensemble VRAI stocké
 	consigne: string;
@@ -154,25 +154,29 @@ function renderQuestion(): void {
 	const q = questions[idx];
 	// Consigne PERSISTANTE et emphatique (« Coche TOUTES… ») : reste affichée pendant tout
 	// le cochage (contre le réflexe « un seul choix »). « toutes » est mis en gras.
-	const consigneHTML = q.consigne.replace(/toutes/i, (m) => `<strong>${m}</strong>`);
-	sheets().innerHTML = `
+	// `q.consigne` est un libellé de leçon (donnée du catalogue) : on l'échappe par le
+	// gabarit, puis on met « toutes » en gras DANS le fragment déjà sûr.
+	const consigneHTML = brut(
+		html`${q.consigne}`.balisage.replace(/toutes/i, (m) => html`<strong>${m}</strong>`.balisage),
+	);
+	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
         ${leconTitreHTML(lesson)}
         ${figureBlock(q.figure)}
         <p class="sprint-q lqcm-multi-consigne"${ttsAttr(q.parle)}>${consigneHTML}</p>
-        <div class="sprint-choices sprint-choices--pile lqcm-multi-choices" id="lqmChoices" role="group" aria-label="${escapeHTML(q.consigne)}">
-          ${q.propositions
-						.map(
-							(p, i) => `<div class="lqcm-multi-wrap">
+        <div class="sprint-choices sprint-choices--pile lqcm-multi-choices" id="lqmChoices" role="group" aria-label="${q.consigne}">
+          ${joindre(
+						q.propositions.map(
+							(p, i) => html`<div class="lqcm-multi-wrap">
             <button type="button" class="lqcm-multi-choice" aria-pressed="false" data-i="${i}">
               <span class="lqcm-multi-box" aria-hidden="true">${icon('square')}</span>
-              <span class="lqcm-multi-lab">${escapeHTML(p)}</span>
+              <span class="lqcm-multi-lab">${p}</span>
             </button>
           </div>`,
-						)
-						.join('')}
+						),
+					)}
         </div>
         ${decisionHTML('lqmValider', { classeBloc: 'lqcm-multi-decide' })}
         <!-- Région live (#467) : porte la RÉVÉLATION d'une question passée. Le verdict
@@ -183,7 +187,7 @@ function renderQuestion(): void {
         <div class="sprint-correction" id="lqmFeedback" hidden></div>
         <div class="sprint-actions" id="lqmActions" hidden></div>
       </div>
-    </div>`;
+    </div>`.balisage;
 	sheets()
 		.querySelectorAll<HTMLButtonElement>('#lqmChoices .lqcm-multi-choice')
 		.forEach((btn) => btn.addEventListener('click', () => toggle(Number(btn.dataset.i), btn)));
@@ -206,7 +210,7 @@ function toggle(i: number, btn: HTMLButtonElement): void {
 	btn.setAttribute('aria-pressed', String(coche));
 	btn.classList.toggle('is-selected', coche);
 	const box = btn.querySelector('.lqcm-multi-box');
-	if (box) box.innerHTML = icon(coche ? 'check-square' : 'square');
+	if (box) box.innerHTML = icon(coche ? 'check-square' : 'square').balisage;
 	(sheets().querySelector('#lqmValider') as HTMLButtonElement).disabled = selected.size === 0;
 }
 
@@ -232,15 +236,15 @@ function valider(): void {
 			let verdict = '';
 			if (estBonne && cochee) {
 				btn.classList.add('is-hit'); // coché à raison → vert + ✓
-				if (box) box.innerHTML = icon('check');
+				if (box) box.innerHTML = icon('check').balisage;
 				verdict = 'correcte';
 			} else if (estBonne && !cochee) {
 				btn.classList.add('is-missed'); // oublié → ambre (pas rouge), picto « ? » distinct
-				if (box) box.innerHTML = icon('question');
+				if (box) box.innerHTML = icon('question').balisage;
 				verdict = 'oubliée, il fallait la cocher';
 			} else if (!estBonne && cochee) {
 				btn.classList.add('is-false'); // coché à tort → rouge + ✗
-				if (box) box.innerHTML = icon('x');
+				if (box) box.innerHTML = icon('x').balisage;
 				verdict = 'à ne pas cocher';
 			}
 			// décoché à raison → neutre (aucune classe, aucune annonce)
@@ -262,14 +266,14 @@ function valider(): void {
 	// Badge tout-ou-rien + synthèse (redondante avec les cases marquées). Échec en AMBRE et
 	// libellé NON punitif, distinct de la feature « À revoir » (révision espacée).
 	const badge = correct
-		? `<span class="lqm-badge lqm-badge--ok">${icon('check-circle')} Bravo ! 🎉</span>`
-		: `<span class="lqm-badge lqm-badge--revoir">Presque ! Regarde bien.</span>`;
-	const synthese = `<p class="lqm-synthese">Les bonnes propriétés :<br>${listeCorrectesHTML(q)}</p>`;
+		? html`<span class="lqm-badge lqm-badge--ok">${icon('check-circle')} Bravo ! 🎉</span>`
+		: html`<span class="lqm-badge lqm-badge--revoir">Presque ! Regarde bien.</span>`;
+	const synthese = html`<p class="lqm-synthese">Les bonnes propriétés :<br>${listeCorrectesHTML(q)}</p>`;
 	wireNext(
 		sheets().querySelector('#lqmActions') as HTMLElement,
 		sheets().querySelector('#lqmFeedback') as HTMLElement,
 		{
-			feedbackHTML: `${badge}${synthese}`,
+			feedbackHTML: html`${badge}${synthese}`,
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;
@@ -284,8 +288,11 @@ function valider(): void {
    complète. Partagé par la synthèse d'une réponse validée et la révélation d'une question
    passée (#467) — deux formulations différentes de la même liste seraient une divergence de
    plus à maintenir. */
-function listeCorrectesHTML(q: QuestionMulti): string {
-	return q.correctes.map((c) => escapeHTML(c)).join('<br>');
+function listeCorrectesHTML(q: QuestionMulti): SafeHtml {
+	return joindre(
+		q.correctes.map((c) => html`${c}`),
+		html`<br>`.balisage,
+	);
 }
 
 /* Verdict TOUT-OU-RIEN de la grille cochée : juste ⇔ toutes les bonnes cochées ET aucune
@@ -370,7 +377,7 @@ function passer(): void {
 		actions: sheets().querySelector('#lqmActions') as HTMLElement,
 		// Réponse EN BLOC (plusieurs phrases) : la ligne l'annonce et s'arrête sur « : ».
 		repHTML: ligneRevelation('les bonnes propriétés'),
-		extraHTML: `<p class="lqm-synthese">${listeCorrectesHTML(q)}</p>`,
+		extraHTML: html`<p class="lqm-synthese">${listeCorrectesHTML(q)}</p>`,
 		annonce: `Les bonnes propriétés : ${q.correctes.join(' ; ')}.`,
 		isLast: idx >= questions.length,
 		onNext: () => {

@@ -16,7 +16,6 @@
    jour » : on empêche une récurrence en conflit avec un autre programme du profil
    (recurrencesEnConflit) — message clair, jamais de blocage dur du volume.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
 import { icon } from './icon';
 import type { IconName } from '../core/icon-names';
 import { listProfiles, type Profile } from '../core/profiles';
@@ -61,6 +60,7 @@ import {
 	type ActionLigne,
 } from './selecteur-lecon';
 import { segmentHTML } from './segment';
+import { html, type SafeHtml, VIDE, joindre, drapeau } from '../core/html';
 
 /* ---------- État de la section (module) ---------- */
 /* Message de conflit de récurrence, rattaché à un programme précis d'un profil précis
@@ -178,7 +178,7 @@ function checkboxesDicteeHTML(
 	etape: SeanceEtape,
 	dictees: Groupe[],
 	resoudreLabel: (id: string) => string | null,
-): string {
+): SafeHtml {
 	const selected = ciblesEtape(etape);
 	const dispo = new Set(dictees.flatMap((g) => g.items.map((it) => it.id)));
 	const orphelins = selected.filter((id) => !dispo.has(id));
@@ -194,25 +194,25 @@ function checkboxesDicteeHTML(
 	// Le repère est décrit par chaque case (aria-describedby) : comme le focus revient sur
 	// la case cochée après re-rendu, le lecteur d'écran relit l'état à jour dans la même passe.
 	const hintId = `dictee-hint-${def.id}-${etape.id}`;
-	const corps = groupes
-		.map((g) => {
-			const cases = g.items
-				.map((it) => {
+	const corps = joindre(
+		groupes.map((g) => {
+			const cases = joindre(
+				g.items.map((it) => {
 					const on = selected.includes(it.id);
-					return `<label class="enc-seance-dictee${on ? ' on' : ''}"><input type="checkbox" data-act="seance-dictee-toggle" data-def="${def.id}" data-etape="${etape.id}" data-ref="${escapeHTML(it.id)}" aria-describedby="${hintId}"${on ? ' checked' : ''} /><span>${escapeHTML(it.label)}</span></label>`;
-				})
-				.join('');
+					return html`<label class="enc-seance-dictee${on ? ' on' : ''}"><input type="checkbox" data-act="seance-dictee-toggle" data-def="${def.id}" data-etape="${etape.id}" data-ref="${it.id}" aria-describedby="${hintId}"${on ? drapeau('checked') : ''} /><span>${it.label}</span></label>`;
+				}),
+			);
 			// role="group" + aria-label expose le regroupement (le <p> visuel est masqué pour
 			// éviter la double annonce), même brique que recurrenceHTML.
-			return `<div class="enc-seance-dictees-groupe" role="group" aria-label="${escapeHTML(g.label)}"><p class="enc-seance-dictees-grp" aria-hidden="true">${escapeHTML(g.label)}</p>${cases}</div>`;
-		})
-		.join('');
+			return html`<div class="enc-seance-dictees-groupe" role="group" aria-label="${g.label}"><p class="enc-seance-dictees-grp" aria-hidden="true">${g.label}</p>${cases}</div>`;
+		}),
+	);
 	const totalDispo = dictees.reduce((s, g) => s + g.items.length, 0);
 	const hint = hintDictees(selected.length, totalDispo, orphelins.length > 0);
-	return `<fieldset class="enc-seance-dictees" data-def="${def.id}" data-etape="${etape.id}">
+	return html`<fieldset class="enc-seance-dictees" data-def="${def.id}" data-etape="${etape.id}">
       <legend class="sr-only">Dictées visées (une ou plusieurs)</legend>
       ${corps}
-      <p id="${hintId}" class="enc-seance-dictees-hint">${escapeHTML(hint)}</p>
+      <p id="${hintId}" class="enc-seance-dictees-hint">${hint}</p>
     </fieldset>`;
 }
 
@@ -265,7 +265,7 @@ function resumeRecurrence(rec: SeanceRecurrence): string {
 	return `Chaque semaine : ${jours.join(', ')}.`;
 }
 
-function recurrenceHTML(def: SeanceDef): string {
+function recurrenceHTML(def: SeanceDef): SafeHtml {
 	const estDate = def.recurrence.type === 'date';
 	const bascule = segmentHTML({
 		act: 'seance-rec-type',
@@ -278,26 +278,28 @@ function recurrenceHTML(def: SeanceDef): string {
 			{ val: 'hebdo', label: 'Chaque semaine' },
 		],
 	});
-	let corps: string;
+	let corps: SafeHtml;
 	if (def.recurrence.type === 'date') {
-		corps = `<label class="enc-row enc-seance-date-row"><span>Date</span>
-        <input type="date" class="enc-seance-date" data-act="seance-rec-date" data-def="${def.id}" value="${escapeHTML(def.recurrence.date)}" />
+		corps = html`<label class="enc-row enc-seance-date-row"><span>Date</span>
+        <input type="date" class="enc-seance-date" data-act="seance-rec-date" data-def="${def.id}" value="${def.recurrence.date}" />
       </label>`;
 	} else {
 		const jours = def.recurrence.jours;
-		corps = `<fieldset class="enc-seance-jours">
+		corps = html`<fieldset class="enc-seance-jours">
         <legend class="sr-only">Jours de la semaine</legend>
-        ${JOURS_COURTS.map((lab, i) => {
-					const jour = i + 1;
-					const on = jours.includes(jour);
-					return `<label class="enc-seance-jour${on ? ' on' : ''}"><input type="checkbox" aria-label="${JOURS_LONGS[i]}" data-act="seance-rec-jour" data-def="${def.id}" data-jour="${jour}"${on ? ' checked' : ''} /><span aria-hidden="true">${lab}</span></label>`;
-				}).join('')}
+        ${joindre(
+					JOURS_COURTS.map((lab, i) => {
+						const jour = i + 1;
+						const on = jours.includes(jour);
+						return html`<label class="enc-seance-jour${on ? ' on' : ''}"><input type="checkbox" aria-label="${JOURS_LONGS[i]}" data-act="seance-rec-jour" data-def="${def.id}" data-jour="${jour}"${on ? drapeau('checked') : ''} /><span aria-hidden="true">${lab}</span></label>`;
+					}),
+				)}
       </fieldset>`;
 	}
-	return `<div class="enc-seance-rec">
+	return html`<div class="enc-seance-rec">
       ${bascule}
       ${corps}
-      <p class="enc-hint">${escapeHTML(resumeRecurrence(def.recurrence))}</p>
+      <p class="enc-hint">${resumeRecurrence(def.recurrence)}</p>
     </div>`;
 }
 
@@ -332,28 +334,28 @@ function hintARevoir(n: number): string {
    telle quelle : c'est le seul motif restant de l'ancien repli « Cible actuelle », puisqu'une
    cible hors de la classe suivie est désormais légale. Afficher son identifiant nu sans le
    dire laisserait croire à un libellé. */
-function cibleLeconHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): string {
+function cibleLeconHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): SafeHtml {
 	const lesson = etape.ref ? getLessonById(etape.ref) : undefined;
 	const ouvert = estOuvert(consulte.uuid, def.id, etape.id);
-	let nom: string;
-	if (!etape.ref) nom = `<span class="enc-seance-cible-vide">Aucune leçon choisie</span>`;
+	let nom: SafeHtml;
+	if (!etape.ref) nom = html`<span class="enc-seance-cible-vide">Aucune leçon choisie</span>`;
 	else if (!lesson)
-		nom = `<span class="enc-seance-cible-vide">Leçon introuvable (${escapeHTML(etape.ref)})</span>`;
+		nom = html`<span class="enc-seance-cible-vide">Leçon introuvable (${etape.ref})</span>`;
 	else {
 		const origine = origineLecon(lesson, consulte);
 		// Badge SANS infobulle : la conséquence est rendue en clair sous l'activité
 		// (`noteOrigineHTML`), la répéter dans le nom accessible du badge la ferait annoncer
 		// deux fois de suite.
 		const badge = origine.direction === 'classe-suivie' ? '' : badgeClasseOrigine(origine.niveau);
-		nom = `<span class="enc-seance-cible-nom">${escapeHTML(labelLecon(lesson, origine.niveau))}</span>${badge}`;
+		nom = html`<span class="enc-seance-cible-nom">${labelLecon(lesson, origine.niveau)}</span>${badge}`;
 	}
 	// `aria-expanded` sur le bouton qui ouvre le sélecteur : c'est un dévoilement, pas une
 	// navigation — l'adulte doit savoir, à la voix, si le panneau est déjà ouvert.
 	// `aria-controls` seulement quand le panneau EXISTE : replié, il n'est pas rendu du tout,
 	// et l'attribut pointerait vers un identifiant absent du document (IDREF invalide).
 	const controls = ouvert ? ` aria-controls="${idSelecteur(def, etape)}"` : '';
-	const bouton = `<button type="button" class="enc-btn-sec${ouvert ? ' on' : ''}" data-act="seance-cible-ouvrir" data-def="${def.id}" data-etape="${etape.id}" aria-expanded="${ouvert}"${controls}>${etape.ref ? 'Changer' : 'Choisir une leçon'}</button>`;
-	return `<span class="enc-seance-cible">${nom}${bouton}</span>`;
+	const bouton = html`<button type="button" class="enc-btn-sec${ouvert ? ' on' : ''}" data-act="seance-cible-ouvrir" data-def="${def.id}" data-etape="${etape.id}" aria-expanded="${String(ouvert)}"${controls}>${etape.ref ? 'Changer' : 'Choisir une leçon'}</button>`;
+	return html`<span class="enc-seance-cible">${nom}${bouton}</span>`;
 }
 
 /* Ce qu'implique une cible prise dans une autre classe, EN CLAIR sous l'activité (#571).
@@ -364,20 +366,20 @@ function cibleLeconHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): 
    infobulle native ne s'ouvre pas au doigt, et cet écran est fait pour la tablette.
    Rien du tout quand la cible est de la classe suivie : ce serait du bruit sur le cas
    courant, qui est aussi le plus fréquent. */
-function noteOrigineHTML(etape: SeanceEtape, consulte: Profile): string {
+function noteOrigineHTML(etape: SeanceEtape, consulte: Profile): SafeHtml {
 	const lesson = etape.ref ? getLessonById(etape.ref) : undefined;
-	if (!lesson) return '';
+	if (!lesson) return VIDE;
 	const origine = origineLecon(lesson, consulte);
-	if (origine.direction === 'classe-suivie') return '';
-	return `<p class="enc-hint enc-seance-arevoir">${escapeHTML(
-		INFOBULLE_ORIGINE[origine.direction](consulte.name),
+	if (origine.direction === 'classe-suivie') return VIDE;
+	return html`<p class="enc-hint enc-seance-arevoir">${INFOBULLE_ORIGINE[origine.direction](
+		consulte.name,
 	)}</p>`;
 }
 
 /* Le sélecteur déployé sous une étape. L'action de ligne est « Choisir », et la ligne DÉJÀ
    retenue se marque comme telle plutôt que de disparaître : on doit pouvoir voir, dans
    l'arbre, laquelle est la cible actuelle. */
-function selecteurEtapeHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): string {
+function selecteurEtapeHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): SafeHtml {
 	const id = idSelecteur(def, etape);
 	const action: ActionLigne = {
 		act: 'seance-cible-choisir',
@@ -391,7 +393,7 @@ function selecteurEtapeHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profil
 		const p = profilConsulte();
 		return p ? { consulte: p, action } : null;
 	});
-	return `<div class="enc-seance-selecteur" id="${id}">
+	return html`<div class="enc-seance-selecteur" id="${id}">
       ${selecteurLeconHTML({ id, consulte, action })}
       <button type="button" class="enc-btn-sec" data-act="seance-cible-fermer" data-def="${def.id}" data-etape="${etape.id}">Fermer</button>
     </div>`;
@@ -403,13 +405,13 @@ function etapeHTML(
 	etape: SeanceEtape,
 	consulte: Profile,
 	dictees: Groupe[],
-): string {
+): SafeHtml {
 	const info = SEANCE_MODE_INFOS[etape.kind];
-	let cibleInline = ''; // cible compacte sur la ligne (leçon)
-	let cibleBloc = ''; // bloc pleine largeur sous la ligne (pool de dictées #463, repère « à revoir » #464)
+	let cibleInline: SafeHtml = VIDE; // cible compacte sur la ligne (leçon)
+	let cibleBloc: SafeHtml = VIDE; // bloc pleine largeur sous la ligne (pool de dictées #463, repère « à revoir » #464)
 	if (etape.kind === 'aRevoir') {
-		cibleBloc = `<p class="enc-hint enc-seance-arevoir">${escapeHTML(
-			hintARevoir(epingleesProfil(consulte).length),
+		cibleBloc = html`<p class="enc-hint enc-seance-arevoir">${hintARevoir(
+			epingleesProfil(consulte).length,
 		)}</p>`;
 	} else if (info.ref === 'lecon') {
 		cibleInline = cibleLeconHTML(def, etape, consulte);
@@ -418,20 +420,23 @@ function etapeHTML(
 		// durée estimée — même parti pris que le repère de l'étape « à revoir » sans épingle.
 		cibleBloc = etape.ref
 			? noteOrigineHTML(etape, consulte)
-			: `<p class="enc-hint enc-seance-arevoir">Tant qu'aucune leçon n'est choisie, cette activité n'apparaîtra pas dans le programme.</p>`;
+			: html`<p class="enc-hint enc-seance-arevoir">Tant qu'aucune leçon n'est choisie, cette activité n'apparaîtra pas dans le programme.</p>`;
 		if (estOuvert(consulte.uuid, def.id, etape.id))
-			cibleBloc += selecteurEtapeHTML(def, etape, consulte);
+			cibleBloc = html`${cibleBloc}${selecteurEtapeHTML(def, etape, consulte)}`;
 	} else if (info.ref === 'dictee') {
 		cibleBloc = checkboxesDicteeHTML(def, etape, dictees, (id) =>
 			labelLeconOrtho(id, loadOrthoFor(consulte.uuid).listes),
 		);
 	}
-	const count = `<label class="enc-seance-count"><span class="sr-only">Nombre de fois</span>
-      <select class="enc-select-niveau" data-act="seance-count" data-def="${def.id}" data-etape="${etape.id}">${PALIERS.map(
-				(n) => `<option value="${n}"${n === etape.count ? ' selected' : ''}>× ${n}</option>`,
-			).join('')}</select></label>`;
-	return `<li class="enc-seance-etape">
-      <span class="enc-seance-etape-mode">${icon(MODE_ICONE[etape.kind])} ${escapeHTML(info.label)}</span>
+	const count = html`<label class="enc-seance-count"><span class="sr-only">Nombre de fois</span>
+      <select class="enc-select-niveau" data-act="seance-count" data-def="${def.id}" data-etape="${etape.id}">${joindre(
+				PALIERS.map(
+					(n) =>
+						html`<option value="${n}"${n === etape.count ? drapeau('selected') : ''}>× ${n}</option>`,
+				),
+			)}</select></label>`;
+	return html`<li class="enc-seance-etape">
+      <span class="enc-seance-etape-mode">${icon(MODE_ICONE[etape.kind])} ${info.label}</span>
       ${cibleInline}
       ${count}
       <button type="button" class="enc-seance-etape-del" data-act="seance-etape-del" data-def="${def.id}" data-etape="${etape.id}" aria-label="Retirer cette activité">${icon('trash')}</button>
@@ -440,29 +445,29 @@ function etapeHTML(
 }
 
 /* ---------- Une définition (carte) ---------- */
-function defHTML(def: SeanceDef, consulte: Profile, dictees: Groupe[]): string {
-	const nom = def.nom ? escapeHTML(def.nom) : 'Programme sans nom';
+function defHTML(def: SeanceDef, consulte: Profile, dictees: Groupe[]): SafeHtml {
+	const nom = def.nom || 'Programme sans nom';
 	const duree = estimationDureeMin(def);
 	// Le décompte ne retient que les étapes CONFIGURÉES : une activité « une leçon précise »
 	// sans cible disparaît au lancement (#556), l'annoncer à l'adulte serait un mensonge.
 	const nb = def.etapes.filter(etapeConfiguree).length;
 	const warn =
 		conflit && conflit.uuid === consulte.uuid && conflit.defId === def.id
-			? `<p class="enc-warn" role="alert">${escapeHTML(conflit.msg)}</p>`
-			: '';
+			? html`<p class="enc-warn" role="alert">${conflit.msg}</p>`
+			: VIDE;
 	// La LISTE montre toutes les étapes, configurées ou non : une étape sans cible doit
 	// rester sous les yeux, c'est là qu'on lui en donne une. Seul le décompte les distingue.
 	const etapes = def.etapes.length
-		? `<ul class="enc-seance-etapes">${def.etapes.map((e) => etapeHTML(def, e, consulte, dictees)).join('')}</ul>`
-		: `<p class="enc-hint">Aucune activité pour l'instant : ajoutez-en une ci-dessous.</p>`;
-	const ajout = `<label class="enc-seance-add-etape">
+		? html`<ul class="enc-seance-etapes">${joindre(def.etapes.map((e) => etapeHTML(def, e, consulte, dictees)))}</ul>`
+		: html`<p class="enc-hint">Aucune activité pour l'instant : ajoutez-en une ci-dessous.</p>`;
+	const ajout = html`<label class="enc-seance-add-etape">
       <span class="sr-only">Ajouter une activité</span>
       <select class="enc-select-niveau" data-act="seance-etape-add" data-def="${def.id}">
         <option value="">+ Ajouter une activité…</option>
-        ${MODES.map((k) => `<option value="${k}">${escapeHTML(SEANCE_MODE_INFOS[k].label)}</option>`).join('')}
+        ${joindre(MODES.map((k) => html`<option value="${k}">${SEANCE_MODE_INFOS[k].label}</option>`))}
       </select>
     </label>`;
-	return `<div class="enc-block enc-seance-def">
+	return html`<div class="enc-block enc-seance-def">
       <div class="enc-seance-def-head">
         <span class="enc-seance-def-nom">${nom}</span>
         <span class="enc-seance-duree">${icon('timer')} ~${duree} min</span>
@@ -480,38 +485,36 @@ function defHTML(def: SeanceDef, consulte: Profile, dictees: Groupe[]): string {
 }
 
 /* ---------- Copier vers un autre profil ---------- */
-function copieHTML(consulte: Profile, aDesProgrammes: boolean): string {
+function copieHTML(consulte: Profile, aDesProgrammes: boolean): SafeHtml {
 	const autres = listProfiles().filter((p) => p.uuid !== consulte.uuid);
-	if (autres.length === 0) return '';
-	const opts = autres
-		.map((p) => `<option value="${escapeHTML(p.uuid)}">${escapeHTML(p.name)}</option>`)
-		.join('');
-	return `<div class="enc-block enc-seance-copie">
+	if (autres.length === 0) return VIDE;
+	const opts = joindre(autres.map((p) => html`<option value="${p.uuid}">${p.name}</option>`));
+	return html`<div class="enc-block enc-seance-copie">
       <h3 class="enc-h3">Copier ces programmes</h3>
-      <p class="enc-hint">Copiez les programmes de ${escapeHTML(consulte.name)} vers un autre profil. Les programmes du profil choisi seront remplacés.</p>
+      <p class="enc-hint">Copiez les programmes de ${consulte.name} vers un autre profil. Les programmes du profil choisi seront remplacés.</p>
       <div class="enc-actions">
         <select id="seanceCopyCible" class="enc-select-niveau" data-act="seance-copy-cible" aria-label="Profil de destination">${opts}</select>
-        <button type="button" class="enc-btn-sec" data-act="seance-copy"${aDesProgrammes ? '' : ' disabled'}>Copier vers ce profil</button>
+        <button type="button" class="enc-btn-sec" data-act="seance-copy"${aDesProgrammes ? '' : drapeau('disabled')}>Copier vers ce profil</button>
       </div>
       ${aDesProgrammes ? '' : '<p class="enc-hint">Composez au moins un programme avant de pouvoir le copier.</p>'}
     </div>`;
 }
 
 /* ---------- Bloc principal (composé par l'orchestrateur) ---------- */
-export function seanceHTML(consulte: Profile): string {
+export function seanceHTML(consulte: Profile): SafeHtml {
 	const defs = chargerSeancesFor(consulte.uuid);
 	const dictees = groupesDictee(
 		consulte.uuid,
 		niveauProfilMatiere(consulte, 'francais'),
 		consulte.name,
 	);
-	const titre = `<h2 class="enc-h2">${icon('calendar')} Programme du jour de ${escapeHTML(consulte.name)}</h2>`;
+	const titre = html`<h2 class="enc-h2">${icon('calendar')} Programme du jour de ${consulte.name}</h2>`;
 	const cartes = defs.length
-		? defs.map((d) => defHTML(d, consulte, dictees)).join('')
-		: `<p class="enc-hint">${escapeHTML(consulte.name)} n'a pas encore de programme du jour.</p>`;
-	return `<section class="enc-section enc-seance-section">
+		? joindre(defs.map((d) => defHTML(d, consulte, dictees)))
+		: html`<p class="enc-hint">${consulte.name} n'a pas encore de programme du jour.</p>`;
+	return html`<section class="enc-section enc-seance-section">
       ${titre}
-      <p class="enc-seance-frame">Composez pour ${escapeHTML(consulte.name)} un « programme du jour » : une petite liste d'activités qu'il ou elle retrouvera et fera dans l'ordre de son choix. Un seul programme s'applique par jour.</p>
+      <p class="enc-seance-frame">Composez pour ${consulte.name} un « programme du jour » : une petite liste d'activités qu'il ou elle retrouvera et fera dans l'ordre de son choix. Un seul programme s'applique par jour.</p>
       ${cartes}
       <button type="button" class="enc-btn-sec enc-seance-add" data-act="seance-add">${icon('plus')} Nouveau programme</button>
       ${copieHTML(consulte, defs.length > 0)}

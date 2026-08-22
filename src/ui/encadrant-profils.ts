@@ -7,7 +7,7 @@
    palette d'avatar ouverte (`gestionEmojiFor`). Dépend de `encadrant-pin` uniquement
    pour refermer le sous-panneau « code » quand on change de profil consulté.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+
 import { icon } from './icon';
 import {
 	listProfiles,
@@ -28,6 +28,7 @@ import { applyPreferences } from './preferences';
 import { uiConfirm, uiPrompt, toast } from './ui-modal';
 import { consulteUuid, setConsulteUuid, renderEspace, telechargerBlob } from './encadrant-commun';
 import { resetPinPanel } from './encadrant-pin';
+import { html, type SafeHtml, joindre, drapeau } from '../core/html';
 
 /* ---------- État de la section (module) ---------- */
 let gestionEmojiFor: string | null = null; // profil dont la palette d'avatar est ouverte (gestion)
@@ -36,39 +37,39 @@ let gestionEmojiFor: string | null = null; // profil dont la palette d'avatar es
    (renommer/avatar/réinitialiser/supprimer, replié). Action de gestion = encadrant
    UNIQUEMENT (un enfant ne touche pas aux profils des autres). Suppression désactivée
    s'il ne reste qu'un profil. La bascule du profil ACTIF reste au menu de la barre. */
-export function profilsHTML(profiles: Profile[], consulte: Profile, actif: Profile): string {
+export function profilsHTML(profiles: Profile[], consulte: Profile, actif: Profile): SafeHtml {
 	const seul = profiles.length <= 1;
-	const cartes = profiles
-		.map((p) => {
+	const cartes = joindre(
+		profiles.map((p) => {
 			const courant = p.uuid === consulte.uuid;
 			const joue = p.uuid === actif.uuid;
 			const palette =
 				gestionEmojiFor === p.uuid
 					? emojiPaletteHTML(p.emoji, niveauDepuisXP(getXPFor(p.uuid)))
 					: '';
-			return `<li class="enc-prof-card${courant ? ' current' : ''}">
+			return html`<li class="enc-prof-card${courant ? ' current' : ''}">
         <div class="enc-prof-head">
-          <span class="enc-profile-emoji" aria-hidden="true">${escapeHTML(p.emoji)}</span>
+          <span class="enc-profile-emoji" aria-hidden="true">${p.emoji}</span>
           <span class="enc-prof-id">
-            <span class="enc-profile-name">${escapeHTML(p.name)}</span>
+            <span class="enc-profile-name">${p.name}</span>
             ${joue ? '<span class="enc-profile-actif">joue en ce moment</span>' : ''}
           </span>
           <button type="button" class="enc-btn${courant ? '' : '-sec'}" data-act="voir" data-uuid="${p.uuid}"${courant ? ' aria-current="true"' : ''}>${courant ? `${icon('check')} Affiché` : `${icon('eye')} Voir le suivi`}</button>
         </div>
-        <details class="enc-gerer"${gestionEmojiFor === p.uuid ? ' open' : ''}>
+        <details class="enc-gerer"${gestionEmojiFor === p.uuid ? drapeau('open') : ''}>
           <summary>Gérer ce profil</summary>
           <div class="enc-gerer-actions">
             <button type="button" class="enc-btn-sec" data-act="enc-rename" data-uuid="${p.uuid}">${icon('pencil')} Renommer</button>
             <button type="button" class="enc-btn-sec" data-act="enc-emoji" data-uuid="${p.uuid}">${icon('palette')} Avatar</button>
             <button type="button" class="enc-btn-sec" data-act="enc-reset" data-uuid="${p.uuid}">${icon('reset')} Réinitialiser</button>
-            <button type="button" class="enc-btn-sec enc-danger" data-act="enc-delete" data-uuid="${p.uuid}"${seul ? ' disabled' : ''}>${icon('trash')} Supprimer</button>
+            <button type="button" class="enc-btn-sec enc-danger" data-act="enc-delete" data-uuid="${p.uuid}"${seul ? drapeau('disabled') : ''}>${icon('trash')} Supprimer</button>
           </div>
           ${palette}
         </details>
       </li>`;
-		})
-		.join('');
-	return `<section class="enc-section">
+		}),
+	);
+	return html`<section class="enc-section">
       <h2 class="enc-h2">Profils</h2>
       <p class="enc-hint">Choisissez « Voir le suivi » pour consulter un enfant ci-dessous, ou dépliez « Gérer » pour le modifier.</p>
       <ul class="enc-profiles">${cartes}</ul>
@@ -81,8 +82,8 @@ export function profilsHTML(profiles: Profile[], consulte: Profile, actif: Profi
    (#306 §7) : l'accueil est l'écran de l'enfant, il doit rester sobre et non anxiogène,
    alors qu'ici on s'adresse à un adulte venu de son plein gré — on peut donc tout
    expliquer, y compris ce qui fait vraiment perdre des données. */
-export function sauvegardeHTML(): string {
-	return `<section class="enc-section">
+export function sauvegardeHTML(): SafeHtml {
+	return html`<section class="enc-section">
       <h2 class="enc-h2">Sauvegarde</h2>
       <p class="enc-hint">Exportez les profils (transfert vers un autre appareil) ou importez une sauvegarde. À l'import, un profil déjà présent n'est remplacé que s'il est plus récent.</p>
       <div class="enc-actions">

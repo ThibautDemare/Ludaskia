@@ -46,7 +46,7 @@ import type { LessonDef } from '../core/catalog';
 import { labelLecon } from '../core/levels';
 import { buildLessonFiche } from '../core/build';
 import { createRenderContext } from '../core/items';
-import { withSeed, escapeHTML } from '../core/utils';
+import { withSeed } from '../core/utils';
 import type { Exercise } from '../core/exercise';
 import { bindTuileInteraction } from './tuile-interaction';
 import type { TuileOptions, TuileSpec } from './tuile-interaction';
@@ -54,6 +54,7 @@ import { bindAppariement } from './appariement';
 import type { AppariementSpec } from './appariement';
 import { renderProblemeBoardHTML } from './lecon-probleme';
 import { renderTableauBoardHTML, buildCells } from './lecon-tableau';
+import { html, type SafeHtml, joindre, VIDE } from '../core/html';
 
 /* Graine fixe : le rendu doit être identique à chaque exécution pour que la
    comparaison aux baselines soit stable. Valeur arbitraire (date de l'issue). */
@@ -87,10 +88,10 @@ function genExemple(lessonId: string, mode?: string): { lesson: LessonDef; ex: E
    widget remplace au bind. `consigneHTML` reproduit le paragraphe d'énoncé des
    runners ordre/tri/appariement (le runner tuiles n'en a pas : le widget rend
    lui-même l'énoncé avec le `@`). */
-function sceneWidget(label: string, consigneHTML: string): string {
-	return `<div class="sprint sprint-lecon">
+function sceneWidget(label: string, consigneHTML: SafeHtml): SafeHtml {
+	return html`<div class="sprint sprint-lecon">
     <div class="sprint-stage">
-      <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(label)}</span></div>
+      <div class="sprint-theme"><span class="sprint-lesson">${label}</span></div>
       ${consigneHTML}
       <div data-tuile-mount></div>
     </div>
@@ -99,9 +100,9 @@ function sceneWidget(label: string, consigneHTML: string): string {
 
 /* Section de galerie autour d'un board (titre + contenu). `data-gallery` la rend
    capturable un-à-un par e2e/galerie.spec.ts (une nouvelle section = une capture). */
-function runnerSection(gallery: string, titre: string, boardHTML: string): string {
-	return `<section class="gal-section gal-runner" data-gallery="${escapeHTML(gallery)}">
-    <h2 class="gal-section-title">${escapeHTML(titre)}</h2>
+function runnerSection(gallery: string, titre: string, boardHTML: SafeHtml): SafeHtml {
+	return html`<section class="gal-section gal-runner" data-gallery="${gallery}">
+    <h2 class="gal-section-title">${titre}</h2>
     ${boardHTML}
   </section>`;
 }
@@ -128,7 +129,7 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 				tuiles: ex.tuiles,
 				parle: ex.parle,
 			};
-			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), '');
+			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), VIDE).balisage;
 			bindTuileInteraction(host, spec, OPTS_INERTES);
 		},
 	},
@@ -144,8 +145,8 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 				ordre: ex.ordre,
 				tuiles: ex.tuiles,
 			};
-			const consigne = `<p class="sprint-q lord-consigne">${escapeHTML(ex.question)}</p>`;
-			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), consigne);
+			const consigne = html`<p class="sprint-q lord-consigne">${ex.question}</p>`;
+			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), consigne).balisage;
 			bindTuileInteraction(host, spec, OPTS_INERTES);
 		},
 	},
@@ -161,8 +162,8 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 				categories: ex.categories,
 				mots: ex.mots,
 			};
-			const consigne = `<p class="sprint-q lord-consigne">${escapeHTML(ex.question)}</p>`;
-			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), consigne);
+			const consigne = html`<p class="sprint-q lord-consigne">${ex.question}</p>`;
+			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), consigne).balisage;
 			bindTuileInteraction(host, spec, OPTS_INERTES);
 		},
 	},
@@ -177,8 +178,8 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 				paires: ex.paires,
 				intrus: ex.intrus,
 			};
-			const consigne = `<p class="sprint-q lapp-titre">${escapeHTML(ex.question)}</p>`;
-			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), consigne);
+			const consigne = html`<p class="sprint-q lapp-titre">${ex.question}</p>`;
+			host.innerHTML = sceneWidget(labelLecon(lesson, lesson.levels[0]), consigne).balisage;
 			// bindAppariement re-mélange les colonnes via sample() AU BIND → doit rester
 			// dans le withSeed de renderGalerie (garanti : render() y est appelé). La
 			// géométrie SVG se calcule après insertion (host est dans #sheets, donc en page).
@@ -192,14 +193,14 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 			const { lesson, ex } = genExemple('math-prob-deux-etapes');
 			if (ex.type !== 'probleme') throw new Error('Galerie : type probleme attendu.');
 			// Board pur PARTAGÉ avec le runner live (renderProblemeBoardHTML) → fidélité.
-			host.innerHTML = `<div class="sprint sprint-lecon">
+			host.innerHTML = html`<div class="sprint sprint-lecon">
     <div class="sprint-stage prob-stage">
       <div class="prob-col">
-        <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(labelLecon(lesson, lesson.levels[0]))}</span></div>
+        <div class="sprint-theme"><span class="sprint-lesson">${labelLecon(lesson, lesson.levels[0])}</span></div>
         ${renderProblemeBoardHTML(ex)}
       </div>
     </div>
-  </div>`;
+  </div>`.balisage;
 		},
 	},
 	{
@@ -211,12 +212,12 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
 			// Markup pur PARTAGÉ avec le runner live (renderTableauBoardHTML) SANS
 			// wireInteraction : pas de listener `document`, aucun effet de bord.
 			const cells = buildCells(ex);
-			host.innerHTML = `<div class="sprint sprint-lecon tc-runner">
+			host.innerHTML = html`<div class="sprint sprint-lecon tc-runner">
     <div class="sprint-stage">
-      <div class="sprint-theme"><span class="sprint-lesson">${escapeHTML(labelLecon(lesson, lesson.levels[0]))}</span></div>
+      <div class="sprint-theme"><span class="sprint-lesson">${labelLecon(lesson, lesson.levels[0])}</span></div>
       ${renderTableauBoardHTML(ex, cells)}
     </div>
-  </div>`;
+  </div>`.balisage;
 		},
 	},
 ];
@@ -232,40 +233,44 @@ export function renderGalerie(container: HTMLElement): void {
 
 	withSeed(SEED, () => {
 		// 1. Fiches par catégorie (périmètre #412).
-		const fichesHTML = CATEGORIES.map((cat) => {
-			const catLessons = lessons.filter((l) => l.category === cat.id);
-			// Catégories sans leçon LessonDef (orthographe dynamique, catégories à venir) :
-			// rien à rendre ici (leurs runners/listes sortent du périmètre fiche v1).
-			if (!catLessons.length) return '';
-			const subject = SUBJECTS.find((s) => s.id === cat.subject);
-			const fiches = catLessons
-				.map((l) => {
-					const fiche = buildLessonFiche(l.id, l.levels[0], ctx);
-					return `<article class="gal-lesson" data-gallery-lesson="${escapeHTML(l.id)}">
-    <p class="gal-lesson-meta"><code>${escapeHTML(l.id)}</code> · ${escapeHTML(l.levels.join('/'))}</p>
+		const fichesHTML = joindre(
+			CATEGORIES.map((cat) => {
+				const catLessons = lessons.filter((l) => l.category === cat.id);
+				// Catégories sans leçon LessonDef (orthographe dynamique, catégories à venir) :
+				// rien à rendre ici (leurs runners/listes sortent du périmètre fiche v1).
+				if (!catLessons.length) return VIDE;
+				const subject = SUBJECTS.find((s) => s.id === cat.subject);
+				const fiches = joindre(
+					catLessons.map((l) => {
+						const fiche = buildLessonFiche(l.id, l.levels[0], ctx);
+						return html`<article class="gal-lesson" data-gallery-lesson="${l.id}">
+    <p class="gal-lesson-meta"><code>${l.id}</code> · ${l.levels.join('/')}</p>
     <div class="page">${fiche}</div>
   </article>`;
-				})
-				.join('');
-			return `<section class="gal-section" data-gallery="${escapeHTML(cat.id)}">
-    <h2 class="gal-section-title">${escapeHTML(subject?.label ?? cat.subject)} — ${escapeHTML(cat.label)}</h2>
+					}),
+				);
+				return html`<section class="gal-section" data-gallery="${cat.id}">
+    <h2 class="gal-section-title">${subject?.label ?? cat.subject} — ${cat.label}</h2>
     ${fiches}
   </section>`;
-		}).join('');
+			}),
+		);
 
 		// 2. Sections des écrans de runner (#419) : hôtes VIDES d'abord — on génère et on
 		//    câble les widgets JUSTE APRÈS l'insertion (le DOM doit exister pour le bind et
 		//    la mesure de layout SVG de l'appariement).
-		const runnersHTML = RUNNER_EXEMPLES.map((r) =>
-			runnerSection(r.gallery, r.titre, `<div data-runner-host></div>`),
-		).join('');
+		const runnersHTML = joindre(
+			RUNNER_EXEMPLES.map((r) =>
+				runnerSection(r.gallery, r.titre, html`<div data-runner-host></div>`),
+			),
+		);
 
-		container.innerHTML = `<div class="galerie">
+		container.innerHTML = html`<div class="galerie">
     <h1 class="gal-h1">Galerie visuelle — rendu du catalogue (dev)</h1>
     <p class="gal-intro">Une fiche par leçon, puis un écran de runner par type. Surface des snapshots visuels (#412, #419).</p>
     ${fichesHTML}
     ${runnersHTML}
-  </div>`;
+  </div>`.balisage;
 
 		// 3. Génération + rendu des boards de runner (toujours DANS le withSeed).
 		for (const r of RUNNER_EXEMPLES) {

@@ -33,7 +33,7 @@ export function openDrawer() {
 	if (scrim) scrim.hidden = false;
 	burger.setAttribute('aria-expanded', 'true');
 	burger.setAttribute('aria-label', 'Fermer le menu');
-	burger.innerHTML = icon('x');
+	burger.innerHTML = icon('x').balisage;
 	document.body.classList.add('drawer-open');
 }
 export function closeDrawer() {
@@ -45,7 +45,7 @@ export function closeDrawer() {
 	if (burger) {
 		burger.setAttribute('aria-expanded', 'false');
 		burger.setAttribute('aria-label', 'Ouvrir le menu');
-		burger.innerHTML = icon('list');
+		burger.innerHTML = icon('list').balisage;
 	}
 	document.body.classList.remove('drawer-open');
 	closeProfileMenu(); // le sous-menu profils ne survit pas à la fermeture du tiroir

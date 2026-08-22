@@ -12,7 +12,7 @@
 import { getAllLessons, getLessonById } from '../core/catalog';
 import { defaultMode } from '../core/exercise';
 import type { ExerciseMode } from '../core/exercise';
-import { escapeHTML } from '../core/utils';
+
 import { buildLessonFiche } from '../core/build';
 import { runLeconQcm } from './lecon-qcm';
 import { runLeconQcmMulti } from './lecon-qcm-multi';
@@ -64,6 +64,7 @@ import {
 	activiteDemarree,
 	type OrigineActivite,
 } from './retour-activite';
+import { html, joindre } from '../core/html';
 
 // Icône de matière pour les cartes de reprise (#63).
 const SUBJECT_ICON: Record<string, string> = { math: 'calculator', francais: 'book-open' };
@@ -193,31 +194,31 @@ export function showModeChoice(id: string) {
 	setToolbar({ verify: false, home: true, profile: true });
 	hideMenus();
 	const sheets = document.getElementById('sheets')!;
-	sheets.innerHTML = `<div class="mode-choice">
+	sheets.innerHTML = html`<div class="mode-choice">
     <h2 class="mode-choice-title">Comment veux-tu t'entraîner ?</h2>
-    <p class="mode-choice-lesson">${escapeHTML(labelLecon(lesson, niveauLecon(lesson)))}</p>
+    <p class="mode-choice-lesson">${labelLecon(lesson, niveauLecon(lesson))}</p>
     <div class="mode-choice-list">
-      ${opts
-				.map(
+      ${joindre(
+				opts.map(
 					(
 						m,
-					) => `<button class="mode-btn${m.recommended ? ' recommended' : ''}" data-mode="${m.id}">
+					) => html`<button class="mode-btn${m.recommended ? ' recommended' : ''}" data-mode="${m.id}">
         <span class="mode-btn-ico">${iconOr(m.icon)}</span>
         <span class="mode-btn-txt">
-          <span class="mode-btn-label">${escapeHTML(m.label)}</span>
+          <span class="mode-btn-label">${m.label}</span>
           ${
 						m.recommended
 							? '<span class="mode-btn-badge">conseillé</span>'
 							: m.hint
-								? `<span class="mode-btn-hint">${escapeHTML(m.hint)}</span>`
+								? html`<span class="mode-btn-hint">${m.hint}</span>`
 								: ''
 					}
         </span>
       </button>`,
-				)
-				.join('')}
+				),
+			)}
     </div>
-  </div>`;
+  </div>`.balisage;
 	sheets
 		.querySelectorAll<HTMLButtonElement>('.mode-btn')
 		.forEach((btn) => btn.addEventListener('click', () => chooseMode(id, btn.dataset.mode!)));
@@ -692,7 +693,7 @@ export function runLecon(id: string) {
 	setRenderCtx(ctx);
 	const fiche = buildLessonFiche(id, undefined, ctx); // aiguille math (rendu riche) / autres matières (texte)
 	document.getElementById('sheets')!.innerHTML =
-		`<div class="page">${fiche}<p class="foot print-only">Ludaskia</p></div>`;
+		html`<div class="page">${fiche}<p class="foot print-only">Ludaskia</p></div>`.balisage;
 	afterStart();
 	// Étayage de la notion (#490) : bouton persistant, puis exemple d'avant-série. La fiche
 	// n'a pas d'aide au geste à laisser passer d'abord (elle n'a pas de widget).
@@ -704,11 +705,11 @@ export function runRevision(items: Item[]) {
 	currentLessonId = null;
 	const ctx = createRenderContext();
 	setRenderCtx(ctx);
-	const grid = `<div class="grid c3">${items.map((it) => `<div class="op">${renderItem(it, ctx)}</div>`).join('')}</div>`;
-	document.getElementById('sheets')!.innerHTML = `<div class="page">
+	const grid = html`<div class="grid c3">${joindre(items.map((it) => html`<div class="op">${renderItem(it, ctx)}</div>`))}</div>`;
+	document.getElementById('sheets')!.innerHTML = html`<div class="page">
     <p class="fiche-title">Révision — tes erreurs</p>
     <p class="fiche-sub">Reprends les calculs que tu n'avais pas réussis.</p>
-    ${grid}<p class="foot print-only">Ludaskia</p></div>`;
+    ${grid}<p class="foot print-only">Ludaskia</p></div>`.balisage;
 	afterStart();
 }
 export function afterStart() {

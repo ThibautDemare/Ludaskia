@@ -76,7 +76,9 @@ export function buildLessonFiche(
 	const lvl = level ?? niveauLecon(lesson);
 	const items = genItems(lesson, 8, lvl);
 	const inner = withLessonId(ctx, lessonId, () => {
-		const lignes = joindre(items.map((it) => html`<div class="conj-op">${renderItem(it, ctx)}</div>`));
+		const lignes = joindre(
+			items.map((it) => html`<div class="conj-op">${renderItem(it, ctx)}</div>`),
+		);
 		return html`<div class="conj-list">${lignes}</div>`;
 	});
 	// Consigne propre au type d'exercice si définie (#42 : nomme la tâche, ex.

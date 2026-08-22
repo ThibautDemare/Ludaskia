@@ -3,9 +3,9 @@
    Utilisé par tous les types d'exercices (math, conjugaison, QCM, orthographe…).
    ============================================================ */
 import { normalizeText } from './utils';
-import type { SafeHtml } from './html';
 import type { IconName } from './icon-names';
 import type { SchoolLevel } from './catalog';
+import { type SafeHtml } from './html';
 
 /** Affichage riche d'un choix de QCM (#200) : un fragment HTML/SVG DE CONFIANCE
     (généré par l'app, jamais une saisie utilisateur) et son libellé parlé pour

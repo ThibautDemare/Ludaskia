@@ -18,9 +18,10 @@
    révélé (surlignage vert doux) même en cas d'erreur. Une live region (#lclicStatus)
    annonce le verdict (le focus part alors sur « Continuer »).
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+
 import { ttsAttr } from '../core/tts-text';
 import { estPonctuation, libelleCible } from '../data/francais/grammaire-clic-mot';
+import { html, joindre } from '../core/html';
 
 export interface ClicMotSpec {
 	tokens: string[];
@@ -69,20 +70,20 @@ export function bindClicMot(
 	let fige = false;
 	let resultat = false;
 
-	const motsHTML = tokens
-		.map((t, i) =>
+	const motsHTML = joindre(
+		tokens.map((t, i) =>
 			estPonctuation(t)
-				? `<span class="lclic-ponct">${escapeHTML(t)}</span>`
-				: `<button type="button" class="lclic-mot" data-i="${i}" aria-pressed="false">${escapeHTML(t)}</button>`,
-		)
-		.join('');
+				? html`<span class="lclic-ponct">${t}</span>`
+				: html`<button type="button" class="lclic-mot" data-i="${i}" aria-pressed="false">${t}</button>`,
+		),
+	);
 	const mount = root.querySelector('[data-tuile-mount]');
 	if (mount) {
-		mount.outerHTML = `
+		mount.outerHTML = html`
     <div class="lclic-phrase-zone"${spec.parle ? ttsAttr(spec.parle) : ''}>
       <div class="lclic-phrase">${motsHTML}</div>
     </div>
-    <p class="sr-only" id="lclicStatus" role="status" aria-live="polite" aria-atomic="true"></p>`;
+    <p class="sr-only" id="lclicStatus" role="status" aria-live="polite" aria-atomic="true"></p>`.balisage;
 	}
 
 	const status = root.querySelector('#lclicStatus') as HTMLElement | null;

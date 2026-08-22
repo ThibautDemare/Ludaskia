@@ -13,8 +13,14 @@ import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import type { ChoiceView, ExerciseMode, QcmVariante } from '../core/exercise';
 import type { Item } from '../core/items';
-import { checkItemAnswer, choiceButtonHTML, enonceTexte, figureBlock } from '../core/items';
-import { commKey, escapeHTML } from '../core/utils';
+import {
+	checkItemAnswer,
+	choiceButtonHTML,
+	enonceTexte,
+	figureBlock,
+	poserAuTrou,
+} from '../core/items';
+import { commKey } from '../core/utils';
 import { mathInline } from '../core/fraction-text';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts, bindItemTts } from './consigne-tts';
@@ -32,6 +38,7 @@ import {
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { capterErreur, libelleChoix } from './erreur-capture';
+import { html, joindre } from '../core/html';
 
 // Cible de questions ; une leçon offrant moins de variantes en aura moins, sans
 // doublon (une conjugaison = 6 personnes), comme la fiche en saisie.
@@ -155,16 +162,16 @@ function renderQuestion(): void {
 	// Ponctuation (#204) : le trou final est un cadre vide pointillé (PAS un « ? », qui se
 	// confondrait avec la réponse) ; sinon le repère « ? » standard du QCM.
 	const trou = ponct
-		? '<span class="lqcm-ponct-trou" id="lqcmTrou" aria-hidden="true"></span>'
-		: '<span class="sprint-blank">?</span>';
-	const question = enonceTexte(q.item.text).replace('@', trou);
+		? html`<span class="lqcm-ponct-trou" id="lqcmTrou" aria-hidden="true"></span>`
+		: html`<span class="sprint-blank">?</span>`;
+	const question = poserAuTrou(enonceTexte(q.item.text), '@', trou);
 	const ttsText = q.item.parle ?? q.item.text;
 	// Consigne renforcée optionnelle (#203) : ligne en gras précédée d'un picto
 	// décoratif (« ↔ » / « = », aria-hidden — le sens est porté par le texte). Elle
 	// porte la lecture vocale globale (consigne + phrase) ; l'énoncé n'a alors pas
 	// son propre bouton « Écouter ». Markup partagé avec la révision (#265).
 	const consigneHTML = consigneRenforceeHTML(q.consigne, q.picto, ttsText);
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
@@ -173,19 +180,19 @@ function renderQuestion(): void {
         ${consigneHTML}
         <div class="sprint-q sprint-q-qcm"${q.consigne ? '' : ttsAttr(ttsText)}>${question}</div>
         <div class="sprint-choices${q.empilees ? ' sprint-choices--pile' : ''}${q.ttsItems ? ' lqcm-choices-tts' : ''}${ponct ? ' lqcm-choices-sym' : ''}" id="lqcmChoices">
-          ${q.choices
-						.map((c, i) => {
+          ${joindre(
+						q.choices.map((c, i) => {
 							const btn = choiceButtonHTML(c, i, ponct ? ponctView(c) : q.choicesView?.[i]);
 							// Les options portant un haut-parleur (#203) sont enveloppées pour
 							// accueillir le bouton sans l'imbriquer dans le bouton-choix.
-							return q.ttsItems ? `<span class="lqcm-choice-wrap">${btn}</span>` : btn;
-						})
-						.join('')}
+							return q.ttsItems ? html`<span class="lqcm-choice-wrap">${btn}</span>` : btn;
+						}),
+					)}
         </div>
         <div class="sprint-correction" id="lqcmFeedback" hidden></div>
         <div class="sprint-actions" id="lqcmActions" hidden></div>
       </div>
-    </div>`;
+    </div>html`.balisage;
 	sheets()
 		.querySelectorAll<HTMLButtonElement>('#lqcmChoices .sprint-choice')
 		.forEach((btn) => btn.addEventListener('click', () => answer(Number(btn.dataset.i))));
@@ -235,15 +242,14 @@ function answer(choiceIdx: number): void {
 	// d'afficher un glyphe nu, peu lisible isolé dans la phrase de feedback.
 	const ans = String(q.item.answer);
 	const ansHTML =
-		q.variante === 'ponctuation'
-			? `${escapeHTML(PONCT_MOTS[ans] ?? ans)} (${escapeHTML(ans)})`
-			: mathInline(ans);
+		q.variante === 'ponctuation' ? html`${PONCT_MOTS[ans] ?? ans} (${ans})` : mathInline(ans);
 	let feedbackHTML = correct
-		? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-		: `<span class="lqcm-ko">La bonne réponse était <strong>${ansHTML}</strong>.</span>`;
+		? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
+		: html`<span class="lqcm-ko">La bonne réponse était <strong>${ansHTML}</strong>.</span>`;
 	// Justification pédagogique (ex. critère de substitution des homophones, #110).
 	// `mathInline` empile aussi les fractions citées dans l'explication (cohérence d'écriture).
-	if (q.explication) feedbackHTML += `<p class="lqcm-expl">${mathInline(q.explication)}</p>`;
+	if (q.explication)
+		feedbackHTML = html`${feedbackHTML}<p class="lqcm-expl">${mathInline(q.explication)}</p>`;
 	// Ponctuation (#204) : on réinjecte le BON signe dans le trou de la phrase → l'enfant
 	// voit sa phrase complétée correctement. Le signe étant toujours la bonne réponse, on
 	// le montre « juste » (vert) même après une erreur (le rouge reste sur le bouton tapé).

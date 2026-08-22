@@ -10,7 +10,6 @@
    Chaque question offre en outre une SORTIE DE SECOURS assumée — « Je ne sais pas,
    montre-moi » (#467) — traitée comme une réponse fausse (cf. plus bas).
    ============================================================ */
-import { escapeHTML } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { dicter, dicteeDisponible } from './tts';
@@ -33,6 +32,7 @@ import {
 	figureBlock,
 	renderItem,
 	TEXT_ANSWER_INPUT_ATTRS,
+	poserAuTrou,
 } from '../core/items';
 import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
 import { journaliserPaliersOrtho } from '../core/orthographe/paliers';
@@ -98,6 +98,7 @@ import {
 } from '../core/erreur-representation';
 import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
 import type { ProblemeEtape, ProbLexique, NatureOrdre } from '../core/exercise';
+import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
 
 // `consigne` (#186) : libellé de la leçon, affiché au-dessus de l'exercice pour
 // dire ce qu'on attend (le HUD ne montre que la catégorie). Absent pour les mots
@@ -170,7 +171,7 @@ type RevItem = { groupLabel: string; consigne?: string; niveau?: SchoolLevel } &
 			enonce: string;
 			etapes: ProblemeEtape[];
 			parle: string;
-			figure?: string;
+			figure?: SafeHtml;
 			explication?: string;
 			lex?: ProbLexique;
 	  }
@@ -386,18 +387,18 @@ export function runRevisionEspacee(): void {
 	active = false;
 	const sheets = document.getElementById('sheets')!;
 	if (!items.length) {
-		sheets.innerHTML = `<div class="revision"><div class="rev-done">
+		sheets.innerHTML = html`<div class="revision"><div class="rev-done">
       <div class="rev-done-big">👍</div>
       <div class="rev-done-lab">Rien à réviser pour l'instant !</div>
       <div class="rev-done-sub">Reviens un autre jour : les notions à entretenir réapparaîtront ici.</div>
       <div class="rev-actions"><button class="rev-btn" id="revHome">${icon('house')} Accueil</button></div>
-    </div></div>`;
+    </div></div>`.balisage;
 		document.getElementById('revHome')!.addEventListener('click', goHome);
 		return;
 	}
 	active = true; // révision réellement en cours (au moins un élément à réviser)
 	startTs = Date.now();
-	sheets.innerHTML = `<div class="revision">
+	sheets.innerHTML = html`<div class="revision">
     <div class="rev-hud">
       <span class="rev-prog" id="revProg"></span>
       <span class="rev-cat" id="revCat"></span>
@@ -411,7 +412,7 @@ export function runRevisionEspacee(): void {
          que son texte — rien ne serait annoncé, exactement le défaut qu'on corrige. Un seul
          nœud pour toute la séance (id fixe, vidé à chaque question par renderCurrent). -->
     <p class="sr-only" id="revStatus" role="status" aria-live="polite" aria-atomic="true"></p>
-  </div>`;
+  </div>`.balisage;
 	bindEnter(); // une seule fois : #revStage persiste d'une question à l'autre
 	renderCurrent();
 	window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -506,8 +507,8 @@ function monterAide(it: RevItem): void {
 
 /* Consigne (#186) : libellé de la leçon, affiché au-dessus de l'exercice (le HUD
    ne montre que la catégorie). Vide pour les items sans consigne (mots). */
-function consigneHTML(it: RevItem): string {
-	return it.consigne ? `<div class="rev-consigne">${escapeHTML(it.consigne)}</div>` : '';
+function consigneHTML(it: RevItem): SafeHtml {
+	return it.consigne ? html`<div class="rev-consigne">${it.consigne}</div>` : VIDE;
 }
 
 /* ---------- « Je ne sais pas, montre-moi » (#467) ----------
@@ -533,7 +534,7 @@ function consigneHTML(it: RevItem): string {
    cible) et son id, repère des specs e2e. C'est un `<button type="button">`, JAMAIS un
    `<a>` : le raccourci Entrée de #revStage ferait un preventDefault sur un lien et
    détournerait la touche vers Valider/Continuer. */
-function giveUpHTML(): string {
+function giveUpHTML(): SafeHtml {
 	return lienPasserHTML('rev-giveup', 'revGiveUp');
 }
 
@@ -541,9 +542,9 @@ function giveUpHTML(): string {
    dans cet ordre en DOM comme au clavier, la validation restant la première action
    atteinte. `validerInactif` : les widgets démarrent avec « Valider » désactivé (réponse
    incomplète) ; le lien, lui, est TOUJOURS actif, c'est tout son intérêt. */
-function decideHTML(validerInactif = false): string {
-	return `<div class="rev-decide">
-      <div class="rev-actions"><button class="rev-btn" id="revValidate"${validerInactif ? ' disabled' : ''}>Valider</button></div>
+function decideHTML(validerInactif = false): SafeHtml {
+	return html`<div class="rev-decide">
+      <div class="rev-actions"><button class="rev-btn" id="revValidate"${validerInactif ? drapeau('disabled') : ''}>Valider</button></div>
       ${giveUpHTML()}
     </div>`;
 }
@@ -558,7 +559,7 @@ function wireGiveUp(reveler: () => void): void {
    règle : réponse donnée vide + marqueur `sansTentative`). */
 function capterPasse(o: {
 	text: string;
-	figure?: string;
+	figure?: SafeHtml;
 	attendue: string;
 	lessonId: string | null;
 }): void {
@@ -578,7 +579,7 @@ function neutraliserWidget(stage: HTMLElement): void {
 function passerItem(o: {
 	cible: 'stage' | 'after';
 	correct?: string;
-	extra?: string;
+	extra?: SafeHtml;
 	parIntervalle?: boolean;
 }): void {
 	// Étayage de la notion (#490) : c'est ici que l'enfant RÉCLAME de l'aide — le meilleur
@@ -596,7 +597,7 @@ function passerItem(o: {
 function verdictPasse(o: {
 	cible: 'stage' | 'after';
 	correct?: string;
-	extra?: string;
+	extra?: SafeHtml;
 	parIntervalle?: boolean;
 }): void {
 	recordGrade(false); // recul d'un cran en répétition espacée + 0 XP, exactement une fois
@@ -609,10 +610,11 @@ function verdictPasse(o: {
 		repli: '#revStatus',
 		message: o.correct
 			? `${o.parIntervalle ? 'Une réponse possible' : 'La réponse'} : ${o.correct}.`
-			: REVELATION_EN_PLACE, // même phrase que celle affichée, pas une version tronquée
+			: REVELATION_EN_PLACE.balisage, // même phrase que celle affichée, pas une version tronquée
 	});
-	const html = verdictHTML('reveal', o.correct, o.extra ?? '', o.parIntervalle ?? false);
-	document.getElementById(o.cible === 'stage' ? 'revStage' : 'revAfter')!.innerHTML = html;
+	const verdict = verdictHTML('reveal', o.correct, o.extra ?? VIDE, o.parIntervalle ?? false);
+	document.getElementById(o.cible === 'stage' ? 'revStage' : 'revAfter')!.innerHTML =
+		verdict.balisage;
 	wireRevNext(); // le focus part sur « Continuer », comme après une réponse
 }
 
@@ -624,8 +626,9 @@ function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
 	const actionHTML = consigneRenforceeHTML(it.consigneAction, undefined, it.consigneAction ?? '');
 	// Contexte de rendu jetable (#352) : la révision valide les cellules via le DOM
 	// (`.posee-input` + data-answer), pas via la table id→Item — inutile de la conserver.
-	stage.innerHTML = `${consigneHTML(it)}${actionHTML}<div class="rev-q rev-posee">${renderItem(it.item, createRenderContext())}</div>
-    ${decideHTML()}`;
+	stage.innerHTML =
+		html`${consigneHTML(it)}${actionHTML}<div class="rev-q rev-posee">${renderItem(it.item, createRenderContext())}</div>
+    ${decideHTML()}`.balisage;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const cells = [...stage.querySelectorAll<HTMLInputElement>('.posee-input')];
 		const vide = cells.find((c) => c.value.trim() === '');
@@ -656,16 +659,17 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 	// d'où l'impossibilité de saisir un signe ou un mot en révision (#186).
 	const texte = it.item.kind === 'text' || it.item.kind === 'heure';
 	const champ = texte
-		? `<input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}>`
-		: '<input id="revInput" class="rev-input" inputmode="numeric" autocomplete="off">';
-	const q = enonceTexte(it.item.text).replace('@', champ);
+		? html`<input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}>`
+		: html`<input id="revInput" class="rev-input" inputmode="numeric" autocomplete="off">`;
+	const q = poserAuTrou(enonceTexte(it.item.text), '@', champ);
 	// Consigne d'action (#265) : si le type en fournit une, elle s'affiche au-dessus de
 	// l'énoncé et porte la lecture vocale ; l'énoncé garde la sienne sinon. Aujourd'hui les
 	// exos saisie portent l'instruction dans leur énoncé (consigneAction vide) ; cas générique.
 	const actionHTML = consigneRenforceeHTML(it.consigneAction, undefined, it.consigneAction ?? '');
 	const enonceTts = it.consigneAction ? '' : ttsAttr(it.item.parle ?? it.item.text);
-	stage.innerHTML = `${consigneHTML(it)}${actionHTML}${figureBlock(it.item.figure)}<div class="rev-q"${enonceTts}>${q}</div>
-    ${decideHTML()}`;
+	stage.innerHTML =
+		html`${consigneHTML(it)}${actionHTML}${figureBlock(it.item.figure)}<div class="rev-q"${enonceTts}>${q}</div>
+    ${decideHTML()}`.balisage;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;
 		if (inp.value.trim() === '') return inp.focus();
@@ -707,11 +711,11 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 	// réponses — et les choix sont affichés par leur MOT (un « . » nu serait illisible).
 	const ponct = it.variante === 'ponctuation';
 	const blank = ponct
-		? '<span class="lqcm-ponct-trou" aria-hidden="true"></span>'
-		: '<span class="rev-blank">?</span>';
+		? html`<span class="lqcm-ponct-trou" aria-hidden="true"></span>`
+		: html`<span class="rev-blank">?</span>`;
 	// `enonceTexte` : échappe + GRAS « **…** » (#199/#203) + fractions empilées (#200),
 	// comme les runners leçon et sprint — le chemin QCM de la révision l'avait oublié (#264).
-	const q = enonceTexte(it.item.text).replace('@', blank);
+	const q = poserAuTrou(enonceTexte(it.item.text), '@', blank);
 	const ttsText = it.item.parle ?? it.item.text;
 	// Consigne renforcée (#203) propagée en révision (#265) : ligne en gras + picto au-dessus
 	// de l'énoncé (« Quel mot veut dire le contraire ? »), pour donner l'ACTION et pas
@@ -719,25 +723,26 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 	// alors la lecture vocale globale (consigne + phrase) et l'énoncé n'a plus son propre
 	// bouton « Écouter » (markup partagé via consigneRenforceeHTML).
 	const consigneRenfHTML = consigneRenforceeHTML(it.consigneRenforcee, it.picto, ttsText);
-	stage.innerHTML = `${consigneHTML(it)}${consigneRenfHTML}${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm"${it.consigneRenforcee ? '' : ttsAttr(ttsText)}>${q}</div>
-    <div class="rev-choices">${it.choices
-			.map((c, i) => {
+	stage.innerHTML =
+		html`${consigneHTML(it)}${consigneRenfHTML}${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm"${it.consigneRenforcee ? '' : ttsAttr(ttsText)}>${q}</div>
+    <div class="rev-choices">${joindre(
+			it.choices.map((c, i) => {
 				// Ponctuation (#204) : libellé MOT lisible (un « . » nu serait invisible) — on
 				// n'utilise PAS les boutons-symboles de la leçon. Sinon, vue riche optionnelle
 				// (#200/#264 : fractions empilées) rendue telle quelle, son libellé parlé en
 				// aria-label ; à défaut, le texte du choix échappé.
 				const view = ponct ? undefined : it.choicesView?.[i];
 				const label = ponct ? (PONCT_MOTS[c] ?? c) : c;
-				const inner = view ? view.html : escapeHTML(label);
+				const inner = view ? view.html : html`${label}`;
 				const aria = view
-					? ` aria-label="${escapeHTML(view.label)}"`
+					? attribut('aria-label', view.label)
 					: ponct
-						? ` aria-label="${escapeHTML(label)}"`
+						? attribut('aria-label', label)
 						: '';
-				return `<button class="rev-choice" data-i="${i}"${aria}>${inner}</button>`;
-			})
-			.join('')}</div>
-    ${giveUpHTML()}`;
+				return html`<button class="rev-choice" data-i="${i}"${aria}>${inner}</button>`;
+			}),
+		)}</div>
+    ${giveUpHTML()}html`.balisage;
 	// Libellé LISIBLE d'un choix, comme à l'écran : mot de ponctuation (un « . » nu
 	// serait illisible dans le journal), sinon vue riche #200 (fraction empilée).
 	const label = (v: string) =>
@@ -781,9 +786,9 @@ function motDeRevision(it: Extract<RevItem, { kind: 'word' }>): MotOrtho | undef
    d'entraînement. Lit le mot, avec son « comme dans » pour lever l'ambiguïté d'un
    homophone. Rendu seulement si l'appareil a une voix FR (sinon pas de bouton mort).
    Réutilise le bouton `.rev-btn` (icône haut-parleur), comme les autres boutons. */
-function ecouteMotHTML(m: MotOrtho | undefined): string {
-	if (!m || !dicteeDisponible()) return '';
-	return `<div class="rev-actions"><button type="button" class="rev-btn" id="revEcouter">${icon('speaker')} Écouter le mot</button></div>`;
+function ecouteMotHTML(m: MotOrtho | undefined): SafeHtml {
+	if (!m || !dicteeDisponible()) return VIDE;
+	return html`<div class="rev-actions"><button type="button" class="rev-btn" id="revEcouter">${icon('speaker')} Écouter le mot</button></div>`;
 }
 function bindEcouteMot(m: MotOrtho | undefined): void {
 	if (!m || !dicteeDisponible()) return;
@@ -796,10 +801,11 @@ function bindEcouteMot(m: MotOrtho | undefined): void {
 function renderWordLook(it: Extract<RevItem, { kind: 'word' }>) {
 	const stage = document.getElementById('revStage')!;
 	const m = motDeRevision(it);
-	stage.innerHTML = `<div class="rev-consigne">Regarde bien ce mot, puis écris-le sans le voir.</div>
-    <div class="rev-word">${escapeHTML(it.mot)}</div>
+	stage.innerHTML =
+		html`<div class="rev-consigne">Regarde bien ce mot, puis écris-le sans le voir.</div>
+    <div class="rev-word">${it.mot}</div>
     ${ecouteMotHTML(m)}
-    <div class="rev-actions"><button class="rev-btn" id="revHide">Cacher et écrire</button></div>`;
+    <div class="rev-actions"><button class="rev-btn" id="revHide">Cacher et écrire</button></div>`.balisage;
 	bindEcouteMot(m);
 	document.getElementById('revHide')!.addEventListener('click', () => renderWordWrite(it));
 }
@@ -808,10 +814,10 @@ function renderWordLook(it: Extract<RevItem, { kind: 'word' }>) {
 function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 	const stage = document.getElementById('revStage')!;
 	const m = motDeRevision(it);
-	stage.innerHTML = `<div class="rev-consigne">Écris le mot.</div>
+	stage.innerHTML = html`<div class="rev-consigne">Écris le mot.</div>
     ${ecouteMotHTML(m)}
     <div class="rev-q"><input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}></div>
-    ${decideHTML()}`;
+    ${decideHTML()}`.balisage;
 	bindEcouteMot(m);
 	// Énoncé du journal : la phrase à trou du mot si on en a une (la plus parlante pour le
 	// parent), sinon la tâche elle-même. Formulation distincte de celle de la dictée
@@ -868,7 +874,7 @@ function renderWordCorrection(it: Extract<RevItem, { kind: 'word' }>, saisie: st
 	// bien à l'écran (en grand, lettres ratées soulignées) : l'annoncer ne dévoile rien de plus.
 	annoncerVerdict(false, it.mot, false);
 	if (!m) {
-		stage.innerHTML = verdictHTML('ko', it.mot);
+		stage.innerHTML = verdictHTML('ko', it.mot).balisage;
 		wireRevNext();
 		return;
 	}
@@ -898,8 +904,8 @@ function renderWordCorrection(it: Extract<RevItem, { kind: 'word' }>, saisie: st
    propre à l'ordre/au tri (la « tuile » porte la sienne dans son énoncé).
    C'est aussi l'unique endroit où le lien « Je ne sais pas, montre-moi » (#467) est posé
    pour les cinq widgets — dans #revAfter, donc effacé avec « Valider » par le verdict. */
-function tuileStageHTML(it: RevItem, extra = ''): string {
-	return `${consigneHTML(it)}${extra}
+function tuileStageHTML(it: RevItem, extra: SafeHtml = VIDE): SafeHtml {
+	return html`${consigneHTML(it)}${extra}
     <div data-tuile-mount></div>
     <div id="revAfter">${decideHTML(true)}</div>`;
 }
@@ -907,7 +913,7 @@ function tuileStageHTML(it: RevItem, extra = ''): string {
 /* Comparaison : amener LA bonne tuile (signe <, =, >) dans la case, sans clavier. */
 function renderTuile(it: Extract<RevItem, { kind: 'tuile' }>) {
 	const stage = document.getElementById('revStage')!;
-	stage.innerHTML = tuileStageHTML(it);
+	stage.innerHTML = tuileStageHTML(it).balisage;
 	const verif = document.getElementById('revValidate') as HTMLButtonElement;
 	const ctrl = bindTuileInteraction(
 		stage,
@@ -950,8 +956,8 @@ function renderOrdre(it: Extract<RevItem, { kind: 'ordre' }>) {
 	const stage = document.getElementById('revStage')!;
 	stage.innerHTML = tuileStageHTML(
 		it,
-		`<p class="rev-q lord-consigne"${ttsAttr(it.question)}>${escapeHTML(it.question)}</p>`,
-	);
+		html`<p class="rev-q lord-consigne"${ttsAttr(it.question)}>${it.question}</p>`,
+	).balisage;
 	const verif = document.getElementById('revValidate') as HTMLButtonElement;
 	const ctrl = bindTuileInteraction(
 		stage,
@@ -993,8 +999,8 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 	const stage = document.getElementById('revStage')!;
 	stage.innerHTML = tuileStageHTML(
 		it,
-		`<p class="rev-q lord-consigne"${ttsAttr(it.question)}>${escapeHTML(it.question)}</p>`,
-	);
+		html`<p class="rev-q lord-consigne"${ttsAttr(it.question)}>${it.question}</p>`,
+	).balisage;
 	const verif = document.getElementById('revValidate') as HTMLButtonElement;
 	const ctrl = bindTuileInteraction(
 		stage,
@@ -1052,8 +1058,8 @@ function renderAppariement(it: Extract<RevItem, { kind: 'appariement' }>) {
 	const stage = document.getElementById('revStage')!;
 	stage.innerHTML = tuileStageHTML(
 		it,
-		`<p class="rev-q lapp-titre"${ttsAttr(it.question)}>${escapeHTML(it.question)}</p>`,
-	);
+		html`<p class="rev-q lapp-titre"${ttsAttr(it.question)}>${it.question}</p>`,
+	).balisage;
 	const verif = document.getElementById('revValidate') as HTMLButtonElement;
 	const ctrl = bindAppariement(
 		stage,
@@ -1109,10 +1115,10 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 		},
 		it.lex,
 	);
-	stage.innerHTML = `${consigneHTML(it)}<div class="rev-q rev-probleme">${board}</div>
+	stage.innerHTML = html`${consigneHTML(it)}<div class="rev-q rev-probleme">${board}</div>
     ${brouillonHTML()}
     ${PROB_STATUS_HTML}
-    <div id="revAfter">${decideHTML()}</div>`;
+    <div id="revAfter">${decideHTML()}</div>html`.balisage;
 	bindBrouillon(stage); // ardoise de dessin repliable (#199) — l'énoncé garde sa lecture TTS
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inputs = [...stage.querySelectorAll<HTMLInputElement>('.prob-input')];
@@ -1135,7 +1141,7 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 			toutJuste ? 'ok' : 'ko',
 			undefined,
 			explicationHTML(it.explication),
-		);
+		).balisage;
 		wireRevNext();
 	});
 	// Passé (#467) : UNE entrée par SOUS-QUESTION, comme pour une erreur — chacune a son
@@ -1165,8 +1171,8 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 
 /* Explication de stratégie (#252) affichée après la réponse quand la leçon la fournit —
    qu'on ait répondu, raté, ou demandé à voir (#467 : c'est justement là qu'elle sert). */
-function explicationHTML(explication?: string): string {
-	return explication ? `<p class="lqcm-expl">${escapeHTML(explication)}</p>` : '';
+function explicationHTML(explication?: string): SafeHtml {
+	return explication ? html`<p class="lqcm-expl">${explication}</p>` : VIDE;
 }
 
 /* « Clique sur le mot » (#259) : le vrai widget de sélection dans la phrase, monté
@@ -1178,8 +1184,8 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 	const stage = document.getElementById('revStage')!;
 	stage.innerHTML = tuileStageHTML(
 		it,
-		`<p class="rev-q lclic-consigne"${ttsAttr(it.actionConsigne)}>${escapeHTML(it.actionConsigne)}</p>`,
-	);
+		html`<p class="rev-q lclic-consigne"${ttsAttr(it.actionConsigne)}>${it.actionConsigne}</p>`,
+	).balisage;
 	const verif = document.getElementById('revValidate') as HTMLButtonElement;
 	const ctrl = bindClicMot(
 		stage,
@@ -1216,11 +1222,11 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 			reussi ? 'ok' : 'ko',
 			undefined,
 			explicationHTML(it.explication),
-		);
+		).balisage;
 		wireRevNext();
 	});
 	// Passé (#467) : le(s) mot(s) attendu(s) sont révélés en TEXTE et la phrase est désarmée.
-	// Pas de `ctrl.verify()` : il marquerait ✗ en rouge les mots éventuellement sélectionnés
+	// Pas de `ctrl.verify()html` : il marquerait ✗ en rouge les mots éventuellement sélectionnés
 	// et figerait la phrase comme après une erreur. L'explication, elle, est bien affichée —
 	// c'est le moment où elle sert le plus.
 	wireGiveUp(() => {
@@ -1310,7 +1316,7 @@ function recordGrade(reussi: boolean) {
    fausses (vraies erreurs) ; un item passé SANS aucune saisie passe par `capterPasse`. */
 function capterRev(o: {
 	text: string;
-	figure?: string;
+	figure?: SafeHtml;
 	donnee: string;
 	attendue: string;
 	lessonId: string | null;
@@ -1394,9 +1400,9 @@ function annoncerVerdict(reussi: boolean, correct: string, parIntervalle: boolea
 function verdictHTML(
 	etat: EtatVerdict,
 	correct?: string,
-	extra = '',
+	extra: SafeHtml = VIDE,
 	parIntervalle = false,
-): string {
+): SafeHtml {
 	// `correct` absent (moteurs qui révèlent EUX-MÊMES la bonne réponse en place —
 	// problème marqué étape par étape, clic-mot surligné) → verdict sans ligne
 	// « La bonne réponse : … » redondante. `extra` insère un complément
@@ -1405,8 +1411,8 @@ function verdictHTML(
 	// la valeur montrée n'est qu'UN exemple ; on ne lui donne donc pas le statut de réponse
 	// unique, sinon la correction contredit la consigne (« plusieurs réponses possibles »).
 	const label = labelReponse(parIntervalle);
-	let verdict: string;
-	if (etat === 'ok') verdict = `<div class="rev-feedback ok">✓ Bravo !</div>`;
+	let verdict: SafeHtml;
+	if (etat === 'ok') verdict = html`<div class="rev-feedback ok">✓ Bravo !</div>`;
 	else if (etat === 'reveal') {
 		// Ton NEUTRE (#467) : ni rouge ni ✗ — l'enfant n'a pas échoué, il a demandé à voir —
 		// et aucune animation (ni célébration, ni signal d'erreur). La réponse reste mise en
@@ -1416,20 +1422,20 @@ function verdictHTML(
 		const rep = correct
 			? ligneRevelation(parIntervalle ? 'une réponse possible' : 'la réponse', mathInline(correct))
 			: REVELATION_EN_PLACE;
-		verdict = `<div class="rev-feedback reveal">
+		verdict = html`<div class="rev-feedback reveal">
         <span class="rev-reveal-lab">${REVEAL_LAB}</span>
         <span class="rev-reveal-rep">${rep}</span>
       </div>`;
 	} else
 		verdict = correct
-			? `<div class="rev-feedback ko">✗ ${label} : <strong>${mathInline(correct)}</strong></div>`
-			: `<div class="rev-feedback ko">✗ Regarde la correction, puis continue.</div>`;
+			? html`<div class="rev-feedback ko">✗ ${label} : <strong>${mathInline(correct)}</strong></div>`
+			: html`<div class="rev-feedback ko">✗ Regarde la correction, puis continue.</div>`;
 	// Étayage de la notion (#490) : proposé sur une erreur ou une révélation, jamais sur une
 	// réussite. Placé APRÈS la bonne réponse et AVANT « Continuer ▶ » : l'enfant lit d'abord
 	// ce qu'il cherchait, puis choisit d'approfondir. Placé avant la réponse, ou aussi lourd
 	// que « Continuer », il serait cliqué par réflexe sans être lu.
 	const etay = etat !== 'ok' && etayageDemande() ? lienEtayageHTML('etay-lien', 'revEtayage') : '';
-	return `${verdict}${extra}${etay}
+	return html`${verdict}${extra}${etay}
     <div class="rev-actions"><button class="rev-btn" id="revNext">${idx + 1 < items.length ? 'Continuer ▶' : 'Terminer'}</button></div>`;
 }
 
@@ -1469,9 +1475,9 @@ function grade(reussi: boolean, correct: string, parIntervalle = false) {
 	document.getElementById('revStage')!.innerHTML = verdictHTML(
 		reussi ? 'ok' : 'ko',
 		correct,
-		'',
+		VIDE,
 		parIntervalle,
-	);
+	).balisage;
 	// Annonce APRÈS le remplacement du stage : la région visée est bien celle qui survit à la
 	// question (`#revStatus`, posée hors de #revStage), et non un reste de la question effacée.
 	annoncerVerdict(reussi, correct, parIntervalle);
@@ -1487,9 +1493,9 @@ function gradeTuile(reussi: boolean, correct: string, parIntervalle = false) {
 	document.getElementById('revAfter')!.innerHTML = verdictHTML(
 		reussi ? 'ok' : 'ko',
 		correct,
-		'',
+		VIDE,
 		parIntervalle,
-	);
+	).balisage;
 	// Même annonce que `grade` : la comparaison en tuiles et le rangement d'une suite
 	// n'ont pas de région live à eux (seuls tri, appariement, clic-mot et problème en
 	// montent une), donc leur verdict ne se lisait QUE dans les marques ✓/✗ du widget.
@@ -1542,12 +1548,12 @@ function renderDone() {
 	if (!stage) return;
 	document.querySelector('.rev-hud')?.remove();
 	viderStatut(); // l'écran de fin ne doit pas garder la dernière réponse révélée en sr-only
-	stage.innerHTML = `<div class="rev-done">
+	stage.innerHTML = html`<div class="rev-done">
     <div class="rev-done-big">${score}/${items.length}</div>
     <div class="rev-done-lab">révision terminée</div>
     <div class="rev-done-sub">Les notions réussies reviendront plus tard, les autres plus tôt.</div>
     ${recapAutonomeHTML('revision', notionsRecap, 'rev-recap')}
     <div class="rev-actions"><button class="rev-btn" id="revHome">${icon('house')} Accueil</button></div>
-  </div>`;
+  </div>`.balisage;
 	document.getElementById('revHome')!.addEventListener('click', goHome);
 }

@@ -8,7 +8,7 @@
    Les calculs (recap, échelle) vivent dans core/encadrant-stats ; ici, le rendu et
    les handlers de la section (bascule, épinglage, impression).
    ============================================================ */
-import { enumererFr, escapeHTML } from '../core/utils';
+import { enumererFr } from '../core/utils';
 import { LEVEL_LABEL, labelLecon } from '../core/levels';
 import { icon } from './icon';
 import { listProfiles, activeProfile, type Profile } from '../core/profiles';
@@ -57,6 +57,7 @@ import {
 } from './encadrant-banque';
 import { enregistrerSelecteur, selecteurLeconHTML, type ActionLigne } from './selecteur-lecon';
 import { segmentHTML } from './segment';
+import { html, type SafeHtml, VIDE, joindre, drapeau } from '../core/html';
 
 /* ---------- État de la section (module) ---------- */
 let vueActivite: 'total' | 'type' = 'total'; // graphe d'activité : « Total » ou « Par type » (#319)
@@ -84,11 +85,11 @@ const TENDANCE: Record<TendanceNotion, { glyphe: string; mot: string; titre: str
 		titre: 'Gagnerait à être retravaillée en ce moment',
 	},
 };
-function tendanceHTML(t: TendanceNotion | null): string {
-	if (!t) return '';
+function tendanceHTML(t: TendanceNotion | null): SafeHtml {
+	if (!t) return VIDE;
 	const { glyphe, mot, titre } = TENDANCE[t];
 	// `sr-only` : nomme l'info pour les lecteurs d'écran (« Tendance : … »), le glyphe restant décoratif.
-	return `<span class="enc-tendance enc-tendance-${t}" title="${titre}"><span class="enc-tendance-glyphe" aria-hidden="true">${glyphe}</span> <span class="sr-only">Tendance : </span>${mot}</span>`;
+	return html`<span class="enc-tendance enc-tendance-${t}" title="${titre}"><span class="enc-tendance-glyphe" aria-hidden="true">${glyphe}</span> <span class="sr-only">Tendance : </span>${mot}</span>`;
 }
 
 /* Types de session du graphe d'activité (#319). Couleurs reprises des tokens
@@ -112,10 +113,10 @@ const TYPE_INCONNU = {
 const NOMS_JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
 /* ---------- Récap de progression (accompagnement, pas un bulletin) ---------- */
-export function recapHTML(recap: RecapProfil, consulte: Profile): string {
-	return `<section class="enc-section">
-      <h2 class="enc-h2"><span aria-hidden="true">${escapeHTML(consulte.emoji)}</span> Progression de ${escapeHTML(consulte.name)}</h2>
-      <p class="enc-frame">Voici où en est l'entraînement de ${escapeHTML(consulte.name)}, pour vous aider à l'accompagner.</p>
+export function recapHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
+	return html`<section class="enc-section">
+      <h2 class="enc-h2"><span aria-hidden="true">${consulte.emoji}</span> Progression de ${consulte.name}</h2>
+      <p class="enc-frame">Voici où en est l'entraînement de ${consulte.name}, pour vous aider à l'accompagner.</p>
       ${chiffresHTML(recap)}
       ${activiteHTML(recap)}
       ${travailHTML(consulte)}
@@ -125,10 +126,10 @@ export function recapHTML(recap: RecapProfil, consulte: Profile): string {
     </section>`;
 }
 
-function chiffresHTML(recap: RecapProfil): string {
+function chiffresHTML(recap: RecapProfil): SafeHtml {
 	const stat = (num: number, lab: string) =>
-		`<div class="enc-stat"><span class="enc-stat-num">${num}</span><span class="enc-stat-lab">${lab}</span></div>`;
-	return `<div class="enc-stats">
+		html`<div class="enc-stat"><span class="enc-stat-num">${num}</span><span class="enc-stat-lab">${lab}</span></div>`;
+	return html`<div class="enc-stats">
       ${stat(recap.totalMaitrisees, `notion${recap.totalMaitrisees > 1 ? 's' : ''} maîtrisée${recap.totalMaitrisees > 1 ? 's' : ''}`)}
       ${recap.nouvellesRecentes > 0 ? stat(recap.nouvellesRecentes, `maîtrisée${recap.nouvellesRecentes > 1 ? 's' : ''} récemment`) : ''}
       ${stat(recap.aRevoir.length, 'à revoir ensemble')}
@@ -146,12 +147,12 @@ function repartitionTexte(j: JourActivite): string {
 		.join(', ');
 }
 
-function activiteHTML(recap: RecapProfil): string {
+function activiteHTML(recap: RecapProfil): SafeHtml {
 	const jours = recap.activite7j;
 	const total = jours.reduce((s, j) => s + j.total, 0);
 	// Pas d'activité : pas de graphe ni de bascule (rien à comparer).
 	if (total === 0) {
-		return `<div class="enc-block">
+		return html`<div class="enc-block">
       <h3 class="enc-h3">${icon('calendar')} Activité des 7 derniers jours</h3>
       <p class="enc-hint">Aucune session récente.</p>
     </div>`;
@@ -163,12 +164,12 @@ function activiteHTML(recap: RecapProfil): string {
 	// segment pct(sous-total) → la somme des segments = pct(total). Sommet `top` ≥ max.
 	const { top, ticks } = echelleActivite(Math.max(...jours.map((j) => j.total)));
 	const pct = (v: number) => (v / top) * 100;
-	const axis = ticks
-		.map((t) => `<span class="enc-axis-tick" style="bottom:${pct(t)}%">${t}</span>`)
-		.join('');
-	const gridlines = ticks
-		.map((t) => `<span class="enc-gridline" style="bottom:${pct(t)}%"></span>`)
-		.join('');
+	const axis = joindre(
+		ticks.map((t) => html`<span class="enc-axis-tick" style="bottom:${pct(t)}%">${t}</span>`),
+	);
+	const gridlines = joindre(
+		ticks.map((t) => html`<span class="enc-gridline" style="bottom:${pct(t)}%"></span>`),
+	);
 
 	// Libellés de jour, calculés une fois (initiale visible + nom complet pour l'a11y) ;
 	// dernière colonne = aujourd'hui.
@@ -180,27 +181,31 @@ function activiteHTML(recap: RecapProfil): string {
 		return { initiale: NOMS_JOURS[d.getDay()].charAt(0).toUpperCase(), nom };
 	});
 
-	const colonnes = jours
-		.map((j, i) => {
+	const colonnes = joindre(
+		jours.map((j, i) => {
 			const detail = parType && j.total ? ` (${repartitionTexte(j)})` : '';
 			const cap = infos[i].nom.charAt(0).toUpperCase() + infos[i].nom.slice(1);
 			const aria = `${cap} : ${j.total} session${j.total > 1 ? 's' : ''}${detail}`;
-			let barre: string;
+			let barre: SafeHtml;
 			if (parType) {
-				const segs = [...TYPES_ACTIVITE, TYPE_INCONNU]
-					.map((t) => {
+				const segs = joindre(
+					[...TYPES_ACTIVITE, TYPE_INCONNU].map((t) => {
 						const c = j[t.k];
-						return c ? `<span class="enc-seg-bar ${t.cls}" style="height:${pct(c)}%"></span>` : '';
-					})
-					.join('');
-				barre = `<div class="enc-bar-stack">${segs}</div>`;
+						return c
+							? html`<span class="enc-seg-bar ${t.cls}" style="height:${pct(c)}%"></span>`
+							: VIDE;
+					}),
+				);
+				barre = html`<div class="enc-bar-stack">${segs}</div>`;
 			} else {
-				barre = `<div class="enc-bar" style="height:${pct(j.total)}%"></div>`;
+				barre = html`<div class="enc-bar" style="height:${pct(j.total)}%"></div>`;
 			}
-			return `<div class="enc-bar-col" role="img" aria-label="${aria}" title="${aria}">${barre}</div>`;
-		})
-		.join('');
-	const labs = infos.map((info) => `<span class="enc-bar-lab">${info.initiale}</span>`).join('');
+			return html`<div class="enc-bar-col" role="img" aria-label="${aria}" title="${aria}">${barre}</div>`;
+		}),
+	);
+	const labs = joindre(
+		infos.map((info) => html`<span class="enc-bar-lab">${info.initiale}</span>`),
+	);
 
 	// Bascule Total / Par type (composant segment partagé, cf. ui/segment.ts).
 	const bascule = segmentHTML({
@@ -216,10 +221,10 @@ function activiteHTML(recap: RecapProfil): string {
 	// Légende (mode « par type ») : « Autre » seulement si d'anciennes sessions non typées existent.
 	const legendeTypes = [...TYPES_ACTIVITE, ...(jours.some((j) => j.inconnu) ? [TYPE_INCONNU] : [])];
 	const legende = parType
-		? `<p class="enc-legend">${legendeTypes
-				.map((t) => `<span class="enc-key ${t.cls}">${t.legende}</span>`)
-				.join('')}</p>`
-		: '';
+		? html`<p class="enc-legend">${joindre(
+				legendeTypes.map((t) => html`<span class="enc-key ${t.cls}">${t.legende}</span>`),
+			)}</p>`
+		: VIDE;
 	// Synthèse : total de la semaine, + répartition globale par type (donne au lecteur
 	// d'écran le même niveau d'info que la pile visuelle, sans parcourir les colonnes).
 	const totalParType: JourActivite = jours.reduce(
@@ -238,7 +243,7 @@ function activiteHTML(recap: RecapProfil): string {
 		parType ? ` — ${repartitionTexte(totalParType)}` : ''
 	}.`;
 
-	return `<div class="enc-block">
+	return html`<div class="enc-block">
       <h3 class="enc-h3">${icon('calendar')} Activité des 7 derniers jours</h3>
       ${bascule}
       ${legende}
@@ -256,11 +261,11 @@ function activiteHTML(recap: RecapProfil): string {
     </div>`;
 }
 
-function maitriseHTML(recap: RecapProfil): string {
-	if (recap.parCategorie.length === 0) return '';
-	const legende = ORDRE_NIVEAUX.map(
-		(n) => `<span class="enc-key enc-key-${n}">${MOT_NIVEAU[n]}</span>`,
-	).join('');
+function maitriseHTML(recap: RecapProfil): SafeHtml {
+	if (recap.parCategorie.length === 0) return VIDE;
+	const legende = joindre(
+		ORDRE_NIVEAUX.map((n) => html`<span class="enc-key enc-key-${n}">${MOT_NIVEAU[n]}</span>`),
+	);
 	const valeur: Record<NiveauNotion, (c: RecapProfil['parCategorie'][number]) => number> = {
 		'a-decouvrir': (c) => c.aDecouvrir,
 		'non-acquis': (c) => c.nonAcquis,
@@ -269,15 +274,15 @@ function maitriseHTML(recap: RecapProfil): string {
 	};
 	const seg = (n: NiveauNotion, v: number) =>
 		v > 0
-			? `<span class="enc-seg-part enc-key-${n}" style="flex:${v}" title="${v} ${MOT_NIVEAU[n]}"></span>`
-			: '';
+			? html`<span class="enc-seg-part enc-key-${n}" style="flex:${v}" title="${v} ${MOT_NIVEAU[n]}"></span>`
+			: VIDE;
 	// Détail d'une catégorie : une ligne par leçon (puce d'état + libellé + suivi
 	// « travaillée N fois · dernière fois … · acquise le … » + mot + frise d'états + actions :
 	// épingler/retirer + imprimer une fiche + imprimer avec corrigé).
 	const now = Date.now();
 	const detail = (c: RecapProfil['parCategorie'][number]) =>
-		c.lecons
-			.map((l) => {
+		joindre(
+			c.lecons.map((l) => {
 				const quand = libelleDerniereFois(l.derniereFois, now);
 				// Date du cap le PLUS HAUT franchi (#521) : la trajectoire complète est dans la
 				// frise, la méta n'en retient que l'événement marquant, sinon la ligne s'allonge
@@ -305,11 +310,11 @@ function maitriseHTML(recap: RecapProfil): string {
 				// réintroduire le signal qu'on vient d'enlever.
 				const puce = l.frise
 					? '<span class="enc-detail-puce enc-detail-puce--reserve" aria-hidden="true"></span>'
-					: `<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
-				return `<li class="enc-detail-item">
+					: html`<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
+				return html`<li class="enc-detail-item">
           ${puce}
           <span class="enc-detail-main">
-            <span class="enc-detail-lab">${escapeHTML(l.label)}</span>
+            <span class="enc-detail-lab">${l.label}</span>
             <span class="enc-detail-meta">${suivi}</span>
           </span>
           <span class="enc-detail-mot"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[l.niveau]}</span>
@@ -320,27 +325,27 @@ function maitriseHTML(recap: RecapProfil): string {
           </span>
           ${friseNotionHTML(l.frise, now)}
         </li>`;
-			})
-			.join('');
+			}),
+		);
 	// `data-subject` : cible du dépliage global par matière (cf. deplierHTML / handler).
 	// `data-cat` : identifie la catégorie pour retenir son pli à travers un re-rendu.
 	// `id` : référencé par l'`aria-controls` du bouton de dépliage, qui sinon ne serait relié
 	// à rien programmatiquement.
-	const cats = recap.parCategorie
-		.map(
+	const cats = joindre(
+		recap.parCategorie.map(
 			(
 				c,
-			) => `<details class="enc-cat-d" id="${idCategorie(c.categoryId)}" data-subject="${c.subject}" data-cat="${c.categoryId}"${categoriesOuvertes.has(c.categoryId) ? ' open' : ''}>
+			) => html`<details class="enc-cat-d" id="${idCategorie(c.categoryId)}" data-subject="${c.subject}" data-cat="${c.categoryId}"${categoriesOuvertes.has(c.categoryId) ? drapeau('open') : ''}>
         <summary class="enc-cat-sum">
-          <span class="enc-cat-lab">${escapeHTML(c.label)}</span>
+          <span class="enc-cat-lab">${c.label}</span>
           <span class="enc-cat-counts">${c.travaillees}/${c.total} travaillée${c.travaillees > 1 ? 's' : ''} · ${c.acquis} acquise${c.acquis > 1 ? 's' : ''}</span>
-          <span class="enc-seg" aria-hidden="true">${ORDRE_NIVEAUX.map((n) => seg(n, valeur[n](c))).join('')}</span>
+          <span class="enc-seg" aria-hidden="true">${joindre(ORDRE_NIVEAUX.map((n) => seg(n, valeur[n](c))))}</span>
         </summary>
         <ul class="enc-detail">${detail(c)}</ul>
       </details>`,
-		)
-		.join('');
-	return `<div class="enc-block">
+		),
+	);
+	return html`<div class="enc-block">
       <h3 class="enc-h3">${icon('star')} Notions par catégorie</h3>
       ${matieresHTML(recap)}
       <p class="enc-legend">${legende}</p>
@@ -355,25 +360,25 @@ function maitriseHTML(recap: RecapProfil): string {
    Les catégories restent repliées à l'arrivée (on ne surcharge pas l'écran de quelqu'un venu
    voir autre chose) — c'est une commande, pas un réglage persistant. Une seule matière suivie
    → pas de bascule (elle n'aurait rien à trancher). */
-function deplierHTML(recap: RecapProfil): string {
-	if (recap.parMatiere.length < 2) return '';
+function deplierHTML(recap: RecapProfil): SafeHtml {
+	if (recap.parMatiere.length < 2) return VIDE;
 	// Le libellé visuel n'est que le nom de la matière (la mention « Tout déplier » est portée
 	// une fois pour le groupe) : le nom ACCESSIBLE doit donc être complet, et CONTENIR le
 	// libellé visible (SC 2.5.3) — sans quoi un bouton annoncé « Mathématiques » ne dit pas ce
 	// qu'il fait. Même parade que les boutons « Épingler » de la file à revoir.
 	// `aria-controls` liste les catégories pilotées : le lien bouton → contenu n'existe sinon
 	// que dans le code du handler.
-	const btns = recap.parMatiere
-		.map((m) => {
+	const btns = joindre(
+		recap.parMatiere.map((m) => {
 			const cats = recap.parCategorie.filter((c) => c.subject === m.subject);
 			const controls = cats.map((c) => idCategorie(c.categoryId)).join(' ');
 			// État à l'instant du rendu : le pli survivant au re-rendu, le bouton doit s'y accorder
 			// (et son verbe avec, sinon « Tout déplier » resterait affiché alors que le clic replie).
 			const tout = cats.length > 0 && cats.every((c) => categoriesOuvertes.has(c.categoryId));
-			return `<button type="button" class="enc-btn-sec${tout ? ' on' : ''}" data-act="deplier-matiere" data-subject="${m.subject}" aria-controls="${controls}" aria-expanded="${tout}" aria-label="${escapeHTML(`${tout ? 'Tout replier' : 'Tout déplier'} : ${m.label}`)}" data-matiere="${escapeHTML(m.label)}">${escapeHTML(m.label)}</button>`;
-		})
-		.join('');
-	return `<div class="enc-deplier">
+			return html`<button type="button" class="enc-btn-sec${tout ? ' on' : ''}" data-act="deplier-matiere" data-subject="${m.subject}" aria-controls="${controls}" aria-expanded="${String(tout)}" aria-label="${`${tout ? 'Tout replier' : 'Tout déplier'} : ${m.label}`}" data-matiere="${m.label}">${m.label}</button>`;
+		}),
+	);
+	return html`<div class="enc-deplier">
       <span class="enc-deplier-lab" aria-hidden="true">Tout déplier :</span>
       ${btns}
     </div>`;
@@ -422,10 +427,10 @@ function syncDeplier(subject: string): void {
    frise d'états ayant rejoint les lignes de leçon, c'est la seule trace de « ça bouge » qui
    reste visible SANS déplier une catégorie. Un total, pas un palmarès : aucune leçon n'est
    nommée ni mise en avant ici. */
-function matieresHTML(recap: RecapProfil): string {
-	if (recap.parMatiere.length === 0) return '';
-	const items = recap.parMatiere
-		.map((m) => {
+function matieresHTML(recap: RecapProfil): SafeHtml {
+	if (recap.parMatiere.length === 0) return VIDE;
+	const items = joindre(
+		recap.parMatiere.map((m) => {
 			const compteurs = [
 				`${m.travaillees}/${m.total} travaillée${m.travaillees > 1 ? 's' : ''}`,
 				`${m.acquis} acquise${m.acquis > 1 ? 's' : ''}`,
@@ -433,13 +438,13 @@ function matieresHTML(recap: RecapProfil): string {
 					? `${m.changementsRecents} changement${m.changementsRecents > 1 ? 's' : ''} récent${m.changementsRecents > 1 ? 's' : ''}`
 					: '',
 			].filter(Boolean);
-			return `<li class="enc-mat-item">
-        <span class="enc-mat-lab">${escapeHTML(m.label)}</span>
+			return html`<li class="enc-mat-item">
+        <span class="enc-mat-lab">${m.label}</span>
         <span class="enc-mat-counts">${compteurs.join(' · ')}</span>
       </li>`;
-		})
-		.join('');
-	return `<h4 class="enc-sub-lab">Couverture par matière</h4>
+		}),
+	);
+	return html`<h4 class="enc-sub-lab">Couverture par matière</h4>
       <ul class="enc-mat-list">${items}</ul>
       ${etoilesNiveauHTML(recap)}`;
 }
@@ -451,10 +456,10 @@ function matieresHTML(recap: RecapProfil): string {
    répondre. Cumul DEPUIS TOUJOURS, comme le « trésor » de l'enfant : il ne baisse jamais,
    même après un changement de classe. Côté enfant, rien de tout ceci n'apparaît : le total
    reste unique et sans détail (avis gamification, #225). */
-function etoilesNiveauHTML(recap: RecapProfil): string {
-	if (recap.etoilesParNiveau.length < 2) return '';
+function etoilesNiveauHTML(recap: RecapProfil): SafeHtml {
+	if (recap.etoilesParNiveau.length < 2) return VIDE;
 	const parts = recap.etoilesParNiveau.map((e) => `${e.etoiles} en ${LEVEL_LABEL[e.niveau]}`);
-	return `<p class="enc-hint">Étoiles gagnées depuis toujours : ${escapeHTML(enumererFr(parts))}.</p>`;
+	return html`<p class="enc-hint">Étoiles gagnées depuis toujours : ${enumererFr(parts)}.</p>`;
 }
 
 /* Mot de chaque cellule de frise, pour le libellé accessible. Il s'agit d'une PHRASE, pas
@@ -500,8 +505,8 @@ const EVENEMENT_CELLULE: Partial<Record<CelluleFrise, string>> = {
    dit déjà, en texte visible, la date du cap le plus haut.
    Rien à tracer (leçon jamais travaillée) → rien du tout, pas de rangée vide ni de mention
    d'absence : ça ferait du bruit sur les lignes jamais travaillées, qui sont la majorité. */
-function friseNotionHTML(f: FriseNotion | null, now: number): string {
-	if (!f) return '';
+function friseNotionHTML(f: FriseNotion | null, now: number): SafeHtml {
+	if (!f) return VIDE;
 	const n = f.semaines.length;
 	// Récit par CHANGEMENT d'état, pas par semaine. Le premier segment n'est pas daté : c'est
 	// l'état en début de fenêtre, dont le franchissement peut être bien plus ancien. Les
@@ -522,15 +527,15 @@ function friseNotionHTML(f: FriseNotion | null, now: number): string {
 				: MOT_CELLULE[s.etat];
 		});
 	const aria = `Évolution sur les ${n} dernières semaines : ${segments.join(', puis ')}.`;
-	const cells = f.semaines
-		.map((etat, i) => {
+	const cells = joindre(
+		f.semaines.map((etat, i) => {
 			// `enc-frise-courante` et non `en-cours` : cette dernière est déjà le nom de l'ÉTAT
 			// « en cours », et une cellule peut porter les deux sens à la fois.
 			const derniere = i === n - 1;
-			return `<span class="enc-frise-cell enc-frise-${etat}${derniere ? ' enc-frise-courante' : ''}"></span>`;
-		})
-		.join('');
-	return `<span class="enc-frise" role="img" aria-label="${escapeHTML(aria)}" title="${escapeHTML(aria)}">
+			return html`<span class="enc-frise-cell enc-frise-${etat}${derniere ? ' enc-frise-courante' : ''}"></span>`;
+		}),
+	);
+	return html`<span class="enc-frise" role="img" aria-label="${aria}" title="${aria}">
       <span class="enc-frise-cells" aria-hidden="true">${cells}</span>
     </span>`;
 }
@@ -552,16 +557,16 @@ function friseNotionHTML(f: FriseNotion | null, now: number): string {
    identiques serait sans repère en navigation au rotor (même parade que enc-err-anciennes).
    Les mots sont une VRAIE liste (annonce « liste, N éléments », relecture mot à mot), et
    jamais `aria-hidden`. Texte du résumé invariant : le compte est déjà dans la méta. */
-function motsDicteeHTML(mots: readonly string[], label: string): string {
-	if (!mots.length) return '';
-	const items = mots.map((m) => `<li>${escapeHTML(m)}</li>`).join('');
-	return `<details class="enc-mots">
-      <summary aria-label="Voir les mots de « ${escapeHTML(label)} »">Voir les mots</summary>
+function motsDicteeHTML(mots: readonly string[], label: string): SafeHtml {
+	if (!mots.length) return VIDE;
+	const items = joindre(mots.map((m) => html`<li>${m}</li>`));
+	return html`<details class="enc-mots">
+      <summary aria-label="Voir les mots de « ${label} »">Voir les mots</summary>
       <ul class="enc-mots-list">${items}</ul>
     </details>`;
 }
 
-function ligneListeOrtho(l: RecapListeOrtho, now: number): string {
+function ligneListeOrtho(l: RecapListeOrtho, now: number): SafeHtml {
 	const entryId = orthoRevoirId(l.id);
 	// « en cours » regroupe « 1 mot commencé » et « 9/10 maîtrisés » : on accole le compte
 	// factuel de mots maîtrisés pour restituer la nuance (avis pédago), jamais de %.
@@ -585,19 +590,19 @@ function ligneListeOrtho(l: RecapListeOrtho, now: number): string {
 	// couleur, a11y). Sa PLACE, elle, est gardée, pour que la colonne des libellés reste droite.
 	const puce = l.frise
 		? '<span class="enc-detail-puce enc-detail-puce--reserve" aria-hidden="true"></span>'
-		: `<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
+		: html`<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
 	// Le repli des mots est le DERNIER enfant : il occupe toute la largeur (flex-basis 100 %),
 	// donc l'ordre du DOM reste l'ordre visuel — et « Épingler » garde sa place dans la
 	// tabulation, avant lui (a11y : ordre de focus = ordre de lecture).
-	return `<li class="enc-detail-item">
+	return html`<li class="enc-detail-item">
       ${puce}
       <span class="enc-detail-main">
-        <span class="enc-detail-lab">${escapeHTML(l.label)}</span>
+        <span class="enc-detail-lab">${l.label}</span>
         <span class="enc-detail-meta">${meta}</span>
       </span>
       <span class="enc-detail-mot"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[l.niveau]}</span>
       <span class="enc-actions">
-        <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${l.epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(l.label)} »">${l.epingle ? 'Retirer' : 'Épingler'}</button>
+        <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${l.epingle ? 'Retirer' : 'Épingler'} « ${l.label} »">${l.epingle ? 'Retirer' : 'Épingler'}</button>
       </span>
       ${friseNotionHTML(l.frise, now)}
       ${motsDicteeHTML(l.mots, l.label)}
@@ -610,7 +615,7 @@ function ligneListeOrtho(l: RecapListeOrtho, now: number): string {
    proposée n'est jamais commencée) : ce n'est pas un discriminant entre les lignes, mais
    il reconduit le code couleur + mot déjà appris ailleurs (avis designer). Toujours
    « Épingler » (par construction elle n'est pas épinglée), et rien à imprimer. */
-function ligneDicteeProposee(d: DicteeProposee): string {
+function ligneDicteeProposee(d: DicteeProposee): SafeHtml {
 	return ligneRevoir(orthoRevoirId(d.id), d.label, false, {
 		etat: 'a-decouvrir',
 		imprimable: false,
@@ -624,21 +629,23 @@ function voletListesHTML(
 	listes: RecapListeOrtho[],
 	proposees: DicteeProposee[],
 	now: number,
-): string {
-	const legende = ORDRE_NIVEAUX_ORTHO.map(
-		(n) => `<span class="enc-key enc-key-${n}">${MOT_NIVEAU[n]}</span>`,
-	).join('');
+): SafeHtml {
+	const legende = joindre(
+		ORDRE_NIVEAUX_ORTHO.map(
+			(n) => html`<span class="enc-key enc-key-${n}">${MOT_NIVEAU[n]}</span>`,
+		),
+	);
 	const suivi = listes.length
-		? `<ul class="enc-detail">${listes.map((l) => ligneListeOrtho(l, now)).join('')}</ul>`
-		: `<p class="enc-hint">Aucune dictée commencée pour le moment.</p>`;
+		? html`<ul class="enc-detail">${joindre(listes.map((l) => ligneListeOrtho(l, now)))}</ul>`
+		: html`<p class="enc-hint">Aucune dictée commencée pour le moment.</p>`;
 	// « À l'avance » (parcourir/épingler une dictée non commencée) est déplacé dans l'onglet
 	// Programme (#459) : c'est un acte de préparation, pas d'observation. On laisse ici un
 	// simple renvoi pour ne pas le faire disparaître silencieusement.
 	const renvoi = proposees.length
-		? `<p class="enc-hint">Proposer une dictée à l'avance ? Rendez-vous dans l'onglet <strong>Programme</strong>.</p>`
-		: '';
-	return `<p class="enc-legend">${legende}</p>
-      <p class="enc-hint">Les listes de dictée (mots invariables, thèmes, vos propres listes) et leur avancement. Épinglez-en une pour qu'elle revienne sur l'accueil de ${escapeHTML(consulte.name)}.</p>
+		? html`<p class="enc-hint">Proposer une dictée à l'avance ? Rendez-vous dans l'onglet <strong>Programme</strong>.</p>`
+		: VIDE;
+	return html`<p class="enc-legend">${legende}</p>
+      <p class="enc-hint">Les listes de dictée (mots invariables, thèmes, vos propres listes) et leur avancement. Épinglez-en une pour qu'elle revienne sur l'accueil de ${consulte.name}.</p>
       ${suivi}
       ${renvoi}`;
 }
@@ -649,7 +656,7 @@ function voletListesHTML(
    dictées. Le volet « Listes » reste le défaut — la banque peut faire des centaines de
    lignes, elle ne s'affiche que si on la demande. Le rendu du volet « Mots » vit dans
    `encadrant-banque` (état de vue, recherche, suppression). */
-function listesOrthoHTML(consulte: Profile, now: number): string {
+function listesOrthoHTML(consulte: Profile, now: number): SafeHtml {
 	const dispo = dicteeDisponible();
 	const listes = listesOrthoProfil(consulte, dispo, now);
 	const proposees = dicteesProposees(consulte, dispo);
@@ -657,7 +664,7 @@ function listesOrthoHTML(consulte: Profile, now: number): string {
 	// Rien à montrer ni côté listes ni côté mots. La banque compte dans cette condition :
 	// un parent qui a supprimé toutes ses listes garde des mots en révision, et c'est
 	// PRÉCISÉMENT le cas où il a besoin d'y accéder (le bloc disparaîtrait sinon).
-	if (listes.length === 0 && proposees.length === 0 && banque.length === 0) return '';
+	if (listes.length === 0 && proposees.length === 0 && banque.length === 0) return VIDE;
 	const catOrtho = CATEGORIES.find((c) => c.id === ORTHO_CATEGORY_ID);
 	// Pas de bascule tant que la banque est vide : un volet vide n'a rien à proposer.
 	const bascule = banque.length
@@ -676,7 +683,7 @@ function listesOrthoHTML(consulte: Profile, now: number): string {
 		banque.length && vueDictees() === 'mots'
 			? banqueMotsHTML(consulte, banque)
 			: voletListesHTML(consulte, listes, proposees, now);
-	return `<div class="enc-block">
+	return html`<div class="enc-block">
       <h3 class="enc-h3">${icon(catOrtho?.icon ?? 'book-open')} Dictées</h3>
       ${bascule}
       ${corps}
@@ -687,13 +694,13 @@ function listesOrthoHTML(consulte: Profile, now: number): string {
    non commencées, épinglables AVANT que l'enfant ne les rencontre (parité avec « épingler
    n'importe quelle leçon »). Extrait du suivi des dictées (autrefois replié sous « Listes de
    dictée ») car c'est un acte de préparation. Renvoie '' s'il n'y a rien à proposer. */
-export function dicteesProposeesHTML(consulte: Profile): string {
+export function dicteesProposeesHTML(consulte: Profile): SafeHtml {
 	const proposees = dicteesProposees(consulte, dicteeDisponible());
-	if (proposees.length === 0) return '';
-	return `<div class="enc-block">
+	if (proposees.length === 0) return VIDE;
+	return html`<div class="enc-block">
       <h3 class="enc-h3">${icon('feather')} Proposer une dictée à l'avance</h3>
-      <p class="enc-hint">Des dictées prêtes à l'emploi (mots invariables, nombres, thèmes). Épinglez-en une pour la proposer à ${escapeHTML(consulte.name)} avant qu'il ou elle ne la rencontre.</p>
-      <ul class="enc-ortho-dispo-list">${proposees.map(ligneDicteeProposee).join('')}</ul>
+      <p class="enc-hint">Des dictées prêtes à l'emploi (mots invariables, nombres, thèmes). Épinglez-en une pour la proposer à ${consulte.name} avant qu'il ou elle ne la rencontre.</p>
+      <ul class="enc-ortho-dispo-list">${joindre(proposees.map(ligneDicteeProposee))}</ul>
     </div>`;
 }
 
@@ -702,9 +709,9 @@ export function dicteesProposeesHTML(consulte: Profile): string {
    `label` ne sert QU'aux `aria-label` : l'onglet peut aligner une dizaine de « Fiche » /
    « Corrigé » identiques, indistinguables pour qui navigue par liste de contrôles (rotor
    VoiceOver, liste de formulaires NVDA) — le nom accessible doit porter la leçon (a11y). */
-function boutonsImpression(lessonId: string, label: string): string {
-	const nom = `« ${escapeHTML(label)} »`;
-	return `<button type="button" class="enc-btn-sec" data-act="imprimer" data-lesson="${lessonId}" aria-label="Imprimer la fiche de ${nom}">${icon('printer')} Fiche</button>
+function boutonsImpression(lessonId: string, label: string): SafeHtml {
+	const nom = `« ${label} »`;
+	return html`<button type="button" class="enc-btn-sec" data-act="imprimer" data-lesson="${lessonId}" aria-label="Imprimer la fiche de ${nom}">${icon('printer')} Fiche</button>
       <button type="button" class="enc-btn-sec" data-act="imprimer" data-corrige="1" data-lesson="${lessonId}" aria-label="Imprimer la fiche avec corrigé de ${nom}">${icon('printer')} Corrigé</button>`;
 }
 
@@ -724,9 +731,9 @@ function boutonsImpression(lessonId: string, label: string): string {
    le signal. On qualifie la NOTION, jamais l'enfant. Pas d'icône : elle serait redondante
    avec le texte, et `repeat` — le seul picto qui aurait convenu — sert déjà de titre au
    bloc « À revoir ensemble » avec un autre sens (avis accessibilité). */
-function signalBlocage(blocages: number): string {
-	if (blocages < BLOCAGES_SIGNAL_ADULTE) return '';
-	return `<span class="enc-revoir-signal" title="Revient depuis plusieurs jours sans être réussie">reste un point dur</span>`;
+function signalBlocage(blocages: number): SafeHtml {
+	if (blocages < BLOCAGES_SIGNAL_ADULTE) return VIDE;
+	return html`<span class="enc-revoir-signal" title="Revient depuis plusieurs jours sans être réussie">reste un point dur</span>`;
 }
 
 /* Jours de blocage par leçon, à plat depuis le récap (les suggestions comme les
@@ -811,32 +818,32 @@ function ligneRevoir(
 		meta?: string;
 		mots?: readonly string[];
 	} = {},
-): string {
+): SafeHtml {
 	const { etat, essai, origine, imprimable = true, quand, blocages = 0, meta, mots } = opts;
 	// `sr-only` « Niveau : » comme dans `ligneListeOrtho` (même échelle) : depuis que les
 	// épinglées ET les suggestions portent le badge, une navigation à la voix enchaînerait des
 	// « acquis » / « en cours » / « à renforcer » sans savoir de quoi ils parlent (avis a11y).
 	const badge = etat
-		? `<span class="enc-revoir-etat enc-key-${etat}"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[etat]}</span>`
+		? html`<span class="enc-revoir-etat enc-key-${etat}"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[etat]}</span>`
 		: essai
-			? `<span class="enc-revoir-essai">${escapeHTML(texteEssai(essai))}</span>`
+			? html`<span class="enc-revoir-essai">${texteEssai(essai)}</span>`
 			: quand
-				? `<span class="enc-revoir-quand">Retirée ${escapeHTML(quand)}</span>`
-				: '';
+				? html`<span class="enc-revoir-quand">Retirée ${quand}</span>`
+				: VIDE;
 	// Classe d'origine : seulement quand la leçon vient d'ailleurs que la classe suivie, et
 	// AVANT l'état — on lit d'abord d'où vient la notion, puis où en est l'enfant dessus.
 	const classe =
 		origine && origine.direction !== 'classe-suivie'
 			? badgeClasseOrigine(origine.niveau, INFOBULLE_ORIGINE[origine.direction])
 			: '';
-	return `<li class="enc-revoir-item">
+	return html`<li class="enc-revoir-item">
       <span class="enc-revoir-main">
-        <span class="enc-revoir-lab">${escapeHTML(label)}</span>
-        ${meta ? `<span class="enc-detail-meta">${escapeHTML(meta)}</span>` : ''}
+        <span class="enc-revoir-lab">${label}</span>
+        ${meta ? html`<span class="enc-detail-meta">${meta}</span>` : ''}
       </span>
       ${classe}${badge}${signalBlocage(blocages)}
       <span class="enc-actions">
-        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${escapeHTML(label)} »">${epingle ? 'Retirer' : 'Épingler'}</button>
+        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${label} »">${epingle ? 'Retirer' : 'Épingler'}</button>
         ${imprimable ? boutonsImpression(entryId, label) : ''}
       </span>
       ${mots ? motsDicteeHTML(mots, label) : ''}
@@ -850,7 +857,7 @@ function ligneRevoir(
    geste naturel quand on vient de lire l'état d'une notion : les deux écrivent la même file. */
 const ID_SELECTEUR_EPINGLE = 'revoir-epingler';
 
-function epinglerHTML(consulte: Profile, epinglees: ReadonlySet<string>): string {
+function epinglerHTML(consulte: Profile, epinglees: ReadonlySet<string>): SafeHtml {
 	// `data-act` propre au sélecteur, alors que le geste est le même que `epingler` : une leçon
 	// déjà épinglée porte DEUX boutons sur la page (sa ligne en haut, sa ligne dans l'arbre), et
 	// un `data-act` commun renverrait le focus au premier des deux — donc en haut de bloc, à
@@ -865,12 +872,12 @@ function epinglerHTML(consulte: Profile, epinglees: ReadonlySet<string>): string
 		const p = listProfiles().find((x) => x.uuid === consulteUuid());
 		return p ? { consulte: p, action } : null;
 	});
-	return `<h4 class="enc-sub-lab">Épingler une leçon</h4>
-     <p class="enc-hint">Choisissez n'importe quelle leçon du catalogue, même pas encore abordée, même d'une autre classe que celle que suit ${escapeHTML(consulte.name)} : sa classe ne change pas, seule cette leçon est proposée.</p>
+	return html`<h4 class="enc-sub-lab">Épingler une leçon</h4>
+     <p class="enc-hint">Choisissez n'importe quelle leçon du catalogue, même pas encore abordée, même d'une autre classe que celle que suit ${consulte.name} : sa classe ne change pas, seule cette leçon est proposée.</p>
      ${selecteurLeconHTML({ id: ID_SELECTEUR_EPINGLE, consulte, action })}`;
 }
 
-export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
+export function aRevoirHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
 	// La file a déjà été nettoyée (purgeRevoirSolides, appelé par l'orchestrateur AVANT le
 	// calcul du récap, #465) : la liste de gestion ne peut donc plus contenir de « fantôme »
 	// (notion redevenue solide, déjà invisible côté enfant).
@@ -887,8 +894,8 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 	// Jours de blocage (#492) : sert aux DEUX blocs, épinglées comprises.
 	const blocages = blocagesParLecon(recap);
 	const blocEpinglees = pinned.length
-		? `<ul class="enc-revoir">${pinned
-				.map((e) =>
+		? html`<ul class="enc-revoir">${joindre(
+				pinned.map((e) =>
 					ligneRevoir(e.kind === 'ortho' ? orthoRevoirId(e.id) : e.id, e.label, true, {
 						imprimable: e.kind !== 'ortho',
 						// Une leçon prise AU-DESSUS n'entre pas dans les compteurs de maîtrise ni dans
@@ -900,34 +907,34 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): string {
 						essai: e.etat.kind === 'essai' ? e.etat : undefined,
 						origine: e.origine,
 					}),
-				)
-				.join('')}</ul>`
-		: `<p class="enc-hint">Aucune leçon épinglée pour le moment.</p>`;
+				),
+			)}</ul>`
+		: html`<p class="enc-hint">Aucune leçon épinglée pour le moment.</p>`;
 	const blocSuggestions = suggestions.length
-		? `<h4 class="enc-sub-lab">Suggestions</h4>
+		? html`<h4 class="enc-sub-lab">Suggestions</h4>
        <p class="enc-hint">Leçons qui gagneraient à être revues :</p>
-       <ul class="enc-revoir">${suggestions
-					.map((n) =>
+       <ul class="enc-revoir">${joindre(
+					suggestions.map((n) =>
 						ligneRevoir(n.lessonId, n.label, false, { etat: n.niveau, blocages: n.blocages }),
-					)
-					.join('')}</ul>`
-		: '';
+					),
+				)}</ul>`
+		: VIDE;
 	const blocRetraits = retraits.length
-		? `<h4 class="enc-sub-lab">Retirées automatiquement</h4>
+		? html`<h4 class="enc-sub-lab">Retirées automatiquement</h4>
        <p class="enc-hint">Ces notions ont quitté la liste d'elles-mêmes. Épinglez-en une si vous voulez quand même y revenir.</p>
-       <ul class="enc-revoir">${retraits
-					.map((r) =>
+       <ul class="enc-revoir">${joindre(
+					retraits.map((r) =>
 						ligneRevoir(r.id, r.label, false, {
 							imprimable: r.kind === 'lecon',
 							quand: quandRetrait(r, now),
 						}),
-					)
-					.join('')}</ul>`
-		: '';
+					),
+				)}</ul>`
+		: VIDE;
 
-	return `<div class="enc-block">
+	return html`<div class="enc-block">
       <h3 class="enc-h3">${icon('repeat')} À revoir ensemble</h3>
-      <p class="enc-hint">Épinglez une leçon : elle apparaîtra sur l'accueil de ${escapeHTML(consulte.name)} pour qu'il ou elle y revienne.</p>
+      <p class="enc-hint">Épinglez une leçon : elle apparaîtra sur l'accueil de ${consulte.name} pour qu'il ou elle y revienne.</p>
       <h4 class="enc-sub-lab">Épinglées</h4>
       ${blocEpinglees}
       ${blocSuggestions}

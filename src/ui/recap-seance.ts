@@ -18,7 +18,7 @@
    La DÉCISION (ce qui est nommé, avec quelle phrase) vit dans `core/recap-notions.ts`,
    pure et testée. Ici, seule la résolution et le HTML.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+import { html, VIDE, type SafeHtml } from '../core/html';
 import { CATEGORIES, getLessonById } from '../core/catalog';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
@@ -144,11 +144,11 @@ let tour = 0;
     `classe` est fournie par l'écran porteur (`rb-recap`, `sprint-recap`, `rev-recap`) :
     chacun a déjà sa famille de styles, et une classe transversale aurait dû lutter contre
     trois contextes de mise en page différents. */
-export function recapHTML(notions: readonly NotionRecap[], classe: string): string {
+export function recapHTML(notions: readonly NotionRecap[], classe: string): SafeHtml {
 	const contenu = contenuRecap(notions);
-	if (!contenu) return '';
+	if (!contenu) return VIDE;
 	const jour = new Date(Date.now()).getDate();
-	return `<p class="${classe}">${escapeHTML(phraseRecap(contenu, jour + tour++))}</p>`;
+	return html`<p class="${classe}">${phraseRecap(contenu, jour + tour++)}</p>`;
 }
 
 /** Phrase de récap d'un sprint / d'une révision, `''` s'il n'y a rien à nommer OU si le
@@ -164,11 +164,11 @@ export function recapAutonomeHTML(
 	kind: KindRecap,
 	notions: readonly NotionRecap[],
 	classe: string,
-): string {
+): SafeHtml {
 	const vue = vueProgramme();
 	const masque = recapAutonomeMasque(
 		kind,
 		vue ? { complete: vue.complete, kinds: vue.etapes.map((v) => v.etape.kind) } : null,
 	);
-	return masque ? '' : recapHTML(notions, classe);
+	return masque ? VIDE : recapHTML(notions, classe);
 }

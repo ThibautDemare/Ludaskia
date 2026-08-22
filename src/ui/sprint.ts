@@ -14,7 +14,7 @@
    - validation sur Entrée OU bouton « Valider »
    - un sprint ne compte que s'il va au bout des 5 minutes
    ============================================================ */
-import { choice, commKey, escapeHTML, fmt, rnd } from '../core/utils';
+import { choice, commKey, fmt, rnd } from '../core/utils';
 import {
 	getAllLessons,
 	getLessonsBySubject,
@@ -46,6 +46,7 @@ import {
 	figureBlock,
 	itemEstNumerique,
 	TEXT_ANSWER_INPUT_ATTRS,
+	poserAuTrou,
 } from '../core/items';
 import { saisieEstNombre } from '../core/nombres';
 import type { Item } from '../core/items';
@@ -83,6 +84,7 @@ import {
 } from './navigation';
 import { capterErreur } from './erreur-capture';
 import { attendueItem } from '../core/erreur-representation';
+import { html, VIDE, type SafeHtml, joindre } from '../core/html';
 
 const SPRINT_MS = 300000; // 5 minutes
 
@@ -213,41 +215,43 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 		const checked = currentValue === value ? 'checked' : '';
 		const disabled = n === 0 ? 'disabled' : '';
 		const cls = `sc-option${indent ? ' sc-option-indent' : ''}${n === 0 ? ' sc-option-disabled' : ''}`;
-		return `<label class="${cls}">
+		return html`<label class="${cls}">
       <input type="radio" name="scFilter" class="sc-radio" value="${value}" ${checked} ${disabled}>
-      <span>${escapeHTML(label)} <span class="sc-count">${n} leçon${n > 1 ? 's' : ''}</span></span>
+      <span>${label} <span class="sc-count">${n} leçon${n > 1 ? 's' : ''}</span></span>
     </label>`;
 	};
 
 	// La structure matière/catégorie reste affichée selon l'ÉLIGIBILITÉ (indépendante
 	// du périmètre) → liste stable au basculement ; seules les options vides au
 	// périmètre courant sont grisées (compte 0).
-	const subjectOptions = SUBJECTS.flatMap((subj) => {
-		if (!lessonsForFilter({ type: 'subject', id: subj.id }).length) return [];
-		const catOptions = CATEGORIES.filter((c) => c.subject === subj.id).flatMap((cat) =>
-			lessonsForFilter({ type: 'category', id: cat.id }).length
-				? [opt(`category:${cat.id}`, cat.label, countFor({ type: 'category', id: cat.id }), true)]
-				: [],
-		);
-		return [
-			opt(`subject:${subj.id}`, subj.label, countFor({ type: 'subject', id: subj.id })),
-			...catOptions,
-		];
-	}).join('');
+	const subjectOptions = joindre(
+		SUBJECTS.flatMap((subj) => {
+			if (!lessonsForFilter({ type: 'subject', id: subj.id }).length) return [];
+			const catOptions = CATEGORIES.filter((c) => c.subject === subj.id).flatMap((cat) =>
+				lessonsForFilter({ type: 'category', id: cat.id }).length
+					? [opt(`category:${cat.id}`, cat.label, countFor({ type: 'category', id: cat.id }), true)]
+					: [],
+			);
+			return [
+				opt(`subject:${subj.id}`, subj.label, countFor({ type: 'subject', id: subj.id })),
+				...catOptions,
+			];
+		}),
+	);
 
 	// Sélecteur de périmètre (#208) : « Ce que tu connais déjà » (défaut) en tête.
 	// « connais » et non « appris » : critère = rencontrée, pas maîtrisée (avis pédago).
 	// Voix « tu » (#278, l'app pose la question) ; titre en <h2> sous le <h1>
 	// « Sprint 5 min » de l'écran (#277). L'id reste la cible de l'aria-labelledby.
 	const perimetre = choisissable
-		? `<h2 class="sc-section-title" id="scScopeTitle">Sur quoi veux-tu t'entraîner&nbsp;?</h2>
+		? html`<h2 class="sc-section-title" id="scScopeTitle">Sur quoi veux-tu t'entraîner&nbsp;?</h2>
     <div class="sc-options sc-perimetre" role="radiogroup" aria-labelledby="scScopeTitle">
       <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="seen" ${scope === 'seen' ? 'checked' : ''}><span>Ce que tu connais déjà</span></label>
       <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="all" ${scope === 'all' ? 'checked' : ''}><span>Tout</span></label>
     </div>`
-		: '';
+		: VIDE;
 
-	el.innerHTML = `<div class="sprint-config">
+	el.innerHTML = html`<div class="sprint-config">
     ${perimetre}
     <h2 class="sc-section-title" id="scFilterTitle">Dans quelle matière&nbsp;?</h2>
     <div class="sc-options" role="radiogroup" aria-labelledby="scFilterTitle">
@@ -255,7 +259,7 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
       ${subjectOptions}
     </div>
     <button id="scLaunch" class="sprint-btn">${icon('play')} Lancer</button>
-  </div>`;
+  </div>`.balisage;
 
 	// Basculer le périmètre : on conserve le filtre en cours puis on redessine.
 	el.querySelectorAll<HTMLInputElement>('.sc-scope').forEach((r) =>
@@ -344,28 +348,28 @@ export function runSprint() {
 	setToolbar({ verify: false, home: true, profile: false }); // pas de Vérifier (validation auto par question)
 	resetChrono(); // le sprint a son propre compte à rebours
 	const badge = filterLabel(sprintFilter);
-	const badgeHTML = badge ? `<span class="sprint-filter-badge">${escapeHTML(badge)}</span>` : '';
+	const badgeHTML = badge ? html`<span class="sprint-filter-badge">${badge}</span>` : VIDE;
 	// Sans pression (#223) : on masque le minuteur ET le score live (révélés au bilan).
 	// Le HUD ne garde alors que le badge éventuel ; sans badge, il n'est pas rendu du
 	// tout (pas de barre vide au-dessus de la question).
 	const hudContent = sprintSansPression
 		? badgeHTML
-		: `<span class="sprint-time" id="sprintTime">05:00</span>
+		: html`<span class="sprint-time" id="sprintTime">05:00</span>
         ${badgeHTML}
         <span class="sprint-score" id="sprintScore">0 bonne réponse</span>`;
-	const hud = hudContent
-		? `<div class="sprint-hud${sprintSansPression ? ' sprint-hud--calme' : ''}">${hudContent}</div>`
-		: '';
+	const hud = hudContent.balisage
+		? html`<div class="sprint-hud${sprintSansPression ? ' sprint-hud--calme' : ''}">${hudContent}</div>`
+		: VIDE;
 	// Région live du lecteur d'écran, créée VIDE et hors du stage : le stage est
 	// réécrit à chaque question, or une région live insérée en même temps que son
 	// texte n'est pas annoncée de façon fiable. Même pattern que le widget
 	// d'appariement et « clique sur le mot ». Remplie par sprintAnnonce.
-	document.getElementById('sheets')!.innerHTML = `
+	document.getElementById('sheets')!.innerHTML = html`
     <div class="sprint">
       ${hud}
       <div class="sprint-stage" id="sprintStage"></div>
       <p class="sr-only" id="sprintStatus" role="status" aria-live="polite" aria-atomic="true"></p>
-    </div>`;
+    </div>`.balisage;
 	sprintRenderTime();
 	sprintLastTick = Date.now();
 	const t0 = getTimer();
@@ -416,12 +420,12 @@ const SPRINT_SUBJECT_META: Record<string, { icon: IconName; label: string }> = {
 	math: { icon: 'calculator', label: 'Maths' },
 	francais: { icon: 'book-open', label: 'Français' },
 };
-function subjectTag(subject: string): string {
+function subjectTag(subject: string): SafeHtml {
 	const meta = SPRINT_SUBJECT_META[subject] ?? {
 		icon: 'book-open' as IconName,
 		label: SUBJECTS.find((s) => s.id === subject)?.label ?? subject,
 	};
-	return `<span class="sprint-subject sprint-subject-${subject}">${icon(meta.icon)} ${escapeHTML(meta.label)}</span>`;
+	return html`<span class="sprint-subject sprint-subject-${subject}">${icon(meta.icon)} ${meta.label}</span>`;
 }
 
 // Choisit la prochaine leçon en gardant la même matière sur une mini-série de
@@ -533,12 +537,12 @@ function onSprintEnter(e: KeyboardEvent) {
 // Question à saisir (maths) : champ + bouton Valider.
 function renderSprintTyped(stage: HTMLElement, def: LessonDef, q: Item) {
 	const deco = def.id === 'math-decomposer-multiplication' ? ' deco' : '';
-	stage.innerHTML = `
-    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(labelLecon(def, niveauLecon(def)))}</span></div>
+	stage.innerHTML = html`
+    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${labelLecon(def, niveauLecon(def))}</span></div>
     ${figureBlock(q.figure)}
     <div class="sprint-q${deco}">${sprintQuestionBody(q)}</div>
     <p class="sprint-hint" id="sprintHint" hidden></p>
-    <div class="sprint-actions"><button class="sprint-btn" id="sprintValidate">Valider</button></div>`;
+    <div class="sprint-actions"><button class="sprint-btn" id="sprintValidate">Valider</button></div>`.balisage;
 	document.getElementById('sprintValidate')?.addEventListener('click', sprintSubmit);
 	stage.addEventListener('keydown', onSprintEnter);
 	const champ = document.getElementById('sprintInput') as HTMLInputElement | null;
@@ -598,14 +602,14 @@ function renderSprintQcm(
 	sym = false,
 ) {
 	// `mathInline` : empile les fractions « num/den » de l'énoncé (barre horizontale).
-	const question = mathInline(q.text).replace('@', '<span class="sprint-blank">?</span>');
-	stage.innerHTML = `
-    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${escapeHTML(labelLecon(def, niveauLecon(def)))}</span></div>
+	const question = poserAuTrou(mathInline(q.text), '@', html`<span class="sprint-blank">?</span>`);
+	stage.innerHTML = html`
+    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${labelLecon(def, niveauLecon(def))}</span></div>
     ${figureBlock(q.figure)}
     <div class="sprint-q sprint-q-qcm">${question}</div>
     <div class="sprint-choices${sym ? ' lqcm-choices-sym' : ''}">
-      ${choices.map((c, i) => choiceButtonHTML(c, i, choicesView?.[i])).join('')}
-    </div>`;
+      ${joindre(choices.map((c, i) => choiceButtonHTML(c, i, choicesView?.[i])))}
+    </div>`.balisage;
 	stage.querySelectorAll<HTMLButtonElement>('.sprint-choice').forEach((btn) => {
 		btn.addEventListener('click', () => sprintAnswer(choices[Number(btn.dataset.i)]));
 	});
@@ -618,14 +622,15 @@ export function sprintQuestionBody(q: Item) {
 	// suivant, il n'y en a pas). Une ligne, et un doute de moins sur la touche à utiliser.
 	const main =
 		q.kind === 'text'
-			? `<input id="sprintInput" class="sprint-input sprint-input-text" enterkeyhint="done" ${TEXT_ANSWER_INPUT_ATTRS}>`
-			: '<input id="sprintInput" class="sprint-input" inputmode="numeric" enterkeyhint="done" autocomplete="off">';
-	if (q._lesson !== 'math-decomposer-multiplication') return escapeHTML(q.text).replace('@', main);
+			? html`<input id="sprintInput" class="sprint-input sprint-input-text" enterkeyhint="done" ${TEXT_ANSWER_INPUT_ATTRS}>`
+			: html`<input id="sprintInput" class="sprint-input" inputmode="numeric" enterkeyhint="done" autocomplete="off">`;
+	if (q._lesson !== 'math-decomposer-multiplication')
+		return poserAuTrou(html`${q.text}`, '@', main);
 	const m = q.text.match(/(\d+)\s*×\s*(\d+)/)!;
 	const a = +m[1],
 		b = +m[2];
-	const free = '<input class="sprint-free" inputmode="numeric" autocomplete="off">';
-	return `${a} × ${b} = (${free} × ${free}) + (${free} × ${free}) = ${free} + ${free} = ${main}`;
+	const free = html`<input class="sprint-free" inputmode="numeric" autocomplete="off">`;
+	return html`${a} × ${b} = (${free} × ${free}) + (${free} × ${free}) = ${free} + ${free} = ${main}`;
 }
 
 // Cœur de la validation, commun à la saisie (maths) et au QCM (conjugaison).
@@ -651,7 +656,7 @@ function sprintAnswer(raw: string, sansTentative = false) {
 		addXP(1);
 		sprintUpdateScore();
 		const stage = document.getElementById('sprintStage');
-		if (stage) stage.innerHTML = `<div class="sprint-check">✓</div>`; // petite animation
+		if (stage) stage.innerHTML = html`<div class="sprint-check">✓</div>`.balisage; // petite animation
 		setTimeout(() => {
 			if (!sprintActive || sprintPaused) return;
 			if (sprintTimeUp)
@@ -738,7 +743,8 @@ function sprintShowCorrection(
 	sprintPaused = true;
 	const stage = document.getElementById('sprintStage');
 	if (!stage) return;
-	const solBrute = escapeHTML(String(ans)); // dans l'énoncé reconstitué, à la place du champ
+	// Dans l'énoncé reconstitué, à la place du champ.
+	const solBrute = html`<span class="sprint-sol">${String(ans)}</span>`;
 	const solLue = reponseLisible(String(ans)); // dans la phrase de correction
 	const donneeLue = reponseLisible(donnee);
 	const amorce = parIntervalle ? 'Une réponse possible était' : 'La bonne réponse était';
@@ -746,15 +752,15 @@ function sprintShowCorrection(
 	// signes « < = > »), où rien n'a été saisi au clavier.
 	const rappelHTML = sansTentative
 		? RAPPEL_SANS_REPONSE
-		: `Tu as répondu <strong>${escapeHTML(donneeLue)}</strong>.`;
-	stage.innerHTML = `
-    <div class="sprint-theme">${sprintCurrentDef ? subjectTag(sprintCurrentDef.subject) : ''}<span class="sprint-lesson">${escapeHTML(sprintCurrentDef ? labelLecon(sprintCurrentDef, niveauLecon(sprintCurrentDef)) : '')}</span></div>
-    <div class="sprint-q wrong">${escapeHTML(sprintCurrent!.text).replace('@', '<span class="sprint-sol">' + solBrute + '</span>')}</div>
+		: html`Tu as répondu <strong>${donneeLue}</strong>.`;
+	stage.innerHTML = html`
+    <div class="sprint-theme">${sprintCurrentDef ? subjectTag(sprintCurrentDef.subject) : ''}<span class="sprint-lesson">${sprintCurrentDef ? labelLecon(sprintCurrentDef, niveauLecon(sprintCurrentDef)) : ''}</span></div>
+    <div class="sprint-q wrong">${poserAuTrou(html`${sprintCurrent!.text}`, '@', solBrute)}</div>
     <div class="sprint-correction">
       <span class="sprint-donnee">${rappelHTML}</span>
-      <span>${amorce} <strong>${escapeHTML(solLue)}</strong>. Prends le temps de la lire.</span>
+      <span>${amorce} <strong>${solLue}</strong>. Prends le temps de la lire.</span>
     </div>
-    <div class="sprint-actions"><button class="sprint-btn" id="sprintContinue">Continuer ▶</button></div>`;
+    <div class="sprint-actions"><button class="sprint-btn" id="sprintContinue">Continuer ▶</button></div>`.balisage;
 	// Le focus part sur « Continuer » (ci-dessous) : un lecteur d'écran n'annonce que
 	// l'élément focalisé, donc sans cette ligne la correction ne serait jamais lue.
 	const rappelLu = sansTentative ? RAPPEL_SANS_REPONSE : `Tu as répondu ${donneeLue}.`;
@@ -814,16 +820,16 @@ function finalizeSprint() {
 /* `recap` (#537) : phrase nommant les notions traversées, déjà rendue par la couche récap
    (vide si le programme du jour va la nommer lui-même). Le chiffre reste l'objet de
    l'exercice ; le récap n'est qu'un épilogue SOUS lui. */
-function renderSprintResults(medalInfo: RunResult, streakDays: number, recap = '') {
+function renderSprintResults(medalInfo: RunResult, streakDays: number, recap: SafeHtml = VIDE) {
 	const acc = sprintAnswered ? Math.round((sprintScore / sprintAnswered) * 100) : 0;
 	let extra = '';
 	if (medalInfo) {
-		if (medalInfo.isRecord) extra += `<div class="rb-record">🎉 Nouveau record !</div>`;
-		extra += `<div class="rb-rank">C'est ton ${medalInfo.rank}<sup>${medalInfo.rank === 1 ? 'er' : 'e'}</sup> meilleur sprint sur ${medalInfo.total}.${streakSuffix(streakDays)}</div>`;
+		if (medalInfo.isRecord) extra += html`<div class="rb-record">🎉 Nouveau record !</div>`;
+		extra += html`<div class="rb-rank">C'est ton ${medalInfo.rank}<sup>${medalInfo.rank === 1 ? 'er' : 'e'}</sup> meilleur sprint sur ${medalInfo.total}.${streakSuffix(streakDays)}</div>`;
 	}
 	const stage = document.getElementById('sprintStage');
 	if (stage)
-		stage.innerHTML = `
+		stage.innerHTML = html`
     <div class="sprint-done">
       ${mascotteBulleHTML(encouragementMascotte())}
       <div class="sprint-done-big">${sprintScore}</div>
@@ -835,7 +841,7 @@ function renderSprintResults(medalInfo: RunResult, streakDays: number, recap = '
         <button class="sprint-btn" id="sprintAgain">↻ Recommencer</button>
         <button class="sprint-btn ghost" id="sprintHome">${icon('house')} Accueil</button>
       </div>
-    </div>`;
+    </div>`.balisage;
 	const again = document.getElementById('sprintAgain');
 	if (again) again.addEventListener('click', startSprint);
 	const home = document.getElementById('sprintHome');

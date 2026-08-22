@@ -12,7 +12,7 @@
    que la section « progression » compose et aiguille. Les calculs (sélection, comptage,
    tri) vivent dans core/encadrant-stats (`travailRecent`) ; ici, le rendu et le handler.
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+
 import { icon } from './icon';
 import { type Profile } from '../core/profiles';
 import {
@@ -23,6 +23,7 @@ import {
 } from '../core/encadrant-stats';
 import { container, renderEspace } from './encadrant-commun';
 import { segmentHTML } from './segment';
+import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 
 /* ---------- État de la section (module) ----------
    Fenêtre en JOURS calendaires. Défaut : 7 jours, la même fenêtre que le graphe d'activité
@@ -45,7 +46,7 @@ const MAX_TRAVAIL_PAR_MATIERE = 6;
    ne dit pas à un parent s'il s'agit d'une notion de base ou avancée (avis pédago). Et aucun
    état d'acquisition par ligne — une notion tout juste abordée est normalement encore « à
    découvrir », un badge afficherait donc un niveau bas sur ce qu'il y a de plus récent (idem). */
-export function travailHTML(consulte: Profile): string {
+export function travailHTML(consulte: Profile): SafeHtml {
 	const { jours, phrase } = periodeTravail();
 	const now = Date.now();
 	const groupes = travailRecentProfil(consulte, jours, now);
@@ -67,10 +68,10 @@ export function travailHTML(consulte: Profile): string {
 	});
 	const corps =
 		total === 0
-			? `<p class="enc-hint">${resume}.</p>`
-			: `${groupes.map((g) => groupeTravailHTML(g, now)).join('')}
+			? html`<p class="enc-hint">${resume}.</p>`
+			: html`${joindre(groupes.map((g) => groupeTravailHTML(g, now)))}
       <p class="enc-hint">${resume}.</p>`;
-	return `<div class="enc-block">
+	return html`<div class="enc-block">
       <h3 class="enc-h3">${icon('check-square')} Travaillé récemment</h3>
       ${bascule}
       ${corps}
@@ -100,20 +101,20 @@ function resumeTravail(groupes: GroupeTravail[], phrase: string): string {
 /* Une matière : son libellé, ses lignes, et le reste DÉPLIABLE au-delà de
    MAX_TRAVAIL_PAR_MATIERE (jamais un simple compteur : annoncer des lignes sans permettre
    de les lire crée un écart inexplicable, cf. les erreurs plus anciennes). */
-function groupeTravailHTML(g: GroupeTravail, now: number): string {
+function groupeTravailHTML(g: GroupeTravail, now: number): SafeHtml {
 	const visibles = g.cibles.slice(0, MAX_TRAVAIL_PAR_MATIERE);
 	const reste = g.cibles.slice(MAX_TRAVAIL_PAR_MATIERE);
 	const texte = `${reste.length} autre${reste.length > 1 ? 's' : ''}`;
 	// Nom accessible enrichi de la matière : deux matières peuvent déborder, et une série
 	// de « 3 autres » identiques serait sans repère en navigation au rotor.
 	const repli = reste.length
-		? `<details class="enc-trav-plus">
-        <summary class="enc-trav-plus-sum" aria-label="${escapeHTML(`${texte} en ${g.label.toLowerCase()}`)}">${texte}</summary>
-        <ul class="enc-trav-list">${reste.map((c) => ligneTravailHTML(c, now)).join('')}</ul>
+		? html`<details class="enc-trav-plus">
+        <summary class="enc-trav-plus-sum" aria-label="${`${texte} en ${g.label.toLowerCase()}`}">${texte}</summary>
+        <ul class="enc-trav-list">${joindre(reste.map((c) => ligneTravailHTML(c, now)))}</ul>
       </details>`
-		: '';
-	return `<h4 class="enc-sub-lab">${escapeHTML(g.label)}</h4>
-      <ul class="enc-trav-list">${visibles.map((c) => ligneTravailHTML(c, now)).join('')}</ul>
+		: VIDE;
+	return html`<h4 class="enc-sub-lab">${g.label}</h4>
+      <ul class="enc-trav-list">${joindre(visibles.map((c) => ligneTravailHTML(c, now)))}</ul>
       ${repli}`;
 }
 
@@ -126,7 +127,7 @@ function groupeTravailHTML(g: GroupeTravail, now: number): string {
    l'ellipse réserve la formule longue au compte cumulé.
    Pas d'action sur la ligne : épingler et imprimer restent groupés dans l'accordéon, ce bloc
    est une lecture. */
-function ligneTravailHTML(c: CibleTravaillee, now: number): string {
+function ligneTravailHTML(c: CibleTravaillee, now: number): SafeHtml {
 	const meta = [
 		c.kind === 'dictee' ? 'Dictée' : c.contexte,
 		c.seances === null ? '' : `${c.seances} fois`,
@@ -134,9 +135,9 @@ function ligneTravailHTML(c: CibleTravaillee, now: number): string {
 	]
 		.filter(Boolean)
 		.join(' · ');
-	return `<li class="enc-trav-item">
-      <span class="enc-trav-lab">${escapeHTML(c.label)}</span>
-      <span class="enc-trav-meta">${escapeHTML(meta)}</span>
+	return html`<li class="enc-trav-item">
+      <span class="enc-trav-lab">${c.label}</span>
+      <span class="enc-trav-meta">${meta}</span>
     </li>`;
 }
 

@@ -23,7 +23,7 @@ import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import type { ExerciseMode } from '../core/exercise';
-import { escapeHTML } from '../core/utils';
+
 import { ttsAttr } from '../core/tts-text';
 import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
 import { bindClicMot, type ClicMotController } from './clic-mot-interaction';
@@ -48,6 +48,7 @@ import {
 	wirePasser,
 } from './lecon-passer';
 import { monterBoutonAide } from './aide-exercice';
+import { html } from '../core/html';
 
 const NB_QUESTIONS = 8;
 
@@ -169,20 +170,20 @@ enregistrerRunner(RUNNER, (snap) => {
 function renderQuestion(): void {
 	answered = false;
 	const q = questions[idx];
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage lclic-stage">
         <div class="lclic-col">
           ${leconTitreHTML(lesson)}
-          <p class="lclic-consigne"${ttsAttr(q.consigne)}>${escapeHTML(q.consigne)}</p>
+          <p class="lclic-consigne"${ttsAttr(q.consigne)}>${q.consigne}</p>
           <div data-tuile-mount></div>
           ${decisionHTML('lclicVerif')}
           <div class="sprint-correction" id="lclicFeedback" hidden></div>
           <div class="sprint-actions" id="lclicActions" hidden></div>
         </div>
       </div>
-    </div>`;
+    </div>`.balisage;
 	const verif = sheets().querySelector('#lclicVerif') as HTMLButtonElement;
 	ctrl = bindClicMot(
 		sheets(),
@@ -221,15 +222,16 @@ function verifier(): void {
 
 	if (!juste) journaliser(q, ctrl.selected());
 
-	const expl = `<p class="lqcm-expl">${escapeHTML(q.explication)}</p>`;
+	const expl = html`<p class="lqcm-expl">${q.explication}</p>`;
 	wireNext(
 		sheets().querySelector('#lclicActions') as HTMLElement,
 		sheets().querySelector('#lclicFeedback') as HTMLElement,
 		{
-			feedbackHTML:
-				(juste
-					? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-					: `<span class="lqcm-ko">Regarde le bon mot en vert, puis continue.</span>`) + expl,
+			feedbackHTML: html`${
+				juste
+					? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
+					: html`<span class="lqcm-ko">Regarde le bon mot en vert, puis continue.</span>`
+			}${expl}`,
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;
@@ -264,8 +266,8 @@ function passer(): void {
 		root: sheets(),
 		feedback: sheets().querySelector('#lclicFeedback') as HTMLElement,
 		actions: sheets().querySelector('#lclicActions') as HTMLElement,
-		repHTML: ligneRevelation('la réponse', escapeHTML(solution)),
-		extraHTML: `<p class="lqcm-expl">${escapeHTML(q.explication)}</p>`,
+		repHTML: ligneRevelation('la réponse', html`${solution}`),
+		extraHTML: html`<p class="lqcm-expl">${q.explication}</p>`,
 		// L'explication est annoncée AUSSI : elle est affichée à l'écran, et la live region est
 		// le seul canal d'un lecteur d'écran (le focus part sur « Continuer ▶ »).
 		annonce: `La réponse : ${solution}. ${q.explication}`,

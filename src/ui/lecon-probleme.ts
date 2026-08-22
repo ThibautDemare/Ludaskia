@@ -13,7 +13,7 @@ import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import type { ExerciseMode, ProblemeEtape, ProbLexique } from '../core/exercise';
 import { figureBlock } from '../core/items';
-import { commKey, escapeHTML } from '../core/utils';
+import { commKey } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { brouillonHTML, bindBrouillon } from './brouillon';
@@ -37,6 +37,7 @@ import {
 } from './lecon-passer';
 import { attenduEtapeTexte, entreesEtapesPassees, etapeJuste } from '../core/probleme-etapes';
 import type { EntreeEtapePassee } from '../core/probleme-etapes';
+import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 
 const NB_QUESTIONS = 8;
 
@@ -48,7 +49,7 @@ export interface ProbQuestion {
 	enonce: string;
 	etapes: ProblemeEtape[];
 	parle: string;
-	figure?: string;
+	figure?: SafeHtml;
 	explication?: string; // stratégie affichée APRÈS la réponse (#252) — optionnelle
 }
 
@@ -57,13 +58,13 @@ export interface ProbQuestion {
    par la galerie visuelle (ui/galerie.ts) — même markup des deux côtés, donc un
    snapshot y détecte les régressions du VRAI rendu. Fonction pure, SANS effet de bord
    (pas de TTS branché, pas de listener) : l'entrée live ajoute ces effets autour. */
-export function renderProblemeBoardHTML(q: ProbQuestion, lex: ProbLexique = LEX_DEFAUT): string {
+export function renderProblemeBoardHTML(q: ProbQuestion, lex: ProbLexique = LEX_DEFAUT): SafeHtml {
 	const multi = q.etapes.length > 1;
-	const etapesHTML = q.etapes
-		.map(
-			(et, i) => `<div class="prob-etape">
-        ${multi && lex.badgeEtape !== false ? `<span class="prob-num">Étape ${i + 1}</span>` : ''}
-        <label class="prob-q" for="probInput${i}">${escapeHTML(et.question)}</label>
+	const etapesHTML = joindre(
+		q.etapes.map(
+			(et, i) => html`<div class="prob-etape">
+        ${multi && lex.badgeEtape !== false ? html`<span class="prob-num">Étape ${i + 1}</span>` : ''}
+        <label class="prob-q" for="probInput${i}">${et.question}</label>
         <span class="prob-rep">
           <span class="prob-rep-lab">Ma réponse</span>
           <span class="prob-saisie">
@@ -72,9 +73,9 @@ export function renderProblemeBoardHTML(q: ProbQuestion, lex: ProbLexique = LEX_
           </span>
         </span>
       </div>`,
-		)
-		.join('');
-	return `<p class="prob-enonce" data-tts-pos="start"${ttsAttr(q.parle)}>${escapeHTML(q.enonce)}</p>
+		),
+	);
+	return html`<p class="prob-enonce" data-tts-pos="start"${ttsAttr(q.parle)}>${q.enonce}</p>
           ${figureBlock(q.figure)}
           <div class="prob-etapes${multi ? ' prob-etapes-multi' : ''}">${etapesHTML}</div>`;
 }
@@ -111,7 +112,9 @@ export function corrigerEtapesProbleme(
 		const attenduTexte = attenduEtapeTexte(attendu);
 		const mark = root.querySelector(`.prob-mark[data-for="${i}"]`) as HTMLElement;
 		mark.className = 'prob-mark ' + (correct ? 'correct' : 'wrong');
-		mark.innerHTML = correct ? '✓' : `✗ <span class="sol">→ ${escapeHTML(attenduTexte)}</span>`;
+		mark.innerHTML = (
+			correct ? html`✓` : html`✗ <span class="sol">→ ${attenduTexte}</span>`
+		).balisage;
 		mark.setAttribute(
 			'aria-label',
 			correct ? 'correct' : `incorrect, la bonne réponse était ${attenduTexte}`,
@@ -156,7 +159,7 @@ export function revelerEtapesProbleme(
 		const mark = root.querySelector(`.prob-mark[data-for="${i}"]`);
 		if (!mark) return;
 		mark.className = 'prob-mark reveal';
-		mark.innerHTML = `<span class="sol">→ ${escapeHTML(attendu)}</span>`;
+		mark.innerHTML = html`<span class="sol">→ ${attendu}</span>`.balisage;
 		// Le glyphe « → » n'est pas fiablement vocalisé : on nomme la révélation.
 		mark.setAttribute('aria-label', `la réponse était ${attendu}`);
 	});
@@ -258,7 +261,7 @@ enregistrerRunner(RUNNER, (snap) => {
 function renderQuestion(): void {
 	answered = false;
 	const q = questions[idx];
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length, lex.nom)}
       <div class="sprint-stage prob-stage">
@@ -274,7 +277,7 @@ function renderQuestion(): void {
           <div class="sprint-actions" id="probActions" hidden></div>
         </div>
       </div>
-    </div>`;
+    </div>`.balisage;
 	bindConsigneTts(sheets()); // bouton « Écouter » en tête de l'énoncé (#42)
 	bindBrouillon(sheets()); // ardoise de dessin repliable (#199)
 	sheets()
@@ -319,10 +322,11 @@ function verifier(): void {
 		sheets().querySelector('#probActions') as HTMLElement,
 		sheets().querySelector('#probFeedback') as HTMLElement,
 		{
-			feedbackHTML:
-				(toutJuste
-					? `<span class="lqcm-ok">Bravo ! 🎉</span>`
-					: `<span class="lqcm-ko">Regarde la bonne réponse, puis continue.</span>`) + expl,
+			feedbackHTML: html`${
+				toutJuste
+					? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
+					: html`<span class="lqcm-ko">Regarde la bonne réponse, puis continue.</span>`
+			}${expl}`,
 			isLast: idx >= questions.length - 1,
 			// Étayage (#490) : proposé sur un problème raté, et déroulé sur CELUI-LÀ — un
 			// problème ne se ramène pas à un exemple canonique, c'est son énoncé qui fait la
@@ -352,8 +356,8 @@ function verifier(): void {
 /* Explication de stratégie (#252, ex. le « pont » d'une durée avec retenue) : affichée après
    la réponse quand la leçon la fournit — qu'on ait répondu, raté, ou demandé à voir (#467 :
    c'est justement là qu'elle sert le plus). Contenu de confiance, échappé par sûreté. */
-function explicationHTML(q: ProbQuestion): string {
-	return q.explication ? `<p class="lqcm-expl">${escapeHTML(q.explication)}</p>` : '';
+function explicationHTML(q: ProbQuestion): SafeHtml {
+	return q.explication ? html`<p class="lqcm-expl">${q.explication}</p>` : VIDE;
 }
 
 /* « Je ne sais pas, montre-moi » (#467) : les réponses sont révélées EN PLACE, à côté de
@@ -386,7 +390,7 @@ function passer(): void {
 		// Aucune réponse à répéter dans le verdict : elles sont déjà à côté des cases.
 		repHTML: REVELATION_EN_PLACE,
 		extraHTML: explicationHTML(q),
-		annonce: REVELATION_EN_PLACE,
+		annonce: REVELATION_EN_PLACE.balisage,
 		// Les cases sont DÉJÀ verrouillées par la révélation ; figer la scène désactiverait en
 		// plus le brouillon (ardoise peut-être ouverte, à pouvoir refermer et à relire).
 		figerWidget: false,

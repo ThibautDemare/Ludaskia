@@ -18,7 +18,7 @@
    vue (bascule, recherche, filtre) et les handlers. Écriture sur le profil CONSULTÉ par
    UUID (`saveOrthoFor` + `touchProfile`), jamais de bascule du profil actif.
    ============================================================ */
-import { enumererFr, escapeHTML } from '../core/utils';
+import { enumererFr } from '../core/utils';
 import { icon } from './icon';
 import { type Profile } from '../core/profiles';
 import { loadOrthoFor } from '../core/orthographe/store';
@@ -36,6 +36,7 @@ import {
 	ORDRE_NIVEAUX_ORTHO,
 } from './encadrant-commun';
 import { uiConfirm } from './ui-modal';
+import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 
 /* ---------- État de la section (module) ---------- */
 /* Mots listés d'un coup, et pas de « Afficher les suivants ». Assez pour couvrir une banque
@@ -78,32 +79,30 @@ export function banqueDuProfil(uuid: string): EntreeBanque[] {
 function citationListes(e: EntreeBanque): string {
 	const noms = [...e.listes, ...e.verbeListes].map((l) => l.label);
 	if (noms.length === 0) {
-		return e.leconPredefinie
-			? `Dictée proposée : ${escapeHTML(e.leconPredefinie)}`
-			: 'Dans aucune liste';
+		return e.leconPredefinie ? `Dictée proposée : ${e.leconPredefinie}` : 'Dans aucune liste';
 	}
 	const cites = noms
 		.slice(0, MAX_LISTES_CITEES)
-		.map((n) => `« ${escapeHTML(n)} »`)
+		.map((n) => `« ${n} »`)
 		.join(', ');
 	const reste = noms.length - MAX_LISTES_CITEES;
 	return reste > 0 ? `${cites} +${reste}` : cites;
 }
 
-function ligneMot(e: EntreeBanque): string {
+function ligneMot(e: EntreeBanque): SafeHtml {
 	const niveau = NIVEAU_DE_STATUT[e.statut];
 	// Le mot AFFICHÉ : la phrase de contexte pour une cible verbe (« mange » seul serait
 	// ambigu entre je/il, et l'adulte ne saurait pas laquelle il supprime).
 	const affiche = e.contexte ?? e.mot;
 	const action = e.supprimable
-		? `<button type="button" class="enc-btn-sec enc-danger" data-act="banque-supprimer" data-mot="${escapeHTML(e.id)}" aria-label="Supprimer « ${escapeHTML(affiche)} »">${icon('trash')} Supprimer</button>`
+		? html`<button type="button" class="enc-btn-sec enc-danger" data-act="banque-supprimer" data-mot="${e.id}" aria-label="Supprimer « ${affiche} »">${icon('trash')} Supprimer</button>`
 		: // Pas de bouton désactivé (invisible aux lecteurs d'écran en navigation par contrôles) :
 			// une mention textuelle dit POURQUOI, ce qu'un bouton grisé ne dirait pas.
-			`<span class="enc-banque-fige">Mot d'une dictée proposée par l'application</span>`;
-	return `<li class="enc-detail-item enc-banque-item">
+			html`<span class="enc-banque-fige">Mot d'une dictée proposée par l'application</span>`;
+	return html`<li class="enc-detail-item enc-banque-item">
       <span class="enc-detail-puce enc-key-${niveau}" aria-hidden="true"></span>
       <span class="enc-detail-main">
-        <span class="enc-detail-lab">${escapeHTML(affiche)}</span>
+        <span class="enc-detail-lab">${affiche}</span>
         <span class="enc-detail-meta">${citationListes(e)}</span>
       </span>
       <span class="enc-detail-mot"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[niveau]}</span>
@@ -117,12 +116,12 @@ function ligneMot(e: EntreeBanque): string {
    afficherait « 0 mot n'est plus dans aucune liste », ou disparaîtrait en laissant un filtre
    actif que plus rien ne permettrait de relâcher). Son libellé ne dépend PAS des filtres :
    la bascule ne fait donc jamais varier que `aria-pressed` et `.on`, mutés en place. */
-function orphelinsHTML(entrees: EntreeBanque[]): string {
+function orphelinsHTML(entrees: EntreeBanque[]): SafeHtml {
 	const n = entrees.filter((e) => e.orphelin).length;
-	if (n === 0) return '';
+	if (n === 0) return VIDE;
 	const lab =
 		n > 1 ? `${n} mots ne sont plus dans aucune liste` : `${n} mot n'est plus dans aucune liste`;
-	return `<button type="button" class="enc-btn-sec enc-banque-orphelins${orphelinsSeuls ? ' on' : ''}" data-act="banque-orphelins" aria-pressed="${orphelinsSeuls}">${lab}</button>`;
+	return html`<button type="button" class="enc-btn-sec enc-banque-orphelins${orphelinsSeuls ? ' on' : ''}" data-act="banque-orphelins" aria-pressed="${String(orphelinsSeuls)}">${lab}</button>`;
 }
 
 /* Phrase d'état, seule source du compte affiché ET du cas « rien à montrer ». Vit dans une
@@ -144,28 +143,30 @@ function texteResume(entrees: EntreeBanque[], filtres: EntreeBanque[]): string {
    obligeraient un utilisateur clavier ou en accès par contacteur à tous les traverser pour
    atteindre la section suivante (SC 2.4.1). La recherche ne suffit pas comme garde-fou —
    rien n'oblige à s'en servir avant de recevoir la liste entière. */
-function listeHTML(filtres: EntreeBanque[]): string {
-	if (filtres.length === 0) return '';
+function listeHTML(filtres: EntreeBanque[]): SafeHtml {
+	if (filtres.length === 0) return VIDE;
 	const visibles = filtres.slice(0, limite);
 	const reste = filtres.length - visibles.length;
 	const suite = reste
-		? `<button type="button" class="enc-btn-sec enc-banque-plus" data-act="banque-plus">Afficher les ${Math.min(reste, PAS_AFFICHAGE)} mots suivants</button>`
-		: '';
-	return `<ul class="enc-detail enc-banque-list">${visibles.map(ligneMot).join('')}</ul>${suite}`;
+		? html`<button type="button" class="enc-btn-sec enc-banque-plus" data-act="banque-plus">Afficher les ${Math.min(reste, PAS_AFFICHAGE)} mots suivants</button>`
+		: VIDE;
+	return html`<ul class="enc-detail enc-banque-list">${joindre(visibles.map(ligneMot))}</ul>${suite}`;
 }
 
 /** Volet « Mots » du bloc Dictées : barre d'outils (recherche + orphelins) puis liste. */
-export function banqueMotsHTML(consulte: Profile, entrees: EntreeBanque[]): string {
-	const legende = ORDRE_NIVEAUX_ORTHO.map(
-		(n) => `<span class="enc-key enc-key-${n}">${MOT_NIVEAU[n]}</span>`,
-	).join('');
+export function banqueMotsHTML(consulte: Profile, entrees: EntreeBanque[]): SafeHtml {
+	const legende = joindre(
+		ORDRE_NIVEAUX_ORTHO.map(
+			(n) => html`<span class="enc-key enc-key-${n}">${MOT_NIVEAU[n]}</span>`,
+		),
+	);
 	const filtres = filtrerBanque(entrees, { recherche, orphelinsSeuls });
-	return `<p class="enc-legend">${legende}</p>
-    <p class="enc-hint">Tous les mots que ${escapeHTML(consulte.name)} révise, et la ou les listes où ils figurent. Un mot supprimé ici ne reviendra plus en révision.</p>
+	return html`<p class="enc-legend">${legende}</p>
+    <p class="enc-hint">Tous les mots que ${consulte.name} révise, et la ou les listes où ils figurent. Un mot supprimé ici ne reviendra plus en révision.</p>
     <div class="enc-banque-outils">
       <label class="enc-banque-rech">
         <span class="sr-only">Rechercher un mot</span>
-        <input type="search" class="enc-input" id="encBanqueRech" data-act="banque-recherche" placeholder="Rechercher un mot…" value="${escapeHTML(recherche)}" autocomplete="off" />
+        <input type="search" class="enc-input" id="encBanqueRech" data-act="banque-recherche" placeholder="Rechercher un mot…" value="${recherche}" autocomplete="off" />
       </label>
       ${orphelinsHTML(entrees)}
     </div>
@@ -184,7 +185,7 @@ function rafraichir(uuid: string): void {
 	if (!corps) return;
 	const entrees = banqueDuProfil(uuid);
 	const filtres = filtrerBanque(entrees, { recherche, orphelinsSeuls });
-	corps.innerHTML = listeHTML(filtres);
+	corps.innerHTML = listeHTML(filtres).balisage;
 	annoncer();
 }
 

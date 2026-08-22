@@ -1084,7 +1084,7 @@ export function nomsCE2(texte: string, noms: string[]): PhraseClicMot {
 		if (/^[ld]'/iu.test(t)) {
 			throw new Error(
 				`grammaire-clic-mot (noms CE2) : « ${t} » est élidé dans « ${texte} » ` +
-					`(l'article soudé au nom empêche de cliquer le nom seul).`,
+					`(l'article soudé au nom empêche de cliquer le nom seul).html`,
 			);
 		}
 	}

@@ -7,7 +7,7 @@
    par `encadrant-pin` et injecté ici par l'orchestrateur (`pinBlock`), car il vit dans
    la même section « Réglages ».
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+
 import { icon } from './icon';
 import {
 	setNiveauReferenceFor,
@@ -27,11 +27,12 @@ import {
 } from '../core/vu-ailleurs';
 import { dicteeDisponible, messageSansVoix } from './tts';
 import { consulteUuid, renderEspace } from './encadrant-commun';
+import { html, type SafeHtml, VIDE, joindre, drapeau } from '../core/html';
 
 /* La section « Réglages » : classe + aménagements + déjà vu en classe + bloc PIN
    (rendu par le module pin et passé en `pinBlock` par l'orchestrateur). */
-export function reglagesHTML(consulte: Profile, pinBlock: string): string {
-	return `<section class="enc-section">
+export function reglagesHTML(consulte: Profile, pinBlock: SafeHtml): SafeHtml {
+	return html`<section class="enc-section">
       <h2 class="enc-h2">Réglages</h2>
       ${classeHTML(consulte)}
       ${amenagementsHTML(consulte)}
@@ -45,16 +46,18 @@ export function reglagesHTML(consulte: Profile, pinBlock: string): string {
    (setPrefFor, sans changer le profil actif). Menu à paliers fixes (REVISION_PLAFOND_CHOIX,
    déjà bornés côté programme) : pas de saisie libre, donc pas de valeur extrême possible.
    Le défaut (REVISION_PLAFOND) est marqué et reste sélectionné pour un profil non réglé. */
-function plafondRevisionHTML(consulte: Profile): string {
+function plafondRevisionHTML(consulte: Profile): SafeHtml {
 	const actuel = consulte.prefs?.revisionPlafond ?? REVISION_PLAFOND;
 	// Valeur affichée : le palier stocké s'il fait partie de la liste, sinon on retombe
 	// sur le défaut (donnée importée hors paliers → pas d'option « fantôme » à afficher).
 	const sel = REVISION_PLAFOND_CHOIX.includes(actuel) ? actuel : REVISION_PLAFOND;
-	const opts = REVISION_PLAFOND_CHOIX.map(
-		(n) =>
-			`<option value="${n}"${n === sel ? ' selected' : ''}>${n}${n === REVISION_PLAFOND ? ' (par défaut)' : ''}</option>`,
-	).join('');
-	return `<div class="enc-block">
+	const opts = joindre(
+		REVISION_PLAFOND_CHOIX.map(
+			(n) =>
+				html`<option value="${n}"${n === sel ? drapeau('selected') : ''}>${n}${n === REVISION_PLAFOND ? ' (par défaut)' : ''}</option>`,
+		),
+	);
+	return html`<div class="enc-block">
       <h3 class="enc-h3">Séance de révision</h3>
       <label class="enc-row"><span>Nombre de questions par séance</span>
         <select class="enc-select-niveau" data-act="set-revision-plafond">${opts}</select></label>
@@ -66,23 +69,23 @@ function plafondRevisionHTML(consulte: Profile): string {
    apprentissage) : masquer le minuteur (pression temporelle) + lecture auto des
    consignes. Stables (l'enfant ne les bascule pas par jeu) ; l'écoute À LA DEMANDE
    reste toujours dispo côté enfant. Écrits sur le profil CONSULTÉ (setPrefFor). */
-function amenagementsHTML(consulte: Profile): string {
+function amenagementsHTML(consulte: Profile): SafeHtml {
 	const prefs = consulte.prefs ?? {};
 	const voix = dicteeDisponible();
-	return `<div class="enc-block">
+	return html`<div class="enc-block">
       <h3 class="enc-h3">Aménagements</h3>
       <p class="enc-hint">Réglages d'accompagnement posés par l'adulte (l'enfant ne peut pas les changer).</p>
       <label class="enc-toggle">
-        <input type="checkbox" data-act="set-amenagement" data-pref="sansPressionTemporelle"${prefs.sansPressionTemporelle ? ' checked' : ''} />
+        <input type="checkbox" data-act="set-amenagement" data-pref="sansPressionTemporelle"${prefs.sansPressionTemporelle ? drapeau('checked') : ''} />
         <span>Masquer le minuteur pendant les sprints <small class="enc-hint">(moins de pression ; le score s'affiche à la fin)</small></span>
       </label>
       <label class="enc-toggle${voix ? '' : ' enc-toggle-off'}">
-        <input type="checkbox" data-act="set-amenagement" data-pref="lectureConsigneAuto"${prefs.lectureConsigneAuto ? ' checked' : ''}${voix ? '' : ' disabled'} />
+        <input type="checkbox" data-act="set-amenagement" data-pref="lectureConsigneAuto"${prefs.lectureConsigneAuto ? drapeau('checked') : ''}${voix ? '' : drapeau('disabled')} />
         <span>Lire la consigne à voix haute automatiquement</span>
       </label>
       <p class="enc-hint">${icon('speaker')} ${messageSansVoix()}</p>
       <label class="enc-toggle">
-        <input type="checkbox" data-act="set-amenagement" data-pref="sansApparitionsSurprises"${prefs.sansApparitionsSurprises ? ' checked' : ''} />
+        <input type="checkbox" data-act="set-amenagement" data-pref="sansApparitionsSurprises"${prefs.sansApparitionsSurprises ? drapeau('checked') : ''} />
         <span>Désactiver les apparitions surprises <small class="enc-hint">(petites surprises qui passent parfois à l'écran, ex. une luciole — à couper pour un enfant qu'un mouvement inattendu déconcentre)</small></span>
       </label>
     </div>`;
@@ -100,15 +103,15 @@ function amenagementsHTML(consulte: Profile): string {
    fermées au rendu : les ~110 cases de leçons restent hors de l'ordre de tabulation
    tant qu'on n'a pas déplié. Les cases se mettent à jour EN PLACE (pas de re-rendu de
    l'espace, qui détruirait focus, scroll et dépliages). */
-function vuEnClasseHTML(consulte: Profile): string {
+function vuEnClasseHTML(consulte: Profile): SafeHtml {
 	const cats = categoriesDeclarables(consulte.uuid, (s: SubjectId) =>
 		niveauProfilMatiere(consulte, s),
 	);
-	if (cats.length === 0) return '';
-	const blocs = cats.map(categorieVuHTML).join('');
-	return `<div class="enc-block" id="encVuBloc">
+	if (cats.length === 0) return VIDE;
+	const blocs = joindre(cats.map(categorieVuHTML));
+	return html`<div class="enc-block" id="encVuBloc">
       <h3 class="enc-h3">Leçons déjà vues en classe</h3>
-      <p class="enc-hint">Cochez ce que ${escapeHTML(consulte.name)} a déjà travaillé en classe, hors de l'application. Ces leçons rejoignent « ce que tu connais déjà » pour le sprint et entrent en révision : la première révision arrive dès le lendemain.</p>
+      <p class="enc-hint">Cochez ce que ${consulte.name} a déjà travaillé en classe, hors de l'application. Ces leçons rejoignent « ce que tu connais déjà » pour le sprint et entrent en révision : la première révision arrive dès le lendemain.</p>
       <p class="enc-hint">Mieux vaut cocher au fil du programme de la classe : tout déclarer d'un coup fait grimper d'autant ce qu'il y a à réviser. Une erreur à cette première révision est normale — c'est la première fois que l'application interroge l'enfant sur cette notion.</p>
       <div class="enc-vu-actions">
         <button type="button" class="enc-btn-sec" data-act="vu-tout">${icon('check')} Tout déclarer</button>
@@ -124,32 +127,32 @@ function vuEnClasseHTML(consulte: Profile): string {
    Une leçon DÉJÀ travaillée dans l'appli est cochée et désactivée : elle est déjà
    rencontrée, la déclarer n'ajouterait rien — et la décocher ne la retirerait pas du
    périmètre, ce qui serait incompréhensible. */
-function categorieVuHTML(c: CategorieDeclarable): string {
-	const items = c.lecons
-		.map((l) => {
-			const off = l.jouee ? ' disabled' : '';
+function categorieVuHTML(c: CategorieDeclarable): SafeHtml {
+	const items = joindre(
+		c.lecons.map((l) => {
+			const off = l.jouee ? drapeau('disabled') : '';
 			const mention = l.jouee
-				? ` <small class="enc-vu-note">(déjà travaillée dans l'application)</small>`
-				: '';
-			return `<li><label class="enc-vu-item">
-          <input type="checkbox" class="enc-vu-lecon" data-act="vu-lecon" data-cat="${c.categoryId}" data-lesson="${l.lessonId}" data-niveau="${l.niveau}"${l.declaree || l.jouee ? ' checked' : ''}${off} />
-          <span>${escapeHTML(l.label)}${mention}</span>
+				? html` <small class="enc-vu-note">(déjà travaillée dans l'application)</small>`
+				: VIDE;
+			return html`<li><label class="enc-vu-item">
+          <input type="checkbox" class="enc-vu-lecon" data-act="vu-lecon" data-cat="${c.categoryId}" data-lesson="${l.lessonId}" data-niveau="${l.niveau}"${l.declaree || l.jouee ? drapeau('checked') : ''}${off} />
+          <span>${l.label}${mention}</span>
         </label></li>`;
-		})
-		.join('');
+		}),
+	);
 	const listId = `encVuList-${c.categoryId}`;
 	// `role="group"` + libellé : en navigation « champ par champ » (lecteur d'écran), les
 	// cases de leçons restent rattachées à leur catégorie — sinon ~110 libellés défilent
 	// sans contexte. Pas de <fieldset>/<legend>, qui doublonnerait le titre à l'écran.
-	return `<div class="enc-vu-cat" role="group" aria-label="${escapeHTML(c.label)}" data-cat="${c.categoryId}">
+	return html`<div class="enc-vu-cat" role="group" aria-label="${c.label}" data-cat="${c.categoryId}">
       <div class="enc-vu-head">
         <label class="enc-vu-catlab">
-          <input type="checkbox" class="enc-vu-cat-check" data-act="vu-cat" data-cat="${c.categoryId}"${c.declarables === 0 ? ' disabled' : ''} />
-          <span>${escapeHTML(c.label)}</span>
+          <input type="checkbox" class="enc-vu-cat-check" data-act="vu-cat" data-cat="${c.categoryId}"${c.declarables === 0 ? drapeau('disabled') : ''} />
+          <span>${c.label}</span>
         </label>
         <span class="enc-vu-count" data-count="${c.categoryId}"></span>
         <button type="button" class="enc-vu-expand" data-act="vu-detail" data-cat="${c.categoryId}" aria-expanded="false" aria-controls="${listId}">
-          <span class="sr-only">Détail des leçons : ${escapeHTML(c.label)}</span>${icon('caret-down')}
+          <span class="sr-only">Détail des leçons : ${c.label}</span>${icon('caret-down')}
         </button>
       </div>
       <ul class="enc-vu-list" id="${listId}" hidden>${items}</ul>
@@ -219,28 +222,31 @@ function declarerCases(uuid: string, cases: HTMLInputElement[], vu: boolean, ann
 	annoncerVu(annonce);
 }
 
-function classeHTML(consulte: Profile): string {
+function classeHTML(consulte: Profile): SafeHtml {
 	const niveaux = availableLevels(getAllLessons());
-	if (niveaux.length < 2) return ''; // un seul niveau au catalogue → aucun choix utile
+	if (niveaux.length < 2) return VIDE; // un seul niveau au catalogue → aucun choix utile
 	const ref = consulte.niveauReference ?? niveaux[0];
 	const parMat = consulte.niveauParMatiere ?? {};
 	const opts = (sel: string | undefined) =>
-		niveaux
-			.map(
-				(lv) => `<option value="${lv}"${lv === sel ? ' selected' : ''}>${LEVEL_LABEL[lv]}</option>`,
-			)
-			.join('');
-	const matieres = SUBJECTS.map(
-		(s) => `<label class="enc-row">
-          <span>${escapeHTML(s.label)}</span>
+		joindre(
+			niveaux.map(
+				(lv) =>
+					html`<option value="${lv}"${lv === sel ? drapeau('selected') : ''}>${LEVEL_LABEL[lv]}</option>`,
+			),
+		);
+	const matieres = joindre(
+		SUBJECTS.map(
+			(s) => html`<label class="enc-row">
+          <span>${s.label}</span>
           <select class="enc-select-niveau" data-act="set-niveau-mat" data-subject="${s.id}">
-            <option value=""${parMat[s.id] ? '' : ' selected'}>Comme la classe</option>
+            <option value=""${parMat[s.id] ? '' : drapeau('selected')}>Comme la classe</option>
             ${opts(parMat[s.id])}
           </select>
         </label>`,
-	).join('');
-	return `<div class="enc-block">
-      <h3 class="enc-h3">Classe de ${escapeHTML(consulte.name)}</h3>
+		),
+	);
+	return html`<div class="enc-block">
+      <h3 class="enc-h3">Classe de ${consulte.name}</h3>
       <div class="enc-niveau">
         <label class="enc-row"><span><strong>Classe</strong></span>
           <select class="enc-select-niveau" data-act="set-niveau-ref">${opts(ref)}</select></label>

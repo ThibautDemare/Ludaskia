@@ -13,7 +13,7 @@ import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import { depuisTuilesNombre } from '../core/exercise';
 import type { ExerciseMode, TuilesSpec } from '../core/exercise';
-import { commKey, escapeHTML } from '../core/utils';
+import { commKey } from '../core/utils';
 import { bindConsigneTts } from './consigne-tts';
 import { goHome } from './navigation';
 import {
@@ -39,6 +39,7 @@ import {
 } from './lecon-passer';
 import { attendueIntervalle } from '../core/erreur-representation';
 import { intervalleAPlusieursReponses } from '../core/items';
+import { html, type SafeHtml } from '../core/html';
 
 const NB_QUESTIONS = 8;
 
@@ -133,7 +134,7 @@ enregistrerRunner(RUNNER, (snap) => {
 function renderQuestion(): void {
 	const q = questions[idx];
 	tranchee = false;
-	sheets().innerHTML = `
+	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
@@ -148,7 +149,7 @@ function renderQuestion(): void {
         <div class="sprint-correction" id="ltuiFeedback" hidden></div>
         <div class="sprint-actions" id="ltuiActions" hidden></div>
       </div>
-    </div>`;
+    </div>`.balisage;
 	const verif = sheets().querySelector('#ltuiVerif') as HTMLButtonElement;
 	// Le widget « tuiles » mutualisé (#345) rend l'énoncé + le bac, gère tap/glisser
 	// et l'enveloppe .bignum (#240) ; il (dé)active « Vérifier » via onState.
@@ -180,9 +181,9 @@ function renderQuestion(): void {
      qu'en saisie). Seuil de pluriel partagé avec la consigne (`intervalleAPlusieursReponses`) :
      « d'autres nombres » serait faux quand l'intervalle n'admet que deux valeurs, dont la
      tuile juste. */
-function correctionHTML(q: TuilesQuestion): string {
+function correctionHTML(q: TuilesQuestion): SafeHtml {
 	const amorce = q.intervalle ? 'Une réponse possible était' : 'La bonne réponse était';
-	return `<span class="lqcm-ko">${amorce} <strong>${escapeHTML(q.answer)}</strong>.${mentionAutresNombres(q)}</span>`;
+	return html`<span class="lqcm-ko">${amorce} <strong>${q.answer}</strong>.${mentionAutresNombres(q)}</span>`;
 }
 
 /* Mention « D'autres nombres… » : partagée par la correction d'une erreur et la révélation
@@ -222,7 +223,7 @@ function verifier(): void {
 		sheets().querySelector('#ltuiActions') as HTMLElement,
 		sheets().querySelector('#ltuiFeedback') as HTMLElement,
 		{
-			feedbackHTML: correct ? `<span class="lqcm-ok">Bravo ! 🎉</span>` : correctionHTML(q),
+			feedbackHTML: correct ? html`<span class="lqcm-ok">Bravo ! 🎉</span>` : correctionHTML(q),
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;
@@ -255,9 +256,10 @@ function passer(): void {
 		root: sheets(),
 		feedback: sheets().querySelector('#ltuiFeedback') as HTMLElement,
 		actions: sheets().querySelector('#ltuiActions') as HTMLElement,
-		repHTML:
-			ligneRevelation(q.intervalle ? 'une réponse possible' : 'la réponse', escapeHTML(q.answer)) +
-			mentionAutresNombres(q),
+		repHTML: html`${ligneRevelation(
+			q.intervalle ? 'une réponse possible' : 'la réponse',
+			html`${q.answer}`,
+		)}${mentionAutresNombres(q)}`,
 		annonce: `${q.intervalle ? 'Une réponse possible' : 'La réponse'} : ${q.answer}.`,
 		isLast: idx >= questions.length,
 		onNext: () => {

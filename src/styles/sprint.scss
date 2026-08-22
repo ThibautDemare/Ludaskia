@@ -526,6 +526,17 @@ html.anim-reduced .sprint-check {
 	color: var(--grey);
 	margin-bottom: 6px;
 }
+/* Récap éphémère (#537) : même registre que `.rb-recap` du bandeau de bilan — une phrase,
+   pas une liste. Le chiffre du sprint reste l'objet de l'exercice, le récap est l'épilogue
+   SOUS lui. */
+.sprint-recap {
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--grey);
+	margin: 8px 0 0;
+	text-wrap: balance;
+	overflow-wrap: anywhere;
+}
 .sprint-done .sprint-actions {
 	margin-top: 14px;
 }

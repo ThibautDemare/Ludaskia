@@ -23,7 +23,7 @@
    l'applicabilité de l'étape ET à reconnaître la session qui la satisfait — et l'unique
    porte d'entrée de lecture de la séance côté UI (`vueProgramme`, navigation comprise).
    ============================================================ */
-import { escapeHTML } from '../core/utils';
+import { enumererFr, escapeHTML } from '../core/utils';
 import { getLessonById, type SubjectId } from '../core/catalog';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
@@ -59,6 +59,8 @@ import { subjectIcon } from './cat-visuals';
 import { startRevisionEspacee, startLecon, startOrthoLecon } from './navigation';
 import { startDefaultSprint } from './sprint';
 import { showCelebration } from './effects';
+import { contenuRecap, type NotionRecap } from '../core/recap-notions';
+import { notionLecon, notionsNotees } from './recap-seance';
 import { dicteeDisponible } from './tts';
 
 /* ---------- Cibles d'une étape « dictée » (#463) ---------- */
@@ -293,14 +295,60 @@ function tuileHTML(v: VueEtape): string {
   </button>`;
 }
 
-function recapItemHTML(v: VueEtape): string {
+/* Ce que l'étape a réellement fait travailler (#537), pour les étapes dont le TITRE reste
+   générique : « Sprint 5 min » ne dit pas quelles leçons ont été tirées, « Révision » ni
+   « Leçon du jour » non plus. Deux sources, aucune créée pour l'occasion :
+   - les modes qui traversent PLUSIEURS notions (sprint, révision) sont lus dans la mémoire
+     de la page (`notionsNotees`). Vide après un rechargement : l'étape retombe alors sur
+     son titre seul, comme avant. Enrichi quand on peut, jamais faux ;
+   - les modes à cible UNIQUE, tirée au lancement (leçon du jour, épinglée d'un pool, dictée
+     d'un pool), sont lus dans les complétions du jour (`v.refs`), déjà enregistrées.
+   Le titre n'est jamais répété : une étape qui se nomme déjà (une leçon précise, une dictée
+   figée) n'est pas enrichie. Même décision que le récap de fin de séance sur ce qui est
+   nommé — plafond et agrégation par catégorie compris (`contenuRecap`). */
+function notionsEtape(v: VueEtape, titre: string, dictees: Map<string, string>): string[] {
+	const notions: NotionRecap[] = [];
+	if (v.etape.kind === 'sprint' || v.etape.kind === 'revision') {
+		notions.push(...notionsNotees(v.etape.kind));
+	} else {
+		for (const ref of v.refs) {
+			const n = notionLecon(ref);
+			if (n) notions.push(n);
+			else {
+				const label = dictees.get(ref);
+				// Une liste supprimée depuis n'est plus résoluble : on ne nomme jamais un id
+				// brut à l'enfant, l'étape garde son titre seul.
+				if (label) notions.push({ id: ref, label, categorie: 'Orthographe' });
+			}
+		}
+	}
+	const contenu = contenuRecap(notions);
+	return contenu ? contenu.labels.filter((l) => l !== titre) : [];
+}
+
+function recapItemHTML(v: VueEtape, dictees: Map<string, string>): string {
 	const { titre } = etapeVisuel(v);
+	const notions = notionsEtape(v, titre, dictees);
+	// Nommé DANS la même phrase, à la même taille, juste nuancé en gris : une seconde ligne
+	// plus petite et grise sous un libellé, c'est la recette exacte des relevés de suivi de
+	// l'espace encadrant, dont ce récap doit rester distinct (avis `designer-ux-enfant`).
 	return `<li class="programme-recap-item">
     <span class="programme-recap-ico" aria-hidden="true">${icon('check-circle')}</span>
     <span>${escapeHTML(titre)}${
 			v.requis > 1 ? ` <span class="programme-recap-x">×${v.requis}</span>` : ''
+		}${
+			notions.length
+				? ` <span class="programme-recap-notions">· ${escapeHTML(enumererFr(notions))}</span>`
+				: ''
 		}</span>
   </li>`;
+}
+
+/* Liste de récap. La table des dictées est résolue UNE fois ici plutôt qu'à chaque ligne :
+   `loadOrtho` lit le stockage, et une étape peut avoir plusieurs cibles. */
+function recapListeHTML(vues: VueEtape[]): string {
+	const dictees = new Map(listOrthoLecons(loadOrtho()).map((x) => [x.id, x.label]));
+	return vues.map((v) => recapItemHTML(v, dictees)).join('');
 }
 
 /* ---------- Écran #seance ---------- */
@@ -321,7 +369,7 @@ export function renderSeance(el: HTMLElement): void {
         <p class="programme-fini-txt">Bravo, tu as fait tout ton programme du jour !</p>
         ${pastilles}
       </div>
-      <ul class="programme-recap">${vue.etapes.map(recapItemHTML).join('')}</ul>`;
+      <ul class="programme-recap">${recapListeHTML(vue.etapes)}</ul>`;
 		wire(el);
 		return;
 	}
@@ -356,7 +404,7 @@ export function renderSeance(el: HTMLElement): void {
 			faites.length
 				? `<div class="programme-deja">
         <p class="programme-deja-titre">Déjà fait aujourd'hui</p>
-        <ul class="programme-recap">${faites.map(recapItemHTML).join('')}</ul>
+        <ul class="programme-recap">${recapListeHTML(faites)}</ul>
       </div>`
 				: ''
 		}`;

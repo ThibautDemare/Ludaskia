@@ -71,6 +71,7 @@ import { sansPressionTemporelle } from '../core/profiles';
 import { getTimer, setTimer, resetChrono } from './chrono';
 import { recompensesEntre } from '../core/unlocks';
 import { announceRewards } from './effects';
+import { noterNotions, notionsDepuisPerLesson, recapAutonomeHTML } from './recap-seance';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
 	setCurrentMode,
@@ -783,6 +784,12 @@ function finalizeSprint() {
 	// Journalise aussi les franchissements de palier (frise d'évolution, #397), de lui-même :
 	// le sprint n'attribue pas d'étoile, donc ne peut faire atteindre que « en cours ».
 	recordLessonStats(sprintPerLesson, 'sprint'); // type journalisé pour le graphe d'activité (#319)
+	// Récap éphémère (#537) : le sprint est la séance où l'enfant traverse le plus de
+	// notions sans pouvoir les nommer. On mémorise lesquelles — en mémoire, jamais
+	// persisté — MÊME quand l'écran de fin ne les affichera pas : c'est justement dans ce
+	// cas que le récap du programme du jour en a besoin pour nommer sa tuile « Sprint ».
+	const recapNotions = notionsDepuisPerLesson(sprintPerLesson);
+	noterNotions('sprint', recapNotions);
 	const medalInfo = recordRun('sprint', sprintScore, sprintAnswered, SPRINT_MS);
 	const goalRes = updateGoal({ mode: 'sprint', sprint: true, isRecord: medalInfo.isRecord });
 	const newTrophies = evaluateTrophies();
@@ -790,7 +797,11 @@ function finalizeSprint() {
 	if (medalInfo.isRecord) celeb.push({ icon: '🎉', text: 'Nouveau record de sprint !' });
 	newTrophies.forEach((t) => celeb.push({ icon: t.icon, text: `Nouveau trophée : ${t.title}` }));
 	if (goalRes.justDone) celeb.push({ icon: '🎯', text: 'Objectif du jour réussi !' });
-	renderSprintResults(medalInfo, streakDays);
+	renderSprintResults(
+		medalInfo,
+		streakDays,
+		recapAutonomeHTML('sprint', recapNotions, 'sprint-recap'),
+	);
 	// Passage de niveau pendant le sprint → modale dédiée, puis enchaînement.
 	const niveauApres = niveauDepuisXP(getXP());
 	announceRewards(
@@ -800,7 +811,10 @@ function finalizeSprint() {
 	);
 }
 
-function renderSprintResults(medalInfo: RunResult, streakDays: number) {
+/* `recap` (#537) : phrase nommant les notions traversées, déjà rendue par la couche récap
+   (vide si le programme du jour va la nommer lui-même). Le chiffre reste l'objet de
+   l'exercice ; le récap n'est qu'un épilogue SOUS lui. */
+function renderSprintResults(medalInfo: RunResult, streakDays: number, recap = '') {
 	const acc = sprintAnswered ? Math.round((sprintScore / sprintAnswered) * 100) : 0;
 	let extra = '';
 	if (medalInfo) {
@@ -816,6 +830,7 @@ function renderSprintResults(medalInfo: RunResult, streakDays: number) {
       <div class="sprint-done-lab">bonne${sprintScore > 1 ? 's' : ''} réponse${sprintScore > 1 ? 's' : ''} en 5 min</div>
       <div class="sprint-done-sub">${sprintAnswered} question${sprintAnswered > 1 ? 's' : ''} posée${sprintAnswered > 1 ? 's' : ''} · ${acc}% de réussite</div>
       ${extra}
+      ${recap}
       <div class="sprint-actions">
         <button class="sprint-btn" id="sprintAgain">↻ Recommencer</button>
         <button class="sprint-btn ghost" id="sprintHome">${icon('house')} Accueil</button>

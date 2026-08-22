@@ -49,6 +49,8 @@ import {
 	recordSessionActivity,
 } from '../core/progress';
 import { selectDueGroups } from '../core/revision-select';
+import type { NotionRecap } from '../core/recap-notions';
+import { noterNotions, notionLecon, notionGroupe, recapAutonomeHTML } from './recap-seance';
 import { getRevisionPlafond } from '../core/profiles';
 import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
 import { bindTuileInteraction } from './tuile-interaction';
@@ -1521,6 +1523,21 @@ function renderDone() {
 	// de mot dans la session : ce qui compte aussi ici, c'est de dater la mise en service du
 	// journal pour ce profil (cf. journaliserPaliersOrtho).
 	journaliserPaliersOrtho(dicteeDisponible(), Date.now());
+	// Récap éphémère (#537) : une révision rejoue des notions de plusieurs origines, et son
+	// écran de fin n'en nommait aucune. On les liste depuis les ITEMS joués et non depuis
+	// `perLesson` — ce dernier écarte volontairement l'entretien du niveau inférieur (#232),
+	// parce qu'il alimente des STATS ; le récap, lui, ne mesure rien, il nomme ce que
+	// l'enfant vient de faire, y compris une notion revue au niveau d'en dessous. Les MOTS
+	// d'orthographe n'ont pas de leçon au catalogue : ils sont nommés par leur groupe, sans
+	// quoi une révision composée uniquement de mots — le cas le plus courant — n'aurait rien
+	// à dire. Mémorisé même quand l'écran ne l'affiche pas : le récap du programme du jour
+	// en a besoin pour nommer sa tuile « Révision ».
+	const notionsRecap: NotionRecap[] = [];
+	for (const it of items) {
+		const n = it.kind === 'word' ? notionGroupe(it.groupLabel) : notionLecon(it.lessonId);
+		if (n) notionsRecap.push(n);
+	}
+	noterNotions('revision', notionsRecap);
 	const stage = document.getElementById('revStage')!;
 	if (!stage) return;
 	document.querySelector('.rev-hud')?.remove();
@@ -1529,6 +1546,7 @@ function renderDone() {
     <div class="rev-done-big">${score}/${items.length}</div>
     <div class="rev-done-lab">révision terminée</div>
     <div class="rev-done-sub">Les notions réussies reviendront plus tard, les autres plus tôt.</div>
+    ${recapAutonomeHTML('revision', notionsRecap, 'rev-recap')}
     <div class="rev-actions"><button class="rev-btn" id="revHome">${icon('house')} Accueil</button></div>
   </div>`;
 	document.getElementById('revHome')!.addEventListener('click', goHome);

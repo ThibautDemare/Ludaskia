@@ -92,7 +92,13 @@ export function contenuRecap(notions: readonly NotionRecap[]): ContenuRecap | nu
       obligeraient l'enfant à re-analyser la phrase à chaque lecture, et détourneraient
       justement le budget de lecture qu'on veut consacrer aux NOMS des notions (avis
       `pedagogue-primaire`). Écarté pour la même raison : « Ce que tu viens de faire : … »
-      (relative substantivée — syntaxe de phrase complexe, hors attendus CE2). */
+      (relative substantivée — syntaxe de phrase complexe, hors attendus CE2).
+
+    Les gabarits 2 et 3 partagent le verbe « fait », faute de troisième verbe juste : ce qui
+    les distingue est la POSITION du sujet (les deux premiers ouvrent sur « Tu », le
+    troisième non), et c'est elle que l'oreille entend d'abord. « Tu as revu » a été écarté —
+    il affirme que la notion avait déjà été vue, ce qui est faux à la première séance
+    (avis `redacteur-contenu-francais`). */
 export const GABARITS_RECAP: readonly ((liste: string) => string)[] = [
 	(liste) => `Tu as travaillé : ${liste}.`,
 	(liste) => `Tu viens de faire : ${liste}.`,

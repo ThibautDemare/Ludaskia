@@ -22,6 +22,7 @@ import { escapeHTML } from '../core/utils';
 import { CATEGORIES, getLessonById } from '../core/catalog';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
+import { activeProfile } from '../core/profiles';
 import {
 	contenuRecap,
 	phraseRecap,
@@ -83,24 +84,41 @@ export function notionGroupe(groupLabel: string): NotionRecap {
 
 /* ---------- Journal éphémère (mémoire de la page, jamais persistée) ---------- */
 
-const notionsParKind: Record<KindRecap, NotionRecap[]> = { sprint: [], revision: [] };
+/* Rangé PAR PROFIL, et pas en une seule paire de listes. Changer de profil ne recharge
+   pas la page (`setActiveProfile` puis `route()`, cf. `main.ts`) : une mémoire globale
+   aurait accolé les notions du sprint d'un enfant à l'étape « Sprint » du programme de
+   son frère, ce qui retourne la promesse même du récap — dire ce que TU viens de faire.
+   Le classement par profil vaut mieux qu'un effacement branché sur le changement de
+   profil actif : celui-ci a quatre points d'entrée (`initProfiles`, `setActiveProfile`,
+   `addProfile`, `deleteProfile`), et il aurait suffi d'en oublier un. */
+const notionsParProfil = new Map<string, Record<KindRecap, NotionRecap[]>>();
+
+function seauProfil(): Record<KindRecap, NotionRecap[]> {
+	const uuid = activeProfile()?.uuid ?? '';
+	let seau = notionsParProfil.get(uuid);
+	if (!seau) {
+		seau = { sprint: [], revision: [] };
+		notionsParProfil.set(uuid, seau);
+	}
+	return seau;
+}
 
 /** Mémorise ce qu'un sprint / une révision vient de travailler, pour le récap du
     programme du jour. Cumulatif dans la page (deux sprints d'affilée ⇒ l'union), ce qui
     correspond à l'étape « Sprint ×2 » du programme. */
 export function noterNotions(kind: KindRecap, notions: readonly NotionRecap[]): void {
-	notionsParKind[kind].push(...notions);
+	seauProfil()[kind].push(...notions);
 }
 
-/** Ce qui a été noté pour un mode depuis le chargement de la page (vide au démarrage). */
+/** Ce que le profil ACTIF a travaillé dans ce mode depuis le chargement de la page
+    (vide au démarrage, et vide pour un profil qui n'a rien fait dans cet onglet). */
 export function notionsNotees(kind: KindRecap): NotionRecap[] {
-	return notionsParKind[kind].slice();
+	return seauProfil()[kind].slice();
 }
 
-/** Remise à zéro — réservée aux tests. */
+/** Remise à zéro de tous les profils — réservée aux tests. */
 export function oublierNotions(): void {
-	notionsParKind.sprint.length = 0;
-	notionsParKind.revision.length = 0;
+	notionsParProfil.clear();
 }
 
 /* ---------- Rendu ---------- */

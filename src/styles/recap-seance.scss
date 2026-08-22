@@ -1,0 +1,44 @@
+/* ============================================================
+   Récap éphémère de fin de séance (#537)
+   Une PHRASE, sur les trois écrans de repos : bandeau de fin de bilan
+   (`.rb-recap`), fin de sprint (`.sprint-recap`), fin de révision espacée
+   (`.rev-recap`).
+
+   Volontairement en prose : pas de puce, pas d'icône, pas d'encadré. C'est la
+   structure en carte ou en ligne (bordure + libellé + méta) qui fait « relevé
+   pour les parents », registre dont ce récap doit rester distinct — même contenu
+   factuel, registre différent selon qui regarde.
+
+   La couleur est celle des lignes d'accompagnement de ces écrans (`--grey`, déjà
+   tenue sur les six thèmes par la rampe de gris de #576) ; seule la graisse donne
+   à la phrase une présence propre, sans emprunter le vert ni l'orange réservés
+   aux récompenses.
+
+   Un seul fichier pour les trois classes, et non un bloc recopié dans chacune des
+   trois feuilles d'écran : les déclarations étaient identiques au caractère près,
+   et trois copies d'une même règle finissent par diverger. Les NOMS restent
+   distincts par écran (le registre appartient à l'écran), les déclarations non.
+   ============================================================ */
+.rb-recap,
+.sprint-recap,
+.rev-recap {
+	font-family: var(--ui);
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--grey);
+	/* `balance` évite la dernière ligne orpheline d'un mot sur une phrase de trois ou
+	   quatre lignes ; `anywhere` est le filet du cas extrême (zoom 200 % sur 320 px).
+	   Amélioration progressive : aucun repli nécessaire là où ce n'est pas supporté. */
+	text-wrap: balance;
+	overflow-wrap: anywhere;
+}
+/* Le bandeau de bilan est un conteneur en `flex-wrap` : sans `width: 100%`, la phrase
+   se glisserait à côté d'un voisin au lieu de prendre sa propre ligne. */
+.rb-recap {
+	width: 100%;
+	margin: 2px 0 0;
+}
+.sprint-recap,
+.rev-recap {
+	margin: 8px 0 0;
+}

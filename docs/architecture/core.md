@@ -534,6 +534,24 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `'correct'|'wrong'|'empty'` — pour le marquage DOM par l'appelant). `ui/session.ts`
   (`verify()`) lit le DOM, construit la liste `ScoredInput`, délègue à `scoreItems`, puis
   pose les marques ✓/✗ selon les `statuses` renvoyés.
+- **`recap-notions.ts`** (#537, pur) — **récap éphémère de fin de séance** : décide CE QUI
+  est nommé à l'enfant après un bilan, un sprint, une révision ou une étape du programme
+  du jour, à partir de notions déjà résolues en libellés par l'appelant (`NotionRecap
+  {id, label, categorie}` — ce module ne connaît ni le catalogue ni le stockage, ce qui le
+  rend testable seul). **`contenuRecap(notions)`** dédoublonne (par `id` puis par
+  `label`, deux ids pouvant porter le même libellé) et nomme jusqu'à
+  **`MAX_NOTIONS_NOMMEES`** (5) notions distinctes ; au-delà, il **agrège par catégorie**
+  (plafonnée au même nombre) — une liste de douze leçons ne se retient pas, et un bilan
+  complet de maths peut traverser sept catégories. **`phraseRecap(contenu, tour)`** choisit
+  parmi **trois gabarits** (`GABARITS_RECAP`) par rotation **déterministe** (jamais deux
+  fois le même à la suite), aucun ne portant de participe accordable (le genre de l'enfant
+  n'est pas connu). **`recapAutonomeMasque(kind, programme)`** éteint le récap autonome
+  d'un sprint/d'une révision quand un programme du jour **actif et non complet** contient
+  déjà une étape du même type — il la nommera lui-même, un double récap se contredirait
+  sur la forme à deux écrans d'écart. Volontairement **sans** compte ni pourcentage
+  (`NotionRecap` n'a ni `ok` ni `total`) : ce module dit ce qui a été travaillé, jamais
+  comment ça s'est passé. Résolution catalogue, mémoire de page (aucune persistance) et
+  rendu dans `ui/recap-seance.ts` (cf. [Rendu & interactions](ui.md)).
 
 ## Enregistrement, catalogue & ordre pédagogique
 
@@ -1606,7 +1624,12 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   créditée ou que ce soit le **contexte** qui ait fait disparaître la dernière étape
   restante (#464). Un seul appel couvre donc les deux cas : `consoliderCompletion` et
   `etapesApplicables` ont disparu. `seancesCompletees` (compteur cumulé) alimente le
-  trophée dédié (cf. [Gamification](gamification.md)). Consommé côté enfant par
+  trophée dédié (cf. [Gamification](gamification.md)). **`VueEtape.refs`** (#537) — les
+  références (`ActivityEntry.ref`) des complétions du jour qui satisfont l'étape : seul
+  moyen de nommer après coup la cible réellement tirée d'une étape à pool (dictée,
+  épinglée, leçon précise) sans relire le journal une seconde fois — consommé par le récap
+  de fin de séance (« Récap éphémère de fin de séance », `ui/seance.ts`, cf.
+  [`ui/`](ui.md)). Consommé côté enfant par
   `ui/seance.ts` (porte d'entrée unique `vueProgramme`, cf. [`ui/`](ui.md)) et côté
   encadrant par `ui/encadrant-seance.ts`.
 - **`vu-ailleurs.ts`** (#478, pur) — l'adulte déclare, pour le profil **consulté**,

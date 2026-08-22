@@ -234,6 +234,21 @@ describe('contenuRecap — ce que le récap nomme', () => {
 		]);
 	});
 
+	it('des libellés dédoublonnés ne libèrent pas de place pour d’autres notions', () => {
+		/* Angle complémentaire du dédoublonnage des libellés : 5 ids distincts dont 3 au
+		   même libellé ⇒ 3 libellés dits. Le récap ne doit PAS aller chercher de quoi
+		   remonter à 5 (il n'a rien d'autre à nommer) ni répéter le libellé pour tenir le
+		   compte : c'est le travail fait qui commande, pas un quota à remplir. */
+		const c = contenuRecap([
+			n('add@ce2', 'Additionner', 'Calcul'),
+			n('add@cm1', 'Additionner', 'Calcul'),
+			n('add@cm2', 'Additionner', 'Calcul'),
+			n('cmp', 'Comparer', 'Nombres'),
+			n('plu', 'Le pluriel', 'Orthographe'),
+		]);
+		expect(c).toEqual({ forme: 'notions', labels: ['Additionner', 'Comparer', 'Le pluriel'] });
+	});
+
 	it('critère 12 : le résultat ne porte que la forme et les libellés (aucun compte, aucun score)', () => {
 		const c = contenuRecap(seance(3));
 		expect(c).not.toBeNull();
@@ -458,6 +473,16 @@ describe('recapAutonomeMasque — non-doublon avec le programme du jour (critèr
 		const programme = { complete: true, kinds: ['sprint', 'revision'] as const };
 		for (const kind of KINDS_AUTONOMES) {
 			expect(recapAutonomeMasque(kind, programme), kind).toBe(false);
+		}
+	});
+
+	it('à étapes identiques, « complété » est ce qui décide seul du masquage', () => {
+		/* Différentiel sur la seule garde de complétion : mêmes étapes en jeu, seul
+		   `complete` change. Un programme terminé n'a plus de récap à venir qui reprendrait
+		   l'activité, donc supprimer celui du sprint le ferait disparaître pour de bon. */
+		for (const kind of KINDS_AUTONOMES) {
+			expect(recapAutonomeMasque(kind, { complete: false, kinds: [kind] }), kind).toBe(true);
+			expect(recapAutonomeMasque(kind, { complete: true, kinds: [kind] }), kind).toBe(false);
 		}
 	});
 

@@ -547,6 +547,90 @@ describe('vueSeanceDuJour', () => {
 	});
 });
 
+/* Cibles RÉELLEMENT travaillées par une étape (#537) : `VueEtape.refs` alimente le récap
+   du programme du jour, qui nomme ainsi ce qu'un titre de tuile laisse générique (« Une
+   dictée », « Leçon du jour »). Attendus dérivés de cette intention, pas du code : on doit
+   y lire CE QUI a été fait, dans l'ordre où ça a été fait, et jamais ce qui relève d'une
+   autre étape. Le fil passe par le chemin réel (marqueur → session journalisée →
+   attribution), donc `refs` n'est jamais renseigné « à la main ». */
+describe('vueSeanceDuJour : cibles travaillées par étape (#537)', () => {
+	const etapeVue = (t: number, id: string) =>
+		vueSeanceDuJour(t)!.etapes.find((e) => e.etape.id === id)!;
+
+	it('la dictée tirée d’un pool se retrouve dans les cibles de son étape', () => {
+		poserDefs([
+			defHebdo(
+				'd1',
+				[1],
+				[
+					{
+						id: 'e1',
+						kind: 'dictee',
+						count: 1,
+						refs: ['fr-ortho-invariables-1', 'fr-ortho-son-eu-1'],
+					},
+				],
+			),
+		]);
+		realiser({ etape: 'e1', t: LUN, k: 'dictee', ref: 'fr-ortho-son-eu-1' });
+		// La cible VUE, pas le pool : le récap doit nommer la dictée faite, pas les deux.
+		expect(etapeVue(LUN + 5000, 'e1').refs).toEqual(['fr-ortho-son-eu-1']);
+	});
+
+	it('la leçon choisie pour « Leçon du jour » se retrouve dans les cibles', () => {
+		poserDefs([defHebdo('d1', [1], [etape('e1', 'leconDuJour')])]);
+		realiser({ etape: 'e1', t: LUN, k: 'lecon', ref: 'math-doubles' });
+		expect(etapeVue(LUN + 5000, 'e1').refs).toEqual(['math-doubles']);
+	});
+
+	it('une étape dont la complétion ne désigne aucune cible (sprint, révision) : aucune cible', () => {
+		poserDefs([defHebdo('d1', [1], [etape('e1', 'sprint'), etape('e2', 'revision')])]);
+		realiser({ etape: 'e1', t: LUN, k: 'sprint' });
+		realiser({ etape: 'e2', t: LUN + 1000, k: 'revision' });
+		expect(etapeVue(LUN + 5000, 'e1')).toMatchObject({ fait: 1, refs: [] });
+		expect(etapeVue(LUN + 5000, 'e2')).toMatchObject({ fait: 1, refs: [] });
+	});
+
+	it('plusieurs passages de la même étape : les cibles s’empilent dans l’ordre chronologique', () => {
+		poserDefs([defHebdo('d1', [1], [etape('e1', 'leconDuJour', 3)])]);
+		realiser({ etape: 'e1', t: LUN, k: 'lecon', ref: 'math-complements' });
+		realiser({ etape: 'e1', t: LUN + 1000, k: 'lecon', ref: 'math-doubles' });
+		realiser({ etape: 'e1', t: LUN + 2000, k: 'lecon', ref: 'math-complements' });
+		// Doublon CONSERVÉ : c'est la suite de ce que l'enfant a fait, pas un ensemble.
+		expect(etapeVue(LUN + 5000, 'e1').refs).toEqual([
+			'math-complements',
+			'math-doubles',
+			'math-complements',
+		]);
+	});
+
+	it('une étape pas encore faite n’annonce aucune cible', () => {
+		poserDefs([defHebdo('d1', [1], [etape('e1', 'leconDuJour'), etape('e2', 'sprint')])]);
+		expect(vueSeanceDuJour(LUN)!.etapes.map((e) => e.refs)).toEqual([[], []]);
+	});
+
+	it('aucune contamination : la cible d’une étape ne remonte pas dans une autre', () => {
+		poserDefs([
+			defHebdo(
+				'd1',
+				[1],
+				[
+					etape('e1', 'lecon', 1, 'math-doubles'),
+					{ id: 'e2', kind: 'dictee', count: 1, refs: ['fr-ortho-invariables-1'] },
+					etape('e3', 'sprint'),
+				],
+			),
+		]);
+		realiser({ etape: 'e1', t: LUN, k: 'lecon', ref: 'math-doubles' });
+		realiser({ etape: 'e2', t: LUN + 1000, k: 'dictee', ref: 'fr-ortho-invariables-1' });
+		realiser({ etape: 'e3', t: LUN + 2000, k: 'sprint' });
+		const t = LUN + 5000;
+		expect(etapeVue(t, 'e1').refs).toEqual(['math-doubles']);
+		expect(etapeVue(t, 'e2').refs).toEqual(['fr-ortho-invariables-1']);
+		expect(etapeVue(t, 'e3').refs).toEqual([]);
+	});
+});
+
 describe('chargerJournalSeances (archivage au passage de minuit)', () => {
 	it('séance COMPLÈTE d’hier archivée avec durées cohérentes', () => {
 		poserDefs([defHebdo('d1', [1, 2], [etape('e1', 'sprint', 1)])]);

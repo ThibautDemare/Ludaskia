@@ -84,6 +84,13 @@ test('CM1 décomposer : le trou d’un rang décimal se rend en fraction empilé
 	for (let i = 0; i < 12; i++) {
 		await page.goto('app.html#lecon-num-dec-decomposer', { waitUntil: 'networkidle' });
 		await page.reload({ waitUntil: 'networkidle' });
+		// Attendre que la fiche soit RENDUE avant de chercher la variante en fraction :
+		// `count()` est une lecture one-shot, elle ne retente pas. Or `networkidle` peut
+		// précéder le rendu du SPA sous charge parallèle — la relance brûlerait alors une
+		// tentative sur un écran qui allait s'afficher. Tout champ de la fiche porte `.ans`
+		// (y compris `.frac-num-input`, cf. core/items.ts), donc l'attente vaut pour les
+		// deux tirages, celui qu'on cherche comme celui qu'on rejette.
+		await page.locator('.ans').first().waitFor({ state: 'visible' });
 		if (await page.locator('.frac .frac-num-input').count()) break;
 	}
 	const num = page.locator('.frac .frac-num-input').first();

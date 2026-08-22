@@ -552,6 +552,16 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`NotionRecap` n'a ni `ok` ni `total`) : ce module dit ce qui a été travaillé, jamais
   comment ça s'est passé. Résolution catalogue, mémoire de page (aucune persistance) et
   rendu dans `ui/recap-seance.ts` (cf. [Rendu & interactions](ui.md)).
+- **`compteur-etoiles.ts`** (#559, pur) — texte du compteur `#recLecon` (carte accueil
+  « Une leçon à la fois ») : **`compteurEtoilesHTML(état)`** choisit entre deux
+  formulations selon que le cumul **tous niveaux** (`starsCumul`) dépasse ou non les
+  étoiles du niveau actif — **multi-niveaux** : le cumul reste le chiffre mis en
+  avant (formulation gelée, #225), l'objectif de la classe passant en sous-ligne ;
+  **mono-niveau** : la progression scopée, nommant toujours le mot « étoile ». Jamais
+  de « 0 sur N » brut dans aucune branche (un zéro se lit comme une note). Extrait de
+  `ui/render.ts`, qui ne fait plus qu'assembler l'état (`starsEarned`,
+  `starsEarnedAll`, catalogue du niveau actif) et l'injecter — le texte était jusque-là
+  inline et hors de portée des tests.
 
 ## Enregistrement, catalogue & ordre pédagogique
 

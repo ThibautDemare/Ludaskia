@@ -61,6 +61,17 @@ révision espacée, qui n'écrivait auparavant qu'un run de régularité. Un mê
 entraînement compte donc un peu plus qu'avant vers ces trophées ; c'est cohérent
 avec l'XP, gagnée « tous modes confondus » de longue date.
 
+**Franchir plusieurs paliers d'un coup n'est pas un défaut (#559).** Rebrancher une
+métrique sur un CUMUL (ex. les paliers ⭐ sur `starsTousNiveaux`, cf. [Niveaux
+scolaires](niveaux-scolaires.md)) peut faire dépasser **plusieurs** seuils au même
+appel d'`evaluateTrophies()` pour un profil déjà avancé — rien à coder pour ce cas :
+`showCelebration` affiche déjà une **liste** de récompenses dans une **modale
+unique**, jamais des pop-ups en série, et c'est le mécanisme déjà employé partout
+ailleurs pour un déblocage simultané (plusieurs trophées de bilans/sprints à la
+fois, montée de niveau + déblocage cosmétique…). Juger du *ressenti* de voir trois
+trophées listés d'un coup relève d'un avis `gamification-enfant` /
+`designer-ux-enfant`, pas d'un défaut technique.
+
 ## Trophée « programme du jour » (#440)
 
 Le **programme du jour** composé par l'encadrant (cf. [Modes &

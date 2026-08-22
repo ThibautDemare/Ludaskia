@@ -109,11 +109,21 @@ fait hors de la classe suivie — côté enfant, le trésor reste un total uniqu
 
 ## Scoping gamification
 
-**Scoping gamification** (`rewards.ts`) — **complétude** (`starsAll`, `allgreen`, par
+**Scoping gamification** (`rewards.ts`) — **complétude** (`allgreen`, par
 matière/catégorie) et **objectif du jour** scopés au niveau actif ; **XP, déblocages
 (forêt), trophées d'effort/régularité (`vol`/`sprint`/`streak`/`goal`/`ortho`)
 restent GLOBAUX** (`loadRunsAll` agrège tous niveaux — un trophée acquis ne se
 reverrouille jamais au changement de classe).
+
+**Paliers ⭐ (`stars5`/`stars15`/`stars30`) : GLOBAUX depuis #559**, sur la métrique
+`starsTousNiveaux` (= `starsEarnedAll()`, le cumul « trésor » tous niveaux confondus) —
+et non plus sur les étoiles du niveau actif : c'est ce cumul que l'accueil met en avant
+(compteur `#recLecon`, cf. [`ui/`](ui.md)), un enfant ne pouvant pas comprendre un
+trophée hors de portée de ce qu'il lit. Les **ids ne changent pas**, ce qui garantit
+qu'aucun trophée déjà acquis ne se reverrouille. `starsAll` (« Sans faute partout »)
+**reste seul SCOPÉ** au niveau actif dans cette famille : il se compare à
+`totalLessons`, le catalogue de la classe active, une métrique qui n'a pas de sens
+« tous niveaux ».
 
 ## Records de bilans/sprint scopés par niveau
 

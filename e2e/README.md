@@ -107,6 +107,15 @@ sinon lancer avec une config temporaire sur des ports isolés.
   question répondue pour atteindre `.sprint-done`. Installer l'horloge APRÈS le lancement
   ne fonctionne pas (l'intervalle déjà créé tourne sur l'horloge réelle). Exemple :
   `e2e/je-ne-sais-pas.spec.ts` (« Sprint : valider un champ vide… »).
+- **Semer une clé de données dans `localStorage` : préfixer par le profil actif.**
+  `storage.ts` scope toute clé applicative par l'uuid du profil actif
+  (`<uuid>/ludaskia_…`, cf. [docs/architecture/donnees-et-profils.md](../docs/architecture/donnees-et-profils.md)),
+  sauf `ludaskia_profiles` lui-même. Un `localStorage.setItem('ludaskia_stars', …)`
+  posé nu dans un `addInitScript` est donc **silencieusement ignoré** (aucune
+  erreur, la clé réelle attendue est `e2e/ludaskia_stars` avec le profil `e2e` par
+  défaut d'`ENSURE_NIVEAU`) — un piège qui ne se voit qu'à l'échec de l'assertion
+  suivante, sans piste. Exemples : `seedAideVueScript(uuid)` ci-dessus,
+  ou `e2e/compteur-etoiles.spec.ts` (`e2e/ludaskia_stars`).
 - **Forcer une fenêtre de course de façon déterministe** : un scénario qui ne reproduit un bug
   que si une action retardée (un `setTimeout` de débounce, par ex.) retombe **pendant** un
   autre événement ne doit pas dépendre du temps réel écoulé entre deux clics Playwright — ce

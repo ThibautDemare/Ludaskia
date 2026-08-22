@@ -36,6 +36,7 @@ import {
 } from '../core/progress';
 import { lessonsNiveauActif, niveauActif } from '../core/niveau-actif';
 import { LEVEL_LABEL } from '../core/levels';
+import { compteurEtoilesHTML } from '../core/compteur-etoiles';
 import { prochaineEcheance, aDesRevisions, effortRevisionAffiche } from '../core/revision-select';
 import { JOUR } from '../core/revision';
 import { titreDuNiveau, AVATARS_FORET } from '../core/unlocks';
@@ -333,27 +334,14 @@ export function renderHomeStats() {
 	renderReprises(document.getElementById('reprises')); // « À continuer » (#63)
 	const recL = document.getElementById('recLecon');
 	if (recL) {
-		const n = starsEarned(); // étoiles du niveau actif (par matière)
-		const total = lessonsNiveauActif().length; // catalogue du niveau actif
-		const tous = starsEarnedAll(); // cumul tous niveaux (ne baisse jamais)
-		// Au changement de classe, le compteur scopé retombe (catalogue plus petit) :
-		// pour ne JAMAIS donner l'impression d'avoir perdu ses succès, dès qu'il existe
-		// des étoiles à un AUTRE niveau, on met en avant le CUMUL « trésor » (qui ne
-		// baisse jamais) et on passe l'objectif de la CLASSE en sous-ligne (#225, avis
-		// gamification/UX/pédago). Deux pictos distincts (⭐ trésor / 🎯 objectif) et un
-		// « 0 sur N » remplacé par une invitation (un « 0 » se lit comme une note).
-		if (tous > n) {
-			const classe = LEVEL_LABEL[niveauActif()];
-			const objectif =
-				n === 0
-					? `${classe} : ${total} étoile${total > 1 ? 's' : ''} à gagner`
-					: `${n}/${total} en ${classe}`;
-			recL.innerHTML =
-				`⭐ <strong>${tous}</strong> étoile${tous > 1 ? 's' : ''} gagnée${tous > 1 ? 's' : ''}` +
-				`<span class="rec-sub">🎯 ${objectif}</span>`;
-		} else {
-			recL.innerHTML = `⭐ <strong>${n}/${total}</strong> leçon${n > 1 ? 's' : ''} réussie${n > 1 ? 's' : ''} sans faute`;
-		}
+		// Le TEXTE est décidé par `core/compteur-etoiles.ts`, pur et testé (#559) : il vivait
+		// ici, et deux défauts y étaient passés inaperçus faute de pouvoir être testés.
+		recL.innerHTML = compteurEtoilesHTML({
+			starsNiveau: starsEarned(), // étoiles du niveau actif
+			totalNiveau: lessonsNiveauActif().length, // catalogue du niveau actif
+			starsCumul: starsEarnedAll(), // cumul tous niveaux (ne baisse jamais)
+			labelClasse: LEVEL_LABEL[niveauActif()],
+		});
 	}
 	fillSprintRecord('recSprint');
 	fillRevisionRecord('recRevision');

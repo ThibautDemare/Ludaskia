@@ -40,6 +40,7 @@ import { etayageRedige, type LessonInput } from '../_shared';
 import type { PlaneShape } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
 import { choice, sample } from '../../core/utils';
+import { type SafeHtml } from '../../core/html';
 
 const NIVEAUX: SchoolLevel[] = ['cm1'];
 
@@ -227,7 +228,7 @@ function rotationFigure(shape: PlaneShape): number {
 	}
 }
 
-function figureSvg(shape: PlaneShape): string {
+function figureSvg(shape: PlaneShape): SafeHtml {
 	return renderFigure({
 		kind: 'figurePlane',
 		shape,

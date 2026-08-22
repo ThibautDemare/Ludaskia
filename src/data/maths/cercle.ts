@@ -26,6 +26,7 @@ import { calibrated } from '../../core/level-combinators';
 import { renderFigure } from '../../core/figures';
 import { checkNumeriqueOuTexte } from '../../core/check-helpers';
 import { rnd, choice, sample } from '../../core/utils';
+import { type SafeHtml } from '../../core/html';
 
 const MODES: ModeOption[] = [
 	{ ...MODE_QCM_POINT, hint: 'parmi 4' },
@@ -37,7 +38,7 @@ interface Fait {
 	answer: string;
 	unit: string; // ' cm' (calcul) ou '' (vocabulaire)
 	choices: string[]; // pour le QCM (mélangés)
-	figure: string;
+	figure: SafeHtml;
 }
 
 /* Choix numériques : la bonne réponse + 3 distracteurs distincts (> 0). */

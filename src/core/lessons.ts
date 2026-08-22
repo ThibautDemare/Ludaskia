@@ -26,6 +26,7 @@ import {
 } from './items';
 import type { Item, RenderContext } from './items';
 import type { SchoolLevel } from './catalog';
+import { html, joindre, VIDE, type SafeHtml } from './html';
 // Import « tardif » (utilisé seulement dans des corps de fonction) du pipeline
 // générique : dépendance circulaire build ↔ lessons sans effet de bord au chargement.
 import { buildLessonFiche, bilanBlocksForIds } from './build';
@@ -375,8 +376,8 @@ export const LESSONS = [
 					d.push([a, b]);
 				}
 			}
-			const lines = d
-				.map(([a, b]) => {
+			const lines = joindre(
+				d.map(([a, b]) => {
 					// Nom accessible de chaque case (#577) : cette leçon construit ses champs à la
 					// main, hors `renderItem`, donc elle n'a pas hérité du nom que celui-ci pose.
 					// Sans nom, un lecteur d'écran annonce SEPT « zone de saisie » par ligne, toutes
@@ -392,20 +393,20 @@ export const LESSONS = [
 					];
 					let etape = 0;
 					const free = () =>
-						`<input class="ans-free" inputmode="numeric" autocomplete="off" aria-label="${a} × ${b} — ${ETAPES[etape++]}">`;
+						html`<input class="ans-free" inputmode="numeric" autocomplete="off" aria-label="${`${a} × ${b} — ${ETAPES[etape++]}`}">`;
 					const finalId = nextInputId(ctx);
 					const item: Item = { text: `${a} × ${b} = @`, answer: a * b };
 					ctx.items[finalId] = item;
-					const finalField = `<input class="ans" id="${finalId}" data-answer="${a * b}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"${ariaChamp(item)}><span class="mark" data-for="${finalId}"></span>`;
-					return `<div class="op">${a} × ${b} = (${free()} × ${free()}) + (${free()} × ${free()}) = ${free()} + ${free()} = ${finalField}</div>`;
-				})
-				.join('');
+					const finalField = html`<input class="ans" id="${finalId}" data-answer="${a * b}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"${ariaChamp(item)}><span class="mark" data-for="${finalId}"></span>`;
+					return html`<div class="op">${a} × ${b} = (${free()} × ${free()}) + (${free()} × ${free()}) = ${free()} + ${free()} = ${finalField}</div>`;
+				}),
+			);
 			return ficheHTML(
 				this.num,
 				this.title,
 				this.sub,
 				this.consigne,
-				`<div class="deco">${lines}</div>`,
+				html`<div class="deco">${lines}</div>`,
 			);
 		},
 	},
@@ -574,20 +575,20 @@ export function bilanBlocks(nbQ: number) {
    construits par src/core/build.ts (bilanBlocksForIds / buildFichesForIds),
    qui aiguille math vs autres matières. */
 /* numero = libellé ; le bloc temps total est print-only */
-export function bilanHTML(numero: number) {
+export function bilanHTML(numero: number): SafeHtml {
 	// Un seul contexte pour tout le document : le compteur d'id est partagé entre les
 	// blocs (ids uniques dans la page) ; seule la leçon courante change bloc par bloc.
 	const ctx = createRenderContext();
 	const blocks = bilanBlocks(3);
-	const cells = blocks
-		.map((b) => {
+	const cells = joindre(
+		blocks.map((b) => {
 			const ops = withLessonId(ctx, b.id, () =>
-				b.ops.map((o) => `<div class="bop">${renderItem(o, ctx)}</div>`).join(''),
+				joindre(b.ops.map((o) => html`<div class="bop">${renderItem(o, ctx)}</div>`)),
 			);
-			return `<div class="bloc"><span class="blab">M${b.num}.</span> <span class="btheme">${b.theme}</span>${ops}</div>`;
-		})
-		.join('');
-	return `<div class="page">
+			return html`<div class="bloc"><span class="blab">M${b.num}.</span> <span class="btheme">${b.theme}</span>${ops}</div>`;
+		}),
+	);
+	return html`<div class="page">
     <p class="bilan-title">Bilan express ${numero} — toutes les leçons</p>
     <p class="bilan-sub">3 calculs par leçon · objectif : environ 15 minutes.
        <span class="print-only">Prénom : __________   Date : ________</span></p>
@@ -600,15 +601,14 @@ export function bilanHTML(numero: number) {
 /* Pagination « écran » d'un ensemble de fiches (3 par bloc), utilisée par le
    bilan personnalisé interactif. L'impression a sa propre pagination
    (fichesPagesForIds, 2 par A4). */
-export function fichesPagesHTML(fiches: string[]) {
+export function fichesPagesHTML(fiches: SafeHtml[]): SafeHtml {
 	const perPage = 3;
-	const pages = [];
+	const pages: SafeHtml[] = [];
 	for (let i = 0; i < fiches.length; i += perPage) {
-		pages.push(
-			`<div class="page">${fiches.slice(i, i + perPage).join('')}<p class="foot print-only">Ludaskia</p></div>`,
-		);
+		const bloc = joindre(fiches.slice(i, i + perPage));
+		pages.push(html`<div class="page">${bloc}<p class="foot print-only">Ludaskia</p></div>`);
 	}
-	return pages.join('');
+	return joindre(pages);
 }
 
 /* ============================================================
@@ -636,7 +636,7 @@ const LONG_FICHE_LESSONS = new Set(['math-decompo-60', 'math-decomposer-multipli
 /* Page de garde dynamique : titre du périmètre, nombre réel de fiches/leçons,
    consigne générique (« je prends le temps qu'il me faut »). Pas de « 15
    ateliers » ni « je calcule de tête » codés en dur. */
-export function coverHTML(scope: PrintScope): string {
+export function coverHTML(scope: PrintScope): SafeHtml {
 	const n = scope.lessonIds.length;
 	const sousTitre =
 		scope.kind === 'bilan'
@@ -644,11 +644,11 @@ export function coverHTML(scope: PrintScope): string {
 			: `Fiches d'entraînement · ${n} fiche${n > 1 ? 's' : ''}`;
 	const warn =
 		n >= PRINT_PAGES_WARN
-			? `<p class="cover-warn">Beaucoup de pages : tu peux aussi imprimer une catégorie à la fois.</p>`
-			: '';
-	return `<div class="page cover print-only">
+			? html`<p class="cover-warn">Beaucoup de pages : tu peux aussi imprimer une catégorie à la fois.</p>`
+			: VIDE;
+	return html`<div class="page cover print-only">
     <div class="big">Ludaskia</div>
-    <div class="tagline">${escapeHTML(scope.title)}</div>
+    <div class="tagline">${scope.title}</div>
     <div class="cover-sub">${sousTitre}</div>
     <div class="idbox"><div>Prénom : ______________________</div><div>Date : ______________________</div></div>
     <p class="consigne">Je prends le temps qu'il me faut. Si je bloque, je passe et j'y reviens à la fin. Bon travail !</p>
@@ -662,12 +662,13 @@ function fichesPagesForIds(
 	lessonIds: string[],
 	level: SchoolLevel | undefined,
 	ctx: RenderContext,
-): string {
-	const pages: string[] = [];
-	let cur: string[] = [];
+): SafeHtml {
+	const pages: SafeHtml[] = [];
+	let cur: SafeHtml[] = [];
 	const flush = () => {
 		if (cur.length) {
-			pages.push(`<div class="page">${cur.join('')}<p class="foot print-only">Ludaskia</p></div>`);
+			const corps = joindre(cur);
+			pages.push(html`<div class="page">${corps}<p class="foot print-only">Ludaskia</p></div>`);
 			cur = [];
 		}
 	};
@@ -675,34 +676,36 @@ function fichesPagesForIds(
 		const fiche = buildLessonFiche(id, level, ctx);
 		if (LONG_FICHE_LESSONS.has(id)) {
 			flush();
-			pages.push(`<div class="page">${fiche}<p class="foot print-only">Ludaskia</p></div>`);
+			pages.push(html`<div class="page">${fiche}<p class="foot print-only">Ludaskia</p></div>`);
 			continue;
 		}
 		cur.push(fiche);
 		if (cur.length >= 2) flush();
 	}
 	flush();
-	return pages.join('');
+	return joindre(pages);
 }
 
 /* Bilan imprimable multi-matières : nbQ questions par leçon, mise en page grille. */
-function bilanPrintHTML(scope: PrintScope, ctx: RenderContext): string {
+function bilanPrintHTML(scope: PrintScope, ctx: RenderContext): SafeHtml {
 	const nbQ = scope.nbQ ?? 3;
 	const blocks = bilanBlocksForIds(scope.lessonIds, nbQ, scope.level);
-	const cells = blocks
-		.map((b) => {
+	const cells = joindre(
+		blocks.map((b) => {
 			const ops = withLessonId(ctx, b.id, () =>
-				b.ops.map((o) => `<div class="bop">${renderItem(o, ctx)}</div>`).join(''),
+				joindre(b.ops.map((o) => html`<div class="bop">${renderItem(o, ctx)}</div>`)),
 			);
 			// Bloc de QCM imprimé (#289) : consigne d'action « Coche… » sous le thème (le
 			// bilan n'a pas de consigne par leçon, contrairement à la fiche).
 			const isQcm = b.ops.some(estItemQcm);
-			const action = isQcm ? `<span class="bloc-consigne">Coche la bonne réponse.</span>` : '';
-			return `<div class="bloc"><span class="btheme">${escapeHTML(b.theme)}</span>${action}${ops}</div>`;
-		})
-		.join('');
-	return `<div class="page">
-    <p class="bilan-title">${escapeHTML(scope.title)}</p>
+			const action = isQcm
+				? html`<span class="bloc-consigne">Coche la bonne réponse.</span>`
+				: VIDE;
+			return html`<div class="bloc"><span class="btheme">${b.theme}</span>${action}${ops}</div>`;
+		}),
+	);
+	return html`<div class="page">
+    <p class="bilan-title">${scope.title}</p>
     <p class="bilan-sub">${nbQ} question${nbQ > 1 ? 's' : ''} par leçon · ${blocks.length} leçon${blocks.length > 1 ? 's' : ''}
        <span class="print-only">Prénom : __________   Date : ________</span></p>
     <div class="bilan-grid">${cells}</div>
@@ -712,15 +715,15 @@ function bilanPrintHTML(scope: PrintScope, ctx: RenderContext): string {
 
 /* Page de garde du corrigé (#41) : sépare nettement les réponses (copie du parent)
    de la feuille de l'enfant. Pas de cartouche prénom/date. */
-function corrigeCoverHTML(scope: PrintScope): string {
+function corrigeCoverHTML(scope: PrintScope): SafeHtml {
 	const n = scope.lessonIds.length;
 	const sousTitre =
 		scope.kind === 'bilan'
 			? `Réponses du bilan · ${n} leçon${n > 1 ? 's' : ''}`
 			: `Réponses des fiches · ${n} fiche${n > 1 ? 's' : ''}`;
-	return `<div class="page cover cover-corrige print-only">
+	return html`<div class="page cover cover-corrige print-only">
     <div class="big">Corrigé</div>
-    <div class="tagline">${escapeHTML(scope.title)}</div>
+    <div class="tagline">${scope.title}</div>
     <div class="cover-sub">${sousTitre}</div>
     <p class="consigne">Les bonnes réponses sont indiquées. À garder par le parent pour la correction.</p>
   </div>`;
@@ -732,23 +735,23 @@ function corrigeCoverHTML(scope: PrintScope): string {
    Chaque corps est rendu dans un contexte d'impression FRAIS et local (#352,
    printMode #289 : QCM en cases à cocher, zone-réponse garantie, consignes-crayon) :
    aucun état de module n'est posé ni à retirer, donc l'écran n'en hérite jamais. */
-export function buildPrintableDOM(scope: PrintScope): string {
+export function buildPrintableDOM(scope: PrintScope): SafeHtml {
 	const single = scope.lessonIds.length === 1;
-	const cover = single ? '' : coverHTML(scope);
+	const cover = single ? VIDE : coverHTML(scope);
 	// Un corps (fiches ou bilan) dans son contexte d'impression : compteur d'id à 0,
 	// printMode actif, corrigeMode selon la passe. Les items sont régénérés à chaque appel.
-	const renderBody = (corrige: boolean): string => {
+	const renderBody = (corrige: boolean): SafeHtml => {
 		const ctx = createRenderContext({ printMode: true, corrigeMode: corrige });
 		return scope.kind === 'bilan'
 			? bilanPrintHTML(scope, ctx)
 			: fichesPagesForIds(scope.lessonIds, scope.level, ctx);
 	};
-	if (!scope.corrige) return cover + renderBody(false);
+	if (!scope.corrige) return html`${cover}${renderBody(false)}`;
 	// Corrigé (#41) : on rend le corps DEUX fois — feuille vierge puis réponses révélées —
 	// sur les MÊMES items. Le pipeline régénérant aléatoirement, on fixe une graine commune
 	// (withSeed) pour que le corrigé corresponde à la feuille.
 	const seed = randomSeed();
 	const blank = withSeed(seed, () => renderBody(false));
-	const corrige = withSeed(seed, () => corrigeCoverHTML(scope) + renderBody(true));
-	return cover + blank + corrige;
+	const corrige = withSeed(seed, () => html`${corrigeCoverHTML(scope)}${renderBody(true)}`);
+	return html`${cover}${blank}${corrige}`;
 }

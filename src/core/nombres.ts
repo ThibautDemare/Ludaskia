@@ -23,6 +23,8 @@
    `\u202F` (et U+00A0 par `\u00A0`).
    ============================================================ */
 
+import { brut, html, type SafeHtml } from './html';
+
 /** Espace fine insécable (U+202F) : séparateur de milliers français. Exporté
  *  pour les tests et pour neutraliser la saisie (un enfant peut taper le nombre
  *  groupé : « 1 002 050 »). */
@@ -81,13 +83,25 @@ export function saisieEstNombre(saisie: string): boolean {
    donc marqueur fiable et sans effet de bord ailleurs dans un énoncé. */
 const NOMBRE_GROUPE = /\d{1,3}(?:\u202F\d{3})+/g;
 
-/** Enveloppe les grands nombres groupés d'un texte DÉJÀ échappé dans un
+/** Enveloppe les grands nombres groupés d'un fragment dans un
  *  `<span class="bignum">` (rendu typographique unique : tabular-nums, nowrap,
  *  clamp — cf. lessons.scss). Les petits nombres (< 10 000, sans séparateur) sont
  *  laissés intacts. Appelé par core/items.ts → enonceTexte, donc partagé par tous
- *  les rendus (fiche, sprint, révision, impression). */
-export function wrapGrandsNombres(escaped: string): string {
-	return escaped.replace(NOMBRE_GROUPE, (m) => `<span class="bignum">${m}</span>`);
+ *  les rendus (fiche, sprint, révision, impression).
+ *
+ *  Prend et rend un `SafeHtml` (#614) : la fonction réinjecte du balisage AUTOUR
+ *  de son entrée, elle ne peut donc travailler que sur du contenu déjà échappé.
+ *  Avant, ce contrat vivait dans le NOM du paramètre (`escaped`) — rien n'empêchait
+ *  de lui passer du texte brut. C'est désormais une erreur de compilation. */
+export function wrapGrandsNombres(fragment: SafeHtml): SafeHtml {
+	// Le motif ne capture que des chiffres et l'espace fine U+202F : rien à échapper
+	// dans `m`, et le reste du fragment était déjà sûr en entrant.
+	return brut(
+		fragment.balisage.replace(
+			NOMBRE_GROUPE,
+			(m) => html`<span class="bignum">${m}</span>`.balisage,
+		),
+	);
 }
 
 /* Noms français des nombres pour la lecture verbale (#249 : numérateurs impropres > 9,

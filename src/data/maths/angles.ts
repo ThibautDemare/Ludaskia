@@ -45,6 +45,7 @@ import { renderFigure } from '../../core/figures';
 import type { AngleSpec } from '../../core/figures';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
+import { type SafeHtml, html } from '../../core/html';
 
 const MODES: ModeOption[] = [MODE_QCM_POINT];
 
@@ -92,7 +93,7 @@ function bissectrice(): number {
 	return rnd(0, 23) * 15;
 }
 
-function figureAngle(cat: Categorie): string {
+function figureAngle(cat: Categorie): SafeHtml {
 	return renderFigure({ kind: 'angle', opening: ouverture(cat), bisector: bissectrice() });
 }
 
@@ -103,7 +104,7 @@ const AIDE_NOMMER =
 	'<p class="angle-aide screen-only">plus petit que l\'angle droit → aigu · plus grand → obtus</p>';
 // Oui/Non « aigu » : aide RÉDUITE à UN seul terme (avis specialiste-troubles : ne
 // pas nommer « obtus » ici, la marche binaire ne porte qu'un mot neuf à la fois).
-const AIDE_AIGU = '<p class="angle-aide screen-only">aigu = plus petit que l\'angle droit</p>';
+const AIDE_AIGU = html`<p class="angle-aide screen-only">aigu = plus petit que l'angle droit</p>`;
 
 /* ---------- Familles Oui/Non « est-ce un angle droit ? » (estDroit / poserCarre /
    coinReel) : 50 % droit (sinon aigu ou obtus) pour ne pas récompenser un « Non »
@@ -149,7 +150,7 @@ function genAiguOuiNon(): { ex: Exercise; cat: Categorie } {
 			question: choice(ENONCES.aiguOuiNon),
 			answer: estAigu ? 'Oui' : 'Non',
 			choices: sample(['Oui', 'Non'], 2),
-			figure: figureAngle(cat) + AIDE_AIGU,
+			figure: html`${figureAngle(cat)}${AIDE_AIGU}`,
 			explication: estAigu
 				? "Oui : il est plus petit que l'angle droit, c'est un angle aigu."
 				: "Non : il n'est pas plus petit que l'angle droit.",
@@ -191,7 +192,7 @@ function genNommer(): { ex: Exercise; cat: Categorie } {
 			question: choice(ENONCES.nommer),
 			answer,
 			choices: sample(['Aigu', 'Droit', 'Obtus'], 3),
-			figure: figureAngle(cat) + AIDE_NOMMER,
+			figure: html`${figureAngle(cat)}${AIDE_NOMMER}`,
 			explication:
 				cat === 'aigu'
 					? "Plus petit que l'angle droit, c'est un angle aigu."

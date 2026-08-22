@@ -15,7 +15,7 @@
      .ans/.mark inchangé) ; la frappe au clavier physique reste possible.
    Le comportement (clic → remplissage) vit dans ui/pave-signes.ts.
    ============================================================ */
-import { escapeHTML } from './utils';
+import { html, joindre, type SafeHtml } from './html';
 import type { ChoiceView } from './exercise';
 
 /* Ordre d'affichage FIGÉ (« < = > ») : le même que les tuiles des leçons de
@@ -48,9 +48,7 @@ export function estSigneComparaison(answer: number | string): boolean {
    est porté par le bouton (aria-label via choiceButtonHTML / paveSignesHTML). */
 export function signeView(signe: SigneComparaison): ChoiceView {
 	return {
-		html:
-			`<span class="lqcm-sym-glyph" aria-hidden="true">${escapeHTML(signe)}</span>` +
-			`<span class="lqcm-sym-mot" aria-hidden="true">${escapeHTML(SIGNE_MOTS[signe])}</span>`,
+		html: html`<span class="lqcm-sym-glyph" aria-hidden="true">${signe}</span><span class="lqcm-sym-mot" aria-hidden="true">${SIGNE_MOTS[signe]}</span>`,
 		label: SIGNE_LABELS[signe],
 	};
 }
@@ -60,14 +58,12 @@ export function signeView(signe: SigneComparaison): ChoiceView {
    dédié ne le rend pas, mais le bouton 🖨 imprime l'écran courant tel quel).
    aria-pressed reflète le signe présent dans le champ (synchronisé par
    ui/pave-signes.ts, aussi quand on tape au clavier physique). */
-export function paveSignesHTML(forId: string): string {
-	const boutons = SIGNES_COMPARAISON.map((s) => {
-		const v = signeView(s);
-		return (
-			`<button type="button" class="pave-signe" data-for="${forId}" ` +
-			`data-signe="${escapeHTML(s)}" aria-pressed="false" aria-label="${escapeHTML(v.label)}">` +
-			`${v.html}</button>`
-		);
-	}).join('');
-	return `<span class="pave-signes screen-only" role="group" aria-label="Choisis le signe">${boutons}</span>`;
+export function paveSignesHTML(forId: string): SafeHtml {
+	const boutons = joindre(
+		SIGNES_COMPARAISON.map((s) => {
+			const v = signeView(s);
+			return html`<button type="button" class="pave-signe" data-for="${forId}" data-signe="${s}" aria-pressed="false" aria-label="${v.label}">${v.html}</button>`;
+		}),
+	);
+	return html`<span class="pave-signes screen-only" role="group" aria-label="Choisis le signe">${boutons}</span>`;
 }

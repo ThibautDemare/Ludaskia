@@ -35,6 +35,7 @@ import { checkAnswer } from '../../core/exercise';
 import { choice, escapeHTML, sample } from '../../core/utils';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
+import { html } from '../../core/html';
 
 /** Genre × nombre du participe. */
 export type Forme = 'ms' | 'fs' | 'mp' | 'fp';
@@ -170,7 +171,7 @@ export const forme = (v: VerbeEtre, f: Forme): string => v.base + v.terminaisons
    reste la forme nue (lecteur d'écran). */
 function vue(v: VerbeEtre, f: Forme): ChoiceView {
 	return {
-		html: `${escapeHTML(v.base)}<span class="term">${escapeHTML(v.terminaisons[f])}</span>`,
+		html: html`${v.base}<span class="term">${v.terminaisons[f]}</span>`,
 		label: forme(v, f),
 	};
 }

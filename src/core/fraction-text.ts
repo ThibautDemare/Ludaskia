@@ -8,7 +8,7 @@
    donnée garde la clé plate « num/den » (réponse + comparaison QCM) ; `mathInline`
    transforme cette clé EN AFFICHAGE empilé au moment du rendu.
    ============================================================ */
-import { escapeHTML } from './utils';
+import { brut, html, type SafeHtml } from './html';
 import { nombreEnMots } from './nombres';
 import type { ChoiceView } from './exercise';
 
@@ -45,23 +45,27 @@ export function nomFraction(num: number, den: number): string {
 
 /** Fraction empilée (barre horizontale) accessible : `role="img"` + `aria-label`
     verbal (« six huitièmes »), pour ne jamais faire lire « six slash huit ». */
-export function fractionInlineHTML(num: number, den: number): string {
-	return (
-		`<span class="frac" role="img" aria-label="${escapeHTML(nomFraction(num, den))}">` +
-		`<span class="frac-num">${num}</span><span class="frac-den">${den}</span></span>`
-	);
+export function fractionInlineHTML(num: number, den: number): SafeHtml {
+	return html`<span class="frac" role="img" aria-label="${nomFraction(num, den)}"><span class="frac-num">${num}</span><span class="frac-den">${den}</span></span>`;
 }
 
-/** Remplace les fractions « num/den » d'un texte DÉJÀ échappé par leur rendu empilé. */
-export function stackFractions(escaped: string): string {
-	return escaped.replace(/(\d+)\/(\d+)/g, (_m, n: string, d: string) =>
-		fractionInlineHTML(Number(n), Number(d)),
+/** Remplace les fractions « num/den » d'un fragment par leur rendu empilé.
+ *  Prend un `SafeHtml` (#614) : la fonction réinjecte du balisage au milieu de son
+ *  entrée, elle ne peut donc travailler que sur du contenu déjà échappé. */
+export function stackFractions(fragment: SafeHtml): SafeHtml {
+	// Les groupes capturés ne sont que des chiffres, et le reste du fragment était
+	// déjà sûr en entrant : rien à ré-échapper ici.
+	return brut(
+		fragment.balisage.replace(
+			/(\d+)\/(\d+)/g,
+			(_m, n: string, d: string) => fractionInlineHTML(Number(n), Number(d)).balisage,
+		),
 	);
 }
 
 /** Échappe un texte puis empile ses fractions (énoncés libres de QCM/fiche). */
-export function mathInline(text: string): string {
-	return stackFractions(escapeHTML(text));
+export function mathInline(text: string): SafeHtml {
+	return stackFractions(html`${text}`);
 }
 
 /** Vues riches de choix de QCM faits de notations « num/den » : chaque choix devient

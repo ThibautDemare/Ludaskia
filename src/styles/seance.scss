@@ -172,10 +172,19 @@
 }
 .programme-recap-item {
 	display: flex;
-	align-items: center;
+	/* `flex-start` et non `center` (#537) : la ligne peut désormais nommer les notions
+	   travaillées et passer sur deux lignes ; une coche centrée verticalement sur ce bloc
+	   paraîtrait décrochée du texte qu'elle valide. */
+	align-items: flex-start;
 	gap: 10px;
 	font-size: 16px;
 	color: var(--ink);
+}
+/* Notions travaillées par l'étape (#537) : DANS la même phrase, à la même taille, juste
+   nuancée en gris. Ni saut de taille de police ni ligne dédiée — ce serait exactement la
+   recette « libellé + méta » des relevés de l'espace encadrant. */
+.programme-recap-notions {
+	color: var(--grey);
 }
 .programme-recap-ico {
 	flex-shrink: 0;

@@ -587,6 +587,24 @@ html.anim-reduced .mark.correct {
 	color: #1b5e20;
 	width: 100%;
 }
+/* Récap éphémère de fin de séance (#537) : ce que l'enfant vient de travailler, NOMMÉ.
+   Volontairement en prose — pas de puce, pas d'icône, pas d'encadré : c'est la structure
+   en carte ou en ligne (bordure + libellé + méta) qui fait « relevé pour les parents »,
+   registre dont ce récap doit rester distinct. La couleur reste celle des lignes
+   d'accompagnement de ce bandeau (`--grey`, déjà tenue sur les six thèmes) ; seule la
+   graisse lui donne une présence propre, sans emprunter le vert ni l'orange réservés aux
+   récompenses. `text-wrap: balance` évite la dernière ligne orpheline sur une phrase de
+   trois ou quatre lignes (amélioration progressive, aucun repli nécessaire). */
+.rb-recap {
+	font-family: var(--ui);
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--grey);
+	width: 100%;
+	margin: 2px 0 0;
+	text-wrap: balance;
+	overflow-wrap: anywhere;
+}
 .rb-warn {
 	font-family: var(--ui);
 	font-size: 13.5px;

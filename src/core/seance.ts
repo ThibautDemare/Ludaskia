@@ -430,6 +430,12 @@ export interface VueEtape {
 	fait: number;
 	reste: number;
 	epuise: boolean;
+	/** Cibles RÉELLEMENT travaillées aujourd'hui pour cette étape (#537), dans l'ordre des
+	    complétions : la leçon tirée par « Leçon du jour », l'épinglée sortie d'un pool, la
+	    dictée piochée. Vide pour une étape dont la complétion ne désigne aucune cible
+	    (sprint, révision espacée), ou pas encore faite. Alimente le récap du programme du
+	    jour, qui nomme ainsi ce que le titre de la tuile laissait générique. */
+	refs: string[];
 }
 export interface VueSeance {
 	def: SeanceDef;
@@ -467,7 +473,8 @@ export function vueSeanceDuJour(
 		const fait = jour.faits[etape.id] ?? 0;
 		const requis = requisJour(etape, jour, ctx);
 		const reste = Math.max(0, requis - fait);
-		return { etape, requis, fait, reste, epuise: reste === 0 };
+		const refs = jour.completions.filter((c) => c.etapeId === etape.id && c.ref).map((c) => c.ref!);
+		return { etape, requis, fait, reste, epuise: reste === 0, refs };
 	});
 	const restantes = etapes.filter((v) => v.reste > 0);
 	return {

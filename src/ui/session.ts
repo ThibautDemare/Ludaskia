@@ -17,6 +17,7 @@ import { saisieEstNombre } from '../core/nombres';
 import { stopChrono } from './chrono';
 import { finishResume } from './resume';
 import { announceRewards } from './effects';
+import { recapHTML, notionsDepuisPerLesson } from './recap-seance';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
 	getCurrentMode,
@@ -264,6 +265,15 @@ export function verify() {
 			html += `<div class="rb-goal">🎯 Objectif du jour réussi : ${goalRes.goal.label}</div>`;
 		else if (!goalRes.goal.done)
 			html += `<div class="rb-goal">🎯 Objectif du jour : ${goalRes.goal.label} (${goalRes.goal.progress}/${goalRes.goal.target})</div>`;
+	}
+	// Récap éphémère de fin de séance (#537) : un bilan a traversé PLUSIEURS leçons, et
+	// l'enfant n'en repart qu'avec un pourcentage. On nomme donc ce qu'il vient de
+	// travailler, sous les récompenses (critère 7) et au-dessus des actions. Réservé aux
+	// bilans : une leçon seule nomme déjà la notion que l'enfant a sous les yeux, et
+	// l'étoile est son retour (critère 10). Construit depuis `perLesson`, en mémoire —
+	// aucune lecture de stockage.
+	if (currentMode === 'express' || currentMode === 'complet') {
+		html += recapHTML(notionsDepuisPerLesson(perLesson), 'rb-recap');
 	}
 	if (lastErrors.length) {
 		html += `<button class="rb-redo" id="btnRedo">↻ Réviser mes erreurs (${lastErrors.length})</button>`;

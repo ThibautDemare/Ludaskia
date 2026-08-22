@@ -57,6 +57,9 @@ de conception initial est `docs/design-multi-subject.md`.
   famille), catalogue, progression, révision, gamification, encadrant.
 - [Rendu & interactions (`src/ui/`)](architecture/ui.md) — modules `ui/`, runners
   d'exercice, thèmes d'affichage, **Accessibilité (#42)**.
+- [Rendu & échappement HTML (#614)](architecture/rendu-et-echappement.md) — le
+  gabarit `html`, le type `SafeHtml`, l'échappement **par position d'insertion**, la
+  règle ESLint sur `.innerHTML`, et la limite assumée du moteur de figures SVG.
 
 ### Fonctionnement
 

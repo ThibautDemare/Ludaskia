@@ -16,6 +16,7 @@ import { mathInline } from '../src/core/fraction-text';
 import { choiceButtonHTML, createRenderContext, renderItem } from '../src/core/items';
 import type { Item } from '../src/core/items';
 import { genLessonItem, getLessonById, getLessonsByCategory } from '../src/core/catalog';
+import { brut } from '../src/core/html';
 
 const TIRAGES = 400;
 // Plus grand échantillon pour les invariants statistiques par niveau (#287).
@@ -46,16 +47,16 @@ describe('mathInline — affichage empilé (barre horizontale, #200)', () => {
 	it("rend la fraction empilée avec un aria-label verbal, pas l'oblique", () => {
 		const html = mathInline('Combien font 6/8 + 1/8 ?');
 		// La barre horizontale est rendue (num/den dans des span séparés), pas « 6/8 » brut.
-		expect(html).not.toContain('6/8');
-		expect(html).toContain('frac-num');
-		expect(html).toContain('frac-den');
+		expect(html.balisage).not.toContain('6/8');
+		expect(html.balisage).toContain('frac-num');
+		expect(html.balisage).toContain('frac-den');
 		// aria-label verbal pour le lecteur d'écran (jamais « six slash huit »).
-		expect(html).toContain('aria-label="six huitièmes"');
-		expect(html).toContain('aria-label="un huitième"');
+		expect(html.balisage).toContain('aria-label="six huitièmes"');
+		expect(html.balisage).toContain('aria-label="un huitième"');
 	});
 
 	it('laisse intact un texte sans fraction (échappement seul)', () => {
-		expect(mathInline('a < b')).toBe('a &lt; b');
+		expect(mathInline('a < b').balisage).toBe('a &lt; b');
 	});
 });
 
@@ -74,7 +75,7 @@ describe('choicesView — choix QCM riches (#200)', () => {
 				ex.choices.forEach((c, i) => {
 					const v = ex.choicesView![i];
 					const [n, d] = parse(c);
-					expect(v.html).toContain('frac-num'); // fraction empilée, pas « n/d »
+					expect(v.html.balisage).toContain('frac-num'); // fraction empilée, pas « n/d »
 					expect(v.label).toBe(nomFraction(n, d)); // libellé parlé aligné sur la valeur
 				});
 			}
@@ -91,16 +92,16 @@ describe('choicesView — choix QCM riches (#200)', () => {
 	it('choiceButtonHTML : valeur échappée par défaut, html + aria-label si vue', () => {
 		// Sans vue : la valeur est échappée (sécurité), pas de aria-label.
 		const plain = choiceButtonHTML('a < b', 0);
-		expect(plain).toContain('data-i="0"');
-		expect(plain).toContain('a &lt; b');
-		expect(plain).not.toContain('aria-label');
+		expect(plain.balisage).toContain('data-i="0"');
+		expect(plain.balisage).toContain('a &lt; b');
+		expect(plain.balisage).not.toContain('aria-label');
 		// Avec vue : html de confiance rendu tel quel + libellé parlé en aria-label.
 		const rich = choiceButtonHTML('3/4', 1, {
-			html: '<span class="frac">x</span>',
+			html: brut('<span class="frac">x</span>'),
 			label: 'trois quarts',
 		});
-		expect(rich).toContain('aria-label="trois quarts"');
-		expect(rich).toContain('<span class="frac">x</span>');
+		expect(rich.balisage).toContain('aria-label="trois quarts"');
+		expect(rich.balisage).toContain('<span class="frac">x</span>');
 	});
 });
 
@@ -152,7 +153,7 @@ describe('leçon « Lire une fraction » (sens)', () => {
 			expect(ex.choices).toHaveLength(4);
 			expect(new Set(ex.choices).size).toBe(4); // choix distincts
 			expect(ex.choices).toContain(ex.answer);
-			expect(ex.figure).toBeTruthy();
+			expect(ex.figure?.balisage).toBeTruthy();
 			const [n, d] = parse(ex.answer);
 			expect(n).toBeGreaterThanOrEqual(1);
 			expect(n).toBeLessThan(d); // fraction strictement < 1
@@ -169,7 +170,7 @@ describe("leçon « Fraction d'une collection » (saisie numérique)", () => {
 			expect(ex.type).toBe('text');
 			if (ex.type !== 'text') continue;
 			expect(ex.question).toContain('@');
-			expect(ex.figure).toBeTruthy();
+			expect(ex.figure?.balisage).toBeTruthy();
 			const res = Number(ex.answer);
 			expect(Number.isInteger(res)).toBe(true);
 			expect(res).toBeGreaterThan(0);
@@ -187,7 +188,7 @@ describe('leçon « Fraction sur une bande »', () => {
 			expect(ex.choices).toHaveLength(4);
 			expect(new Set(ex.choices).size).toBe(4); // choix distincts
 			expect(ex.choices).toContain(ex.answer);
-			expect(ex.figure).toBeTruthy();
+			expect(ex.figure?.balisage).toBeTruthy();
 			const [n, d] = parse(ex.answer);
 			expect(n).toBeLessThan(d);
 			// CE2 : {2,3,4,6,8} + 5 (#287) ; le 5 a été ajouté à la plage par défaut.
@@ -202,7 +203,7 @@ describe('leçon « Fractions égales » (oui/non)', () => {
 			if (ex.type !== 'qcm') continue;
 			expect(ex.choices).toHaveLength(2);
 			expect(ex.choices).toContain(ex.answer);
-			expect(ex.figure).toBeTruthy();
+			expect(ex.figure?.balisage).toBeTruthy();
 			expect(['Oui, elles sont égales', 'Non, elles sont différentes']).toContain(ex.answer);
 		}
 	});
@@ -214,7 +215,7 @@ describe('leçon « Comparer des fractions »', () => {
 			if (ex.type !== 'qcm') continue;
 			expect(ex.choices).toHaveLength(2);
 			expect(ex.choices).toContain(ex.answer);
-			expect(ex.figure).toBeTruthy();
+			expect(ex.figure?.balisage).toBeTruthy();
 			const [a, b] = ex.choices.map(parse);
 			const va = a[0] / a[1];
 			const vb = b[0] / b[1];
@@ -236,7 +237,7 @@ describe('leçon « Additionner des fractions » (même dénominateur)', () => {
 			expect(ex.choices).toHaveLength(4);
 			expect(new Set(ex.choices).size).toBe(4); // choix distincts
 			expect(ex.choices).toContain(ex.answer);
-			expect(ex.figure).toBeTruthy();
+			expect(ex.figure?.balisage).toBeTruthy();
 			// L'énoncé est « a/d + b/d ? » ; on revérifie la somme.
 			const termes = ex.question.match(/(\d+)\/(\d+)/g)!.map(parse);
 			expect(termes).toHaveLength(2);
@@ -260,10 +261,10 @@ describe('intégration catalogue', () => {
 
 	it('genLessonItem porte la figure (QCM) et le bon kind (collection numérique)', () => {
 		const sens = genLessonItem(getLessonById('num-frac-sens')!);
-		expect(sens.figure).toBeTruthy();
+		expect(sens.figure?.balisage).toBeTruthy();
 		const coll = genLessonItem(getLessonById('num-frac-collection')!);
 		expect(coll.kind).toBe('num');
-		expect(coll.figure).toBeTruthy();
+		expect(coll.figure?.balisage).toBeTruthy();
 	});
 });
 
@@ -438,7 +439,7 @@ describe('leçon « Une fraction plus grande que 1 » (impropre, QCM)', () => {
 			expect(new Set(ex.choices).size).toBe(4); // choix distincts
 			expect(ex.choices).toContain(ex.answer);
 			expect(ex.choicesView).toHaveLength(4); // fractions empilées
-			expect(ex.figure).toBeTruthy();
+			expect(ex.figure?.balisage).toBeTruthy();
 			const [n, d] = parse(ex.answer);
 			expect([2, 3, 4, 5, 6, 8]).toContain(d);
 			expect(n).toBeGreaterThan(d); // strictement impropre (> 1)
@@ -471,8 +472,8 @@ describe('leçon « Je décompose une fraction » (saisie, un terme troué)', ()
 			expect(l.exerciseType.check(ex, String(attendue))).toBe(true);
 			expect(l.exerciseType.check(ex, String(attendue + 1))).toBe(false);
 			// Appui visuel seulement dans le plafond lisible (≤ 2 unités entières).
-			if (entier <= 2) expect(ex.figure).toBeTruthy();
-			else expect(ex.figure).toBeFalsy();
+			if (entier <= 2) expect(ex.figure?.balisage).toBeTruthy();
+			else expect(ex.figure?.balisage).toBeFalsy();
 		}
 	});
 
@@ -481,23 +482,23 @@ describe('leçon « Je décompose une fraction » (saisie, un terme troué)', ()
 		// le numérateur (réponse = un chiffre), pas « @/5 » en ligne.
 		const item: Item = { text: '27/5 = 5 + @/5', answer: '2', kind: 'num' };
 		const ecran = renderItem(item, createRenderContext());
-		expect(ecran).toContain('frac-num-input');
-		expect(ecran).not.toContain('@/5');
+		expect(ecran.balisage).toContain('frac-num-input');
+		expect(ecran.balisage).not.toContain('@/5');
 		const impr = renderItem(item, createRenderContext({ printMode: true }));
-		expect(impr).toContain('cloze-box');
-		expect(impr).not.toContain('frac-num-input'); // pas de champ à l'impression
-		expect(impr).not.toContain('@/5');
+		expect(impr.balisage).toContain('cloze-box');
+		expect(impr.balisage).not.toContain('frac-num-input'); // pas de champ à l'impression
+		expect(impr.balisage).not.toContain('@/5');
 		const corrige = renderItem(item, createRenderContext({ printMode: true, corrigeMode: true }));
-		expect(corrige).toContain('ans-corrige');
-		expect(corrige).not.toContain('cloze-box');
+		expect(corrige.balisage).toContain('ans-corrige');
+		expect(corrige.balisage).not.toContain('cloze-box');
 	});
 
 	it('trou sur l’entier : champ générique noté (le trou n’est PAS dans un numérateur)', () => {
 		const item: Item = { text: '27/5 = @ + 2/5', answer: '5', kind: 'num' };
 		const ecran = renderItem(item, createRenderContext());
-		expect(ecran).toContain('class="ans'); // champ générique noté
-		expect(ecran).not.toContain('frac-num-input'); // le trou n'est pas au numérateur
-		expect(ecran).not.toContain('@'); // le @ a bien été remplacé par le champ
+		expect(ecran.balisage).toContain('class="ans'); // champ générique noté
+		expect(ecran.balisage).not.toContain('frac-num-input'); // le trou n'est pas au numérateur
+		expect(ecran.balisage).not.toContain('@'); // le @ a bien été remplacé par le champ
 	});
 });
 
@@ -526,7 +527,7 @@ describe('leçon « Encadrer une fraction » (QCM, demi-droite)', () => {
 			expect(new Set(ex.choices).size).toBe(4); // choix distincts
 			expect(ex.choices).toContain(ex.answer);
 			expect(ex.choicesView).toBeUndefined(); // choix texte « entre X et Y »
-			expect(ex.figure).toBeTruthy();
+			expect(ex.figure?.balisage).toBeTruthy();
 			const [num, den] = parse(ex.question.match(/(\d+)\/(\d+)/)![0]);
 			expect(num).toBeGreaterThan(den); // impropre (> 1)
 			expect(num).toBeLessThan(3 * den); // dans (1,3) → demi-droite 0→3

@@ -19,6 +19,7 @@ import {
 } from '../src/core/nombres';
 import { getLessonById, genLessonItem } from '../src/core/catalog';
 import { checkItemAnswer, renderItem, createRenderContext } from '../src/core/items';
+import { brut } from '../src/core/html';
 
 /* Espaces de référence, désignés par leur point de code pour ne JAMAIS écrire de
    caractère invisible dans ce source (fragile à l'édition / au lint). */
@@ -55,13 +56,15 @@ describe('formatNombre / nettoyerSaisieNombre (#240)', () => {
 	});
 
 	it('wrapGrandsNombres enveloppe seulement les nombres groupés (≥ 10 000)', () => {
-		const html = wrapGrandsNombres(`Compare : ${formatNombre(1234567)} @ 999`);
-		expect(html).toContain('<span class="bignum">1');
+		const rendu = wrapGrandsNombres(brut(`Compare : ${formatNombre(1234567)} @ 999`)).balisage;
+		expect(rendu).toContain('<span class="bignum">1');
 		// Le petit nombre 999 reste hors .bignum.
-		expect(html).toContain('@ 999');
-		expect(wrapGrandsNombres('chiffre des unités de 305')).toBe('chiffre des unités de 305');
+		expect(rendu).toContain('@ 999');
+		expect(wrapGrandsNombres(brut('chiffre des unités de 305')).balisage).toBe(
+			'chiffre des unités de 305',
+		);
 		// Un nombre à 4 chiffres (plage CE2) n'est pas groupé → pas enveloppé.
-		expect(wrapGrandsNombres(`situe ${formatNombre(1234)}`)).toBe('situe 1234');
+		expect(wrapGrandsNombres(brut(`situe ${formatNombre(1234)}`)).balisage).toBe('situe 1234');
 	});
 });
 
@@ -316,12 +319,18 @@ describe('Ajustements numération (suite des retours mainteneur)', () => {
 	// Champ de saisie élargi (.ans-grand) pour une réponse numérique à ≥ 5 chiffres.
 	it('renderItem : un grand nombre (≥ 10 000) reçoit la classe ans-grand, pas un petit', () => {
 		const c = () => createRenderContext();
-		expect(renderItem({ text: 'x = @', answer: 1_400_000, kind: 'num' }, c())).toContain(
+		expect(renderItem({ text: 'x = @', answer: 1_400_000, kind: 'num' }, c()).balisage).toContain(
 			'ans-grand',
 		);
-		expect(renderItem({ text: 'x = @', answer: 90_000, kind: 'num' }, c())).toContain('ans-grand');
-		expect(renderItem({ text: 'x = @', answer: 7, kind: 'num' }, c())).not.toContain('ans-grand');
-		expect(renderItem({ text: 'x = @', answer: 999, kind: 'num' }, c())).not.toContain('ans-grand');
+		expect(renderItem({ text: 'x = @', answer: 90_000, kind: 'num' }, c()).balisage).toContain(
+			'ans-grand',
+		);
+		expect(renderItem({ text: 'x = @', answer: 7, kind: 'num' }, c()).balisage).not.toContain(
+			'ans-grand',
+		);
+		expect(renderItem({ text: 'x = @', answer: 999, kind: 'num' }, c()).balisage).not.toContain(
+			'ans-grand',
+		);
 	});
 });
 

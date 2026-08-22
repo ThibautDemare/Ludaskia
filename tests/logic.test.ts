@@ -273,6 +273,7 @@ import {
 	type ResumeGrille,
 } from '../src/core/resume';
 import { loadBilans, saveBilan } from '../src/core/bilans';
+import { brut } from '../src/core/html';
 
 // API agrégée (parité avec l'ancien globalThis.__api), pour conserver le style `api.x`.
 const api = {
@@ -543,9 +544,9 @@ describe('Items', () => {
 	});
 	test('renderItem remplace @ par un champ', () => {
 		const h = api.renderItem(api.add(2, 3), api.createRenderContext());
-		expect(h.includes('@')).toBe(false);
-		expect(/class="ans /.test(h)).toBe(true);
-		expect(/data-answer="5"/.test(h)).toBe(true);
+		expect(h.balisage.includes('@')).toBe(false);
+		expect(/class="ans /.test(h.balisage)).toBe(true);
+		expect(/data-answer="5"/.test(h.balisage)).toBe(true);
 	});
 	test('renderItem : anti-suggestion sur le texte uniquement (issue #67)', () => {
 		// Réponse texte : déguisée en mot de passe pour bloquer les suggestions du clavier.
@@ -553,11 +554,11 @@ describe('Items', () => {
 			{ text: 'x = @', answer: 'mangé', kind: 'text' },
 			api.createRenderContext(),
 		);
-		expect(/type="password"/.test(txt)).toBe(true);
+		expect(/type="password"/.test(txt.balisage)).toBe(true);
 		// Calcul : saisie numérique inchangée (pas de type password).
 		const num = api.renderItem(api.add(2, 3), api.createRenderContext());
-		expect(/type="password"/.test(num)).toBe(false);
-		expect(/inputmode="numeric"/.test(num)).toBe(true);
+		expect(/type="password"/.test(num.balisage)).toBe(false);
+		expect(/inputmode="numeric"/.test(num.balisage)).toBe(true);
 	});
 });
 
@@ -568,7 +569,7 @@ describe('RenderContext (#352)', () => {
 		// porter le même id="aN" et verify() (lookup sessionItems[inp.id]) confondrait leurs
 		// réponses — c'est l'invariant central que garantit le contexte partagé (#352).
 		const html = api.bilanHTML(1);
-		const ids = [...html.matchAll(/id="(a\d+)"/g)].map((m) => m[1]);
+		const ids = [...html.balisage.matchAll(/id="(a\d+)"/g)].map((m) => m[1]);
 		expect(ids.length).toBeGreaterThan(15); // 15 leçons × 3 questions : vrai multi-bloc
 		expect(new Set(ids).size).toBe(ids.length); // aucun id en double
 	});
@@ -579,8 +580,8 @@ describe('RenderContext (#352)', () => {
 		const b = api.renderItem(item, api.createRenderContext());
 		// Chaque contexte a son propre compteur : le premier champ de chacun est « a0 »
 		// (aucune fuite d'état d'un rendu à l'autre — le point de #352).
-		expect(a).toContain('id="a0"');
-		expect(b).toContain('id="a0"');
+		expect(a.balisage).toContain('id="a0"');
+		expect(b.balisage).toContain('id="a0"');
 	});
 });
 
@@ -588,13 +589,20 @@ describe('Leçons & bilans', () => {
 	test('buildFiches produit 15 fiches couvrant les 15 leçons', () => {
 		const html = api.buildFiches();
 		expect(html.length).toBe(15);
-		const seen = new Set([...html.join('').matchAll(/data-lesson="([^"]+)"/g)].map((m) => m[1]));
+		const seen = new Set(
+			[
+				...html
+					.map((f) => f.balisage)
+					.join('')
+					.matchAll(/data-lesson="([^"]+)"/g),
+			].map((m) => m[1]),
+		);
 		expect(seen.size).toBe(15);
 	});
 	test('bilan express : 45 champs tagués (3 par leçon)', () => {
 		const h = api.bilanHTML(1);
-		expect([...h.matchAll(/data-lesson=/g)].length).toBe(45);
-		expect([...h.matchAll(/data-lesson="math-tables-multiplication"/g)].length).toBe(3);
+		expect([...h.balisage.matchAll(/data-lesson=/g)].length).toBe(45);
+		expect([...h.balisage.matchAll(/data-lesson="math-tables-multiplication"/g)].length).toBe(3);
 	});
 	test('bilanQ renvoie un item valide pour chaque leçon', () => {
 		// 1–15 = CE2, 16–17 = CM1 (#241).
@@ -767,8 +775,8 @@ describe('Calcul mental : variété des plages (#287)', () => {
 		]) {
 			expect(() => buildLessonFiche(id)).not.toThrow();
 			const html = buildLessonFiche(id);
-			expect(html).toContain('<input'); // au moins un champ de réponse
-			expect(html).not.toContain('@'); // le `@` est remplacé par le champ
+			expect(html.balisage).toContain('<input'); // au moins un champ de réponse
+			expect(html.balisage).not.toContain('@'); // le `@` est remplacé par le champ
 		}
 	});
 
@@ -778,7 +786,7 @@ describe('Calcul mental : variété des plages (#287)', () => {
 		// complément à 1000 sur une centaine ronde : « 300 = </span> » suivi du total).
 		let vu1000 = false;
 		for (let i = 0; i < 200 && !vu1000; i++) {
-			if (/= 1000\b/.test(buildLessonFiche('math-complements'))) vu1000 = true;
+			if (/= 1000\b/.test(buildLessonFiche('math-complements').balisage)) vu1000 = true;
 		}
 		expect(vu1000).toBe(true);
 	});
@@ -885,14 +893,14 @@ describe('Calcul mental CM1 (#241)', () => {
 		for (const id of ['math-multiples-50', 'math-diviser-10-100']) {
 			expect(() => buildLessonFiche(id)).not.toThrow();
 			const html = buildLessonFiche(id);
-			expect(html).toContain('<input'); // au moins un champ de réponse
-			expect(html).not.toContain('@'); // le `@` est remplacé par le champ
+			expect(html.balisage).toContain('<input'); // au moins un champ de réponse
+			expect(html.balisage).not.toContain('@'); // le `@` est remplacé par le champ
 		}
 		// La fiche ÷10/÷100, régénérée plusieurs fois, ne produit jamais une réponse
 		// décimale (data-answer entier) — l'invariant « quotient entier » tient au rendu.
 		for (let i = 0; i < 100; i++) {
 			const html = buildLessonFiche('math-diviser-10-100');
-			for (const m of html.matchAll(/data-answer="([^"]+)"/g)) {
+			for (const m of html.balisage.matchAll(/data-answer="([^"]+)"/g)) {
 				expect(m[1]).toMatch(/^\d+$/); // entier seul, ni « . » ni « , »
 			}
 		}
@@ -1185,10 +1193,10 @@ describe('Grandeurs et mesures : conversions (#89)', () => {
 	});
 	test('buildLessonFiche : rendu fiche/écran avec champs de saisie (chemin math moderne)', () => {
 		const html = buildLessonFiche('mes-longueurs');
-		expect(html).toContain('Je convertis les longueurs'); // titre
-		expect(html).toContain('Complète : écris le bon nombre.'); // consigne d'action (#265)
-		expect(html).toContain('<input'); // au moins un champ de réponse
-		expect(html).not.toContain('@'); // le `@` a bien été remplacé par le champ
+		expect(html.balisage).toContain('Je convertis les longueurs'); // titre
+		expect(html.balisage).toContain('Complète : écris le bon nombre.'); // consigne d'action (#265)
+		expect(html.balisage).toContain('<input'); // au moins un champ de réponse
+		expect(html.balisage).not.toContain('@'); // le `@` a bien été remplacé par le champ
 	});
 });
 
@@ -1262,13 +1270,13 @@ describe('Moteur de figures SVG (#88)', () => {
 		expect(renderHorloge(3, 30)).toContain(`x2="${x3h}"`);
 	});
 	test('renderFigure dispatch : horloge', () => {
-		expect(renderFigure({ kind: 'horloge', heures: 6, minutes: 45 })).toContain('<svg');
+		expect(renderFigure({ kind: 'horloge', heures: 6, minutes: 45 }).balisage).toContain('<svg');
 	});
 	test('figureBlock : enveloppe seulement si figure présente (SVG non échappé)', () => {
-		expect(figureBlock(undefined)).toBe('');
-		const b = figureBlock('<svg id="x"></svg>');
-		expect(b).toContain('class="figure"');
-		expect(b).toContain('<svg id="x">'); // pas d'échappement du balisage
+		expect(figureBlock(undefined).balisage).toBe('');
+		const b = figureBlock(brut('<svg id="x"></svg>'));
+		expect(b.balisage).toContain('class="figure"');
+		expect(b.balisage).toContain('<svg id="x">'); // pas d'échappement du balisage
 	});
 });
 
@@ -1286,7 +1294,7 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 			const it = genLessonItem(l);
 			expect(it.kind).toBe('heure'); // saisie en 2 champs [heures] h [minutes]
 			expect(it.text).toContain('@');
-			expect(it.figure).toContain('<svg'); // l'horloge accompagne la question
+			expect(it.figure?.balisage).toContain('<svg'); // l'horloge accompagne la question
 			expect(it._lesson).toBe('mes-lecture-heure');
 			expect(checkItemAnswer(it, String(it.answer))).toBe(true); // forme canonique
 			for (const v of it.answers ?? []) expect(checkItemAnswer(it, v)).toBe(true); // variantes
@@ -1296,11 +1304,11 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 	test('renderItem : un item « heure » produit 2 champs et un « h » en dur', () => {
 		const it = genLessonItem(lesson());
 		const html = renderItem(it, createRenderContext());
-		expect(html).toContain('class="ans heure-h '); // champ des heures (noté)
-		expect(html).toContain('heure-min'); // champ des minutes
-		expect(html).toContain('data-min-field='); // lien heures → minutes (fusion à la correction)
-		expect(html).toContain('>h<'); // séparateur « h » affiché en dur
-		expect((html.match(/<input/g) ?? []).length).toBe(2); // exactement 2 champs
+		expect(html.balisage).toContain('class="ans heure-h '); // champ des heures (noté)
+		expect(html.balisage).toContain('heure-min'); // champ des minutes
+		expect(html.balisage).toContain('data-min-field='); // lien heures → minutes (fusion à la correction)
+		expect(html.balisage).toContain('>h<'); // séparateur « h » affiché en dur
+		expect((html.balisage.match(/<input/g) ?? []).length).toBe(2); // exactement 2 champs
 	});
 	test('format canonique « H h MM » : heures 1–12, minutes multiples de 5, jamais 12 h 00', () => {
 		const type = lesson().exerciseType;
@@ -1325,7 +1333,7 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 			expect(ex.choices.length).toBe(4);
 			expect(new Set(ex.choices).size).toBe(4); // toutes distinctes
 			expect(ex.choices).toContain(ex.answer);
-			expect(ex.figure).toContain('<svg');
+			expect(ex.figure?.balisage).toContain('<svg');
 			for (const c of ex.choices) expect(c).toMatch(/^\d{1,2} h \d{2}$/); // même format
 		}
 	});
@@ -1381,10 +1389,14 @@ describe("Grandeurs et mesures : lire l'heure (#88)", () => {
 	});
 	test('buildLessonFiche : fiche imprimable avec horloge SVG et champ de saisie', () => {
 		const html = buildLessonFiche('mes-lecture-heure');
-		expect(html).toContain("Je lis l'heure"); // titre
-		expect(html).toContain('<svg'); // l'horloge s'affiche sur la fiche
-		expect(html).toContain('<input'); // champ de réponse
-		expect(html).not.toContain('@'); // le `@` est remplacé par le champ
+		// Le titre est désormais échappé dans le balisage (`l&#39;heure`, #614) : on lit
+		// donc le TEXTE RENDU, qui est ce que l'enfant voit — et qui, lui, n'a pas bougé.
+		const hote = document.createElement('div');
+		hote.innerHTML = html.balisage;
+		expect(hote.querySelector('.fiche-title')!.textContent).toContain("Je lis l'heure");
+		expect(html.balisage).toContain('<svg'); // l'horloge s'affiche sur la fiche
+		expect(html.balisage).toContain('<input'); // champ de réponse
+		expect(html.balisage).not.toContain('@'); // le `@` est remplacé par le champ
 	});
 });
 
@@ -1449,11 +1461,11 @@ describe('Moteur de figures : polygone coté & quadrillage (#99)', () => {
 					[0, 4],
 				],
 				labels: ['4', '4', '4', '4'],
-			}),
+			}).balisage,
 		).toContain('<polygon');
-		expect(renderFigure({ kind: 'quadrillage', cols: 3, rows: 3, cells: [[1, 1]] })).toContain(
-			'<svg',
-		);
+		expect(
+			renderFigure({ kind: 'quadrillage', cols: 3, rows: 3, cells: [[1, 1]] }).balisage,
+		).toContain('<svg');
 	});
 });
 
@@ -1471,7 +1483,7 @@ describe('Grandeurs et mesures : le périmètre (#99)', () => {
 				expect(it.kind).toBe('num'); // réponse numérique
 				expect(it.text).toContain('@');
 				expect(it.text).toContain('tour'); // la définition est rappelée
-				expect(it.figure).toContain('<svg'); // figure affichée
+				expect(it.figure?.balisage).toContain('<svg'); // figure affichée
 				expect(it._lesson).toBe(id);
 				const ans = Number(it.answer);
 				expect(Number.isInteger(ans)).toBe(true);
@@ -1511,10 +1523,10 @@ describe('Grandeurs et mesures : le périmètre (#99)', () => {
 	});
 	test('buildLessonFiche : fiche imprimable avec figure SVG et champ de saisie', () => {
 		const html = buildLessonFiche('mes-perimetre-cotes');
-		expect(html).toContain('Je calcule le périmètre'); // titre
-		expect(html).toContain('<svg');
-		expect(html).toContain('<input');
-		expect(html).not.toContain('@');
+		expect(html.balisage).toContain('Je calcule le périmètre'); // titre
+		expect(html.balisage).toContain('<svg');
+		expect(html.balisage).toContain('<input');
+		expect(html.balisage).not.toContain('@');
 	});
 });
 
@@ -1545,10 +1557,10 @@ describe('Moteur de figures : figures planes & scène (#100)', () => {
 		expect((html.match(/<circle/g) ?? []).length).toBe(1); // cercle
 	});
 	test('renderFigure : dispatch figurePlane et sceneFigures', () => {
-		expect(renderFigure({ kind: 'figurePlane', shape: 'losange' })).toContain('<polygon');
-		expect(renderFigure({ kind: 'sceneFigures', cells: [{ shape: 'rectangle' }] })).toContain(
-			'<svg',
-		);
+		expect(renderFigure({ kind: 'figurePlane', shape: 'losange' }).balisage).toContain('<polygon');
+		expect(
+			renderFigure({ kind: 'sceneFigures', cells: [{ shape: 'rectangle' }] }).balisage,
+		).toContain('<svg');
 	});
 });
 
@@ -1564,7 +1576,7 @@ describe('Géométrie : je reconnais les figures planes (#100)', () => {
 		for (let i = 0; i < 400; i++) {
 			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm');
-			expect(ex.figure).toContain('<svg');
+			expect(ex.figure?.balisage).toContain('<svg');
 			expect(ex.choices.length).toBeGreaterThanOrEqual(3);
 			expect(new Set(ex.choices).size).toBe(ex.choices.length); // distinctes
 			expect(ex.choices).toContain(ex.answer);
@@ -1583,7 +1595,7 @@ describe('Géométrie : je reconnais les figures planes (#100)', () => {
 		for (let i = 0; i < 200; i++) {
 			const it = genLessonItem(lesson);
 			expect(it.text).toContain('@');
-			expect(it.figure).toContain('<svg');
+			expect(it.figure?.balisage).toContain('<svg');
 			expect(['num', 'text']).toContain(it.kind); // comptage (num) ou nommage (text)
 			expect(checkItemAnswer(it, String(it.answer))).toBe(true);
 		}
@@ -1593,7 +1605,7 @@ describe('Géométrie : je reconnais les figures planes (#100)', () => {
 		for (let i = 0; i < 200; i++) {
 			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm');
-			expect(ex.figure).toBeUndefined(); // pas de figure (vocabulaire/propriétés)
+			expect(ex.figure?.balisage).toBeUndefined(); // pas de figure (vocabulaire/propriétés)
 			expect(ex.choices.length).toBe(4);
 			expect(ex.choices).toContain(ex.answer);
 		}
@@ -1621,7 +1633,9 @@ describe('Géométrie : le cercle (#102)', () => {
 		expect(head).not.toContain('rayon');
 	});
 	test('renderFigure : dispatch cercle', () => {
-		expect(renderFigure({ kind: 'cercle', segment: 'rayon', label: '5 cm' })).toContain('<svg');
+		expect(renderFigure({ kind: 'cercle', segment: 'rayon', label: '5 cm' }).balisage).toContain(
+			'<svg',
+		);
 	});
 	test('la leçon « Le cercle » peuple « Géométrie » avec 2 modes', () => {
 		const cat = getLessonsByCategory('math-geometrie').map((l) => l.id);
@@ -1634,7 +1648,7 @@ describe('Géométrie : le cercle (#102)', () => {
 		for (let i = 0; i < 500; i++) {
 			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm');
-			expect(ex.figure).toContain('<svg');
+			expect(ex.figure?.balisage).toContain('<svg');
 			expect(ex.choices.length).toBe(4);
 			expect(new Set(ex.choices).size).toBe(4);
 			expect(ex.choices).toContain(ex.answer);
@@ -1652,7 +1666,7 @@ describe('Géométrie : le cercle (#102)', () => {
 		for (let i = 0; i < 200; i++) {
 			const it = genLessonItem(lesson);
 			expect(it.text).toContain('@');
-			expect(it.figure).toContain('<svg');
+			expect(it.figure?.balisage).toContain('<svg');
 			expect(checkItemAnswer(it, String(it.answer))).toBe(true);
 		}
 	});
@@ -1672,7 +1686,7 @@ describe('Géométrie : je reconnais les solides (#103)', () => {
 		}
 	});
 	test('renderFigure : dispatch solide', () => {
-		expect(renderFigure({ kind: 'solide', solid: 'cylindre' })).toContain('<svg');
+		expect(renderFigure({ kind: 'solide', solid: 'cylindre' }).balisage).toContain('<svg');
 	});
 	test('renderSolide — orientation (#286) : miroir par transform, angle/profondeur variables', () => {
 		// Miroir horizontal = transform centré (coordonnées internes inchangées).
@@ -1692,7 +1706,7 @@ describe('Géométrie : je reconnais les solides (#103)', () => {
 			const set = new Set<string>();
 			for (let i = 0; i < 1200; i++) {
 				const ex = type.generate({ mode: 'qcm' });
-				if (ex.type === 'qcm' && ex.answer === nom && ex.figure) set.add(ex.figure);
+				if (ex.type === 'qcm' && ex.answer === nom && ex.figure) set.add(ex.figure?.balisage);
 			}
 			return set;
 		};
@@ -1715,7 +1729,7 @@ describe('Géométrie : je reconnais les solides (#103)', () => {
 		for (let i = 0; i < 300; i++) {
 			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm');
-			expect(ex.figure).toContain('<svg');
+			expect(ex.figure?.balisage).toContain('<svg');
 			expect(ex.choices.length).toBe(4);
 			expect(new Set(ex.choices).size).toBe(4);
 			expect(ex.choices).toContain(ex.answer);
@@ -1740,7 +1754,7 @@ describe('Géométrie : je reconnais les solides (#103)', () => {
 		for (let i = 0; i < 400; i++) {
 			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm');
-			expect(ex.figure).toBeUndefined();
+			expect(ex.figure?.balisage).toBeUndefined();
 			expect(ex.choices).toContain(ex.answer);
 			// On ne demande JAMAIS le nombre de faces/arêtes d'un solide à face courbe.
 			expect(ex.question.toLowerCase()).not.toMatch(
@@ -1942,9 +1956,9 @@ describe('Calcul : opérations posées (#97)', () => {
 				{ text: '', answer: Number(attendu), kind: 'posed', posed },
 				createRenderContext(),
 			);
-			expect(html).toContain('class="posee"');
+			expect(html.balisage).toContain('class="posee"');
 			// Pour +, − et ×1 chiffre, les seuls champs .posee-input sont le résultat.
-			const digits = [...html.matchAll(/posee-input[^>]*data-answer="(\d)"/g)]
+			const digits = [...html.balisage.matchAll(/posee-input[^>]*data-answer="(\d)"/g)]
 				.map((m) => m[1])
 				.join('');
 			expect(digits).toBe(attendu);
@@ -1956,9 +1970,9 @@ describe('Calcul : opérations posées (#97)', () => {
 			{ text: '', answer: 312, kind: 'posed', posed: { op: 'x', a: 24, b: 13 } },
 			createRenderContext(),
 		);
-		const nbInputs = [...html.matchAll(/posee-input/g)].length;
+		const nbInputs = [...html.balisage.matchAll(/posee-input/g)].length;
 		expect(nbInputs).toBeGreaterThan(3); // pp1 + pp2 + somme finale
-		expect((html.match(/posee-rule/g) ?? []).length).toBe(2); // deux traits
+		expect((html.balisage.match(/posee-rule/g) ?? []).length).toBe(2); // deux traits
 	});
 	test('multiplication ×2 chiffres : 0 fourni + retenues posées au-dessus des produits partiels (#154/#307)', () => {
 		// 24 × 13 → pp1 = 72, pp2 = 24 (suivi du 0 fourni), somme = 312. C = 3 colonnes.
@@ -1967,19 +1981,19 @@ describe('Calcul : opérations posées (#97)', () => {
 			createRenderContext(),
 		);
 		// Le 0 du décalage est FOURNI (grisé) : présent, mais pas un champ noté.
-		expect(html).toContain('posee-zero');
-		expect((html.match(/posee-zero/g) ?? []).length).toBe(1);
+		expect(html.balisage).toContain('posee-zero');
+		expect((html.balisage.match(/posee-zero/g) ?? []).length).toBe(1);
 		// Une seule rangée de retenues d'aide (celle de l'addition finale) : C cellules non notées.
-		expect((html.match(/posee-carry/g) ?? []).length).toBe(3);
+		expect((html.balisage.match(/posee-carry/g) ?? []).length).toBe(3);
 		// #307 : cette rangée est posée AU-DESSUS des produits partiels (ses opérandes) →
 		// elle apparaît avant la 1re cellule-résultat dans le DOM (et non plus juste avant la somme).
-		expect(html.indexOf('posee-carry')).toBeLessThan(html.indexOf('posee-input'));
+		expect(html.balisage.indexOf('posee-carry')).toBeLessThan(html.balisage.indexOf('posee-input'));
 		// #307 : un marqueur « + » signale l'addition des deux produits partiels, en plus
 		// du « × » de la multiplication → deux opérateurs `posee-op` dans la grille.
-		expect(html).toContain('posee-op">+<');
-		expect((html.match(/posee-op/g) ?? []).length).toBe(2);
+		expect(html.balisage).toContain('posee-op">+<');
+		expect((html.balisage.match(/posee-op/g) ?? []).length).toBe(2);
 		// Chiffres NOTÉS, dans l'ordre : pp1 (72) + pp2 (24) + somme (312) ; le 0 exclu.
-		const digits = [...html.matchAll(/posee-input[^>]*data-answer="(\d)"/g)]
+		const digits = [...html.balisage.matchAll(/posee-input[^>]*data-answer="(\d)"/g)]
 			.map((m) => m[1])
 			.join('');
 		expect(digits).toBe('7224312');
@@ -2400,15 +2414,15 @@ describe('Sprint', () => {
 			answer: 84,
 			_lesson: 'math-decomposer-multiplication',
 		});
-		expect((body15.match(/sprint-free/g) || []).length).toBe(6); // 6 champs de brouillon
-		expect((body15.match(/id="sprintInput"/g) || []).length).toBe(1); // 1 champ final corrigé
+		expect((body15.balisage.match(/sprint-free/g) || []).length).toBe(6); // 6 champs de brouillon
+		expect((body15.balisage.match(/id="sprintInput"/g) || []).length).toBe(1); // 1 champ final corrigé
 		const body7 = api.sprintQuestionBody({
 			text: '6 × 7 = @',
 			answer: 42,
 			_lesson: 'math-tables-multiplication',
 		});
-		expect(body7.includes('sprint-free')).toBe(false);
-		expect(body7.includes('id="sprintInput"')).toBe(true);
+		expect(body7.balisage.includes('sprint-free')).toBe(false);
+		expect(body7.balisage.includes('id="sprintInput"')).toBe(true);
 	});
 });
 
@@ -2787,9 +2801,9 @@ describe('Impression contextuelle (issue #40)', () => {
 			lessonIds: ['math-tables-addition', 'fr-conj-etre-present'],
 			kind: 'fiches',
 		});
-		expect(html.includes('class="page cover')).toBe(true); // garde dès 2 leçons
-		expect(html.includes('ans-text')).toBe(true); // champ texte (conjugaison)
-		expect(html.includes('class="ans ')).toBe(true); // champ numérique (maths)
+		expect(html.balisage.includes('class="page cover')).toBe(true); // garde dès 2 leçons
+		expect(html.balisage.includes('ans-text')).toBe(true); // champ texte (conjugaison)
+		expect(html.balisage.includes('class="ans ')).toBe(true); // champ numérique (maths)
 	});
 	test('une seule leçon : pas de page de garde', () => {
 		const html = api.buildPrintableDOM({
@@ -2797,7 +2811,7 @@ describe('Impression contextuelle (issue #40)', () => {
 			lessonIds: ['math-doubles'],
 			kind: 'fiches',
 		});
-		expect(html.includes('class="page cover')).toBe(false);
+		expect(html.balisage.includes('class="page cover')).toBe(false);
 	});
 	test('bilan : grille de bilan, titre repris, multi-matières', () => {
 		const html = api.buildPrintableDOM({
@@ -2806,8 +2820,8 @@ describe('Impression contextuelle (issue #40)', () => {
 			kind: 'bilan',
 			nbQ: 2,
 		});
-		expect(html.includes('bilan-grid')).toBe(true);
-		expect(html.includes('Bilan test')).toBe(true);
+		expect(html.balisage.includes('bilan-grid')).toBe(true);
+		expect(html.balisage.includes('Bilan test')).toBe(true);
 	});
 });
 

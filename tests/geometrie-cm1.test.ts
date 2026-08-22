@@ -278,7 +278,7 @@ describe('Géométrie CM1 — prisme (#242)', () => {
 	});
 
 	it('renderFigure dispatch le prisme ; le miroir/le lean changent le tracé', () => {
-		expect(renderFigure({ kind: 'solide', solid: 'prisme' })).toContain('<svg');
+		expect(renderFigure({ kind: 'solide', solid: 'prisme' }).balisage).toContain('<svg');
 		expect(renderSolide('prisme', { mirror: true })).toContain('scale(-1 1)');
 		expect(renderSolide('prisme', { lean: 0 })).not.toBe(renderSolide('prisme', { lean: 2 }));
 	});
@@ -297,7 +297,7 @@ describe('Géométrie CM1 — reconnaissance des triangles', () => {
 		for (let i = 0; i < 500; i++) {
 			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm attendu');
-			expect(ex.figure).toContain('<svg');
+			expect(ex.figure?.balisage).toContain('<svg');
 			expect(ex.choices).toHaveLength(4);
 			expect(new Set(ex.choices).size).toBe(4); // distinctes
 			expect(ex.choices).toContain(ex.answer);
@@ -314,7 +314,7 @@ describe('Géométrie CM1 — reconnaissance des triangles', () => {
 			// Quand la réponse est « isocèle », la figure est un isocèle FRANC (2 côtés
 			// égaux, base différente) — donc PAS un équilatéral (pas d'ambiguïté).
 			if (ex.answer === 'triangle isocèle') {
-				const c = [...cotes(polygones(ex.figure!)[0])].sort((a, b) => a - b);
+				const c = [...cotes(polygones(ex.figure!.balisage)[0])].sort((a, b) => a - b);
 				expect(c[1]).toBeCloseTo(c[2], 1); // 2 côtés égaux
 				expect(c[0]).toBeLessThan(c[2] * 0.85); // mais pas tous égaux
 			}
@@ -334,7 +334,7 @@ describe('Géométrie CM1 — reconnaissance des triangles', () => {
 		for (let i = 0; i < 200; i++) {
 			const ex = type.generate({ mode: 'saisie' });
 			if (ex.type !== 'text') continue;
-			expect(ex.figure).toContain('<svg');
+			expect(ex.figure?.balisage).toContain('<svg');
 			expect(type.check(ex, ex.answer)).toBe(true);
 			// L'adjectif sans « triangle » est dans les formes acceptées.
 			const adj = ex.answer.replace('triangle ', '');
@@ -350,7 +350,7 @@ describe('Géométrie CM1 — propriétés des triangles', () => {
 		for (let i = 0; i < 300; i++) {
 			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm attendu');
-			expect(ex.figure).toBeUndefined();
+			expect(ex.figure?.balisage).toBeUndefined();
 			expect(ex.choices.length).toBeGreaterThanOrEqual(2);
 			expect(new Set(ex.choices).size).toBe(ex.choices.length);
 			expect(ex.choices).toContain(ex.answer);
@@ -391,7 +391,7 @@ describe('Géométrie CM1 — reconnaissance des quadrilatères (dont parallélo
 		for (let i = 0; i < 200; i++) {
 			const ex = type.generate({ mode: 'saisie' });
 			if (ex.type !== 'text') continue;
-			expect(ex.figure).toContain('<svg');
+			expect(ex.figure?.balisage).toContain('<svg');
 			expect(type.check(ex, ex.answer)).toBe(true);
 		}
 	});
@@ -406,7 +406,7 @@ describe('Géométrie CM1 — reconnaissance des solides (dont prisme)', () => {
 		for (let i = 0; i < 600; i++) {
 			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm attendu');
-			expect(ex.figure).toContain('<svg');
+			expect(ex.figure?.balisage).toContain('<svg');
 			expect(ex.choices).toHaveLength(4);
 			expect(ex.choices).toContain(ex.answer);
 			for (const c of ex.choices) expect(NOMS).toContain(c);
@@ -470,7 +470,7 @@ describe('Géométrie CM1 — comptage faces/arêtes/sommets DE MÉMOIRE', () =>
 			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') throw new Error('mode qcm attendu');
 			// Jamais de figure (un dessin 3D inviterait à compter les arêtes visibles).
-			expect(ex.figure).toBeUndefined();
+			expect(ex.figure?.balisage).toBeUndefined();
 			// Jamais « sur le dessin » dans l'énoncé.
 			expect(ex.question.toLowerCase()).not.toContain('dessin');
 			// Le solide nommé est un polyèdre connu (jamais cône/cylindre/boule).
@@ -557,7 +557,7 @@ describe('Géométrie CM1 — catalogue & non-régression CE2', () => {
 		// Le parallélogramme n'est tiré par aucun générateur CE2 (ni nommage ni comptage) :
 		// corriger son tracé est purement additif côté CM1.
 		const fait = renderFigure({ kind: 'figurePlane', shape: 'parallelogramme' as PlaneShape });
-		expect(fait).toContain('<polygon'); // le renderer fonctionne, sans dépendance CE2
+		expect(fait.balisage).toContain('<polygon'); // le renderer fonctionne, sans dépendance CE2
 	});
 
 	it('CE2 INCHANGÉ : le codage (#326) est OPT-IN — sans lui, les formes partagées n’ont ni équerre ni tiret', () => {
@@ -574,7 +574,7 @@ describe('Géométrie CM1 — catalogue & non-régression CE2', () => {
 		for (let i = 0; i < 200; i++) {
 			const ex = ce2Reco.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm' || !ex.figure) continue;
-			expect(ex.figure).not.toContain('<polyline');
+			expect(ex.figure?.balisage).not.toContain('<polyline');
 		}
 	});
 });

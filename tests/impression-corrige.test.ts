@@ -53,9 +53,9 @@ describe('renderItem — révélation corrigé par type (#41)', () => {
 			{ text: '2 + 2 = @', answer: 4, kind: 'num' },
 			createRenderContext({ printMode: true, corrigeMode: true }),
 		);
-		expect(html).toContain('ans-corrige');
-		expect(html).toContain('>4<');
-		expect(html).not.toContain('<input');
+		expect(html.balisage).toContain('ans-corrige');
+		expect(html.balisage).toContain('>4<');
+		expect(html.balisage).not.toContain('<input');
 	});
 
 	it('hors corrigé : champ vide normal (pas de révélation)', () => {
@@ -63,8 +63,8 @@ describe('renderItem — révélation corrigé par type (#41)', () => {
 			{ text: '2 + 2 = @', answer: 4, kind: 'num' },
 			createRenderContext({ printMode: true }),
 		);
-		expect(html).toContain('<input');
-		expect(html).not.toContain('ans-corrige');
+		expect(html.balisage).toContain('<input');
+		expect(html.balisage).not.toContain('ans-corrige');
 	});
 });
 
@@ -73,16 +73,16 @@ describe('buildPrintableDOM — document avec corrigé (#41)', () => {
 
 	it('sans corrigé : aucune page corrigé ni réponse révélée', () => {
 		const dom = buildPrintableDOM({ ...base, kind: 'bilan', nbQ: 3 });
-		expect(dom).not.toContain('cover-corrige');
-		expect(dom).not.toContain('qcm-print-box--checked');
+		expect(dom.balisage).not.toContain('cover-corrige');
+		expect(dom.balisage).not.toContain('qcm-print-box--checked');
 	});
 
 	it('avec corrigé : page de garde « Corrigé » + bon choix coché (QCM)', () => {
 		const dom = buildPrintableDOM({ ...base, kind: 'bilan', nbQ: 3, corrige: true });
-		expect(dom).toContain('cover-corrige');
-		expect(dom).toContain('Corrigé');
-		expect(dom).toContain('qcm-print-box--checked'); // case du bon choix cochée
-		expect(dom).toContain('qcm-print-choice--correct');
+		expect(dom.balisage).toContain('cover-corrige');
+		expect(dom.balisage).toContain('Corrigé');
+		expect(dom.balisage).toContain('qcm-print-box--checked'); // case du bon choix cochée
+		expect(dom.balisage).toContain('qcm-print-choice--correct');
 	});
 
 	it('corrigé d’une fiche posée : cellules-résultat remplies', () => {
@@ -92,16 +92,16 @@ describe('buildPrintableDOM — document avec corrigé (#41)', () => {
 			kind: 'fiches',
 			corrige: true,
 		});
-		expect(dom).toContain('posee-corrige');
+		expect(dom.balisage).toContain('posee-corrige');
 	});
 
 	it('le corrigé reflète les MÊMES items que la feuille (mêmes questions, même ordre)', () => {
 		const dom = buildPrintableDOM({ ...base, kind: 'bilan', nbQ: 3, corrige: true });
-		const cut = dom.indexOf('cover-corrige');
+		const cut = dom.balisage.indexOf('cover-corrige');
 		expect(cut).toBeGreaterThan(0);
 		const questions = (s: string) => s.match(/<p class="qcm-print-q">.*?<\/p>/g) ?? [];
-		const feuille = questions(dom.slice(0, cut));
-		const corrige = questions(dom.slice(cut));
+		const feuille = questions(dom.balisage.slice(0, cut));
+		const corrige = questions(dom.balisage.slice(cut));
 		expect(feuille.length).toBeGreaterThan(0);
 		expect(corrige).toEqual(feuille);
 	});

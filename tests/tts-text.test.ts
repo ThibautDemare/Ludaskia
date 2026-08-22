@@ -144,12 +144,12 @@ describe('texteParle', () => {
 
 describe('ttsAttr', () => {
 	it('produit un attribut data-tts échappé pour les guillemets droits', () => {
-		expect(ttsAttr('dire "oui"')).toBe(' data-tts="dire &quot;oui&quot;"');
+		expect(ttsAttr('dire "oui"').balisage).toBe(' data-tts="dire &quot;oui&quot;"');
 	});
 
 	it('renvoie une chaîne vide quand il n’y a rien à lire', () => {
-		expect(ttsAttr('@')).toBe('');
-		expect(ttsAttr('   ')).toBe('');
+		expect(ttsAttr('@').balisage).toBe('');
+		expect(ttsAttr('   ').balisage).toBe('');
 	});
 
 	/* Le module n'a plus sa copie privée d'échappement : la valeur d'attribut est protégée
@@ -158,7 +158,7 @@ describe('ttsAttr', () => {
 	   et se contenterait de recopier la table d'échappement du jour. */
 	it('guillemet et apostrophe : l’attribut se relit intact une fois parsé', () => {
 		const hote = document.createElement('div');
-		hote.innerHTML = `<span class="consigne"${ttsAttr('Le mot "chat" s\'écrit : @')}>x</span>`;
+		hote.innerHTML = `<span class="consigne"${ttsAttr('Le mot "chat" s\'écrit : @').balisage}>x</span>`;
 		const span = hote.querySelector('span');
 		expect(span).toBeTruthy();
 		// Attendu dérivé à la main : `@` (le trou à remplir) devient un silence, le reste est
@@ -169,7 +169,7 @@ describe('ttsAttr', () => {
 
 	it('une consigne hostile ne peut plus refermer l’attribut ni en fabriquer un autre', () => {
 		const hote = document.createElement('div');
-		hote.innerHTML = `<span${ttsAttr('Dis " onmouseover=alert(1) et \' oups')}></span>`;
+		hote.innerHTML = `<span${ttsAttr('Dis " onmouseover=alert(1) et \' oups').balisage}></span>`;
 		const span = hote.querySelector('span')!;
 		expect(span.getAttributeNames()).toEqual(['data-tts']);
 		expect(span.getAttribute('data-tts')).toBe('Dis " onmouseover=alert(1) et \' oups');

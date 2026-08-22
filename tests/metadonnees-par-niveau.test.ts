@@ -211,17 +211,17 @@ describe('consignePourNiveau — forme chaîne (#42) et forme fonction (#436)', 
 describe('Fiche imprimée — titre et consigne parlent du MÊME niveau (#436)', () => {
 	it('la fiche CE2 nomme la leçon et la tâche en vocabulaire CE2', () => {
 		const html = buildLessonFiche(NOYAU, 'ce2', createRenderContext());
-		expect(html).toContain('Clique sur le nom');
-		expect(html).toContain('tous les noms');
+		expect(html.balisage).toContain('Clique sur le nom');
+		expect(html.balisage).toContain('tous les noms');
 		// (« noyau » nu apparaît dans l'id de leçon des attributs `data-lesson` : on cherche
 		// donc la TOURNURE lisible, celle qui atteindrait l'enfant.)
-		expect(html).not.toContain('nom noyau');
+		expect(html.balisage).not.toContain('nom noyau');
 	});
 
 	it('la fiche CM1 garde le vocabulaire du CM1 (titre ET consigne)', () => {
 		const html = buildLessonFiche(NOYAU, 'cm1', createRenderContext());
-		expect(html).toContain('Clique sur le nom noyau');
-		expect(html).toContain('nom noyau du groupe nominal');
-		expect(html).not.toContain('tous les noms');
+		expect(html.balisage).toContain('Clique sur le nom noyau');
+		expect(html.balisage).toContain('nom noyau du groupe nominal');
+		expect(html.balisage).not.toContain('tous les noms');
 	});
 });

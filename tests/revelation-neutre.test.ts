@@ -32,6 +32,7 @@ import {
 import { chargerErreursFor } from '../src/core/erreurs-journal';
 import { initProfiles, activeProfile, touchActiveProfile } from '../src/core/profiles';
 import { setOnDataWrite } from '../src/core/storage';
+import { brut, html } from '../src/core/html';
 
 beforeEach(() => {
 	localStorage.clear();
@@ -63,45 +64,62 @@ function premierElement(html: string): HTMLElement {
 
 describe('ligneRevelation — les deux formes de la ligne de solution', () => {
 	it('solution sur la ligne : deux-points, solution mise en valeur, point final', () => {
-		const ligne = ligneRevelation('la réponse', '4,5');
-		expect(ligne).toContain('la réponse');
-		expect(ligne).toContain('<strong>4,5</strong>');
-		expect(ligne).toMatch(/ : <strong>4,5<\/strong>\.$/); // « … : <strong>4,5</strong>. »
-		expect(ligne).not.toContain(':.');
-		expect(ligne.match(/\./g)).toHaveLength(1); // un seul point, le final
+		const ligne = ligneRevelation('la réponse', html`4,5`);
+		expect(ligne.balisage).toContain('la réponse');
+		expect(ligne.balisage).toContain('<strong>4,5</strong>');
+		expect(ligne.balisage).toMatch(/ : <strong>4,5<\/strong>\.$/); // « … : <strong>4,5</strong>. »
+		expect(ligne.balisage).not.toContain(':.');
+		expect(ligne.balisage.match(/\./g)).toHaveLength(1); // un seul point, le final
 	});
 
 	it('solution en bloc dessous : la ligne l’annonce et s’arrête sur « : »', () => {
 		const bloc = ligneRevelation('le bon classement');
-		expect(bloc).toContain('le bon classement');
-		expect(bloc.endsWith(' :')).toBe(true);
-		expect(bloc.endsWith('.')).toBe(false); // le bloc qui suit porte la solution
-		expect(bloc).not.toContain('<strong>');
+		expect(bloc.balisage).toContain('le bon classement');
+		expect(bloc.balisage.endsWith(' :')).toBe(true);
+		expect(bloc.balisage.endsWith('.')).toBe(false); // le bloc qui suit porte la solution
+		expect(bloc.balisage).not.toContain('<strong>');
 	});
 
 	it('les deux formes disent la MÊME phrase : la forme en ligne prolonge celle en bloc', () => {
 		const bloc = ligneRevelation('le bon rangement');
-		expect(ligneRevelation('le bon rangement', 'A · B · C').startsWith(bloc)).toBe(true);
+		expect(
+			ligneRevelation('le bon rangement', html`A · B · C`).balisage.startsWith(bloc.balisage),
+		).toBe(true);
 	});
 
 	it('le libellé propre au format est reproduit tel quel', () => {
-		expect(ligneRevelation('une réponse possible', '12')).toContain('une réponse possible');
-		expect(ligneRevelation('les bonnes paires')).toContain('les bonnes paires');
+		expect(ligneRevelation('une réponse possible', html`12`).balisage).toContain(
+			'une réponse possible',
+		);
+		expect(ligneRevelation('les bonnes paires').balisage).toContain('les bonnes paires');
 	});
 
 	it('une solution vide retombe sur la forme en bloc (pas de « <strong></strong>. »)', () => {
-		expect(ligneRevelation('la réponse', '')).toBe(ligneRevelation('la réponse'));
+		expect(ligneRevelation('la réponse', html``).balisage).toBe(
+			ligneRevelation('la réponse').balisage,
+		);
 	});
 
-	/* Contrat assumé : la ligne accepte du HTML (une fraction, un `mathInline`, des
-	   items joints par « · »), donc c'est à l'APPELANT d'échapper une chaîne venue des
-	   données. Le test le fige pour qu'un futur appelant ne s'y trompe pas. */
-	it('la solution est injectée telle quelle : l’échappement reste à la charge de l’appelant', () => {
-		const ligne = ligneRevelation('la réponse', '<img src=x onerror="pan()">');
-		expect(ligne).toContain('<img src=x onerror="pan()">');
+	/* Le contrat a CHANGÉ avec #614, et c'est tout l'objet du lot : la ligne accepte
+	   toujours du balisage (une fraction, un `mathInline`, des items joints par « · »),
+	   mais elle ne prend plus qu'un `SafeHtml`. « À l'appelant d'échapper » ne repose
+	   donc plus sur sa mémoire — lui passer une chaîne brute ne compile pas.
+	   Le test fige les DEUX faces : un fragment construit par le gabarit traverse
+	   échappé, et un fragment déclaré de confiance traverse tel quel. */
+	it('une valeur passée par le gabarit ressort échappée, pas exécutable', () => {
+		const ligne = ligneRevelation('la réponse', html`${'<img src=x onerror="pan()">'}`);
+		expect(ligne.balisage).not.toContain('<img');
+		expect(ligne.balisage).toContain('&lt;img');
 		const hote = document.createElement('div');
-		hote.innerHTML = ligne;
-		expect(hote.querySelector('img')).not.toBeNull(); // vraiment du markup, pas du texte
+		hote.innerHTML = ligne.balisage;
+		expect(hote.querySelector('img')).toBeNull(); // du TEXTE, plus du markup
+	});
+
+	it('un fragment déclaré de confiance traverse tel quel', () => {
+		// `brut` reste la porte de sortie : elle sert au balisage que l'application
+		// construit elle-même (fraction empilée, liste jointe), jamais à une donnée.
+		const ligne = ligneRevelation('la réponse', brut('<strong>4,5</strong>'));
+		expect(ligne.balisage).toContain('<strong>4,5</strong>');
 	});
 });
 
@@ -111,26 +129,26 @@ describe('lienPasserHTML — libellé du lien de déblocage', () => {
 	});
 
 	it('c’est un bouton, jamais un lien (rien à naviguer)', () => {
-		const el = premierElement(lienPasserHTML('rev-giveup', 'revGiveUp'));
+		const el = premierElement(lienPasserHTML('rev-giveup', 'revGiveUp').balisage);
 		expect(el.tagName).toBe('BUTTON');
 		expect(el.getAttribute('type')).toBe('button');
 		expect(el.querySelector('a')).toBeNull();
 	});
 
 	it('classe et id restent propres à l’écran', () => {
-		const el = premierElement(lienPasserHTML('lecon-passer', 'leconPasser'));
+		const el = premierElement(lienPasserHTML('lecon-passer', 'leconPasser').balisage);
 		expect(el.className).toBe('lecon-passer');
 		expect(el.id).toBe('leconPasser');
 	});
 
 	it('le nom accessible est EXACTEMENT le libellé (l’icône n’ajoute pas de texte)', () => {
-		const el = premierElement(lienPasserHTML('lecon-passer', 'leconPasser'));
+		const el = premierElement(lienPasserHTML('lecon-passer', 'leconPasser').balisage);
 		expect(el.textContent?.trim()).toBe(PASSER_LABEL);
 	});
 
 	it('les deux écrans obtiennent le même libellé, à l’habillage près', () => {
-		const lecon = premierElement(lienPasserHTML('lecon-passer', 'leconPasser'));
-		const revision = premierElement(lienPasserHTML('rev-giveup', 'revGiveUp'));
+		const lecon = premierElement(lienPasserHTML('lecon-passer', 'leconPasser').balisage);
+		const revision = premierElement(lienPasserHTML('rev-giveup', 'revGiveUp').balisage);
 		expect(lecon.textContent).toBe(revision.textContent);
 	});
 });
@@ -167,8 +185,8 @@ describe('annoncerRevelation — région du widget, sinon repli', () => {
 
 	it('écran sans repli déclaré (mode leçon) : la région présente reçoit l’annonce', () => {
 		const scope = ecran(REGION_WIDGET);
-		annoncerRevelation({ scope, message: REVELATION_EN_PLACE });
-		expect(annonce('#ltriStatus')).toContain(REVELATION_EN_PLACE);
+		annoncerRevelation({ scope, message: REVELATION_EN_PLACE.balisage });
+		expect(annonce('#ltriStatus')).toContain(REVELATION_EN_PLACE.balisage);
 	});
 
 	it('repli déclaré mais absent du scope : l’annonce n’est pas perdue', () => {

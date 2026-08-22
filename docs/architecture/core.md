@@ -23,9 +23,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `ui/ortho-runner.ts`, logique agnostique du DOM), **`escapeHTML`** — les **cinq**
   caractères qui changent le sens du markup (`& < > " '`), donc bon en contenu comme en
   **valeur d'attribut**, où un `"` refermerait l'attribut et laisserait en écrire de
-  nouveaux sans avoir besoin d'un `<` ; c'est le **seul** échappement du projet, les copies
-  locales partielles (`tts-text.ts`, `items.ts`) ont été supprimées et rien ne justifie d'en
-  réécrire une —, `fmt` (mm:ss), et
+  nouveaux sans avoir besoin d'un `<`. Depuis #614 il n'est plus appelé directement par
+  le rendu : c'est la **brique du contexte texte** du gabarit `html`
+  ([Rendu & échappement](rendu-et-echappement.md)), qui choisit l'échappement selon la
+  position d'insertion. Reste le **seul** échappement du projet —, `fmt` (mm:ss), et
   `normalizeText` (normalisation **partagée** des réponses texte : trim + espaces
   internes réduits + NFC). **`cleRecherche(s)`** (#496, partagée #556) — clé de recherche
   d'un texte libre **insensible casse/accents** (minuscules, ligatures dépliées,

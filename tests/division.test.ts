@@ -50,7 +50,7 @@ describe('Moitié et quart d’une collection', () => {
 			expect(Boolean(moitie) || Boolean(quart)).toBe(true);
 			if (moitie) expect(Number(moitie[1])).toBe(rep * 2);
 			if (quart) expect(Number(quart[1])).toBe(rep * 4);
-			expect(ex.figure).toBeUndefined(); // pas de figure sur cette leçon
+			expect(ex.figure?.balisage).toBeUndefined(); // pas de figure sur cette leçon
 		}
 	});
 
@@ -477,8 +477,8 @@ describe('Division euclidienne — quotient et reste (CM1, #251)', () => {
 describe('renderGroupes (figure de partage)', () => {
 	it('dessine autant de paniers que demandé et le bon nombre de jetons', () => {
 		const svg = renderFigure({ kind: 'groupes', paniers: 3, total: 12 });
-		expect(svg).toContain('<svg');
-		expect(svg.match(/<polygon/g)?.length).toBe(3); // 3 paniers
-		expect(svg.match(/<circle/g)?.length).toBe(12); // 12 jetons
+		expect(svg.balisage).toContain('<svg');
+		expect(svg.balisage.match(/<polygon/g)?.length).toBe(3); // 3 paniers
+		expect(svg.balisage.match(/<circle/g)?.length).toBe(12); // 12 jetons
 	});
 });

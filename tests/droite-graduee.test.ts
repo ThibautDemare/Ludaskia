@@ -352,18 +352,18 @@ describe('Dispatch FigureSpec : renderFigure({ kind: "droiteGraduee" })', () => 
 	it('produit EXACTEMENT la même sortie qu’un appel direct à renderDroiteGraduee', () => {
 		const viaDispatch = renderFigure({ kind: 'droiteGraduee', ...spec });
 		const direct = renderDroiteGraduee(spec);
-		expect(viaDispatch).toBe(direct);
+		expect(viaDispatch.balisage).toBe(direct);
 	});
 
 	it('SVG statique attendu : role="img", axe complet, repère à la position calculée à la main', () => {
 		const svg = renderFigure({ kind: 'droiteGraduee', ...spec });
-		expect(svg).toContain('role="img"');
+		expect(svg.balisage).toContain('role="img"');
 		// Axe horizontal de X0(24) à X1(296) à l'ordonnée axisY(74).
-		expect(svg).toContain('x1="24" y1="74" x2="296" y2="74"');
+		expect(svg.balisage).toContain('x1="24" y1="74" x2="296" y2="74"');
 		// Repère à la valeur 7 : x = 24 + 7 × (296−24) / 10 = 24 + 190,4 = 214,4 (tête à cy=42).
-		expect(svg).toContain('cx="214.4" cy="42" r="7"');
-		expect(svg).toContain('x1="214.4" y1="74" x2="214.4" y2="42"');
-		expect(svg).toContain('var(--clock-min)'); // repère neutre (à lire)
+		expect(svg.balisage).toContain('cx="214.4" cy="42" r="7"');
+		expect(svg.balisage).toContain('x1="214.4" y1="74" x2="214.4" y2="42"');
+		expect(svg.balisage).toContain('var(--clock-min)'); // repère neutre (à lire)
 	});
 });
 
@@ -533,9 +533,9 @@ describe('Repli catalogue : lire le nombre repéré (genLessonItem)', () => {
 				expect(item.answer).toBe(ex.cibleLabel);
 				expect(item.text).toContain('Quel nombre est repéré');
 				// Figure statique présente (role="img"), sans fuite de la valeur dans le <desc>.
-				expect(item.figure).toBeTruthy();
-				expect(item.figure!).toContain('role="img"');
-				const desc = item.figure!.match(/<desc>(.*?)<\/desc>/)?.[1] ?? '';
+				expect(item.figure?.balisage).toBeTruthy();
+				expect(item.figure!.balisage).toContain('role="img"');
+				const desc = item.figure!.balisage.match(/<desc>(.*?)<\/desc>/)?.[1] ?? '';
 				expect(desc).not.toContain(ex.cibleLabel);
 
 				// La bonne réponse est acceptée…

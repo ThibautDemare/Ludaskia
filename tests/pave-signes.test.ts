@@ -47,23 +47,23 @@ describe('estSigneComparaison (#380)', () => {
 describe('rendu du champ signe et du pavé (#380)', () => {
 	test('item signe → champ .ans-signe sans clavier virtuel + pavé de 3 boutons', () => {
 		const html = renderItem(itemSigne('<'), createRenderContext());
-		expect(html).toContain('ans-signe');
-		expect(html).toContain('inputmode="none"');
-		expect(html).toContain('class="pave-signes screen-only"');
-		expect(html.match(/class="pave-signe"/g)).toHaveLength(3);
+		expect(html.balisage).toContain('ans-signe');
+		expect(html.balisage).toContain('inputmode="none"');
+		expect(html.balisage).toContain('class="pave-signes screen-only"');
+		expect(html.balisage.match(/class="pave-signe"/g)).toHaveLength(3);
 		// Ordre FIGÉ « < = > » (même ancrage spatial que les tuiles), lu sur les attributs
 		// tels que le navigateur les reconstruit. `escapeHTML` échappe les cinq caractères de
 		// markup : « < » et « > » sont tous deux sérialisés (`&lt;`, `&gt;`) et redonnent le
 		// signe nu au parsing — c'est ce signe-là que le tap écrira dans le champ.
-		const ordre = [...parse(html).querySelectorAll('button.pave-signe')].map((b) =>
+		const ordre = [...parse(html.balisage).querySelectorAll('button.pave-signe')].map((b) =>
 			b.getAttribute('data-signe'),
 		);
 		expect(ordre).toEqual(['<', '=', '>']);
 		// Libellés accessibles complets (registre CE2), boutons non pressés au rendu.
-		expect(html).toContain('aria-label="plus petit que"');
-		expect(html).toContain('aria-label="égal à"');
-		expect(html).toContain('aria-label="plus grand que"');
-		expect(html).not.toContain('aria-pressed="true"');
+		expect(html.balisage).toContain('aria-label="plus petit que"');
+		expect(html.balisage).toContain('aria-label="égal à"');
+		expect(html.balisage).toContain('aria-label="plus grand que"');
+		expect(html.balisage).not.toContain('aria-pressed="true"');
 	});
 
 	test('la réponse-signe part échappée dans data-answer (valeur décodée intacte)', () => {
@@ -77,50 +77,53 @@ describe('rendu du champ signe et du pavé (#380)', () => {
 		expect('<input class="ans" data-answer="<">').toMatch(chevronNu);
 		for (const signe of SIGNES_COMPARAISON) {
 			const html = renderItem(itemSigne(signe), createRenderContext());
-			const champ = parse(html).querySelector('input.ans');
+			const champ = parse(html.balisage).querySelector('input.ans');
 			expect(champ, signe).toBeTruthy();
 			expect(champ!.getAttribute('data-answer'), signe).toBe(signe);
 			// Le contenu de balise, lui, a parfaitement le droit de porter un chevron échappé.
-			expect(html, signe).not.toMatch(chevronNu);
+			expect(html.balisage, signe).not.toMatch(chevronNu);
 		}
 	});
 
 	test('les boutons du pavé sont rattachés au champ rendu (data-for = id)', () => {
 		const ctx = createRenderContext();
 		const html = renderItem(itemSigne('>'), ctx);
-		const id = html.match(/<input[^>]*id="(a\d+)"/)?.[1];
+		const id = html.balisage.match(/<input[^>]*id="(a\d+)"/)?.[1];
 		expect(id).toBeTruthy();
 		// 3 boutons rattachés au champ (la marque ✓/✗ porte AUSSI un data-for : on ne
 		// compte que ceux des boutons du pavé).
-		expect(html.match(new RegExp(`class="pave-signe" data-for="${id}"`, 'g'))?.length).toBe(3);
+		expect(
+			html.balisage.match(new RegExp(`class="pave-signe" data-for="${id}"`, 'g'))?.length,
+		).toBe(3);
 	});
 
 	test('pas de pavé pour une réponse numérique ou un mot', () => {
-		expect(renderItem({ text: '3 + 4 = @', answer: 7 }, createRenderContext())).not.toContain(
-			'pave-signes',
-		);
 		expect(
-			renderItem({ text: 'Le félin : @', answer: 'chat', kind: 'text' }, createRenderContext()),
+			renderItem({ text: '3 + 4 = @', answer: 7 }, createRenderContext()).balisage,
+		).not.toContain('pave-signes');
+		expect(
+			renderItem({ text: 'Le félin : @', answer: 'chat', kind: 'text' }, createRenderContext())
+				.balisage,
 		).not.toContain('pave-signes');
 	});
 
 	test('pas de pavé à l’impression ni en corrigé', () => {
 		const impr = renderItem(itemSigne('='), createRenderContext({ printMode: true }));
-		expect(impr).not.toContain('pave-signes');
+		expect(impr.balisage).not.toContain('pave-signes');
 		const corrige = renderItem(
 			itemSigne('='),
 			createRenderContext({ printMode: true, corrigeMode: true }),
 		);
-		expect(corrige).not.toContain('pave-signes');
-		expect(corrige).toContain('ans-corrige'); // la réponse est révélée, pas de champ
+		expect(corrige.balisage).not.toContain('pave-signes');
+		expect(corrige.balisage).toContain('ans-corrige'); // la réponse est révélée, pas de champ
 	});
 });
 
 describe('signeView (#380)', () => {
 	test('glyphe échappé + mot-légende, libellé accessible complet', () => {
 		const v = signeView('<');
-		expect(v.html).toContain('&lt;');
-		expect(v.html).toContain('petit');
+		expect(v.html.balisage).toContain('&lt;');
+		expect(v.html.balisage).toContain('petit');
 		expect(v.label).toBe('plus petit que');
 		expect(signeView('=').label).toBe('égal à');
 		expect(signeView('>').label).toBe('plus grand que');
@@ -129,7 +132,7 @@ describe('signeView (#380)', () => {
 
 describe('comportement du pavé (ui/pave-signes.ts)', () => {
 	beforeEach(() => {
-		document.body.innerHTML = `<div id="sheets">${renderItem(itemSigne('<'), createRenderContext())}</div>`;
+		document.body.innerHTML = `<div id="sheets">${renderItem(itemSigne('<'), createRenderContext()).balisage}</div>`;
 		installPaveSignes();
 	});
 

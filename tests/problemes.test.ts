@@ -105,7 +105,7 @@ describe('problèmes — repli texte (bilan/révision via genLessonItem)', () =>
 
 describe('enonceTexte (#199) — gras léger + échappement', () => {
 	it('transforme **…** en <strong> et conserve l’échappement HTML', () => {
-		expect(enonceTexte('Total **42** ?')).toBe('Total <strong>42</strong> ?');
-		expect(enonceTexte('a < b **x**')).toBe('a &lt; b <strong>x</strong>');
+		expect(enonceTexte('Total **42** ?').balisage).toBe('Total <strong>42</strong> ?');
+		expect(enonceTexte('a < b **x**').balisage).toBe('a &lt; b <strong>x</strong>');
 	});
 });

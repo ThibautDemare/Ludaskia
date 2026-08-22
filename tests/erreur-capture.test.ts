@@ -15,6 +15,7 @@ import type { ChoiceView } from '../src/core/exercise';
 import { chargerErreursFor, ERREURS_KEY } from '../src/core/erreurs-journal';
 import { initProfiles, activeProfile, touchActiveProfile } from '../src/core/profiles';
 import { setOnDataWrite } from '../src/core/storage';
+import { brut } from '../src/core/html';
 
 beforeEach(() => {
 	localStorage.clear();
@@ -49,8 +50,8 @@ describe('questionPourJournal', () => {
 
 describe('libelleChoix', () => {
 	const view: ChoiceView[] = [
-		{ html: '<span>1/2</span>', label: 'un demi' },
-		{ html: '<span>1/4</span>', label: 'un quart' },
+		{ html: brut('<span>1/2</span>'), label: 'un demi' },
+		{ html: brut('<span>1/4</span>'), label: 'un quart' },
 	];
 
 	it('sans vue riche → la valeur brute (QCM texte déjà lisible)', () => {
@@ -139,7 +140,7 @@ describe('capterErreur — marqueur « passé sans essayer » (#467)', () => {
 	});
 
 	it('un item passé sur un exercice à dessin reste journalisé et signalé', () => {
-		capterErreur(opts({ text: '', figure: '<svg></svg>', donnee: '', sansTentative: true }));
+		capterErreur(opts({ text: '', figure: brut('<svg></svg>'), donnee: '', sansTentative: true }));
 		expect(journal()[0]).toMatchObject({
 			question: 'Exercice avec un dessin',
 			sansTentative: true,

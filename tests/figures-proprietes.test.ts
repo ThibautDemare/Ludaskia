@@ -25,6 +25,7 @@ import type { Exercise, ExerciseType } from '../src/core/exercise';
 import { checkItemAnswer } from '../src/core/items';
 import { withSeed } from '../src/core/utils';
 import { FIGURES } from '../src/data/maths/figures-proprietes';
+import { brut } from '../src/core/html';
 
 /* Libellés d'affirmations attendus (CONTRAT d'affichage — affirmations POSITIVES, sans
    nom de figure). Écrits ici indépendamment : si le code change le libellé, ces tests
@@ -64,7 +65,7 @@ describe('Figures par propriétés CM1 — vrai/faux (mode qcm, défaut)', () =>
 				// L'affirmation jugée est l'un des libellés connus (aucune propriété non codée).
 				const affirmation = ex.question.slice('Vrai ou faux ? '.length);
 				expect(TOUS_TEXTES).toContain(affirmation);
-				expect(ex.figure ?? '').toContain('<svg');
+				expect(ex.figure?.balisage ?? '').toContain('<svg');
 				expect(ex.parle).toBe(ex.question);
 			}
 		});
@@ -130,7 +131,7 @@ describe('Figures par propriétés CM1 — multi-sélection (mode coche → qcmM
 				expect(ex.correctes.length).toBeLessThanOrEqual(3);
 				for (const c of ex.correctes) expect(ex.propositions).toContain(c);
 				for (const p of ex.propositions) expect(TOUS_TEXTES).toContain(p);
-				expect(ex.figure ?? '').toContain('<svg');
+				expect(ex.figure?.balisage ?? '').toContain('<svg');
 				expect(contientNomFigure(ex.question)).toBe(false);
 				ex.propositions.forEach((p) => expect(contientNomFigure(p)).toBe(false));
 			}
@@ -280,7 +281,7 @@ describe('Variante qcmMulti — câblage (#253)', () => {
 				question: 'Coche les propriétés vraies.',
 				propositions,
 				correctes,
-				figure: '<svg>fig</svg>',
+				figure: brut('<svg>fig</svg>'),
 				parle: 'Coche les propriétés vraies.',
 			}),
 			check: checkAnswer,
@@ -292,7 +293,7 @@ describe('Variante qcmMulti — câblage (#253)', () => {
 		expect(item.kind).toBe('text');
 		expect(item.answer).toBe('Vrai'); // propositions[0] appartient à correctes
 		expect(item.text).toBe(`Vrai ou faux ? ${P.tousEgaux}`);
-		expect(item.figure).toBe('<svg>fig</svg>');
+		expect(item.figure?.balisage).toBe('<svg>fig</svg>');
 		expect(checkItemAnswer(item, 'Vrai')).toBe(true);
 		expect(checkItemAnswer(item, 'Faux')).toBe(false);
 		expect(item.choices).toBeUndefined(); // pas un QCM classique

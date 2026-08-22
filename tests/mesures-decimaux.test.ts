@@ -189,9 +189,9 @@ describe('Conversions décimales CM1 (#248) — tolérance de saisie', () => {
 describe('Conversions décimales CM1 (#248) — rendu de la saisie', () => {
 	it('champ décimal → inputmode="decimal" (virgule au clavier) ; entier → "numeric"', () => {
 		const dec = renderItem({ text: 'q @', answer: '4,56', kind: 'num' }, createRenderContext());
-		expect(dec).toContain('inputmode="decimal"');
-		expect(dec).not.toContain('.'); // aucun point dans le champ ni la réponse exposée
+		expect(dec.balisage).toContain('inputmode="decimal"');
+		expect(dec.balisage).not.toContain('.'); // aucun point dans le champ ni la réponse exposée
 		const ent = renderItem({ text: 'q @', answer: '300', kind: 'num' }, createRenderContext());
-		expect(ent).toContain('inputmode="numeric"');
+		expect(ent.balisage).toContain('inputmode="numeric"');
 	});
 });

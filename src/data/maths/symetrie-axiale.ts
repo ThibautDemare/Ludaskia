@@ -24,6 +24,7 @@ import type { LessonInput } from '../_shared';
 import type { SymAxis, SymMotif, SymShape, SymTransform } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
 import { choice, rnd, sample } from '../../core/utils';
+import { type SafeHtml } from '../../core/html';
 
 const MODES: ModeOption[] = [MODE_QCM_POINT];
 
@@ -50,7 +51,7 @@ interface Fait {
 	answer: string;
 	choices: string[];
 	choicesView?: ChoiceView[]; // affichage riche des choix (figures-images du format 3)
-	figure: string;
+	figure: SafeHtml;
 	explication: string;
 	parle: string;
 }

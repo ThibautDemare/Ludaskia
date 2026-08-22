@@ -55,6 +55,7 @@ export * from './symetrie';
 export * from './angles';
 export * from './groupes';
 export * from './graphiques';
+import { brut, type SafeHtml } from '../html';
 
 import { renderHorloge } from './horloge';
 import {
@@ -167,7 +168,25 @@ export type FigureSpec =
 			coinLabel?: string;
 	  };
 
-export function renderFigure(spec: FigureSpec): string {
+/* FRONTIÈRE TYPÉE du moteur de figures (#614).
+
+   Le moteur compose du SVG à partir de `FigureSpec`, une donnée FERMÉE construite
+   par l'application (nombres, énumérations, libellés de leçon) — jamais une saisie
+   d'enfant ni un contenu importé. Les rares figures qui interpolent du texte libre
+   (droite graduée, diagramme, tableau de données) l'échappent chez elles.
+
+   On marque donc la sortie de CE point d'entrée, une fois, plutôt que de convertir
+   3 000 lignes de composition SVG en gabarits : ce serait une réécriture du moteur,
+   pas un garde-fou, et le SVG a ses propres contextes (`<text>`, `viewBox`, `d`) que
+   le gabarit HTML ne modélise pas. La limite est assumée et écrite — cf.
+   docs/architecture/rendu-et-echappement.md. Ce que ce marquage APPORTE : tout ce
+   qui consomme une figure (`Item.figure`, `figureBlock`, les runners) est désormais
+   typé, donc plus personne ne peut y glisser une chaîne quelconque. */
+export function renderFigure(spec: FigureSpec): SafeHtml {
+	return brut(renderFigureSvg(spec));
+}
+
+function renderFigureSvg(spec: FigureSpec): string {
 	switch (spec.kind) {
 		case 'horloge':
 			return renderHorloge(spec.heures, spec.minutes);

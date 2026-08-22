@@ -3,6 +3,7 @@
    et fabrique de champs / grilles / fiches.
    ============================================================ */
 import { escapeHTML, normalizeText } from './utils';
+import { attribut, brut, html, joindre, VIDE, type SafeHtml } from './html';
 import { ttsAttr, texteParle } from './tts-text';
 import { stackFractions } from './fraction-text';
 import { wrapGrandsNombres, parseNombreFr } from './nombres';
@@ -27,7 +28,7 @@ export interface Item {
 	answers?: string[]; // formes équivalentes acceptées (exercices texte)
 	kind?: 'num' | 'text' | 'posed' | 'heure'; // 'num' (calcul) ; 'text' (chaîne) ; 'posed' (grille) ; 'heure' (2 champs H h MM, #88)
 	posed?: PosedSpec; // présent si kind === 'posed'
-	figure?: string; // fragment SVG (moteur core/figures.ts), affiché au-dessus de la question (#88)
+	figure?: SafeHtml; // fragment SVG (moteur core/figures.ts), affiché au-dessus de la question (#88)
 	parle?: string; // texte LU à voix haute si l'énoncé est télégraphique (#42 ; cf. tts-text)
 	// Intercaler (#240 CM1, #446 CE2) : la réponse n'est pas unique mais TOUTE valeur
 	// strictement comprise entre deux bornes exclues [min, max] (« un nombre entre 450 et
@@ -63,8 +64,8 @@ export const estItemQcm = (it: Item): boolean => !!(it.choices && it.choices.len
    Centralisé ici pour que tous les rendus (fiche, QCM, sprint, révision)
    affichent la figure de la même façon — appelée par renderItem et par les
    runners « une question à la fois ». Le fragment SVG n'est PAS échappé. */
-export function figureBlock(figure?: string): string {
-	return figure ? `<div class="figure">${figure}</div>` : '';
+export function figureBlock(figure?: SafeHtml): SafeHtml {
+	return figure ? html`<div class="figure">${figure}</div>` : VIDE;
 }
 
 /* Énoncé d'un item, échappé puis enrichi : GRAS léger via `**…**` (#199 : question
@@ -75,20 +76,23 @@ export function figureBlock(figure?: string): string {
    sûres. Les transformations sont disjointes (fractions = « n/m » ; grands nombres =
    classes séparées par U+202F, caractère introduit seulement par formatNombre) :
    sans effet de bord ailleurs. */
-export function enonceTexte(text: string): string {
-	return wrapGrandsNombres(
-		stackFractions(escapeHTML(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')),
-	);
+export function enonceTexte(text: string): SafeHtml {
+	return wrapGrandsNombres(stackFractions(gras(html`${text}`)));
 }
+
+/* GRAS léger `**…**` posé APRÈS échappement : les `**` de l'énoncé sont intacts (ils
+   n'ont rien à échapper), et le `<strong>` injecté encadre du contenu déjà sûr. */
+const gras = (fragment: SafeHtml): SafeHtml =>
+	brut(fragment.balisage.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'));
 
 /* Un bouton-choix de QCM (#200), partagé par le runner leçon et le sprint.
    `value` est la VALEUR comparée (rendue échappée par défaut) ; si une `view` riche
    est fournie, on rend son HTML/SVG de confiance avec un `aria-label` verbal (le
    lecteur d'écran lit le libellé, jamais le balisage ni « num slash den »). */
-export function choiceButtonHTML(value: string, index: number, view?: ChoiceView): string {
-	const inner = view ? view.html : escapeHTML(value);
-	const aria = view ? ` aria-label="${escapeHTML(view.label)}"` : '';
-	return `<button class="sprint-choice" data-i="${index}"${aria}>${inner}</button>`;
+export function choiceButtonHTML(value: string, index: number, view?: ChoiceView): SafeHtml {
+	const inner = view ? view.html : value;
+	const aria = view ? html` aria-label="${view.label}"` : VIDE;
+	return html`<button class="sprint-choice" data-i="${index}"${aria}>${inner}</button>`;
 }
 
 /* L'intervalle OUVERT ]min ; max[ admet-il PLUSIEURS réponses au sens du LANGAGE, c.-à-d.
@@ -251,8 +255,8 @@ export function createRenderContext(init: Partial<RenderContext> = {}): RenderCo
 // Id de champ unique dans le contexte (« a0 », « a1 »…).
 export const nextInputId = (ctx: RenderContext) => 'a' + ctx.counter++;
 // Attribut data-lesson, ou rien si le champ n'est rattaché à aucune leçon.
-export const lessonAttr = (ctx: RenderContext) =>
-	ctx.lessonId != null ? ` data-lesson="${ctx.lessonId}"` : '';
+export const lessonAttr = (ctx: RenderContext): SafeHtml =>
+	ctx.lessonId != null ? attribut('data-lesson', ctx.lessonId) : VIDE;
 
 /* Nom accessible d'un champ de réponse (#577). Sans lui, un lecteur d'écran annonce
    « zone de saisie » — six fois de suite sur une fiche de conjugaison, sans jamais dire
@@ -277,8 +281,8 @@ export function nomChampReponse(it: Item): string {
    unique) — utile à qui ne voit ni le pavé de signes ni la fraction empilée. Il vient
    APRÈS l'énoncé : c'est l'énoncé qui distingue ce champ de ses voisins, et un lecteur
    d'écran annonce le début du nom en premier. */
-export const ariaChamp = (it: Item, role?: string) =>
-	` aria-label="${escapeHTML(role ? `${nomChampReponse(it)} — ${role}` : nomChampReponse(it))}"`;
+export const ariaChamp = (it: Item, role?: string): SafeHtml =>
+	attribut('aria-label', role ? `${nomChampReponse(it)} — ${role}` : nomChampReponse(it));
 
 /* Rend un fragment en rattachant ses champs à `lessonId` (attribut data-lesson), puis
    détache — sans toucher au compteur d'id ni à la table `items`, qui persistent pour
@@ -306,41 +310,53 @@ export function withLessonId<T>(ctx: RenderContext, lessonId: string, render: ()
    N'affecte QUE le texte ; la saisie numérique du calcul garde `type` texte +
    `inputmode="numeric"`. La valeur saisie (`input.value`) demeure le texte tapé →
    correction (`checkItemAnswer`) inchangée. */
-export const TEXT_ANSWER_INPUT_ATTRS =
-	'type="password" data-unmask autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"';
+export const TEXT_ANSWER_INPUT_ATTRS = brut(
+	// Littéral constant : aucune donnée n'y est interpolée, rien à échapper.
+	'type="password" data-unmask autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"',
+);
 
 /* Rendu PAPIER d'un QCM (#289) : la question, puis chaque choix précédé d'une case à
    cocher ☐. Le libellé est le texte échappé, ou la vue riche `choicesView` de confiance
    (fraction empilée, terminaison surlignée, image de symétrie), alignée par index. La
    consigne d'action « Coche… » est portée par la fiche / le bloc de bilan, pas répétée
    ici. Réservé à l'impression : à l'écran, le QCM est joué par son runner interactif. */
-function qcmCheckboxHTML(it: Item, ctx: RenderContext): string {
+function qcmCheckboxHTML(it: Item, ctx: RenderContext): SafeHtml {
 	const answer = String(it.answer);
-	const lis = (it.choices ?? [])
-		.map((c, i) => {
+	const lis = joindre(
+		(it.choices ?? []).map((c, i) => {
 			const view = it.choicesView?.[i];
-			const label = view ? view.html : escapeHTML(c);
-			const aria = view ? ` aria-label="${escapeHTML(view.label)}"` : '';
+			const label = view ? view.html : c;
+			const aria = view ? attribut('aria-label', view.label) : VIDE;
 			// Corrigé (#41) : la case du bon choix est cochée ☑ et le libellé mis en gras
 			// (le ✓ ET la graisse — deux indices, pas la couleur seule). `answer` est
 			// toujours l'une des valeurs de `choices` (par construction du générateur).
 			const correct = ctx.corrigeMode && c === answer;
 			const liCls = correct ? 'qcm-print-choice qcm-print-choice--correct' : 'qcm-print-choice';
 			const boxCls = correct ? 'qcm-print-box qcm-print-box--checked' : 'qcm-print-box';
-			return `<li class="${liCls}"><span class="${boxCls}" aria-hidden="true"></span><span class="qcm-print-label"${aria}>${label}</span></li>`;
-		})
-		.join('');
+			return html`<li class="${liCls}"><span class="${boxCls}" aria-hidden="true"></span><span class="qcm-print-label"${aria}>${label}</span></li>`;
+		}),
+	);
 	// Le `@` (emplacement de la réponse dans les QCM à trou : homophones, m/b/p…) ne doit
 	// pas s'imprimer tel quel — incompris d'un enfant. On le rend par un rectangle vide
 	// qui matérialise « le mot/la lettre va ici » (#41 suivi de #289).
-	const question = enonceTexte(it.text).replace(
+	const question = poserAuTrou(
+		enonceTexte(it.text),
 		'@',
-		'<span class="cloze-box" aria-hidden="true"></span>',
+		html`<span class="cloze-box" aria-hidden="true"></span>`,
 	);
-	return `${figureBlock(it.figure)}<p class="qcm-print-q">${question}</p><ul class="qcm-print-choices">${lis}</ul>`;
+	return html`${figureBlock(it.figure)}<p class="qcm-print-q">${question}</p><ul class="qcm-print-choices">${lis}</ul>`;
 }
 
-export function renderItem(it: Item, ctx: RenderContext, extra = '') {
+/* Remplace l'emplacement de réponse (`@`, ou le motif d'une fraction à trou) d'un
+   énoncé DÉJÀ rendu par le fragment du champ. Un des quatre motifs « échappe puis
+   réinjecte du brut » que #614 devait retyper : les deux côtés sont des `SafeHtml`,
+   donc plus rien ne se glisse au milieu sans être passé par le gabarit. Le
+   remplacement est une FONCTION, pour que les `$&` / `$1` d'un champ ne soient pas
+   réinterprétés par `String.replace`. */
+const poserAuTrou = (texte: SafeHtml, motif: string | RegExp, champ: SafeHtml): SafeHtml =>
+	brut(texte.balisage.replace(motif, () => champ.balisage));
+
+export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
 	// Opération posée : déployée en grille de colonnes (plusieurs champs .ans).
 	if (it.kind === 'posed' && it.posed) return posedGridHTML(it.posed, ctx);
 	// QCM imprimable (#289) : un item porteur de `choices` (sa question n'a pas de `@`)
@@ -351,7 +367,7 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	const id = nextInputId(ctx);
 	ctx.items[id] = it;
 	// Réponse exposée pour la révélation après correction (échappée pour les attributs).
-	const ansAttr = escapeHTML(String(it.answer));
+	const ansAttr = attribut('data-answer', String(it.answer));
 	// Intercalation (#446) : `data-answer` ne porte qu'UN exemple valide. On expose EN PLUS
 	// la BANDE acceptée, déjà rédigée, pour que la révélation d'une erreur (marqueur ✗ de
 	// `ui/session.ts`) annonce « un nombre entre 450 et 465 » au lieu d'un nombre isolé —
@@ -360,7 +376,7 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	// plus en session) et le point d'appui des specs e2e. Attribut posé sur le seul champ
 	// numérique : un item à intervalle est numérique par construction (réponse = un nombre),
 	// et `checkItemAnswer` ne consulte l'intervalle que hors branche texte.
-	const attendueAttr = it.intervalle ? ` data-attendue="${escapeHTML(attendueItem(it))}"` : '';
+	const attendueAttr = it.intervalle ? attribut('data-attendue', attendueItem(it)) : VIDE;
 	// Saisie de l'heure (#88) : DEUX champs « [heures] h [minutes] », le « h » en dur.
 	// Seul le champ des heures est `.ans` (noté) et porte la réponse canonique ; il
 	// référence le champ des minutes (`data-min-field`) que session.verify fusionne en
@@ -374,17 +390,12 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	if (it.kind === 'heure') {
 		// Corrigé (#41) : l'heure complète révélée à la place des deux champs « h ».
 		if (ctx.corrigeMode) {
-			const rev = `<span class="ans-corrige">${escapeHTML(String(it.answer))}</span>`;
-			return figureBlock(it.figure) + enonceTexte(it.text).replace('@', rev);
+			const rev = html`<span class="ans-corrige">${String(it.answer)}</span>`;
+			return html`${figureBlock(it.figure)}${poserAuTrou(enonceTexte(it.text), '@', rev)}`;
 		}
 		const mid = nextInputId(ctx);
-		const group =
-			`<span class="heure-input">` +
-			`<input class="ans heure-h ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} data-min-field="${mid}" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="heures">` +
-			`<span class="heure-sep" aria-hidden="true">h</span>` +
-			`<input class="heure-min" id="${mid}" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="minutes">` +
-			`</span><span class="mark" data-for="${id}"></span>`;
-		return figureBlock(it.figure) + enonceTexte(it.text).replace('@', group);
+		const group = html`<span class="heure-input"><input class="ans heure-h ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)} data-min-field="${mid}" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="heures"><span class="heure-sep" aria-hidden="true">h</span><input class="heure-min" id="${mid}" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="minutes"></span><span class="mark" data-for="${id}"></span>`;
+		return html`${figureBlock(it.figure)}${poserAuTrou(enonceTexte(it.text), '@', group)}`;
 	}
 	const texte = enonceTexte(it.text);
 	// Fraction à trou (#247) : un « @ » AU NUMÉRATEUR d'une fraction (« @/10 » / « @/100 »)
@@ -395,24 +406,20 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 	// révélé en corrigé —, pour rester cohérent avec le terme voisin empilé. Seule la
 	// décomposition décimale (#247) produit ce motif ; le trou de la partie entière
 	// (« @ + … », sans « / ») passe par le champ générique ci-dessous.
-	const fracTrou = texte.match(/@\/(\d+)/);
+	const fracTrou = texte.balisage.match(/@\/(\d+)/);
 	if (fracTrou) {
-		let numHTML: string;
-		let markHTML = '';
+		let numHTML: SafeHtml;
+		let markHTML: SafeHtml = VIDE;
 		if (ctx.corrigeMode) {
-			numHTML = `<span class="ans-corrige">${escapeHTML(String(it.answer))}</span>`;
+			numHTML = html`<span class="ans-corrige">${String(it.answer)}</span>`;
 		} else if (ctx.printMode) {
-			numHTML = `<span class="cloze-box" aria-hidden="true"></span>`;
+			numHTML = html`<span class="cloze-box" aria-hidden="true"></span>`;
 		} else {
-			numHTML =
-				`<input class="ans frac-num-input ${extra}" id="${id}" data-answer="${ansAttr}"` +
-				`${lessonAttr(ctx)} inputmode="numeric" maxlength="1" autocomplete="off"${ariaChamp(it, 'chiffre manquant')}>`;
-			markHTML = `<span class="mark" data-for="${id}"></span>`;
+			numHTML = html`<input class="ans frac-num-input ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)} inputmode="numeric" maxlength="1" autocomplete="off"${ariaChamp(it, 'chiffre manquant')}>`;
+			markHTML = html`<span class="mark" data-for="${id}"></span>`;
 		}
-		const fracHTML =
-			`<span class="frac"><span class="frac-num">${numHTML}</span>` +
-			`<span class="frac-den">${fracTrou[1]}</span></span>${markHTML}`;
-		return figureBlock(it.figure) + texte.replace(/@\/\d+/, fracHTML);
+		const fracHTML = html`<span class="frac"><span class="frac-num">${numHTML}</span><span class="frac-den">${fracTrou[1]}</span></span>${markHTML}`;
+		return html`${figureBlock(it.figure)}${poserAuTrou(texte, /@\/\d+/, fracHTML)}`;
 	}
 	// Corrigé (#41) : la réponse écrite sur la ligne, à la place du champ vide. Pas de
 	// classe `.ans` (que l'impression rend transparente pour cacher la saisie) — on
@@ -448,21 +455,26 @@ export function renderItem(it: Item, ctx: RenderContext, extra = '') {
 		? corrigeIntercalation(it.answer, it.intervalle)
 		: String(it.answer);
 	const field = ctx.corrigeMode
-		? `<span class="ans-corrige ${extra}">${escapeHTML(revelee)}</span>`
+		? html`<span class="ans-corrige ${extra}">${revelee}</span>`
 		: signe
-			? `<input class="ans ans-signe ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" spellcheck="false" maxlength="1"${ariaChamp(it, 'signe de comparaison')}><span class="mark" data-for="${id}"></span>`
+			? html`<input class="ans ans-signe ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" spellcheck="false" maxlength="1"${ariaChamp(it, 'signe de comparaison')}><span class="mark" data-for="${id}"></span>`
 			: it.kind === 'text'
-				? `<input class="ans ans-text ${extra}" id="${id}" data-answer="${ansAttr}"${lessonAttr(ctx)}${ariaChamp(it)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
-				: `<input class="ans${grand} ${extra}" id="${id}" data-answer="${ansAttr}"${attendueAttr}${lessonAttr(ctx)}${ariaChamp(it)} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
+				? html`<input class="ans ans-text ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)}${ariaChamp(it)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
+				: html`<input class="ans${grand} ${extra}" id="${id}"${ansAttr}${attendueAttr}${lessonAttr(ctx)}${ariaChamp(it)} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
-	const place = texte.includes('@') ? texte : ctx.printMode ? `${texte} @` : texte;
-	const pave = signe && !ctx.printMode && !ctx.corrigeMode ? paveSignesHTML(id) : '';
-	return figureBlock(it.figure) + place.replace('@', field) + pave;
+	const place = texte.balisage.includes('@')
+		? texte
+		: ctx.printMode
+			? html`${texte} @`
+			: texte;
+	const pave = signe && !ctx.printMode && !ctx.corrigeMode ? paveSignesHTML(id) : VIDE;
+	return html`${figureBlock(it.figure)}${poserAuTrou(place, '@', field)}${pave}`;
 }
-export function gridHTML(items: Item[], cols: number, ctx: RenderContext) {
+export function gridHTML(items: Item[], cols: number, ctx: RenderContext): SafeHtml {
 	const cls = cols === 3 ? 'c3' : 'c4';
-	return `<div class="grid ${cls}">${items.map((it) => `<div class="op">${renderItem(it, ctx)}</div>`).join('')}</div>`;
+	const cases = joindre(items.map((it) => html`<div class="op">${renderItem(it, ctx)}</div>`));
+	return html`<div class="grid ${cls}">${cases}</div>`;
 }
 
 /* ---------- Disposition d'une opération posée (#97, extraite en #490) ----------
@@ -582,23 +594,24 @@ export function dispositionPosee(spec: PosedSpec): DispositionPosee {
     d'alourdir chaque cellule d'une copie de l'opération. */
 export function poseeGrilleHTML(
 	disposition: DispositionPosee,
-	cellules: string,
+	cellules: SafeHtml,
 	classe = '',
 	spec?: PosedSpec,
-): string {
+): SafeHtml {
 	// `data-pose-*` et non `data-posee-*` : ce dernier contiendrait la sous-chaîne
 	// « posee-op », qui sert de repère de comptage des opérateurs dans les tests.
 	const data = spec
-		? ` data-pose-op="${spec.op}" data-pose-a="${spec.a}" data-pose-b="${spec.b}"`
-		: '';
-	return `<div class="posee${classe ? ' ' + classe : ''}"${data} style="grid-template-columns: repeat(${disposition.colonnes + 1}, var(--posee-col, 2.1rem))">${cellules}</div>`;
+		? html`${attribut('data-pose-op', spec.op)}${attribut('data-pose-a', spec.a)}${attribut('data-pose-b', spec.b)}`
+		: VIDE;
+	const colonnes = `repeat(${disposition.colonnes + 1}, var(--posee-col, 2.1rem))`;
+	return html`<div class="posee${classe ? ' ' + classe : ''}"${data} style="grid-template-columns: ${colonnes}">${cellules}</div>`;
 }
 
 /* Grille d'une opération posée (#97) : les chiffres du résultat (et des produits
    partiels en ×2 chiffres) sont des champs `.ans` NOTÉS un par un ; la rangée de
    retenues `.ans-free` (non notée) sert d'aide visible. verify() corrige chaque cellule
    via son data-answer ; un sans-faute = toutes les cellules justes. */
-function posedGridHTML(spec: PosedSpec, ctx: RenderContext): string {
+function posedGridHTML(spec: PosedSpec, ctx: RenderContext): SafeHtml {
 	const disposition = dispositionPosee(spec);
 	// Journal d'erreurs (#391) : descripteur partagé par les cellules-chiffres du RÉSULTAT
 	// (agrégées en UNE entrée par opération dans session.verify, cf. erreur-representation).
@@ -608,41 +621,41 @@ function posedGridHTML(spec: PosedSpec, ctx: RenderContext): string {
 	const operation = disposition.operation;
 	const attendue = String(disposition.resultat);
 
-	const celluleHTML = (c: CellulePosee): string => {
+	const celluleHTML = (c: CellulePosee): SafeHtml => {
 		switch (c.role) {
 			case 'vide':
-				return `<span class="posee-cell"></span>`;
+				return html`<span class="posee-cell"></span>`;
 			case 'signe':
-				return `<span class="posee-cell posee-op">${c.texte}</span>`;
+				return html`<span class="posee-cell posee-op">${c.texte}</span>`;
 			case 'chiffre':
-				return `<span class="posee-cell posee-digit">${c.chiffre}</span>`;
+				return html`<span class="posee-cell posee-digit">${c.chiffre}</span>`;
 			// Zéro FOURNI (grisé, non saisi) du 2ᵉ produit partiel : on multiplie par les
 			// dizaines, donc le produit se termine par 0 — ce 0 explique le décalage et
 			// réaligne la ligne sous la somme (#154, avis pedagogue-primaire).
 			case 'zeroDecalage':
-				return `<span class="posee-cell posee-digit posee-zero" aria-label="zéro du décalage">0</span>`;
+				return html`<span class="posee-cell posee-digit posee-zero" aria-label="zéro du décalage">0</span>`;
 			case 'retenue':
-				return `<input class="ans-free posee-cell posee-carry" maxlength="1" inputmode="numeric" autocomplete="off" aria-label="retenue">`;
+				return html`<input class="ans-free posee-cell posee-carry" maxlength="1" inputmode="numeric" autocomplete="off" aria-label="retenue">`;
 			case 'saisie': {
 				// Corrigé (#41) : le chiffre du résultat révélé dans la cellule (au lieu du champ).
 				if (ctx.corrigeMode)
-					return `<span class="posee-cell posee-input posee-corrige">${c.chiffre}</span>`;
+					return html`<span class="posee-cell posee-input posee-corrige">${c.chiffre}</span>`;
 				const id = nextInputId(ctx);
 				const item: Item = { text: '', answer: Number(c.chiffre), kind: 'num' };
 				// Seules les cellules du RÉSULTAT sont taguées pour le journal (#391).
 				if (c.resultat) item.posedResult = { groupe, operation, attendue, pos: c.resultat.pos };
 				ctx.items[id] = item;
-				return `<input class="ans posee-cell posee-input" id="${id}" data-answer="${c.chiffre}"${lessonAttr(ctx)} maxlength="1" inputmode="numeric" autocomplete="off" aria-label="chiffre du résultat">`;
+				return html`<input class="ans posee-cell posee-input" id="${id}" data-answer="${c.chiffre}"${lessonAttr(ctx)} maxlength="1" inputmode="numeric" autocomplete="off" aria-label="chiffre du résultat">`;
 			}
 		}
 	};
-	const cellules = disposition.rangees
-		.map((r) =>
+	const cellules = joindre(
+		disposition.rangees.map((r) =>
 			r.barre
-				? `<span class="posee-rule" style="grid-column: 1 / ${disposition.colonnes + 2}"></span>`
-				: r.cellules.map(celluleHTML).join(''),
-		)
-		.join('');
+				? html`<span class="posee-rule" style="grid-column: 1 / ${disposition.colonnes + 2}"></span>`
+				: joindre(r.cellules.map(celluleHTML)),
+		),
+	);
 	return poseeGrilleHTML(disposition, cellules, '', spec);
 }
 /* L'en-tête de fiche : le champ "Temps : ___ min" est print-only */
@@ -651,9 +664,9 @@ export function ficheHTML(
 	titre: string,
 	sous: string,
 	consigne: string,
-	inner: string,
-) {
-	return `<div class="fiche">
+	inner: SafeHtml,
+): SafeHtml {
+	return html`<div class="fiche">
     <div class="fiche-head">
       <p class="fiche-title">MENTAL ${num} — ${titre}</p>
       <span class="temps print-only">Temps : ______ min</span>
@@ -665,13 +678,18 @@ export function ficheHTML(
 }
 /* En-tête de fiche générique (sans préfixe « MENTAL ») pour les matières
    autres que le calcul mental. */
-export function ficheHTMLGeneric(titre: string, sous: string, consigne: string, inner: string) {
-	return `<div class="fiche">
+export function ficheHTMLGeneric(
+	titre: string,
+	sous: string,
+	consigne: string,
+	inner: SafeHtml,
+): SafeHtml {
+	return html`<div class="fiche">
     <div class="fiche-head">
       <p class="fiche-title">${titre}</p>
       <span class="temps print-only">Temps : ______ min</span>
     </div>
-    ${sous ? `<p class="fiche-sub">${sous}</p>` : ''}
+    ${sous ? html`<p class="fiche-sub">${sous}</p>` : VIDE}
     <p class="consigne-line"${ttsAttr(consigne)}>${consigne}</p>
     ${inner}
   </div>`;

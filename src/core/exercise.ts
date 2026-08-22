@@ -3,6 +3,7 @@
    Utilisé par tous les types d'exercices (math, conjugaison, QCM, orthographe…).
    ============================================================ */
 import { normalizeText } from './utils';
+import type { SafeHtml } from './html';
 import type { IconName } from './icon-names';
 import type { SchoolLevel } from './catalog';
 
@@ -10,7 +11,7 @@ import type { SchoolLevel } from './catalog';
     (généré par l'app, jamais une saisie utilisateur) et son libellé parlé pour
     l'accessibilité (lu par le lecteur d'écran / le TTS, jamais le balisage). */
 export interface ChoiceView {
-	html: string;
+	html: SafeHtml;
 	label: string;
 }
 
@@ -113,7 +114,7 @@ export type Exercise =
 			question: string;
 			answer: string;
 			answers?: string[];
-			figure?: string;
+			figure?: SafeHtml;
 			champHeure?: boolean;
 			parle?: string;
 			intervalle?: [number, number];
@@ -148,7 +149,7 @@ export type Exercise =
 			choices: string[];
 			choicesView?: ChoiceView[];
 			choicesEmpilees?: boolean;
-			figure?: string;
+			figure?: SafeHtml;
 			explication?: string;
 			parle?: string;
 			consigne?: string;
@@ -171,7 +172,7 @@ export type Exercise =
 			question: string;
 			propositions: string[];
 			correctes: string[];
-			figure?: string;
+			figure?: SafeHtml;
 			parle?: string;
 	  }
 	// Numération (#98) — l'enfant déplace LA bonne tuile (signe ou nombre) parmi
@@ -316,7 +317,7 @@ export type Exercise =
 			enonce: string;
 			etapes: ProblemeEtape[];
 			parle: string;
-			figure?: string;
+			figure?: SafeHtml;
 			explication?: string;
 	  }
 	// Orthographe — interactions réutilisables (vérifiées comme du texte) :

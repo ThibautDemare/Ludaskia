@@ -6,7 +6,7 @@
    DOM, en produit une version pour l'OREILLE. Réutilisée par tout bouton
    « Écouter la consigne ». Voir docs/design-orthographe.md (§ Accessibilité).
    ============================================================ */
-import { escapeHTML } from './utils';
+import { attribut, VIDE, type SafeHtml } from './html';
 
 // Signes d'opération entourés d'espaces (les énoncés calcul sont « 7 + 8 = @ »)
 // → mots. On exige l'espacement pour ne pas toucher un tiret interne (« porte-clé »).
@@ -107,7 +107,7 @@ export function texteParle(raw: string): string {
  *  l'élément de consigne le porte, le composant ui/consigne-tts greffe le bouton.
  *  L'échappement passe par `escapeHTML`, qui couvre désormais les guillemets : ce module
  *  gardait sa propre copie faute de quoi la valeur d'attribut se serait refermée. */
-export function ttsAttr(raw: string): string {
+export function ttsAttr(raw: string): SafeHtml {
 	const t = texteParle(raw);
-	return t ? ` data-tts="${escapeHTML(t)}"` : '';
+	return t ? attribut('data-tts', t) : VIDE;
 }

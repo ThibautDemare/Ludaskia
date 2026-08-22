@@ -30,6 +30,7 @@ import type { PlaneShape } from '../../core/figures';
 import { renderFigure } from '../../core/figures';
 import { checkNumeriqueOuTexte } from '../../core/check-helpers';
 import { rnd, choice, sample } from '../../core/utils';
+import { type SafeHtml } from '../../core/html';
 
 /* ---------- Identification visuelle ---------- */
 
@@ -68,7 +69,7 @@ interface Fait {
 	base: string; // énoncé (sans `@`)
 	answer: string;
 	choices: string[]; // pour le QCM (mélangés)
-	figure: string;
+	figure: SafeHtml;
 }
 
 /* Orientation de la figure unique : le carré s'incline parfois (objectif CE2),

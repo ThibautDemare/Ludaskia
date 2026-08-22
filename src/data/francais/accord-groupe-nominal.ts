@@ -38,6 +38,7 @@ import { checkAnswer } from '../../core/exercise';
 import { choice, escapeHTML, sample } from '../../core/utils';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
+import { html, joindre, type SafeHtml } from '../../core/html';
 
 /** Sens de la transformation demandée à l'enfant. */
 export type SensGN = 'pluriel' | 'feminin';
@@ -232,14 +233,14 @@ function prefixeCommun(a: string, b: string): string {
    surligne UNIFORMÉMENT sur tous les choix : un suffixe vide (forme de départ
    laissée non accordée) garde un `<span class="term">` vide, donc le surlignage ne
    trahit pas la bonne réponse. */
-function vueConstituant(c: Constituant, valeur: string): string {
+function vueConstituant(c: Constituant, valeur: string): SafeHtml {
 	if (c.marque === 'mot') {
-		return `<span class="term">${escapeHTML(valeur)}</span>`;
+		return html`<span class="term">${valeur}</span>`;
 	}
 	const racine = prefixeCommun(c.depart, c.cible);
 	// `valeur` commence toujours par la racine (départ et cible la partagent).
 	const suffixe = valeur.slice(racine.length);
-	return `${escapeHTML(racine)}<span class="term">${escapeHTML(suffixe)}</span>`;
+	return html`${racine}<span class="term">${suffixe}</span>`;
 }
 
 /* Une proposition de QCM : la valeur nue (clé de correction) et sa vue riche. Une
@@ -258,7 +259,7 @@ function proposition(g: GroupeNominal, accordes: boolean[]): Proposition {
 	const vues = g.constituants.map((c, i) => vueConstituant(c, valeurs[i]));
 	return {
 		valeur: valeurs.join(' '),
-		vue: { html: vues.join(' '), label: valeurs.join(' ') },
+		vue: { html: joindre(vues, ' '), label: valeurs.join(' ') },
 	};
 }
 

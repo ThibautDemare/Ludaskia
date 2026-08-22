@@ -20,6 +20,7 @@ import {
 } from './items';
 import type { Item, RenderContext } from './items';
 import { commKey } from './utils';
+import { html, joindre, VIDE, type SafeHtml } from './html';
 
 /* Génère jusqu'à n items distincts pour une leçon (dédup par contenu).
    Si la leçon offre moins de n variantes (ex. une conjugaison = 6 personnes),
@@ -58,9 +59,9 @@ export function buildLessonFiche(
 	lessonId: string,
 	level?: SchoolLevel,
 	ctx: RenderContext = createRenderContext(),
-): string {
+): SafeHtml {
 	const lesson = getLessonById(lessonId);
-	if (!lesson) return '';
+	if (!lesson) return VIDE;
 	// Calcul mental (moteur bilanQ) : rendu riche dédié (grilles, décomposition…).
 	if (isLegacyMathLesson(lesson)) {
 		const math = LESSONS_CALCUL_MENTAL.find((l) => l.id === lessonId)!;
@@ -74,14 +75,10 @@ export function buildLessonFiche(
 	// fiche parlent tous du même niveau (#436).
 	const lvl = level ?? niveauLecon(lesson);
 	const items = genItems(lesson, 8, lvl);
-	const inner = withLessonId(
-		ctx,
-		lessonId,
-		() =>
-			`<div class="conj-list">${items
-				.map((it) => `<div class="conj-op">${renderItem(it, ctx)}</div>`)
-				.join('')}</div>`,
-	);
+	const inner = withLessonId(ctx, lessonId, () => {
+		const lignes = joindre(items.map((it) => html`<div class="conj-op">${renderItem(it, ctx)}</div>`));
+		return html`<div class="conj-list">${lignes}</div>`;
+	});
 	// Consigne propre au type d'exercice si définie (#42 : nomme la tâche, ex.
 	// « Conjugue le verbe au temps demandé. ») ; sinon générique selon la matière.
 	// En impression (#289), une fiche de QCM se remplit en cochant → consigne d'action
@@ -117,7 +114,7 @@ export function buildFichesForIds(
 	lessonIds: string[],
 	level?: SchoolLevel,
 	ctx: RenderContext = createRenderContext(),
-): string[] {
+): SafeHtml[] {
 	return getAllLessons()
 		.filter((l) => lessonIds.includes(l.id))
 		.map((l) => buildLessonFiche(l.id, level, ctx));

@@ -309,6 +309,28 @@ export function html(parts: TemplateStringsArray, ...valeurs: ValeurHtml[]): Saf
 	return new SafeHtml(sortie);
 }
 
+/** Attribut ` nom="valeur"` prêt à coller dans une balise, espace de tête comprise.
+ *
+ *  Pourquoi un helper plutôt qu'un `html\` nom="${v}"\`` : un gabarit commence
+ *  toujours en position TEXTE, donc un fragment d'attribut ÉCRIT SEUL serait analysé
+ *  hors contexte — l'échappement tomberait juste par chance (les deux contextes
+ *  partagent `escapeHTML`) mais un `href` isolé perdrait son contrôle de schéma.
+ *  Ici la position est posée explicitement, contrôle d'URL compris. */
+export function attribut(nom: string, valeur: string | number): SafeHtml {
+	if (!/^[a-zA-Z_:][\w:.-]*$/.test(nom))
+		throw new Error(`html : nom d'attribut invalide « ${apercu(nom)} ».`);
+	const position: Position = ATTRIBUTS_URL.has(nom.toLowerCase()) ? 'url' : 'attribut-quote';
+	return new SafeHtml(` ${nom}="${echapper(String(valeur), position)}"`);
+}
+
+/** Attribut BOOLÉEN (` disabled`, ` hidden`…), sans valeur. Le nom est validé :
+ *  c'est la seule chose à vérifier, puisqu'il n'y a pas de valeur à échapper. */
+export function drapeau(nom: string): SafeHtml {
+	if (!/^[a-zA-Z_:][\w:.-]*$/.test(nom))
+		throw new Error(`html : nom d'attribut invalide « ${apercu(nom)} ».`);
+	return new SafeHtml(` ${nom}`);
+}
+
 /** Joint des fragments déjà sûrs — équivalent typé de `.join('')`, pour les
  *  `map(…)` qui produisent une liste d'éléments. */
 export const joindre = (fragments: SafeHtml[], separateur = ''): SafeHtml =>

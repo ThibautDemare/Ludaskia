@@ -28,6 +28,7 @@ import type { SchoolLevel } from '../../core/catalog';
 import { etayageRedige, type LessonInput } from '../_shared';
 import { renderFigure, boundaryEdges } from '../../core/figures';
 import { rnd, sample, choice } from '../../core/utils';
+import { type SafeHtml } from '../../core/html';
 
 const NIVEAUX: SchoolLevel[] = ['cm1'];
 
@@ -87,9 +88,9 @@ function choixNombres(bon: number, pieges: number[]): string[] {
 	return sample([...set], set.size).map(String);
 }
 
-const figAireSvg = (f: FigureQuad): string =>
+const figAireSvg = (f: FigureQuad): SafeHtml =>
 	renderFigure({ kind: 'quadrillage', cols: f.cols, rows: f.rows, cells: f.cells, mode: 'aire' });
-const figPerimetreSvg = (f: FigureQuad): string =>
+const figPerimetreSvg = (f: FigureQuad): SafeHtml =>
 	renderFigure({
 		kind: 'quadrillage',
 		cols: f.cols,

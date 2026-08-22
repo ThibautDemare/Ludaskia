@@ -385,6 +385,77 @@ pure](core.md)) pour les formats composites :
   (`filtrerErreursParPeriode`, `core/erreurs-journal.ts`), défaut adaptatif
   (`periodeParDefaut`) ; handler exporté `erreursClick`, routé par `progressionClick`.
 
+**Récap éphémère de fin de séance (#537)** — `recap-seance.ts` (hors des modules de
+section/runner ci-dessus), consommé par `session.ts` (bilans express/complet/
+personnalisé), `sprint.ts`, `revision.ts` et `seance.ts` (programme du jour, ci-dessus) :
+une phrase qui NOMME les notions traversées, là où le seul retour existant était un
+pourcentage ou une étoile. La décision (ce qui est nommé, avec quel gabarit) vit dans
+`core/recap-notions.ts` (pure, cf. [Logique pure](core.md)) ; ce module-ci ne fait que la
+résolution catalogue, la mémoire de page et le rendu :
+- **`notionLecon`/`notionGroupe`/`notionsDepuisPerLesson`** résolvent un id de leçon ou un
+  groupe de mots d'orthographe en `NotionRecap` (libellé résolu au niveau JOUÉ,
+  `labelLecon`+`niveauLecon`, comme `leconTitreHTML`).
+- **`noterNotions`/`notionsNotees`** gardent, en **mémoire de la page** (aucune clé de
+  stockage — critère du cadrage), ce qu'un sprint/une révision vient de traverser, pour
+  que le programme du jour puisse nommer une étape au titre générique sans relire le
+  journal ; perdu au rechargement, l'étape retombe alors sur son titre seul (enrichi
+  quand on peut, jamais faux). Rangée **par profil** (`notionsParProfil`, `Map<uuid,
+  …>`) : changer de profil ne recharge pas la page (`setActiveProfile` puis `route()`,
+  `main.ts`), donc une mémoire globale aurait accolé les notions du sprint d'un enfant à
+  l'étape « Sprint » du programme de son frère. Préféré à un effacement déclenché par le
+  changement de profil actif, qui a **quatre** points d'entrée (`initProfiles`,
+  `setActiveProfile`, `addProfile`, `deleteProfile`) — il aurait suffi d'en oublier un.
+- **`recapHTML`/`recapAutonomeHTML`** rendent la phrase (`''` si rien à nommer, jamais de
+  bloc vide) ; la seconde s'efface quand un programme du jour actif et non complet
+  contient déjà une étape du même type (`recapAutonomeMasque`), pour ne pas se
+  contredire sur la forme à deux écrans d'écart. Chaque écran porteur passe sa propre
+  classe (`rb-recap`, `sprint-recap`, `rev-recap`) : une prose continue, sans puce ni
+  encadré — la structure en carte/ligne est ce qui fait « relevé pour les parents »,
+  pas la couleur (avis `designer-ux-enfant`). Styles dans `styles/recap-seance.scss`,
+  **fichier unique pour les trois classes** plutôt qu'un bloc recopié dans chacune des
+  trois feuilles d'écran (`sheets.scss`/`sprint.scss`/`revision.scss`) : deux des trois
+  copies étaient identiques au caractère près. Les noms de classe restent distincts par
+  écran, seules les déclarations sont mutualisées.
+
+**Second cycle d'imports TOLÉRÉ, `seance.ts` ↔ `recap-seance.ts`** (même critère que
+`menu.ts` ci-dessous, dans « Menu, préférences, thèmes & accessibilité ») :
+`recap-seance.ts` importe `vueProgramme` de `seance.ts` (dans `recapAutonomeHTML`), et
+`seance.ts` importe `notionLecon`/`notionsNotees` de `recap-seance.ts` (dans
+`notionsEtape`). Les deux imports ne sont utilisés **qu'à l'intérieur d'une fonction**,
+jamais au chargement du module — contrairement au cycle `main ↔ navigation` qui avait
+motivé l'extraction de `menu.ts`, où l'effet de bord était justement **au chargement**
+(`wireDOM()`). Rien à extraire ici.
+
+Deux non-décisions du cadrage, à ne pas re-proposer :
+- **Aucun état persistant, aucun cumul consultable côté enfant.** Pas de tuile
+  d'accueil, pas d'historique : le récap est un épilogue de séance, pas un carnet de
+  devoirs. Un rechargement de page le perd (`tour`/`notionsParProfil` sont des variables
+  de module, jamais écrites en `localStorage`), et c'est voulu.
+- **`core/encadrant-stats.ts:travailRecent` / `ui/encadrant-travail.ts:travailHTML` ne
+  sont PAS réutilisés**, alors qu'ils projettent déjà « ce qui a été travaillé » pour
+  l'adulte (cf. [Espace encadrant](espace-encadrant.md)). Ils lisent des **fenêtres de
+  plusieurs jours** pour un tableau de suivi ; ce récap-ci nomme une **seule séance**
+  côté enfant, à la voix « tu ». Même contenu factuel, registre et fenêtre temporelle
+  différents selon qui regarde — d'où deux modules plutôt qu'un partagé.
+
+Deux remontées `relecteur-accessibilite` **écartées** sur ce lot, pour qu'un futur
+passage ne les re-remonte pas :
+- **Le point médian `·` en séparateur de prose** (ex. « ✓ Sprint 5 min · Numération et
+  Calcul mental ») reste **sans marquage sémantique** (pas d'`aria-hidden`, pas de texte
+  alternatif) : les lecteurs d'écran l'annoncent de façon inconstante selon le moteur
+  vocal, mais la phrase reste juste une fois les deux segments lus bout à bout, et le
+  dépôt en a déjà plusieurs occurrences non contestées (`.sprint-done-sub` dans
+  `sprint.ts`, la liste de trophées dans `session.ts`). Le marquer ici romprait la
+  cohérence avec l'existant sans rien corriger ailleurs.
+- **Pas de bouton « Écouter » sur la phrase de récap.** `bindConsigneTts`
+  (`consigne-tts.ts`) est scopé aux **consignes actionnables** (`[data-tts]` posé par un
+  runner) ; le récap n'en est pas une, et les autres textes d'épilogue du même registre
+  (`.rb-warn`, `.rb-goal`, `.rb-rank`, la bulle de mascotte) n'ont pas non plus de TTS.
+  En équiper un seul casserait la cohérence sans base dans le cadrage. Étendre le TTS à
+  *tous* les textes d'épilogue serait un arbitrage produit
+  (`specialiste-troubles-apprentissage` / `pedagogue-primaire`), pas une exigence a11y de
+  ce lot.
+
 ## Modales & effets
 
 - **`modal-a11y.ts`** — **mécanique a11y partagée des modales** (#235, extraite de
@@ -475,6 +546,13 @@ pure](core.md)) pour les formats composites :
   `vueSeanceDuJour`. `renderProgrammeCard` (masquée hors programme applicable ce
   jour) et `renderSeance` (tuiles des étapes restantes en ordre libre, jauge de
   pastilles, bouton « Choisis pour moi », état terminé célébré) en découlent.
+  **Récap nommé par étape (#537)** : les lignes « Déjà fait aujourd'hui » (programme en
+  cours) et la liste finale (programme terminé) ne s'arrêtent plus au titre générique
+  d'une étape (« Sprint 5 min », « Révision ») — `recapListeHTML`/`recapItemHTML` y
+  ajoutent les notions réellement traversées, lues dans `notionsNotees` (sprint/révision,
+  mémoire de page) ou dans `VueEtape.refs` (#537, `core/seance.ts` — cibles des
+  complétions du jour, pour une étape à cible unique tirée au lancement) ; le titre n'est
+  jamais répété. Cf. « Récap éphémère de fin de séance » plus bas pour le module partagé.
   **Programme terminé (#517)** : la carte porte alors `programme-card--fini` **et**
   `card-inactive` (même classe que la carte Révision sans rien de dû, posée par
   `render.ts`) — plus de pastille d'action ni de clic, et « Terminé, bravo ! 🎉 »
@@ -1242,7 +1320,20 @@ pure](core.md)) pour les formats composites :
 ## Menu, préférences, thèmes & accessibilité
 
 - **`menu.ts`** — liste déroulante de profils (`open/close/toggleProfileMenu`),
-  extrait pour éviter un cycle `main ↔ navigation`.
+  extrait pour éviter un cycle `main ↔ navigation`. Ce cycle-là ne pouvait PAS rester en
+  l'état : `main.ts` appelle ces helpers dans son câblage d'événements **au chargement**
+  (`wireDOM()`, exécuté au bootstrap), donc une dépendance circulaire aurait fait lire un
+  export **avant** qu'il n'existe.
+
+  **Critère qui décide si un cycle d'imports doit être cassé par extraction, ou peut
+  rester tel quel** (à appliquer avant de proposer une extraction, cf. `seance.ts` ↔
+  `recap-seance.ts` ci-dessus, dans « Récap éphémère de fin de séance », pour le second
+  cas) : un cycle **casse** dès qu'un des deux
+  modules **utilise l'import au chargement** — effet de bord de niveau module, comme ici
+  (`wireDOM()`), ou constante dérivée d'un export de l'autre module évaluée en haut de
+  fichier. Un cycle où l'import n'est **utilisé qu'à l'intérieur d'une fonction** (appelée
+  après que les deux modules ont fini de s'évaluer) est **sans risque** : à l'exécution,
+  les deux exports existent déjà, peu importe l'ordre d'évaluation initial des modules.
 - **`preferences.ts`** — préférences cosmétiques **par profil** (issue #28) : thème
   d'affichage/couleur (`getTheme`/`setTheme`, gating par niveau) et réduction des animations
   (`animationsReduites`/`setAnimationsReduites`). `applyPreferences()` pose

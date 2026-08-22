@@ -280,16 +280,6 @@
 	color: var(--grey);
 	margin-bottom: 6px;
 }
-/* Récap éphémère (#537) : même registre que `.rb-recap` et `.sprint-recap`. La révision
-   ne gagne ni étoile ni record à cette occasion — le récap NOMME, il ne mesure pas. */
-.rev-recap {
-	font-size: 14px;
-	font-weight: 700;
-	color: var(--grey);
-	margin: 8px 0 0;
-	text-wrap: balance;
-	overflow-wrap: anywhere;
-}
 .rev-done .rev-actions {
 	margin-top: 14px;
 }

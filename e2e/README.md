@@ -45,6 +45,44 @@ sinon lancer avec une config temporaire sur des ports isolés.
   smoke test ne doit pas devenir rouge parce qu'une leçon d'un autre lot a bougé.
 - Naviguer via `gotoHash` (helpers) ; vérifier l'absence d'erreur de rendu via
   `watchErrors` (exceptions non rattrapées + `console.error` applicatifs).
+- **Navigation : `gotoHash`, jamais `page.goto` — parce qu'un `goto` vers l'URL
+  courante ne recharge pas.** Sous Chromium, `page.goto` vers l'URL déjà affichée
+  (même hash) est un **no-op silencieux** : ni navigation, ni re-rendu. Une boucle
+  « je relance jusqu'à tomber sur le bon tirage » ne tire alors qu'**une** fois et
+  revoit indéfiniment le premier écran — elle échoue au hasard, et surtout elle
+  **ne teste pas ce qu'elle annonce** : la variante qu'elle prétend couvrir n'est
+  jamais rencontrée, donc une régression dessus passerait inaperçue. `gotoHash`
+  détecte ce cas et force un `.reload()` ; le motif avait été redécouvert trois
+  fois (`clic-verbe`, `intercaler-ce2`, `mesures-decimaux`) avant d'être tenu par
+  un gate. Tenu par `tests/e2e-navigation-gate.test.ts` (#511) : une spec neuve
+  qui écrit `page.goto` vers `app.html` fait échouer `npm test`. Les specs
+  antérieures figurent dans sa **liste d'exemptions**, qui décroît PR par PR —
+  y ajouter une ligne n'est pas une option pour du code neuf.
+  - Une navigation **à froid délibérée** reste légitime : `gotoHash` injecte
+    `ENSURE_NIVEAU` (profil CE2, onboardings marqués « vus »), ce qui effacerait
+    justement ce que testent `niveau.spec.ts`, `tour.spec.ts` et
+    `modales-statiques.spec.ts`. Ces cas s'écrivent dans la liste
+    `NAVIGATION_A_FROID_DELIBEREE` du gate, **avec leur raison**.
+- **Après une navigation, lire la page avec une lecture qui RETENTE — pas un
+  `count()`.** `networkidle` ne veut pas dire « dessiné » : sous charge parallèle,
+  le rendu du SPA arrive après. `count()`, `innerText()` et `getAttribute()` sont
+  des lectures **one-shot** — elles répondent « 0 » / « vide » à l'instant même,
+  sans retenter — là où `expect(locator).toHaveCount()` / `.toBeVisible()` et
+  `locator.waitFor()` retentent jusqu'au timeout. Dans une boucle de relance, un
+  one-shot juste après le rechargement brûle une tentative sur un écran qui allait
+  s'afficher. Intercaler l'attente du rendu :
+
+  ```ts
+  await gotoHash(page, 'lecon-...');
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.locator('.ans').first().waitFor({ state: 'visible' }); // ← le rendu
+  trouve = (await page.locator('.ans[data-answer*=","]').count()) > 0;
+  ```
+
+  Attendre un marqueur présent dans **tous** les tirages, pas celui qu'on cherche :
+  attendre la variante visée exclurait d'emblée les tirages qu'on veut pouvoir
+  rejeter (cf. `#revValidate` dans `intercaler-ce2.spec.ts`, présent quel que soit
+  le mode de la révision). Tenu par le même gate (#511).
 - Rester **ciblé et robuste** : peu de tests, des sélecteurs stables
   (`#btnVerify`, `.cat-empty`, `.lesson-item`…), pas de suite exhaustive fragile.
 - **Pas d'import de `src/` dans une spec** : une spec reste une boîte noire du rendu,

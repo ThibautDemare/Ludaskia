@@ -251,6 +251,14 @@ async function trouverRevisionTuileIntercalation(page: Page, tentativesMax = 80)
 	for (let tentative = 0; tentative < tentativesMax; tentative++) {
 		await gotoHash(page, 'revision-espacee');
 		await page.reload({ waitUntil: 'networkidle' });
+		// Attendre que la carte de révision soit RENDUE avant de trancher le mode : le
+		// `count()` ci-dessous est une lecture one-shot et `networkidle` peut précéder le
+		// rendu du SPA, si bien qu'une tentative sur deux se conclurait par « pas de tuiles »
+		// alors que la page n'avait simplement rien dessiné — les 80 relances y passeraient
+		// sans jamais voir le tirage cherché. On attend `#revValidate`, présent dans la carte
+		// QUEL QUE SOIT le mode (revision.ts) : attendre `#ltuiSlot`, lui, exclurait d'emblée
+		// le cas saisie qu'on veut justement pouvoir rejeter.
+		await expect(page.locator('#revValidate')).toBeVisible();
 		if (!(await page.locator('#ltuiSlot').count())) continue; // item 'num' (saisie) : relance
 		const enonce = await page.locator('.ltui-enonce').innerText();
 		if (/Place un nombre entre \d+ et \d+/.test(enonce)) return true; // comparer/encadrer en tuiles : relance

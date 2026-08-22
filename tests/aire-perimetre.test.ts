@@ -56,7 +56,7 @@ describe('Aire et périmètre CM1 — structure par sous-type', () => {
 				const ex = type.generate();
 				expect(ex.type).toBe('qcm');
 				if (ex.type !== 'qcm') continue;
-				expect(ex.figure ?? '').toContain('<svg');
+				expect(ex.figure?.balisage ?? '').toContain('<svg');
 				expect(ex.parle).toBe(ex.question);
 			}
 		});

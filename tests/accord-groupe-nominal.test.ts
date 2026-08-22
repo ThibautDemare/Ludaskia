@@ -148,7 +148,7 @@ describe('génération GN — surlignage .term cohérent', () => {
 				expect(view.label).toBe(c); // libellé parlé = forme nue
 				// Un span .term par constituant (déterminant, [adjectif], nom) — surlignage
 				// UNIFORME quel que soit le choix (un suffixe vide reste un span vide).
-				const nbTerm = (view.html.match(/<span class="term">/g) ?? []).length;
+				const nbTerm = (view.html.balisage.match(/<span class="term">/g) ?? []).length;
 				expect(nbTerm).toBe(g.constituants.length);
 			});
 		}
@@ -164,7 +164,7 @@ describe('génération GN — surlignage .term cohérent', () => {
 			ex.choices.forEach((c, k) => {
 				if (c === ex.answer) return;
 				const view = ex.choicesView![k];
-				const nbTerm = (view.html.match(/<span class="term">/g) ?? []).length;
+				const nbTerm = (view.html.balisage.match(/<span class="term">/g) ?? []).length;
 				expect(nbTerm).toBe(tokens(c).length);
 			});
 		}

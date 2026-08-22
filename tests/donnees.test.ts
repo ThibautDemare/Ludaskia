@@ -357,7 +357,9 @@ describe('Dispatch renderFigure : identique à l’appel direct du renderer', ()
 			pas: 1,
 			max: 8,
 		};
-		expect(renderFigure({ kind: 'diagrammeBarres', ...spec })).toBe(renderDiagrammeBarres(spec));
+		expect(renderFigure({ kind: 'diagrammeBarres', ...spec }).balisage).toBe(
+			renderDiagrammeBarres(spec),
+		);
 	});
 
 	it('tableauDonnees', () => {
@@ -371,7 +373,9 @@ describe('Dispatch renderFigure : identique à l’appel direct du renderer', ()
 			],
 			coinLabel: 'Élève',
 		};
-		expect(renderFigure({ kind: 'tableauDonnees', ...spec })).toBe(renderTableauDonnees(spec));
+		expect(renderFigure({ kind: 'tableauDonnees', ...spec }).balisage).toBe(
+			renderTableauDonnees(spec),
+		);
 	});
 });
 
@@ -434,11 +438,11 @@ describe('Générateur donnees-barres-lire (échantillon)', () => {
 	it('axe régulier, 4-6 barres, sommets pile sur une graduation, réponse = barre interrogée', () => {
 		for (let i = 0; i < 400; i++) {
 			const ex = genText(BARRES);
-			expect(ex.figure).toBeTruthy();
+			expect(ex.figure?.balisage).toBeTruthy();
 			const svg = ex.figure!;
 
 			// --- Axe : régulier, pas ∈ {1,2,5,10}, petites valeurs (< ~50). ---
-			const grads = graduationsLues(svg);
+			const grads = graduationsLues(svg.balisage);
 			expect(grads[0]).toBe(0);
 			const pas = grads[1] - grads[0];
 			expect([1, 2, 5, 10]).toContain(pas);
@@ -453,10 +457,10 @@ describe('Générateur donnees-barres-lire (échantillon)', () => {
 			expect(nGradPos).toBeLessThanOrEqual(6);
 
 			// --- Barres : 4 à 6, chacune multiple du pas dans (0, max]. ---
-			const nBarres = (svg.match(/<path/g) ?? []).length;
+			const nBarres = (svg.balisage.match(/<path/g) ?? []).length;
 			expect(nBarres).toBeGreaterThanOrEqual(4);
 			expect(nBarres).toBeLessThanOrEqual(6);
-			const vals = valeursBarresLues(svg, max);
+			const vals = valeursBarresLues(svg.balisage, max);
 			expect(vals.length).toBe(nBarres);
 			for (const v of vals) {
 				expect(v).toBeGreaterThan(0);
@@ -475,7 +479,7 @@ describe('Générateur donnees-barres-lire (échantillon)', () => {
 			// Le prénom interrogé (fin de consigne) est affiché comme catégorie.
 			const prenom = ex.question.match(/ a (\S+) \?/)?.[1];
 			expect(prenom).toBeTruthy();
-			expect(textesSvg(svg)).toContain(prenom);
+			expect(textesSvg(svg.balisage)).toContain(prenom);
 
 			// Texte lu = consigne (sans le marqueur de saisie « @ »).
 			expect(ex.question).toBe(`${ex.parle} @`);
@@ -486,11 +490,11 @@ describe('Générateur donnees-barres-lire (échantillon)', () => {
 		for (let i = 0; i < 400; i++) {
 			const ex = genText(BARRES);
 			const svg = ex.figure!;
-			const grads = graduationsLues(svg);
+			const grads = graduationsLues(svg.balisage);
 			const pas = grads[1] - grads[0];
 			const max = grads[grads.length - 1];
-			const nBarres = (svg.match(/<path/g) ?? []).length;
-			const nums = nombresDuDesc(svg);
+			const nBarres = (svg.balisage.match(/<path/g) ?? []).length;
+			const nums = nombresDuDesc(svg.balisage);
 			// Seuls la structure (nombre de barres, 0, max, pas) apparaît.
 			expect(nums).toEqual(new Set([nBarres, 0, max, pas]));
 			// La réponse ne fuit pas, sauf coïncidence avec une valeur structurelle (ex. barre = max).
@@ -508,13 +512,13 @@ describe('Générateur donnees-tableau-lire (échantillon)', () => {
 	it('3-4 colonnes × 3-4 lignes, petites valeurs, réponse = cellule au croisement interrogé', () => {
 		for (let i = 0; i < 400; i++) {
 			const ex = genText(TABLEAU);
-			expect(ex.figure).toBeTruthy();
-			const table = parseTable(ex.figure!);
+			expect(ex.figure?.balisage).toBeTruthy();
+			const table = parseTable(ex.figure!.balisage);
 
 			expect((table.querySelector('caption')?.textContent ?? '').length).toBeGreaterThan(0);
 			// Tableau HTML, pas une figure SVG.
-			expect(ex.figure!).toContain('<table');
-			expect(ex.figure!).not.toContain('role="img"');
+			expect(ex.figure!.balisage).toContain('<table');
+			expect(ex.figure!.balisage).not.toContain('role="img"');
 
 			const cols = [...table.querySelectorAll('th[scope="col"]')].map((t) => t.textContent ?? '');
 			const rows = [...table.querySelectorAll('th[scope="row"]')].map((t) => t.textContent ?? '');
@@ -571,7 +575,7 @@ describe('Élision de l’article devant l’objet', () => {
 			const svg = ex.figure!;
 
 			// Titre de l'axe : « Nombre {article}{objet} ».
-			const titre = textesSvg(svg).find((t) => t.startsWith('Nombre'));
+			const titre = textesSvg(svg.balisage).find((t) => t.startsWith('Nombre'));
 			expect(titre, 'titre d’axe').toBeTruthy();
 			const mT = titre!.match(/^Nombre (d'|de )(.+)$/);
 			expect(mT, titre).toBeTruthy();
@@ -651,7 +655,7 @@ describe('Repli catalogue (genLessonItem)', () => {
 
 				expect(item.kind).toBe('num');
 				expect(item.answer).toBe(ex.answer);
-				expect(item.figure).toBeTruthy();
+				expect(item.figure?.balisage).toBeTruthy();
 				// « de » ou « d' » selon l'objet (élision devant voyelle).
 				expect(item.text).toMatch(/Combien d[e']/);
 

@@ -125,11 +125,11 @@ describe('Leçon 1 — une fraction, une écriture à virgule (grille, QCM) (#24
 			const vals = ex.choices.map(valeur);
 			expect(new Set(vals).size).toBe(vals.length);
 			// La figure colorie exactement le nombre de cases correspondant à la réponse.
-			expect(ex.figure).toBeDefined();
+			expect(ex.figure?.balisage).toBeDefined();
 			const attendu = Math.round(valeur(ex.answer) * 100);
 			expect(attendu).toBeGreaterThanOrEqual(0);
 			expect(attendu).toBeLessThanOrEqual(100);
-			expect(casesColoriees(ex.figure!)).toBe(attendu);
+			expect(casesColoriees(ex.figure!.balisage)).toBe(attendu);
 		}
 	});
 
@@ -241,20 +241,20 @@ describe('Leçon 3 — je décompose un nombre décimal (saisie) (#247)', () => 
 		const item: Item = { text: '42,48 = 42 + @/10 + 8/100', answer: '4', kind: 'num' };
 		// Écran : le champ (noté) tient DANS le numérateur (fraction empilée), pas « @/10 » en ligne.
 		const ecran = renderItem(item, createRenderContext());
-		expect(ecran).toContain('frac-num-input');
-		expect(ecran).toContain('frac-num');
-		expect(ecran).not.toContain('@/10');
+		expect(ecran.balisage).toContain('frac-num-input');
+		expect(ecran.balisage).toContain('frac-num');
+		expect(ecran.balisage).not.toContain('@/10');
 		// Impression : une case vide `.cloze-box` DANS un numérateur empilé (rendu homogène
 		// avec le terme voisin « 8/100 », lui aussi empilé), pas « @/10 » en ligne.
 		const impr = renderItem(item, createRenderContext({ printMode: true }));
-		expect(impr).toContain('cloze-box');
-		expect(impr).toContain('frac-num');
-		expect(impr).not.toContain('@/10');
-		expect(impr).not.toContain('frac-num-input'); // pas de champ de saisie à l'impression
+		expect(impr.balisage).toContain('cloze-box');
+		expect(impr.balisage).toContain('frac-num');
+		expect(impr.balisage).not.toContain('@/10');
+		expect(impr.balisage).not.toContain('frac-num-input'); // pas de champ de saisie à l'impression
 		// Corrigé : le chiffre est révélé dans le numérateur (pas de case vide).
 		const corrige = renderItem(item, createRenderContext({ printMode: true, corrigeMode: true }));
-		expect(corrige).toContain('ans-corrige');
-		expect(corrige).not.toContain('cloze-box');
+		expect(corrige.balisage).toContain('ans-corrige');
+		expect(corrige.balisage).not.toContain('cloze-box');
 	});
 
 	it('les trois positions de trou apparaissent, et le rôle du zéro est éprouvé (réponse 0)', () => {

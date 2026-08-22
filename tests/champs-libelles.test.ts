@@ -32,7 +32,7 @@ const ficheDe = (id: string) => withSeed(GRAINE, () => buildLessonFiche(id));
 
 describe('Nom accessible des champs de réponse (#577)', () => {
 	it('conjugaison : chaque champ nomme SA personne, et les six diffèrent', () => {
-		const libs = libelles(ficheDe('fr-conj-etre-present'));
+		const libs = libelles(ficheDe('fr-conj-etre-present').balisage);
 		expect(libs.length).toBeGreaterThanOrEqual(6);
 		for (const l of libs) expect(l).toMatch(/^Conjugue le verbe être au présent, avec /);
 		// Le cœur du défaut : six champs nommés pareil auraient satisfait axe sans rien
@@ -42,7 +42,7 @@ describe('Nom accessible des champs de réponse (#577)', () => {
 	});
 
 	it('comparaison : le champ « signe » porte l’énoncé, pas seulement son format', () => {
-		const libs = libelles(ficheDe('num-comparer'));
+		const libs = libelles(ficheDe('num-comparer').balisage);
 		expect(libs.length).toBeGreaterThan(1);
 		for (const l of libs) {
 			// Le FORMAT attendu reste annoncé (le pavé de signes n'est pas visible à
@@ -63,7 +63,7 @@ describe('Nom accessible des champs de réponse (#577)', () => {
 			answer: 8,
 			kind: 'num',
 		};
-		const lib = libelles(renderItem(item, createRenderContext()))[0];
+		const lib = libelles(renderItem(item, createRenderContext()).balisage)[0];
 		expect(lib).toBe(
 			'Dans 60 virgule quatre huit, quel est le chiffre des centièmes ? — chiffre manquant',
 		);
@@ -74,8 +74,8 @@ describe('Nom accessible des champs de réponse (#577)', () => {
 		const html = renderItem(item, createRenderContext());
 		// Ici le nom doit distinguer les DEUX champs entre eux ; l'énoncé, identique d'une
 		// horloge à l'autre, ne distinguerait rien (ce qui change est dans le dessin).
-		expect(html).toContain('aria-label="heures"');
-		expect(html).toContain('aria-label="minutes"');
+		expect(html.balisage).toContain('aria-label="heures"');
+		expect(html.balisage).toContain('aria-label="minutes"');
 	});
 });
 
@@ -107,10 +107,10 @@ describe('nomChampReponse — dérivation du nom (#577)', () => {
 	it('un énoncé à guillemets ne casse pas l’attribut', () => {
 		const item: Item = { text: 'Écris « a"b » : @', answer: 'x', kind: 'text' };
 		const html = renderItem(item, createRenderContext());
-		const lib = libelles(html)[0];
+		const lib = libelles(html.balisage)[0];
 		expect(lib).toBeTruthy();
 		expect(lib).not.toContain('"'); // échappé en &quot; dans l'attribut
-		expect(html).toContain('&quot;');
+		expect(html.balisage).toContain('&quot;');
 	});
 });
 
@@ -128,7 +128,7 @@ describe('Gate : aucun champ de fiche sans nom accessible (#577)', () => {
 		const lesson = getLessonById(id)!;
 		for (const niveau of lesson.levels) {
 			const html = withSeed(GRAINE, () => buildLessonFiche(id, niveau));
-			const libs = libelles(html);
+			const libs = libelles(html.balisage);
 			for (const [i, lib] of libs.entries()) {
 				expect(
 					lib.trim(),
@@ -146,7 +146,7 @@ describe('Non-régression : le corrigé et l’impression ne portent pas de cham
 		const lesson = getLessonById('fr-conj-etre-present')!;
 		const item = withSeed(GRAINE, () => genItems(lesson, 1))[0];
 		const html = renderItem(item, createRenderContext({ corrigeMode: true }));
-		expect(html).not.toContain('<input');
-		expect(html).toContain('ans-corrige');
+		expect(html.balisage).not.toContain('<input');
+		expect(html.balisage).toContain('ans-corrige');
 	});
 });

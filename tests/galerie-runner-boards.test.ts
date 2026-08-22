@@ -19,6 +19,7 @@ import type { Exercise } from '../src/core/exercise';
 import { MESURE_LESSONS } from '../src/data/maths/mesures';
 import { PROBLEMES_LESSONS } from '../src/data/maths/problemes';
 import type { SchoolLevel } from '../src/core/catalog';
+import { brut } from '../src/core/html';
 
 type Tableau = Extract<Exercise, { type: 'tableauConversion' }>;
 
@@ -208,7 +209,7 @@ describe('renderTableauBoardHTML — structure du tableau', () => {
 			],
 		};
 		const cells = buildCells(ex);
-		const root = parse(renderTableauBoardHTML(ex, cells));
+		const root = parse(renderTableauBoardHTML(ex, cells).balisage);
 		// 4 colonnes, mais 5 cases (tête à 2 chiffres).
 		expect(root.querySelectorAll('.tc-col').length).toBe(4);
 		const domCells = [...root.querySelectorAll<HTMLButtonElement>('.tc-cell')];
@@ -234,7 +235,7 @@ describe('renderTableauBoardHTML — structure du tableau', () => {
 				{ unite: 'm', nom: 'mètre', transit: false, chiffres: '0' },
 			],
 		};
-		const root = parse(renderTableauBoardHTML(ex, buildCells(ex)));
+		const root = parse(renderTableauBoardHTML(ex, buildCells(ex)).balisage);
 		const cols = [...root.querySelectorAll('.tc-col')];
 		expect(cols.length).toBe(4);
 		cols.forEach((col, i) => {
@@ -264,7 +265,7 @@ describe('renderTableauBoardHTML — structure du tableau', () => {
 				{ unite: 'cm', nom: 'centimètre', transit: false, chiffres: '0' },
 			],
 		};
-		const root = parse(renderTableauBoardHTML(ex, buildCells(ex)));
+		const root = parse(renderTableauBoardHTML(ex, buildCells(ex)).balisage);
 		// Pas de virgule pour une conversion entière.
 		expect(root.querySelector('.tc-virgule')).toBeNull();
 		// Consigne présente, lue par le TTS (data-tts renseigné).
@@ -294,7 +295,7 @@ describe('renderTableauBoardHTML — structure du tableau', () => {
 				{ unite: 'dm', nom: 'décimètre', transit: false, chiffres: '5' },
 			],
 		};
-		const root = parse(renderTableauBoardHTML(ex, buildCells(ex)));
+		const root = parse(renderTableauBoardHTML(ex, buildCells(ex)).balisage);
 		const virgs = root.querySelectorAll('.tc-virgule');
 		expect(virgs.length).toBe(1);
 		// La virgule suit immédiatement la colonne cible.
@@ -310,7 +311,7 @@ describe('renderTableauBoardHTML — structure du tableau', () => {
 		for (const id of FAMILLES) {
 			for (const ex of genTab(id, 'cm1', 60)) {
 				const cells = buildCells(ex);
-				const root = parse(renderTableauBoardHTML(ex, cells));
+				const root = parse(renderTableauBoardHTML(ex, cells).balisage);
 				const domCells = [...root.querySelectorAll<HTMLButtonElement>('.tc-cell')];
 				expect(domCells.length).toBe(cells.length);
 				expect(root.querySelectorAll('.tc-col').length).toBe(ex.colonnes.length);
@@ -333,7 +334,7 @@ describe('renderProblemeBoardHTML — structure du problème', () => {
 			etapes: [{ question: 'Combien Léo a-t-il de billes ?', answer: 7 }],
 			parle: 'Léo a 3 billes, il en gagne 4. Combien Léo a-t-il de billes ?',
 		};
-		const root = parse(renderProblemeBoardHTML(q));
+		const root = parse(renderProblemeBoardHTML(q).balisage);
 		const inputs = [...root.querySelectorAll<HTMLInputElement>('.prob-input')];
 		expect(inputs.length).toBe(1);
 		expect(inputs[0].dataset.i).toBe('0');
@@ -357,7 +358,7 @@ describe('renderProblemeBoardHTML — structure du problème', () => {
 			],
 			parle: 'peu importe',
 		};
-		const root = parse(renderProblemeBoardHTML(q));
+		const root = parse(renderProblemeBoardHTML(q).balisage);
 		const inputs = [...root.querySelectorAll<HTMLInputElement>('.prob-input')];
 		expect(inputs.length).toBe(2);
 		expect(inputs.map((inp) => inp.dataset.i)).toEqual(['0', '1']);
@@ -377,7 +378,8 @@ describe('renderProblemeBoardHTML — structure du problème', () => {
 			parle: 'peu importe',
 		};
 		const root = parse(
-			renderProblemeBoardHTML(q, { nom: 'Calcul', nomPluriel: 'calculs', badgeEtape: false }),
+			renderProblemeBoardHTML(q, { nom: 'Calcul', nomPluriel: 'calculs', badgeEtape: false })
+				.balisage,
 		);
 		expect(root.querySelectorAll('.prob-input').length).toBe(2);
 		expect(root.querySelectorAll('.prob-num').length).toBe(0);
@@ -388,9 +390,9 @@ describe('renderProblemeBoardHTML — structure du problème', () => {
 			enonce: 'Regarde le schéma.',
 			etapes: [{ question: 'Combien ?', answer: 5 }],
 			parle: 'Regarde le schéma. Combien ?',
-			figure: '<svg data-fig="oui"></svg>',
+			figure: brut('<svg data-fig="oui"></svg>'),
 		};
-		const root = parse(renderProblemeBoardHTML(q));
+		const root = parse(renderProblemeBoardHTML(q).balisage);
 		const fig = root.querySelector('.figure');
 		expect(fig).not.toBeNull();
 		expect(fig?.querySelector('svg[data-fig="oui"]')).not.toBeNull();
@@ -402,7 +404,7 @@ describe('renderProblemeBoardHTML — structure du problème', () => {
 			etapes: [{ question: 'Combien font <i>2 + 3</i> ?', answer: 5 }],
 			parle: 'peu importe',
 		};
-		const root = parse(renderProblemeBoardHTML(q));
+		const root = parse(renderProblemeBoardHTML(q).balisage);
 		const enonce = root.querySelector('.prob-enonce');
 		expect(enonce?.querySelector('b')).toBeNull(); // pas de balise injectée
 		expect(enonce?.textContent).toBe(q.enonce); // texte restitué tel quel
@@ -425,7 +427,9 @@ describe('renderProblemeBoardHTML — cohérence avec des problèmes générés'
 					parle: ex.parle,
 					figure: ex.figure,
 				};
-				const root = parse(lex ? renderProblemeBoardHTML(q, lex) : renderProblemeBoardHTML(q));
+				const root = parse(
+					(lex ? renderProblemeBoardHTML(q, lex) : renderProblemeBoardHTML(q)).balisage,
+				);
 				const inputs = [...root.querySelectorAll<HTMLInputElement>('.prob-input')];
 				expect(inputs.length).toBe(ex.etapes.length);
 				inputs.forEach((inp, k) => {

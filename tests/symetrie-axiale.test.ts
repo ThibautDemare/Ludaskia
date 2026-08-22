@@ -31,7 +31,7 @@ describe('symétrie axiale — invariants de génération', () => {
 		for (const ex of draws) {
 			expect(ex.type).toBe('qcm');
 			if (ex.type !== 'qcm') continue;
-			expect(ex.figure ?? '').toContain('<svg');
+			expect(ex.figure?.balisage ?? '').toContain('<svg');
 			expect(ex.choices).toContain(ex.answer);
 			expect(ex.choices.length).toBeGreaterThanOrEqual(2);
 			expect((ex.explication ?? '').length).toBeGreaterThan(0);
@@ -63,11 +63,11 @@ describe('symétrie axiale — invariants de génération', () => {
 		expect(reflet).toBeTruthy();
 		if (reflet && reflet.type === 'qcm' && reflet.choicesView) {
 			// La question montre le miroir ; chaque choix est une image SVG avec libellé parlé.
-			expect(reflet.figure).toContain('figure-symetrie-miroir');
+			expect(reflet.figure?.balisage).toContain('figure-symetrie-miroir');
 			expect(reflet.choicesView).toHaveLength(reflet.choices.length);
 			expect(reflet.choicesView).toHaveLength(3);
 			for (const v of reflet.choicesView) {
-				expect(v.html).toContain('figure-symetrie-image');
+				expect(v.html.balisage).toContain('figure-symetrie-image');
 				expect(v.label.length).toBeGreaterThan(0);
 			}
 		}

@@ -265,9 +265,9 @@ describe('Repli LECTURE au CE2 (genLessonItem)', () => {
 			expect(String(item.answer)).toMatch(/^\d{2,4}$/); // entier nu, dans la plage CE2
 			expect(item.text).toContain('Quel nombre est repéré');
 			// Figure statique présente, sans fuite de la valeur à lire dans sa description.
-			expect(item.figure).toBeTruthy();
-			expect(item.figure!).toContain('role="img"');
-			const desc = item.figure!.match(/<desc>(.*?)<\/desc>/)?.[1] ?? '';
+			expect(item.figure?.balisage).toBeTruthy();
+			expect(item.figure!.balisage).toContain('role="img"');
+			const desc = item.figure!.balisage.match(/<desc>(.*?)<\/desc>/)?.[1] ?? '';
 			expect(desc).not.toContain(ex.cibleLabel);
 
 			// La bonne réponse est acceptée…

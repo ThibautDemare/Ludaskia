@@ -270,15 +270,15 @@ describe('Présentation des signes (ponctuation-view, partagée runner/révision
 	it('ponctView : glyphe + mot, label = mot, point grossi', () => {
 		const v = ponctView('!');
 		expect(v.label).toBe("point d'exclamation");
-		expect(v.html).toContain('lqcm-sym-glyph');
+		expect(v.html.balisage).toContain('lqcm-sym-glyph');
 		// Ce que l'enfant LIT sur le bouton, entités décodées : l'apostrophe est sérialisée
 		// en `&#39;` par `escapeHTML`, donc chercher la sous-chaîne dans le markup brut ne
 		// dirait rien de l'affichage réel (et casserait au prochain changement de table).
-		const affiche = texteRendu(v.html);
+		const affiche = texteRendu(v.html.balisage);
 		expect(affiche).toContain("point d'exclamation");
 		expect(affiche).toContain('!');
 		// Le point reçoit la classe modificatrice (grossi) ; pas les autres.
-		expect(ponctView('.').html).toContain('lqcm-sym-glyph--point');
-		expect(ponctView('?').html).not.toContain('lqcm-sym-glyph--point');
+		expect(ponctView('.').html.balisage).toContain('lqcm-sym-glyph--point');
+		expect(ponctView('?').html.balisage).not.toContain('lqcm-sym-glyph--point');
 	});
 });

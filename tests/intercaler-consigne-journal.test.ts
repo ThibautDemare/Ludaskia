@@ -315,7 +315,7 @@ describe('renderItem — data-attendue sur le champ, data-answer intact (#446)',
 					intervalle: [450, 465],
 				},
 				createRenderContext(),
-			),
+			).balisage,
 		);
 		// data-answer INTACT : clé de correction de repli (scoring hors session) et ancrage e2e.
 		expect(inp.dataset.answer).toBe('457');
@@ -327,8 +327,8 @@ describe('renderItem — data-attendue sur le champ, data-answer intact (#446)',
 			{ text: 'La centaine juste avant 456 : @', answer: 400, kind: 'num' },
 			createRenderContext(),
 		);
-		expect(html).not.toContain('data-attendue');
-		expect(champ(html).dataset.answer).toBe('400');
+		expect(html.balisage).not.toContain('data-attendue');
+		expect(champ(html.balisage).dataset.answer).toBe('400');
 	});
 
 	it('grande bande CM1 : les séparateurs de milliers traversent l’attribut', () => {
@@ -341,7 +341,7 @@ describe('renderItem — data-attendue sur le champ, data-answer intact (#446)',
 					intervalle: [610000, 620000],
 				},
 				createRenderContext(),
-			),
+			).balisage,
 		);
 		expect(inp.dataset.attendue).toBe(
 			`un nombre entre 610${ESPACE_FINE}000 et 620${ESPACE_FINE}000`,
@@ -357,14 +357,14 @@ describe('renderItem — data-attendue sur le champ, data-answer intact (#446)',
 			renderItem(
 				{ text: 'Écris le mot : @', answer: 'a"b & c', kind: 'text' },
 				createRenderContext(),
-			),
+			).balisage,
 		);
 		expect(inp.dataset.answer).toBe('a"b & c');
 	});
 
 	it('item réellement généré : les deux attributs cohabitent, la clé de repli reste juste', () => {
 		for (const item of itemsIntercalation('num-encadrer-intercaler', 20)) {
-			const inp = champ(renderItem(item, createRenderContext()));
+			const inp = champ(renderItem(item, createRenderContext()).balisage);
 			const [a, b] = item.intervalle!;
 			expect(inp.dataset.attendue).toContain(String(a));
 			expect(inp.dataset.attendue).toContain(String(b));
@@ -381,7 +381,7 @@ describe('renderItem — data-attendue sur le champ, data-answer intact (#446)',
 		for (const id of LECONS_CE2) {
 			for (const item of itemsIntercalation(id, 40)) {
 				expect(item.kind).toBe('num');
-				expect(renderItem(item, createRenderContext())).toContain('data-attendue');
+				expect(renderItem(item, createRenderContext()).balisage).toContain('data-attendue');
 			}
 		}
 	});
@@ -443,9 +443,9 @@ describe('Corrigé imprimé — mise en forme pure (corrigeIntercalation, #446)'
 describe('Corrigé imprimé — révélation par renderItem (#446)', () => {
 	it('CE2 : la réponse révélée porte l’exemple ET la bande, sans champ de saisie', () => {
 		const html = renderItem(itemIntercaler(450, 465, 457), corrigeCtx());
-		expect(html).toContain('ans-corrige'); // convention maison du corrigé (#41)
-		expect(html).not.toContain('<input');
-		const lue = revelation(html);
+		expect(html.balisage).toContain('ans-corrige'); // convention maison du corrigé (#41)
+		expect(html.balisage).not.toContain('<input');
+		const lue = revelation(html.balisage);
 		expect(nombresLus(lue)).toEqual([457, 450, 465]);
 		expect(lue).not.toBe('457');
 	});
@@ -455,8 +455,8 @@ describe('Corrigé imprimé — révélation par renderItem (#446)', () => {
 			itemIntercaler(450, 465, 457),
 			createRenderContext({ printMode: true }),
 		);
-		expect(html).toContain('<input');
-		expect(html).not.toContain('ans-corrige');
+		expect(html.balisage).toContain('<input');
+		expect(html.balisage).not.toContain('ans-corrige');
 	});
 
 	it('CM1 : bornes ET exemple groupés de la même façon dans la ligne révélée', () => {
@@ -464,7 +464,9 @@ describe('Corrigé imprimé — révélation par renderItem (#446)', () => {
 			`610${ESPACE_FINE}000`,
 			`620${ESPACE_FINE}000`, // bornes telles que l'énoncé les affiche
 		];
-		const lue = revelation(renderItem(itemIntercaler(610000, 620000, 615000, ecrit), corrigeCtx()));
+		const lue = revelation(
+			renderItem(itemIntercaler(610000, 620000, 615000, ecrit), corrigeCtx()).balisage,
+		);
 		expect(lue).toContain(`615${ESPACE_FINE}000`);
 		expect(lue).toContain(ecrit[0]);
 		expect(lue).toContain(ecrit[1]);
@@ -476,7 +478,7 @@ describe('Corrigé imprimé — révélation par renderItem (#446)', () => {
 		'%s : sur des items réellement tirés, la ligne reprend les bornes de l’énoncé, écrites comme lui',
 		(niveau) => {
 			for (const item of itemsIntercalation('num-encadrer-intercaler', 25, niveau)) {
-				const lue = revelation(renderItem(item, corrigeCtx()));
+				const lue = revelation(renderItem(item, corrigeCtx()).balisage);
 				const ecrites = bornesEcrites(item.text);
 				// Verbatim : une graphie qui diverge de l'énoncé ferait douter l'adulte qu'il
 				// s'agit des mêmes nombres.
@@ -515,8 +517,8 @@ describe('Corrigé imprimé — repli inchangé hors intercalation (#446)', () =
 
 	it.each(CAS)('%s : la réponse est révélée telle quelle', (_nom, item) => {
 		const html = renderItem(item, corrigeCtx());
-		expect(revelation(html)).toBe(String(item.answer));
-		expect(html).not.toContain('<input');
+		expect(revelation(html.balisage)).toBe(String(item.answer));
+		expect(html.balisage).not.toContain('<input');
 	});
 
 	it('dans la MÊME leçon, un encadrement garde sa réponse unique révélée', () => {
@@ -528,7 +530,7 @@ describe('Corrigé imprimé — repli inchangé hors intercalation (#446)', () =
 			const item = genLessonItem(lesson, 'ce2');
 			if (item.text.startsWith(INTERCALER)) continue;
 			expect(item.intervalle).toBeUndefined();
-			expect(revelation(renderItem(item, corrigeCtx()))).toBe(String(item.answer));
+			expect(revelation(renderItem(item, corrigeCtx()).balisage)).toBe(String(item.answer));
 			vus++;
 		}
 		expect(vus).toBe(40);
@@ -557,13 +559,13 @@ describe('Corrigé imprimé — garde sur le document complet (#41/#446)', () =>
 			});
 			// Frontière feuille / corrigé : début de la BALISE de la page de garde du corrigé
 			// (couper sur le nom de classe laisserait un fragment HTML tronqué).
-			const marque = dom.indexOf('cover-corrige');
+			const marque = dom.balisage.indexOf('cover-corrige');
 			expect(marque).toBeGreaterThan(0);
-			const debut = dom.lastIndexOf('<', marque);
+			const debut = dom.balisage.lastIndexOf('<', marque);
 			// La feuille de l'enfant ne révèle rien : la bande ne doit pas fuiter côté élève.
-			expect(dom.slice(0, debut)).not.toContain('ans-corrige');
+			expect(dom.balisage.slice(0, debut)).not.toContain('ans-corrige');
 			const hote = document.createElement('div');
-			hote.innerHTML = dom.slice(debut);
+			hote.innerHTML = dom.balisage.slice(debut);
 			for (const span of hote.querySelectorAll('.ans-corrige')) {
 				const cellule = span.closest('.bop, .op')?.textContent ?? '';
 				if (!cellule.includes(INTERCALER)) continue;

@@ -53,19 +53,19 @@ describe('renderItem — cases à cocher RÉSERVÉES à l’impression (#289)', 
 	it('hors impression, un item QCM ne produit PAS de cases à cocher', () => {
 		const it = genLessonItem(getLessonById(QCM_TEXTE)!);
 		const html = renderItem(it, ecran());
-		expect(html).not.toContain('qcm-print-box');
-		expect(html).not.toContain('qcm-print-choices');
+		expect(html.balisage).not.toContain('qcm-print-box');
+		expect(html.balisage).not.toContain('qcm-print-choices');
 	});
 
 	it('en impression, un item QCM produit la liste de cases à cocher', () => {
 		const it = genLessonItem(getLessonById(QCM_TEXTE)!);
 		const html = renderItem(it, impression());
-		expect(html).toContain('qcm-print-choices');
+		expect(html.balisage).toContain('qcm-print-choices');
 		// Autant de cases que de choix.
-		const boxes = html.match(/qcm-print-box/g) ?? [];
+		const boxes = html.balisage.match(/qcm-print-box/g) ?? [];
 		expect(boxes.length).toBe(it.choices!.length);
 		// Pas de champ de saisie pour un QCM (la réponse se coche).
-		expect(html).not.toContain('class="ans');
+		expect(html.balisage).not.toContain('class="ans');
 	});
 
 	it('en impression, le `@` d’un QCM à trou devient une case vide (pas un « @ » littéral)', () => {
@@ -78,8 +78,8 @@ describe('renderItem — cases à cocher RÉSERVÉES à l’impression (#289)', 
 			},
 			impression(),
 		);
-		expect(html).toContain('cloze-box'); // emplacement matérialisé par un rectangle vide
-		expect(html).not.toContain('@'); // plus de « @ » brut, incompréhensible pour un enfant
+		expect(html.balisage).toContain('cloze-box'); // emplacement matérialisé par un rectangle vide
+		expect(html.balisage).not.toContain('@'); // plus de « @ » brut, incompréhensible pour un enfant
 	});
 
 	it('en impression, un item de saisie sans `@` reçoit quand même une zone-réponse', () => {
@@ -88,13 +88,13 @@ describe('renderItem — cases à cocher RÉSERVÉES à l’impression (#289)', 
 			{ text: 'Une question sans emplacement', answer: 'x', kind: 'text' },
 			impression(),
 		);
-		expect(html).toContain('class="ans'); // champ ajouté
+		expect(html.balisage).toContain('class="ans'); // champ ajouté
 		// Hors impression, le comportement historique est inchangé (pas d'ajout).
 		const htmlEcran = renderItem(
 			{ text: 'Une question sans emplacement', answer: 'x', kind: 'text' },
 			ecran(),
 		);
-		expect(htmlEcran).not.toContain('class="ans');
+		expect(htmlEcran.balisage).not.toContain('class="ans');
 	});
 });
 
@@ -103,16 +103,16 @@ describe('buildPrintableDOM — fiche & bilan de QCM (#289)', () => {
 
 	it('une FICHE de QCM imprime les choix en cases à cocher + consigne « Coche… »', () => {
 		const dom = buildPrintableDOM({ ...scopeBase, lessonIds: [QCM_TEXTE], kind: 'fiches' });
-		expect(dom).toContain('qcm-print-choices');
-		expect(dom).toContain('qcm-print-box');
-		expect(dom).toContain('Coche la bonne réponse.');
+		expect(dom.balisage).toContain('qcm-print-choices');
+		expect(dom.balisage).toContain('qcm-print-box');
+		expect(dom.balisage).toContain('Coche la bonne réponse.');
 	});
 
 	it('un BILAN de QCM imprime cases à cocher + consigne d’action par bloc', () => {
 		const dom = buildPrintableDOM({ ...scopeBase, lessonIds: [QCM_TEXTE], kind: 'bilan', nbQ: 3 });
-		expect(dom).toContain('qcm-print-choices');
-		expect(dom).toContain('bloc-consigne');
-		expect(dom).toContain('Coche la bonne réponse.');
+		expect(dom.balisage).toContain('qcm-print-choices');
+		expect(dom.balisage).toContain('bloc-consigne');
+		expect(dom.balisage).toContain('Coche la bonne réponse.');
 	});
 
 	it('la symétrie « reflet » imprime ses images-choix (choicesView SVG) en cases à cocher', () => {
@@ -121,8 +121,8 @@ describe('buildPrintableDOM — fiche & bilan de QCM (#289)', () => {
 		let vuImage = false;
 		for (let i = 0; i < 12 && !vuImage; i++) {
 			const dom = buildPrintableDOM({ ...scopeBase, lessonIds: [QCM_IMAGES], kind: 'fiches' });
-			expect(dom).toContain('qcm-print-choices'); // tous les formats → cases à cocher
-			if (dom.includes('aria-label="La ')) vuImage = true; // libellé positionnel d'une image-choix
+			expect(dom.balisage).toContain('qcm-print-choices'); // tous les formats → cases à cocher
+			if (dom.balisage.includes('aria-label="La ')) vuImage = true; // libellé positionnel d'une image-choix
 		}
 		expect(vuImage).toBe(true);
 	});
@@ -131,8 +131,8 @@ describe('buildPrintableDOM — fiche & bilan de QCM (#289)', () => {
 		// Chaque cellule de fiche (`.conj-op`) d'un QCM doit porter sa liste de cases à
 		// cocher → le nombre de listes égale le nombre de cellules (pas de question seule).
 		const dom = buildPrintableDOM({ ...scopeBase, lessonIds: [QCM_TEXTE], kind: 'fiches' });
-		const cells = (dom.match(/<div class="conj-op">/g) ?? []).length;
-		const zones = (dom.match(/qcm-print-choices/g) ?? []).length;
+		const cells = (dom.balisage.match(/<div class="conj-op">/g) ?? []).length;
+		const zones = (dom.balisage.match(/qcm-print-choices/g) ?? []).length;
 		expect(cells).toBeGreaterThan(0);
 		expect(zones).toBe(cells);
 	});
@@ -142,7 +142,7 @@ describe('buildPrintableDOM — fiche & bilan de QCM (#289)', () => {
 		// Un rendu écran fait APRÈS une impression part d'un contexte neuf (printMode false) :
 		// aucune case à cocher n'y fuit — le printMode n'est plus un état de module partagé.
 		const html = renderItem(genLessonItem(getLessonById(QCM_TEXTE)!), ecran());
-		expect(html).not.toContain('qcm-print-box');
+		expect(html.balisage).not.toContain('qcm-print-box');
 	});
 
 	it('une génération d’impression qui lève ne corrompt aucun état (plus de mode global, #352)', () => {
@@ -156,6 +156,6 @@ describe('buildPrintableDOM — fiche & bilan de QCM (#289)', () => {
 			}),
 		).toThrow();
 		const html = renderItem(genLessonItem(getLessonById(QCM_TEXTE)!), ecran());
-		expect(html).not.toContain('qcm-print-box');
+		expect(html.balisage).not.toContain('qcm-print-box');
 	});
 });

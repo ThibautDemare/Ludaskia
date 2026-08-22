@@ -264,6 +264,36 @@ Deux détails de méthode qui font la différence entre un gate et une illusion 
 Le seuil anti-liste-vide est double (≥ 30 clés, ≥ 60 sites d'appel) : un scan cassé rendrait
 sinon le gate vert en n'examinant plus rien.
 
+### Échappement HTML par construction (#614)
+
+Deux fichiers, deux niveaux.
+
+`tests/html-gabarit.test.ts` éprouve le **contrat du gabarit** `html`
+([Rendu & échappement](rendu-et-echappement.md)), position par position : texte,
+valeur d'attribut quotée, valeur d'attribut NUE (où l'espace suffit à ouvrir un
+attribut voisin, ce que `escapeHTML` seul laisserait passer), URL (schéma
+`javascript:` / `data:` **refusé**, pas échappé — le danger n'y est pas dans les
+caractères). Plus la composition : un `SafeHtml` traverse sans **double
+échappement**, un tableau se joint, `false` / `null` / `undefined` rendent du vide.
+
+`tests/echappement-chemins-sensibles.test.ts` prend la chaîne complète, de la donnée
+au fragment rendu, sur les quatre chemins que l'issue nommait : nom de profil, valeur
+de tuile saisie par l'enfant, libellés de leçon, `aria-label`. Il lit le **DOM
+produit**, pas la chaîne : « l'élément `<img>` n'existe pas » dit ce qui compte, là où
+un test sur la chaîne se satisferait d'un `&lt;` obtenu par hasard. Ces chemins étaient
+déjà échappés avant #614 — c'est le point : la conversion ne devait rien dé-échapper.
+
+Côté e2e, `e2e/echappement-rendu.spec.ts` ferme le risque symétrique, invisible aux
+deux précédents : un fragment **doublement** échappé ne casse ni la compilation ni un
+sélecteur, il s'affiche simplement en clair à l'enfant. La spec lit le TEXTE VISIBLE de
+quatre familles de rendu (fiche, runner à widget, espace encadrant, sprint) et refuse
+toute ouverture de balise — plus « [object Object] », marque de l'oubli inverse. Le
+**chevron seul** n'est pas testé, délibérément : les leçons de comparaison affichent
+« 3 < 5 ».
+
+La règle ESLint, elle, vit dans `eslint.config.js` et exige que toute affectation à
+`.innerHTML` soit de la forme `X.balisage`.
+
 ### Contraste AA des tokens de couleur (#576, #582)
 
 `tests/contraste-tokens.test.ts` lit les tokens dans `base.scss`/`themes.scss` et éprouve

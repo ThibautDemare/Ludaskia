@@ -48,7 +48,7 @@ describe('Les angles — génération QCM', () => {
 		for (const { ex, famille } of tirages) {
 			if (ex.type !== 'qcm') throw new Error('attendu qcm');
 			expect(ENONCES[famille]).toContain(ex.question); // énoncé = une variante de surface de la famille
-			expect(ex.figure ?? '').toContain('<svg');
+			expect(ex.figure?.balisage ?? '').toContain('<svg');
 			expect(ex.choices).toContain(ex.answer);
 			expect(typeof ex.explication).toBe('string');
 			expect((ex.explication ?? '').length).toBeGreaterThan(0);
@@ -60,9 +60,9 @@ describe('Les angles — génération QCM', () => {
 			if (ex.type !== 'qcm') continue;
 			expect(ex.question).not.toContain('°');
 			expect(ex.question.toLowerCase()).not.toContain('degré');
-			const svg = (ex.figure ?? '').split('</svg>')[0];
+			const svg = (ex.figure?.balisage ?? '').split('</svg>')[0];
 			expect(svg).not.toContain('<text'); // la figure ne porte AUCUNE cote
-			expect(ex.figure ?? '').not.toContain('°');
+			expect(ex.figure?.balisage ?? '').not.toContain('°');
 		}
 	});
 
@@ -83,7 +83,7 @@ describe('Les angles — génération QCM', () => {
 	it('loyauté : carré de codage ⟺ angle droit montré, et réponse cohérente avec la figure (par famille)', () => {
 		for (const { ex, famille, cat } of tirages) {
 			if (ex.type !== 'qcm') continue;
-			const svg = (ex.figure ?? '').split('</svg>')[0];
+			const svg = (ex.figure?.balisage ?? '').split('</svg>')[0];
 			// Invariant renderer : carré (polyline) ⟺ angle droit ; sinon arc (path).
 			if (cat === 'droit') {
 				expect(svg).toContain('<polyline');
@@ -110,7 +110,7 @@ describe('Les angles — génération QCM', () => {
 	it('bulle d’aide : au nommage (aigu + obtus) et au Oui/Non aigu (réduite, SANS « obtus ») ; nulle part ailleurs', () => {
 		for (const { ex, famille } of tirages) {
 			if (ex.type !== 'qcm') continue;
-			const fig = ex.figure ?? '';
+			const fig = ex.figure?.balisage ?? '';
 			expect(fig.includes('angle-aide')).toBe(famille === 'nommer' || famille === 'aiguOuiNon');
 			if (famille === 'nommer') {
 				expect(fig).toContain('aigu');
@@ -172,13 +172,13 @@ describe('Les angles — génération QCM', () => {
 describe('renderAngle — invariants du renderer', () => {
 	it('angle droit (90°) : carré de codage (polyline), jamais d’arc ; deux segments, un sommet', () => {
 		const svg = renderFigure({ kind: 'angle', opening: 90, bisector: 30 });
-		expect(svg).toContain('<svg');
-		expect(count(/<line/g, svg)).toBe(2); // les deux demi-droites
-		expect(count(/<polyline/g, svg)).toBe(1); // le carré de codage
-		expect(count(/<path/g, svg)).toBe(0); // pas d'arc
-		expect(count(/<circle/g, svg)).toBe(1); // le sommet
-		expect(svg).not.toContain('<text'); // aucune mesure affichée
-		expect(svg).not.toContain('°');
+		expect(svg.balisage).toContain('<svg');
+		expect(count(/<line/g, svg.balisage)).toBe(2); // les deux demi-droites
+		expect(count(/<polyline/g, svg.balisage)).toBe(1); // le carré de codage
+		expect(count(/<path/g, svg.balisage)).toBe(0); // pas d'arc
+		expect(count(/<circle/g, svg.balisage)).toBe(1); // le sommet
+		expect(svg.balisage).not.toContain('<text'); // aucune mesure affichée
+		expect(svg.balisage).not.toContain('°');
 	});
 
 	it('angle non droit : arc d’ouverture (path), jamais de carré', () => {
@@ -242,7 +242,7 @@ describe('Les angles CM1 (#252) — comparer deux angles + notation', () => {
 	it('QCM bien formé : figure SVG, explication, bonne réponse parmi des choix uniques', () => {
 		for (const { ex } of cm1) {
 			if (ex.type !== 'qcm') throw new Error('attendu qcm');
-			expect(ex.figure ?? '').toContain('<svg');
+			expect(ex.figure?.balisage ?? '').toContain('<svg');
 			expect(ex.choices).toContain(ex.answer);
 			expect(new Set(ex.choices).size).toBe(ex.choices.length);
 			expect((ex.explication ?? '').length).toBeGreaterThan(0);
@@ -267,9 +267,9 @@ describe('Les angles CM1 (#252) — comparer deux angles + notation', () => {
 		it('figure = paire de DEUX angles ; choix A/B ; jamais de degré affiché', () => {
 			for (const { ex } of items) {
 				if (ex.type !== 'qcm') continue;
-				expect(svgsOf(ex.figure ?? '')).toHaveLength(2);
+				expect(svgsOf(ex.figure?.balisage ?? '')).toHaveLength(2);
 				expect([...ex.choices].sort()).toEqual(['Angle A', 'Angle B']);
-				expect(ex.figure ?? '').not.toContain('°');
+				expect(ex.figure?.balisage ?? '').not.toContain('°');
 				expect(ex.question).not.toContain('°');
 			}
 		});
@@ -277,7 +277,7 @@ describe('Les angles CM1 (#252) — comparer deux angles + notation', () => {
 		it('écart NET ≥ 25° et réponse LOYALE à l’angle réellement le plus ouvert', () => {
 			for (const { ex } of items) {
 				if (ex.type !== 'qcm') continue;
-				const [sa, sb] = svgsOf(ex.figure ?? '');
+				const [sa, sb] = svgsOf(ex.figure?.balisage ?? '');
 				const oA = ouvertureMesuree(sa);
 				const oB = ouvertureMesuree(sb);
 				expect(Math.abs(oA - oB)).toBeGreaterThanOrEqual(24); // ≥ 25° (marge d'arrondi SVG)
@@ -288,7 +288,7 @@ describe('Les angles CM1 (#252) — comparer deux angles + notation', () => {
 		it('PIÈGE « longueur du trait » : l’angle le plus ouvert a PARFOIS le trait le plus court', () => {
 			const contreExemple = items.some(({ ex }) => {
 				if (ex.type !== 'qcm') return false;
-				const [sa, sb] = svgsOf(ex.figure ?? '');
+				const [sa, sb] = svgsOf(ex.figure?.balisage ?? '');
 				const oA = ouvertureMesuree(sa);
 				const oB = ouvertureMesuree(sb);
 				const lA = longueurTrait(sa);
@@ -307,7 +307,7 @@ describe('Les angles CM1 (#252) — comparer deux angles + notation', () => {
 			for (const { ex } of items) {
 				if (ex.type !== 'qcm') continue;
 				expect([...ex.choices].sort()).toEqual(['Non', 'Oui']);
-				const [sa, sb] = svgsOf(ex.figure ?? '');
+				const [sa, sb] = svgsOf(ex.figure?.balisage ?? '');
 				const ecart = Math.abs(ouvertureMesuree(sa) - ouvertureMesuree(sb));
 				if (ex.answer === 'Oui')
 					expect(ecart).toBeLessThan(1); // mêmes ouvertures
@@ -347,11 +347,11 @@ describe('Les angles CM1 (#252) — comparer deux angles + notation', () => {
 		it('figure angleNomme : un SVG avec des <text> (NOMS de points) mais AUCUN degré/mesure', () => {
 			for (const { ex } of items) {
 				if (ex.type !== 'qcm') continue;
-				const svgs = svgsOf(ex.figure ?? '');
+				const svgs = svgsOf(ex.figure?.balisage ?? '');
 				expect(svgs).toHaveLength(1);
 				expect(svgs[0]).toContain('<text'); // exception admise : les noms de points
-				expect(ex.figure ?? '').not.toContain('°');
-				expect((ex.figure ?? '').toLowerCase()).not.toContain('degré');
+				expect(ex.figure?.balisage ?? '').not.toContain('°');
+				expect((ex.figure?.balisage ?? '').toLowerCase()).not.toContain('degré');
 			}
 		});
 
@@ -371,7 +371,7 @@ describe('Les angles CM1 (#252) — comparer deux angles + notation', () => {
 				if (ex.type !== 'qcm') continue;
 				expect([...ex.choices].sort()).toEqual(['Aigu', 'Droit', 'Obtus']);
 				expect(['Aigu', 'Droit', 'Obtus']).toContain(ex.answer);
-				expect(svgsOf(ex.figure ?? '')).toHaveLength(1); // un seul angle
+				expect(svgsOf(ex.figure?.balisage ?? '')).toHaveLength(1); // un seul angle
 			}
 		});
 	});

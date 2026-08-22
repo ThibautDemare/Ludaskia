@@ -90,9 +90,9 @@ describe('génération — invariants du QCM', () => {
 			ex.choices.forEach((c, i) => {
 				const view = ex.choicesView![i];
 				expect(view.label).toBe(c); // libellé parlé = forme nue
-				expect(view.html).toContain('<span class="term">'); // terminaison surlignée
+				expect(view.html.balisage).toContain('<span class="term">'); // terminaison surlignée
 				const v = verbeDeForme(c)!;
-				expect(view.html.startsWith(v.base)).toBe(true); // radical avant la marque
+				expect(view.html.balisage.startsWith(v.base)).toBe(true); // radical avant la marque
 			});
 		}
 	});

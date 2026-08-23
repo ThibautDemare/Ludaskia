@@ -37,6 +37,16 @@ approximation. Elle navigue en URL absolue (`PROD_URL`), pas via `gotoHash`.
 vous testez du code périmé (404 inexplicables). Vérifier que le port est libre,
 sinon lancer avec une config temporaire sur des ports isolés.
 
+**Symptôme qui trompe** : ce n'est pas toujours un 404. Un test peut échouer sur une
+assertion qui semble juste au vu du code qu'on vient d'écrire — le réflexe naturel est
+alors de chercher le bug dans sa propre logique, alors que la suite entière tourne
+silencieusement contre le build **d'avant** ce changement, servi par le serveur oublié
+d'un autre worktree. Aucun avertissement de Playwright ne signale la réutilisation.
+**Réflexe avant de creuser son propre code** : vérifier qui écoute sur 4173
+(`netstat -ano | findstr :4173` sous PowerShell, `lsof -i :4173` sous POSIX) et
+rapprocher le PID du bon worktree, ou dans le doute couper ce serveur avant de relancer
+`npm run test:e2e`.
+
 ## Conventions
 
 - **Tester le contenu de la branche** : les leçons **ajoutées dans la même PR**

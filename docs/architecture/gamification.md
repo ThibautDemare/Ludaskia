@@ -72,6 +72,42 @@ fois, montée de niveau + déblocage cosmétique…). Juger du *ressenti* de voi
 trophées listés d'un coup relève d'un avis `gamification-enfant` /
 `designer-ux-enfant`, pas d'un défaut technique.
 
+## Tour complet d'une matière (#276)
+
+Le jalon le plus rare de l'app — finir **toutes** les leçons proposées, dans **une**
+matière, à son niveau actif — donne lieu à un trophée `tour-<matière>-<niveau>`
+(`rewards.ts:tourMatiereTrophies`, un id par couple matière × niveau **peuplé**), qui
+sert à la fois de célébration à l'instant (modale + confettis, comme toute
+récompense), de gate anti-rejeu (le stockage des trophées ne rend que le
+nouvellement acquis) et de trace en galerie. **Aucun état dédié** n'est nécessaire :
+la condition (`tourMatiereFait`, cf. [Logique pure](core.md)) est recalculée en direct
+à chaque évaluation.
+
+**Barre volontairement plus basse que « Sans faute partout » (`starsAll`)** : une
+leçon est « franchie » ici dès qu'elle est étoilée **ou** réussie au seuil des 70 %
+(la même barre que le fil de la leçon du jour, #485) — pas besoin du sans-faute sur
+chacune. C'est précisément le chemin franchi au score, jamais étoilé, que rien ne
+fêtait avant ce lot ; les deux jalons restent **distincts** et peuvent se déclencher à
+des moments différents.
+
+**Aucun XP** n'accompagne ce trophée : sans cette règle, finir la matière où l'on est
+à l'aise en évitant l'autre deviendrait rentable. Même icône et descriptions de
+longueur comparable entre matières, pour qu'aucun tour ne paraisse plus « juteux »
+qu'un autre. Pas de « grand tour toutes matières » par-dessus les deux tours : ce
+serait un doublon de prestige sur un jalon censé rester rare.
+
+**Dans la galerie** (`ui/unlocks-view.ts:openTrophees`), `trophiesVisibles()` masque
+un trophée de tour d'un niveau **au-dessus** du niveau de référence tant qu'il n'est
+pas acquis (afficher « 🔒 Tour complet — Mathématiques CM1 » à un enfant de CE2
+pointerait vers « la suite », une décision d'encadrant). Un tour déjà acquis reste
+visible même si le niveau redescend ensuite. Le compteur « N/M trophées obtenus »
+compte les acquis **parmi les visibles** (et non `TROPHIES.length`), pour rester
+cohérent quand le dénominateur varie avec le niveau.
+
+Pourquoi la maille est **matière × niveau**, pas le seul niveau : cf. [Niveaux
+scolaires](niveaux-scolaires.md), qui détaille aussi pourquoi ce trophée ne rentre ni
+dans la case « scopé » ni dans la case « global » des autres trophées de cette page.
+
 ## Trophée « programme du jour » (#440)
 
 Le **programme du jour** composé par l'encadrant (cf. [Modes &

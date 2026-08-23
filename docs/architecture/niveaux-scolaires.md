@@ -125,6 +125,51 @@ qu'aucun trophée déjà acquis ne se reverrouille. `starsAll` (« Sans faute pa
 `totalLessons`, le catalogue de la classe active, une métrique qui n'a pas de sens
 « tous niveaux ».
 
+## Tour de matière : une troisième nature, le niveau porté par l'id (#276)
+
+Les trophées de tour (`tour-<matière>-<niveau>`, `rewards.ts:tourMatiereTrophies`,
+cf. [Gamification](gamification.md)) n'entrent dans **aucune** des deux cases
+ci-dessus. Pas SCOPÉS : un tour acquis au CE2 doit rester acquis quand la matière
+passe au CM1 (comme tout trophée). Pas GLOBAUX : contrairement à `starsTousNiveaux`,
+un même id ne peut pas représenter à la fois « tout le CE2 » et « tout le CM1 » sans
+perdre l'un des deux diplômes. La solution est une **troisième nature** : le niveau
+est **porté par l'id lui-même**, un id par couple matière × niveau **peuplé** — la
+clé de stockage (`loadTrophies`) suffit alors à ne jamais reverrouiller un tour,
+sans qu'aucune vue scopée ni aucun cumul n'ait à s'en mêler.
+
+**Pourquoi la maille est MATIÈRE × NIVEAU, et non le seul niveau** (arbitrage tracé
+sur #276) : nommer le trophée d'après la classe de RÉFÉRENCE (`niveauActif()`)
+mentirait dès qu'une matière est réglée ailleurs (le niveau se règle **par matière**,
+cf. « Modules » ci-dessus) — un enfant en référence CM1 avec les maths laissées au
+CE2 aurait décroché « Tour complet — CM1 » sans une seule leçon de maths de CM1, et
+ce diplôme déjà acquis aurait rendu muet le jour où les vraies maths de CM1 seraient
+enfin finies : le « second diplôme silencieux » que ce lot supprime serait revenu par
+cette porte. La maille matière × niveau laisse les deux tours (CE2 puis CM1)
+atteignables indépendamment, chacun au rythme propre de sa matière.
+
+### Rejet écrit : le calcul en direct a une fenêtre de perte, assumée (#585)
+
+`gSnapshot().toursMatiere: Record<'matière@niveau', boolean>` est recalculé EN DIRECT
+à chaque évaluation des trophées, à partir des cartes d'étoiles et de report en
+cours — rien n'est mémorisé pour dire « le tour du CE2 était fait ». Remontée
+d'`auteur-tests-logique` en relecture : si un encadrant change le niveau d'une
+matière **entre** l'instant où le tour s'achève et son évaluation, le diplôme est
+**perdu pour toujours** — les leçons jamais tentées d'un niveau abandonné ne
+reviennent dans aucun pool de tirage (#232), donc ce niveau ne redeviendra jamais
+« tout franchi » de lui-même. En pratique la fenêtre est étroite :
+`core/lesson-run.ts` évalue les trophées dans le même appel que celui qui enregistre
+l'essai qui termine le tour, et `ui/render.ts` rattrape à chaque affichage de
+l'accueil — il faut une intervention d'adulte pile entre les deux pour la manquer.
+
+**Écarté volontairement** : mémoriser le tour par niveau (un état posé une fois pour
+toutes, indépendant du calcul en direct) fermerait cette fenêtre, mais au prix d'un
+défaut pire pour un enfant qui avance à un rythme inégal entre ses deux matières (ex.
+maths passées au CM1, français resté au CE2) — le niveau quitté avant d'y avoir tout
+fini ne repasserait alors plus jamais par l'état « tout franchi », son tour resterait
+donc **définitivement inatteignable**. Le calcul en direct paie une fenêtre de
+quelques secondes contre ce risque permanent ; ce n'est pas à rouvrir sans un cas
+concret qui le justifie.
+
 ## Records de bilans/sprint scopés par niveau
 
 **Records de bilans/sprint SCOPÉS par niveau** (`progress.ts`, #233) — clé

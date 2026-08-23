@@ -83,6 +83,24 @@ function etatMatiere(
 	};
 }
 
+/** Reste-t-il quelque chose à franchir dans UNE matière, à son niveau actif ? (#276)
+    `false` = tour de cette matière achevé. Une matière sans aucune leçon à son niveau ne
+    compte PAS comme achevée : sinon un catalogue vide décrocherait le diplôme à froid.
+
+    Même barre que le fil (`estFranchie` : étoilée OU réussie au seuil), et non celle de
+    « Sans faute partout » (une étoile sur chaque leçon), plus stricte — c'est justement le
+    chemin non étoilé que rien ne fêtait. Les leçons mises de côté ne comptent pas comme
+    franchies : elles restent à faire, elles sont seulement différées. */
+export function tourMatiereFait(
+	subject: SubjectId,
+	stars: Record<string, number> = loadStars(),
+	reports: Record<string, EtatReport> = loadLessonReports(),
+): boolean {
+	const lessons = getLessonsBySubject(subject, niveauActifMatiere(subject));
+	if (lessons.length === 0) return false;
+	return lessons.every((l) => estFranchie(reports[l.id], estAcquise(stars, l.id)));
+}
+
 /* Entrelacement 1:1 des files par matière (round-robin), files déjà ordonnées. */
 function entrelacer(files: LessonDef[][]): LessonDef[] {
 	const out: LessonDef[] = [];

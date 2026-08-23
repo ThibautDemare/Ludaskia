@@ -4,8 +4,14 @@
    ============================================================ */
 import { choice } from './utils';
 import { lsGet, lsSet } from './storage';
-import { getAllLessons, getLessonsByCategory, SUBJECTS, CATEGORIES } from './catalog';
-import { lessonsNiveauActif, niveauLecon } from './niveau-actif';
+import {
+	getAllLessons,
+	getLessonsByCategory,
+	getLessonsBySubject,
+	SUBJECTS,
+	CATEGORIES,
+} from './catalog';
+import { lessonsNiveauActif, niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
 import { labelLecon } from './levels';
 import {
 	loadRuns,
@@ -21,6 +27,9 @@ import {
 	todayStr,
 } from './progress';
 import { enReport } from './report-lecon';
+import { tourMatiereFait } from './lecon-du-jour';
+import { availableLevels, LEVEL_LABEL, LEVEL_ORDER } from './levels';
+import type { SchoolLevel } from './catalog';
 import { loadOrtho } from './orthographe/store';
 import type { MotOrtho } from './orthographe/types';
 import { seancesCompletees } from './seance';
@@ -397,7 +406,70 @@ function categoryTrophies(): Trophy[] {
 		})),
 	);
 }
-TROPHIES.push(...subjectTrophies(), ...categoryTrophies());
+/* ---------- Tour complet d'une matière, par NIVEAU (#276) ----------
+   Le jalon le plus rare de l'application recevait le traitement le plus faible : finir tout
+   ce que l'appli propose ne déclenchait rien au moment où ça arrivait, l'enfant l'apprenait
+   en rouvrant l'accueil et en remarquant qu'une carte avait changé de texte. À cet âge, le
+   lien « je viens de finir → il se passe quelque chose » ne survit pas au délai : différée,
+   une célébration n'est plus un accomplissement vécu, c'est un fait découvert.
+
+   Maille MATIÈRE × NIVEAU, et non le seul niveau (arbitrage tracé sur #276) :
+   - la matière est une unité que l'enfant perçoit dès le CE2 (cahiers, moments de la journée
+     et retours du maître séparés), là où le niveau est un réglage d'ADULTE qu'un enfant à
+     niveaux mixtes ne perçoit pas forcément (avis `pedagogue-primaire`) ;
+   - un tour global nommé d'après la classe de référence MENTAIT dès qu'une matière était
+     ajustée ailleurs, et refermait la porte du second diplôme ;
+   - le niveau porté par l'id est celui DE LA MATIÈRE : un trophée acquis ne se reverrouille
+     donc jamais, et passer les maths au CM1 rend un nouveau tour atteignable.
+
+   Généré pour les seuls couples PEUPLÉS (même garde-fou que `categoryTrophies` : pas de
+   trophée impossible). Aucun XP n'y est attaché — sans quoi finir la matière où l'on est à
+   l'aise, en évitant l'autre, deviendrait rentable (avis `gamification-enfant`). Même icône
+   et descriptions de même longueur entre matières, pour qu'aucun tour ne soit la récompense
+   la plus « juteuse ». Volontairement PAS de « grand tour toutes matières » par-dessus : ce
+   serait un doublon de prestige sur un jalon censé rester rare, et un id unique ne donnerait
+   de nouveau qu'un seul diplôme, jamais deux. */
+function tourMatiereTrophies(): Trophy[] {
+	return SUBJECTS.flatMap((sub) =>
+		availableLevels(getLessonsBySubject(sub.id)).map((lv) => ({
+			id: `tour-${sub.id}-${lv}`,
+			icon: '🏅',
+			title: `Tour complet — ${sub.label} ${LEVEL_LABEL[lv]}`,
+			desc: `Faire le tour des leçons de ${sub.label} proposées en ${LEVEL_LABEL[lv]}.`,
+			test: (g: GSnapshot) => g.toursMatiere[`${sub.id}@${lv}`] === true,
+		})),
+	);
+}
+/* Niveau de chaque trophée de tour, mémorisé à la génération plutôt que redeviné depuis
+   l'id : un futur trophée dont l'id commencerait par « tour- » serait sinon happé sans
+   bruit par le filtre de visibilité ci-dessous. */
+const NIVEAU_PAR_TOUR = new Map<string, SchoolLevel>(
+	SUBJECTS.flatMap((sub) =>
+		availableLevels(getLessonsBySubject(sub.id)).map(
+			(lv) => [`tour-${sub.id}-${lv}`, lv] as [string, SchoolLevel],
+		),
+	),
+);
+
+/** Trophées à MONTRER dans la galerie, qui les affiche tous — verrouillés compris, titre et
+    description en clair.
+
+    Un trophée de tour d'un niveau AU-DESSUS du niveau de référence est masqué tant qu'il
+    n'est pas acquis : afficher « 🔒 Tour complet — Mathématiques CM1 » à un enfant de CE2
+    pointerait vers « la suite » et l'inciterait implicitement à changer de classe, alors que
+    cette décision appartient à l'encadrant (#276, critère 14). Rien d'autre n'est filtré, et
+    un trophée DÉJÀ ACQUIS reste visible quoi qu'il arrive au niveau ensuite — on ne retire
+    jamais une reconnaissance de la galerie. */
+export function trophiesVisibles(): Trophy[] {
+	const rang = LEVEL_ORDER.indexOf(niveauActif());
+	const acquis = new Set<string>(loadTrophies());
+	return TROPHIES.filter((t) => {
+		const lv = NIVEAU_PAR_TOUR.get(t.id);
+		if (!lv || acquis.has(t.id)) return true;
+		return LEVEL_ORDER.indexOf(lv) <= rang;
+	});
+}
+TROPHIES.push(...subjectTrophies(), ...categoryTrophies(), ...tourMatiereTrophies());
 
 // Compile le raccourci {metric, n} en fonction test.
 TROPHIES.forEach((t) => {
@@ -454,10 +526,33 @@ export function gSnapshot() {
 				return !!m && estMaitriseOrtho(m);
 			}),
 	).length;
+	// Tours de matière (#276) : une entrée `matière@niveau` par matière dont TOUT est franchi
+	// à son niveau actif. La clé porte le niveau pour que le trophée n'ait rien à redeviner.
+	// Les cartes d'étoiles et de rapports sont PASSÉES : laissées à leurs défauts,
+	// `tourMatiereFait` les rechargerait depuis le stockage une fois par matière, alors que
+	// `gSnapshot` a déjà les étoiles en main (remontée `relecteur-qualite`).
+	const reportsSnap = loadLessonReports();
+	const toursMatiere: Record<string, boolean> = {};
+	for (const sub of SUBJECTS) {
+		if (tourMatiereFait(sub.id, starsMap, reportsSnap))
+			toursMatiere[`${sub.id}@${niveauActifMatiere(sub.id)}`] = true;
+	}
 	return {
 		totalRuns: all.length,
 		stars: starsEarned(), // étoiles du niveau ACTIF (seuil « Sans faute partout », complétude scopée)
 		starsTousNiveaux: starsEarnedAll(), // cumul « trésor » (#559) : paliers ⭐, jamais reverrouillés
+		// Tour complet d'une MATIÈRE, à SON niveau actif (#276), clé `matière@niveau`.
+		// Pourquoi pas un tour global nommé d'après la classe de référence : le niveau est
+		// réglable par matière (#225), donc un enfant en référence CM1 avec les maths au CE2
+		// aurait décroché « Tour complet — CM1 » sans une seule leçon de maths de CM1 — et le
+		// trophée acquis, finir plus tard les vraies maths CM1 n'aurait plus rien déclenché :
+		// le « second diplôme silencieux » que ce lot supprime revenait par cette porte.
+		// Calculé EN DIRECT, aucun état persisté. Mémoriser « les maths du CE2 ont été
+		// bouclées » aurait rendu le diplôme d'un niveau QUITTÉ définitivement inatteignable :
+		// les leçons jamais tentées d'un niveau abandonné ne reviennent dans aucun pool de
+		// tirage (#232), donc le trophée le plus rare de l'appli aurait été réservé aux enfants
+		// avançant au même rythme dans les deux matières — avis `gamification-enfant`.
+		toursMatiere,
 		totalLessons: lessonsActif.length, // leçons du niveau actif (seuil « partout », complétude scopée)
 		maxStreak: s.max || s.days || 0,
 		bestExpressMs: re.length ? Math.min(...re.map((r) => r.ms)) : Infinity,

@@ -11,7 +11,7 @@ dès la création d'un libellé :
 - **(a) L'app parle À l'enfant → « tu »** (voix par défaut) : titres d'écran et de
   section, questions de réglage, consignes, encouragements, messages d'état.
   Ex. « Ta prochaine leçon », « Dans quelle matière ? », « Sur quoi veux-tu
-  t'entraîner ? », « Bravo ! Tu as fait le tour… ».
+  t'entraîner ? », « Tu as fait toutes les leçons proposées ici. ».
 - **(b) Le libellé EST la voix de l'enfant → « je / mon / mes »** (conservé
   volontairement, **ne pas tutoyer**) : (1) **boutons d'action/de choix** que
   l'enfant « prononce » en cliquant (« J'ai compris », « Je choisis mes leçons »,

@@ -562,6 +562,20 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `ui/render.ts`, qui ne fait plus qu'assembler l'état (`starsEarned`,
   `starsEarnedAll`, catalogue du niveau actif) et l'injecter — le texte était jusque-là
   inline et hors de portée des tests.
+- **`carte-tour-fait.ts`** (#276, pur) — texte de la carte d'accueil quand plus rien
+  n'est à travailler (même découpage que `compteur-etoiles.ts` ci-dessus, et pour la
+  même raison : un texte isolé dans un module pur est testable). **`VARIANTES_TOUR_FAIT`**
+  — trois formulations strictement SYNONYMES (jamais des angles différents, qui
+  laisseraient croire à un changement d'état à un enfant qui recroise la carte des
+  semaines plus tard) — et **`varianteTourFait(tour)`** choisit par rotation
+  déterministe sur un entier quelconque (l'appelant, `ui/lecon-du-jour.ts`, passe le
+  jour du mois : aucun état gardé ici). Le texte nomme le **périmètre réel** (« ici »,
+  « cet écran »), jamais « ta classe » ni « fini » sans borne — l'app ne couvre ni
+  l'oral, ni la lecture, ni la production d'écrit. **`TEXTE_ENTRETIEN_TOUR`** est la
+  phrase fixe d'entretien qui suit (« garder tout ça bien en tête »). Cette carte n'est
+  qu'une TRACE calme : la célébration (modale + confettis) a déjà eu lieu au moment où
+  le tour s'est achevé, via le trophée de tour (`rewards.ts`, cf. « Enregistrement,
+  catalogue & ordre pédagogique » ci-dessous, et [Gamification](gamification.md)).
 
 ## Enregistrement, catalogue & ordre pédagogique
 
@@ -646,6 +660,17 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   épuisement de son programme (#484). `leconSuivante` = contournement « voir une autre
   leçon » (jamais de mur). Reste **distinct** de la révision espacée (avancer vers le
   neuf ↔ entretenir l'acquis) et du défi du jour.
+  **`tourMatiereFait(subject, stars?, reports?)`** (#276, pure) répond à une question
+  différente de `leconDuJour` : reste-t-il quelque chose à franchir dans **une seule**
+  matière, à **son** niveau actif ? Même barre que le fil (`estFranchie` : étoilée OU
+  réussie au seuil), volontairement **plus lâche** que `starsAll` (« Sans faute
+  partout », qui exige l'étoile sur chaque leçon) — c'est justement le chemin franchi
+  au score, jamais étoilé, que rien ne fêtait avant #276. Une matière sans aucune leçon
+  à son niveau ne compte **pas** comme achevée (sinon un catalogue vide déclencherait le
+  diplôme à froid) ; une leçon mise de côté ne compte pas non plus (différée, pas
+  faite). Consommée par `rewards.ts:gSnapshot` pour peupler `toursMatiere` — cf.
+  [Gamification](gamification.md) et [Niveaux scolaires](niveaux-scolaires.md) pour la
+  maille matière × niveau et le calcul en direct.
 - **`accueil-propositions.ts`** (#516) — arbitrage **pur** qui déduplique les deux
   cartes « à faire » de l'accueil, rendues indépendamment mais capables de proposer
   la MÊME leçon (une entrée épinglée « à revoir » n'est montrée que tant que la notion
@@ -963,6 +988,15 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   « remédiation », perf < 70 %) exclut une leçon actuellement **en report** (#485,
   `report-lecon.ts:enReport`) : la proposer irait à l'encontre du répit que la leçon du
   jour vient de lui accorder ; elle continue de revenir via la révision espacée.
+  **`tourMatiereTrophies()`** (#276) génère la famille `tour-<matière>-<niveau>` pour
+  les seuls couples matière × niveau **peuplés** (même garde-fou que `categoryTrophies`),
+  testée sur `g.toursMatiere[matière@niveau]` (rempli par `tourMatiereFait`, cf.
+  `lecon-du-jour.ts` ci-dessus) ; aucun XP n'y est attaché. **`trophiesVisibles()`**
+  filtre `TROPHIES` pour la galerie : un trophée de tour d'un niveau **au-dessus** du
+  niveau de référence reste masqué tant qu'il n'est pas acquis (jamais un trophée déjà
+  acquis). Détails de la maille (ni scopée, ni globale — le niveau est porté par l'id)
+  dans [Niveaux scolaires](niveaux-scolaires.md) ; mécanique et garde-fous côté jeu dans
+  [Gamification](gamification.md).
 - **`eggs.ts`** (#331) — **easter eggs**, module **PUR** (aucun accès DOM, testable
   comme `unlocks.ts`) : catalogue déclaratif `EGGS` (4 eggs v1, familles `EggFamily` =
   `exploration` / `ambient` / **`visible`** — ce dernier (#336) = déclencheur OUVERT et

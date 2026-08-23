@@ -591,8 +591,12 @@ passage ne les re-remonte pas :
   la couleur de la matière, libellé de leçon, « matière · catégorie », « C'est parti → » —
   avec un bouton **« Voir une autre leçon »** (contournement `leconSuivante`, jamais de mur)
   et, tout **franchi** (#485 — étoilé ou réussi à 70 % en mode leçon, y compris les
-  leçons mises de côté rendues au fil), une **félicitation + passerelle vers la révision**.
-  La carte est cliquable
+  leçons mises de côté rendues au fil), une **trace calme + passerelle vers la
+  révision** — texte tiré de `core/carte-tour-fait.ts` (#276), en rotation sur le
+  jour du mois pour ne pas répéter le même message pendant des mois ; la
+  célébration elle-même (modale + confettis) a déjà eu lieu au moment où le tour
+  s'est achevé, via le trophée `tour-<matière>-<niveau>` (cf.
+  [Gamification](gamification.md)). La carte est cliquable
   (→ `startLecon`/`startRevisionEspacee`) via un listener posé **une seule fois** sur l'élément
   persistant ; l'état (leçon courante, mode) vit dans ses `data-*`, le contournement est
   **éphémère** (revenir sur l'accueil ré-affiche la vraie leçon du jour).
@@ -643,7 +647,12 @@ passage ne les re-remonte pas :
   ouverture des **modales dédiées** `openRecompenses` (paliers de niveau : rangs,
   compagnon, avatars, thèmes — acquis ✓ / à venir 🔒) et `openTrophees` (collection,
   sortie de l'inline ; réutilise le rendu `.trophy`), et la **mascotte accompagnante**
-  `mascotteBulleHTML(message, loop)` + `encouragementMascotte()` (bulle de BD).
+  `mascotteBulleHTML(message, loop)` + `encouragementMascotte()` (bulle de BD). La
+  grille de trophées se construit sur `trophiesVisibles()` (#276, `core/rewards.ts`)
+  et non `TROPHIES` brut — un tour de matière d'un niveau non atteint y est masqué —, et
+  le compteur « N/M » (`acquisVisibles`) intersecte les acquis avec les visibles :
+  compter sur `TROPHIES.length` laissait un id acquis puis disparu du catalogue faire
+  déborder l'affichage (« 45/44 trophées obtenus »).
 - **`tour.ts`** (#330) — **guide de première visite** (couche UI ; contenu pur dans
   `core/tour.ts`). Trois pièces : `ouvrirMotParents(onClose)` — courte modale destinée à
   l'**adulte** qui installe (voix « vous », modale a11y standard) ; `lancerTour(opts)` —

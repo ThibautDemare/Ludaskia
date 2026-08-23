@@ -7,7 +7,7 @@
    ============================================================ */
 import { getXP, niveauDepuisXP } from '../core/progress';
 import { RANGS, MASCOTTE, AVATARS_FORET, THEMES, mascotteDuNiveau } from '../core/unlocks';
-import { TROPHIES, loadTrophies } from '../core/rewards';
+import { loadTrophies, trophiesVisibles } from '../core/rewards';
 import { icon } from './icon';
 import { activateModal } from './modal-a11y';
 
@@ -66,17 +66,34 @@ function recompensesContentHTML(): string {
     ${section('Thèmes de couleur', themes)}`;
 }
 
+/* Numérateur du compteur « N/M » : les ids acquis QUI EXISTENT ENCORE parmi les visibles,
+   et non la taille brute du stockage. Un id acquis puis disparu du catalogue de trophées —
+   préfixe hérité d'une version antérieure, ou `cat-<catégorie>-N` d'une catégorie redevenue
+   vide, `categoryTrophies` ne générant que les catégories peuplées — était sinon compté au
+   numérateur sans exister au dénominateur, et l'enfant lisait « 45/44 trophées obtenus ».
+   Le trou préexistait avec `TROPHIES.length` ; #276 a baissé le dénominateur d'une unité pour
+   un profil de CE2, donc un seul id fantôme suffisait désormais à le faire déborder.
+   (Remontée `auteur-tests-logique`.) */
+function acquisVisibles(have: Set<string>, visibles: { id: string }[]): number {
+	return visibles.filter((t) => have.has(t.id)).length;
+}
+
 // La grille de trophées (acquis / verrouillés), pour la modale dédiée.
 function trophiesContentHTML(): string {
-	const have = new Set(loadTrophies());
-	const cells = TROPHIES.map((t) => {
-		const on = have.has(t.id);
-		return `<div class="trophy ${on ? 'on' : 'off'}">
+	const have = new Set<string>(loadTrophies());
+	// `trophiesVisibles` et non `TROPHIES` (#276) : un trophée de tour d'un niveau
+	// au-dessus du sien ne doit pas s'afficher, même verrouillé.
+	const visibles = trophiesVisibles();
+	const cells = visibles
+		.map((t) => {
+			const on = have.has(t.id);
+			return `<div class="trophy ${on ? 'on' : 'off'}">
       <span class="trophy-ico">${on ? t.icon : icon('lock')}</span>
       <span class="trophy-title">${t.title}</span>
       <span class="trophy-desc">${t.desc}</span></div>`;
-	}).join('');
-	return `<p class="rewards-sub"><strong>${have.size}/${TROPHIES.length}</strong> trophées obtenus.</p>
+		})
+		.join('');
+	return `<p class="rewards-sub"><strong>${acquisVisibles(have, visibles)}/${visibles.length}</strong> trophées obtenus.</p>
     <div class="trophy-grid">${cells}</div>`;
 }
 
@@ -92,10 +109,11 @@ export function renderRewardNav() {
 		...THEMES.map((t) => t.niveau),
 	];
 	const acquis = seuils.filter((s) => niveau >= s).length;
-	const trophies = new Set(loadTrophies()).size;
+	const trophiesVus = trophiesVisibles();
+	const trophies = acquisVisibles(new Set<string>(loadTrophies()), trophiesVus);
 	el.innerHTML =
 		`<button class="reward-btn" data-act="open-recompenses">🎁 Mes récompenses <span class="reward-count">${acquis}/${seuils.length}</span></button>` +
-		`<button class="reward-btn" data-act="open-trophees">🏆 Mes trophées <span class="reward-count">${trophies}/${TROPHIES.length}</span></button>`;
+		`<button class="reward-btn" data-act="open-trophees">🏆 Mes trophées <span class="reward-count">${trophies}/${trophiesVus.length}</span></button>`;
 }
 
 // Une seule vitrine ouverte à la fois (Récompenses XOR Trophées) → un seul

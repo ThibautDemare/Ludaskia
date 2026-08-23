@@ -21,6 +21,7 @@
 import { escapeHTML } from '../core/utils';
 import { SUBJECTS, CATEGORIES, getLessonById, type LessonDef } from '../core/catalog';
 import { sequenceLeconDuJour, leconSuivante } from '../core/lecon-du-jour';
+import { varianteTourFait, TEXTE_ENTRETIEN_TOUR } from '../core/carte-tour-fait';
 import { choisirProchaineLecon } from '../core/accueil-propositions';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
@@ -53,13 +54,20 @@ export function renderLeconDuJour(
 	const lesson = cibleId ? getLessonById(cibleId) : choisirProchaineLecon(seq, eviterId ?? null);
 
 	if (!lesson) {
-		// Tout le programme du niveau est acquis : félicitation + passerelle révision.
+		// Plus aucune leçon à travailler ici : TRACE calme + passerelle révision (#276). La
+		// célébration, elle, est partie au moment où le tour s'est achevé (trophée `tour-<niveau>`
+		// → modale + confettis, cf. core/rewards.ts) ; la carte n'a pas à la rejouer à chaque
+		// visite. Aucune mise en scène non plus : le gabarit de la rangée `.cards` vit de sa
+		// répétition, et une médaille ne rentre pas dans une pastille de 64 px.
+		// Le texte VARIE (rotation sur le jour du mois, aucun état persisté) : un message
+		// identique réaffiché pendant des mois s'apprend à ne plus être lu.
 		el.dataset.mode = 'revision';
 		delete el.dataset.lesson;
+		const v = varianteTourFait(new Date(Date.now()).getDate());
 		el.innerHTML = `
       <div class="ico" aria-hidden="true">${icon('star')}</div>
-      <h2>Bravo&nbsp;!</h2>
-      <p>Tu as fait le tour des leçons de ta classe.</p>
+      <h2>${escapeHTML(v.titre)}</h2>
+      <p>${escapeHTML(v.texte)} ${escapeHTML(TEXTE_ENTRETIEN_TOUR)}</p>
       <button type="button" class="go" aria-label="Réviser tes leçons">Réviser <span aria-hidden="true">→</span></button>`;
 	} else {
 		el.dataset.mode = 'lesson';

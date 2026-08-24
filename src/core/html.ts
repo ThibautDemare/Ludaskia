@@ -62,6 +62,37 @@ import { escapeHTML } from './utils';
  *  ferait « marcher » un chemin qui a justement perdu son échappement. */
 export class SafeHtml {
 	constructor(readonly balisage: string) {}
+
+	/** Sérialisation SELF-DESCRIBING, pour survivre à un aller-retour JSON.
+	 *
+	 *  L'instantané de reprise (#573) persiste les questions du runner en cours, et
+	 *  une question porte parfois sa `figure`. Sans marqueur, `JSON.parse` rend un
+	 *  objet nu `{ balisage }` : `instanceof SafeHtml` échoue, `rendre` refuse la
+	 *  valeur, et reprendre une leçon à figures plante l'écran. C'était le cas —
+	 *  la spec `reprise-runners` l'a montré. Le marqueur `__html` permet à
+	 *  `revivreFragments` de reconstruire le fragment à la lecture.
+	 *
+	 *  Ce que ça N'AUTORISE PAS : ranger un fragment dans une donnée métier. Le
+	 *  stockage reste le domaine des `string` (journal d'erreurs, réponses) ; seul
+	 *  l'instantané de reprise, qui rejoue un rendu, a une raison d'y toucher. */
+	toJSON(): { __html: string } {
+		return { __html: this.balisage };
+	}
+}
+
+/** Reconstruit les `SafeHtml` d'une valeur relue en JSON (cf. `SafeHtml.toJSON`).
+ *  Descend dans les tableaux et les objets simples. La confiance vient de l'origine
+ *  du stockage — c'est l'application qui a écrit ce balisage, comme avant #614 où
+ *  il y voyageait déjà, en `string` et sans marqueur. */
+export function revivreFragments<T>(valeur: T): T {
+	if (Array.isArray(valeur)) return valeur.map(revivreFragments) as T;
+	if (valeur === null || typeof valeur !== 'object') return valeur;
+	const obj = valeur as Record<string, unknown>;
+	if (typeof obj.__html === 'string' && Object.keys(obj).length === 1)
+		return new SafeHtml(obj.__html) as T;
+	const sortie: Record<string, unknown> = {};
+	for (const [cle, v] of Object.entries(obj)) sortie[cle] = revivreFragments(v);
+	return sortie as T;
 }
 
 /** Valeurs interpolables. `false` / `null` / `undefined` rendent la chaîne vide,
@@ -225,16 +256,18 @@ const CACHE = new WeakMap<TemplateStringsArray, Position[]>();
 
 /** Caractères qui TERMINENT une valeur d'attribut non quotée : les laisser
  *  passer laisserait la valeur ouvrir l'attribut suivant. Les références
- *  numériques sont bien décodées par l'analyseur HTML dans cette position. */
-const ECHAPPEMENT_NU: Record<string, string> = {
-	' ': '&#32;',
-	'\t': '&#9;',
-	'\n': '&#10;',
-	'\r': '&#13;',
-	'\f': '&#12;',
-	'=': '&#61;',
-	'`': '&#96;',
-};
+ *  numériques sont bien décodées par l'analyseur HTML dans cette position.
+ *
+ *  On échappe TOUT ce que `\s` de JavaScript capture, sans table de correspondance.
+ *  Une première version en tenait une (espace, tabulation, `\n`, `\r`, `\f`, `=`,
+ *  backquote) avec un repli `?? c` qui laissait passer le reste : or `\s` est plus
+ *  large que l'espace blanc HTML (tabulation verticale, insécable, U+2028/2029,
+ *  espace idéographique, BOM…). Le repli ne rattrapait donc RIEN, en silence.
+ *  Aucun de ces caractères ne termine une valeur d'attribut pour la spec HTML, mais
+ *  un analyseur peut en juger autrement (happy-dom coupe dessus, l'antislash compris)
+ *  — échapper le sur-ensemble ne coûte rien et supprime la question. Le balayage de
+ *  `tests/html-injection-balayage.test.ts` prend le plus sévère des deux pour arbitre. */
+const echapperNu = (c: string) => `&#${c.codePointAt(0)};`;
 
 function echapper(valeur: string, position: Position): string {
 	switch (position) {
@@ -242,7 +275,7 @@ function echapper(valeur: string, position: Position): string {
 		case 'attribut-quote':
 			return escapeHTML(valeur);
 		case 'attribut-nu':
-			return escapeHTML(valeur).replace(/[\s=`]/g, (c) => ECHAPPEMENT_NU[c] ?? c);
+			return escapeHTML(valeur).replace(/[\s=`\\]/g, echapperNu);
 		case 'url':
 			refuserSchema(valeur);
 			return escapeHTML(valeur);
@@ -263,8 +296,19 @@ function echapper(valeur: string, position: Position): string {
 
 const apercu = (v: string) => (v.length > 40 ? `${v.slice(0, 40)}…` : v);
 
+/** Normalise comme le fait l'analyseur d'URL AVANT de lire le schéma : il retire
+ *  tabulations et retours ligne PARTOUT dans l'URL, et les contrôles C0 plus
+ *  l'espace en TÊTE. Sans cette étape, le contrôle de schéma se contourne
+ *  trivialement — `java<TAB>script:alert(1)` et `\u0001javascript:alert(1)`
+ *  passaient et s'exécutaient quand même, `\s` ne couvrant ni `\x00`-`\x08` ni
+ *  `\x0e`-`\x1f`. Trouvé par `auteur-tests-logique` (critère 4 de #614). */
+// Les contrôles C0 sont exactement le SUJET ici : `no-control-regex` vise celui qui
+// en met un par accident dans un motif, pas celui qui les traque délibérément.
+// eslint-disable-next-line no-control-regex
+const normaliserUrl = (v: string) => v.replace(/[\t\n\r]/g, '').replace(/^[\u0000-\u0020]+/, '');
+
 function refuserSchema(valeur: string): void {
-	if (!SCHEMAS_REFUSES.test(valeur)) return;
+	if (!SCHEMAS_REFUSES.test(normaliserUrl(valeur))) return;
 	throw new Error(
 		`html : schéma d'URL refusé dans « ${apercu(valeur)} ». Un « javascript: » ou un ` +
 			`« data: » ne devient pas inoffensif en étant échappé — il exécute. Si cette URL ` +
@@ -305,7 +349,13 @@ function rendre(valeur: ValeurHtml, position: Position): string {
 export function html(parts: TemplateStringsArray, ...valeurs: ValeurHtml[]): SafeHtml {
 	let positions = CACHE.get(parts);
 	if (!positions) {
-		positions = analyserPositions(parts.raw);
+		// Les parties CUITES, pas `parts.raw` : c'est `parts` que la boucle ci-dessous
+		// émet. Sur `raw`, un `"` du balisage statique reste six caractères pour
+		// l'automate alors que la sortie contient un vrai guillemet — l'analyse se
+		// croirait dans un attribut quoté déjà refermé. Aucun site de `src/` n'écrit
+		// d'échappement dans ses parties statiques aujourd'hui, mais la divergence
+		// entre ce qu'on analyse et ce qu'on émet n'a aucune raison d'exister.
+		positions = analyserPositions(parts);
 		CACHE.set(parts, positions);
 	}
 	let sortie = parts[0];
@@ -338,5 +388,5 @@ export function drapeau(nom: string): SafeHtml {
 
 /** Joint des fragments déjà sûrs — équivalent typé de `.join('')`, pour les
  *  `map(…)` qui produisent une liste d'éléments. */
-export const joindre = (fragments: SafeHtml[], separateur = ''): SafeHtml =>
-	new SafeHtml(fragments.map((f) => f.balisage).join(separateur));
+export const joindre = (fragments: SafeHtml[], separateur: SafeHtml = VIDE): SafeHtml =>
+	new SafeHtml(fragments.map((f) => f.balisage).join(separateur.balisage));

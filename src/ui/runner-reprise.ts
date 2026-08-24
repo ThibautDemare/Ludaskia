@@ -27,6 +27,7 @@ import type { LessonDef } from '../core/catalog';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
 import { subjectIcon } from './cat-visuals';
+import { revivreFragments } from '../core/html';
 
 /** Ce qu'un runner doit dire de lui-même pour devenir reprenable. La leçon est passée
     entière : libellé, icône et catégorie de la carte « À continuer » s'en déduisent ici,
@@ -114,6 +115,12 @@ export function enregistrerRunner(nom: string, restaurer: RestaurerRunner): void
 export function restaurerRunner(snap: ResumeRunner): boolean {
 	const restaurer = registre.get(snap.runner);
 	if (!restaurer) return false;
-	restaurer(snap);
+	// L'instantané a fait un aller-retour JSON : les `SafeHtml` qu'il porte (la
+	// `figure` d'une question, notamment) en sont revenus en objets nus, que le
+	// gabarit refuse. On les reconstruit AVANT de rendre la main au runner, plutôt
+	// que d'imposer la précaution aux dix restaurateurs. Cf. SafeHtml.toJSON.
+	// Reconstruction EN PLACE : `Object.assign` remplace les enfants revivifiés sans
+	// changer l'identité de l'instantané, que l'appelant tient déjà.
+	restaurer(Object.assign(snap, revivreFragments(snap)));
 	return true;
 }

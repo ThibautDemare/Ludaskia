@@ -187,7 +187,7 @@ function renderManche(): void {
 function pairesHTML(q: MancheAppariement): SafeHtml {
 	const bon = joindre(
 		q.paires.map((p) => html`${p.gauche} → ${p.droite}`),
-		html`<br>`.balisage,
+		html`<br>`,
 	);
 	return html`<div class="lapp-solution">${bon}</div>`;
 }

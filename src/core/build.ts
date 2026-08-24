@@ -38,7 +38,7 @@ export function genItems(lesson: LessonDef, n: number, level?: SchoolLevel): Ite
 	let misses = 0;
 	while (items.length < n && misses < 80) {
 		const it = genLessonItem(lesson, lvl);
-		const key = `${commKey(it.text)}¦${it.answer}¦${it.figure ?? ''}`;
+		const key = `${commKey(it.text)}¦${it.answer}¦${it.figure?.balisage ?? ''}`;
 		if (seen.has(key)) {
 			misses++;
 			continue;

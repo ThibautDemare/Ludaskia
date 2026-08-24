@@ -45,7 +45,7 @@ export function segmentHTML(c: SegmentConfig): SafeHtml {
 			const nom = o.ariaLabel ? attribut('aria-label', o.ariaLabel) : VIDE;
 			// tabindex mobile : seule l'option cochée est dans l'ordre de tabulation,
 			// les autres s'atteignent aux flèches (cf. segmentKeydown).
-			return html`<button type="button" role="radio" class="enc-act-mode${on ? ' on' : ''}" data-act="${c.act}" data-${c.valAttr}="${o.val}"${extra} aria-checked="${String(on)}" tabindex="${on ? '0' : '-1'}"${nom}>${o.label}</button>`;
+			return html`<button type="button" role="radio" class="enc-act-mode${on ? ' on' : ''}" data-act="${c.act}"${attribut(`data-${c.valAttr}`, o.val)}${extra} aria-checked="${String(on)}" tabindex="${on ? '0' : '-1'}"${nom}>${o.label}</button>`;
 		}),
 	);
 	return html`<div class="enc-act-modes${c.wrap ? ' enc-act-modes-wrap' : ''}" role="radiogroup" aria-label="${c.label}">${btns}</div>`;

@@ -51,7 +51,7 @@ import { renderProgrammeCard } from './seance';
 import { renderRewardNav, mascotteBulleHTML } from './unlocks-view';
 import { onHomeShown } from './eggs';
 import { icon, type IconName } from './icon';
-import { html, VIDE, type SafeHtml, joindre } from '../core/html';
+import { html, VIDE, type SafeHtml, joindre, attribut } from '../core/html';
 
 /* Niveau de réussite → couleur (rouge < 50, orange < 75, vert sinon) */
 export const pctColor = (p: number) => (p < 50 ? '#c62828' : p < 75 ? '#ef6c00' : '#2e7d32');
@@ -167,7 +167,7 @@ export function closeEmojiPicker() {
 export function emojiPaletteHTML(current: string, niveau: number) {
 	const dispo = (e: string) =>
 		html`<button class="emoji-opt${e === current ? ' current' : ''}" data-act="set-emoji" data-emoji="${e}"${
-			e === current ? ' aria-current="true"' : ''
+			e === current ? attribut('aria-current', 'true') : ''
 		} title="${e === current ? 'Avatar actuel' : 'Choisir cet avatar'}">${e}</button>`;
 	const base = joindre(PROFILE_EMOJIS.map(dispo));
 	const foret = joindre(
@@ -193,7 +193,7 @@ export function renderProfiles() {
       <span class="profile-emoji">${p.emoji}</span>
       <span class="profile-name">${p.name}</span>
       <span class="profile-tools">
-        <button data-act="emoji" title="Changer mon avatar"${p.uuid === emojiPickerFor ? ' aria-expanded="true"' : ''}>${icon('palette', { cls: 'ph-lg', label: 'Changer mon avatar' })}</button>
+        <button data-act="emoji" title="Changer mon avatar"${p.uuid === emojiPickerFor ? attribut('aria-expanded', 'true') : ''}>${icon('palette', { cls: 'ph-lg', label: 'Changer mon avatar' })}</button>
         <button data-act="rename" title="Changer mon prénom">${icon('pencil', { cls: 'ph-lg', label: 'Changer mon prénom' })}</button>
       </span>
       ${p.uuid === emojiPickerFor ? emojiPaletteHTML(p.emoji, niveauDepuisXP(getXPFor(p.uuid))) : ''}

@@ -262,9 +262,9 @@ function renderOrthoCategorie(el: HTMLElement): void {
 		const mots = `${l.nbMots} mot${l.nbMots > 1 ? 's' : ''}`;
 		if (l.source === 'liste' && l.dateControle) {
 			const [, m, d] = l.dateControle.split('-');
-			return `${mots} · ${icon('calendar')} ${d}/${m}`;
+			return html`${mots} · ${icon('calendar')} ${d}/${m}`;
 		}
-		return mots;
+		return html`${mots}`;
 	};
 	const apercu = (l: LeconOrthoRef) => {
 		if (!l.mots.length) return '';
@@ -311,8 +311,8 @@ function renderOrthoCategorie(el: HTMLElement): void {
 		const tint = meta?.tint ?? 'var(--accent)';
 		const repere =
 			l.repere === 'plus-difficile'
-				? ' <span class="lz-level" title="Leçon plus difficile">plus dur</span>'
-				: '';
+				? html` <span class="lz-level" title="Leçon plus difficile">plus dur</span>`
+				: VIDE;
 		return html`<button class="nav-card" data-lecon="${l.id}">
       <span class="cat-ico" style="background:${tint}">${icon(ico)}</span>
       <div class="nav-card-title">${labelLecon(l, niveau)}${etoilee ? ' ⭐' : ''}${repere}</div>

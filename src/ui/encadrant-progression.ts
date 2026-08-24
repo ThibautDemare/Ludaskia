@@ -309,7 +309,7 @@ function maitriseHTML(recap: RecapProfil): SafeHtml {
 				// dents de scie. Un vide plutôt qu'une pastille pâle : réserver la place n'est pas
 				// réintroduire le signal qu'on vient d'enlever.
 				const puce = l.frise
-					? '<span class="enc-detail-puce enc-detail-puce--reserve" aria-hidden="true"></span>'
+					? html`<span class="enc-detail-puce enc-detail-puce--reserve" aria-hidden="true"></span>`
 					: html`<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
 				return html`<li class="enc-detail-item">
           ${puce}
@@ -589,7 +589,7 @@ function ligneListeOrtho(l: RecapListeOrtho, now: number): SafeHtml {
 	// sa dernière cellule dit déjà l'état, en plus grand. Le MOT reste (canal indépendant de la
 	// couleur, a11y). Sa PLACE, elle, est gardée, pour que la colonne des libellés reste droite.
 	const puce = l.frise
-		? '<span class="enc-detail-puce enc-detail-puce--reserve" aria-hidden="true"></span>'
+		? html`<span class="enc-detail-puce enc-detail-puce--reserve" aria-hidden="true"></span>`
 		: html`<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
 	// Le repli des mots est le DERNIER enfant : il occupe toute la largeur (flex-basis 100 %),
 	// donc l'ordre du DOM reste l'ordre visuel — et « Épingler » garde sa place dans la

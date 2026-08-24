@@ -28,7 +28,7 @@ import { applyPreferences } from './preferences';
 import { uiConfirm, uiPrompt, toast } from './ui-modal';
 import { consulteUuid, setConsulteUuid, renderEspace, telechargerBlob } from './encadrant-commun';
 import { resetPinPanel } from './encadrant-pin';
-import { html, type SafeHtml, joindre, drapeau } from '../core/html';
+import { html, type SafeHtml, joindre, drapeau, attribut } from '../core/html';
 
 /* ---------- État de la section (module) ---------- */
 let gestionEmojiFor: string | null = null; // profil dont la palette d'avatar est ouverte (gestion)
@@ -52,9 +52,9 @@ export function profilsHTML(profiles: Profile[], consulte: Profile, actif: Profi
           <span class="enc-profile-emoji" aria-hidden="true">${p.emoji}</span>
           <span class="enc-prof-id">
             <span class="enc-profile-name">${p.name}</span>
-            ${joue ? '<span class="enc-profile-actif">joue en ce moment</span>' : ''}
+            ${joue ? html`<span class="enc-profile-actif">joue en ce moment</span>` : ''}
           </span>
-          <button type="button" class="enc-btn${courant ? '' : '-sec'}" data-act="voir" data-uuid="${p.uuid}"${courant ? ' aria-current="true"' : ''}>${courant ? `${icon('check')} Affiché` : `${icon('eye')} Voir le suivi`}</button>
+          <button type="button" class="enc-btn${courant ? '' : '-sec'}" data-act="voir" data-uuid="${p.uuid}"${courant ? attribut('aria-current', 'true') : ''}>${courant ? html`${icon('check')} Affiché` : html`${icon('eye')} Voir le suivi`}</button>
         </div>
         <details class="enc-gerer"${gestionEmojiFor === p.uuid ? drapeau('open') : ''}>
           <summary>Gérer ce profil</summary>

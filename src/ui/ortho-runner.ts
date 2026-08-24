@@ -930,7 +930,7 @@ function annoncerNiveauSiGagne(): void {
 }
 
 function reussite(fb: HTMLElement, xpGagne = false): void {
-	const xp = xpGagne ? ' <span class="fb-xp">+1 XP</span>' : '';
+	const xp = xpGagne ? html` <span class="fb-xp">+1 XP</span>` : VIDE;
 	fb.innerHTML = html`<span class="fb-ok">Bravo ! 🎉</span>${xp} `.balisage;
 	boutonContinuer(fb);
 }

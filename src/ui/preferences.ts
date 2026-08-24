@@ -23,7 +23,7 @@ import {
 	sansPressionTemporelle,
 } from '../core/profiles';
 import { icon } from './icon';
-import { html, type SafeHtml, VIDE, joindre, drapeau } from '../core/html';
+import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
 
 export const THEME_KEY = 'ludaskia_theme';
 export const ANIM_KEY = 'ludaskia_anim';
@@ -79,7 +79,7 @@ function themeSwatch(t: Theme, courant: string, debloques: string[]): SafeHtml {
 	// la seule couleur — a11y / daltonisme).
 	const coche = actif ? html`<span class="theme-check">${icon('check')}</span>` : VIDE;
 	// Le thème automatique pointe vers sa ligne d'aide (comportement non évident).
-	const describedby = t.id === 'auto' ? ` aria-describedby="${HINT_AUTO_ID}"` : '';
+	const describedby = t.id === 'auto' ? attribut('aria-describedby', HINT_AUTO_ID) : VIDE;
 	return html`<button class="theme-opt theme-${t.id}${actif ? ' current' : ''}" role="radio" aria-checked="${actif ? 'true' : 'false'}" data-act="set-theme" data-theme="${t.id}"${describedby} title="${actif ? 'Thème actuel' : 'Choisir ce thème'}">
       <span class="theme-dot"></span><span class="theme-lab">${t.label}</span>${coche}</button>`;
 }

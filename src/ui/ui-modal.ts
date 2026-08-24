@@ -84,7 +84,7 @@ function openModal(cfg: ModalConfig): Promise<unknown> {
 	overlay.className = 'modal-overlay';
 	activeOverlay = overlay;
 
-	const describedby = cfg.message ? ` aria-describedby="${DESC_ID}"` : '';
+	const describedby = cfg.message ? attribut('aria-describedby', DESC_ID) : VIDE;
 	const listenHTML = dicteeDisponible()
 		? html`<button type="button" class="modal-listen" aria-label="Écouter">${icon('speaker')}<span class="modal-listen-lab">Écouter</span></button>`
 		: VIDE;
@@ -96,7 +96,7 @@ function openModal(cfg: ModalConfig): Promise<unknown> {
 					: b.variant === 'danger'
 						? 'modal-danger'
 						: 'modal-secondary';
-			const ic = b.icon ? `${icon(b.icon)} ` : '';
+			const ic = b.icon ? html`${icon(b.icon)} ` : VIDE;
 			return html`<button type="${b.submit ? 'submit' : 'button'}" class="${cls}"${
 				b.initialFocus ? drapeau('data-initial-focus') : ''
 			}>${ic}${b.label}</button>`;

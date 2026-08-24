@@ -184,7 +184,7 @@ function classementHTML(q: TriQuestion): SafeHtml {
 					.map(escapeHTML)
 					.join(' · ')}`,
 		),
-		'<br>',
+		html`<br>`,
 	);
 	return html`<div class="ltri-solution">${bon}</div>`;
 }

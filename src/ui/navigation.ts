@@ -208,7 +208,7 @@ export function showModeChoice(id: string) {
           <span class="mode-btn-label">${m.label}</span>
           ${
 						m.recommended
-							? '<span class="mode-btn-badge">conseillé</span>'
+							? html`<span class="mode-btn-badge">conseillé</span>`
 							: m.hint
 								? html`<span class="mode-btn-hint">${m.hint}</span>`
 								: ''

@@ -325,7 +325,7 @@ function passer(): void {
 			'le bon rangement',
 			joindre(
 				q.ordre.map((m) => html`${m}`),
-				' · ',
+				html` · `,
 			),
 		),
 		// La suite est énumérée avec le séparateur de sa NATURE (#448) : le point-virgule des

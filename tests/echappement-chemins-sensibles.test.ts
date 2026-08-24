@@ -3,6 +3,8 @@ import { renderItem, createRenderContext, enonceTexte, choiceButtonHTML } from '
 import { paveSignesHTML } from '../src/core/signes';
 import { ficheHTMLGeneric } from '../src/core/items';
 import { html } from '../src/core/html';
+import { renderToolbarProfile, renderProfileMenu, renderProfiles } from '../src/ui/render';
+import { initProfiles, activeProfile, renameProfile, addProfile } from '../src/core/profiles';
 
 /* ============================================================
    Les chemins SENSIBLES restent échappés (#614).
@@ -95,6 +97,74 @@ describe('chemins sensibles : la charge ressort en TEXTE, jamais en balisage', (
 		expect(boutons.map((b) => b.getAttribute('data-signe'))).toEqual(['<', '=', '>']);
 		expect(boutons[0].getAttribute('aria-label')).toBe('plus petit que');
 		expect(hote.textContent).not.toContain('[object Object]');
+	});
+});
+
+/* Le NOM DE PROFIL est le premier chemin nommé par #614, et le seul des quatre qui
+   soit à la fois libre (l'enfant tape ce qu'il veut), persistant (il survit dans
+   `localStorage` et dans une sauvegarde importée) et ré-affiché sur trois écrans
+   différents. Un seul des trois échappé, c'est le trou. On passe donc par les
+   fonctions de rendu réelles, avec le DOM comme juge — un « &lt; » dans la chaîne
+   ne prouverait pas que l'élément n'a pas été créé ailleurs dans le fragment. */
+describe('chemin sensible : le nom de profil, sur ses trois surfaces', () => {
+	beforeEach(() => {
+		localStorage.clear();
+		initProfiles();
+		document.body.innerHTML =
+			'<div id="xpBadge"></div><div id="toolbarProfile"></div>' +
+			'<div id="profileMenu"></div><div id="profileList"></div>';
+	});
+
+	/** Renomme le profil actif avec la charge et rend l'élément demandé. */
+	function nommer(nom: string): void {
+		const p = activeProfile();
+		expect(p).toBeTruthy();
+		renameProfile(p!.uuid, nom);
+	}
+
+	const zone = (id: string) => document.getElementById(id)!;
+
+	it('bouton de la barre d’outils', () => {
+		nommer(CHARGE);
+		renderToolbarProfile();
+		expect(zone('toolbarProfile').querySelector('img')).toBeNull();
+		expect(zone('toolbarProfile').textContent).toContain('<img');
+	});
+
+	it('menu déroulant des profils (tous les profils, pas seulement l’actif)', () => {
+		// Le menu liste TOUS les profils : celui qui porte la charge peut être un autre
+		// que l'actif, et c'est le cas qu'on oublie en ne testant que `activeProfile()`.
+		nommer('Léa');
+		const autre = addProfile(CHARGE);
+		expect(autre.name).toBe(CHARGE);
+		renderProfileMenu();
+		expect(zone('profileMenu').querySelector('img')).toBeNull();
+		expect(zone('profileMenu').textContent).toContain('<img');
+		expect(zone('profileMenu').querySelectorAll('.pm-item').length).toBeGreaterThanOrEqual(2);
+	});
+
+	it('carte « Mon espace »', () => {
+		nommer(CHARGE);
+		renderProfiles();
+		const carte = zone('profileList');
+		expect(carte.querySelector('img')).toBeNull();
+		expect(carte.querySelector('.profile-name')!.textContent).toBe(CHARGE);
+		// La carte porte l'uuid en attribut : un nom hostile ne doit pas non plus
+		// pouvoir s'y glisser via un attribut voisin.
+		expect(carte.querySelector('.profile-row')!.getAttributeNames().sort()).toEqual([
+			'class',
+			'data-uuid',
+		]);
+	});
+
+	it('un nom qui referme un attribut ne crée pas d’attribut de plus', () => {
+		// Charge dédiée : ici le danger n'est pas le chevron mais le GUILLEMET, et le
+		// nom voisine avec des attributs (`data-uuid`, `title`) sur chacun des écrans.
+		nommer('" onmouseover="vole()');
+		renderProfiles();
+		const row = document.querySelector('.profile-row')!;
+		expect(row.getAttributeNames()).not.toContain('onmouseover');
+		expect(document.querySelector('.profile-name')!.textContent).toBe('" onmouseover="vole()');
 	});
 });
 

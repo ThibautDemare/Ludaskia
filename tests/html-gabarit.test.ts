@@ -186,7 +186,7 @@ describe('composition', () => {
 	it('joindre() assemble des fragments, avec ou sans séparateur', () => {
 		const frags = [html`<i>a</i>`, html`<i>b</i>`];
 		expect(rendu(joindre(frags))).toBe('<i>a</i><i>b</i>');
-		expect(rendu(joindre(frags, ', '))).toBe('<i>a</i>, <i>b</i>');
+		expect(rendu(joindre(frags, html`, `))).toBe('<i>a</i>, <i>b</i>');
 	});
 
 	it('VIDE est un fragment vide réutilisable', () => {

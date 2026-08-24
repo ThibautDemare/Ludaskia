@@ -53,7 +53,14 @@ dépôt produit réellement :
 
 - **valeur d'attribut NON QUOTÉE** (`<i class=${c}>`) : l'espace passe, donc une
   valeur peut ajouter un second attribut (`a onmouseover=…`) sans le moindre chevron.
-  Le gabarit y neutralise aussi l'espace, la tabulation, `=` et le backquote ;
+  Le gabarit y neutralise `=`, le backquote, l'antislash et **tout ce que `\s` de
+  JavaScript capture**, en référence numérique. Le sur-ensemble est délibéré : `\s`
+  est plus large que l'espace blanc HTML (tabulation verticale, insécable,
+  U+2028/2029, espace idéographique, BOM), les analyseurs ne s'accordent pas sur ces
+  caractères, et les échapper ne coûte rien. Une première version tenait une **table**
+  de sept caractères avec un repli `?? c` : la regex qui la pilotait capturant plus
+  large, le repli laissait passer le reste **en silence**. C'est le balayage
+  exhaustif qui l'a montré, pas la relecture ;
 - **URL** (`href`, `src`, `formaction`, `xlink:href`…) : aucun échappement ne rend
   `javascript:alert(1)` inoffensif — le danger est le **schéma**. Une telle valeur est
   **refusée**, même déclarée par `brut()`.
@@ -83,16 +90,51 @@ construite par l'application (nombres, énumérations, libellés de leçon) — 
 saisie d'enfant ni un contenu importé. Les rares figures qui interpolent du texte
 libre (droite graduée, diagramme, tableau de données) l'échappent chez elles.
 
-On marque donc la sortie de son **point d'entrée unique** (`renderFigure`), une fois,
-plutôt que de convertir 3 000 lignes de composition. Convertir le moteur serait une
-réécriture, pas un garde-fou, et le SVG a ses propres contextes (`<text>`, `viewBox`,
-`d`) que le gabarit HTML ne modélise pas. Ce que le marquage apporte quand même : tout
-ce qui **consomme** une figure (`Item.figure`, `figureBlock`, les runners) est typé,
-donc plus personne ne peut y glisser une chaîne quelconque.
+On marque donc sa SORTIE, plutôt que de convertir 3 000 lignes de composition.
+Convertir le moteur serait une réécriture, pas un garde-fou, et le SVG a ses propres
+contextes (`<text>`, `viewBox`, `d`) que le gabarit HTML ne modélise pas. Ce que le
+marquage apporte quand même : tout ce qui **consomme** une figure (`Item.figure`,
+`figureBlock`, les runners) est typé, donc plus personne ne peut y glisser une chaîne
+quelconque.
+
+**Attention, le moteur n'a pas un point d'entrée mais plusieurs.** `renderFigure`
+couvre les figures décrites par un `FigureSpec`, mais deux runners appellent le moteur
+en direct (`renderDroiteGraduee`, `renderDroiteGradueeInteractif`), et le moteur
+exporte une vingtaine de `render*` en `string`. **Chaque appel doit donc être marqué
+par `brut()` à l'appel.** Un seul oubli et la figure entière part en texte échappé : le
+`brut()` manquant sur `renderDroiteGradueeInteractif` a fait que la leçon de droite
+graduée ne se rendait plus du tout, avec `typecheck`, `lint` et les tests unitaires au
+vert. C'est ce que garde la classe 4 de `tests/html-positions-gate.test.ts`.
 
 **C'est un rejet écrit, pas un oubli** (règle #585) : inutile de le re-remonter en
 relecture. Ce qui le ferait rouvrir : une figure qui accepterait un jour du texte
 saisi par un enfant.
+
+## Ce que le gabarit ne promet PAS (rejets écrits)
+
+Remontés à la relecture de #614, écartés en connaissance de cause. Inutile de les
+re-remonter : ce qui les rouvrirait est dit à chaque fois.
+
+- **`attribut('onclick', v)` est accepté.** La fonction valide la *syntaxe* du nom
+  d'attribut, pas sa nature : elle ne refuse pas les gestionnaires d'événements. La
+  valeur est alors échappée pour le contexte ATTRIBUT, pas pour JavaScript, ce qui ne
+  la rend pas sûre dans un `on*`. Écarté parce qu'aucun appel n'écrit de gestionnaire
+  en HTML (tout passe par `addEventListener` et la délégation), et qu'une liste noire
+  `on*` donnerait l'illusion d'une garantie qui reste fausse pour `style` ou pour un
+  attribut inventé. Ce qui rouvrirait : un premier `on*` posé en balisage.
+- **Le séparateur de `joindre` n'échappe pas.** C'est voulu, et c'est pour ça qu'il
+  est typé `SafeHtml` depuis #614 : il *est* du balisage (`` html`<br>` ``), pas du
+  texte. Avant, c'était une `string` insérée telle quelle, seule valeur non échappée
+  de l'API publique.
+- **Un nombre court-circuite l'échappement** (`rendre` le convertit sans passer par
+  `echapper`). Éprouvé : `String(n)` ne produit jamais d'espace, de guillemet ni de
+  chevron, bornes comprises. L'incohérence visible est ailleurs : `${42}` passe entre
+  deux attributs là où `${'42'}` est refusé. Sans conséquence, et aligner les deux
+  ferait échouer des gabarits corrects.
+- **`</SCRIPT>` en majuscules ne referme pas le contexte `<script>`** pour
+  l'automate : toutes les interpolations suivantes sont donc refusées. Direction sûre
+  (on refuse trop, jamais trop peu), et le dépôt n'écrit pas de `<script>` dans un
+  gabarit.
 
 ## Prettier
 
@@ -121,8 +163,48 @@ el.innerHTML = brut(svg).balisage;
 Deux réflexes :
 
 - une fonction qui **produit du balisage** renvoie `SafeHtml`, jamais `string` ;
-- une valeur **destinée au stockage** (journal d'erreurs, instantané de reprise) reste
-  du `string` : un `SafeHtml` y serait sérialisé `{"balisage":"…"}`.
+- une valeur **destinée au stockage** reste du `string`. Le journal d'erreurs, les
+  réponses, tout ce qu'un encadrant relit : de la donnée, pas du balisage.
+
+### L'exception : l'instantané de reprise
+
+Elle mérite d'être connue, parce qu'elle a coûté un écran. L'instantané de reprise
+(#498) persiste les **questions du runner en cours**, et une question porte parfois sa
+`figure`, donc un `SafeHtml`. Un aller-retour JSON en faisait un objet nu :
+`instanceof SafeHtml` échouait, le gabarit refusait la valeur, et **reprendre une leçon
+à figures plantait**. Le défaut ne se voyait ni au typage (le champ est `unknown[]`),
+ni aux tests unitaires, ni au premier lancement — seulement à la reprise.
+
+D'où `SafeHtml.toJSON()`, qui sérialise en `{ __html: "…" }`, et `revivreFragments()`,
+appliqué **une seule fois** dans `restaurerRunner` plutôt que dans les dix
+restaurateurs. Ce n'est pas une invitation à ranger du balisage dans de la donnée
+métier : seul un instantané, qui rejoue un rendu, a une raison d'en porter.
+
+## Les trois fautes que ni le type ni le linter ne voient
+
+Elles ont toutes compilé, passé ESLint et passé les tests unitaires pendant la
+conversion. Elles ne se voyaient qu'à l'écran, et c'est ce qui les rend dangereuses :
+
+1. **Interpolation à une position refusée** (`<p ${' aria-current="page"'}>`). Le
+   gabarit lève, donc l'écran entier ne se rend plus. Cinq sites ont ainsi cassé
+   `renderEspace`, c'est-à-dire tout l'espace encadrant, et seule la suite Playwright
+   complète les a montrés — une heure plus tard.
+2. **Balisage écrit en chaîne** (`${cond ? '<span>…</span>' : ''}`). Le gabarit fait
+   son travail, échappe, et l'enfant lit `<span>…` en clair.
+3. **Fragment sorti de son gabarit** : interpolé dans un gabarit **non balisé**,
+   concaténé au `+`, ou `.join('')` sur un tableau de fragments. `SafeHtml` n'ayant
+   pas de `toString()`, ça rend `[object Object]`. `join` acceptant n'importe quel
+   type d'élément, rien ne rougit : **111 sites** étaient concernés.
+
+`tests/html-positions-gate.test.ts` les attrape toutes les trois, en ~2 s, au
+`npm test`. Il construit un programme TypeScript sur `src/` et interroge le
+**typechecker** — pas une heuristique de noms : une première version reconnaissait
+les fabriques par leur nom (`html`, `attribut`, `brut`…) et criait sur **45 sites
+sains**, faute de savoir que `ttsAttr(…)` ou `marqueCase(…)` rendent déjà un
+fragment. Un gate qui se trompe trois fois sur quatre finit contourné.
+
+Pour la classe 1, le gate rejoue `analyserPositions` — **la fonction du moteur**,
+pas une copie, qui divergerait.
 
 ## Ce qui tient la règle
 
@@ -130,6 +212,8 @@ Deux réflexes :
 | --- | --- |
 | Le **type** | Une fonction de rendu qui renvoie du texte brut ; du texte passé à `wrapGrandsNombres` / `stackFractions`. |
 | La **règle ESLint** | Une affectation `.innerHTML` dont la valeur n'est pas un fragment. |
+| `tests/html-positions-gate.test.ts` | Les trois fautes ci-dessus, sur tout `src/`. |
 | `tests/html-gabarit.test.ts` | Le contrat du gabarit, position par position. |
+| `tests/html-injection-balayage.test.ts` | Les codes 1..255 (plus les espaces Unicode) sur les trois positions, **l'analyseur DOM pour arbitre** — c'est lui qui a trouvé le repli inopérant de l'attribut non quoté. Ses **contrôles négatifs** vérifient d'abord que l'oracle sait voir une injection : sans eux, le balayage passerait aussi bien si l'analyseur ne voyait rien. |
 | `tests/echappement-chemins-sensibles.test.ts` | Les chemins nommés par #614 (nom de profil, valeur de tuile, libellés, `aria-label`) restent échappés. |
 | `e2e/echappement-rendu.spec.ts` | Rien ne s'affiche **en clair** sur les quatre familles de rendu (double échappement, `[object Object]`). |

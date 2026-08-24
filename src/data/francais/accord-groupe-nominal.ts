@@ -259,7 +259,7 @@ function proposition(g: GroupeNominal, accordes: boolean[]): Proposition {
 	const vues = g.constituants.map((c, i) => vueConstituant(c, valeurs[i]));
 	return {
 		valeur: valeurs.join(' '),
-		vue: { html: joindre(vues, ' '), label: valeurs.join(' ') },
+		vue: { html: joindre(vues, html` `), label: valeurs.join(' ') },
 	};
 }
 

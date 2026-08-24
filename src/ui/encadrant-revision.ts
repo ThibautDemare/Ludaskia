@@ -75,7 +75,7 @@ function entreeHTML(e: EntreeRevision, o: RenduEntree = {}): SafeHtml {
 		? html`<span class="enc-rev-cat"><span class="sr-only">Niveau d'origine : </span>${LEVEL_LABEL[e.niveauOrigine]}</span>`
 		: VIDE;
 	// Nomme la nature « mot » pour les lecteurs d'écran (un mot isolé serait ambigu).
-	const natureSr = e.nature === 'mot' ? '<span class="sr-only">Mot : </span>' : '';
+	const natureSr = e.nature === 'mot' ? html`<span class="sr-only">Mot : </span>` : VIDE;
 	return html`<li class="enc-rev-item${e.acquis ? ' acquis' : ''}">
       <span class="enc-rev-main">
         <span class="enc-rev-lab">${natureSr}${e.label}</span>

@@ -100,8 +100,7 @@ function figureAngle(cat: Categorie): SafeHtml {
 /* Bulles d'aide (apostrophe droite — convention projet ; `screen-only` : retirées
    à l'impression #290, sinon elles fuiteraient la réponse sur un bilan). */
 // Nommage (temps 3) : les deux termes, ancrés sur la comparaison à l'angle droit.
-const AIDE_NOMMER =
-	'<p class="angle-aide screen-only">plus petit que l\'angle droit → aigu · plus grand → obtus</p>';
+const AIDE_NOMMER = html`<p class="angle-aide screen-only">plus petit que l'angle droit → aigu · plus grand → obtus</p>`;
 // Oui/Non « aigu » : aide RÉDUITE à UN seul terme (avis specialiste-troubles : ne
 // pas nommer « obtus » ici, la marche binaire ne porte qu'un mot neuf à la fois).
 const AIDE_AIGU = html`<p class="angle-aide screen-only">aigu = plus petit que l'angle droit</p>`;

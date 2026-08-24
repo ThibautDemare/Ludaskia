@@ -18,7 +18,7 @@ import type { Entourage, MotOrtho } from '../core/orthographe/types';
 import { uiConfirm } from './ui-modal';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 import { icon } from './icon';
-import { html, type SafeHtml, joindre, VIDE } from '../core/html';
+import { html, type SafeHtml, joindre, VIDE, attribut } from '../core/html';
 
 // Palette colorblind-safe (Okabe-Ito).
 const PALETTE = ['#E69F00', '#56B4E9', '#009E73', '#0072B2', '#CC79A7', '#D55E00'];
@@ -33,7 +33,7 @@ export function lettresMotHTML(mot: string, diff?: boolean[]): SafeHtml {
 		lettresDuMot(mot).map((l, i) =>
 			l === ' '
 				? html`<span class="atelier-lettre atelier-espace" data-i="${i}" data-space="1">&nbsp;</span>`
-				: html`<span class="atelier-lettre" data-i="${i}"${diff?.[i] ? ' data-diff="1"' : ''}>${l}</span>`,
+				: html`<span class="atelier-lettre" data-i="${i}"${diff?.[i] ? attribut('data-diff', '1') : ''}>${l}</span>`,
 		),
 	);
 }

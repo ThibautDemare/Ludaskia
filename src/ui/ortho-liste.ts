@@ -31,7 +31,7 @@ import { dicteeDisponible } from './tts';
 import { icon } from './icon';
 import { uiAlert, uiConfirm } from './ui-modal';
 import { enumererFr } from '../core/utils';
-import { html, joindre, drapeau } from '../core/html';
+import { html, joindre } from '../core/html';
 
 interface RowData {
 	mot: string;
@@ -173,7 +173,7 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 		);
 
 		const toggle = document.createElement('button');
-		toggle.className = 'ortho-formes-toggle' + (aFormes ? drapeau('actif') : '');
+		toggle.className = 'ortho-formes-toggle' + (aFormes ? ' actif' : '');
 		toggle.type = 'button';
 		toggle.textContent = '✍️';
 		toggle.title = 'Pluriel et féminin (facultatif)';

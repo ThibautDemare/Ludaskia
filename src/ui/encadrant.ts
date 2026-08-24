@@ -64,7 +64,7 @@ import {
 import { profilsHTML, sauvegardeHTML, profilsClick } from './encadrant-profils';
 import { selecteurClick, selecteurInput, selecteurToggle } from './selecteur-lecon';
 import { segmentKeydown } from './segment';
-import { html, type SafeHtml, joindre, drapeau } from '../core/html';
+import { html, type SafeHtml, joindre, drapeau, attribut } from '../core/html';
 
 /* Onglets de l'espace (#459), dans l'ordre de fréquence d'usage décroissante :
    observer (Suivi) → préparer (Programme) → configurer (Réglages) → gérer (Profils). */
@@ -187,7 +187,7 @@ function tabsNavHTML(active: EncTab): SafeHtml {
 		TABS.map(
 			(t) =>
 				html`<button type="button" class="enc-tab${t.id === active ? ' active' : ''}" data-act="enc-tab" data-tab="${t.id}"${
-					t.id === active ? ' aria-current="page"' : ''
+					t.id === active ? attribut('aria-current', 'page') : ''
 				}>${icon(t.icon)}<span class="enc-tab-lab">${t.label}</span></button>`,
 		),
 	);

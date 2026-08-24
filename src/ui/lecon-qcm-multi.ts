@@ -84,7 +84,7 @@ function genQuestions(l: LessonDef, m: ExerciseMode, n: number): QuestionMulti[]
 	while (out.length < n && misses < 80) {
 		const ex = l.exerciseType.generate({ mode: m, level: niveauLecon(l) });
 		if (ex.type !== 'qcmMulti') break; // ce runner n'a de sens que pour ce type
-		const key = `${ex.figure ?? ''}¦${[...ex.propositions].sort().join('|')}¦${[...ex.correctes].sort().join('|')}`;
+		const key = `${ex.figure?.balisage ?? ''}¦${[...ex.propositions].sort().join('|')}¦${[...ex.correctes].sort().join('|')}`;
 		if (seen.has(key)) {
 			misses++;
 			continue;
@@ -291,7 +291,7 @@ function valider(): void {
 function listeCorrectesHTML(q: QuestionMulti): SafeHtml {
 	return joindre(
 		q.correctes.map((c) => html`${c}`),
-		html`<br>`.balisage,
+		html`<br>`,
 	);
 }
 

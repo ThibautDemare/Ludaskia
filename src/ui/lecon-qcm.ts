@@ -79,7 +79,7 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 	while (out.length < n && misses < 80) {
 		const ex = l.exerciseType.generate({ mode: m, level: niveauLecon(l) });
 		if (ex.type !== 'qcm') break; // sécurité : ce runner n'a de sens que pour un QCM
-		const key = `${commKey(ex.question)}¦${ex.answer}¦${ex.figure ?? ''}`;
+		const key = `${commKey(ex.question)}¦${ex.answer}¦${ex.figure?.balisage ?? ''}`;
 		if (seen.has(key)) {
 			misses++;
 			continue;

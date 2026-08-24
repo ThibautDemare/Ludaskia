@@ -191,14 +191,18 @@ function renderQuestion(): void {
         <div class="dg-col">
           ${leconTitreHTML(lesson)}
           <p class="dg-consigne" id="dgConsigne"${ttsAttr(q.parle)}>${q.consigne}</p>
-          <div class="dg-figure" id="dgFigure">${renderDroiteGradueeInteractif({
-						min: q.min,
-						max: q.max,
-						pas: q.pas,
-						graduations: q.graduations,
-						bornes: q.bornes,
-						ariaLabel: q.consigne,
-					})}</div>
+          <div class="dg-figure" id="dgFigure">${brut(
+						// Fragment SVG du moteur de figures (frontière typée, cf. rendu-et-echappement.md) :
+						// composé de nombres et de la consigne de la leçon, jamais d'une saisie d'enfant.
+						renderDroiteGradueeInteractif({
+							min: q.min,
+							max: q.max,
+							pas: q.pas,
+							graduations: q.graduations,
+							bornes: q.bornes,
+							ariaLabel: q.consigne,
+						}),
+					)}</div>
           ${decisionHTML('dgVerify')}
           <p class="sr-only" id="dgStatus" role="status" aria-live="polite" aria-atomic="true"></p>
           <div class="sprint-correction" id="dgFeedback" hidden></div>

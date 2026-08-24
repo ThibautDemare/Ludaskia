@@ -60,7 +60,7 @@ import {
 	type ActionLigne,
 } from './selecteur-lecon';
 import { segmentHTML } from './segment';
-import { html, type SafeHtml, VIDE, joindre, drapeau } from '../core/html';
+import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
 
 /* ---------- État de la section (module) ---------- */
 /* Message de conflit de récurrence, rattaché à un programme précis d'un profil précis
@@ -353,7 +353,7 @@ function cibleLeconHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): 
 	// navigation — l'adulte doit savoir, à la voix, si le panneau est déjà ouvert.
 	// `aria-controls` seulement quand le panneau EXISTE : replié, il n'est pas rendu du tout,
 	// et l'attribut pointerait vers un identifiant absent du document (IDREF invalide).
-	const controls = ouvert ? ` aria-controls="${idSelecteur(def, etape)}"` : '';
+	const controls = ouvert ? attribut('aria-controls', idSelecteur(def, etape)) : VIDE;
 	const bouton = html`<button type="button" class="enc-btn-sec${ouvert ? ' on' : ''}" data-act="seance-cible-ouvrir" data-def="${def.id}" data-etape="${etape.id}" aria-expanded="${String(ouvert)}"${controls}>${etape.ref ? 'Changer' : 'Choisir une leçon'}</button>`;
 	return html`<span class="enc-seance-cible">${nom}${bouton}</span>`;
 }
@@ -496,7 +496,7 @@ function copieHTML(consulte: Profile, aDesProgrammes: boolean): SafeHtml {
         <select id="seanceCopyCible" class="enc-select-niveau" data-act="seance-copy-cible" aria-label="Profil de destination">${opts}</select>
         <button type="button" class="enc-btn-sec" data-act="seance-copy"${aDesProgrammes ? '' : drapeau('disabled')}>Copier vers ce profil</button>
       </div>
-      ${aDesProgrammes ? '' : '<p class="enc-hint">Composez au moins un programme avant de pouvoir le copier.</p>'}
+      ${aDesProgrammes ? '' : html`<p class="enc-hint">Composez au moins un programme avant de pouvoir le copier.</p>`}
     </div>`;
 }
 

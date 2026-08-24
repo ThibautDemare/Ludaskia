@@ -498,8 +498,8 @@ function favoriItemHTML(b: BilanConfig): SafeHtml {
 	// Un favori sprint (#64) affiche son chrono ; un bilan, ses questions/leçon.
 	const detail =
 		bilanMode(b) === 'sprint'
-			? `${icon('run')} Sprint · 5 min · ${nLessons}`
-			: `${icon('feather')} ${nLessons} · ${
+			? html`${icon('run')} Sprint · 5 min · ${nLessons}`
+			: html`${icon('feather')} ${nLessons} · ${
 					b.questionsPerLesson === 'all'
 						? 'toutes les questions'
 						: `${b.questionsPerLesson} question${(b.questionsPerLesson as number) > 1 ? 's' : ''}/leçon`

@@ -83,8 +83,13 @@ export function renderProblemeBoardHTML(q: ProbQuestion, lex: ProbLexique = LEX_
 /* Live region (sr-only) à insérer dans le board par l'APPELANT (runner leçon ET
    révision) : `corrigerEtapesProbleme` y annonce le verdict non-visuel (#466). Hors
    du board PUR (renderProblemeBoardHTML), qui reste réutilisé tel quel par la galerie. */
-export const PROB_STATUS_HTML =
-	'<p class="sr-only" id="probStatus" role="status" aria-live="polite" aria-atomic="true"></p>';
+export const PROB_STATUS_HTML = html`<p
+	class="sr-only"
+	id="probStatus"
+	role="status"
+	aria-live="polite"
+	aria-atomic="true"
+></p>`;
 
 /* Corrige les sous-questions d'un problème DANS le DOM (partagé runner ↔ révision,
    #466) : marque chaque `.prob-input` (couleur + classe) et sa `.prob-mark` (glyphe

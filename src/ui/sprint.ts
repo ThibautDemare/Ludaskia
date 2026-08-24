@@ -84,7 +84,7 @@ import {
 } from './navigation';
 import { capterErreur } from './erreur-capture';
 import { attendueItem } from '../core/erreur-representation';
-import { html, VIDE, type SafeHtml, joindre } from '../core/html';
+import { html, VIDE, type SafeHtml, joindre, drapeau } from '../core/html';
 
 const SPRINT_MS = 300000; // 5 minutes
 
@@ -212,11 +212,11 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 	const currentValue = countFor(parseFilter(wanted)) > 0 ? wanted : 'all';
 
 	const opt = (value: string, label: string, n: number, indent = false) => {
-		const checked = currentValue === value ? 'checked' : '';
-		const disabled = n === 0 ? 'disabled' : '';
+		const checked = currentValue === value ? drapeau('checked') : VIDE;
+		const disabled = n === 0 ? drapeau('disabled') : VIDE;
 		const cls = `sc-option${indent ? ' sc-option-indent' : ''}${n === 0 ? ' sc-option-disabled' : ''}`;
 		return html`<label class="${cls}">
-      <input type="radio" name="scFilter" class="sc-radio" value="${value}" ${checked} ${disabled}>
+      <input type="radio" name="scFilter" class="sc-radio" value="${value}"${checked}${disabled}>
       <span>${label} <span class="sc-count">${n} leçon${n > 1 ? 's' : ''}</span></span>
     </label>`;
 	};
@@ -246,8 +246,8 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 	const perimetre = choisissable
 		? html`<h2 class="sc-section-title" id="scScopeTitle">Sur quoi veux-tu t'entraîner&nbsp;?</h2>
     <div class="sc-options sc-perimetre" role="radiogroup" aria-labelledby="scScopeTitle">
-      <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="seen" ${scope === 'seen' ? 'checked' : ''}><span>Ce que tu connais déjà</span></label>
-      <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="all" ${scope === 'all' ? 'checked' : ''}><span>Tout</span></label>
+      <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="seen"${scope === 'seen' ? drapeau('checked') : ''}><span>Ce que tu connais déjà</span></label>
+      <label class="sc-option"><input type="radio" name="scScope" class="sc-scope" value="all"${scope === 'all' ? drapeau('checked') : ''}><span>Tout</span></label>
     </div>`
 		: VIDE;
 

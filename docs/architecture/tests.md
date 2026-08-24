@@ -266,7 +266,33 @@ sinon le gate vert en n'examinant plus rien.
 
 ### Échappement HTML par construction (#614)
 
-Deux fichiers, deux niveaux.
+Quatre fichiers, quatre niveaux.
+
+`tests/html-positions-gate.test.ts` est le **gate** du lot. Il construit un programme
+TypeScript sur `src/` et attrape les trois fautes de rendu qui compilent proprement,
+passent ESLint et passent les tests unitaires : une interpolation à une position que le
+gabarit **refuse** (elle lève, donc l'écran ne se rend plus), du **balisage écrit en
+chaîne** (il sera échappé et lu en clair par l'enfant), et un **fragment sorti de son
+gabarit** (gabarit non balisé, `+`, `.join('')` → « [object Object] »).
+
+Deux choix de méthode y sont structurants. Il interroge le **typechecker**, pas les noms :
+une première version reconnaissait les fabriques par leur nom (`html`, `attribut`,
+`brut`…) et criait sur **45 sites sains**, faute de savoir que `ttsAttr(…)` ou
+`marqueCase(…)` rendent déjà un fragment — un gate qui se trompe trois fois sur quatre
+finit contourné. Et il rejoue `analyserPositions`, **la fonction du moteur**, plutôt
+qu'une copie de l'automate qui divergerait au premier changement. Coût ~2 s, en
+environnement `node`. Anti-liste-vide : ≥ 300 gabarits et ≥ 1000 interpolations examinés.
+
+`tests/html-injection-balayage.test.ts` prend le problème par l'autre bout : au lieu
+d'une liste de caractères choisie à la main (donc ceux auxquels l'auteur a pensé), il
+balaie les codes **1 à 255** plus les espaces Unicode, sur les trois positions, et laisse
+l'**analyseur DOM** juger — « la balise porte-t-elle encore exactement un attribut, avec
+la valeur d'origine ». Cette forme a trouvé son premier défaut à l'écriture : l'attribut
+non quoté échappait par une **table** de sept caractères avec un repli `?? c`, alors que
+la regex qui la pilotait capturait bien plus large ; le repli ne rattrapait rien, en
+silence. Ses trois **contrôles négatifs** ne sont pas décoratifs : ils vérifient que
+l'oracle sait voir une injection quand on la laisse délibérément passer, sans quoi le
+balayage passerait tout aussi bien si l'analyseur ne voyait rien du tout.
 
 `tests/html-gabarit.test.ts` éprouve le **contrat du gabarit** `html`
 ([Rendu & échappement](rendu-et-echappement.md)), position par position : texte,

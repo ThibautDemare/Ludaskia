@@ -350,7 +350,7 @@ export function renderHomeStats() {
 			totalNiveau: lessonsNiveauActif().length, // catalogue du niveau actif
 			starsCumul: starsEarnedAll(), // cumul tous niveaux (ne baisse jamais)
 			labelClasse: LEVEL_LABEL[niveauActif()],
-		});
+		}).balisage;
 	}
 	fillSprintRecord('recSprint');
 	fillRevisionRecord('recRevision');

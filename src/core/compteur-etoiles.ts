@@ -1,3 +1,4 @@
+import { html, VIDE, type SafeHtml } from './html';
 /* ============================================================
    Compteur d'étoiles de l'accueil (#559) — texte, pur.
    ------------------------------------------------------------
@@ -31,11 +32,11 @@ const pluriel = (n: number) => (n > 1 ? 's' : '');
 
 /** HTML interne de `#recLecon`. Aucun accès DOM, aucune lecture de stockage.
     Chaîne vide = rien à afficher (ni étoile gagnée, ni étoile à gagner). */
-export function compteurEtoilesHTML(e: EtatCompteurEtoiles): string {
+export function compteurEtoilesHTML(e: EtatCompteurEtoiles): SafeHtml {
 	const { starsNiveau: n, totalNiveau: total, starsCumul: cumul, labelClasse } = e;
 	if (cumul > n) {
 		// Le cumul est le chiffre mis en avant, et sa formulation ne bouge pas (#225).
-		const tresor = `⭐ <strong>${cumul}</strong> étoile${pluriel(cumul)} gagnée${pluriel(cumul)}`;
+		const tresor = html`⭐ <strong>${cumul}</strong> étoile${pluriel(cumul)} gagnée${pluriel(cumul)}`;
 		// Catalogue vide pour cette classe (niveau sans leçon) : il n'y a pas d'objectif à
 		// énoncer, et « 0 étoile à gagner » serait le zéro qu'on refuse partout ailleurs.
 		// On garde le trésor, on tait l'objectif — plutôt que de masquer un compteur que
@@ -49,14 +50,14 @@ export function compteurEtoilesHTML(e: EtatCompteurEtoiles): string {
 			n === 0
 				? `${labelClasse} : ${total} étoile${pluriel(total)} à gagner`
 				: `${n}/${total} étoile${pluriel(n)} en ${labelClasse}`;
-		return tresor + `<span class="rec-sub">🎯 ${objectif}</span>`;
+		return html`${tresor}<span class="rec-sub">🎯 ${objectif}</span>`;
 	}
 	// Mono-niveau. Rien au catalogue ⇒ rien à dire (défensif : un niveau sans leçon).
-	if (total === 0) return '';
+	if (total === 0) return VIDE;
 	// Qui démarre est INVITÉ, pas noté : même parti pris que la sous-ligne ci-dessus.
 	// La classe n'est pas nommée ici, contrairement à la branche multi : il n'y en a
 	// qu'une, le préciser n'apprendrait rien à l'enfant.
-	if (n === 0) return `⭐ <strong>${total}</strong> étoile${pluriel(total)} à gagner`;
+	if (n === 0) return html`⭐ <strong>${total}</strong> étoile${pluriel(total)} à gagner`;
 	// Le mot ET le picto de l'étoile, comme la carte qui la promet juste au-dessus.
-	return `⭐ <strong>${n}/${total}</strong> étoile${pluriel(n)} gagnée${pluriel(n)}`;
+	return html`⭐ <strong>${n}/${total}</strong> étoile${pluriel(n)} gagnée${pluriel(n)}`;
 }

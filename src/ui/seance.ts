@@ -23,7 +23,7 @@
    l'applicabilité de l'étape ET à reconnaître la session qui la satisfait — et l'unique
    porte d'entrée de lecture de la séance côté UI (`vueProgramme`, navigation comprise).
    ============================================================ */
-import { enumererFr, escapeHTML } from '../core/utils';
+import { enumererFr } from '../core/utils';
 import { getLessonById, type SubjectId } from '../core/catalog';
 import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
@@ -327,19 +327,19 @@ function notionsEtape(v: VueEtape, titre: string, dictees: Map<string, string>):
 	return contenu ? contenu.labels.filter((l) => l !== titre) : [];
 }
 
-function recapItemHTML(v: VueEtape, dictees: Map<string, string>): string {
+function recapItemHTML(v: VueEtape, dictees: Map<string, string>): SafeHtml {
 	const { titre } = etapeVisuel(v);
 	const notions = notionsEtape(v, titre, dictees);
 	// Nommé DANS la même phrase, à la même taille, juste nuancé en gris : une seconde ligne
 	// plus petite et grise sous un libellé, c'est la recette exacte des relevés de suivi de
 	// l'espace encadrant, dont ce récap doit rester distinct (avis `designer-ux-enfant`).
-	return `<li class="programme-recap-item">
+	return html`<li class="programme-recap-item">
     <span class="programme-recap-ico" aria-hidden="true">${icon('check-circle')}</span>
-    <span>${escapeHTML(titre)}${
-			v.requis > 1 ? ` <span class="programme-recap-x">×${v.requis}</span>` : ''
+    <span>${titre}${
+			v.requis > 1 ? html` <span class="programme-recap-x">×${v.requis}</span>` : ''
 		}${
 			notions.length
-				? ` <span class="programme-recap-notions">· ${escapeHTML(enumererFr(notions))}</span>`
+				? html` <span class="programme-recap-notions">· ${enumererFr(notions)}</span>`
 				: ''
 		}</span>
   </li>`;
@@ -347,9 +347,9 @@ function recapItemHTML(v: VueEtape, dictees: Map<string, string>): string {
 
 /* Liste de récap. La table des dictées est résolue UNE fois ici plutôt qu'à chaque ligne :
    `loadOrtho` lit le stockage, et une étape peut avoir plusieurs cibles. */
-function recapListeHTML(vues: VueEtape[]): string {
+function recapListeHTML(vues: VueEtape[]): SafeHtml {
 	const dictees = new Map(listOrthoLecons(loadOrtho()).map((x) => [x.id, x.label]));
-	return vues.map((v) => recapItemHTML(v, dictees)).join('');
+	return joindre(vues.map((v) => recapItemHTML(v, dictees)));
 }
 
 /* ---------- Écran #seance ---------- */

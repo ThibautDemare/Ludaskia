@@ -64,7 +64,9 @@ test('fiche : après correction, le verdict et la réponse révélée restent du
 test('runner à widget (tuiles) : consigne, énoncé et tuiles se rendent', async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(seedAideVueScript());
-	await gotoHash(page, 'lecon-num-comparer');
+	// `mode-…` et non `lecon-…` : c'est l'écran de CHOIX de mode qui offre les tuiles,
+	// `lecon-…` lançant directement le mode par défaut (saisie).
+	await gotoHash(page, 'mode-num-comparer');
 	await page.getByText('Je déplace les tuiles').click();
 	await page.locator('#ltuiSlot').waitFor({ state: 'visible' });
 	await expect(page.locator('.ltui-tuile').first()).toBeVisible();

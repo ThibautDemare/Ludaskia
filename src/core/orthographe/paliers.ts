@@ -21,6 +21,8 @@ import type { PaliersNotion } from '../progress';
 import { loadOrtho } from './store';
 import { listOrthoLecons } from './lessons';
 import { niveauListeOrtho } from './progression';
+import { ORDRE_ETAPES, dateFranchissement } from './etapes';
+import type { MotOrtho } from './types';
 
 export const ORTHO_PALIERS_KEY = 'ludaskia_paliersOrtho';
 /* MISE EN SERVICE du journal pour ce profil, sur le modèle de `PALIERS_DEBUT_KEY` : sans cette
@@ -34,10 +36,45 @@ export const ORTHO_PALIERS_KEY = 'ludaskia_paliersOrtho';
    affirmation que la borne existe pour empêcher. */
 export const ORTHO_PALIERS_DEBUT_KEY = 'ludaskia_paliersOrthoDepuis';
 
+/* TROISIÈME borne, celle du datage PAR MOT (#545) — et non un doublon de la précédente, pour la
+   raison qui vient d'être écrite au sujet des leçons : ce journal-ci est plus RÉCENT, si bien que
+   les semaines couvertes par la borne des listes ne le sont pas par lui. Les reprendre ferait
+   dire à la frise de composition qu'elle connaît des semaines où aucune date de mot ne
+   s'écrivait, et elle y montrerait tous les mots au bas de l'escalier — une affirmation fausse,
+   exactement ce qu'une borne existe pour empêcher. */
+export const ORTHO_ETAPES_DEBUT_KEY = 'ludaskia_orthoEtapesDepuis';
+
 /* Pose la borne si elle manque, jamais deux fois : ce qu'elle date, c'est le journal EN SERVICE,
    pas un franchissement. Donc APPELÉE MÊME quand la session ne franchit aucun cap. */
 function marquerDebutSuiviOrtho(now: number): void {
 	if (lsGet(ORTHO_PALIERS_DEBUT_KEY, null) == null) lsSet(ORTHO_PALIERS_DEBUT_KEY, now);
+}
+
+/* Même geste pour la borne du datage par mot (#545). Posée ICI, dans la fonction de fin de séance
+   déjà appelée par les deux seuls chemins qui font progresser un mot, plutôt qu'à côté d'eux : un
+   second appel à placer serait un second appel à oublier, et le journal ne le dirait pas. Elle est
+   posée MÊME quand la séance ne fait franchir aucune étape — c'est là tout son objet : sans elle,
+   une liste dont l'enfant ne fait plus qu'entretenir les mots n'aurait jamais de semaine connue,
+   faute du moindre franchissement à dater. */
+function marquerDebutSuiviEtapes(now: number): void {
+	if (lsGet(ORTHO_ETAPES_DEBUT_KEY, null) == null) lsSet(ORTHO_ETAPES_DEBUT_KEY, now);
+}
+
+/* Mise en service du datage par mot pour un profil : le PLUS ANCIEN entre la borne stockée et les
+   franchissements déjà datés de la banque — même raisonnement que `debutSuiviPaliers`, dont ceci
+   est le pendant. La borne n'est posée qu'à la première fin de séance suivant l'arrivée du code,
+   donc une date de franchissement plus ancienne PROUVE que le datage tournait déjà et fait foi
+   contre elle (cas d'un import de sauvegarde, où la borne du profil d'accueil peut manquer).
+   `Infinity` si le profil ne fournit ni l'un ni l'autre : aucune semaine ancienne n'est alors
+   connue, et la frise se réduit à sa colonne du jour. Pur. */
+export function debutSuiviEtapes(depuis: unknown, banque: Record<string, MotOrtho>): number {
+	let debut = typeof depuis === 'number' && Number.isFinite(depuis) ? depuis : Infinity;
+	for (const mot of Object.values(banque ?? {}))
+		for (const etape of ORDRE_ETAPES) {
+			const t = dateFranchissement(mot, etape);
+			if (t !== null && t < debut) debut = t;
+		}
+	return debut;
 }
 
 /* Enregistre les franchissements d'état des listes de dictée du profil ACTIF, à appeler à la fin
@@ -53,6 +90,7 @@ function marquerDebutSuiviOrtho(now: number): void {
    `now` daté par l'appelant (testable). */
 export function journaliserPaliersOrtho(dicteeDispo: boolean, now: number): void {
 	marquerDebutSuiviOrtho(now);
+	marquerDebutSuiviEtapes(now);
 	const state = loadOrtho();
 	const paliers = lsGet(ORTHO_PALIERS_KEY, {}) as Record<string, PaliersNotion>;
 	// Toutes les listes, SANS filtre de niveau : une liste hors du niveau du profil n'est

@@ -20,27 +20,26 @@
 import { ORTHO_PREDEF } from '../../data/francais/orthographe';
 import { getListe, formeNormalisee } from './store';
 import { statutMot, type StatutMot } from './runner';
+import { composition, type Composition } from './etapes';
 import { cibleVerbeId } from './verbes';
 import type { MotOrtho, OrthoState } from './types';
 import type { NiveauNotion } from '../maitrise';
 
-/** Statut d'un mot attendu : son statut s'il est en banque, sinon « nouveau ». */
-function statutAttendu(mot: MotOrtho | undefined, dicteeDispo: boolean): StatutMot {
-	return mot ? statutMot(mot, dicteeDispo) : 'nouveau';
-}
-
-/** Statuts des mots ATTENDUS d'une leçon d'orthographe (liste du profil OU prédéfinie),
-    en lecture seule : mots simples + cibles verbe. `[]` si l'id est inconnu. */
-export function statutsLecon(state: OrthoState, id: string, dicteeDispo: boolean): StatutMot[] {
+/** Mots ATTENDUS d'une leçon d'orthographe (liste du profil OU prédéfinie), en lecture seule :
+    mots simples puis cibles verbe. Une entrée `undefined` = mot attendu jamais matérialisé en
+    banque (donc jamais commencé). `[]` si l'id est inconnu.
+    Énumération PARTAGÉE : c'est la même population de mots qui donne l'état d'une liste
+    (`avancementLecon`) et sa composition par étape (`compositionLecon`, #545) — les deux ne
+    doivent pas pouvoir porter sur des ensembles différents. */
+export function motsAttendusLecon(state: OrthoState, id: string): (MotOrtho | undefined)[] {
 	const liste = getListe(state, id);
 	if (liste) {
-		const simples = liste.motIds.map((mid) => statutAttendu(state.banque[mid], dicteeDispo));
-		const verbes: StatutMot[] = [];
+		const simples = liste.motIds.map((mid) => state.banque[mid]);
+		const verbes: (MotOrtho | undefined)[] = [];
 		for (const v of liste.verbes ?? []) {
 			for (const temps of v.temps) {
 				for (const person of v.pronoms) {
-					const cible = state.banque[cibleVerbeId(v.infinitif, temps, person)];
-					verbes.push(statutAttendu(cible, dicteeDispo));
+					verbes.push(state.banque[cibleVerbeId(v.infinitif, temps, person)]);
 				}
 			}
 		}
@@ -50,10 +49,27 @@ export function statutsLecon(state: OrthoState, id: string, dicteeDispo: boolean
 	if (predef) {
 		return predef.mots.map((mi) => {
 			const motId = state.motIdParForme[formeNormalisee(mi.mot)];
-			return statutAttendu(motId ? state.banque[motId] : undefined, dicteeDispo);
+			return motId ? state.banque[motId] : undefined;
 		});
 	}
 	return [];
+}
+
+/** Statuts des mots ATTENDUS d'une leçon : celui du mot s'il est en banque, sinon « nouveau ». */
+export function statutsLecon(state: OrthoState, id: string, dicteeDispo: boolean): StatutMot[] {
+	return motsAttendusLecon(state, id).map((m) => (m ? statutMot(m, dicteeDispo) : 'nouveau'));
+}
+
+/** Composition d'une leçon d'orthographe (#545) : combien de ses mots sont à chaque étape du
+    parcours, à `at` si fourni, sinon aujourd'hui. Mesure de COUVERTURE qui bouge à chaque
+    franchissement, là où `avancementLecon` ne bouge qu'aux deux caps de la liste. */
+export function compositionLecon(
+	state: OrthoState,
+	id: string,
+	dicteeDispo: boolean,
+	at?: number,
+): Composition {
+	return composition(motsAttendusLecon(state, id), dicteeDispo, at);
 }
 
 /** Avancement d'une leçon d'orthographe : état sur l'échelle NiveauNotion (3 valeurs

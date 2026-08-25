@@ -14,6 +14,14 @@ import type { VerbTense } from '../../data/francais/verbs-lookup';
 export type ModeOrtho = 'motCache' | 'tuiles' | 'dictee';
 export const MODES_ORTHO: readonly ModeOrtho[] = ['motCache', 'tuiles', 'dictee'];
 
+/** Étape franchissable d'un mot (#545) : l'atelier de découverte, puis les modes validants.
+    L'ORDRE de franchissement et la lecture de ces dates vivent dans `etapes.ts` ; seul le
+    modèle de données est ici, avec le reste du stockage. */
+export type EtapeOrtho = 'atelier' | ModeOrtho;
+/** Dates des franchissements d'un mot. Partielle par nature : une étape non franchie n'a pas
+    de date, et une étape franchie AVANT #545 n'en a pas non plus (rien n'est reconstitué). */
+export type Franchissements = Partial<Record<EtapeOrtho, number>>;
+
 /** Entourage tracé par l'enfant dans l'atelier : une plage de lettres + une couleur. */
 export interface Entourage {
 	debut: number; // index de la 1re lettre (sur le mot)
@@ -61,6 +69,11 @@ export interface MotOrtho {
 	entourage: Entourage[]; // marquage de l'enfant (sauvegardé)
 	atelierFait: boolean; // l'atelier de découverte a-t-il été fait ?
 	validation: Record<ModeOrtho, boolean>; // pour l'étoile de liste
+	/** Dates des franchissements d'étape (#545), écrites par `marquerAtelierFait`/`validerMode`.
+	    FACULTATIF : les mots déjà en banque avant #545 n'en ont pas, et rien n'est reconstitué —
+	    une étape franchie sans date est réputée l'avoir été avant la mise en service du suivi.
+	    Voir `orthographe/etapes.ts`. */
+	franchissements?: Franchissements;
 	revision: EtatRevision;
 	origine: 'liste' | 'predefini' | 'verbe';
 }

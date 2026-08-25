@@ -7,7 +7,7 @@
    Voir docs/design-orthographe.md (§ Runner).
    ============================================================ */
 import { choice } from '../utils';
-import type { MotOrtho, ModeOrtho } from './types';
+import type { MotOrtho, ModeOrtho, EtapeOrtho } from './types';
 
 /** Ordre de déblocage des modes : tuiles → affiche/masque → dictée. */
 export const ORDRE_MODES: readonly ModeOrtho[] = ['tuiles', 'motCache', 'dictee'];
@@ -45,8 +45,19 @@ export function prochaineActivite(mot: MotOrtho, dicteeDispo: boolean): Activite
 	return prochainModeAValider(mot, dicteeDispo) ?? choice(modesRequis(dicteeDispo));
 }
 
-export function marquerAtelierFait(mot: MotOrtho): void {
+/* Date le franchissement d'une étape s'il ne l'était pas déjà (#545). MONOTONE : un mot
+   rejoué ne réécrit pas sa date. Interne, et appelé DANS les deux fonctions qui font
+   progresser un mot plutôt que par leurs appelants — c'est ce qui rend impossible une étape
+   franchie sans date, là où un rappel en commentaire ne fait qu'espérer (cf. le rappel de
+   `journaliserPaliersOrtho` ci-dessous, qui n'a pas pu être structurel, lui). */
+function dater(mot: MotOrtho, etape: EtapeOrtho, now: number): void {
+	const journal = (mot.franchissements ??= {});
+	if (journal[etape] == null) journal[etape] = now;
+}
+
+export function marquerAtelierFait(mot: MotOrtho, now = Date.now()): void {
 	mot.atelierFait = true;
+	dater(mot, 'atelier', now);
 }
 
 /** Valide un mode après une réussite (v1 : une réussite suffit).
@@ -60,8 +71,9 @@ export function marquerAtelierFait(mot: MotOrtho): void {
  *  l'endroit où l'état change, pas le module qui l'observe. Le pendant côté leçons, lui, est
  *  STRUCTUREL (`recordLessonStats` journalise de lui-même, cf. PR #540) ; ça ne l'est pas ici,
  *  faute de pouvoir décider sans `dicteeDispo`, que seule l'UI connaît. */
-export function validerMode(mot: MotOrtho, mode: ModeOrtho): void {
+export function validerMode(mot: MotOrtho, mode: ModeOrtho, now = Date.now()): void {
 	mot.validation[mode] = true;
+	dater(mot, mode, now);
 }
 
 /** Une liste est étoilée quand tous ses mots sont « maîtrisés ». */

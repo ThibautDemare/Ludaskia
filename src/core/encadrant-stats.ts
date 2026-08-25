@@ -81,10 +81,16 @@ import {
 	motsApercu,
 	type SourceLecon,
 } from './orthographe/lessons';
-import { niveauListeOrtho, avancementLecon } from './orthographe/progression';
-import { ORTHO_PALIERS_KEY, ORTHO_PALIERS_DEBUT_KEY } from './orthographe/paliers';
+import { niveauListeOrtho, avancementLecon, motsAttendusLecon } from './orthographe/progression';
+import {
+	ORTHO_PALIERS_KEY,
+	ORTHO_PALIERS_DEBUT_KEY,
+	ORTHO_ETAPES_DEBUT_KEY,
+	debutSuiviEtapes,
+} from './orthographe/paliers';
+import { composition, type RangMot } from './orthographe/etapes';
 import { REVISION_INTERVALLES, PALIER_ACQUIS, JOUR, estAcquis } from './revision';
-import type { EtatRevision, OrthoState } from './orthographe/types';
+import type { EtatRevision, OrthoState, MotOrtho } from './orthographe/types';
 
 /* L'échelle de maîtrise (types + niveauNotion/tendanceNotion) vit dans maitrise.ts ; on la
    re-expose ici pour les consommateurs historiques de l'espace encadrant (UI + tests) qui
@@ -796,6 +802,76 @@ export function premieresSeancesDictee(activityRaw: unknown): Map<string, number
 	return out;
 }
 
+/* Frise de COMPOSITION d'une liste de dictée (#545) : combien de ses mots étaient à chaque étape
+   du parcours, semaine par semaine, sur la même fenêtre de SEMAINES_FRISE que les frises d'états.
+
+   Elle ne mesure PAS la même chose que `friseListeOrtho`, et c'est tout son objet. L'état d'une
+   liste ne connaît que trois valeurs et ne bouge qu'à deux moments (premier mot commencé, dernier
+   mot maîtrisé) : entre les deux, des semaines de travail réel ne changent rien à l'écran. La
+   composition, elle, bouge dès qu'UN mot monte d'une marche, ce qui est le fait que l'adulte
+   cherche quand il se demande si l'apprentissage avance.
+
+   CONVENTION D'APPARTENANCE, à connaître avant de lire une colonne ancienne : rien ne date la
+   composition d'une LISTE (`ListeOrtho` n'a qu'un `updatedAt`, qui ne dit pas quels mots elle
+   contenait). La frise montre donc où en étaient, chaque semaine, les mots qu'elle contient
+   AUJOURD'HUI. Un mot ajouté hier apparaît au bas de l'escalier sur toutes les colonnes
+   antérieures — ce qui est vrai de lui, mais fait « grandir » une liste rétrospectivement. On ne
+   corrige pas : masquer ce mot demanderait un historique d'appartenance qui n'existe pas, et
+   l'inventer serait la seule des deux options à produire un chiffre faux.
+
+   Les semaines antérieures à `debutSuivi` valent `null` (inconnues) et non « rien n'était
+   commencé », même langage que les cellules creuses des frises d'états. La DERNIÈRE colonne, elle,
+   est TOUJOURS connue : la répartition du jour se lit sur les booléens du mot, qui n'ont jamais eu
+   besoin de dates. C'est ce qui rend cette frise utile dès le premier jour, là où les frises
+   d'états doivent attendre leur borne — et ce qui la fait échapper à la règle « aucune semaine
+   connue → pas de frise du tout ».
+
+   `null` pour une liste SANS mot attendu : il n'y a alors rien à répartir. `now` injecté (pur). */
+export interface FriseComposition {
+	/** Rangs de l'escalier, du bas vers le haut (dépend de `dicteeDispo`, cf. `paliersComposition`). */
+	paliers: RangMot[];
+	/** SEMAINES_FRISE colonnes, de la plus ANCIENNE à la plus récente (la dernière = semaine en
+	    cours). Chacune : le nombre de mots à chaque rang, indexé comme `paliers` — ou `null` quand
+	    la semaine précède la mise en service du datage. */
+	semaines: (number[] | null)[];
+	total: number; // mots attendus de la liste (constant d'une colonne à l'autre, cf. convention)
+}
+export function friseComposition(
+	mots: readonly (MotOrtho | undefined)[],
+	dicteeDispo: boolean,
+	debutSuivi: number,
+	now: number,
+): FriseComposition | null {
+	const jour = composition(mots, dicteeDispo);
+	if (jour.total === 0) return null;
+	// Rien de commencé AUJOURD'HUI vaut rien de commencé jamais : un mot ne redescend pas de
+	// l'escalier, donc toutes les colonnes vaudraient la même, et on afficherait douze fois
+	// « aucun mot commencé » sous une ligne qui le dit déjà en toutes lettres. Même refus que
+	// `aucuneSemaineConnue` pour les frises d'états, et même effet de bord voulu : la frise
+	// APPARAÎT le jour où le premier mot bouge. Le cas est réel des deux côtés — dictée
+	// prédéfinie épinglée à l'avance, ou liste dont le parent vient de retirer les mots
+	// travaillés.
+	if (jour.compte[0] === jour.total) return null;
+	const semaines: (number[] | null)[] = [];
+	for (let i = 0; i < SEMAINES_FRISE; i++) {
+		// Dernière colonne = la semaine EN COURS, lue sans date : les booléens du mot suffisent
+		// à dire où il en est aujourd'hui. Elle échappe donc à la borne, et c'est ce qui rend
+		// cette frise utile dès le premier jour (critère 11 de #545) — là où une frise d'états
+		// sans borne n'a que des cellules creuses et n'est pas dessinée du tout.
+		if (i === SEMAINES_FRISE - 1) {
+			semaines.push(jour.compte);
+			continue;
+		}
+		// Même découpage que `cellulesFrise` : l'état d'une colonne est celui atteint à la FIN
+		// de sa semaine, soit le lundi suivant, exclu. Les deux frises doivent tomber sur les
+		// mêmes frontières, sinon un même franchissement change de colonne d'une frise à l'autre.
+		const finSemaine = lundiDecale(now, SEMAINES_FRISE - 2 - i);
+		if (finSemaine <= debutSuivi) semaines.push(null);
+		else semaines.push(composition(mots, dicteeDispo, finSemaine).compte);
+	}
+	return { paliers: jour.paliers, semaines, total: jour.total };
+}
+
 /* La frise montre-t-elle un changement d'état ? Alimente le compteur « N changements récents »
    de la couverture par matière (#521), seule trace de « ça bouge » lisible SANS déplier une
    catégorie, maintenant que la frise vit dans les lignes de leçon.
@@ -1015,6 +1091,11 @@ export interface RecapListeOrtho {
 	/** Trajectoire d'états semaine par semaine (#541, cf. friseListeOrtho) ; `null` quand la
 	    liste n'a jamais été commencée, donc qu'il n'y a rien à tracer. */
 	frise: FriseNotion | null;
+	/** Répartition des mots entre les étapes du parcours, semaine par semaine (#545, cf.
+	    `friseComposition`) ; `null` quand la liste n'attend aucun mot. La DERNIÈRE colonne est la
+	    répartition du JOUR, celle que la ligne affiche ; les précédentes ne servent qu'au
+	    dépliable. */
+	composition: FriseComposition | null;
 }
 /* `dicteeDispo` fourni par l'UI (dispo du TTS) : conditionne l'« acquis » (mode dictée requis).
    Les dictées PRÉDÉFINIES ne sont listées que si l'enfant en a commencé au moins un mot
@@ -1043,6 +1124,12 @@ export function listesOrthoProfil(
 	// (cf. friseListeOrtho). Sans elles, un enfant qui fait des dictées depuis des mois n'aurait
 	// aucune trajectoire à montrer tant qu'il n'en a pas rejoué une.
 	const premieres = premieresSeancesDictee(lsGetRaw(profile.uuid + '/' + ACTIVITY_KEY, []));
+	// Borne du DATAGE par mot (#545), distincte de celle des paliers ci-dessus et calculée une
+	// seule fois : elle balaye toute la banque, et la refaire par liste serait quadratique.
+	const debutEtapes = debutSuiviEtapes(
+		lsGetRaw(profile.uuid + '/' + ORTHO_ETAPES_DEBUT_KEY, null),
+		state.banque,
+	);
 	const out: RecapListeOrtho[] = [];
 	for (const ref of listOrthoLecons(state, niveau)) {
 		const av = avancementLecon(state, ref.id, dicteeDispo);
@@ -1067,6 +1154,12 @@ export function listesOrthoProfil(
 				debutSuivi,
 				now,
 				premieres.get(ref.id) ?? null,
+			),
+			composition: friseComposition(
+				motsAttendusLecon(state, ref.id),
+				dicteeDispo,
+				debutEtapes,
+				now,
 			),
 		});
 	}

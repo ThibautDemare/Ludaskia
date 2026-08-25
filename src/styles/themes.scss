@@ -105,6 +105,13 @@
 	   rampe. Écrit en dur et non `var(--grey)` pour rester mesurable par le gate. */
 	--field-line: #aeb7c4;
 	--track: #2c3543;
+	/* Rampe des étapes de dictée (#545), INVERSÉE en Nuit : sur une carte sombre, « plus
+	   haut sur l'escalier » se rend par « plus clair ». Les valeurs claires y tomberaient
+	   sous le seuil (le rose de base, #c2185b, ne fait plus que 2,46:1 sur --paper Nuit —
+	   même relevé que celui déjà fait pour les couleurs de famille du graphe d'activité). */
+	--compo-atelier: #d4568f;
+	--compo-tuiles: #e87bb5;
+	--compo-cache: #f5c2da;
 	--ok-soft: #1d3326;
 	--ko-soft: #3b2222;
 	/* Espace encadrant (#234) : fond neutre plus sombre que les cartes (--paper), et

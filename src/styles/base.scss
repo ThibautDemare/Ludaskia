@@ -85,6 +85,25 @@
 	--cat-bilan: #7a5cc0; /* violet-myrtille : bilans / objectifs */
 	--cat-bleu: #336cbf; /* bleu : révision / impression (papier) */
 	--cat-rose: #c2185b; /* rose-magenta : dictée / orthographe (graphe d'activité #319) */
+	/* Rampe des ÉTAPES du parcours d'un mot de dictée (#545), pour la frise de COMPOSITION
+	   de l'espace encadrant. Séquentielle et MONOCHROME (une teinte, trois clartés), là où
+	   les couleurs de famille ci-dessus sont qualitatives : ce qu'elle encode est un
+	   escalier ordonné, pas des catégories. C'est aussi ce qui l'empêche d'être lue avec la
+	   grille de la frise d'ÉTATS voisine, qui est multi-teintes — l'ambiguïté même que #545
+	   avait pour objet de supprimer. Le sommet de l'escalier n'est pas dans la rampe : il
+	   prend --ok, en rupture de teinte, parce que « combien de mots sont maîtrisés » est la
+	   question que l'adulte pose en premier et doit se voir avant tout le reste.
+	   --compo-tuiles reprend DÉLIBÉRÉMENT la valeur de --cat-rose (l'ancre de teinte de la
+	   famille dictée sur cet écran) et l'écrit en dur : le gate de contraste ne lit que les
+	   littéraux hexadécimaux, un var() y serait invisible (cf. tests/contraste-tokens).
+	   Ratios sur --paper : 3,59:1 / 5,87:1 / 9,11:1 en clair, 3,81:1 / 5,46:1 / 9,37:1 en
+	   Nuit. Aucune paire VOISINE n'atteint 3:1 entre elles (1,55 à 1,72) — comme la frise
+	   d'états, et pour la même raison : ce sont l'ordre constant des segments, le filet qui
+	   les sépare et les dénombrements en toutes lettres qui portent l'information, jamais
+	   l'écart de teinte seul. */
+	--compo-atelier: #db5a8c; /* atelier de découverte fait */
+	--compo-tuiles: #c2185b; /* tuiles réussi (= --cat-rose) */
+	--compo-cache: #8e1043; /* affiche/masque réussi */
 	/* Espace encadrant (#234) : zone ADULTE neutre, retirée du vert de marque pour
 	   signaler « on a quitté l'espace de l'enfant ». --admin-bg = fond gris-bleuté ;
 	   --admin-accent = bleu d'accent (titres/boutons), stable quel que soit le thème

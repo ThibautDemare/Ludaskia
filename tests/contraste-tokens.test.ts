@@ -261,6 +261,35 @@ const PAIRES_NON_TEXTE: Paire[] = [
 		arriere: '--paper',
 		ou: 'encadrant.scss .enc-revoir-signal (liseré « ça bloque »)',
 	},
+	// Rampe des étapes de dictée (#545) : segments de la frise de composition, posés sur la
+	// carte. Ce sont bien des objets graphiques PORTEURS de sens — la longueur d'un segment
+	// EST le nombre de mots à cette étape — donc le seuil non-texte s'applique à chacun.
+	// Ce qui n'est PAS testé ici, et ne peut pas l'être : l'écart entre deux rangs VOISINS de
+	// la rampe (1,55 à 1,72). Il est sous 3:1 par construction, comme celui des états voisins
+	// de la frise d'à côté, et c'est assumé : ce sont l'ordre constant des segments, le filet
+	// qui les sépare et les dénombrements écrits qui portent l'information.
+	{
+		avant: '--compo-atelier',
+		arriere: '--paper',
+		ou: 'encadrant.scss .enc-compo-seg / .enc-compo-part (mots découverts)',
+	},
+	{
+		avant: '--compo-tuiles',
+		arriere: '--paper',
+		ou: 'encadrant.scss (mots ayant réussi les tuiles)',
+	},
+	{
+		avant: '--compo-cache',
+		arriere: '--paper',
+		ou: 'encadrant.scss (mots ayant réussi le mot caché)',
+	},
+	// Le SOMMET de l'escalier prend --ok, déjà couvert plus haut comme TEXTE sur --paper ;
+	// il l'est ici comme objet graphique, les deux régimes étant distincts (cf. Nature).
+	{
+		avant: '--ok',
+		arriere: '--paper',
+		ou: 'encadrant.scss (segment des mots maîtrisés, frise de composition #545)',
+	},
 ];
 
 /** Dérogation = défaut CONNU, tracé, et pas corrigé ici.

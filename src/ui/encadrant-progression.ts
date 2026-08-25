@@ -32,7 +32,9 @@ import {
 	type JourActivite,
 	type CelluleFrise,
 	type FriseNotion,
+	type FriseComposition,
 } from '../core/encadrant-stats';
+import type { RangMot } from '../core/orthographe/etapes';
 import { getAllLessons, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
 import { BLOCAGES_SIGNAL_ADULTE } from '../core/report-lecon';
 import { dicteeDisponible } from './tts';
@@ -540,6 +542,127 @@ function friseNotionHTML(f: FriseNotion | null, now: number): SafeHtml {
     </span>`;
 }
 
+/* ---------- Frise de COMPOSITION d'une liste de dictée (#545) ----------
+   Ce que la frise d'états ne peut pas dire : entre « commencée » et « acquise », une liste
+   passe des semaines sans que rien bouge à l'écran, alors que ses mots montent l'escalier.
+   Ici on montre la RÉPARTITION des mots entre les étapes, qui change dès qu'un seul mot
+   franchit une marche. Deux vues de la même donnée : la barre du JOUR sur la ligne, et les
+   douze semaines dans un repli (le gabarit d'une ligne ne laisse pas la hauteur qu'il
+   faudrait — un mot d'une liste de quinze y pèserait moins de deux pixels). */
+
+/* Libellé d'un rang, au singulier puis au pluriel. Des PARTICIPES PASSÉS du geste mesuré,
+   jamais une compétence : « réussi aux tuiles » est un fait que le journal peut prouver,
+   « sait écrire » serait une affirmation sur l'enfant que rien dans la donnée ne soutient
+   (avis langue). Le SOMMET échappe à cette table, cf. MOT_SOMMET. */
+const MOT_RANG: Record<RangMot, [string, string]> = {
+	neuf: ['pas encore commencé', 'pas encore commencés'],
+	atelier: ['découvert', 'découverts'],
+	tuiles: ['réussi aux tuiles', 'réussis aux tuiles'],
+	motCache: ['réussi au mot caché', 'réussis au mot caché'],
+	dictee: ['réussi à la dictée', 'réussis à la dictée'],
+};
+/* Le sommet ne prend pas le nom de son étape, et ce n'est pas un raccourci de rédaction :
+   l'étape qui l'occupe CHANGE avec la voix de synthèse (la dictée avec, le mot caché sans),
+   si bien que « réussi à la dictée » serait faux sur un appareil muet. « Maîtrisé » désigne
+   exactement « tous les modes requis validés » — c'est sa définition dans design-orthographe.md,
+   et c'est déjà le mot à l'écran, deux lignes plus haut, dans « 3/10 mots maîtrisés ». Lui
+   donner ici un second nom aurait mis deux mots sur un seul fait, à quelques pixels d'écart. */
+const MOT_SOMMET: [string, string] = ['maîtrisé', 'maîtrisés'];
+/* Couleur par rang. Le sommet a sa propre classe (cf. encadrant.scss) : c'est la POSITION
+   qui reste verte, pas une étape nommée — pour la même raison que MOT_SOMMET. */
+const CLASSE_RANG: Record<RangMot, string> = {
+	neuf: 'enc-compo-neuf',
+	atelier: 'enc-compo-atelier',
+	tuiles: 'enc-compo-tuiles',
+	motCache: 'enc-compo-cache',
+	dictee: 'enc-compo-cache',
+};
+const estSommet = (c: FriseComposition, i: number) => i === c.paliers.length - 1;
+const classeRang = (c: FriseComposition, i: number) =>
+	estSommet(c, i) ? 'enc-compo-sommet' : CLASSE_RANG[c.paliers[i]];
+const motRang = (c: FriseComposition, i: number, n: number) => {
+	const [un, plusieurs] = estSommet(c, i) ? MOT_SOMMET : MOT_RANG[c.paliers[i]];
+	return n > 1 ? plusieurs : un;
+};
+/* Une colonne dite en toutes lettres, rangs VIDES omis. Les omettre n'est pas de la place
+   gagnée : « 0 mot réussi au mot caché » se lit comme un constat d'échec là où le fait est
+   qu'aucun mot n'est encore arrivé jusque-là. */
+const motsColonne = (c: FriseComposition, col: readonly number[]): string[] =>
+	col.map((n, i) => (n > 0 ? `${n} ${motRang(c, i, n)}` : '')).filter(Boolean);
+
+/* Répartition du JOUR, sur la ligne de la liste : une barre segmentée, et le détail en
+   toutes lettres juste dessous. C'est le TEXTE qui porte l'information (la barre est donc
+   décorative et masquée aux lecteurs d'écran, sans quoi le même fait serait annoncé deux
+   fois) — et c'est ce texte qui change quand un mot monte d'une marche sans que personne ne
+   devienne maîtrisé, ce que l'écran d'avant ne savait pas montrer. */
+function compositionHTML(c: FriseComposition | null): SafeHtml {
+	const jour = c?.semaines[c.semaines.length - 1];
+	if (!c || !jour) return VIDE;
+	const parts = joindre(
+		jour.map((n, i) =>
+			n > 0
+				? html`<span class="enc-compo-part ${classeRang(c, i)}" style="flex:${n}"></span>`
+				: VIDE,
+		),
+	);
+	return html`<span class="enc-compo">
+      <span class="enc-compo-bar" aria-hidden="true">${parts}</span>
+      <span class="enc-compo-texte">${enumererFr(motsColonne(c, jour))}.</span>
+    </span>`;
+}
+
+/* Récit de la frise pour un lecteur d'écran : par CHANGEMENT de composition, pas par semaine.
+   Douze colonnes annoncées une à une seraient interminables et diraient surtout douze fois la
+   même chose — une composition ne bouge que les semaines où l'enfant a travaillé. Les semaines
+   sans donnée sont comptées ensemble en tête : elles forment toujours un préfixe (la borne de
+   suivi est unique), et les énumérer n'apprendrait rien de plus que leur nombre. */
+function recitComposition(c: FriseComposition): string {
+	const segments: string[] = [];
+	let precedente = '';
+	let inconnues = 0;
+	for (const col of c.semaines) {
+		if (!col) {
+			inconnues++;
+			continue;
+		}
+		const cle = col.join(',');
+		if (cle === precedente) continue;
+		precedente = cle;
+		segments.push(enumererFr(motsColonne(c, col)));
+	}
+	const avant = inconnues
+		? `${inconnues} semaine${inconnues > 1 ? 's' : ''} sans donnée, puis `
+		: '';
+	return `Composition sur les ${c.semaines.length} dernières semaines : ${avant}${segments.join(', puis ')}.`;
+}
+
+/* Les douze semaines, dans un repli. Replié par DÉFAUT : un parent a facilement dix listes,
+   et douze colonnes segmentées sous chacune rendraient l'écran illisible d'entrée (avis
+   designer). Le résumé porte le libellé de la liste dans son `aria-label` : une série de
+   « Voir le détail… » identiques serait sans repère au rotor, même parade que le repli des
+   mots juste en dessous. */
+function friseCompositionHTML(c: FriseComposition | null, label: string): SafeHtml {
+	if (!c) return VIDE;
+	const cols = joindre(
+		c.semaines.map((col) => {
+			if (!col) return html`<span class="enc-compo-col enc-compo-col--inconnue"></span>`;
+			const segs = joindre(
+				col.map((n, i) =>
+					n > 0
+						? html`<span class="enc-compo-seg ${classeRang(c, i)}" style="flex:${n}"></span>`
+						: VIDE,
+				),
+			);
+			return html`<span class="enc-compo-col">${segs}</span>`;
+		}),
+	);
+	const aria = recitComposition(c);
+	return html`<details class="enc-compo-frise">
+      <summary aria-label="Voir les étapes semaine par semaine de « ${label} »">Voir les étapes semaine par semaine</summary>
+      <span class="enc-compo-cells" role="img" aria-label="${aria}" title="${aria}">${cols}</span>
+    </details>`;
+}
+
 /* ---------- Bloc « Listes de dictée » ----------
    Les dictées (store orthographe) ne sont pas des leçons du catalogue → suivies à part,
    sur la MÊME échelle d'acquisition, mais à 3 niveaux (pas de « à renforcer » : la
@@ -605,6 +728,8 @@ function ligneListeOrtho(l: RecapListeOrtho, now: number): SafeHtml {
         <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${l.epingle ? 'Retirer' : 'Épingler'} « ${l.label} »">${l.epingle ? 'Retirer' : 'Épingler'}</button>
       </span>
       ${friseNotionHTML(l.frise, now)}
+      ${compositionHTML(l.composition)}
+      ${friseCompositionHTML(l.composition, l.label)}
       ${motsDicteeHTML(l.mots, l.label)}
     </li>`;
 }

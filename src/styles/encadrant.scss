@@ -1155,6 +1155,123 @@ $frise-neutre: #7c8494;
 	box-shadow: -1px 0 0 var(--paper);
 }
 
+/* ---------- Frise de COMPOSITION d'une liste de dictée (#545) ----------
+   Voisine de la frise d'états ci-dessus, et elle doit s'en distinguer AU PREMIER COUP D'ŒIL,
+   sans quoi on lit l'une avec la grille de l'autre — le défaut qui a ouvert #545. La
+   distinction est STRUCTURELLE avant d'être chromatique (elle tient donc aussi pour qui ne
+   perçoit pas la différence de teinte) :
+   - frise d'états : un aplat unique par semaine, dont la HAUTEUR varie avec le rang atteint ;
+   - frise de composition : une barre SEGMENTÉE à hauteur constante, dont seules les
+     frontières internes bougent. Une colonne est toujours pleine — c'est une répartition,
+     pas un niveau, et sa somme vaut toujours le nombre de mots de la liste.
+   La palette (rampe monochrome + --ok au sommet) et ses ratios mesurés sont documentés dans
+   base.scss ; ne pas y toucher sans repasser tools/contrast sur les six thèmes. */
+.enc-compo-bar {
+	display: flex;
+	width: 100%;
+	height: 10px;
+	border-radius: 5px;
+	overflow: hidden;
+	background: var(--track);
+}
+/* Couleur des segments, par RANG de l'escalier. En classes et non en `--k` inline (le patron
+   de .enc-seg-part voisin) parce qu'ici la couleur ne varie pas avec la donnée : elle est
+   fixe par rang, et la garder dans la feuille est ce qui permet aux thèmes de la réécrire et
+   au gate de contraste de la mesurer. Le rang le plus bas reprend $frise-neutre, le gris déjà
+   employé au bas de la frise d'états : « rien n'est commencé » est le même fait des deux
+   côtés, et un gris désaturé contre une rampe saturée reste distinguable en daltonisme là où
+   l'écart de luminance, lui, ne dit rien (1,05:1 contre --compo-atelier).
+   Le SOMMET a sa propre classe plutôt qu'un nom d'étape : l'étape qui le porte change avec la
+   voix de synthèse (dictée avec, mot caché sans), et c'est la POSITION qui doit rester verte,
+   pas une étape en particulier.
+   Les segments VIDES ne sont pas rendus du tout : un `min-height` sur un rang à zéro mot
+   dessinerait un mot qui n'existe pas, ce qui est exactement le contraire du but. */
+.enc-compo-neuf {
+	background: $frise-neutre;
+}
+.enc-compo-atelier {
+	background: var(--compo-atelier);
+}
+.enc-compo-tuiles {
+	background: var(--compo-tuiles);
+}
+.enc-compo-cache {
+	background: var(--compo-cache);
+}
+.enc-compo-sommet {
+	background: var(--ok);
+}
+/* Filet entre segments voisins de la barre HORIZONTALE (le pendant vertical est sur
+   .enc-compo-seg) : mêmes teintes rapprochées, même parade. */
+.enc-compo-part + .enc-compo-part {
+	box-shadow: -1px 0 0 var(--paper);
+}
+/* Répartition du jour, sur la ligne de la liste : la barre occupe toute la largeur sous les
+   actions, comme .enc-frise, et les dénombrements la suivent en toutes lettres. */
+.enc-compo {
+	flex-basis: 100%;
+	display: block;
+	margin: 0.1rem 0;
+}
+.enc-compo-texte {
+	display: block;
+	font-size: 0.8rem;
+	color: var(--grey);
+	margin-top: 0.15rem;
+}
+/* Repli des 12 semaines : dernier enfant de la ligne avec le repli des mots, donc pleine
+   largeur, et l'ordre du DOM reste l'ordre visuel (a11y : ordre de focus = ordre de lecture).
+   Il vient AVANT « Voir les mots » : c'est le prolongement direct de la barre du jour qui le
+   précède, alors que la liste des mots est un autre sujet. */
+.enc-compo-frise {
+	flex-basis: 100%;
+	margin: 0.1rem 0 0.2rem;
+	font-size: 0.85rem;
+}
+/* Les 12 semaines, dans le repli. 40px et non les 26px de la frise d'états : ici le pas de
+   quantification est le MOT, pas le rang — sur une liste de 20 mots, un mot ne pèse que 2px
+   même à cette hauteur, et il en pesait 1,3px à 26px, soit sous le seuil où ce fichier a
+   déjà constaté que des cellules contiguës « se lisent comme un seul trait » (avis designer).
+   Largeur et gouttière reprises de .enc-frise-cell pour que les deux frises s'alignent
+   colonne à colonne quand on passe de l'une à l'autre. */
+.enc-compo-cells {
+	display: flex;
+	align-items: flex-end;
+	gap: 2px;
+	height: 40px;
+	margin-top: 0.3rem;
+}
+.enc-compo-col {
+	flex: 1;
+	min-width: 0;
+	max-width: 14px;
+	height: 100%;
+	display: flex;
+	flex-direction: column-reverse; /* rang le plus BAS en bas : on monte l'escalier vers le haut */
+	border-radius: 2px;
+	overflow: hidden;
+}
+/* Filet couleur-carte entre segments empilés : deux rangs voisins de la rampe n'atteignent
+   pas 3:1 entre eux (1,55 à 1,72 — cf. base.scss), donc la séparation ne peut pas reposer
+   sur l'écart de teinte. Même parade que .enc-seg-bar, pour la même raison. */
+.enc-compo-seg {
+	width: 100%;
+	/* Plancher de visibilité, comme .enc-seg-bar : le pas de quantification est le mot, donc
+	   sur une liste de 30 mots un mot isolé ne pèserait qu'1,3px et se perdrait dans le filet
+	   de séparation. Sans risque de déborder la colonne : l'escalier compte au plus 5 rangs,
+	   soit 10px de plancher cumulé sur les 40px disponibles. */
+	min-height: 2px;
+	box-shadow: 0 -1px 0 var(--paper);
+}
+/* Semaine antérieure à la mise en service du datage : le MÊME bloc creux que la frise
+   d'états. C'est un même fait (« pas de donnée »), donc un même signe — la divergence
+   voulue entre les deux frises porte sur ce qu'elles mesurent, pas sur ce qu'elles ignorent. */
+.enc-compo-col--inconnue {
+	height: 32%;
+	background: transparent;
+	border: 1px solid $frise-neutre;
+}
+
 /* Dépliage global par matière (#521) : ouvrir d'un coup toutes les catégories d'une matière
    pour balayer plusieurs frises. Commande, pas réglage — rien n'est persisté. */
 .enc-deplier {

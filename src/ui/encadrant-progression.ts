@@ -670,6 +670,26 @@ const libelleSemaine = (i: number, total: number, now: number): string =>
 				month: 'long',
 			});
 
+/* Infobulle d'UNE colonne, au survol : sa semaine et sa composition, y compris quand la
+   précédente était identique — c'est le complément du récap, qui déduplique justement ces
+   semaines-là et n'en dit donc rien de nommé.
+   Posée sur la COLONNE et non sur chaque segment : le `title` natif remonte au premier ancêtre
+   qui en porte un, donc survoler n'importe quel segment donne la semaine entière, ce qui est
+   l'information cherchée — un segment seul ne dirait qu'un rang.
+   Un `title` est un confort de souris, sans équivalent tactile fiable (le même constat a fait
+   écarter l'infobulle du catalogue enfant, cf. motsDicteeHTML) : il n'est acceptable ICI que
+   parce qu'il ne porte rien d'exclusif. Tout ce qu'il dit est déjà dans le récap juste dessous,
+   en texte, pour le doigt comme pour le lecteur d'écran. */
+const titreColonne = (
+	c: FriseComposition,
+	i: number,
+	col: readonly number[] | null,
+	now: number,
+): string => {
+	const quand = libelleSemaine(i, c.semaines.length, now);
+	return col ? `${quand} : ${enumererFr(motsColonne(c, col))}.` : `${quand} : statut inconnu.`;
+};
+
 /* Récap des douze semaines, une entrée par semaine où la composition CHANGE — pas les douze.
    Une composition ne bouge que les semaines où l'enfant a travaillé, donc énoncer chaque colonne
    reviendrait surtout à répéter la précédente.
@@ -718,8 +738,10 @@ function entreesRecit(c: FriseComposition, now: number): EntreeRecit[] {
 function friseCompositionHTML(c: FriseComposition | null, label: string, now: number): SafeHtml {
 	if (!c) return VIDE;
 	const cols = joindre(
-		c.semaines.map((col) => {
-			if (!col) return html`<span class="enc-compo-col enc-compo-col--inconnue"></span>`;
+		c.semaines.map((col, s) => {
+			const infobulle = titreColonne(c, s, col, now);
+			if (!col)
+				return html`<span class="enc-compo-col enc-compo-col--inconnue" title="${infobulle}"></span>`;
 			const segs = joindre(
 				col.map((n, i) =>
 					n > 0
@@ -727,7 +749,7 @@ function friseCompositionHTML(c: FriseComposition | null, label: string, now: nu
 						: VIDE,
 				),
 			);
-			return html`<span class="enc-compo-col">${segs}</span>`;
+			return html`<span class="enc-compo-col" title="${infobulle}">${segs}</span>`;
 		}),
 	);
 	// Le récit est du TEXTE VISIBLE, pas un `aria-label` : c'est ce qui distingue ce repli d'un

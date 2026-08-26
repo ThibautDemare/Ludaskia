@@ -1185,21 +1185,29 @@ $frise-neutre: #7c8494;
    voix de synthèse (dictée avec, mot caché sans), et c'est la POSITION qui doit rester verte,
    pas une étape en particulier.
    Les segments VIDES ne sont pas rendus du tout : un `min-height` sur un rang à zéro mot
-   dessinerait un mot qui n'existe pas, ce qui est exactement le contraire du but. */
+   dessinerait un mot qui n'existe pas, ce qui est exactement le contraire du but.
+   La couleur passe par `--k`, comme .enc-key-* et .enc-seg-part : les MÊMES classes habillent
+   donc les segments des barres et les pastilles de la légende, si bien qu'un rang ne peut pas
+   changer de couleur d'un endroit à l'autre. C'est le reproche exact qui avait été fait au
+   token --muted, corrigé une fois pour toutes en le tenant depuis une seule source. */
 .enc-compo-neuf {
-	background: $frise-neutre;
+	--k: #{$frise-neutre};
 }
 .enc-compo-atelier {
-	background: var(--compo-atelier);
+	--k: var(--compo-atelier);
 }
 .enc-compo-tuiles {
-	background: var(--compo-tuiles);
+	--k: var(--compo-tuiles);
 }
 .enc-compo-cache {
-	background: var(--compo-cache);
+	--k: var(--compo-cache);
 }
 .enc-compo-sommet {
-	background: var(--ok);
+	--k: var(--ok);
+}
+.enc-compo-part,
+.enc-compo-seg {
+	background: var(--k);
 }
 /* Filet entre segments voisins de la barre HORIZONTALE (le pendant vertical est sur
    .enc-compo-seg) : mêmes teintes rapprochées, même parade. */
@@ -1220,10 +1228,12 @@ $frise-neutre: #7c8494;
 	margin-top: 0.15rem;
 }
 /* Repli des 12 semaines : dernier enfant de la ligne avec le repli des mots, donc pleine
-   largeur, et l'ordre du DOM reste l'ordre visuel (a11y : ordre de focus = ordre de lecture).
-   Il vient AVANT « Voir les mots » : c'est le prolongement direct de la barre du jour qui le
-   précède, alors que la liste des mots est un autre sujet. */
-.enc-compo-frise {
+   largeur, et l'
+		ordre du DOM reste l
+		'ordre visuel (a11y : ordre de focus = ordre de lecture).
+   Il vient AVANT « Voir les mots » : c'
+		est le prolongement direct de la barre du jour qui le précède,
+	alors que la liste des mots est un autre sujet. * / .enc-compo-frise {
 	flex-basis: 100%;
 	margin: 0.1rem 0 0.2rem;
 	font-size: 0.85rem;
@@ -1263,14 +1273,33 @@ $frise-neutre: #7c8494;
 	min-height: 2px;
 	box-shadow: 0 -1px 0 var(--paper);
 }
+/* Les deux légendes du volet sont EMPILÉES et non fondues en une : celle des états (trois
+   valeurs) et celle des étapes (quatre ou cinq) mesurent des choses différentes, et les mettre
+   sur une seule ligne recréerait au niveau de la légende la confusion que #545 vient de
+   défaire au niveau des frises. Le libellé en tête de chacune dit laquelle on lit. */
+.enc-legend-titre {
+	font-size: 0.78rem;
+	font-weight: 700;
+	color: var(--grey);
+}
 /* Récit des douze semaines, en texte VISIBLE sous les colonnes (et non en `aria-label`, cf.
    friseCompositionHTML) : sur 40 px de haut, la frontière entre deux rangs voisins de la rampe
    tient dans un filet d'1 px, et c'est ce texte qui porte l'information à sa place. */
 .enc-compo-recit {
+	list-style: none;
 	margin: 0.3rem 0 0.2rem;
+	padding: 0;
 	font-size: 0.8rem;
-	line-height: 1.35;
+	line-height: 1.4;
 	color: var(--grey);
+}
+.enc-compo-recit li + li {
+	margin-top: 0.15rem;
+}
+/* Le repère de temps en --ink, le reste en --grey : c'est le point d'accroche du balayage,
+   celui qui permet de sauter à une semaine sans lire les autres. */
+.enc-compo-recit strong {
+	color: var(--ink);
 }
 /* Semaine antérieure à la mise en service du datage : le MÊME bloc creux que la frise
    d'états. C'est un même fait (« pas de donnée »), donc un même signe — la divergence

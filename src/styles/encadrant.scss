@@ -1263,6 +1263,15 @@ $frise-neutre: #7c8494;
 	min-height: 2px;
 	box-shadow: 0 -1px 0 var(--paper);
 }
+/* Récit des douze semaines, en texte VISIBLE sous les colonnes (et non en `aria-label`, cf.
+   friseCompositionHTML) : sur 40 px de haut, la frontière entre deux rangs voisins de la rampe
+   tient dans un filet d'1 px, et c'est ce texte qui porte l'information à sa place. */
+.enc-compo-recit {
+	margin: 0.3rem 0 0.2rem;
+	font-size: 0.8rem;
+	line-height: 1.35;
+	color: var(--grey);
+}
 /* Semaine antérieure à la mise en service du datage : le MÊME bloc creux que la frise
    d'états. C'est un même fait (« pas de donnée »), donc un même signe — la divergence
    voulue entre les deux frises porte sur ce qu'elles mesurent, pas sur ce qu'elles ignorent. */
@@ -1414,10 +1423,16 @@ $frise-neutre: #7c8494;
    il est le dernier enfant du DOM, l'ordre de focus suit l'ordre visuel (a11y). Chrome de
    chevron des autres <summary> de l'écran, cible tactile 44 px, accent bleu pour signaler
    l'interactif sans dépendre du seul chevron. */
+/* Le repli de la frise de composition (#545) partage ce chrome, et le SÉLECTEUR plutôt qu'une
+   copie : une ligne de dictée porte désormais deux replis côte à côte, et deux jeux de règles
+   auraient dérivé l'un de l'autre — c'est d'ailleurs par là que le second est arrivé sans cible
+   tactile ni focus, jusqu'à ce qu'une relecture a11y le voie. Tout nouveau <details> de cette
+   famille s'ajoute ICI, pas ailleurs. */
 .enc-mots {
 	flex-basis: 100%;
 }
-.enc-mots > summary {
+.enc-mots > summary,
+.enc-compo-frise > summary {
 	display: flex;
 	align-items: center;
 	gap: 0.35rem;
@@ -1428,21 +1443,25 @@ $frise-neutre: #7c8494;
 	font-weight: 600;
 	color: var(--admin-accent);
 }
-.enc-mots > summary::-webkit-details-marker {
+.enc-mots > summary::-webkit-details-marker,
+.enc-compo-frise > summary::-webkit-details-marker {
 	display: none;
 }
-.enc-mots > summary::before {
+.enc-mots > summary::before,
+.enc-compo-frise > summary::before {
 	content: '▸';
 	color: var(--muted);
 }
-.enc-mots[open] > summary::before {
+.enc-mots[open] > summary::before,
+.enc-compo-frise[open] > summary::before {
 	content: '▾';
 }
 /* Règle de focus EXPLICITE : les autres <summary> du fichier s'en remettent au focus par
    défaut du navigateur, à rebours de tous les autres contrôles de l'espace encadrant
    (.enc-btn-sec, .enc-vu-expand… en outline --admin-accent). On ne reconduit pas l'angle
    mort (avis a11y). */
-.enc-mots > summary:focus-visible {
+.enc-mots > summary:focus-visible,
+.enc-compo-frise > summary:focus-visible {
 	outline: 3px solid var(--admin-accent);
 	outline-offset: 2px;
 	border-radius: 6px;

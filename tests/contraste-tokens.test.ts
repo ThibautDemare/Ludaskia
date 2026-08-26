@@ -265,9 +265,14 @@ const PAIRES_NON_TEXTE: Paire[] = [
 	// carte. Ce sont bien des objets graphiques PORTEURS de sens — la longueur d'un segment
 	// EST le nombre de mots à cette étape — donc le seuil non-texte s'applique à chacun.
 	// Ce qui n'est PAS testé ici, et ne peut pas l'être : l'écart entre deux rangs VOISINS de
-	// la rampe (1,55 à 1,72). Il est sous 3:1 par construction, comme celui des états voisins
-	// de la frise d'à côté, et c'est assumé : ce sont l'ordre constant des segments, le filet
-	// qui les sépare et les dénombrements écrits qui portent l'information.
+	// la rampe. Il est sous 3:1 par construction, comme celui des états voisins de la frise
+	// d'à côté, et c'est assumé : ce sont l'ordre constant des segments, le filet qui les
+	// sépare et les dénombrements écrits qui portent l'information.
+	// Les deux frontières les plus serrées, écrites en toutes lettres parce qu'une dérogation
+	// vague se relit comme une dérogation confortable : 1,01:1 (gris du bas contre premier
+	// rose, en Nuit) et 1,24:1 (rang sous le sommet contre --ok, en Nuit). La seconde est celle
+	// qui compte, deux teintes claires qu'un œil deutan ne départage pas ; le récit affiché en
+	// texte visible dans le repli est ce qui la rend non porteuse d'information.
 	{
 		avant: '--compo-atelier',
 		arriere: '--paper',

@@ -565,7 +565,9 @@ const MOT_RANG: Record<RangMot, [string, string]> = {
    l'étape qui l'occupe CHANGE avec la voix de synthèse (la dictée avec, le mot caché sans),
    si bien que « réussi à la dictée » serait faux sur un appareil muet. « Maîtrisé » désigne
    exactement « tous les modes requis validés » — c'est sa définition dans design-orthographe.md,
-   et c'est déjà le mot à l'écran, deux lignes plus haut, dans « 3/10 mots maîtrisés ». Lui
+   et c'est déjà le mot à l'écran, un peu plus haut dans la même carte, dans « 3/10 mots
+   maîtrisés » (pas à un nombre de lignes fixe : entre les deux s'intercalent le badge d'état,
+   le bouton d'épinglage, et la frise d'états quand la liste en a une). Lui
    donner ici un second nom aurait mis deux mots sur un seul fait, à quelques pixels d'écart. */
 const MOT_SOMMET: [string, string] = ['maîtrisé', 'maîtrisés'];
 /* Couleur par rang. Le sommet a sa propre classe (cf. encadrant.scss) : c'est la POSITION
@@ -607,15 +609,20 @@ function compositionHTML(c: FriseComposition | null): SafeHtml {
 	);
 	return html`<span class="enc-compo">
       <span class="enc-compo-bar" aria-hidden="true">${parts}</span>
-      <span class="enc-compo-texte">${enumererFr(motsColonne(c, jour))}.</span>
+      <span class="enc-compo-texte"><span class="sr-only">Mots : </span>${enumererFr(motsColonne(c, jour))}.</span>
     </span>`;
 }
 
-/* Récit de la frise pour un lecteur d'écran : par CHANGEMENT de composition, pas par semaine.
-   Douze colonnes annoncées une à une seraient interminables et diraient surtout douze fois la
-   même chose — une composition ne bouge que les semaines où l'enfant a travaillé. Les semaines
-   sans donnée sont comptées ensemble en tête : elles forment toujours un préfixe (la borne de
-   suivi est unique), et les énumérer n'apprendrait rien de plus que leur nombre. */
+/* Récit de la frise, par CHANGEMENT de composition et non par semaine. Douze colonnes énoncées
+   une à une diraient surtout douze fois la même chose — une composition ne bouge que les
+   semaines où l'enfant a travaillé. Les semaines de statut inconnu sont comptées ensemble en
+   tête : elles forment toujours un préfixe (la borne de suivi est unique), et les énumérer
+   n'apprendrait rien de plus que leur nombre.
+   Sa LONGUEUR n'est pas bornée, et c'est un écart connu avec la frise d'états, dont chaque
+   segment vaut un seul mot : ici un segment est une énumération, et une liste travaillée chaque
+   semaine peut en produire une dizaine. C'est assumé — abréger reviendrait à taire des semaines
+   où l'enfant a travaillé, dans le seul endroit de l'écran qui existe pour les montrer — mais
+   c'est à revoir si un cas réel devient illisible. */
 function recitComposition(c: FriseComposition): string {
 	const segments: string[] = [];
 	let precedente = '';
@@ -630,8 +637,12 @@ function recitComposition(c: FriseComposition): string {
 		precedente = cle;
 		segments.push(enumererFr(motsColonne(c, col)));
 	}
+	// « statut inconnu » et non « sans donnée » : c'est le mot que la frise d'états emploie
+	// déjà pour cette même situation (MOT_CELLULE.inconnu), et un parent peut ouvrir les deux
+	// frises l'une après l'autre sur la même liste. Deux mots pour un seul fait auraient laissé
+	// croire à deux faits — précisément ce que ce module dit vouloir éviter par ailleurs.
 	const avant = inconnues
-		? `${inconnues} semaine${inconnues > 1 ? 's' : ''} sans donnée, puis `
+		? `${inconnues} semaine${inconnues > 1 ? 's' : ''} de statut inconnu, puis `
 		: '';
 	return `Composition sur les ${c.semaines.length} dernières semaines : ${avant}${segments.join(', puis ')}.`;
 }
@@ -639,8 +650,10 @@ function recitComposition(c: FriseComposition): string {
 /* Les douze semaines, dans un repli. Replié par DÉFAUT : un parent a facilement dix listes,
    et douze colonnes segmentées sous chacune rendraient l'écran illisible d'entrée (avis
    designer). Le résumé porte le libellé de la liste dans son `aria-label` : une série de
-   « Voir le détail… » identiques serait sans repère au rotor, même parade que le repli des
-   mots juste en dessous. */
+   « Voir les étapes… » identiques serait sans repère au rotor, même parade que le repli des
+   mots juste en dessous. Le compte de semaines n'est PAS répété dans le résumé, même
+   convention que « Voir les mots » : la constante vit dans le code, et le récit l'annonce une
+   fois le repli ouvert. */
 function friseCompositionHTML(c: FriseComposition | null, label: string): SafeHtml {
 	if (!c) return VIDE;
 	const cols = joindre(
@@ -656,10 +669,19 @@ function friseCompositionHTML(c: FriseComposition | null, label: string): SafeHt
 			return html`<span class="enc-compo-col">${segs}</span>`;
 		}),
 	);
-	const aria = recitComposition(c);
+	// Le récit est du TEXTE VISIBLE, pas un `aria-label` : c'est ce qui distingue ce repli d'un
+	// graphique décoré. Trois raisons convergentes (avis a11y) :
+	// - un `aria-label` sur un `role="img"` n'est ni survolable au doigt ni atteignable au
+	//   clavier (le conteneur n'est pas focalisable), donc il ne servait qu'au lecteur d'écran ;
+	// - c'est la frontière la plus serrée de la palette (rang sous le sommet contre --ok, 1,24:1
+	//   en Nuit) qui portait le plus d'information, et sur 40 px un filet d'1 px ne la donne pas ;
+	// - le contenu d'un repli EST l'information cherchée, jamais un décor — c'est déjà le parti
+	//   pris juste en dessous pour la liste des mots.
+	// Les colonnes deviennent donc décoratives, et l'écran ne dit plus deux fois la même chose.
 	return html`<details class="enc-compo-frise">
       <summary aria-label="Voir les étapes semaine par semaine de « ${label} »">Voir les étapes semaine par semaine</summary>
-      <span class="enc-compo-cells" role="img" aria-label="${aria}" title="${aria}">${cols}</span>
+      <span class="enc-compo-cells" aria-hidden="true">${cols}</span>
+      <p class="enc-compo-recit">${recitComposition(c)}</p>
     </details>`;
 }
 

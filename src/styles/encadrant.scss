@@ -1235,6 +1235,24 @@ $frise-neutre: #7c8494;
 	flex-basis: 100%;
 	margin: 0;
 }
+/* Les DEUX replis d'une ligne de suivi tiennent CÔTE À CÔTE tant qu'ils sont fermés, et non
+   l'un sous l'autre : deux lignes de chrome par liste finissaient par éloigner les listes plus
+   que les listes elles-mêmes ne sont hautes, et on n'en voyait plus que deux à l'écran.
+   Réduire la cible ne suffisait pas — le problème n'était pas la hauteur d'un repli mais leur
+   NOMBRE de lignes. Celui qu'on OUVRE reprend toute la largeur et repousse l'autre à la ligne
+   suivante : son contenu (douze colonnes, ou quarante mots) a besoin de la largeur entière, et
+   la moitié ne lui suffirait pas. Sur un écran étroit, `flex-wrap` les remet d'eux-mêmes l'un
+   sous l'autre, sans média query.
+   Ciblé sur `.enc-detail-item` : `.enc-mots` sert aussi dans `.enc-revoir-item`, où il est
+   SEUL sur sa ligne et doit y rester pleine largeur. */
+.enc-detail-item > .enc-compo-frise,
+.enc-detail-item > .enc-mots {
+	flex: 0 1 auto;
+}
+.enc-detail-item > .enc-compo-frise[open],
+.enc-detail-item > .enc-mots[open] {
+	flex-basis: 100%;
+}
 /* Les 12 semaines, dans le repli. 40px et non les 26px de la frise d'états : ici le pas de
    quantification est le MOT, pas le rang — sur une liste de 20 mots, un mot ne pèse que 2px
    même à cette hauteur, et il en pesait 1,3px à 26px, soit sous le seuil où ce fichier a

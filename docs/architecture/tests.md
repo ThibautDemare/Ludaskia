@@ -382,6 +382,20 @@ construction. Le module a ses propres ancres testées (21:1, 1:1, les deux gris 
 le seuil AA à un cran près) : si la formule dérive, ce sont elles qui tombent d'abord. C'est
 le seul JS du programme TypeScript (`allowJs`), parce que le CLI s'exécute sans build.
 
+### Le texte narratif d'une frise se vérifie en e2e, pas en Vitest (#545)
+
+Précédent établi deux fois désormais — la frise d'états (`friseNotionHTML`, #521) puis la frise
+de composition des listes de dictée (`friseCompositionHTML`, #545) : le CALCUL (quelles cellules,
+quelles dates, quel changement) est couvert en Vitest sur les fonctions pures de `core/` ; la
+PHRASE réellement rendue (le récit lu par un lecteur d'écran ou affiché en clair) n'est vérifiée
+qu'en e2e, sur le DOM produit par le vrai runner (`e2e/frise-composition-listes.spec.ts`,
+critère 12 par exemple). Ce n'est pas un trou de couverture : dupliquer l'assertion de texte dans
+les deux couches ferait dériver l'une sans l'autre, et cette suite Vitest reste sur `src/core/`
+(cf. en tête de page) — elle n'appelle pas les fonctions de rendu de `src/ui/` qui composent la
+phrase finale. Le premier précédent (la frise d'états) n'avait
+jamais été écrit noir sur blanc, ce qui a fait rouvrir la question à la frise suivante — d'où cette
+note, pour qu'un futur relecteur ne redemande pas « où est le test Vitest du texte de la frise ? ».
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent

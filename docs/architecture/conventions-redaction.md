@@ -53,3 +53,25 @@ est masqué (< 600 px). Les sous-titres de réglage (config sprint) sont des `<h
 portant l'`id` cible de l'`aria-labelledby` du `radiogroup` (un seul nœud). **Tout
 nouvel écran doit suivre ce schéma** (un `<h1>` propre, jamais réintroduire un titre
 global dans la barre).
+
+## Énumérations elliptiques : toujours porter le sujet (#545)
+
+Une énumération affichée dans l'espace encadrant, quand elle omet le sujet grammatical à
+chaque terme pour ne pas l'alourdir (un dénombrement du type « 1 découvert et 1 réussi aux
+tuiles »), doit porter ce sujet **au moins une fois**. Sans lui, l'antécédent est déjà loin dans
+l'ordre de lecture au moment où l'oreille (lecteur d'écran) ou l'œil l'attend — surtout quand
+d'autres éléments (badge d'état, bouton d'action) s'intercalent dans le DOM entre le sujet réel et
+l'énumération. Cas corrigé (avis `redacteur-contenu-francais`) : « 1 découvert et 1 réussi aux
+tuiles » → « 1 mot découvert et 1 réussi aux tuiles » (`motsColonne`, frise de composition des
+listes de dictée, #545). Le mot-sujet se pose sur le **premier** terme seulement — le français
+sous-entend le reste — jamais sur chacun (alourdit une ligne déjà dense) ni en `sr-only` (ne
+règle rien : l'antécédent reste loin dans l'ordre de lecture, y compris pour un lecteur d'écran).
+
+## Résumé d'un repli `<details>` : ne pas redire ce que le contenu annonce (#545)
+
+Le texte visible d'un `<summary>` ne répète pas un compte ou une constante que le contenu déplié
+annonce lui-même une fois ouvert — la valeur vit dans le code, pas dans deux endroits à tenir
+synchrones. Convention observée deux fois : « Voir les mots » (le nombre de mots figure déjà dans
+la méta juste au-dessus de la ligne, pas dans le résumé du repli) et « Voir les étapes semaine par
+semaine » (`friseCompositionHTML`, #545) — pas « … des 12 dernières semaines » : la constante
+(`SEMAINES_FRISE`) vit dans le code, et le récit l'annonce une fois le repli ouvert.

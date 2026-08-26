@@ -150,7 +150,12 @@ ci-dessous.
   `encadrant-erreurs.ts`), `travail-periode` (délégué à `travailClick`, exporté par
   `encadrant-travail.ts`) et les actions `banque-*` (délégué à `banqueClick`/`banqueInput`,
   exportées par `encadrant-banque.ts` — même raison : c'est cette section qui compose leur
-  bloc).
+  bloc). Depuis #545, chaque ligne de liste porte en plus une **frise de composition**
+  (`compositionHTML` — barre segmentée + dénombrement du jour ; `friseCompositionHTML` — repli
+  des 12 dernières semaines, récit en texte visible) qui **remplace** l'affichage de la frise
+  d'états sur ces lignes (`friseNotionHTML` reste réservée aux leçons du catalogue ci-dessus) —
+  cf. [Espace encadrant](espace-encadrant.md) pour ce que cette frise mesure et les décisions de
+  rendu.
   Expose aussi `aRevoirHTML` (file « à revoir ensemble », épinglées + suggestions
   + **retirées automatiquement** #465, ré-épinglables d'un clic) et
   `dicteesProposeesHTML` (dictées prédéfinies épinglables à l'avance), toutes

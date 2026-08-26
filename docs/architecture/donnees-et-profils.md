@@ -143,8 +143,19 @@ service, sur le modèle de `ludaskia_paliersDepuis`, mais **propre à ce journal
 leçons est posée par toute session finalisée — dictée et révision comprises — et la reprendre
 ici ferait croire une liste suivie depuis une séance de maths qui n'a jamais touché ce
 journal-ci). Écrits en fin de dictée (`ui/ortho-runner.ts`) et de révision espacée
-(`ui/revision.ts`, qui rejoue aussi des mots) ; base de la frise d'évolution des listes de
-l'espace encadrant, cf. [Espace encadrant](espace-encadrant.md).
+(`ui/revision.ts`, qui rejoue aussi des mots) ; ce journal ne date que l'ÉTAT d'une liste (« en
+cours », « acquis ») et n'alimente plus, depuis #545, qu'une date de méta sur la ligne — cf.
+[Espace encadrant](espace-encadrant.md).
+
+**Troisième borne**, propre au datage PAR MOT (#545, distincte des deux journaux « par liste »
+ci-dessus, plus récente qu'eux) : `ludaskia_orthoEtapesDepuis` (`ORTHO_ETAPES_DEBUT_KEY`,
+`core/orthographe/paliers.ts:debutSuiviEtapes`) date la mise en service, par profil, du champ
+`franchissements?: Franchissements` (`Partial<Record<EtapeOrtho, number>>`) d'un `MotOrtho` — la
+date du PREMIER franchissement de CE mot à chaque étape de son parcours (atelier, tuiles,
+affiche/masque, dictée), MONOTONE, écrite **structurellement** par `marquerAtelierFait`/
+`validerMode` (`core/orthographe/runner.ts`). Base de la frise de COMPOSITION d'une liste
+(répartition de ses mots entre les étapes, semaine par semaine), cf. [Logique pure](core.md) et
+[Espace encadrant](espace-encadrant.md).
 
 ## Profils
 

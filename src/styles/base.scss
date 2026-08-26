@@ -97,10 +97,17 @@
 	   famille dictée sur cet écran) et l'écrit en dur : le gate de contraste ne lit que les
 	   littéraux hexadécimaux, un var() y serait invisible (cf. tests/contraste-tokens).
 	   Ratios sur --paper : 3,59:1 / 5,87:1 / 9,11:1 en clair, 3,81:1 / 5,46:1 / 9,37:1 en
-	   Nuit. Aucune paire VOISINE n'atteint 3:1 entre elles (1,55 à 1,72) — comme la frise
-	   d'états, et pour la même raison : ce sont l'ordre constant des segments, le filet qui
-	   les sépare et les dénombrements en toutes lettres qui portent l'information, jamais
-	   l'écart de teinte seul. */
+	   Nuit. Aucune paire VOISINE n'atteint 3:1 entre elles — comme la frise d'états, et pour
+	   la même raison : ce sont l'ordre constant des segments, le filet qui les sépare et les
+	   dénombrements en toutes lettres qui portent l'information, jamais l'écart de teinte seul.
+	   L'écart voisin le plus SERRÉ, à citer tel quel si on réétudie la palette, parce qu'une
+	   fourchette optimiste se retourne contre le prochain audit : 1,01:1 entre le gris du bas
+	   et le premier rose (Nuit), 1,24:1 entre le rang sous le sommet et --ok (Nuit également).
+	   Le premier reste séparable — gris désaturé contre rose saturé, la saturation fait ce que
+	   la luminance ne fait pas. Le second est le point réellement faible : rose très clair
+	   contre vert clair, deux teintes que le contraste ne départage plus et qu'un œil deutan ne
+	   départage pas non plus. C'est pourquoi le repli affiche son récit en TEXTE VISIBLE (cf.
+	   friseCompositionHTML) : là, l'information ne dépend plus de la frontière du tout. */
 	--compo-atelier: #db5a8c; /* atelier de découverte fait */
 	--compo-tuiles: #c2185b; /* tuiles réussi (= --cat-rose) */
 	--compo-cache: #8e1043; /* affiche/masque réussi */

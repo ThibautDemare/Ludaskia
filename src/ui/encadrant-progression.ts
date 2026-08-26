@@ -30,6 +30,7 @@ import {
 	type NiveauNotion,
 	type TendanceNotion,
 	type JourActivite,
+	lundiDecale,
 	type CelluleFrise,
 	type FriseNotion,
 	type FriseComposition,
@@ -579,18 +580,53 @@ const CLASSE_RANG: Record<RangMot, string> = {
 	motCache: 'enc-compo-cache',
 	dictee: 'enc-compo-cache',
 };
-const estSommet = (c: FriseComposition, i: number) => i === c.paliers.length - 1;
-const classeRang = (c: FriseComposition, i: number) =>
-	estSommet(c, i) ? 'enc-compo-sommet' : CLASSE_RANG[c.paliers[i]];
-const motRang = (c: FriseComposition, i: number, n: number) => {
-	const [un, plusieurs] = estSommet(c, i) ? MOT_SOMMET : MOT_RANG[c.paliers[i]];
+/* Ces trois helpers prennent les PALIERS et non la frise : c'est ce qui permet à la légende du
+   volet et aux segments des barres de se peindre et de se nommer par le même chemin. Les faire
+   diverger serait le moyen le plus simple d'afficher une légende qui ne décrit plus ce qu'on
+   voit. */
+const estSommet = (paliers: readonly RangMot[], i: number) => i === paliers.length - 1;
+const classeRang = (paliers: readonly RangMot[], i: number) =>
+	estSommet(paliers, i) ? 'enc-compo-sommet' : CLASSE_RANG[paliers[i]];
+const motRang = (paliers: readonly RangMot[], i: number, n: number) => {
+	const [un, plusieurs] = estSommet(paliers, i) ? MOT_SOMMET : MOT_RANG[paliers[i]];
 	return n > 1 ? plusieurs : un;
 };
 /* Une colonne dite en toutes lettres, rangs VIDES omis. Les omettre n'est pas de la place
    gagnée : « 0 mot réussi au mot caché » se lit comme un constat d'échec là où le fait est
    qu'aucun mot n'est encore arrivé jusque-là. */
-const motsColonne = (c: FriseComposition, col: readonly number[]): string[] =>
-	col.map((n, i) => (n > 0 ? `${n} ${motRang(c, i, n)}` : '')).filter(Boolean);
+function motsColonne(c: FriseComposition, col: readonly number[]): string[] {
+	const items: string[] = [];
+	for (const [i, n] of col.entries()) {
+		if (n === 0) continue;
+		// Le nom « mot » n'est posé QUE sur le premier item : le français le sous-entend ensuite
+		// (« 10 mots pas encore commencés et 2 maîtrisés »), et le répéter cinq fois alourdirait
+		// une ligne déjà dense. L'omettre partout, en revanche, donnait « 1 découvert et 1 réussi
+		// aux tuiles », un participe sans sujet. Le poser ICI et non en `sr-only` sert aussi la
+		// lecture à l'oreille : dans l'ordre du DOM, le badge d'état et le bouton d'épinglage
+		// s'intercalent entre la méta (« 3/10 mots maîtrisés ») et cette phrase, si bien que
+		// l'antécédent y serait déjà loin (avis langue).
+		const sujet = items.length === 0 ? (n > 1 ? ' mots' : ' mot') : '';
+		items.push(`${n}${sujet} ${motRang(c.paliers, i, n)}`);
+	}
+	return items;
+}
+
+/* Légende des étapes, pour le volet entier. Les paliers viennent d'une composition RÉELLEMENT
+   affichée et non d'un appel à `dicteeDisponible()` : sans voix de synthèse l'escalier perd sa
+   marche « dictée », et une légende qui la nommerait quand même annoncerait une couleur que
+   les barres ne dessinent jamais. `VIDE` quand aucune liste n'a de composition — il n'y a alors
+   rien à légender. */
+function legendeEtapesHTML(listes: readonly RecapListeOrtho[]): SafeHtml {
+	const paliers = listes.find((l) => l.composition)?.composition?.paliers;
+	if (!paliers) return VIDE;
+	const cles = joindre(
+		paliers.map(
+			(_, i) =>
+				html`<span class="enc-key ${classeRang(paliers, i)}">${motRang(paliers, i, 1)}</span>`,
+		),
+	);
+	return html`<p class="enc-legend"><span class="enc-legend-titre">Étapes des mots :</span>${cles}</p>`;
+}
 
 /* Répartition du JOUR, sur la ligne de la liste : une barre segmentée, et le détail en
    toutes lettres juste dessous. C'est le TEXTE qui porte l'information (la barre est donc
@@ -603,48 +639,73 @@ function compositionHTML(c: FriseComposition | null): SafeHtml {
 	const parts = joindre(
 		jour.map((n, i) =>
 			n > 0
-				? html`<span class="enc-compo-part ${classeRang(c, i)}" style="flex:${n}"></span>`
+				? html`<span class="enc-compo-part ${classeRang(c.paliers, i)}" style="flex:${n}"></span>`
 				: VIDE,
 		),
 	);
 	return html`<span class="enc-compo">
       <span class="enc-compo-bar" aria-hidden="true">${parts}</span>
-      <span class="enc-compo-texte"><span class="sr-only">Mots : </span>${enumererFr(motsColonne(c, jour))}.</span>
+      <span class="enc-compo-texte">${enumererFr(motsColonne(c, jour))}.</span>
     </span>`;
 }
 
-/* Récit de la frise, par CHANGEMENT de composition et non par semaine. Douze colonnes énoncées
-   une à une diraient surtout douze fois la même chose — une composition ne bouge que les
-   semaines où l'enfant a travaillé. Les semaines de statut inconnu sont comptées ensemble en
-   tête : elles forment toujours un préfixe (la borne de suivi est unique), et les énumérer
-   n'apprendrait rien de plus que leur nombre.
-   Sa LONGUEUR n'est pas bornée, et c'est un écart connu avec la frise d'états, dont chaque
-   segment vaut un seul mot : ici un segment est une énumération, et une liste travaillée chaque
-   semaine peut en produire une dizaine. C'est assumé — abréger reviendrait à taire des semaines
-   où l'enfant a travaillé, dans le seul endroit de l'écran qui existe pour les montrer — mais
-   c'est à revoir si un cas réel devient illisible. */
-function recitComposition(c: FriseComposition): string {
-	const segments: string[] = [];
+/* Une entrée du récap : son repère de temps (mis en gras au rendu) et la composition de cette
+   semaine-là. `quoi` vide = l'entrée d'ouverture, qui ne compte que les semaines non suivies. */
+interface EntreeRecit {
+	quand: string;
+	quoi: string;
+}
+
+/* Repère de temps d'une colonne. Une DATE et non un numéro d'ordre : « semaine 3 » ne dit pas
+   si l'on compte depuis le début de la fenêtre ou depuis aujourd'hui, et ne correspond à aucune
+   numérotation que le lecteur connaisse par ailleurs. Le lundi vient de `lundiDecale`, la même
+   fonction qui découpe les colonnes — le libellé ne peut donc pas désigner une autre semaine
+   que celle qu'il surmonte. */
+const libelleSemaine = (i: number, total: number, now: number): string =>
+	i === total - 1
+		? 'Cette semaine'
+		: 'Semaine du ' +
+			new Date(lundiDecale(now, total - 1 - i)).toLocaleDateString('fr-FR', {
+				day: 'numeric',
+				month: 'long',
+			});
+
+/* Récap des douze semaines, une entrée par semaine où la composition CHANGE — pas les douze.
+   Une composition ne bouge que les semaines où l'enfant a travaillé, donc énoncer chaque colonne
+   reviendrait surtout à répéter la précédente.
+   Une LISTE et non une phrase : la première version joignait tout par « , puis », ce qui donnait
+   sur une liste active un pavé de plusieurs centaines de caractères où rien ne disait à quelle
+   semaine appartenait quel dénombrement, et où l'oreille devait s'accrocher au seul mot « puis »
+   au milieu d'une longue suite de virgules. Une vraie liste s'annonce « liste, N éléments » et
+   se parcourt élément par élément.
+   Les semaines de statut inconnu sont comptées ensemble en tête : elles forment toujours un
+   préfixe (la borne de suivi est unique), et les énumérer n'apprendrait rien de plus que leur
+   nombre. « statut inconnu » et non « sans donnée » : c'est le mot que la frise d'états emploie
+   déjà pour cette même situation (MOT_CELLULE.inconnu), et deux mots pour un seul fait auraient
+   laissé croire à deux faits. */
+function entreesRecit(c: FriseComposition, now: number): EntreeRecit[] {
+	const entrees: EntreeRecit[] = [];
 	let precedente = '';
 	let inconnues = 0;
-	for (const col of c.semaines) {
+	c.semaines.forEach((col, i) => {
 		if (!col) {
 			inconnues++;
-			continue;
+			return;
 		}
 		const cle = col.join(',');
-		if (cle === precedente) continue;
+		if (cle === precedente) return;
 		precedente = cle;
-		segments.push(enumererFr(motsColonne(c, col)));
-	}
-	// « statut inconnu » et non « sans donnée » : c'est le mot que la frise d'états emploie
-	// déjà pour cette même situation (MOT_CELLULE.inconnu), et un parent peut ouvrir les deux
-	// frises l'une après l'autre sur la même liste. Deux mots pour un seul fait auraient laissé
-	// croire à deux faits — précisément ce que ce module dit vouloir éviter par ailleurs.
-	const avant = inconnues
-		? `${inconnues} semaine${inconnues > 1 ? 's' : ''} de statut inconnu, puis `
-		: '';
-	return `Composition sur les ${c.semaines.length} dernières semaines : ${avant}${segments.join(', puis ')}.`;
+		entrees.push({
+			quand: libelleSemaine(i, c.semaines.length, now),
+			quoi: enumererFr(motsColonne(c, col)),
+		});
+	});
+	if (inconnues)
+		entrees.unshift({
+			quand: `${inconnues} semaine${inconnues > 1 ? 's' : ''} de statut inconnu`,
+			quoi: '',
+		});
+	return entrees;
 }
 
 /* Les douze semaines, dans un repli. Replié par DÉFAUT : un parent a facilement dix listes,
@@ -654,7 +715,7 @@ function recitComposition(c: FriseComposition): string {
    mots juste en dessous. Le compte de semaines n'est PAS répété dans le résumé, même
    convention que « Voir les mots » : la constante vit dans le code, et le récit l'annonce une
    fois le repli ouvert. */
-function friseCompositionHTML(c: FriseComposition | null, label: string): SafeHtml {
+function friseCompositionHTML(c: FriseComposition | null, label: string, now: number): SafeHtml {
 	if (!c) return VIDE;
 	const cols = joindre(
 		c.semaines.map((col) => {
@@ -662,7 +723,7 @@ function friseCompositionHTML(c: FriseComposition | null, label: string): SafeHt
 			const segs = joindre(
 				col.map((n, i) =>
 					n > 0
-						? html`<span class="enc-compo-seg ${classeRang(c, i)}" style="flex:${n}"></span>`
+						? html`<span class="enc-compo-seg ${classeRang(c.paliers, i)}" style="flex:${n}"></span>`
 						: VIDE,
 				),
 			);
@@ -681,7 +742,15 @@ function friseCompositionHTML(c: FriseComposition | null, label: string): SafeHt
 	return html`<details class="enc-compo-frise">
       <summary aria-label="Voir les étapes semaine par semaine de « ${label} »">Voir les étapes semaine par semaine</summary>
       <span class="enc-compo-cells" aria-hidden="true">${cols}</span>
-      <p class="enc-compo-recit">${recitComposition(c)}</p>
+      <ul class="enc-compo-recit">
+        ${joindre(
+					entreesRecit(c, now).map((e) =>
+						e.quoi
+							? html`<li><strong>${e.quand}</strong> : ${e.quoi}.</li>`
+							: html`<li><strong>${e.quand}</strong>.</li>`,
+					),
+				)}
+      </ul>
     </details>`;
 }
 
@@ -719,8 +788,10 @@ function ligneListeOrtho(l: RecapListeOrtho, now: number): SafeHtml {
 		l.niveau === 'en-cours'
 			? `${l.maitrises}/${l.nbMots} mot${l.nbMots > 1 ? 's' : ''} maîtrisé${l.maitrises > 1 ? 's' : ''}`
 			: `${l.nbMots} mot${l.nbMots > 1 ? 's' : ''}`;
-	// Date du cap le PLUS HAUT franchi, comme sur une ligne de leçon (#541) : la trajectoire
-	// complète est dans la frise, la méta n'en retient que l'événement marquant.
+	// Date du cap le PLUS HAUT franchi. `l.frise` n'est plus DESSINÉE sur une ligne de liste
+	// depuis #545 (la frise de composition l'a remplacée) : elle ne survit que pour ces deux
+	// dates, que rien d'autre ne porte. C'est le critère 20 de l'issue, et c'est pour ça que le
+	// journal `ludaskia_paliersOrtho` reste alimenté alors que sa frise a disparu de l'écran.
 	const franchi =
 		l.frise?.acquisDepuis != null
 			? `acquise ${libelleDerniereFois(l.frise.acquisDepuis, now)}`
@@ -730,12 +801,12 @@ function ligneListeOrtho(l: RecapListeOrtho, now: number): SafeHtml {
 	const meta = [compte, l.source === 'predefini' ? 'dictée proposée' : '', franchi]
 		.filter(Boolean)
 		.join(' · ');
-	// Puce d'état omise quand la frise est là, pour la même raison que sur une ligne de leçon :
-	// sa dernière cellule dit déjà l'état, en plus grand. Le MOT reste (canal indépendant de la
-	// couleur, a11y). Sa PLACE, elle, est gardée, pour que la colonne des libellés reste droite.
-	const puce = l.frise
-		? html`<span class="enc-detail-puce enc-detail-puce--reserve" aria-hidden="true"></span>`
-		: html`<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
+	// Puce d'état TOUJOURS colorée, contrairement à une ligne de leçon : là-bas elle est omise
+	// parce que la dernière cellule de la frise d'états dit déjà le même état, en plus grand.
+	// Ici cette frise n'existe plus (#545), et la composition qui l'a remplacée ne mesure PAS
+	// l'état — elle ne peut donc pas en tenir lieu. La puce redevient le seul canal visuel de
+	// l'état, avec le mot qui l'accompagne à droite.
+	const puce = html`<span class="enc-detail-puce enc-key-${l.niveau}" aria-hidden="true"></span>`;
 	// Le repli des mots est le DERNIER enfant : il occupe toute la largeur (flex-basis 100 %),
 	// donc l'ordre du DOM reste l'ordre visuel — et « Épingler » garde sa place dans la
 	// tabulation, avant lui (a11y : ordre de focus = ordre de lecture).
@@ -749,9 +820,8 @@ function ligneListeOrtho(l: RecapListeOrtho, now: number): SafeHtml {
       <span class="enc-actions">
         <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${l.epingle ? 'Retirer' : 'Épingler'} « ${l.label} »">${l.epingle ? 'Retirer' : 'Épingler'}</button>
       </span>
-      ${friseNotionHTML(l.frise, now)}
       ${compositionHTML(l.composition)}
-      ${friseCompositionHTML(l.composition, l.label)}
+      ${friseCompositionHTML(l.composition, l.label, now)}
       ${motsDicteeHTML(l.mots, l.label)}
     </li>`;
 }
@@ -791,7 +861,8 @@ function voletListesHTML(
 	const renvoi = proposees.length
 		? html`<p class="enc-hint">Proposer une dictée à l'avance ? Rendez-vous dans l'onglet <strong>Programme</strong>.</p>`
 		: VIDE;
-	return html`<p class="enc-legend">${legende}</p>
+	return html`<p class="enc-legend"><span class="enc-legend-titre">État de la liste :</span>${legende}</p>
+      ${legendeEtapesHTML(listes)}
       <p class="enc-hint">Les listes de dictée (mots invariables, thèmes, vos propres listes) et leur avancement. Épinglez-en une pour qu'elle revienne sur l'accueil de ${consulte.name}.</p>
       ${suivi}
       ${renvoi}`;

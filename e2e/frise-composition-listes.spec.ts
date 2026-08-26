@@ -66,9 +66,18 @@ const SEED_DEUX_LISTES = {
 		d1: motVierge('d1', 'cahier'),
 		d2: motVierge('d2', 'tableau'),
 		d3: motVierge('d3', 'domino'),
-		t1: { ...motVierge('t1', 'ballon'), validation: { motCache: false, tuiles: true, dictee: false } },
-		t2: { ...motVierge('t2', 'jardin'), validation: { motCache: false, tuiles: true, dictee: false } },
-		t3: { ...motVierge('t3', 'nuage'), validation: { motCache: false, tuiles: true, dictee: false } },
+		t1: {
+			...motVierge('t1', 'ballon'),
+			validation: { motCache: false, tuiles: true, dictee: false },
+		},
+		t2: {
+			...motVierge('t2', 'jardin'),
+			validation: { motCache: false, tuiles: true, dictee: false },
+		},
+		t3: {
+			...motVierge('t3', 'nuage'),
+			validation: { motCache: false, tuiles: true, dictee: false },
+		},
 	},
 	listes: [
 		{

@@ -1235,8 +1235,7 @@ $frise-neutre: #7c8494;
 		est le prolongement direct de la barre du jour qui le précède,
 	alors que la liste des mots est un autre sujet. * / .enc-compo-frise {
 	flex-basis: 100%;
-	margin: 0.1rem 0 0.2rem;
-	font-size: 0.85rem;
+	margin: 0;
 }
 /* Les 12 semaines, dans le repli. 40px et non les 26px de la frise d'états : ici le pas de
    quantification est le MOT, pas le rang — sur une liste de 20 mots, un mot ne pèse que 2px
@@ -1465,7 +1464,14 @@ $frise-neutre: #7c8494;
 	display: flex;
 	align-items: center;
 	gap: 0.35rem;
-	min-height: 2.75rem;
+	/* 36 px et non les 44 px d'origine : depuis #545, une ligne de dictée porte DEUX de ces
+	   replis l'un sous l'autre, et 88 px de chrome par ligne éloignaient tellement les listes
+	   les unes des autres qu'on n'en voyait plus que deux à l'écran. Reste très au-dessus du
+	   minimum exigé (WCAG 2.2, 2.5.8 : 24 × 24 px), et la cible occupe toute la LARGEUR de la
+	   ligne, donc sa surface réelle dépasse de loin celle d'un bouton carré de 44 px. Le 44 px
+	   reste la règle pour ce que l'ENFANT touche ; ceci est un écran d'adulte, le plus souvent
+	   à la souris. À rediscuter si un troisième repli s'ajoutait à la même ligne. */
+	min-height: 2.25rem;
 	cursor: pointer;
 	list-style: none; /* marqueur natif retiré ; chevron via ::before (comme .enc-gerer) */
 	font-size: 0.8rem;

@@ -1,13 +1,32 @@
 /* ============================================================
-   Frise d'états des LISTES de dictée (#541, volet 2) — smoke tests e2e.
+   Dates de la ligne d'une liste de dictée (#541 volet 2, converti par #545) —
+   smoke tests e2e.
    ------------------------------------------------------------
-   Les listes de dictée avaient déjà un ÉTAT (`avancementLecon`), mais aucune
-   trajectoire datée : rien ne journalisait le moment où une liste passe
-   « en cours » puis « acquis ». Le journal dédié (`journaliserPaliersOrtho`,
-   `src/core/orthographe/paliers.ts`) répare ça, sur le modèle du journal des
-   paliers des leçons (#397/#521), et la même frise (`friseNotionHTML`) est
-   réutilisée dans le bloc « Dictées » de l'onglet Suivi (`ligneListeOrtho`,
-   `src/ui/encadrant-progression.ts`).
+   Anciennement « frise d'états des listes » : cette spec testait `.enc-frise` sur
+   une ligne de liste (une cellule par semaine, couleur = état). Cette frise a
+   DISPARU des lignes de liste avec #545 (remplacée par la frise de composition,
+   cf. `frise-composition-listes.spec.ts`) — la liste ne mesurant pas la même
+   chose qu'une leçon, garder les deux frises côte à côte aurait recréé la
+   confusion que #545 vient justement défaire (cf. le commentaire de
+   `ligneListeOrtho`, `src/ui/encadrant-progression.ts`).
+
+   Ce que cette spec vérifiait ne s'est pas volatilisé pour autant : le journal
+   `journaliserPaliersOrtho` (`src/core/orthographe/paliers.ts`) continue de
+   dater les franchissements « en cours » / « acquis » d'une liste, et c'est
+   maintenant la SEULE chose qui porte ces dates — la méta visible de la ligne
+   (« commencée le… », « acquise le… »), dérivée par `friseListeOrtho` (toujours
+   là, juste plus dessinée). C'est le critère 20 de #545, et le point le plus
+   fragile de tout ce travail : plus rien à l'écran ne montre la frise d'états
+   elle-même, donc rien ne saute aux yeux si `ludaskia_paliersOrtho` cesse un
+   jour d'être lu. Cette spec est ce qui l'empêche : elle garde les seeds et les
+   cas de l'ancienne (bien construits), et vérifie désormais la MÉTA plutôt que
+   des cellules de frise.
+
+   Autre conséquence directe de la disparition de la frise : la puce d'état
+   (`.enc-detail-puce`) n'est plus jamais réservée sur une ligne de liste — elle
+   était omise seulement parce que la dernière cellule de la frise disait déjà
+   l'état ; cette cellule n'existe plus, donc la puce redevient le seul canal
+   visuel de l'état et reste TOUJOURS colorée (`.enc-key-<niveau>`).
 
    Ces tests SÈMENT le journal directement en localStorage (comme
    encadrant.spec.ts le fait pour les leçons) : l'écriture RÉELLE par une
@@ -115,7 +134,7 @@ test.beforeEach(async ({ page }) => {
 	}, SEED_ORTHO_ETATS);
 });
 
-test("frise d'une liste de dictée « en cours » : 12 cellules, préfixe inconnu, dernière cellule en cours", async ({
+test("liste « en cours » : la méta dit « commencée le… », plus de frise d'états sur la ligne, puce colorée", async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -123,27 +142,26 @@ test("frise d'une liste de dictée « en cours » : 12 cellules, préfixe inconn
 	await gotoHash(page, 'encadrant');
 
 	const ligne = page.locator('.enc-detail-item:has([data-lesson="ortho:l-e2e-frise-encours"])');
-	const frise = ligne.locator('.enc-frise');
-	await expect(frise).toBeVisible();
-	await expect(frise).toHaveAttribute('aria-label', /Évolution sur les 12 dernières semaines/);
-
-	const cells = frise.locator('.enc-frise-cell');
-	await expect(cells).toHaveCount(12);
-	// Avant la mise en service du journal (borne à 6 semaines), les semaines suivies
-	// mais sans cap daté sont « à découvrir » (cf. friseListeOrtho : plancher constant
-	// pour une liste, contrairement à une leçon).
-	await expect(cells.first()).toHaveClass(/enc-frise-inconnu/);
-	await expect(cells.last()).toHaveClass(/enc-frise-en-cours/);
-	await expect(cells.last()).toHaveClass(/enc-frise-courante/);
-	// Puce d'état omise mais sa gouttière réservée, même règle que sur une ligne de leçon
-	// (cf. encadrant.spec.ts, test 10) — seul le placeholder subsiste, jamais de pastille COLORÉE.
-	await expect(ligne.locator('.enc-detail-puce.enc-detail-puce--reserve')).toHaveCount(1);
-	await expect(ligne.locator('.enc-detail-puce[class*="enc-key-"]')).toHaveCount(0);
+	await expect(ligne).toBeVisible();
+	// La frise d'états elle-même a disparu des lignes de liste (#545) : la composition l'a
+	// remplacée pour le mouvement au jour le jour, et la garder ICI en plus aurait recréé la
+	// confusion entre deux mesures différentes que #545 corrige. Absence VÉRIFIÉE et non
+	// supposée, pour qu'un futur lecteur ne la lise pas comme un oubli.
+	await expect(ligne.locator('.enc-frise')).toHaveCount(0);
+	// Ce que la frise portait à elle seule survit dans la méta, DATÉE, dérivée du même
+	// journal (`ludaskia_paliersOrtho`) par `friseListeOrtho` — juste plus dessinée.
+	await expect(ligne.locator('.enc-detail-meta')).toContainText(/commencée le/);
+	await expect(ligne.locator('.enc-detail-meta')).not.toContainText('acquise');
+	// Puce TOUJOURS colorée sur une ligne de liste (plus jamais réservée, cf. l'ancienne
+	// règle qui l'omettait quand la frise d'états disait déjà l'état — cette frise n'existe
+	// plus, la puce redevient le seul canal visuel).
+	await expect(ligne.locator('.enc-detail-puce.enc-key-en-cours')).toBeVisible();
+	await expect(ligne.locator('.enc-detail-puce--reserve')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });
 
-test("frise d'une liste de dictée « acquise » : dernière cellule acquise et courante", async ({
+test("liste « acquise » : la méta dit « acquise le… », plus de frise d'états sur la ligne, puce colorée", async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -151,26 +169,21 @@ test("frise d'une liste de dictée « acquise » : dernière cellule acquise et 
 	await gotoHash(page, 'encadrant');
 
 	const ligne = page.locator('.enc-detail-item:has([data-lesson="ortho:l-e2e-frise-acquis"])');
-	const frise = ligne.locator('.enc-frise');
-	await expect(frise).toBeVisible();
-
-	const cells = frise.locator('.enc-frise-cell');
-	await expect(cells).toHaveCount(12);
-	await expect(cells.last()).toHaveClass(/enc-frise-acquis/);
-	await expect(cells.last()).toHaveClass(/enc-frise-courante/);
-	await expect(ligne.locator('.enc-detail-puce.enc-detail-puce--reserve')).toHaveCount(1);
-	await expect(ligne.locator('.enc-detail-puce[class*="enc-key-"]')).toHaveCount(0);
+	await expect(ligne).toBeVisible();
+	await expect(ligne.locator('.enc-frise')).toHaveCount(0);
+	await expect(ligne.locator('.enc-detail-meta')).toContainText(/acquise le/);
+	await expect(ligne.locator('.enc-detail-puce.enc-key-acquis')).toBeVisible();
+	await expect(ligne.locator('.enc-detail-puce--reserve')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });
 
-/* Nuance documentée par friseListeOrtho/aucuneSemaineConnue (#541) : SANS borne de mise
-   en service (`ludaskia_paliersOrthoDepuis` absente) et sans aucun cap déjà daté, rien
-   n'est déductible d'aucune semaine — plutôt que d'affirmer douze cellules « inconnu »
-   (lu comme un défaut d'affichage sur TOUTES les listes d'un profil existant, le jour de
-   la mise en service du journal), la frise n'est PAS DESSINÉE. La ligne retombe alors sur
-   sa puce d'état et son mot, exactement comme avant qu'elle ait une frise. */
-test("sans borne de mise en service, une liste déjà commencée n'affiche PAS de frise (repli sur la puce et le mot)", async ({
+/* Nuance documentée par friseListeOrtho/aucuneSemaineConnue (#541), toujours vraie sans
+   frise à dessiner : SANS borne de mise en service (`ludaskia_paliersOrthoDepuis` absente)
+   et sans aucun cap déjà daté, rien n'est déductible — la méta n'a alors AUCUNE date, elle
+   ne dit que le compte de mots. Avant #545 ce fait s'observait par l'absence de frise ; il
+   s'observe maintenant par l'absence du segment daté dans la méta. */
+test('sans borne de mise en service, une liste déjà commencée a une méta SANS aucune date (juste le compte de mots)', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -180,11 +193,14 @@ test("sans borne de mise en service, une liste déjà commencée n'affiche PAS d
 
 	const ligne = page.locator('.enc-detail-item:has([data-lesson="ortho:l-e2e-frise-encours"])');
 	await expect(ligne).toBeVisible();
-	// Rien à affirmer d'aucune semaine → pas de frise du tout (pas douze blocs creux).
 	await expect(ligne.locator('.enc-frise')).toHaveCount(0);
-	// La ligne retombe sur ce qu'elle montrait avant d'avoir une frise : la puce d'état…
+	// Rien à dater : ni « commencée », ni « acquise » — seul le compte de mots reste.
+	const meta = ligne.locator('.enc-detail-meta');
+	await expect(meta).toContainText('mot');
+	await expect(meta).not.toContainText('commencée');
+	await expect(meta).not.toContainText('acquise');
+	// La puce d'état et le mot restent le canal — inchangés par cette absence de date.
 	await expect(ligne.locator('.enc-detail-puce.enc-key-en-cours')).toBeVisible();
-	// … et le mot, qui porte la même information en texte (a11y).
 	await expect(ligne.locator('.enc-detail-mot')).toContainText('en cours');
 
 	expect(errors).toEqual([]);
@@ -195,8 +211,8 @@ test("sans borne de mise en service, une liste déjà commencée n'affiche PAS d
    ni borne posée. `ludaskia_activity` garde pourtant des séances DATÉES par liste
    (`{k:'dictee', ref}`, #498) : une séance sur cette liste PROUVE qu'elle était « en
    cours » à cette date. `friseListeOrtho` s'en sert pour amorcer le cap « en cours » ET
-   la borne de suivi de CETTE ligne — la frise apparaît dès le premier chargement, sans
-   attendre une prochaine séance. */
+   la borne de suivi de CETTE ligne — la méta porte une date dès le premier chargement,
+   sans attendre une prochaine séance. */
 const SEED_ACTIVITE_AMORCE = `(() => {
   const now = Date.now(); const week = 7 * 86400000;
   localStorage.setItem('e2e/ludaskia_activity', JSON.stringify([
@@ -205,7 +221,7 @@ const SEED_ACTIVITE_AMORCE = `(() => {
   ]));
 })();`;
 
-test("amorçage depuis le graphe d'activité : une liste « en cours » sans palier stocké affiche une frise dès la première séance datée", async ({
+test("amorçage depuis le graphe d'activité : une liste « en cours » sans palier stocké obtient quand même sa date « commencée »", async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -216,26 +232,21 @@ test("amorçage depuis le graphe d'activité : une liste « en cours » sans pal
 	const ligne = page.locator(
 		'.enc-detail-item:has([data-lesson="ortho:l-e2e-frise-amorce-encours"])',
 	);
-	const frise = ligne.locator('.enc-frise');
-	await expect(frise).toBeVisible();
-
-	const cells = frise.locator('.enc-frise-cell');
-	await expect(cells).toHaveCount(12);
-	// Les semaines ANTÉRIEURES à cette première séance (il y a 3 semaines) restent creuses :
-	// l'amorçage ne prouve rien avant la date qu'il fournit.
-	await expect(cells.first()).toHaveClass(/enc-frise-inconnu/);
-	await expect(cells.last()).toHaveClass(/enc-frise-en-cours/);
-	await expect(cells.last()).toHaveClass(/enc-frise-courante/);
+	await expect(ligne).toBeVisible();
+	await expect(ligne.locator('.enc-frise')).toHaveCount(0);
+	// La première séance connue (il y a 3 semaines) sert de date « commencée » — l'amorçage
+	// ne prouve rien avant cette date, mais celle-ci suffit à dater la méta dès aujourd'hui.
+	await expect(ligne.locator('.enc-detail-meta')).toContainText(/commencée le/);
 
 	expect(errors).toEqual([]);
 });
 
 /* Ce que l'amorçage ne fait JAMAIS : dater une acquisition. Une liste déjà maîtrisée avant
    ce journal (état courant « acquis ») n'a AUCUN tampon `acquis` stocké — rien ne permet de
-   dater CE franchissement-là, et l'inventer peindrait une semaine au hasard. Elle reste donc
-   sans frise (repli sur la puce et le mot), même avec des séances de dictée datées ; elle en
-   aura une après sa prochaine séance, qui posera pour de bon le tampon `acquis`. */
-test("amorçage depuis le graphe d'activité : une liste déjà « acquise » sans tampon reste sans frise", async ({
+   dater CE franchissement-là, et l'inventer peindrait une semaine au hasard. Sa méta reste
+   donc SANS aucune date, même avec des séances de dictée datées ; elle en aura une après sa
+   prochaine séance, qui posera pour de bon le tampon `acquis`. */
+test("amorçage depuis le graphe d'activité : une liste déjà « acquise » sans tampon garde une méta SANS date", async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -247,15 +258,19 @@ test("amorçage depuis le graphe d'activité : une liste déjà « acquise » sa
 	);
 	await expect(ligne).toBeVisible();
 	await expect(ligne.locator('.enc-frise')).toHaveCount(0);
+	const meta = ligne.locator('.enc-detail-meta');
+	await expect(meta).not.toContainText('acquise');
+	await expect(meta).not.toContainText('commencée');
 	await expect(ligne.locator('.enc-detail-puce.enc-key-acquis')).toBeVisible();
 	await expect(ligne.locator('.enc-detail-mot')).toContainText('acquis');
 
 	expect(errors).toEqual([]);
 });
 
-/* Une liste jamais commencée (aucun mot travaillé) n'a rien à tracer : pas de frise,
-   comme pour une leçon jamais travaillée (cf. encadrant.spec.ts, test 10). */
-test('liste de dictée jamais commencée : pas de frise', async ({ page }) => {
+/* Une liste jamais commencée (aucun mot travaillé) n'a rien à dater : pas de frise (comme
+   pour une leçon jamais travaillée, cf. encadrant.spec.ts, test 10) et pas de segment daté
+   dans la méta non plus. */
+test('liste de dictée jamais commencée : ni frise, ni date dans la méta', async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript((seed) => {
 		const s = JSON.parse(seed);
@@ -274,6 +289,9 @@ test('liste de dictée jamais commencée : pas de frise', async ({ page }) => {
 	const ligne = page.locator('.enc-detail-item:has([data-lesson="ortho:l-e2e-frise-vierge"])');
 	await expect(ligne).toBeVisible();
 	await expect(ligne.locator('.enc-frise')).toHaveCount(0);
+	const meta = ligne.locator('.enc-detail-meta');
+	await expect(meta).not.toContainText('commencée');
+	await expect(meta).not.toContainText('acquise');
 
 	expect(errors).toEqual([]);
 });

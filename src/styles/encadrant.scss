@@ -1227,13 +1227,11 @@ $frise-neutre: #7c8494;
 	color: var(--grey);
 	margin-top: 0.15rem;
 }
-/* Repli des 12 semaines : dernier enfant de la ligne avec le repli des mots, donc pleine
-   largeur, et l'
-		ordre du DOM reste l
-		'ordre visuel (a11y : ordre de focus = ordre de lecture).
-   Il vient AVANT « Voir les mots » : c'
-		est le prolongement direct de la barre du jour qui le précède,
-	alors que la liste des mots est un autre sujet. * / .enc-compo-frise {
+/* Repli des 12 semaines. Pleine largeur, comme le repli des mots avec lequel il partage la fin
+   de la ligne, si bien que le DOM garde le même ordre que le rendu (a11y : ordre de focus =
+   ordre de lecture). Il vient AVANT « Voir les mots », car il prolonge directement la barre du
+   jour qui le précède, là où la liste des mots ouvre un autre sujet. */
+.enc-compo-frise {
 	flex-basis: 100%;
 	margin: 0;
 }

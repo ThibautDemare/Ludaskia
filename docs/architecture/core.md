@@ -8,7 +8,9 @@ et les modules `levels.ts` / `level-combinators.ts` / `niveau-actif.ts` dans
 [Niveaux scolaires](niveaux-scolaires.md). Le **moteur d'orthographe**
 (`core/orthographe/` : `store`, `exercise`, `lessons`, `diff`, `types`, `entourages`
 — bascule et couleur des entourages de l'atelier du mot —, verbes, `banque` —
-projection de la banque d'un profil pour l'espace encadrant, #496, cf. [Espace
+projection de la banque d'un profil pour l'espace encadrant, #496 —, `etapes` —
+lecture de l'escalier DATÉ d'un mot (#545), cf. « Frise de composition d'une liste »
+plus bas —, cf. [Espace
 encadrant](espace-encadrant.md)) a sa propre
 doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
 `entourages`).
@@ -1554,8 +1556,54 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   journal d'activité est borné aux `ACTIVITY_MAX` (200) dernières séances et ne porte de `ref`
   que depuis #498 ; une liste travaillée seulement en révision espacée n'y a aucune entrée à
   son nom (un tour de révision ne référence aucune cible unique, cf. `progress.ts` ci-dessus).
-  Consommée par `listesOrthoProfil` → `RecapListeOrtho.frise`, rendue par la même
-  `friseNotionHTML` que les leçons (cf. [Espace encadrant](espace-encadrant.md)).
+  Consommée par `listesOrthoProfil` → `RecapListeOrtho.frise`. **Depuis #545, ce champ n'est
+  plus dessiné en frise sur une ligne de liste** (`friseNotionHTML` reste réservée aux leçons du
+  catalogue) : il ne sert plus qu'à dater la méta de la ligne (« acquise le… » / « commencée
+  le… »), cf. « Frise de composition d'une liste » ci-dessous et [Espace
+  encadrant](espace-encadrant.md).
+
+  **Frise de COMPOSITION d'une liste** (#545, module `core/orthographe/etapes.ts` + fonction
+  `friseComposition` ci-dessous) : mesure **autre chose** que la frise d'états qui précède, et
+  la remplace à l'écran pour cette raison. L'état d'une liste (à découvrir/en cours/acquis) ne
+  bouge qu'à deux moments (premier mot commencé, dernier mot maîtrisé) : entre les deux, des
+  semaines de travail réel ne changent rien à l'écran. `etapes.ts` porte le PARCOURS d'un mot,
+  un escalier strictement ordonné et exclusif (`ORDRE_ETAPES = ['atelier', ...ORDRE_MODES]`) :
+  **`rangMot(mot, dicteeDispo, at?)`** lit le rang atteint (`'neuf'` ou la dernière étape
+  franchie) à une date donnée — lecture DU PARCOURS (s'arrête à la première marche manquante),
+  pas « la plus haute étape franchie », pour rester cohérente avec `statutMot` sur un état
+  incohérent (mode validé sans son précédent) ; **`composition(mots, dicteeDispo, at?)`**
+  répartit un ensemble de mots entre les rangs `paliersComposition(dicteeDispo)` à cette date —
+  la somme des comptes vaut toujours `mots.length`, ce qui autorise l'UI à dessiner une barre
+  pleine sans jamais se demander où passe le reste.
+
+  **`friseComposition(mots, dicteeDispo, debutSuivi, now)`** (`core/encadrant-stats.ts`) projette
+  cette répartition sur les mêmes **12 colonnes hebdomadaires** (`SEMAINES_FRISE`) que les frises
+  d'états, aux mêmes frontières de semaine (`cellulesFrise`) — un cap franchi le dimanche soir ne
+  doit pas tomber dans une semaine ici et dans l'autre à côté. Deux différences structurelles
+  avec la frise d'états : la **dernière colonne** (semaine en cours) est lue **sans date**, sur
+  les seuls booléens du mot — elle échappe donc à toute borne, ce qui rend la frise utile dès le
+  1er jour, là où une frise d'états sans borne n'a que des cellules creuses et n'est pas
+  dessinée ; et la répartition d'AUJOURD'HUI, pas datée, **grandit rétrospectivement** une liste
+  à laquelle un mot vient d'être ajouté (les colonnes anciennes le comptent aussi, faute d'un
+  historique d'appartenance qui n'existe pas — assumé, la seule alternative étant de produire un
+  chiffre faux). `null` si la liste n'a aucun mot attendu, ou si rien n'est commencé (un mot ne
+  redescend jamais l'escalier, donc les 12 colonnes vaudraient toutes la même chose).
+
+  **Datage PAR MOT** (#545, distinct des deux journaux « par liste » ci-dessus) :
+  `MotOrtho.franchissements?: Franchissements` (`Partial<Record<EtapeOrtho, number>>`) date le
+  PREMIER passage de CE mot à chaque étape, MONOTONE (un mot rejoué ne réécrit pas sa date).
+  Écrit **structurellement** par `marquerAtelierFait`/`validerMode` (`core/orthographe/runner.ts`)
+  — la date est posée À L'INTÉRIEUR de ces deux fonctions plutôt que par leurs appelants, ce qui
+  rend impossible une étape franchie sans date (contrairement au rappel en commentaire qui protège
+  `journaliserPaliersOrtho`, lui non structurel). `debutSuiviEtapes(depuis, banque)`
+  (`core/orthographe/paliers.ts`) calcule la borne de mise en service **une fois par profil**
+  (même principe que `debutSuiviPaliers`) sur une TROISIÈME clé, `ORTHO_ETAPES_DEBUT_KEY`
+  (`ludaskia_orthoEtapesDepuis`) : distincte des deux journaux « par liste » (`ludaskia_paliers`/
+  `ludaskia_paliersOrtho`) parce qu'elle date des franchissements PAR MOT, journal plus récent que
+  les deux autres — les reprendre ferait croire connues des semaines qu'aucune date de mot ne
+  couvre. Cf. [Espace encadrant](espace-encadrant.md) pour le rendu et les décisions de palette/
+  cible tactile, et [Données & profils](donnees-et-profils.md) pour la clé.
+
   **Travaillé récemment** (#520) : `travailRecent(statsRaw, activityRaw, ortho, jours, now)`
   → `GroupeTravail[]` (`{subject, label, cibles: CibleTravaillee[]}`, un groupe par matière
   dans l'ordre de `SUBJECTS`) et son lecteur de stores `travailRecentProfil(profile, jours,

@@ -337,16 +337,68 @@ listes créées par le parent restent toujours visibles**, même « à découvri
 un compte factuel « X/Y mots maîtrisés » est accolé (jamais de %), pour restituer la nuance
 perdue par l'absence de « à renforcer ».
 
-**Frise d'états** (#541) : chaque ligne de liste porte la **même frise** que les leçons du
-catalogue (cf. « Frise d'états par leçon » ci-dessus, `friseNotionHTML` partagé), sur un
-journal daté **dédié** (`ludaskia_paliersOrtho` / `ludaskia_paliersOrthoDepuis`, cf.
-`core/orthographe/paliers.ts` et [Données & profils](donnees-et-profils.md)) — écrit en fin de
-dictée ET de révision espacée, qui rejoue aussi des mots et peut donc faire franchir un cap à
-une liste sans qu'aucune dictée n'ait été lancée. Déduction propre aux listes
-(`friseListeOrtho`, [Logique pure](core.md)) : l'échelle à 3 niveaux n'ayant pas de « à
-renforcer », une semaine suivie avant le 1er cap « en cours » ne peut avoir été que
-« à découvrir » — la frise d'une liste ne montre donc de creux qu'avant sa borne de suivi,
-jamais après.
+**Journal d'états d'une liste** (#541) : `ludaskia_paliersOrtho` / `ludaskia_paliersOrthoDepuis`
+(`core/orthographe/paliers.ts`, cf. [Données & profils](donnees-et-profils.md)) datent le premier
+passage « en cours » puis « acquis » d'une liste, écrits en fin de dictée ET de révision espacée,
+qui rejoue aussi des mots et peut donc faire franchir un cap à une liste sans qu'aucune dictée
+n'ait été lancée. **Depuis #545, ce journal ne dessine plus de frise sur la ligne** —
+`friseNotionHTML` (ci-dessus) reste réservée aux leçons du catalogue ; `RecapListeOrtho.frise`
+(`friseListeOrtho`, [Logique pure](core.md)) survit seulement pour dater la méta de la ligne
+(« acquise le… » / « commencée le… »), les deux seules informations qu'aucun autre champ ne porte
+— la frise de COMPOSITION ci-dessous ne mesure pas la même chose et ne peut pas en tenir lieu.
+
+**Frise de COMPOSITION d'une liste** (#545, remplace l'affichage de la frise d'états sur cette
+ligne) : entre « en cours » et « acquis », des semaines de travail réel ne changeaient rien à
+l'écran — le seul compte affiché (`avancementLecon`) ne retient que les mots dont TOUS les modes
+sont validés. Chaque ligne porte désormais une **barre segmentée** — combien de ses mots sont,
+**aujourd'hui**, à chaque étape du parcours (atelier de découverte, tuiles, affiche/masque, dictée
+si le TTS est dispo) — suivie d'un dénombrement en toutes lettres (`compositionHTML`,
+`ui/encadrant-progression.ts`, sur `composition`/`rangMot`, `core/orthographe/etapes.ts`) : cette
+répartition bouge dès qu'UN mot monte d'une marche, même si personne ne devient « maîtrisé », ce
+que la frise d'états ne pouvait pas montrer. Un repli natif ouvre la même répartition **semaine
+par semaine sur 12 semaines** (`friseComposition`, `core/encadrant-stats.ts`, même fenêtre
+`SEMAINES_FRISE` que les frises d'états ci-dessus) — narrée en **texte visible** (une entrée par
+semaine où la composition CHANGE, pas les douze), jamais colonne par colonne : la frontière la
+plus serrée de la palette (rang sous le sommet contre `--ok`, 1,24:1 en Nuit) ne suffit pas seule
+à porter l'information.
+
+**Datage PAR MOT** (#545, `core/orthographe/etapes.ts`) : chaque mot porte un champ
+`franchissements?: Franchissements` (date du PREMIER passage à chaque étape, MONOTONE — un mot
+rejoué ne réécrit pas sa date), écrit **structurellement** par `marquerAtelierFait`/`validerMode`
+(`core/orthographe/runner.ts`) : c'est à l'INTÉRIEUR de ces deux fonctions, jamais laissé à un
+appelant qui pourrait l'oublier, qu'un franchissement se date — impossible donc de faire
+progresser un mot sans le dater. Troisième borne de mise en service, DISTINCTE des deux journaux
+« par liste » ci-dessus (elle date des franchissements PAR MOT, journal plus récent que les deux
+autres) : `ludaskia_orthoEtapesDepuis` (`ORTHO_ETAPES_DEBUT_KEY`, `debutSuiviEtapes`, cf. [Logique
+pure](core.md) et [Données & profils](donnees-et-profils.md)).
+
+**Un 4e cran « à renforcer » a été écarté pour les listes** (avis `pedagogue-primaire`, #545) :
+côté leçon, ce cran signale une chute de performance RÉCENTE et mesurée (`pctRecent` sous le
+seuil) ; rien d'équivalent n'existe côté liste, où la validation d'un mode reste binaire — le même
+mot aurait donc désigné deux réalités différentes selon qu'on regarde une leçon ou une liste.
+L'échelle d'une liste reste à **3 niveaux** (à découvrir / en cours / acquis, cf. ci-dessus).
+
+**L'axe « solidité dans la durée » reste hors périmètre** (#545) : le palier de révision espacée
+d'un mot est un axe PARALLÈLE au parcours d'apprentissage, pas sa suite — le brancher au bout de
+l'escalier de composition serait faux (un mot « maîtrisé » peut être fragile en révision, et
+inversement). Le pédagogue classait pourtant cet axe premier en utilité pour un parent ; le besoin
+est noté ici pour ne pas être ré-instruit à chaque relecture — aucune solution retenue à ce stade.
+
+**Rendu retenu** (avis designer) : la frise de composition doit se DISTINGUER de la frise d'états
+au premier coup d'œil, sans quoi on lit l'une avec la grille de l'autre. Distinction
+**structurelle avant d'être chromatique** : la frise d'états est un aplat unique par semaine dont
+la HAUTEUR varie avec le rang atteint ; la frise de composition est une barre **segmentée** à
+hauteur constante, toujours pleine — c'est une répartition, sa somme vaut toujours l'effectif de
+la liste. Palette dédiée (`--compo-atelier` / `--compo-tuiles` / `--compo-cache`,
+`styles/base.scss`, relevée en thème Nuit) en **rampe monochrome** — une seule teinte, trois
+clartés — là où la frise d'états voisine est multi-teintes : elle encode un ESCALIER ordonné, pas
+des catégories. Le SOMMET rompt la rampe et prend `--ok` : « combien de mots sont maîtrisés » est
+la question que l'adulte pose en premier. Le repli des 12 semaines porte une cible de **36 px**,
+et non les 44 px habituels de l'espace encadrant : depuis #545 une ligne de liste porte DEUX
+replis l'un sous l'autre (mots + semaines), et 88 px de chrome cumulé espaçait tellement les
+listes qu'on n'en voyait plus que deux à l'écran ; 36 px reste très au-dessus du plancher WCAG
+2.5.8 (24 px), sur un écran d'adulte majoritairement tenu à la souris — le 44 px reste la règle
+pour ce que l'ENFANT touche (`styles/encadrant.scss`).
 
 **Amorçage par l'historique de dictée** : à la mise en service de ce journal, un profil déjà
 actif n'a par construction AUCUNE donnée datée pour ses listes déjà travaillées — sans

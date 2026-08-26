@@ -320,6 +320,39 @@ toute ouverture de balise — plus « [object Object] », marque de l'oubli inve
 La règle ESLint, elle, vit dans `eslint.config.js` et exige que toute affectation à
 `.innerHTML` soit de la forme `X.balisage`.
 
+### Commentaires SCSS qui avalent du code (36bf465)
+
+`tests/scss-commentaires-gate.test.ts` répond à un défaut qui a traversé toute la chaîne
+existante sans un mot : un commentaire SCSS fermé par « * / » (avec une espace) au lieu du
+terminateur laisse Sass chercher plus loin, trouver celui d'un commentaire **suivant**, et avaler
+entre les deux une règle CSS complète — qui cesse simplement d'exister dans la sortie. Le cas réel
+(`.enc-compo-frise` dans `encadrant.scss`) passait `prettier --check` (qui avait même
+**reformaté** la prose avalée, la rendant illisible sans jamais rien signaler), le build, et
+`npm test`/`lint`/`typecheck`. Rien dans l'outillage ne remarquait une règle CSS qui disparaît.
+
+**Le déséquilibre d'ouvertures/fermetures n'est PAS le signal** : le défaut d'origine était
+parfaitement équilibré (deux `/*`, deux `*/`) — c'est le VOL de terminateur qui compte, pas un
+comptage global.
+
+Trois filets, sans aucune exemption à maintenir :
+
+1. **Mécanisme.** Un commentaire fautif contient forcément le `/*` de celui dont il a volé le
+   terminateur (0 faux positif sur les 911 commentaires bloc du dépôt, mesure du 26/08/2026).
+2. **Contenu.** Une ligne de code reconnaissable, seule sur sa ligne, à l'intérieur d'un
+   commentaire (ouverture de règle, fermeture de bloc, déclaration `propriété: valeur;`,
+   directive `@include …;`).
+3. **Oracle Sass.** Chaque feuille est réellement **compilée**, et les deux filets textuels
+   rejoués sur le CSS produit — Sass conserve les commentaires « loud » dans sa sortie, donc une
+   règle avalée s'y retrouve verbatim, à l'intérieur d'un commentaire. Ce filet ferme un trou que
+   même #614 laissait ouvert : rien dans `npm test` ne compilait les feuilles avant lui.
+
+**Ce qu'il ne voit pas**, à ne pas surestimer : « la règle existe dans le CSS produit » n'est pas
+« la règle s'applique à l'élément visé ». Passent donc inaperçus un mixin plus jamais inclus, une
+branche `@if` jamais prise, un sélecteur qui ne correspond à aucun HTML, et une règle écrasée plus
+loin par une autre. Il ne vérifie **aucune valeur** : `flex-basis: 100%` devenu `flex-basis: 10%`
+est invisible ici (domaine du e2e et de la relecture). Portée limitée aux `.scss` de `src/` : ni
+le CSS inline d'`index.html`, ni celui d'un futur composant.
+
 ### Contraste AA des tokens de couleur (#576, #582)
 
 `tests/contraste-tokens.test.ts` lit les tokens dans `base.scss`/`themes.scss` et éprouve

@@ -20,6 +20,11 @@
      trié du plus récent au plus ancien, de façon DÉTERMINISTE (l'ordre des clés de
      stockage ne doit jamais se voir à l'écran).
 
+   Les CAPS FRANCHIS (#536) ne sont PAS éprouvés ici : ce fichier porte sur la sélection
+   et le tri des cibles, et passe donc par `travailSansPaliers` (journaux vides, donc
+   `capFranchi` nul partout — ce que vérifie le dernier describe). La mention elle-même,
+   ses fenêtres et ses bornes vivent dans `travail-recent-cap.test.ts`.
+
    Les horodatages sont construits avec `new Date(a, m, j, h, min)` (heure LOCALE) :
    un décalage fixe en millisecondes présupposerait des jours de 24 h et rendrait les
    tests dépendants du fuseau.
@@ -30,6 +35,7 @@ import {
 	travailRecentProfil,
 	niveauProfilMatiere,
 	type GroupeTravail,
+	type SourcesCapFranchi,
 } from '../src/core/encadrant-stats';
 import { getAllLessons, type LessonDef, type SubjectId } from '../src/core/catalog';
 import { LESSON_STATS_KEY, ACTIVITY_KEY } from '../src/core/progress';
@@ -46,6 +52,7 @@ import {
 import { createListe, loadOrtho } from '../src/core/orthographe/store';
 import { ORTHO_PREDEF } from '../src/data/francais/orthographe';
 import type { LessonStat } from '../src/core/maitrise';
+import type { OrthoState } from '../src/core/orthographe/types';
 
 beforeEach(() => {
 	localStorage.clear();
@@ -77,6 +84,28 @@ const seanceBilan = (t: number) => ({ t, k: 'bilan' });
 const seanceSprint = (t: number) => ({ t, k: 'sprint' });
 const seanceDictee = (t: number, ref: string) => ({ t, k: 'dictee', ref });
 
+/* Sources de la mention NEUTRALISÉES (#536) : les deux journaux de paliers sont vides, donc
+   aucun cap n'est daté nulle part et aucune ligne ne peut porter de mention — quel que soit
+   l'état courant des cibles, et donc quelles que soient les étoiles et la dispo du TTS, qui ne
+   servent qu'à plafonner un cap DÉJÀ daté. Ce raccourci dit explicitement « ce test-ci n'a pas
+   d'opinion sur les caps » ; il ne masque rien, puisque le dernier describe vérifie qu'un
+   journal vide donne bien `capFranchi: null` sur TOUTES les cibles produites ici. */
+const SANS_PALIERS: SourcesCapFranchi = {
+	paliersLecons: {},
+	paliersOrtho: {},
+	etoiles: {},
+	dicteeDispo: false,
+};
+function travailSansPaliers(
+	statsRaw: Record<string, LessonStat>,
+	activityRaw: unknown,
+	ortho: OrthoState | null,
+	jours: number,
+	now: number,
+): GroupeTravail[] {
+	return travailRecent(statsRaw, activityRaw, ortho, SANS_PALIERS, jours, now);
+}
+
 const groupe = (res: GroupeTravail[], subject: SubjectId) => res.find((g) => g.subject === subject);
 const labels = (res: GroupeTravail[], subject: SubjectId) =>
 	(groupe(res, subject)?.cibles ?? []).map((c) => c.label);
@@ -105,7 +134,7 @@ function predefDeNiveau(niveau: 'ce2' | 'cm1') {
 
 describe('travailRecent — fenêtre en jours calendaires', () => {
 	it('2 jours : hier 23 h 59 ET ce matin sont dedans, avant-hier midi non (bien qu’à moins de 48 h)', () => {
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{
 				'math-doubles@ce2': stat(AUJ(8, 15)),
 				'math-complements@ce2': stat(HIER(23, 59)),
@@ -120,7 +149,7 @@ describe('travailRecent — fenêtre en jours calendaires', () => {
 	});
 
 	it('1 jour (« Aujourd’hui ») : hier 23 h 59 est exclu, ce matin 00 h 00 inclus', () => {
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{
 				'math-doubles@ce2': stat(AUJ(0, 0)), // minuit pile aujourd'hui
 				'math-complements@ce2': stat(HIER(23, 59)), // 31 min plus tôt seulement
@@ -136,7 +165,7 @@ describe('travailRecent — fenêtre en jours calendaires', () => {
 	it('la borne basse est INCLUSIVE : minuit pile du 1er jour de la fenêtre compte', () => {
 		// Fenêtre de 2 jours depuis le 15 mars → premier jour = 14 mars, borne = 14 mars 00 h 00.
 		const borne = new Date(2026, 2, 14, 0, 0, 0, 0).getTime();
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{
 				'math-doubles@ce2': stat(borne), // sur la borne
 				'math-complements@ce2': stat(borne - 1), // 1 ms avant
@@ -150,7 +179,7 @@ describe('travailRecent — fenêtre en jours calendaires', () => {
 	});
 
 	it('7 jours : le 7e jour révolu est dedans, le 8e dehors', () => {
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{
 				'math-doubles@ce2': stat(IL_Y_A_6_J(8, 0)), // 9 mars = 7e jour de la fenêtre
 				'math-complements@ce2': stat(IL_Y_A_7_J(23, 30)), // 8 mars = hors fenêtre
@@ -167,7 +196,7 @@ describe('travailRecent — fenêtre en jours calendaires', () => {
 		// Lundi 30 mars 2026, lendemain du passage à l'heure d'été en Europe : la veille
 		// n'a duré que 23 h. Fenêtre de 2 jours → borne = 29 mars 00 h 00 LOCAL.
 		const lundi = new Date(2026, 2, 30, 9, 0, 0, 0).getTime();
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{
 				'math-doubles@ce2': stat(new Date(2026, 2, 29, 0, 30, 0, 0).getTime()), // dans la fenêtre
 				'math-complements@ce2': stat(new Date(2026, 2, 28, 23, 30, 0, 0).getTime()), // veille de la veille
@@ -181,7 +210,7 @@ describe('travailRecent — fenêtre en jours calendaires', () => {
 	});
 
 	it('rien dans la fenêtre → aucun groupe (pas un groupe vide)', () => {
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ 'math-doubles@ce2': stat(IL_Y_A_7_J(10, 0)) },
 			[seanceBilan(IL_Y_A_7_J(10, 0))],
 			null,
@@ -192,13 +221,13 @@ describe('travailRecent — fenêtre en jours calendaires', () => {
 	});
 
 	it('stats vides et journal vide → aucun groupe', () => {
-		expect(travailRecent({}, [], null, 7, NOW)).toEqual([]);
+		expect(travailSansPaliers({}, [], null, 7, NOW)).toEqual([]);
 	});
 });
 
 describe('travailRecent — appartenance (lastAt) vs compte de séances (journal)', () => {
 	it('compte les séances portant la ref, DANS la fenêtre seulement', () => {
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ 'math-doubles@ce2': stat(AUJ(9, 0)) },
 			[
 				seanceLecon(AUJ(9, 0), 'math-doubles'),
@@ -214,7 +243,7 @@ describe('travailRecent — appartenance (lastAt) vs compte de séances (journal
 	});
 
 	it('leçon travaillée seulement en bilan ou en sprint : seances = null, JAMAIS 0', () => {
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ 'math-doubles@ce2': stat(AUJ(9, 0)), 'math-moities@ce2': stat(AUJ(9, 0)) },
 			[seanceBilan(AUJ(9, 0)), seanceSprint(AUJ(9, 0))], // aucune ref : cibles multiples
 			null,
@@ -230,22 +259,28 @@ describe('travailRecent — appartenance (lastAt) vs compte de séances (journal
 	it('journal vide ou à l’ANCIEN format (horodatages nus) : la leçon est listée, compte inconnu', () => {
 		const stats = { 'math-doubles@ce2': stat(AUJ(9, 0)) };
 		expect(
-			cible(travailRecent(stats, [], null, 2, NOW), 'math', 'math-doubles')!.seances,
+			cible(travailSansPaliers(stats, [], null, 2, NOW), 'math', 'math-doubles')!.seances,
 		).toBeNull();
 		// Ancien format (#319/#498) : ni type ni ref → inattribuable, mais rien ne casse.
-		const ancien = travailRecent(stats, [AUJ(9, 0), AUJ(9, 5)], null, 2, NOW);
+		const ancien = travailSansPaliers(stats, [AUJ(9, 0), AUJ(9, 5)], null, 2, NOW);
 		expect(ids(ancien, 'math')).toEqual(['math-doubles']);
 		expect(cible(ancien, 'math', 'math-doubles')!.seances).toBeNull();
 	});
 
 	it('journal illisible (non tableau) : ignoré, la leçon reste listée', () => {
-		const res = travailRecent({ 'math-doubles@ce2': stat(AUJ(9, 0)) }, 'corrompu', null, 2, NOW);
+		const res = travailSansPaliers(
+			{ 'math-doubles@ce2': stat(AUJ(9, 0)) },
+			'corrompu',
+			null,
+			2,
+			NOW,
+		);
 		expect(ids(res, 'math')).toEqual(['math-doubles']);
 		expect(cible(res, 'math', 'math-doubles')!.seances).toBeNull();
 	});
 
 	it('une ref du journal ne suffit PAS à faire apparaître une leçon sans lastAt dans la fenêtre', () => {
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{
 				'math-doubles@ce2': statSansDate(), // donnée antérieure au suivi de la dernière fois
 				'math-moities@ce2': stat(IL_Y_A_7_J(10, 0)), // date connue, hors fenêtre
@@ -259,7 +294,7 @@ describe('travailRecent — appartenance (lastAt) vs compte de séances (journal
 	});
 
 	it('derniereFois est la date des stats (dernière session, tous chemins confondus)', () => {
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ 'math-doubles@ce2': stat(AUJ(9, 42)) },
 			[seanceLecon(HIER(18, 0), 'math-doubles')],
 			null,
@@ -270,7 +305,7 @@ describe('travailRecent — appartenance (lastAt) vs compte de séances (journal
 	});
 
 	it('leçon retirée du catalogue → écartée, les autres restent', () => {
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ 'math-lecon-disparue@ce2': stat(AUJ(9, 0)), 'math-doubles@ce2': stat(AUJ(8, 0)) },
 			[seanceLecon(AUJ(9, 0), 'math-lecon-disparue')],
 			null,
@@ -287,7 +322,7 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 			(l) => l.subject === 'math' && l.levels.includes('cm1') && l.id !== 'math-doubles',
 			'de maths CM1',
 		);
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ 'math-doubles@ce2': stat(AUJ(9, 0)), [mathCm1.id + '@cm1']: stat(AUJ(8, 0)) },
 			[],
 			null,
@@ -302,7 +337,7 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 			(l) => l.levels.includes('ce2') && l.levels.includes('cm1'),
 			'portant CE2 et CM1',
 		);
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{
 				[deuxNiveaux.id + '@ce2']: stat(HIER(17, 0)), // clé la plus ANCIENNE en tête
 				[deuxNiveaux.id + '@cm1']: stat(AUJ(9, 30)),
@@ -322,7 +357,7 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 			(l) => l.levels.includes('ce2') && l.levels.includes('cm1'),
 			'portant CE2 et CM1',
 		);
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{
 				[deuxNiveaux.id + '@cm1']: stat(AUJ(9, 30)), // clé la plus RÉCENTE en tête
 				[deuxNiveaux.id + '@ce2']: stat(HIER(17, 0)),
@@ -342,7 +377,7 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 			(l) => l.levels.includes('ce2') && l.levels.includes('cm1'),
 			'portant CE2 et CM1',
 		);
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{
 				[deuxNiveaux.id + '@ce2']: stat(IL_Y_A_7_J(10, 0)), // hors fenêtre
 				[deuxNiveaux.id + '@cm1']: stat(HIER(18, 0)), // dedans
@@ -359,10 +394,10 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 
 	it('clé héritée SANS niveau (données d’avant le namespacing) : listée, et fusionnée avec la clé namespacée', () => {
 		expect(
-			ids(travailRecent({ 'math-doubles': stat(AUJ(9, 0)) }, [], null, 2, NOW), 'math'),
+			ids(travailSansPaliers({ 'math-doubles': stat(AUJ(9, 0)) }, [], null, 2, NOW), 'math'),
 		).toEqual(['math-doubles']);
 		// Migration en cours : l'ancienne clé et la nouvelle désignent la MÊME leçon.
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ 'math-doubles': stat(HIER(17, 0)), 'math-doubles@ce2': stat(AUJ(9, 0)) },
 			[],
 			null,
@@ -380,7 +415,7 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 			(l) => l.levels.includes('ce2') && l.levels.includes('cm1'),
 			'portant CE2 et CM1',
 		);
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{
 				[deuxNiveaux.id + '@ce2']: stat(HIER(17, 0)),
 				[deuxNiveaux.id + '@cm1']: stat(AUJ(9, 30)),
@@ -397,7 +432,7 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 describe('travailRecent — dictées (journal seul, rattachées au français)', () => {
 	it('dictée prédéfinie : nommée, comptée, sans stats de leçon', () => {
 		const predef = predefDeNiveau('ce2');
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{},
 			[seanceDictee(AUJ(9, 0), predef.id), seanceDictee(HIER(19, 0), predef.id)],
 			null,
@@ -414,13 +449,14 @@ describe('travailRecent — dictées (journal seul, rattachées au français)', 
 			contexte: '', // une liste n'a pas de catégorie du catalogue ; le mot vient de l'UI
 			seances: 2,
 			derniereFois: AUJ(9, 0), // la plus récente des deux séances
+			capFranchi: null, // journal de paliers vide : rien à annoncer (#536)
 		});
 	});
 
 	it('liste créée par le parent : nommée depuis l’état orthographe du profil', () => {
 		const etat = loadOrtho();
 		const liste = createListe(etat, 'Mots du lundi', [{ mot: 'chat' }, { mot: 'chien' }]);
-		const res = travailRecent({}, [seanceDictee(AUJ(9, 0), liste.id)], etat, 2, NOW);
+		const res = travailSansPaliers({}, [seanceDictee(AUJ(9, 0), liste.id)], etat, 2, NOW);
 		expect(labels(res, 'francais')).toEqual(['Mots du lundi']);
 		expect(cible(res, 'francais', liste.id)!.kind).toBe('dictee');
 	});
@@ -429,7 +465,7 @@ describe('travailRecent — dictées (journal seul, rattachées au français)', 
 		const etat = loadOrtho();
 		const liste = createListe(etat, 'Mots du lundi', [{ mot: 'chat' }]);
 		const predef = predefDeNiveau('ce2');
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{},
 			[seanceDictee(AUJ(9, 0), liste.id), seanceDictee(AUJ(9, 30), predef.id)],
 			null, // pas d'état ortho lisible
@@ -440,7 +476,7 @@ describe('travailRecent — dictées (journal seul, rattachées au français)', 
 	});
 
 	it('liste supprimée depuis (id non résolu en libellé) → écartée', () => {
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{},
 			[seanceDictee(AUJ(9, 0), 'liste-supprimee')],
 			loadOrtho(),
@@ -460,7 +496,7 @@ describe('travailRecent — dictées (journal seul, rattachées au français)', 
 			[autreType, dictee], // l'entrée « dictee » n'est PAS la première de la ref
 			[dictee, autreType],
 		]) {
-			const res = travailRecent({}, journal, null, 2, NOW);
+			const res = travailSansPaliers({}, journal, null, 2, NOW);
 			expect(ids(res, 'francais')).toEqual([predef.id]);
 			expect(cible(res, 'francais', predef.id)!.seances).toBe(2);
 			expect(cible(res, 'francais', predef.id)!.derniereFois).toBe(AUJ(9, 0));
@@ -469,13 +505,13 @@ describe('travailRecent — dictées (journal seul, rattachées au français)', 
 
 	it('dictée hors fenêtre → écartée', () => {
 		const predef = predefDeNiveau('ce2');
-		const res = travailRecent({}, [seanceDictee(HIER(19, 0), predef.id)], null, 1, NOW);
+		const res = travailSansPaliers({}, [seanceDictee(HIER(19, 0), predef.id)], null, 1, NOW);
 		expect(res).toEqual([]);
 	});
 
 	it('dictée d’un autre niveau : affichée aussi (aucun filtre de niveau)', () => {
 		const cm1 = predefDeNiveau('cm1');
-		const res = travailRecent({}, [seanceDictee(AUJ(9, 0), cm1.id)], null, 2, NOW);
+		const res = travailSansPaliers({}, [seanceDictee(AUJ(9, 0), cm1.id)], null, 2, NOW);
 		expect(ids(res, 'francais')).toEqual([cm1.id]);
 	});
 
@@ -485,7 +521,7 @@ describe('travailRecent — dictées (journal seul, rattachées au français)', 
 			(l) => l.subject === 'francais' && l.levels.includes('ce2'),
 			'de français CE2',
 		);
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ [frCe2.id + '@ce2']: stat(AUJ(8, 0)) },
 			[seanceDictee(AUJ(9, 30), predef.id)], // dictée plus récente que la leçon
 			null,
@@ -504,7 +540,7 @@ describe('travailRecent — groupes par matière', () => {
 		);
 		// Le français est inséré EN PREMIER dans les stats : l'ordre de sortie ne doit pas
 		// refléter l'ordre de découverte des clés.
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ [frCe2.id + '@ce2']: stat(AUJ(9, 0)), 'math-doubles@ce2': stat(AUJ(8, 0)) },
 			[],
 			null,
@@ -517,7 +553,7 @@ describe('travailRecent — groupes par matière', () => {
 	});
 
 	it('matière non travaillée → absente (pas de groupe vide)', () => {
-		const res = travailRecent({ 'math-doubles@ce2': stat(AUJ(9, 0)) }, [], null, 2, NOW);
+		const res = travailSansPaliers({ 'math-doubles@ce2': stat(AUJ(9, 0)) }, [], null, 2, NOW);
 		expect(res.map((g) => g.subject)).toEqual(['math']);
 	});
 });
@@ -528,7 +564,7 @@ describe('travailRecent — groupes par matière', () => {
    catégorie annoncée là où il n'y en a pas. */
 describe('travailRecent — nature de la cible (kind) et contexte', () => {
 	it('leçon du catalogue → kind « lecon » et contexte = libellé de sa catégorie', () => {
-		const res = travailRecent({ 'math-doubles@ce2': stat(AUJ(9, 0)) }, [], null, 2, NOW);
+		const res = travailSansPaliers({ 'math-doubles@ce2': stat(AUJ(9, 0)) }, [], null, 2, NOW);
 		const doubles = cible(res, 'math', 'math-doubles')!;
 		expect(doubles.kind).toBe('lecon');
 		expect(doubles.contexte).toBe('Calcul mental');
@@ -536,7 +572,7 @@ describe('travailRecent — nature de la cible (kind) et contexte', () => {
 
 	it('dictée → kind « dictee » et contexte VIDE (le mot « Dictée » appartient à l’UI)', () => {
 		const predef = predefDeNiveau('ce2');
-		const res = travailRecent({}, [seanceDictee(AUJ(9, 0), predef.id)], null, 2, NOW);
+		const res = travailSansPaliers({}, [seanceDictee(AUJ(9, 0), predef.id)], null, 2, NOW);
 		const dictee = cible(res, 'francais', predef.id)!;
 		expect(dictee.kind).toBe('dictee');
 		expect(dictee.contexte).toBe('');
@@ -548,7 +584,7 @@ describe('travailRecent — nature de la cible (kind) et contexte', () => {
 			(l) => l.subject === 'francais' && l.levels.includes('ce2'),
 			'de français CE2',
 		);
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ 'math-doubles@ce2': stat(AUJ(9, 0)), [frCe2.id + '@ce2']: stat(AUJ(8, 30)) },
 			[seanceDictee(AUJ(9, 30), predef.id)],
 			null,
@@ -571,7 +607,7 @@ describe('travailRecent — nature de la cible (kind) et contexte', () => {
 
 describe('travailRecent — tri et déterminisme', () => {
 	it('la plus récemment travaillée en tête', () => {
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{
 				'math-moities@ce2': stat(HIER(17, 0)),
 				'math-doubles@ce2': stat(AUJ(9, 0)),
@@ -589,7 +625,7 @@ describe('travailRecent — tri et déterminisme', () => {
 		// Un bilan écrit la MÊME date sur toutes ses leçons ; l'une d'elles a en plus été
 		// jouée seule deux fois dans la fenêtre.
 		const bilan = AUJ(9, 0);
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ 'math-complements@ce2': stat(bilan), 'math-moities@ce2': stat(bilan) },
 			[
 				seanceBilan(bilan),
@@ -611,7 +647,7 @@ describe('travailRecent — tri et déterminisme', () => {
 		// Cas réel : un bilan date deux leçons à la ms près, l'une d'elles ayant aussi été
 		// jouée seule (donc comptée). L'autre reste « travaillée, compte inconnu ».
 		const bilan = AUJ(9, 0);
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ 'math-complements@ce2': stat(bilan), 'math-moities@ce2': stat(bilan) },
 			[seanceBilan(bilan), seanceLecon(HIER(18, 0), 'math-moities')],
 			null,
@@ -625,14 +661,14 @@ describe('travailRecent — tri et déterminisme', () => {
 	it('à égalité complète : ordre alphabétique français, indépendant de l’ordre des clés', () => {
 		const t = AUJ(9, 0);
 		const attendu = ['Complément à 10/100/1000', 'Doubles', 'Moitiés'];
-		const res1 = travailRecent(
+		const res1 = travailSansPaliers(
 			{ 'math-moities@ce2': stat(t), 'math-doubles@ce2': stat(t), 'math-complements@ce2': stat(t) },
 			[],
 			null,
 			2,
 			NOW,
 		);
-		const res2 = travailRecent(
+		const res2 = travailSansPaliers(
 			{ 'math-complements@ce2': stat(t), 'math-moities@ce2': stat(t), 'math-doubles@ce2': stat(t) },
 			[],
 			null,
@@ -645,7 +681,7 @@ describe('travailRecent — tri et déterminisme', () => {
 
 	it('chaque matière est triée pour elle-même', () => {
 		const predef = predefDeNiveau('ce2');
-		const res = travailRecent(
+		const res = travailSansPaliers(
 			{ 'math-doubles@ce2': stat(HIER(17, 0)), 'math-moities@ce2': stat(AUJ(9, 0)) },
 			[seanceDictee(HIER(18, 0), predef.id)],
 			null,
@@ -738,5 +774,39 @@ describe('travailRecentProfil — lecture des stores du profil consulté', () =>
 
 	it('profil sans aucune donnée → aucun groupe', () => {
 		expect(travailRecentProfil(activeProfile(), 7, NOW)).toEqual([]);
+	});
+});
+
+/* Contrepartie du raccourci `travailSansPaliers` : sans journal, aucune ligne n'annonce
+   quoi que ce soit. Sans ce garde-fou, un défaut posé par erreur (« en cours » quand le
+   journal ne dit rien) collerait une mention sur CHAQUE ligne du bloc — l'inverse exact de
+   ce que le pédagogue a autorisé. */
+describe('travailRecent — journaux de paliers vides (#536, critère 1)', () => {
+	it('aucun cap daté nulle part → capFranchi vaut null sur toutes les cibles', () => {
+		const predef = predefDeNiveau('ce2');
+		const frCe2 = leconTelleQue(
+			(l) => l.subject === 'francais' && l.levels.includes('ce2'),
+			'de français CE2',
+		);
+		const res = travailSansPaliers(
+			{ 'math-doubles@ce2': stat(AUJ(9, 0)), [frCe2.id + '@ce2']: stat(HIER(18, 0)) },
+			[seanceDictee(AUJ(9, 30), predef.id)],
+			null,
+			7,
+			NOW,
+		);
+		const toutes = res.flatMap((g) => g.cibles);
+		expect(toutes).toHaveLength(3); // prémisse : les trois familles de lignes sont là
+		expect(toutes.map((c) => c.capFranchi)).toEqual([null, null, null]);
+	});
+
+	it('profil sans aucun journal de paliers stocké → même silence de bout en bout', () => {
+		const a = activeProfile();
+		lsSetRaw(
+			a.uuid + '/' + LESSON_STATS_KEY,
+			JSON.stringify({ 'math-doubles@ce2': stat(AUJ(9, 0)) }),
+		);
+		const res = travailRecentProfil(profilRelu(a.uuid), 7, NOW);
+		expect(cible(res, 'math', 'math-doubles')!.capFranchi).toBeNull();
 	});
 });

@@ -18,10 +18,12 @@ import { type Profile } from '../core/profiles';
 import {
 	libelleDerniereFois,
 	travailRecentProfil,
+	type CapFranchi,
 	type CibleTravaillee,
 	type GroupeTravail,
 } from '../core/encadrant-stats';
 import { container, renderEspace } from './encadrant-commun';
+import { dicteeDisponible } from './tts';
 import { segmentHTML } from './segment';
 import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 
@@ -49,7 +51,11 @@ const MAX_TRAVAIL_PAR_MATIERE = 6;
 export function travailHTML(consulte: Profile): SafeHtml {
 	const { jours, phrase } = periodeTravail();
 	const now = Date.now();
-	const groupes = travailRecentProfil(consulte, jours, now);
+	// `dicteeDisponible()` : l'état courant d'une liste en dépend (un mode requis en moins sans
+	// voix de synthèse), et cet état sert à ne pas annoncer un cap que la liste ne porte plus
+	// (#536, cf. capAnnoncable). Le paramètre a un défaut `false`, donc l'oublier ne casse rien
+	// bruyamment — il rendrait seulement l'état des listes plus optimiste qu'il ne l'est.
+	const groupes = travailRecentProfil(consulte, jours, now, dicteeDisponible());
 	const total = groupes.reduce((s, g) => s + g.cibles.length, 0);
 	const resume = resumeTravail(groupes, phrase);
 	// Bascule de période : mêmes fenêtres que le filtre des erreurs, sans « Tout ».
@@ -118,6 +124,35 @@ function groupeTravailHTML(g: GroupeTravail, now: number): SafeHtml {
       ${repli}`;
 }
 
+/* Mot de la mention de cap (#536). Chaque terme est repris d'ailleurs sur cet écran plutôt
+   qu'inventé, et les trois choix ont une raison qui a déjà servi :
+
+   Au FÉMININ, le sujet implicite étant la leçon ou la dictée — convention posée par
+   `MOT_CELLULE` (encadrant-progression) et déjà appliquée à la suite de libellés masculins dans
+   la méta de `maitriseHTML`. L'accord tient donc même après « Le passé composé ».
+
+   « RÉCEMMENT » et non « tout juste » : « tout juste » a deux sens en français, temporel (« à
+   l'instant ») et restrictif (« à peine, de justesse »), et le second se lirait comme un
+   jugement sur la solidité de l'acquisition — l'inverse de ce que cette mention veut dire.
+   « Récemment » est déjà le mot de la fraîcheur d'un état sur ce même écran (« N maîtrisées
+   récemment », dans le bandeau de chiffres-clés).
+
+   « PASSÉE EN COURS » et non « commencée », et c'est le point qui m'a échappé au premier jet :
+   l'échelle d'une leçon compte un palier « à renforcer » ENTRE « à découvrir » et « en cours »,
+   si bien qu'une leçon peut être travaillée depuis des semaines et ne franchir « en cours » que
+   maintenant. Ce n'est alors pas un commencement, c'est une progression, et `EVENEMENT_CELLULE`
+   dit déjà « passée en cours » pour exactement ce fait. « Commencée » ne serait exact que pour
+   une LISTE, dont l'échelle n'a que trois crans — or cette table ne distingue pas les deux
+   familles, donc il faut le mot qui reste vrai des deux côtés (avis langue).
+
+   Deux entrées et jamais plus : ce sont les deux seuls franchissements que les journaux datent,
+   et les deux seuls que le pédagogue a autorisés à figurer ici. Rien de bas ni d'intermédiaire
+   n'a de mot dans cette table, ce qui rend le critère 6 impossible à violer par inadvertance. */
+const MOT_CAP: Record<CapFranchi, string> = {
+	'en-cours': 'récemment passée en cours',
+	acquis: 'récemment acquise',
+};
+
 /* Une ligne : libellé de la leçon (ou de la liste de dictée) + méta factuelle. Le compte
    est OMIS quand il est inconnu (leçon travaillée dans un bilan ou un sprint, qui ne
    référencent pas une cible unique) — mieux vaut une méta plus courte qu'un chiffre faux.
@@ -135,9 +170,18 @@ function ligneTravailHTML(c: CibleTravaillee, now: number): SafeHtml {
 	]
 		.filter(Boolean)
 		.join(' · ');
+	// La mention de cap (#536), SEULE exception à la règle « aucun état sur ces lignes ». Elle
+	// est dans la méta et non en badge : un badge se lit comme un état permanent, alors que le
+	// fait est ponctuel et daté (« ça a bougé pendant la fenêtre affichée »). Et elle arrive en
+	// TÊTE de la méta, parce que c'est la seule chose de la ligne qui ne soit pas de l'activité.
+	// Rien n'est ajouté quand `capFranchi` est nul, ce qui est le cas ordinaire : une mention
+	// vide sur chaque ligne rendrait le signal invisible là où il existe.
+	const complete = c.capFranchi
+		? html`<span class="enc-trav-cap">${MOT_CAP[c.capFranchi]}</span> · ${meta}`
+		: html`${meta}`;
 	return html`<li class="enc-trav-item">
       <span class="enc-trav-lab">${c.label}</span>
-      <span class="enc-trav-meta">${meta}</span>
+      <span class="enc-trav-meta">${complete}</span>
     </li>`;
 }
 

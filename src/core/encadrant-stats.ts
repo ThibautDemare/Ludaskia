@@ -377,6 +377,78 @@ export function echelleActivite(max: number): { top: number; step: number; ticks
    est normalement encore « à découvrir », un badge par ligne afficherait donc un niveau
    bas sur ce qu'il y a de plus récent. C'est une photo d'activité, le jugement vit dans
    l'accordéon. Pur (`now` injecté). */
+/* Cap positif franchi par une cible (#536). Deux valeurs seulement, et jamais rien de bas :
+   ce sont les deux seuls franchissements que les journaux de paliers datent, et ce sont aussi
+   les deux seuls qu'on accepte d'annoncer ici. */
+export type CapFranchi = 'en-cours' | 'acquis';
+
+/* Cap le plus HAUT franchi depuis `seuil`, ou `null` si aucun ne l'a été dans cette fenêtre.
+   Comparaison directe des horodatages à une borne en MILLISECONDES, sans passer par la frise :
+   celle-ci raisonne en semaines calendaires alors que ce bloc-ci offre des fenêtres de 1, 2 ou
+   7 jours (`joursTravail`), et un « aujourd'hui » qui se lirait sur une semaine annoncerait des
+   progrès vieux de six jours.
+   Le plus haut des deux, et non les deux : une notion acquise ce matin a franchi « en cours »
+   dans la même fenêtre si elle a démarré hier, et « commencée puis acquise » sur une seule ligne
+   raconterait deux fois le même élan. Pur. */
+export function capDansFenetre(
+	paliers: PaliersNotion | undefined,
+	seuil: number,
+): CapFranchi | null {
+	// Borne basse INCLUSIVE, comme celle qui retient la ligne elle-même (`lastAt >= seuil`) :
+	// sinon la mention arriverait un jour après la ligne qu'elle décore. Pas de borne haute —
+	// rien dans ce bloc ne recale un horodatage sur `now` — mais `Infinity` est rejeté, comme
+	// partout ailleurs dans ce module.
+	const dans = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= seuil;
+	if (dans(paliers?.acquis)) return 'acquis';
+	if (dans(paliers?.enCours)) return 'en-cours';
+	return null;
+}
+
+/* Le plus haut de deux caps. Sert quand une même leçon a PLUSIEURS clés de journal (travaillée
+   sous deux classes) : le progrès compte, qu'il ait eu lieu sous l'une ou sous l'autre. */
+const capPlusHaut = (a: CapFranchi | null, b: CapFranchi | null): CapFranchi | null =>
+	a === 'acquis' || b === 'acquis' ? 'acquis' : (a ?? b);
+
+/* Tout ce qu'il faut pour décider si un cap est ANNONÇABLE (#536), en un seul paramètre plutôt
+   qu'en quatre de plus.
+   Deux journaux et non un : les leçons du catalogue et les listes de dictée ont chacune le leur
+   (`LESSON_PALIERS_KEY`, indexé par la clé de stats namespacée, et `ORTHO_PALIERS_KEY`, indexé
+   par l'id nu), et une ligne de « Travaillé récemment » peut être l'une ou l'autre
+   (`CibleTravaillee.kind`).
+   Les étoiles et la dispo du TTS servent, elles, à établir l'état COURANT de la cible, sans quoi
+   un cap démenti serait annoncé — voir `capAnnoncable`. */
+export interface SourcesCapFranchi {
+	paliersLecons: Record<string, PaliersNotion>;
+	paliersOrtho: Record<string, PaliersNotion>;
+	/** Étoiles par clé de stats (même indexation que `paliersLecons`). */
+	etoiles: Record<string, number>;
+	/** Dispo de la voix de synthèse : conditionne l'« acquis » d'une liste (un mode requis en moins). */
+	dicteeDispo: boolean;
+}
+
+/* Cap franchi dans la fenêtre ET encore porté par l'état COURANT de la cible.
+   Sans ce plafonnement, la mention annoncerait « tout juste acquise » pendant que l'accordéon du
+   même écran dit « à renforcer ». Les journaux de paliers sont MONOTONES : ils ne datent que les
+   montées, jamais les redescentes, et il y a des redescentes réelles — une leçon dont la perf
+   récente retombe sous le seuil, un parent qui ajoute un mot à une liste déjà acquise, ou la voix
+   de synthèse qui réapparaît et remet la dictée au rang des modes requis. C'est exactement le
+   raisonnement que `friseListeOrtho` tient déjà, et le même patron de plafonnement.
+   On filtre AVANT de prendre le plus haut, et non après : un « acquis » démenti ne doit pas
+   effacer un « en cours » de la même fenêtre qui, lui, est encore vrai. */
+export function capAnnoncable(
+	paliers: PaliersNotion | undefined,
+	seuil: number,
+	niveau: NiveauNotion,
+): CapFranchi | null {
+	return capDansFenetre(
+		{
+			acquis: niveau === 'acquis' ? paliers?.acquis : undefined,
+			enCours: niveau === 'acquis' || niveau === 'en-cours' ? paliers?.enCours : undefined,
+		},
+		seuil,
+	);
+}
+
 export interface CibleTravaillee {
 	id: string; // leçon du catalogue, ou liste d'orthographe (une dictée)
 	label: string;
@@ -387,6 +459,12 @@ export interface CibleTravaillee {
 	contexte: string; // catégorie de la leçon (« Calcul mental ») ; vide pour une dictée
 	seances: number | null; // séances attribuables dans la fenêtre ; null = compte inconnu
 	derniereFois: number; // horodatage le plus récent connu dans la fenêtre
+	/** Cap POSITIF franchi pendant la fenêtre affichée (#536), `null` sinon — et c'est le cas
+	    ordinaire. Seule exception à la règle « pas d'état sur ces lignes » : le pédagogue a
+	    écarté tout badge systématique (une notion tout juste abordée est encore « à découvrir »,
+	    donc un badge afficherait un niveau bas sur ce qu'il y a de plus récent) mais autorisé
+	    explicitement la mention d'un progrès. */
+	capFranchi: CapFranchi | null;
 }
 export interface GroupeTravail {
 	subject: SubjectId;
@@ -397,6 +475,7 @@ export function travailRecent(
 	statsRaw: Record<string, LessonStat>,
 	activityRaw: unknown,
 	ortho: OrthoState | null,
+	sources: SourcesCapFranchi,
 	jours: number,
 	now: number,
 ): GroupeTravail[] {
@@ -429,11 +508,30 @@ export function travailRecent(
 	// Leçons du catalogue, dédoublonnées par id : deux clés `@niveau` de la même leçon ne
 	// font qu'une ligne, datée de la plus récente des deux.
 	const derniereFoisLecon = new Map<string, number>();
+	const capLecon = new Map<string, CapFranchi | null>();
 	for (const key in statsRaw) {
 		const lastAt = statsRaw[key].lastAt;
 		if (typeof lastAt !== 'number' || lastAt < seuil) continue;
 		const id = lessonOfKey(key);
 		derniereFoisLecon.set(id, Math.max(derniereFoisLecon.get(id) ?? lastAt, lastAt));
+		// Le journal des paliers des leçons est indexé par la CLÉ DE STATS, namespacée `@niveau`
+		// (`recordMonteesPalier` l'écrit ainsi, et la frise le relit ainsi) — PAS par l'id nu.
+		// L'adresser par l'id rendait la mention muette pour TOUTE leçon, et la panne était
+		// invisible : « aucun cap franchi » est le cas ordinaire, donc rien n'aurait signalé que
+		// ce n'était jamais autre chose. Le journal des LISTES, lui, est bien indexé par l'id nu
+		// (cf. plus bas) : les deux n'ont pas la même clé, et c'est là que l'élargissement de
+		// cette mention aux dictées pouvait échouer sans bruit.
+		// L'état courant se lit sur la MÊME clé que le journal, avec la définition employée
+		// partout ailleurs dans ce module (`niveauNotion(stat, etoilee)`) : en réécrire une
+		// seconde ici donnerait deux états possibles pour une même leçon selon qui la regarde.
+		const etat = niveauNotion(statsRaw[key], (sources.etoiles[key] || 0) > 0);
+		capLecon.set(
+			id,
+			capPlusHaut(
+				capLecon.get(id) ?? null,
+				capAnnoncable(sources.paliersLecons[key], seuil, etat),
+			),
+		);
 	}
 	for (const [id, derniereFois] of derniereFoisLecon) {
 		const lesson = getLessonById(id);
@@ -445,6 +543,7 @@ export function travailRecent(
 			contexte: CATEGORIES.find((c) => c.id === lesson.category)?.label ?? '',
 			seances: parRef.get(id)?.seances ?? null,
 			derniereFois,
+			capFranchi: capLecon.get(id) ?? null,
 		});
 	}
 
@@ -460,6 +559,15 @@ export function travailRecent(
 			contexte: '', // une liste d'orthographe n'a pas de catégorie du catalogue
 			seances: acc.seances,
 			derniereFois: acc.derniereFois,
+			// Journal des LISTES, pas celui des leçons : deux clés de stockage distinctes, indexées
+			// différemment, et un id de liste n'existe pas dans l'autre (cf. SourcesCapFranchi).
+			// `ortho` est ici forcément non nul — sans lui, `labelLeconOrtho` n'aurait rendu aucun
+			// libellé et la ligne aurait été écartée juste au-dessus.
+			capFranchi: capAnnoncable(
+				sources.paliersOrtho[id],
+				seuil,
+				ortho ? niveauListeOrtho(ortho, id, sources.dicteeDispo) : 'a-decouvrir',
+			),
 		});
 	}
 
@@ -488,12 +596,28 @@ export function travailRecent(
    trois fenêtres à chaque fois pour n'en afficher qu'une, soit à faire porter un paramètre de
    sélection à un calcul qui est une photo de l'état. (Ce n'est pas une question de coût : le
    récap est lui aussi recalculé à chaque rendu de l'onglet.) */
-export function travailRecentProfil(profile: Profile, jours: number, now: number): GroupeTravail[] {
+export function travailRecentProfil(
+	profile: Profile,
+	jours: number,
+	now: number,
+	dicteeDispo = false,
+): GroupeTravail[] {
 	const uuid = profile.uuid;
 	return travailRecent(
 		lsGetRaw(uuid + '/' + LESSON_STATS_KEY, {}) as Record<string, LessonStat>,
 		lsGetRaw(uuid + '/' + ACTIVITY_KEY, []),
 		loadOrthoFor(uuid),
+		// Les DEUX journaux de paliers (#536), lus ici et non dans la fonction pure : c'est ce
+		// qui garde `travailRecent` testable sans monter un profil en localStorage.
+		{
+			paliersLecons: lsGetRaw(uuid + '/' + LESSON_PALIERS_KEY, {}) as Record<
+				string,
+				PaliersNotion
+			>,
+			paliersOrtho: lsGetRaw(uuid + '/' + ORTHO_PALIERS_KEY, {}) as Record<string, PaliersNotion>,
+			etoiles: lsGetRaw(uuid + '/' + STARS_KEY, {}) as Record<string, number>,
+			dicteeDispo,
+		},
 		jours,
 		now,
 	);

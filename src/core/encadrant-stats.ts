@@ -527,10 +527,7 @@ export function travailRecent(
 		const etat = niveauNotion(statsRaw[key], (sources.etoiles[key] || 0) > 0);
 		capLecon.set(
 			id,
-			capPlusHaut(
-				capLecon.get(id) ?? null,
-				capAnnoncable(sources.paliersLecons[key], seuil, etat),
-			),
+			capPlusHaut(capLecon.get(id) ?? null, capAnnoncable(sources.paliersLecons[key], seuil, etat)),
 		);
 	}
 	for (const [id, derniereFois] of derniereFoisLecon) {
@@ -610,10 +607,7 @@ export function travailRecentProfil(
 		// Les DEUX journaux de paliers (#536), lus ici et non dans la fonction pure : c'est ce
 		// qui garde `travailRecent` testable sans monter un profil en localStorage.
 		{
-			paliersLecons: lsGetRaw(uuid + '/' + LESSON_PALIERS_KEY, {}) as Record<
-				string,
-				PaliersNotion
-			>,
+			paliersLecons: lsGetRaw(uuid + '/' + LESSON_PALIERS_KEY, {}) as Record<string, PaliersNotion>,
 			paliersOrtho: lsGetRaw(uuid + '/' + ORTHO_PALIERS_KEY, {}) as Record<string, PaliersNotion>,
 			etoiles: lsGetRaw(uuid + '/' + STARS_KEY, {}) as Record<string, number>,
 			dicteeDispo,

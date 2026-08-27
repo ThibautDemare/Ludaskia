@@ -1012,6 +1012,16 @@ $plot-h: 140px;
 	font-size: 0.72rem;
 	color: var(--grey);
 }
+/* Mention de cap franchi (#536) : la seule chose POSITIVE et non factuelle de cette méta, donc
+   la seule à sortir du gris. Reprend --ok, la couleur de la réussite partout ailleurs dans
+   l'application, et la graisse pour qu'elle se voie au balayage sans devenir un badge — un
+   badge se lirait comme un état permanent, alors que le fait est ponctuel.
+   --ok sur --paper est déjà tenu par le gate de contraste (5,76:1 en clair, 7,57:1 en Nuit),
+   au seuil TEXTE puisque c'en est. */
+.enc-trav-cap {
+	font-weight: 800;
+	color: var(--ok);
+}
 /* Repli « + N autres » d'une matière : chrome partagé (mixin `repli-sum`), pas de filet ici
    — la liste des lignes visibles fait déjà séparation. */
 .enc-trav-plus {

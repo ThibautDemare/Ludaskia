@@ -428,28 +428,57 @@ function faq(fichier: string): { questions: string[]; reponses: string[] } {
 	};
 }
 
-/* Écart entre deux inventaires de questions, dans les deux sens : une question
-   affichée mais absente du JSON-LD (le cas que le critère vise), et une question
-   déclarée qui n'est plus sur la page (interdit par Google : le balisage doit
-   refléter le contenu visible). */
+/* Écart entre deux inventaires de questions, dans TROIS sens :
+   • `manquantes` — affichée sur la page, absente du JSON-LD (le cas que le
+     critère vise) ;
+   • `surnumeraires` — déclarée mais plus affichée (interdit par Google : le
+     balisage doit refléter le contenu visible) ;
+   • `dupliquees` — déclarée PLUSIEURS FOIS. Sans ce troisième sens, la
+     comparaison d'appartenance (`includes`) est aveugle au doublon : un
+     inventaire `[Q1…Q8, Q1]` n'a ni manquante ni surnuméraire — chaque affichée
+     est déclarée, chaque déclarée est affichée — et passerait, alors que le
+     balisage annonce neuf questions pour huit blocs à l'écran. Le trou a été
+     trouvé en relecture, pas par le gate : c'est le genre de cécité qu'une règle
+     fondée sur l'appartenance a par construction, et il valait mieux la corriger
+     DANS la règle que par une assertion de comptage posée à côté, qui aurait
+     laissé la règle fausse pour le prochain appelant. */
 function ecartQuestions(
 	affichees: string[],
 	declarees: string[],
-): { manquantes: string[]; surnumeraires: string[] } {
+): { manquantes: string[]; surnumeraires: string[]; dupliquees: string[] } {
 	return {
 		manquantes: affichees.filter((q) => !declarees.includes(q)),
 		surnumeraires: declarees.filter((q) => !affichees.includes(q)),
+		/* Une entrée par question fautive, pas une par répétition : c'est la
+		   question qu'il faut nommer, pas le nombre de fois qu'elle revient. */
+		dupliquees: [...new Set(declarees.filter((q, i) => declarees.indexOf(q) !== i))],
 	};
 }
 
+const VIDE = { manquantes: [], surnumeraires: [], dupliquees: [] };
+
 describe('critère 6 — les FAQ sont exposées en JSON-LD, sans écart', () => {
 	it('la vitrine expose ses 8 questions, ni plus ni moins', () => {
-		/* Mordant de la règle d'abord, dans les DEUX sens : une question ajoutée à
-		   la page et oubliée dans le JSON-LD (le cas que le critère vise), et une
-		   question déclarée qui ne s'affiche plus. */
-		expect(ecartQuestions(['a', 'b'], ['a'])).toEqual({ manquantes: ['b'], surnumeraires: [] });
-		expect(ecartQuestions(['a'], ['a', 'b'])).toEqual({ manquantes: [], surnumeraires: ['b'] });
-		expect(ecartQuestions(['a'], ['a'])).toEqual({ manquantes: [], surnumeraires: [] });
+		/* Mordant de la règle d'abord, dans les TROIS sens : une question ajoutée à
+		   la page et oubliée dans le JSON-LD (le cas que le critère vise), une
+		   question déclarée qui ne s'affiche plus, et une question déclarée deux
+		   fois. */
+		expect(ecartQuestions(['a', 'b'], ['a'])).toEqual({ ...VIDE, manquantes: ['b'] });
+		expect(ecartQuestions(['a'], ['a', 'b'])).toEqual({ ...VIDE, surnumeraires: ['b'] });
+		expect(ecartQuestions(['a', 'b'], ['a', 'b', 'a'])).toEqual({ ...VIDE, dupliquees: ['a'] });
+		/* Trois occurrences ne font qu'une entrée de rapport, et le doublon reste vu
+		   même quand il masque une manquante — le cas le plus fourbe : `[Q1, Q1]`
+		   contre `[Q1, Q2]` a bien le bon COMPTE, et deux défauts. */
+		expect(ecartQuestions(['a', 'b'], ['a', 'a', 'a', 'b'])).toEqual({
+			...VIDE,
+			dupliquees: ['a'],
+		});
+		expect(ecartQuestions(['a', 'b'], ['a', 'a'])).toEqual({
+			manquantes: ['b'],
+			surnumeraires: [],
+			dupliquees: ['a'],
+		});
+		expect(ecartQuestions(['a'], ['a'])).toEqual(VIDE);
 
 		const affichees = questionsHtml('index.html');
 		/* Inventaire RECOMPTÉ le 28/08/2026 sur la section « Questions fréquentes »
@@ -457,21 +486,35 @@ describe('critère 6 — les FAQ sont exposées en JSON-LD, sans écart', () => 
 		   l'issue. Le compte est asséné ici pour que le test ne se vide pas si la
 		   section change de balisage (zéro question = zéro écart, donc vert à tort). */
 		expect(affichees).toHaveLength(8);
+		/* Deux blocs qui poseraient la MÊME question sont un défaut de la page, et
+		   fausseraient aussi la comparaison ci-dessous. */
+		expect(new Set(affichees).size).toBe(affichees.length);
 		expect(affichees[0]).toBe('Faut-il créer un compte ?');
-		expect(ecartQuestions(affichees, faq('index.html').questions)).toEqual({
-			manquantes: [],
-			surnumeraires: [],
+
+		const declarees = faq('index.html').questions;
+		/* Écart nul ET même compte : à eux deux, ils forcent la bijection entre les
+		   deux inventaires. `dupliquees` suffirait ici, mais le compte nomme
+		   directement le défaut le plus probable — une entrée en trop. */
+		expect(declarees).toHaveLength(affichees.length);
+		expect(ecartQuestions(affichees, declarees)).toEqual(VIDE);
+		/* Mordant sur l'inventaire RÉEL et non sur des lettres : si le JSON-LD de la
+		   page redéclarait une de ses propres questions, le gate doit la nommer.
+		   C'est exactement le balisage qui passait avant l'ajout de `dupliquees`. */
+		expect(ecartQuestions(affichees, [...declarees, declarees[0]])).toEqual({
+			...VIDE,
+			dupliquees: [declarees[0]],
 		});
 	});
 
 	it('le guide expose ses 6 questions, ni plus ni moins', () => {
 		const affichees = questionsHtml('guide.html');
 		expect(affichees).toHaveLength(6);
+		expect(new Set(affichees).size).toBe(affichees.length);
 		expect(affichees[0]).toBe('Combien de temps par jour ?');
-		expect(ecartQuestions(affichees, faq('guide.html').questions)).toEqual({
-			manquantes: [],
-			surnumeraires: [],
-		});
+
+		const declarees = faq('guide.html').questions;
+		expect(declarees).toHaveLength(affichees.length);
+		expect(ecartQuestions(affichees, declarees)).toEqual(VIDE);
 	});
 
 	it('chaque question déclarée porte une réponse, et seules les pages à FAQ en déclarent', () => {

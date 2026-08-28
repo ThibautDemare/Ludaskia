@@ -58,6 +58,23 @@
 		     tests/seo-decouvrabilite.test.ts, une faute de frappe dans l'une des
 		     deux fait échouer `npm test`. -->
 		<link rel="canonical" href="https://thibautdemare.github.io/Ludaskia/" />
+		<!-- Preuve de propriété du site (#631) pour Google Search Console et Bing
+		     Webmaster Tools. Ce ne sont PAS des secrets : ces jetons sont publics par
+		     construction (ils sont dans le HTML de tout site vérifié) et ne donnent
+		     aucun accès — ils prouvent seulement à ces outils que le propriétaire du
+		     compte contrôle bien cette page.
+		     À NE PAS RETIRER : les deux services revérifient périodiquement, et la
+		     balise absente révoque la propriété SANS PRÉVENIR. On perd alors le
+		     rapport d'indexation et la soumission du sitemap, et rien ne le signale
+		     dans l'application. Un gate le rappelle (tests/seo-decouvrabilite.test.ts).
+		     Uniquement sur cette page, parce que c'est elle qui est servie à
+		     `…/Ludaskia/`, l'URL exacte des deux propriétés déclarées. Les recopier
+		     sur app.html et guide.html n'apporterait rien.
+		     Ces balises sont inertes : aucun script, aucun cookie, aucune requête
+		     réseau. C'est ce qui permet de déclarer le site aux moteurs sans rien
+		     ajouter dans la page que voit l'enfant (cf. e2e/aucune-ressource-tierce.spec.ts). -->
+		<meta name="google-site-verification" content="RGNJbURtmK75A4-R-Akr9uFYzHlyZ0-s7GTHC0j5RgM" />
+		<meta name="msvalidate.01" content="F235BE2163C7EE2250F2B7DF3C1C358E" />
 		<!-- Données structurées (#631) — deux blocs DISTINCTS et non imbriqués : le
 		     `WebApplication` décrit l'application, le `FAQPage` plus bas reprend la
 		     section « Questions fréquentes » de cette page.

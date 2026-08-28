@@ -35,3 +35,7 @@ défaut et le préfixe actif. Le **rendu** n'a plus d'état de module à réinit
   pas d'apostrophe typographique (`’`) dans une `answer`/`answers`, ni d'espace
   parasite. Une leçon dont la réponse s'écrit `l’action de…` échoue : l'enfant tape
   l'apostrophe droite de son clavier et `normalizeText` ne replie pas les deux formes.
+- **Nouveau niveau scolaire jouable** : le JSON-LD de la vitrine (`index.html`)
+  annonce les classes disponibles (`educationalLevel`) — `tests/seo-decouvrabilite.test.ts`
+  (#631) les compare à `availableLevels(getAllLessons())` et échoue si le balisage
+  n'est pas mis à jour ; voir `docs/architecture/build-et-deploiement.md`.

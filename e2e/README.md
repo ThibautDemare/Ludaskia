@@ -232,6 +232,21 @@ lisible). On écarte les règles « best-practice » (bruit non normatif).
   l'historique du profil et, sur un profil neuf, elles rendent un écran vide. Un gate
   sur un écran vide ne garde rien.
 
+## Sobriété réseau des trois pages (#631)
+
+`aucune-ressource-tierce.spec.ts` est la contrepartie non négociable de la
+déclaration Search Console / Bing Webmaster Tools qu'introduit le balisage SEO
+(#631, cf. [docs/architecture/build-et-deploiement.md](../docs/architecture/build-et-deploiement.md)) :
+se déclarer aux moteurs ne doit rien ajouter dans la page que voit l'enfant.
+Sur les **trois** pages (vitrine, guide, application), elle écoute les
+requêtes **réseau réelles** (`page.on('request')`) et les cookies posés, et
+refuse tout hôte hors origine (`data:`/`blob:` acceptés, ce sont des
+ressources inline, pas un domaine tiers). Écouter le réseau plutôt que lire le
+seul HTML est volontaire : un tracker posé par du JS après coup, ou un `fetch`
+déclenché en cours de vie de la page, ne se verrait pas à la seule lecture du
+source. Rougit le jour où quelqu'un ajoute un tracker, une police Google
+Fonts, un CDN de script ou un pixel de vérification en JavaScript.
+
 ## Snapshots visuels de la galerie (#412)
 
 > ⚠️ **Le viewport est agrandi avant les captures, et ce n'est pas un détail (#458).**

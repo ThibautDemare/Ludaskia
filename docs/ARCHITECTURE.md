@@ -86,5 +86,6 @@ de conception initial est `docs/design-multi-subject.md`.
   commandes, intégration continue.
 - [Tests](architecture/tests.md) — Vitest (logique pure), smoke Playwright (e2e).
 - [Build & déploiement](architecture/build-et-deploiement.md) — GitHub Pages,
-  service worker hors-ligne (#306), auto-actualisation.
+  service worker hors-ligne (#306), auto-actualisation, découvrabilité par les
+  moteurs de recherche (#631).
 - [Piste d'évolution](architecture/pistes-d-evolution.md) — chantiers à explorer.

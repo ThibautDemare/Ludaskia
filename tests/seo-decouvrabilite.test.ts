@@ -26,8 +26,12 @@ import { availableLevels, LEVEL_LABEL, LEVEL_ORDER } from '../src/core/levels';
    ── Ce que ces tests ne couvrent pas ──────────────────────────────────────────
    • Critère 14 (aucune ressource tierce, aucun cookie au chargement) : c'est du
      réseau réel, donc une spec Playwright, pas de la logique pure.
-   • Critères 7, 12, 13 (comptes Search Console / Bing, métadonnées du dépôt
-     GitHub, résultat d'indexation à six semaines) : hors d'atteinte d'un test.
+   • Critères 7, 12, 13 (propriétés vérifiées côté service et sitemap « traité
+     avec succès », métadonnées du dépôt GitHub, résultat d'indexation à six
+     semaines) : hors d'atteinte d'un test. Le critère 8, lui, est tenu ici
+     depuis que les jetons sont posés — c'est la moitié mécanisable du 7 : rien
+     ne prouve d'ici que la propriété est encore vérifiée, mais on peut garantir
+     que la balise dont elle dépend ne disparaîtra pas en silence.
    • Critères 9 à 11 et 17-18 : ils portent sur l'AUTRE dépôt
      (`thibautdemare.github.com`), rien à lire ici.
    • Critère 15 (rien ne change à l'écran) : c'est la suite e2e existante qui le
@@ -533,6 +537,115 @@ describe('critère 6 — les FAQ sont exposées en JSON-LD, sans écart', () => 
 		   correspondant — le motif exact que Google sanctionne. */
 		expect(questionsHtml('app.html')).toEqual([]);
 		expect(noeudDeType('app.html', 'FAQPage')).toBeUndefined();
+	});
+});
+
+/* ─── Critère 8 : vérification de propriété par <meta> ─────────────────────── */
+
+/* Jetons de vérification fournis par les deux services et posés dans le <head>
+   de la VITRINE seulement. Ce ne sont pas des secrets : ils figurent en clair
+   dans le HTML de tout site vérifié et n'ouvrent aucun accès. Les épingler ici
+   est donc sans risque, et c'est le seul moyen d'attraper le cas le plus
+   vicieux — le jeton retapé de travers ou tronqué, où la balise a l'air en
+   place et ne vérifie plus rien.
+
+   Pourquoi ce gate : les deux services REVÉRIFIENT périodiquement, et révoquent
+   la propriété si la balise a disparu, sans rien signaler dans l'application. Un
+   « nettoyage du <head> » six mois plus tard coûterait le rapport d'indexation
+   et la soumission du sitemap, et personne ne s'en apercevrait — exactement le
+   profil de panne que le CLAUDE.md décrit pour les surfaces que personne ne
+   relit en écrivant du code. */
+const VERIFICATIONS: Record<string, string> = {
+	'google-site-verification': 'RGNJbURtmK75A4-R-Akr9uFYzHlyZ0-s7GTHC0j5RgM',
+	'msvalidate.01': 'F235BE2163C7EE2250F2B7DF3C1C358E',
+};
+
+const metaVerif = (nom: string, jeton: string): string =>
+	`<meta name="${nom}" content="${jeton}" />`;
+
+/* Défauts d'une balise de vérification. Même forme que les autres règles du
+   fichier : rend la liste des fautes, sur un SOURCE, pour qu'on puisse lui
+   soumettre du balisage fabriqué. */
+function defautsVerification(source: string, nom: string, jeton: string): string[] {
+	const balises = Array.from(analyser(source).querySelectorAll(`meta[name="${nom}"]`));
+	if (balises.length === 0) return [`aucune <meta name="${nom}">`];
+	const defauts: string[] = [];
+	/* Deux balises pour un même service = fusion ratée : si leurs jetons
+	   diffèrent, rien ne dit laquelle sera lue. */
+	if (balises.length > 1) defauts.push(`${balises.length} <meta name="${nom}">`);
+	for (const balise of balises) {
+		const parent = (balise.parentElement?.tagName ?? '?').toLowerCase();
+		if (parent !== 'head') defauts.push(`<meta name="${nom}"> hors du <head> (dans <${parent}>)`);
+		const contenu = (balise.getAttribute('content') ?? '').trim();
+		if (contenu === '') defauts.push(`content vide pour ${nom}`);
+		else if (contenu !== jeton) defauts.push(`jeton « ${contenu} » au lieu de « ${jeton} »`);
+	}
+	return defauts;
+}
+
+/* Jeton altéré d'UN SEUL caractère. */
+const altere = (jeton: string): string => (jeton[0] === 'A' ? 'B' : 'A') + jeton.slice(1);
+
+const occurrences = (source: string, aiguille: string): number => source.split(aiguille).length - 1;
+
+describe('critère 8 — la propriété est vérifiée par deux <meta>, et rien de plus', () => {
+	it('les deux jetons sont en place dans le <head> de la vitrine', () => {
+		for (const [nom, jeton] of Object.entries(VERIFICATIONS)) {
+			/* Mordant d'abord, sur du balisage fabriqué : balise absente, content
+			   vide, jeton tronqué, jeton altéré d'un caractère, balise posée dans le
+			   corps (où aucun des deux services ne la lit), et doublon. */
+			expect(defautsVerification(pageAvec(''), nom, jeton), nom).not.toEqual([]);
+			expect(defautsVerification(pageAvec(metaVerif(nom, '')), nom, jeton), nom).not.toEqual([]);
+			expect(
+				defautsVerification(pageAvec(metaVerif(nom, jeton.slice(0, -1))), nom, jeton),
+				nom,
+			).not.toEqual([]);
+			expect(
+				defautsVerification(pageAvec(metaVerif(nom, altere(jeton))), nom, jeton),
+				nom,
+			).not.toEqual([]);
+			expect(defautsVerification(pageAvec('', metaVerif(nom, jeton)), nom, jeton), nom).not.toEqual(
+				[],
+			);
+			expect(
+				defautsVerification(pageAvec(metaVerif(nom, jeton) + metaVerif(nom, jeton)), nom, jeton),
+				nom,
+			).not.toEqual([]);
+			/* …et la forme juste est acceptée, sinon la règle refuserait tout. */
+			expect(defautsVerification(pageAvec(metaVerif(nom, jeton)), nom, jeton), nom).toEqual([]);
+
+			/* La page réelle, maintenant qu'on sait que la règle mord. */
+			expect(defautsVerification(lire('index.html'), nom, jeton), nom).toEqual([]);
+			expect(doc('index.html').querySelectorAll(`meta[name="${nom}"]`), nom).toHaveLength(1);
+		}
+	});
+
+	it("la vérification n'ajoute rien d'actif : chaque jeton ne vit que dans sa <meta>", () => {
+		/* Contrepartie non négociable de l'ouverture des comptes (critères 8 et 14
+		   de l'issue) : la déclaration aux moteurs ne doit rien ajouter d'exécutable
+		   dans la page que voit l'enfant. Un jeton présent DEUX fois dans le source
+		   signalerait une seconde porte — extrait de script, pixel, fichier de
+		   vérification recopié dans la page. */
+		const source = lire('index.html');
+		for (const jeton of Object.values(VERIFICATIONS)) expect(occurrences(source, jeton)).toBe(1);
+		for (const script of Array.from(doc('index.html').querySelectorAll('script')))
+			for (const jeton of Object.values(VERIFICATIONS))
+				expect(script.textContent ?? '', 'jeton dans un <script>').not.toContain(jeton);
+	});
+
+	it('les jetons ne sont recopiés ni sur app.html ni sur guide.html', () => {
+		/* La propriété déclarée est l'URL …/Ludaskia/ : recopier les balises sur les
+		   autres pages n'apporte rien et laisse croire à tort qu'elles sont
+		   couvertes. Le test vaut aussi comme garde-fou de portée — c'est la vitrine
+		   qui porte la vérification, et elle seule. */
+		for (const fichier of ['app.html', 'guide.html'])
+			for (const [nom, jeton] of Object.entries(VERIFICATIONS)) {
+				expect(
+					doc(fichier).querySelectorAll(`meta[name="${nom}"]`),
+					`${fichier} / ${nom}`,
+				).toHaveLength(0);
+				expect(occurrences(lire(fichier), jeton), `${fichier} / ${nom}`).toBe(0);
+			}
 	});
 });
 

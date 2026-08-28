@@ -427,7 +427,7 @@ le seul JS du programme TypeScript (`allowJs`), parce que le CLI s'exécute sans
 
 ### Découvrabilité par les moteurs — balisage des trois pages (#631)
 
-`tests/seo-decouvrabilite.test.ts` (24 tests) éprouve le balisage SEO des trois
+`tests/seo-decouvrabilite.test.ts` (27 tests) éprouve le balisage SEO des trois
 pages contre les **attendus de l'issue**, pas contre le code : URL canonique
 absolue par page (avec la répartition assumée — vitrine et guide sur
 elles-mêmes, `app.html` sur la vitrine), `meta description` propre à
@@ -444,6 +444,17 @@ comparées à `availableLevels(getAllLessons())` — la même source que le choi
 de classe au démarrage de l'application. Ouvrir l'application à un nouveau
 niveau scolaire sans mettre à jour le JSON-LD de la vitrine fait donc échouer
 `npm test`.
+
+**Critère 8 (3 tests) — preuve de propriété Search Console / Bing Webmaster
+Tools.** Les deux `<meta>` de vérification (`google-site-verification`,
+`msvalidate.01`) doivent être présentes dans le `<head>` de la vitrine avec le
+jeton **exact** (une lettre altérée ou une valeur tronquée fait échouer le
+test — c'est le cas le plus vicieux, où la balise a l'air en place et ne
+vérifie plus rien), chaque jeton ne doit apparaître **qu'une fois** et jamais
+dans un `<script>` (aucun script n'est ajouté par cette ouverture de compte),
+et aucun des deux ne doit être recopié sur `app.html` ni `guide.html`. Cf.
+[Build & déploiement](build-et-deploiement.md) pour ce que ces jetons sont
+(et ne sont pas) et pourquoi les retirer casserait la propriété en silence.
 
 **Chaque règle prouve son mordant avant d'être appliquée à la page réelle** :
 un gate qui ne trouve rien serait indiscernable d'un gate qui ne cherche rien,

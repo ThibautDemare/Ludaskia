@@ -55,6 +55,31 @@ dédié) :
   listant les deux seules URL indexables (la vitrine et le guide). `app.html`
   en est volontairement absente : elle se déclare canonique vers la vitrine,
   donc l'inscrire au sitemap serait se contredire.
+- **Preuve de propriété (Search Console + Bing Webmaster Tools)** : deux
+  `<meta>` de vérification (`google-site-verification`, `msvalidate.01`),
+  posées dans le `<head>` d'**`index.html` seulement** — c'est la page servie
+  à `…/Ludaskia/`, l'URL exacte des deux propriétés déclarées ; les recopier
+  sur `app.html` ou `guide.html` n'apporterait rien, et le gate l'interdit
+  (cf. [Tests](tests.md)). **Ce ne sont pas des secrets** : ces jetons sont
+  publics par construction (présents dans le HTML de tout site vérifié) et
+  n'ouvrent aucun accès — rien à sortir du dépôt ni à passer en variable
+  d'environnement, malgré le réflexe qu'inspirent deux jetons en clair.
+  **À ne pas retirer** : les deux services revérifient périodiquement et
+  **révoquent la propriété sans prévenir** si la balise disparaît — on
+  perdrait le rapport d'indexation et la soumission du sitemap, sans aucun
+  signal dans l'application. **Elles sont inertes** (aucun script, aucun
+  cookie, aucune requête réseau) : c'est ce qui permet de déclarer le site
+  aux moteurs sans rien ajouter dans la page que voit l'enfant — même
+  contrepartie que pour le reste du balisage
+  (`e2e/aucune-ressource-tierce.spec.ts`), et cohérente avec le refus du
+  mainteneur d'installer une mesure d'audience.
+
+> **Ordre de mise en prod.** Le déploiement se déclenche sur **publication
+> d'une release**, pas au merge (cf. ci-dessus). `sitemap.xml` n'est donc
+> accessible en ligne qu'**après** la release : le soumettre à Search Console
+> ou à Bing Webmaster Tools avant fait remonter une erreur de fichier
+> introuvable, alors que rien n'est cassé. Séquence à respecter : **merge →
+> release → soumission du sitemap**.
 
 **Écarté, à ne pas re-proposer sans élément nouveau** :
 

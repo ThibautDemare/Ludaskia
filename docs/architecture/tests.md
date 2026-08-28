@@ -425,6 +425,50 @@ construction. Le module a ses propres ancres testées (21:1, 1:1, les deux gris 
 le seuil AA à un cran près) : si la formule dérive, ce sont elles qui tombent d'abord. C'est
 le seul JS du programme TypeScript (`allowJs`), parce que le CLI s'exécute sans build.
 
+### Découvrabilité par les moteurs — balisage des trois pages (#631)
+
+`tests/seo-decouvrabilite.test.ts` (24 tests) éprouve le balisage SEO des trois
+pages contre les **attendus de l'issue**, pas contre le code : URL canonique
+absolue par page (avec la répartition assumée — vitrine et guide sur
+elles-mêmes, `app.html` sur la vitrine), `meta description` propre à
+`app.html`, validité et contenu de `public/sitemap.xml` (deux URL exactement,
+`app.html` exclue, chaque `<loc>` correspondant à une page qui existe et se
+déclare canonique), JSON-LD `WebApplication`/`FAQPage` fidèle au contenu
+visible, et le critère négatif « une seule URL présentée comme page
+d'accueil » (pas de doublon de canonical, pas de repli par `meta robots
+noindex`).
+
+**Le seul test qui lit le dépôt plutôt que l'issue est le critère 5** : les
+classes scolaires annoncées dans le `WebApplication` (`educationalLevel`) sont
+comparées à `availableLevels(getAllLessons())` — la même source que le choix
+de classe au démarrage de l'application. Ouvrir l'application à un nouveau
+niveau scolaire sans mettre à jour le JSON-LD de la vitrine fait donc échouer
+`npm test`.
+
+**Chaque règle prouve son mordant avant d'être appliquée à la page réelle** :
+un gate qui ne trouve rien serait indiscernable d'un gate qui ne cherche rien,
+donc chaque fonction de règle (canonical, écart de FAQ…) est d'abord soumise à
+du balisage fautif fabriqué à la main — canonical relatif, canonical vers une
+autre page, deux canonicals concurrents, question de FAQ oubliée — avant
+d'être appliquée aux trois pages.
+
+**Rejet écrit : le contenu des réponses de FAQ n'est pas comparé au texte
+visible.** Le gate compare les **questions** (libellés exacts, inventaire dans
+les deux sens, cf. critère 6 ci-dessus) mais ne vérifie du côté des
+**réponses** que leur non-vacuité. Une comparaison littérale casserait sur
+tout lien, tout `<strong>` et toute fusion de plusieurs `<p>` du HTML visible
+absents du texte `Answer.text` — des éditions de forme, pas de fond — pour un
+mauvais rapport coût/fragilité sur les 14 réponses au total, qui changent
+rarement. Ce qui tient la fidélité à la place : le comptage des questions
+(mécanisé, ci-dessus) et un rappel posé au point d'édition réel, en
+commentaire juste avant `<div class="v-faq-list">` dans `index.html` et
+`guide.html` — vérifier qu'aucune clause (renvoi, condition, exception) ne
+disparaît en fusionnant plusieurs paragraphes dans une réponse JSON-LD, cf.
+[Conventions rédactionnelles](conventions-redaction.md).
+
+Cf. [Build & déploiement](build-et-deploiement.md) pour ce que ce balisage dit
+(et pour les pistes écartées ou différées, consignées là-bas plutôt qu'ici).
+
 ### Le texte narratif d'une frise se vérifie en e2e, pas en Vitest (#545)
 
 Précédent établi deux fois désormais — la frise d'états (`friseNotionHTML`, #521) puis la frise
@@ -491,6 +535,15 @@ profil neuf — un gate sur un écran vide ne garde rien). Les cinq ajoutées n'
 revanche montré que `--accent` sur `--page-bg` est un couple **réel**, alors que le gate de
 #582 l'avait écarté au motif que « l'accent en texte est toujours posé sur une carte » — le
 couple a été ajouté à la table, et l'erreur consignée là-bas.
+
+**`e2e/aucune-ressource-tierce.spec.ts` (#631)** est un gate transversal du même
+genre, sur les trois pages cette fois : il écoute le **réseau réel**
+(`page.on('request')`) et les cookies posés plutôt que le seul HTML servi — un
+tracker posé par du JS après coup ne se verrait pas à la seule lecture du
+source — et refuse tout hôte hors origine (`data:`/`blob:` acceptés, ce sont
+des ressources inline). C'est la contrepartie non négociable de la
+déclaration Search Console / Bing Webmaster Tools qu'introduit #631 : se
+déclarer aux moteurs ne doit rien ajouter dans la page que voit l'enfant.
 
 Autre famille, `galerie.spec.ts` (#412) compare le rendu du catalogue à des
 **baselines de screenshots** (`toHaveScreenshot`) via la route **DEV-only**

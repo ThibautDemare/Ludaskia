@@ -96,3 +96,31 @@ renforcer » (celle d'une liste de dictée). Quand un même libellé doit valoir
 familles sans les distinguer (`MOT_CAP`), c'est donc le mot qui reste vrai des deux côtés
 qu'il faut retenir : « passée en cours », déjà celui d'`EVENEMENT_CELLULE` pour ce même
 fait.
+## `meta description` : ne jamais finir sur la clause qui conditionne une promesse (#631)
+
+Viser **~155 caractères** (au-delà, Google tronque l'affichage dans les résultats de
+recherche) — mais la longueur n'est **pas** ce qui compte vraiment : la troncature se
+mesure en pixels, pas en caractères, donc ce n'est pas mécanisable, d'où sa place ici
+plutôt que dans un gate. La règle qui tient réellement : **ne jamais terminer la
+description sur la clause qui conditionne une promesse**, parce que c'est
+précisément ce qu'une troncature coupe en premier. Cas corrigé (#631) : la
+description de `app.html` disait « … utilisable sans connexion une fois installée »
+(196 caractères) ; tronquée, elle devenait « utilisable sans connexion », l'inverse
+de la prudence que le projet tient partout ailleurs sur le hors-ligne (cf.
+[Build & déploiement](build-et-deploiement.md)). Réécrite « Installable pour
+travailler sans connexion » (153 caractères) : la condition est portée par
+l'adjectif en tête, elle ne peut plus être amputée par une coupe en fin de phrase.
+
+## JSON-LD `FAQPage` : fusionner des paragraphes visibles ne doit perdre aucune clause (#631)
+
+Quand la réponse à une question de FAQ fusionne plusieurs `<p>` de la page en un seul
+`Answer.text`, vérifier qu'aucune clause ne disparaît dans la couture — un renvoi vers
+une autre page, une condition, une exception. Le risque est concentré sur les liens
+hypertextes : un `<a>` du HTML visible n'a pas d'équivalent naturel en JSON-LD, donc il
+est tentant de le retirer avec son contenu plutôt que de le reformuler en texte. Cas
+corrigé (#631) : la réponse « Ça marche sans connexion ? » de la vitrine avait perdu le
+renvoi « le guide pour les parents explique comment, selon l'appareil » en retirant le
+lien qui le portait. Pas mécanisable (cf. [Tests](tests.md), rejet écrit du gate
+`seo-decouvrabilite` sur le contenu des réponses) : un rappel est posé en commentaire au
+point d'édition réel, juste avant `<div class="v-faq-list">` dans `index.html` et
+`guide.html`.

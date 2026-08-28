@@ -22,6 +22,62 @@
   déclencheur de la mise à jour (cf. Hors-ligne ci-dessous) : le `dist/version.json`
   publié et le plugin qui l'émettait ont disparu avec l'ancien sondage.
 
+## Découvrabilité par les moteurs de recherche (SEO, #631)
+
+Balisage minimal des trois pages, publié tel quel avec le build (pas de plugin
+dédié) :
+
+- **URL canonique par page** (`<link rel="canonical">`) : `index.html` et
+  `guide.html` se déclarent canoniques sur elles-mêmes (formes
+  `…/Ludaskia/` et `…/Ludaskia/guide.html` — sans nom de fichier pour la
+  première, sinon `…/index.html` serait une seconde URL pour le même
+  contenu). **`app.html` se déclare canonique vers la VITRINE, pas vers
+  elle-même**, et c'est délibéré : le texte que l'application offre à un
+  crawler est celui de son interface (« Choisis une leçon », « Mon espace »),
+  fragmenté et illisible en extrait de résultat, alors que la vitrine explique
+  ce qu'est Ludaskia. Ça concentre le signal de recherche sur une seule URL
+  au lieu de laisser les deux se disputer la requête « Ludaskia » — sans
+  `noindex`, qui retirerait la page de l'index et empêcherait aussi d'en
+  suivre les liens.
+- **`meta description` propre à chaque page** : `app.html` en a désormais une
+  (elle n'en avait pas avant #631), volontairement différente de celle de la
+  vitrine — deux pages qui partagent leur description se cannibalisent dans
+  les résultats de recherche.
+- **JSON-LD** : la vitrine porte un `WebApplication` (catégorie
+  `EducationalApplication`, gratuité, éditeur, `educationalLevel`) et un
+  `FAQPage` reprenant sa section « Questions fréquentes » ; le guide porte son
+  propre `FAQPage`. Règle à tenir en les modifiant : tout ce qui est déclaré
+  doit être **visible** dans la page (Google sanctionne le balisage sans
+  contenu correspondant), et **les classes annoncées suivent le catalogue** —
+  ouvrir l'application à un nouveau niveau scolaire sans mettre à jour le
+  JSON-LD de la vitrine fait échouer `npm test` (cf. [Tests](tests.md)).
+- **`public/sitemap.xml`** : fichier **statique**, pas généré au build,
+  listant les deux seules URL indexables (la vitrine et le guide). `app.html`
+  en est volontairement absente : elle se déclare canonique vers la vitrine,
+  donc l'inscrire au sitemap serait se contredire.
+
+**Écarté, à ne pas re-proposer sans élément nouveau** :
+
+- **`llms.txt`** — Google a indiqué en mai 2026 ne pas l'utiliser pour AI
+  Overviews ni pour AI Mode, et les mesures d'adoption disponibles ne montrent
+  aucune corrélation entre la présence d'un `llms.txt` et la fréquence de
+  citation par les IA.
+- **Génération du sitemap au build** — avec seulement deux URL, un plugin
+  Vite coûterait plus qu'il n'apporte ; un fichier statique lisible en clair
+  se vérifie sans lancer `npm run build`.
+- **`<lastmod>` dans le sitemap** — il faudrait le tenir à jour à chaque
+  release, et une date fausse est pire que pas de date : un moteur qui
+  constate un `lastmod` menteur cesse d'en tenir compte.
+
+**Différé, pas rejeté** : un **nom de domaine propre** (nom de marque dans le
+domaine, propriété Search Console vérifiable par DNS) est le levier
+structurel le plus fort pour la recherche, mais jugé prématuré par le
+mainteneur en août 2026.
+
+Tests : `tests/seo-decouvrabilite.test.ts` (Vitest, balisage) et
+`e2e/aucune-ressource-tierce.spec.ts` (Playwright, sobriété réseau) — détails
+dans [Tests](tests.md) et `e2e/README.md`.
+
 ## Hors-ligne (service worker, #306)
 
 Le worker est **écrit à la main** (`src/sw.ts`), en mode **`injectManifest`** de

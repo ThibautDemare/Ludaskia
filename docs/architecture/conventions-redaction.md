@@ -75,3 +75,24 @@ synchrones. Convention observée deux fois : « Voir les mots » (le nombre de m
 la méta juste au-dessus de la ligne, pas dans le résumé du repli) et « Voir les étapes semaine par
 semaine » (`friseCompositionHTML`, #545) — pas « … des 12 dernières semaines » : la constante
 (`SEMAINES_FRISE`) vit dans le code, et le récit l'annonce une fois le repli ouvert.
+
+## « Récemment » pour la fraîcheur d'un état, jamais « tout juste » (#536)
+
+Pour dater un changement d'état sans afficher de date (un cap franchi, une notion
+maîtrisée), l'adverbe est **« récemment »** — déjà celui du bandeau de chiffres-clés
+(« N maîtrisées récemment »). Pas **« tout juste »** : le mot a deux sens en français, l'un
+temporel (« à l'instant ») et l'autre restrictif (« à peine, de justesse »), et ce second
+sens se lit comme un jugement sur la solidité de l'acquisition — l'inverse de ce qu'une
+mention de progrès veut dire. Cas posé par la mention de cap de « Travaillé récemment »
+(`MOT_CAP`, `ui/encadrant-travail.ts`, cf. [Espace encadrant](espace-encadrant.md)).
+
+## Franchir « en cours » se dit « passée en cours », jamais « commencée » (#536)
+
+Sur une échelle qui compte un palier **« à renforcer » entre « à découvrir » et « en
+cours »** (celle d'une leçon du catalogue), franchir « en cours » n'est pas un
+commencement : la notion peut être travaillée depuis des semaines sans y être encore
+entrée. « Commencée » ne redevient exact que sur une échelle à trois crans sans « à
+renforcer » (celle d'une liste de dictée). Quand un même libellé doit valoir pour les deux
+familles sans les distinguer (`MOT_CAP`), c'est donc le mot qui reste vrai des deux côtés
+qu'il faut retenir : « passée en cours », déjà celui d'`EVENEMENT_CELLULE` pour ce même
+fait.

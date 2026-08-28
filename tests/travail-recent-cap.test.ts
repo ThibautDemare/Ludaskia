@@ -1078,6 +1078,13 @@ describe('travailRecent — le plafonnement d’une dictée suit la dispo de la 
    vérifie qu'aucune ne manque au passage : un journal lu sous la mauvaise clé, ou les étoiles
    oubliées, se verrait par une mention absente — et « pas de cap franchi » étant le cas
    ordinaire, rien d'autre ne le signalerait.
+
+   `dicteeDispo` est OBLIGATOIRE, sans valeur par défaut, et c'est le compilateur qui tient
+   cette moitié-là : le seul défaut envisageable (`false`) est aussi le plus optimiste, puisque
+   sans voix une liste compte un mode requis de moins et s'acquiert donc plus tôt. Un appelant
+   qui l'omettrait annoncerait des acquisitions que l'appareil de l'enfant démentirait, en
+   silence. Aucun test ne peut couvrir ça, mais un paramètre requis, oui — d'où les `false`
+   explicites ci-dessous, y compris là où la valeur n'a aucune incidence sur l'attendu.
    ============================================================ */
 describe('travailRecentProfil — les quatre sources sont lues sur le profil consulté', () => {
 	const ecrire = (uuid: string, key: string, valeur: unknown) =>
@@ -1088,7 +1095,7 @@ describe('travailRecentProfil — les quatre sources sont lues sur le profil con
 		ecrire(p.uuid, LESSON_STATS_KEY, { 'math-doubles@ce2': stat(AUJ(9, 0)) });
 		ecrire(p.uuid, LESSON_PALIERS_KEY, { 'math-doubles@ce2': { acquis: AUJ(8, 0) } });
 		ecrire(p.uuid, STARS_KEY, { 'math-doubles@ce2': 1 });
-		const res = travailRecentProfil(p, 7, NOW);
+		const res = travailRecentProfil(p, 7, NOW, false);
 		expect(cible(res, 'math', 'math-doubles')!.capFranchi).toBe('acquis');
 	});
 
@@ -1098,7 +1105,7 @@ describe('travailRecentProfil — les quatre sources sont lues sur le profil con
 		const p = activeProfile();
 		ecrire(p.uuid, LESSON_STATS_KEY, { 'math-doubles@ce2': statFaible(AUJ(9, 0)) });
 		ecrire(p.uuid, LESSON_PALIERS_KEY, { 'math-doubles@ce2': { acquis: AUJ(8, 0) } });
-		const res = travailRecentProfil(p, 7, NOW);
+		const res = travailRecentProfil(p, 7, NOW, false);
 		expect(cible(res, 'math', 'math-doubles')!.capFranchi).toBeNull();
 	});
 
@@ -1110,12 +1117,14 @@ describe('travailRecentProfil — les quatre sources sont lues sur le profil con
 		saveOrthoFor(p.uuid, ortho);
 		ecrire(p.uuid, ACTIVITY_KEY, [seanceDictee(AUJ(9, 0), liste.id)]);
 		ecrire(p.uuid, ORTHO_PALIERS_KEY, { [liste.id]: { acquis: AUJ(8, 0) } });
-		// Défaut du paramètre : pas de voix → la liste est acquise → la mention passe.
-		expect(cible(travailRecentProfil(p, 7, NOW), 'francais', liste.id)!.capFranchi).toBe('acquis');
+		// Appareil SANS voix : la dictée n'est pas un mode requis, la liste est donc bel et bien
+		// acquise, et sa mention doit passer. Ce n'est pas une tolérance mais l'usage courant d'un
+		// appareil muet — la fermer « par prudence » priverait ces profils de toute mention.
 		expect(cible(travailRecentProfil(p, 7, NOW, false), 'francais', liste.id)!.capFranchi).toBe(
 			'acquis',
 		);
-		// Voix disponible → la dictée redevient requise → l'« acquis » est démenti.
+		// Appareil qui parle → la dictée redevient requise → l'« acquis » est démenti. Même profil,
+		// même stockage, même instant : seul le booléen change.
 		expect(
 			cible(travailRecentProfil(p, 7, NOW, true), 'francais', liste.id)!.capFranchi,
 		).toBeNull();
@@ -1125,6 +1134,8 @@ describe('travailRecentProfil — les quatre sources sont lues sur le profil con
 		const p = activeProfile();
 		ecrire(p.uuid, LESSON_STATS_KEY, { 'math-doubles@ce2': stat(AUJ(9, 0)) });
 		ecrire(p.uuid, STARS_KEY, { 'math-doubles@ce2': 1 });
-		expect(cible(travailRecentProfil(p, 7, NOW), 'math', 'math-doubles')!.capFranchi).toBeNull();
+		expect(
+			cible(travailRecentProfil(p, 7, NOW, false), 'math', 'math-doubles')!.capFranchi,
+		).toBeNull();
 	});
 });

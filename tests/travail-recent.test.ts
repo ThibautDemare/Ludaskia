@@ -106,6 +106,13 @@ function travailSansPaliers(
 	return travailRecent(statsRaw, activityRaw, ortho, SANS_PALIERS, jours, now);
 }
 
+/* 4e paramètre de `travailRecentProfil`, OBLIGATOIRE (pas de valeur par défaut) : la dispo de la
+   voix de synthèse. Elle ne sert qu'à établir l'état courant d'une LISTE, donc à plafonner un cap
+   déjà daté — sans incidence sur la sélection et le tri, qui font l'objet de ce fichier. Nommée
+   plutôt que passée en `false` nu, pour qu'on n'ait pas à relire la signature pour savoir ce que
+   ce booléen dit. Son effet réel est éprouvé dans travail-recent-cap.test.ts. */
+const SANS_VOIX = false;
+
 const groupe = (res: GroupeTravail[], subject: SubjectId) => res.find((g) => g.subject === subject);
 const labels = (res: GroupeTravail[], subject: SubjectId) =>
 	(groupe(res, subject)?.cibles ?? []).map((c) => c.label);
@@ -709,7 +716,7 @@ describe('travailRecentProfil — lecture des stores du profil consulté', () =>
 		ecrireStores(b.uuid, { 'math-moities@ce2': stat(AUJ(9, 0)) }, []);
 		const avant = loadProfilesMeta()!.active;
 
-		const res = travailRecentProfil(profilRelu(a.uuid), 7, NOW);
+		const res = travailRecentProfil(profilRelu(a.uuid), 7, NOW, SANS_VOIX);
 		expect(ids(res, 'math')).toEqual(['math-doubles']);
 		expect(cible(res, 'math', 'math-doubles')!.seances).toBe(1);
 		expect(loadProfilesMeta()!.active).toBe(avant); // toujours B
@@ -730,7 +737,7 @@ describe('travailRecentProfil — lecture des stores du profil consulté', () =>
 			seanceLecon(AUJ(9, 0), ce2Seule.id),
 		]);
 
-		const res = travailRecentProfil(p, 7, NOW);
+		const res = travailRecentProfil(p, 7, NOW, SANS_VOIX);
 		expect(ids(res, 'math')).toEqual([ce2Seule.id]);
 		expect(cible(res, 'math', ce2Seule.id)!.seances).toBe(1);
 	});
@@ -740,7 +747,9 @@ describe('travailRecentProfil — lecture des stores du profil consulté', () =>
 		expect(niveauProfilMatiere(a, 'francais')).toBe('ce2');
 		const cm1 = predefDeNiveau('cm1');
 		ecrireStores(a.uuid, {}, [seanceDictee(AUJ(9, 0), cm1.id)]);
-		expect(ids(travailRecentProfil(profilRelu(a.uuid), 7, NOW), 'francais')).toEqual([cm1.id]);
+		expect(ids(travailRecentProfil(profilRelu(a.uuid), 7, NOW, SANS_VOIX), 'francais')).toEqual([
+			cm1.id,
+		]);
 	});
 
 	it('stats stockées avec une date absente ou non numérique → cible écartée', () => {
@@ -768,12 +777,12 @@ describe('travailRecentProfil — lecture des stores du profil consulté', () =>
 			},
 			[],
 		);
-		const res = travailRecentProfil(profilRelu(a.uuid), 7, NOW);
+		const res = travailRecentProfil(profilRelu(a.uuid), 7, NOW, SANS_VOIX);
 		expect(ids(res, 'math')).toEqual(['math-complements']);
 	});
 
 	it('profil sans aucune donnée → aucun groupe', () => {
-		expect(travailRecentProfil(activeProfile(), 7, NOW)).toEqual([]);
+		expect(travailRecentProfil(activeProfile(), 7, NOW, SANS_VOIX)).toEqual([]);
 	});
 });
 
@@ -806,7 +815,7 @@ describe('travailRecent — journaux de paliers vides (#536, critère 1)', () =>
 			a.uuid + '/' + LESSON_STATS_KEY,
 			JSON.stringify({ 'math-doubles@ce2': stat(AUJ(9, 0)) }),
 		);
-		const res = travailRecentProfil(profilRelu(a.uuid), 7, NOW);
+		const res = travailRecentProfil(profilRelu(a.uuid), 7, NOW, SANS_VOIX);
 		expect(cible(res, 'math', 'math-doubles')!.capFranchi).toBeNull();
 	});
 });

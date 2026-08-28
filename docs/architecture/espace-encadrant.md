@@ -258,10 +258,11 @@ enfermé dans l'accordéon « Notions par catégorie », qu'il fallait déplier 
 catégorie pour reconstituer la semaine.
 
 Calcul pur dans `core/encadrant-stats.ts` : **`travailRecent(statsRaw, activityRaw, ortho,
-jours, now)`** → `GroupeTravail[]` (un groupe par matière, dans l'ordre de `SUBJECTS`,
+sources, jours, now)`** → `GroupeTravail[]` (un groupe par matière, dans l'ordre de `SUBJECTS`,
 chaque `cibles: CibleTravaillee[]` triée de la plus récente à la plus ancienne), lu pour
-le profil consulté par **`travailRecentProfil(profile, jours, now)`** (mêmes clés brutes
-par UUID que `progressionProfil`).
+le profil consulté par **`travailRecentProfil(profile, jours, now, dicteeDispo)`** (mêmes
+clés brutes par UUID que `progressionProfil`, plus les deux journaux de paliers et les
+étoiles — cf. « Cap franchi » ci-dessous ; `dicteeDispo` sans défaut, **obligatoire**).
 
 Chaque **`CibleTravaillee`** combine deux sources distinctes : l'**appartenance** à la
 fenêtre vient de `lastAt` (tous chemins confondus : leçon jouée seule, bilan, sprint),
@@ -289,8 +290,9 @@ Rendu : groupé par MATIÈRE, chaque ligne portant sa catégorie (leçon) ou l'�
 « Dictée » (`kind`), son compte (« N fois », omis quand `null` — jamais « travaillée N
 fois », formule réservée au compte CUMULÉ « depuis toujours » de l'accordéon « Notions par
 catégorie » ci-dessous, pour ne pas afficher deux chiffres différents sous la même phrase
-sur le même écran) et sa date relative (`libelleDerniereFois`). Aucun état d'acquisition par
-ligne (avis pédago) : une notion tout
+sur le même écran) et sa date relative (`libelleDerniereFois`). **Aucun état d'acquisition
+par ligne** (avis pédago), à une seule exception près (« Cap franchi », #536, ci-dessous) :
+une notion tout
 juste abordée est normalement encore « à découvrir », un badge afficherait donc un niveau
 bas sur ce qu'il y a de plus récent, alors que c'est une photo d'activité et non un
 jugement. Sélecteur de période à **1 / 2 / 7 jours** (composant segment partagé, cf. [Rendu
@@ -301,6 +303,46 @@ anciennes ci-dessous : jamais un simple compteur muet) — son chrome de `<summa
 **factorisé** dans le mixin SCSS `repli-sum` (`styles/encadrant.scss`), partagé avec le
 repli des erreurs plus anciennes plutôt que recopié. État vide : « Aucune session … »
 (le mot déjà employé par le graphe d'activité), jamais un « 0 » en tête de phrase.
+
+**Cap franchi, seule exception positive (#536)** : une ligne peut porter la mention
+« récemment passée en cours » / « récemment acquise » (`CapFranchi`, `MOT_CAP` dans
+`ui/encadrant-travail.ts`, classe `.enc-trav-cap`, `--ok` en gras dans la méta plutôt qu'en
+badge — un badge se lirait comme un état permanent, alors que le fait est ponctuel) quand la
+cible a franchi ce cap **pendant la fenêtre affichée** (`capDansFenetre`). Deux valeurs
+seulement, jamais rien de plus bas : ce sont les deux seuls franchissements que les
+journaux de paliers datent, et les deux seuls que le pédagogue a autorisés à figurer ici.
+
+Les deux journaux de paliers **n'ont pas la même clé** (cf. [Données &
+profils](donnees-et-profils.md)) : celui des leçons (`ludaskia_paliers`) est indexé par la
+clé de stats **namespacée** `lessonId@niveau`, la même que `statsRaw` ; celui des listes
+(`ludaskia_paliersOrtho`) par l'**id nu** de la liste. Une première version avait adressé le
+premier par id nu : la mention restait alors silencieusement muette pour **toute** leçon,
+sans qu'aucun test ne le révèle — « aucun cap franchi » étant le cas ordinaire, rien ne
+distingue un vrai calme d'une lecture qui rate sa clé.
+
+Un cap n'est retenu que s'il est encore **porté par l'état courant** de la cible
+(`capAnnoncable`) : les journaux sont MONOTONES (ils ne datent que les montées), alors que
+l'état réel peut être redescendu depuis (perf récente retombée sous le seuil, mot ajouté à
+une liste déjà acquise, voix de synthèse qui réapparaît et remet la dictée au rang des modes
+requis). Le filtrage par l'état courant **précède** la prise du plus haut des deux valeurs,
+et non l'inverse : un « acquis » démenti ne doit pas effacer un « en cours » de la même
+fenêtre qui, lui, est encore vrai.
+
+Les entrées nécessaires à ce calcul (les deux journaux, les étoiles, et `dicteeDispo` — la
+dispo de la synthèse vocale, qui conditionne l'état courant d'une liste) sont rassemblées
+dans `SourcesCapFranchi`, 4e paramètre de `travailRecent`. Forme **plate**, non imbriquée
+par famille (`{ lecons: …, ortho: … }` aurait semblé plus parlante) : `dicteeDispo` n'est
+pas une donnée du profil mais une propriété de l'**appareil**, et la ranger avec les deux
+journaux lus en stockage laisserait croire qu'elle en vient aussi. `travailRecentProfil`
+prend `dicteeDispo` en paramètre **obligatoire**, sans défaut : un défaut à `false` serait
+silencieusement optimiste (une liste sans synthèse vocale s'acquiert plus tôt) et ferait
+apparaître une mention sur une liste que l'appareil ne considère pas encore comme acquise —
+exactement la classe de panne muette que ce mécanisme cherche à fermer.
+
+Cas limite couvert par les tests : une leçon travaillée sous **deux niveaux** (deux clés de
+paliers) est annoncée dès que l'**une** des deux a franchi un cap — cohérent avec le
+dédoublonnage « aucun filtre de niveau » ci-dessus, qui traite déjà une telle leçon comme
+une seule ligne.
 
 ## Dictées : listes et banque de mots (#424, #496)
 

@@ -56,6 +56,12 @@ faut.**
   `watchErrors` + `expect(errors).toEqual([])`, et l'interaction clé marche,
   sélecteurs stables). Si la PR ajoute du visible sans spec e2e, **c'est
   bloquant** : signale-le en premier.
+- **Champ ajouté à une structure déjà rendue.** Un champ optionnel de plus sur un
+  type déjà affiché (ex. `capFranchi` sur `CibleTravaillee`, #536) ne crée ni
+  nouveau mode, ni nouveau type d'`Exercise`, ni nouveau runner : aucun gate
+  mécanique (`tests/couverture-e2e-gate.test.ts`) ne le voit passer sans spec.
+  Demande-toi si son affichage a sa **propre** vérification e2e, et pas
+  seulement le test Vitest de son calcul.
 - **Qualité des tests, pas seulement leur présence.** Un test qui ne teste rien
   (assertion triviale, mock qui masque la logique), un test fragile (sélecteur
   instable, dépendance à l'aléatoire non maîtrisé, timing), ou un test qui teste

@@ -425,6 +425,11 @@ export interface SourcesCapFranchi {
 	/** Dispo de la voix de synthèse : conditionne l'« acquis » d'une liste (un mode requis en moins). */
 	dicteeDispo: boolean;
 }
+/* Forme PLATE et non imbriquée par famille (`{ lecons: {...}, ortho: {...} }`), qui serait plus
+   parlante au premier regard : `dicteeDispo` n'est pas une donnée de la famille ortho mais une
+   propriété de l'APPAREIL, et la ranger avec deux journaux lus en stockage laisserait croire
+   qu'elle vient du profil comme eux. Les quatre champs ont en commun d'être des entrées de la
+   décision, pas une origine. */
 
 /* Cap franchi dans la fenêtre ET encore porté par l'état COURANT de la cible.
    Sans ce plafonnement, la mention annoncerait « tout juste acquise » pendant que l'accordéon du
@@ -593,11 +598,17 @@ export function travailRecent(
    trois fenêtres à chaque fois pour n'en afficher qu'une, soit à faire porter un paramètre de
    sélection à un calcul qui est une photo de l'état. (Ce n'est pas une question de coût : le
    récap est lui aussi recalculé à chaque rendu de l'onglet.) */
+/* `dicteeDispo` est OBLIGATOIRE, contrairement aux autres lectures de profil de ce module qui
+   le défaultent à `false`. Un défaut ici serait silencieusement optimiste — sans voix de
+   synthèse une liste compte un mode requis de moins, donc elle s'acquiert plus tôt, et une
+   mention pourrait s'afficher sur une liste que l'appareil ne considère pas comme acquise.
+   C'est précisément la classe de panne muette que le reste de cette fonction s'emploie à
+   éviter, et il n'y a qu'un appelant : le coût de l'exiger est nul. */
 export function travailRecentProfil(
 	profile: Profile,
 	jours: number,
 	now: number,
-	dicteeDispo = false,
+	dicteeDispo: boolean,
 ): GroupeTravail[] {
 	const uuid = profile.uuid;
 	return travailRecent(

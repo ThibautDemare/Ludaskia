@@ -216,6 +216,16 @@ token près** (`lqcm-progress-lab(?![\w-])`). En simple sous-chaîne, renommer
 derrière satisfait le gate ; il garde l'**existence** d'un chemin e2e par surface, la
 profondeur du round-trip restant l'affaire de `e2e/journal-couverture.spec.ts`.
 
+**Une mention ajoutée à une ligne existante n'a, elle, aucun gate (#536, rejet écrit.)**
+Ce gate accroche sur des surfaces **structurelles** : un id de mode, un type d'`Exercise`,
+un runner. Le champ `capFranchi` de « Travaillé récemment » (cf. [Espace
+encadrant](espace-encadrant.md)) n'en crée aucune — même composant, même route, un champ
+optionnel de plus sur une structure déjà rendue. Rien de mécanisable n'attrape « une
+mention ajoutée à une ligne existante doit avoir sa spec e2e » ; un gate textuel cherchant
+la classe `.enc-trav-cap` se contournerait par un simple renommage. Contrepartie posée en
+**checklist** plutôt qu'en test : une ligne dans le prompt de `relecteur-qualite`
+(`.claude/agents/relecteur-qualite.md`).
+
 ### Nom accessible des champs de réponse (#577)
 
 `tests/champs-libelles.test.ts` balaie le catalogue et exige qu'aucun `<input class="ans…">`

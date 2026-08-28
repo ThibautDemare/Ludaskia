@@ -51,6 +51,124 @@
 			name="twitter:image:alt"
 			content="Logo de Ludaskia : un arbre dans une pastille blanche, à côté du nom de l'application."
 		/>
+		<!-- URL canonique (#631). Forme SANS nom de fichier : `…/Ludaskia/` et
+		     `…/Ludaskia/index.html` servent la MÊME page, et sans cette balise un
+		     moteur peut indexer les deux et répartir le signal entre elles. Doit
+		     rester absolue et identique à `og:url` — les deux sont comparées par
+		     tests/seo-decouvrabilite.test.ts, une faute de frappe dans l'une des
+		     deux fait échouer `npm test`. -->
+		<link rel="canonical" href="https://thibautdemare.github.io/Ludaskia/" />
+		<!-- Données structurées (#631) — deux blocs DISTINCTS et non imbriqués : le
+		     `WebApplication` décrit l'application, le `FAQPage` plus bas reprend la
+		     section « Questions fréquentes » de cette page.
+		     Règle à tenir en les modifiant : tout ce qui est déclaré ici doit être
+		     VISIBLE dans la page. Google sanctionne le balisage sans contenu
+		     correspondant, donc on ne déclare pas une question qui ne s'affiche pas
+		     (et réciproquement : une question ajoutée à la page doit être ajoutée
+		     ici, sinon le gate tombe).
+		     Les CLASSES annoncées sont vérifiées contre le catalogue réel : ouvrir
+		     l'application à un nouveau niveau sans le déclarer ici fait échouer
+		     `npm test`. C'est voulu — une promesse de classe non tenue est le genre
+		     d'écart qu'on ne remarque qu'en lisant un résultat de recherche. -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "WebApplication",
+				"name": "Ludaskia",
+				"url": "https://thibautdemare.github.io/Ludaskia/",
+				"applicationCategory": "EducationalApplication",
+				"operatingSystem": "Navigateur web",
+				"inLanguage": "fr",
+				"isAccessibleForFree": true,
+				"description": "Entraînement gratuit en maths et en français pour le CE2 et le CM1 : exercices générés à la volée, corrigés tout de suite, sans compte ni publicité. Les données restent sur l'appareil.",
+				"educationalLevel": ["CE2", "CM1"],
+				"audience": {
+					"@type": "EducationalAudience",
+					"educationalRole": "student"
+				},
+				"offers": {
+					"@type": "Offer",
+					"price": 0,
+					"priceCurrency": "EUR"
+				},
+				"publisher": {
+					"@type": "Person",
+					"name": "Thibaut Démare"
+				}
+			}
+		</script>
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "FAQPage",
+				"mainEntity": [
+					{
+						"@type": "Question",
+						"name": "Faut-il créer un compte ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Non. Aucune inscription, aucun mot de passe : on ouvre Ludaskia et on commence. La progression est enregistrée automatiquement sur l'appareil."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Est-ce payant ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Non, Ludaskia est entièrement gratuit. Pas de publicité, pas d'achat dans l'application, rien à débloquer en payant."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Que deviennent les données de mon enfant ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Elles restent sur votre appareil, dans le navigateur. Rien n'est envoyé sur un serveur ni partagé. Si vous effacez les données du navigateur, la progression est perdue — vous pouvez en faire une sauvegarde depuis l'application."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Ça marche sans connexion ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Oui. Après quelques utilisations, Ludaskia s'enregistre sur l'appareil et se rouvre sans réseau — en voiture, en voyage, ou simplement quand la connexion lâche. L'application complète ce qu'elle a mis de côté petit à petit, en arrière-plan : laissez-lui quelques passages avant de compter dessus. Pour que ce soit durable, mieux vaut l'ajouter à l'écran d'accueil. C'est surtout vrai sur iPhone et iPad : sans cela, Safari finit par effacer les données d'un site resté longtemps sans être ouvert."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Pour quelles classes ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Le CE2 et le CM1 pour le moment : on choisit la classe au démarrage pour avoir les bons exercices. D'autres classes — et d'autres matières — viendront s'ajouter au fil du temps."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Puis-je suivre les progrès de mon enfant ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Oui, depuis l'espace encadrants de l'application. Vous y voyez où en est chaque notion, l'activité des dernières semaines et les erreurs récentes avec la réponse donnée et celle qui était attendue. Ni note, ni moyenne, ni classement, ni comparaison entre enfants : c'est fait pour accompagner, pas pour évaluer."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Puis-je entrer la liste de mots de la dictée ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Oui. Vous saisissez la liste de la semaine, celle du cahier, dans la rubrique des dictées de mots. Elle devient alors une leçon que votre enfant travaille comme les autres, et vous en suivez l'avancement depuis l'espace encadrants."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Plusieurs enfants sur le même appareil ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Oui, un profil par enfant : chacun garde sa progression, ses réglages et son avatar, et on passe de l'un à l'autre en deux touches. Chaque progression peut être sauvegardée dans un fichier, puis reprise sur un autre appareil."
+						}
+					}
+				]
+			}
+		</script>
 	</head>
 	<body class="vitrine">
 		<!-- ============================================================

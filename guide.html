@@ -40,6 +40,71 @@
 		<meta property="og:locale" content="fr_FR" />
 		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:image" content="https://thibautdemare.github.io/Ludaskia/og-image.png" />
+		<!-- URL canonique (#631) — le guide s'indexe pour lui-même : c'est une page
+		     faite pour être lue AVANT d'essayer l'application, et elle répond à des
+		     questions qu'un parent tape vraiment. Identique à `og:url` (comparés par
+		     tests/seo-decouvrabilite.test.ts). -->
+		<link rel="canonical" href="https://thibautdemare.github.io/Ludaskia/guide.html" />
+		<!-- Données structurées (#631) — la FAQ de la section 9, exposée telle
+		     quelle. Même règle que sur la vitrine : ce qui est déclaré ici doit être
+		     VISIBLE plus bas dans la page, et une question ajoutée à la page sans
+		     être ajoutée ici fait échouer `npm test`. -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "FAQPage",
+				"mainEntity": [
+					{
+						"@type": "Question",
+						"name": "Combien de temps par jour ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Dix à quinze minutes suffisent, et valent mieux qu'une heure le dimanche. Ludaskia entraîne des automatismes : c'est la régularité qui les installe, pas la durée."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Mon enfant se trompe beaucoup, c'est grave ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Non, et c'est même l'usage prévu : chaque erreur est corrigée tout de suite, la bonne réponse est affichée, et la notion revient plus tard. Ce qui compte n'est pas le score d'aujourd'hui mais le fait que la notion finisse par tenir."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Faut-il rester à côté de lui ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Non. L'application se corrige seule et n'a besoin de personne pour tourner. Votre place utile est ailleurs : dix minutes sur une erreur précise, repérée dans l'historique, valent mieux qu'une demi-heure à surveiller."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Et pour une utilisation en classe ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Ludaskia peut servir en autonomie sur une tablette (atelier, fond de classe, APC), avec un profil par élève. En revanche il n'y a ni compte, ni liste de classe, ni tableau de bord collectif : la progression reste attachée à l'appareil et au navigateur, et disparaît s'ils sont nettoyés ou changés. C'est un outil d'entraînement individuel, pas un outil de gestion de classe."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Ça marche sans connexion ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Oui. Ludaskia s'enregistre sur l'appareil et se rouvre sans réseau — en voiture, en voyage, ou quand la connexion lâche. Elle complète en arrière-plan ce qu'elle a mis de côté, aux moments où l'enfant ne fait rien : laissez-lui quelques passages avant de compter dessus, et ajoutez-la à l'écran d'accueil pour que ce soit durable. Une seule chose a besoin du réseau sur certains appareils : la voix de la dictée. Si l'appareil n'a pas de voix française installée, la dictée n'est pas proposée sans connexion — les autres façons de travailler les mots, elles, restent disponibles."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Est-ce que ça remplace les devoirs ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Non. C'est un complément d'entraînement, sur des automatismes qui gagnent à être répétés : tables, conjugaison, orthographe des mots courants. La leçon, la compréhension et le travail de fond restent du côté de l'école."
+						}
+					}
+				]
+			}
+		</script>
 	</head>
 	<body class="vitrine guide">
 		<!-- ============================================================

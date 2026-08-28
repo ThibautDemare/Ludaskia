@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Plan du site (#631), soumis à Google Search Console et à Bing Webmaster Tools.
+
+	Fichier STATIQUE : `public/` est recopié tel quel à la racine du build, donc
+	ce fichier est servi à https://thibautdemare.github.io/Ludaskia/sitemap.xml.
+	Pas de génération au build : avec deux URL, un plugin coûterait plus qu'il ne
+	rapporte, et un fichier lisible en clair se vérifie sans lancer `npm run build`.
+
+	Ne liste QUE les pages indexables. `app.html` en est volontairement absente :
+	elle se déclare canonique vers la vitrine, donc l'inscrire ici serait se
+	contredire (« indexe-la » d'un côté, « non, indexe l'autre » de l'autre), et
+	Search Console remonterait l'incohérence. Le gate
+	tests/seo-decouvrabilite.test.ts vérifie cette absence, ainsi que le fait que
+	chaque URL listée corresponde à une page qui existe et se déclare canonique.
+
+	Pas de <lastmod> : il faudrait le tenir à jour à chaque release, et une date
+	fausse est pire que pas de date (un moteur qui constate un lastmod menteur
+	cesse d'en tenir compte). Le sitemap sert ici à faire DÉCOUVRIR deux URL, pas
+	à arbitrer une fréquence de recrawl.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<url>
+		<loc>https://thibautdemare.github.io/Ludaskia/</loc>
+	</url>
+	<url>
+		<loc>https://thibautdemare.github.io/Ludaskia/guide.html</loc>
+	</url>
+</urlset>

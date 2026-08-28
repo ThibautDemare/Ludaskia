@@ -4,6 +4,15 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Ludaskia — s'exercer en s'amusant</title>
+		<!-- Description propre à l'APPLICATION (#631), volontairement différente de
+		     celle de la vitrine : deux pages qui partagent leur description se
+		     cannibalisent dans les résultats de recherche. Celle-ci parle à qui
+		     arrive directement sur l'app (lien partagé, favori), pas à qui découvre
+		     le projet. -->
+		<meta
+			name="description"
+			content="Ouvrir Ludaskia et s'entraîner : exercices de maths et de français pour le CE2 et le CM1, corrigés tout de suite. Sans compte, sans publicité, et utilisable sans connexion une fois installée."
+		/>
 		<!-- Favicon + icône d'application (logo « arbre »). Fichiers dans public/ ;
 		     chemins SANS la base : Vite préfixe lui-même /Ludaskia/. -->
 		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -46,6 +55,17 @@
 			name="twitter:image:alt"
 			content="Logo de Ludaskia : un arbre dans une pastille blanche, à côté du nom de l'application."
 		/>
+		<!-- URL canonique (#631) — pointe sur la VITRINE, pas sur elle-même, et
+		     c'est délibéré. Le texte que cette page offre à un moteur est celui de
+		     son interface (« Choisis une leçon », « Mon espace »), fragmenté et
+		     illisible en extrait de résultat ; la vitrine, elle, explique ce qu'est
+		     Ludaskia. On concentre donc le signal sur une seule URL au lieu de
+		     laisser les deux se disputer la requête « Ludaskia ».
+		     À NE PAS remplacer par un `noindex` : ici on consolide deux URL en une,
+		     alors qu'un `noindex` retirerait la page de l'index et empêcherait aussi
+		     d'en suivre les liens. L'application reste évidemment accessible,
+		     partageable et favorisable. -->
+		<link rel="canonical" href="https://thibautdemare.github.io/Ludaskia/" />
 	</head>
 	<body>
 		<header class="toolbar">

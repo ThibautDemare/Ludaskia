@@ -581,6 +581,13 @@
 			<section class="v-section v-faq" id="faq" aria-labelledby="gFaqTitle" tabindex="-1">
 				<div class="v-wrap">
 					<h2 id="gFaqTitle">9. Questions fréquentes</h2>
+					<!-- Cette FAQ est DUPLIQUÉE en JSON-LD `FAQPage` dans le <head> de cette
+					     page (#631). Le rappel est ici, au point d'édition réel : personne
+					     ne relit le <head> en corrigeant une réponse 500 lignes plus bas.
+					     • Question ajoutée ou retirée → la reporter dans le JSON-LD, sinon
+					       `npm test` échoue (le gate compare les inventaires).
+					     • Texte d'une réponse modifié → le reporter À LA MAIN : ce n'est PAS
+					       vérifié automatiquement (cf. docs/architecture/tests.md). -->
 					<div class="v-faq-list">
 						<div class="v-faq-item">
 							<h3>Combien de temps par jour&nbsp;?</h3>

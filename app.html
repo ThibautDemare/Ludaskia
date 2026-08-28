@@ -8,10 +8,19 @@
 		     celle de la vitrine : deux pages qui partagent leur description se
 		     cannibalisent dans les résultats de recherche. Celle-ci parle à qui
 		     arrive directement sur l'app (lien partagé, favori), pas à qui découvre
-		     le projet. -->
+		     le projet.
+		     Deux contraintes de forme, tenues à la main (voir
+		     docs/architecture/conventions-redaction.md) : rester sous ~155
+		     caractères, parce que Google tronque au-delà ; et surtout NE PAS finir
+		     sur la clause qui conditionne une promesse. La version initiale disait
+		     « utilisable sans connexion une fois installée » : coupée à 155, elle
+		     devenait « utilisable sans connexion », soit l'inverse de l'honnêteté
+		     que la page tient partout ailleurs sur le hors-ligne. D'où
+		     « Installable pour travailler sans connexion », où la condition est
+		     dans l'adjectif et ne peut plus être amputée. -->
 		<meta
 			name="description"
-			content="Ouvrir Ludaskia et s'entraîner : exercices de maths et de français pour le CE2 et le CM1, corrigés tout de suite. Sans compte, sans publicité, et utilisable sans connexion une fois installée."
+			content="Exercices de maths et de français pour le CE2 et le CM1, corrigés tout de suite. Sans compte ni publicité. Installable pour travailler sans connexion."
 		/>
 		<!-- Favicon + icône d'application (logo « arbre »). Fichiers dans public/ ;
 		     chemins SANS la base : Vite préfixe lui-même /Ludaskia/. -->
@@ -59,12 +68,10 @@
 		     c'est délibéré. Le texte que cette page offre à un moteur est celui de
 		     son interface (« Choisis une leçon », « Mon espace »), fragmenté et
 		     illisible en extrait de résultat ; la vitrine, elle, explique ce qu'est
-		     Ludaskia. On concentre donc le signal sur une seule URL au lieu de
-		     laisser les deux se disputer la requête « Ludaskia ».
-		     À NE PAS remplacer par un `noindex` : ici on consolide deux URL en une,
-		     alors qu'un `noindex` retirerait la page de l'index et empêcherait aussi
-		     d'en suivre les liens. L'application reste évidemment accessible,
-		     partageable et favorisable. -->
+		     Ludaskia. Sans elle, les deux URL se disputeraient la même requête.
+		     À NE PAS remplacer par un `noindex` : on consolide deux URL en une,
+		     alors qu'un `noindex` retirerait la page de l'index et empêcherait
+		     d'en suivre les liens. -->
 		<link rel="canonical" href="https://thibautdemare.github.io/Ludaskia/" />
 	</head>
 	<body>

@@ -60,7 +60,18 @@
 	font-size: 14px;
 	font-weight: 800;
 	letter-spacing: 0.3px;
-	color: var(--accent);
+	/* `--ink`, et non `--accent` : à 14 px gras le badge est du texte COURANT, donc
+	   4,5:1 exigés — et `--accent` sur `--page-bg` retombe à 4,48 / 4,27 / 3,80 selon
+	   le thème (mesuré à l'outil). La rampe de gris, elle, est tenue sur les six
+	   thèmes par tests/contraste-tokens.test.ts. */
+	color: var(--ink);
+}
+/* L'attribut [hidden] doit l'emporter sur display:inline-flex (règle d'auteur, sinon
+   la règle par défaut du navigateur perd) — sans quoi le badge « Pause » resterait
+   affiché en permanence, y compris quand rien ne joue. Même correctif compagnon que
+   .enc-vu-list, .lecon-decide et .ortho-formes. */
+.sprint-pause[hidden] {
+	display: none;
 }
 .sprint-score {
 	font-size: 16px;

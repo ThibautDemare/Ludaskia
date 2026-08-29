@@ -261,6 +261,13 @@ const PAIRES_NON_TEXTE: Paire[] = [
 		arriere: '--paper',
 		ou: 'encadrant.scss .enc-revoir-signal (liseré « ça bloque »)',
 	},
+	// Décompte gelé pendant l'écoute d'un énoncé (#630) : un liseré pointillé cerne le
+	// minuteur, en `currentColor` — donc `--accent` au repos, `--ko` dans les 30
+	// dernières secondes. `outline-offset` le pose HORS de la carte du minuteur, donc
+	// sur le fond de page et non sur `--paper`. C'est bien un objet porteur d'état :
+	// c'est le seul signal, avec le badge, que le temps ne court plus.
+	{ avant: '--accent', arriere: '--page-bg', ou: 'sprint.scss .sprint-time.en-pause' },
+	{ avant: '--ko', arriere: '--page-bg', ou: 'sprint.scss .sprint-time.en-pause.low' },
 	// Rampe des étapes de dictée (#545) : segments de la frise de composition, posés sur la
 	// carte. Ce sont bien des objets graphiques PORTEURS de sens — la longueur d'un segment
 	// EST le nombre de mots à cette étape — donc le seuil non-texte s'applique à chacun.

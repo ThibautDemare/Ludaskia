@@ -111,6 +111,21 @@ de la prudence que le projet tient partout ailleurs sur le hors-ligne (cf.
 travailler sans connexion » (153 caractères) : la condition est portée par
 l'adjectif en tête, elle ne peut plus être amputée par une coupe en fin de phrase.
 
+## Ligne d'aménagement lue par l'enfant : dire ce qui reste, pas seulement ce qui change (#630)
+
+Quand un réglage posé par l'adulte **retire** quelque chose à l'enfant dans un contexte
+précis (un mode, un écran), la ligne qui le lui annonce — lue par l'enfant, donc en
+« tu » — ne s'arrête pas à l'exception : elle nomme aussi ce qui **reste** possible à sa
+place, sans quoi le retrait se lit comme une privation sèche. Cas corrigé (avis
+`redacteur-contenu-francais`, #630) : la ligne en lecture seule des préférences enfant
+annonçait « Les consignes sont lues à voix haute automatiquement, sauf pendant les
+sprints » — vrai, mais silencieux sur le fait que le bouton « Écouter » y reste
+disponible, l'enfant déclenchant lui-même la lecture. Réécrite « … sauf pendant les
+sprints, où le bouton « Écouter » reste disponible » (`ui/preferences.ts`). Ne
+s'applique qu'aux lignes **lues par l'enfant** : le toggle de l'espace encadrant
+(`ui/encadrant-reglages.ts`), lu par l'adulte, peut se contenter de nommer la portée du
+réglage sans reformuler ce que l'enfant retrouve ailleurs.
+
 ## JSON-LD `FAQPage` : fusionner des paragraphes visibles ne doit perdre aucune clause (#631)
 
 Quand la réponse à une question de FAQ fusionne plusieurs `<p>` de la page en un seul

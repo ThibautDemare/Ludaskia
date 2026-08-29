@@ -20,7 +20,7 @@ import {
 	getLessonsBySubject,
 	getLessonsByCategory,
 	lessonsForIds,
-	estEligibleSprint,
+	estEligibleSprintHorsNiveau,
 	SUBJECTS,
 	CATEGORIES,
 } from '../core/catalog';
@@ -117,10 +117,10 @@ function lessonsForFilter(f: SprintFilter): LessonDef[] {
 			? base
 			: base.filter((d) => d.levels.includes(niveauActifMatiere(d.subject)));
 	// Les formats à écran dédié (posée #97, rangement #108, tri #114, appariement
-	// #392…) ne se jouent pas « une réponse à la fois » : `estEligibleSprint` les
+	// #392…) ne se jouent pas « une réponse à la fois » : `estEligibleSprintHorsNiveau` les
 	// écarte, avec les leçons explicitement exclues. Le prédicat vit dans le
 	// catalogue depuis #630, pour que le gate du texte parlé interroge le même pool.
-	return auNiveau.filter(estEligibleSprint);
+	return auNiveau.filter(estEligibleSprintHorsNiveau);
 }
 
 function filterLabel(f: SprintFilter): string {
@@ -306,6 +306,7 @@ const SPRINT_RECENT = 4;
 export function sprintCleanup() {
 	sprintActive = false;
 	sprintDecompte = null;
+	sprintDesarmerFilet();
 	stopTts(); // une lecture d'énoncé ne survit pas à la sortie du mode (#630)
 }
 
@@ -482,6 +483,15 @@ const ANNONCE_BONNE_REPONSE = 'Bonne réponse !';
 const LECTURE_MAX_MS = 30000;
 let sprintLectureFilet: ReturnType<typeof setTimeout> | null = null;
 
+/* Désarme le filet en quittant la partie. Il se rattrapait de lui-même — le rappel
+   relit l'état RÉEL du décompte du moment — mais un compte à rebours d'une partie
+   finie qui reste armé au-dessus de la suivante n'a aucune raison d'exister, et
+   c'est une ligne. */
+function sprintDesarmerFilet(): void {
+	if (sprintLectureFilet) clearTimeout(sprintLectureFilet);
+	sprintLectureFilet = null;
+}
+
 /* L'énoncé À LIRE de la question courante, en attribut. Vide (leçon délibérément
    muette : `parle: ''` des homophones, où l'oral trahirait la réponse) ⇒ aucun
    bouton n'est greffé. Le gate tests/sprint-tts-gate.test.ts interdit qu'une leçon
@@ -521,8 +531,8 @@ function sprintBindTts(stage: HTMLElement): void {
    question coupe la lecture (cf. sprintNext). Réécouter dix fois ne fait gagner que
    dix fois le temps d'écouter. */
 function sprintGelLecture(enCours: boolean): void {
-	if (sprintLectureFilet) clearTimeout(sprintLectureFilet);
-	sprintLectureFilet = enCours ? setTimeout(() => sprintGelLecture(false), LECTURE_MAX_MS) : null;
+	sprintDesarmerFilet();
+	if (enCours) sprintLectureFilet = setTimeout(() => sprintGelLecture(false), LECTURE_MAX_MS);
 	if (!sprintDecompte) return;
 	const now = Date.now();
 	// Le décompte peut DÉJÀ être gelé par une correction affichée. On le relève AVANT
@@ -887,6 +897,7 @@ function finalizeSprint() {
 	if (!sprintActive) return;
 	sprintActive = false;
 	sprintDecompte = null;
+	sprintDesarmerFilet();
 	stopTts(); // le bilan n'a pas à hériter d'un énoncé encore en cours de lecture
 	const t = getTimer();
 	if (t) clearInterval(t);

@@ -54,6 +54,25 @@ produit, par conception, moins de 50 items distincts (conjugaison = un verbe × 
 temps = 6 formes, ~4 types de triangles…). Il reste une cible pour les **banques
 de contenu** (vocabulaire, homophones), pas un gate sur l'ensemble du catalogue.
 
+### Gate du texte parlé du sprint (#630)
+
+`tests/sprint-tts-gate.test.ts` garde l'invariant du bouton « Écouter » ajouté au
+sprint : **toute** question tirable par le mode doit donner quelque chose à lire à
+voix haute. Deux leçons du catalogue sont délibérément **muettes**
+(`parle: ''` — homophones, participes en `-é`/`-és`/`-ée`/`-ées`, où l'entendre
+donnerait la réponse) ; rien ne liait mécaniquement « énoncé muet » à « exclue du
+sprint » avant ce gate, `estEligibleSprintHorsNiveau` ne regardant pas `parle`. Il interroge
+donc le **prédicat réel** du tirage (`estEligibleSprintHorsNiveau`, `core/catalog.ts`) et le
+**générateur réel** de la question (`genSprintQuestion`, `core/sprint-item.ts`) —
+pas une liste recopiée à la main, qui aurait divergé au premier format ajouté — et
+échantillonne **40 tirages par (leçon, niveau)** éligible : la mutité peut ne
+toucher qu'une partie des tirages d'une banque (seuls quelques items portant
+`parle: ''`), un tirage unique la manquerait une fois sur deux. Deux témoins
+prouvent que le gate a des dents (il resterait vert par construction sans eux) :
+un énoncé à `parle` vide rend bien un texte parlé vide, et les deux leçons muettes
+assumées restent bien hors du pool. **Ce qu'il ne prouve pas** : que le bouton est
+réellement greffé à l'écran, ni qu'il parle — c'est l'objet d'`e2e/sprint-ecouter.spec.ts`.
+
 ### Gate statique du journal d'erreurs (#580)
 
 `tests/erreurs-journal-gate.test.ts` fait respecter la règle « pas de correction sans

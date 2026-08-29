@@ -275,7 +275,18 @@ export const lessonAttr = (ctx: RenderContext): SafeHtml =>
    Repli « réponse » si l'énoncé ne donne rien à lire (item à figure seule) : un nom
    générique reste préférable à l'absence de nom, qu'axe classe `critical`. */
 export function nomChampReponse(it: Item): string {
-	return texteParle(it.parle ?? it.text) || 'réponse';
+	return texteItemParle(it) || 'réponse';
+}
+
+/* Ce qu'un item DONNE À LIRE à voix haute, en un seul endroit (#630). `parle` prime
+   sur `text` : il porte la version pour l'oreille d'un énoncé télégraphique, et sa
+   valeur VIDE est un choix — les leçons d'homophones s'en servent pour rester muettes,
+   l'oral trahirait la réponse. `?? ` et non `||` : c'est justement la chaîne vide qu'il
+   faut respecter. Le sprint s'en sert pour décider s'il greffe un bouton « Écouter »,
+   `nomChampReponse` pour nommer le champ de saisie ; les deux doivent dire la même
+   chose du même énoncé. */
+export function texteItemParle(it: Item): string {
+	return texteParle(it.parle ?? it.text);
 }
 
 /* Attribut `aria-label` prêt à coller sur un champ de réponse. `role` précise le FORMAT

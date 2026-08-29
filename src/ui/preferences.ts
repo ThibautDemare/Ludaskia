@@ -138,7 +138,9 @@ function amenagementsInfoHTML(): SafeHtml {
 	if (sansPressionTemporelle())
 		lignes.push('Le minuteur est masqué pendant les sprints (réglé par un adulte).');
 	if (lectureConsigneAuto())
-		lignes.push('Les consignes sont lues à voix haute automatiquement (réglé par un adulte).');
+		lignes.push(
+			'Les consignes sont lues à voix haute automatiquement, sauf pendant les sprints (réglé par un adulte).',
+		);
 	if (!apparitionsSurprises())
 		lignes.push('Les apparitions surprises sont désactivées (réglé par un adulte).');
 	return lignes.length

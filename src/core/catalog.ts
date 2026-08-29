@@ -995,6 +995,29 @@ export function isDroiteGradueeLesson(lesson: LessonDef): boolean {
 	return lesson.exerciseType.exerciseKind === 'droiteGraduee';
 }
 
+/* Une leçon peut-elle être TIRÉE par le sprint chronométré ? Réunit l'exclusion
+   déclarative (`excludeFromSprint`, posée sur les notions à charge cognitive
+   élevée) et les sept formats d'écran dédié ci-dessus, incompatibles avec le
+   « une réponse à la fois ». Le filtre de NIVEAU reste à part (ui/sprint.ts) :
+   il dépend du profil actif, pas du catalogue.
+
+   Extrait de ui/sprint.ts (#630) pour que le gate `tests/sprint-tts-gate.test.ts`
+   interroge le MÊME prédicat que le tirage : un pool éligible recopié à la main
+   dans le test aurait divergé au premier format ajouté, et le gate aurait alors
+   couvert un catalogue imaginaire. */
+export function estEligibleSprint(lesson: LessonDef): boolean {
+	return (
+		!lesson.excludeFromSprint &&
+		!isPosedLesson(lesson) &&
+		!isOrderingLesson(lesson) &&
+		!isTriLesson(lesson) &&
+		!isProblemeLesson(lesson) &&
+		!isPairingLesson(lesson) &&
+		!isClicMotLesson(lesson) &&
+		!isDroiteGradueeLesson(lesson)
+	);
+}
+
 /* Une leçon math « héritée » est branchée sur le générateur numérique bilanQ
    (calcul mental, via MATH_LESSON_NUM). Les autres leçons math (moteurs
    modernes : conversions #89, etc.) produisent leur item via leur ExerciseType. */

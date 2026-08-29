@@ -19,6 +19,14 @@
 .sprint-hud--calme {
 	justify-content: center;
 }
+/* Le minuteur et son témoin de pause forment UN bloc dans le HUD : sans ce
+   groupement, le badge deviendrait un troisième enfant du `space-between` et
+   pousserait le score à l'apparition. */
+.sprint-time-wrap {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
 .sprint-time {
 	font-family: 'Courier New', monospace;
 	font-size: 34px;
@@ -32,6 +40,27 @@
 }
 .sprint-time.low {
 	color: var(--ko);
+}
+/* Décompte gelé pendant l'écoute de l'énoncé (#630). Le liseré est POINTILLÉ et
+   suit `currentColor` : la forme du trait porte l'information, pas une teinte de
+   plus — la couleur du minuteur est déjà prise par le rouge des 30 dernières
+   secondes, et un état signalé par une seconde teinte lui ferait concurrence. */
+.sprint-time.en-pause {
+	outline: 2px dashed currentColor;
+	outline-offset: 3px;
+}
+/* Le témoin qui NOMME l'état, à côté du chiffre : deux codages (mot + picto), aucun
+   chromatique. Un enfant qui voit le décompte s'arrêter sans explication croirait à
+   un bug — et n'oserait plus écouter. */
+.sprint-pause {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-family: var(--ui);
+	font-size: 14px;
+	font-weight: 800;
+	letter-spacing: 0.3px;
+	color: var(--accent);
 }
 .sprint-score {
 	font-size: 16px;
@@ -57,6 +86,11 @@
 	gap: 10px;
 	flex-wrap: wrap;
 	justify-content: center;
+	/* Filet (#630) : la ligne accueille le bouton « Écouter » (44 px de cible
+	   tactile). Elle en fait déjà la hauteur sur toutes les questions du catalogue
+	   actuel ; réserver la place évite que l'écran se décale le jour où une leçon
+	   délibérément muette entrerait dans le pool sans son bouton. */
+	min-height: 44px;
 }
 /* Pastille de matière (signale d'un coup d'œil maths vs français) */
 .sprint-subject {

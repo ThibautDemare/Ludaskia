@@ -20,24 +20,18 @@ import {
 	getLessonsBySubject,
 	getLessonsByCategory,
 	lessonsForIds,
-	genLessonItem,
-	isPosedLesson,
-	isOrderingLesson,
-	isTriLesson,
-	isProblemeLesson,
-	isPairingLesson,
-	isClicMotLesson,
-	isDroiteGradueeLesson,
+	estEligibleSprint,
 	SUBJECTS,
 	CATEGORIES,
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { niveauLecon, niveauActifMatiere } from '../core/niveau-actif';
 import { labelLecon } from '../core/levels';
-import { estSigneComparaison, SIGNES_COMPARAISON, signeView } from '../core/signes';
+import { estSigneComparaison, signeView } from '../core/signes';
 import type { SigneComparaison } from '../core/signes';
-import { hasMode } from '../core/exercise';
 import type { ChoiceView } from '../core/exercise';
+import { genSprintQuestion } from '../core/sprint-item';
+import { creerDecompte, type Decompte } from '../core/sprint-decompte';
 import { mathInline } from '../core/fraction-text';
 import { icon, type IconName } from './icon';
 import {
@@ -47,6 +41,7 @@ import {
 	itemEstNumerique,
 	TEXT_ANSWER_INPUT_ATTRS,
 	poserAuTrou,
+	texteItemParle,
 } from '../core/items';
 import { saisieEstNombre } from '../core/nombres';
 import type { Item } from '../core/items';
@@ -82,9 +77,11 @@ import {
 	startSprint,
 	goHome,
 } from './navigation';
+import { bindConsigneTts } from './consigne-tts';
+import { stopTts } from './tts';
 import { capterErreur } from './erreur-capture';
 import { attendueItem } from '../core/erreur-representation';
-import { html, VIDE, type SafeHtml, joindre, drapeau } from '../core/html';
+import { attribut, html, VIDE, type SafeHtml, joindre, drapeau } from '../core/html';
 
 const SPRINT_MS = 300000; // 5 minutes
 
@@ -119,21 +116,11 @@ function lessonsForFilter(f: SprintFilter): LessonDef[] {
 		f.type === 'lessons'
 			? base
 			: base.filter((d) => d.levels.includes(niveauActifMatiere(d.subject)));
-	// Les opérations posées (#97, grille multi-cellules), le rangement d'une suite
-	// (#108, plusieurs tuiles à ordonner), le tri par thème (#114, tuiles à classer)
-	// et l'appariement (#392, relier des paires) ne se jouent pas « une réponse à la
-	// fois » : on les écarte du sprint chronométré.
-	return auNiveau.filter(
-		(d) =>
-			!d.excludeFromSprint &&
-			!isPosedLesson(d) &&
-			!isOrderingLesson(d) &&
-			!isTriLesson(d) &&
-			!isProblemeLesson(d) &&
-			!isPairingLesson(d) &&
-			!isClicMotLesson(d) &&
-			!isDroiteGradueeLesson(d),
-	);
+	// Les formats à écran dédié (posée #97, rangement #108, tri #114, appariement
+	// #392…) ne se jouent pas « une réponse à la fois » : `estEligibleSprint` les
+	// écarte, avec les leçons explicitement exclues. Le prédicat vit dans le
+	// catalogue depuis #630, pour que le gate du texte parlé interroge le même pool.
+	return auNiveau.filter(estEligibleSprint);
 }
 
 function filterLabel(f: SprintFilter): string {
@@ -279,15 +266,24 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 
 let sprintLessonDefs: LessonDef[] = [];
 
-let sprintActive = false,
-	sprintPaused = false;
+let sprintActive = false;
+/* Le compte à rebours, avec ses causes de gel (core/sprint-decompte.ts). Créé à
+   chaque lancement ; `null` hors partie. Une seule notion de pause pour la
+   correction d'une erreur ET l'écoute de l'énoncé (#630), pour que la fin de
+   l'audio ne relance pas un décompte que la correction voulait garder figé. */
+let sprintDecompte: Decompte | null = null;
+/* « L'écran attend un Continuer », et non « le temps est arrêté » : depuis #630 le
+   décompte gèle AUSSI pendant l'écoute d'un énoncé, et l'enfant doit pouvoir
+   répondre pendant qu'il écoute. Interroger la pause tout court à ces endroits
+   ferait ignorer une réponse tapée pendant l'audio — et, sur Entrée, sauterait la
+   question sans qu'elle soit comptée. */
+const sprintEnCorrection = () => !!sprintDecompte?.gelePar('correction');
 // Sans pression temporelle (#223) : minuteur + score masqués, fin douce. Lu une
 // fois au lancement (runSprint). `sprintTimeUp` = les 5 min sont écoulées mais on
 // laisse l'enfant terminer la question en cours avant de finaliser.
 let sprintSansPression = false,
 	sprintTimeUp = false;
-let sprintRemaining = SPRINT_MS,
-	sprintLastTick = 0;
+
 let sprintScore = 0,
 	sprintAnswered = 0,
 	sprintNiveauDepart = 1; // niveau au lancement du sprint (pour détecter une montée)
@@ -309,7 +305,8 @@ const SPRINT_RECENT = 4;
 // Stoppe proprement un sprint en cours (appelé en quittant la vue).
 export function sprintCleanup() {
 	sprintActive = false;
-	sprintPaused = false;
+	sprintDecompte = null;
+	stopTts(); // une lecture d'énoncé ne survit pas à la sortie du mode (#630)
 }
 
 // Un sprint est-il EN COURS (pas l'écran de résultats) ? Sert au garde-fou de
@@ -331,10 +328,9 @@ export function runSprint() {
 		return;
 	}
 	sprintActive = true;
-	sprintPaused = false;
+	sprintDecompte = creerDecompte(SPRINT_MS, Date.now());
 	sprintSansPression = sansPressionTemporelle();
 	sprintTimeUp = false;
-	sprintRemaining = SPRINT_MS;
 	sprintScore = 0;
 	sprintAnswered = 0;
 	sprintNiveauDepart = niveauDepuisXP(getXP());
@@ -352,9 +348,17 @@ export function runSprint() {
 	// Sans pression (#223) : on masque le minuteur ET le score live (révélés au bilan).
 	// Le HUD ne garde alors que le badge éventuel ; sans badge, il n'est pas rendu du
 	// tout (pas de barre vide au-dessus de la question).
+	// Le badge « Pause » (#630) est rendu VIDE ET CACHÉ dès le lancement, à côté du
+	// minuteur : le poser à la volée au premier clic sur « Écouter » ferait sauter la
+	// largeur du HUD au moment précis où l'enfant attend le début de l'audio. Il porte
+	// un MOT en plus de son picto — l'état « en pause » ne doit pas dépendre de la
+	// seule couleur, qui est déjà prise par le rouge d'urgence du minuteur (`.low`).
 	const hudContent = sprintSansPression
 		? badgeHTML
-		: html`<span class="sprint-time" id="sprintTime">05:00</span>
+		: html`<span class="sprint-time-wrap"
+          ><span class="sprint-time" id="sprintTime">05:00</span
+          ><span class="sprint-pause" id="sprintPause" hidden>${icon('pause')} Pause</span></span
+        >
         ${badgeHTML}
         <span class="sprint-score" id="sprintScore">0 bonne réponse</span>`;
 	const hud = hudContent.balisage
@@ -371,7 +375,6 @@ export function runSprint() {
       <p class="sr-only" id="sprintStatus" role="status" aria-live="polite" aria-atomic="true"></p>
     </div>`.balisage;
 	sprintRenderTime();
-	sprintLastTick = Date.now();
 	const t0 = getTimer();
 	if (t0) clearInterval(t0);
 	setTimer(setInterval(sprintTick, 250));
@@ -380,11 +383,9 @@ export function runSprint() {
 }
 
 function sprintTick() {
-	const now = Date.now();
-	if (!sprintPaused) sprintRemaining -= now - sprintLastTick; // gelé pendant une correction
-	sprintLastTick = now;
-	if (sprintRemaining <= 0) {
-		sprintRemaining = 0;
+	if (!sprintDecompte) return;
+	// Le décompte gèle de lui-même s'il a une cause active (correction, écoute).
+	if (sprintDecompte.tic(Date.now()) <= 0) {
 		sprintRenderTime();
 		// Sans pression (#223) : pas de coupure sèche. On note que le temps est écoulé
 		// et on stoppe le ticker ; la finalisation attend la fin de la question en cours
@@ -403,9 +404,10 @@ function sprintTick() {
 }
 function sprintRenderTime() {
 	const el = document.getElementById('sprintTime');
-	if (el) {
-		el.textContent = fmt(Math.max(0, sprintRemaining));
-		el.classList.toggle('low', sprintRemaining <= 30000);
+	if (el && sprintDecompte) {
+		const restant = sprintDecompte.restant(); // borné à zéro par le décompte lui-même
+		el.textContent = fmt(restant);
+		el.classList.toggle('low', restant <= 30000);
 	}
 }
 function sprintUpdateScore() {
@@ -455,6 +457,106 @@ function sprintAnnonce(texte: string): void {
 	if (el) el.textContent = texte;
 }
 
+/* ---------- Écouter l'énoncé (#630) ---------- */
+
+/* Ce que la région live dit quand l'écoute arrête le temps, puis quand il repart.
+   Le sprint est le seul mode où le décompte est un enjeu : un enfant qui ne voit
+   pas le minuteur doit savoir que l'écoute ne lui coûte rien, sinon il n'osera pas
+   s'en servir — et le bouton n'aura servi à rien. */
+const ANNONCE_PAUSE = 'Lecture de la question. Le temps est en pause.';
+const ANNONCE_REPRISE = 'Le temps repart.';
+/* Une bonne réponse n'était signalée que par un « ✓ » à l'écran : rien pour qui
+   ne voit pas l'écran, alors que la branche erreur, elle, annonçait déjà (SC 4.1.3). */
+const ANNONCE_BONNE_REPONSE = 'Bonne réponse !';
+
+/* Filet : au-delà de quoi on considère qu'une lecture ne finira pas. La synthèse
+   vocale des navigateurs sait rester muette SANS émettre ni `end` ni `error` (bug
+   connu des moteurs mobiles au-delà d'une quinzaine de secondes). Ailleurs dans
+   l'application ce silence ne coûte qu'un bouton resté surligné ; ici il figerait le
+   compte à rebours pour toujours, et un sprint qui ne tombe jamais à zéro ne se
+   termine jamais — l'enfant est coincé dans sa partie. Les énoncés du mode tiennent
+   en quelques secondes : 30 s laissent une marge confortable, et le pire cas est de
+   rendre la main trop tôt, pas trop tard.
+   `dicterConsigne` rappelant tout de même son `onDone` dans la quasi-totalité des
+   cas, le filet est presque toujours désarmé sans avoir servi. */
+const LECTURE_MAX_MS = 30000;
+let sprintLectureFilet: ReturnType<typeof setTimeout> | null = null;
+
+/* L'énoncé À LIRE de la question courante, en attribut. Vide (leçon délibérément
+   muette : `parle: ''` des homophones, où l'oral trahirait la réponse) ⇒ aucun
+   bouton n'est greffé. Le gate tests/sprint-tts-gate.test.ts interdit qu'une leçon
+   se retrouve dans ce cas SANS être exclue du sprint. */
+const sprintTtsAttr = (q: Item | null): SafeHtml => {
+	const texte = q ? texteItemParle(q) : '';
+	return texte ? attribut('data-tts', texte) : VIDE;
+};
+
+/* La ligne « matière + leçon », commune aux TROIS rendus du mode (saisie, choix,
+   correction) : c'est elle qui porte l'énoncé à lire et qui accueille le bouton
+   « Écouter ». Un seul endroit, donc un bouton qui ne se déplace jamais d'une forme
+   de question à l'autre — sous chrono, le rechercher coûterait à chaque question.
+   PAS dans le HUD : celui-ci disparaît entièrement quand le minuteur est masqué,
+   c'est-à-dire précisément pour les profils dont l'aménagement dys/TDAH est posé,
+   ceux qui ont le plus besoin de l'oral. */
+function sprintThemeHTML(def: LessonDef | null, q: Item | null): SafeHtml {
+	return html`<div class="sprint-theme"${sprintTtsAttr(q)}>${def ? subjectTag(def.subject) : ''}<span class="sprint-lesson">${def ? labelLecon(def, niveauLecon(def)) : ''}</span></div>`;
+}
+
+/* Greffe le bouton sur l'écran qui vient d'être rendu. Deux réglages propres au
+   chrono : `auto: false` — le mode réécrit son écran à chaque question, donc la
+   lecture automatique du profil ferait de CHAQUE question « la première » et
+   enchaînerait 20 à 60 énoncés en 5 minutes — et `exclusif: true`, pour qu'un
+   second clic ne relance pas une lecture par-dessus la première (deux gels du
+   décompte qui se chevauchent, le temps repartant au milieu de l'audio). */
+function sprintBindTts(stage: HTMLElement): void {
+	bindConsigneTts(stage, { auto: false, exclusif: true, onLecture: sprintGelLecture });
+}
+
+/* Gel du décompte pendant la lecture, posé et retiré par le MÊME callback que
+   l'état « ça parle » du bouton : deux états tenus en synchro à la main auraient
+   fini par diverger, et c'est le décompte qui serait resté figé.
+
+   L'écoute ne coûte donc rien à l'enfant — et ne lui achète rien non plus : le gel
+   est borné à la durée de l'audio, il se lève tout seul à la fin, et changer de
+   question coupe la lecture (cf. sprintNext). Réécouter dix fois ne fait gagner que
+   dix fois le temps d'écouter. */
+function sprintGelLecture(enCours: boolean): void {
+	if (sprintLectureFilet) clearTimeout(sprintLectureFilet);
+	sprintLectureFilet = enCours ? setTimeout(() => sprintGelLecture(false), LECTURE_MAX_MS) : null;
+	if (!sprintDecompte) return;
+	const now = Date.now();
+	if (enCours) {
+		// Le décompte peut DÉJÀ être gelé par une correction affichée : ne rien
+		// signaler alors, le temps ne s'arrête pas une seconde fois, et l'annonce
+		// écraserait la correction que le lecteur d'écran est en train de lire.
+		const gelaitDeja = sprintDecompte.enPause();
+		sprintDecompte.geler('lecture', now);
+		if (!gelaitDeja) sprintMarquerPause(true);
+	} else {
+		sprintDecompte.degeler('lecture', now);
+		if (!sprintDecompte.enPause()) sprintMarquerPause(false);
+	}
+}
+
+/* L'état « en pause » du minuteur : classe sur le chiffre ET badge à mot ouvert.
+   Deux codages, aucun chromatique — la couleur est déjà prise par le rouge des
+   30 dernières secondes (`.low`), et un état signalé par une teinte de plus
+   entrerait en concurrence avec lui.
+
+   La reprise n'est annoncée QUE si la région live dit encore la mise en pause :
+   quand la lecture est coupée par un changement de question, ou quand l'enfant a
+   répondu pendant l'audio, la région porte déjà autre chose (« Bonne réponse ! »,
+   une correction, ou le vide de la question suivante) et la recouvrir d'un
+   « Le temps repart. » hors sujet ferait perdre le message utile. */
+function sprintMarquerPause(enPause: boolean): void {
+	document.getElementById('sprintTime')?.classList.toggle('en-pause', enPause);
+	const badge = document.getElementById('sprintPause');
+	if (badge) badge.hidden = !enPause;
+	const live = document.getElementById('sprintStatus');
+	if (enPause) sprintAnnonce(ANNONCE_PAUSE);
+	else if (live?.textContent === ANNONCE_PAUSE) sprintAnnonce(ANNONCE_REPRISE);
+}
+
 /* Une réponse telle qu'elle se LIT dans une phrase de correction : un signe de
    comparaison est NOMMÉ (« plus petit que (<) ») au lieu d'être laissé en glyphe nu,
    comme la ponctuation du runner QCM (#204). Un symbole isolé au milieu d'une phrase
@@ -466,43 +568,23 @@ function reponseLisible(valeur: string): string {
 }
 
 function sprintNext() {
+	// Une lecture d'énoncé ne déborde JAMAIS sur la question suivante (#630) : sans
+	// cette coupure, un enfant pourrait lancer l'audio d'un énoncé long, répondre
+	// aussitôt, et voir le décompte rester gelé sur la question d'après — le seul
+	// vrai passe-droit que l'écoute pouvait offrir. La coupure lève le gel d'elle-même
+	// (dicterConsigne rappelle son `onDone` sur interruption).
+	stopTts();
 	sprintAnnonce(''); // la correction précédente ne survit pas à la question suivante
 	let q: Item,
 		def: LessonDef,
 		choices: string[] | null,
 		choicesView: ChoiceView[] | undefined,
-		sym = false, // choix-symboles « < = > » (#380) : présentation glyphe + mot
+		sym: boolean, // choix-symboles « < = > » (#380) : présentation glyphe + mot
 		key: string,
 		guard = 0;
 	do {
 		def = pickSprintDef();
-		const level = niveauLecon(def); // calibrage au niveau effectif (#225)
-		if (hasMode(def.exerciseType, 'qcm')) {
-			const ex = def.exerciseType.generate({ mode: 'qcm', level });
-			q = {
-				text: ex.type === 'qcm' ? ex.question : '',
-				answer: ex.type === 'qcm' ? ex.answer : '',
-				kind: 'text',
-				figure: ex.type === 'qcm' ? ex.figure : undefined,
-				_lesson: def.id,
-			};
-			choices = ex.type === 'qcm' ? ex.choices : null;
-			choicesView = ex.type === 'qcm' ? ex.choicesView : undefined;
-		} else {
-			q = genLessonItem(def, level); // aiguille math (bilanQ) ; pose _lesson
-			// Réponse = signe de comparaison (#380) : posée en QCM à trois choix (tap
-			// direct, chemin déjà câblé) plutôt qu'en saisie — le clavier virtuel
-			// n'expose pas « < = > », et sous chrono le QCM valide au tap sans bouton
-			// « Valider ». Même ordre figé que les tuiles et le pavé de la fiche.
-			if (q.kind === 'text' && estSigneComparaison(q.answer)) {
-				choices = [...SIGNES_COMPARAISON];
-				choicesView = SIGNES_COMPARAISON.map(signeView);
-				sym = true;
-			} else {
-				choices = null;
-				choicesView = undefined;
-			}
-		}
+		({ q, choices, choicesView, sym } = genSprintQuestion(def, niveauLecon(def)));
 		key = commKey(q.text);
 		guard++;
 	} while (sprintRecentKeys.includes(key) && guard < 25);
@@ -530,7 +612,7 @@ function onSprintEnter(e: KeyboardEvent) {
 	// une touche Entrée gardée enfoncée enchaînerait « Continuer » puis un envoi à vide sur la
 	// question suivante, et brûlerait des questions à la volée sans que l'enfant les ait vues.
 	if (e.repeat) return;
-	if (sprintPaused) sprintContinue();
+	if (sprintEnCorrection()) sprintContinue();
 	else sprintSubmit();
 }
 
@@ -538,11 +620,12 @@ function onSprintEnter(e: KeyboardEvent) {
 function renderSprintTyped(stage: HTMLElement, def: LessonDef, q: Item) {
 	const deco = def.id === 'math-decomposer-multiplication' ? ' deco' : '';
 	stage.innerHTML = html`
-    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${labelLecon(def, niveauLecon(def))}</span></div>
+    ${sprintThemeHTML(def, q)}
     ${figureBlock(q.figure)}
     <div class="sprint-q${deco}">${sprintQuestionBody(q)}</div>
     <p class="sprint-hint" id="sprintHint" hidden></p>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintValidate">Valider</button></div>`.balisage;
+	sprintBindTts(stage);
 	document.getElementById('sprintValidate')?.addEventListener('click', sprintSubmit);
 	stage.addEventListener('keydown', onSprintEnter);
 	const champ = document.getElementById('sprintInput') as HTMLInputElement | null;
@@ -604,15 +687,22 @@ function renderSprintQcm(
 	// `mathInline` : empile les fractions « num/den » de l'énoncé (barre horizontale).
 	const question = poserAuTrou(mathInline(q.text), '@', html`<span class="sprint-blank">?</span>`);
 	stage.innerHTML = html`
-    <div class="sprint-theme">${subjectTag(def.subject)}<span class="sprint-lesson">${labelLecon(def, niveauLecon(def))}</span></div>
+    ${sprintThemeHTML(def, q)}
     ${figureBlock(q.figure)}
     <div class="sprint-q sprint-q-qcm">${question}</div>
     <div class="sprint-choices${sym ? ' lqcm-choices-sym' : ''}">
       ${joindre(choices.map((c, i) => choiceButtonHTML(c, i, choicesView?.[i])))}
     </div>`.balisage;
+	sprintBindTts(stage);
 	stage.querySelectorAll<HTMLButtonElement>('.sprint-choice').forEach((btn) => {
 		btn.addEventListener('click', () => sprintAnswer(choices[Number(btn.dataset.i)]));
 	});
+	// Le focus repart sur le premier choix, comme la branche saisie le pose sur son
+	// champ (#630). Sans cette ligne, réécrire `stage.innerHTML` renvoyait le focus au
+	// corps de page à CHAQUE question : sous chrono, le Tab suivant recommençait
+	// depuis la barre du haut. Enter reste sans effet ici (pas de champ à valider),
+	// donc rien ne peut être choisi par inadvertance.
+	stage.querySelector<HTMLButtonElement>('.sprint-choice')?.focus();
 }
 // Corps de la question : champ unique, sauf leçon 15 où l'on affiche la
 // décomposition avec des champs de brouillon (non corrigés) + le champ final.
@@ -639,7 +729,7 @@ export function sprintQuestionBody(q: Item) {
 // aucun point, aucun XP, révélation), mais journalisée « passé sans essayer » pour
 // l'encadrant. Seul `sprintSubmit` lève ce drapeau : un choix de QCM n'est jamais vide.
 function sprintAnswer(raw: string, sansTentative = false) {
-	if (!sprintActive || sprintPaused) return;
+	if (!sprintActive || sprintEnCorrection()) return;
 	const val = (raw || '').trim();
 	// Une valeur vide ne vaut réponse que par le chemin explicite de `sprintSubmit` : ailleurs
 	// (choix de QCM vide, appel défensif), il n'y a rien à corriger et rien à compter.
@@ -655,10 +745,15 @@ function sprintAnswer(raw: string, sansTentative = false) {
 		b.ok++;
 		addXP(1);
 		sprintUpdateScore();
+		// Annoncée AVANT de remplacer l'écran par le « ✓ » (#630) : seule la branche
+		// erreur annonçait, donc un enfant au lecteur d'écran n'avait aucun signal que
+		// sa réponse venait d'être acceptée (SC 4.1.3). Une seule annonce par question :
+		// sprintNext videra la région avant la suivante.
+		sprintAnnonce(ANNONCE_BONNE_REPONSE);
 		const stage = document.getElementById('sprintStage');
 		if (stage) stage.innerHTML = html`<div class="sprint-check">✓</div>`.balisage; // petite animation
 		setTimeout(() => {
-			if (!sprintActive || sprintPaused) return;
+			if (!sprintActive || sprintEnCorrection()) return;
 			if (sprintTimeUp)
 				finalizeSprint(); // temps écoulé : on finalise après la question (#223)
 			else sprintNext();
@@ -740,7 +835,7 @@ function sprintShowCorrection(
 		sansTentative = false,
 	}: { parIntervalle?: boolean; sansTentative?: boolean } = {},
 ) {
-	sprintPaused = true;
+	sprintDecompte?.geler('correction', Date.now());
 	const stage = document.getElementById('sprintStage');
 	if (!stage) return;
 	// Dans l'énoncé reconstitué, à la place du champ.
@@ -754,13 +849,14 @@ function sprintShowCorrection(
 		? RAPPEL_SANS_REPONSE
 		: html`Tu as répondu <strong>${donneeLue}</strong>.`;
 	stage.innerHTML = html`
-    <div class="sprint-theme">${sprintCurrentDef ? subjectTag(sprintCurrentDef.subject) : ''}<span class="sprint-lesson">${sprintCurrentDef ? labelLecon(sprintCurrentDef, niveauLecon(sprintCurrentDef)) : ''}</span></div>
+    ${sprintThemeHTML(sprintCurrentDef, sprintCurrent)}
     <div class="sprint-q wrong">${poserAuTrou(html`${sprintCurrent!.text}`, '@', solBrute)}</div>
     <div class="sprint-correction">
       <span class="sprint-donnee">${rappelHTML}</span>
       <span>${amorce} <strong>${solLue}</strong>. Prends le temps de la lire.</span>
     </div>
     <div class="sprint-actions"><button class="sprint-btn" id="sprintContinue">Continuer ▶</button></div>`.balisage;
+	sprintBindTts(stage);
 	// Le focus part sur « Continuer » (ci-dessous) : un lecteur d'écran n'annonce que
 	// l'élément focalisé, donc sans cette ligne la correction ne serait jamais lue.
 	const rappelLu = sansTentative ? RAPPEL_SANS_REPONSE : `Tu as répondu ${donneeLue}.`;
@@ -773,7 +869,7 @@ function sprintShowCorrection(
 }
 function sprintContinue() {
 	if (!sprintActive) return;
-	sprintPaused = false; // le compte à rebours repart
+	sprintDecompte?.degeler('correction', Date.now()); // le compte à rebours repart
 	if (sprintTimeUp)
 		finalizeSprint(); // temps écoulé pendant la correction : on finalise (#223)
 	else sprintNext();
@@ -782,7 +878,8 @@ function sprintContinue() {
 function finalizeSprint() {
 	if (!sprintActive) return;
 	sprintActive = false;
-	sprintPaused = false;
+	sprintDecompte = null;
+	stopTts(); // le bilan n'a pas à hériter d'un énoncé encore en cours de lecture
 	const t = getTimer();
 	if (t) clearInterval(t);
 	// Un sprint compte car il est allé au bout du temps : on enregistre tout.

@@ -81,7 +81,7 @@ function amenagementsHTML(consulte: Profile): SafeHtml {
       </label>
       <label class="enc-toggle${voix ? '' : ' enc-toggle-off'}">
         <input type="checkbox" data-act="set-amenagement" data-pref="lectureConsigneAuto"${prefs.lectureConsigneAuto ? drapeau('checked') : ''}${voix ? '' : drapeau('disabled')} />
-        <span>Lire la consigne à voix haute automatiquement</span>
+        <span>Lire la consigne à voix haute automatiquement <small class="enc-hint">(sauf pendant les sprints, où l'enfant déclenche l'écoute lui-même)</small></span>
       </label>
       <p class="enc-hint">${icon('speaker')} ${messageSansVoix()}</p>
       <label class="enc-toggle">

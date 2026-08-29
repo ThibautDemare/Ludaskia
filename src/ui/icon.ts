@@ -51,6 +51,7 @@ import text from '@phosphor-icons/core/assets/bold/text-aa-bold.svg?raw';
 import eye from '@phosphor-icons/core/assets/bold/eye-bold.svg?raw';
 import speaker from '@phosphor-icons/core/assets/bold/speaker-high-bold.svg?raw';
 import play from '@phosphor-icons/core/assets/bold/play-bold.svg?raw';
+import pause from '@phosphor-icons/core/assets/bold/pause-bold.svg?raw';
 import cards from '@phosphor-icons/core/assets/bold/cards-bold.svg?raw';
 import star from '@phosphor-icons/core/assets/bold/star-bold.svg?raw';
 import bookOpen from '@phosphor-icons/core/assets/bold/book-open-bold.svg?raw';
@@ -109,6 +110,7 @@ const SVGS: Record<IconName, string> = {
 	eye,
 	speaker,
 	play,
+	pause,
 	cards,
 	star,
 	'book-open': bookOpen,

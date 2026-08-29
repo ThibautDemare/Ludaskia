@@ -36,6 +36,7 @@ export type IconName =
 	| 'eye'
 	| 'speaker'
 	| 'play'
+	| 'pause'
 	| 'cards'
 	| 'star'
 	| 'book-open'

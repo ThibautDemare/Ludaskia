@@ -117,6 +117,16 @@ rapprocher le PID du bon worktree, ou dans le doute couper ce serveur avant de r
   question répondue pour atteindre `.sprint-done`. Installer l'horloge APRÈS le lancement
   ne fonctionne pas (l'intervalle déjà créé tourne sur l'horloge réelle). Exemple :
   `e2e/je-ne-sais-pas.spec.ts` (« Sprint : valider un champ vide… »).
+- **Stubber `speechSynthesis` pour tester le bouton « Écouter »** : Chromium headless
+  n'expose **aucune voix** par défaut (`dicteeDisponible()` répond alors `false`, aucun
+  bouton n'est greffé), donc une spec qui exerce le TTS doit poser son propre
+  `speechSynthesis`/`SpeechSynthesisUtterance` via `page.addInitScript`, **avant**
+  `gotoHash`. Pour un scénario qui n'a besoin que du bouton présent/cliquable, un stub
+  minimal suffit (`ortho-atelier-ecouter.spec.ts`, `revision-ortho.spec.ts`). Pour
+  observer un état PENDANT la lecture puis APRÈS (le gel du décompte du sprint, #630),
+  le stub doit rester **sous contrôle du test** : mémoriser l'utterance courante et
+  exposer sur `window` une fonction qui déclenche `end` (fin normale) — jamais un vrai
+  délai, non déterministe. Exemple enrichi : `e2e/sprint-ecouter.spec.ts`.
 - **Semer une clé de données dans `localStorage` : préfixer par le profil actif.**
   `storage.ts` scope toute clé applicative par l'uuid du profil actif
   (`<uuid>/ludaskia_…`, cf. [docs/architecture/donnees-et-profils.md](../docs/architecture/donnees-et-profils.md)),

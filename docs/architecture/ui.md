@@ -1082,17 +1082,25 @@ passage ne les re-remonte pas :
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
   **filtrable** (toutes matières / une matière / une catégorie / **une sélection
   précise de leçons** via `startCustomSprint`, #64) via un écran de
-  configuration ; correction par `checkItemAnswer` (numérique ou texte).
-  **Exclusions du sprint** (`lessonsForFilter`) : par TYPE d'item (posée, tuiles
-  ordre/tri, problème, appariement, clic-mot, droite graduée — détecté via l'étiquette déclarative
-  **`ExerciseType.exerciseKind`**, #348, via les helpers `isPosedLesson`/
-  `isOrderingLesson`/`isTriLesson`/`isProblemeLesson`/`isPairingLesson`/`isClicMotLesson`/`isDroiteGradueeLesson` de
-  `core/catalog.ts`) **et** par le flag déclaratif **`LessonDef.excludeFromSprint`** (#104) pour une leçon qui produit un
-  item `text` ordinaire mais ne convient pas au chrono (figure de découverte,
-  lecture d'énoncé — ex. « Je partage »). L'écran de config ne compte que les
-  leçons **éligibles** (une catégorie entièrement exclue n'est pas proposée). Le
-  réglage de profil **« sans pression temporelle »** (#223) masque le minuteur et le
-  score ici et bascule la fin en mode doux — détaillé dans la section Accessibilité.
+  configuration ; correction par `checkItemAnswer` (numérique ou texte). La
+  génération d'une question (`genSprintQuestion`, choix QCM vs saisie) est
+  extraite dans `core/sprint-item.ts`, et le compte à rebours dans
+  `core/sprint-decompte.ts` (cf. [Logique pure](core.md)) : deux modules purs,
+  testables sans DOM.
+  **Éligibilité au sprint** (`estEligibleSprintHorsNiveau`, #630 — vit désormais dans
+  `core/catalog.ts`, cf. [Logique pure](core.md)) : exclut par TYPE d'item (posée,
+  tuiles ordre/tri, problème, appariement, clic-mot, droite graduée — détecté via
+  l'étiquette déclarative **`ExerciseType.exerciseKind`**, #348, via les helpers
+  `isPosedLesson`/`isOrderingLesson`/`isTriLesson`/`isProblemeLesson`/`isPairingLesson`/
+  `isClicMotLesson`/`isDroiteGradueeLesson`) **et** par le flag déclaratif
+  **`LessonDef.excludeFromSprint`** (#104) pour une leçon qui produit un item `text`
+  ordinaire mais ne convient pas au chrono (figure de découverte, lecture d'énoncé —
+  ex. « Je partage »). `lessonsForFilter` (ici) ne fait plus qu'y ajouter le filtre de
+  NIVEAU, qui dépend du profil actif. L'écran de config ne compte que les leçons
+  **éligibles** (une catégorie entièrement exclue n'est pas proposée). Le réglage de
+  profil **« sans pression temporelle »** (#223) masque le minuteur et le score ici et
+  bascule la fin en mode doux — détaillé dans la section Accessibilité. **Bouton
+  « Écouter » l'énoncé** (#630) : voir la section dédiée plus bas.
   **Validation à VIDE = réponse fausse assumée** (#467) : `sprintSubmit` ne refuse plus
   un champ vide — `sprintAnswer('', true)` la traite comme n'importe quelle réponse
   fausse (révélation de la solution, question comptée, aucun point ni XP), journalisée
@@ -1428,8 +1436,10 @@ un attribut `data-tts` ; le texte parlé est normalisé par `core/tts-text.ts`
 (`texteParle`/`ttsAttr` : retire le `@`, traduit `+ − × ÷ =` en mots, strip HTML).
 Lecture via `dicterConsigne` (`ui/tts.ts`, débit 0,92). **À la demande** ; **aucun bouton
 si pas de voix FR** (`dicteeDisponible`) ; lecture **auto** opt-in (`lectureConsigneAuto`,
-1re consigne seulement). Branché dans tous les runners d'exercice **sauf le sprint**
-(QCM, tuiles, ordre, tri, révision, et la fiche/bilan via `afterStart`).
+1re consigne seulement, **sauf en sprint** — cf. #630 ci-dessous). Branché dans **tous**
+les runners d'exercice (QCM, tuiles, ordre, tri, révision, la fiche/bilan via
+`afterStart`, et depuis #630 le **sprint chronométré**, seul écran resté sans accès à
+l'oral jusque-là — non par décision, par défaut de câblage).
 
 - **Dissociation affiché / lu** : un énoncé télégraphique (« pouvoir · présent — je @ »)
   est illisible tel quel à l'oral. Les générateurs peuvent donc poser un champ
@@ -1459,3 +1469,63 @@ les records/médailles/XP/objectif et `recordRun(…, SPRINT_MS)` sont **inchang
 couper net ; la finalisation attend la **fin de la question en cours** (`sprintAnswer` /
 `sprintContinue`). Réglage **non transverse** (propre au sprint), d'où un point distinct du
 trio #42 ci-dessus.
+
+### Sprint : écouter l'énoncé pendant le chrono (#630)
+
+Le sprint chronométré était le **seul** écran d'exercice sans accès à l'oral — non par
+décision (#42 ne l'évoque pas), par défaut de câblage. Il est désormais branché sur la
+même greffe que les autres runners (`bindConsigneTts`), posée dans `.sprint-theme` —
+la ligne « matière + leçon » commune aux **trois** rendus du mode (saisie, QCM,
+correction), pour que le bouton ne se déplace jamais d'une forme de question à
+l'autre. Deux réglages propres au chrono (`ConsigneTtsOptions`, cf. Accessibilité #42
+ci-dessus) : **`auto: false`** — le mode réécrit son écran à chaque question, la
+lecture automatique du profil ferait de CHAQUE question « la première » et
+enchaînerait 20 à 60 énoncés en 5 minutes — et **`exclusif: true`** — un second clic
+pendant la lecture ne relance pas, pour ne pas empiler un second gel du décompte sur
+la fin du premier. Un troisième réglage, **`onLecture(enCours)`**, notifie l'appelant
+au démarrage et à la fin de chaque lecture : un seul point de code pose et retire donc
+à la fois l'état visuel « ça parle » du bouton et le gel du décompte — deux états tenus
+en synchro à la main auraient fini par diverger.
+
+**Décompte à plusieurs causes** (`core/sprint-decompte.ts`, cf. [Logique
+pure](core.md)) : le sprint gelait déjà le temps pendant la correction d'une erreur ;
+écouter l'énoncé ajoute une SECONDE cause de gel, et les deux peuvent se chevaucher
+(écouter pendant qu'une correction est affichée). Une seule notion de pause, le temps
+ne repartant que quand la DERNIÈRE cause est retirée. `gelePar('lecture')` distingue
+« le temps est arrêté par l'écoute » de « une correction attend Continuer »
+(`gelePar('correction')`) : les confondre ferait ignorer une réponse tapée pendant
+l'audio, ou pire, sauterait la question sur Entrée (routée vers « Continuer » dès que
+le décompte est gelé). L'écoute ne coûte rien à l'enfant (le gel est borné exactement à
+la durée de l'audio et se lève tout seul) et ne lui achète rien (réécouter dix fois ne
+fait gagner que dix fois le temps d'écouter) ; changer de question coupe toujours la
+lecture en cours (`stopTts()` dans `sprintNext`). **Filet de sécurité** : au-delà de
+30 s sans `end`/`error` de la synthèse (silence connu de certains moteurs mobiles), la
+lecture est considérée terminée d'office — sans lui, ce silence gèlerait le décompte
+pour toujours et le sprint ne se terminerait jamais.
+
+**État visible, double codage** : le minuteur porte un liseré pointillé
+(`.sprint-time.en-pause`) et un badge à mot (`#sprintPause`, posé VIDE et caché dès le
+lancement pour ne pas faire sauter la largeur du HUD au premier clic), tous deux
+DÉRIVÉS du décompte (`sprintSyncPause`) plutôt que poussés à la main dans chaque
+branche qui gèle ou dégèle — un premier jet qui les poussait en avait oublié une :
+après une écoute suivie d'une erreur, le témoin restait allumé pour tout le reste de
+la partie. Les deux suivent spécifiquement la cause `'lecture'`, pas la pause en
+général : une correction affichée gèle aussi le temps mais se signale déjà par sa
+propre présence à l'écran. La couleur seule n'est pas le signal, déjà prise par le
+rouge des 30 dernières secondes (`.low`).
+
+**Gate du texte parlé** (`tests/sprint-tts-gate.test.ts`, cf. [Tests](tests.md)) :
+échantillonne 40 tirages par (leçon, niveau) du pool éligible (`estEligibleSprintHorsNiveau`,
+cf. [Logique pure](core.md)) et échoue si l'une de ses questions ne donne rien à lire
+(`texteItemParle` vide) sans que la leçon soit explicitement exclue
+(`excludeFromSprint`) ou dotée d'un `parle` non vide — un bouton « Écouter » présent
+et muet sur une partie seulement des questions serait vécu comme une panne.
+
+**Deux trous d'accessibilité comblés à cette occasion** : une bonne réponse n'était
+annoncée par rien dans la région live (`#sprintStatus`) — seule la branche erreur le
+faisait (SC 4.1.3) —, et le focus clavier repartait sur `<body>` à chaque question QCM
+au lieu du premier bouton de choix (`Tab` recommençait depuis la barre du haut à
+chaque question). Les deux textes qui documentent l'exception « sprint » de la
+lecture automatique — le toggle encadrant (`ui/encadrant-reglages.ts`) et la ligne en
+lecture seule des préférences enfant (`ui/preferences.ts`) — nomment désormais le
+sprint explicitement plutôt que de laisser deviner pourquoi il fait exception.

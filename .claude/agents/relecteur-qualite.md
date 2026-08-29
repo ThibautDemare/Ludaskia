@@ -106,6 +106,15 @@ faut.**
     état mutable partagé évitable, généricité que personne n'utilise. Le code doit
     rester **simple à suivre** pour le prochain contributeur — quitte à préférer
     deux fonctions claires à une fonction « maligne ».
+  - **Une classe SCSS qui fixe `display` sur un élément par ailleurs montré/caché
+    par l'attribut `hidden` DOIT avoir sa règle compagnon `&[hidden] { display:
+    none; }`.** Une règle d'auteur l'emporte sur celle du navigateur : sans elle
+    l'attribut ne cache RIEN, et l'élément reste affiché en permanence. Le défaut
+    ne se voit pas en relecture (le HTML pose bien `hidden`, le JS le bascule bien)
+    et ne casse aucun test qui ne regarde pas la visibilité. Le dépôt le contourne
+    déjà à la main dans huit règles (`encadrant.scss`, `lecon-mode.scss`,
+    `orthographe.scss` ×4, `profiles.scss`, `vitrine.scss`), et #630 l'a reproduit
+    une neuvième fois : à chaque nouvelle classe basculée par `hidden`, vérifier.
 - **TypeScript strict, vraiment.** Repère les `any`, les `as` qui masquent un
   vrai problème, les `!` non-null hasardeux, les types trop larges. Le code doit
   passer `tsc --noEmit` sans contournement.

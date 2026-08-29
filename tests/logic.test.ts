@@ -4356,4 +4356,10 @@ describe('exerciseKind — classification déclarative (#348)', () => {
 		expect(isPairingLesson(getLessonById('fr-vocab-familles')!)).toBe(false); // QCM
 		expect(isPairingLesson(getLessonById('fr-vocab-champs-tri')!)).toBe(false); // tri
 	});
+
+	/* La fonction qui COMPOSE ces sept prédicats (`estEligibleSprintHorsNiveau`, #630 — c'est elle
+	   qui décide de ce que le sprint tire) est éprouvée à part, format par format, dans
+	   tests/sprint-eligibilite.test.ts. Y ajouter le cas du huitième format si l'union
+	   `ExerciseKind` s'étend : un prédicat testé ici mais oublié dans la conjonction
+	   laisserait entrer un écran dédié dans le sprint sans faire rougir ce fichier. */
 });

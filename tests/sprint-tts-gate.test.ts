@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getAllLessons, estEligibleSprint, getLessonById } from '../src/core/catalog';
+import { getAllLessons, estEligibleSprintHorsNiveau, getLessonById } from '../src/core/catalog';
 import type { LessonDef, SchoolLevel } from '../src/core/catalog';
 import { texteItemParle } from '../src/core/items';
 import { genSprintQuestion } from '../src/core/sprint-item';
@@ -15,7 +15,7 @@ import { genSprintQuestion } from '../src/core/sprint-item';
    donnerait la réponse. Aujourd'hui ces deux leçons sont hors du pool du sprint —
    mais RIEN ne lie mécaniquement « énoncé muet » à « exclue du sprint » : c'est une
    coïncidence de calendrier, les deux traits ont été posés séparément et pour des
-   raisons différentes (`estEligibleSprint` ne regarde pas `parle`).
+   raisons différentes (`estEligibleSprintHorsNiveau` ne regarde pas `parle`).
 
    Ce que le gate empêche, donc : qu'une future leçon d'homophones (ou toute leçon à
    énoncé sans texte lisible) entre dans le pool du sprint sans que personne n'ait
@@ -25,7 +25,7 @@ import { genSprintQuestion } from '../src/core/sprint-item';
    - un bouton « Écouter » présent et sans effet sur CERTAINES questions seulement
      ⇒ l'enfant qui s'appuie sur l'oral se croit en panne d'appli.
 
-   COMMENT. On interroge le prédicat RÉEL du tirage (`estEligibleSprint`) et le
+   COMMENT. On interroge le prédicat RÉEL du tirage (`estEligibleSprintHorsNiveau`) et le
    générateur RÉEL du sprint (`genSprintQuestion`), pas une liste recopiée : un pool
    reconstitué à la main aurait divergé au premier format ajouté et le gate aurait
    couvert un catalogue imaginaire. On échantillonne chaque leçon sur chacun de ses
@@ -39,7 +39,7 @@ import { genSprintQuestion } from '../src/core/sprint-item';
 
 const TIRAGES = 40; // par (leçon, niveau) : assez pour attraper une mutité minoritaire
 
-const POOL: LessonDef[] = getAllLessons().filter(estEligibleSprint);
+const POOL: LessonDef[] = getAllLessons().filter(estEligibleSprintHorsNiveau);
 
 /* Un cas par couple (leçon, niveau) : une leçon multi-niveaux peut n'être muette
    qu'au CM1 (variante d'énoncé propre au niveau). */
@@ -113,7 +113,7 @@ describe('Gate TTS du sprint (#630, C14)', () => {
 		).toEqual([]);
 
 		expect(
-			estEligibleSprint(def!),
+			estEligibleSprintHorsNiveau(def!),
 			`« ${id} » est muette par choix pédagogique (parle: '' — ses formes sont homophones, ` +
 				`l'entendre donnerait la réponse) et vient d'entrer dans le pool du sprint.\n` +
 				`Soit c'est un accident : la ressortir (excludeFromSprint: true).\n` +

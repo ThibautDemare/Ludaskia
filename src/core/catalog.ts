@@ -998,14 +998,17 @@ export function isDroiteGradueeLesson(lesson: LessonDef): boolean {
 /* Une leçon peut-elle être TIRÉE par le sprint chronométré ? Réunit l'exclusion
    déclarative (`excludeFromSprint`, posée sur les notions à charge cognitive
    élevée) et les sept formats d'écran dédié ci-dessus, incompatibles avec le
-   « une réponse à la fois ». Le filtre de NIVEAU reste à part (ui/sprint.ts) :
-   il dépend du profil actif, pas du catalogue.
+   « une réponse à la fois ». Le filtre de NIVEAU reste à part (ui/sprint.ts) : il
+   dépend du profil actif, que le catalogue ne connaît pas. D'où le suffixe du nom,
+   et non un simple `estEligibleSprint` : l'éligibilité RÉELLE est ce prédicat ET le
+   niveau, et un appelant qui prendrait le nom court au pied de la lettre tirerait
+   des leçons hors du niveau de l'enfant sans que rien ne le signale.
 
    Extrait de ui/sprint.ts (#630) pour que le gate `tests/sprint-tts-gate.test.ts`
    interroge le MÊME prédicat que le tirage : un pool éligible recopié à la main
    dans le test aurait divergé au premier format ajouté, et le gate aurait alors
    couvert un catalogue imaginaire. */
-export function estEligibleSprint(lesson: LessonDef): boolean {
+export function estEligibleSprintHorsNiveau(lesson: LessonDef): boolean {
 	return (
 		!lesson.excludeFromSprint &&
 		!isPosedLesson(lesson) &&

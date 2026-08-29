@@ -631,6 +631,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   « Bientôt disponible », les trophées de catégorie ne sont générés que pour les
   catégories peuplées (`rewards.ts`), et le sprint/bilan d'une catégorie vide ne
   tire rien (retour accueil / no-op) plutôt que de planter.
+  **`estEligibleSprintHorsNiveau(lesson)`** (#630) réunit, en un seul prédicat, l'exclusion
+  déclarative (`excludeFromSprint`) et les sept helpers `exerciseKind` ci-dessus
+  (posée, ordre, tri, problème, appariement, clic-mot, droite graduée) : `ui/sprint.ts`
+  (tirage) et `tests/sprint-tts-gate.test.ts` l'appellent tous deux, pour que le gate du
+  texte parlé du sprint interroge exactement le même pool que ce qui est tiré — un
+  pool reconstitué à la main dans le test aurait divergé au premier format ajouté.
 - **`ordre.ts`** — **ordre pédagogique** des leçons (#208). Consomme la table de
   données `data/ordre-pedagogique.ts` (`ORDRE_LECONS[matière][niveau]` = liste d'`id`
   **ordonnée** = progression de l'année, validée avec `pedagogue-primaire`) et expose
@@ -739,6 +745,22 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `perimetreChoisissable` dit si le choix a un sens. Consommé par `ui/sprint.ts`
   (sélecteur dans l'écran de config, options vides au périmètre courant désactivées) ;
   un favori (`lessons`) ignore le périmètre.
+- **`sprint-decompte.ts`** (#630, pur) — le **compte à rebours du sprint**, à
+  PLUSIEURS causes de gel (`CauseGel = 'correction' | 'lecture'`) qui peuvent se
+  chevaucher (écouter l'énoncé pendant qu'une correction est affichée) : un seul
+  concept de pause, le temps ne repart que quand la DERNIÈRE cause est retirée.
+  `geler`/`degeler`/`tic` reçoivent l'heure **en paramètre** (jamais lue via
+  `Date.now()` en interne, pour rester testable sans faux timers) et soldent
+  d'abord le temps couru depuis le dernier relevé — sans ce solde, l'intervalle
+  entre deux battements (250 ms) serait offert gratuitement à chaque écoute.
+  `gelePar(cause)` distingue « le temps est arrêté » de « une correction attend
+  Continuer », ce que `ui/sprint.ts` interroge pour ne jamais ignorer une réponse
+  tapée pendant une lecture.
+- **`sprint-item.ts`** (#630, pur) — **`genSprintQuestion(def, level)`**, extrait de
+  `ui/sprint.ts` : la décision QCM/saisie et la fabrique de l'`Item` d'une question
+  de sprint, pour que `tests/sprint-tts-gate.test.ts` (cf. [Tests](tests.md))
+  interroge EXACTEMENT la question vue par l'enfant plutôt qu'une reconstitution
+  qui aurait divergé au premier format ajouté.
 
 ## Contenu maths & génération de fiches/bilans
 

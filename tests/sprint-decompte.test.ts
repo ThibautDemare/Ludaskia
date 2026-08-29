@@ -61,20 +61,29 @@ describe('Décompte du sprint — le socle (C17 : sans aucune écoute, rien ne c
 		expect(d.restant()).toBe(DUREE - total);
 	});
 
-	it('une partie épuisée le reste : le décompte ne repasse jamais au-dessus de zéro', () => {
-		// NB : le module ne borne PAS `restant()` à zéro — il rend une valeur négative
-		// une fois la durée dépassée, et c'est l'appelant (ui/sprint.ts) qui coupe à
-		// l'affichage (`Math.max(0, …)`) et termine la partie sur `<= 0`. On éprouve donc
-		// l'invariant qui compte vraiment ici : une fois le temps écoulé, plus rien — pas
-		// même un gel tardif — ne rend du temps de jeu.
+	it('passe à zéro sans jamais devenir négatif, et y reste', () => {
+		// `restant()` est borné à zéro DANS le module : un « temps restant » négatif n'est
+		// pas un temps restant, et qui calculerait « temps utilisé = durée − restant() »
+		// obtiendrait plus que la durée de la partie. Une fois le temps écoulé, plus rien —
+		// pas même un gel tardif — ne rend du temps de jeu.
 		const d = creerDecompte(5_000, T0);
-		expect(d.tic(t(7_000))).toBeLessThanOrEqual(0);
-		expect(d.restant()).toBeLessThanOrEqual(0);
+		expect(d.tic(t(7_000))).toBe(0);
+		expect(d.restant()).toBe(0);
 		d.geler('lecture', t(8_000));
 		d.degeler('lecture', t(20_000));
-		expect(d.tic(t(30_000))).toBeLessThanOrEqual(0);
-		// Le dernier tirage de la partie reste jouable jusqu'au bout : le franchissement
-		// de zéro est net, pas un « presque zéro » flottant.
+		expect(d.tic(t(30_000))).toBe(0);
+	});
+
+	it('le dépassement ne se reporte pas : ce qui est perdu au-delà de zéro est perdu', () => {
+		// Piège du clamp posé trop tard : si le module gardait en interne un solde négatif
+		// (−7 s) et ne coupait qu'à la lecture, une partie relancée sur le même décompte —
+		// ou tout futur calcul cumulé — hériterait de la dette. Ici le franchissement est
+		// net, et un gel de 1 min après la fin ne rend toujours rien.
+		const d = creerDecompte(5_000, T0);
+		d.tic(t(12_000)); // 7 s au-delà de la fin
+		d.geler('lecture', t(12_000));
+		d.degeler('lecture', t(72_000));
+		expect(d.restant()).toBe(0);
 		expect(Number.isInteger(d.restant())).toBe(true);
 	});
 });
@@ -272,18 +281,39 @@ describe('Décompte du sprint — C12 : réécouter n’achète aucun temps', ()
 });
 
 describe('Décompte du sprint — C13 : le gel est porté par le décompte, pas par l’affichage', () => {
-	it('critère 13 : le décompte n’a AUCUN moyen de savoir si le minuteur est visible', () => {
+	it('critère 13 : aucun canal par où l’état d’affichage pourrait entrer', () => {
 		// L'aménagement « sans pression temporelle » masque le minuteur. Pour que le gel
-		// puisse en dépendre, il faudrait bien que l'information entre quelque part : ni la
-		// fabrique ni les méthodes n'ont de paramètre pour ça, et le module ne lit rien du
-		// DOM (tout le temps lui est passé). Le gel ne peut donc être porté que par le
-		// décompte lui-même. Ce test se contente de le CONSTATER sur la surface d'API ;
-		// que `sprint.ts` gèle bien même minuteur caché reste du ressort de l'e2e.
+		// puisse en dépendre, il faudrait bien que l'information ENTRE quelque part : par la
+		// fabrique, par un argument de méthode, ou par une lecture du DOM — cette dernière
+		// hors de portée ici, tout le temps étant passé en paramètre. On éprouve donc les
+		// deux premières. Que `sprint.ts` gèle bien même minuteur caché reste e2e.
+		//
+		// Ce test regardait d'abord la liste EXACTE des méthodes : il a rougi à la première
+		// méthode ajoutée pour une bonne raison (`gelePar`, #630), soit du bruit pur. Ce
+		// qui garde vraiment le critère, ce sont les ARITÉS : un troisième argument
+		// « minuteur visible » échoue ici, une septième méthode utile non.
 		expect(creerDecompte.length).toBe(2); // (dureeMs, maintenant) et rien d'autre
 		const d = creerDecompte(DUREE, T0);
-		expect(Object.keys(d).sort()).toEqual(['degeler', 'enPause', 'geler', 'restant', 'tic']);
-		expect(d.geler.length).toBe(2); // (cause, now)
-		expect(d.degeler.length).toBe(2);
+		const arites: [string, { readonly length: number }, number][] = [
+			['restant', d.restant, 0],
+			['enPause', d.enPause, 0],
+			['tic', d.tic, 1], // (now)
+			['geler', d.geler, 2], // (cause, now)
+			['degeler', d.degeler, 2], // (cause, now)
+			['gelePar', d.gelePar, 1], // (cause)
+		];
+		for (const [nom, fn, arite] of arites) {
+			expect(
+				fn.length,
+				`« ${nom} » ne prend plus ${arite} argument(s) : si c'est un état d'écran qui ` +
+					`entre par là, le gel cesse d'être porté par le décompte seul.`,
+			).toBe(arite);
+		}
+		// Aucune DONNÉE exposée non plus : un drapeau mutable (« minuteur visible ») s'y
+		// poserait tout aussi bien qu'un paramètre.
+		for (const [cle, valeur] of Object.entries(d)) {
+			expect(typeof valeur, `« ${cle} » est une donnée exposée, pas une méthode`).toBe('function');
+		}
 	});
 
 	it('critère 13 : sans aucun relevé pendant la lecture (rien à redessiner), le gel tient quand même', () => {
@@ -295,5 +325,89 @@ describe('Décompte du sprint — C13 : le gel est porté par le décompte, pas 
 		d.degeler('lecture', t(38_000)); // 30 s d'écoute, zéro relevé entre les deux
 		expect(d.restant()).toBe(52_000);
 		expect(d.tic(t(40_000))).toBe(50_000);
+	});
+});
+
+describe('Décompte du sprint — gelePar : quelle cause gèle, au juste ?', () => {
+	/* `enPause()` répond « le décompte est-il arrêté ? ». Les GARDES d'écran du sprint,
+	   elles, veulent savoir « une correction est-elle affichée ? » — question devenue
+	   différente depuis qu'une écoute gèle aussi. Les conflater cassait le mode : pendant
+	   une lecture, une réponse tapée était ignorée et « Entrée » sautait la question sans
+	   la compter. D'où `gelePar(cause)`, qui répond cause par cause. */
+
+	it('faux sur un décompte neuf : aucune cause n’a été posée', () => {
+		const d = creerDecompte(DUREE, T0);
+		expect(d.gelePar('lecture')).toBe(false);
+		expect(d.gelePar('correction')).toBe(false);
+		expect(d.enPause()).toBe(false);
+	});
+
+	it('distingue les deux causes : écouter n’est pas être en correction', () => {
+		// LE cas du défaut : l'enfant écoute l'énoncé, aucune correction n'est affichée.
+		// Une garde qui lit `gelePar('correction')` doit le laisser répondre.
+		const d = creerDecompte(DUREE, T0);
+		d.geler('lecture', t(2_000));
+		expect(d.gelePar('lecture')).toBe(true);
+		expect(d.gelePar('correction')).toBe(false);
+		expect(d.enPause()).toBe(true);
+	});
+
+	it('reste faux pour une cause jamais posée, même décompte gelé par l’autre', () => {
+		const d = creerDecompte(DUREE, T0);
+		d.geler('correction', t(2_000));
+		d.degeler('lecture', t(3_000)); // dégel d'une cause absente : sans effet
+		expect(d.gelePar('correction')).toBe(true);
+		expect(d.gelePar('lecture')).toBe(false);
+	});
+
+	it('redevient faux au dégel de SA cause, alors qu’enPause reste vrai (chevauchement)', () => {
+		// Correction affichée, l'enfant réécoute l'énoncé pendant celle-ci, puis referme la
+		// correction : la voix parle encore. Le décompte reste gelé (enPause), mais l'écran
+		// doit à nouveau accepter une réponse — donc `gelePar('correction')` doit retomber.
+		const d = creerDecompte(DUREE, T0);
+		d.geler('correction', t(5_000));
+		d.geler('lecture', t(6_000));
+		expect(d.gelePar('correction')).toBe(true);
+		expect(d.gelePar('lecture')).toBe(true);
+
+		d.degeler('correction', t(8_000));
+		expect(d.gelePar('correction')).toBe(false);
+		expect(d.gelePar('lecture')).toBe(true);
+		expect(d.enPause()).toBe(true); // le décompte, lui, ne repart pas encore
+
+		d.degeler('lecture', t(9_000));
+		expect(d.gelePar('lecture')).toBe(false);
+		expect(d.enPause()).toBe(false);
+	});
+
+	it('pas de compteur caché : deux gels de la même cause, un seul dégel suffit', () => {
+		const d = creerDecompte(DUREE, T0);
+		d.geler('lecture', t(1_000));
+		d.geler('lecture', t(2_000)); // double clic sur « Écouter »
+		d.degeler('lecture', t(3_000));
+		expect(d.gelePar('lecture')).toBe(false);
+		expect(d.enPause()).toBe(false);
+	});
+
+	it('enPause vaut exactement « au moins une cause active », à chaque étape', () => {
+		// L'invariant qui interdit aux deux réponses de diverger — c'est justement leur
+		// divergence silencieuse qui a produit le défaut.
+		const d = creerDecompte(DUREE, T0);
+		const frise: [CauseGel, 'geler' | 'degeler', number][] = [
+			['lecture', 'geler', 1_000],
+			['correction', 'geler', 2_000],
+			['lecture', 'degeler', 3_000],
+			['correction', 'degeler', 4_000],
+			['correction', 'degeler', 5_000], // redondant
+			['correction', 'geler', 6_000],
+			['lecture', 'geler', 7_000],
+			['correction', 'degeler', 8_000],
+			['lecture', 'degeler', 9_000],
+		];
+		for (const [cause, geste, ms] of frise) {
+			d[geste](cause, t(ms));
+			const auMoinsUne = d.gelePar('lecture') || d.gelePar('correction');
+			expect(d.enPause(), `après ${geste} « ${cause} » à ${ms} ms`).toBe(auMoinsUne);
+		}
 	});
 });

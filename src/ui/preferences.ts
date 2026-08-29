@@ -132,14 +132,21 @@ export function renderPreferences() {
    minuteur, lecture auto des consignes. Affichés ici en LECTURE SEULE — l'enfant
    comprend pourquoi son app se comporte ainsi sans pouvoir le désactiver par jeu.
    Rien n'est affiché si aucun aménagement n'est posé. L'écoute « à la demande »
-   (bouton « Écouter ») reste, elle, toujours disponible côté enfant. */
+   (bouton « Écouter ») reste, elle, toujours disponible côté enfant.
+
+   La ligne de la lecture auto nomme son exception de mode (#630) ET ce qu'il reste
+   à l'enfant. Dire seulement « sauf pendant les sprints » lui ferait comprendre
+   qu'il y perd l'accès à l'oral, alors que c'est l'inverse : c'est le seul mode où
+   il le déclenche lui-même. La ligne est plus longue que ses sœurs, et c'est
+   assumé — l'enfant que le bouton sert en premier est celui qui lit le moins vite,
+   et à qui on ne peut pas demander de deviner. */
 function amenagementsInfoHTML(): SafeHtml {
 	const lignes: string[] = [];
 	if (sansPressionTemporelle())
 		lignes.push('Le minuteur est masqué pendant les sprints (réglé par un adulte).');
 	if (lectureConsigneAuto())
 		lignes.push(
-			'Les consignes sont lues à voix haute automatiquement, sauf pendant les sprints (réglé par un adulte).',
+			'Les consignes sont lues à voix haute automatiquement, sauf pendant les sprints, où le bouton « Écouter » reste disponible (réglé par un adulte).',
 		);
 	if (!apparitionsSurprises())
 		lignes.push('Les apparitions surprises sont désactivées (réglé par un adulte).');

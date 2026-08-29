@@ -525,36 +525,44 @@ function sprintGelLecture(enCours: boolean): void {
 	sprintLectureFilet = enCours ? setTimeout(() => sprintGelLecture(false), LECTURE_MAX_MS) : null;
 	if (!sprintDecompte) return;
 	const now = Date.now();
-	if (enCours) {
-		// Le décompte peut DÉJÀ être gelé par une correction affichée : ne rien
-		// signaler alors, le temps ne s'arrête pas une seconde fois, et l'annonce
-		// écraserait la correction que le lecteur d'écran est en train de lire.
-		const gelaitDeja = sprintDecompte.enPause();
-		sprintDecompte.geler('lecture', now);
-		if (!gelaitDeja) sprintMarquerPause(true);
-	} else {
-		sprintDecompte.degeler('lecture', now);
-		if (!sprintDecompte.enPause()) sprintMarquerPause(false);
-	}
+	// Le décompte peut DÉJÀ être gelé par une correction affichée. On le relève AVANT
+	// de toucher aux causes : c'est ce qui distingue « l'écoute vient d'arrêter le
+	// temps » de « le temps était déjà arrêté », et donc s'il y a quelque chose à dire.
+	const gelaitDeja = sprintDecompte.enPause();
+	if (enCours) sprintDecompte.geler('lecture', now);
+	else sprintDecompte.degeler('lecture', now);
+	sprintSyncPause();
+	// L'annonce de mise en pause est tue quand une correction gelait déjà le temps :
+	// elle écraserait, dans la région live, la correction que l'enfant est en train de
+	// se faire lire. Celle de reprise ne part que si la région porte ENCORE la mise en
+	// pause : sinon c'est qu'autre chose de plus récent s'y trouve (« Bonne réponse ! »,
+	// une correction, ou le vide de la question suivante), et la recouvrir d'un
+	// « Le temps repart. » hors sujet ferait perdre le message utile.
+	const live = document.getElementById('sprintStatus');
+	if (enCours && !gelaitDeja) sprintAnnonce(ANNONCE_PAUSE);
+	else if (!enCours && !sprintDecompte.enPause() && live?.textContent === ANNONCE_PAUSE)
+		sprintAnnonce(ANNONCE_REPRISE);
 }
 
-/* L'état « en pause » du minuteur : classe sur le chiffre ET badge à mot ouvert.
-   Deux codages, aucun chromatique — la couleur est déjà prise par le rouge des
-   30 dernières secondes (`.low`), et un état signalé par une teinte de plus
-   entrerait en concurrence avec lui.
+/* L'état visible du minuteur, DÉRIVÉ du décompte plutôt que poussé par chaque
+   branche qui gèle ou dégèle. Le premier jet le poussait, et en oubliait une : après
+   avoir écouté puis répondu faux, le liseré et le badge restaient allumés pour tout
+   le reste de la partie, au-dessus d'un chiffre qui tournait de nouveau — soit
+   exactement le contresens que le témoin est censé éviter. Un état recopié à la main
+   dans trois branches finit toujours par en oublier une ; celui-ci se recalcule.
 
-   La reprise n'est annoncée QUE si la région live dit encore la mise en pause :
-   quand la lecture est coupée par un changement de question, ou quand l'enfant a
-   répondu pendant l'audio, la région porte déjà autre chose (« Bonne réponse ! »,
-   une correction, ou le vide de la question suivante) et la recouvrir d'un
-   « Le temps repart. » hors sujet ferait perdre le message utile. */
-function sprintMarquerPause(enPause: boolean): void {
+   Il suit la cause `'lecture'`, et pas la pause en général : une correction affichée
+   gèle aussi le temps, mais elle ne montrait aucun témoin avant #630 et une partie
+   sans écoute doit se comporter comme avant. L'écran de correction dit déjà, à lui
+   seul, pourquoi l'enfant n'est plus en train de courir.
+
+   Deux codages, aucun chromatique : le liseré est POINTILLÉ et le badge porte un MOT.
+   La couleur est déjà prise par le rouge des 30 dernières secondes (`.low`). */
+function sprintSyncPause(): void {
+	const enPause = !!sprintDecompte?.gelePar('lecture');
 	document.getElementById('sprintTime')?.classList.toggle('en-pause', enPause);
 	const badge = document.getElementById('sprintPause');
 	if (badge) badge.hidden = !enPause;
-	const live = document.getElementById('sprintStatus');
-	if (enPause) sprintAnnonce(ANNONCE_PAUSE);
-	else if (live?.textContent === ANNONCE_PAUSE) sprintAnnonce(ANNONCE_REPRISE);
 }
 
 /* Une réponse telle qu'elle se LIT dans une phrase de correction : un signe de

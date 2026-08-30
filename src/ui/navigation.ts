@@ -48,7 +48,7 @@ import { countDusSeance } from '../core/progress';
 import { getRevisionPlafond } from '../core/profiles';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { renderOrthoListeForm } from './ortho-liste';
-import { renderOrthoRevoir } from './ortho-revoir';
+import { renderOrthoRevoir, renderOrthoRevoirSelection, setPendingRelecture } from './ortho-revoir';
 import { iconOr } from './icon';
 import { startOrthoRun, orthoDiscoveryComplete, renderOrthoModeChoice } from './ortho-runner';
 import { closeProfileMenu, closeDrawer } from './menu';
@@ -156,6 +156,23 @@ export function goOrthoEdit(id: string) {
 }
 export function goOrthoRevoir(id: string) {
 	location.hash = 'ortho-revoir-' + id;
+}
+/* Relecture RESTREINTE à quelques mots (#618, « Relire ces mots » des écrans de fin).
+   La sélection voyage en mémoire, jamais dans le hash : c'est ce qui la fait
+   disparaître au rechargement et au bouton Précédent (critères 12 et 21), alors
+   qu'une URL la rendrait partageable et rejouable. */
+export function goOrthoRevoirMots(motIds: readonly string[], lessonId?: string) {
+	setPendingRelecture({ motIds, ...(lessonId ? { lessonId } : {}) });
+	// Une sélection issue d'UNE liste garde le hash de cette liste : son sous-titre et
+	// sa provenance (#461) restent ceux de la liste. Une sélection multi-listes n'a pas
+	// de liste à nommer et prend le hash nu.
+	const cible = lessonId ? 'ortho-revoir-' + lessonId : 'ortho-revoir';
+	// Réassigner un hash IDENTIQUE ne déclenche pas `hashchange` : la page ne serait pas
+	// re-rendue et la sélection resterait en attente, prête à s'appliquer à la prochaine
+	// relecture ouverte — exactement la fuite que le critère 12 interdit. On rend donc la
+	// vue à la main dans ce cas (même parade que `goHome`).
+	if (location.hash === '#' + cible) route();
+	else location.hash = cible;
 }
 export function showProfiles() {
 	location.hash = 'profils';
@@ -315,6 +332,8 @@ export function route() {
 		showOrthoEditView(h.slice('ortho-edit-'.length));
 	} else if (h.startsWith('ortho-mode-')) {
 		showOrthoModeView(h.slice('ortho-mode-'.length));
+	} else if (h === 'ortho-revoir') {
+		showOrthoRevoirSelectionView();
 	} else if (h.startsWith('ortho-revoir-')) {
 		showOrthoRevoirView(h.slice('ortho-revoir-'.length));
 	} else if (h.startsWith('ortho-')) {
@@ -582,6 +601,16 @@ function showOrthoRevoirView(id: string) {
 	setToolbar({ verify: false, home: true, profile: true });
 	hideMenus();
 	renderOrthoRevoir(document.getElementById('sheets')!, id);
+}
+/* Relecture d'une SÉLECTION de mots (#618) : mots qui ont résisté pendant une révision
+   espacée, pouvant venir de plusieurs listes. La sélection vit en mémoire et se consomme
+   une seule fois — arriver ici par le hash direct, un rechargement ou le bouton Précédent
+   n'a donc rien à afficher, et on rend la main à l'accueil (critère 21). */
+function showOrthoRevoirSelectionView() {
+	resetSessionUI();
+	setToolbar({ verify: false, home: true, profile: true });
+	hideMenus();
+	if (!renderOrthoRevoirSelection(document.getElementById('sheets')!)) goHome();
 }
 /* Écran de choix du mode d'une liste d'orthographe (#69). */
 function showOrthoModeView(id: string) {

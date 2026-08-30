@@ -97,10 +97,19 @@
 	gap: 10px;
 	flex-wrap: wrap;
 	justify-content: center;
-	/* Filet (#630) : la ligne accueille le bouton « Écouter » (44 px de cible
-	   tactile). Elle en fait déjà la hauteur sur toutes les questions du catalogue
-	   actuel ; réserver la place évite que l'écran se décale le jour où une leçon
-	   délibérément muette entrerait dans le pool sans son bouton. */
+}
+/* Filet (#630) : la ligne accueille le bouton « Écouter » (44 px de cible tactile).
+   Elle en fait déjà la hauteur sur toutes les questions du catalogue actuel ;
+   réserver la place évite que l'écran se décale le jour où une leçon délibérément
+   muette entrerait dans le pool sans son bouton.
+
+   Posé sur un MODIFICATEUR, et non sur `.sprint-theme` : cette classe est partagée
+   avec les dix runners de leçon (`leconTitreHTML`, ui/lecon-runner-shared.ts) et
+   avec la galerie. Le premier jet la visait tout court et allongeait de 8 px le
+   bandeau de titre de CHAQUE runner — attrapé par la baseline visuelle de
+   `e2e/galerie.spec.ts`. Un scope `.sprint .sprint-theme` n'aurait rien réglé : les
+   runners de leçon s'enveloppent eux aussi dans `.sprint`. */
+.sprint-theme--ecoute {
 	min-height: 44px;
 }
 /* Pastille de matière (signale d'un coup d'œil maths vs français) */

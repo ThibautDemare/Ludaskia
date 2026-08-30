@@ -509,7 +509,7 @@ const sprintTtsAttr = (q: Item | null): SafeHtml => {
    c'est-à-dire précisément pour les profils dont l'aménagement dys/TDAH est posé,
    ceux qui ont le plus besoin de l'oral. */
 function sprintThemeHTML(def: LessonDef | null, q: Item | null): SafeHtml {
-	return html`<div class="sprint-theme"${sprintTtsAttr(q)}>${def ? subjectTag(def.subject) : ''}<span class="sprint-lesson">${def ? labelLecon(def, niveauLecon(def)) : ''}</span></div>`;
+	return html`<div class="sprint-theme sprint-theme--ecoute"${sprintTtsAttr(q)}>${def ? subjectTag(def.subject) : ''}<span class="sprint-lesson">${def ? labelLecon(def, niveauLecon(def)) : ''}</span></div>`;
 }
 
 /* Greffe le bouton sur l'écran qui vient d'être rendu. Deux réglages propres au

@@ -762,7 +762,7 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 				return html`<button class="rev-choice" data-i="${i}"${aria}>${inner}</button>`;
 			}),
 		)}</div>
-    ${giveUpHTML()}html`.balisage;
+    ${giveUpHTML()}`.balisage;
 	// Libellé LISIBLE d'un choix, comme à l'écran : mot de ponctuation (un « . » nu
 	// serait illisible dans le journal), sinon vue riche #200 (fraction empilée).
 	const label = (v: string) =>
@@ -1142,7 +1142,7 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 	stage.innerHTML = html`${consigneHTML(it)}<div class="rev-q rev-probleme">${board}</div>
     ${brouillonHTML()}
     ${PROB_STATUS_HTML}
-    <div id="revAfter">${decideHTML()}</div>html`.balisage;
+    <div id="revAfter">${decideHTML()}</div>`.balisage;
 	bindBrouillon(stage); // ardoise de dessin repliable (#199) — l'énoncé garde sa lecture TTS
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inputs = [...stage.querySelectorAll<HTMLInputElement>('.prob-input')];

@@ -150,10 +150,14 @@ export function renderLeconResult(opts: LeconResultOpts): void {
 	const acc = total ? Math.round((score / total) * 100) : 0;
 	// Retour d'où l'on vient (#461) : le programme du jour s'il a lancé la leçon.
 	const retour = retourFinActivite({ label: 'Retour', aller: () => goCategorie(category) });
-	let extra = '';
+	// Liste de fragments, JAMAIS une chaîne accumulée : `extra += html\`…\`` coerce le
+	// `SafeHtml` en « [object Object] », que le gabarit affiche ensuite en toutes lettres.
+	const extra: SafeHtml[] = [];
 	if (out.starInfo) {
 		if (out.starInfo.perfect)
-			extra += html`<div class="rb-medal"><span class="rb-medal-ico">⭐</span><span class="rb-medal-txt">${out.starInfo.newStar ? 'Étoile gagnée !' : 'Encore sans faute !'}</span></div>`;
+			extra.push(
+				html`<div class="rb-medal"><span class="rb-medal-ico">⭐</span><span class="rb-medal-txt">${out.starInfo.newStar ? 'Étoile gagnée !' : 'Encore sans faute !'}</span></div>`,
+			);
 		const succes = lexique
 			? `${cap(lexique.nomPluriel)} réussis sans faute`
 			: 'Leçon réussie sans faute';
@@ -162,7 +166,7 @@ export function renderLeconResult(opts: LeconResultOpts): void {
 				? `${succes}${out.starInfo.count > 1 ? ` (${out.starInfo.count}×)` : ''}. Bravo !`
 				: `Il faut un sans-faute pour décrocher l'étoile. Réessaie ⭐`) +
 			streakSuffix(out.streakDays);
-		extra += html`<div class="sprint-done-sub">${msg}</div>`;
+		extra.push(html`<div class="sprint-done-sub">${msg}</div>`);
 	}
 	const labTexte = lexique
 		? `${score > 1 ? lexique.nomPluriel : lexique.nom.toLowerCase()} réussi${score > 1 ? 's' : ''} (${acc}%)`

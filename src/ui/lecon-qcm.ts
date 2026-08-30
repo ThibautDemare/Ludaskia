@@ -192,7 +192,7 @@ function renderQuestion(): void {
         <div class="sprint-correction" id="lqcmFeedback" hidden></div>
         <div class="sprint-actions" id="lqcmActions" hidden></div>
       </div>
-    </div>html`.balisage;
+    </div>`.balisage;
 	sheets()
 		.querySelectorAll<HTMLButtonElement>('#lqcmChoices .sprint-choice')
 		.forEach((btn) => btn.addEventListener('click', () => answer(Number(btn.dataset.i))));

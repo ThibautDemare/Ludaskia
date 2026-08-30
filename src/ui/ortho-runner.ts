@@ -29,7 +29,8 @@ import { addXP, getXP, niveauDepuisXP, recordSessionActivity } from '../core/pro
 import { journaliserPaliersOrtho } from '../core/orthographe/paliers';
 import { evaluateTrophies } from '../core/rewards';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
-import { goCategorie, goOrthoRevoir } from './navigation';
+import { goCategorie, goOrthoRevoir, goOrthoRevoirMots } from './navigation';
+import { motsDifficilesHTML, bindMotsDifficiles } from './mots-difficiles-view';
 import { retourFinActivite, activiteDemarree } from './retour-activite';
 import {
 	renderAtelier,
@@ -68,6 +69,24 @@ let revisionRun = false;
 // encadrant (#319) ? Posée une seule fois par session (au 1er écran terminal atteint :
 // pause, bilan ou révision terminée), pour ne pas re-compter les « Continuer encore ».
 let orthoJournalisee = false;
+// Mots passés par la CORRECTION GUIDÉE depuis le début de la séance (#618), dans
+// l'ordre de rencontre et sans doublon. Alimenté par la seule branche d'escalade
+// (2e erreur → atelier avec le diff) du mot caché et de la dictée : un mot raté puis
+// rattrapé dans la foulée relève de la récupération autonome, donc du fonctionnement
+// normal de l'apprentissage, et ne se signale pas. Les TUILES n'ont pas cette branche
+// (l'enfant y réessaie sans escalade, et les lettres lui sont fournies) : elles ne
+// nourrissent donc jamais cette liste, conséquence assumée du cadrage.
+//
+// À NE PAS CONFONDRE avec le journal de l'espace encadrant (`journalErreurOrtho`), qui
+// capture lui le PREMIER essai raté. Les deux points de capture divergent volontairement.
+//
+// En mémoire uniquement : aucune clé de stockage, rien qui survive au rechargement.
+// Remis à zéro par `startOrthoRun` seulement — surtout pas par « Continuer encore un
+// peu », qui poursuit la MÊME séance.
+let motsDifficiles: MotOrtho[] = [];
+function noterMotDifficile(word: MotOrtho): void {
+	if (!motsDifficiles.some((m) => m.id === word.id)) motsDifficiles.push(word);
+}
 // Mode choisi en attente, posé par l'écran de choix et consommé par startOrthoRun.
 let pendingOrthoMode: ModeOrtho | null = null;
 export const setPendingOrthoMode = (m: ModeOrtho | null) => {
@@ -169,6 +188,7 @@ export async function startOrthoRun(lessonId: string): Promise<void> {
 	idx = 0;
 	niveauAvant = niveauDepuisXP(getXP());
 	actes = 0;
+	motsDifficiles = []; // nouvelle séance → nouveau rappel de fin (#618)
 	orthoJournalisee = false; // nouvelle session → re-journalisable une fois (#319)
 	// Parcours complet sur une liste déjà acquise → tour de révision (sinon le bilan
 	// tomberait tout de suite, sans rien proposer à travailler).
@@ -436,6 +456,7 @@ function renderMotCache(word: MotOrtho): void {
 				// 2e erreur : on bascule sur l'atelier de correction (diff sur le mot). Le
 				// retrace du mot affiché a déjà été coupé au clic « Cacher » (on n'arrive
 				// ici qu'après), donc `motCacheResize` est déjà nul — rien à nettoyer.
+				noterMotDifficile(word); // ce mot a demandé un étayage (#618)
 				const diff = diffCorrect(input.value, word.mot);
 				renderAtelier(sheets(), word, {
 					contexteHTML: contexteHTML(word),
@@ -509,6 +530,7 @@ function renderDictee(word: MotOrtho): void {
 				input.focus();
 				ecouter();
 			} else {
+				noterMotDifficile(word); // ce mot a demandé un étayage (#618)
 				const diff = diffCorrect(input.value, word.mot);
 				renderAtelier(sheets(), word, {
 					contexteHTML: contexteHTML(word),
@@ -828,15 +850,23 @@ function renderBilan(): void {
 	journalOrthoSession();
 	const total = mots.length;
 	const retour = retourOrtho("Retour à l'orthographe");
+	// Rappel des mots qui ont résisté (#618) : au bilan, TOUS ceux passés par la
+	// correction guidée pendant la séance, sans filtre de statut. À cet instant ils sont
+	// maîtrisés par construction — c'est la condition même d'affichage de cet écran —,
+	// donc ce qui est nommé vient de l'historique de la séance et se dit sous l'angle de
+	// l'effort fourni, jamais de la fragilité.
+	const difficiles = motsDifficiles;
 	sheets().innerHTML = html`
     <div class="page ortho-run ortho-bilan">
       ${mascotteBulleHTML(encouragementMascotte())}
       <div class="ortho-bilan-emoji">🎉</div>
       <h2>Liste prête !</h2>
       <p>Tu as bien travaillé ${total > 1 ? html`les <b>${total}</b> mots` : 'le mot'} de cette liste.</p>
+      ${motsDifficilesHTML(difficiles, 'bilan', 'ortho-difficiles')}
       <button class="btn-primary" id="btnBilanRetour">${retour.label}</button>
     </div>`.balisage;
 	sheets().querySelector('#btnBilanRetour')!.addEventListener('click', retour.aller);
+	bindMotsDifficiles(sheets(), () => relireMotsDifficiles(difficiles));
 
 	// Récompenses : l'étoile « Liste prête », plus trophées éventuels + montée de niveau.
 	annoncerRecompensesFin([{ icon: '🌟', text: 'Liste prête, bravo !' }]);
@@ -886,11 +916,19 @@ function renderPause(): void {
 	// Bouton d'arrêt : garde son libellé « intention » hors programme ; depuis le
 	// programme, il annonce où il ramène (#461).
 	const retour = retourOrtho('Revenir une autre fois', 'Revenir au programme');
+	// Rappel des mots qui ont résisté (#618) : à la pause, seuls ceux qui donnent ENCORE
+	// du travail. Un mot passé par la correction guidée puis validé avant la pause n'y est
+	// pas nommé — il relève du bilan, sous l'angle de l'effort fourni.
+	// Cas limite assumé : une séance CIBLÉE ne valide aucun mode (`reussiteMode`), donc le
+	// statut lu ici est celui d'avant la séance. Sur une liste déjà étoilée, un mot qui
+	// résiste n'est donc pas nommé — c'est la lettre du critère 1 (« pas encore maîtrisé »).
+	const difficiles = motsDifficiles.filter((m) => statutMot(m, dispoDictee) !== 'maitrise');
 	sheets().innerHTML = html`
     <div class="page ortho-run ortho-bilan">
       <div class="ortho-bilan-emoji">👏</div>
       <h2>Bonne séance !</h2>
       <p>Tu as bien travaillé. Tu peux continuer encore un peu ou revenir une autre fois.</p>
+      ${motsDifficilesHTML(difficiles, 'pause', 'ortho-difficiles')}
       <div class="ortho-pause-actions">
         <button class="btn-primary" id="btnContinuerSeance">Continuer encore un peu</button>
         <button class="atelier-undo" id="btnStopSeance">${retour.label}</button>
@@ -902,6 +940,7 @@ function renderPause(): void {
 		renderNext();
 	});
 	sheets().querySelector('#btnStopSeance')!.addEventListener('click', retour.aller);
+	bindMotsDifficiles(sheets(), () => relireMotsDifficiles(difficiles));
 	b.focus();
 	// Hors parcours de première complétion (mode ciblé ou révision), il n'y a pas de
 	// bilan d'étoile → on célèbre à la pause les niveaux éventuellement gagnés.
@@ -909,6 +948,17 @@ function renderPause(): void {
 }
 
 /* ---------- Helpers ---------- */
+/* « Relire ces mots » (#618) : ouvre la page de relecture RESTREINTE aux mots qui ont
+   résisté. La liste travaillée est passée : la relecture garde alors son sous-titre et
+   la provenance d'activité (#461), donc son bouton « Retour » ramène là d'où l'enfant
+   vient — catalogue ou programme du jour. */
+function relireMotsDifficiles(difficiles: readonly MotOrtho[]): void {
+	goOrthoRevoirMots(
+		difficiles.map((m) => m.id),
+		orthoLessonId,
+	);
+}
+
 /* Réussite d'un mode : +1 XP, et — en parcours complet seulement — validation du
    mode (l'étoile ne se gagne qu'en faisant la suite ordonnée, pas un mode isolé). */
 function reussiteMode(word: MotOrtho, mode: ModeOrtho): void {

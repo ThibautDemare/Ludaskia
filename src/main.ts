@@ -19,6 +19,7 @@ import './styles/revision.scss';
 import './styles/modal.scss';
 import './styles/reprise.scss';
 import './styles/recap-seance.scss';
+import './styles/mots-difficiles.scss';
 import './styles/print.scss';
 import './styles/bilan.scss';
 import './styles/catalog.scss';

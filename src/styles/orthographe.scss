@@ -847,6 +847,15 @@ html.anim-reduced .tuile-slot.is-caret .tuile-curseur {
 	color: var(--grey);
 	margin: 0 0 0.4rem;
 }
+/* Rappel de ce qu'on regarde quand la page ne montre PAS toute la liste (#618) :
+   sans lui, l'enfant arrivé par « Relire ces mots » croit avoir perdu ses autres mots. */
+.relecture-amorce {
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--grey);
+	margin: 0 auto 0.4rem;
+	max-width: 540px;
+}
 .relecture-consigne {
 	font-size: 1.05rem;
 	color: var(--muted);

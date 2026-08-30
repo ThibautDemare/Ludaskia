@@ -651,9 +651,12 @@ export const debutSemaine = startOfWeek;
 
    Ce que la donnée permet, et ce qu'elle interdit :
    - `PaliersNotion` ne date que les MONTÉES vers « en cours » et « acquis », et seulement la
-     première fois. Une cellule ne vaut donc que « l'état le plus haut atteint à cette date ».
-     L'état RÉEL du jour est connu par ailleurs (`RecapNotion.niveau`) et peut être PLUS BAS :
-     c'est l'UI qui met les deux côte à côte, un écart valant signal de recul.
+     première fois. Une cellule PASSÉE ne vaut donc que « l'état le plus haut atteint à cette
+     date » : ce préfixe croît et ne redescend jamais, faute d'une donnée qui daterait les
+     baisses. La DERNIÈRE cellule, elle, échappe à cette limite — l'état du jour est connu
+     (`RecapNotion.niveau`, le même que le mot de la ligne) et lui est imposé (cf.
+     `finaliserFrise`, correctif « état du jour »). C'était la faille : la frise pouvait finir plus haut que ce que
+     la ligne annonçait juste à côté, et plus haut que la barre de la catégorie.
    - « à renforcer » n'est jamais daté (entrer là n'est pas un progrès de maîtrise, cf.
      maitrise.ts) mais il se DÉDUIT : une leçon travaillée, suivie, sans cap franchi, était à
      renforcer. C'est ce qui manquait à la version précédente, qui escamotait ce palier et
@@ -744,9 +747,10 @@ function finDecouverte(rencontre: number | null, debutSuivi: number): number {
    seule des trois autorise « à renforcer » :
    - aucun cap daté du tout : rien n'est monté sous l'œil du journal, donc l'état courant tient
      depuis la borne (une montée aurait été datée, et l'étoile ne se retire pas). Ce cas est
-     testé EN PREMIER : le plancher couvre alors jusqu'à la dernière cellule, qui ne peut donc
-     pas se retrouver SOUS le mot d'état de la ligne — un faux signal de recul, si un chemin
-     d'écriture des stats oubliait un jour d'appeler recordMonteesPalier ;
+     testé EN PREMIER, ce qui étend l'état courant à TOUTE la période suivie plutôt qu'à la
+     seule dernière cellule — celle-ci le porte de toute façon depuis le correctif « état du jour » (`finaliserFrise`),
+     mais rien ne justifierait de laisser les semaines antérieures dans le doute quand aucune
+     montée n'a été observée ;
    - première rencontre datée (donc postérieure à la borne) : toute la trajectoire est
      journalisée, donc avant son premier cap la leçon était travaillée sous les 40 % ;
    - un cap daté, mais un historique antérieur au journal : le tampon peut n'être que la PREMIÈRE
@@ -779,8 +783,39 @@ export function friseNotion(
 	const finDecouv = finDecouverte(horodatage(firstSeen), debutSuivi);
 	const plancher = plancherSuivi(niveau, aucunCap, finDecouv !== -Infinity);
 	const semaines = cellulesFrise(acquis, enCours, finDecouv, plancher, debutSuivi, now);
+	return finaliserFrise(semaines, niveau, enCours, acquis);
+}
+
+/* Rangée FINALISÉE : la dernière cellule porte l'ÉTAT DU JOUR, et non le rang le plus haut
+   atteint (correctif « état du jour »).
+   Pourquoi ce forçage. Le journal des paliers est MONOTONE (il ne date que les montées, cf.
+   recordMonteesPalier) ; une rangée reconstruite depuis lui ne peut donc que croître. L'état
+   courant, lui, redescend — la fenêtre glissante de 40 questions retombe sous les 40 %. Sans
+   ce forçage, une leçon affichait « à renforcer » en toutes lettres, comptait pour un segment
+   ORANGE dans la barre de sa catégorie, et gardait une frise BLEUE jusqu'au bout. Les deux
+   widgets mesuraient deux choses différentes (état du jour / plus haut rang atteint) sans que
+   rien ne le dise, et le parent qui balaie les frises ne voyait jamais la baisse — c'est le
+   défaut rapporté, reproduit, qui a motivé ce correctif.
+   L'état du jour n'est pas une déduction : il est calculé pour cette même ligne, juste à côté,
+   et c'est le sens même de la cellule « semaine en cours ». La rangée peut donc DÉCROCHER sur
+   sa dernière marche, et ce décrochage EST l'information (le mot de la ligne le dit déjà, la
+   frise cesse de le démentir).
+   Placé APRÈS `aucuneSemaineConnue`, et c'est essentiel : sans ça, forcer la dernière cellule
+   ferait apparaître une frise d'une seule marche sur toutes les lignes dont aucune semaine
+   n'est déductible — précisément la population qu'on a choisi de laisser sans frise.
+   Partagé par les deux frises d'états (leçon, liste de dictée) : elles ne peuvent pas diverger
+   sur ce point. La liste plafonnait déjà ses caps par l'état courant (cf. friseListeOrtho), ce
+   qui couvrait presque le même besoin ; ce forçage ferme le cas qui lui échappait — un « acquis »
+   courant sans tampon « acquis » au journal, dont la rangée s'arrêtait à « en cours ». */
+function finaliserFrise(
+	semaines: CelluleFrise[],
+	etatDuJour: NiveauNotion,
+	enCoursDepuis: number | null,
+	acquisDepuis: number | null,
+): FriseNotion | null {
 	if (aucuneSemaineConnue(semaines)) return null;
-	return { semaines, enCoursDepuis: enCours, acquisDepuis: acquis };
+	semaines[semaines.length - 1] = etatDuJour;
+	return { semaines, enCoursDepuis, acquisDepuis };
 }
 
 /* Une frise dont AUCUNE semaine n'est connue n'est PAS dessinée. Douze blocs creux côte à côte
@@ -860,6 +895,10 @@ export function friseListeOrtho(
 	// d'acquisition d'origine réapparaît telle quelle au lieu d'avoir été réécrite. Ce que la frise
 	// perd alors, c'est l'épisode passé du cap démenti — elle sous-dit, et ne prétend jamais au
 	// parent un état que la ligne contredirait.
+	// Ce plafonnement reste utile APRÈS le correctif « état du jour », qui force la dernière cellule à l'état du jour pour
+	// les deux frises (`finaliserFrise`) : il gouverne, lui, les cellules PASSÉES et le plancher
+	// des semaines suivies. Les deux se complètent — la dernière cellule dit le présent, celui-ci
+	// évite que les précédentes racontent un cap que l'état courant dément.
 	const enCoursStocke = horodatage(paliers?.enCours);
 	const acquisStocke = horodatage(paliers?.acquis);
 	const acquis = niveau === 'acquis' ? acquisStocke : null;
@@ -913,8 +952,7 @@ export function friseListeOrtho(
 	// Pas de date de « première rencontre » pour une liste (aucun équivalent de firstSeen) : la
 	// période « à découvrir » n'est pas bornée par une date mais déduite du plancher ci-dessus.
 	const semaines = cellulesFrise(acquis, enCours, -Infinity, plancher, borne, now);
-	if (aucuneSemaineConnue(semaines)) return null;
-	return { semaines, enCoursDepuis: enCours, acquisDepuis: acquis };
+	return finaliserFrise(semaines, niveau, enCours, acquis);
 }
 
 /* Première séance de dictée DATÉE de chaque liste, tirée du graphe d'activité (`{k:'dictee', ref}`,
@@ -1013,6 +1051,10 @@ export function friseComposition(
 export function aChangeRecemment(frise: FriseNotion | null): boolean {
 	if (frise === null) return false;
 	// Deux états CONNUS dans la fenêtre : la frise change de rang sous les yeux du lecteur.
+	// Depuis le correctif « état du jour », ce « changement » couvre aussi les BAISSES : la dernière cellule porte l'état
+	// du jour, qui peut décrocher du rang atteint. C'est voulu — une notion qui retombe sous les
+	// 40 % est exactement ce qu'un adulte doit pouvoir repérer sans déplier chaque catégorie, et
+	// le compteur ne promet rien de plus qu'un mouvement, dans un sens ou dans l'autre.
 	if (new Set(frise.semaines.filter((c) => c !== 'inconnu')).size > 1) return true;
 	// Un seul état connu, précédé de pointillé : c'en est un changement si et seulement si un CAP
 	// DATÉ l'a produit — c'est alors le passage du pointillé à la couleur, visible lui aussi.

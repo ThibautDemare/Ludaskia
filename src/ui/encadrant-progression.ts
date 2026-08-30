@@ -303,10 +303,17 @@ function maitriseHTML(recap: RecapProfil): SafeHtml {
 				]
 					.filter(Boolean)
 					.join(' · ');
-				// Puce d'état OMISE quand la frise est là : sa dernière cellule dit déjà l'état,
-				// en plus grand et avec la hauteur comme second indice — trois expressions de la
-				// même chose sur une ligne, c'en était une de trop (avis designer). Le MOT, lui,
-				// reste : c'est le canal qui ne dépend pas de la couleur (a11y).
+				// Puce d'état OMISE quand la frise est là : sa dernière cellule dit déjà l'état, en
+				// plus grand et avec la hauteur comme second indice — trois expressions de la même
+				// chose sur une ligne, c'en était une de trop (avis designer). Le MOT, lui, reste :
+				// c'est le canal qui ne dépend pas de la couleur (a11y).
+				// CETTE PRÉMISSE N'EST VRAIE QUE DEPUIS le correctif « état du jour ». Avant, la dernière cellule portait le
+				// plus haut rang ATTEINT, pas l'état du jour : la puce avait donc été retirée sur
+				// une affirmation fausse, et une leçon retombée à « à renforcer » n'avait plus aucun
+				// canal COULEUR disant son état réel — le mot le disait, mais l'œil balaie les
+				// frises, pas les mots. Si la frise redevenait un jour purement historique, cette
+				// puce serait à rétablir avec elle : c'est ce qui la remplace, pas ce qu'elle a
+				// rendu inutile.
 				// Omise, mais sa PLACE est gardée : sans ça le libellé de cette ligne démarre à la
 				// marge, ~19 px à gauche de tous ses voisins, et la colonne des titres part en
 				// dents de scie. Un vide plutôt qu'une pastille pâle : réserver la place n'est pas
@@ -352,7 +359,7 @@ function maitriseHTML(recap: RecapProfil): SafeHtml {
       <h3 class="enc-h3">${icon('star')} Notions par catégorie</h3>
       ${matieresHTML(recap)}
       <p class="enc-legend">${legende}</p>
-      <p class="enc-hint">C'est normal qu'il reste des notions « à découvrir » ou « à renforcer » : ce sont celles qui n'ont pas encore été beaucoup travaillées. Dépliez une catégorie pour voir le détail, épingler une leçon, et suivre son évolution sur les 12 dernières semaines. Les leçons épinglées se retrouvent dans l'onglet Programme.</p>
+      <p class="enc-hint">C'est normal qu'il reste des notions « à découvrir » ou « à renforcer » : ce sont celles qui n'ont pas encore été beaucoup travaillées. Dépliez une catégorie pour voir le détail, épingler une leçon, et suivre son évolution sur les 12 dernières semaines. Dans chaque frise, la dernière colonne montre où en est la leçon aujourd'hui : elle peut redescendre d'un cran quand les dernières réponses ont été plus fragiles. Les leçons épinglées se retrouvent dans l'onglet Programme.</p>
       ${deplierHTML(recap)}
       <div class="enc-cats">${cats}</div>
     </div>`;

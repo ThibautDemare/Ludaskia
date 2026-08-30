@@ -1501,11 +1501,25 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   (`{semaines: CelluleFrise[], enCoursDepuis, acquisDepuis}`) reconstruit, semaine par
   semaine sur **12 semaines** (`SEMAINES_FRISE`), l'état atteint par **une** leçon depuis
   son journal `PaliersNotion` (`ludaskia_paliers`) ; `CelluleFrise` = `'inconnu' |
-  'a-decouvrir' | 'non-acquis' | 'en-cours' | 'acquis'`. Une cellule ne vaut que **l'état
-  le plus haut atteint à cette date** (`PaliersNotion` ne date que les montées, jamais les
-  redescentes) : l'état RÉEL du jour vient de `RecapNotion.niveau`, et un écart entre les
-  deux EST le signal de recul. Renvoie `null` seulement pour une leçon jamais travaillée
+  'a-decouvrir' | 'non-acquis' | 'en-cours' | 'acquis'`. Une cellule PASSÉE ne vaut que
+  **l'état le plus haut atteint à cette date** (`PaliersNotion` ne date que les montées,
+  jamais les redescentes) ; la **DERNIÈRE** vaut l'**état du jour** — le `niveau` reçu en
+  argument, celui-là même que porte `RecapNotion.niveau` et le mot de la ligne. Forçage
+  appliqué par `finaliserFrise`, helper partagé avec `friseListeOrtho` : les deux frises
+  d'états ne peuvent pas diverger sur ce point. Il est placé **après** le garde
+  « aucune semaine connue → `null` », sans quoi il ferait apparaître une frise d'une seule
+  marche sur toute ligne dont rien n'est déductible. Le contrat se résume donc en deux
+  invariants : le préfixe est croissant, et la dernière cellule EST l'état du jour (les
+  deux sont tenus par échantillonnage large dans `tests/frise-etats.test.ts`, avec un
+  compte minimal de rangées qui décrochent pour qu'un retour à l'ancienne monotonie ne
+  puisse pas passer le test). Renvoie `null` seulement pour une leçon jamais travaillée
   (`niveau === 'a-decouvrir'` ET aucun cap daté) : rien à tracer.
+
+  Ce forçage est le correctif « état du jour ». Avant lui, la rangée ne pouvait que croître
+  et le recul se lisait comme un ÉCART entre la frise et le mot d'état voisin — un design
+  qui faisait mesurer deux choses différentes à deux widgets voisins du même écran, sans que
+  rien ne le signale : une leçon retombée sous 40 % gardait une dernière cellule bleue sous
+  un mot disant « à renforcer », pendant que la barre de sa catégorie la comptait orange.
 
   **`debutSuivi`** (`debutSuiviPaliers(depuis, paliers)`) est une borne calculée **UNE
   fois par profil**, pas par leçon : le plus ancien entre `PALIERS_DEBUT_KEY`
@@ -1560,7 +1574,8 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   `lundiDecale(now, semainesAvant)` décale en **jours calendaires** (`debutJourLocal`)
   plutôt que par pas fixe de 7 × 24 h, qui dérivait d'une heure autour d'un changement
   d'heure. `aChangeRecemment(frise)` dit si la frise montre un changement : ≥ 2 états
-  distincts **lus sur les cellules**, OU un seul état connu précédé de semaines `'inconnu'`
+  distincts **lus sur les cellules** — donc, depuis que la dernière cellule porte l'état du
+  jour, les BAISSES comme les montées —, OU un seul état connu précédé de semaines `'inconnu'`
   **si son franchissement est daté** (`enCoursDepuis`/`acquisDepuis` non nuls) — sans cap
   daté, ce qui a changé est le SUIVI et non l'enfant. **Ce compteur ne se lit donc plus
   entièrement sur le dessin** (les cellules `'inconnu'` étant rendues comme « à découvrir »,

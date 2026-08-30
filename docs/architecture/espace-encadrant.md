@@ -156,9 +156,12 @@ elle-même — l'historique daté vit dans la frise d'états ci-dessous (#521).
 dépliable d'une catégorie (remplace la frise par matière de #397 : un compteur hebdomadaire
 de notions ayant franchi un cap, événement rare, laissait la plupart des colonnes à 0 et ne
 nommait aucune leçon). Douze cellules (**12 dernières semaines**, `SEMAINES_FRISE`), une par
-semaine : couleur ET hauteur portent le même rang d'état, le plus haut atteint à cette date
-(`friseNotion(paliers, firstSeen, niveau, debutSuivi, now)`, cf. [Logique pure](core.md)) —
-deux canaux redondants, la couleur ne portant jamais seule le sens. `debutSuivi` est une
+semaine : couleur ET hauteur portent le même rang d'état — deux canaux redondants, la couleur
+ne portant jamais seule le sens. Les **onze premières** cellules montrent le rang le plus haut
+atteint à leur date (le journal des paliers ne date que les montées : il ne peut pas dessiner
+une baisse passée) ; la **douzième**, celle de la semaine en cours, porte l'**état du jour**
+(`friseNotion(paliers, firstSeen, niveau, debutSuivi, now)`, cf. [Logique pure](core.md)). La
+rangée peut donc décrocher d'un cran sur sa dernière marche. `debutSuivi` est une
 borne **par profil** (pas par leçon, cf. [Logique pure](core.md) pour `debutSuiviPaliers`)
 qui gouverne toutes les lignes de la même façon : une première rencontre ne vaut
 « à découvrir » que si sa semaine tombe à cette borne ou après.
@@ -195,7 +198,11 @@ changements (« statut inconnu, puis passée en cours le 3 juin 2026, puis acqui
 que d'annoncer douze cellules une à une, dont aucune n'est focalisable. La **puce d'état**
 (pastille colorée) de la ligne est **omise** dès qu'une frise s'affiche : elle redirait, en
 plus petit, ce que la dernière cellule montre déjà (avis designer) — le **mot** d'état, lui,
-reste affiché (canal indépendant de la couleur, a11y). La méta de la ligne (« travaillée N
+reste affiché (canal indépendant de la couleur, a11y). **Cette justification n'est vraie que
+depuis le correctif « état du jour »** : la dernière cellule portait auparavant le plus haut
+rang atteint, donc la puce avait été retirée sur une affirmation fausse, et une leçon
+retombée à « à renforcer » n'avait plus aucun canal COULEUR disant son état réel. Si la frise
+redevenait un jour purement historique, la puce serait à rétablir avec elle. La méta de la ligne (« travaillée N
 fois · dernière fois … ») gagne la date du cap le **plus haut** franchi (« acquise le… » /
 « passée en cours le… ») : la trajectoire complète vit dans la frise, la méta n'en retient que
 l'événement marquant. Un segment « à renforcer » reste volontairement **muet** (pas de date,
@@ -207,10 +214,24 @@ semaine ne serait déductible (#541 : douze cases `'inconnu'`, cf. [Logique pure
 un dessin entièrement creux se lit comme un bug d'affichage, pas comme une absence de donnée,
 la ligne retombe donc sur sa pastille comme si la frise n'existait pas encore.
 
-**Signal de recul** : la frise ne redescend jamais (elle ne date que des montées) — un écart
-entre sa dernière cellule (p. ex. « acquis ») et le **mot** d'état affiché à côté (qui peut
-être retombé à « non acquis »/« à renforcer ») EST le signal à lire, sans qu'aucune cellule ne
-le désigne explicitement.
+**Signal de recul** : il se lit DANS la rangée, comme un décrochage de la dernière cellule
+sous celles qui la précèdent (p. ex. onze cellules « en cours » puis une « à renforcer »).
+
+La règle a changé, et c'est le correctif « état du jour » : la frise se déduisant d'un journal
+monotone, elle ne redescendait jamais, et le recul ne se voyait que comme un ÉCART entre sa
+dernière cellule et le mot d'état affiché à côté. Ce design était intenable à l'usage — le mot
+et la barre segmentée de la catégorie disent l'état du jour, la frise disait le plus haut rang
+atteint, et rien à l'écran ne prévenait que les deux widgets ne mesuraient pas la même chose.
+Une leçon retombée sous 40 % annonçait donc « à renforcer », comptait pour un segment orange
+dans sa catégorie, et gardait une frise bleue jusqu'au bout ; le parent qui balaie les frises
+ne voyait jamais la baisse. Un test e2e verrouillait même l'écart comme s'il était la
+solution. La dernière cellule porte désormais l'état du jour (`finaliserFrise`, partagé avec
+la frise des listes de dictée), et les trois expressions de l'état concordent.
+
+Corollaire à connaître : le compteur « N changements récents » (`aChangeRecemment`) compte
+depuis lors les BAISSES comme les montées. C'est voulu — une notion qui retombe est
+exactement ce qu'un adulte doit pouvoir repérer sans déplier chaque catégorie — et le libellé
+(« changement », jamais « progrès ») reste vrai dans les deux sens.
 
 **La révision espacée alimente la frise** (#541) : dès qu'une session rejoue au moins un item
 du catalogue, elle met à jour les stats de la leçon (et son étoile éventuelle) exactement

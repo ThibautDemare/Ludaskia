@@ -343,6 +343,15 @@ faux positif. Cette auto-vérification a servi dès l'écriture : elle a démasq
 première version qui ratait un jeton collé juste après un nœud texte. Sans elle, un
 trou dans ce détecteur serait, à nouveau, indiscernable d'un arbre sain.
 
+**Rejet écrit** — les deux gates construisent chacun leur programme TypeScript sur
+`src/`, et cette duplication ne sera **pas** factorisée. Elle se limite à la lecture
+du `tsconfig` et au filtrage des racines ; au-delà, les deux constructions divergent
+pour de bon : le second a besoin d'un `host` qui sert un **fichier virtuel** (celui de
+l'échantillon fautif), que le premier n'a pas, et leurs aides de type ne se recouvrent
+pas non plus. Un helper partagé devrait donc porter le cas le plus complexe pour deux
+sites d'appel : il coûterait plus qu'il ne rapporterait. Consigné ici pour qu'un
+troisième gate du même genre ne rouvre pas la question sans trace.
+
 `tests/html-injection-balayage.test.ts` prend le problème par l'autre bout : au lieu
 d'une liste de caractères choisie à la main (donc ceux auxquels l'auteur a pensé), il
 balaie les codes **1 à 255** plus les espaces Unicode, sur les trois positions, et laisse

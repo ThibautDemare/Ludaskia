@@ -1,0 +1,76 @@
+/* ============================================================
+   Mots qui ont résisté pendant une séance (#618)
+   Un bloc sur trois écrans de fin : pause et bilan d'orthographe
+   (`.ortho-difficiles`), fin de révision espacée (`.rev-difficiles`).
+
+   Même parti pris de sobriété que le récap de #537, et pour la même raison : une
+   PHRASE en prose, pas une carte, pas de puce, pas de badge. Un encadré à part
+   ferait « relevé de fautes » au moment précis où l'écran doit reconnaître un
+   effort. La seule chose qui s'y ajoute est le bouton « Relire ces mots », parce
+   qu'il propose un geste — et un geste a besoin d'être vu comme cliquable.
+
+   Aucun couple de tokens NEUF ici, volontairement : la phrase reprend `--grey` sur
+   le fond de page (rampe de gris, déjà tenue sur les six thèmes par #576) et le
+   bouton écrit `--accent-dark` sur `--paper`, couple déjà tenu SANS dérogation par
+   la table de #582.
+
+   Le premier jet reprenait `--accent` sur `--accent-soft`, en croyant réutiliser un
+   couple validé (c'est celui de `.atelier-undo` et de `.rev-cat`). C'était faux :
+   ce couple est une DÉROGATION de `tests/contraste-tokens.test.ts`, un échec CONNU
+   entre 3,59:1 et 4,50:1 sur cinq des six thèmes (#600). Le reprendre aurait ajouté
+   une instance de plus au défaut au lieu de le corriger — exactement le « contourné
+   feuille par feuille » que #576 a coûté cher à démêler. Remontée
+   `relecteur-accessibilite`. Le bouton est donc CONTOURÉ (fond `--paper`, bordure
+   `--accent-dark`) plutôt que rempli d'une teinte douce : ça règle le contraste, et
+   ça le distingue au passage du `.btn-primary` de l'écran, qui reste l'action
+   principale.
+   ============================================================ */
+.mots-difficiles {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0.75rem 0 0;
+}
+.mots-difficiles-phrase {
+	font-family: var(--ui);
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--grey);
+	margin: 0;
+	max-width: 32rem;
+	/* `balance` évite la ligne orpheline d'un mot ; `anywhere` est le filet du cas
+	   extrême (un mot long, zoom 200 % sur 320 px). */
+	text-wrap: balance;
+	overflow-wrap: anywhere;
+}
+.mots-difficiles-relire {
+	font-family: var(--ui);
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--accent-dark);
+	/* Fond posé EXPLICITEMENT : c'est ce qui garantit que le couple mesuré est bien
+	   `--accent-dark` sur `--paper`, quel que soit l'écran porteur. */
+	background: var(--paper);
+	border: 2px solid var(--accent-dark);
+	border-radius: 10px;
+	/* 48 px : cible tactile d'un doigt d'enfant, comme les autres boutons secondaires. */
+	min-height: 48px;
+	padding: 8px 18px;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+/* Survol par l'OMBRE et non par un fond plus foncé : `.atelier-undo` éclaircit vers un
+   `#dbe6f6` écrit en dur, qui est un bleu de thème par défaut posé sur les six thèmes.
+   Une ombre ne dépend d'aucune palette et n'introduit donc aucun couple à mesurer.
+   Aucune `transition` déclarée : l'ombre apparaît d'un coup, il n'y a donc rien que
+   `prefers-reduced-motion` doive réduire. */
+.mots-difficiles-relire:hover {
+	box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+}
+.mots-difficiles-relire:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 2px;
+}

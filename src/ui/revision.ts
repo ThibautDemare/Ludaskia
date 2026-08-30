@@ -52,7 +52,15 @@ import { selectDueGroups } from '../core/revision-select';
 import type { NotionRecap } from '../core/recap-notions';
 import { noterNotions, notionLecon, notionGroupe, recapAutonomeHTML } from './recap-seance';
 import { getRevisionPlafond } from '../core/profiles';
-import { setToolbar, hideMenus, goHome, setCurrentMode, setCurrentLessonId } from './navigation';
+import {
+	setToolbar,
+	hideMenus,
+	goHome,
+	goOrthoRevoirMots,
+	setCurrentMode,
+	setCurrentLessonId,
+} from './navigation';
+import { motsDifficilesHTML, bindMotsDifficiles, type MotDifficile } from './mots-difficiles-view';
 import { bindTuileInteraction } from './tuile-interaction';
 import { bindAppariement } from './appariement';
 import { bindClicMot } from './clic-mot-interaction';
@@ -202,6 +210,17 @@ let score = 0;
 // les mots d'orthographe ont leur propre modèle d'acquisition (validation par mode).
 let perLesson: Record<string, { ok: number; total: number }> = {};
 let ortho: OrthoState;
+// MOTS d'orthographe qui ont résisté pendant la session (#618), dans l'ordre de
+// rencontre et sans doublon. Deux chemins l'alimentent, et seulement eux : l'échec
+// d'une saisie (qui bascule ici DIRECTEMENT sur la correction guidée — la révision ne
+// laisse qu'un essai par item) et le bouton « Je ne sais pas, montre-moi » (#467), qui
+// montre le mot sans passer par l'atelier mais compte quand même comme mot difficile.
+// Les items de LEÇON ratés n'y entrent pas : ils relèvent du récap de notions (#537).
+// En mémoire uniquement, remis à zéro au démarrage d'une session.
+let motsDifficiles: MotDifficile[] = [];
+function noterMotDifficile(wordId: string, mot: string): void {
+	if (!motsDifficiles.some((m) => m.id === wordId)) motsDifficiles.push({ id: wordId, mot });
+}
 let active = false; // une révision est-elle EN COURS ? (garde-fou de sortie, #63)
 let startTs = 0; // début de la session (durée enregistrée à la fin, #178)
 
@@ -384,6 +403,7 @@ export function runRevisionEspacee(): void {
 	idx = 0;
 	score = 0;
 	perLesson = {};
+	motsDifficiles = []; // nouvelle session → nouveau rappel de fin (#618)
 	active = false;
 	const sheets = document.getElementById('sheets')!;
 	if (!items.length) {
@@ -844,6 +864,7 @@ function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 				lessonId: groupeOrthoDuMot(ortho, it.wordId),
 			});
 			recordGrade(false);
+			noterMotDifficile(it.wordId, it.mot); // correction guidée → mot difficile (#618)
 			renderWordCorrection(it, saisie);
 		}
 	});
@@ -855,6 +876,9 @@ function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
 			attendue: it.mot,
 			lessonId: groupeOrthoDuMot(ortho, it.wordId),
 		});
+		// Exception explicite du cadrage (#618, critère 14) : l'abandon ne passe pas par
+		// l'atelier de correction, mais un mot qu'on renonce à écrire a bel et bien résisté.
+		noterMotDifficile(it.wordId, it.mot);
 		passerItem({ cible: 'stage', correct: it.mot });
 	});
 	(document.getElementById('revInput') as HTMLInputElement).focus();
@@ -1548,12 +1572,21 @@ function renderDone() {
 	if (!stage) return;
 	document.querySelector('.rev-hud')?.remove();
 	viderStatut(); // l'écran de fin ne doit pas garder la dernière réponse révélée en sr-only
+	// Mots qui ont résisté (#618) : inséré ENTRE le score et le récap de notions (#537),
+	// sans remplacer ni l'un ni l'autre. Le score `8/10` reste tel quel — cet écran
+	// affichait déjà un décompte, ce n'est pas ce cadrage qui l'introduit — et le récap
+	// de notions garde sa règle et son plafond de 5.
+	const difficiles = motsDifficiles;
 	stage.innerHTML = html`<div class="rev-done">
     <div class="rev-done-big">${score}/${items.length}</div>
     <div class="rev-done-lab">révision terminée</div>
     <div class="rev-done-sub">Les notions réussies reviendront plus tard, les autres plus tôt.</div>
+    ${motsDifficilesHTML(difficiles, 'revision', 'rev-difficiles')}
     ${recapAutonomeHTML('revision', notionsRecap, 'rev-recap')}
     <div class="rev-actions"><button class="rev-btn" id="revHome">${icon('house')} Accueil</button></div>
   </div>`.balisage;
 	document.getElementById('revHome')!.addEventListener('click', goHome);
+	// « Relire ces mots » : sélection SANS liste d'origine — une révision tire ses mots
+	// dans toute la banque. La page de relecture ramène alors à l'accueil (critère 17).
+	bindMotsDifficiles(stage, () => goOrthoRevoirMots(difficiles.map((m) => m.id)));
 }

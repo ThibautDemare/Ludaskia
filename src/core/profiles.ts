@@ -51,6 +51,13 @@ export interface ProfilePrefs {
 	 *  le bornage se font à la lecture (`getRevisionPlafond`), pas à l'écriture, pour
 	 *  rester robuste aux données importées. */
 	revisionPlafond?: number;
+	/** Désactive le rappel des mots qui ont résisté en fin de séance d'orthographe
+	 *  (#618). Aménagement posé par l'adulte pour un enfant que revoir ses mots
+	 *  ratés décourage plutôt qu'il ne l'aide — le bloc nomme des difficultés, et
+	 *  tous les enfants ne le reçoivent pas comme une information neutre. N'affecte
+	 *  RIEN d'autre : le journal de l'espace encadrant continue de tout capturer.
+	 *  Défaut (absent) = rappel affiché. */
+	sansMotsDifficiles?: boolean;
 }
 export interface Profile {
 	uuid: string;
@@ -263,6 +270,12 @@ export function sansPressionTemporelle(): boolean {
 // fait que les DÉSACTIVER) — cf. #331.
 export function apparitionsSurprises(): boolean {
 	return getPrefs().sansApparitionsSurprises !== true;
+}
+// Les mots qui ont résisté sont-ils rappelés en fin de séance d'orthographe (#618) ?
+// Vrai par défaut (l'aménagement ne fait que les MASQUER), comme les apparitions
+// surprises : un réglage qui coupe une aide ne doit pas être ce qui l'allume.
+export function motsDifficilesRappeles(): boolean {
+	return getPrefs().sansMotsDifficiles !== true;
 }
 // Nombre d'éléments d'une session de Révision pour le profil actif (#439). Le fallback
 // et le bornage se font ICI, à la lecture : un profil sans réglage explicite (ou une

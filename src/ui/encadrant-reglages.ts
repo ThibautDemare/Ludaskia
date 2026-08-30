@@ -88,6 +88,10 @@ function amenagementsHTML(consulte: Profile): SafeHtml {
         <input type="checkbox" data-act="set-amenagement" data-pref="sansApparitionsSurprises"${prefs.sansApparitionsSurprises ? drapeau('checked') : ''} />
         <span>Désactiver les apparitions surprises <small class="enc-hint">(petites surprises qui passent parfois à l'écran, ex. une luciole — à couper pour un enfant qu'un mouvement inattendu déconcentre)</small></span>
       </label>
+      <label class="enc-toggle">
+        <input type="checkbox" data-act="set-amenagement" data-pref="sansMotsDifficiles"${prefs.sansMotsDifficiles ? drapeau('checked') : ''} />
+        <span>Ne pas rappeler les mots difficiles en fin de séance <small class="enc-hint">(à la fin d'une dictée ou d'une révision, l'enfant revoit les mots qui lui ont demandé de l'aide — à couper si cela le décourage ; votre suivi n'en est pas affecté)</small></span>
+      </label>
     </div>`;
 }
 
@@ -327,7 +331,10 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 	}
 	if (act === 'set-amenagement' && uuid) {
 		const pref = (t as HTMLElement).dataset.pref as
-			'sansPressionTemporelle' | 'lectureConsigneAuto' | 'sansApparitionsSurprises';
+			| 'sansPressionTemporelle'
+			| 'lectureConsigneAuto'
+			| 'sansApparitionsSurprises'
+			| 'sansMotsDifficiles';
 		setPrefFor(uuid, pref, (t as HTMLInputElement).checked);
 		renderEspace();
 		return true;

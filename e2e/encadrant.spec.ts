@@ -722,11 +722,13 @@ test('accessibilité : confort côté enfant, aménagements côté encadrant', a
 	await expect(page.locator('#prefConfort')).toBeVisible();
 	await expect(page.locator('#prefSansChrono')).toHaveCount(0);
 	await expect(page.locator('#prefLectureAuto')).toHaveCount(0);
-	// Espace encadrants : les trois aménagements (masquer le minuteur + lecture auto
-	// + désactiver les apparitions surprises, #331), dans l'onglet Réglages (#459).
+	// Espace encadrants : les quatre aménagements (masquer le minuteur + lecture auto
+	// + désactiver les apparitions surprises, #331 + ne pas rappeler les mots
+	// difficiles en fin de séance, #618), dans l'onglet Réglages (#459).
 	await gotoHash(page, 'encadrant/reglages');
-	expect(await page.locator('[data-act="set-amenagement"]').count()).toBe(3);
+	expect(await page.locator('[data-act="set-amenagement"]').count()).toBe(4);
 	await expect(page.locator('[data-pref="sansApparitionsSurprises"]')).toBeVisible();
+	await expect(page.locator('[data-pref="sansMotsDifficiles"]')).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

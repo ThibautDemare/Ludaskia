@@ -207,7 +207,11 @@ const PAIRES_TEXTE: Paire[] = [
 	{ avant: '--on-accent', arriere: '--accent-dark', ou: 'survol des mêmes boutons (bilan.scss)' },
 	{ avant: '--on-accent', arriere: '--ok', ou: 'lecon-mode.scss .lord-cell.correct .lord-mark' },
 	{ avant: '--on-accent', arriere: '--ko', ou: 'lecon-mode.scss .lord-cell.wrong .lord-mark' },
-	{ avant: '--accent-dark', arriere: '--paper', ou: 'accessibility.scss, aide-exercice.scss' },
+	{
+		avant: '--accent-dark',
+		arriere: '--paper',
+		ou: 'accessibility.scss, aide-exercice.scss, mots-difficiles.scss .mots-difficiles-relire',
+	},
 	{ avant: '--accent', arriere: '--paper', ou: 'sprint.scss, titres et libellés dans une carte' },
 	{
 		avant: '--accent',
@@ -268,6 +272,14 @@ const PAIRES_NON_TEXTE: Paire[] = [
 	// c'est le seul signal, avec le badge, que le temps ne court plus.
 	{ avant: '--accent', arriere: '--page-bg', ou: 'sprint.scss .sprint-time.en-pause' },
 	{ avant: '--ko', arriere: '--page-bg', ou: 'sprint.scss .sprint-time.en-pause.low' },
+	// Bouton CONTOURÉ : la bordure est la seule chose qui dit « c'est cliquable », donc un
+	// composant d'interface au sens de 1.4.11, pas un filet décoratif. Même couple que son
+	// texte, déclaré à part parce que la nature fait partie de l'identité d'un cas (#582).
+	{
+		avant: '--accent-dark',
+		arriere: '--paper',
+		ou: 'mots-difficiles.scss .mots-difficiles-relire (bordure et anneau de focus)',
+	},
 	// Rampe des étapes de dictée (#545) : segments de la frise de composition, posés sur la
 	// carte. Ce sont bien des objets graphiques PORTEURS de sens — la longueur d'un segment
 	// EST le nombre de mots à cette étape — donc le seuil non-texte s'applique à chacun.

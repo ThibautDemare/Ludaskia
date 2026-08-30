@@ -950,11 +950,16 @@ rien n'affiche encore ces métriques côté espace encadrant.
 #459) : la **« Classe
 scolaire »** (`setNiveauReferenceFor`/`setNiveauMatiereFor`) et les **« Aménagements »**
 dys/attention — *masquer le minuteur* + *lecture auto des consignes* + *désactiver les
-apparitions surprises* (`setPrefFor`, avis `specialiste-troubles-apprentissage`). Ce
-dernier (#331, `sansApparitionsSurprises`) coupe l'**easter egg ambiant** (la luciole qui
+apparitions surprises* + *ne pas rappeler les mots difficiles* (`setPrefFor`, avis
+`specialiste-troubles-apprentissage`). Le 3ᵉ (#331, `sansApparitionsSurprises`) coupe
+l'**easter egg ambiant** (la luciole qui
 passe) pour un enfant qu'un mouvement inattendu déconcentre ou qui a besoin de
 prévisibilité — il **n'affecte pas** les eggs d'exploration, déclenchés volontairement par
-l'enfant (cf. [Gamification](gamification.md)). Le **« Mon confort »** (réduire les
+l'enfant (cf. [Gamification](gamification.md)). Le 4ᵉ (#618, `sansMotsDifficiles`) coupe
+le rappel de fin de séance d'orthographe (cf. [Rendu & interactions](ui.md)) pour un
+enfant que revoir ses mots ratés décourage plutôt qu'il ne l'aide — il **n'affecte rien
+d'autre** : le journal d'erreurs de ce même onglet continue de capturer le premier essai
+raté de chaque mot, que le rappel soit affiché ou non côté enfant. Le **« Mon confort »** (réduire les
 animations, confort de lecture) reste côté enfant (auto-régulation immédiate, coût
 d'erreur nul) ; un aménagement actif est rappelé en lecture seule sur « Mon espace »
 (« réglé par un adulte »). L'écoute TTS **à la demande** reste toujours dispo côté enfant.

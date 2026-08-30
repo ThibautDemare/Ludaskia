@@ -625,3 +625,28 @@ de texte différant d'un OS à l'autre) et régénérées via
 `.github/workflows/update-snapshots.yml`. Corollaire retenu de #458 : après une
 régénération, **deux runs CI** avant de conclure — l'instabilité qu'on vient de fermer
 ne se voyait justement pas sur un run unique. Détails et procédure : `e2e/README.md`.
+
+### Rappel des mots difficiles (#618) — deux volets NON rejoués en e2e, et pourquoi
+
+`e2e/mots-difficiles.spec.ts` couvre la pause du runner d'orthographe, le bouton
+« Relire ces mots » et sa restriction, la non-fuite du filtre de relecture (Précédent
+**et** rechargement), le réglage encadrant et la fin de révision espacée. Deux volets du
+cadrage en sont **volontairement absents**, écrits ici pour qu'ils ne soient pas
+re-remontés à chaque relecture :
+
+- **La dictée lancée en mode ciblé** (critère 3). Sa branche d'escalade est la copie
+  structurelle de celle du mot caché — mêmes appels `noterMotDifficile` / `diffCorrect` /
+  `renderAtelier` — et la rendre observable demanderait de **simuler une voix TTS** (cf.
+  `ortho-dictee-muette.spec.ts`) **en plus** de rejouer les huit activités d'une séance.
+  Le mot caché, lui, est bien joué de bout en bout : c'est le chemin qui prouve la
+  mécanique.
+- **Le volet NÉGATIF « une séance ciblée sur les tuiles ne nomme jamais rien »**
+  (critère 3). Ce que ce volet garde est une **absence de point d'appel** : le mode tuiles
+  n'a aucune branche de correction guidée. C'est vérifiable par lecture (aucun
+  `noterMotDifficile` hors des branches `motCache` / `dictee` de `ortho-runner.ts`) alors
+  qu'un test e2e devrait poser huit grilles de tuiles pour ne rien observer — le coût est
+  celui d'un scénario complet, la preuve est plus faible que celle du call-site.
+
+Corollaire à tenir : si un jour le mode tuiles gagne une correction guidée, ce n'est pas
+ce fichier qu'il faudra relire mais la décision 1 de #618, qui l'exclut explicitement du
+dispositif.

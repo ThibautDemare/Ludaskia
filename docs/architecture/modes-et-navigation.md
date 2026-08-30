@@ -10,7 +10,9 @@ fallback SPA) : `#accueil` · `#matieres` · `#matiere-<id>` · `#categorie-<id>
 `#lecon-<id>` · `#mode-<id>` (choix de mode d'une leçon, #69) · `#sprint-config` ·
 `#sprint` · `#bilan-custom` · `#bilan-cat-<id>` · `#ortho-mode-<id>` (choix de mode
 d'une liste d'ortho) · `#ortho-new` · `#ortho-edit-<id>` · `#ortho-revoir-<id>`
-(création / édition / relecture des listes d'ortho) · `#revision-espacee` ·
+(création / édition / relecture des listes d'ortho) · `#ortho-revoir` (#618 : relecture
+d'une SÉLECTION de mots posée en mémoire par un écran de fin de séance, jamais dans le
+hash — renvoie à l'accueil si aucune sélection n'est en attente) · `#revision-espacee` ·
 `#seance` (programme du jour composé par l'encadrant, #440) · `#profils` ·
 `#encadrant` / `#encadrant/<onglet>` (espace encadrant en onglets, #234/#459) ·
 `#revision`

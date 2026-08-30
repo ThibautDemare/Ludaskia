@@ -555,6 +555,29 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`NotionRecap` n'a ni `ok` ni `total`) : ce module dit ce qui a été travaillé, jamais
   comment ça s'est passé. Résolution catalogue, mémoire de page (aucune persistance) et
   rendu dans `ui/recap-seance.ts` (cf. [Rendu & interactions](ui.md)).
+- **`orthographe/mots-difficiles.ts`** (#618, pur) — décide ce qu'un écran de fin de
+  séance d'orthographe **NOMME** parmi les mots passés par la correction guidée, plutôt
+  qu'un dénombrement (« tu as bien travaillé les 10 mots de cette liste »). **Modèle
+  explicite** de `recap-notions.ts` ci-dessus, qu'il ne remplace pas : l'unité pertinente
+  en orthographe lexicale est le MOT, pas la notion. **`contenuMotsDifficiles(mots)`**
+  dédoublonne (par forme, dans l'ordre de rencontre) et bascule sur une formulation
+  **groupée non nominative** au-delà de **`MAX_MOTS_NOMMES`** (3, plus bas que les 5
+  notions de #537 : un échec ne se nomme pas comme une notion travaillée).
+  **`phraseMotsDifficiles(contenu, contexte)`** choisit la phrase selon l'écran porteur
+  (**`ContexteMotsDifficiles`** : `pause` — mots encore en travaux, registre neutre pour
+  ne pas peser sur le choix « Continuer »/« Revenir » — ; `bilan` — mots désormais
+  acquis, sous l'angle de l'effort — ; `revision` — fin de révision espacée) ; le plafond
+  y est **revérifié**, pas seulement dans `contenuMotsDifficiles`. Aucune quantité
+  affichée, ni en chiffres ni en lettres (« Plusieurs mots », jamais « 4 mots ») : un
+  compteur de fin de séance fonctionnerait comme un score inversé. Rendu et câblage dans
+  `ui/mots-difficiles-view.ts` (cf. [Rendu & interactions](ui.md)).
+  **Rejet écrit** (revue #618) : l'accumulateur de séance n'est PAS factorisé ici. Il
+  existe en deux exemplaires — `motsDifficiles` dans `ui/ortho-runner.ts` (des `MotOrtho`)
+  et dans `ui/revision.ts` (des `MotDifficile`) — avec la même garde de trois lignes
+  contre les doublons. Ce sont deux **états de séance de deux runners distincts**, qui
+  n'ont ni le même cycle de vie ni le même type d'élément ; les mutualiser créerait un
+  couplage entre deux boucles indépendantes pour économiser un `some(…)`. Écarté
+  sciemment, pour que la remontée ne revienne pas à chaque relecture.
 - **`compteur-etoiles.ts`** (#559, pur) — texte du compteur `#recLecon` (carte accueil
   « Une leçon à la fois ») : **`compteurEtoilesHTML(état)`** choisit entre deux
   formulations selon que le cumul **tous niveaux** (`starsCumul`) dépasse ou non les

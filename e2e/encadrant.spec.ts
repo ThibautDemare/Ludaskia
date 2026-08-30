@@ -63,13 +63,31 @@ const SEED_PALIERS = `(() => {
     'math-doubles@ce2': { acquis: now - 2 * week },
     'math-moities@ce2': { enCours: now - 1 * week },
   }));
+  // État du jour (fix/frise-etat-du-jour) : la DERNIÈRE cellule de la frise porte désormais
+  // l'état COURANT (stats/étoiles réelles), pas le plus haut cap du journal — sans stat ni
+  // étoile associée, ces trois lignes n'auraient plus aucune donnée récente et retomberaient
+  // toutes à « à découvrir », contredisant leur propre palier daté juste au-dessus. On seed donc
+  // une perf réelle qui CONFIRME chaque cap (étoile pour l'« acquis » de math-doubles, perf
+  // récente ≥ 40 % pour les deux « en cours »).
+  localStorage.setItem('e2e/ludaskia_stars', JSON.stringify({ 'math-doubles@ce2': 1 }));
+  localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({
+    'math-complements@ce2': { attempts: 1, correct: 6, questions: 8, bestPct: 75, lastPct: 75, recentPct: [75], lastAt: now },
+    'math-moities@ce2': { attempts: 1, correct: 6, questions: 8, bestPct: 75, lastPct: 75, recentPct: [75], lastAt: now },
+  }));
 })();`;
 
-/* Seed du signal de recul (#521) : « math-tables-multiplication » a franchi le cap « acquis »
-   il y a 3 semaines (journal des paliers, jamais réécrit), mais n'est plus étoilée aujourd'hui
-   et sa perf récente est retombée à 50 % → niveau courant « en cours ». C'est l'écart entre le
-   cap le plus haut de la frise et le mot d'état courant qui sert de signal de recul — le seul
-   trou du design d'après le relecteur qualité, rien d'autre ne le couvre. */
+/* Seed du signal de recul (#521, réécrit par le correctif « état du jour », fix/frise-etat-du-jour) :
+   « math-tables-multiplication » a franchi le cap « acquis » il y a 3 semaines (journal des
+   paliers, jamais réécrit), mais n'est plus étoilée aujourd'hui et sa perf récente est retombée
+   à 50 % → niveau courant « en cours ».
+   AVANT le correctif, la frise ne traçait que les montées (journal monotone) : sa dernière
+   cellule restait bloquée sur « acquis » pendant que `.enc-detail-mot` disait déjà « en cours » —
+   c'était le signal de recul, et le SEUL endroit où ce recul se lisait (le bug fermé par ce
+   correctif : une leçon retombée sous 40 % gardait une frise bleue jusqu'au bout). DEPUIS le
+   correctif (`finaliserFrise`, encadrant-stats.ts), la dernière cellule porte l'état DU JOUR : elle
+   s'aligne désormais sur le mot, et c'est une cellule ANTÉRIEURE (le cap « acquis » de 3 semaines,
+   toujours daté dans le journal) qui garde le rang le plus haut. Le recul se lit maintenant DANS
+   la rangée, entre l'avant-dernière cellule et la dernière — pas dans l'écart frise/mot. */
 const SEED_REGRESSION = `(() => {
   const now = Date.now(); const week = 7 * 86400000;
   localStorage.setItem('e2e/ludaskia_paliers', JSON.stringify({
@@ -78,6 +96,25 @@ const SEED_REGRESSION = `(() => {
   localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({
     'math-tables-multiplication@ce2': {
       attempts: 5, correct: 6, questions: 10, bestPct: 90, lastPct: 50, recentPct: [50], lastAt: now,
+    },
+  }));
+})();`;
+
+/* Seed du recul jusqu'à « à renforcer » (fix/frise-etat-du-jour) : cœur du bug rapporté (#521
+   suite). « math-ajouter-9-19-29 » a franchi le cap « en cours » il y a 6 semaines (jamais
+   réécrit dans le journal), mais sa perf récente est retombée à 25 % — sous le seuil de 40 % —
+   avec un échantillon assez large (20 questions) pour que l'état courant se prononce : niveau
+   du jour « non acquis » (« à renforcer »). Avant le correctif « état du jour », la dernière
+   cellule serait restée « en cours » (plus haut cap du journal) et la barre de sa catégorie
+   n'aurait compté aucun segment orange, exactement le défaut fermé par #521 suite. */
+const SEED_RECUL_NON_ACQUIS = `(() => {
+  const now = Date.now(); const week = 7 * 86400000;
+  localStorage.setItem('e2e/ludaskia_paliers', JSON.stringify({
+    'math-ajouter-9-19-29@ce2': { enCours: now - 6 * week },
+  }));
+  localStorage.setItem('e2e/ludaskia_lessonStats', JSON.stringify({
+    'math-ajouter-9-19-29@ce2': {
+      attempts: 2, correct: 5, questions: 20, bestPct: 60, lastPct: 30, recentPct: [20, 30], lastAt: now,
     },
   }));
 })();`;
@@ -412,7 +449,11 @@ test('couverture : vue par matière et compteur « travaillées » par catégori
        matière de #397 (bloc `.enc-evol` disparu). Paliers franchis → 12 cellules dans
        la ligne de détail, puce d'état omise (la frise porte déjà l'info), méta datée
        du cap le plus haut, et compteur « changements récents » par matière. Une leçon
-       jamais travaillée garde sa puce et n'a pas de frise. */
+       jamais travaillée garde sa puce et n'a pas de frise.
+       Depuis le correctif « état du jour » (fix/frise-etat-du-jour), la DERNIÈRE cellule
+       lit l'état courant (stats/étoiles réelles) et non plus le cap du journal : le seed
+       (SEED_PALIERS) fournit donc, en plus du palier daté, une perf/étoile qui CONFIRME ce
+       cap, sinon la dernière cellule décrocherait sans qu'aucune vraie réponse ne le justifie. */
 test("frise d'états : 12 cellules cohérentes avec le seed, puce omise sur ces lignes, conservée sur une leçon jamais travaillée", async ({
 	page,
 }) => {
@@ -474,12 +515,18 @@ test("frise d'états : 12 cellules cohérentes avec le seed, puce omise sur ces 
 	expect(errors).toEqual([]);
 });
 
-/* 10bis. Signal de recul (#521) : la frise ne redescend jamais (elle ne trace que les
-       montées), donc le seul endroit où un recul se voit est l'écart entre son cap le plus
-       haut et le mot d'état COURANT de la ligne (`.enc-detail-mot`, piloté par les stats/
-       étoiles réelles, pas par le journal des paliers). Signalé par le relecteur qualité
-       comme le seul trou du design : rien d'autre ne couvre ce cas. */
-test("signal de recul : le mot d'état courant peut être plus bas que le cap le plus haut de la frise", async ({
+/* 10bis. Signal de recul (#521, RÉÉCRIT par le correctif « état du jour », fix/frise-etat-du-jour) :
+       ce test verrouillait l'ANCIEN comportement — la frise ne redescendait jamais (journal
+       monotone), donc le seul endroit où un recul se voyait était l'écart entre le cap le plus
+       haut de la frise et le mot d'état COURANT de la ligne (`.enc-detail-mot`). C'était
+       précisément le bug fermé par ce correctif : une leçon retombée sous 40 % affichait
+       « à renforcer » en toutes lettres tout en gardant une frise BLEUE jusqu'au bout.
+       Depuis le correctif (`finaliserFrise`, encadrant-stats.ts), la DERNIÈRE cellule s'aligne
+       désormais sur le mot d'état du jour — l'écart frise/mot n'existe plus. Le recul se lit
+       maintenant DANS la rangée elle-même : une cellule ANTÉRIEURE (ici l'avant-dernière, le cap
+       « acquis » franchi il y a 3 semaines, toujours daté dans le journal) porte un rang plus haut
+       que la dernière. Même graine SEED_REGRESSION : seul ce qu'on en attend a changé. */
+test("signal de recul : la dernière cellule s'aligne sur le mot d'état du jour, le recul se lit sur une cellule antérieure de rang plus haut", async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -493,10 +540,54 @@ test("signal de recul : le mot d'état courant peut être plus bas que le cap le
 	for (let i = 0; i < n; i++) await resumes.nth(i).click();
 
 	const ligne = page.locator('.enc-detail-item:has([data-lesson="math-tables-multiplication"])');
-	// La frise dit « acquis » (cap le plus haut jamais franchi)…
-	await expect(ligne.locator('.enc-frise-cell').last()).toHaveClass(/enc-frise-acquis/);
-	// … mais le mot d'état courant dit « en cours » : l'écart EST le signal de recul.
+	const cells = ligne.locator('.enc-frise-cell');
+	const nbCells = await cells.count();
+	// La dernière cellule dit désormais « en cours », comme le mot d'état du jour — plus « acquis ».
+	await expect(cells.last()).toHaveClass(/enc-frise-en-cours/);
 	await expect(ligne.locator('.enc-detail-mot')).toContainText('en cours');
+	// … mais le cap « acquis » franchi il y a 3 semaines reste visible juste avant : c'est LÀ,
+	// sur une cellule antérieure de rang plus haut que la dernière, que le recul se lit désormais.
+	await expect(cells.nth(nbCells - 2)).toHaveClass(/enc-frise-acquis/);
+
+	expect(errors).toEqual([]);
+});
+
+/* 10bis-2. Recul jusqu'à « à renforcer » (#521 suite, fix/frise-etat-du-jour) : LE test qui
+       couvre le cœur du bug rapporté — une leçon dont l'état courant est retombé à « à renforcer »
+       alors qu'un cap « en cours » a été franchi plus tôt (jamais réécrit, le journal est
+       monotone). Avant le correctif, la dernière cellule serait restée « en cours » (plus haut
+       cap du journal), la barre de sa catégorie n'aurait compté aucun segment orange, et seul le
+       mot de la ligne aurait dit « à renforcer » — exactement le défaut rapporté. Depuis le
+       correctif, la dernière cellule DÉCROCHE jusqu'à « non acquis », une cellule antérieure garde
+       la trace du cap « en cours », et la barre de catégorie compte enfin ce recul. */
+test('frise d’états : une leçon retombée à « à renforcer » après un cap « en cours » le montre en dernière cellule ET dans la barre de sa catégorie', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(SEED_RECUL_NON_ACQUIS);
+	await page.addInitScript(SEED_CE2);
+	await page.goto('app.html#encadrant', { waitUntil: 'networkidle' });
+
+	const resumes = page.locator('.enc-cat-sum');
+	const n = await resumes.count();
+	for (let i = 0; i < n; i++) await resumes.nth(i).click();
+
+	const categorie = page.locator('.enc-cat-d:has([data-lesson="math-ajouter-9-19-29"])');
+	const ligne = categorie.locator('.enc-detail-item:has([data-lesson="math-ajouter-9-19-29"])');
+	const cells = ligne.locator('.enc-frise-cell');
+	const nbCells = await cells.count();
+
+	// Dernière cellule : état du jour « non acquis », pas le cap « en cours » du journal.
+	await expect(cells.last()).toHaveClass(/enc-frise-non-acquis/);
+	// Une cellule antérieure garde la trace du cap « en cours » réellement franchi il y a 6 semaines
+	// (rang plus haut que la dernière) : le recul se lit dans la rangée, pas en son absence.
+	await expect(cells.nth(nbCells - 2)).toHaveClass(/enc-frise-en-cours/);
+	// Le mot d'état de la ligne dit « à renforcer », en toutes lettres.
+	await expect(ligne.locator('.enc-detail-mot')).toContainText('à renforcer');
+	// La barre de la catégorie compte désormais ce recul (segment orange « non acquis »),
+	// là où avant le correctif elle n'en aurait porté aucune trace.
+	await expect(categorie.locator('.enc-cat-sum .enc-seg-part.enc-key-non-acquis')).toHaveCount(1);
 
 	expect(errors).toEqual([]);
 });

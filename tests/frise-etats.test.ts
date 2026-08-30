@@ -6,6 +6,16 @@
    - 12 cellules, de la plus ANCIENNE à la plus récente, la dernière = semaine EN COURS ;
      semaines CALENDAIRES (lundi premier jour), état d'une cellule = état atteint à la FIN
      de sa semaine (un cap franchi le mercredi colore la semaine qui le contient) ;
+   - la DERNIÈRE cellule porte l'ÉTAT DU JOUR (correctif « état du jour ») : elle vaut EXACTEMENT l'état courant reçu
+     en argument — plus bas que le plus haut rang atteint (perf récente retombée sous 40 %)
+     comme plus haut que tout cap daté (étoile posée avant que le journal ne la tamponne). Les
+     ONZE premières continuent de montrer le plus haut rang ATTEINT à la fin de leur semaine :
+     ce préfixe reste croissant, la rangée entière ne l'est plus. Ce que ça corrige : le journal
+     ne date que les MONTÉES, si bien qu'une leçon retombée gardait une frise bleue jusqu'à la
+     dernière cellule pendant que le mot de la ligne disait « à renforcer » et que la barre de
+     catégorie la comptait en orange — le parent qui balaie les frises ne voyait jamais la
+     baisse. Corollaire à ne pas perdre : le forçage ne CRÉE aucune frise, la population des
+     lignes sans frise est inchangée ;
    - `null` pour DEUX motifs distincts : la leçon n'a JAMAIS été travaillée (état courant
      « à découvrir » ET aucun franchissement daté), ou bien AUCUNE semaine n'est
      déductible — douze blocs creux n'apprennent rien et se lisent comme un défaut
@@ -36,8 +46,9 @@
      recalculés par un modèle qui redirait la cascade du code ;
    - la grille de semaines du test est une arithmétique de CALENDRIER écrite ici, pas
      `lundiDecale` ; si l'une des deux dérive, les attendus ne coïncident plus ;
-   - les invariants (préfixe 'inconnu' contigu, jamais de redescente, uniformité, fenêtre
-     glissante) sont éprouvés sur ~7 000 journaux, INCOHÉRENTS compris, sans modèle.
+   - les invariants (préfixe 'inconnu' contigu, aucune redescente AVANT la dernière cellule,
+     dernière cellule = état du jour, uniformité, fenêtre glissante) sont éprouvés sur ~8 000
+     journaux, INCOHÉRENTS compris, sans modèle.
 
    TROIS repères temporels, chacun un mercredi à 15 h 30 (heure locale) :
    - `NOW` = 12 août 2026, dont la fenêtre (25 mai → 16 août) ne contient aucun changement
@@ -251,7 +262,10 @@ describe('friseNotion — rien à tracer', () => {
 			NOW,
 		);
 		expect(f).not.toBeNull();
-		expect(f!.semaines).toEqual(rangee(['inconnu', 6], ['acquis', 6]));
+		// La semaine EN COURS porte l'état du jour (correctif « état du jour »), fût-il celui d'une leçon qu'aucune
+		// stat ne décrit : la rangée finit donc là où la ligne le dit, et le cap daté continue
+		// de tenir les semaines passées.
+		expect(f!.semaines).toEqual(rangee(['inconnu', 6], ['acquis', 5], ['a-decouvrir', 1]));
 	});
 
 	it('caps non exploitables (chaîne, null, NaN, Infinity) → traités comme absents', () => {
@@ -357,6 +371,95 @@ describe('friseNotion — les cas qui ont changé', () => {
 		expect(f.semaines).toEqual(rangee(['inconnu', 8], ['acquis', 4]));
 		expect(f.semaines).not.toContain('non-acquis');
 		expect(f.semaines).not.toContain('a-decouvrir');
+	});
+});
+
+/* ============================================================
+   L'état du jour est un FAIT, la dernière cellule le porte (correctif « état du jour »)
+   ------------------------------------------------------------
+   Le journal de paliers ne date que les MONTÉES : reconstruite à partir de lui seul, la
+   rangée était strictement croissante et sa dernière cellule affirmait le plus haut rang
+   atteint, jamais l'état d'aujourd'hui. Sur la même ligne, le mot d'état et la barre de
+   catégorie, eux, viennent de `niveauNotion` : une leçon dont la perf récente est retombée
+   sous 40 % se lisait donc « à renforcer » en texte, comptait en orange dans la barre, et
+   gardait une frise bleue jusqu'au bout. La frise étant ce que l'adulte balaie en premier,
+   la baisse n'était visible nulle part.
+   Les attendus ci-dessous sont écrits à la main depuis ce contrat, pas relus du code.
+   ============================================================ */
+describe('friseNotion — l’état du jour est un fait, la dernière cellule le porte', () => {
+	const BORNE = dansSemaine(-6); // journal en service bien avant la fenêtre
+
+	it('critère 1 : la leçon retombée finit sur « à renforcer », pas sur son plus haut cap', () => {
+		// Le défaut, dans sa forme exacte : deux caps datés (donc onze cellules qui montent) et un
+		// état du jour retombé sous les 40 %. La semaine EN COURS doit dire ce que dit la ligne.
+		const f = friseNotion(
+			{ enCours: dansSemaine(2), acquis: dansSemaine(5) },
+			undefined,
+			'non-acquis',
+			BORNE,
+			NOW,
+		)!;
+		expect(f.semaines).toEqual(
+			rangee(['inconnu', 2], ['en-cours', 3], ['acquis', 6], ['non-acquis', 1]),
+		);
+		// Critère 6 : la méta datée de la ligne (« acquise le … ») ne bouge pas d'un pouce — c'est
+		// une DATE de franchissement, pas un état, et l'effacer perdrait l'histoire.
+		expect(f.enCoursDepuis).toBe(dansSemaine(2));
+		expect(f.acquisDepuis).toBe(dansSemaine(5));
+	});
+
+	it('critère 1 : l’état du jour PLUS HAUT que tout cap daté est porté lui aussi', () => {
+		// Le cas de bord symétrique, et celui qui distingue « la dernière cellule VAUT l'état du
+		// jour » d'un simple plafonnement vers le bas : la leçon est étoilée alors que le journal
+		// n'a jamais tamponné son « acquis » (étoile posée hors suivi, journal importé, session
+		// d'un autre appareil). Rien ne date cette acquisition, mais elle est un fait du jour.
+		const f = friseNotion({ enCours: dansSemaine(4) }, undefined, 'acquis', BORNE, NOW)!;
+		expect(f.semaines).toEqual(rangee(['inconnu', 4], ['en-cours', 7], ['acquis', 1]));
+		expect(f.acquisDepuis).toBeNull(); // aucune date à afficher : la ligne ne l'invente pas
+	});
+
+	it('critère 3 : le passé ne se réécrit pas quand l’état du jour change', () => {
+		// Ce que le forçage ne doit PAS faire : repeindre la trajectoire à l'image du présent.
+		// Même journal, quatre états du jour ; les onze premières cellules sont les mêmes, seule
+		// la dernière suit la ligne. Sinon une leçon qui redescend perdrait la trace de ce qu'elle
+		// avait atteint, c'est-à-dire exactement ce que le parent doit voir en regard de la baisse.
+		const journal = { enCours: dansSemaine(2), acquis: dansSemaine(5) };
+		const passe = rangee(['inconnu', 2], ['en-cours', 3], ['acquis', 7]).slice(0, NB_SEMAINES - 1);
+		for (const niveau of ECHELLE) {
+			const f = friseNotion(journal, undefined, niveau, BORNE, NOW)!;
+			expect(f.semaines.slice(0, NB_SEMAINES - 1), niveau).toEqual(passe);
+			expect(f.semaines[NB_SEMAINES - 1], niveau).toBe(niveau);
+		}
+	});
+
+	it('critère 4 : porter l’état du jour ne fait APPARAÎTRE aucune frise', () => {
+		// Le forçage se lit sur une rangée déjà dessinée : il ne rattrape ni la leçon jamais
+		// travaillée, ni celle dont aucune semaine n'est déductible. Sinon toutes les lignes d'un
+		// profil sans borne de suivi se peupleraient d'une cellule solitaire — une affirmation
+		// que rien ne fonde, sur la seule foi de l'état du jour.
+		expect(friseNotion({}, undefined, 'a-decouvrir', dansSemaine(2), NOW)).toBeNull();
+		expect(
+			friseNotion({ acquis: NaN }, dansSemaine(4), 'a-decouvrir', dansSemaine(2), NOW),
+		).toBeNull();
+		for (const niveau of ['non-acquis', 'en-cours', 'acquis'] as const) {
+			expect(friseNotion({}, undefined, niveau, Infinity, NOW), niveau).toBeNull();
+			expect(friseNotion({}, dansSemaine(3), niveau, Infinity, NOW), niveau).toBeNull();
+		}
+	});
+
+	it('critère 5 : la dernière cellule ne rouvre pas de creux au milieu de la rangée', () => {
+		// Elle est toujours CONNUE — l'état du jour en est un, « à découvrir » compris : le
+		// pointillé reste un préfixe et la hauteur ne dessine aucun trou entre deux semaines
+		// colorées. Seule conséquence à assumer : 'a-decouvrir' peut désormais côtoyer un préfixe
+		// 'inconnu' sur la DERNIÈRE cellule, sans que la rangée porte pour autant deux lectures du
+		// passé (celle-là ne lit pas le passé).
+		for (const niveau of ECHELLE) {
+			const f = friseNotion({ acquis: dansSemaine(6) }, undefined, niveau, dansSemaine(1), NOW)!;
+			expect(f.semaines[NB_SEMAINES - 1], niveau).not.toBe('inconnu');
+			const premierConnu = f.semaines.findIndex((x) => x !== 'inconnu');
+			expect(premierConnu, niveau).toBe(6);
+			expect(f.semaines.slice(premierConnu), niveau).not.toContain('inconnu');
+		}
 	});
 });
 
@@ -595,70 +698,94 @@ describe('friseNotion — INVARIANTS sur tous les journaux, incohérents compris
 		// ferait lire comme une régression ; deux lectures du passé sur la même rangée
 		// ('inconnu' = on ne sait pas / « à découvrir » = pas encore commencée) seraient
 		// illisibles. On cherche ici un journal, même absurde, qui casse l'un ou l'autre.
+		// AJUSTÉ (correctif « état du jour ») : la seconde règle ne porte plus que sur les cellules du PASSÉ. La
+		// dernière porte l'état du jour, qui peut valoir « à découvrir » (leçon dont plus aucune
+		// stat ne parle) derrière un préfixe 'inconnu' — ce n'est pas une seconde lecture du
+		// passé, c'est un fait d'aujourd'hui. Le préfixe, lui, reste contigu sur les douze.
 		for (const c of tousLesCas()) {
 			const f = frise(c);
 			if (f === null) continue;
 			const premierConnu = f.semaines.findIndex((x) => x !== 'inconnu');
 			const prefixe = premierConnu === -1 ? NB_SEMAINES : premierConnu;
 			expect(f.semaines.slice(prefixe), c.etiquette).not.toContain('inconnu');
-			if (prefixe > 0) expect(f.semaines, c.etiquette).not.toContain('a-decouvrir');
+			if (prefixe > 0)
+				expect(f.semaines.slice(0, NB_SEMAINES - 1), c.etiquette).not.toContain('a-decouvrir');
 		}
 	});
 
-	it('la frise ne redescend JAMAIS d’une cellule à la suivante', () => {
+	it('le PASSÉ ne redescend jamais : les onze premières cellules sont croissantes', () => {
+		// RÉÉCRIT (correctif « état du jour »). L'invariant portait sur les DOUZE cellules — la frise se reconstruisant
+		// d'un journal qui ne date que les montées, elle ne pouvait que croître. C'était vrai, et
+		// c'était le défaut : la dernière cellule ne pouvait donc pas dire une baisse. Ce qui
+		// reste vrai et doit le rester, c'est le PRÉFIXE : les semaines passées portent le plus
+		// haut rang atteint à leur terme, donc aucun creux entre deux cellules colorées.
+		let reculs = 0;
 		for (const c of tousLesCas()) {
 			const f = frise(c);
 			if (f === null) continue;
-			for (let i = 1; i < f.semaines.length; i++)
+			for (let i = 1; i < NB_SEMAINES - 1; i++)
 				expect(rang(f.semaines[i]), `${c.etiquette} — cellule ${i}`).toBeGreaterThanOrEqual(
 					rang(f.semaines[i - 1]),
 				);
+			if (rang(f.semaines[NB_SEMAINES - 1]) < rang(f.semaines[NB_SEMAINES - 2])) reculs++;
 		}
+		// Et l'assouplissement n'est pas gratuit : sur ces journaux, des centaines de rangées
+		// décrochent bel et bien à la dernière cellule. Sans ce compte, un code qui garderait la
+		// vieille monotonie passerait le test réécrit sans rien corriger.
+		expect(reculs).toBeGreaterThan(1000);
 	});
 
-	it('la dernière cellule ne descend JAMAIS sous l’état courant de la ligne', () => {
-		// La frise montre le plus haut état ATTEINT : elle peut dépasser l'état du jour (c'est le
-		// signal de recul que l'UI met en regard), jamais rester en dessous — sinon la ligne
-		// annoncerait « acquis » en texte au-dessus d'une frise qui finit plus bas, soit un faux
-		// recul. 'inconnu' est admis : il n'affirme rien.
-		// Seule restriction : un état courant PLUS HAUT que le plus haut cap daté est hors de ce
-		// que l'appli peut produire (l'étoile passe toujours par le journal), et la frise n'a alors
-		// aucune date pour le porter. Ni la première rencontre ni la borne n'ont besoin d'être
-		// filtrées : l'ordre des branches les rend inoffensives.
-		let verifies = 0;
+	it('la dernière cellule EST l’état du jour de la ligne, exactement', () => {
+		// RÉÉCRIT (correctif « état du jour »). L'ancienne version disait « ne descend jamais SOUS l'état courant » et
+		// tolérait explicitement qu'elle le DÉPASSE : c'est par là que passait le défaut, une
+		// leçon retombée sous 40 % gardant sa cellule « acquis ». Elle excluait en outre les cas
+		// où l'état du jour dépasse le plus haut cap daté — l'autre moitié du contrat, désormais
+		// exigée elle aussi : rien ne date cette montée, mais elle est un fait.
+		// Aucune exclusion ici, donc, et pas de tolérance pour 'inconnu' : une frise DESSINÉE a
+		// toujours au moins une semaine connue, et sa dernière cellule est cet état-là.
+		let plusBas = 0;
+		let plusHaut = 0;
 		for (const c of tousLesCas()) {
-			const plusHaut: NiveauNotion | null =
-				c.acquis !== null ? 'acquis' : c.enCours !== null ? 'en-cours' : null;
-			if (plusHaut !== null && RANG[c.niveau] > RANG[plusHaut]) continue;
 			const f = frise(c);
 			if (f === null) continue;
-			const derniere = f.semaines[NB_SEMAINES - 1];
-			expect(
-				derniere === 'inconnu' || rang(derniere) >= RANG[c.niveau],
-				`${c.etiquette} — dernière cellule ${derniere}`,
-			).toBe(true);
-			verifies++;
+			expect(f.semaines[NB_SEMAINES - 1], `${c.etiquette} — dernière cellule`).toBe(c.niveau);
+			const avant = rang(f.semaines[NB_SEMAINES - 2]);
+			if (avant > RANG[c.niveau]) plusBas++;
+			if (avant < RANG[c.niveau]) plusHaut++;
 		}
-		expect(verifies).toBeGreaterThan(3000);
+		// Les DEUX sens sont parcourus : sans ça, l'égalité pourrait n'être éprouvée que là où
+		// elle allait déjà de soi (le plancher de la frise vaut l'état courant quand rien n'est
+		// daté), et la moitié « l'état du jour monte » du contrat resterait sans témoin.
+		expect(plusBas).toBeGreaterThan(1000);
+		expect(plusHaut).toBeGreaterThan(500);
 	});
 
 	it('aChangeRecemment : deux états connus, ou un seul sorti du pointillé grâce à un cap', () => {
-		// Second modèle, écrit autrement que la fonction : la frise étant monotone, « deux états
-		// distincts » se lit « la queue ne commence pas comme elle finit », et « précédé de
-		// pointillé » se lit « la queue est plus courte que la rangée ». L'existence d'un cap est
-		// prise sur les ENTRÉES du cas, pas sur la frise renvoyée.
+		// Second modèle, écrit autrement que la fonction : « deux états distincts » se compte sur
+		// l'ensemble des cellules parlantes, et « précédé de pointillé » se lit « la queue est plus
+		// courte que la rangée ». L'existence d'un cap est prise sur les ENTRÉES du cas, pas sur la
+		// frise renvoyée.
+		// AJUSTÉ (correctif « état du jour ») : le modèle comparait la PREMIÈRE cellule parlante à la DERNIÈRE, raccourci
+		// que la monotonie autorisait. Elle a sauté avec le forçage de la dernière cellule, et une
+		// rangée qui monte puis redescend au même rang (« en cours », « acquis », puis de nouveau
+		// « en cours » aujourd'hui) commence comme elle finit tout en ayant bel et bien bougé — le
+		// raccourci l'aurait déclarée immobile.
 		let allumes = 0;
+		let retours = 0;
 		for (const c of tousLesCas()) {
 			const f = frise(c);
 			const parlantes = (f?.semaines ?? []).filter((x) => x !== 'inconnu');
 			const capDate = c.enCours !== null || c.acquis !== null;
 			const attendu =
-				(parlantes.length > 0 && parlantes[0] !== parlantes[parlantes.length - 1]) ||
+				new Set(parlantes).size > 1 ||
 				(parlantes.length > 0 && parlantes.length < NB_SEMAINES && capDate);
 			expect(aChangeRecemment(f), c.etiquette).toBe(attendu);
 			if (attendu) allumes++;
+			if (parlantes.length > 0 && parlantes[0] === parlantes[parlantes.length - 1])
+				retours += new Set(parlantes).size > 1 ? 1 : 0;
 		}
 		expect(allumes).toBeGreaterThan(500); // les deux branches sont bien parcourues
+		expect(retours).toBeGreaterThan(100); // et le cas « revenue à son point de départ » existe
 	});
 
 	it('les horodatages sont ré-exposés tels quels (l’UI date les caps avec)', () => {
@@ -702,6 +829,11 @@ describe('friseNotion — INVARIANTS sur tous les journaux, incohérents compris
 		// L'état d'une cellule ne dépend que de la FIN de sa semaine : la frise de la semaine
 		// suivante doit donc être la même rangée décalée. Un off-by-one dans l'indexation des
 		// semaines se voit ici et nulle part ailleurs.
+		// AJUSTÉ (correctif « état du jour ») : la comparaison exclut les DEUX cellules « semaine en cours » (la dernière
+		// d'`avant`, la dernière d'`apres`). Celle d'`avant` ne raconte plus sa semaine mais l'état
+		// du JOUR : la confronter à la même semaine vue de la semaine suivante, où elle n'est plus
+		// qu'une semaine passée reconstruite du journal, comparerait deux choses différentes. Le
+		// dernier journal ci-dessous est là pour ça — sans lui, l'exclusion serait indolore.
 		for (const maintenant of [NOW, NOW_PRINTEMPS, NOW_AUTOMNE]) {
 			const g = grille(maintenant);
 			const journaux: [PaliersNotion, NiveauNotion][] = [
@@ -710,6 +842,7 @@ describe('friseNotion — INVARIANTS sur tous les journaux, incohérents compris
 				[{ enCours: g.dans(2), acquis: g.dans(9) }, 'acquis'],
 				[{ acquis: g.dans(11) }, 'acquis'],
 				[{ enCours: g.dans(-2) }, 'en-cours'],
+				[{ enCours: g.dans(2), acquis: g.dans(5) }, 'non-acquis'], // retombée sous les 40 %
 			];
 			for (const [paliers, niveau] of journaux)
 				for (const rencontre of [undefined, g.dans(3)]) {
@@ -717,8 +850,8 @@ describe('friseNotion — INVARIANTS sur tous les journaux, incohérents compris
 					const borne = g.dans(1);
 					const avant = friseNotion(paliers, rencontre, niveau, borne, maintenant)!;
 					const apres = friseNotion(paliers, rencontre, niveau, borne, joursApres(maintenant, 7))!;
-					expect(apres.semaines.slice(0, NB_SEMAINES - 1), etiquette).toEqual(
-						avant.semaines.slice(1),
+					expect(apres.semaines.slice(0, NB_SEMAINES - 2), etiquette).toEqual(
+						avant.semaines.slice(1, NB_SEMAINES - 1),
 					);
 				}
 		}
@@ -938,10 +1071,11 @@ describe('progressionProfil — branchement de la frise', () => {
 		// Si la borne stockée l'emportait, B serait 'inconnu' jusqu'à la semaine 10 : l'historique
 		// déjà visible s'effacerait à la première session de l'enfant.
 		expect(notion(recap, B).frise!.semaines).toEqual(rangee(['non-acquis', 12]));
-		// Et A, dont le cap précède la fenêtre, la porte de bout en bout (état courant
-		// « à découvrir » faute de stats : la trajectoire datée est tracée quand même).
+		// Et A, dont le cap précède la fenêtre, la porte sur toutes ses semaines PASSÉES (état
+		// courant « à découvrir » faute de stats : la trajectoire datée est tracée quand même,
+		// et la semaine en cours dit l'état du jour comme sur n'importe quelle ligne).
 		expect(notion(recap, A).niveau).toBe('a-decouvrir');
-		expect(notion(recap, A).frise!.semaines).toEqual(rangee(['acquis', 12]));
+		expect(notion(recap, A).frise!.semaines).toEqual(rangee(['acquis', 11], ['a-decouvrir', 1]));
 	});
 
 	it('deux leçons au même journal ne se départagent pas sur la date de 1re rencontre', () => {
@@ -970,8 +1104,12 @@ describe('progressionProfil — branchement de la frise', () => {
 		rencontreeLe(B, dansSemaine(-25)); // travaillée de longue date, aucun cap
 		recordLessonStats({ [B]: { ok: 2, total: 10 } });
 		const recap = progressionProfil(p, NOW);
-		// A ne lit QUE son entrée namespacée : son « acquis » date de la semaine 9.
-		expect(notion(recap, A).frise!.semaines).toEqual(rangee(['inconnu', 9], ['acquis', 3]));
+		// A ne lit QUE son entrée namespacée : son « acquis » date de la semaine 9. (La dernière
+		// cellule porte l'état du jour, « à découvrir » faute de stats sur A — cf. finaliserFrise.)
+		expect(notion(recap, A).niveau).toBe('a-decouvrir');
+		expect(notion(recap, A).frise!.semaines).toEqual(
+			rangee(['inconnu', 9], ['acquis', 2], ['a-decouvrir', 1]),
+		);
 		// La clé legacy compte en revanche pour la borne du profil (elle prouve que le journal
 		// tournait) : B est donc suivie sur toute la fenêtre, et non 'inconnu' jusqu'à la semaine 9.
 		expect(notion(recap, B).frise!.semaines).toEqual(rangee(['non-acquis', 12]));

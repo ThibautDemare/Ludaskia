@@ -237,17 +237,25 @@ describe('friseListeOrtho — la frise ne lit aucun cap démenti par l’état c
 		expect(journal).toEqual({ acquis: dansSemaine(4) }); // pur : le journal reçu est intact
 	});
 
-	it('ÉCART ASSUMÉ avec une leçon : mêmes entrées, la leçon garde son cap', () => {
-		// Une leçon étoilée ne se désétoile pas : son « acquis » ne peut pas être démenti, donc
-		// friseNotion n'a aucune raison de plafonner — et ne doit pas se mettre à le faire (la
-		// frise d'une leçon montre le plus haut état ATTEINT, l'UI mettant le recul en regard).
+	it('ÉCART ASSUMÉ avec une leçon : mêmes entrées, la leçon garde son cap PASSÉ', () => {
+		// L'écart porte sur le PASSÉ, et sur lui seul. Une liste tait un cap que son état ne porte
+		// plus (le parent a pu vider la liste, la voix réapparaître) : rien ne prouve que cet
+		// épisode ait eu lieu tel que le journal le dit. Une leçon, elle, l'a bel et bien atteint —
+		// l'étoile ne se retire pas, et une perf qui retombe n'efface pas la semaine où elle était
+		// haute : friseNotion garde donc la cellule et la date.
+		// Ce qui n'est PLUS un écart depuis le correctif « état du jour » : la DERNIÈRE cellule. Les deux frises finissent
+		// désormais sur l'état du jour, chacune par son chemin (plafonnement pour la liste, état
+		// porté pour la leçon) — un parent ne peut plus lire, sur la même page, deux rangées qui
+		// se contredisent avec le mot de leur ligne.
 		const journal = { acquis: dansSemaine(6) };
 		const lecon = friseNotion(journal, undefined, 'en-cours', dansSemaine(-6), NOW)!;
 		expect(lecon.acquisDepuis).toBe(dansSemaine(6));
-		expect(lecon.semaines).toEqual(rangee(['inconnu', 6], ['acquis', 6]));
+		expect(lecon.semaines).toEqual(rangee(['inconnu', 6], ['acquis', 5], ['en-cours', 1]));
 		const liste = friseListeOrtho(journal, 'en-cours', dansSemaine(-6), NOW)!;
 		expect(liste.acquisDepuis).toBeNull();
 		expect(liste.semaines).toEqual(rangee(['en-cours', 12]));
+		// Même dernière cellule des deux côtés : c'est l'état du jour, il n'a qu'une valeur.
+		expect(lecon.semaines[NB_SEMAINES - 1]).toBe(liste.semaines[NB_SEMAINES - 1]);
 	});
 
 	it('BOUT EN BOUT : la voix qui réapparaît ne fait pas mentir la ligne du parent', () => {
@@ -265,6 +273,61 @@ describe('friseListeOrtho — la frise ne lit aucun cap démenti par l’état c
 		expect(avecVoix.niveau).toBe('en-cours');
 		expect(avecVoix.frise!.semaines).toEqual(rangee(['inconnu', 5], ['en-cours', 7]));
 		expect(avecVoix.frise!.acquisDepuis).toBeNull();
+	});
+});
+
+/* ============================================================
+   1 ter. L'état du jour est un FAIT, la dernière cellule le porte (correctif « état du jour »)
+   ------------------------------------------------------------
+   Le plafonnement ci-dessus règle un sens : la frise n'affirme jamais PLUS que le mot de
+   la ligne. Restait l'autre, et il sous-disait — quand l'état du jour dépasse le plus haut
+   cap que le journal date, la rangée finissait en dessous de ce que la ligne annonce. Le
+   contrat commun aux deux frises (leçon et liste) le tranche : la dernière cellule, celle
+   de la semaine EN COURS, vaut EXACTEMENT l'état courant. Ce n'est pas une reconstitution
+   à partir d'un journal, c'est un fait connu par ailleurs.
+   Ce que ça ne change pas : les semaines PASSÉES, qui restent ce que le journal permet
+   d'affirmer, et la population des lignes SANS frise — porter l'état du jour sur une
+   rangée qu'on ne dessine pas n'aurait aucun sens.
+   ============================================================ */
+describe('friseListeOrtho — l’état du jour est un fait, la dernière cellule le porte', () => {
+	it('critère 2 : liste acquise dont le journal n’a daté que le « en cours »', () => {
+		// Cas réel, miroir de celui de la voix qui réapparaît : le tampon « en cours » a été posé
+		// depuis un appareil équipé d'une voix de synthèse (la dictée y est un mode requis, la
+		// liste n'y est donc pas acquise), et l'espace encadrant est consulté depuis un appareil
+		// qui n'en a pas — la liste y est acquise. Le mot de la ligne dit « acquise » : la
+		// dernière cellule aussi.
+		const f = friseListeOrtho({ enCours: dansSemaine(3) }, 'acquis', dansSemaine(-6), NOW)!;
+		expect(f.semaines).toEqual(rangee(['a-decouvrir', 3], ['en-cours', 8], ['acquis', 1]));
+		// Et rien n'est inventé pour autant : aucune date d'acquisition n'existe, la ligne
+		// n'affichera donc pas d'« acquise le … ».
+		expect(f.acquisDepuis).toBeNull();
+		expect(f.enCoursDepuis).toBe(dansSemaine(3));
+	});
+
+	it('critère 4 : cette montée ne fait apparaître aucune frise', () => {
+		// Le pendant du critère 2 : là où AUCUNE semaine n'est déductible, la ligne reste sans
+		// frise. Peindre une cellule solitaire sur la seule foi de l'état du jour, c'est
+		// exactement ce que « aucune acquisition inventée » interdit déjà.
+		expect(friseListeOrtho({}, 'acquis', Infinity, NOW)).toBeNull();
+		expect(friseListeOrtho({}, 'acquis', Infinity, NOW, dansSemaine(4))).toBeNull();
+	});
+
+	it('BOUT EN BOUT : la voix qui manque ne fait pas mentir la ligne du parent non plus', () => {
+		// Même chemin réel que le test symétrique du describe précédent, joué dans l'autre sens :
+		// la séance journalise depuis un appareil équipé (liste « en cours »), le parent consulte
+		// depuis un appareil sans voix (liste acquise).
+		const p = activeProfile();
+		const id = creerListeMaitrisee('Semaine 1', ['chat']);
+		journaliserPaliersOrtho(true, dansSemaine(5)); // séance avec voix : liste seulement commencée
+		const avecVoix = listesOrthoProfil(p, true, NOW).find((x) => x.id === id)!;
+		expect(avecVoix.niveau).toBe('en-cours');
+		expect(avecVoix.frise!.semaines).toEqual(rangee(['inconnu', 5], ['en-cours', 7]));
+		const sansVoix = listesOrthoProfil(p, false, NOW).find((x) => x.id === id)!;
+		expect(sansVoix.niveau).toBe('acquis');
+		expect(sansVoix.frise!.semaines).toEqual(
+			rangee(['inconnu', 5], ['en-cours', 6], ['acquis', 1]),
+		);
+		expect(sansVoix.frise!.acquisDepuis).toBeNull();
 	});
 });
 
@@ -749,7 +812,14 @@ describe('friseListeOrtho — INVARIANTS sur tous les journaux', () => {
 		}
 	});
 
-	it('la frise ne redescend JAMAIS d’une cellule à la suivante', () => {
+	it('la frise ne redescend JAMAIS d’une cellule à la suivante, dernière comprise', () => {
+		// L'invariant tient ici sur les DOUZE cellules, là où celui d'une leçon a dû être borné au
+		// préfixe (correctif « état du jour ») : une leçon peut finir sous son plus haut rang atteint, une liste non.
+		// Ce n'est pas une exception au contrat mais sa conséquence — le plafonnement (describe
+		// 1 bis) fait qu'aucune cellule ne dépasse déjà l'état du jour, donc porter cet état sur
+		// la dernière ne peut que la faire monter. Si un jour la rangée d'une liste redescendait,
+		// c'est que le plafonnement aurait sauté et que le mot de la ligne contredirait une
+		// cellule du passé.
 		for (const c of tousLesCas()) {
 			const f = frise(c);
 			if (f === null) continue;
@@ -760,28 +830,26 @@ describe('friseListeOrtho — INVARIANTS sur tous les journaux', () => {
 		}
 	});
 
-	it('la dernière cellule ne descend jamais sous l’état courant de la ligne', () => {
-		// Sinon la ligne annoncerait « acquise » en texte au-dessus d'une frise qui finit plus
-		// bas. 'inconnu' est admis : il n'affirme rien. Restriction : quand l'état courant dépasse
-		// le plus haut cap daté, la frise n'a AUCUNE date pour le porter et sous-dit
-		// délibérément — cas réel depuis le plafonnement (liste journalisée « en cours » sur un
-		// appareil équipé d'une voix, consultée depuis un appareil qui n'en a pas, donc acquise).
-		let verifies = 0;
+	it('la dernière cellule EST l’état du jour de la ligne, exactement', () => {
+		// RÉÉCRIT (correctif « état du jour »), avec le même contrat que la frise d'une leçon : la semaine EN COURS
+		// n'est pas une reconstitution, c'est le fait du jour. L'ancienne version se contentait
+		// de « ne descend pas SOUS l'état courant » et EXCLUAIT les lignes dont l'état dépasse le
+		// plus haut cap lu — c'est-à-dire précisément celles qui sous-disaient : liste maîtrisée
+		// dont le journal n'a tamponné que le « en cours » (aucune voix de synthèse à
+		// l'acquisition, ou acquisition antérieure à ce journal). Le mot de la ligne disait
+		// « acquise » au-dessus d'une rangée qui finissait « commencée ».
+		// Rien à exclure ici, donc, et pas de tolérance pour 'inconnu' : une frise DESSINÉE a au
+		// moins une semaine connue, et sa dernière cellule est l'état du jour.
+		let plusHaut = 0;
 		for (const c of tousLesCas()) {
-			const lu = lecture(c);
-			const plusHaut: NiveauNotion | null =
-				lu.acquis !== null ? 'acquis' : lu.enCours !== null ? 'en-cours' : null;
-			if (plusHaut !== null && RANG[c.niveau] > RANG[plusHaut]) continue;
 			const f = frise(c);
 			if (f === null) continue;
-			const derniere = f.semaines[NB_SEMAINES - 1];
-			expect(
-				derniere === 'inconnu' || rang(derniere) >= RANG[c.niveau],
-				`${c.etiquette} — dernière cellule ${derniere}`,
-			).toBe(true);
-			verifies++;
+			expect(f.semaines[NB_SEMAINES - 1], `${c.etiquette} — dernière cellule`).toBe(c.niveau);
+			if (rang(f.semaines[NB_SEMAINES - 2]) < RANG[c.niveau]) plusHaut++;
 		}
-		expect(verifies).toBeGreaterThan(300);
+		// Le sens « l'état du jour est PLUS HAUT que ce que le journal date » est bien parcouru :
+		// sans ce compte, l'égalité ne serait éprouvée que là où elle allait déjà de soi.
+		expect(plusHaut).toBeGreaterThan(200);
 	});
 
 	it('les horodatages ré-exposés : aucun cap démenti, aucune date qui remonte le temps', () => {
@@ -833,6 +901,9 @@ describe('friseListeOrtho — INVARIANTS sur tous les journaux', () => {
 		// la dernière cellule sont côte à côte, un lecteur ne peut pas les voir se contredire —
 		// peu importe que le cap démenti soit « acquis » (prétention forte) ou « en cours ». Une
 		// cellule PLUS BASSE reste admise : c'est le passé, et 'inconnu' n'affirme rien.
+		// La règle porte donc sur les DOUZE cellules, la dernière comprise — pour elle, l'égalité
+		// exacte est désormais exigée un test plus haut (correctif « état du jour »), ce qui la satisfait forcément :
+		// ici, c'est le PASSÉ d'une liste qui est éprouvé.
 		let hautes = 0;
 		for (const c of tousLesCas()) {
 			const f = frise(c);
@@ -841,9 +912,10 @@ describe('friseListeOrtho — INVARIANTS sur tous les journaux', () => {
 				expect(rang(cellule), `${c.etiquette} — cellule ${i} = ${cellule}`).toBeLessThanOrEqual(
 					RANG[c.niveau],
 				);
-			// Non creux : la dernière cellule atteint effectivement l'état courant dès qu'une
-			// donnée le porte (sinon l'invariant serait satisfait par une frise toujours vide).
-			if (rang(f.semaines[NB_SEMAINES - 1]) === RANG[c.niveau]) hautes++;
+			// Non creux : une cellule du PASSÉ atteint effectivement l'état courant dès qu'une
+			// donnée le porte (sinon l'invariant serait satisfait par une frise toujours vide, ou
+			// par la seule cellule que le contrat force).
+			if (rang(f.semaines[NB_SEMAINES - 2]) === RANG[c.niveau]) hautes++;
 		}
 		expect(hautes).toBeGreaterThan(100);
 	});

@@ -8,7 +8,8 @@ import { analyserPositions } from '../src/core/html';
 
    Quatre classes de fautes, toutes rencontrées pendant la conversion, qui ont en
    commun de compiler proprement, de passer ESLint et de passer les tests
-   unitaires — et de ne se manifester qu'à l'écran, chez l'enfant :
+   unitaires — et de ne se manifester qu'à l'écran, chez l'enfant. Ce fichier en
+   tient TROIS : la 3e a migré (voir plus bas), et son numéro reste vacant.
 
    1. INTERPOLATION À UNE POSITION REFUSÉE. Le gabarit refuse deux positions
       qu'il ne sait pas échapper honnêtement : entre deux attributs (`<p ${x}>`,
@@ -24,11 +25,19 @@ import { analyserPositions } from '../src/core/html';
       aria-live="polite">` : la zone d'annonce n'existait plus du tout, et
       l'annonce non-visuelle disparaissait en silence.
 
-   3. FRAGMENT SORTI DE SON GABARIT. `SafeHtml` n'a volontairement pas de
-      `toString()` : l'interpoler dans un gabarit NON balisé, le concaténer au
-      `+` ou faire `.join('')` sur un tableau de fragments rend
-      « [object Object] ». `join` accepte n'importe quel type d'élément, donc
-      rien ne rougit — 111 sites étaient concernés.
+   3. FRAGMENT SORTI DE SON GABARIT — DÉPLACÉE dans
+      `tests/fuites-gabarit-html-gate.test.ts`, qui la couvre strictement mieux.
+      Elle vivait ici et n'a PAS tenu : elle ne testait que `PlusToken`, alors
+      que le motif fautif réel est l'accumulateur `extra += html\`…\``, soit un
+      `PlusEqualsToken`. Un jeton d'écart, cinq sites partis en production, et
+      aucun moyen de s'en apercevoir — rien ne vérifiait que ce détecteur
+      détectait encore quelque chose, et sur un arbre sain un détecteur troué
+      rend exactement le même vert qu'un détecteur correct.
+      Le numéro 3 reste vacant à dessein : les classes sont citées par leur
+      numéro dans docs/architecture/rendu-et-echappement.md, et renuméroter
+      ferait mentir ces renvois. Ne PAS réarmer une détection de fragments
+      égarés ici : ce serait remettre en place le doublon qui se périme en
+      silence.
 
    4. FRONTIÈRE DU MOTEUR DE FIGURES. `src/core/figures/` reste volontairement en
       `string` (cf. le rejet écrit dans rendu-et-echappement.md). Ses points
@@ -120,7 +129,6 @@ function auditer() {
 
 	const positionsRefusees: Faute[] = [];
 	const balisagesEcrits: Faute[] = [];
-	const fragmentsEgares: Faute[] = [];
 	const figuresNonMarquees: Faute[] = [];
 	let gabarits = 0;
 	let expressionsExaminees = 0;
@@ -205,30 +213,8 @@ function auditer() {
 				for (const morceau of [node.head, ...node.templateSpans.map((s) => s.literal)])
 					signalerBalisage(morceau, morceau.text);
 
-			/* ---- Classe 3 : un fragment hors de tout gabarit `html` ---- */
-			if (ts.isTemplateExpression(node) && !estGabaritHtml(node.parent))
-				for (const span of node.templateSpans)
-					if (estFragment(span.expression))
-						fragmentsEgares.push({
-							...situer(span.expression),
-							detail: 'fragment interpolé dans un gabarit NON balisé',
-						});
-
-			if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken)
-				for (const cote of [node.left, node.right])
-					if (estFragment(cote))
-						fragmentsEgares.push({ ...situer(cote), detail: 'fragment concaténé au +' });
-
-			if (
-				ts.isCallExpression(node) &&
-				ts.isPropertyAccessExpression(node.expression) &&
-				node.expression.name.text === 'join' &&
-				estFragment(node.expression.expression)
-			)
-				fragmentsEgares.push({
-					...situer(node.expression.expression),
-					detail: '`.join()` sur un tableau de fragments (utiliser `joindre`)',
-				});
+			/* Classe 3 : voir l'en-tête — elle est tenue par
+			   tests/fuites-gabarit-html-gate.test.ts, pas ici. */
 
 			ts.forEachChild(node, visiter);
 		};
@@ -238,7 +224,6 @@ function auditer() {
 	return {
 		positionsRefusees,
 		balisagesEcrits,
-		fragmentsEgares,
 		figuresNonMarquees,
 		gabarits,
 		expressionsExaminees,
@@ -280,15 +265,6 @@ describe('fautes de rendu invisibles au compilateur (#614)', () => {
 				`échappé, et l'enfant le lira en clair.\n${lister(AUDIT.balisagesEcrits)}\n\n` +
 				'Écrire html`<span …>…</span>` plutôt que la chaîne. Si la chaîne est ' +
 				'légitime, l’ajouter à BALISAGE_EN_CHAINE_ADMIS **avec sa raison**.',
-		).toEqual([]);
-	});
-
-	it('aucun fragment ne sort de son gabarit (rendu « [object Object] »)', () => {
-		expect(
-			AUDIT.fragmentsEgares,
-			`Un SafeHtml n'a pas de toString() : ces expressions rendent « [object Object] ` +
-				`».\n${lister(AUDIT.fragmentsEgares)}\n\n` +
-				'Composer avec html`…`, joindre(…) ou lire `.balisage` si la cible attend une chaîne.',
 		).toEqual([]);
 	});
 

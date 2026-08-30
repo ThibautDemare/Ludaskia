@@ -139,3 +139,43 @@ lien qui le portait. Pas mécanisable (cf. [Tests](tests.md), rejet écrit du ga
 `seo-decouvrabilite` sur le contenu des réponses) : un rappel est posé en commentaire au
 point d'édition réel, juste avant `<div class="v-faq-list">` dans `index.html` et
 `guide.html`.
+
+## Neutralité d'un écran à choix : ne pas reprendre la formule du bouton (#618)
+
+Sur un écran qui doit laisser **deux options également valables** (la pause d'une séance
+d'orthographe propose « Continuer encore un peu » et « Revenir une autre fois »), un texte
+neutre ne doit reprendre **aucune formule d'un libellé voisin, bouton compris**. Le
+premier jet du rappel des mots difficiles disait « Ce mot te demande encore **un peu** de
+travail » : lexicalement neutre, sans impératif ni verbe d'incitation, mais le trigramme
+« encore un peu » se retrouvait **trois fois** sur le même écran, dont une sur le bouton
+principal placé juste dessous. L'incitation ne vient alors pas des mots mais de leur
+voisinage, et **aucune liste de mots interdits ne peut la voir** — d'où une règle de
+jugement plutôt qu'un test. Corrigé en « encore du travail », qui aligne au passage la
+phrase sur les deux autres écrans porteurs.
+
+Corollaire, posé par le `pedagogue-primaire` sur la même tranche : sur ce genre d'écran,
+**la connotation pèse autant que l'impératif**. Une formule sans le moindre verbe
+d'incitation (« ce mot te résiste », « ce mot est difficile pour toi ») fait quand même
+pencher le choix par sa seule charge affective — on ne quitte pas un écran sur un constat
+pareil. La règle de neutralité vaut donc pour le **registre**, pas seulement pour la
+syntaxe. Et la difficulté s'attribue à la **tâche**, jamais à l'enfant : « ce mot demande
+du travail » (l'objet) et non « ce mot est difficile **pour toi** » (un trait personnel),
+qui personnalise un déficit au moment précis où le sentiment de compétence est le plus
+exposé.
+
+## Deux verbes avant un deux-points révélateur : scinder la phrase (#618)
+
+Une phrase qui fait porter un référent sur **deux verbes avant** de le nommer par un
+deux-points final oblige un lecteur CE2 fragile à tenir ce référent en mémoire sur toute
+la longueur — précisément le public d'un écran qui parle des mots qui lui ont résisté.
+Scinder en deux phrases courtes, **révélation d'abord**. Cas corrigé (#618) : « Ce mot t'a
+demandé du travail, et maintenant tu sais l'écrire : bateau. » est devenu « Ce mot t'a
+demandé du travail : bateau. Maintenant, tu sais l'écrire ! ».
+
+## Le suivi parental se dit « le suivi », au singulier (#618)
+
+Le terme établi dans tout l'espace encadrant est **« le suivi »** (bouton « Voir le
+suivi », « le suivi des notions », « le suivi d'orthographe »). Jamais « les suivis » ni
+« vos suivis » : le pluriel n'existe nulle part ailleurs dans `src/` et se lit comme un
+autre objet que celui que le parent connaît. Cas corrigé (#618) dans l'aide du réglage
+« Ne pas rappeler les mots difficiles en fin de séance ».

@@ -461,6 +461,32 @@ passage ne les re-remonte pas :
   (`specialiste-troubles-apprentissage` / `pedagogue-primaire`), pas une exigence a11y de
   ce lot.
 
+**Mots qui ont résisté, fin de séance d'orthographe (#618)** — `mots-difficiles-view.ts`,
+consommé par `ortho-runner.ts` (bilan, pause) et `revision.ts` (fin de révision espacée) :
+remplace un dénombrement par le **nom** des mots passés par la correction guidée. La
+décision (dédoublonnage, plafond, bascule vers une formulation groupée, phrase par
+contexte) vit dans `core/orthographe/mots-difficiles.ts` (pure, cf. [Logique
+pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
+- **`motsDifficilesHTML(mots, contexte, classe)`** rend VIDE quand il n'y a rien à
+  nommer, ou quand l'adulte a coupé l'aménagement
+  **`sansMotsDifficiles`** (`ProfilePrefs`, accesseur `motsDifficilesRappeles`, cf.
+  [Espace encadrant](espace-encadrant.md)) — jamais de bloc vide. Chaque écran porteur
+  passe sa propre classe (`ortho-difficiles`, `rev-difficiles`), même parti pris que le
+  récap de #537 ci-dessus.
+- **ÉPHÉMÈRE par construction**, comme ce récap : aucune clé de stockage, ce module ne
+  garde même pas d'état — la liste des mots vit dans l'état de séance de l'écran
+  appelant (variable de module, jamais persistée) et meurt avec elle.
+- **Couverture par écran, pas par module** : dans `ortho-runner.ts`, seules les branches
+  d'escalade du mot caché et de la dictée notent un mot (2ᵉ erreur → l'atelier se rouvre
+  avec le diff) — le mode **tuiles** en est exclu **par construction**, il n'a pas de
+  branche d'escalade (rejet écrit sur sa couverture e2e, cf. [Tests](tests.md)). Dans
+  `revision.ts`, un mot est noté par un échec **et** par « Je ne sais pas, montre-moi »
+  (#467).
+- **Bouton « Relire ces mots »** ouvre la relecture restreinte à ces mots via
+  `goOrthoRevoirMots` (`navigation.ts`), qui pose la sélection **en mémoire** plutôt que
+  dans le hash — jamais persistée, jamais partageable par URL (cf. `ortho-revoir.ts`,
+  décrit dans `docs/design-orthographe.md`, § Relecture).
+
 ## Modales & effets
 
 - **`modal-a11y.ts`** — **mécanique a11y partagée des modales** (#235, extraite de
@@ -1452,6 +1478,22 @@ l'oral jusque-là — non par décision, par défaut de câblage).
 - **Consigne de la fiche** : `ExerciseType.consigne` (optionnel) nomme la tâche
   (« Conjugue chaque verbe au présent. ») et remplace le générique « Écris la forme
   correcte. » (`core/build.ts`).
+
+**Règle : un bloc inséré AVANT un bouton auto-focalisé porte `role="status"`.** Le motif
+revient dans tout le dépôt — le lien d'étayage sous un verdict (#490), le rappel des mots
+difficiles en fin de séance d'orthographe (#618) — et il a la même conséquence à chaque
+fois : l'écran est rendu d'un coup par `innerHTML`, le focus part sur le bouton d'action
+(« Continuer ▶ », « Continuer encore un peu »), et tout ce qui **précède** ce bouton dans
+le DOM devient inatteignable en Tab **avant** (seul Shift+Tab y ramène). Ce n'est pas une
+violation de 2.4.3 — l'ordre de lecture reste logique — mais sans région live, un enfant
+au lecteur d'écran n'apprendrait jamais que le bloc existe. Le correctif retenu est
+l'**annonce** (`role="status"` + `aria-atomic="true"` sur le conteneur), **pas** le
+réordonnancement du DOM : mettre le contenu après le bouton casserait l'ordre de lecture
+pour tout le monde afin de servir la tabulation d'une minorité. La non-atteignabilité en
+Tab avant est donc un **compromis assumé, écrit ici pour ne pas être relu comme un
+oubli**. Ne pas détourner pour ça la région `#revStatus` de la révision espacée, réservée
+au verdict de l'item en cours (annoncé puis vidé) : deux responsabilités dans une même
+région finissent par se marcher dessus.
 
 ### Sprint sans pression temporelle (#223)
 

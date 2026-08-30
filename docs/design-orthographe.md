@@ -549,29 +549,53 @@ parcours (pas de choix).
 (1 réussite ? 2 ?). v1 envisagée : **1 réussite valide le mode**, l'**entretien**
 (répétition espacée) assurant le renforcement.
 
-### Relecture — « Je relis mes mots » (#80, implémenté)
+### Relecture — « Je relis mes mots » (#80, #618, implémenté)
 Une page d'**étude passive**, **distincte des modes d'entraînement** et de la
-révision espacée : elle affiche **tous les mots d'une liste sur une seule page**,
-chacun avec **les entourages tracés par l'enfant** (mêmes couleurs / même rendu
-SVG que l'atelier). Sa valeur pédagogique est la **mémoire visuelle** des pièges,
-en **complément** (jamais en remplacement) des modes qui *testent* l'orthographe.
+révision espacée : elle affiche **des mots sur une seule page**, chacun avec
+**les entourages tracés par l'enfant** (mêmes couleurs / même rendu SVG que
+l'atelier). Sa valeur pédagogique est la **mémoire visuelle** des pièges, en
+**complément** (jamais en remplacement) des modes qui *testent* l'orthographe.
 
 - **Pas un exercice** : aucune saisie, aucune vérification, **aucun XP, aucune
   étoile**, pas de chrono ni de confettis. La relecture seule **ne persiste rien**
   (`motsDeLecon` matérialise les prédéfinis en mémoire mais on **ne sauvegarde
   pas** au simple affichage).
-- **Accès** depuis l'écran de choix de mode d'une liste (#69), via une entrée
-  **« 📖 Relire mes mots »** posée **à part** des boutons de mode (identité
-  « étude », sobre, *jamais* « conseillée ») — route `#ortho-revoir-<id>`.
+- **Deux entrées, organisées autour d'un ENSEMBLE de mots** (#618) — la page ne
+  s'organise plus autour d'un `lessonId` unique, car une sélection peut traverser
+  plusieurs listes :
+  - **une LISTE entière**, route `#ortho-revoir-<id>`, depuis l'écran de choix de
+    mode d'une liste (#69) via une entrée **« 📖 Relire mes mots »** posée **à
+    part** des boutons de mode (identité « étude », sobre, *jamais*
+    « conseillée ») ;
+  - **une SÉLECTION de mots**, route `#ortho-revoir` (hash nu), posée **en
+    mémoire** — jamais dans le hash, jamais persistée — par le bouton
+    « Relire ces mots » d'un écran de fin de séance (pause, bilan, fin de
+    révision espacée ; cf. « Étoile d'une liste / récompenses » et le mode
+    Révision espacée). Consommée **une seule fois** : un rechargement, le
+    bouton Précédent ou un accès direct au hash retrouvent la **liste
+    entière** (ou, sans liste d'origine — cas d'une révision qui a traversé
+    plusieurs listes —, renvoient à l'accueil, faute de liste derrière
+    laquelle se replier). Résolue depuis la **banque** du profil (`OrthoState.banque`),
+    pas depuis une liste : c'est ce qui permet à un mot issu de n'importe quelle
+    liste d'y apparaître.
 - **Correction libre, optionnelle** : un **crayon discret par mot** rouvre
   l'atelier (`renderAtelier`, qui sait charger/sauver `mot.entourage`) ; au
   « Continuer », on **sauvegarde** et on revient à la relecture, recentrée sur le
   mot modifié. Un mot **sans entourage** s'affiche normalement (crayon
   « Entourer les pièges », mention douce « Pas encore de pièges marqués »).
+  Fonctionne à l'identique sur une sélection multi-listes : l'atelier mute
+  l'objet `MotOrtho` de la **banque**, qui ne dépend d'aucune liste.
 - **Réutilisation, pas duplication** : `lettresMotHTML` (spans `.atelier-lettre`)
   et `dessinerEntourages` (tracé SVG lecture seule) sont **extraits de l'atelier**
   et partagés. Mise en page : grille mobile-first **1 → 2 → 3 colonnes**, mot à
   `1.8rem` (mobile) / `2.2rem` (tablette), défilement vertical assumé.
+
+**Ce qui alimente la sélection (#618)** : `ui/mots-difficiles-view.ts` (couche UI, cf.
+`docs/architecture/ui.md`) et `core/orthographe/mots-difficiles.ts` (décision pure, cf.
+`docs/architecture/core.md`) décident, en fin de séance d'orthographe ou de révision
+espacée, quels mots ont **résisté** (passés par la correction guidée) et méritent une
+phrase les nommant plutôt qu'un dénombrement. `ui/navigation.ts:goOrthoRevoirMots(motIds,
+lessonId?)` pose cette liste en attente pour le prochain rendu de cette page.
 
 ---
 
@@ -609,6 +633,21 @@ pourrait servir aux **maths** (tables). Hors scope du premier jet.
 ## Points encore ouverts
 
 Les grands choix sont tranchés (ci-dessus). Restent des détails et une issue à part.
+
+### Mots difficiles à la pause : la lettre du critère 1 (#618)
+
+Le critère 1 de #618 nomme, à la pause, les mots passés par la correction guidée **et
+« pas encore maîtrisés »** — implémenté à la lettre, via `statutMot`. Conséquence dans un
+cas précis : une séance en **mode ciblé** ne valide aucun mode (`reussiteMode` ne
+`validerMode` qu'en parcours complet), donc le statut lu à la pause est celui d'**avant**
+la séance. Sur une liste **déjà étoilée**, un mot qui résiste y est donc `maitrise` et
+n'est **pas** nommé. Même mécanique pour un tour de révision d'une liste étoilée — mais
+là c'est sans effet, le critère négatif 9 excluant déjà cet écran.
+
+Accepté tel quel plutôt que contourné : lever le filtre pour les séances ciblées ferait
+diverger les deux écrans sur une règle que le cadrage a écrite d'une seule façon. Écrit
+ici pour qu'un futur relecteur qui retombe sur le commentaire de `renderPause` sache que
+c'est un choix, pas un oubli.
 
 ### Modèle & stockage — détails
 - Forme exacte d'`Entourage` (plage `[début, fin]` + index de couleur) et

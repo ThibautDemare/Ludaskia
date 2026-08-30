@@ -233,6 +233,15 @@ depuis lors les BAISSES comme les montées. C'est voulu — une notion qui retom
 exactement ce qu'un adulte doit pouvoir repérer sans déplier chaque catégorie — et le libellé
 (« changement », jamais « progrès ») reste vrai dans les deux sens.
 
+**Écarté, une fois pour toutes** : masquer la date du cap dans la méta de la ligne quand
+l'état est retombé (« passée en cours le 15 juillet » affiché sur une leçon désormais « à
+renforcer »). Remontée à la relecture pédagogique du correctif « état du jour », par crainte
+d'une relecture au présent. Gardé tel quel : c'est un événement PASSÉ et daté, le mot d'état
+juste à côté dit le présent, et la frise montre maintenant le décrochage — trois informations
+qui se complètent au lieu de se contredire. La retirer effacerait une trajectoire réelle, le
+défaut même que `friseListeOrtho` documente sous le nom de « sous-dire ». Inutile de la
+re-remonter sans élément nouveau.
+
 **La révision espacée alimente la frise** (#541) : dès qu'une session rejoue au moins un item
 du catalogue, elle met à jour les stats de la leçon (et son étoile éventuelle) exactement
 comme une leçon jouée seule, cf. [Logique pure](core.md) — une semaine de révision peut donc

@@ -259,11 +259,15 @@ function lancerHasard(): void {
 
 /* ---------- Rendu des morceaux ---------- */
 function pastillesHTML(total: number, fait: number): SafeHtml {
-	let s = '';
+	// Liste de fragments, JAMAIS une chaîne accumulée : `s += html\`…\`` coerce le
+	// `SafeHtml` en « [object Object] », que le gabarit affiche ensuite en toutes lettres.
+	const s: SafeHtml[] = [];
 	for (let i = 0; i < total; i++) {
-		s += html`<span class="programme-pastille${i < fait ? drapeau('faite') : ''}" aria-hidden="true">${
-			i < fait ? icon('check') : ''
-		}</span>`;
+		s.push(
+			html`<span class="programme-pastille${i < fait ? drapeau('faite') : ''}" aria-hidden="true">${
+				i < fait ? icon('check') : ''
+			}</span>`,
+		);
 	}
 	const lbl = `${fait} activité${fait > 1 ? 's' : ''} sur ${total} faite${fait > 1 ? 's' : ''}`;
 	return html`<div class="programme-pastilles" role="img" aria-label="${lbl}">${s}</div>`;

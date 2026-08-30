@@ -938,10 +938,14 @@ function finalizeSprint() {
    l'exercice ; le récap n'est qu'un épilogue SOUS lui. */
 function renderSprintResults(medalInfo: RunResult, streakDays: number, recap: SafeHtml = VIDE) {
 	const acc = sprintAnswered ? Math.round((sprintScore / sprintAnswered) * 100) : 0;
-	let extra = '';
+	// Liste de fragments, JAMAIS une chaîne accumulée : `extra += html\`…\`` coerce le
+	// `SafeHtml` en « [object Object] », que le gabarit affiche ensuite en toutes lettres.
+	const extra: SafeHtml[] = [];
 	if (medalInfo) {
-		if (medalInfo.isRecord) extra += html`<div class="rb-record">🎉 Nouveau record !</div>`;
-		extra += html`<div class="rb-rank">C'est ton ${medalInfo.rank}<sup>${medalInfo.rank === 1 ? 'er' : 'e'}</sup> meilleur sprint sur ${medalInfo.total}.${streakSuffix(streakDays)}</div>`;
+		if (medalInfo.isRecord) extra.push(html`<div class="rb-record">🎉 Nouveau record !</div>`);
+		extra.push(
+			html`<div class="rb-rank">C'est ton ${medalInfo.rank}<sup>${medalInfo.rank === 1 ? 'er' : 'e'}</sup> meilleur sprint sur ${medalInfo.total}.${streakSuffix(streakDays)}</div>`,
+		);
 	}
 	const stage = document.getElementById('sprintStage');
 	if (stage)

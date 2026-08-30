@@ -295,22 +295,53 @@ sinon le gate vert en n'examinant plus rien.
 
 ### Échappement HTML par construction (#614)
 
-Quatre fichiers, quatre niveaux.
+Cinq fichiers, cinq niveaux.
 
-`tests/html-positions-gate.test.ts` est le **gate** du lot. Il construit un programme
-TypeScript sur `src/` et attrape les trois fautes de rendu qui compilent proprement,
-passent ESLint et passent les tests unitaires : une interpolation à une position que le
-gabarit **refuse** (elle lève, donc l'écran ne se rend plus), du **balisage écrit en
-chaîne** (il sera échappé et lu en clair par l'enfant), et un **fragment sorti de son
-gabarit** (gabarit non balisé, `+`, `.join('')` → « [object Object] »).
+`tests/html-positions-gate.test.ts` attrape deux fautes de rendu qui compilent
+proprement, passent ESLint et passent les tests unitaires : une interpolation à une
+position que le gabarit **refuse** (elle lève, donc l'écran ne se rend plus) et du
+**balisage écrit en chaîne** (il sera échappé et lu en clair par l'enfant). Il garde
+aussi la frontière du moteur de figures — chaque point d'entrée doit être marqué
+`brut()` à l'appel (cf. [Rendu & échappement](rendu-et-echappement.md)).
 
 Deux choix de méthode y sont structurants. Il interroge le **typechecker**, pas les noms :
 une première version reconnaissait les fabriques par leur nom (`html`, `attribut`,
 `brut`…) et criait sur **45 sites sains**, faute de savoir que `ttsAttr(…)` ou
 `marqueCase(…)` rendent déjà un fragment — un gate qui se trompe trois fois sur quatre
 finit contourné. Et il rejoue `analyserPositions`, **la fonction du moteur**, plutôt
-qu'une copie de l'automate qui divergerait au premier changement. Coût ~2 s, en
+qu'une copie de l'automate qui divergerait au premier changement. Coût ~3 s, en
 environnement `node`. Anti-liste-vide : ≥ 300 gabarits et ≥ 1000 interpolations examinés.
+
+**Il tenait autrefois une troisième faute — le fragment sorti de son gabarit —, et
+elle a fui en production** (release `v2026.08.28`) : cinq sites affichaient
+« [object Object] » (résultat du sprint, résultat de toute leçon, pastilles du
+« programme du jour »). Le détecteur ne testait que la forme `a + frag` (`PlusToken`)
+; le motif réel de ces cinq sites était l'accumulateur `extra += html\`…\``
+(`PlusEqualsToken`) — un seul jeton d'écart, et rien ne vérifiait que ce détecteur
+détectait encore quelque chose : sur un arbre sain, un détecteur troué rend le même
+vert qu'un détecteur correct. La classe a donc migré, en plus large, vers le fichier
+suivant ; son numéro reste **vacant** dans [Rendu & échappement](rendu-et-echappement.md),
+qui cite les classes par numéro — renuméroter ferait mentir ces renvois. Trois autres
+sites (runner QCM de leçon, deux écrans de révision) affichaient le mot `html` nu,
+une forme que `html-positions-gate` n'avait jamais eu vocation à voir : c'est une
+détection entièrement nouvelle, pas un trou dans une détection existante.
+
+`tests/fuites-gabarit-html-gate.test.ts` reprend la classe migrée en mieux : **exhaustif
+sur `src/`** par construction (là où l'e2e n'échantillonne que quelques écrans),
+**typé** (il attrape `x += fabriqueUnFragment()`, qu'aucune regex ne voit), et
+couvrant `+`, `+=`, gabarit non balisé, `.join()`, `String()`, `.toString()` — plus la
+seconde forme, nouvelle : un jeton technique (`html`, `balisage`…) resté collé dans le
+balisage **statique** du gabarit, comme le mot « html » nu avant le backtick fermant
+en production. ~3-4 s au `npm test`.
+
+Sa particularité, et c'est la leçon de l'incident : il est **vérifié contre un
+échantillon fautif** tenu dans un fichier virtuel (jamais écrit sur le disque,
+jamais compilé ni linté par le projet), qui rejoue les deux formes — témoins
+légitimes compris (un lien `guide.html` coupé par une interpolation, un fragment
+joint par `joindre()`) — et exige que le détecteur les signale **toutes**, sans
+faux positif. Cette auto-vérification a servi dès l'écriture : elle a démasqué une
+première version qui ratait un jeton collé juste après un nœud texte. Sans elle, un
+trou dans ce détecteur serait, à nouveau, indiscernable d'un arbre sain.
 
 `tests/html-injection-balayage.test.ts` prend le problème par l'autre bout : au lieu
 d'une liste de caractères choisie à la main (donc ceux auxquels l'auteur a pensé), il
@@ -338,13 +369,19 @@ produit**, pas la chaîne : « l'élément `<img>` n'existe pas » dit ce qui co
 un test sur la chaîne se satisferait d'un `&lt;` obtenu par hasard. Ces chemins étaient
 déjà échappés avant #614 — c'est le point : la conversion ne devait rien dé-échapper.
 
-Côté e2e, `e2e/echappement-rendu.spec.ts` ferme le risque symétrique, invisible aux
-deux précédents : un fragment **doublement** échappé ne casse ni la compilation ni un
-sélecteur, il s'affiche simplement en clair à l'enfant. La spec lit le TEXTE VISIBLE de
-quatre familles de rendu (fiche, runner à widget, espace encadrant, sprint) et refuse
-toute ouverture de balise — plus « [object Object] », marque de l'oubli inverse. Le
+Côté e2e, `e2e/echappement-rendu.spec.ts` (11 tests) ferme le risque symétrique,
+invisible aux gates statiques : un fragment **doublement** échappé ne casse ni la
+compilation ni un sélecteur, il s'affiche simplement en clair à l'enfant. La spec lit
+le TEXTE VISIBLE de neuf familles de rendu et refuse toute ouverture de balise, plus
+« [object Object] » et le mot `html` nu — marques des deux oublis symétriques. Le
 **chevron seul** n'est pas testé, délibérément : les leçons de comparaison affichent
-« 3 < 5 ».
+« 3 < 5 ». Elle n'en couvrait que quatre (fiche, runner à widget, espace encadrant,
+sprint) quand les huit sites ci-dessus ont fui en production : aucun n'était sur les
+six écrans qu'elle traversait alors, malgré un en-tête qui nommait déjà les deux
+symptômes cherchés. Cinq tests de plus depuis, un par écran qui avait réellement fui
+(runner QCM de leçon — question et résultat —, résultat du sprint, « programme du
+jour », révision QCM et problème) : c'est la limite propre à un gate par
+échantillon, qui ne prouve que les écrans qu'il visite.
 
 La règle ESLint, elle, vit dans `eslint.config.js` et exige que toute affectation à
 `.innerHTML` soit de la forme `X.balisage`.

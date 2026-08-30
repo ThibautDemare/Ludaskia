@@ -192,11 +192,12 @@ conversion. Elles ne se voyaient qu'à l'écran, et c'est ce qui les rend danger
 2. **Balisage écrit en chaîne** (`${cond ? '<span>…</span>' : ''}`). Le gabarit fait
    son travail, échappe, et l'enfant lit `<span>…` en clair.
 3. **Fragment sorti de son gabarit** : interpolé dans un gabarit **non balisé**,
-   concaténé au `+`, ou `.join('')` sur un tableau de fragments. `SafeHtml` n'ayant
-   pas de `toString()`, ça rend `[object Object]`. `join` acceptant n'importe quel
-   type d'élément, rien ne rougit : **111 sites** étaient concernés.
+   concaténé au `+` ou au `+=`, joint par `.join('')`, ou coercé par `String()` /
+   `.toString()`. `SafeHtml` n'ayant pas de `toString()`, ça rend `[object Object]`.
+   `join` acceptant n'importe quel type d'élément, rien ne rougit : **111 sites**
+   étaient concernés à la conversion.
 
-`tests/html-positions-gate.test.ts` les attrape toutes les trois, en ~2 s, au
+`tests/html-positions-gate.test.ts` attrape les classes **1 et 2**, en ~3 s, au
 `npm test`. Il construit un programme TypeScript sur `src/` et interroge le
 **typechecker** — pas une heuristique de noms : une première version reconnaissait
 les fabriques par leur nom (`html`, `attribut`, `brut`…) et criait sur **45 sites
@@ -206,14 +207,45 @@ fragment. Un gate qui se trompe trois fois sur quatre finit contourné.
 Pour la classe 1, le gate rejoue `analyserPositions` — **la fonction du moteur**,
 pas une copie, qui divergerait.
 
+**La classe 3 a fui en production** (release `v2026.08.28`) : le détecteur posé
+dans `html-positions-gate` ne testait que la forme `a + frag` (`PlusToken`), alors
+que le motif fautif réel est l'accumulateur `extra += html\`…\`` (`PlusEqualsToken`)
+— un seul jeton d'écart. **Cinq** sites en ont profité pour partir en production
+avec « [object Object] » à l'écran (résultat du sprint, résultat de toute leçon,
+pastilles du « programme du jour »). La même release en portait **trois** autres,
+qui affichaient le mot `html` nu resté collé avant le backtick fermant : ceux-là
+ne relèvent d'aucun trou, mais d'une faute qu'**aucun** garde-fou ne cherchait —
+du texte technique dans le balisage STATIQUE d'un gabarit. La classe 3 a donc été
+**retirée** de
+`html-positions-gate.test.ts` — son numéro laissé **vacant**, pour ne pas faire
+mentir les renvois par numéro de cette page — et reprise, en plus large (`+` et
+`+=`, le jeton `html` nu compris), par `tests/fuites-gabarit-html-gate.test.ts`
+(cf. [Tests](tests.md)).
+
+Deux leçons qui dépassent l'incident :
+
+- **un garde-fou qui n'est pas lui-même gardé se périme en silence** : sur un
+  arbre sain, un détecteur troué rend exactement le même vert qu'un détecteur
+  correct. `tests/fuites-gabarit-html-gate.test.ts` s'éprouve donc contre un
+  **échantillon fautif** tenu dans un fichier virtuel (jamais écrit sur le
+  disque, jamais compilé par le projet) — ce qui a démasqué une première version
+  du détecteur avant même sa mise en service ;
+- **un garde-fou par échantillon ne prouve que ce qu'il visite** :
+  `e2e/echappement-rendu.spec.ts` cherchait déjà « [object Object] » et nommait
+  les deux symptômes dans son en-tête, et a pourtant laissé fuir les huit sites —
+  aucun n'était sur les écrans qu'il traverse. Sur cette classe de défaut, c'est
+  au **statique**, exhaustif par construction sur `src/`, de porter
+  l'exhaustivité ; l'e2e ne peut que confirmer sur les écrans qu'il visite.
+
 ## Ce qui tient la règle
 
 | Garde | Ce qu'il attrape |
 | --- | --- |
 | Le **type** | Une fonction de rendu qui renvoie du texte brut ; du texte passé à `wrapGrandsNombres` / `stackFractions`. |
 | La **règle ESLint** | Une affectation `.innerHTML` dont la valeur n'est pas un fragment. |
-| `tests/html-positions-gate.test.ts` | Les trois fautes ci-dessus, sur tout `src/`. |
+| `tests/html-positions-gate.test.ts` | Les fautes 1 et 2 ci-dessus (interpolation à une position refusée, balisage écrit en chaîne), plus la frontière du moteur de figures, sur tout `src/`. |
+| `tests/fuites-gabarit-html-gate.test.ts` | La faute 3 (fragment sorti de son gabarit — `+`, `+=`, gabarit non balisé, `.join()`, `String()`, `.toString()`) et le jeton technique (`html`…) resté collé dans le balisage statique — vérifié contre un échantillon fautif pour qu'un trou dans le détecteur échoue bruyamment plutôt que de rester silencieusement vert. |
 | `tests/html-gabarit.test.ts` | Le contrat du gabarit, position par position. |
 | `tests/html-injection-balayage.test.ts` | Les codes 1..255 (plus les espaces Unicode) sur les trois positions, **l'analyseur DOM pour arbitre** — c'est lui qui a trouvé le repli inopérant de l'attribut non quoté. Ses **contrôles négatifs** vérifient d'abord que l'oracle sait voir une injection : sans eux, le balayage passerait aussi bien si l'analyseur ne voyait rien. |
 | `tests/echappement-chemins-sensibles.test.ts` | Les chemins nommés par #614 (nom de profil, valeur de tuile, libellés, `aria-label`) restent échappés. |
-| `e2e/echappement-rendu.spec.ts` | Rien ne s'affiche **en clair** sur les quatre familles de rendu (double échappement, `[object Object]`). |
+| `e2e/echappement-rendu.spec.ts` | Rien ne s'affiche **en clair** sur neuf familles de rendu (double échappement, `[object Object]`, jeton `html` nu). |

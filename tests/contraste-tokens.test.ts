@@ -515,6 +515,123 @@ describe("Palette d'impression, miroir de la palette claire (#601)", () => {
 });
 
 /* ============================================================
+   Les RECOPIES de `--accent` hors des feuilles de thème (#600)
+   ============================================================ */
+
+/** Un endroit du dépôt qui réécrit à la main une couleur d'accent. `theme` sert à
+ *  retrouver la palette de référence, `role` à dire ce que la copie casse si elle ment. */
+type Recopie = { fichier: string; motif: RegExp; theme: string; role: string };
+
+/* Ce qui rend ces copies dangereuses, et différentes des tokens : elles restent
+   PARFAITEMENT LISIBLES quand elles mentent. Une pastille d'aperçu qui affiche l'ancien
+   vert ne déclenche aucun gate de contraste — elle annonce simplement une couleur que le
+   thème ne rend plus, et personne ne s'en aperçoit avant des mois. Même classe de défaut
+   que la palette d'impression de #601 (une copie à la main qui avait cessé de suivre sa
+   source) ; #600 en a trouvé six familles d'un coup en déplaçant les accents. */
+const RECOPIES: Recopie[] = [
+	{
+		fichier: 'src/styles/themes.scss',
+		motif: /\.theme-defaut \.theme-dot \{\s*background: (#[0-9a-fA-F]{6})/,
+		theme: 'defaut',
+		role: "pastille d'aperçu du sélecteur de thèmes",
+	},
+	{
+		fichier: 'src/styles/themes.scss',
+		motif: /\.theme-ciel \.theme-dot \{\s*background: (#[0-9a-fA-F]{6})/,
+		theme: 'ciel',
+		role: "pastille d'aperçu du sélecteur de thèmes",
+	},
+	{
+		fichier: 'src/styles/themes.scss',
+		motif: /\.theme-automne \.theme-dot \{\s*background: (#[0-9a-fA-F]{6})/,
+		theme: 'automne',
+		role: "pastille d'aperçu du sélecteur de thèmes",
+	},
+	{
+		fichier: 'src/styles/themes.scss',
+		motif: /\.theme-lagon \.theme-dot \{\s*background: (#[0-9a-fA-F]{6})/,
+		theme: 'lagon',
+		role: "pastille d'aperçu du sélecteur de thèmes",
+	},
+	{
+		fichier: 'src/styles/themes.scss',
+		motif: /\.theme-fruit-rouge \.theme-dot \{\s*background: (#[0-9a-fA-F]{6})/,
+		theme: 'fruit-rouge',
+		role: "pastille d'aperçu du sélecteur de thèmes",
+	},
+	// La barre d'outils porte `--accent` : `theme-color` teinte le chrome du navigateur
+	// juste au-dessus d'elle. Une valeur périmée s'y voit comme une COUTURE entre les deux.
+	{
+		fichier: 'app.html',
+		motif: /<meta name="theme-color" content="(#[0-9a-fA-F]{6})"/,
+		theme: 'defaut',
+		role: 'couleur du chrome du navigateur',
+	},
+	{
+		fichier: 'index.html',
+		motif: /<meta name="theme-color" content="(#[0-9a-fA-F]{6})"/,
+		theme: 'defaut',
+		role: 'couleur du chrome du navigateur',
+	},
+	{
+		fichier: 'guide.html',
+		motif: /<meta name="theme-color" content="(#[0-9a-fA-F]{6})"/,
+		theme: 'defaut',
+		role: 'couleur du chrome du navigateur',
+	},
+	{
+		fichier: 'vite.config.ts',
+		motif: /theme_color: '(#[0-9a-fA-F]{6})'/,
+		theme: 'defaut',
+		role: 'manifeste PWA (écran de démarrage, application installée)',
+	},
+	// Les deux générateurs tournent HORS du bundle (node + navigateur headless) : ils ne
+	// peuvent pas lire une variable CSS, d'où la copie. Seul le PREMIER stop du dégradé est
+	// `--accent` ; le second est un vert choisi à la main, non tenu ici (dit sur place).
+	{
+		fichier: 'tools/pwa-icons/generate.mjs',
+		motif: /linear-gradient\(160deg,(#[0-9a-fA-F]{6}) 0%/,
+		theme: 'defaut',
+		role: "icônes de l'application installée",
+	},
+	{
+		fichier: 'tools/og-image/generate.mjs',
+		motif: /linear-gradient\(160deg,(#[0-9a-fA-F]{6}) 0%/,
+		theme: 'defaut',
+		role: 'bannière de partage (og:image)',
+	},
+];
+
+describe('Les recopies de --accent suivent leur source (#600)', () => {
+	it.each(RECOPIES)('$fichier — $role ($theme)', ({ fichier, motif, theme, role }) => {
+		const m = readFileSync(fichier, 'utf8').match(motif);
+		expect(
+			m,
+			`Rien ne correspond à ${motif} dans ${fichier} : la déclaration a changé de forme, ` +
+				`ce test ne garde plus rien. Corriger le motif plutôt que retirer l'entrée.`,
+		).toBeTruthy();
+		const attendu = PALETTES[theme]['--accent'];
+		expect(
+			m![1].toLowerCase(),
+			`${fichier} écrit ${m![1]} pour « ${role} », alors que --accent du thème ` +
+				`« ${theme} » vaut ${attendu}.\n` +
+				`Cette valeur est une COPIE À LA MAIN du token : elle ne suit pas sa source, et ` +
+				`rien d'autre ne peut le voir — une couleur périmée reste parfaitement lisible, ` +
+				`elle annonce juste une couleur que l'application ne rend plus.\n` +
+				`Pour les deux générateurs d'images, corriger le littéral ne suffit pas : il faut ` +
+				`aussi RÉGÉNÉRER les PNG (npm run pwa:icons, npm run og:gen).`,
+		).toBe(attendu);
+	});
+
+	it('la liste couvre bien les familles de recopie connues', () => {
+		// Garde contre un test qui se viderait : si quelqu'un retire des entrées au lieu de
+		// corriger les copies, l'échec doit venir d'ici plutôt que d'un silence.
+		expect(RECOPIES.length).toBeGreaterThanOrEqual(11);
+		expect(new Set(RECOPIES.map((r) => r.fichier)).size).toBeGreaterThanOrEqual(6);
+	});
+});
+
+/* ============================================================
    Le module partagé lui-même (#582)
    ============================================================ */
 

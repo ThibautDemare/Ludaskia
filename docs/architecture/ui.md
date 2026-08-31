@@ -1440,8 +1440,11 @@ du texte et 3:1 pour un composant d'interface, sur les six thèmes. **Réflexe �
 de poser une couleur** : la mesurer avec `node tools/contrast/contrast.mjs`, qui partage sa
 formule avec le gate ; et si un nouveau couple apparaît, l'**ajouter à la table** — sinon il
 n'est gardé par rien. Les défauts connus non corrigés y sont déclarés en dérogation avec
-leur issue (#385, #438, #600, #601) ; ces dérogations **échouent le jour où le défaut est
-corrigé**, pour forcer leur retrait.
+leur issue — il ne reste que #385, les autres (#438, #600, #601) ayant été corrigés et
+leur entrée retirée du même coup. Ces dérogations **échouent le jour où le défaut est
+corrigé**, pour forcer leur retrait : c'est ce mécanisme, et non une relecture, qui a
+signalé que la couleur composée du chronomètre avait bougé quand les accents ont été
+assombris (#600 puis #609).
 
 Token associé, introduit à cette occasion : **`--field-line`** (#386), la ligne de base d'un
 champ de réponse (`.ans` et dérivés). Elle était en `#333` **codé en dur**, donc jamais

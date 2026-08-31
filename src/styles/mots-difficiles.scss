@@ -15,12 +15,16 @@
    la table de #582.
 
    Le premier jet reprenait `--accent` sur `--accent-soft`, en croyant réutiliser un
-   couple validé (c'est celui de `.atelier-undo` et de `.rev-cat`). C'était faux :
-   ce couple est une DÉROGATION de `tests/contraste-tokens.test.ts`, un échec CONNU
-   entre 3,59:1 et 4,50:1 sur cinq des six thèmes (#600). Le reprendre aurait ajouté
-   une instance de plus au défaut au lieu de le corriger — exactement le « contourné
-   feuille par feuille » que #576 a coûté cher à démêler. Remontée
-   `relecteur-accessibilite`. Le bouton est donc CONTOURÉ (fond `--paper`, bordure
+   couple validé (c'est celui de `.atelier-undo` et de `.rev-cat`). C'était faux À
+   L'ÉPOQUE : ce couple était alors une DÉROGATION de `tests/contraste-tokens.test.ts`,
+   un échec CONNU entre 3,59:1 et 4,50:1 sur cinq des six thèmes. Le reprendre aurait
+   ajouté une instance de plus au défaut au lieu de le corriger — exactement le
+   « contourné feuille par feuille » que #576 a coûté cher à démêler. Remontée
+   `relecteur-accessibilite`.
+   DEPUIS, #600 a corrigé la cause : les cinq accents clairs ont été assombris, le
+   couple est conforme (≥ 4,61:1) et sa dérogation a été retirée. Le choix ci-dessous
+   n'est donc plus imposé par le contraste — il est GARDÉ pour la raison qui suit, qui
+   elle n'a pas changé. Le bouton est CONTOURÉ (fond `--paper`, bordure
    `--accent-dark`) plutôt que rempli d'une teinte douce : ça règle le contraste, et
    ça le distingue au passage du `.btn-primary` de l'écran, qui reste l'action
    principale.

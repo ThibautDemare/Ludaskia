@@ -31,7 +31,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{width:1200px;height:630px;}
 .banner{width:1200px;height:630px;display:flex;align-items:center;justify-content:center;gap:64px;
-  background:linear-gradient(160deg,#2f7d52 0%,#2a7048 100%);
+  background:linear-gradient(160deg,#2d774e 0%,#286a44 100%);
   font-family:'Nunito',system-ui,sans-serif;color:#fff;}
 .pastille{flex:none;width:400px;height:400px;border-radius:50%;background:#ffffff;
   display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.22);}

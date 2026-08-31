@@ -84,7 +84,7 @@ export default defineConfig({
 				display: 'standalone',
 				orientation: 'any',
 				background_color: '#ffffff', // --paper
-				theme_color: '#2f7d52', // --accent (barre d'outils)
+				theme_color: '#2d774e', // --accent (barre d'outils)
 				categories: ['education', 'kids'],
 				icons: [
 					{ src: '/Ludaskia/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

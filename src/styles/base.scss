@@ -13,9 +13,18 @@
 :root {
 	/* Accent de marque = VERT (thème par défaut). Le bleu historique est devenu le
 	   thème déblocable « ciel » (voir themes.scss). Les tokens nomment un RÔLE
-	   (--accent…), pas une teinte. */
-	--accent: #2f7d52;
-	--accent-dark: #225c3c;
+	   (--accent…), pas une teinte.
+	   Assombri (#600) : à #2f7d52 l'accent employé comme TEXTE tombait à 4,29:1 sur
+	   --accent-soft et 4,48:1 sur --page-bg, sous AA. La surface CONTRAIGNANTE est
+	   --accent-soft (la plus sombre des trois où ce texte se pose) : caler l'accent
+	   dessus donne la marge sur les deux autres. Teinte et saturation figées, seule la
+	   clarté descend (147°, 45 %, 33,7 % → 32,2 %) — même méthode que --ok et --muted.
+	   4,64:1 sur --accent-soft, 4,84 sur --page-bg, 5,44 sur --paper.
+	   --accent-dark SUIT la même descente : laissé en place, l'écart de survol se
+	   resserrait (1,568 → 1,449 ici, et 1,510 → 1,164 en Lagon, où le survol serait
+	   devenu invisible). Il repasse ainsi à 1,576, soit le pas d'aujourd'hui. */
+	--accent: #2d774e;
+	--accent-dark: #205638;
 	--accent-soft: #e4f0e8;
 	--clock-min: #e8662a; /* aiguille des minutes (#88) — corail, distinct de l'accent des heures ; 1er token du moteur de figures */
 	--ink: #1a1a1a;

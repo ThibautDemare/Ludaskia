@@ -598,7 +598,7 @@ Deux choix qui font la différence entre ce gate et une allow-list qui s'endort 
   correspondaient qu'à 4 causes racines ; une liste par sélecteur aurait grossi à chaque
   vue ajoutée sans rien dire de plus. Une dérogation déclare le couple de couleurs
   **mesuré par axe** — donc la couleur réellement rendue, composition alpha comprise. C'est
-  ce qui permet de nommer `#50926e`, qui n'est écrit dans aucune feuille : c'est un voile
+  ce qui permet de nommer `#4f8d6a`, qui n'est écrit dans aucune feuille : c'est un voile
   blanc à 16 % posé sur l'accent (la pastille du chronomètre, #609).
 - **Une dérogation qui n'excuse plus rien fait échouer le test.** Corriger le défaut oblige
   à retirer l'entrée. Sans ça, l'allow-list survit à ce qu'elle justifiait et finit par

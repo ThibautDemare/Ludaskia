@@ -79,13 +79,19 @@ describe('orthographe — store', () => {
 		expect(s.banque[a.id].homophone).toBe(true);
 	});
 
-	test('un nouveau mot initialise validation/atelier à zéro et entre en révision', () => {
+	test('un nouveau mot initialise validation/atelier à zéro et attend son atelier pour entrer en révision', () => {
 		const s = emptyOrthoState();
 		const m = addOrGetMot(s, { mot: 'fleur' });
 		expect(m.validation).toEqual({ motCache: false, tuiles: false, dictee: false });
 		expect(m.atelierFait).toBe(false);
 		expect(m.revision.palier).toBe(0);
-		// Entrée en rotation de révision espacée dès l'ajout (#45) : 1er re-test à venir.
+		// La règle a CHANGÉ en #641 (critère 16) : le mot n'entre plus en rotation à l'ajout
+		// (#45), mais à son ATELIER. Un mot ajouté le lundi et jamais découvert accumulait
+		// sinon du retard tout seul, puis saturait la première séance de révision d'une liste
+		// que l'enfant n'avait pas encore vue — et se faisait interroger sur un mot qu'on ne
+		// lui avait jamais montré. Voir tests/ortho-revision-atelier.test.ts.
+		expect(m.revision.prochaineRevision).toBeNull();
+		marquerAtelierFait(m);
 		expect(typeof m.revision.prochaineRevision).toBe('number');
 		expect(m.revision.prochaineRevision!).toBeGreaterThan(Date.now());
 	});

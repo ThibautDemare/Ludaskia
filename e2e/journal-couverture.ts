@@ -117,8 +117,9 @@ const ORTHO_SEED = {
    « dictée » n'apparaît même pas (`dicteeDisponible()`, ui/tts.ts). Même piège
    `SpeechSynthesisUtterance` que `ortho-atelier-ecouter.spec.ts` et
    `ortho-dictee-muette.spec.ts` : affecter un objet JS ordinaire à `.voice` sur le
-   VRAI constructeur lève une erreur WebIDL, d'où l'utterance factice. */
-const STUB_VOIX_FR = `(() => {
+   VRAI constructeur lève une erreur WebIDL, d'où l'utterance factice.
+   Exportée : plusieurs specs orthographe en ont besoin (pas seulement cette table). */
+export const STUB_VOIX_FR = `(() => {
   const voix = { lang: 'fr-FR', name: 'Voix FR de test', localService: true, default: true, voiceURI: 'e2e-voix-fr' };
   class FakeUtterance {
     constructor(text) { this.text = text; this.voice = null; this.lang = ''; this.rate = 1; }
@@ -127,6 +128,19 @@ const STUB_VOIX_FR = `(() => {
   window.SpeechSynthesisUtterance = FakeUtterance;
   window.speechSynthesis.getVoices = () => [voix];
   window.speechSynthesis.speak = () => {};
+})();`;
+
+/* Pendant de STUB_VOIX_FR : force l'ABSENCE de voix française, quel que soit
+   l'hôte qui exécute la suite. Chromium headless sous Linux (CI) n'expose déjà
+   aucune voix par défaut, mais Chromium expose les voix SAPI du système sous
+   Windows — souvent françaises. Une spec qui compte sur « pas de voix » pour
+   garder `dicteeDisponible()` fausse (modes ciblés sans dictée, écran de choix
+   sans le 3e bouton…) devient alors dépendante de la machine qui l'exécute :
+   verte en CI, rouge (ou fausse verte) en local. `getVoices` renvoie un tableau
+   vide sans toucher au reste de l'API. */
+export const STUB_SANS_VOIX = `(() => {
+  if (typeof speechSynthesis === 'undefined') return;
+  window.speechSynthesis.getVoices = () => [];
 })();`;
 
 async function amorcerOrtho(page: Page, avecVoix = false): Promise<void> {

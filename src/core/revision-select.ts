@@ -15,7 +15,7 @@ import {
 } from './revision';
 import { getLessonById, CATEGORIES, ORTHO_CATEGORY_ID } from './catalog';
 import type { SchoolLevel } from './catalog';
-import type { OrthoState, EtatRevision } from './orthographe/types';
+import type { MotOrtho, OrthoState, EtatRevision } from './orthographe/types';
 
 /* Leçon en rotation à un niveau STRICTEMENT INFÉRIEUR au niveau actif de sa matière
    (#232) : entrée de l'entretien du niveau inférieur. Le contrat vit ici, avec la
@@ -48,6 +48,20 @@ export interface DueGroup {
 	items: DueItem[];
 }
 
+/* Un mot est ÉLIGIBLE à la révision espacée seulement s'il a été découvert (#641).
+   Deux raisons de le filtrer ici, en plus de ne plus poser d'échéance à l'ajout
+   (`marquerAtelierFait`) : les banques DÉJÀ constituées portent des échéances posées à
+   l'ajout, et un mot jamais rencontré n'a rien à re-tester — la révision espacée entretient
+   une trace, elle ne la crée pas. Sans ce filtre, une liste saisie en début de mois et
+   ouverte trois semaines plus tard saturait la première séance de sa dette accumulée.
+   Le prédicat est partagé par TOUT ce qui parle de révision à l'enfant (compte, sélection,
+   prochaine échéance, « as-tu des révisions ») : c'est l'invariant « annoncé = proposé »
+   (#478) qui l'exige — une seule de ces lectures qui filtrerait autrement remettrait un
+   écart entre ce que la carte d'accueil promet et ce que la séance sert. */
+function motEnRevision(m: MotOrtho): boolean {
+	return m.atelierFait;
+}
+
 /* Tous les éléments dus (mots + leçons), les plus en retard d'abord. */
 function collectDue(
 	ortho: OrthoState,
@@ -57,7 +71,7 @@ function collectDue(
 	const due: DueItem[] = [];
 	for (const id in ortho.banque) {
 		const m = ortho.banque[id];
-		if (estDu(m.revision, now)) {
+		if (motEnRevision(m) && estDu(m.revision, now)) {
 			due.push({
 				kind: 'word',
 				id,
@@ -166,7 +180,10 @@ export function prochaineEcheance(
 		if (e.prochaineRevision <= now) return; // déjà dû
 		if (min == null || e.prochaineRevision < min) min = e.prochaineRevision;
 	};
-	for (const id in ortho.banque) consider(ortho.banque[id].revision);
+	for (const id in ortho.banque) {
+		const m = ortho.banque[id];
+		if (motEnRevision(m)) consider(m.revision);
+	}
 	for (const id in lessonRevisions) {
 		if (getLessonById(id)) consider(lessonRevisions[id]);
 	}
@@ -183,7 +200,9 @@ export function aDesRevisions(
 	lessonRevisions: Record<string, EtatRevision>,
 	bas: LeconBasNiveau[] = [],
 ): boolean {
-	for (const id in ortho.banque) if (ortho.banque[id].revision) return true;
+	for (const id in ortho.banque) {
+		if (motEnRevision(ortho.banque[id]) && ortho.banque[id].revision) return true;
+	}
 	for (const id in lessonRevisions) if (getLessonById(id)) return true;
 	// Un profil dont il ne reste QUE des notions du niveau inférieur en rotation n'est pas
 	// un profil neuf : il a tout révisé, ce qui n'est pas le même message (#232).

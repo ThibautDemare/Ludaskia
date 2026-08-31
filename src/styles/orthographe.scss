@@ -661,6 +661,19 @@ html.anim-reduced .tuile-slot.is-caret .tuile-curseur {
 .ortho-bilan-emoji {
 	font-size: 3rem;
 }
+/* Fin de séance : un mode d'entraînement dont le dernier mot vient d'être franchi (#641).
+   Encart POSITIF (vert), et pas un avertissement : ce qui vient d'arriver est une réussite,
+   et le message sert surtout à devancer la lecture « mon bouton a disparu » de la prochaine
+   visite. Couple de tokens déjà couvert (--ok sur --ok-soft, cf. .mode-btn-badge). */
+.ortho-mode-epuise {
+	max-width: 30rem;
+	margin: 1rem auto;
+	padding: 0.6rem 1rem;
+	border-radius: 12px;
+	color: var(--ok);
+	background: var(--ok-soft);
+	font-weight: 600;
+}
 
 /* Atelier du mot (entourer les pièges, SVG) */
 .atelier-stage {

@@ -11,7 +11,7 @@
      formes homophones je/il « mange » restent des cibles distinctes, et n'entrent
      pas en collision avec les mots classiques de la banque).
    ============================================================ */
-import { etatNeuf } from '../revision';
+import { etatHorsRotation } from '../revision';
 import { displayPronoun, PRONOUNS } from '../../data/francais/conjugaison';
 import {
 	lookupConjugatedForms,
@@ -93,11 +93,14 @@ export function nbCiblesVerbes(verbes: VerbeConfig[] = []): number {
 }
 
 /** Déplie un verbe en cibles MotOrtho « neuves » à partir des formes RÉSOLUES
-    (Map temps → 6 formes). Fonction pure : `now` daté par l'appelant. */
+    (Map temps → 6 formes). Fonction pure.
+    `_now` n'est plus lu depuis #641 (une cible naît HORS rotation de révision, son
+    compteur ne démarrant qu'à l'atelier) : le paramètre reste pour ne pas casser les
+    appelants, et parce que toute date remise ici devra être celle de l'appelant. */
 export function expanseVerbe(
 	cfg: VerbeConfig,
 	formesParTemps: Map<VerbTense, FormesConjuguees>,
-	now: number,
+	_now: number,
 ): MotOrtho[] {
 	const apres = cfg.complement ? ' ' + cfg.complement : '';
 	const out: MotOrtho[] = [];
@@ -114,7 +117,7 @@ export function expanseVerbe(
 				entourage: [],
 				atelierFait: false,
 				validation: { motCache: false, tuiles: false, dictee: false },
-				revision: etatNeuf(now),
+				revision: etatHorsRotation(), // rotation démarrée à l'atelier, pas ici (#641)
 				origine: 'verbe',
 			});
 		}

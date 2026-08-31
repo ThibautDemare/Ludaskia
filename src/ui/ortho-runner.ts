@@ -13,16 +13,18 @@ import { loadOrtho, saveOrtho, getListe } from '../core/orthographe/store';
 import { materialiserVerbes } from '../core/orthographe/verbes';
 import { motsDeLecon } from '../core/orthographe/lessons';
 import { genExerciseOrtho, ORTHO_MODE_OPTIONS } from '../core/orthographe/exercise';
-import { checkAnswer } from '../core/exercise';
+import { checkAnswer, type ModeOption } from '../core/exercise';
 import { TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
 import {
 	statutMot,
 	prochaineActivite,
+	activiteProgressive,
 	marquerAtelierFait,
 	validerMode,
 	decouverteEnCours,
 	listeEtoilee,
 } from '../core/orthographe/runner';
+import { modesEpuises, modesEpuisesPendant } from '../core/orthographe/choix-mode';
 import type { MotOrtho, OrthoState, ModeOrtho } from '../core/orthographe/types';
 import { diffCorrect } from '../core/orthographe/diff';
 import { addXP, getXP, niveauDepuisXP, recordSessionActivity } from '../core/progress';
@@ -39,13 +41,13 @@ import {
 	ajusterTailleMot,
 } from './ortho-atelier';
 import { recompensesEntre } from '../core/unlocks';
-import { announceRewards, showLevelUp } from './effects';
+import { announceRewards } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import { dicteeDisponible, dicter, messageSansVoix } from './tts';
 import { icon, iconOr } from './icon';
 import { monterBoutonAide, maybeAutoAide } from './aide-exercice';
 import { capterErreur } from './erreur-capture';
-import { html, drapeau, type SafeHtml, joindre, VIDE } from '../core/html';
+import { html, drapeau, attribut, type SafeHtml, joindre, VIDE } from '../core/html';
 
 const ACCENTS = ['é', 'è', 'ê', 'à', 'â', 'ç', 'ô', 'î', 'ï', 'û', 'ù', 'œ', '-', "'"];
 const SEANCE_MAX = 8; // activités par séance avant de proposer une pause (rythme CE2)
@@ -57,9 +59,23 @@ let idx = 0;
 let dispoDictee = false;
 let niveauAvant = 0;
 let actes = 0;
-// Mode de la séance (#69) : null = parcours complet (atelier → modes → étoile) ;
-// un mode = entraînement ciblé sur ce seul mode (ne valide pas, pas d'étoile).
+// Mode de la séance (#69) : null = parcours complet (atelier → modes → étoile) ; un mode =
+// entraînement ciblé sur ce seul mode. Depuis #641 un mode ciblé VALIDE lui aussi (le cumul
+// vit dans `validerMode`) : il peut donc faire monter un mot, étoiler la liste et décrocher
+// des trophées. Ce qu'il change encore, c'est le CHOIX de l'activité (imposée) et le tour de
+// piste (on tourne sur tous les mots au lieu de s'arrêter aux non-maîtrisés).
 let seanceMode: ModeOrtho | null = null;
+// La liste était-elle DÉJÀ étoilée à l'ouverture (#641, critère 5) ? On ne rejoue pas la
+// célébration de première complétion pour une liste acquise avant que la séance commence.
+let listeEtoileeAvant = false;
+// Modes terminés pour la liste À L'OUVERTURE (#641, critère 12) : témoin qui permet de dire,
+// en fin de séance, lesquels viennent de basculer — et eux seuls.
+let modesEpuisesAvant: ModeOrtho[] = [];
+// La séance a-t-elle comporté au moins une activité qui POUVAIT faire progresser un mot
+// (#641) ? C'est ce qui décide si l'étape « dictée » du programme du jour se coche, la
+// réussite n'entrant pas dans le calcul. Un parcours complet compte toujours (y compris son
+// tour de révision) ; un mode ciblé ne compte que s'il avait quelque chose à faire gagner.
+let seanceProgressive = false;
 // Tour de révision : true quand le parcours complet est lancé sur une liste DÉJÀ
 // entièrement maîtrisée. Au lieu d'un bilan vide (l'étoile est déjà gagnée), on
 // repasse chaque mot une fois en mode d'entretien, puis on clôt par « Révision
@@ -190,9 +206,12 @@ export async function startOrthoRun(lessonId: string): Promise<void> {
 	actes = 0;
 	motsDifficiles = []; // nouvelle séance → nouveau rappel de fin (#618)
 	orthoJournalisee = false; // nouvelle session → re-journalisable une fois (#319)
+	seanceProgressive = false; // nouvelle session : rien n'a encore pu faire progresser (#641)
+	listeEtoileeAvant = listeEtoilee(mots, dispoDictee);
+	modesEpuisesAvant = modesEpuises(mots, dispoDictee);
 	// Parcours complet sur une liste déjà acquise → tour de révision (sinon le bilan
 	// tomberait tout de suite, sans rien proposer à travailler).
-	revisionRun = !seanceMode && listeEtoilee(mots, dispoDictee);
+	revisionRun = !seanceMode && listeEtoileeAvant;
 	if (!mots.length) {
 		goCategorie(ORTHO_CATEGORY_ID);
 		return;
@@ -218,15 +237,66 @@ export function orthoDiscoveryComplete(lessonId: string): boolean {
 	return m.length > 0 && !decouverteEnCours(m);
 }
 
+/* Coût d'une séance, annoncé sur TOUS les boutons qui en lancent une (#641, critère 9) —
+   et sur eux seuls : porté par le seul parcours complet, le chiffre se lirait comme un
+   avertissement contre lui. « Relire mes mots » n'a pas de plafond d'activités, donc pas de
+   chip. Interpolé depuis `SEANCE_MAX` : écrit en dur, le libellé se désynchroniserait
+   silencieusement le jour où la constante bouge. */
+function coutSeanceHTML(): SafeHtml {
+	return html`<span class="mode-btn-cout">${SEANCE_MAX} activités</span>`;
+}
+
+/* Un bouton de mode ciblé. `termine` = tous les mots de la liste ont validé ce mode : il
+   descend en zone basse, porte son badge, et surtout GARDE l'aspect d'un bouton pleinement
+   actif (critère 10) — jamais le pointillé de `.programme-tuile--inactive`, que l'enfant a
+   déjà appris ailleurs comme « pas cliquable ». Il rapporte toujours de l'XP, et le badge
+   le dit — avec le MÊME adverbe que le message de fin de séance (« toujours ») : deux mots
+   différents pour le même fait, sur le même écran, se lisent comme deux faits différents. */
+function modeBtnHTML(m: ModeOption, termine: boolean): SafeHtml {
+	const badge = termine
+		? html`<span class="mode-btn-badge">Terminé pour cette liste · donne toujours des points</span>`
+		: VIDE;
+	return html`<button class="mode-btn" data-mode="${m.id}"${termine ? attribut('data-epuise', '1') : ''}>
+        <span class="mode-btn-ico">${iconOr(m.icon)}</span>
+        <span class="mode-btn-txt">
+          <span class="mode-btn-label">${m.label}</span>
+          ${badge}${coutSeanceHTML()}
+        </span>
+      </button>`;
+}
+
 /* Écran de choix du mode d'une liste (#69), proposé une fois la liste découverte :
-   le parcours complet (conseillé, seul à donner l'étoile) ou un mode ciblé pour
-   s'entraîner librement (sans étoile). Dérivé de ORTHO_MODE_OPTIONS. */
+   le parcours complet (conseillé, seul à donner l'étoile) ou un mode ciblé.
+
+   Depuis #641, les modes se répartissent en DEUX zones : ce qui reste à faire en tête, et
+   plus bas ce qui est déjà terminé pour cette liste (tous ses mots l'ont validé). Un mode
+   terminé ne disparaît pas — il rapporte toujours des points et reste un entraînement
+   valable — mais il cesse de capter le geste par défaut d'un enfant qui va au plus étayé,
+   ce qui est le point de départ de l'issue. La zone basse reste toujours DÉPLIÉE (choix du
+   mainteneur) : un repli en cacherait l'existence à qui ne sait pas qu'il faut chercher.
+
+   Cas limite tenu par le critère 11 : sur une liste entièrement acquise, la zone principale
+   n'a plus de mode ciblé, mais l'écran ne se vide pas (parcours complet + relecture y sont
+   toujours). Les cibles VERBE d'une liste (#261) ne sont pas comptées ici : elles ne sont
+   matérialisées qu'au lancement du parcours, donc un mode ne se dira « terminé » que sur
+   les mots classiques — au pire un bouton reste en tête un peu plus longtemps. */
 export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label: string): void {
-	const cibles = ORTHO_MODE_OPTIONS.filter((m) => m.id !== 'dictee' || dicteeDisponible());
+	const dispo = dicteeDisponible();
+	const motsListe = motsDeLecon(loadOrtho(), lessonId);
+	const finis = modesEpuises(motsListe, dispo);
+	const cibles = ORTHO_MODE_OPTIONS.filter((m) => m.id !== 'dictee' || dispo);
+	const aFaire = cibles.filter((m) => !finis.includes(m.id as ModeOrtho));
+	const termines = cibles.filter((m) => finis.includes(m.id as ModeOrtho));
 	const go = (mode: ModeOrtho | null) => {
 		setPendingOrthoMode(mode);
 		location.hash = 'ortho-' + lessonId;
 	};
+	const zoneTermines = termines.length
+		? html`<div class="mode-choice-epuises">
+      <p class="mode-choice-epuises-sep">Déjà terminés pour cette liste</p>
+      ${joindre(termines.map((m) => modeBtnHTML(m, true)))}
+    </div>`
+		: VIDE;
 	host.innerHTML = html`<div class="mode-choice">
     <h2 class="mode-choice-title">Comment veux-tu t'entraîner ?</h2>
     <p class="mode-choice-lesson">${label}</p>
@@ -236,20 +306,12 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
         <span class="mode-btn-txt">
           <span class="mode-btn-label">Le parcours complet</span>
           <span class="mode-btn-badge">conseillé · donne l'étoile</span>
+          ${coutSeanceHTML()}
         </span>
       </button>
-      ${joindre(
-				cibles.map(
-					(m) => html`<button class="mode-btn" data-mode="${m.id}">
-        <span class="mode-btn-ico">${iconOr(m.icon)}</span>
-        <span class="mode-btn-txt">
-          <span class="mode-btn-label">${m.label}</span>
-          <span class="mode-btn-hint">pour t'entraîner</span>
-        </span>
-      </button>`,
-				),
-			)}
+      ${joindre(aFaire.map((m) => modeBtnHTML(m, false)))}
     </div>
+    ${zoneTermines}
     <div class="mode-choice-etude">
       <p class="mode-choice-etude-sep">Ou pour réviser tranquillement</p>
       <button class="etude-btn" id="btnRevoir">
@@ -341,6 +403,16 @@ function renderDicteeMuette(): void {
 function renderNext(): void {
 	cleanupMotCacheResize(); // on quitte un éventuel mot affiché : plus rien à retracer
 	reviserDisponibiliteDictee();
+	// La liste vient-elle d'être achevée PENDANT une séance ciblée (#641, critère 4) ? Depuis
+	// que le cumul fait monter les mots dans tous les modes, un enfant peut finir sa liste en
+	// tuiles ; il doit alors recevoir le bilan « Liste prête ! », et non tourner en boucle ou
+	// tomber sur l'écran de pause. D'où la place de ce test AVANT le plafond de séance.
+	// Le témoin `listeEtoileeAvant` garde le critère 5 : une liste acquise avant l'ouverture
+	// ne rejoue pas sa célébration (le parcours complet, lui, passe par `revisionRun`).
+	if (seanceMode && !listeEtoileeAvant && listeEtoilee(mots, dispoDictee)) {
+		renderBilan();
+		return;
+	}
 	const word = prochainNonMaitrise();
 	if (!word) {
 		if (revisionRun) renderRevisionFin();
@@ -360,6 +432,12 @@ function renderNext(): void {
 		renderDicteeMuette();
 		return;
 	}
+	// #641 : cette activité-là pouvait-elle faire monter ce mot ? Posé APRÈS l'écran de
+	// dictée muette (une activité qu'on n'a pas pu jouer n'est pas du travail) et AVANT la
+	// réponse de l'enfant (rater ne retire pas le crédit du programme du jour). Le parcours
+	// complet compte toujours : c'est le trajet entier de la liste, y compris son tour de
+	// révision sur une liste déjà acquise, que l'adulte a mis au programme (critère 15).
+	if (!seanceMode || activiteProgressive(word, act, dispoDictee)) seanceProgressive = true;
 	if (act === 'atelier') {
 		renderAtelier(sheets(), word, {
 			contexteHTML: contexteHTML(word),
@@ -828,7 +906,7 @@ function journalOrthoSession(): void {
 	if (orthoJournalisee) return;
 	orthoJournalisee = true;
 	const now = Date.now(); // un seul instant pour les deux journaux de cette session
-	recordSessionActivity('dictee', orthoLessonId || undefined);
+	recordSessionActivity('dictee', orthoLessonId || undefined, seanceProgressive);
 	// Franchissements d'état des listes (#541) : ce qui donne à une dictée la frise d'évolution
 	// des leçons. Toutes les listes sont réévaluées, pas seulement celle jouée — les mots sont
 	// partagés (cf. journaliserPaliersOrtho). `dispoDictee` = ce que l'enfant avait vraiment.
@@ -893,7 +971,8 @@ function renderRevisionFin(): void {
 	annoncerRecompensesFin([]); // pas d'étoile : seulement trophées/niveau réellement gagnés
 }
 
-/* Annonce les récompenses obtenues en fin de parcours ou de révision : trophées
+/* Annonce les récompenses obtenues sur un écran de fin — bilan, révision terminée, ou pause
+   d'une séance qui n'aura pas de bilan (mode ciblé, révision) : trophées
    nouvellement débloqués + éventuelle montée de niveau (modale + confettis). `celebBase`
    = entrées de célébration toujours montrées (l'étoile « Liste prête » du parcours
    complet) ; vide en révision, où l'on ne célèbre que ce qui a réellement été gagné. */
@@ -918,16 +997,16 @@ function renderPause(): void {
 	const retour = retourOrtho('Revenir une autre fois', 'Revenir au programme');
 	// Rappel des mots qui ont résisté (#618) : à la pause, seuls ceux qui donnent ENCORE
 	// du travail. Un mot passé par la correction guidée puis validé avant la pause n'y est
-	// pas nommé — il relève du bilan, sous l'angle de l'effort fourni.
-	// Cas limite assumé : une séance CIBLÉE ne valide aucun mode (`reussiteMode`), donc le
-	// statut lu ici est celui d'avant la séance. Sur une liste déjà étoilée, un mot qui
-	// résiste n'est donc pas nommé — c'est la lettre du critère 1 (« pas encore maîtrisé »).
+	// pas nommé — il relève du bilan, sous l'angle de l'effort fourni. Depuis #641 le statut
+	// lu ici tient compte du travail de la séance dans TOUS les modes (`reussiteMode` valide
+	// désormais partout), et non plus du seul parcours complet.
 	const difficiles = motsDifficiles.filter((m) => statutMot(m, dispoDictee) !== 'maitrise');
 	sheets().innerHTML = html`
     <div class="page ortho-run ortho-bilan">
       <div class="ortho-bilan-emoji">👏</div>
       <h2>Bonne séance !</h2>
       <p>Tu as bien travaillé. Tu peux continuer encore un peu ou revenir une autre fois.</p>
+      ${messageModesTerminesHTML()}
       ${motsDifficilesHTML(difficiles, 'pause', 'ortho-difficiles')}
       <div class="ortho-pause-actions">
         <button class="btn-primary" id="btnContinuerSeance">Continuer encore un peu</button>
@@ -942,9 +1021,49 @@ function renderPause(): void {
 	sheets().querySelector('#btnStopSeance')!.addEventListener('click', retour.aller);
 	bindMotsDifficiles(sheets(), () => relireMotsDifficiles(difficiles));
 	b.focus();
-	// Hors parcours de première complétion (mode ciblé ou révision), il n'y a pas de
-	// bilan d'étoile → on célèbre à la pause les niveaux éventuellement gagnés.
-	if (seanceMode || revisionRun) annoncerNiveauSiGagne();
+	// Hors parcours de première complétion (mode ciblé ou révision), il n'y a pas de bilan
+	// d'étoile → la pause EST l'écran de fin, et doit donc annoncer ce qui a été gagné.
+	// Depuis #641 cela inclut les TROPHÉES : un mode ciblé fait monter les mots, donc décroche
+	// « Première liste » comme le parcours complet ; les laisser à l'accueil, c'est ne rien
+	// annoncer au moment où l'enfant l'a mérité. Sans étoile ajoutée : elle appartient au bilan.
+	if (seanceMode || revisionRun) annoncerRecompensesFin([]);
+}
+
+/* Message de fin (#641, critère 12) : un mode d'entraînement dont le DERNIER mot vient d'être
+   franchi pendant cette séance. Sans lui, le bouton quitte simplement la zone principale de
+   l'écran de choix à la prochaine visite, ce qui se lit comme une perte ou un bug.
+   Posé à la PAUSE seulement : quand la séance étoile la liste, c'est le bilan « Liste prête ! »
+   qui s'affiche, et la célébration prime — aucune annonce ne s'y empile (critère 13).
+   On dit « ce mode » sans le nommer : à cet instant l'enfant n'a pas eu le libellé du bouton
+   de choix sous les yeux. Le mot « terminé » plutôt qu'« épuisé », et la mention des points,
+   pour ne pas laisser croire à un bouton mort. */
+function messageModesTerminesHTML(): SafeHtml {
+	const apres = modesEpuises(mots, dispoDictee);
+	const finis = modesEpuisesPendant(modesEpuisesAvant, apres);
+	// Le témoin avance : la nouvelle ne s'annonce qu'UNE fois. « Continuer encore un peu »
+	// poursuit la MÊME séance et repasserait sinon par ici à chaque pause.
+	modesEpuisesAvant = apres;
+	if (!finis.length) return VIDE;
+	// Le cumul peut faire basculer PLUSIEURS modes d'un coup (réussir le mot caché du dernier
+	// mot valide aussi ses tuiles) : l'accord suit, le message reste unique.
+	// Le pluriel n'est pas l'accord mécanique du singulier : « tous les mots » et « ces modes »
+	// y seraient deux antécédents masculins pluriels concurrents, et « tu LES retrouveras un peu
+	// plus bas » se lirait aussi bien « les mots » — lecture cohérente, puisque l'écran de choix
+	// propose bien de retrouver des mots plus bas. « toute cette liste » a la même portée (elle
+	// reste bornée par « avec ces modes ») et ne laisse qu'un seul nom pluriel dans la phrase.
+	// Pas de NUMÉRAL non plus (« ces deux modes ») : le compte peut valoir trois.
+	const texte =
+		finis.length > 1
+			? 'Tu as fini toute cette liste avec ces modes ! La prochaine fois, tu les retrouveras un peu plus bas, et ils te donneront toujours des points.'
+			: 'Tu as fini tous les mots de cette liste avec ce mode ! La prochaine fois, tu le retrouveras un peu plus bas, et il te donnera toujours des points.';
+	// `role="status"` : même situation que le bloc VOISIN de cet écran (`motsDifficilesHTML`,
+	// ui/mots-difficiles-view.ts) — la pause est rendue d'un coup par `innerHTML`, puis le
+	// focus part droit sur « Continuer encore un peu », qui suit ce message dans le DOM. Sans
+	// annonce, un enfant au lecteur d'écran n'apprendrait jamais qu'il a terminé un mode, ni
+	// qu'il rapporte toujours des points, ni où le retrouver — soit tout ce que le critère 12
+	// demande de dire. `aria-atomic` fait relire la phrase entière plutôt que le seul nœud
+	// modifié.
+	return html`<p class="ortho-mode-epuise" role="status" aria-atomic="true">${icon('check-circle')} ${texte}</p>`;
 }
 
 /* ---------- Helpers ---------- */
@@ -959,24 +1078,16 @@ function relireMotsDifficiles(difficiles: readonly MotOrtho[]): void {
 	);
 }
 
-/* Réussite d'un mode : +1 XP, et — en parcours complet seulement — validation du
-   mode (l'étoile ne se gagne qu'en faisant la suite ordonnée, pas un mode isolé). */
+/* Réussite d'un mode : +1 XP et validation du mode, DANS TOUS LES MODES DE SÉANCE (#641).
+   Le garde `if (!seanceMode)` qui vivait ici est le bug d'origine : l'enfant qui prenait
+   systématiquement le mode le plus étayé encaissait son XP et cochait son programme sans
+   qu'aucun mot ne monte d'un cran — l'appli lui confirmait par ses deux seuls signaux
+   visibles un travail qu'elle ne comptait nulle part. Le cumul est dans `validerMode` :
+   valider la dictée d'un mot valide aussi tout ce qui est plus étayé. */
 function reussiteMode(word: MotOrtho, mode: ModeOrtho): void {
-	if (!seanceMode) {
-		validerMode(word, mode);
-		saveOrtho(st);
-	}
+	validerMode(word, mode);
+	saveOrtho(st);
 	addXP(1);
-}
-
-/* Annonce une éventuelle montée de niveau (modale + déblocages), puis met à jour
-   le repère. Utilisé hors bilan (mode ciblé), où il n'y a pas d'écran de fin. */
-function annoncerNiveauSiGagne(): void {
-	const niveauApres = niveauDepuisXP(getXP());
-	if (niveauApres > niveauAvant) {
-		showLevelUp(niveauApres, recompensesEntre(niveauAvant, niveauApres));
-		niveauAvant = niveauApres;
-	}
 }
 
 function reussite(fb: HTMLElement, xpGagne = false): void {

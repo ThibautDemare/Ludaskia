@@ -31,6 +31,18 @@
    scénario choisit délibérément un mode CIBLÉ (mot caché seul) : cela
    couvre le critère 3 gratuitement, et une seule escalade suffit (les
    rounds suivants se répondent juste, sans jamais raccrocher au filtre).
+
+   Depuis #641 (critère 4), un mode CIBLÉ valide par cumul (tuiles ET mot
+   caché à chaque réussite, dictée indisponible en Chromium headless) et une
+   séance dont la LISTE se retrouve entièrement maîtrisée EN COURS DE ROUTE
+   saute directement au bilan « Liste prête ! », sans jamais atteindre la
+   pause visée ici. Le lot « Pause » ci-dessous est donc délibérément LONG :
+   assez de mots pour qu'aucune séance bornée à `SEANCE_MAX` réussites ne
+   puisse tous les toucher, garantissant qu'on reste sur le chemin PAUSE (et
+   non le chemin bilan, déjà couvert côté #641 par `ortho-choix-mode.spec.ts`,
+   critère 13). Une séance qui termine plutôt qu'une pause en atteignant le
+   dernier mot d'un mode/d'une liste peut aussi croiser une modale de
+   récompense (trophée) : fermée avant tout clic derrière elle.
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
@@ -112,37 +124,55 @@ test.beforeEach(async ({ page }) => {
 /* ------------------------------------------------------------
    Pause (critères 1, 3, 5, 6, 10, 12) — mode ciblé « mot caché », seul.
    ------------------------------------------------------------ */
+/* Liste délibérément LONGUE (voir en-tête de fichier) : le 1er mot échoue (2 essais,
+   correction guidée), tous les suivants réussissent du 1er coup en boucle jusqu'à la
+   pause — 7 réussites suffisent pour épuiser les 8 activités de la séance (1 échec +
+   7 réussites). Avec seulement 7 mots RESTANTS après le 1er (donc 8 au total), le
+   dernier mot du lot ne serait JAMAIS touché → la liste ne peut pas devenir
+   entièrement maîtrisée dans cette séance bornée. On en prend 15 pour une marge
+   confortable si `SEANCE_MAX` venait à bouger un peu. */
+const MOTS_SEED_PAUSE = [
+	'chat',
+	'gris',
+	'bleu',
+	'vert',
+	'jaune',
+	'noir',
+	'blanc',
+	'rose',
+	'brun',
+	'sable',
+	'ciel',
+	'sol',
+	'mer',
+	'bois',
+	'roc',
+];
 const SEED_PAUSE = {
-	banque: {
-		m1: {
-			id: 'm1',
-			mot: 'chat',
-			entourage: [],
-			atelierFait: true,
-			validation: { motCache: false, tuiles: false, dictee: false },
-			revision: { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null },
-			origine: 'liste',
-		},
-		m2: {
-			id: 'm2',
-			mot: 'gris',
-			entourage: [],
-			atelierFait: true,
-			validation: { motCache: false, tuiles: false, dictee: false },
-			revision: { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null },
-			origine: 'liste',
-		},
-	},
+	banque: Object.fromEntries(
+		MOTS_SEED_PAUSE.map((mot, i) => [
+			`m${i + 1}`,
+			{
+				id: `m${i + 1}`,
+				mot,
+				entourage: [],
+				atelierFait: true,
+				validation: { motCache: false, tuiles: false, dictee: false },
+				revision: { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null },
+				origine: 'liste',
+			},
+		]),
+	),
 	listes: [
 		{
 			id: 'l-e2e-md-pause',
 			label: 'Test pause mots difficiles',
-			motIds: ['m1', 'm2'],
+			motIds: MOTS_SEED_PAUSE.map((_, i) => `m${i + 1}`),
 			createdAt: 1,
 			updatedAt: 1,
 		},
 	],
-	motIdParForme: { chat: 'm1', gris: 'm2' },
+	motIdParForme: Object.fromEntries(MOTS_SEED_PAUSE.map((mot, i) => [mot, `m${i + 1}`])),
 };
 
 test('pause : le mot passé par la correction guidée est nommé sous sa forme correcte, sans jamais le compter, et « Relire ces mots » ouvre une sélection qui ne fuite pas (critères 1, 3, 5, 6, 10, 12)', async ({
@@ -157,10 +187,15 @@ test('pause : le mot passé par la correction guidée est nommé sous sa forme c
 
 	const SAISIE_FAUSSE = 'zzzzzz';
 	const cible = await echouerMotCache(page, SAISIE_FAUSSE); // correction guidée → mot noté
-	const autre = cible === 'chat' ? 'gris' : 'chat'; // jamais touché, ne doit jamais être nommé
+	// Dernier mot du lot : hors d'atteinte du round-robin avant la pause (voir en-tête
+	// de fichier) — jamais touché, ne doit jamais être nommé.
+	const autre = MOTS_SEED_PAUSE[MOTS_SEED_PAUSE.length - 1];
 
-	// Le mode ciblé ne « finit » jamais tout seul : on avance jusqu'à la pause
-	// (compteur d'activités, borné pour rester robuste si SEANCE_MAX change).
+	// Depuis #641, un mode ciblé PEUT finir tout seul (critère 4, liste entièrement
+	// maîtrisée en cours de route) : la liste ci-dessus est délibérément trop longue
+	// pour que ça arrive ici, donc on avance jusqu'à la pause sans risque de tomber sur
+	// le bilan à la place (compteur d'activités, borné pour rester robuste si
+	// SEANCE_MAX change).
 	const pauseVisible = page.getByRole('heading', { name: 'Bonne séance !' });
 	for (let i = 0; i < 20; i++) {
 		if (await pauseVisible.isVisible().catch(() => false)) break;
@@ -186,8 +221,16 @@ test('pause : le mot passé par la correction guidée est nommé sous sa forme c
 	const blocTexte = await bloc.innerText();
 	expect(blocTexte).not.toMatch(/\d/);
 
+	// Une réussite en cours de route peut décrocher un trophée (progression réelle
+	// depuis #641, y compris en mode ciblé) : fermer la modale avant tout clic
+	// derrière elle, sinon elle intercepte le clic sur « Relire ces mots ».
+	for (const ok of ['#levelupOk', '#celebrateOk']) {
+		const btn = page.locator(ok);
+		if (await btn.isVisible().catch(() => false)) await btn.click();
+	}
+
 	// Critère 6 : « Relire ces mots » ouvre une sélection RESTREINTE — 1 carte, pas
-	// les 2 mots du lot (le lot entier aurait 2 `.relecture-carte`).
+	// les mots du lot entier (le lot entier aurait `MOTS_SEED_PAUSE.length` cartes).
 	await page.locator('#btnRelireMotsDifficiles').click();
 	await expect(page).toHaveURL(/#ortho-revoir-l-e2e-md-pause$/);
 	await expect(page.locator('.relecture-carte')).toHaveCount(1);
@@ -198,12 +241,12 @@ test('pause : le mot passé par la correction guidée est nommé sous sa forme c
 	await page.locator('#relRetour').click();
 	await expect(page).not.toHaveURL(/ortho-revoir/);
 	await page.goBack();
-	await expect(page.locator('.relecture-carte')).toHaveCount(2);
+	await expect(page.locator('.relecture-carte')).toHaveCount(MOTS_SEED_PAUSE.length);
 	await expect(page.locator('.relecture-amorce')).toHaveCount(0);
 
 	// … ni à un rechargement / accès direct au hash.
 	await page.reload({ waitUntil: 'networkidle' });
-	await expect(page.locator('.relecture-carte')).toHaveCount(2);
+	await expect(page.locator('.relecture-carte')).toHaveCount(MOTS_SEED_PAUSE.length);
 	await expect(page.locator('.relecture-amorce')).toHaveCount(0);
 
 	expect(errors).toEqual([]);

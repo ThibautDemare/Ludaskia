@@ -9,11 +9,30 @@ import { SHAPE_FILL, circle, ellipse, line, polygon, rect, svgCanvas } from './p
 export type Solid = 'cube' | 'pave' | 'cylindre' | 'cone' | 'pyramide' | 'boule' | 'prisme';
 
 const SOLID_SIZE = 200;
+/* Arêtes de PROFONDEUR : arêtes de fuite, arêtes arrière visibles, et l'équateur de
+   la boule (voir plus bas). Elles portent l'information « c'est un volume » — sans
+   elles un cube est un carré et une sphère un disque — donc WCAG 1.4.11 leur impose
+   3:1 contre le fond de figure, comme à tout objet graphique porteur de sens.
+   Opacité relevée de 0,55 à 0,80 (#387). L'opacité dilue le trait vers `--paper` : à
+   0,55 le contraste réel tombait entre 2,30 et 3,11:1 selon le thème — les six
+   échouaient. À 0,80 il va de 3,61 à 4,98:1, soit ~20 % de marge au-dessus du seuil.
+   0,75 suffirait au chiffre (3,30 au plus serré) mais ne laisse que 10 % de marge, et
+   ce contraste-là n'est gardé par aucun test de tokens : c'est une couleur COMPOSÉE,
+   invisible pour un gate qui compare des paires déclarées. D'où le test dédié dans
+   `tests/contraste-tokens.test.ts`, qui relit cette opacité et refait le calcul.
+   L'effet de perspective survit parce qu'il ne tenait pas à la pâleur seule : la face
+   avant garde son remplissage `--accent-soft` et un trait d'épaisseur 3 contre 2 ici,
+   à pleine opacité (5,35 à 6,94:1). Deux signaux sur trois sont intacts.
+   Écartés (avis `designer-ux-enfant`) : une couleur dédiée à pleine opacité — six
+   tokens à maintenir pour ce qui reste une variation de `--accent` ; et le pointillé —
+   il dit conventionnellement « arête CACHÉE » en géométrie, l'inverse exact de ce que
+   sont ces arêtes-ci, et le parti pris du fichier est justement de ne dessiner que des
+   arêtes visibles. */
 const DEPTH = {
 	fill: 'none',
 	stroke: 'var(--accent)',
 	'stroke-width': 2,
-	opacity: 0.55,
+	opacity: 0.8,
 	'stroke-linecap': 'round',
 } as const;
 
@@ -139,14 +158,13 @@ export function renderSolide(solid: Solid, orient: SolidOrient = {}): string {
 			break;
 		}
 		case 'boule':
-			body =
-				circle(100, 100, 60, SHAPE_FILL) +
-				ellipse(100, 100, 60, 18, {
-					fill: 'none',
-					stroke: 'var(--accent)',
-					'stroke-width': 2,
-					opacity: 0.5,
-				});
+			// L'équateur passe par DEPTH au lieu de le recopier à la main (#387). Il jouait
+			// exactement le rôle d'une arête de profondeur — c'est lui qui fait lire
+			// « sphère » plutôt que « disque » — mais avec ses propres valeurs, dont une
+			// opacité de 0,5 encore plus basse que les 0,55 d'alors : 2,10 à 2,85:1, le
+			// pire écart du fichier. Une constante recopiée dérive ; celle-ci avait déjà
+			// dérivé de 0,05 sans raison écrite.
+			body = circle(100, 100, 60, SHAPE_FILL) + ellipse(100, 100, 60, 18, DEPTH);
 			break;
 		case 'prisme': {
 			const [ox, oy] = FUITE_PRISME[orient.lean ?? 0];

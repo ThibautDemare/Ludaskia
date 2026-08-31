@@ -95,6 +95,14 @@ function palettes(): Record<string, Record<string, string>> {
 const PALETTES = palettes();
 const THEMES_NOMS = Object.keys(PALETTES);
 
+/** Opacité des arêtes de profondeur des solides (#387), lue dans le module de figures :
+ *  c'est du TypeScript et non une feuille, mais la couleur qui en résulte est composée
+ *  par le navigateur exactement comme celle d'un voile CSS. */
+const SOLIDES = readFileSync('src/core/figures/solides.ts', 'utf8');
+const OPACITE_DEPTH = Number(
+	SOLIDES.match(/const DEPTH = \{[\s\S]*?opacity:\s*([\d.]+)/)?.[1] ?? 0,
+);
+
 /* ============================================================
    #576 — la rampe de gris
    ============================================================ */
@@ -593,6 +601,62 @@ describe("Palette d'impression, miroir de la palette claire (#601)", () => {
 				`exactement ce qui est arrivé à --muted entre #576 et #601.\n` +
 				`Si la divergence est voulue, l'écrire dans DIVERGENCES_ASSUMEES avec sa raison.`,
 		).toBe(RACINE[nom]);
+	});
+});
+
+/* ============================================================
+   Les arêtes de PROFONDEUR des solides, diluées par leur opacité (#387)
+   ============================================================ */
+
+describe('Arêtes de profondeur des solides en perspective (#387)', () => {
+	/* Troisième variante du même piège que `.trophy.off` (#576) et la pastille du chrono
+	   (#609) : une couleur qu'aucune feuille n'écrit. Ici c'est un trait `--accent` posé
+	   à opacité réduite sur le fond de la figure — le navigateur le dilue vers ce fond, et
+	   ce que l'œil reçoit n'est ni `--accent` ni `--paper`. À 0,55, l'opacité d'origine, ça
+	   donnait 2,30 à 3,11:1 selon le thème : les six échouaient le seuil de 3:1.
+	   Seuil NON-TEXTE, pas texte : ce sont des objets graphiques, mais bien PORTEURS
+	   d'information (sans arêtes de fuite un cube est un carré, sans équateur une sphère
+	   est un disque, et l'exercice demande justement de reconnaître le solide) — donc pas
+	   de l'ornement exempté par 1.4.11.
+	   Le test relit l'opacité DANS le module plutôt que de figer un nombre : la rebaisser
+	   le fait échouer. Il mesure les DEUX fonds sur lesquels une figure peut atterrir,
+	   `--paper` (la carte, cas courant) et `--page-bg` (le plus serré des deux). */
+	it("l'opacité de DEPTH est bien lue (garde contre un test à vide)", () => {
+		expect(
+			OPACITE_DEPTH,
+			'constante DEPTH introuvable dans src/core/figures/solides.ts, ou son `opacity` a ' +
+				'changé de forme : ce test ne garde plus rien.',
+		).toBeGreaterThan(0);
+	});
+
+	it.each(Object.entries(PALETTES))('%s : arête lisible sur le fond de figure', (theme, p) => {
+		for (const fond of ['--paper', '--page-bg']) {
+			const compose = melange(p['--accent'], p[fond], OPACITE_DEPTH);
+			const r = contraste(compose, p[fond]);
+			expect(
+				r,
+				`Thème « ${theme} » : à opacity ${OPACITE_DEPTH}, une arête de profondeur ` +
+					`(--accent ${p['--accent']}) se compose en ${compose} sur ${fond} (${p[fond]}), ` +
+					`soit ${r.toFixed(2)}:1 — sous les ${SEUIL_NON_TEXTE_AA}:1 exigés pour un objet ` +
+					`graphique porteur d'information (WCAG 1.4.11).\n` +
+					`Remonter l'opacité, pas la couleur : l'opacité rediluerait tout token qu'on ` +
+					`mettrait dessous. La distinction avec la face avant ne tient pas à la pâleur ` +
+					`seule — celle-ci garde son remplissage et un trait plus épais.`,
+			).toBeGreaterThanOrEqual(SEUIL_NON_TEXTE_AA);
+		}
+	});
+
+	it('aucune figure ne recopie DEPTH à la main', () => {
+		// C'est par là que le défaut s'était aggravé : l'équateur de la boule dupliquait
+		// DEPTH avec une opacité de 0,5 au lieu de 0,55, donc échouait un cran plus bas,
+		// et le corriger dans la constante ne l'aurait pas touché. Une seule source.
+		const autres = [...SOLIDES.matchAll(/opacity:\s*([\d.]+)/g)].map((m) => m[1]);
+		expect(
+			autres,
+			`src/core/figures/solides.ts déclare ${autres.length} opacités (${autres.join(', ')}) ` +
+				`alors que seule celle de DEPTH doit exister.\nUne arête atténuée écrite à la main ` +
+				`échappe à la constante ET au test ci-dessus : passer par DEPTH.`,
+		).toHaveLength(1);
 	});
 });
 

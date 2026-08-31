@@ -102,6 +102,17 @@ faut.**
     hétérogènes (métier + DOM + stockage) → propose un **découpage concret** (quel
     bout va où). Méfie-toi des dépendances circulaires (cf. `menu.ts` extrait pour
     casser le cycle `main ↔ navigation`).
+  - **Taille des fichiers de rendu.** Un `ui/*-runner.ts` ou `ui/lecon-*.ts` qui
+    dépasse ~1000 lignes et reçoit un **nouveau bloc autonome** (écran, sous-vue) doit
+    voir ce bloc **proposé en extraction** vers son propre module, même si le reste du
+    fichier n'est pas retouché — ne pas attendre qu'une refacto dédiée s'en charge un
+    jour. Ne vaut que pour un bloc **ajouté**, pas pour la dette déjà présente dans le
+    fichier (une fonction longue préexistante que la PR ne touche pas est hors
+    périmètre de cette PR-là, cf. le rejet sur `renderTuiles`,
+    `docs/architecture/ui.md`). Cas d'origine (#641) : la **zone basse** de l'écran de
+    choix de mode d'orthographe (`.mode-choice-epuises`, un bloc entier de
+    `renderOrthoModeChoice`) a été ajoutée directement dans `ui/ortho-runner.ts`, déjà >
+    1000 lignes, plutôt que d'ouvrir un module dédié au rendu de cet écran.
   - **Complexité gratuite.** Abstraction prématurée, drapeaux booléens en série,
     état mutable partagé évitable, généricité que personne n'utilise. Le code doit
     rester **simple à suivre** pour le prochain contributeur — quitte à préférer

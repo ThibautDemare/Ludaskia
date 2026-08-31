@@ -555,6 +555,14 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`NotionRecap` n'a ni `ok` ni `total`) : ce module dit ce qui a été travaillé, jamais
   comment ça s'est passé. Résolution catalogue, mémoire de page (aucune persistance) et
   rendu dans `ui/recap-seance.ts` (cf. [Rendu & interactions](ui.md)).
+- **`orthographe/choix-mode.ts`** (#641, pur) — ce que l'écran de choix d'une liste a
+  encore à proposer. **`modeEpuise(mots, mode)`** = tous les mots de la liste ont validé ce
+  mode (une liste vide n'épuise rien) ; **`modesEpuises(mots, dicteeDispo)`** les liste dans
+  l'ordre de l'escalier, bornés aux modes **requis** ; **`modesEpuisesPendant(avant, apres)`**
+  isole ce qui a basculé **pendant** une séance, seule chose dont l'écran de fin doive
+  parler. Le mot « épuisé » vit ICI et **nulle part à l'écran** : côté enfant il se lit « à
+  bout », donc « bouton mort », exactement la lecture qu'un mode terminé ne doit pas
+  provoquer (il rapporte toujours de l'XP). Répartition à l'écran dans `ui/ortho-runner.ts`.
 - **`orthographe/mots-difficiles.ts`** (#618, pur) — décide ce qu'un écran de fin de
   séance d'orthographe **NOMME** parmi les mots passés par la correction guidée, plutôt
   qu'un dénombrement (« tu as bien travaillé les 10 mots de cette liste »). **Modèle
@@ -846,7 +854,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
 - **`revision.ts`** — **révision espacée** (#45), brique **pure** : escalier
   d'intervalles CE2 (`etatNeuf`, `avancerEtat`, `estDu`/`estAcquis` ; `now` passé
   en paramètre). État `EtatRevision` partagé par les mots d'orthographe et les
-  leçons maths/conjugaison. Cette file est aussi **consultable côté encadrant**
+  leçons maths/conjugaison. **Hors rotation (#641)** : `etatHorsRotation()` /
+  `estHorsRotation(e)` décrivent un élément qui existe mais dont le compteur d'espacement
+  n'a **pas démarré** (`prochaineRevision: null` au palier 0 — état qu'aucun élément en
+  rotation ne peut prendre, `avancerEtat` ne mettant `null` qu'au palier ACQUIS). C'est
+  l'état d'un **mot d'orthographe à l'ajout** : il n'entre en rotation qu'à sa première
+  rencontre réelle (`marquerAtelierFait`), sans quoi une liste saisie par le parent et
+  ouverte trois semaines plus tard arrivait avec trois semaines de dette. Cette file est aussi **consultable côté encadrant**
   (par profil, sans bascule) via `encadrant-stats.ts:revisionProfil` — cf.
   [Espace encadrant](espace-encadrant.md). **Plafond d'une session réglable par profil**
   (#439) : `REVISION_PLAFOND` (12) reste la valeur **par défaut** pour un profil non
@@ -885,6 +899,11 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`) ;
   `prochaineEcheance`/`aDesRevisions` alimentent l'état « rien à réviser » de
   l'accueil (carte conservée mais non actionnable, message valorisant + horizon).
+  Un mot dont l'**atelier n'est pas fait** est écarté des **quatre** (#641,
+  prédicat `motEnRevision`) : ne le faire qu'à l'entrée en rotation laisserait les
+  banques DÉJÀ constituées proposer des mots jamais rencontrés, et filtrer une seule
+  de ces lectures rouvrirait l'écart entre ce que la carte d'accueil annonce et ce que
+  la séance sert (invariant « annoncé = proposé », #478).
   La composition de la session est **équilibrée par SOURCE** (`categoryId`) via
   `selectionEquilibree` (#45) : une « source » = une catégorie de leçon (maths,
   conjugaison…) ou l'orthographe entière (tous les mots confondus). **Phase 1
@@ -995,7 +1014,7 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   ci-dessous) ; consommée par `ui/etayage-panneau.ts:maybeEtayageAvantSerie`, jamais
   directement par l'UI.
   **Journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée,
-  #234 ; **entrées typées** `ActivityEntry = {t, k, ref?}` avec
+  #234 ; **entrées typées** `ActivityEntry = {t, k, ref?, progressive?}` avec
   `ActivityKind = 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee'` (+ `'inconnu'`
   pour l'ancien format), #319). **`ref`** (#498) = id de la leçon (`'lecon'`) ou de la
   liste d'orthographe (`'dictee'`) travaillée, **quand la session en vise UNE seule** —
@@ -1010,7 +1029,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   rejoué au moins un item du catalogue — une session composée UNIQUEMENT de mots
   d'orthographe n'a, elle, aucune stat de leçon à écrire. La dictée d'orthographe
   (`ui/ortho-runner.ts`), qui ne porte jamais de leçon du catalogue, et une révision
-  purement lexicale appellent alors **`recordSessionActivity(kind, ref?)`**.
+  purement lexicale appellent alors **`recordSessionActivity(kind, ref?, progressive?)`**.
+  **`progressive`** (#641) = la séance a-t-elle comporté au moins une activité qui POUVAIT
+  faire progresser un mot (la réussite n'entre pas dans le calcul) ; écrit **uniquement
+  quand la réponse est `false`**, donc son **absence vaut « oui »** — c'est ce qui empêche
+  la mise à jour de décréditer les entrées déjà en stockage. Lu par la seule lecture
+  autorisée, `sessionProgressive(entry)`, et consommé par l'étape `dictee` du programme du
+  jour (cf. `etapeSatisfaite` ci-dessous).
   `normalizeActivity` lit **tolérant** l'ancien
   `number[]` (chaque horodatage nu → `'inconnu'`, sans `ref`) et le réécrit au format objet
   au prochain passage (migration **lazy, sans perte**).
@@ -1655,7 +1680,12 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   Écrit **structurellement** par `marquerAtelierFait`/`validerMode` (`core/orthographe/runner.ts`)
   — la date est posée À L'INTÉRIEUR de ces deux fonctions plutôt que par leurs appelants, ce qui
   rend impossible une étape franchie sans date (contrairement au rappel en commentaire qui protège
-  `journaliserPaliersOrtho`, lui non structurel). `debutSuiviEtapes(depuis, banque)`
+  `journaliserPaliersOrtho`, lui non structurel). **Le cumul de #641 vit au même endroit et pour
+  la même raison** : `validerMode(mot, mode)` valide le mode **et tous ceux qui le précèdent**
+  (`modesJusqua`), en datant chacun — aucun appelant ne peut donc faire monter un mot en sautant
+  une marche, et `rangMot` ne rencontre jamais d'escalier incohérent. Pendant en lecture :
+  **`activiteProgressive(mot, activite, dicteeDispo)`**, qui dit si une activité pouvait encore
+  faire monter ce mot (base de l'attribution de l'étape « dictée » du programme du jour). `debutSuiviEtapes(depuis, banque)`
   (`core/orthographe/paliers.ts`) calcule la borne de mise en service **une fois par profil**
   (même principe que `debutSuiviPaliers`) sur une TROISIÈME clé, `ORTHO_ETAPES_DEBUT_KEY`
   (`ludaskia_orthoEtapesDepuis`) : distincte des deux journaux « par liste » (`ludaskia_paliers`/
@@ -1751,9 +1781,18 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   `etapeSatisfaite(etape, activite, epinglees)` est la SOURCE UNIQUE de « ce que vaut »
   une entrée du journal d'activité (`ActivityEntry`, cf. `progress.ts` ci-dessus) pour
   chaque mode — un sprint/une révision vaut son étape par le seul TYPE ; une leçon/dictée
-  dont l'`ActivityEntry.ref` correspond vaut l'étape `lecon`/`dictee` ; n'importe quelle
+  dont l'`ActivityEntry.ref` correspond vaut l'étape `lecon`/`dictee` — pour `dictee`, à
+  la condition SUPPLÉMENTAIRE (#641) que la séance ait pu faire progresser un mot
+  (`sessionProgressive`), sans quoi huit tuiles sur une liste dont tous les mots avaient
+  déjà validé les tuiles cochaient l'étape du jour sans qu'aucun mot ne monte d'un cran ;
+  n'importe quelle
   leçon vaut « Leçon du jour » (elle change dès qu'elle est réussie, incomparable après
-  coup) ; une leçon/dictée dont la référence figure dans `epinglees` vaut « à revoir ».
+  coup) ; une leçon/dictée dont la référence figure dans `epinglees` vaut « à revoir » —
+  la **dictée** y porte la MÊME condition `sessionProgressive` que l'étape `dictee` (#641) :
+  une file épinglée qui se coche sur du travail ne faisant monter aucun mot dirait exactement
+  ce que #641 corrige à côté. La branche **leçon** d'« à revoir » est inchangée, comme
+  `lecon`, `leconDuJour`, `sprint` et `revision` : le drapeau ne concerne que les sessions
+  d'orthographe.
   `resoudreProgramme(now, ctx?)` (remplace l'ancien `resoudrePending`) relit, à chaque
   appel, les sessions du journal **postérieures à un curseur** (`SeanceJour.vuTs`, avancé
   à chaque passe — idempotent), et attribue chacune à la meilleure étape restante

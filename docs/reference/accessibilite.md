@@ -184,6 +184,27 @@ Si la consigne contient une figure géométrique et que la forme de cette figure
 
 ---
 
+## 9. Messages de statut (SC 4.1.3, niveau AA)
+
+Un changement de contenu qui informe sans déplacer le focus (validation, score, mode
+terminé…) doit être annoncé par une technologie d'assistance sans recevoir le focus lui-même.
+Pattern Ludaskia : `role="status"` + `aria-live="polite"` + `aria-atomic="true"` posé sur un
+`<p>` (visible ou `.sr-only`) mis à jour au moment de l'événement — utilisé dans une
+vingtaine d'endroits du projet (`ui/sprint.ts`, `ui/revision.ts`, les runners
+`lecon-*.ts`, `ui/ortho-runner.ts`…).
+
+**Checklist — région posée sur un écran qui peut immédiatement ouvrir une modale.**
+Une région `role="status"` rendue au même tick qu'un chemin qui peut ensuite ouvrir une
+modale (récompense, montée de niveau, confettis) est à **vérifier au lecteur d'écran
+réel**, pas seulement en lisant le code : `lockBackground` (`src/ui/modal-a11y.ts`) rend
+l'arrière-plan `inert` dans le **même tick** que le rendu de la modale, ce qui peut
+avaler l'annonce du `role="status"` posé juste avant elle. Cas concret : la pause de
+séance d'orthographe (`renderPause`, `ui/ortho-runner.ts`, #641) pose son message « mode
+terminé » en `role="status"`, puis peut enchaîner sur `annoncerRecompensesFin`, qui peut
+ouvrir une modale de récompense. **Non automatisable** : rien ne mesure en CI le timing
+réel d'annonce d'une technologie d'assistance (dépend du navigateur, du lecteur d'écran,
+et du moment exact où `inert` est posé) — d'où une checklist et non un gate.
+
 ## Note de maintenance
 
 Les critères WCAG sont stables entre révisions majeures. Re-vérifier uniquement si :

@@ -328,48 +328,12 @@ const PAIRES_NON_TEXTE: Paire[] = [
 type Derogation = Paire & { nature: Nature; themes: string[]; issue: string; motif: string };
 
 const DEROGATIONS: Derogation[] = [
-	{
-		avant: '--accent',
-		arriere: '--accent-soft',
-		ou: '',
-		nature: 'texte',
-		themes: ['defaut', 'ciel', 'automne', 'lagon', 'fruit-rouge'],
-		issue: '#600',
-		motif:
-			'3,59:1 à 4,50:1 selon le thème. Corriger veut dire déplacer CINQ couleurs de ' +
-			'marque (ou leurs surfaces douces) : décision de design, pas réglage de token.',
-	},
-	{
-		avant: '--accent',
-		arriere: '--page-bg',
-		ou: '',
-		nature: 'texte',
-		themes: ['defaut', 'automne', 'lagon'],
-		issue: '#600',
-		motif:
-			'4,48 / 4,27 / 3,80:1 — même cause que le couple ci-dessus, sur le fond de page. ' +
-			'Trouvé par le scan axe en basculant le gate a11y (#583), après avoir été écarté à tort.',
-	},
-	{
-		avant: '--accent',
-		arriere: '--paper',
-		ou: '',
-		nature: 'texte',
-		themes: ['lagon'],
-		issue: '#438',
-		motif:
-			"4,16:1 — l'accent Lagon (#0a8a8f) est simplement trop clair ; même cause que " +
-			"l'échec de --on-accent sur --accent ci-dessous, une seule correction règle les deux.",
-	},
-	{
-		avant: '--on-accent',
-		arriere: '--accent',
-		ou: '',
-		nature: 'texte',
-		themes: ['lagon'],
-		issue: '#438',
-		motif: '4,16:1 sur les états sélectionnés (QCM multiple, tri, appariement, tuiles).',
-	},
+	// RETIRÉES en corrigeant #600 et #438 : les quatre couples d'accent (accent sur
+	// accent-soft, accent sur page-bg, accent sur paper en Lagon, on-accent sur accent
+	// en Lagon) étaient la MÊME cause mesurée quatre fois — un accent trop clair. Les
+	// cinq accents clairs ont été assombris d'un bloc, calés sur --accent-soft (la
+	// surface la plus serrée) ; voir base.scss et themes.scss. Ces couples sont
+	// désormais dans PAIRES_TEXTE, sans dérogation.
 	{
 		avant: '--accent-soft',
 		arriere: '--paper',

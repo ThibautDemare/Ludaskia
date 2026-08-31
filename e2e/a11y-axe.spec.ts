@@ -76,7 +76,7 @@ interface Derogation {
 	/** Règle axe visée. */
 	regle: string;
 	/** Le couple de couleurs que mesure AXE — donc la couleur RÉELLEMENT rendue,
-	 *  composition alpha comprise. C'est tout l'intérêt : `#50926e` n'est écrit dans
+	 *  composition alpha comprise. C'est tout l'intérêt : `#4f8d6a` n'est écrit dans
 	 *  aucune feuille, c'est un voile blanc à 16 % posé sur l'accent. */
 	avant: string;
 	arriere: string;
@@ -91,35 +91,22 @@ interface Derogation {
 }
 
 const DEROGATIONS: Derogation[] = [
-	{
-		regle: 'color-contrast',
-		avant: '#2f7d52',
-		arriere: '#e4f0e8',
-		vues: ['Leçon à tuiles (tri de mots)', 'Catégorie (grille de leçons)', "Atelier d'orthographe"],
-		issue: '#600',
-		mesure: '2026-08-20',
-		raison:
-			'`--accent` employé comme TEXTE sur `--accent-soft` : 4,29:1 (défaut), 3,59 à 4,50 selon le thème. Corriger demande de déplacer cinq couleurs de marque — décision de design, pas réglage de token.',
-	},
-	{
-		regle: 'color-contrast',
-		avant: '#2f7d52',
-		arriere: '#eef3ee',
-		vues: ['Config du sprint', 'Catégorie (grille de leçons)', 'Profils'],
-		issue: '#600',
-		mesure: '2026-08-20',
-		raison:
-			"même cause, sur `--page-bg` : 4,47:1. Ce couple avait été écarté à tort de la table de #582 (« l'accent en texte est toujours posé sur une carte ») — le scan a montré le contraire, la table a été corrigée.",
-	},
+	// RETIRÉES en corrigeant #600 : `--accent` employé comme texte échouait sur
+	// `--accent-soft` (4,29:1) et sur `--page-bg` (4,47:1). Les cinq accents clairs ont
+	// été assombris à la source (base.scss, themes.scss) ; il n'y a plus de #2f7d52.
 	{
 		regle: 'color-contrast',
 		avant: '#ffffff',
-		arriere: '#50926e',
+		// Recomposé après l'assombrissement des accents (#600) : le voile blanc étant
+		// posé SUR `--accent`, déplacer l'accent déplace la couleur fautive. C'est
+		// précisément ce qui rend ce défaut invisible en relecture — la couleur n'est
+		// écrite nulle part, elle se recalcule. Le gate l'a signalé tout seul.
+		arriere: '#4f8d6a',
 		vues: ['Leçon français (conjugaison — être au présent)'],
 		issue: '#609',
-		mesure: '2026-08-20',
+		mesure: '2026-08-31',
 		raison:
-			'pastille du chronomètre : `rgba(255,255,255,0.16)` posé sur `--accent`. La couleur fautive est COMPOSÉE, écrite nulle part — 3,25 à 4,33:1 selon le thème. Inverser le voile (noir) réglerait les six thèmes, mais change le rendu de la barre : arbitrage de design.',
+			"pastille du chronomètre : `rgba(255,255,255,0.16)` posé sur `--accent`. La couleur fautive est COMPOSÉE, écrite nulle part — 3,90 à 4,50:1 selon le thème après #600 (3,25 à 4,33 avant). Assombrir l'accent ne suffit donc pas : le voile ÉCLAIRCIT, et il éclaircit d'autant plus que ce qu'il recouvre est sombre. Inverser le voile (noir) réglerait les six thèmes, mais change le rendu de la barre : arbitrage de design.",
 	},
 ];
 

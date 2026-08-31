@@ -4,11 +4,22 @@
    --ok/--ko/--warn (code couleur réussite/erreur appris par l'enfant).
    Appliqués via <html data-theme="..."> (voir ui/preferences.ts). */
 
+/* Les cinq accents CLAIRS ont été assombris d'un bloc (#600) : chacun est calé sur
+   4,6:1 contre SON --accent-soft, la surface la plus serrée des trois où l'accent est
+   employé comme texte (--paper, --page-bg, --accent-soft). Teinte et saturation
+   figées, seule la clarté descend ; --accent-dark descend d'autant, pour que le pas
+   de survol reste celui d'avant. Détail de la méthode en tête de base.scss.
+   Le ratio étant symétrique, ce même geste referme #438 : le blanc --on-accent posé
+   SUR --accent plein (états sélectionnés des exercices) est le MÊME nombre que
+   l'accent en texte sur --paper. */
+
 /* « Ciel » = le bleu historique, désormais thème déblocable (le vert est devenu
    le défaut, voir base.scss). */
 :root[data-theme='ciel'] {
-	--accent: #336cbf;
-	--accent-dark: #2a5aa0;
+	/* 4,50 → 4,63:1 sur --accent-soft (L 47,5 % → 46,7 %) : le thème qui bouge le
+	   moins, il n'échouait que d'un cheveu (4,4988). */
+	--accent: #326abc;
+	--accent-dark: #29589d;
 	--accent-soft: #e9eff8;
 	--page-bg: #eef1f5;
 	/* L'accent est bleu → la couleur « révision/impression » (bleue par défaut)
@@ -16,8 +27,10 @@
 	--cat-bleu: #0a8a8f;
 }
 :root[data-theme='automne'] {
-	--accent: #b5532a;
-	--accent-dark: #8f3e1d;
+	/* 4,10 → 4,63:1 sur --accent-soft (L 43,7 % → 40,6 %). Rouille plus profonde ;
+	   teinte et saturation inchangées, donc pas plus terne — plus soutenue. */
+	--accent: #a84d27;
+	--accent-dark: #82381a;
 	--accent-soft: #f6e7db;
 	--page-bg: #f4ede4;
 	--ink: #2a1d16;
@@ -26,8 +39,13 @@
 	--cat-sprint: #0a8a8f;
 }
 :root[data-theme='lagon'] {
-	--accent: #0a8a8f;
-	--accent-dark: #066b6f;
+	/* Celui qui bouge le plus : 3,59 → 4,65:1 sur --accent-soft (L 30,0 % → 25,9 %,
+	   soit ~15 % de sa clarté). C'était aussi le seul accent à échouer sur --paper
+	   (4,16:1) — donc le seul dont le blanc posé DESSUS échouait, ce qui est #438 :
+	   états sélectionnés du QCM multiple, du tri, de l'appariement, des tuiles et du
+	   « clique sur le mot ». Ils passent tous à 5,40:1. */
+	--accent: #09767b;
+	--accent-dark: #05575a;
 	--accent-soft: #def2f2;
 	--page-bg: #eef6f6;
 	--ink: #142020;
@@ -37,8 +55,9 @@
 	   plus profond que l'ancien #d7395a (framboise ~347°, qui rendait « rose »).
 	   Le fond et les tons d'appui sont quasi désaturés (blanc cassé tiède, chair
 	   de fraise) pour ne pas réintroduire le rose pâle qui inondait la page. */
-	--accent: #c62a3e;
-	--accent-dark: #9e1f30;
+	/* 4,40 → 4,61:1 sur --accent-soft (L 47,1 % → 45,7 %). */
+	--accent: #c0293c;
+	--accent-dark: #981e2e;
 	--accent-soft: #f9e0db;
 	--page-bg: #fbf3f1;
 	--ink: #241413;
@@ -47,21 +66,23 @@
 }
 
 /* Pastilles d'aperçu du sélecteur de thèmes (couleur d'accent de chaque thème,
-   indépendante du thème actif). */
+   indépendante du thème actif, donc RECOPIÉE ici — à resynchroniser avec les
+   --accent ci-dessus à chaque déplacement, sous peine d'annoncer une couleur que
+   le thème ne rend plus). Valeurs suivies lors de l'assombrissement de #600. */
 .theme-defaut .theme-dot {
-	background: #2f7d52;
+	background: #2d774e;
 }
 .theme-ciel .theme-dot {
-	background: #336cbf;
+	background: #326abc;
 }
 .theme-automne .theme-dot {
-	background: #b5532a;
+	background: #a84d27;
 }
 .theme-lagon .theme-dot {
-	background: #0a8a8f;
+	background: #09767b;
 }
 .theme-fruit-rouge .theme-dot {
-	background: #c62a3e;
+	background: #c0293c;
 }
 /* Pastille « Nuit » : sombre. */
 .theme-nuit .theme-dot {

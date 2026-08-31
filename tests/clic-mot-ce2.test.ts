@@ -865,12 +865,17 @@ describe('Repli non interactif au CE2 — recopie de la cible (#436)', () => {
    7. `explicationNommeCible` — propagation depuis la donnée.
    ============================================================ */
 describe('explicationNommeCible — drapeau porté par la donnée (#436)', () => {
-	it('posé sur les DEUX banques à cible plurielle, absent partout ailleurs', () => {
+	it('posé sur les DEUX banques à cible plurielle — et, depuis #529, sur les autres aussi', () => {
 		for (const [nom, banque] of BANQUES_PLURIELLES) {
 			for (const p of banque) expect(p.explicationNommeCible, `${nom} « ${texte(p)} »`).toBe(true);
 		}
+		// #529 : les huit autres fabriques CITENT elles aussi leur cible (« ici « chat » »,
+		// « « Je » dit qui fait l'action »…). Leur explication tient donc lieu d'annonce
+		// exactement comme celle des deux banques plurielles de #436, et la région live n'a
+		// pas à y ajouter son « La bonne réponse : … ». La COHÉRENCE explication ↔ drapeau
+		// est tenue leçon par leçon, dans les deux sens, par `clic-mot-annonce-cible.test.ts`.
 		for (const banque of [PHRASES_ADJ_CE2, PHRASES_PRON_CE2, PHRASES_CE2, PHRASES_NOYAU]) {
-			for (const p of banque) expect(p.explicationNommeCible, texte(p)).toBeUndefined();
+			for (const p of banque) expect(p.explicationNommeCible, texte(p)).toBe(true);
 		}
 	});
 
@@ -887,21 +892,24 @@ describe('explicationNommeCible — drapeau porté par la donnée (#436)', () =>
 		}
 	});
 
-	it('propagé jusqu’à l’exercice généré, et JAMAIS au CM1 (cible unique)', () => {
+	it('propagé jusqu’à l’exercice généré, aux DEUX niveaux (#529)', () => {
 		for (const id of ['fr-gram-clic-noyau', 'fr-gram-clic-det']) {
 			const type = lecon(id).exerciseType;
 			for (let i = 0; i < 60; i++) {
 				const ce2 = type.generate({ level: 'ce2' });
 				if (ce2.type === 'clicMot') expect(ce2.explicationNommeCible, `${id}@ce2`).toBe(true);
+				// Le CM1 a une cible UNIQUE, mais son explication la nomme aussi (« ici « chat » ») :
+				// depuis #529 le drapeau y est donc posé également — la cible plurielle n'était
+				// jamais la condition, seulement le premier endroit où on avait vu la redondance.
 				const cm1 = type.generate({ level: 'cm1' });
-				if (cm1.type === 'clicMot') expect(cm1.explicationNommeCible, `${id}@cm1`).toBeUndefined();
+				if (cm1.type === 'clicMot') expect(cm1.explicationNommeCible, `${id}@cm1`).toBe(true);
 			}
 		}
 		for (const id of ['fr-gram-clic-adj', 'fr-gram-clic-pron', 'fr-gram-clic-verbe']) {
 			const type = lecon(id).exerciseType;
 			for (let i = 0; i < 30; i++) {
 				const ex = type.generate({ level: 'ce2' });
-				if (ex.type === 'clicMot') expect(ex.explicationNommeCible, id).toBeUndefined();
+				if (ex.type === 'clicMot') expect(ex.explicationNommeCible, id).toBe(true);
 			}
 		}
 	});

@@ -44,12 +44,17 @@ const GABARITS = [
 	{ nom: 'pwa-maskable-512.png', taille: 512, pastille: 72, logo: 52 },
 ];
 
-// Couleurs reprises de src/styles/base.scss (--accent / --accent-dark), comme og-image.
+// Le PREMIER stop du dégradé est `--accent` de src/styles/base.scss, recopié en dur
+// (ce script tourne hors du bundle, il ne peut pas lire une variable CSS) — et tenu par
+// tests/contraste-tokens.test.ts, qui échoue si les deux divergent. Le SECOND est un vert
+// plus profond choisi à la main pour le dégradé : ce n'est PAS `--accent-dark`, contrairement
+// à ce que disait ce commentaire, et il n'est donc gardé par rien. Le déplacer avec l'accent
+// est manuel. Même dégradé dans tools/og-image/generate.mjs.
 const html = (taille, pastille, logo) => `<!doctype html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{width:${taille}px;height:${taille}px;}
 .icone{width:${taille}px;height:${taille}px;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(160deg,#2f7d52 0%,#2a7048 100%);}
+  background:linear-gradient(160deg,#2d774e 0%,#286a44 100%);}
 .pastille{width:${pastille}%;height:${pastille}%;border-radius:50%;background:#ffffff;
   display:flex;align-items:center;justify-content:center;}
 .pastille img{height:${(logo / pastille) * 100}%;width:auto;display:block;}

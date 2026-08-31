@@ -204,7 +204,13 @@
 	font: inherit;
 	font-size: 0.9rem;
 	text-align: left;
-	color: var(--accent-dark); /* AA sur --accent-soft (le vert --accent y passe sous 4,5:1) */
+	/* `--accent-dark` et non `--accent` : le motif ci-dessous demande de la marge, ce
+	   texte étant petit (0,9rem) et posé sur la teinte douce. La raison d'ORIGINE
+	   n'existe plus — « le vert --accent y passe sous 4,5:1 » était vrai jusqu'à #600,
+	   qui a assombri les cinq accents clairs ; le couple --accent / --accent-soft est
+	   depuis conforme (≥ 4,61:1) et n'est plus une dérogation. On garde le token
+	   sombre pour le rendu, pas pour la conformité. */
+	color: var(--accent-dark);
 	background: var(--accent-soft);
 	border: 1px dashed var(--accent);
 	border-radius: 8px;
@@ -225,7 +231,7 @@
 	font: inherit;
 	font-weight: 600;
 	text-align: left;
-	color: var(--accent-dark); /* AA sur --accent-soft */
+	color: var(--accent-dark); /* marge de lecture sur la teinte douce, cf. .ortho-verbe-suggest */
 	background: var(--accent-soft);
 	border: 1px solid var(--accent);
 	border-radius: 8px;
@@ -302,7 +308,7 @@
 	margin: 0;
 	min-height: 1.2em;
 	font-style: italic;
-	color: var(--accent-dark); /* AA sur --accent-soft */
+	color: var(--accent-dark); /* marge de lecture sur la teinte douce, cf. .ortho-verbe-suggest */
 }
 /* Focus clavier net sur les contrôles verbe (aligné sur .tuile/.item-tts). */
 .ortho-chip:focus-visible,

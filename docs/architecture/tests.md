@@ -465,8 +465,8 @@ Trois choix de conception structurent la table :
   nature fait partie de l'identité d'un cas, sinon une dérogation posée sur l'un déborde en
   silence sur l'autre.
 
-**Les dérogations s'auto-périment.** Un défaut connu mais non corrigé (#385, #438, #600)
-est déclaré avec son issue et son motif, et le test correspondant est **inversé** : il
+**Les dérogations s'auto-périment.** Un défaut connu mais non corrigé (#385 est le seul
+qui reste ; #438, #600 et #601 sont tombés) est déclaré avec son issue et son motif, et le test correspondant est **inversé** : il
 exige que le couple soit *encore* en échec. Le jour où quelqu'un corrige la couleur, `npm
 test` échoue tant que l'entrée n'est pas retirée. C'est volontaire : une allow-list qui
 survit à ce qu'elle justifiait finit par masquer une vraie régression.

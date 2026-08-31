@@ -68,6 +68,25 @@
 	   ce #333 sur --paper (#222a36) tombait à 1,14:1 — le champ devenait invisible
 	   tant qu'on n'avait pas cliqué dedans (seul le :focus restait visible). */
 	--field-line: #333333;
+	/* Bordure AU REPOS d'un bouton de choix (`.sprint-choice`, `.pave-signe`,
+	   `.etude-btn`, `.mode-btn` épuisé). Même famille que --field-line : ce n'est pas
+	   un filet décoratif, c'est ce qui dit à l'enfant OÙ est le bouton avant qu'il ne
+	   le touche → composant d'interface, seuil 3:1 (WCAG 1.4.11).
+	   Les quatre règles tiraient cette bordure de --accent-soft (#385), une teinte de
+	   SURFACE employée comme contour : 1,15 à 1,26:1 selon le thème, soit un contour
+	   qu'on ne voit pas. Les états survol (--accent), pressé et focus étaient déjà
+	   conformes ; c'est l'état de repos — le seul que l'enfant voit avant d'agir — qui
+	   manquait. --accent-soft reste une surface, on cesse simplement de s'en servir
+	   comme trait.
+	   Gris bleuté de la famille de --muted (~217°), calé BAS exprès : 3,57:1 sur --paper
+	   clair, juste ce qu'il faut. Les pistes de l'issue, --grey (7,57:1) et --line
+	   (1,23:1), encadrent le bon réglage sans l'atteindre — la première dessinerait un
+	   cadre noir sur chaque choix, la seconde ne corrige rien.
+	   UNE SEULE valeur pour les six thèmes, y compris Nuit : à cette clarté le gris
+	   fonctionne dans les deux sens (4,05:1 sur le --paper sombre). Pas de surcharge
+	   dans themes.scss, et c'est délibéré — contrairement à --field-line, qui a dû en
+	   recevoir une. */
+	--control-line: #818894;
 	--track: #e7ebf1; /* surface neutre pleine : jauge, bouton « fantôme » */
 	--ok-soft: #e4f1ea; /* fond de retour « réussite » (doublé par l'icône, pas la couleur seule) */
 	--ko-soft: #fbe4e4; /* fond de retour « erreur » */

@@ -186,7 +186,10 @@
 	font-size: 24px;
 	color: var(--ink);
 	background: var(--paper);
-	border: 2px solid var(--accent-soft);
+	/* Bordure au repos : `--control-line`, pas `--accent-soft` (#385) — cf. base.scss.
+	   Les quatre boutons de choix du dépôt partagent ce token, pour qu'aucun ne dérive
+	   du motif commun. Survol / pressé / focus inchangés, ils étaient déjà conformes. */
+	border: 2px solid var(--control-line);
 	border-radius: 12px;
 	padding: 14px 26px;
 	min-width: 110px;

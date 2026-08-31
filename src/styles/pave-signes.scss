@@ -35,7 +35,9 @@
 	padding: 6px 10px;
 	font-family: var(--ui);
 	background: var(--paper);
-	border: 2px solid var(--accent-soft);
+	/* Même bordure au repos que `.sprint-choice` (#385, cf. base.scss) : ces deux
+	   boutons doivent rester indiscernables au contour, c'est tout l'intérêt du pavé. */
+	border: 2px solid var(--control-line);
 	border-radius: 12px;
 	cursor: pointer;
 	transition:

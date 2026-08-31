@@ -340,10 +340,15 @@ const PAIRES_NON_TEXTE: Paire[] = [
 		arriere: '--paper',
 		ou: 'sheets.scss .ans — la ligne qui dit OÙ écrire',
 	},
+	// `--accent-soft` comme BORDURE a disparu du dépôt avec #385 : c'était une teinte de
+	// surface employée comme trait (1,15 à 1,26:1). Les cinq boutons de choix qui la
+	// portaient tirent désormais leur contour de repos du token ci-dessous. Le couple
+	// n'est donc plus dans la table — on ne teste que les couples qu'on peut montrer du
+	// doigt — et sa dérogation est tombée avec lui.
 	{
-		avant: '--accent-soft',
+		avant: '--control-line',
 		arriere: '--paper',
-		ou: 'sprint.scss .sprint-choice, pave-signes.scss .pave-signe (bordure au repos), lecon-mode.scss .etude-btn et .mode-btn[data-epuise="1"] (#641)',
+		ou: 'sprint.scss .sprint-choice, pave-signes.scss .pave-signe, lecon-mode.scss .etude-btn, .lqcm-multi-choice et .mode-btn[data-epuise="1"] (bordure au repos)',
 	},
 	{
 		avant: '--accent',
@@ -424,18 +429,16 @@ const DEROGATIONS: Derogation[] = [
 	// cinq accents clairs ont été assombris d'un bloc, calés sur --accent-soft (la
 	// surface la plus serrée) ; voir base.scss et themes.scss. Ces couples sont
 	// désormais dans PAIRES_TEXTE, sans dérogation.
-	{
-		avant: '--accent-soft',
-		arriere: '--paper',
-		ou: '',
-		nature: 'non-texte',
-		themes: THEMES_NOMS,
-		issue: '#385',
-		motif:
-			'1,15 à 1,26:1 — --accent-soft est une teinte de SURFACE employée comme bordure. ' +
-			'Les états survol / pressé / focus sont conformes ; seul le repos échoue.',
-	},
+	// RETIRÉE en corrigeant #385 (`--accent-soft` sur `--paper` en bordure, 1,15 à
+	// 1,26:1) : le couple lui-même a disparu, les cinq boutons de choix tirant leur
+	// contour de repos de `--control-line`.
 ];
+
+/* La table est VIDE, et c'est l'état visé — pas un oubli. Elle a porté sept entrées
+   (#600 ×2, #438 ×2, #385, plus le chrono côté axe) ; toutes sont tombées avec leur
+   correctif, comme le mécanisme l'exige. Une entrée ajoutée ici doit porter son couple,
+   sa nature, ses thèmes, son issue et son motif — et le test correspondant, inversé,
+   exigera qu'elle serve ENCORE. */
 
 const cle = (p: { avant: string; arriere: string }, nature: Nature, theme: string) =>
 	`${p.avant} sur ${p.arriere} [${nature}] @ ${theme}`;

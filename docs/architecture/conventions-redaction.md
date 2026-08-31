@@ -192,3 +192,20 @@ suivi », « le suivi des notions », « le suivi d'orthographe »). Jamais « l
 « vos suivis » : le pluriel n'existe nulle part ailleurs dans `src/` et se lit comme un
 autre objet que celui que le parent connaît. Cas corrigé (#618) dans l'aide du réglage
 « Ne pas rappeler les mots difficiles en fin de séance ».
+
+## Passage au pluriel d'un message à variantes : l'accord mécanique peut ouvrir une seconde lecture (#641)
+
+Quand un message existe en deux variantes accordées selon un compte (singulier /
+pluriel), pluraliser **mécaniquement** chaque nom de la phrase peut faire apparaître un
+second nom pluriel de même genre qui n'existait pas au singulier. Une reprise
+pronominale plus loin (« les », « ils »), sans ambiguïté au singulier faute d'un second
+antécédent possible, devient alors équivoque : rien ne dit sur lequel des deux noms
+pluriels elle porte. L'accord mécanique seul ne le détecte pas — c'est une question de
+lecture de la phrase entière, pas de grammaire locale du mot qui change. Cas corrigé
+(`messageModesTerminesHTML`, `ui/ortho-runner.ts`, #641) : la variante plurielle disait
+« Tu as fini **tous les mots** de cette liste avec **ces modes** ! La prochaine fois, tu
+**les** retrouveras… », où « les » pouvait se lire aussi bien sur « les mots » que sur
+« ces modes » — lecture d'autant plus plausible que l'écran de choix propose justement
+de retrouver des mots plus bas. Réécrite « Tu as fini **toute cette liste** avec ces
+modes ! … tu les retrouveras… » : en passant le premier terme au singulier, un seul nom
+pluriel — « modes » — reste disponible pour la reprise.

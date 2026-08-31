@@ -145,9 +145,13 @@ boutons dérivés de `modes`, le mode `recommended` mis en avant) ; un type
 **mono-mode** (maths) se lance directement. **Conjugaison** : *J'écris le verbe*
 (saisie, conseillé, fiche imprimable) ou *Je choisis la bonne réponse* (runner QCM
 `lecon-qcm.ts`, feedback immédiat, sans chrono). **Orthographe** : le **parcours
-complet** (conseillé, **seul à donner l'étoile**) ou un **mode ciblé** (tuiles /
-mot caché / dictée) pour s'entraîner — l'entraînement ciblé donne de l'XP mais ne
-valide pas (l'étoile reste liée à la suite ordonnée). En **phase de découverte**
+complet** (conseillé, qui enchaîne les activités dues) ou un **mode ciblé** (tuiles /
+mot caché / dictée). Depuis **#641** un mode ciblé **valide comme le parcours complet**
+(la validation est **cumulative** : réussir un mode valide aussi tous ceux du dessous),
+donc il fait monter les mots, peut étoiler la liste et décrocher des trophées ; l'écran
+range plus bas les modes **terminés pour cette liste** (tous ses mots les ont validés)
+sans les désactiver, et annonce le **coût** (`8 activités`) sur tous les boutons de
+séance. Détail dans [design-orthographe](../design-orthographe.md). En **phase de découverte**
 (au moins un mot sans atelier), le parcours ne propose **que des ateliers** : toute
 la liste est découverte avant le moindre entraînement, et le choix de mode n'est
 proposé qu'ensuite. Fin d'exercice : **Recommencer / Quitter** (la pause ortho et

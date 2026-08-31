@@ -520,13 +520,51 @@ voir tous ses mots vite : la 1re dictée tombe dès le lendemain). La pause de
 séance (`SEANCE_MAX = 8`) propose **Continuer / Revenir**, donc un enfant motivé
 peut finir la découverte d'une longue liste d'une traite.
 
-**Choix du mode depuis la liste (#69)** : une fois la liste **découverte**, taper
-la liste ouvre un **écran de choix** : le **parcours complet** (conseillé, **seul à
-valider les modes → l'étoile**) ou un **mode ciblé** (`tuiles` / `motCache` /
-`dictee`) pour s'entraîner librement. Le mode ciblé donne de l'**XP** mais
-**ne valide pas** (`validation` inchangée) : l'étoile reste liée à la **suite
-ordonnée**. Tant que la découverte n'est pas finie, on lance directement le
-parcours (pas de choix).
+**Choix du mode depuis la liste (#69, refondu par #641)** : une fois la liste
+**découverte**, taper la liste ouvre un **écran de choix** : le **parcours complet**
+(conseillé, qui enchaîne les activités dues mot par mot) ou un **mode ciblé**
+(`tuiles` / `motCache` / `dictee`). Tant que la découverte n'est pas finie, on lance
+directement le parcours (pas de choix).
+
+Depuis **#641**, un mode ciblé **valide comme le parcours complet** : la validation est
+**cumulative** (voir ci-dessous), donc une réussite y fait monter le mot, peut étoiler la
+liste et décrocher des trophées. Ce qu'un mode ciblé change encore : l'activité est
+**imposée** et le tour de piste passe sur **tous** les mots (jamais « fini » tant que la
+liste n'est pas acquise). L'écran répartit les modes en deux zones :
+- **zone principale** — ce qui reste à faire ;
+- **zone basse** (`.mode-choice-epuises`, toujours dépliée) — les modes **terminés pour
+  cette liste** (tous les mots les ont validés), badge « Terminé pour cette liste · donne
+  toujours des points ». Ils restent **pleinement actifs** et rapportent toujours de l'XP :
+  jamais le style `.programme-tuile--inactive`, que l'enfant lit comme « pas cliquable ».
+
+**Écarté (#641)** : la zone basse n'a pas de `role="group"`/`aria-labelledby` reliant son
+titre « Déjà terminés pour cette liste » aux boutons qu'elle coiffe — même schéma, non
+groupé, que la zone « étude » (`.mode-choice-etude-sep`) déjà en place. Chaque bouton porte
+déjà l'information dans son propre nom accessible (le badge « Terminé pour cette liste ·
+donne toujours des points » est DANS le `<button>`) : aucune perte d'information mesurée à
+laisser le regroupement implicite.
+
+**Écarté (#641)** : `.mode-btn` n'a pas de `:focus-visible` dédié et s'appuie sur l'anneau
+natif du navigateur, contrairement à d'autres boutons du runner de leçon (`.lecon-passer`,
+`.lqcm-multi-choice`…). État **antérieur** à #641, non touché par cette PR ; le renforcer
+serait une tranche à part sur `.mode-btn` en général, pas un correctif ponctuel de la zone
+basse.
+
+Chaque bouton qui lance une **séance** annonce son **coût** (`8 activités`, interpolé
+depuis `SEANCE_MAX`) — tous, pour que le chiffre ne se lise pas comme un avertissement
+contre le parcours complet ; « Relire mes mots », qui n'a pas de plafond, n'en porte pas.
+Quand une séance **termine** un mode, l'écran de fin le dit (`.ortho-mode-epuise`, en
+`role="status"` comme le bloc voisin des mots difficiles — le focus part sur « Continuer
+encore un peu » dès le rendu, donc sans région live l'annonce serait perdue) ; si
+elle **étoile** la liste, la célébration « Liste prête ! » prime et rien ne s'y empile.
+
+**Validation cumulative (#641)** : `validerMode(mot, mode)` valide le mode **et tous ceux
+qui le précèdent** (`tuiles → motCache → dictee`), en datant chaque marche franchie. Les
+tuiles fournissent toutes les lettres, le mot caché laisse regarder avant d'écrire : qui
+écrit un mot sous la dictée a fait, de fait, ce que les modes plus étayés demandent. Le
+cumul vit **dans** `validerMode` (et non chez ses appelants) pour la même raison que le
+datage de #545 : aucun chemin ne peut faire monter un mot en sautant une marche, donc
+`rangMot` ne rencontre jamais d'escalier incohérent.
 
 **Déroulé d'un tour** :
 1. **Activité** : Atelier (édition d'entourage) **ou** `generate(mode)` →
@@ -637,17 +675,17 @@ Les grands choix sont tranchés (ci-dessus). Restent des détails et une issue �
 ### Mots difficiles à la pause : la lettre du critère 1 (#618)
 
 Le critère 1 de #618 nomme, à la pause, les mots passés par la correction guidée **et
-« pas encore maîtrisés »** — implémenté à la lettre, via `statutMot`. Conséquence dans un
-cas précis : une séance en **mode ciblé** ne valide aucun mode (`reussiteMode` ne
-`validerMode` qu'en parcours complet), donc le statut lu à la pause est celui d'**avant**
-la séance. Sur une liste **déjà étoilée**, un mot qui résiste y est donc `maitrise` et
-n'est **pas** nommé. Même mécanique pour un tour de révision d'une liste étoilée — mais
-là c'est sans effet, le critère négatif 9 excluant déjà cet écran.
+« pas encore maîtrisés »** — implémenté à la lettre, via `statutMot`. La moitié de la
+conséquence décrite ici a disparu avec **#641** : une séance ciblée valide désormais, donc
+le statut lu à la pause tient compte du travail de la séance dans **tous** les modes.
+Reste le cas d'un tour de **révision** sur une liste déjà étoilée, où un mot qui résiste
+est `maitrise` et n'est donc pas nommé — sans effet, le critère négatif 9 de #618 excluant
+déjà cet écran.
 
-Accepté tel quel plutôt que contourné : lever le filtre pour les séances ciblées ferait
-diverger les deux écrans sur une règle que le cadrage a écrite d'une seule façon. Écrit
-ici pour qu'un futur relecteur qui retombe sur le commentaire de `renderPause` sache que
-c'est un choix, pas un oubli.
+Accepté tel quel plutôt que contourné : lever le filtre ferait diverger les deux écrans
+sur une règle que le cadrage a écrite d'une seule façon. Écrit ici pour qu'un futur
+relecteur qui retombe sur le commentaire de `renderPause` sache que c'est un choix, pas un
+oubli.
 
 ### Modèle & stockage — détails
 - Forme exacte d'`Entourage` (plage `[début, fin]` + index de couleur) et

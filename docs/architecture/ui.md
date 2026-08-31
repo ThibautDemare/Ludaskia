@@ -1230,7 +1230,10 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   `styles/pave-signes.scss`.
 - Les runners d'**orthographe** (`ui/ortho-atelier.ts`, `ortho-liste.ts`, `ortho-revoir.ts`,
   `ortho-runner.ts`) et leur moteur (`core/orthographe/`) sont décrits dans
-  `docs/design-orthographe.md`.
+  `docs/design-orthographe.md`. **Rejet écrit (#641)** : `renderTuiles` (`ortho-runner.ts`,
+  ~258 lignes) reste une fonction longue non découpée. Dette **pré-existante** — aucun hunk
+  de #641 n'y tombe —, hors périmètre de cette PR, à traiter dans une refacto dédiée plutôt
+  qu'au fil d'un changement qui ne la touche pas.
 
 ## Étayage de la notion (#490)
 

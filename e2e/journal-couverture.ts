@@ -176,6 +176,10 @@ async function ouvrirLecon(page: Page, lecon: string): Promise<void> {
 /* Remplit chaque champ `.ans` d'une fiche avec un signe de comparaison FAUX. */
 async function ficheComparerFausse(page: Page): Promise<void> {
 	const champs = page.locator('#sheets input.ans');
+	// `ouvrirLecon` retourne dès le clic envoyé, pas dès le rendu de la fiche (navigation
+	// par hash asynchrone) : attendre le 1er champ AVANT le `.count()` one-shot, sinon il
+	// lit 0 au hasard du timing de la machine (#511, e2e/README.md).
+	await champs.first().waitFor();
 	const n = await champs.count();
 	for (let i = 0; i < n; i++) {
 		const champ = champs.nth(i);
@@ -278,6 +282,14 @@ export const COUVERTURE_JOURNAL: Record<Exercise['type'], CouvertureFormat> = {
 				jouer: async (page) => {
 					await ouvrirMode(page, 'geo-cm1-figures-proprietes', 'coche');
 					const choix = page.locator('.lqcm-multi-choice');
+					// `ouvrirMode` retourne dès le clic envoyé, pas dès le rendu de la question
+					// (navigation par hash asynchrone) : attendre le 1er choix AVANT le `.count()`
+					// one-shot, sinon il lit 0 au hasard du timing de la machine (#511,
+					// e2e/README.md) — DIAGNOSTIQUÉ : reproduit 100 % du temps aussi bien avec
+					// qu'avec la voix stubbée absente, donc bien une lecture prématurée du test,
+					// pas une course avec l'injection TTS (`bindItemTts`, ui/consigne-tts.ts, qui
+					// est d'ailleurs entièrement synchrone).
+					await choix.first().waitFor();
 					const n = await choix.count();
 					for (let i = 0; i < n; i++) await choix.nth(i).click();
 					await page.locator('#lqmValider').click();

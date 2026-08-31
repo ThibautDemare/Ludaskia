@@ -11,6 +11,24 @@
 	background: var(--accent);
 	color: #fff;
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+	/* Voile des pastilles translucides de la barre — chrono, bouton profil, boutons
+	   fantômes. DÉCLARÉ ICI, une fois, et jamais recopié : c'est la recopie qui a
+	   produit #609. Le même `rgba(255, 255, 255, 0.16)` vivait dans QUATRE règles de
+	   ce fichier, chacune composant avec `--accent` une couleur plus claire que la
+	   barre — donc écrite nulle part, donc invisible en relecture — sous laquelle le
+	   texte blanc tombait entre 3,25 et 4,50:1. Trois des quatre portaient du texte à
+	   lire (chiffre du chrono, prénom de l'enfant, libellés « Accueil » / « Imprimer »),
+	   soit AA à 4,5:1.
+	   Un voile NOIR corrige les six thèmes d'un coup : il assombrit proportionnellement,
+	   là où le blanc éclaircissait d'autant plus que l'accent était sombre. À 20 %, le
+	   texte est entre 7,42 et 7,97:1 sur les cinq thèmes clairs, et la pastille se
+	   détache du même écart partout (1,38 à 1,40, contre 1,27 à 1,37 avant — donc mieux,
+	   et surtout de façon homogène).
+	   Le thème Nuit REDÉFINIT ces deux valeurs dans `nuit-overrides` : sa barre est déjà
+	   sombre, un creux y effacerait les pastilles (1,08 contre 1,66). Une exception, un
+	   endroit, à côté de celle que `.score` y a déjà pour la même raison. */
+	--voile-barre: rgba(0, 0, 0, 0.2);
+	--voile-barre-fort: rgba(0, 0, 0, 0.3);
 }
 /* Branding de l'en-tête : lien vers l'accueil (#277). Reprend l'ancien style du
    <h1> de la toolbar (rendu inchangé) + resets de lien (couleur héritée du blanc
@@ -91,7 +109,15 @@ body.drawer-open {
 		height: 30px;
 	}
 
-	/* Hamburger : cible tactile généreuse (48px), picto blanc sur l'accent. */
+	/* Hamburger : cible tactile généreuse (48px), picto blanc sur l'accent.
+	   GARDE le voile clair, et n'utilise donc PAS `--voile-barre` — ce n'est pas un
+	   oubli de la passe #609. Un pictogramme relève du seuil non-texte (3:1, WCAG
+	   1.4.11) et non des 4,5:1 d'un caractère à déchiffrer : il est conforme tel quel
+	   (3,90 à 4,50:1). Et fonctionnellement il appartient à l'autre famille de la barre
+	   — celle des cibles claires qui EMMÈNENT quelque part (logo, « Accueil », score),
+	   pas des pastilles sombres qui INFORMENT en passant. Les quatre règles partageaient
+	   le nombre 0,16, pas la même exigence : ne pas aligner par réflexe de symétrie
+	   (avis designer). */
 	.toolbar-burger {
 		display: inline-flex;
 		align-items: center;
@@ -272,12 +298,12 @@ html.anim-reduced .toolbar-scrim:not([hidden]) {
 	box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
 }
 .btn-ghost {
-	background: rgba(255, 255, 255, 0.14);
+	background: var(--voile-barre);
 	color: #fff;
 	border: 1px solid rgba(255, 255, 255, 0.5) !important;
 }
 .btn-ghost:hover {
-	background: rgba(255, 255, 255, 0.26);
+	background: var(--voile-barre-fort);
 }
 /* Badge de niveau dans la barre (à gauche du profil) : niveau + barre de progression */
 .toolbar-xp {
@@ -315,16 +341,19 @@ html.anim-reduced .toolbar-scrim:not([hidden]) {
 	transition: width 0.3s ease;
 }
 
-/* Indicateur de profil (ouvre la gestion des profils) */
+/* Indicateur de profil (ouvre la gestion des profils). Il affiche le PRÉNOM de
+   l'enfant en 14px gras : du texte courant, donc 4,5:1 — et il portait le même voile
+   blanc que le chrono, donc le même échec (3,90 à 4,50:1 selon le thème). Repéré en
+   vérifiant le critère 3 de #609 sur toute la barre, et pas seulement sur `.score`. */
 .btn-profile {
-	background: rgba(255, 255, 255, 0.16);
+	background: var(--voile-barre);
 	color: #fff;
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
 }
 .btn-profile:hover {
-	background: rgba(255, 255, 255, 0.28);
+	background: var(--voile-barre-fort);
 }
 .btn-profile-caret {
 	opacity: 0.8;
@@ -348,7 +377,25 @@ html.anim-reduced .toolbar-scrim:not([hidden]) {
 	font-weight: 700;
 	padding: 6px 14px;
 	border-radius: 8px;
-	background: rgba(255, 255, 255, 0.16);
+	/* Voile SOMBRE, pas clair (#609). Le voile blanc à 16 % qui vivait ici composait
+	   avec `--accent` une couleur plus claire que la barre — écrite dans aucune
+	   feuille, donc invisible en relecture de token — et le chiffre blanc y tombait
+	   entre 3,25 et 4,33:1 selon le thème. 18px gras = 13,5pt : c'est du texte
+	   COURANT au sens WCAG (le seuil « grand texte » commence à 14pt gras), donc
+	   4,5:1 exigés. À 20 % de noir, le chiffre est entre 7,42 et 7,97:1 sur les cinq
+	   thèmes clairs, et la pastille se détache du même écart partout (1,38 à 1,40) —
+	   un voile sombre assombrit proportionnellement, là où le voile blanc éclaircissait
+	   d'autant plus que l'accent était sombre (1,27 en fruit rouge contre 1,37 en
+	   défaut). Une seule valeur, six thèmes, une seule règle à maintenir.
+	   Le thème Nuit fait exception et garde le voile blanc : sa barre est déjà sombre,
+	   un creux y ferait disparaître la pastille (1,08 contre 1,66). Cette exception est
+	   écrite dans `nuit-overrides`, à côté de celle que `.score` y a déjà pour la même
+	   raison — un traitement pensé pour une barre claire n'y survit pas.
+	   Vérifié au passage (critère #609) : `.score` n'a pas ce défaut. En thèmes clairs
+	   c'est du `--accent` sur blanc plein (5,35 à 5,80:1) ; en Nuit, `--accent` vert sur
+	   son voile blanc composé (#404651) donne 4,56:1. Il garde donc son traitement, qui
+	   est aussi une hiérarchie voulue : le score ressort, le chrono accompagne. */
+	background: rgba(0, 0, 0, 0.2);
 	color: #fff;
 	letter-spacing: 1px;
 }

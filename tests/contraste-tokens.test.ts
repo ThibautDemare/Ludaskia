@@ -176,6 +176,88 @@ describe('Contraste AA de la rampe de gris (#576)', () => {
 			).toBeGreaterThan(1);
 		}
 	});
+
+	/* Même piège que le trophée ci-dessus, dans l'autre sens (#609) : les pastilles
+	   translucides de la barre d'outils — chrono, bouton profil, boutons fantômes —
+	   sont des VOILES posés sur la barre, donc leur fond n'est écrit dans aucune
+	   feuille, c'est une composition. Un voile BLANC éclaircit l'accent, ce qui fait
+	   BAISSER le contraste du texte blanc posé dessus : le défaut est arrivé par là,
+	   entre 3,25 et 4,50:1 selon le thème, sur le chiffre que l'enfant lit sous
+	   pression de temps et sur son propre prénom.
+	   Le test lit le voile et son alpha DANS les feuilles au lieu de figer un nombre :
+	   revenir à un voile clair sur les thèmes clairs, ou monter l'alpha du blanc de
+	   Nuit, le fait échouer. Les trois pastilles partagent `--voile-barre` (une seule
+	   déclaration, cf. toolbar.scss) — c'est justement la recopie de ce `rgba` dans
+	   quatre règles qui avait dispersé le défaut, donc le test mesure le TOKEN.
+	   Aucune ne qualifie comme « grand texte » (chrono 18px gras = 13,5pt, les boutons
+	   14px gras = 10,5pt ; le seuil est à 14pt gras) → seuil texte courant. */
+	const voileBarre = (bloc: string) =>
+		bloc.match(/--voile-barre:\s*rgba\((\d+), (\d+), (\d+), ([\d.]+)\)/);
+
+	it('le texte des pastilles de la barre reste lisible sur leur fond composé (#609)', () => {
+		const toolbar = readFileSync('src/styles/toolbar.scss', 'utf8');
+		const clair = voileBarre(toolbar.slice(toolbar.indexOf('.toolbar {')));
+		expect(
+			clair,
+			'`--voile-barre` introuvable dans la règle `.toolbar` : la déclaration a changé de forme, ce test ne garde plus rien',
+		).toBeTruthy();
+		// Nuit garde un voile à lui, redéclaré dans `nuit-overrides` (barre sombre : un
+		// voile sombre y effacerait les pastilles). Sans cette lecture, le test mesurerait
+		// le voile clair sur la barre Nuit, qui n'est pas ce que le navigateur rend.
+		const blocNuit = THEMES.slice(THEMES.indexOf('@mixin nuit-overrides'));
+		const nuit = voileBarre(blocNuit);
+		expect(nuit, '`--voile-barre` de `nuit-overrides` introuvable').toBeTruthy();
+		const barreNuit = blocNuit.match(/\.toolbar \{\s*background: (#[0-9a-fA-F]{6})/);
+		expect(barreNuit, 'fond de `.toolbar` en Nuit introuvable').toBeTruthy();
+
+		for (const [theme, p] of Object.entries(PALETTES)) {
+			const estNuit = theme === 'nuit';
+			// La barre porte `--accent`, SAUF en Nuit où `nuit-overrides` lui donne la sienne.
+			const barre = estNuit ? barreNuit![1].toLowerCase() : p['--accent'];
+			const m = estNuit ? nuit! : clair!;
+			const voile = `rgb(${m[1]}, ${m[2]}, ${m[3]})`;
+			const fond = melange(voile, barre, Number(m[4]));
+			const r = contraste('#ffffff', fond);
+			expect(
+				r,
+				`Thème « ${theme} » : le voile ${voile} à ${m[4]} posé sur la barre ${barre} ` +
+					`compose ${fond} ; le texte blanc des pastilles y fait ${r.toFixed(2)}:1, sous ` +
+					`les ${SEUIL_TEXTE_AA}:1 exigés.\n` +
+					`La couleur fautive n'est écrite nulle part — seul ce calcul, ou axe, la voit.\n` +
+					`Un voile sombre relève le contraste sur les six thèmes d'un coup ; un voile ` +
+					`clair le dégrade d'autant plus que la barre est sombre.`,
+			).toBeGreaterThanOrEqual(SEUIL_TEXTE_AA);
+		}
+	});
+
+	/* L'autre moitié de #609, et celle qu'on perdrait en optimisant le test ci-dessus :
+	   un voile assez opaque passe le contraste du texte, mais peut noyer la pastille
+	   dans la barre. Or la pastille EST le repère que l'enfant vise du coin de l'œil.
+	   Le plancher est calé sur ce que rendait le voile blanc historique (1,27 au plus
+	   serré, en fruit rouge) : la correction ne doit pas faire moins bien que ce qu'elle
+	   remplace. Rien à voir avec un seuil WCAG — c'est un repère de forme, pas un
+	   composant porteur d'information (le texte l'est, et il est tenu ci-dessus).
+	   Nuit est EXCLU : ses pastilles y sont sous ce plancher depuis toujours (1,66 pour
+	   le chrono, mais 1,06 pour le bouton fantôme, dont c'est le liseré qui porte la
+	   forme). Un plancher qu'on devrait déroger dès le premier thème ne garderait rien. */
+	it('les pastilles de la barre restent détachées du fond (#609)', () => {
+		const toolbar = readFileSync('src/styles/toolbar.scss', 'utf8');
+		const m = voileBarre(toolbar.slice(toolbar.indexOf('.toolbar {')))!;
+		const PLANCHER = 1.27;
+		for (const [theme, p] of Object.entries(PALETTES)) {
+			if (theme === 'nuit') continue;
+			const barre = p['--accent'];
+			const fond = melange(`rgb(${m[1]}, ${m[2]}, ${m[3]})`, barre, Number(m[4]));
+			const r = contraste(fond, barre);
+			expect(
+				r,
+				`Thème « ${theme} » : la pastille (${fond}) ne se détache plus de la barre ` +
+					`(${barre}) — ${r.toFixed(2)}:1, sous le plancher de ${PLANCHER} que rendait déjà ` +
+					`le voile d'avant #609.\nUn voile trop discret rend le texte lisible mais fait ` +
+					`disparaître le repère que l'enfant cherche du coin de l'œil.`,
+			).toBeGreaterThanOrEqual(PLANCHER);
+		}
+	});
 });
 
 /* ============================================================

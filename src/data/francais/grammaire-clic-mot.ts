@@ -64,7 +64,17 @@ export interface PhraseClicMot {
 	    bonne réponse : … » de la région live la répéterait alors mot pour mot — deux
 	    énumérations d'affilée pour un enfant au lecteur d'écran. Drapeau porté par la
 	    DONNÉE (jamais deviné en comparant des textes) ; absent ⇒ la bonne réponse est
-	    annoncée, comportement par défaut (ne JAMAIS se taire sur la réponse). */
+	    annoncée, comportement par défaut (ne JAMAIS se taire sur la réponse).
+	    #529 l'a généralisé : posé en #436 sur les deux seules banques livrées alors (nom
+	    et déterminant, à cible plurielle), il manquait sur TOUTES les autres, qui citent
+	    pourtant la cible elles aussi — verbe, conjonction, déterminant, pronom, nom
+	    noyau, sujet, adjectif, pronom sujet. La redondance qu'il corrige subsistait donc
+	    partout sauf aux deux endroits où on l'avait vue.
+	    C'est ce qui rend un drapeau manuel fragile : rien ne relie l'explication qu'on
+	    rédige au drapeau qu'on oublie de poser. La cohérence des deux est désormais
+	    VÉRIFIÉE — si une explication cite ses mots-cibles sans porter le drapeau (ou
+	    l'inverse), `npm test` échoue. Écrire l'explication suffit ; le test réclame le
+	    drapeau. */
 	explicationNommeCible?: boolean;
 }
 
@@ -167,7 +177,8 @@ export function phrase(texte: string, verbe: string): PhraseClicMot {
 		cibleIndices.length > 1
 			? `Le verbe conjugué est en deux mots : « ${texteVerbe} » (l'auxiliaire et le participe passé).`
 			: `Le verbe, c'est le mot qui dit l'action ou l'état : ici « ${texteVerbe} ».`;
-	return { tokens, cibleIndices, explication };
+	// Les deux formulations CITENT le verbe : la région live n'a pas à le redire (#529).
+	return { tokens, cibleIndices, explication, explicationNommeCible: true };
 }
 
 /** Construit une phrase annotée en ciblant un ENSEMBLE de mots ISOLÉS, éventuellement
@@ -461,6 +472,7 @@ const CIBLE_CONJ = 'la conjonction de coordination';
 function conj(texte: string, conjonction: string): PhraseClicMot {
 	return phraseMots(texte, [conjonction], {
 		explication: `« ${conjonction} » relie deux mots, deux groupes ou deux phrases : c'est une conjonction de coordination.`,
+		explicationNommeCible: true,
 	});
 }
 /* ni…ni : les DEUX « ni » forment la cible (non adjacente). */
@@ -468,6 +480,7 @@ function conjNi(texte: string): PhraseClicMot {
 	return phraseMots(texte, ['ni', 'ni'], {
 		explication:
 			"« ni … ni » relie deux mots ou deux groupes en les niant : c'est une conjonction de coordination.",
+		explicationNommeCible: true,
 	});
 }
 
@@ -590,6 +603,7 @@ export function det(texte: string, cible: string, cat: SousCatDet): PhraseClicMo
 		explication: DET_EXPL[cat](cible),
 		consigne: DET_CONSIGNE[cat],
 		cibleLabel: DET_LABEL[cat],
+		explicationNommeCible: true, // les trois formulations de DET_EXPL citent le mot (#529)
 	});
 }
 /* Expanse une phrase en plusieurs items (un par sous-catégorie ciblée). */
@@ -744,6 +758,7 @@ export function pron(texte: string, cible: string, role: RolePron): PhraseClicMo
 		explication: PRON_EXPL[role](cible),
 		consigne: PRON_CONSIGNE[role],
 		cibleLabel: PRON_LABEL[role],
+		explicationNommeCible: true, // les deux formulations de PRON_EXPL citent le mot (#529)
 	});
 }
 function pronItems(texte: string, specs: [string, RolePron][]): PhraseClicMot[] {
@@ -848,6 +863,7 @@ const CIBLE_NOYAU = 'le nom noyau';
 function noyau(texte: string, nom: string): PhraseClicMot {
 	return phraseMots(texte, [nom], {
 		explication: `Le nom noyau, c'est le nom principal du groupe : ici « ${nom} » (les autres mots le complètent).`,
+		explicationNommeCible: true, // #529
 	});
 }
 
@@ -916,11 +932,13 @@ const CIBLE_SUJET = 'le nom noyau du sujet';
 function sujetSimple(texte: string, nom: string): PhraseClicMot {
 	return phraseMots(texte, [nom], {
 		explication: `Le nom noyau du sujet, c'est qui fait l'action : « ${nom} » (les autres mots le complètent).`,
+		explicationNommeCible: true, // #529
 	});
 }
 function sujetCompose(texte: string, nom1: string, nom2: string): PhraseClicMot {
 	return phraseMots(texte, [nom1, nom2], {
 		explication: `Le sujet est composé de deux noms : « ${nom1} » et « ${nom2} ».`,
+		explicationNommeCible: true, // #529 — les DEUX noms sont énumérés
 	});
 }
 
@@ -1519,6 +1537,7 @@ export function adjCE2(texte: string, adjectif: string): PhraseClicMot {
 		explication: `« ${adjectif} » dit comment est le nom : c'est un adjectif.`,
 		consigne: CONSIGNE_ADJ_CE2,
 		cibleLabel: CIBLE_ADJ_CE2,
+		explicationNommeCible: true, // #529
 	});
 	const rad = radicalAdj(adjectif);
 	const cibleIdx = p.cibleIndices[0];
@@ -1613,6 +1632,7 @@ export function pronSujetCE2(texte: string, cible: string): PhraseClicMot {
 		explication: `« ${cible} » dit qui fait l'action : c'est un pronom personnel sujet.`,
 		consigne: CONSIGNE_PRON_CE2,
 		cibleLabel: CIBLE_PRON_CE2,
+		explicationNommeCible: true, // #529
 	});
 }
 

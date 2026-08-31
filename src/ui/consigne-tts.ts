@@ -41,12 +41,19 @@ function parler(btn: HTMLElement, texte: string, onLecture?: (enCours: boolean) 
 	});
 }
 
-function fabriquerBouton(texte: string, opts: ConsigneTtsOptions): HTMLButtonElement {
+/** Nom accessible par défaut : ce que lit un bouton greffé sur une consigne. */
+const LIBELLE_DEFAUT = 'Écouter la consigne';
+
+function fabriquerBouton(
+	texte: string,
+	opts: ConsigneTtsOptions,
+	libelle: string = LIBELLE_DEFAUT,
+): HTMLButtonElement {
 	const btn = document.createElement('button');
 	btn.type = 'button';
 	btn.className = 'consigne-tts';
-	btn.setAttribute('aria-label', 'Écouter la consigne');
-	btn.title = 'Écouter la consigne';
+	btn.setAttribute('aria-label', libelle);
+	btn.title = libelle;
 	btn.innerHTML = html`${icon('speaker')}<span class="consigne-tts-lab">Écouter</span>`.balisage;
 	btn.addEventListener('click', () => {
 		// `exclusif` : un clic pendant que ça parle est SANS EFFET, au lieu de couper
@@ -82,7 +89,14 @@ export function bindConsigneTts(root: ParentNode = document, opts: ConsigneTtsOp
 		el.dataset[MARQUE] = '1';
 		const texte = el.dataset.tts || '';
 		if (!texte.trim()) return;
-		const btn = fabriquerBouton(texte, opts);
+		// `data-tts-label` (#470) : nom accessible SUR MESURE, pour un écran qui greffe
+		// DEUX boutons. « Clique sur le mot » en pose un sur la consigne d'action et un
+		// sur la phrase entière ; sans ça, un lecteur d'écran annonce deux fois « Écouter
+		// la consigne » à la suite, pour deux textes différents (WCAG 2.4.6 et 4.1.2).
+		// Attribut plutôt qu'option de `bindConsigneTts` : l'appelant équipe TOUT un
+		// conteneur d'un coup, il ne peut pas nommer chaque bouton à ce niveau — c'est
+		// l'élément lu qui sait ce qu'il est. Même mécanique que `data-tts-pos`.
+		const btn = fabriquerBouton(texte, opts, el.dataset.ttsLabel?.trim() || LIBELLE_DEFAUT);
 		// Par défaut le bouton suit la consigne (inline) ; `data-tts-pos="start"`
 		// l'ancre EN TÊTE (énoncés longs : il reste rattaché au texte, jamais isolé).
 		if (el.dataset.ttsPos === 'start') el.prepend(btn);

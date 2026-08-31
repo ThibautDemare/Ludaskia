@@ -148,6 +148,16 @@
 	   texte clair conservé. */
 	.toolbar {
 		background: #1c2330;
+		/* Les pastilles translucides de la barre gardent leur voile CLAIR en Nuit (#609).
+		   Sur les thèmes clairs, le voile est passé au noir : posé sur l'accent, un voile
+		   blanc composait une surface plus claire que la barre, sous laquelle le texte
+		   blanc échouait AA. Ici la barre est déjà sombre — l'assombrir encore effacerait
+		   la pastille (1,08:1 contre la barre, quand le voile clair en donne 1,66) sans
+		   rien gagner : le texte y est déjà à 9,49:1. Rendu strictement inchangé dans ce
+		   thème. Une seule exception, redéclarée sur les deux tokens plutôt que sur chaque
+		   règle qui les consomme — même endroit et même raison que `.score` ci-dessous. */
+		--voile-barre: rgba(255, 255, 255, 0.16);
+		--voile-barre-fort: rgba(255, 255, 255, 0.28);
 	}
 	.toolbar-logo {
 		background: #fff; /* badge clair gardé : le feuillage vert du logo reste vif */

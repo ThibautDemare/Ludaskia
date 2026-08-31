@@ -91,23 +91,12 @@ interface Derogation {
 }
 
 const DEROGATIONS: Derogation[] = [
-	// RETIRÉES en corrigeant #600 : `--accent` employé comme texte échouait sur
-	// `--accent-soft` (4,29:1) et sur `--page-bg` (4,47:1). Les cinq accents clairs ont
-	// été assombris à la source (base.scss, themes.scss) ; il n'y a plus de #2f7d52.
-	{
-		regle: 'color-contrast',
-		avant: '#ffffff',
-		// Recomposé après l'assombrissement des accents (#600) : le voile blanc étant
-		// posé SUR `--accent`, déplacer l'accent déplace la couleur fautive. C'est
-		// précisément ce qui rend ce défaut invisible en relecture — la couleur n'est
-		// écrite nulle part, elle se recalcule. Le gate l'a signalé tout seul.
-		arriere: '#4f8d6a',
-		vues: ['Leçon français (conjugaison — être au présent)'],
-		issue: '#609',
-		mesure: '2026-08-31',
-		raison:
-			"pastille du chronomètre : `rgba(255,255,255,0.16)` posé sur `--accent`. La couleur fautive est COMPOSÉE, écrite nulle part — 3,90 à 4,50:1 selon le thème après #600 (3,25 à 4,33 avant). Assombrir l'accent ne suffit donc pas : le voile ÉCLAIRCIT, et il éclaircit d'autant plus que ce qu'il recouvre est sombre. Inverser le voile (noir) réglerait les six thèmes, mais change le rendu de la barre : arbitrage de design.",
-	},
+	// VIDE, et c'est l'état visé. Les trois dernières entrées sont tombées avec leurs
+	// correctifs : `--accent` en texte sur `--accent-soft` puis sur `--page-bg` (#600,
+	// accents assombris à la source), et la pastille composée du chronomètre (#609,
+	// voile inversé). Une entrée ajoutée ici doit porter son couple de couleurs MESURÉ
+	// PAR AXE (composition alpha comprise), son issue, sa date — et le test exige
+	// qu'elle serve encore, donc elle s'auto-périme le jour du correctif.
 ];
 
 /** La dérogation qui couvre ce nœud, s'il y en a une. */

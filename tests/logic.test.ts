@@ -2828,6 +2828,10 @@ describe('Impression contextuelle (issue #40)', () => {
 describe('Révision espacée (issue #45)', () => {
 	const T0 = 1_700_000_000_000; // instant de référence (ms)
 	// Construit un OrthoState avec n mots tous dus (une seule source « orthographe »).
+	// `atelierFait: true` depuis #641 : un mot n'entre en rotation qu'à son atelier, et la
+	// sélection écarte ceux qui ne l'ont pas fait (critère 16). Un mot « dû » est donc, par
+	// construction, un mot découvert — sinon cette fabrique décrirait un état impossible et
+	// ces tests ne mesureraient plus rien.
 	const motsDus = (n: number): OrthoState => {
 		const banque: OrthoState['banque'] = {};
 		for (let i = 0; i < n; i++) {
@@ -2836,7 +2840,7 @@ describe('Révision espacée (issue #45)', () => {
 				id,
 				mot: 'mot' + i,
 				entourage: [],
-				atelierFait: false,
+				atelierFait: true,
 				validation: { motCache: false, tuiles: false, dictee: false },
 				revision: { palier: 0, prochaineRevision: T0 - 1000 - i, reussites: 0, dernierTest: null },
 				origine: 'liste',
@@ -3204,10 +3208,14 @@ describe('Révision espacée (issue #45)', () => {
 
 describe('Reprise vers la révision espacée (#45)', () => {
 	const NOW = 1_700_000_000_000;
-	// Un mot « pré-fonctionnalité » : présent en banque, sans état de révision.
+	// Un mot « pré-fonctionnalité » : présent en banque, sans état de révision. Il a été
+	// travaillé avant l'arrivée de la révision espacée, donc découvert (`atelierFait`) —
+	// depuis #641, c'est ce qui l'autorise à revenir en révision (critère 16).
 	function orthoSansRevision(): OrthoState {
 		return {
-			banque: { w1: { id: 'w1', mot: 'caillou', revision: undefined as any } as any },
+			banque: {
+				w1: { id: 'w1', mot: 'caillou', atelierFait: true, revision: undefined as any } as any,
+			},
 			listes: [],
 			motIdParForme: { caillou: 'w1' },
 		};

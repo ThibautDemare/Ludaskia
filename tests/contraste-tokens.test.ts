@@ -253,7 +253,7 @@ const PAIRES_NON_TEXTE: Paire[] = [
 	{
 		avant: '--accent-soft',
 		arriere: '--paper',
-		ou: 'sprint.scss .sprint-choice, pave-signes.scss .pave-signe (bordure au repos)',
+		ou: 'sprint.scss .sprint-choice, pave-signes.scss .pave-signe (bordure au repos), lecon-mode.scss .etude-btn et .mode-btn[data-epuise="1"] (#641)',
 	},
 	{
 		avant: '--accent',

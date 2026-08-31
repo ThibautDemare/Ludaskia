@@ -75,6 +75,28 @@ export function plafondBasNiveau(plafond: number): number {
 export const REVISION_SEUIL_SOURCE_VIDABLE = 4; // au-delà, une source est « grosse »
 export const REVISION_MAX_VIDAGES_SOURCES = 2; // petites sources vidées d'un jet, max
 
+/* État d'un élément PAS ENCORE en rotation (#641) : il existe, mais son compteur
+   d'espacement n'a pas démarré. `prochaineRevision: null` au palier 0 — un état qu'aucun
+   élément en rotation ne peut prendre (`avancerEtat` ne met `null` qu'au palier ACQUIS),
+   donc lisible sans ambiguïté par `estHorsRotation`.
+
+   Pourquoi : un mot d'orthographe ajouté par le parent entrait en rotation dès l'AJOUT,
+   si bien qu'un mot jamais découvert à l'atelier arrivait « dû » le lendemain — et qu'une
+   liste découverte trois semaines plus tard saturait la première séance de sa dette
+   accumulée. Le compteur démarre donc à la première rencontre RÉELLE (`marquerAtelierFait`,
+   orthographe/runner.ts). */
+export function etatHorsRotation(): EtatRevision {
+	return { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null };
+}
+
+/* L'élément n'a jamais commencé sa rotation. Distinct d'« acquis » (palier ACQUIS, sorti
+   de la rotation par le haut) et distinct d'un état absent (données d'avant #45, que
+   `backfillMotRevisions` rattrape). Un état manquant compte ici comme hors rotation :
+   l'appelant a alors tout à poser. */
+export function estHorsRotation(e: EtatRevision | undefined | null): boolean {
+	return !e || (e.palier === 0 && e.prochaineRevision == null && e.dernierTest == null);
+}
+
 /* État d'un élément qui ENTRE en rotation (dès l'ajout / la 1re rencontre) :
    palier 0, premier re-test dès le lendemain (J+1) pour consolider à chaud. */
 export function etatNeuf(now: number): EtatRevision {

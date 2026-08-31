@@ -412,6 +412,19 @@ export interface ActivityEntry {
 	t: number; // horodatage (ms)
 	k: ActivityKindStored;
 	ref?: string; // cible travaillée (id de leçon / de liste) quand la session n'en a qu'une
+	/* La séance a-t-elle comporté au moins une activité qui POUVAIT faire progresser ce
+	   qu'elle travaillait (#641) ? Écrit UNIQUEMENT quand la réponse est `false` : son
+	   ABSENCE vaut « oui ». C'est ce qui empêche une mise à jour de décréditer les entrées
+	   déjà en stockage (critère 18), et ce qui garde le journal court dans le cas courant.
+	   Ne concerne aujourd'hui que les sessions de dictée (cf. `etapeSatisfaite`). */
+	progressive?: boolean;
+}
+
+/** Une session a-t-elle pu faire progresser ce qu'elle travaillait (#641) ? Lecture unique
+    du drapeau, absence comprise — à n'écrire qu'ici pour que « absent = oui » ne se
+    réinvente pas à chaque appelant. Pur. */
+export function sessionProgressive(e: ActivityEntry): boolean {
+	return e.progressive !== false;
 }
 /* Normalise un journal brut (lu en localStorage) en entrées typées, en tolérant
    l'ANCIEN format `number[]` (chaque nombre → entrée de type 'inconnu'). Une `ref` vide
@@ -431,6 +444,10 @@ export function normalizeActivity(raw: unknown): ActivityEntry[] {
 				k: (ACTIVITY_KINDS as readonly string[]).includes(k) ? (k as ActivityKind) : 'inconnu',
 			};
 			if (typeof ref === 'string' && ref !== '') entry.ref = ref;
+			// Seul le `false` explicite est conservé (#641) : tout le reste — clé absente,
+			// valeur d'un import bancal — retombe sur « la séance comptait », donc sur le
+			// comportement d'avant, jamais sur un crédit retiré à l'enfant.
+			if ((e as ActivityEntry).progressive === false) entry.progressive = false;
 			out.push(entry);
 		}
 	}
@@ -439,7 +456,7 @@ export function normalizeActivity(raw: unknown): ActivityEntry[] {
 export function loadActivity(): ActivityEntry[] {
 	return normalizeActivity(lsGet(ACTIVITY_KEY, []));
 }
-function recordActivity(now: number, kind: ActivityKind, ref?: string) {
+function recordActivity(now: number, kind: ActivityKind, ref?: string, progressive = true) {
 	// Toute session finalisée, de n'importe quel type, atteste que le journal des paliers tourne
 	// (cf. marquerDebutSuivi) : sans ça, un enfant qui ne ferait que des dictées et de la révision
 	// espacée n'aurait aucune borne, et l'espace encadrant afficherait « aucun suivi » sur toutes
@@ -448,16 +465,21 @@ function recordActivity(now: number, kind: ActivityKind, ref?: string) {
 	// entre une telle borne et la première session de leçon, aucun état ne peut avoir bougé.
 	marquerDebutSuivi(now);
 	const a = loadActivity(); // normalisé : réécrit aussi l'éventuel héritage au format objet
-	a.push(ref ? { t: now, k: kind, ref } : { t: now, k: kind });
+	const entry: ActivityEntry = ref ? { t: now, k: kind, ref } : { t: now, k: kind };
+	if (!progressive) entry.progressive = false; // absent = « oui » (#641)
+	a.push(entry);
 	if (a.length > ACTIVITY_MAX) a.splice(0, a.length - ACTIVITY_MAX);
 	lsSet(ACTIVITY_KEY, a);
 }
 /* Journalise une session finalisée d'un type qui NE passe PAS par recordLessonStats
    (révision espacée, dictée d'orthographe) — un point d'activité daté (#319). `ref`
    (#498) = cible travaillée quand la session n'en a qu'une (id de liste pour une dictée) ;
-   omise pour la révision espacée, qui rejoue des items de plusieurs origines. */
-export function recordSessionActivity(kind: ActivityKind, ref?: string): void {
-	recordActivity(Date.now(), kind, ref);
+   omise pour la révision espacée, qui rejoue des items de plusieurs origines.
+   `progressive` (#641) = la séance a-t-elle comporté au moins une activité qui POUVAIT
+   faire progresser un mot ; défaut `true`, donc un appelant qui l'ignore garde son
+   comportement d'avant. */
+export function recordSessionActivity(kind: ActivityKind, ref?: string, progressive = true): void {
+	recordActivity(Date.now(), kind, ref, progressive);
 }
 
 /* ---------- Premier passage par leçon (objectif « nouvelle leçon », #178) ----------

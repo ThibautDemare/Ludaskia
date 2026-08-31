@@ -32,7 +32,7 @@
      futur récap encadrant « durée des séances », visuel différé).
    ============================================================ */
 import { lsGet, lsSet, lsGetRaw, lsSetRaw, lsRemoveQuiet } from './storage';
-import { loadActivity, type ActivityEntry } from './progress';
+import { loadActivity, sessionProgressive, type ActivityEntry } from './progress';
 import { touchProfile } from './profiles';
 
 /* ---------- Modèle ---------- */
@@ -532,7 +532,17 @@ export function etapeSatisfaite(
 		case 'lecon':
 			return activite.k === 'lecon' && !!activite.ref && activite.ref === etape.ref;
 		case 'dictee':
-			return activite.k === 'dictee' && !!activite.ref && ciblesEtape(etape).includes(activite.ref);
+			// #641 : en plus de la cible, la séance doit avoir pu FAIRE PROGRESSER un mot. Sans
+			// cette condition, huit tuiles sur une liste dont tous les mots ont déjà validé les
+			// tuiles cochaient l'étape du jour sans qu'aucun mot ne monte d'un cran — l'appli
+			// confirmait à l'enfant un travail qu'elle ne comptait nulle part ailleurs.
+			// La réussite, elle, n'entre pas dans le calcul : rater huit fois reste du travail.
+			return (
+				activite.k === 'dictee' &&
+				!!activite.ref &&
+				ciblesEtape(etape).includes(activite.ref) &&
+				sessionProgressive(activite)
+			);
 		case 'leconDuJour':
 			// La leçon PROPOSÉE change dès qu'elle est réussie : impossible de la comparer après
 			// coup. N'importe quelle leçon vaut donc l'étape, ce qui reste fidèle à la consigne
@@ -540,9 +550,17 @@ export function etapeSatisfaite(
 			// une autre depuis le catalogue.
 			return activite.k === 'lecon' && !!activite.ref;
 		case 'aRevoir':
+			// La branche DICTÉE porte la même exigence que l'étape « Une dictée » ci-dessus
+			// (#641, amendement du critère 19) : si on épingle une dictée et que tous les mots
+			// ont déjà été vus en tuiles, l'enfant doit faire du mot caché ou de la dictée pure
+			// pour que ça compte. Une file épinglée qui se coche sur du travail qui ne fait
+			// monter aucun mot dirait exactement ce que #641 corrige ailleurs.
+			// La branche LEÇON, elle, est strictement inchangée : le drapeau ne concerne que
+			// les sessions d'orthographe, et une leçon n'a rien d'équivalent à mesurer.
 			if (!activite.ref) return false;
 			if (activite.k === 'lecon') return epinglees.aRevoirLecons.includes(activite.ref);
-			if (activite.k === 'dictee') return epinglees.aRevoirDictees.includes(activite.ref);
+			if (activite.k === 'dictee')
+				return epinglees.aRevoirDictees.includes(activite.ref) && sessionProgressive(activite);
 			return false;
 	}
 }

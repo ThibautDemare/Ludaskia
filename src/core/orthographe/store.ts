@@ -13,7 +13,7 @@ import type {
 	FormesAccord,
 	VerbeConfig,
 } from './types';
-import { etatNeuf, avancerEtat } from '../revision';
+import { etatNeuf, etatHorsRotation, avancerEtat } from '../revision';
 
 export const ORTHO_KEY = 'ludaskia_ortho';
 
@@ -135,7 +135,9 @@ export function addOrGetMot(
 		entourage: [],
 		atelierFait: false,
 		validation: { motCache: false, tuiles: false, dictee: false },
-		revision: etatNeuf(Date.now()), // entre en rotation de révision dès l'ajout (#45)
+		// Hors rotation à l'ajout (#641) : le compteur d'espacement ne démarre qu'à la
+		// première rencontre réelle du mot (son atelier), pas à sa saisie par le parent.
+		revision: etatHorsRotation(),
 		origine,
 	};
 	state.banque[m.id] = m;

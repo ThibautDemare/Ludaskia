@@ -87,6 +87,40 @@
 	border-radius: 999px;
 	padding: 2px 10px;
 }
+/* Coût d'une séance (#641) : chip NEUTRE, posé sur les quatre boutons qui lancent une
+   séance et sur aucun autre. Neutre par choix — porté par le seul parcours complet, ou
+   coloré comme un badge, le chiffre se lirait comme un avertissement contre lui, alors
+   qu'il dit la même chose partout : « ça dure ce que ça dure ». Couple de tokens déjà
+   couvert par tests/contraste-tokens.test.ts (--grey sur --track). */
+.mode-btn-cout {
+	align-self: flex-start;
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--grey);
+	background: var(--track);
+	border-radius: 999px;
+	padding: 2px 10px;
+}
+/* Zone basse (#641) : les modes déjà terminés pour cette liste. Troisième registre visuel,
+   entre le bouton d'action plein de la zone principale et l'accès « étude » : fond de carte
+   et liseré d'accent, comme `.etude-btn`. Ce qu'il ne faut SURTOUT pas reprendre, c'est
+   `.programme-tuile--inactive` (pointillé + --muted), que l'enfant a appris ailleurs comme
+   « pas cliquable » : ces boutons sont pleinement actifs et rapportent toujours des points. */
+.mode-choice-epuises {
+	margin-top: 22px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+.mode-choice-epuises-sep {
+	font-size: 13px;
+	color: var(--grey);
+	margin: 0;
+}
+.mode-btn[data-epuise='1'] {
+	background: var(--paper);
+	border-color: var(--accent-soft);
+}
 /* Tablette / paysage : deux colonnes si la place le permet (mobile = pile). */
 @media (min-width: 560px) {
 	.mode-choice-list {
@@ -96,6 +130,14 @@
 	}
 	.mode-btn {
 		flex: 1 1 240px;
+	}
+	.mode-choice-epuises {
+		flex-direction: row;
+		flex-wrap: wrap;
+		justify-content: center;
+	}
+	.mode-choice-epuises-sep {
+		flex: 1 0 100%;
 	}
 }
 

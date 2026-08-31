@@ -77,7 +77,10 @@ const etatDu = (dernierTest: number | null = null) => etat(1, T0 - JOUR, dernier
 const etatAcquis = () => etat(PALIER_ACQUIS, null, T0 - 100 * JOUR);
 const etatFutur = () => etat(2, T0 + 5 * JOUR, T0 - JOUR);
 
-/* Banque d'orthographe de n mots TOUS dus (une seule source « orthographe »). */
+/* Banque d'orthographe de n mots TOUS dus (une seule source « orthographe »).
+   `atelierFait: true` depuis #641 : un mot n'entre en rotation qu'à son atelier, et la
+   sélection écarte ceux qui ne l'ont pas fait (critère 16). Un mot « dû » est donc, par
+   construction, un mot découvert. */
 function motsDus(n: number): OrthoState {
 	const banque: OrthoState['banque'] = {};
 	for (let i = 0; i < n; i++) {
@@ -86,7 +89,7 @@ function motsDus(n: number): OrthoState {
 			id,
 			mot: 'mot' + i,
 			entourage: [],
-			atelierFait: false,
+			atelierFait: true,
 			validation: { motCache: false, tuiles: false, dictee: false },
 			revision: etat(0, T0 - 1000 - i),
 			origine: 'liste',

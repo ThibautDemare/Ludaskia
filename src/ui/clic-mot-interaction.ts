@@ -79,8 +79,24 @@ export function bindClicMot(
 	);
 	const mount = root.querySelector('[data-tuile-mount]');
 	if (mount) {
+		// `data-tts-label` (#470) : l'écran porte DEUX boutons « Écouter » consécutifs au
+		// Tab — celui de la consigne d'action (greffé par l'appelant sur `.lclic-consigne`)
+		// et celui-ci, qui lit la phrase entière. Sans libellé propre, les deux annoncent
+		// « Écouter la consigne » pour deux textes différents : un lecteur d'écran ne peut
+		// pas les distinguer (WCAG 2.4.6 « Intitulés descriptifs », 4.1.2 « Nom, rôle,
+		// valeur »). Posé ICI et pas chez les appelants : la zone est rendue par ce widget,
+		// donc les deux chemins qui l'utilisent — la leçon (ui/lecon-clic-mot.ts) et la
+		// révision (ui/revision.ts, renderClicMot) — en héritent sans rien à répéter.
+		// « phrase » et pas « texte » : c'est le mot des consignes elles-mêmes (« Clique sur
+		// le verbe conjugué de la phrase »), et la paire « Écouter la phrase » / « Écouter le
+		// mot » existe déjà dans ui/ortho-runner.ts. Intitulé validé par
+		// `relecteur-accessibilite`.
+		// LIMITE, à connaître avant de réutiliser ce widget : le libellé est en dur parce que
+		// toutes les banques actuelles sont des phrases complètes. Le jour où il sert un
+		// fragment non phrastique (un groupe nominal isolé, par exemple), le libellé devient
+		// faux et doit repasser en champ de `ClicMotSpec`.
 		mount.outerHTML = html`
-    <div class="lclic-phrase-zone"${spec.parle ? ttsAttr(spec.parle) : ''}>
+    <div class="lclic-phrase-zone"${spec.parle ? ttsAttr(spec.parle) : ''} data-tts-label="Écouter la phrase">
       <div class="lclic-phrase">${motsHTML}</div>
     </div>
     <p class="sr-only" id="lclicStatus" role="status" aria-live="polite" aria-atomic="true"></p>`.balisage;

@@ -6,7 +6,35 @@
    le bloc Préférences (réglage auto + statut de la lecture vocale).
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, seedAideVue, seedAideVueScript } from './helpers';
+
+/* Simule une voix FR locale, pour faire apparaître le(s) bouton(s) « Écouter »
+   (dicteeDisponible() faux par défaut sous Chromium headless, cf. en-tête). On
+   ne clique jamais dessus dans les tests ci-dessous (lectureConsigneAuto est
+   désactivée par défaut) : seul getVoices() est nécessaire, mais on garde
+   speak()/SpeechSynthesisUtterance en no-op par défense, comme les autres
+   specs qui stubbent la voix (ortho-atelier-ecouter.spec.ts,
+   revision-ortho.spec.ts, sprint-ecouter.spec.ts). Doit être posé AVANT la
+   navigation (addInitScript s'exécute avant les scripts de la page). */
+function stubVoixFr(): string {
+	return `(() => {
+		const voix = {
+			lang: 'fr-FR',
+			name: 'Voix FR de test',
+			localService: true,
+			default: true,
+			voiceURI: 'e2e-voix-fr',
+		};
+		class FakeUtterance {
+			constructor(text) { this.text = text; this.voice = null; this.lang = ''; this.rate = 1; }
+			addEventListener() {}
+		}
+		window.SpeechSynthesisUtterance = FakeUtterance;
+		const synth = window.speechSynthesis;
+		synth.getVoices = () => [voix];
+		synth.speak = () => {};
+	})();`;
+}
 
 test('Confort de lecture : classe, espacement et persistance', async ({ page }) => {
 	const errors = watchErrors(page);
@@ -71,6 +99,105 @@ test('Champs de conjugaison : chaque saisie a un nom accessible, et ils diffère
 	// Et surtout : ils se DISTINGUENT. Six noms identiques satisferaient axe sans rien
 	// résoudre — c'est le pronom qui manquait, pas l'attribut.
 	expect(new Set(noms.slice(0, 6)).size).toBe(6);
+	expect(errors).toEqual([]);
+});
+
+/* ============================================================
+   #470 — « Clique sur le mot » greffe DEUX boutons « Écouter » (la consigne
+   d'action ET la phrase entière). Avant le correctif, `fabriquerBouton`
+   codait en dur le même aria-label/title pour tout bouton généré : deux
+   boutons consécutifs au Tab, même nom accessible, deux textes lus
+   différents (WCAG 2.4.6 / 4.1.2). `bindConsigneTts` lit désormais
+   `data-tts-label` (posé par `bindClicMot`, ui/clic-mot-interaction.ts, sur
+   la zone de phrase) pour distinguer les deux, avec repli sur « Écouter la
+   consigne » par défaut. Le widget étant mutualisé, on éprouve les DEUX
+   chemins qui le montent : la leçon (ui/lecon-clic-mot.ts) et la révision
+   (ui/revision.ts, renderClicMot).
+   ============================================================ */
+
+test('« Clique sur le mot » (leçon) : deux boutons Écouter, jamais un 3e, noms accessibles distincts — critères 3 et 6', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(stubVoixFr());
+	await seedAideVue(page); // écarte l'auto-aide (#435), sans intérêt pour ce test
+	await gotoHash(page, 'lecon-fr-gram-clic-verbe'); // mono-mode → lancement direct
+
+	const boutons = page.locator('.consigne-tts');
+	await boutons.first().waitFor();
+	// Critère 6 : aucun bouton Écouter surnuméraire — toujours exactement deux
+	// (consigne d'action + phrase entière), jamais un troisième empilé au-dessus.
+	await expect(boutons).toHaveCount(2);
+
+	// Critère 3 : deux noms accessibles DIFFÉRENTS — chacun retrouvable par son
+	// propre nom, exact (un match par substring confondrait les deux : « Écouter »
+	// est commun aux deux libellés).
+	await expect(page.getByRole('button', { name: 'Écouter la consigne', exact: true })).toHaveCount(
+		1,
+	);
+	await expect(page.getByRole('button', { name: 'Écouter la phrase', exact: true })).toHaveCount(1);
+
+	expect(errors).toEqual([]);
+});
+
+const UUID_CLICMOT = 'e2e-470-clicmot';
+
+/* Amorce un profil dédié avec une leçon « clique sur le mot » DUE, pour rejouer
+   la même vérification en révision (cf. revision.spec.ts, seedDueLesson). */
+function seedDueClicMot(): string {
+	return `
+    localStorage.setItem('ludaskia_profiles', ${JSON.stringify(
+			JSON.stringify({
+				list: [{ uuid: UUID_CLICMOT, name: 'Test', emoji: '🦊', updatedAt: 1 }],
+				active: UUID_CLICMOT,
+			}),
+		)});
+    localStorage.setItem('${UUID_CLICMOT}/ludaskia_lessonRevision', JSON.stringify({
+      'fr-gram-clic-verbe': { palier: 0, prochaineRevision: 1, reussites: 0, dernierTest: null }
+    }));
+    ${seedAideVueScript(UUID_CLICMOT)}
+  `;
+}
+
+test('« Clique sur le mot » (révision) : deux boutons Écouter, jamais un 3e, noms accessibles distincts — critères 3 et 6', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(stubVoixFr());
+	await page.addInitScript(seedDueClicMot());
+	await gotoHash(page, 'revision-espacee');
+
+	const boutons = page.locator('.consigne-tts');
+	await boutons.first().waitFor();
+	await expect(boutons).toHaveCount(2); // critère 6, même garde-fou qu'en leçon
+
+	await expect(page.getByRole('button', { name: 'Écouter la consigne', exact: true })).toHaveCount(
+		1,
+	);
+	await expect(page.getByRole('button', { name: 'Écouter la phrase', exact: true })).toHaveCount(1);
+
+	expect(errors).toEqual([]);
+});
+
+/* Critère 5 (négatif) : le comportement PAR DÉFAUT ne change pas. Un écran à
+   consigne simple (un seul `data-tts`, sans `data-tts-label`) doit toujours
+   produire un unique bouton nommé « Écouter la consigne » — c'est le test qui
+   rougit si quelqu'un renomme le libellé par défaut ou le rend conditionnel. */
+test('Comportement par défaut inchangé : un écran à un seul bouton Écouter reste « Écouter la consigne » — critère 5', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(stubVoixFr());
+	await gotoHash(page, 'lecon-fr-conj-etre-present'); // fiche en saisie, un seul data-tts
+
+	const boutons = page.locator('.consigne-tts');
+	await boutons.first().waitFor();
+	await expect(boutons).toHaveCount(1);
+	await expect(boutons.first()).toHaveAttribute('aria-label', 'Écouter la consigne');
+	await expect(page.getByRole('button', { name: 'Écouter la consigne', exact: true })).toHaveCount(
+		1,
+	);
+
 	expect(errors).toEqual([]);
 });
 

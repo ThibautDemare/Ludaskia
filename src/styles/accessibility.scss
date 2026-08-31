@@ -87,6 +87,17 @@ html.confort-lecture {
 .consigne-tts-lab {
 	display: none; /* icône seule par défaut (libellé en aria-label + title) */
 }
+/* ÉCARTÉ une fois pour toutes (#470), pour qu'un prochain audit ne le re-remonte pas :
+   sur « Clique sur le mot », DEUX boutons coexistent (consigne d'action, phrase entière)
+   et portent des noms accessibles distincts — mais le même libellé visible « Écouter »
+   dès qu'on est en Confort de lecture. On ne les différencie PAS visuellement.
+   Raisons : le texte est masqué par défaut (règle ci-dessus), donc le doublon n'existe
+   que dans ce mode ; les deux boutons y sont physiquement disjoints, ce qui suffit à un
+   enfant voyant ; et WCAG 2.5.3 « Label in Name » n'exige pas l'unicité entre composants,
+   seulement que le nom accessible contienne le texte visible — ce qui est le cas
+   (« Écouter la phrase » contient « Écouter »). Différencier casserait l'uniformité de
+   tous les autres boutons TTS de l'appli pour un gain marginal.
+   Avis `relecteur-accessibilite`. */
 html.confort-lecture .consigne-tts-lab {
 	display: inline; /* mode Confort : on réaffiche le libellé texte */
 }

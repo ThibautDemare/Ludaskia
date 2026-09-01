@@ -28,6 +28,14 @@ Tu ne modifies **pas** le code applicatif (`src/`). Si un test échoue à cause
 d'un vrai bug ou d'un sélecteur manquant, tu le **signales** précisément (et tu
 proposes le sélecteur stable à ajouter) plutôt que de contourner.
 
+**Un test EXISTANT qui rougit a trois causes possibles, pas deux.** Le changement
+a cassé quelque chose ; ou le test était faux ; ou — le cas qu'on oublie — **le
+test verrouillait le défaut qu'on vient de corriger**, parce qu'il décrivait l'état
+du code plutôt que l'exigence. Pose la question dans cet ordre. Si c'est le
+troisième cas, ne retourne pas l'assertion et ne la supprime pas : **réécris-la sur
+l'exigence** qu'elle aurait dû porter, et dis dans ton compte rendu ce qu'elle
+gardait vraiment.
+
 # Ce qu'est un bon smoke test ici
 
 Cible **navigation + rendu réel**, pas l'exhaustivité (la logique pure est
@@ -48,6 +56,17 @@ critère dans le titre du test, pour qu'un échec dise ce qui n'est pas tenu. Le
 **critère négatif** de l'issue (« ne doit pas… ») est souvent le plus facile à
 tenir en e2e et le plus utile : c'est lui qui attrape la régression.
 
+**Assère l'EXIGENCE, jamais la formulation qui la satisfait aujourd'hui.** C'est
+le piège propre à l'e2e, où tout se vérifie par du texte à l'écran : exiger la
+chaîne « La bonne réponse » revient à figer *une phrase*, alors que l'exigence est
+« l'enfant apprend la réponse ». Le jour où une autre formulation la dit aussi
+bien, le test rougit sans que rien ne soit cassé. Vise donc ce qui doit rester
+vrai — le mot attendu se retrouve dans ce qui est annoncé, la région n'est pas
+vide, l'écran suivant s'affiche — plutôt qu'un libellé exact. Un libellé ne se
+teste au mot près que quand **c'est lui** l'objet du test (nom accessible d'un
+bouton, intitulé validé par un relecteur) ; dis-le alors dans un commentaire, pour
+que le prochain sache que la chaîne est intentionnelle.
+
 # Le pattern maison (à respecter)
 
 - Lis d'abord `e2e/README.md` et **les specs existantes** (`e2e/*.spec.ts`) :
@@ -60,6 +79,14 @@ tenir en e2e et le plus utile : c'est lui qui attrape la régression.
   sélecteur stable n'existe pas, signale-le (à ajouter dans `src/`).
 - Récupère la réponse attendue via l'attribut **`data-answer`** du champ, ne la
   recalcule pas dans le test (l'exercice est aléatoire).
+- **Vert en local ne veut pas dire vert en CI, parce que le tirage change.** Un
+  test qui lit le contenu d'un élément corrigé doit tenir les DEUX issues du
+  tirage. Cas réel : `textContent` d'un mot-cible vaut `« vous✓ »` quand l'enfant
+  l'a tapé (la correction insère une pastille DANS le bouton) et `« vous »` quand
+  il est seulement révélé — l'assertion passait ou non selon la question tirée,
+  verte en local, rouge en CI. Lis le **premier nœud texte** plutôt que
+  `textContent`, ou neutralise l'aléa autrement ; et quand un test dépend d'un
+  tirage, rejoue-le (`--repeat-each=8`) avant de le déclarer bon.
 - **Un nouveau type d'exercice mérite SON fichier spec** (ex.
   `numeration.spec.ts`). Une variante mineure peut enrichir une spec existante.
 

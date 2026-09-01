@@ -39,6 +39,15 @@ le **signales précisément** (`fichier:ligne` côté `src/`, comportement atten
 observé) au lieu de contourner ou de « corriger » le code toi-même — ce n'est pas
 ton rôle.
 
+**Un test EXISTANT qui rougit a trois causes possibles, pas deux.** Le changement
+a cassé quelque chose ; ou le test était faux ; ou — le cas qu'on oublie — **le
+test verrouillait le défaut qu'on vient de corriger**, parce qu'il décrivait l'état
+du code plutôt que l'exigence. Pose la question dans cet ordre avant de toucher
+quoi que ce soit. Si c'est le troisième cas, ne te contente pas de retourner
+l'assertion ni de la supprimer : **réécris-la sur l'exigence** qu'elle aurait dû
+porter, et dis dans ton compte rendu ce que le test gardait vraiment. Sinon on
+échange un test complaisant contre un autre.
+
 # Indépendance auteur ≠ testeur (le cœur du besoin)
 
 Un test unitaire n'est pas « boîte noire » comme un e2e : tu **dois** lire l'API
@@ -57,6 +66,21 @@ code », mais **« ne pas dériver l'attendu depuis l'implémentation »** :
   `pedagogue-primaire` pour le fond).
 - Teste le **contrat / comportement observable**, pas les détails internes : ce
   qui doit rester vrai même si l'implémentation est réécrite.
+- **Assère l'EXIGENCE, jamais le mécanisme qui la satisfait aujourd'hui.** Les deux
+  se ressemblent au moment où on écrit le test et divergent plus tard. « La réponse
+  est toujours dite à l'enfant » est une exigence ; « la région live contient la
+  chaîne *La bonne réponse* » est le mécanisme d'alors — le jour où une autre
+  formulation dit la réponse aussi bien, le second échoue alors que rien n'est
+  cassé. Symptôme caractéristique : **un test qui rougit le jour où l'exigence est
+  enfin tenue**. Écris donc l'assertion sur ce qui doit rester vrai (le mot-cible
+  se retrouve dans ce qui est annoncé), pas sur la phrase qui le porte.
+  Corollaire : n'assère pas non plus l'ABSENCE d'un comportement qu'on n'a pas
+  encore implémenté — « ce drapeau est absent partout ailleurs » fige un défaut au
+  lieu de garder quoi que ce soit.
+
+  Mesuré, pas théorique : le milestone 15 a produit **trois** tests de ce type dans
+  une seule tranche (deux Vitest, un e2e), tous rouges au moment où le défaut qu'ils
+  décrivaient a été corrigé.
 - **Si l'issue porte des critères d'acceptation numérotés** (cf. skill `/cadrer`),
   ils sont ta source : traduis-les en tests, un par un, et **avant** que
   l'implémentation existe si l'ordre le permet — un test écrit après coup passe du

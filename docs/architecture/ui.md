@@ -792,7 +792,27 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   mon résultat ▶ » (`opts.isLast`) et câble son clic (`opts.onNext`) + le focus. Le bouton
   n'a plus d'id propre (résolu via `actions.querySelector('button')`) — seuls les
   conteneurs `#…Actions` / `#…Feedback` de chaque runner restent des sélecteurs stables
-  (repris par les specs e2e). Pose aussi, pour la leçon en cours, les deux points
+  (repris par les specs e2e).
+  **Depuis #505**, `wireNext` porte aussi l'**annonce du verdict** pour un lecteur
+  d'écran, posée AVANT que le focus ne parte sur « Continuer ▶ » : `opts.resume`
+  (chaîne OBLIGATOIRE, texte brut, un résumé en une phrase — jamais le pavé HTML de
+  `.sprint-correction`, qui n'est pas une région live) atterrit dans `opts.statut` s'il
+  est fourni (la région FIXE que le runner rend lui-même — `#lqcmStatus`, `#ltuiStatus`,
+  `#lordStatus`, `#dgStatus`, `#lqmStatus`, et `#tcVerdict` pour le tableau de conversion,
+  distinct de `#tcStatus` qui porte l'écho de saisie au pavé), sinon via la règle
+  partagée `annoncerStatut` (`revelation-neutre.ts`), qui trouve la région du WIDGET
+  monté. `resume: ''` signifie « ma mécanique a déjà annoncé, ne redis rien » : le
+  régime des runners à **widget bavard** (`lecon-appariement.ts`, `lecon-clic-mot.ts`,
+  `lecon-tri.ts`, `lecon-probleme.ts`, et la révélation de `lecon-passer.ts`), dont la
+  région propre porte un message plus riche — c'est aussi ce qui garantit qu'aucun
+  runner n'annonce deux fois. Les deux amorces partagées **`VERDICT_OK`** /
+  **`verdictKo(suite)`**, exportées ici, évitent que la formulation diverge d'un runner
+  à l'autre. Avant #505, `lecon-qcm.ts` (le runner le plus fréquenté) n'avait AUCUNE
+  région live et restait muet, `lecon-qcm-multi.ts`/`lecon-tuiles.ts`/`lecon-tableau.ts`
+  déclaraient la leur sans que rien ne l'écrive au verdict, et seuls
+  `lecon-ordre.ts`/`lecon-droite-graduee.ts` annonçaient déjà à la main — les cinq
+  convergent désormais vers ce point unique.
+  Pose aussi, pour la leçon en cours, les deux points
   d'entrée AUTOMATIQUE/persistant de l'étayage de la notion (#490) —
   `monterBoutonEtayage` (bouton de l'en-tête) et `maybeEtayageAvantSerie` (exemple au
   retour d'une mise de côté), tous deux no-op sans contenu d'étayage pour la leçon ;

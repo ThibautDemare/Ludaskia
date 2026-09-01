@@ -423,8 +423,13 @@ test('annonce #lclicStatus : réponse TOUJOURS présente sur une leçon à cible
 
 	// Le mot-cible, tel que la correction vient de le désigner à l'écran : marqué
 	// `correct` s'il était parmi les deux tapés, sinon révélé en `is-cible`.
+	// On lit le PREMIER NŒUD TEXTE, pas `textContent` : `marquer()` ajoute une pastille
+	// ✓/✗ DANS le bouton, donc `textContent` vaudrait « vous✓ » quand la cible est parmi
+	// les mots tapés — et rien quand elle ne l'est pas (le mot révélé n'a pas de
+	// pastille). L'assertion passait donc ou non selon le tirage : verte en local, rouge
+	// en CI.
 	const cible = page.locator('.lclic-mot.correct, .lclic-mot.is-cible').first();
-	const mot = ((await cible.textContent()) ?? '').trim();
+	const mot = (await cible.evaluate((el) => el.firstChild?.textContent ?? '')).trim();
 	expect(mot.length).toBeGreaterThan(0);
 
 	const annonce = ((await page.locator('#lclicStatus').textContent()) ?? '').trim();

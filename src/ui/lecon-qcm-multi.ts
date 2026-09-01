@@ -36,6 +36,8 @@ import {
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	VERDICT_OK,
+	verdictKo,
 	demarrerRunner,
 	leconTitreHTML,
 } from './lecon-runner-shared';
@@ -274,6 +276,17 @@ function valider(): void {
 		sheets().querySelector('#lqmFeedback') as HTMLElement,
 		{
 			feedbackHTML: html`${badge}${synthese}`,
+			// Ce runner déclarait `#lqmStatus` sans que rien ne l'écrive au verdict (#505) :
+			// les cases marquées portent bien un `sr-only` par proposition, mais il faut les
+			// PARCOURIR pour les entendre — or le focus part sur « Continuer ». Le résumé
+			// énumère donc les bonnes propriétés, comme la synthèse affichée.
+			// Séparateur « ; » et non « , » : c'est celui de la révélation et du journal
+			// encadrant, qui énumèrent la MÊME donnée. Il marque aussi une pause plus nette
+			// à l'oral, et reste sans ambiguïté si une propriété contient une virgule.
+			resume: correct
+				? VERDICT_OK
+				: verdictKo(`Les bonnes propriétés : ${q.correctes.join(' ; ')}.`),
+			statut: '#lqmStatus',
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;

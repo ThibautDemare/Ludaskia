@@ -29,6 +29,8 @@ import {
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	VERDICT_OK,
+	verdictKo,
 	demarrerRunner,
 	leconTitreHTML,
 } from './lecon-runner-shared';
@@ -249,6 +251,7 @@ function renderQuestion(): void {
         <div class="sprint-correction" id="tcFeedback" hidden></div>
         <div class="sprint-actions" id="tcActions" hidden></div>
         <p class="sr-only" id="tcStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+        <p class="sr-only" id="tcVerdict" role="status" aria-live="polite" aria-atomic="true"></p>
       </div>
     </div>`.balisage;
 	wireInteraction();
@@ -351,7 +354,8 @@ function detachKeys(): void {
 
 const cellBtn = (i: number) => sheets().querySelector<HTMLButtonElement>(`.tc-cell[data-i="${i}"]`);
 
-/* Région live (#tcStatus, `role=status`) : annonce la saisie au lecteur d'écran quand elle
+/* Région live de l'ÉCHO DE SAISIE (#tcStatus, `role=status`) — à ne pas confondre avec
+   `#tcVerdict`, celle du verdict, peuplée par `wireNext` (#505). Annonce la saisie quand elle
    passe par le PAVÉ (le focus reste alors sur le pavé, `aria-current` sur la case ne serait
    pas lu). Même parade que le widget tuiles (#360 / SC 4.1.3). */
 function announce(msg: string): void {
@@ -482,6 +486,18 @@ function verifier(): void {
 			feedbackHTML: correct
 				? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
 				: html`<span class="lqcm-ko">La bonne réponse était <strong>${ex.answer} ${ex.answerUnit}</strong>.${explication ? html` ${explication}` : ''}</span>`,
+			// Ce runner ne disait RIEN à la correction (#505) : `#tcStatus` existait, mais
+			// ne servait qu'à l'écho de SAISIE au pavé (« case mètres : 3 »). Un enfant au
+			// lecteur d'écran s'entendait dicter ses propres chiffres, puis plus rien.
+			// Le verdict a donc sa PROPRE région, `#tcVerdict`, et ne réutilise pas celle
+			// de l'écho : le dépôt s'est déjà donné cette règle par écrit à propos de
+			// `#revStatus` (docs/architecture/ui.md) — « deux responsabilités dans une même
+			// région finissent par se marcher dessus ». Les deux ont ici des rythmes
+			// opposés : l'écho parle à chaque frappe, le verdict une fois, à la fin.
+			resume: correct
+				? VERDICT_OK
+				: verdictKo(`La bonne réponse était ${ex.answer} ${ex.answerUnit}.`),
+			statut: '#tcVerdict',
 			isLast: idx >= questions.length - 1,
 			// Étayage (#490) : proposé sur un tableau raté, jamais sur un tableau juste, et
 			// déroulé sur LA conversion qui vient d'échouer (pas l'exemple de la leçon).

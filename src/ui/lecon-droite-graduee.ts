@@ -296,13 +296,12 @@ function verifier(): void {
 	// « Je ne sais pas, montre-moi » cliquable sur une droite déjà corrigée.
 	masquerDecision(sheets());
 
-	// Annonce du verdict pour lecteur d'écran (le focus part sur « Continuer »).
-	const statusEl = sheets().querySelector('#dgStatus');
-	if (statusEl) {
-		statusEl.textContent = juste
-			? "Bravo, c'est le bon endroit."
-			: `Ce n'est pas ça. Il fallait placer ${q.cibleLabel} ; tu as placé ${choisie.label}.`;
-	}
+	// Le résumé annoncé aux lecteurs d'écran est désormais passé à `wireNext`, qui le
+	// pose dans `#dgStatus` (#505) — c'était jusqu'ici une écriture à la main, recopiée
+	// runner par runner. Le texte, lui, ne change pas.
+	const resume = juste
+		? "Bravo, c'est le bon endroit."
+		: `Ce n'est pas ça. Il fallait placer ${q.cibleLabel} ; tu as placé ${choisie.label}.`;
 
 	if (!juste) journaliser(q, choisie.label);
 
@@ -316,6 +315,8 @@ function verifier(): void {
 					? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
 					: html`<span class="lqcm-ko">Regarde le bon repère en vert, puis continue.</span>`
 			}${expl}`,
+			resume,
+			statut: '#dgStatus',
 			isLast: idx >= questions.length - 1,
 			// Étayage (#490) : proposé sur un placement raté, et déroulé sur CETTE droite —
 			// l'échelle change à chaque question, un exemple voisin ne montrerait pas la sienne.

@@ -279,11 +279,10 @@ function verifier(): void {
 	masquerDecision(sheets());
 	// Annonce vocale du verdict (SC 4.1.3) : `#lordFeedback` n'est PAS une région live et
 	// `wireNext` pose le focus sur « Continuer ▶ » — sans ça, un lecteur d'écran passe
-	// par-dessus le diagnostic d'inversion ET la révélation du bon rangement. Peuplé AVANT
-	// `wireNext` (donc avant le déplacement du focus) et en `textContent` : rien à échapper,
-	// et le même résumé pur que l'écran (`resumeCorrection`), jamais une 2ᵉ formulation.
-	const statut = sheets().querySelector('#lordStatus');
-	if (statut) statut.textContent = resumeCorrection(propose, q.ordre, q.nature, correct);
+	// par-dessus le diagnostic d'inversion ET la révélation du bon rangement. Le même
+	// résumé pur que l'écran (`resumeCorrection`), jamais une 2ᵉ formulation.
+	// Écrit ici à la main jusqu'à #505 (correctif ad hoc de #448) ; c'est désormais
+	// `wireNext` qui le pose, avant de déplacer le focus, comme pour tous les runners.
 	wireNext(
 		sheets().querySelector('#lordActions') as HTMLElement,
 		sheets().querySelector('#lordFeedback') as HTMLElement,
@@ -291,6 +290,8 @@ function verifier(): void {
 			feedbackHTML: correct
 				? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
 				: html`${inversion ? html`<span class="lord-inverse">${inversion}</span>` : ''}<span class="lqcm-ko">Le bon rangement : <strong>${q.ordre.map(escapeHTML).join(' · ')}</strong></span>`,
+			resume: resumeCorrection(propose, q.ordre, q.nature, correct),
+			statut: '#lordStatus',
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;

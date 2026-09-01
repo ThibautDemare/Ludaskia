@@ -33,6 +33,8 @@ import {
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	VERDICT_OK,
+	verdictKo,
 	demarrerRunner,
 	leconTitreHTML,
 } from './lecon-runner-shared';
@@ -154,6 +156,12 @@ enregistrerRunner(RUNNER, (snap) => {
 	demarrer(l, snap.exerciseMode as ExerciseMode, qs, snap.idx, snap.score);
 });
 
+/* Le markup rend une région live vide, `#lqcmStatus` (#505). Ce runner — l'un des plus
+   fréquentés de l'application — n'en avait AUCUNE : sa correction était entièrement muette
+   pour un lecteur d'écran, le focus sautant du choix tapé à « Continuer ▶ ». Elle est
+   rendue VIDE ici, dans le markup initial de l'écran, et non créée au moment d'annoncer :
+   une région insérée puis remplie dans la même tâche n'est pas annoncée de façon fiable.
+   C'est `wireNext` qui la peuple, via le résumé que ce runner lui passe. */
 function renderQuestion(): void {
 	answered = false;
 	const q = questions[idx];
@@ -190,6 +198,7 @@ function renderQuestion(): void {
 					)}
         </div>
         <div class="sprint-correction" id="lqcmFeedback" hidden></div>
+        <p class="sr-only" id="lqcmStatus" role="status" aria-live="polite" aria-atomic="true"></p>
         <div class="sprint-actions" id="lqcmActions" hidden></div>
       </div>
     </div>`.balisage;
@@ -263,6 +272,25 @@ function answer(choiceIdx: number): void {
 	}
 	wireNext(sheets().querySelector('#lqcmActions') as HTMLElement, fb, {
 		feedbackHTML,
+		// Résumé TEXTE, pas le HTML affiché (#505) : celui-ci contient l'explication
+		// pédagogique, parfois plusieurs phrases.
+		// La réponse passe par un LIBELLÉ lisible, jamais par la valeur brute. Deux pièges,
+		// tous deux réels dans le catalogue : un signe de ponctuation nu ne se prononce pas
+		// (d'où `PONCT_MOTS`, comme à l'écran), et une fraction écrite « 3/4 » se lit
+		// « trois slash quatre » — c'est précisément ce que l'aria-label de
+		// `fractionInlineHTML` a été construit pour éviter côté visuel. `libelleChoix` rend
+		// « trois quarts » via `choicesView`, avec repli sur la valeur brute quand la leçon
+		// n'en fournit pas : aucun QCM ordinaire n'est affecté.
+		resume: correct
+			? VERDICT_OK
+			: verdictKo(
+					`La bonne réponse était ${
+						q.variante === 'ponctuation'
+							? (PONCT_MOTS[ans] ?? ans)
+							: libelleChoix(q.choices, q.choicesView, ans)
+					}.`,
+				),
+		statut: '#lqcmStatus',
 		isLast: idx >= questions.length - 1,
 		onNext: () => {
 			idx++;

@@ -21,6 +21,8 @@ import {
 	finishLeconRun,
 	renderLeconResult,
 	wireNext,
+	VERDICT_OK,
+	verdictKo,
 	demarrerRunner,
 	leconTitreHTML,
 } from './lecon-runner-shared';
@@ -186,6 +188,17 @@ function correctionHTML(q: TuilesQuestion): SafeHtml {
 	return html`<span class="lqcm-ko">${amorce} <strong>${q.answer}</strong>.${mentionAutresNombres(q)}</span>`;
 }
 
+/* Résumé TEXTE du verdict, pour la région live (#505). La même phrase que la correction
+   affichée, sans le balisage : ce runner ne disait RIEN aux lecteurs d'écran — il
+   déclarait bien `#ltuiStatus`, mais rien ne l'écrivait au moment de corriger (seul le
+   chemin « je ne sais pas, montre-moi » la remplissait). L'enfant entendait donc le
+   focus arriver sur « Continuer » sans savoir ce qu'était devenue sa réponse. */
+function resumeCorrection(q: TuilesQuestion, correct: boolean): string {
+	if (correct) return VERDICT_OK;
+	const amorce = q.intervalle ? 'Une réponse possible était' : 'La bonne réponse était';
+	return verdictKo(`${amorce} ${q.answer}.${mentionAutresNombres(q)}`);
+}
+
 /* Mention « D'autres nombres… » : partagée par la correction d'une erreur et la révélation
    d'une question passée (#467) — le mode tuiles cache la pluralité dans les deux cas. */
 function mentionAutresNombres(q: TuilesQuestion): string {
@@ -224,6 +237,8 @@ function verifier(): void {
 		sheets().querySelector('#ltuiFeedback') as HTMLElement,
 		{
 			feedbackHTML: correct ? html`<span class="lqcm-ok">Bravo ! 🎉</span>` : correctionHTML(q),
+			resume: resumeCorrection(q, correct),
+			statut: '#ltuiStatus',
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;

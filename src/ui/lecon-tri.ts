@@ -230,6 +230,9 @@ function verifier(): void {
 		sheets().querySelector('#ltriFeedback') as HTMLElement,
 		{
 			feedbackHTML,
+			// Le widget de tuiles a déjà annoncé dans `#ltriStatus`, colonne par colonne :
+			// résumé vide = « ne redis rien ». Cf. `WireNextOpts.resume` (#505).
+			resume: '',
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;

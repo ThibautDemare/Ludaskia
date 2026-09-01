@@ -158,6 +158,9 @@ export function revelerSolution(o: RevelationOpts): void {
         <span class="lecon-reveal-lab">${REVEAL_LAB}</span>
         <span class="lecon-reveal-rep">${o.repHTML}</span>
       </div>${o.extraHTML ?? ''}`,
+		// `annoncerRevelation` vient de le faire, juste au-dessus, avec le libellé qui
+		// dédramatise : résumé vide = « ne redis rien ». Cf. `WireNextOpts.resume` (#505).
+		resume: '',
 		isLast: o.isLast,
 		onNext: o.onNext,
 	});

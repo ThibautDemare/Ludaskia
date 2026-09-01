@@ -1,7 +1,8 @@
 /* ============================================================
    Représentations composites du journal d'erreurs (#391) — logique pure :
    opération posée (agrégation des cellules), rangement, tableau de conversion,
-   appariement, tri par thème, et résolution du libellé d'une liste d'orthographe.
+   appariement, tri par thème, résolution du libellé d'une liste d'orthographe, et
+   mise en forme de la réponse attendue révélée au parent (#501).
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import {
@@ -10,6 +11,8 @@ import {
 	nombreTableauSaisi,
 	pairesErreur,
 	motsMalClasses,
+	attendueItem,
+	attendueIntervalle,
 	type CellulePosee,
 	type CelluleTableau,
 	type LienPropose,
@@ -312,5 +315,70 @@ describe('labelLeconOrtho (libellé d’une liste d’orthographe)', () => {
 
 	it('id inconnu → null (repli sur l’id brut côté UI)', () => {
 		expect(labelLeconOrtho('inexistant')).toBeNull();
+	});
+});
+
+/* ---------------------------------------------------------------
+   Réponse attendue révélée au parent (#501). `attendueItem` est la source unique
+   de la « réponse attendue » du journal encadrant ET du corrigé imprimé, et la
+   SEULE des cinq surfaces de révélation qui soit de la logique pure : les quatre
+   autres (marqueur de fiche, sprint, révision, verdict) passent par le DOM et
+   relèvent de l'e2e. Sans ce gate, un refactor peut ré-afficher « 2300000 » à un
+   parent sans rien faire rougir.
+   --------------------------------------------------------------- */
+/* Espace fine insécable (U+202F), séparateur de milliers français : désignée par
+   son point de code, jamais écrite en clair (convention de core/nombres.ts). */
+const U202F = String.fromCharCode(0x202f);
+
+describe('attendueItem — la réponse révélée au parent (#501)', () => {
+	it('un grand entier est groupé, comme dans les énoncés', () => {
+		expect(attendueItem({ answer: 2300000 })).toBe(`2${U202F}300${U202F}000`);
+		expect(attendueItem({ answer: '2300000' })).toBe(`2${U202F}300${U202F}000`);
+		expect(attendueItem({ answer: 10000 })).toBe(`10${U202F}000`);
+		// Sous le seuil de groupement (plage CE2) : inchangé, comme partout ailleurs.
+		expect(attendueItem({ answer: 9999 })).toBe('9999');
+		expect(attendueItem({ answer: 457 })).toBe('457');
+	});
+
+	it('un décimal sort à la virgule française, sans décimale perdue', () => {
+		// Le point n'est pas la notation enseignée au cycle 3 : un parent qui lit « 3.45 »
+		// dans le journal lit une écriture que l'école corrige.
+		expect(attendueItem({ answer: '3.45' })).toBe('3,45');
+		expect(attendueItem({ answer: 3.5 })).toBe('3,5');
+		// Zéro final SIGNIFIANT : « 3,60 » n'est pas « 3,6 » dans la leçon des décimaux.
+		expect(attendueItem({ answer: '3.60' })).toBe('3,60');
+		expect(attendueItem({ answer: '4,56' })).toBe('4,56');
+	});
+
+	it('une réponse non numérique reste intacte', () => {
+		for (const answer of [
+			'<',
+			'losange',
+			'Oui',
+			'4 h 30',
+			'2 h 30 min',
+			'8/10',
+			'1er groupe',
+			'104 100 98 94', // rangement : une SUITE de nombres, jamais un nombre géant
+		]) {
+			expect(attendueItem({ answer })).toBe(answer);
+		}
+		// Bord : une réponse falsy (0) reste « 0 » et ne devient pas une chaîne vide.
+		expect(attendueItem({ answer: 0 })).toBe('0');
+	});
+
+	it('avec intervalle : toujours la BANDE, jamais le nombre-exemple mis en forme', () => {
+		// Branche que la mise en forme ne doit PAS toucher : `answer` n'y est qu'un exemple
+		// valide. La régression serait la plus discrète de toutes — le parent lirait « la
+		// bonne réponse : 6 150 000 » là où douze valeurs étaient acceptées.
+		const iv: [number, number] = [6100000, 6200000];
+		const bande = attendueItem({ answer: 6150000, intervalle: iv });
+		expect(bande).toBe(attendueIntervalle(iv));
+		expect(bande).toBe(`un nombre entre 6${U202F}100${U202F}000 et 6${U202F}200${U202F}000`);
+		expect(bande).not.toContain(`6${U202F}150${U202F}000`);
+		// Petites bornes (CE2) : la bande reste la bande, sans séparateur.
+		expect(attendueItem({ answer: 457, intervalle: [450, 465] })).toBe(
+			'un nombre entre 450 et 465',
+		);
 	});
 });

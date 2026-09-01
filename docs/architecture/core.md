@@ -809,7 +809,7 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   au CM1 se fait par une **leçon distincte** (nouvel `id` + nouveau numéro `bilanQ`, dans
   `LESSONS_CM1`, taguée `levels: ['cm1']`), **jamais** en surchargeant la plage d'une
   leçon CE2. Les vues legacy « toutes les leçons » (`buildFiches`, `bilanBlocks`,
-  `bilanHTML`, `renderLessons`) itèrent le seul `LESSONS` (CE2) ; `buildLessonFiche`
+  `bilanHTML`) itèrent le seul `LESSONS` (CE2) ; `buildLessonFiche`
   retrouve une leçon (tous niveaux) dans `LESSONS_CALCUL_MENTAL`. Côté
   impression : `PrintScope` + **`buildPrintableDOM(scope)`** (contextuel,
   **multi-matières** via `buildLessonFiche`/`bilanBlocksForIds`), `coverHTML(scope)`

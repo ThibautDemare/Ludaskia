@@ -1,5 +1,5 @@
 /* ============================================================
-   Rendu de l'écran d'accueil et du sélecteur de leçons
+   Rendu de l'écran d'accueil, des profils et des cartes de leçon
    ============================================================ */
 import { fmt, startOfDay } from '../core/utils';
 import {
@@ -9,7 +9,6 @@ import {
 	getXPFor,
 	getRevisionPlafond,
 } from '../core/profiles';
-import { LESSONS } from '../core/lessons';
 import { getAllLessons } from '../core/catalog';
 import {
 	loadRuns,
@@ -17,8 +16,6 @@ import {
 	runPct,
 	starsEarned,
 	starsEarnedAll,
-	loadStars,
-	loadLessonStats,
 	lessonAvgPct,
 	type LessonStat,
 	startOfWeek,
@@ -424,8 +421,8 @@ export function renderObjectives() {
 	el.innerHTML = html`<h3 class="obj-h">Mes objectifs</h3>${rows}`.balisage;
 }
 
-/* Carte d'une leçon (étoile + taux de réussite). Réutilisée par le sélecteur
-   de leçons et par l'écran d'une catégorie (navigation multi-matières). */
+/* Carte d'une leçon (étoile + taux de réussite), rendue par l'écran d'une catégorie
+   (navigation multi-matières, `catalog-nav.ts`). */
 export function lessonCardHTML(
 	l: { id: string; num: number | string; title: string },
 	stars: Record<string, number>,
@@ -465,28 +462,4 @@ export function lessonCardHTML(
     <span class="lz-num">${l.num}</span>
     <span class="lz-main"><span class="lz-titleline"><span class="lz-title">${l.title}</span>${repereBadge}${prevBadge}</span>${stat}</span>
     ${starBadge}</button>`;
-}
-
-/* Liste des 15 leçons avec étoiles + taux de réussite */
-export function renderLessons() {
-	const stars = loadStars();
-	const lstats = loadLessonStats();
-	const list = document.getElementById('lessonList');
-	if (list) {
-		list.innerHTML = joindre(LESSONS.map((l) => lessonCardHTML(l, stars, lstats))).balisage;
-	}
-	const sum = document.getElementById('starsSummary');
-	if (sum) {
-		const n = starsEarned();
-		const total = lessonsNiveauActif().length;
-		const weak = LESSONS.filter((l) => {
-			const a = lessonAvgPct(lstats[l.id]);
-			return a != null && a < 70;
-		}).map((l) => l.num);
-		sum.innerHTML = html`⭐ ${n} / ${total} leçons réussies sans faute${
-			weak.length
-				? html` · <span class="weak-hint">à revoir : leçons ${weak.join(', ')}</span>`
-				: VIDE
-		}`.balisage;
-	}
 }

@@ -232,6 +232,10 @@ function verifier(): void {
 					? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
 					: html`<span class="lqcm-ko">Regarde le bon mot en vert, puis continue.</span>`
 			}${expl}`,
+			// `bindClicMot.verify()` a déjà écrit dans `#lclicStatus` un message plus riche
+			// (verdict + explication, et le drapeau #436/#529 qui évite de redire la
+			// réponse) : résumé vide = « ne redis rien ». Cf. `WireNextOpts.resume` (#505).
+			resume: '',
 			isLast: idx >= questions.length - 1,
 			onNext: () => {
 				idx++;

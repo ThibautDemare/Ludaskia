@@ -332,6 +332,9 @@ function verifier(): void {
 					? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
 					: html`<span class="lqcm-ko">Regarde la bonne réponse, puis continue.</span>`
 			}${expl}`,
+			// Le widget a déjà annoncé dans `#probStatus`, sous-question par sous-question :
+			// résumé vide = « ne redis rien ». Cf. `WireNextOpts.resume` (#505).
+			resume: '',
 			isLast: idx >= questions.length - 1,
 			// Étayage (#490) : proposé sur un problème raté, et déroulé sur CELUI-LÀ — un
 			// problème ne se ramène pas à un exemple canonique, c'est son énoncé qui fait la

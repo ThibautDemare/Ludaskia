@@ -210,6 +210,9 @@ function verifier(): void {
 		sheets().querySelector('#lappFeedback') as HTMLElement,
 		{
 			feedbackHTML,
+			// Le widget a déjà annoncé, et plus précisément (paire par paire, mot par mot) :
+			// résumé vide = « ne redis rien ». Cf. `WireNextOpts.resume` (#505).
+			resume: '',
 			isLast: idx >= manches.length - 1,
 			onNext: () => {
 				idx++;

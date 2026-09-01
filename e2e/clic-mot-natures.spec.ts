@@ -389,10 +389,22 @@ test('annonce #lclicStatus : réponse OMISE sur une leçon plurielle (l’explic
 	expect(errors).toEqual([]);
 });
 
-/* Symétrique : sur une leçon à cible UNIQUE (pronom personnel sujet, sans
-   `explicationNommeCible`), « La bonne réponse : … » doit TOUJOURS être
-   annoncée. Sélectionner DEUX mots garantit une erreur (cardinal 2 ≠ cible 1)
-   sans avoir besoin de savoir lequel des deux est le bon. */
+/* L'AUTRE moitié de la garantie, sur une leçon à cible UNIQUE (pronom personnel
+   sujet) : la réponse est TOUJOURS dite, jamais tue.
+
+   Ce test exigeait littéralement « La bonne réponse : … », parce que cette leçon
+   ne portait pas `explicationNommeCible` — le repli générique de la région live
+   était donc le seul à énoncer la cible. #529 a posé le drapeau sur les huit
+   fabriques du moteur, dont celle-ci : c'est désormais l'explication qui nomme la
+   cible (« « vous » dit qui fait l'action… »), et le repli ne s'ajoute plus.
+   L'assertion littérale décrivait donc le MÉCANISME d'alors, pas l'exigence. Elle
+   porte maintenant sur l'exigence elle-même : le mot révélé doit se retrouver dans
+   ce qu'entend l'enfant, quelle que soit la phrase qui le porte. C'est ce qui
+   attrape une régression où la région se tairait sur la réponse — le pire des deux
+   échecs, celui que le drapeau posé à tort produirait.
+
+   Sélectionner DEUX mots garantit une erreur (cardinal 2 ≠ cible 1) sans avoir
+   besoin de savoir lequel des deux est le bon. */
 test('annonce #lclicStatus : réponse TOUJOURS présente sur une leçon à cible unique', async ({
 	page,
 }) => {
@@ -408,7 +420,16 @@ test('annonce #lclicStatus : réponse TOUJOURS présente sur une leçon à cible
 	await mots.nth(1).click();
 	await page.locator('#lclicVerif').click();
 	await expect(page.locator('.lqcm-ko')).toBeVisible();
-	await expect(page.locator('#lclicStatus')).toContainText('La bonne réponse');
+
+	// Le mot-cible, tel que la correction vient de le désigner à l'écran : marqué
+	// `correct` s'il était parmi les deux tapés, sinon révélé en `is-cible`.
+	const cible = page.locator('.lclic-mot.correct, .lclic-mot.is-cible').first();
+	const mot = ((await cible.textContent()) ?? '').trim();
+	expect(mot.length).toBeGreaterThan(0);
+
+	const annonce = ((await page.locator('#lclicStatus').textContent()) ?? '').trim();
+	expect(annonce).toContain(mot); // la réponse est dite…
+	expect(annonce).not.toContain('La bonne réponse'); // …et une seule fois (#529)
 	expect(errors).toEqual([]);
 });
 

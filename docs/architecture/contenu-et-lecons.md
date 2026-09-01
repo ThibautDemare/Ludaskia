@@ -94,12 +94,38 @@ mots, articles, adverbes »** (`fr-gram-classes`). QCM d'étiquetage, 3 sous-typ
 sur une **banque interne étiquetée** (jamais les listes du parent). Un builder unifie
 les 3 types en items QCM. Relue par l'agent pédagogue.
 
-#### `francais/grammaire-clic-mot.ts` (#259, #437, #436)
+#### `francais/grammaire-clic-mot*.ts` (#259, #437, #436, découpage #530)
 
 catégorie **Grammaire**, brique d'interaction **« clique sur le mot »** : une phrase
 est rendue **mot par mot** et l'enfant sélectionne le(s) mot(s) répondant à la
 consigne. **7 leçons** partagent la mécanique (runner `ui/lecon-clic-mot.ts`, désormais
-**agnostique de la notation grammaticale ciblée**, cf. [Rendu & interactions](ui.md)) :
+**agnostique de la notation grammaticale ciblée**, cf. [Rendu & interactions](ui.md)).
+
+**Famille de quatre modules + une entrée** depuis #530 (le fichier unique atteignait
+1 964 lignes, le plus gros de `src/data/`) :
+
+- **`grammaire-clic-mot-moteur.ts`** — module **feuille** : modèle `PhraseClicMot`,
+  tokenisation (`tokeniser`, `estPonctuation`, `joindrePhrase`), constructeurs à
+  garde-fou générique (`phrase`, `phraseMots`), énoncé de la cible (`cibleContigue`,
+  `libelleCible`), fabrique `clicMotType`/`itemClicMot`/`MODE_CLIC`, **et le
+  VOCABULAIRE grammatical partagé entre classes** (`DET_SETS`, `PRON_SUJET`,
+  `PRON_COMPL` et leurs variantes strictes, types `SousCatDet`/`RolePron`). Ce
+  vocabulaire vit là parce que les garde-fous **CE2** se définissent sur les mêmes
+  ensembles de formes que les leçons **CM1** : c'était le couplage qui rendait le
+  découpage non mécanique, et le copier par module aurait laissé un garde-fou accepter
+  au CE2 ce que l'autre refuse au CM1.
+- **`grammaire-clic-mot-verbe.ts`** — banques CE2/CM1 du verbe + `clicVerbeType` (seule
+  leçon dont la banque CM1 **contient** celle du CE2).
+- **`grammaire-clic-mot-cm1.ts`** — les 5 natures CM1 (#437) : conjonction,
+  sous-catégories de déterminant, pronom sujet/complément, nom noyau, sujet.
+- **`grammaire-clic-mot-ce2.ts`** — les 4 natures CE2 (#436) : noms, déterminants,
+  adjectif, pronom personnel sujet.
+- **`grammaire-clic-mot.ts`** — **entrée** de la famille : étayages, entrées de
+  catalogue (`CLIC_MOT_LESSONS`) et **ré-export de l'API publique**. Le découpage est
+  INTERNE : catalogue, UI et tests importent toujours d'ici. Aucune banque n'importe
+  une autre banque (elles ne dépendent que du moteur).
+
+Les 7 leçons :
 
 - **« Clique sur le verbe »** (`fr-gram-clic-verbe`, #259) — **CE2 + CM1**.
   `generate({level})` tire dans **`PHRASES_CE2`** (~47 phrases, temps simples → cible

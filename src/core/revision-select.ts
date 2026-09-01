@@ -27,12 +27,19 @@ export interface LeconBasNiveau {
 	etat: EtatRevision;
 }
 
+/* Pas de `label` ici, et c'est délibéré (#531) : un libellé de leçon se DÉCLINE par
+   niveau (`LessonDef.labelNiveau`, #436) et ne se résout qu'à l'affichage
+   (`labelLecon(lesson, niveau)`), là où le niveau consulté est connu. Un libellé figé au
+   moment de la sélection serait juste au CE2 et faux au CM1 dès qu'un consommateur le
+   lirait — le champ a existé sans jamais être lu, exactement dans cet état. Le rendu part
+   donc de l'`id` : un mot via `ortho.banque`, une leçon via `getLessonById` + `labelLecon`
+   (cf. `ui/revision.ts`). `DueGroup.label`, lui, reste un libellé de CATÉGORIE
+   (`CATEGORIES`), qui ne se décline pas par niveau. */
 export type DueItem =
-	| { kind: 'word'; id: string; label: string; categoryId: string; due: number }
+	| { kind: 'word'; id: string; categoryId: string; due: number }
 	| {
 			kind: 'lesson';
 			id: string;
-			label: string;
 			categoryId: string;
 			due: number;
 			/* Niveau de STOCKAGE de l'état SR, renseigné UNIQUEMENT pour un élément d'un
@@ -75,7 +82,6 @@ function collectDue(
 			due.push({
 				kind: 'word',
 				id,
-				label: m.mot,
 				categoryId: ORTHO_CATEGORY_ID,
 				due: m.revision.prochaineRevision!,
 			});
@@ -89,7 +95,6 @@ function collectDue(
 			due.push({
 				kind: 'lesson',
 				id,
-				label: lesson.label,
 				categoryId: lesson.category,
 				due: e.prochaineRevision!,
 			});
@@ -148,7 +153,6 @@ function collectBasNiveau(bas: LeconBasNiveau[], now: number, budget: number): D
 			it: {
 				kind: 'lesson',
 				id: e.lessonId,
-				label: lesson.label,
 				categoryId: lesson.category,
 				due: e.etat.prochaineRevision!,
 				niveau: e.niveau,

@@ -107,6 +107,7 @@ import {
 import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
 import type { ProblemeEtape, ProbLexique, NatureOrdre } from '../core/exercise';
 import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
+import { formatReponseRevelee } from '../core/nombres';
 
 // `consigne` (#186) : libellé de la leçon, affiché au-dessus de l'exercice pour
 // dire ce qu'on attend (le HUD ne montre que la catégorie). Absent pour les mots
@@ -629,7 +630,7 @@ function verdictPasse(o: {
 		scope: document.querySelector('.revision'),
 		repli: '#revStatus',
 		message: o.correct
-			? `${o.parIntervalle ? 'Une réponse possible' : 'La réponse'} : ${o.correct}.`
+			? `${o.parIntervalle ? 'Une réponse possible' : 'La réponse'} : ${formatReponseRevelee(o.correct)}.`
 			: REVELATION_EN_PLACE.balisage, // même phrase que celle affichée, pas une version tronquée
 	});
 	const verdict = verdictHTML('reveal', o.correct, o.extra ?? VIDE, o.parIntervalle ?? false);
@@ -1414,7 +1415,7 @@ function annoncerVerdict(reussi: boolean, correct: string, parIntervalle: boolea
 		seulementRepli: true,
 		message: reussi
 			? "Bravo, c'est juste."
-			: `Ce n'est pas ça. ${labelReponse(parIntervalle)} : ${correct}.`,
+			: `Ce n'est pas ça. ${labelReponse(parIntervalle)} : ${formatReponseRevelee(correct)}.`,
 	});
 }
 
@@ -1435,6 +1436,9 @@ function verdictHTML(
 	// la valeur montrée n'est qu'UN exemple ; on ne lui donne donc pas le statut de réponse
 	// unique, sinon la correction contredit la consigne (« plusieurs réponses possibles »).
 	const label = labelReponse(parIntervalle);
+	// Réponse révélée écrite comme dans les énoncés (#501) : groupée, virgule française.
+	// Un mot, un signe ou une bande d'intercalation en ressortent inchangés.
+	const affichee = correct === undefined ? undefined : formatReponseRevelee(correct);
 	let verdict: SafeHtml;
 	if (etat === 'ok') verdict = html`<div class="rev-feedback ok">✓ Bravo !</div>`;
 	else if (etat === 'reveal') {
@@ -1443,16 +1447,16 @@ function verdictHTML(
 		// valeur en --ok comme dans les autres verdicts : c'est bien la bonne qu'il regarde.
 		// Formulation issue du module partagé (source unique) : d'un écran à l'autre, l'enfant
 		// lit exactement la même phrase. `parIntervalle` (#446) → singulier INDÉFINI.
-		const rep = correct
-			? ligneRevelation(parIntervalle ? 'une réponse possible' : 'la réponse', mathInline(correct))
+		const rep = affichee
+			? ligneRevelation(parIntervalle ? 'une réponse possible' : 'la réponse', mathInline(affichee))
 			: REVELATION_EN_PLACE;
 		verdict = html`<div class="rev-feedback reveal">
         <span class="rev-reveal-lab">${REVEAL_LAB}</span>
         <span class="rev-reveal-rep">${rep}</span>
       </div>`;
 	} else
-		verdict = correct
-			? html`<div class="rev-feedback ko">✗ ${label} : <strong>${mathInline(correct)}</strong></div>`
+		verdict = affichee
+			? html`<div class="rev-feedback ko">✗ ${label} : <strong>${mathInline(affichee)}</strong></div>`
 			: html`<div class="rev-feedback ko">✗ Regarde la correction, puis continue.</div>`;
 	// Étayage de la notion (#490) : proposé sur une erreur ou une révélation, jamais sur une
 	// réussite. Placé APRÈS la bonne réponse et AVANT « Continuer ▶ » : l'enfant lit d'abord

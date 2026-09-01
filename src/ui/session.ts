@@ -13,7 +13,7 @@ import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import type { Recompense } from '../core/unlocks';
 import { itemEstNumerique } from '../core/items';
-import { saisieEstNombre } from '../core/nombres';
+import { formatReponseRevelee, saisieEstNombre } from '../core/nombres';
 import { stopChrono } from './chrono';
 import { finishResume } from './resume';
 import { announceRewards } from './effects';
@@ -117,7 +117,9 @@ export function verify() {
 				// (`data-attendue`, posé par renderItem — intercaler #446), sinon la réponse
 				// unique. Sur une intercalation, révéler « → 457 » laissait croire à une réponse
 				// unique dans le mode le plus joué, alors que la consigne annonçait le contraire.
-				const revelee = inp.dataset.attendue ?? inp.dataset.answer;
+				// Mise en forme partagée (#501) : le nombre révélé s'écrit comme dans les énoncés
+				// (groupé, virgule française) ; une bande déjà rédigée en ressort intacte.
+				const revelee = formatReponseRevelee(inp.dataset.attendue ?? inp.dataset.answer ?? '');
 				mark.innerHTML = html`✗ <span class="sol">→ ${revelee}</span>`.balisage;
 			}
 		}

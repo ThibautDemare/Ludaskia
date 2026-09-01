@@ -28,6 +28,7 @@
 import { icon } from './icon';
 import { capterErreur } from './erreur-capture';
 import { html, type SafeHtml } from '../core/html';
+import { sansSeparateurMilliers } from '../core/nombres';
 
 /* Libellé retenu (#467) : jamais « Passer » seul, qui sonne comme un raccourci gratuit
    et ne dit pas ce qu'on obtient en échange. Un seul libellé pour les deux écrans :
@@ -158,16 +159,22 @@ export function annoncerStatut(o: {
 	seulementRepli?: boolean;
 }): void {
 	if (!o.scope) return;
+	// Ce qui part à l'oreille n'emporte PAS le séparateur de milliers (#501) : la graphie
+	// groupée est faite pour l'œil, et le lecteur d'écran de l'enfant — pipeline que le projet
+	// ne maîtrise pas — n'a aucune raison de lire trois nombres là où il y en a un. Posé ICI,
+	// au point de passage commun des annonces (leçon ET révision) plutôt que chez chaque
+	// appelant : un futur runner qui annonce un grand nombre hérite de la règle.
+	const message = sansSeparateurMilliers(o.message);
 	const repli = o.repli ? o.scope.querySelector<HTMLElement>(o.repli) : null;
 	const regions = [...o.scope.querySelectorAll<HTMLElement>('[role="status"]')];
 	const regionWidget = regions.find((r) => r !== repli);
 	if (o.seulementRepli) {
 		if (regionWidget) return; // sa mécanique a déjà annoncé, et en plus précis
-		if (repli) repli.textContent = o.message;
+		if (repli) repli.textContent = message;
 		return;
 	}
 	const region = regionWidget ?? repli;
-	if (region) region.textContent = o.message;
+	if (region) region.textContent = message;
 }
 
 /** Annonce non visuelle de la révélation. C'est le SEUL canal qu'a un lecteur d'écran :

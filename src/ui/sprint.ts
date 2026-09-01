@@ -43,7 +43,7 @@ import {
 	poserAuTrou,
 	texteItemParle,
 } from '../core/items';
-import { saisieEstNombre } from '../core/nombres';
+import { formatReponseRevelee, saisieEstNombre, sansSeparateurMilliers } from '../core/nombres';
 import type { Item } from '../core/items';
 import {
 	updateStreak,
@@ -455,7 +455,9 @@ function pickSprintDef(): LessonDef {
 /* Écrit (ou vide, avec '') l'annonce destinée au lecteur d'écran. */
 function sprintAnnonce(texte: string): void {
 	const el = document.getElementById('sprintStatus');
-	if (el) el.textContent = texte;
+	// Sans séparateur de milliers : cette région est LUE par le lecteur d'écran de l'enfant,
+	// pas regardée (#501, même règle que `annoncerStatut` côté leçon et révision).
+	if (el) el.textContent = sansSeparateurMilliers(texte);
 }
 
 /* ---------- Écouter l'énoncé (#630) ---------- */
@@ -857,8 +859,11 @@ function sprintShowCorrection(
 	const stage = document.getElementById('sprintStage');
 	if (!stage) return;
 	// Dans l'énoncé reconstitué, à la place du champ.
-	const solBrute = html`<span class="sprint-sol">${String(ans)}</span>`;
-	const solLue = reponseLisible(String(ans)); // dans la phrase de correction
+	// Même graphie que dans la grille de fiche et que dans les énoncés (#501) : groupée
+	// pour un grand nombre, virgule française pour un décimal.
+	const solTexte = formatReponseRevelee(String(ans));
+	const solBrute = html`<span class="sprint-sol">${solTexte}</span>`;
+	const solLue = reponseLisible(solTexte); // dans la phrase de correction
 	const donneeLue = reponseLisible(donnee);
 	const amorce = parIntervalle ? 'Une réponse possible était' : 'La bonne réponse était';
 	// « répondu » et non « écrit » : le sprint valide aussi au TAP (QCM de conjugaison,

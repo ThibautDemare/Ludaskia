@@ -33,6 +33,7 @@ import {
 } from './etayage-panneau';
 import { announceRewards } from './effects';
 import { annoncerStatut } from './revelation-neutre';
+import { sansSeparateurMilliers } from '../core/nombres';
 import { declarerSessionRunner, finirSessionRunner } from './runner-reprise';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
@@ -272,7 +273,11 @@ export function wireNext(actions: HTMLElement, feedback: HTMLElement, opts: Wire
 		// Sans ce chemin direct, l'écho passait pour un widget et récupérait le verdict —
 		// exactement la confusion que séparer les deux régions cherchait à éviter.
 		const cible = opts.statut ? scope?.querySelector<HTMLElement>(opts.statut) : null;
-		if (cible) cible.textContent = opts.resume;
+		// Même règle que `annoncerStatut` (#501) : ce qui part à l'OREILLE n'emporte pas le
+		// séparateur de milliers. Posée ici, elle couvre les six régions que ce chemin direct
+		// dessert (#tcVerdict, #dgStatus, #lordStatus, #ltuiStatus, #lqcmStatus, #lqmStatus) —
+		// les mettre à jour runner par runner aurait laissé le prochain runner dehors.
+		if (cible) cible.textContent = sansSeparateurMilliers(opts.resume);
 		// Sans `statut`, l'écran n'a pas de région à lui : on retombe sur la règle
 		// partagée, qui trouvera celle du widget s'il en monte une.
 		else annoncerStatut({ scope, message: opts.resume });

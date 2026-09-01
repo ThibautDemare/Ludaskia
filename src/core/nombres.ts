@@ -42,6 +42,26 @@ export function formatNombre(n: number): string {
 	return FORMAT_FR.format(n);
 }
 
+/* Séparateur de milliers ENTRE DEUX CHIFFRES : U+202F, et U+00A0 que des contenus plus
+   anciens emploient encore. Le motif exige un chiffre de chaque côté, donc il ne touche
+   pas aux espaces d'une phrase — il s'applique à un texte entier sans le mutiler. Les
+   deux caractères sont désignés par leur CODE, jamais écrits en clair (cf. en-tête). */
+const SEP_MILLIERS = new RegExp('([0-9])[' + String.fromCharCode(0x202f, 0x00a0) + ']([0-9])', 'g');
+
+/** Le même texte, ses grands nombres RECOLLÉS (« 1 002 050 » → « 1002050 ») : la forme à
+ *  donner à qui LIT le texte à voix haute plutôt qu'à qui le regarde. Deux canaux en
+ *  dépendent, et c'est pourquoi la règle vit ici plutôt que dans l'un des deux :
+ *  - la synthèse vocale du bouton « Écouter » (core/tts-text.ts) : sans la colle, le
+ *    moteur ÉPELLE les groupes au lieu de lire un entier (#240) ;
+ *  - les régions live (role=\"status\") — annonce d'un verdict, correction du sprint —,
+ *    lues par le lecteur d'écran de l'enfant, une pipeline que le projet ne maîtrise pas
+ *    et où le séparateur n'a donc rien à faire (avis relecteur-accessibilite, #501).
+ *
+ *  La graphie AFFICHÉE, elle, reste groupée : seul ce qui part à l'oreille est recollé. */
+export function sansSeparateurMilliers(texte: string): string {
+	return texte.replace(SEP_MILLIERS, '$1$2');
+}
+
 /** Retire tout séparateur d'une saisie numérique avant correction : espaces
  *  ordinaires (\s), fines insécables (U+202F) et insécables (U+00A0). Permet
  *  d'accepter « 1 002 050 » comme « 1002050 » (l'enfant peut recopier le nombre
@@ -207,4 +227,47 @@ export function grouperChiffresSaisis(chiffres: string): string {
 	// `\B(?=(\d{3})+(?!\d))` insère un séparateur devant chaque groupe de 3 chiffres
 	// aligné sur la droite : « 14000 » → « 14 000 », « 1400000 » → « 1 400 000 ».
 	return chiffres.replace(/\B(?=(\d{3})+(?!\d))/g, ESPACE_FINE);
+}
+
+/* Ce qu'on accepte de mettre en forme dans une réponse RÉVÉLÉE : UN nombre, et rien
+   d'autre — entier, ou décimal à séparateur point OU virgule. Le motif est ancré aux
+   deux bouts et n'admet AUCUN espace, délibérément : « 104 100 98 94 » (réponse de la
+   leçon « ranger des nombres ») est une SUITE de nombres, « 2 h 30 min » une durée,
+   « 8/10 » une fraction, « 1er groupe » un rang. Neutraliser les espaces avant un
+   `Number` — réflexe tentant, `nettoyerSaisieNombre` est juste au-dessus — fondrait la
+   suite en un seul nombre géant (constat de l'auteur-tests-logique, #501). */
+const REPONSE_NOMBRE = /^(-?)(\d+)(?:[.,](\d+))?$/;
+
+/** Met en forme la réponse RÉVÉLÉE à un enfant (#501) : le marqueur ✗ de la grille de
+ *  fiche, la correction du sprint, le verdict de révision, le corrigé imprimé et la
+ *  réponse attendue du journal encadrant lisaient tous la valeur BRUTE — « → 2300000 » à
+ *  deux lignes d'un encadrement groupé « 6 100 000 », et « → 3.5 » avec un point que
+ *  l'école n'enseigne pas (avis pedagogue-primaire : l'écriture à virgule est un objectif
+ *  d'apprentissage du cycle, pas une préférence de graphie).
+ *
+ *  Deux règles, et une seule autre issue possible : l'entrée rendue INCHANGÉE.
+ *  - Entier → `formatNombre`, donc exactement la graphie des énoncés (groupé à partir de
+ *    5 chiffres, espace fine insécable).
+ *  - Décimal → virgule française, partie entière groupée. Les décimales sont RECOPIÉES
+ *    caractère par caractère, jamais relues par un `Number` : « 3.60 » donne « 3,60 » et
+ *    non « 3,6 », et aucune réponse ne peut être arrondie ni tronquée par son affichage.
+ *
+ *  Ne connaît PAS les unités : « 3,5 » ne devient pas « 3,50 » ici. La notation monétaire
+ *  se déclare à la source, sur la sous-question (#542) — une fonction qui devinerait un
+ *  prix au vu du nombre se tromperait sur la première mesure au dixième. */
+export function formatReponseRevelee(valeur: string): string {
+	const m = REPONSE_NOMBRE.exec(valeur.trim());
+	if (!m) return valeur;
+	const [, signe, entier, decimales] = m;
+	if (decimales === undefined) {
+		const n = Number(signe + entier);
+		// Repli sur l'entrée quand le nombre ne se relit pas à l'identique : zéros de tête
+		// (« 007 »), magnitude au-delà de la précision d'un `number` (9007199254740993
+		// deviendrait …992), « -0 ». Mieux vaut une réponse non groupée qu'une réponse fausse.
+		return Number.isSafeInteger(n) && String(n) === signe + entier ? formatNombre(n) : valeur;
+	}
+	// Groupement AU NIVEAU DES CHIFFRES : `grouperChiffresSaisis` n'insère que des
+	// séparateurs, là où repasser par `Number` reperdrait les décimales significatives
+	// qu'on vient de préserver.
+	return `${signe}${grouperChiffresSaisis(entier)},${decimales}`;
 }

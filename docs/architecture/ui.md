@@ -94,11 +94,15 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
 
 ## Espace encadrant (rendu)
 
-Découpé par responsabilité (#234, découpage #354) en un **orchestrateur** + huit
-modules de section, en graphe **étoile** : chaque section n'importe que
-`encadrant-commun` (+ le core), sauf `encadrant-profils` qui dépend aussi de
-`encadrant-pin` (referme son sous-panneau au changement de profil consulté) —
-seule dépendance inter-sections. La logique de données (`core/encadrant-stats.ts`,
+Découpé par responsabilité (#234, découpage #354 puis #520/#534) en un
+**orchestrateur** + dix modules de section, en graphe **étoile** autour du module feuille
+`encadrant-commun`, que chaque section importe (+ le core). Deux exceptions, et seulement
+deux : `encadrant-profils` dépend d'`encadrant-pin` (referme son sous-panneau au changement
+de profil consulté), et `encadrant-progression` — qui fait office de **sous-orchestrateur de
+l'onglet Suivi** — importe les sections dont il compose le bloc et à qui il aiguille les
+événements (`encadrant-notions`, `encadrant-travail`, `encadrant-erreurs`,
+`encadrant-banque`). Aucune de ces quatre n'importe en retour : la dépendance reste à sens
+unique. La logique de données (`core/encadrant-stats.ts`,
 `core/encadrant-lock.ts`, `core/seance.ts`) est inchangée. Voix « vous », accent
 neutre (`encadrant.scss`).
 
@@ -121,8 +125,13 @@ ci-dessous.
   `rerender`/`renderEspace` (casse le cycle orchestrateur ↔ sections) +
   `telechargerBlob` (export, clé de récupération). Porte aussi le **wording partagé de
   l'échelle d'acquisition** (`MOT_NIVEAU`, `ORDRE_NIVEAUX`/`ORDRE_NIVEAUX_ORTHO`) : depuis
-  #496, deux sections distinctes (`encadrant-progression.ts` et `encadrant-banque.ts`)
-  affichent la même échelle, d'où son déplacement ici plutôt que dans l'une des deux.
+  #496, des sections distinctes (`encadrant-notions.ts`, `encadrant-progression.ts` et
+  `encadrant-banque.ts`) affichent la même échelle, d'où son déplacement ici plutôt que dans
+  l'une d'elles. Même raison pour **`boutonsImpression(lessonId, label)`** (#534) — les deux
+  boutons « Fiche » / « Corrigé » d'une leçon, dont le nom accessible porte la leçon —
+  affiché par les lignes de `encadrant-notions.ts` **et** par celles d'`aRevoirHTML`
+  (`encadrant-progression.ts`) ; le HANDLER de `imprimer`, lui, reste dans
+  `encadrant-progression.ts`, qui compose les deux blocs et a `printScope` sous la main.
   **`badgeClasseOrigine(niveau, infobulle?)`** (#556, révisé #571) — badge « classe
   d'origine » dont l'infobulle est **optionnelle** : fournie, le badge passe en
   `role="img"` + `aria-label` (préfixe, classe ET phrase), `title` conservé pour la souris ;
@@ -135,22 +144,26 @@ ci-dessous.
 - **`encadrant-progression.ts`** — **récap** par profil (onglet **Suivi**) :
   chiffres-clés, graphe d'activité 7 jours (#319, bascule Total / Par type —
   composant segment partagé, cf. `segment.ts` plus bas), le bloc **« Travaillé
-  récemment »** (#520 — module dédié `encadrant-travail.ts` ci-dessous), maîtrise par
-  catégorie (chaque leçon du détail dépliable portant désormais sa **frise d'états sur 12
-  semaines**, #521 — un seul `role="img"` par ligne, puce d'état omise sur ces lignes,
-  dépliage global par matière), **historique des erreurs récentes** (#391, filtrable par
+  récemment »** (#520 — module dédié `encadrant-travail.ts` ci-dessous), le bloc **« Notions
+  par catégorie »** (#534 — module dédié `encadrant-notions.ts` ci-dessous),
+  **historique des erreurs récentes** (#391, filtrable par
   période #476, cf.
   `encadrant-erreurs.ts` ci-dessous), et le bloc **« Dictées »** (#424 — listes de
   dictée d'orthographe, échelle à 3 niveaux) qui porte depuis #496 une **bascule
   « Listes » / « Mots »** : le volet Listes reste ici (`listesOrthoProfil`), le volet
   Mots (la banque du profil, recherche + suppression) est délégué au module dédié
   `encadrant-banque.ts` ci-dessous ; handlers `activite-mode`/`epingler`/`imprimer`/
-  `dictees-vue`/`deplier-matiere` (#521, dépliage global des catégories d'une matière — cf.
-  [Espace encadrant](espace-encadrant.md)), plus `erreurs-periode` (délégué à `erreursClick`, exporté par
+  `dictees-vue`, plus `erreurs-periode` (délégué à `erreursClick`, exporté par
   `encadrant-erreurs.ts`), `travail-periode` (délégué à `travailClick`, exporté par
-  `encadrant-travail.ts`) et les actions `banque-*` (délégué à `banqueClick`/`banqueInput`,
+  `encadrant-travail.ts`), `deplier-matiere` (délégué à `notionsClick`, exporté par
+  `encadrant-notions.ts`) et les actions `banque-*` (délégué à `banqueClick`/`banqueInput`,
   exportées par `encadrant-banque.ts` — même raison : c'est cette section qui compose leur
-  bloc). Depuis #545, chaque ligne de liste porte en plus une **frise de composition**
+  bloc). **`epingler` et `imprimer` restent ici** et ne suivent pas leur section : leur
+  markup apparaît à la fois sur les lignes de « Notions par catégorie » et sur celles de
+  « À revoir ensemble », or un second handler pour la même action renverrait le focus au
+  premier des deux boutons de la page (#534). L'événement natif `toggle` des `<details>`
+  passe par `progressionToggle`, qui aiguille sur `notionsToggle`. Depuis #545, chaque
+  ligne de liste porte en plus une **frise de composition**
   (`compositionHTML` — barre segmentée + dénombrement du jour ; `friseCompositionHTML` — repli
   des 12 dernières semaines, récit en texte visible) qui **remplace** l'affichage de la frise
   d'états sur ces lignes (`friseNotionHTML` reste réservée aux leçons du catalogue ci-dessus) —
@@ -173,6 +186,16 @@ ci-dessous.
   leçon »** (`epinglerHTML`) : le sélecteur de leçon partagé (ci-dessus), même action que
   l'épinglage inline du récap, mais ouvrant TOUT le catalogue — y compris les classes que
   l'enfant ne suit pas.
+- **`encadrant-notions.ts`** (#534) — bloc **« Notions par catégorie »** (onglet **Suivi**),
+  composé par `encadrant-progression.ts` (ci-dessus) : couverture par matière
+  (`matieresHTML` + étoiles cumulées par classe, #556), **dépliage global par matière**
+  (`deplierHTML`, #521) et le détail dépliable d'une catégorie — une ligne par leçon (état,
+  suivi, tendance, actions, **frise d'états sur 12 semaines** #521 : un seul `role="img"`
+  par ligne, puce d'état omise sur ces lignes). Possède l'état de vue du dépliage
+  (`categoriesOuvertes`, **jamais persisté** — on revient replié à la prochaine ouverture
+  de l'espace) et expose `notionsHTML`/`notionsClick` (action `deplier-matiere`) plus
+  `notionsToggle` (événement natif `toggle`). Détail fonctionnel dans [Espace
+  encadrant](espace-encadrant.md).
 - **`encadrant-travail.ts`** (#520) — bloc **« Travaillé récemment »** (onglet **Suivi**),
   composé par `encadrant-progression.ts` (ci-dessus) entre le graphe d'activité et
   « Notions par catégorie » : nomme directement les leçons et dictées travaillées sur une

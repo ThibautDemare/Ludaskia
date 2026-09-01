@@ -10,12 +10,14 @@
    les sections appellent `rerender()` / `renderEspace()` sans importer l'orchestrateur.
    Il héberge aussi les BRIQUES transverses aux sections, pour la même raison qu'il porte
    `MOT_NIVEAU` : recopiées de section en section, elles divergeraient. À ce jour le badge
-   « classe d'origine » (#556, programme + à revoir) et `telechargerBlob`, utilitaire de
-   téléchargement partagé par pin (clé de récupération) et profils (export).
+   « classe d'origine » (#556, programme + à revoir), `boutonsImpression` (#534, notions +
+   à revoir) et `telechargerBlob`, utilitaire de téléchargement partagé par pin (clé de
+   récupération) et profils (export).
    ============================================================ */
 import type { SchoolLevel } from '../core/catalog';
 import type { NiveauNotion } from '../core/encadrant-stats';
 import { LEVEL_LABEL } from '../core/levels';
+import { icon } from './icon';
 
 import { html, type SafeHtml } from '../core/html';
 
@@ -67,6 +69,20 @@ export function badgeClasseOrigine(niveau: SchoolLevel, infobulle?: string): Saf
 	// conséquence. Même parade que la frise d'états, dont le récit est aussi porté par un
 	// `aria-label` sur `role="img"`. Le `title` reste, pour la souris.
 	return html`<span class="enc-classe-origine" role="img" title="${infobulle}" aria-label="${`Classe d'origine : ${classe}. ${infobulle}`}">${classe}</span>`;
+}
+
+/* Boutons d'impression d'une leçon (au niveau du profil consulté) : fiche vierge +
+   fiche avec corrigé (#41). Réutilisés par le détail des catégories ET « à revoir » —
+   d'où sa place ici depuis que les deux vivent dans des modules distincts (#534) ; le
+   HANDLER de `data-act="imprimer"`, lui, reste chez l'orchestrateur, qui seul compose
+   les deux sections (il a besoin de `printScope`, que ce module feuille n'importe pas).
+   `label` ne sert QU'aux `aria-label` : l'onglet peut aligner une dizaine de « Fiche » /
+   « Corrigé » identiques, indistinguables pour qui navigue par liste de contrôles (rotor
+   VoiceOver, liste de formulaires NVDA) — le nom accessible doit porter la leçon (a11y). */
+export function boutonsImpression(lessonId: string, label: string): SafeHtml {
+	const nom = `« ${label} »`;
+	return html`<button type="button" class="enc-btn-sec" data-act="imprimer" data-lesson="${lessonId}" aria-label="Imprimer la fiche de ${nom}">${icon('printer')} Fiche</button>
+      <button type="button" class="enc-btn-sec" data-act="imprimer" data-corrige="1" data-lesson="${lessonId}" aria-label="Imprimer la fiche avec corrigé de ${nom}">${icon('printer')} Corrigé</button>`;
 }
 
 let conteneur: HTMLElement | null = null;

@@ -128,8 +128,8 @@ function groupeTravailHTML(g: GroupeTravail, now: number): SafeHtml {
    qu'inventé, et les trois choix ont une raison qui a déjà servi :
 
    Au FÉMININ, le sujet implicite étant la leçon ou la dictée — convention posée par
-   `MOT_CELLULE` (encadrant-progression) et déjà appliquée à la suite de libellés masculins dans
-   la méta de `maitriseHTML`. L'accord tient donc même après « Le passé composé ».
+   `MOT_CELLULE` (encadrant-notions) et déjà appliquée à la suite de libellés masculins dans
+   la méta des lignes de `notionsHTML`. L'accord tient donc même après « Le passé composé ».
 
    « RÉCEMMENT » et non « tout juste » : « tout juste » a deux sens en français, temporel (« à
    l'instant ») et restrictif (« à peine, de justesse »), et le second se lirait comme un

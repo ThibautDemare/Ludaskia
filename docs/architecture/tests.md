@@ -731,3 +731,20 @@ re-remontés à chaque relecture :
 Corollaire à tenir : si un jour le mode tuiles gagne une correction guidée, ce n'est pas
 ce fichier qu'il faudra relire mais la décision 1 de #618, qui l'exclut explicitement du
 dispositif.
+
+### Annonce partagée de la correction (#505)
+
+`e2e/annonce-correction.spec.ts` (8 tests) est **transversale**, pas la spec d'une
+leçon : elle garde la garantie que `wireNext` (`ui/lecon-runner-shared.ts`, cf.
+[Rendu & interactions](ui.md)) apporte à **six runners**, pas le contenu pédagogique
+d'une leçon précise. Elle couvre : la région live qui n'existait pas du tout avant
+#505 (QCM, `#lqcmStatus` — le runner le plus fréquenté), celles qui existaient mais
+restaient muettes au verdict (tuiles, QCM multi-sélection, tableau de conversion — et
+au passage la séparation `#tcVerdict`/`#tcStatus` de ce dernier, verdict vs écho de
+saisie au pavé), celles qui annonçaient déjà à la main et doivent le rester en
+passant désormais par `wireNext` (ordre, droite graduée), et un widget bavard
+(clic-mot) dont la région doit rester la **seule** non vide après correction — la
+preuve que `resume: ''` ne double pas son annonce plutôt que de l'écraser. Un
+dernier test verrouille une régression trouvée en relecture : une fraction annoncée
+en valeur brute (« 3/4 », prononcée « trois slash quatre ») plutôt qu'en toutes
+lettres.

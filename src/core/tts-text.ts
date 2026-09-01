@@ -7,6 +7,7 @@
    « Écouter la consigne ». Voir docs/design-orthographe.md (§ Accessibilité).
    ============================================================ */
 import { attribut, VIDE, type SafeHtml } from './html';
+import { sansSeparateurMilliers } from './nombres';
 
 // Signes d'opération entourés d'espaces (les énoncés calcul sont « 7 + 8 = @ »)
 // → mots. On exige l'espacement pour ne pas toucher un tiret interne (« porte-clé »).
@@ -32,13 +33,6 @@ const UNITES: [RegExp, string][] = [
 	[/ kg\b/g, ' kilogrammes'],
 	[/ min\b/g, ' minutes'],
 ];
-
-// Grands nombres (#240) : entre deux chiffres, on COLLE les classes séparées par
-// l'espace fine insécable U+202F (ou l'insécable U+00A0) — « 1 002 050 » → « 1002050 »
-// — pour que le moteur vocal lise un ENTIER (« un million deux mille cinquante »)
-// plutôt que d'épeler les groupes. Les séparateurs sont désignés par leur CODE
-// (String.fromCharCode), jamais écrits en clair : invisibles et fragiles à l'édition.
-const SEP_MILLIERS = new RegExp('([0-9])[' + String.fromCharCode(0x202f, 0x00a0) + ']([0-9])', 'g');
 
 // Chiffres épelés pour la lecture des décimales (#246, nombres décimaux CM1).
 const CHIFFRE_MOT = [
@@ -95,8 +89,11 @@ export function texteParle(raw: string): string {
 		.replace(/&amp;/g, '&')
 		.replace(/[·—–]/g, ' ') // séparateurs purement visuels (puce, tirets longs)
 		.replace(/→/g, ' ') // flèche « devient » : muette (souvent suivie du trou)
-		.replace(/@/g, ' ') // le trou à remplir : silence, pas « arobase »
-		.replace(SEP_MILLIERS, '$1$2'); // colle les classes des grands nombres (avant le \s+ final)
+		.replace(/@/g, ' '); // le trou à remplir : silence, pas « arobase »
+	// Grands nombres (#240) : les classes sont RECOLLÉES avant de parler, sinon le moteur
+	// vocal épelle les groupes au lieu de lire un entier. Règle partagée avec les régions
+	// live (core/nombres.ts) : un seul endroit sait à quoi ressemble un séparateur de milliers.
+	t = sansSeparateurMilliers(t); // avant le \s+ final
 	t = epelerDecimales(t); // épelle la partie décimale (après avoir collé les milliers)
 	for (const [re, mot] of OPERATEURS) t = t.replace(re, mot);
 	for (const [re, mot] of UNITES) t = t.replace(re, mot);

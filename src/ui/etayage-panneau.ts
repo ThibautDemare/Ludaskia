@@ -40,6 +40,7 @@ import { labelLecon } from '../core/levels';
 import { niveauLecon } from '../core/niveau-actif';
 import { activeProfile, lectureConsigneAuto } from '../core/profiles';
 import { texteParle } from '../core/tts-text';
+import { sansSeparateurMilliers } from '../core/nombres';
 import { loadEtayagesVus, loadLessonReports, marquerEtayageVu } from '../core/progress';
 
 import { icon } from './icon';
@@ -134,7 +135,7 @@ function panneauHTML(
 	sortie: string,
 ): SafeHtml {
 	return html`
-		<div class="modal aide-modal etay-modal" role="dialog" aria-modal="true" aria-labelledby="etayTitle" aria-describedby="etayRegle etayEtapes etayPhrase">
+		<div class="modal aide-modal etay-modal" role="dialog" aria-modal="true" aria-labelledby="etayTitle" aria-describedby="etayRegle etayEtapes etayPhraseLu">
 			<button type="button" class="modal-close aide-close" aria-label="Fermer l'explication">${icon('x')}</button>
 			${mascotteBulleHTML(d.avantSerie ? 'Un petit rappel avant de commencer.' : pas.length ? MASCOTTE_DEROULE : MASCOTTE_REDIGE)}
 			<h2 class="modal-title aide-titre" id="etayTitle">${titre}</h2>
@@ -162,9 +163,19 @@ function panneauHTML(
 						// muté). C'est `aria-describedby` sur le dialogue qui fait entendre la règle
 						// et la première phrase à l'ouverture ; la région live prend le relais aux pas
 						// suivants, où il y a bien mutation (constat du `relecteur-accessibilite`).
+						//
+						// DEUX copies de la phrase, et ce n'est pas une redondance à « simplifier » (#501) :
+						// un grand nombre s'écrit groupé pour l'ŒIL (« 48 205 », espace fine insécable, la
+						// graphie de tous les énoncés) et RECOLLÉ pour l'OREILLE (« 48205 »), sinon le
+						// séparateur risque de faire lire trois nombres là où il y en a un — c'est déjà la
+						// raison pour laquelle la synthèse vocale les recolle (core/nombres.ts). Un seul
+						// élément ne peut pas porter les deux : celui qu'on VOIT est donc masqué aux
+						// technologies d'assistance (comme le visuel juste au-dessus, et pour la même raison :
+						// ce qu'il montre est déjà dit), et c'est la copie `.sr-only` qui est la région live.
 						html`<p class="etay-compteur" id="etayCompteur" aria-live="polite">${compteurTexte(0, pas.length)}</p>
 						 <div class="etay-bar" aria-hidden="true"><div class="etay-bar-fill" id="etayBarFill"></div></div>
-						 <p class="etay-phrase" id="etayPhrase" role="status">${pas[0].phrase}</p>`
+						 <p class="etay-phrase" id="etayPhrase" aria-hidden="true">${pas[0].phrase}</p>
+						 <p class="sr-only" id="etayPhraseLu" role="status" aria-live="polite" aria-atomic="true">${sansSeparateurMilliers(pas[0].phrase)}</p>`
 					: ''
 			}
 			${prerequisHTML(d)}
@@ -210,6 +221,7 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 	const suivant = overlay.querySelector<HTMLButtonElement>('#etaySuivant')!;
 	const precedent = overlay.querySelector<HTMLButtonElement>('#etayPrec');
 	const phrase = overlay.querySelector<HTMLElement>('#etayPhrase');
+	const phraseLu = overlay.querySelector<HTMLElement>('#etayPhraseLu');
 	const visuel = overlay.querySelector<HTMLElement>('#etayVisuel');
 	const compteur = overlay.querySelector<HTMLElement>('#etayCompteur');
 	const barre = overlay.querySelector<HTMLElement>('#etayBarFill');
@@ -242,6 +254,9 @@ export function ouvrirEtayage(d: EtayageDemande): void {
 	function afficher(i: number): void {
 		if (visuel && moteur) visuel.innerHTML = moteur.visuel(i).balisage;
 		if (phrase) phrase.textContent = pas[i].phrase;
+		// La copie LUE suit la copie VUE, recollée (cf. le commentaire du gabarit) : les deux
+		// s'écrivent au même endroit, pour qu'aucune ne puisse rester en arrière d'un pas.
+		if (phraseLu) phraseLu.textContent = sansSeparateurMilliers(pas[i].phrase);
 		if (compteur) compteur.textContent = compteurTexte(i, pas.length);
 		if (barre) barre.style.width = `${Math.round(((i + 1) / pas.length) * 100)}%`;
 		// Le bouton qu'on vient de cliquer ne doit pas disparaître SOUS le focus : un élément

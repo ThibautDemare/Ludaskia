@@ -6,7 +6,7 @@ import { normalizeText } from './utils';
 import { attribut, brut, html, joindre, VIDE, type SafeHtml, drapeau } from './html';
 import { ttsAttr, texteParle } from './tts-text';
 import { stackFractions } from './fraction-text';
-import { wrapGrandsNombres, parseNombreFr } from './nombres';
+import { wrapGrandsNombres, parseNombreFr, formatReponseRevelee } from './nombres';
 import { estSigneComparaison, paveSignesHTML } from './signes';
 import { attendueItem, corrigeIntercalation } from './erreur-representation';
 import type { ChoiceView } from './exercise';
@@ -466,7 +466,7 @@ export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
 	// item porteur d'un `intervalle` est concerné.
 	const revelee = it.intervalle
 		? corrigeIntercalation(it.answer, it.intervalle)
-		: String(it.answer);
+		: formatReponseRevelee(String(it.answer));
 	const field = ctx.corrigeMode
 		? html`<span class="ans-corrige ${extra}">${revelee}</span>`
 		: signe

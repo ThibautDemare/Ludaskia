@@ -19,7 +19,7 @@
    ============================================================ */
 import { separateurSuite } from './exercise';
 import type { NatureOrdre } from './exercise';
-import { formatNombre } from './nombres';
+import { formatNombre, formatReponseRevelee } from './nombres';
 import type { Item } from './items';
 
 /* ---------- Question PASSÉE : ce qu'une tentative laisse au journal (#467) ---------- */
@@ -103,7 +103,9 @@ export function corrigeIntercalation(
    qu'un EXEMPLE et l'attendu est la bande. Un seul point de vérité pour les trois chemins
    de correction qui journalisent un `Item`. */
 export function attendueItem(it: Pick<Item, 'answer' | 'intervalle'>): string {
-	return it.intervalle ? attendueIntervalle(it.intervalle) : String(it.answer);
+	return it.intervalle
+		? attendueIntervalle(it.intervalle)
+		: formatReponseRevelee(String(it.answer));
 }
 
 /* ---------- Opération posée (cellules-chiffres du résultat) ---------- */

@@ -50,6 +50,7 @@ import { conversionDepuisTableau } from '../core/etayage-conversion';
 import type { EtayageDemande } from './etayage-panneau';
 import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 import { poserAuTrou } from '../core/items';
+import { formatReponseRevelee } from '../core/nombres';
 
 const NB_QUESTIONS = 8;
 
@@ -457,6 +458,12 @@ function verifier(): void {
 		}
 	});
 	if (correct) score++;
+	// La réponse attendue, écrite comme dans les énoncés (#501) : « 20 000 mL », pas
+	// « 20000 mL ». UNE variable pour ses trois usages — le journal encadrant, le feedback
+	// affiché et le résumé annoncé — pour qu'ils ne puissent pas se contredire. Le résumé
+	// annoncé, lui, est recollé en aval par le point de passage des annonces
+	// (ui/lecon-runner-shared.ts) : un séparateur de milliers ne part jamais à l'oreille.
+	const attendueTexte = `${formatReponseRevelee(ex.answer)} ${ex.answerUnit}`;
 	// Journal des erreurs (#391) : UNE entrée par tableau raté (jamais une par case, illisible
 	// pour le parent), la réponse donnée étant le nombre relu dans l'unité demandée — un
 	// chiffre parasite dans une colonne de transit s'y voit donc. La garde `frozen` ci-dessus
@@ -469,7 +476,7 @@ function verifier(): void {
 		capterErreur({
 			text: ex.question,
 			donnee: `${saisi} ${ex.answerUnit}`,
-			attendue: `${ex.answer} ${ex.answerUnit}`,
+			attendue: attendueTexte,
 			lessonId: lesson.id,
 			mode: 'lecon',
 		});
@@ -485,7 +492,7 @@ function verifier(): void {
 		{
 			feedbackHTML: correct
 				? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
-				: html`<span class="lqcm-ko">La bonne réponse était <strong>${ex.answer} ${ex.answerUnit}</strong>.${explication ? html` ${explication}` : ''}</span>`,
+				: html`<span class="lqcm-ko">La bonne réponse était <strong>${attendueTexte}</strong>.${explication ? html` ${explication}` : ''}</span>`,
 			// Ce runner ne disait RIEN à la correction (#505) : `#tcStatus` existait, mais
 			// ne servait qu'à l'écho de SAISIE au pavé (« case mètres : 3 »). Un enfant au
 			// lecteur d'écran s'entendait dicter ses propres chiffres, puis plus rien.
@@ -494,9 +501,7 @@ function verifier(): void {
 			// `#revStatus` (docs/architecture/ui.md) — « deux responsabilités dans une même
 			// région finissent par se marcher dessus ». Les deux ont ici des rythmes
 			// opposés : l'écho parle à chaque frappe, le verdict une fois, à la fin.
-			resume: correct
-				? VERDICT_OK
-				: verdictKo(`La bonne réponse était ${ex.answer} ${ex.answerUnit}.`),
+			resume: correct ? VERDICT_OK : verdictKo(`La bonne réponse était ${attendueTexte}.`),
 			statut: '#tcVerdict',
 			isLast: idx >= questions.length - 1,
 			// Étayage (#490) : proposé sur un tableau raté, jamais sur un tableau juste, et
@@ -549,6 +554,9 @@ function passer(): void {
 	if (frozen) return;
 	frozen = true;
 	const ex = questions[idx];
+	// Même graphie que dans le feedback de correction (#501) : le journal, la ligne révélée
+	// et l'annonce lisent la MÊME variable, donc disent le même nombre.
+	const attendueTexte = `${formatReponseRevelee(ex.answer)} ${ex.answerUnit}`;
 	// Une entrée « n'a pas essayé » pour le tableau, jamais le nombre relu dans les cases : un
 	// tableau incomplet ne se relit pas en nombre (il manque des chiffres), et un « 3,07 km »
 	// reconstruit sur des cases vides ferait croire à une erreur de conversion inexistante.
@@ -560,7 +568,7 @@ function passer(): void {
 	// donnée à montrer au parent, même partielle.
 	capterPasse({
 		text: ex.question,
-		attendue: `${ex.answer} ${ex.answerUnit}`,
+		attendue: attendueTexte,
 		lessonId: lesson.id,
 	});
 	paintAll(); // retire la surbrillance de la case active (plus de saisie en cours)
@@ -572,9 +580,9 @@ function passer(): void {
 		root: sheets(),
 		feedback: sheets().querySelector('#tcFeedback') as HTMLElement,
 		actions: sheets().querySelector('#tcActions') as HTMLElement,
-		repHTML: ligneRevelation('la réponse', html`${ex.answer} ${ex.answerUnit}`),
+		repHTML: ligneRevelation('la réponse', html`${attendueTexte}`),
 		extraHTML: explication ? html`<p class="lqcm-expl">${explication}</p>` : VIDE,
-		annonce: `La réponse : ${ex.answer} ${ex.answerUnit}.`,
+		annonce: `La réponse : ${attendueTexte}.`,
 		isLast: idx >= questions.length,
 		onNext: () => {
 			if (idx >= questions.length) finish();

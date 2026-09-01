@@ -490,6 +490,41 @@ construction. Le module a ses propres ancres testées (21:1, 1:1, les deux gris 
 le seuil AA à un cran près) : si la formule dérive, ce sont elles qui tombent d'abord. C'est
 le seul JS du programme TypeScript (`allowJs`), parce que le CLI s'exécute sans build.
 
+### Cohérence explication ↔ drapeau d'annonce (#529)
+
+`tests/clic-mot-annonce-cible.test.ts` tient une règle qu'aucun type ne peut exprimer :
+sur le moteur « clique sur le mot », une explication qui **cite déjà** ses mots-cibles
+doit porter `explicationNommeCible`, faute de quoi la région live y ajoute son « La bonne
+réponse : … » et l'enfant au lecteur d'écran entend deux fois la même énumération.
+
+Pourquoi un gate et pas une relecture : le drapeau vit dans la donnée, l'explication juste
+au-dessus, et **rien ne relie les deux**. #436 l'avait posé sur les deux banques qu'elle
+livrait ; les huit autres fabriques citaient leur cible sans le porter, et le défaut a
+survécu jusqu'à #529 — non par inattention, mais parce que rédiger une explication et
+poser un drapeau sont deux gestes séparés. Le test les rend inséparables : écrire
+l'explication suffit, il réclame le drapeau.
+
+Il vérifie les **deux sens**. Une explication qui nomme sans drapeau, c'est la double
+annonce ; un drapeau sans explication qui nomme, c'est le pire des deux — se taire sur la
+réponse. Piloté par le **catalogue** (`getAllLessons` × `lesson.levels`), jamais par une
+liste de banques écrite à la main : une liste reproduirait exactement l'oubli dont l'issue
+est faite, une banque neuve et une ligne oubliée.
+
+Ce qu'il a fallu arbitrer pour qu'il soit juste, et qui vaut d'être gardé : la comparaison
+porte sur des **mots entiers**. « or » est contenu dans « alors », « ni » dans « niant » —
+une sous-chaîne naïve aurait exigé le drapeau sur des leçons dont l'explication ne dit
+PAS la réponse, donc **introduit** le défaut grave que le second sens existe pour
+empêcher. Insensible à la casse (« Je », « Paul » en tête de phrase), **sensible aux
+accents** (« mangé » n'est pas « mange » pour une voix de synthèse), par **occurrence**
+(les deux « ni », les deux mots d'un passé composé, les deux noms d'un sujet composé), et
+la cible doit être **citée entre guillemets** — sans quoi la prose fixe de `noyau()`
+(« nom », « groupe », « mots ») suffirait à déclarer nommée une cible qu'elle ne désigne
+pas.
+
+Deux gardes contre le test à vide : toute leçon déclarée doit être atteinte par la
+sélection, et un test de **saturation** échoue si l'échantillon (1200 tirages par couple
+leçon/niveau) cesse de couvrir toute la banque — le message dit alors quoi faire.
+
 ### Découvrabilité par les moteurs — balisage des trois pages (#631)
 
 `tests/seo-decouvrabilite.test.ts` (27 tests) éprouve le balisage SEO des trois

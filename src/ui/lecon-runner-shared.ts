@@ -32,6 +32,7 @@ import {
 	type EtayageDemande,
 } from './etayage-panneau';
 import { announceRewards } from './effects';
+import { annoncerStatut } from './revelation-neutre';
 import { declarerSessionRunner, finirSessionRunner } from './runner-reprise';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
@@ -192,8 +193,48 @@ export function renderLeconResult(opts: LeconResultOpts): void {
 	announceRewards(out.niveauGagne, out.recompensesNiv, out.celeb);
 }
 
+/** Les deux amorces du résumé annoncé aux lecteurs d'écran (#505).
+ *
+ *  Partagées et non recopiées : ces deux phrases existaient déjà dans
+ *  `clic-mot-interaction.ts`, et généraliser l'annonce à cinq runners de plus allait
+ *  les dupliquer six fois. Le dépôt a déjà payé ce copier-coller ailleurs (le token
+ *  `--muted`, contourné à la main dans quatre feuilles avant d'être corrigé à la
+ *  source) : une formulation recopiée diverge le jour où l'une des copies change.
+ *  Ce sont des amorces, pas des messages complets : chaque runner ajoute ce que SA
+ *  mécanique sait dire (la bonne réponse, le bon rangement, les bonnes propriétés). */
+export const VERDICT_OK = 'Bravo, bonne réponse.';
+export const verdictKo = (suite: string): string => `Ce n'est pas ça. ${suite}`;
+
 export interface WireNextOpts {
 	feedbackHTML: SafeHtml; // fragment du feedback (injecté via innerHTML)
+	/** Résumé du verdict EN UNE PHRASE, annoncé aux lecteurs d'écran (#505).
+	 *
+	 *  OBLIGATOIRE, et c'est le cœur du correctif. Optionnel, il serait « ce que
+	 *  l'auteur du prochain runner pensera peut-être à fournir » — exactement le régime
+	 *  qui a laissé cinq runners muets pendant des mois, chacun ayant recopié ou oublié
+	 *  le même bout de code. Requis, le compilateur refuse un runner qui ne dit pas ce
+	 *  qu'il faut annoncer. Il n'y a pas de valeur par défaut raisonnable : dériver le
+	 *  résumé du feedback affiché reviendrait à faire lire le pavé HTML (plusieurs
+	 *  phrases, parfois une explication entière), ce que la région live doit justement
+	 *  éviter.
+	 *  TEXTE BRUT, pas de HTML : c'est ce que la voix de synthèse va prononcer. Et un
+	 *  LIBELLÉ lisible, pas une valeur brute — « 3/4 » se prononce « trois slash quatre ».
+	 *  Chaîne VIDE = « ma mécanique a déjà annoncé, ne redis rien » (cas des widgets,
+	 *  voir ci-dessous) — jamais « il n'y a rien à dire ».
+	 *  ÉCARTÉ, pour ne pas être reproposé : typer ce cas en `string | 'deja-annonce'`.
+	 *  En TypeScript, `string` absorbe la branche littérale — l'union s'effondre en
+	 *  `string` et ne contraint rien de plus qu'aujourd'hui. La forme qui marcherait est
+	 *  une union DISCRIMINÉE par la forme de l'objet (`{ resume } | { dejaAnnonce: true }`) ;
+	 *  elle n'empêcherait pas plus un `dejaAnnonce: true` mensonger, pour un remaniement
+	 *  des onze points d'appel. À reconsidérer si le motif se reproduit ailleurs. */
+	resume: string;
+	/** Sélecteur de la région live FIXE de l'écran, celle que le runner rend lui-même
+	 *  dans son markup (`#ltuiStatus`, `#lqmStatus`, `#dgStatus`…). Sert à la distinguer
+	 *  de celle d'un WIDGET monté dans la même carte : la règle partagée
+	 *  (`annoncerStatut`) donne la priorité au widget, dont le message est plus riche.
+	 *  Absent ⇒ l'écran n'a pas de région à lui, on écrit dans celle du widget s'il y en
+	 *  a une. */
+	statut?: string;
 	isLast: boolean; // dernière question → « Voir mon résultat ▶ », sinon « Continuer ▶ »
 	onNext: () => void; // enchaînement (question suivante ou écran de résultat)
 	/** Étayage à PROPOSER sous le verdict (#490) : un lien discret, jamais un affichage
@@ -211,6 +252,31 @@ export interface WireNextOpts {
 export function wireNext(actions: HTMLElement, feedback: HTMLElement, opts: WireNextOpts): void {
 	feedback.hidden = false;
 	feedback.innerHTML = opts.feedbackHTML.balisage;
+	// Annonce du verdict AVANT que le focus ne parte sur « Continuer ▶ » (plus bas) : ce
+	// bouton ne dit que « Continuer », donc sans elle l'enfant qui n'y voit pas apprend
+	// que la question est finie sans savoir ce qu'elle est devenue.
+	// Le `.sprint-correction` lui-même n'est PAS une région live, et ne doit pas le
+	// devenir : il contient du HTML (des <strong>, plusieurs phrases, parfois une
+	// explication entière), qui serait annoncé d'un bloc. D'où un résumé texte à part.
+	// Résumé VIDE = le widget a déjà annoncé, et plus précisément (il connaît chaque
+	// paire, chaque mot) : on se tait plutôt que d'écraser son message par un résumé
+	// global. C'est aussi ce qui garantit qu'on n'annonce jamais deux fois.
+	if (opts.resume) {
+		const scope = feedback.closest('.sprint-stage') ?? feedback.parentElement;
+		// Le runner qui NOMME sa région de verdict est cru sur parole, sans passer par la
+		// règle de résolution partagée. Celle-ci (`annoncerStatut`) départage « région du
+		// widget » et « région fixe » par la négative — toute région qui n'est PAS le repli
+		// est réputée appartenir à un widget —, ce qui suppose qu'un écran n'en a qu'une à
+		// lui. L'hypothèse tient pour la révélation et la révision, mais plus ici : le
+		// tableau de conversion en a DEUX, l'écho de saisie au pavé et le verdict (#505).
+		// Sans ce chemin direct, l'écho passait pour un widget et récupérait le verdict —
+		// exactement la confusion que séparer les deux régions cherchait à éviter.
+		const cible = opts.statut ? scope?.querySelector<HTMLElement>(opts.statut) : null;
+		if (cible) cible.textContent = opts.resume;
+		// Sans `statut`, l'écran n'a pas de région à lui : on retombe sur la règle
+		// partagée, qui trouvera celle du widget s'il en monte une.
+		else annoncerStatut({ scope, message: opts.resume });
+	}
 	// Étayage (#490) : APRÈS la bonne réponse et AVANT « Continuer ▶ ». Placé avant la
 	// réponse, ou aussi lourd que « Continuer », il serait cliqué par réflexe sans être lu.
 	// Même ordre qu'en révision, où le lien vit déjà au même endroit du verdict.

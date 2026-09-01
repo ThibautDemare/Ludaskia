@@ -205,6 +205,20 @@ ouvrir une modale de récompense. **Non automatisable** : rien ne mesure en CI l
 réel d'annonce d'une technologie d'assistance (dépend du navigateur, du lecteur d'écran,
 et du moment exact où `inert` est posé) — d'où une checklist et non un gate.
 
+**Même checklist, cas plus général : région écrite puis `focus()` dans le même tick.**
+La modale n'est qu'une façon parmi d'autres d'avaler une annonce ; en déplacer le focus
+juste après avoir rempli un `aria-live="polite"` en est une autre, certains couples
+navigateur/lecteur d'écran donnant priorité à l'événement de focus sur la région en
+attente. Le dépôt fait cela partout où une correction s'achève : la région est peuplée,
+puis « Continuer ▶ » reçoit le focus. C'est un **compromis assumé** (déplacer le contenu
+après le bouton casserait l'ordre de lecture pour tout le monde, cf.
+`docs/architecture/ui.md`), pas un oubli. Ce qui a changé avec #505 : ce motif ne vit
+plus en cinq copies mais en **un seul point**, `wireNext` (`ui/lecon-runner-shared.ts`),
+pour les onze runners de leçon. Une vérification au lecteur d'écran réel y porte donc
+désormais sur tous — et un correctif de timing, s'il s'avérait nécessaire, s'y ferait une
+fois. Restent en dehors, avec leur propre point d'annonce : `ui/sprint.ts`,
+`ui/revision.ts`, `ui/ortho-runner.ts`.
+
 ## Note de maintenance
 
 Les critères WCAG sont stables entre révisions majeures. Re-vérifier uniquement si :

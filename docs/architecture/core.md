@@ -470,8 +470,9 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   correction reste donc accepté ici). Sert les runners (`ui/sprint.ts`, `ui/session.ts`, via
   `items.ts:itemEstNumerique` ci-dessus) à **refuser** une saisie illisible (« 3- », un
   caractère parasite du pavé numérique Android) au lieu de la compter fausse : une erreur de
-  FORMAT n'est pas une erreur de CALCUL. **`wrapGrandsNombres(escaped)`** enveloppe les
-  nombres groupés (≥ 10 000) d'un texte **déjà échappé** dans `<span class="bignum">` (rendu
+  FORMAT n'est pas une erreur de CALCUL. **`wrapGrandsNombres(fragment)`** enveloppe les
+  nombres groupés (≥ 10 000) d'un texte **déjà échappé** (`SafeHtml`, #614) dans `<span
+  class="bignum">` (rendu
   identique partout : `tabular-nums`, `nowrap`, `clamp` — cf. `styles/lessons.scss`) ;
   appelé par `items.ts → enonceTexte`, donc partagé par tous les rendus (fiche, sprint,
   révision, impression). **`grouperChiffresSaisis(chiffres)`** (#327) groupe une **chaîne de
@@ -480,7 +481,38 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   nombres (`ui/grand-nombre-echo.ts`) : restitue exactement les chiffres tapés (zéros de tête
   compris) en n'insérant que des séparateurs. On n'écrit jamais le caractère U+202F en clair dans
   le source (échappements `U+202F`/`U+00A0`). Réutilisé par `data/maths/numeration.ts` et
-  `position.ts`. **`nombreEnMots(n)`** (#249) écrit un entier de 0 à 99 en toutes
+  `position.ts`. **`sansSeparateurMilliers(texte)`** (#501) fait l'inverse de `formatNombre`
+  sur un texte ENTIER : recolle les classes de milliers (U+202F, U+00A0) pour qui va
+  **entendre** ce texte plutôt que le lire — remontée ici depuis `core/tts-text.ts`, qui en
+  gardait une copie **privée**, le jour où un second canal en a eu besoin. Deux familles de
+  consommateurs partagent désormais la même règle. La synthèse vocale du bouton « Écouter »
+  (`tts-text.ts:texteParle`, sans quoi le moteur épelle les groupes au lieu de lire un entier)
+  d'une part. D'autre part, **trois points de passage** — et seulement trois, la liste
+  COMPLÈTE des messages envoyés à une région live `role="status"`, à tenir à jour ICI plutôt
+  qu'à la reconstituer runner par runner : la règle de repli d'annonce
+  **`ui/revelation-neutre.ts:annoncerStatut`** (leçon et révision), **`ui/sprint.ts:sprintAnnonce`**
+  (sprint), et le chemin **direct** de **`ui/lecon-runner-shared.ts:wireNext`** (#505) qu'emprunte
+  un runner qui NOMME sa propre région (`opts.statut` — `#tcVerdict`, `#dgStatus`, `#lordStatus`,
+  `#ltuiStatus`, `#lqcmStatus`, `#lqmStatus`, cf. [Rendu & interactions](ui.md)) sans passer par
+  `annoncerStatut`. Toutes lues par le lecteur d'écran de l'enfant, pipeline que le projet ne
+  maîtrise pas et où le séparateur n'a donc rien à faire — un futur runner qui nomme sa région
+  hérite de la règle sans rien réimplémenter.
+  **`formatReponseRevelee(valeur)`** (#501) est la mise en forme UNIQUE d'une réponse
+  RÉVÉLÉE à un enfant : le marqueur ✗ de la grille de fiche (`ui/session.ts`), la correction du
+  sprint (`ui/sprint.ts`), le verdict de révision (`ui/revision.ts`/`ui/revelation-neutre.ts`),
+  la réponse attendue du journal encadrant (`attendueItem`, cf. `erreur-representation.ts`
+  plus bas) et le corrigé imprimé (`items.ts`, ci-dessus) lisaient tous jusque-là la valeur
+  BRUTE (`String(answer)`) — un grand nombre révélé sans son groupement, à deux lignes d'un
+  encadrement groupé, ou un décimal avec un point que l'école n'enseigne pas. Deux règles,
+  aucune troisième : un ENTIER suit `formatNombre` (donc la graphie des énoncés) ; un DÉCIMAL
+  s'écrit à la virgule française, partie entière groupée, décimales **recopiées caractère par
+  caractère** — jamais relues par un `Number`, pour n'en perdre ni arrondir aucune (« 3.60 » →
+  « 3,60 », pas « 3,6 »). Tout le reste (texte, conjugaison, signes, une SUITE de nombres
+  « 104 100 98 94 », une durée « 2 h 30 min », une fraction « 8/10 », une bande d'intercalation
+  déjà rédigée) ressort **inchangé** : le motif d'entrée est ancré aux deux bouts et n'admet
+  aucun espace, précisément pour ne pas fondre une suite de plusieurs nombres en un seul.
+  Ne connaît pas les unités (« 3,5 » ne devient pas « 3,50 » ici) : une notation monétaire se
+  déclare à la source, sur la donnée. **`nombreEnMots(n)`** (#249) écrit un entier de 0 à 99 en toutes
   lettres (conventions FR scolaires : « et » à 21/31…/51/61/71, traits d'union
   ailleurs, « quatre-vingts » invariable) — repli sur les chiffres au-delà de 99
   (jamais atteint en pratique, les numérateurs de fractions plafonnent à ~69) ; sert
@@ -1375,8 +1407,9 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   DEUX runners distincts (leçon et révision).
   **Intercalation** (#446) : **`attendueIntervalle([min, max])`** rend la BANDE acceptée
   (« un nombre entre 450 et 465 », bornes exclues, grands nombres groupés) et
-  **`attendueItem(item)`** l'applique dès qu'un `Item` porte `intervalle`, sinon renvoie
-  `String(item.answer)` — un seul point de vérité pour les trois chemins qui journalisent un
+  **`attendueItem(item)`** l'applique dès qu'un `Item` porte `intervalle`, sinon renvoie la
+  réponse mise en forme par **`formatReponseRevelee`** (#501, `core/nombres.ts` ci-dessus) —
+  un seul point de vérité pour les trois chemins qui journalisent un
   `Item` (`ui/session.ts:verify`, `ui/sprint.ts`, `ui/revision.ts:renderNum`). Sans ça le
   parent lisait « La bonne réponse : 457 » là où douze valeurs étaient acceptées, et croyait
   son enfant plus loin du but qu'il ne l'est. Les DEUX runners qui journalisent depuis une
@@ -1413,6 +1446,13 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   une étape dont la réponse est 0) ; **`etapeJuste`** est le raccourci du chemin de correction
   ordinaire (deux issues à peindre) et **`attenduEtapeTexte(attendu)`** écrit la réponse
   attendue à la française (« 4,5 »), affichée à côté de la case dans les deux chemins.
+  **Trou latent, non actif (#501/#542)** : `attenduEtapeTexte` fait le passage à la virgule
+  mais **ne groupe pas** les grands nombres, contrairement à `formatReponseRevelee`
+  (`core/nombres.ts` ci-dessus) qui tient les cinq autres surfaces de révélation — cette
+  sous-question de problème en est donc une **sixième**, restée hors de #501. Mesuré à
+  l'écriture de #501 (300 tirages × tous niveaux de toutes les leçons `probleme`) : aucune
+  sous-question n'atteint 10 000, donc rien à corriger dans l'immédiat ; à traiter par #542,
+  qui touche déjà cette fonction.
   **`entreesEtapesPassees(etapes, saisies)`** en dérive ce qu'un problème **passé**
   (« Je ne sais pas, montre-moi ») laisse au journal encadrant, sous-question par
   sous-question : case vide → entrée `sansTentative` sans réponse donnée, case remplie et

@@ -22,6 +22,7 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 import {
 	annoncerRevelation,
+	annoncerStatut,
 	capterPasse,
 	lienPasserHTML,
 	ligneRevelation,
@@ -218,6 +219,77 @@ describe('annoncerRevelation — région du widget, sinon repli', () => {
 		expect(() => annoncerRevelation({ scope, repli: '#revStatus', message: 'x' })).not.toThrow();
 		expect(scope.innerHTML).toBe('<p>Question sans région live</p>');
 		expect(() => annoncerRevelation({ scope: null, message: 'x' })).not.toThrow();
+	});
+});
+
+/* ============================================================
+   Ce qui part à l'OREILLE n'emporte pas le séparateur de milliers (#501, avis
+   relecteur-accessibilite). Depuis que les verdicts passent par `formatReponseRevelee`,
+   un message d'annonce peut contenir un nombre GROUPÉ (« 2 300 000 ») — graphie faite
+   pour l'œil. Or ces régions `role="status"` sont écrites en `textContent` et lues par
+   le lecteur d'écran de l'enfant, une pipeline que le projet ne maîtrise pas : le
+   signal est dans le projet lui-même, `core/tts-text.ts` recollait déjà les classes
+   avant de parler, preuve qu'au moins un moteur épelle les groupes au lieu de lire un
+   entier. La règle est donc posée au POINT DE PASSAGE (`annoncerStatut`), pour qu'un
+   futur runner en hérite ; c'est ce point d'entrée qu'on éprouve ici, la fonction pure
+   `sansSeparateurMilliers` l'étant dans tests/reponse-revelee.test.ts.
+
+   Les DEUX écritures de la fonction sont couvertes : la région du widget et le repli —
+   la règle appliquée à une seule des deux serait invisible à l'usage (elle ne se
+   verrait que sur les écrans qui n'ont pas de région de widget).
+
+   Ce que ce test ne prouve pas : que TOUTE région live de l'appli passe par ici. Le
+   sprint a son propre point d'entrée (`sprintAnnonce`, module privé → e2e), et
+   plusieurs widgets écrivent leur région en direct.
+   ============================================================ */
+const U202F = String.fromCharCode(0x202f); // espace fine insécable (séparateur de milliers)
+const U00A0 = String.fromCharCode(0x00a0); // espace insécable
+
+describe('annoncerStatut — un grand nombre annoncé est RECOLLÉ (#501)', () => {
+	it('région du widget : le nombre est collé, la phrase reste une phrase', () => {
+		const scope = ecran(REGION_WIDGET);
+		annoncerStatut({ scope, message: `La bonne réponse était 2${U202F}300${U202F}000.` });
+		const lu = annonce('#ltriStatus')!;
+		expect(lu).toBe('La bonne réponse était 2300000.'); // espaces des MOTS intacts
+		expect(lu).not.toContain(U202F);
+		expect(lu).not.toContain(U00A0);
+	});
+
+	it('l’espace insécable est neutralisé lui aussi', () => {
+		const scope = ecran(REGION_WIDGET);
+		annoncerStatut({ scope, message: `Il reste 1${U00A0}234 points.` });
+		expect(annonce('#ltriStatus')).toBe('Il reste 1234 points.');
+	});
+
+	it('chemin de REPLI : la règle s’applique aux DEUX écritures de la fonction', () => {
+		// `seulementRepli` sur un écran sans région de widget : c'est la seconde écriture,
+		// celle qu'un correctif posé à un seul endroit laisserait passer.
+		const scope = ecran(REGION_REPLI);
+		annoncerStatut({
+			scope,
+			repli: '#revStatus',
+			message: `Une réponse possible était 6${U202F}150${U202F}000.`,
+			seulementRepli: true,
+		});
+		expect(annonce('#revStatus')).toBe('Une réponse possible était 6150000.');
+	});
+
+	it('annoncerRevelation en hérite, puisqu’elle passe par annoncerStatut', () => {
+		const scope = ecran(REGION_REPLI);
+		annoncerRevelation({
+			scope,
+			repli: '#revStatus',
+			message: `La réponse : un nombre entre 6${U202F}100${U202F}000 et 6${U202F}200${U202F}000.`,
+		});
+		const lu = annonce('#revStatus')!;
+		expect(lu).toBe(`${REVEAL_LAB} La réponse : un nombre entre 6100000 et 6200000.`);
+		expect(lu).not.toContain(U202F);
+	});
+
+	it('un message sans grand nombre traverse inchangé', () => {
+		const scope = ecran(REGION_WIDGET);
+		annoncerStatut({ scope, message: 'La bonne réponse était chat.' });
+		expect(annonce('#ltriStatus')).toBe('La bonne réponse était chat.');
 	});
 });
 

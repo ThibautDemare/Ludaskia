@@ -502,24 +502,44 @@ describe('Corrigé imprimé — révélation par renderItem (#446)', () => {
 	);
 });
 
-describe('Corrigé imprimé — repli inchangé hors intercalation (#446)', () => {
-	/* Chemin emprunté par TOUTES les autres leçons : la réponse révélée telle quelle. C'est la
-	   non-régression qui compte le plus — un mot ajouté ici polluerait chaque corrigé du dépôt. */
-	const CAS: [string, Item][] = [
-		['entier', { text: '2 + 2 = @', answer: 4, kind: 'num' }],
-		['zéro', { text: '5 − 5 = @', answer: 0, kind: 'num' }],
-		['décimal à virgule', { text: '456 cm = @ m', answer: '4,56', kind: 'num' }],
-		['grand nombre', { text: 'Le millier juste après 12 345 : @', answer: 13000, kind: 'num' }],
-		['mot', { text: 'Le félin : @', answer: 'chat', kind: 'text' }],
-		['signe de comparaison', { text: '45 @ 54', answer: '<', kind: 'text' }],
-		['caractères à échapper', { text: 'Écris : @', answer: 'a"b & c', kind: 'text' }],
+describe('Corrigé imprimé — repli hors intercalation (#446), dans la graphie des énoncés (#501)', () => {
+	/* Chemin emprunté par TOUTES les autres leçons. Deux règles s'y croisent, et ce test tient
+	   les deux :
+	     - #446 : la BANDE d'intercalation ne doit JAMAIS déborder ici — un mot ajouté
+	       polluerait chaque corrigé du dépôt. C'est la non-régression qui compte le plus,
+	       et un attendu EXACT (`toBe`) la tient à lui seul.
+	     - #501 : la réponse est désormais révélée dans la GRAPHIE DES ÉNONCÉS (grands nombres
+	       groupés, virgule française), non plus « telle quelle ». Sur le papier, les énoncés
+	       sont déjà groupés par `wrapGrandsNombres` : un corrigé qui imprimerait « 13000 » à
+	       côté d'un énoncé « 12 345 » rejouerait l'incohérence que #501 corrige à l'écran.
+
+	   L'attendu est écrit EN DUR, jamais calculé par `formatReponseRevelee` : un test qui
+	   appelle la fonction qu'il garde ne garde plus rien. */
+	const CAS: [string, Item, string][] = [
+		['entier', { text: '2 + 2 = @', answer: 4, kind: 'num' }, '4'],
+		['zéro', { text: '5 − 5 = @', answer: 0, kind: 'num' }, '0'],
+		['décimal à virgule', { text: '456 cm = @ m', answer: '4,56', kind: 'num' }, '4,56'],
+		// Décimal à POINT (la graphie que produit un rendu de monnaie) : la fiche papier écrit
+		// la virgule, seule notation enseignée au cycle 3.
+		['décimal à point', { text: 'On te rend : @ €', answer: '3.45', kind: 'num' }, '3,45'],
+		[
+			'grand nombre',
+			{ text: 'Le millier juste après 12 345 : @', answer: 13000, kind: 'num' },
+			`13${ESPACE_FINE}000`,
+		],
+		['mot', { text: 'Le félin : @', answer: 'chat', kind: 'text' }, 'chat'],
+		['signe de comparaison', { text: '45 @ 54', answer: '<', kind: 'text' }, '<'],
+		['caractères à échapper', { text: 'Écris : @', answer: 'a"b & c', kind: 'text' }, 'a"b & c'],
 	];
 
-	it.each(CAS)('%s : la réponse est révélée telle quelle', (_nom, item) => {
-		const html = renderItem(item, corrigeCtx());
-		expect(revelation(html.balisage)).toBe(String(item.answer));
-		expect(html.balisage).not.toContain('<input');
-	});
+	it.each(CAS)(
+		'%s : révélée dans la graphie des énoncés, et rien de plus',
+		(_nom, item, attendu) => {
+			const html = renderItem(item, corrigeCtx());
+			expect(revelation(html.balisage)).toBe(attendu);
+			expect(html.balisage).not.toContain('<input');
+		},
+	);
 
 	it('dans la MÊME leçon, un encadrement garde sa réponse unique révélée', () => {
 		// `num-encadrer-intercaler` mêle encadrer (réponse unique) et intercaler (bande) : le
@@ -530,6 +550,9 @@ describe('Corrigé imprimé — repli inchangé hors intercalation (#446)', () =
 			const item = genLessonItem(lesson, 'ce2');
 			if (item.text.startsWith(INTERCALER)) continue;
 			expect(item.intervalle).toBeUndefined();
+			// `String(item.answer)` reste juste ICI, et seulement ici : la plage CE2 de cette leçon
+			// (≤ 1 000) est sous le seuil de groupement de #501, donc la graphie révélée est la
+			// graphie brute. Étendre ce test au CM1 exigerait un attendu mis en forme (#501).
 			expect(revelation(renderItem(item, corrigeCtx()).balisage)).toBe(String(item.answer));
 			vus++;
 		}

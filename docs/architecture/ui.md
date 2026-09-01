@@ -825,7 +825,10 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   `#lordStatus`, `#dgStatus`, `#lqmStatus`, et `#tcVerdict` pour le tableau de conversion,
   distinct de `#tcStatus` qui porte l'écho de saisie au pavé), sinon via la règle
   partagée `annoncerStatut` (`revelation-neutre.ts`), qui trouve la région du WIDGET
-  monté. `resume: ''` signifie « ma mécanique a déjà annoncé, ne redis rien » : le
+  monté. Comme `annoncerStatut` et `sprintAnnonce`, ce chemin direct recolle les classes de
+  milliers avant d'écrire dans la région (`sansSeparateurMilliers`, #501) : les **trois**
+  points de passage d'un message vers l'oreille sont énumérés dans [Logique pure](core.md),
+  à tenir à jour là-bas plutôt qu'ici. `resume: ''` signifie « ma mécanique a déjà annoncé, ne redis rien » : le
   régime des runners à **widget bavard** (`lecon-appariement.ts`, `lecon-clic-mot.ts`,
   `lecon-tri.ts`, `lecon-probleme.ts`, et la révélation de `lecon-passer.ts`), dont la
   région propre porte un message plus riche — c'est aussi ce qui garantit qu'aucun
@@ -981,6 +984,16 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   présentation** : consigne renforcée (#203, `consigne-renforcee.ts`), boutons-symboles
   de ponctuation (#204, `ponctuation-view.ts`), choix riches cliquables (#200,
   `choicesView`).
+  **Point mort, non actif (#501)** : le feedback (« La bonne réponse était … ») construit
+  `String(q.item.answer)` puis `mathInline(...)` **sans** passer par `formatReponseRevelee`
+  (`core/nombres.ts`) — un contournement réel de la règle de #501, mais qu'aucune leçon QCM
+  n'atteint aujourd'hui : sur les banques QCM numériques inspectées (`ordre-grandeur.ts`,
+  `decimaux.ts`, `decimaux-ecritures.ts`, `aire-perimetre.ts`, `angles.ts`, `division.ts`,
+  `duree-ecoulee.ts`), les choix décimaux sont déjà pré-formatés à la virgule **à la source**
+  (« 0,1 », `` `${ent},5` ``…) et les entiers restent petits (aires de quadrillage, degrés,
+  durées) — aucun ne franchit 10 000. Règle pour la suite : la première leçon QCM à produire
+  une réponse numérique ≥ 10 000 ou un décimal non pré-formaté devra faire passer ce chemin
+  par `formatReponseRevelee`.
 - **`lecon-qcm-multi.ts`** (#253) — runner **QCM multi-sélection** d'une leçon
   (« coche TOUTES les propriétés qui s'appliquent ») : une figure codée + **exactement 4**
   affirmations en **boutons-toggles** (`<button aria-pressed>`, case carrée ☐/☑ décorative,
@@ -1046,6 +1059,13 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   autres runners dédiés. Routé par `runLecon` quand `generate(mode).type ===
   'tableauConversion'` ; n'a de sens qu'en complément du mode `saisie`
   (`ui/navigation.ts` propose les deux via `ModeOption`), jamais en remplacement.
+  **Réponse révélée mise en forme (#501)** : les six sites qui affichent ou journalisent la
+  réponse (feedback, résumé annoncé, ligne de révélation, annonce, deux entrées de journal)
+  partagent désormais une variable unique `attendueTexte` — `` `${formatReponseRevelee(ex.answer)}
+  ${ex.answerUnit}` `` (`core/nombres.ts`). Ce runner franchissait le seuil de groupement **par
+  construction**, contrairement à `lecon-qcm.ts` ci-dessus : les paires CM1 km→m / m→mm / L→mL
+  (`maxBig: 20` × facteur 1000) produisent 11 000 à 20 000 — avant le correctif, « 20000 mL »
+  s'affichait brut à l'écran et dans le journal encadrant.
 - **`lecon-appariement.ts`** (#392) — runner **« appariement »** d'une leçon de
   vocabulaire, « une manche à la fois » (5 manches). `genManches` privilégie
   **`ExerciseType.generateSession`** quand la fabrique l'implémente (session entière
@@ -1509,7 +1529,10 @@ bumpent `updatedAt` (`setPref`). (1) **Confort de lecture** (`confortLecture`) �
 mais augmente espacement + taille (figures SVG exclues). (2) **Bouton « Écouter la
 consigne »** (TTS) — `ui/consigne-tts.ts` greffe un bouton après chaque consigne portant
 un attribut `data-tts` ; le texte parlé est normalisé par `core/tts-text.ts`
-(`texteParle`/`ttsAttr` : retire le `@`, traduit `+ − × ÷ =` en mots, strip HTML).
+(`texteParle`/`ttsAttr` : retire le `@`, traduit `+ − × ÷ =` en mots, strip HTML, et **recolle
+les grands nombres** groupés via `sansSeparateurMilliers`, #501, `core/nombres.ts` — sans quoi
+le moteur vocal épelle les groupes au lieu de lire un entier ; même règle appliquée aux
+régions live d'un verdict, cf. [Logique pure](core.md)).
 Lecture via `dicterConsigne` (`ui/tts.ts`, débit 0,92). **À la demande** ; **aucun bouton
 si pas de voix FR** (`dicteeDisponible`) ; lecture **auto** opt-in (`lectureConsigneAuto`,
 1re consigne seulement, **sauf en sprint** — cf. #630 ci-dessous). Branché dans **tous**
@@ -1544,6 +1567,16 @@ Tab avant est donc un **compromis assumé, écrit ici pour ne pas être relu com
 oubli**. Ne pas détourner pour ça la région `#revStatus` de la révision espacée, réservée
 au verdict de l'item en cours (annoncé puis vidé) : deux responsabilités dans une même
 région finissent par se marcher dessus.
+
+**Cohérence typographique d'un nombre groupé révélé, à surveiller (avis
+`relecteur-accessibilite`, #501).** Tout nombre groupé révélé (`formatReponseRevelee`, cf.
+[Logique pure](core.md)) inséré en HTML devrait recevoir le même traitement typographique que
+dans l'énoncé (`.bignum` via `wrapGrandsNombres`), pas seulement à la génération de
+l'exercice — aujourd'hui absent de `.mark.wrong .sol`, `.sprint-sol`, du verdict de révision
+et de `.ans-corrige`. Ce n'est **pas** un blocage WCAG (U+202F est une espace « glue » : les
+moteurs de rendu n'y coupent pas de ligne, et aucun nombre ne débordait au viewport Pixel 5,
+constat de l'auteur des tests e2e) — une cohérence de style (`tabular-nums`, taille) restée à
+faire.
 
 ### Sprint sans pression temporelle (#223)
 

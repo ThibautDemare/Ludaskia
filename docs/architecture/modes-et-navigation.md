@@ -16,8 +16,11 @@ hash — renvoie à l'accueil si aucune sélection n'est en attente) · `#revisi
 `#seance` (programme du jour composé par l'encadrant, #440) · `#profils` ·
 `#encadrant` / `#encadrant/<onglet>` (espace encadrant en onglets, #234/#459) ·
 `#revision`
-(`#lecons`, ancien sélecteur plat, reste
-routable mais n'est plus lié). Les identifiants de leçon sont des **chaînes**
+(l'ancien sélecteur plat `#lecons` a été **supprimé** — #560 : sa fonction d'accès
+`showLessons()` n'était plus appelée depuis la refonte multi-matières, aucune spec ne
+l'atteignait, et son rendu itérait le seul `LESSONS` (CE2), donc il aurait affiché un
+catalogue faux à un profil CM1. Le catalogue passe par `#matieres` puis les catégories).
+Les identifiants de leçon sont des **chaînes**
 (`math-tables-addition`, `fr-conj-etre-present`…). Les déclencheurs changent juste
 le hash ; `route()` (sur `hashchange`) rend la vue.
 

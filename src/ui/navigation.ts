@@ -1,8 +1,8 @@
 /* ============================================================
    Navigation : routing par hash + rendu des vues
    ------------------------------------------------------------
-   Chaque vue a un hash (#accueil, #lecons, #complet, #express,
-   #lecon-N, #revision). Les déclencheurs ne font que CHANGER le
+   Chaque vue a un hash (#accueil, #matieres, #categorie-<id>,
+   #lecon-<id>, #revision). Les déclencheurs ne font que CHANGER le
    hash : c'est ce qui crée une entrée dans l'historique. Le rendu
    réel est piloté par route(), branché sur hashchange — donc
    Précédent/Suivant du navigateur passent d'une vue à l'autre au
@@ -36,7 +36,7 @@ import { startChrono, resetChrono } from './chrono';
 import { afficherAstuceReponseVide } from './session';
 import { bindConsigneTts } from './consigne-tts';
 import { stopTts } from './tts';
-import { renderToolbarProfile, renderHomeStats, renderLessons, renderProfiles } from './render';
+import { renderToolbarProfile, renderHomeStats, renderProfiles } from './render';
 import { rafraichirRappelSauvegarde } from './rappel-sauvegarde';
 import { runSprint, sprintCleanup, renderSprintConfigScreen } from './sprint';
 import { runRevisionEspacee, revisionCleanup } from './revision';
@@ -130,9 +130,6 @@ export function goHome() {
 	} else {
 		location.hash = 'accueil';
 	}
-}
-export function showLessons() {
-	location.hash = 'lecons';
 }
 export function startMatieres() {
 	location.hash = 'matieres';
@@ -302,7 +299,6 @@ export function route() {
 		if (id !== ORTHO_CATEGORY_ID && CATEGORIES.find((c) => c.id === id)) showBilanCustomView(id);
 		else showMatieresView();
 	} else if (h === 'matieres') showMatieresView();
-	else if (h === 'lecons') showLessonsView();
 	else if (h === 'profils') showProfilesView();
 	else if (h === 'encadrant' || h.startsWith('encadrant/')) showEncadrantView();
 	else if (h === 'seance') showSeanceView();
@@ -437,7 +433,6 @@ function resetSessionUI() {
 export function hideMenus() {
 	[
 		'home',
-		'lessons',
 		'profils',
 		'encadrant',
 		'seance',
@@ -484,14 +479,6 @@ export function showSeanceView() {
 	hideMenus();
 	renderSeance(document.getElementById('seanceContent')!);
 	document.getElementById('seance')!.style.display = '';
-	window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-export function showLessonsView() {
-	resetSessionUI();
-	setToolbar({ verify: false, home: true, profile: true }); // sélecteur : Accueil + profil
-	hideMenus();
-	renderLessons();
-	document.getElementById('lessons')!.style.display = '';
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showProfilesView() {

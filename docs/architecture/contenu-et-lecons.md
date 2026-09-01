@@ -914,7 +914,7 @@ Catégorie `math-calcul-mental`. Quatre origines :
   virgule (les décimaux sont différés au chantier dédié) ; quotient ≤ 2 chiffres.
   `levels: ['cm1']` + ordre pédagogique `math.cm1`. **Convention multi-niveaux du
   moteur historique** : `LESSONS` reste l'ensemble **CE2** consommé par les vues legacy
-  « toutes les leçons » (`buildFiches`, `bilanBlocks`, `bilanHTML`, `renderLessons`) ;
+  « toutes les leçons » (`buildFiches`, `bilanBlocks`, `bilanHTML`) ;
   les leçons CM1 vivent dans `LESSONS_CM1` ; **`LESSONS_CALCUL_MENTAL`** (= `LESSONS` +
   `LESSONS_CM1`) est le **lookup combiné** utilisé par `buildLessonFiche` et la carte de
   catégorie pour retrouver le rendu riche d'une leçon par `id` (tous niveaux).

@@ -167,11 +167,6 @@
 	font-size: 11px;
 	font-family: var(--ui);
 }
-.weak-hint {
-	color: var(--ko);
-	font-weight: 700;
-}
-
 /* ---- Grands nombres (#240, numération CM1 « millions ») ----
    Tout nombre groupé par classes de 3 (≥ 10 000, séparateur ` ` U+202F injecté par
    core/nombres.ts → enveloppé en .bignum par enonceTexte) est rendu ici de façon

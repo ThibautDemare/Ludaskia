@@ -416,8 +416,8 @@ export const LESSONS = [
    Leçons de calcul mental CM1 (issue #241).
    ------------------------------------------------------------
    Tableau SÉPARÉ de LESSONS (qui reste l'ensemble CE2 « historique », consommé
-   par les vues legacy « toutes les leçons » : buildFiches, bilanBlocks, bilanHTML,
-   renderLessons). Les leçons CM1 sont surfacées par niveau via le catalogue
+   par les vues legacy « toutes les leçons » : buildFiches, bilanBlocks,
+   bilanHTML). Les leçons CM1 sont surfacées par niveau via le catalogue
    (catalog.ts : levels=['cm1'] + ordre pédagogique math.cm1) et rendues par
    buildLessonFiche, qui les retrouve dans LESSONS_CALCUL_MENTAL (lookup combiné).
    Leur numéro bilanQ prolonge la numérotation CE2 (16, 17) ; jamais de

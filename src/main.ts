@@ -74,7 +74,6 @@ import {
 	startMatieres,
 	goCategories,
 	goCategorie,
-	startLecon,
 } from './ui/navigation';
 import { ORTHO_CATEGORY_ID } from './core/catalog';
 import { verify, printAll, initSession } from './ui/session';
@@ -161,7 +160,6 @@ function wireDOM() {
 	document.getElementById('cardSprint')!.addEventListener('click', startSprint);
 	document.getElementById('cardRevision')!.addEventListener('click', startRevisionEspacee);
 	document.getElementById('cardBilanCustom')!.addEventListener('click', startBilanCustom);
-	document.getElementById('backHome')!.addEventListener('click', goHome);
 	document.getElementById('backHomeBilanCustom')!.addEventListener('click', goHome);
 	document.getElementById('backHomeSprintConfig')!.addEventListener('click', goHome);
 	// Navigation multi-matières : retour « d'un cran » en haut de chaque vue de la
@@ -291,12 +289,6 @@ function wireDOM() {
 		document.getElementById(id)!.addEventListener('click', (e: any) => {
 			if (e.target.id === id) hideUnlockModals();
 		});
-	});
-
-	// Sélection d'une leçon dans la liste (délégation)
-	document.getElementById('lessonList')!.addEventListener('click', (e: any) => {
-		const btn = e.target.closest('.lesson-item');
-		if (btn && btn.dataset.id) startLecon(btn.dataset.id);
 	});
 
 	// Modale de récompense : fermeture (bouton, croix, fond, Échap)

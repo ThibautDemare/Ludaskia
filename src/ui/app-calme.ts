@@ -28,7 +28,6 @@ import { isRevisionRunning } from './revision';
 /* Écrans « menu » (pas un exercice) : seul un de ceux-là visible = écran calme. */
 const MENU_IDS = [
 	'home',
-	'lessons',
 	'profils',
 	'bilan-custom',
 	'sprint-config',

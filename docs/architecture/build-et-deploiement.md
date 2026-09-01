@@ -33,7 +33,7 @@ dédié) :
   première, sinon `…/index.html` serait une seconde URL pour le même
   contenu). **`app.html` se déclare canonique vers la VITRINE, pas vers
   elle-même**, et c'est délibéré : le texte que l'application offre à un
-  crawler est celui de son interface (« Choisis une leçon », « Mon espace »),
+  crawler est celui de son interface (« Choisis une matière », « Mon espace »),
   fragmenté et illisible en extrait de résultat, alors que la vitrine explique
   ce qu'est Ludaskia. Ça concentre le signal de recherche sur une seule URL
   au lieu de laisser les deux se disputer la requête « Ludaskia » — sans

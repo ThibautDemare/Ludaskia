@@ -541,7 +541,8 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   `renderProgrammeCard` (carte « programme du jour », #440) — et favoris, badge **niveau + barre** dans
   `renderToolbarProfile`, carte de progression `renderProgression` (sa bulle de
   mascotte porte le **défi du jour** : invitation, puis félicitations une fois
-  accompli), `renderObjectives`, `renderLessons` + `lessonCardHTML` réutilisable,
+  accompli), `renderObjectives`, `lessonCardHTML` (carte de leçon, rendue par
+  `catalog-nav.ts`),
   `renderProfileMenu`, `renderProfiles`, `boardHTML`/`sprintBoardHTML`,
   `pctColor`, config `REGULARITY`). **Rejouée quand le jour change sous un accueil
   affiché (#517)** : l'écouteur `visibilitychange` de `main.ts` (qui porte déjà la

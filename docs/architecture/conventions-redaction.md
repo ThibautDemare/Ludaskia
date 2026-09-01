@@ -102,7 +102,7 @@ fait.
 Le bloc s'intitule « Notions par catégorie » et parle de « notions » quand il désigne
 l'objet pédagogique, mais dès qu'un texte porte sur la **frise** elle-même, le sujet
 implicite est la **leçon** : c'est déjà la convention de `MOT_CELLULE`
-(`ui/encadrant-progression.ts`), où « acquise » s'accorde parce que la frise parle d'une
+(`ui/encadrant-notions.ts`), où « acquise » s'accorde parce que la frise parle d'une
 leçon. Rédiger « où en est la notion » juste après une phrase qui vient de dire « épingler
 une leçon, et suivre son évolution » ouvre deux antécédents féminins pour le pronom
 suivant, et laisse croire que les deux mots désignent des objets différents. Cas posé par

@@ -192,7 +192,7 @@ désormais également. La dernière cellule (semaine en cours) porte en plus un 
 (`.enc-frise-courante`) : l'état qu'elle montre est déjà un fait, mais peut encore changer
 avant dimanche.
 
-**Rendu en un seul `role="img"` par ligne** (`friseNotionHTML`, `ui/encadrant-progression.ts`) :
+**Rendu en un seul `role="img"` par ligne** (`friseNotionHTML`, `ui/encadrant-notions.ts`) :
 les douze cellules sont `aria-hidden`, l'`aria-label`/`title` porte un **récit textuel** des
 changements (« statut inconnu, puis passée en cours le 3 juin 2026, puis acquise hier ») plutôt
 que d'annoncer douze cellules une à une, dont aucune n'est focalisable. La **puce d'état**

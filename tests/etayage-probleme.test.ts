@@ -357,7 +357,11 @@ describe('INVARIANTS sur un large échantillon des vrais problèmes', () => {
 			if (d.pas.length !== t.spec.etapes.length + 1) faute(`${d.pas.length} pas`);
 			t.spec.etapes.forEach((e, i) => {
 				const pas = d.pas[i + 1];
-				const attendu = attenduEtapeTexte(e.answer);
+				// L'unité de la sous-question est PASSÉE (#542) : sans elle, la réponse d'un
+				// problème d'argent se relit « 4,5 » ici alors que l'étayage écrit « 4,50 » dans
+				// la case, et le test signalerait une faute qui n'existe pas. L'attendu se
+				// calcule donc comme l'enfant le lit, unité comprise.
+				const attendu = attenduEtapeTexte(e.answer, e.unite);
 				// La sous-question est citée telle quelle : l'enfant doit reconnaître SA question.
 				if (!pas.phrase.includes(e.question)) faute(`étape ${i} : intitulé absent`);
 				// La réponse écrite dans la case est celle que le runner corrige.
@@ -430,8 +434,13 @@ describe('INVARIANTS sur un large échantillon des vrais problèmes', () => {
 					fautes.push(`${t.ou} — étape ${i} : reprise ${dit ? 'annoncée à tort' : 'tue'}`);
 				if (dit) {
 					annonces++;
-					// La valeur nommée est bien une réponse précédente.
-					const valeurs = precedentes.map((v) => attenduEtapeTexte(v));
+					// La valeur nommée est bien une réponse précédente, ÉCRITE COMME dans sa case
+					// (#542) : la reprise cite le résultat de l'étape source, donc avec l'unité de
+					// CETTE étape. Sans ça, le chaînage d'un problème d'argent à montants décimaux
+					// ne serait pas reconnu ici (le chemin actuel, « deux étapes » CE2, est entier).
+					const valeurs = t.spec.etapes
+						.slice(0, i)
+						.map((source) => attenduEtapeTexte(source.answer, source.unite));
 					if (!valeurs.some((v) => phrase.includes(`Le ${v} vient`)))
 						fautes.push(`${t.ou} — étape ${i} : la valeur nommée n'est pas une réponse d'avant`);
 				}

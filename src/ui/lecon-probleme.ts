@@ -114,7 +114,7 @@ export function corrigerEtapesProbleme(
 		const correct = etapeJuste(saisie, attendu);
 		inp.disabled = true;
 		inp.classList.add(correct ? 'correct' : 'wrong');
-		const attenduTexte = attenduEtapeTexte(attendu);
+		const attenduTexte = attenduEtapeTexte(attendu, etapes[i].unite);
 		const mark = root.querySelector(`.prob-mark[data-for="${i}"]`) as HTMLElement;
 		mark.className = 'prob-mark ' + (correct ? 'correct' : 'wrong');
 		mark.innerHTML = (
@@ -160,7 +160,7 @@ export function revelerEtapesProbleme(
 		const i = Number(inp.dataset.i);
 		saisies[i] = inp.value;
 		inp.disabled = true;
-		const attendu = attenduEtapeTexte(etapes[i].answer);
+		const attendu = attenduEtapeTexte(etapes[i].answer, etapes[i].unite);
 		const mark = root.querySelector(`.prob-mark[data-for="${i}"]`);
 		if (!mark) return;
 		mark.className = 'prob-mark reveal';
@@ -312,7 +312,9 @@ function verifier(): void {
 		capterErreur({
 			text: etape.question,
 			donnee: saisie,
-			attendue: String(etape.answer),
+			// Ce que LIT le parent, dans la graphie de l'énoncé (#542) : `String(4.5)` lui écrivait
+			// « 4.5 », avec un point, une notation que son enfant n'a jamais vue en classe.
+			attendue: attenduEtapeTexte(etape.answer, etape.unite),
 			lessonId: lesson.id,
 			mode: 'lecon',
 		}),
@@ -382,7 +384,7 @@ function passer(): void {
 		capterErreur({
 			text: e.etape.question,
 			donnee: e.donnee,
-			attendue: String(e.etape.answer),
+			attendue: attenduEtapeTexte(e.etape.answer, e.etape.unite),
 			lessonId: lesson.id,
 			mode: 'lecon',
 			sansTentative: e.sansTentative,

@@ -53,13 +53,41 @@ const SEP_MILLIERS = new RegExp('([0-9])[' + String.fromCharCode(0x202f, 0x00a0)
  *  dépendent, et c'est pourquoi la règle vit ici plutôt que dans l'un des deux :
  *  - la synthèse vocale du bouton « Écouter » (core/tts-text.ts) : sans la colle, le
  *    moteur ÉPELLE les groupes au lieu de lire un entier (#240) ;
- *  - les régions live (role=\"status\") — annonce d'un verdict, correction du sprint —,
+ *  - les régions live `role="status"` — annonce d'un verdict, correction du sprint —,
  *    lues par le lecteur d'écran de l'enfant, une pipeline que le projet ne maîtrise pas
  *    et où le séparateur n'a donc rien à faire (avis relecteur-accessibilite, #501).
  *
  *  La graphie AFFICHÉE, elle, reste groupée : seul ce qui part à l'oreille est recollé. */
 export function sansSeparateurMilliers(texte: string): string {
 	return texte.replace(SEP_MILLIERS, '$1$2');
+}
+
+/** Écrit un montant en euros comme l'école l'écrit (#542) : deux chiffres après la
+ *  virgule dès qu'il y a des centimes (« 7,50 »), AUCUNE décimale si le montant est
+ *  entier (« 6 »). Ce n'est pas un arrondi d'affichage mais une notation enseignée : le
+ *  programme CE2 lui-même écrit « 43,45 € + 68 € » (docs/reference/programmes,
+ *  avis pedagogue-primaire). « 7,5 € » se lirait « 7 euros et 5 centimes » par un enfant
+ *  qui découvre les décimaux — c'est le risque que les deux décimales écartent, et il est
+ *  propre à la monnaie : une longueur de 3,5 m ne se réécrit PAS « 3,50 m », qui
+ *  annoncerait une précision au centimètre jamais mesurée.
+ *
+ *  Un grand montant est GROUPÉ comme n'importe quel autre nombre de l'appli
+ *  (« 12 345,50 »). Sans ça, déclarer l'unité d'une réponse lui aurait fait PERDRE le
+ *  groupement que `formatReponseRevelee` donne au même nombre sans unité : une régression
+ *  déclenchée par la bonne intention (constat de l'auteur-tests-logique). Aucun montant de
+ *  l'appli n'atteint 10 000 € aujourd'hui — raison de plus pour le régler ici, plutôt que
+ *  de le découvrir dans la première leçon de budget.
+ *
+ *  Reste hors domaine, et non promis : au-delà de deux décimales, `toFixed` ARRONDIT. Aucun
+ *  appelant n'en produit, l'arithmétique monétaire du projet étant entière (des centimes,
+ *  divisés par 100 au dernier moment). */
+export function formatEuros(montant: number): string {
+	if (Number.isInteger(montant)) return formatNombre(montant);
+	// `toFixed` a déjà figé les deux décimales : il ne reste qu'à grouper la partie entière AU
+	// NIVEAU DES CHIFFRES et à recopier les centimes. Pas de second passage par `Number`, qui
+	// pourrait rendre ce que les deux décimales viennent d'établir.
+	const [entier, centimes] = montant.toFixed(2).split('.');
+	return `${grouperChiffresSaisis(entier)},${centimes}`;
 }
 
 /** Retire tout séparateur d'une saisie numérique avant correction : espaces

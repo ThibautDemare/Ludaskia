@@ -27,6 +27,10 @@ import { etayageRedige, type LessonInput } from '../_shared';
 import { checkNumerique } from '../../core/check-helpers';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice } from '../../core/utils';
+/* La graphie des montants vit dans core/nombres.ts (#542) : la leçon de monnaie et les
+   problèmes d'argent l'écrivaient chacun de leur côté, et la révélation d'une réponse une
+   troisième fois — en perdant les centimes. */
+import { formatEuros } from '../../core/nombres';
 
 const OBJETS = ['livre', 'jouet', 'ballon', 'stylo', 'cahier', 'jeu', 'gâteau', 'cadeau', 'crayon'];
 const obj = () => choice(OBJETS);
@@ -73,19 +77,13 @@ interface RenduConfig {
 	decimal: boolean; // CM1 : prix au centime près (franchit l'euro)
 }
 
-/* Formate un montant en euros pour l'affichage : entier (« 3 € ») ou décimal
-   à la française (« 1,50 € »), toujours deux décimales en mode décimal. */
-function fmtEuros(montant: number): string {
-	return Number.isInteger(montant) ? String(montant) : montant.toFixed(2).replace('.', ',');
-}
-
 function rendreMonnaie(config: RenduConfig): Exercise {
 	const billet = choice(config.billets);
 	if (!config.decimal) {
 		// CE2 : prix entier, rendu entier.
 		const p = rnd(1, billet - 1); // prix strictement inférieur au billet
 		return ex(
-			`Un ${obj()} coûte ${fmtEuros(p)} €. Tu paies avec un billet de ${billet} €. Combien te rend-on ? @ €`,
+			`Un ${obj()} coûte ${formatEuros(p)} €. Tu paies avec un billet de ${billet} €. Combien te rend-on ? @ €`,
 			billet - p,
 		);
 	}
@@ -95,7 +93,7 @@ function rendreMonnaie(config: RenduConfig): Exercise {
 	const prixC = rnd(1, billetC / 5 - 1) * 5; // 0,05 € .. (billet − 0,05 €), pas de 5 c
 	const renduC = billetC - prixC;
 	return ex(
-		`Un ${obj()} coûte ${fmtEuros(prixC / 100)} €. Tu paies avec un billet de ${billet} €. Combien te rend-on ? @ €`,
+		`Un ${obj()} coûte ${formatEuros(prixC / 100)} €. Tu paies avec un billet de ${billet} €. Combien te rend-on ? @ €`,
 		renduC / 100,
 	);
 }

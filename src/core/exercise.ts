@@ -32,6 +32,14 @@ export interface TableauColonne {
 	// La colonne de tête est TOUJOURS la première (index 0) — inutile de la marquer.
 }
 
+/** Unité qui commande l'ÉCRITURE d'une valeur de sous-question (#542). Déclarée par le
+    générateur, jamais devinée : un helper qui reconnaîtrait un prix « à sa tête » se
+    tromperait sur la première mesure au dixième, et l'écriture monétaire n'est justement
+    pas celle des autres décimaux (« 4,50 » toujours, « 3,5 m » jamais réécrit « 3,50 m »).
+    Un enum fermé, et non un booléen : les mesures rejoindront la même porte le jour où
+    elles auront besoin d'une graphie à elles. */
+export type UniteEtape = 'euro';
+
 /** Le calcul qui répond à une sous-question, dans les valeurs AFFICHÉES de l'énoncé
     (euros, mètres… — jamais les centimes ou les dixièmes internes). Ajouté pour l'étayage
     (#490) : sans lui, une résolution générée ne saurait que réciter les réponses, ce que la
@@ -46,6 +54,14 @@ export interface CalculEtape {
 	op: '+' | '-' | 'x' | ':';
 	a: number;
 	b: number;
+	/** Unité de chaque OPÉRANDE, séparément — et pas une unité pour tout le calcul (#542).
+	    Une addition garde bien la même unité partout, mais une MULTIPLICATION mélange par
+	    nature une quantité et un montant (« 3 stylos à 3,20 € »), et écrire « 3,00 × 3,20 »
+	    serait faux. Invisible tant que les quantités sont entières (`formatEuros(3)` vaut
+	    « 3 ») ; faux dès la première quantité décimale — constat de l'auteur-tests-logique,
+	    qui a refusé la version « une unité par étape » de ce contrat. */
+	uniteA?: UniteEtape;
+	uniteB?: UniteEtape;
 	/** Index de la sous-question DONT PROVIENT l'opérande, quand celui-ci n'est pas un
 	    nombre de l'énoncé mais le résultat d'une étape précédente. C'est le chaînage d'un
 	    problème à étapes, et il se DÉCLARE plutôt qu'il ne se devine : le retrouver en
@@ -62,6 +78,10 @@ export interface ProblemeEtape {
 	question: string; // ex. « Combien Léo a-t-il de billes maintenant ? »
 	answer: number;
 	calcul?: CalculEtape;
+	/** Unité de la RÉPONSE de cette sous-question (#542) : posée par le générateur, elle
+	    commande la graphie partout où la réponse s'affiche — case révélée, marque de
+	    correction, journal encadrant, panneau d'étayage, repli fiche. */
+	unite?: UniteEtape;
 }
 
 /** Lexique d'affichage du runner « problème » (#95). Permet à une leçon qui réutilise

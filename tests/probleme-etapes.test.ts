@@ -11,6 +11,9 @@
      étape dont la réponse attendue est 0. `Number('')` vaut 0, donc toute
      comparaison faite AVANT le test du vide déclarerait « juste » un champ jamais
      rempli — et ferait disparaître la sous-question du journal encadrant ;
+   - la LECTURE de la saisie : ce qui est AFFICHÉ à l'enfant doit être accepté s'il le
+     recopie (un grand nombre s'affiche groupé, #501/#542), sans que la tolérance aux
+     séparateurs rende juste une valeur voisine ni sauve une saisie illisible ;
    - la virgule française (« 4,5 » = 4,5 ; « 12,50 » = 12,5, prix en euros) et les
      espaces autour de la saisie ;
    - une saisie non numérique, qui est une vraie tentative ratée et pas un vide ;
@@ -34,6 +37,13 @@ import type { ProblemeEtape } from '../src/core/exercise';
 
 /** Sous-question d'un problème, réduite à ce que la règle regarde. */
 const etape = (question: string, answer: number): ProblemeEtape => ({ question, answer });
+
+/* Les deux espaces de groupement possibles, désignées par leur CODE et jamais écrites en
+   clair (invisibles à la relecture, fragiles à l'édition — convention de core/nombres.ts) :
+   la FINE insécable U+202F que l'appli affiche, et l'insécable large U+00A0 que produisent
+   des contenus plus anciens et certains claviers. */
+const FINE = String.fromCharCode(0x202f);
+const NBSP = String.fromCharCode(0x00a0);
 
 describe('etatEtape — trois issues par case', () => {
 	it('case remplie et exacte → « juste »', () => {
@@ -87,7 +97,8 @@ describe('etatEtape — trois issues par case', () => {
 	});
 
 	/* Tolérance de CLAVIER, pas d'enseignement : l'application n'écrit jamais le point
-	   (la réponse attendue s'affiche « 4,5 », cf. attenduEtapeTexte), mais un pavé
+	   (la réponse attendue s'affiche « 4,5 » — « 4,50 » sur un montant depuis #542, cf.
+	   attenduEtapeTexte), mais un pavé
 	   numérique — physique ou Android — peut n'offrir que le point. Compter faux une
 	   réponse juste à cause de la touche disponible punirait le matériel, pas le
 	   raisonnement : la permissivité est défendable ici. */
@@ -98,6 +109,58 @@ describe('etatEtape — trois issues par case', () => {
 	it('une saisie non numérique est une tentative FAUSSE, jamais un vide', () => {
 		for (const saisie of ['abc', '4,5,6', '?', '12 ans', '-']) {
 			expect(etatEtape(saisie, 12)).toBe('faux');
+		}
+	});
+
+	/* Un grand nombre s'AFFICHE groupé (« 12 345,50 », #501/#542) : l'enfant qui le recopie
+	   tape ce qu'il VOIT, avec l'espace de son clavier — une espace ordinaire, pas la fine
+	   insécable de la typographie. Toutes ces formes désignent le même nombre. La case d'un
+	   problème était le SEUL correcteur numérique de l'appli à relire par un `Number` nu :
+	   elle comptait donc faux ce que l'affichage venait de lui apprendre. */
+	it('un grand nombre recopié est juste, quel que soit le séparateur tapé', () => {
+		const formes = [
+			`12${FINE}345,50`, // la graphie AFFICHÉE, telle quelle
+			'12 345,50', // espace ordinaire du clavier
+			`12${NBSP}345,50`, // insécable large
+			'12345,50', // aucun séparateur
+			'12 345.50', // séparateur + point décimal (pavé numérique)
+			'12345.5', // ni séparateur ni zéro des centièmes
+		];
+		for (const saisie of formes) {
+			expect(etatEtape(saisie, 12345.5), JSON.stringify(saisie)).toBe('juste');
+		}
+		for (const saisie of [`12${FINE}345`, '12 345', `12${NBSP}345`, '12345']) {
+			expect(etatEtape(saisie, 12345), JSON.stringify(saisie)).toBe('juste');
+		}
+	});
+
+	/* Le versant qu'il faut garder en élargissant la lecture : ce qui était faux le reste.
+	   Neutraliser les espaces ne doit pas neutraliser le RESTE — ni rendre juste une valeur
+	   voisine, ni avaler une unité collée, ni sauver une saisie illisible. */
+	it('la tolérance aux séparateurs ne rend juste aucune valeur DIFFÉRENTE', () => {
+		expect(etatEtape('12 346,50', 12345.5)).toBe('faux');
+		expect(etatEtape(`12${FINE}345,05`, 12345.5)).toBe('faux');
+		expect(etatEtape('1 234,50', 12345.5)).toBe('faux');
+		expect(etatEtape('123 455', 12345.5)).toBe('faux'); // la virgule perdue n'est pas rattrapée
+	});
+
+	it('une saisie illisible reste FAUSSE, séparateurs ou pas', () => {
+		for (const saisie of ['12 345 €', 'douze mille', '1,2,3', '12 3,4,5', '?']) {
+			expect(etatEtape(saisie, 12345.5), JSON.stringify(saisie)).toBe('faux');
+		}
+	});
+
+	/* Le garde-fou que le changement de lecteur ne desserre PAS, et qui tient à l'ordre des
+	   tests dans la fonction : `parseNombreFr('')` vaut 0 comme `Number('')`, et il efface EN
+	   PLUS les espaces — donc une case ne contenant que des espaces se relit aussi 0. Le test
+	   du vide passe AVANT la comparaison, sinon toute case blanche serait déclarée JUSTE sur
+	   une étape dont la réponse est 0 (cas déjà couvert plus haut pour l'espace ordinaire ;
+	   ici, les insécables, que seul le nouveau lecteur efface). */
+	it('une case ne contenant que des espaces INSÉCABLES reste « vide », même sur une étape à 0', () => {
+		for (const saisie of [FINE, NBSP, `${FINE} ${NBSP}`]) {
+			expect(etatEtape(saisie, 0), JSON.stringify(saisie)).toBe('vide');
+			expect(etapeJuste(saisie, 0), JSON.stringify(saisie)).toBe(false);
+			expect(etatEtape(saisie, 12), JSON.stringify(saisie)).toBe('vide');
 		}
 	});
 });
@@ -255,9 +318,13 @@ describe('sur les problèmes réellement générés par le catalogue', () => {
 		expect(ECHANTILLON.some(({ etape }) => !Number.isInteger(etape.answer))).toBe(true);
 	});
 
+	/* L'unité de la sous-question est PASSÉE (#542) : sans elle, ce balayage éprouverait un
+	   chemin que l'enfant ne voit plus. Depuis que la notation monétaire se déclare sur
+	   l'étape, la case d'un problème d'argent affiche « 4,50 », pas « 4,5 » — tester
+	   `attenduEtapeTexte(answer)` seul resterait vert en étant à côté du sujet. */
 	it('la réponse affichée à côté de la case est lisible par un enfant', () => {
 		for (const { id, etape } of ECHANTILLON) {
-			const texte = attenduEtapeTexte(etape.answer);
+			const texte = attenduEtapeTexte(etape.answer, etape.unite);
 			expect(texte, id).not.toContain('.'); // jamais le point décimal anglo-saxon
 			expect(texte, id).not.toMatch(/e[+-]/i); // ni une notation scientifique
 			expect(texte, id).toMatch(/^\d+(,\d{1,2})?$/); // au plus deux décimales (argent)
@@ -266,7 +333,11 @@ describe('sur les problèmes réellement générés par le catalogue', () => {
 
 	it('ce qui est affiché serait accepté si l’enfant le recopiait', () => {
 		for (const { id, etape } of ECHANTILLON) {
-			expect(etatEtape(attenduEtapeTexte(etape.answer), etape.answer), id).toBe('juste');
+			// Unité comprise (#542) : c'est bien « 4,50 » qui est proposé à la recopie sur un
+			// problème d'argent, et c'est donc « 4,50 » qui doit être accepté.
+			expect(etatEtape(attenduEtapeTexte(etape.answer, etape.unite), etape.answer), id).toBe(
+				'juste',
+			);
 		}
 	});
 

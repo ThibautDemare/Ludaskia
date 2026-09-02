@@ -443,3 +443,49 @@ test('#501 (tableau de conversion, « Je ne sais pas, montre-moi ») : la révé
 
 	expect(errors).toEqual([]);
 });
+
+/* ---------- 8. Journal encadrant (core/probleme-etapes.ts : attenduEtapeTexte) ---------- */
+
+test('#542 (journal encadrant) : un problème d’argent CM1 raté écrit la réponse attendue à deux décimales, jamais au point', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(SEED_CM1);
+	// Pas de verrou PIN hérité d'un test précédent (même précaution que erreurs-encadrant.spec.ts).
+	await page.addInitScript(`localStorage.removeItem('ludaskia_encadrant_lock');`);
+
+	// « J'ai combien en tout » (multiplication) : mono-étape, et sa branche décimale CM1
+	// (`genMultiplicationDec`, ~50 % du tirage) est TOUJOURS un montant en euros — contrairement
+	// à la composition/comparaison, qui mélangent argent et mesures. Un `data-answer` à point
+	// suffit donc à garantir qu'on tient un item d'argent, sans lire l'énoncé.
+	let dataAnswer: string | null = null;
+	for (let tentative = 0; tentative < 6 && !dataAnswer?.includes('.'); tentative++) {
+		await gotoHash(page, 'lecon-math-prob-multiplication');
+		await page.locator('.prob-input').first().waitFor({ state: 'visible' });
+		dataAnswer = await page.locator('.prob-input').first().getAttribute('data-answer');
+	}
+	expect(dataAnswer, 'un tirage décimal (donc en euros) attendu sur 6 essais').toMatch(
+		/^\d+\.\d+$/,
+	);
+
+	await page.locator('.prob-input').first().fill('0'); // jamais la réponse : un montant est > 0
+	await page.locator('#probVerif').click();
+	await expect(page.locator('.prob-mark.wrong')).toBeVisible();
+
+	// Round-trip du journal (même pattern que e2e/journal-couverture.spec.ts) : la faute vient
+	// d'être commise, une seule leçon doit apparaître.
+	await gotoHash(page, 'encadrant');
+	const carte = page.locator('.enc-err-lecon');
+	await expect(carte).toHaveCount(1);
+	await carte.locator('.enc-err-sum').click();
+
+	const bonne = carte.locator('.enc-err-bonne').first();
+	await expect(bonne).toBeVisible();
+	const texte = (await bonne.innerText()).trim();
+	// #542 : ce que LIT le parent ne doit plus jamais porter de point (`String(4.5)` l'y
+	// mettait avant ce correctif) et doit toujours porter DEUX décimales pour un montant.
+	expect(texte).not.toContain('.');
+	expect(texte).toMatch(/,\d{2}$/);
+
+	expect(errors).toEqual([]);
+});

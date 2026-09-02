@@ -93,6 +93,20 @@ rapprocher le PID du bon worktree, ou dans le doute couper ce serveur avant de r
   attendre la variante visée exclurait d'emblée les tirages qu'on veut pouvoir
   rejeter (cf. `#revValidate` dans `intercaler-ce2.spec.ts`, présent quel que soit
   le mode de la révision). Tenu par le même gate (#511).
+- **Un cas précis dans un tirage à plusieurs branches se BOUCLE, ne se garde jamais
+  sous un `if`.** Quand un générateur mélange plusieurs branches au hasard (~50/50
+  argent/mesure, encadrement/intercalation…) et qu'un test ne vérifie qu'**une**
+  d'entre elles, poser l'assertion sous `if (bonneBranche) { expect(...) }` la rend
+  **optionnelle** : sur un run qui tire l'autre branche, l'assertion ne s'exécute
+  jamais et le test reste vert sans avoir rien vérifié — il ne dit plus « la règle
+  tient » mais « elle tient si le hasard nous y amène ». Boucler à la place jusqu'à
+  obtenir la branche visée (relance avec un **plafond** de tentatives, comme les
+  autres boucles de ce fichier), puis échouer **explicitement** avec un message
+  (`expect(x, 'raison').not.toBeNull()`) si elle ne sort jamais sur le plafond —
+  jamais un silence, jamais un `waitForTimeout`. Exemple : la double boucle
+  « item d'encadrement ET item d'intercalation » de `reponse-revelee.spec.ts`
+  (#501), qui reprend chaque tentative jusqu'à tenir les deux formes sur la même
+  fiche avant d'asserter quoi que ce soit sur l'une ou l'autre.
 - Rester **ciblé et robuste** : peu de tests, des sélecteurs stables
   (`#btnVerify`, `.cat-empty`, `.lesson-item`…), pas de suite exhaustive fragile.
 - **Pas d'import de `src/` dans une spec** : une spec reste une boîte noire du rendu,

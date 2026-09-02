@@ -72,6 +72,17 @@ tirage mixte de `geo-cm1-quadrilateres` et le QCM `geo-cm1-polyedre` (`geometrie
 via `propQExercise`. Ces cinq fabriques recopiaient auparavant la même logique de tirage à
 l'identique.
 
+### Graphie d'une valeur : se déclare, ne se devine jamais (#542)
+
+Convention transversale, née de la graphie monétaire (`UniteEtape`, `ProblemeEtape.unite`,
+`CalculEtape.uniteA`/`uniteB`, cf. [Logique pure](core.md)) mais valable à toute leçon qui
+manipule une valeur à plusieurs écritures possibles : **une graphie se déclare sur la
+donnée, à la source — elle ne se devine jamais en inspectant la valeur.** Rien dans `4.5`
+ne distingue un prix (« 4,50 € ») d'une longueur (« 4,5 m ») ; un helper qui tenterait de
+la reconnaître à sa tête se tromperait sur la première mesure venue. Une leçon qui
+introduit une nouvelle écriture étend l'enum fermé `UniteEtape` plutôt que d'ajouter une
+heuristique de reconnaissance.
+
 ## Français
 
 ### Grammaire
@@ -1326,8 +1337,11 @@ clôture de `ORDRE_LECONS.math.cm1` (réinvestissement, après les décimaux et 
 mesures CM1). Le repli texte du bilan/de la fiche (`catalog.ts`), la correction par
 étapes en révision (`corrigerEtapesProbleme`, `ui/lecon-probleme.ts`, #466 — la révision
 monte désormais le board complet plutôt que ce repli) et la réponse révélée en cas
-d'erreur dans le runner de leçon affichent tous la valeur en **écriture à virgule
-française**.
+d'erreur dans le runner de leçon affichent tous la valeur mise en forme par
+**`attenduEtapeTexte`** (`core/probleme-etapes.ts`, #542, cf. [Logique pure](core.md)) :
+virgule française pour une mesure, mais **deux décimales dès qu'il y a des centimes,
+aucune sur un montant entier** pour l'argent (`4,50 €`, jamais `4,5`), la sous-question
+déclarant son unité plutôt que la laissant se deviner à l'inspection de la valeur.
 
 > Recalibrage par **branchement manuel** sur `opts.level`, pas par le combinateur
 > `calibrated` — voir [Niveaux scolaires](niveaux-scolaires.md#modules).

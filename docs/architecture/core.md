@@ -314,13 +314,18 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   son runner, comme `posed`) | `probleme` (résolution de problèmes #199 :
   `enonce`, `etapes[]` — 1 ou 2 sous-questions corrigées indépendamment —,
   `parle`, `figure?` #95, `explication?` #252 — stratégie affichée APRÈS la
-  réponse, ex. le « pont » d'un calcul de durée) — chaque étape porte aussi un
-  `calcul?: CalculEtape` optionnel (`{op, a, b}`, dans les valeurs AFFICHÉES de
-  l'énoncé, ajouté pour l'étayage de la notion #490) : RENSEIGNÉ seulement quand le
-  résultat de l'étape EST `a op b`, et **absent par refus explicite** pour une
-  division avec reste ou une durée décomposée en heures/minutes, qui n'entrent pas
-  dans ce moule ; `deA`/`deB` y déclarent l'étape d'où PROVIENT un opérande quand il
-  n'est pas un nombre de l'énoncé mais le résultat d'une sous-question précédente
+  réponse, ex. le « pont » d'un calcul de durée) ; chaque étape porte aussi un
+  `unite?: UniteEtape` optionnel qui commande sa GRAPHIE (#542, enum fermé à ce jour
+  réduit à `'euro'` — cf. `core/probleme-etapes.ts:attenduEtapeTexte` plus bas) et un
+  `calcul?: CalculEtape` optionnel (`{op, a, b, uniteA?, uniteB?}`, dans les valeurs
+  AFFICHÉES de l'énoncé, ajouté pour l'étayage de la notion #490) : RENSEIGNÉ
+  seulement quand le résultat de l'étape EST `a op b`, et **absent par refus
+  explicite** pour une division avec reste ou une durée décomposée en
+  heures/minutes, qui n'entrent pas dans ce moule ; l'unité de CHAQUE opérande se
+  déclare SÉPARÉMENT (#542) — une multiplication mélange par nature une quantité et
+  un montant (« 3 stylos à 3,20 € ») —, et `deA`/`deB` y déclarent l'étape d'où
+  PROVIENT un opérande quand il n'est pas un nombre de l'énoncé mais le résultat
+  d'une sous-question précédente
   (cf. « Étayage de la notion » plus bas) | `clicMot` (« clique sur le mot »
   #259, généralisé #437 : `{tokens: string[]` — phrase mot à mot, ponctuation comprise —,
   `cibleIndices: number[]` — ensemble EXACT des indices-cibles, **stockés**, adjacents
@@ -1438,21 +1443,38 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   (`journaliserPasseMulti`, une grille tout-ou-rien). La règle avait été **recopiée** dans
   ces deux runners — exactement la divergence que l'extraction du module problème devait
   empêcher.
-- **`probleme-etapes.ts`** (#467, pur) — verdict d'**UNE sous-question** de problème, extrait
+- **`probleme-etapes.ts`** (#467/#542, pur) — verdict d'**UNE sous-question** de problème, extrait
   de la correction DOM `ui/lecon-probleme.ts:corrigerEtapesProbleme` le jour où un second
-  chemin en a eu besoin. **`etatEtape(saisie, attendu)`** rend trois états — `'vide'`,
-  `'juste'`, `'faux'` — la virgule française étant tolérée (#255) et le test du VIDE passant
-  **avant** la comparaison (`Number('')` vaut 0 : sans lui, une case vide serait « juste » sur
-  une étape dont la réponse est 0) ; **`etapeJuste`** est le raccourci du chemin de correction
-  ordinaire (deux issues à peindre) et **`attenduEtapeTexte(attendu)`** écrit la réponse
-  attendue à la française (« 4,5 »), affichée à côté de la case dans les deux chemins.
-  **Trou latent, non actif (#501/#542)** : `attenduEtapeTexte` fait le passage à la virgule
-  mais **ne groupe pas** les grands nombres, contrairement à `formatReponseRevelee`
-  (`core/nombres.ts` ci-dessus) qui tient les cinq autres surfaces de révélation — cette
-  sous-question de problème en est donc une **sixième**, restée hors de #501. Mesuré à
-  l'écriture de #501 (300 tirages × tous niveaux de toutes les leçons `probleme`) : aucune
-  sous-question n'atteint 10 000, donc rien à corriger dans l'immédiat ; à traiter par #542,
-  qui touche déjà cette fonction.
+  chemin en a eu besoin. **`etatEtape(saisie, attendu)`** rend trois états — `'vide'`, `'juste'`, `'faux'` — le test du
+  VIDE passant **avant** la comparaison (`Number('')` vaut 0 : sans lui, une case vide serait
+  « juste » sur une étape dont la réponse est 0), et la saisie relue par **`parseNombreFr`**
+  (`core/nombres.ts` ci-dessus) plutôt qu'un `Number` nu (#542) : virgule française tolérée
+  (réponses décimales CM1, #255) ET séparateurs de milliers neutralisés, comme
+  `checkItemAnswer`/`checkNumerique` — c'était le SEUL correcteur numérique du projet à relire
+  autrement, ce qui rendait faux ce que l'affichage venait d'apprendre à l'enfant : la réponse
+  révélée s'écrit « 12 345,50 » (groupée), et `Number('12 345,50')` vaut `NaN`. **`etapeJuste`**
+  est le raccourci du chemin de correction ordinaire (deux issues à peindre).
+  **`attenduEtapeTexte(attendu, unite?)`** (#542) écrit la réponse attendue, ou l'un de ses
+  OPÉRANDES, comme l'enfant l'a lue dans l'énoncé. Sans `unite` : la règle générale des
+  décimaux de l'app — virgule française et grands nombres groupés (`formatReponseRevelee`,
+  #501). Avec `unite: 'euro'` (seul membre à ce jour de l'enum fermé **`UniteEtape`**,
+  `core/exercise.ts`) : **`formatEuros`** (`core/nombres.ts` ci-dessus) — deux décimales dès
+  qu'il y a des centimes, aucune sur un montant entier, jamais un arrondi caché. `unite` se
+  **DÉCLARE** sur la donnée — `ProblemeEtape.unite` pour la réponse de l'étape,
+  `CalculEtape.uniteA`/`uniteB` pour CHAQUE opérande **séparément** — plutôt que de se deviner à
+  l'inspection : rien dans `4.5` ne distingue un prix de 4,50 € d'une longueur de 4,5 m. Une
+  unité par ÉTAPE (et non par opérande) aurait suffi tant que les deux opérandes partagent la
+  même, mais une MULTIPLICATION mélange par nature une quantité et un montant (« 3 stylos à
+  3,20 € ») : uniformiser aurait écrit « 3,00 × 3,20 » (constat de l'auteur-tests-logique, qui a
+  refusé cette forme plus simple).
+  Sert **six chemins**, qui écrivaient chacun la réponse à sa façon avant #542 — tous sauf le
+  repli fiche en `String(etape.answer)` brut, donc « 4.5 » avec un point dans ce que lit le
+  parent : la marque de correction et son `aria-label` (`ui/lecon-probleme.ts:corrigerEtapesProbleme`),
+  la révélation « Je ne sais pas, montre-moi » et le sien (`revelerEtapesProbleme`), le panneau
+  d'étayage de la notion — résultat ET opérandes de chaque calcul (`core/etayage-probleme.ts`,
+  cf. « Étayage de la notion » plus bas), le repli fiche du bilan/catalogue (`core/catalog.ts`,
+  qui recopiait la règle à la main), et les entrées de journal encadrant de la leçon et de la
+  révision (`ui/lecon-probleme.ts`, `ui/revision.ts`).
   **`entreesEtapesPassees(etapes, saisies)`** en dérive ce qu'un problème **passé**
   (« Je ne sais pas, montre-moi ») laisse au journal encadrant, sous-question par
   sous-question : case vide → entrée `sansTentative` sans réponse donnée, case remplie et

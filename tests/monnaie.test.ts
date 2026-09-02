@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import { MONNAIE_LESSONS } from '../src/data/maths/monnaie';
 import type { Exercise } from '../src/core/exercise';
 import type { SchoolLevel } from '../src/core/catalog';
+import { parseNombreFr } from '../src/core/nombres';
 
 const TIRAGES = 1000;
 
@@ -24,8 +25,14 @@ function echantillon(id: string, level?: SchoolLevel, n = TIRAGES): Exercise[] {
 	return Array.from({ length: n }, () => t.generate(level ? { level } : undefined));
 }
 
-// Montant numérique attendu (centimes près) à partir de la chaîne `answer`.
-const montant = (a: string) => Number(a);
+/* Montant numérique attendu (au centime) à partir de la chaîne `answer`, lu par le
+   lecteur de l'APPLI (`parseNombreFr`), celui-là même dont se sert la correction. Un
+   `Number` nu marchait tant que la réponse était stockée « 3.5 » ; il décrivait donc un
+   choix d'implémentation (« la réponse est stockée avec un point ») là où le test veut
+   dire une exigence (« la réponse VAUT billet − prix »). Depuis #542 la réponse est
+   stockée dans sa graphie monétaire (« 3,50 ») et la question « avec quoi la relit-on ? »
+   a une seule bonne réponse : avec ce que l'appli utilise pour corriger. */
+const montant = (a: string) => parseNombreFr(a);
 // L'énoncé contient-il une écriture décimale à la française (« 1,50 ») ?
 const aDecimal = (q: string) => /\d+,\d+/.test(q);
 
@@ -92,12 +99,24 @@ describe('Monnaie — « Je rends la monnaie » : extension CM1', () => {
 		}
 	});
 
-	it('chaque réponse générée se valide par check() (saisie « 1,50 » ou « 1.5 »)', () => {
+	/* Une graphie de STOCKAGE ne doit jamais rendre une réponse fausse (#542). On énumère
+	   donc les écritures que l'enfant peut réellement produire pour le même montant, au lieu
+	   de décrire celle que le générateur a choisie : la forme affichée telle quelle, le point
+	   du pavé numérique, et l'écriture sans le zéro des centièmes (« 3,5 » pour 3,50 €). */
+	it('chaque réponse générée se valide, dans toutes les écritures du même montant', () => {
 		const t = byId('mes-monnaie-rendu').exerciseType;
 		for (const ex of items) {
 			const a = (ex as { answer: string }).answer;
-			expect(t.check(ex, a)).toBe(true); // forme stockée (point)
-			expect(t.check(ex, a.replace('.', ','))).toBe(true); // saisie à la française (virgule)
+			const valeur = parseNombreFr(a);
+			const ecritures = [
+				a, // la forme STOCKÉE, qui est aussi celle qu'on montre à l'enfant
+				a.replace(',', '.'), // point du pavé numérique
+				String(valeur).replace('.', ','), // sans le zéro des centièmes (« 3,5 »)
+				String(valeur), // « 3.5 »
+			];
+			for (const saisie of ecritures) {
+				expect(t.check(ex, saisie), `${a} ← ${JSON.stringify(saisie)}`).toBe(true);
+			}
 		}
 	});
 });

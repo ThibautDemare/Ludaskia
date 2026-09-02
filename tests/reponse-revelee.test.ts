@@ -411,26 +411,35 @@ describe('Formes réelles du catalogue, famille par famille (critère 2)', () =>
 		expect(vus).toBeGreaterThan(0); // des décimaux existent bien dans le catalogue
 	});
 
-	// La monnaie CM1 est le cas qui a motivé l'élargissement : son `answer` sort d'un
-	// `String(renduC / 100)`, donc avec un POINT (« 3.45 »). Elle n'est pas atteignable
-	// par `lesson.levels` (le CM1 de cette leçon n'est pas encore surfacé, cf.
-	// core/catalog.ts) : on interroge donc son `exerciseType` directement, comme le
-	// font déjà les tests de numération.
-	it('monnaie CM1 : « 3.45 » se révèle « 3,45 » (le point ne doit jamais s’afficher)', () => {
+	/* La monnaie CM1 est le cas qui a motivé l'élargissement. Ce test filtrait ses réponses
+	   sur la PRÉSENCE D'UN POINT, parce que `answer` sortait alors d'un `String(renduC / 100)`
+	   — il décrivait donc le défaut du jour, et il a rougi le jour où #542 l'a corrigé (la
+	   réponse est désormais stockée « 3,45 », cf. tests/monnaie-euros-graphie.test.ts) alors
+	   que rien n'était cassé. Ce qu'il gardait vraiment, et ce qu'il dit maintenant : une
+	   réponse DÉCIMALE de cette leçon ne montre jamais le point décimal à l'enfant, ses
+	   décimales sont recopiées telles quelles, et ce qu'on lui montre reste accepté par la
+	   correction. Vrai quelle que soit la graphie de stockage choisie demain.
+
+	   La leçon n'est pas atteignable par `lesson.levels` (son CM1 n'est pas encore surfacé,
+	   cf. core/catalog.ts) : on interroge son `exerciseType` directement, comme le font déjà
+	   les tests de numération. */
+	it('monnaie CM1 : une réponse décimale se révèle à la virgule, décimales intactes', () => {
 		const exType = lecon('mes-monnaie-rendu').exerciseType;
-		let vusAvecPoint = 0;
-		for (let i = 0; i < 400 && vusAvecPoint < 30; i++) {
+		let vus = 0;
+		for (let i = 0; i < 400 && vus < 30; i++) {
 			const ex = exType.generate({ level: 'cm1' });
-			if (ex.type !== 'text' || !ex.answer.includes('.')) continue;
-			vusAvecPoint++;
+			if (ex.type !== 'text' || !DECIMAL.test(ex.answer)) continue;
+			vus++;
 			const revelee = formatReponseRevelee(ex.answer);
-			expect(revelee, `« ${ex.answer} »`).not.toContain('.');
-			expect(revelee).toBe(ex.answer.replace('.', ','));
-			// La saisie de l'enfant à la virgule est déjà acceptée par la correction
-			// (parseNombreFr) : révéler la virgule ne crée aucune incohérence.
-			expect(exType.check(ex, revelee), `« ${revelee} »`).toBe(true);
+			const ou = `« ${ex.answer} » → « ${revelee} »`;
+			expect(revelee, ou).toContain(',');
+			expect(revelee, ou).not.toContain('.');
+			// Décimales recopiées : « 3,50 » ne redevient jamais « 3,5 ».
+			expect(revelee.split(',')[1], ou).toBe(ex.answer.split(/[.,]/)[1]);
+			// Ce qu'on montre à l'enfant reste accepté s'il le recopie.
+			expect(exType.check(ex, revelee), ou).toBe(true);
 		}
-		expect(vusAvecPoint).toBeGreaterThan(0); // le point décimal est bien une forme réelle
+		expect(vus, 'aucune réponse décimale tirée').toBeGreaterThan(0);
 	});
 
 	it('mesures — lecture de l’heure : « 7 h 00 » n’est pas un nombre', () => {

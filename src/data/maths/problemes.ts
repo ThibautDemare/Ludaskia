@@ -25,6 +25,7 @@
    « deux étapes » (hors « à une étape ») restent CE2-only.
    ============================================================ */
 import { choice, rnd, sample } from '../../core/utils';
+import { formatEuros } from '../../core/nombres';
 import type { Exercise, ExerciseType, GenerateOpts, ProblemeEtape } from '../../core/exercise';
 import type { SchoolLevel } from '../../core/catalog';
 import type { LessonInput } from '../_shared';
@@ -336,12 +337,11 @@ function genComparaisonEnt(): Exercise {
    ============================================================ */
 
 // Écriture à virgule d'un montant en CENTIMES (« 750 » → « 7,50 » ; « 600 » → « 6 »).
-// Affichage seulement ; la valeur reste calculée en entier.
-function euros(centimes: number): string {
-	const e = Math.floor(centimes / 100);
-	const c = centimes % 100;
-	return c === 0 ? `${e}` : `${e},${String(c).padStart(2, '0')}`;
-}
+// Affichage seulement ; la valeur reste calculée en entier. La RÈGLE, elle, vit dans
+// core/nombres.ts (#542) : ce module en gardait une copie, la leçon de monnaie une autre,
+// et la révélation d'une réponse une troisième qui perdait les centimes. Une seule
+// désormais, donc l'énoncé et la case révélée ne peuvent plus se contredire.
+const euros = (centimes: number): string => formatEuros(centimes / 100);
 // Centimes « jolis » au pas de 5 (jamais un centième arbitraire type 7,63 €), non nuls.
 const CENTIMES_PRIX = [50, 25, 75, 20, 90, 10, 40, 60, 30, 80, 95, 45, 15, 5];
 // Prix raisonnable : partie entière dans [euMin, euMax] €, partie décimale au pas de 5 c.
@@ -443,7 +443,8 @@ function compositionArgent(): Exercise {
 			{
 				question: `Combien ${p.nom} paie-t-${il(p.genre)} en tout ?`,
 				answer: (c1 + c2) / 100,
-				calcul: { op: '+', a: c1 / 100, b: c2 / 100 },
+				unite: 'euro',
+				calcul: { op: '+', a: c1 / 100, b: c2 / 100, uniteA: 'euro', uniteB: 'euro' },
 			},
 		]);
 	}
@@ -455,7 +456,8 @@ function compositionArgent(): Exercise {
 			{
 				question: `Combien coûte le ${a2.s} ?`,
 				answer: c2 / 100,
-				calcul: { op: '-', a: total / 100, b: c1 / 100 },
+				unite: 'euro',
+				calcul: { op: '-', a: total / 100, b: c1 / 100, uniteA: 'euro', uniteB: 'euro' },
 			},
 		],
 	);
@@ -482,7 +484,8 @@ function genTransformationDec(): Exercise {
 				{
 					question: `Combien lui reste-t-il ?`,
 					answer: reste / 100,
-					calcul: { op: '-', a: avoir / 100, b: prix / 100 },
+					unite: 'euro',
+					calcul: { op: '-', a: avoir / 100, b: prix / 100, uniteA: 'euro', uniteB: 'euro' },
 				},
 			],
 		);
@@ -497,7 +500,8 @@ function genTransformationDec(): Exercise {
 				{
 					question: `Combien a-t-${il(p.genre)} maintenant ?`,
 					answer: (avoir + don) / 100,
-					calcul: { op: '+', a: avoir / 100, b: don / 100 },
+					unite: 'euro',
+					calcul: { op: '+', a: avoir / 100, b: don / 100, uniteA: 'euro', uniteB: 'euro' },
 				},
 			],
 		);
@@ -512,7 +516,8 @@ function genTransformationDec(): Exercise {
 			{
 				question: `Combien a coûté le ${art.s} ?`,
 				answer: cout / 100,
-				calcul: { op: '-', a: avant / 100, b: apres / 100 },
+				unite: 'euro',
+				calcul: { op: '-', a: avant / 100, b: apres / 100, uniteA: 'euro', uniteB: 'euro' },
 			},
 		],
 	);
@@ -532,7 +537,8 @@ function genComparaisonDec(): Exercise {
 				{
 					question: `Combien ${p1.nom} a-t-${il(p1.genre)} d'argent de plus que ${p2.nom} ?`,
 					answer: ecart / 100,
-					calcul: { op: '-', a: grand / 100, b: petit / 100 },
+					unite: 'euro',
+					calcul: { op: '-', a: grand / 100, b: petit / 100, uniteA: 'euro', uniteB: 'euro' },
 				},
 			]);
 		}
@@ -561,7 +567,8 @@ function genComparaisonDec(): Exercise {
 				{
 					question: `Combien ${p2.nom} a-t-${il(p2.genre)} d'argent ?`,
 					answer: (base + deplus) / 100,
-					calcul: { op: '+', a: base / 100, b: deplus / 100 },
+					unite: 'euro',
+					calcul: { op: '+', a: base / 100, b: deplus / 100, uniteA: 'euro', uniteB: 'euro' },
 				},
 			],
 		);
@@ -593,7 +600,9 @@ function genMultiplicationDec(): Exercise {
 		{
 			question: `Combien ${p.nom} paie-t-${il(p.genre)} en tout ?`,
 			answer: (n * prix) / 100,
-			calcul: { op: 'x', a: n, b: prix / 100 },
+			unite: 'euro',
+			// `a` est un NOMBRE D'ARTICLES : il n'a pas à s'écrire en euros (cf. CalculEtape).
+			calcul: { op: 'x', a: n, b: prix / 100, uniteB: 'euro' },
 		},
 	]);
 }
@@ -614,16 +623,19 @@ function genDeuxEtapes(): Exercise {
 			{
 				question: `Combien coûtent les ${n} ${art.p} ?`,
 				answer: cout,
-				calcul: { op: 'x', a: n, b: m },
+				unite: 'euro',
+				// `a` est un NOMBRE D'ARTICLES, `b` le prix unitaire (cf. CalculEtape).
+				calcul: { op: 'x', a: n, b: m, uniteB: 'euro' },
 			},
 			{
 				question: `Combien lui rend-on ?`,
 				answer: billet - cout,
+				unite: 'euro',
 				// `deB: 0` : le coût n'est pas dans l'énoncé, c'est la réponse de la 1re
 				// sous-question. C'est LE point que l'étayage (#490) sait expliquer d'un
 				// problème à deux étapes, et il faut le lui dire — le deviner par égalité de
 				// valeur tiendrait du hasard.
-				calcul: { op: '-', a: billet, b: cout, deB: 0 },
+				calcul: { op: '-', a: billet, b: cout, deB: 0, uniteA: 'euro', uniteB: 'euro' },
 			},
 		],
 	);

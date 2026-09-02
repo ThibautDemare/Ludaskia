@@ -9,6 +9,7 @@ import { separateurSuite } from './exercise';
 import type { IconName } from './icon-names';
 import type { Item } from './items';
 import { bilanQ } from './lessons';
+import { attenduEtapeTexte } from './probleme-etapes';
 import { CONJ_LESSONS, conjugationType } from '../data/francais/conjugaison';
 import { CONJ_META_LESSONS } from '../data/francais/conjugaison-meta';
 import { VOCAB_LESSONS } from '../data/francais/vocabulaire';
@@ -1097,10 +1098,13 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 		const last = ex.etapes[ex.etapes.length - 1];
 		return {
 			text: `${ex.enonce} **${last.question}** @`,
-			// Réponse en écriture à virgule française (#255 : les problèmes CM1 ont des
-			// réponses décimales). `checkNumerique` tolère virgule/point des deux côtés ;
-			// un entier est inchangé (« 42 ».replace('.',',') === « 42 »).
-			answer: String(last.answer).replace('.', ','),
+			// Réponse dans la graphie du runner (#255, #542) : la même fonction que la case révélée,
+			// au lieu de la copie manuelle de la règle qui vivait ici. Ce qui change vraiment, et
+			// rien d'autre : un montant garde ses centimes (« 4,50 » et non « 4,5 »). L'écriture à
+			// virgule, elle, était déjà là (#255), clavier décimal du mobile compris.
+			// `checkNumerique` tolère virgule et point des deux côtés, donc la correction est
+			// insensible à ce choix d'affichage.
+			answer: attenduEtapeTexte(last.answer, last.unite),
 			kind: 'num',
 			// Texte lu aligné sur l'AFFICHÉ du repli (énoncé + question finale), sans la
 			// sous-question intermédiaire — absente de l'écran en bilan/fiche.

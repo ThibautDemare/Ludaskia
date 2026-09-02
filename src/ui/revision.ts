@@ -108,6 +108,7 @@ import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot
 import type { ProblemeEtape, ProbLexique, NatureOrdre } from '../core/exercise';
 import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
 import { formatReponseRevelee } from '../core/nombres';
+import { attenduEtapeTexte } from '../core/probleme-etapes';
 
 // `consigne` (#186) : libellé de la leçon, affiché au-dessus de l'exercice pour
 // dire ce qu'on attend (le HUD ne montre que la catégorie). Absent pour les mots
@@ -1157,7 +1158,7 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 			capterRev({
 				text: etape.question,
 				donnee: saisie,
-				attendue: String(etape.answer),
+				attendue: attenduEtapeTexte(etape.answer, etape.unite),
 				lessonId: it.lessonId,
 			}),
 		);
@@ -1183,7 +1184,7 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 			capterRev({
 				text: e.etape.question,
 				donnee: e.donnee,
-				attendue: String(e.etape.answer),
+				attendue: attenduEtapeTexte(e.etape.answer, e.etape.unite),
 				lessonId: it.lessonId,
 				sansTentative: e.sansTentative,
 			}),

@@ -19,7 +19,7 @@
    dans un problème à deux étapes, et c'est déductible des données.
    ============================================================ */
 import type { DerouleEtayage, PasEtayage } from './etayage-deroule';
-import type { CalculEtape, ProblemeEtape } from './exercise';
+import type { CalculEtape, ProblemeEtape, UniteEtape } from './exercise';
 import { attenduEtapeTexte } from './probleme-etapes';
 
 /** Le problème à dérouler : son énoncé et ses sous-questions (celles de l'exercice). */
@@ -43,10 +43,12 @@ const RANGS_QUESTION = ['Première question', 'Deuxième question', 'Troisième 
    recalculé : les valeurs décimales de l'appli sont construites en entier puis divisées au
    dernier moment (cf. data/maths/problemes.ts), et refaire le calcul ici rouvrirait la
    porte aux artefacts de virgule flottante que le générateur s'échine à éviter. */
-function calculTexte(calcul: CalculEtape, answer: number): string {
-	const a = attenduEtapeTexte(calcul.a);
-	const b = attenduEtapeTexte(calcul.b);
-	return `${a} ${SIGNES[calcul.op]} ${b} = ${attenduEtapeTexte(answer)}`;
+function calculTexte(calcul: CalculEtape, answer: number, unite?: UniteEtape): string {
+	// Chaque opérande porte SA propre unité : celle du résultat ne vaut pas pour eux dès que
+	// le calcul change d'unité, ce que fait toute multiplication (cf. CalculEtape).
+	const a = attenduEtapeTexte(calcul.a, calcul.uniteA);
+	const b = attenduEtapeTexte(calcul.b, calcul.uniteB);
+	return `${a} ${SIGNES[calcul.op]} ${b} = ${attenduEtapeTexte(answer, unite)}`;
 }
 
 /** La sous-question dont PROVIENT un opérande du calcul de l'étape `i`, ou -1. C'est le
@@ -85,8 +87,8 @@ export function derouleProbleme(spec: ProblemeSpec): DerouleEtayage {
 		if (!etape.calcul) {
 			// Sous-question dont le calcul ne s'écrit pas en une opération : on ne l'invente pas.
 			pas.push({
-				phrase: `${intitule} Ici, la réponse est ${attenduEtapeTexte(etape.answer)}.`,
-				ecritures: [{ cible: cibleEtape(i), texte: attenduEtapeTexte(etape.answer) }],
+				phrase: `${intitule} Ici, la réponse est ${attenduEtapeTexte(etape.answer, etape.unite)}.`,
+				ecritures: [{ cible: cibleEtape(i), texte: attenduEtapeTexte(etape.answer, etape.unite) }],
 				actifs: [cibleEtape(i)],
 			});
 			return;
@@ -98,13 +100,13 @@ export function derouleProbleme(spec: ProblemeSpec): DerouleEtayage {
 		const source = etapeSource(etapes, i);
 		const reprise =
 			source >= 0
-				? ` Le ${attenduEtapeTexte(etapes[source].answer)} vient de la ${
+				? ` Le ${attenduEtapeTexte(etapes[source].answer, etapes[source].unite)} vient de la ${
 						source === i - 1 ? "question d'avant" : `question ${source + 1}`
 					} : je m'en sers ici.`
 				: '';
 		pas.push({
-			phrase: `${intitule} Je calcule ${calculTexte(etape.calcul, etape.answer)}.${reprise}`,
-			ecritures: [{ cible: cibleEtape(i), texte: attenduEtapeTexte(etape.answer) }],
+			phrase: `${intitule} Je calcule ${calculTexte(etape.calcul, etape.answer, etape.unite)}.${reprise}`,
+			ecritures: [{ cible: cibleEtape(i), texte: attenduEtapeTexte(etape.answer, etape.unite) }],
 			actifs: [cibleEtape(i)],
 		});
 	});

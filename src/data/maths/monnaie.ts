@@ -35,7 +35,15 @@ import { formatEuros } from '../../core/nombres';
 const OBJETS = ['livre', 'jouet', 'ballon', 'stylo', 'cahier', 'jeu', 'gâteau', 'cadeau', 'crayon'];
 const obj = () => choice(OBJETS);
 
-function ex(question: string, answer: number): Exercise {
+/* `answer` accepte une CHAÎNE pour que l'appelant puisse imposer la graphie de sa réponse
+   (#542) : une réponse en euros au centime s'écrit « 3,50 », pas « 3.5 ». C'est la règle
+   du projet — une graphie se déclare à la source, elle ne se devine pas plus bas — et elle
+   valait ici deux fois : `String(3.5)` révélait « 3,5 » sous un énoncé qui dit « 1,50 € »,
+   et son POINT ne franchissait même pas `inputMode` (core/items.ts), qui n'expose le clavier
+   décimal du mobile qu'à une réponse portant une virgule. Un enfant n'avait donc aucune
+   touche pour écrire sa réponse. `checkNumerique` lit les deux graphies, la correction est
+   insensible au choix. */
+function ex(question: string, answer: number | string): Exercise {
 	return { type: 'text', question, answer: String(answer) };
 }
 
@@ -92,9 +100,11 @@ function rendreMonnaie(config: RenduConfig): Exercise {
 	const billetC = billet * 100;
 	const prixC = rnd(1, billetC / 5 - 1) * 5; // 0,05 € .. (billet − 0,05 €), pas de 5 c
 	const renduC = billetC - prixC;
+	// La réponse est STOCKÉE dans sa graphie monétaire, comme l'énoncé (#542) : « 3,50 » et
+	// non « 3.5 ». Même geste que les conversions décimales (#248), qui stockent déjà « 4,56 ».
 	return ex(
 		`Un ${obj()} coûte ${formatEuros(prixC / 100)} €. Tu paies avec un billet de ${billet} €. Combien te rend-on ? @ €`,
-		renduC / 100,
+		formatEuros(renduC / 100),
 	);
 }
 

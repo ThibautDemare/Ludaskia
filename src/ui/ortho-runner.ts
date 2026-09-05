@@ -29,7 +29,6 @@ import type { MotOrtho, OrthoState, ModeOrtho } from '../core/orthographe/types'
 import { diffCorrect } from '../core/orthographe/diff';
 import { addXP, getXP, niveauDepuisXP, recordSessionActivity } from '../core/progress';
 import { journaliserPaliersOrtho } from '../core/orthographe/paliers';
-import { evaluateTrophies } from '../core/rewards';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
 import { goCategorie, goOrthoRevoir, goOrthoRevoirMots } from './navigation';
 import { motsDifficilesHTML, bindMotsDifficiles } from './mots-difficiles-view';
@@ -40,7 +39,7 @@ import {
 	dessinerEntourages,
 	ajusterTailleMot,
 } from './ortho-atelier';
-import { recompensesEntre } from '../core/unlocks';
+import { recompensesFin, type CelebEntry } from '../core/recompenses-fin';
 import { announceRewards } from './effects';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import { dicteeDisponible, dicter, messageSansVoix } from './tts';
@@ -976,17 +975,10 @@ function renderRevisionFin(): void {
    nouvellement débloqués + éventuelle montée de niveau (modale + confettis). `celebBase`
    = entrées de célébration toujours montrées (l'étoile « Liste prête » du parcours
    complet) ; vide en révision, où l'on ne célèbre que ce qui a réellement été gagné. */
-function annoncerRecompensesFin(celebBase: { icon: string; text: string }[]): void {
-	const newTrophies = evaluateTrophies();
-	const celeb = [
-		...celebBase,
-		...newTrophies.map((t) => ({ icon: t.icon, text: `Trophée : ${t.title}` })),
-	];
-	const niveauApres = niveauDepuisXP(getXP());
-	const niveauGagne = niveauApres > niveauAvant ? niveauApres : 0;
-	const recompensesNiv = recompensesEntre(niveauAvant, niveauApres);
-	niveauAvant = niveauApres;
-	announceRewards(niveauGagne, recompensesNiv, celeb);
+function annoncerRecompensesFin(celebBase: CelebEntry[]): void {
+	const gains = recompensesFin(niveauAvant, celebBase);
+	niveauAvant = gains.niveauApres; // un parcours enchaîne plusieurs écrans de fin
+	announceRewards(gains.niveauGagne, gains.recompensesNiv, gains.celeb);
 }
 
 /* ---------- Pause de séance (rythme adapté à un CE2) ---------- */

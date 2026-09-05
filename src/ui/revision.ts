@@ -47,7 +47,11 @@ import {
 	recordRun,
 	recordLessonStats,
 	recordSessionActivity,
+	getXP,
+	niveauDepuisXP,
 } from '../core/progress';
+import { recompensesFin } from '../core/recompenses-fin';
+import { announceRewards } from './effects';
 import { selectDueGroups } from '../core/revision-select';
 import type { NotionRecap } from '../core/recap-notions';
 import { noterNotions, notionLecon, notionGroupe, recapAutonomeHTML } from './recap-seance';
@@ -225,6 +229,9 @@ function noterMotDifficile(wordId: string, mot: string): void {
 }
 let active = false; // une révision est-elle EN COURS ? (garde-fou de sortie, #63)
 let startTs = 0; // début de la session (durée enregistrée à la fin, #178)
+// Niveau au DÉMARRAGE de la session (#659) : le seul moyen de savoir, à la fin, si un
+// palier a été franchi pendant celle-ci. Lu ici et pas ailleurs — l'XP monte item par item.
+let niveauAvant = 0;
 
 // Exposé pour le garde-fou de sortie ; remis à zéro en quittant la vue.
 export const isRevisionRunning = () => active;
@@ -420,6 +427,7 @@ export function runRevisionEspacee(): void {
 	}
 	active = true; // révision réellement en cours (au moins un élément à réviser)
 	startTs = Date.now();
+	niveauAvant = niveauDepuisXP(getXP()); // référence de l'annonce de fin (#659)
 	sheets.innerHTML = html`<div class="revision">
     <div class="rev-hud">
       <span class="rev-prog" id="revProg"></span>
@@ -1594,4 +1602,13 @@ function renderDone() {
 	// « Relire ces mots » : sélection SANS liste d'origine — une révision tire ses mots
 	// dans toute la banque. La page de relecture ramène alors à l'accueil (critère 17).
 	bindMotsDifficiles(stage, () => goOrthoRevoirMots(difficiles.map((m) => m.id)));
+	// Récompenses réellement gagnées pendant la session (#659) : trophées et passage de
+	// niveau. Une révision les faisait avancer sans jamais rien en dire — l'enfant les
+	// retrouvait plus tard dans la galerie, sans lien avec ce qu'il venait de faire.
+	// ICI et pas ailleurs : un franchissement tombe sur un item parmi douze, l'annoncer en
+	// cours de session couperait le flux d'une séance multi-matières. Aucune célébration de
+	// base à ajouter — on n'annonce que ce qui vient d'être gagné.
+	const gains = recompensesFin(niveauAvant);
+	niveauAvant = gains.niveauApres;
+	announceRewards(gains.niveauGagne, gains.recompensesNiv, gains.celeb);
 }

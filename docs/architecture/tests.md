@@ -594,6 +594,38 @@ phrase finale. Le premier précédent (la frise d'états) n'avait
 jamais été écrit noir sur blanc, ce qui a fait rouvrir la question à la frise suivante — d'où cette
 note, pour qu'un futur relecteur ne redemande pas « où est le test Vitest du texte de la frise ? ».
 
+### Annonce des récompenses en fin de session (#659)
+
+La révision espacée faisait avancer XP, trophées et niveau **sans jamais rien
+annoncer** — le seul écran de fin de run à ne jamais appeler `evaluateTrophies`.
+Le calcul commun (trophées nouvellement débloqués + paliers de niveau franchis)
+est désormais factorisé dans `core/recompenses-fin.ts:recompensesFin`, consommé
+par `ui/revision.ts` et par `ui/ortho-runner.ts` (qui refaisait le même calcul à
+la main dans une fonction privée). Trois filets, chacun sur ce que les autres ne
+voient pas :
+
+- `tests/recompenses-fin.test.ts` tient le **calcul** : trophée(s) et niveau
+  franchis pendant une session, plusieurs paliers d'un coup, rien quand aucun
+  seuil n'est approché, et le critère négatif « jamais deux fois » (un second
+  appel avec le `niveauApres` rendu ne retrouve plus rien — `evaluateTrophies`
+  est **destructif**, un trophée rendu ne ressort plus). Un dernier test fige le
+  refus assumé : `core/lesson-run.ts` garde son propre calcul inline et son
+  libellé distinct (« Nouveau trophée : … », contre « Trophée : … » pour le
+  chemin factorisé) — l'issue **gèle** ce comportement plutôt que de
+  l'harmoniser au passage (critère 9), cf. [Gamification](gamification.md).
+- `tests/annonce-recompenses-gate.test.ts` tient le **câblage**, ce que le test
+  de calcul ne peut pas voir (il ne sait pas qui l'appelle) : `revision.ts`
+  importe bien `announceRewards` (`ui/effects.ts`), et ni lui ni
+  `ortho-runner.ts` ne recalculent `evaluateTrophies`/`recompensesEntre` à la
+  main. Un écran de fin qui n'annonce rien ne casse RIEN de visible (compteurs
+  qui avancent, CI verte) — d'où un contrôle qui ne dépend pas de la vigilance
+  de qui écrit l'écran suivant.
+- `e2e/revision-recompenses.spec.ts` tient le **moment** : un trophée et un
+  niveau (avec son déblocage) gagnés au premier item d'une session qui en
+  compte deux ne s'affichent **qu'à l'écran de fin**, jamais entre-temps, puis
+  s'enchaînent (modale de niveau → modale de célébration) ; une session sans
+  rien gagner ne laisse aucune modale ni trace textuelle sur l'écran de fin.
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent

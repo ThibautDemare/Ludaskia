@@ -659,7 +659,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   COMPLET en mode leçon, jamais le sprint ni les bilans. Transmet aussi à
   `recordLessonStats` la **référence** (#498) de la leçon jouée, mais seulement en
   mode `'lecon'` — un bilan couvre plusieurs leçons, aucune cible unique à désigner
-  pour l'attribution du programme du jour (cf. `core/seance.ts` ci-dessous).
+  pour l'attribution du programme du jour (cf. `core/seance.ts` ci-dessous). Le
+  calcul trophées/niveau qu'il fait ici (`evaluateTrophies` + `recompensesEntre`)
+  reste **volontairement** local, non délégué au module partagé
+  `recompenses-fin.ts` (ci-dessous, #659) : le libellé d'un trophée y diffère
+  (« Nouveau trophée » ici, « Trophée » pour le chemin factorisé), et l'issue
+  **gèle** ce comportement plutôt que de l'harmoniser au passage — cf.
+  [Gamification](gamification.md).
 - **`catalog.ts`** — hiérarchie `SUBJECTS` / `CATEGORIES` / `LessonDef`
   (`id, label, subject, category, levels: SchoolLevel[], exerciseType` — #225). La
   plupart des familles de leçons passent par **`toLessonDefs(inputs, opts)`** (#373) :
@@ -1129,6 +1135,19 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   fait dans `profiles.ts` pour éviter un cycle), **thèmes de couleur** (`THEMES`,
   `themesDebloques` — tous clairs, débloqués par palier), et récompenses de palier
   (`recompensesNiveau`, `recompensesEntre` qui agrège un saut de plusieurs niveaux).
+- **`recompenses-fin.ts`** (#659) — **`recompensesFin(niveauAvant, celebBase?)`**
+  factorise le calcul commun à un écran de fin de session : trophées nouvellement
+  débloqués (`evaluateTrophies`, libellé `Trophée : <titre>`) + paliers de niveau
+  franchis (`recompensesEntre`, sur `niveauDepuisXP(getXP())`). Logique **pure**
+  (aucun import de `src/ui`) ; l'annonce à l'écran reste côté rendu
+  (`ui/effects.ts:announceRewards`, cf. [Rendu & interactions](ui.md)). Consommée
+  par `ui/ortho-runner.ts` (qui refaisait le même calcul à la main dans une
+  fonction privée) et par `ui/revision.ts`, qui n'annonçait rien du tout avant ce
+  lot. `evaluateTrophies` étant **destructif** (un trophée rendu ne ressort plus),
+  l'appel n'a de sens qu'**une fois** par écran de fin, jamais « pour voir ».
+  `lesson-run.ts` (ci-dessus) garde volontairement son propre calcul inline plutôt
+  que de passer par ce module : cf. [Gamification](gamification.md) pour la raison
+  et le détail par chemin.
 
 ## Étayage de la notion (#490)
 

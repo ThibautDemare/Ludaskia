@@ -190,7 +190,40 @@ pendant l'effort** (masquée par `body.session-active`, cf. [`ui/`](ui.md)).
 objectif, trophée) que si ≥ 60 % des calculs ont une réponse. Le sprint compte
 s'il va au bout des 5 minutes.
 
-## Récompense = modale + confettis
+## Annonce des récompenses, par chemin (#659)
 
 Une récompense déclenche une **modale + confettis** (jamais de confettis sans
-explication).
+explication) : `showLevelUp` (passage de niveau, avec ses déblocages) puis, à sa
+fermeture, `showCelebration` (célébration générique) s'il reste autre chose à
+montrer — chaînage tenu par la porte commune `announceRewards` (`ui/effects.ts`,
+cf. [Rendu & interactions](ui.md)).
+
+Deux chemins y mènent, avec un calcul et un libellé qui **diffèrent
+volontairement** :
+
+- **Leçon, bilan, sprint** (`core/lesson-run.ts:recordLessonRun`) calculent
+  trophées + niveau **inline**, au même appel que l'enregistrement de l'essai.
+  Un trophée s'y annonce « **Nouveau** trophée : … ».
+- **Orthographe** (bilan, révision d'une liste déjà acquise, pause de séance) et
+  **révision espacée** appellent le calcul **factorisé**
+  `core/recompenses-fin.ts:recompensesFin(niveauAvant, celebBase?)` — mêmes
+  ingrédients (`evaluateTrophies`, `recompensesEntre`), lus une fois l'essai déjà
+  enregistré. Un trophée s'y annonce « Trophée : … » (sans « Nouveau »).
+
+**Les deux libellés distincts sont un choix assumé, pas un oubli
+d'harmonisation** (critère 9 de #659) : factoriser le calcul ne devait rien
+changer au comportement déjà en place de la leçon/du bilan/du sprint, seul le
+trou de la révision espacée étant à combler. Un test fige ce refus
+(`tests/recompenses-fin.test.ts`) pour qu'un futur relecteur ne le reprenne pas
+pour un oubli.
+
+**Avant #659, la révision espacée faisait avancer XP, trophées et niveau sans
+jamais rien annoncer** — le seul écran de fin de run à ne jamais appeler
+`evaluateTrophies`. Un trophée gagné en révision n'était rattrapé que plus tard,
+au retour à l'accueil (`ui/render.ts`, `evaluateTrophies()` « sans célébration
+ici ») : la récompense existait bien, mais rien ne la reliait au moment où
+l'enfant venait de la gagner. L'annonce ne tombe que sur l'**écran de fin** de la
+session, jamais entre deux items : un franchissement de niveau, calculé en temps
+réel sur l'XP, peut survenir dès le premier item d'une session multi-matières qui
+en compte douze — l'annoncer en cours de route couperait le flux d'une séance qui
+continue.

@@ -536,7 +536,9 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   gains). `announceRewards(niveauGagne, recompensesNiv, celeb)` factorise ce
   gate (niveau → sa modale, puis la générique ; sinon la générique seule) : il
   est la porte d'entrée commune des écrans de fin (leçon, bilan, sprint,
-  parcours/révision ortho).
+  parcours/révision ortho, **révision espacée**, #659) — cf.
+  [Gamification](gamification.md) pour le calcul en amont (`recompensesFin` ou
+  inline selon le chemin) et pourquoi son libellé diffère.
 - **`aide-exercice.ts`** (#272) — couche **UI de l'aide contextuelle** (contenu dans
   `core/aide.ts`) des runners à mécanique non intuitive : `monterBoutonAide(conteneur,
   type)` pose un bouton « ampoule » persistant, `maybeAutoAide(type)` ouvre l'aide **au

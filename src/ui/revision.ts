@@ -1608,6 +1608,12 @@ function renderDone() {
 	// ICI et pas ailleurs : un franchissement tombe sur un item parmi douze, l'annoncer en
 	// cours de session couperait le flux d'une séance multi-matières. Aucune célébration de
 	// base à ajouter — on n'annonce que ce qui vient d'être gagné.
+	// Focus posé AVANT d'ouvrir quoi que ce soit : la dernière question focalisait `#revNext`,
+	// que le rendu de cet écran vient de détacher — `document.activeElement` est donc retombé
+	// sur `<body>`, et c'est lui qu'`activateModal` capturerait comme point de retour. La modale
+	// se fermerait alors sur un focus nulle part (`body.focus()` est un no-op), exactement ce
+	// que `restoreFocus` dit vouloir éviter. Même geste que la pause d'orthographe.
+	document.getElementById('revHome')!.focus({ preventScroll: true });
 	const gains = recompensesFin(niveauAvant);
 	niveauAvant = gains.niveauApres;
 	announceRewards(gains.niveauGagne, gains.recompensesNiv, gains.celeb);

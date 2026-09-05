@@ -144,8 +144,27 @@ test('critères 1, 2, 3, 6 : trophée ET niveau (avec déblocage) sont annoncés
 	// Critère 3 : à la fermeture de la modale de niveau, la célébration s'enchaîne — le
 	// trophée gagné dans LA MÊME session (critère 1) n'est pas avalé par le niveau.
 	await page.locator('#levelupOk').click();
+	// Le focus ne repasse PAS par #revHome ici, et ce n'est pas un défaut : `hideLevelUp`
+	// enchaîne SYNCHRONEMENT sur `showCelebration`, qui pose son propre focus initial sur
+	// #celebrateOk (#235) — ce second réglage écrase tout ce que la restauration du focus de
+	// la modale de niveau vient d'écrire, qu'elle ait pointé vers #revHome (corrigé) ou
+	// vers <body> (bug). Ce point de passage n'est donc PAS discriminant ; il documente
+	// juste où le focus est réellement pendant que la modale de célébration est ouverte.
+	expect(await page.evaluate(() => document.activeElement?.id)).toBe('celebrateOk');
 	await expect(page.locator('#celebrate')).toBeVisible();
 	await expect(page.locator('#celebrateList')).toContainText('Trophée : 100 calculs');
+
+	// Retour de focus (relu par `relecteur-accessibilite`) : la dernière question de la
+	// session focalisait #revNext, DÉTACHÉ quand `renderDone` remplace #revStage en entier —
+	// sans le `#revHome.focus()` explicite posé dans `renderDone` avant `announceRewards`,
+	// `document.activeElement` serait retombé sur `<body>` au moment où la modale de niveau
+	// (donc la célébration chaînée) capture son point de retour ; à la fermeture de CETTE
+	// dernière modale de la chaîne, le focus ne reviendrait nulle part d'exploitable pour un
+	// clavier/lecteur d'écran. Discriminant : retirer cette ligne dans `src/ui/revision.ts`
+	// fait échouer l'assertion ci-dessous (`activeElement?.id` ne vaut plus 'revHome').
+	await page.locator('#celebrateOk').click();
+	await expect(page.locator('#celebrate')).not.toBeVisible();
+	expect(await page.evaluate(() => document.activeElement?.id)).toBe('revHome');
 
 	expect(errors).toEqual([]);
 });

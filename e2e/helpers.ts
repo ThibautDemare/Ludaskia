@@ -218,9 +218,35 @@ export async function estAtteignable(page: Page, selector: string): Promise<bool
    (Node → texte de script), puis re-sérialisé en JSON côté NAVIGATEUR avant
    `setItem` — c'est bien une CHAÎNE que `lsGet` doit retrouver via
    `JSON.parse`, pas l'objet lui-même.
+
+   BUG corrigé ici : cette fonction ne semait QUE la clé de jeux, sans jamais
+   créer le profil `e2e` lui-même. `lsGet`/`lsSet` préfixent par l'uuid du
+   profil ACTIF (`activePrefix`, posé par `initProfiles()` au chargement) — pas
+   par la constante 'e2e' en dur. Sans un `ludaskia_profiles` VALIDE déjà en
+   place, `initProfiles()` fabrique un profil avec un uuid ALÉATOIRE
+   (`genUuid()`, `src/core/profiles.ts`) et l'active : la clé écrite ici, sous
+   le préfixe 'e2e/', n'appartient alors à AUCUN profil réel, et
+   `jeuxPossedes()` (préfixée par ce vrai uuid aléatoire) rend `[]`.
+   `gotoHash` pose bien son propre `ENSURE_NIVEAU`, qui crée CE MÊME profil
+   'e2e' par défaut — mais une spec ne doit pas faire reposer la validité de
+   SA graine sur l'ordre d'exécution entre DEUX scripts d'init distincts,
+   posés par deux appelants différents. Ce helper sème donc désormais
+   `ludaskia_profiles` lui-même, de façon autonome et idempotente (il ne créé
+   le profil que s'il n'existe pas déjà), sur le modèle EXACT de
+   `seedRappelSauvegardeScript` / `seedDueLesson` (recap-seance.spec.ts) — qui
+   ne se reposent JAMAIS sur `ENSURE_NIVEAU` pour la même raison.
    À appeler via `page.addInitScript(...)` AVANT `gotoHash`. */
 export function seedJeuxPossedesScript(ids: string[], uuid = 'e2e'): string {
-	return `localStorage.setItem('${uuid}/ludaskia_jeux_possedes', JSON.stringify(${JSON.stringify(ids)}));`;
+	return `(function(){
+		var KEY = 'ludaskia_profiles';
+		var m = null;
+		try { m = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+		if (!m || !Array.isArray(m.list) || !m.list.length) {
+			m = { list: [{ uuid: ${JSON.stringify(uuid)}, name: 'E2E', emoji: '🦊', updatedAt: 1, niveauReference: 'ce2' }], active: ${JSON.stringify(uuid)} };
+			localStorage.setItem(KEY, JSON.stringify(m));
+		}
+		localStorage.setItem(${JSON.stringify(uuid + '/ludaskia_jeux_possedes')}, JSON.stringify(${JSON.stringify(ids)}));
+	})();`;
 }
 
 /* Ouvre l'étagère depuis l'accueil (bouton #btnJeux → modale #jeuxEtagere,

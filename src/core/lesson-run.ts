@@ -19,6 +19,8 @@ import {
 import { updateGoal, evaluateTrophies } from './rewards';
 import type { Trophy } from './rewards';
 import { recompensesEntre } from './unlocks';
+import { paliersFranchis } from './jeux/paliers';
+import { empilerPaliers } from './jeux/etat';
 import type { Recompense } from './unlocks';
 
 export interface LessonRunInput {
@@ -62,6 +64,11 @@ export function recordLessonRun(p: LessonRunInput): LessonRunOutcome {
 	const niveauApres = niveauDepuisXP(getXP());
 	const niveauGagne = niveauApres > niveauAvant ? niveauApres : 0;
 	const recompensesNiv = recompensesEntre(niveauAvant, niveauApres);
+	// Paliers de l'étagère de jeux (#661). EMPILÉS ici, jamais ouverts : l'écran de
+	// choix arrive après la chaîne de célébration, un palier à la fois (critère 7).
+	// Et il ne passe pas par `Recompense` : un palier n'offre pas un jeu, il ouvre
+	// un choix — c'est un rendez-vous, pas un cadeau.
+	empilerPaliers(paliersFranchis(niveauAvant, niveauApres).map((p) => p.rang));
 
 	let starInfo: LessonRunOutcome['starInfo'] = null;
 	let perfect = false;

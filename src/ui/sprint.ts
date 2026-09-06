@@ -66,6 +66,9 @@ import { updateGoal, evaluateTrophies } from '../core/rewards';
 import { sansPressionTemporelle } from '../core/profiles';
 import { getTimer, setTimer, resetChrono } from './chrono';
 import { recompensesEntre } from '../core/unlocks';
+import { invitationHTML } from './jeux-invitation';
+import { paliersFranchis } from '../core/jeux/paliers';
+import { empilerPaliers } from '../core/jeux/etat';
 import { announceRewards } from './effects';
 import { noterNotions, notionsDepuisPerLesson, recapAutonomeHTML } from './recap-seance';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
@@ -931,6 +934,12 @@ function finalizeSprint() {
 	);
 	// Passage de niveau pendant le sprint → modale dédiée, puis enchaînement.
 	const niveauApres = niveauDepuisXP(getXP());
+	// Paliers de l'étagère de jeux (#661) : empilés ici, ouverts par la chaîne de
+	// célébration (`announceRewards`), un par un. Ce site calcule son niveau en
+	// ligne au lieu de passer par `recompensesFin` — c'est pour ça qu'il faut
+	// l'appel explicite, et c'est exactement le genre d'oubli qui rendrait le
+	// palier silencieux après un sprint et nulle part ailleurs.
+	empilerPaliers(paliersFranchis(sprintNiveauDepart, niveauApres).map((p) => p.rang));
 	announceRewards(
 		niveauApres > sprintNiveauDepart ? niveauApres : 0,
 		recompensesEntre(sprintNiveauDepart, niveauApres),
@@ -966,6 +975,7 @@ function renderSprintResults(medalInfo: RunResult, streakDays: number, recap: Sa
         <button class="sprint-btn" id="sprintAgain">↻ Recommencer</button>
         <button class="sprint-btn ghost" id="sprintHome">${icon('house')} Accueil</button>
       </div>
+      ${invitationHTML('ecran')}
     </div>`.balisage;
 	const again = document.getElementById('sprintAgain');
 	if (again) again.addEventListener('click', startSprint);

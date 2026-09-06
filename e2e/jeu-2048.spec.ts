@@ -3,21 +3,17 @@
    les critères numérotés de l'issue et le contrat `tmp-contrat.md` (racine du
    dépôt, temporaire).
 
-   Sélecteurs stables (cf. tmp-contrat.md) : #btnJeux, #jeuxEtagere, .jeu-item,
-   #jeuEcran, #btnQuitterJeu.
+   Sélecteurs stables (cf. tmp-contrat.md, plus ceux posés par l'implémentation) :
+   #btnJeux, #jeuxEtagere, .jeu-item, #jeuEcran, #btnQuitterJeu,
+   .g2048-case[data-valeur] (`"0"` = case vide), .g2048-fin, #g2048Record.
 
-   AUCUN sélecteur stable n'existe encore pour une CASE/TUILE du 2048 (le
-   contrat n'en donne pas). Cette spec compare donc le texte brut de #jeuEcran
-   avant/après un glissement plutôt que de compter des tuiles précises — cf.
-   compte rendu pour la proposition d'un sélecteur du type
-   `.g2048-case[data-valeur]`, qui rendrait ce test moins générique.
-
-   Ce que cette spec NE teste PAS : la fin de partie (critère 15, seconde
-   moitié) et la persistance du meilleur score (critère 17) — aucun sélecteur
-   stable pour un écran de fin ou un affichage de score n'existe dans le
-   contrat ; jouer une partie 2048 jusqu'à blocage complet serait par ailleurs
-   un scénario long et fragile pour un smoke test. Ces deux points relèvent
-   des Vitest sur `partieFinie`/`enregistrerScore`.
+   Ce que cette spec NE teste PAS, et pourquoi : la fin de partie (critère 15,
+   seconde moitié) et la persistance du meilleur score au travers d'une
+   nouvelle partie (critère 17) — `.g2048-fin`/`#g2048Record` existent, mais
+   jouer jusqu'à blocage complet de la grille (aucun des 4 coups ne bouge)
+   resterait un scénario long et non déterministe pour un smoke test (le
+   nombre de coups nécessaires dépend du tirage des tuiles). Ces deux points
+   restent du ressort des Vitest sur `partieFinie`/`enregistrerScore`.
    ============================================================ */
 import { test, expect, type Page } from '@playwright/test';
 import { watchErrors, gotoHash, seedJeuxPossedesScript, ouvrirJeuDepuisEtagere } from './helpers';
@@ -36,6 +32,15 @@ async function glisser(page: Page, dx: number, dy: number): Promise<void> {
 	await page.mouse.up();
 }
 
+/* L'état des 16 cases, dans l'ordre du DOM : "0" = vide, sinon la valeur de la
+   tuile. Sélecteur structuré (posé par l'implémentation), à préférer au texte
+   brut de l'écran — insensible au score ou à un libellé qui changerait. */
+async function lireGrille(page: Page): Promise<string[]> {
+	return page
+		.locator('.g2048-case')
+		.evaluateAll((els) => els.map((el) => el.getAttribute('data-valeur') ?? ''));
+}
+
 const DIRECTIONS: [number, number][] = [
 	[150, 0], // droite
 	[-150, 0], // gauche
@@ -51,7 +56,13 @@ test('critère 15 : un glissement change la grille du 2048', async ({ page }) =>
 	await gotoHash(page, 'accueil');
 	await ouvrirJeuDepuisEtagere(page);
 
-	const avant = await page.locator('#jeuEcran').innerText();
+	const depart = await lireGrille(page);
+	// Sanity du porteur : une nouvelle partie place exactement DEUX tuiles — si ce
+	// n'est pas le cas, la suite du test ne prouverait plus ce qu'elle annonce.
+	expect(
+		depart.filter((v) => v !== '0'),
+		'la grille de départ doit avoir 2 tuiles',
+	).toHaveLength(2);
 
 	// Deux tuiles de départ, quatre directions possibles : au moins l'une d'elles
 	// bouge nécessairement (grille loin d'être pleine/bloquée en tout début de
@@ -60,8 +71,8 @@ test('critère 15 : un glissement change la grille du 2048', async ({ page }) =>
 	let bouge = false;
 	for (const [dx, dy] of DIRECTIONS) {
 		await glisser(page, dx, dy);
-		const apres = await page.locator('#jeuEcran').innerText();
-		if (apres !== avant) {
+		const apres = await lireGrille(page);
+		if (apres.some((v, i) => v !== depart[i])) {
 			bouge = true;
 			break;
 		}

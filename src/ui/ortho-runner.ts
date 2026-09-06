@@ -41,6 +41,7 @@ import {
 } from './ortho-atelier';
 import { recompensesFin, type CelebEntry } from '../core/recompenses-fin';
 import { announceRewards } from './effects';
+import { invitationHTML } from './jeux-invitation';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import { dicteeDisponible, dicter, messageSansVoix } from './tts';
 import { icon, iconOr } from './icon';
@@ -941,6 +942,7 @@ function renderBilan(): void {
       <p>Tu as bien travaillé ${total > 1 ? html`les <b>${total}</b> mots` : 'le mot'} de cette liste.</p>
       ${motsDifficilesHTML(difficiles, 'bilan', 'ortho-difficiles')}
       <button class="btn-primary" id="btnBilanRetour">${retour.label}</button>
+      ${invitationHTML('ecran')}
     </div>`.balisage;
 	sheets().querySelector('#btnBilanRetour')!.addEventListener('click', retour.aller);
 	bindMotsDifficiles(sheets(), () => relireMotsDifficiles(difficiles));
@@ -965,6 +967,7 @@ function renderRevisionFin(): void {
       <h2>Révision terminée !</h2>
       <p>Tu as révisé ${total > 1 ? html`les <b>${total}</b> mots` : 'le mot'} de cette liste.</p>
       <button class="btn-primary" id="btnBilanRetour">${retour.label}</button>
+      ${invitationHTML('ecran')}
     </div>`.balisage;
 	sheets().querySelector('#btnBilanRetour')!.addEventListener('click', retour.aller);
 	annoncerRecompensesFin([]); // pas d'étoile : seulement trophées/niveau réellement gagnés

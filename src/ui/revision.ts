@@ -52,6 +52,7 @@ import {
 } from '../core/progress';
 import { recompensesFin } from '../core/recompenses-fin';
 import { announceRewards } from './effects';
+import { invitationHTML } from './jeux-invitation';
 import { selectDueGroups } from '../core/revision-select';
 import type { NotionRecap } from '../core/recap-notions';
 import { noterNotions, notionLecon, notionGroupe, recapAutonomeHTML } from './recap-seance';
@@ -1597,6 +1598,7 @@ function renderDone() {
     ${motsDifficilesHTML(difficiles, 'revision', 'rev-difficiles')}
     ${recapAutonomeHTML('revision', notionsRecap, 'rev-recap')}
     <div class="rev-actions"><button class="rev-btn" id="revHome">${icon('house')} Accueil</button></div>
+    ${invitationHTML('ecran')}
   </div>`.balisage;
 	document.getElementById('revHome')!.addEventListener('click', goHome);
 	// « Relire ces mots » : sélection SANS liste d'origine — une révision tire ses mots

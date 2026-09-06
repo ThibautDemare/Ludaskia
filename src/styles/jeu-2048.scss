@@ -1,0 +1,250 @@
+/* Plateau du 2048 (#661). Rempli par le runner `src/ui/jeu-2048.ts`.
+   Le cadre commun (titre, retour, plafond, étagère) est dans `jeux.scss` :
+   cette feuille n'habille QUE la grille, les tuiles et la fin de partie.
+
+   ── Pourquoi des couleurs EN DUR, et pas des tokens ──────────────────────────
+   Le plateau est une aire de jeu, pas une surface d'interface : sa palette doit
+   être la MÊME sur les six thèmes, sinon la rampe des tuiles (qui code la
+   progression 2 → 4 → 8 → …) changerait de sens d'un thème à l'autre. Ces
+   couleurs vivent donc ici et n'entrent pas dans `base.scss` / `themes.scss` —
+   c'est aussi ce qui les rend invisibles à `tests/contraste-tokens.test.ts`, qui
+   ne lit que ces deux feuilles. Elles ont donc été mesurées À LA MAIN avec
+   `node tools/contrast/contrast.mjs`, et les valeurs sont écrites ci-dessous
+   pour que la prochaine retouche n'ait pas à les redécouvrir :
+
+   - le chiffre (#1a1a1a) sur CHAQUE tuile : de 8,63:1 (le 32) à 14,10:1 (le 2).
+     Toutes les tuiles sont donc des fonds CLAIRS à texte sombre — c'est ce qui
+     interdit la rampe classique du 2048, qui fonce jusqu'au rouge et écrit en
+     blanc dessus (le « 16 » orange y tombe à ~2:1). La progression est donc
+     portée par la TEINTE (beige → orangé → rose → violet → bleu → vert → or),
+     pas par l'assombrissement ;
+   - chaque tuile sur le cadre (#5f564a) : de 3,57:1 à 5,83:1, donc au-dessus du
+     3:1 des objets graphiques porteurs de sens ;
+   - la case VIDE (#b3a99b) sur ce même cadre : 3,11:1. « Cette case est libre »
+     est une information de jeu, pas une décoration : elle est tenue au 3:1.
+
+   Une tuile pleine ne se distingue en revanche de la case vide QUE par le
+   chiffre écrit dessus (1,15:1 pour la moins contrastée) : c'est assumé, la
+   couleur n'y est pas le seul porteur — le nombre l'est. */
+
+.g2048 {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	font-family: var(--ui);
+}
+
+/* Scores + grille. `position: relative` porte le panneau de fin, qui se pose EN
+   RECOUVREMENT plutôt qu'en dessous : inséré dans le flux, il repousserait les
+   quatre commandes hors de l'écran au moment précis où l'enfant veut rejouer. */
+.g2048-zone {
+	position: relative;
+	width: min(88vw, 340px);
+	/* Le glissement au doigt est une COMMANDE, pas un défilement : sans ça, le
+	   navigateur s'approprie le geste vertical et le coup se perd. */
+	touch-action: none;
+}
+
+.g2048-scores {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 12px;
+	margin-bottom: 8px;
+	font-size: 13px;
+	color: var(--muted);
+}
+.g2048-scores p {
+	margin: 0;
+}
+.g2048-scores strong {
+	margin-left: 4px;
+	font-size: 18px;
+	color: var(--ink);
+	font-variant-numeric: tabular-nums;
+}
+
+.g2048-grille {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 8px;
+	border-radius: 12px;
+	background: #5f564a;
+}
+.g2048-ligne {
+	display: flex;
+	gap: 8px;
+}
+
+.g2048-case {
+	flex: 1 1 0;
+	aspect-ratio: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 8px;
+	background: #b3a99b;
+	color: #1a1a1a;
+	font-weight: 800;
+	font-size: 30px;
+	font-variant-numeric: tabular-nums;
+	transition: background-color 120ms ease;
+}
+/* Rampe des tuiles. La règle générique vient d'abord : elle habille les valeurs
+   au-delà de 2048, qu'un enfant finira par atteindre et qu'il serait absurde de
+   laisser en « case vide ». */
+.g2048-case:not([data-valeur='0']) {
+	background: #ffe066;
+}
+.g2048-case[data-valeur='2'] {
+	background: #f0e6d8;
+}
+.g2048-case[data-valeur='4'] {
+	background: #f7dfae;
+}
+.g2048-case[data-valeur='8'] {
+	background: #ffc98a;
+}
+.g2048-case[data-valeur='16'] {
+	background: #ffab7a;
+}
+.g2048-case[data-valeur='32'] {
+	background: #ff9b9b;
+}
+.g2048-case[data-valeur='64'] {
+	background: #f3a8d8;
+}
+.g2048-case[data-valeur='128'] {
+	background: #dcb0f2;
+}
+.g2048-case[data-valeur='256'] {
+	background: #b8c4f5;
+}
+.g2048-case[data-valeur='512'] {
+	background: #9fd8ef;
+}
+.g2048-case[data-valeur='1024'] {
+	background: #9fe6c0;
+}
+.g2048-case[data-valeur='2048'] {
+	background: #ffe066;
+	box-shadow: inset 0 0 0 3px #1a1a1a;
+}
+/* Un « 1024 » ne tient pas dans la case au corps d'un « 2 ». */
+.g2048-case[data-chiffres='3'] {
+	font-size: 24px;
+}
+.g2048-case[data-chiffres='4'] {
+	font-size: 19px;
+}
+.g2048-case[data-chiffres='5'] {
+	font-size: 16px;
+}
+
+/* ---- Fin de partie (critère 15 : une issue explicite) ---- */
+
+/* Cette règle n'est PAS redondante avec l'attribut `hidden`. Le `display: none`
+   de l'agent utilisateur appartient à l'origine « UA », que TOUTE déclaration
+   d'auteur écrase — le `display: flex` ci-dessous suffirait donc à afficher en
+   permanence un panneau pourtant marqué `hidden`. Il faut la reposer côté
+   auteur. Piège classique, et silencieux : rien ne rougit. */
+.g2048-fin[hidden] {
+	display: none;
+}
+.g2048-fin {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 16px;
+	border-radius: 12px;
+	text-align: center;
+	/* Fond et texte EN DUR, comme les tuiles : le panneau se pose sur le plateau,
+	   pas sur la page, donc il suit la palette du plateau et non celle du thème
+	   (#1a1a1a sur #fdfaf6 = 16,73:1). */
+	background: rgb(253 250 246 / 0.96);
+	color: #1a1a1a;
+}
+.g2048-fin-titre {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 800;
+}
+.g2048-fin-score {
+	margin: 0;
+	font-size: 16px;
+}
+
+/* ---- Les commandes (critère 18 : jouable au doigt, sans clavier) ---- */
+
+/* Croix directionnelle : la disposition EST le libellé. Un enfant qui ne lit pas
+   encore vite reconnaît la position avant la flèche, et les quatre cibles font
+   60 px de côté, largement au-dessus du minimum tactile. */
+.g2048-commandes {
+	display: grid;
+	grid-template-columns: repeat(3, 60px);
+	grid-template-rows: repeat(3, 60px);
+	gap: 8px;
+	justify-content: center;
+}
+.g2048-dir {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font: inherit;
+	font-size: 22px;
+	color: var(--accent);
+	background: var(--accent-soft);
+	border: 2px solid transparent;
+	border-radius: 14px;
+	cursor: pointer;
+}
+.g2048-dir-haut {
+	grid-area: 1 / 2;
+}
+.g2048-dir-gauche {
+	grid-area: 2 / 1;
+}
+.g2048-dir-droite {
+	grid-area: 2 / 3;
+}
+.g2048-dir-bas {
+	grid-area: 3 / 2;
+}
+.g2048-dir:active {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+/* Anneau de focus charte, repris de `.reward-btn` : ces boutons sont la voie
+   d'accès au clavier, ils doivent se voir quand on les atteint par tabulation. */
+.g2048-dir:focus-visible,
+.g2048-rejouer:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 5px var(--accent);
+}
+
+.g2048-rejouer {
+	font: inherit;
+	font-size: 15px;
+	font-weight: 700;
+	min-height: 44px;
+	padding: 10px 18px;
+	color: var(--on-accent);
+	background: var(--accent);
+	border: 0;
+	border-radius: 14px;
+	cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.g2048-case {
+		transition: none;
+	}
+}

@@ -38,6 +38,11 @@ import './styles/eggs.scss';
 import './styles/tour.scss';
 import './styles/footer.scss';
 import './styles/seance.scss';
+// Étagère de jeux (#661) : le cadre commun (entrée, étagère, choix, invitation,
+// écran de jeu) puis une feuille par jeu, chacune n'habillant que son plateau.
+import './styles/jeux.scss';
+import './styles/jeu-motus.scss';
+import './styles/jeu-2048.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -89,6 +94,14 @@ import { lancerTour, maybeOnboarding } from './ui/tour';
 import { initAppCalme } from './ui/app-calme';
 import { initPwa } from './ui/pwa';
 import { initInstallationPWA } from './ui/rappel-sauvegarde';
+import { bindInvitationJeux } from './ui/jeux-invitation';
+/* Runners de jeux (#661) : importés pour leur EFFET DE MODULE. Chacun s'inscrit
+   au chargement par `enregistrerJeu(...)`, ce qui évite à `jeux-ecran.ts` de
+   connaître la liste des jeux. Sans cette ligne, la fabrique n'est jamais posée :
+   la route rend la main à l'accueil et le jeu est injouable, en silence. C'est
+   ce que `tests/couverture-e2e-gate.test.ts` rattrape désormais côté catalogue. */
+import './ui/jeu-2048';
+import './ui/jeu-motus';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 import { installGroupedNumberEcho } from './ui/grand-nombre-echo';
 import { installPaveSignes } from './ui/pave-signes';
@@ -425,6 +438,11 @@ initTts(); // précharge les voix de synthèse (dictée best-effort)
 initAppCalme(); // observe « l'app est-elle calme ? » (mise à jour, cache hors-ligne, rappels)
 initPwa(); // service worker : hors-ligne + auto-actualisation quand un déploiement est en ligne
 initInstallationPWA(); // capte `beforeinstallprompt` (émis une seule fois, très tôt)
+// Étagère de jeux (#661) : un seul écouteur délégué pour TOUS les déclencheurs
+// `data-act="open-jeux"` — le bouton de l'accueil et l'invitation, qui apparaît
+// sur six écrans de fin différents. Recâbler à chaque rendu reviendrait à en
+// oublier un, et l'oubli ne se verrait que sur cet écran-là.
+bindInvitationJeux();
 // Les scripts type="module" sont différés : si le DOM est déjà prêt, on câble
 // immédiatement, sinon on attend DOMContentLoaded (parité avec l'ancien main.js).
 if (document.readyState !== 'loading') wireDOM();

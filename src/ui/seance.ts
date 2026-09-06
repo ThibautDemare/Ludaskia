@@ -62,6 +62,7 @@ import { showCelebration } from './effects';
 import { contenuRecap, type NotionRecap } from '../core/recap-notions';
 import { notionLecon, notionsNotees } from './recap-seance';
 import { dicteeDisponible } from './tts';
+import { invitationHTML } from './jeux-invitation';
 import { html, type SafeHtml, joindre, drapeau } from '../core/html';
 
 /* ---------- Cibles d'une étape « dictée » (#463) ---------- */
@@ -374,7 +375,8 @@ export function renderSeance(el: HTMLElement): void {
         <p class="programme-fini-txt">Bravo, tu as fait tout ton programme du jour !</p>
         ${pastilles}
       </div>
-      <ul class="programme-recap">${recapListeHTML(vue.etapes)}</ul>`.balisage;
+      <ul class="programme-recap">${recapListeHTML(vue.etapes)}</ul>
+      ${invitationHTML('programme')}`.balisage;
 		wire(el);
 		return;
 	}

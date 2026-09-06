@@ -17,6 +17,7 @@ import { formatReponseRevelee, saisieEstNombre } from '../core/nombres';
 import { stopChrono } from './chrono';
 import { finishResume } from './resume';
 import { announceRewards } from './effects';
+import { invitationHTML } from './jeux-invitation';
 import { recapHTML, notionsDepuisPerLesson } from './recap-seance';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
@@ -295,6 +296,9 @@ export function verify() {
 		}
 		banniere = html`${banniere}<button class="rb-quit" id="btnQuitter">${icon('house')} Quitter</button>`;
 	}
+	// Invitation vers l'étagère de jeux (#661), après les actions et jamais avant :
+	// c'est une proposition d'après-coup, pas une action de l'écran de résultat.
+	banniere = html`${banniere}${invitationHTML('ecran')}`;
 	banner.innerHTML = banniere.balisage;
 	const redo = banner.querySelector('#btnRedo');
 	if (redo) redo.addEventListener('click', startRevision);

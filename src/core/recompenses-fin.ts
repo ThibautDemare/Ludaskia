@@ -16,6 +16,8 @@
 import { getXP, niveauDepuisXP } from './progress';
 import { evaluateTrophies } from './rewards';
 import { recompensesEntre, type Recompense } from './unlocks';
+import { paliersFranchis } from './jeux/paliers';
+import { empilerPaliers } from './jeux/etat';
 
 export type CelebEntry = { icon: string; text: string };
 
@@ -39,6 +41,9 @@ export function recompensesFin(niveauAvant: number, celebBase: CelebEntry[] = []
 		...nouveaux.map((t) => ({ icon: t.icon, text: `Trophée : ${t.title}` })),
 	];
 	const niveauApres = niveauDepuisXP(getXP());
+	// Paliers de l'étagère de jeux (#661) : empilés, jamais ouverts ici. Voir la
+	// note du même appel dans `lesson-run.ts`.
+	empilerPaliers(paliersFranchis(niveauAvant, niveauApres).map((p) => p.rang));
 	return {
 		niveauGagne: niveauApres > niveauAvant ? niveauApres : 0,
 		niveauApres,

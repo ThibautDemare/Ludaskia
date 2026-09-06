@@ -154,7 +154,11 @@ mot caché / dictée). Depuis **#641** un mode ciblé **valide comme le parcours
 donc il fait monter les mots, peut étoiler la liste et décrocher des trophées ; l'écran
 range plus bas les modes **terminés pour cette liste** (tous ses mots les ont validés)
 sans les désactiver, et annonce le **coût** (`8 activités`) sur tous les boutons de
-séance. Détail dans [design-orthographe](../design-orthographe.md). En **phase de découverte**
+séance. Sur une liste **déjà entièrement acquise**, ce bouton de tête ne relance plus le
+parcours complet mais un **tour de révision** qui repasse chaque mot une fois via sa
+marche la plus haute jouable (dictée ou mot caché, jamais un mode tiré au hasard) : il
+porte alors le libellé de ce mode et un badge « conseillé » simple, sans promettre une
+étoile déjà gagnée (#658). Détail dans [design-orthographe](../design-orthographe.md). En **phase de découverte**
 (au moins un mot sans atelier), le parcours ne propose **que des ateliers** : toute
 la liste est découverte avant le moindre entraînement, et le choix de mode n'est
 proposé qu'ensuite. Fin d'exercice : **Recommencer / Quitter** (la pause ortho et

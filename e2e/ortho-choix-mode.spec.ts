@@ -231,8 +231,13 @@ test.describe('sans voix (dictée indisponible, stub)', () => {
 	   SEUL mot : la réussite jouée en MOT CACHÉ ne peut achever la liste
 	   entière (et donc mener au bilan « Liste prête ! ») QUE SI le cumul a
 	   aussi validé les TUILES, jamais jouées. On revient ensuite sur l'écran
-	   de choix pour lire l'état à jour DEPUIS L'INTERFACE (zone basse), pas
-	   depuis le localStorage.
+	   de choix pour lire l'état à jour DEPUIS L'INTERFACE, pas depuis le
+	   localStorage.
+	   Depuis #658, une liste à un seul mot entièrement acquise voit son SEUL
+	   mode restant (ici mot caché, sans voix stubbée) promu en tête d'écran
+	   plutôt que relégué en zone basse : la vérification « mot caché acquis »
+	   se lit donc sur le bouton de tête (`data-marche`), tandis que les
+	   TUILES, jamais jouées, restent visibles en zone basse comme avant.
 	   ============================================================ */
 	test('critère 1 : une réussite en mode ciblé « mot caché » valide aussi les tuiles au passage (cumul)', async ({
 		page,
@@ -261,9 +266,13 @@ test.describe('sans voix (dictée indisponible, stub)', () => {
 		// Retour sur l'écran de choix : lecture depuis l'INTERFACE, pas le localStorage.
 		await gotoHash(page, 'ortho-mode-' + LESSON_CUMUL);
 
-		// Le mode JOUÉ (mot caché) est bien épuisé…
+		// Le mode JOUÉ (mot caché) est bien acquis — mais sur cette liste à UN
+		// mot, c'est désormais le SEUL mode restant : #658 le promeut en tête
+		// d'écran (bouton `.recommended`) au lieu de le laisser en zone basse,
+		// donc c'est là qu'on l'atteste (`data-marche`), pas dans
+		// `.mode-choice-epuises` qu'il a quitté.
 		await expect(
-			page.locator('.mode-choice-epuises .mode-btn[data-mode="motCache"][data-epuise="1"]'),
+			page.locator('.mode-choice-list .mode-btn.recommended[data-marche="motCache"]'),
 		).toBeVisible();
 		// … et les TUILES aussi, alors qu'elles n'ont JAMAIS été jouées directement :
 		// c'est la moitié de la règle qu'un test qui ne vérifierait que le mode
@@ -364,6 +373,10 @@ test.describe('sans voix (dictée indisponible, stub)', () => {
 	/* ============================================================
 	   Critère 11 (cas limite) : liste entièrement acquise, l'écran reste
 	   utilisable — il ne se vide pas quand plus aucun mode ciblé n'est utile.
+	   Depuis #658, le mode restant ne stagne plus en zone basse sans porte
+	   d'entrée : il EST la marche que sert le bouton de tête (ici mot caché,
+	   sans voix stubbée), qui quitte donc `.mode-choice-epuises` — seules les
+	   tuiles, l'autre mode terminé, y restent.
 	   ============================================================ */
 	test("critère 11 : liste entièrement acquise, l'écran de choix ne se vide pas", async ({
 		page,
@@ -372,20 +385,27 @@ test.describe('sans voix (dictée indisponible, stub)', () => {
 		await seedOrtho(page, SEED_COMPLET);
 		await gotoHash(page, 'ortho-mode-' + LESSON_COMPLET);
 
-		// Plus aucun mode ciblé utile : zone principale vidée des deux modes…
+		// Plus aucun mode ciblé utile en zone principale : ni tuiles ni mot caché
+		// n'y apparaissent comme bouton « à faire ».
 		await expect(page.locator('.mode-choice-list .mode-btn[data-mode="tuiles"]')).toHaveCount(0);
 		await expect(page.locator('.mode-choice-list .mode-btn[data-mode="motCache"]')).toHaveCount(0);
 
-		// … mais l'écran ne se vide pas pour autant : parcours complet et « Relire mes mots »
-		// restent, et les deux modes terminés restent accessibles plus bas.
-		await expect(page.locator('.mode-choice-list .mode-btn.recommended')).toBeVisible();
+		// … mais l'écran ne se vide pas pour autant : le bouton de tête sert la
+		// marche la plus haute jouable (mot caché, sans voix) au lieu du parcours
+		// complet, et « Relire mes mots » reste disponible.
+		await expect(
+			page.locator('.mode-choice-list .mode-btn.recommended[data-marche="motCache"]'),
+		).toBeVisible();
 		await expect(page.locator('#btnRevoir')).toBeVisible();
+
+		// Tuiles, l'autre mode terminé, reste accessible plus bas…
 		await expect(
 			page.locator('.mode-choice-epuises .mode-btn[data-mode="tuiles"][data-epuise="1"]'),
 		).toBeVisible();
-		await expect(
-			page.locator('.mode-choice-epuises .mode-btn[data-mode="motCache"][data-epuise="1"]'),
-		).toBeVisible();
+		// … mais mot caché, promu en tête, a quitté cette zone : il n'y apparaît plus en double.
+		await expect(page.locator('.mode-choice-epuises .mode-btn[data-mode="motCache"]')).toHaveCount(
+			0,
+		);
 
 		expect(errors).toEqual([]);
 	});

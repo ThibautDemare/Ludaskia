@@ -204,3 +204,38 @@ export async function estAtteignable(page: Page, selector: string): Promise<bool
 		return !!top && (top === el || el.contains(top));
 	}, selector);
 }
+
+/* ============================================================
+   Étagère de jeux (#661) — écrits AVANT l'implémentation, contre le contrat
+   `tmp-contrat.md` (racine du dépôt, temporaire). Réutilisés par
+   jeux-etagere.spec.ts, jeu-2048.spec.ts et jeu-motus.spec.ts.
+   ============================================================ */
+
+/* Sème les jeux déjà POSSÉDÉS du profil actif : `CLE_POSSEDES` du contrat
+   (`src/core/jeux/etat.ts`), `ludaskia_jeux_possedes`, un tableau d'ids
+   (`jeuxPossedes(): string[]`). Même style d'amorçage que
+   `seedRappelSauvegardeScript` : le tableau est embarqué comme littéral JS
+   (Node → texte de script), puis re-sérialisé en JSON côté NAVIGATEUR avant
+   `setItem` — c'est bien une CHAÎNE que `lsGet` doit retrouver via
+   `JSON.parse`, pas l'objet lui-même.
+   À appeler via `page.addInitScript(...)` AVANT `gotoHash`. */
+export function seedJeuxPossedesScript(ids: string[], uuid = 'e2e'): string {
+	return `localStorage.setItem('${uuid}/ludaskia_jeux_possedes', JSON.stringify(${JSON.stringify(ids)}));`;
+}
+
+/* Ouvre l'étagère depuis l'accueil (bouton #btnJeux → modale #jeuxEtagere,
+   critère 39). Suppose qu'on est déjà sur l'accueil. */
+export async function ouvrirEtagere(page: Page): Promise<void> {
+	await page.locator('#btnJeux').click();
+	await page.locator('#jeuxEtagere').waitFor({ state: 'visible' });
+}
+
+/* Ouvre l'étagère puis lance le PREMIER jeu listé (écran plein #jeuEcran,
+   critère 39). Les specs qui l'utilisent sèment un SEUL jeu possédé au
+   préalable (`seedJeuxPossedesScript`), pour ne pas dépendre d'un attribut
+   distinguant un jeu précis dans `.jeu-item` — absent du contrat. */
+export async function ouvrirJeuDepuisEtagere(page: Page): Promise<void> {
+	await ouvrirEtagere(page);
+	await page.locator('.jeu-item').first().click();
+	await page.locator('#jeuEcran').waitFor({ state: 'visible' });
+}

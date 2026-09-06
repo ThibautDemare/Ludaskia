@@ -6,6 +6,7 @@ import type { Recompense } from '../core/unlocks';
 import { activateModal } from './modal-a11y';
 import { animationsReduites } from './preferences';
 import { html, joindre } from '../core/html';
+import { ouvrirProchainChoix } from './jeux-choix';
 
 /* Mini-courbe SVG de la progression (score % au fil des essais) */
 export function sparkline(vals: number[], w = 260, h = 46) {
@@ -63,8 +64,16 @@ export function confetti() {
 
 /* Modale de récompense : annonce explicitement ce qui vient d'être gagné. */
 let celebrateRelease: (() => void) | null = null;
-export function showCelebration(items: { icon: string; text: string }[]) {
-	if (!items || !items.length) return;
+/* `then` : suite de la chaîne de célébration, jouée à la FERMETURE. Symétrique de
+   `showLevelUp`. Elle sert à l'écran de choix de l'étagère de jeux (#661), qui
+   doit arriver APRÈS les félicitations et jamais par-dessus. */
+let celebrateThen: (() => void) | null = null;
+export function showCelebration(items: { icon: string; text: string }[], then?: () => void) {
+	if (!items || !items.length) {
+		if (then) then(); // rien à célébrer : on n'avale pas la suite de la chaîne
+		return;
+	}
+	celebrateThen = then ?? null;
 	const list = document.getElementById('celebrateList');
 	if (list)
 		list.innerHTML = joindre(
@@ -87,6 +96,9 @@ export function hideCelebration() {
 	celebrateRelease = null;
 	const ov = document.getElementById('celebrate');
 	if (ov) ov.style.display = 'none';
+	const then = celebrateThen;
+	celebrateThen = null;
+	if (then) then();
 }
 
 /* Modale dédiée au passage de niveau : médaillon doré animé + rayons.
@@ -150,11 +162,17 @@ export function announceRewards(
 	recompensesNiv: Recompense[],
 	celeb: { icon: string; text: string }[],
 ): void {
+	/* Dernier maillon de la chaîne : l'écran de choix d'un palier de l'étagère de
+	   jeux (#661). Il arrive APRÈS les félicitations, jamais par-dessus, et se
+	   présente un palier à la fois (critère 7). `ouvrirProchainChoix` ne fait rien
+	   s'il n'y a aucun palier en attente : l'appel inconditionnel est voulu, c'est
+	   ce qui rattrape les paliers franchis lors d'une session précédente. */
 	if (niveauGagne)
-		showLevelUp(
-			niveauGagne,
-			recompensesNiv,
-			celeb.length ? () => showCelebration(celeb) : undefined,
-		);
-	else if (celeb.length) showCelebration(celeb);
+		showLevelUp(niveauGagne, recompensesNiv, () => showCelebration(celeb, apresChaine));
+	else if (celeb.length) showCelebration(celeb, apresChaine);
+	else apresChaine();
+}
+
+function apresChaine(): void {
+	ouvrirProchainChoix();
 }

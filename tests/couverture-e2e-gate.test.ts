@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { getAllLessons } from '../src/core/catalog';
+import { JEUX } from '../src/core/jeux/catalogue';
 
 /* ============================================================
    Gate de couverture e2e par SURFACE DE RENDU (#598).
@@ -281,4 +282,85 @@ describe('Couverture e2e des types d’exercice, déléguée à #581 (#598)', ()
 				`Le mode Orthographe « ${mode} » n'a plus d'entrée dans e2e/journal-couverture.ts.`,
 			).toBe(true);
 	});
+});
+
+/* ============================================================
+   Surface 4 — les JEUX de l'étagère (#661, critère 19)
+   ============================================================
+
+   Les trois surfaces ci-dessus sont aveugles aux jeux, et par construction : un
+   `src/ui/jeu-*.ts` n'est ni un mode de leçon, ni un `lecon-*.ts` aiguillé par
+   `navigation.ts`, ni un type d'`Exercise`. Un jeu livré sans spec ne faisait donc
+   rougir strictement rien — CI verte, aucune erreur, et le trou ne se voit qu'à
+   l'usage, des semaines plus tard.
+
+   Le signal de couverture est l'ID DU JEU, pas le nom du fichier : un runner
+   s'enregistre par `enregistrerJeu('<id>', …)`, et une spec l'atteint soit par sa
+   route (`jeu-<id>`), soit par le bouton de l'étagère (`data-jeu="<id>"`). Prendre
+   l'id plutôt que le fichier évite qu'un renommage de module fasse silencieusement
+   sauter la garde.
+
+   Le second test ferme l'autre moitié : un jeu déclaré au catalogue sans runner est
+   une entrée d'étagère qui n'ouvre rien. */
+
+/* L'id d'un jeu se lit dans le NOM DU FICHIER, pas dans son code. Première
+   version : un regex sur `enregistrerJeu('<id>', …)`. Deux défauts rencontrés dès
+   les deux premiers runners — un en-tête qui citait le motif pour l'expliquer
+   était pris pour l'appel, et un runner passant par une constante
+   (`enregistrerJeu(ID_JEU, …)`) n'était pas reconnu du tout. Un gate qui impose
+   une façon d'écrire l'appel garde le style, pas la couverture.
+
+   La convention `src/ui/jeu-<id>.ts` est donc la source, et elle devient une
+   règle vérifiée : le nom du fichier DIT quel jeu il sert. */
+const JEUX_RUNNERS = readdirSync('src/ui')
+	.filter((f) => /^jeu-.+\.ts$/.test(f))
+	.map((f) => ({ fichier: f, id: f.slice('jeu-'.length, -'.ts'.length) }));
+
+describe('Couverture e2e des jeux de l’étagère (#661)', () => {
+	it('chaque runner de jeu porte l’id d’un jeu du catalogue, et l’enregistre', () => {
+		expect(JEUX_RUNNERS.length, 'aucun src/ui/jeu-*.ts trouvé').toBeGreaterThan(0);
+		const ids = new Set(JEUX.map((j) => j.id));
+		for (const r of JEUX_RUNNERS) {
+			expect(
+				ids.has(r.id),
+				`${r.fichier} nomme le jeu « ${r.id} », absent de JEUX (src/core/jeux/catalogue.ts). ` +
+					`La convention src/ui/jeu-<id>.ts est ce qui rattache un runner à son jeu.`,
+			).toBe(true);
+			expect(
+				readFileSync(`src/ui/${r.fichier}`, 'utf8').includes('enregistrerJeu('),
+				`${r.fichier} n'appelle pas enregistrerJeu(...) : la fabrique n'est jamais posée, ` +
+					`donc la route rend la main à l'accueil et le jeu est injouable en silence.`,
+			).toBe(true);
+		}
+	});
+
+	it.each(JEUX.map((j) => ({ id: j.id, label: j.label })))(
+		'le jeu « $label » a son runner src/ui/jeu-$id.ts',
+		({ id, label }) => {
+			// Un jeu du catalogue sans runner s'affiche dans l'étagère et n'ouvre rien :
+			// l'enfant clique, la route refuse, il retombe sur l'accueil sans explication.
+			expect(
+				JEUX_RUNNERS.some((r) => r.id === id),
+				`Le jeu « ${label} » est au catalogue mais src/ui/jeu-${id}.ts n'existe pas : ` +
+					`il apparaîtrait dans l'étagère sans être jouable.`,
+			).toBe(true);
+		},
+	);
+
+	it.each(JEUX_RUNNERS.map((r) => ({ fichier: r.fichier, id: r.id })))(
+		'$fichier est joué par au moins une spec e2e',
+		({ fichier, id }) => {
+			const specs = SPECS.filter(
+				(s) => s.src.includes(`jeu-${id}`) || s.src.includes(`data-jeu="${id}"`),
+			).map((s) => s.nom);
+			expect(
+				specs.length,
+				`Aucune spec e2e n'atteint le jeu « ${id} » (${fichier}), ni par sa route ` +
+					`« jeu-${id} », ni par « data-jeu="${id}" ».
+` +
+					`« Pas de fonctionnalité visuelle sans sa spec » (CLAUDE.md) : un jeu est du ` +
+					`visuel pur, et aucune autre surface de ce gate ne le voit.`,
+			).toBeGreaterThan(0);
+		},
+	);
 });

@@ -32,6 +32,7 @@ import {
 	type EtayageDemande,
 } from './etayage-panneau';
 import { announceRewards } from './effects';
+import { invitationHTML } from './jeux-invitation';
 import { annoncerStatut } from './revelation-neutre';
 import { sansSeparateurMilliers } from '../core/nombres';
 import { declarerSessionRunner, finirSessionRunner } from './runner-reprise';
@@ -185,6 +186,7 @@ export function renderLeconResult(opts: LeconResultOpts): void {
             <button class="sprint-btn" id="leconAgain">↻ Recommencer</button>
             <button class="sprint-btn ghost" id="leconBack">${retour.label}</button>
           </div>
+          ${invitationHTML('ecran')}
         </div>
       </div>
     </div>`.balisage;

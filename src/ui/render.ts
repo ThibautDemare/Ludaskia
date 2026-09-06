@@ -46,6 +46,7 @@ import { renderLeconDuJour } from './lecon-du-jour';
 import { renderARevoir } from './a-revoir-card';
 import { renderProgrammeCard } from './seance';
 import { renderRewardNav, mascotteBulleHTML } from './unlocks-view';
+import { renderJeuxNav } from './jeux-etagere';
 import { onHomeShown } from './eggs';
 import { icon, type IconName } from './icon';
 import { html, VIDE, type SafeHtml, joindre, attribut } from '../core/html';
@@ -357,6 +358,7 @@ export function renderHomeStats() {
 	// express/complet varient d'un essai à l'autre → pas de podium (#35).
 	if (boards) boards.innerHTML = sprintBoardHTML().balisage;
 	evaluateTrophies(); // rattrape d'éventuels trophées acquis (sans célébration ici)
+	renderJeuxNav(); // entrée « Mes jeux » (#661), juste AVANT ses deux voisines
 	renderRewardNav(); // boutons « Récompenses » / « Trophées » (ouvrent leurs modales)
 	renderFavoris(document.getElementById('favoris'));
 	onHomeShown(); // easter eggs (#331) : accès à l'album + tentative d'apparition ambiante

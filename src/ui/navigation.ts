@@ -55,6 +55,7 @@ import { closeProfileMenu, closeDrawer } from './menu';
 import { applyPreferences, renderPreferences } from './preferences';
 import { enterEncadrant } from './encadrant';
 import { renderSeance, rafraichirProgramme, vueProgramme } from './seance';
+import { monterJeu, demonterJeuActif } from './jeux-ecran';
 import { leconKey } from '../core/resume';
 import { captureResume, clearResumeCtx, setResumeCtx, maybeRelaunch } from './resume';
 import { quitterSessionRunner } from './runner-reprise';
@@ -287,6 +288,13 @@ export function startRevision() {
 
 export function route() {
 	stopTts(); // coupe une lecture de consigne en cours quand on change d'écran (#42)
+	// Un jeu ouvert (#661) est démonté à TOUT changement d'écran, pas seulement
+	// quand on sort par son propre bouton : `#btnHome`, le retour arrière du
+	// navigateur et un lien du bandeau passent tous par ici. Sans ça, le runner
+	// restait vivant derrière l'écran suivant et son temps de jeu n'était jamais
+	// décompté — une fuite de plafond que rien ne signale, puisqu'elle profite à
+	// l'enfant. `showJeuView` remonte juste après, donc rien ne se perd.
+	demonterJeuActif();
 	// Applique le thème + le réglage d'animations du profil actif (couvre le
 	// bootstrap et chaque bascule de profil, qui passent toutes par route()).
 	applyPreferences();
@@ -302,6 +310,7 @@ export function route() {
 	else if (h === 'profils') showProfilesView();
 	else if (h === 'encadrant' || h.startsWith('encadrant/')) showEncadrantView();
 	else if (h === 'seance') showSeanceView();
+	else if (h.startsWith('jeu-')) showJeuView(h.slice(4));
 	else if (h === 'revision') {
 		if (pendingRevision.length) runRevision(pendingRevision);
 		else showHomeView();
@@ -480,6 +489,22 @@ export function showSeanceView() {
 	hideMenus();
 	renderSeance(document.getElementById('seanceContent')!);
 	document.getElementById('seance')!.style.display = '';
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* Écran d'un jeu de l'étagère (#661). La SEULE des quatre surfaces qui soit un
+   écran plein (critère 39). Un jeu non possédé, inconnu, ou dont le plafond du
+   jour est épuisé ne s'ouvre pas : on rend la main à l'accueil plutôt que
+   d'afficher un écran vide — et surtout, on ne dit pas combien de temps il
+   reste (critère 12). */
+export function showJeuView(id: string) {
+	resetSessionUI();
+	setToolbar({ verify: false, home: true, profile: true });
+	hideMenus();
+	if (!monterJeu(id, document.getElementById('jeuEcranContent')!)) {
+		goHome();
+		return;
+	}
+	document.getElementById('jeuEcran')!.style.display = '';
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showProfilesView() {

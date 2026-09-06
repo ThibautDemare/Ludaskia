@@ -1,0 +1,186 @@
+/* ============================================================
+   Étagère de jeux (#661) — le CADRE COMMUN.
+
+   Ce que cette feuille habille : l'entrée sur l'accueil, la modale de
+   l'étagère, l'écran de choix d'un palier, l'invitation de fin de séance, et
+   la carcasse de l'écran de jeu (titre, retour, plateau vide). Chaque jeu
+   habille SON plateau dans sa propre feuille (`jeu-motus.scss`,
+   `jeu-2048.scss`) — rien de spécifique à un jeu ici.
+
+   Deux règles de charte tenues ici, et qui ont leur raison :
+   - tout reste dans la famille `--accent`, et RIEN n'anime en boucle sur
+     l'accueil (critère 43). Le registre plus vif est réservé à l'intérieur des
+     jeux et à l'invitation ; un pictogramme qui pulse sur la page d'accueil
+     est une relance permanente déguisée en décoration ;
+   - les cibles tactiles ne descendent pas sous 48 px de haut. Ce sont des
+     enfants, sur tablette, souvent en portrait.
+   ============================================================ */
+
+/* ---------- L'entrée sur l'accueil ---------- */
+/* Aucun style propre : la facture est exactement celle de `.reward-btn`
+   (critère 40), parce que le contrat d'interaction est le même — ces trois
+   boutons ouvrent tous une modale. Ce qui distingue celui-ci de ses voisins
+   n'est pas sa forme mais l'ABSENCE de ratio (critère 41). La classe
+   `.jeux-btn` n'existe que comme point d'accroche pour plus tard. */
+
+/* ---------- La modale de l'étagère ---------- */
+
+.jeux-liste {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.jeu-item {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	width: 100%;
+	min-height: 56px;
+	padding: 12px 16px;
+	font: inherit;
+	font-family: var(--ui);
+	font-size: 17px;
+	font-weight: 700;
+	color: var(--ink);
+	text-align: left;
+	background: var(--paper);
+	border: 2px solid var(--accent-soft);
+	border-radius: 14px;
+	cursor: pointer;
+	transition:
+		transform 0.08s ease,
+		border-color 0.15s ease;
+}
+.jeu-item:hover {
+	transform: translateY(-1px);
+	border-color: var(--accent);
+}
+.jeu-item:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 4px var(--accent);
+}
+
+.jeu-item-ico {
+	font-size: 26px;
+	line-height: 1;
+}
+
+/* Plafond atteint. Registre `--warn`, jamais `--ko` (critère 44) : avoir joué
+   son temps n'est pas une faute, et le message ne reproche rien. Il ne dit pas
+   non plus combien il restait — ce serait le compte à rebours que le critère 12
+   interdit. */
+.jeux-plafond {
+	margin: 0 0 14px;
+	padding: 12px 14px;
+	font-family: var(--ui);
+	font-size: 15px;
+	color: var(--warn);
+	background: var(--warn-bg);
+	border: 2px solid var(--warn-bd);
+	border-radius: 12px;
+}
+
+/* ---------- L'écran de choix d'un palier ---------- */
+
+.jeu-choix-consigne {
+	margin: 0 0 14px;
+	font-family: var(--ui);
+	font-size: 17px;
+	font-weight: 700;
+	color: var(--ink);
+}
+
+.jeu-choix-liste {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.jeu-choix-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	min-height: 84px;
+	padding: 14px;
+	font: inherit;
+	font-family: var(--ui);
+	color: var(--ink);
+	background: var(--paper);
+	border: 3px solid var(--accent-soft);
+	border-radius: 16px;
+	cursor: pointer;
+	transition:
+		transform 0.08s ease,
+		border-color 0.15s ease;
+}
+.jeu-choix-item:hover {
+	transform: translateY(-2px);
+	border-color: var(--accent);
+}
+.jeu-choix-item:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--paper),
+		0 0 0 4px var(--accent);
+}
+
+.jeu-choix-ico {
+	font-size: 34px;
+	line-height: 1;
+}
+.jeu-choix-titre {
+	font-size: 17px;
+	font-weight: 700;
+}
+
+/* La phrase qui tient le critère 6 : les jeux non choisis restent dans la
+   réserve. Discrète mais LISIBLE — `--muted` passe AA depuis #576. */
+.jeu-choix-rassure {
+	margin: 14px 0 0;
+	font-family: var(--ui);
+	font-size: 14px;
+	color: var(--muted);
+}
+
+/* ---------- L'invitation de fin de séance ---------- */
+
+.jeu-invitation {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	margin: 20px auto 0;
+	padding: 16px;
+	max-width: 420px;
+	background: var(--accent-soft);
+	border-radius: 16px;
+}
+
+.jeu-invitation-txt {
+	margin: 0;
+	font-family: var(--ui);
+	font-size: 16px;
+	font-weight: 700;
+	color: var(--ink);
+	text-align: center;
+}
+
+.jeu-invitation-btn {
+	min-height: 48px;
+}
+
+/* ---------- L'écran d'un jeu ---------- */
+
+.jeu-titre {
+	margin-bottom: 6px;
+}
+
+.jeu-plateau {
+	margin: 18px auto 0;
+	max-width: 520px;
+}

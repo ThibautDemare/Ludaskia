@@ -15,6 +15,7 @@
    exercice.
    ============================================================ */
 import { lsGet, lsSet } from '../storage';
+import { consommer, jourLocal, restantSecondes, type EtatPlafond } from './plafond';
 
 export const CLE_POSSEDES = 'ludaskia_jeux_possedes';
 export const CLE_PALIERS_ATTENTE = 'ludaskia_jeux_paliers_attente';
@@ -116,4 +117,33 @@ export function enregistrerScore(idJeu: string, score: number): void {
 	const table = tableScores();
 	if (score <= (table[idJeu] ?? 0)) return;
 	lsSet(CLE_SCORES, { ...table, [idJeu]: score });
+}
+
+/* ---------- Le temps de jeu du jour ---------- */
+
+/* Ces trois fonctions sont la SEULE couche qui lise l'horloge et le stockage
+   pour le plafond ; l'arithmétique, elle, est pure dans `./plafond` et testée
+   là-bas. Séparation volontaire : sans elle, les bugs de bord de journée ne se
+   voient qu'à minuit passé, chez l'enfant. */
+
+function plafondEtat(): EtatPlafond | null {
+	const brut = lsGet(CLE_PLAFOND, null) as unknown;
+	if (!brut || typeof brut !== 'object') return null;
+	const { jour, secondes } = brut as Partial<EtatPlafond>;
+	if (typeof jour !== 'string' || typeof secondes !== 'number' || !Number.isFinite(secondes)) {
+		return null;
+	}
+	return { jour, secondes };
+}
+
+/** Secondes encore jouables aujourd'hui, pour ce plafond réglé par l'encadrant. */
+export function secondesRestantes(plafondMinutes: number): number {
+	return restantSecondes(plafondEtat(), plafondMinutes, jourLocal());
+}
+
+/** Décompte du temps joué. Appelé à la SORTIE d'une partie, pas pendant : rien
+    ne doit ressembler à un compte à rebours (critère 12). */
+export function ajouterTempsJoue(secondes: number): void {
+	if (!Number.isFinite(secondes) || secondes <= 0) return;
+	lsSet(CLE_PLAFOND, consommer(plafondEtat(), Math.round(secondes), jourLocal()));
 }

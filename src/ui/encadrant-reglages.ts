@@ -18,6 +18,7 @@ import {
 import { getAllLessons, SUBJECTS, type SchoolLevel, type SubjectId } from '../core/catalog';
 import { availableLevels, LEVEL_LABEL } from '../core/levels';
 import { REVISION_PLAFOND, REVISION_PLAFOND_CHOIX } from '../core/revision';
+import { PLAFOND_DEFAUT_MINUTES, PLAFOND_CHOIX_MINUTES } from '../core/jeux/plafond';
 import { niveauProfilMatiere } from '../core/encadrant-stats';
 import {
 	categoriesDeclarables,
@@ -37,6 +38,7 @@ export function reglagesHTML(consulte: Profile, pinBlock: SafeHtml): SafeHtml {
       ${classeHTML(consulte)}
       ${amenagementsHTML(consulte)}
       ${plafondRevisionHTML(consulte)}
+      ${jeuxHTML(consulte)}
       ${vuEnClasseHTML(consulte)}
       ${pinBlock}
     </section>`;
@@ -62,6 +64,47 @@ function plafondRevisionHTML(consulte: Profile): SafeHtml {
       <label class="enc-row"><span>Nombre de questions par séance</span>
         <select class="enc-select-niveau" data-act="set-revision-plafond">${opts}</select></label>
       <p class="enc-hint">Ajustez la longueur d'une séance de révision selon l'attention de l'enfant (par défaut ${REVISION_PLAFOND}).</p>
+    </div>`;
+}
+
+/* Étagère de jeux (#661), réglée par l'adulte sur le profil CONSULTÉ. Trois
+   réglages, et leur ordre dit leur dépendance : l'accès commande tout, le
+   plafond borne le temps, l'invitation ne concerne que la proposition de fin de
+   séance.
+
+   Deux partis pris à ne pas défaire :
+   - le plafond est un menu à paliers fixes, comme la longueur de révision : pas
+     de saisie libre, donc pas de « 300 minutes » saisi par erreur ;
+   - couper l'accès coupe aussi l'invitation, et l'interface le montre en
+     désactivant la case au lieu de la laisser cochable sans effet. Un réglage
+     qui ne fait rien est pire qu'un réglage absent. */
+function jeuxHTML(consulte: Profile): SafeHtml {
+	const prefs = consulte.prefs ?? {};
+	const actif = prefs.sansJeux !== true;
+	const actuel = prefs.jeuxPlafondMinutes ?? PLAFOND_DEFAUT_MINUTES;
+	const sel = (PLAFOND_CHOIX_MINUTES as readonly number[]).includes(actuel)
+		? actuel
+		: PLAFOND_DEFAUT_MINUTES;
+	const opts = joindre(
+		PLAFOND_CHOIX_MINUTES.map(
+			(n) =>
+				html`<option value="${n}"${n === sel ? drapeau('selected') : ''}>${n} min${n === PLAFOND_DEFAUT_MINUTES ? ' (par défaut)' : ''}</option>`,
+		),
+	);
+	return html`<div class="enc-block">
+      <h3 class="enc-h3">Jeux</h3>
+      <p class="enc-hint">L'enfant débloque de nouveaux jeux en montant de niveau. Jouer ne coûte rien et ne rapporte rien : ni XP, ni étoile, ni trophée.</p>
+      <label class="enc-toggle">
+        <input type="checkbox" id="encJeuxActives" data-act="set-amenagement" data-pref="sansJeux"${prefs.sansJeux ? drapeau('checked') : ''} />
+        <span>Désactiver les jeux <small class="enc-hint">(l'accès disparaît de l'accueil ; les jeux déjà obtenus sont conservés et reviendront si vous les réactivez)</small></span>
+      </label>
+      <label class="enc-row${actif ? '' : ' enc-toggle-off'}"><span>Temps de jeu par jour</span>
+        <select class="enc-select-niveau" id="encJeuxMinutes" data-act="set-jeux-plafond"${actif ? '' : drapeau('disabled')}>${opts}</select></label>
+      <label class="enc-toggle${actif ? '' : ' enc-toggle-off'}">
+        <input type="checkbox" data-act="set-amenagement" data-pref="sansInvitationJeux"${prefs.sansInvitationJeux ? drapeau('checked') : ''}${actif ? '' : drapeau('disabled')} />
+        <span>Ne pas proposer de jouer en fin de séance <small class="enc-hint">(l'accès reste sur l'accueil, mais l'application ne relance jamais l'enfant)</small></span>
+      </label>
+      <p class="enc-hint">Le temps de jeu n'est ni cumulable ni reportable : une journée sans jouer n'allonge pas la suivante.</p>
     </div>`;
 }
 
@@ -285,6 +328,12 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 		setPrefFor(uuid, 'revisionPlafond', Number(t.value));
 		return true;
 	}
+	if (act === 'set-jeux-plafond' && uuid) {
+		// Même parti pris que ci-dessus : bornage à la lecture (getJeuxPlafondMinutes),
+		// pas de re-rendu — le <select> perdrait le focus clavier pour rien.
+		setPrefFor(uuid, 'jeuxPlafondMinutes', Number(t.value));
+		return true;
+	}
 	// Déclaration « vu en classe » (#478) : écriture ciblée puis mise à jour EN PLACE.
 	// Surtout pas de renderEspace() — il détruirait le DOM (focus, scroll, dépliages)
 	// à chaque case cochée, sur une liste qui peut compter plus de cent leçons.
@@ -334,7 +383,12 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 			| 'sansPressionTemporelle'
 			| 'lectureConsigneAuto'
 			| 'sansApparitionsSurprises'
-			| 'sansMotsDifficiles';
+			| 'sansMotsDifficiles'
+			// #661 : `sansJeux` commande les deux réglages qui le suivent, d'où le
+			// `renderEspace()` ci-dessous — sans lui, couper les jeux laisserait le
+			// plafond et l'invitation actifs à l'écran alors qu'ils ne servent plus.
+			| 'sansJeux'
+			| 'sansInvitationJeux';
 		setPrefFor(uuid, pref, (t as HTMLInputElement).checked);
 		renderEspace();
 		return true;

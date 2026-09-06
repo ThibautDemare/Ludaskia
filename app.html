@@ -152,6 +152,14 @@
 					<div class="reprises" id="reprises"></div>
 					<div class="objectives" id="objectives"></div>
 					<div class="boards" id="boards"></div>
+					<!-- Entrée de l'étagère de jeux (#661) : rendue par ui/jeux-etagere.ts,
+					     MASQUÉE tant qu'aucun palier n'a été franchi (critère 27) ou que
+					     l'encadrant a coupé l'accès. Placée ICI, juste avant #rewardNav :
+					     `reprises` et `objectives` au-dessus sont des relances de travail,
+					     `boards` un tableau passif — le jeu n'est ni l'un ni l'autre, il
+					     ouvre le groupe « tes affaires » (jeux, récompenses, trophées,
+					     album). -->
+					<div class="reward-nav jeux-nav" id="jeuxNav"></div>
 					<div class="reward-nav" id="rewardNav"></div>
 					<!-- Accès à l'album des easter eggs (#331) : rendu par ui/eggs.ts,
 						     MASQUÉ tant qu'aucune surprise n'a été trouvée. -->
@@ -240,6 +248,14 @@
 		     par l'enfant dans l'ordre qu'il veut (tuiles des étapes restantes, pastilles
 		     de progression, « Choisis pour moi », état terminé). Contenu rendu par
 		     ui/seance.ts. Redirige vers l'accueil s'il n'y a pas de programme aujourd'hui. -->
+		<!-- Écran d'un jeu (#661) : la SEULE des quatre surfaces de l'étagère qui soit un
+		     écran plein (critère 39). Une grille manipulée au doigt ne tient pas dans les
+		     560 px d'une modale. Contenu rendu par le runner du jeu (ui/jeu-*.ts), qui
+		     est choisi par la route `jeu-<id>`. -->
+		<div class="home screen-only" id="jeuEcran" style="display: none">
+			<div id="jeuEcranContent"></div>
+		</div>
+
 		<div class="home screen-only" id="seance" style="display: none">
 			<div id="seanceContent"></div>
 		</div>
@@ -401,6 +417,39 @@
 				<h2 class="modal-title" id="eggAlbumTitle">Mon album de surprises</h2>
 				<div class="rewards-body" id="eggAlbumContent"></div>
 				<button class="modal-ok" id="eggAlbumOk">Fermer</button>
+			</div>
+		</div>
+
+		<!-- Modale « Étagère de jeux » (#661) : la liste des jeux possédés. UNE seule
+		     liste, sans section ni étiquette de matière (critère 3) — l'étagère est un
+		     rayon de jeux, pas un sommaire de compétences. `.modal-wide` comme ses deux
+		     voisines : 560 px, 85vh, défilante, ce qui tient largement les 18 jeux de la
+		     cible (critère 39). Contenu rendu par ui/jeux-etagere.ts. -->
+		<div class="modal-overlay" id="jeuxEtagere" style="display: none">
+			<div
+				class="modal modal-wide"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="jeuxEtagereTitle"
+			>
+				<button class="modal-close" id="jeuxEtagereClose" aria-label="Fermer">×</button>
+				<div class="modal-emoji">🧩</div>
+				<h2 class="modal-title" id="jeuxEtagereTitle">Mes jeux</h2>
+				<div class="rewards-body" id="jeuxEtagereContent"></div>
+				<button class="modal-ok" id="jeuxEtagereOk">Fermer</button>
+			</div>
+		</div>
+
+		<!-- Modale « Choix d'un jeu » (#661) : les 3 propositions d'un palier franchi.
+		     Modale et non écran plein, dans la lignée de showCelebration (critère 39) —
+		     c'est un moment de célébration, pas une destination. Pas de croix ni de
+		     bouton « Fermer » : le choix est le seul moyen d'en sortir, et il est
+		     irrévocable (critère 6). Contenu rendu par ui/jeux-choix.ts. -->
+		<div class="modal-overlay" id="jeuxChoix" style="display: none">
+			<div class="modal" role="dialog" aria-modal="true" aria-labelledby="jeuxChoixTitle">
+				<div class="modal-emoji">🎁</div>
+				<h2 class="modal-title" id="jeuxChoixTitle">Un nouveau jeu pour toi !</h2>
+				<div id="jeuxChoixContent"></div>
 			</div>
 		</div>
 

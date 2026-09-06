@@ -442,6 +442,7 @@ export function hideMenus() {
 		'categories',
 		'categorie',
 		'ortho-liste',
+		'jeuEcran',
 	].forEach((id) => {
 		const e = document.getElementById(id);
 		if (e) e.style.display = 'none';

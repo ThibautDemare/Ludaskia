@@ -23,6 +23,7 @@ import {
 	validerMode,
 	decouverteEnCours,
 	listeEtoilee,
+	marcheLaPlusHaute,
 } from '../core/orthographe/runner';
 import { modesEpuises, modesEpuisesPendant } from '../core/orthographe/choix-mode';
 import type { MotOrtho, OrthoState, ModeOrtho } from '../core/orthographe/types';
@@ -241,8 +242,8 @@ export function orthoDiscoveryComplete(lessonId: string): boolean {
    avertissement contre lui. « Relire mes mots » n'a pas de plafond d'activités, donc pas de
    chip. Interpolé depuis `SEANCE_MAX` : écrit en dur, le libellé se désynchroniserait
    silencieusement le jour où la constante bouge. */
-function coutSeanceHTML(): SafeHtml {
-	return html`<span class="mode-btn-cout">${SEANCE_MAX} activités</span>`;
+function coutSeanceHTML(n = SEANCE_MAX): SafeHtml {
+	return html`<span class="mode-btn-cout">${n} ${n > 1 ? 'activités' : 'activité'}</span>`;
 }
 
 /* Un bouton de mode ciblé. `termine` = tous les mots de la liste ont validé ce mode : il
@@ -260,6 +261,39 @@ function modeBtnHTML(m: ModeOption, termine: boolean): SafeHtml {
         <span class="mode-btn-txt">
           <span class="mode-btn-label">${m.label}</span>
           ${badge}${coutSeanceHTML()}
+        </span>
+      </button>`;
+}
+
+/* Le bouton de tête de l'écran de choix. `marche` non nulle = liste entièrement acquise
+   (#658) : le bouton lance toujours le même tour (`data-mode=""`), mais il annonce la tâche
+   qu'il va réellement servir au lieu de « Le parcours complet », et son badge retombe sur le
+   simple « conseillé » de tous les modes recommandés de l'app — le « · donne l'étoile » était
+   l'exception, justifiée par un enjeu qui n'existe plus ici.
+
+   `data-marche` porte la marche visée pour qui teste l'écran : le libellé, lui, appartient au
+   mode et peut être réécrit sans que le sens du bouton change.
+
+   Le coût annoncé est celui du tour réellement servi — un mot, une activité, plafonné à la
+   séance. Réserve connue : les cibles VERBE d'une liste (#261) ne sont matérialisées qu'au
+   lancement, donc une liste qui en porte peut en servir davantage que le chiffre annoncé. */
+function teteHTML(marche: ModeOrtho | null, nbMots: number): SafeHtml {
+	if (!marche)
+		return html`<button class="mode-btn recommended" data-mode="">
+        <span class="mode-btn-ico">${icon('star', { cls: 'ph-star' })}</span>
+        <span class="mode-btn-txt">
+          <span class="mode-btn-label">Le parcours complet</span>
+          <span class="mode-btn-badge">conseillé · donne l'étoile</span>
+          ${coutSeanceHTML()}
+        </span>
+      </button>`;
+	const option = ORTHO_MODE_OPTIONS.find((m) => m.id === marche)!;
+	return html`<button class="mode-btn recommended" data-mode=""${attribut('data-marche', marche)}>
+        <span class="mode-btn-ico">${iconOr(option.icon)}</span>
+        <span class="mode-btn-txt">
+          <span class="mode-btn-label">${option.label}</span>
+          <span class="mode-btn-badge">conseillé</span>
+          ${coutSeanceHTML(Math.min(SEANCE_MAX, nbMots))}
         </span>
       </button>`;
 }
@@ -285,7 +319,15 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
 	const finis = modesEpuises(motsListe, dispo);
 	const cibles = ORTHO_MODE_OPTIONS.filter((m) => m.id !== 'dictee' || dispo);
 	const aFaire = cibles.filter((m) => !finis.includes(m.id as ModeOrtho));
-	const termines = cibles.filter((m) => finis.includes(m.id as ModeOrtho));
+	// Liste entièrement acquise (#658) : derrière « Le parcours complet » il n'y a plus le
+	// parcours mais un TOUR DE RÉVISION, qui repasse chaque mot une fois. Le bouton de tête
+	// dit donc ce qu'il fait vraiment — la marche la plus haute jouable — et cesse de promettre
+	// une étoile déjà gagnée, dont la célébration ne se rejoue pas.
+	const acquise = listeEtoilee(motsListe, dispo);
+	const marche = acquise ? marcheLaPlusHaute(dispo) : null;
+	// La marche promue quitte la zone basse : la laisser aussi en « déjà terminé » ferait lire
+	// deux fois le même libellé sur un écran que l'enfant parcourt en diagonale.
+	const termines = cibles.filter((m) => finis.includes(m.id as ModeOrtho) && m.id !== marche);
 	const go = (mode: ModeOrtho | null) => {
 		setPendingOrthoMode(mode);
 		location.hash = 'ortho-' + lessonId;
@@ -300,14 +342,7 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
     <h2 class="mode-choice-title">Comment veux-tu t'entraîner ?</h2>
     <p class="mode-choice-lesson">${label}</p>
     <div class="mode-choice-list">
-      <button class="mode-btn recommended" data-mode="">
-        <span class="mode-btn-ico">${icon('star', { cls: 'ph-star' })}</span>
-        <span class="mode-btn-txt">
-          <span class="mode-btn-label">Le parcours complet</span>
-          <span class="mode-btn-badge">conseillé · donne l'étoile</span>
-          ${coutSeanceHTML()}
-        </span>
-      </button>
+      ${teteHTML(marche, motsListe.length)}
       ${joindre(aFaire.map((m) => modeBtnHTML(m, false)))}
     </div>
     ${zoneTermines}

@@ -47,6 +47,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { watchErrors, gotoHash, seedAideVue } from './helpers';
+import { STUB_SANS_VOIX } from './journal-couverture';
 
 async function seedOrtho(page: Page, seed: unknown): Promise<void> {
 	await page.addInitScript((s) => {
@@ -421,18 +422,18 @@ test("#ortho-revoir sans id, atteint directement (sans sélection en attente), r
    jumeaux) ou si le bloc y était recopié par réflexe.
 
    La liste est mastered AVANT le lancement (tous les modes requis déjà
-   validés) : `prochaineActivite` retombe alors sur un tirage AU HASARD parmi
-   les modes d'entretien (`choice`, non seedable ici) — « mot caché » et
-   « dictée » portent tous deux une escalade vers la correction guidée, mais
-   PAS les tuiles (cf. l'en-tête de fichier), donc un tirage sur les tuiles ne
-   prouverait rien. On force donc `Math.random` à une valeur fixe pour tomber
-   systématiquement sur « mot caché », quelle que soit la disponibilité du
-   TTS dans l'environnement Chromium headless qui fait tourner ce test (elle
-   varie d'une machine à l'autre, cf. `ortho-revision.spec.ts`) : `modesRequis`
-   vaut `['tuiles','motCache']` (dictée indispo) ou `['tuiles','motCache',
-   'dictee']` (dictée dispo) selon les cas, et « mot caché » est l'INDEX 1
-   dans les deux — 0.55 tombe dans [0.5, 0.666), qui sélectionne cet index
-   pour un tableau de longueur 2 COMME de longueur 3.
+   validés) : depuis #658, `prochaineActivite` ne tire plus au hasard sur une
+   liste acquise — elle sert de façon déterministe la MARCHE LA PLUS HAUTE
+   jouable (dictée si une voix est disponible, mot caché sinon). « Mot
+   caché » et « dictée » portent tous deux une escalade vers la correction
+   guidée, mais PAS les tuiles, donc c'est l'un de ces deux modes qu'il faut
+   forcer pour que le test prouve quelque chose. On stub explicitement
+   l'ABSENCE de voix (`STUB_SANS_VOIX`, cf. `ortho-choix-mode.spec.ts`) pour
+   que la marche servie soit « mot caché » de façon fiable, indépendamment de
+   la disponibilité réelle du TTS dans l'environnement Chromium headless qui
+   fait tourner ce test (elle varie d'une machine à l'autre — Windows expose
+   des voix SAPI système, souvent françaises ; Linux/CI n'en expose aucune
+   par défaut — cf. `ortho-revision.spec.ts`).
    ------------------------------------------------------------ */
 const SEED_REVISION_RUN = {
 	banque: {
@@ -462,15 +463,16 @@ test('tour de révision (liste déjà étoilée) : « Révision terminée ! » n
 	page,
 }) => {
 	const errors = watchErrors(page);
-	// Force le tirage d'entretien sur « mot caché » (cf. commentaire ci-dessus) : fiable
-	// que la dictée soit disponible ou non dans cet environnement Chromium headless.
-	await page.addInitScript(() => {
-		window.Math.random = () => 0.55;
-	});
+	// Force la marche servie sur « mot caché » (cf. commentaire ci-dessus) : fiable quelle
+	// que soit la disponibilité réelle du TTS sur la machine qui exécute ce test.
+	await page.addInitScript(STUB_SANS_VOIX);
 	await seedOrtho(page, SEED_REVISION_RUN);
 	await gotoHash(page, 'ortho-mode-l-e2e-md-revrun');
 
-	await page.locator('.mode-btn.recommended').click(); // parcours complet → tour de révision
+	// Le bouton de tête sert désormais la marche la plus haute jouable (#658), pas le
+	// parcours complet — ici « mot caché », seule voix stubbée absente.
+	await expect(page.locator('.mode-btn.recommended[data-marche="motCache"]')).toBeVisible();
+	await page.locator('.mode-btn.recommended').click(); // → tour de révision
 	await echouerMotCache(page, 'zzzzzz'); // 2 échecs → correction guidée (accumulateur nourri)
 
 	// Seul mot de la liste, déjà mastered → le tour se termine directement après cette

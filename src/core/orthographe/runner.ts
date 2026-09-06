@@ -6,7 +6,6 @@
    le rendu/écrans et la dictée TTS relèvent de la couche UI.)
    Voir docs/design-orthographe.md (§ Runner).
    ============================================================ */
-import { choice } from '../utils';
 import { etatNeuf, estHorsRotation } from '../revision';
 import type { MotOrtho, ModeOrtho, EtapeOrtho } from './types';
 
@@ -47,11 +46,26 @@ export function prochainModeAValider(mot: MotOrtho, dicteeDispo: boolean): ModeO
 	return modesRequis(dicteeDispo).find((m) => !mot.validation[m]) ?? null;
 }
 
+/** La marche la plus haute JOUABLE sur cet appareil : la dictée si le TTS est là, le mot
+    caché sinon. C'est ce qu'on sert à un mot dont tout est déjà validé (#658).
+
+    Le tirage au hasard qu'elle remplace était un défaut, pas une variété : `ORDRE_MODES`
+    acte que les trois tâches forment un GRADIENT de difficulté. Resservir les tuiles à un
+    mot déjà écrit sous la dictée, c'est de la reconstitution et non du rappel — ça ne teste
+    rien que l'enfant n'ait prouvé, et à 8-9 ans une tâche plus facile que prévu renforce une
+    illusion de compétence. Sur un rappel espacé, l'enfant n'a par ailleurs aucun souvenir de
+    la fois d'avant : il ne percevrait pas la variété, seulement le coût de re-décoder une
+    consigne imprévisible. */
+export function marcheLaPlusHaute(dicteeDispo: boolean): ModeOrtho {
+	const requis = modesRequis(dicteeDispo);
+	return requis[requis.length - 1];
+}
+
 /** Prochaine activité d'un mot : atelier (découverte) → modes dans l'ordre →
-    une fois tout validé, un mode aléatoire (entretien), jamais l'atelier. */
+    une fois tout validé, la marche la plus haute jouable (entretien), jamais l'atelier. */
 export function prochaineActivite(mot: MotOrtho, dicteeDispo: boolean): Activite {
 	if (!mot.atelierFait) return 'atelier';
-	return prochainModeAValider(mot, dicteeDispo) ?? choice(modesRequis(dicteeDispo));
+	return prochainModeAValider(mot, dicteeDispo) ?? marcheLaPlusHaute(dicteeDispo);
 }
 
 /* Date le franchissement d'une étape s'il ne l'était pas déjà (#545). MONOTONE : un mot

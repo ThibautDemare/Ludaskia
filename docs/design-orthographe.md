@@ -286,11 +286,15 @@ seul** shard à la demande (chunk Vite séparé, ~34 Ko, mis en cache).
 | **Tuiles** | Orthographe sans le coût moteur du clavier (lettres à ordonner) | **Oui** |
 | **Dictée TTS** | Ancrage : rappel sans indice visuel, mot dicté | **Oui** (si TTS dispo) |
 
-**Parcours depuis une carte d'orthographe — ordonné, puis aléatoire.** Les modes
+**Parcours depuis une carte d'orthographe — ordonné, jamais aléatoire.** Les modes
 ne se lancent pas au hasard au début : il faut d'abord faire l'**Atelier**, puis
 les **Tuiles**, puis **Affiche/masque** (Regarde-cache-écris), puis éventuellement
-la **Dictée** (si TTS dispo). Une fois **tout débloqué**, les modes s'enchaînent
-**aléatoirement** parmi tous **sauf l'atelier**.
+la **Dictée** (si TTS dispo). Un mot dont tous les modes requis sont déjà validés
+(cas du **tour de révision** sur une liste acquise, voir plus bas) reçoit la
+**marche la plus haute jouable** — la dictée si le TTS est là, le mot caché sinon
+— **jamais** un mode tiré au hasard (#658, `marcheLaPlusHaute`) : les trois tâches
+forment un gradient de difficulté, et resservir un mode plus étayé à un mot déjà
+écrit sous la dictée serait de la reconstitution, pas du rappel.
 
 **L'atelier revient à la correction.** À chaque correction — réponse **bonne ou
 fausse** — on **réaffiche le mot façon atelier** : l'enfant revoit son entourage
@@ -506,7 +510,9 @@ La **logique de session** qui enchaîne les activités sur une liste (hors
 - nouveau → **Atelier (découverte)**, puis on enchaîne sur le 1er mode du mot ;
 - en cours → **prochain mode non validé**, ordre **tuiles → motCache → dictee**
   (dictée **sautée** si TTS indispo) ;
-- maîtrisé → mode **aléatoire** parmi les modes validants dispo (entretien).
+- maîtrisé → la **marche la plus haute jouable** (`marcheLaPlusHaute`, #658) :
+  la dictée si le TTS est dispo, le mot caché sinon — jamais un tirage
+  aléatoire (entretien).
 
 **Choix du mot (session d'une liste = cram hebdo)** : priorité aux mots **non
 maîtrisés** de la liste (ordre de la liste), puis aux **maîtrisés** en entretien.
@@ -565,6 +571,29 @@ tuiles fournissent toutes les lettres, le mot caché laisse regarder avant d'éc
 cumul vit **dans** `validerMode` (et non chez ses appelants) pour la même raison que le
 datage de #545 : aucun chemin ne peut faire monter un mot en sautant une marche, donc
 `rangMot` ne rencontre jamais d'escalier incohérent.
+
+**Liste entièrement acquise (#658)** : rouvrir une liste dont tous les mots ont déjà
+tous leurs modes requis validés ne peut plus proposer « Le parcours complet » — il n'y a
+plus rien à débloquer, et l'étoile est déjà gagnée (#641 interdit de rejouer sa
+célébration). Le bouton de tête lance toujours le même tour (`data-mode=""`), mais :
+- son **libellé et son icône** reprennent ceux du mode réellement joué
+  (`ORTHO_MODE_OPTIONS`), plus jamais « Le parcours complet » — le libellé appartient au
+  mode, pas au bouton, et peut être réécrit sans changer le sens de ce dernier
+  (`data-marche` porte la marche visée, pour qui teste l'écran) ;
+- son **badge** redevient le simple « conseillé », celui de tout mode recommandé
+  ailleurs dans l'app — le « · donne l'étoile » était l'exception, justifiée par un
+  enjeu qui n'existe plus ici ;
+- son **coût annoncé** est celui du tour réellement servi (`min(SEANCE_MAX, nombre de
+  mots)`), pas le plafond de séance ;
+- le mode ainsi promu **quitte la zone basse** « Déjà terminés pour cette liste » —
+  l'y laisser aussi ferait lire deux fois le même libellé sur un écran parcouru en
+  diagonale.
+
+Le tour lancé (`revisionRun`) repasse chaque mot **une fois**, dans l'ordre de la
+liste, via la marche la plus haute jouable (`marcheLaPlusHaute`, ci-dessus), et se clôt
+par **« Révision terminée ! »** — jamais la célébration « Liste prête ! » de première
+complétion, mais les récompenses réellement gagnées pendant ce tour (trophées, montée
+de niveau) restent annoncées.
 
 **Déroulé d'un tour** :
 1. **Activité** : Atelier (édition d'entourage) **ou** `generate(mode)` →

@@ -209,3 +209,17 @@ lecture de la phrase entière, pas de grammaire locale du mot qui change. Cas co
 de retrouver des mots plus bas. Réécrite « Tu as fini **toute cette liste** avec ces
 modes ! … tu les retrouveras… » : en passant le premier terme au singulier, un seul nom
 pluriel — « modes » — reste disponible pour la reprise.
+
+## Le libellé d'un bouton dit ce qu'il fait, le badge dit pourquoi (#658)
+
+Quand un même bouton change de rôle selon une condition (le bouton de tête de l'écran
+de choix d'orthographe sert soit le parcours complet, soit — sur une liste déjà
+acquise — un tour de révision ciblé sur un seul mode), son **libellé** reprend le nom
+de l'activité réellement lancée, pas une formule inventée pour ce contexte précis ; le
+**contexte** (pourquoi ce bouton est mis en avant, ce qu'il rapporte) se porte par le
+**badge**, à côté. Les deux ne se substituent pas l'un à l'autre : un libellé qui
+absorberait le contexte (« Ton tour de révision ») désignerait une activité de plus au
+lieu de nommer celle qui existe déjà ailleurs sous un autre nom. Cas posé par `teteHTML`
+(`ui/ortho-runner.ts`, #658) : sur une liste acquise, le bouton porte le libellé du mode
+réellement servi (« J'écoute et j'écris », « Je regarde puis j'écris »…) et le badge
+redevient « conseillé », sans rien y ajouter de propre à ce tour.

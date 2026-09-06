@@ -26,6 +26,7 @@ import {
 	marcheLaPlusHaute,
 } from '../core/orthographe/runner';
 import { modesEpuises, modesEpuisesPendant } from '../core/orthographe/choix-mode';
+import { avancementLecon } from '../core/orthographe/progression';
 import type { MotOrtho, OrthoState, ModeOrtho } from '../core/orthographe/types';
 import { diffCorrect } from '../core/orthographe/diff';
 import { addXP, getXP, niveauDepuisXP, recordSessionActivity } from '../core/progress';
@@ -246,6 +247,18 @@ function coutSeanceHTML(n = SEANCE_MAX): SafeHtml {
 	return html`<span class="mode-btn-cout">${n} ${n > 1 ? 'activités' : 'activité'}</span>`;
 }
 
+/* L'intérieur d'un bouton de l'écran de choix — icône, libellé, badge, coût. Les trois
+   boutons (mode ciblé, parcours complet, marche promue) ne diffèrent que par ces quatre
+   fentes et par leurs attributs ; passer par un contenu commun évite qu'un champ ajouté
+   plus tard n'atterrisse que dans deux d'entre eux. */
+function contenuBoutonHTML(ico: SafeHtml, label: string, badge: SafeHtml, cout: SafeHtml) {
+	return html`<span class="mode-btn-ico">${ico}</span>
+        <span class="mode-btn-txt">
+          <span class="mode-btn-label">${label}</span>
+          ${badge}${cout}
+        </span>`;
+}
+
 /* Un bouton de mode ciblé. `termine` = tous les mots de la liste ont validé ce mode : il
    descend en zone basse, porte son badge, et surtout GARDE l'aspect d'un bouton pleinement
    actif (critère 10) — jamais le pointillé de `.programme-tuile--inactive`, que l'enfant a
@@ -257,11 +270,7 @@ function modeBtnHTML(m: ModeOption, termine: boolean): SafeHtml {
 		? html`<span class="mode-btn-badge">Terminé pour cette liste · donne toujours des points</span>`
 		: VIDE;
 	return html`<button class="mode-btn" data-mode="${m.id}"${termine ? attribut('data-epuise', '1') : ''}>
-        <span class="mode-btn-ico">${iconOr(m.icon)}</span>
-        <span class="mode-btn-txt">
-          <span class="mode-btn-label">${m.label}</span>
-          ${badge}${coutSeanceHTML()}
-        </span>
+        ${contenuBoutonHTML(iconOr(m.icon), m.label, badge, coutSeanceHTML())}
       </button>`;
 }
 
@@ -275,26 +284,26 @@ function modeBtnHTML(m: ModeOption, termine: boolean): SafeHtml {
    mode et peut être réécrit sans que le sens du bouton change.
 
    Le coût annoncé est celui du tour réellement servi — un mot, une activité, plafonné à la
-   séance. Réserve connue : les cibles VERBE d'une liste (#261) ne sont matérialisées qu'au
-   lancement, donc une liste qui en porte peut en servir davantage que le chiffre annoncé. */
+   séance. `nbMots` compte les mots ATTENDUS, cibles VERBE (#261) comprises : les compter sur
+   les seuls `motIds` sous-estimait le tour d'une liste à verbes. */
 function teteHTML(marche: ModeOrtho | null, nbMots: number): SafeHtml {
 	if (!marche)
 		return html`<button class="mode-btn recommended" data-mode="">
-        <span class="mode-btn-ico">${icon('star', { cls: 'ph-star' })}</span>
-        <span class="mode-btn-txt">
-          <span class="mode-btn-label">Le parcours complet</span>
-          <span class="mode-btn-badge">conseillé · donne l'étoile</span>
-          ${coutSeanceHTML()}
-        </span>
+        ${contenuBoutonHTML(
+					icon('star', { cls: 'ph-star' }),
+					'Le parcours complet',
+					html`<span class="mode-btn-badge">conseillé · donne l'étoile</span>`,
+					coutSeanceHTML(),
+				)}
       </button>`;
 	const option = ORTHO_MODE_OPTIONS.find((m) => m.id === marche)!;
 	return html`<button class="mode-btn recommended" data-mode=""${attribut('data-marche', marche)}>
-        <span class="mode-btn-ico">${iconOr(option.icon)}</span>
-        <span class="mode-btn-txt">
-          <span class="mode-btn-label">${option.label}</span>
-          <span class="mode-btn-badge">conseillé</span>
-          ${coutSeanceHTML(Math.min(SEANCE_MAX, nbMots))}
-        </span>
+        ${contenuBoutonHTML(
+					iconOr(option.icon),
+					option.label,
+					html`<span class="mode-btn-badge">conseillé</span>`,
+					coutSeanceHTML(Math.min(SEANCE_MAX, nbMots)),
+				)}
       </button>`;
 }
 
@@ -323,7 +332,15 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
 	// parcours mais un TOUR DE RÉVISION, qui repasse chaque mot une fois. Le bouton de tête
 	// dit donc ce qu'il fait vraiment — la marche la plus haute jouable — et cesse de promettre
 	// une étoile déjà gagnée, dont la célébration ne se rejoue pas.
-	const acquise = listeEtoilee(motsListe, dispo);
+	// « Acquise » se lit sur les mots ATTENDUS, pas sur `motsListe` : ce dernier ne connaît que
+	// les mots simples (`motIds`), alors qu'une liste peut aussi porter des cibles VERBE (#261),
+	// matérialisées seulement au lancement du parcours. Une liste étoilée à laquelle un parent
+	// ajoute un verbe paraîtrait donc acquise ici, et le bouton promettrait un tour de N
+	// activités avant de lancer... la découverte des cibles verbe. `avancementLecon` énumère les
+	// deux populations en lecture seule (id de cible déterministe, sans LEFFF) et compte
+	// « nouveau » ce qui n'est pas encore en banque — c'est la même mesure que l'espace encadrant.
+	const avancement = avancementLecon(loadOrtho(), lessonId, dispo);
+	const acquise = avancement.niveau === 'acquis';
 	const marche = acquise ? marcheLaPlusHaute(dispo) : null;
 	// La marche promue quitte la zone basse : la laisser aussi en « déjà terminé » ferait lire
 	// deux fois le même libellé sur un écran que l'enfant parcourt en diagonale.
@@ -342,7 +359,7 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
     <h2 class="mode-choice-title">Comment veux-tu t'entraîner ?</h2>
     <p class="mode-choice-lesson">${label}</p>
     <div class="mode-choice-list">
-      ${teteHTML(marche, motsListe.length)}
+      ${teteHTML(marche, avancement.total)}
       ${joindre(aFaire.map((m) => modeBtnHTML(m, false)))}
     </div>
     ${zoneTermines}
@@ -377,7 +394,8 @@ function prochainNonMaitrise(): MotOrtho | null {
 	}
 	// Tour de révision : liste déjà acquise → on repasse chaque mot UNE fois, dans
 	// l'ordre, puis « fini » (pas de filtre de statut, ils sont tous maîtrisés ;
-	// l'activité due sera un mode d'entretien aléatoire via prochaineActivite).
+	// l'activité due sera la marche la plus haute jouable, via prochaineActivite — depuis
+	// #658, plus un tirage : c'est aussi ce que le bouton de tête annonce à l'enfant).
 	if (revisionRun) return idx < mots.length ? mots[idx++] : null;
 	const enDecouverte = decouverteEnCours(mots);
 	for (let k = 0; k < mots.length; k++) {

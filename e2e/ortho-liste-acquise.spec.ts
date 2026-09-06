@@ -121,6 +121,86 @@ const SEED_NON_ACQUISE = {
 	motIdParForme: { chat: 'm1', lion: 'm2' },
 };
 
+// Liste entièrement acquise mais de 10 mots (tous maîtrisés, sans voix) : le coût affiché
+// doit PLAFONNER à SEANCE_MAX (8), pas suivre le total réel — un Math.max ou un clamp oublié
+// ferait ressortir « 10 activités » ici sans qu'aucun des seeds à 2 mots ci-dessus ne le voie.
+const LESSON_ACQUISE_PLAFOND = 'l-e2e-liste-acquise-plafond';
+const MOTS_PLAFOND = Array.from({ length: 10 }, (_, i) => `mot${i + 1}`);
+const SEED_ACQUISE_PLAFOND = {
+	banque: Object.fromEntries(
+		MOTS_PLAFOND.map((mot, i) => [
+			`p${i + 1}`,
+			motVierge(`p${i + 1}`, mot, { tuiles: true, motCache: true }),
+		]),
+	),
+	listes: [
+		{
+			id: LESSON_ACQUISE_PLAFOND,
+			label: 'Liste acquise 10 mots',
+			motIds: MOTS_PLAFOND.map((_, i) => `p${i + 1}`),
+			createdAt: 1,
+			updatedAt: 1,
+		},
+	],
+	motIdParForme: Object.fromEntries(MOTS_PLAFOND.map((mot, i) => [mot, `p${i + 1}`])),
+};
+
+// Une cible VERBE (#261) paramétrée sur la liste, jamais matérialisée en banque : le premier
+// jet lisait l'acquisition sur les seuls mots simples (`motIds`) et déclarait ces listes
+// acquises malgré une cible verbe encore à découvrir. `avancementLecon` doit la compter
+// « nouveau » et empêcher la promotion du bouton de tête.
+const VERBE_MANGER = {
+	kind: 'verbe' as const,
+	infinitif: 'manger',
+	pronoms: [2],
+	temps: ['present'] as const,
+};
+
+// 2 mots simples maîtrisés + la cible verbe ci-dessus, ABSENTE de la banque : pas acquise.
+const LESSON_VERBE_NON_BANQUE = 'l-e2e-liste-verbe-non-banque';
+const SEED_VERBE_NON_BANQUE = {
+	banque: {
+		m1: motVierge('m1', 'chat', { tuiles: true, motCache: true }),
+		m2: motVierge('m2', 'lion', { tuiles: true, motCache: true }),
+	},
+	listes: [
+		{
+			id: LESSON_VERBE_NON_BANQUE,
+			label: 'Liste avec verbe non matérialisé',
+			motIds: ['m1', 'm2'],
+			verbes: [VERBE_MANGER],
+			createdAt: 1,
+			updatedAt: 1,
+		},
+	],
+	motIdParForme: { chat: 'm1', lion: 'm2' },
+};
+
+// Même liste, mais la cible verbe est déjà en banque et maîtrisée : contre-épreuve — la liste
+// est bien acquise, et son coût compte la cible verbe en plus des 2 mots simples (3, pas 2).
+const LESSON_VERBE_BANQUE = 'l-e2e-liste-verbe-banque';
+const SEED_VERBE_BANQUE = {
+	banque: {
+		m1: motVierge('m1', 'chat', { tuiles: true, motCache: true }),
+		m2: motVierge('m2', 'lion', { tuiles: true, motCache: true }),
+		'v:manger#present#2': {
+			...motVierge('v:manger#present#2', 'mange', { tuiles: true, motCache: true }),
+			origine: 'verbe',
+		},
+	},
+	listes: [
+		{
+			id: LESSON_VERBE_BANQUE,
+			label: 'Liste avec verbe acquis',
+			motIds: ['m1', 'm2'],
+			verbes: [VERBE_MANGER],
+			createdAt: 1,
+			updatedAt: 1,
+		},
+	],
+	motIdParForme: { chat: 'm1', lion: 'm2' },
+};
+
 test.describe('Orthographe : écran de choix, liste entièrement acquise (#658)', () => {
 	test('critères 1,2,4,5,6,10 : sans voix, la marche haute promue en tête est « mot caché »', async ({
 		page,
@@ -200,6 +280,57 @@ test.describe('Orthographe : écran de choix, liste entièrement acquise (#658)'
 		expect(await tete.getAttribute('data-marche')).toBeNull();
 		await expect(tete.locator('.mode-btn-label')).toHaveText('Le parcours complet');
 		await expect(tete.locator('.mode-btn-badge')).toHaveText("conseillé · donne l'étoile");
+
+		expect(errors).toEqual([]);
+	});
+
+	test('plafond de séance : liste acquise de 10 mots plafonne à 8 activités, pas 10', async ({
+		page,
+	}) => {
+		const errors = watchErrors(page);
+		await page.addInitScript(STUB_SANS_VOIX);
+		await seedOrtho(page, SEED_ACQUISE_PLAFOND);
+		await gotoHash(page, 'ortho-mode-' + LESSON_ACQUISE_PLAFOND);
+
+		const tete = page.locator('.mode-choice-list .mode-btn.recommended');
+		await expect(tete).toBeVisible();
+		await expect(tete).toHaveAttribute('data-marche', 'motCache');
+		await expect(tete.locator('.mode-btn-cout')).toHaveText('8 activités');
+
+		expect(errors).toEqual([]);
+	});
+
+	test('cibles verbe (#261) non matérialisées : la liste ne doit pas paraître acquise', async ({
+		page,
+	}) => {
+		const errors = watchErrors(page);
+		await page.addInitScript(STUB_SANS_VOIX);
+		await seedOrtho(page, SEED_VERBE_NON_BANQUE);
+		await gotoHash(page, 'ortho-mode-' + LESSON_VERBE_NON_BANQUE);
+
+		const tete = page.locator('.mode-choice-list .mode-btn.recommended');
+		await expect(tete).toBeVisible();
+		expect(await tete.getAttribute('data-marche')).toBeNull();
+		await expect(tete.locator('.mode-btn-label')).toHaveText('Le parcours complet');
+		await expect(tete.locator('.mode-btn-badge')).toHaveText("conseillé · donne l'étoile");
+
+		expect(errors).toEqual([]);
+	});
+
+	test('contre-épreuve : cibles verbe matérialisées et maîtrisées → liste acquise, coût les inclut', async ({
+		page,
+	}) => {
+		const errors = watchErrors(page);
+		await page.addInitScript(STUB_SANS_VOIX);
+		await seedOrtho(page, SEED_VERBE_BANQUE);
+		await gotoHash(page, 'ortho-mode-' + LESSON_VERBE_BANQUE);
+
+		const tete = page.locator('.mode-choice-list .mode-btn.recommended');
+		await expect(tete).toBeVisible();
+		await expect(tete).toHaveAttribute('data-marche', 'motCache');
+		await expect(tete.locator('.mode-btn-badge')).toHaveText('conseillé');
+		// 2 mots simples + la cible verbe : 3, pas 2 — la cible verbe compte dans le coût.
+		await expect(tete.locator('.mode-btn-cout')).toHaveText('3 activités');
 
 		expect(errors).toEqual([]);
 	});

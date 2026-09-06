@@ -23,6 +23,7 @@ import { XP_KEY, niveauDepuisXP, migrateNiveauNamespacing } from './progress';
 import { niveauRequisAvatar } from './unlocks';
 import { migrateRevisions } from './revision-migrate';
 import { REVISION_PLAFOND, REVISION_PLAFOND_MIN, REVISION_PLAFOND_MAX } from './revision';
+import { PLAFOND_DEFAUT_MINUTES, PLAFOND_MIN_MINUTES, PLAFOND_MAX_MINUTES } from './jeux/plafond';
 import { enregistrerExport } from './rappel-sauvegarde';
 import type { SchoolLevel } from './catalog';
 
@@ -58,6 +59,21 @@ export interface ProfilePrefs {
 	 *  RIEN d'autre : le journal de l'espace encadrant continue de tout capturer.
 	 *  Défaut (absent) = rappel affiché. */
 	sansMotsDifficiles?: boolean;
+	/** Coupe entièrement l'étagère de jeux (#661) : l'entrée disparaît de
+	 *  l'accueil, et avec elle l'invitation de fin de séance. Aménagement posé par
+	 *  l'adulte pour qui le temps d'écran de loisir n'a pas sa place ici, ou pour
+	 *  une période donnée. Défaut (absent) = étagère accessible. */
+	sansJeux?: boolean;
+	/** Coupe la seule INVITATION de fin de séance (#661), sans fermer l'étagère :
+	 *  l'enfant garde son entrée permanente sur l'accueil, mais l'application ne
+	 *  lui propose plus de jouer après avoir travaillé. Pour l'adulte qui ne veut
+	 *  aucune relance, même non conditionnelle. SUBORDONNÉ à `sansJeux` : couper
+	 *  l'accès coupe l'invitation, quel que soit ce réglage. Défaut = on invite. */
+	sansInvitationJeux?: boolean;
+	/** Plafond quotidien de jeu, en minutes (#661). Absent = PLAFOND_DEFAUT_MINUTES
+	 *  (10). Comme `revisionPlafond`, le fallback ET le bornage se font à la
+	 *  lecture, pour rester robuste aux données importées. */
+	jeuxPlafondMinutes?: number;
 }
 export interface Profile {
 	uuid: string;
@@ -286,6 +302,26 @@ export function getRevisionPlafond(): number {
 	const v = getPrefs().revisionPlafond;
 	if (typeof v !== 'number' || !Number.isFinite(v)) return REVISION_PLAFOND;
 	return Math.min(REVISION_PLAFOND_MAX, Math.max(REVISION_PLAFOND_MIN, Math.round(v)));
+}
+/* ---------- Étagère de jeux (#661) ---------- */
+// Trois réglages indépendants dans l'espace encadrant, mais pas symétriques :
+// l'invitation est SUBORDONNÉE à l'accès (couper l'accès coupe l'invitation),
+// alors que le plafond, lui, vaut aussi pour un enfant qui entre de lui-même.
+// Les deux drapeaux ne font que DÉSACTIVER, comme les autres aménagements : un
+// réglage qui coupe quelque chose ne doit pas être ce qui l'allume.
+export function etagereJeuxActive(): boolean {
+	return getPrefs().sansJeux !== true;
+}
+export function invitationJeuxActive(): boolean {
+	return etagereJeuxActive() && getPrefs().sansInvitationJeux !== true;
+}
+// Plafond quotidien en minutes. Fallback et bornage à la LECTURE, comme
+// `getRevisionPlafond` : l'espace encadrant ne contrôle rien, une valeur
+// importée hors plage retombe dans l'intervalle.
+export function getJeuxPlafondMinutes(): number {
+	const v = getPrefs().jeuxPlafondMinutes;
+	if (typeof v !== 'number' || !Number.isFinite(v)) return PLAFOND_DEFAUT_MINUTES;
+	return Math.min(PLAFOND_MAX_MINUTES, Math.max(PLAFOND_MIN_MINUTES, Math.round(v)));
 }
 
 /* ---------- Niveau scolaire de référence du profil actif (#225) ---------- */

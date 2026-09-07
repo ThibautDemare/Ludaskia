@@ -675,8 +675,9 @@ mot mal classé), l'appariement (`ui/lecon-appariement.ts`, une entrée par manc
 restreinte aux paires fausses), le tableau de conversion (`ui/lecon-tableau.ts`, le nombre relu
 dans l'unité cible), la résolution de problèmes (`ui/lecon-probleme.ts`, une entrée par
 sous-question ratée) et la dictée d'orthographe (`ui/ortho-runner.ts`, le **premier essai raté**
-d'un mot). Ignore une erreur sans leçon rattachée ou sans énoncé affichable (rien à
-regrouper/montrer). Les formats **composites** délèguent leur mise en forme à
+d'un mot — le rendu des trois tâches, lui, vit depuis #640 dans `ui/ortho-taches.ts`, partagé
+avec la révision espacée, cf. [Rendu & interactions](ui.md)). Ignore une erreur sans leçon
+rattachée ou sans énoncé affichable (rien à regrouper/montrer). Les formats **composites** délèguent leur mise en forme à
 `core/erreur-representation.ts` (pur) : une opération posée agrège les cellules-chiffres du
 résultat (`Item.posedResult`) en **une** entrée par opération (`analyserResultatPosee`) plutôt
 qu'une par chiffre, un tableau de conversion se relit **dans l'unité cible** demandée

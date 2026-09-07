@@ -259,6 +259,19 @@ comparaison » satisfont la règle `label` sans rien résoudre. Les tests exigen
 champs d'une même fiche se **distinguent** (conjugaison : un pronom par champ ; comparaison :
 les deux nombres comparés). Cf. `nomChampReponse` dans [Cœur logique](core.md).
 
+### Parité du nom accessible entre les trois tâches d'orthographe (#640, suite de #577)
+
+`tests/ortho-taches-libelles.test.ts` couvre un angle mort du gate précédent : celui-ci
+balaie les champs `class="ans…"` du rendu de FICHE (`core/items.ts`), alors que les trois
+tâches d'orthographe (`ui/ortho-taches.ts`, #640) montent leur propre champ
+(`class="ortho-input"`), hors de son périmètre. Défaut attrapé : `renderMotCache` portait
+`aria-label="Écris le mot"` EN DUR, alors que `renderDictee` adaptait déjà en « Écris le
+verbe » sur une cible conjuguée (#261) — un enfant au lecteur d'écran entendait donc « Écris
+le mot » sur une tâche de conjugaison, sans rien pour s'en apercevoir (la consigne visible,
+elle, était déjà correcte). L'assertion porte sur le NOM ACCESSIBLE du champ, pas sur une
+formulation figée, et sur la PARITÉ entre les trois marches — balayage piloté par
+`ORDRE_MODES` : une quatrième marche ajoutée à l'escalier y entre d'elle-même.
+
 ### Préfixe `ludaskia_` des clés de stockage (#597)
 
 `tests/cles-stockage-gate.test.ts` lit `src/` comme du texte. Le préfixe n'est pas une
@@ -626,6 +639,36 @@ voient pas :
   s'enchaînent (modale de niveau → modale de célébration) ; une session sans
   rien gagner ne laisse aucune modale ni trace textuelle sur l'écran de fin.
 
+### Révision espacée : servir la marche due (#640)
+
+`tests/revision-marche-due.test.ts` (Vitest, critères 1-3, 5-10, 13, 16-18, 22-24) et
+`e2e/revision-marche-due.spec.ts` (Playwright, critères 4, 11, 12, 14, 15, 19, 21) couvrent
+ensemble le défaut d'origine : la révision servait invariablement le **mot caché** à tout mot
+dû, quel que soit son rang réel sur l'escalier du parcours (§ 2 de `docs/design-orthographe.md`),
+et une réussite n'y faisait progresser que le compteur d'espacement — jamais
+`validation`/`franchissements`. Les deux suites sont écrites AVANT l'implémentation, à partir
+des critères gelés de l'issue.
+
+Côté logique (happy-dom, même pattern que `dictee-voix.test.ts`) : la tâche réellement servie
+est classée par ce que l'enfant peut FAIRE (les lettres sont-elles toutes fournies ? le mot
+est-il lisible avant la saisie ? faut-il l'entendre ?), jamais par un id DOM — la
+mutualisation des rendus (`ortho-taches.ts`) fait justement bouger les ids d'aujourd'hui. Cas
+le plus délicat, tranché et testé : un escalier **troué** hérité d'avant #641 (ex.
+`{ tuiles: false, motCache: true }`) reçoit en révision la marche la plus **basse non
+validée**, jamais une lecture qui traiterait la marche haute comme preuve des marches
+manquantes ; une réussite comble alors le trou sans rien dé-franchir — seule lecture
+compatible à la fois avec « la révision ne crée jamais de trou » (critère 16) et « un aveu
+d'ignorance ne valide rien » (critère 9). Décision consignée dans `docs/design-orthographe.md`
+§ 3.
+
+Côté écran, la spec couvre ce qu'un test Vitest ne voit pas : la consigne affichée correspond
+à la tâche réellement servie (critère 4), la dégradation dictée → mot caché sans voix ne fait
+JAMAIS sortir de la session multi-matières (critère 19 — contrairement à l'écran « Travailler
+autrement » du parcours), une ou plusieurs listes qui deviennent acquises PENDANT la révision
+sont annoncées sur l'écran de fin (critères 11-12), et une tâche ratée en révision journalise
+puis se retrouve nommée « mot difficile » (#618) même si son format n'a jamais été joué en
+séance d'orthographe (critères 14-15).
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent
@@ -755,10 +798,12 @@ re-remontés à chaque relecture :
   mécanique.
 - **Le volet NÉGATIF « une séance ciblée sur les tuiles ne nomme jamais rien »**
   (critère 3). Ce que ce volet garde est une **absence de point d'appel** : le mode tuiles
-  n'a aucune branche de correction guidée. C'est vérifiable par lecture (aucun
-  `noterMotDifficile` hors des branches `motCache` / `dictee` de `ortho-runner.ts`) alors
-  qu'un test e2e devrait poser huit grilles de tuiles pour ne rien observer — le coût est
-  celui d'un scénario complet, la preuve est plus faible que celle du call-site.
+  n'a aucune branche de correction guidée — `essaisAvantCorrection` y vaut `Infinity`
+  (`ortho-taches.ts`, #640), donc `onCorrection` n'y est jamais invoqué. C'est vérifiable
+  par lecture (aucun appel à `noterMotDifficile`, posé dans le seul `onCorrection` de
+  `ortho-runner.ts`, hors des marches `motCache` / `dictee`) alors qu'un test e2e devrait
+  poser huit grilles de tuiles pour ne rien observer — le coût est celui d'un scénario
+  complet, la preuve est plus faible que celle du call-site.
 
 Corollaire à tenir : si un jour le mode tuiles gagne une correction guidée, ce n'est pas
 ce fichier qu'il faudra relire mais la décision 1 de #618, qui l'exclut explicitement du

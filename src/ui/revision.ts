@@ -12,7 +12,7 @@
    ============================================================ */
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
-import { dicter, dicteeDisponible } from './tts';
+import { dicter, dicteeDisponible, stopTts } from './tts';
 import { renderAtelier } from './ortho-atelier';
 import { consigneRenforceeHTML } from './consigne-renforcee';
 import { icon } from './icon';
@@ -34,11 +34,19 @@ import {
 	TEXT_ANSWER_INPUT_ATTRS,
 	poserAuTrou,
 } from '../core/items';
-import { loadOrtho, saveOrtho, avancerMotRevision } from '../core/orthographe/store';
+import { loadOrtho, saveOrtho, avancerMotRevision, motsDeListe } from '../core/orthographe/store';
 import { journaliserPaliersOrtho } from '../core/orthographe/paliers';
 import { groupeOrthoDuMot } from '../core/orthographe/lessons';
 import { diffCorrect } from '../core/orthographe/diff';
-import type { OrthoState, MotOrtho } from '../core/orthographe/types';
+import {
+	prochaineActivite,
+	activiteProgressive,
+	validerMode,
+	listeEtoilee,
+} from '../core/orthographe/runner';
+import { etatNeuf } from '../core/revision';
+import type { OrthoState, MotOrtho, ModeOrtho, ListeOrtho } from '../core/orthographe/types';
+import { monterTacheOrtho, nettoyerTaches, type OptionsTache } from './ortho-taches';
 import {
 	loadLessonRevisions,
 	loadLessonRevisionsBasNiveau,
@@ -50,7 +58,7 @@ import {
 	getXP,
 	niveauDepuisXP,
 } from '../core/progress';
-import { recompensesFin } from '../core/recompenses-fin';
+import { recompensesFin, type CelebEntry } from '../core/recompenses-fin';
 import { announceRewards } from './effects';
 import { selectDueGroups } from '../core/revision-select';
 import type { NotionRecap } from '../core/recap-notions';
@@ -227,6 +235,21 @@ let motsDifficiles: MotDifficile[] = [];
 function noterMotDifficile(wordId: string, mot: string): void {
 	if (!motsDifficiles.some((m) => m.id === wordId)) motsDifficiles.push({ id: wordId, mot });
 }
+// Voix de synthèse de l'APPAREIL, lue une fois à l'ouverture (#640). Elle décide de la
+// tâche servie à un mot dû en dictée : la dictée si elle est là, le mot caché sinon —
+// jamais l'écran de sortie du parcours, qui ferait quitter une session multi-matières
+// (critère 19). Elle ne peut que RETOMBER en cours de séance (voix distante coupée en
+// plein vol), jamais remonter : l'escalier d'un mot ne doit pas s'éloigner sous ses pieds
+// au gré du réseau.
+let voixDispo = false;
+// La même disponibilité, FIGÉE à l'ouverture, pour les deux instantanés d'étoile de liste
+// ci-dessous. Sans elle, une voix qui disparaît en cours de séance ferait paraître
+// « prêtes » des listes dont la dictée n'est plus requise (`modesRequis`), et l'écran de
+// fin célébrerait un travail qui n'a pas eu lieu.
+let voixEtoile = false;
+// Listes d'orthographe DÉJÀ étoilées à l'ouverture (#640, critère 13) : témoin qui permet
+// de n'annoncer, en fin de séance, que celles qui viennent de basculer.
+let listesEtoileesAvant = new Set<string>();
 let active = false; // une révision est-elle EN COURS ? (garde-fou de sortie, #63)
 let startTs = 0; // début de la session (durée enregistrée à la fin, #178)
 // Niveau au DÉMARRAGE de la session (#659) : le seul moyen de savoir, à la fin, si un
@@ -245,6 +268,12 @@ export function runRevisionEspacee(): void {
 	hideMenus();
 	setToolbar({ verify: false, home: true, profile: false });
 	ortho = loadOrtho();
+	nettoyerTaches(); // aucun mot d'une séance précédente à retracer au resize
+	// Voix lue UNE fois pour toute la séance (cf. `voixDispo`), et non au moment de servir
+	// la tâche : c'est ce qui rend la tâche due DÉTERMINISTE (critère 24).
+	voixDispo = dicteeDisponible();
+	voixEtoile = voixDispo;
+	listesEtoileesAvant = new Set(ortho.listes.filter(estEtoilee).map((l) => l.id));
 	// Plafond réglé par profil dans l'espace encadrant (#439) ; défaut 12 si non réglé
 	// (fallback + bornage assurés par getRevisionPlafond). Le 5e argument ouvre l'entretien
 	// du niveau inférieur (#232) : une dose plafonnée de notions encore en consolidation au
@@ -479,12 +508,13 @@ function degelerStage(): void {
 }
 
 function renderCurrent() {
+	nettoyerTaches(); // on quitte un éventuel mot affiché : plus rien à retracer
 	updateHud();
 	viderStatut();
 	degelerStage();
 	const it = items[idx];
 	if (it.kind === 'qcm') renderQcm(it);
-	else if (it.kind === 'word') renderWordLook(it);
+	else if (it.kind === 'word') renderMotOrtho(it);
 	else if (it.kind === 'tuile') renderTuile(it);
 	else if (it.kind === 'ordre') renderOrdre(it);
 	else if (it.kind === 'tri') renderTri(it);
@@ -811,87 +841,134 @@ function motDeRevision(it: Extract<RevItem, { kind: 'word' }>): MotOrtho | undef
 	return ortho.banque[it.wordId];
 }
 
-/* Bouton « Écouter le mot » d'un afficher/cacher en révision : le mode a besoin
-   qu'on puisse (r)entendre le mot — surtout une fois caché — comme au parcours
-   d'entraînement. Lit le mot, avec son « comme dans » pour lever l'ambiguïté d'un
-   homophone. Rendu seulement si l'appareil a une voix FR (sinon pas de bouton mort).
-   Réutilise le bouton `.rev-btn` (icône haut-parleur), comme les autres boutons. */
-function ecouteMotHTML(m: MotOrtho | undefined): SafeHtml {
-	if (!m || !dicteeDisponible()) return VIDE;
-	return html`<div class="rev-actions"><button type="button" class="rev-btn" id="revEcouter">${icon('speaker')} Écouter le mot</button></div>`;
-}
-function bindEcouteMot(m: MotOrtho | undefined): void {
-	if (!m || !dicteeDisponible()) return;
-	document
-		.getElementById('revEcouter')
-		?.addEventListener('click', () => dicter(m.mot, m.commeDans));
+/* ---------- Mot d'orthographe : la marche DUE (#640) ----------
+   La révision servait invariablement le mot caché — « on regarde, ça disparaît, on
+   écrit » —, c'est-à-dire la marche 2 de l'escalier, à des mots dans des états très
+   différents : un mot découvert la veille y recevait du RAPPEL là où son parcours lui
+   donnait encore de la reconstitution (les tuiles, où toutes les lettres sont fournies).
+   Et cette réussite ne faisait monter aucun mot : seul le compteur d'espacement avançait,
+   si bien que l'espace encadrant pouvait montrer un mot bloqué au rang « tuiles » alors
+   que l'enfant l'écrivait de mémoire depuis des semaines.
+
+   Elle sert désormais la tâche que le rang du mot appelle — `prochaineActivite`, la MÊME
+   décision que le parcours, donc jamais tirée au hasard (critère 24) — et la réussite fait
+   franchir cette marche (`validerMode`, cumulatif depuis #641). Les trois rendus sont ceux
+   du parcours (`ui/ortho-taches.ts`) : une seule tâche par marche, où qu'elle soit servie. */
+
+/* Une liste est-elle étoilée ? Lu avec la voix FIGÉE à l'ouverture (cf. `voixEtoile`),
+   pour que les deux instantanés de la séance soient comparables. */
+function estEtoilee(l: ListeOrtho): boolean {
+	return listeEtoilee(motsDeListe(ortho, l), voixEtoile);
 }
 
-/* Orthographe — phase 1 : on regarde le mot (et on peut l'écouter). */
-function renderWordLook(it: Extract<RevItem, { kind: 'word' }>) {
-	const stage = document.getElementById('revStage')!;
-	const m = motDeRevision(it);
-	stage.innerHTML =
-		html`<div class="rev-consigne">Regarde bien ce mot, puis écris-le sans le voir.</div>
-    <div class="rev-word">${it.mot}</div>
-    ${ecouteMotHTML(m)}
-    <div class="rev-actions"><button class="rev-btn" id="revHide">Cacher et écrire</button></div>`.balisage;
-	bindEcouteMot(m);
-	document.getElementById('revHide')!.addEventListener('click', () => renderWordWrite(it));
-}
-
-/* Orthographe — phase 2 : on écrit le mot de mémoire (l'écoute reste dispo). */
-function renderWordWrite(it: Extract<RevItem, { kind: 'word' }>) {
-	const stage = document.getElementById('revStage')!;
-	const m = motDeRevision(it);
-	stage.innerHTML = html`<div class="rev-consigne">Écris le mot.</div>
-    ${ecouteMotHTML(m)}
-    <div class="rev-q"><input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}></div>
-    ${decideHTML()}`.balisage;
-	bindEcouteMot(m);
-	// Énoncé du journal : la phrase à trou du mot si on en a une (la plus parlante pour le
-	// parent), sinon la tâche elle-même. Formulation distincte de celle de la dictée
-	// (« sous la dictée ») : les deux exercices ne se confondent pas dans le journal.
-	// Partagé par l'erreur et le passage (#467), qui parlent du même exercice.
-	const enonceJournal = (): string => {
-		const ctx = motDeRevision(it)?.contexte;
-		return ctx ? `${ctx.avant}…${ctx.apres}` : 'Mot à écrire de mémoire';
+/* Repli si un mot disparaissait de la banque en cours de séance (suppression depuis
+   l'espace encadrant) : une tâche a besoin d'un `MotOrtho`, et un écran vide vaudrait
+   moins qu'un mot à écrire. Hors banque, donc `saveOrtho` ne l'écrit pas : il ne fait
+   monter personne. */
+function motDeSecours(mot: string): MotOrtho {
+	return {
+		id: '',
+		mot,
+		entourage: [],
+		atelierFait: true,
+		validation: { tuiles: false, motCache: false, dictee: false },
+		revision: etatNeuf(Date.now()),
+		origine: 'liste',
 	};
-	document.getElementById('revValidate')!.addEventListener('click', () => {
-		const inp = document.getElementById('revInput') as HTMLInputElement;
-		if (inp.value.trim() === '') return inp.focus();
-		const saisie = inp.value;
-		if (checkItemAnswer({ text: '', answer: it.mot, kind: 'text' }, saisie)) {
+}
+
+/* Énoncé du journal d'erreurs (#391) : ce que le parent doit pouvoir lire hors de
+   l'appli. La phrase à trou d'une cible verbe quand il y en a une (la plus parlante),
+   sinon la TÂCHE servie. Depuis #640 la révision peut servir les trois : dire laquelle
+   évite qu'un mot mal reconstitué et un mot mal écrit sous la dictée se confondent.
+   Partagé par l'erreur et l'abandon (#467), qui parlent du même exercice. */
+function enonceJournalMot(m: MotOrtho, mode: ModeOrtho): string {
+	const ctx = m.contexte;
+	if (ctx) return `${ctx.avant}…${ctx.apres}`;
+	if (mode === 'tuiles') return 'Mot à reconstituer avec les lettres données';
+	if (mode === 'dictee') return 'Mot à écrire sous la dictée';
+	return 'Mot à écrire de mémoire';
+}
+
+function renderMotOrtho(it: Extract<RevItem, { kind: 'word' }>): void {
+	const m = motDeRevision(it) ?? motDeSecours(it.mot);
+	const due = prochaineActivite(m, voixDispo);
+	// `prochaineActivite` ne rend « atelier » que pour un mot jamais découvert, et la
+	// sélection écarte déjà ceux-là (#641, critère 16) : la révision entretient une trace,
+	// elle ne la crée pas. Repli sur le mot caché plutôt qu'un format qu'elle n'a pas.
+	const mode: ModeOrtho = due === 'atelier' ? 'motCache' : due;
+	monterTacheOrtho(mode, m, optionsTacheRevision(it, m, mode));
+}
+
+/* Ce que la RÉVISION attend d'une tâche : un seul essai (comme tous ses autres formats),
+   son propre enregistrement d'espacement, et le franchissement de la marche jouée. */
+function optionsTacheRevision(
+	it: Extract<RevItem, { kind: 'word' }>,
+	m: MotOrtho,
+	mode: ModeOrtho,
+): OptionsTache {
+	const stage = document.getElementById('revStage')!;
+	// Groupe d'appartenance du mot : c'est LUI le `lessonId` du journal, jamais la liste
+	// d'une séance d'entraînement — la révision n'en travaille aucune. Une entrée sans
+	// `lessonId` serait ignorée en silence par `capterErreur` (#391), donc invisible.
+	const lessonId = groupeOrthoDuMot(ortho, it.wordId);
+	const enonce = enonceJournalMot(m, mode);
+	return {
+		hote: stage,
+		// La carte de révision porte déjà son fond et son ombre : la tâche n'y empile pas la
+		// feuille du parcours.
+		cadre: 'ortho-run',
+		dispoDictee: voixDispo,
+		// Un seul essai par item, comme partout ailleurs en révision : une erreur bascule
+		// droit sur la correction guidée, sans « Presque, réessaie ».
+		essaisAvantCorrection: 1,
+		// Un clic malheureux sur « Vérifier » ne doit pas coûter le mot : sans réponse, il n'y
+		// a rien à corriger (parité avec le garde-fou de saisie vide d'avant ce lot).
+		ignorerReponseVide: true,
+		decisionHTML: giveUpHTML(),
+		onMonte: () =>
+			// Passé (#467) : on montre le mot, sans passer par l'atelier de correction — il n'y
+			// a aucune saisie à comparer, donc rien à souligner ni à ré-entourer. Et RIEN n'est
+			// validé : un aveu d'ignorance ne fait franchir aucune marche (critère 16).
+			wireGiveUp(() => {
+				// La dictée peut encore être en train de prononcer le mot : sans quoi sa voix
+				// se superpose quelques secondes à l'annonce du verdict. Combinaison neuve —
+				// le parcours ne propose pas « Je ne sais pas » sur une dictée.
+				stopTts();
+				capterPasse({ text: enonce, attendue: it.mot, lessonId });
+				// Exception explicite du cadrage (#618, critère 14) : l'abandon ne passe pas par
+				// l'atelier de correction, mais un mot qu'on renonce à écrire a bel et bien résisté.
+				noterMotDifficile(it.wordId, it.mot);
+				passerItem({ cible: 'stage', correct: it.mot });
+			}),
+		onReussite: () => {
+			// Le travail compte enfin (#640) : `validerMode` fait franchir la marche jouée ET
+			// toutes celles du dessous (cumul #641), chacune datée, exactement comme le parcours.
+			// `grade` enregistre l'autre versant — palier d'espacement, XP, score — les deux
+			// mécaniques étant indépendantes et n'écrivant pas au même endroit.
+			// Sous garde d'`activiteProgressive` : un mot d'ENTRETIEN a déjà toutes ses marches,
+			// il n'a donc rien à gagner, et le faire passer par la primitive daterait
+			// D'AUJOURD'HUI des marches franchies bien avant. Le cas n'est pas théorique : un mot
+			// en banque depuis avant #545 n'a aucune date, et sa frise de composition se
+			// remplirait d'un coup à sa première révision (critère 13).
+			if (activiteProgressive(m, mode, voixDispo)) validerMode(m, mode);
+			saveOrtho(ortho);
 			grade(true, it.mot);
-		} else {
-			// Erreur : on enregistre l'échec SR, puis on rebascule sur l'atelier du mot
-			// (parité avec le parcours d'entraînement) au lieu d'afficher le mot correct
-			// sans correction interactive.
-			capterRev({
-				text: enonceJournal(),
-				donnee: saisie,
-				attendue: it.mot,
-				lessonId: groupeOrthoDuMot(ortho, it.wordId),
-			});
-			recordGrade(false);
+		},
+		onEchec: (saisie, rang) => {
+			if (rang > 1) return; // garde-fou : la révision ne laisse qu'un essai
+			capterRev({ text: enonce, donnee: saisie, attendue: it.mot, lessonId });
+			recordGrade(false); // recul d'un cran en espacement, et AUCUNE marche dé-franchie
 			noterMotDifficile(it.wordId, it.mot); // correction guidée → mot difficile (#618)
-			renderWordCorrection(it, saisie);
-		}
-	});
-	// Passé (#467) : on montre le mot, sans passer par l'atelier de correction — il n'y a
-	// aucune saisie à comparer, donc rien à souligner ni à ré-entourer.
-	wireGiveUp(() => {
-		capterPasse({
-			text: enonceJournal(),
-			attendue: it.mot,
-			lessonId: groupeOrthoDuMot(ortho, it.wordId),
-		});
-		// Exception explicite du cadrage (#618, critère 14) : l'abandon ne passe pas par
-		// l'atelier de correction, mais un mot qu'on renonce à écrire a bel et bien résisté.
-		noterMotDifficile(it.wordId, it.mot);
-		passerItem({ cible: 'stage', correct: it.mot });
-	});
-	(document.getElementById('revInput') as HTMLInputElement).focus();
+		},
+		onCorrection: (saisie) => renderWordCorrection(it, saisie),
+		// La voix s'est tue en plein vol : on ne sort pas de la session (critère 19), le mot
+		// bascule sur le mot caché — la même dégradation que sur un appareil sans voix.
+		onSilence: () => {
+			voixDispo = false;
+			renderMotOrtho(it);
+		},
+	};
 }
 
 /* Orthographe — correction d'un mot raté : réaffiche l'atelier du mot (le mot en
@@ -915,7 +992,9 @@ function renderWordCorrection(it: Extract<RevItem, { kind: 'word' }>, saisie: st
 	renderAtelier(stage, m, {
 		diff: diffCorrect(saisie, m.mot),
 		consigne: "Presque ! Regarde où tu t'es trompé, puis entoure le piège.",
-		ecoute: dicteeDisponible()
+		// La voix de la SÉANCE (`voixDispo`), et non une nouvelle interrogation de l'appareil :
+		// un mot dont la dictée vient de se taire ne doit pas retrouver ici un bouton mort.
+		ecoute: voixDispo
 			? { label: 'Écouter le mot', onClick: () => dicter(m.mot, m.commeDans) }
 			: undefined,
 		onDone: () => {
@@ -1550,6 +1629,7 @@ function next() {
 
 function renderDone() {
 	active = false; // terminée : plus rien à perdre, pas de confirmation de sortie
+	nettoyerTaches(); // dernier mot affiché : plus rien à retracer au resize
 	// Une session de révision TERMINÉE compte comme une « révision » de la semaine
 	// (objectif de régularité #178). Pas de classement ni de médaille : ce run
 	// n'alimente aucun podium, il sert seulement au comptage via countSince.
@@ -1614,7 +1694,17 @@ function renderDone() {
 	// se fermerait alors sur un focus nulle part (`body.focus()` est un no-op), exactement ce
 	// que `restoreFocus` dit vouloir éviter. Même geste que la pause d'orthographe.
 	document.getElementById('revHome')!.focus({ preventScroll: true });
-	const gains = recompensesFin(niveauAvant);
+	// Étoiles de liste gagnées PENDANT la session (#640, critères 10 à 12) : annoncées ICI,
+	// au même endroit que les trophées et les niveaux. Annoncées tout de suite, et non
+	// différées à la prochaine ouverture de la liste : une liste qu'on vient d'étoiler n'a
+	// plus de raison d'être rouverte, donc l'annonce pouvait ne jamais partir. Plusieurs
+	// listes peuvent basculer dans la même séance (les mots sont tirés dans toute la
+	// banque) : chacune a son entrée. Une liste déjà étoilée à l'ouverture n'en a aucune —
+	// la célébration tient à une TRANSITION (critère 13).
+	const celeb: CelebEntry[] = ortho.listes
+		.filter((l) => !listesEtoileesAvant.has(l.id) && estEtoilee(l))
+		.map((l) => ({ icon: '🌟', text: `Liste prête : ${l.label}` }));
+	const gains = recompensesFin(niveauAvant, celeb);
 	niveauAvant = gains.niveauApres;
 	announceRewards(gains.niveauGagne, gains.recompensesNiv, gains.celeb);
 }

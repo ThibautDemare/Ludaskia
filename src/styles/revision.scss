@@ -55,12 +55,15 @@
 	flex-wrap: wrap;
 	justify-content: center;
 }
-.rev-word {
-	font-family: var(--ui);
-	font-size: 40px;
-	font-weight: 700;
-	letter-spacing: 2px;
-	color: var(--ink);
+/* Tâche d'orthographe montée dans la carte de révision (#640) : les trois rendus du
+   parcours (tuiles, mot caché, dictée) sont partagés, mais sans sa feuille `.page` — le
+   fond, l'ombre et le rayon sont déjà portés par `.rev-stage`. Reste à leur donner toute
+   la largeur de la carte : `.rev-stage` étant une colonne flex centrée, un enfant s'y
+   réduirait à la largeur de son contenu, et le bouton d'aide « ? » ancré en haut-droite
+   de `.ortho-run` viendrait sur le texte de la consigne. */
+.rev-stage > .ortho-run {
+	align-self: stretch;
+	width: 100%;
 }
 .rev-input {
 	font-family: var(--ui);

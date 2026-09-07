@@ -72,7 +72,15 @@ test('révision espacée sur une leçon due : stats de leçon écrites + UN SEUL
 /* Un seul mot d'orthographe DÛ, aucune leçon due : la session ne produit aucune stat
    de leçon (rien à agréger dans `perLesson`), mais doit garder son point d'activité
    via le repli explicite `recordSessionActivity('revision')` — sinon elle
-   disparaîtrait du graphe de l'espace encadrant. */
+   disparaîtrait du graphe de l'espace encadrant.
+
+   #640 : la révision sert désormais la MARCHE DUE du mot (`prochaineActivite`), plus
+   invariablement le mot caché — les anciens ids `#revHide`/`#revInput`/`#revValidate`
+   et la classe `.rev-word` ont disparu, remplacés par ceux du parcours
+   (`ui/ortho-taches.ts`). Peu importe ICI quelle marche est servie (le test ne
+   porte pas sur le rendu d'une tâche précise), mais le seed doit en fixer une : tuiles
+   déjà validé, motCache pas encore → la marche due est motCache, dont les ids sont
+   connus (`#btnCacher`, `#orthoInput`, `#btnVerifMot`). */
 const SEED_MOT_DU = {
 	banque: {
 		w1: {
@@ -80,7 +88,7 @@ const SEED_MOT_DU = {
 			mot: 'jardin',
 			entourage: [],
 			atelierFait: true,
-			validation: { motCache: true, tuiles: false, dictee: false },
+			validation: { tuiles: true, motCache: false, dictee: false },
 			revision: { palier: 2, prochaineRevision: 1, reussites: 2, dernierTest: 1 },
 			origine: 'liste',
 		},
@@ -100,10 +108,10 @@ test('révision espacée composée UNIQUEMENT de mots d’orthographe : pas de s
 	}, SEED_MOT_DU);
 	await gotoHash(page, 'revision-espacee');
 
-	await expect(page.locator('.rev-word')).toHaveText('jardin');
-	await page.locator('#revHide').click();
-	await page.locator('#revInput').fill('jardin');
-	await page.locator('#revValidate').click();
+	await expect(page.locator('#motAffiche')).toHaveText('jardin');
+	await page.locator('#btnCacher').click();
+	await page.locator('#orthoInput').fill('jardin');
+	await page.locator('#btnVerifMot').click();
 	await page.locator('#revNext').click();
 
 	await expect(page.locator('.rev-done')).toContainText('terminée');

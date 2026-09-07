@@ -500,11 +500,20 @@ export function showJeuView(id: string) {
 	resetSessionUI();
 	setToolbar({ verify: false, home: true, profile: true });
 	hideMenus();
+	/* L'écran est rendu VISIBLE avant le montage, et l'ordre n'est pas
+	   indifférent : un élément dans un sous-arbre `display: none` ne peut pas
+	   recevoir le focus, donc un runner qui se focalise à son montage voyait son
+	   appel ignoré en silence. Conséquence mesurée le 2026-09-07 : la frappe
+	   physique du Motus ne fonctionnait JAMAIS, pas même au premier essai — son
+	   écouteur est posé sur le plateau, et le focus restait sur `<body>`. En cas
+	   de refus, on remasque avant de rendre la main. */
+	const ecran = document.getElementById('jeuEcran')!;
+	ecran.style.display = '';
 	if (!monterJeu(id, document.getElementById('jeuEcranContent')!)) {
+		ecran.style.display = 'none';
 		goHome();
 		return;
 	}
-	document.getElementById('jeuEcran')!.style.display = '';
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showProfilesView() {

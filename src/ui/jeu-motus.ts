@@ -177,10 +177,18 @@ function creerRunner(): RunnerJeu {
 	let racine: HTMLElement | null = null;
 	let vue: HTMLElement | null = null;
 	let annonce: HTMLElement | null = null;
-	/* Fourni par `jeux-ecran.ts`. Remis à un no-op au démontage : ce rappel peut
-	   nous démonter nous-mêmes (fin par plafond), il ne doit pas rester joignable
-	   après coup. */
-	let avantNouvellePartie: () => boolean = () => true;
+	/* Fourni par `jeux-ecran.ts`. Remis à un REFUS au démontage, jamais à une
+	   autorisation : ce rappel peut nous démonter nous-mêmes (fin par plafond), il
+	   ne doit pas rester joignable après coup.
+
+	   Le défaut est `() => false` et c'est le point qui compte. Il valait
+	   `() => true`, ce qui était fail-OPEN : un futur runner qui oublierait la
+	   ligne `avantNouvellePartie = demanderPartie` de son `monter()` — copier-coller
+	   plausible, il en reste seize à écrire — ne vérifierait plus JAMAIS le plafond
+	   du jour. Aucune erreur, aucun test rouge, juste du temps de jeu illimité,
+	   c'est-à-dire une panne qui profite à l'enfant et que personne ne signale
+	   donc jamais. Relevé par `relecteur-qualite` le 2026-09-07. */
+	let avantNouvellePartie: () => boolean = () => false;
 	let vivant = false;
 
 	let mot = '';
@@ -244,12 +252,20 @@ function creerRunner(): RunnerJeu {
 		const lignes = essais.map((e) => ligneEssaiHTML(e, largeur));
 		for (let i = essais.length; i < budget; i++) lignes.push(ligneVideHTML(largeur));
 
+		/* « Ton essai » et pas « Ton mot » : la consigne juste au-dessus nomme « le
+		   mot caché », et un possessif posé sur le même nom laissait lire « invente
+		   un mot à toi » au lieu de « propose ta réponse ». Relevé par
+		   `redacteur-contenu-francais` le 2026-09-07. Sa suggestion, « Ta
+		   proposition », est écartée : « proposition » est une notion de grammaire
+		   que cette application enseigne par ailleurs, donc le mot y serait plus
+		   ambigu qu'ailleurs, pas moins. « Essai » est le vocabulaire du jeu
+		   lui-même — c'est l'unité du budget. */
 		return html`${serieHTML()}
 			<p class="motus-consigne">Trouve le mot caché. Il a ${largeur} lettres.</p>
 			<div class="motus-grille">${joindre(lignes)}</div>
 			${finHTML()}
 			<div class="motus-saisie-zone">
-				<label class="motus-saisie-label" for="motusSaisie">Ton mot</label>
+				<label class="motus-saisie-label" for="motusSaisie">Ton essai</label>
 				<input
 					type="text"
 					id="motusSaisie"
@@ -294,8 +310,21 @@ function creerRunner(): RunnerJeu {
 
 	function rendre(): void {
 		if (!vue) return;
+		/* Le focus est-il DANS la vue qu'on s'apprête à détruire ? C'est le cas
+		   après un clic sur une touche virtuelle ou sur « Valider » : le navigateur
+		   focalise le bouton, et réécrire `innerHTML` le fait disparaître — le focus
+		   retombe alors sur `<body>`, qui n'est PAS un descendant du plateau. Or
+		   l'écouteur clavier est posé sur le plateau : la frappe physique cessait
+		   donc de fonctionner dès le premier clic. Mesuré le 2026-09-07 après une
+		   remontée de `relecteur-qualite`. On rend le focus au plateau, jamais au
+		   champ : focaliser un champ ouvrirait le clavier du système par-dessus le
+		   nôtre sur tablette. */
+		const focusDansVue = vue.contains(document.activeElement);
 		vue.innerHTML = plateauHTML().balisage;
 		if (annonce) annonce.textContent = texteAnnonce();
+		if (focusDansVue || document.activeElement === document.body) {
+			racine?.focus({ preventScroll: true });
+		}
 	}
 
 	/* ---------- Gestes ---------- */
@@ -390,11 +419,18 @@ function creerRunner(): RunnerJeu {
 	/* Clavier physique. Posé sur le PLATEAU, et pas sur le champ (il faudrait viser
 	   la zone de saisie avant de pouvoir taper) ni sur le document.
 
-	   Pas sur le document, et ce n'est pas un détail : `#btnHome` quitte l'écran
-	   d'un jeu sans passer par `quitterJeu`, donc sans `demonter`. Un écouteur
-	   global survivrait à ce départ et continuerait d'avaler les touches — Entrée
-	   comprise — sur l'accueil et dans les leçons. Sur le plateau, le problème ne
-	   se pose pas : une fois l'écran masqué, plus rien n'y a le focus. */
+	   Pas sur le document, et ce n'est pas un détail : un écouteur global qui
+	   survivrait à un `demonter()` manqué continuerait d'avaler les touches —
+	   Entrée comprise — sur l'accueil et dans les leçons. Sur le plateau, le
+	   problème ne peut pas se poser : une fois l'écran masqué, plus rien n'y a le
+	   focus.
+
+	   Correction du 2026-09-07 : ce commentaire disait que `#btnHome` quittait un
+	   jeu « sans passer par `quitterJeu`, donc sans `demonter` ». C'était vrai à
+	   l'écriture, et ça ne l'est plus — `route()` appelle désormais
+	   `demonterJeuActif()` à TOUT changement de hash, précisément pour boucher
+	   cette fuite. Le raisonnement ci-dessus tient toujours, mais il repose
+	   maintenant sur la prudence et non sur un trou réel. */
 	function surTouche(e: KeyboardEvent): void {
 		if (!vivant) return;
 		const champ = champSaisie();

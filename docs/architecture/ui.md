@@ -499,12 +499,13 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
 - **ÉPHÉMÈRE par construction**, comme ce récap : aucune clé de stockage, ce module ne
   garde même pas d'état — la liste des mots vit dans l'état de séance de l'écran
   appelant (variable de module, jamais persistée) et meurt avec elle.
-- **Couverture par écran, pas par module** : dans `ortho-runner.ts`, seules les branches
-  d'escalade du mot caché et de la dictée notent un mot (2ᵉ erreur → l'atelier se rouvre
-  avec le diff) — le mode **tuiles** en est exclu **par construction**, il n'a pas de
-  branche d'escalade (rejet écrit sur sa couverture e2e, cf. [Tests](tests.md)). Dans
-  `revision.ts`, un mot est noté par un échec **et** par « Je ne sais pas, montre-moi »
-  (#467).
+- **Couverture par écran, pas par module** : le mode **tuiles** n'a **par construction** pas
+  de branche d'escalade — `essaisAvantCorrection` y vaut `Infinity` (`ortho-taches.ts`, #640,
+  qui rend désormais les trois tâches et les partage avec la révision) — donc aucun appel à
+  `noterMotDifficile` ne peut s'y produire (rejet écrit sur sa couverture e2e, cf.
+  [Tests](tests.md)). Le mot caché et la dictée, eux, l'atteignent : `ortho-runner.ts` note un
+  mot au 2ᵉ essai raté (son `onCorrection`, la marge du parcours), `revision.ts` dès le 1er
+  (elle n'en laisse qu'un) **et** par « Je ne sais pas, montre-moi » (#467).
 - **Bouton « Relire ces mots »** ouvre la relecture restreinte à ces mots via
   `goOrthoRevoirMots` (`navigation.ts`), qui pose la sélection **en mémoire** plutôt que
   dans le hash — jamais persistée, jamais partageable par URL (cf. `ortho-revoir.ts`,
@@ -1296,10 +1297,22 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   `styles/pave-signes.scss`.
 - Les runners d'**orthographe** (`ui/ortho-atelier.ts`, `ortho-liste.ts`, `ortho-revoir.ts`,
   `ortho-runner.ts`) et leur moteur (`core/orthographe/`) sont décrits dans
-  `docs/design-orthographe.md`. **Rejet écrit (#641)** : `renderTuiles` (`ortho-runner.ts`,
-  ~258 lignes) reste une fonction longue non découpée. Dette **pré-existante** — aucun hunk
-  de #641 n'y tombe —, hors périmètre de cette PR, à traiter dans une refacto dédiée plutôt
-  qu'au fil d'un changement qui ne la touche pas.
+  `docs/design-orthographe.md`. **`ortho-taches.ts`** (#640) en a été **extrait** :
+  les rendus des **trois tâches** (tuiles, affiche/masque, dictée) vivaient dans
+  `ortho-runner.ts`, en écrivant dans son état de module ; la révision espacée en avait sa
+  propre copie réduite au seul mot caché (une tâche servie hors de son rang, une réussite
+  qui ne faisait progresser aucun mot, cf. `docs/design-orthographe.md` § 3). Ce module ne
+  connaît plus que son **mot** et son **hôte** (`monterTacheOrtho(mode, mot, options:
+  OptionsTache)`) : tout ce que la tâche ne décide pas — quelle marche franchir, où va l'XP,
+  ce qui suit une réussite, ce qui se journalise (`onReussite`/`onEchec`/`onCorrection`,
+  aucun `capterErreur` ici — le `lessonId` n'appartient qu'à l'hôte) — remonte par rappels,
+  ce qui permet de la monter à l'identique sur la feuille du parcours (`ortho-runner.ts`)
+  et sur la carte de révision (`revision.ts`). Les identifiants DOM restent ceux du
+  parcours **partout** : deux jeux d'ids selon l'hôte auraient reproduit la divergence que
+  ce lot corrige. **Rejet écrit (#641)** : `renderTuiles` (~260 lignes) reste une fonction
+  longue non découpée. Dette **pré-existante** — aucun hunk de #641 n'y tombe, elle a
+  seulement changé de fichier avec #640 —, hors périmètre de cette PR, à traiter dans une
+  refacto dédiée plutôt qu'au fil d'un changement qui ne la touche pas.
 
 ## Étayage de la notion (#490)
 

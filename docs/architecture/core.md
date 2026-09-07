@@ -22,7 +22,7 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   suites #108/#448 : un exercice « déjà rangé » n'aurait aucun intérêt), déduplication
   (`uniqueComm/Exact`, `commKey`), réordonnancement pur d'un tableau d'index
   (`insertAt`/`removeAt`/`moveAt`, #374 — utilisés par les tuiles d'orthographe
-  `ui/ortho-runner.ts`, logique agnostique du DOM), **`escapeHTML`** — les **cinq**
+  `ui/ortho-taches.ts`, logique agnostique du DOM), **`escapeHTML`** — les **cinq**
   caractères qui changent le sens du markup (`& < > " '`), donc bon en contenu comme en
   **valeur d'attribut**, où un `"` refermerait l'attribut et laisserait en écrire de
   nouveaux sans avoir besoin d'un `<`. Depuis #614 il n'est plus appelé directement par
@@ -1766,7 +1766,22 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   (`modesJusqua`), en datant chacun — aucun appelant ne peut donc faire monter un mot en sautant
   une marche, et `rangMot` ne rencontre jamais d'escalier incohérent. Pendant en lecture :
   **`activiteProgressive(mot, activite, dicteeDispo)`**, qui dit si une activité pouvait encore
-  faire monter ce mot (base de l'attribution de l'étape « dictée » du programme du jour). `debutSuiviEtapes(depuis, banque)`
+  faire monter ce mot (base de l'attribution de l'étape « dictée » du programme du jour).
+  **`prochaineActivite`/`marcheLaPlusHaute`** (mêmes fonctions, cf. « Reprise & révision
+  espacée » ci-dessus) décident de la marche à servir — **la révision espacée les réutilise
+  telles quelles depuis #640** (`ui/revision.ts:renderMotOrtho`), au lieu d'y servir
+  invariablement le mot caché comme avant ce lot : une réussite en révision fait donc
+  désormais franchir la marche jouée (`validerMode`, sous garde d'`activiteProgressive` — un
+  mot d'entretien n'a plus rien à gagner, et daterait sinon D'AUJOURD'HUI des marches
+  franchies bien avant), tandis que l'échéance d'espacement (`core/revision.ts`) reste un
+  état à part, qui n'écrit pas au même endroit. **Décision consignée** sur un escalier
+  **troué** hérité d'avant #641 (ex. `{ tuiles: false, motCache: true }`, cohérent avec la
+  lecture « DU PARCOURS » de `rangMot` ci-dessus) : `prochainModeAValider` y sert la marche
+  la plus **basse non validée**, jamais la plus haute comme preuve des marches manquantes,
+  et une réussite **comble** ce trou (via `validerMode`) sans rien dé-franchir — seule
+  lecture compatible à la fois avec « la révision ne crée jamais de trou » et « un aveu
+  d'ignorance ne valide rien », cf. `docs/design-orthographe.md` § 3 et [Tests](tests.md).
+  `debutSuiviEtapes(depuis, banque)`
   (`core/orthographe/paliers.ts`) calcule la borne de mise en service **une fois par profil**
   (même principe que `debutSuiviPaliers`) sur une TROISIÈME clé, `ORTHO_ETAPES_DEBUT_KEY`
   (`ludaskia_orthoEtapesDepuis`) : distincte des deux journaux « par liste » (`ludaskia_paliers`/

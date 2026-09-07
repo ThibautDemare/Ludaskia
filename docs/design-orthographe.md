@@ -18,8 +18,8 @@ Deux fonctionnalités liées, issues de la même réflexion :
    semaine, une **liste de mots** donnée par l'école, avec une échéance courte
    (le contrôle), et on veut aussi entretenir ces mots sur l'année.
 
-Le **mode Révision espacée** qui en découle est traité en fin de document comme
-un chantier **séparé** (issue à part).
+Le **mode Révision espacée** qui en découle est décrit en fin de document (§ 3) —
+**implémenté** (#45), affiné depuis par #232/#439/#641/#658/#640.
 
 ---
 
@@ -666,34 +666,69 @@ lessonId?)` pose cette liste en attente pour le prochain rendu de cette page.
 
 ---
 
-## 3. Révision espacée (chantier séparé — issue à part)
+## 3. Révision espacée (implémentée — #45, affinée par #232/#439/#641/#658/#640)
 
-Distinction clé : la **répétition espacée** est une **stratégie de sélection**
-(« quels mots sont dus aujourd'hui »), pas un format de session. Le **sprint**
-est un format (5 min, chronométré). On **ne fond pas** l'un dans l'autre : la
-révision sera un **mode à part**, en plus des bilans et du sprint.
+Distinction clé, toujours vraie : la **répétition espacée** est une **stratégie
+de sélection** (« quels mots — et quelles leçons — sont dus aujourd'hui »), pas
+un format de session. Le **sprint** est un format (5 min, chronométré). Les deux
+ne se fondent pas : la révision est un **mode à part** (`#revision-espacee`), au
+même titre que les bilans et le sprint. Implémentation : `core/revision.ts`
+(état pur, partagé entre mots d'orthographe et leçons maths/conjugaison,
+généralisation déjà faite — pas un projet futur) + `core/revision-select.ts`
+(sélection équilibrée par source, entretien du niveau scolaire inférieur, #232)
++ `ui/revision.ts` (écran).
 
-Deux horizons à ne pas confondre :
+Deux horizons, toujours distincts dans leur **finalité**, mais plus dans leur
+**effet sur la progression du mot** depuis #641/#640 (voir plus bas) :
 - **Court terme — la liste de la semaine** (échéance = contrôle) : entraînement
-  **resserré, quotidien**, vers le contrôle. **Pas** de répétition espacée ici.
-  « Prêt » ≈ 2 réussites en dictée.
-- **Long terme — la banque de l'année** : **répétition espacée** simple, escalier
-  d'intervalles adapté CE2 (pas de SM-2 sophistiqué) :
+  **resserré**, via le parcours d'orthographe (§ 2), qui fait progresser un mot
+  sur son propre escalier (tuiles → affiche/masque → dictée, cf. *Validation
+  cumulative*).
+- **Long terme — la banque de l'année** : **répétition espacée**, escalier
+  d'intervalles adapté CE2 inspiré des « boîtes » de Leitner (`core/revision.ts`,
+  `REVISION_INTERVALLES`) : entrée → J+1 → J+3 → ~1 semaine → ~2 semaines →
+  ~1 mois → ~2-3 mois → **acquis** (sort de la rotation active, gardé
+  consultable pour la fierté). Une réussite monte d'un cran ; un échec recule
+  d'**un** cran (jamais à zéro). Plafond de séance **réglable par profil** (#439,
+  6 à 24, 12 par défaut) — une petite dose supplémentaire peut aussi entretenir
+  le niveau scolaire immédiatement inférieur (#232, cf. `core.md`).
 
-  | Étape | Délai avant re-test |
-  |---|---|
-  | Mot rangé dans la banque | ~1 semaine |
-  | Réussi | ~2-3 semaines |
-  | Réussi | ~1 mois |
-  | Réussi | ~2-3 mois → **acquis** |
-  | **Échec** | recule d'**un** cran (pas à zéro) |
+**Ce que #640 a changé : la tâche servie, et ce qu'une réussite y écrit.** Avant
+#640, un mot dû en révision recevait invariablement le **mot caché** (« on
+regarde, ça disparaît, on écrit »), quel que soit son rang réel sur l'escalier du
+parcours (§ 2) — un mot découvert la veille pouvait y recevoir du simple rappel
+là où son parcours lui donnait encore de la reconstitution (les tuiles, où
+toutes les lettres sont fournies). Et la réussite ne faisait progresser **que**
+l'échéance d'espacement ci-dessus : elle ne touchait jamais
+`validation`/`franchissements`, si bien que l'espace encadrant pouvait montrer un
+mot bloqué au rang « tuiles » alors que l'enfant l'écrivait de mémoire depuis des
+semaines — la révision entretenait la mémoire du mot sans jamais compter comme un
+apprentissage.
 
-  Plafond **~10-15 mots de révision/jour** par-dessus la liste de la semaine ;
-  si la banque déborde, on **étale**. Un mot « acquis » sort de la rotation active
-  (gardé consultable, pour la fierté).
+Les deux mécanismes restent des états **indépendants, qui n'écrivent pas au même
+endroit** : l'échéance d'espacement (ce fichier, `EtatRevision`) et l'escalier du
+parcours (§ 2, `MotOrtho.validation`/`franchissements`, franchi par
+`validerMode`). Ce que #640 corrige, c'est que la révision sert désormais la
+**marche due** (`prochaineActivite`, la même fonction que le parcours — jamais
+un tirage au hasard) et qu'une réussite y **fait franchir cette marche** comme au
+parcours (`validerMode`, cumulatif depuis #641 : valider une marche valide aussi
+toutes celles qui la précèdent). Un mot déjà acquis reçoit la **marche la plus
+haute jouable** (`marcheLaPlusHaute` : la dictée si un TTS est là, le mot caché
+sinon), en pur entretien — jamais un tirage aléatoire, qui resservirait une
+tâche plus facile que ce que l'enfant a déjà prouvé. Les trois rendus (tuiles,
+mot caché, dictée) sont **mutualisés** avec le parcours depuis #640
+(`ui/ortho-taches.ts`, cf. `ui.md`) : une seule tâche par marche, montée sur la
+carte de révision comme sur la feuille du parcours, pour qu'aucun des deux
+chemins ne puisse re-diverger.
 
-Généralisation possible (plus tard) : la même brique « éléments à réviser »
-pourrait servir aux **maths** (tables). Hors scope du premier jet.
+**Décision consignée — escalier troué hérité.** Un mot dont l'état de validation
+comporte un « trou » — hérité d'avant #641, ex. `{ tuiles: false, motCache: true
+}` — reçoit en révision la marche la plus **basse non validée** (les tuiles dans
+cet exemple), jamais une lecture qui traiterait une marche plus étayée comme
+preuve des marches manquantes. Une réussite comble alors le trou sans rien
+dé-valider ni rien accorder de plus haut : la révision ne **crée** jamais de trou
+et ne **répare** jamais un trou existant par le haut, elle fait progresser le mot
+d'une marche à la fois, exactement comme partout ailleurs.
 
 ---
 
@@ -753,8 +788,9 @@ oubli.
 - **Moteur LireCouleur 6 / portage WASM** (GPL v3, incompatible commercial).
 - **TTS embarqué** (GPL+robotique ou trop lourd) ; **audio pré-enregistré**
   (mots arbitraires saisis par le parent).
-- **Fusion révision ↔ sprint** ; **généralisation répétition espacée aux maths**
-  (plus tard).
+- **Fusion révision ↔ sprint** (les deux restent des modes distincts). La
+  généralisation aux maths/conjugaison, elle, n'est plus hors-scope : c'est
+  l'état courant depuis #45 (cf. § 3).
 
 ## Découpage pressenti en issues (pour mémoire, à ne pas créer tout de suite)
 1. **Confort de lecture + TTS « lire la consigne »** (priorité normale) — police +

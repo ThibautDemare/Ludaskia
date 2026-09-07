@@ -20,6 +20,21 @@
      hook de test ne l'expose), impossible de taper la bonne réponse. La
      défaite, elle, ne demande PAS de connaître le mot (cf. le test ci-dessous) :
      c'est donc elle qui couvre 13/34/35, pas l'inverse.
+
+   Non-régression (focus/frappe physique, corrigé le 2026-09-07) : le montage
+   du runner appelait `hote.focus()` alors que `#jeuEcran` était encore
+   `display: none` (un élément dans un sous-arbre masqué ne peut pas prendre le
+   focus, l'appel était ignoré en silence), et `rendre()` remplaçait `#motusVue`
+   par `innerHTML` sans se soucier de l'élément qui avait le focus dedans — une
+   touche virtuelle tout juste cliquée. Dans les deux cas la frappe PHYSIQUE
+   (l'écouteur `keydown` posé sur le plateau) tombait dans le vide silencieusement :
+   rien à l'écran ne la distingue d'un clavier qui n'a simplement rien reçu.
+   `.fill()`/`.press('Enter')` sur `#motusSaisie`, utilisés PARTOUT ci-dessus, sont
+   AVEUGLES à ce bug : `.fill()` refocalise explicitement l'élément à chaque appel.
+   Le test ci-dessous est le SEUL de ce fichier à taper au clavier SANS jamais
+   interagir directement avec le champ (`page.keyboard.type` seul), condition
+   nécessaire pour que le focus RÉEL du document soit ce qui route la frappe — et
+   donc pour que ce test puisse rougir si le montage ou le ré-rendu perdent le focus.
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash, seedJeuxPossedesScript, ouvrirJeuDepuisEtagere } from './helpers';
@@ -111,6 +126,34 @@ test('critères 13, 34, 35 : épuiser les essais révèle le mot, en dernière p
 		return (grille.compareDocumentPosition(fin) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
 	});
 	expect(finApresGrille).toBe(true);
+
+	expect(errors).toEqual([]);
+});
+
+/* ---------- Non-régression : la frappe PHYSIQUE alimente #motusSaisie ---------- */
+
+test('non-régression : la frappe physique alimente #motusSaisie, au montage puis après un clic sur une touche virtuelle', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedJeuxPossedesScript(['motus']));
+	await gotoHash(page, 'accueil');
+	await ouvrirJeuDepuisEtagere(page);
+
+	// --- Sans rien cliquer sur le champ : taper au clavier doit le remplir.
+	// Le mot caché fait 5 ou 6 lettres (critère 30) : 3 lettres tiennent toujours
+	// entières, aucun risque d'être tronqué par la largeur de la grille.
+	await page.keyboard.type('abc');
+	await expect(page.locator('#motusSaisie')).toHaveValue('abc');
+
+	// --- Cliquer une touche virtuelle (elle prend le focus DOM), valider (ce qui
+	// détruit toute la vue — donc l'élément qui avait le focus — via `rendre()`),
+	// puis taper de nouveau au clavier : les lettres doivent encore arriver, ce qui
+	// prouve que le focus a été rendu au plateau plutôt que perdu sur <body>.
+	await page.locator('.motus-touche').first().click();
+	await page.locator('#motusValider').click();
+	await page.keyboard.type('xyz');
+	await expect(page.locator('#motusSaisie')).toHaveValue('xyz');
 
 	expect(errors).toEqual([]);
 });

@@ -13,7 +13,8 @@ d'une liste d'ortho) · `#ortho-new` · `#ortho-edit-<id>` · `#ortho-revoir-<id
 (création / édition / relecture des listes d'ortho) · `#ortho-revoir` (#618 : relecture
 d'une SÉLECTION de mots posée en mémoire par un écran de fin de séance, jamais dans le
 hash — renvoie à l'accueil si aucune sélection n'est en attente) · `#revision-espacee` ·
-`#seance` (programme du jour composé par l'encadrant, #440) · `#profils` ·
+`#seance` (programme du jour composé par l'encadrant, #440) ·
+`#jeu-<id>` (écran plein d'un jeu de l'étagère, #661) · `#profils` ·
 `#encadrant` / `#encadrant/<onglet>` (espace encadrant en onglets, #234/#459) ·
 `#revision`
 (l'ancien sélecteur plat `#lecons` a été **supprimé** — #560 : sa fonction d'accès
@@ -187,6 +188,20 @@ natures étant reprenables) et **expire** en silence après 7 j. Le **sprint** e
 la **révision espacée** restent hors périmètre (on **confirme** avant de
 quitter ces modes, faute de reprise). Détail des modules côté rendu :
 `ui/resume.ts` et `ui/runner-reprise.ts`, cf. [Rendu & interactions](ui.md).
+
+## Étagère de jeux (#661)
+
+Chaque jeu débloqué s'ouvre en **écran plein** (`#jeu-<id>`) : la seule des quatre
+surfaces de l'étagère à ne pas être une modale (une grille manipulée au doigt ne
+tient pas dans les 560 px d'une modale). `jeuEcran` rejoint la liste en dur des
+écrans « menu » masqués par `hideMenus()` (`ui/navigation.ts`). `route()` démonte
+le jeu courant à **tout** changement d'écran (`demonterJeuActif`), pas seulement à
+la sortie par son propre bouton — sans ça, le runner restait vivant derrière
+l'écran suivant et son temps de jeu n'était jamais décompté, une fuite de plafond
+que rien ne signale puisqu'elle profite à l'enfant. Quitter un jeu — par son
+bouton ou par le plafond du jour épuisé — ramène à l'**étagère** (`openEtagere`),
+jamais à l'accueil. Détail des modules et du contrat `RunnerJeu` : [Rendu &
+interactions](ui.md) ; catalogue, paliers et plafond : [Gamification](gamification.md).
 
 ## Pipeline multi-matières
 

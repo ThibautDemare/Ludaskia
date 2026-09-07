@@ -157,6 +157,18 @@ affiche/masque, dictée), MONOTONE, écrite **structurellement** par `marquerAte
 (répartition de ses mots entre les étapes, semaine par semaine), cf. [Logique pure](core.md) et
 [Espace encadrant](espace-encadrant.md).
 
+**Étagère de jeux (#661)** : quatre clés dédiées, décrites en tête de
+`core/jeux/etat.ts` — `ludaskia_jeux_possedes` (jeux débloqués, dans l'ordre du
+choix), `ludaskia_jeux_paliers_attente` (rangs de palier franchis dont l'écran de
+choix reste à afficher), `ludaskia_jeux_plafond` (`{jour, secondes}` du temps de
+jeu déjà consommé aujourd'hui, jour LOCAL) et `ludaskia_jeux_scores` (meilleur
+score par jeu, **local** au jeu — jamais remonté au profil, à l'espace encadrant ni
+à un trophée). Aucune ne touche l'XP, les étoiles ou un trophée : jouer ne rapporte
+rien (cf. [Gamification](gamification.md)). Trois réglages associés vivent dans
+`ProfilePrefs` (`sansJeux`, `sansInvitationJeux`, `jeuxPlafondMinutes`), donc dans
+`ludaskia_profiles` comme les autres préférences plutôt que dans une clé dédiée —
+cf. [Espace encadrant](espace-encadrant.md) pour leur effet.
+
 ## Profils
 
 - Chaque profil a un **UUID stable** (id inter-appareils) et un **`updatedAt`**

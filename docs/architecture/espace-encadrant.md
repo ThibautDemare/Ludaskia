@@ -46,7 +46,8 @@ Répartition des blocs par onglet :
   deux actes de **préparation**, sortis du récap de Suivi (qui garde un simple
   renvoi textuel vers cet onglet pour les dictées prédéfinies non commencées).
 - **Réglages** — classe scolaire, aménagements dys/attention, longueur d'une
-  séance de révision, leçons déjà vues en classe (#478), code d'accès PIN.
+  séance de révision, leçons déjà vues en classe (#478), **étagère de jeux**
+  (#661), code d'accès PIN.
 - **Profils** — liste/gestion des profils + sauvegarde.
 
 ## Consultation SANS bascule
@@ -1001,6 +1002,36 @@ libre, donc pas de valeur extrême possible. Réglé sur le profil consulté
 (`setPrefFor(uuid, 'revisionPlafond', n)`), ajuste le nombre d'éléments proposés par une
 séance de `#revision-espacee` (fallback + bornage assurés à la lecture par
 `getRevisionPlafond`, cf. [Logique pure](core.md)).
+
+## Étagère de jeux (#661)
+
+**Trois réglages** (`ui/encadrant-reglages.ts:jeuxHTML`), bloc « Jeux » de
+l'**onglet Réglages** sur le profil consulté — bloc distinct des
+« Aménagements » dys/attention ci-dessus, quoique voisin. Leur ordre dit leur
+dépendance : l'accès commande tout.
+
+- **Désactiver les jeux** (`sansJeux`) — l'entrée disparaît de l'accueil de
+  l'enfant ; les jeux déjà obtenus sont **conservés** et reviennent si
+  l'adulte réactive.
+- **Temps de jeu par jour** (`jeuxPlafondMinutes`) — menu à paliers fixes (5 à
+  30 min, 10 par défaut), même parti pris que la longueur d'une séance de
+  révision ci-dessus : pas de saisie libre. Ni cumulable ni reportable — une
+  journée sans jouer n'allonge pas la suivante.
+- **Ne pas proposer de jouer en fin de séance** (`sansInvitationJeux`) —
+  coupe la seule **invitation**, sans fermer l'étagère : l'enfant garde son
+  entrée permanente sur l'accueil, mais l'application ne le relance plus
+  après une séance. **Subordonné** au premier réglage (couper l'accès coupe
+  l'invitation, quel que soit ce réglage) — l'interface le montre en
+  désactivant la case plutôt qu'en la laissant cochable sans effet.
+
+**Jouer ne rapporte ni ne coûte rien** (ni XP, ni étoile, ni trophée, ni temps
+de travail) : ce n'est ni une monnaie ni une punition, et l'écran le rappelle
+en toutes lettres à l'adulte. Un jeu ne **corrige** rien non plus, donc
+n'alimente **pas** le journal d'erreurs de cet onglet (cf. « Historique des
+erreurs » ci-dessus) — c'est délibéré, pas un trou de couverture. Cf.
+[Gamification](gamification.md) pour le catalogue et les paliers de
+déblocage, [Données & profils](donnees-et-profils.md) pour les clés de
+stockage.
 
 ## Leçons déjà vues en classe (#478)
 

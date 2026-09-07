@@ -95,8 +95,10 @@ export function ouvrirProchainChoix(): void {
 	ov.style.display = '';
 	choixRelease?.();
 	/* Pas de `onEscape` : Échap ne ferme pas cet écran, parce qu'il n'y a rien à
-	   fermer sans choisir. C'est le seul endroit de l'app où on le refuse
-	   volontairement — `activateModal` le permet en ne passant pas l'option. */
+	   fermer sans choisir. `activateModal` le permet en ne passant pas l'option —
+	   même parti pris que la modale de choix de classe de l'onboarding, qui force
+	   aussi la décision. Ce n'est donc pas une invention de ce lot, mais un
+	   mécanisme générique déjà en place. */
 	choixRelease = activateModal(ov, {
 		initialFocus: ov.querySelector<HTMLElement>('.jeu-choix-item'),
 	});

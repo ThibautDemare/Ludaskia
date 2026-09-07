@@ -156,6 +156,36 @@ débloquent aussi par palier : choisis dans le bloc « Préférences » de l'éc
 un réglage **« Réduire les animations »** (`ludaskia_anim`, classe `anim-reduced`), en
 complément de `prefers-reduced-motion`.
 
+## Étagère de jeux (#661) — DÉCOUPLÉE de l'économie de jeu
+
+Une **étagère de jeux** de pur loisir, débloquée au fil de la montée de niveau mais
+**hors de l'économie de jeu** : jouer ne rapporte **rien** (ni XP, ni étoile, ni
+médaille, ni trophée) et ne coûte rien non plus. Travailler n'achète pas de temps de
+jeu, il ouvre des jeux **nouveaux** — l'inverse aurait rouvert un péage. Deux jeux
+livrés sur un catalogue prévu pour 18 (`core/jeux/catalogue.ts`) : « Le mot caché »
+(un Motus d'orthographe lexicale, jeu-**compétence** — la compétence scolaire EST
+la mécanique) et **2048** (jeu-**refuge**, sans lien au programme). **#663** (non
+livré) y ajoutera la banque CM1 du Motus.
+
+**18 paliers** (`core/jeux/paliers.ts`), un niveau XP dédié chacun, alternant les
+deux types — aucun ne coïncide avec un déblocage existant (rang, mascotte, avatar,
+thème), pour que deux célébrations ne s'annulent pas au même instant ; vérifié par
+un test plutôt que recopié à l'œil. Franchir un palier n'ouvre **pas directement**
+un jeu mais un **écran de choix** entre 3 propositions tirées du vivier
+(`core/jeux/tirage.ts`, Fisher-Yates sur générateur injecté), les deux non retenues
+restant disponibles aux paliers suivants. C'est pourquoi ce mécanisme ne passe
+**pas** par `Recompense` (`core/unlocks.ts`, cf. « Déblocages par niveau »
+ci-dessus) : une `Recompense` décrit un **acquis immédiat**, un palier décrit un
+**rendez-vous** à honorer, pas un cadeau qui tombe tout seul.
+
+**Plafond de temps de jeu quotidien** (défaut 10 min, réglable 0-60 par l'adulte,
+non cumulable ni reportable d'un jour à l'autre, `core/jeux/plafond.ts`) et
+**invitation** de fin de séance — une proposition **après coup**, jamais une
+condition annoncée d'avance (`core/jeux/invitation.ts:doitInviter`). Trois réglages
+associés dans l'espace encadrant (accès, plafond, invitation), cf. [Espace
+encadrant](espace-encadrant.md) ; détail des modules dans [Rendu &
+interactions](ui.md) et [Logique pure](core.md).
+
 ## Easter eggs (#331) — DÉCOUPLÉS de l'apprentissage
 
 **Mini easter eggs** : de petites surprises de l'accueil à découvrir, **délibérément
@@ -196,7 +226,9 @@ Une récompense déclenche une **modale + confettis** (jamais de confettis sans
 explication) : `showLevelUp` (passage de niveau, avec ses déblocages) puis, à sa
 fermeture, `showCelebration` (célébration générique) s'il reste autre chose à
 montrer — chaînage tenu par la porte commune `announceRewards` (`ui/effects.ts`,
-cf. [Rendu & interactions](ui.md)).
+cf. [Rendu & interactions](ui.md)). Depuis #661, la chaîne se prolonge d'un
+troisième maillon, toujours en dernier : l'écran de choix d'un palier franchi de
+l'étagère de jeux (cf. « Étagère de jeux » ci-dessus).
 
 Deux chemins y mènent, avec un calcul et un libellé qui **diffèrent
 volontairement** :

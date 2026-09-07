@@ -6,12 +6,6 @@
    familles d'ids : mots d'orthographe ancrés (`orthoAncres1/150/300/420`) et
    notions ancrées — paires leçon × niveau — (`notionsAncrees1/45/120/200`).
 
-   Écrite AVANT l'implémentation (rouge attendu) : aucun de ces huit ids
-   n'existe encore dans `TROPHIES` (`src/core/rewards.ts`), donc
-   `evaluateTrophies()` ne peut rien débloquer pour eux — la spec doit
-   échouer sur « rien n'a été annoncé/ajouté », pas sur un sélecteur
-   introuvable pour une raison sans rapport.
-
    Périmètre volontairement restreint à la famille NOTIONS (paires
    leçon@niveau, portées par `ludaskia_lessonRevision`) : la famille MOTS
    partage le MÊME mécanisme (`evaluateTrophies` → `recompensesFin` →
@@ -42,19 +36,25 @@
      QUI N'EST PAS LE DERNIER (critère 9).
    Aucune stat de leçon préexistante n'est semée (contrairement à #659) :
    avec seulement 2 réponses ajoutées, `totalAnswered` reste loin des seuils
-   « N calculs », et XP (2 au total) reste loin du niveau 2 (12) — la session
-   ne doit rien déclencher d'AUTRE que le trophée testé, sans quoi
-   `#celebrateList` et les comptages de la galerie deviendraient ambigus.
+   « N calculs », et XP (2 au total) reste loin du niveau 2 (12) — mais la
+   session écrit quand même des stats de leçon et de l'XP en direct, donc RIEN
+   ne garantit qu'un AUTRE trophée d'effort ne bascule pas dans le même
+   mouvement. D'où le resserrage ci-dessous : chaque assertion de critère 6/7
+   NOMME `notionsAncrees1`, elle ne se contente pas d'un comptage global qui
+   serait tout aussi vert si un trophée sans rapport avait basculé à la place.
 
    Critères couverts (numérotation #660) :
    - 6 : le palier franchi PENDANT la session est annoncé sur l'écran de fin
-     (`#celebrateList`), par le même chemin que les autres récompenses.
+     (`#celebrateList`), par le même chemin que les autres récompenses — ET
+     l'annonce nomme SPÉCIFIQUEMENT `notionsAncrees1` (son titre, lu dans la
+     galerie, doit apparaître dans le texte de la célébration), pas un
+     trophée voisin qui aurait basculé dans le même mouvement.
    - 7 : la galerie (modale « Trophées ») affiche cette famille comme les
-     autres — SANS rendu inventé. Vérifié par une DIFFÉRENCE de comptage
-     dans `#tropheesContent .trophy` avant/après la session (même dénominateur,
-     +1 sur `.trophy.on`) plutôt que par un texte : si #660 avait dessiné une
-     grille ou un compteur séparés pour ces familles, ce comptage ne
-     bougerait pas comme attendu.
+     autres — SANS rendu inventé — ET c'est LA BONNE cellule qui bascule :
+     `[data-trophy-id="notionsAncrees1"]` passe de `.trophy.off` à
+     `.trophy.on`, tandis que le dénominateur (`#tropheesContent .trophy`,
+     total) ne bouge pas (la cellule existait déjà, verrouillée — aucune
+     grille séparée n'a été ajoutée pour cette famille).
    - 9 (négatif) : rien n'est annoncé au milieu de la session — le
      franchissement a lieu sur l'item 1/2 (pas le dernier), aucune modale ne
      doit apparaître avant le clic sur « Terminer ».
@@ -62,21 +62,36 @@
      affiché à l'enfant sur l'item qui vient de franchir le palier ne doit
      rien laisser filtrer sur l'état interne (palier/« ancré »/« acquis »).
 
+   Discriminance vérifiée explicitement (demande de resserrage) :
+   `notionsAncrees45` — le palier SUIVANT de la MÊME famille — est lu à
+   chaque ouverture de la galerie et DOIT rester verrouillé. Une
+   implémentation buguée qui allumerait toute la famille d'un coup (au lieu
+   du seul palier franchi) ferait rougir cette ligne précise, que l'ancienne
+   version par comptage global ne pouvait pas distinguer d'un déblocage
+   correct (`total`/`acquis` auraient bougé pareil dans les deux cas).
+
+   Ce que la version RESSERRÉE attrape et que l'ancienne (comptage seul)
+   laissait passer : un trophée SANS RAPPORT qui basculerait dans la même
+   session (la session écrit aussi de l'XP et des stats de leçon, donc un
+   trophée d'effort peut basculer dans le même mouvement) faisait déjà
+   avancer `acquis` de 1 et laissait `total` inchangé — indiscernable, dans
+   l'ancienne version, d'un déblocage correct de `notionsAncrees1`. Nommer
+   l'id cible (`[data-trophy-id="notionsAncrees1"]`) et vérifier le voisin
+   (`notionsAncrees45`) ferme ce trou : le test ne peut plus être satisfait
+   que par LE bon trophée.
+
+   Sélecteur `data-trophy-id` : ajouté à `unlocks-view.ts` (`trophiesContentHTML`)
+   suite à la remontée initiale de cette spec (le rendu n'exposait auparavant
+   aucun identifiant, seulement un titre non figé — relecture pédagogique en
+   cours). On continue de ne JAMAIS hardcoder le libellé d'un trophée : le
+   titre de `notionsAncrees1` est lu dynamiquement dans la galerie puis
+   cherché dans le texte de la célébration, jamais écrit en dur ici.
+
    Sélecteurs stables utilisés : #revProg, .posee-input, #revValidate,
    .rev-feedback, #revNext, .rev-done, #celebrate, #celebrateList,
    #celebrateOk, [data-act="open-trophees"], #trophees, #tropheesContent,
-   .trophy, .trophy.on.
-
-   Sélecteur stable MANQUANT signalé au passage : `.trophy` (et sa variante
-   `tierCell` dans `recompensesContentHTML`) ne porte aucun `data-trophy-id`.
-   Impossible donc de cibler UNE cellule précise sans dépendre de son titre —
-   or les titres/descriptions de #660 ne sont pas figés (relecture pédago en
-   cours), et cette spec doit rester verte quel que soit le libellé retenu.
-   D'où le choix d'un test par COMPTAGE (transition .off → .on, dénominateur
-   stable) plutôt que par correspondance de texte. Ajouter
-   `data-trophy-id="${t.id}"` sur la cellule (`unlocks-view.ts`, les deux
-   fonctions qui rendent des `.trophy`) permettrait des specs futures bien
-   plus ciblées. */
+   .trophy, .trophy.on, [data-trophy-id], .trophy-title.
+   ============================================================ */
 import { test, expect, type Page } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
 
@@ -113,28 +128,59 @@ async function remplirPoseeCorrectement(page: Page): Promise<void> {
 	}
 }
 
-async function ouvrirTropheesEtCompter(
-	page: Page,
-): Promise<{ acquis: number; total: number }> {
+/* État d'UN trophée précis dans la galerie déjà ouverte : verrouillé/débloqué (classe
+   `.trophy.on`/`.off`) + son titre (jamais comparé à un libellé en dur, seulement
+   RE-cherché tel quel dans le texte d'une autre modale — cf. critère 6 ci-dessous). */
+async function etatTrophee(page: Page, id: string): Promise<{ on: boolean; titre: string }> {
+	const cell = page.locator(`[data-trophy-id="${id}"]`);
+	await expect(cell).toHaveCount(1);
+	const classes = (await cell.getAttribute('class')) ?? '';
+	const titre = ((await cell.locator('.trophy-title').textContent()) ?? '').trim();
+	return { on: classes.split(/\s+/).includes('on'), titre };
+}
+
+interface EtatGalerie {
+	total: number;
+	acquis: number;
+	notionsAncrees1On: boolean;
+	notionsAncrees45On: boolean;
+	notionsAncrees1Titre: string;
+}
+
+/* Ouvre la modale « Trophées » depuis l'accueil, lit le dénominateur global (`total`),
+   le numérateur (`acquis`), PLUS l'état nommé de `notionsAncrees1` et de son voisin de
+   famille `notionsAncrees45` (discriminance), puis referme (Échap, comme
+   `modales-statiques.spec.ts`). */
+async function ouvrirTropheesEtLire(page: Page): Promise<EtatGalerie> {
 	await page.locator('[data-act="open-trophees"]').click();
 	await expect(page.locator('#trophees')).toBeVisible();
 	await page.locator('#tropheesContent .trophy').first().waitFor();
-	const acquis = await page.locator('#tropheesContent .trophy.on').count();
 	const total = await page.locator('#tropheesContent .trophy').count();
+	const acquis = await page.locator('#tropheesContent .trophy.on').count();
+	const notionsAncrees1 = await etatTrophee(page, 'notionsAncrees1');
+	const notionsAncrees45 = await etatTrophee(page, 'notionsAncrees45');
 	await page.keyboard.press('Escape');
 	await expect(page.locator('#trophees')).toBeHidden();
-	return { acquis, total };
+	return {
+		total,
+		acquis,
+		notionsAncrees1On: notionsAncrees1.on,
+		notionsAncrees45On: notionsAncrees45.on,
+		notionsAncrees1Titre: notionsAncrees1.titre,
+	};
 }
 
-test('critères 6, 7, 9 : une notion ancrée PENDANT la session (item non final) est annoncée à l’écran de fin et rejoint la galerie, jamais avant', async ({
+test('critères 6, 7, 9 : notionsAncrees1 (et lui seul) est annoncé et débloqué par une session dont il n’est PAS le dernier item', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(seedSessionPalier5(UUID));
 
-	// ---------- Baseline AVANT la session : compteur/état de la galerie. ----------
+	// ---------- Baseline AVANT la session : `notionsAncrees1` ET son voisin verrouillés. ----------
 	await gotoHash(page, 'accueil');
-	const avant = await ouvrirTropheesEtCompter(page);
+	const avant = await ouvrirTropheesEtLire(page);
+	expect(avant.notionsAncrees1On).toBe(false);
+	expect(avant.notionsAncrees45On).toBe(false);
 
 	// ---------- Session : item 1/2 = la paire au palier 5 (la plus en retard). ----------
 	await gotoHash(page, 'revision-espacee');
@@ -172,28 +218,34 @@ test('critères 6, 7, 9 : une notion ancrée PENDANT la session (item non final)
 	await page.locator('#revNext').click(); // « Terminer » → écran de fin
 	await expect(page.locator('.rev-done')).toBeVisible();
 
-	// Critère 6 : la notion ancrée pendant CETTE session est annoncée à l'écran de
-	// fin, par le même chemin que les autres récompenses (`#celebrate`/`#celebrateList`,
-	// `showCelebration` — `ui/effects.ts`). Le préfixe « Trophée : » est un format
-	// d'application partagé par TOUS les trophées (`recompenses-fin.ts:39`), pas le
-	// libellé propre à #660 : le vérifier ne fige aucune formulation de ce lot.
+	// Critère 6 (annonce) : quelque chose EST annoncé à l'écran de fin — capturé ici,
+	// vérifié ci-dessous une fois qu'on connaît le VRAI titre de `notionsAncrees1`.
 	await expect(page.locator('#celebrate')).toBeVisible();
-	await expect(page.locator('#celebrateList')).toContainText(/Trophée\s*:/);
+	const celebrateTexte = ((await page.locator('#celebrateList').innerText()) ?? '').trim();
+	expect(celebrateTexte).toMatch(/Trophée\s*:/);
 
 	await page.locator('#celebrateOk').click();
 	await expect(page.locator('#celebrate')).not.toBeVisible();
 
-	// ---------- Critère 7 : la galerie affiche la notion ancrée COMME LES AUTRES. ----------
+	// ---------- Critère 7 (resserré) : LA bonne cellule bascule, pas une autre. ----------
 	await gotoHash(page, 'accueil');
-	const apres = await ouvrirTropheesEtCompter(page);
+	const apres = await ouvrirTropheesEtLire(page);
 
-	// Le dénominateur ne bouge pas entre les deux lectures : la cellule existait déjà,
-	// verrouillée, avant d'être décrochée — aucune grille ni compteur séparés n'ont
-	// été ajoutés pour cette famille (sans quoi `total` aurait changé ici).
+	// Le dénominateur ne bouge pas entre les deux lectures : aucune grille ni compteur
+	// séparés n'ont été ajoutés pour cette famille.
 	expect(apres.total).toBe(avant.total);
-	// Une cellule de plus est passée de .trophy.off à .trophy.on : la transition a
-	// bien eu lieu DANS la grille commune.
-	expect(apres.acquis).toBe(avant.acquis + 1);
+	// `notionsAncrees1` — et lui nommément — est maintenant débloqué.
+	expect(apres.notionsAncrees1On).toBe(true);
+	// Discriminance famille : le palier SUIVANT (`notionsAncrees45`) reste verrouillé —
+	// une implémentation qui allumerait toute la famille d'un coup ferait rougir CETTE
+	// ligne précise, que l'ancien comptage global ne pouvait pas voir.
+	expect(apres.notionsAncrees45On).toBe(false);
+
+	// Critère 6 (resserré) : le texte annoncé en fin de session nomme SPÉCIFIQUEMENT
+	// `notionsAncrees1` (son titre, lu dans la galerie — jamais écrit en dur ici), pas un
+	// trophée d'effort/XP sans rapport qui aurait basculé dans le même mouvement.
+	expect(apres.notionsAncrees1Titre).toBeTruthy();
+	expect(celebrateTexte).toContain(apres.notionsAncrees1Titre);
 
 	expect(errors).toEqual([]);
 });

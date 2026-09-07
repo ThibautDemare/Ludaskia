@@ -219,6 +219,26 @@ désormais sur tous — et un correctif de timing, s'il s'avérait nécessaire, 
 fois. Restent en dehors, avec leur propre point d'annonce : `ui/sprint.ts`,
 `ui/revision.ts`, `ui/ortho-runner.ts`.
 
+**Symétrique, et le piège inverse : une description changée sur un élément DÉJÀ focalisé
+n'est pas relue.** NVDA et JAWS ne relisent le texte pointé par `aria-describedby` que sur
+un événement `focus` **réel** ; la seule mutation du nœud décrit ne déclenche rien. Or
+l'élément visé a très souvent déjà le focus au moment où l'on veut parler : Chrome et
+Firefox donnent le focus à un `<button>` **dès son clic**, et la touche Entrée dans un champ
+ne le déplace pas. Appeler `focus()` y est alors un no-op, et le message reste inaudible
+précisément pour qui en dépend. Le contournement retenu, documenté côté W3C ARIA et NVDA :
+forcer la transition par `blur()` puis `focus()`. Cas concret : `rienDePose`
+(`ui/ortho-taches.ts`, suite de #640), qui annonce « rien de posé » sur un clic de
+validation à vide. **Non automatisable** pour la relecture effective par une technologie
+d'assistance — un test en jsdom donne un faux vert, jsdom ne reproduisant pas le
+focus-on-click natif ; à vérifier au lecteur d'écran réel.
+
+*Rejet écrit, pour ne pas le re-remonter :* `aria-describedby="fb"` est posé **en
+permanence** sur le champ et sur le bouton de validation des tuiles, donc un refocus
+ultérieur relit le message encore affiché même sans nouvelle validation. Accepté tel quel :
+le contenu reste contextuellement exact tant qu'aucune nouvelle réponse n'a été donnée —
+redondant à l'oreille, jamais faux. Le nettoyer au fil de la frappe a été envisagé et
+écarté, le gain ne valant pas la mécanique.
+
 ## Note de maintenance
 
 Les critères WCAG sont stables entre révisions majeures. Re-vérifier uniquement si :

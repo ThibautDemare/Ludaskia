@@ -1313,6 +1313,23 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   longue non découpée. Dette **pré-existante** — aucun hunk de #641 n'y tombe, elle a
   seulement changé de fichier avec #640 —, hors périmètre de cette PR, à traiter dans une
   refacto dédiée plutôt qu'au fil d'un changement qui ne la touche pas.
+- **Suite de #640** (commentaire daté du 2026-09-07) aligne deux décisions qui avaient
+  divergé entre les deux hôtes du module partagé, chacune couverte par
+  `tests/ortho-taches-hotes.test.ts` (les deux hôtes joués pour de vrai, sur le même état
+  de banque) :
+  - **Un clic « Vérifier » à vide ne coûte plus rien, dans les deux hôtes.**
+    `ignorerReponseVide` n'était vrai qu'en révision : au parcours, un mis-clic consommait un
+    essai réel et, au clavier, le focus revenait sans qu'aucun message ne soit posé. Le
+    message vient de **`messageRienDePose(geste, verbe)`** (`core/orthographe/exercise.ts`,
+    pure) et est relié au champ (ou au bouton de validation, pour les tuiles) par
+    **`aria-describedby="fb"`** — jamais par une région live sur `#fb` : la carte de révision
+    **cède la parole** aux régions live du widget qu'elle monte quand il en a une (dictée,
+    silence TTS), et rendre `#fb` live y aurait rendu son **propre** verdict muet.
+  - **Le journal d'erreurs du parcours décrit la tâche réellement jouée.**
+    **`enonceJournalOrtho(mot, mode)`** (`core/orthographe/exercise.ts`) est désormais
+    partagé par `ortho-runner.ts` et `revision.ts` ; avant, le parcours écrivait « Mot à
+    écrire sous la dictée » pour les trois tâches, si bien qu'une erreur commise sur les
+    TUILES se lisait comme une dictée dans le tableau du parent.
 
 ## Étayage de la notion (#490)
 

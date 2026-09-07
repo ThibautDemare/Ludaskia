@@ -653,13 +653,15 @@ Côté logique (happy-dom, même pattern que `dictee-voix.test.ts`) : la tâche 
 est classée par ce que l'enfant peut FAIRE (les lettres sont-elles toutes fournies ? le mot
 est-il lisible avant la saisie ? faut-il l'entendre ?), jamais par un id DOM — la
 mutualisation des rendus (`ortho-taches.ts`) fait justement bouger les ids d'aujourd'hui. Cas
-le plus délicat, tranché et testé : un escalier **troué** hérité d'avant #641 (ex.
-`{ tuiles: false, motCache: true }`) reçoit en révision la marche la plus **basse non
+le plus délicat, tranché et testé à l'époque de ce lot : un escalier **troué** hérité d'avant
+#641 (ex. `{ tuiles: false, motCache: true }`) reçoit en révision la marche la plus **basse non
 validée**, jamais une lecture qui traiterait la marche haute comme preuve des marches
 manquantes ; une réussite comble alors le trou sans rien dé-franchir — seule lecture
 compatible à la fois avec « la révision ne crée jamais de trou » (critère 16) et « un aveu
-d'ignorance ne valide rien » (critère 9). Décision consignée dans `docs/design-orthographe.md`
-§ 3.
+d'ignorance ne valide rien » (critère 9). Décision **consolidée par la suite** : un tel trou
+est désormais réparé **à la lecture**, avant même d'atteindre cette logique (cf. « Escaliers
+troués hérités, et parité des deux hôtes (suite de #640) » ci-dessous, et
+`docs/design-orthographe.md` § 3).
 
 Côté écran, la spec couvre ce qu'un test Vitest ne voit pas : la consigne affichée correspond
 à la tâche réellement servie (critère 4), la dégradation dictée → mot caché sans voix ne fait
@@ -668,6 +670,48 @@ autrement » du parcours), une ou plusieurs listes qui deviennent acquises PENDA
 sont annoncées sur l'écran de fin (critères 11-12), et une tâche ratée en révision journalise
 puis se retrouve nommée « mot difficile » (#618) même si son format n'a jamais été joué en
 séance d'orthographe (critères 14-15).
+
+### Escaliers troués hérités, et parité des deux hôtes (suite de #640)
+
+Trois suites, écrites depuis le commentaire daté du 2026-09-07 sur #640 (qui fait foi comme
+les critères gelés), jamais depuis le code.
+
+**`tests/escalier-troue-migration.test.ts`** — un mot dont l'état de validation comporte un
+« trou » hérité d'avant #641 (ex. `{ tuiles: false, motCache: true }`) est désormais réparé **À
+LA LECTURE** (`reparerEscalier`, appelée par `parseOrtho`) plutôt que seulement contourné au
+moment de servir la marche : la lecture littérale du critère 18 (« aucune marche validée sans
+les précédentes ») était sinon intenable, combler sans réussite violant le critère 16 et
+dé-valider le critère 9. Éprouvé : le trou est comblé (§ 1) ; la marche comblée reprend la date
+de la marche haute qui la prouve et jamais celle du jour — « le point le plus important du
+lot », vérifié aussi sur la frise de composition que lit le parent (§ 2) ; rien n'est perdu et
+deux lectures successives ne dérivent pas, y compris via `loadOrthoFor` (l'espace encadrant voit
+le même état réparé, § 3) ; un échantillon de 64 mots (les 8 états de `validation` croisés avec
+4 profils de datage réellement rencontrés et l'atelier fait ou non) tient l'invariant du
+critère 18 au sens littéral (§ 4) ; et une réussite qui SUIT une réparation ne date que ce
+qu'elle fait elle-même franchir (§ 5) — sans cette garde côté `validerMode`, la première
+réussite suivante aurait redaté d'aujourd'hui une marche que la réparation avait sciemment
+laissée sans date.
+
+**`tests/ortho-taches-hotes.test.ts`** — les deux hôtes du module partagé (`ortho-taches.ts`,
+#640) jouent réellement les trois tâches (happy-dom), sur le même état de banque, pour prouver
+deux parités que le lot précédent avait laissées diverger : **Gate B**, un clic « Vérifier » à
+vide (`ignorerReponseVide`) ne coûte ni état, ni XP, ni entrée de journal dans AUCUN des deux
+hôtes, et laisse la tâche jouable (la bonne réponse qui suit compte normalement) ; **Gate C**,
+le journal d'une faute décrit la MÊME tâche de la MÊME façon dans les deux hôtes, et les trois
+tâches ne se confondent jamais entre elles. Les attendus sont dérivés du cadrage, jamais des
+chaînes du code — Gate C ne cite aucun libellé, elle compare ce que les deux hôtes écrivent
+l'un à l'autre, si bien qu'un jour où les trois phrases changent les tests restent justes. La
+disponibilité des voix est stubée (jamais celles de la machine de test, qui peut voir apparaître
+des voix SAPI en cours de session).
+
+**`tests/revision-marche-due.test.ts`** amendé : la réparation à la lecture change ce qu'un
+mot « à escalier troué » présente une fois relu par l'appli (le mot caché validé sans les
+tuiles arrive déjà avec les tuiles prouvées) — la marche qui manque le plus bas n'est donc plus
+forcément celle que le stockage montrait avant réparation, et les assertions (et un commentaire
+explicite) ont été réécrites pour porter sur l'état LU plutôt que sur l'état semé. Une séance
+sur appareil sans TTS (gate #541) sème désormais un mot cohérent (tuiles validées) plutôt que
+troué, pour la même raison : un mot troué y arriverait déjà maîtrisé une fois réparé, ce qui
+n'éprouverait plus la bascule que ce gate vise.
 
 ## Smoke tests e2e (Playwright)
 

@@ -1774,14 +1774,24 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   désormais franchir la marche jouée (`validerMode`, sous garde d'`activiteProgressive` — un
   mot d'entretien n'a plus rien à gagner, et daterait sinon D'AUJOURD'HUI des marches
   franchies bien avant), tandis que l'échéance d'espacement (`core/revision.ts`) reste un
-  état à part, qui n'écrit pas au même endroit. **Décision consignée** sur un escalier
-  **troué** hérité d'avant #641 (ex. `{ tuiles: false, motCache: true }`, cohérent avec la
-  lecture « DU PARCOURS » de `rangMot` ci-dessus) : `prochainModeAValider` y sert la marche
-  la plus **basse non validée**, jamais la plus haute comme preuve des marches manquantes,
-  et une réussite **comble** ce trou (via `validerMode`) sans rien dé-franchir — seule
-  lecture compatible à la fois avec « la révision ne crée jamais de trou » et « un aveu
-  d'ignorance ne valide rien », cf. `docs/design-orthographe.md` § 3 et [Tests](tests.md).
-  `debutSuiviEtapes(depuis, banque)`
+  état à part, qui n'écrit pas au même endroit. Un escalier **troué** hérité d'avant #641
+  (ex. `{ tuiles: false, motCache: true }`, cohérent avec la lecture « DU PARCOURS » de
+  `rangMot` ci-dessus) n'est plus laissé à la charge du runtime depuis le **lot de suite de
+  #640** (commentaire daté du 2026-09-07) : **`reparerEscalier(mot)`** (`core/orthographe/
+  runner.ts`) applique RÉTROACTIVEMENT le cumul de #641 à un état hérité — un mot qui a
+  validé une marche haute a de fait prouvé les marches du dessous, donc les combler n'est
+  pas « franchir sans réussite » (critère 16) mais reconnaître une réussite déjà survenue.
+  Appelée par **`parseOrtho`** (`core/orthographe/store.ts`), donc à TOUTE lecture (`loadOrtho`
+  comme `loadOrthoFor`, pour que l'espace encadrant voie le même état réparé) :
+  `prochainModeAValider`/`prochaineActivite` ne rencontrent donc plus, en pratique, d'escalier
+  troué — la branche « marche la plus basse non validée » qu'ils gardent reste un filet, pas
+  ce qui referme le trou. La marche comblée reprend la date de la marche qui la prouve,
+  **jamais celle du jour**, et aucune date n'est inventée quand la source n'en a pas (banque
+  d'avant #545) ; rien n'est jamais dé-franchi (critère 9). Corollaire : `validerMode` ne date
+  désormais QUE ce qu'une réussite fait effectivement franchir — sans cette garde, la première
+  réussite suivant une réparation aurait redaté d'aujourd'hui une marche que la réparation
+  avait sciemment laissée sans date. Rend le **critère 18** de #640 tenable au sens littéral
+  (cf. `docs/design-orthographe.md` § 3 et [Tests](tests.md)). `debutSuiviEtapes(depuis, banque)`
   (`core/orthographe/paliers.ts`) calcule la borne de mise en service **une fois par profil**
   (même principe que `debutSuiviPaliers`) sur une TROISIÈME clé, `ORTHO_ETAPES_DEBUT_KEY`
   (`ludaskia_orthoEtapesDepuis`) : distincte des deux journaux « par liste » (`ludaskia_paliers`/

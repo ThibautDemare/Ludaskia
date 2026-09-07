@@ -153,7 +153,11 @@ ci-dessus, plus récente qu'eux) : `ludaskia_orthoEtapesDepuis` (`ORTHO_ETAPES_D
 `franchissements?: Franchissements` (`Partial<Record<EtapeOrtho, number>>`) d'un `MotOrtho` — la
 date du PREMIER franchissement de CE mot à chaque étape de son parcours (atelier, tuiles,
 affiche/masque, dictée), MONOTONE, écrite **structurellement** par `marquerAtelierFait`/
-`validerMode` (`core/orthographe/runner.ts`). Base de la frise de COMPOSITION d'une liste
+`validerMode` (`core/orthographe/runner.ts`). Depuis la suite de #640, ce champ peut aussi être
+complété **à la lecture** par `reparerEscalier` (appelée depuis `parseOrtho`, donc à toute
+lecture de `ludaskia_ortho`) : un mot dont l'escalier est troué (hérité d'avant #641) voit ses
+marches manquantes comblées, datées de la marche qui les prouve — jamais du jour, et jamais
+inventées quand la source n'en porte aucune. Base de la frise de COMPOSITION d'une liste
 (répartition de ses mots entre les étapes, semaine par semaine), cf. [Logique pure](core.md) et
 [Espace encadrant](espace-encadrant.md).
 

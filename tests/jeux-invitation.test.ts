@@ -20,7 +20,8 @@ import { describe, it, expect } from 'vitest';
 import { doitInviter } from '../src/core/jeux/invitation';
 import type { ContexteInvitation } from '../src/core/jeux/invitation';
 
-/** Contexte « tout au vert » : accès ouvert, invitation autorisée, au moins un jeu. */
+/** Contexte « tout au vert » : accès ouvert, invitation autorisée, étagère non vide
+ *  (au moins un jeu possédé OU un choix de palier encore dû). */
 const vert = (
 	programmeActif: boolean,
 	ou: 'programme' | 'ecran',
@@ -28,7 +29,7 @@ const vert = (
 ): ContexteInvitation => ({
 	etagereActive: true,
 	invitationActive: true,
-	aUnJeu: true,
+	etagereNonVide: true,
 	programmeActif,
 	ou,
 	...reglages,
@@ -101,16 +102,32 @@ describe('doitInviter — les réglages de l’encadrant (section 5)', () => {
 });
 
 describe('doitInviter — rien à proposer, rien à dire (critère 27)', () => {
-	it('n’invite pas un enfant qui ne possède aucun jeu', () => {
-		// Avant le premier palier (niveau 2), l'étagère est vide : inviter enverrait
-		// l'enfant sur une liste vide, et formulerait le jeu comme une promesse.
+	it('n’invite pas quand l’étagère est vide', () => {
+		// Avant le premier palier (niveau 2), il n'y a ni jeu ni choix dû : inviter
+		// enverrait l'enfant sur une liste vide, et formulerait le jeu comme une promesse.
 		for (const s of SITUATIONS) {
-			expect(doitInviter(vert(s.programmeActif, s.ou, { aUnJeu: false }))).toBe(false);
+			expect(doitInviter(vert(s.programmeActif, s.ou, { etagereNonVide: false }))).toBe(false);
 		}
 	});
 
-	it('invite dès le premier jeu possédé', () => {
-		expect(doitInviter(vert(false, 'ecran', { aUnJeu: true }))).toBe(true);
+	it('invite dès qu’il y a quelque chose à ouvrir', () => {
+		expect(doitInviter(vert(false, 'ecran', { etagereNonVide: true }))).toBe(true);
+	});
+
+	it('« non vide » veut dire un jeu OU un choix dû — pas « possède un jeu »', () => {
+		/* Le cas qui manquait, et qui a coûté un bug (2026-09-07) : un enfant qui ferme
+		   son tout premier écran de choix possède ZÉRO jeu et a un choix en attente. Le
+		   champ s'appelait alors `aUnJeu`, il valait `false`, et l'invitation se taisait —
+		   alors que le critère 42 interdit tout badge sur l'accueil, donc plus rien ne
+		   ramenait l'enfant vers ce qu'il avait gagné.
+
+		   Vu d'ici, ce cas ne se distingue plus du cas nominal : `doitInviter` reçoit un
+		   booléen déjà calculé, et c'est bien le sens du renommage — la règle ne doit pas
+		   avoir à connaître les deux sources. Ce que ce test garde, c'est donc le NOM et
+		   son intention ; la fusion des deux sources, elle, est asservie plus bas au
+		   niveau de l'appelant, seul endroit où l'erreur pouvait se produire. */
+		const zeroJeuMaisUnChoixDu = vert(false, 'ecran', { etagereNonVide: true });
+		expect(doitInviter(zeroJeuMaisUnChoixDu)).toBe(true);
 	});
 });
 
@@ -128,13 +145,14 @@ describe('doitInviter — la table complète des 32 entrées', () => {
 		let vues = 0;
 		for (const etagereActive of [true, false]) {
 			for (const invitationActive of [true, false]) {
-				for (const aUnJeu of [true, false]) {
-					if (etagereActive && invitationActive && aUnJeu) continue; // les 4 lignes ci-dessus
+				for (const etagereNonVide of [true, false]) {
+					// les 4 lignes ci-dessus
+					if (etagereActive && invitationActive && etagereNonVide) continue;
 					for (const s of SITUATIONS) {
 						const c: ContexteInvitation = {
 							etagereActive,
 							invitationActive,
-							aUnJeu,
+							etagereNonVide,
 							programmeActif: s.programmeActif,
 							ou: s.ou,
 						};

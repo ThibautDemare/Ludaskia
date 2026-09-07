@@ -31,7 +31,7 @@
    ============================================================ */
 import { html, type SafeHtml, VIDE } from '../core/html';
 import { doitInviter } from '../core/jeux/invitation';
-import { jeuxPossedes } from '../core/jeux/etat';
+import { etagereNonVide } from '../core/jeux/etat';
 import { etagereJeuxActive, invitationJeuxActive } from '../core/profiles';
 import { vueProgramme } from './seance';
 import { openEtagere } from './jeux-etagere';
@@ -42,7 +42,7 @@ export function invitationHTML(ou: 'programme' | 'ecran'): SafeHtml {
 	const afficher = doitInviter({
 		etagereActive: etagereJeuxActive(),
 		invitationActive: invitationJeuxActive(),
-		aUnJeu: jeuxPossedes().length > 0,
+		etagereNonVide: etagereNonVide(),
 		programmeActif: vueProgramme() !== null,
 		ou,
 	});

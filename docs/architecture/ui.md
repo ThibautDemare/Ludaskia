@@ -454,6 +454,17 @@ jamais au chargement du module — contrairement au cycle `main ↔ navigation` 
 motivé l'extraction de `menu.ts`, où l'effet de bord était justement **au chargement**
 (`wireDOM()`). Rien à extraire ici.
 
+**Troisième cycle d'imports TOLÉRÉ, `seance.ts` ↔ `jeux-invitation.ts`** (même
+critère, cf. « Menu, préférences, thèmes & accessibilité » plus bas) :
+`jeux-invitation.ts` importe `vueProgramme` de `seance.ts` (dans `invitationHTML`,
+pour savoir si un programme du jour est actif) et `seance.ts` importe
+`invitationHTML` de `jeux-invitation.ts` (dans `renderSeance`, bloc
+`.programme-fini`). S'y ajoute un chemin à **trois nœuds** :
+`seance.ts` → `sprint.ts` (`startDefaultSprint`) → `jeux-invitation.ts`
+(`invitationHTML`) → `seance.ts` (`vueProgramme`). Les trois imports en jeu restent
+**à l'intérieur d'une fonction**, jamais au chargement du module — même garantie
+que le second cycle ci-dessus, rien à extraire.
+
 Deux non-décisions du cadrage, à ne pas re-proposer :
 - **Aucun état persistant, aucun cumul consultable côté enfant.** Pas de tuile
   d'accueil, pas d'historique : le récap est un épilogue de séance, pas un carnet de
@@ -539,6 +550,14 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   parcours/révision ortho, **révision espacée**, #659) — cf.
   [Gamification](gamification.md) pour le calcul en amont (`recompensesFin` ou
   inline selon le chemin) et pourquoi son libellé diffère.
+  Depuis #661, `announceRewards` gagne un **troisième maillon** : `apresChaine()`
+  appelle `ouvrirProchainChoix()` (`jeux-choix.ts`, ci-dessous) une fois les deux
+  premières modales purgées — l'écran de choix d'un palier franchi de l'étagère de
+  jeux. `effects.ts` fait donc office d'**orchestrateur** de toute la chaîne de
+  récompenses, ce qui couple un module au nom générique à `jeux-choix.ts` ;
+  décision **préexistante** à #661 (la fonction orchestrait déjà niveau →
+  célébration), simplement étendue ici. Si la chaîne s'allonge encore, extraire
+  l'orchestration dans son propre module.
 - **`aide-exercice.ts`** (#272) — couche **UI de l'aide contextuelle** (contenu dans
   `core/aide.ts`) des runners à mécanique non intuitive : `monterBoutonAide(conteneur,
   type)` pose un bouton « ampoule » persistant, `maybeAutoAide(type)` ouvre l'aide **au
@@ -1300,6 +1319,51 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   ~258 lignes) reste une fonction longue non découpée. Dette **pré-existante** — aucun hunk
   de #641 n'y tombe —, hors périmètre de cette PR, à traiter dans une refacto dédiée plutôt
   qu'au fil d'un changement qui ne la touche pas.
+
+## Étagère de jeux (#661)
+
+Cinq modules, au-dessus des huit modules **purs** de `core/jeux/` (cf. [Logique
+pure](core.md)) : aucun n'y connaît de jeu concret — chaque runner s'enregistre
+lui-même par `enregistrerJeu(id, fabrique)` **à son propre chargement**
+(`jeu-motus.ts`, `jeu-2048.ts`, importés dans `main.ts`), pour que l'accueil
+n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
+
+- **`jeux-etagere.ts`** — l'**entrée** (bouton `#btnJeux` sur l'accueil, masqué
+  tant qu'aucun palier n'est franchi ou que l'encadrant a coupé l'accès) et la
+  **modale étagère** (`openEtagere`/`hideEtagere`) : liste des jeux possédés,
+  message de plafond atteint. Lancer un jeu passe par la **route**
+  (`location.hash = 'jeu-<id>'`), jamais par un appel direct au runner — c'est ce
+  qui garde le retour arrière du navigateur cohérent et ce qui permet à
+  `jeux-ecran.ts:quitterJeu` de rouvrir l'étagère derrière lui.
+- **`jeux-choix.ts`** — l'écran de choix d'**un** palier franchi (trois
+  propositions tirées par `core/jeux/tirage.ts`, cf. [Gamification](gamification.md)) :
+  `ouvrirProchainChoix()` empile les paliers en attente et n'en traite qu'un à la
+  fois, sans consommer un palier dont le vivier ne rend aucune proposition (il se
+  redéclenchera quand la classe du profil ouvre des jeux). **Sans `onEscape`**
+  (choix forcé, même parti pris que la modale de choix de classe de l'onboarding) :
+  choisir est la seule sortie de cet écran.
+- **`jeux-ecran.ts`** — l'**écran plein** d'un jeu (cf. [Modes &
+  navigation](modes-et-navigation.md)) et le contrat **`RunnerJeu`**
+  (`monter(hote, avantNouvellePartie)` / `demonter()`) que chaque jeu implémente :
+  ce module tient ce qui est commun à n'importe quel jeu — le retour vers
+  l'étagère (jamais l'accueil), le décompte du temps joué (mesuré à la SORTIE
+  d'une partie, jamais affiché en cours de jeu), et le refus d'une nouvelle
+  partie une fois le plafond du jour épuisé. `avantNouvellePartie` est appelé par
+  le runner **juste avant** de lancer une partie, jamais après : vérifier le
+  plafond en FIN de partie aurait refermé l'écran au moment même où le Motus
+  révèle le mot cherché.
+- **`jeux-invitation.ts`** — le bloc de fin de séance (`invitationHTML('ecran' |
+  'programme')`, cf. `core/jeux/invitation.ts:doitInviter`) : une proposition
+  **après coup**, jamais une condition annoncée d'avance — aucune formulation du
+  type « pour débloquer » ou « il te reste ». **Six points d'appel fixes**
+  (`session.ts`, `lecon-runner-shared.ts`, `sprint.ts`, `revision.ts`,
+  `ortho-runner.ts` ×2, `seance.ts` seul pour l'emplacement « programme »), gardés
+  par un gate dédié (cf. [Tests](tests.md)).
+- **`jeu-motus.ts`** / **`jeu-2048.ts`** — les deux runners livrés, chacun un
+  `RunnerJeu` autour de son moteur pur (`core/jeux/motus.ts` /
+  `core/jeux/deux-mille-quarante-huit.ts`). Convention de nommage
+  `src/ui/jeu-<id>.ts` : le nom du fichier DIT quel jeu du catalogue il sert,
+  vérifié par un gate (cf. [Tests](tests.md)).
 
 ## Étayage de la notion (#490)
 

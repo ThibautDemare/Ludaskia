@@ -1928,3 +1928,44 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   jouées ∪ déclarées, comptées une seule fois) ; une leçon déjà **jouée** dans l'appli
   est exclue des `declarables` (la déclarer n'ajouterait rien). Consommé par
   `ui/encadrant-reglages.ts` (cf. [Espace encadrant](espace-encadrant.md)).
+
+## Étagère de jeux (#661)
+
+Huit modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
+`etat.ts` (le seul à lire/écrire le stockage) — cf. [Gamification](gamification.md)
+pour le pourquoi du dispositif (pas de `Recompense`, pas d'XP) et [Espace
+encadrant](espace-encadrant.md) pour les trois réglages adulte.
+
+- **`catalogue.ts`** — `JEUX: JeuDef[]` (id, libellé enfant, icône, `type: 'C' |
+  'R'` — compétence / refuge —, `competence?` réservée à l'espace encadrant,
+  jamais montrée à l'enfant, `levels?` absent = toutes les classes). Deux jeux
+  livrés (`motus`, `2048`) sur un catalogue prévu pour 18 (#663 y ajoutera la
+  banque CM1 du Motus).
+- **`paliers.ts`** — `PALIERS` : 18 rangs, un niveau XP dédié chacun, alternant
+  `R`/`C`. `paliersFranchis(avant, apres)` rend les rangs strictement franchis
+  entre deux niveaux (borne de départ exclue, d'arrivée incluse — même grammaire
+  que `recompensesEntre`), `[]` à la baisse.
+- **`tirage.ts`** — `proposerJeux(...)` : les 3 propositions d'un palier
+  (Fisher-Yates sur générateur injecté), d'abord les jeux du type du palier puis
+  l'autre type pour compléter ; pure, ne mute jamais le vivier reçu — les jeux non
+  choisis y restent.
+- **`plafond.ts`** — arithmétique pure du temps de jeu quotidien (`jourLocal`,
+  `restantSecondes`, `consommer`) : borné, non cumulable, jour LOCAL passé en
+  paramètre plutôt que lu de l'horloge, pour rester testable aux bords de journée.
+- **`etat.ts`** — la SEULE couche du dispositif à toucher `localStorage`, quatre
+  clés (cf. [Données & profils](donnees-et-profils.md)) : jeux possédés, paliers
+  en attente de choix, plafond du jour, meilleur score par jeu — ce dernier
+  volontairement en dehors de `core/progress.ts` (namespacé par niveau scolaire),
+  un jeu ignorant la classe de l'enfant.
+- **`motus.ts`** — correcteur du Motus (`evaluerEssai`, deux passes pour ne pas
+  sur-créditer une lettre répétée plus de fois qu'elle n'apparaît dans le mot) et
+  vivier de mots (`vivierMots`/`tirerMot`, filtré aux séries `fr-ortho-theme-*` de
+  5-6 lettres, sans homophone ni famille irrégulière/invariable/CM1, cf.
+  `data/francais/orthographe.ts`).
+- **`deux-mille-quarante-huit.ts`** — moteur du 2048 (`glisser`/`ajouterTuile`/
+  `partieFinie`), grille et aléa injectés, une tuile née d'une fusion verrouillée
+  pour le reste du coup (`[2,2,4]` glissé rend `[4,4]`, jamais `[8]`).
+- **`invitation.ts`** — `doitInviter(ContexteInvitation)` : la règle pure qui
+  décide si l'étagère se propose en fin de séance, et à quel emplacement
+  (« programme » DÉPLACE l'invitation vers la fin d'un programme du jour plutôt
+  que de la dupliquer à chaque étape).

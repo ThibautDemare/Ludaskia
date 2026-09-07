@@ -63,6 +63,8 @@ de progression.
 - **Médailles** de classement, **records** personnels, **étoiles** par leçon
   réussie sans faute.
 - **Trophées à débloquer**, dont des séries **par matière** et **par catégorie**.
+- **Des jeux à débloquer** en montant de niveau, purement pour le plaisir : jouer
+  ne rapporte ni ne coûte rien à la progression.
 - **Statistiques par leçon** pour repérer les thèmes à retravailler.
 - **Correction immédiate** : la bonne réponse est affichée en cas d'erreur.
 
@@ -76,8 +78,9 @@ L'**espace encadrants** réunit ce qui s'adresse à l'adulte, sans rien rendre
 obligatoire : l'enfant peut s'entraîner sans qu'un adulte ait quoi que ce soit à
 régler. On y **suit** où en est chaque notion et sur quoi ça a coincé, on
 **prépare** une séance ou une leçon « à revoir », on **adapte** l'application
-(classe, aménagements « dys » / attention), et on épingle les **listes de dictée**
-saisies pour l'enfant. Un **code d'accès** optionnel garde le tout hors de portée.
+(classe, aménagements « dys » / attention, accès aux jeux et temps de jeu
+quotidien), et on épingle les **listes de dictée** saisies pour l'enfant. Un
+**code d'accès** optionnel garde le tout hors de portée.
 
 Par principe : ni note, ni moyenne, ni classement, ni comparaison entre enfants —
 un outil d'accompagnement, pas un bulletin. Le détail est dans

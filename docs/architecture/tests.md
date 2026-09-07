@@ -245,6 +245,47 @@ la classe `.enc-trav-cap` se contournerait par un simple renommage. Contrepartie
 **checklist** plutôt qu'en test : une ligne dans le prompt de `relecteur-qualite`
 (`.claude/agents/relecteur-qualite.md`).
 
+### Couverture e2e des jeux de l'étagère, quatrième surface (#661)
+
+`tests/couverture-e2e-gate.test.ts` (le même fichier que ci-dessus) ajoute une
+**quatrième surface**, aveugle aux trois précédentes par construction : un
+`src/ui/jeu-*.ts` n'est ni un mode de leçon, ni un `lecon-*.ts` aiguillé par
+`navigation.ts`, ni un type d'`Exercise`. Un jeu livré sans spec ne faisait donc
+rougir strictement rien — CI verte, et le trou ne se voit qu'à l'usage.
+
+Le signal de couverture est l'**id du jeu**, pas le nom du fichier : la convention
+`src/ui/jeu-<id>.ts` (vérifiée par le même gate) fait que le nom du fichier dit
+quel jeu du catalogue (`core/jeux/catalogue.ts`) il sert, et une spec l'atteint
+soit par sa route (`jeu-<id>`), soit par le bouton de l'étagère
+(`data-jeu="<id>"`). Trois vérifications : chaque runner porte l'id d'un jeu
+déclaré au catalogue **et** appelle `enregistrerJeu(...)` ; chaque jeu du
+catalogue a bien son runner (sinon il apparaît dans l'étagère et n'ouvre rien) ;
+chaque runner est atteint par au moins une spec e2e.
+
+### Points d'appel de l'invitation vers l'étagère (#661)
+
+`tests/jeux-invitation-points-appel-gate.test.ts` garde ce que
+`tests/jeux-invitation.test.ts` (32 combinaisons de `doitInviter`, pur) ne peut
+pas voir : la règle peut être parfaitement juste pendant qu'un écran de fin
+oublie de l'appeler — rien ne rougirait, l'invitation disparaîtrait simplement
+d'un écran, remarqué seulement à l'usage. Une **liste en dur** de six points
+d'appel (`session.ts`, `lecon-runner-shared.ts`, `sprint.ts`, `revision.ts`,
+`ortho-runner.ts` ×2, `seance.ts`), plutôt qu'un scan par convention de nom :
+l'ensemble des écrans de fin est **fermé** (il ne grandit pas à chaque leçon,
+contrairement aux `lecon-*.ts` du gate de couverture ci-dessus), donc le risque
+réaliste est qu'un refactor en déplace ou en perde un, pas qu'on en ajoute un
+sans y penser.
+
+Trois défauts attrapés : un fichier qui perd son appel ; un écran de fin
+ordinaire qui passerait `'programme'` au lieu d'`'ecran'` — bug silencieux,
+l'invitation ne disparaîtrait que les jours SANS programme du jour ;
+`ortho-runner.ts`, qui porte DEUX écrans de fin distincts, retombé à un seul
+appel (perdre le second ne changerait rien au premier, le genre de perte
+qu'aucune relecture ne voit). Une section « auto-contrôle » rejoue les contrôles
+eux-mêmes sur des sources mutées en mémoire pour vérifier qu'ils savent rougir.
+Ce que le gate ne prouve pas : que le bloc arrive réellement à l'écran (affaire
+des specs Playwright, qui assertent `.jeu-invitation`).
+
 ### Nom accessible des champs de réponse (#577)
 
 `tests/champs-libelles.test.ts` balaie le catalogue et exige qu'aucun `<input class="ans…">`
@@ -428,7 +469,7 @@ loin par une autre. Il ne vérifie **aucune valeur** : `flex-basis: 100%` devenu
 est invisible ici (domaine du e2e et de la relecture). Portée limitée aux `.scss` de `src/` : ni
 le CSS inline d'`index.html`, ni celui d'un futur composant.
 
-### Contraste AA des tokens de couleur (#576, #582)
+### Contraste AA des tokens de couleur (#576, #582, #661)
 
 `tests/contraste-tokens.test.ts` lit les tokens dans `base.scss`/`themes.scss` et éprouve
 leur contraste WCAG **thème par thème** — les six (cinq clairs + Nuit ; « Clair-obscur »
@@ -482,6 +523,26 @@ même là que le parent lit le corrigé. Chaque token forcé doit désormais val
 claire, et toute divergence voulue s'écrit avec sa raison (`--page-bg`, blanc sur papier —
 imprimer un aplat teinté gâcherait de l'encre pour rien). Le test échoue **aussi** si une
 divergence déclarée cesse d'en être une.
+
+**Ce que #661 y ajoute** : deux invariants que la lecture par tokens ne voyait pas,
+tous deux repérés en relecture d'accessibilité.
+
+- **La palette en dur du plateau 2048** (`jeu-2048.scss`) — une aire de jeu garde
+  la même rampe sur les six thèmes, donc elle ne peut pas être tokenisée. Ses
+  ratios étaient mesurés à la main dans l'en-tête de sa feuille (un constat écrit
+  une fois, sans test, comme `--muted` avant #576) ; ils sont désormais relus et
+  recalculés à chaque `npm test` : le chiffre lisible sur chacune des onze tuiles
+  (`.g2048-case[data-valeur]`, 2 à 2048, plus la règle générique qui prend le
+  relais au-delà) reste lisible sur son fond, et chaque tuile se détache du cadre
+  du plateau.
+- **Une troisième nature de cas, « grand texte »** — un couple dont la conformité
+  tient à la TAILLE et non à la couleur (`--on-accent` sur `--warn`, 4,24:1, sous
+  les 4,5:1 du texte courant mais au-dessus des 3:1 que WCAG 1.4.3 accorde au
+  texte d'au moins 18 pt, ou 14 pt en gras). Le gate ne se contente pas de la
+  couleur : il **mesure** les corps de police réellement utilisés par chaque
+  règle citée et vérifie qu'ils franchissent encore la bascule « grand texte » —
+  sans quoi la table `PAIRES_GRAND_TEXTE` pourrait dériver vers un plancher de
+  taille non tenu, en silence.
 
 **La formule vit dans `tools/contrast/wcag.js`**, partagé avec l'outil interactif
 `tools/contrast/contrast.mjs` (qui n'en est plus que l'habillage CLI). Celui qu'on lance pour

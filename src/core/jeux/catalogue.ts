@@ -44,6 +44,11 @@ export const JEUX: JeuDef[] = [
 		levels: ['ce2', 'cm1'],
 	},
 	{ id: '2048', label: '2048', icone: '🔢', type: 'R' },
+	// Sudoku à silhouettes (#666). Type R, donc ni `competence` ni `levels`
+	// (critère 20) : il n'est adossé à aucun attendu du programme — vérifié dans
+	// `docs/reference/programmes/`, il n'y apparaît nulle part — et sa valeur est
+	// méthodologique, pas curriculaire.
+	{ id: 'sudoku', label: 'Sudoku des formes', icone: '🔷', type: 'R' },
 ];
 
 export function jeuParId(id: string): JeuDef | undefined {

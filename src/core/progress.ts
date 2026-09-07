@@ -8,7 +8,7 @@ import { getAllLessons, getLessonById } from './catalog';
 import type { SchoolLevel } from './catalog';
 import { LEVEL_ORDER, niveauInferieurImmediat } from './levels';
 import { niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
-import { etatNeuf, avancerEtat } from './revision';
+import { etatNeuf, avancerEtat, estAcquis } from './revision';
 import { countDue } from './revision-select';
 import type { LeconBasNiveau } from './revision-select';
 import type { EtatRevision, OrthoState } from './orthographe/types';
@@ -587,6 +587,29 @@ function loadLessonRevisionsRaw(): Record<string, EtatRevision> {
 }
 export function loadLessonRevisions(): Record<string, EtatRevision> {
 	return scopeActif(loadLessonRevisionsRaw());
+}
+/* Notions ANCRÉES (#660) : paires leçon × niveau arrivées au sommet de l'escalier de
+   répétition espacée (`PALIER_ACQUIS`, soit 137 jours sans échec au minimum). Sert de
+   métrique à une famille de trophées ; l'unité est la PAIRE, comme les étoiles cumulées
+   (#559) : retravailler une notion au niveau supérieur est un travail distinct.
+
+   Lu sur la carte BRUTE, jamais sur `loadLessonRevisions()` : la vue scopée n'expose que
+   le niveau actif de chaque matière, donc passer les maths au CM1 ferait BAISSER le
+   compteur et rendrait inatteignable un palier déjà frôlé — c'est exactement le défaut
+   que #559 a corrigé pour les étoiles.
+
+   Les entrées dont la leçon a QUITTÉ le catalogue sont comptées elles aussi, à la
+   différence de `loadLessonRevisionsBasNiveau` (qui, lui, doit générer un exercice, donc
+   a besoin de la leçon). Contrepartie assumée : renommer l'id d'une leçon ajoute +1
+   définitif (l'ancienne clé reste ancrée, la nouvelle s'ancrera à son tour). Le sens de
+   l'écart est ce qui tranche — un compteur de reconnaissance qui monte à tort après une
+   maintenance du catalogue est bénin ; un compteur qui BAISSE reprend à l'enfant quelque
+   chose qu'il avait réellement fait (critère 11). */
+export function notionsAncrees(): number {
+	const raw = loadLessonRevisionsRaw();
+	let n = 0;
+	for (const k in raw) if (estAcquis(raw[k])) n++;
+	return n;
 }
 /* Leçons en rotation au niveau immédiatement INFÉRIEUR au niveau actif de leur matière
    (#232). `loadLessonRevisions` (vue scopée) les exclut par construction : leur état

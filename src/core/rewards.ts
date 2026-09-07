@@ -24,8 +24,10 @@ import {
 	lessonAvgPct,
 	starsEarned,
 	starsEarnedAll,
+	notionsAncrees,
 	todayStr,
 } from './progress';
+import { estAcquis } from './revision';
 import { enReport } from './report-lecon';
 import { tourMatiereFait } from './lecon-du-jour';
 import { availableLevels, LEVEL_LABEL, LEVEL_ORDER } from './levels';
@@ -370,6 +372,98 @@ export const TROPHIES: Trophy[] = [
 		{ n: 50, title: 'Chasseur de pièges (50)', desc: "Travailler 50 mots à l'atelier." },
 		{ n: 100, title: 'Chasseur de pièges (100)', desc: "Travailler 100 mots à l'atelier." },
 	]),
+	/* ---------- Ce qui TIENT dans le temps (#660) ----------
+	   Deux familles adossées à la répétition espacée : un élément n'y compte qu'une fois
+	   arrivé au sommet de l'escalier (`PALIER_ACQUIS`), soit 137 jours sans échec au
+	   minimum, réalistement plusieurs mois avec des ratés en route. Le fait qu'un savoir ait
+	   TENU ne rapportait jusqu'ici que l'XP de fond, comme n'importe quelle bonne réponse.
+
+	   DEUX FAMILLES, JAMAIS UN COMPTEUR UNIQUE. Les mots se comptent par centaines, les
+	   notions sont bornées par le catalogue : fondus, l'événement le plus signifiant — une
+	   notion entière qui tient — disparaîtrait derrière le plus fréquent. Et « ce mot ne me
+	   piège plus » n'est pas la même fierté que « je sais encore faire ça ».
+
+	   SEUILS VOLONTAIREMENT HORS DE LA CONVENTION des autres familles (avis
+	   `gamification-enfant`) : le calibrage habituel suppose une métrique qui bouge à chaque
+	   séance, alors qu'ici un seul élément met des mois. Ancres mesurées au cadrage : 466
+	   mots distincts livrés (419 atteignables sans quitter le CE2), 264 paires leçon ×
+	   niveau (142 en CE2). Le 4e palier de chaque famille passe DÉLIBÉRÉMENT au-dessus du
+	   plafond CE2 : c'est un capstone qui suppose du contenu CM1.
+
+	   PALIER 1 À 1, et c'est le plus important des quatre : la première preuve, pour
+	   l'enfant, que ce qu'il a appris ne s'efface pas. Impossible à forcer — rien de ce
+	   qu'il fait aujourd'hui n'avancera ces compteurs avant des semaines —, donc aucune
+	   incitation au grinding : c'est une reconnaissance rétrospective, pas un objectif.
+
+	   POURQUOI « NOTION » ET NON « LEÇON » (rejet écrit, remontée `redacteur-contenu-francais`) :
+	   le compteur porte sur des paires leçon × niveau, or le catalogue expose 183 leçons pour
+	   264 paires. Un libellé « 200 leçons » afficherait donc à l'enfant un seuil SUPÉRIEUR au
+	   nombre de leçons qu'il peut voir — un écart vérifiable, pas une simple imprécision.
+	   Même raison qu'en #559, où la famille ⭐ a gardé « étoiles gagnées » plutôt que
+	   « leçons ». Le mot « notion » n'était jusqu'ici employé que côté encadrant ; c'est le
+	   prix assumé pour ne pas mentir sur ce qui est compté.
+
+	   AUCUN MOT ABSOLU dans les libellés (« pour toujours », « tu ne l'oublieras plus ») :
+	   un élément au sommet peut redescendre s'il est raté plus tard. On constate ce qui A
+	   tenu, on ne promet pas ce qui tiendra (avis `pedagogue-primaire`). Et aucune
+	   description ne commence par un verbe d'action, contrairement aux familles faisables le
+	   jour même : un enfant ne doit pas lire ces trophées comme une consigne du jour. Tenu
+	   par un gate (`tests/trophees-ancres.test.ts`, critère 8). */
+	...tiers('orthoAncres', '🧠', 'orthoMotsAncres', [
+		{
+			n: 1,
+			title: 'Premier mot qui tient',
+			desc: "Un mot d'orthographe encore connu, des mois plus tard.",
+		},
+		{
+			n: 150,
+			title: '150 mots qui tiennent',
+			desc: "150 mots d'orthographe encore connus, des mois plus tard.",
+		},
+		{
+			n: 300,
+			title: '300 mots qui tiennent',
+			desc: "300 mots d'orthographe encore connus, des mois plus tard.",
+		},
+		{
+			n: 420,
+			title: '420 mots qui tiennent',
+			desc: "420 mots d'orthographe encore connus, des mois plus tard.",
+		},
+	]),
+	/* Verbe d'USAGE ici (« qui marche encore »), verbe de RÉTENTION au-dessus (« qui
+	   tient ») : deux fiertés que le `pedagogue-primaire` tient pour cognitivement
+	   distinctes — un mot qu'on connaît encore n'est pas un savoir-faire qui fonctionne
+	   encore. Les titres de cette famille font donc 5 mots au lieu des 4 de la famille
+	   voisine : « encore » est le seul signal de durée du titre, et « marcher » ne porte pas
+	   la persistance de lui-même, contrairement à « tenir ».
+	   « Solide » a été essayé et ÉCARTÉ (relecture `redacteur-contenu-francais`) : le mot
+	   est déjà pris deux fois à des seuils sans rapport — `estNotionSolide` (`maitrise.ts`,
+	   atteint dès UNE réussite ≥ 70 %, et affiché tel quel à l'encadrant) et la leçon de
+	   géométrie « Je reconnais les solides ». Il aplatissait de surcroît la distinction
+	   ci-dessus, « tenir » et « être solide » disant la même stabilité. */
+	...tiers('notionsAncrees', '💎', 'notionsAncrees', [
+		{
+			n: 1,
+			title: 'Première notion qui marche encore',
+			desc: "Une notion qu'on sait encore, des mois plus tard.",
+		},
+		{
+			n: 45,
+			title: '45 notions qui marchent encore',
+			desc: "45 notions qu'on sait encore, des mois plus tard.",
+		},
+		{
+			n: 120,
+			title: '120 notions qui marchent encore',
+			desc: "120 notions qu'on sait encore, des mois plus tard.",
+		},
+		{
+			n: 200,
+			title: '200 notions qui marchent encore',
+			desc: "200 notions qu'on sait encore, des mois plus tard.",
+		},
+	]),
 ];
 /* ---------- Trophées par matière et par catégorie ----------
    Générés depuis le catalogue : chaque matière a des paliers de
@@ -518,6 +612,12 @@ export function gSnapshot() {
 	const estMaitriseOrtho = (m: MotOrtho) => m.validation.motCache && m.validation.tuiles;
 	const orthoMotsMaitrises = motsBanque.filter(estMaitriseOrtho).length;
 	const orthoMotsAtelier = motsBanque.filter((m) => m.atelierFait).length;
+	/* Mots ANCRÉS (#660) : arrivés au sommet de l'escalier de répétition espacée, ce qui
+	   demande 137 jours sans échec au minimum. À ne pas confondre avec `orthoMotsMaitrises`
+	   au-dessus, qui compte les mots ayant validé motCache + tuiles UNE fois — affaire de
+	   quelques séances, et qui ne dit rien de la durée. Toute la banque du profil compte, y
+	   compris les mots saisis par le parent (critère 2). */
+	const orthoMotsAncres = motsBanque.filter((m) => estAcquis(m.revision)).length;
 	const orthoListesMaitrisees = ortho.listes.filter(
 		(l) =>
 			l.motIds.length > 0 &&
@@ -574,6 +674,10 @@ export function gSnapshot() {
 		orthoMotsMaitrises, // mots d'orthographe maîtrisés (motCache + tuiles)
 		orthoMotsAtelier, // mots travaillés à l'atelier
 		orthoListesMaitrisees, // listes entièrement maîtrisées
+		orthoMotsAncres, // mots au sommet de la répétition espacée (#660)
+		// Notions au sommet de la répétition espacée (#660), en paires leçon × niveau et sur
+		// l'état BRUT — cf. `notionsAncrees` (progress.ts) pour le pourquoi du non-scopage.
+		notionsAncrees: notionsAncrees(),
 	};
 }
 /* Débloque les trophées nouvellement atteints ; renvoie les nouveaux. */

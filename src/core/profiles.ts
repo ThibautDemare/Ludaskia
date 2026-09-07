@@ -142,7 +142,14 @@ function applyActive(m: ProfilesMeta) {
  * sont bien acquis (ils l'étaient : l'enfant avait prouvé ces mots), simplement marqués sans
  * moment. Le seul retour d'`evaluateTrophies` qu'on jette est celui-là.
  *
- * Idempotent comme les deux migrations au-dessus : le second passage ne rend plus rien. */
+ * Idempotent comme les deux migrations au-dessus : le second passage ne rend plus rien.
+ *
+ * DEUXIÈME CAUSE, ARRIVÉE APRÈS (#660) : les deux familles de trophées adossées à la
+ * répétition espacée (mots et notions arrivées au sommet de l'escalier) sont, elles aussi,
+ * recalculées à chaque `evaluateTrophies()`. Un profil qui avait DÉJÀ des éléments au
+ * sommet avant la mise à jour les voit apparaître d'un coup au premier calcul — même
+ * mécanique, même remède. Ne pas supprimer ce rattrapage sans vérifier que ce retard-là est
+ * consommé lui aussi. */
 function absorberTropheesDeReparation(): void {
 	evaluateTrophies();
 }

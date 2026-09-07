@@ -145,11 +145,13 @@ const tuilesDuBac = (): HTMLElement[] => [
 	...document.querySelectorAll<HTMLElement>('#bac .tuile[data-i]'),
 ];
 
-/** Ce que l'enfant s'ENTEND dire : tout ce qu'un lecteur d'écran annonce sans qu'il ait à
-    explorer la page — régions live, et description de l'élément qui a le focus. Deux
-    mécanismes acceptés, parce que l'exigence est « on le lui dit », pas « on le met dans
-    telle balise » : un message posé dans une région `aria-live`/`role=status` est annoncé,
-    et une description rattachée au champ qui reçoit le focus l'est aussi. */
+/** Lecture STRUCTURELLE de ce qui s'adresse à un lecteur d'écran à cet instant : régions
+    live et description de l'élément focalisé. Sert à COMPARER deux gestes (« lui répond-on
+    la même chose ? »), et rien d'autre.
+    À NE PAS prendre pour une preuve d'annonce : un texte peut être là, dans la bonne
+    balise, et n'être jamais prononcé (une description n'est relue que sur un événement
+    `focus` RÉEL). C'est cette confusion qui a rendu un test vert des deux côtés du défaut ;
+    pour « est-ce entendu ? », c'est `observerAnnonce` plus bas. */
 function textesAnnonces(): string {
 	const live = [
 		...document.querySelectorAll<HTMLElement>('[role="status"], [role="alert"], [aria-live]'),
@@ -176,6 +178,87 @@ const retourVu = (): string =>
 /** Tout ce que l'enfant reçoit en retour, vu et entendu. C'est le bon grain pour comparer
     « on lui répond quoi ? » entre deux gestes, sans citer aucune phrase. */
 const retourRecu = (): string => (retourVu() + ' ' + textesAnnonces()).replace(/\s+/g, ' ').trim();
+
+/* ---------- Ce qui est réellement ANNONCÉ, et pas seulement affiché ----------
+   `textesAnnonces` ci-dessus est une lecture STRUCTURELLE : elle dit ce qu'un lecteur
+   d'écran TROUVERAIT s'il explorait la page à cet instant. Elle ne dit pas qu'il l'a
+   ENTENDU, et les deux se confondent facilement — c'est exactement le faux vert que ce
+   bloc corrige. Une annonce spontanée n'arrive que par deux voies :
+   1. une région live qui EXISTAIT DÉJÀ et dont le texte change (une région créée avec
+      son texte n'est pas annoncée) ;
+   2. une description (`aria-describedby`) relue à l'occasion d'un événement `focus`
+      RÉEL — NVDA et JAWS ne relisent rien sur la seule mutation du texte décrit, et
+      `focus()` sur l'élément DÉJÀ focalisé ne déclenche aucun événement.
+   D'où l'observation des ÉVÉNEMENTS pendant le geste, et non de `document.activeElement`
+   après coup : celui-ci a la même valeur qu'on ait annoncé ou pas, donc il ne distingue
+   rien. Aucune des deux voies n'est exigée en particulier : c'est « le message lui
+   parvient » qui est asséré, pas le mécanisme qui le porte aujourd'hui. */
+const texteDe = (e: Element | null): string => (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
+const zonesDeRetour = (): HTMLElement[] => [
+	...document.querySelectorAll<HTMLElement>('.ortho-feedback'),
+];
+const zonesLive = (): HTMLElement[] => [
+	...document.querySelectorAll<HTMLElement>('[role="status"], [role="alert"], [aria-live]'),
+];
+/** Ce que la voix de synthèse lirait comme description de cet élément, MAINTENANT. */
+const descriptionDe = (el: HTMLElement): string =>
+	(el.getAttribute('aria-describedby') ?? '')
+		.split(/\s+/)
+		.filter(Boolean)
+		.map((id) => texteDe(document.getElementById(id)))
+		.join(' ')
+		.trim();
+
+interface Observation {
+	/** Ce qui vient d'être répondu à l'écran (zones de retour dont le texte a changé). */
+	messages: string[];
+	/** Ceux qui seraient effectivement entendus, avec la voie constatée. */
+	annonces: { message: string; via: string }[];
+	/** Ceux qui resteraient MUETS pour qui ne voit pas l'écran. */
+	muets: string[];
+}
+
+/** Joue `geste` en écoutant ce qui parviendrait à un lecteur d'écran. */
+function observerAnnonce(geste: () => void): Observation {
+	const avantRetours = new Map(zonesDeRetour().map((e) => [e, texteDe(e)] as const));
+	const avantLive = new Map(zonesLive().map((e) => [e, texteDe(e)] as const));
+	// Description relue À L'INSTANT du focus (et pas après le geste) : c'est ce que la voix
+	// dirait vraiment ; une description remplie après coup ne serait jamais entendue.
+	const relues: string[] = [];
+	const noter = (e: Event): void => {
+		const cible = e.target as HTMLElement | null;
+		const d = cible ? descriptionDe(cible) : '';
+		if (d) relues.push(d);
+	};
+	document.addEventListener('focus', noter, true); // `focus` ne remonte pas : capture
+	document.addEventListener('focusin', noter); // même transition, voie bouillonnante
+	try {
+		geste();
+	} finally {
+		document.removeEventListener('focus', noter, true);
+		document.removeEventListener('focusin', noter);
+	}
+	const messages = zonesDeRetour()
+		.filter((e) => texteDe(e) !== (avantRetours.get(e) ?? ''))
+		.map((e) => texteDe(e))
+		.filter((t) => t !== '');
+	const criees = zonesLive()
+		.filter((e) => avantLive.has(e) && texteDe(e) !== avantLive.get(e))
+		.map((e) => texteDe(e));
+	const voie = (m: string): string | null => {
+		if (criees.some((t) => t.includes(m))) return 'région live';
+		if (relues.some((t) => t.includes(m))) return 'focus';
+		return null;
+	};
+	const annonces: { message: string; via: string }[] = [];
+	const muets: string[] = [];
+	for (const m of messages) {
+		const via = voie(m);
+		if (via) annonces.push({ message: m, via });
+		else muets.push(m);
+	}
+	return { messages, annonces, muets };
+}
 
 /* ---------- Les trois tâches, et l'état qui les rend dues ----------
    Les seeds suivent l'escalier : rien de validé → les tuiles sont dues ; les tuiles
@@ -227,10 +310,38 @@ function preparerSaisie(mode: ModeOrtho): void {
 	if (!cacher) throw new Error('bouton « Cacher » introuvable sur le mot caché');
 	cliquer(cacher);
 }
-function valider(): void {
+function boutonValider(): HTMLElement {
 	const b = bouton(/vérifier|valider/i);
 	if (!b) throw new Error('aucun bouton de validation à l’écran');
-	cliquer(b);
+	return b;
+}
+function valider(): void {
+	cliquer(boutonValider());
+}
+/** Valider dans les CONDITIONS DE FOCUS d'un vrai navigateur — c'est là que se joue tout
+    ce qui s'adresse à qui ne voit pas l'écran, et c'est ce qu'un `dispatchEvent('click')`
+    seul ne reproduit pas (ni happy-dom ni jsdom n'implémentent le focus-on-click natif,
+    si bien que dans le harnais tout `focus()` du code sous test passe pour une vraie
+    transition alors qu'il est un no-op dans la vie) :
+    - TUILES : Chrome et Firefox donnent le focus au `<button>` dès son clic. La cible du
+      message est donc DÉJÀ focalisée quand on lui répond, TOUJOURS ;
+    - CHAMP : l'enfant tape au clavier, il a donc le focus dans le champ, et Entrée ne
+      l'en fait pas sortir. C'est le chemin le plus courant au clavier. */
+function validerCommeAuNavigateur(mode: ModeOrtho): void {
+	if (mode === 'tuiles') {
+		const b = boutonValider();
+		b.focus();
+		expect(document.activeElement, 'prémisse : le bouton cliqué a reçu le focus').toBe(b);
+		cliquer(b);
+		return;
+	}
+	const input = champ();
+	if (!input) throw new Error('aucun champ de saisie à l’écran');
+	input.focus();
+	expect(document.activeElement, 'prémisse : l’enfant tape dans le champ').toBe(input);
+	input.dispatchEvent(
+		new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+	);
 }
 /** Le mis-clic : valider sans avoir rien saisi ni posé. */
 function verifierAVide(mode: ModeOrtho): void {
@@ -327,23 +438,34 @@ for (const hote of HOTES) {
 				expect(journal()[0].donnee).toBe(cas.mode === 'tuiles' ? 'che' : 'chevale');
 			});
 
-			it('est DIT à l’enfant, et annoncé — pas seulement un focus qui bouge', async () => {
+			it('est DIT à l’enfant, et ENTENDU — dans les conditions de focus du navigateur', async () => {
 				// Sans message, l'enfant croit avoir validé et attend ; au clavier, le focus
 				// revenait dans le champ sans que rien ne soit annoncé — donc rien du tout pour
 				// un lecteur d'écran (SC 4.1.3). L'exigence est « on le lui dit », pas « telle
-				// balise » : cf. `textesAnnonces`, qui accepte les deux mécanismes.
+				// balise » : cf. `observerAnnonce`, qui accepte région live comme description.
+				//
+				// La version d'avant de ce test asserait `textesAnnonces() !== ''`, c'est-à-dire
+				// une TOPOLOGIE (« l'élément focalisé porte une description non vide »), sur un
+				// écran où le focus n'était nulle part. Elle passait donc aussi bien avec le
+				// défaut qu'avec son correctif, dans les deux chemins réels où la cible est déjà
+				// focalisée (clic sur un bouton, Entrée dans un champ) : verte des deux côtés,
+				// elle ne gardait rien. On assère désormais un événement `focus` RÉELLEMENT
+				// déclenché, seul moment où une description est relue.
 				const { listeId } = banque({ mot: MOT, validation: cas.validation });
 				await hote.lancer(listeId);
+				expect(tacheAffichee(cas.mode)).toBe(true); // prémisse : c'est bien cette tâche
 				preparerSaisie(cas.mode);
 				expect(retourVu(), 'prémisse : rien n’est encore répondu à l’enfant').toBe('');
 
-				valider();
+				const obs = observerAnnonce(() => validerCommeAuNavigateur(cas.mode));
 
-				expect(retourVu(), 'rien d’affiché après un clic à vide').not.toBe('');
-				const annonce = textesAnnonces();
-				expect(annonce, 'rien d’annoncé après un clic à vide').not.toBe('');
+				expect(obs.messages, 'rien d’affiché après une validation à vide').not.toEqual([]);
+				expect(
+					obs.muets,
+					`affiché à l’écran mais jamais annoncé : muet pour qui ne voit pas l’écran (entendu : ${JSON.stringify(obs.annonces)})`,
+				).toEqual([]);
 				// Et surtout pas la réponse : l'enfant ne l'a pas demandée, il n'a rien répondu.
-				expect(annonce.toLowerCase()).not.toContain(MOT);
+				expect(obs.messages.join(' ').toLowerCase()).not.toContain(MOT);
 			});
 		});
 	}

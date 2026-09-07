@@ -1,0 +1,300 @@
+/* ============================================================
+   #640 (lot de suite) — LE SAUT DE LA RÉPARATION EST ABSORBÉ À L'ACTIVATION DU PROFIL.
+
+   LE DÉFAUT. La réparation des escaliers troués (`reparerEscalier`, appelée par
+   `parseOrtho`, donc à TOUTE lecture) fait monter d'un coup des mots hérités au rang
+   « maîtrisé ». Or les compteurs d'orthographe (`orthoMotsMaitrises`,
+   `orthoListesMaitrisees`) sont recalculés à CHAQUE `evaluateTrophies()`, y compris à la
+   fin de n'importe quelle leçon (`recordLessonRun`), où les nouveaux trophées sont
+   CÉLÉBRÉS. Un enfant pouvait donc voir surgir « Nouveau trophée : Collectionneur de
+   mots » à la fin d'un exercice de multiplication, sans avoir touché à l'orthographe.
+
+   L'EXIGENCE ÉPROUVÉE ICI, dérivée de la décision du mainteneur (absorber le saut au
+   moment où le profil devient actif, sans célébration) et non de l'implémentation :
+   1. après l'activation, le prochain `evaluateTrophies()` ne rend plus rien de neuf —
+      donc AUCUNE leçon ultérieure ne peut célébrer ces trophées ;
+   2. le trophée est bel et bien ACQUIS et visible en galerie : on absorbe le moment, pas
+      la récompense (l'enfant avait réellement prouvé ces mots) ;
+   3. il est acquis pour LE profil qu'on active, pas pour celui qu'on quitte ;
+   4. CONTRE-ÉPREUVE, sans laquelle rien n'est prouvé : un seuil franchi normalement,
+      par du vrai travail APRÈS l'activation, est toujours rendu par `evaluateTrophies()`
+      et toujours annoncé en fin de leçon. Le rattrapage ne rend pas le mécanisme muet.
+
+   D'OÙ VIENNENT LES ATTENDUS. Les seuils ne sont jamais écrits en dur : ils sont lus dans
+   la table `TROPHIES` (la donnée fait foi), par métrique et par plus petit palier — un
+   seuil déplacé de 10 à 8 redimensionne la fixture au lieu de faire rougir le test. La
+   taille de la banque semée se DÉDUIT du seuil.
+
+   COMMENT L'ÉTAT HÉRITÉ EST POSÉ : par `lsSetRaw`, en JSON brut, comme le ferait un vrai
+   localStorage écrit par une version d'avant #641 (même parti pris que
+   `escalier-troue-migration.test.ts`). Aucun chemin d'écriture de l'appli n'est emprunté :
+   un tel état n'est plus fabricable depuis #641.
+
+   CE QU'ON N'ÉPROUVE PAS ICI : ni le nom ni l'emplacement de la fonction d'absorption —
+   le contrat de surface est « après activation, plus rien de neuf à rendre ».
+   ============================================================ */
+import { beforeEach, describe, it, expect } from 'vitest';
+import { setOnDataWrite, lsSetRaw } from '../src/core/storage';
+import {
+	initProfiles,
+	activeProfile,
+	addProfile,
+	setActiveProfile,
+	touchActiveProfile,
+} from '../src/core/profiles';
+import { loadOrtho, saveOrtho, ORTHO_KEY } from '../src/core/orthographe/store';
+import { validerMode } from '../src/core/orthographe/runner';
+import {
+	TROPHIES,
+	evaluateTrophies,
+	gSnapshot,
+	loadTrophies,
+	trophiesVisibles,
+} from '../src/core/rewards';
+import type { Trophy } from '../src/core/rewards';
+import { recordLessonRun } from '../src/core/lesson-run';
+import { getAllLessons } from '../src/core/catalog';
+import { JOUR } from '../src/core/revision';
+import type { MotOrtho, OrthoState } from '../src/core/orthographe/types';
+
+beforeEach(() => {
+	localStorage.clear();
+	setOnDataWrite(touchActiveProfile);
+	initProfiles();
+});
+
+/* ---------- Les seuils, lus dans la table des trophées ---------- */
+
+/** Le plus petit palier d'une famille de trophées à seuil. C'est LUI qui dimensionne la
+    fixture : la banque semée porte juste de quoi le franchir, pas un nombre magique. */
+function premierPalier(metrique: string): Trophy {
+	const famille = TROPHIES.filter((t) => t.metric === metrique && typeof t.n === 'number');
+	if (!famille.length) throw new Error(`aucun trophée à seuil sur la métrique ${metrique}`);
+	return famille.reduce((a, b) => (a.n! <= b.n! ? a : b));
+}
+const TROPHEE_MOTS = () => premierPalier('orthoMotsMaitrises'); // « Collectionneur de mots » (10)
+const TROPHEE_LISTE = () => premierPalier('orthoListesMaitrisees'); // « Première liste » (1)
+const TROPHEE_ESSAI = () => premierPalier('totalRuns'); // « Premier pas » (1 bilan)
+
+/** Les trophées que la réparation peut faire franchir : les deux seules familles dont la
+    métrique dépend de `validation` (mots maîtrisés, listes maîtrisées). */
+const familleOrtho = (): Trophy[] =>
+	TROPHIES.filter((t) => t.metric === 'orthoMotsMaitrises' || t.metric === 'orthoListesMaitrisees');
+
+/* ---------- Banque HÉRITÉE (écrite avant #641) ---------- */
+
+const MOTS = [
+	'cheval',
+	'oiseau',
+	'maison',
+	'bateau',
+	'fenêtre',
+	'montagne',
+	'famille',
+	'journée',
+	'panier',
+	'tortue',
+	'chemin',
+	'village',
+	'bouteille',
+	'lumière',
+];
+
+/** Un mot de banque tel qu'une version d'avant #641 a pu l'écrire.
+    `troue` : le mot caché a été réussi (marche haute) sans que les tuiles soient validées.
+    L'escalier a un trou ; la réparation le comble à la lecture, ce qui fait passer le mot
+    au rang « maîtrisé » (mot caché ET tuiles). */
+function motHerite(i: number, troue: boolean, now: number): MotOrtho {
+	return {
+		id: 'w' + String(i),
+		mot: MOTS[i % MOTS.length],
+		entourage: [],
+		atelierFait: true,
+		validation: { tuiles: false, motCache: troue, dictee: false },
+		franchissements: troue
+			? { atelier: now - 90 * JOUR, motCache: now - 60 * JOUR }
+			: { atelier: now - 90 * JOUR },
+		revision: {
+			palier: 2,
+			prochaineRevision: now + 3 * JOUR,
+			reussites: 2,
+			dernierTest: now - JOUR,
+		},
+		origine: 'liste',
+	};
+}
+
+/** Écrit BRUTALEMENT la banque d'un profil : `troues` mots à escalier troué + `neufs` mots
+    encore vierges, tous dans UNE liste (c'est elle que compte `orthoListesMaitrisees`). */
+function semerBanqueHeritee(uuid: string, troues: number, neufs = 0): void {
+	const now = Date.now();
+	const banque: Record<string, MotOrtho> = {};
+	const motIdParForme: Record<string, string> = {};
+	for (let i = 0; i < troues + neufs; i++) {
+		const m = motHerite(i, i < troues, now);
+		banque[m.id] = m;
+		motIdParForme[m.mot.toLowerCase()] = m.id;
+	}
+	const state: OrthoState = {
+		banque,
+		listes: [
+			{
+				id: 'L1',
+				label: 'Semaine 1',
+				motIds: Object.keys(banque),
+				createdAt: now - 100 * JOUR,
+				updatedAt: now - 100 * JOUR,
+			},
+		],
+		motIdParForme,
+	};
+	lsSetRaw(uuid + '/' + ORTHO_KEY, JSON.stringify(state));
+}
+
+/** Le lancement SUIVANT de l'appli : la méta existe déjà, le profil (re)devient actif. */
+const relancerLAppli = () => initProfiles();
+
+/* ---------- Une leçon réelle, pour jouer la fin d'exercice ---------- */
+
+function leconMaths() {
+	const l = getAllLessons().find((x) => x.subject === 'math' && x.levels.includes('ce2'));
+	if (!l) throw new Error('aucune leçon de maths CE2 au catalogue');
+	return l;
+}
+
+/** Ce qu'un runner enregistre à la fin d'un essai de leçon sans faute. */
+function finDeLecon(lessonId: string, ok = 10) {
+	return recordLessonRun({
+		mode: 'lecon',
+		lessonId,
+		ok,
+		questionCount: ok,
+		ms: 60_000,
+		perLesson: { [lessonId]: { ok, total: ok } },
+	});
+}
+
+/* ============================================================
+   1. LE MOMENT EST ABSORBÉ
+   ============================================================ */
+describe('#640 — le saut de la réparation est absorbé quand le profil devient actif', () => {
+	it('après l’activation, plus rien de neuf n’est à rendre', () => {
+		const seuil = TROPHEE_MOTS().n!;
+		semerBanqueHeritee(activeProfile().uuid, seuil);
+		expect(loadTrophies()).toEqual([]); // prémisse : rien n’a encore été évalué
+
+		relancerLAppli();
+
+		// (i) le saut a bien eu lieu — sans lui, le test ne prouverait rien : les mots hérités
+		// ne portaient AUCUNE marche « tuiles » en stockage, et pèsent pourtant le seuil une
+		// fois relus.
+		expect(gSnapshot().orthoMotsMaitrises).toBeGreaterThanOrEqual(seuil);
+		// (ii) et il ne reste rien à célébrer : le prochain appel — celui de n’importe quelle
+		// fin de leçon — ne rend plus rien.
+		expect(evaluateTrophies()).toEqual([]);
+	});
+
+	it('la fin d’une leçon de maths ne célèbre aucun trophée d’orthographe', () => {
+		// Le défaut tel que l’enfant le vivait : « Nouveau trophée : Collectionneur de mots »
+		// au bout d’un exercice de multiplication, sans avoir touché à l’orthographe.
+		semerBanqueHeritee(activeProfile().uuid, TROPHEE_MOTS().n!);
+		relancerLAppli();
+
+		const res = finDeLecon(leconMaths().id);
+
+		const idsOrtho = new Set(familleOrtho().map((t) => t.id));
+		expect(res.newTrophies.filter((t) => idsOrtho.has(t.id))).toEqual([]);
+		// Rien de ce qui est ANNONCÉ à l’enfant ne nomme un trophée d’orthographe, quelle que
+		// soit la phrase qui le porterait.
+		const annonce = res.celeb.map((c) => c.text).join(' | ');
+		for (const t of familleOrtho()) expect(annonce, t.title).not.toContain(t.title);
+	});
+
+	it('le trophée est ACQUIS et visible en galerie : on absorbe le moment, pas la récompense', () => {
+		semerBanqueHeritee(activeProfile().uuid, TROPHEE_MOTS().n!);
+		relancerLAppli();
+
+		const acquis = new Set(loadTrophies());
+		const visibles = trophiesVisibles();
+		for (const t of [TROPHEE_MOTS(), TROPHEE_LISTE()]) {
+			// L’enfant avait réellement prouvé ces mots : la reconnaissance lui reste due, elle
+			// est simplement marquée sans moment.
+			expect(acquis.has(t.id), `${t.title} acquis`).toBe(true);
+			expect(
+				visibles.some((v) => v.id === t.id),
+				`${t.title} en galerie`,
+			).toBe(true);
+		}
+	});
+
+	it('c’est le profil ACTIVÉ qui reçoit le trophée, pas celui qu’on quitte', () => {
+		// Le trophée est une donnée par profil : absorber avant que le préfixe ait basculé le
+		// créditerait à l’enfant qui vient de rendre la place.
+		const premier = activeProfile();
+		const zoe = addProfile('Zoé'); // devient actif, banque vide
+		semerBanqueHeritee(zoe.uuid, TROPHEE_MOTS().n!);
+		setActiveProfile(premier.uuid);
+		expect(loadTrophies()).toEqual([]); // prémisse : personne n’a encore rien
+
+		setActiveProfile(zoe.uuid);
+		expect(loadTrophies()).toContain(TROPHEE_MOTS().id);
+		expect(evaluateTrophies()).toEqual([]); // et rien ne reste à célébrer côté Zoé
+
+		setActiveProfile(premier.uuid);
+		expect(loadTrophies()).not.toContain(TROPHEE_MOTS().id);
+	});
+});
+
+/* ============================================================
+   2. CONTRE-ÉPREUVE — le mécanisme n'est pas devenu muet
+   ------------------------------------------------------------
+   Sans cette section, la précédente serait satisfaite par un `evaluateTrophies` qui ne
+   rendrait plus jamais rien : ce qu'on garde, c'est que le rattrapage absorbe le saut
+   HÉRITÉ, et lui seul.
+   ============================================================ */
+describe('#640 — un seuil franchi par du vrai travail reste célébrable', () => {
+	it('le mot que l’enfant travaille APRÈS l’activation fait rendre le trophée', () => {
+		const seuil = TROPHEE_MOTS().n!;
+		// Une marche de moins que le seuil : le saut hérité ne le franchit pas, et le dernier
+		// mot de la liste attend encore d’être travaillé.
+		semerBanqueHeritee(activeProfile().uuid, seuil - 1, 1);
+		relancerLAppli();
+
+		const acquis = loadTrophies();
+		expect(acquis).not.toContain(TROPHEE_MOTS().id); // prémisse : rien n’est encore acquis…
+		expect(acquis).not.toContain(TROPHEE_LISTE().id);
+		expect(gSnapshot().orthoMotsMaitrises).toBe(seuil - 1);
+
+		// … puis l’enfant réussit pour de bon le mot caché du dernier mot (ce que fait le
+		// runner d’orthographe à chaque réussite).
+		const etat = loadOrtho();
+		validerMode(etat.banque['w' + String(seuil - 1)], 'motCache');
+		saveOrtho(etat);
+
+		const rendus = evaluateTrophies().map((t) => t.id);
+		expect(rendus).toContain(TROPHEE_MOTS().id);
+		expect(rendus).toContain(TROPHEE_LISTE().id);
+	});
+
+	it('la fin d’une leçon annonce toujours le trophée qu’elle vient de faire gagner', () => {
+		// Même profil, même banque héritée absorbée : ce que l’enfant gagne MAINTENANT lui est
+		// bien annoncé. C’est l’annonce elle-même qui doit rester vivante, pas seulement le
+		// marquage.
+		semerBanqueHeritee(activeProfile().uuid, TROPHEE_MOTS().n!);
+		relancerLAppli();
+
+		const t = TROPHEE_ESSAI(); // « Premier pas » : un premier bilan terminé
+		expect(loadTrophies()).not.toContain(t.id); // prémisse : aucun bilan au compteur
+		const res = recordLessonRun({
+			mode: 'express',
+			lessonId: null,
+			ok: 8,
+			questionCount: 10,
+			ms: 60_000,
+			perLesson: { [leconMaths().id]: { ok: 8, total: 10 } },
+		});
+
+		expect(res.newTrophies.map((x) => x.id)).toContain(t.id);
+		expect(res.celeb.map((c) => c.text).join(' | ')).toContain(t.title);
+	});
+});

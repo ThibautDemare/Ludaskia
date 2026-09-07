@@ -22,6 +22,7 @@ import {
 import { XP_KEY, niveauDepuisXP, migrateNiveauNamespacing } from './progress';
 import { niveauRequisAvatar } from './unlocks';
 import { migrateRevisions } from './revision-migrate';
+import { evaluateTrophies } from './rewards';
 import { REVISION_PLAFOND, REVISION_PLAFOND_MIN, REVISION_PLAFOND_MAX } from './revision';
 import { enregistrerExport } from './rappel-sauvegarde';
 import type { SchoolLevel } from './catalog';
@@ -124,6 +125,26 @@ function applyActive(m: ProfilesMeta) {
 	// idempotents → sans effet une fois faits.
 	migrateNiveauNamespacing();
 	migrateRevisions(Date.now());
+	absorberTropheesDeReparation();
+}
+
+/* TEMPORAIRE — à supprimer une fois les banques d'avant #641 éteintes.
+ *
+ * La réparation des escaliers troués (suite de #640, `reparerEscalier`) fait « monter »
+ * d'un coup des mots qui avaient prouvé une marche haute sans porter les basses. Les
+ * compteurs de trophées d'orthographe (`orthoMotsMaitrises`, `orthoListesMaitrisees`) sont
+ * recalculés à CHAQUE `evaluateTrophies()`, y compris à la fin de n'importe quelle leçon —
+ * où les nouveaux trophées sont, eux, CÉLÉBRÉS. Sans ce rattrapage, un enfant pouvait donc
+ * voir « Nouveau trophée : Collectionneur de mots » surgir à la fin d'un exercice de
+ * multiplication, sans avoir touché à l'orthographe ce jour-là.
+ *
+ * On absorbe donc le saut ICI, au moment où le profil devient actif : les trophées mérités
+ * sont bien acquis (ils l'étaient : l'enfant avait prouvé ces mots), simplement marqués sans
+ * moment. Le seul retour d'`evaluateTrophies` qu'on jette est celui-là.
+ *
+ * Idempotent comme les deux migrations au-dessus : le second passage ne rend plus rien. */
+function absorberTropheesDeReparation(): void {
+	evaluateTrophies();
 }
 export function initProfiles() {
 	let m = loadProfilesMeta();

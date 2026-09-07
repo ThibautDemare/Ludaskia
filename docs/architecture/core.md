@@ -10,7 +10,8 @@ et les modules `levels.ts` / `level-combinators.ts` / `niveau-actif.ts` dans
 — bascule et couleur des entourages de l'atelier du mot —, verbes, `banque` —
 projection de la banque d'un profil pour l'espace encadrant, #496 —, `etapes` —
 lecture de l'escalier DATÉ d'un mot (#545), cf. « Frise de composition d'une liste »
-plus bas —, cf. [Espace
+plus bas —, plus `runner`, `choix-mode`, `progression`, `paliers` et
+`mots-difficiles` (détaillés plus bas, à leur bullet propre), cf. [Espace
 encadrant](espace-encadrant.md)) a sa propre
 doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
 `entourages`).
@@ -1113,6 +1114,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   acquis). Détails de la maille (ni scopée, ni globale — le niveau est porté par l'id)
   dans [Niveaux scolaires](niveaux-scolaires.md) ; mécanique et garde-fous côté jeu dans
   [Gamification](gamification.md).
+  **Deux familles adossées à la répétition espacée (#660)** — `orthoAncres`/`notionsAncrees`,
+  métriques `orthoMotsAncres` (`loadOrtho`, mots au sommet de l'escalier) et
+  `notionsAncrees()` (`progress.ts`, paires leçon × niveau au sommet, lues sur l'état SR
+  BRUT et non la vue scopée) — reconnaissent ce qui a **tenu** dans la durée
+  (`PALIER_ACQUIS`, `core/revision.ts`), avec des seuils hors de la convention `tiers()`
+  habituelle ; détail et raison dans [Gamification](gamification.md).
 - **`eggs.ts`** (#331) — **easter eggs**, module **PUR** (aucun accès DOM, testable
   comme `unlocks.ts`) : catalogue déclaratif `EGGS` (4 eggs v1, familles `EggFamily` =
   `exploration` / `ambient` / **`visible`** — ce dernier (#336) = déclencheur OUVERT et

@@ -125,6 +125,15 @@ qu'aucun trophée déjà acquis ne se reverrouille. `starsAll` (« Sans faute pa
 `totalLessons`, le catalogue de la classe active, une métrique qui n'a pas de sens
 « tous niveaux ».
 
+**Notions ancrées (`notionsAncrees`) : GLOBALES sur le même motif que #559, mais par une
+lecture BRUTE plutôt qu'un agrégat** (#660) — `progress.ts:notionsAncrees()` lit
+`ludaskia_lessonRevision` **sans** passer par `loadLessonRevisions()` (la vue scopée au
+niveau actif), pour la même raison qu'en #559 : scoper ferait BAISSER le compteur dès
+qu'une matière passe du CE2 au CM1, rendant inatteignable un palier déjà frôlé. Contrepartie
+propre à cette lecture brute, absente de `starsTousNiveaux` : une entrée dont la leçon a
+QUITTÉ le catalogue est comptée elle aussi (renommer un id de leçon ajoute +1 définitif) —
+détail complet et calibrage dans [Gamification](gamification.md).
+
 ## Tour de matière : une troisième nature, le niveau porté par l'id (#276)
 
 Les trophées de tour (`tour-<matière>-<niveau>`, `rewards.ts:tourMatiereTrophies`,

@@ -738,20 +738,28 @@ describe('#640 — mot à escalier TROUÉ, hérité d’avant #641 (critères 6,
 	});
 
 	it('la marche servie est celle qui MANQUE le plus bas : l’escalier ne se saute pas', () => {
+		// Écrit sur l'ÉTAT QUE L'APPLI LIT, et non sur celui qu'on a posé en stockage : le lot
+		// de suite de #640 répare les trous hérités À LA LECTURE (le mot caché prouve les
+		// tuiles), donc la marche qui manque le plus bas n'est pas forcément celle que le
+		// stockage montrait. L'exigence, elle, ne bouge pas et se dit sans formule : on ne
+		// resert jamais une marche déjà prouvée, et on n'en sert jamais une au-dessus d'une
+		// marche manquante. Elle vaut avant comme après la réparation.
+		// (Version précédente : `toBe('tuiles')`, qui décrivait l'état du code d'alors et
+		// rougissait le jour où le trou hérité serait réparé — cf. son message d'échec, qui
+		// demandait justement à re-décider ce test à ce moment-là.)
 		const id = motTroue();
 		runRevisionEspacee();
+		const vue = tacheServie('cheval');
+		expect(vue).not.toBe('inconnue');
+		const etat = relu(id).validation;
+		expect(etat[vue as ModeOrtho], `marche ${vue} déjà prouvée, et pourtant resservie`).toBe(false);
+		const dessous = ORDRE_MODES.slice(0, ORDRE_MODES.indexOf(vue as ModeOrtho));
 		expect(
-			tacheServie('cheval'),
-			"La marche due d'un mot troué est aujourd'hui la plus basse NON validée — les tuiles —,\n" +
-				"et non le mot caché (déjà validé) ni la dictée (au-dessus d'une marche manquante).\n" +
-				'Le coût est borné : une seule reconstitution comble le trou, et le mot monte dès la\n' +
-				'révision suivante (cf. le test « le mot MONTE » ci-dessous).\n' +
-				'Si ce choix a changé VOLONTAIREMENT — réparer le trou par le haut, la marche haute\n' +
-				'valant preuve des marches plus étayées — c’est ce test qu’il faut re-décider, avec le\n' +
-				'critère 16 en tête : INFÉRER les tuiles, ce serait franchir une marche sans réussite.',
-		).toBe('tuiles');
-		// Et rien n'a encore bougé : servir n'est pas valider.
-		expect(relu(id).validation).toEqual({ tuiles: false, motCache: true, dictee: false });
+			dessous.filter((m) => !etat[m]),
+			`marche ${vue} servie alors qu'il manque plus bas`,
+		).toEqual([]);
+		// Et rien n'a bougé du fait de SERVIR la tâche : servir n'est pas valider.
+		expect(relu(id).validation).toEqual(etat);
 	});
 
 	it('critère 24 : un mot troué ne tire pas sa tâche au hasard non plus', () => {
@@ -777,10 +785,13 @@ describe('#640 — mot à escalier TROUÉ, hérité d’avant #641 (critères 6,
 		const apres = relu(id);
 		expect(apres.validation).toEqual(avant.validation);
 		expect(apres.franchissements).toEqual(avant.franchissements);
-		// Le trou HÉRITÉ subsiste, faute de réussite : c'est la seule lecture du critère 18
-		// compatible avec les critères 9 et 16 — la révision ne CRÉE pas de trou et ne
-		// dé-franchit rien, elle ne peut pas non plus valider un aveu d'ignorance.
-		expect(troue(apres)).toBe(true);
+		// AUCUNE marche ne passe de « non validée » à « validée » : un aveu d'ignorance ne
+		// franchit rien (critère 16), et il ne date rien non plus.
+		// Dit sur l'écart avec l'état LU juste avant l'abandon, et non sur « le trou subsiste » :
+		// le lot de suite répare les trous hérités à la lecture, et cette réparation-là repose
+		// sur une réussite passée — elle n'a rien à voir avec l'abandon qu'on éprouve ici.
+		// Écrire « le trou subsiste » reviendrait à exiger que la réparation n'existe pas.
+		expect(ORDRE_MODES.filter((m) => apres.validation[m] && !avant.validation[m])).toEqual([]);
 	});
 
 	it('critères 6 et 18 : une réussite COMBLE le trou, sans rien perdre au passage', () => {
@@ -795,29 +806,40 @@ describe('#640 — mot à escalier TROUÉ, hérité d’avant #641 (critères 6,
 		expect(m.revision.palier).toBe(1); // et l'espacement avance dans le même mouvement
 	});
 
-	it('critère 7 : la marche comblée est datée d’aujourd’hui, celle d’avant garde SA date', () => {
+	it('critère 7 : la marche JOUÉE est datée d’aujourd’hui, aucune autre ne l’est', () => {
+		// Dit sur la marche RÉELLEMENT jouée (`reussirLaTacheServie` la renvoie) et non sur
+		// « les tuiles » : après la réparation des trous hérités, ce n'est plus la même marche
+		// qui est due. L'exigence est intacte — une séance date ce qu'elle fait franchir, et
+		// rien d'autre (monotonie #545) : re-dater une marche franchie il y a trois semaines
+		// ferait raconter à la frise de composition une séance qui n'a pas eu lieu.
 		const dateHaute = T0 - 20 * JOUR;
 		const id = motTroue(dateHaute);
 		runRevisionEspacee();
-		reussirLaTacheServie('cheval');
+		const jouee = reussirLaTacheServie('cheval') as ModeOrtho;
 		const m = relu(id);
-		expect(dateFranchissement(m, 'tuiles')).toBe(T0);
-		// Monotonie (#545) : une marche franchie il y a trois semaines n'est pas re-datée
-		// d'aujourd'hui, sinon la frise de composition de l'espace encadrant raconte une
-		// séance qui n'a pas eu lieu.
+		expect(dateFranchissement(m, jouee)).toBe(T0);
 		expect(dateFranchissement(m, 'motCache')).toBe(dateHaute);
+		for (const mode of ORDRE_MODES.filter((x) => x !== jouee)) {
+			expect(dateFranchissement(m, mode), `marche ${mode}, non jouée`).not.toBe(T0);
+		}
 	});
 
 	it('critère 7 (banque d’avant #545) : aucune date n’est INVENTÉE pour la marche déjà validée', () => {
 		// Un mot troué d'une banque ancienne n'a aucune date. Dater aujourd'hui son mot caché
 		// affirmerait que l'enfant vient de l'écrire de mémoire, ce qui est faux ; le suivi
 		// assume l'inconnu (« franchie avant la mise en service », cf. `types.ts`).
+		// À SAVOIR si ce test rougit sur `motCache` : la réussite porte alors sur une marche
+		// PLUS HAUTE (trou hérité réparé à la lecture), et `validerMode` date d'aujourd'hui
+		// toute marche de son cumul dépourvue de date — y compris une marche validée depuis
+		// des mois. C'est le même défaut que le cadrage interdit à la réparation, pris par
+		// l'autre bout ; cf. `escalier-troue-migration.test.ts`, describe « une réussite ne
+		// date que ce qu'elle fait franchir ».
 		const id = motTroue();
 		expect(dateFranchissement(relu(id), 'motCache')).toBeNull();
 		runRevisionEspacee();
-		reussirLaTacheServie('cheval');
+		const jouee = reussirLaTacheServie('cheval') as ModeOrtho;
 		const m = relu(id);
-		expect(dateFranchissement(m, 'tuiles')).toBe(T0);
+		expect(dateFranchissement(m, jouee)).toBe(T0);
 		expect(dateFranchissement(m, 'motCache')).toBeNull();
 	});
 
@@ -847,12 +869,16 @@ describe('#640 — mot à escalier TROUÉ, hérité d’avant #641 (critères 6,
 	});
 
 	it('sans voix, l’unique réussite due rend le mot maîtrisé — et étoile sa liste', () => {
-		// Conséquence assumée, et surprenante, d'un escalier troué : sur un appareil muet
-		// l'escalier n'a que DEUX marches (`modesRequis(false)`), et il n'en manquait qu'une.
-		// Le statut se lit sur les marches validées, jamais sur le nombre de séances qu'il a
-		// fallu : aucune condition cachée ne doit retarder l'étoile de l'enfant.
+		// Conséquence assumée, et surprenante : sur un appareil muet l'escalier n'a que DEUX
+		// marches (`modesRequis(false)`), donc un mot au rang « tuiles » n'en a plus qu'une à
+		// franchir. Le statut se lit sur les marches validées, jamais sur le nombre de séances
+		// qu'il a fallu : aucune condition cachée ne doit retarder l'étoile de l'enfant.
+		// Semé COHÉRENT (« tuiles validées »), et non troué : sur un appareil muet, un mot
+		// troué arrive DÉJÀ maîtrisé une fois le trou réparé à la lecture (lot de suite de
+		// #640), donc il n'y aurait plus de transition à observer dans la séance — et c'est
+		// cette transition qui est l'objet du test.
 		sansVoix();
-		const id = motTroue();
+		const id = banque([{ mot: 'cheval', validation: { tuiles: true } }]).ids[0];
 		const listeDe = (): MotOrtho[] => {
 			const s = loadOrtho();
 			return motsDeListe(s, s.listes[0]);
@@ -1069,13 +1095,18 @@ for (const { mode, libelle, seed } of CAS_TACHE) {
 }
 
 /* ============================================================
-   GATE 2 — LE MOT TROUÉ, AU NIVEAU DU JOURNAL DES PALIERS DE LISTE (#541).
+   GATE 2 — UNE LISTE QUI BASCULE PENDANT LA SÉANCE, AU JOURNAL DES PALIERS (#541).
    ------------------------------------------------------------
-   Le mot à escalier troué est abondamment éprouvé plus haut AU NIVEAU DU MOT. Il ne l'était
-   nulle part au niveau de la LISTE, et c'est justement là qu'il a un effet propre : sur un
-   appareil sans voix, l'escalier n'a que deux marches et il n'en manquait qu'une — une
-   unique réussite en révision rend donc le mot maîtrisé, et une liste qui ne contient que
-   lui devient ACQUISE dans cette séance-là, sans qu'aucune dictée n'ait été lancée.
+   L'effet propre à la LISTE, que rien n'éprouvait : sur un appareil sans voix, l'escalier
+   n'a que deux marches (`modesRequis(false)`), donc un mot au rang « tuiles » n'en a plus
+   qu'une à franchir — une unique réussite en révision le rend maîtrisé, et une liste qui ne
+   contient que lui devient ACQUISE dans cette séance-là, sans qu'aucune dictée n'ait été
+   lancée.
+
+   Le mot est semé COHÉRENT (« tuiles validées ») et non troué, comme il l'était d'abord :
+   depuis le lot de suite de #640, un mot troué est réparé à la lecture, donc sur appareil
+   muet il arrive DÉJÀ maîtrisé et il n'y a plus de bascule à observer dans la séance. C'est
+   la bascule qui est l'objet de ce gate, pas la forme du trou.
 
    Ce que le journal des paliers promet (cf. l'en-tête de `core/orthographe/paliers.ts`) :
    DATER le franchissement d'état d'une liste, une fois, pour que la frise de l'espace
@@ -1089,7 +1120,7 @@ for (const { mode, libelle, seed } of CAS_TACHE) {
    auteur l'a signalé comme non couvert. Il l'est ici, où la disponibilité des voix est
    STUBÉE et affirmée.
    ============================================================ */
-describe('#640/#541 — un mot troué SEUL dans sa liste, vu du journal des paliers', () => {
+describe('#640/#541 — une liste d’un seul mot qui bascule, vue du journal des paliers', () => {
 	const journalPaliers = (): Record<string, PaliersNotion> =>
 		lsGet(ORTHO_PALIERS_KEY, {}) as Record<string, PaliersNotion>;
 	const listeCouranteId = (): string => loadOrtho().listes[0].id;
@@ -1102,7 +1133,7 @@ describe('#640/#541 — un mot troué SEUL dans sa liste, vu du journal des pali
 	it('sans voix, la réussite qui la rend acquise la DATE « acquis » dans la séance', () => {
 		sansVoix();
 		expect(dicteeDisponible()).toBe(false); // stub affirmé : la dictée n'est pas requise
-		const id = motTroue();
+		const id = banque([{ mot: 'cheval', validation: { tuiles: true } }]).ids[0];
 		const listeId = listeCouranteId();
 		// Prémisses : rien n'est encore journalisé, et la liste n'est pas acquise.
 		expect(journalPaliers()[listeId]).toBeUndefined();
@@ -1130,9 +1161,9 @@ describe('#640/#541 — un mot troué SEUL dans sa liste, vu du journal des pali
 	it('avec voix, la même réussite ne la date PAS « acquis » : la dictée reste due', () => {
 		// Le versant qui rend le test précédent discriminant : le journal doit suivre l'ÉTAT de
 		// la liste, et non tamponner « acquis » toute liste dont un mot vient d'être réussi.
-		// Combler le trou (les tuiles) laisse ici la dictée à franchir.
+		// Avec voix, la même réussite laisse encore le mot caché et la dictée à franchir.
 		expect(dicteeDisponible()).toBe(true); // stub affirmé : voix FR locale installée
-		const id = motTroue();
+		const id = banque([{ mot: 'cheval' }]).ids[0];
 		const listeId = listeCouranteId();
 
 		runRevisionEspacee();

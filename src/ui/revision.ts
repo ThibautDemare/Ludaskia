@@ -14,6 +14,7 @@ import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { dicter, dicteeDisponible, stopTts } from './tts';
 import { renderAtelier } from './ortho-atelier';
+import { enonceJournalOrtho } from '../core/orthographe/exercise';
 import { consigneRenforceeHTML } from './consigne-renforcee';
 import { icon } from './icon';
 import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
@@ -882,14 +883,6 @@ function motDeSecours(mot: string): MotOrtho {
    sinon la TÂCHE servie. Depuis #640 la révision peut servir les trois : dire laquelle
    évite qu'un mot mal reconstitué et un mot mal écrit sous la dictée se confondent.
    Partagé par l'erreur et l'abandon (#467), qui parlent du même exercice. */
-function enonceJournalMot(m: MotOrtho, mode: ModeOrtho): string {
-	const ctx = m.contexte;
-	if (ctx) return `${ctx.avant}…${ctx.apres}`;
-	if (mode === 'tuiles') return 'Mot à reconstituer avec les lettres données';
-	if (mode === 'dictee') return 'Mot à écrire sous la dictée';
-	return 'Mot à écrire de mémoire';
-}
-
 function renderMotOrtho(it: Extract<RevItem, { kind: 'word' }>): void {
 	const m = motDeRevision(it) ?? motDeSecours(it.mot);
 	const due = prochaineActivite(m, voixDispo);
@@ -912,7 +905,7 @@ function optionsTacheRevision(
 	// d'une séance d'entraînement — la révision n'en travaille aucune. Une entrée sans
 	// `lessonId` serait ignorée en silence par `capterErreur` (#391), donc invisible.
 	const lessonId = groupeOrthoDuMot(ortho, it.wordId);
-	const enonce = enonceJournalMot(m, mode);
+	const enonce = enonceJournalOrtho(m, mode);
 	return {
 		hote: stage,
 		// La carte de révision porte déjà son fond et son ombre : la tâche n'y empile pas la

@@ -113,9 +113,53 @@ export function validerMode(mot: MotOrtho, mode: ModeOrtho, now = Date.now()): v
 	// `dicteeDispo` vaut `true` : le mode DEMANDÉ vient forcément d'être joué, donc il
 	// était disponible, et le filtre ne concerne que les modes au-dessus de lui.
 	for (const m of modesJusqua(mode, true)) {
+		// Ne dater QUE ce que cette réussite fait effectivement franchir. `dater` est monotone,
+		// mais une banque d'avant #545 porte des marches validées SANS date : les re-daterait
+		// alors d'aujourd'hui, et la frise de composition affirmerait une séance de travail qui
+		// n'a pas eu lieu — le défaut même que la réparation d'escalier refuse de commettre.
+		// Sans cette garde, la protection fuit d'une séance.
+		const aFranchir = !mot.validation[m];
 		mot.validation[m] = true;
-		dater(mot, m, now);
+		if (aFranchir) dater(mot, m, now);
 	}
+}
+
+/* Répare un escalier TROUÉ hérité : toute marche sous la plus haute marche validée est
+   validée à son tour. Une banque écrite avant que `validerMode` ne devienne cumulative
+   (#641) peut porter `{ tuiles: false, motCache: true }` — un mot qui a prouvé le mot caché
+   a de fait prouvé les tuiles, donc rien n'est franchi sans réussite (#640, critère 16) :
+   c'est la règle du cumul appliquée rétroactivement à une donnée écrite avant elle.
+
+   La marche comblée reprend la date de la marche du DESSUS, jamais celle du jour, et aucune
+   date n'est inventée quand la source n'en a pas : la frise de l'espace encadrant ne doit
+   pas se mettre à décrire du travail récent parce que le code a changé. Cf. le commentaire
+   daté du 2026-09-07 sur #640, qui rend le critère 18 tenable au sens littéral.
+
+   Idempotente et jamais destructrice : elle ne dé-valide rien et laisse intact un escalier
+   déjà cohérent. Renvoie `true` si elle a comblé quelque chose. */
+export function reparerEscalier(mot: MotOrtho): boolean {
+	let comble = false;
+	// De haut en bas : on retient la date de la marche validée la plus BASSE déjà rencontrée,
+	// qui est la plus proche au-dessus de celle qu'on comble.
+	let dateAuDessus: number | undefined;
+	for (let i = ORDRE_MODES.length - 1; i >= 0; i--) {
+		const m = ORDRE_MODES[i];
+		if (mot.validation[m]) {
+			dateAuDessus = mot.franchissements?.[m] ?? dateAuDessus;
+			continue;
+		}
+		if (dateAuDessus === undefined && !aUneMarcheValidee(mot, i)) continue; // rien au-dessus
+		mot.validation[m] = true;
+		comble = true;
+		if (dateAuDessus !== undefined) dater(mot, m, dateAuDessus);
+	}
+	return comble;
+}
+
+/* Une marche STRICTEMENT au-dessus du rang `rang` est-elle validée ? Sert à décider s'il y a
+   un trou à combler quand aucune date n'est connue au-dessus. */
+function aUneMarcheValidee(mot: MotOrtho, rang: number): boolean {
+	return ORDRE_MODES.slice(rang + 1).some((m) => mot.validation[m]);
 }
 
 /** Cette activité peut-elle encore faire MONTER ce mot (#641) ? L'atelier ouvre le

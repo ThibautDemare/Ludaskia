@@ -6,11 +6,15 @@
    Le plateau est une aire de jeu, pas une surface d'interface : sa palette doit
    être la MÊME sur les six thèmes, sinon la rampe des tuiles (qui code la
    progression 2 → 4 → 8 → …) changerait de sens d'un thème à l'autre. Ces
-   couleurs vivent donc ici et n'entrent pas dans `base.scss` / `themes.scss` —
-   c'est aussi ce qui les rend invisibles à `tests/contraste-tokens.test.ts`, qui
-   ne lit que ces deux feuilles. Elles ont donc été mesurées À LA MAIN avec
-   `node tools/contrast/contrast.mjs`, et les valeurs sont écrites ci-dessous
-   pour que la prochaine retouche n'ait pas à les redécouvrir :
+   couleurs vivent donc ici et n'entrent pas dans `base.scss` / `themes.scss`.
+
+   Elles ne sont pour autant PAS hors garde : `tests/contraste-tokens.test.ts` a
+   été étendu pour relire CETTE feuille et recalculer les trois seuils
+   ci-dessous à chaque exécution (#661). Les valeurs restent écrites ici pour que
+   la prochaine retouche n'ait pas à les redécouvrir — mais c'est le test qui
+   fait foi, pas ce commentaire. Attention en le relisant : les hex apparaissent
+   deux fois dans ce fichier, en prose ici et en déclaration plus bas, et seule
+   la déclaration compte.
 
    - le chiffre (#1a1a1a) sur CHAQUE tuile : de 8,63:1 (le 32) à 14,10:1 (le 2).
      Toutes les tuiles sont donc des fonds CLAIRS à texte sombre — c'est ce qui

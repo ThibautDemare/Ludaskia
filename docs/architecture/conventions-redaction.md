@@ -209,3 +209,49 @@ lecture de la phrase entière, pas de grammaire locale du mot qui change. Cas co
 de retrouver des mots plus bas. Réécrite « Tu as fini **toute cette liste** avec ces
 modes ! … tu les retrouveras… » : en passant le premier terme au singulier, un seul nom
 pluriel — « modes » — reste disponible pour la reprise.
+
+## Ne jamais accoler une félicitation et une offre de jeu (#661)
+
+Le lien de contrepartie ne se crée pas seulement avec des mots. « Beau travail ! Tes
+jeux t'attendent, si tu veux. » ne contient **aucune** des tournures que le critère 28
+de #661 interdit (« pour débloquer », « il te reste », « tu dois d'abord ») — et
+installe pourtant la même cadence causale, parce qu'un compliment sur l'effort fourni
+suivi immédiatement d'une offre de jeu **se lit** comme un échange. À huit ans, deux
+phrases collées au même endroit, dans cet ordre, ne sont pas deux idées indépendantes ;
+et le « si tu veux » n'y change rien, puisque la contrepartie vient de la POSITION.
+
+Conséquence pratique : une invitation vers une récompense **ne réouvre pas** sur le
+travail accompli. L'écran de fin l'a déjà félicité juste au-dessus — le redire dans
+l'invitation ne sert qu'à payer l'enfant. Cas corrigé (`ui/jeux-invitation.ts`, #661) :
+réduit à « Tes jeux t'attendent, si tu veux. »
+
+**Le contrôle par mots-clés ne voit pas ce défaut**, et c'est justement pourquoi la
+règle est écrite ici plutôt que mécanisée : il faut lire l'enchaînement.
+
+## Dans un jeu de devinette, le champ de saisie nomme l'ACTION, pas l'objet cherché (#661)
+
+Un possessif posé sur le nom de la cible ouvre une seconde lecture. Le Motus annonce
+« Trouve le mot caché », et son champ était étiqueté « Ton mot » : deux lignes d'écart,
+deux référents différents, un seul nom. Un enfant peut y lire « invente un mot à toi »
+au lieu de « propose ta réponse ». Le libellé doit donc désigner le geste — « Ton
+essai » — et non s'approprier ce qu'il faut deviner. Cas corrigé (`ui/jeu-motus.ts`,
+#661).
+
+À noter, parce que la suggestion reviendra : **« Ta proposition » est un mauvais
+remplacement dans cette application précise.** « Proposition » y est une notion de
+grammaire enseignée par ailleurs, donc le mot y est plus ambigu qu'ailleurs, pas moins.
+
+## Deux remontées écartées sur l'étagère de jeux (#661)
+
+Consignées pour que la prochaine relecture ne les re-remonte pas.
+
+- **« Tu as bien joué aujourd'hui. On se retrouve demain ! »** (plafond du jour atteint)
+  porte une ambiguïté d'idiome — « bien joué » comme compliment d'habileté, ou comme
+  quantité. **Gardée telle quelle** : le contexte (le message apparaît quand l'accès se
+  ferme) tranche en une seconde, et le ton chaleureux est ce qui empêche le plafond de
+  se lire comme une sanction.
+- **« 🧩 Mes jeux » sur l'accueil contre « 🧩 Voir mes jeux » dans l'invitation** — deux
+  libellés pour la même destination. **Différence assumée** : le premier est un point
+  d'accès permanent qu'on nomme, le second une proposition dans une phrase, où
+  l'infinitif marque qu'on n'y est pas obligé. Aligner les deux ferait perdre cette
+  nuance de registre.

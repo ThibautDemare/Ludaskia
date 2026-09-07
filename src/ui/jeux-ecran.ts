@@ -24,7 +24,14 @@ import { openEtagere } from './jeux-etagere';
     est commun (retour, temps, plafond) est tenu ici, pas dans les runners. */
 export interface RunnerJeu {
 	/** Rend le jeu dans `hote`. `avantNouvellePartie` est à appeler juste avant de
-	    (re)lancer une partie — voir sa documentation, le moment compte. */
+	    (re)lancer une partie — voir sa documentation, le moment compte.
+
+	    **Règle pour le champ où un runner range ce rappel** : son défaut, avant
+	    câblage et après démontage, doit REFUSER de lancer une partie. Jamais
+	    l'autoriser. Un runner qui oublierait de le câbler ne vérifierait alors
+	    plus le plafond du jour, et cette panne-là est invisible : elle ne lève
+	    rien, ne rougit nulle part, et profite à l'enfant — donc personne ne la
+	    remonte. Un bouton mort se voit ; un plafond mort, non. */
 	monter(hote: HTMLElement, avantNouvellePartie: () => boolean): void;
 	/** Appelé quand on quitte l'écran : arrêter les minuteurs, les écouteurs. */
 	demonter(): void;

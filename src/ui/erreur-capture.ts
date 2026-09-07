@@ -8,8 +8,14 @@
    `core/erreurs-journal`, pour ne pas réécrire la capture dans chaque runner.
 
    Sert aussi de porte d'entrée au marqueur « passé sans essayer » (#467,
-   `sansTentative`) : les chemins « Je ne sais pas, montre-moi » et « validation à
-   vide » journalisent par ici, comme une erreur, mais signalée comme telle.
+   `sansTentative`) : « Je ne sais pas, montre-moi » journalise par ici, comme une erreur,
+   mais signalée comme telle.
+
+   « Validation à vide » DÉPEND du chemin, et la nuance vaut d'être écrite : le sprint la
+   journalise (`ui/sprint.ts`, phrase dédiée « a validé sans répondre » côté encadrant) parce
+   que le chrono tourne — valider à vide y est un renoncement assumé. En orthographe, c'est
+   un mis-clic : depuis le lot de suite de #640, un clic « Vérifier » sans rien de posé ne
+   coûte pas l'essai et le dit à l'enfant, donc il n'y a rien à raconter au parent.
 
    Ne journalise QUE des erreurs rattachées à une leçon et à un énoncé lisible :
    une entrée sans leçon (ex. calcul mental non rattaché) ou sans question

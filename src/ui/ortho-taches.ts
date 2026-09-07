@@ -25,7 +25,7 @@
    silence. D'où `onEchec`, qui remonte la réponse donnée à qui sait la rattacher.
    ============================================================ */
 import { insertAt, moveAt, removeAt } from '../core/utils';
-import { genExerciseOrtho } from '../core/orthographe/exercise';
+import { genExerciseOrtho, messageRienDePose } from '../core/orthographe/exercise';
 import { checkAnswer } from '../core/exercise';
 import { TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
 import type { MotOrtho, ModeOrtho } from '../core/orthographe/types';
@@ -163,7 +163,8 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
       <div><button class="btn-primary" id="btnCacher">Cacher et écrire →</button></div>
       <div class="ortho-saisie" id="zoneSaisie" hidden>
         <input class="ortho-input" id="orthoInput" ${TEXT_ANSWER_INPUT_ATTRS}
-               aria-label="${word.contexte ? 'Écris le verbe' : 'Écris le mot'}" />
+               aria-label="${word.contexte ? 'Écris le verbe' : 'Écris le mot'}"
+               aria-describedby="fb" />
         <div class="accent-kb" id="accentKb"></div>
         <button class="btn-primary" id="btnVerifMot">✓ Vérifier</button>
         ${o.decisionHTML ?? VIDE}
@@ -209,7 +210,7 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
 	});
 
 	const verifier = () => {
-		if (o.ignorerReponseVide && input.value.trim() === '') return input.focus();
+		if (o.ignorerReponseVide && input.value.trim() === '') return rienDePose(fb, input, word);
 		if (checkAnswer(ex, input.value)) {
 			// Réussite : « Vérifier » s'efface, seul « Continuer → » reste (pas deux boutons, #153).
 			(hote.querySelector('#btnVerifMot') as HTMLButtonElement).hidden = true;
@@ -248,7 +249,8 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
       <button class="btn-primary ortho-ecouter" id="btnEcouter">${icon('speaker')} ${ecouterLabel(word)}</button>
       <div class="ortho-saisie">
         <input class="ortho-input" id="orthoInput" ${TEXT_ANSWER_INPUT_ATTRS}
-               aria-label="${word.contexte ? 'Écris le verbe' : 'Écris le mot'}" />
+               aria-label="${word.contexte ? 'Écris le verbe' : 'Écris le mot'}"
+               aria-describedby="fb" />
         <div class="accent-kb" id="accentKb"></div>
         <button class="btn-primary" id="btnVerifMot">✓ Vérifier</button>
         ${o.decisionHTML ?? VIDE}
@@ -275,7 +277,7 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
 
 	const verifier = () => {
 		if (muette) return; // dictée silencieuse : on ne corrige ni ne journalise
-		if (o.ignorerReponseVide && input.value.trim() === '') return input.focus();
+		if (o.ignorerReponseVide && input.value.trim() === '') return rienDePose(fb, input, word);
 		if (checkAnswer(ex, input.value)) {
 			// Réussite : « Vérifier » s'efface, seul « Continuer → » reste (pas deux boutons, #153).
 			(hote.querySelector('#btnVerifMot') as HTMLButtonElement).hidden = true;
@@ -332,7 +334,7 @@ export function renderTuiles(word: MotOrtho, o: OptionsTache): void {
       <div class="tuiles-construction" id="construction"></div>
       <p class="tuiles-titre">Les lettres</p>
       <div class="tuiles-bac" id="bac"></div>
-      <button class="btn-primary" id="btnVerifTuiles">✓ Vérifier</button>
+      <button class="btn-primary" id="btnVerifTuiles" aria-describedby="fb">✓ Vérifier</button>
       ${o.decisionHTML ?? VIDE}
       <div class="ortho-feedback" id="fb"></div>
     </div>`.balisage;
@@ -554,8 +556,7 @@ export function renderTuiles(word: MotOrtho, o: OptionsTache): void {
 		} else if (o.ignorerReponseVide && built === '') {
 			// Rien de posé : l'enfant n'a pas répondu. On le lui dit sans consommer son essai —
 			// là où l'hôte n'en laisse qu'un, un clic malheureux lui coûterait le mot.
-			fb.innerHTML =
-				html`<span class="fb-ko">Pose d'abord des lettres, puis vérifie.</span>`.balisage;
+			rienDePose(fb, hote.querySelector<HTMLElement>('#btnVerifTuiles'), word, true);
 		} else {
 			essais++;
 			o.onEchec(built, essais);
@@ -573,6 +574,25 @@ export function renderTuiles(word: MotOrtho, o: OptionsTache): void {
 }
 
 /* ---------- Helpers ---------- */
+/* « Vérifier » cliqué sans rien avoir posé : on le DIT, sans consommer l'essai. Le silence
+   d'avant (`input.focus()` seul) laissait l'enfant sans explication — et un lecteur d'écran
+   sans rien du tout, là où les tuiles annonçaient déjà quelque chose. Le message part dans
+   `#fb`, région live, donc il s'entend autant qu'il se lit. */
+function rienDePose(
+	fb: HTMLElement,
+	cible: HTMLElement | null,
+	word: MotOrtho,
+	tuiles = false,
+): void {
+	fb.innerHTML =
+		html`<span class="fb-ko">${messageRienDePose(tuiles ? 'tuiles' : 'saisie', !!word.contexte)}</span>`.balisage;
+	// Le focus revient sur ce qui porte `aria-describedby="fb"` : sans lui, le message reste
+	// muet pour qui ne voit pas l'écran. Et PAS de région live ici — la carte de révision cède
+	// la parole aux régions du widget quand il en a une, si bien que rendre `#fb` live rendait
+	// son propre verdict inaudible (attrapé par les témoins de #640).
+	cible?.focus();
+}
+
 /* Entrée valide la saisie. `stopPropagation` : la carte de révision détourne Entrée vers
    son bouton principal (cf. `bindEnter`, ui/revision.ts). Sans cette coupure, l'Entrée
    qui vient de valider remonterait jusqu'à elle et cliquerait le « Continuer ▶ » que le

@@ -15,7 +15,7 @@
 import { loadOrtho, saveOrtho, getListe } from '../core/orthographe/store';
 import { materialiserVerbes } from '../core/orthographe/verbes';
 import { motsDeLecon } from '../core/orthographe/lessons';
-import { ORTHO_MODE_OPTIONS } from '../core/orthographe/exercise';
+import { ORTHO_MODE_OPTIONS, enonceJournalOrtho } from '../core/orthographe/exercise';
 import { type ModeOption } from '../core/exercise';
 import {
 	statutMot,
@@ -121,11 +121,10 @@ function sheets(): HTMLElement {
    au parent). Pour un verbe en contexte, l'énoncé montre la phrase à trou ; sinon un
    libellé générique (la bonne réponse — le mot — porte l'info). Appelé une seule fois
    par activité (garde chez l'appelant). */
-function journalErreurOrtho(word: MotOrtho, saisie: string): void {
+function journalErreurOrtho(word: MotOrtho, saisie: string, act: ModeOrtho): void {
 	if (!saisie.trim()) return; // saisie vide = non répondu → ignorée (parité avec la fiche)
-	const c = word.contexte;
 	capterErreur({
-		text: c ? `${c.avant}…${c.apres}` : 'Mot à écrire sous la dictée',
+		text: enonceJournalOrtho(word, act),
 		donnee: saisie,
 		attendue: word.mot,
 		lessonId: orthoLessonId,
@@ -463,12 +462,13 @@ function optionsTacheParcours(word: MotOrtho, act: ModeOrtho): OptionsTache {
 		hote: sheets(),
 		dispoDictee,
 		essaisAvantCorrection: act === 'tuiles' ? Infinity : 2,
+		ignorerReponseVide: true,
 		onReussite: (mode, fb) => {
 			reussiteMode(word, mode);
 			reussite(fb, true);
 		},
 		onEchec: (saisie, rang) => {
-			if (rang === 1) journalErreurOrtho(word, saisie); // 1er essai raté
+			if (rang === 1) journalErreurOrtho(word, saisie, act); // 1er essai raté
 		},
 		onCorrection: (saisie) => {
 			noterMotDifficile(word); // ce mot a demandé un étayage (#618)

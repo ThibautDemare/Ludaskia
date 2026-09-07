@@ -14,6 +14,7 @@ import type {
 	VerbeConfig,
 } from './types';
 import { etatNeuf, etatHorsRotation, avancerEtat } from '../revision';
+import { reparerEscalier } from './runner';
 
 export const ORTHO_KEY = 'ludaskia_ortho';
 
@@ -75,8 +76,17 @@ export function normaliserVerbes(verbes?: VerbeConfig[]): VerbeConfig[] {
     loadOrtho (profil actif) et loadOrthoFor (profil arbitraire, espace encadrant). */
 function parseOrtho(s: Partial<OrthoState> | null): OrthoState {
 	if (!s || typeof s !== 'object') return emptyOrthoState();
+	const banque = s.banque ?? {};
+	// Escaliers troués hérités (#640, commentaire daté du 2026-09-07) : réparés ICI, donc à
+	// TOUTE lecture — y compris `loadOrthoFor`, sans quoi l'espace encadrant continuerait de
+	// montrer au parent un rang que le mot a dépassé. Pas de migration écrite à part : la
+	// réparation est idempotente, elle se contente de rétablir un invariant.
+	// `mot?.validation` et pas `mot` seul : c'est ICI qu'entre une donnée non fiable (état
+	// importé, sauvegarde d'une version antérieure), et une entrée corrompue doit rester
+	// ignorée plutôt que faire tomber toute la lecture — cf. le test d'import incohérent.
+	for (const mot of Object.values(banque)) if (mot?.validation) reparerEscalier(mot);
 	return {
-		banque: s.banque ?? {},
+		banque,
 		listes: (Array.isArray(s.listes) ? s.listes : []).map((l) => ({
 			...l,
 			verbes: l.verbes ? normaliserVerbes(l.verbes) : undefined,

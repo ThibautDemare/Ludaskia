@@ -256,7 +256,26 @@ test('pause : le mot passé par la correction guidée est nommé sous sa forme c
 /* ------------------------------------------------------------
    Réglage encadrant (critère 7) — parcours complet, bilan (chemin le plus
    court pour y arriver : 1 mot, 1 seul mode manquant → bilan en 2 activités).
-   ------------------------------------------------------------ */
+
+   `dictee` à `false` et pas `true` (comme au dépôt de #618, avant #641) : à
+   l'époque, `validerMode` n'était pas cumulative — `{tuiles:true, motCache:false,
+   dictee:true}` était un état ordinaire (dictée jouée seule). Depuis #641 c'est
+   devenu un escalier À TROU (`tuiles < motCache < dictee`, cf. `ORDRE_MODES`),
+   et depuis #640 (décision du 2026-09-07) `reparerEscalier` le comble à LA
+   LECTURE de l'état, `motCache` y compris — sans regarder `dicteeDispo`, qui ne
+   sert qu'à décider ce qui est REQUIS pour l'étoile, pas à filtrer les trous
+   lus. Avec `dictee: true`, `motCache` se retrouvait donc déjà validé à
+   l'ouverture de la page, la liste déjà maîtrisée et « Liste prête ! » jamais
+   atteint par CE chemin (le mode manquant qu'on vient jouer n'existe plus).
+
+   `dictee: false` restaure l'unique trou voulu par le test (`motCache`) mais
+   rouvre un AUTRE risque, sans rapport avec #640 : la dictée redevient un
+   véritable mode À VALIDER si une voix est chargée (Windows local expose des
+   voix SAPI, souvent absentes en CI/Linux — cf. `STUB_SANS_VOIX` plus bas dans
+   ce fichier). Sans le stub, le parcours complet enchaînerait alors sur une
+   ronde de dictée après le mot caché, et le test resterait bloqué avant
+   « Liste prête ! » — vert ou rouge selon la machine. On stub donc l'absence de
+   voix ici aussi, pour que `motCache` reste le SEUL mode requis. */
 const SEED_BILAN_PREF = {
 	banque: {
 		m1: {
@@ -264,7 +283,7 @@ const SEED_BILAN_PREF = {
 			mot: 'chat',
 			entourage: [],
 			atelierFait: true,
-			validation: { motCache: false, tuiles: true, dictee: true },
+			validation: { motCache: false, tuiles: true, dictee: false },
 			revision: { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null },
 			origine: 'liste',
 		},
@@ -287,6 +306,7 @@ test('réglage « Ne pas rappeler les mots difficiles » : le bloc et le bouton 
 	const errors = watchErrors(page);
 	await seedPrefSansMotsDifficiles(page);
 	await seedOrtho(page, SEED_BILAN_PREF);
+	await page.addInitScript(STUB_SANS_VOIX); // dictée non requise : seul motCache doit rester à valider
 	await gotoHash(page, 'ortho-mode-l-e2e-md-pref');
 
 	await page.locator('.mode-btn.recommended').click(); // parcours complet

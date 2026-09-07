@@ -60,15 +60,43 @@ export const TAILLES: readonly TailleSudoku[] = [4, 6];
     Une forme par FAMILLE VISUELLE (critère 8) : les paires carré/losange,
     triangle haut/bas et étoile/croix se confondent à 35-40 px, taille mesurée
     sur la grille à 6 colonnes du Motus déjà en production. Les quatre premières
-    servent le 4×4 et sont les plus distinctes entre elles. */
+    servent le 4×4 et sont les plus distinctes entre elles.
+
+    ── Ce sextuor est arbitré, pas improvisé (`designer-ux-enfant`, 2026-09-07) ──
+
+    Le critère de choix n'est PAS « ces deux tracés se ressemblent-ils ». C'est :
+    **la forme a-t-elle un ancrage structurel qu'un enfant peut nommer d'un coup
+    d'œil répété** — un nombre de sommets, une symétrie. Le cercle en a zéro, le
+    carré quatre, le triangle trois, l'étoile est hérissée : quatre compteurs
+    distincts, d'où le quatuor du 4×4, la grille du plus jeune public. Un sudoku
+    force à comparer des cases entre elles en continu, pas à reconnaître une
+    icône isolée, et c'est ce scan répété qui rend l'ancrage décisif.
+
+    Trois écarts au jeu classique, chacun pour une raison :
+    • **la lune est retirée, pas le cœur.** Ni l'une ni l'autre n'a de compteur
+      de sommets, donc les deux tombent dans la même case mentale (« le truc
+      rond bizarre ») ; il ne peut y en avoir qu'une. Le cœur est acquis plus
+      tôt. Et surtout, **lune + étoile dans la même grille** dessinerait un
+      croissant-et-étoile, symbole religieux et national, sans que personne
+      l'ait voulu ;
+    • **pentagone plutôt qu'hexagone.** Au-delà de six côtés l'œil arrondit :
+      un hexagone posé à côté du cercle recrée deux formes rondes. Le pentagone
+      a une pointe unique et saillante qui casse l'effet ;
+    • **soleil, fleur, papillon, nuage écartés** — trop de détail pour survivre
+      à la réduction (les rayons fins du soleil se noient dans l'antialiasing) ;
+      **trèfle et pique** aussi, chargés de l'univers du jeu d'argent.
+
+    À vérifier sur un téléphone d'entrée de gamme avant de figer : l'avis
+    s'appuie sur les tracés SVG et la théorie de la reconnaissance de forme, pas
+    sur un test avec un enfant (Notes de l'issue). */
 export const SYMBOLES: readonly string[] = [
 	'',
 	'cercle',
 	'carre',
 	'triangle',
 	'etoile',
-	'hexagone',
 	'coeur',
+	'pentagone',
 ];
 
 export function symbolesDe(taille: TailleSudoku): readonly string[] {

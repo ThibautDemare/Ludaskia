@@ -1,0 +1,362 @@
+/* Plateau du sudoku (#666). Rempli par le runner `src/ui/jeu-sudoku.ts`.
+   Le cadre commun (titre, retour, plafond, étagère) est dans `jeux.scss` :
+   cette feuille n'habille QUE la grille, la palette et la fin de grille.
+
+   ── Aucune valeur hexadécimale ici, et c'est une règle du dépôt ──────────────
+   Les couples de tokens sont tenus sur les six thèmes par
+   `tests/contraste-tokens.test.ts` ; une couleur écrite en dur y échapperait, et
+   c'est comme ça qu'un `--muted` sous AA a survécu des années (#576).
+
+   ── Le conflit porte DEUX canaux, dès cette version (critère 14) ─────────────
+   Une case en conflit prend le liseré `--warn` ET une trame de hachures. La
+   trame est indépendante de la teinte, donc elle survit à un œil deutan, là où
+   deux couleurs proches ne survivent pas. L'en-tête de `jeu-motus.scss` admet
+   que le Motus a livré son code à trois couleurs SANS son doublage par la forme,
+   dette reportée à #663 ; on ne la refait pas ici.
+
+   Et jamais `--ko`, jamais la paire rouge/vert des corrections (critère 15) :
+   `--ko` est réservé à une réponse corrigée et DÉFINITIVEMENT fausse. Un conflit
+   de sudoku est transitoire, auto-corrigible, jamais soumis. Un enfant qui verrait
+   la couleur de ses fautes de calcul y lirait un verdict, quelle que soit
+   l'architecture invisible derrière — et le jeu redeviendrait à ses yeux un
+   exercice déguisé.
+
+   ── La sélection ne se dit pas par la seule couleur ──────────────────────────
+   La case choisie porte un contour ÉPAIS, la forme choisie un état `aria-pressed`
+   qui inverse ses surfaces. Deux canaux à chaque fois. */
+
+.sudoku {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.9rem;
+	font-family: var(--ui);
+}
+
+/* ---------- Le choix de taille (critère 1) ---------- */
+
+.sudoku-tailles {
+	display: flex;
+	gap: 0.6rem;
+}
+
+.sudoku-taille {
+	min-width: 4.5rem;
+	min-height: 2.9rem;
+	padding: 0 0.9rem;
+	font-family: var(--ui);
+	font-size: 1.05rem;
+	font-weight: 800;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--control-line);
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* L'état retenu inverse la surface : ce n'est pas une nuance de la même couleur,
+   c'est un renversement, lisible sans distinguer les teintes. */
+.sudoku-taille[aria-pressed='true'] {
+	color: var(--on-accent);
+	background: var(--accent);
+	border-color: var(--accent);
+}
+
+.sudoku-regle {
+	margin: 0;
+	max-width: 26rem;
+	font-size: 1.05rem;
+	color: var(--ink);
+	text-align: center;
+}
+
+/* Écoute à la demande seulement (critère 23) : la règle ne change jamais d'une
+   grille à l'autre, la relire à chaque partie serait du bruit. */
+.sudoku-ecouter {
+	min-height: 2.75rem;
+	padding: 0 0.9rem;
+	font-family: var(--ui);
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--track);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* ---------- Grille et palette ---------- */
+
+/* UNE seule mise en page (critère 24). En portrait étroit la palette se range
+   SOUS la grille, parce que la hauteur est la ressource rare ; dès qu'il y a de
+   la largeur, elle passe à côté et ne mange plus de hauteur. Mêmes composants
+   des deux côtés, un seul point de rupture. */
+.sudoku-jeu {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.9rem;
+	width: 100%;
+}
+
+@media (min-width: 700px) {
+	.sudoku-jeu {
+		flex-direction: row;
+		justify-content: center;
+		align-items: flex-start;
+	}
+}
+
+/* `60vh` dans le `min()` n'est pas décoratif : sans lui, un écran court
+   (téléphone couché, fenêtre basse) pousserait la palette hors de vue. */
+.sudoku-grille {
+	display: grid;
+	grid-template-columns: repeat(var(--sudoku-cotes), 1fr);
+	width: min(90vw, 60vh, 380px);
+	aspect-ratio: 1;
+	background: var(--paper);
+	border: 3px solid var(--control-line);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.sudoku-grille[data-cotes='4'] {
+	--sudoku-cotes: 4;
+}
+
+.sudoku-grille[data-cotes='6'] {
+	--sudoku-cotes: 6;
+}
+
+.sudoku-case {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	aspect-ratio: 1;
+	color: var(--accent);
+	background: var(--paper);
+	border: 0;
+	/* Filet FIN entre cases, épais entre régions : voir les deux règles de bord
+	   ci-dessous. `--line` est décoratif et exempté du 3:1, `--control-line` non
+	   — et c'est bien le second qui porte l'information de région (critère 9). */
+	box-shadow: inset 0 0 0 1px var(--line);
+	cursor: pointer;
+}
+
+/* Les bords de RÉGION. La région est la contrainte la moins intuitive des trois
+   et la plus oubliée, y compris chez l'adulte débutant : elle doit se voir d'un
+   coup d'œil, pas se déduire. Au 6×6 elle fait 3 de large sur 2 de haut, donc
+   un rectangle, ce qui la rend encore moins évidente. */
+.sudoku-case[data-bord-r] {
+	border-right: 3px solid var(--control-line);
+}
+
+.sudoku-case[data-bord-b] {
+	border-bottom: 3px solid var(--control-line);
+}
+
+/* Les cases DONNÉES : surface pleine neutre et encre sombre, contre l'accent des
+   cases posées par l'enfant. Deux canaux, la surface et la teinte, donc « ce que
+   j'ai posé » reste distinguable de « ce qui était là » sans dépendre de l'œil. */
+.sudoku-case[data-fixe] {
+	color: var(--ink);
+	background: var(--track);
+	cursor: default;
+}
+
+/* Le déchargement de repérage du critère 16 : la ligne, la colonne et la région
+   de la case choisie. Une aide à la LECTURE de la grille, pas à la réponse. */
+.sudoku-case[data-lie] {
+	background: var(--accent-soft);
+}
+
+.sudoku-case[data-fixe][data-lie] {
+	background: var(--accent-soft);
+}
+
+/* Les occurrences déjà posées de la forme choisie : un anneau intérieur, pas un
+   fond, pour rester lisible par-dessus la mise en évidence ci-dessus. */
+.sudoku-case[data-meme] {
+	box-shadow:
+		inset 0 0 0 1px var(--line),
+		inset 0 0 0 4px var(--accent);
+}
+
+/* La case choisie : contour ÉPAIS posé à l'intérieur, plus la teinte d'accent.
+   L'épaisseur est le canal qui ne dépend pas de la couleur. */
+.sudoku-case.sel {
+	box-shadow:
+		inset 0 0 0 1px var(--line),
+		inset 0 0 0 4px var(--accent);
+}
+
+/* Le CONFLIT, en dernier pour l'emporter sur les aides ci-dessus. Registre
+   `--warn` (« ce n'est pas une faute »), jamais `--ko`, et doublé par une trame
+   de hachures qui survit à un œil deutan. */
+.sudoku-case[data-conflit] {
+	background:
+		repeating-linear-gradient(
+			135deg,
+			transparent 0,
+			transparent 5px,
+			var(--warn-bd) 5px,
+			var(--warn-bd) 8px
+		),
+		var(--warn-bg);
+	box-shadow:
+		inset 0 0 0 1px var(--line),
+		inset 0 0 0 3px var(--warn);
+}
+
+.sudoku-case[data-conflit].sel {
+	box-shadow:
+		inset 0 0 0 1px var(--line),
+		inset 0 0 0 5px var(--warn);
+}
+
+.sudoku-glyphe {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 62%;
+	height: 62%;
+}
+
+/* Les silhouettes suivent `currentColor` : la teinte vient de la case, jamais du
+   dessin, donc aucune forme n'est identifiée par sa couleur (critère 7). */
+.sudoku-glyphe svg {
+	width: 100%;
+	height: 100%;
+}
+
+/* ---------- La palette (critères 10, 11) ---------- */
+
+/* HORS de la grille et fixe : une palette qui surgirait au point de contact
+   serait masquée par le doigt qui vient de la déclencher. `2.75rem` vaut 44 px
+   au corps de base — la cible que le projet vise pour un doigt d'enfant, très
+   au-dessus du plancher AA de 24 px (WCAG 2.2, SC 2.5.8). */
+.sudoku-palette {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(2.75rem, 1fr));
+	gap: 0.5rem;
+	width: min(90vw, 380px);
+}
+
+@media (min-width: 700px) {
+	.sudoku-palette {
+		grid-template-columns: repeat(2, minmax(2.75rem, 1fr));
+		width: auto;
+		min-width: 9rem;
+	}
+}
+
+.sudoku-symbole {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 2.75rem;
+	min-height: 2.9rem;
+	padding: 0.35rem;
+	color: var(--accent);
+	background: var(--paper);
+	border: 2px solid var(--control-line);
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+.sudoku-symbole .sudoku-glyphe {
+	width: 1.6rem;
+	height: 1.6rem;
+}
+
+.sudoku-symbole[aria-pressed='true'] {
+	color: var(--on-accent);
+	background: var(--accent);
+	border-color: var(--accent);
+}
+
+/* Effacer est un BOUTON explicite : ni double appui, ni appui long, dont la
+   fenêtre de temps est trop stricte à cet âge (critère 11). */
+.sudoku-effacer {
+	grid-column: 1 / -1;
+	min-height: 2.9rem;
+	font-family: var(--ui);
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--track);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* ---------- Le repli et la fin ---------- */
+
+.sudoku-actions {
+	display: flex;
+	gap: 0.6rem;
+}
+
+/* Toujours visible, jamais conditionné à une détection de blocage (critère 12) :
+   l'enfant n'a pas à démontrer qu'il est coincé pour avoir une porte de sortie.
+   Registre discret, comme `.motus-btn-doux` : c'est un repli, pas l'action
+   principale. */
+.sudoku-doux {
+	min-height: 2.75rem;
+	padding: 0 1rem;
+	font-family: var(--ui);
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--track);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* Un panneau CALME dans le plateau, sur le modèle de `.motus-fin` et de
+   `.g2048-fin` : pas de confettis, pas de modale de récompense (critère 36). Un
+   jeu de l'étagère n'alimente aucune économie, donc il n'emprunte pas le
+   traitement paroxystique d'une fin de leçon. */
+.sudoku-fin {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 0.9rem 1.2rem;
+	background: var(--accent-soft);
+	border-radius: 14px;
+}
+
+.sudoku-fin[hidden] {
+	display: none;
+}
+
+.sudoku-fin-titre {
+	margin: 0;
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: var(--ink);
+}
+
+.sudoku-nouvelle {
+	min-height: 3rem;
+	padding: 0 1.2rem;
+	font-family: var(--ui);
+	font-size: 1.05rem;
+	font-weight: 800;
+	color: var(--on-accent);
+	background: var(--accent);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.sudoku-case,
+	.sudoku-symbole,
+	.sudoku-taille {
+		transition: none;
+	}
+}

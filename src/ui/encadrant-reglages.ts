@@ -104,6 +104,10 @@ function jeuxHTML(consulte: Profile): SafeHtml {
         <input type="checkbox" data-act="set-jeux-pref" data-pref="sansInvitationJeux"${prefs.sansInvitationJeux ? drapeau('checked') : ''}${actif ? '' : drapeau('disabled')} />
         <span>Ne pas proposer de jouer en fin de séance <small class="enc-hint">(l'accès reste sur l'accueil, mais l'application ne relance jamais l'enfant)</small></span>
       </label>
+      <label class="enc-toggle${actif ? '' : ' enc-toggle-off'}">
+        <input type="checkbox" data-act="set-jeux-pref" data-pref="sansAidesJeux"${prefs.sansAidesJeux ? drapeau('checked') : ''}${actif ? '' : drapeau('disabled')} />
+        <span>Jouer sans aides visuelles <small class="enc-hint">(dans le sudoku, ne plus marquer les formes en double ni éclairer la ligne, la colonne et le bloc de la case choisie)</small></span>
+      </label>
       <p class="enc-hint">Le temps de jeu n'est ni cumulable ni reportable : une journée sans jouer n'allonge pas la suivante.</p>
     </div>`;
 }
@@ -341,7 +345,8 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 	   qui le suivent, et sans re-rendu ils resteraient actifs à l'écran alors
 	   qu'ils ne servent plus. */
 	if (act === 'set-jeux-pref' && uuid) {
-		const pref = (t as HTMLElement).dataset.pref as 'sansJeux' | 'sansInvitationJeux';
+		const pref = (t as HTMLElement).dataset.pref as
+			'sansJeux' | 'sansInvitationJeux' | 'sansAidesJeux';
 		setPrefFor(uuid, pref, (t as HTMLInputElement).checked);
 		renderEspace();
 		return true;

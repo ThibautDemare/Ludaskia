@@ -18,8 +18,16 @@ export interface ContexteInvitation {
 	etagereActive: boolean;
 	/** L'encadrant veut-il qu'on invite ? Subordonné à `etagereActive`. */
 	invitationActive: boolean;
-	/** L'enfant possède-t-il au moins un jeu ? */
-	aUnJeu: boolean;
+	/** Y a-t-il quelque chose à ouvrir : au moins un jeu possédé, OU un choix de
+	 *  palier encore dû ?
+
+	 *  Ce n'est PAS « possède un jeu », et la nuance a coûté un bug : un enfant
+	 *  qui ferme son tout premier écran de choix possède zéro jeu et a un choix
+	 *  en attente. Avec « possède un jeu », l'invitation se taisait — alors que le
+	 *  critère 42 interdit tout badge sur l'accueil, donc plus rien ne lui disait
+	 *  qu'il avait quelque chose à aller chercher, et ce jusqu'au palier suivant.
+	 *  Relevé par `auteur-tests-logique` le 2026-09-07. */
+	etagereNonVide: boolean;
 	/** Y a-t-il un programme du jour aujourd'hui ? */
 	programmeActif: boolean;
 	/** L'écran d'où l'on demande. */
@@ -38,8 +46,9 @@ export interface ContexteInvitation {
     cherche à éviter. */
 export function doitInviter(c: ContexteInvitation): boolean {
 	// L'accès commande tout : couper l'étagère coupe l'invitation, quel que soit
-	// le réglage d'invitation. Et sans jeu sur l'étagère, il n'y a rien à
-	// proposer — avant le premier palier, l'enfant ne voit rien (critère 27).
-	if (!c.etagereActive || !c.invitationActive || !c.aUnJeu) return false;
+	// le réglage d'invitation. Et si l'étagère est vide — ni jeu, ni choix dû —
+	// il n'y a rien à proposer : avant le premier palier, l'enfant ne voit rien
+	// (critère 27).
+	if (!c.etagereActive || !c.invitationActive || !c.etagereNonVide) return false;
 	return c.ou === 'programme' ? c.programmeActif : !c.programmeActif;
 }

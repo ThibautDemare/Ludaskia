@@ -49,7 +49,23 @@ export function watchErrors(page: Page): string[] {
    Guide de 1re visite (#330) : de même, on amorce les drapeaux « déjà vu » du tour
    enfant ET du mot aux parents (préfixés par le profil actif) pour que cet
    onboarding ne s'affiche pas sur l'accueil de toutes les specs. La spec dédiée
-   (tour.spec.ts) navigue « à froid », sans cet amorçage, pour tester l'enchaînement. */
+   (tour.spec.ts) navigue « à froid », sans cet amorçage, pour tester l'enchaînement.
+
+   Écran de choix d'un jeu (#661, régression du 2026-09-07) : le palier 1 est au
+   niveau 2, une douzaine d'XP — n'importe quelle spec qui termine une leçon peut
+   le franchir SANS jamais parler de jeux, et `#jeuxChoix` s'ouvrait par-dessus tout
+   (`.modal-overlay` intercepte les clics suivants, dix specs existantes en sont
+   restées bloquées en CI). Même remède que l'onboarding : on marque par avance
+   une plage large de rangs de palier comme « déjà présentés »
+   (`ludaskia_jeux_paliers_proposes`, `core/jeux/etat.ts`) — un rang qui y figure
+   ne s'ouvre plus tout seul (`prochainPalierAProposer`), même s'il vient d'entrer
+   en attente. Un rang non choisi reste accessible depuis la liste de jeux
+   (`.jeu-attente`), donc rien n'est perdu pour l'enfant — ce n'est que l'ouverture
+   AUTOMATIQUE qu'on coupe. 30 rangs couvre large (la table n'en compte que 18
+   aujourd'hui) sans avoir à importer `PALIERS` depuis `src/` (interdit dans une
+   spec, cf. plus haut). Les specs de l'étagère qui veulent VRAIMENT l'écran de
+   choix (`jeux-etagere.spec.ts`) l'annulent explicitement après coup — voir
+   `neutraliserChoixAutoScript` plus bas. */
 const ENSURE_NIVEAU = `(() => {
 	const KEY = 'ludaskia_profiles';
 	let m = null;
@@ -62,6 +78,7 @@ const ENSURE_NIVEAU = `(() => {
 	localStorage.setItem(KEY, JSON.stringify(m));
 	localStorage.setItem(m.active + '/ludaskia_tour_seen', 'true');
 	localStorage.setItem(m.active + '/ludaskia_parents_seen', 'true');
+	localStorage.setItem(m.active + '/ludaskia_jeux_paliers_proposes', JSON.stringify(Array.from({ length: 30 }, (_, i) => i + 1)));
 })();`;
 
 /* Navigue vers une vue routée par hash (#accueil, #categorie-..., #lecon-...).
@@ -264,4 +281,24 @@ export async function ouvrirJeuDepuisEtagere(page: Page): Promise<void> {
 	await ouvrirEtagere(page);
 	await page.locator('.jeu-item').first().click();
 	await page.locator('#jeuEcran').waitFor({ state: 'visible' });
+}
+
+/* Annule, pour CETTE page, le blanket posé par `ENSURE_NIVEAU` sur
+   `ludaskia_jeux_paliers_proposes` (cf. son commentaire plus haut) : réservé aux
+   specs qui veulent VOIR l'écran de choix s'ouvrir tout seul quand un palier est
+   franchi (aujourd'hui, la seule dans ce cas : jeux-etagere.spec.ts, critères 4
+   et 6).
+
+   Appeler APRÈS le `gotoHash` qui suit le seed d'XP, PAS avant : `gotoHash` pose
+   son propre `ENSURE_NIVEAU` à CHAQUE appel, et l'ordre d'exécution des scripts
+   d'init suit l'ordre d'ENREGISTREMENT — un appel fait avant serait rejoué puis
+   écrasé par lui. Deux gestes, pas un seul : `page.evaluate` retire la clé tout
+   de suite, pour la navigation qui vient d'avoir lieu (un `addInitScript` seul
+   n'agirait qu'à partir de la PROCHAINE) ; `page.addInitScript` la retire aussi
+   à toute navigation ultérieure dans ce même test (repli éventuel vers l'accueil
+   plus loin dans le test), sans quoi le prochain `ENSURE_NIVEAU` la reposerait. */
+export async function autoriserProchainChoixDePalier(page: Page): Promise<void> {
+	const script = `localStorage.removeItem('e2e/ludaskia_jeux_paliers_proposes');`;
+	await page.evaluate(script);
+	await page.addInitScript(script);
 }

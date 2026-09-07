@@ -39,6 +39,7 @@ import {
 	seedJeuxPossedesScript,
 	ouvrirEtagere,
 	ouvrirJeuDepuisEtagere,
+	autoriserProchainChoixDePalier,
 } from './helpers';
 
 /* ---------- Critère 27 (négatif) : rien avant le premier palier ---------- */
@@ -228,6 +229,10 @@ test('critères 4 et 6 : franchir le palier 1 ouvre l’écran de choix ; choisi
 	const errors = watchErrors(page);
 	await page.addInitScript(`localStorage.setItem('e2e/ludaskia_xp', '${XP_JUSTE_SOUS_NIVEAU_2}');`);
 	await gotoHash(page, 'lecon-num-comparer');
+	// Ce test-ci est celui qui doit VOIR l'écran de choix s'ouvrir tout seul :
+	// annule le blanket que `gotoHash` pose par défaut pour toutes les AUTRES
+	// specs (cf. le commentaire d'ENSURE_NIVEAU, helpers.ts).
+	await autoriserProchainChoixDePalier(page);
 
 	// Fiche mono-mode saisie (8 items, cf. compteur-etoiles.spec.ts) : toutes les
 	// réponses justes suffisent largement à passer de 11 à un total < 34

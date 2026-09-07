@@ -95,13 +95,13 @@ function jeuxHTML(consulte: Profile): SafeHtml {
       <h3 class="enc-h3">Jeux</h3>
       <p class="enc-hint">L'enfant débloque de nouveaux jeux en montant de niveau. Jouer ne coûte rien et ne rapporte rien : ni XP, ni étoile, ni trophée.</p>
       <label class="enc-toggle">
-        <input type="checkbox" id="encJeuxActives" data-act="set-amenagement" data-pref="sansJeux"${prefs.sansJeux ? drapeau('checked') : ''} />
+        <input type="checkbox" id="encJeuxActives" data-act="set-jeux-pref" data-pref="sansJeux"${prefs.sansJeux ? drapeau('checked') : ''} />
         <span>Désactiver les jeux <small class="enc-hint">(l'accès disparaît de l'accueil ; les jeux déjà obtenus sont conservés et reviendront si vous les réactivez)</small></span>
       </label>
       <label class="enc-row${actif ? '' : ' enc-toggle-off'}"><span>Temps de jeu par jour</span>
         <select class="enc-select-niveau" id="encJeuxMinutes" data-act="set-jeux-plafond"${actif ? '' : drapeau('disabled')}>${opts}</select></label>
       <label class="enc-toggle${actif ? '' : ' enc-toggle-off'}">
-        <input type="checkbox" data-act="set-amenagement" data-pref="sansInvitationJeux"${prefs.sansInvitationJeux ? drapeau('checked') : ''}${actif ? '' : drapeau('disabled')} />
+        <input type="checkbox" data-act="set-jeux-pref" data-pref="sansInvitationJeux"${prefs.sansInvitationJeux ? drapeau('checked') : ''}${actif ? '' : drapeau('disabled')} />
         <span>Ne pas proposer de jouer en fin de séance <small class="enc-hint">(l'accès reste sur l'accueil, mais l'application ne relance jamais l'enfant)</small></span>
       </label>
       <p class="enc-hint">Le temps de jeu n'est ni cumulable ni reportable : une journée sans jouer n'allonge pas la suivante.</p>
@@ -328,6 +328,24 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 		setPrefFor(uuid, 'revisionPlafond', Number(t.value));
 		return true;
 	}
+	/* Les deux drapeaux de la section « Jeux » ont leur PROPRE `data-act`, et ce
+	   n'est pas de la plomberie en double. Ils partageaient `set-amenagement`
+	   avec les aménagements dys/attention, et deux choses en découlaient : un
+	   comptage global de ce sélecteur passait de 4 à 6 — `e2e/encadrant.spec.ts`
+	   l'a fait échouer, alors que le critère 26 interdit qu'une spec existante
+	   doive changer — et surtout le nom mentait. Un réglage de jeux n'est pas un
+	   aménagement : il ne lève aucun obstacle d'apprentissage, il borne une
+	   récompense. Relevé par `auteur-tests-e2e` le 2026-09-07.
+
+	   `renderEspace()` est nécessaire ici : `sansJeux` commande les deux réglages
+	   qui le suivent, et sans re-rendu ils resteraient actifs à l'écran alors
+	   qu'ils ne servent plus. */
+	if (act === 'set-jeux-pref' && uuid) {
+		const pref = (t as HTMLElement).dataset.pref as 'sansJeux' | 'sansInvitationJeux';
+		setPrefFor(uuid, pref, (t as HTMLInputElement).checked);
+		renderEspace();
+		return true;
+	}
 	if (act === 'set-jeux-plafond' && uuid) {
 		// Même parti pris que ci-dessus : bornage à la lecture (getJeuxPlafondMinutes),
 		// pas de re-rendu — le <select> perdrait le focus clavier pour rien.
@@ -383,12 +401,7 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 			| 'sansPressionTemporelle'
 			| 'lectureConsigneAuto'
 			| 'sansApparitionsSurprises'
-			| 'sansMotsDifficiles'
-			// #661 : `sansJeux` commande les deux réglages qui le suivent, d'où le
-			// `renderEspace()` ci-dessous — sans lui, couper les jeux laisserait le
-			// plafond et l'invitation actifs à l'écran alors qu'ils ne servent plus.
-			| 'sansJeux'
-			| 'sansInvitationJeux';
+			| 'sansMotsDifficiles';
 		setPrefFor(uuid, pref, (t as HTMLInputElement).checked);
 		renderEspace();
 		return true;

@@ -23,12 +23,18 @@ import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 import { activateModal } from './modal-a11y';
 import { etagereJeuxActive, getJeuxPlafondMinutes } from '../core/profiles';
 import { jeuParId } from '../core/jeux/catalogue';
-import { jeuxPossedes, secondesRestantes } from '../core/jeux/etat';
+import {
+	etagereNonVide,
+	jeuxPossedes,
+	paliersEnAttente,
+	secondesRestantes,
+} from '../core/jeux/etat';
+import { ouvrirChoix } from './jeux-choix';
 
 /** L'étagère est-elle montrable ? Masquée avant le premier palier (critère 27)
     et quand l'encadrant a coupé l'accès. */
 export function etagereVisible(): boolean {
-	return etagereJeuxActive() && jeuxPossedes().length > 0;
+	return etagereJeuxActive() && etagereNonVide();
 }
 
 /** Le bouton d'accès sur l'accueil. Vide quand il n'y a rien à ouvrir. */
@@ -68,9 +74,28 @@ function plafondHTML(): SafeHtml {
 			</p>`;
 }
 
+/* Un choix en attente : l'enfant a fermé l'écran de palier sans choisir, ou
+   n'était pas là quand il s'est ouvert. C'est ICI qu'il le retrouve, et nulle
+   part ailleurs — surtout pas en badge sur l'accueil, que le critère 42
+   interdit. La liste de jeux porte l'attente, l'accueil non. */
+function choixEnAttenteHTML(): SafeHtml {
+	const rangs = paliersEnAttente();
+	if (!rangs.length) return VIDE;
+	return html`<button type="button" class="jeu-attente" data-palier="${String(rangs[0])}">
+		<span class="jeu-attente-ico" aria-hidden="true">🎁</span>
+		<span class="jeu-attente-txt"
+			>${
+				rangs.length > 1
+					? `Tu as ${rangs.length} nouveaux jeux à choisir`
+					: "Un nouveau jeu t'attend : choisis-le"
+			}</span
+		>
+	</button>`;
+}
+
 function etagereContenuHTML(): SafeHtml {
 	const jeux = joindre(jeuxPossedes().map(jeuItemHTML));
-	return html`${plafondHTML()}
+	return html`${plafondHTML()}${choixEnAttenteHTML()}
 		<div class="jeux-liste" id="jeuxListe">${jeux}</div>`;
 }
 
@@ -107,14 +132,26 @@ export function hideEtagere(): void {
    Le plafond épuisé ne grise rien : la route refuse d'ouvrir et rend la main,
    pendant que la modale explique en une phrase pourquoi. */
 function surClicJeu(e: MouseEvent): void {
-	const btn = (e.target as HTMLElement | null)?.closest<HTMLElement>('.jeu-item');
+	const cible = (e.target as HTMLElement | null) ?? null;
+	/* Un choix en attente passe AVANT le lancement d'un jeu : les deux vivent dans
+	   la même modale, et l'attente est en tête. */
+	const attente = cible?.closest<HTMLElement>('.jeu-attente');
+	if (attente?.dataset.palier) {
+		const rang = Number(attente.dataset.palier);
+		hideEtagere();
+		if (Number.isFinite(rang)) ouvrirChoix(rang);
+		return;
+	}
+	const btn = cible?.closest<HTMLElement>('.jeu-item');
 	const id = btn?.dataset.jeu;
 	if (!id) return;
 	hideEtagere();
 	location.hash = `jeu-${id}`;
 }
 
-/** Le plafond du jour est-il épuisé ? Sert au lancement d'une partie. */
-export function plafondAtteint(): boolean {
-	return secondesRestantes(getJeuxPlafondMinutes()) <= 0;
-}
+/* `plafondAtteint()` a été SUPPRIMÉE le 2026-09-07 : exportée, jamais appelée.
+   Elle dupliquait `secondesRestantes(getJeuxPlafondMinutes())` sans le drapeau
+   d'accès que `jeuOuvrable` conjugue, lui — donc deux réponses possibles à la
+   même question, dont l'une amputée d'un terme. C'est le motif exact qui avait
+   fait diverger l'entrée et l'invitation. La seule autorité sur « peut-on
+   ouvrir un jeu ? » est `jeuOuvrable` dans `jeux-ecran.ts`. */

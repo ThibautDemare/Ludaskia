@@ -21,6 +21,11 @@ export const CLE_POSSEDES = 'ludaskia_jeux_possedes';
 export const CLE_PALIERS_ATTENTE = 'ludaskia_jeux_paliers_attente';
 export const CLE_PLAFOND = 'ludaskia_jeux_plafond';
 export const CLE_SCORES = 'ludaskia_jeux_scores';
+/* Les paliers DÉJÀ présentés automatiquement (#661, arbitrage du 2026-09-07).
+   Sans cette clé, « ne plus reproposer » ne se distingue pas de « pas encore
+   proposé » — et c'est justement cette distinction qui permet à un palier fermé
+   de rester disponible sans revenir de lui-même. */
+export const CLE_PALIERS_PROPOSES = 'ludaskia_jeux_paliers_proposes';
 
 /* Les lectures nettoient au lieu de faire confiance : ces clés passent par
    l'export/import de sauvegarde, donc une donnée bricolée à la main peut
@@ -51,6 +56,19 @@ export function ajouterJeu(id: string): void {
 	lsSet(CLE_POSSEDES, [...actuels, id]);
 }
 
+/** Y a-t-il quelque chose dans l'étagère : un jeu possédé, ou un choix dû ?
+
+    SOURCE UNIQUE, et c'est tout l'intérêt. Cette condition était écrite deux
+    fois — dans l'entrée de l'accueil et dans l'invitation de fin de séance — et
+    les deux copies avaient déjà divergé une fois : l'invitation se taisait pour
+    un enfant qui venait de refermer son premier écran de choix, alors que
+    l'entrée s'affichait. La divergence est corrigée ; c'est la POSSIBILITÉ de
+    divergence que cette fonction supprime, avant que le troisième consommateur
+    ne l'écrive à son tour. Relevé par `auteur-tests-logique` le 2026-09-07. */
+export function etagereNonVide(): boolean {
+	return jeuxPossedes().length > 0 || paliersEnAttente().length > 0;
+}
+
 /* ---------- Les paliers en attente de choix ---------- */
 
 function rangsEnAttente(): number[] {
@@ -77,16 +95,82 @@ export function empilerPaliers(rangs: number[]): void {
 	lsSet(CLE_PALIERS_ATTENTE, [...actuels, ...ajouts]);
 }
 
-/** Sort le prochain palier à traiter, dans l'ordre de franchissement.
+/* L'invariant tenu ICI, à la lecture : « déjà proposé » ⊆ « en attente ». Un
+   rang proposé mais plus en attente est du bruit, et du bruit DÉFINITIF s'il
+   subsiste — le palier re-franchi plus tard serait sauté par
+   `prochainPalierAProposer` et ne s'ouvrirait plus jamais tout seul, sans
+   qu'aucun chemin ne remette la clé d'aplomb.
+
+   Le chemin normal ne produit pas cet état ; un import de sauvegarde bricolé,
+   si. Même convention que `getRevisionPlafond` : on borne à la LECTURE, pas à
+   l'écriture, ce qui reste robuste aux données qui reviennent de l'extérieur.
+   Relevé par `auteur-tests-logique` le 2026-09-07. */
+function rangsProposesBruts(): number[] {
+	const brut = lsGet(CLE_PALIERS_PROPOSES, []) as unknown;
+	if (!Array.isArray(brut)) return [];
+	return brut.filter((x): x is number => typeof x === 'number' && Number.isFinite(x));
+}
+
+function rangsProposes(): number[] {
+	const attente = new Set(rangsEnAttente());
+	return rangsProposesBruts().filter((r) => attente.has(r));
+}
+
+/** Le prochain palier à PRÉSENTER automatiquement, ou `undefined`.
+
+    C'est le premier palier en attente qui n'a pas déjà été présenté. Un palier
+    que l'enfant a fermé sans choisir reste donc en attente — atteignable depuis
+    sa liste de jeux — mais ne s'ouvre plus tout seul : on ne relance pas
+    indéfiniment (arbitrage du 2026-09-07).
 
     UN par appel, jamais la pile entière : deux écrans de choix simultanés sont
     le cas d'échec du critère 7. */
-export function consommerPalier(): number | undefined {
+export function prochainPalierAProposer(): number | undefined {
+	const proposes = new Set(rangsProposes());
+	return rangsEnAttente().find((r) => !proposes.has(r));
+}
+
+/** Note qu'un palier vient d'être présenté. À appeler à l'OUVERTURE de l'écran,
+    pas à la fermeture : si l'enfant quitte l'app en cours de route, la modale ne
+    doit pas le rattraper au démarrage suivant. */
+export function marquerPalierPropose(rang: number): void {
+	/* Lecture BRUTE, pas filtrée, et c'est délibéré : `rangsProposes()` ne garde
+	   que les rangs encore en attente, donc marquer un palier avant de l'avoir
+	   empilé aurait écrit une valeur que la lecture suivante aurait jetée. Le
+	   marquage se serait évaporé en silence, et l'écran de choix se serait rouvert
+	   tout seul — ce que l'arbitrage du 2026-09-07 interdit. Aucun chemin ne fait
+	   ça aujourd'hui, mais rien ne l'empêchait. Relevé par
+	   `auteur-tests-logique` le 2026-09-07. */
+	const actuels = rangsProposesBruts();
+	if (actuels.includes(rang)) return;
+	lsSet(CLE_PALIERS_PROPOSES, [...actuels, rang]);
+}
+
+/** Consomme un palier précis : son choix vient d'être fait.
+
+    Prend le rang en paramètre et non plus la tête de pile, parce que le choix
+    peut désormais se faire depuis la liste de jeux, dans l'ordre que l'enfant
+    veut. Rend `true` si le palier était bien en attente. */
+export function consommerPalier(rang: number): boolean {
 	const actuels = rangsEnAttente();
-	if (!actuels.length) return undefined;
-	const [premier, ...reste] = actuels;
-	lsSet(CLE_PALIERS_ATTENTE, reste);
-	return premier;
+	if (!actuels.includes(rang)) return false;
+	/* Lecture BRUTE ici aussi : le nettoyage doit voir le rang qu'on s'apprête à
+	   retirer de l'attente. Avec la lecture filtrée, la condition ci-dessous
+	   n'aurait jamais été vraie une fois l'attente mise à jour, et la clé stockée
+	   aurait grossi indéfiniment. Défaut introduit puis rattrapé le 2026-09-07,
+	   attrapé par un test qui lit le stockage sans passer par l'API. */
+	const proposes = rangsProposesBruts();
+	lsSet(
+		CLE_PALIERS_ATTENTE,
+		actuels.filter((r) => r !== rang),
+	);
+	if (proposes.includes(rang)) {
+		lsSet(
+			CLE_PALIERS_PROPOSES,
+			proposes.filter((r) => r !== rang),
+		);
+	}
+	return true;
 }
 
 /* ---------- Le meilleur score, LOCAL au jeu ---------- */

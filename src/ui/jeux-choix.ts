@@ -23,10 +23,20 @@ import { niveauActif } from '../core/niveau-actif';
 import { JEUX, type JeuDef } from '../core/jeux/catalogue';
 import { PALIERS } from '../core/jeux/paliers';
 import { proposerJeux } from '../core/jeux/tirage';
-import { ajouterJeu, consommerPalier, jeuxPossedes, paliersEnAttente } from '../core/jeux/etat';
+import {
+	ajouterJeu,
+	consommerPalier,
+	jeuxPossedes,
+	marquerPalierPropose,
+	prochainPalierAProposer,
+} from '../core/jeux/etat';
 import { renderJeuxNav } from './jeux-etagere';
 
 let choixRelease: (() => void) | null = null;
+/* Le palier dont l'écran est ouvert. Le choix consomme CE rang, et pas la tête
+   de pile : depuis la liste de jeux, l'enfant peut reprendre un palier qu'il
+   avait refermé, dans l'ordre qu'il veut. */
+let rangCourant: number | undefined;
 
 function propositionHTML(jeu: JeuDef): SafeHtml {
 	/* Rien ne nomme la compétence (critère 3) : l'enfant choisit un jeu, pas une
@@ -44,7 +54,10 @@ function choixContenuHTML(propositions: JeuDef[]): SafeHtml {
 	return html`<p class="jeu-choix-consigne">Choisis celui que tu veux garder.</p>
 		<div class="jeu-choix-liste">${joindre(propositions.map(propositionHTML))}</div>
 		<p class="jeu-choix-rassure">Les autres restent dans la réserve : tu pourras les choisir à un
-			prochain niveau.</p>`;
+			prochain niveau.</p>
+		<button type="button" class="jeu-choix-plus-tard" id="jeuxChoixPlusTard">
+			Je choisirai plus tard
+		</button>`;
 }
 
 function fermer(): void {
@@ -54,9 +67,12 @@ function fermer(): void {
 	if (!ov) return;
 	ov.removeEventListener('click', surClic);
 	ov.style.display = 'none';
+	rangCourant = undefined;
 }
 
 function choisir(id: string): void {
+	if (rangCourant === undefined) return;
+	consommerPalier(rangCourant);
 	ajouterJeu(id);
 	fermer();
 	renderJeuxNav(); // l'entrée peut apparaître pour la première fois (critère 27)
@@ -64,17 +80,24 @@ function choisir(id: string): void {
 	ouvrirProchainChoix();
 }
 
-/** Ouvre l'écran de choix du prochain palier en attente, s'il y en a un.
+/** Ouvre l'écran de choix du prochain palier à PRÉSENTER, s'il y en a un.
 
     Ne fait rien — et surtout ne CONSOMME rien — quand le vivier ne rend aucune
     proposition : le palier doit rester en attente pour se redéclencher quand la
     classe du profil change et rouvre des jeux (critère 9). */
 export function ouvrirProchainChoix(): void {
-	const rang = paliersEnAttente()[0];
+	const rang = prochainPalierAProposer();
 	if (rang === undefined) return;
+	ouvrirChoix(rang);
+}
+
+/** Ouvre l'écran de choix d'un palier donné. Utilisé par le franchissement, et
+    par la liste de jeux pour un palier que l'enfant avait refermé. */
+export function ouvrirChoix(rang: number): void {
 	const palier = PALIERS.find((p) => p.rang === rang);
 	if (!palier) {
-		consommerPalier(); // rang inconnu (donnée importée d'une version future) : on purge
+		// Rang inconnu (donnée importée d'une version future) : on purge et on passe.
+		consommerPalier(rang);
 		ouvrirProchainChoix();
 		return;
 	}
@@ -87,19 +110,27 @@ export function ouvrirProchainChoix(): void {
 	});
 	if (!propositions.length) return; // palier gardé en attente, pas consommé
 
-	consommerPalier();
+	/* Marqué présenté à l'OUVERTURE, pas à la fermeture : si l'enfant quitte
+	   l'application en cours de route, la modale ne doit pas le rattraper au
+	   démarrage suivant. Le palier, lui, reste en attente jusqu'au choix. */
+	marquerPalierPropose(rang);
+	rangCourant = rang;
+
 	const contenu = document.getElementById('jeuxChoixContent');
 	if (contenu) contenu.innerHTML = choixContenuHTML(propositions).balisage;
 	const ov = document.getElementById('jeuxChoix');
 	if (!ov) return;
 	ov.style.display = '';
 	choixRelease?.();
-	/* Pas de `onEscape` : Échap ne ferme pas cet écran, parce qu'il n'y a rien à
-	   fermer sans choisir. `activateModal` le permet en ne passant pas l'option —
-	   même parti pris que la modale de choix de classe de l'onboarding, qui force
-	   aussi la décision. Ce n'est donc pas une invention de ce lot, mais un
-	   mécanisme générique déjà en place. */
+	/* Échap ferme, et le palier reste en attente (arbitrage du 2026-09-07). La
+	   version initiale refusait toute sortie sans choisir, au motif qu'un moyen de
+	   repousser ferait de ce cadeau une tâche. C'était vrai du côté de l'enfant, et
+	   faux du côté de l'écran : la modale se posait sur ce qu'il était en train de
+	   faire, et rien ne la fermait. La CI l'a montré en bloquant dix specs
+	   existantes. On propose donc, on n'impose plus — et on ne repropose pas non
+	   plus, le choix attend dans la liste de jeux. */
 	choixRelease = activateModal(ov, {
+		onEscape: fermer,
 		initialFocus: ov.querySelector<HTMLElement>('.jeu-choix-item'),
 	});
 	/* Délégation posée à l'ouverture et retirée à la fermeture, PAS un
@@ -110,7 +141,12 @@ export function ouvrirProchainChoix(): void {
 }
 
 function surClic(e: MouseEvent): void {
-	const btn = (e.target as HTMLElement | null)?.closest<HTMLElement>('.jeu-choix-item');
+	const cible = e.target as HTMLElement | null;
+	const btn = cible?.closest<HTMLElement>('.jeu-choix-item');
 	const id = btn?.dataset.jeu;
-	if (id) choisir(id);
+	if (id) {
+		choisir(id);
+		return;
+	}
+	if (cible?.closest('#jeuxChoixPlusTard')) fermer();
 }

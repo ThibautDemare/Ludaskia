@@ -379,7 +379,7 @@ const PAIRES_NON_TEXTE: Paire[] = [
 	{
 		avant: '--control-line',
 		arriere: '--paper',
-		ou: 'sprint.scss .sprint-choice, pave-signes.scss .pave-signe, lecon-mode.scss .etude-btn, .lqcm-multi-choice et .mode-btn[data-epuise="1"] (bordure au repos)',
+		ou: 'sprint.scss .sprint-choice, pave-signes.scss .pave-signe, lecon-mode.scss .etude-btn, .lqcm-multi-choice et .mode-btn[data-epuise="1"] (bordure au repos), jeu-sudoku.scss les bords de RÉGION de la grille (#666, critère 9)',
 	},
 	{
 		avant: '--accent',
@@ -389,7 +389,7 @@ const PAIRES_NON_TEXTE: Paire[] = [
 	{
 		avant: '--warn',
 		arriere: '--paper',
-		ou: 'encadrant.scss .enc-revoir-signal (liseré « ça bloque »)',
+		ou: 'encadrant.scss .enc-revoir-signal (liseré « ça bloque »), jeu-sudoku.scss .sudoku-case[data-conflit] (les formes en double, #666, critère 15)',
 	},
 	// Décompte gelé pendant l'écoute d'un énoncé (#630) : un liseré pointillé cerne le
 	// minuteur, en `currentColor` — donc `--accent` au repos, `--ko` dans les 30

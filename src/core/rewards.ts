@@ -383,17 +383,10 @@ export const TROPHIES: Trophy[] = [
 	   notion entière qui tient — disparaîtrait derrière le plus fréquent. Et « ce mot ne me
 	   piège plus » n'est pas la même fierté que « je sais encore faire ça ».
 
-	   SEUILS VOLONTAIREMENT HORS DE LA CONVENTION des autres familles (avis
-	   `gamification-enfant`) : le calibrage habituel suppose une métrique qui bouge à chaque
-	   séance, alors qu'ici un seul élément met des mois. Ancres mesurées au cadrage : 466
-	   mots distincts livrés (419 atteignables sans quitter le CE2), 264 paires leçon ×
-	   niveau (142 en CE2). Le 4e palier de chaque famille passe DÉLIBÉRÉMENT au-dessus du
-	   plafond CE2 : c'est un capstone qui suppose du contenu CM1.
-
-	   PALIER 1 À 1, et c'est le plus important des quatre : la première preuve, pour
-	   l'enfant, que ce qu'il a appris ne s'efface pas. Impossible à forcer — rien de ce
-	   qu'il fait aujourd'hui n'avancera ces compteurs avant des semaines —, donc aucune
-	   incitation au grinding : c'est une reconnaissance rétrospective, pas un objectif.
+	   SEUILS VOLONTAIREMENT HORS DE LA CONVENTION des autres familles : le calibrage
+	   habituel suppose une métrique qui bouge à chaque séance, alors qu'ici un seul élément
+	   met des mois. Les ancres mesurées, le palier 1 posé à 1 et le 4e palier délibérément
+	   au-dessus du plafond CE2 sont détaillés dans `docs/architecture/gamification.md`.
 
 	   POURQUOI « NOTION » ET NON « LEÇON » (rejet écrit, remontée `redacteur-contenu-francais`) :
 	   le compteur porte sur des paires leçon × niveau, or le catalogue expose 183 leçons pour

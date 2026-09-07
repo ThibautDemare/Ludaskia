@@ -1,6 +1,12 @@
 /* ============================================================
-   #641 — Révision espacée : un mot n'entre en rotation qu'à son ATELIER (critère 16),
-   et la révision ne valide toujours aucun mode de l'escalier (critère 23).
+   #641 — Révision espacée : un mot n'entre en rotation qu'à son ATELIER (critère 16).
+
+   Le critère 23 de #641 (« la révision ne valide aucun mode ») était un verrou POSÉ
+   PROVISOIRE : il décrivait l'état du code, pas une exigence. #640 le LÈVE — la révision sert
+   désormais la marche due et la fait franchir. Ce qui reste ci-dessous est ce que ce verrou
+   gardait vraiment, et qui ne bouge pas : l'espacement et l'escalier sont deux mécaniques
+   SÉPARÉES, la première n'écrivant jamais dans la seconde. L'exigence inverse — la révision
+   fait bien monter le mot — vit dans `tests/revision-marche-due.test.ts`.
 
    Écrits AVANT l'implémentation, à partir de l'issue seule.
 
@@ -14,10 +20,7 @@
    faux + échéance dépassée) : c'est exactement ce qui dort dans le stockage de l'enfant
    au moment de la mise à jour.
 
-   Le critère 23 est un VERROU : il est déjà vrai aujourd'hui, il doit le rester quand le
-   cumul de #641 arrive. Provisoire par nature — l'issue #640 le lèvera.
    ============================================================ */
-import { readFileSync } from 'node:fs';
 import { beforeEach, describe, it, expect } from 'vitest';
 import { estDu, estAcquis, REVISION_INTERVALLES, JOUR, PALIER_ACQUIS } from '../src/core/revision';
 import { selectDueGroups, countDue, effortRevisionAffiche } from '../src/core/revision-select';
@@ -187,9 +190,15 @@ describe('critère 16 : la sélection filtre les mots dont l’atelier n’est p
 });
 
 /* ============================================================
-   3) Critère 23 — la révision espacée ne valide aucun mode (verrou provisoire, #640)
+   3) Espacement et escalier : deux mécaniques séparées
+   ------------------------------------------------------------
+   Ancien critère 23 de #641, LEVÉ par #640 (cf. en-tête). Ce qui subsiste n'est pas « la
+   révision ne fait rien monter » — elle le fait maintenant, par `validerMode` — mais « le
+   compteur d'espacement, lui, n'écrit pas dans l'escalier ». Sans cette séparation, un échec
+   de révision ferait redescendre un mot d'un rang (#640, critère 9) et un « je ne sais pas,
+   montre-moi » pourrait valider une marche (#640, critère 16).
    ============================================================ */
-describe('critère 23 : une réussite en révision espacée ne fait monter aucun mode', () => {
+describe('le compteur d’espacement n’écrit jamais dans l’escalier', () => {
 	it('avancerMotRevision ne touche ni les booléens d’étape ni leurs dates', () => {
 		const state = emptyOrthoState();
 		const liste = createListe(state, 'Semaine 1', [{ mot: 'chat' }]);
@@ -204,7 +213,9 @@ describe('critère 23 : une réussite en révision espacée ne fait monter aucun
 		expect(m.validation).toEqual({ motCache: false, tuiles: false, dictee: false });
 	});
 
-	it('même acquis en révision espacée, un mot n’a validé aucun mode de l’escalier', () => {
+	it('répétée jusqu’à l’acquisition, elle ne valide toujours aucun mode à elle seule', () => {
+		// Depuis #640, un mot PEUT devenir acquis par des révisions successives ET porter ses
+		// marches : c'est `validerMode`, appelé par la révision, qui les pose — jamais celle-ci.
 		const state = emptyOrthoState();
 		const m = addOrGetMot(state, { mot: 'chat' });
 		marquerAtelierFait(m, le(0));
@@ -213,11 +224,9 @@ describe('critère 23 : une réussite en révision espacée ne fait monter aucun
 		expect(Object.values(m.validation)).toEqual([false, false, false]);
 	});
 
-	it('GATE : le runner de révision espacée n’appelle ni validerMode ni marquerAtelierFait', () => {
-		// Verrou PROVISOIRE : l'issue #640 rendra la révision validante, et lèvera ce test.
-		// Tant qu'elle n'est pas faite, le cumul de #641 ne doit pas s'y inviter par ricochet.
-		const source = readFileSync('src/ui/revision.ts', 'utf8');
-		expect(/\bvaliderMode\s*\(/.test(source)).toBe(false);
-		expect(/\bmarquerAtelierFait\s*\(/.test(source)).toBe(false);
-	});
+	/* Ici vivait un GATE qui exigeait de `src/ui/revision.ts` qu'il n'appelle JAMAIS
+	   `validerMode`. Il tenait le critère 23 de #641, posé PROVISOIRE, et #640 l'a levé : la
+	   révision doit désormais appeler cette primitive — et elle seule — pour faire monter un
+	   mot. L'exigence a donc changé de signe et de fichier : voir
+	   `tests/revision-marche-due.test.ts`, critères 6, 7 et 8. */
 });

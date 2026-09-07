@@ -311,7 +311,9 @@ const SEED_REVISION = {
 			mot: 'bonjour',
 			entourage: [],
 			atelierFait: true,
-			validation: { motCache: true, tuiles: false, dictee: false },
+			// #640 : la révision sert la MARCHE DUE (`prochaineActivite`) — tuiles déjà
+			// validé, motCache pas encore, pour que ce soit motCache la marche due ici.
+			validation: { tuiles: true, motCache: false, dictee: false },
 			revision: { palier: 2, prochaineRevision: 1, reussites: 2, dernierTest: 1 },
 			origine: 'liste',
 		},
@@ -320,7 +322,9 @@ const SEED_REVISION = {
 			mot: 'chat',
 			entourage: [],
 			atelierFait: true,
-			validation: { motCache: true, tuiles: false, dictee: false },
+			// #640 : la révision sert la MARCHE DUE (`prochaineActivite`) — tuiles déjà
+			// validé, motCache pas encore, pour que ce soit motCache la marche due ici.
+			validation: { tuiles: true, motCache: false, dictee: false },
 			revision: { palier: 2, prochaineRevision: 1, reussites: 2, dernierTest: 1 },
 			origine: 'liste',
 		},
@@ -346,20 +350,23 @@ test("fin de révision espacée : un mot raté et un mot passé sont nommés, le
 
 	// 1er mot : une réponse fausse bascule DIRECTEMENT sur la correction guidée (un
 	// seul essai en révision — pas de 2ᵉ chance comme dans le parcours d'entraînement).
-	await expect(page.locator('.rev-word')).toBeVisible();
-	const mot1 = (await page.locator('.rev-word').innerText()).trim();
-	await page.locator('#revHide').click();
-	await page.locator('#revInput').fill(mot1 + 'xx');
-	await page.locator('#revValidate').click();
+	// #640 : rendu motCache partagé (`ortho-taches.ts`) — ids du parcours, `.rev-word`
+	// remplacé par `#motAffiche` (pas encore de correction ici, donc pas de pastille
+	// à filtrer : c'est le premier affichage du mot).
+	await expect(page.locator('#motAffiche')).toBeVisible();
+	const mot1 = (await page.locator('#motAffiche').innerText()).trim();
+	await page.locator('#btnCacher').click();
+	await page.locator('#orthoInput').fill(mot1 + 'xx');
+	await page.locator('#btnVerifMot').click();
 	await expect(page.locator('#atelierMot')).toBeVisible();
 	await page.locator('#btnAtelierDone').click();
 	const continuer = page.getByRole('button', { name: 'Continuer quand même' });
 	if (await continuer.isVisible().catch(() => false)) await continuer.click();
 
 	// 2e mot : abandon assumé (#467) — compte aussi comme une résistance (critère 14).
-	await expect(page.locator('.rev-word')).toBeVisible();
-	const mot2 = (await page.locator('.rev-word').innerText()).trim();
-	await page.locator('#revHide').click();
+	await expect(page.locator('#motAffiche')).toBeVisible();
+	const mot2 = (await page.locator('#motAffiche').innerText()).trim();
+	await page.locator('#btnCacher').click();
 	await expect(page.locator('#revGiveUp')).toBeVisible();
 	await page.locator('#revGiveUp').click();
 	await page.locator('#revNext').click();

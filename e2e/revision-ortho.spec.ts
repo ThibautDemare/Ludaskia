@@ -1,12 +1,21 @@
 /* ============================================================
    Mode Révision — parité orthographe avec le parcours d'entraînement.
    Le mot caché (motCache) rejoué en révision espacée a désormais :
-   - un bouton « Écouter le mot » (#revEcouter) aux deux phases (regarde /
+   - un bouton « Écouter le mot » (#btnEcouterMot) aux deux phases (regarde /
      écris), comme la dictée/les tuiles/l'atelier — rendu seulement si une
      voix FR est disponible (dicteeDisponible()) ;
    - un rebasculement sur l'atelier du mot à l'erreur (renderWordCorrection →
      renderAtelier), au lieu d'un simple verdict, pour revoir où l'enfant
      s'est trompé (lettres soulignées via le diff) et ré-entourer le piège.
+
+   #640 : la révision sert désormais la MARCHE DUE de chaque mot (tuiles / mot
+   caché / dictée), et non plus invariablement le mot caché — les rendus sont
+   ceux du parcours (`ui/ortho-taches.ts`), montés sur `#revStage`, avec les
+   MÊMES ids que le parcours (`#btnCacher`, `#orthoInput`, `#btnVerifMot`,
+   `#motAffiche`…), les anciens `#revHide`/`#revInput`/`#revValidate`/
+   `#revEcouter` et la classe `.rev-word` ayant disparu. Ce fichier ne teste
+   QUE le rendu motCache : le mot est donc seedé avec tuiles déjà validé (et
+   motCache pas encore), pour que ce soit bien lui la marche due.
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash, seedAideVue } from './helpers';
@@ -23,7 +32,12 @@ const ORTHO_SEED_DUE = {
 			mot: 'bonjour',
 			entourage: [],
 			atelierFait: true,
-			validation: { motCache: true, tuiles: false, dictee: false },
+			// #640 : la révision sert désormais la marche DUE du mot (`prochaineActivite`),
+			// pas invariablement le mot caché — l'ancien seed (`motCache: true, tuiles:
+			// false`) forçait donc la tâche TUILES (premier mode non validé de l'escalier),
+			// pas motCache. Ce fichier teste spécifiquement le rendu motCache : tuiles doit
+			// être déjà validé et motCache pas encore, pour que ce soit lui la marche due.
+			validation: { tuiles: true, motCache: false, dictee: false },
 			revision: { palier: 2, prochaineRevision: 1, reussites: 2, dernierTest: 1 },
 			origine: 'liste',
 		},
@@ -80,16 +94,19 @@ test('Révision ortho : bouton Écouter aux deux phases (voix stubbée), clic sa
 	await gotoHash(page, 'revision-espacee');
 
 	// Phase 1 — « Regarde bien ce mot » : le mot est affiché ET écoutable.
-	await expect(page.locator('.rev-word')).toHaveText('bonjour');
-	const ecouterLook = page.locator('#revEcouter');
+	await expect(page.locator('#motAffiche')).toHaveText('bonjour');
+	const ecouterLook = page.locator('#btnEcouterMot');
 	await expect(ecouterLook).toBeVisible();
 	await expect(ecouterLook).toContainText('Écouter le mot');
 
 	// Phase 2 — « Cacher et écrire » : le mot disparaît, le bouton Écouter reste dispo.
-	await page.locator('#revHide').click();
-	await expect(page.locator('.rev-word')).toHaveCount(0);
-	await expect(page.locator('#revInput')).toBeVisible();
-	const ecouterWrite = page.locator('#revEcouter');
+	// #640 : le rendu partagé (`ortho-taches.ts`) masque `#motStage` par `display:none`
+	// plutôt que de re-rendre tout l'écran (le nœud `#motAffiche` reste dans le DOM,
+	// simplement invisible) — l'exigence est l'invisibilité, pas la disparition du nœud.
+	await page.locator('#btnCacher').click();
+	await expect(page.locator('#motAffiche')).not.toBeVisible();
+	await expect(page.locator('#orthoInput')).toBeVisible();
+	const ecouterWrite = page.locator('#btnEcouterMot');
 	await expect(ecouterWrite).toBeVisible();
 
 	await ecouterWrite.click();
@@ -108,8 +125,8 @@ test('Révision ortho : sans voix FR (Chromium headless) → pas de bouton Écou
 	await seedOrthoDue(page);
 	await gotoHash(page, 'revision-espacee');
 
-	await expect(page.locator('.rev-word')).toHaveText('bonjour');
-	await expect(page.locator('#revEcouter')).toHaveCount(0);
+	await expect(page.locator('#motAffiche')).toHaveText('bonjour');
+	await expect(page.locator('#btnEcouterMot')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });
@@ -123,11 +140,11 @@ test("Révision ortho : une réponse fausse rebascule sur l'atelier du mot, puis
 	await gotoHash(page, 'revision-espacee');
 
 	// On passe directement à la phase d'écriture, puis on saisit une réponse fausse.
-	await page.locator('#revHide').click();
-	const input = page.locator('#revInput');
+	await page.locator('#btnCacher').click();
+	const input = page.locator('#orthoInput');
 	await expect(input).toBeVisible();
 	await input.fill('bonjourxx');
-	await page.locator('#revValidate').click();
+	await page.locator('#btnVerifMot').click();
 
 	// L'atelier du mot s'affiche : le mot en grand, la consigne de correction.
 	await expect(page.locator('#atelierMot')).toBeVisible();
@@ -152,8 +169,8 @@ test("Révision ortho : une réponse fausse rebascule sur l'atelier du mot, puis
    focus posé sur un bouton (ex. « Écouter le mot ») — Entrée validait alors la
    saisie en cours (même fausse) au lieu d'activer nativement le bouton focus.
    La garde `tagName === 'BUTTON'` (revision.ts) corrige ça : Entrée sur un bouton
-   l'active nativement, le hijack ne sert plus qu'à valider depuis #revInput. */
-test('Révision ortho : Entrée sur #revEcouter (bouton) ne valide PAS la saisie en cours — #keydown-enter-bouton', async ({
+   l'active nativement, le hijack ne sert plus qu'à valider depuis #orthoInput. */
+test('Révision ortho : Entrée sur #btnEcouterMot (bouton) ne valide PAS la saisie en cours — #keydown-enter-bouton', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -161,12 +178,12 @@ test('Révision ortho : Entrée sur #revEcouter (bouton) ne valide PAS la saisie
 	await seedOrthoDue(page);
 	await gotoHash(page, 'revision-espacee');
 
-	await page.locator('#revHide').click();
-	const input = page.locator('#revInput');
+	await page.locator('#btnCacher').click();
+	const input = page.locator('#orthoInput');
 	await expect(input).toBeVisible();
 	await input.fill('bonjourxx'); // réponse FAUSSE, non vide (sinon Valider re-focusse sans agir)
 
-	await page.locator('#revEcouter').focus();
+	await page.locator('#btnEcouterMot').focus();
 	await page.keyboard.press('Enter');
 
 	// (a) Entrée a bien activé le bouton focus (écoute déclenchée)…

@@ -639,6 +639,38 @@ voient pas :
   s'enchaînent (modale de niveau → modale de célébration) ; une session sans
   rien gagner ne laisse aucune modale ni trace textuelle sur l'écran de fin.
 
+### Trophées « ce qui tient dans le temps » (#660)
+
+`tests/trophees-ancres.test.ts` (Vitest, critères 1-5, 8, 11-13) écrit AVANT
+l'implémentation : au moment où il est posé, ni `notionsAncrees()` ni les huit
+trophées n'existent, donc tout est rouge. Couvre le **calcul** — deux familles
+distinctes, un mot compte quelle que soit son origine (liste parent/livrée, cible
+verbe), une notion compte par paire leçon × niveau, le compte lu sur l'état SR BRUT
+plutôt que la vue scopée (une matière passée au CM1 ne fait pas baisser le compteur),
+les quatre seuils de chaque famille éprouvés au bord (n-1/n), aucun trophée ne se
+reverrouille (changement de niveau, leçon retirée du catalogue, mot supprimé de la
+banque) — **et le critère 8** (les libellés situent l'accomplissement dans la durée,
+jamais dans l'effort du jour), mécanisé en **propriété** (`situeDansLaDuree` :
+aucune phrase ne commence par un verbe d'action, aucun ancrage sur l'instant
+présent, au moins un marqueur de durée), pas en comparaison de chaînes — les titres
+et descriptions restent libres de changer sans casser le test. L'état « ancré » est
+toujours obtenu par les CHEMINS réels (`avancerMotRevision`, l'escalier pur de
+`revision.ts`), jamais par un littéral `{ palier: 6 }` : si l'escalier change, la
+fixture suit au lieu de mentir.
+
+`e2e/revision-trophees-ancres.spec.ts` couvre ce qui reste hors de portée de Vitest
+(critères 6, 7, 9, 10) : un palier franchi PENDANT une session de révision espacée
+est annoncé sur l'écran de fin, par le même chemin que les autres récompenses
+(`#celebrateList`) ; la galerie affiche la famille comme les autres, sans grille ni
+compteur séparés (comptage `.trophy.on` avant/après, dénominateur inchangé) ; rien
+n'est annoncé au milieu de la session, sur l'item qui vient précisément de franchir
+le palier (pas le dernier de la session) ; et le feedback affiché à l'enfant sur cet
+item ne laisse rien filtrer de l'état interne (palier/« ancré »/« acquis » —
+best-effort, ce filet n'attrape qu'une fuite directement écrite à cet endroit).
+Périmètre volontairement restreint à la famille NOTIONS : la famille MOTS partage le
+même mécanisme de bout en bout (`evaluateTrophies` → `recompensesFin` →
+`announceRewards`), seule la métrique de `GSnapshot` change.
+
 ### Révision espacée : servir la marche due (#640)
 
 `tests/revision-marche-due.test.ts` (Vitest, critères 1-3, 5-10, 13, 16-18, 22-24) et

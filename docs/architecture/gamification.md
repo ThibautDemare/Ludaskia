@@ -119,6 +119,59 @@ programme court et un long comptent 1 pareil) et **sans XP** : la complétion
 déclenche la modale + confettis habituelle, mais aucun bonus d'XP — chaque mode
 composant le programme a déjà donné le sien.
 
+## Trophées « ce qui tient dans le temps » (#660)
+
+Deux familles adossées à la **répétition espacée** (`core/revision.ts`) reconnaissent ce
+qui n'a pas été *seulement réussi une fois*, mais a **tenu** : un élément n'y compte
+qu'une fois arrivé au sommet de l'escalier (`PALIER_ACQUIS`), soit **137 jours sans échec
+au minimum** (réalistement plusieurs mois, ratés compris). Jusqu'ici, un savoir qui tient
+ne rapportait rien de plus que l'XP de fond d'une bonne réponse.
+
+**Deux familles, jamais un compteur unique** : **mots d'orthographe ancrés**
+(`orthoAncres1/150/300/420`, 🧠, métrique `orthoMotsAncres` — mots dont l'escalier de
+révision a atteint `estAcquis`, toute la banque du profil comptant, mots saisis par le
+parent compris) et **notions ancrées** (`notionsAncrees1/45/120/200`, 💎, métrique
+`notionsAncrees`, comptée en **paires leçon × niveau**, comme les étoiles cumulées #559 :
+retravailler une notion au niveau supérieur est un travail distinct). Les mots se comptent
+par centaines, les notions sont bornées par le catalogue : fondues en un seul compteur,
+l'événement le plus signifiant — une notion entière qui tient — disparaîtrait derrière le
+plus fréquent.
+
+**Notions ancrées : lues sur l'état de révision BRUT, jamais sur la vue scopée au niveau
+actif** (`progress.ts:notionsAncrees()`) — scoper ferait BAISSER le compteur quand une
+matière passe du CE2 au CM1, exactement le défaut que #559 avait corrigé pour les étoiles.
+Contrepartie assumée, propre à cette lecture brute : une entrée dont la leçon a QUITTÉ le
+catalogue est comptée elle aussi (renommer un id de leçon ajoute +1 définitif) — un
+compteur qui monte à tort après une maintenance du catalogue est jugé bénin, à la
+différence d'un compteur qui BAISSERAIT et reprendrait à l'enfant un travail réel. Détail
+de la taxonomie scopé/global/troisième-nature dans [Niveaux scolaires](niveaux-scolaires.md).
+
+**Seuils volontairement hors de la convention `tiers()` des autres familles** (avis
+`gamification-enfant`) : le calibrage habituel suppose une métrique qui bouge à chaque
+séance, alors qu'ici un seul élément met des mois à franchir. Ancres mesurées au cadrage :
+466 mots distincts livrés (419 atteignables sans quitter le CE2), 264 paires leçon × niveau
+(142 en CE2). Le **4ᵉ palier de chaque famille dépasse délibérément le plafond CE2** : un
+capstone qui suppose du contenu CM1.
+
+**Impossible à forcer, donc sans dark pattern** : rien de ce que l'enfant fait aujourd'hui
+n'avance ces compteurs avant plusieurs semaines — reconnaissance **rétrospective**, pas un
+objectif à viser. Corollaire de rendu : **aucun écran enfant ne révèle quels éléments
+approchent du sommet** (ce serait rendre le trophée ciblable, donc *forçable*) ; côté
+encadrant, la vue « Par palier » (#555, cf. [Espace encadrant](espace-encadrant.md))
+donne seule cette lecture, à l'adulte plutôt qu'à l'enfant.
+
+**À ne pas confondre avec `orthoMots` (« mots maîtrisés », seuils 10/50/100/200)** : cette
+famille existante compte les mots ayant validé motCache + tuiles **une fois** — affaire de
+quelques séances, qui ne dit rien de la durée. Les deux familles cohabitent volontairement
+sur la même population de mots.
+
+Aucun mot absolu dans les libellés (« pour toujours ») ni verbe d'action en tête (charte
+détaillée dans [Conventions rédactionnelles](conventions-redaction.md)) : un élément au
+sommet peut redescendre s'il est raté plus tard, et ces trophées ne sont pas une consigne
+du jour. Tenu par `tests/trophees-ancres.test.ts` (calcul, seuils, non-reverrouillage,
+propriété des libellés) et `e2e/revision-trophees-ancres.spec.ts` (annonce en fin de
+session de révision, apparition dans la galerie — cf. [Tests](tests.md)).
+
 ## XP & niveaux
 
 **XP & niveaux** : 1 point d'XP par bonne réponse, tous modes confondus
@@ -247,7 +300,17 @@ sujet.
 
 D'où `absorberTropheesDeReparation()` (`core/profiles.ts`), appelé quand un profil
 **devient actif**, à côté des migrations idempotentes : il consomme le saut sans
-rien célébrer. **Temporaire par construction** — il disparaîtra avec les banques
-d'avant #641. La règle générale qu'il illustre, elle, reste : *une métrique qui peut
-bouger sans geste de l'enfant doit être absorbée hors d'un écran de fin*, sinon elle
-finira par être fêtée au mauvais moment.
+rien célébrer.
+
+**Deux causes désormais, pas une seule (#660).** À la réparation des escaliers troués
+d'avant #641 ci-dessus s'ajoute un second cas, arrivé avec les trophées « ce qui tient
+dans le temps » (ci-dessus) : ces deux familles sont, elles aussi, recalculées à CHAQUE
+`evaluateTrophies()`, donc un profil qui avait DÉJÀ des mots ou des notions au sommet de
+l'escalier de révision **avant** la mise à jour les verrait sinon apparaître d'un coup à
+la fin d'une leçon sans rapport. Le remède est le même rattrapage silencieux. Ce n'est
+donc plus « **temporaire, le temps que les banques d'avant #641 s'éteignent** » à
+proprement parler : la fonction reste nécessaire tant que l'une OU l'autre cause n'est
+pas consommée par tous les profils existants — la supprimer suppose de vérifier les deux,
+pas seulement la première. La règle générale qu'elle illustre, elle, reste : *une
+métrique qui peut bouger sans geste de l'enfant doit être absorbée hors d'un écran de
+fin*, sinon elle finira par être fêtée au mauvais moment.

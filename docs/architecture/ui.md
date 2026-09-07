@@ -378,10 +378,11 @@ pure](core.md)) pour les formats composites :
   résolution de problèmes (`lecon-probleme.ts` — une entrée par sous-question ratée),
   « Clique sur le mot » (`lecon-clic-mot.ts` — une entrée par phrase ratée : mots choisis
   vs bon(s) mot(s), joints par `libelleCible` pour qu'une cible non adjacente se lise
-  « chien et pomme ») et la dictée d'orthographe (`ortho-runner.ts` — le **premier essai
-  raté** d'un mot ; libellé résolu via `labelLeconOrtho`, cf.
-  `core/orthographe/lessons.ts`, l'id étant une **liste** d'orthographe et non une leçon
-  du catalogue). La **révision espacée** (`revision.ts`) capture elle aussi, sous un mode
+  « chien et pomme ») et le **parcours d'orthographe**, ses **trois tâches** confondues —
+  tuiles, mot caché, dictée — (`ortho-runner.ts:journalErreurOrtho` — le **premier essai
+  raté** d'un mot, quelle que soit la tâche qui l'a produit ; libellé résolu via
+  `labelLeconOrtho`, cf. `core/orthographe/lessons.ts`, l'id étant une **liste**
+  d'orthographe et non une leçon du catalogue). La **révision espacée** (`revision.ts`) capture elle aussi, sous un mode
   dédié `'revision'`, via un point d'entrée local `capterRev` qui délègue ici (cf.
   [Espace encadrant](espace-encadrant.md) pour le détail de ses 10 formes d'item et la
   limite propre aux mots d'orthographe sans liste). Une opération posée (`session.ts`)
@@ -710,7 +711,10 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   et non `TROPHIES` brut — un tour de matière d'un niveau non atteint y est masqué —, et
   le compteur « N/M » (`acquisVisibles`) intersecte les acquis avec les visibles :
   compter sur `TROPHIES.length` laissait un id acquis puis disparu du catalogue faire
-  déborder l'affichage (« 45/44 trophées obtenus »).
+  déborder l'affichage (« 45/44 trophées obtenus »). Chaque cellule de `openTrophees`
+  porte aussi `data-trophy-id="<id>"` (#660) — sélecteur stable pour qu'une spec
+  Playwright nomme le trophée qu'elle attend plutôt que de compter les cellules
+  allumées. La grille de paliers de `openRecompenses` (`tierCell`) ne le porte pas.
 - **`tour.ts`** (#330) — **guide de première visite** (couche UI ; contenu pur dans
   `core/tour.ts`). Trois pièces : `ouvrirMotParents(onClose)` — courte modale destinée à
   l'**adulte** qui installe (voix « vous », modale a11y standard) ; `lancerTour(opts)` —

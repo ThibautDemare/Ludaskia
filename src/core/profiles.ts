@@ -74,6 +74,13 @@ export interface ProfilePrefs {
 	 *  (10). Comme `revisionPlafond`, le fallback ET le bornage se font à la
 	 *  lecture, pour rester robuste aux données importées. */
 	jeuxPlafondMinutes?: number;
+	/** Coupe les AIDES VISUELLES des jeux (#666, critère 21) : le marquage des
+	 *  cases en conflit et la mise en évidence de la ligne, de la colonne et de la
+	 *  région de la case sélectionnée. Pour un profil TDAH, un surlignage
+	 *  permanent peut devenir lui-même un distracteur, et un enfant plus avancé
+	 *  peut vouloir jouer sans filet. Défaut (absent) = aides actives : le réglage
+	 *  ne fait que RETIRER une aide, jamais l'imposer. */
+	sansAidesJeux?: boolean;
 }
 export interface Profile {
 	uuid: string;
@@ -322,6 +329,13 @@ export function getJeuxPlafondMinutes(): number {
 	const v = getPrefs().jeuxPlafondMinutes;
 	if (typeof v !== 'number' || !Number.isFinite(v)) return PLAFOND_DEFAUT_MINUTES;
 	return Math.min(PLAFOND_MAX_MINUTES, Math.max(PLAFOND_MIN_MINUTES, Math.round(v)));
+}
+// Les aides visuelles d'un jeu (#666, critère 21). Même sens que les drapeaux
+// ci-dessus : la préférence ABSENTE vaut « aides actives », donc un profil
+// importé d'une version antérieure garde ses aides. Non subordonné à `sansJeux` :
+// une étagère coupée rend la question sans objet, pas l'inverse.
+export function aidesJeuxActives(): boolean {
+	return getPrefs().sansAidesJeux !== true;
 }
 
 /* ---------- Niveau scolaire de référence du profil actif (#225) ---------- */

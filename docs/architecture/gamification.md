@@ -227,3 +227,27 @@ session, jamais entre deux items : un franchissement de niveau, calculé en temp
 réel sur l'XP, peut survenir dès le premier item d'une session multi-matières qui
 en compte douze — l'annoncer en cours de route couperait le flux d'une séance qui
 continue.
+
+### Un trophée peut être ACQUIS sans avoir de moment (suite de #640)
+
+`evaluateTrophies()` recalcule ses métriques **à chaque appel**, en relisant les
+données sources — dont l'état d'orthographe, via `loadOrtho()`. Une métrique peut
+donc sauter sans qu'aucun geste de l'enfant ne l'explique, si la lecture elle-même
+change ce qu'elle rend : c'est le cas depuis la **réparation des escaliers troués**
+(cf. [`design-orthographe.md`](../design-orthographe.md)), qui fait monter d'un coup
+des mots hérités au rang « maîtrisé ».
+
+Le danger n'est pas le trophée — il est mérité, l'enfant avait prouvé ces mots —
+mais le **moment** : `evaluateTrophies()` est appelé à la fin de **n'importe quelle**
+leçon (`core/lesson-run.ts`), où ses nouveaux trophées sont célébrés. Un enfant
+pouvait donc voir « Nouveau trophée : Collectionneur de mots » à la fin d'un
+exercice de multiplication, sans avoir touché à l'orthographe ce jour-là — et selon
+la route prise, le saut était tantôt absorbé en silence (accueil), tantôt fêté hors
+sujet.
+
+D'où `absorberTropheesDeReparation()` (`core/profiles.ts`), appelé quand un profil
+**devient actif**, à côté des migrations idempotentes : il consomme le saut sans
+rien célébrer. **Temporaire par construction** — il disparaîtra avec les banques
+d'avant #641. La règle générale qu'il illustre, elle, reste : *une métrique qui peut
+bouger sans geste de l'enfant doit être absorbée hors d'un écran de fin*, sinon elle
+finira par être fêtée au mauvais moment.

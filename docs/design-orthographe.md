@@ -721,14 +721,32 @@ mot caché, dictée) sont **mutualisés** avec le parcours depuis #640
 carte de révision comme sur la feuille du parcours, pour qu'aucun des deux
 chemins ne puisse re-diverger.
 
-**Décision consignée — escalier troué hérité.** Un mot dont l'état de validation
-comporte un « trou » — hérité d'avant #641, ex. `{ tuiles: false, motCache: true
-}` — reçoit en révision la marche la plus **basse non validée** (les tuiles dans
-cet exemple), jamais une lecture qui traiterait une marche plus étayée comme
-preuve des marches manquantes. Une réussite comble alors le trou sans rien
-dé-valider ni rien accorder de plus haut : la révision ne **crée** jamais de trou
-et ne **répare** jamais un trou existant par le haut, elle fait progresser le mot
-d'une marche à la fois, exactement comme partout ailleurs.
+**Escalier troué hérité — réparé à la lecture (suite de #640, commentaire daté du
+2026-09-07).** Un mot dont l'état de validation comporte un « trou » — hérité
+d'avant #641, ex. `{ tuiles: false, motCache: true }` — rendait la lecture
+littérale du **critère 18** (« aucune marche validée sans les précédentes »)
+**intenable** : le combler sans réussite aurait violé le critère 16 (« rien
+n'est franchi sans réussite »), le dé-valider aurait violé le critère 9 (« aucune
+marche n'est jamais dé-franchie »). La réparation retenue applique
+RÉTROACTIVEMENT le cumul de #641 à la donnée héritée : un mot qui a prouvé le mot
+caché a de fait prouvé les tuiles, donc combler la marche du dessous n'est pas
+« franchir sans réussite », c'est reconnaître une réussite qui a déjà eu lieu.
+**`reparerEscalier`** (`core/orthographe/runner.ts`), appelée par **`parseOrtho`**
+(`core/orthographe/store.ts`), le fait à **toute** lecture — `loadOrtho` comme
+`loadOrthoFor`, pour que l'espace encadrant voie le même état réparé que
+l'enfant. La marche comblée reprend la date de la marche du DESSUS qui la
+prouve, **jamais celle du jour**, et **aucune date n'est inventée** quand la
+source n'en a pas (banque d'avant #545) — sans quoi la frise de composition de
+l'espace encadrant affirmerait une séance de travail qui n'a jamais eu lieu.
+Corollaire : `validerMode` ne date désormais QUE ce qu'une réussite fait
+effectivement franchir, faute de quoi la première réussite suivant une
+réparation re-daterait d'aujourd'hui une marche que la réparation avait
+sciemment laissée sans date. Une fois la réparation posée, un mot lu par l'app
+n'a plus jamais d'escalier troué — en révision comme au parcours —, ce qui rend
+le critère 18 tenable **au sens littéral** ; la branche de
+`prochainModeAValider` qui sert la marche la plus basse non validée sur un
+escalier troué reste écrite (elle ne dépend d'aucune hypothèse sur l'appelant),
+mais elle n'a plus, en pratique, de trou hérité à rencontrer.
 
 ---
 

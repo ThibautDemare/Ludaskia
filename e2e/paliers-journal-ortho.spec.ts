@@ -135,10 +135,12 @@ test('round-trip dictée : une révision de liste déjà maîtrisée journalise 
    non « maitrise » ne change plus l'issue de CE test — seule la présence d'UNE
    écriture de journal daté ('en cours' quelconque) reste vérifiée ici. Ce cas
    précis (un mot dont la marche due, une fois franchie, dévoile un trou hérité
-   d'avant #641) n'a pas été retrouvé, en recherchant, dans les Vitest existants
-   (`tests/revision-marche-due.test.ts`, `tests/ortho-revision-atelier.test.ts`) :
-   à signaler côté `auteur-tests-logique` si l'invariant mérite d'être gelé pour
-   de vrai. */
+   d'avant #641), avec la voix STUBÉE et affirmée dans un sens puis dans l'autre,
+   est désormais couvert au niveau du mot ET de la liste par
+   `tests/revision-marche-due.test.ts` (« #640/#541 — un mot troué SEUL dans sa
+   liste, vu du journal des paliers » : « sans voix, la réussite qui la rend
+   acquise la DATE "acquis" dans la séance » / « avec voix, la même réussite ne
+   la date PAS "acquis" »). */
 const ORTHO_SEED_DUE = {
 	banque: {
 		w1: {

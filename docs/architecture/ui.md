@@ -1359,11 +1359,21 @@ n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
   (`session.ts`, `lecon-runner-shared.ts`, `sprint.ts`, `revision.ts`,
   `ortho-runner.ts` ×2, `seance.ts` seul pour l'emplacement « programme »), gardés
   par un gate dédié (cf. [Tests](tests.md)).
-- **`jeu-motus.ts`** / **`jeu-2048.ts`** — les deux runners livrés, chacun un
-  `RunnerJeu` autour de son moteur pur (`core/jeux/motus.ts` /
-  `core/jeux/deux-mille-quarante-huit.ts`). Convention de nommage
-  `src/ui/jeu-<id>.ts` : le nom du fichier DIT quel jeu du catalogue il sert,
-  vérifié par un gate (cf. [Tests](tests.md)).
+- **`jeu-motus.ts`** / **`jeu-2048.ts`** / **`jeu-sudoku.ts`** — les trois runners
+  livrés, chacun un `RunnerJeu` autour de son moteur pur (`core/jeux/motus.ts`,
+  `core/jeux/deux-mille-quarante-huit.ts`, `core/jeux/sudoku.ts`). Convention de
+  nommage `src/ui/jeu-<id>.ts` : le nom du fichier DIT quel jeu du catalogue il
+  sert, vérifié par un gate (cf. [Tests](tests.md)).
+- Le **sudoku** (#666) se pose en deux temps — appui sur la case, puis appui sur
+  la forme dans un bandeau HORS de la grille. L'ordre est l'inverse de celui des
+  tuiles de numération, et c'est délibéré : dans un sudoku la case cible est ce
+  que l'enfant cherche, donc tenir une forme « en main » avant de savoir où la
+  poser coûte de la mémoire de travail pour rien. Toucher une case
+  **sélectionne** et n'écrit jamais, sinon l'aide qui éclaire sa ligne, sa
+  colonne et son bloc se retournerait contre elle-même : elle invite justement à
+  toucher pour REGARDER. Seul runner sans aucun écouteur de clavier maison — ses
+  cases et ses formes sont de vrais `<button>`, là où le Motus et le 2048 écoutent
+  `keydown` sur `document` et doivent se garder des champs qui ont le focus.
 
 ## Étayage de la notion (#490)
 

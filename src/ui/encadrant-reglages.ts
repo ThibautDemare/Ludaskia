@@ -106,7 +106,7 @@ function jeuxHTML(consulte: Profile): SafeHtml {
       </label>
       <label class="enc-toggle${actif ? '' : ' enc-toggle-off'}">
         <input type="checkbox" data-act="set-jeux-pref" data-pref="sansAidesJeux"${prefs.sansAidesJeux ? drapeau('checked') : ''}${actif ? '' : drapeau('disabled')} />
-        <span>Jouer sans aides visuelles <small class="enc-hint">(dans le sudoku, ne plus marquer les formes en double ni éclairer la ligne, la colonne et le bloc de la case choisie)</small></span>
+        <span>Jouer sans aides visuelles <small class="enc-hint">(dans le sudoku, ne plus signaler les formes en double ni éclairer la ligne, la colonne et le bloc de la case choisie)</small></span>
       </label>
       <p class="enc-hint">Le temps de jeu n'est ni cumulable ni reportable : une journée sans jouer n'allonge pas la suivante.</p>
     </div>`;

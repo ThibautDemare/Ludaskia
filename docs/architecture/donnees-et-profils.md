@@ -157,15 +157,32 @@ affiche/masque, dictée), MONOTONE, écrite **structurellement** par `marquerAte
 (répartition de ses mots entre les étapes, semaine par semaine), cf. [Logique pure](core.md) et
 [Espace encadrant](espace-encadrant.md).
 
-**Étagère de jeux (#661)** : quatre clés dédiées, décrites en tête de
+**Étagère de jeux (#661)** : cinq clés dédiées, décrites en tête de
 `core/jeux/etat.ts` — `ludaskia_jeux_possedes` (jeux débloqués, dans l'ordre du
 choix), `ludaskia_jeux_paliers_attente` (rangs de palier franchis dont l'écran de
-choix reste à afficher), `ludaskia_jeux_plafond` (`{jour, secondes}` du temps de
-jeu déjà consommé aujourd'hui, jour LOCAL) et `ludaskia_jeux_scores` (meilleur
-score par jeu, **local** au jeu — jamais remonté au profil, à l'espace encadrant ni
-à un trophée). Aucune ne touche l'XP, les étoiles ou un trophée : jouer ne rapporte
-rien (cf. [Gamification](gamification.md)). Trois réglages associés vivent dans
-`ProfilePrefs` (`sansJeux`, `sansInvitationJeux`, `jeuxPlafondMinutes`), donc dans
+choix reste à afficher), `ludaskia_jeux_paliers_proposes` (ceux déjà PRÉSENTÉS
+automatiquement : un palier que l'enfant a fermé sans choisir reste atteignable
+depuis sa liste de jeux mais ne se rouvre plus tout seul),
+`ludaskia_jeux_plafond` (`{jour, secondes}` du temps de jeu déjà consommé
+aujourd'hui, jour LOCAL) et `ludaskia_jeux_scores` (meilleur score par jeu,
+**local** au jeu — jamais remonté au profil, à l'espace encadrant ni à un
+trophée). Aucune ne touche l'XP, les étoiles ou un trophée : jouer ne rapporte
+rien (cf. [Gamification](gamification.md)).
+
+**Sudoku (#666)** : trois clés de plus, dans `core/jeux/sudoku-etat.ts` —
+`ludaskia_jeux_sudoku_parties` (la grille en cours, **une par taille** : énoncé
+et état courant), `ludaskia_jeux_sudoku_taille` (la dernière taille jouée,
+reproposée par défaut — une préférence, pas un record, le jeu n'ayant aucun
+score) et `ludaskia_jeux_sudoku_initie` (le profil a déjà joué une grille, ce qui
+n'arrive qu'une fois : la toute PREMIÈRE est presque complète, pour que l'enfant
+apprenne la règle en posant sa première forme). Le bornage se fait à la
+**lecture**, ces clés traversant l'export de sauvegarde : une grille dont la
+forme est impossible, dont l'état courant contredit son énoncé, dont l'énoncé
+n'est pas finissable par déduction élémentaire, ou qui est déjà terminée, ne
+revient pas — et une taille corrompue n'emporte pas l'autre avec elle.
+
+Les réglages associés vivent dans `ProfilePrefs` (`sansJeux`,
+`sansInvitationJeux`, `jeuxPlafondMinutes`, `sansAidesJeux`), donc dans
 `ludaskia_profiles` comme les autres préférences plutôt que dans une clé dédiée —
 cf. [Espace encadrant](espace-encadrant.md) pour leur effet.
 

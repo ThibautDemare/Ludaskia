@@ -111,8 +111,19 @@ const NOMS: Record<string, string> = {
     Une seule phrase. À une fluence de lecture d'environ 90 mots par minute en
     CE2, un pavé de règles coûte cher avant même de jouer — et la toute première
     grille étant presque complète (critère 6), l'enfant apprend surtout la règle
-    en posant sa première forme. */
-const REGLE = 'Chaque forme une seule fois par ligne, par colonne et par bloc.';
+    en posant sa première forme.
+
+    Elle porte un VERBE conjugué. « Chaque forme une seule fois par ligne… » était
+    grammaticalement valide, et elle faisait porter à un enfant qui découvre le jeu
+    la reconstruction du verbe manquant, plus trois compléments en cascade :
+    l'ellipse nominale allège l'écrit et alourdit la première lecture, l'inverse de
+    ce qu'on cherche sur le texte qui explique la règle. Relevé par
+    `redacteur-contenu-francais` le 2026-09-07.
+
+    Et « bloc », pas « région » ni « carré » : le second est déjà pris par une des
+    six formes. Le mot ne tient que parce que le bloc est visuellement ancré, ce
+    qu'impose le critère 9. */
+const REGLE = 'Chaque forme apparaît une seule fois par ligne, par colonne et par bloc.';
 
 const nomDe = (symbole: string): string => NOMS[symbole] ?? symbole;
 
@@ -124,6 +135,7 @@ function boutonTailleHTML(taille: TailleSudoku, courante: TailleSudoku): SafeHtm
 		class="sudoku-taille"
 		data-taille="${taille}"
 		aria-pressed="${taille === courante ? 'true' : 'false'}"
+		aria-label="Grille de taille ${taille} sur ${taille}"
 	>
 		${taille} × ${taille}
 	</button>`;
@@ -331,7 +343,13 @@ function creerRunner(): RunnerJeu {
 		if (!partie || t === partie.taille) return;
 		memoriserTaille(t);
 		if (!charger(t)) return;
-		rendreEtat(`Grille ${t} sur ${t}.`);
+		/* « Grille de taille 4 sur 4 », et pas « Grille 4 sur 4 » : hors contexte, et
+		   une annonce vocale est toujours hors contexte, « X sur X » évoque d'abord
+		   un score scolaire avant une dimension. Le risque est aggravé précisément
+		   parce que ce jeu revendique de ne rien noter — une annonce qui SONNE comme
+		   une note contredit tout le dispositif. Relevé par
+		   `redacteur-contenu-francais` le 2026-09-07. */
+		rendreEtat(`Grille de taille ${t} sur ${t}.`);
 	};
 
 	/** Pose ou efface, puis sauve. La sauvegarde est à CHAQUE coup, pas à la
@@ -465,7 +483,7 @@ function creerRunner(): RunnerJeu {
 			const ecouter = dans('#sudokuEcouterRegle');
 			if (ecouter && dicteeDisponible()) ecouter.hidden = false;
 			if (!charger(taille)) return;
-			rendreEtat(`Grille ${taille} sur ${taille}.`);
+			rendreEtat(`Grille de taille ${taille} sur ${taille}.`);
 		},
 		demonter() {
 			racine?.removeEventListener('click', surClic);

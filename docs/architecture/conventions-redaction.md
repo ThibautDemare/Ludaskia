@@ -255,3 +255,40 @@ Consignées pour que la prochaine relecture ne les re-remonte pas.
   d'accès permanent qu'on nomme, le second une proposition dans une phrase, où
   l'infinitif marque qu'on n'y est pas obligé. Aligner les deux ferait perdre cette
   nuance de registre.
+
+## Une annonce « X sur Y » ne doit pas pouvoir se lire comme une note (#666)
+
+Le sudoku annonçait sa taille par « Grille 4 sur 4 ». Hors contexte, et une
+annonce vocale est toujours hors contexte, « X sur X » évoque **d'abord un score
+scolaire** avant une dimension. Ce n'est pas une faute — « 4 mètres sur 4 » est la
+lecture standard d'une dimension — mais le risque est aggravé **précisément parce
+que ce jeu revendique de ne rien noter** : une annonce qui *sonne* comme une note
+contredit ce que tout le dispositif s'efforce de dire. Corrigé en « Grille de
+taille 4 sur 4 », qui reprend au passage le mot du groupe ARIA voisin.
+
+La règle générale : toute annonce associant un chiffre à « sur [chiffre] » doit
+exclure la lecture « score », en particulier dans un contenu qui n'évalue rien.
+Préciser ce que mesure le chiffre, ou reformuler.
+
+## Une règle de jeu affichée en permanence porte un verbe conjugué (#666)
+
+« Chaque forme une seule fois par ligne, par colonne et par bloc » est
+grammaticalement valide, et elle fait porter à un enfant qui découvre le jeu la
+reconstruction du verbe manquant, plus trois compléments en cascade. L'ellipse
+nominale allège l'écrit et alourdit la première lecture — l'inverse de ce qu'on
+cherche sur le texte qui explique la règle. Corrigé en « Chaque forme **apparaît**
+une seule fois… », par l'ajout du seul verbe.
+
+## Deux remontées écartées sur le sudoku (#666)
+
+Consignées pour que la prochaine relecture ne les re-remonte pas.
+
+- **Le mot « bloc »** pour la région d'un sudoku. Il n'y a pas mieux : « carré »
+  est déjà pris par une des six formes, « région » et « zone » sont plus abstraits
+  sans appui visuel, « groupe » obligerait à restructurer la phrase. **Gardé**, à
+  une condition qui est remplie : le bloc doit être **visuellement ancré**, sans
+  quoi le mot n'a aucune prise. C'est l'objet du critère 9 de #666, qui impose des
+  séparations de région plus épaisses que celles des cases et tenues au 3:1.
+- **« Sudoku »** dans « Sudoku des formes ». Nom propre passé dans l'usage,
+  correctement orthographié, pas plus décomposable que « domino » ou « loto » à
+  cet âge. **Gardé** : le jeu a justement vocation à faire découvrir le mot.

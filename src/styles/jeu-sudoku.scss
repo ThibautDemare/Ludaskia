@@ -10,7 +10,20 @@
    ── Le conflit porte DEUX canaux, dès cette version (critère 14) ─────────────
    Une case en conflit prend le liseré `--warn` ET une trame de hachures. La
    trame est indépendante de la teinte, donc elle survit à un œil deutan, là où
-   deux couleurs proches ne survivent pas. L'en-tête de `jeu-motus.scss` admet
+   deux couleurs proches ne survivent pas.
+
+   La trame est en `--warn`, et pas en `--warn-bd` comme dans la première
+   version, parce que MESURÉ : `--warn-bd` sur `--warn-bg` ne vaut que **1,28:1**
+   en thème clair et 1,84:1 en Nuit. Le second canal exigé par le critère 14
+   aurait donc été une intention invisible, ce qui est pire qu'une absence
+   puisque personne ne l'aurait cherché. `--warn` sur `--warn-bg` donne 3,84:1 et
+   7,32:1, au-dessus du seuil des objets graphiques.
+
+   Et le liseré épais ne suffirait PAS à lui seul comme second canal : la case
+   choisie porte déjà un anneau épais, donc en niveaux de gris les deux états se
+   ressembleraient. C'est la TEXTURE qui les sépare.
+
+   L'en-tête de `jeu-motus.scss` admet
    que le Motus a livré son code à trois couleurs SANS son doublage par la forme,
    dette reportée à #663 ; on ne la refait pas ici.
 
@@ -195,15 +208,23 @@
    `--warn` (« ce n'est pas une faute »), jamais `--ko`, et doublé par une trame
    de hachures qui survit à un œil deutan. */
 .sudoku-case[data-conflit] {
-	background:
-		repeating-linear-gradient(
-			135deg,
-			transparent 0,
-			transparent 5px,
-			var(--warn-bd) 5px,
-			var(--warn-bd) 8px
-		),
-		var(--warn-bg);
+	background-color: var(--warn-bg);
+	/* La trame occupe une BANDE au pied de la case, pas toute sa surface. Mesuré
+	   aussi : la silhouette se dessine par-dessus le fond, donc là où une hachure
+	   passerait derrière elle le contraste tomberait à 1,16-1,37:1 selon le thème,
+	   et la forme se ferait hacher par des bandes illisibles — or la reconnaître
+	   est tout l'objet du jeu. La silhouette fait 62 % de la case et reste centrée,
+	   donc elle s'arrête à 81 % de la hauteur : la bande commence en dessous. */
+	background-image: repeating-linear-gradient(
+		135deg,
+		transparent 0,
+		transparent 4px,
+		var(--warn) 4px,
+		var(--warn) 7px
+	);
+	background-size: 100% 16%;
+	background-position: bottom center;
+	background-repeat: no-repeat;
 	box-shadow:
 		inset 0 0 0 1px var(--line),
 		inset 0 0 0 3px var(--warn);

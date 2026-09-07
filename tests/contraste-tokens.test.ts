@@ -391,6 +391,28 @@ const PAIRES_NON_TEXTE: Paire[] = [
 		arriere: '--paper',
 		ou: 'encadrant.scss .enc-revoir-signal (liseré « ça bloque »), jeu-sudoku.scss .sudoku-case[data-conflit] (les formes en double, #666, critère 15)',
 	},
+	/* La case du sudoku en conflit (#666, critère 14). Le doublage du code couleur
+	   y est une TRAME de hachures, donc un objet graphique porteur d'information :
+	   c'est le seul canal qui survive à un œil deutan, et il ne survit à rien s'il
+	   ne se voit pas. Sa première version, en `--warn-bd`, valait 1,28:1 en thème
+	   clair — mesuré, pas jugé. Les deux couples de silhouette suivent, parce
+	   qu'une case en conflit garde sa forme et qu'elle doit rester lisible : la
+	   forme posée par l'enfant est en `--accent`, la case donnée en `--ink`. */
+	{
+		avant: '--warn',
+		arriere: '--warn-bg',
+		ou: 'jeu-sudoku.scss .sudoku-case[data-conflit] (la trame de hachures)',
+	},
+	{
+		avant: '--accent',
+		arriere: '--warn-bg',
+		ou: 'jeu-sudoku.scss la silhouette posée par l’enfant dans une case en conflit',
+	},
+	{
+		avant: '--ink',
+		arriere: '--warn-bg',
+		ou: 'jeu-sudoku.scss la silhouette d’une case DONNÉE prise dans un conflit',
+	},
 	// Décompte gelé pendant l'écoute d'un énoncé (#630) : un liseré pointillé cerne le
 	// minuteur, en `currentColor` — donc `--accent` au repos, `--ko` dans les 30
 	// dernières secondes. `outline-offset` le pose HORS de la carte du minuteur, donc

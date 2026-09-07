@@ -395,21 +395,43 @@ function creerRunner(): RunnerJeu {
 		const bCase = cible.closest<HTMLElement>('.sudoku-case');
 		if (bCase) {
 			const i = Number(bCase.dataset.index);
-			caseChoisie = caseChoisie === i ? null : i;
-			/* Une forme déjà choisie se pose immédiatement : l'enfant qui enchaîne
-			   plusieurs cases avec la même forme n'a pas à la retoucher à chaque
-			   fois. */
-			if (caseChoisie !== null && symboleChoisi !== null) jouer(symboleChoisi);
-			else peindre();
+			/* On sélectionne, on ne bascule PAS. Une bascule paraissait inoffensive
+			   et rendait « Effacer » muet : après une pose la case reste choisie,
+			   l'enfant la retouche pour dire « c'est celle-là que je veux effacer »,
+			   et ce geste la désélectionnait. Le bouton ne faisait alors plus rien.
+			   Désélectionner n'apporte rien à l'enfant de toute façon : la mise en
+			   évidence est une aide, pas un mode dont il faudrait sortir. */
+			caseChoisie = i;
+			/* Toucher une case SÉLECTIONNE, et n'écrit jamais — même quand une forme
+			   est déjà choisie. Le raccourci « une forme choisie se pose au premier
+			   appui sur une case » était commode pour enchaîner, et il défaisait
+			   l'aide du critère 16 : cette aide invite justement à toucher une case
+			   pour REGARDER sa ligne, sa colonne et son bloc, or le même geste
+			   écrivait. Un enfant qui explore la grille la remplissait sans le
+			   vouloir. Le critère 10 décrit d'ailleurs l'ordre inverse : appui sur la
+			   case, PUIS appui sur la forme. */
+			peindre();
 			return;
 		}
 
 		const bSymbole = cible.closest<HTMLElement>('.sudoku-symbole');
 		if (bSymbole) {
 			const v = Number(bSymbole.dataset.valeur);
-			symboleChoisi = symboleChoisi === v ? null : v;
-			if (symboleChoisi !== null && caseChoisie !== null) jouer(symboleChoisi);
-			else peindre();
+			/* Une case est choisie : on POSE, toujours, sans jamais basculer. La
+			   bascule cassait le cas le plus courant d'un sudoku — poser la MÊME
+			   forme dans une deuxième case. Le deuxième appui sur la forme la
+			   désélectionnait au lieu de l'écrire, et il ne se passait rien.
+
+			   Sans case choisie, l'appui ne sert qu'à éclairer les occurrences déjà
+			   posées de cette forme (critère 16) : là, la bascule a du sens, c'est
+			   ainsi qu'on éteint la mise en évidence. */
+			if (caseChoisie !== null) {
+				symboleChoisi = v;
+				jouer(v);
+			} else {
+				symboleChoisi = symboleChoisi === v ? null : v;
+				peindre();
+			}
 			return;
 		}
 

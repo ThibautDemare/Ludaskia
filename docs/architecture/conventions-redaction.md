@@ -223,3 +223,27 @@ lieu de nommer celle qui existe déjà ailleurs sous un autre nom. Cas posé par
 (`ui/ortho-runner.ts`, #658) : sur une liste acquise, le bouton porte le libellé du mode
 réellement servi (« J'écoute et j'écris », « Je regarde puis j'écris »…) et le badge
 redevient « conseillé », sans rien y ajouter de propre à ce tour.
+
+## Un trophée qu'on ne peut pas gagner aujourd'hui ne se décrit pas à l'infinitif (#660)
+
+Les descriptions de trophées à l'infinitif de consigne — « Terminer un premier bilan. »,
+« Réussir un objectif du jour. », « Décrocher l'étoile de toutes les leçons. » — décrivent
+**toutes** des trophées faisables le jour même. La forme grammaticale est donc devenue,
+pour l'enfant qui parcourt la grille, le signal « voilà quelque chose à faire ». Un trophée
+dont le compteur ne peut PAS bouger aujourd'hui — les deux familles adossées à la
+répétition espacée (#660), où un élément met au minimum 137 jours à atteindre le sommet —
+évite cette construction et lui préfère une phrase d'état (« Un mot d'orthographe encore
+connu, des mois plus tard. »). Sans quoi la description promet une prise que la mécanique
+refuse. Remontée `redacteur-contenu-francais` ; le versant mécanisable est tenu par un gate
+(`tests/trophees-ancres.test.ts`, critère 8), qui refuse l'impératif et l'infinitif de
+consigne en tête de phrase — le reste (registre, justesse) reste du ressort de la relecture.
+
+## Une description répétée sur plusieurs paliers reste courte (#660)
+
+Une famille de trophées répète sa description à l'identique, seul le nombre changeant
+(« 100 calculs résolus. », « 500 calculs résolus. »…). Le procédé tient tant que la phrase
+est brève : au-delà de six ou sept mots après le chiffre, relire quatre fois la même longue
+phrase dans une même grille pèse. C'est ce qui a fait raccourcir les libellés de #660
+(« 150 mots d'orthographe encore connus, des mois plus tard. » plutôt que « … encore
+connus, plusieurs mois après les avoir appris. ») : la subordonnée finale redisait ce que
+« encore » portait déjà.

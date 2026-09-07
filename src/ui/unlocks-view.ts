@@ -88,7 +88,11 @@ function trophiesContentHTML(): SafeHtml {
 	const cells = joindre(
 		visibles.map((t) => {
 			const on = have.has(t.id);
-			return html`<div class="trophy ${on ? 'on' : 'off'}">
+			/* `data-trophy-id` : sélecteur stable pour les specs Playwright (remontée
+			   `auteur-tests-e2e` sur #660). Sans lui, une spec ne peut que COMPTER les
+			   cellules allumées — et devient verte si n'importe quel AUTRE trophée se
+			   débloque au même moment. Purement technique : rien n'est affiché. */
+			return html`<div class="trophy ${on ? 'on' : 'off'}" data-trophy-id="${t.id}">
       <span class="trophy-ico">${on ? t.icon : icon('lock')}</span>
       <span class="trophy-title">${t.title}</span>
       <span class="trophy-desc">${t.desc}</span></div>`;

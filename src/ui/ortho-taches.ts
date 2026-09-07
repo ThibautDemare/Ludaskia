@@ -577,7 +577,8 @@ export function renderTuiles(word: MotOrtho, o: OptionsTache): void {
 /* « Vérifier » cliqué sans rien avoir posé : on le DIT, sans consommer l'essai. Le silence
    d'avant (`input.focus()` seul) laissait l'enfant sans explication — et un lecteur d'écran
    sans rien du tout, là où les tuiles annonçaient déjà quelque chose. Le message part dans
-   `#fb`, région live, donc il s'entend autant qu'il se lit. */
+   `#fb`, que la cible du focus DÉCRIT (`aria-describedby`) — voir plus bas pourquoi ce n'est
+   surtout pas une région live. */
 function rienDePose(
 	fb: HTMLElement,
 	cible: HTMLElement | null,
@@ -590,6 +591,14 @@ function rienDePose(
 	// muet pour qui ne voit pas l'écran. Et PAS de région live ici — la carte de révision cède
 	// la parole aux régions du widget quand il en a une, si bien que rendre `#fb` live rendait
 	// son propre verdict inaudible (attrapé par les témoins de #640).
+	//
+	// `blur()` AVANT `focus()`, et ce n'est pas une superstition : NVDA et JAWS ne relisent une
+	// description que sur un événement `focus` RÉEL, jamais sur la seule mutation du texte
+	// décrit. Or la cible est déjà focalisée dans les deux chemins les plus courants — Chrome
+	// et Firefox donnent le focus à un `<button>` dès son clic (donc toujours, sur les tuiles),
+	// et Entrée dans un champ ne le déplace pas. Sans la transition forcée, `focus()` est un
+	// no-op et le message reste inaudible précisément pour qui en a besoin.
+	cible?.blur();
 	cible?.focus();
 }
 

@@ -81,10 +81,14 @@ function parseOrtho(s: Partial<OrthoState> | null): OrthoState {
 	// TOUTE lecture — y compris `loadOrthoFor`, sans quoi l'espace encadrant continuerait de
 	// montrer au parent un rang que le mot a dépassé. Pas de migration écrite à part : la
 	// réparation est idempotente, elle se contente de rétablir un invariant.
-	// `mot?.validation` et pas `mot` seul : c'est ICI qu'entre une donnée non fiable (état
-	// importé, sauvegarde d'une version antérieure), et une entrée corrompue doit rester
-	// ignorée plutôt que faire tomber toute la lecture — cf. le test d'import incohérent.
-	for (const mot of Object.values(banque)) if (mot?.validation) reparerEscalier(mot);
+	// C'est ICI qu'entre une donnée non fiable (état importé, sauvegarde d'une version
+	// antérieure) : une entrée corrompue doit rester ignorée plutôt que faire tomber TOUTE la
+	// lecture. Seules les formes FALSY (`validation` absent ou `null`) lèveraient aujourd'hui ;
+	// le contrôle de type est plus large qu'il n'est nécessaire, et c'est délibéré — mesuré :
+	// sur un primitif truthy la réparation ne peut de toute façon rien écrire, faute d'y lire
+	// une marche validée. La ceinture sert le jour où elle écrirait sans avoir lu d'abord.
+	for (const mot of Object.values(banque))
+		if (mot && typeof mot.validation === 'object' && mot.validation !== null) reparerEscalier(mot);
 	return {
 		banque,
 		listes: (Array.isArray(s.listes) ? s.listes : []).map((l) => ({

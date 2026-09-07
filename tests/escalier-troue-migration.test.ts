@@ -48,7 +48,7 @@ import {
 	touchActiveProfile,
 } from '../src/core/profiles';
 import { loadOrtho, loadOrthoFor, saveOrtho, ORTHO_KEY } from '../src/core/orthographe/store';
-import { ORDRE_MODES, validerMode } from '../src/core/orthographe/runner';
+import { ORDRE_MODES, validerMode, reparerEscalier } from '../src/core/orthographe/runner';
 import { dateFranchissement, rangMot, ORDRE_ETAPES } from '../src/core/orthographe/etapes';
 import { friseComposition } from '../src/core/encadrant-stats';
 import { motsAttendusLecon } from '../src/core/orthographe/progression';
@@ -573,5 +573,103 @@ describe('#640 — une réussite ne date que ce qu’elle fait franchir', () => 
 		});
 		validerMode(m, 'dictee', T0);
 		expect(dateFranchissement(m, 'tuiles')).toBe(T0 - 80 * JOUR);
+	});
+});
+
+/* ============================================================
+   6. DONNÉE CORROMPUE — une entrée abîmée ne fait pas tomber la lecture
+   ------------------------------------------------------------
+   `parseOrtho` est la porte d'entrée d'une donnée NON FIABLE : sauvegarde importée à la
+   main, export d'une version antérieure, fichier bricolé. Y ajouter une réparation, c'est
+   y ajouter une ÉCRITURE — donc un endroit où une entrée abîmée peut lever et emporter
+   TOUTE la banque avec elle. La règle est celle que tient déjà l'espace encadrant (cf.
+   `encadrant-banque.test.ts`, « état importé incohérent ») : on ignore l'entrée, on garde
+   le reste.
+
+   CE QUE CE TEST ATTRAPE, et ce qu'il n'attrape pas — mesuré, pas supposé (cf. le compte
+   rendu) : il rougit si la réparation est appelée SANS garde du tout, ce qui lève dès la
+   première lecture d'un `validation` absent ou `null`. Il ne distingue en revanche pas un
+   garde « présence » (`if (mot.validation)`) d'un garde « type »
+   (`typeof … === 'object' && … !== null`) : sur un `validation` truthy mais primitif
+   (`true`, `'oui'`, `1`), `reparerEscalier` n'écrit jamais — chaque marche y est
+   `undefined`, donc aucune n'est vue comme validée, donc il n'y a aucun trou à combler et
+   la boucle sort sans toucher à rien. Le contrôle de type est une ceinture en plus de la
+   bretelle ; ce test garde la bretelle.
+   ============================================================ */
+describe('#640 — une entrée corrompue est ignorée, pas fatale à la lecture', () => {
+	/** Écrit une banque BRUTE mêlant un mot sain à escalier troué et une entrée abîmée. */
+	function banqueAbimee(abimee: unknown): void {
+		lsSetRaw(
+			activeProfile().uuid + '/' + ORTHO_KEY,
+			JSON.stringify({
+				banque: {
+					bon: motStocke({
+						id: 'bon',
+						mot: 'cheval',
+						validation: { motCache: true },
+						franchissements: { atelier: T0 - 90 * JOUR, motCache: T0 - 60 * JOUR },
+					}),
+					abime: abimee,
+				},
+				listes: [],
+				motIdParForme: { cheval: 'bon' },
+			}),
+		);
+	}
+
+	/* Les formes réellement rencontrables dans un état sérialisé à la main. `validation`
+	   n'y est pas toujours l'objet à trois booléens attendu : absent (entrée tronquée),
+	   `null` (champ vidé), ou remplacé par une valeur « qui veut dire quelque chose » pour
+	   qui édite le fichier — un booléen, le nom de la marche atteinte, un compteur. */
+	const ABIMEES: [string, unknown][] = [
+		['sans `validation` du tout', { id: 'abime', mot: 'x' }],
+		['`validation: null`', { id: 'abime', mot: 'x', validation: null }],
+		['`validation: true`', { id: 'abime', mot: 'x', validation: true }],
+		['`validation` en chaîne', { id: 'abime', mot: 'x', validation: 'motCache' }],
+		['`validation` en nombre', { id: 'abime', mot: 'x', validation: 2 }],
+		['`validation` en tableau', { id: 'abime', mot: 'x', validation: [false, true, false] }],
+		['mot entier remplacé par un nombre', 7],
+		['mot entier `null`', null],
+		[
+			'`franchissements` corrompu sur un mot troué',
+			{
+				id: 'abime',
+				mot: 'x',
+				validation: { tuiles: false, motCache: true },
+				franchissements: 'hier',
+			},
+		],
+	];
+
+	for (const [nom, abimee] of ABIMEES) {
+		it(`${nom} : la lecture aboutit, et le mot sain est réparé quand même`, () => {
+			banqueAbimee(abimee);
+			// (i) la lecture ABOUTIT : c'est tout l'enjeu — une exception ici, et l'enfant
+			// perd d'un coup toute sa banque de l'année, pas seulement l'entrée abîmée.
+			const etat = loadOrtho();
+			// (ii) le voisin sain est lu ET réparé : ignorer l'entrée abîmée ne veut pas dire
+			// renoncer à réparer les autres.
+			expect(etat.banque.bon.validation).toEqual({
+				tuiles: true,
+				motCache: true,
+				dictee: false,
+			});
+			expect(dateFranchissement(etat.banque.bon, 'tuiles')).toBe(T0 - 60 * JOUR);
+			// (iii) l'espace encadrant lit la même chose : la réparation vit dans `parseOrtho`,
+			// les deux lectures ne peuvent pas diverger sur une banque abîmée non plus.
+			expect(loadOrthoFor(activeProfile().uuid).banque.bon.validation.tuiles).toBe(true);
+		});
+	}
+
+	it('témoin : appelée SANS garde, la réparation lève bien sur ces entrées', () => {
+		// Ce qui rend la série ci-dessus non vide : la réparation n'est pas tolérante par
+		// elle-même. Deux formes la font lever, et ce sont celles qu'un garde doit retenir —
+		// c'est donc l'existence du garde, et non sa formulation, que la série éprouve.
+		for (const abimee of [
+			{ id: 'a', mot: 'x' },
+			{ id: 'a', mot: 'x', validation: null },
+		]) {
+			expect(() => reparerEscalier(abimee as unknown as MotOrtho)).toThrow(TypeError);
+		}
 	});
 });

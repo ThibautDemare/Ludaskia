@@ -27,7 +27,7 @@
      points qu'aucun test ne peut tenir (relecture designer-ux-enfant /
      redacteur-contenu-francais).
    - critère 4 « EXACTEMENT 3 propositions » : au lancement le catalogue ne
-     compte que 2 jeux (Motus, 2048) — l'issue le documente elle-même
+     comptait 2 jeux au lot #661 (Motus, 2048), 3 depuis #666 — l'issue le documente elle-même
      (« Contexte », table des paliers) comme un cas où la règle de
      RELÂCHEMENT (critère 5) s'applique nécessairement. Le test ci-dessous
      vérifie donc 2 propositions, pas 3.
@@ -262,12 +262,19 @@ test('critères 4 et 6 : franchir le palier 1 ouvre l’écran de choix ; choisi
 	const choix = page.locator('#jeuxChoix');
 	await expect(choix).toBeVisible();
 
-	// Contexte de l'issue #661 : au lancement, le catalogue ne compte que 2 jeux
-	// (Motus, 2048) — la règle des 3 propositions ne peut donc pas s'exercer avant
-	// qu'un 3ᵉ jeu existe (#664+). On vérifie ici la règle de RELÂCHEMENT (critère 5),
-	// explicitement anticipée par l'issue pour ce lot.
+	/* Le critère 4 exige EXACTEMENT 3 propositions, et il est enfin exerçable :
+	   le sudoku de #666 est le 3ᵉ jeu du catalogue. Ce compte valait 2 jusque-là,
+	   et le commentaire d'origine l'annonçait comme transitoire — « la règle des 3
+	   propositions ne peut pas s'exercer avant qu'un 3ᵉ jeu existe ».
+
+	   La règle de RELÂCHEMENT du critère 5 reste visible ici, et c'est ce qui rend
+	   le compte de 3 non trivial : le palier 1 est de type R, le vivier R ne compte
+	   que 2 jeux (2048, sudoku), donc la 3ᵉ proposition vient forcément de l'autre
+	   type. Assertion mise à jour par #666, pas re-figée sur un nouvel état
+	   transitoire : 3 est le compte que la règle impose dès que le vivier le
+	   permet. */
 	const propositions = choix.locator('.jeu-choix-item');
-	await expect(propositions).toHaveCount(2);
+	await expect(propositions).toHaveCount(3);
 
 	// Critère 28 : aucune formulation de prix/condition sur cet écran.
 	const texteChoix = (await choix.innerText()).toLowerCase();

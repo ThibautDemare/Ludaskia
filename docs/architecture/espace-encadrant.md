@@ -1005,7 +1005,7 @@ séance de `#revision-espacee` (fallback + bornage assurés à la lecture par
 
 ## Étagère de jeux (#661)
 
-**Trois réglages** (`ui/encadrant-reglages.ts:jeuxHTML`), bloc « Jeux » de
+**Quatre réglages** (`ui/encadrant-reglages.ts:jeuxHTML`), bloc « Jeux » de
 l'**onglet Réglages** sur le profil consulté — bloc distinct des
 « Aménagements » dys/attention ci-dessus, quoique voisin. Leur ordre dit leur
 dépendance : l'accès commande tout.
@@ -1023,6 +1023,18 @@ dépendance : l'accès commande tout.
   après une séance. **Subordonné** au premier réglage (couper l'accès coupe
   l'invitation, quel que soit ce réglage) — l'interface le montre en
   désactivant la case plutôt qu'en la laissant cochable sans effet.
+
+- **Jouer sans aides visuelles** (`sansAidesJeux`, #666) — dans le sudoku, ne
+  plus marquer les formes en double ni éclairer la ligne, la colonne et le bloc
+  de la case choisie. Le réglage ne fait que **retirer** une aide, jamais
+  l'imposer : absent, les aides sont actives. Pour un profil TDAH, un surlignage
+  permanent peut devenir lui-même un distracteur, et un enfant plus avancé peut
+  vouloir jouer sans filet. Subordonné à l'accès, comme l'invitation.
+
+  Il porte `data-act="set-jeux-pref"` et **non** `set-amenagement`, comme les
+  deux réglages ci-dessus : une aide de jeu ne lève aucun obstacle
+  d'apprentissage, et le compteur global des aménagements est affirmé par une
+  spec e2e existante.
 
 **Jouer ne rapporte ni ne coûte rien** (ni XP, ni étoile, ni trophée, ni temps
 de travail) : ce n'est ni une monnaie ni une punition, et l'écran le rappelle

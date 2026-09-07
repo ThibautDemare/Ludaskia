@@ -1931,16 +1931,17 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
 
 ## Étagère de jeux (#661)
 
-Huit modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
-`etat.ts` (le seul à lire/écrire le stockage) — cf. [Gamification](gamification.md)
+Onze modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
+`etat.ts` et `sudoku-etat.ts` (les seuls à lire/écrire le stockage) — cf.
+[Gamification](gamification.md)
 pour le pourquoi du dispositif (pas de `Recompense`, pas d'XP) et [Espace
 encadrant](espace-encadrant.md) pour les trois réglages adulte.
 
 - **`catalogue.ts`** — `JEUX: JeuDef[]` (id, libellé enfant, icône, `type: 'C' |
   'R'` — compétence / refuge —, `competence?` réservée à l'espace encadrant,
-  jamais montrée à l'enfant, `levels?` absent = toutes les classes). Deux jeux
-  livrés (`motus`, `2048`) sur un catalogue prévu pour 18 (#663 y ajoutera la
-  banque CM1 du Motus).
+  jamais montrée à l'enfant, `levels?` absent = toutes les classes). Trois jeux
+  livrés (`motus`, `2048`, `sudoku`) sur un catalogue prévu pour 18 (#663 y
+  ajoutera la banque CM1 du Motus).
 - **`paliers.ts`** — `PALIERS` : 18 rangs, un niveau XP dédié chacun, alternant
   `R`/`C`. `paliersFranchis(avant, apres)` rend les rangs strictement franchis
   entre deux niveaux (borne de départ exclue, d'arrivée incluse — même grammaire
@@ -1952,9 +1953,10 @@ encadrant](espace-encadrant.md) pour les trois réglages adulte.
 - **`plafond.ts`** — arithmétique pure du temps de jeu quotidien (`jourLocal`,
   `restantSecondes`, `consommer`) : borné, non cumulable, jour LOCAL passé en
   paramètre plutôt que lu de l'horloge, pour rester testable aux bords de journée.
-- **`etat.ts`** — la SEULE couche du dispositif à toucher `localStorage`, quatre
+- **`etat.ts`** — la couche de `localStorage` du dispositif commun, **cinq**
   clés (cf. [Données & profils](donnees-et-profils.md)) : jeux possédés, paliers
-  en attente de choix, plafond du jour, meilleur score par jeu — ce dernier
+  en attente de choix, paliers déjà PROPOSÉS automatiquement, plafond du jour,
+  meilleur score par jeu — ce dernier
   volontairement en dehors de `core/progress.ts` (namespacé par niveau scolaire),
   un jeu ignorant la classe de l'enfant.
 - **`motus.ts`** — correcteur du Motus (`evaluerEssai`, deux passes pour ne pas
@@ -1965,6 +1967,36 @@ encadrant](espace-encadrant.md) pour les trois réglages adulte.
 - **`deux-mille-quarante-huit.ts`** — moteur du 2048 (`glisser`/`ajouterTuile`/
   `partieFinie`), grille et aléa injectés, une tuile née d'une fusion verrouillée
   pour le reste du coup (`[2,2,4]` glissé rend `[4,4]`, jamais `[8]`).
+- **`grille-contraintes.ts`** (#666) — moteur de grille à contraintes
+  **générique**, qui ne connaît pas le sudoku : une géométrie (côtés, largeur et
+  hauteur de région), ses zones (`lignes`/`colonnes`/`regions`, des rectangles
+  contigus et pas « des groupes de `cotes` cases ») et un jeu de contraintes
+  **enfichables**. Deux solveurs : `compterSolutions` (juge du critère 3) et
+  `resoudreParDeductionElementaire`, volontairement FAIBLE — il ne pose que les
+  cases à candidat unique, donc une grille qu'il ne finit pas exige de raisonner
+  sur une paire de candidats, technique hors de portée avant 10-11 ans. Le second
+  implique le premier : chaque étape étant forcée, la solution atteinte est
+  nécessairement unique. Une contrainte peut rendre des zones qui ne
+  **partitionnent pas** la grille (diagonale, cage) — c'est ce qui permettra au
+  calcudoku de #667 de brancher ses cages arithmétiques sans toucher ce module.
+- **`sudoku.ts`** (#666) — le jeu comme ASSEMBLAGE : trois unicités sur une
+  géométrie (régions 2×2 au 4×4, 3 de large sur 2 de haut au 6×6). `tirerGrille`
+  part d'une solution complète et creuse tant que le solveur faible finit encore
+  la grille ; `presqueComplete` ne laisse qu'un ou deux trous pour la toute
+  première grille d'un profil. `SYMBOLES` expose des **noms** de silhouettes, pas
+  des dessins — `core` ne rend rien, le runner associe chaque nom à son SVG.
+  ⚠️ **En 4×4, une grille à solution unique est TOUJOURS résoluble par déduction
+  élémentaire** (établi exhaustivement sur les 2^16 sous-ensembles de trois
+  grilles solutions) : un échantillon limité à cette taille serait vert quoi
+  qu'on écrive, le critère 4 n'a de mordant qu'au 6×6.
+- **`sudoku-etat.ts`** (#666) — trois clés de plus : la grille en cours **par
+  taille**, la dernière taille jouée, et le drapeau « a déjà joué une grille ».
+  La reprise n'est pas un confort : avec un plafond par défaut de 10 minutes une
+  grille 6×6 ne se termine pas en une session, donc repartir de zéro serait le
+  cas NORMAL. Tout se vérifie à la LECTURE (ces clés traversent l'export de
+  sauvegarde), y compris deux refus qui vont plus loin que la forme — un énoncé
+  non finissable par déduction élémentaire ne rentre pas par la porte du
+  stockage, et une grille déjà terminée ne se rouvre jamais.
 - **`invitation.ts`** — `doitInviter(ContexteInvitation)` : la règle pure qui
   décide si l'étagère se propose en fin de séance, et à quel emplacement
   (« programme » DÉPLACE l'invitation vers la fin d'un programme du jour plutôt

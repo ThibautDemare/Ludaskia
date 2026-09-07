@@ -34,8 +34,8 @@
    ============================================================ */
 import { readFileSync, readdirSync } from 'node:fs';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
-import { setOnDataWrite } from '../src/core/storage';
-import { initProfiles, touchActiveProfile } from '../src/core/profiles';
+import { setOnDataWrite, lsGet } from '../src/core/storage';
+import { activeProfile, initProfiles, touchActiveProfile } from '../src/core/profiles';
 import {
 	loadOrtho,
 	saveOrtho,
@@ -59,9 +59,12 @@ import {
 import { dateFranchissement } from '../src/core/orthographe/etapes';
 import { JOUR } from '../src/core/revision';
 import { selectDueGroups } from '../src/core/revision-select';
-import { getXP, loadActivity } from '../src/core/progress';
+import { getXP, loadActivity, type PaliersNotion } from '../src/core/progress';
 import { etapeSatisfaite, CONTEXTE_VIDE, type SeanceEtape } from '../src/core/seance';
-import { initTts } from '../src/ui/tts';
+import { chargerErreursFor } from '../src/core/erreurs-journal';
+import { niveauListeOrtho } from '../src/core/orthographe/progression';
+import { ORTHO_PALIERS_KEY } from '../src/core/orthographe/paliers';
+import { dicteeDisponible, initTts } from '../src/ui/tts';
 import { runRevisionEspacee } from '../src/ui/revision';
 import { setPendingOrthoMode, startOrthoRun } from '../src/ui/ortho-runner';
 import { PASSER_LABEL } from '../src/ui/revelation-neutre';
@@ -924,5 +927,222 @@ describe('#640 — charge d’une session (critère 20, hors attribution)', () =
 		runRevisionEspacee();
 		const progression = (document.getElementById('revProg')?.textContent ?? '').replace(/\s/g, '');
 		expect(progression).toBe('1/5');
+	});
+});
+
+/* ============================================================
+   GATE 1 — « Vérifier » CLIQUÉ SANS RÉPONSE, sous l'unique essai de la révision.
+   ------------------------------------------------------------
+   Ce que la révision promet à l'enfant : UN essai par item (`essaisAvantCorrection: 1`),
+   une erreur menant droit à la correction guidée, au mot noté difficile et au palier
+   d'espacement qui recule. Le corollaire est une exigence à part entière : ce prix se paie
+   pour une RÉPONSE FAUSSE, jamais pour une absence de réponse. Un doigt qui effleure
+   « Vérifier » sur une tablette n'est pas une erreur d'orthographe — le journal du parent
+   lirait une faute jamais commise, et l'enfant perdrait le mot sans l'avoir travaillé.
+
+   L'exigence n'est PAS propre à ce lot, et ne se dérive pas de son code : c'est la règle que
+   la révision tient déjà pour ses autres formats à saisie (grille posée, sous-questions de
+   problème — cf. `ui/revision.ts`, où une case vide RE-FOCALISE au lieu de valider). Le
+   refactor de #640 mutualise les trois tâches d'orthographe dans un module partagé avec le
+   parcours, qui laisse LUI plusieurs essais : le garde-fou devait survivre à cette mise en
+   commun, et rien ne le vérifiait.
+
+   Les trois versants sont éprouvés SUR LES TROIS TÂCHES, la révision les servant toutes
+   depuis #640 : les tuiles, le mot caché et la dictée valident par des gestes différents,
+   donc trois occasions distinctes de perdre la garde.
+   ============================================================ */
+
+/** Erreurs journalisées pour le profil actif — ce que le parent lira. */
+const erreursJournalisees = () => chargerErreursFor(activeProfile().uuid);
+
+/** Ce que l'enfant s'ENTEND dire : les régions live de la carte de révision. Sert à
+    éprouver qu'on ne lui a pas annoncé un verdict — ni soufflé la réponse — alors qu'il
+    n'a rien répondu. Lu par rôle, pas par identifiant. */
+function annonce(): string {
+	return [...document.querySelectorAll<HTMLElement>('.revision [role="status"]')]
+		.map((e) => e.textContent ?? '')
+		.join(' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+/** Le geste du mis-clic : valider sans rien avoir saisi ni posé. Le mot caché demande
+    d'abord de cacher le mot (sinon il n'y a pas encore de champ à laisser vide). */
+function verifierSansRepondre(vue: TacheVue): void {
+	if (vue === 'motCache') {
+		const cacher = bouton(/cacher/i);
+		if (!cacher) throw new Error('bouton « Cacher » introuvable sur le mot caché');
+		cliquer(cacher);
+	}
+	const valider = bouton(/vérifier|valider/i);
+	if (!valider) throw new Error('aucun bouton de validation sur l’item de révision');
+	cliquer(valider);
+}
+
+/** Une VRAIE faute : une réponse donnée, et fausse. Témoin des tests ci-dessous — sans lui,
+    « l'état n'a pas bougé » pourrait passer parce que rien ne le fait jamais bouger. */
+function repondreFaux(vue: TacheVue): void {
+	if (vue === 'tuiles')
+		assemblerEtValider('che'); // trois lettres posées, mot incomplet
+	else saisirEtValider('chevale');
+}
+
+/** Un mot dû sur CHACUNE des trois tâches, avec un palier d'espacement déjà engagé (2) :
+    un recul y est visible, là qu'un palier 0 en masquerait la moitié. */
+const CAS_TACHE: { mode: ModeOrtho; libelle: string; seed: () => string }[] = [
+	{
+		mode: 'tuiles',
+		libelle: 'les tuiles',
+		seed: () => banque([{ mot: 'cheval', palier: 2 }]).ids[0],
+	},
+	{
+		mode: 'motCache',
+		libelle: 'le mot caché',
+		seed: () => banque([{ mot: 'cheval', validation: { tuiles: true }, palier: 2 }]).ids[0],
+	},
+	{
+		mode: 'dictee',
+		libelle: 'la dictée',
+		seed: () =>
+			banque([{ mot: 'cheval', validation: { tuiles: true, motCache: true }, palier: 2 }]).ids[0],
+	},
+];
+
+for (const { mode, libelle, seed } of CAS_TACHE) {
+	describe(`#640 — validation à vide en révision, sur ${libelle}`, () => {
+		it('ne coûte NI le palier, NI une erreur au journal du parent, NI un verdict', () => {
+			const id = seed();
+			runRevisionEspacee();
+			expect(tacheServie('cheval')).toBe(mode); // prémisse : c'est bien cette tâche qui est servie
+			const avant = JSON.stringify(relu(id));
+
+			verifierSansRepondre(mode);
+
+			// (i) RIEN n'est enregistré : ni recul de palier, ni date de test, ni marche franchie.
+			// L'état COMPLET du mot est comparé, et non le seul palier : c'est tout ce que
+			// l'espace encadrant relira.
+			expect(JSON.stringify(relu(id))).toBe(avant);
+			// Une faute jamais commise ne doit pas remonter au parent (#391).
+			expect(erreursJournalisees()).toEqual([]);
+			expect(getXP()).toBe(0);
+			// (ii) pas de bascule sur la correction guidée : l'enfant ne s'entend pas dire qu'il
+			// s'est trompé, et la réponse ne lui est pas soufflée — il ne l'a pas demandée.
+			expect(annonce()).not.toContain('cheval');
+		});
+
+		it('laisse l’essai INTACT : une réponse juste, juste après, compte normalement', () => {
+			const id = seed();
+			runRevisionEspacee();
+			expect(tacheServie('cheval')).toBe(mode);
+
+			verifierSansRepondre(mode);
+			// Le mis-clic n'a pas consommé l'essai : l'enfant répond, et son travail compte —
+			// marche franchie (#640), palier avancé, un point. C'est le versant qui prouve que la
+			// garde ne se contente pas de « ne rien faire » : la tâche reste JOUABLE.
+			reussirLaTacheServie('cheval');
+
+			const m = relu(id);
+			expect(m.validation[mode]).toBe(true);
+			expect(dateFranchissement(m, mode)).toBe(T0);
+			expect(m.revision.palier).toBe(3); // 2 → 3 : une réussite avance d'un cran
+			expect(getXP()).toBe(1);
+			expect(erreursJournalisees()).toEqual([]);
+		});
+
+		it('témoin : une vraie faute, elle, coûte bien l’essai (sinon rien n’est prouvé)', () => {
+			const id = seed();
+			runRevisionEspacee();
+			expect(tacheServie('cheval')).toBe(mode);
+
+			repondreFaux(mode);
+
+			// Les trois observables du premier test BOUGENT quand un essai est réellement
+			// consommé : palier reculé, erreur journalisée, réponse annoncée avec la correction
+			// guidée. C'est ce qui rend « inchangé » discriminant.
+			expect(relu(id).revision.palier).toBe(1); // 2 → 1 : un échec recule d'un cran
+			expect(erreursJournalisees()).toHaveLength(1);
+			expect(annonce()).toContain('cheval');
+			// Et aucune marche n'est dé-franchie au passage (critère 9), y compris ici.
+			expect(relu(id).validation[mode]).toBe(false);
+		});
+	});
+}
+
+/* ============================================================
+   GATE 2 — LE MOT TROUÉ, AU NIVEAU DU JOURNAL DES PALIERS DE LISTE (#541).
+   ------------------------------------------------------------
+   Le mot à escalier troué est abondamment éprouvé plus haut AU NIVEAU DU MOT. Il ne l'était
+   nulle part au niveau de la LISTE, et c'est justement là qu'il a un effet propre : sur un
+   appareil sans voix, l'escalier n'a que deux marches et il n'en manquait qu'une — une
+   unique réussite en révision rend donc le mot maîtrisé, et une liste qui ne contient que
+   lui devient ACQUISE dans cette séance-là, sans qu'aucune dictée n'ait été lancée.
+
+   Ce que le journal des paliers promet (cf. l'en-tête de `core/orthographe/paliers.ts`) :
+   DATER le franchissement d'état d'une liste, une fois, pour que la frise de l'espace
+   encadrant puisse dire au parent « acquis depuis le … ». Le modèle est MONOTONE : ce qui
+   n'est pas tamponné au moment du franchissement ne le sera jamais — rien ne repassera par
+   là. Un franchissement manqué n'est donc pas un retard d'affichage, c'est une liste dont la
+   frise restera muette pour toujours.
+
+   La spec `e2e/paliers-journal-ortho.spec.ts` avait dû neutraliser ce cas (un second mot
+   hors rotation) pour rester stable face aux voix qui apparaissent en cours de session : son
+   auteur l'a signalé comme non couvert. Il l'est ici, où la disponibilité des voix est
+   STUBÉE et affirmée.
+   ============================================================ */
+describe('#640/#541 — un mot troué SEUL dans sa liste, vu du journal des paliers', () => {
+	const journalPaliers = (): Record<string, PaliersNotion> =>
+		lsGet(ORTHO_PALIERS_KEY, {}) as Record<string, PaliersNotion>;
+	const listeCouranteId = (): string => loadOrtho().listes[0].id;
+	/** Listes tamponnées « acquis » par le journal, pour ce profil. */
+	const listesAcquises = (): string[] =>
+		Object.entries(journalPaliers())
+			.filter(([, rec]) => rec.acquis != null)
+			.map(([id]) => id);
+
+	it('sans voix, la réussite qui la rend acquise la DATE « acquis » dans la séance', () => {
+		sansVoix();
+		expect(dicteeDisponible()).toBe(false); // stub affirmé : la dictée n'est pas requise
+		const id = motTroue();
+		const listeId = listeCouranteId();
+		// Prémisses : rien n'est encore journalisé, et la liste n'est pas acquise.
+		expect(journalPaliers()[listeId]).toBeUndefined();
+		expect(niveauListeOrtho(loadOrtho(), listeId, false)).toBe('en-cours');
+
+		runRevisionEspacee();
+		reussirLaTacheServie('cheval');
+		terminerSession();
+
+		// L'état de la liste a bien franchi le cap du haut pendant cette séance…
+		expect(statutMot(relu(id), false)).toBe('maitrise');
+		expect(niveauListeOrtho(loadOrtho(), listeId, false)).toBe('acquis');
+		// … et le journal le DATE : sans ce tampon, le parent n'aura jamais de « acquis depuis
+		// le … » pour cette liste, le modèle monotone ne repassant pas par là.
+		expect(journalPaliers()[listeId]?.acquis).toBe(T0);
+		// Un seul cap franchi dans cette séance, celui du haut : le journal ne date pas un
+		// « en cours » qu'il n'a jamais observé (il serait POSTÉRIEUR à l'acquis, et la frise
+		// raconterait une liste entamée après avoir été acquise).
+		expect(journalPaliers()[listeId]?.enCours ?? null).toBeNull();
+		// Et seule CETTE liste est acquise : les leçons prédéfinies qui partagent le mot ne le
+		// sont pas (elles en ont d'autres, jamais travaillés).
+		expect(listesAcquises()).toEqual([listeId]);
+	});
+
+	it('avec voix, la même réussite ne la date PAS « acquis » : la dictée reste due', () => {
+		// Le versant qui rend le test précédent discriminant : le journal doit suivre l'ÉTAT de
+		// la liste, et non tamponner « acquis » toute liste dont un mot vient d'être réussi.
+		// Combler le trou (les tuiles) laisse ici la dictée à franchir.
+		expect(dicteeDisponible()).toBe(true); // stub affirmé : voix FR locale installée
+		const id = motTroue();
+		const listeId = listeCouranteId();
+
+		runRevisionEspacee();
+		reussirLaTacheServie('cheval');
+		terminerSession();
+
+		expect(statutMot(relu(id), true)).toBe('enCours');
+		expect(niveauListeOrtho(loadOrtho(), listeId, true)).toBe('en-cours');
+		expect(journalPaliers()[listeId]?.enCours).toBe(T0);
+		expect(journalPaliers()[listeId]?.acquis ?? null).toBeNull();
+		expect(listesAcquises()).toEqual([]);
 	});
 });

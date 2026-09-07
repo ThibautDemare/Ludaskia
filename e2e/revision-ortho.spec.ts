@@ -197,3 +197,33 @@ test('Révision ortho : Entrée sur #btnEcouterMot (bouton) ne valide PAS la sai
 
 	expect(errors).toEqual([]);
 });
+
+/* #640 : `brancherEntree` (ortho-taches.ts) coupe la propagation de l'Entrée qui vient de
+   valider — sans quoi cette même touche continuerait de remonter jusqu'à `bindEnter`
+   (revision.ts), qui cliquerait aussitôt le `#revNext` que le verdict vient d'afficher.
+   L'enfant saisirait alors sa réponse, validerait au clavier, et sauterait la correction
+   sans l'avoir lue — sur une tâche où il n'a qu'un seul essai (#391 : le verdict doit être
+   LU, pas juste écrit). Un seul mot dû dans `ORTHO_SEED_DUE` : si Entrée avait déjà cliqué
+   « Continuer/Terminer », la révision serait déjà terminée au lieu de montrer le verdict. */
+test("Révision ortho : valider au clavier (Entrée) dans #orthoInput atterrit sur le verdict, sans sauter à l'item suivant — #640", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await seedOrthoDue(page);
+	await gotoHash(page, 'revision-espacee');
+
+	await page.locator('#btnCacher').click();
+	const input = page.locator('#orthoInput');
+	await expect(input).toBeVisible();
+	await input.fill('bonjour'); // réponse CORRECTE (cf. ORTHO_SEED_DUE)
+	await input.press('Enter'); // validation au CLAVIER, PAS de clic sur #btnVerifMot
+
+	// Le verdict de réussite est bien affiché…
+	await expect(page.locator('.rev-feedback.ok')).toBeVisible();
+	await expect(page.locator('#revNext')).toBeVisible();
+	// … et la séance n'est PAS déjà terminée : un seul mot dû, donc un passage prématuré à
+	// l'item suivant atterrirait directement sur l'écran de fin.
+	await expect(page.locator('.rev-done')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});

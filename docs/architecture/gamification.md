@@ -161,13 +161,24 @@ complément de `prefers-reduced-motion`.
 Une **étagère de jeux** de pur loisir, débloquée au fil de la montée de niveau mais
 **hors de l'économie de jeu** : jouer ne rapporte **rien** (ni XP, ni étoile, ni
 médaille, ni trophée) et ne coûte rien non plus. Travailler n'achète pas de temps de
-jeu, il ouvre des jeux **nouveaux** — l'inverse aurait rouvert un péage. Trois jeux
+jeu, il ouvre des jeux **nouveaux** — l'inverse aurait rouvert un péage. Quatre jeux
 livrés sur un catalogue prévu pour 18 (`core/jeux/catalogue.ts`) : « Le mot caché »
 (un Motus d'orthographe lexicale, jeu-**compétence** — la compétence scolaire EST
-la mécanique), **2048** et le **Sudoku des formes** (#666), ces deux-là
-jeux-**refuge** sans lien au programme. Le sudoku a posé le **moteur de grille à
-contraintes** (`core/jeux/grille-contraintes.ts`) que réutilisera le calcudoku de
-#667. **#663** (non livré) y ajoutera la banque CM1 du Motus.
+la mécanique), **2048**, le **Sudoku des formes** (#666) et les **Mots casés**
+(#664), ces trois-là jeux-**refuge** sans lien au programme. Le sudoku a posé le
+**moteur de grille à contraintes** (`core/jeux/grille-contraintes.ts`) que
+réutilisera le calcudoku de #667 ; les mots casés ont posé le **moteur de grille de
+mots** (`core/jeux/grille-mots.ts`) que réutilisera les mots croisés de #665.
+**#663** (non livré) y ajoutera la banque CM1 du Motus.
+
+Les mots casés sont de type **refuge** malgré leurs mots, et c'est un arbitrage
+écrit : sans définitions, un « fill-in » n'entraîne ni lecture, ni orthographe
+produite, ni vocabulaire — le mot est donné en entier, l'enfant ne le rappelle
+jamais de mémoire et peut boucler la grille en comptant des cases. Ce qu'il
+mobilise est la satisfaction de contraintes et la discrimination visuelle. Le seul
+bénéfice de langue honnête est une exposition répétée, non notée, à la forme
+correcte de mots — à ne jamais compter comme un renfort de français dans un bilan
+destiné aux parents.
 
 **18 paliers** (`core/jeux/paliers.ts`), un niveau XP dédié chacun, alternant les
 deux types — aucun ne coïncide avec un déblocage existant (rang, mascotte, avatar,

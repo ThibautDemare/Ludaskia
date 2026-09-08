@@ -181,6 +181,19 @@ forme est impossible, dont l'état courant contredit son énoncé, dont l'énonc
 n'est pas finissable par déduction élémentaire, ou qui est déjà terminée, ne
 revient pas — et une taille corrompue n'emporte pas l'autre avec elle.
 
+**Mots casés (#664)** : deux clés de plus, dans `core/jeux/mots-cases-etat.ts` —
+`ludaskia_jeux_mots-cases_partie` (la grille en cours : l'IDENTIFIANT du motif,
+la liste de ses mots dans l'ordre d'affichage, et les mots posés) et
+`ludaskia_jeux_mots-cases_taille` (la dernière taille jouée). **Deux et pas
+trois** : une clé de plus serait une mémoire de plus, donc un compteur de parties
+ou une série de grilles enchaînées — le jeu n'a le droit ni de compter ni de se
+souvenir. Une SEULE grille en cours, pas une par taille : elle porte déjà sa
+taille dans son motif, et changer de taille l'abandonne. Bornage à la
+**lecture** ici aussi : motif inconnu, mot hors des banques, doublon, longueur
+qui ne colle pas au dessin, mot posé absent de la liste, partie déjà terminée —
+rien de tout cela ne revient. La grille **pleine mais fausse**, elle, revient :
+c'est un état de jeu, pas une corruption.
+
 Les réglages associés vivent dans `ProfilePrefs` (`sansJeux`,
 `sansInvitationJeux`, `jeuxPlafondMinutes`, `sansAidesJeux`), donc dans
 `ludaskia_profiles` comme les autres préférences plutôt que dans une clé dédiée —

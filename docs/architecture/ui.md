@@ -1359,9 +1359,11 @@ n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
   (`session.ts`, `lecon-runner-shared.ts`, `sprint.ts`, `revision.ts`,
   `ortho-runner.ts` ×2, `seance.ts` seul pour l'emplacement « programme »), gardés
   par un gate dédié (cf. [Tests](tests.md)).
-- **`jeu-motus.ts`** / **`jeu-2048.ts`** / **`jeu-sudoku.ts`** — les trois runners
-  livrés, chacun un `RunnerJeu` autour de son moteur pur (`core/jeux/motus.ts`,
-  `core/jeux/deux-mille-quarante-huit.ts`, `core/jeux/sudoku.ts`). Convention de
+- **`jeu-motus.ts`** / **`jeu-2048.ts`** / **`jeu-sudoku.ts`** /
+  **`jeu-mots-cases.ts`** — les quatre runners livrés, chacun un `RunnerJeu`
+  autour de son moteur pur (`core/jeux/motus.ts`,
+  `core/jeux/deux-mille-quarante-huit.ts`, `core/jeux/sudoku.ts`,
+  `core/jeux/grille-mots.ts` + `core/jeux/mots-cases.ts`). Convention de
   nommage `src/ui/jeu-<id>.ts` : le nom du fichier DIT quel jeu du catalogue il
   sert, vérifié par un gate (cf. [Tests](tests.md)).
 - Le **sudoku** (#666) se pose en deux temps — appui sur la case, puis appui sur
@@ -1374,6 +1376,23 @@ n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
   toucher pour REGARDER. Seul runner sans aucun écouteur de clavier maison — ses
   cases et ses formes sont de vrais `<button>`, là où le Motus et le 2048 écoutent
   `keydown` sur `document` et doivent se garder des champs qui ont le focus.
+
+- Les **mots casés** (#664) se posent dans l'ordre INVERSE du sudoku : appui sur
+  le mot dans la liste, puis appui sur la grille. Là, c'est le mot qui est le
+  point de départ naturel, et l'endroit se déduit de sa longueur. Trois
+  conséquences de rendu :
+  - une case de croisement appartient à deux mots, donc y poser demanderait
+    d'arbitrer — sauf qu'**aucun motif ne fait se croiser deux emplacements de
+    même longueur** : l'ambiguïté est écartée par la DONNÉE, pas rattrapée par
+    une règle que l'enfant devrait apprendre. Reste le retrait, quand les deux
+    mots d'un croisement sont posés : on retire l'horizontal et on l'annonce ;
+  - le mot en main s'affiche dans un bandeau `position: sticky` — sur la grande
+    grille, la liste sort de l'écran dès qu'on regarde le bas de la grille ;
+  - la grille montre les lettres en CAPITALES (b/d/p/q se confondent bien plus
+    que B/D/P/Q dans une case isolée), la liste garde les minuscules, qui sont la
+    forme correcte du mot écrit. Une case de croisement en désaccord affiche les
+    **deux** lettres réclamées, jamais une seule : en choisir une afficherait une
+    lettre fausse pour l'un des deux mots.
 
 ## Étayage de la notion (#490)
 

@@ -22,15 +22,7 @@ import {
 } from '../src/core/jeux/motus';
 import type { EtatLettre } from '../src/core/jeux/motus';
 import { ORTHO_PREDEF } from '../src/data/francais/orthographe';
-
-/* Tirage déterministe (LCG), pattern de fenetre-ponderee.test.ts. */
-function tirage(graine: number): () => number {
-	let s = graine >>> 0;
-	return () => {
-		s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-		return s / 4294967296;
-	};
-}
+import { tirage } from './aleatoire';
 
 const lettres = (mot: string): string[] => [...mot.normalize('NFC')];
 

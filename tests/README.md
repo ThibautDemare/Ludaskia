@@ -35,6 +35,13 @@ défaut et le préfixe actif. Le **rendu** n'a plus d'état de module à réinit
   pas d'apostrophe typographique (`’`) dans une `answer`/`answers`, ni d'espace
   parasite. Une leçon dont la réponse s'écrit `l’action de…` échoue : l'enfant tape
   l'apostrophe droite de son clavier et `normalizeText` ne replie pas les deux formes.
+- **Aléa déterministe** : ne jamais réécrire un générateur dans son fichier de test —
+  importer `tirage(graine)` de **`tests/aleatoire.ts`**. Le LCG qui était recopié dans
+  huit fichiers avait une première sortie quasi constante (corrélation graine / première
+  sortie : r = 1,0000), ce qui effondrait Fisher-Yates : mélanger deux éléments donnait
+  toujours la même permutation, et sur trois, le premier n'arrivait jamais en tête. Deux
+  tests l'ont payé sans le voir. L'en-tête d'`aleatoire.ts` détaille le diagnostic, et
+  `tests/aleatoire.test.ts` le rejoue à chaque `npm test`.
 - **Nouveau niveau scolaire jouable** : le JSON-LD de la vitrine (`index.html`)
   annonce les classes disponibles (`educationalLevel`) — `tests/seo-decouvrabilite.test.ts`
   (#631) les compare à `availableLevels(getAllLessons())` et échoue si le balisage

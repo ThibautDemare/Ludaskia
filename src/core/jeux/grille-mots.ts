@@ -233,24 +233,29 @@ export function terminee(g: Grille): boolean {
    ne compare que des lettres et des longueurs.
    ============================================================ */
 
-/** Mélange par CLÉ TIRÉE : un tirage par élément, puis tri sur cette clé. Une
-    copie, jamais l'original.
+/** Fisher-Yates sur une COPIE, comme `core/jeux/tirage.ts` — un seul algorithme
+    de mélange dans le dépôt, et c'est celui-là.
 
-    Ce n'est pas le Fisher-Yates habituel du dépôt, et le motif du changement est
-    mesuré. Fisher-Yates fait reposer UNE position sur UN tirage — la dernière
-    sur le tout premier appel. Or les générateurs déterministes employés partout
-    dans les tests sont des LCG semés par de petits entiers, dont la première
-    sortie est quasi constante : sur les graines 1 à 200, elle ne bouge que de
-    0,236 à 0,314. Choisir un motif parmi trois avec ce seul tirage, c'est donc
-    servir le même motif aux 200 tirages et n'en montrer jamais un troisième.
+    Il a un temps été remplacé ici par un tri sur clé tirée, parce que
+    Fisher-Yates fait reposer UNE position sur UN tirage : la dernière sur le tout
+    premier appel. Avec les générateurs des tests, un LCG semé par de petits
+    entiers dont la première sortie ne bougeait que de 0,236 à 0,314 sur les
+    graines 1 à 200, un motif sur trois n'était jamais servi.
 
-    Avec une clé par élément, chaque position dépend de TOUS les tirages : le
-    biais d'un seul d'entre eux ne peut plus geler un rang. */
+    C'était corriger l'étage du dessous. Le défaut était dans le générateur de
+    TEST, pas dans le mélange, et il valait aussi pour `tirage.ts` — simplement
+    son test était trop lâche pour le révéler. Le générateur est désormais corrigé
+    à sa racine, et les deux modules mélangent de nouveau pareil.
+
+    Le `Math.min` borne un générateur qui rendrait exactement 1 : sans lui,
+    l'index sort du tableau et la permutation perd un élément en silence. */
 export function melanger<T>(items: readonly T[], r: () => number): T[] {
-	return items
-		.map((item) => ({ item, cle: r() }))
-		.sort((a, b) => a.cle - b.cle)
-		.map(({ item }) => item);
+	const a = [...items];
+	for (let i = a.length - 1; i > 0; i--) {
+		const j = Math.min(i, Math.floor(r() * (i + 1)));
+		[a[i], a[j]] = [a[j], a[i]];
+	}
+	return a;
 }
 
 /** Nombre de placements essayés avant d'abandonner un motif. C'est un garde-fou,

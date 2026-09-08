@@ -19,21 +19,13 @@ import type { SchoolLevel } from '../src/core/catalog';
 import { ajouterJeu } from '../src/core/jeux/etat';
 import { initProfiles, touchActiveProfile } from '../src/core/profiles';
 import { setOnDataWrite } from '../src/core/storage';
+import { tirage } from './aleatoire';
 
 beforeEach(() => {
 	localStorage.clear();
 	setOnDataWrite(touchActiveProfile);
 	initProfiles();
 });
-
-/* Tirage déterministe (LCG), pattern de fenetre-ponderee.test.ts. */
-function tirage(graine: number): () => number {
-	let s = graine >>> 0;
-	return () => {
-		s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-		return s / 4294967296;
-	};
-}
 
 const jeu = (id: string, type: TypeJeu, levels?: SchoolLevel[]): JeuDef =>
 	levels
@@ -132,29 +124,50 @@ describe('proposerJeux — la forme des 3 propositions (critère 4)', () => {
 		}
 	});
 
-	it('laisse chaque jeu éligible atteignable — aucun jeu mort dans le vivier', () => {
-		// Sur 500 tirages, les 4 « compétence » disponibles en CE2 doivent tous sortir au
-		// moins une fois : une sélection qui prendrait toujours les 3 premiers serait
-		// déterministe (critère 8) mais ne serait pas un tirage.
-		const vus = new Set<string>();
+	it('sert TOUTES les sélections possibles — aucun jeu mort, aucun jeu d’office', () => {
+		/* « Chaque jeu sort au moins une fois » ne prouve presque rien : ce contrôle
+		   reste vert alors même que deux jeux sur quatre sont proposés à TOUS les
+		   coups. Ce n'est pas une hypothèse — c'est ce qui se passait ici : le
+		   générateur des tests avait une première sortie quasi constante, le mélange
+		   Fisher-Yates de `tirage.ts` s'effondrait, et seules 2 des 4 sélections
+		   possibles sortaient (c3 et c4 présents 500 fois sur 500, c1 et c2 se
+		   partageant la place restante). Le test ne le voyait pas.
+
+		   On énumère donc les POSSIBILITÉS et non leur existence : 4 jeux éligibles
+		   pour 3 places, cela fait exactement 4 sélections. Les quatre doivent
+		   sortir — autrement dit, chaque jeu doit aussi être parfois ÉCARTÉ. */
+		const eligibles = ['c1', 'c2', 'c3', 'c4'];
+		const selections = new Set<string>();
+		const rangs = new Map<string, Set<number>>(eligibles.map((id) => [id, new Set<number>()]));
 		for (let graine = 1; graine <= 500; graine++) {
-			for (const j of proposerJeux({
-				palier: PALIER_C,
-				vivier: VIVIER,
-				niveau: 'ce2',
-				dejaChoisis: [],
-				r: tirage(graine),
-			})) {
-				vus.add(j.id);
-			}
+			const p = ids(
+				proposerJeux({
+					palier: PALIER_C,
+					vivier: VIVIER,
+					niveau: 'ce2',
+					dejaChoisis: [],
+					r: tirage(graine),
+				}),
+			);
+			selections.add([...p].sort().join(','));
+			p.forEach((id, rang) => rangs.get(id)?.add(rang));
 		}
-		expect([...vus].sort()).toEqual(['c1', 'c2', 'c3', 'c4']);
+		// Les 4 sous-ensembles de 3 parmi 4, écrits en clair : un échec dit lequel
+		// n'est jamais servi, au lieu de « il manque un jeu quelque part ».
+		expect([...selections].sort()).toEqual(['c1,c2,c3', 'c1,c2,c4', 'c1,c3,c4', 'c2,c3,c4']);
+		// Et personne n'est cantonné à la dernière carte. L'ordre d'affichage pèse
+		// sur ce qu'un enfant choisit : un jeu toujours servi en troisième est
+		// désavantagé sans que rien à l'écran ne le dise.
+		for (const id of eligibles) {
+			expect([...(rangs.get(id) ?? [])].sort(), id).toEqual([0, 1, 2]);
+		}
 	});
 });
 
 describe('proposerJeux — relâchement vers l’autre type (critère 5)', () => {
 	it('complète avec l’autre type quand le type du palier n’a que 2 candidats', () => {
 		const vivier = [jeu('c1', 'C'), jeu('c2', 'C'), jeu('r1', 'R'), jeu('r2', 'R')];
+		const complements = new Set<string>();
 		for (let graine = 1; graine <= 200; graine++) {
 			const p = proposerJeux({
 				palier: PALIER_C,
@@ -170,8 +183,15 @@ describe('proposerJeux — relâchement vers l’autre type (critère 5)', () =>
 					.filter((i) => i.startsWith('c'))
 					.sort(),
 			).toEqual(['c1', 'c2']);
-			expect(p.filter((j) => j.type === 'R').length).toBe(1);
+			const autres = p.filter((j) => j.type === 'R');
+			expect(autres.length).toBe(1);
+			complements.add(autres[0].id);
 		}
+		/* Et ce n'est pas toujours le MÊME qui complète. Choisir 1 parmi 2 est le
+		   tirage le plus fragile qui soit : c'est celui où un générateur biaisé rend
+		   toujours la même permutation, donc où un jeu ne sort jamais. « Il y en a
+		   bien un » ne l'aurait pas vu ; « les deux sortent » le voit. */
+		expect([...complements].sort()).toEqual(['r1', 'r2']);
 	});
 
 	it('complète entièrement avec l’autre type quand le type du palier n’a plus rien', () => {

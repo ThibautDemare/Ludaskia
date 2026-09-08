@@ -1931,17 +1931,18 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
 
 ## Étagère de jeux (#661)
 
-Onze modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
-`etat.ts` et `sudoku-etat.ts` (les seuls à lire/écrire le stockage) — cf.
+Quatorze modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
+`etat.ts`, `sudoku-etat.ts` et `mots-cases-etat.ts` (les seuls à lire/écrire le
+stockage) — cf.
 [Gamification](gamification.md)
 pour le pourquoi du dispositif (pas de `Recompense`, pas d'XP) et [Espace
 encadrant](espace-encadrant.md) pour les trois réglages adulte.
 
 - **`catalogue.ts`** — `JEUX: JeuDef[]` (id, libellé enfant, icône, `type: 'C' |
   'R'` — compétence / refuge —, `competence?` réservée à l'espace encadrant,
-  jamais montrée à l'enfant, `levels?` absent = toutes les classes). Trois jeux
-  livrés (`motus`, `2048`, `sudoku`) sur un catalogue prévu pour 18 (#663 y
-  ajoutera la banque CM1 du Motus).
+  jamais montrée à l'enfant, `levels?` absent = toutes les classes). Quatre jeux
+  livrés (`motus`, `2048`, `sudoku`, `mots-cases`) sur un catalogue prévu pour 18
+  (#663 y ajoutera la banque CM1 du Motus).
 - **`paliers.ts`** — `PALIERS` : 18 rangs, un niveau XP dédié chacun, alternant
   `R`/`C`. `paliersFranchis(avant, apres)` rend les rangs strictement franchis
   entre deux niveaux (borne de départ exclue, d'arrivée incluse — même grammaire
@@ -1997,6 +1998,43 @@ encadrant](espace-encadrant.md) pour les trois réglages adulte.
   sauvegarde), y compris deux refus qui vont plus loin que la forme — un énoncé
   non finissable par déduction élémentaire ne rentre pas par la porte du
   stockage, et une grille déjà terminée ne se rouvre jamais.
+- **`grille-mots.ts`** (#664) — moteur de **grille de mots** générique, qui ne
+  connaît ni le français, ni le jeu, ni le stockage : une géométrie
+  (`Motif` = des `Emplacement` horizontaux et verticaux), des `croisements`
+  DÉDUITS de cette géométrie (jamais déclarés, donc jamais désynchronisés), et
+  l'état d'une `Grille` (`poser`/`retirer`/`conflits`/`lettresEn`/`terminee`).
+  C'est la brique que #665 (mots croisés) reprendra en ne changeant que la source
+  des mots. Trois règles de contrat : rien ne mute la grille reçue, ce qui n'a
+  pas de sens est refusé EN SILENCE (index hors motif, mauvaise longueur,
+  emplacement occupé — jamais d'exception, un enfant n'a rien à rattraper), et un
+  emplacement occupé ne se remplace pas (sinon le mot écrasé disparaîtrait sans
+  revenir dans la liste). Tout passe par **NFC** avant d'être mesuré comme avant
+  d'être comparé : `é` composé et `é` décomposé sont la même lettre, mais `é` et
+  `e` n'en sont pas une seule — sinon une case de croisement afficherait une
+  lettre fausse pour l'un des deux mots.
+- **`mots-cases.ts`** (#664) — le jeu comme ASSEMBLAGE du moteur et des motifs
+  (`data/jeux/motifs-mots-cases.ts`). Ce qui lui appartient en propre, c'est le
+  français : `vivierMotsCases()` prend TOUT des séries `fr-ortho-theme-*` et de
+  `CHAMPS`, avec pour seule exclusion la FORME (espace, apostrophe, trait
+  d'union) — surtout pas le vivier du Motus, qui écarte les homophones et borne à
+  5-6 lettres pour une raison (le retour lettre à lettre) qui ne vaut pas ici,
+  puisque le mot est donné en entier. `remplir` cherche « le plus contraint
+  d'abord » sous **budget de nœuds** avec abandon propre : mesuré 200/200 sur les
+  sept motifs livrés, et 0/200 sur un carré de mots 5×5 — ce qui limite est la
+  DENSITÉ des croisements, pas la taille du vivier. Le mélange se fait par **clé
+  tirée** et non en Fisher-Yates : ce dernier fait reposer un rang sur un SEUL
+  tirage, or la première sortie des LCG à petite graine employés par les tests
+  est quasi constante (0,236 à 0,314 sur les graines 1-200), ce qui gelait le
+  choix du motif et en rendait un injouable.
+- **`mots-cases-etat.ts`** (#664) — deux clés seulement (cf. [Données &
+  profils](donnees-et-profils.md)), et deux volontairement : une troisième serait
+  une mémoire de plus, donc un compteur de parties ou un record. **UNE seule
+  grille en cours**, pas une par taille comme au sudoku — changer de taille
+  abandonne la grille et repasse par le plafond, ce qui interdit de le contourner
+  par l'aller-retour. Bornage à la LECTURE, y compris ce que la génération
+  s'interdit (mot hors banques, doublon, longueur qui ne colle pas au dessin) et
+  la partie déjà terminée ; en revanche la grille **pleine mais fausse** est
+  GARDÉE, c'est un état de jeu légitime.
 - **`invitation.ts`** — `doitInviter(ContexteInvitation)` : la règle pure qui
   décide si l'étagère se propose en fin de séance, et à quel emplacement
   (« programme » DÉPLACE l'invitation vers la fin d'un programme du jour plutôt

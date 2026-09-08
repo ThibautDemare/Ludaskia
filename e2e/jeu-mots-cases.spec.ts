@@ -895,6 +895,13 @@ test('mesure : à 360 px, une case en désaccord de la GRANDE grille ne déborde
 			await gotoHash(page, 'accueil');
 			await entrerDansLeJeu(page);
 		}
+		// `entrerDansLeJeu` attend déjà `.mc-grille` visible, mais cette attente vit
+		// dans le helper — hors du CORPS de cette boucle. La relire ICI, entre la
+		// navigation et la première lecture one-shot (`getAttribute`), est ce qui
+		// protège vraiment sous charge parallèle : « networkidle » ne veut pas dire
+		// « dessiné », et un one-shot trop tôt épuiserait des tentatives pour rien
+		// sur un tirage qui allait s'afficher (#511, tests/e2e-navigation-gate.test.ts).
+		await expect(grille).toBeVisible();
 		if ((await grille.getAttribute('data-taille')) !== 'grande') {
 			await page.locator('.mc-taille[data-taille="grande"]').click();
 		}

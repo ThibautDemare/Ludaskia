@@ -328,8 +328,15 @@ describe('Navigation des specs e2e : `gotoHash` plutôt que `page.goto` (#511)',
 /** Lectures qui NE retentent PAS : elles répondent « 0 » / « vide » / `null` à
  *  l'instant où on les appelle. Liste volontairement courte et nommée par
  *  l'issue : élargir (`allTextContents`, `textContent`…) demanderait de revérifier
- *  que les boucles saines restent vertes. */
-const LECTURE_ONE_SHOT = /\.\s*(count|innerText|getAttribute)\s*\(/g;
+ *  que les boucles saines restent vertes.
+ *
+ *  `evaluate` a rejoint la liste en #664, signalé par l'auteur d'une spec qui
+ *  venait de se faire prendre par ce gate sur un `getAttribute` : ses helpers de
+ *  lecture du DOM passaient tous par `page.evaluate(…)`, que le gate ne regardait
+ *  pas. Une boucle qui aurait appelé l'un d'eux juste après une navigation serait
+ *  donc passée. Vérification faite avant de l'ajouter : les 29 specs qui emploient
+ *  `evaluate` restent vertes, l'élargissement ne coûte rien. */
+const LECTURE_ONE_SHOT = /\.\s*(count|innerText|getAttribute|evaluate)\s*\(/g;
 /** Navigations : après l'une d'elles, la page peut ne pas être encore dessinée. */
 const NAVIGATION = /page\.goto\(|gotoHash\(|page\.reload\(/g;
 

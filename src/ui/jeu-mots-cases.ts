@@ -94,6 +94,19 @@ const REGLE = 'Choisis un mot dans la liste, puis touche la grille à l’endroi
 const MESSAGE_COINCE =
 	'La grille est pleine, mais certaines lettres ne se rejoignent pas : les cases où deux mots se contredisent sont signalées.';
 
+/** Le tirage n'a rien trouvé : aucun motif de cette taille ne s'est rempli.
+
+    Le cas est théorique avec les motifs livrés (mesurés à 200 réussites sur
+    200), mais c'est LE garde-fou prévu pour un dessin futur plus dense — et un
+    garde-fou qui laisse l'écran vide ne garde rien. Le squelette du plateau est
+    déjà rendu quand le tirage échoue : sans ce panneau, l'enfant obtiendrait un
+    titre, des boutons et une règle au-dessus d'une grille vide pour toujours.
+
+    Registre calme et sans reproche, comme le reste du jeu : la panne n'est pas
+    la sienne, on le dit, et le geste qui la répare tient en un appui. */
+const MESSAGE_PANNE =
+	'Le jeu n’a pas réussi à préparer une grille. Tu n’y es pour rien : essaie encore, ou choisis l’autre taille.';
+
 const LIBELLE_TAILLE: Record<TailleMotsCases, string> = {
 	petite: 'Petite grille',
 	grande: 'Grande grille',
@@ -191,6 +204,11 @@ function plateauHTML(taille: TailleMotsCases): SafeHtml {
 		<p class="mc-main" id="mcMain"></p>
 		<p class="mc-progres" id="mcProgres"></p>
 		<div class="mc-grille" id="mcGrille" role="group" aria-label="Grille de mots à caser"></div>
+		<div class="mc-panne" id="mcPanne" ${drapeau('hidden')}>
+			<p class="mc-panne-titre">Pas de grille cette fois.</p>
+			<p class="mc-panne-texte">${MESSAGE_PANNE}</p>
+			<button type="button" class="mc-reessayer" id="mcReessayer">Réessayer</button>
+		</div>
 		<p class="mc-coince" id="mcCoince" ${drapeau('hidden')}>${MESSAGE_COINCE}</p>
 		<div class="mc-liste" id="mcListe" role="group" aria-label="Mots à placer"></div>
 		<div class="mc-fin" id="mcFin" ${drapeau('hidden')}>
@@ -357,36 +375,100 @@ function creerRunner(): RunnerJeu {
 	    commencer une partie, et l'écran ne s'ouvre de toute façon pas quand le
 	    plafond est épuisé. C'est ce qui fait survivre la grille à l'atteinte du
 	    plafond — sans quoi une grande grille, qui ne tient pas dans une session,
-	    repartirait de zéro à chaque fois. */
-	const charger = (t: TailleMotsCases): boolean => {
+	    repartirait de zéro à chaque fois.
+
+	    Trois issues et pas un booléen : les deux échecs ne se traitent pas
+	    pareil. Le plafond referme l'écran tout seul, il n'y a donc plus rien à
+	    dire ; la panne de tirage, elle, laisse l'écran ouvert et doit se DIRE.
+	    Les confondre, c'est exactement ce qui laisserait un jeu mort. */
+	const charger = (t: TailleMotsCases): 'ok' | 'plafond' | 'panne' => {
 		const reprise = partieEnCours();
 		if (reprise && reprise.motif.taille === t) {
 			partie = reprise;
 			taille = t;
-			return true;
+			return 'ok';
 		}
-		if (!avantNouvellePartie?.()) return false;
-		partie = tirerGrille(t, randFloat);
+		if (!avantNouvellePartie?.()) return 'plafond';
+		let neuve: PartieMotsCases;
+		try {
+			neuve = tirerGrille(t, randFloat);
+		} catch (erreur) {
+			/* `tirerGrille` lève quand aucun motif de cette taille ne se remplit :
+			   un défaut de DONNÉES, jamais un aléa. On garde le message pour qui
+			   déboguera — un `warn` et pas un `error`, parce que l'enfant, lui, a
+			   déjà sa réponse à l'écran. */
+			console.warn('[mots-cases] tirage impossible :', erreur);
+			return 'panne';
+		}
+		partie = neuve;
 		taille = t;
 		sauverPartie(partie);
-		return true;
+		return 'ok';
+	};
+
+	/** Vide le plateau et montre le panneau de panne : mieux vaut un écran qui
+	    dit « pas de grille » qu'un écran qui fait semblant d'en avoir une.
+
+	    La partie est mise à `null` — il n'y en a pas —, ce qui rend au passage
+	    inoffensif tout clic dans un plateau vidé. */
+	const montrerPanne = (): void => {
+		partie = null;
+		motEnMain = null;
+		const grille = dans('#mcGrille');
+		if (grille) grille.innerHTML = '';
+		const liste = dans('#mcListe');
+		if (liste) liste.innerHTML = '';
+		const main = dans('#mcMain');
+		if (main) {
+			main.textContent = '';
+			/* Sans ça, un mot en main au moment du changement de taille laissait un
+			   bandeau `--accent` PLEIN et VIDE en haut du plateau. */
+			bascule(main, 'data-plein', false);
+		}
+		const progres = dans('#mcProgres');
+		if (progres) progres.textContent = '';
+		const fin = dans('#mcFin');
+		if (fin) fin.hidden = true;
+		const coince = dans('#mcCoince');
+		if (coince) coince.hidden = true;
+		const panne = dans('#mcPanne');
+		if (panne) panne.hidden = false;
+		annoncer(MESSAGE_PANNE);
+	};
+
+	/** Charge `t` et rend `true` quand la partie est prête. Les deux échecs se
+	    traitent ICI, une fois pour toutes, pour qu'aucun appelant ne puisse en
+	    oublier un. */
+	const preparer = (t: TailleMotsCases): boolean => {
+		const issue = charger(t);
+		if (issue === 'panne') montrerPanne();
+		return issue === 'ok';
 	};
 
 	const rendreEtat = (annonce: string): void => {
 		motEnMain = null;
+		const panne = dans('#mcPanne');
+		if (panne) panne.hidden = true;
 		construire();
 		peindre();
 		annoncer(annonce);
 	};
 
 	const appliquerTaille = (t: TailleMotsCases): void => {
-		if (!charger(t)) return;
+		if (!preparer(t)) return;
 		memoriserTaille(t);
 		rendreEtat(`${LIBELLE_TAILLE[t]}.`);
 	};
 
 	const changerTaille = (t: TailleMotsCases): void => {
-		if (!partie || t === partie.motif.taille) return;
+		/* Après une panne il n'y a plus de partie du tout, et le choix de taille
+		   reste alors le seul geste utile de l'écran : le refuser rendrait menteur
+		   le panneau qui vient d'inviter à essayer l'autre taille. */
+		if (!partie) {
+			appliquerTaille(t);
+			return;
+		}
+		if (t === partie.motif.taille) return;
 		/* Une seule grille en cours : changer de taille l'abandonne, et repasse
 		   donc par le plafond du jour. C'est aussi ce qui interdit de contourner
 		   le plafond en faisant l'aller-retour entre les deux tailles.
@@ -494,14 +576,14 @@ function creerRunner(): RunnerJeu {
 
 	const nouvelleGrille = (): void => {
 		effacerPartie();
-		if (!charger(taille)) return;
+		if (!preparer(taille)) return;
 		rendreEtat('Nouvelle grille.');
 		dans<HTMLButtonElement>('.mc-mot')?.focus();
 	};
 
 	const surClic = (e: MouseEvent): void => {
 		const cible = e.target as HTMLElement | null;
-		if (!cible || !partie) return;
+		if (!cible) return;
 
 		const bTaille = cible.closest<HTMLElement>('.mc-taille');
 		if (bTaille) {
@@ -509,6 +591,22 @@ function creerRunner(): RunnerJeu {
 			if (t) changerTaille(t);
 			return;
 		}
+
+		/* Les deux seuls boutons qui doivent répondre SANS partie : celui de la
+		   panne est là précisément parce qu'il n'y en a pas, et la règle du jeu ne
+		   dépend d'aucune grille. Tout le reste tombe après le garde-fou. */
+		if (cible.closest('#mcReessayer')) {
+			nouvelleGrille();
+			return;
+		}
+		/* La règle ne se lit QUE sur demande : contrairement à un énoncé
+		   d'exercice, elle ne change jamais d'une grille à l'autre. */
+		if (cible.closest('#mcEcouterRegle')) {
+			dicterConsigne(REGLE);
+			return;
+		}
+
+		if (!partie) return;
 
 		/* La lecture d'un mot est un bouton À PART, dans le mot lui-même : une
 		   lecture globale de la liste obligerait à retenir huit mots d'affilée,
@@ -534,13 +632,7 @@ function creerRunner(): RunnerJeu {
 			return;
 		}
 
-		if (cible.closest('#mcNouvelle')) {
-			nouvelleGrille();
-			return;
-		}
-		/* La règle ne se lit QUE sur demande : contrairement à un énoncé
-		   d'exercice, elle ne change jamais d'une grille à l'autre. */
-		if (cible.closest('#mcEcouterRegle')) dicterConsigne(REGLE);
+		if (cible.closest('#mcNouvelle')) nouvelleGrille();
 	};
 
 	return {
@@ -552,7 +644,7 @@ function creerRunner(): RunnerJeu {
 			racine?.addEventListener('click', surClic);
 			const ecouter = dans('#mcEcouterRegle');
 			if (ecouter && dicteeDisponible()) ecouter.hidden = false;
-			if (!charger(taille)) return;
+			if (!preparer(taille)) return;
 			rendreEtat(`${LIBELLE_TAILLE[taille]}.`);
 		},
 		demonter() {

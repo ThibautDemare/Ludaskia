@@ -384,7 +384,8 @@
 	color: var(--ink);
 }
 
-.mc-nouvelle {
+.mc-nouvelle,
+.mc-reessayer {
 	min-height: 3rem;
 	padding: 0 1.2rem;
 	font-family: var(--ui);
@@ -395,6 +396,41 @@
 	border: 0;
 	border-radius: 12px;
 	cursor: pointer;
+}
+
+/* ---------- La panne de tirage ---------- */
+
+/* Même forme que le panneau de fin, autre registre : `--warn` et jamais `--ko`.
+   Le jeu ne reproche rien à l'enfant, il constate qu'il n'a pas de grille à lui
+   donner. Le couple `--ink` sur `--warn-bg` est celui de `.mc-coince`, déjà
+   mesuré — pas un couple de plus à tenir. */
+.mc-panne {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 0.9rem 1.2rem;
+	max-width: 28rem;
+	background: var(--warn-bg);
+	border-radius: 14px;
+	text-align: center;
+}
+
+.mc-panne[hidden] {
+	display: none;
+}
+
+.mc-panne-titre {
+	margin: 0;
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: var(--ink);
+}
+
+.mc-panne-texte {
+	margin: 0;
+	font-size: 0.95rem;
+	color: var(--ink);
 }
 
 @media (prefers-reduced-motion: reduce) {

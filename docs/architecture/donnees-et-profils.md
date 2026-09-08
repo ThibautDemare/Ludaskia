@@ -181,7 +181,7 @@ forme est impossible, dont l'état courant contredit son énoncé, dont l'énonc
 n'est pas finissable par déduction élémentaire, ou qui est déjà terminée, ne
 revient pas — et une taille corrompue n'emporte pas l'autre avec elle.
 
-**Mots casés (#664)** : deux clés de plus, dans `core/jeux/mots-cases-etat.ts` —
+**Mots à caser (#664)** : deux clés de plus, dans `core/jeux/mots-cases-etat.ts` —
 `ludaskia_jeux_mots-cases_partie` (la grille en cours : l'IDENTIFIANT du motif,
 la liste de ses mots dans l'ordre d'affichage, et les mots posés) et
 `ludaskia_jeux_mots-cases_taille` (la dernière taille jouée). **Deux et pas

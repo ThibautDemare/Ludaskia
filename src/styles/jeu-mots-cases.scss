@@ -194,16 +194,26 @@
 }
 
 /* Les DEUX lettres réclamées par un croisement en désaccord tiennent côte à
-   côte, en plus petit. Elles ne sont pas là pour se lire de loin — la case porte
-   déjà son liseré et sa trame, et chacun des deux mots se relit en entier dans
-   la grille. Elles sont là pour que la case ne MENTE pas en n'en affichant
-   qu'une, et l'`aria-label` dit les deux en toutes lettres. */
+   côte, en plus petit. Elles sont là pour que la case ne MENTE pas en n'en
+   affichant qu'une, et l'`aria-label` dit les deux en toutes lettres.
+
+   « Plus petit » a d'abord voulu dire 9,6 px sur la grande grille : le `clamp`
+   d'origine y retombait sur son plancher, dans une case de 30,5 px. Elles
+   rentraient donc, mais on ne les lisait plus — et deux glyphes à moitié lisibles
+   se lisent de travers, ce qui désinforme plus sûrement qu'une case muette. Les
+   valeurs ci-dessous valent 90 % du corps normal de la case, soit 12,3 px sur la
+   grande grille, et l'espace entre les deux lettres a été remplacé par un
+   `letter-spacing` qui sépare pour bien moins cher. */
+.mc-case[data-double] {
+	letter-spacing: 0.06em;
+}
+
 .mc-grille[data-taille='petite'] .mc-case[data-double] {
-	font-size: clamp(0.7rem, 3.2vw, 1rem);
+	font-size: clamp(0.99rem, 4.86vw, 1.44rem);
 }
 
 .mc-grille[data-taille='grande'] .mc-case[data-double] {
-	font-size: clamp(0.6rem, 2.1vw, 0.8rem);
+	font-size: clamp(0.77rem, 2.88vw, 1.04rem);
 }
 
 /* Les emplacements où le mot en main peut entrer. Une aide, donc soumise au

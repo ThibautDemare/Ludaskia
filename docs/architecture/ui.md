@@ -1392,7 +1392,26 @@ n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
     que B/D/P/Q dans une case isolée), la liste garde les minuscules, qui sont la
     forme correcte du mot écrit. Une case de croisement en désaccord affiche les
     **deux** lettres réclamées, jamais une seule : en choisir une afficherait une
-    lettre fausse pour l'un des deux mots.
+    lettre fausse pour l'un des deux mots. Elles valent 90 % du corps normal de la
+    case — la première version tombait à 9,6 px sur la grande grille, où elles
+    rentraient sans plus se lire ;
+  - changer de taille **abandonne** la grille en cours (une seule est sauvée), donc
+    l'écran le demande d'abord, par `uiConfirm` comme la reprise de leçon — mais
+    seulement s'il y a quelque chose à perdre : une grille vierge change de taille
+    sans friction ;
+  - un appui refusé **s'annonce** (« Ce mot ne va pas dans cette case. »). Le
+    surlignage des emplacements compatibles n'a pas de contrepartie annoncée et
+    l'encadrant peut l'avoir coupé : sans cette phrase, le jeu était injouable au
+    lecteur d'écran, l'enfant tapant des cases sans jamais savoir laquelle accepte
+    son mot.
+
+**Limite connue des deux jeux à grille, à ne pas re-remonter jeu par jeu.** Ni
+`jeu-sudoku.scss` ni `jeu-mots-cases.scss` ne redéfinissent `:focus-visible`, là
+où `jeux.scss`, `modal.scss` et `jeu-motus.scss` le font. Aucune des deux ne pose
+non plus `outline: none` : l'anneau natif du navigateur s'applique donc, et WCAG
+2.4.7 est tenu au minimum. Ce n'est pas un oubli à rattraper dans l'urgence, mais
+ce n'est pas non plus un choix — le jour où l'une des deux feuilles touche au
+focus, les deux se traitent ensemble.
 
 ## Étayage de la notion (#490)
 

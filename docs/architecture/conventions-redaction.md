@@ -292,3 +292,35 @@ Consignées pour que la prochaine relecture ne les re-remonte pas.
 - **« Sudoku »** dans « Sudoku des formes ». Nom propre passé dans l'usage,
   correctement orthographié, pas plus décomposable que « domino » ou « loto » à
   cet âge. **Gardé** : le jeu a justement vocation à faire découvrir le mot.
+
+## Un libellé de jeu ne doit pas être le quasi-homophone d'un jeu voisin (#664)
+
+Les mots casés ont été livrés sous le libellé **« Mots à caser »**, pas sous le
+nom du genre. La raison n'est pas la lisibilité du participe : c'est que **les
+mots croisés arriveront sur la MÊME étagère** (#665). Deux libellés quasi
+homophones, dont l'enfant ne connaît que le second, et rien pour les distinguer
+au moment du choix — ni sous-titre, ni icône parlante — auraient produit un jeu
+choisi pour ce qu'il n'est pas : un CE2 qui lit « mots cas… » attend des
+définitions, ce jeu-ci n'en a aucune.
+
+L'infinitif nomme **l'action** au lieu d'un genre que l'enfant n'a pas encore.
+L'argument retenu pour « Sudoku » — un jeu peut enseigner son propre nom — ne
+transpose pas ici, parce que « sudoku » n'a aucun voisin avec quoi le confondre.
+
+**À vérifier avant de nommer tout jeu suivant** : le libellé se distingue-t-il à
+la lecture rapide de ceux qui sont **déjà sur l'étagère et de ceux qui y sont
+prévus** ? La liste des jeux prévus est dans `docs/architecture/gamification.md`.
+
+## Une remontée écartée sur les mots à caser (#664)
+
+**L'apostrophe typographique dans un texte AFFICHÉ.** Signalée comme une faute
+dans la règle du jeu, au motif que le projet a retenu l'apostrophe droite. La
+règle ne dit pas ça : elle porte sur les **réponses attendues** (`answer`,
+`answers`), et sa raison est mécanique — `normalizeText` ne replie pas `’` vers
+`'`, donc une réponse attendue qui en contient devient **incorrigible** dès qu'un
+enfant la saisit au clavier (cf. `docs/architecture/tests.md`, linter #578).
+
+Rien de tel dans un texte que l'enfant ne fait que lire. Le dépôt compte 286
+apostrophes typographiques réparties sur douze fichiers de `src/`, et c'est la
+bonne typographie française. **Gardée** : ni faute, ni exception à documenter au
+cas par cas.

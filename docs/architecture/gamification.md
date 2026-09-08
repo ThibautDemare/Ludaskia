@@ -164,7 +164,7 @@ médaille, ni trophée) et ne coûte rien non plus. Travailler n'achète pas de 
 jeu, il ouvre des jeux **nouveaux** — l'inverse aurait rouvert un péage. Quatre jeux
 livrés sur un catalogue prévu pour 18 (`core/jeux/catalogue.ts`) : « Le mot caché »
 (un Motus d'orthographe lexicale, jeu-**compétence** — la compétence scolaire EST
-la mécanique), **2048**, le **Sudoku des formes** (#666) et les **Mots casés**
+la mécanique), **2048**, le **Sudoku des formes** (#666) et les **Mots à caser**
 (#664), ces trois-là jeux-**refuge** sans lien au programme. Le sudoku a posé le
 **moteur de grille à contraintes** (`core/jeux/grille-contraintes.ts`) que
 réutilisera le calcudoku de #667 ; les mots casés ont posé le **moteur de grille de

@@ -49,6 +49,12 @@ export const JEUX: JeuDef[] = [
 	// `docs/reference/programmes/`, il n'y apparaît nulle part — et sa valeur est
 	// méthodologique, pas curriculaire.
 	{ id: 'sudoku', label: 'Sudoku des formes', icone: '🔷', type: 'R' },
+	// Mots casés (#664). Type R, donc ni `competence` ni `levels` : le cadrage a
+	// établi que le format « fill-in » n'entraîne ni lecture, ni orthographe
+	// produite, ni vocabulaire — le mot est donné en entier, l'enfant ne le
+	// rappelle jamais de mémoire et peut boucler la grille en comptant des cases.
+	// Lui attribuer une compétence ferait mentir le bilan destiné aux parents.
+	{ id: 'mots-cases', label: 'Mots casés', icone: '🧩', type: 'R' },
 ];
 
 export function jeuParId(id: string): JeuDef | undefined {

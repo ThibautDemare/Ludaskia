@@ -1,0 +1,385 @@
+/* Plateau des mots casés (#664). Rempli par le runner `src/ui/jeu-mots-cases.ts`.
+   Le cadre commun (titre, retour, plafond, étagère) est dans `jeux.scss` : cette
+   feuille n'habille QUE la grille, la liste des mots et la fin de partie.
+
+   ── Aucune valeur hexadécimale ici, et c'est une règle du dépôt ──────────────
+   Les couples de tokens sont tenus sur les six thèmes par
+   `tests/contraste-tokens.test.ts` ; une couleur écrite en dur y échapperait, et
+   c'est comme ça qu'un `--muted` sous AA a survécu des années (#576). Les
+   couples employés ici sont ceux que le sudoku a déjà fait mesurer — `--warn`
+   sur `--warn-bg` pour la trame de conflit, `--ink` sur `--warn-bg` pour la
+   lettre qui reste dedans, `--control-line` sur `--paper` pour les filets.
+   Aucun couple nouveau n'est introduit.
+
+   ── La taille d'une case, qui est une contrainte et pas un goût ──────────────
+   Sur un écran de 360 px, l'écran de jeu vit dans `.home`, qui prend 20 px de
+   marge de chaque côté ; une barre de défilement peut manger 15 px de plus. Il
+   reste donc 305 px pour la grille, et rien ne les élargira.
+
+   • PETITE : six colonnes au plus (tenu côté données), soit 50 px par case —
+     au-dessus du plancher de 44 px. À sept colonnes on tomberait à 43 px, et
+     aucune feuille de style ne rattraperait ça.
+   • GRANDE : dix colonnes au plus, soit 30 px par case — au-dessus de son
+     plancher de 24 px.
+
+   D'où l'absence totale de `gap` entre les cases : à cette largeur, la moindre
+   gouttière se paie en millimètres de doigt. Les filets sont des ombres
+   INTÉRIEURES, qui ne prennent aucune place, comme dans le sudoku.
+
+   Le plafond par case (`--mc-case-max`) empêche la grille de s'étirer bêtement
+   sur un écran large : au-delà, une case de 8 cm ne se lit pas mieux, elle
+   oblige juste à balayer la page des yeux.
+
+   ── Le conflit : deux canaux, et il ne s'éteint jamais ───────────────────────
+   Registre `--warn` (« ce n'est pas une faute »), jamais `--ko` : `--ko` est
+   réservé à une réponse corrigée et DÉFINITIVEMENT fausse, alors qu'un conflit
+   ici est transitoire, auto-corrigible, jamais soumis. Un enfant qui verrait la
+   couleur de ses fautes de calcul y lirait un verdict, quelle que soit
+   l'architecture invisible derrière.
+
+   La couleur est doublée par une TRAME de hachures : c'est le canal qui survit à
+   un œil deutan. Les deux mots en cause portent le fond d'alerte, la case du
+   croisement porte la trame et le liseré — donc on voit d'un coup QUELS deux
+   mots se disputent, et OÙ. */
+
+.mc {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.7rem;
+	font-family: var(--ui);
+}
+
+/* ---------- Le choix de taille ---------- */
+
+.mc-tailles {
+	display: flex;
+	gap: 0.6rem;
+}
+
+.mc-taille {
+	min-height: 2.9rem;
+	padding: 0 0.9rem;
+	font-family: var(--ui);
+	font-size: 1rem;
+	font-weight: 800;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--control-line);
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* L'état retenu inverse la surface : ce n'est pas une nuance de la même
+   couleur, c'est un renversement, lisible sans distinguer les teintes. */
+.mc-taille[aria-pressed='true'] {
+	color: var(--on-accent);
+	background: var(--accent);
+	border-color: var(--accent);
+}
+
+.mc-regle {
+	margin: 0;
+	max-width: 28rem;
+	font-size: 1.05rem;
+	color: var(--ink);
+	text-align: center;
+}
+
+/* Écoute à la demande seulement : la règle ne change jamais d'une grille à
+   l'autre, la relire à chaque partie serait du bruit. */
+.mc-ecouter {
+	min-height: 2.75rem;
+	padding: 0 0.9rem;
+	font-family: var(--ui);
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--track);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* ---------- Le mot en main, toujours visible ---------- */
+
+/* COLLANT en haut : sur la grande grille, la liste sort de l'écran dès qu'on
+   regarde le bas de la grille. Sans ce bandeau, l'enfant devrait remonter pour
+   se rappeler ce qu'il tient — exactement la charge de mémoire de travail que
+   le format est censé ne pas imposer. */
+.mc-main {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	margin: 0;
+	padding: 0.45rem 0.9rem;
+	width: 100%;
+	font-size: 1.05rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--paper);
+	border-radius: 12px;
+	text-align: center;
+}
+
+.mc-main[data-plein] {
+	color: var(--on-accent);
+	background: var(--accent);
+}
+
+.mc-progres {
+	margin: 0;
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--ink);
+}
+
+/* ---------- La grille ---------- */
+
+.mc-grille {
+	display: grid;
+	grid-template-columns: repeat(var(--mc-colonnes, 6), 1fr);
+	width: 100%;
+	max-width: calc(var(--mc-colonnes, 6) * var(--mc-case-max));
+	background: var(--paper);
+	border-radius: 8px;
+}
+
+.mc-grille[data-taille='petite'] {
+	--mc-case-max: 3.4rem;
+}
+
+.mc-grille[data-taille='grande'] {
+	--mc-case-max: 2.6rem;
+}
+
+/* Une case hors de tout mot : elle n'est ni un bouton, ni une cible. Le fond de
+   page la fait disparaître, la grille n'existe qu'à travers ses mots. */
+.mc-trou {
+	aspect-ratio: 1;
+}
+
+.mc-case {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	aspect-ratio: 1;
+	font-family: var(--ui);
+	/* La lettre suit la CASE, qui suit la taille de grille : une valeur unique
+	   donnerait une lettre perdue au milieu d'une case de 53 px (petite) ou
+	   débordante dans une case de 32 px (grande). Le corps est donc redéfini plus
+	   bas par taille ; celui-ci n'est que le repli. */
+	font-size: 1.1rem;
+	font-weight: 800;
+	line-height: 1;
+	color: var(--ink);
+	background: var(--paper);
+	border: 0;
+	/* Filet FIN autour de chaque case, posé à l'INTÉRIEUR : il ne prend pas un
+	   pixel de largeur, ce qui compte quand chaque case se joue à 6 px près. */
+	box-shadow: inset 0 0 0 1px var(--control-line);
+	cursor: pointer;
+}
+
+/* Les deux lettres réclamées par un croisement en désaccord tiennent dans la
+   même case : on les montre TOUTES LES DEUX plutôt que d'en choisir une, ce qui
+   afficherait une lettre fausse pour l'un des deux mots. */
+.mc-grille[data-taille='petite'] .mc-case {
+	font-size: clamp(1.1rem, 5.4vw, 1.6rem);
+}
+
+.mc-grille[data-taille='grande'] .mc-case {
+	font-size: clamp(0.85rem, 3.2vw, 1.15rem);
+}
+
+/* Les DEUX lettres réclamées par un croisement en désaccord tiennent côte à
+   côte, en plus petit. Elles ne sont pas là pour se lire de loin — la case porte
+   déjà son liseré et sa trame, et chacun des deux mots se relit en entier dans
+   la grille. Elles sont là pour que la case ne MENTE pas en n'en affichant
+   qu'une, et l'`aria-label` dit les deux en toutes lettres. */
+.mc-grille[data-taille='petite'] .mc-case[data-double] {
+	font-size: clamp(0.7rem, 3.2vw, 1rem);
+}
+
+.mc-grille[data-taille='grande'] .mc-case[data-double] {
+	font-size: clamp(0.6rem, 2.1vw, 0.8rem);
+}
+
+/* Les emplacements où le mot en main peut entrer. Une aide, donc soumise au
+   réglage des aides visuelles de l'espace encadrant : le runner ne pose pas
+   l'attribut quand l'encadrant les a coupées. */
+.mc-case[data-cible] {
+	background: var(--accent-soft);
+}
+
+/* Les deux mots d'un croisement fautif : le fond d'alerte sur toute leur
+   longueur, pour qu'on voie LESQUELS se disputent. */
+.mc-case[data-conflit-mot] {
+	background: var(--warn-bg);
+}
+
+/* La case du désaccord : liseré plein plus une trame de hachures. La trame est
+   en `--warn` (3,84:1 sur `--warn-bg` en thème clair, 7,32:1 en Nuit) et non en
+   `--warn-bd`, qui n'y vaut que 1,28:1 — un second canal invisible est pire
+   qu'une absence, puisque personne ne le cherche. Mesuré, pas jugé (#666).
+
+   La trame occupe une BANDE au pied de la case et pas toute sa surface : les
+   lettres se dessinent par-dessus, et une hachure qui passerait derrière elles
+   les rendrait illisibles — or les lire est tout l'objet du jeu. */
+.mc-case[data-conflit] {
+	background-color: var(--warn-bg);
+	background-image: repeating-linear-gradient(
+		135deg,
+		transparent 0,
+		transparent 4px,
+		var(--warn) 4px,
+		var(--warn) 7px
+	);
+	background-size: 100% 18%;
+	background-position: bottom center;
+	background-repeat: no-repeat;
+	box-shadow:
+		inset 0 0 0 1px var(--control-line),
+		inset 0 0 0 3px var(--warn);
+}
+
+/* ---------- La liste des mots ---------- */
+
+.mc-coince {
+	margin: 0;
+	padding: 0.5rem 0.9rem;
+	max-width: 28rem;
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--warn-bg);
+	border-radius: 12px;
+	text-align: center;
+}
+
+.mc-coince[hidden] {
+	display: none;
+}
+
+/* Les mots ne sont PAS groupés par longueur : le regroupement rendrait la
+   grille solvable par élimination de tas, sans regarder une seule lettre. Le
+   nombre affiché sur chaque mot donne le repère sans fabriquer les tas. */
+.mc-liste {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.5rem;
+	width: 100%;
+}
+
+.mc-item {
+	display: flex;
+	align-items: stretch;
+	gap: 2px;
+}
+
+.mc-item[hidden] {
+	display: none;
+}
+
+.mc-mot {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	min-height: 2.75rem;
+	padding: 0 0.7rem;
+	font-family: var(--ui);
+	/* Les mots restent en MINUSCULES, contrairement à la grille : c'est la forme
+	   correcte du mot écrit, et le seul bénéfice de langue honnête du jeu est
+	   l'exposition répétée à cette forme-là. La capitale de la grille répond à un
+	   autre besoin — une lettre isolée, sans appui sémantique. */
+	font-size: 1.05rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--control-line);
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+.mc-mot[aria-pressed='true'] {
+	color: var(--on-accent);
+	background: var(--accent);
+	border-color: var(--accent);
+}
+
+/* La longueur EN CLAIR : sans elle, l'enfant compte les lettres à l'œil, une
+   par une, à chaque essai. */
+.mc-mot-nb {
+	padding: 0 0.4rem;
+	font-size: 0.85rem;
+	font-weight: 800;
+	color: var(--ink);
+	background: var(--track);
+	border-radius: 8px;
+}
+
+.mc-mot[aria-pressed='true'] .mc-mot-nb {
+	color: var(--ink);
+	background: var(--paper);
+}
+
+.mc-ecoute {
+	min-width: 2.75rem;
+	min-height: 2.75rem;
+	font-size: 1.05rem;
+	color: var(--ink);
+	background: var(--track);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* ---------- La fin ---------- */
+
+/* Un panneau CALME dans le plateau, sur le modèle de `.sudoku-fin` : pas de
+   confettis, pas de modale de récompense. Un jeu de l'étagère n'alimente aucune
+   économie, donc il n'emprunte pas le traitement paroxystique d'une fin de
+   leçon. */
+.mc-fin {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 0.9rem 1.2rem;
+	background: var(--accent-soft);
+	border-radius: 14px;
+}
+
+.mc-fin[hidden] {
+	display: none;
+}
+
+.mc-fin-titre {
+	margin: 0;
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: var(--ink);
+}
+
+.mc-nouvelle {
+	min-height: 3rem;
+	padding: 0 1.2rem;
+	font-family: var(--ui);
+	font-size: 1.05rem;
+	font-weight: 800;
+	color: var(--on-accent);
+	background: var(--accent);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mc-case,
+	.mc-mot,
+	.mc-taille {
+		transition: none;
+	}
+}

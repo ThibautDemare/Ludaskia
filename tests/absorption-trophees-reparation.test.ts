@@ -1,5 +1,5 @@
 /* ============================================================
-   #640 (lot de suite) — LE SAUT DE LA RÉPARATION EST ABSORBÉ À L'ACTIVATION DU PROFIL.
+   #640 (lot de suite) + #660 — LES SAUTS DE MÉTRIQUE SONT ABSORBÉS À L'ACTIVATION DU PROFIL.
 
    LE DÉFAUT. La réparation des escaliers troués (`reparerEscalier`, appelée par
    `parseOrtho`, donc à TOUTE lecture) fait monter d'un coup des mots hérités au rang
@@ -30,6 +30,19 @@
    `escalier-troue-migration.test.ts`). Aucun chemin d'écriture de l'appli n'est emprunté :
    un tel état n'est plus fabricable depuis #641.
 
+   LE MÊME DÉFAUT, DEUXIÈME CAUSE (#660). Les deux familles adossées à la répétition
+   espacée — mots ancrés (`orthoMotsAncres`) et notions ancrées (`notionsAncrees`, carte brute
+   `ludaskia_lessonRevision`) — sont recalculées par le MÊME `evaluateTrophies()`, et leur
+   premier palier est à 1. Or la répétition espacée existe depuis #45 : le jour où ces
+   familles sortent, des profils réels ont DÉJÀ des éléments au sommet de l'escalier, et
+   l'enfant verrait « Premier mot qui tient » surgir à la fin d'un exercice de
+   multiplication. Un commentaire de `profiles.ts` affirme que le rattrapage de #640
+   consomme ce retard-là aussi ; la section 3 est ce qui le vérifie. L'écart y est MESURÉ,
+   pas supposé : son premier cas évalue l'état hérité SANS l'étape d'activation et montre
+   qu'il rendrait bien deux trophées neufs — c'est ce retour non vide qu'une fin de leçon
+   célébrerait. Les états « au sommet » sont dérivés des fonctions pures de `revision.ts`
+   (PALIER_ACQUIS réussites), jamais écrits en dur.
+
    CE QU'ON N'ÉPROUVE PAS ICI : ni le nom ni l'emplacement de la fonction d'absorption —
    le contrat de surface est « après activation, plus rien de neuf à rendre ».
    ============================================================ */
@@ -42,8 +55,14 @@ import {
 	setActiveProfile,
 	touchActiveProfile,
 } from '../src/core/profiles';
-import { loadOrtho, saveOrtho, ORTHO_KEY } from '../src/core/orthographe/store';
-import { validerMode } from '../src/core/orthographe/runner';
+import {
+	ajouterMots,
+	avancerMotRevision,
+	loadOrtho,
+	saveOrtho,
+	ORTHO_KEY,
+} from '../src/core/orthographe/store';
+import { marquerAtelierFait, validerMode } from '../src/core/orthographe/runner';
 import {
 	TROPHIES,
 	evaluateTrophies,
@@ -54,8 +73,13 @@ import {
 import type { Trophy } from '../src/core/rewards';
 import { recordLessonRun } from '../src/core/lesson-run';
 import { getAllLessons } from '../src/core/catalog';
-import { JOUR } from '../src/core/revision';
-import type { MotOrtho, OrthoState } from '../src/core/orthographe/types';
+import { JOUR, PALIER_ACQUIS, avancerEtat, estAcquis, etatNeuf } from '../src/core/revision';
+import {
+	LESSON_REVISION_KEY,
+	avancerLessonRevision,
+	loadLessonRevisions,
+} from '../src/core/progress';
+import type { EtatRevision, MotOrtho, OrthoState } from '../src/core/orthographe/types';
 
 beforeEach(() => {
 	localStorage.clear();
@@ -75,11 +99,18 @@ function premierPalier(metrique: string): Trophy {
 const TROPHEE_MOTS = () => premierPalier('orthoMotsMaitrises'); // « Collectionneur de mots » (10)
 const TROPHEE_LISTE = () => premierPalier('orthoListesMaitrisees'); // « Première liste » (1)
 const TROPHEE_ESSAI = () => premierPalier('totalRuns'); // « Premier pas » (1 bilan)
+const TROPHEE_MOTS_ANCRES = () => premierPalier('orthoMotsAncres'); // #660, premier palier
+const TROPHEE_NOTIONS = () => premierPalier('notionsAncrees'); // #660, premier palier
 
 /** Les trophées que la réparation peut faire franchir : les deux seules familles dont la
     métrique dépend de `validation` (mots maîtrisés, listes maîtrisées). */
 const familleOrtho = (): Trophy[] =>
 	TROPHIES.filter((t) => t.metric === 'orthoMotsMaitrises' || t.metric === 'orthoListesMaitrisees');
+
+/** Les deux familles adossées à la répétition espacée (#660), dont le retard hérité doit
+    être absorbé par le même rattrapage. */
+const famillesAncrees = (): Trophy[] =>
+	TROPHIES.filter((t) => t.metric === 'orthoMotsAncres' || t.metric === 'notionsAncrees');
 
 /* ---------- Banque HÉRITÉE (écrite avant #641) ---------- */
 
@@ -172,6 +203,120 @@ function finDeLecon(lessonId: string, ok = 10) {
 		ms: 60_000,
 		perLesson: { [lessonId]: { ok, total: ok } },
 	});
+}
+
+/* ---------- États DÉJÀ AU SOMMET de la répétition espacée (#660) ---------- */
+
+/** L'état d'un élément arrivé au sommet de l'escalier : le RÉSULTAT de `PALIER_ACQUIS`
+    réussites, chacune à son échéance, dérivé des fonctions pures de `revision.ts`. Jamais un
+    littéral `{ palier: 6 }` : si l'escalier change de hauteur, la fixture suit. */
+function etatAncre(depart: number): EtatRevision {
+	let e = etatNeuf(depart);
+	let t = depart;
+	for (let i = 0; i < PALIER_ACQUIS; i++) {
+		t = e.prochaineRevision ?? t;
+		e = avancerEtat(e, true, t);
+	}
+	return e;
+}
+
+/** Formes uniques au-delà de `MOTS` : deux mots de même forme ne sont pas une banque
+    réaliste (l'appli dédup par forme normalisée), et feraient rétrécir la fixture. */
+const formeUnique = (i: number): string =>
+	MOTS[i % MOTS.length] + (i < MOTS.length ? '' : String(i));
+
+/** Un mot hérité dont l'escalier de révision est au sommet, tel qu'un profil ouvert bien
+    avant #660 le porte. AUCUNE marche de validation n'est cochée : `reparerEscalier` ne
+    comble que SOUS une marche validée, donc `orthoMotsMaitrises` reste à zéro et seules les
+    métriques de #660 bougent — ce qui isole ce qu'on éprouve du défaut de #640. */
+function motAncreHerite(i: number, now: number): MotOrtho {
+	const decouverte = now - 200 * JOUR; // l'escalier a eu le temps de monter (137 jours mini)
+	return {
+		id: 'anc' + String(i),
+		mot: formeUnique(i),
+		entourage: [],
+		atelierFait: true,
+		validation: { tuiles: false, motCache: false, dictee: false },
+		franchissements: { atelier: decouverte },
+		revision: etatAncre(decouverte),
+		origine: 'liste',
+	};
+}
+
+/** Écrit brutalement une banque de `n` mots déjà ancrés (JSON brut, comme un vrai
+    localStorage d'avant la mise à jour). */
+function semerMotsAncresHerites(uuid: string, n: number): void {
+	const now = Date.now();
+	const banque: Record<string, MotOrtho> = {};
+	const motIdParForme: Record<string, string> = {};
+	for (let i = 0; i < n; i++) {
+		const m = motAncreHerite(i, now);
+		banque[m.id] = m;
+		motIdParForme[m.mot.toLowerCase()] = m.id;
+	}
+	const state: OrthoState = {
+		banque,
+		listes: [
+			{
+				id: 'L1',
+				label: 'Semaine 1',
+				motIds: Object.keys(banque),
+				createdAt: now - 300 * JOUR,
+				updatedAt: now - 300 * JOUR,
+			},
+		],
+		motIdParForme,
+	};
+	lsSetRaw(uuid + '/' + ORTHO_KEY, JSON.stringify(state));
+}
+
+/** Écrit brutalement `n` paires leçon × niveau déjà ancrées dans la carte BRUTE des
+    révisions de leçons — c'est elle que compte `notionsAncrees`, pas la vue scopée. */
+function semerNotionsAncreesHeritees(uuid: string, n: number): string[] {
+	const now = Date.now();
+	const paires = getAllLessons()
+		.flatMap((l) => l.levels.map((lv) => `${l.id}@${lv}`))
+		.sort()
+		.slice(0, n);
+	expect(paires.length).toBe(n); // le catalogue doit avoir de quoi atteindre le seuil
+	const carte: Record<string, EtatRevision> = {};
+	for (const k of paires) carte[k] = etatAncre(now - 200 * JOUR);
+	lsSetRaw(uuid + '/' + LESSON_REVISION_KEY, JSON.stringify(carte));
+	return paires;
+}
+
+/** L'état hérité complet de #660 : de quoi franchir le premier palier des DEUX familles,
+    la taille se déduisant des seuils lus dans `TROPHIES`. */
+function semerAncragesHerites(uuid: string): void {
+	semerMotsAncresHerites(uuid, TROPHEE_MOTS_ANCRES().n!);
+	semerNotionsAncreesHeritees(uuid, TROPHEE_NOTIONS().n!);
+}
+
+/* ---------- Le même sommet, mais atteint par du VRAI TRAVAIL (contre-épreuve) ---------- */
+
+/** Un mot découvert à l'atelier puis réussi à chaque échéance, par les chemins du runner
+    d'orthographe (aucune écriture brute ici : c'est le travail de l'enfant). */
+function travaillerMotJusquAuSommet(forme: string, now: number): void {
+	const etat = loadOrtho();
+	const [id] = ajouterMots(etat, [{ mot: forme }], 'liste');
+	marquerAtelierFait(etat.banque[id], now);
+	let t = now;
+	for (let i = 0; i < PALIER_ACQUIS; i++) {
+		t = etat.banque[id].revision.prochaineRevision ?? t;
+		avancerMotRevision(etat, id, true, t);
+	}
+	saveOrtho(etat);
+	expect(estAcquis(loadOrtho().banque[id].revision)).toBe(true); // le sommet est bien atteint
+}
+
+/** Une notion menée au sommet par le hook réel de la séance de révision. */
+function travaillerNotionJusquAuSommet(lessonId: string, now: number): void {
+	let t = now;
+	for (let i = 0; i < PALIER_ACQUIS; i++) {
+		avancerLessonRevision(lessonId, true, t);
+		t = loadLessonRevisions()[lessonId]?.prochaineRevision ?? t;
+	}
+	expect(estAcquis(loadLessonRevisions()[lessonId])).toBe(true);
 }
 
 /* ============================================================
@@ -296,5 +441,91 @@ describe('#640 — un seuil franchi par du vrai travail reste célébrable', () 
 
 		expect(res.newTrophies.map((x) => x.id)).toContain(t.id);
 		expect(res.celeb.map((c) => c.text).join(' | ')).toContain(t.title);
+	});
+});
+
+/* ============================================================
+   3. #660 — LE MÊME RETARD, SUR LES DEUX FAMILLES ADOSSÉES À LA RÉPÉTITION ESPACÉE
+   ------------------------------------------------------------
+   La répétition espacée tourne depuis #45 : quand ces familles sortent, des profils réels
+   ont déjà des mots et des notions au sommet de l'escalier. Le premier cas MESURE l'écart
+   (ce que rendrait l'évaluation sans l'étape d'activation), les deux suivants disent ce qui
+   doit en rester, le dernier est la contre-épreuve propre à ces familles.
+   ============================================================ */
+describe('#660 — le retard des mots et notions déjà ancrés est absorbé lui aussi', () => {
+	it('écart mesuré : sans l’étape d’activation, cet état hérité rendrait deux trophées neufs', () => {
+		// Le monde SANS rattrapage : le même état, mais personne ne l’a consommé au moment où le
+		// profil est devenu actif. C’est ce retour non vide qu’une fin de leçon célébrerait — et
+		// c’est lui qui rend les deux cas suivants démonstratifs plutôt que tautologiques.
+		semerAncragesHerites(activeProfile().uuid);
+
+		const rendus = evaluateTrophies().map((t) => t.id);
+		expect(rendus).toContain(TROPHEE_MOTS_ANCRES().id);
+		expect(rendus).toContain(TROPHEE_NOTIONS().id);
+	});
+
+	it('après l’activation, ni le mot ni la notion déjà au sommet ne rendent plus rien de neuf', () => {
+		semerAncragesHerites(activeProfile().uuid);
+		expect(loadTrophies()).toEqual([]); // prémisse : rien n’a encore été évalué
+
+		relancerLAppli();
+
+		// (i) le retard existe bel et bien : les deux métriques pèsent leur seuil…
+		const snap = gSnapshot();
+		expect(snap.orthoMotsAncres).toBeGreaterThanOrEqual(TROPHEE_MOTS_ANCRES().n!);
+		expect(snap.notionsAncrees).toBeGreaterThanOrEqual(TROPHEE_NOTIONS().n!);
+		// (ii) … et il ne reste rien à célébrer : le prochain appel — celui de n’importe quelle
+		// fin de leçon — ne rend plus rien.
+		expect(evaluateTrophies()).toEqual([]);
+
+		// Ce que l’enfant vit : une leçon de maths n’annonce aucun de ces paliers, quelle que
+		// soit la phrase qui le porterait.
+		const res = finDeLecon(leconMaths().id);
+		const idsAncres = new Set(famillesAncrees().map((t) => t.id));
+		expect(res.newTrophies.filter((t) => idsAncres.has(t.id))).toEqual([]);
+		const annonce = res.celeb.map((c) => c.text).join(' | ');
+		for (const t of famillesAncrees()) expect(annonce, t.title).not.toContain(t.title);
+	});
+
+	it('les deux trophées sont ACQUIS et visibles en galerie : on absorbe le moment, pas la récompense', () => {
+		semerAncragesHerites(activeProfile().uuid);
+		relancerLAppli();
+
+		const acquis = new Set(loadTrophies());
+		const visibles = trophiesVisibles();
+		for (const t of [TROPHEE_MOTS_ANCRES(), TROPHEE_NOTIONS()]) {
+			// L’enfant avait réellement tenu ces éléments dans le temps : la reconnaissance lui
+			// reste due, elle est simplement marquée sans moment.
+			expect(acquis.has(t.id), `${t.title} acquis`).toBe(true);
+			expect(
+				visibles.some((v) => v.id === t.id),
+				`${t.title} en galerie`,
+			).toBe(true);
+		}
+	});
+
+	it('CONTRE-ÉPREUVE : un élément mené au sommet APRÈS l’activation est toujours rendu', () => {
+		// Sans ce cas, un rattrapage qui rendrait `evaluateTrophies` définitivement muet sur ces
+		// deux familles passerait les cas ci-dessus. Profil sans aucun ancrage hérité : le
+		// premier palier des deux familles est encore à prendre, et c’est le travail du jour qui
+		// va le franchir.
+		relancerLAppli();
+		expect(gSnapshot().orthoMotsAncres).toBe(0); // prémisse : rien n’est au sommet…
+		expect(gSnapshot().notionsAncrees).toBe(0);
+		expect(loadTrophies()).not.toContain(TROPHEE_MOTS_ANCRES().id);
+		expect(loadTrophies()).not.toContain(TROPHEE_NOTIONS().id);
+
+		const now = Date.now();
+		for (let i = 0; i < TROPHEE_MOTS_ANCRES().n!; i++)
+			travaillerMotJusquAuSommet(formeUnique(i), now);
+		const lecons = getAllLessons()
+			.filter((l) => l.levels.includes('ce2'))
+			.slice(0, TROPHEE_NOTIONS().n!);
+		expect(lecons.length).toBe(TROPHEE_NOTIONS().n!);
+		for (const l of lecons) travaillerNotionJusquAuSommet(l.id, now);
+
+		const rendus = evaluateTrophies().map((t) => t.id);
+		expect(rendus).toContain(TROPHEE_MOTS_ANCRES().id);
+		expect(rendus).toContain(TROPHEE_NOTIONS().id);
 	});
 });

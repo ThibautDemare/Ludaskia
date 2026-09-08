@@ -333,6 +333,17 @@ const PAIRES_TEXTE: Paire[] = [
 		arriere: '--paper',
 		ou: 'accessibility.scss, aide-exercice.scss, mots-difficiles.scss .mots-difficiles-relire',
 	},
+	/* #664 — le MÊME couple figure déjà en non-texte plus bas, pour la silhouette du
+	   sudoku posée sur une case en conflit. Ici il porte de vraies LETTRES (la case
+	   d'un croisement en désaccord, et le message `.mc-coince`), donc le régime texte
+	   et ses 4,5:1. La nature fait partie de l'identité d'un cas : sans cette entrée,
+	   un futur assombrissement de `--warn-bg` vérifié contre le seul seuil de 3:1
+	   casserait cet usage-ci en silence. */
+	{
+		avant: '--ink',
+		arriere: '--warn-bg',
+		ou: 'jeu-mots-cases.scss .mc-case en conflit (lettres) et .mc-coince',
+	},
 	{ avant: '--accent', arriere: '--paper', ou: 'sprint.scss, titres et libellés dans une carte' },
 	{
 		avant: '--accent',

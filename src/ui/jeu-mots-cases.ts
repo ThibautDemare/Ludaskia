@@ -78,6 +78,7 @@ import { TAILLES_MOTS_CASES, type TailleMotsCases } from '../data/jeux/motifs-mo
 import { aidesJeuxActives } from '../core/profiles';
 import { dicteeDisponible, dicterConsigne } from './tts';
 import { enregistrerJeu, type RunnerJeu } from './jeux-ecran';
+import { uiConfirm } from './ui-modal';
 
 /** La RÈGLE DU JEU, jamais « la consigne » : ce mot appartient au registre de
     l'exercice et contribue à faire lire le jeu comme du travail déguisé. Une
@@ -91,7 +92,7 @@ const REGLE = 'Choisis un mot dans la liste, puis touche la grille à l’endroi
     Pas de nombre non plus (« deux mots ») — il peut y avoir un désaccord comme
     quatre, et une phrase qui compte mal serait pire que muette. */
 const MESSAGE_COINCE =
-	'La grille est pleine, mais certaines lettres ne se rejoignent pas : regarde les cases marquées.';
+	'La grille est pleine, mais certaines lettres ne se rejoignent pas : les cases où deux mots se contredisent sont signalées.';
 
 const LIBELLE_TAILLE: Record<TailleMotsCases, string> = {
 	petite: 'Petite grille',
@@ -189,7 +190,7 @@ function plateauHTML(taille: TailleMotsCases): SafeHtml {
 		</button>
 		<p class="mc-main" id="mcMain"></p>
 		<p class="mc-progres" id="mcProgres"></p>
-		<div class="mc-grille" id="mcGrille" role="group" aria-label="Grille de mots"></div>
+		<div class="mc-grille" id="mcGrille" role="group" aria-label="Grille de mots à caser"></div>
 		<p class="mc-coince" id="mcCoince" ${drapeau('hidden')}>${MESSAGE_COINCE}</p>
 		<div class="mc-liste" id="mcListe" role="group" aria-label="Mots à placer"></div>
 		<div class="mc-fin" id="mcFin" ${drapeau('hidden')}>
@@ -259,6 +260,17 @@ function creerRunner(): RunnerJeu {
 		   pas tenir. Et rien ne se lit tout seul — toute lecture part d'un appui. */
 		const avecVoix = dicteeDisponible();
 		liste.innerHTML = joindre(p.mots.map((mot) => motHTML(mot, avecVoix))).balisage;
+		/* `aria-pressed` se repose ICI et pas seulement au montage : le balisage des
+		   boutons de taille n'est produit qu'une fois, donc sans cette boucle le
+		   bouton précédemment choisi resterait annoncé — et peint — comme actif
+		   après un changement de taille. Le sudoku le fait déjà ; l'oublier ici
+		   était une régression sur un modèle pourtant correct. */
+		for (const bouton of racine?.querySelectorAll<HTMLElement>('.mc-taille') ?? []) {
+			bouton.setAttribute(
+				'aria-pressed',
+				bouton.dataset.taille === p.motif.taille ? 'true' : 'false',
+			);
+		}
 	};
 
 	/** Repeint l'état : lettres, conflits, mise en évidence, liste, progression.
@@ -291,7 +303,11 @@ function creerRunner(): RunnerJeu {
 			const ligne = Number(el.dataset.ligne);
 			const colonne = Number(el.dataset.colonne);
 			const lettres = lettresEn(p.grille, ligne, colonne).map(capitale);
-			el.textContent = lettres.join(' ');
+			/* Deux lettres en désaccord tiennent SANS espace : mesuré, la grande
+			   grille descend à 30,5 px de case sur un écran de 360 px, et l'espace
+			   coûtait la marge qui permet de les lire à un corps décent. Le léger
+			   `letter-spacing` de la feuille les sépare pour bien moins cher. */
+			el.textContent = lettres.join('');
 			const ou = `ligne ${ligne + 1}, colonne ${colonne + 1}`;
 			let etat = 'case vide';
 			if (lettres.length === 1) etat = `lettre ${lettres[0]}`;
@@ -363,6 +379,12 @@ function creerRunner(): RunnerJeu {
 		annoncer(annonce);
 	};
 
+	const appliquerTaille = (t: TailleMotsCases): void => {
+		if (!charger(t)) return;
+		memoriserTaille(t);
+		rendreEtat(`${LIBELLE_TAILLE[t]}.`);
+	};
+
 	const changerTaille = (t: TailleMotsCases): void => {
 		if (!partie || t === partie.motif.taille) return;
 		/* Une seule grille en cours : changer de taille l'abandonne, et repasse
@@ -374,10 +396,26 @@ function creerRunner(): RunnerJeu {
 		   instant précis refermait alors l'écran sur une grille déjà détruite —
 		   l'enfant perdait son travail sans avoir rien obtenu en échange. On ne
 		   renonce à l'ancienne grille qu'une fois la nouvelle accordée : `charger`
-		   ne reprend pas la partie sauvée, puisqu'elle n'est pas de cette taille. */
-		if (!charger(t)) return;
-		memoriserTaille(t);
-		rendreEtat(`${LIBELLE_TAILLE[t]}.`);
+		   ne reprend pas la partie sauvée, puisqu'elle n'est pas de cette taille.
+
+		   Et parce qu'on l'abandonne, on le DIT — mais seulement s'il y a quelque
+		   chose à perdre. Une grille encore vierge change de taille sans friction ;
+		   dix minutes de travail ne partent pas sur un appui. Le choix sûr est
+		   celui qui garde la grille, et c'est lui qui reçoit le focus. */
+		if (!partie.grille.poses.some((m) => m !== null)) {
+			appliquerTaille(t);
+			return;
+		}
+		void uiConfirm({
+			emoji: '🔁',
+			title: 'Tu as une grille en cours !',
+			message: 'Changer de taille effacera les mots que tu as déjà posés.',
+			cancelLabel: 'Non, je garde ma grille',
+			confirmLabel: 'Changer quand même',
+			destructive: true,
+		}).then((changer) => {
+			if (changer) appliquerTaille(t);
+		});
 	};
 
 	/** Sauve à CHAQUE coup, jamais à la sortie : le plafond peut tomber et
@@ -402,7 +440,14 @@ function creerRunner(): RunnerJeu {
 		const vise = [el.dataset.h, el.dataset.v]
 			.map((brut) => (brut === undefined ? null : Number(brut)))
 			.find((i): i is number => i !== null && compatibles.includes(i));
-		if (vise === undefined) return;
+		/* Un appui refusé ne peut pas rester MUET. Le surlignage des emplacements
+		   compatibles n'a aucune contrepartie annoncée, et l'encadrant peut même
+		   l'avoir coupé : sans cette phrase, un enfant qui suit le jeu au lecteur
+		   d'écran tape des cases sans jamais savoir laquelle accepte son mot. */
+		if (vise === undefined) {
+			annoncer('Ce mot ne va pas dans cette case.');
+			return;
+		}
 		const mot = motEnMain;
 		partie = { ...p, grille: poser(p.grille, vise, mot) };
 		motEnMain = null;
@@ -435,7 +480,10 @@ function creerRunner(): RunnerJeu {
 		const vise = [el.dataset.h, el.dataset.v]
 			.map((brut) => (brut === undefined ? null : Number(brut)))
 			.find((i): i is number => i !== null && p.grille.poses[i] !== null);
-		if (vise === undefined) return;
+		if (vise === undefined) {
+			annoncer('Cette case est vide.');
+			return;
+		}
 		const mot = p.grille.poses[vise] ?? '';
 		partie = { ...p, grille: retirer(p.grille, vise) };
 		enregistrer(partie);

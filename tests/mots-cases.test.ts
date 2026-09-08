@@ -282,10 +282,16 @@ function instantaneStockage(): Record<string, string> {
 }
 
 describe('#664 critères 1 et 2 — la place du jeu dans le catalogue', () => {
-	it('déclare « mots-cases », libellé « Mots casés », type R', () => {
+	/* Le libellé attendu a CHANGÉ après l'écriture de ce test, et c'est la seule
+	   raison pour laquelle il a été touché : le mainteneur a arbitré le 2026-09-08
+	   pour « Mots à caser », parce que les mots croisés de #665 arriveront sur la
+	   même étagère et qu'un CE2 confondrait deux libellés quasi homophones dont il
+	   ne connaît que le second. Le critère 1 de l'issue est amendé en conséquence,
+	   par commentaire daté. L'`id` et les clés de stockage, eux, n'ont pas bougé. */
+	it('déclare « mots-cases », libellé « Mots à caser », type R', () => {
 		expect(jeuParId('mots-cases')).toMatchObject({
 			id: 'mots-cases',
-			label: 'Mots casés',
+			label: 'Mots à caser',
 			type: 'R',
 		});
 	});

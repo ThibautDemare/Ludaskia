@@ -54,7 +54,13 @@ export const JEUX: JeuDef[] = [
 	// produite, ni vocabulaire — le mot est donné en entier, l'enfant ne le
 	// rappelle jamais de mémoire et peut boucler la grille en comptant des cases.
 	// Lui attribuer une compétence ferait mentir le bilan destiné aux parents.
-	{ id: 'mots-cases', label: 'Mots casés', icone: '🧩', type: 'R' },
+	//
+	// Le libellé dit « à caser » et non « casés », alors que « mots casés » est le
+	// vrai nom du genre : les mots croisés de #665 arriveront sur CETTE étagère, et
+	// un CE2 qui lit vite confondrait deux libellés quasi homophones dont il ne
+	// connaît que le second. L'infinitif nomme l'action au lieu d'un genre qu'il
+	// n'a pas encore. L'`id` et les clés de stockage, eux, ne bougent pas.
+	{ id: 'mots-cases', label: 'Mots à caser', icone: '🧩', type: 'R' },
 ];
 
 export function jeuParId(id: string): JeuDef | undefined {

@@ -212,6 +212,11 @@ function semerCibleVerbe(): string {
 function semerRevisions(raw: Record<string, EtatRevision>): void {
 	lsSet(LESSON_REVISION_KEY, raw);
 }
+/* Écriture BRUTE de la carte, hors du typage d'`EtatRevision` : sert aux états corrompus
+   (cf. le bloc « ÉTATS CORROMPUS », section 1), qu'aucun chemin de l'appli ne sait produire. */
+function semerRevisionsBrutes(carte: unknown): void {
+	lsSet(LESSON_REVISION_KEY, carte);
+}
 /** Toutes les paires `lessonId@niveau` du catalogue, dans un ordre stable. */
 const pairesCatalogue = (): string[] =>
 	getAllLessons()
@@ -317,6 +322,49 @@ describe('mots ancrés — la métrique', () => {
 		evaluateTrophies();
 		expect(acquisFamille('orthoMots')).toEqual(['orthoMots10']);
 	});
+
+	/* ---------- ÉTATS CORROMPUS : ce que ces verrous gardent, et ce qu'ils ne prétendent pas
+	   ----------
+	   CE N'EST PAS LA REPRODUCTION D'UN DÉFAUT VIVANT — mesuré le 2026-09-08, tous ces cas
+	   passent en l'état. `estAcquis` s'écrit `!!e && e.palier >= PALIER_ACQUIS` : un état de
+	   révision absent, un `palier` manquant ou non numérique, une entrée qui n'est même pas un
+	   objet, tout cela vaut `false` sans rien faire tomber, et l'élément douteux n'est
+	   simplement pas compté (un `for...in` sur une valeur non-objet ne lève pas non plus).
+
+	   CE QU'ILS GARDENT, c'est l'AVENIR de cette lecture. Une déstructuration
+	   (`const { palier } = e`), une garde de type stricte ou le passage à une lecture de champ
+	   obligatoire y réintroduiraient un plantage — sur des données IMPORTÉES ou corrompues,
+	   donc chez un enfant qui restaure une sauvegarde, et sur des chemins (galerie des
+	   trophées, bilan de fin de session) qu'aucun autre cas de ce fichier n'éprouve avec autre
+	   chose que des états sains.
+
+	   CE QU'ILS NE GARDENT PAS, délibérément : la coercition d'une chaîne NUMÉRIQUE. Mesuré :
+	   un `palier: '6'` est aujourd'hui COMPTÉ (`'6' >= 6` est vrai en JS). Aucune assertion de
+	   ce fichier ne fige ce cas dans un sens ou dans l’autre — le compter est bénin (l’élément
+	   est bien au sommet), et une garde de type stricte qui cesserait de le compter serait tout
+	   aussi défendable. Ce qui est verrouillé est plus étroit : rien ne PLANTE, et rien de non
+	   numérique ne décroche un palier.
+
+	   Aucune de ces formes ne peut naître d'un chemin d'écriture de l'appli : elles sont donc
+	   posées à la main, et TOUJOURS à côté d'un élément sain — sans quoi le test ne
+	   distinguerait pas « l'élément douteux ne compte pas » de « la métrique ne renvoie plus
+	   rien ». */
+	it('robustesse : un mot sans état de révision, ou sans palier, ne compte pas et ne fait rien tomber', () => {
+		const [sain, sansRevision, sansPalier] = semerMots(3, { ancres: true });
+		expect(gSnapshot().orthoMotsAncres).toBe(3); // prémisse : les trois sont bien ancrés
+
+		const state = loadOrtho();
+		// `delete` est refusé par TS sur un champ obligatoire ; Reflect fait le trou sans cast.
+		Reflect.deleteProperty(state.banque[sansRevision], 'revision');
+		Reflect.deleteProperty(state.banque[sansPalier].revision, 'palier');
+		saveOrtho(state);
+
+		expect(() => gSnapshot()).not.toThrow();
+		expect(gSnapshot().orthoMotsAncres).toBe(1); // le seul mot resté sain
+		expect(loadOrtho().banque[sain].revision.palier).toBe(PALIER_ACQUIS); // voisin intact
+		expect(() => evaluateTrophies()).not.toThrow();
+		expect(acquisFamille('orthoAncres')).toEqual(['orthoAncres1']);
+	});
 });
 
 /* ============================================================
@@ -373,6 +421,39 @@ describe('notions ancrées — la métrique', () => {
 		// Un compteur unique mélangeant les deux familles vaudrait 8 des deux côtés.
 		expect(g.orthoMotsAncres).toBe(3);
 		expect(g.notionsAncrees).toBe(5);
+	});
+
+	/* Robustesse — cf. le bloc « ÉTATS CORROMPUS » de la section 1 pour ce que ces deux cas
+	   gardent, et pourquoi ce n'est pas un défaut vivant. */
+	it('robustesse : une entrée sans palier, ou à palier non numérique, ne compte pas et ne fait rien tomber', () => {
+		const lecon = leconAuxNiveaux('math', ['ce2']);
+		semerRevisionsBrutes({
+			[`${lecon.id}@ce2`]: etatAncre(), // la SEULE entrée saine
+			'sans-palier@ce2': { dernierTest: T0, prochaineRevision: null },
+			'palier-texte@ce2': { ...etatAncre(), palier: 'acquis' },
+			'palier-nul@ce2': { ...etatAncre(), palier: null },
+			'palier-objet@ce2': { ...etatAncre(), palier: {} },
+			'palier-booleen@ce2': { ...etatAncre(), palier: true },
+			'entree-non-objet@ce2': 'ancrée',
+			'entree-nulle@ce2': null,
+		});
+		expect(() => notionsAncrees()).not.toThrow();
+		expect(notionsAncrees()).toBe(1);
+		expect(() => gSnapshot()).not.toThrow();
+		expect(gSnapshot().notionsAncrees).toBe(1);
+		expect(() => evaluateTrophies()).not.toThrow();
+		expect(acquisFamille('notionsAncrees')).toEqual(['notionsAncrees1']);
+	});
+
+	it('robustesse : une carte de révisions qui n’est pas un objet ne compte rien et ne fait rien tomber', () => {
+		for (const carte of ['ludaskia', 42, true, ['pas-une-carte']]) {
+			const quoi = `carte brute ${JSON.stringify(carte)}`;
+			semerRevisionsBrutes(carte);
+			expect(() => notionsAncrees()).not.toThrow();
+			expect(notionsAncrees(), quoi).toBe(0);
+			expect(() => gSnapshot()).not.toThrow();
+			expect(gSnapshot().notionsAncrees, quoi).toBe(0);
+		}
 	});
 });
 

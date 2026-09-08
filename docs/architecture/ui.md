@@ -1403,7 +1403,15 @@ n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
     surlignage des emplacements compatibles n'a pas de contrepartie annoncée et
     l'encadrant peut l'avoir coupé : sans cette phrase, le jeu était injouable au
     lecteur d'écran, l'enfant tapant des cases sans jamais savoir laquelle accepte
-    son mot.
+    son mot ;
+  - le tirage qui **ne trouve aucun motif** ne traverse pas l'écran. `tirerGrille`
+    lève (défaut de données, pas aléa) ; le runner ATTRAPE, vide le plateau et
+    montre un panneau `.mc-panne` en registre `--warn` — même forme que le panneau
+    de fin, jamais `--ko`, avec un bouton « Réessayer » et l'invitation à changer
+    de taille. Sans cela, l'exception laissait un jeu **silencieusement mort** :
+    titre, boutons et règle rendus au-dessus d'une grille vide pour toujours. Le
+    cas est théorique avec les sept motifs livrés (200/200), mais c'est le
+    garde-fou prévu pour un dessin futur plus dense — et pour #665.
 
 **Limite connue des deux jeux à grille, à ne pas re-remonter jeu par jeu.** Ni
 `jeu-sudoku.scss` ni `jeu-mots-cases.scss` ne redéfinissent `:focus-visible`, là

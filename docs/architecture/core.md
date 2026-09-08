@@ -2011,21 +2011,33 @@ encadrant](espace-encadrant.md) pour les trois réglages adulte.
   revenir dans la liste). Tout passe par **NFC** avant d'être mesuré comme avant
   d'être comparé : `é` composé et `é` décomposé sont la même lettre, mais `é` et
   `e` n'en sont pas une seule — sinon une case de croisement afficherait une
-  lettre fausse pour l'un des deux mots.
+  lettre fausse pour l'un des deux mots. Le **REMPLISSAGE** y vit aussi
+  (`melanger`, `remplirMotif`, `choisirRemplissage`, `BUDGET_NOEUDS`/`BUDGETS`),
+  et pour la même raison : trouver un jeu de mots qui tient dans un motif est un
+  problème de géométrie et de longueurs, jamais de langue — le solveur ne LIT pas
+  les mots. La liste de mots est donc un **paramètre**, ce qui est très
+  exactement ce que #665 changera. `choisirRemplissage` essaie les motifs à
+  budget croissant et rend **`null`** quand aucun ne se remplit : le moteur ne
+  lève rien, l'appelant décide quoi en dire — et ce chemin d'échec devient
+  atteignable d'un test, par une liste de mots inerte ou un budget d'une poignée
+  de nœuds.
 - **`mots-cases.ts`** (#664) — le jeu comme ASSEMBLAGE du moteur et des motifs
   (`data/jeux/motifs-mots-cases.ts`). Ce qui lui appartient en propre, c'est le
   français : `vivierMotsCases()` prend TOUT des séries `fr-ortho-theme-*` et de
   `CHAMPS`, avec pour seule exclusion la FORME (espace, apostrophe, trait
   d'union) — surtout pas le vivier du Motus, qui écarte les homophones et borne à
   5-6 lettres pour une raison (le retour lettre à lettre) qui ne vaut pas ici,
-  puisque le mot est donné en entier. `remplir` cherche « le plus contraint
-  d'abord » sous **budget de nœuds** avec abandon propre : mesuré 200/200 sur les
-  sept motifs livrés, et 0/200 sur un carré de mots 5×5 — ce qui limite est la
-  DENSITÉ des croisements, pas la taille du vivier. Le mélange se fait par **clé
-  tirée** et non en Fisher-Yates : ce dernier fait reposer un rang sur un SEUL
-  tirage, or la première sortie des LCG à petite graine employés par les tests
-  est quasi constante (0,236 à 0,314 sur les graines 1-200), ce qui gelait le
-  choix du motif et en rendait un injouable.
+  puisque le mot est donné en entier. `remplir` et `tirerGrille` ne font que
+  passer ce vivier au solveur du moteur ; ce qui reste ici est la **mesure**, qui
+  dépend du vivier autant que des motifs : 200/200 sur les sept motifs livrés,
+  0/200 sur un carré de mots 5×5 — ce qui limite est la DENSITÉ des croisements,
+  pas la taille du vivier. Les deux prennent la liste de mots en **paramètre
+  optionnel** (par défaut le vivier), seule façon d'atteindre l'abandon du
+  solveur et l'exception de `tirerGrille` sans toucher aux données. Le mélange se
+  fait par **clé tirée** et non en Fisher-Yates : ce dernier fait reposer un rang
+  sur un SEUL tirage, or la première sortie des LCG à petite graine employés par
+  les tests est quasi constante (0,236 à 0,314 sur les graines 1-200), ce qui
+  gelait le choix du motif et en rendait un injouable.
 - **`mots-cases-etat.ts`** (#664) — deux clés seulement (cf. [Données &
   profils](donnees-et-profils.md)), et deux volontairement : une troisième serait
   une mémoire de plus, donc un compteur de parties ou un record. **UNE seule

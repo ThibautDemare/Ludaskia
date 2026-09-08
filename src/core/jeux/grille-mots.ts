@@ -6,6 +6,14 @@
    (mots croisés) le reprenne en ne changeant que la SOURCE des mots — un moteur
    qui aurait besoin d'un vrai mot pour fonctionner ne serait pas celui-là.
 
+   Le REMPLISSAGE vit ici aussi, en bas de fichier, et c'est délibéré : trouver
+   un jeu de mots qui tient dans un motif est un problème de géométrie et de
+   longueurs, jamais de langue — le solveur ne LIT pas les mots, il compare des
+   lettres et compte des cases. Il reçoit donc sa liste de mots en PARAMÈTRE, ce
+   qui est très exactement la promesse faite à #665 : reprendre ce moteur en ne
+   changeant que la SOURCE des mots, sans redupliquer un algorithme réglé à la
+   main.
+
    Un motif décrit une géométrie : des emplacements horizontaux et verticaux. Les
    CROISEMENTS ne sont pas déclarés, ils se calculent — deux emplacements se
    croisent quand ils partagent une case. C'est ce qui permet d'écrire un motif à
@@ -215,4 +223,166 @@ export function complete(g: Grille): boolean {
     acceptée), donc la fin de partie doit l'en distinguer. */
 export function terminee(g: Grille): boolean {
 	return complete(g) && conflits(g).length === 0;
+}
+
+/* ============================================================
+   LE REMPLISSAGE — trouver un mot pour chaque emplacement.
+
+   Générique lui aussi, et c'est tout l'intérêt : la liste de mots est un
+   PARAMÈTRE. Le solveur ne sait pas d'où elle vient, n'en lit jamais le sens, et
+   ne compare que des lettres et des longueurs.
+   ============================================================ */
+
+/** Mélange par CLÉ TIRÉE : un tirage par élément, puis tri sur cette clé. Une
+    copie, jamais l'original.
+
+    Ce n'est pas le Fisher-Yates habituel du dépôt, et le motif du changement est
+    mesuré. Fisher-Yates fait reposer UNE position sur UN tirage — la dernière
+    sur le tout premier appel. Or les générateurs déterministes employés partout
+    dans les tests sont des LCG semés par de petits entiers, dont la première
+    sortie est quasi constante : sur les graines 1 à 200, elle ne bouge que de
+    0,236 à 0,314. Choisir un motif parmi trois avec ce seul tirage, c'est donc
+    servir le même motif aux 200 tirages et n'en montrer jamais un troisième.
+
+    Avec une clé par élément, chaque position dépend de TOUS les tirages : le
+    biais d'un seul d'entre eux ne peut plus geler un rang. */
+export function melanger<T>(items: readonly T[], r: () => number): T[] {
+	return items
+		.map((item) => ({ item, cle: r() }))
+		.sort((a, b) => a.cle - b.cle)
+		.map(({ item }) => item);
+}
+
+/** Nombre de placements essayés avant d'abandonner un motif. C'est un garde-fou,
+    pas un réglage de performance : il existe pour qu'un dessin trop dense se
+    solde par « on essaie un autre motif » et jamais par un onglet figé. */
+export const BUDGET_NOEUDS = 30000;
+
+/** Les passes de `choisirRemplissage`, à budget CROISSANT. On desserre plutôt
+    que de partir large : le cas normal reste instantané, et le cas tordu reste
+    borné au lieu de virer à la recherche exhaustive. */
+export const BUDGETS: readonly number[] = [BUDGET_NOEUDS, BUDGET_NOEUDS * 8, BUDGET_NOEUDS * 64];
+
+/** Un mot de `mots` par emplacement de `motif`, dans l'ordre des emplacements —
+    ou `null` si ce tirage n'y arrive pas dans le budget imparti. Aucun mot n'y
+    figure deux fois et tous les croisements s'accordent : c'est ce placement qui
+    prouve qu'une grille servie est résoluble. Pur, l'aléa étant injecté.
+
+    Une recherche naïve sur ce problème ne termine pas. Deux réglages suffisent à
+    le rendre trivial :
+
+    • **l'ordre**, choisir à chaque étape l'emplacement qui a le MOINS de mots
+      encore possibles — c'est ce qui fait échouer tôt les impasses, au lieu de
+      les découvrir après avoir posé cinq mots ;
+    • **le budget**, un nombre de nœuds maximal avec abandon propre.
+
+    Quelle densité de croisements passe, et avec quel budget, ne se décide pas
+    ici : cela dépend du vivier fourni autant que du dessin, donc de l'appelant.
+    C'est lui qui mesure, et lui qui documente ce qu'il a mesuré. */
+export function remplirMotif(
+	motif: Motif,
+	mots: readonly string[],
+	r: () => number,
+	budget: number = BUDGET_NOEUDS,
+): string[] | null {
+	const n = motif.emplacements.length;
+	const parEmplacement: Croisement[][] = motif.emplacements.map(() => []);
+	for (const c of croisements(motif)) {
+		parEmplacement[c.a].push(c);
+		parEmplacement[c.b].push(c);
+	}
+
+	/* Les mots sont mélangés UNE fois puis rangés par longueur : c'est ce mélange
+	   qui fait varier les grilles d'un tirage à l'autre, et le seul endroit où
+	   l'aléa entre. La recherche, elle, est déterministe. */
+	const parLongueur = new Map<number, string[][]>();
+	for (const mot of melanger(mots, r)) {
+		const lettres = lettresDe(mot);
+		const liste = parLongueur.get(lettres.length);
+		if (liste) liste.push(lettres);
+		else parLongueur.set(lettres.length, [lettres]);
+	}
+	const candidats = motif.emplacements.map((e) => parLongueur.get(e.longueur) ?? []);
+
+	const poses: (string[] | null)[] = motif.emplacements.map(() => null);
+	const pris = new Set<string>();
+	let restant = budget;
+
+	/** Le mot tient-il compte des lettres déjà fixées par les croisements ? */
+	const accepte = (i: number, mot: string[]): boolean => {
+		for (const c of parEmplacement[i]) {
+			const voisin = poses[c.a === i ? c.b : c.a];
+			if (!voisin) continue;
+			if (mot[c.a === i ? c.indexA : c.indexB] !== voisin[c.a === i ? c.indexB : c.indexA]) {
+				return false;
+			}
+		}
+		return true;
+	};
+
+	const chercher = (): boolean => {
+		if (restant-- <= 0) return false;
+		/* L'emplacement le PLUS CONTRAINT d'abord : celui qui a le moins de mots
+		   encore possibles. C'est ce qui fait échouer tôt les impasses, au lieu de
+		   les découvrir après avoir posé cinq mots. */
+		let cible = -1;
+		let choix: string[][] | null = null;
+		for (let i = 0; i < n; i++) {
+			if (poses[i]) continue;
+			const possibles = candidats[i].filter((mot) => !pris.has(mot.join('')) && accepte(i, mot));
+			if (!choix || possibles.length < choix.length) {
+				cible = i;
+				choix = possibles;
+				if (possibles.length === 0) break;
+			}
+		}
+		if (cible < 0 || !choix) return true;
+		for (const mot of choix) {
+			const forme = mot.join('');
+			poses[cible] = mot;
+			pris.add(forme);
+			if (chercher()) return true;
+			poses[cible] = null;
+			pris.delete(forme);
+			if (restant <= 0) return false;
+		}
+		return false;
+	};
+
+	if (!chercher()) return null;
+	return poses.map((mot) => (mot ?? []).join(''));
+}
+
+/** Le motif retenu, et le mot de chacun de ses emplacements. Le TYPE du motif
+    est conservé : un appelant qui range ses propres champs dessus (une taille,
+    un thème, des définitions) les retrouve sans conversion. */
+export interface Remplissage<T extends Motif = Motif> {
+	motif: T;
+	solution: string[];
+}
+
+/** Le premier motif de `motifs` qui se remplit avec `mots`, essayé à budget
+    croissant (`budgets`).
+
+    Rend `null` quand AUCUN n'y arrive, même à la dernière passe : le moteur ne
+    lève rien, c'est l'appelant qui sait quoi en dire à celui qui attend une
+    grille. Rendre `null` plutôt que jeter est aussi ce qui rend ce chemin
+    d'échec ATTEIGNABLE d'un test — il suffit d'une liste de mots qui ne peut pas
+    remplir, ou d'un budget d'une poignée de nœuds.
+
+    Chaque passe remélange les motifs, et chaque tentative remélange les mots :
+    c'est le seul endroit où l'aléa entre. */
+export function choisirRemplissage<T extends Motif>(
+	motifs: readonly T[],
+	mots: readonly string[],
+	r: () => number,
+	budgets: readonly number[] = BUDGETS,
+): Remplissage<T> | null {
+	for (const budget of budgets) {
+		for (const motif of melanger(motifs, r)) {
+			const solution = remplirMotif(motif, mots, r, budget);
+			if (solution) return { motif, solution };
+		}
+	}
+	return null;
 }

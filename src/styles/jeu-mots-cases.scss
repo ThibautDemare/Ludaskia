@@ -204,8 +204,19 @@
    valeurs ci-dessous valent 90 % du corps normal de la case, soit 12,3 px sur la
    grande grille, et l'espace entre les deux lettres a été remplacé par un
    `letter-spacing` qui sépare pour bien moins cher. */
+/* L'écart entre les deux lettres est volontairement MAIGRE. Mesuré au rendu à
+   360 px sur la grande grille, la case contenait exactement sa largeur — 36 px
+   pour 36 px — avec un écart de 0,06em : ça tenait, sans un pixel de marge. Or
+   les métriques de police diffèrent d'une plateforme à l'autre et la CI tourne
+   sous linux, donc « exactement » y devient « déborde ». La spec e2e mesure
+   `scrollWidth` contre `clientWidth` pour que ça ne se redécouvre pas.
+
+   Le pire cas atteignable a d'ailleurs été mesuré, et il n'est PAS le pire cas
+   absolu : aucun mot du vivier ne contient de W, donc la paire de deux capitales
+   larges reste inéprouvée. Un vivier élargi — celui de #665, ou #662 — devra
+   refaire la mesure. */
 .mc-case[data-double] {
-	letter-spacing: 0.06em;
+	letter-spacing: 0.03em;
 }
 
 .mc-grille[data-taille='petite'] .mc-case[data-double] {

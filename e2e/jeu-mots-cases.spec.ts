@@ -39,9 +39,24 @@
      petit solveur par retour en arrière (`resoudreGrille`) trouve UNE
      assignation valide ; rien n'exige qu'elle soit CELLE tirée par le jeu
      (aucune exigence d'unicité, cf. les notes de cadrage de l'issue).
+
+   ── Ajouts post-relecture (trois passes de revue, #664) ─────────────────────
+   Quatre comportements ajoutés APRÈS le cadrage initial, remontés par la
+   relecture d'accessibilité : la confirmation avant de changer de taille sur
+   une grille entamée (nouvelle exigence, hors des 42 critères d'origine —
+   consignée par commentaire daté sur l'issue), la remise à plat d'`aria-pressed`
+   sur les boutons de taille après reconstruction, l'annonce d'un appui refusé
+   dans la région live, et le gabarit des lettres en désaccord. Les tests
+   correspondants ne portent donc pas de numéro « critère N » (qui désigne les
+   42 d'origine) : ils sont nommés par leur comportement.
    ============================================================ */
 import { test, expect, type Page } from '@playwright/test';
 import { watchErrors, gotoHash, seedJeuxPossedesScript, ouvrirEtagere } from './helpers';
+
+/* Alias : l'overlay `ui-modal.ts` est le SEUL `.modal-overlay` sans `id` dans le
+   DOM (les overlays statiques de gamification en ont un) — repris tel quel
+   d'`encadrant-banque.spec.ts`. */
+const uiModalOverlay = '.modal-overlay:not([id])';
 
 declare global {
 	interface Window {
@@ -260,6 +275,58 @@ async function trouverPaireConflit(page: Page): Promise<PaireConflit | null> {
 							if (motB === motA) continue;
 							if (lettres(motB).length !== emplacements[b].longueur) continue;
 							if (maj(lettres(motA)[cr.pa]) !== maj(lettres(motB)[cr.pb])) {
+								return {
+									motA, ligneA: emplacements[a].cellules[0].ligne, colonneA: emplacements[a].cellules[0].colonne,
+									motB, ligneB: emplacements[b].cellules[0].ligne, colonneB: emplacements[b].cellules[0].colonne,
+								};
+							}
+						}
+					}
+				}
+			}
+			return null;
+		})()
+	`) as Promise<PaireConflit | null>;
+}
+
+/** Variante de `trouverPaireConflit` : n'accepte QUE les paires dont l'une des
+    deux lettres en désaccord est `lettreCible` (majuscule). Sert à fabriquer
+    délibérément un affichage à deux capitales larges (mesure de gabarit) plutôt
+    que le premier conflit venu — voir la note de la mesure à 360 px plus bas
+    sur ce que ce filtre peut et ne peut pas garantir. */
+async function trouverPaireConflitAvecLettre(
+	page: Page,
+	lettreCible: string,
+): Promise<PaireConflit | null> {
+	return page.evaluate(`
+		(() => {
+			const cible = ${JSON.stringify(lettreCible)};
+			const emplacements = ${lireEmplacementsJS()};
+			function croise(a, b) {
+				for (let pa = 0; pa < a.cellules.length; pa++) {
+					for (let pb = 0; pb < b.cellules.length; pb++) {
+						if (a.cellules[pa].ligne === b.cellules[pb].ligne && a.cellules[pa].colonne === b.cellules[pb].colonne) {
+							return { pa, pb };
+						}
+					}
+				}
+				return null;
+			}
+			const mots = [...document.querySelectorAll('.mc-mot')].map((b) => b.dataset.mot || '');
+			const lettres = (mot) => [...mot.normalize('NFC')];
+			const maj = (l) => l.toLocaleUpperCase('fr');
+			for (let a = 0; a < emplacements.length; a++) {
+				for (let b = a + 1; b < emplacements.length; b++) {
+					const cr = croise(emplacements[a], emplacements[b]);
+					if (!cr) continue;
+					for (const motA of mots) {
+						if (lettres(motA).length !== emplacements[a].longueur) continue;
+						for (const motB of mots) {
+							if (motB === motA) continue;
+							if (lettres(motB).length !== emplacements[b].longueur) continue;
+							const la = maj(lettres(motA)[cr.pa]);
+							const lb = maj(lettres(motB)[cr.pb]);
+							if (la !== lb && (la === cible || lb === cible)) {
 								return {
 									motA, ligneA: emplacements[a].cellules[0].ligne, colonneA: emplacements[a].cellules[0].colonne,
 									motB, ligneB: emplacements[b].cellules[0].ligne, colonneB: emplacements[b].cellules[0].colonne,
@@ -677,6 +744,190 @@ test('critères 33 et 34 (moitié e2e) : la grille survit à un rechargement BRU
 	await page.locator('.jeu-item[data-jeu="mots-cases"]').click();
 	await expect(page.locator('.mc-grille')).toBeVisible();
 	await expect(caseCible).not.toHaveText('');
+
+	expect(errors).toEqual([]);
+});
+
+/* ---------- Post-relecture : confirmation avant de changer de taille ------- */
+
+test('changer de taille : une grille vierge bascule tout de suite, un mot posé demande confirmation — et le choix sûr a le focus', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await ouvrirMotsCases(page);
+
+	const grille = page.locator('.mc-grille');
+	await expect(grille).toHaveAttribute('data-taille', 'petite');
+
+	// Négatif : rien à perdre → bascule immédiate, AUCUNE modale.
+	await page.locator('.mc-taille[data-taille="grande"]').click();
+	await expect(grille).toHaveAttribute('data-taille', 'grande');
+	await expect(page.locator(uiModalOverlay)).toHaveCount(0);
+
+	// Un mot posé : cette fois il y a quelque chose à perdre.
+	const { mot: motPose } = await poserPremierMotCible(page);
+	await expect(page.locator('#mcProgres')).toContainText('1 mot placé');
+
+	await page.locator('.mc-taille[data-taille="petite"]').click();
+	await expect(page.locator(`${uiModalOverlay} .modal-title`)).toHaveText(
+		'Tu as une grille en cours !',
+	);
+	await expect(page.locator(`${uiModalOverlay} .modal-msg`)).toContainText(
+		'effacera les mots que tu as déjà posés',
+	);
+	// Le choix SÛR (garder la grille) domine et reçoit le focus initial.
+	const boutonGarder = page.locator(`${uiModalOverlay} .modal-ok`);
+	await expect(boutonGarder).toHaveText('Non, je garde ma grille');
+	await expect(boutonGarder).toBeFocused();
+	const boutonChanger = page.locator(`${uiModalOverlay} .modal-danger`);
+	await expect(boutonChanger).toHaveText('Changer quand même');
+
+	// Refuser : rien ne bouge, le mot posé et la taille restent.
+	await boutonGarder.click();
+	await expect(page.locator(uiModalOverlay)).toHaveCount(0);
+	await expect(grille).toHaveAttribute('data-taille', 'grande');
+	await expect(page.locator(`.mc-item[data-mot="${motPose}"]`)).toBeHidden();
+
+	// Confirmer cette fois : la taille change, pour une grille NEUVE (vide).
+	await page.locator('.mc-taille[data-taille="petite"]').click();
+	await page.locator(`${uiModalOverlay} .modal-danger`).click();
+	await expect(page.locator(uiModalOverlay)).toHaveCount(0);
+	await expect(grille).toHaveAttribute('data-taille', 'petite');
+	await expect(page.locator('#mcProgres')).toContainText('0 mot placé');
+
+	expect(errors).toEqual([]);
+});
+
+/* ---------- Post-relecture : aria-pressed se repose à chaque reconstruction ---------- */
+
+test('taille : aria-pressed suit la taille active sur les DEUX boutons après un changement (comme le sudoku)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await ouvrirMotsCases(page);
+
+	await expect(page.locator('.mc-taille[data-taille="petite"]')).toHaveAttribute(
+		'aria-pressed',
+		'true',
+	);
+	await expect(page.locator('.mc-taille[data-taille="grande"]')).toHaveAttribute(
+		'aria-pressed',
+		'false',
+	);
+
+	await page.locator('.mc-taille[data-taille="grande"]').click();
+	await expect(page.locator('.mc-grille')).toHaveAttribute('data-taille', 'grande');
+
+	// Avant le correctif, le bouton PRÉCÉDENT restait peint/annoncé actif.
+	await expect(page.locator('.mc-taille[data-taille="grande"]')).toHaveAttribute(
+		'aria-pressed',
+		'true',
+	);
+	await expect(page.locator('.mc-taille[data-taille="petite"]')).toHaveAttribute(
+		'aria-pressed',
+		'false',
+	);
+
+	expect(errors).toEqual([]);
+});
+
+/* ---------- Post-relecture : un appui refusé s'annonce ---------- */
+
+test('un appui refusé s’annonce : une case incompatible dit qu’elle refuse, une case vide dit qu’elle est vide', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await ouvrirMotsCases(page);
+
+	// Avant le correctif, les deux refus étaient MUETS (aucune mise à jour de
+	// la région live) : un enfant au lecteur d'écran tapait des cases sans jamais
+	// savoir pourquoi rien ne se passait.
+
+	// Case vide, rien en main : `retirerMot` refuse.
+	const caseAuHasard = page.locator('.mc-case').first();
+	await caseAuHasard.click();
+	await expect(page.locator('#mcAnnonce')).toHaveText(/case est vide/i);
+
+	// Mot en main, case incompatible (longueur différente) : `poserMot` refuse.
+	const motBtn = page.locator('.mc-mot').first();
+	const motLongueur = ((await motBtn.getAttribute('data-mot')) ?? '').normalize('NFC').length;
+	await motBtn.click();
+	const caseIncompatible = page.locator('.mc-case:not([data-cible])').first();
+	await expect(
+		caseIncompatible,
+		`une case non-cible doit exister pour un mot de ${motLongueur} lettres`,
+	).toHaveCount(1);
+	await caseIncompatible.click();
+	await expect(page.locator('#mcAnnonce')).toHaveText(/ne va pas dans cette case/i);
+	// Le mot reste en main : le refus n'a pas dépossédé l'enfant de son choix.
+	await expect(motBtn).toHaveAttribute('aria-pressed', 'true');
+
+	expect(errors).toEqual([]);
+});
+
+/* ---------- Post-relecture : mesure — une case en désaccord ne déborde pas ---------- */
+
+test('mesure : à 360 px, une case en désaccord de la GRANDE grille ne déborde pas (scrollWidth ≤ clientWidth)', async ({
+	page,
+}) => {
+	test.setTimeout(90_000); // plusieurs tirages peuvent être nécessaires (cf. note ci-dessous)
+	const errors = watchErrors(page);
+	await page.setViewportSize({ width: 360, height: 640 });
+	await ouvrirMotsCases(page);
+
+	/* Un conflit se fabrique parmi le SEUL vivier affiché par le tirage courant
+	   (cf. la note en tête de fichier) — jamais parmi le vivier complet. Sur la
+	   taille grande, une mesure empirique (300 tirages simulés, mêmes motifs et
+	   même vivier que l'appli, hors de cette spec) trouve une paire en désaccord
+	   impliquant M dans ~33 % des tirages, et JAMAIS de W : aucun mot du vivier
+	   (séries d'orthographe thématiques + champs lexicaux) ne contient de W. La
+	   paire « deux capitales larges M et W » n'est donc PAS fabricable par cette
+	   spec — seul M est forcé ici, systématiquement associé à une lettre plus
+	   étroite (R, T, V ou I dans cet échantillon). La mesure ci-dessous couvre
+	   donc le pire cas ATTEIGNABLE avec le vivier actuel, pas le pire cas absolu
+	   qu'un futur mot en W rendrait possible. */
+	const grille = page.locator('.mc-grille');
+	let paire: Awaited<ReturnType<typeof trouverPaireConflitAvecLettre>> = null;
+	for (let tentative = 0; tentative < 25 && !paire; tentative++) {
+		if (tentative > 0) {
+			// Nouveau tirage : on jette la partie sauvée puis on rentre à nouveau.
+			await page.evaluate(() => localStorage.removeItem('e2e/ludaskia_jeux_mots-cases_partie'));
+			await gotoHash(page, 'accueil');
+			await entrerDansLeJeu(page);
+		}
+		if ((await grille.getAttribute('data-taille')) !== 'grande') {
+			await page.locator('.mc-taille[data-taille="grande"]').click();
+		}
+		await expect(grille).toHaveAttribute('data-taille', 'grande');
+		paire = await trouverPaireConflitAvecLettre(page, 'M');
+	}
+	expect(
+		paire,
+		'aucune paire en désaccord impliquant M n’a pu être formée en 25 tirages de la grande grille',
+	).not.toBeNull();
+	const { motA, ligneA, colonneA, motB, ligneB, colonneB } = paire as PaireConflit;
+
+	await page.locator(`.mc-mot[data-mot="${motA}"]`).click();
+	await page.locator(`.mc-case[data-ligne="${ligneA}"][data-colonne="${colonneA}"]`).click();
+	await page.locator(`.mc-mot[data-mot="${motB}"]`).click();
+	await page.locator(`.mc-case[data-ligne="${ligneB}"][data-colonne="${colonneB}"]`).click();
+
+	const caseDouble = page.locator('.mc-case[data-double]');
+	await expect(caseDouble).toHaveCount(1);
+	const texte = ((await caseDouble.textContent()) ?? '').toUpperCase();
+	expect(texte, `case en désaccord mesurée : « ${texte} »`).toContain('M');
+
+	const mesure = await caseDouble.evaluate((el) => ({
+		scrollWidth: el.scrollWidth,
+		clientWidth: el.clientWidth,
+	}));
+	console.log(
+		`[mots-cases] case en désaccord « ${texte} » à 360 px (grande) : scrollWidth=${mesure.scrollWidth}px, clientWidth=${mesure.clientWidth}px`,
+	);
+	expect(
+		mesure.scrollWidth,
+		`la case « ${texte} » déborde : scrollWidth=${mesure.scrollWidth}px > clientWidth=${mesure.clientWidth}px`,
+	).toBeLessThanOrEqual(mesure.clientWidth);
 
 	expect(errors).toEqual([]);
 });

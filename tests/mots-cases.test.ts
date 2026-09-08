@@ -98,23 +98,13 @@ import { CHAMPS } from '../src/data/francais/champs-lexicaux';
 import { LEVEL_ORDER } from '../src/core/levels';
 import { initProfiles, setNiveauReference, touchActiveProfile } from '../src/core/profiles';
 import { setOnDataWrite } from '../src/core/storage';
+import { tirage } from './aleatoire';
 
 beforeEach(() => {
 	localStorage.clear();
 	setOnDataWrite(touchActiveProfile);
 	initProfiles();
 });
-
-/* Tirage déterministe (LCG), pattern de `jeux-tirage.test.ts` et de
-   `sudoku.test.ts`. Jamais de hasard réel : un invariant qui casse une fois sur
-   mille doit pouvoir être rejoué à l'identique. */
-function tirage(graine: number): () => number {
-	let s = graine >>> 0;
-	return () => {
-		s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-		return s / 4294967296;
-	};
-}
 
 const NFC = (s: string): string => s.normalize('NFC');
 const lettres = (mot: string): string[] => [...NFC(mot)];

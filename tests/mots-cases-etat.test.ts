@@ -74,20 +74,13 @@ import {
 } from '../src/core/profiles';
 import { appKeys, lsGet, lsSet, setOnDataWrite } from '../src/core/storage';
 import { getXP } from '../src/core/progress';
+import { tirage } from './aleatoire';
 
 beforeEach(() => {
 	localStorage.clear();
 	setOnDataWrite(touchActiveProfile);
 	initProfiles();
 });
-
-function tirage(graine: number): () => number {
-	let s = graine >>> 0;
-	return () => {
-		s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-		return s / 4294967296;
-	};
-}
 
 const lettres = (mot: string): string[] => [...mot.normalize('NFC')];
 

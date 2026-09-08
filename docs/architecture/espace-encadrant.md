@@ -1024,12 +1024,17 @@ dépendance : l'accès commande tout.
   l'invitation, quel que soit ce réglage) — l'interface le montre en
   désactivant la case plutôt qu'en la laissant cochable sans effet.
 
-- **Jouer sans aides visuelles** (`sansAidesJeux`, #666) — dans le sudoku, ne
-  plus marquer les formes en double ni éclairer la ligne, la colonne et le bloc
-  de la case choisie. Le réglage ne fait que **retirer** une aide, jamais
-  l'imposer : absent, les aides sont actives. Pour un profil TDAH, un surlignage
-  permanent peut devenir lui-même un distracteur, et un enfant plus avancé peut
-  vouloir jouer sans filet. Subordonné à l'accès, comme l'invitation.
+- **Jouer sans aides visuelles** (`sansAidesJeux`, #666, étendu aux **mots à
+  caser** #664) — dans le sudoku, ne plus marquer les formes en double ni
+  éclairer la ligne, la colonne et le bloc de la case choisie ; dans les mots
+  à caser, ne plus surligner les emplacements où le mot en main entrerait. Le
+  réglage ne fait que **retirer** une aide, jamais l'imposer : absent, les
+  aides sont actives. Pour un profil TDAH, un surlignage permanent peut
+  devenir lui-même un distracteur, et un enfant plus avancé peut vouloir jouer
+  sans filet. Subordonné à l'accès, comme l'invitation. Sur les mots à caser,
+  le **signalement d'un croisement en conflit** n'en dépend en revanche jamais
+  — ce n'est pas une aide, c'est l'état de la grille (cf. [Rendu &
+  interactions](ui.md)).
 
   Il porte `data-act="set-jeux-pref"` et **non** `set-amenagement`, comme les
   deux réglages ci-dessus : une aide de jeu ne lève aucun obstacle

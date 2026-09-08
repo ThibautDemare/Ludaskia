@@ -18,17 +18,9 @@ import {
 	grilleVide,
 } from '../src/core/jeux/deux-mille-quarante-huit';
 import type { Grille, Direction } from '../src/core/jeux/deux-mille-quarante-huit';
+import { tirage } from './aleatoire';
 
 const DIRECTIONS: Direction[] = ['haut', 'bas', 'gauche', 'droite'];
-
-/* Tirage déterministe (LCG), pattern de fenetre-ponderee.test.ts. */
-function tirage(graine: number): () => number {
-	let s = graine >>> 0;
-	return () => {
-		s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-		return s / 4294967296;
-	};
-}
 
 const G = (...lignes: number[][]): Grille => lignes.map((l) => [...l]);
 const somme = (g: Grille): number => g.reduce((a, l) => a + l.reduce((x, y) => x + y, 0), 0);

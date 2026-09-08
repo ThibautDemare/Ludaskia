@@ -76,6 +76,22 @@ const doitContenir = (chemin: string, nom: string, motif: RegExp): void => {
 	});
 };
 
+/** Les symboles que `chemin` importe NOMMÉMENT du module `source` (le `type `
+    d'un import de type est retiré). Sert à distinguer « prend les types du
+    moteur » de « prend le TRAVAIL du moteur » : chercher le nom du module
+    suffirait pour le premier, pas pour le second. */
+const importsDe = (chemin: string, source: string): string[] => {
+	const src = code(chemin) ?? '';
+	const motif = new RegExp(`import\\s*\\{([^}]*)\\}\\s*from\\s*'${source.replace(/\./g, '\\.')}'`);
+	const trouve = motif.exec(src);
+	return trouve
+		? trouve[1]
+				.split(',')
+				.map((s) => s.trim().replace(/^type\s+/, ''))
+				.filter((s) => s.length > 0)
+		: [];
+};
+
 const doitEviter = (chemin: string, nom: string, motif: RegExp): void => {
 	expect({ fichier: chemin, interdit: nom, present: contient(chemin, motif) }).toEqual({
 		fichier: chemin,
@@ -110,7 +126,43 @@ describe('#664 — le moteur de grille de mots reste réutilisable par #665', ()
 		   que ça vient bien du moteur. */
 		existe(JEU);
 		doitContenir(JEU, "import depuis './grille-mots'", /from\s*'\.\/grille-mots'/);
-		doitContenir(JEU, 'croisements', /\bcroisements\b/);
+
+		/* ─ Ce que cette ligne remplace, et pourquoi ─────────────────────────────
+		   Il y avait ici `doitContenir(JEU, 'croisements', /\bcroisements\b/)`. Le
+		   solveur ayant été déplacé dans le moteur, le jeu ne manipule plus aucun
+		   croisement : l'assertion ne restait verte que parce que le mot survit dans
+		   un MESSAGE D'ERREUR (« ou croisements trop denses »). Elle affirmait
+		   « il ne réinvente pas la géométrie » en mesurant la présence d'un mot dans
+		   une chaîne de caractères — donc elle ne gardait plus rien.
+
+		   Ce qu'il faut prouver n'a pas changé : le travail de géométrie vient du
+		   moteur. Cela se dit en deux temps — ce que le jeu lui PREND, et ce qu'il
+		   ne refait pas chez lui. */
+
+		// 1. Il lui prend le TRAVAIL, pas seulement les types. Un fichier qui
+		//    n'importerait que `Grille` et `Motif` passerait le contrôle du module
+		//    ci-dessus tout en réécrivant le solveur en dessous.
+		const pris = importsDe(JEU, './grille-mots');
+		for (const symbole of ['remplirMotif', 'choisirRemplissage', 'grilleNeuve']) {
+			expect({ fichier: JEU, pris: symbole, present: pris.includes(symbole) }).toEqual({
+				fichier: JEU,
+				pris: symbole,
+				present: true,
+			});
+		}
+
+		// 2. Il ne dérive AUCUNE case d'un emplacement. Réinventer la géométrie, en
+		//    pratique, c'est exactement cela : repartir de (ligne, colonne, sens)
+		//    pour recalculer où tombe la n-ième lettre. Le jour où ces trois mots
+		//    reviennent dans ce fichier, #665 devra le rouvrir au lieu de se
+		//    contenter d'apporter ses propres mots.
+		for (const [nom, motif] of [
+			['une coordonnée `.ligne`', /\.ligne\b/],
+			['une coordonnée `.colonne`', /\.colonne\b/],
+			["le sens 'h'/'v' d'un emplacement", /\bsens\b/],
+		] as const) {
+			doitEviter(JEU, nom, motif);
+		}
 	});
 
 	it('le moteur, lui, ne connaît ni le jeu, ni le français, ni le stockage', () => {

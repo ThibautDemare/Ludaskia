@@ -50,6 +50,7 @@ import { recordLessonStats, loadLessonStats, LESSON_STATS_KEY } from '../src/cor
 import { progressionProfil } from '../src/core/encadrant-stats';
 import { initProfiles, activeProfile, touchActiveProfile } from '../src/core/profiles';
 import { setOnDataWrite, lsSet } from '../src/core/storage';
+import { tirage } from './aleatoire';
 
 beforeEach(() => {
 	localStorage.clear();
@@ -95,16 +96,6 @@ function statLegacy(recentPct: number[], parEssai: number, essais = recentPct.le
 }
 /** Donnée relue du STOCKAGE (JSON, non typée) : le cast est l'objet du test. */
 const brut = <T>(v: unknown): T => v as T;
-
-/* Tirage déterministe (LCG) : les invariants de bornage se cherchent sur des centaines
-   de séquences, mais un test ne doit pas dépendre du hasard réel. */
-function tirage(graine: number): () => number {
-	let s = graine >>> 0;
-	return () => {
-		s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-		return s / 4294967296;
-	};
-}
 
 /* ============================================================
    1. essaisRecents — une seule forme en sortie, quelle que soit la donnée stockée

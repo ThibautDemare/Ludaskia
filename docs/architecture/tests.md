@@ -16,6 +16,38 @@ de l'ancien runner : `localStorage.clear()`, rebranchement du hook
 (`setOnDataWrite`), remise à zéro de l'état du module `items`, puis
 `initProfiles()`. **Lancer `npm test` après toute modif de logique.**
 
+### Générateur aléatoire partagé des tests (#664)
+
+`tests/aleatoire.ts` exporte `tirage(graine)` (splitmix32), le **seul**
+générateur déterministe à importer dans un test — jamais en réécrire un dans
+son fichier. Il remplace un LCG semé par de petits entiers que **huit
+fichiers** recopiaient à l'identique, dont la première sortie était une
+fonction quasi affine de la graine (graines 1-200 : sortie coincée dans
+[0,2365 ; 0,3136], χ² = 1209,6 pour un seuil à 0,1 % de 27,88). Le défaut ne se
+voyait qu'à la deuxième sortie et plus (χ² revenant à 1,6) : indétectable donc
+sur tout algorithme dont une décision repose sur le tout premier appel — et
+Fisher-Yates, le mélange employé partout (`core/jeux/tirage.ts`,
+`core/jeux/grille-mots.ts`), en est un, sa boucle partant de la fin.
+
+**Ce n'est pas un bug de production** — `randFloat()` (`core/utils.ts`) reste
+`Math.random` par défaut, sans rapport avec ce LCG — mais le défaut a coûté
+deux fois pendant le développement, à un cran du code réel. `core/jeux/mots-cases.ts`
+avait remplacé Fisher-Yates par un tri sur clé tirée pour faire taire un motif
+« grande » sur trois jamais servi en 200 tirages : un correctif posé au mauvais
+étage, puisque le mélange était juste et seul le générateur de test était faux.
+Et un test aussi exigeant sur `core/jeux/tirage.ts` (le tirage des 3
+propositions d'un palier) aurait trouvé la même chose : mesuré avec ce LCG, sur
+4 jeux éligibles et 500 tirages, seules 2 des 4 combinaisons de 3 sortaient —
+deux jeux systématiquement proposés, les deux autres se partageant la
+troisième place. Les deux mélanges sont restés corrects sans qu'on y touche
+une fois le générateur de test réparé.
+`tests/aleatoire.test.ts` rejoue ce diagnostic (déciles, corrélation graine ↔
+première sortie, permutations obtenues à petite taille) à chaque `npm test`,
+et l'en-tête d'`aleatoire.ts` détaille la mesure complète, y compris les pistes
+écartées (brûler les premières sorties du LCG ; réutiliser `mulberry32` de
+`core/utils.ts`, qui aurait supprimé l'indépendance entre le générateur de
+test et celui de l'application).
+
 ### Harnais d'invariants du catalogue (#410)
 
 `tests/catalogue-invariants.test.ts` balaie **tout** `getAllLessons()` et éprouve,

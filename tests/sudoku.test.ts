@@ -56,22 +56,13 @@ import {
 import { jeuParId, jeuxDisponibles } from '../src/core/jeux/catalogue';
 import { initProfiles, setNiveauReference, touchActiveProfile } from '../src/core/profiles';
 import { setOnDataWrite } from '../src/core/storage';
+import { tirage } from './aleatoire';
 
 beforeEach(() => {
 	localStorage.clear();
 	setOnDataWrite(touchActiveProfile);
 	initProfiles();
 });
-
-/* Tirage déterministe (LCG), pattern de `jeux-tirage.test.ts`. Jamais de hasard
-   réel dans un test : le critère 5 exige justement que ce soit possible. */
-function tirage(graine: number): () => number {
-	let s = graine >>> 0;
-	return () => {
-		s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-		return s / 4294967296;
-	};
-}
 
 const tri = (s: Set<number>): number[] => [...s].sort((a, b) => a - b);
 const vides = (v: Valeurs): number => v.filter((x) => x === 0).length;

@@ -1936,7 +1936,7 @@ Quatorze modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
 stockage) — cf.
 [Gamification](gamification.md)
 pour le pourquoi du dispositif (pas de `Recompense`, pas d'XP) et [Espace
-encadrant](espace-encadrant.md) pour les trois réglages adulte.
+encadrant](espace-encadrant.md) pour les quatre réglages adulte.
 
 - **`catalogue.ts`** — `JEUX: JeuDef[]` (id, libellé enfant, icône, `type: 'C' |
   'R'` — compétence / refuge —, `competence?` réservée à l'espace encadrant,

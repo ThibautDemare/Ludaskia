@@ -221,6 +221,12 @@
 	/* Filet FIN autour de chaque case, posé à l'INTÉRIEUR : il ne prend pas un
 	   pixel de largeur, ce qui compte quand chaque case se joue à 6 px près. */
 	box-shadow: inset 0 0 0 1px var(--control-line);
+	/* Le bandeau de définition est COLLANT : sans cette marge, le défilement
+	   natif vers le champ qui prend le focus l'amène DESSOUS, et l'enfant tape
+	   dans une case qu'il ne voit pas. Le bandeau change de hauteur selon qu'il
+	   porte un choix de sens ou non : le runner mesure et pose `--mx-bandeau`, le
+	   repli couvre le cas le plus haut. Précédent maison : `lecon-mode.scss`. */
+	scroll-margin-top: calc(var(--mx-bandeau, 9rem) + 0.5rem);
 	text-align: center;
 	cursor: pointer;
 }
@@ -229,7 +235,9 @@
    plein plutôt qu'un fond : le fond est déjà pris par l'état du mot, et deux
    informations sur le même canal en effacent une. */
 .mx-case[data-courant] {
-	box-shadow: inset 0 0 0 3px var(--accent);
+	box-shadow:
+		inset 0 0 0 1px var(--control-line),
+		inset 0 0 0 3px var(--accent);
 }
 
 /* Un mot trouvé. Ce n'est pas un retour lettre à lettre : le fond couvre le mot
@@ -257,8 +265,30 @@
 	background-repeat: no-repeat;
 }
 
-.mx-case[data-faux][data-courant] {
-	box-shadow: inset 0 0 0 3px var(--accent);
+/* LA case qui recevra la lettre, en dernier pour l'emporter sur l'anneau du mot.
+   Sans elle, le mot en cours porte le même liseré sur ses six cases et seul le
+   curseur natif dit laquelle est visée — un trait d'un pixel, dans une grille
+   sans gouttière où la case peinte après recouvre le bord de sa voisine. C'est le
+   repère le plus utile de la grille.
+
+   Quatre pixels, cinq sur une case d'un mot faux : le fond hachuré y mange
+   l'anneau, et l'épaisseur est le canal qui ne dépend pas de la couleur. Modèle
+   repris du sudoku (`.sudoku-case.sel`), qui épaissit lui aussi de 4 à 5 sur une
+   case en conflit. Le couple `--accent` sur `--warn-bg` y est déjà mesuré.
+
+   `:focus` et non `:focus-visible` : ce n'est pas une affordance de clavier, c'est
+   un état du JEU — la case visée doit se voir, que l'enfant soit venu au doigt ou
+   à la tabulation. Le contour natif du navigateur, lui, n'est jamais retiré. */
+.mx-case:focus {
+	box-shadow:
+		inset 0 0 0 1px var(--control-line),
+		inset 0 0 0 4px var(--accent);
+}
+
+.mx-case[data-faux]:focus {
+	box-shadow:
+		inset 0 0 0 1px var(--control-line),
+		inset 0 0 0 5px var(--accent);
 }
 
 /* ---------- Le signalement, les actions, la fin ---------- */
@@ -284,6 +314,12 @@
 	flex-wrap: wrap;
 	justify-content: center;
 	gap: 0.6rem;
+}
+
+/* `display: flex` l'emporterait sur l'attribut `hidden` : sans cette règle, le
+   masquage à la victoire ne prendrait tout simplement pas. */
+.mx-actions[hidden] {
+	display: none;
 }
 
 .mx-effacer,

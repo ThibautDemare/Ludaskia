@@ -127,6 +127,16 @@ qu'une fois arrivé au sommet de l'escalier (`PALIER_ACQUIS`), soit **137 jours 
 au minimum** (réalistement plusieurs mois, ratés compris). Jusqu'ici, un savoir qui tient
 ne rapportait rien de plus que l'XP de fond d'une bonne réponse.
 
+**Un rendez-vous servi très en retard peut créditer plusieurs paliers d'un coup, mais
+jamais l'ancre elle-même (#688)** : le crédit de l'escalier (cf. [Logique
+pure](core.md)) plafonne au palier 3, il reste donc toujours trois réussites à des
+rendez-vous réels avant `PALIER_ACQUIS` (16 + 35 + 75 jours ; le cadrage de l'issue
+écrivait « au moins deux », le plafond retenu en impose trois), et le plancher ci-dessus reste
+le chemin le plus court possible — l'escalier est sur-additif, attendre pour se faire
+créditer un cran coûte toujours plus cher que le gagner en deux rendez-vous à l'heure. Le
+crédit rattrape une information jetée par le retard de la file, il ne fabrique jamais de
+progression : le sens du trophée (ce qui a réellement TENU) est préservé.
+
 **Deux familles, jamais un compteur unique** : **mots d'orthographe ancrés**
 (`orthoAncres1/150/300/420`, 🧠, métrique `orthoMotsAncres` — mots dont l'escalier de
 révision a atteint `estAcquis`, toute la banque du profil comptant, mots saisis par le

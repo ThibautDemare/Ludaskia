@@ -671,6 +671,45 @@ Périmètre volontairement restreint à la famille NOTIONS : la famille MOTS par
 même mécanisme de bout en bout (`evaluateTrophies` → `recompensesFin` →
 `announceRewards`), seule la métrique de `GSnapshot` change.
 
+### Rendez-vous très en retard : crédit et non-débit (#688)
+
+`tests/revision-retard.test.ts` (Vitest) écrit AVANT l'implémentation, à partir des
+critères gelés de l'issue (reproduits en tête du fichier, avec l'arbitrage retenu sur un
+point ambigu du critère 2 et ses conséquences mesurables sur ce qui suit). Couvre le
+**calcul** d'`avancerEtat` sur les six paliers déjà testés (`dernierTest` non nul, montés
+par le chemin réel, jamais un littéral) : réussite/échec servis à l'heure strictement
+inchangés, crédit d'une réussite très tardive au palier que le délai écoulé démontre
+(plafonné au palier 3, jamais au-delà de l'avancement normal), aucun crédit sans mesure
+antérieure (`dernierTest` nul), non-débit d'un échec très tardif (conserve le palier,
+repose l'échéance à l'intervalle conservé) contre le débit habituel d'un échec à l'heure
+ou en retard modéré, et le critère négatif « aucun échec ne fait jamais monter un
+palier ».
+
+**Le plancher temporel (137 jours) est CHERCHÉ, pas recopié.** `plancherAncre()` rejoue
+`avancerEtat` sur tous les chemins de réussites possibles depuis l'entrée en rotation
+(retard compris, au pas d'un jour), mémoïsé par état visité et borné par
+`LIMITE_EXPLORATION` — motif réutilisable pour prouver un extremum de trajectoire plutôt
+que de dériver un calcul qui recopierait la donnée, cf. `tests/README.md`. Un dernier test
+**gate les cinq endroits qui annoncent ce plancher** (`src/core/rewards.ts` — deux
+mentions —, `src/core/progress.ts`, [Logique pure](core.md), [Gamification](gamification.md)
+et [Conventions rédactionnelles](conventions-redaction.md)) par lecture de texte : chacun
+doit annoncer exactement 137 via le motif « N jours sans échec » ou « N jours à
+atteindre » — modifier le plancher sans mettre à jour l'un d'eux fait échouer `npm test`.
+C'est la règle du projet appliquée à la doc elle-même : une valeur annoncée que rien ne
+tient est exactement le défaut que cette issue corrige. La version précédente de ce test se contentait de sommer
+`REVISION_INTERVALLES` : elle décrivait la donnée au lieu de garder l'exigence, et
+laissait passer n'importe quel raccourci de l'escalier.
+
+**Rejet écrit** sur la non-factorisation d'`intervalleDe` (`revision.ts`) et
+`libellePalier` (`encadrant-stats.ts`), qui calculent le même clamp d'index pour deux
+usages distincts : cf. [Logique pure](core.md).
+
+Hors périmètre (spec Playwright) : « retard »/« rattrapage » sont déjà des libellés
+légitimes de l'espace encadrant, rien ne distingue statiquement une vue enfant d'une vue
+adulte (critère 12) ; et la moitié « aucune réécriture au montage d'un écran » du
+critère 10 — l'autre moitié, « aucune migration au chargement », est éprouvée ici au
+niveau du store des leçons.
+
 ### Révision espacée : servir la marche due (#640)
 
 `tests/revision-marche-due.test.ts` (Vitest, critères 1-3, 5-10, 13, 16-18, 22-24) et

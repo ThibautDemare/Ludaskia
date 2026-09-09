@@ -67,6 +67,7 @@ import {
 	effacerCase,
 	effacerMot,
 	etatMot,
+	lettreAffichee,
 	lettreEn,
 	motsSur,
 	motsTrouves,
@@ -116,8 +117,8 @@ const GLYPHE_SENS = { h: '→', v: '↓' } as const;
 const cle = (ligne: number, colonne: number): string => `${ligne},${colonne}`;
 
 /** En capitales (critère 33) : dans une case isolée, sans appui sémantique,
-    b/d/p/q se confondent bien plus que B/D/P/Q. Accents compris — c'est tout
-    l'objet de la lettre accentuée rangée par le modèle. */
+    b/d/p/q se confondent bien plus que B/D/P/Q. Accents compris — sur un mot
+    trouvé, c'est justement l'accent qui fait tout l'intérêt de la case. */
 const capitale = (lettre: string): string => lettre.toLocaleUpperCase('fr');
 
 /** Pose ou retire un attribut d'état. Un attribut plutôt qu'une classe : c'est
@@ -343,7 +344,10 @@ function creerRunner(): RunnerJeu {
 		for (const el of racine.querySelectorAll<HTMLInputElement>('.mx-case')) {
 			const ligne = Number(el.dataset.ligne);
 			const colonne = Number(el.dataset.colonne);
-			const lettre = lettreEn(p, ligne, colonne);
+			/* La lettre MONTRÉE, pas celle qui est rangée : elles ne diffèrent que sur
+			   un mot déjà trouvé, dont la graphie prend alors le dessus (accent
+			   compris). Avant ça, la case rend exactement ce que l'enfant a tapé. */
+			const lettre = lettreAffichee(p, ligne, colonne);
 			const affichee = lettre === null ? '' : capitale(lettre);
 			/* Écriture conditionnelle : réécrire la valeur d'un champ qui a le focus
 			   replace le curseur, et sur certains claviers virtuels coupe la frappe

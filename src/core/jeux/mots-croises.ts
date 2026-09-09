@@ -32,20 +32,22 @@
    modèle ne peut pas comparer à ce qu'il n'a pas. Que le DOM n'en laisse rien
    filtrer (critère 44) est une autre affaire, et c'est celle du runner.
 
-   ── L'ACCENT : jugé nulle part, affiché partout ─────────────────────────────
+   ── L'ACCENT : jamais jugé, affiché quand le MOT est trouvé ─────────────────
 
-   Décision du mainteneur, et elle a deux moitiés indissociables.
+   Décision du mainteneur, et elle tient en trois temps qu'il ne faut pas
+   mélanger.
 
-   • **La comparaison ignore les accents.** Taper « é » demande un appui long sur
-     un clavier Android — un geste fin, hors de propos pour un jeu qui ne
-     travaille pas la frappe. Un enfant qui écrit ECOLE a trouvé le mot.
-   • **La grille affiche quand même la lettre accentuée de la solution.** Dès que
-     la lettre tapée est la bonne à l'accent près, c'est la forme de la solution
-     qui est rangée dans la case. L'exposition à la forme correcte est le seul
-     bénéfice de langue honnête de ce jeu, et il serait perdu si la grille se
-     finissait en « ECOLE ». Ce n'est pas un indice au sens du critère 44 : rien
-     n'est révélé qui ne soit déjà trouvé, la lettre était juste avant de
-     s'habiller.
+   • **La comparaison ignore les accents** (`plierLettre`). Taper « é » demande un
+     appui long sur un clavier Android — un geste fin, hors de propos pour un jeu
+     qui ne travaille pas la frappe. Un enfant qui écrit ECOLE a trouvé le mot.
+   • **Le modèle range la lettre TAPÉE**, telle quelle (`ecrire`, `lettreEn`).
+   • **La forme accentuée s'affiche quand le MOT est juste**, et pas avant
+     (`lettreAffichee`). Habiller la case dès que la LETTRE est bonne dirait à
+     l'enfant, lettre par lettre, qu'il a raison — ce que le critère 26 refuse —
+     et le dirait seulement sur les mots accentués, donc de façon partielle et
+     indétectable. Une fois le mot trouvé, l'accent n'apprend plus rien de la
+     justesse et ne laisse que l'exposition à la forme correcte, qui est le seul
+     bénéfice de langue de ce jeu.
 
    Ce que ça pèse, mesuré sur la banque : 57 mots sur 231 portent un accent
    (â ç è é ê ô), et 123 grilles sur 200 en contiennent au moins un. Ni un cas
@@ -198,18 +200,10 @@ export function motsSur(
 	return out;
 }
 
-/** La lettre que la SOLUTION réclame dans cette case, ou `null` hors mot. Les
-    croisements d'une grille servie s'accordent (critère 16), donc le premier mot
-    qui traverse la case suffit à la dire. */
-function lettreAttendue(p: PartieMotsCroises, ligne: number, colonne: number): string | null {
-	const [premier] = motsSur(p.motif, ligne, colonne);
-	if (!premier) return null;
-	return lettresDe(p.solution[premier.emplacement] ?? '')[premier.rang] ?? null;
-}
-
 /* ---------- Lire et écrire ---------- */
 
-/** La lettre posée dans cette case, ou `null` si elle est vide. */
+/** La lettre posée dans cette case, ou `null` si elle est vide. C'est ce que
+    l'ENFANT a tapé, jamais ce qu'on attendait de lui. */
 export function lettreEn(p: PartieMotsCroises, ligne: number, colonne: number): string | null {
 	return p.lettres[cleCase(ligne, colonne)] ?? null;
 }
@@ -232,14 +226,13 @@ export function ecrire(
 ): PartieMotsCroises {
 	if (motsSur(p.motif, ligne, colonne).length === 0) return p;
 	if (!estLettre(lettre)) return p;
-	/* L'accent de la SOLUTION l'emporte dès que la lettre est la bonne à l'accent
-	   près : « e » tapé dans une case qui attend « é » range « é ». Voir l'en-tête
-	   pour les deux moitiés de cette décision. */
-	const attendue = lettreAttendue(p, ligne, colonne);
-	const tapee = bas(lettre);
-	const posee =
-		attendue !== null && plierLettre(tapee) === plierLettre(attendue) ? attendue : tapee;
-	return { ...p, lettres: { ...p.lettres, [cleCase(ligne, colonne)]: posee } };
+	/* La lettre TAPÉE, telle quelle — seule la casse est ramenée à celle du
+	   vivier. Le modèle range ce que l'enfant a écrit, jamais ce qu'on attendait de
+	   lui : y substituer la lettre de la solution habillerait la case de son accent
+	   à l'instant où elle devient juste, donc lui dirait LETTRE PAR LETTRE qu'il a
+	   raison (critère 26). L'accent, lui, s'affiche quand le MOT est trouvé — voir
+	   `lettreAffichee`. */
+	return { ...p, lettres: { ...p.lettres, [cleCase(ligne, colonne)]: bas(lettre) } };
 }
 
 /** Vide une case. Sans effet sur une case déjà vide ou hors grille. */
@@ -274,6 +267,40 @@ export function etatMot(p: PartieMotsCroises, emplacement: number): EtatMot {
 	const attendues = lettresDe(p.solution[emplacement] ?? '');
 	const juste = posees.every((l, k) => plierLettre(l ?? '') === plierLettre(attendues[k] ?? ''));
 	return juste ? 'juste' : 'faux';
+}
+
+/** La lettre à MONTRER dans cette case — celle que l'enfant a tapée, sauf si un
+    mot qui traverse la case est TROUVÉ : sa graphie prend alors le dessus, accent
+    compris.
+
+    C'est la deuxième moitié de la décision sur les accents, et le moment compte.
+    L'accent apparaît quand le MOT est juste, jamais quand la lettre l'est : sinon
+    la case s'habillerait à l'instant précis où l'enfant tape la bonne lettre, ce
+    qui est un retour lettre par lettre (critère 26) — et un retour PARTIEL de
+    surcroît, puisqu'il ne se produirait que sur les 57 mots accentués de la
+    banque. Un signal qui ne se déclenche qu'une fois sur quatre, sans que
+    personne puisse le savoir, est pire que pas de signal du tout.
+
+    Une fois le mot trouvé, en revanche, l'enfant n'apprend plus rien de sa
+    justesse : elle est déjà dite par le mot entier. Ne reste que l'exposition à
+    la forme correcte, qui est le seul bénéfice de langue de ce jeu — et il serait
+    perdu si la grille finissait en « ECOLE ».
+
+    À un croisement, un seul des deux mots suffit à habiller la case : les deux
+    réclament la même lettre (critère 16), donc il n'y a rien à arbitrer. */
+export function lettreAffichee(
+	p: PartieMotsCroises,
+	ligne: number,
+	colonne: number,
+): string | null {
+	const tapee = lettreEn(p, ligne, colonne);
+	if (tapee === null) return null;
+	for (const { emplacement, rang } of motsSur(p.motif, ligne, colonne)) {
+		if (etatMot(p, emplacement) !== 'juste') continue;
+		const attendue = lettresDe(p.solution[emplacement] ?? '')[rang];
+		if (attendue !== undefined) return attendue;
+	}
+	return tapee;
 }
 
 /** Le mot est-il COMPLET, juste ou faux ? La question que se pose l'effacement :

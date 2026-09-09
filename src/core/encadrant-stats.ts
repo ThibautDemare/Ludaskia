@@ -1760,7 +1760,8 @@ export interface GroupeRevision {
 	label: string;
 	subject: SubjectId;
 	entrees: EntreeRevision[]; // triées par urgence (dues d'abord, acquises en fin)
-	enRotation: number; // entrées non acquises
+	enRotation: number; // entrées non acquises ET démarrées
+	enAttente: number; // entrées dont le compteur d'espacement n'a pas démarré (#690)
 	acquises: number;
 	dues: number; // non acquises et échues (aujourd'hui ou en retard)
 }
@@ -1946,6 +1947,7 @@ export function revisionProfil(profile: Profile, now: number): RecapRevision {
 			subject: cat.subject,
 			entrees: es,
 			enRotation: es.filter((e) => !e.acquis && !e.enAttente).length,
+			enAttente: es.filter((e) => e.enAttente).length,
 			acquises: es.filter((e) => e.acquis).length,
 			dues: es.filter((e) => e.du).length,
 		});

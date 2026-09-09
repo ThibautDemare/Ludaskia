@@ -939,6 +939,32 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (carte d'accueil, tuile de séance, rappel de navigation) — **`progress.ts:countDusSeance`**
   — inclut cette dose depuis #232, pour rester d'accord avec ce que la séance sert
   vraiment.
+  **Rendez-vous servi TRÈS en retard (#688)** : `avancerEtat` fait deux exceptions à
+  l'escalier ci-dessus, réservées à un retard réel d'au moins `REVISION_RETARD_FACTEUR`
+  (2) fois l'intervalle du palier — mesuré sur un profil réel (retard médian de 10 fois
+  l'intervalle du palier, 148 des 233 éléments en rotation bloqués aux paliers 0 et 1).
+  Une **réussite** monte alors au palier que le délai réellement écoulé DÉMONTRE (le plus
+  haut palier dont l'intervalle a été tenu en entier, fonction privée `palierDemontre`)
+  plutôt que d'un seul cran, plafonné à `REVISION_CREDIT_PALIER_MAX` (palier 3) — le
+  plafond borne le CRÉDIT, jamais l'avancement normal : un palier 3 réussi tardivement
+  monte quand même au palier 4. Aucun crédit sans mesure antérieure (`dernierTest` nul) :
+  une leçon « vue en classe » puis réussie à son premier passage n'a rien démontré. Un
+  **échec** servi aussi tard CONSERVE son palier au lieu de reculer (l'échéance est
+  simplement reposée à l'intervalle du palier conservé) — imputer à l'enfant un retard qui
+  vient de la file n'aurait aucun sens ; un échec à l'heure ou en retard modéré recule
+  toujours d'un cran, comme avant. Mécanisme totalement INERTE sur une file saine : rien ne
+  change sans une correction réelle (aucune migration, rien au chargement). Le plancher
+  temporel entre l'entrée en rotation et l'ancre reste de **137 jours sans échec** malgré
+  le crédit — l'escalier est SUR-ADDITIF (chaque intervalle dépasse la somme des deux
+  précédents), donc attendre pour se faire créditer un cran coûte toujours plus cher que
+  le gagner en deux rendez-vous à l'heure ; propriété vérifiée par exploration EXHAUSTIVE
+  (mémoïsée) des chemins de réussite dans `tests/revision-retard.test.ts`, pas recalculée
+  à la main sur `REVISION_INTERVALLES`. Cette phrase est l'un des cinq endroits tenus par
+  le gate du plancher (cf. [Tests](tests.md)). **Rejet écrit** : la fonction privée `intervalleDe` (le clamp
+  d'index sur `REVISION_INTERVALLES` qu'utilise le crédit, en millisecondes brutes) et
+  `libellePalier` (`encadrant-stats.ts`, ci-dessous — même clamp, pour un libellé humain)
+  calculent le même bornage sans le partager : usages distincts (durée brute vs texte
+  affiché), non-factorisation délibérée, dette mineure assumée.
 - **`revision-select.ts`** — sélection des éléments **dus** (mots + leçons),
   **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`) ;
   `prochaineEcheance`/`aDesRevisions` alimentent l'état « rien à réviser » de

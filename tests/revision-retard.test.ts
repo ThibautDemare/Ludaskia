@@ -551,6 +551,7 @@ describe('critères 8 et 9 — le plancher temporel entre l’entrée en rotatio
 		const fichiers = [
 			'src/core/rewards.ts',
 			'src/core/progress.ts',
+			'docs/architecture/core.md',
 			'docs/architecture/gamification.md',
 			'docs/architecture/conventions-redaction.md',
 		];

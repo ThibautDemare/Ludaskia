@@ -39,3 +39,12 @@ défaut et le préfixe actif. Le **rendu** n'a plus d'état de module à réinit
   annonce les classes disponibles (`educationalLevel`) — `tests/seo-decouvrabilite.test.ts`
   (#631) les compare à `availableLevels(getAllLessons())` et échoue si le balisage
   n'est pas mis à jour ; voir `docs/architecture/build-et-deploiement.md`.
+- **Prouver un extremum de trajectoire (plancher, plafond)** : pour un invariant du
+  type « aucun chemin ne fait mieux/pire que N », ne pas dériver un calcul qui
+  recopierait la donnée (par exemple une somme des intervalles de l'escalier) —
+  explorer EXHAUSTIVEMENT les chemins possibles, avec **mémoïsation**, et garder le
+  meilleur trouvé. Voir `plancherAncre()` (`tests/revision-retard.test.ts`, #688) :
+  bornée par une limite d'exploration (`LIMITE_EXPLORATION`, en jours), mémoïsée par
+  état visité, avec un pas d'un jour justifié en commentaire (tous les intervalles de
+  l'escalier de révision sont des multiples entiers de `JOUR`) plutôt que posé sans
+  raison.

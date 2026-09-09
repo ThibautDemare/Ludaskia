@@ -8,7 +8,18 @@ import { getAllLessons, getLessonById } from './catalog';
 import type { SchoolLevel } from './catalog';
 import { LEVEL_ORDER, niveauInferieurImmediat } from './levels';
 import { niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
-import { etatNeuf, avancerEtat, estAcquis } from './revision';
+import {
+	JOUR,
+	etatNeuf,
+	etatHorsRotation,
+	estHorsRotation,
+	avancerEtat,
+	estAcquis,
+	budgetEntreesRotation,
+	REVISION_FENETRE_ENTREES,
+	REVISION_ATTENTE_MAX,
+} from './revision';
+import { ORTHO_KEY } from './orthographe/store';
 import { countDue } from './revision-select';
 import type { LeconBasNiveau } from './revision-select';
 import type { EtatRevision, OrthoState } from './orthographe/types';
@@ -648,17 +659,30 @@ function saveLessonRevisions(r: Record<string, EtatRevision>) {
 }
 /* Entrée en rotation à la première rencontre (1er re-test dès J+1), sans
    rendre la leçon due immédiatement. */
+/* Entrée en rotation par RENCONTRE RÉELLE : elle entre immédiatement, quel que soit l'état
+   du budget hebdomadaire (#690, critère 5), et sort de la file d'attente si elle y était.
+   Le test porte sur `estHorsRotation` et non sur l'absence de clé : depuis #690 une leçon
+   déclarée existe déjà, différée — un simple `!all[k]` la laisserait dormir pour toujours.
+   Un état DÉJÀ AVANCÉ n'est jamais réécrit : rejouer une leçon ne remet pas son escalier
+   au palier 0. */
 export function enterLessonsRevision(lessonIds: string[], now: number) {
 	const all = loadLessonRevisionsRaw();
+	const file = fileActive();
 	let changed = false;
+	let fileChangee = false;
 	for (const id of lessonIds) {
 		const k = nsKey(id, niveauStockage(id));
-		if (!all[k]) {
+		if (!all[k] || estHorsRotation(all[k])) {
 			all[k] = etatNeuf(now);
 			changed = true;
 		}
+		if (file.attente[k] != null) {
+			delete file.attente[k];
+			fileChangee = true;
+		}
 	}
 	if (changed) saveLessonRevisions(all);
+	if (fileChangee) saveFileActive(file, now);
 }
 /* Reprise : injecte en rotation les leçons déjà rencontrées (stats présentes)
    mais jamais entrées en révision espacée — activité antérieure à l'arrivée du
@@ -696,33 +720,187 @@ export function countDusSeance(ortho: OrthoState, now: number, plafond: number):
 function revisionsFor(uuid: string): Record<string, EtatRevision> {
 	return lsGetRaw(uuid + '/' + LESSON_REVISION_KEY, {}) as Record<string, EtatRevision>;
 }
-export function enterLessonsRevisionFor(uuid: string, cles: string[], now: number): void {
+
+/* ---------- File d'attente d'entrée en rotation (#690) ----------
+   Deux informations que rien ne portait, et sans lesquelles le budget hebdomadaire est
+   incalculable :
+
+   - `attente` : la DATE de mise en attente de chaque élément différé. `VU_AILLEURS_KEY`
+     ne stocke qu'un booléen par clé, et `EtatRevision` n'a pas de date d'entrée en
+     rotation ; on pourrait la déduire d'un `etatNeuf` (`prochaineRevision - J+1`), mais
+     `avancerEtat` l'écrase dès le premier re-test — qui tombe à J+1, donc DANS la fenêtre
+     de 7 jours que le budget doit mesurer.
+   - `promues` : les horodatages des déclarations effectivement entrées. Les rencontres
+     réelles, elles, sont déjà datées ailleurs (`franchissements.atelier` d'un mot,
+     `LESSON_FIRST_SEEN_KEY` d'une leçon) et n'ont donc rien à journaliser ici.
+
+   Journal BORNÉ, sur le modèle d'`ACTIVITY_KEY` : la fenêtre de 7 jours suffit au calcul,
+   le mois gardé laisse de quoi constater le comportement de la file sans croître. */
+export const REVISION_FILE_KEY = 'ludaskia_revisionFile';
+const REVISION_FILE_HISTORIQUE = 30 * JOUR;
+const REVISION_FILE_MAX = 200;
+interface FileEntreeRotation {
+	/** Clé namespacée → date de mise en attente. */
+	attente: Record<string, number>;
+	/** Horodatages des déclarations promues (budget de la fenêtre glissante). */
+	promues: number[];
+}
+/* Lecture DÉFENSIVE : la clé traverse l'export/import, donc tout y est possible. */
+function normaliserFile(brut: unknown): FileEntreeRotation {
+	const o = (brut ?? {}) as Partial<FileEntreeRotation>;
+	const attente: Record<string, number> = {};
+	if (o.attente && typeof o.attente === 'object') {
+		for (const k in o.attente) {
+			const t = o.attente[k];
+			if (Number.isFinite(t)) attente[k] = t;
+		}
+	}
+	const promues = Array.isArray(o.promues) ? o.promues.filter((t) => Number.isFinite(t)) : [];
+	return { attente, promues };
+}
+function fileFor(uuid: string): FileEntreeRotation {
+	return normaliserFile(lsGetRaw(uuid + '/' + REVISION_FILE_KEY, null));
+}
+function saveFileFor(uuid: string, file: FileEntreeRotation, now?: number): void {
+	const promues = (
+		now == null ? file.promues : file.promues.filter((t) => t > now - REVISION_FILE_HISTORIQUE)
+	).slice(-REVISION_FILE_MAX);
+	lsSetRaw(uuid + '/' + REVISION_FILE_KEY, JSON.stringify({ attente: file.attente, promues }));
+}
+/* Mêmes données pour le profil ACTIF : `lsGet`/`lsSet` appliquent son préfixe. */
+function fileActive(): FileEntreeRotation {
+	return normaliserFile(lsGet(REVISION_FILE_KEY, null));
+}
+function saveFileActive(file: FileEntreeRotation, now: number): void {
+	const promues = file.promues
+		.filter((t) => t > now - REVISION_FILE_HISTORIQUE)
+		.slice(-REVISION_FILE_MAX);
+	lsSet(REVISION_FILE_KEY, { attente: file.attente, promues });
+}
+
+/* Entrées en rotation par RENCONTRE RÉELLE dans la fenêtre, toutes sources confondues :
+   mots découverts à l'atelier et leçons jouées pour la première fois. Elles consomment le
+   budget (critère 4) sans jamais être différées par lui (critère 5) — c'est leur J+1 à
+   chaud qui verrouille la trace, et le rater reviendrait à annuler la séance
+   d'apprentissage initiale. */
+function rencontresReellesFenetre(uuid: string, debut: number, now: number): number {
+	const dans = (t: unknown) => Number.isFinite(t) && (t as number) > debut && (t as number) <= now;
+	let n = 0;
+	const seen = lsGetRaw(uuid + '/' + LESSON_FIRST_SEEN_KEY, {}) as Record<string, number>;
+	for (const k in seen) if (dans(seen[k])) n++;
+	const ortho = lsGetRaw(uuid + '/' + ORTHO_KEY, null) as OrthoState | null;
+	if (ortho?.banque && typeof ortho.banque === 'object') {
+		for (const id in ortho.banque) if (dans(ortho.banque[id]?.franchissements?.atelier)) n++;
+	}
+	return n;
+}
+
+/* Fait entrer en rotation ce que le budget de la semaine permet (#690). Renvoie le nombre
+   d'éléments promus. Appelée à l'activation d'un profil, jamais au montage d'un écran :
+   l'invariant « annoncé = proposé » (#478) interdit que la carte d'accueil annonce zéro dû
+   et qu'une séance en révèle ensuite.
+
+   Trois niveaux, dans cet ordre :
+   1. les éléments qui attendent depuis plus de `REVISION_ATTENTE_MAX`, par ancienneté ;
+   2. les autres déclarations, même ordre — les deux sur le reliquat de budget ;
+   3. le SLOT RÉSERVÉ : si la fenêtre n'a laissé passer AUCUNE déclaration et qu'un élément
+      attend depuis plus de `REVISION_ATTENTE_MAX`, il entre quand même.
+
+   Le niveau 3 est ce qui rend la borne du critère 10 finie : sans lui, un enfant qui
+   découvre plus de mots par semaine que le budget garderait un reliquat nul en permanence,
+   et son stock déclaré n'entrerait JAMAIS — c'est le cas d'école mesuré (11 mots par
+   semaine pour un budget de 8). C'est aussi ce qui rend le seuil des 4 semaines observable :
+   le niveau 2 étant déjà un premier arrivé, premier servi, rien d'autre ne le distinguerait.
+   Mais c'est un PLANCHER, pas une allocation — il ne s'ouvre que si le niveau 1 et le
+   niveau 2 n'ont rien promu et que la fenêtre est vide de déclarations, donc la charge
+   d'une semaine ne dépasse jamais `budget + 1`. */
+export function promouvoirEntreesEnAttente(uuid: string, now: number, plafond: number): number {
+	const file = fileFor(uuid);
+	const cles = Object.keys(file.attente);
+	if (cles.length === 0) return 0;
 	const all = revisionsFor(uuid);
+	const debut = now - REVISION_FENETRE_ENTREES;
+	/* Un élément sorti de la file par une rencontre réelle a déjà été retiré ; on reste
+	   défensif, une donnée importée pouvant contredire les deux cartes. */
+	const candidats = cles
+		.filter((k) => estHorsRotation(all[k]))
+		.sort((a, b) => file.attente[a] - file.attente[b] || (a < b ? -1 : 1));
+	const ages = candidats.filter((k) => now - file.attente[k] > REVISION_ATTENTE_MAX);
+	const jeunes = candidats.filter((k) => now - file.attente[k] <= REVISION_ATTENTE_MAX);
+
+	const promuesFenetre = file.promues.filter((t) => t > debut && t <= now).length;
+	const consomme = promuesFenetre + rencontresReellesFenetre(uuid, debut, now);
+	let reliquat = Math.max(0, budgetEntreesRotation(plafond) - consomme);
+
+	const promus: string[] = [];
+	for (const k of [...ages, ...jeunes]) {
+		if (reliquat <= 0) break;
+		promus.push(k);
+		reliquat--;
+	}
+	if (promus.length === 0 && promuesFenetre === 0 && ages.length > 0) promus.push(ages[0]);
+	if (promus.length === 0) return 0;
+
+	for (const k of promus) {
+		all[k] = etatNeuf(now); // jamais rétrodaté : le compteur démarre à l'entrée réelle
+		delete file.attente[k];
+		file.promues.push(now);
+	}
+	lsSetRaw(uuid + '/' + LESSON_REVISION_KEY, JSON.stringify(all));
+	saveFileFor(uuid, file, now);
+	return promus.length;
+}
+/* Déclaration « vu en classe » (#478) : la leçon est mise EN ATTENTE, pas en rotation
+   (#690). Elle existe, mais son compteur d'espacement ne démarre pas — exactement l'état
+   d'un mot d'orthographe avant son atelier (`etatHorsRotation`, #641). Elle démarrera à sa
+   première rencontre réelle, ou par la passe de promotion (`promouvoirEntreesEnAttente`).
+
+   Une leçon DÉJÀ en rotation n'est jamais renvoyée en arrière : déclarer ce qui a déjà été
+   joué ne défait pas le progrès. Et l'ancienneté dans la file ne se réarme pas : re-déclarer
+   ne fait pas reculer dans l'ordre d'entrée. */
+export function mettreEnAttenteFor(uuid: string, cles: string[], now: number): void {
+	const all = revisionsFor(uuid);
+	const file = fileFor(uuid);
 	let changed = false;
 	for (const k of cles) {
 		if (!all[k]) {
-			all[k] = etatNeuf(now);
+			all[k] = etatHorsRotation();
+			changed = true;
+		}
+		if (estHorsRotation(all[k]) && file.attente[k] == null) {
+			file.attente[k] = now;
 			changed = true;
 		}
 	}
-	if (changed) lsSetRaw(uuid + '/' + LESSON_REVISION_KEY, JSON.stringify(all));
+	if (!changed) return;
+	lsSetRaw(uuid + '/' + LESSON_REVISION_KEY, JSON.stringify(all));
+	saveFileFor(uuid, file, now);
 }
 /* Annulation d'une déclaration « vu en classe » : retire l'état SR des clés données,
    SAUF s'il vient d'un vrai passage dans l'appli — leçon déjà travaillée (stat) ou
    état déjà re-testé au moins une fois (`dernierTest`). On ne détruit jamais un
-   progrès de révision réel ; on ne défait que ce que la déclaration avait créé. */
+   progrès de révision réel ; on ne défait que ce que la déclaration avait créé.
+   La sortie de la file d'attente, elle, est INCONDITIONNELLE (#690) : une déclaration
+   annulée ne doit jamais être promue plus tard, y compris quand son état a survécu. */
 export function retirerRevisionsDeclareesFor(uuid: string, cles: string[]): void {
 	const all = revisionsFor(uuid);
 	const stats = lsGetRaw(uuid + '/' + LESSON_STATS_KEY, {}) as Record<string, LessonStat>;
+	const file = fileFor(uuid);
 	let changed = false;
 	for (const k of cles) {
+		if (file.attente[k] != null) {
+			delete file.attente[k];
+			changed = true;
+		}
 		const e = all[k];
 		if (!e || e.dernierTest != null) continue; // absent, ou déjà révisé pour de vrai
 		if ((stats[k]?.questions ?? 0) > 0) continue; // déjà travaillée dans l'appli
 		delete all[k];
 		changed = true;
 	}
-	if (changed) lsSetRaw(uuid + '/' + LESSON_REVISION_KEY, JSON.stringify(all));
+	if (!changed) return;
+	lsSetRaw(uuid + '/' + LESSON_REVISION_KEY, JSON.stringify(all));
+	saveFileFor(uuid, file); // pas de `now` ici : l'annulation n'est pas datée, on n'élague pas
 }
 
 /* ---------- Avancement / report de la leçon du jour (#485) ----------

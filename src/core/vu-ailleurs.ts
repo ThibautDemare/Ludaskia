@@ -29,7 +29,7 @@ import { lsGet, lsGetRaw, lsSetRaw } from './storage';
 import { touchProfile } from './profiles';
 import {
 	scopeActif,
-	enterLessonsRevisionFor,
+	mettreEnAttenteFor,
 	retirerRevisionsDeclareesFor,
 	LESSON_FIRST_SEEN_KEY,
 } from './progress';
@@ -71,9 +71,12 @@ export function loadVuAilleurs(): Record<string, true> {
    Idempotent : seules les entrées qui CHANGENT réellement d'état propagent leur effet
    sur la révision espacée — décocher une leçon jamais déclarée ne doit pas toucher un
    état SR issu d'un vrai passage dans l'appli.
-   Effet sur la révision espacée (#478) : entrée immédiate en rotation au comportement
-   standard (1er re-test à J+1) ; à l'annulation, on ne retire que ce que la déclaration
-   avait créé (cf. `retirerRevisionsDeclareesFor`). */
+   Effet sur la révision espacée : la leçon est mise EN ATTENTE d'entrée en rotation
+   (#690, `mettreEnAttenteFor`), et non plus en rotation immédiate. Déclarer un lot de
+   cent leçons ne pose donc plus cent rendez-vous le lendemain ; c'est la première
+   rencontre réelle, ou la passe de promotion, qui démarre le compteur d'espacement.
+   À l'annulation, on ne retire que ce que la déclaration avait créé
+   (cf. `retirerRevisionsDeclareesFor`). */
 export function declarerVuAilleursFor(
 	uuid: string,
 	entrees: LeconNiveau[],
@@ -99,7 +102,7 @@ export function declarerVuAilleursFor(
 	// le profil comme modifié, sinon une session où l'adulte ne fait QUE déclarer des
 	// leçons perdrait à la fusion par récence de l'export/import (même geste que #440).
 	touchProfile(uuid);
-	if (vu) enterLessonsRevisionFor(uuid, changees, now);
+	if (vu) mettreEnAttenteFor(uuid, changees, now);
 	else retirerRevisionsDeclareesFor(uuid, changees);
 }
 

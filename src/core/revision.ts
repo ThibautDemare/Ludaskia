@@ -72,6 +72,44 @@ export function plafondBasNiveau(plafond: number): number {
 	return REVISION_BAS_NIVEAU_MAX;
 }
 
+/* ---------- Borner l'ENTRÉE en rotation (#690) ----------
+   Le gate hors rotation (#641, plus bas) empêche un élément d'arriver « dû » sans avoir
+   jamais été rencontré, mais rien ne bornait le NOMBRE d'éléments démarrant leur cascade
+   J+1 / J+3 la même semaine. Mesuré sur un profil réel au 8 septembre 2026 : 101 leçons
+   déclarées « vues en classe » entrées ensemble, puis environ 11 mots découverts par
+   semaine, pour une capacité d'absorption d'environ 8 par semaine au réglage maximal. Le
+   profil n'est jamais sorti de la congestion qui a suivi.
+
+   Le budget est DÉRIVÉ du plafond de séance, pas réglé à part : même principe que
+   `plafondBasNiveau` ci-dessus, une dose plutôt qu'un curseur de plus dans l'espace
+   encadrant, que personne ne saurait régler. Plafond → budget : 2 / 3 / 3 / 4 / 5 / 7 / 8
+   sur les sept paliers de `REVISION_PLAFOND_CHOIX`.
+
+   Le plancher de 2 tient même sur un plafond dégénéré (donnée importée) : le bornage de
+   `getRevisionPlafond` se fait à la lecture, et un budget nul figerait la file pour
+   toujours. */
+export const REVISION_BUDGET_MIN = 2;
+export function budgetEntreesRotation(plafond: number): number {
+	if (!Number.isFinite(plafond)) return REVISION_BUDGET_MIN;
+	return Math.max(REVISION_BUDGET_MIN, Math.round(plafond / 3));
+}
+
+/* Fenêtre du budget : 7 jours GLISSANTS, sans report du déficit d'une semaine sur
+   l'autre. Reporter le dépassement rendrait le blocage cumulatif, et un élément différé
+   pourrait alors ne jamais entrer. */
+export const REVISION_FENETRE_ENTREES = 7 * JOUR;
+
+/* Au-delà de cette attente, un élément différé passe devant les autres déclarations et
+   ouvre le « slot réservé » (cf. `promouvoirEntreesEnAttente`, progress.ts) : au moins une
+   entrée par fenêtre lui est garantie, même si les rencontres réelles ont déjà épuisé le
+   budget. Sans ce plancher, un enfant qui découvre plus de mots par semaine que le budget
+   bloquerait indéfiniment tout son stock déclaré — c'est le cas d'école mesuré (11 mots
+   par semaine pour un budget de 8), et le budget n'aurait plus de borne annonçable.
+   Le slot est un PLANCHER, jamais une allocation : il ne s'ouvre que si la fenêtre n'a rien
+   laissé passer côté déclarations, donc la charge d'une semaine ne dépasse jamais
+   `budget + 1`. */
+export const REVISION_ATTENTE_MAX = 28 * JOUR;
+
 /* Paramètres de la sélection équilibrée d'une session (algo dans
    `selectionEquilibree`, revision-select.ts) : une source surreprésentée — l'ortho,
    où chaque mot compte pour un élément — ne doit pas rafler toute la session. */

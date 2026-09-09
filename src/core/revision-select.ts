@@ -7,6 +7,7 @@
    ============================================================ */
 import {
 	estDu,
+	estHorsRotation,
 	PALIER_ACQUIS,
 	REVISION_PLAFOND,
 	REVISION_SEUIL_SOURCE_VIDABLE,
@@ -207,7 +208,13 @@ export function aDesRevisions(
 	for (const id in ortho.banque) {
 		if (motEnRevision(ortho.banque[id]) && ortho.banque[id].revision) return true;
 	}
-	for (const id in lessonRevisions) if (getLessonById(id)) return true;
+	/* `estHorsRotation` et non la simple présence de la clé : depuis #690 une leçon déclarée
+	   « vue en classe » existe AVANT d'entrer en rotation. La compter ici ferait dire à
+	   l'accueil « Bravo, tu as tout révisé ! » à un enfant qui n'a encore rien joué — le
+	   pendant, côté leçons, du filtre `motEnRevision` que les mots ont déjà. */
+	for (const id in lessonRevisions) {
+		if (!estHorsRotation(lessonRevisions[id]) && getLessonById(id)) return true;
+	}
 	// Un profil dont il ne reste QUE des notions du niveau inférieur en rotation n'est pas
 	// un profil neuf : il a tout révisé, ce qui n'est pas le même message (#232).
 	for (const e of bas) if (getLessonById(e.lessonId)) return true;

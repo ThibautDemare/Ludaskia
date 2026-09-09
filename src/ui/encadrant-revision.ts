@@ -85,8 +85,42 @@ function entreeHTML(e: EntreeRevision, o: RenduEntree = {}): SafeHtml {
     </li>`;
 }
 
-/* Résumé chiffré d'un groupe (dénombrement, jamais de pourcentage). */
-function resumeGroupe(g: GroupeRevision): string {
+/* Synthèse chiffrée du bloc entier. Aucun segment NUL n'est affiché — même règle que
+   `resumeGroupe` juste en dessous, qui l'appliquait déjà de son côté. La divergence entre
+   les deux ne se voyait jamais avant #690 : à `total > 0`, `enRotation` ne pouvait valoir
+   zéro que si tout était acquis. Depuis, le scénario même qui motive la fonctionnalité —
+   cent leçons qu'on vient de déclarer — ouvrait la phrase sur « 0 entrée en révision »,
+   donc sur un compte nul avant la seule information utile.
+   `total === enAttente + enRotation + acquises` et l'appelant écarte déjà `total === 0` :
+   la phrase n'est donc jamais réduite à son point final. Pure et exportée pour être tenue
+   par un test (remontée `redacteur-contenu-francais`). */
+export function syntheseRevision(recap: RecapRevision): string {
+	const parts: string[] = [];
+	if (recap.enRotation > 0) {
+		parts.push(
+			`${recap.enRotation} entrée${recap.enRotation > 1 ? 's' : ''} en révision` +
+				(recap.dues > 0 ? `, dont ${recap.dues} à réviser` : ''),
+		);
+	}
+	if (recap.acquises > 0) {
+		parts.push(`${recap.acquises} déjà acquise${recap.acquises > 1 ? 's' : ''}`);
+	}
+	/* « en attente d'une première rencontre », et non « en attente » tout court : en français
+	   courant, « en attente » connote l'imminence (« en attente de livraison »), alors qu'ici
+	   l'élément peut attendre des semaines — le contresens exact que #690 doit éviter.
+	   Nommer ce qu'on attend lève l'ambiguïté, et « rencontre » couvre d'un seul mot la leçon
+	   travaillée comme l'atelier d'un mot, sans imposer d'accord de genre (un mot est
+	   masculin, une leçon féminine). */
+	if (recap.enAttente > 0) {
+		parts.push(`${recap.enAttente} en attente d'une première rencontre`);
+	}
+	return parts.join(' · ') + '.';
+}
+
+/* Résumé chiffré d'un groupe (dénombrement, jamais de pourcentage). Exportée pour la même
+   raison que `syntheseRevision` : elle applique la même règle d'omission des segments nuls,
+   et rien ne la tenait. */
+export function resumeGroupe(g: GroupeRevision): string {
 	const parts: string[] = [];
 	// « dont M à réviser » (et non un compte séparé) : les dues sont un SOUS-ENSEMBLE des
 	// entrées en révision — les juxtaposer laisserait croire à des comptes disjoints.
@@ -96,7 +130,11 @@ function resumeGroupe(g: GroupeRevision): string {
 	if (g.acquises > 0) parts.push(`${g.acquises} acquise${g.acquises > 1 ? 's' : ''}`);
 	// Une catégorie entièrement en attente (#690) afficherait sinon une ligne VIDE, alors
 	// qu'elle contient bien des entrées : le compte doit dire qu'elles n'ont pas démarré.
-	if (g.enAttente > 0) parts.push(`${g.enAttente} en attente`);
+	// « de rencontre » et pas « en attente » nu, pour la raison dite au-dessus de
+	// `syntheseRevision` : un résumé de catégorie se lit replié, sans la phrase de synthèse
+	// à proximité, donc il doit rester non ambigu tout seul. Forme courte : la largeur est
+	// comptée ici (cf. le passage en `wrap` de la bascule, plus bas).
+	if (g.enAttente > 0) parts.push(`${g.enAttente} en attente de rencontre`);
 	return parts.join(' · ');
 }
 
@@ -270,18 +308,7 @@ export function revisionHTML(consulte: Profile, now: number): SafeHtml {
 			{ val: 'palier', label: 'Par palier' },
 		],
 	});
-	const synthese =
-		`${recap.enRotation} entrée${recap.enRotation > 1 ? 's' : ''} en révision` +
-		(recap.dues > 0 ? `, dont ${recap.dues} à réviser` : '') +
-		(recap.acquises > 0
-			? ` · ${recap.acquises} déjà acquise${recap.acquises > 1 ? 's' : ''}`
-			: '') +
-		/* Compte de la file d'attente (#690) : ce qui est connu du profil mais dont le
-		   compteur d'espacement n'a pas démarré. Sans lui, un adulte qui vient de déclarer
-		   cent leçons ne verrait RIEN bouger et croirait sa déclaration perdue — alors
-		   qu'elle est seulement étalée dans le temps. */
-		(recap.enAttente > 0 ? ` · ${recap.enAttente} en attente d'une première rencontre` : '') +
-		'.';
+	const synthese = syntheseRevision(recap);
 	const corps =
 		vueRevision === 'urgence'
 			? vueUrgenceHTML(recap)

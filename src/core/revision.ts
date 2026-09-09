@@ -18,6 +18,9 @@
    Une réussite monte d'un cran ; un échec recule d'UN cran (pas à zéro).
    La phase rapprochée est sans pénalité : un élément non révisé à temps est
    simplement « en retard », jamais culpabilisant (cf. discussion #45).
+
+   Un rendez-vous servi TRÈS en retard fait exception aux deux règles ci-dessus
+   (#688) : voir `REVISION_RETARD_FACTEUR` et `avancerEtat` plus bas.
    ============================================================ */
 import type { EtatRevision } from './orthographe/types';
 
@@ -120,15 +123,109 @@ export function estAcquis(e: EtatRevision | undefined | null): boolean {
 	return !!e && e.palier >= PALIER_ACQUIS;
 }
 
-/* Fait évoluer l'état après une réponse : réussite → +1 cran (jusqu'à acquis,
-   qui sort de la rotation) ; échec → -1 cran (jamais en dessous de 0). */
+/* ---------- Le rendez-vous servi TRÈS en retard (#688) ----------
+   Quand la file de révision dépasse ce que l'enfant peut traiter, ses rendez-vous sont
+   servis très en retard, et l'escalier traitait jusqu'ici un test tardif exactement comme
+   un test à l'heure. Mesuré sur un profil réel au 8 septembre 2026 : retard médian de
+   20,5 jours, soit DIX fois l'intervalle du palier, et 148 des 233 éléments en rotation
+   bloqués aux paliers 0 et 1 (intervalles de 1 et 3 jours). Deux informations étaient
+   jetées à chaque passage :
+     - une réussite après 48 jours ne valait qu'un cran, alors que l'enfant venait de
+       démontrer 48 jours de rétention : le mot revenait dans 3 jours ;
+     - un échec après 48 jours coûtait un cran, comme un échec à l'heure. Or il est
+       imputable au retard de la file, pas à l'enfant : un rappel qui arrive après la
+       disparition de la trace ne mesure plus une compétence. L'élément redescendait et
+       rechargeait le BAS de l'escalier, là où un élément coûte 25 à 75 fois plus cher
+       qu'en haut — la congestion s'auto-entretenait.
+
+   Le retard réel d'un passage, et lui seul, déclenche les deux correctifs. Donc aucun
+   état ne change sans une correction (rien au chargement, aucune migration), et le
+   mécanisme est totalement INERTE sur une file saine.
+
+   SEUIL : le retard doit atteindre ce facteur fois l'intervalle du palier. En dessous, on
+   est dans la variance ordinaire d'un calendrier de 3 séances par semaine, qui ne prouve
+   rien sur la mémoire. */
+export const REVISION_RETARD_FACTEUR = 2;
+
+/* Plafond du saut de palier. Un crédit, même massif, ne mène jamais plus haut que le
+   palier 3 : il reste alors au moins trois réussites à des rendez-vous RÉELS
+   (16 + 35 + 75 jours) avant l'ancre. Le crédit ne peut donc pas ancrer à lui seul, et le
+   trophée #660 continue de constater ce qui a TENU.
+
+   Le second plafond du cadrage (« ni 3 crans d'un seul passage ») n'est pas codé : il est
+   DOMINÉ partout par celui-ci. Depuis le palier 0 les deux donnent 3 ; à partir du palier
+   1, le plafond de palier est strictement plus strict. En faire une branche serait du code
+   mort. */
+export const REVISION_CREDIT_PALIER_MAX = 3;
+
+/* Délai avant re-test du palier atteint (les paliers au-delà du dernier intervalle —
+   l'acquis — n'en ont pas leur propre). */
+function intervalleDe(palier: number): number {
+	return REVISION_INTERVALLES[Math.min(palier, REVISION_INTERVALLES.length - 1)];
+}
+
+/* Le rendez-vous a-t-il été servi assez tard pour que le retard soit imputable à la FILE
+   plutôt qu'à l'enfant ? Faux pour un élément qui n'a pas de rendez-vous du tout (hors
+   rotation, acquis) : il n'y a alors aucun retard à constater. */
+function serviTresEnRetard(e: EtatRevision, now: number): boolean {
+	if (e.prochaineRevision == null) return false;
+	return now - e.prochaineRevision >= REVISION_RETARD_FACTEUR * intervalleDe(e.palier);
+}
+
+/* Le plus HAUT palier dont l'intervalle a été tenu EN ENTIER pendant `ecoule` ; -1 si même
+   le premier ne l'a pas été.
+
+   C'est la lecture retenue (arbitrage du mainteneur) de « le palier correspondant au délai
+   réellement écoulé » : 10 jours tenus démontrent le palier 2 (7 jours), pas le palier 3
+   (16 jours). Le délai écoulé est une PREUVE de rétention ; créditer le palier suivant
+   extrapolerait au-delà de la mesure, et ferait sauter DEUX crans à un élément servi
+   6 jours en retard — exactement la variance qu'on vient de déclarer non probante.
+
+   Conséquence, éprouvée par exploration dans `tests/revision-retard.test.ts` : le crédit
+   ne raccourcit JAMAIS le chemin vers l'ancre, qui reste de 137 jours. L'escalier est
+   sur-additif (7 > 1+3, 16 > 3+7, 35 > 7+16, 75 > 16+35), donc attendre assez longtemps
+   pour se faire créditer un cran de plus coûte toujours plus de jours que de gagner ce
+   cran en deux rendez-vous servis à l'heure. Le crédit rattrape une information jetée, il
+   ne fabrique pas de progression. */
+function palierDemontre(ecoule: number): number {
+	let p = -1;
+	for (let i = 0; i < REVISION_INTERVALLES.length; i++) {
+		if (REVISION_INTERVALLES[i] <= ecoule) p = i;
+	}
+	return p;
+}
+
+function palierApresPassage(e: EtatRevision, reussi: boolean, now: number): number {
+	const tardif = serviTresEnRetard(e, now);
+	if (!reussi) {
+		/* Échec très tardif : l'élément CONSERVE son palier au lieu de reculer, et son
+		   échéance est simplement reposée à l'intervalle du palier conservé. Le non-débit ne
+		   s'applique jamais à un échec servi à l'heure ou en retard modéré : celui-là recule
+		   d'un cran comme avant, sans quoi une notion réellement fragile deviendrait
+		   indétectable. */
+		return tardif ? e.palier : Math.max(0, e.palier - 1);
+	}
+	const normal = Math.min(PALIER_ACQUIS, e.palier + 1);
+	/* Aucun crédit sans mesure antérieure : une leçon déclarée « vue en classe » il y a
+	   45 jours et réussie à son premier passage ne démontre aucune rétention — on ne sait
+	   pas ce que ces 45 jours ont contenu. Une PREMIÈRE mesure n'est pas une mesure de
+	   rétention. */
+	if (!tardif || e.dernierTest == null) return normal;
+	const credit = Math.min(REVISION_CREDIT_PALIER_MAX, palierDemontre(now - e.dernierTest));
+	/* Le plafond borne le CRÉDIT, jamais l'avancement normal : un palier 3 réussi
+	   tardivement monte au palier 4 comme avant, il ne stagne pas au plafond. */
+	return Math.max(normal, credit);
+}
+
+/* Fait évoluer l'état après une réponse : réussite → +1 cran (jusqu'à acquis, qui sort de
+   la rotation) ; échec → -1 cran (jamais en dessous de 0). Un rendez-vous servi très en
+   retard fait exception aux deux règles (#688, cf. `palierApresPassage`). */
 export function avancerEtat(e: EtatRevision, reussi: boolean, now: number): EtatRevision {
-	const palier = reussi ? Math.min(PALIER_ACQUIS, e.palier + 1) : Math.max(0, e.palier - 1);
+	const palier = palierApresPassage(e, reussi, now);
 	const acquis = palier >= PALIER_ACQUIS;
-	const delai = REVISION_INTERVALLES[Math.min(palier, REVISION_INTERVALLES.length - 1)];
 	return {
 		palier,
-		prochaineRevision: acquis ? null : now + delai,
+		prochaineRevision: acquis ? null : now + intervalleDe(palier),
 		reussites: e.reussites + (reussi ? 1 : 0),
 		dernierTest: now,
 	};

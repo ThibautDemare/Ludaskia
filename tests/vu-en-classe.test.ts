@@ -3,8 +3,11 @@
    ------------------------------------------------------------
    Attendus DÉRIVÉS de la spécification de l'issue, pas de l'implémentation :
    - carte DÉDIÉE `ludaskia_lessonVuAilleurs`, par UUID, clés `lessonId@niveau` ;
-   - déclarer = entrée en rotation de révision au comportement STANDARD d'entrée
-     (état neuf : palier 0, premier re-test à J+1 = +24 h — sémantique #45) ;
+   - déclarer = MISE EN ATTENTE de la révision espacée (#690) : la leçon est enregistrée
+     HORS ROTATION, sans aucune échéance ; son compteur d'espacement ne démarre qu'à la
+     première rencontre réelle, ou quand le budget d'entrée hebdomadaire lui ouvre un
+     créneau (l'entrée et le budget sont éprouvés dans `revision-entree-rotation.test.ts`
+     et `revision-budget-entree.test.ts`) ;
    - annuler ne détruit JAMAIS un état de révision issu d'un vrai passage ;
    - union « joué ∪ déclaré » UNIQUEMENT dans sprint-scope ;
    - aucun effet sur les compteurs de NOUVEAUTÉ (objectif « nouvelle leçon »,
@@ -12,6 +15,7 @@
    - cloisonnement strict par niveau scolaire.
    ============================================================ */
 import { beforeEach, describe, it, expect } from 'vitest';
+import { estDu } from '../src/core/revision';
 import {
 	VU_AILLEURS_KEY,
 	declarerVuAilleursFor,
@@ -90,6 +94,11 @@ function etatRevise(palier: number, now: number): EtatRevision {
 		reussites: palier,
 		dernierTest: now - JOUR,
 	};
+}
+/* État d'un élément MIS EN ATTENTE (#690) : il existe, mais son compteur d'espacement
+   n'a pas démarré — aucune échéance, aucun test. C'est ce que pose une déclaration. */
+function etatAttenteAttendu(): EtatRevision {
+	return { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null };
 }
 /* État NEUF (jamais re-testé), tel qu'une entrée en rotation le pose. */
 function etatNeufAttendu(now: number): EtatRevision {
@@ -181,32 +190,38 @@ describe('carte « vu en classe » : stockage dédié', () => {
 /* ============================================================
    2) Entrée en rotation de révision espacée
    ============================================================ */
-describe('déclaration → entrée en révision espacée', () => {
-	it('pose un état NEUF : palier 0, premier re-test le lendemain, jamais testé', () => {
+describe('déclaration → file d’attente de la révision espacée', () => {
+	it('met la leçon EN ATTENTE : aucune échéance, donc rien de dû du fait de la déclaration', () => {
 		const uuid = activeProfile().uuid;
 		declarerVuAilleursFor(uuid, [decl(CALC_B)], true, NOW);
 
 		const r = revisions(uuid);
 		expect(Object.keys(r)).toEqual([`${CALC_B}@ce2`]);
-		expect(r[`${CALC_B}@ce2`]).toEqual(etatNeufAttendu(NOW));
+		expect(r[`${CALC_B}@ce2`]).toEqual(etatAttenteAttendu());
 		// Pas dû immédiatement (sinon la déclaration remplirait la session du jour) :
-		// l'échéance est bien postérieure à l'instant de déclaration.
-		expect(r[`${CALC_B}@ce2`].prochaineRevision!).toBeGreaterThan(NOW);
+		// c'était l'EXIGENCE de ce test, et elle est désormais tenue plus fort qu'avant :
+		// une déclaration ne vaut plus preuve de DATE, donc rien n'est dû, ni le jour même,
+		// ni le lendemain, ni un mois plus tard (#690).
+		for (const t of [NOW, NOW + JOUR, NOW + 30 * JOUR]) {
+			expect(estDu(r[`${CALC_B}@ce2`], t), `t=${t}`).toBe(false);
+		}
 	});
 
-	it('un lot entier entre en rotation, chaque leçon à sa clé de niveau', () => {
+	it('un lot entier est mis en attente, chaque leçon à sa clé de niveau', () => {
 		const uuid = activeProfile().uuid;
 		declarerVuAilleursFor(uuid, [decl(CALC_A), decl(CALC_B), decl(BI, 'cm1')], true, NOW);
 		const r = revisions(uuid);
 		expect(Object.keys(r).sort()).toEqual([`${CALC_A}@ce2`, `${CALC_B}@ce2`, `${BI}@cm1`].sort());
-		expect(r[`${BI}@cm1`]).toEqual(etatNeufAttendu(NOW));
+		expect(r[`${BI}@cm1`]).toEqual(etatAttenteAttendu());
 	});
 
-	it('re-déclarer ne réarme PAS l’échéance déjà posée', () => {
+	it('re-déclarer ne change RIEN à l’état déjà posé (idempotence)', () => {
 		const uuid = activeProfile().uuid;
 		declarerVuAilleursFor(uuid, [decl(CALC_B)], true, NOW);
 		declarerVuAilleursFor(uuid, [decl(CALC_B)], true, NOW + 10 * JOUR);
-		expect(revisions(uuid)[`${CALC_B}@ce2`]).toEqual(etatNeufAttendu(NOW));
+		expect(revisions(uuid)[`${CALC_B}@ce2`]).toEqual(etatAttenteAttendu());
+		// Le pendant côté FILE (re-déclarer ne repousse pas l'ancienneté, donc n'ajourne pas
+		// l'entrée) est éprouvé dans `revision-entree-rotation.test.ts`.
 	});
 
 	it('ne réinitialise pas un état de révision déjà avancé', () => {
@@ -250,15 +265,19 @@ describe('annulation d’une déclaration : protection de la révision réelle',
 		expect(loadVuAilleursFor(uuid)).toEqual({}); // la déclaration, elle, est bien retirée
 	});
 
-	it('PROTECTION 2 — garde l’état d’une leçon travaillée dans l’appli (statistiques)', () => {
+	it('PROTECTION 2 — garde l’état d’une leçon dont les STATISTIQUES attestent un vrai passage', () => {
 		const uuid = activeProfile().uuid;
-		declarerVuAilleursFor(uuid, [decl(CALC_B)], true, NOW);
-		// L'enfant a joué la leçon depuis la déclaration : stats présentes, mais l'état SR
-		// n'a pas encore été re-testé (dernierTest null) → seule la stat le protège.
+		// Ce qui reste PROPRE à cette protection depuis #690 : des statistiques présentes SANS
+		// état de rotation, c'est-à-dire un profil importé dont les essais sont antérieurs à
+		// #45. L'état SR n'a jamais été re-testé (dernierTest null) → seule la stat le protège.
+		// Le cas COURANT (« déclarée puis jouée dans l'appli ») ne peut plus se monter à la
+		// main : un vrai passage écrit ses stats ET fait entrer la leçon en rotation. Il passe
+		// donc par `recordLessonStats` dans `revision-entree-rotation.test.ts` (critère 9).
 		ecrire(uuid, LESSON_STATS_KEY, { [`${CALC_B}@ce2`]: stat(8) });
+		declarerVuAilleursFor(uuid, [decl(CALC_B)], true, NOW);
 
 		declarerVuAilleursFor(uuid, [decl(CALC_B)], false, NOW + JOUR);
-		expect(revisions(uuid)[`${CALC_B}@ce2`]).toEqual(etatNeufAttendu(NOW));
+		expect(revisions(uuid)[`${CALC_B}@ce2`]).toEqual(etatAttenteAttendu());
 		expect(loadVuAilleursFor(uuid)).toEqual({});
 	});
 

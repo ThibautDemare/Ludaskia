@@ -1,0 +1,391 @@
+/* Plateau des mots croisés (#665). Rempli par le runner `src/ui/jeu-mots-croises.ts`.
+   Le cadre commun (titre, retour, plafond, étagère) est dans `jeux.scss` : cette
+   feuille n'habille QUE le bandeau de définition, la grille et la fin de partie.
+
+   ── Aucune valeur hexadécimale ici, et c'est une règle du dépôt ──────────────
+   Les couples de tokens sont tenus sur les six thèmes par
+   `tests/contraste-tokens.test.ts` ; une couleur écrite en dur y échapperait, et
+   c'est comme ça qu'un `--muted` sous AA a survécu des années (#576). Tous les
+   couples employés ici sont DÉJÀ dans cette table — `--ink` sur `--paper`, sur
+   `--track`, sur `--accent-soft` et sur `--warn-bg` ; `--warn` sur `--warn-bg`
+   pour la trame ; `--control-line` et `--accent` sur `--paper` pour les filets.
+   Aucun couple nouveau n'est introduit, donc rien à ajouter à la table.
+
+   ── La taille d'une case, qui est une contrainte et pas un goût ──────────────
+   Critère 36 : au moins 44 px sur un écran de 360. L'écran de jeu vit dans
+   `.home`, qui prend 20 px de marge de chaque côté, et une barre de défilement
+   peut manger 15 px de plus. Il reste 305 px, et rien ne les élargira : à six
+   colonnes (le maximum, tenu côté données) une case fait 50 px ; à sept elle
+   tomberait à 43,6 px, et aucune feuille de style ne rattraperait ça.
+
+   D'où l'absence totale de `gap` entre les cases : à cette largeur, la moindre
+   gouttière se paie en millimètres de doigt. Les filets sont des ombres
+   INTÉRIEURES, qui ne prennent aucune place, comme dans le sudoku et les mots
+   casés. Le plafond par case (`--mx-case-max`) empêche la grille de s'étirer
+   bêtement sur un écran large : au-delà, une case de 8 cm ne se lit pas mieux.
+
+   ── Le mot faux : deux canaux, et il ne s'éteint jamais ──────────────────────
+   Registre `--warn` (« ce mot est encore à trouver »), jamais `--ko`, réservé à
+   une réponse corrigée et DÉFINITIVEMENT fausse. La couleur est doublée par une
+   TRAME de hachures : c'est le canal qui survit à un œil deutan. La trame occupe
+   une bande au pied de la case, pas toute sa surface — les lettres se dessinent
+   par-dessus, et les lire est tout l'objet du jeu.
+
+   Rien n'est jamais dit lettre par lettre (critère 26) : le fond porte l'état du
+   MOT entier, sur toute sa longueur. */
+
+.mx {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.7rem;
+	font-family: var(--ui);
+}
+
+.mx-regle {
+	margin: 0;
+	max-width: 28rem;
+	font-size: 1.05rem;
+	color: var(--ink);
+	text-align: center;
+}
+
+/* Écoute à la demande seulement : la règle ne change jamais d'une grille à
+   l'autre, la relire à chaque partie serait du bruit. */
+.mx-ecouter {
+	min-height: 2.75rem;
+	padding: 0 0.9rem;
+	font-family: var(--ui);
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--track);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+.mx-ecouter[hidden] {
+	display: none;
+}
+
+/* ---------- Le bandeau de définition, toujours visible ---------- */
+
+/* COLLANT en haut (critère 20) : une grille de sept lignes sort du champ de
+   vision dès qu'on regarde le bas. Sans ce bandeau, l'enfant devrait remonter
+   pour se rappeler ce qu'il cherche — exactement la charge de mémoire de travail
+   que le format doit éviter. */
+.mx-def {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.5rem 0.7rem;
+	width: 100%;
+	background: var(--paper);
+	border-radius: 12px;
+}
+
+.mx-def-texte {
+	margin: 0;
+	font-size: 1.05rem;
+	color: var(--ink);
+	text-align: center;
+}
+
+/* La définition en cours passe en gras sur fond doux : elle se distingue de
+   l'invitation, qui n'est qu'un mode d'emploi. Le fond change en même temps que
+   la graisse — deux canaux, pas un. */
+.mx-def-texte[data-plein] {
+	padding: 0.35rem 0.7rem;
+	font-weight: 700;
+	background: var(--accent-soft);
+	border-radius: 10px;
+}
+
+.mx-def-ecoute {
+	min-height: 2.75rem;
+	padding: 0 0.9rem;
+	font-family: var(--ui);
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--track);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+.mx-def-ecoute[hidden] {
+	display: none;
+}
+
+/* Les deux mots d'une case de croisement (critère 19). Chaque bouton porte sa
+   définition ENTIÈRE : proposer les deux sens sans les deux définitions
+   obligerait l'enfant à choisir à l'aveugle, ce que le critère refuse. */
+.mx-choix {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.5rem;
+	width: 100%;
+}
+
+.mx-choix[hidden] {
+	display: none;
+}
+
+.mx-sens {
+	display: flex;
+	flex: 1 1 14rem;
+	flex-direction: column;
+	gap: 0.15rem;
+	min-height: 2.75rem;
+	padding: 0.4rem 0.7rem;
+	font-family: var(--ui);
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--control-line);
+	border-radius: 12px;
+	text-align: left;
+	cursor: pointer;
+}
+
+/* L'état retenu inverse la surface : ce n'est pas une nuance de la même
+   couleur, c'est un renversement, lisible sans distinguer les teintes. */
+.mx-sens[aria-pressed='true'] {
+	color: var(--on-accent);
+	background: var(--accent);
+	border-color: var(--accent);
+}
+
+.mx-sens-quoi {
+	font-size: 0.9rem;
+	font-weight: 800;
+}
+
+.mx-sens-glyphe {
+	margin-right: 0.3rem;
+}
+
+.mx-sens-def {
+	font-size: 0.95rem;
+}
+
+.mx-progres {
+	margin: 0;
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--ink);
+}
+
+/* ---------- La grille ---------- */
+
+.mx-grille {
+	--mx-case-max: 3.4rem;
+
+	display: grid;
+	grid-template-columns: repeat(var(--mx-colonnes, 6), 1fr);
+	width: 100%;
+	max-width: calc(var(--mx-colonnes, 6) * var(--mx-case-max));
+	background: var(--paper);
+	border-radius: 8px;
+}
+
+/* Une case hors de tout mot : ni champ, ni cible. Le fond de page la fait
+   disparaître, la grille n'existe qu'à travers ses mots. */
+.mx-trou {
+	aspect-ratio: 1;
+}
+
+.mx-case {
+	padding: 0;
+	width: 100%;
+	aspect-ratio: 1;
+	font-family: var(--ui);
+	/* Les lettres s'affichent en CAPITALES (critère 33) : dans une case isolée,
+	   sans appui sémantique, b/d/p/q se confondent bien plus que B/D/P/Q. Le
+	   runner range déjà la capitale dans le champ ; `text-transform` n'est là que
+	   pour la fraction de seconde où le clavier vient d'insérer une minuscule. */
+	font-size: clamp(1.1rem, 5.4vw, 1.6rem);
+	font-weight: 800;
+	line-height: 1;
+	text-transform: uppercase;
+	color: var(--ink);
+	background: var(--paper);
+	border: 0;
+	border-radius: 0;
+	/* Filet FIN autour de chaque case, posé à l'INTÉRIEUR : il ne prend pas un
+	   pixel de largeur, ce qui compte quand chaque case se joue à 6 px près. */
+	box-shadow: inset 0 0 0 1px var(--control-line);
+	text-align: center;
+	cursor: pointer;
+}
+
+/* Les cases du mot en cours (critère 18 : « met ce mot en évidence »). Un liseré
+   plein plutôt qu'un fond : le fond est déjà pris par l'état du mot, et deux
+   informations sur le même canal en effacent une. */
+.mx-case[data-courant] {
+	box-shadow: inset 0 0 0 3px var(--accent);
+}
+
+/* Un mot trouvé. Ce n'est pas un retour lettre à lettre : le fond couvre le mot
+   ENTIER, et il n'apparaît qu'une fois toutes ses cases écrites. */
+.mx-case[data-juste] {
+	background: var(--accent-soft);
+}
+
+/* Un mot complété qui ne correspond pas à sa définition : fond d'alerte sur
+   toute sa longueur, et trame de hachures en `--warn` (3,84:1 sur `--warn-bg` en
+   thème clair, 7,32:1 en Nuit). La trame est le second canal exigé par le
+   critère 27 ; en `--warn-bd` elle ne vaudrait que 1,28:1, et un canal invisible
+   est pire qu'une absence puisque personne ne le cherche. */
+.mx-case[data-faux] {
+	background-color: var(--warn-bg);
+	background-image: repeating-linear-gradient(
+		135deg,
+		transparent 0,
+		transparent 4px,
+		var(--warn) 4px,
+		var(--warn) 7px
+	);
+	background-size: 100% 18%;
+	background-position: bottom center;
+	background-repeat: no-repeat;
+}
+
+.mx-case[data-faux][data-courant] {
+	box-shadow: inset 0 0 0 3px var(--accent);
+}
+
+/* ---------- Le signalement, les actions, la fin ---------- */
+
+.mx-signal {
+	margin: 0;
+	padding: 0.5rem 0.9rem;
+	max-width: 28rem;
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--warn-bg);
+	border-radius: 12px;
+	text-align: center;
+}
+
+.mx-signal[hidden] {
+	display: none;
+}
+
+.mx-actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.6rem;
+}
+
+.mx-effacer,
+.mx-changer {
+	min-height: 2.9rem;
+	padding: 0 0.9rem;
+	font-family: var(--ui);
+	font-size: 1rem;
+	font-weight: 800;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--control-line);
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* « Effacer ce mot » ne s'éteint pas, il se GRISE : le bouton reste à sa place,
+   donc l'enfant sait qu'il existe avant d'avoir choisi un mot. */
+.mx-effacer[disabled] {
+	color: var(--grey);
+	cursor: default;
+}
+
+/* Un panneau CALME dans le plateau, sur le modèle de `.mc-fin` : pas de
+   confettis, pas de modale de récompense. Un jeu de l'étagère n'alimente aucune
+   économie, donc il n'emprunte pas le traitement paroxystique d'une fin de
+   leçon. */
+.mx-fin {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 0.9rem 1.2rem;
+	background: var(--accent-soft);
+	border-radius: 14px;
+}
+
+.mx-fin[hidden] {
+	display: none;
+}
+
+.mx-fin-titre {
+	margin: 0;
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: var(--ink);
+}
+
+.mx-nouvelle,
+.mx-reessayer {
+	min-height: 3rem;
+	padding: 0 1.2rem;
+	font-family: var(--ui);
+	font-size: 1.05rem;
+	font-weight: 800;
+	color: var(--on-accent);
+	background: var(--accent);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* ---------- La panne de tirage ---------- */
+
+/* Même forme que le panneau de fin, autre registre : `--warn` et jamais `--ko`.
+   Le jeu ne reproche rien à l'enfant, il constate qu'il n'a pas de grille à lui
+   donner. Le couple `--ink` sur `--warn-bg` est celui de `.mx-signal`, déjà
+   mesuré — pas un couple de plus à tenir. */
+.mx-panne {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 0.9rem 1.2rem;
+	max-width: 28rem;
+	background: var(--warn-bg);
+	border-radius: 14px;
+	text-align: center;
+}
+
+.mx-panne[hidden] {
+	display: none;
+}
+
+.mx-panne-titre {
+	margin: 0;
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: var(--ink);
+}
+
+.mx-panne-texte {
+	margin: 0;
+	font-size: 0.95rem;
+	color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mx-case,
+	.mx-sens,
+	.mx-effacer,
+	.mx-changer {
+		transition: none;
+	}
+}

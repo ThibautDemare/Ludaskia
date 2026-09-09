@@ -61,6 +61,26 @@ export const JEUX: JeuDef[] = [
 	// connaît que le second. L'infinitif nomme l'action au lieu d'un genre qu'il
 	// n'a pas encore. L'`id` et les clés de stockage, eux, ne bougent pas.
 	{ id: 'mots-cases', label: 'Mots à caser', icone: '🧩', type: 'R' },
+	// Mots croisés (#665). Type C, contrairement à son voisin d'étagère : ici
+	// l'enfant RETROUVE le mot à partir de son sens, il ne le reçoit pas écrit.
+	// C'est la différence exacte entre les deux jeux, et c'est ce que la
+	// compétence dit à l'espace encadrant — elle reste invisible côté enfant.
+	//
+	// Aucun `levels` : les séries du vivier sont toutes de niveau CE2 et la banque
+	// de définitions n'a pas de variante CM1, donc la question du cumul ne se pose
+	// pas encore. `levels` absent, et non `['ce2','cm1']` : c'est la façon d'écrire
+	// « ce jeu ignore le niveau scolaire » sans y revenir à chaque classe.
+	//
+	// Le libellé nomme le genre, que « Mots à caser » évitait justement parce que
+	// l'enfant ne le connaît pas : celui-ci, il le connaît, et c'est ce qui met
+	// cinq caractères entre les deux étiquettes de l'étagère.
+	{
+		id: 'mots-croises',
+		label: 'Mots croisés',
+		icone: '✏️',
+		type: 'C',
+		competence: 'vocabulaire : retrouver un mot à partir de sa définition',
+	},
 ];
 
 export function jeuParId(id: string): JeuDef | undefined {

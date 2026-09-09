@@ -45,6 +45,7 @@ import './styles/jeu-motus.scss';
 import './styles/jeu-2048.scss';
 import './styles/jeu-sudoku.scss';
 import './styles/jeu-mots-cases.scss';
+import './styles/jeu-mots-croises.scss';
 
 import { setOnDataWrite } from './core/storage';
 import {
@@ -106,6 +107,7 @@ import './ui/jeu-2048';
 import './ui/jeu-motus';
 import './ui/jeu-sudoku';
 import './ui/jeu-mots-cases';
+import './ui/jeu-mots-croises';
 import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 import { installGroupedNumberEcho } from './ui/grand-nombre-echo';
 import { installPaveSignes } from './ui/pave-signes';

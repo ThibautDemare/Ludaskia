@@ -67,6 +67,15 @@
    arbitrage produit, pas une évidence technique, et il est remonté plutôt que
    tranché en douce par un test.
 
+   **Il a été tranché depuis**, dans le brief d'implémentation : on ne détruit
+   pas le travail d'un voisin ALLÉ AU BOUT. Les sections E et F ci-dessous
+   éprouvent cet arbitrage et ses bords, et elles sont — seules de ce fichier —
+   écrites APRÈS le code. Elles ne pouvaient pas l'être avant : `effacerCase`,
+   `effacerMot` et `lettreAffichee` ne sont pas nées d'un critère, mais de
+   décisions prises en écrivant. Ce que ces deux sections tiennent est donc
+   énoncé chaque fois en toutes lettres, avant l'assertion, pour qu'on puisse
+   les relire comme une exigence et pas comme une photographie du code.
+
    ── MESURES FAITES AVANT D'ÉCRIRE, ET QUI CHANGENT LA LECTURE ───────────────
 
    Sur la banque livrée (`src/data/francais/definitions.ts`), 231 définitions,
@@ -100,7 +109,10 @@ import { describe, it, expect, vi } from 'vitest';
 import {
 	definitionDe,
 	ecrire,
+	effacerCase,
+	effacerMot,
 	etatMot,
+	lettreAffichee,
 	lettreEn,
 	partieGagnee,
 	tirerGrille,
@@ -797,5 +809,700 @@ describe('#665 critère 28 — la partie se termine pleine ET juste', () => {
 			});
 			expect(partieGagnee(pleine), `tirage ${String(graine)} (${p.motif.id})`).toBe(true);
 		}
+	});
+});
+
+/* ============================================================
+   OUTILS DES SECTIONS E ET F
+
+   Tout ce qui suit se juge avec la géométrie LOCALE (`casesLocales`,
+   `croisementsLocaux`) et avec des notions recalculées ici : « ce mot est
+   complet », « ce mot est trouvé ». Un juge qui appellerait `etatMot` ou
+   `motsSur` serait faux en même temps que le module jugé, donc vert.
+   ============================================================ */
+
+/** L'accent et la casse retirés : la forme sur laquelle un mot se COMPARE, et
+    celle que l'enfant peut taper au clavier sans appui long. */
+const sansAccent = (s: string): string => bas(s).normalize('NFD').replace(/\p{M}/gu, '');
+
+/** Ce que l'enfant tape : des capitales (critère 33) et pas un seul accent. */
+const frappe = (mot: string): string => sansAccent(mot).toUpperCase();
+
+const cleXY = (c: CaseXY): string => `${String(c.ligne)},${String(c.colonne)}`;
+
+/** Toutes les cases du dessin, une seule fois chacune. */
+function casesToutesLocales(m: Motif): CaseXY[] {
+	const vues = new Map<string, CaseXY>();
+	for (const e of m.emplacements) {
+		for (const c of casesLocales(e)) vues.set(cleXY(c), c);
+	}
+	return [...vues.values()];
+}
+
+/** La photo OBSERVABLE de la grille : ce que chaque case porte, et rien de la
+    forme interne. Sert à dire « rien d'autre n'a bougé » sans supposer comment
+    la saisie est rangée. */
+function photo(p: PartieMotsCroises): Record<string, string> {
+	const out: Record<string, string> = {};
+	for (const c of casesToutesLocales(p.motif)) {
+		const l = lettreEn(p, c.ligne, c.colonne);
+		if (l !== null) out[cleXY(c)] = bas(l);
+	}
+	return out;
+}
+
+/** Le mot est-il TROUVÉ ? Toutes ses cases pleines, et chacune portant la
+    lettre de la solution à l'accent près. */
+function trouveLocal(p: PartieMotsCroises, i: number): boolean {
+	const sol = lettres(p.solution[i]);
+	return casesLocales(p.motif.emplacements[i]).every((c, k) => {
+		const l = lettreEn(p, c.ligne, c.colonne);
+		return l !== null && sansAccent(l) === sansAccent(sol[k] ?? '');
+	});
+}
+
+/** Les emplacements qui traversent cette case. */
+const motsSurLocal = (m: Motif, c: CaseXY): number[] =>
+	m.emplacements
+		.map((_e, i) => i)
+		.filter((i) =>
+			casesLocales(m.emplacements[i]).some((x) => x.ligne === c.ligne && x.colonne === c.colonne),
+		);
+
+/** Les rangs, DANS le mot `i`, des cases qu'il partage avec le mot `j`. */
+const rangsPartages = (m: Motif, i: number, j: number): Set<number> =>
+	new Set(
+		croisementsLocaux(m)
+			.filter((c) => (c.a === i && c.b === j) || (c.a === j && c.b === i))
+			.map((c) => (c.a === i ? c.ia : c.ib)),
+	);
+
+/* ============================================================
+   E. EFFACER (critère 23, et l'arbitrage tranché à l'implémentation)
+   ============================================================ */
+
+describe('#665 — effacer une case', () => {
+	it('vide la case visée, et elle seule', () => {
+		const p = tirerGrille(tirage(21));
+		const pose = ecrireMot(p, 0, p.solution[0]);
+		const { xy } = caseExclusive(p.motif, 0);
+		const attendu = { ...photo(pose) };
+		delete attendu[cleXY(xy)];
+
+		const apres = effacerCase(pose, xy.ligne, xy.colonne);
+		expect(lettreEn(apres, xy.ligne, xy.colonne)).toBeNull();
+		expect(photo(apres), 'l’effacement a débordé sur d’autres cases').toEqual(attendu);
+		expect(etatMot(apres, 0), 'le mot amputé d’une lettre').toBe('en-cours');
+	});
+
+	it('rend une NOUVELLE partie et ne touche pas à celle qu’on lui donne', () => {
+		// Même règle que `ecrire` : le runner garde son état, et une fonction qui
+		// viderait la partie reçue le corromprait sans rien lever.
+		const p = tirerGrille(tirage(21));
+		const pose = ecrireMot(p, 0, p.solution[0]);
+		const avant = photo(pose);
+		const { xy } = caseExclusive(p.motif, 0);
+		effacerCase(pose, xy.ligne, xy.colonne);
+		expect(photo(pose), 'la partie d’origine a été vidée sur place').toEqual(avant);
+	});
+
+	it('ne fait rien, en silence, sur une case déjà vide ou hors grille', () => {
+		/* Une coordonnée impossible est un défaut de rendu, pas une faute de
+		   l'enfant : la règle du module est le refus SILENCIEUX, jamais l'exception
+		   — appuyer sur « effacer » ne doit pas pouvoir éteindre le jeu. */
+		const p = tirerGrille(tirage(21));
+		const pose = ecrireMot(p, 0, p.solution[0]);
+		const avant = photo(pose);
+		const vide = casesLocales(p.motif.emplacements[1]).find(
+			(c) => lettreEn(pose, c.ligne, c.colonne) === null,
+		);
+		expect(vide, 'montage : il faut une case encore vide').toBeDefined();
+
+		for (const xy of [
+			vide ?? { ligne: 0, colonne: 0 },
+			{ ligne: -1, colonne: -1 },
+			{ ligne: p.motif.hauteur + 3, colonne: p.motif.largeur + 3 },
+		]) {
+			expect(() => effacerCase(pose, xy.ligne, xy.colonne), cleXY(xy)).not.toThrow();
+			expect(photo(effacerCase(pose, xy.ligne, xy.colonne)), cleXY(xy)).toEqual(avant);
+		}
+	});
+
+	it('fait redescendre LES DEUX mots quand la case est partagée', () => {
+		/* Le symétrique du critère 24, du côté de l'effacement : une case, une
+		   lettre. La vider ne peut pas ne concerner qu'un des deux mots — sinon
+		   l'autre resterait affiché comme trouvé avec un trou dedans, et la partie
+		   pourrait se déclarer gagnée sur une grille percée. */
+		const p = tirerGrille(tirage(21));
+		const c = croisementsLocaux(p.motif)[0];
+		expect(c, 'ce motif n’a aucun croisement (critère 15)').toBeDefined();
+		const pleine = toutEcrire(p);
+		expect(partieGagnee(pleine), 'montage : la grille écrite avec sa solution').toBe(true);
+
+		const troue = effacerCase(pleine, c.ligne, c.colonne);
+		expect(etatMot(troue, c.a), 'le mot horizontal').toBe('en-cours');
+		expect(etatMot(troue, c.b), 'le mot vertical').toBe('en-cours');
+		expect(partieGagnee(troue)).toBe(false);
+	});
+
+	it('se défait : retaper la lettre effacée rend la grille identique', () => {
+		// L'aller-retour est le geste ordinaire de l'enfant qui se corrige. Un
+		// effacement qui laisserait une trace (une case marquée, un état retenu) se
+		// verrait ici et nulle part ailleurs.
+		const p = tirerGrille(tirage(21));
+		const c = croisementsLocaux(p.motif)[0];
+		const pleine = toutEcrire(p);
+		const revenue = ecrire(
+			effacerCase(pleine, c.ligne, c.colonne),
+			c.ligne,
+			c.colonne,
+			lettres(p.solution[c.a])[c.ia],
+		);
+		expect(photo(revenue)).toEqual(photo(pleine));
+		expect(partieGagnee(revenue)).toBe(true);
+	});
+});
+
+describe('#665 critère 23 — effacer un mot, et lui seul', () => {
+	it('le vide entièrement quand aucun voisin n’est allé au bout', () => {
+		const p = tirerGrille(tirage(21));
+		const c = croisementsLocaux(p.motif)[0];
+		const pose = ecrireMot(p, c.a, p.solution[c.a]);
+		expect(etatMot(pose, c.a), 'montage : le mot doit être posé en entier').toBe('juste');
+
+		const apres = effacerMot(pose, c.a);
+		expect(etatMot(apres, c.a)).toBe('vide');
+		// Le voisin n'avait que la lettre que ce mot lui prêtait : la grille est nue.
+		expect(photo(apres), 'des lettres ont survécu à l’effacement').toEqual({});
+	});
+
+	it('épargne les cases d’un voisin DÉJÀ COMPLET, et le mot revient « en cours »', () => {
+		/* L'arbitrage, énoncé avant l'assertion : on ne détruit pas le travail d'un
+		   voisin allé au bout, même pour obéir à un « effacer ». La conséquence est
+		   assumée et c'est elle qui se vérifie ici — le mot effacé ne revient pas
+		   « vide » mais « en cours », avec les lettres que son voisin lui impose.
+		   C'est l'état RÉEL de la grille, pas un effacement raté. */
+		const p = tirerGrille(tirage(21));
+		const c = croisementsLocaux(p.motif)[0];
+		const avec = ecrireMot(ecrireMot(p, c.b, p.solution[c.b]), c.a, p.solution[c.a]);
+		expect(etatMot(avec, c.b), 'montage : le voisin doit être complet').toBe('juste');
+
+		const apres = effacerMot(avec, c.a);
+		expect(etatMot(apres, c.b), 'le voisin trouvé a perdu une lettre').toBe('juste');
+		expect(etatMot(apres, c.a)).toBe('en-cours');
+
+		const tenues = rangsPartages(p.motif, c.a, c.b);
+		casesLocales(p.motif.emplacements[c.a]).forEach((xy, k) => {
+			const restee = lettreEn(apres, xy.ligne, xy.colonne);
+			if (tenues.has(k)) {
+				expect(bas(restee ?? ''), `la case ${cleXY(xy)}, que le voisin tient`).toBe(
+					bas(lettres(p.solution[c.a])[k]),
+				);
+			} else {
+				expect(restee, `la case ${cleXY(xy)}, qui n’appartient qu’au mot effacé`).toBeNull();
+			}
+		});
+	});
+
+	it('épargne aussi un voisin complet et FAUX : c’est du travail, juste ou non', () => {
+		/* Le bord qui sépare l'arbitrage d'une faveur faite aux bonnes réponses. Si
+		   la règle était « on épargne les mots JUSTES », l'enfant qui efface un mot
+		   verrait s'évaporer les lettres du voisin qu'il n'a pas encore réussi —
+		   c'est-à-dire précisément celui sur lequel il peine. Complet suffit. */
+		const p = tirerGrille(tirage(21));
+		const c = croisementsLocaux(p.motif)[0];
+		const { index, xy } = caseExclusive(p.motif, c.b);
+		expect(index, 'montage : il faut une case propre au voisin').not.toBe(c.ib);
+
+		let avec = ecrireMot(p, c.b, p.solution[c.b]);
+		avec = ecrire(avec, xy.ligne, xy.colonne, autreLettre(lettres(p.solution[c.b])[index]));
+		avec = ecrireMot(avec, c.a, p.solution[c.a]);
+		expect(etatMot(avec, c.b), 'montage : le voisin doit être complet et faux').toBe('faux');
+
+		const apres = effacerMot(avec, c.a);
+		expect(
+			bas(lettreEn(apres, c.ligne, c.colonne) ?? ''),
+			'la case partagée d’un voisin faux a été vidée',
+		).toBe(bas(lettres(p.solution[c.b])[c.ib]));
+		expect(etatMot(apres, c.b), 'le voisin faux n’est plus complet').toBe('faux');
+	});
+
+	it('épargne DEUX voisins complets à la fois', () => {
+		// Un seul voisin épargné est un cas particulier qu'on peut traiter par
+		// accident (« la première case partagée »). Deux disent que la règle porte
+		// sur chaque case, pas sur le mot.
+		let montage: { p: PartieMotsCroises; cible: number; voisins: number[] } | null = null;
+		for (let graine = 1; graine <= 40 && !montage; graine++) {
+			const p = tirerGrille(tirage(graine));
+			const crois = croisementsLocaux(p.motif);
+			for (let i = 0; i < p.motif.emplacements.length && !montage; i++) {
+				const voisins = [
+					...new Set(
+						crois.filter((c) => c.a === i || c.b === i).map((c) => (c.a === i ? c.b : c.a)),
+					),
+				];
+				if (voisins.length >= 2) montage = { p, cible: i, voisins };
+			}
+		}
+		expect(montage, 'aucun motif livré n’a un mot à deux voisins').not.toBeNull();
+		if (!montage) return;
+
+		const { p, cible, voisins } = montage;
+		let avec = p;
+		for (const j of voisins) avec = ecrireMot(avec, j, p.solution[j]);
+		avec = ecrireMot(avec, cible, p.solution[cible]);
+		for (const j of voisins) {
+			expect(etatMot(avec, j), `montage : le voisin ${String(j)}`).toBe('juste');
+		}
+
+		const apres = effacerMot(avec, cible);
+		for (const j of voisins) {
+			expect(etatMot(apres, j), `le voisin ${String(j)} a été amputé`).toBe('juste');
+		}
+		const tenues = new Set(voisins.flatMap((j) => [...rangsPartages(p.motif, cible, j)]));
+		expect(tenues.size, 'montage : deux cases partagées attendues').toBeGreaterThanOrEqual(2);
+		casesLocales(p.motif.emplacements[cible]).forEach((xy, k) => {
+			expect(lettreEn(apres, xy.ligne, xy.colonne) !== null, `la case ${cleXY(xy)}`).toBe(
+				tenues.has(k),
+			);
+		});
+	});
+
+	it('la limite de l’arbitrage : un voisin PAS complet ne retient rien', () => {
+		/* L'autre bord, et il n'est pas anodin : le voisin encore en chantier perd
+		   la lettre de la case partagée. C'est ce que « complet » veut dire, et il
+		   faut le voir écrit pour pouvoir en discuter. Ce qui reste vrai, en
+		   revanche, c'est que les lettres PROPRES du voisin ne bougent pas. */
+		const p = tirerGrille(tirage(21));
+		const c = croisementsLocaux(p.motif)[0];
+		const { index, xy } = caseExclusive(p.motif, c.b);
+		let avec = ecrireMot(p, c.a, p.solution[c.a]);
+		avec = ecrire(avec, xy.ligne, xy.colonne, lettres(p.solution[c.b])[index]);
+		expect(etatMot(avec, c.b), 'montage : le voisin doit être incomplet').toBe('en-cours');
+
+		const apres = effacerMot(avec, c.a);
+		expect(
+			lettreEn(apres, c.ligne, c.colonne),
+			'la case partagée est partie avec le mot',
+		).toBeNull();
+		expect(
+			bas(lettreEn(apres, xy.ligne, xy.colonne) ?? ''),
+			'une lettre PROPRE du voisin a été emportée',
+		).toBe(bas(lettres(p.solution[c.b])[index]));
+		expect(etatMot(apres, c.b)).toBe('en-cours');
+	});
+
+	it('sur une grille pleine, ne vide que les cases que le mot a POUR LUI SEUL', () => {
+		/* La forme générale, en échantillon : dix grilles, chaque mot effacé à son
+		   tour. Tous les voisins étant complets, aucune case partagée ne doit
+		   partir — et aucun voisin ne doit cesser d'être trouvé. Un effacement qui
+		   ratisserait large casserait ici une grille finie, ce qui est le pire
+		   moment possible. */
+		for (let graine = 1; graine <= 10; graine++) {
+			const p = tirerGrille(tirage(graine));
+			const pleine = toutEcrire(p);
+			const ou = `tirage ${String(graine)} (${p.motif.id})`;
+			for (let i = 0; i < p.motif.emplacements.length; i++) {
+				const apres = effacerMot(pleine, i);
+				const siennes = new Set(casesLocales(p.motif.emplacements[i]).map(cleXY));
+				const partagees = new Set(
+					croisementsLocaux(p.motif)
+						.filter((c) => c.a === i || c.b === i)
+						.map((c) => cleXY(c)),
+				);
+				for (const xy of casesToutesLocales(p.motif)) {
+					const doitPartir = siennes.has(cleXY(xy)) && !partagees.has(cleXY(xy));
+					expect(
+						lettreEn(apres, xy.ligne, xy.colonne) === null,
+						`${ou}, mot ${String(i)} : la case ${cleXY(xy)}`,
+					).toBe(doitPartir);
+				}
+				p.motif.emplacements.forEach((_e, j) => {
+					if (j !== i) expect(etatMot(apres, j), `${ou} : le voisin ${String(j)}`).toBe('juste');
+				});
+				/* « En cours » et non « vide » : c'est la conséquence assumée de
+				   l'arbitrage. Elle suppose que le mot ait AU MOINS une case à lui —
+				   convention des motifs, écartée comme test dans
+				   `mots-croises-motifs.test.ts` parce que l'issue la range en plaidoyer.
+				   Un motif futur qui s'en affranchirait rendrait « effacer ce mot »
+				   totalement inerte, et c'est ICI que ça se verrait. */
+				expect(etatMot(apres, i), `${ou} : le mot effacé, ${p.solution[i]}`).toBe('en-cours');
+			}
+		}
+	});
+
+	it('ne mute pas la partie reçue, et ignore un emplacement qui n’existe pas', () => {
+		const p = tirerGrille(tirage(21));
+		const pose = ecrireMot(p, 0, p.solution[0]);
+		const avant = photo(pose);
+		effacerMot(pose, 0);
+		expect(photo(pose), 'la partie d’origine a été vidée sur place').toEqual(avant);
+
+		for (const i of [-1, 99, 1.5, Number.NaN]) {
+			expect(() => effacerMot(pose, i), String(i)).not.toThrow();
+			expect(photo(effacerMot(pose, i)), String(i)).toEqual(avant);
+		}
+	});
+});
+
+/* ============================================================
+   F. LA LETTRE MONTRÉE (critère 26)
+
+   Le critère : aucun retour lettre par lettre sur la justesse. La première
+   version rangeait la graphie de la solution dès que la lettre tapée était
+   bonne À L'ACCENT PRÈS — la case s'habillait donc à l'instant exact où
+   l'enfant tapait juste, et seulement sur les mots accentués : un signal
+   partiel, que personne ne pouvait ni prévoir ni lire.
+
+   Ce que cette section verrouille tient en une phrase : rien de ce que la
+   grille montre ne distingue une lettre juste d'une lettre fausse, tant que le
+   MOT entier n'est pas trouvé. Une fois qu'il l'est, la justesse est déjà dite
+   par le mot, et l'accent ne fait plus qu'exposer la forme correcte.
+   ============================================================ */
+
+/** LE JUGE DU CRITÈRE 26 — les fuites d'une grille donnée.
+
+    Une fuite, c'est une case qui montre autre chose que la frappe de l'enfant
+    alors qu'AUCUN mot qui la traverse n'est trouvé : à cet instant, la grille
+    en dit plus qu'elle n'en a le droit. (Et une case vide qui montre quelque
+    chose est une fuite pire encore.)
+
+    `montrer` est en paramètre exprès : le même juge sert à éprouver
+    l'implémentation livrée ET l'implémentation écartée, ci-dessous. Sans quoi
+    rien ne dirait qu'il mord. */
+function fuites(
+	p: PartieMotsCroises,
+	montrer: (p: PartieMotsCroises, ligne: number, colonne: number) => string | null,
+): string[] {
+	const out: string[] = [];
+	for (const c of casesToutesLocales(p.motif)) {
+		const tapee = lettreEn(p, c.ligne, c.colonne);
+		const vue = montrer(p, c.ligne, c.colonne);
+		if (tapee === null) {
+			if (vue !== null) out.push(`case ${cleXY(c)} : vide, et pourtant elle montre « ${vue} »`);
+			continue;
+		}
+		if (motsSurLocal(p.motif, c).some((i) => trouveLocal(p, i))) continue;
+		if (bas(vue ?? '') !== bas(tapee)) {
+			out.push(
+				`case ${cleXY(c)} : l’enfant a tapé « ${tapee} », la grille montre « ${vue ?? '∅'} » alors qu’aucun mot qui la traverse n’est trouvé`,
+			);
+		}
+	}
+	return out;
+}
+
+/** L'IMPLÉMENTATION ÉCARTÉE, gardée ici comme étalon : elle montre la graphie
+    de la solution dès que la lettre TAPÉE est bonne à l'accent près. */
+function lettreAfficheeEcartee(
+	p: PartieMotsCroises,
+	ligne: number,
+	colonne: number,
+): string | null {
+	const tapee = lettreEn(p, ligne, colonne);
+	if (tapee === null) return null;
+	for (const i of motsSurLocal(p.motif, { ligne, colonne })) {
+		const rang = casesLocales(p.motif.emplacements[i]).findIndex(
+			(c) => c.ligne === ligne && c.colonne === colonne,
+		);
+		const attendue = lettres(p.solution[i])[rang];
+		if (attendue !== undefined && sansAccent(attendue) === sansAccent(tapee)) return attendue;
+	}
+	return tapee;
+}
+
+/** Une grille où un mot porte un accent AILLEURS qu'à l'une de ses cases de
+    croisement : de quoi le remplir en laissant le croisement pour la fin, donc
+    de quoi observer l'instant exact où il devient trouvé. */
+interface MontageAccent {
+	p: PartieMotsCroises;
+	mot: number;
+	ka: number;
+	accent: CaseXY;
+	kx: number;
+	croisee: CaseXY;
+}
+
+function montageAccent(): MontageAccent | null {
+	for (let graine = 1; graine <= 60; graine++) {
+		const p = tirerGrille(tirage(graine));
+		const crois = croisementsLocaux(p.motif);
+		for (let i = 0; i < p.solution.length; i++) {
+			const sol = lettres(p.solution[i]);
+			const ka = sol.findIndex((l) => sansAccent(l) !== bas(l));
+			if (ka < 0) continue;
+			const cases = casesLocales(p.motif.emplacements[i]);
+			for (const c of crois) {
+				if (c.a !== i && c.b !== i) continue;
+				const kx = c.a === i ? c.ia : c.ib;
+				if (kx === ka) continue;
+				return { p, mot: i, ka, accent: cases[ka], kx, croisee: cases[kx] };
+			}
+		}
+	}
+	return null;
+}
+
+describe('#665 critère 26 — rien ne transparaît avant que le MOT soit trouvé', () => {
+	it('taper le mot sans ses accents suffit à le trouver', () => {
+		/* La prémisse de tout ce qui suit, et elle n'allait pas de soi : « é »
+		   demande un appui long sur un clavier Android, et le clavier du critère 21
+		   ne le propose pas. Un modèle qui comparerait les accents rendrait les
+		   57 mots accentués de la banque impossibles à trouver. */
+		const m = montageAccent();
+		expect(
+			m,
+			'aucune grille accentuée en 60 tirages : la mesure des 57 mots est à refaire',
+		).not.toBeNull();
+		if (!m) return;
+		const juste = ecrireMot(m.p, m.mot, frappe(m.p.solution[m.mot]));
+		expect(etatMot(juste, m.mot), `« ${frappe(m.p.solution[m.mot])} » refusé`).toBe('juste');
+	});
+
+	it('une lettre bonne à l’accent près ne s’habille pas tant qu’il manque une case', () => {
+		/* LE test de cette section. Toutes les lettres du mot sont là et toutes sont
+		   bonnes ; il ne manque que la case de croisement. Si la grille montrait
+		   déjà l'accent, elle dirait à l'enfant « cette lettre-là est juste » —
+		   lettre par lettre, et seulement sur les mots accentués. */
+		const m = montageAccent();
+		expect(m).not.toBeNull();
+		if (!m) return;
+		const sol = lettres(m.p.solution[m.mot]);
+		let courante = m.p;
+		casesLocales(m.p.motif.emplacements[m.mot]).forEach((c, k) => {
+			if (k === m.kx) return;
+			courante = ecrire(courante, c.ligne, c.colonne, frappe(sol[k]));
+		});
+		expect(etatMot(courante, m.mot), 'montage : il doit manquer une case').toBe('en-cours');
+
+		expect(
+			lettreAffichee(courante, m.accent.ligne, m.accent.colonne),
+			`la case accentuée montre « ${sol[m.ka]} » avant que le mot soit trouvé`,
+		).not.toBe(sol[m.ka]);
+		expect(bas(lettreAffichee(courante, m.accent.ligne, m.accent.colonne) ?? '')).toBe(
+			sansAccent(sol[m.ka]),
+		);
+		expect(fuites(courante, lettreAffichee)).toEqual([]);
+	});
+
+	it('l’accent apparaît à l’instant où le mot entier devient juste', () => {
+		const m = montageAccent();
+		expect(m).not.toBeNull();
+		if (!m) return;
+		const sol = lettres(m.p.solution[m.mot]);
+		const trouve = ecrireMot(m.p, m.mot, frappe(m.p.solution[m.mot]));
+		expect(etatMot(trouve, m.mot)).toBe('juste');
+
+		casesLocales(m.p.motif.emplacements[m.mot]).forEach((c, k) => {
+			expect(lettreAffichee(trouve, c.ligne, c.colonne), `rang ${String(k)}`).toBe(sol[k]);
+		});
+		/* Le MODÈLE, lui, garde ce que l'enfant a tapé : c'est l'affichage qui
+		   s'habille, pas la saisie. Confondre les deux reviendrait à corriger la
+		   grille à la place de l'enfant — et la correction se relirait telle quelle
+		   au rechargement, donc après que le mot a cessé d'être juste. */
+		expect(lettreEn(trouve, m.accent.ligne, m.accent.colonne)).toBe(sansAccent(sol[m.ka]));
+	});
+
+	it('et il repart quand une lettre de croisement rend le mot faux', () => {
+		/* La bascule dans l'autre sens, et c'est elle qui dit que le contrat est un
+		   MOMENT et non une valeur : la case ne se souvient pas d'avoir été juste.
+		   Un affichage qui garderait l'accent après coup laisserait la bonne graphie
+		   sous les yeux de l'enfant pendant qu'il cherche encore. */
+		const m = montageAccent();
+		expect(m).not.toBeNull();
+		if (!m) return;
+		const sol = lettres(m.p.solution[m.mot]);
+		const trouve = ecrireMot(m.p, m.mot, frappe(m.p.solution[m.mot]));
+
+		const casse = ecrire(trouve, m.croisee.ligne, m.croisee.colonne, autreLettre(sol[m.kx]));
+		expect(etatMot(casse, m.mot), 'montage : le mot doit être devenu faux').toBe('faux');
+		expect(lettreAffichee(casse, m.accent.ligne, m.accent.colonne)).toBe(sansAccent(sol[m.ka]));
+		expect(fuites(casse, lettreAffichee)).toEqual([]);
+
+		const repare = ecrire(casse, m.croisee.ligne, m.croisee.colonne, frappe(sol[m.kx]));
+		expect(lettreAffichee(repare, m.accent.ligne, m.accent.colonne)).toBe(sol[m.ka]);
+	});
+
+	it('repart aussi quand on EFFACE une lettre du mot trouvé', () => {
+		// Le même moment, atteint par l'autre geste. La case effacée ne montre plus
+		// rien, et le reste du mot redevient ce que l'enfant a tapé.
+		const m = montageAccent();
+		expect(m).not.toBeNull();
+		if (!m) return;
+		const sol = lettres(m.p.solution[m.mot]);
+		const trouve = ecrireMot(m.p, m.mot, frappe(m.p.solution[m.mot]));
+		const troue = effacerCase(trouve, m.croisee.ligne, m.croisee.colonne);
+
+		expect(etatMot(troue, m.mot)).toBe('en-cours');
+		expect(lettreAffichee(troue, m.croisee.ligne, m.croisee.colonne)).toBeNull();
+		expect(lettreAffichee(troue, m.accent.ligne, m.accent.colonne)).toBe(sansAccent(sol[m.ka]));
+		expect(fuites(troue, lettreAffichee)).toEqual([]);
+	});
+
+	it('à un croisement, le mot trouvé s’habille sans habiller son voisin', () => {
+		/* Le cas où UN SEUL des deux mots est juste. Le mot trouvé doit s'afficher
+		   entier, y compris sur la case qu'il partage — sinon il resterait à moitié
+		   correct à l'écran. Le voisin, lui, n'a rien gagné : ses cases propres
+		   montrent toujours la frappe de l'enfant, accent compris. */
+		let montage: {
+			p: PartieMotsCroises;
+			a: number;
+			b: number;
+			ia: number;
+			partagee: CaseXY;
+			kb: number;
+			accentB: CaseXY;
+		} | null = null;
+		for (let graine = 1; graine <= 120 && !montage; graine++) {
+			const p = tirerGrille(tirage(graine));
+			for (const c of croisementsLocaux(p.motif)) {
+				for (const [a, b, ia, ib] of [
+					[c.a, c.b, c.ia, c.ib],
+					[c.b, c.a, c.ib, c.ia],
+				]) {
+					const solA = lettres(p.solution[a]);
+					const solB = lettres(p.solution[b]);
+					if (!solA.some((l) => sansAccent(l) !== bas(l))) continue;
+					const kb = solB.findIndex((l, k) => k !== ib && sansAccent(l) !== bas(l));
+					if (kb < 0) continue;
+					montage = {
+						p,
+						a,
+						b,
+						ia,
+						partagee: { ligne: c.ligne, colonne: c.colonne },
+						kb,
+						accentB: casesLocales(p.motif.emplacements[b])[kb],
+					};
+					break;
+				}
+				if (montage) break;
+			}
+		}
+		expect(
+			montage,
+			'aucun croisement en 120 tirages ne met en jeu deux mots accentués : ce test ne prouverait plus rien et doit être supprimé avec cette raison',
+		).not.toBeNull();
+		if (!montage) return;
+
+		const { p, a, b, ia, partagee, kb, accentB } = montage;
+		let courante = ecrireMot(p, a, frappe(p.solution[a]));
+		courante = ecrire(courante, accentB.ligne, accentB.colonne, frappe(lettres(p.solution[b])[kb]));
+		expect(etatMot(courante, a), 'montage : le premier mot doit être trouvé').toBe('juste');
+		expect(etatMot(courante, b), 'montage : le second ne doit pas l’être').toBe('en-cours');
+
+		expect(lettreAffichee(courante, partagee.ligne, partagee.colonne)).toBe(
+			lettres(p.solution[a])[ia],
+		);
+		expect(
+			lettreAffichee(courante, accentB.ligne, accentB.colonne),
+			'le voisin non trouvé a gagné un accent',
+		).toBe(sansAccent(lettres(p.solution[b])[kb]));
+		expect(fuites(courante, lettreAffichee)).toEqual([]);
+	});
+
+	it('habille la case de croisement elle-même, sans attendre le second mot', () => {
+		/* L'assertion précédente ne mord que sur les cases propres. Celle-ci porte
+		   sur la case PARTAGÉE, et elle demande une grille rare — il faut que les
+		   deux mots réclament la même lettre ACCENTUÉE au croisement (le moteur les
+		   compare graphie pour graphie), ce qui arrive 6 fois sur 200 tirages :
+		   « préau » × « énergie » sur le é, « sucré » × « écorce ».
+
+		   Sans elle, une implémentation qui n'habillerait la case que si TOUS les
+		   mots qui la traversent sont trouvés passerait tout le reste du fichier —
+		   et laisserait un mot trouvé s'afficher à moitié correct à l'écran, ce que
+		   personne ne saurait relier à la règle. */
+		let montage: { p: PartieMotsCroises; a: number; b: number; ia: number; xy: CaseXY } | null =
+			null;
+		for (let graine = 1; graine <= 200 && !montage; graine++) {
+			const p = tirerGrille(tirage(graine));
+			for (const c of croisementsLocaux(p.motif)) {
+				const l = lettres(p.solution[c.a])[c.ia];
+				if (sansAccent(l) === bas(l)) continue;
+				montage = { p, a: c.a, b: c.b, ia: c.ia, xy: { ligne: c.ligne, colonne: c.colonne } };
+				break;
+			}
+		}
+		expect(
+			montage,
+			'aucun croisement accentué en 200 tirages : mesuré à 6 auparavant, la banque ou les motifs ont changé',
+		).not.toBeNull();
+		if (!montage) return;
+
+		const { p, a, b, ia, xy } = montage;
+		const courante = ecrireMot(p, a, frappe(p.solution[a]));
+		expect(etatMot(courante, a), 'montage : le mot doit être trouvé').toBe('juste');
+		expect(etatMot(courante, b), 'montage : son voisin ne doit pas l’être').toBe('en-cours');
+
+		expect(lettreEn(courante, xy.ligne, xy.colonne), 'le modèle range la frappe').toBe(
+			sansAccent(lettres(p.solution[a])[ia]),
+		);
+		expect(
+			lettreAffichee(courante, xy.ligne, xy.colonne),
+			'le mot trouvé s’affiche à moitié correct : sa case de croisement a gardé la frappe',
+		).toBe(lettres(p.solution[a])[ia]);
+	});
+});
+
+describe('#665 critère 26 — la grille entière ne fuit jamais', () => {
+	it('sur 25 grilles remplies frappe par frappe', () => {
+		// L'invariant sous sa forme la plus large : à AUCUN instant d'un remplissage
+		// complet, une case ne montre autre chose que ce que l'enfant a tapé, tant
+		// qu'aucun mot qui la traverse n'est trouvé.
+		for (let graine = 1; graine <= 25; graine++) {
+			const depart = tirerGrille(tirage(graine));
+			let courante = depart;
+			depart.solution.forEach((mot, i) => {
+				casesLocales(depart.motif.emplacements[i]).forEach((c, k) => {
+					courante = ecrire(courante, c.ligne, c.colonne, frappe(lettres(mot)[k]));
+					expect(
+						fuites(courante, lettreAffichee),
+						`tirage ${String(graine)} (${depart.motif.id}), mot ${String(i)}, lettre ${String(k + 1)}`,
+					).toEqual([]);
+				});
+			});
+			expect(partieGagnee(courante), `tirage ${String(graine)}`).toBe(true);
+		}
+	});
+
+	it('sur 10 grilles PLEINES ET FAUSSES, qui ne montrent pas la solution', () => {
+		/* Le pire moment pour une fuite : la grille est pleine, aucun mot n'est
+		   trouvé, et l'enfant cherche ses erreurs. Une case qui s'habillerait là lui
+		   désignerait les lettres à garder — donc, en creux, celles à changer. */
+		for (let graine = 1; graine <= 10; graine++) {
+			const p = tirerGrille(tirage(graine));
+			let fausse = toutEcrire(p);
+			p.motif.emplacements.forEach((_e, i) => {
+				const { index, xy } = caseExclusive(p.motif, i);
+				fausse = ecrire(fausse, xy.ligne, xy.colonne, autreLettre(lettres(p.solution[i])[index]));
+			});
+			const ou = `tirage ${String(graine)} (${p.motif.id})`;
+			p.motif.emplacements.forEach((_e, i) => {
+				expect(etatMot(fausse, i), `${ou} : montage, le mot ${String(i)}`).toBe('faux');
+			});
+			expect(fuites(fausse, lettreAffichee), ou).toEqual([]);
+		}
+	});
+
+	it('le juge ci-dessus attrape VRAIMENT la fuite qu’on a corrigée', () => {
+		/* Le garde-fou du garde-fou, et il n'est pas décoratif : sans lui, les tests
+		   précédents seraient verts même si `fuites` ne regardait rien. On lui
+		   soumet l'implémentation ÉCARTÉE — celle qui habille la case dès que la
+		   lettre tapée est bonne à l'accent près — et il doit la refuser. */
+		const m = montageAccent();
+		expect(m).not.toBeNull();
+		if (!m) return;
+		const sol = lettres(m.p.solution[m.mot]);
+		let courante = m.p;
+		casesLocales(m.p.motif.emplacements[m.mot]).forEach((c, k) => {
+			if (k === m.kx) return;
+			courante = ecrire(courante, c.ligne, c.colonne, frappe(sol[k]));
+		});
+
+		expect(fuites(courante, lettreAffichee), 'l’implémentation livrée fuit').toEqual([]);
+		expect(
+			fuites(courante, lettreAfficheeEcartee),
+			'le juge ne voit pas la version écartée : il ne garde donc rien',
+		).not.toEqual([]);
 	});
 });

@@ -155,7 +155,14 @@ export const REVISION_RETARD_FACTEUR = 2;
    Le second plafond du cadrage (« ni 3 crans d'un seul passage ») n'est pas codé : il est
    DOMINÉ partout par celui-ci. Depuis le palier 0 les deux donnent 3 ; à partir du palier
    1, le plafond de palier est strictement plus strict. En faire une branche serait du code
-   mort. */
+   mort.
+
+   MAIS cette dominance tient à une coïncidence numérique (les deux valeurs valent 3), pas
+   à une relation vérifiée : augmenter cette constante réactive le second plafond, qui
+   n'existe alors nulle part dans le code pour le retenir. Le filet est côté test —
+   `tests/revision-retard.test.ts` compare au littéral 3 et non à cette constante, donc un
+   changement ici fait échouer le plafond du critère 2 — mais c'est cette ligne qui dit
+   pourquoi le test tombe. */
 export const REVISION_CREDIT_PALIER_MAX = 3;
 
 /* Délai avant re-test du palier atteint (les paliers au-delà du dernier intervalle —

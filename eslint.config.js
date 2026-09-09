@@ -79,9 +79,17 @@ const ECHAPPEMENT_INNERHTML = {
 };
 
 export default tseslint.config(
-	// `.claude/` (worktrees, configs d'agents) hors périmètre de lint. NB : en flat
-	// config, `.eslintignore` n'est PAS lu — l'ignore doit vivre ici.
-	{ ignores: ['dist', 'node_modules', '.claude'] },
+	// `.claude/` (worktrees, configs d'agents) et `notes/` (notes de travail et scripts
+	// de mesure locaux, gitignored) hors périmètre de lint. NB : en flat config,
+	// `.eslintignore` n'est PAS lu — l'ignore doit vivre ici.
+	//
+	// Pourquoi `notes/` : le dossier est gitignored, donc la CI ne le voit jamais, mais
+	// `npm run verify` tourne en local via le hook `pre-push` — un scratchpad Node y
+	// suffisait à bloquer tous les pushs sur des `no-undef` (`console`, `process`) que
+	// personne ne verra jamais dans le dépôt. Un script Node destiné à VIVRE dans le
+	// dépôt reste linté et déclare ses globales en tête de fichier, comme
+	// `tools/contrast/contrast.mjs`.
+	{ ignores: ['dist', 'node_modules', '.claude', 'notes'] },
 	js.configs.recommended,
 	...tseslint.configs.recommended,
 	prettier,

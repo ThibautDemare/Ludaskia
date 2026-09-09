@@ -324,3 +324,40 @@ Rien de tel dans un texte que l'enfant ne fait que lire. Le dépôt compte 286
 apostrophes typographiques réparties sur douze fichiers de `src/`, et c'est la
 bonne typographie française. **Gardée** : ni faute, ni exception à documenter au
 cas par cas.
+
+## Écrire une définition d'enfant (#665)
+
+La banque `src/data/francais/definitions.ts` donne un couple mot-définition pour
+chaque mot jouable du vivier des jeux de grille. Sa moitié mécanique est tenue par
+`tests/definitions-gate.test.ts` — longueur, phrase unique, circularité, termes
+méta-linguistiques, ponctuation, collisions de tête catégorielle. Ce que le gate
+**ne voit pas**, et qui s'est révélé fautif à la relecture des 231 premières :
+
+- **Les mots qui définissent doivent être plus simples que le mot défini.**
+  `petit` avait été défini par « minuscule », plus rare que lui.
+- **Une définition ne cite pas un autre mot du vivier de même longueur.**
+  `navire` était défini par « un très grand **bateau** » : l'enfant n'avait même
+  pas à deviner, la réponse concurrente était écrite dans l'indice, et elle avait
+  le bon nombre de lettres.
+- **Un « qui » relatif ne doit avoir qu'un antécédent plausible.** « La femme du
+  roi, qui règne sur un pays » ne dit pas qui règne.
+- **Le sens retenu ne contredit pas une désambiguïsation déjà actée ailleurs.**
+  `flotter` est documenté dans `orthographe.ts` comme homographe piégeur, avec le
+  sens du vent ; la définition avait choisi celui de l'eau.
+- **Le monde de l'application fait foi.** Deux définitions parlaient « du roi »,
+  alors que le mot n'apparaît pas une seule fois dans les treize thèmes de dictée,
+  où c'est une **reine** qui gouverne, seule.
+- **Aucun jugement de conduite.** `sage` était « un enfant qui obéit sans faire de
+  bêtises », phrase qui évalue l'enfant en train de lire au lieu de l'aider.
+
+## Orthographe rectifiée, et « où l'on » (#665)
+
+Le dépôt écrit en **orthographe rectifiée** : « gout », « naitre », « connaitre »,
+« maitre », « disparait ». Deux entrées de `champs-lexicaux.ts` gardaient le
+circonflexe traditionnel et ont été alignées. À vérifier sur les familles
+`paraitre` / `connaitre` / `maitre` quand on ajoute du contenu ; les circonflexes
+distinctifs (`sûr`, `dû`, `mûr`, `jeûne`) restent, eux, obligatoires.
+
+Après « où », le `l'` euphonique est **facultatif** en français, donc les deux
+formes sont correctes. Le dépôt écrit **« où l'on »**, déjà majoritaire : une
+banque lue d'affilée n'a pas à hésiter entre les deux.

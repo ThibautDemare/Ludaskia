@@ -128,7 +128,7 @@ export const CHAMPS: Champ[] = [
 		mots: [
 			{ mot: 'pupitre', def: "La petite table de l'élève." },
 			{ mot: 'ardoise', def: 'Une plaque sur laquelle on écrit puis on efface.' },
-			{ mot: 'estrade', def: 'La petite scène surélevée où se tient le maître.' },
+			{ mot: 'estrade', def: 'La petite scène surélevée où se tient le maitre.' },
 			{ mot: 'préau', def: "L'endroit couvert de la cour pour s'abriter de la pluie." },
 			{ mot: 'récréation', def: 'Le moment de pause pour jouer entre les classes.' },
 			{ mot: 'encrier', def: "Le petit pot qui contenait l'encre autrefois." },
@@ -157,7 +157,7 @@ export const CHAMPS: Champ[] = [
 			{ mot: 'honte', def: "Ce qu'on ressent après avoir fait une bêtise devant les autres." },
 			{ mot: 'fierté', def: "Ce qu'on ressent quand on a réussi quelque chose de difficile." },
 			{ mot: 'jalousie', def: "Ce qu'on ressent quand on voudrait avoir ce qu'a un autre." },
-			{ mot: 'soulagement', def: 'Le bien-être qu’on ressent quand une inquiétude disparaît.' },
+			{ mot: 'soulagement', def: 'Le bien-être qu’on ressent quand une inquiétude disparait.' },
 			{ mot: 'déception', def: 'La tristesse quand ce qu’on espérait n’arrive pas.' },
 			{ mot: 'inquiétude', def: 'Ce qu’on ressent quand on se fait du souci.' },
 			{ mot: 'émerveillement', def: 'Le grand étonnement devant quelque chose de très beau.' },

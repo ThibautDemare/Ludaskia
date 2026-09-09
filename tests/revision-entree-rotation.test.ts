@@ -147,7 +147,15 @@ function decouvrirMots(uuid: string, n: number, t: number): void {
 	saveOrthoFor(uuid, state);
 }
 /* Déroule les jours [de, a] de la vie du profil : `motsParJour` découvertes réelles, puis
-   la passe de promotion de la file d'attente (celle que l'appli déclenchera). */
+   la passe de promotion de la file d'attente (celle que l'appli déclenchera).
+
+   CHAUFFER LA FENÊTRE AVANT DE DÉCLARER. Un scénario « budget saturé » doit dérouler une
+   semaine de découvertes AVANT la déclaration : sur un profil neuf la fenêtre glissante
+   est vide, le reliquat vaut donc le budget entier, et les déclarations entrent tout de
+   suite. Ce n'est pas un défaut — au jour 0, la fenêtre contient bien moins d'entrées que
+   le budget ne l'autorise, et refuser ces places bloquerait le démarrage de tout profil
+   neuf. C'est simplement qu'un enfant EN RÉGIME et un enfant qui vient d'arriver ne sont
+   pas la même mise en scène. */
 function vivreLesJours(uuid: string, de: number, a: number, motsParJour = 0): void {
 	for (let j = de; j <= a; j++) {
 		if (motsParJour > 0) decouvrirMots(uuid, motsParJour, jour(j));
@@ -311,18 +319,19 @@ describe('critère 3 — quatre semaines d’attente donnent la priorité entre 
 	});
 
 	it('une déclaration qui a attendu 4 semaines passe avant une déclaration récente', () => {
-		// Quatre semaines de budget saturé (2 mots par jour, 14 par semaine pour un budget
-		// de 8) : A ne peut pas entrer et vieillit. B est déclarée fraîche à J+28, puis le
-		// rythme retombe à 1 mot par jour (7 par semaine) : un seul slot se libère. Il doit
-		// aller à A.
+		// Une semaine de chauffe (cf. `vivreLesJours`), puis A est déclarée dans un budget
+		// déjà saturé (2 mots par jour, 14 par semaine pour un budget de 8) : elle ne peut
+		// pas entrer et vieillit. B est déclarée fraîche quatre semaines plus tard. La place
+		// qui se libère alors doit aller à A, la plus ancienne, jamais à B.
 		const uuid = activeProfile().uuid;
 		const [A, B] = leconsCe2().slice(0, 2);
-		declarer(uuid, [A], T0);
-		vivreLesJours(uuid, 0, 27, 2);
+		vivreLesJours(uuid, 0, 6, 2);
+		declarer(uuid, [A], jour(7));
+		vivreLesJours(uuid, 7, 34, 2);
 		expect(estHorsRotation(revisions(uuid)[`${A}@ce2`])).toBe(true);
 
-		declarer(uuid, [B], jour(28));
-		vivreLesJours(uuid, 28, 34, 1);
+		declarer(uuid, [B], jour(35));
+		vivreLesJours(uuid, 35, 41, 2);
 
 		const r = revisions(uuid);
 		expect(enRotation(r[`${A}@ce2`])).toBe(true);
@@ -350,20 +359,21 @@ describe('critère 3 — quatre semaines d’attente donnent la priorité entre 
 	});
 
 	it('SEUIL DISCRIMINANT — rien à trois semaines, entrée à cinq, budget saturé des deux côtés', () => {
-		// Le test qui distingue le slot réservé d'un simple FIFO par ancienneté. Le budget
-		// est saturé en permanence (2 mots découverts par jour, 14 par semaine pour un
+		// Le test qui distingue le slot réservé d'un simple FIFO par ancienneté. Une semaine
+		// de chauffe, puis le budget reste saturé (2 mots par jour, 14 par semaine pour un
 		// budget de 8) et une SEULE déclaration attend : elle est donc la plus ancienne de
-		// la file dans les deux cas. À trois semaines rien n'entre ; à cinq, le plancher
-		// s'ouvre. Sous un FIFO pur, l'ancienneté seule déciderait et le seuil des
-		// 4 semaines ne se verrait nulle part.
+		// la file dans les deux relevés. À trois semaines d'attente rien n'entre ; à cinq,
+		// le plancher s'ouvre. Sous un FIFO pur, l'ancienneté seule déciderait et le seuil
+		// des 4 semaines ne se verrait nulle part.
 		const uuid = activeProfile().uuid;
 		const A = leconsCe2()[0];
-		declarer(uuid, [A], T0);
+		vivreLesJours(uuid, 0, 6, 2);
+		declarer(uuid, [A], jour(7));
 
-		vivreLesJours(uuid, 0, 21, 2);
+		vivreLesJours(uuid, 7, 28, 2); // trois semaines d'attente
 		expect(estHorsRotation(revisions(uuid)[`${A}@ce2`])).toBe(true);
 
-		vivreLesJours(uuid, 22, 35, 2);
+		vivreLesJours(uuid, 29, 42, 2); // cinq semaines d'attente
 		const e = revisions(uuid)[`${A}@ce2`];
 		expect(estHorsRotation(e)).toBe(false);
 		// Elle entre FRAÎCHE : premier rappel à J+1 de son ENTRÉE, jamais rétrodaté à sa
@@ -374,15 +384,17 @@ describe('critère 3 — quatre semaines d’attente donnent la priorité entre 
 	});
 
 	it('le plancher reste un PLANCHER : sous saturation, au plus une déclaration par semaine', () => {
-		// Vingt déclarations, budget saturé en permanence : le reliquat est nul, seul le
-		// slot réservé les fait avancer. Il ne doit en libérer qu'UNE par fenêtre glissante,
-		// sinon le stock déclaré repart en rafale par la porte de service.
+		// Vingt déclarations, budget saturé en permanence dès avant la déclaration (semaine
+		// de chauffe) : le reliquat est nul, seul le slot réservé les fait avancer. Il ne
+		// doit en libérer qu'UNE par fenêtre glissante, sinon le stock déclaré repart en
+		// rafale par la porte de service.
 		const uuid = activeProfile().uuid;
 		const ids = leconsCe2().slice(0, 20);
-		declarer(uuid, ids, T0);
+		vivreLesJours(uuid, 0, 6, 2);
+		declarer(uuid, ids, jour(7));
 
 		const cumul: number[] = [];
-		for (let j = 0; j <= 7 * 12; j++) {
+		for (let j = 7; j <= 7 * 13; j++) {
 			decouvrirMots(uuid, 2, jour(j)); // 14 par semaine > budget 8
 			promouvoirEntreesEnAttente(uuid, jour(j), PLAFOND_MAX);
 			cumul.push(ids.filter((id) => enRotation(revisions(uuid)[`${id}@ce2`])).length);
@@ -390,7 +402,7 @@ describe('critère 3 — quatre semaines d’attente donnent la priorité entre 
 
 		for (let j = 0; j < cumul.length; j++) {
 			const debutFenetre = j >= 7 ? cumul[j - 7] : 0;
-			expect(cumul[j] - debutFenetre, `fenêtre finissant à j=${j}`).toBeLessThanOrEqual(1);
+			expect(cumul[j] - debutFenetre, `fenêtre finissant à j=${7 + j}`).toBeLessThanOrEqual(1);
 		}
 		expect(cumul[cumul.length - 1]).toBeGreaterThan(0); // la file avance quand même
 	});
@@ -811,10 +823,11 @@ describe('critère 14 — une leçon en file d’attente reste accessible', () =
 	it('elle reste dans le périmètre « ce que tu connais déjà » du sprint (#478)', () => {
 		const uuid = activeProfile().uuid;
 		const A = leconsCe2()[0];
-		declarer(uuid, [A], T0);
+		vivreLesJours(uuid, 0, 6, 2); // chauffe : la déclaration arrive dans un budget saturé
+		declarer(uuid, [A], jour(7));
 
 		expect(estRencontree(A, loadRencontrees())).toBe(true);
-		vivreLesJours(uuid, 0, 20, 2); // toujours en attente, toujours dans le périmètre
+		vivreLesJours(uuid, 7, 27, 2); // toujours en attente, toujours dans le périmètre
 		expect(estHorsRotation(revisions(uuid)[`${A}@ce2`])).toBe(true);
 		expect(estRencontree(A, loadRencontrees())).toBe(true);
 	});

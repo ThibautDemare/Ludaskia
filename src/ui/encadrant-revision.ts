@@ -94,6 +94,9 @@ function resumeGroupe(g: GroupeRevision): string {
 		parts.push(`${g.enRotation} en révision${g.dues > 0 ? `, dont ${g.dues} à réviser` : ''}`);
 	}
 	if (g.acquises > 0) parts.push(`${g.acquises} acquise${g.acquises > 1 ? 's' : ''}`);
+	// Une catégorie entièrement en attente (#690) afficherait sinon une ligne VIDE, alors
+	// qu'elle contient bien des entrées : le compte doit dire qu'elles n'ont pas démarré.
+	if (g.enAttente > 0) parts.push(`${g.enAttente} en attente`);
 	return parts.join(' · ');
 }
 
@@ -273,6 +276,11 @@ export function revisionHTML(consulte: Profile, now: number): SafeHtml {
 		(recap.acquises > 0
 			? ` · ${recap.acquises} déjà acquise${recap.acquises > 1 ? 's' : ''}`
 			: '') +
+		/* Compte de la file d'attente (#690) : ce qui est connu du profil mais dont le
+		   compteur d'espacement n'a pas démarré. Sans lui, un adulte qui vient de déclarer
+		   cent leçons ne verrait RIEN bouger et croirait sa déclaration perdue — alors
+		   qu'elle est seulement étalée dans le temps. */
+		(recap.enAttente > 0 ? ` · ${recap.enAttente} en attente d'une première rencontre` : '') +
 		'.';
 	const corps =
 		vueRevision === 'urgence'

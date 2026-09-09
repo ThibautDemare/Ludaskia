@@ -19,7 +19,12 @@ import {
 	appKeys,
 	setActivePrefix,
 } from './storage';
-import { XP_KEY, niveauDepuisXP, migrateNiveauNamespacing } from './progress';
+import {
+	XP_KEY,
+	niveauDepuisXP,
+	migrateNiveauNamespacing,
+	promouvoirEntreesEnAttente,
+} from './progress';
 import { niveauRequisAvatar } from './unlocks';
 import { migrateRevisions } from './revision-migrate';
 import { evaluateTrophies } from './rewards';
@@ -126,6 +131,13 @@ function applyActive(m: ProfilesMeta) {
 	migrateNiveauNamespacing();
 	migrateRevisions(Date.now());
 	absorberTropheesDeReparation();
+	/* (3) File d'attente d'entrée en rotation (#690) : ce que le budget de la semaine
+	   permet entre MAINTENANT. Ici, à l'activation d'un profil, et nulle part ailleurs —
+	   surtout pas au montage d'un écran. L'invariant « annoncé = proposé » (#478)
+	   l'exige : promue plus tard, à l'entrée en séance, la file ferait annoncer zéro dû
+	   par la carte d'accueil pour qu'une séance en révèle ensuite. Idempotente aussi :
+	   deux activations le même jour ne rouvrent pas le budget. */
+	promouvoirEntreesEnAttente(p.uuid, Date.now(), getRevisionPlafond());
 }
 
 /* TEMPORAIRE — à supprimer une fois les banques d'avant #641 éteintes.

@@ -312,11 +312,12 @@ describe('critère 6 — une semaine chargée ne fait entrer aucune déclaration
 		const uuid = activeProfile().uuid;
 		const ids = leconsCe2().slice(0, 5);
 		declarer(uuid, ids, T0);
-		// Les huit ateliers étalés sur la semaine, comme dans la vraie vie.
-		for (let j = 0; j <= 6; j++) {
-			decouvrirMots(uuid, j < 2 ? 2 : 1, jour(j));
-			promouvoirEntreesEnAttente(uuid, jour(j), PLAFOND_MAX);
-		}
+		// Les huit ateliers étalés sur la semaine, comme dans la vraie vie. La passe se juge
+		// une fois la SEMAINE ÉCOULÉE : au jour 0 la fenêtre ne contient que les deux
+		// ateliers du jour, et mesurer là reviendrait à parler d'une semaine à deux ateliers.
+		for (let j = 0; j <= 6; j++) decouvrirMots(uuid, j < 2 ? 2 : 1, jour(j));
+
+		promouvoirEntreesEnAttente(uuid, jour(6), PLAFOND_MAX);
 
 		const r = revisions(uuid);
 		for (const id of ids) expect(estHorsRotation(r[`${id}@ce2`]), id).toBe(true);

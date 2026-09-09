@@ -48,14 +48,7 @@ import {
 	setNiveauReference,
 	touchActiveProfile,
 } from '../src/core/profiles';
-import {
-	JOUR,
-	PALIER_ACQUIS,
-	REVISION_INTERVALLES,
-	avancerEtat,
-	estAcquis,
-	etatNeuf,
-} from '../src/core/revision';
+import { JOUR, PALIER_ACQUIS, avancerEtat, estAcquis, etatNeuf } from '../src/core/revision';
 import {
 	LESSON_REVISION_KEY,
 	getXP,
@@ -255,10 +248,20 @@ describe('prémisse — l’escalier de la répétition espacée', () => {
 		expect(etatAncre().prochaineRevision).toBeNull(); // sorti de la rotation
 	});
 
-	it('un élément ancré l’est au plus tôt après 137 jours sans échec', () => {
-		const attendu = REVISION_INTERVALLES.reduce((a, b) => a + b, 0);
-		expect(attendu).toBe(137 * JOUR); // 1 + 3 + 7 + 16 + 35 + 75
-		expect(etatAncre().dernierTest).toBe(T0 + attendu);
+	/* Ce que coûte la fixture, en temps : le chemin qu'elle REJOUE — six réussites servies
+	   le jour même du rendez-vous — met 137 jours (cumuls 1, 4, 11, 27, 62, 137). C'est
+	   tout ce dont ce fichier a besoin.
+	   Le PLANCHER, lui (« aucun chemin ne fait mieux, retard compris »), est une propriété
+	   de l'escalier et non des trophées : il est tenu par `tests/revision-retard.test.ts`
+	   (#688), qui l'EXPLORE en rejouant `avancerEtat` sur des chemins réels. La version
+	   précédente de ce test additionnait `REVISION_INTERVALLES` sans rejouer quoi que ce
+	   soit : elle décrivait la donnée au lieu de garder l'exigence, et laissait passer
+	   n'importe quel raccourci de l'escalier (#688, critère 9). */
+	it('la fixture « ancré » est le résultat d’un chemin de 137 jours sans échec', () => {
+		const jour = (t: number | null) => Math.round(((t ?? T0) - T0) / JOUR);
+		const paliers = [1, 2, 3, 4, 5, PALIER_ACQUIS];
+		expect(paliers.map((n) => jour(etatPalier(n).dernierTest))).toEqual([1, 4, 11, 27, 62, 137]);
+		expect(jour(etatAncre().dernierTest)).toBe(137);
 	});
 });
 

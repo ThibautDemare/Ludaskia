@@ -89,7 +89,7 @@ import {
 	debutSuiviEtapes,
 } from './orthographe/paliers';
 import { composition, type RangMot } from './orthographe/etapes';
-import { REVISION_INTERVALLES, PALIER_ACQUIS, JOUR, estAcquis } from './revision';
+import { REVISION_INTERVALLES, PALIER_ACQUIS, JOUR, estAcquis, estHorsRotation } from './revision';
 import type { EtatRevision, OrthoState, MotOrtho } from './orthographe/types';
 
 /* L'échelle de maîtrise (types + niveauNotion/tendanceNotion) vit dans maitrise.ts ; on la
@@ -1747,6 +1747,12 @@ export interface EntreeRevision {
 	   une étiquette de niveau en pleine séance ajoute une charge métacognitive (« est-ce
 	   que je régresse ? ») sans bénéfice d'apprentissage. */
 	niveauOrigine?: SchoolLevel;
+	/* En ATTENTE d'entrée en rotation (#690, #641) : l'élément existe, son compteur
+	   d'espacement n'a pas démarré. Une leçon déclarée « vue en classe » pas encore
+	   rencontrée, un mot dont l'atelier n'est pas fait. Ni dû, ni acquis, ni « en retard » :
+	   sans cette distinction, le récap le rangeait avec les vraies entrées de palier 0, et
+	   l'adulte lisait « en rotation » ce qui n'a jamais commencé. */
+	enAttente: boolean;
 }
 
 export interface GroupeRevision {
@@ -1775,6 +1781,11 @@ export interface PalierRevision {
 export interface RecapRevision {
 	total: number;
 	enRotation: number;
+	/* Éléments EN ATTENTE d'entrée en rotation (#690) : le compte que l'adulte doit pouvoir
+	   lire pour savoir que son stock déclaré n'est pas perdu, seulement différé.
+	   `total === enAttente + enRotation + acquises` : ces trois-là ne se recouvrent pas,
+	   et `enRotation` ne compte donc plus ce qui n'a pas démarré. */
+	enAttente: number;
 	acquises: number;
 	dues: number;
 	groupes: GroupeRevision[]; // vue « par catégorie » (ordre du catalogue)
@@ -1830,11 +1841,13 @@ function entreeRevision(
 	niveauOrigine?: SchoolLevel,
 ): EntreeRevision {
 	const acquis = estAcquis(etat);
+	const enAttente = !acquis && estHorsRotation(etat);
 	const joursRestants =
 		acquis || etat.prochaineRevision == null
 			? null
 			: Math.round((startOfDay(etat.prochaineRevision) - startOfDay(now)) / JOUR);
 	return {
+		enAttente,
 		cle,
 		label,
 		nature,
@@ -1932,7 +1945,7 @@ export function revisionProfil(profile: Profile, now: number): RecapRevision {
 			label: cat.label,
 			subject: cat.subject,
 			entrees: es,
-			enRotation: es.filter((e) => !e.acquis).length,
+			enRotation: es.filter((e) => !e.acquis && !e.enAttente).length,
 			acquises: es.filter((e) => e.acquis).length,
 			dues: es.filter((e) => e.du).length,
 		});
@@ -1960,7 +1973,8 @@ export function revisionProfil(profile: Profile, now: number): RecapRevision {
 
 	return {
 		total: entrees.length,
-		enRotation: entrees.filter((e) => !e.acquis).length,
+		enRotation: entrees.filter((e) => !e.acquis && !e.enAttente).length,
+		enAttente: entrees.filter((e) => e.enAttente).length,
 		acquises: entrees.filter((e) => e.acquis).length,
 		dues: entrees.filter((e) => e.du).length,
 		groupes,

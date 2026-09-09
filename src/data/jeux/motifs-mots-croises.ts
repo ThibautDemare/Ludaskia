@@ -110,8 +110,11 @@ export const MOTIFS_MOTS_CROISES: readonly Motif[] = [
 		id: 'echelle',
 		largeur: 5,
 		hauteur: 7,
-		/* Cinq colonnes seulement : les cases y sont les plus grandes du lot
-		   (61 px sur un écran de 360), au prix de mots plus courts.
+		/* Cinq colonnes seulement : les cases y sont les plus grandes du lot, au prix
+		   de mots plus courts. 54,4 px et non les 61 px que donnerait le partage des
+		   305 px utiles : c'est `--mx-case-max` (3,4 rem) qui plafonne, dans
+		   `jeu-mots-croises.scss`. Largement au-dessus du plancher de 44 px, mais un
+		   futur motif à cinq colonnes ne doit pas compter sur les 61.
 		   #####
 		   #...#
 		   #...#

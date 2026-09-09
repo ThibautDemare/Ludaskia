@@ -191,7 +191,7 @@ function plateauHTML(): SafeHtml {
 		<p class="mx-progres" id="mxProgres"></p>
 		<div class="mx-grille" id="mxGrille" role="group" aria-label="Grille de mots croisés"></div>
 		<p class="mx-signal" id="mxSignal" ${drapeau('hidden')}>${MESSAGE_FAUX}</p>
-		<div class="mx-actions">
+		<div class="mx-actions" id="mxActions">
 			<button type="button" class="mx-effacer" id="mxEffacer" ${drapeau('disabled')}>
 				Effacer ce mot
 			</button>
@@ -275,6 +275,27 @@ function creerRunner(): RunnerJeu {
 		grille.innerHTML = joindre(cases).balisage;
 	};
 
+	/** Ce que le bandeau affiche, au moment de sa dernière mesure. */
+	let signatureBandeau = '';
+
+	/** Pose la hauteur RÉELLE du bandeau collant sur la grille, pour que
+	    `scroll-margin-top` empêche le défilement natif de glisser la case qui
+	    prend le focus dessous. Une valeur fixe ne suffirait pas : le bandeau
+	    grandit d'un choix de sens sur une case de croisement, et sa définition
+	    s'enroule sur deux ou trois lignes selon le mot.
+
+	    Mesurer force un calcul de mise en page, d'où la signature : on ne mesure
+	    qu'aux changements de CONTENU du bandeau — au plus une fois par case
+	    touchée, jamais à chaque lettre. */
+	const mesurerBandeau = (signature: string): void => {
+		if (signature === signatureBandeau) return;
+		signatureBandeau = signature;
+		const def = dans('#mxDef');
+		const grille = dans('#mxGrille');
+		if (!def || !grille) return;
+		grille.style.setProperty('--mx-bandeau', `${String(def.offsetHeight)}px`);
+	};
+
 	/** Le bandeau : la définition du mot en cours, et le choix de sens quand la
 	    case touchée en appelle un. */
 	const peindreDefinition = (): void => {
@@ -305,10 +326,18 @@ function creerRunner(): RunnerJeu {
 				).balisage;
 			}
 			for (const bouton of choix.querySelectorAll<HTMLElement>('.mx-sens')) {
-				bouton.setAttribute(
-					'aria-pressed',
-					Number(bouton.dataset.emplacement) === motCourant ? 'true' : 'false',
-				);
+				const retenu = Number(bouton.dataset.emplacement) === motCourant;
+				bouton.setAttribute('aria-pressed', retenu ? 'true' : 'false');
+				/* La définition du bouton RETENU est masquée à l'œil : le bandeau
+				   l'affiche déjà juste au-dessus, en plus grand, et la répéter allonge
+				   d'autant le bandeau collant dans l'état où il est déjà le plus haut.
+				   Celle de l'autre bouton reste visible — c'est elle qui permet de
+				   basculer sans re-toucher la case.
+
+				   `.sr-only` et non `display: none` : le texte sort de l'écran, pas de
+				   l'arbre d'accessibilité. Un bouton dont le nom se réduirait à « Le mot
+				   qui descend » ne dirait plus quel mot il désigne. */
+				bouton.querySelector('.mx-sens-def')?.classList.toggle('sr-only', retenu);
 			}
 		}
 
@@ -318,6 +347,7 @@ function creerRunner(): RunnerJeu {
 		/* Le bouton d'écoute n'existe que s'il y a une voix (critère 31) : affiché
 		   sans voix disponible, il promettrait ce qu'il ne peut pas tenir. */
 		ecoute.hidden = definition === null || !dicteeDisponible();
+		mesurerBandeau(`${definition ?? ''}|${croisement ? (choix.dataset.pour ?? '') : ''}`);
 	};
 
 	/** Repeint l'état : lettres, mot en cours, mots faux, progression, fin. */
@@ -362,6 +392,11 @@ function creerRunner(): RunnerJeu {
 			const k = cle(ligne, colonne);
 			bascule(el, 'data-courant', casesDuMot.has(k));
 			bascule(el, 'data-faux', casesFausses.has(k));
+			/* Sur une case partagée, FAUX l'emporte sur JUSTE : elle appartient à deux
+			   mots, et celui qui ne va pas est le seul sur lequel il reste quelque
+			   chose à faire. Peindre la case en « trouvé » y cacherait le signalement
+			   à l'endroit précis où l'enfant doit regarder. Même arbitrage que le
+			   conflit du sudoku, qui passe lui aussi devant les mises en évidence. */
 			bascule(el, 'data-juste', casesJustes.has(k) && !casesFausses.has(k));
 		}
 
@@ -385,6 +420,13 @@ function creerRunner(): RunnerJeu {
 		if (signal) signal.hidden = !parEtat.includes('faux');
 		const fin = dans('#mxFin');
 		if (fin) fin.hidden = !gagnee;
+		/* La grille finie, les actions courantes s'effacent : « Effacer ce mot » n'a
+		   plus d'objet, et « Changer de grille » ferait doublon avec le bouton du
+		   panneau de fin — au mot près le même geste, puisque la confirmation saute
+		   sur une grille gagnée. Deux boutons pour une seule action, c'est un choix
+		   à faire là où il n'y en a pas. */
+		const actions = dans('#mxActions');
+		if (actions) actions.hidden = gagnee;
 	};
 
 	/** Remplace la partie, SAUVE, repeint. Un seul chemin d'écriture : la
@@ -622,7 +664,10 @@ function creerRunner(): RunnerJeu {
 		if (effacer) effacer.disabled = true;
 		const progres = dans('#mxProgres');
 		if (progres) progres.textContent = '';
-		for (const id of ['#mxSignal', '#mxFin']) {
+		/* Les actions courantes disparaissent avec la grille : sans grille, « Effacer
+		   ce mot » n'a plus d'objet et « Changer de grille » ferait le même geste que
+		   le « Réessayer » du panneau, à trois centimètres de lui. */
+		for (const id of ['#mxSignal', '#mxFin', '#mxActions']) {
 			const el = dans(id);
 			if (el) el.hidden = true;
 		}

@@ -229,3 +229,63 @@ test('critère 14 — une leçon en attente reste jouable (saisie, correction)',
 
 	expect(errors).toEqual([]);
 });
+
+/* ---------- 5. Les TROIS vues décrivent l'attente, pas seulement « Par catégorie » ----------
+   Remontée relecteur-qualite : le test du critère 8 ne couvrait que la vue « Par catégorie »
+   (via `resumeGroupe`). Les deux autres vues rendent CHAQUE LIGNE (`entreeHTML`), pas un résumé
+   agrégé, et une entrée en attente (palier 0, sans échéance) s'y confondait avec une entrée
+   FRAÎCHEMENT entrée en rotation : même « Palier : 1 jour », échéance vide plutôt qu'absente.
+   En vue « Par palier » c'est pire : le palier 0 est un étage qui existe aussi pour de VRAIES
+   entrées en rotation, donc son compteur gonflait sans rien distinguer (`resumeEtage`).
+   Le code affiche désormais « En attente de rencontre » à la place du palier (les trois vues,
+   `entreeHTML`) et l'étage annonce un sous-compte (« N entrées, dont M en attente de
+   rencontre », `resumeEtage`). Vérifié ROUGIR sur le rendu d'avant (commit babe9dd, parent de
+   75eac79) via un scratch hors dépôt reproduisant la logique pure des deux fonctions : sur la
+   même fixture, l'ancien rendu ne produit ni « En attente de rencontre » ni le sous-compte —
+   seul le rendu actuel les produit. */
+const UUID_VUES = 'e2e-vues';
+
+test('vue « Par urgence » : une entrée en attente porte le libellé dédié, jamais un palier ni une échéance vide', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await seedEnAttente(page, UUID_VUES);
+	await gotoHash(page, 'encadrant');
+
+	const section = page.locator('.enc-rev-section');
+	await section.locator('[data-act="revision-mode"][data-mode="urgence"]').click();
+
+	const item = section.locator('.enc-rev-item');
+	await expect(item).toHaveCount(1);
+	await expect(item.locator('.enc-rev-palier')).toHaveText('En attente de rencontre');
+	// Avant le correctif, une échéance VIDE était quand même émise (`<span class="enc-rev-echeance">`) :
+	// le conteneur ne doit plus exister du tout pour une entrée en attente.
+	await expect(item.locator('.enc-rev-echeance')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+test("vue « Par palier » : l'étage annonce son sous-compte « en attente de rencontre », la ligne ne redit pas un faux palier", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await seedEnAttente(page, UUID_VUES);
+	await gotoHash(page, 'encadrant');
+
+	const section = page.locator('.enc-rev-section');
+	await section.locator('[data-act="revision-mode"][data-mode="palier"]').click();
+
+	// Une seule entrée, palier 0 : un seul étage.
+	const etage = section.locator('.enc-rev-etage');
+	await expect(etage).toHaveCount(1);
+	await expect(etage.locator('.enc-rev-etage-n')).toHaveText(
+		'1 entrée, dont 1 en attente de rencontre',
+	);
+
+	const item = etage.locator('.enc-rev-item');
+	await expect(item).toHaveCount(1);
+	await expect(item.locator('.enc-rev-palier')).toHaveText('En attente de rencontre');
+	await expect(item.locator('.enc-rev-echeance')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});

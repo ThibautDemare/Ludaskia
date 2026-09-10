@@ -19,6 +19,7 @@ import {
 	REVISION_FENETRE_ENTREES,
 	REVISION_ATTENTE_MAX,
 } from './revision';
+import { journaliserRetard } from './retard-journal';
 import { ORTHO_KEY } from './orthographe/store';
 import { countDue } from './revision-select';
 import type { LeconBasNiveau } from './revision-select';
@@ -983,6 +984,11 @@ export function avancerLessonRevision(
 ) {
 	const all = loadLessonRevisionsRaw();
 	const k = nsKey(lessonId, niveau ?? niveauStockage(lessonId));
+	/* Capture du retard AVANT que `avancerEtat` recalcule l'échéance et le rende
+	   indéterminable (#691). Dans l'avanceur plutôt que chez l'appelant : aucun chemin de
+	   correction, présent ou futur, ne peut alors l'oublier en silence. Écriture seule —
+	   ce journal ne se relit nulle part dans le moteur. */
+	journaliserRetard({ kind: 'lecon', id: k }, all[k], reussi, now);
 	all[k] = avancerEtat(all[k] ?? etatNeuf(now), reussi, now);
 	saveLessonRevisions(all);
 }

@@ -90,6 +90,7 @@ import {
 } from './orthographe/paliers';
 import { composition, type RangMot } from './orthographe/etapes';
 import { REVISION_INTERVALLES, PALIER_ACQUIS, JOUR, estAcquis, estHorsRotation } from './revision';
+import { chargerRetardsFor, tauxParTranche, type TauxTranche } from './retard-journal';
 import type { EtatRevision, OrthoState, MotOrtho } from './orthographe/types';
 
 /* L'échelle de maîtrise (types + niveauNotion/tendanceNotion) vit dans maitrise.ts ; on la
@@ -1985,4 +1986,18 @@ export function revisionProfil(profile: Profile, now: number): RecapRevision {
 		parUrgence: [...entrees].sort(compareUrgence),
 		parPalier,
 	};
+}
+
+/* ---------- Le retard fait-il échouer ? (#691) ----------
+   Tout le lot « révision espacée soutenable » repose sur l'hypothèse qu'un rendez-vous
+   servi très en retard fait rater l'enfant, et que cet échec est imputable à la file
+   plutôt qu'à lui. Ce récap la rend LISIBLE : trois taux de réussite, un par tranche de
+   retard, sur le journal du profil consulté. Si les trois se ressemblent, l'hypothèse ne
+   tient pas et le calibrage des autres issues est à revoir ; si le dernier s'effondre,
+   elle tient.
+
+   Lu sur le profil AFFICHÉ (par UUID), jamais sur le profil actif : l'adulte consulte
+   souvent un enfant qui n'est pas celui qui joue. */
+export function tauxRetardProfil(profile: Profile): TauxTranche[] {
+	return tauxParTranche(chargerRetardsFor(profile.uuid));
 }

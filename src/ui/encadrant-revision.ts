@@ -19,7 +19,9 @@ import {
 	type EntreeRevision,
 	type GroupeRevision,
 	type PalierRevision,
+	tauxRetardProfil,
 } from '../core/encadrant-stats';
+import type { TauxTranche } from '../core/retard-journal';
 import { LEVEL_LABEL } from '../core/levels';
 import { renderEspace, container } from './encadrant-commun';
 import { segmentHTML } from './segment';
@@ -125,6 +127,20 @@ export function syntheseRevision(recap: RecapRevision): string {
 		parts.push(`${recap.enAttente} en attente d'une première rencontre`);
 	}
 	return parts.join(' · ') + '.';
+}
+
+/* Réussite par tranche de retard (#691) : la seule lecture qui répond à « le retard
+   fait-il échouer ? ». Une tranche VIDE est omise plutôt que rendue « 0 % » — un taux nul
+   dit que tout a été raté, l'absence de mesure ne dit rien. Rend '' quand rien n'a encore
+   été mesuré, l'appelant n'affichant alors pas la ligne : un tableau de trois tirets, sur
+   un profil neuf, ferait croire à un problème.
+   Le pourcentage se met en forme ICI et pas dans le noyau : `tauxParTranche` rend une
+   fraction, ce qui la garde comparable et testable sans dépendre d'un arrondi. */
+export function syntheseTauxRetard(taux: readonly TauxTranche[]): string {
+	const parts = taux
+		.filter((t) => t.taux != null)
+		.map((t) => `${t.label} : ${Math.round((t.taux as number) * 100)} % (${t.total})`);
+	return parts.length ? parts.join(' · ') : '';
 }
 
 /* Résumé chiffré d'un groupe (dénombrement, jamais de pourcentage). Exportée pour la même
@@ -328,6 +344,10 @@ export function revisionHTML(consulte: Profile, now: number): SafeHtml {
 		],
 	});
 	const synthese = syntheseRevision(recap);
+	/* Réussite par tranche de retard (#691). Ligne OMISE tant que rien n'est mesuré : le
+	   journal ne se remplit qu'au fil des corrections, et trois tirets sur un profil neuf
+	   se liraient comme une panne. */
+	const retards = syntheseTauxRetard(tauxRetardProfil(consulte));
 	const corps =
 		vueRevision === 'urgence'
 			? vueUrgenceHTML(recap)
@@ -340,6 +360,13 @@ export function revisionHTML(consulte: Profile, now: number): SafeHtml {
       <p class="enc-rev-frame">Le mode Révision propose de revoir, à intervalles de plus en plus espacés, ce que ${consulte.name} a déjà travaillé. Chaque entrée gravit cet escalier : ${escalier} ; plus le palier est haut, mieux la notion est ancrée.</p>
       <div class="enc-block">
         <p class="enc-hint">${synthese}</p>
+        ${
+					retards
+						? html`<p class="enc-hint">
+								Réussite selon le retard du rendez-vous&nbsp;: ${retards}
+							</p>`
+						: VIDE
+				}
         ${bascule}
         ${corps}
       </div>

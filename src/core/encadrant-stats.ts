@@ -1777,6 +1777,7 @@ export interface PalierRevision {
 	acquis: boolean; // étage sommital (sorti de la rotation)
 	entrees: EntreeRevision[]; // triées par urgence
 	dues: number; // non acquises et échues
+	enAttente: number; // entrées dont le compteur d'espacement n'a pas démarré (#690)
 }
 
 export interface RecapRevision {
@@ -1970,6 +1971,7 @@ export function revisionProfil(profile: Profile, now: number): RecapRevision {
 			acquis,
 			entrees: es,
 			dues: es.filter((e) => e.du).length,
+			enAttente: es.filter((e) => e.enAttente).length,
 		});
 	}
 

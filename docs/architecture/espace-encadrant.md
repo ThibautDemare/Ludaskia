@@ -952,6 +952,24 @@ défaut.
 (`ludaskia_revoir`) reste un mécanisme **manuel**, épinglé par l'encadrant. Les deux
 coexistent sans se recouvrir.
 
+**Réussite selon le retard du rendez-vous (#691)** : une ligne supplémentaire, juste sous
+la synthèse du bloc, ventile le taux de réussite en révision selon le retard avec lequel
+chaque rendez-vous a été servi (`tauxRetardProfil`, `core/encadrant-stats.ts`, sur le
+journal dédié `ludaskia_retards` — cf. [Logique pure](core.md) et [Données &
+profils](donnees-et-profils.md)) — trois tranches, « Servi à l'heure », « Moins de 2 fois
+le délai prévu », « 2 fois le délai prévu ou plus », chacune avec son pourcentage et son
+total (`syntheseTauxRetard`, `ui/encadrant-revision.ts` : le noyau ne rend qu'une
+fraction, la mise en pourcentage vit ici). **Distinct de l'historique des erreurs** plus
+haut dans l'onglet Suivi : celui-ci garde des énoncés, ne retient que les échecs, et sert
+à comprendre UNE erreur précise ; celui-là ne porte que des nombres, garde aussi les
+réussites (sans elles, pas de taux à lire), et répond à une question sur la
+PLANIFICATION — « le retard fait-il échouer ? » — pas à un point précis à retravailler.
+**Ligne OMISE** (pas trois tirets) tant qu'aucune tranche n'a de mesure : un profil qui
+vient de migrer sur cette version, ou qui n'a pas encore eu de correction en révision, ne
+doit pas lire un tableau qui ressemble à une panne. Une tranche VIDE, elle, disparaît
+individuellement plutôt que d'afficher « 0 % », qui dirait « tout raté » là où il n'y a
+simplement rien à lire.
+
 ## Composition du « programme du jour » (#440)
 
 Bloc de composition (`ui/encadrant-seance.ts` — `seanceHTML`/`seanceClick`/

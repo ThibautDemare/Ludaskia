@@ -913,7 +913,34 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   l'espace encadrant (`ui/encadrant-reglages.ts`, cf. [Espace
   encadrant](espace-encadrant.md)) ; fallback + bornage appliqués à la lecture par
   `profiles.ts:getRevisionPlafond`, consommé par `ui/revision.ts:runRevisionEspacee` au
-  lieu de la valeur par défaut figée. L'algorithme d'équilibrage entre sources
+  lieu de la valeur par défaut figée.
+  **Entrée en rotation bornée par un budget hebdomadaire (#690)** : le hors-rotation
+  ci-dessus protège une leçon déclarée « vue en classe » (#478) contre une échéance
+  prématurée, mais ne bornait pas *combien* d'éléments pouvaient démarrer leur cascade
+  J+1/J+3 la même semaine — mesuré sur un profil réel, 101 déclarations groupées
+  avaient posé 101 échéances à J+1, congestion dont le profil n'est jamais sorti.
+  `budgetEntreesRotation(plafond)` dérive un budget de `max(2, round(plafond / 3))`
+  (même principe que `plafondBasNiveau` : une dose, pas un curseur de plus), mesuré sur
+  une **fenêtre glissante de 7 jours sans report du déficit** (`REVISION_FENETRE_ENTREES`
+  — reporter rendrait le blocage cumulatif). `progress.ts:promouvoirEntreesEnAttente(uuid,
+  now, plafond)` fait entrer trois niveaux, dans cet ordre : (1) les **rencontres
+  réelles** (mot travaillé à l'atelier, leçon jouée) entrent **toujours** immédiatement et
+  consomment le budget — leur J+1 à chaud ne doit jamais être retardé, le rater
+  reviendrait à annuler la séance d'apprentissage ; (2) au-delà de `REVISION_ATTENTE_MAX`
+  (4 semaines), un élément en attente passe devant les autres et entre **quoi qu'il
+  arrive**, même budget épuisé — ce **slot réservé** est un PLANCHER et non une
+  allocation (il ne s'ouvre que si aucune déclaration n'est passée par le budget normal),
+  donc la charge d'une semaine ne dépasse jamais `budget + 1` ; sans lui, un enfant
+  découvrant plus de mots par semaine que le budget ne verrait jamais entrer son stock
+  déclaré ; (3) les autres déclarations, par ancienneté, sur le reliquat de budget. La
+  file (`REVISION_FILE_KEY`, `ludaskia_revisionFile`, cf. [Données &
+  profils](donnees-et-profils.md)) date chaque mise en attente et journalise les
+  promotions ; ses entrées **orphelines** (sorties par une rencontre réelle sans passer
+  par la promotion) sont purgées à chaque passe, `attente` n'ayant pas de borne de taille
+  propre contrairement à `promues`. Appelée **uniquement à l'activation d'un profil**
+  (`profiles.ts:applyActive`), jamais au montage d'un écran : l'invariant « annoncé =
+  proposé » (#478) l'exige, sans quoi la carte d'accueil annoncerait zéro dû qu'une
+  séance révélerait ensuite. L'algorithme d'équilibrage entre sources
   (`selectionEquilibree`, `revision-select.ts`) a été **adapté** au passage : son budget
   de vidage suit désormais le plafond pour qu'un plafond bas (6/8) n'affame plus une
   source pourtant due (cf. ci-dessous).
@@ -1947,13 +1974,15 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   court-circuite `onDataWrite`). ⚠️ Cette carte NE remplace PAS
   `progress.ts:LESSON_FIRST_SEEN_KEY` (date de 1er passage) — deux sources distinctes,
   réunies **uniquement** dans `sprint-scope.ts` (cf. ci-dessus). Effet sur la révision
-  espacée : `declarerVuAilleursFor` appelle la variante par UUID de l'entrée en
-  rotation (`progress.ts:enterLessonsRevisionFor`, même comportement standard qu'un
-  vrai passage — état neuf, 1er re-test à J+1) ; à l'annulation,
-  `progress.ts:retirerRevisionsDeclareesFor` ne retire l'état SR **que** s'il n'a
-  jamais été re-testé (`dernierTest === null`) **et** que la leçon n'a aucune
-  statistique dans l'appli — on ne détruit jamais un progrès issu d'un vrai passage,
-  on ne défait que ce que la déclaration avait créé. **Modèle de l'écran adulte**
+  espacée (#690) : `declarerVuAilleursFor` appelle `progress.ts:mettreEnAttenteFor`, qui
+  met l'élément **hors rotation, en attente** — plus d'entrée immédiate en rotation ; la
+  leçon démarre son escalier à sa première rencontre réelle ou via la passe de
+  promotion bornée par budget (cf. « Entrée en rotation bornée par un budget
+  hebdomadaire » ci-dessus) ; à l'annulation, `progress.ts:retirerRevisionsDeclareesFor`
+  retire la clé de la file d'attente **inconditionnellement**, et ne retire l'état SR
+  **que** s'il n'a jamais été re-testé (`dernierTest === null`) **et** que la leçon n'a
+  aucune statistique dans l'appli — on ne détruit jamais un progrès issu d'un vrai
+  passage, on ne défait que ce que la déclaration avait créé. **Modèle de l'écran adulte**
   (`categoriesDeclarables(uuid, niveauDe)`, aucun DOM) : parcourt `CATEGORIES` comme
   le récap de progression et donne, par catégorie, chaque leçon avec son état
   (`declaree`/`jouee`) et trois compteurs (`declarables`, `declarees`, `rencontrees` =

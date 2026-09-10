@@ -745,6 +745,70 @@ sur appareil sans TTS (gate #541) sème désormais un mot cohérent (tuiles vali
 troué, pour la même raison : un mot troué y arriverait déjà maîtrisé une fois réparé, ce qui
 n'éprouverait plus la bascule que ce gate vise.
 
+### Borner l'entrée en rotation (#690)
+
+Trois fichiers Vitest, écrits AVANT l'implémentation à partir des critères gelés de
+l'issue (`notes/_issue690.md`) et de deux décisions du mainteneur qui les ont fait
+évoluer en cours de route (la soupape des 4 semaines est débitée du budget, et un slot
+réservé garantit une entrée par fenêtre à l'élément le plus ancien).
+
+**`tests/revision-entree-rotation.test.ts`** couvre le comportement de
+`mettreEnAttenteFor`/`promouvoirEntreesEnAttente` (critères 1-3, 7-11, 13-14) : une
+déclaration n'ouvre plus d'échéance et reste retrouvable telle quelle (101 déclarations
+restent 101) ; elle entre à sa première rencontre réelle, datée du **passage**, jamais
+de la déclaration ; l'attente de 4 semaines donne la **priorité** entre déclarations et
+ouvre le slot réservé quand le budget de la fenêtre n'a rien laissé passer ; un élément
+différé n'apparaît nulle part comme dû, y compris pour l'accueil (qui ne doit pas non
+plus annoncer « tout est révisé » sur un profil qui n'a que ça) ; l'annulation d'une
+déclaration jamais rencontrée retire la file sans toucher un progrès réel ; aucune
+migration ne touche les états déjà en rotation (y compris la seule leçon jamais jouée du
+profil mesuré). Un bloc dédié couvre la **purge des orphelins** (une clé de la file dont
+l'état a démarré par ailleurs, cas qui ne peut venir que d'une donnée importée) : purgée
+qu'une promotion ait lieu ou non à la même passe, y compris pour un état acquis.
+
+**`tests/revision-budget-entree.test.ts`** couvre `budgetEntreesRotation` et la
+hiérarchie du budget (critères 4-6, 12) : la formule `max(2, round(plafond/3))` sur les
+sept paliers et toute la plage admissible ; le budget compte **toutes** les sources
+(mots découverts, leçons jouées, déclarations) et la passe est idempotente à l'intérieur
+d'une même journée ; une rencontre réelle entre toujours, y compris quand elle dépasse le
+budget, sans jamais retarder son propre J+1 ; une semaine chargée ne fait entrer aucune
+déclaration, dans l'ordre d'ancienneté. Un bloc couvre le **changement de plafond en
+cours de fenêtre** (le budget se recalcule à chaque passe depuis le plafond courant,
+sans allocation mémorisée) ; un autre la **fenêtre glissante** de 7 jours (la frontière du
+lundi ne libère rien, le dépassement d'une semaine ne rogne pas la suivante) et la borne
+`budget + 1` par fenêtre glissante que la décision du mainteneur garantit sur le lot des
+101 déclarations mesurées.
+
+**`tests/encadrant-synthese-revision.test.ts`** tient `syntheseRevision`, `resumeGroupe`
+et `resumeEtage` (`ui/encadrant-revision.ts`) : aucun compte NUL n'est jamais prononcé
+(le défaut d'origine — cent leçons déclarées ouvrant la phrase sur « 0 entrée en
+révision », un résumé de catégorie entièrement muet) et, à l'inverse, un ensemble non
+vide ne se résume jamais par du vide. Les trois fonctions n'ont pas le même invariant :
+les deux premières énumèrent des parts disjointes d'un tout (rotation, acquis, attente),
+la troisième annonce un tout puis ses sous-comptes inclus (dues, en attente) — chaque
+bloc de test dit le sien, plus un test croisé qui vérifie que la synthèse du bloc et le
+résumé de catégorie ne divergent jamais sur les mêmes chiffres. Assertions volontairement
+indépendantes de la formulation (comptes prononcés, accord singulier/pluriel, bonne
+formation de la phrase), pour rester vraies si le libellé est un jour reformulé.
+
+**`e2e/revision-entree-attente.spec.ts`** couvre ce que ces ~100 tests Vitest ne
+peuvent pas voir : le **rendu** (le compte « en attente » apparaît bien dans les trois
+vues du récap, avec le libellé dédié et sans échéance vide) et surtout le
+**déclenchement réel** de la passe de promotion — elle n'est appelée que depuis
+`profiles.ts:applyActive`, donc sans un test qui charge vraiment l'app, la logique pure
+pourrait rester verte pendant que la file ne se vide jamais en production. Vérifié en
+semant l'état brut de `ludaskia_revisionFile` puis en chargeant l'app une seule fois
+(premier `gotoHash` = vraie navigation depuis `about:blank`, donc `main.ts` s'exécute en
+entier). Couvre aussi le critère 14 côté enfant (leçon en attente toujours visible dans
+le catalogue et jouable de bout en bout) et le garde-fou de régression sur l'accueil
+(`aDesRevisions` comptait autrefois toute clé présente, donc un profil qui n'a QUE des
+déclarations en attente affichait « tout révisé » sans qu'aucune leçon ait été jouée).
+
+**`tests/vu-en-classe.test.ts` amendé** : quatre assertions qui verrouillaient l'ancien
+comportement (déclaration → `etatNeuf`, échéance à J+1) sont réécrites pour l'état HORS
+ROTATION (`etatHorsRotation`) que #690 pose désormais — la déclaration est mise en
+attente, plus jamais en rotation directe.
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent

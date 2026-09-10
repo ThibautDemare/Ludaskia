@@ -18,8 +18,9 @@ cartes de progression, écrite **par UUID** depuis l'espace encadrant sans
 changer le profil actif, `core/vu-ailleurs.ts` — carte **dédiée** qui ne
 remplace PAS `ludaskia_lessonFirstSeen` : l'union des deux ne se fait que dans
 `core/sprint-scope.ts`, pour le périmètre « déjà vues » du sprint, cf. [Logique
-pure](core.md) ; une déclaration fait aussi entrer la leçon en rotation de
-révision espacée), `ludaskia_paliers` (#397 : journal daté des
+pure](core.md) ; depuis #690, une déclaration met la leçon **en attente**
+d'entrée en rotation — voir `ludaskia_revisionFile` plus bas — au lieu d'y
+entrer directement), `ludaskia_paliers` (#397 : journal daté des
 **premiers** franchissements de palier par notion — `PaliersNotion {enCours?, acquis?}`,
 namespacée `lessonId@niveau` comme stats/étoiles, 2 horodatages max donc bornée par le
 catalogue — depuis PR #540 journalisé par `recordLessonStats` **lui-même** (en
@@ -39,6 +40,20 @@ semaine pouvaient suivre deux règles différentes, cf. [Logique pure](core.md))
 `ludaskia_lessonRevision` (état SR par leçon, namespacée `lessonId@niveau` — la vue scopée
 lit le niveau actif, sauf pour l'entretien du niveau immédiatement inférieur en révision
 espacée, #232, cf. [Logique pure](core.md)),
+`ludaskia_revisionFile` (#690 : file d'attente d'**entrée** en rotation —
+`{attente: Record<'lessonId@niveau', number>; promues: number[]}`. `EtatRevision` ne
+porte aucune date d'entrée en rotation, et `avancerEtat` écrase l'échéance dès le
+premier re-test (J+1, donc **dans** la fenêtre de 7 jours que le budget doit mesurer) :
+`attente` date donc, à part, la mise en attente de chaque élément différé ; `promues`
+horodate les déclarations effectivement entrées (bornée à 30 jours **et** 200 entrées,
+comme `ludaskia_activity`). Les rencontres réelles n'y sont pas journalisées : elles
+sont déjà datées ailleurs (`franchissements.atelier` d'un mot, `ludaskia_lessonFirstSeen`
+d'une leçon). `attente`, elle, n'a **pas** de borne de taille dédiée — écarté
+volontairement : une fois les orphelins purgés à chaque passe (une clé sortie par une
+rencontre réelle), son contenu légitime est majoré par le nombre de paires leçon × niveau
+déclarables du catalogue, donc fini et indépendant de l'usage — à la différence de
+`promues`, qui croît avec le temps et a donc besoin de ses deux bornes. Voir « Entrée en
+rotation bornée par un budget hebdomadaire » dans [Logique pure](core.md)),
 `ludaskia_leconReport` (#485 : avancement/report de la **leçon du jour** —
 `Record<'lessonId@niveau', EtatReport>`, namespacée par niveau comme les étoiles et
 les stats — `EtatReport {jours, dernierJour, reporteLe, reprendreLe, meilleurPct}` ;

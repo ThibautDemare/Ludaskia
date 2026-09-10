@@ -896,6 +896,22 @@ garantit qu'une leçon assignée dans une classe au-dessus n'entre jamais en rot
 « Assigner une leçon d'une autre classe » plus haut). Cette distinction de niveau d'origine
 est réservée à l'espace encadrant — rien n'en est montré à l'enfant.
 
+**Une entrée EN ATTENTE (#690) n'a ni palier ni échéance** : `enAttente` (dérivé
+d'`estHorsRotation`) distingue un élément dont le compteur d'espacement n'a pas encore
+démarré — une déclaration « vu en classe » pas encore rencontrée, ou un mot dont
+l'atelier n'est pas fait (#641) — d'un vrai palier 0. Sa ligne affiche « En attente de
+rencontre » à la place du palier (`entreeHTML`), et n'affiche aucune échéance : sans
+cette distinction, ces entrées se lisaient comme des révisions déjà démarrées. Le compte
+s'ouvre à **trois granularités** : `RecapRevision.enAttente` (synthèse du bloc entier),
+`GroupeRevision.enAttente` (résumé d'une catégorie repliée) et `PalierRevision.enAttente`
+(sous-compte de l'étage 0, où ces entrées atterrissent avec un palier à zéro comme un
+élément qui vient réellement d'entrer) — `total === enAttente + enRotation + acquises`,
+`enRotation` ne comptant donc plus ce qui n'a pas démarré. Les libellés diffèrent
+volontairement selon la granularité : « en attente d'une première rencontre » (synthèse
+du bloc) contre « en attente de rencontre » (résumé de catégorie, sous-compte d'étage,
+plus court) — chacun doit rester non ambigu lu seul, sans la phrase de synthèse à
+proximité (cf. [Conventions rédactionnelles](conventions-redaction.md)).
+
 Trois visualisations, bascule au même patron que le graphe d'activité (module
 `ui/encadrant-revision.ts`, composant segment en variante `wrap` depuis cette 3e option —
 trois libellés de cette longueur ne tiennent pas sur une ligne de téléphone) : **« Par
@@ -911,8 +927,9 @@ l'une au 1er étage, l'autre au 5e). Un étage par palier occupé, du moins ancr
 posée ici est une lecture panoramique, que des accordéons fermés cacheraient précisément (avis
 designer). Le palier de chaque entrée est alors porté par l'en-tête de son étage et n'est plus
 répété sur la ligne — reste l'échéance, seule information qui varie encore d'une ligne à
-l'autre à palier égal. Seul chiffre affiché : un dénombrement (« X en révision, dont Y à réviser
-· Z déjà acquises »), aucun pourcentage ni note.
+l'autre à palier égal. Seul chiffre affiché en en-tête : un dénombrement (« N entrées, dont
+M à réviser » et, à l'étage 0 quand des entrées y sont différées, « et K en attente de
+rencontre » — #690, `resumeEtage`), aucun pourcentage ni note.
 
 **« Par palier » et « Par urgence » sont plafonnées** : rien ne borne le nombre d'entrées d'un
 profil (une par leçon travaillée et par mot d'orthographe en rotation), et les deux vues à plat
@@ -1011,8 +1028,14 @@ le profil **consulté**, ce que l'enfant a déjà travaillé HORS de l'applicati
 (rattrapage à l'arrivée sur l'appli, notions traitées après un changement de
 classe). Une leçon déclarée compte alors comme **rencontrée** pour le
 périmètre « déjà vues » du sprint (`core/sprint-scope.ts`, cf. [Logique
-pure](core.md)) et **entre en révision espacée** au comportement standard
-(état neuf, 1er re-test à J+1).
+pure](core.md)) mais **n'entre pas directement en révision espacée** (#690) :
+elle est enregistrée **hors rotation, en attente**, sans échéance — l'état
+d'un mot d'orthographe avant son atelier (#641). Son compteur d'espacement ne
+démarre qu'à sa première rencontre réelle dans l'application, ou par une
+**passe de promotion** bornée par un budget hebdomadaire (cf. « Entrée en
+rotation bornée par un budget hebdomadaire » dans [Logique pure](core.md)) —
+sans quoi déclarer une centaine de leçons d'un coup posait autant d'échéances
+dès le lendemain, mesuré sur un profil réel resté congestionné des semaines.
 
 Case par catégorie (état plein/partiel/vide via l'`indeterminate` du DOM),
 dépliage leçon par leçon (`aria-expanded`/`aria-controls`, listes closes au
@@ -1033,7 +1056,9 @@ impossible à exprimer en HTML seul.
 retire son état de révision espacée que s'il n'a **jamais été re-testé** et
 que la leçon n'a **aucune statistique** dans l'appli — un progrès issu d'un
 vrai passage n'est jamais détruit, seule la trace créée par la déclaration
-l'est.
+l'est. La sortie de la file d'attente (#690), elle, est **inconditionnelle** :
+une déclaration annulée n'est plus jamais candidate à la passe de promotion,
+même quand son état de révision a survécu.
 
 **Carte de stockage dédiée** (`ludaskia_lessonVuAilleurs`, cf. [Données &
 profils](donnees-et-profils.md)) qui ne remplace **pas** la date de 1er

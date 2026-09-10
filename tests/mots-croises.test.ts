@@ -115,6 +115,7 @@ import {
 	lettreAffichee,
 	lettreEn,
 	partieGagnee,
+	prochaineVide,
 	tirerGrille,
 	vivierMotsCroises,
 	type PartieMotsCroises,
@@ -1504,5 +1505,192 @@ describe('#665 critère 26 — la grille entière ne fuit jamais', () => {
 			fuites(courante, lettreAfficheeEcartee),
 			'le juge ne voit pas la version écartée : il ne garde donc rien',
 		).not.toEqual([]);
+	});
+});
+
+/* ============================================================
+   G. OÙ VA LE CURSEUR (critère 22)
+
+   `prochaineVide` vivait dans une fermeture du runner : rien ne pouvait
+   l'atteindre, et la spec Playwright ne remplit qu'un mot de gauche à droite.
+   Le TOUR DE BOUCLE — l'enfant laisse un trou, arrive au bout, le curseur
+   revient sur le trou — n'était donc éprouvé par rien, alors que c'est la seule
+   partie de la fonction qu'un parcours ordonné ne rencontre jamais.
+
+   Ce qui se tient ici est le contrat vu de l'enfant, pas l'arithmétique : après
+   une lettre, le curseur va sur une case VIDE du mot, il n'en saute aucune, il
+   n'en visite aucune deux fois, il n'écrase jamais rien (critère 22 le dit en
+   toutes lettres) et il finit par dire qu'il n'y a plus rien à remplir.
+   ============================================================ */
+
+/** Le rang d'une case DANS un mot, ou −1 si elle ne lui appartient pas. */
+const rangDans = (cases: CaseXY[], c: CaseXY | null): number =>
+	c === null ? -1 : cases.findIndex((x) => x.ligne === c.ligne && x.colonne === c.colonne);
+
+/** Le geste réel : partir d'avant la première case, écrire dans chaque case que
+    le curseur propose, et recommencer jusqu'à ce qu'il n'en propose plus.
+
+    La boucle est BORNÉE, et c'est le seul moyen d'attraper un curseur qui
+    tournerait sans fin : sans garde, un tel défaut ne se verrait qu'en timeout
+    de suite, sans dire où. */
+function parcoursDuCurseur(
+	depart: PartieMotsCroises,
+	i: number,
+): { visites: number[]; fin: PartieMotsCroises; deborde: boolean } {
+	const cases = casesLocales(depart.motif.emplacements[i]);
+	const visites: number[] = [];
+	let courante = depart;
+	let depuis = -1;
+	for (let garde = 0; garde <= cases.length + 1; garde++) {
+		const c = prochaineVide(courante, i, depuis);
+		if (c === null) return { visites, fin: courante, deborde: false };
+		const rang = rangDans(cases, c);
+		visites.push(rang);
+		if (rang < 0) return { visites, fin: courante, deborde: false };
+		courante = ecrire(courante, c.ligne, c.colonne, 'a');
+		depuis = rang;
+	}
+	return { visites, fin: courante, deborde: true };
+}
+
+describe('#665 critère 22 — le curseur va sur la prochaine case VIDE', () => {
+	it('avance d’une case sur un mot vierge', () => {
+		const p = tirerGrille(tirage(21));
+		const cases = casesLocales(p.motif.emplacements[0]);
+		expect(rangDans(cases, prochaineVide(p, 0, 0))).toBe(1);
+		expect(rangDans(cases, prochaineVide(p, 0, 1))).toBe(2);
+	});
+
+	it('saute les cases déjà écrites, y compris celles d’un mot croisé', () => {
+		/* Le critère 22 l'écrit noir sur blanc : avancer n'écrase rien. La case de
+		   croisement est le cas qui compte — elle a été remplie par le VOISIN, donc
+		   l'enfant ne l'a jamais tapée, et un curseur qui s'y poserait ferait
+		   disparaître la lettre du mot d'à côté à la frappe suivante. */
+		const p = tirerGrille(tirage(21));
+		const c = croisementsLocaux(p.motif)[0];
+		const cases = casesLocales(p.motif.emplacements[c.a]);
+		const avec = ecrireMot(p, c.b, p.solution[c.b]);
+		expect(
+			lettreEn(avec, c.ligne, c.colonne),
+			'montage : le voisin remplit la case',
+		).not.toBeNull();
+
+		// Depuis la case juste avant le croisement, le curseur doit l'enjamber — et
+		// repartir du début s'il n'y a plus rien après.
+		expect(rangDans(cases, prochaineVide(avec, c.a, c.ia - 1))).toBe((c.ia + 1) % cases.length);
+	});
+
+	it('revient sur le trou laissé au milieu, une fois le bout du mot atteint', () => {
+		/* LE cas de cette section, et celui qu'aucun smoke ne rencontre : l'enfant
+		   remplit de gauche à droite en sautant une case, tape la dernière lettre,
+		   et le curseur doit revenir en arrière tout seul. Sans le tour de boucle,
+		   il ne proposerait plus rien alors que le mot n'est pas fini — l'enfant
+		   croirait le jeu bloqué. */
+		const p = tirerGrille(tirage(21));
+		const cases = casesLocales(p.motif.emplacements[0]);
+		const trou = 1;
+		let courante = p;
+		cases.forEach((c, k) => {
+			if (k !== trou) courante = ecrire(courante, c.ligne, c.colonne, 'a');
+		});
+
+		const dernier = cases.length - 1;
+		expect(rangDans(cases, prochaineVide(courante, 0, dernier)), 'depuis la dernière case').toBe(
+			trou,
+		);
+		// Et de n'importe où ailleurs : il n'y a qu'une case vide, c'est elle.
+		for (let depuis = 0; depuis < cases.length; depuis++) {
+			expect(rangDans(cases, prochaineVide(courante, 0, depuis)), `depuis ${String(depuis)}`).toBe(
+				trou,
+			);
+		}
+	});
+
+	it('ne propose plus rien quand le mot est plein', { timeout: 5000 }, () => {
+		// Le `timeout` est là exprès : un curseur qui tournerait sans jamais
+		// conclure se verrait comme un échec de CE test, et non comme une suite qui
+		// se fige sans dire où.
+		const p = tirerGrille(tirage(21));
+		const plein = ecrireMot(p, 0, p.solution[0]);
+		for (let depuis = 0; depuis < casesLocales(p.motif.emplacements[0]).length; depuis++) {
+			expect(prochaineVide(plein, 0, depuis), `depuis ${String(depuis)}`).toBeNull();
+		}
+	});
+
+	it('remplit le mot entier en le suivant : chaque case vide une fois, aucune écrasée', () => {
+		/* L'invariant sous sa forme utile, en échantillon et dans les deux
+		   situations réelles : une grille vierge, puis une grille où tous les
+		   voisins ont déjà donné leurs lettres de croisement. Un curseur qui
+		   sauterait une case, en revisiterait une, ou s'arrêterait avant la fin se
+		   verrait ici quelle que soit la géométrie du dessin. */
+		for (let graine = 1; graine <= 10; graine++) {
+			const p = tirerGrille(tirage(graine));
+			for (let i = 0; i < p.motif.emplacements.length; i++) {
+				const voisinsEcrits = p.motif.emplacements.reduce(
+					(acc, _e, j) => (j === i ? acc : ecrireMot(acc, j, p.solution[j])),
+					p,
+				);
+				for (const [quoi, depart] of [
+					['grille vierge', p],
+					['voisins déjà remplis', voisinsEcrits],
+				] as [string, PartieMotsCroises][]) {
+					const ou = `tirage ${String(graine)} (${p.motif.id}), mot ${String(i)}, ${quoi}`;
+					const cases = casesLocales(p.motif.emplacements[i]);
+					const avant = cases.map((c) => lettreEn(depart, c.ligne, c.colonne));
+					const vides = avant.filter((l) => l === null).length;
+
+					const { visites, fin, deborde } = parcoursDuCurseur(depart, i);
+					expect(deborde, `${ou} : le curseur ne conclut jamais`).toBe(false);
+					expect(
+						visites.filter((r) => r < 0),
+						`${ou} : une case proposée n’appartient pas au mot`,
+					).toEqual([]);
+					expect(new Set(visites).size, `${ou} : une case proposée deux fois`).toBe(visites.length);
+					expect(visites.length, `${ou} : cases visitées`).toBe(vides);
+					cases.forEach((c, k) => {
+						if (avant[k] === null) return;
+						expect(
+							lettreEn(fin, c.ligne, c.colonne),
+							`${ou} : la case ${cleXY(c)} a été écrasée`,
+						).toBe(avant[k]);
+					});
+					expect(prochaineVide(fin, i, 0), `${ou} : le mot devrait être plein`).toBeNull();
+				}
+			}
+		}
+	});
+
+	it('ne connaît pas cet emplacement : rien, et en silence', () => {
+		// Elle est publique depuis peu : l'index ne vient plus forcément d'un
+		// `findIndex` du runner. La règle du module est le refus silencieux.
+		const p = tirerGrille(tirage(21));
+		for (const i of [-1, 99, 1.5, Number.NaN]) {
+			expect(() => prochaineVide(p, i, 0), String(i)).not.toThrow();
+			expect(prochaineVide(p, i, 0), String(i)).toBeNull();
+		}
+	});
+
+	it('part d’« avant la première case » quand le rang est négatif', () => {
+		/* −1 se lit « le curseur n'est encore sur aucune case » : entrer dans un mot
+		   doit alors proposer sa PREMIÈRE case vide, pas la seconde, et surtout pas
+		   déclarer le mot plein. Les rangs plus négatifs n'ont pas de sens à
+		   l'écran ; ce qu'on exige d'eux est seulement de ne pas casser et de ne
+		   jamais désigner une case déjà écrite. */
+		const p = tirerGrille(tirage(21));
+		const cases = casesLocales(p.motif.emplacements[0]);
+		expect(rangDans(cases, prochaineVide(p, 0, -1)), 'sur un mot vierge').toBe(0);
+
+		const debutPris = ecrire(p, cases[0].ligne, cases[0].colonne, 'a');
+		expect(rangDans(cases, prochaineVide(debutPris, 0, -1)), 'première case déjà écrite').toBe(1);
+
+		for (const depuis of [-2, -3, -7, -cases.length, -cases.length - 1]) {
+			expect(() => prochaineVide(debutPris, 0, depuis), String(depuis)).not.toThrow();
+			const c = prochaineVide(debutPris, 0, depuis);
+			expect(rangDans(cases, c), `${String(depuis)} : hors du mot`).toBeGreaterThanOrEqual(0);
+			expect(
+				c === null ? null : lettreEn(debutPris, c.ligne, c.colonne),
+				`${String(depuis)} : une case DÉJÀ écrite est proposée`,
+			).toBeNull();
+		}
 	});
 });

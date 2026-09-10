@@ -31,15 +31,34 @@
    (les trois comptes ne se recouvrent pas) et `dues ⊆ enRotation`. Sur un étage, `dues` et
    `enAttente` sont deux sous-ensembles DISJOINTS des entrées présentes (une entrée en
    attente n'a pas d'échéance, donc n'est jamais échue).
+
+   Quatrième sœur, ajoutée pour #691 : `syntheseTauxRetard` met en forme la réussite en
+   révision espacée ventilée par tranche de retard (`TauxTranche`, src/core/retard-journal.ts).
+   Son invariant n'est PAS celui des trois blocs au-dessus (aucun compte nul affiché) : ici,
+   un taux à 0 doit au contraire s'AFFICHER (« tout a été raté » est une information), et
+   c'est l'absence de mesure (`taux: null`, tranche vide) qui doit disparaître. Confondre les
+   deux ferait lire « 0 % » sur une tranche qui n'a simplement jamais été traversée.
    ============================================================ */
 import { describe, it, expect } from 'vitest';
-import { syntheseRevision, resumeGroupe, resumeEtage } from '../src/ui/encadrant-revision';
+import {
+	syntheseRevision,
+	resumeGroupe,
+	resumeEtage,
+	syntheseTauxRetard,
+} from '../src/ui/encadrant-revision';
 import type {
 	EntreeRevision,
 	GroupeRevision,
 	PalierRevision,
 	RecapRevision,
 } from '../src/core/encadrant-stats';
+import {
+	TRANCHES_RETARD,
+	tauxParTranche,
+	type RetardEntry,
+	type TauxTranche,
+	type TrancheRetard,
+} from '../src/core/retard-journal';
 
 /* Récap minimal : seuls les compteurs comptent pour la synthèse. `groupes`, `parUrgence`
    et `parPalier` alimentent les trois vues, pas la phrase. Le garde-fou sur `dues`
@@ -449,5 +468,208 @@ describe('resumeEtage : le total est annoncé, ses sous-comptes seulement s’il
 			}
 		}
 		expect(cas).toBeGreaterThan(30);
+	});
+});
+
+/* ---------- syntheseTauxRetard : un pourcentage, pas un dénombrement ----------
+   Invariant inverse des trois blocs au-dessus : un taux à 0 s'affiche (« tout a été
+   raté » est lisible), c'est l'ABSENCE de mesure qui disparaît. Les fixtures passent par
+   un petit constructeur `tranche()`, sur le même principe que `recap()`/`groupe()`/`etage()`
+   plus haut : un garde-fou de cohérence, pour ne pas construire un état que le noyau ne
+   produit jamais. */
+
+const LABEL_A_HEURE = TRANCHES_RETARD.find((t) => t.id === 'aHeure')!.label;
+const LABEL_MODERE = TRANCHES_RETARD.find((t) => t.id === 'retardModere')!.label;
+const LABEL_FORT = TRANCHES_RETARD.find((t) => t.id === 'retardFort')!.label;
+
+/* Une tranche mesurée, telle que `tauxParTranche` la rend : la FRACTION, jamais le
+   pourcentage (la mise en forme appartient à `syntheseTauxRetard`). Garde-fou : `taux` est
+   null SSI la tranche est vide (cf. le commentaire sur `TauxTranche.taux`,
+   src/core/retard-journal.ts). Le violer construirait un état qu'aucun appelant réel ne
+   peut produire — `tauxParTranche` ne rend `null` que quand `total === 0`, jamais un `taux`
+   à 0 sur une tranche vide. C'est pour ça qu'on ne teste PAS l'incohérence « total à 0 mais
+   taux à 0 » : la figer reviendrait à décrire un bug qui n'a pas de source. */
+function tranche(
+	id: TrancheRetard,
+	c: { total: number; reussites: number; taux: number | null },
+): TauxTranche {
+	const label = TRANCHES_RETARD.find((t) => t.id === id)!.label;
+	if ((c.total === 0) !== (c.taux === null)) {
+		throw new Error('fixture impossible : taux est null si et seulement si la tranche est vide');
+	}
+	return { tranche: id, label, total: c.total, reussites: c.reussites, taux: c.taux };
+}
+
+describe('syntheseTauxRetard : réussite par tranche de retard (#691)', () => {
+	it('une tranche mesurée : « Libellé : NN % (T rendez-vous) »', () => {
+		const phrase = syntheseTauxRetard([tranche('aHeure', { total: 8, reussites: 6, taux: 6 / 8 })]);
+		expect(phrase).toBe(`${LABEL_A_HEURE} : 75 % (8 rendez-vous)`);
+	});
+
+	it('trois tranches mesurées : jointes par « · », dans l’ordre reçu', () => {
+		const phrase = syntheseTauxRetard([
+			tranche('aHeure', { total: 8, reussites: 6, taux: 6 / 8 }),
+			tranche('retardModere', { total: 5, reussites: 3, taux: 3 / 5 }),
+			tranche('retardFort', { total: 3, reussites: 1, taux: 1 / 3 }),
+		]);
+		expect(phrase).toBe(
+			`${LABEL_A_HEURE} : 75 % (8 rendez-vous) · ${LABEL_MODERE} : 60 % (5 rendez-vous) · ${LABEL_FORT} : 33 % (3 rendez-vous)`,
+		);
+	});
+
+	it('le nombre entre parenthèses est le TOTAL de la tranche, pas les réussites', () => {
+		// reussites (6) ne divise pas total (8) et n'est ni égal ni évident à confondre avec
+		// lui : si le code affichait reussites à la place de total, ce test le verrait.
+		const phrase = syntheseTauxRetard([tranche('aHeure', { total: 8, reussites: 6, taux: 6 / 8 })]);
+		expect(phrase).toContain('(8 rendez-vous)');
+		expect(phrase).not.toContain('(6 rendez-vous)');
+	});
+
+	it('taux à 0 : la tranche APPARAÎT avec « 0 % » — tout a été raté, ce n’est pas rien à lire', () => {
+		const phrase = syntheseTauxRetard([tranche('retardFort', { total: 4, reussites: 0, taux: 0 })]);
+		expect(phrase).toBe(`${LABEL_FORT} : 0 % (4 rendez-vous)`);
+	});
+
+	it('tranche vide (taux null) : elle DISPARAÎT, à la différence d’un taux de 0', () => {
+		const phrase = syntheseTauxRetard([
+			tranche('retardModere', { total: 0, reussites: 0, taux: null }),
+		]);
+		expect(phrase).toBe('');
+	});
+
+	it('tranche vide au milieu : omise sans séparateur orphelin ni double espace', () => {
+		const phrase = syntheseTauxRetard([
+			tranche('aHeure', { total: 6, reussites: 3, taux: 3 / 6 }),
+			tranche('retardModere', { total: 0, reussites: 0, taux: null }),
+			tranche('retardFort', { total: 2, reussites: 2, taux: 1 }),
+		]);
+		expect(phrase).toBe(
+			`${LABEL_A_HEURE} : 50 % (6 rendez-vous) · ${LABEL_FORT} : 100 % (2 rendez-vous)`,
+		);
+		expect(phrase).not.toMatch(/·\s*·/);
+		expect(phrase.startsWith('·')).toBe(false);
+		expect(phrase.endsWith('·')).toBe(false);
+		expect(phrase).not.toMatch(/\s{2,}/);
+	});
+
+	it('les trois tranches vides : rien à lire, chaîne vide (pas trois tirets sur un profil neuf)', () => {
+		const phrase = syntheseTauxRetard(
+			TRANCHES_RETARD.map((t) => tranche(t.id, { total: 0, reussites: 0, taux: null })),
+		);
+		expect(phrase).toBe('');
+	});
+
+	it('tableau vide : chaîne vide', () => {
+		expect(syntheseTauxRetard([])).toBe('');
+	});
+
+	it('une seule tranche mesurée : aucun séparateur ne s’invite', () => {
+		const phrase = syntheseTauxRetard([tranche('aHeure', { total: 4, reussites: 4, taux: 1 })]);
+		expect(phrase).not.toContain(' · ');
+		expect(phrase).toBe(`${LABEL_A_HEURE} : 100 % (4 rendez-vous)`);
+	});
+
+	it('T = 1 : « rendez-vous » est invariable, pas d’accord singulier à gérer', () => {
+		// « un rendez-vous », « des rendez-vous » : le mot ne prend jamais de marque de
+		// pluriel en français. Contrairement aux comptes des trois fonctions sœurs (« entrée »/
+		// « entrées », qui s'accordent), il n'y a donc rien à distinguer entre T = 1 et T > 1 —
+		// la même règle rend juste dans les deux cas.
+		const phrase = syntheseTauxRetard([tranche('aHeure', { total: 1, reussites: 1, taux: 1 })]);
+		expect(phrase).toBe(`${LABEL_A_HEURE} : 100 % (1 rendez-vous)`);
+	});
+
+	it('l’ordre des segments suit celui du tableau reçu, la fonction ne trie rien', () => {
+		// `tauxParTranche` rend toujours aHeure, retardModere, retardFort dans cet ordre, mais
+		// `syntheseTauxRetard` elle-même n'impose aucun tri : lui donner l'ordre inverse doit
+		// le rendre à l'envers, sinon un futur changement d'ordre du noyau passerait inaperçu.
+		const phrase = syntheseTauxRetard([
+			tranche('retardFort', { total: 2, reussites: 2, taux: 1 }),
+			tranche('aHeure', { total: 4, reussites: 4, taux: 1 }),
+		]);
+		expect(phrase).toBe(
+			`${LABEL_FORT} : 100 % (2 rendez-vous) · ${LABEL_A_HEURE} : 100 % (4 rendez-vous)`,
+		);
+	});
+
+	describe('arrondi en pourcentage entier (l’arrondi appartient au rendu, pas au noyau)', () => {
+		it('1/3 arrondit à 33 % (partie décimale sous le demi-point)', () => {
+			const phrase = syntheseTauxRetard([
+				tranche('aHeure', { total: 3, reussites: 1, taux: 1 / 3 }),
+			]);
+			expect(phrase).toBe(`${LABEL_A_HEURE} : 33 % (3 rendez-vous)`);
+		});
+
+		it('2/3 arrondit à 67 % (partie décimale au-dessus du demi-point)', () => {
+			const phrase = syntheseTauxRetard([
+				tranche('aHeure', { total: 3, reussites: 2, taux: 2 / 3 }),
+			]);
+			expect(phrase).toBe(`${LABEL_A_HEURE} : 67 % (3 rendez-vous)`);
+		});
+
+		it('0,5 % (1/200) arrondit à 1 %, pas à 0', () => {
+			const phrase = syntheseTauxRetard([
+				tranche('aHeure', { total: 200, reussites: 1, taux: 1 / 200 }),
+			]);
+			expect(phrase).toBe(`${LABEL_A_HEURE} : 1 % (200 rendez-vous)`);
+		});
+
+		it('99,5 % (199/200) arrondit à 100 %', () => {
+			const phrase = syntheseTauxRetard([
+				tranche('aHeure', { total: 200, reussites: 199, taux: 199 / 200 }),
+			]);
+			expect(phrase).toBe(`${LABEL_A_HEURE} : 100 % (200 rendez-vous)`);
+		});
+
+		it('taux à 1 (réussite totale) : 100 %', () => {
+			const phrase = syntheseTauxRetard([tranche('aHeure', { total: 5, reussites: 5, taux: 1 })]);
+			expect(phrase).toBe(`${LABEL_A_HEURE} : 100 % (5 rendez-vous)`);
+		});
+
+		it('taux à 0 (échec total, tranche non vide) : 0 %', () => {
+			const phrase = syntheseTauxRetard([tranche('aHeure', { total: 5, reussites: 0, taux: 0 })]);
+			expect(phrase).toBe(`${LABEL_A_HEURE} : 0 % (5 rendez-vous)`);
+		});
+	});
+});
+
+describe('syntheseTauxRetard : enchaînement réel avec tauxParTranche (#691)', () => {
+	// Seul ce bloc prouve que les tranches sorties du noyau arrivent dans le bon ordre et
+	// avec les bons libellés dans la phrase lue par le parent : les tests unitaires des deux
+	// côtés (ci-dessus, et ceux de `tauxParTranche` dans son propre fichier) ne le garantissent
+	// pas séparément — l'un fixe des `TauxTranche` à la main, l'autre ne regarde pas la phrase.
+	function entree(retardRelatif: number, reussi: boolean, i: number): RetardEntry {
+		return {
+			ts: 1_700_000_000_000 + i,
+			kind: 'lecon',
+			id: `lecon-${i}`,
+			palier: 0,
+			retardRelatif,
+			reussi,
+		};
+	}
+
+	it('les tranches sorties du noyau arrivent dans le bon ordre, avec les bons libellés', () => {
+		const entrees: RetardEntry[] = [
+			// aHeure ([0, 1[) : 3 réussites sur 4.
+			entree(0.1, true, 0),
+			entree(0.4, true, 1),
+			entree(0.9, true, 2),
+			entree(0.5, false, 3),
+			// retardModere ([1, 2[) : 1 réussite sur 3.
+			entree(1.1, true, 4),
+			entree(1.5, false, 5),
+			entree(1.9, false, 6),
+			// retardFort ([2, +∞[, borne basse incluse) : 2 réussites sur 2.
+			entree(2, true, 7),
+			entree(10, true, 8),
+		];
+		const phrase = syntheseTauxRetard(tauxParTranche(entrees));
+		expect(phrase).toBe(
+			`${LABEL_A_HEURE} : 75 % (4 rendez-vous) · ${LABEL_MODERE} : 33 % (3 rendez-vous) · ${LABEL_FORT} : 100 % (2 rendez-vous)`,
+		);
+	});
+
+	it('aucune correction mesurée : chaîne vide sur un profil neuf', () => {
+		expect(syntheseTauxRetard(tauxParTranche([]))).toBe('');
 	});
 });

@@ -1360,10 +1360,11 @@ n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
   `ortho-runner.ts` ×2, `seance.ts` seul pour l'emplacement « programme »), gardés
   par un gate dédié (cf. [Tests](tests.md)).
 - **`jeu-motus.ts`** / **`jeu-2048.ts`** / **`jeu-sudoku.ts`** /
-  **`jeu-mots-cases.ts`** — les quatre runners livrés, chacun un `RunnerJeu`
-  autour de son moteur pur (`core/jeux/motus.ts`,
+  **`jeu-mots-cases.ts`** / **`jeu-mots-croises.ts`** — les cinq runners livrés,
+  chacun un `RunnerJeu` autour de son moteur pur (`core/jeux/motus.ts`,
   `core/jeux/deux-mille-quarante-huit.ts`, `core/jeux/sudoku.ts`,
-  `core/jeux/grille-mots.ts` + `core/jeux/mots-cases.ts`). Convention de
+  `core/jeux/grille-mots.ts` + `core/jeux/mots-cases.ts`,
+  `core/jeux/grille-mots.ts` + `core/jeux/mots-croises.ts`). Convention de
   nommage `src/ui/jeu-<id>.ts` : le nom du fichier DIT quel jeu du catalogue il
   sert, vérifié par un gate (cf. [Tests](tests.md)).
 - Le **sudoku** (#666) se pose en deux temps — appui sur la case, puis appui sur
@@ -1411,15 +1412,52 @@ n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
     de taille. Sans cela, l'exception laissait un jeu **silencieusement mort** :
     titre, boutons et règle rendus au-dessus d'une grille vide pour toujours. Le
     cas est théorique avec les sept motifs livrés (200/200), mais c'est le
-    garde-fou prévu pour un dessin futur plus dense — et pour #665.
+    garde-fou prévu pour un dessin futur plus dense — et pour #665, qui reprend
+    exactement ce parti pris (`.mx-panne`, ci-dessous).
 
-**Limite connue des deux jeux à grille, à ne pas re-remonter jeu par jeu.** Ni
+- Les **mots croisés** (#665) touchent d'abord la case : toucher une case AFFICHE
+  la définition du mot qui la traverse, dans un bandeau `position: sticky`
+  (raison identique aux mots casés — une grille de sept lignes sort de l'écran).
+  Sur une case de croisement, le jeu ne choisit pas à la place de l'enfant : les
+  deux définitions s'affichent sur deux boutons touchables, jamais un double
+  appui ou une bascule cachée. Trois écarts avec le reste de l'étagère :
+  - **chaque case jouable est un vrai `<input maxlength="1">`, une première dans
+    ce dépôt.** La lettre s'écrit dans la case au clavier de l'appareil
+    (virtuel sur tablette, physique sur ordinateur), comme partout ailleurs dans
+    l'application — leçons, sprint, révision. Le seul écran qui affiche encore
+    son propre clavier est le **Motus**, et pour une raison qui ne vaut pas ici :
+    ses touches servent AUSSI de résumé des lettres déjà essayées, ce que
+    `inputmode="none"` protège. Aux mots croisés, une lettre peut être juste
+    dans un mot et pas encore tapée dans l'autre — le statut vit sur la CASE, pas
+    sur une touche — donc `inputmode` n'est pas forcé, pour ne pas priver
+    l'enfant des touches accentuées de son clavier ;
+  - le curseur avance tout seul vers la prochaine case VIDE du mot, en faisant le
+    TOUR du mot plutôt que de s'arrêter à la fin : un trou laissé en route se
+    comble sans geste de plus, et aucune lettre déjà posée n'est écrasée au
+    passage ;
+  - un mot complété se compare **automatiquement** à sa solution — pas de bouton
+    « vérifier » — mais rien ne se dit LETTRE PAR LETTRE, jamais : la case
+    affiche la lettre tapée jusqu'à ce que le mot ENTIER soit trouvé, et prend
+    alors sa forme accentuée (registre `--warn` doublé d'une trame de hachures
+    sur un mot faux, jamais `--ko`, réservé à une réponse définitivement fausse —
+    ici le mot reste à trouver).
+
+  Jeu de **compétence** (retrouver un mot à partir de son sens) et pourtant :
+  aucun XP, aucune médaille, aucun objectif, et — écart à retenir — **aucune
+  entrée au journal d'erreurs #391**, alors que ce jeu CORRIGE vraiment quelque
+  chose. La règle « pas de correction sans capture » ne vaut que pour les
+  LEÇONS : les jeux de l'étagère, mots croisés compris, en sont exclus par
+  arbitrage de cadrage — même parti pris que le Motus.
+
+**Limite connue des jeux à grille, à ne pas re-remonter jeu par jeu.** Ni
 `jeu-sudoku.scss` ni `jeu-mots-cases.scss` ne redéfinissent `:focus-visible`, là
 où `jeux.scss`, `modal.scss` et `jeu-motus.scss` le font. Aucune des deux ne pose
 non plus `outline: none` : l'anneau natif du navigateur s'applique donc, et WCAG
 2.4.7 est tenu au minimum. Ce n'est pas un oubli à rattraper dans l'urgence, mais
 ce n'est pas non plus un choix — le jour où l'une des deux feuilles touche au
-focus, les deux se traitent ensemble.
+focus, les deux se traitent ensemble. `jeu-mots-croises.scss` n'entre pas dans
+cette limite : il ajoute un `:focus` dédié à la case courante SANS jamais retirer
+l'anneau natif ni le remplacer par un `:focus-visible` sélectif.
 
 ## Étayage de la notion (#490)
 

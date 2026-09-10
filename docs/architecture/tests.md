@@ -318,6 +318,28 @@ eux-mêmes sur des sources mutées en mémoire pour vérifier qu'ils savent roug
 Ce que le gate ne prouve pas : que le bloc arrive réellement à l'écran (affaire
 des specs Playwright, qui assertent `.jeu-invitation`).
 
+### Gate de contenu : la banque de définitions (#665)
+
+`tests/definitions-gate.test.ts` tient la **forme** des 231 définitions d'enfant
+de `src/data/francais/definitions.ts` (cf. [Contenu & leçons](contenu-et-lecons.md)) :
+douze mots au plus par phrase, une phrase et un point, aucun terme
+méta-linguistique (« synonyme », « veut dire »…), aucun indice de la forme de la
+solution (nombre de lettres, initiale, rime), pas de mot de la MÊME famille que
+le mot défini (détecteur de radical, éprouvé dans les deux sens sur une table de
+cas), pas deux définitions identiques, et **couverture** — chaque mot jouable de
+4 à 8 lettres est soit défini, soit explicitement exclu avec sa raison
+(`MOTS_SANS_DEFINITION`), jamais silencieux. Écrit **avant** la banque, d'après
+les critères numérotés de l'issue #665 : c'est la spec exécutable que le
+rédacteur a fait tourner en boucle sur 219 définitions à écrire à la main, une
+consigne relue à l'œil ne tenant pas à cette échelle.
+
+Un critère mérite d'être lu avant de le trouver trop sévère : deux mots de MÊME
+longueur ne peuvent pas partager la même **tête catégorielle** (le segment
+jusqu'au premier « qui », « pour » ou « de ») — sans quoi un enfant qui lit vite
+deux définitions qui commencent pareil peut légitimement répondre l'une pour
+l'autre. Le gate **ne dit rien** de la justesse d'une définition ni de sa
+clarté pour un CE2 : ça reste le rôle de la relecture pédagogique.
+
 ### Nom accessible des champs de réponse (#577)
 
 `tests/champs-libelles.test.ts` balaie le catalogue et exige qu'aucun `<input class="ans…">`

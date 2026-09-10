@@ -194,6 +194,20 @@ qui ne colle pas au dessin, mot posé absent de la liste, partie déjà terminé
 rien de tout cela ne revient. La grille **pleine mais fausse**, elle, revient :
 c'est un état de jeu, pas une corruption.
 
+**Mots croisés (#665)** : **une seule** clé de plus,
+`ludaskia_jeux_mots-croises_partie` (`core/jeux/mots-croises-etat.ts`) —
+l'IDENTIFIANT du motif, la solution dans l'ordre des emplacements, et les
+lettres écrites, indexées par case (`ligne,colonne`). Une clé et pas deux : à la
+différence des mots à caser, l'enfant n'y choisit aucune taille, donc une
+deuxième clé serait déjà une mémoire de plus — un compteur de grilles finies,
+une série enchaînée, un record — que le jeu n'a pas le droit de garder. Bornage
+à la **lecture**, même logique que les deux jeux à grille ci-dessus : un mot
+hors du vivier des définitions, un doublon, une longueur qui ne colle pas au
+dessin, une solution qui se contredit à un croisement, ou une case qui porte
+autre chose qu'une lettre unique — rien de tout cela ne revient ; une grille
+déjà terminée ne se rouvre pas non plus. La grille **pleine mais fausse** est,
+comme au sudoku et aux mots à caser, gardée.
+
 Les réglages associés vivent dans `ProfilePrefs` (`sansJeux`,
 `sansInvitationJeux`, `jeuxPlafondMinutes`, `sansAidesJeux`), donc dans
 `ludaskia_profiles` comme les autres préférences plutôt que dans une clé dédiée —

@@ -161,15 +161,21 @@ complément de `prefers-reduced-motion`.
 Une **étagère de jeux** de pur loisir, débloquée au fil de la montée de niveau mais
 **hors de l'économie de jeu** : jouer ne rapporte **rien** (ni XP, ni étoile, ni
 médaille, ni trophée) et ne coûte rien non plus. Travailler n'achète pas de temps de
-jeu, il ouvre des jeux **nouveaux** — l'inverse aurait rouvert un péage. Quatre jeux
+jeu, il ouvre des jeux **nouveaux** — l'inverse aurait rouvert un péage. Cinq jeux
 livrés sur un catalogue prévu pour 18 (`core/jeux/catalogue.ts`) : « Le mot caché »
 (un Motus d'orthographe lexicale, jeu-**compétence** — la compétence scolaire EST
 la mécanique), **2048**, le **Sudoku des formes** (#666) et les **Mots à caser**
-(#664), ces trois-là jeux-**refuge** sans lien au programme. Le sudoku a posé le
-**moteur de grille à contraintes** (`core/jeux/grille-contraintes.ts`) que
-réutilisera le calcudoku de #667 ; les mots casés ont posé le **moteur de grille de
-mots** (`core/jeux/grille-mots.ts`) que réutilisera les mots croisés de #665.
-**#663** (non livré) y ajoutera la banque CM1 du Motus.
+(#664), ces trois-là jeux-**refuge** sans lien au programme, et de nouveau une
+**compétence** avec **Mots croisés** (#665, « retrouver un mot à partir de sa
+définition »). Le sudoku a posé le **moteur de grille à contraintes**
+(`core/jeux/grille-contraintes.ts`) que réutilisera le calcudoku de #667 ; les
+mots casés ont posé le **moteur de grille de mots** (`core/jeux/grille-mots.ts`),
+que les mots croisés ont repris pour sa seule GÉOMÉTRIE et son REMPLISSAGE — pas
+pour son état de grille, où un mot ENTIER se pose par emplacement (une case
+pouvant réclamer deux lettres si deux mots posés se contredisent) : un modèle qui
+ne convient qu'à un jeu où l'enfant pose des mots déjà écrits, pas où il tape
+lettre à lettre dans une case qui n'en porte jamais qu'une (détail dans [Logique
+pure](core.md)). **#663** (non livré) y ajoutera la banque CM1 du Motus.
 
 Les mots casés sont de type **refuge** malgré leurs mots, et c'est un arbitrage
 écrit : sans définitions, un « fill-in » n'entraîne ni lecture, ni orthographe
@@ -178,7 +184,14 @@ jamais de mémoire et peut boucler la grille en comptant des cases. Ce qu'il
 mobilise est la satisfaction de contraintes et la discrimination visuelle. Le seul
 bénéfice de langue honnête est une exposition répétée, non notée, à la forme
 correcte de mots — à ne jamais compter comme un renfort de français dans un bilan
-destiné aux parents.
+destiné aux parents. Les mots croisés sont, à l'inverse, de type **compétence** :
+l'enfant reçoit une définition (banque dédiée `data/francais/definitions.ts`, cf.
+[Contenu & leçons](contenu-et-lecons.md)) et doit RAPPELER le mot de mémoire — le
+rappel actif que le fill-in n'exige jamais est exactement ce qui justifie le lien
+au programme, et c'est la différence exacte entre les deux jeux voisins de
+l'étagère. Comme les mots casés, aucun des deux n'alimente XP, étoile, médaille ou
+trophée, et ni l'un ni l'autre ne journalise d'erreur (#391) : ce sont des jeux,
+pas des leçons, même quand l'un d'eux corrige vraiment quelque chose.
 
 **18 paliers** (`core/jeux/paliers.ts`), un niveau XP dédié chacun, alternant les
 deux types — aucun ne coïncide avec un déblocage existant (rang, mascotte, avatar,

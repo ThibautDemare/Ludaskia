@@ -83,6 +83,30 @@ la reconnaître à sa tête se tromperait sur la première mesure venue. Une le�
 introduit une nouvelle écriture étend l'enum fermé `UniteEtape` plutôt que d'ajouter une
 heuristique de reconnaissance.
 
+### `francais/definitions.ts` (#665)
+
+Banque transverse de **231 couples mot/définition « enfant »**, une phrase par mot
+jouable des jeux de grille (`DEFINITIONS`), plus **16 mots explicitement exclus**
+avec leur raison (`MOTS_SANS_DEFINITION` : mots-outils, auxiliaires, une
+interjection — aucun ne désigne une chose, donc aucune phrase ne peut les faire
+deviner). Vit dans `francais/` et non dans `jeux/` : la banque ne connaît ni
+grille ni motif, et c'est délibéré — toute future leçon qui va du SENS vers le
+MOT (une définition donnée, un mot à retrouver) pourra la lire sans dépendre d'un
+jeu. Les 72 définitions déjà relues de « Le mot juste » (`champs-lexicaux.ts`,
+`CHAMPS`, ci-dessous) sont DÉRIVÉES, jamais recopiées : l'enfant qui croise le
+même mot dans la leçon puis dans une grille lit la même phrase. La forme
+(longueur, phrase unique, absence d'indice de forme ou de circularité, collisions
+de tête catégorielle, couverture du vivier) est tenue par
+`tests/definitions-gate.test.ts` (cf. [Tests](tests.md)) ; la justesse et la
+clarté pour un CE2 restent du ressort de la relecture pédagogique.
+
+Consommée aujourd'hui par le seul jeu **Mots croisés**
+(`core/jeux/mots-croises.ts`, cf. [Logique pure](core.md) et « Étagère de jeux »
+dans [Rendu & interactions](ui.md)), qui n'en utilise que **177 des 231** : ses
+motifs bornent un mot à 4-7 lettres, et les définitions de 8 lettres et plus (ou
+au-delà) ne sont pas perdues — elles attendent un motif ou une leçon qui en aura
+besoin.
+
 ## Français
 
 ### Grammaire

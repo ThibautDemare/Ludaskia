@@ -44,7 +44,10 @@
 
    Le curseur avance à la prochaine case VIDE du mot, jamais sur une lettre déjà
    posée : il fait le tour du mot plutôt que de s'arrêter à la fin, pour que les
-   trous laissés en route se comblent sans un geste de plus.
+   trous laissés en route se comblent sans un geste de plus (`prochaineVide`, du
+   côté pur). Ce tour de boucle est le seul moment où le curseur ne va pas là où
+   l'enfant l'attend : il s'ANNONCE donc, sans quoi un enfant dont l'attention
+   lâche entre deux lettres continuerait d'écrire à l'aveugle en croyant avancer.
 
    ── Le mot faux : automatique, jamais lettre à lettre ───────────────────────
 
@@ -101,6 +104,15 @@ const INVITE_CROISEMENT = 'Deux mots passent par cette case : touche celui que t
     trois, et une phrase qui compte mal serait pire que muette. */
 const MESSAGE_FAUX =
 	'Un mot au moins ne correspond pas encore à sa définition : il est signalé dans la grille.';
+
+/** Le curseur vient de repartir en arrière, sur un trou laissé en chemin. Une
+    phrase courte, qui dit CE QUI EST ARRIVÉ et où l'on écrit maintenant : la
+    case elle-même s'annonce toute seule en prenant le focus (sa ligne, sa
+    colonne), ce qui manque est la RAISON du saut.
+
+    Aucun mot d'interface ici — ni « curseur », ni « champ » : l'enfant n'a pas à
+    connaître le vocabulaire du logiciel pour comprendre où il en est. */
+const MESSAGE_RETOUR = 'Une case du mot était restée vide : tu écris là maintenant.';
 
 /** Le tirage n'a rien trouvé. Théorique avec les motifs livrés (mesurés à 20
     remplissages sur 20 chacun), mais un garde-fou qui laisse l'écran vide ne
@@ -431,26 +443,27 @@ function creerRunner(): RunnerJeu {
 		peindre();
 	};
 
-	/** Ce que la nouvelle lettre a changé, dit à voix haute. Sans ça, un enfant
+	/** Ce que la nouvelle lettre a changé, à dire à voix haute. Sans ça, un enfant
 	    qui suit le jeu au lecteur d'écran ne saurait jamais qu'il vient de trouver
 	    un mot — ni qu'il vient d'en casser un autre en écrivant dans une case
-	    partagée (critère 24). */
-	const annoncerChangements = (avant: EtatMot[], apres: EtatMot[], p: PartieMotsCroises): void => {
-		if (partieGagnee(p)) {
-			annoncer('Grille terminée.');
-			return;
-		}
+	    partagée (critère 24).
+
+	    Rend la phrase au lieu de l'annoncer : le déplacement du curseur a lui
+	    aussi quelque chose à dire (voir `MESSAGE_RETOUR`), et deux appels
+	    successifs à la région d'annonce en écraseraient un. Chaîne vide quand il
+	    n'y a rien à signaler — on ne vide pas la région pour autant, la phrase
+	    précédente n'a rien de faux. */
+	const messageChangements = (avant: EtatMot[], apres: EtatMot[], p: PartieMotsCroises): string => {
+		if (partieGagnee(p)) return 'Grille terminée.';
 		const total = p.motif.emplacements.length;
 		const trouves = motsTrouves(p);
 		const nouveauJuste = apres.some((e, i) => e === 'juste' && avant[i] !== 'juste');
 		const nouveauFaux = apres.some((e, i) => e === 'faux' && avant[i] !== 'faux');
-		if (nouveauJuste && nouveauFaux) {
-			annoncer(`Mot trouvé, ${String(trouves)} sur ${String(total)}. ${MESSAGE_FAUX}`);
-		} else if (nouveauJuste) {
-			annoncer(`Mot trouvé, ${String(trouves)} sur ${String(total)}.`);
-		} else if (nouveauFaux) {
-			annoncer(MESSAGE_FAUX);
-		}
+		const trouve = `Mot trouvé, ${String(trouves)} sur ${String(total)}.`;
+		if (nouveauJuste && nouveauFaux) return `${trouve} ${MESSAGE_FAUX}`;
+		if (nouveauJuste) return trouve;
+		if (nouveauFaux) return MESSAGE_FAUX;
+		return '';
 	};
 
 	/** Le mot que la case touchée met en avant. Sur un croisement, AUCUN tant que
@@ -531,18 +544,37 @@ function creerRunner(): RunnerJeu {
 			return;
 		}
 		appliquer(suivante);
-		annoncerChangements(avant, etats(suivante), suivante);
+		const message = messageChangements(avant, etats(suivante), suivante);
 		if (partieGagnee(suivante)) {
+			annoncer(message);
 			dans<HTMLButtonElement>('#mxNouvelle')?.focus();
 			return;
 		}
-		if (motCourant === null) return;
-		const rang = motsSur(suivante.motif, ligne, colonne).find(
-			({ emplacement }) => emplacement === motCourant,
-		)?.rang;
-		if (rang === undefined) return;
-		const suivanteCase = prochaineVide(suivante, motCourant, rang);
-		if (suivanteCase) deplacerCurseur(suivanteCase.ligne, suivanteCase.colonne);
+		if (motCourant === null) {
+			if (message) annoncer(message);
+			return;
+		}
+		const cases = casesDe(suivante.motif.emplacements[motCourant]);
+		const rang = cases.findIndex((c) => c.ligne === ligne && c.colonne === colonne);
+		if (rang < 0) {
+			if (message) annoncer(message);
+			return;
+		}
+		const cible = prochaineVide(suivante, motCourant, rang);
+		/* Le curseur est-il REPARTI EN ARRIÈRE ? C'est le seul moment où il ne va
+		   pas là où l'enfant l'attend, et rien d'autre ne le lui dirait : le focus
+		   se déplace en silence, l'anneau de la case suit sans commentaire, et la
+		   case comblée est ailleurs dans le mot. Pour un enfant qui suit au lecteur
+		   d'écran, ou dont l'attention lâche entre deux lettres, c'est exactement le
+		   déplacement qu'on perd de vue. */
+		const rangCible =
+			cible === null
+				? -1
+				: cases.findIndex((c) => c.ligne === cible.ligne && c.colonne === cible.colonne);
+		const retour = rangCible >= 0 && rangCible < rang ? MESSAGE_RETOUR : '';
+		const dire = [message, retour].filter((t) => t !== '').join(' ');
+		if (dire) annoncer(dire);
+		if (cible) deplacerCurseur(cible.ligne, cible.colonne);
 	};
 
 	/** Retour arrière sur une case DÉJÀ vide : on recule d'une case et on l'efface.

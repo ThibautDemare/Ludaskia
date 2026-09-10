@@ -18,6 +18,16 @@
    des nombres, garde aussi les RÉUSSITES (sans dénominateur, pas de taux à lire)
    et sert à juger la PLANIFICATION. Les deux restent distincts.
 
+   CE QU'IL CONFOND, ASSUMÉ. « Je ne sais pas, montre-moi » (#467) passe par le même
+   `recordGrade(false)` qu'une réponse fausse : un élément abandonné sans tentative est
+   donc journalisé comme un échec ordinaire, sans champ équivalent au `sansTentative` du
+   journal d'erreurs. C'est un vrai confondant, et pas un oubli — mais il n'est pas neutre :
+   si l'abandon est lui-même corrélé au retard (un élément très oublié est aussi plus dur,
+   donc plus abandonné), il gonfle l'écart de la tranche la plus en retard, c'est-à-dire
+   précisément la variable à mesurer. À la lecture des taux, ne pas conclure de
+   l'effondrement de la dernière tranche qu'il vient du seul oubli. Distinguer les deux
+   demanderait un booléen de plus, écarté de ce lot (cadrage gelé, #691).
+
    IL N'ENTRE DANS AUCUN CALCUL de l'application : ni XP, ni trophée, ni objectif,
    ni sélection des éléments à réviser. C'est une mesure, pas une entrée du moteur —
    le retirer ne doit rien changer au comportement.
@@ -64,6 +74,16 @@ export interface TrancheDef {
 /* Trois tranches, bornes SEMI-OUVERTES `[min, max[` : aucune valeur ne tombe dans deux
    tranches ni dans aucune.
 
+   Les libellés disent « délai prévu » et non « intervalle », alors que c'est bien
+   l'intervalle du palier qui sert de diviseur : le mot est DÉJÀ PRIS sur le même écran,
+   dans un autre sens. La phrase-cadre au-dessus de ce bloc énumère l'escalier (« 1 jour,
+   3 jours, 7 jours… »), ce qui amorce le parent à lire « intervalle » comme « échelon ».
+   « 2 intervalles de retard » se comprendrait alors « deux échelons plus tard que prévu »,
+   qui est faux : la tranche mesure un MULTIPLICATEUR du délai propre à l'échelon courant,
+   si bien que 2 jours de retard sur un rendez-vous à J+1 et 14 jours sur un rendez-vous à
+   J+7 y tombent tous les deux. « Délai prévu » ne collisionne avec rien et ne peut se lire
+   que comme une durée.
+
    Pourquoi « à l'heure » va jusqu'à un intervalle entier, et non jusqu'à une fraction :
    l'échéance est horodatée à la minute, alors qu'un enfant révise une fois par jour à
    une heure variable. Une séance de la veille à 18 h rend l'élément dû à 18 h ; l'enfant
@@ -78,8 +98,8 @@ export interface TrancheDef {
    contredirait ce qu'il compte. */
 export const TRANCHES_RETARD: readonly TrancheDef[] = [
 	{ id: 'aHeure', label: "Servi à l'heure", min: 0, max: 1 },
-	{ id: 'retardModere', label: 'Moins de 2 intervalles de retard', min: 1, max: 2 },
-	{ id: 'retardFort', label: '2 intervalles de retard ou plus', min: 2, max: Infinity },
+	{ id: 'retardModere', label: 'Moins de 2 fois le délai prévu', min: 1, max: 2 },
+	{ id: 'retardFort', label: '2 fois le délai prévu ou plus', min: 2, max: Infinity },
 ];
 
 export interface TauxTranche {

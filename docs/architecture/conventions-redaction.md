@@ -260,3 +260,25 @@ attendre plusieurs semaines — le contresens exact que la fonctionnalité corri
 D'où « en attente d'une première rencontre » (synthèse du bloc) et « en attente de
 rencontre » (résumé de catégorie, sous-compte d'étage) : nommer ce qu'on attend, plutôt
 que l'attente elle-même (`ui/encadrant-revision.ts`).
+
+## Un mot déjà employé sur l'écran ne peut pas y prendre un second sens (#691)
+
+Avant de réutiliser un terme du domaine dans un libellé, vérifier qu'il n'est pas **déjà
+affiché ailleurs sur le même écran avec une autre acception** : le lecteur est amorcé par
+la première, et la seconde passe inaperçue. Cas posé par #691 : la phrase-cadre du bloc
+Révision énumère l'escalier (« 1 jour, 3 jours, 7 jours… »), ce qui installe
+« intervalle » = « échelon ». Les tranches de retard, deux paragraphes plus bas,
+l'employaient pour un **multiplicateur** du délai propre à l'échelon courant : « 2
+intervalles de retard » se lisait « deux échelons plus tard que prévu », faux, puisque
+2 jours de retard à J+1 et 14 jours à J+7 tombent dans la même tranche. D'où « délai
+prévu » dans les tranches, « intervalle » réservé à l'escalier. La collision ne se voit
+pas en relisant le libellé seul — seulement en le relisant **à sa place dans la page**.
+
+## Deux-points d'un libellé d'interface : espace normale, pas d'insécable (#691)
+
+Écrire `Libellé : valeur`, jamais `Libellé&nbsp;: valeur`. C'est une convention de fait,
+tenue par les 57 occurrences de `src/ui` ; l'insécable typographiquement correct y est
+resté absent parce que le rendu est du HTML fluide où la coupure avant deux-points ne
+s'observe pas, et parce qu'une exception isolée se voit à la relecture d'un diff. #691
+avait introduit la seule occurrence contraire du dépôt, à trois lignes d'un libellé de la
+même fonction qui suivait la règle.

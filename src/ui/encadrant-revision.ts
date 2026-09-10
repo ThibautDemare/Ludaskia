@@ -135,11 +135,15 @@ export function syntheseRevision(recap: RecapRevision): string {
    été mesuré, l'appelant n'affichant alors pas la ligne : un tableau de trois tirets, sur
    un profil neuf, ferait croire à un problème.
    Le pourcentage se met en forme ICI et pas dans le noyau : `tauxParTranche` rend une
-   fraction, ce qui la garde comparable et testable sans dépendre d'un arrondi. */
+   fraction, ce qui la garde comparable et testable sans dépendre d'un arrondi.
+   L'effectif est NOMMÉ (« 54 rendez-vous ») et non laissé nu entre parenthèses : un
+   nombre seul se devine à l'œil mais s'énonce sans unité au lecteur d'écran, et c'est
+   ce que font déjà les seize autres comptes de l'espace encadrant. Le mot est répété à
+   chaque tranche parce que chaque segment doit rester lisible seul (cf. #690). */
 export function syntheseTauxRetard(taux: readonly TauxTranche[]): string {
 	const parts = taux
 		.filter((t) => t.taux != null)
-		.map((t) => `${t.label} : ${Math.round((t.taux as number) * 100)} % (${t.total})`);
+		.map((t) => `${t.label} : ${Math.round((t.taux as number) * 100)} % (${t.total} rendez-vous)`);
 	return parts.length ? parts.join(' · ') : '';
 }
 
@@ -363,7 +367,7 @@ export function revisionHTML(consulte: Profile, now: number): SafeHtml {
         ${
 					retards
 						? html`<p class="enc-hint">
-								Réussite selon le retard du rendez-vous&nbsp;: ${retards}
+								Réussite selon le retard du rendez-vous : ${retards}
 							</p>`
 						: VIDE
 				}

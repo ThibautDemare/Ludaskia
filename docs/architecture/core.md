@@ -1931,18 +1931,18 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
 
 ## Étagère de jeux (#661)
 
-Quatorze modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
-`etat.ts`, `sudoku-etat.ts` et `mots-cases-etat.ts` (les seuls à lire/écrire le
-stockage) — cf.
+Seize modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
+`etat.ts`, `sudoku-etat.ts`, `mots-cases-etat.ts` et `mots-croises-etat.ts` (les
+seuls à lire/écrire le stockage) — cf.
 [Gamification](gamification.md)
 pour le pourquoi du dispositif (pas de `Recompense`, pas d'XP) et [Espace
 encadrant](espace-encadrant.md) pour les quatre réglages adulte.
 
 - **`catalogue.ts`** — `JEUX: JeuDef[]` (id, libellé enfant, icône, `type: 'C' |
   'R'` — compétence / refuge —, `competence?` réservée à l'espace encadrant,
-  jamais montrée à l'enfant, `levels?` absent = toutes les classes). Quatre jeux
-  livrés (`motus`, `2048`, `sudoku`, `mots-cases`) sur un catalogue prévu pour 18
-  (#663 y ajoutera la banque CM1 du Motus).
+  jamais montrée à l'enfant, `levels?` absent = toutes les classes). Cinq jeux
+  livrés (`motus`, `2048`, `sudoku`, `mots-cases`, `mots-croises`) sur un
+  catalogue prévu pour 18 (#663 y ajoutera la banque CM1 du Motus).
 - **`paliers.ts`** — `PALIERS` : 18 rangs, un niveau XP dédié chacun, alternant
   `R`/`C`. `paliersFranchis(avant, apres)` rend les rangs strictement franchis
   entre deux niveaux (borne de départ exclue, d'arrivée incluse — même grammaire
@@ -2003,9 +2003,18 @@ encadrant](espace-encadrant.md) pour les quatre réglages adulte.
   (`Motif` = des `Emplacement` horizontaux et verticaux), des `croisements`
   DÉDUITS de cette géométrie (jamais déclarés, donc jamais désynchronisés), et
   l'état d'une `Grille` (`poser`/`retirer`/`conflits`/`lettresEn`/`terminee`).
-  C'est la brique que #665 (mots croisés) reprendra en ne changeant que la source
-  des mots. Trois règles de contrat : rien ne mute la grille reçue, ce qui n'a
-  pas de sens est refusé EN SILENCE (index hors motif, mauvaise longueur,
+  ⚠️ **Mots croisés (#665) n'en a repris que la moitié, et c'est le fait à
+  connaître avant d'ouvrir ce fichier pour un troisième jeu.** `casesDe`,
+  `croisements` et tout le REMPLISSAGE (ci-dessous) servent aux DEUX jeux à
+  grille. En revanche `Grille`, `poser`, `retirer`, `lettresEn`, `conflits`,
+  `complete` et `terminee` — l'état d'une grille où un MOT ENTIER est posé par
+  emplacement, une case pouvant réclamer deux lettres quand deux mots posés se
+  contredisent — n'ont plus qu'un seul client, `mots-cases.ts` juste en dessous :
+  ce modèle ne correspond à rien aux mots croisés, où une case porte exactement
+  UNE lettre que l'enfant tape lui-même (`mots-croises.ts` définit donc sa propre
+  saisie — `ecrire`/`lettreEn`/`etatMot` — plutôt que de tordre celle-ci). Trois
+  règles de contrat sur cette partie-là : rien ne mute la grille reçue, ce qui
+  n'a pas de sens est refusé EN SILENCE (index hors motif, mauvaise longueur,
   emplacement occupé — jamais d'exception, un enfant n'a rien à rattraper), et un
   emplacement occupé ne se remplace pas (sinon le mot écrasé disparaîtrait sans
   revenir dans la liste). Tout passe par **NFC** avant d'être mesuré comme avant
@@ -2015,9 +2024,10 @@ encadrant](espace-encadrant.md) pour les quatre réglages adulte.
   (`melanger`, `remplirMotif`, `choisirRemplissage`, `BUDGET_NOEUDS`/`BUDGETS`),
   et pour la même raison : trouver un jeu de mots qui tient dans un motif est un
   problème de géométrie et de longueurs, jamais de langue — le solveur ne LIT pas
-  les mots. La liste de mots est donc un **paramètre**, ce qui est très
-  exactement ce que #665 changera. `choisirRemplissage` essaie les motifs à
-  budget croissant et rend **`null`** quand aucun ne se remplit : le moteur ne
+  les mots. La liste de mots est donc un **paramètre** — c'est ce qui permet aux
+  deux jeux à grille (`mots-cases.ts` et `mots-croises.ts`, ci-dessous) de
+  l'appeler avec leur propre vivier sans y toucher. `choisirRemplissage` essaie
+  les motifs à budget croissant et rend **`null`** quand aucun ne se remplit : le moteur ne
   lève rien, l'appelant décide quoi en dire — et ce chemin d'échec devient
   atteignable d'un test, par une liste de mots inerte ou un budget d'une poignée
   de nœuds.
@@ -2047,6 +2057,40 @@ encadrant](espace-encadrant.md) pour les quatre réglages adulte.
   s'interdit (mot hors banques, doublon, longueur qui ne colle pas au dessin) et
   la partie déjà terminée ; en revanche la grille **pleine mais fausse** est
   GARDÉE, c'est un état de jeu légitime.
+- **`mots-croises.ts`** (#665) — le jeu comme ASSEMBLAGE des motifs
+  (`data/jeux/motifs-mots-croises.ts` : six dessins propres à ce jeu, six colonnes
+  et sept lignes au plus — un septième dessin, qui contraignait trois mots de
+  quatre lettres deux fois chacun contre une banque qui n'en compte que 22, a été
+  mesuré injouable, 0 remplissage sur 20, et écarté avant livraison) avec la
+  banque `data/francais/definitions.ts` (cf.
+  [Contenu & leçons](contenu-et-lecons.md)), mais pas de la même moitié du moteur
+  que son voisin : il reprend `casesDe` et le REMPLISSAGE (`tirerGrille` appelle
+  `choisirRemplissage`) tels quels, jamais `Grille` ni `poser`/`lettresEn` (cf.
+  `grille-mots.ts` ci-dessus). Ce qui lui appartient en propre, c'est le
+  FRANÇAIS et la SAISIE lettre à lettre : une case porte
+  exactement UNE lettre, indexée `ligne,colonne` (`cleCase`) et non par mot —
+  c'est ce choix qui rend `etatMot` RECALCULABLE à chaque lecture (jamais
+  mémorisé) et qui fait qu'écrire dans une case partagée réévalue les DEUX mots
+  qui la traversent. `vivierMotsCroises()` rend tous les mots de
+  `data/francais/definitions.ts` **sans filtre de longueur** (le vivier n'a pas à
+  connaître les bornes d'un motif — ce sont `remplirMotif` et les motifs livrés
+  qui, de fait, n'utilisent que les mots de 4 à 7 lettres, 177 sur 231 mesuré) ;
+  `definitionDe` refuse le silence, un mot sans définition ne doit jamais pouvoir
+  être servi. La comparaison **plie casse et accent** (`plierLettre` : taper un
+  accent est un geste fin, hors de propos ici), mais la lettre **affichée**
+  (`lettreAffichee`) ne prend sa forme accentuée qu'une fois le MOT ENTIER
+  trouvé — jamais à l'instant où la LETTRE devient juste, ce qui reviendrait à
+  corriger lettre par lettre, et seulement sur les mots accentués (57/231).
+- **`mots-croises-etat.ts`** (#665) — **une seule clé** (cf. [Données &
+  profils](donnees-et-profils.md)), et une seule volontairement : l'enfant n'y
+  choisit aucune taille, donc une deuxième clé serait déjà une mémoire de plus
+  (compteur, série, record) que le dispositif s'interdit. Bornage à la LECTURE,
+  même logique que `mots-cases-etat.ts` : un mot hors du vivier, un doublon, une
+  longueur qui ne colle pas au dessin, une solution qui se contredit à un
+  croisement, ou une case qui ne porte pas exactement une lettre — rien de tout
+  cela ne revient ; une grille déjà terminée ne se rouvre pas non plus. La
+  grille **pleine mais fausse** est, comme au sudoku et aux mots à caser,
+  GARDÉE : c'est le moment où l'enfant a le plus besoin d'y revenir.
 - **`invitation.ts`** — `doitInviter(ContexteInvitation)` : la règle pure qui
   décide si l'étagère se propose en fin de séance, et à quel emplacement
   (« programme » DÉPLACE l'invitation vers la fin d'un programme du jour plutôt

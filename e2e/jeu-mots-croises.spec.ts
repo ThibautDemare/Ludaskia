@@ -480,3 +480,47 @@ test('recharger la page au milieu d’une grille retrouve les lettres posées', 
 
 	expect(errors).toEqual([]);
 });
+
+/* ---------- 11. Retour du curseur sur un trou : annoncé, et le focus suit ---------- */
+
+test('sauter une case au milieu d’un mot puis la combler en dernier annonce le retour, et y place le focus', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await ouvrirMotsCroises(page);
+
+	const grille = await lireGrilleReelle(page);
+	const emplacement = grille.find((e) => e.cellules.length >= 3 && e.libre);
+	expect(
+		emplacement,
+		'aucun emplacement de trois lettres ou plus avec une case libre',
+	).toBeTruthy();
+	const lettres = [...emplacement!.mot.normalize('NFC')];
+	const cellules = emplacement!.cellules;
+	const trou = cellules[1]; // la case laissée vide, au milieu du mot
+
+	// On sélectionne le mot par sa case LIBRE (jamais ambiguë) : c'est elle qui
+	// fixe le mot courant dont `prochaineVide` fera le tour.
+	await caseLoc(page, emplacement!.libre!).click();
+
+	// Toutes les cases SAUF celle du milieu, dans l'ordre — en la laissant vide
+	// jusqu'au bout. On ne touche AUCUNE autre case de la grille : aucun mot
+	// voisin ne peut donc devenir juste ou faux en même temps, et l'annonce
+	// reste un seul fragment (le cas composé décrit par le mainteneur ne peut
+	// survenir que si une case partagée termine un AUTRE mot au même geste).
+	for (let i = 0; i < cellules.length; i++) {
+		if (i === 1) continue;
+		await caseLoc(page, cellules[i]).fill(lettres[i]);
+	}
+
+	// Regex plutôt que texte figé (message informatif, pas un libellé
+	// d'interface) et `toContainText` plutôt qu'une égalité stricte : si jamais
+	// deux fragments se composaient, on cherche le fragment du retour dans la
+	// valeur plutôt que de comparer la phrase entière.
+	await expect(page.locator('#mxAnnonce')).toContainText(/case .* restée vide/i);
+	// La case comblée en dernier n'est pas celle qui garde le focus : c'est le
+	// TROU qui le reçoit, puisque c'est là que la prochaine lettre doit aller.
+	await expect(caseLoc(page, trou)).toBeFocused();
+
+	expect(errors).toEqual([]);
+});

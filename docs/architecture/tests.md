@@ -848,6 +848,71 @@ comportement (déclaration → `etatNeuf`, échéance à J+1) sont réécrites p
 ROTATION (`etatHorsRotation`) que #690 pose désormais — la déclaration est mise en
 attente, plus jamais en rotation directe.
 
+### Journal du retard en révision, et son gate structurel (#691)
+
+Quatrième et dernière tranche de la milestone « Révision espacée soutenable » :
+capturer, avant qu'il soit écrasé, le retard avec lequel un rendez-vous a été servi —
+sans cette mesure, l'hypothèse portée par #688 (« un rendez-vous très en retard fait
+échouer l'enfant, pas la file ») restait ni vérifiable ni réfutable.
+
+**`tests/retard-journal.test.ts`** couvre `src/core/retard-journal.ts` de bout en bout,
+écrit AVANT l'implémentation depuis les critères de l'issue : le retard relatif
+(`retardRelatif`, rapporté à l'intervalle du PALIER DE DÉPART, jamais au premier de
+l'escalier — un même retard absolu vaut 14 intervalles au palier 0 et 2 au palier 2),
+les trois tranches half-open (`trancheRetard`, bascule pile à 1 et à 2, retard négatif
+rangé avec « à l'heure »), la forme d'une entrée (aucun champ textuel hors
+`kind`/`id`), la borne et l'éviction (`ajouterRetard`), la persistance par profil
+(`journaliserRetard`/`chargerRetardsFor` : écrit sur le profil actif, se relit par
+UUID, disparaît avec le profil supprimé, entre dans l'export de sauvegarde) et la
+pureté de `tauxParTranche` (rend toujours les trois tranches, `taux: null` SSI la
+tranche est vide — jamais confondu avec un taux de 0). Un dernier bloc
+**comportemental** prouve le critère « ce journal n'entre dans aucun calcul » en
+comparant XP et sélection des éléments dus, journal vide puis saturé d'échecs très en
+retard sur les leçons sélectionnées : résultat identique.
+
+**`tests/retard-journal-gate.test.ts`** tient le pendant STATIQUE du même critère, et
+il est d'une nature différente des gates précédents (#580, #581, #598) — plus forte, et
+le fichier le revendique lui-même en tête. Là où #580 surveille des fichiers qui
+*ressemblent* à un chemin de correction (convention de nommage `lecon-*.ts` + liste
+tenue à la main, limite que son propre commentaire assume), celui-ci surveille **la
+fonction qui détruit l'information** : `avancerEtat` (`core/revision.ts`) n'a que deux
+appelants dans tout le dépôt, `avancerMotRevision` et `avancerLessonRevision`, eux-mêmes
+appelés depuis un point unique de l'interface (`recordGrade`, `ui/revision.ts`). La
+liste des appelants est donc énumérable MÉCANIQUEMENT, pas devinée par convention. Trois
+tests rouges si l'invariant casse : (1) la liste des fichiers qui font avancer
+l'escalier est CLOSE — un nouveau mode de révision, ajouté depuis un fichier non
+déclaré, la fait échouer ; (2) côté interface, la correction reste un point unique
+(`recordGrade`) ; (3) toute fonction qui avance journalise le retard AVANT d'écraser
+l'échéance — l'ordre compte, une journalisation après coup mesurerait le PROCHAIN
+rendez-vous, pas celui qui vient d'être servi. Le même fichier tient aussi les critères
+de LECTURE : seul l'espace encadrant importe
+`chargerRetardsFor`/`tauxParTranche`/`TRANCHES_RETARD` (aucune vue enfant), personne
+d'autre que la chaîne d'écriture et l'encadrant n'importe le module, et `RetardEntry` ne
+peut pas se remettre à porter du texte (`question`, `mot`, `enonce`… explicitement
+interdits). **Ce qu'il ne fixe pas**, écrit dans son en-tête : l'endroit précis de
+l'appel (dans `recordGrade` ou dans l'un des deux avanceurs — les deux satisfont le test
+3) et la justesse de l'entrée (palier, retard), qui reste à
+`tests/retard-journal.test.ts` et à l'e2e.
+
+**`tests/encadrant-synthese-revision.test.ts` (extension)** ajoute `syntheseTauxRetard`
+(`ui/encadrant-revision.ts`) aux trois fonctions de phrase déjà couvertes — avec un
+invariant INVERSE des trois autres : un taux à 0 % doit s'AFFICHER (« tout a été raté »
+est une information), c'est l'ABSENCE de mesure (tranche vide) qui doit disparaître sans
+laisser de séparateur orphelin. Un bloc final enchaîne pour de vrai `tauxParTranche` puis
+`syntheseTauxRetard`, pour ne pas se contenter des deux moitiés testées séparément.
+
+**`e2e/retard-journal.spec.ts` (nouveau)** rejoue une vraie session de révision sur
+chacun des deux avanceurs — une leçon, un mot d'orthographe — et relit
+`ludaskia_retards` dans `localStorage` : le gate statique prouve qu'un appel précède
+l'écrasement, cette spec prouve que le chemin s'exécute réellement depuis l'interface,
+avec un `palier` de DÉPART et un `retardRelatif` positif et fini.
+
+**`e2e/encadrant-revision.spec.ts` (extension)** sème directement `ludaskia_retards` et
+vérifie le texte exact de la ligne « Réussite selon le retard du rendez-vous » sur deux
+tranches mesurées, puis, critère NÉGATIF explicite, son ABSENCE totale quand le journal
+ne contient encore aucune entrée — le cas d'un profil qui vient de migrer sur cette
+version.
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent

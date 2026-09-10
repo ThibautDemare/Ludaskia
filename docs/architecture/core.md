@@ -1467,6 +1467,30 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   rangement, tri, appariement, tableau de conversion, résolution de problèmes, « Clique sur
   le mot », dictée d'orthographe) **et la révision espacée** (`ui/revision.ts`, mode dédié
   `'revision'`, ses 10 formes d'item) — cf. [Espace encadrant](espace-encadrant.md).
+- **`retard-journal.ts`** (#691, pur) — **journal du RETARD** avec lequel un rendez-vous
+  de révision espacée a été servi, capturé AVANT qu'`avancerEtat` (ci-dessus) n'écrase
+  l'échéance : `journaliserRetard` vit à l'intérieur des deux seuls appelants
+  d'`avancerEtat` — `avancerMotRevision` (`core/orthographe/store.ts`) et
+  `avancerLessonRevision` (`progress.ts`) — jamais côté interface, ce qui rend « aucun
+  chemin de correction ne peut l'oublier » STRUCTUREL plutôt que conventionnel (gate
+  dédié, cf. [Tests](tests.md)). `RetardEntry {ts, kind: 'mot' | 'lecon', id, palier,
+  retardRelatif, reussi}`, clé `ludaskia_retards` (plafonnée à `MAX_RETARDS` = 1000, cf.
+  [Données & profils](donnees-et-profils.md)). **`retardRelatif(e, now)`** rapporte le
+  retard à l'intervalle du PALIER DE DÉPART (`REVISION_INTERVALLES[e.palier]`, jamais le
+  premier de l'escalier), `null` si rien n'est mesurable (hors rotation, palier hors
+  escalier). **Distinct du journal d'erreurs (#391) ci-dessus** : aucun énoncé, garde
+  aussi les RÉUSSITES (sans elles aucun taux n'est calculable), et sert à juger la
+  PLANIFICATION plutôt qu'à comprendre une erreur précise. **`TRANCHES_RETARD`** (3
+  tranches half-open sur le retard relatif — à l'heure `[0,1[`, retard modéré `[1,2[`,
+  retard fort `[2,+∞[`) et **`tauxParTranche(entries)`** (pur, rend TOUJOURS les trois
+  tranches ; `taux: number | null`, `null` seulement si la tranche est vide, jamais
+  confondu avec un taux de 0) alimentent `encadrant-stats.ts:tauxRetardProfil` et la ligne
+  « Réussite selon le retard du rendez-vous » de l'espace encadrant (mise en pourcentage
+  dans `ui/encadrant-revision.ts:syntheseTauxRetard` — le noyau ne rend qu'une fraction),
+  cf. [Espace encadrant](espace-encadrant.md). **N'entre dans AUCUN calcul du moteur**
+  (XP, trophée, objectif, sélection des éléments à réviser) : c'est une mesure, pas une
+  entrée du moteur — le retirer ne change rien au comportement, propriété vérifiée
+  (journal vide ou saturé) par `tests/retard-journal.test.ts`.
 - **`erreur-representation.ts`** (#391, pur) — mise en forme de la « réponse donnée /
   attendue » pour les formats **composites**, à partir des données brutes du runner
   (indépendant de `erreurs-journal.ts`) : **`analyserResultatPosee(cells)`** agrège les

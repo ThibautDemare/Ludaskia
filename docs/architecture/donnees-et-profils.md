@@ -103,7 +103,19 @@ jours, libellé figé à l'instant du retrait — base du bloc « Retirées auto
 de l'espace encadrant, cf. [Espace encadrant](espace-encadrant.md)), `ludaskia_erreurs` (#391 : journal des erreurs commises — question posée,
 réponse donnée, réponse attendue, leçon, mode, horodatage — plafonné aux 150 entrées
 les plus récentes ; base du bloc « Ce qui a été difficile récemment » de l'espace
-encadrant, voir `core/erreurs-journal.ts`), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de
+encadrant, voir `core/erreurs-journal.ts`), `ludaskia_retards`
+(#691 : journal du **retard** avec lequel un rendez-vous de révision espacée a été
+servi — capturé par `journaliserRetard` avant qu'`avancerEtat` (`core/revision.ts`)
+n'écrase l'échéance, donc à l'intérieur des deux seuls avanceurs
+(`avancerMotRevision`/`avancerLessonRevision`), jamais côté interface ; `RetardEntry
+{ts, kind, id, palier, retardRelatif, reussi}`, plafonné à `MAX_RETARDS` (1000,
+volontairement bien au-dessus des 150 de `ludaskia_erreurs` — la fenêtre visée se
+compte en semaines, cf. `core/retard-journal.ts`). **Distinct** de `ludaskia_erreurs` :
+aucun énoncé (seulement des nombres et deux identifiants), garde aussi les
+**réussites** (sans elles aucun taux n'est calculable), et sert à juger la
+**planification** de la révision plutôt qu'à comprendre une erreur précise ; base du
+taux de réussite par tranche de retard de l'espace encadrant, cf. [Espace
+encadrant](espace-encadrant.md)), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de
 runner — voir `core/aide.ts`), `ludaskia_eggs` (#331 : ids des **easter eggs** trouvés,
 album de l'accueil — clé **dédiée et disjointe** de l'XP et des trophées, les eggs étant
 hors de l'économie de jeu, cf. `core/eggs.ts`), `ludaskia_tour_seen` et `ludaskia_parents_seen`

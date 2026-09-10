@@ -20,6 +20,32 @@
    la main sans jamais tenir à jour une liste de croisements en parallèle, donc
    sans jamais la désynchroniser.
 
+   ── CE FICHIER N'EST GÉNÉRIQUE QU'À MOITIÉ, et il faut le savoir en entrant ──
+
+   Deux jeux l'emploient, mais pas les mêmes morceaux. La distinction ne se
+   devine pas à la lecture des signatures, alors elle s'écrit ici :
+
+   • **Réellement partagé, et éprouvé par DEUX clients** : la géométrie (`Motif`,
+     `Emplacement`, `Case`, `Sens`, `casesDe`, `croisements`, `cleCase`), le
+     mélange (`melanger`) et le SOLVEUR (`remplirMotif`, `choisirRemplissage`,
+     `Remplissage`, les budgets). C'est cette moitié-là qui a tenu la promesse du
+     cadrage : le second jeu l'a reprise sans y changer une ligne.
+   • **Propre au format des mots à caser, un seul client** : `Grille`,
+     `grilleNeuve`, `poser`, `retirer`, `emplacementsCompatibles`, `conflits`,
+     `lettresEn`, `complete`, `terminee`. Tout ce groupe modélise « UN MOT POSÉ
+     par emplacement », d'où une case qui peut réclamer DEUX lettres quand deux
+     mots posés se contredisent.
+
+   Ce modèle-là n'a aucun sens dans une grille où l'enfant écrit lettre par
+   lettre : une case y porte exactement une lettre, et deux mots qui la traversent
+   n'ont pas la place de se contredire. Le jeu de mots croisés tient donc son
+   PROPRE état de cases, dans son module, et n'appelle rien de ce second groupe —
+   ce n'est pas un oubli à réparer, c'est le bon découpage.
+
+   Un troisième jeu qui arriverait ici doit donc se demander lequel des deux
+   modèles est le sien AVANT de réutiliser `Grille` : tordre celui des mots à
+   caser pour le faire entrer coûterait plus cher que quinze lignes d'état.
+
    ── Trois choix de contrat, et leur raison ──────────────────────────────────
 
    1. **Rien ne mute la grille reçue.** Le runner garde son état et le
@@ -92,6 +118,13 @@ export interface Grille {
 function lettresDe(mot: string): string[] {
 	return [...mot.normalize('NFC')];
 }
+
+/** La clé d'une case, pour l'indexer sans porter un couple partout : un état de
+    saisie, une carte de cases vers leurs mots, un sélecteur de rendu. Ici et pas
+    dans chaque jeu, parce que trois copies de `${ligne},${colonne}` finissent par
+    diverger d'un séparateur — et le jour où elles divergent, c'est un état
+    persisté qui ne se relit plus. */
+export const cleCase = (ligne: number, colonne: number): string => `${ligne},${colonne}`;
 
 /** Les cases d'un emplacement, dans l'ordre de lecture du mot. */
 export function casesDe(e: Emplacement): Case[] {

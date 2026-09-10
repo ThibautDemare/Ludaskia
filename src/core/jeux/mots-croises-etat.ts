@@ -45,10 +45,9 @@
    de ne PAS rendre la grille — le cas d'échec littéral.
    ============================================================ */
 import { lsGet, lsSet } from '../storage';
-import { casesDe, croisements } from './grille-mots';
+import { casesDe, cleCase, croisements } from './grille-mots';
 import { MOTIFS_MOTS_CROISES } from '../../data/jeux/motifs-mots-croises';
 import {
-	cleCase,
 	estLettre,
 	lettresDe,
 	partieGagnee,

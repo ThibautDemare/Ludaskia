@@ -60,7 +60,7 @@
    ============================================================ */
 import { attribut, drapeau, html, joindre, VIDE, type SafeHtml } from '../core/html';
 import { randFloat } from '../core/utils';
-import { casesDe } from '../core/jeux/grille-mots';
+import { casesDe, cleCase } from '../core/jeux/grille-mots';
 import {
 	definitionDe,
 	ecrire,
@@ -68,10 +68,10 @@ import {
 	effacerMot,
 	etatMot,
 	lettreAffichee,
-	lettreEn,
 	motsSur,
 	motsTrouves,
 	partieGagnee,
+	prochaineVide,
 	tirerGrille,
 	type EtatMot,
 	type PartieMotsCroises,
@@ -80,6 +80,7 @@ import { effacerPartie, partieEnCours, sauverPartie } from '../core/jeux/mots-cr
 import { lectureConsigneAuto } from '../core/profiles';
 import { dicteeDisponible, dicterConsigne } from './tts';
 import { enregistrerJeu, type RunnerJeu } from './jeux-ecran';
+import { bascule, capitale } from './jeux-dom';
 import { uiConfirm } from './ui-modal';
 
 /** La RÈGLE DU JEU, jamais « la consigne » : ce mot appartient au registre de
@@ -113,21 +114,6 @@ const MESSAGE_PANNE =
 const LIBELLE_SENS = { h: 'Le mot qui va vers la droite', v: 'Le mot qui descend' } as const;
 
 const GLYPHE_SENS = { h: '→', v: '↓' } as const;
-
-const cle = (ligne: number, colonne: number): string => `${ligne},${colonne}`;
-
-/** En capitales (critère 33) : dans une case isolée, sans appui sémantique,
-    b/d/p/q se confondent bien plus que B/D/P/Q. Accents compris — sur un mot
-    trouvé, c'est justement l'accent qui fait tout l'intérêt de la case. */
-const capitale = (lettre: string): string => lettre.toLocaleUpperCase('fr');
-
-/** Pose ou retire un attribut d'état. Un attribut plutôt qu'une classe : c'est
-    la convention du plateau du sudoku et de celui des mots casés, et un
-    sélecteur d'attribut se lit aussi bien dans la feuille que dans une spec. */
-function bascule(el: HTMLElement, nom: string, actif: boolean): void {
-	if (actif) el.setAttribute(nom, '1');
-	else el.removeAttribute(nom);
-}
 
 /* ---------- Le balisage ---------- */
 
@@ -258,16 +244,16 @@ function creerRunner(): RunnerJeu {
 		const parCase = new Map<string, { h: number | null; v: number | null }>();
 		p.motif.emplacements.forEach((e, i) => {
 			for (const c of casesDe(e)) {
-				const place = parCase.get(cle(c.ligne, c.colonne)) ?? { h: null, v: null };
+				const place = parCase.get(cleCase(c.ligne, c.colonne)) ?? { h: null, v: null };
 				if (e.sens === 'h') place.h = i;
 				else place.v = i;
-				parCase.set(cle(c.ligne, c.colonne), place);
+				parCase.set(cleCase(c.ligne, c.colonne), place);
 			}
 		});
 		const cases: SafeHtml[] = [];
 		for (let ligne = 0; ligne < p.motif.hauteur; ligne++) {
 			for (let colonne = 0; colonne < p.motif.largeur; colonne++) {
-				const place = parCase.get(cle(ligne, colonne)) ?? { h: null, v: null };
+				const place = parCase.get(cleCase(ligne, colonne)) ?? { h: null, v: null };
 				cases.push(caseHTML(ligne, colonne, place.h, place.v));
 			}
 		}
@@ -358,16 +344,16 @@ function creerRunner(): RunnerJeu {
 		const casesDuMot = new Set(
 			motCourant === null
 				? []
-				: casesDe(p.motif.emplacements[motCourant]).map((c) => cle(c.ligne, c.colonne)),
+				: casesDe(p.motif.emplacements[motCourant]).map((c) => cleCase(c.ligne, c.colonne)),
 		);
 		const casesFausses = new Set(
 			p.motif.emplacements.flatMap((e, i) =>
-				parEtat[i] === 'faux' ? casesDe(e).map((c) => cle(c.ligne, c.colonne)) : [],
+				parEtat[i] === 'faux' ? casesDe(e).map((c) => cleCase(c.ligne, c.colonne)) : [],
 			),
 		);
 		const casesJustes = new Set(
 			p.motif.emplacements.flatMap((e, i) =>
-				parEtat[i] === 'juste' ? casesDe(e).map((c) => cle(c.ligne, c.colonne)) : [],
+				parEtat[i] === 'juste' ? casesDe(e).map((c) => cleCase(c.ligne, c.colonne)) : [],
 			),
 		);
 
@@ -389,7 +375,7 @@ function creerRunner(): RunnerJeu {
 					lettre === null ? 'case vide' : `lettre ${affichee}`
 				}`,
 			);
-			const k = cle(ligne, colonne);
+			const k = cleCase(ligne, colonne);
 			bascule(el, 'data-courant', casesDuMot.has(k));
 			bascule(el, 'data-faux', casesFausses.has(k));
 			/* Sur une case partagée, FAUX l'emporte sur JUSTE : elle appartient à deux
@@ -465,23 +451,6 @@ function creerRunner(): RunnerJeu {
 		} else if (nouveauFaux) {
 			annoncer(MESSAGE_FAUX);
 		}
-	};
-
-	/** La prochaine case VIDE du mot en cours, en repartant de `depuis`. Le tour
-	    de la boucle est volontaire : un trou laissé en route se comble sans un
-	    geste de plus, et aucune lettre déjà posée n'est écrasée au passage
-	    (critère 22). Rend `null` quand le mot est plein. */
-	const prochaineVide = (
-		p: PartieMotsCroises,
-		emplacement: number,
-		depuis: number,
-	): { ligne: number; colonne: number } | null => {
-		const cases = casesDe(p.motif.emplacements[emplacement]);
-		for (let n = 1; n <= cases.length; n++) {
-			const c = cases[(depuis + n) % cases.length];
-			if (lettreEn(p, c.ligne, c.colonne) === null) return c;
-		}
-		return null;
 	};
 
 	/** Le mot que la case touchée met en avant. Sur un croisement, AUCUN tant que

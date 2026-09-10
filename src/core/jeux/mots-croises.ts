@@ -58,7 +58,7 @@
    ============================================================ */
 import { DEFINITIONS } from '../../data/francais/definitions';
 import { MOTIFS_MOTS_CROISES } from '../../data/jeux/motifs-mots-croises';
-import { casesDe, choisirRemplissage, type Motif } from './grille-mots';
+import { casesDe, choisirRemplissage, cleCase, type Case, type Motif } from './grille-mots';
 
 /** Une partie servie : le dessin, sa solution (un mot par emplacement, dans
     l'ordre du motif), et les lettres écrites par l'enfant.
@@ -90,10 +90,6 @@ const UNE_LETTRE = /^\p{L}$/u;
 const nfc = (s: string): string => s.normalize('NFC');
 
 const bas = (s: string): string => nfc(s).toLocaleLowerCase('fr');
-
-/** La clé d'une case. Une chaîne et non un couple : c'est ce qui rend l'état
-    sérialisable tel quel, donc relisible sans conversion (critère 38). */
-export const cleCase = (ligne: number, colonne: number): string => `${ligne},${colonne}`;
 
 /** La lettre, dépouillée de sa casse ET de son accent : c'est la forme sur
     laquelle le jeu COMPARE, jamais celle qu'il affiche. */
@@ -206,6 +202,38 @@ export function motsSur(
     l'ENFANT a tapé, jamais ce qu'on attendait de lui. */
 export function lettreEn(p: PartieMotsCroises, ligne: number, colonne: number): string | null {
 	return p.lettres[cleCase(ligne, colonne)] ?? null;
+}
+
+/** La prochaine case VIDE du mot, en repartant du rang `depuis` — c'est-à-dire
+    l'endroit où le curseur doit aller après une lettre écrite (critère 22).
+
+    Le tour de la boucle est volontaire : arrivé au bout du mot, on repart de son
+    début. Un enfant qui remplit dans le désordre, laisse un trou au milieu et
+    finit par la dernière case retrouve ainsi son trou sans un geste de plus. Le
+    parcours saute toujours les cases DÉJÀ écrites — y compris celles qu'un mot
+    croisé a remplies —, donc avancer n'écrase jamais rien, ce que le critère 22
+    interdit explicitement. Rend `null` quand le mot est plein.
+
+    Ici et non dans le runner : rien de tout cela ne touche au DOM, et enfermé
+    dans une fermeture d'interface le tour de boucle n'était atteignable par aucun
+    test — donc cassable en silence. */
+export function prochaineVide(
+	p: PartieMotsCroises,
+	emplacement: number,
+	depuis: number,
+): Case | null {
+	const e = p.motif.emplacements[emplacement];
+	if (!e) return null;
+	const cases = casesDe(e);
+	/* Le modulo est pris deux fois : `depuis` négatif (« avant la première case »)
+	   donnerait sinon un index négatif, et le mot paraîtrait plein. */
+	const rangDe = (n: number): number =>
+		(((depuis + n) % cases.length) + cases.length) % cases.length;
+	for (let n = 1; n <= cases.length; n++) {
+		const c = cases[rangDe(n)];
+		if (lettreEn(p, c.ligne, c.colonne) === null) return c;
+	}
+	return null;
 }
 
 /** Écrit une lettre dans une case, et rend une NOUVELLE partie — la partie reçue

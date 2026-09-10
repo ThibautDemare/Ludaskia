@@ -58,6 +58,7 @@ import { attribut, drapeau, html, joindre, VIDE, type SafeHtml } from '../core/h
 import { randFloat } from '../core/utils';
 import {
 	casesDe,
+	cleCase,
 	complete,
 	conflits,
 	emplacementsCompatibles,
@@ -78,6 +79,7 @@ import { TAILLES_MOTS_CASES, type TailleMotsCases } from '../data/jeux/motifs-mo
 import { aidesJeuxActives } from '../core/profiles';
 import { dicteeDisponible, dicterConsigne } from './tts';
 import { enregistrerJeu, type RunnerJeu } from './jeux-ecran';
+import { bascule, capitale } from './jeux-dom';
 import { uiConfirm } from './ui-modal';
 
 /** La RÈGLE DU JEU, jamais « la consigne » : ce mot appartient au registre de
@@ -114,21 +116,6 @@ const LIBELLE_TAILLE: Record<TailleMotsCases, string> = {
 
 /** Les lettres d'un mot, en NFC : une entrée par lettre perçue. */
 const lettresDe = (mot: string): string[] => [...mot.normalize('NFC')];
-
-/** En capitales (critère 28) : dans une case isolée, sans appui sémantique,
-    b/d/p/q se confondent bien plus que B/D/P/Q. Accents compris — c'est tout
-    l'objet de la comparaison stricte des croisements. */
-const capitale = (lettre: string): string => lettre.toLocaleUpperCase('fr');
-
-const cle = (ligne: number, colonne: number): string => `${ligne},${colonne}`;
-
-/** Pose ou retire un attribut d'état. Un attribut plutôt qu'une classe : c'est
-    la convention du plateau du sudoku, et un sélecteur d'attribut se lit tout
-    aussi bien dans la feuille de style comme dans une spec. */
-function bascule(el: HTMLElement, nom: string, actif: boolean): void {
-	if (actif) el.setAttribute(nom, '1');
-	else el.removeAttribute(nom);
-}
 
 /* ---------- Le balisage ---------- */
 
@@ -257,16 +244,16 @@ function creerRunner(): RunnerJeu {
 		const parCase = new Map<string, { h: number | null; v: number | null }>();
 		p.motif.emplacements.forEach((e, i) => {
 			for (const c of casesDe(e)) {
-				const place = parCase.get(cle(c.ligne, c.colonne)) ?? { h: null, v: null };
+				const place = parCase.get(cleCase(c.ligne, c.colonne)) ?? { h: null, v: null };
 				if (e.sens === 'h') place.h = i;
 				else place.v = i;
-				parCase.set(cle(c.ligne, c.colonne), place);
+				parCase.set(cleCase(c.ligne, c.colonne), place);
 			}
 		});
 		const cases: SafeHtml[] = [];
 		for (let ligne = 0; ligne < p.motif.hauteur; ligne++) {
 			for (let colonne = 0; colonne < p.motif.largeur; colonne++) {
-				const place = parCase.get(cle(ligne, colonne)) ?? { h: null, v: null };
+				const place = parCase.get(cleCase(ligne, colonne)) ?? { h: null, v: null };
 				cases.push(caseHTML(ligne, colonne, place.h, place.v));
 			}
 		}
@@ -302,18 +289,18 @@ function creerRunner(): RunnerJeu {
 		if (!p || !racine) return;
 		const aides = aidesJeuxActives();
 		const enConflit = conflits(p.grille);
-		const casesFautives = new Set(enConflit.map((c) => cle(c.ligne, c.colonne)));
+		const casesFautives = new Set(enConflit.map((c) => cleCase(c.ligne, c.colonne)));
 		const motsFautifs = new Set(enConflit.flatMap((c) => [c.a, c.b]));
 		const casesDesMotsFautifs = new Set(
 			[...motsFautifs].flatMap((i) =>
-				casesDe(p.motif.emplacements[i]).map((c) => cle(c.ligne, c.colonne)),
+				casesDe(p.motif.emplacements[i]).map((c) => cleCase(c.ligne, c.colonne)),
 			),
 		);
 		const compatibles =
 			aides && motEnMain !== null ? emplacementsCompatibles(p.grille, motEnMain) : [];
 		const casesCibles = new Set(
 			compatibles.flatMap((i) =>
-				casesDe(p.motif.emplacements[i]).map((c) => cle(c.ligne, c.colonne)),
+				casesDe(p.motif.emplacements[i]).map((c) => cleCase(c.ligne, c.colonne)),
 			),
 		);
 
@@ -332,9 +319,9 @@ function creerRunner(): RunnerJeu {
 			else if (lettres.length > 1) etat = `deux lettres se contredisent, ${lettres.join(' et ')}`;
 			el.setAttribute('aria-label', `${ou}, ${etat}`);
 			bascule(el, 'data-double', lettres.length > 1);
-			bascule(el, 'data-conflit', casesFautives.has(cle(ligne, colonne)));
-			bascule(el, 'data-conflit-mot', casesDesMotsFautifs.has(cle(ligne, colonne)));
-			bascule(el, 'data-cible', casesCibles.has(cle(ligne, colonne)));
+			bascule(el, 'data-conflit', casesFautives.has(cleCase(ligne, colonne)));
+			bascule(el, 'data-conflit-mot', casesDesMotsFautifs.has(cleCase(ligne, colonne)));
+			bascule(el, 'data-cible', casesCibles.has(cleCase(ligne, colonne)));
 		}
 
 		const restants = new Set(motsDisponibles(p));

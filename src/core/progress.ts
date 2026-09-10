@@ -821,7 +821,12 @@ export function promouvoirEntreesEnAttente(uuid: string, now: number, plafond: n
 	const all = revisionsFor(uuid);
 	const debut = now - REVISION_FENETRE_ENTREES;
 	/* Un élément sorti de la file par une rencontre réelle a déjà été retiré ; on reste
-	   défensif, une donnée importée pouvant contredire les deux cartes. */
+	   défensif, une donnée importée pouvant contredire les deux cartes. Ces ORPHELINS sont
+	   purgés ici plutôt que seulement ignorés : filtrés à chaque passe sans jamais être
+	   retirés, ils resteraient dans la carte indéfiniment, `attente` n'ayant aucune borne
+	   propre (contrairement à `promues`, borné par date et par nombre). */
+	const orphelins = cles.filter((k) => !estHorsRotation(all[k]));
+	for (const k of orphelins) delete file.attente[k];
 	const candidats = cles
 		.filter((k) => estHorsRotation(all[k]))
 		.sort((a, b) => file.attente[a] - file.attente[b] || (a < b ? -1 : 1));
@@ -839,7 +844,11 @@ export function promouvoirEntreesEnAttente(uuid: string, now: number, plafond: n
 		reliquat--;
 	}
 	if (promus.length === 0 && promuesFenetre === 0 && ages.length > 0) promus.push(ages[0]);
-	if (promus.length === 0) return 0;
+	if (promus.length === 0) {
+		// Rien à promouvoir, mais la purge des orphelins mérite d'être écrite.
+		if (orphelins.length > 0) saveFileFor(uuid, file, now);
+		return 0;
+	}
 
 	for (const k of promus) {
 		all[k] = etatNeuf(now); // jamais rétrodaté : le compteur démarre à l'entrée réelle

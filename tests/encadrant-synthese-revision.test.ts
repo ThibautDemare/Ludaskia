@@ -1,10 +1,14 @@
 /* ============================================================
    Résumés chiffrés du récap de Révision (#690) — vue ENCADRANT.
    ------------------------------------------------------------
-   Cible : `syntheseRevision` et `resumeGroupe` (src/ui/encadrant-revision.ts), les deux
-   fonctions PURES qui dénombrent la file de répétition espacée pour l'adulte — la phrase
-   d'en-tête du bloc « Révision » pour la première, le résumé d'une catégorie (rendu dans
-   le <summary> de son accordéon) pour la seconde.
+   Cible : `syntheseRevision`, `resumeGroupe` et `resumeEtage` (src/ui/encadrant-revision.ts),
+   les trois fonctions PURES qui dénombrent la file de répétition espacée pour l'adulte — la
+   phrase d'en-tête du bloc « Révision », le résumé d'une catégorie (dans le <summary> de son
+   accordéon), et celui d'un étage de l'escalier dans la vue « Par palier ».
+
+   Les deux premières énumèrent des parts DISJOINTES d'un tout (rotation, acquis, attente) ;
+   la troisième annonce un TOUT puis ses sous-comptes inclus (dues, en attente). L'invariant
+   n'a donc pas la même forme des deux côtés, et chaque bloc dit le sien.
 
    Exigence gardée ici (remontée `redacteur-contenu-francais`) : **aucun compte nul
    n'apparaît dans le résumé**, et **un ensemble non vide ne se résume jamais par du
@@ -24,11 +28,18 @@
 
    Invariants du modèle, utilisés pour bâtir les fixtures (cf. RecapRevision,
    src/core/encadrant-stats.ts) : `total === enAttente + enRotation + acquises`
-   (les trois comptes ne se recouvrent pas) et `dues ⊆ enRotation`.
+   (les trois comptes ne se recouvrent pas) et `dues ⊆ enRotation`. Sur un étage, `dues` et
+   `enAttente` sont deux sous-ensembles DISJOINTS des entrées présentes (une entrée en
+   attente n'a pas d'échéance, donc n'est jamais échue).
    ============================================================ */
 import { describe, it, expect } from 'vitest';
-import { syntheseRevision, resumeGroupe } from '../src/ui/encadrant-revision';
-import type { GroupeRevision, RecapRevision } from '../src/core/encadrant-stats';
+import { syntheseRevision, resumeGroupe, resumeEtage } from '../src/ui/encadrant-revision';
+import type {
+	EntreeRevision,
+	GroupeRevision,
+	PalierRevision,
+	RecapRevision,
+} from '../src/core/encadrant-stats';
 
 /* Récap minimal : seuls les compteurs comptent pour la synthèse. `groupes`, `parUrgence`
    et `parPalier` alimentent les trois vues, pas la phrase. Le garde-fou sur `dues`
@@ -85,6 +96,46 @@ function groupe(c: {
 		acquises,
 		dues,
 	};
+}
+
+/* Une entrée d'étage, dans l'un de ses trois états observables. Le résumé d'étage compte
+   les ENTRÉES présentes (`entrees.length`), pas un compteur séparé : les fixtures doivent
+   donc être cohérentes, sinon le test mesurerait un modèle impossible. Une entrée en
+   attente n'a ni échéance ni jours restants — c'est ce qui la rend non échue. */
+function entree(i: number, etat: 'attente' | 'due' | 'programmee'): EntreeRevision {
+	return {
+		cle: `lecon-${i}`,
+		label: `Leçon ${i}`,
+		nature: 'lecon',
+		categoryId: 'calcul',
+		palier: 0,
+		palierLabel: '1 jour',
+		acquis: false,
+		prochaineRevision: etat === 'attente' ? null : 1_700_000_000_000,
+		echeance:
+			etat === 'attente' ? '' : etat === 'due' ? "à réviser aujourd'hui" : 'à réviser demain',
+		du: etat === 'due',
+		joursRestants: etat === 'attente' ? null : etat === 'due' ? 0 : 1,
+		enAttente: etat === 'attente',
+	};
+}
+
+/* Étage de l'escalier : `total` entrées, dont `dues` échues et `enAttente` jamais démarrées
+   — deux sous-ensembles disjoints, d'où le garde-fou sur leur somme. */
+function etage(c: { total: number; dues?: number; enAttente?: number }): PalierRevision {
+	const dues = c.dues ?? 0;
+	const enAttente = c.enAttente ?? 0;
+	if (dues + enAttente > c.total) {
+		throw new Error(
+			'fixture impossible : dues et en attente sont disjointes, et incluses dans l’étage',
+		);
+	}
+	const entrees = [
+		...Array.from({ length: dues }, (_, i) => entree(i, 'due')),
+		...Array.from({ length: enAttente }, (_, i) => entree(100 + i, 'attente')),
+		...Array.from({ length: c.total - dues - enAttente }, (_, i) => entree(200 + i, 'programmee')),
+	];
+	return { palier: 0, label: '1 jour', acquis: false, entrees, dues, enAttente };
 }
 
 /* Les nombres effectivement PRONONCÉS par le résumé, dans l'ordre où on les lit.
@@ -313,5 +364,90 @@ describe('resumeGroupe : une catégorie non vide ne se résume jamais par du vid
 			const parGroupe = nombresAnnonces(resumeGroupe(groupe(m))).sort(croissant);
 			expect(parGroupe, JSON.stringify(m)).toEqual(parPhrase);
 		}
+	});
+});
+
+/* ---------- resumeEtage : un TOUT, puis ses sous-comptes inclus ----------
+   Forme d'invariant différente des deux blocs précédents : le total est TOUJOURS annoncé,
+   fût-ce sans sous-compte, parce qu'il n'est pas une part mais l'ensemble. Ce qui reste
+   commun : un sous-compte nul ne se prononce pas. D'où la formulation retenue —
+   « le premier nombre lu est le total des entrées présentes, et les suivants sont
+   exactement les sous-comptes non nuls ».
+   Pas de cas « étage vide » ici, contrairement aux deux autres fonctions : `revisionProfil`
+   omet les étages sans entrée (tenu par tests/encadrant-revision.test.ts), et le seul test
+   qu'on pourrait écrire sur ce cas inatteignable consisterait à figer ce que la fonction
+   rend aujourd'hui — c'est-à-dire un compte nul. Le décrire serait le garder. */
+describe('resumeEtage : le total est annoncé, ses sous-comptes seulement s’ils existent (#690)', () => {
+	it('étage sans dues ni attente : le total seul, aucun sous-compte inventé', () => {
+		const resume = resumeEtage(etage({ total: 4 }));
+		expect(nombresAnnonces(resume)).toEqual([4]);
+		verifierResumeBienForme(resume);
+	});
+
+	it('étage entièrement en attente : l’attente est dite, l’étage ne se lit pas comme démarré', () => {
+		// Le cas motivant : trois entrées à l'étage 0 sous un en-tête « Palier : 1 jour »,
+		// alors qu'aucune n'a commencé. Le total reste juste, mais il doit être qualifié.
+		const resume = resumeEtage(etage({ total: 3, enAttente: 3 }));
+		expect(nombresAnnonces(resume)).toEqual([3, 3]);
+		verifierResumeBienForme(resume);
+	});
+
+	it('étage aux deux sous-comptes : total d’abord, puis les deux parts', () => {
+		const resume = resumeEtage(etage({ total: 5, dues: 2, enAttente: 1 }));
+		const nombres = nombresAnnonces(resume);
+		expect(nombres[0]).toBe(5); // le tout, avant ses parties
+		expect(nombres.slice(1).sort(croissant)).toEqual([1, 2]);
+		verifierResumeBienForme(resume);
+	});
+
+	it('un seul sous-compte non nul : l’autre reste muet', () => {
+		expect(nombresAnnonces(resumeEtage(etage({ total: 6, dues: 2 })))).toEqual([6, 2]);
+		expect(nombresAnnonces(resumeEtage(etage({ total: 6, enAttente: 4 })))).toEqual([6, 4]);
+	});
+
+	it('dues + attente = total : les deux parts épuisent l’étage sans le contredire', () => {
+		const resume = resumeEtage(etage({ total: 4, dues: 1, enAttente: 3 }));
+		const nombres = nombresAnnonces(resume);
+		expect(nombres[0]).toBe(4);
+		expect(nombres.slice(1).sort(croissant)).toEqual([1, 3]);
+		verifierResumeBienForme(resume);
+	});
+
+	it('accord du nom compté : singulier à 1, pluriel au-delà', () => {
+		const un = resumeEtage(etage({ total: 1 }));
+		const deux = resumeEtage(etage({ total: 2 }));
+		expect(deux).not.toBe(un.replace('1', '2'));
+		expect(deux.length).toBe(un.length + 1);
+	});
+
+	it('étage d’une seule entrée, elle-même en attente : tout reste au singulier', () => {
+		const resume = resumeEtage(etage({ total: 1, enAttente: 1 }));
+		const pluriels = resume.split(/[^0-9A-Za-zÀ-ÿ]+/).filter((m) => /[a-zà-ÿ]s$/.test(m));
+		expect(pluriels, resume).toEqual([]);
+		expect(nombresAnnonces(resume)).toEqual([1, 1]);
+		verifierResumeBienForme(resume);
+	});
+
+	it('ÉCHANTILLON : le total est toujours celui des entrées présentes, les sous-comptes nuls jamais dits', () => {
+		let cas = 0;
+		for (const total of [1, 2, 5, 12, 100]) {
+			for (const dues of [0, 1, 2, total]) {
+				for (const enAttente of [0, 1, 3, total]) {
+					if (dues > total || enAttente > total || dues + enAttente > total) continue;
+					const p = etage({ total, dues, enAttente });
+					const resume = resumeEtage(p);
+					const nombres = nombresAnnonces(resume);
+					// Le tout d'abord, et c'est bien le nombre d'entrées rangées à cet étage.
+					expect(nombres[0], resume).toBe(p.entrees.length);
+					// Puis exactement les sous-comptes non nuls, une fois chacun.
+					expect(nombres.slice(1).sort(croissant), resume).toEqual(
+						[dues, enAttente].filter((n) => n > 0).sort(croissant),
+					);
+					verifierResumeBienForme(resume);
+					cas++;
+				}
+			}
+		}
+		expect(cas).toBeGreaterThan(30);
 	});
 });

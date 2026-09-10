@@ -45,7 +45,9 @@ import {
 	etatNeuf,
 	estHorsRotation,
 	estDu,
+	estAcquis,
 	avancerEtat,
+	PALIER_ACQUIS,
 } from '../src/core/revision';
 import {
 	countDue,
@@ -104,6 +106,15 @@ function lire(uuid: string, key: string): unknown {
 }
 function revisions(uuid: string): Record<string, EtatRevision> {
 	return lsGetRaw(uuid + '/' + LESSON_REVISION_KEY, {}) as Record<string, EtatRevision>;
+}
+/* La file d'attente telle qu'elle est PERSISTÉE : `attente` (clé → date de mise en
+   attente) et `promues` (horodatages). Clé écrite littéralement, comme les autres accès
+   bruts de ces tests. */
+function fileAttente(uuid: string): { attente: Record<string, number>; promues: number[] } {
+	return lsGetRaw(uuid + '/ludaskia_revisionFile', { attente: {}, promues: [] }) as {
+		attente: Record<string, number>;
+		promues: number[];
+	};
 }
 function decl(lessonId: string, niveau: SchoolLevel = 'ce2'): LeconNiveau {
 	return { lessonId, niveau };
@@ -796,6 +807,91 @@ describe('critère 13 — les états déjà en rotation ne sont ni ressortis ni 
 		const anciens: Record<string, EtatRevision> = {};
 		for (const id of ids) anciens[`${id}@ce2`] = r[`${id}@ce2`];
 		expect(JSON.stringify(anciens)).toBe(revAvant);
+	});
+});
+
+/* ============================================================
+   9 bis) Hygiène de la file : aucun orphelin ne s'y accumule
+   ------------------------------------------------------------
+   Une clé peut se retrouver dans `attente` alors que son élément a DÉJÀ démarré sa
+   rotation : deux cartes incohérentes dans une sauvegarde importée suffisent. Filtrée à
+   chaque passe mais jamais retirée, elle resterait là indéfiniment — `attente` n'a pas de
+   borne propre, contrairement à l'historique des promotions (borné par date et par
+   nombre). Un orphelin est par définition un élément déjà parti : le purger ne doit donc
+   toucher à rien d'autre que la file.
+   ============================================================ */
+describe('file d’attente — les entrées orphelines sont purgées', () => {
+	/* Orpheline = déclarée (donc dans la file) mais dont l'état de révision a démarré par
+	   ailleurs. Montée à la main : par les chemins réels, l'entrée en rotation retire
+	   elle-même la clé de la file, l'incohérence ne vient que d'une donnée importée. */
+	function semerOrpheline(uuid: string, lessonId: string, etat: EtatRevision): void {
+		const r = revisions(uuid);
+		r[`${lessonId}@ce2`] = etat;
+		ecrire(uuid, LESSON_REVISION_KEY, r);
+	}
+	const etatDemarre = (): EtatRevision => avancerEtat(etatNeuf(T0 - 10 * JOUR), true, T0 - JOUR);
+
+	it('purge accompagnée d’une promotion : l’orpheline sort, l’autre entre', () => {
+		const uuid = activeProfile().uuid;
+		const [A, B] = leconsCe2().slice(0, 2);
+		declarer(uuid, [A, B], T0);
+		const etatA = etatDemarre();
+		semerOrpheline(uuid, A, etatA);
+		expect(fileAttente(uuid).attente[`${A}@ce2`]).toBeDefined(); // pré-condition
+
+		promouvoirEntreesEnAttente(uuid, jour(1), PLAFOND_MAX);
+
+		expect(fileAttente(uuid).attente[`${A}@ce2`]).toBeUndefined(); // purgée
+		expect(revisions(uuid)[`${A}@ce2`]).toEqual(etatA); // et rien de détruit
+		expect(enRotation(revisions(uuid)[`${B}@ce2`])).toBe(true); // la promotion a bien eu lieu
+	});
+
+	it('purge SEULE : la carte est écrite même quand la passe ne promeut rien', () => {
+		// Le chemin qui manquait : sans écriture, la purge n'existe qu'en mémoire et la clé
+		// est toujours là au rechargement. `fileAttente` relit le stockage, donc l'assertion
+		// porte bien sur ce qui est PERSISTÉ.
+		const uuid = activeProfile().uuid;
+		const A = leconsCe2()[0];
+		declarer(uuid, [A], T0);
+		const etatA = etatDemarre();
+		semerOrpheline(uuid, A, etatA);
+
+		expect(promouvoirEntreesEnAttente(uuid, jour(1), PLAFOND_MAX)).toBe(0);
+
+		expect(fileAttente(uuid).attente).toEqual({});
+		expect(revisions(uuid)[`${A}@ce2`]).toEqual(etatA);
+	});
+
+	it('une orpheline ACQUISE est purgée aussi (elle est sortie par le haut)', () => {
+		const uuid = activeProfile().uuid;
+		const A = leconsCe2()[0];
+		declarer(uuid, [A], T0);
+		let acquis = etatNeuf(T0 - 200 * JOUR);
+		for (let i = 0; i < PALIER_ACQUIS; i++) acquis = avancerEtat(acquis, true, T0 - JOUR);
+		semerOrpheline(uuid, A, acquis);
+		expect(estAcquis(acquis)).toBe(true); // la fixture est bien au sommet
+
+		promouvoirEntreesEnAttente(uuid, jour(1), PLAFOND_MAX);
+
+		expect(fileAttente(uuid).attente).toEqual({});
+		expect(revisions(uuid)[`${A}@ce2`]).toEqual(acquis);
+	});
+
+	it('une entrée qui attend VRAIMENT n’est ni purgée ni redatée', () => {
+		// Le pendant : la purge ne doit pas emporter la file elle-même. La date de mise en
+		// attente est ce qui porte l'ancienneté et le seuil des 4 semaines — la voir bouger
+		// au fil des passes repousserait l'entrée indéfiniment.
+		const uuid = activeProfile().uuid;
+		const A = leconsCe2()[0];
+		vivreLesJours(uuid, 0, 6, 2); // chauffe : la déclaration arrive budget saturé
+		declarer(uuid, [A], jour(7));
+		const dateAttente = fileAttente(uuid).attente[`${A}@ce2`];
+		expect(dateAttente).toBe(jour(7));
+
+		vivreLesJours(uuid, 7, 20, 2);
+
+		expect(fileAttente(uuid).attente[`${A}@ce2`]).toBe(dateAttente);
+		expect(estHorsRotation(revisions(uuid)[`${A}@ce2`])).toBe(true);
 	});
 });
 

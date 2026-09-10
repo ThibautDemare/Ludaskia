@@ -53,14 +53,24 @@ function entreeHTML(e: EntreeRevision, o: RenduEntree = {}): SafeHtml {
 	// l'échéance, seule information qui varie d'une ligne à l'autre à palier égal. Un état
 	// vide n'émet pas de conteneur (une coquille à styler pour rien).
 	const bouts: SafeHtml[] = [];
-	if (!o.palierDejaAffiche) {
+	/* Une entrée EN ATTENTE (#690) n'a pas de palier à annoncer : son compteur n'a pas
+	   démarré. Sans ce cas, elle affichait « Palier : 1 jour » suivi d'une échéance VIDE,
+	   donc une ligne quasi identique à une entrée réellement en rotation — le parent lisait
+	   comme « en cours » ce qui n'a jamais commencé. Le libellé reprend celui des comptes,
+	   plutôt que « en attente » nu qui connote l'imminence (cf. `syntheseRevision`).
+	   Il remplace le palier MÊME quand l'en-tête d'étage l'a déjà affiché : c'est justement
+	   là que la ligne contredisait son étage. */
+	if (e.enAttente) {
+		bouts.push(html`<span class="enc-rev-palier">En attente de rencontre</span>`);
+	} else if (!o.palierDejaAffiche) {
 		bouts.push(
 			e.acquis
 				? html`<span class="enc-rev-badge">${icon('check-circle')} acquis</span>`
 				: html`<span class="enc-rev-palier">Palier : ${e.palierLabel}</span>`,
 		);
 	}
-	if (!e.acquis) {
+	// Une entrée en attente n'a pas d'échéance : émettre le conteneur produirait un span vide.
+	if (!e.acquis && !e.enAttente) {
 		bouts.push(html`<span class="enc-rev-echeance${e.du ? ' du' : ''}">${e.echeance}</span>`);
 	}
 	const etat = bouts.length ? html`<span class="enc-rev-etat">${bouts}</span>` : VIDE;
@@ -222,9 +232,18 @@ function vueUrgenceHTML(recap: RecapRevision): SafeHtml {
 
 /* Résumé chiffré d'un étage. Même unité que la synthèse du bloc (« entrée »), qui couvre
    à la fois les leçons et les mots d'orthographe. */
-function resumeEtage(p: PalierRevision): string {
+export function resumeEtage(p: PalierRevision): string {
 	const n = `${p.entrees.length} entrée${p.entrees.length > 1 ? 's' : ''}`;
-	return p.dues > 0 ? `${n}, dont ${p.dues} à réviser` : n;
+	/* Les entrées EN ATTENTE (#690) atterrissent toutes à l'étage 0 : leur palier vaut zéro,
+	   comme celui d'un élément qui vient réellement d'entrer en rotation. Sans ce sous-compte,
+	   l'étage annonce « 5 entrées » sous un en-tête « Palier : 1 jour » alors que trois n'ont
+	   jamais démarré — exactement le contresens que l'issue supprime, réintroduit un cran plus
+	   bas. Sous-compte et non compte disjoint, comme les dues : elles SONT dans les entrées. */
+	const parts = [
+		p.dues > 0 ? `${p.dues} à réviser` : '',
+		p.enAttente > 0 ? `${p.enAttente} en attente de rencontre` : '',
+	].filter(Boolean);
+	return parts.length ? `${n}, dont ${parts.join(' et ')}` : n;
 }
 
 /* Vue « Par palier » (#555) : les étages de l'escalier, du plus fragile au plus ancré.

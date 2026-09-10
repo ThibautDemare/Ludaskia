@@ -339,6 +339,77 @@ describe('critère 6 — une semaine chargée ne fait entrer aucune déclaration
 });
 
 /* ============================================================
+   4 bis) Le plafond de séance change EN COURS de fenêtre
+   ------------------------------------------------------------
+   Le budget se recalcule depuis le plafond COURANT à chaque passe, et le reliquat se
+   déduit de ce que la fenêtre a réellement laissé passer : aucune allocation n'est
+   mémorisée au moment où une place est prise. Un adulte qui bouge le curseur un mercredi
+   doit donc voir l'effet le jour même, dans les deux sens, sans que la semaine en cours
+   soit ni doublement comptée ni pénalisée plus tard.
+   ============================================================ */
+describe('le plafond de séance change en cours de semaine', () => {
+	it('un plafond qui MONTE ouvre des places sur-le-champ, sans double comptage', () => {
+		// Plafond 6 → budget 2 : deux déclarations entrent. Le plafond passe à 24 → budget 8 :
+		// SIX places s'ouvrent, pas huit — les deux déjà entrées comptent dans la fenêtre.
+		const uuid = activeProfile().uuid;
+		const ids = leconsCe2().slice(0, 30);
+		declarer(uuid, ids, T0);
+
+		promouvoirEntreesEnAttente(uuid, T0, 6);
+		expect(leconsEntrees(uuid, ids)).toBe(2);
+
+		promouvoirEntreesEnAttente(uuid, jour(1), PLAFOND_MAX);
+		expect(leconsEntrees(uuid, ids)).toBe(BUDGET_MAX);
+	});
+
+	it('un plafond qui DESCEND referme les places, sans rien faire ressortir de rotation', () => {
+		// Le cas limite : budget de 2 alors que 8 sont déjà entrées dans la fenêtre. Le
+		// reliquat doit être NUL, jamais négatif — et surtout, ce qui est entré est entré.
+		const uuid = activeProfile().uuid;
+		const ids = leconsCe2().slice(0, 30);
+		declarer(uuid, ids, T0);
+		promouvoirEntreesEnAttente(uuid, T0, PLAFOND_MAX);
+		expect(leconsEntrees(uuid, ids)).toBe(BUDGET_MAX);
+		const avant = JSON.stringify(revisions(uuid));
+
+		expect(promouvoirEntreesEnAttente(uuid, jour(1), 6)).toBe(0);
+
+		expect(leconsEntrees(uuid, ids)).toBe(BUDGET_MAX);
+		expect(JSON.stringify(revisions(uuid))).toBe(avant); // aucun état réécrit
+	});
+
+	it('la baisse ne se REPORTE pas : la fenêtre suivante repart sur le plafond courant', () => {
+		// Un reliquat négatif mémorisé (2 − 8 = −6) rognerait les semaines d'après. Une fois
+		// la fenêtre vidée, le budget du plafond courant s'applique en entier.
+		const uuid = activeProfile().uuid;
+		const ids = leconsCe2().slice(0, 30);
+		declarer(uuid, ids, T0);
+		promouvoirEntreesEnAttente(uuid, T0, PLAFOND_MAX); // 8 entrent
+		promouvoirEntreesEnAttente(uuid, jour(1), 6); // budget 2 < 8 : rien
+
+		promouvoirEntreesEnAttente(uuid, jour(8), 6); // fenêtre purgée : la dose de 2
+
+		expect(leconsEntrees(uuid, ids)).toBe(BUDGET_MAX + 2);
+	});
+
+	it('la hausse ne crée pas de place rétroactive : les rencontres réelles comptent pareil', () => {
+		// Sept mots découverts sous plafond 6 (budget 2) : aucune place. Le plafond monte à
+		// 24 (budget 8) le lendemain → il reste UNE place, pas huit : les sept rencontres de
+		// la fenêtre sont comptées avec le NOUVEAU budget, pas oubliées avec l'ancien.
+		const uuid = activeProfile().uuid;
+		const ids = leconsCe2().slice(0, 30);
+		declarer(uuid, ids, T0);
+		decouvrirMots(uuid, 7, T0);
+
+		promouvoirEntreesEnAttente(uuid, T0, 6);
+		expect(leconsEntrees(uuid, ids)).toBe(0);
+
+		promouvoirEntreesEnAttente(uuid, jour(1), PLAFOND_MAX);
+		expect(leconsEntrees(uuid, ids)).toBe(BUDGET_MAX - 7);
+	});
+});
+
+/* ============================================================
    5) La fenêtre est glissante (7 jours), et le dépassement n'est pas reporté
    ------------------------------------------------------------
    L'issue écarte explicitement le report du déficit (« une fenêtre glissante de 7 jours

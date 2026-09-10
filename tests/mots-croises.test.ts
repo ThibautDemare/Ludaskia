@@ -1670,27 +1670,87 @@ describe('#665 critère 22 — le curseur va sur la prochaine case VIDE', () => 
 		}
 	});
 
-	it('part d’« avant la première case » quand le rang est négatif', () => {
-		/* −1 se lit « le curseur n'est encore sur aucune case » : entrer dans un mot
-		   doit alors proposer sa PREMIÈRE case vide, pas la seconde, et surtout pas
-		   déclarer le mot plein. Les rangs plus négatifs n'ont pas de sens à
-		   l'écran ; ce qu'on exige d'eux est seulement de ne pas casser et de ne
-		   jamais désigner une case déjà écrite. */
+	it('tout rang négatif se lit « avant le mot » et repart de sa première case vide', () => {
+		/* `-1` se lit « le curseur n'est encore sur aucune case ». Les valeurs plus
+		   négatives disent la même chose et s'obtiennent toutes seules — un appelant
+		   qui calcule `rang - 1` depuis le rang 0, ou qui décrémente un `findIndex`
+		   déjà à `-1` —, donc elles doivent se comporter pareil.
+
+		   Le montage discriminant est le MOT VIERGE : un repli arithmétique (le
+		   modulo) y enverrait `-2` sur l'avant-dernière case, ce qui est un curseur
+		   qui saute au milieu du mot sans raison. Un attendu unique pour toutes les
+		   valeurs est la seule façon de dire ça. */
 		const p = tirerGrille(tirage(21));
 		const cases = casesLocales(p.motif.emplacements[0]);
-		expect(rangDans(cases, prochaineVide(p, 0, -1)), 'sur un mot vierge').toBe(0);
+		const negatifs = [-1, -2, -3, -7, -cases.length, -cases.length - 1];
 
-		const debutPris = ecrire(p, cases[0].ligne, cases[0].colonne, 'a');
-		expect(rangDans(cases, prochaineVide(debutPris, 0, -1)), 'première case déjà écrite').toBe(1);
-
-		for (const depuis of [-2, -3, -7, -cases.length, -cases.length - 1]) {
-			expect(() => prochaineVide(debutPris, 0, depuis), String(depuis)).not.toThrow();
-			const c = prochaineVide(debutPris, 0, depuis);
-			expect(rangDans(cases, c), `${String(depuis)} : hors du mot`).toBeGreaterThanOrEqual(0);
+		for (const depuis of negatifs) {
+			expect(() => prochaineVide(p, 0, depuis), String(depuis)).not.toThrow();
 			expect(
-				c === null ? null : lettreEn(debutPris, c.ligne, c.colonne),
-				`${String(depuis)} : une case DÉJÀ écrite est proposée`,
-			).toBeNull();
+				rangDans(cases, prochaineVide(p, 0, depuis)),
+				`${String(depuis)} sur un mot vierge`,
+			).toBe(0);
 		}
+
+		// La première case prise, « avant le mot » désigne la suivante — jamais une
+		// case déjà écrite, sans quoi la frappe suivante l'écraserait (critère 22).
+		const debutPris = ecrire(p, cases[0].ligne, cases[0].colonne, 'a');
+		for (const depuis of negatifs) {
+			expect(
+				rangDans(cases, prochaineVide(debutPris, 0, depuis)),
+				`${String(depuis)}, première case déjà écrite`,
+			).toBe(1);
+		}
+
+		// Et sur un mot dont seul le milieu est vide : la première case VIDE, pas la
+		// première case tout court.
+		let troue = p;
+		const trou = 2;
+		cases.forEach((c, k) => {
+			if (k !== trou) troue = ecrire(troue, c.ligne, c.colonne, 'a');
+		});
+		for (const depuis of negatifs) {
+			expect(rangDans(cases, prochaineVide(troue, 0, depuis)), `${String(depuis)}, mot troué`).toBe(
+				trou,
+			);
+		}
+	});
+
+	it('refuse en silence un rang qui n’est pas un entier', () => {
+		/* `NaN` et les rangs fractionnaires sont des défauts d'APPELANT, que l'enfant
+		   n'a pas commis : la règle du moteur veut qu'ils soient refusés sans
+		   exception, comme le font déjà `ecrire`, `effacerCase` et `effacerMot`.
+
+		   Refuser, et non se replier sur le début du mot : les deux rendent un
+		   résultat plausible, et seul le montage ci-dessous les distingue. Le mot est
+		   VIERGE, donc `null` ne peut pas vouloir dire « plus rien à remplir » — il
+		   ne peut vouloir dire que « je ne bouge pas le curseur sur une demande qui
+		   n'a pas de sens ». Un repli rendrait ici la case de rang 0. */
+		const p = tirerGrille(tirage(21));
+		const cases = casesLocales(p.motif.emplacements[0]);
+		expect(
+			lettreEn(p, cases[0].ligne, cases[0].colonne),
+			'montage : le mot doit être vierge',
+		).toBeNull();
+
+		for (const depuis of [Number.NaN, 1.5, -0.5, 0.1, Number.POSITIVE_INFINITY, -Infinity]) {
+			expect(() => prochaineVide(p, 0, depuis), String(depuis)).not.toThrow();
+			expect(prochaineVide(p, 0, depuis), String(depuis)).toBeNull();
+		}
+	});
+
+	it('replie un rang qui déborde de la longueur du mot', () => {
+		// Le mot est un anneau : un rang au-delà du dernier désigne la même case que
+		// son reste. Le contrôle porte sur le résultat, pas sur le calcul — un rang
+		// qui déborde ne doit ni casser, ni déclarer le mot plein.
+		const p = tirerGrille(tirage(21));
+		const cases = casesLocales(p.motif.emplacements[0]);
+		const n = cases.length;
+		expect(rangDans(cases, prochaineVide(p, 0, n)), 'un tour complet vaut le rang 0').toBe(
+			rangDans(cases, prochaineVide(p, 0, 0)),
+		);
+		expect(rangDans(cases, prochaineVide(p, 0, 2 * n + 1)), 'deux tours et un rang').toBe(
+			rangDans(cases, prochaineVide(p, 0, 1)),
+		);
 	});
 });

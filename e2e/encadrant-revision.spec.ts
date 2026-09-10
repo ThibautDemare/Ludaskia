@@ -370,3 +370,76 @@ test('récap Révision : état vide (aucune révision programmée)', async ({ pa
 
 	expect(errors).toEqual([]);
 });
+
+/* ---------- Réussite par tranche de retard (#691) ----------
+   Sème directement `ludaskia_retards` (même technique que `SEED_REVISION` en tête de
+   fichier), avec des entrées dont `retardRelatif` tombe dans DEUX tranches distinctes et
+   des `reussi` choisis pour un pourcentage rond et non ambigu. Le contenu des entrées
+   (id, kind, palier) importe peu ici : seule compte leur répartition tranche/réussite,
+   ce que `tauxParTranche` (core/retard-journal.ts) agrège. */
+const SEED_RETARDS = `(() => {
+  const now = Date.now();
+  const entries = [];
+  // Tranche « Servi à l'heure » [0,1[ : 4 entrées, 3 réussies → 75 %.
+  [true, true, true, false].forEach((reussi, i) => entries.push({
+    ts: now - i * 1000, kind: 'lecon', id: 'num-comparer@ce2', palier: 0,
+    retardRelatif: 0.1 + i * 0.1, reussi,
+  }));
+  // Tranche « Moins de 2 fois le délai prévu » [1,2[ : 5 entrées, 2 réussies → 40 %.
+  [true, true, false, false, false].forEach((reussi, i) => entries.push({
+    ts: now - (i + 10) * 1000, kind: 'mot', id: 'm' + i, palier: 1,
+    retardRelatif: 1.1 + i * 0.1, reussi,
+  }));
+  localStorage.setItem('e2e/ludaskia_retards', JSON.stringify(entries));
+})();`;
+
+test('récap Révision : ligne de réussite par tranche de retard, deux tranches mesurées (#691)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// Recap non vide (SEED_REVISION, même seed que le test d'ouverture de fichier) : la ligne
+	// de retard n'apparaît que dans le bloc rendu quand il y a au moins une entrée en révision.
+	await page.addInitScript(SEED_REVISION);
+	await page.addInitScript(SEED_RETARDS);
+	await gotoHash(page, 'encadrant');
+
+	const section = page.locator('.enc-rev-section');
+	const ligne = section.locator('.enc-hint', { hasText: 'Réussite selon le retard' });
+	await expect(ligne).toBeVisible();
+	// Libellés ET pourcentages : c'est justement le contenu chiffré que le parent doit lire,
+	// donc la formulation exacte (labels de `TRANCHES_RETARD`) est ici l'objet du test — pas
+	// une formulation accessoire qu'on pourrait reformuler sans rien changer à l'exigence.
+	// L'effectif est NOMMÉ (« N rendez-vous », pas un nombre nu entre parenthèses) : un
+	// nombre nu s'énonce sans unité au lecteur d'écran (relecture a11y, seule occurrence de
+	// l'espace encadrant qui dérogeait à la règle des seize autres comptes).
+	await expect(ligne).toHaveText(
+		"Réussite selon le retard du rendez-vous : Servi à l'heure : 75 % (4 rendez-vous) · Moins de 2 fois le délai prévu : 40 % (5 rendez-vous)",
+	);
+	// La 3e tranche (« 2 fois le délai prévu ou plus ») n'a aucune mesure ici : omise, pas de
+	// 0 % trompeur ni de tiret.
+	await expect(section).not.toContainText('2 fois le délai prévu ou plus');
+
+	expect(errors).toEqual([]);
+});
+
+test('récap Révision : sans mesure de retard, la ligne de réussite par tranche est ABSENTE (#691)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// Recap non vide (SEED_REVISION) mais AUCUNE entrée dans `ludaskia_retards` : c'est le cas
+	// d'un profil qui vient de migrer sur cette version, ou qui n'a pas encore eu de correction
+	// en révision depuis. La ligne doit être ABSENTE (pas rendue avec des tirets/0 %) — un
+	// tableau à trois tirets sur un profil neuf se lirait comme un problème (cf. commentaire de
+	// `revisionHTML`). Assertion explicite plutôt qu'une absence constatée en passant : c'est
+	// le critère négatif de #691.
+	await page.addInitScript(SEED_REVISION);
+	await gotoHash(page, 'encadrant');
+
+	const section = page.locator('.enc-rev-section');
+	await expect(section).toBeVisible(); // le récap Révision existe bien (pas l'état vide global)
+	await expect(section.locator('.enc-hint', { hasText: 'Réussite selon le retard' })).toHaveCount(
+		0,
+	);
+
+	expect(errors).toEqual([]);
+});

@@ -216,21 +216,36 @@ export function lettreEn(p: PartieMotsCroises, ligne: number, colonne: number): 
 
     Ici et non dans le runner : rien de tout cela ne touche au DOM, et enfermé
     dans une fermeture d'interface le tour de boucle n'était atteignable par aucun
-    test — donc cassable en silence. */
+    test — donc cassable en silence.
+
+    ── Ce que la fonction fait des `depuis` qui n'ont pas de sens ──────────────
+
+    • **Négatif : on part du début du mot**, quelle que soit la valeur. Seul `-1`
+      a une lecture naturelle (« pas encore dans le mot »), et un simple modulo
+      enverrait `-2` sur l'avant-dernière case — un curseur qui saute au milieu du
+      mot sans raison. Or `-2` et au-delà, ça s'obtient tout seul : un appelant qui
+      calcule `rang - 1` depuis le rang 0, ou qui décrémente un `findIndex` déjà à
+      `-1`. Toutes ces valeurs disent la même chose, « avant le mot », et sont
+      traitées pareil.
+    • **Non entier, `NaN` : refusé en silence**, la fonction rend `null` et le
+      curseur ne bouge pas. C'est la règle du moteur (« ce qui n'a pas de sens est
+      refusé en silence, jamais par une exception ») et celle de ses voisines
+      immédiates : `ecrire`, `effacerCase` et `effacerMot` avalent déjà `NaN` sans
+      rien lever. Une `TypeError` ici serait une panne à l'écran pour l'enfant, sur
+      un défaut d'appelant qu'il n'a pas commis. */
 export function prochaineVide(
 	p: PartieMotsCroises,
 	emplacement: number,
 	depuis: number,
 ): Case | null {
 	const e = p.motif.emplacements[emplacement];
-	if (!e) return null;
+	if (!e || !Number.isInteger(depuis)) return null;
 	const cases = casesDe(e);
-	/* Le modulo est pris deux fois : `depuis` négatif (« avant la première case »)
-	   donnerait sinon un index négatif, et le mot paraîtrait plein. */
-	const rangDe = (n: number): number =>
-		(((depuis + n) % cases.length) + cases.length) % cases.length;
+	/* `-1` vaut « avant la première case » : le premier candidat est donc le rang
+	   0. Tout négatif est ramené là, et le modulo replie les rangs qui débordent. */
+	const depart = depuis < 0 ? -1 : depuis % cases.length;
 	for (let n = 1; n <= cases.length; n++) {
-		const c = cases[rangDe(n)];
+		const c = cases[(depart + n) % cases.length];
 		if (lettreEn(p, c.ligne, c.colonne) === null) return c;
 	}
 	return null;

@@ -14,6 +14,7 @@ import type {
 	VerbeConfig,
 } from './types';
 import { etatNeuf, etatHorsRotation, avancerEtat } from '../revision';
+import { journaliserRetard } from '../retard-journal';
 import { reparerEscalier } from './runner';
 
 export const ORTHO_KEY = 'ludaskia_ortho';
@@ -277,7 +278,15 @@ export function avancerMotRevision(
 	now: number,
 ): void {
 	const m = state.banque[motId];
-	if (m) m.revision = avancerEtat(m.revision, reussi, now);
+	if (!m) return;
+	/* Le retard est capturé ICI, dans la fonction qui l'écrase, et non chez l'appelant
+	   (#691) : `avancerEtat` recalcule `prochaineRevision` à la ligne suivante, après quoi
+	   plus rien ne permet de savoir avec quel retard ce rendez-vous a été servi. Placé
+	   dans l'avanceur plutôt que dans le mode Révision, aucun chemin de correction futur
+	   ne peut l'oublier. On journalise le `motId`, jamais le mot lui-même : ce journal ne
+	   porte que des nombres et des identifiants. */
+	journaliserRetard({ kind: 'mot', id: motId }, m.revision, reussi, now);
+	m.revision = avancerEtat(m.revision, reussi, now);
 }
 
 /** Supprime une liste. Les mots restent dans la banque (corpus de l'année). */

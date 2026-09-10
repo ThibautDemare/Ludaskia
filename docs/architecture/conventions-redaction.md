@@ -247,3 +247,16 @@ phrase dans une même grille pèse. C'est ce qui a fait raccourcir les libellés
 (« 150 mots d'orthographe encore connus, des mois plus tard. » plutôt que « … encore
 connus, plusieurs mois après les avoir appris. ») : la subordonnée finale redisait ce que
 « encore » portait déjà.
+
+## Un compte de synthèse répété à plusieurs granularités doit rester non ambigu tout seul (#690)
+
+Un libellé de compte qui apparaît à plusieurs endroits d'un même écran — synthèse du
+bloc entier, résumé d'une catégorie repliée, sous-compte d'un étage — ne se lit pas
+toujours à côté du paragraphe qui l'explique : un résumé de catégorie se lit **replié**,
+sans la phrase de synthèse à proximité. Chaque occurrence doit donc rester non ambiguë
+seule, pas seulement la première. Cas posé par #690 : « en attente » nu connote, en
+français courant, l'imminence (« en attente de livraison »), alors qu'ici l'élément peut
+attendre plusieurs semaines — le contresens exact que la fonctionnalité corrige.
+D'où « en attente d'une première rencontre » (synthèse du bloc) et « en attente de
+rencontre » (résumé de catégorie, sous-compte d'étage) : nommer ce qu'on attend, plutôt
+que l'attente elle-même (`ui/encadrant-revision.ts`).

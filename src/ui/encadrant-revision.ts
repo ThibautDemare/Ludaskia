@@ -115,14 +115,21 @@ export function syntheseRevision(recap: RecapRevision): string {
 		);
 	}
 	if (recap.acquises > 0) {
-		/* « dont N à recontrôler » (#689) : un acquis n'est plus sorti pour de bon, il revient
+		/* « dont N à reconfirmer » (#689) : un acquis n'est plus sorti pour de bon, il revient
 		   une fois l'an. Le compte est accroché aux ACQUISES et non ajouté aux dues, parce que
 		   c'en est un sous-ensemble — et surtout parce que c'est l'ambiguïté que le critère 6
 		   vise : « 3 à réviser » ne doit pas mélanger trois notions fragiles, qui demandent une
-		   réaction, et trois contrôles de routine, qui n'en demandent aucune. */
+		   réaction, et trois vérifications de routine, qui n'en demandent aucune.
+
+		   Pas « à recontrôler », alors que c'est le mot du domaine partout dans le code :
+		   « contrôle » désigne DÉJÀ une évaluation notée pour ce même parent, deux écrans plus
+		   loin (« Date du contrôle (facultatif) », `ui/ortho-liste.ts`, la dictée notée à
+		   l'école). Et pas « à revérifier », qui rime avec « à réviser » juste au moment où les
+		   deux comptes doivent se distinguer. « Reconfirmer » dit ce qui se passe vraiment —
+		   on revérifie que ça tient — sans enjeu de notation. */
 		parts.push(
 			`${recap.acquises} déjà acquise${recap.acquises > 1 ? 's' : ''}` +
-				(recap.enControle > 0 ? `, dont ${recap.enControle} à recontrôler` : ''),
+				(recap.enControle > 0 ? `, dont ${recap.enControle} à reconfirmer` : ''),
 		);
 	}
 	/* « en attente d'une première rencontre », et non « en attente » tout court : en français

@@ -900,11 +900,14 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   en paramètre). État `EtatRevision` partagé par les mots d'orthographe et les
   leçons maths/conjugaison. **Hors rotation (#641)** : `etatHorsRotation()` /
   `estHorsRotation(e)` décrivent un élément qui existe mais dont le compteur d'espacement
-  n'a **pas démarré** (`prochaineRevision: null` au palier 0 — état qu'aucun élément en
-  rotation ne peut prendre, `avancerEtat` ne mettant `null` qu'au palier ACQUIS). C'est
+  n'a **pas démarré** (`prochaineRevision: null` au palier 0). C'est
   l'état d'un **mot d'orthographe à l'ajout** : il n'entre en rotation qu'à sa première
   rencontre réelle (`marquerAtelierFait`), sans quoi une liste saisie par le parent et
-  ouverte trois semaines plus tard arrivait avec trois semaines de dette. Cette file est aussi **consultable côté encadrant**
+  ouverte trois semaines plus tard arrivait avec trois semaines de dette. **Depuis #689
+  (cf. plus bas), `avancerEtat` ne pose plus JAMAIS `null`** : `prochaineRevision: null`
+  ne peut donc plus désigner qu'un état hors rotation, jamais un sommet « sorti pour de
+  bon » comme avant — désambiguïsation dont `estHorsRotation` profite sans rien changer
+  à son propre code. Cette file est aussi **consultable côté encadrant**
   (par profil, sans bascule) via `encadrant-stats.ts:revisionProfil` — cf.
   [Espace encadrant](espace-encadrant.md). **Plafond d'une session réglable par profil**
   (#439) : `REVISION_PLAFOND` (12) reste la valeur **par défaut** pour un profil non
@@ -992,6 +995,29 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `libellePalier` (`encadrant-stats.ts`, ci-dessous — même clamp, pour un libellé humain)
   calculent le même bornage sans le partager : usages distincts (durée brute vs texte
   affiché), non-factorisation délibérée, dette mineure assumée.
+  **Le sommet n'est plus une sortie définitive (#689)** : atteindre `PALIER_ACQUIS`
+  posait jusque-là `prochaineRevision: null`, et `estDu` exigeant un palier inférieur, un
+  acquis n'était donc plus jamais retesté — `rewards.ts` justifiait pourtant la prudence
+  des libellés du trophée #660 par l'affirmation inverse (« un élément au sommet peut
+  redescendre »), qui n'était vraie nulle part dans le code (cf.
+  [Gamification](gamification.md)). `avancerEtat` pose désormais au sommet un
+  rendez-vous de **contrôle** à `REVISION_CONTROLE_ACQUIS` (365 jours) au lieu de
+  `null` : il ne produit donc plus JAMAIS d'échéance nulle (cf. « Hors rotation »
+  ci-dessus). **`echeanceControle(e)`** / **`estDuControle(e, now)`** lisent cette
+  échéance de contrôle, **distincte** d'`estDu` qui reste réservé aux non-acquis — le
+  parent doit pouvoir distinguer trois notions fragiles de trois vieux contrôles de
+  routine (cf. [Espace encadrant](espace-encadrant.md)). **Repli de LECTURE, jamais de
+  migration** (critère 11) : un acquis d'avant ce changement porte encore `null` en
+  base et se lit daté à `dernierTest + REVISION_CONTROLE_ACQUIS` au moment
+  d'`echeanceControle`, sans jamais réécrire le stockage ; sans `dernierTest`,
+  l'échéance rendue est `null` plutôt qu'un 1970 implicite qui rendrait tout le stock dû
+  d'un coup. **Garde dans `palierApresPassage`** : l'exemption « servi très en retard »
+  de #688 (qui conserve le palier d'un échec très tardif au lieu de le faire reculer) ne
+  s'applique **pas** au sommet — sans ce garde, l'intervalle de référence qu'y prend
+  `intervalleDe` (le dernier de l'escalier, 75 jours) ferait passer « très en retard »
+  dès 150 jours après l'échéance de contrôle (365 jours), donc bien avant qu'un contrôle
+  raté soit jamais rendu redescendant, ce qui annulerait le mécanisme et laisserait un
+  acquis raté rester acquis pour toujours.
 - **`revision-select.ts`** — sélection des éléments **dus** (mots + leçons),
   **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`) ;
   `prochaineEcheance`/`aDesRevisions` alimentent l'état « rien à réviser » de
@@ -1033,7 +1059,8 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   une échéance basse est systématiquement plus en retard et raflerait tout sur un tri commun,
   le retard n'est donc JAMAIS comparé entre niveaux — mais un tri interne par « le plus
   longtemps SANS TEST RÉEL » (`dernierTest`), pour faire tourner le stock plutôt que laisser
-  un élément moisir (jamais testé passe d'abord). **`insererEntretien`** glisse chaque élément
+  un élément moisir (jamais testé passe d'abord). **`insererAppoint`** (ex-`insererEntretien`,
+  renommée depuis #689 pour servir les deux appoints ci-dessous) glisse chaque élément
   dans la séance déjà GROUPÉE (jamais avant : une insertion à plat serait de toute façon
   recollée au bloc de sa catégorie une fois groupée, donc ne déciderait de rien) selon deux
   règles ordonnées : **jamais en clôture de séance** (un échec recule d'un palier — clore sur
@@ -1042,6 +1069,29 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   active, un entretien d'une AUTRE catégorie ouvre forcément la séance (il ne peut être ni
   premier ni dernier d'une liste de deux) — préféré à une clôture, au prix d'un lot
   identifiable en tête.
+  **Contrôle des acquis (#689)** : `collectControle` sélectionne les acquis dont
+  `estDuControle` est vrai — mots, leçons du niveau actif, et leçons du niveau inférieur
+  (`bas`, symétriquement à l'entretien) —, dans la limite d'un budget qui n'est **jamais**
+  un curseur propre mais le **reliquat** de plafond laissé par le niveau actif et
+  l'entretien (`plafond - actifs.length - entretien.length`, servi en dernier) : un acquis
+  ne prend donc jamais le slot d'un élément fragile. Tri identique à `collectBasNiveau`
+  (le plus longtemps sans TEST RÉEL d'abord ; jamais sur le retard du contrôle, qui ne
+  discriminerait plus rien — un contrôle est en général dépassé de jours quand un élément
+  actif l'est d'heures). **Départage par `kind|id|niveau` et non par le seul `id`** comme
+  `collectBasNiveau` — écart délibéré, **rejet écrit (règle #585)** consigné ici pour ne
+  pas être re-signalé comme une violation du critère 4 de l'issue : ce pool-ci mélange trois sources (mots,
+  leçons du niveau actif, leçons du niveau inférieur) là où `collectBasNiveau` n'en a
+  qu'une, si bien qu'un mot et une leçon peuvent partager un id et qu'une même leçon
+  acquise au niveau actif ET au niveau inférieur porte forcément le même id ; sans ce
+  complément, leur ordre relatif dépendrait de l'ordre d'énumération du stockage —
+  exactement ce que le départage stable existe pour éviter. `insererAppoint` place ces
+  éléments avec les deux mêmes règles que l'entretien. `countDue`/`selectDueGroups`
+  bornent le contrôle EXACTEMENT au même reliquat que ce qui sera servi (invariant #478).
+  **`prochaineEcheance`, lui, EXCLUT volontairement les contrôles de l'horizon annoncé à
+  l'accueil** (« Bravo, tu es à jour ! Prochaine révision… ») : annoncer à un enfant qui
+  vient de tout ancrer que son prochain rendez-vous est dans 11 mois remplacerait une
+  félicitation par une échéance décourageante — le contrôle n'apparaît que le jour où il
+  est réellement dû, via `countDue`.
 - **`revision-migrate.ts`** — **reprise** de l'historique vers la révision : à
   l'activation d'un profil (`applyActive`), les leçons déjà notées et les mots
   déjà en banque sans état SR entrent en rotation, **datés J-1** → dus dès le jour

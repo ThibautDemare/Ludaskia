@@ -178,9 +178,17 @@ sur la même population de mots.
 Aucun mot absolu dans les libellés (« pour toujours ») ni verbe d'action en tête (charte
 détaillée dans [Conventions rédactionnelles](conventions-redaction.md)) : un élément au
 sommet peut redescendre s'il est raté plus tard, et ces trophées ne sont pas une consigne
-du jour. Tenu par `tests/trophees-ancres.test.ts` (calcul, seuils, non-reverrouillage,
-propriété des libellés) et `e2e/revision-trophees-ancres.spec.ts` (annonce en fin de
-session de révision, apparition dans la galerie — cf. [Tests](tests.md)).
+du jour. **Cette phrase est un chemin RÉEL depuis #689** (cf. [Logique pure](core.md)) :
+elle était fausse avant — le sommet posait `prochaineRevision: null` et sortait de la
+rotation pour de bon, donc rien ne pouvait plus jamais le re-tester ni le faire
+redescendre. Le sommet pose désormais un rendez-vous de **contrôle annuel**
+(`REVISION_CONTROLE_ACQUIS`, 365 jours) ; un contrôle raté fait redescendre d'un cran
+comme n'importe quel échec, donc cesse d'être compté par `estAcquis` — et les deux
+métriques `orthoMotsAncres`/`notionsAncrees` qui en dépendent peuvent désormais
+**diminuer**. Tenu par
+`tests/trophees-ancres.test.ts` (calcul, seuils, non-reverrouillage, propriété des
+libellés) et `e2e/revision-trophees-ancres.spec.ts` (annonce en fin de session de
+révision, apparition dans la galerie — cf. [Tests](tests.md)).
 
 ## XP & niveaux
 

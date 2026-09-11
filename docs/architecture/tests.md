@@ -913,6 +913,85 @@ tranches mesurées, puis, critère NÉGATIF explicite, son ABSENCE totale quand 
 ne contient encore aucune entrée — le cas d'un profil qui vient de migrer sur cette
 version.
 
+### Le sommet de l'escalier n'est plus une sortie définitive (#689)
+
+Dernière tranche de la milestone « Révision espacée soutenable » (#688, #690, #691
+ci-dessus) : `avancerEtat` posait `prochaineRevision: null` au sommet, sortant un acquis
+de la rotation pour de bon — `rewards.ts` affirmait pourtant l'inverse (cf.
+[Gamification](gamification.md)).
+
+**`tests/revision-controle-acquis.test.ts`** (21 cas, écrit AVANT l'implémentation
+depuis les critères gelés de l'issue) couvre l'**état et l'escalier seuls** : la montée
+au sommet pose 365 jours et jamais `null`, y compris via le crédit de retard de #688
+(qui ne doit pas laisser fuiter l'intervalle d'escalier à 75 jours) ; un contrôle réussi
+reconduit le sommet avec une NOUVELLE échéance ; un contrôle raté — même des mois après
+l'échéance — redescend TOUJOURS d'un cran, piège explicite du fichier : l'exemption
+« servi très en retard » de #688 ne doit pas couvrir le sommet, sans quoi tout contrôle
+raté au-delà de 150 jours serait exempté et annulerait le critère ; le repli de lecture
+d'un acquis d'ancienne forme (`prochaineRevision: null`, `echeanceControle` retombe sur
+`dernierTest + 365 j`, ou `null` sans `dernierTest`) est **pur, jamais une migration**
+(critère 11), prouvé en relisant l'état brut du stockage avant/après ; `estDu` reste
+réservé aux non-acquis même très en retard sur leur contrôle (#478) ; et `estAcquis`
+cesse de compter un acquis redescendu (critère 7, base d'`orthoMotsAncres`/
+`notionsAncrees`, #660).
+
+**`tests/revision-selection-controle.test.ts`** (22 cas) couvre la **sélection en
+séance et les comptes annoncés**, sans re-tester l'escalier isolément : les acquis en
+contrôle ne servent QUE le reliquat de plafond laissé par le niveau actif et l'entretien
+du niveau inférieur (zéro reliquat ⇒ zéro contrôle servi, même avec des candidats très en
+retard) ; tri « le plus longtemps sans test réel d'abord », départage par id (comme
+`collectBasNiveau` — **rejet écrit** sur l'écart de clé de tri, consigné dans
+[Logique pure](core.md) plutôt que ré-instruit ici) ; `countDue`/`selectDueGroups`
+s'accordent sur tous les plafonds réglables, contrôle compris (#478) ; critère négatif —
+aucun acquis ne prend le slot d'un fragile, même à 205 éléments non acquis dus ; et une
+charge **journalière calculée**, pas mesurée après coup : simulation jour par jour au
+stock maximal du contenu livré (466 mots + 264 paires leçon × niveau, cf.
+[Gamification](gamification.md) § Ancrage) qui converge vers ~2 contrôles servis par
+jour — moins de 20 % d'une séance de 11 — et jamais plus de 4 en une seule séance. Côté
+encadrant, `revisionProfil` compte `RecapRevision.enControle` (sous-ensemble
+d'`acquises`, jamais un 4e terme de `total`) sur les deux formes d'échéance (neuve et
+ancienne, via le même repli de lecture) sans jamais gonfler `dues` — un contrôle en
+retard n'est pas un fragile.
+
+**Trois suites existantes amendées**, qui figeaient l'ancien invariant (« acquis ⇒
+`prochaineRevision: null` pour toujours ») dans leurs propres fixtures ou assertions :
+`tests/logic.test.ts` (la montée au sommet pose désormais 365 jours, plus jamais `null`),
+`tests/revision-retard.test.ts` (son helper `etatAttendu`, qui prédit l'état après un
+passage — y compris tardif — prédit désormais le contrôle au sommet plutôt que `null`)
+et `tests/trophees-ancres.test.ts` (l'accroche « ancré » ne se lit plus sur l'ABSENCE
+d'échéance, seulement sur `estAcquis`, le palier). `tests/encadrant-synthese-revision.test.ts`
+est **étendu**, pas amendé sur un invariant ancien : `syntheseRevision` gagne
+`enControle` comme paramètre supplémentaire balayé par le test de propriété déjà en
+place (aucun compte nul jamais prononcé), plus un bloc dédié qui vérifie que le segment
+« dont M à reconfirmer » reste un sous-ensemble d'« acquises », jamais un compte
+disjoint.
+
+**`e2e/revision-controle-acquis.spec.ts`** (nouveau, 2 tests) couvre ce que les ~96
+tests Vitest ci-dessus ne peuvent pas établir en logique pure : un contrôle échu est
+réellement SERVI dans une vraie séance (annoncé par la carte d'accueil, proposé par
+l'écran de révision), et y répondre laisse en stockage un état toujours au sommet dont
+`prochaineRevision - dernierTest` vaut EXACTEMENT `REVISION_CONTROLE_ACQUIS` (365
+jours). Le second test rejoue cet aller-retour sur un acquis d'**ancienne forme**
+(`prochaineRevision: null`, `dernierTest` vieux de plus d'un an) et prouve en plus
+l'**absence de migration** : le stockage est relu tel quel juste après le chargement,
+avant toute interaction, sur l'accueil puis sur l'écran de révision — c'est le seul
+endroit où le critère 11 est éprouvé en conditions réelles, un test Vitest ne prouvant
+que la pureté des fonctions de lecture, jamais qu'aucun chemin de chargement de page ne
+réécrit le profil.
+
+**`e2e/encadrant-revision.spec.ts` (extension, 2 tests)** vérifie le texte exact de la
+synthèse avec le sous-compte — « 3 déjà acquises, dont 2 à reconfirmer. » — puis, cas
+négatif explicite, son ABSENCE quand aucun contrôle n'est échu (« 2 déjà acquises. »,
+sans clause « dont »). Seeds **distincts** de ceux déjà en tête de fichier
+(`SEED_REVISION`/`SEED_PALIER`/`SEED_RETARDS`) : plusieurs tests existants assertent déjà
+le texte exact de la même phrase de synthèse, et y introduire un acquis en contrôle les
+ferait rougir sans rapport avec ce qu'ils couvrent.
+
+Le rendu de `entreeHTML`, lui, ne change PAS pour une entrée en contrôle (seul son
+compte remonte, cf. [Espace encadrant](espace-encadrant.md)) — aucune des deux specs ne
+teste donc le détail d'une ligne, seulement la carte d'accueil, la séance, le stockage
+et la phrase de synthèse.
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent

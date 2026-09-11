@@ -371,6 +371,75 @@ test('récap Révision : état vide (aucune révision programmée)', async ({ pa
 	expect(errors).toEqual([]);
 });
 
+/* ---------- Sous-compte « dont N à reconfirmer » (#689) ----------
+   Le contrôle annuel des acquis (`REVISION_CONTROLE_ACQUIS`, src/core/revision.ts) donne à
+   la synthèse un sous-compte accroché aux ACQUISES, distinct des « à réviser » (accroché aux
+   entrées en ROTATION) : le critère 6 de l'issue veut que le parent ne confonde jamais trois
+   notions fragiles avec trois vérifications de routine. Constantes DISTINCTES de
+   SEED_REVISION/SEED_PALIER/SEED_RETARDS plus haut dans ce fichier : ces seeds sont réutilisés
+   par plusieurs tests existants qui assertent le texte EXACT de la synthèse (lignes ~191, ~204,
+   ~265) — y introduire un acquis en contrôle les ferait rougir sans rapport avec ce qu'ils
+   couvrent. */
+const SEED_CONTROLE = `(() => {
+  const now = Date.now();
+  const day = 86400000;
+  localStorage.setItem('e2e/ludaskia_lessonRevision', JSON.stringify({
+    // Rotation : une due, une pas due.
+    'num-comparer@ce2': { palier: 2, prochaineRevision: now - day, reussites: 2, dernierTest: now - 3 * day },
+    'math-doubles@ce2': { palier: 3, prochaineRevision: now + 5 * day, reussites: 4, dernierTest: now - 10 * day },
+    // Acquis (palier 6) DONT le contrôle annuel est échu : dernierTest + 365 j est dans le passé.
+    'math-complements@ce2': { palier: 6, prochaineRevision: null, reussites: 6, dernierTest: now - 400 * day },
+    'fr-gram-clic-verbe@ce2': { palier: 6, prochaineRevision: null, reussites: 6, dernierTest: now - 400 * day },
+    // Acquis dont le contrôle N'EST PAS échu : ne doit PAS compter dans le sous-compte.
+    'fr-vocab-contraires@ce2': { palier: 6, prochaineRevision: now + 300 * day, reussites: 6, dernierTest: now - 65 * day },
+  }));
+})();`;
+
+test('récap Révision : la synthèse porte « dont N à reconfirmer » accroché aux acquises (#689)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(SEED_CONTROLE);
+	await gotoHash(page, 'encadrant');
+
+	const section = page.locator('.enc-rev-section');
+	await expect(section).toBeVisible();
+	// 2 entrées en rotation (dont 1 due) + 3 acquises (dont 2 en contrôle échu) : la phrase
+	// nomme les deux sous-comptes, chacun accroché à SON compte parent, jamais mélangés.
+	await expect(section.locator('.enc-hint').first()).toHaveText(
+		'2 entrées en révision, dont 1 à réviser · 3 déjà acquises, dont 2 à reconfirmer.',
+	);
+
+	expect(errors).toEqual([]);
+});
+
+/* Cas négatif (critère explicite, #689) : aucun acquis n'a son contrôle échu → le sous-compte
+   est ABSENT, alors que « N déjà acquises » reste annoncé. Absence voulue, pas un oubli : la
+   règle de `syntheseRevision` (aucun compte nul prononcé) omet la clause « , dont … » entière
+   quand `enControle === 0`, exactement comme elle omettrait « dont 0 à réviser » côté rotation
+   — un « dont 0 à reconfirmer » réduirait la vigilance du parent à un chiffre qui ne dit rien. */
+test('récap Révision : sans contrôle échu, le sous-compte est ABSENT bien que « déjà acquises » soit annoncé (#689)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(`(() => {
+    const now = Date.now();
+    const day = 86400000;
+    localStorage.setItem('e2e/ludaskia_lessonRevision', JSON.stringify({
+      'math-complements@ce2': { palier: 6, prochaineRevision: now + 300 * day, reussites: 6, dernierTest: now - 65 * day },
+      'fr-gram-clic-verbe@ce2': { palier: 6, prochaineRevision: now + 200 * day, reussites: 6, dernierTest: now - 165 * day },
+    }));
+  })();`);
+	await gotoHash(page, 'encadrant');
+
+	const section = page.locator('.enc-rev-section');
+	await expect(section).toBeVisible();
+	await expect(section.locator('.enc-hint').first()).toHaveText('2 déjà acquises.');
+	await expect(section.locator('.enc-hint').first()).not.toContainText('reconfirmer');
+
+	expect(errors).toEqual([]);
+});
+
 /* ---------- Réussite par tranche de retard (#691) ----------
    Sème directement `ludaskia_retards` (même technique que `SEED_REVISION` en tête de
    fichier), avec des entrées dont `retardRelatif` tombe dans DEUX tranches distinctes et

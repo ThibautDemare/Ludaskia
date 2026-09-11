@@ -77,7 +77,12 @@ const etatDu = (dernierTest: number | null = null) => etat(1, T0 - JOUR, dernier
 /* Acquis dont le CONTRÔLE tombe à `echeance` (forme NEUVE, #689 critère 1 : jamais
    `prochaineRevision: null`). `dernierTest` sert au tri du critère 4. */
 function acquisControle(echeance: number, dernierTest: number | null = null): EtatRevision {
-	return { palier: PALIER_ACQUIS, prochaineRevision: echeance, reussites: PALIER_ACQUIS, dernierTest };
+	return {
+		palier: PALIER_ACQUIS,
+		prochaineRevision: echeance,
+		reussites: PALIER_ACQUIS,
+		dernierTest,
+	};
 }
 /* Acquis d'AVANT #689 (critère 5) : `prochaineRevision: null`, échéance à déduire de
    `dernierTest + 365 jours` — construit à la main, comme dans la 1re tranche. */
@@ -144,7 +149,9 @@ const LECONS_DISPONIBLES = getAllLessons()
    anciennement testée, donc la première servie par le tri du critère 4). */
 function leconsAcquisesControle(n: number, echeanceBase: number): Record<string, EtatRevision> {
 	if (n > LECONS_DISPONIBLES.length) {
-		throw new Error(`catalogue insuffisant : ${LECONS_DISPONIBLES.length} leçons dispo, ${n} demandées`);
+		throw new Error(
+			`catalogue insuffisant : ${LECONS_DISPONIBLES.length} leçons dispo, ${n} demandées`,
+		);
 	}
 	const out: Record<string, EtatRevision> = {};
 	for (let i = 0; i < n; i++) {
@@ -254,12 +261,12 @@ describe('critère 4 — tri du contrôle : le plus longtemps sans test réel, d
 				.filter((it) => it.kind === 'lesson')
 				.map((it) => it.id);
 		// « math-complements » < « math-tables-addition » en ordre alphabétique.
-		expect(controleServi(construireDansCetOrdre(['math-tables-addition', 'math-complements']))).toEqual(
-			['math-complements'],
-		);
-		expect(controleServi(construireDansCetOrdre(['math-complements', 'math-tables-addition']))).toEqual(
-			['math-complements'],
-		);
+		expect(
+			controleServi(construireDansCetOrdre(['math-tables-addition', 'math-complements'])),
+		).toEqual(['math-complements']);
+		expect(
+			controleServi(construireDansCetOrdre(['math-complements', 'math-tables-addition'])),
+		).toEqual(['math-complements']);
 	});
 
 	it('ROTATION : deux séances consécutives ne resservent pas les mêmes acquis, d’autres attendaient plus longtemps', () => {
@@ -280,12 +287,16 @@ describe('critère 4 — tri du contrôle : le plus longtemps sans test réel, d
 		// tri (`grouper([...entretien, ...controle])`), sans passer par `insererAppoint` (qui
 		// ne s'applique qu'aux séances avec des actifs à protéger de la fatigue de fin) :
 		// l'ordre de sélection EST donc l'ordre d'affichage ici, et c'est un contrat.
-		const idsServis = (groups: ReturnType<typeof selectDueGroups>) => aplati(groups).map((it) => it.id);
+		const idsServis = (groups: ReturnType<typeof selectDueGroups>) =>
+			aplati(groups).map((it) => it.id);
 		const seance1 = selectDueGroups(orthoVide(), lessonRevisions, T0, plafond, []);
 		expect(idsServis(seance1)).toEqual(['math-tables-addition', 'math-moities']);
 		// Réponses réussies : leur échéance de contrôle est repoussée d'un an.
 		for (const it of aplati(seance1)) {
-			lessonRevisions = { ...lessonRevisions, [it.id]: avancerEtat(lessonRevisions[it.id], true, T0) };
+			lessonRevisions = {
+				...lessonRevisions,
+				[it.id]: avancerEtat(lessonRevisions[it.id], true, T0),
+			};
 		}
 		// Séance 2 (même instant) : les deux premiers ne sont plus dus → ce sont les deux
 		// autres qui sortent, PAS une répétition des premiers — c'est le stock qui tourne.
@@ -333,7 +344,11 @@ describe('critère 6 / #478 — countDue et selectDueGroups s’accordent, contr
 			const groups = selectDueGroups(fragiles, lessonRevisions, T0, plafond, bas);
 			const proposes = aplati(groups).length;
 			expect(effortRevisionAffiche(dus, plafond).n, `plafond ${plafond}`).toBe(proposes);
-			if (aplati(groups).some((it) => it.id === 'math-complements' || it.id === 'math-tables-addition')) {
+			if (
+				aplati(groups).some(
+					(it) => it.id === 'math-complements' || it.id === 'math-tables-addition',
+				)
+			) {
 				auMoinsUnAcquisServi = true;
 			}
 		}
@@ -382,7 +397,10 @@ describe('critère 9 (négatif) — aucun acquis ne prend le slot d’un éléme
 		for (const plafond of REVISION_PLAFOND_CHOIX) {
 			const items = aplati(selectDueGroups(fragiles, lessonRevisions, T0, plafond, []));
 			expect(items.length, `plafond ${plafond}`).toBe(plafond); // séance pleine de fragiles
-			expect(items.every((it) => it.kind === 'word'), `plafond ${plafond}`).toBe(true);
+			expect(
+				items.every((it) => it.kind === 'word'),
+				`plafond ${plafond}`,
+			).toBe(true);
 		}
 	});
 });
@@ -494,7 +512,11 @@ describe('critères 10 & 12 (négatifs) — charge journalière du contrôle au 
 		for (const id of idsActifs) lessonRevisions[id] = acquisControle(echeance(), now - UN_AN);
 		const bas: LeconBasNiveau[] = [];
 		for (let b = 0; b < LECONS_BAS; b++) {
-			bas.push({ lessonId: idsActifs[b], niveau: 'ce2', etat: acquisControle(echeance(), now - UN_AN) });
+			bas.push({
+				lessonId: idsActifs[b],
+				niveau: 'ce2',
+				etat: acquisControle(echeance(), now - UN_AN),
+			});
 		}
 		return { ortho, lessonRevisions, bas };
 	}
@@ -515,7 +537,9 @@ describe('critères 10 & 12 (négatifs) — charge journalière du contrôle au 
 			const groups = selectDueGroups(ortho, lessonRevisions, t, PLAFOND_ISSUE, bas);
 			const servis = aplati(groups);
 			// L'invariant #478 tient aussi sur cette fixture extrême.
-			expect(countDue(ortho, lessonRevisions, t, PLAFOND_ISSUE, bas), `jour ${d}`).toBe(servis.length);
+			expect(countDue(ortho, lessonRevisions, t, PLAFOND_ISSUE, bas), `jour ${d}`).toBe(
+				servis.length,
+			);
 			total += servis.length;
 			max = Math.max(max, servis.length);
 			// Réponses réussies : repousse l'échéance d'un an, pour que la file TOURNE au lieu

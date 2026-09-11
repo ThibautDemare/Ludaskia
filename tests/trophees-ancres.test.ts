@@ -633,6 +633,70 @@ describe('critère 11 — rien ne reprend un trophée déjà obtenu', () => {
 		expect(acquis()).toContain('orthoAncres1'); // … le trophée, lui, reste acquis
 		expect(visiblesIds()).toContain('orthoAncres1');
 	});
+
+	/* ---------- Critères 7 et 8, ASSEMBLÉS (#689) ----------
+	   Les deux moitiés sont prouvées séparément ailleurs : les trois tests ci-dessus montrent
+	   qu'un trophée déjà décerné n'est jamais repris ; la section « prémisse » de ce fichier
+	   montre que l'escalier peut redescendre. Rien, avant ces deux tests, ne rejoue
+	   l'ENCHAÎNEMENT complet que le commentaire de `rewards.ts` (bloc `tiers('orthoAncres', …)`)
+	   affirme depuis #689 : « un élément au sommet peut redescendre s'il est raté plus tard ».
+	   Un signe inversé quelque part (#689 qui ferait REMONTER au lieu de redescendre, ou qui
+	   ferait `evaluateTrophies` RETIRER un trophée déjà acquis) passerait les tests séparés et
+	   casserait uniquement cet assemblage.
+
+	   Date d'échec choisie franchement APRÈS l'échéance de contrôle (échéance + 200 jours, très
+	   au-delà du seuil « très en retard » de #688, qui vaut 150 jours à ce palier) : #688 exempte
+	   un échec très tardif de reculer d'un cran, mais SEULEMENT sous le sommet — au sommet,
+	   `palierApresPassage` (revision.ts) renvoie `PALIER_ACQUIS - 1` sans regarder ce drapeau.
+	   Une date à peine postérieure à l'échéance ne prouverait donc rien de plus qu'un cas déjà
+	   couvert par le chemin normal ; c'est le cas TRÈS en retard, réintroduisant l'exemption au
+	   sommet, qui ferait échouer ce test si quelqu'un la réintroduisait. */
+	it('critère 7+8 : un mot ancré qui échoue son contrôle très en retard fait baisser la métrique, sans reprendre le trophée déjà décerné', () => {
+		const [id] = semerMots(1, { ancres: true });
+		evaluateTrophies();
+		expect(acquis()).toContain('orthoAncres1'); // le trophée est décerné
+
+		const state = loadOrtho();
+		const echeance = state.banque[id].revision.prochaineRevision;
+		expect(echeance).not.toBeNull(); // prémisse : le contrôle annuel est bien daté
+		const dateEchecTresTardif = echeance! + 200 * JOUR;
+		avancerMotRevision(state, id, false, dateEchecTresTardif);
+		saveOrtho(state);
+
+		// Le commentaire de rewards.ts devient vrai ICI : le mot redescend d'un cran, il ne
+		// reste pas figé au sommet.
+		expect(state.banque[id].revision.palier).toBe(PALIER_ACQUIS - 1);
+		expect(estAcquis(state.banque[id].revision)).toBe(false);
+		expect(gSnapshot().orthoMotsAncres).toBe(0); // critère 7 : la métrique décroît
+
+		evaluateTrophies();
+		expect(acquis()).toContain('orthoAncres1'); // le trophée déjà décerné n'est PAS repris
+		expect(visiblesIds()).toContain('orthoAncres1');
+	});
+
+	it('critère 7+8 : une notion ancrée qui échoue son contrôle très en retard fait baisser la métrique, sans reprendre le trophée déjà décerné', () => {
+		const lecon = leconAuxNiveaux('math', ['ce2']);
+		const cle = `${lecon.id}@ce2`;
+		const etatInitial = etatAncre();
+		semerRevisions({ [cle]: etatInitial });
+		evaluateTrophies();
+		expect(acquis()).toContain('notionsAncrees1'); // le trophée est décerné
+
+		const echeance = etatInitial.prochaineRevision;
+		expect(echeance).not.toBeNull(); // prémisse : le contrôle annuel est bien daté
+		const dateEchecTresTardif = echeance! + 200 * JOUR;
+		const apres = avancerEtat(etatInitial, false, dateEchecTresTardif);
+		semerRevisions({ [cle]: apres });
+
+		expect(apres.palier).toBe(PALIER_ACQUIS - 1);
+		expect(estAcquis(apres)).toBe(false);
+		expect(notionsAncrees()).toBe(0); // critère 7 : la métrique décroît
+		expect(gSnapshot().notionsAncrees).toBe(0);
+
+		evaluateTrophies();
+		expect(acquis()).toContain('notionsAncrees1'); // le trophée déjà décerné n'est PAS repris
+		expect(visiblesIds()).toContain('notionsAncrees1');
+	});
 });
 
 /* ============================================================

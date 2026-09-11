@@ -61,21 +61,28 @@ import {
 } from '../src/core/retard-journal';
 
 /* Récap minimal : seuls les compteurs comptent pour la synthèse. `groupes`, `parUrgence`
-   et `parPalier` alimentent les trois vues, pas la phrase. Le garde-fou sur `dues`
-   empêche d'écrire une fixture impossible (une entrée due qui ne serait pas en rotation :
-   une entrée en attente n'a pas d'échéance, donc ne peut pas être échue). */
+   et `parPalier` alimentent les trois vues, pas la phrase. Les deux garde-fous empêchent
+   d'écrire une fixture impossible : une entrée due qui ne serait pas en rotation (une
+   entrée en attente n'a pas d'échéance, donc ne peut pas être échue), ou un contrôle
+   échu (#689) qui dépasserait le nombre d'acquises — `enControle` en est un
+   SOUS-ENSEMBLE, jamais un compte disjoint. */
 function recap(c: {
 	enRotation?: number;
 	enAttente?: number;
 	acquises?: number;
 	dues?: number;
+	enControle?: number;
 }): RecapRevision {
 	const enRotation = c.enRotation ?? 0;
 	const enAttente = c.enAttente ?? 0;
 	const acquises = c.acquises ?? 0;
 	const dues = c.dues ?? 0;
+	const enControle = c.enControle ?? 0;
 	if (dues > enRotation) {
 		throw new Error('fixture impossible : les dues sont un sous-ensemble des entrées en rotation');
+	}
+	if (enControle > acquises) {
+		throw new Error('fixture impossible : enControle (#689) est un sous-ensemble des acquises');
 	}
 	return {
 		total: enRotation + enAttente + acquises,
@@ -83,8 +90,7 @@ function recap(c: {
 		enAttente,
 		acquises,
 		dues,
-		// #689 : sous-ensemble des acquises, sans effet sur les synthèses testées ici.
-		enControle: 0,
+		enControle,
 		groupes: [],
 		parUrgence: [],
 		parPalier: [],
@@ -249,19 +255,73 @@ describe('syntheseRevision : aucun compte nul n’est annoncé (#690)', () => {
 				for (const acquises of [0, 1, 5]) {
 					// `dues` balaie ses trois positions remarquables : aucune, une, toutes.
 					for (const dues of new Set([0, Math.min(1, enRotation), enRotation])) {
-						if (enRotation + enAttente + acquises === 0) continue; // écarté par l'appelant
-						const phrase = syntheseRevision(recap({ enRotation, enAttente, acquises, dues }));
-						const attendus = [enRotation, dues, acquises, enAttente]
-							.filter((n) => n > 0)
-							.sort(croissant);
-						expect(nombresAnnonces(phrase).sort(croissant), phrase).toEqual(attendus);
-						verifierPhraseBienFormee(phrase);
-						cas++;
+						// `enControle` (#689) balaie les mêmes trois positions, mais sous-ensemble
+						// des ACQUISES et non de la rotation.
+						for (const enControle of new Set([0, Math.min(1, acquises), acquises])) {
+							if (enRotation + enAttente + acquises === 0) continue; // écarté par l'appelant
+							const phrase = syntheseRevision(
+								recap({ enRotation, enAttente, acquises, dues, enControle }),
+							);
+							const attendus = [enRotation, dues, acquises, enControle, enAttente]
+								.filter((n) => n > 0)
+								.sort(croissant);
+							expect(nombresAnnonces(phrase).sort(croissant), phrase).toEqual(attendus);
+							verifierPhraseBienFormee(phrase);
+							cas++;
+						}
 					}
 				}
 			}
 		}
 		expect(cas).toBeGreaterThan(100); // l'échantillon a bien tourné
+	});
+});
+
+describe('syntheseRevision : le contrôle des acquis, sous-ensemble des acquises (#689)', () => {
+	it('apparaît accroché aux acquises quand enControle > 0, juste après leur compte', () => {
+		const phrase = syntheseRevision(recap({ acquises: 22, enControle: 2 }));
+		expect(phrase).toMatch(/reconfirmer/);
+		const nombres = nombresAnnonces(phrase);
+		expect(nombres.indexOf(2)).toBe(nombres.indexOf(22) + 1); // même attachement que « dues »
+		verifierPhraseBienFormee(phrase);
+	});
+
+	it('disparaît quand enControle vaut 0, même avec des acquises : pas de « dont 0 »', () => {
+		const phrase = syntheseRevision(recap({ acquises: 22, enControle: 0 }));
+		expect(nombresAnnonces(phrase)).toEqual([22]);
+		expect(phrase).not.toMatch(/reconfirmer/);
+		verifierPhraseBienFormee(phrase);
+	});
+
+	it('ne s’affiche jamais quand acquises === 0 : la clause entière est omise', () => {
+		// enControle ne peut être positif que si acquises l’est aussi (garde-fou de la
+		// fixture) : le seul cas atteignable avec acquises === 0 est enControle === 0.
+		const phrase = syntheseRevision(recap({ enRotation: 4, dues: 1, acquises: 0 }));
+		expect(phrase).not.toMatch(/reconfirmer/);
+		expect(phrase).not.toMatch(/acquis/);
+		verifierPhraseBienFormee(phrase);
+	});
+
+	it('singulier à 1 : « 1 déjà acquise, dont 1 à reconfirmer »', () => {
+		const phrase = syntheseRevision(recap({ acquises: 1, enControle: 1 }));
+		expect(phrase).toBe('1 déjà acquise, dont 1 à reconfirmer.');
+	});
+
+	it('critère 6 : le compte des éléments à réviser ne bouge pas quand enControle augmente', () => {
+		// « 3 éléments dus » ne doit jamais devenir ambigu pour le parent : le sous-compte de
+		// rotation (enRotation, dues) doit rester identique, que le contrôle porte sur 0 ou 4
+		// acquis. Si ce test rougit, le contrôle a fui hors de la clause des acquises.
+		const sansControle = syntheseRevision(recap({ enRotation: 5, dues: 3, acquises: 10 }));
+		const avecControle = syntheseRevision(
+			recap({ enRotation: 5, dues: 3, acquises: 10, enControle: 4 }),
+		);
+		expect(nombresAnnonces(sansControle).slice(0, 2)).toEqual([5, 3]);
+		expect(nombresAnnonces(avecControle).slice(0, 2)).toEqual([5, 3]);
+		expect(sansControle).not.toBe(avecControle); // le segment de contrôle change bien la phrase
+	});
+
+	it('garde-fou de fixture : enControle ne peut pas dépasser acquises', () => {
+		expect(() => recap({ acquises: 2, enControle: 3 })).toThrow();
 	});
 });
 

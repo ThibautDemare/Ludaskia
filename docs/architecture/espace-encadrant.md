@@ -912,6 +912,24 @@ du bloc) contre « en attente de rencontre » (résumé de catégorie, sous-comp
 plus court) — chacun doit rester non ambigu lu seul, sans la phrase de synthèse à
 proximité (cf. [Conventions rédactionnelles](conventions-redaction.md)).
 
+**Un acquis dont le CONTRÔLE annuel est échu (#689)** : `enControle` (dérivé
+d'`estDuControle`, `core/revision.ts` — cf. [Logique pure](core.md)) est un
+**sous-ensemble** d'`acquises`, jamais un quatrième terme de `total` : un élément en
+contrôle est toujours acquis, il n'a pas quitté le sommet — c'est ce qui permet à
+l'adulte de distinguer trois notions fragiles de trois vieux contrôles de routine, deux
+lectures qu'un compte fondu dans `dues` rendrait indiscernables (critère 6). À la
+différence d'`enAttente`, ce compte n'existe qu'à **une seule granularité**
+(`RecapRevision.enControle` ; ni `GroupeRevision` ni `PalierRevision` ne le déclinent) :
+une entrée en contrôle reste affichée avec son simple badge « acquis » (`entreeHTML` ne
+change rien pour elle, seul le compte remonte) — la question à laquelle ce chiffre
+répond, « combien de vieux contrôles se cachent derrière les acquises ? », est une
+question de synthèse, pas une lecture par catégorie ou par étage. La synthèse du bloc
+(`syntheseRevision`) l'annonce « N déjà acquises, **dont M à reconfirmer** » —
+« reconfirmer » plutôt que « recontrôler » (qui entrerait en collision avec le contrôle
+NOTÉ de la dictée, « Date du contrôle (facultatif) », `ui/ortho-liste.ts`) ou
+« revérifier » (trop proche de « à réviser », juste au moment où les deux comptes
+doivent se distinguer).
+
 Trois visualisations, bascule au même patron que le graphe d'activité (module
 `ui/encadrant-revision.ts`, composant segment en variante `wrap` depuis cette 3e option —
 trois libellés de cette longueur ne tiennent pas sur une ligne de téléphone) : **« Par

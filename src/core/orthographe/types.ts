@@ -31,8 +31,13 @@ export interface Entourage {
 
 /** État de répétition espacée d'un mot (escalier d'intervalles). */
 export interface EtatRevision {
-	palier: number; // 0 = neuf … PALIER_ACQUIS (= 6, cf. revision.ts) = acquis (hors rotation)
-	prochaineRevision: number | null; // timestamp ms ; null tant que pas entré en banque (ou une fois acquis)
+	palier: number; // 0 = neuf … PALIER_ACQUIS (= 6, cf. revision.ts) = acquis (ancré, pas sorti)
+	/* Timestamp ms. `null` veut dire HORS ROTATION — le compteur d'espacement n'a pas démarré
+	   (#641) — et rien d'autre. Ce n'est plus une marque d'acquisition : depuis #689, un
+	   élément acquis porte une échéance de CONTRÔLE à un an, et `avancerEtat` ne pose plus
+	   jamais `null`. Les états écrits avant #689 gardent `null` au sommet ; ils sont datés à
+	   la lecture par `echeanceControle`, jamais réécrits. */
+	prochaineRevision: number | null;
 	reussites: number;
 	dernierTest: number | null; // timestamp ms
 }

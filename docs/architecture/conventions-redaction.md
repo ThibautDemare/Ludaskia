@@ -282,3 +282,20 @@ resté absent parce que le rendu est du HTML fluide où la coupure avant deux-po
 s'observe pas, et parce qu'une exception isolée se voit à la relecture d'un diff. #691
 avait introduit la seule occurrence contraire du dépôt, à trois lignes d'un libellé de la
 même fonction qui suivait la règle.
+
+## Un mot à charge scolaire se vérifie sur tout l'espace encadrant, pas sur le seul écran (#689)
+
+Élargissement de la règle de #691 ci-dessus : pour un mot qui porte une **connotation
+d'évaluation** (contrôle, interro, examen, note, épreuve), la portée de la vérification
+n'est pas l'écran mais l'**espace encadrant entier**. Le parent circule entre ses écrans
+en quelques clics, et un terme déjà chargé ailleurs arrive chargé ici. Cas posé par
+#689 : le sous-compte des acquis à revérifier allait s'appeler « dont N à recontrôler »,
+alors que « contrôle » désigne déjà une évaluation notée réelle dans le formulaire de
+liste de dictée (« Date du contrôle (facultatif) », `ui/ortho-liste.ts`) — c'est-à-dire
+exactement l'enjeu scolaire que ce compte n'a pas. Retenu : « dont N à reconfirmer ».
+Écarté aussi, « à revérifier » : il rime avec « à réviser » et rapproche à l'oreille les
+deux sous-comptes au moment précis où ils doivent se distinguer.
+
+Le vocabulaire INTERNE, lui, garde « contrôle » (`REVISION_CONTROLE_ACQUIS`,
+`estDuControle`, `enControle`) : c'est le mot de l'issue et du domaine, il ne s'affiche
+nulle part, et le renommer éloignerait le code de son cadrage.

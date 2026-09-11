@@ -200,6 +200,7 @@ import {
 	avancerEtat,
 	PALIER_ACQUIS,
 	REVISION_INTERVALLES,
+	REVISION_CONTROLE_ACQUIS,
 	REVISION_PLAFOND,
 	REVISION_PLAFOND_MIN,
 	REVISION_PLAFOND_MAX,
@@ -2864,12 +2865,16 @@ describe('Révision espacée (issue #45)', () => {
 		expect(estDu(e, T0)).toBe(false); // pas dû tout de suite
 		expect(estDu(e, T0 + REVISION_INTERVALLES[0])).toBe(true); // dû dès le lendemain
 	});
-	test('réussite monte d’un cran ; acquis sort de la rotation', () => {
+	test('réussite monte d’un cran ; au sommet, un rendez-vous de contrôle à un an (#689)', () => {
 		let e = etatNeuf(T0);
 		for (let i = 0; i < PALIER_ACQUIS; i++) e = avancerEtat(e, true, T0);
 		expect(e.palier).toBe(PALIER_ACQUIS);
 		expect(estAcquis(e)).toBe(true);
-		expect(e.prochaineRevision).toBe(null); // plus en rotation
+		// Depuis #689, le sommet ne sort plus de la rotation : il pose un rendez-vous de
+		// contrôle à un an au lieu de `null` (l'ancienne sortie définitive).
+		expect(e.prochaineRevision).toBe(T0 + REVISION_CONTROLE_ACQUIS);
+		// Mais `estDu` reste réservé aux éléments non acquis (#478) : même très en retard
+		// sur ce contrôle, l'élément n'est jamais « dû » par ce prédicat-là.
 		expect(estDu(e, T0 + 10 * 365 * 86400000)).toBe(false);
 	});
 	test('échec recule d’UN cran, jamais sous 0', () => {

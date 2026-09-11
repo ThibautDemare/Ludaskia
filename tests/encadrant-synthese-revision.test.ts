@@ -83,6 +83,8 @@ function recap(c: {
 		enAttente,
 		acquises,
 		dues,
+		// #689 : sous-ensemble des acquises, sans effet sur les synthèses testées ici.
+		enControle: 0,
 		groupes: [],
 		parUrgence: [],
 		parPalier: [],
@@ -136,6 +138,8 @@ function entree(i: number, etat: 'attente' | 'due' | 'programmee'): EntreeRevisi
 		du: etat === 'due',
 		joursRestants: etat === 'attente' ? null : etat === 'due' ? 0 : 1,
 		enAttente: etat === 'attente',
+		// #689 : les trois états de cette fixture sont tous NON acquis, donc jamais en contrôle.
+		enControle: false,
 	};
 }
 

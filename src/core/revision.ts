@@ -118,8 +118,9 @@ export const REVISION_MAX_VIDAGES_SOURCES = 2; // petites sources vidées d'un j
 
 /* État d'un élément PAS ENCORE en rotation (#641) : il existe, mais son compteur
    d'espacement n'a pas démarré. `prochaineRevision: null` au palier 0 — un état qu'aucun
-   élément en rotation ne peut prendre (`avancerEtat` ne met `null` qu'au palier ACQUIS),
-   donc lisible sans ambiguïté par `estHorsRotation`.
+   élément en rotation ne peut prendre (depuis #689, `avancerEtat` ne pose plus JAMAIS
+   d'échéance nulle : le sommet reçoit un contrôle à un an), donc lisible sans ambiguïté
+   par `estHorsRotation`.
 
    Pourquoi : un mot d'orthographe ajouté par le parent entrait en rotation dès l'AJOUT,
    si bien qu'un mot jamais découvert à l'atelier arrivait « dû » le lendemain — et qu'une
@@ -159,6 +160,47 @@ export function estDu(e: EtatRevision | undefined | null, now: number): boolean 
 
 export function estAcquis(e: EtatRevision | undefined | null): boolean {
 	return !!e && e.palier >= PALIER_ACQUIS;
+}
+
+/* ---------- Le sommet n'est plus une sortie définitive (#689) ----------
+   Atteindre le sommet posait `prochaineRevision: null`, et `estDu` exige un palier sous
+   le sommet : « acquis » voulait donc dire « plus jamais testé ». Une notion nommée
+   acquise un peu vite le restait pour toujours, sans que le parent puisse s'en apercevoir
+   — et `rewards.ts` justifiait la prudence des libellés du trophée #660 par l'affirmation
+   inverse (« un élément au sommet peut redescendre s'il est raté plus tard »), qui
+   n'existait nulle part dans le code. L'enjeu monte avec le crédit de retard de #688, qui
+   fait atteindre le sommet avec moins de rappels.
+
+   Un an, et pas six mois : au stock maximal du contenu livré (466 mots et 264 paires
+   leçon × niveau), un contrôle annuel coûte 730 / 365 = 2,0 passages par jour, soit 18 %
+   d'une séance de 11 ; le semestriel monte à 4,1. À rouvrir si le journal du retard (#691)
+   montre que l'oubli arrive plus tôt. */
+export const REVISION_CONTROLE_ACQUIS = 365 * JOUR;
+
+/* Échéance du prochain contrôle d'un élément ACQUIS, `null` s'il n'y a rien à dater.
+
+   Le repli est une lecture, JAMAIS une écriture (critère 11) : les acquis d'avant ce
+   changement portent `prochaineRevision: null` en base, et on les date à
+   `dernierTest + 365 j` au moment de les lire. Réécrire le stockage au simple chargement
+   ferait différer deux exports encadrant le même démarrage — même pattern que le repli de
+   `getRevisionPlafond`.
+
+   Sans `dernierTest`, on rend `null` plutôt que de replier sur zéro : `0 + 365 j` tombe en
+   1971, donc tout le stock deviendrait dû de contrôle d'un coup. */
+export function echeanceControle(e: EtatRevision | undefined | null): number | null {
+	if (!estAcquis(e)) return null;
+	if (e!.prochaineRevision != null) return e!.prochaineRevision;
+	return e!.dernierTest != null ? e!.dernierTest + REVISION_CONTROLE_ACQUIS : null;
+}
+
+/* Un acquis dont le contrôle est échu. DISTINCT d'`estDu`, qui reste réservé aux éléments
+   non acquis : les deux comptes doivent rester séparables pour que le parent puisse lire
+   « 3 dus » sans se demander s'il s'agit de trois éléments fragiles ou de trois vieux
+   contrôles (critère 6). Fondre les deux prédicats rendrait cette distinction
+   irrécupérable en aval. */
+export function estDuControle(e: EtatRevision | undefined | null, now: number): boolean {
+	const ech = echeanceControle(e);
+	return ech != null && ech <= now;
 }
 
 /* ---------- Le rendez-vous servi TRÈS en retard (#688) ----------
@@ -243,6 +285,15 @@ function palierDemontre(ecoule: number): number {
 function palierApresPassage(e: EtatRevision, reussi: boolean, now: number): number {
 	const tardif = serviTresEnRetard(e, now);
 	if (!reussi) {
+		/* AU SOMMET, pas d'exemption de retard (#689). L'exemption ci-dessous refuse de punir
+		   l'enfant d'un retard imputable à la file ; appliquée ici, elle annulerait purement
+		   et simplement le contrôle annuel. L'intervalle de référence au sommet vaut 75 jours,
+		   donc tout contrôle raté plus de 150 jours après son échéance serait « très en
+		   retard » et resterait acquis — or le cas d'échec du critère 2 est précisément « un
+		   élément acquis servi et échoué reste au sommet ». Le sommet affirme ce qui A TENU :
+		   si la notion n'a pas tenu un an, elle redescend, quelle que soit la date à laquelle
+		   on a pu le constater. */
+		if (e.palier >= PALIER_ACQUIS) return PALIER_ACQUIS - 1;
 		/* Échec très tardif : l'élément CONSERVE son palier au lieu de reculer, et son
 		   échéance est simplement reposée à l'intervalle du palier conservé. Le non-débit ne
 		   s'applique jamais à un échec servi à l'heure ou en retard modéré : celui-là recule
@@ -262,15 +313,18 @@ function palierApresPassage(e: EtatRevision, reussi: boolean, now: number): numb
 	return Math.max(normal, credit);
 }
 
-/* Fait évoluer l'état après une réponse : réussite → +1 cran (jusqu'à acquis, qui sort de
-   la rotation) ; échec → -1 cran (jamais en dessous de 0). Un rendez-vous servi très en
-   retard fait exception aux deux règles (#688, cf. `palierApresPassage`). */
+/* Fait évoluer l'état après une réponse : réussite → +1 cran ; échec → -1 cran (jamais en
+   dessous de 0). Un rendez-vous servi très en retard fait exception aux deux règles (#688,
+   cf. `palierApresPassage`), SAUF au sommet (#689).
+   Le sommet ne sort plus de la rotation : il y pose un rendez-vous de contrôle à un an
+   (#689) au lieu de `null`. Cette fonction ne produit donc plus jamais d'échéance nulle,
+   ce qui rend `estHorsRotation` encore moins ambigu qu'avant. */
 export function avancerEtat(e: EtatRevision, reussi: boolean, now: number): EtatRevision {
 	const palier = palierApresPassage(e, reussi, now);
 	const acquis = palier >= PALIER_ACQUIS;
 	return {
 		palier,
-		prochaineRevision: acquis ? null : now + intervalleDe(palier),
+		prochaineRevision: now + (acquis ? REVISION_CONTROLE_ACQUIS : intervalleDe(palier)),
 		reussites: e.reussites + (reussi ? 1 : 0),
 		dernierTest: now,
 	};

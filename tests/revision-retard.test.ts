@@ -61,6 +61,7 @@ import {
 	JOUR,
 	PALIER_ACQUIS,
 	REVISION_INTERVALLES,
+	REVISION_CONTROLE_ACQUIS,
 	avancerEtat,
 	estAcquis,
 	estDu,
@@ -179,9 +180,15 @@ const palierAttenduEchec = (e: EtatRevision, now: number): number =>
    l'échéance sont autant de choses que le changement peut casser. */
 function etatAttendu(e: EtatRevision, reussi: boolean, now: number): EtatRevision {
 	const palier = reussi ? palierAttenduReussite(e, now) : palierAttenduEchec(e, now);
+	/* Depuis #689, franchir le sommet pose un rendez-vous de CONTRÔLE à un an au lieu de
+	   sortir de la rotation (`null`). Les fixtures de ce fichier n'atteignent jamais le
+	   sommet par un ÉCHEC (`palierAttenduEchec` ne fait jamais monter un palier), donc
+	   cette branche ne concerne que les réussites — cf. `palierAttenduReussite`. */
+	const prochaineRevision =
+		palier >= PALIER_ACQUIS ? now + REVISION_CONTROLE_ACQUIS : now + intervalle(palier);
 	return {
 		palier,
-		prochaineRevision: palier >= PALIER_ACQUIS ? null : now + intervalle(palier),
+		prochaineRevision,
 		reussites: e.reussites + (reussi ? 1 : 0),
 		dernierTest: now,
 	};
@@ -238,7 +245,10 @@ describe('critères 1 et 11 — un rendez-vous servi à l’heure garde le compo
 			vus.push({ palier: e.palier, jour: Math.round((now - T0) / JOUR) });
 		}
 		expect(vus).toEqual(attendus);
-		expect(e.prochaineRevision).toBeNull(); // acquis → sorti de la rotation
+		/* Depuis #689, le sommet pose un rendez-vous de CONTRÔLE à un an au lieu de sortir de
+		   la rotation (`null`) : la dernière réussite du chemin (jour 137) le pose 365 jours
+		   plus tard, pas hors rotation. */
+		expect(e.prochaineRevision).toBe(dernierTestDe(e) + REVISION_CONTROLE_ACQUIS);
 		expect(estAcquis(e)).toBe(true);
 	});
 });
@@ -303,9 +313,13 @@ describe('critère 2 — une réussite servie très en retard porte le crédit d
 		expect(avancerEtat(quatre, true, dernierTestDe(quatre) + jours(200)).palier).toBe(5);
 
 		const cinq = etatALHeure(5);
-		const ancre = avancerEtat(cinq, true, dernierTestDe(cinq) + jours(400));
+		const now5 = dernierTestDe(cinq) + jours(400);
+		const ancre = avancerEtat(cinq, true, now5);
 		expect(ancre.palier).toBe(PALIER_ACQUIS);
-		expect(ancre.prochaineRevision).toBeNull();
+		/* Depuis #689, franchir le sommet pose un rendez-vous de contrôle à un an, pas une
+		   sortie de rotation : même via la branche « tardif » de #688 (400 jours de retard),
+		   l'échéance posée est celle du CONTRÔLE, pas celle (75 jours) de l'escalier. */
+		expect(ancre.prochaineRevision).toBe(now5 + REVISION_CONTROLE_ACQUIS);
 	});
 
 	it('sur tout l’échantillon des retards tardifs, l’état complet est celui attendu', () => {
@@ -337,8 +351,11 @@ describe('critère 3 — un retard inférieur à 2 fois l’intervalle ne donne 
 				const now = rendezVous(e) + retard;
 				const apres = avancerEtat(e, true, now);
 				expect(apres.palier).toBe(alHeure.palier);
+				// Depuis #689, franchir le sommet pose le contrôle à un an, plus jamais `null`.
 				expect(apres.prochaineRevision).toBe(
-					apres.palier >= PALIER_ACQUIS ? null : now + intervalle(apres.palier),
+					apres.palier >= PALIER_ACQUIS
+						? now + REVISION_CONTROLE_ACQUIS
+						: now + intervalle(apres.palier),
 				);
 			}
 		}

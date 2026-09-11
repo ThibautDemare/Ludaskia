@@ -264,23 +264,53 @@ describe('critère 4 — tri du contrôle : le plus longtemps sans test réel, d
 
 	it('ROTATION : deux séances consécutives ne resservent pas les mêmes acquis, d’autres attendaient plus longtemps', () => {
 		const plafond = 2; // aucun fragile, aucun entretien → reliquat 2
+		// Quatre VRAIES leçons du catalogue (même catégorie, math-calcul-mental — cf. la
+		// précondition de `revision-bas-niveau.test.ts`), sinon `getLessonById` les écarte
+		// comme orphelines et le test « prouve » une rotation qui n'a jamais eu lieu.
+		// `dernierTest` est délibérément à REBOURS de l'ordre alphabétique des ids : si le
+		// tri suivait l'id plutôt que `dernierTest`, ce test le verrait.
 		let lessonRevisions: Record<string, EtatRevision> = {
-			a: acquisControle(T0 - 1, T0 - 400 * JOUR),
-			b: acquisControle(T0 - 1, T0 - 300 * JOUR),
-			c: acquisControle(T0 - 1, T0 - 200 * JOUR),
-			d: acquisControle(T0 - 1, T0 - 100 * JOUR),
+			'math-tables-addition': acquisControle(T0 - 1, T0 - 400 * JOUR), // le plus ancien test réel
+			'math-moities': acquisControle(T0 - 1, T0 - 300 * JOUR),
+			'math-doubles': acquisControle(T0 - 1, T0 - 200 * JOUR),
+			'math-complements': acquisControle(T0 - 1, T0 - 100 * JOUR), // le plus récemment testé
 		};
-		// Séance 1 : les deux plus anciennement testés.
-		const seance1 = aplati(selectDueGroups(orthoVide(), lessonRevisions, T0, plafond, []));
-		expect(seance1.map((it) => it.id)).toEqual(['a', 'b']);
+		// Séance 1 : les deux plus anciennement testés, dans CET ORDRE — la branche « aucun
+		// actif » de `selectDueGroups` groupe entretien puis contrôle chacun dans son ordre de
+		// tri (`grouper([...entretien, ...controle])`), sans passer par `insererAppoint` (qui
+		// ne s'applique qu'aux séances avec des actifs à protéger de la fatigue de fin) :
+		// l'ordre de sélection EST donc l'ordre d'affichage ici, et c'est un contrat.
+		const idsServis = (groups: ReturnType<typeof selectDueGroups>) => aplati(groups).map((it) => it.id);
+		const seance1 = selectDueGroups(orthoVide(), lessonRevisions, T0, plafond, []);
+		expect(idsServis(seance1)).toEqual(['math-tables-addition', 'math-moities']);
 		// Réponses réussies : leur échéance de contrôle est repoussée d'un an.
-		for (const it of seance1) {
+		for (const it of aplati(seance1)) {
 			lessonRevisions = { ...lessonRevisions, [it.id]: avancerEtat(lessonRevisions[it.id], true, T0) };
 		}
-		// Séance 2 (même instant) : a et b ne sont plus dus → ce sont c et d qui sortent,
-		// PAS une répétition de a/b — c'est le stock qui tourne.
-		const seance2 = aplati(selectDueGroups(orthoVide(), lessonRevisions, T0, plafond, []));
-		expect(seance2.map((it) => it.id)).toEqual(['c', 'd']);
+		// Séance 2 (même instant) : les deux premiers ne sont plus dus → ce sont les deux
+		// autres qui sortent, PAS une répétition des premiers — c'est le stock qui tourne.
+		const seance2 = selectDueGroups(orthoVide(), lessonRevisions, T0, plafond, []);
+		expect(idsServis(seance2)).toEqual(['math-doubles', 'math-complements']);
+	});
+
+	it('trois éléments de contrôle d’une même catégorie, aucun actif : l’ordre servi est EXACTEMENT celui du tri', () => {
+		// Cas dédié pour la branche « aucun actif » : plusieurs éléments d'appoint qui
+		// partagent une catégorie doivent sortir dans l'ordre du tri lui-même (dernierTest
+		// croissant), sans qu'un mécanisme de placement ne les réordonne — à la différence de
+		// la branche AVEC actifs, où `insererAppoint` protège la fin de séance et où seul
+		// l'ordre RELATIF entre éléments d'appoint est garanti (pas leur position absolue).
+		const plafond = 3; // aucun fragile, aucun entretien → reliquat 3
+		const lessonRevisions: Record<string, EtatRevision> = {
+			'math-complements': acquisControle(T0 - 1, T0 - 100 * JOUR), // le plus récemment testé
+			'math-tables-addition': acquisControle(T0 - 1, T0 - 400 * JOUR), // le plus ancien
+			'math-moities': acquisControle(T0 - 1, T0 - 300 * JOUR),
+		};
+		const items = aplati(selectDueGroups(orthoVide(), lessonRevisions, T0, plafond, []));
+		expect(items.map((it) => it.id)).toEqual([
+			'math-tables-addition',
+			'math-moities',
+			'math-complements',
+		]);
 	});
 });
 

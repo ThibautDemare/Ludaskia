@@ -398,7 +398,16 @@ export const TROPHIES: Trophy[] = [
 
 	   AUCUN MOT ABSOLU dans les libellés (« pour toujours », « tu ne l'oublieras plus ») :
 	   un élément au sommet peut redescendre s'il est raté plus tard. On constate ce qui A
-	   tenu, on ne promet pas ce qui tiendra (avis `pedagogue-primaire`). Et aucune
+	   tenu, on ne promet pas ce qui tiendra (avis `pedagogue-primaire`).
+	   Cette phrase a été FAUSSE jusqu'à #689, et c'est ce qui a motivé l'issue : le sommet
+	   posait `prochaineRevision: null` et `estDu` exigeait un palier inférieur, donc rien ne
+	   pouvait plus jamais re-tester un acquis, ni le faire redescendre. Le chemin qui la rend
+	   vraie : `avancerEtat` pose désormais un contrôle à `REVISION_CONTROLE_ACQUIS` (un an)
+	   au sommet, `estDuControle` le rend échu, `collectControle` (revision-select.ts) le sert
+	   sur le reliquat de plafond, et un échec y redescend d'un cran SANS l'exemption de
+	   retard de #688. Les deux compteurs ci-dessous reposant sur `estAcquis`, ils décroissent
+	   alors d'eux-mêmes — le trophée déjà décerné, lui, reste acquis (persistant une fois
+	   gagné). Et aucune
 	   description ne commence par un verbe d'action, contrairement aux familles faisables le
 	   jour même : un enfant ne doit pas lire ces trophées comme une consigne du jour. Tenu
 	   par un gate (`tests/trophees-ancres.test.ts`, critère 8). */

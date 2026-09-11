@@ -48,7 +48,14 @@ import {
 	setNiveauReference,
 	touchActiveProfile,
 } from '../src/core/profiles';
-import { JOUR, PALIER_ACQUIS, avancerEtat, estAcquis, etatNeuf } from '../src/core/revision';
+import {
+	JOUR,
+	PALIER_ACQUIS,
+	REVISION_CONTROLE_ACQUIS,
+	avancerEtat,
+	estAcquis,
+	etatNeuf,
+} from '../src/core/revision';
 import {
 	LESSON_REVISION_KEY,
 	getXP,
@@ -244,8 +251,12 @@ describe('prémisse — l’escalier de la répétition espacée', () => {
 	it('six réussites d’affilée mènent au palier acquis, cinq n’y suffisent pas', () => {
 		expect(estAcquis(etatPalier(PALIER_ACQUIS - 1))).toBe(false);
 		expect(estAcquis(etatAncre())).toBe(true);
-		expect(etatAncre().palier).toBe(PALIER_ACQUIS);
-		expect(etatAncre().prochaineRevision).toBeNull(); // sorti de la rotation
+		const ancre = etatAncre();
+		expect(ancre.palier).toBe(PALIER_ACQUIS);
+		/* Depuis #689, le sommet ne sort plus de la rotation : il pose un rendez-vous de
+		   contrôle à un an au lieu de `null`. C'est désormais `estAcquis` (le palier), et
+		   lui seul, qui distingue un élément « ancré » — plus la présence d'une échéance. */
+		expect(ancre.prochaineRevision).toBe(ancre.dernierTest! + REVISION_CONTROLE_ACQUIS);
 	});
 
 	/* Ce que coûte la fixture, en temps : le chemin qu'elle REJOUE — six réussites servies

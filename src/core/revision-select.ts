@@ -7,6 +7,8 @@
    ============================================================ */
 import {
 	estDu,
+	estDuControle,
+	echeanceControle,
 	estHorsRotation,
 	PALIER_ACQUIS,
 	REVISION_PLAFOND,
@@ -167,6 +169,75 @@ function collectBasNiveau(bas: LeconBasNiveau[], now: number, budget: number): D
 	return dus.slice(0, budget).map((x) => x.it);
 }
 
+/* Éléments ACQUIS dont le contrôle annuel est échu (#689), dans la limite d'un budget.
+
+   Ils ne CONCOURENT jamais avec les autres : leur budget est ce qui reste du plafond une
+   fois servis le niveau actif et l'entretien du niveau inférieur, et il vaut zéro dès que
+   la séance est pleine. C'est le critère négatif 9 — aucun acquis ne prend le slot d'un
+   élément fragile — et c'est aussi pourquoi le retard n'est pas comparable ici : une
+   échéance de contrôle est dépassée de jours quand une échéance active l'est d'heures,
+   sur une clé commune le contrôle raflerait tout (même raisonnement qu'en #232).
+
+   Tri « le plus longtemps sans TEST RÉEL d'abord », comme `collectBasNiveau` et pour la
+   même raison : faire tourner le stock au lieu de laisser un élément moisir. Jamais sur
+   l'échéance de contrôle, qui ne discriminerait plus rien — deux acquis testés le même
+   jour la portent identique.
+
+   Le départage ajoute la NATURE et le NIVEAU à l'identifiant, là où `collectBasNiveau`
+   s'arrête à l'identifiant : ce pool-ci mélange trois sources, et une même leçon acquise
+   au niveau actif et au niveau inférieur y porte le même id. Sans ce complément, leur
+   ordre relatif dépendrait de l'ordre d'énumération du stockage.
+
+   Les acquis du niveau INFÉRIEUR sont inclus : le stock que le critère 10 chiffre est
+   celui des « paires leçon × niveau » (264 pour 183 leçons distinctes), donc une leçon
+   acquise à deux niveaux compte deux fois. Les exclure rendrait ce chiffre faux. */
+function collectControle(
+	ortho: OrthoState,
+	lessonRevisions: Record<string, EtatRevision>,
+	bas: LeconBasNiveau[],
+	now: number,
+	budget: number,
+): DueItem[] {
+	if (budget <= 0) return [];
+	const cands: { it: DueItem; teste: number; rang: string }[] = [];
+	const retenir = (it: DueItem, e: EtatRevision) => {
+		const niveau = it.kind === 'lesson' ? (it.niveau ?? '') : '';
+		cands.push({ it, teste: e.dernierTest ?? -Infinity, rang: `${it.kind}|${it.id}|${niveau}` });
+	};
+	for (const id in ortho.banque) {
+		const m = ortho.banque[id];
+		if (!motEnRevision(m) || !estDuControle(m.revision, now)) continue;
+		retenir(
+			{ kind: 'word', id, categoryId: ORTHO_CATEGORY_ID, due: echeanceControle(m.revision)! },
+			m.revision,
+		);
+	}
+	for (const id in lessonRevisions) {
+		const e = lessonRevisions[id];
+		if (!estDuControle(e, now)) continue;
+		const lesson = getLessonById(id);
+		if (!lesson) continue; // leçon orpheline : écartée comme partout ailleurs ici
+		retenir({ kind: 'lesson', id, categoryId: lesson.category, due: echeanceControle(e)! }, e);
+	}
+	for (const b of bas) {
+		if (!estDuControle(b.etat, now)) continue;
+		const lesson = getLessonById(b.lessonId);
+		if (!lesson) continue;
+		retenir(
+			{
+				kind: 'lesson',
+				id: b.lessonId,
+				categoryId: lesson.category,
+				due: echeanceControle(b.etat)!,
+				niveau: b.niveau,
+			},
+			b.etat,
+		);
+	}
+	cands.sort((a, b) => (a.teste !== b.teste ? a.teste - b.teste : a.rang.localeCompare(b.rang)));
+	return cands.slice(0, budget).map((x) => x.it);
+}
+
 /* Date (ms) du prochain re-test À VENIR parmi les éléments en rotation (mots +
    leçons non acquis), ou `null` si rien n'est programmé : banque vierge, ou tout
    acquis. Sert à l'état « rien à réviser » de l'accueil pour annoncer l'échéance.
@@ -180,6 +251,13 @@ export function prochaineEcheance(
 	bas: LeconBasNiveau[] = [],
 ): number | null {
 	let min: number | null = null;
+	/* Les acquis restent EXCLUS de l'horizon, alors que #689 leur donne une échéance de
+	   contrôle à un an. Écarté volontairement : cette fonction alimente le message d'accueil
+	   « Bravo, tu es à jour ! Prochaine révision… », et annoncer à un enfant qui vient de
+	   tout ancrer que son prochain rendez-vous est « dans 11 mois » remplacerait une
+	   félicitation par une échéance lointaine et décourageante. Un profil entièrement acquis
+	   garde donc « Bravo, tu as tout révisé ! », et le contrôle apparaîtra le jour où il
+	   sera réellement dû, via `countDue`. */
 	const consider = (e: EtatRevision | undefined | null) => {
 		if (!e || e.palier >= PALIER_ACQUIS || e.prochaineRevision == null) return;
 		if (e.prochaineRevision <= now) return; // déjà dû
@@ -234,7 +312,18 @@ export function countDue(
 	bas: LeconBasNiveau[] = [],
 ): number {
 	const dus = collectDue(ortho, lessonRevisions, now);
-	return dus.length + collectBasNiveau(bas, now, budgetEntretien(dus.length, plafond)).length;
+	const entretien = collectBasNiveau(bas, now, budgetEntretien(dus.length, plafond));
+	/* Le contrôle des acquis (#689) compte ici EXACTEMENT comme `selectDueGroups` le
+	   servira, budget compris : c'est l'invariant « annoncé = proposé » (#478). Un compte
+	   qui l'ignorerait ferait promettre 2 à la carte d'accueil pour une séance de 3. */
+	const controle = collectControle(
+		ortho,
+		lessonRevisions,
+		bas,
+		now,
+		plafond - dus.length - entretien.length,
+	);
+	return dus.length + entretien.length + controle.length;
 }
 
 /* Ce que la carte Révision de l'accueil ANNONCE à l'enfant : au-delà d'une séance, on
@@ -335,7 +424,12 @@ function groupeDe(it: DueItem): DueGroup {
 	return { categoryId: it.categoryId, label: cat?.label ?? it.categoryId, items: [it] };
 }
 
-/* Glisse un élément d'entretien (niveau inférieur, #232) dans une séance déjà GROUPÉE.
+/* Glisse un élément d'APPOINT dans une séance déjà GROUPÉE — l'entretien du niveau
+   inférieur (#232) et, depuis #689, le contrôle annuel d'un acquis. Les deux sont servis
+   à part du niveau actif, sur un reliquat de plafond, et la règle de placement ci-dessous
+   vaut identiquement pour eux : elle protège de la fatigue de fin de séance un élément
+   qu'un faux échec ferait reculer. Pour un contrôle, l'enjeu est même plus grand — un
+   échec au sommet fait redescendre d'un cran ET décroître la métrique du trophée.
    Le placement se décide sur les GROUPES, pas sur une liste plate : ce que l'enfant joue,
    c'est la concaténation des groupes, donc un élément inséré au milieu d'une liste plate
    est de toute façon recollé dans le bloc de sa catégorie — placer avant de grouper ne
@@ -356,7 +450,7 @@ function groupeDe(it: DueItem): DueGroup {
    catégorie ouvre forcément la séance (il ne peut être ni premier ni dernier d'une liste de
    deux). On préfère l'ouverture : elle place l'entretien loin de la fatigue de fin, et le
    seul reproche qu'on lui fait est de rendre le lot identifiable. */
-function insererEntretien(groups: DueGroup[], it: DueItem): void {
+function insererAppoint(groups: DueGroup[], it: DueItem): void {
 	const i = groups.findIndex((g) => g.categoryId === it.categoryId);
 	if (i < 0) {
 		groups.splice(Math.max(0, groups.length - 1), 0, groupeDe(it));
@@ -372,7 +466,7 @@ function insererEntretien(groups: DueGroup[], it: DueItem): void {
    d'abord ».
    `bas` = leçons en rotation au niveau INFÉRIEUR (#232) : une dose plafonnée
    (`plafondBasNiveau`) prend des slots DANS le plafond — la charge d'une séance ne change
-   pas — et se glisse dans la séance groupée (cf. insererEntretien). Absent ou vide ⇒
+   pas — et se glisse dans la séance groupée (cf. insererAppoint). Absent ou vide ⇒
    comportement V1 strictement inchangé (niveau actif seul). */
 export function selectDueGroups(
 	ortho: OrthoState,
@@ -385,10 +479,24 @@ export function selectDueGroups(
 	const entretien = collectBasNiveau(bas, now, budgetEntretien(dus.length, plafond));
 	// Re-tri par retard : selectionEquilibree ne garantit pas l'ordre global.
 	const actifs = selectionEquilibree(dus, plafond - entretien.length).sort((a, b) => a.due - b.due);
-	// Rien d'actif : il ne reste que l'entretien, dans son propre ordre (les règles de
-	// placement n'ont plus d'objet, elles se définissent par rapport aux éléments actifs).
-	if (!actifs.length) return grouper(entretien);
+	/* Le contrôle des acquis (#689) ne prend QUE le reliquat : servi après le niveau actif
+	   et après l'entretien, il disparaît dès que la séance est pleine (critères 3 et 9). */
+	const controle = collectControle(
+		ortho,
+		lessonRevisions,
+		bas,
+		now,
+		plafond - actifs.length - entretien.length,
+	);
+	/* Rien d'actif : il ne reste que l'entretien et le contrôle, dans leur propre ordre. Les
+	   règles de placement n'ont plus d'objet — elles se définissent par rapport aux éléments
+	   actifs — et les APPLIQUER quand même retourne l'ordre au lieu de le préserver : la règle
+	   « jamais en clôture » insère chaque élément avant le précédent, si bien que trois
+	   éléments d'une même catégorie sortent B, C, A. C'est l'inverse de ce que le tri vient
+	   d'établir, celui qui attend depuis le plus longtemps finissant servi en dernier. */
+	if (!actifs.length) return grouper([...entretien, ...controle]);
 	const groups = grouper(actifs);
-	for (const it of entretien) insererEntretien(groups, it);
+	for (const it of entretien) insererAppoint(groups, it);
+	for (const it of controle) insererAppoint(groups, it);
 	return groups;
 }

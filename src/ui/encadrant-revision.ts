@@ -115,7 +115,15 @@ export function syntheseRevision(recap: RecapRevision): string {
 		);
 	}
 	if (recap.acquises > 0) {
-		parts.push(`${recap.acquises} déjà acquise${recap.acquises > 1 ? 's' : ''}`);
+		/* « dont N à recontrôler » (#689) : un acquis n'est plus sorti pour de bon, il revient
+		   une fois l'an. Le compte est accroché aux ACQUISES et non ajouté aux dues, parce que
+		   c'en est un sous-ensemble — et surtout parce que c'est l'ambiguïté que le critère 6
+		   vise : « 3 à réviser » ne doit pas mélanger trois notions fragiles, qui demandent une
+		   réaction, et trois contrôles de routine, qui n'en demandent aucune. */
+		parts.push(
+			`${recap.acquises} déjà acquise${recap.acquises > 1 ? 's' : ''}` +
+				(recap.enControle > 0 ? `, dont ${recap.enControle} à recontrôler` : ''),
+		);
 	}
 	/* « en attente d'une première rencontre », et non « en attente » tout court : en français
 	   courant, « en attente » connote l'imminence (« en attente de livraison »), alors qu'ici

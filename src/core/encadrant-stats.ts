@@ -89,7 +89,14 @@ import {
 	debutSuiviEtapes,
 } from './orthographe/paliers';
 import { composition, type RangMot } from './orthographe/etapes';
-import { REVISION_INTERVALLES, PALIER_ACQUIS, JOUR, estAcquis, estHorsRotation } from './revision';
+import {
+	REVISION_INTERVALLES,
+	PALIER_ACQUIS,
+	JOUR,
+	estAcquis,
+	estHorsRotation,
+	estDuControle,
+} from './revision';
 import { chargerRetardsFor, tauxParTranche, type TauxTranche } from './retard-journal';
 import type { EtatRevision, OrthoState, MotOrtho } from './orthographe/types';
 
@@ -1754,6 +1761,11 @@ export interface EntreeRevision {
 	   sans cette distinction, le récap le rangeait avec les vraies entrées de palier 0, et
 	   l'adulte lisait « en rotation » ce qui n'a jamais commencé. */
 	enAttente: boolean;
+	/* Acquis dont le CONTRÔLE annuel est échu (#689). Volontairement distinct de `du`, qui
+	   reste réservé aux éléments non acquis : sans cette séparation, un parent lisant
+	   « 3 dus » ne saurait pas s'il a devant lui trois notions fragiles ou trois vieux
+	   contrôles de routine — deux situations qui n'appellent pas la même réaction. */
+	enControle: boolean;
 }
 
 export interface GroupeRevision {
@@ -1791,6 +1803,11 @@ export interface RecapRevision {
 	enAttente: number;
 	acquises: number;
 	dues: number;
+	/* Acquis dont le contrôle annuel est échu (#689). SOUS-ENSEMBLE d'`acquises`, et non un
+	   quatrième terme de la somme ci-dessus : un élément en contrôle est toujours acquis,
+	   il n'a pas quitté le sommet. Le compte existe pour que le parent distingue une file
+	   fragile d'un fond d'entretien de routine (critère 6). */
+	enControle: number;
 	groupes: GroupeRevision[]; // vue « par catégorie » (ordre du catalogue)
 	parUrgence: EntreeRevision[]; // vue « par urgence » (plus en retard d'abord, acquises en fin)
 	parPalier: PalierRevision[]; // vue « par palier » (bas de l'escalier d'abord, acquis en fin)
@@ -1851,6 +1868,11 @@ function entreeRevision(
 			: Math.round((startOfDay(etat.prochaineRevision) - startOfDay(now)) / JOUR);
 	return {
 		enAttente,
+		/* L'ÉCHÉANCE d'un acquis reste masquée (`prochaineRevision: null` plus bas) : le
+		   contrôle est un entretien de routine à un an, pas un rendez-vous que l'adulte doit
+		   surveiller, et l'afficher rangerait l'acquis parmi les entrées « en retard ». Seul
+		   son COMPTE remonte, par ce drapeau. */
+		enControle: acquis && estDuControle(etat, now),
 		cle,
 		label,
 		nature,
@@ -1982,6 +2004,7 @@ export function revisionProfil(profile: Profile, now: number): RecapRevision {
 		enAttente: entrees.filter((e) => e.enAttente).length,
 		acquises: entrees.filter((e) => e.acquis).length,
 		dues: entrees.filter((e) => e.du).length,
+		enControle: entrees.filter((e) => e.enControle).length,
 		groupes,
 		parUrgence: [...entrees].sort(compareUrgence),
 		parPalier,

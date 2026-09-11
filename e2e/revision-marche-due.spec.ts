@@ -46,7 +46,19 @@ interface ValidationSeed {
 
 /* `due = true` pose un palier de révision ÉCHU (prochaineRevision dans un passé
    lointain, timestamp 1 = 1970 : toujours <= Date.now()) ; `due = false` pose un
-   mot fraîchement acquis (palier au maximum, hors rotation — cf. PALIER_ACQUIS). */
+   mot ACQUIS (palier au maximum — PALIER_ACQUIS, src/core/revision.ts), qui doit
+   rester NON servi dans ces tests (il joue le « reste de la liste », déjà là avant
+   la séance) — PAS « hors rotation » au sens strict du code (`estHorsRotation`
+   exige palier 0 ET dernierTest null : un état qu'un mot acquis ne prend jamais).
+
+   #689 : un acquis d'ancienne forme (`prochaineRevision: null`) est daté, à la
+   LECTURE, à `dernierTest + 365 jours` (repli de `echeanceControle`) — jamais
+   réécrit en stockage. Un `dernierTest: 1` (1970) le ferait donc paraître en
+   contrôle échu depuis cinquante ans, et il entrerait en séance comme un
+   contrôle : exactement ce que ce mot ne doit PAS faire ici. D'où un
+   `dernierTest` récent (quelques semaines) plutôt que 1970 — le cas réaliste
+   aussi : un mot ancré l'a été en étant testé, son dernier test n'est jamais à
+   l'aube d'Unix. */
 function motSeed(id: string, mot: string, validation: ValidationSeed, due: boolean) {
 	return {
 		id,
@@ -56,7 +68,12 @@ function motSeed(id: string, mot: string, validation: ValidationSeed, due: boole
 		validation: { tuiles: false, motCache: false, dictee: false, ...validation },
 		revision: due
 			? { palier: 2, prochaineRevision: 1, reussites: 2, dernierTest: 1 }
-			: { palier: 6, prochaineRevision: null, reussites: 6, dernierTest: 1 },
+			: {
+					palier: 6,
+					prochaineRevision: null,
+					reussites: 6,
+					dernierTest: Date.now() - 14 * 86_400_000,
+				},
 		origine: 'liste',
 	};
 }
@@ -200,7 +217,8 @@ test.describe('Révision espacée : la marche due (#640)', () => {
 		await seedAideVue(page);
 		await seedOrtho(page, {
 			banque: {
-				// Déjà maîtrisé (hors rotation) : sert de « reste de la liste ».
+				// ACQUIS (palier maximal, testé il y a quelques semaines — pas en 1970,
+				// cf. motSeed) : sert de « reste de la liste », non servi en séance.
 				m1: motSeed('m1', 'poire', { tuiles: true, motCache: true }, false),
 				// Dernier mot dû : il ne manque que le mot caché pour que la liste soit complète.
 				m2: motSeed('m2', 'tomate', { tuiles: true }, true),

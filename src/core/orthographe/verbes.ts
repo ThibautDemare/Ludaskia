@@ -26,6 +26,24 @@ export function cibleVerbeId(infinitif: string, temps: VerbTense, person: number
 	return `v:${normVerbKey(infinitif)}#${temps}#${person}`;
 }
 
+/** Ids des cibles d'une liste de verbes configurés — tous les couples pronom × temps, dans
+ *  l'ordre de configuration (verbe, puis temps, puis pronom).
+ *
+ *  Déterministe et SANS LEFFF : c'est ce qui permet aux lectures SYNCHRONES (avancement d'une
+ *  liste, relecture) de retrouver les cibles verbe en banque sans résoudre la moindre forme.
+ *  Une cible n'étant référencée nulle part — elle n'entre pas dans `motIds` —, régénérer son id
+ *  est le SEUL chemin pour la retrouver. L'ordre des pronoms est celui du tableau, tel quel : le
+ *  tri canonique appartient à `normaliserVerbes`, pas à cette lecture. Pur. */
+export function idsCiblesVerbes(verbes: readonly VerbeConfig[] = []): string[] {
+	const out: string[] = [];
+	for (const v of verbes) {
+		for (const temps of v.temps) {
+			for (const person of v.pronoms) out.push(cibleVerbeId(v.infinitif, temps, person));
+		}
+	}
+	return out;
+}
+
 /** Liste du profil qui POSSÈDE cette cible verbe, `null` si aucune (#391).
  *
  *  Une cible verbe n'est pas référencée par `motIds` : elle est matérialisée dans la banque au

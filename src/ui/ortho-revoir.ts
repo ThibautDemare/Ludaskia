@@ -20,9 +20,10 @@
    ============================================================ */
 
 import { loadOrtho, saveOrtho } from '../core/orthographe/store';
-import { motsDeLecon, listOrthoLecons } from '../core/orthographe/lessons';
+import { motsDeLeconAvecVerbes, listOrthoLecons } from '../core/orthographe/lessons';
 import type { MotOrtho, OrthoState } from '../core/orthographe/types';
 import { lettresMotHTML, dessinerEntourages, renderAtelier } from './ortho-atelier';
+import { contexteHTML } from './ortho-taches';
 import { goCategorie, goHome } from './navigation';
 import { retourFinActivite, activiteDemarree, type RetourCible } from './retour-activite';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
@@ -123,7 +124,7 @@ export function renderOrthoRevoirSelection(host: HTMLElement): boolean {
    « resoudre » et non « motsAffiches » : cette fonction peut ANNULER la sélection en
    repliant, un nom d'accesseur cacherait cet effet de bord (remontée `relecteur-qualite`). */
 function resoudreMotsAffiches(): MotOrtho[] {
-	const tous = lessonId ? motsDeLecon(st, lessonId) : [];
+	const tous = lessonId ? motsDeLeconAvecVerbes(st, lessonId) : [];
 	if (!selection) return tous;
 	const choisis = selection.motIds
 		.map((id) => st.banque[id])
@@ -135,7 +136,7 @@ function resoudreMotsAffiches(): MotOrtho[] {
 
 function render(): void {
 	cleanup();
-	// État frais à chaque rendu (couvre le retour de correction). motsDeLecon
+	// État frais à chaque rendu (couvre le retour de correction). motsDeLeconAvecVerbes
 	// matérialise les mots prédéfinis en mémoire, mais on ne sauvegarde PAS ici :
 	// relire ne doit rien persister (saveOrtho n'a lieu qu'après une correction).
 	st = loadOrtho();
@@ -204,6 +205,11 @@ function carteHTML(mot: MotOrtho, i: number): SafeHtml {
 		? html`<p class="relecture-comme">comme dans <i>${mot.commeDans}</i></p>`
 		: VIDE;
 	const aide = vide ? html`<p class="relecture-aide">Pas encore de pièges marqués</p>` : VIDE;
+	// Une cible verbe (#261) se relit AVEC sa phrase : la forme seule ne dit pas de quelle
+	// personne il s'agit, et deux cartes « mange » (je / il) seraient indiscernables l'une de
+	// l'autre. Même balisage que les quatre activités (`contexteHTML`), mais RÉVÉLÉ : il n'y a
+	// rien à deviner sur une page d'étude. Un mot classique garde son « comme dans … ».
+	const contexte = mot.contexte ? contexteHTML(mot, true) : VIDE;
 	return html`<div class="relecture-carte" data-i="${i}">
       <button type="button" class="relecture-crayon" data-edit="${i}"
               aria-label="${crayonLabel}" title="${crayonLabel}">✏️</button>
@@ -211,6 +217,7 @@ function carteHTML(mot: MotOrtho, i: number): SafeHtml {
         <div class="relecture-mot" data-mot="${i}">${lettresMotHTML(mot.mot)}</div>
         <svg class="atelier-svg" data-svg="${i}" aria-hidden="true"></svg>
       </div>
+      ${contexte}
       ${comme}
       ${aide}
     </div>`;

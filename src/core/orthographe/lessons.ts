@@ -7,7 +7,7 @@
    ============================================================ */
 import { ORTHO_PREDEF } from '../../data/francais/orthographe';
 import { ajouterMots, getListe, motsDeListe, listeContenantMot, formeNormalisee } from './store';
-import { nbCiblesVerbes, listeDeCibleVerbe, apercuVerbe } from './verbes';
+import { nbCiblesVerbes, listeDeCibleVerbe, apercuVerbe, idsCiblesVerbes } from './verbes';
 import type { MotOrtho, OrthoState } from './types';
 import type { SchoolLevel } from '../catalog';
 import { LEVEL_ORDER } from '../levels';
@@ -159,4 +159,34 @@ export function motsDeLecon(state: OrthoState, id: string): MotOrtho[] {
 		return ids.map((mid) => state.banque[mid]).filter((m): m is MotOrtho => !!m);
 	}
 	return [];
+}
+
+/** Mots d'une leçon POUR UNE LECTURE D'ÉTUDE : ceux de `motsDeLecon`, CIBLES VERBE COMPRISES.
+    `motsDeLecon` ne connaît que les mots simples (`motIds`) ; les cibles verbe (#261) sont
+    matérialisées à part, au lancement du parcours, et n'y entrent donc JAMAIS. C'est ce qui
+    rendait la relecture d'une liste muette sur les verbes que l'enfant venait de dicter (#702),
+    alors que le design les y comptait depuis le début (« un verbe à N couples compte pour N
+    cibles (relecture, nbMots) »).
+
+    Lecture SYNCHRONE et sans LEFFF (`idsCiblesVerbes`) : une cible jamais matérialisée — liste
+    configurée mais jamais lancée — est simplement ABSENTE, faute de connaître sa forme conjuguée
+    sans le lexique. Sans effet en pratique : la relecture n'est atteignable que depuis l'écran de
+    choix de mode, qui suppose la liste déjà jouée.
+
+    NON fusionnée avec `motsDeLecon`, et ce n'est pas un oubli : le runner concatène lui-même les
+    cibles qu'il vient de résoudre (`materialiserVerbes`), les ajouter en amont les lui ferait
+    compter deux fois. Même contrat de persistance que `motsDeLecon` (matérialise les prédéfinis
+    en mémoire, ne sauvegarde pas). */
+export function motsDeLeconAvecVerbes(state: OrthoState, id: string): MotOrtho[] {
+	const mots = motsDeLecon(state, id);
+	const liste = getListe(state, id);
+	if (!liste) return mots;
+	const vus = new Set(mots.map((m) => m.id));
+	for (const cibleId of idsCiblesVerbes(liste.verbes)) {
+		const cible = state.banque[cibleId];
+		if (!cible || vus.has(cible.id)) continue;
+		vus.add(cible.id);
+		mots.push(cible);
+	}
+	return mots;
 }

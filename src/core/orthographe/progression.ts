@@ -21,7 +21,7 @@ import { ORTHO_PREDEF } from '../../data/francais/orthographe';
 import { getListe, formeNormalisee } from './store';
 import { statutMot, type StatutMot } from './runner';
 import { composition, type Composition } from './etapes';
-import { cibleVerbeId } from './verbes';
+import { idsCiblesVerbes } from './verbes';
 import type { MotOrtho, OrthoState } from './types';
 import type { NiveauNotion } from '../maitrise';
 
@@ -35,14 +35,10 @@ export function motsAttendusLecon(state: OrthoState, id: string): (MotOrtho | un
 	const liste = getListe(state, id);
 	if (liste) {
 		const simples = liste.motIds.map((mid) => state.banque[mid]);
-		const verbes: (MotOrtho | undefined)[] = [];
-		for (const v of liste.verbes ?? []) {
-			for (const temps of v.temps) {
-				for (const person of v.pronoms) {
-					verbes.push(state.banque[cibleVerbeId(v.infinitif, temps, person)]);
-				}
-			}
-		}
+		// Énumération DÉLÉGUÉE (`idsCiblesVerbes`) : la relecture a besoin de la même (#702), et
+		// deux copies de cette triple boucle divergeraient sur l'ordre des cartes au premier
+		// temps ajouté à `VerbTense`.
+		const verbes = idsCiblesVerbes(liste.verbes).map((id) => state.banque[id]);
 		return [...simples, ...verbes];
 	}
 	const predef = ORTHO_PREDEF.find((l) => l.id === id);

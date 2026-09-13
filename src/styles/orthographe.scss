@@ -939,6 +939,13 @@ html.anim-reduced .tuile-slot.is-caret .tuile-curseur {
 	color: var(--grey);
 	margin: 0.4rem 0 0;
 }
+/* Phrase d'une cible verbe relue (#702) : même balisage que dans les activités
+   (`.ortho-contexte`), mais servi en LÉGENDE de carte — à la taille de « comme dans … »,
+   pas à celle d'un énoncé plein écran, sinon elle écrase le mot qu'elle accompagne. */
+.relecture-carte .ortho-contexte {
+	font-size: 0.95rem;
+	margin: 0.4rem 0 0;
+}
 .relecture-aide {
 	font-size: 0.85rem;
 	color: var(--muted);

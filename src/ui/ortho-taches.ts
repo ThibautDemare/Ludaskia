@@ -198,7 +198,13 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
 	// Écoute du mot (#150) : disponible avant ET après l'avoir caché (le bouton est
 	// hors des éléments masqués) — entendre la prononciation aide à l'écrire.
 	if (o.dispoDictee) {
-		hote.querySelector('#btnEcouterMot')!.addEventListener('click', () => ecouterCible(word));
+		hote.querySelector('#btnEcouterMot')!.addEventListener('click', () => {
+			ecouterCible(word);
+			// On rend la main au champ pour enchaîner la saisie sans recliquer (#702) — mais
+			// SEULEMENT une fois le mot caché. Tant qu'il est affiché, la zone de saisie est
+			// masquée : y envoyer le focus ferait taper l'enfant dans un champ qu'il ne voit pas.
+			if (!zone.hidden) input.focus();
+		});
 	}
 
 	btnCacher.addEventListener('click', () => {
@@ -235,6 +241,12 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
 	hote.querySelector('#btnVerifMot')!.addEventListener('click', verifier);
 	input.addEventListener('keydown', (e) => brancherEntree(e, verifier));
 	o.onMonte?.();
+	// Le bouton prend le focus à l'arrivée, donc Entrée cache le mot (#702) : l'enfant qui va
+	// écrire au clavier n'a plus à lâcher le clavier pour un clic. Même patron que le
+	// « Continuer → » du parcours (`boutonContinuer`, ui/ortho-runner.ts). Pas d'écouteur
+	// global : sans focus initial, un `keydown` part de `document.body` et n'atteint ni cet
+	// hôte ni `#revStage` — c'est bien le focus, et lui seul, qui manquait.
+	btnCacher.focus();
 }
 
 /* ---------- Dictée (TTS) ---------- */
@@ -273,7 +285,17 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
 		o.onSilence?.();
 	};
 	const ecouter = () => ecouterCible(word, surSilence);
-	hote.querySelector('#btnEcouter')!.addEventListener('click', ecouter);
+	/* Rendre la main au champ (#702) : ici, écouter n'est pas une fin, c'est le préalable à
+	   écrire. `isConnected` plutôt que `muette` : une voix en échec fait remplacer TOUT l'écran
+	   par `onSilence`, qui pose son propre focus — et rien ne garantit que le drapeau soit déjà
+	   levé quand on repasse ici (l'erreur de synthèse peut arriver plus tard). */
+	const rendreLaMain = (): void => {
+		if (input.isConnected) input.focus();
+	};
+	hote.querySelector('#btnEcouter')!.addEventListener('click', () => {
+		ecouter();
+		rendreLaMain();
+	});
 
 	const verifier = () => {
 		if (muette) return; // dictée silencieuse : on ne corrige ni ne journalise
@@ -304,6 +326,7 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
 	// DOM de l'écran. Déclenchée plus haut, elle laisserait les `querySelector(...)!`
 	// suivants chercher des éléments qui n'existent plus.
 	ecouter();
+	rendreLaMain(); // l'énoncé part tout seul : le champ doit être prêt à recevoir la frappe
 }
 
 /* ---------- Tuiles ---------- */

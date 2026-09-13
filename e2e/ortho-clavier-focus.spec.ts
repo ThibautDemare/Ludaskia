@@ -183,7 +183,7 @@ test.describe('voix disponible (stub STUB_VOIX_FR)', () => {
 		expect(errors).toEqual([]);
 	});
 
-	test("critère 7 (NÉGATIF) : mot encore affiché, « Écouter » ne focalise pas #orthoInput", async ({
+	test('critère 7 (NÉGATIF) : mot encore affiché, « Écouter » ne focalise pas #orthoInput', async ({
 		page,
 	}) => {
 		const errors = watchErrors(page);

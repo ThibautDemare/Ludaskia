@@ -74,3 +74,116 @@ test('jouer une liste de verbe : la phrase à trou s’affiche', async ({ page }
 	await expect(page.locator('.ortho-contexte').first()).toContainText('pomme');
 	expect(errors).toEqual([]);
 });
+
+/* ============================================================
+   #702, critères 1-2 : cibles verbe absentes de « Relire mes mots » (#261).
+   `motsDeLecon` (core/orthographe/lessons.ts), utilisé par la relecture,
+   ne résout que `liste.motIds` — les cibles verbe sont matérialisées À PART
+   dans la banque (id `v:<infinitif>#<temps>#<personne>`, cf.
+   `materialiserVerbes`/`expanseVerbe`, core/orthographe/verbes.ts) et n'y
+   figurent jamais. On seed directement une liste dont les cibles sont DÉJÀ
+   matérialisées (l'état exact après un premier lancement réel du parcours),
+   sans repasser par la résolution LEFFF (asynchrone, hors sujet ici).
+   « je mange » / « il mange » (présent, personnes 0 et 2) sont homophones :
+   exactement le cas que le critère 2 doit garder distinguable. ============================================================ */
+const LESSON_RELECTURE_VERBE = 'l-e2e-relecture-verbe';
+const SEED_RELECTURE_VERBE = {
+	banque: {
+		w1: {
+			id: 'w1',
+			mot: 'chat',
+			commeDans: 'chat noir',
+			entourage: [],
+			atelierFait: true,
+			validation: { motCache: false, tuiles: false, dictee: false },
+			revision: { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null },
+			origine: 'liste',
+		},
+		'v:manger#present#0': {
+			id: 'v:manger#present#0',
+			mot: 'mange',
+			contexte: { avant: 'je ', apres: ' une pomme' },
+			entourage: [],
+			atelierFait: false,
+			validation: { motCache: false, tuiles: false, dictee: false },
+			revision: { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null },
+			origine: 'verbe',
+		},
+		'v:manger#present#2': {
+			id: 'v:manger#present#2',
+			mot: 'mange',
+			contexte: { avant: 'il ', apres: ' une pomme' },
+			entourage: [],
+			atelierFait: false,
+			validation: { motCache: false, tuiles: false, dictee: false },
+			revision: { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null },
+			origine: 'verbe',
+		},
+	},
+	listes: [
+		{
+			id: LESSON_RELECTURE_VERBE,
+			label: 'Relecture verbe',
+			motIds: ['w1'],
+			verbes: [
+				{
+					kind: 'verbe',
+					infinitif: 'manger',
+					pronoms: [0, 2],
+					temps: ['present'],
+					complement: 'une pomme',
+				},
+			],
+			createdAt: 1,
+			updatedAt: 1,
+		},
+	],
+	motIdParForme: { chat: 'w1' },
+};
+
+async function seedRelectureVerbe(page: import('@playwright/test').Page): Promise<void> {
+	await page.addInitScript((seed) => {
+		localStorage.setItem('e2e/ludaskia_ortho', JSON.stringify(seed));
+	}, SEED_RELECTURE_VERBE);
+}
+
+test('critère 1 (#702) : « Relire mes mots » affiche une carte par cible verbe, en plus des mots simples', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await seedRelectureVerbe(page);
+	await gotoHash(page, 'ortho-revoir-' + LESSON_RELECTURE_VERBE);
+
+	// 1 mot classique + 2 cibles verbe (je/il « mange ») déjà matérialisées en banque.
+	await expect(page.locator('.relecture-carte')).toHaveCount(3);
+	// Les 2 cartes verbe portent la phrase de contexte…
+	await expect(page.locator('.relecture-carte .ortho-contexte')).toHaveCount(2);
+	// … le mot classique, lui, garde son « comme dans » et n'a pas de contexte.
+	await expect(page.locator('.relecture-carte .relecture-comme')).toHaveCount(1);
+
+	expect(errors).toEqual([]);
+});
+
+test('critère 2 (#702) : la carte d’une cible verbe montre la phrase complète, deux homophones restent distinguables', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await seedRelectureVerbe(page);
+	await gotoHash(page, 'ortho-revoir-' + LESSON_RELECTURE_VERBE);
+
+	const contextes = page.locator('.relecture-carte .ortho-contexte');
+	await expect(contextes).toHaveCount(2);
+	// La forme conjuguée est bien affichée RÉVÉLÉE (pas le trou vide) dans les 2 cartes.
+	await expect(page.locator('.relecture-carte .ortho-trou.is-rempli')).toHaveCount(2);
+
+	const textes = await contextes.allInnerTexts();
+	// Le complément de la phrase est repris (pas juste la forme seule)…
+	for (const t of textes) expect(t).toContain('pomme');
+	// … et les deux cibles homophones (« je mange » / « il mange ») restent distinguables :
+	// la phrase de contexte diffère même si la forme jouée est identique.
+	expect(textes.some((t) => t.includes('je'))).toBe(true);
+	expect(textes.some((t) => t.includes('il'))).toBe(true);
+	expect(textes[0]).not.toEqual(textes[1]);
+
+	expect(errors).toEqual([]);
+});

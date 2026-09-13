@@ -1334,6 +1334,16 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
     partagé par `ortho-runner.ts` et `revision.ts` ; avant, le parcours écrivait « Mot à
     écrire sous la dictée » pour les trois tâches, si bien qu'une erreur commise sur les
     TUILES se lisait comme une dictée dans le tableau du parent.
+- **Suite de #702** (trois frictions clavier remontées d'une séance de dictée réelle),
+  jouées pour de vrai sur les deux hôtes par `e2e/ortho-clavier-focus.spec.ts` :
+  - `renderMotCache` pose le focus sur « Cacher et écrire → » **au montage** : Entrée
+    déclenche la marche sans souris, dans le parcours comme sur la carte de révision.
+  - le champ de saisie **reprend le focus** après un clic sur « Écouter »/« Écouter la
+    phrase » et après la lecture automatique d'arrivée en dictée — écouter n'est plus
+    un aller simple, c'est le préalable à écrire.
+  - en mot caché, « Écouter » ne rend la main au champ que si la zone de saisie est
+    **visible** : tant que le mot est affiché, elle est masquée, et y poser le focus
+    ferait taper l'enfant dans un champ qu'il ne voit pas.
 
 ## Étayage de la notion (#490)
 

@@ -252,13 +252,18 @@ des **temps** (présent en v1, UI prête pour d'autres), + un **complément** fa
   couple (pronom × temps) — id namespacé `v:<clé>#<temps>#<personne>`, **jamais**
   indexé par forme (les homophones *je/il* « mange » restent distincts ; pas de
   collision avec la banque de mots). La cible porte un `contexte { avant, apres }`
-  (« il … une pomme ») affiché en **phrase à trou** dans les 4 activités ; le TTS lit
+  (« il … une pomme ») affiché en **phrase à trou** dans les 4 activités —
+  **révélée** dans la page de relecture (#702, voir plus bas) ; le TTS lit
   la **phrase complète** (lève l'ambiguïté phonétique /mɑ̃ʒe/). La cible se rejoue
   comme un mot (atelier → tuiles → mot caché → dictée), et persiste sa progression.
 - **Réponse** = la forme conjuguée seule (`mange`) ; le contexte n'est jamais comparé.
+- Un verbe à N couples compte pour N cibles, y compris en **relecture** (`nbMots`,
+  #702) — mais seulement pour les cibles déjà **matérialisées** en banque (liste
+  déjà lancée au moins une fois) : une cible jamais jouée reste absente, faute de
+  forme conjuguée sans LEFFF.
 - **Limites connues** : complément **fixe** à travers les personnes (peut sonner
-  étrange avec *nous/vous*) ; un verbe à N couples compte pour N cibles (relecture,
-  `nbMots`). Hors v1 : autres temps, phase de découverte du paradigme.
+  étrange avec *nous/vous*). Hors v1 : autres temps, phase de découverte du
+  paradigme.
 
 #### Bibliothèque LEFFF (build-only + lookup paresseux)
 
@@ -625,8 +630,15 @@ l'atelier). Sa valeur pédagogique est la **mémoire visuelle** des pièges, en
 
 - **Pas un exercice** : aucune saisie, aucune vérification, **aucun XP, aucune
   étoile**, pas de chrono ni de confettis. La relecture seule **ne persiste rien**
-  (`motsDeLecon` matérialise les prédéfinis en mémoire mais on **ne sauvegarde
-  pas** au simple affichage).
+  (`motsDeLeconAvecVerbes` matérialise les prédéfinis en mémoire mais on **ne
+  sauvegarde pas** au simple affichage).
+- **Cibles verbe comprises** (#702) : une liste avec des verbes (#261) montre
+  aussi les couples pronom × temps déjà **dictés au moins une fois** —
+  `motsDeLeconAvecVerbes` complète `motsDeLecon` avec les cibles verbe déjà
+  matérialisées en banque (`idsCiblesVerbes`, lecture synchrone et sans LEFFF ;
+  une cible jamais lancée n'apparaît donc pas). La carte y montre la **phrase de
+  contexte révélée** (même balisage que dans les 4 activités), à la place du
+  « comme dans … » d'un mot classique.
 - **Deux entrées, organisées autour d'un ENSEMBLE de mots** (#618) — la page ne
   s'organise plus autour d'un `lessonId` unique, car une sélection peut traverser
   plusieurs listes :

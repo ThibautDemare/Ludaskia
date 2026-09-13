@@ -299,3 +299,31 @@ deux sous-comptes au moment précis où ils doivent se distinguer.
 Le vocabulaire INTERNE, lui, garde « contrôle » (`REVISION_CONTROLE_ACQUIS`,
 `estDuControle`, `enControle`) : c'est le mot de l'issue et du domaine, il ne s'affiche
 nulle part, et le renommer éloignerait le code de son cadrage.
+
+## Un libellé qui distingue deux éléments jumeaux le fait avec un mot, pas avec de la ponctuation (#702)
+
+Un `aria-label` (et son `title`) est **entendu** avant d'être lu : un lecteur d'écran
+n'énonce ni guillemets ni parenthèses, il n'en fait au mieux qu'une pause. Dès qu'un
+libellé doit désigner un élément parmi plusieurs **jumeaux**, la distinction doit donc
+tenir à un marqueur **verbal**.
+
+Cas posé par #702 : la page « Je relis mes mots » affiche une carte par cible verbe, et un
+parent qui demande « manger, présent, je et il » obtient deux cartes portant la même forme
+« mange », séparées par leur seule phrase. Les deux crayons de correction s'appelaient donc
+« Corriger les pièges de mange » — identiques, alors que `Tab` ne s'arrête que sur eux (ni
+le mot ni la phrase ne sont focalisables) et qu'une liste de boutons de lecteur d'écran les
+énumère hors de tout contexte visuel. Retenu : **« Corriger les pièges de « mange » dans la
+phrase « il mange une pomme » »**, avec les guillemets gardés à l'écrit (le `title` visuel
+en profite) mais sans rien leur confier : « dans la phrase » porte seul la transition.
+
+Écartés, tous muets une fois la ponctuation tue : « … de mange, dans « il mange une
+pomme » » (la virgule ne sépare plus rien à l'oreille), « … de mange (il mange une
+pomme) » (« mange il mange une pomme »), et « … du verbe de « il mange une pomme » », qui
+cesse de nommer le mot cible et oblige à écouter toute la phrase avant de savoir de quoi
+on parle. La redondance mange/mange est assumée : c'est elle qui lève l'ambiguïté.
+
+Un mot classique n'a pas de phrase et reste au patron court (« Corriger les pièges de
+aujourd'hui ») : le patron long n'est qu'une extension pour la cible qui en a besoin.
+Remontée `redacteur-contenu-francais` sur alerte `relecteur-accessibilite` ; le versant
+mécanisable — deux cartes de même forme ont des noms accessibles distincts — est tenu par
+un test.

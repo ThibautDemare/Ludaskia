@@ -232,6 +232,25 @@ validation à vide. **Non automatisable** pour la relecture effective par une te
 d'assistance — un test en jsdom donne un faux vert, jsdom ne reproduisant pas le
 focus-on-click natif ; à vérifier au lecteur d'écran réel.
 
+**Checklist — focus d'arrivée posé sur un bouton plutôt que sur le contenu à lire.**
+Depuis #702, le mot caché (`renderMotCache`, `ui/ortho-taches.ts`) donne le focus à
+« Cacher et écrire → » **au montage**, pour que la touche Entrée suffise à enchaîner. Un
+lecteur d'écran n'annonce alors que ce bouton, en sautant la consigne (« Regarde bien ce
+mot… ») et le mot affiché. Ce n'est **pas** une régression — avant, le focus retombait sur
+`body` et rien n'était annoncé du tout — et le bouton « Écouter le mot » reste atteignable
+en `Maj+Tab` avant lui. Mais le geste que ce patron encourage (Entrée immédiate) incite
+précisément à sauter l'étape dont dépend, pour connaître le mot, qui ne le voit pas. **Non
+automatisable** : Playwright et jsdom mesurent le focus DOM, jamais ce qui est vocalisé —
+à vérifier au lecteur d'écran réel.
+
+**Checklist — lecture TTS automatique et annonce de focus dans le même tick.** Toujours
+#702 : la dictée (`renderDictee`) déclenche son énoncé à l'arrivée **et** place désormais
+le focus dans le champ de saisie. Les deux partent au même tick, donc la synthèse de
+l'application (Web Speech) et celle du lecteur d'écran, qui annonce le champ focalisé,
+peuvent se chevaucher sur le même canal audio — un enfant qui dépend du TTS pourrait
+n'entendre ni l'un ni l'autre. **Non mesurable en CI** (dépend du couple
+navigateur/lecteur d'écran) : à vérifier au lecteur d'écran réel, voix active.
+
 *Rejet écrit, pour ne pas le re-remonter :* `aria-describedby="fb"` est posé **en
 permanence** sur le champ et sur le bouton de validation des tuiles, donc un refocus
 ultérieur relit le message encore affiché même sans nouvelle validation. Accepté tel quel :

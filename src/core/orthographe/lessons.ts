@@ -149,7 +149,13 @@ export function indexPredef(state: OrthoState): Map<string, { id: string; label:
 
 /** Résout les mots d'une leçon (liste du profil OU leçon prédéfinie).
     Une leçon prédéfinie est matérialisée dans la banque au passage
-    (l'appelant doit sauvegarder ensuite). Renvoie [] si l'id est inconnu. */
+    (l'appelant doit sauvegarder ensuite). Renvoie [] si l'id est inconnu.
+
+    NE REND PAS les cibles verbe (#261), qui ne sont pas dans `motIds` : un appelant qui
+    veut TOUT ce qu'une liste fait travailler prend `motsDeLeconAvecVerbes` (ci-dessous).
+    Ce pointeur n'est pas décoratif — c'est faute de l'avoir que la page de relecture est
+    restée muette sur les verbes (#702) ; le nom le plus court est aussi celui qu'on trouve
+    en premier. */
 export function motsDeLecon(state: OrthoState, id: string): MotOrtho[] {
 	const liste = getListe(state, id);
 	if (liste) return motsDeListe(state, liste);

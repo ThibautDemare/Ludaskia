@@ -161,16 +161,23 @@ complément de `prefers-reduced-motion`.
 Une **étagère de jeux** de pur loisir, débloquée au fil de la montée de niveau mais
 **hors de l'économie de jeu** : jouer ne rapporte **rien** (ni XP, ni étoile, ni
 médaille, ni trophée) et ne coûte rien non plus. Travailler n'achète pas de temps de
-jeu, il ouvre des jeux **nouveaux** — l'inverse aurait rouvert un péage. Cinq jeux
+jeu, il ouvre des jeux **nouveaux** — l'inverse aurait rouvert un péage. Six jeux
 livrés sur un catalogue prévu pour 18 (`core/jeux/catalogue.ts`) : « Le mot caché »
 (un Motus d'orthographe lexicale, jeu-**compétence** — la compétence scolaire EST
 la mécanique), **2048**, le **Sudoku des formes** (#666) et les **Mots à caser**
-(#664), ces trois-là jeux-**refuge** sans lien au programme, et de nouveau une
-**compétence** avec **Mots croisés** (#665, « retrouver un mot à partir de sa
-définition »). Le sudoku a posé le **moteur de grille à contraintes**
-(`core/jeux/grille-contraintes.ts`) que réutilisera le calcudoku de #667 ; les
-mots casés ont posé le **moteur de grille de mots** (`core/jeux/grille-mots.ts`),
-que les mots croisés ont repris pour sa seule GÉOMÉTRIE et son REMPLISSAGE — pas
+(#664), ces trois-là jeux-**refuge** sans lien au programme, et deux jeux-
+**compétence** de plus : **Mots croisés** (#665, « retrouver un mot à partir de
+sa définition ») et **Cages à nombres** (#667) — un calcudoku 4×4, **premier
+jeu de mathématiques de l'étagère**, dont la compétence encadrant (« sommes,
+différences et tables de multiplication ») reste, comme pour les deux autres
+jeux-compétence, invisible à l'enfant. Le sudoku a posé le **moteur de grille à
+contraintes** (`core/jeux/grille-contraintes.ts`), que le calcudoku a réutilisé
+SANS qu'une ligne du moteur ne bouge — la cage s'y ajoute comme une
+`Contrainte` de plus, promesse TENUE et gardée par une empreinte de fichier, à
+la différence de la promesse équivalente que #664 avait faite à #665 (cf.
+[Logique pure](core.md)). Les mots casés ont posé le **moteur de grille de
+mots** (`core/jeux/grille-mots.ts`), que les mots croisés ont repris pour sa
+seule GÉOMÉTRIE et son REMPLISSAGE — pas
 pour son état de grille, où un mot ENTIER se pose par emplacement (une case
 pouvant réclamer deux lettres si deux mots posés se contredisent) : un modèle qui
 ne convient qu'à un jeu où l'enfant pose des mots déjà écrits, pas où il tape

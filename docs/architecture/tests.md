@@ -598,6 +598,18 @@ tous deux repérés en relecture d'accessibilité.
   sans quoi la table `PAIRES_GRAND_TEXTE` pourrait dériver vers un plancher de
   taille non tenu, en silence.
 
+**Ce que #667 y ajoute** : la première fois que `SOCLE` compose autre chose que
+la racine de `base.scss`. Le calcudoku déclare trois tokens de SENS en racine
+dans sa PROPRE feuille (`--calcudoku-somme`, `--calcudoku-diff`,
+`--calcudoku-produit`, sur le modèle des `--cat-*`) plutôt que dans
+`base.scss`, parce qu'ils doivent rester identiques sur les six thèmes — un
+enfant qui change de thème ne doit pas réapprendre que le bleu dit
+« addition ». `SOCLE` fusionne donc désormais la racine de `base.scss` et
+celle de `jeu-calcudoku.scss`, pour que chaque thème hérite de la triade.
+Neuf couples nouveaux (les trois teintes × les trois surfaces où le trait de
+cage peut apparaître), 54 cas sur les six thèmes, zéro échec, pire cas 3,04:1
+(`--calcudoku-diff` sur l'`--accent-soft` de Fruit rouge).
+
 **La formule vit dans `tools/contrast/wcag.js`**, partagé avec l'outil interactif
 `tools/contrast/contrast.mjs` (qui n'en est plus que l'habillage CLI). Celui qu'on lance pour
 **choisir** une couleur et celui qui fait **échouer** `npm test` mesurent la même chose par

@@ -361,3 +361,16 @@ distinctifs (`sûr`, `dû`, `mûr`, `jeûne`) restent, eux, obligatoires.
 Après « où », le `l'` euphonique est **facultatif** en français, donc les deux
 formes sont correctes. Le dépôt écrit **« où l'on »**, déjà majoritaire : une
 banque lue d'affilée n'a pas à hésiter entre les deux.
+
+## Une remontée écartée sur le calcudoku (#667)
+
+Consignée pour que la prochaine relecture ne la re-remonte pas.
+
+- **Le mot « cage ».** Signalé comme un terme pouvant inquiéter un enfant de
+  8 ans. **Gardé** : c'est le terme standard du genre en français, vérifié sur
+  les règles publiées du calcudoku, et à cet âge il évoque d'abord une cage à
+  hamster ou une cage de but, pas un enfermement. Il n'est de toute façon
+  jamais lâché seul : la règle du jeu et la zone de phrase (`phraseCage`,
+  `ui/jeu-calcudoku.ts`) le définissent en situation dès le premier appui —
+  même parti pris que « Sudoku » (cf. « Deux remontées écartées sur le sudoku »
+  ci-dessus), un jeu peut enseigner son propre vocabulaire.

@@ -215,12 +215,12 @@ toute première grille, un cas-pivot d'exemple servi une seule fois). Deux et
 pas trois : le jeu n'a qu'une seule taille, donc aucune préférence de taille à
 retenir, là où le sudoku en garde une. Bornage à la LECTURE, même logique que
 les jeux à grille ci-dessus : forme, bornes des valeurs, cohérence
-énoncé/état courant, et conformité des cages (partition CONTIGUË de 2 à 4
-cases, jamais de division, différence et produit à deux cases seulement) —
-rien de tout cela ne revient ; une grille déjà terminée non plus. Ne va
-délibérément pas jusqu'à revérifier que l'énoncé stocké a encore une solution
-unique : il faudrait rejouer l'oracle du tirage à chaque lecture de stockage,
-ce qu'aucun critère ne demande.
+énoncé/état courant, conformité des cages (partition CONTIGUË de 2 à 4
+cases, jamais de division, différence et produit à deux cases seulement) et
+— depuis l'arbitrage du 2026-09-14, en symétrie avec le sudoku — un énoncé
+qui n'est plus finissable par déduction élémentaire ; rien de tout cela ne
+revient ; une grille déjà terminée non plus. Raison et détail du contrôle de
+résolubilité : [Logique pure](core.md).
 
 Les réglages associés vivent dans `ProfilePrefs` (`sansJeux`,
 `sansInvitationJeux`, `jeuxPlafondMinutes`, `sansAidesJeux`), donc dans

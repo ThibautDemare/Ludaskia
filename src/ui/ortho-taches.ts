@@ -97,8 +97,12 @@ export function contexteHTML(word: MotOrtho, reveal = false): SafeHtml {
 	return html`<p class="ortho-contexte" lang="fr">${avant}${creux}${apres}</p>`;
 }
 
-/** Phrase complète lue par le TTS pour une cible verbe : « il mange une pomme ». */
-function phraseVerbe(word: MotOrtho): string {
+/** Phrase complète d'une cible verbe : « il mange une pomme ». Lue par le TTS, et servie
+    telle quelle à qui doit DÉSIGNER la cible sans ambiguïté — deux cibles homophones (je/il
+    « mange ») n'ont que leur phrase pour se distinguer (#702, `ui/ortho-revoir.ts`). Un seul
+    point de composition : trois façons de recoller `avant + mot + apres` finiraient par ne
+    plus dire la même chose. */
+export function phraseVerbe(word: MotOrtho): string {
 	const c = word.contexte!;
 	return `${c.avant}${word.mot}${c.apres}`;
 }

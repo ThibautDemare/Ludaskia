@@ -1,0 +1,40 @@
+/* Mixins partagés par les feuilles des jeux (#666, #667).
+
+   PREMIER partiel du dépôt, d'où le souligné qui le préfixe : c'est la convention
+   Sass pour un fichier qui n'est PAS une feuille à part entière. Il n'est donc
+   jamais importé depuis `src/main.ts` comme les autres — une feuille de jeu le
+   charge par une directive Sass, et seul ce qu'elle inclut arrive dans le CSS.
+
+   Ce qui a le droit d'entrer ici : ce qui porte la MÊME règle d'accessibilité dans
+   plusieurs jeux. Deux habillages qui se ressemblent sans partager leur raison n'y
+   ont rien à faire : ils divergeraient un jour légitimement, et un mixin les
+   tiendrait ensemble à tort. */
+
+@mixin trame-signalement($hauteur-bande) {
+	/* La trame de hachures du signalement : le SECOND canal, celui qui n'est pas la
+	   couleur. Une case signalée prend le fond `--warn-bg` ET cette trame, parce
+	   qu'une trame ne dépend pas de la teinte et survit donc à un œil deutan, là où
+	   le fond seul ne survit à rien.
+
+	   Pourquoi `--warn` plein plutôt que `--warn-bd` : mesuré, 3,84:1 sur `--warn-bg`
+	   en thème clair et 7,32:1 en Nuit, contre 1,28:1 pour `--warn-bd`. Un second
+	   canal invisible est pire qu'une absence, puisque personne ne le cherche.
+
+	   Pourquoi une BANDE au pied de la case et pas toute sa surface : le contenu de
+	   la case (chiffre, lettre, silhouette) se dessine par-dessus le fond, et une
+	   hachure qui passerait derrière lui le rendrait illisible — or le lire est tout
+	   l'objet du jeu. La HAUTEUR de cette bande reste à la charge de l'appelant :
+	   elle dépend de ce que le jeu pose dans la case, et c'est la seule chose ici qui
+	   ne soit pas commune. Le reste — angle, épaisseur, teinte — est justement ce
+	   qu'on ne veut plus voir réajusté dans une feuille sur deux (#576). */
+	background-image: repeating-linear-gradient(
+		135deg,
+		transparent 0,
+		transparent 4px,
+		var(--warn) 4px,
+		var(--warn) 7px
+	);
+	background-size: 100% $hauteur-bande;
+	background-position: bottom center;
+	background-repeat: no-repeat;
+}

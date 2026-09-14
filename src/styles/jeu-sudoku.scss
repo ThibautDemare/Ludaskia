@@ -38,6 +38,8 @@
    La case choisie porte un contour ÉPAIS, la forme choisie un état `aria-pressed`
    qui inverse ses surfaces. Deux canaux à chaque fois. */
 
+@use './mixins-jeux' as jeux;
+
 .sudoku {
 	display: flex;
 	flex-direction: column;
@@ -209,22 +211,15 @@
    de hachures qui survit à un œil deutan. */
 .sudoku-case[data-conflit] {
 	background-color: var(--warn-bg);
-	/* La trame occupe une BANDE au pied de la case, pas toute sa surface. Mesuré
-	   aussi : la silhouette se dessine par-dessus le fond, donc là où une hachure
-	   passerait derrière elle le contraste tomberait à 1,16-1,37:1 selon le thème,
-	   et la forme se ferait hacher par des bandes illisibles — or la reconnaître
-	   est tout l'objet du jeu. La silhouette fait 62 % de la case et reste centrée,
-	   donc elle s'arrête à 81 % de la hauteur : la bande commence en dessous. */
-	background-image: repeating-linear-gradient(
-		135deg,
-		transparent 0,
-		transparent 4px,
-		var(--warn) 4px,
-		var(--warn) 7px
-	);
-	background-size: 100% 16%;
-	background-position: bottom center;
-	background-repeat: no-repeat;
+	/* 16 % de la hauteur, mesuré : la silhouette fait 62 % de la case et reste
+	   centrée, donc elle s'arrête à 81 % de la hauteur et la bande commence en
+	   dessous. Là où une hachure passerait derrière elle, le contraste tomberait à
+	   1,16-1,37:1 selon le thème et la forme se ferait hacher par des bandes
+	   illisibles — or la reconnaître est tout l'objet du jeu. Le reste de la trame
+	   est commun aux jeux de grille et vit dans `_mixins-jeux.scss`, pour qu'un
+	   réajustement d'angle ou de teinte ne se fasse pas dans une seule des feuilles
+	   qui l'emploient. */
+	@include jeux.trame-signalement(16%);
 	box-shadow:
 		inset 0 0 0 1px var(--line),
 		inset 0 0 0 3px var(--warn);

@@ -69,12 +69,21 @@ import { enregistrerJeu, type RunnerJeu } from './jeux-ecran';
 /** La RÈGLE DU JEU, jamais « la consigne » : ce mot appartient au registre de
     l'exercice et contribue à faire lire le jeu comme du travail déguisé.
 
-    Une seule phrase, et un verbe conjugué en tête : à une fluence d'environ
-    90 mots par minute en CE2, un pavé de règles coûte cher avant même de jouer.
-    Le mot « cage » y est employé sans être défini, et c'est volontaire : la zone
-    de phrase le définit en situation, dès le premier appui. */
+    DEUX phrases courtes, chacune ouverte par un verbe conjugué, et non une seule
+    à subordonnée : la contrainte de ligne-colonne et celle de cage sont de
+    natures différentes, et les empiler faisait 21 mots d'un trait — à une
+    fluence d'environ 90 mots par minute en CE2, cela coûte cher avant même de
+    jouer. Le mot « cage » y est employé sans être défini, et c'est volontaire :
+    la zone de phrase le définit en situation, dès le premier appui. */
 const REGLE =
-	'Place les nombres de 1 à 4 une seule fois par ligne et par colonne, en respectant l’objectif de chaque cage.';
+	'Place les nombres de 1 à 4 une seule fois par ligne et par colonne. Respecte aussi l’objectif de chaque cage.';
+
+/** Le refus d'un appui sur un nombre alors qu'aucune case n'est choisie. Il
+    s'affiche dans la ZONE DE PHRASE, qui est visible : le dire seulement dans la
+    zone `sr-only` laissait un enfant voyant, ou un utilisateur clavier sans
+    lecteur d'écran, appuyer sans rien voir bouger — ce qui se lit comme une
+    application cassée. */
+const REFUS_SANS_CASE = 'Touche d’abord une case.';
 
 /** Le panneau de panne (critère 7). `tirerGrille` rend `null` quand son budget
     d'essais est épuisé — l'événement est d'une probabilité dérisoire, mais une
@@ -91,6 +100,44 @@ const PANNE_TEXTE = 'Ce n’est pas de ta faute. Touche le bouton pour réessaye
     et la couleur porte le CONTOUR, en renfort du symbole et jamais seule. */
 function etiquetteHTML(c: Cage): SafeHtml {
 	return html`<span class="calcudoku-etiquette" aria-hidden="true">${libelleCage(c)}</span>`;
+}
+
+/** L'objectif de la cage EN MOTS, pour le libellé accessible d'une case.
+
+    Jamais le glyphe : `libelleCage` rend « 3↔ », qui se prononce au mieux « 3 »
+    et au pire « 3 flèche gauche droite ». Or le contour de cage, qu'un enfant
+    voyant embrasse d'un coup d'œil, n'existe pas au lecteur d'écran : sans cet
+    ajout, l'objectif ne s'obtient qu'en ACTIVANT chaque case une à une.
+
+    Forme COURTE, et c'est la contrainte dimensionnante : ce fragment est relu à
+    chacune des seize cases pendant un balayage, là où `phraseCage` est une
+    phrase complète lue une seule fois, à la demande, dans la zone de phrase.
+    Aucun identifiant de cage n'est ajouté : la ligne et la colonne, déjà dans le
+    libellé, situent la case, et deux cages de même objectif ne se confondent pas
+    puisqu'on ne les parcourt jamais qu'une case à la fois.
+
+    L'ÉTENDUE est dite, elle, et ces trois mots ne sont pas négociables : « 7 »
+    ne se répartit pas de la même façon sur deux cases ou sur quatre, et connaître
+    l'objectif sans savoir sur combien de cases le répartir le rend inutilisable.
+    C'est le complément du contour, que le voyant lit d'un regard. Reste un angle
+    mort assumé : le libellé dit COMBIEN de cases, jamais LESQUELLES. Les nommer
+    demanderait une liste de positions dans un fragment relu seize fois. Une cage
+    faisant 2 à 4 cases (critère 10), le pluriel est toujours juste. */
+function objectifParle(c: Cage): string {
+	const etendue = `cage de ${c.cases.length} cases`;
+	if (c.operation === 'somme') return `${etendue} : additionner pour ${c.objectif}`;
+	if (c.operation === 'produit') return `${etendue} : multiplier pour ${c.objectif}`;
+	return `${etendue} : différence de ${c.objectif}`;
+}
+
+/** Le libellé accessible d'une case, en un seul endroit : le balisage initial et
+    le repeint doivent dire exactement la même chose. */
+function libelleCase(p: Partie, index: number, valeur: number): string {
+	const x = index % COTE;
+	const y = Math.floor(index / COTE);
+	const cage = cageDe(p, index);
+	const contenu = valeur === 0 ? 'vide' : String(valeur);
+	return `ligne ${y + 1}, colonne ${x + 1}, ${contenu}${cage ? `, ${objectifParle(cage)}` : ''}`;
 }
 
 /** Une case. Une cage est un polyomino : les deux attributs de bord du sudoku ne
@@ -118,7 +165,7 @@ function caseHTML(p: Partie, index: number): SafeHtml {
 		${traitDroit ? attribut('data-trait-d', '1') : VIDE}
 		${traitBas ? attribut('data-trait-b', '1') : VIDE}
 		${traitGauche ? attribut('data-trait-g', '1') : VIDE}
-		aria-label="ligne ${y + 1}, colonne ${x + 1}, vide"
+		aria-label="${libelleCase(p, index, p.valeurs[index] ?? 0)}"
 	>
 		${cage && cage.cases[0] === index ? etiquetteHTML(cage) : VIDE}
 		<span class="calcudoku-valeur" aria-hidden="true"></span>
@@ -142,7 +189,13 @@ function plateauHTML(): SafeHtml {
 		<button type="button" class="calcudoku-ecouter" id="calcudokuEcouterRegle" ${drapeau('hidden')}>
 			🔊 Écouter la règle
 		</button>
-		<p class="calcudoku-phrase" id="calcudokuPhrase" aria-live="polite" aria-atomic="true">
+		<p
+			class="calcudoku-phrase"
+			id="calcudokuPhrase"
+			role="status"
+			aria-live="polite"
+			aria-atomic="true"
+		>
 			${PHRASE_DEFAUT}
 		</p>
 		<div class="calcudoku-jeu" id="calcudokuJeu">
@@ -238,12 +291,10 @@ function creerRunner(): RunnerJeu {
 		for (const el of racine.querySelectorAll<HTMLElement>('.calcudoku-case')) {
 			const i = Number(el.dataset.index);
 			const v = p.valeurs[i] ?? 0;
-			const x = i % COTE;
-			const y = Math.floor(i / COTE);
 			el.dataset.valeur = String(v);
 			const valeur = el.querySelector<HTMLElement>('.calcudoku-valeur');
 			if (valeur) valeur.textContent = v === 0 ? '' : String(v);
-			el.setAttribute('aria-label', `ligne ${y + 1}, colonne ${x + 1}, ${v === 0 ? 'vide' : v}`);
+			el.setAttribute('aria-label', libelleCase(p, i, v));
 			el.classList.toggle('sel', i === caseChoisie);
 			if (signales.has(i)) el.dataset.conflit = '1';
 			else delete el.dataset.conflit;
@@ -414,7 +465,14 @@ function creerRunner(): RunnerJeu {
 		const bNombre = cible.closest<HTMLElement>('.calcudoku-nombre');
 		if (bNombre) {
 			if (caseChoisie === null) {
-				annoncer('Touche d’abord une case.');
+				/* Le refus s'écrit dans la zone de phrase, VISIBLE, et pas seulement
+				   dans l'annonce `sr-only`. Rien d'utile n'est écrasé : aucune case
+				   n'est choisie, donc la zone n'affiche que `PHRASE_DEFAUT`, et le
+				   prochain `peindre` la rétablit dès que l'enfant touche une case.
+				   Elle porte `role="status"` et `aria-live`, donc le lecteur d'écran
+				   l'entend aussi — doubler avec `annoncer` la ferait lire deux fois. */
+				const zone = dans('#calcudokuPhrase');
+				if (zone) zone.textContent = REFUS_SANS_CASE;
 				return;
 			}
 			jouer(Number(bNombre.dataset.valeur));

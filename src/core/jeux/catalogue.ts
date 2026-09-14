@@ -109,7 +109,7 @@ export const JEUX: JeuDef[] = [
 		label: 'Cages à nombres',
 		icone: '🪟',
 		type: 'C',
-		competence: 'Sommes, différences et tables de multiplication',
+		competence: 'sommes, différences et tables de multiplication',
 	},
 ];
 

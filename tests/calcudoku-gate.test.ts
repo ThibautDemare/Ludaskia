@@ -126,7 +126,7 @@ describe('#667 critères 39 et 57 — la place au catalogue', () => {
 		// Chaque mot est daté : « sommes » et « différences » sont le vocabulaire du
 		// programme, « tables de multiplication » se tient volontairement en deçà de
 		// « facteurs et multiples » — et n'est honnête que si le critère 12 tient.
-		expect(jeu()?.competence).toBe('Sommes, différences et tables de multiplication');
+		expect(jeu()?.competence).toBe('sommes, différences et tables de multiplication');
 	});
 
 	it('critère 57 : ni « déduction » ni « logique » dans la compétence', () => {

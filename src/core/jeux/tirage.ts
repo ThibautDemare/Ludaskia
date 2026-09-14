@@ -11,6 +11,11 @@
    lancement, l'étagère ne compte que DEUX jeux, donc les premiers paliers
    passeront tous par là. C'est le chemin normal, pas l'exception.
 
+   Le mélange vient de `grille-tirage.ts` : ce module en gardait une copie privée
+   (même corps, même garde `Math.min`, à un nom de paramètre près), retirée depuis
+   au profit de la version partagée. C'est là qu'il faut aller lire pourquoi ce
+   Fisher-Yates borne son index.
+
    Ce qui n'est PAS ici, et c'est volontaire : le fait que les jeux non choisis
    restent dans le vivier (critère 6). Cette fonction ne retire rien de rien —
    elle reçoit `dejaChoisis` et rend une sélection. Ne rien muter EST la
@@ -18,6 +23,7 @@
    ============================================================ */
 import type { SchoolLevel } from '../catalog';
 import type { JeuDef } from './catalogue';
+import { melanger } from './grille-tirage';
 import type { Palier } from './paliers';
 
 /** Combien de jeux l'écran de choix propose, quand le vivier le permet. */
@@ -33,18 +39,6 @@ export interface EntreesTirage {
 	dejaChoisis: string[];
 	/** Générateur injecté, dans [0, 1[. */
 	r: () => number;
-}
-
-/* Fisher-Yates sur une COPIE. Le `Math.min` borne un générateur qui rendrait
-   exactement 1 : sans lui, l'index sort du tableau et la permutation perd un
-   élément en silence. */
-function melanger<T>(items: T[], r: () => number): T[] {
-	const a = [...items];
-	for (let i = a.length - 1; i > 0; i--) {
-		const j = Math.min(i, Math.floor(r() * (i + 1)));
-		[a[i], a[j]] = [a[j], a[i]];
-	}
-	return a;
 }
 
 /** Les 3 propositions d'un palier — ou moins, si le vivier ne suit plus.

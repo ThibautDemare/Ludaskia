@@ -1,7 +1,14 @@
 /* ============================================================
-   Ce que le SUDOKU (#666) et le CALCUDOKU (#667) partagent VRAIMENT.
+   Ce que les jeux de GRILLE partagent VRAIMENT.
 
    Trois fonctions, pas une de plus, et c'est le sujet de cet en-tête.
+
+   Le titre disait d'abord « ce que le sudoku et le calcudoku partagent », et il
+   est devenu faux dans la tranche même qui l'écrivait : `melanger` a un
+   troisième client, `tirage.ts`, qui ne tire aucune grille à contraintes. Le
+   titre a donc été élargi plutôt que laissé à mentir, mais c'est le genre de
+   dette de nommage qui se paie plus tard : un lecteur de `tirage.ts` n'ira pas
+   spontanément chercher son Fisher-Yates ici.
 
    ── CE QU'IL Y A DEDANS, ET POURQUOI CES TROIS-LÀ ───────────────────────────
 
@@ -48,6 +55,22 @@
    parce qu'elle parle la même langue que les deux autres — une `Geometrie`, des
    `Zone`s, aucun DOM — et qu'un quatrième module pour une fonction de quinze
    lignes coûterait plus qu'il ne rangerait.
+
+   ── `melanger` A UN TROISIÈME CLIENT, ET UNE COPIE SUBSISTE AILLEURS ────────
+
+   Le tirage des 3 propositions de l'étagère (`tirage.ts`, #661) gardait sa propre
+   copie privée de `melanger` : même corps, même garde `Math.min`, à un nom de
+   paramètre près. Elle a été retirée au profit de celle d'ici. Le titre de ce
+   fichier est donc un peu étroit pour cette fonction-là — les deux autres, elles,
+   restent bien l'affaire du sudoku et du calcudoku.
+
+   Une TROISIÈME copie subsiste, et ce n'est pas un oubli : `grille-mots.ts`
+   EXPORTE son propre `melanger`, qui sert les mots à caser et les mots croisés, et
+   que `tests/aleatoire.test.ts` prend directement pour sujet. La supprimer
+   toucherait deux jeux livrés et déplacerait leurs tests de permutation, là où le
+   rangement qui a écrit ces lignes ne devait faire que des déplacements
+   mécaniquement équivalents. Un `grep melanger` remonte donc encore deux
+   définitions : celle-ci et celle-là. Le travail n'est pas fini, il est borné.
 
    Le moteur, lui, ne bouge pas. `grille-contraintes.ts` est figé par empreinte
    (critère 41 de #667) : ce fichier-ci est un module NEUF posé à côté, jamais un

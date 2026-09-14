@@ -43,6 +43,7 @@ import {
 } from '../core/jeux/deux-mille-quarante-huit';
 import { enregistrerScore, meilleurScore } from '../core/jeux/etat';
 import { enregistrerJeu, type RunnerJeu } from './jeux-ecran';
+import { creerDans } from './jeux-dom';
 
 /* L'id du jeu. Il est REDIT en clair dans l'appel d'enregistrement, tout en bas,
    et ce n'est pas une étourderie : `tests/couverture-e2e-gate.test.ts` (critère 19)
@@ -148,8 +149,7 @@ function creerRunner(): RunnerJeu {
 	let avantNouvellePartie: (() => boolean) | null = null;
 	let depart: { x: number; y: number; pid: number } | null = null;
 
-	const dans = <T extends HTMLElement>(sel: string): T | null =>
-		racine ? racine.querySelector<T>(sel) : null;
+	const dans = creerDans(() => racine);
 
 	const ecrire = (sel: string, texte: string): void => {
 		const el = dans(sel);

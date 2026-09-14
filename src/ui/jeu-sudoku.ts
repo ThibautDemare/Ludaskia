@@ -65,6 +65,7 @@ import {
 import { aidesJeuxActives } from '../core/profiles';
 import { dicteeDisponible, dicterConsigne } from './tts';
 import { enregistrerJeu, type RunnerJeu } from './jeux-ecran';
+import { creerAnnonceur, creerDans } from './jeux-dom';
 
 /* Les silhouettes, pleines et monochromes : elles suivent `currentColor`, donc
    nos tokens (critère 7 — jamais une teinte par forme, ce qui pénaliserait deux
@@ -235,13 +236,9 @@ function creerRunner(): RunnerJeu {
 	   non. */
 	let avantNouvellePartie: (() => boolean) | null = null;
 
-	const dans = <T extends HTMLElement>(sel: string): T | null =>
-		racine ? racine.querySelector<T>(sel) : null;
+	const dans = creerDans(() => racine);
 
-	const annoncer = (texte: string): void => {
-		const el = dans('#sudokuAnnonce');
-		if (el) el.textContent = texte;
-	};
+	const annoncer = creerAnnonceur(() => dans('#sudokuAnnonce'));
 
 	/** Reconstruit grille et palette. Appelé au montage et à chaque changement de
 	    taille — jamais à chaque coup : `peindre` ne fait que déplacer des

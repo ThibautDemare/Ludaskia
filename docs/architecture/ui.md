@@ -1334,16 +1334,18 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
     partagé par `ortho-runner.ts` et `revision.ts` ; avant, le parcours écrivait « Mot à
     écrire sous la dictée » pour les trois tâches, si bien qu'une erreur commise sur les
     TUILES se lisait comme une dictée dans le tableau du parent.
-- **Suite de #702** (trois frictions clavier remontées d'une séance de dictée réelle),
-  jouées pour de vrai sur les deux hôtes par `e2e/ortho-clavier-focus.spec.ts` :
+- **Suite de #702** (frictions clavier remontées d'une séance de dictée réelle), jouées
+  pour de vrai sur les deux hôtes par `e2e/ortho-clavier-focus.spec.ts` :
   - `renderMotCache` pose le focus sur « Cacher et écrire → » **au montage** : Entrée
     déclenche la marche sans souris, dans le parcours comme sur la carte de révision.
-  - le champ de saisie **reprend le focus** après un clic sur « Écouter »/« Écouter la
-    phrase » et après la lecture automatique d'arrivée en dictée — écouter n'est plus
-    un aller simple, c'est le préalable à écrire.
-  - en mot caché, « Écouter » ne rend la main au champ que si la zone de saisie est
-    **visible** : tant que le mot est affiché, elle est masquée, et y poser le focus
-    ferait taper l'enfant dans un champ qu'il ne voit pas.
+    C'était le seul runner à saisie du dépôt à ne pas poser son focus d'arrivée — le
+    sprint, les problèmes et la révision le faisaient déjà.
+  - `renderDictee` pose le sien **dans le champ**, la lecture de l'énoncé s'y déclenchant
+    toute seule : sans geste préalable, l'enfant doit pouvoir écrire.
+  - les trois boutons « Écouter » de l'orthographe passent par
+    `rendreLaMainApresEcoute` (`ui/consigne-tts.ts`, voir ci-dessous) — **aucune**
+    condition propre à l'orthographe : ce que le mot caché doit NE PAS faire tant que le
+    mot est affiché découle de la règle générale.
 
 ## Étayage de la notion (#490)
 
@@ -1597,6 +1599,38 @@ l'oral jusque-là — non par décision, par défaut de câblage).
 - **Consigne de la fiche** : `ExerciseType.consigne` (optionnel) nomme la tâche
   (« Conjugue chaque verbe au présent. ») et remplace le générique « Écris la forme
   correcte. » (`core/build.ts`).
+- **Un bouton « Écouter » rend la main au champ qui avait le focus** (#702,
+  `rendreLaMainApresEcoute`). Écouter n'est pas une fin : sur un écran où l'enfant écrit,
+  c'est le préalable à écrire. Or le navigateur donne le focus au `<button>` dès l'appui,
+  si bien qu'il fallait **recliquer dans le champ après chaque écoute** — sur la fiche,
+  le problème à étapes, le sprint, la révision espacée et la dictée. Relevé sur une
+  séance réelle, où le geste se répète des dizaines de fois.
+  - La règle **ne devine rien** : elle restaure l'élément de saisie qui avait le focus
+    **juste avant le clic**, mémorisé au `pointerdown` (au `click`, le bouton a déjà pris
+    le focus et `activeElement` ne dit plus d'où l'on vient). Aucun champ focalisé avant
+    → rien ne bouge. C'est ce qui permet de la poser sur **tous** les boutons, greffe de
+    consigne comme haut-parleur d'item, sans câblage par appelant : un QCM ou des tuiles
+    n'ont pas à s'en protéger, et sur un écran à plusieurs champs c'est **celui où
+    l'enfant était** qui reprend la main, jamais le premier de la page.
+  - **Exemptée au clavier** (`MouseEvent.detail === 0` sur Entrée/Espace) : qui navigue
+    au clavier vient d'atteindre ce bouton et s'attend à y rester, ne serait-ce que pour
+    réécouter. C'est ce qui distingue ce retour de main d'un vol de focus — il ne sert
+    que le geste tactile ou souris, qui n'a pas de focus à perdre (WCAG 3.2).
+  - Tenue par `e2e/ecouter-rend-la-main.spec.ts` (les quatre écrans, les deux négatifs)
+    et `e2e/ortho-clavier-focus.spec.ts` (les trois marches de l'orthographe).
+
+  *Rejet écrit, pour ne pas le re-remonter :* les champs de réponse naissent en
+  `type="password"` (anti-suggestion des claviers mobiles, `ui/anti-suggestion.ts`) et ne
+  sont démasqués qu'à la **microtâche suivante**, un `MutationObserver` ne se déclenchant
+  jamais pendant le bloc de code qui a inséré le champ. Un focus d'arrivée posé dans ce
+  même bloc atterrit donc sur un champ encore masqué, à rebours de l'invariant que
+  `anti-suggestion.ts` documente (« basculé AVANT son premier focus »). Les **quatre**
+  runners à saisie le font — sprint, problèmes, révision, dictée —, les trois premiers
+  depuis bien avant #702. Écarté en connaissance de cause : un `focus()` programmé sans
+  geste n'ouvre pas le clavier mobile, la bascule est acquise avant que l'enfant ne touche
+  l'écran, et les chemins déclenchés par un vrai geste agissent sur un champ rendu
+  longtemps auparavant, donc déjà démasqué. Rien à corriger tant qu'un appareil réel ne
+  montre pas le contraire.
 
 **Règle : un bloc inséré AVANT un bouton auto-focalisé porte `role="status"`.** Le motif
 revient dans tout le dépôt — le lien d'étayage sous un verdict (#490), le rappel des mots

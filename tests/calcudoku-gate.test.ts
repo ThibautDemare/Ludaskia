@@ -30,7 +30,9 @@
    par un fichier.
    ============================================================ */
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join } from 'node:path';
 import { JEUX, type JeuDef } from '../src/core/jeux/catalogue';
 import { COTE, type Cage, type Operation, type Partie } from '../src/core/jeux/calcudoku';
 import { partieEnCours, sauverPartie } from '../src/core/jeux/calcudoku-etat';
@@ -497,8 +499,99 @@ describe('#667 critère 52 — aucun indice, aucun badge de performance', () => 
 	});
 });
 
+/* ── LE REGISTRE DES CORRECTIONS (critère 26) ────────────────────────────── */
+
+/* POURQUOI CE CONTRÔLE NE GREPE PAS UN SEUL FICHIER.
+
+   La version précédente lisait `jeu-calcudoku.scss`, et rien d'autre. Tant que la
+   feuille était seule, cela suffisait ; elle ne l'est plus. Le dépôt a désormais
+   un partiel (`_mixins-jeux.scss`) que les feuilles de jeux tirent par `@use`, et
+   c'est lui qui porte la trame du signalement — donc EXACTEMENT le rendu que ce
+   critère encadre. Un jeton de correction déménagé d'un cran serait sorti du
+   filet sans que rien ne rougisse.
+
+   On suit donc les `@use` de la feuille, transitivement. Nommer le partiel en dur
+   à côté d'elle aurait été plus court, mais aurait seulement déplacé le trou d'un
+   cran : le partiel SUIVANT y échapperait à son tour, et personne ne le saurait.
+   Ce n'est pas pour autant un résolveur Sass : pas d'`index`, pas de chemin de
+   recherche, pas de `node_modules`. Juste la convention du souligné, relative au
+   dossier de l'importateur — ce dont ce dépôt a besoin, et rien de plus.
+
+   LA DÉCISION QUI COMPTE : un `@use` qu'on ne sait pas résoudre est un ÉCHEC
+   NOMMÉ, pas un silence. Hausser les épaules devant ce qu'on ne sait pas lire
+   rendrait le gate vert précisément le jour où il cesse de voir quelque chose,
+   c'est-à-dire le défaut qu'on corrige ici. Seuls les modules internes de Sass
+   (`sass:math`…) sont écartés, parce qu'ils n'ont pas de fichier du tout.
+
+   On lit le fichier BRUT, commentaires compris, comme le faisait la version
+   précédente : une feuille qui DOCUMENTE l'interdit en le citant fait donc rougir
+   le gate. C'est le prix d'un contrôle de rendu qu'un `/*` mal placé ne désarme
+   pas ; l'interdit se documente en le nommant autrement (« le registre des
+   corrections »). */
+
+/** Les jetons qui appartiennent aux marques de correction d'exercice. Un conflit
+    de calcudoku est transitoire, auto-corrigible et jamais soumis : un enfant qui
+    y verrait la couleur de ses fautes de calcul y lirait un verdict. */
+const JETONS_DE_CORRECTION = [
+	['--ko', /--ko\b/],
+	['.mark.correct', /\.mark\.correct/],
+	['.mark.wrong', /\.mark\.wrong/],
+] as const;
+
+const REFS_USE = /@use\s+['"]([^'"]+)['"]/g;
+
+/** Le chemin en barres obliques, pour que les messages d'échec se lisent pareil
+    sous Windows et ailleurs. */
+const enSlash = (chemin: string): string => chemin.replace(/\\/g, '/');
+
+/** Le fichier visé par une référence `@use`, ou `null` si aucun candidat n'existe
+    sur le disque. Convention Sass : `_nom.scss` d'abord, `nom.scss` ensuite. */
+const fichierDuUse = (importateur: string, ref: string): string | null => {
+	const dossier = join(dirname(importateur), dirname(ref));
+	for (const nom of [`_${basename(ref)}.scss`, `${basename(ref)}.scss`]) {
+		const candidat = join(dossier, nom);
+		if (existsSync(candidat)) return enSlash(candidat);
+	}
+	return null;
+};
+
+/** Tout ce qu'une feuille fait entrer dans le CSS : elle-même, plus la fermeture
+    transitive de ses `@use`. `introuvables` recense ce qu'on n'a pas su suivre —
+    non vide, c'est un échec, pas une note de bas de page. */
+const ceQueChargeLaFeuille = (
+	racine: string,
+): { fichiers: string[]; introuvables: string[]; fautes: string[] } => {
+	const fichiers: string[] = [];
+	const introuvables: string[] = [];
+	const fautes: string[] = [];
+	const vus = new Set<string>();
+	const aLire = [enSlash(racine)];
+	for (let courant = aLire.pop(); courant !== undefined; courant = aLire.pop()) {
+		if (vus.has(courant)) continue;
+		vus.add(courant);
+		const src = lire(courant);
+		if (src === null) {
+			introuvables.push(courant);
+			continue;
+		}
+		fichiers.push(courant);
+		for (const [nom, motif] of JETONS_DE_CORRECTION) {
+			if (motif.test(src)) fautes.push(`${courant} : ${nom}`);
+		}
+		for (const trouve of src.matchAll(REFS_USE)) {
+			const ref = trouve[1] ?? '';
+			/* `sass:math` & consorts : modules internes, aucun fichier à lire. */
+			if (ref.startsWith('sass:')) continue;
+			const cible = fichierDuUse(courant, ref);
+			if (cible === null) introuvables.push(`${courant} → @use '${ref}'`);
+			else aLire.push(cible);
+		}
+	}
+	return { fichiers, introuvables, fautes };
+};
+
 describe('#667 critère 26 — le signalement n’emprunte pas le registre des corrections', () => {
-	it('critère 26 : ni `--ko`, ni `.mark.correct`, ni `.mark.wrong` dans la feuille', () => {
+	it('critère 26 : ni `--ko`, ni `.mark.correct`, ni `.mark.wrong` dans ce que la feuille charge', () => {
 		/* Cas d'échec littéral : « une classe ou un token de la famille des marques
 		   de correction apparaît dans le rendu du jeu ». Le jeu ne corrige pas, il
 		   signale : emprunter le rouge et le vert des exercices ferait porter deux
@@ -511,17 +604,67 @@ describe('#667 critère 26 — le signalement n’emprunte pas le registre des c
 		   critères 30 et 31 (tokens neufs, mesurés sur les six thèmes) relèvent de
 		   `tests/contraste-tokens.test.ts`, qu'il faudra nourrir. */
 		existe(FEUILLE);
-		const src = lire(FEUILLE) ?? '';
-		for (const [nom, motif] of [
-			['--ko', /--ko\b/],
-			['.mark.correct', /\.mark\.correct/],
-			['.mark.wrong', /\.mark\.wrong/],
-		] as const) {
-			expect({ fichier: FEUILLE, interdit: nom, present: motif.test(src) }).toEqual({
-				fichier: FEUILLE,
-				interdit: nom,
-				present: false,
-			});
+		const charge = ceQueChargeLaFeuille(FEUILLE);
+		/* L'exigence POSITIVE, sans quoi l'absence de faute ne prouverait rien : tout
+		   ce que la feuille tire a bien été LU. Volontairement pas « le partiel est
+		   là » — la feuille a le droit de cesser d'en dépendre, pas d'en charger un
+		   qu'on ne regarde pas. */
+		expect({ racine: FEUILLE, introuvables: charge.introuvables }).toEqual({
+			racine: FEUILLE,
+			introuvables: [],
+		});
+		expect({ racine: FEUILLE, fautes: charge.fautes }).toEqual({ racine: FEUILLE, fautes: [] });
+	});
+
+	it('critère 26 : le contrôle MORD — un jeton posé dans un partiel tiré par `@use` est refusé', () => {
+		/* La preuve qu'il attrape, et pas seulement qu'il est vert. Un contrôle qui
+		   n'a jamais rien attrapé est indiscernable d'un contrôle qui ne PEUT rien
+		   attraper — et c'est précisément ce qu'était la version d'avant vis-à-vis du
+		   partiel. On fabrique donc le cas, hors du dépôt : une feuille irréprochable
+		   qui tire un partiel fautif. Si les `@use` n'étaient pas suivis, rien ne
+		   serait signalé. */
+		const dossier = mkdtempSync(join(tmpdir(), 'ludaskia-gate-26-'));
+		try {
+			const feuille = enSlash(join(dossier, 'jeu-faux.scss'));
+			const partiel = enSlash(join(dossier, '_trame-fausse.scss'));
+			writeFileSync(
+				feuille,
+				"@use './trame-fausse' as t;\n.case { background: var(--warn-bg); }\n",
+			);
+			writeFileSync(
+				partiel,
+				'.mark.wrong { color: var(--ko); }\n.mark.correct { color: var(--ok); }\n',
+			);
+			const charge = ceQueChargeLaFeuille(feuille);
+			expect(charge.introuvables).toEqual([]);
+			/* Les trois jetons sont attrapés, et tous imputés au PARTIEL : le message
+			   d'échec envoie donc au fichier à corriger, pas à la feuille racine. */
+			expect([...charge.fautes].sort()).toEqual(
+				[`${partiel} : --ko`, `${partiel} : .mark.correct`, `${partiel} : .mark.wrong`].sort(),
+			);
+		} finally {
+			rmSync(dossier, { recursive: true, force: true });
+		}
+	});
+
+	it('critère 26 : un `@use` qu’on ne sait pas suivre est un échec, un module `sass:` ne l’est pas', () => {
+		/* L'autre moitié de la preuve. Le trou d'origine venait d'un fichier non lu
+		   en silence ; un résolveur qui hausse les épaules devant un `@use` inconnu
+		   rouvrirait le même trou à l'identique. On exige donc qu'il le DISE, en
+		   nommant l'importateur et la référence. Les modules internes de Sass sont la
+		   seule exception, et elle est nommée. */
+		const dossier = mkdtempSync(join(tmpdir(), 'ludaskia-gate-26-'));
+		try {
+			const feuille = enSlash(join(dossier, 'jeu-faux.scss'));
+			writeFileSync(
+				feuille,
+				"@use 'sass:math';\n@use './partiel-absent' as p;\n.case { color: red; }\n",
+			);
+			const charge = ceQueChargeLaFeuille(feuille);
+			expect(charge.introuvables).toEqual([`${feuille} → @use './partiel-absent'`]);
+			expect(charge.fichiers).toEqual([feuille]);
+		} finally {
+			rmSync(dossier, { recursive: true, force: true });
 		}
 	});
 });

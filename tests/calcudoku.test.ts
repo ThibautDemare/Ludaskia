@@ -80,6 +80,7 @@ import {
 	PHRASE_DEFAUT,
 	SYMBOLES,
 	cageDe,
+	caseTutorielle,
 	casesLiees,
 	conflitsCalcudoku,
 	contrainteCages,
@@ -1204,6 +1205,153 @@ describe('#667 critères 32 et 33 — la première grille est un cas-pivot', () 
 		expect(decompositions(1)).toBe(3);
 		expect(decompositions(2)).toBe(2);
 		expect(decompositions(3)).toBe(1);
+	});
+});
+
+/* ── LA CASE PRÉSÉLECTIONNÉE DE LA PREMIÈRE GRILLE ───────────────────────── */
+
+describe('#667 — `caseTutorielle` : la case que la toute première grille présélectionne', () => {
+	/* CE QUE CETTE FONCTION DOIT TENIR, et d'où c'est tiré : elle présélectionne
+	   une case sur la première grille d'un profil, pour que la ligne, la colonne,
+	   la cage et sa phrase soient visibles au montage sans geste à deviner. Trois
+	   exigences en découlent, et aucune ne se lit dans son corps :
+
+	   — la case doit appartenir à une cage de DIFFÉRENCE s'il en existe une de
+	     libre : c'est l'opération la plus piégeuse des trois et celle que la phrase
+	     explique le mieux, donc celle qui vaut la démonstration ;
+	   — à défaut, le choix doit rester DÉTERMINISTE — deux enfants qui ouvrent la
+	     même grille voient la même case, et la case ne bouge pas selon l'ordre dans
+	     lequel les cages se trouvent rangées, qui est un détail de structure ;
+	   — la case doit être MODIFIABLE : présélectionner une case donnée montrerait
+	     une case que l'enfant ne peut pas toucher, et le premier geste proposé
+	     échouerait.
+
+	   LES PARTIES SONT FABRIQUÉES À LA MAIN, et c'est nécessaire : deux des cas
+	   (aucune cage de différence, aucune case libre) n'existent tout simplement pas
+	   parmi les grilles servies — `tirerGrille` donne deux cases sur seize, et la
+	   première grille porte toujours une cage de différence. Le dernier bloc rejoue
+	   donc l'exigence sur des grilles RÉELLEMENT tirées, où elle se vérifie sans
+	   fabrication. */
+
+	/** Six cages contiguës qui partitionnent les seize cases, comme toute grille
+	    servie. Seule l'opération de la cage `[4, 5]` varie d'un cas à l'autre : les
+	    objectifs sont plausibles mais sans portée ici, `caseTutorielle` ne lisant
+	    que l'énoncé et l'opération des cages. */
+	const cagesAvec = (operation: Operation): Cage[] => [
+		{ cases: [0, 1], operation: 'somme', objectif: 5 },
+		{ cases: [2, 3], operation: 'produit', objectif: 6 },
+		{ cases: [4, 5], operation, objectif: 1 },
+		{ cases: [6, 7], operation: 'somme', objectif: 7 },
+		{ cases: [8, 9, 12, 13], operation: 'somme', objectif: 10 },
+		{ cases: [10, 11, 14, 15], operation: 'somme', objectif: 10 },
+	];
+
+	/** Les mêmes cages, dans tous les ordres obtenus par rotation puis miroir.
+	    L'ordre du tableau est un détail de structure : rien de visible ne doit en
+	    dépendre. */
+	const tousLesOrdres = (cages: readonly Cage[]): Cage[][] => {
+		const out: Cage[][] = [];
+		for (let k = 0; k < cages.length; k++) {
+			const tourne = [...cages.slice(k), ...cages.slice(0, k)];
+			out.push(tourne, [...tourne].reverse());
+		}
+		return out;
+	};
+
+	it('une cage de différence l’emporte, même sur une case libre d’index plus petit', () => {
+		/* Cas d'échec littéral : « la première grille présélectionne une case de
+		   cage d'addition alors qu'une cage de différence attendait ». La case 0 est
+		   libre et vient en premier ; c'est pourtant la cage `[4, 5]` qui a la raison
+		   d'être du dispositif. */
+		const p = partie(cagesAvec('difference'), vide());
+		expect(caseTutorielle(p)).toBe(4);
+	});
+
+	it('la case rendue est MODIFIABLE : une case donnée de la cage de différence est passée', () => {
+		// Présélectionner la case 4, pré-remplie, montrerait une case que l'enfant ne
+		// peut pas toucher — le premier geste proposé serait un échec.
+		const p = partie(cagesAvec('difference'), avec([4, 3]));
+		expect(caseTutorielle(p)).toBe(5);
+		expect(estFixe(p, 5), 'la case 5 n’était même pas libre : le cas ne prouve rien').toBe(false);
+		expect(estFixe(p, 4), 'la case 4 n’était pas donnée : le cas ne prouve rien').toBe(true);
+	});
+
+	it('quand la seule cage de différence est entièrement donnée, le repli reprend la main', () => {
+		const p = partie(cagesAvec('difference'), avec([4, 3], [5, 2]));
+		expect(caseTutorielle(p)).toBe(0);
+	});
+
+	it('sans cage de différence, c’est la première case libre en index CROISSANT', () => {
+		/* Cas d'échec littéral : « la case présélectionnée dépend de l'ordre d'une
+		   itération ». Deux grilles identiques doivent montrer la même case. */
+		expect(caseTutorielle(partie(cagesAvec('produit'), vide()))).toBe(0);
+		expect(caseTutorielle(partie(cagesAvec('produit'), avec([0, 1], [1, 2], [2, 3])))).toBe(3);
+		// Les cases données ne sont pas forcément les premières : le repli saute les
+		// trous, il ne s'arrête pas au premier.
+		expect(caseTutorielle(partie(cagesAvec('produit'), avec([0, 1], [2, 3], [3, 4])))).toBe(1);
+	});
+
+	it('le choix ne dépend pas de l’ORDRE dans lequel les cages sont rangées', () => {
+		/* La forme d'indéterminisme la plus facile à écrire sans y penser : parcourir
+		   les cages plutôt que les cases. Elle ne se voit qu'avec DEUX cages de
+		   différence, sans quoi tous les ordres tombent d'accord par accident.
+
+		   Ce test n'impose PAS laquelle des deux est choisie — l'exigence est que la
+		   réponse soit la même partout, libre et dans une cage de différence. */
+		const deuxDifferences: Cage[] = cagesAvec('difference').map((c) =>
+			c.cases.join() === '0,1' ? { ...c, operation: 'difference', objectif: 2 } : c,
+		);
+		const reponses = tousLesOrdres(deuxDifferences).map((cages) =>
+			caseTutorielle(partie(cages, vide())),
+		);
+		expect(new Set(reponses).size, `réponses selon l’ordre : ${reponses.join(', ')}`).toBe(1);
+
+		// Et la réponse, quelle qu'elle soit, tient les deux autres exigences.
+		const reference = partie(deuxDifferences, vide());
+		const decrire = (i: number | null): string =>
+			i === null
+				? 'aucune case'
+				: `${cageDe(reference, i)?.operation}${estFixe(reference, i) ? ' (case donnée)' : ''}`;
+		expect(new Set(reponses.map(decrire))).toEqual(new Set(['difference']));
+
+		// Et le repli aussi : sans cage de différence, tous les ordres rendent 0.
+		const repli = tousLesOrdres(cagesAvec('produit')).map((cages) =>
+			caseTutorielle(partie(cages, avec([0, 1]))),
+		);
+		expect(new Set(repli)).toEqual(new Set([1]));
+	});
+
+	it('aucune case libre : elle rend `null`, et pas une case donnée par défaut', () => {
+		/* Cas DÉFENSIF, inatteignable par `tirerGrille` (deux cases données sur seize
+		   en laissent quatorze) : il ne se teste qu'à la main, et c'est normal. Ce
+		   qu'il garde, c'est qu'un jour où une partie relue du stockage arriverait
+		   pleine, la présélection ne désignerait pas une case intouchable — l'enfant
+		   verrait une case mise en avant sur laquelle rien ne réagit. */
+		expect(caseTutorielle(partie(cagesAvec('difference'), SOL4))).toBeNull();
+		// Même pleine, la grille porte bien une cage de différence : c'est l'absence
+		// de case LIBRE qui décide, pas l'absence de différence.
+		expect(cageDe(partie(cagesAvec('difference'), SOL4), 4)?.operation).toBe('difference');
+	});
+
+	it('sur les premières grilles RÉELLEMENT tirées, elle désigne une case libre d’une cage de différence', () => {
+		/* L'exigence rejouée sans fabrication. Elle est garantie par les critères 32
+		   et 33 : une première grille contient toujours une case ambiguë, libre, que
+		   tranche une cage de DIFFÉRENCE de cible 1 ou 2. Il existe donc toujours une
+		   case libre en cage de différence, et la présélection doit tomber dessus.
+
+		   C'est le seul bloc de ce describe qui parle des grilles que l'enfant verra
+		   vraiment — les fabrications d'au-dessus ne prouvent rien de leur forme. */
+		const fautes = premieres().parties.map((p, n) => {
+			const i = caseTutorielle(p);
+			if (i === null) return `grille ${n} : aucune case présélectionnée`;
+			if (estFixe(p, i)) return `grille ${n} : la case ${i} est une case donnée`;
+			const c = cageOracle(p.cages, i);
+			if (c?.operation !== 'difference') {
+				return `grille ${n} : la case ${i} est en cage « ${c?.operation} »`;
+			}
+			return null;
+		});
+		expect(fautes.filter((f) => f !== null)).toEqual([]);
 	});
 });
 

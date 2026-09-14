@@ -34,6 +34,8 @@
    Rien n'est jamais dit lettre par lettre (critère 26) : le fond porte l'état du
    MOT entier, sur toute sa longueur. */
 
+@use './mixins-jeux' as jeux;
+
 .mx {
 	display: flex;
 	flex-direction: column;
@@ -246,23 +248,16 @@
 	background: var(--accent-soft);
 }
 
-/* Un mot complété qui ne correspond pas à sa définition : fond d'alerte sur
-   toute sa longueur, et trame de hachures en `--warn` (3,84:1 sur `--warn-bg` en
-   thème clair, 7,32:1 en Nuit). La trame est le second canal exigé par le
-   critère 27 ; en `--warn-bd` elle ne vaudrait que 1,28:1, et un canal invisible
-   est pire qu'une absence puisque personne ne le cherche. */
+/* Un mot complété qui ne correspond pas à sa définition : fond d'alerte sur toute
+   sa longueur, et la trame de hachures qui est le second canal exigé par le
+   critère 27. Le choix de la teinte de la trame et la raison de la bande sont
+   communs aux jeux de grille, donc remontés dans `_mixins-jeux.scss` — c'est là
+   qu'on les réajuste, pour que ça ne se fasse pas dans une feuille sur quatre. */
 .mx-case[data-faux] {
 	background-color: var(--warn-bg);
-	background-image: repeating-linear-gradient(
-		135deg,
-		transparent 0,
-		transparent 4px,
-		var(--warn) 4px,
-		var(--warn) 7px
-	);
-	background-size: 100% 18%;
-	background-position: bottom center;
-	background-repeat: no-repeat;
+	/* 18 % de la hauteur : les lettres se dessinent par-dessus le fond et occupent
+	   le centre de la case, donc la bande passe dessous sans les traverser. */
+	@include jeux.trame-signalement(18%);
 }
 
 /* LA case qui recevra la lettre, en dernier pour l'emporter sur l'anneau du mot.

@@ -39,6 +39,8 @@
    donc le nom du token interdit ne s'écrit nulle part ici, pas même pour dire
    qu'on l'évite. */
 
+@use './mixins-jeux' as jeux;
+
 /* Les trois teintes d'opération. Elles se portent sur le CONTOUR, en renfort du
    symbole de l'étiquette (`+`, `↔`, `×`), jamais comme canal unique : un enfant
    daltonien lit l'étiquette, qui reste en encre neutre. */
@@ -277,19 +279,12 @@
 	--anneau: 3;
 	--anneau-teinte: var(--warn);
 	background-color: var(--warn-bg);
-	/* La trame occupe une BANDE au pied de la case, pas toute sa surface : le
-	   chiffre se dessine par-dessus le fond, et des hachures derrière lui le
-	   rendraient illisible — or le lire est tout l'objet du jeu. */
-	background-image: repeating-linear-gradient(
-		135deg,
-		transparent 0,
-		transparent 4px,
-		var(--warn) 4px,
-		var(--warn) 7px
-	);
-	background-size: 100% 16%;
-	background-position: bottom center;
-	background-repeat: no-repeat;
+	/* 16 % de la hauteur : le chiffre se dessine par-dessus le fond et occupe le
+	   centre de la case, donc la bande passe dessous sans le traverser — or le lire
+	   est tout l'objet du jeu. Le reste de la trame est commun aux jeux de grille et
+	   vit dans `_mixins-jeux.scss`, pour qu'un réajustement d'angle ou de teinte ne
+	   se fasse pas dans une seule des feuilles qui l'emploient. */
+	@include jeux.trame-signalement(16%);
 }
 
 /* Signalée ET choisie : le `--warn` l'emporte sur l'accent, et c'est

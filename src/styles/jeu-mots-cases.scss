@@ -42,6 +42,8 @@
    croisement porte la trame et le liseré — donc on voit d'un coup QUELS deux
    mots se disputent, et OÙ. */
 
+@use './mixins-jeux' as jeux;
+
 .mc {
 	display: flex;
 	flex-direction: column;
@@ -239,26 +241,16 @@
 	background: var(--warn-bg);
 }
 
-/* La case du désaccord : liseré plein plus une trame de hachures. La trame est
-   en `--warn` (3,84:1 sur `--warn-bg` en thème clair, 7,32:1 en Nuit) et non en
-   `--warn-bd`, qui n'y vaut que 1,28:1 — un second canal invisible est pire
-   qu'une absence, puisque personne ne le cherche. Mesuré, pas jugé (#666).
-
-   La trame occupe une BANDE au pied de la case et pas toute sa surface : les
-   lettres se dessinent par-dessus, et une hachure qui passerait derrière elles
-   les rendrait illisibles — or les lire est tout l'objet du jeu. */
+/* La case du désaccord : liseré plein PLUS une trame de hachures, mesuré et pas
+   jugé (#666). Le choix de la teinte de la trame et la raison de la bande sont
+   communs aux jeux de grille, donc remontés dans `_mixins-jeux.scss` — c'est là
+   qu'on les réajuste, pour que ça ne se fasse pas dans une feuille sur quatre. */
 .mc-case[data-conflit] {
 	background-color: var(--warn-bg);
-	background-image: repeating-linear-gradient(
-		135deg,
-		transparent 0,
-		transparent 4px,
-		var(--warn) 4px,
-		var(--warn) 7px
-	);
-	background-size: 100% 18%;
-	background-position: bottom center;
-	background-repeat: no-repeat;
+	/* 18 % de la hauteur : les lettres se dessinent par-dessus le fond et occupent
+	   le centre de la case, donc la bande passe dessous sans les traverser — or les
+	   lire est tout l'objet du jeu. */
+	@include jeux.trame-signalement(18%);
 	box-shadow:
 		inset 0 0 0 1px var(--control-line),
 		inset 0 0 0 3px var(--warn);

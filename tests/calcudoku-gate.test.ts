@@ -29,9 +29,18 @@
    le critère 55 (rien d'existant ne change) est tenu par la suite ENTIÈRE, pas
    par un fichier.
    ============================================================ */
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { JEUX, type JeuDef } from '../src/core/jeux/catalogue';
+import { COTE, type Cage, type Operation, type Partie } from '../src/core/jeux/calcudoku';
+import { partieEnCours, sauverPartie } from '../src/core/jeux/calcudoku-etat';
+import { ajouterJeu } from '../src/core/jeux/etat';
+import { initProfiles, touchActiveProfile } from '../src/core/profiles';
+import { setOnDataWrite } from '../src/core/storage';
+import { demonterJeuActif, monterJeu } from '../src/ui/jeux-ecran';
+/* Importé pour son EFFET : c'est lui qui enregistre le runner auprès de
+   `jeux-ecran`, donc ce qui rend `monterJeu('calcudoku', …)` possible plus bas. */
+import '../src/ui/jeu-calcudoku';
 
 const MOTEUR = 'src/core/jeux/grille-contraintes.ts';
 const JEU = 'src/core/jeux/calcudoku.ts';
@@ -513,6 +522,410 @@ describe('#667 critère 26 — le signalement n’emprunte pas le registre des c
 				interdit: nom,
 				present: false,
 			});
+		}
+	});
+});
+
+/* ── LE LIBELLÉ ACCESSIBLE D'UNE CASE ────────────────────────────────────── */
+
+/* POURQUOI CE BLOC N'EST PAS STATIQUE, alors que tout ce qui précède l'est.
+
+   Le défaut corrigé ici n'était pas l'absence d'une chaîne dans un fichier :
+   c'était une INFORMATION QUI N'ATTEIGNAIT PERSONNE. L'étiquette de cage (`7+`,
+   `3↔`) vit dans un `span aria-hidden` ; le libellé de la case, lui, ne disait
+   que « ligne 2, colonne 3, vide ». Ce qui EST le jeu n'existait donc pas au
+   lecteur d'écran, et ne s'obtenait qu'en activant les seize cases une à une.
+
+   Un `doitContenir(RUNNER, /additionner pour/)` serait vert dès que la chaîne
+   traîne quelque part dans le fichier — dans un commentaire, dans une fonction
+   morte, dans une phrase qui n'est jamais posée sur une case. Il rougirait par
+   ailleurs à la première reformulation, alors même que l'exigence tiendrait. Il
+   garderait donc le contraire de ce qu'on lui demande.
+
+   On MONTE donc le vrai runner et on lit les `aria-label` que les vraies cases
+   portent. Les deux points de pose (le balisage initial et le repeint) sont
+   ainsi éprouvés par l'usage : le second l'est explicitement, après une pose.
+
+   L'INJECTION passe par la grille en cours (`sauverPartie` avant le montage) :
+   le runner REPREND cette grille-là, ce qui donne des cages connues sans mocker
+   quoi que ce soit — ce dépôt n'emploie nulle part de module mocké.
+
+   CE QUE CE BLOC N'ASSÈRE PAS, et c'est délibéré : aucune FORMULATION exacte.
+   « additionner pour 7 » est la phrase d'aujourd'hui, pas l'exigence ; figer la
+   phrase ferait rougir le gate le jour où une autre dirait la même chose aussi
+   bien. On vérifie donc que l'opération est NOMMÉE (un mot parmi un vocabulaire
+   admis), que l'objectif est dit À CÔTÉ d'elle, que l'étendue est dite, et
+   qu'aucun glyphe ne s'y substitue. */
+
+/** Les glyphes qui ne se prononcent pas — au mieux ils se taisent, au pire ils
+    s'énoncent « flèche gauche droite ».
+
+    La liste est écrite EN CLAIR et pas relue depuis `SYMBOLES` : un gate qui
+    prendrait ses interdits dans le module qu'il surveille se tairait le jour où
+    un quatrième glyphe y serait ajouté. Elle est donc plus large que l'existant
+    (le « − » et le « ± » que le critère 14 a écartés, la division que le
+    critère 11 interdit). Le trait d'union ASCII n'y est PAS : il porte aussi les
+    mots composés du français, et l'interdire exposerait le gate à rougir sur un
+    « c'est-à-dire » parfaitement innocent. */
+const GLYPHES = ['+', '−', '±', '×', '÷', '↔', '*'] as const;
+
+/** Le vocabulaire admis pour NOMMER chaque opération. Volontairement large : ce
+    qui se garde ici, c'est qu'un mot le dise — pas lequel. Une reformulation
+    reste donc libre, un glyphe non. */
+const MOTS: Readonly<Record<Operation, string>> = {
+	somme: 'addition\\w*|additionn\\w*|somme\\w*|ajout\\w*|plus',
+	produit: 'multipli\\w*|produit\\w*|fois|table\\w*',
+	difference: 'diff[ée]renc\\w*|soustra\\w*|[ée]cart\\w*|enl[èe]v\\w*|retir\\w*|moins',
+};
+
+const operationNommee = (op: Operation): RegExp => new RegExp(MOTS[op], 'i');
+
+/** L'objectif est-il dit AVEC l'opération ? On exige l'adjacence (aucun autre
+    chiffre entre les deux) plutôt que la simple présence du nombre : un libellé
+    dit déjà « ligne 2, colonne 3 », donc un objectif de 2 ou 3 serait « présent »
+    dans une case où il n'aurait jamais été écrit. L'ordre reste libre — « 7 à
+    additionner » vaut « additionner pour 7 ». */
+const objectifDit = (op: Operation, objectif: number): RegExp =>
+	new RegExp(
+		`(?:${MOTS[op]})[^0-9]{0,24}\\b${objectif}\\b|\\b${objectif}\\b[^0-9]{0,24}(?:${MOTS[op]})`,
+		'i',
+	);
+
+/** L'étendue de la cage, en nombre de cases. TOLÉRANCE CONNUE : le nombre est
+    attendu en chiffres, juste avant le mot. Une étendue écrite en toutes lettres
+    (« cage de deux cases ») ferait rougir ce contrôle sans faute réelle — c'est
+    assumé, les libellés de ce jeu écrivent déjà « ligne 2, colonne 3 » en
+    chiffres, et il n'y a pas de façon robuste de reconnaître « l'étendue est
+    dite » sans s'accrocher à quelque chose. */
+const etendueDite = (taille: number): RegExp => new RegExp(`\\b${taille}\\s*cases?\\b`, 'i');
+
+const glyphesDe = (texte: string): string[] => GLYPHES.filter((g) => texte.includes(g));
+
+/** Le texte porté par l'élément LUI-MÊME, sans celui de ses descendants : sinon
+    tout ancêtre d'un glyphe paraîtrait en porter un. */
+const texteDirect = (el: Element): string =>
+	[...el.childNodes]
+		.filter((n) => n.nodeType === 3 /* Node.TEXT_NODE */)
+		.map((n) => n.textContent ?? '')
+		.join('');
+
+/** L'élément est-il soustrait aux technologies d'assistance, lui ou l'un de ses
+    ancêtres jusqu'à `racine` ? */
+const masqueAuxAT = (el: Element, racine: Element): boolean => {
+	let courant: Element | null = el;
+	while (courant) {
+		if (courant.getAttribute('aria-hidden') === 'true') return true;
+		if (courant === racine) return false;
+		courant = courant.parentElement;
+	}
+	return false;
+};
+
+/** Une grille témoin, dont les cages sont CHOISIES et non tirées.
+
+    Deux précautions de fabrication, vérifiées par le premier test du bloc :
+    l'objectif d'une cage ne vaut jamais son nombre de cases (sans quoi les
+    contrôles « objectif » et « étendue » se confondraient, et l'un passerait
+    pour l'autre), et les six cages partitionnent bien les seize cases. Deux
+    cages partagent volontairement l'objectif 6 : deux cages de même objectif ne
+    doivent pas se confondre. */
+const CAGES_TEMOIN: readonly Cage[] = [
+	{ cases: [0, 1, 2, 3], operation: 'somme', objectif: 10 },
+	{ cases: [4, 8], operation: 'produit', objectif: 6 },
+	{ cases: [5, 6], operation: 'difference', objectif: 3 },
+	{ cases: [7, 11], operation: 'produit', objectif: 6 },
+	{ cases: [9, 12, 13], operation: 'somme', objectif: 8 },
+	{ cases: [10, 14, 15], operation: 'somme', objectif: 7 },
+];
+
+/** Deux cases données, pour que le contrôle porte AUSSI sur elles : une case
+    pré-remplie appartient à une cage comme une autre, et l'oublier priverait
+    l'enfant de l'objectif au moment précis où il s'en sert pour déduire. */
+const DONNEES_TEMOIN = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+
+const partieTemoin = (): Partie => ({
+	cages: CAGES_TEMOIN.map((c) => ({ ...c, cases: [...c.cases] })),
+	enonce: [...DONNEES_TEMOIN],
+	valeurs: [...DONNEES_TEMOIN],
+});
+
+const cageTemoinDe = (index: number): Cage => {
+	const c = CAGES_TEMOIN.find((cage) => cage.cases.includes(index));
+	if (!c) throw new Error(`la grille témoin ne couvre pas la case ${index}`);
+	return c;
+};
+
+let hote: HTMLElement;
+
+const prendreLeJeu = (): void => {
+	localStorage.clear();
+	setOnDataWrite(touchActiveProfile);
+	initProfiles();
+	ajouterJeu('calcudoku');
+	hote = document.createElement('div');
+	document.body.appendChild(hote);
+};
+
+/** Monte le jeu et rend sa grille. Le plafond du jour et la possession sont
+    l'affaire du cadre, pas du test : `monterJeu` rend `false` si quoi que ce
+    soit manque, et l'échec est alors NOMMÉ plutôt que déguisé en « aucune case
+    trouvée ». */
+const monterEtRendreLaGrille = (): HTMLElement => {
+	expect(monterJeu('calcudoku', hote), 'le jeu n’a pas pu être monté').toBe(true);
+	const grille = hote.querySelector<HTMLElement>('#calcudokuGrille');
+	expect(grille, 'aucune grille rendue').not.toBeNull();
+	const cases = grille?.querySelectorAll('.calcudoku-case').length ?? 0;
+	expect(cases, 'la grille ne porte pas ses seize cases').toBe(COTE * COTE);
+	return grille as HTMLElement;
+};
+
+const libelleDe = (grille: HTMLElement, index: number): string =>
+	grille
+		.querySelector<HTMLElement>(`.calcudoku-case[data-index="${index}"]`)
+		?.getAttribute('aria-label') ?? '';
+
+const cliquer = (racine: HTMLElement, selecteur: string): void => {
+	const el = racine.querySelector<HTMLElement>(selecteur);
+	expect(el, `rien à cliquer pour « ${selecteur} »`).not.toBeNull();
+	el?.click();
+};
+
+describe('#667 — les contrôles du libellé MORDENT', () => {
+	/* Les tests qui suivent sont passés au VERT du premier coup, le correctif étant
+	   déjà livré. Un test qui n'a jamais échoué ne prouve rien de lui-même : on
+	   éprouve donc les trois contrôles sur les formes DÉFECTUEUSES, à commencer par
+	   celle que la relecture d'accessibilité a réellement trouvée.
+
+	   Les chaînes ci-dessous ne sont pas des libellés attendus — ce sont des
+	   contre-exemples. Aucune n'a à être mise à jour si la formulation change. */
+
+	const AVANT_CORRECTIF = 'ligne 2, colonne 3, vide';
+
+	it('le défaut d’origine — la case ne dit que sa position — est refusé trois fois', () => {
+		expect(operationNommee('somme').test(AVANT_CORRECTIF)).toBe(false);
+		expect(objectifDit('somme', 7).test(AVANT_CORRECTIF)).toBe(false);
+		expect(etendueDite(2).test(AVANT_CORRECTIF)).toBe(false);
+	});
+
+	it('la correction la plus tentante — recopier l’étiquette — est refusée', () => {
+		// `libelleCage` rend « 7+ » ou « 3↔ » : un glyphe, et pas un mot.
+		for (const faux of [`${AVANT_CORRECTIF}, 7+`, `${AVANT_CORRECTIF}, 3↔`]) {
+			expect(glyphesDe(faux), faux).not.toEqual([]);
+			expect(operationNommee('somme').test(faux), faux).toBe(false);
+		}
+	});
+
+	it('un objectif sans étendue, ou une étendue sans objectif, ne passe pas', () => {
+		const sansEtendue = `${AVANT_CORRECTIF}, additionner pour 7`;
+		expect(operationNommee('somme').test(sansEtendue)).toBe(true);
+		expect(etendueDite(2).test(sansEtendue), 'l’étendue manque et passe quand même').toBe(false);
+
+		const sansObjectif = `${AVANT_CORRECTIF}, cage de 2 cases : additionner`;
+		expect(etendueDite(2).test(sansObjectif)).toBe(true);
+		expect(
+			objectifDit('somme', 3).test(sansObjectif),
+			'le « 3 » de « colonne 3 » passe pour l’objectif',
+		).toBe(false);
+	});
+
+	it('en revanche, une reformulation qui dit bien les trois choses est acceptée', () => {
+		/* L'autre sens, sans quoi le gate serait un carcan : ces deux phrases ne sont
+		   pas celles du code, et doivent passer. C'est ce qui autorise une réécriture
+		   de la formulation sans toucher au gate. */
+		for (const bon of [
+			'ligne 2, colonne 3, vide, cage de 2 cases : additionner pour 7',
+			'ligne 2, colonne 3, vide, 7 à obtenir en additionnant, sur une cage de 2 cases',
+		]) {
+			expect(operationNommee('somme').test(bon), bon).toBe(true);
+			expect(objectifDit('somme', 7).test(bon), bon).toBe(true);
+			expect(etendueDite(2).test(bon), bon).toBe(true);
+			expect(glyphesDe(bon), bon).toEqual([]);
+		}
+	});
+
+	it('un texte masqué par un ancêtre `aria-hidden` compte pour masqué, pas le reste', () => {
+		// Le contrôle de l'étiquette remonte la chaîne des ancêtres : sans cela, un
+		// glyphe déplacé d'un cran passerait pour exposé (ou pour masqué à tort).
+		const racine = document.createElement('div');
+		racine.innerHTML =
+			'<span class="a" aria-hidden="true"><b class="dedans">7+</b></span><span class="b">3↔</span>';
+		const dedans = racine.querySelector('.dedans') as Element;
+		const expose = racine.querySelector('.b') as Element;
+		expect(masqueAuxAT(dedans, racine)).toBe(true);
+		expect(masqueAuxAT(expose, racine)).toBe(false);
+		expect(texteDirect(racine.querySelector('.a') as Element), 'le texte des enfants a fuité').toBe(
+			'',
+		);
+	});
+});
+
+describe('#667 — le libellé accessible d’une case dit l’objectif de sa cage', () => {
+	beforeEach(() => {
+		prendreLeJeu();
+		sauverPartie(partieTemoin());
+	});
+
+	afterEach(() => {
+		demonterJeuActif();
+		hote.remove();
+	});
+
+	it('préalable : la grille témoin est valide, et ses contrôles ne se recouvrent pas', () => {
+		// Sans ce test, une retouche de la grille témoin rendrait les suivants
+		// complaisants sans que rien ne le dise.
+		const couvertes = CAGES_TEMOIN.flatMap((c) => c.cases).sort((a, b) => a - b);
+		expect(couvertes, 'les cages ne partitionnent pas les seize cases').toEqual([
+			...Array(COTE * COTE).keys(),
+		]);
+		for (const c of CAGES_TEMOIN) {
+			expect(
+				c.objectif,
+				`cage ${c.cases.join('-')} : objectif et étendue confondus, les deux contrôles n’en feraient plus qu’un`,
+			).not.toBe(c.cases.length);
+		}
+		expect(
+			partieEnCours(),
+			'la grille témoin est refusée à la relecture : le runner en tirerait une autre',
+		).not.toBeNull();
+	});
+
+	it('l’opération est NOMMÉE sur chaque case d’une cage, jamais laissée au glyphe', () => {
+		const grille = monterEtRendreLaGrille();
+		for (const cage of CAGES_TEMOIN) {
+			for (const i of cage.cases) {
+				const libelle = libelleDe(grille, i);
+				expect(libelle, `case ${i}, cage « ${cage.operation} »`).toMatch(
+					operationNommee(cage.operation),
+				);
+			}
+		}
+	});
+
+	it('l’objectif de la cage est dit, et dit à côté de son opération', () => {
+		const grille = monterEtRendreLaGrille();
+		for (const cage of CAGES_TEMOIN) {
+			for (const i of cage.cases) {
+				const libelle = libelleDe(grille, i);
+				expect(libelle, `case ${i}, objectif ${cage.objectif}`).toMatch(
+					objectifDit(cage.operation, cage.objectif),
+				);
+			}
+		}
+	});
+
+	it('l’ÉTENDUE de la cage est dite : « 7 » ne se répartit pas pareil sur deux cases ou sur quatre', () => {
+		const grille = monterEtRendreLaGrille();
+		for (const cage of CAGES_TEMOIN) {
+			for (const i of cage.cases) {
+				const libelle = libelleDe(grille, i);
+				expect(libelle, `case ${i}, cage de ${cage.cases.length} cases`).toMatch(
+					etendueDite(cage.cases.length),
+				);
+			}
+		}
+	});
+
+	it('aucun glyphe d’opération dans un libellé de case', () => {
+		// Cas d'échec littéral : « le libellé emprunte l'étiquette visuelle », ce qui
+		// est la correction la plus tentante et la moins audible.
+		const grille = monterEtRendreLaGrille();
+		for (let i = 0; i < COTE * COTE; i++) {
+			const libelle = libelleDe(grille, i);
+			expect(glyphesDe(libelle), `case ${i} : « ${libelle} »`).toEqual([]);
+		}
+	});
+
+	it('une case DONNÉE porte l’objectif de sa cage comme les autres', () => {
+		/* Elle n'est pas inscriptible, mais c'est justement sur elle que l'enfant
+		   s'appuie pour déduire : la priver de l'objectif rendrait le libellé le plus
+		   utile le plus pauvre. */
+		const grille = monterEtRendreLaGrille();
+		for (const i of [0, 15]) {
+			const cage = cageTemoinDe(i);
+			const libelle = libelleDe(grille, i);
+			expect(libelle, `case donnée ${i}`).toMatch(operationNommee(cage.operation));
+			expect(libelle, `case donnée ${i}`).toMatch(objectifDit(cage.operation, cage.objectif));
+			expect(libelle, `case donnée ${i}`).toMatch(etendueDite(cage.cases.length));
+		}
+	});
+
+	it('après une pose, le libellé dit la nouvelle valeur SANS perdre l’objectif de la cage', () => {
+		/* Le second point de pose du libellé, celui du repeint. Une reprise d'écriture
+		   qui ne toucherait que celui-là (ou que l'autre) laisserait le défaut revenir
+		   à moitié — et à moitié pendant que l'enfant joue, c'est-à-dire là où ça
+		   compte. */
+		const grille = monterEtRendreLaGrille();
+		const cage = cageTemoinDe(5);
+		const avant = libelleDe(grille, 5);
+		expect(avant, 'la case 5 devrait être vide au départ').not.toMatch(/\b4\b/);
+
+		cliquer(grille, '.calcudoku-case[data-index="5"]');
+		cliquer(hote, '.calcudoku-nombre[data-valeur="4"]');
+
+		const apres = libelleDe(grille, 5);
+		expect(apres, 'la valeur posée n’est pas annoncée').toMatch(/\b4\b/);
+		expect(apres, 'l’opération a disparu au repeint').toMatch(operationNommee(cage.operation));
+		expect(apres, 'l’objectif a disparu au repeint').toMatch(
+			objectifDit(cage.operation, cage.objectif),
+		);
+		expect(apres, 'l’étendue a disparu au repeint').toMatch(etendueDite(cage.cases.length));
+		expect(glyphesDe(apres), `« ${apres} »`).toEqual([]);
+	});
+
+	it('l’étiquette visuelle porte le glyphe, et reste masquée aux technologies d’assistance', () => {
+		/* Les deux moitiés comptent. La seconde seule serait vide de sens : si
+		   l'étiquette disparaissait du rendu, « toutes les étiquettes sont masquées »
+		   resterait vrai sans rien garder. La première dit donc que le glyphe est bien
+		   là, à l'écran, une fois par cage. */
+		const grille = monterEtRendreLaGrille();
+		const etiquettes = [...grille.querySelectorAll<HTMLElement>('.calcudoku-etiquette')];
+		expect(etiquettes.length, 'une étiquette visible par cage').toBe(CAGES_TEMOIN.length);
+		for (const e of etiquettes) {
+			expect(glyphesDe(e.textContent ?? ''), `étiquette « ${e.textContent} »`).not.toEqual([]);
+		}
+		/* Pris par le GLYPHE et non par la classe : le jour où il changerait de
+		   porteur, c'est lui qu'il faut continuer de taire, pas ce `span`-là. */
+		for (const el of grille.querySelectorAll('*')) {
+			if (glyphesDe(texteDirect(el)).length === 0) continue;
+			expect(masqueAuxAT(el, grille), `« ${texteDirect(el)} » est lu par le lecteur d’écran`).toBe(
+				true,
+			);
+		}
+	});
+});
+
+describe('#667 — l’objectif de cage est dit sur des grilles RÉELLEMENT tirées', () => {
+	/* La grille témoin prouve que le libellé est juste sur des cages choisies ; elle
+	   ne dit rien de celles que le tirage produit vraiment. Ce bloc-ci monte le jeu
+	   sur de vraies grilles et relit LEURS cages depuis la partie rangée — la grille
+	   sert d'ENTRÉE, l'attendu reste dérivé de l'exigence. */
+
+	beforeEach(prendreLeJeu);
+
+	afterEach(() => {
+		demonterJeuActif();
+		hote.remove();
+	});
+
+	it('chaque case de chaque cage annonce opération, objectif et étendue, sans glyphe', () => {
+		for (let essai = 0; essai < 10; essai++) {
+			const grille = monterEtRendreLaGrille();
+			const p = partieEnCours();
+			expect(p, `essai ${essai} : la grille tirée n’a pas été rangée`).not.toBeNull();
+			const cages = p?.cages ?? [];
+			expect(cages.length, `essai ${essai} : une grille sans cage`).toBeGreaterThan(0);
+			for (const cage of cages) {
+				for (const i of cage.cases) {
+					const libelle = libelleDe(grille, i);
+					const ou = `essai ${essai}, case ${i} : « ${libelle} »`;
+					expect(libelle, ou).toMatch(operationNommee(cage.operation));
+					expect(libelle, ou).toMatch(objectifDit(cage.operation, cage.objectif));
+					expect(libelle, ou).toMatch(etendueDite(cage.cases.length));
+					expect(glyphesDe(libelle), ou).toEqual([]);
+				}
+			}
+			demonterJeuActif();
+			hote.innerHTML = '';
 		}
 	});
 });

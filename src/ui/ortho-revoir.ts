@@ -23,7 +23,7 @@ import { loadOrtho, saveOrtho } from '../core/orthographe/store';
 import { motsDeLeconAvecVerbes, listOrthoLecons } from '../core/orthographe/lessons';
 import type { MotOrtho, OrthoState } from '../core/orthographe/types';
 import { lettresMotHTML, dessinerEntourages, renderAtelier } from './ortho-atelier';
-import { contexteHTML } from './ortho-taches';
+import { contexteHTML, phraseVerbe } from './ortho-taches';
 import { goCategorie, goHome } from './navigation';
 import { retourFinActivite, activiteDemarree, type RetourCible } from './retour-activite';
 import { ORTHO_CATEGORY_ID } from '../core/catalog';
@@ -198,9 +198,14 @@ function render(): void {
 
 function carteHTML(mot: MotOrtho, i: number): SafeHtml {
 	const vide = mot.entourage.length === 0;
-	const crayonLabel = vide
-		? `Entourer les pièges de ${mot.mot}`
-		: `Corriger les pièges de ${mot.mot}`;
+	// Ce que le crayon DÉSIGNE. Un mot classique se suffit de sa forme ; une cible verbe, non :
+	// « je mange » et « il mange » donnent deux cartes de même forme, et le crayon est le SEUL
+	// élément focalisable de la carte (ni le mot ni la phrase ne le sont). Deux boutons au même
+	// nom accessible, c'est une page où rien ne dit lequel ouvre laquelle (#702, critère 10).
+	// Le marqueur est VERBAL — « dans la phrase » — parce qu'une synthèse vocale n'énonce ni
+	// guillemets ni parenthèses : ils ne servent qu'au `title` affiché à la souris.
+	const quoi = mot.contexte ? `« ${mot.mot} » dans la phrase « ${phraseVerbe(mot)} »` : mot.mot;
+	const crayonLabel = vide ? `Entourer les pièges de ${quoi}` : `Corriger les pièges de ${quoi}`;
 	const comme = mot.commeDans
 		? html`<p class="relecture-comme">comme dans <i>${mot.commeDans}</i></p>`
 		: VIDE;

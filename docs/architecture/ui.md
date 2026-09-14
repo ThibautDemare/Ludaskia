@@ -1616,8 +1616,15 @@ l'oral jusque-là — non par décision, par défaut de câblage).
     au clavier vient d'atteindre ce bouton et s'attend à y rester, ne serait-ce que pour
     réécouter. C'est ce qui distingue ce retour de main d'un vol de focus — il ne sert
     que le geste tactile ou souris, qui n'a pas de focus à perdre (WCAG 3.2).
-  - Tenue par `e2e/ecouter-rend-la-main.spec.ts` (les quatre écrans, les deux négatifs)
-    et `e2e/ortho-clavier-focus.spec.ts` (les trois marches de l'orthographe).
+  - Tenue par `tests/tts-retour-au-champ.test.ts` (la primitive elle-même : exemption
+    clavier, cible non inventée, champ inerte, cible détachée, types acceptés),
+    `e2e/ecouter-rend-la-main.spec.ts` (les quatre écrans, les négatifs) et
+    `e2e/ortho-clavier-focus.spec.ts` (les trois marches de l'orthographe).
+  - *Rejet écrit :* la primitive **reste** dans `consigne-tts.ts` plutôt que dans un
+    `ui/focus.ts` à elle. Le dépôt ne compte que **deux** fabricants de boutons
+    « Écouter » — ce module et `ui/ortho-taches.ts`, qui l'importe — et un module dédié
+    à un seul concept partagé par deux appelants serait de la généricité anticipée. À
+    rouvrir au troisième consommateur, s'il n'a rien à voir avec le TTS.
 
   *Rejet écrit, pour ne pas le re-remonter :* les champs de réponse naissent en
   `type="password"` (anti-suggestion des claviers mobiles, `ui/anti-suggestion.ts`) et ne

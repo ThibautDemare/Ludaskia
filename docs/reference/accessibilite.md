@@ -251,6 +251,32 @@ peuvent se chevaucher sur le même canal audio — un enfant qui dépend du TTS 
 n'entendre ni l'un ni l'autre. **Non mesurable en CI** (dépend du couple
 navigateur/lecteur d'écran) : à vérifier au lecteur d'écran réel, voix active.
 
+**Checklist — « activation au clavier » ne se lit pas de façon fiable dans le DOM.** Le
+retour de focus après une écoute (#702, `rendreLaMainApresEcoute`, `ui/consigne-tts.ts`)
+s'exempte des activations clavier via `MouseEvent.detail === 0`, nul sur Entrée et Espace.
+Ce signal est spécifié et fiable pour le cas simple — Tab jusqu'au bouton, Entrée — mais il
+ne dit **rien** des technologies d'assistance, qui sont précisément la population que
+l'exemption protège :
+
+- **NVDA / JAWS en curseur virtuel** convertissent l'Entrée en un clic *synthétique*, pensé
+  pour les pages qui ne gèrent que la souris. Ce qui les couvre ici n'est pas `detail` mais
+  la **mémorisation au `pointerdown`** : un clic synthétisé sans séquence de pointeur ne
+  mémorise aucune cible, donc rien à restaurer. Protection **indirecte**, et c'est à savoir
+  avant de « simplifier » la primitive en déplaçant la mémorisation sur le `click`.
+- **Switch Access (Android)** synthétise un geste tactile *indiscernable* d'un vrai toucher
+  — la documentation Android est explicite, rien ne permet à la page de les distinguer.
+  `detail` vaudra ≥ 1 et le focus sera bien déplacé. **VoiceOver** (double-tap iOS) passe
+  par le pipeline tactile de Safari, avec le même effet probable.
+
+Reste donc une zone où l'exemption ne joue pas, et où l'utilisateur se fait ramener dans le
+champ qu'il occupait avant d'atteindre le bouton. **Non automatisable** — ni Playwright ni
+jsdom ne simulent un VoiceOver, un NVDA ou un Switch Access réels. À vérifier sur appareil
+avant de tenir l'exemption pour complète ; si le problème se confirme, la piste est de
+compléter `detail === 0` par `btn.matches(':focus-visible')` au moment du clic, heuristique
+que les moteurs de navigateurs entretiennent pour ces cas-là, plutôt qu'un compteur de
+clics bas niveau jamais pensé pour ça. Non appliquée d'emblée, faute de pouvoir mesurer
+qu'elle change quoi que ce soit.
+
 *Rejet écrit, pour ne pas le re-remonter :* `aria-describedby="fb"` est posé **en
 permanence** sur le champ et sur le bouton de validation des tuiles, donc un refocus
 ultérieur relit le message encore affiché même sans nouvelle validation. Accepté tel quel :

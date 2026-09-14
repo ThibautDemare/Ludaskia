@@ -41,6 +41,52 @@ function parler(btn: HTMLElement, texte: string, onLecture?: (enCours: boolean) 
 	});
 }
 
+/* ---------- Rendre la main au champ après une écoute (#702) ----------
+   Écouter n'est pas une fin : sur tout écran où l'enfant écrit, c'est le préalable à
+   écrire. Or un navigateur donne le focus au `<button>` dès l'appui, si bien qu'il fallait
+   RECLIQUER dans le champ après chaque écoute — sur la fiche d'exercice, le problème à
+   étapes, le sprint, la révision espacée et la dictée. Relevé sur une séance réelle, où
+   le geste se répète des dizaines de fois.
+
+   La règle est UNE, et elle ne devine rien : on rend la main à l'élément de SAISIE qui
+   avait le focus juste avant le clic. Aucun champ focalisé avant (écran sans saisie,
+   consigne écoutée avant la moindre frappe) → rien ne bouge. C'est ce qui permet de la
+   poser sur TOUS les boutons sans câblage par appelant, et sans qu'un écran de QCM ou de
+   tuiles ait à s'en protéger : ce qu'il faut ne pas faire découle de la règle au lieu
+   d'être une exception à tenir à jour. */
+
+/** Un champ où l'enfant tape sa réponse — ni case à cocher, ni bouton, ni champ inerte.
+    `password` est dans la liste et ce n'est pas une coquille : les champs de réponse
+    NAISSENT ainsi pour couper la barre de suggestions des claviers mobiles, et ne sont
+    démasqués qu'ensuite (cf. `ui/anti-suggestion.ts`). */
+function estChampDeSaisie(el: Element | null): el is HTMLInputElement | HTMLTextAreaElement {
+	if (el instanceof HTMLTextAreaElement) return !el.disabled && !el.readOnly;
+	if (!(el instanceof HTMLInputElement)) return false;
+	if (el.disabled || el.readOnly) return false;
+	return ['text', 'password', 'number', 'search', 'tel'].includes(el.type);
+}
+
+/** Fait rendre à un bouton « Écouter » la main au champ qui avait le focus avant le clic. */
+export function rendreLaMainApresEcoute(btn: HTMLElement): void {
+	let avant: HTMLInputElement | HTMLTextAreaElement | null = null;
+	// `pointerdown` et surtout PAS `click` : quand le clic arrive, le bouton a déjà le
+	// focus, et `activeElement` ne dit plus d'où l'on venait.
+	btn.addEventListener('pointerdown', () => {
+		const el = document.activeElement;
+		avant = estChampDeSaisie(el) ? el : null;
+	});
+	btn.addEventListener('click', (e) => {
+		// Activation au CLAVIER (`detail` nul sur Entrée ou Espace) : on ne déplace rien.
+		// Qui navigue au clavier vient d'atteindre ce bouton et s'attend à y rester, ne
+		// serait-ce que pour réécouter ; l'en éjecter serait un changement de contexte non
+		// sollicité (WCAG 3.2). C'est aussi ce qui distingue ce retour de main d'un vol de
+		// focus : il ne sert que le geste tactile ou souris, qui n'a pas de focus à perdre.
+		if (e.detail === 0) return;
+		const cible = avant;
+		if (cible?.isConnected) cible.focus();
+	});
+}
+
 /** Nom accessible par défaut : ce que lit un bouton greffé sur une consigne. */
 const LIBELLE_DEFAUT = 'Écouter la consigne';
 
@@ -62,6 +108,7 @@ function fabriquerBouton(
 		if (opts.exclusif && btn.classList.contains('speaking')) return;
 		parler(btn, texte, opts.onLecture);
 	});
+	rendreLaMainApresEcoute(btn);
 	return btn;
 }
 
@@ -139,6 +186,10 @@ export function bindItemTts(cibles: ItemTtsCible[]): void {
 			e.stopPropagation();
 			parler(btn, texte);
 		});
+		// Sans effet sur les écrans d'aujourd'hui (un QCM n'a pas de champ de saisie), mais
+		// posé quand même : c'est la MÊME règle pour tous les boutons « Écouter », et le
+		// jour où un écran mêlera un mot à écouter et un champ à remplir, elle y sera déjà.
+		rendreLaMainApresEcoute(btn);
 		if (dans) anchor.append(btn);
 		else anchor.insertAdjacentElement('afterend', btn);
 	}

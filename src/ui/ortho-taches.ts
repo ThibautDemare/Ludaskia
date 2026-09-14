@@ -25,6 +25,7 @@
    silence. D'où `onEchec`, qui remonte la réponse donnée à qui sait la rattacher.
    ============================================================ */
 import { insertAt, moveAt, removeAt } from '../core/utils';
+import { rendreLaMainApresEcoute } from './consigne-tts';
 import { genExerciseOrtho, messageRienDePose } from '../core/orthographe/exercise';
 import { checkAnswer } from '../core/exercise';
 import { TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
@@ -202,13 +203,13 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
 	// Écoute du mot (#150) : disponible avant ET après l'avoir caché (le bouton est
 	// hors des éléments masqués) — entendre la prononciation aide à l'écrire.
 	if (o.dispoDictee) {
-		hote.querySelector('#btnEcouterMot')!.addEventListener('click', () => {
-			ecouterCible(word);
-			// On rend la main au champ pour enchaîner la saisie sans recliquer (#702) — mais
-			// SEULEMENT une fois le mot caché. Tant qu'il est affiché, la zone de saisie est
-			// masquée : y envoyer le focus ferait taper l'enfant dans un champ qu'il ne voit pas.
-			if (!zone.hidden) input.focus();
-		});
+		const btnEcouter = hote.querySelector<HTMLButtonElement>('#btnEcouterMot')!;
+		btnEcouter.addEventListener('click', () => ecouterCible(word));
+		// Retour de main après écoute (#702) : la MÊME règle que les boutons « Écouter la
+		// consigne » de tous les autres écrans. Rien à conditionner ici — tant que le mot est
+		// affiché, c'est « Cacher et écrire → » qui a le focus, donc il n'y a aucun champ à qui
+		// rendre la main, et l'enfant ne se retrouve pas à taper dans une zone masquée.
+		rendreLaMainApresEcoute(btnEcouter);
 	}
 
 	btnCacher.addEventListener('click', () => {
@@ -289,17 +290,9 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
 		o.onSilence?.();
 	};
 	const ecouter = () => ecouterCible(word, surSilence);
-	/* Rendre la main au champ (#702) : ici, écouter n'est pas une fin, c'est le préalable à
-	   écrire. `isConnected` plutôt que `muette` : une voix en échec fait remplacer TOUT l'écran
-	   par `onSilence`, qui pose son propre focus — et rien ne garantit que le drapeau soit déjà
-	   levé quand on repasse ici (l'erreur de synthèse peut arriver plus tard). */
-	const rendreLaMain = (): void => {
-		if (input.isConnected) input.focus();
-	};
-	hote.querySelector('#btnEcouter')!.addEventListener('click', () => {
-		ecouter();
-		rendreLaMain();
-	});
+	const btnEcouter = hote.querySelector<HTMLButtonElement>('#btnEcouter')!;
+	btnEcouter.addEventListener('click', ecouter);
+	rendreLaMainApresEcoute(btnEcouter); // #702, comme partout ailleurs
 
 	const verifier = () => {
 		if (muette) return; // dictée silencieuse : on ne corrige ni ne journalise
@@ -330,7 +323,11 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
 	// DOM de l'écran. Déclenchée plus haut, elle laisserait les `querySelector(...)!`
 	// suivants chercher des éléments qui n'existent plus.
 	ecouter();
-	rendreLaMain(); // l'énoncé part tout seul : le champ doit être prêt à recevoir la frappe
+	/* Focus d'ARRIVÉE (#702) — distinct du retour de main ci-dessus, qui suit un clic :
+	   l'énoncé part tout seul sur cet écran, le champ doit donc être prêt à recevoir la frappe
+	   sans le moindre geste. `isConnected` : une voix en échec fait remplacer tout l'écran par
+	   `onSilence`, qui pose son propre focus, et on ne va pas focaliser un champ détaché. */
+	if (input.isConnected) input.focus();
 }
 
 /* ---------- Tuiles ---------- */
@@ -369,7 +366,10 @@ export function renderTuiles(word: MotOrtho, o: OptionsTache): void {
 	const bac = hote.querySelector('#bac') as HTMLElement;
 	const fb = hote.querySelector('#fb') as HTMLElement;
 	if (o.dispoDictee) {
-		hote.querySelector('#btnEcouterTuiles')!.addEventListener('click', () => ecouterCible(word));
+		const btnEcouter = hote.querySelector<HTMLButtonElement>('#btnEcouterTuiles')!;
+		btnEcouter.addEventListener('click', () => ecouterCible(word));
+		// Même règle, sans effet ici : les tuiles n'ont pas de champ de saisie (#702).
+		rendreLaMainApresEcoute(btnEcouter);
 	}
 	monterBoutonAide(hote.querySelector('.ortho-run'), 'lettres'); // bouton « ? » persistant (#272)
 

@@ -1025,14 +1025,20 @@ dépendance : l'accès commande tout.
   désactivant la case plutôt qu'en la laissant cochable sans effet.
 
 - **Jouer sans aides visuelles** (`sansAidesJeux`, #666, étendu aux **mots à
-  caser** #664) — dans le sudoku, ne plus marquer les formes en double ni
-  éclairer la ligne, la colonne et le bloc de la case choisie ; dans les mots
-  à caser, ne plus surligner les emplacements où le mot en main entrerait. Le
-  réglage ne fait que **retirer** une aide, jamais l'imposer : absent, les
-  aides sont actives. Pour un profil TDAH, un surlignage permanent peut
-  devenir lui-même un distracteur, et un enfant plus avancé peut vouloir jouer
-  sans filet. Subordonné à l'accès, comme l'invitation. Sur les mots à caser,
-  le **signalement d'un croisement en conflit** n'en dépend en revanche jamais
+  caser** #664 et au **calcudoku** #667) — dans le sudoku, ne plus marquer les
+  formes en double ni éclairer la ligne, la colonne et le bloc de la case
+  choisie ; dans les mots à caser, ne plus surligner les emplacements où le
+  mot en main entrerait ; dans le calcudoku, ne plus signaler les conflits
+  (ligne, colonne, cage) ni éclairer la ligne et la colonne de la case
+  choisie — comme au sudoku, le SIGNALEMENT dépend ici du réglage, à la
+  différence des mots à caser (voir plus bas). Le contour de cage et la zone
+  de phrase qui dit l'objectif en toutes lettres, eux, ne dépendent jamais du
+  réglage : ce n'est pas une aide, c'est la règle du jeu elle-même. Le réglage
+  ne fait que **retirer** une aide, jamais l'imposer : absent, les aides sont
+  actives. Pour un profil TDAH, un surlignage permanent peut devenir lui-même
+  un distracteur, et un enfant plus avancé peut vouloir jouer sans filet.
+  Subordonné à l'accès, comme l'invitation. Sur les mots à caser, le
+  **signalement d'un croisement en conflit** n'en dépend en revanche jamais
   — ce n'est pas une aide, c'est l'état de la grille (cf. [Rendu &
   interactions](ui.md)).
 

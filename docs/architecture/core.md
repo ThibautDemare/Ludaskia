@@ -1931,18 +1931,18 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
 
 ## Étagère de jeux (#661)
 
-Seize modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
-`etat.ts`, `sudoku-etat.ts`, `mots-cases-etat.ts` et `mots-croises-etat.ts` (les
-seuls à lire/écrire le stockage) — cf.
+Dix-huit modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
+`etat.ts`, `sudoku-etat.ts`, `mots-cases-etat.ts`, `mots-croises-etat.ts` et
+`calcudoku-etat.ts` (les seuls à lire/écrire le stockage) — cf.
 [Gamification](gamification.md)
 pour le pourquoi du dispositif (pas de `Recompense`, pas d'XP) et [Espace
 encadrant](espace-encadrant.md) pour les quatre réglages adulte.
 
 - **`catalogue.ts`** — `JEUX: JeuDef[]` (id, libellé enfant, icône, `type: 'C' |
   'R'` — compétence / refuge —, `competence?` réservée à l'espace encadrant,
-  jamais montrée à l'enfant, `levels?` absent = toutes les classes). Cinq jeux
-  livrés (`motus`, `2048`, `sudoku`, `mots-cases`, `mots-croises`) sur un
-  catalogue prévu pour 18 (#663 y ajoutera la banque CM1 du Motus).
+  jamais montrée à l'enfant, `levels?` absent = toutes les classes). Six jeux
+  livrés (`motus`, `2048`, `sudoku`, `mots-cases`, `mots-croises`, `calcudoku`)
+  sur un catalogue prévu pour 18 (#663 y ajoutera la banque CM1 du Motus).
 - **`paliers.ts`** — `PALIERS` : 18 rangs, un niveau XP dédié chacun, alternant
   `R`/`C`. `paliersFranchis(avant, apres)` rend les rangs strictement franchis
   entre deux niveaux (borne de départ exclue, d'arrivée incluse — même grammaire
@@ -1978,8 +1978,12 @@ encadrant](espace-encadrant.md) pour les quatre réglages adulte.
   sur une paire de candidats, technique hors de portée avant 10-11 ans. Le second
   implique le premier : chaque étape étant forcée, la solution atteinte est
   nécessairement unique. Une contrainte peut rendre des zones qui ne
-  **partitionnent pas** la grille (diagonale, cage) — c'est ce qui permettra au
-  calcudoku de #667 de brancher ses cages arithmétiques sans toucher ce module.
+  **partitionnent pas** la grille (diagonale, cage) — c'est ce qui a permis au
+  calcudoku de #667 de brancher ses cages arithmétiques sans qu'une seule ligne
+  de ce module ne bouge, promesse TENUE et gardée par une empreinte de fichier
+  (`tests/calcudoku-gate.test.ts`, critère 41), à la différence de la promesse
+  équivalente de #664 envers #665 sur `grille-mots.ts` (⚠️ plus bas), révélée à
+  moitié fausse.
 - **`sudoku.ts`** (#666) — le jeu comme ASSEMBLAGE : trois unicités sur une
   géométrie (régions 2×2 au 4×4, 3 de large sur 2 de haut au 6×6). `tirerGrille`
   part d'une solution complète et creuse tant que le solveur faible finit encore
@@ -2091,6 +2095,32 @@ encadrant](espace-encadrant.md) pour les quatre réglages adulte.
   cela ne revient ; une grille déjà terminée ne se rouvre pas non plus. La
   grille **pleine mais fausse** est, comme au sudoku et aux mots à caser,
   GARDÉE : c'est le moment où l'enfant a le plus besoin d'y revenir.
+- **`calcudoku.ts`** (#667) — le jeu comme ASSEMBLAGE de `grille-contraintes.ts`,
+  **second CLIENT** du moteur générique et **premier jeu de type C en
+  mathématiques** de l'étagère : la cage n'est rien de plus qu'une `Contrainte`
+  de plus (`conflits` + `interdits`). Une seule taille (4×4, valeurs 1 à 4) ;
+  `regionLargeur`/`regionHauteur` sont renseignés SANS SIGNIFICATION, la
+  contrainte de région n'étant jamais enregistrée. La lecture d'une cage est
+  délibérément CAGE-LOCALE — elle ne croise jamais ses complétions possibles
+  avec l'unicité de ligne et de colonne — pour que le solveur qui garantit les
+  grilles reste plus FAIBLE que l'enfant, qui lui fait ce croisement. **Fait
+  mesuré au cadrage** : une grille 4×4 sans aucune case pré-remplie ne se
+  termine JAMAIS par déduction élémentaire seule (0 % sur 600 grilles tirées) —
+  le tirage sert donc deux cases données au départ, un écart assumé au genre
+  (un calcudoku de presse n'en donne aucune). `tirerGrille` tire AVEC REJET
+  jusqu'à obtenir une grille dont la solution est unique ET atteignable par
+  déduction élémentaire seule (le second implique le premier), et rend `null`
+  si le budget d'essais s'épuise — le runner affiche alors une panne plutôt
+  qu'une grille non garantie.
+- **`calcudoku-etat.ts`** (#667) — **deux clés**, pas trois comme
+  `sudoku-etat.ts` : une seule taille, donc aucune préférence de taille à
+  mémoriser. Bornage à la LECTURE, même logique que les jeux à grille voisins :
+  forme, bornes des valeurs, cohérence énoncé/état courant, et conformité des
+  cages (partition CONTIGUË de 2 à 4 cases, jamais de division, différence et
+  produit à deux cases seulement). Ne va délibérément PAS jusqu'à revérifier
+  que l'énoncé stocké a encore une solution unique : il faudrait rejouer
+  l'oracle du tirage à chaque lecture de stockage, ce qu'aucun critère ne
+  demande.
 - **`invitation.ts`** — `doitInviter(ContexteInvitation)` : la règle pure qui
   décide si l'étagère se propose en fin de séance, et à quel emplacement
   (« programme » DÉPLACE l'invitation vers la fin d'un programme du jour plutôt

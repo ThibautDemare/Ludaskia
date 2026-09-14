@@ -1322,8 +1322,8 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
 
 ## Étagère de jeux (#661)
 
-Cinq modules, au-dessus des huit modules **purs** de `core/jeux/` (cf. [Logique
-pure](core.md)) : aucun n'y connaît de jeu concret — chaque runner s'enregistre
+Cinq modules, au-dessus des dix-huit modules **purs** de `core/jeux/` (cf.
+[Logique pure](core.md)) : aucun n'y connaît de jeu concret — chaque runner s'enregistre
 lui-même par `enregistrerJeu(id, fabrique)` **à son propre chargement**
 (`jeu-motus.ts`, `jeu-2048.ts`, importés dans `main.ts`), pour que l'accueil
 n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
@@ -1360,11 +1360,12 @@ n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
   `ortho-runner.ts` ×2, `seance.ts` seul pour l'emplacement « programme »), gardés
   par un gate dédié (cf. [Tests](tests.md)).
 - **`jeu-motus.ts`** / **`jeu-2048.ts`** / **`jeu-sudoku.ts`** /
-  **`jeu-mots-cases.ts`** / **`jeu-mots-croises.ts`** — les cinq runners livrés,
-  chacun un `RunnerJeu` autour de son moteur pur (`core/jeux/motus.ts`,
-  `core/jeux/deux-mille-quarante-huit.ts`, `core/jeux/sudoku.ts`,
-  `core/jeux/grille-mots.ts` + `core/jeux/mots-cases.ts`,
-  `core/jeux/grille-mots.ts` + `core/jeux/mots-croises.ts`). Convention de
+  **`jeu-mots-cases.ts`** / **`jeu-mots-croises.ts`** / **`jeu-calcudoku.ts`** —
+  les six runners livrés, chacun un `RunnerJeu` autour de son moteur pur
+  (`core/jeux/motus.ts`, `core/jeux/deux-mille-quarante-huit.ts`,
+  `core/jeux/sudoku.ts`, `core/jeux/grille-mots.ts` + `core/jeux/mots-cases.ts`,
+  `core/jeux/grille-mots.ts` + `core/jeux/mots-croises.ts`,
+  `core/jeux/calcudoku.ts`). Convention de
   nommage `src/ui/jeu-<id>.ts` : le nom du fichier DIT quel jeu du catalogue il
   sert, vérifié par un gate (cf. [Tests](tests.md)).
 - Le **sudoku** (#666) se pose en deux temps — appui sur la case, puis appui sur
@@ -1449,6 +1450,22 @@ n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
   LEÇONS : les jeux de l'étagère, mots croisés compris, en sont exclus par
   arbitrage de cadrage — même parti pris que le Motus.
 
+Le **calcudoku** (#667), second jeu bâti sur `grille-contraintes.ts` et premier
+jeu de mathématiques de l'étagère, reprend le geste en DEUX TEMPS du sudoku —
+appui sur la case, puis appui sur le nombre dans une palette FIXE hors de la
+grille, jamais de glissé. Il n'a en revanche aucun sélecteur de taille (une
+seule taille, 4×4) : la place que le sudoku réserve à ses boutons de taille
+revient à une **zone de phrase**, TOUJOURS présente sous la règle du jeu et de
+hauteur FIXE, qui dit en toutes lettres l'objectif de la cage touchée — le
+symbole d'une cage tient en deux caractères et ne le dit pas de lui-même
+(« ↔ » moins que les autres). Le réglage « Jouer sans aides visuelles » y coupe,
+comme au sudoku, DEUX signaux à la fois — le signalement des conflits (ligne,
+colonne, cage) et l'éclairage de la ligne et de la colonne de la case choisie —
+mais jamais le contour de cage ni la zone de phrase, qui ne sont pas des aides
+mais la règle du jeu elle-même (à la différence des mots à caser, où le
+signalement d'un conflit ne dépend, lui, jamais du réglage — cf. [Espace
+encadrant](espace-encadrant.md)).
+
 **Limite connue des jeux à grille, à ne pas re-remonter jeu par jeu.** Ni
 `jeu-sudoku.scss` ni `jeu-mots-cases.scss` ne redéfinissent `:focus-visible`, là
 où `jeux.scss`, `modal.scss` et `jeu-motus.scss` le font. Aucune des deux ne pose
@@ -1458,6 +1475,16 @@ ce n'est pas non plus un choix — le jour où l'une des deux feuilles touche au
 focus, les deux se traitent ensemble. `jeu-mots-croises.scss` n'entre pas dans
 cette limite : il ajoute un `:focus` dédié à la case courante SANS jamais retirer
 l'anneau natif ni le remplacer par un `:focus-visible` sélectif.
+
+Le **calcudoku** (#667) s'écarte légèrement de cette limite sans la lever :
+`.calcudoku-case:focus-visible` pose un `outline-offset: -3px`, pour que
+l'anneau ne soit pas rogné aux bords de la grille (elle est en
+`overflow: hidden` et les cases en touchent les bords). Il ne fixe ni couleur ni
+épaisseur — pas d'`outline:` propre, pas d'`outline: none` non plus — donc
+l'anneau reste, comme au sudoku et à `base.scss`, celui du navigateur ; seule sa
+position bouge. Lui donner un anneau dédié désynchroniserait cette feuille de
+ses deux voisines pour un sujet qui dépasse ce lot : la cohérence de l'anneau de
+focus à l'échelle de l'application.
 
 ## Étayage de la notion (#490)
 

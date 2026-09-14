@@ -44,6 +44,7 @@ import {
 	COTE,
 	PHRASE_DEFAUT,
 	cageDe,
+	caseTutorielle,
 	casesLiees,
 	conflitsCalcudoku,
 	estFixe,
@@ -65,6 +66,7 @@ import {
 import { aidesJeuxActives } from '../core/profiles';
 import { dicteeDisponible, dicterConsigne } from './tts';
 import { enregistrerJeu, type RunnerJeu } from './jeux-ecran';
+import { bascule } from './jeux-dom';
 
 /** La RÈGLE DU JEU, jamais « la consigne » : ce mot appartient au registre de
     l'exercice et contribue à faire lire le jeu comme du travail déguisé.
@@ -296,15 +298,12 @@ function creerRunner(): RunnerJeu {
 			if (valeur) valeur.textContent = v === 0 ? '' : String(v);
 			el.setAttribute('aria-label', libelleCase(p, i, v));
 			el.classList.toggle('sel', i === caseChoisie);
-			if (signales.has(i)) el.dataset.conflit = '1';
-			else delete el.dataset.conflit;
-			if (liees.has(i)) el.dataset.lie = '1';
-			else delete el.dataset.lie;
+			bascule(el, 'data-conflit', signales.has(i));
+			bascule(el, 'data-lie', liees.has(i));
 			/* La cage entière se signale par le TRAIT, jamais par un second fond :
 			   ses cases sont par construction aussi sur la ligne et la colonne de la
 			   case touchée, donc deux fonds translucides s'empileraient. */
-			if (cageTouchee?.cases.includes(i)) el.dataset.cageSel = '1';
-			else delete el.dataset.cageSel;
+			bascule(el, 'data-cage-sel', cageTouchee?.cases.includes(i) === true);
 		}
 
 		const phrase = dans('#calcudokuPhrase');
@@ -362,26 +361,15 @@ function creerRunner(): RunnerJeu {
 		return tirer();
 	};
 
-	/** La case présélectionnée du tutoriel : ligne, colonne, cage et phrase sont
-	    visibles au montage, sans geste à deviner. On vise une case vide d'une cage
-	    de différence — c'est la cage la moins évidente des trois, et celle que la
-	    phrase explique le mieux — et à défaut la première case libre. */
-	const caseTutorielle = (p: Partie): number | null => {
-		let repli: number | null = null;
-		for (let i = 0; i < COTE * COTE; i++) {
-			if (estFixe(p, i)) continue;
-			if (repli === null) repli = i;
-			if (cageDe(p, i)?.operation === 'difference') return i;
-		}
-		return repli;
-	};
-
 	/** Rend l'état complet après un changement de grille. */
 	const rendreEtat = (annonce: string): void => {
 		const p = partie;
 		if (!p) return;
 		montrerPanne(false);
 		construire();
+		/* Le choix de la case du tutoriel est PUR : il vit dans `core`, où Vitest
+		   l'atteint (voir `caseTutorielle`). Son `null` veut dire « aucune case
+		   libre », donc aucune présélection. */
 		caseChoisie = tutoriel ? caseTutorielle(p) : null;
 		peindre();
 		annoncer(annonce);

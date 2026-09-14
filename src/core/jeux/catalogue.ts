@@ -81,6 +81,36 @@ export const JEUX: JeuDef[] = [
 		type: 'C',
 		competence: 'vocabulaire : retrouver un mot à partir de sa définition',
 	},
+	// Calcudoku (#667). Type C, et le premier de l'étagère en mathématiques : la
+	// compétence EST la mécanique, puisqu'on ne remplit une cage qu'en calculant.
+	// Chaque mot de l'intitulé est daté — « sommes » et « différences » sont le
+	// vocabulaire du programme, et « tables de multiplication » se tient
+	// volontairement en deçà de « facteurs et multiples », ce que la limitation
+	// des produits à deux cases rend honnête. Il ne dit ni « déduction » ni
+	// « logique » : ce sont des capacités méthodologiques transversales, que le
+	// socle range hors des attendus disciplinaires. Et il reste invisible côté
+	// enfant.
+	//
+	// Aucun `levels` : le jeu est strictement identique à toutes les classes (une
+	// seule taille, valeurs de 1 à 4), donc rien à énumérer ni à reprendre quand
+	// une classe s'ajoutera.
+	//
+	// Le libellé nomme ce que l'enfant VOIT — des nombres enfermés dans des cages
+	// — et jamais ce qu'il travaille : « Calculs en grille » aurait retransformé
+	// le cadeau en exercice déguisé, et la tentation est neuve puisque c'est le
+	// premier jeu de maths de l'étagère. Le mot « cage » n'est pas un jargon
+	// gratuit : c'est celui qu'emploient la règle du jeu et la zone de phrase, qui
+	// le définissent en situation dès le premier appui.
+	//
+	// L'icône est un quadrillage de cases encadrées, distinct des voisines de
+	// l'étagère (🔷 le sudoku, 🧩 les mots à caser) et muette sur l'opération.
+	{
+		id: 'calcudoku',
+		label: 'Cages à nombres',
+		icone: '🪟',
+		type: 'C',
+		competence: 'Sommes, différences et tables de multiplication',
+	},
 ];
 
 export function jeuParId(id: string): JeuDef | undefined {

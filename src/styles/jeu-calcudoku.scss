@@ -176,6 +176,17 @@
 		inset calc(var(--trait-g) * 1px) 0 0 0 var(--cage-teinte);
 }
 
+/* L'anneau de focus se dessine VERS L'INTÉRIEUR. La grille est en
+   `overflow: hidden` et les cases touchent ses bords : un contour posé à
+   l'extérieur de la boîte, comme le fait le navigateur par défaut, serait rogné
+   sur la rangée et la colonne externes — soit sept cases sur seize dont
+   l'utilisateur clavier ne verrait plus où il est. Le décalage vaut l'épaisseur
+   de la bordure transparente, donc l'anneau tombe exactement là où se pose celui
+   de la sélection, et ne recouvre pas le trait de cage qui court en deçà. */
+.calcudoku-case:focus-visible {
+	outline-offset: -3px;
+}
+
 /* La teinte de l'opération. Elle ne dit rien à elle seule : l'étiquette porte le
    symbole, et c'est lui qui nomme l'opération. */
 .calcudoku-case[data-operation='somme'] {

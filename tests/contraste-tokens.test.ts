@@ -95,19 +95,37 @@ const THEMES = readFileSync('src/styles/themes.scss', 'utf8');
 const debutRacine = BASE.indexOf(':root {');
 const RACINE = tokens(BASE.slice(debutRacine, BASE.indexOf('\n}', debutRacine)));
 
+/* La triade d'opérations du calcudoku (#667) : trois teintes déclarées en RACINE dans la
+   feuille du jeu, et non dans base.scss. C'est délibéré, et écrit sur place — un code de
+   SENS sur le modèle des `--cat-*`, qui doit rester identique sur les six thèmes pour
+   qu'un enfant changeant de thème n'ait pas à réapprendre que le bleu dit « addition ».
+   Elles sont donc lues ici et versées dans chaque palette : sans cette lecture, les
+   couples déclarés plus bas mesureraient `undefined` — c'est-à-dire rien, en silence.
+   Un thème qui les réécrirait l'emporterait quand même (ordre d'étalement ci-dessous),
+   pour que le gate mesure ce que le navigateur rend et non ce que la feuille espère. */
+const CALCUDOKU = readFileSync('src/styles/jeu-calcudoku.scss', 'utf8');
+const debutCalcudoku = CALCUDOKU.indexOf(':root {');
+const TRIADE_CALCUDOKU = tokens(
+	CALCUDOKU.slice(debutCalcudoku, CALCUDOKU.indexOf('\n}', debutCalcudoku)),
+);
+
+/** Ce sur quoi chaque thème est bâti : la racine de base.scss, plus les tokens de sens
+ *  déclarés en racine dans une feuille de composant (cf. ci-dessus). */
+const SOCLE = { ...RACINE, ...TRIADE_CALCUDOKU };
+
 /** Palette effective de chaque thème : la racine, écrasée par ses propres tokens. */
 function palettes(): Record<string, Record<string, string>> {
-	const p: Record<string, Record<string, string>> = { defaut: { ...RACINE } };
+	const p: Record<string, Record<string, string>> = { defaut: { ...SOCLE } };
 	for (const m of THEMES.matchAll(/:root\[data-theme='([\w-]+)'\]\s*\{([\s\S]*?)\n\}/g)) {
 		// « auto » ne déclare aucun token : il inclut le mixin Nuit derrière une media
 		// query, non résolue en JS. L'ajouter produirait un doublon exact de « defaut »
 		// (donc 6 cas de plus qui ne testent rien de neuf) alors que sa vraie palette
 		// est celle de « nuit », déjà couverte ci-dessous.
 		if (m[1] === 'auto') continue;
-		p[m[1]] = { ...RACINE, ...tokens(m[2]) };
+		p[m[1]] = { ...SOCLE, ...tokens(m[2]) };
 	}
 	const nuit = THEMES.match(/@mixin nuit-palette\s*\{([\s\S]*?)\n\}/);
-	if (nuit) p.nuit = { ...RACINE, ...tokens(nuit[1]) };
+	if (nuit) p.nuit = { ...SOCLE, ...tokens(nuit[1]) };
 	return p;
 }
 
@@ -472,6 +490,73 @@ const PAIRES_NON_TEXTE: Paire[] = [
 		avant: '--ok',
 		arriere: '--paper',
 		ou: 'encadrant.scss (segment des mots maîtrisés, frise de composition #545)',
+	},
+
+	/* Les trois teintes d'opération du calcudoku (#667, critère 31). Elles peignent le
+	   CONTOUR des cages — jamais un fond, jamais un remplissage — et ce contour est ce qui
+	   dit à quelle cage appartient une case : un objet graphique porteur d'information,
+	   donc 3:1 et non 4,5:1. Le symbole de l'étiquette (`+`, `↔`, `×`) reste le canal
+	   principal, en encre neutre ; la teinte n'est qu'un renfort, mais un renfort qu'on ne
+	   voit pas ne renforce rien.
+	   TROIS surfaces parce qu'une case en porte trois selon son état, et qu'il faut les
+	   énumérer pour que le gate voie la plus serrée — la leçon de `--accent-soft` dans la
+	   rampe de gris (#576), surface oubliée là où le défaut se trouvait justement. La
+	   quatrième surface possible, `--warn-bg`, n'est PAS ici : une case signalée remplace
+	   la teinte de cage par `--warn`, donc ce couple-là n'existe pas à l'écran.
+	   MARGE DE QUATRE CENTIÈMES sur le pire cas : `--calcudoku-diff` sur l'`--accent-soft`
+	   de Fruit rouge, 3,04:1. Viennent ensuite `--calcudoku-produit` sur la même surface
+	   (3,10) et `--calcudoku-somme` sur le `--track` de Nuit (3,14). Les deux tombent en
+	   RAPPROCHANT la surface de sa teinte, mais dans des sens OPPOSÉS — c'est ce qui rend la
+	   marge difficile à sentir à l'œil : il suffit d'assombrir de deux crans l'`--accent-soft`
+	   de Fruit rouge (#f9e0db → #f7ddd8 donne déjà 2,96:1), ou d'éclaircir d'autant le
+	   `--track` de Nuit. La première valeur proposée pour le bleu, #3f7ec4, y valait 2,94:1 ;
+	   c'est cette mesure, et non un avis, qui l'a fait éclaircir. Corriger la TEINTE de
+	   l'opération plutôt que la surface : la teinte ne sert qu'ici, quand la surface porte
+	   des dizaines d'autres couples. */
+	{
+		avant: '--calcudoku-somme',
+		arriere: '--paper',
+		ou: "jeu-calcudoku.scss .calcudoku-case[data-operation='somme'] — trait de cage sur une case vide (fond de carte)",
+	},
+	{
+		avant: '--calcudoku-somme',
+		arriere: '--track',
+		ou: "jeu-calcudoku.scss .calcudoku-case[data-operation='somme'] — trait de cage sur une case DONNÉE (.calcudoku-case[data-fixe])",
+	},
+	{
+		avant: '--calcudoku-somme',
+		arriere: '--accent-soft',
+		ou: "jeu-calcudoku.scss .calcudoku-case[data-operation='somme'] — trait de cage sur une case éclairée par la ligne ou la colonne touchée ([data-lie])",
+	},
+	{
+		avant: '--calcudoku-diff',
+		arriere: '--paper',
+		ou: "jeu-calcudoku.scss .calcudoku-case[data-operation='difference'] — trait de cage sur une case vide (fond de carte)",
+	},
+	{
+		avant: '--calcudoku-diff',
+		arriere: '--track',
+		ou: "jeu-calcudoku.scss .calcudoku-case[data-operation='difference'] — trait de cage sur une case DONNÉE (.calcudoku-case[data-fixe])",
+	},
+	{
+		avant: '--calcudoku-diff',
+		arriere: '--accent-soft',
+		ou: "jeu-calcudoku.scss .calcudoku-case[data-operation='difference'] — trait de cage sur une case éclairée par la ligne ou la colonne touchée ([data-lie])",
+	},
+	{
+		avant: '--calcudoku-produit',
+		arriere: '--paper',
+		ou: "jeu-calcudoku.scss .calcudoku-case[data-operation='produit'] — trait de cage sur une case vide (fond de carte)",
+	},
+	{
+		avant: '--calcudoku-produit',
+		arriere: '--track',
+		ou: "jeu-calcudoku.scss .calcudoku-case[data-operation='produit'] — trait de cage sur une case DONNÉE (.calcudoku-case[data-fixe])",
+	},
+	{
+		avant: '--calcudoku-produit',
+		arriere: '--accent-soft',
+		ou: "jeu-calcudoku.scss .calcudoku-case[data-operation='produit'] — trait de cage sur une case éclairée par la ligne ou la colonne touchée ([data-lie])",
 	},
 ];
 

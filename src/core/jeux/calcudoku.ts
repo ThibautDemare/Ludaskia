@@ -51,6 +51,10 @@ import {
 	type Valeur,
 	type Valeurs,
 } from './grille-contraintes';
+/* Les trois outils communs au sudoku et au calcudoku (mélange, tirage d'une
+   grille pleine, cases liées) : voir l'en-tête de `grille-tirage.ts` pour ce
+   qu'il accepte de contenir, et surtout pour ce qu'il refuse. */
+import { casesLieesDans, melanger, solutionComplete } from './grille-tirage';
 
 /** Une seule taille, et aucun paramètre de taille nulle part (critère 1). */
 export const COTE = 4;
@@ -228,18 +232,15 @@ const MOTEUR_NU = moteurCalcudoku([]);
     et 5 ferait chercher l'enfant là où aucune règle ne s'applique.
 
     Ne prend pas de `Partie` : c'est la moitié « fond plat » du critère 21, celle
-    que la cage ne concerne pas. La cage se signale par son trait, à part. */
+    que la cage ne concerne pas. La cage se signale par son trait, à part.
+
+    Le PARCOURS des zones est commun au sudoku (`grille-tirage.ts`) ; ce qui
+    reste ici, et qui n'appartient qu'au calcudoku, est le choix des FAMILLES —
+    ligne et colonne, jamais la région. L'enveloppe est mince exprès : cette
+    fonction fait partie du contrat public du jeu, et c'est d'ICI qu'elle
+    s'importe. */
 export function casesLiees(index: number): Set<number> {
-	const out = new Set<number>();
-	if (!Number.isInteger(index) || index < 0 || index >= TOTAL) return out;
-	const geo = geometrieCalcudoku();
-	for (const famille of [lignes, colonnes]) {
-		for (const zone of famille(geo)) {
-			if (!zone.includes(index)) continue;
-			for (const i of zone) if (i !== index) out.add(i);
-		}
-	}
-	return out;
+	return casesLieesDans(geometrieCalcudoku(), [lignes, colonnes], index);
 }
 
 /** La cage d'une case, ou `undefined` — y compris sur un index hors grille, qui
@@ -300,17 +301,6 @@ const DONNEES = 2;
 const ESSAIS_ORDINAIRE = 400;
 const ESSAIS_PREMIERE = 3000;
 
-/* Mélange de Fisher-Yates avec la garde `Math.min` du dépôt : un générateur
-   bricolé qui rendrait 1 produirait sinon un index hors tableau. */
-function melanger<T>(source: readonly T[], r: () => number): T[] {
-	const a = [...source];
-	for (let i = a.length - 1; i > 0; i--) {
-		const j = Math.min(i, Math.floor(r() * (i + 1)));
-		[a[i], a[j]] = [a[j], a[i]];
-	}
-	return a;
-}
-
 function choisir<T>(liste: readonly T[], r: () => number): T {
 	return liste[Math.min(liste.length - 1, Math.floor(r() * liste.length))];
 }
@@ -324,21 +314,6 @@ function voisinesDe(index: number): number[] {
 	if (x > 0) out.push(index - 1);
 	if (x < COTE - 1) out.push(index + 1);
 	return out.sort((a, b) => a - b);
-}
-
-/** Une grille complète et valide, tirée : un carré latin d'ordre 4. */
-function solutionComplete(r: () => number): Valeurs | null {
-	const v: Valeurs = new Array<number>(TOTAL).fill(0);
-	const rec = (i: number): boolean => {
-		if (i >= TOTAL) return true;
-		for (const s of melanger([...MOTEUR_NU.candidats(v, i)], r)) {
-			v[i] = s;
-			if (rec(i + 1)) return true;
-			v[i] = 0;
-		}
-		return false;
-	};
-	return rec(0) ? v : null;
 }
 
 /** Partitionne les 16 cases en groupes CONTIGUS de 2 à 4 cases, 6 au plus
@@ -478,8 +453,14 @@ function aUnPivot(cages: readonly Cage[], enonce: Valeurs): boolean {
 }
 
 function tenterGrille(r: () => number, premiere: boolean): Partie | null {
-	const solution = solutionComplete(r);
-	if (!solution) return null;
+	// Un carré latin d'ordre 4, tiré sur le moteur SANS cage. La version partagée
+	// rend toujours une grille — là où la version locale rendait `null` quand le
+	// retour arrière échouait, cas inatteignable ici (un carré latin d'ordre 4
+	// existe toujours). Rien ne se perd : une grille troublée par un retour
+	// arrière raté donnerait des cages bâties sur des zéros, que le contrôle de
+	// déduction élémentaire ci-dessous refuserait comme n'importe quelle autre
+	// grille non finissable. La garantie reste portée par un SEUL endroit.
+	const solution = solutionComplete(MOTEUR_NU, r);
 	const groupes = decouperEnCages(r);
 	if (!groupes) return null;
 	const cages = habillerCages(groupes, solution, r);

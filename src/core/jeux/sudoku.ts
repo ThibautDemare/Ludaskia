@@ -40,6 +40,10 @@ import {
 	type Valeur,
 	type Valeurs,
 } from './grille-contraintes';
+/* Les trois outils communs au sudoku et au calcudoku (mélange, tirage d'une
+   grille pleine, cases liées) : voir l'en-tête de `grille-tirage.ts` pour ce
+   qu'il accepte de contenir, et surtout pour ce qu'il refuse. */
+import { casesLieesDans, melanger, solutionComplete } from './grille-tirage';
 
 /** Deux tailles, et pas de 9×9 : hors périmètre, trois raisons dans l'issue
     (28-30 px la case sur un téléphone de 360 px, pense-bêtes pas automatiques
@@ -141,34 +145,6 @@ export interface Partie {
 	valeurs: Valeurs;
 }
 
-/* Mélange de Fisher-Yates avec la garde `Math.min` du dépôt : un générateur
-   importé ou bricolé qui rendrait 1 produirait sinon un index hors tableau. */
-function melanger<T>(source: readonly T[], r: () => number): T[] {
-	const a = [...source];
-	for (let i = a.length - 1; i > 0; i--) {
-		const j = Math.min(i, Math.floor(r() * (i + 1)));
-		[a[i], a[j]] = [a[j], a[i]];
-	}
-	return a;
-}
-
-/** Une grille complète et valide, tirée. */
-function solutionComplete(m: MoteurGrille, r: () => number): Valeurs {
-	const total = m.geometrie.cotes * m.geometrie.cotes;
-	const v: Valeurs = new Array(total).fill(0);
-	const rec = (i: number): boolean => {
-		if (i >= total) return true;
-		for (const s of melanger([...m.candidats(v, i)], r)) {
-			v[i] = s;
-			if (rec(i + 1)) return true;
-			v[i] = 0;
-		}
-		return false;
-	};
-	rec(0);
-	return v;
-}
-
 /** Retire des cases tant que la grille reste finissable par déduction
     élémentaire. `cible` à 0 veut dire « autant que possible ». */
 function creuser(m: MoteurGrille, plein: Valeurs, r: () => number, cible: number): Valeurs {
@@ -210,19 +186,14 @@ export function conflitsSudoku(p: Partie): Set<number> {
     n'a plus à calculer QUELLES cases comptent avant de chercher un conflit, mais
     la déduction, elle, reste entière.
 
-    7 cases au 4×4, 12 au 6×6 (dans les deux orientations de région). */
+    7 cases au 4×4, 12 au 6×6 (dans les deux orientations de région).
+
+    Le PARCOURS des zones est commun au calcudoku (`grille-tirage.ts`) ; ce qui
+    reste ici, et qui n'appartient qu'au sudoku, est le choix des FAMILLES —
+    ligne, colonne ET région. L'enveloppe est mince exprès : cette fonction fait
+    partie du contrat public du jeu, et c'est d'ICI qu'elle s'importe. */
 export function casesLiees(taille: TailleSudoku, index: number): Set<number> {
-	const out = new Set<number>();
-	const geo = geometrieSudoku(taille);
-	const total = geo.cotes * geo.cotes;
-	if (!Number.isInteger(index) || index < 0 || index >= total) return out;
-	for (const famille of [lignes, colonnes, regions]) {
-		for (const zone of famille(geo)) {
-			if (!zone.includes(index)) continue;
-			for (const i of zone) if (i !== index) out.add(i);
-		}
-	}
-	return out;
+	return casesLieesDans(geometrieSudoku(taille), [lignes, colonnes, regions], index);
 }
 
 /** Remplie ET sans conflit. Le critère 13 rend « remplie mais fausse »

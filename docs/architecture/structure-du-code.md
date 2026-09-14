@@ -15,9 +15,24 @@ src/
   core/          # logique pure (aucun accès DOM au chargement)
   ui/            # rendu et interactions DOM
   data/          # contenus statiques par matière (ex. francais/conjugaison.ts)
-  styles/        # *.scss (importés depuis main.ts)
+  styles/        # *.scss (importés depuis main.ts, sauf les partiels `_*.scss`)
   fonts/         # nunito-variable.woff2 (police embarquée)
 ```
+
+Un fichier `_*.scss` est un **partiel** Sass (le soulignement est la convention
+qui le marque comme tel) : il n'est **jamais** importé depuis `main.ts`, il est
+tiré par `@use` depuis les feuilles qui en ont besoin. Ce qui a le droit d'y
+entrer : une règle d'accessibilité RÉELLEMENT commune à plusieurs feuilles —
+jamais un habillage qui se ressemble par hasard et divergerait légitimement un
+jour. Premier partiel du dépôt, `styles/_mixins-jeux.scss` (#666/#667) : le
+mixin `trame-signalement($hauteur-bande)`, la trame hachurée du signalement
+(second canal, non coloré, indépendant de la teinte), tiré par `@use` depuis
+les quatre feuilles de jeux à grille (`jeu-sudoku.scss`, `jeu-calcudoku.scss`,
+`jeu-mots-cases.scss`, `jeu-mots-croises.scss`) au lieu d'y être recopié — la
+hauteur de bande reste un paramètre à la charge de l'appelant (16 % au sudoku
+et au calcudoku, 18 % aux deux jeux de mots). Avant lui, le dépôt ne contenait
+aucun `@use`/`@import` Sass : chaque feuille était un point d'entrée autonome,
+et les deux seuls mixins existants étaient locaux à leur propre feuille.
 
 Le détail de chaque dossier vit dans son propre fichier :
 

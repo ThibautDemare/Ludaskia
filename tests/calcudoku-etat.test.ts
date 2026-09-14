@@ -25,16 +25,25 @@
    l'ouverture, et l'enfant n'aurait aucun moyen de s'en sortir : la donnée
    fautive serait relue à chaque tentative.
 
-   ── CE QUE CE FICHIER NE VÉRIFIE PAS, DÉLIBÉRÉMENT ──────────────────────────
+   ── LE BORNAGE VA JUSQU'À LA RÉSOLUBILITÉ, ET C'EST RÉCENT ──────────────────
 
-   Le bornage à la lecture s'arrête ici à la validité STRUCTURELLE : forme,
-   longueurs, bornes des valeurs, cohérence énoncé/état courant, et conformité
-   des cages aux critères 9, 11 et 12. Il ne va PAS jusqu'à « l'énoncé stocké
-   a-t-il encore une solution unique ». Le voisin `sudoku-etat.test.ts` l'exige,
-   mais il le fait sur une règle que le module connaît déjà ; ici il faudrait
-   rejouer l'oracle des 576 carrés latins à chaque lecture de stockage, ce
-   qu'aucun critère de l'issue ne demande. Le signaler plutôt que de l'extrapoler
-   en silence.
+   Ce paragraphe disait l'inverse jusqu'au 2026-09-14, et il avait raison de le
+   dire : le bornage s'arrêtait alors à la validité STRUCTURELLE (forme,
+   longueurs, bornes des valeurs, cohérence énoncé/état courant, conformité des
+   cages aux critères 9, 11 et 12), et ce fichier le signalait plutôt que de
+   laisser extrapoler.
+
+   Arbitrage du mainteneur : le module rejoue désormais
+   `resoudreParDeductionElementaire` à la relecture, comme le fait
+   `sudoku-etat.ts`, et rend `null` sur un énoncé insoluble. Sans ce contrôle,
+   une grille structurellement valide mais arithmétiquement impossible était
+   servie SANS ISSUE — « Recommencer cette grille » réinjecte le même énoncé et
+   « Nouvelle grille » n'apparaît qu'une fois la grille terminée, donc le profil
+   restait bloqué sur ce jeu.
+
+   Il juge l'ÉNONCÉ, jamais l'état courant, que l'enfant a le droit d'avoir
+   rendu contradictoire en jouant : le refuser lui effacerait sa partie parce
+   qu'il s'est trompé.
 
    NOTE DE MÉTHODE. Le contrat ne fixe PAS la forme sous laquelle la partie est
    rangée sous sa clé. Aucun test d'ici ne la suppose : les cas de donnée

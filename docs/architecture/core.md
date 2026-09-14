@@ -1931,7 +1931,7 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
 
 ## Étagère de jeux (#661)
 
-Dix-huit modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
+Dix-neuf modules **purs** sous `src/core/jeux/`, sans DOM ni effet de bord hors
 `etat.ts`, `sudoku-etat.ts`, `mots-cases-etat.ts`, `mots-croises-etat.ts` et
 `calcudoku-etat.ts` (les seuls à lire/écrire le stockage) — cf.
 [Gamification](gamification.md)
@@ -1948,9 +1948,11 @@ encadrant](espace-encadrant.md) pour les quatre réglages adulte.
   entre deux niveaux (borne de départ exclue, d'arrivée incluse — même grammaire
   que `recompensesEntre`), `[]` à la baisse.
 - **`tirage.ts`** — `proposerJeux(...)` : les 3 propositions d'un palier
-  (Fisher-Yates sur générateur injecté), d'abord les jeux du type du palier puis
-  l'autre type pour compléter ; pure, ne mute jamais le vivier reçu — les jeux non
-  choisis y restent.
+  (Fisher-Yates sur générateur injecté, `melanger` de `grille-tirage.ts`
+  ci-dessous depuis #667 — sa copie privée a été retirée au profit de
+  celle-ci), d'abord les jeux du type du palier puis l'autre type pour
+  compléter ; pure, ne mute jamais le vivier reçu — les jeux non choisis y
+  restent.
 - **`plafond.ts`** — arithmétique pure du temps de jeu quotidien (`jourLocal`,
   `restantSecondes`, `consommer`) : borné, non cumulable, jour LOCAL passé en
   paramètre plutôt que lu de l'horloge, pour rester testable aux bords de journée.
@@ -1984,6 +1986,26 @@ encadrant](espace-encadrant.md) pour les quatre réglages adulte.
   (`tests/calcudoku-gate.test.ts`, critère 41), à la différence de la promesse
   équivalente de #664 envers #665 sur `grille-mots.ts` (⚠️ plus bas), révélée à
   moitié fausse.
+- **`grille-tirage.ts`** (#667) — ce que les jeux de grille partagent VRAIMENT,
+  trois fonctions et pas une de plus : `melanger` (Fisher-Yates gardé par
+  `Math.min`), `solutionComplete` (remplissage par retour arrière sur un
+  `MoteurGrille` injecté, sans connaître le jeu) et `casesLieesDans` (les cases
+  contraintes par une case, pour le déchargement de repérage). Critère
+  d'entrée strict, pas « ça se ressemble » : **deux clients réels et vérifiés,
+  qui appellent le même code avec les mêmes attendus** — `poser`,
+  `grilleTerminee` et `grilleValide` en sont exclus, leurs `Partie` différant
+  structurellement entre sudoku et calcudoku. C'est la leçon de
+  `grille-mots.ts` (⚠️ ci-dessus), factorisé lors de #664 et révélé générique à
+  moitié seulement, neuf exports pour un seul client. `melanger` a un
+  **troisième** client, `tirage.ts`, qui ne tire aucune grille à contraintes —
+  sa copie privée en a été retirée au profit de celle-ci, ce qui rend le nom du
+  fichier un peu étroit pour cette fonction-là. Dette de nommage assumée et
+  écrite en en-tête : `melanger` existe encore, en copie, dans `grille-mots.ts`
+  — exportée aux deux jeux de mots et prise pour sujet par
+  `tests/aleatoire.test.ts` ; la retirer toucherait deux jeux livrés et leurs
+  tests de permutation, hors du périmètre de ce rangement. Le moteur ne bouge
+  pas : `grille-contraintes.ts` reste figé par empreinte (critère 41), ce
+  module est NEUF et posé à côté, jamais un élargissement de celui-là.
 - **`sudoku.ts`** (#666) — le jeu comme ASSEMBLAGE : trois unicités sur une
   géométrie (régions 2×2 au 4×4, 3 de large sur 2 de haut au 6×6). `tirerGrille`
   part d'une solution complète et creuse tant que le solveur faible finit encore
@@ -2117,10 +2139,20 @@ encadrant](espace-encadrant.md) pour les quatre réglages adulte.
   mémoriser. Bornage à la LECTURE, même logique que les jeux à grille voisins :
   forme, bornes des valeurs, cohérence énoncé/état courant, et conformité des
   cages (partition CONTIGUË de 2 à 4 cases, jamais de division, différence et
-  produit à deux cases seulement). Ne va délibérément PAS jusqu'à revérifier
-  que l'énoncé stocké a encore une solution unique : il faudrait rejouer
-  l'oracle du tirage à chaque lecture de stockage, ce qu'aucun critère ne
-  demande.
+  produit à deux cases seulement). **Va aussi jusqu'à la RÉSOLUBILITÉ**
+  (arbitrage du mainteneur, 2026-09-14, en symétrie avec `sudoku-etat.ts`, qui
+  le fait déjà) : `partieEnCours` rejoue `resoudreParDeductionElementaire` sur
+  l'ÉNONCÉ relu (jamais l'état courant — l'enfant a le droit d'avoir rendu sa
+  grille contradictoire en jouant, critère 22) et rend `null` si l'énoncé n'a
+  plus de solution. Sans ce contrôle, une grille structurellement valide mais
+  arithmétiquement impossible (sauvegarde importée, bricolage, migration
+  future bogée) serait servie **sans aucune issue** : « Recommencer cette
+  grille » réinjecte le même énoncé, et « Nouvelle grille » n'apparaît qu'une
+  fois la grille terminée — jamais, dans ce cas. Ce contrôle a d'ailleurs
+  immédiatement attrapé une grille impossible **dans les tests eux-mêmes** : la
+  grille témoin du gate avait deux solutions, sa cage « somme 10 » couvrant une
+  ligne entière sans rien contraindre — toute ligne d'un carré latin d'ordre 4
+  somme à 10.
 - **`invitation.ts`** — `doitInviter(ContexteInvitation)` : la règle pure qui
   décide si l'étagère se propose en fin de séance, et à quel emplacement
   (« programme » DÉPLACE l'invitation vers la fin d'un programme du jour plutôt

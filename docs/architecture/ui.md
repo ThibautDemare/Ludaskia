@@ -1322,7 +1322,7 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
 
 ## Étagère de jeux (#661)
 
-Cinq modules, au-dessus des dix-huit modules **purs** de `core/jeux/` (cf.
+Six modules, au-dessus des dix-neuf modules **purs** de `core/jeux/` (cf.
 [Logique pure](core.md)) : aucun n'y connaît de jeu concret — chaque runner s'enregistre
 lui-même par `enregistrerJeu(id, fabrique)` **à son propre chargement**
 (`jeu-motus.ts`, `jeu-2048.ts`, importés dans `main.ts`), pour que l'accueil
@@ -1359,6 +1359,21 @@ n'embarque pas le bundle des jeux tant qu'aucun n'est ouvert.
   (`session.ts`, `lecon-runner-shared.ts`, `sprint.ts`, `revision.ts`,
   `ortho-runner.ts` ×2, `seance.ts` seul pour l'emplacement « programme »), gardés
   par un gate dédié (cf. [Tests](tests.md)).
+- **`jeux-dom.ts`** (#665) — les gestes de rendu que plusieurs runners
+  refaisaient à l'identique : `bascule` (pose/retire un attribut d'état,
+  jamais une classe — la valeur `'1'` posée n'est jamais lue, seule la
+  PRÉSENCE de l'attribut compte) et `capitale` (majuscule casse `'fr'`, pour
+  des grilles en CAPITALES accentuées sans confondre b/d/p/q) sont rejointes
+  par deux FABRIQUES : `creerDans` (le `querySelector` borné à la racine d'un
+  jeu, relue à CHAQUE appel — la racine est un `let` que le runner ne reçoit
+  qu'au montage) et `creerAnnonceur` (l'annonce dans la région
+  `role="status"`/`aria-live="polite"` d'un jeu). Seuil de factorisation
+  mesuré, pas un goût d'API : `dans` était recopié au caractère près dans
+  **cinq** runners (2048, calcudoku, mots à caser, mots croisés, sudoku) et
+  `annoncer` dans **quatre** (les mêmes sans le 2048, qui garde son propre
+  `ecrire(sel, texte)`). N'y entre que ce qui ne connaît AUCUN jeu en
+  particulier et reste pur de DOM au chargement — la logique de jeu vit dans
+  `core/jeux/`.
 - **`jeu-motus.ts`** / **`jeu-2048.ts`** / **`jeu-sudoku.ts`** /
   **`jeu-mots-cases.ts`** / **`jeu-mots-croises.ts`** / **`jeu-calcudoku.ts`** —
   les six runners livrés, chacun un `RunnerJeu` autour de son moteur pur

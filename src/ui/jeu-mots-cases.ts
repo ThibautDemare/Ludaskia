@@ -79,7 +79,7 @@ import { TAILLES_MOTS_CASES, type TailleMotsCases } from '../data/jeux/motifs-mo
 import { aidesJeuxActives } from '../core/profiles';
 import { dicteeDisponible, dicterConsigne } from './tts';
 import { enregistrerJeu, type RunnerJeu } from './jeux-ecran';
-import { bascule, capitale } from './jeux-dom';
+import { bascule, capitale, creerAnnonceur, creerDans } from './jeux-dom';
 import { uiConfirm } from './ui-modal';
 
 /** La RÈGLE DU JEU, jamais « la consigne » : ce mot appartient au registre de
@@ -225,13 +225,9 @@ function creerRunner(): RunnerJeu {
 	   ne lève rien et profite à l'enfant. */
 	let avantNouvellePartie: (() => boolean) | null = null;
 
-	const dans = <T extends HTMLElement>(sel: string): T | null =>
-		racine ? racine.querySelector<T>(sel) : null;
+	const dans = creerDans(() => racine);
 
-	const annoncer = (texte: string): void => {
-		const el = dans('#mcAnnonce');
-		if (el) el.textContent = texte;
-	};
+	const annoncer = creerAnnonceur(() => dans('#mcAnnonce'));
 
 	/** Reconstruit la grille et la liste. Appelé au montage, au changement de
 	    taille et à chaque grille neuve — jamais à chaque coup : `peindre` ne fait

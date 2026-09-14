@@ -83,7 +83,7 @@ import { effacerPartie, partieEnCours, sauverPartie } from '../core/jeux/mots-cr
 import { lectureConsigneAuto } from '../core/profiles';
 import { dicteeDisponible, dicterConsigne } from './tts';
 import { enregistrerJeu, type RunnerJeu } from './jeux-ecran';
-import { bascule, capitale } from './jeux-dom';
+import { bascule, capitale, creerAnnonceur, creerDans } from './jeux-dom';
 import { uiConfirm } from './ui-modal';
 
 /** La RÈGLE DU JEU, jamais « la consigne » : ce mot appartient au registre de
@@ -232,13 +232,9 @@ function creerRunner(): RunnerJeu {
 	   vérifierait plus le plafond du jour, et cette panne-là est invisible. */
 	let avantNouvellePartie: (() => boolean) | null = null;
 
-	const dans = <T extends HTMLElement>(sel: string): T | null =>
-		racine ? racine.querySelector<T>(sel) : null;
+	const dans = creerDans(() => racine);
 
-	const annoncer = (texte: string): void => {
-		const el = dans('#mxAnnonce');
-		if (el) el.textContent = texte;
-	};
+	const annoncer = creerAnnonceur(() => dans('#mxAnnonce'));
 
 	const etats = (p: PartieMotsCroises): EtatMot[] =>
 		p.motif.emplacements.map((_e, i) => etatMot(p, i));

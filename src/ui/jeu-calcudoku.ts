@@ -66,7 +66,7 @@ import {
 import { aidesJeuxActives } from '../core/profiles';
 import { dicteeDisponible, dicterConsigne } from './tts';
 import { enregistrerJeu, type RunnerJeu } from './jeux-ecran';
-import { bascule } from './jeux-dom';
+import { bascule, creerAnnonceur, creerDans } from './jeux-dom';
 
 /** La RÈGLE DU JEU, jamais « la consigne » : ce mot appartient au registre de
     l'exercice et contribue à faire lire le jeu comme du travail déguisé.
@@ -252,13 +252,9 @@ function creerRunner(): RunnerJeu {
 	   cette panne-là est invisible : un bouton mort se voit, un plafond mort non. */
 	let avantNouvellePartie: (() => boolean) | null = null;
 
-	const dans = <T extends HTMLElement>(sel: string): T | null =>
-		racine ? racine.querySelector<T>(sel) : null;
+	const dans = creerDans(() => racine);
 
-	const annoncer = (texte: string): void => {
-		const el = dans('#calcudokuAnnonce');
-		if (el) el.textContent = texte;
-	};
+	const annoncer = creerAnnonceur(() => dans('#calcudokuAnnonce'));
 
 	/** Construit les seize cases. Appelé au montage et à chaque grille neuve —
 	    jamais à chaque coup : `peindre` ne fait que déplacer des attributs, ce qui

@@ -8,6 +8,19 @@
    copier-coller en motif » — et #665 l'a atteint : `bascule` et `capitale`
    étaient copiées mot pour mot dans les mots à caser et les mots croisés.
 
+   Deuxième versement, mesuré de la même façon et bien au-delà du seuil : `dans`
+   était recopié au caractère près dans CINQ runners (2048, calcudoku, mots à
+   caser, mots croisés, sudoku), et `annoncer` dans QUATRE (les mêmes sans le
+   2048, qui passe par un `ecrire(sel, texte)` à deux arguments partagé avec son
+   score et son record — une autre fonction, laissée chez lui).
+
+   Ces deux-là entrent sous forme de FABRIQUES, pas de fonctions libres, et ce
+   n'est pas un goût d'API : chaque runner garde sa racine dans un `let`
+   réaffecté au montage et remis à `null` au démontage. Capturer l'élément à la
+   construction rendrait le `dans` définitivement aveugle, puisque la racine vaut
+   `null` à ce moment-là. Ce qu'on ferme donc ici, c'est un accès PARESSEUX,
+   relu à chaque appel.
+
    Ce qui N'A PAS sa place ici : tout ce qui touche à un jeu en particulier (une
    grille, un vivier, une règle), et tout ce qui est PUR — la logique de jeu vit
    dans `core/jeux/`, où elle est testable sans DOM. La clé d'une case, par
@@ -39,3 +52,40 @@ export function bascule(el: HTMLElement, nom: string, actif: boolean): void {
     place — la majuscule accentuée est la forme correcte en français, et c'est
     justement ce que la grille est censée montrer. */
 export const capitale = (lettre: string): string => lettre.toLocaleUpperCase('fr');
+
+/** La fabrique du `querySelector` borné à la racine d'un jeu.
+
+    `lireRacine` est rappelée à CHAQUE requête, et pas lue une fois : la racine
+    d'un runner est un `let` qui ne reçoit son élément qu'au montage. Appel type,
+    au même endroit qu'avant dans le runner :
+    `const dans = creerDans(() => racine);`.
+
+    Rend `null` quand le jeu n'est pas monté ou que le sélecteur ne trouve rien,
+    plutôt que de lever : les appelants testent déjà le résultat, et une exception
+    ici couperait un rendu entier pour une case absente. */
+export function creerDans(
+	lireRacine: () => HTMLElement | null,
+): <T extends HTMLElement>(sel: string) => T | null {
+	return <T extends HTMLElement>(sel: string): T | null => {
+		const racine = lireRacine();
+		return racine ? racine.querySelector<T>(sel) : null;
+	};
+}
+
+/** La fabrique de l'annonce d'un jeu : écrit une phrase dans sa région vivante
+    (`role="status"` + `aria-live="polite"`), seule voie par laquelle un lecteur
+    d'écran apprend ce que la grille vient de faire.
+
+    La région est cherchée à chaque annonce, jamais retenue : elle fait partie du
+    balisage que le runner reconstruit, donc elle change d'identité d'un montage à
+    l'autre. Appel type : `const annoncer = creerAnnonceur(() => dans('#mcAnnonce'));`.
+
+    `textContent`, jamais `innerHTML` : ce qui passe ici est une phrase pour
+    l'oreille, pas du balisage. Région absente = annonce perdue en silence, comme
+    avant : une aide d'accessibilité ne casse pas la partie en tombant. */
+export function creerAnnonceur(region: () => HTMLElement | null): (texte: string) => void {
+	return (texte: string): void => {
+		const el = region();
+		if (el) el.textContent = texte;
+	};
+}

@@ -24,10 +24,17 @@
      champ n'a le focus au moment du clic (focus initial neutralisé) — pour
      écarter spécifiquement un repli « je choisis le premier champ trouvé »,
      que le seul cas QCM ne suffirait pas à attraper.
-   - critère 14 négatif : même écran QCM, bouton atteint et activé AU CLAVIER
-     (Tab puis Enter/Espace, jamais `.click()`) — la distinction porte sur
-     `MouseEvent.detail === 0`, qui ne vaut que pour une vraie activation
-     clavier.
+   - critère 14 négatif : ⚠ un écran SANS champ (QCM) ne discrimine PAS ce
+     critère — la cible mémorisée y est `null` quoi qu'il arrive, garde ou pas
+     (relu en qualité). Le scénario qui l'éprouve VRAIMENT a besoin d'une cible
+     déjà mémorisée par un clic SOURIS antérieur : sur la fiche d'exercice, on
+     clique dans le champ, on écoute à la SOURIS (le focus revient dans le
+     champ, critère 11), puis on rejoint le bouton par Shift+Tab — SANS aucun
+     `pointerdown` entre les deux, donc la cible mémorisée pointe toujours sur
+     le champ — et on active au CLAVIER (Enter/Espace). Sans la garde
+     `e.detail === 0`, cette activation renverrait le focus dans le champ que
+     l'utilisateur vient précisément de quitter au clavier (vol de focus WCAG
+     3.2) ; avec elle, le focus reste sur le bouton et reste réactivable.
 
    Stub de voix : Chromium headless n'expose aucune voix FR (cf.
    accessibilite.spec.ts, en-tête) → aucun bouton .consigne-tts ne serait
@@ -236,36 +243,65 @@ test('critère 13 (négatif) — écran à saisie mais AUCUN champ focus au clic
 
 /* ---------------------------------------------------------------
    Critère 14 (négatif) — activation CLAVIER : le focus ne bouge pas.
-   Atteint au Tab (jamais `.focus()` ni `.click()`) puis activé par
-   Enter/Espace (page.keyboard.press) — une vraie activation native, distincte
-   d'un clic souris simulé (MouseEvent.detail === 0 côté implémentation).
+
+   ⚠ Ce critère ne se prouve QUE si une cible est mémorisée au moment de
+   l'activation clavier. Un écran sans champ (QCM) ne discrimine rien : la
+   cible y est `null` avec ou sans la garde `e.detail === 0` — un test qui s'y
+   fierait resterait vert même si la garde disparaissait (relevé en relecture
+   qualité). On construit donc le seul scénario qui l'éprouve vraiment :
+     1. clic SOURIS dans le champ (mémorise la cible au `pointerdown`) ;
+     2. clic SOURIS sur « Écouter » → le focus revient dans le champ (critère
+        11) ; AUCUN `pointerdown` n'a lieu ensuite, la cible mémorisée reste
+        ce champ ;
+     3. Shift+Tab (clavier, jamais `.focus()` ni un second clic) pour REJOINDRE
+        le bouton — l'utilisateur vient d'atteindre « Écouter » exprès ;
+     4. Entrée puis Espace (clavier) : sans la garde, ce serait un vol de
+        focus WCAG 3.2 vers le champ quitté à l'instant ; avec elle, le focus
+        reste sur le bouton, qui reste réactivable.
    --------------------------------------------------------------- */
 
-test('critère 14 (négatif) — activer Écouter au clavier (Tab puis Enter/Espace) ne déplace pas le focus, réactivable', async ({
+test('critère 14 (négatif) — Shift+Tab vers Écouter puis Entrée/Espace ne renvoie PAS dans le champ mémorisé par le clic précédent', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(stubVoixFr());
-	await gotoHash(page, 'lecon-fr-vocab-sens'); // QCM mono-mode : pas d'option `exclusif`
+	await gotoHash(page, 'lecon-fr-conj-etre-present'); // fiche en saisie, pas d'option `exclusif`
 
+	const champ = page.locator('#sheets input.ans').first();
 	const btn = page.locator('.consigne-tts').first();
-	await btn.waitFor();
+	await champ.waitFor();
 
-	// Atteint le bouton AU CLAVIER : Tab répété jusqu'à ce qu'il devienne l'élément actif
-	// (plafond de sécurité — la position exacte dans l'ordre de tabulation n'est pas figée).
-	let trouve = false;
-	for (let i = 0; i < 40 && !trouve; i++) {
-		await page.keyboard.press('Tab');
-		trouve = await btn.evaluate((el) => el === document.activeElement);
+	// 1. Clic SOURIS dans le champ : mémorise CE champ comme cible au `pointerdown`.
+	await champ.click();
+	await expect(champ).toBeFocused();
+
+	// 2. Écoute à la SOURIS (critère 11) : le focus revient dans le champ. Premier appel
+	// à speak(). Aucun `pointerdown` n'aura plus lieu jusqu'à la fin du test : la cible
+	// mémorisée reste ce champ pour la suite.
+	await btn.click();
+	await expect(champ).toBeFocused();
+	expect(await nbAppelsSpeak(page)).toBe(1);
+
+	// 3. Rejoint le bouton AU CLAVIER (Shift+Tab), jamais par un clic ni `.focus()` —
+	// sinon on réarmerait la mémorisation et le test retomberait dans le même piège.
+	let surLeBouton = false;
+	for (let i = 0; i < 40 && !surLeBouton; i++) {
+		await page.keyboard.press('Shift+Tab');
+		surLeBouton = await btn.evaluate((el) => el === document.activeElement);
 	}
-	expect(trouve, 'le bouton Écouter doit être atteignable au clavier (Tab)').toBe(true);
+	expect(surLeBouton, 'Shift+Tab depuis le champ doit ramener sur le bouton Écouter').toBe(true);
 
+	// 4. Activation CLAVIER : sans la garde `e.detail === 0`, ce Entrée renverrait le
+	// focus dans le champ mémorisé — un vol de focus non sollicité (WCAG 3.2). Avec elle,
+	// le focus reste sur le bouton qui vient d'être atteint exprès.
 	await page.keyboard.press('Enter');
-	expect(await nbAppelsSpeak(page)).toBe(1); // l'activation a bien déclenché la lecture
-	await expect(btn).toBeFocused(); // et le focus est resté sur le bouton
+	expect(await nbAppelsSpeak(page)).toBe(2); // l'activation a bien déclenché la lecture
+	await expect(btn).toBeFocused();
+	await expect(champ).not.toBeFocused();
 
+	// Réactivable au clavier (Espace), sans que le focus ne bouge davantage.
 	await page.keyboard.press('Space');
-	expect(await nbAppelsSpeak(page)).toBe(2); // réactivable au clavier
+	expect(await nbAppelsSpeak(page)).toBe(3);
 	await expect(btn).toBeFocused();
 
 	expect(errors).toEqual([]);

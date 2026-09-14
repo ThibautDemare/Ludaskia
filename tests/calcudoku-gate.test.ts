@@ -621,26 +621,63 @@ const masqueAuxAT = (el: Element, racine: Element): boolean => {
 	return false;
 };
 
+/** LA SOLUTION que le témoin a pour unique issue. Un carré latin d'ordre 4,
+    vérifiable à l'œil : chaque ligne et chaque colonne portent 1, 2, 3 et 4. Les
+    cages ci-dessous en sont TIRÉES, ce qui garantit qu'au moins une solution
+    existe ; que ce soit la seule, et qu'on y arrive par déduction élémentaire,
+    est mesuré par l'oracle au lieu d'être espéré. */
+const SOLUTION_TEMOIN = [1, 2, 3, 4, 2, 4, 1, 3, 3, 1, 4, 2, 4, 3, 2, 1];
+
 /** Une grille témoin, dont les cages sont CHOISIES et non tirées.
 
-    Deux précautions de fabrication, vérifiées par le premier test du bloc :
-    l'objectif d'une cage ne vaut jamais son nombre de cases (sans quoi les
-    contrôles « objectif » et « étendue » se confondraient, et l'un passerait
-    pour l'autre), et les six cages partitionnent bien les seize cases. Deux
-    cages partagent volontairement l'objectif 6 : deux cages de même objectif ne
-    doivent pas se confondre. */
+    ── CE QUE CETTE GRILLE A DÛ CORRIGER, ET POURQUOI C'EST ÉCRIT ICI ─────────
+
+    Sa première version tenait bien ses invariants de fabrication mais pas ceux
+    du JEU : deux solutions, donc aucune obtenue par déduction élémentaire. Elle
+    est passée tant que `partieEnCours` ne relisait que la FORME ; le contrôle de
+    résolubilité (arbitrage du 2026-09-14) l'a refusée, le runner a tiré sa
+    propre grille, et les tests de libellé se sont mis à lire des cages qu'ils ne
+    connaissaient pas.
+
+    La cause n'était pas l'ambiguïté, c'en était la CONSÉQUENCE : la cage
+    `{ [0,1,2,3], somme 10 }` couvrait une ligne entière, et dans un carré latin
+    d'ordre 4 la somme d'une ligne vaut TOUJOURS 10. Elle ne retirait aucune des
+    576 grilles possibles — une cage décorative, qui donnait à la grille l'air
+    d'être contrainte six fois alors qu'elle ne l'était que cinq. Ajouter une
+    troisième case donnée aurait levé l'ambiguïté (mesuré : les cases 4, 7, 8 ou
+    11 y suffisent) sans rien dire de ce défaut-là, et aurait de surcroît éloigné
+    le témoin des grilles réellement servies, qui en donnent exactement deux.
+    C'est donc le découpage qui a changé, et aucune cage ne couvre plus une ligne
+    ni une colonne complète.
+
+    ── LES INVARIANTS, TOUS VÉRIFIÉS PAR LES DEUX PRÉALABLES DU BLOC ──────────
+
+    1. Les six cages partitionnent les seize cases, et aucune ne vaut plus de
+       quatre cases (le témoin doit rester une grille SERVABLE).
+    2. L'objectif d'une cage ne vaut jamais son nombre de cases, sans quoi les
+       contrôles « objectif » et « étendue » se confondraient et l'un passerait
+       pour l'autre.
+    3. Deux cages partagent volontairement l'objectif 7 : deux cages de même
+       objectif ne doivent pas se confondre.
+    4. Les trois opérations et les trois étendues (2, 3 et 4 cases) sont
+       représentées — le vocabulaire et l'étendue se vérifient sur des cas
+       distincts, pas sur un seul.
+    5. Aucune cage n'est décorative : chacune retire au moins un carré latin.
+    6. Une seule solution, et la déduction élémentaire seule y mène. */
 const CAGES_TEMOIN: readonly Cage[] = [
-	{ cases: [0, 1, 2, 3], operation: 'somme', objectif: 10 },
-	{ cases: [4, 8], operation: 'produit', objectif: 6 },
-	{ cases: [5, 6], operation: 'difference', objectif: 3 },
+	{ cases: [0, 4, 5], operation: 'somme', objectif: 7 },
+	{ cases: [1, 2, 3, 6], operation: 'somme', objectif: 10 },
 	{ cases: [7, 11], operation: 'produit', objectif: 6 },
-	{ cases: [9, 12, 13], operation: 'somme', objectif: 8 },
+	{ cases: [8, 9], operation: 'produit', objectif: 3 },
 	{ cases: [10, 14, 15], operation: 'somme', objectif: 7 },
+	{ cases: [12, 13], operation: 'difference', objectif: 1 },
 ];
 
 /** Deux cases données, pour que le contrôle porte AUSSI sur elles : une case
     pré-remplie appartient à une cage comme une autre, et l'oublier priverait
-    l'enfant de l'objectif au moment précis où il s'en sert pour déduire. */
+    l'enfant de l'objectif au moment précis où il s'en sert pour déduire. Deux,
+    et pas trois : c'est ce que sert `tirerGrille`, et un témoin plus doté que
+    les grilles réelles ne les représenterait plus. */
 const DONNEES_TEMOIN = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
 
 const partieTemoin = (): Partie => ({
@@ -653,6 +690,134 @@ const cageTemoinDe = (index: number): Cage => {
 	const c = CAGES_TEMOIN.find((cage) => cage.cases.includes(index));
 	if (!c) throw new Error(`la grille témoin ne couvre pas la case ${index}`);
 	return c;
+};
+
+/* ── L'ORACLE QUI JUGE LE TÉMOIN ─────────────────────────────────────────── */
+
+/* POURQUOI UN SOLVEUR ÉCRIT ICI, alors que `partieEnCours` en appelle déjà un.
+
+   Demander au jeu si sa propre grille témoin tient, c'est le juger avec
+   lui-même : le jour où son solveur deviendrait plus indulgent, le témoin
+   passerait sans que rien ne le dise, et les six tests de libellé qui en
+   dépendent redeviendraient complaisants en silence — exactement ce qui vient
+   d'arriver, mais à l'envers et sans échec pour le signaler. L'oracle ci-dessous
+   ne connaît que les règles du jeu telles que l'issue les énonce : un carré
+   latin, et des cages qui tombent juste. Il est court parce qu'il énumère, et
+   l'énumération est exhaustive — « une seule solution » y est une certitude.
+
+   Il prend la lecture CAGE-LOCALE (l'issue écarte l'extension croisée de son
+   lot) : une cage ne connaît que ses propres cases, et les répétitions y sont
+   admises tant que la ligne et la colonne les autorisent par ailleurs. C'est la
+   lecture EXIGEANTE — un solveur local réussit MOINS souvent qu'un solveur
+   croisé —, donc ce bloc ne peut pas refuser un témoin que le jeu accepterait
+   pour cause d'oracle trop fin. */
+
+/** L'ordre du carré, écrit en dur : l'oracle JUGE `COTE`, il ne le suit pas. */
+const ORDRE = 4;
+
+/** Les carrés latins d'ordre 4, tous. Leur nombre est vérifié avant tout usage :
+    si l'énumération dérive, plus rien de ce qui suit ne veut dire quelque chose. */
+const CARRES_LATINS: number[][] = (() => {
+	const out: number[][] = [];
+	const g = new Array<number>(ORDRE * ORDRE).fill(0);
+	const poser = (i: number): void => {
+		if (i === g.length) {
+			out.push([...g]);
+			return;
+		}
+		const y = Math.floor(i / ORDRE);
+		const x = i % ORDRE;
+		for (let s = 1; s <= ORDRE; s++) {
+			let libre = true;
+			for (let k = 0; k < ORDRE && libre; k++) {
+				if (k < x && g[y * ORDRE + k] === s) libre = false;
+				if (k < y && g[k * ORDRE + x] === s) libre = false;
+			}
+			if (!libre) continue;
+			g[i] = s;
+			poser(i + 1);
+			g[i] = 0;
+		}
+	};
+	poser(0);
+	return out;
+})();
+
+/** Ce que vaut une cage, ou `null` si elle ne s'évalue pas encore. */
+const resultatCage = (operation: Operation, vals: readonly number[]): number | null => {
+	if (vals.some((x) => !x)) return null;
+	if (operation === 'somme') return vals.reduce((a, b) => a + b, 0);
+	if (operation === 'produit') return vals.reduce((a, b) => a * b, 1);
+	return vals.length === 2 ? Math.abs(vals[0] - vals[1]) : null;
+};
+
+const cageTombeJuste = (c: Cage, v: readonly number[]): boolean =>
+	resultatCage(
+		c.operation,
+		c.cases.map((i) => v[i] ?? 0),
+	) === c.objectif;
+
+/** Les grilles qui satisfont À LA FOIS l'énoncé et toutes les cages. Exhaustif. */
+const solutionsDe = (cages: readonly Cage[], enonce: readonly number[]): number[][] =>
+	CARRES_LATINS.filter(
+		(s) => enonce.every((x, i) => !x || x === s[i]) && cages.every((c) => cageTombeJuste(c, s)),
+	);
+
+/** La cage peut-elle ENCORE tomber juste ? Lecture cage-locale : chaque case vide
+    y prend n'importe quelle valeur de 1 à 4, indépendamment des autres. */
+const cageEncorePossible = (c: Cage, vals: readonly number[]): boolean => {
+	const trous = [...vals.keys()].filter((k) => !vals[k]);
+	const essai = [...vals];
+	const rec = (k: number): boolean => {
+		if (k === trous.length) return resultatCage(c.operation, essai) === c.objectif;
+		for (let s = 1; s <= ORDRE; s++) {
+			essai[trous[k]] = s;
+			if (rec(k + 1)) return true;
+		}
+		essai[trous[k]] = 0;
+		return false;
+	};
+	return rec(0);
+};
+
+/** Ne pose que les cases dont UNE seule valeur reste possible, en boucle, et rend
+    le point fixe — rempli, ou non. C'est « la déduction élémentaire seule »,
+    réécrite d'après son énoncé. */
+const deductionElementaire = (cages: readonly Cage[], enonce: readonly number[]): number[] => {
+	const g = [...enonce];
+	const candidats = (i: number): number[] => {
+		const y = Math.floor(i / ORDRE);
+		const x = i % ORDRE;
+		const c = cages.find((cage) => cage.cases.includes(i));
+		const out: number[] = [];
+		for (let s = 1; s <= ORDRE; s++) {
+			let ok = true;
+			for (let k = 0; k < ORDRE; k++) {
+				if (k !== x && g[y * ORDRE + k] === s) ok = false;
+				if (k !== y && g[k * ORDRE + x] === s) ok = false;
+			}
+			if (ok && c) {
+				ok = cageEncorePossible(
+					c,
+					c.cases.map((j) => (j === i ? s : (g[j] ?? 0))),
+				);
+			}
+			if (ok) out.push(s);
+		}
+		return out;
+	};
+	for (;;) {
+		let pose = false;
+		for (let i = 0; i < g.length; i++) {
+			if (g[i]) continue;
+			const seuls = candidats(i);
+			if (seuls.length === 1) {
+				g[i] = seuls[0];
+				pose = true;
+			}
+		}
+		if (!pose) return g;
+	}
 };
 
 let hote: HTMLElement;
@@ -689,6 +854,58 @@ const cliquer = (racine: HTMLElement, selecteur: string): void => {
 	expect(el, `rien à cliquer pour « ${selecteur} »`).not.toBeNull();
 	el?.click();
 };
+
+describe('#667 — l’oracle de la grille témoin MORD', () => {
+	/* Les préalables du bloc suivant sont passés au VERT dès leur écriture, la
+	   grille témoin étant déjà réparée quand ils ont été posés. Un contrôle qui n'a
+	   jamais rien refusé ne prouve rien de lui-même : on l'éprouve donc sur la
+	   grille DÉFECTUEUSE, celle qui a réellement existé dans ce fichier.
+
+	   Ces cages ne sont pas un attendu : c'est un contre-exemple, et il n'a pas à
+	   suivre les retouches du témoin. */
+	const TEMOIN_DEFECTUEUX: readonly Cage[] = [
+		{ cases: [0, 1, 2, 3], operation: 'somme', objectif: 10 },
+		{ cases: [4, 8], operation: 'produit', objectif: 6 },
+		{ cases: [5, 6], operation: 'difference', objectif: 3 },
+		{ cases: [7, 11], operation: 'produit', objectif: 6 },
+		{ cases: [9, 12, 13], operation: 'somme', objectif: 8 },
+		{ cases: [10, 14, 15], operation: 'somme', objectif: 7 },
+	];
+
+	it('une cage posée sur une ligne entière ne contraint RIEN, et le contrôle le voit', () => {
+		/* Le fait de combinatoire qui explique tout le reste : dans un carré latin
+		   d'ordre 4, une ligne porte 1, 2, 3 et 4, donc sa somme vaut 10, toujours.
+		   Une cage « 10+ » sur une ligne est satisfaite par les 576 grilles. */
+		const ligneEntiere: Cage = { cases: [0, 1, 2, 3], operation: 'somme', objectif: 10 };
+		expect(CARRES_LATINS.filter((s) => !cageTombeJuste(ligneEntiere, s)).length).toBe(0);
+		expect(new Set(CARRES_LATINS.map((s) => s[0] + s[1] + s[2] + s[3]))).toEqual(new Set([10]));
+	});
+
+	it('la grille d’origine avait DEUX solutions, et le contrôle d’unicité les compte', () => {
+		expect(solutionsDe(TEMOIN_DEFECTUEUX, DONNEES_TEMOIN).map((s) => s.join(''))).toEqual([
+			'1234241331424321',
+			'1234341221434321',
+		]);
+	});
+
+	it('et la déduction élémentaire y calait, ce que l’unicité seule n’aurait pas dit', () => {
+		/* La distinction qui compte : le contrôle de résolubilité ne demande pas
+		   « une seule solution » mais « on y arrive en ne posant que des cases
+		   forcées ». Sur la grille d'origine, elle n'en posait aucune au-delà des
+		   deux cases données. */
+		const cale = deductionElementaire(TEMOIN_DEFECTUEUX, DONNEES_TEMOIN);
+		expect(cale.filter((x) => x !== 0).length).toBeLessThan(COTE * COTE);
+	});
+
+	it('l’oracle accepte en revanche la grille réparée : il refuse, il ne bloque pas', () => {
+		// L'autre sens, sans quoi un oracle qui dirait « non » à tout paraîtrait
+		// mordre alors qu'il ne garderait rien.
+		expect(solutionsDe(CAGES_TEMOIN, DONNEES_TEMOIN).length).toBe(1);
+		expect(deductionElementaire(CAGES_TEMOIN, DONNEES_TEMOIN).filter((x) => x !== 0).length).toBe(
+			COTE * COTE,
+		);
+	});
+});
 
 describe('#667 — les contrôles du libellé MORDENT', () => {
 	/* Les tests qui suivent sont passés au VERT du premier coup, le correctif étant
@@ -770,7 +987,7 @@ describe('#667 — le libellé accessible d’une case dit l’objectif de sa ca
 		hote.remove();
 	});
 
-	it('préalable : la grille témoin est valide, et ses contrôles ne se recouvrent pas', () => {
+	it('préalable : la grille témoin est BIEN FORMÉE, et ses contrôles ne se recouvrent pas', () => {
 		// Sans ce test, une retouche de la grille témoin rendrait les suivants
 		// complaisants sans que rien ne le dise.
 		const couvertes = CAGES_TEMOIN.flatMap((c) => c.cases).sort((a, b) => a - b);
@@ -783,10 +1000,88 @@ describe('#667 — le libellé accessible d’une case dit l’objectif de sa ca
 				`cage ${c.cases.join('-')} : objectif et étendue confondus, les deux contrôles n’en feraient plus qu’un`,
 			).not.toBe(c.cases.length);
 		}
+
+		/* Deux cages de même objectif ne doivent pas se confondre : encore faut-il
+		   que le témoin en porte deux. C'était une INTENTION écrite en commentaire,
+		   donc rien du tout — une retouche l'aurait effacée sans bruit. */
+		const objectifs = CAGES_TEMOIN.map((c) => c.objectif);
+		expect(
+			objectifs.length - new Set(objectifs).size,
+			'aucune paire de cages ne partage un objectif : le cas ambigu n’est plus représenté',
+		).toBeGreaterThanOrEqual(1);
+
+		/* Les trois opérations et les trois étendues : sans elles, le vocabulaire
+		   admis et le contrôle d'étendue ne seraient éprouvés que sur un seul cas. */
+		expect(new Set(CAGES_TEMOIN.map((c) => c.operation))).toEqual(
+			new Set(['somme', 'difference', 'produit']),
+		);
+		expect(new Set(CAGES_TEMOIN.map((c) => c.cases.length))).toEqual(new Set([2, 3, 4]));
+	});
+
+	it('préalable : l’ORACLE de ce fichier énumère bien les 576 carrés latins d’ordre 4', () => {
+		// Il juge les deux exigences du test suivant : s'il dérive, elles ne valent
+		// plus rien. Le nombre est un fait de combinatoire, pas une mesure du code.
+		expect(CARRES_LATINS.length).toBe(576);
+		expect(
+			CARRES_LATINS.some((s) => s.every((x, i) => x === SOLUTION_TEMOIN[i])),
+			'la solution annoncée du témoin n’est même pas un carré latin',
+		).toBe(true);
+	});
+
+	it('préalable : la grille témoin a UNE solution, et la déduction élémentaire seule y mène', () => {
+		/* Les deux exigences que le contrôle de résolubilité de `partieEnCours`
+		   oppose à toute grille servie — et une grille témoin injectée par le chemin
+		   de reprise EST une grille servie. Elles sont mesurées ici par l'oracle, pas
+		   constatées sur le silence du runner : une grille refusée ne fait pas échouer
+		   la reprise, elle fait tirer une AUTRE grille, et les tests de libellé
+		   partiraient alors lire des cages inconnues.
+
+		   Les deux sont vérifiées séparément bien que la seconde implique la
+		   première : quand un jour l'une tombera, l'échec dira laquelle. */
+		const enonce = [...DONNEES_TEMOIN];
+		expect(
+			enonce.every((x, i) => !x || x === SOLUTION_TEMOIN[i]),
+			'une case donnée contredit la solution annoncée',
+		).toBe(true);
+
+		const sols = solutionsDe(CAGES_TEMOIN, enonce);
+		expect(
+			sols.map((s) => s.join('')),
+			'la grille témoin n’a pas exactement une solution',
+		).toEqual([SOLUTION_TEMOIN.join('')]);
+
+		const deduite = deductionElementaire(CAGES_TEMOIN, enonce);
+		expect(
+			deduite.filter((x) => x !== 0).length,
+			`la déduction élémentaire cale : « ${deduite.join(',')} »`,
+		).toBe(COTE * COTE);
+		expect(deduite, 'la déduction élémentaire aboutit à une AUTRE grille').toEqual(SOLUTION_TEMOIN);
+
+		/* Aucune cage décorative. Le défaut d'origine : une cage posée sur une ligne
+		   entière, dont la somme vaut 10 dans TOUS les carrés latins — elle donnait au
+		   témoin l'air d'être contraint six fois quand il ne l'était que cinq. */
+		for (const c of CAGES_TEMOIN) {
+			const elimines = CARRES_LATINS.filter((s) => !cageTombeJuste(c, s)).length;
+			expect(
+				elimines,
+				`cage ${c.cases.join('-')} : elle est satisfaite par les 576 carrés latins, donc elle ne contraint rien`,
+			).toBeGreaterThan(0);
+		}
+	});
+
+	it('préalable : le jeu REPREND la grille témoin au lieu d’en tirer une autre', () => {
+		/* L'autre moitié, et elle est indispensable : une grille impeccable que la
+		   relecture refuserait tout de même (forme inattendue, contrôle nouveau)
+		   ferait tirer une grille quelconque au runner, et les tests suivants
+		   liraient des cages qu'ils ne connaissent pas — verts ou rouges pour des
+		   raisons sans rapport avec ce qu'ils gardent. */
 		expect(
 			partieEnCours(),
 			'la grille témoin est refusée à la relecture : le runner en tirerait une autre',
 		).not.toBeNull();
+		expect(partieEnCours()?.cages.map((c) => c.cases.join('-'))).toEqual(
+			CAGES_TEMOIN.map((c) => c.cases.join('-')),
+		);
 	});
 
 	it('l’opération est NOMMÉE sur chaque case d’une cage, jamais laissée au glyphe', () => {

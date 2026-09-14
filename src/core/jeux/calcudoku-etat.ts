@@ -24,25 +24,54 @@
    à chaque tentative. D'où un `partieEnCours` qui ne lève JAMAIS et qui, au
    moindre doute, rend `null`.
 
-   Le contrôle porte sur la validité STRUCTURELLE : forme, longueurs, bornes des
-   valeurs, cohérence énoncé/état courant, et conformité des cages aux critères
-   9, 11 et 12 (partition contiguë de 2 à 4 cases, jamais de division, différence
-   et produit à deux cases). Il ne va délibérément PAS jusqu'à « l'énoncé stocké
-   a-t-il encore une solution unique » : le sudoku peut se le permettre, sa règle
-   étant intégralement connue du moteur sans donnée d'énoncé ; ici il faudrait
-   rejouer l'oracle du tirage à chaque lecture de stockage, ce qu'aucun critère
-   ne demande.
+   Le contrôle porte d'abord sur la validité STRUCTURELLE : forme, longueurs,
+   bornes des valeurs, cohérence énoncé/état courant, et conformité des cages aux
+   critères 9, 11 et 12 (partition contiguë de 2 à 4 cases, jamais de division,
+   différence et produit à deux cases).
+
+   ── Et il va jusqu'à la RÉSOLUBILITÉ : arbitrage du mainteneur, 2026-09-14 ───
+
+   Ce fichier a d'abord porté l'inverse, écrit noir sur blanc : « il ne va
+   délibérément PAS jusqu'à — l'énoncé stocké a-t-il encore une solution ». La
+   relecture qualité a montré ce que ce choix coûtait, et l'arbitrage l'a
+   renversé, dans le sens de la SYMÉTRIE avec `sudoku-etat.ts`, qui rejoue déjà
+   `resoudreParDeductionElementaire` à la relecture.
+
+   Le cas : une grille structurellement impeccable mais mathématiquement
+   impossible — arrivée par une sauvegarde importée, bricolée à la main, ou par
+   une migration future bogée. Elle serait SERVIE à l'enfant, et il n'aurait
+   aucune issue : « Recommencer cette grille » réinjecte le même énoncé
+   impossible, et « Nouvelle grille » ne s'offre qu'une fois la grille terminée —
+   ce qu'elle ne sera jamais. Le profil resterait bloqué sur ce jeu, sans que rien
+   ne le lui dise. Une grille restaurée est une grille SERVIE : les garanties des
+   critères 4 et 5 valent pour elle, et elles n'ont pas à rentrer par la porte du
+   stockage.
+
+   L'objection écartée avec sa raison, pour que la question ne se rouvre pas :
+   « il faudrait rejouer l'oracle du tirage à chaque lecture » est faux. L'oracle
+   du tirage, c'est très exactement `resoudreParDeductionElementaire` sur le
+   moteur des cages relues (cf. `tenterGrille`) : une déduction élémentaire sur
+   seize cases, une fois à l'ouverture du jeu, pas à chaque coup. Le vrai oracle
+   coûteux, `compterSolutions`, n'est pas appelé ici et n'a pas à l'être — la
+   déduction élémentaire implique l'unicité.
+
+   Ce qui est jugé, c'est l'ÉNONCÉ (`enonce`), jamais l'état courant (`valeurs`).
+   L'enfant a le droit d'avoir rendu sa grille contradictoire en jouant : le
+   critère 22 dit que le conflit ne bloque pas la pose. Refuser la partie sur ses
+   propres coups lui effacerait son travail parce qu'il s'est trompé, ce qui est
+   la perte exacte que le critère 36 interdit.
    ============================================================ */
 import { lsGet, lsSet } from '../storage';
 import {
 	COTE,
 	grilleTerminee,
+	moteurCalcudoku,
 	OPERATIONS,
 	type Cage,
 	type Operation,
 	type Partie,
 } from './calcudoku';
-import type { Valeurs } from './grille-contraintes';
+import { resoudreParDeductionElementaire, type Valeurs } from './grille-contraintes';
 
 export const CLE_CALCUDOKU_PARTIE = 'ludaskia_jeux_calcudoku_partie';
 export const CLE_CALCUDOKU_INITIE = 'ludaskia_jeux_calcudoku_initie';
@@ -150,6 +179,12 @@ export function partieEnCours(): Partie | null {
 	// l'état courant n'est plus une grille mais deux grilles mélangées, et
 	// `estFixe` mentirait ensuite à l'enfant sur ce qu'il peut toucher.
 	for (let i = 0; i < e.length; i++) if (e[i] !== 0 && v[i] !== e[i]) return null;
+	// L'ÉNONCÉ doit rester finissable (arbitrage du 2026-09-14, cf. en-tête) : une
+	// grille impossible servie à l'enfant n'a AUCUNE sortie, puisque « Nouvelle
+	// grille » attend une victoire qui n'arrivera pas. C'est l'énoncé qui est jugé,
+	// pas l'état courant : un chiffre mal posé rend souvent celui-ci insoluble, et
+	// c'est le droit de l'enfant (critère 22).
+	if (!resoudreParDeductionElementaire(moteurCalcudoku(c), e)) return null;
 	const p: Partie = { cages: c, enonce: e, valeurs: v };
 	// Une grille TERMINÉE ne se rouvre jamais terminée (critère 38). Le chemin
 	// normal efface à la victoire, mais la fenêtre entre la dernière pose et

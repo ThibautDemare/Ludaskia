@@ -181,8 +181,11 @@ function render(): void {
 
 	tracerToutesLesCartes();
 	// Les offsets dépendent de la police : on retrace une fois les polices prêtes
-	// (cas d'un tout premier rendu avant que Nunito ne soit chargée).
-	void document.fonts.ready.then(tracerToutesLesCartes);
+	// (cas d'un tout premier rendu avant que Nunito ne soit chargée). Chaînage optionnel
+	// comme chez le voisin (`ui/ortho-taches.ts`, #640) : `document.fonts` est universel en
+	// navigateur, mais absent de l'environnement de test — sans la garde, c'est au test de
+	// fabriquer un bouchon de plate-forme, ce qu'il a fallu faire pour #702.
+	void document.fonts?.ready?.then(tracerToutesLesCartes);
 	resizeHandler = () => tracerToutesLesCartes();
 	window.addEventListener('resize', resizeHandler);
 

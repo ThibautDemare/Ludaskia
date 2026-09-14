@@ -162,6 +162,33 @@ test('Sprint (saisie) : Écouter dans .sprint-theme, gèle le minuteur (double c
 	expect(errors).toEqual([]);
 });
 
+/* #702 critère 11 : la greffe générique de « Écouter » (consigne-tts.ts) ne rendait
+   jamais la main au champ de saisie — un clic prenait le focus et l'enfant devait
+   recliquer dans #sprintInput pour reprendre sa réponse. On clique explicitement dans
+   le champ AVANT Écouter (état contrôlé, pas supposé), puis on prouve la restauration
+   par de la VRAIE frappe, pas seulement `toBeFocused()` (cf. brief : un focus qui ne
+   sert à rien satisferait l'assertion sans rien prouver pour l'enfant). */
+test('Sprint (saisie) : Écouter rend le focus à #sprintInput, on tape sans recliquer — #702 critère 11', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(stubVoixFrRiche());
+	await lancerSprintSurLeçon(page, 'math-calcul-mental', 'math-tables-addition');
+
+	const champ = page.locator('#sprintInput');
+	await expect(champ).toBeVisible();
+	await champ.click();
+	await expect(champ).toBeFocused();
+
+	await page.locator('.sprint-theme .consigne-tts').click();
+	await expect(champ).toBeFocused(); // revenu au champ, pas resté sur le bouton
+
+	await page.keyboard.type('12'); // sans recliquer dans le champ
+	await expect(champ).toHaveValue('12');
+
+	expect(errors).toEqual([]);
+});
+
 test('Sprint (QCM) : Écouter au même endroit qu’en saisie, même gel/dégel — #630 C1 C2', async ({
 	page,
 }) => {

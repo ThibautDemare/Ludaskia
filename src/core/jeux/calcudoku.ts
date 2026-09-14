@@ -505,3 +505,37 @@ export function tirerGrille(r: () => number, premiere = false): Partie | null {
 	}
 	return null;
 }
+
+/** La case à présélectionner sur la TOUTE PREMIÈRE grille d'un profil : ligne,
+    colonne, cage et phrase sont ainsi visibles dès le montage, sans geste à
+    deviner. On vise une case vide d'une cage de DIFFÉRENCE — c'est la cage la
+    moins évidente des trois, et celle que la phrase explique le mieux — et à
+    défaut la première case libre.
+
+    Pourquoi dans `core` et pas dans le runner : elle ne prend qu'une `Partie`,
+    rend un index et ne touche pas au DOM. Enfermée dans la fermeture du runner,
+    elle était hors d'atteinte de Vitest — le défaut exact que la relecture de
+    #665 avait trouvé sur la fonction qui décidait du déplacement du curseur — et
+    la spec Playwright CONTOURNE délibérément le cas de la première grille, en le
+    disant dans un commentaire : plus rien ne vérifiait ce choix. Ici, il se teste
+    sans DOM.
+
+    Le repli est DÉTERMINISTE : la première case libre en index CROISSANT, jamais
+    la première rencontrée dans un ordre qui dépendrait d'une itération d'objet.
+
+    Rend `null` quand aucune case n'est libre, et `null` plutôt qu'un `-1`
+    sentinelle : le type porte alors l'information tout seul, vérifiée par le
+    compilateur, au lieu d'une convention tenue par ce commentaire. `tirerGrille`
+    ne produit pas ce cas (deux cases données sur seize en laissent quatorze),
+    mais une partie relue du stockage ou fabriquée à la main le peut : c'est un
+    cas DÉFENSIF, et il ne se teste donc qu'avec une `Partie` construite à la
+    main. */
+export function caseTutorielle(p: Partie): number | null {
+	let repli: number | null = null;
+	for (let i = 0; i < TOTAL; i++) {
+		if (estFixe(p, i)) continue;
+		if (repli === null) repli = i;
+		if (cageDe(p, i)?.operation === 'difference') return i;
+	}
+	return repli;
+}

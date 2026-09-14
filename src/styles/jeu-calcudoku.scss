@@ -1,0 +1,428 @@
+/* Plateau du calcudoku (#667). Rempli par le runner `src/ui/jeu-calcudoku.ts`.
+   Le cadre commun (titre, retour, plafond, étagère) est dans `jeux.scss` :
+   cette feuille n'habille QUE la grille, la palette, la zone de phrase et la fin
+   de grille.
+
+   ── La seule exception hexadécimale, et sa raison ───────────────────────────
+   Le dépôt interdit les couleurs en dur dans une feuille de composant : un
+   `--muted` sous AA a survécu des années parce qu'il était rattrapé feuille par
+   feuille (#576). La triade d'opérations ci-dessous est l'exception EXPLICITE,
+   sur le modèle des `--cat-*` : c'est un code de sens, pas une couleur de
+   surface, et il doit rester IDENTIQUE sur les six thèmes. Un enfant qui change
+   de thème ne doit pas avoir à réapprendre que le bleu dit « addition ». D'où
+   une déclaration unique en racine, mesurée, et jamais réécrite ailleurs.
+
+   ── Le contour de cage, et pourquoi il n'est pas un fond ────────────────────
+   Une cage est un polyomino : le contour se ferme sur les QUATRE côtés de chaque
+   case, et le runner pose un attribut par côté. Un aplat de fond serait
+   inutilisable ici — les cases d'une cage sont par construction aussi sur la
+   ligne et la colonne de la case touchée, donc deux fonds translucides
+   s'empileraient en une troisième teinte imprévisible. Le fond plat est réservé
+   à la ligne et à la colonne ; la cage n'a que le trait.
+
+   Le trait est peint en `box-shadow` insérées, PAS en `border` : la bordure est
+   déjà prise par l'anneau de sélection, et surtout l'épaississement du trait de
+   la cage touchée (3 → 5 px) ne doit déplacer aucun pixel du chiffre.
+
+   ── Le signalement porte DEUX canaux (critère 27) ───────────────────────────
+   Une case signalée prend le registre `--warn` ET une trame de hachures. La
+   trame est indépendante de la teinte, donc elle survit à un œil deutan. Même
+   choix que `jeu-sudoku.scss` : la trame est en `--warn` et non en `--warn-bd`,
+   qui ne vaut que 1,28:1 sur `--warn-bg` en thème clair — un second canal
+   invisible est pire qu'une absence, puisque personne ne le cherche.
+
+   Et jamais le token du verdict négatif, jamais la paire rouge/vert des
+   corrections (critère 26) : ce registre-là est réservé à une réponse corrigée
+   et DÉFINITIVEMENT fausse. Un conflit de cage est transitoire et l'enfant le
+   défait lui-même ; lui montrer la couleur de ses fautes ferait du jeu un
+   exercice déguisé. Le gate lit cette feuille SANS retirer les commentaires,
+   donc le nom du token interdit ne s'écrit nulle part ici, pas même pour dire
+   qu'on l'évite. */
+
+/* Les trois teintes d'opération. Elles se portent sur le CONTOUR, en renfort du
+   symbole de l'étiquette (`+`, `↔`, `×`), jamais comme canal unique : un enfant
+   daltonien lit l'étiquette, qui reste en encre neutre. */
+:root {
+	--calcudoku-somme: #2f82da;
+	--calcudoku-diff: #8e71d8;
+	--calcudoku-produit: #d13fd6;
+}
+
+.calcudoku {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.9rem;
+	font-family: var(--ui);
+}
+
+.calcudoku-regle {
+	margin: 0;
+	max-width: 26rem;
+	font-size: 1.05rem;
+	color: var(--ink);
+	text-align: center;
+}
+
+/* Écoute à la demande seulement : la règle ne change jamais d'une grille à
+   l'autre, la relire à chaque partie serait du bruit. */
+.calcudoku-ecouter {
+	min-height: 2.75rem;
+	padding: 0 0.9rem;
+	font-family: var(--ui);
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--track);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* ---------- La zone de phrase (critères 16, 17) ---------- */
+
+/* TOUJOURS présente, et de hauteur FIXE : deux lignes réservées d'avance
+   (2 × 1,05 × 1,45 ≈ 3,05 rem, soit environ 49 px) et `overflow: hidden`. Une
+   zone qui s'étirerait à chaque appui ferait sauter la grille sous le doigt,
+   c'est-à-dire pire que le symbole qu'elle explique. Elle occupe la place que le
+   sudoku donne à ses boutons de taille : ce jeu n'en a qu'une seule. */
+.calcudoku-phrase {
+	margin: 0;
+	width: min(90vw, 30rem);
+	min-height: 3.05rem;
+	overflow: hidden;
+	font-size: 1.05rem;
+	line-height: 1.45;
+	font-weight: 700;
+	color: var(--ink);
+	text-align: center;
+}
+
+/* ---------- Grille et palette ---------- */
+
+/* UNE seule mise en page. En portrait étroit la palette se range SOUS la grille,
+   parce que la hauteur est la ressource rare ; dès qu'il y a de la largeur, elle
+   passe à côté et ne mange plus de hauteur. */
+.calcudoku-jeu {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.9rem;
+	width: 100%;
+}
+
+.calcudoku-jeu[hidden] {
+	display: none;
+}
+
+@media (min-width: 700px) {
+	.calcudoku-jeu {
+		flex-direction: row;
+		justify-content: center;
+		align-items: flex-start;
+	}
+}
+
+/* Le filet fin entre cases vient du FOND du conteneur, qui transparaît dans un
+   écart d'un pixel : les cases n'ont donc aucune bordure à elles pour ça, et la
+   bordure leur reste disponible pour l'anneau de sélection.
+
+   `60vh` dans le `min()` n'est pas décoratif : sans lui, un écran court
+   (téléphone couché, fenêtre basse) pousserait la palette hors de vue. */
+.calcudoku-grille {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 1px;
+	width: min(90vw, 60vh, 380px);
+	aspect-ratio: 1;
+	background: var(--line);
+	border: 3px solid var(--control-line);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.calcudoku-case {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	aspect-ratio: 1;
+	color: var(--accent);
+	background: var(--paper);
+	/* Bordure TRANSPARENTE en permanence : elle réserve la place de l'anneau de
+	   sélection, qui n'a donc rien à déplacer quand il apparaît. Le fond de la
+	   case passe dessous (`background-clip` vaut `border-box` par défaut), donc
+	   les cases restent contiguës à l'œil. */
+	border: 3px solid transparent;
+	cursor: pointer;
+
+	/* Le trait de cage, côté par côté. Les épaisseurs sont des nombres NUS : le
+	   runner n'allume qu'un côté à la fois et la cage touchée n'a qu'à changer
+	   `--trait`, sans réécrire les quatre déclarations. */
+	--cage-teinte: var(--control-line);
+	--trait: 3;
+	--trait-h: 0;
+	--trait-d: 0;
+	--trait-b: 0;
+	--trait-g: 0;
+	--anneau: 0;
+	--anneau-teinte: transparent;
+	box-shadow:
+		inset 0 0 0 calc(var(--anneau) * 1px) var(--anneau-teinte),
+		inset 0 calc(var(--trait-h) * 1px) 0 0 var(--cage-teinte),
+		inset calc(var(--trait-d) * -1px) 0 0 0 var(--cage-teinte),
+		inset 0 calc(var(--trait-b) * -1px) 0 0 var(--cage-teinte),
+		inset calc(var(--trait-g) * 1px) 0 0 0 var(--cage-teinte);
+}
+
+/* La teinte de l'opération. Elle ne dit rien à elle seule : l'étiquette porte le
+   symbole, et c'est lui qui nomme l'opération. */
+.calcudoku-case[data-operation='somme'] {
+	--cage-teinte: var(--calcudoku-somme);
+}
+
+.calcudoku-case[data-operation='difference'] {
+	--cage-teinte: var(--calcudoku-diff);
+}
+
+.calcudoku-case[data-operation='produit'] {
+	--cage-teinte: var(--calcudoku-produit);
+}
+
+/* Les quatre côtés du contour. Le sudoku n'en marque que deux (droite et bas)
+   parce que ses régions pavent la grille régulièrement ; une cage est un
+   polyomino, donc son contour ne se déduit d'aucune régularité. */
+.calcudoku-case[data-trait-h] {
+	--trait-h: var(--trait);
+}
+
+.calcudoku-case[data-trait-d] {
+	--trait-d: var(--trait);
+}
+
+.calcudoku-case[data-trait-b] {
+	--trait-b: var(--trait);
+}
+
+.calcudoku-case[data-trait-g] {
+	--trait-g: var(--trait);
+}
+
+/* L'étiquette de la cage, dans le coin de la case-repère. En encre NEUTRE et non
+   dans la teinte de l'opération : un texte de 0,8 rem doit tenir le 4,5:1 sur
+   les six thèmes, ce qu'une teinte de code ne garantit pas. La couleur reste au
+   contour, où le seuil est celui des objets graphiques. */
+.calcudoku-etiquette {
+	position: absolute;
+	top: 0.55rem;
+	left: 0.6rem;
+	font-size: 0.8rem;
+	font-weight: 800;
+	line-height: 1;
+	color: var(--ink);
+}
+
+.calcudoku-valeur {
+	font-size: clamp(1.3rem, 6vw, 1.9rem);
+	font-weight: 800;
+	line-height: 1;
+}
+
+/* Les cases DONNÉES : surface pleine neutre et encre sombre, contre l'accent des
+   cases posées par l'enfant. Deux canaux, la surface et la teinte, donc « ce que
+   j'ai posé » reste distinguable de « ce qui était là » sans dépendre de l'œil. */
+.calcudoku-case[data-fixe] {
+	color: var(--ink);
+	background: var(--track);
+	cursor: default;
+}
+
+/* Le déchargement de repérage : la ligne et la colonne de la case touchée, en
+   fond PLAT. Jamais la cage, qui se dit par le trait. */
+.calcudoku-case[data-lie],
+.calcudoku-case[data-fixe][data-lie] {
+	background: var(--accent-soft);
+}
+
+/* La case choisie : un anneau d'accent sur le bord, CONCENTRIQUE au trait de
+   cage qui reste visible juste à l'intérieur. L'accent ne remplace donc jamais
+   la teinte de l'opération. */
+.calcudoku-case.sel {
+	border-color: var(--accent);
+}
+
+/* La cage touchée entière : le même trait, plus épais. Aucune bordure ni aucun
+   fond n'entre en jeu, donc rien ne bouge d'un pixel. */
+.calcudoku-case[data-cage-sel] {
+	--trait: 5;
+}
+
+/* Le SIGNALEMENT, en dernier pour l'emporter sur tout le reste : il prend la
+   teinte du trait, ajoute un anneau plein et une trame. Registre `--warn`
+   (« ce n'est pas une faute »), jamais celui du verdict négatif. */
+.calcudoku-case[data-conflit] {
+	--cage-teinte: var(--warn);
+	--anneau: 3;
+	--anneau-teinte: var(--warn);
+	background-color: var(--warn-bg);
+	/* La trame occupe une BANDE au pied de la case, pas toute sa surface : le
+	   chiffre se dessine par-dessus le fond, et des hachures derrière lui le
+	   rendraient illisible — or le lire est tout l'objet du jeu. */
+	background-image: repeating-linear-gradient(
+		135deg,
+		transparent 0,
+		transparent 4px,
+		var(--warn) 4px,
+		var(--warn) 7px
+	);
+	background-size: 100% 16%;
+	background-position: bottom center;
+	background-repeat: no-repeat;
+}
+
+/* Signalée ET choisie : le `--warn` l'emporte sur l'accent, et c'est
+   l'ÉPAISSEUR qui dit la sélection — exactement la cascade de
+   `.sudoku-case[data-conflit].sel`. */
+.calcudoku-case[data-conflit].sel {
+	border-color: var(--warn);
+}
+
+/* ---------- La palette (critères 18, 19) ---------- */
+
+/* HORS de la grille et fixe : une palette qui surgirait au point de contact
+   serait masquée par le doigt qui vient de la déclencher. `2.75rem` vaut 44 px
+   au corps de base — la cible que le projet vise pour un doigt d'enfant, très
+   au-dessus du plancher AA de 24 px (WCAG 2.2, SC 2.5.8). */
+.calcudoku-palette {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(2.75rem, 1fr));
+	gap: 0.5rem;
+	width: min(90vw, 380px);
+}
+
+@media (min-width: 700px) {
+	.calcudoku-palette {
+		grid-template-columns: repeat(2, minmax(2.75rem, 1fr));
+		width: auto;
+		min-width: 9rem;
+	}
+}
+
+.calcudoku-nombre {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 2.75rem;
+	min-height: 2.9rem;
+	padding: 0.35rem;
+	font-family: var(--ui);
+	font-size: 1.45rem;
+	font-weight: 800;
+	color: var(--accent);
+	background: var(--paper);
+	border: 2px solid var(--control-line);
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* Effacer est un BOUTON explicite : ni double appui, ni appui long, dont la
+   fenêtre de temps est trop stricte à cet âge. */
+.calcudoku-effacer {
+	grid-column: 1 / -1;
+	min-height: 2.9rem;
+	font-family: var(--ui);
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--track);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* ---------- Le repli, la fin, la panne ---------- */
+
+.calcudoku-actions {
+	display: flex;
+	gap: 0.6rem;
+}
+
+.calcudoku-actions[hidden] {
+	display: none;
+}
+
+/* Toujours visible, jamais conditionné à une détection de blocage : l'enfant n'a
+   pas à démontrer qu'il est coincé pour avoir une porte de sortie. Registre
+   discret, comme `.sudoku-doux` : c'est un repli, pas l'action principale. */
+.calcudoku-doux {
+	min-height: 2.75rem;
+	padding: 0 1rem;
+	font-family: var(--ui);
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: var(--track);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+/* Un panneau CALME dans le plateau, sur le modèle de `.motus-fin` et de
+   `.g2048-fin` : pas de confettis, pas de modale de récompense. Un jeu de
+   l'étagère n'alimente aucune économie, donc il n'emprunte pas le traitement
+   paroxystique d'une fin de leçon. */
+.calcudoku-fin,
+.calcudoku-panne {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 0.9rem 1.2rem;
+	text-align: center;
+	background: var(--accent-soft);
+	border-radius: 14px;
+}
+
+.calcudoku-fin[hidden],
+.calcudoku-panne[hidden] {
+	display: none;
+}
+
+.calcudoku-fin-titre,
+.calcudoku-panne-titre {
+	margin: 0;
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: var(--ink);
+}
+
+/* La panne est LISIBLE et sortable : jamais une grille vide, jamais un écran
+   figé. Elle dit aussi que ce n'est pas la faute de l'enfant — à cet âge, un
+   écran qui refuse est spontanément lu comme une sanction. */
+.calcudoku-panne-texte {
+	margin: 0;
+	max-width: 22rem;
+	font-size: 1rem;
+	color: var(--ink);
+}
+
+.calcudoku-nouvelle {
+	min-height: 3rem;
+	padding: 0 1.2rem;
+	font-family: var(--ui);
+	font-size: 1.05rem;
+	font-weight: 800;
+	color: var(--on-accent);
+	background: var(--accent);
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.calcudoku-case,
+	.calcudoku-nombre {
+		transition: none;
+	}
+}

@@ -264,8 +264,11 @@ changer de bascule…) refermait les catégories qu'on venait d'ouvrir.
 Histogramme par jour (index 6 = aujourd'hui), avec **échelle Y chiffrée** (graduations +
 lignes de repère, via `echelleActivite` côté `core/encadrant-stats.ts`) et une **bascule
 « Total » / « Par type »** (état `vueActivite`, boutons-segments `data-act="activite-mode"`).
-En mode « Total » chaque barre = le nombre de sessions du jour ; en mode « Par type » la barre
-est **empilée**, segmentée par type de session (`lecon`/`revision`/`dictee`/`bilan`/`sprint`,
+En mode « Total » chaque barre compte les **entrées du journal** écrites ce jour-là — une
+par session pour la plupart des types, mais une par **bloc de travail** pour la dictée (voir
+plus bas) : deux enfants ayant fait le même volume de dictée ne posent donc pas forcément le
+même nombre de points. En mode « Par type » la barre est **empilée**, segmentée par type de
+session (`lecon`/`revision`/`dictee`/`bilan`/`sprint`,
 + `inconnu` pour les sessions de l'ancien format) avec **légende**. Couleurs : leçon = vert
 (`--ok`), révision = bleu (`--cat-bleu`), dictée = rose, bilan = violet (`--cat-bilan`),
 sprint = corail (`--cat-sprint`) — relevées en thème Nuit pour le contraste, avec un filet
@@ -273,8 +276,11 @@ séparateur entre segments (daltonisme). Le détail par type est aussi exposé e
 (a11y, `repartitionTexte`). Pas d'activité → ni graphe ni bascule (rien à comparer). Le type
 est journalisé en amont par `recordLessonRun` (`'lecon'` seule / `'bilan'` express\complet),
 `ui/sprint.ts` (`'sprint'`), et `recordSessionActivity` pour les sessions hors
-`recordLessonStats` : révision espacée (`ui/revision.ts` → `'revision'`) et dictée
-d'orthographe (`ui/ortho-runner.ts` → `'dictee'`, un point par séance).
+`recordLessonStats` : révision espacée (`ui/revision.ts` → `'revision'`, un point par
+session) et dictée d'orthographe (`ui/ortho-runner.ts` → `'dictee'`, un point par **bloc de
+travail** plutôt que par session complète depuis #706 — « Continuer encore un peu » ouvre un
+nouveau bloc, pour qu'un enfant qui enchaîne plusieurs blocs sur la même liste pose autant de
+points plutôt qu'un seul).
 
 ## Travaillé récemment (#520)
 

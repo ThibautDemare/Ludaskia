@@ -1160,8 +1160,9 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   l'horodatage `reporteLe` du report en cours, cf. `core/etayage.ts:episodeEtayable`
   ci-dessous) ; consommée par `ui/etayage-panneau.ts:maybeEtayageAvantSerie`, jamais
   directement par l'UI.
-  **Journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée,
-  #234 ; **entrées typées** `ActivityEntry = {t, k, ref?, progressive?}` avec
+  **Journal d'activité** (`ludaskia_activity`, `loadActivity` — une session finalisée pour
+  la plupart des types, un **bloc de travail** pour la dictée d'orthographe depuis #706 (voir
+  plus bas), #234 ; **entrées typées** `ActivityEntry = {t, k, ref?, progressive?}` avec
   `ActivityKind = 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee'` (+ `'inconnu'`
   pour l'ancien format), #319). **`ref`** (#498) = id de la leçon (`'lecon'`) ou de la
   liste d'orthographe (`'dictee'`) travaillée, **quand la session en vise UNE seule** —
@@ -1177,8 +1178,14 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   d'orthographe n'a, elle, aucune stat de leçon à écrire. La dictée d'orthographe
   (`ui/ortho-runner.ts`), qui ne porte jamais de leçon du catalogue, et une révision
   purement lexicale appellent alors **`recordSessionActivity(kind, ref?, progressive?)`**.
-  **`progressive`** (#641) = la séance a-t-elle comporté au moins une activité qui POUVAIT
-  faire progresser un mot (la réussite n'entre pas dans le calcul) ; écrit **uniquement
+  Pour la dictée, cet appel se produit au premier écran terminal atteint (bilan, révision
+  terminée, pause), et l'unité qu'il journalise est le **bloc de travail** courant (#706,
+  plafonné à `SEANCE_MAX` activités), pas la session dans son ensemble : « Continuer encore
+  un peu » rouvre un nouveau bloc (le témoin de journalisation ainsi que `progressive`
+  ci-dessous repartent à zéro), donc une même visite peut écrire plusieurs points.
+  **`progressive`** (#641) = ce bloc (ou, pour les autres types, la séance) a-t-il comporté
+  au moins une activité qui POUVAIT faire progresser un mot (la réussite n'entre pas dans
+  le calcul) ; écrit **uniquement
   quand la réponse est `false`**, donc son **absence vaut « oui »** — c'est ce qui empêche
   la mise à jour de décréditer les entrées déjà en stockage. Lu par la seule lecture
   autorisée, `sessionProgressive(entry)`, et consommé par l'étape `dictee` du programme du

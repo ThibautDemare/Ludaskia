@@ -84,10 +84,21 @@ let seanceProgressive = false;
 // repasse chaque mot une fois en mode d'entretien, puis on clôt par « Révision
 // terminée » (pas la célébration « Liste prête ! » de première complétion).
 let revisionRun = false;
-// Une session d'orthographe a-t-elle déjà été journalisée dans le graphe d'activité
-// encadrant (#319) ? Posée une seule fois par session (au 1er écran terminal atteint :
-// pause, bilan ou révision terminée), pour ne pas re-compter les « Continuer encore ».
+// Le BLOC de travail en cours a-t-il déjà été journalisé dans le graphe d'activité
+// encadrant (#319, unité revue par #706) ? Posé au 1er écran terminal atteint (pause,
+// bilan ou révision terminée), et rouvert par « Continuer encore un peu » : ce qu'une
+// barre compte est le BLOC, pas la session entière. Avant #706 c'était l'inverse, si bien
+// qu'un enfant enchaînant cinq blocs sur la même liste n'apparaissait qu'une fois — une
+// barre ne distinguait plus huit activités de quarante, précisément chez celui qui
+// travaille le plus.
 let orthoJournalisee = false;
+// Mot TIRÉ puis différé par la pause (#706). `prochainNonMaitrise` fait avancer le curseur
+// AVANT que le plafond de séance ne soit testé : le mot tiré à cet instant était jusqu'ici
+// perdu, et en tour de révision — dont le curseur avance sans jamais cycler — il n'était
+// alors JAMAIS rejoué. Le tour finissait un mot plus tôt, sans que rien ne le signale.
+// Inverser les deux (tester le plafond avant de tirer) ne règle rien : la pause
+// s'afficherait à la place de l'écran de fin quand la liste vient justement de se terminer.
+let motEnAttente: MotOrtho | null = null;
 // Mots passés par la CORRECTION GUIDÉE depuis le début de la séance (#618), dans
 // l'ordre de rencontre et sans doublon. Alimenté par la seule branche d'escalade
 // (2e erreur → atelier avec le diff) du mot caché et de la dictée : un mot raté puis
@@ -155,7 +166,8 @@ export async function startOrthoRun(lessonId: string): Promise<void> {
 	niveauAvant = niveauDepuisXP(getXP());
 	actes = 0;
 	motsDifficiles = []; // nouvelle séance → nouveau rappel de fin (#618)
-	orthoJournalisee = false; // nouvelle session → re-journalisable une fois (#319)
+	orthoJournalisee = false; // nouveau bloc → journalisable (#319, #706)
+	motEnAttente = null; // un mot différé ne survit pas à la séance qui l'a mis de côté (#706)
 	seanceProgressive = false; // nouvelle session : rien n'a encore pu faire progresser (#641)
 	listeEtoileeAvant = listeEtoilee(mots, dispoDictee);
 	modesEpuisesAvant = modesEpuises(mots, dispoDictee);
@@ -414,13 +426,16 @@ function renderNext(): void {
 		renderBilan();
 		return;
 	}
-	const word = prochainNonMaitrise();
+	// Le mot différé par la pause précédente passe AVANT un nouveau tirage (#706).
+	const word = motEnAttente ?? prochainNonMaitrise();
+	motEnAttente = null;
 	if (!word) {
 		if (revisionRun) renderRevisionFin();
 		else renderBilan();
 		return;
 	}
 	if (actes >= SEANCE_MAX) {
+		motEnAttente = word; // servi en premier après « Continuer encore un peu »
 		renderPause();
 		return;
 	}
@@ -501,8 +516,9 @@ function consigneCorrection(word: MotOrtho, act: ModeOrtho): string {
 		: "Regarde le mot et où tu t'es trompé, puis entoure le piège.";
 }
 
-/* Journalise UNE session d'orthographe (#319) au 1er écran terminal atteint (bilan,
-   révision terminée ou pause) ; le flag évite de re-compter un « Continuer encore ».
+/* Journalise UN BLOC de travail d'orthographe (#319, unité revue par #706) au 1er écran
+   terminal atteint (bilan, révision terminée ou pause) ; le flag évite de compter deux fois
+   le MÊME bloc, et « Continuer encore un peu » en rouvre un.
    La LISTE travaillée est jointe (#498) : c'est elle qui permet au programme du jour
    d'attribuer son étape « dictée » ou « à revoir » à ce qui a réellement été fait, sans
    dépendre du bouton par lequel l'enfant est arrivé. */
@@ -613,6 +629,13 @@ function renderPause(): void {
 	const b = sheets().querySelector('#btnContinuerSeance') as HTMLButtonElement;
 	b.addEventListener('click', () => {
 		actes = 0;
+		// Nouveau BLOC (#706) : le prochain écran terminal écrira son propre point d'activité,
+		// et ce point doit décrire SON bloc — d'où la remise à zéro du témoin de progressivité,
+		// qui hériterait sinon de ce qui s'est passé avant la pause. Rien ne s'écrit pour autant
+		// si l'enfant quitte ici : il faut un écran terminal, et le mot mis en attente garantit
+		// qu'au moins une activité le précède.
+		orthoJournalisee = false;
+		seanceProgressive = false;
 		renderNext();
 	});
 	sheets().querySelector('#btnStopSeance')!.addEventListener('click', retour.aller);

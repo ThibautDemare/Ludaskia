@@ -55,6 +55,18 @@ rapprocher le PID du bon worktree, ou dans le doute couper ce serveur avant de r
   smoke test ne doit pas devenir rouge parce qu'une leçon d'un autre lot a bougé.
 - Naviguer via `gotoHash` (helpers) ; vérifier l'absence d'erreur de rendu via
   `watchErrors` (exceptions non rattrapées + `console.error` applicatifs).
+- **Une fabrique de seed recopiée une troisième fois part dans un module partagé.**
+  Recopier un seed d'un fichier à l'autre est normal tant que ça reste anecdotique ;
+  au troisième exemplaire, ce n'est plus un emprunt, c'est une source de vérité
+  diffuse — et le jour où le modèle de donnée bouge, les copies divergent en silence.
+  Trois cas constatés à la relecture de #706 : `seedListeMaitrisee` entre
+  `dictee-comptage.spec.ts` et `dictee-revision-plafond.spec.ts`, `motVierge` entre
+  `ortho-choix-mode.spec.ts` et `ortho-liste-acquise.spec.ts`, et `completerEntretien`
+  repris d'`ortho-revision.spec.ts`. Ce dernier assume la copie **par un commentaire
+  explicite** : c'est le minimum acceptable quand on ne partage pas. Le premier partage
+  est fait (`e2e/ortho-liste-maitrisee.ts`, #706) : c'est là qu'iront les suivants. Règle de jugement, pas de gate — rien ne
+  mesure « la même fabrique » de façon fiable, et un gate trop zélé interdirait la
+  copie délibérée, qui reste parfois le bon choix dans un test.
 - **Navigation : `gotoHash`, jamais `page.goto` — parce qu'un `goto` vers l'URL
   courante ne recharge pas.** Sous Chromium, `page.goto` vers l'URL déjà affichée
   (même hash) est un **no-op silencieux** : ni navigation, ni re-rendu. Une boucle

@@ -10,72 +10,22 @@
    peu » (~l.614), qui pourtant relance une nouvelle tranche de travail. Une liste
    qui déclenche plusieurs pauses ne compte donc jamais qu'UNE seule dictée.
 
-   Les critères 3 (drapeau `progressive` réévalué par bloc) et 6 (journal des
-   paliers non dupliqué) de l'issue ne sont pas éprouvés ici : ils ne laissent pas
-   de trace observable à l'écran ni dans le journal d'activité lu par ce fichier
-   (`progressive` n'entre dans `ActivityEntry` que comme `false` explicite, jamais
-   comme preuve positive d'une réévaluation ; le journal des paliers vit sous une
-   autre clé que ce test ne lit pas). Une assertion dessus depuis l'e2e serait un
-   simulacre — à couvrir autrement (Vitest sur `core/orthographe/paliers.ts` et
-   `core/orthographe/runner.ts`).
+   Le critère 6 (journal des paliers non dupliqué) n'est pas éprouvé ici : il ne
+   laisse pas de trace observable à l'écran ni dans le journal d'activité lu par ce
+   fichier (il vit sous une autre clé que ce test ne lit pas). Une assertion dessus
+   depuis l'e2e serait un simulacre — à couvrir autrement (Vitest sur
+   `core/orthographe/paliers.ts`). Le critère 3 (drapeau `progressive` réévalué par
+   bloc) a SON test dédié : `dictee-progressive-bloc.spec.ts` — il a besoin d'un
+   mode ciblé et d'un seed spécifique, sans rapport avec la liste maîtrisée d'ici.
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { watchErrors, gotoHash, seedAideVue } from './helpers';
+import { seedListeMaitrisee, MOTS_MAITRISES as MOTS } from './ortho-liste-maitrisee';
 
 test.beforeEach(async ({ page }) => {
 	await seedAideVue(page);
 });
-
-/* 10 mots déjà MAÎTRISÉS (atelier fait + les trois modes validés), lettres internes
-   toutes distinctes (tuiles non ambiguës — même contrainte que `ortho-revision.spec.ts`).
-   Avec `SEANCE_MAX = 8`, une liste de 10 mots forme deux blocs bien distincts dans le
-   tour de révision : les 8 premiers avant la pause, puis les 2 derniers après « Continuer
-   encore un peu » (le mot mis en attente au moment de la pause, servi en premier, puis le
-   dernier de la liste). De quoi vérifier que ce SECOND bloc, mené à son tour jusqu'à son
-   écran terminal, écrit son propre point (critère 1+2 de #706) — pas un bloc réduit à un
-   seul mot, qui masquerait moins bien un flag jamais réarmé. */
-const MOTS = [
-	'chat',
-	'lune',
-	'radis',
-	'jupe',
-	'bocal',
-	'guide',
-	'minou',
-	'sirop',
-	'cheval',
-	'pinceau',
-];
-
-function seedListeMaitrisee(id: string, mots: string[]) {
-	return {
-		banque: Object.fromEntries(
-			mots.map((mot, i) => [
-				`${id}-m${i + 1}`,
-				{
-					id: `${id}-m${i + 1}`,
-					mot,
-					entourage: [],
-					atelierFait: true,
-					validation: { motCache: true, tuiles: true, dictee: true },
-					revision: { palier: 4, prochaineRevision: null, reussites: 3, dernierTest: null },
-					origine: 'liste',
-				},
-			]),
-		),
-		listes: [
-			{
-				id,
-				label: 'Liste maîtrisée',
-				motIds: mots.map((_, i) => `${id}-m${i + 1}`),
-				createdAt: 1,
-				updatedAt: 1,
-			},
-		],
-		motIdParForme: Object.fromEntries(mots.map((mot, i) => [mot, `${id}-m${i + 1}`])),
-	};
-}
 
 /* Complète l'activité d'entretien affichée, quel que soit le mode tiré au hasard
    (tuiles, affiche/masque, ou dictée — selon la disponibilité du TTS dans l'environnement

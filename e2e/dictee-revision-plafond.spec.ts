@@ -19,68 +19,22 @@
    le mot caché. Or seul le mot caché affiche le mot en clair à l'écran (la dictée ne fait
    qu'écouter) — et la disponibilité du TTS varie d'un environnement à l'autre (constaté :
    une voix française est parfois rapportée par Chromium en local, jamais en CI headless).
-   On désactive donc `speechSynthesis` explicitement, ce qui fixe la marche à « mot caché »
-   PARTOUT, plutôt que de dépendre d'un hasard d'environnement pour un test qui a besoin
-   de lire le mot affiché. ============================================================ */
+   On force donc l'ABSENCE de voix (`STUB_SANS_VOIX`, déjà partagé par d'autres specs
+   orthographe), ce qui fixe la marche à « mot caché » PARTOUT, plutôt que de dépendre
+   d'un hasard d'environnement pour un test qui a besoin de lire le mot affiché.
+   ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { watchErrors, gotoHash, seedAideVue } from './helpers';
+import { seedListeMaitrisee, MOTS_MAITRISES as MOTS } from './ortho-liste-maitrisee';
+import { STUB_SANS_VOIX } from './journal-couverture';
 
 test.beforeEach(async ({ page }) => {
 	await seedAideVue(page);
 	// Force la marche « mot caché » (cf. bandeau d'en-tête) : seule à afficher le mot en
 	// clair, condition pour savoir lequel a été servi à chaque activité.
-	await page.addInitScript(() => {
-		Object.defineProperty(window, 'speechSynthesis', {
-			get: () => undefined,
-			configurable: true,
-		});
-	});
+	await page.addInitScript(STUB_SANS_VOIX);
 });
-
-/* 10 mots déjà MAÎTRISÉS (atelier fait + les trois modes validés). Le mode de test étant
-   « mot caché » (pas les tuiles), les lettres n'ont pas besoin d'être distinctes ici. */
-const MOTS = [
-	'chat',
-	'lune',
-	'radis',
-	'jupe',
-	'bocal',
-	'guide',
-	'minou',
-	'sirop',
-	'cheval',
-	'pinceau',
-];
-
-function seedListeMaitrisee(id: string, mots: string[]) {
-	return {
-		banque: Object.fromEntries(
-			mots.map((mot, i) => [
-				`${id}-m${i + 1}`,
-				{
-					id: `${id}-m${i + 1}`,
-					mot,
-					entourage: [],
-					atelierFait: true,
-					validation: { motCache: true, tuiles: true, dictee: true },
-					revision: { palier: 4, prochaineRevision: null, reussites: 3, dernierTest: null },
-					origine: 'liste',
-				},
-			]),
-		),
-		listes: [
-			{
-				id,
-				label: 'Liste maîtrisée',
-				motIds: mots.map((_, i) => `${id}-m${i + 1}`),
-				createdAt: 1,
-				updatedAt: 1,
-			},
-		],
-		motIdParForme: Object.fromEntries(mots.map((mot, i) => [mot, `${id}-m${i + 1}`])),
-	};
-}
 
 async function semerEtLancer(page: Page, id: string, mots: string[]): Promise<void> {
 	const seed = seedListeMaitrisee(id, mots);

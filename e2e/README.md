@@ -55,6 +55,16 @@ rapprocher le PID du bon worktree, ou dans le doute couper ce serveur avant de r
   smoke test ne doit pas devenir rouge parce qu'une leçon d'un autre lot a bougé.
 - Naviguer via `gotoHash` (helpers) ; vérifier l'absence d'erreur de rendu via
   `watchErrors` (exceptions non rattrapées + `console.error` applicatifs).
+- **Un test vert dès son écriture doit dire ce qui le ferait rougir.** Un test
+  rouge se justifie seul : il décrit ce qui manque. Un test vert d'emblée (critère
+  négatif, garde de non-régression, comportement déjà livré) ne garde rien tant
+  qu'on n'a pas nommé la mutation qui le casse — et **vérifié** cette mutation en la
+  jouant, pas seulement raisonné. Cas mesuré (#702) : un négatif « une activation
+  clavier ne déplace pas le focus » posé sur un écran SANS champ de saisie, où il
+  n'y a jamais de cible à restaurer. Il passait avec ou sans la garde qu'il
+  prétendait tenir, alors qu'il avait été écrit avant le code et par un auteur
+  distinct : ni l'antériorité ni l'indépendance ne protègent de ce défaut-là. Écrire
+  la mutation en commentaire du test est le minimum ; l'avoir jouée est la règle.
 - **Une fabrique de seed recopiée une troisième fois part dans un module partagé.**
   Recopier un seed d'un fichier à l'autre est normal tant que ça reste anecdotique ;
   au troisième exemplaire, ce n'est plus un emprunt, c'est une source de vérité

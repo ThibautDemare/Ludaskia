@@ -25,6 +25,14 @@ défaut et le préfixe actif. Le **rendu** n'a plus d'état de module à réinit
 - Importer le symbole à tester depuis `../src/core/*` (ou `../src/ui/*`) et l'ajouter à
   l'objet `api` en tête de `logic.test.ts` si l'on garde le style `api.x`.
 - Ajouter un cas : `test('nom', () => { ... })` avec les assertions `expect(...)`.
+- **Un test vert dès son écriture doit dire ce qui le ferait rougir.** Un test rouge se
+  justifie seul : il décrit ce qui manque. Un test vert d'emblée (garde de non-régression,
+  comportement déjà livré, assertion négative) ne garde rien tant qu'on n'a pas nommé la
+  mutation qui le casse — et **vérifié** cette mutation en la jouant contre le code, pas
+  seulement raisonné. Cas mesuré (#702) : un test négatif écrit AVANT le code et par un
+  auteur distinct passait quand même avec ou sans la garde qu'il prétendait tenir, parce
+  qu'il était posé sur un écran où la condition ne pouvait pas se produire. Ni
+  l'antériorité ni l'indépendance ne protègent de ça ; seule la mutation le dit.
 - **Nouvelle leçon** : pas besoin d'écrire à la main les invariants structurels de base
   (`generate()` ne lève pas, round-trip de correction, QCM bien formé, générateur non
   figé) — `catalogue-invariants.test.ts` les éprouve automatiquement pour **toute**

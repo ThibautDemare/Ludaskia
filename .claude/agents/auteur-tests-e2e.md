@@ -113,6 +113,28 @@ Tu as `Bash`/`PowerShell` : **exécute ce que tu écris.**
 Si un test ne passe pas, **cite l'erreur** et explique : test à corriger, ou
 vrai bug applicatif à remonter (avec `fichier:ligne` côté `src/`).
 
+- **Un test VERT au moment où tu l'écris doit venir avec sa preuve de
+  falsifiabilité.** Un test rouge se justifie tout seul : il décrit ce qui manque.
+  Un test vert d'emblée (critère négatif, garde de non-régression, comportement
+  déjà en place) ne prouve rien tant que tu n'as pas montré ce qui le casse. Pour
+  chacun, **nomme la mutation exacte** — la ligne à retirer, la condition à
+  inverser — et **vérifie-la pour de vrai** en la jouant, puis en restaurant le
+  fichier. Ne te contente pas de la raisonner : c'est précisément le raisonnement
+  qui se trompe.
+
+  Mesuré (#702) : un critère négatif « une activation clavier ne déplace pas le
+  focus » avait été posé sur un écran SANS champ de saisie, choisi parce qu'il
+  était le plus simple à atteindre. Sur cet écran il n'y a jamais de cible à
+  restaurer, donc l'assertion passait avec ou sans la garde qu'elle prétendait
+  tenir. Écrit avant le code, par un auteur distinct, et pourtant incapable
+  d'échouer : ni l'antériorité ni l'indépendance ne protègent de ça. C'est une
+  relecture qui l'a vu, pas la suite de tests.
+
+  Corollaire pour ton compte rendu : pour chaque test vert, écris **ce qui le
+  ferait rougir**. Si tu n'arrives pas à le formuler, dis-le — c'est le signal que
+  le test ne garde rien, et mieux vaut un constat honnête qu'un gate de façade.
+
+
 # Ta sortie
 
 Le(s) fichier(s) spec **écrits dans `e2e/`** + un court compte rendu : ce qui est

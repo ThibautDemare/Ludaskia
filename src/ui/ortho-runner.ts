@@ -435,7 +435,13 @@ function renderNext(): void {
 		return;
 	}
 	if (actes >= SEANCE_MAX) {
-		motEnAttente = word; // servi en premier après « Continuer encore un peu »
+		// Servi en premier après « Continuer encore un peu ». Réservé au TOUR DE RÉVISION,
+		// et c'est la condition qui compte : lui seul a un curseur qui ne revient jamais en
+		// arrière, donc lui seul perd le mot. Le parcours rebalaie toute la liste à chaque
+		// tirage et le mode ciblé cycle — ils le retrouveront d'eux-mêmes, et le mettre de
+		// côté leur ferait au contraire court-circuiter la sélection, qui doit rester libre
+		// de conclure que ce mot n'a plus rien à travailler (cf. `onSilence`).
+		if (revisionRun) motEnAttente = word;
 		renderPause();
 		return;
 	}
@@ -502,6 +508,14 @@ function optionsTacheParcours(word: MotOrtho, act: ModeOrtho): OptionsTache {
 		// de sortie prend la main (le parcours proposera un autre mode ensuite).
 		onSilence: () => {
 			dispoDictee = false;
+			// Ce mot a déjà été tiré et l'enfant n'a rien pu en faire : en TOUR DE RÉVISION, dont
+			// le curseur ne revient jamais en arrière, il serait perdu pour de bon (#706). On le
+			// remet donc en attente ; il sera resservi dans un AUTRE mode, la dictée venant de
+			// retomber. Ailleurs, surtout pas : `dispoDictee` vient de basculer, et un mot dont
+			// il ne restait QUE la dictée est désormais maîtrisé — le remettre en attente
+			// resservirait un mot acquis et masquerait la fin de la liste (le bilan « Liste
+			// prête ! » qu'attend `e2e/ortho-dictee-muette.spec.ts`).
+			if (revisionRun) motEnAttente = word;
 			renderDicteeMuette();
 		},
 	};

@@ -56,3 +56,13 @@ défaut et le préfixe actif. Le **rendu** n'a plus d'état de module à réinit
   état visité, avec un pas d'un jour justifié en commentaire (tous les intervalles de
   l'escalier de révision sont des multiples entiers de `JOUR`) plutôt que posé sans
   raison.
+- **Garde de contenu partagée entre plusieurs banques** : l'extraire dans un module
+  `tests/*.ts` **non collecté** (l'`include` de Vitest est `tests/**/*.{test,spec}.ts`),
+  importé par les specs qui l'appliquent — même forme que `e2e/helpers.ts` côté
+  Playwright. Voir `tests/gardes-affixes.ts` (#500), partagé par
+  `familles-affixes-ce2.test.ts` et `vocabulaire-cm1.test.ts`. Un seuil dupliqué finit
+  par diverger, et un seuil par niveau revient à tolérer ici le défaut qu'on refuse là.
+  Le module **doit avoir son propre `*.test.ts`** qui joue chaque détecteur sur une
+  banque fabriquée portant exactement la violation annoncée, **plus les témoins qui ne
+  doivent PAS être signalés** : sans eux, un détecteur devenu trop permissif laisse
+  toutes les banques vertes en silence, puisque le contenu réel les respecte déjà.

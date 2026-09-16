@@ -1355,7 +1355,7 @@ export const PREFIXES_CM1: ItemAffixe[] = [
 	{
 		mot: 'transporter',
 		sens: "porter d'un endroit à un autre",
-		distracteurs: ['porter très lourd', 'poser quelque chose'],
+		distracteurs: ['porter quelque chose de lourd', 'poser quelque chose'],
 		explication:
 			'Le préfixe « trans- » veut dire « d’un côté à l’autre » : transporter = porter d’un endroit à un autre.',
 	},
@@ -1423,7 +1423,15 @@ export const PREFIXES_CM1: ItemAffixe[] = [
 
 /* Suffixes CM1 (#244) : suffixes nominaux (-age, -eur qualité, -iste, -ier/-er, -itude).
    Distracteurs des items « -eur » DISTINCTS des « celui qui … » de la banque CE2
-   (où « -eur » = l'agent) : ici « -eur » nomme une QUALITÉ, pas une personne. */
+   (où « -eur » = l'agent) : ici « -eur » nomme une QUALITÉ, pas une personne.
+   #500 : sur les quatre items dont la bonne réponse ouvre par « la qualité de ce qui
+   est … » (grandeur, douceur, fraîcheur, exactitude), UN distracteur reprend la MÊME
+   formule avec un adjectif proche mais faux (grosseur, mollesse, froideur, complétude).
+   Sans ça la formule n'apparaissait dans aucun distracteur de la banque : elle devenait
+   un mot de passe, repérable à force de révisions espacées, qui donnait le point sans
+   lire le suffixe. Le second distracteur des items « -eur » garde le piège de l'agent
+   (« celui qui est … »), raison d'être du sous-ensemble : il ne bouge pas.
+   Règle à tenir pour tout item ajouté ici. */
 export const SUFFIXES_CM1: ItemAffixe[] = [
 	{
 		mot: 'lavage',
@@ -1447,21 +1455,21 @@ export const SUFFIXES_CM1: ItemAffixe[] = [
 	{
 		mot: 'grandeur',
 		sens: 'la qualité de ce qui est grand',
-		distracteurs: ['celui qui est grand', "l'action de grandir"],
+		distracteurs: ['celui qui est grand', 'la qualité de ce qui est gros'],
 		explication:
 			'Le suffixe « -eur » désigne ici une qualité : la grandeur, c’est la qualité de ce qui est grand.',
 	},
 	{
 		mot: 'douceur',
 		sens: 'la qualité de ce qui est doux',
-		distracteurs: ['celui qui est doux', "l'action d'adoucir"],
+		distracteurs: ['celui qui est doux', 'la qualité de ce qui est mou'],
 		explication:
 			'Le suffixe « -eur » désigne ici une qualité : la douceur, c’est la qualité de ce qui est doux.',
 	},
 	{
 		mot: 'fraîcheur',
 		sens: 'la qualité de ce qui est frais',
-		distracteurs: ["l'action de refroidir", 'celui qui a froid'],
+		distracteurs: ['la qualité de ce qui est froid', 'celui qui est frileux'],
 		explication:
 			'Le suffixe « -eur » désigne ici une qualité : la fraîcheur, c’est la qualité de ce qui est frais.',
 	},
@@ -1502,7 +1510,7 @@ export const SUFFIXES_CM1: ItemAffixe[] = [
 	{
 		mot: 'exactitude',
 		sens: 'la qualité de ce qui est exact',
-		distracteurs: ["l'action de se tromper", "le fait d'être en retard"],
+		distracteurs: ['la qualité de ce qui est complet', "le fait d'être en retard"],
 		explication:
 			'Le suffixe « -itude » indique ici une qualité : l’exactitude, c’est la qualité de ce qui est exact.',
 	},

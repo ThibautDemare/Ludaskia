@@ -117,6 +117,42 @@ describe('Harnais des gardes d’affixes — les détecteurs attrapent ce qu’i
 		expect(affixesAnnoncesIncoherents([suffixes([suffixeFaux])])).toHaveLength(1);
 	});
 
+	it('affixe annoncé : la tolérance d’élision accepte « sou- » pour « sous- », et rien de plus', () => {
+		// Règle chargée en production : « souterrain » / « souligner » (banque CE2) ne passent
+		// que grâce à l'élision de la dernière lettre d'un préfixe d'au moins 4 lettres. Un
+		// DURCISSEMENT se verrait sur le contenu réel ; un ASSOUPLISSEMENT, non — le contenu
+		// resterait vert. On éprouve donc les deux bords de la tolérance.
+		const elide: ItemAffixe = {
+			mot: 'souligner',
+			sens: 'tracer un trait sous un mot',
+			distracteurs: ["tracer un trait au-dessus d'un mot", 'entourer un mot'],
+			explication: 'Le préfixe « sous- » veut dire « en dessous » : souligner.',
+		};
+		expect(affixesAnnoncesIncoherents([prefixes([elide])])).toEqual([]);
+
+		// Bord 1 — la tolérance ne descend PAS sous 4 lettres : « in- » ne doit pas avaler
+		// tout mot commençant par « i » (rougit si le seuil `prefixe.length >= 4` baisse).
+		const prefixeCourt: ItemAffixe = {
+			mot: 'imaginer',
+			sens: 'se représenter quelque chose',
+			distracteurs: ['oublier quelque chose', 'montrer quelque chose'],
+			explication: 'Le préfixe « in- » veut dire « le contraire » : imaginer.',
+		};
+		expect(affixesAnnoncesIncoherents([prefixes([prefixeCourt])])[0]).toContain('ne porte pas');
+
+		// Bord 2 — elle ne retire qu'UNE lettre : « para- » ne doit pas être reconnu dans un
+		// mot qui n'en partage que « pa » (rougit si `slice(0, -1)` s'élargit).
+		const troisLettresSeulement: ItemAffixe = {
+			mot: 'patiner',
+			sens: 'glisser sur la glace',
+			distracteurs: ['courir sur la neige', 'marcher sur la route'],
+			explication: 'Le préfixe « para- » veut dire « protège de » : patiner.',
+		};
+		expect(affixesAnnoncesIncoherents([prefixes([troisLettresSeulement])])[0]).toContain(
+			'ne porte pas',
+		);
+	});
+
 	it('explication : une explication qui parle d’un autre mot est signalée', () => {
 		const recopiee: ItemAffixe = {
 			...PREFIXE_SAIN,
@@ -125,12 +161,21 @@ describe('Harnais des gardes d’affixes — les détecteurs attrapent ce qu’i
 		expect(explicationsSansLeMotInterroge([prefixes([recopiee])])[0]).toContain('refaire');
 	});
 
-	it('mot interrogé : doublon dans une banque, doublon entre banques, espace de bord', () => {
+	it('mot interrogé : mot vide, doublon dans une banque, doublon entre banques, espace de bord', () => {
+		// Mot vide : aucune question à poser, et la garde « l'explication cite le mot » devient
+		// vraie pour n'importe quoi (toute chaîne contient la chaîne vide) — c'est la branche
+		// qui empêche ce trou de s'ouvrir en silence.
+		const vide = prefixes([{ ...PREFIXE_SAIN, mot: '' }]);
+		expect(anomaliesDuMotInterroge([vide])).toHaveLength(1);
+		expect(anomaliesDuMotInterroge([vide])[0]).toContain('mot vide');
+
 		const doublonInterne = prefixes([PREFIXE_SAIN, { ...PREFIXE_SAIN }]);
 		expect(anomaliesDuMotInterroge([doublonInterne])).toHaveLength(1);
+		expect(anomaliesDuMotInterroge([doublonInterne])[0]).toContain('interrogé deux fois');
 
 		const croise = [prefixes([PREFIXE_SAIN]), suffixes([{ ...SUFFIXE_SAIN, mot: 'refaire' }])];
 		expect(anomaliesDuMotInterroge(croise)).toHaveLength(1);
+		expect(anomaliesDuMotInterroge(croise)[0]).toContain('PREFIXES_TEST et SUFFIXES_TEST');
 
 		const espace = prefixes([{ ...PREFIXE_SAIN, mot: 'refaire ' }]);
 		expect(anomaliesDuMotInterroge([espace])[0]).toContain('espace de bord');

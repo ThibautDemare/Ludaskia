@@ -31,41 +31,25 @@
 import { describe, it, expect } from 'vitest';
 import { withSeed } from '../src/core/utils';
 import { getLessonById, genLessonItem } from '../src/core/catalog';
+import { FAMILLES, PREFIXES, SUFFIXES, ITEMS_FAMILLES } from '../src/data/francais/familles';
+/* Les gardes de contenu des banques d'affixes vivent dans un harnais PARTAGÉ depuis
+   #500 : les banques CM1 (`tests/vocabulaire-cm1.test.ts`) sont tenues par exactement
+   les mêmes règles, et le seuil de longueur n'existe qu'à un seul endroit. Les
+   détecteurs eux-mêmes sont éprouvés par `tests/gardes-affixes.test.ts`. */
 import {
-	FAMILLES,
-	PREFIXES,
-	SUFFIXES,
-	ITEMS_FAMILLES,
-	type ItemAffixe,
-} from '../src/data/francais/familles';
+	MARGE_LONGUEUR,
+	anomaliesDuMotInterroge,
+	fuitesDuMotInterroge,
+	reperesDeLongueur,
+	affixesAnnoncesIncoherents,
+	explicationsSansLeMotInterroge,
+	type BanqueAffixes,
+} from './gardes-affixes';
 
 /* Plancher de banque de contenu retenu pour le projet (éviter la répétition ressentie) ;
    #453 vise ~54 entrées par banque. On ne fige PAS la taille exacte : un ajout
    pédagogique futur ne doit pas faire rougir ce test. */
 const PLANCHER_BANQUE = 50;
-
-/* Marge tolérée, en CARACTÈRES, entre la bonne réponse et le PLUS LONG de ses deux
-   distracteurs (garde « option qui se détache visuellement », #453 relecture langue).
-   MÉTRIQUE : caractères, et référence = le plus long distracteur.
-   - vs la MOYENNE des trois options : mauvaise référence. Une réponse peut dépasser la
-     moyenne de 10 caractères tout en égalant le plus long distracteur (deux options
-     longues, une courte) — aucun repère exploitable ; et inversement.
-   - vs le nombre de MOTS : trop grossier, mesuré sur les banques réelles — « sous-titre »
-     a 0 mot d'écart pour +7 caractères, « survêtement » 1 mot d'écart pour +10 (le mot
-     « par-dessus » pèse à lui seul), alors que « facilement » avant correction avait
-     +2 mots pour +10 caractères. La largeur rendue sur un bouton de QCM suit les
-     caractères, pas les mots.
-   MARGE = 10, mesurée sur l'état corrigé des banques CE2 : maximum observé +10
-   (« survêtement »), puis +9 (« surnom ») ; la banque de suffixes plafonne à +2. Elle
-   rattrape 8 des 9 items corrigés par la relecture (de +11 à +28 : récitation, surligner,
-   voleur, franchement, rêveur, soustraction, correction, sérieusement) ; « facilement »
-   (+10 avant correction) tombe pile sur la marge, tout comme « survêtement » qui, lui,
-   est resté — AUCUN seuil de longueur ne sépare ces deux-là. C'est donc un plancher
-   contre les repères FLAGRANTS, pas une preuve d'absence de repère : le jugement fin
-   reste à la relecture langue. Garde volontairement à sens UNIQUE (un distracteur bien
-   plus long que la réponse n'est pas exploitable : l'heuristique « la plus longue »
-   mène alors à une erreur). */
-const MARGE_LONGUEUR = 10;
 
 /* Tirages d'échantillonnage. 4 000 tirages pour ~163 items : sous graine FIXE le
    résultat est déterministe, et même sous graine libre la probabilité qu'un item
@@ -73,27 +57,10 @@ const MARGE_LONGUEUR = 10;
 const NB_TIRAGES = 4000;
 const GRAINE = 453;
 
-const BANQUES_AFFIXES = [
-	{ nom: 'PREFIXES', items: PREFIXES, role: 'préfixe' as const },
-	{ nom: 'SUFFIXES', items: SUFFIXES, role: 'suffixe' as const },
+const BANQUES_AFFIXES: BanqueAffixes[] = [
+	{ nom: 'PREFIXES', items: PREFIXES, role: 'préfixe' },
+	{ nom: 'SUFFIXES', items: SUFFIXES, role: 'suffixe' },
 ];
-
-const TOUS_AFFIXES: ItemAffixe[] = [...PREFIXES, ...SUFFIXES];
-
-/* Affixe annoncé par l'explication : « Le préfixe « re- » … » / « Le suffixe « -eur » … ».
-   Renvoie le rôle annoncé et l'affixe nu (sans le tiret de position). */
-function affixeAnnonce(explication: string): { role: string; affixe: string } | null {
-	const m = explication.match(/^Le (préfixe|suffixe)\s+«\s*-?([^»\s-]+)-?\s*»/);
-	return m ? { role: m[1], affixe: m[2].toLowerCase() } : null;
-}
-
-/* Le mot porte-t-il le préfixe annoncé ? Tolérance d'ÉLISION pour les préfixes longs :
-   « sous- » s'écrit « sou- » devant consonne (souterrain, souligner). Réservée aux
-   préfixes de 4 lettres et plus, sinon la règle deviendrait vide de sens (« in- »
-   accepterait tout mot commençant par « i »). */
-function porteLePrefixe(mot: string, prefixe: string): boolean {
-	return mot.startsWith(prefixe) || (prefixe.length >= 4 && mot.startsWith(prefixe.slice(0, -1)));
-}
 
 describe('Familles / affixes CE2 — taille et unicité des banques (#453)', () => {
 	it('les trois banques du pool combiné atteignent le plancher de 50 items', () => {
@@ -107,20 +74,7 @@ describe('Familles / affixes CE2 — taille et unicité des banques (#453)', () 
 	});
 
 	it('le mot interrogé est unique dans chaque banque d’affixes, et entre préfixes et suffixes', () => {
-		for (const { nom, items } of BANQUES_AFFIXES) {
-			const mots = items.map((a) => a.mot);
-			for (const mot of mots) {
-				expect(mot.length, `${nom} : mot vide`).toBeGreaterThan(0);
-				expect(mot, `${nom} : « ${mot} » a une espace de bord`).toBe(mot.trim());
-			}
-			const doublons = mots.filter((m, i) => mots.indexOf(m) !== i);
-			expect(doublons, `${nom} : mots interrogés deux fois`).toEqual([]);
-		}
-		// Un même mot ne peut pas être interrogé une fois comme préfixé et une fois comme
-		// suffixé : la question serait identique pour deux réponses différentes.
-		const setPref = new Set(PREFIXES.map((a) => a.mot));
-		const croises = SUFFIXES.map((a) => a.mot).filter((m) => setPref.has(m));
-		expect(croises, 'mots présents dans les DEUX banques d’affixes').toEqual([]);
+		expect(anomaliesDuMotInterroge(BANQUES_AFFIXES)).toEqual([]);
 	});
 
 	it('aucune question dupliquée dans le pool combiné (aucune banque versée deux fois)', () => {
@@ -136,72 +90,25 @@ describe('Familles / affixes CE2 — intégrité des items d’affixes (#453)', 
 		// donne la réponse : le mot interrogé ne doit apparaître dans AUCUNE des 3 options
 		// (dans la bonne réponse c'est un cadeau, dans un leurre c'est un aimant à erreur).
 		// On liste TOUTES les violations d'un coup (diagnostic complet en un run).
-		const fuites: string[] = [];
-		for (const { nom, items } of BANQUES_AFFIXES) {
-			for (const a of items) {
-				const mot = a.mot.toLowerCase();
-				for (const opt of [a.sens, ...a.distracteurs]) {
-					if (opt.toLowerCase().includes(mot)) fuites.push(`${nom} : « ${a.mot} » → « ${opt} »`);
-				}
-			}
-		}
-		expect(fuites).toEqual([]);
+		expect(fuitesDuMotInterroge(BANQUES_AFFIXES)).toEqual([]);
 	});
 
-	it('la bonne réponse ne se détache pas par sa longueur (au plus 10 caractères de plus que le plus long distracteur)', () => {
+	it(`la bonne réponse ne se détache pas par sa longueur (au plus ${MARGE_LONGUEUR} caractères de plus que le plus long distracteur)`, () => {
 		// Deuxième famille de repère gratuit, plus grossière que la fuite du mot interrogé :
 		// « l'action de réciter un texte appris par cœur » contre « l'action de lire » et
 		// « l'action d'écouter » se désigne toute seule. Choisir la plus longue ne demande
 		// AUCUNE connaissance — même pas de savoir ce que l'affixe signifie.
-		const repères: string[] = [];
-		for (const { nom, items } of BANQUES_AFFIXES) {
-			for (const a of items) {
-				const plusLongDistracteur = Math.max(...a.distracteurs.map((d) => d.length));
-				const écart = a.sens.length - plusLongDistracteur;
-				if (écart > MARGE_LONGUEUR) {
-					repères.push(
-						`${nom} : « ${a.mot} » +${écart} car. — « ${a.sens} » vs [${a.distracteurs.join(' | ')}]`,
-					);
-				}
-			}
-		}
-		expect(repères).toEqual([]);
+		expect(reperesDeLongueur(BANQUES_AFFIXES)).toEqual([]);
 	});
 
 	it('l’explication annonce un affixe, du bon type et réellement porté par le mot', () => {
-		const anomalies: string[] = [];
-		for (const { nom, items, role } of BANQUES_AFFIXES) {
-			for (const a of items) {
-				const annonce = affixeAnnonce(a.explication);
-				if (!annonce) {
-					anomalies.push(`${nom} : « ${a.mot} » — aucun affixe annoncé (${a.explication})`);
-					continue;
-				}
-				// Un item de préfixes ne peut pas expliquer un suffixe (copier-coller entre banques).
-				if (annonce.role !== role) {
-					anomalies.push(`${nom} : « ${a.mot} » — annoncé comme ${annonce.role}`);
-					continue;
-				}
-				const mot = a.mot.toLowerCase();
-				const porte =
-					role === 'préfixe' ? porteLePrefixe(mot, annonce.affixe) : mot.endsWith(annonce.affixe);
-				if (!porte) {
-					anomalies.push(`${nom} : « ${a.mot} » ne porte pas le ${role} « ${annonce.affixe} »`);
-				}
-			}
-		}
-		expect(anomalies).toEqual([]);
+		expect(affixesAnnoncesIncoherents(BANQUES_AFFIXES)).toEqual([]);
 	});
 
 	it('l’explication cite le mot interrogé (elle explique bien CET item)', () => {
 		// Garde anti-copier-coller : 46 entrées ajoutées d'un coup, une explication recopiée
 		// d'un item voisin parlerait d'un autre mot que celui affiché.
-		for (const a of TOUS_AFFIXES) {
-			expect(
-				a.explication.toLowerCase().includes(a.mot.toLowerCase()),
-				`« ${a.mot} » : explication qui ne cite pas le mot → ${a.explication}`,
-			).toBe(true);
-		}
+		expect(explicationsSansLeMotInterroge(BANQUES_AFFIXES)).toEqual([]);
 	});
 });
 

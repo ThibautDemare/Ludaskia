@@ -37,6 +37,17 @@ import {
 import { ORDRE_LECONS } from '../src/data/ordre-pedagogique';
 import { getLessonById, getLessonsByCategory } from '../src/core/catalog';
 import type { ExerciseType } from '../src/core/exercise';
+/* Gardes de contenu des banques d'affixes, partagées avec le CE2 (#500) : mêmes
+   détecteurs, même seuil, un seul endroit à faire évoluer. */
+import {
+	MARGE_LONGUEUR,
+	anomaliesDuMotInterroge,
+	fuitesDuMotInterroge,
+	reperesDeLongueur,
+	affixesAnnoncesIncoherents,
+	explicationsSansLeMotInterroge,
+	type BanqueAffixes,
+} from './gardes-affixes';
 
 const RE_GRAS_G = /\*\*(.+?)\*\*/g;
 const cibleDe = (phrase: string) => phrase.match(/\*\*(.+?)\*\*/)?.[1] ?? '';
@@ -159,6 +170,49 @@ describe('Vocabulaire CM1 — banques « familles / affixes » (#244)', () => {
 	it('génération QCM 3 options valides (préfixes et suffixes CM1)', () => {
 		const type = FAMILLES_LESSONS.find((l) => l.id === 'fr-vocab-affixes-cm1')!.exerciseType;
 		verifieGenerationQcm(type, new Set(ITEMS_AFFIXES_CM1.map((i) => i.reponse)));
+	});
+});
+
+/* ------------------------------------------------------------
+   #500 — les banques d'affixes CM1 passent sous les MÊMES gardes que les CE2 (#453).
+   Rien ici n'est propre au CM1 : un enfant de CM1 qui clique sur l'option la plus
+   longue marque aussi sans rien décoder, et une explication recopiée d'un item voisin
+   trompe autant. On branche donc les banques CM1 sur le harnais partagé au lieu de
+   redescendre le seuil ou de refaire des détecteurs parallèles.
+   Les quatre gardes d'intégrité (fuite, affixe annoncé, explication qui cite le mot,
+   unicité) sont VERTES sur le contenu actuel ; ce qui les ferait rougir est montré sur
+   des banques fabriquées par `tests/gardes-affixes.test.ts`, qui éprouve chaque
+   détecteur sur la violation exacte qu'il prétend attraper.
+   ------------------------------------------------------------ */
+const BANQUES_AFFIXES_CM1: BanqueAffixes[] = [
+	{ nom: 'PREFIXES_CM1', items: PREFIXES_CM1, role: 'préfixe' },
+	{ nom: 'SUFFIXES_CM1', items: SUFFIXES_CM1, role: 'suffixe' },
+];
+
+describe('Vocabulaire CM1 — repères et intégrité des banques d’affixes (#500)', () => {
+	it(`critère 2 : la bonne réponse ne se détache pas par sa longueur (au plus ${MARGE_LONGUEUR} caractères de plus que le plus long distracteur)`, () => {
+		// Même règle et même seuil que sur les banques CE2 : choisir l'option la plus longue
+		// ne demande AUCUNE connaissance de l'affixe. Garde à sens unique — un distracteur
+		// plus long que la réponse n'est pas exploitable.
+		expect(reperesDeLongueur(BANQUES_AFFIXES_CM1)).toEqual([]);
+	});
+
+	it('aucune option ne reprend le mot interrogé (pas de fuite de la réponse)', () => {
+		expect(fuitesDuMotInterroge(BANQUES_AFFIXES_CM1)).toEqual([]);
+	});
+
+	it('critère 3 : l’explication annonce un affixe, du bon type et réellement porté par le mot', () => {
+		expect(affixesAnnoncesIncoherents(BANQUES_AFFIXES_CM1)).toEqual([]);
+	});
+
+	it('critère 3 : l’explication cite le mot interrogé (elle explique bien CET item)', () => {
+		expect(explicationsSansLeMotInterroge(BANQUES_AFFIXES_CM1)).toEqual([]);
+	});
+
+	it('le mot interrogé est unique dans chaque banque CM1, et entre préfixes et suffixes', () => {
+		// La dédup CE2 ↔ CM1 est tenue plus bas ; ici c'est l'unicité INTERNE au CM1, qui
+		// poserait deux fois la même question pour deux réponses différentes.
+		expect(anomaliesDuMotInterroge(BANQUES_AFFIXES_CM1)).toEqual([]);
 	});
 });
 

@@ -322,6 +322,51 @@ pomme) » (« mange il mange une pomme »), et « … du verbe de « il mange un
 cesse de nommer le mot cible et oblige à écouter toute la phrase avant de savoir de quoi
 on parle. La redondance mange/mange est assumée : c'est elle qui lève l'ambiguïté.
 
+## Une option de QCM ne laisse pas un verbe transitif sans son complément (#500)
+
+Écrire « porter quelque chose de lourd », pas « porter très lourd » ; « l'action d'adoucir
+quelque chose », pas « l'action d'adoucir ». Un verbe d'ordinaire transitif employé seul
+sonne inachevé, et le lecteur cherche le mot manquant au lieu de juger l'option. Le piège
+vient de la pression à raccourcir : une option de QCM se veut brève, et le complément est
+la première chose qu'on coupe. Les locutions figées (`peser lourd`, `sentir bon`,
+`coûter cher`) sont l'exception qui trompe — `porter lourd` n'en fait pas partie.
+
+Cas posé par #500, sur deux distracteurs de `PREFIXES_CM1` / `SUFFIXES_CM1`. La faute y
+était invisible parce que l'option est lue seule, jamais dans une phrase : c'est en la
+relisant à voix haute qu'elle s'entend.
+
+## Une formule qui ouvre la bonne réponse doit ouvrir aussi un distracteur (#500)
+
+Quand plusieurs items d'une même banque partagent une formule d'ouverture (« la qualité de
+ce qui est … », « l'action de … »), vérifier qu'au moins un **distracteur** la porte
+également. Sinon la formule cesse d'être un contenu à comprendre et devient un **mot de
+passe** : l'enfant qui la repère coche juste sans rien mobiliser de la notion.
+
+Trois conditions rendent le raccourci apprenable, et une banque de leçon les réunit
+presque toujours : un pool réduit, rejoué en révision espacée pendant des semaines ; un
+signal sans exception (la formule est sur toutes les bonnes réponses, sur aucun leurre) ;
+et le « correct ! » qui renforce le raccourci à chaque passage sans jamais solliciter le
+raisonnement visé. Repérer une régularité coûte moins cher que d'analyser un suffixe.
+
+Cas posé par #500 : dans `SUFFIXES_CM1`, « la qualité de ce qui est … » ouvrait la bonne
+réponse de `grandeur`, `douceur`, `fraîcheur` et `exactitude`, et aucun distracteur des
+deux banques d'affixes. C'est précisément le sous-ensemble qui porte l'intention la plus
+fine de la banque (« -eur » nomme une qualité, pas la personne comme au CE2) : l'endroit
+où l'enfant doit désapprendre une généralisation était devenu celui où il n'était jamais
+mis à l'épreuve.
+
+Écarté : **varier la formule** des bonnes réponses. Cette paraphrase stable n'est pas une
+négligence de rédaction, c'est la règle du suffixe énoncée sous forme de patron
+réutilisable — ce qui permet de la transférer à un mot hors banque. La fragmenter en
+quatre tournures réduirait la leçon à quatre définitions apprises par cœur. Retenu :
+faire porter la formule à un distracteur, avec un adjectif **proche mais faux** (gros pour
+grand, lisse pour doux, froid pour frais, complet pour exact) — discriminer redemande
+alors de lire l'adjectif, donc de relier le dérivé à son mot de base.
+
+Garde-fou en sens inverse, à vérifier au cas par cas : l'adjectif choisi ne doit pas être
+un quasi-synonyme dans l'usage de l'enfant. « Mou » a été écarté pour `douceur` (un doudou
+« tout mou » et « tout doux », c'est la même chose à 9 ans) au profit de « lisse ».
+
 Un mot classique n'a pas de phrase et reste au patron court (« Corriger les pièges de
 aujourd'hui ») : le patron long n'est qu'une extension pour la cible qui en a besoin.
 Remontée `redacteur-contenu-francais` sur alerte `relecteur-accessibilite` ; le versant

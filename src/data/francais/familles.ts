@@ -1415,7 +1415,7 @@ export const PREFIXES_CM1: ItemAffixe[] = [
 	{
 		mot: 'téléphone',
 		sens: 'appareil pour parler à distance',
-		distracteurs: ['appareil pour écrire', 'appareil pour écouter de la musique'],
+		distracteurs: ['appareil pour écrire', 'appareil pour écouter la radio'],
 		explication:
 			'Le préfixe « télé- » veut dire « à distance » : téléphone = appareil pour parler à distance.',
 	},
@@ -1426,11 +1426,15 @@ export const PREFIXES_CM1: ItemAffixe[] = [
    (où « -eur » = l'agent) : ici « -eur » nomme une QUALITÉ, pas une personne.
    #500 : sur les quatre items dont la bonne réponse ouvre par « la qualité de ce qui
    est … » (grandeur, douceur, fraîcheur, exactitude), UN distracteur reprend la MÊME
-   formule avec un adjectif proche mais faux (grosseur, mollesse, froideur, complétude).
+   formule avec un ADJECTIF proche mais faux : gros, lisse, froid, complet.
    Sans ça la formule n'apparaissait dans aucun distracteur de la banque : elle devenait
    un mot de passe, repérable à force de révisions espacées, qui donnait le point sans
    lire le suffixe. Le second distracteur des items « -eur » garde le piège de l'agent
    (« celui qui est … »), raison d'être du sous-ensemble : il ne bouge pas.
+   Exception assumée : le piège de l'agent de « fraîcheur » dit « celui qui est frileux »
+   et non « celui qui est frais » comme le feraient grandeur et douceur avec leur adjectif
+   racine — « être frais » se lit aussi « être dans l'embarras », donc l'option cesserait
+   d'être clairement fausse. Ne pas la « corriger » vers le patron.
    Règle à tenir pour tout item ajouté ici. */
 export const SUFFIXES_CM1: ItemAffixe[] = [
 	{
@@ -1442,14 +1446,14 @@ export const SUFFIXES_CM1: ItemAffixe[] = [
 	{
 		mot: 'passage',
 		sens: "l'action de passer",
-		distracteurs: ["l'endroit pour dormir", "l'action de rester"],
+		distracteurs: ['celui qui passe le premier', "l'action de rester"],
 		explication:
 			'Le suffixe « -age » indique l’action ou l’endroit : le passage, c’est l’action de passer.',
 	},
 	{
 		mot: 'bricolage',
 		sens: "l'action de bricoler",
-		distracteurs: ["l'action de construire une grande maison", "l'action de réparer une voiture"],
+		distracteurs: ["l'action de bâtir une maison", "l'action de réparer une voiture"],
 		explication: 'Le suffixe « -age » indique l’action : le bricolage, c’est l’action de bricoler.',
 	},
 	{
@@ -1462,7 +1466,7 @@ export const SUFFIXES_CM1: ItemAffixe[] = [
 	{
 		mot: 'douceur',
 		sens: 'la qualité de ce qui est doux',
-		distracteurs: ['celui qui est doux', 'la qualité de ce qui est mou'],
+		distracteurs: ['celui qui est doux', 'la qualité de ce qui est lisse'],
 		explication:
 			'Le suffixe « -eur » désigne ici une qualité : la douceur, c’est la qualité de ce qui est doux.',
 	},
@@ -1505,7 +1509,8 @@ export const SUFFIXES_CM1: ItemAffixe[] = [
 		mot: 'solitude',
 		sens: "l'état d'être seul",
 		distracteurs: ["l'action d'aider les autres", "le fait d'avoir beaucoup d'amis"],
-		explication: 'Le suffixe « -itude » indique un état : la solitude, c’est l’état d’être seul.',
+		explication:
+			'Le suffixe « -itude » indique un état ou une qualité : la solitude, c’est l’état d’être seul.',
 	},
 	{
 		mot: 'exactitude',

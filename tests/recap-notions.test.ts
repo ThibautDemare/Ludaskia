@@ -449,6 +449,7 @@ const TOUS_LES_KINDS: Record<SeanceModeKind, true> = {
 	leconDuJour: true,
 	lecon: true,
 	dictee: true,
+	favori: true,
 };
 const KINDS_ETAPE = [
 	'sprint',
@@ -457,6 +458,11 @@ const KINDS_ETAPE = [
 	'leconDuJour',
 	'lecon',
 	'dictee',
+	// #636 : une étape « bilan favori » ne masque aucun récap autonome, y compris quand le
+	// favori tiré est un SPRINT. La règle de #537 compare la NATURE de l'étape à celle du
+	// récap ; l'étendre au mode du favori tiré changerait un comportement existant, ce que le
+	// critère 17 de #636 interdit. À rouvrir si la duplication se voit à l'usage.
+	'favori',
 ] as const satisfies readonly SeanceModeKind[];
 
 /* Les deux seuls récaps AUTONOMES concernés par la règle de non-doublon. */

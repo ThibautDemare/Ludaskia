@@ -44,6 +44,7 @@ import {
 	SEANCE_KEY,
 	SEANCE_JOUR_KEY,
 	type ContexteSeance,
+	type FavoriDispo,
 	type ResolutionSeance,
 	type SeanceDef,
 	type SeanceEtape,
@@ -69,23 +70,34 @@ const LECON_A = 'math-doubles';
 const LECON_B = 'math-complements';
 const LISTE_A = 'fr-ortho-invariables-1';
 const LISTE_B = 'fr-ortho-son-eu-1';
+const FAVORI_A = 'bilan-favori-a';
+/* Un favori lançable, pour la seule boucle qui parcourt TOUTES les natures d'étape (#636).
+   Le reste du fichier n'en met aucune en jeu. */
+const FAVORIS_DISPO: FavoriDispo[] = [{ id: FAVORI_A, nbLecons: 3, mode: 'bilan' }];
 
 /* ---------- Contextes du jour (ids BRUTS, par nature) ----------
-   Trois axes INDÉPENDANTS depuis #657 : les deux files épinglées « à revoir », et les
-   listes de dictée actuellement PROPOSABLES au profil, dont dépend la seule étape
-   « Une dictée ». Un test qui met une étape « dictée » en jeu déclare donc sa liste
-   disponible — sans quoi l'étape s'escamote (c'est justement l'objet de #657). */
+   Quatre axes INDÉPENDANTS : les deux files épinglées « à revoir », les listes de dictée
+   PROPOSABLES au profil (#657) et les bilans favoris LANÇABLES (#636). Un test qui met en
+   jeu une étape à pool déclare donc sa cible disponible — sans quoi l'étape s'escamote,
+   c'est justement l'objet de ces deux lots. */
 const RIEN_EPINGLE: ContexteSeance = {
 	aRevoirLecons: [],
 	aRevoirDictees: [],
 	dicteesDisponibles: [],
+	favorisDisponibles: [], // #636 : sans objet ici, mais le contexte est ENTIER depuis la refonte
 };
 function epinglees(
 	lecons: string[] = [],
 	dictees: string[] = [],
 	disponibles: string[] = [],
+	favoris: FavoriDispo[] = [],
 ): ContexteSeance {
-	return { aRevoirLecons: lecons, aRevoirDictees: dictees, dicteesDisponibles: disponibles };
+	return {
+		aRevoirLecons: lecons,
+		aRevoirDictees: dictees,
+		dicteesDisponibles: disponibles,
+		favorisDisponibles: favoris,
+	};
 }
 /** Rien d'épinglé, mais des listes de dictée proposables au profil (#657). */
 function listesProposees(disponibles: string[]): ContexteSeance {
@@ -208,11 +220,12 @@ describe('etapeApplicable (#464)', () => {
 			// la configuration de l'étape (éprouvée juste après, et dans
 			// tests/seance-dictee-sans-cible.test.ts pour la dictée).
 			const attendue = SEANCE_MODE_INFOS[k].ref;
-			const e = attendue
-				? etape('e1', k, 1, attendue === 'dictee' ? LISTE_A : LECON_A)
-				: etape('e1', k);
-			expect(etapeApplicable(e, listesProposees([LISTE_A])), k).toBe(true);
-			expect(etapeApplicable(e, epinglees([LECON_A], [LISTE_A], [LISTE_A])), k).toBe(true);
+			const cible = attendue === 'dictee' ? LISTE_A : attendue === 'favori' ? FAVORI_A : LECON_A;
+			const e = attendue ? etape('e1', k, 1, cible) : etape('e1', k);
+			expect(etapeApplicable(e, epinglees([], [], [LISTE_A], FAVORIS_DISPO)), k).toBe(true);
+			expect(etapeApplicable(e, epinglees([LECON_A], [LISTE_A], [LISTE_A], FAVORIS_DISPO)), k).toBe(
+				true,
+			);
 		}
 	});
 

@@ -74,7 +74,12 @@ function session(k: ActivityKindStored, ref?: string, t = 1): ActivityEntry {
 function epinglees(lecons: string[] = [], dictees: string[] = []): ContexteSeance {
 	// #657 : `dicteesDisponibles` est sans objet ici — ce fichier éprouve l'APPARIEMENT
 	// (`etapeSatisfaite`), qui compare aux cibles de la définition, pas l'applicabilité.
-	return { aRevoirLecons: lecons, aRevoirDictees: dictees, dicteesDisponibles: [] };
+	return {
+		aRevoirLecons: lecons,
+		aRevoirDictees: dictees,
+		dicteesDisponibles: [],
+		favorisDisponibles: [], // #636 : même raison — l'appariement lit la DÉFINITION de l'étape
+	};
 }
 
 /* ---------- Accès stockage (API du module + clés documentées) ---------- */
@@ -228,16 +233,29 @@ describe('etapeSatisfaite : mode `aRevoir` (cible prise dans la file épinglée)
 });
 
 describe('etapeSatisfaite : invariants transverses', () => {
-	it('une session MULTI-CIBLES (bilan) ou d’un format ancien (inconnu) ne satisfait AUCUN mode', () => {
-		// Un bilan ou un journal d'avant #498 ne désigne pas une cible : mieux vaut ne rien
-		// créditer que créditer à tort la consigne précise d'un adulte.
+	it('une session SANS cible désignée (bilan, format ancien) ne satisfait AUCUN mode', () => {
+		// Un bilan de catégorie (express, complet) et un journal d'avant #498 ne désignent pas
+		// de cible : mieux vaut ne rien créditer que créditer à tort la consigne précise d'un
+		// adulte. C'est l'ABSENCE DE RÉFÉRENCE qui l'interdit, et non le type d'activité —
+		// #636 a donné au bilan une cible possible (l'id du favori lancé), et l'invariant
+		// tient toujours dès lors qu'on le formule sur ce qui le fonde vraiment.
 		const file = epinglees([LECON_A], [LISTE_A]);
-		for (const kind of Object.keys(SEANCE_MODE_INFOS) as SeanceModeKind[]) {
+		const natures = Object.keys(SEANCE_MODE_INFOS) as SeanceModeKind[];
+		for (const kind of natures) {
 			for (const type of ['bilan', 'inconnu'] as ActivityKindStored[]) {
-				expect(etapeSatisfaite(etape('e1', kind, 1, LECON_A), session(type, LECON_A), file)).toBe(
+				expect(etapeSatisfaite(etape('e1', kind, 1, LECON_A), session(type), file), kind).toBe(
 					false,
 				);
 			}
+		}
+		// Contre-épreuve : une référence ne suffit pas davantage hors de la nature qui
+		// l'attend. Un bilan qui porte l'id d'un favori ne coche que l'étape « bilan favori »
+		// dont le pool le contient — pas une leçon précise, pas une dictée, pas un sprint.
+		for (const kind of natures.filter((k) => k !== 'favori')) {
+			expect(
+				etapeSatisfaite(etape('e1', kind, 1, LECON_A), session('bilan', LECON_A), file),
+				kind,
+			).toBe(false);
 		}
 	});
 	it('fonction PURE : aucune lecture/écriture d’état du jour', () => {

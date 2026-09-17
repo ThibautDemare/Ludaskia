@@ -15,19 +15,24 @@ import type { BilanConfig, LessonDef, Category } from '../core/catalog';
 import { labelLecon } from '../core/levels';
 import { niveauActifMatiere } from '../core/niveau-actif';
 import { subjectIcon, subjectTint, catTint } from './cat-visuals';
-import { loadBilans, saveBilan, deleteBilan } from '../core/bilans';
+import { loadBilans, saveBilan } from '../core/bilans';
 import { startCustomSprint } from './sprint';
 import { fichesPagesHTML } from '../core/lessons';
 import { bilanBlocksForIds, buildFichesForIds } from '../core/build';
 import { renderItem, createRenderContext, withLessonId } from '../core/items';
 import type { RenderContext } from '../core/items';
 
-import { setCurrentMode, setCurrentLessonId, afterStart, setRenderCtx } from './navigation';
+import {
+	setCurrentMode,
+	setCurrentLessonId,
+	setCurrentFavoriId,
+	afterStart,
+	setRenderCtx,
+} from './navigation';
 import { printScope } from './session';
 import { bilanCategoryKey, bilanCustomKey } from '../core/resume';
 import { setResumeCtx, clearResumeCtx, maybeRelaunch, type ResumeCtx } from './resume';
 import { icon } from './icon';
-import { uiConfirm } from './ui-modal';
 import { html, type SafeHtml, VIDE, joindre, drapeau } from '../core/html';
 
 /* ---------- Génération de bilan express personnalisé ---------- */
@@ -69,6 +74,12 @@ export function runBilanConfig(config: BilanConfig, ctx?: ResumeCtx | null): voi
 	// pas classés (cf. session.ts) car les leçons varient d'un bilan à l'autre.
 	setCurrentMode(config.questionsPerLesson === 'all' ? 'complet' : 'express');
 	setCurrentLessonId(null);
+	// #636 : seul un favori ENREGISTRÉ porte un id (`genId()` à la sauvegarde) ; un bilan de
+	// catégorie (express, complet) et une sélection composée à la volée naissent avec
+	// `id: ''`. Ce champ est donc exactement « ce bilan vient-il d'un favori ». Posé ici, au
+	// seul chemin par lequel passe un bilan — reprise comprise, puisqu'elle relance la même
+	// config, ce qui crédite l'étape d'un favori commencé hier et fini aujourd'hui.
+	setCurrentFavoriId(config.id || null);
 	// Contexte de reprise (#63) : ce bilan devient « l'exercice en cours ».
 	if (ctx) setResumeCtx(ctx);
 	else clearResumeCtx();
@@ -79,6 +90,15 @@ export function runBilanConfig(config: BilanConfig, ctx?: ResumeCtx | null): voi
    propose « Continuer / Recommencer » ; sinon on le lance neuf (#63). */
 export function startBilan(config: BilanConfig, ctx: ResumeCtx): void {
 	maybeRelaunch(ctx.key, ctx.label, () => runBilanConfig(config, ctx));
+}
+
+/** Lance un favori selon SON mode (#64) : « sprint » part au chrono, « bilan » ouvre
+    l'écran de bilan. Point d'entrée UNIQUE depuis #636 — l'accueil, une catégorie et le
+    programme du jour lancent un favori de la même façon, donc tous journalisent son id et
+    tous créditent l'étape qui le vise (critère 10 : « quel que soit le point d'entrée »). */
+export function lancerFavori(config: BilanConfig): void {
+	if (bilanMode(config) === 'sprint') startCustomSprint(config, config.id);
+	else startBilan(config, favoriBilanCtx(config));
 }
 
 /* Fabriques de contexte de reprise selon le type de bilan. */
@@ -511,7 +531,6 @@ function favoriItemHTML(b: BilanConfig): SafeHtml {
         </div>
         <div class="favori-btns">
           <button class="favori-btn favori-btn-run" data-run="${b.id}">${icon('play')} Lancer</button>
-          <button class="favori-btn favori-btn-del" data-del="${b.id}" title="Supprimer ce favori" aria-label="Supprimer ce favori">${icon('trash')}</button>
         </div>
       </div>`;
 }
@@ -534,31 +553,12 @@ export function renderFavoris(el: HTMLElement | null, categoryId?: string): void
 		btn.addEventListener('click', () => {
 			const config = loadBilans().find((b) => b.id === btn.dataset.run);
 			if (!config) return;
-			if (bilanMode(config) === 'sprint') startCustomSprint(config);
-			else startBilan(config, favoriBilanCtx(config));
+			lancerFavori(config);
 		});
 	});
-	el.querySelectorAll<HTMLButtonElement>('[data-del]').forEach((btn) => {
-		btn.addEventListener('click', async () => {
-			const name =
-				btn.closest('.favori-item')?.querySelector<HTMLElement>('.favori-name')?.textContent ?? '';
-			// On nomme l'objet par son nom (« Supprimer « X » ? ») plutôt que par le mot
-			// « bilan », abstrait pour un CE2 (avis pédagogue/rédacteur, #230).
-			const ok = await uiConfirm({
-				title: `Supprimer « ${name} » ?`,
-				message: 'Tu ne pourras pas le récupérer.',
-				confirmLabel: 'Supprimer',
-				cancelLabel: 'Non, je garde',
-				destructive: true,
-				confirmIcon: 'trash',
-				emoji: '🗑️',
-			});
-			if (ok) {
-				deleteBilan(btn.dataset.del!);
-				renderFavoris(el, categoryId);
-				// Déclencheur recréé/supprimé au re-rendu → repli sur une action restante.
-				el.querySelector<HTMLElement>('button')?.focus();
-			}
-		});
-	});
+	/* La SUPPRESSION n'est plus ici (#636) : elle est passée dans l'espace encadrant. Dès
+	   qu'une étape de programme peut viser un favori, laisser la corbeille sous la main de
+	   l'enfant, c'est lui laisser effacer d'un clic une consigne posée par l'adulte, sans que
+	   personne ne le sache. La CRÉATION, elle, reste de son côté : il compose, nomme et
+	   enregistre depuis son écran, et c'est l'adulte qui fait le ménage. Asymétrie assumée. */
 }

@@ -28,6 +28,11 @@ export interface LessonRunInput {
 	questionCount: number; // nombre de questions posées
 	ms: number; // temps écoulé (classement des bilans)
 	perLesson: Record<string, { ok: number; total: number }>; // stats agrégées par leçon
+	/** Id du BILAN FAVORI dont cette session est le lancement (#636), quand elle en vient.
+	    Absent pour un bilan de catégorie (express, complet) ou une sélection composée à la
+	    volée : c'est précisément cette absence qui les empêche de cocher une étape
+	    « bilan favori » du programme du jour. */
+	favoriId?: string;
 }
 
 export interface LessonRunOutcome {
@@ -49,13 +54,16 @@ export function recordLessonRun(p: LessonRunInput): LessonRunOutcome {
 	const streakDays = updateStreak().days;
 	// Type journalisé pour le graphe d'activité (#319) : 'lecon' (leçon seule) sinon
 	// 'bilan' (express/complet). Le sprint a son propre chemin (ui/sprint.ts).
-	// La référence (#498) n'est portée qu'en mode 'lecon' : un bilan couvre plusieurs
-	// leçons, aucune cible unique à désigner pour l'attribution du programme du jour.
+	// La référence (#498) désigne la cible que l'attribution du programme du jour doit
+	// reconnaître : la leçon en mode 'lecon' ; sinon, depuis #636, l'id du FAVORI lancé —
+	// un bilan couvre plusieurs leçons, mais le favori, lui, est bien une cible unique et
+	// nommée. Un bilan qui ne vient pas d'un favori (express, complet, sélection composée à
+	// la volée) reste SANS référence : c'est ce qui l'empêche de cocher une étape.
 	const kindActivite = p.mode === 'lecon' ? 'lecon' : 'bilan';
 	recordLessonStats(
 		p.perLesson,
 		kindActivite,
-		kindActivite === 'lecon' ? (p.lessonId ?? undefined) : undefined,
+		kindActivite === 'lecon' ? (p.lessonId ?? undefined) : p.favoriId,
 	);
 	const niveauAvant = niveauDepuisXP(getXP());
 	addXP(p.ok);

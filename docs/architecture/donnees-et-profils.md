@@ -68,7 +68,11 @@ panneau d'étayage — `Record<'lessonId@niveau', number>`, la valeur étant
 l'horodatage `reporteLe` de `EtatReport` qui a ouvert l'épisode ; voir
 `core/etayage.ts` et [Logique pure](core.md)),
 `ludaskia_goal`, `ludaskia_goalsDone`, `ludaskia_trophies`, `ludaskia_xp`,
-`ludaskia_bilans` (configs de bilans favoris), `ludaskia_resume` (exercices **en
+`ludaskia_bilans` (configs de bilans favoris — lu/écrit sur le profil **actif** côté enfant
+par `loadBilans`/`saveBilan`/`deleteBilan` ; depuis #636, lu **et écrit par UUID sans
+bascule** côté espace encadrant, `loadBilansFor`/`deleteBilanFor`, cf. [Logique
+pure](core.md) — seul l'encadrant y **supprime**, cf. [Espace
+encadrant](espace-encadrant.md)), `ludaskia_resume` (exercices **en
 cours**, repris ou abandonnés — #63 ; deux natures d'instantané depuis #498, une
 **grille** — leçon en saisie, bilans — ou un **runner** — l'état logique d'un des
 dix runners « une question à la fois », cf. `core/resume.ts`), `ludaskia_activity`
@@ -218,7 +222,8 @@ inventées quand la source n'en porte aucune. Base de la frise de COMPOSITION d'
   **voulue par l'adulte** bumpe — `enregistrerSeancesFor` (composer un programme du
   jour), `toggleRevoirFor` (épingler/désépingler une leçon ou une dictée),
   `declarerVuAilleursFor` (déclarer « vu en classe »), `supprimerMotFor` (supprimer un
-  mot de la banque, #496, cf. [Espace encadrant](espace-encadrant.md)) ; un effet
+  mot de la banque, #496, cf. [Espace encadrant](espace-encadrant.md)), `deleteBilanFor`
+  (#636, supprimer un bilan favori) ; un effet
   **automatique** reste
   silencieux — `purgeRevoirSolides` (désépinglage auto #465) tourne à chaque ouverture
   de l'espace, bumper y ferait passer une simple **consultation** pour une

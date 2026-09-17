@@ -658,9 +658,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `'lecon'`, appelle aussi **`recordEssaiLecon`** (#485, avancement/report de la leçon
   du jour, cf. `report-lecon.ts`) : **seul** point d'entrée qui enregistre un essai
   COMPLET en mode leçon, jamais le sprint ni les bilans. Transmet aussi à
-  `recordLessonStats` la **référence** (#498) de la leçon jouée, mais seulement en
-  mode `'lecon'` — un bilan couvre plusieurs leçons, aucune cible unique à désigner
-  pour l'attribution du programme du jour (cf. `core/seance.ts` ci-dessous). Le
+  `recordLessonStats` la **référence** (#498) de la leçon jouée en mode `'lecon'` ; pour un
+  bilan, cette référence est depuis #636 l'id du **BILAN FAVORI** dont la session est le
+  lancement (`LessonRunInput.favoriId`, posé par `ui/navigation.ts:setCurrentFavoriId` au
+  seul chemin d'un bilan, `ui/bilan.ts:runBilanConfig`) — absente pour un bilan de catégorie
+  (express/complet) ou une sélection composée à la volée, qui n'ont pas de cible unique à
+  désigner pour l'attribution du programme du jour (cf. `core/seance.ts` ci-dessous). Le
   calcul trophées/niveau qu'il fait ici (`evaluateTrophies` + `recompensesEntre`)
   reste **volontairement** local, non délégué au module partagé
   `recompenses-fin.ts` (ci-dessous, #659) : le libellé d'un trophée y diffère
@@ -874,7 +877,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   prioritaires — et **tournant** — évite le tirage précédent), et
   `buildExpressConfig` qui en fait un `BilanConfig`. Branché sur l'express de
   catégorie ; le bilan personnalisé reste explicite (non borné).
-- **`bilans.ts`** — persistance des `BilanConfig` favoris (`ludaskia_bilans`).
+- **`bilans.ts`** — persistance des `BilanConfig` favoris (`ludaskia_bilans`) : `loadBilans`/
+  `saveBilan`/`deleteBilan` sur le profil ACTIF. Depuis #636, deux accès **par UUID sans
+  bascule** (sur le modèle de `chargerSeancesFor`/`enregistrerSeancesFor` de `seance.ts`
+  ci-dessous), pour l'espace encadrant : **`loadBilansFor(uuid)`** (même `backfillCategory`
+  que `loadBilans` — invariant à tenir, `loadBilansFor(uuidActif)` = `loadBilans()`) et
+  **`deleteBilanFor(uuid, id)`** (écrit la seule clé de ce profil + `touchProfile`, comme
+  `enregistrerSeancesFor`).
 
 ## Reprise & révision espacée
 
@@ -1996,24 +2005,32 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   choisit dans tout le catalogue (cf. `catalogue-arbre.ts`/`ui/selecteur-lecon.ts`
   ci-dessus/[`ui/`](ui.md)), il n'y a plus de « première leçon » évidente à présélectionner
   — ce serait poser une consigne que l'adulte n'a pas donnée. **Une étape « une dictée »
-  PERD LES SIENNES (#657)** : pool jamais posé faute de liste au moment de l'ajout, cases
-  toutes décochées, liste supprimée après coup, ou programme copié vers un profil qui n'a
-  pas ces listes — quatre chemins vers le même écran mort. **`etapeConfiguree(etape,
-  dicteesDisponibles = [])`** (pure sur la DÉFINITION plus cet argument, contrairement à
-  `etapeApplicable` ci-dessous qui regarde aussi le contexte du jour) répond `!!etape.ref`
-  pour une leçon, et pour une dictée `ciblesValides(etape, dicteesDisponibles).length > 0`
-  — UNE cible encore atteignable suffit, `true` pour toute autre nature : une étape non
-  configurée ne compte ni dans le nombre d'activités du composeur ni dans
-  `estimationDureeMin` (elle disparaîtra au lancement, la compter promettrait un temps que
-  l'enfant ne passera pas), et `etapeApplicable` l'escamote du programme au même titre
-  qu'un « à revoir » sans rien d'épinglé — un programme ne peut pas porter une étape VIDE
-  qui bloquerait sa complétion (#464). La dictée est la seule nature dont la configuration
-  ne se lit pas dans la seule définition : `dicteesDisponibles` — troisième champ de
-  `ContexteSeance` ci-dessous, même défaut prudent `[]` — porte les ids que le profil peut
-  réellement lancer aujourd'hui, fournis par l'UI (`ui/seance.ts:contexteProgramme`, MÊME
-  source que le lanceur) ou par l'espace encadrant (ses propres listes). Rien n'est
-  réécrit en stockage : une référence orpheline reste dans `refs`/`ref` et revient d'elle-
-  même dès que sa liste redevient disponible.
+  PERD LES SIENNES (#657)**, et **une étape « un bilan favori » PERD LES SIENS (#636)** de
+  la même façon : pool jamais posé faute de liste/favori au moment de l'ajout, cases
+  toutes décochées, liste/favori supprimé après coup, ou programme copié vers un profil qui
+  n'a pas ces listes/favoris — mêmes chemins vers le même écran mort. **`etapeConfiguree(etape,
+  ctx: ContexteSeance = CONTEXTE_VIDE)`** (pure sur la DÉFINITION plus ce contexte,
+  contrairement à `etapeApplicable` ci-dessous qui regarde aussi le contexte du jour ;
+  `estimationDureeMin` suit la même signature) répond `!!etape.ref` pour une leçon, et pour
+  une dictée ou un favori `ciblesValides(etape, ctx.dicteesDisponibles / ctx.favorisDisponibles.map(id)).length > 0`
+  (selon la nature) — UNE cible encore atteignable suffit,
+  `true` pour toute autre nature : une étape non configurée ne compte ni dans le nombre
+  d'activités du composeur ni dans `estimationDureeMin` (elle disparaîtra au lancement, la
+  compter promettrait un temps que l'enfant ne passera pas), et `etapeApplicable` l'escamote
+  du programme au même titre qu'un « à revoir » sans rien d'épinglé — un programme ne peut
+  pas porter une étape VIDE qui bloquerait sa complétion (#464). **Signature refondue par
+  #636** : la version #657 ne passait que `dicteesDisponibles` en second paramètre ; une
+  deuxième nature à cible contextuelle en aurait fait un deuxième tableau, puis un
+  troisième — le `ContexteSeance` devient donc le point d'extension unique, et toutes les
+  fonctions qui en dépendaient (`etapeApplicable`, `estimationDureeMin`, `resoudreProgramme`,
+  `vueSeanceDuJour`) prennent désormais ce même contexte. Dictée et favori sont les deux
+  natures dont la configuration ne se lit pas dans la seule définition :
+  `dicteesDisponibles`/`favorisDisponibles` — champs de `ContexteSeance` ci-dessous, même
+  défaut prudent — portent ce que le profil peut réellement lancer aujourd'hui, fournis par
+  l'UI (`ui/seance.ts:contexteProgramme`, MÊME source que le lanceur) ou par l'espace
+  encadrant (ses propres listes/favoris). Rien n'est réécrit en stockage : une référence
+  orpheline reste dans `refs`/`ref` et revient d'elle-même dès que sa liste/son favori
+  redevient disponible.
 
   **Étapes CONDITIONNELLES « à revoir » (#464)** : le mode `aRevoir` puise dans la file
   épinglée par l'encadrant (`ludaskia_revoir`, cf. [Espace encadrant](espace-encadrant.md)),
@@ -2023,11 +2040,26 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   encore à travailler, **par nature** plutôt qu'un simple compte ; `CONTEXTE_VIDE` =
   défaut PRUDENT « rien d'épinglé »). Un troisième champ, `dicteesDisponibles: string[]`
   (#657, même défaut prudent `[]`), sert à `etapeConfiguree`/`etapeApplicable` pour la
-  nature `dictee` — cf. ci-dessus. Ces deux premières listes servent autant à
-  l'**applicabilité** de l'étape (`etapeApplicable(etape, ctx)`) qu'à **reconnaître, dans
-  le journal d'activité, quelle épinglée vient d'être travaillée** (`etapeSatisfaite`
-  ci-dessous). Deux natures sont donc conditionnelles au contexte du jour, chacune sur son
-  champ : `aRevoir` sur ces deux listes, `dictee` sur `dicteesDisponibles` (#657).
+  nature `dictee` — cf. ci-dessus. Un quatrième, **`favorisDisponibles: FavoriDispo[]`**
+  (#636, `FavoriDispo = {id, nbLecons, mode: 'bilan' | 'sprint'}` — volontairement pauvre,
+  ni libellé ni liste de leçons, qui n'appartiennent qu'au rendu), joue le même rôle pour la
+  nature `favori`, et porte en plus de quoi **estimer sa durée** (`dureeEtapeMin`, ci-dessous)
+  — un id seul n'aurait pas suffi, la durée d'un bilan favori dépendant de ce qu'il contient.
+  Ces deux premières listes servent autant à l'**applicabilité** de l'étape
+  (`etapeApplicable(etape, ctx)`) qu'à **reconnaître, dans le journal d'activité, quelle
+  épinglée vient d'être travaillée** (`etapeSatisfaite` ci-dessous). Trois natures sont donc
+  conditionnelles au contexte du jour, chacune sur son champ : `aRevoir` sur ces deux
+  listes, `dictee` sur `dicteesDisponibles` (#657), `favori` sur `favorisDisponibles` (#636).
+
+  **Durée d'une étape « bilan favori », variable (#636)** : `dureeEtapeMin(etape, ctx)`
+  calcule la durée d'UNE étape, constante par nature (le forfait de `SEANCE_MODE_INFOS`)
+  sauf pour `favori` — deux favoris n'occupent pas le même temps selon ce qu'ils
+  contiennent. Un favori en mode SPRINT dure le forfait du sprint (5 min) quel que soit son
+  nombre de leçons ; un favori en mode BILAN se chiffre à `2,5 min × nbLecons`, plancher
+  3 min (repère annoncé à l'adulte, jamais contraignant). Un pool de plusieurs favoris se
+  chiffre à la MOYENNE de ses cibles atteignables — l'attente d'un tirage au hasard, plus
+  honnête que le minimum (qui flatterait) ou le maximum (qui dissuaderait) ;
+  `estimationDureeMin` en hérite via ce même `ctx`.
 
   **Une étape déjà travaillée reste comptée (#498)** : `etapesEnJeu(def, jour, ctx)`
   garde, en plus des étapes applicables aujourd'hui, celles **déjà faites** dans la
@@ -2046,7 +2078,12 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   la condition SUPPLÉMENTAIRE (#641) que la séance ait pu faire progresser un mot
   (`sessionProgressive`), sans quoi huit tuiles sur une liste dont tous les mots avaient
   déjà validé les tuiles cochaient l'étape du jour sans qu'aucun mot ne monte d'un cran ;
-  n'importe quelle
+  une session `bilan` OU `sprint` dont l'`ActivityEntry.ref` désigne un favori de l'étape
+  vaut « un bilan favori » (#636) — la RÉFÉRENCE, posée uniquement quand la session vient
+  du lancement d'un favori ENREGISTRÉ (`ui/navigation.ts:currentFavoriId`,
+  `ui/sprint.ts:sprintFavoriId`), est ce qui distingue un bilan favori d'un bilan de
+  catégorie (express, complet) ou d'une sélection composée à la volée, qui n'en portent
+  aucune et ne cochent donc rien ; n'importe quelle
   leçon vaut « Leçon du jour » (elle change dès qu'elle est réussie, incomparable après
   coup) ; une leçon/dictée dont la référence figure dans `epinglees` vaut « à revoir » —
   la **dictée** y porte la MÊME condition `sessionProgressive` que l'étape `dictee` (#641) :
@@ -2058,8 +2095,10 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   appel, les sessions du journal **postérieures à un curseur** (`SeanceJour.vuTs`, avancé
   à chaque passe — idempotent), et attribue chacune à la meilleure étape restante
   candidate via `etapeSatisfaite`, arbitrée **du plus spécifique au plus large**
-  (constante `SPECIFICITE` : `lecon`/`dictee` > `aRevoir` > `leconDuJour` >
-  `sprint`/`revision`) si plusieurs conviendraient — sauf si le marqueur `pending`
+  (constante `SPECIFICITE` : `lecon`/`dictee`/`favori` > `aRevoir` > `leconDuJour` >
+  `sprint`/`revision` — `favori` au même rang que `lecon`/`dictee` depuis #636, un pool
+  fixé par l'adulte comme les deux autres) si plusieurs conviendraient — sauf si le
+  marqueur `pending`
   désigne explicitement l'une des candidates, auquel cas il tranche. Le marqueur posé par
   `marquerEtapeLancee(etapeId, now, ref?)` au lancement d'une étape depuis le programme
   n'est donc plus ce qui ouvre le droit au crédit : il ne sert qu'à **dater** l'étape
@@ -2080,7 +2119,7 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   trophée dédié (cf. [Gamification](gamification.md)). **`VueEtape.refs`** (#537) — les
   références (`ActivityEntry.ref`) des complétions du jour qui satisfont l'étape : seul
   moyen de nommer après coup la cible réellement tirée d'une étape à pool (dictée,
-  épinglée, leçon précise) sans relire le journal une seconde fois — consommé par le récap
+  épinglée, leçon précise, bilan favori #636) sans relire le journal une seconde fois — consommé par le récap
   de fin de séance (« Récap éphémère de fin de séance », `ui/seance.ts`, cf.
   [`ui/`](ui.md)). Consommé côté enfant par
   `ui/seance.ts` (porte d'entrée unique `vueProgramme`, cf. [`ui/`](ui.md)) et côté

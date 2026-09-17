@@ -64,7 +64,7 @@ Le **programme du jour** (`#seance`, `startSeance`/`showSeanceView` dans
 `navigation.ts`, rendu par `ui/seance.ts`, logique par `core/seance.ts`) est une
 **séance** (nom interne des types) : une liste d'**étapes**, chacune un mode
 existant (Sprint, Révision espacée, **la file « à revoir »** #464, Leçon du jour,
-une leçon précise, une ou plusieurs dictées) demandé un certain nombre de fois
+une leçon précise, une ou plusieurs dictées, ou **un bilan favori** #636) demandé un certain nombre de fois
 (`count`), composée à l'avance par l'encadrant pour un profil (cf. [Espace
 encadrant](espace-encadrant.md)). **Distinct de la « leçon du jour »** (#208,
 `core/lecon-du-jour.ts`) : celle-ci propose *une* leçon au fil de l'**avancement**
@@ -95,7 +95,11 @@ dans le journal d'activité, laquelle des épinglées vient d'être travaillée.
 **Attribution sur ce qui a été fait, pas sur le bouton pris (#498)** : le journal
 d'activité (`loadActivity`, #319) porte désormais une **référence** par session
 (`ActivityEntry.ref` = id de la leçon ou de la liste d'orthographe travaillée ;
-absente pour une session **multi-cibles**, comme un bilan ou un sprint).
+absente pour une session **multi-cibles** sans autre identité, comme un bilan de
+catégorie ou un sprint ordinaire). Depuis #636, un bilan ou un sprint qui est le
+lancement d'un **bilan favori** ENREGISTRÉ porte quand même une référence — celle du
+favori, seule cible qu'une sélection de plusieurs leçons peut nommer — ce qui permet à
+une étape « un bilan favori » de se cocher.
 `resoudreProgramme` (remplace `resoudrePending`, appelée par `rafraichirProgramme`
 via `showHomeView`/`showSeanceView`) relit, à chaque passage, les sessions
 **nouvelles depuis son dernier passage** (curseur `SeanceJour.vuTs`) et cherche,

@@ -38,7 +38,8 @@ import { touchProfile } from './profiles';
 /* ---------- Modèle ---------- */
 
 /** Modes qu'une étape de programme peut viser. */
-export type SeanceModeKind = 'sprint' | 'revision' | 'aRevoir' | 'leconDuJour' | 'lecon' | 'dictee';
+export type SeanceModeKind =
+	'sprint' | 'revision' | 'aRevoir' | 'leconDuJour' | 'lecon' | 'dictee' | 'favori';
 
 /** Métadonnées par mode : libellé (voix encadrant), durée estimée (min, pour le repère
     encadrant) et nature de la référence à préciser (`lecon` = id de leçon,
@@ -50,7 +51,7 @@ export type SeanceModeKind = 'sprint' | 'revision' | 'aRevoir' | 'leconDuJour' |
     vérité pour l'appariement, donc aucun risque de désaccord entre les deux. */
 export const SEANCE_MODE_INFOS: Record<
 	SeanceModeKind,
-	{ label: string; dureeMin: number; ref: 'lecon' | 'dictee' | null }
+	{ label: string; dureeMin: number; ref: 'lecon' | 'dictee' | 'favori' | null }
 > = {
 	sprint: { label: 'Sprint 5 min', dureeMin: 5, ref: null },
 	revision: { label: 'Révision', dureeMin: 8, ref: null },
@@ -60,6 +61,11 @@ export const SEANCE_MODE_INFOS: Record<
 	leconDuJour: { label: 'Leçon du jour', dureeMin: 7, ref: null },
 	lecon: { label: 'Une leçon précise', dureeMin: 7, ref: 'lecon' },
 	dictee: { label: 'Une dictée', dureeMin: 10, ref: 'dictee' },
+	// Troisième nature à référence (#636) : un « bilan favori », sélection de leçons que
+	// l'adulte ou l'enfant a enregistrée et nommée. `dureeMin` n'est ici qu'un REPLI : la
+	// durée réelle dépend du favori visé (cf. `dureeEtapeMin`), une sélection de 2 leçons
+	// et une de 12 n'occupant pas le même temps.
+	favori: { label: 'Un bilan favori', dureeMin: 10, ref: 'favori' },
 };
 
 /** Une étape du programme : un mode, un nombre de fois requis, et une éventuelle
@@ -133,6 +139,21 @@ export interface ContexteSeance {
 	    MÊME source que le lanceur (`ui/seance.ts`), sans quoi le programme proposerait une
 	    dictée que le clic ne saurait pas ouvrir. */
 	dicteesDisponibles: string[];
+	/** Favoris que le profil peut RÉELLEMENT lancer aujourd'hui (#636). Même raison d'être
+	    que `dicteesDisponibles` : le cœur ne lit pas le stockage d'un profil donné. On y
+	    porte un peu plus que des ids, parce que la durée d'une étape « bilan favori » dépend
+	    de ce que le favori CONTIENT — c'est l'exigence du critère 5, et un id seul ne
+	    permettrait pas d'y répondre. */
+	favorisDisponibles: FavoriDispo[];
+}
+
+/** Ce que le cœur a besoin de savoir d'un favori lançable (#636) : de quoi décider si une
+    étape a encore une cible, et de quoi en estimer la durée. Volontairement pauvre — ni
+    libellé ni liste de leçons, qui n'appartiennent qu'au rendu. */
+export interface FavoriDispo {
+	id: string;
+	nbLecons: number;
+	mode: 'bilan' | 'sprint';
 }
 /** Contexte NEUTRE (rien d'épinglé, aucune dictée proposable) : défaut PRUDENT des lectures
     de séance — un appelant qui l'omet escamote une étape « à revoir » ou « une dictée »
@@ -143,6 +164,7 @@ export const CONTEXTE_VIDE: ContexteSeance = {
 	aRevoirLecons: [],
 	aRevoirDictees: [],
 	dicteesDisponibles: [],
+	favorisDisponibles: [],
 };
 
 /** Nombre d'entrées épinglées « à revoir » du contexte (les deux natures confondues). Pur. */
@@ -160,33 +182,41 @@ export function nbARevoir(ctx: ContexteSeance): number {
       c'est ce qui les rend équivalents ici : ce qui compte n'est pas ce que la définition
       DEMANDE, mais ce qu'elle peut encore ATTEINDRE.
 
-    D'où `dicteesDisponibles` : `dictee` est la seule nature dont la configuration ne se lit
-    pas dans la seule définition. L'argument est donc attendu de l'appelant, mais optionnel en
-    signature avec `[]` pour défaut — même parti pris prudent que `CONTEXTE_VIDE` (cf. son
-    commentaire). Les autres natures ne le regardent pas.
+    - « un bilan favori » perd les siens (#636) de la même façon : pool vidé par l'adulte, ou
+      programme copié vers un profil qui n'a pas ces favoris.
 
-    Reste utilisable côté encadrant, où l'adulte fournit ses listes, pour ne compter ni dans
-    le nombre d'activités ni dans la durée estimée une étape qui disparaîtra au lancement.
-    Pur. */
-export function etapeConfiguree(
-	etape: SeanceEtape,
-	dicteesDisponibles: readonly string[] = [],
-): boolean {
+    D'où le CONTEXTE en second paramètre. #657 passait ici le seul tableau des dictées ; une
+    deuxième nature à cible contextuelle en aurait fait un deuxième tableau, puis un
+    troisième, chacun optionnel et oubliable. Le `ContexteSeance` existe déjà pour porter ce
+    que le cœur ne peut pas calculer seul : il devient le point d'extension unique. Défaut
+    `CONTEXTE_VIDE`, prudent (cf. son commentaire) — un appelant qui l'omet escamote, il ne
+    neutralise pas.
+
+    Reste utilisable côté encadrant, où l'adulte fournit ses listes et ses favoris, pour ne
+    compter ni dans le nombre d'activités ni dans la durée estimée une étape qui disparaîtra
+    au lancement. Pur. */
+export function etapeConfiguree(etape: SeanceEtape, ctx: ContexteSeance = CONTEXTE_VIDE): boolean {
 	if (etape.kind === 'lecon') return !!etape.ref;
-	// UNE cible encore atteignable suffit : un pool de trois dictées dont deux supprimées
-	// reste parfaitement jouable, et l'escamoter priverait l'enfant d'un travail disponible.
-	if (etape.kind === 'dictee') return ciblesValides(etape, dicteesDisponibles).length > 0;
+	// UNE cible encore atteignable suffit, pour les deux natures à pool : trois dictées dont
+	// deux supprimées restent parfaitement jouables, et l'escamoter priverait l'enfant d'un
+	// travail disponible.
+	if (etape.kind === 'dictee') return ciblesValides(etape, ctx.dicteesDisponibles).length > 0;
+	if (etape.kind === 'favori')
+		return ciblesValides(etape, ctx.favorisDisponibles.map(idDeFavori)).length > 0;
 	return true;
+}
+
+/* Extracteur nommé plutôt qu'une lambda anonyme répétée : trois sites en ont besoin. */
+function idDeFavori(f: FavoriDispo): string {
+	return f.id;
 }
 
 /** Une étape s'applique-t-elle aujourd'hui ? Deux cas d'escamotage : « à revoir » disparaît
     du programme quand rien n'est épinglé, et une étape NON CONFIGURÉE (leçon sans cible #556,
-    dictée sans cible atteignable #657) tant qu'elle n'a rien à proposer — sinon le programme
+    dictée #657 ou bilan favori #636 sans cible atteignable) tant qu'elle n'a rien à proposer — sinon le programme
     porterait une étape VIDE, impossible à réaliser, qui bloquerait sa complétion (#464). Pur. */
 export function etapeApplicable(etape: SeanceEtape, ctx: ContexteSeance): boolean {
-	return etape.kind === 'aRevoir'
-		? nbARevoir(ctx) > 0
-		: etapeConfiguree(etape, ctx.dicteesDisponibles);
+	return etape.kind === 'aRevoir' ? nbARevoir(ctx) > 0 : etapeConfiguree(etape, ctx);
 }
 
 /** Nombre de fois requis d'une étape, ASSAINI (entier ≥ 1) — source unique de ce « combien ».
@@ -337,20 +367,44 @@ export function genDefId(defs: SeanceDef[]): string {
 	return 'd' + (max + 1);
 }
 
+/* Minutes par leçon d'un favori en mode BILAN (#636). Un bilan pose quelques questions par
+   leçon, pas la leçon entière : le forfait d'une étape « une leçon précise » (7 min) serait
+   très au-dessus. Repère annoncé comme tel à l'adulte, jamais contraignant, et arrondi au
+   plancher ci-dessous pour ne jamais afficher « ~1 min » sur une activité réelle. */
+const MIN_PAR_LECON_BILAN = 2.5;
+const PLANCHER_FAVORI_MIN = 3;
+
+/** Durée estimée d'UNE étape, en minutes, hors répétitions. Constante par nature, sauf pour
+    « un bilan favori » (#636) : deux favoris n'occupent pas le même temps selon ce qu'ils
+    contiennent, et l'adulte doit pouvoir le lire avant de composer. Un favori en mode sprint
+    dure ce que dure un sprint — 5 minutes au chrono, quel que soit le nombre de leçons.
+    Un pool se chiffre à la MOYENNE de ses cibles atteignables : c'est l'attente d'un tirage
+    au hasard, plus honnête que le minimum (qui flatterait) ou le maximum (qui dissuaderait).
+    Pur. */
+export function dureeEtapeMin(etape: SeanceEtape, ctx: ContexteSeance = CONTEXTE_VIDE): number {
+	const forfait = SEANCE_MODE_INFOS[etape.kind].dureeMin;
+	if (etape.kind !== 'favori') return forfait;
+	const cibles = ciblesEtape(etape);
+	const vises = ctx.favorisDisponibles.filter((f) => cibles.includes(f.id));
+	if (!vises.length) return forfait; // étape non configurée : la valeur ne sera pas comptée
+	const total = vises.reduce(
+		(s, f) =>
+			s +
+			(f.mode === 'sprint'
+				? SEANCE_MODE_INFOS.sprint.dureeMin
+				: Math.max(PLANCHER_FAVORI_MIN, f.nbLecons * MIN_PAR_LECON_BILAN)),
+		0,
+	);
+	return Math.round(total / vises.length);
+}
+
 /** Durée estimée d'une séance en minutes (repère non contraignant côté encadrant). Une étape
     non CONFIGURÉE n'y entre pas : elle disparaîtra au lancement, la compter promettrait à
-    l'adulte un temps que l'enfant ne passera pas (#556, étendu aux dictées sans cible
-    atteignable par #657 — d'où `dicteesDisponibles`, cf. `etapeConfiguree`). */
-export function estimationDureeMin(
-	def: SeanceDef,
-	dicteesDisponibles: readonly string[] = [],
-): number {
+    l'adulte un temps que l'enfant ne passera pas (#556, étendu aux dictées par #657 et aux
+    bilans favoris par #636 — d'où le contexte, cf. `etapeConfiguree`). */
+export function estimationDureeMin(def: SeanceDef, ctx: ContexteSeance = CONTEXTE_VIDE): number {
 	return def.etapes.reduce(
-		(s, e) =>
-			s +
-			(etapeConfiguree(e, dicteesDisponibles)
-				? countRequis(e) * SEANCE_MODE_INFOS[e.kind].dureeMin
-				: 0),
+		(s, e) => s + (etapeConfiguree(e, ctx) ? countRequis(e) * dureeEtapeMin(e, ctx) : 0),
 		0,
 	);
 }
@@ -585,6 +639,18 @@ export function etapeSatisfaite(
 				ciblesEtape(etape).includes(activite.ref) &&
 				sessionProgressive(activite)
 			);
+		case 'favori':
+			// Un favori peut être un BILAN ou un SPRINT (#64) : les deux journalisent des types
+			// d'activité différents, et l'étape accepte les deux — c'est le favori qui compte,
+			// pas la forme qu'il prend. La RÉFÉRENCE est ce qui distingue « un bilan favori »
+			// de « un bilan » tout court : un bilan de catégorie (express, complet) ou une
+			// sélection composée à la volée n'en porte aucune et ne coche donc rien, y compris
+			// les bilans déjà journalisés avant ce lot (#636, critères 16 et 19).
+			return (
+				(activite.k === 'bilan' || activite.k === 'sprint') &&
+				!!activite.ref &&
+				ciblesEtape(etape).includes(activite.ref)
+			);
 		case 'leconDuJour':
 			// La leçon PROPOSÉE change dès qu'elle est réussie : impossible de la comparer après
 			// coup. N'importe quelle leçon vaut donc l'étape, ce qui reste fidèle à la consigne
@@ -615,6 +681,7 @@ export function etapeSatisfaite(
 const SPECIFICITE: Record<SeanceModeKind, number> = {
 	lecon: 0, // cible unique fixée par l'adulte
 	dictee: 0, // pool de cibles fixé par l'adulte
+	favori: 0, // pool de cibles fixé par l'adulte — passe donc avant « Sprint 5 min » (#636)
 	aRevoir: 1, // cible prise dans la file épinglée
 	leconDuJour: 2, // n'importe quelle leçon
 	sprint: 3, // type seul : un seul mode produit ce type, aucune ambiguïté possible
@@ -705,6 +772,7 @@ export function resoudreProgramme(
 		// cibles de la DÉFINITION), jamais à décider si une étape s'applique. Une dictée faite
 		// reste donc créditée même si sa liste vient d'être supprimée — le travail a eu lieu.
 		dicteesDisponibles: ctx.dicteesDisponibles,
+		favorisDisponibles: ctx.favorisDisponibles,
 	};
 	const depuis = jour.vuTs ?? 0;
 	const nouvelles = loadActivity()

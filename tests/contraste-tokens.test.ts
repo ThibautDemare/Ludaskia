@@ -293,6 +293,13 @@ type Paire = {
  *  La rampe de gris (--ink/--grey/--muted sur --paper/--page-bg/--accent-soft) est
  *  déjà couverte plus haut ; on ne la redéclare pas ici. */
 const PAIRES_TEXTE: Paire[] = [
+	// Bandeau d'alerte de l'espace encadrant. Couple ancien, mis sous garde par #657, qui
+	// lui donne deux émetteurs de plus (les refus de l'étape « Une dictée ») : le message y
+	// devient un texte qu'on lit vraiment, pas un cas de bord. `themes.scss` signale déjà
+	// qu'en thème Nuit cette surface a fait échouer un AUTRE texte (l'ambre #8a5200, #253) —
+	// preuve que `--warn-bg` bouge sans prévenir, donc qu'aucun des textes qu'elle porte ne
+	// devrait rester hors table.
+	{ avant: '--ink', arriere: '--warn-bg', ou: 'encadrant.scss .enc-warn (alerte de carte)' },
 	{ avant: '--on-accent', arriere: '--accent', ou: 'bilan.scss .bilan-cta, aide-exercice.scss' },
 	{ avant: '--on-accent', arriere: '--accent-dark', ou: 'survol des mêmes boutons (bilan.scss)' },
 	{ avant: '--on-accent', arriere: '--ok', ou: 'lecon-mode.scss .lord-cell.correct .lord-mark' },

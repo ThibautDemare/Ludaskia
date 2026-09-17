@@ -183,6 +183,19 @@ rapprocher le PID du bon worktree, ou dans le doute couper ce serveur avant de r
   La fenêtre du bug est ainsi heurtée à chaque run. Exemple : `e2e/encadrant-banque.spec.ts`
   (« un re-rendu complet pendant la fenêtre d'annonce… », #527).
 
+- **Quand l'application REFUSE un geste, l'ordre des clics devient porteur — et un refus ne
+  fait pas échouer la spec, il la rend silencieusement non déterministe.** Cas mesuré
+  (#657/#636) : le compositeur refuse depuis #657 de décocher la **dernière** dictée d'une
+  étape. Une aide qui composait son programme en décochant le défaut **puis** en cochant sa
+  propre liste voyait donc le refus laisser deux cibles au pool ; le tirage redevenait
+  aléatoire, et `retour-programme.spec.ts` ne passait plus qu'une fois sur deux. Elle n'est
+  pas tombée pour autant : elle a eu de la chance pendant toute la livraison de #657, qui
+  avait adapté l'autre site d'appel (`ortho-choix-mode.spec.ts`) et manqué celui-là. Deux
+  réflexes : **cocher la nouvelle cible avant de retirer l'ancienne** (l'ordre que le message
+  de refus conseille lui-même à l'adulte), et **affirmer l'état obtenu** après coup
+  (`toHaveCount(1)` sur les cases cochées) plutôt que de le supposer — c'est cette assertion,
+  et elle seule, qui transforme un refus silencieux en rouge franc.
+
 ## Couverture du journal d'erreurs (#581)
 
 `journal-couverture.ts` (une **table**, pas une spec) déclare pour chaque format

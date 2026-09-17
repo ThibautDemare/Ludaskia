@@ -372,3 +372,62 @@ aujourd'hui ») : le patron long n'est qu'une extension pour la cible qui en a b
 Remontée `redacteur-contenu-francais` sur alerte `relecteur-accessibilite` ; le versant
 mécanisable — deux cartes de même forme ont des noms accessibles distincts — est tenu par
 un test.
+
+
+## Un refus réversible dit COMMENT réussir, pas seulement pourquoi il refuse (#657)
+
+Quand une action est refusée mais que le geste reste possible et sans perte (l'état se
+remet tout seul), le message gagne à donner la manœuvre plutôt que le motif. Cas mesuré :
+décocher la dernière dictée cochée d'une activité du programme du jour. Le vrai piège est
+un **ordre de clics** (il faut cocher la nouvelle avant de décocher l'ancienne), et le
+code se le disait déjà en commentaire sans jamais le dire à l'adulte.
+
+Écarté : « Gardez au moins une dictée cochée : sans cible, cette activité n'apparaîtrait
+pas dans le programme. » Retenu : « Gardez au moins une dictée cochée. Pour en changer,
+cochez d'abord la nouvelle. » Le second est plus court de vingt-cinq caractères et répond
+à « que dois-je faire maintenant » au lieu de « pourquoi ça vient d'échouer », que l'écran
+montre déjà en remettant la case comme elle était.
+
+Ne vaut PAS pour un refus destructif ou coûteux à défaire : là, le motif prime, parce que
+l'adulte doit pouvoir décider s'il insiste.
+
+## Un message d'action dit OÙ se fait l'action, ou il ne la nomme pas (#657)
+
+Un impératif qui désigne une action impossible depuis l'écran affiché est moins utile
+qu'un simple constat : il envoie chercher sans dire où. Cas mesuré : « Aucune dictée n'est
+disponible pour ce profil : créez une liste de mots avant d'ajouter cette activité. »,
+affiché dans l'espace encadrant, qui ne fait que **lire** les listes d'orthographe. La
+création vit dans l'écran enfant « Les dictées de mots » (bouton « Ajouter une liste »).
+Retenu : « … créez d'abord une liste dans « Les dictées de mots ». », qui nomme un titre
+d'écran réellement affiché, donc trouvable.
+
+Vérification à faire avant d'écrire un impératif : l'action nommée est-elle atteignable
+depuis l'écran où le message apparaît ? Sinon, nommer l'endroit, ou retomber sur un
+constat.
+
+## Une activité sans cible se signale toujours du même patron (#657)
+
+Le programme du jour a deux natures d'activité à cible facultative, et une troisième
+viendra (#636). Toutes trois disent la même chose à l'adulte, et doivent la dire pareil :
+
+> Tant qu'aucun·e X n'est Y, cette activité n'apparaîtra pas dans le programme.
+
+Posé par l'étape « une leçon précise » (#556, « Tant qu'aucune leçon n'est choisie… »),
+repris tel quel par l'étape « Une dictée » (#657, « Tant qu'aucune dictée cochée n'est
+disponible… »). La variante écartée disait la même chose en phrase déclarative suivie
+d'une subordonnée (« Aucune des dictées cochées n'est disponible : cette activité
+n'apparaîtra pas dans le programme tant qu'elle n'aura pas de cible. ») : trente-huit
+caractères de plus pour la même information, et une seconde tournure à retenir sans
+raison. Condition en tête, conséquence ensuite, objet concret nommé.
+
+**Rejet écrit, pour ne pas le re-remonter** : le mot « cible » est du vocabulaire de code
+et ne paraît plus dans aucun de ces messages. Il subsiste dans le seul intitulé de groupe
+« Cibles actuelles (indisponibles) » (#463), où il est adossé à la liste qu'il désigne,
+juste au-dessus des cases concernées — c'est ce voisinage qui le rend lisible, et c'est
+la raison de l'exception. Ne pas l'employer ailleurs sans le même appui.
+
+**Rejet écrit (#657), sur le guide parents** : `guide.html` décrit « Composer le programme
+du jour » AVANT « La dictée de la semaine », donc avant d'avoir expliqué comment créer une
+liste. Un parent qui suit la page dans l'ordre peut se heurter au refus d'ajout. On ne
+réordonne pas le guide pour autant : il est organisé par intention et non par ordre
+d'écran, et le message de refus nomme désormais lui-même l'endroit où créer une liste.

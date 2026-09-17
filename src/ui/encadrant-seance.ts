@@ -68,8 +68,22 @@ import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/h
    concernée, effacé à la première action réussie. Trois émetteurs : le conflit de récurrence
    (« un seul programme par jour »), et depuis #657 les deux refus qui empêchent une étape
    « Une dictée » de naître ou de retomber sans cible. Nommé `alerte` et non `conflit` depuis
-   qu'il en porte plus que le conflit. */
-let alerte: { uuid: string; defId: string; msg: string } | null = null;
+   qu'il en porte plus que le conflit.
+
+   `etapeId` / `ajout` disent à quel CONTRÔLE le message se rapporte, et ne servent qu'à
+   l'y rattacher (`aria-describedby`). Sans ça, le bandeau vit en haut de la carte pendant
+   que la case ou le menu concerné peut être plusieurs activités plus bas, dans une liste au
+   défilement capé à 220 px : le focus revient sur le contrôle en `preventScroll`, donc un
+   adulte SANS lecteur d'écran voit sa case se recocher toute seule sans rien qui l'explique.
+   Le conflit de récurrence, lui, n'en pose aucun : son message accompagne un champ déjà
+   voisin du bandeau. */
+let alerte: {
+	uuid: string;
+	defId: string;
+	msg: string;
+	etapeId?: string; // refus de décochage : le repère de CETTE étape porte le message
+	ajout?: boolean; // refus d'ajout : le menu « + Ajouter une activité… » le porte
+} | null = null;
 /* Étape dont le sélecteur de leçon est DÉPLOYÉ (#556). Une seule à la fois : deux arbres
    ouverts sur la même carte noieraient la liste des activités, et l'adulte ne choisit qu'une
    cible à la fois. Rattaché au profil consulté comme le message d'alerte — les
@@ -154,11 +168,22 @@ function groupesDictee(uuid: string, niveauFr: SchoolLevel, nom: string): Groupe
 	return groupes;
 }
 
-/* Ids des dictées proposables au profil, à plat. Sert au refus d'ajout (#657), au décompte
-   d'activités et à la durée estimée de la carte : `etapeConfiguree`/`estimationDureeMin` ne
-   peuvent pas savoir seuls ce que ce profil peut lancer (cf. core/seance.ts). */
-function idsDictees(groupes: Groupe[]): string[] {
-	return groupes.flatMap((g) => g.items.map((it) => it.id));
+/* Ids des dictées que l'ENFANT peut réellement lancer, à plat. Sert au décompte
+   d'activités, à la durée estimée et au repère sous les cases (#657) :
+   `etapeConfiguree`/`estimationDureeMin` ne peuvent pas savoir seuls ce que ce profil peut
+   lancer (cf. core/seance.ts).
+
+   ATTENTION, ce n'est PAS `groupesDictee` : cette liste-ci n'est pas filtrée au niveau
+   suivi, exactement comme celle du lanceur enfant (`ui/seance.ts:dicteesDisponibles`), et
+   c'est la seule qui dise la vérité sur ce qui apparaîtra. Les deux divergent dans un cas
+   réel : une dictée prédéfinie de la classe SUIVANTE, cochée pendant que le profil suivait
+   cette classe, sort de `groupesDictee` si le niveau de français est ensuite abaissé — mais
+   l'enfant, lui, la voit toujours. Compter sur la liste filtrée ferait dire au composeur
+   « cette activité n'apparaîtra pas dans le programme » d'une activité qui apparaît.
+   Ce qu'on PROPOSE au cochage reste filtré au niveau suivi (on ne suggère pas la classe
+   d'à côté) ; ce sur quoi on JUGE ne l'est pas. */
+function idsDicteesLancables(uuid: string): string[] {
+	return listOrthoLecons(loadOrthoFor(uuid)).map((r) => r.id);
 }
 
 /* Première cible disponible (défaut à la création d'une étape « dictée »). Une étape
@@ -189,7 +214,7 @@ function hintDictees(
 		return "Pour l'instant, aucune dictée n'est disponible pour ce profil.";
 	if (coches === 0) return 'Choisissez au moins une dictée.';
 	if (atteignables === 0)
-		return "Aucune des dictées cochées n'est disponible : cette activité n'apparaîtra pas dans le programme tant qu'elle n'aura pas de cible.";
+		return "Tant qu'aucune dictée cochée n'est disponible, cette activité n'apparaîtra pas dans le programme.";
 	if (atteignables === 1) return 'Une seule dictée : toujours celle-ci.';
 	return `${atteignables} dictées : une au hasard à chaque lancement.`;
 }
@@ -198,7 +223,9 @@ function checkboxesDicteeHTML(
 	def: SeanceDef,
 	etape: SeanceEtape,
 	dictees: Groupe[],
+	lancables: string[],
 	resoudreLabel: (id: string) => string | null,
+	msgRefus: string | null,
 ): SafeHtml {
 	const selected = ciblesEtape(etape);
 	const dispo = new Set(dictees.flatMap((g) => g.items.map((it) => it.id)));
@@ -229,12 +256,18 @@ function checkboxesDicteeHTML(
 		}),
 	);
 	const totalDispo = dictees.reduce((s, g) => s + g.items.length, 0);
-	const hint = hintDictees(
-		selected.length - orphelins.length,
-		selected.length,
-		totalDispo,
-		orphelins.length > 0,
-	);
+	/* Un refus qui vient d'avoir lieu PRIME sur le repère de comptage : c'est le seul
+	   moment où l'adulte a besoin d'autre chose que « combien de dictées ». Le canal est
+	   déjà en place — chaque case pointe ce paragraphe par `aria-describedby`, et le focus
+	   y revient après le re-rendu, donc le message est relu à l'atterrissage sans dépendre
+	   du timing d'annonce d'un `role="alert"` situé ailleurs dans la page. */
+	/* Le compte des ATTEIGNABLES se fait sur ce que l'enfant peut lancer, pas sur ce que le
+	   composeur propose au cochage : `orphelins` désigne les cibles absentes de la liste
+	   PROPOSÉE (filtrée au niveau suivi), ce qui suffit à leur garder une case décochable,
+	   mais ne dit pas si l'enfant les verra. Cf. `idsDicteesLancables`. */
+	const nbLancables = selected.filter((id) => lancables.includes(id)).length;
+	const hint =
+		msgRefus ?? hintDictees(nbLancables, selected.length, totalDispo, orphelins.length > 0);
 	return html`<fieldset class="enc-seance-dictees" data-def="${def.id}" data-etape="${etape.id}">
       <legend class="sr-only">Dictées visées (une ou plusieurs)</legend>
       ${corps}
@@ -431,6 +464,7 @@ function etapeHTML(
 	etape: SeanceEtape,
 	consulte: Profile,
 	dictees: Groupe[],
+	lancables: string[],
 ): SafeHtml {
 	const info = SEANCE_MODE_INFOS[etape.kind];
 	let cibleInline: SafeHtml = VIDE; // cible compacte sur la ligne (leçon)
@@ -450,8 +484,20 @@ function etapeHTML(
 		if (estOuvert(consulte.uuid, def.id, etape.id))
 			cibleBloc = html`${cibleBloc}${selecteurEtapeHTML(def, etape, consulte)}`;
 	} else if (info.ref === 'dictee') {
-		cibleBloc = checkboxesDicteeHTML(def, etape, dictees, (id) =>
-			labelLeconOrtho(id, loadOrthoFor(consulte.uuid).listes),
+		const refus =
+			alerte &&
+			alerte.uuid === consulte.uuid &&
+			alerte.defId === def.id &&
+			alerte.etapeId === etape.id
+				? alerte.msg
+				: null;
+		cibleBloc = checkboxesDicteeHTML(
+			def,
+			etape,
+			dictees,
+			lancables,
+			(id) => labelLeconOrtho(id, loadOrthoFor(consulte.uuid).listes),
+			refus,
 		);
 	}
 	const count = html`<label class="enc-seance-count"><span class="sr-only">Nombre de fois</span>
@@ -471,26 +517,37 @@ function etapeHTML(
 }
 
 /* ---------- Une définition (carte) ---------- */
-function defHTML(def: SeanceDef, consulte: Profile, dictees: Groupe[]): SafeHtml {
+function defHTML(
+	def: SeanceDef,
+	consulte: Profile,
+	dictees: Groupe[],
+	lancables: string[],
+): SafeHtml {
 	const nom = def.nom || 'Programme sans nom';
-	const dispo = idsDictees(dictees);
-	const duree = estimationDureeMin(def, dispo);
+	const duree = estimationDureeMin(def, lancables);
 	// Le décompte ne retient que les étapes CONFIGURÉES : une activité « une leçon précise »
 	// sans cible (#556), ou « Une dictée » dont aucune cible n'est plus disponible (#657),
 	// disparaît au lancement — l'annoncer à l'adulte serait un mensonge.
-	const nb = def.etapes.filter((e) => etapeConfiguree(e, dispo)).length;
-	const warn =
-		alerte && alerte.uuid === consulte.uuid && alerte.defId === def.id
-			? html`<p class="enc-warn" role="alert">${alerte.msg}</p>`
-			: VIDE;
+	const nb = def.etapes.filter((e) => etapeConfiguree(e, lancables)).length;
+	const alerteIci =
+		alerte && alerte.uuid === consulte.uuid && alerte.defId === def.id ? alerte : null;
+	// Le bandeau porte un id STABLE pour que le contrôle refusé puisse le désigner.
+	const warnId = `seance-warn-${def.id}`;
+	const warn = alerteIci
+		? html`<p class="enc-warn" role="alert" id="${warnId}">${alerteIci.msg}</p>`
+		: VIDE;
 	// La LISTE montre toutes les étapes, configurées ou non : une étape sans cible doit
 	// rester sous les yeux, c'est là qu'on lui en donne une. Seul le décompte les distingue.
 	const etapes = def.etapes.length
-		? html`<ul class="enc-seance-etapes">${joindre(def.etapes.map((e) => etapeHTML(def, e, consulte, dictees)))}</ul>`
+		? html`<ul class="enc-seance-etapes">${joindre(
+				def.etapes.map((e) => etapeHTML(def, e, consulte, dictees, lancables)),
+			)}</ul>`
 		: html`<p class="enc-hint">Aucune activité pour l'instant : ajoutez-en une ci-dessous.</p>`;
 	const ajout = html`<label class="enc-seance-add-etape">
       <span class="sr-only">Ajouter une activité</span>
-      <select class="enc-select-niveau" data-act="seance-etape-add" data-def="${def.id}">
+      <select class="enc-select-niveau" data-act="seance-etape-add" data-def="${def.id}"${
+				alerteIci?.ajout ? attribut('aria-describedby', warnId) : ''
+			}>
         <option value="">+ Ajouter une activité…</option>
         ${joindre(MODES.map((k) => html`<option value="${k}">${SEANCE_MODE_INFOS[k].label}</option>`))}
       </select>
@@ -531,14 +588,17 @@ function copieHTML(consulte: Profile, aDesProgrammes: boolean): SafeHtml {
 /* ---------- Bloc principal (composé par l'orchestrateur) ---------- */
 export function seanceHTML(consulte: Profile): SafeHtml {
 	const defs = chargerSeancesFor(consulte.uuid);
+	// Deux listes, deux rôles : ce qu'on PROPOSE de cocher (filtré au niveau suivi) et ce
+	// que l'enfant peut LANCER (non filtré, règle du lanceur). Cf. `idsDicteesLancables`.
 	const dictees = groupesDictee(
 		consulte.uuid,
 		niveauProfilMatiere(consulte, 'francais'),
 		consulte.name,
 	);
+	const lancables = idsDicteesLancables(consulte.uuid);
 	const titre = html`<h2 class="enc-h2">${icon('calendar')} Programme du jour de ${consulte.name}</h2>`;
 	const cartes = defs.length
-		? joindre(defs.map((d) => defHTML(d, consulte, dictees)))
+		? joindre(defs.map((d) => defHTML(d, consulte, dictees, lancables)))
 		: html`<p class="enc-hint">${consulte.name} n'a pas encore de programme du jour.</p>`;
 	return html`<section class="enc-section enc-seance-section">
       ${titre}
@@ -687,7 +747,8 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 					alerte = {
 						uuid,
 						defId: def.id,
-						msg: "Aucune dictée n'est disponible pour ce profil : créez une liste de mots avant d'ajouter cette activité.",
+						ajout: true,
+						msg: "Aucune dictée n'est disponible pour ce profil : créez d'abord une liste dans « Les dictées de mots ».",
 					};
 					rendre(`select[data-act="seance-etape-add"][data-def="${defId}"]`);
 					return true;
@@ -736,7 +797,8 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 				alerte = {
 					uuid,
 					defId,
-					msg: "Gardez au moins une dictée cochée : sans cible, cette activité n'apparaîtrait pas dans le programme.",
+					etapeId: t.dataset.etape,
+					msg: "Gardez au moins une dictée cochée. Pour en changer, cochez d'abord la nouvelle.",
 				};
 				rendre(focusSel, { sel: scrollSel, top });
 				return true;

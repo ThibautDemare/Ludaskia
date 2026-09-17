@@ -72,7 +72,9 @@ function session(k: ActivityKindStored, ref?: string, t = 1): ActivityEntry {
 }
 /** Contexte du jour : ids BRUTS des épinglées, par nature. */
 function epinglees(lecons: string[] = [], dictees: string[] = []): ContexteSeance {
-	return { aRevoirLecons: lecons, aRevoirDictees: dictees };
+	// #657 : `dicteesDisponibles` est sans objet ici — ce fichier éprouve l'APPARIEMENT
+	// (`etapeSatisfaite`), qui compare aux cibles de la définition, pas l'applicabilité.
+	return { aRevoirLecons: lecons, aRevoirDictees: dictees, dicteesDisponibles: [] };
 }
 
 /* ---------- Accès stockage (API du module + clés documentées) ---------- */

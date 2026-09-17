@@ -118,10 +118,21 @@ describe('crédit par la liste réellement dictée (#498)', () => {
 	it('pool : n’importe quelle liste DU POOL crédite, avec sa propre cible en métrique', () => {
 		poserDef(etapeDictee({ refs: ['liste-a', 'liste-b', 'liste-c'], count: 2 }));
 		etatSeanceJour(LUN);
+		/* Contexte EXPLICITE depuis #657 : une étape « dictée » n'est due que si ses cibles
+		   restent proposables au profil. Ce test exige DEUX passages ; avec le défaut
+		   `CONTEXTE_VIDE` (aucune dictée proposable — défaut prudent, pas neutre), l'étape se
+		   refermerait dès le premier (son exigence se ramène au fait, cf. `requisJour`) et le
+		   programme se déclarerait terminé à mi-chemin. Les autres cas de ce fichier
+		   n'affirment que le CRÉDIT, qui ne dépend pas de la disponibilité. */
+		const ctx = {
+			aRevoirLecons: [],
+			aRevoirDictees: [],
+			dicteesDisponibles: ['liste-a', 'liste-b', 'liste-c'],
+		};
 		poserActivite('dictee', LUN + 1_000, 'liste-c');
-		expect(resoudreProgramme(LUN + 2_000).etapesCreditees).toEqual(['e1']);
+		expect(resoudreProgramme(LUN + 2_000, ctx).etapesCreditees).toEqual(['e1']);
 		poserActivite('dictee', LUN + 3_000, 'liste-a');
-		expect(resoudreProgramme(LUN + 4_000)).toEqual({
+		expect(resoudreProgramme(LUN + 4_000, ctx)).toEqual({
 			etapesCreditees: ['e1'],
 			justCompleted: true,
 		});

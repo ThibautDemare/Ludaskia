@@ -125,34 +125,68 @@ export function tirerCible(
 export interface ContexteSeance {
 	aRevoirLecons: string[]; // ids de LEÇONS du catalogue épinglées
 	aRevoirDictees: string[]; // ids de LISTES d'orthographe épinglées
+	/** Ids des dictées que le profil peut RÉELLEMENT lancer aujourd'hui (#657). Même raison
+	    d'être que les deux listes ci-dessus : le cœur ne peut pas les calculer seul (elles
+	    dépendent des listes du profil et du niveau suivi, que l'UI seule résout), et sans
+	    elles une étape « Une dictée » dont toutes les cibles ont disparu reste au programme
+	    en tuile morte — impossible à faire, donc impossible à terminer. À remplir avec la
+	    MÊME source que le lanceur (`ui/seance.ts`), sans quoi le programme proposerait une
+	    dictée que le clic ne saurait pas ouvrir. */
+	dicteesDisponibles: string[];
 }
-/** Contexte NEUTRE (rien d'épinglé) : défaut PRUDENT des lectures de séance — un appelant
-    qui l'omet escamote une étape « à revoir » plutôt que de l'afficher à vide. */
-export const CONTEXTE_VIDE: ContexteSeance = { aRevoirLecons: [], aRevoirDictees: [] };
+/** Contexte NEUTRE (rien d'épinglé, aucune dictée proposable) : défaut PRUDENT des lectures
+    de séance — un appelant qui l'omet escamote une étape « à revoir » ou « une dictée »
+    plutôt que de l'afficher à vide. Le sens de ce défaut est délibéré : une étape escamotée à
+    tort se répare (l'adulte la voit toujours dans son espace, #657), une étape affichée à
+    tort bloque la complétion de la journée entière. */
+export const CONTEXTE_VIDE: ContexteSeance = {
+	aRevoirLecons: [],
+	aRevoirDictees: [],
+	dicteesDisponibles: [],
+};
 
 /** Nombre d'entrées épinglées « à revoir » du contexte (les deux natures confondues). Pur. */
 export function nbARevoir(ctx: ContexteSeance): number {
 	return ctx.aRevoirLecons.length + ctx.aRevoirDictees.length;
 }
 
-/** Une étape a-t-elle de quoi être lancée ? Une étape « une leçon précise » NAÎT sans cible
-    depuis #556 (le catalogue n'a plus de « première leçon » évidente une fois tous les
-    niveaux sélectionnables, et présélectionner poserait une consigne que l'adulte n'a pas
-    donnée) : tant qu'aucune leçon n'est choisie, il n'y a rien à proposer à l'enfant.
+/** Une étape a-t-elle de quoi être lancée ? Deux natures peuvent se retrouver sans cible :
+    - « une leçon précise » NAÎT sans cible depuis #556 (le catalogue n'a plus de « première
+      leçon » évidente une fois tous les niveaux sélectionnables, et présélectionner poserait
+      une consigne que l'adulte n'a pas donnée) ;
+    - « une dictée » perd les siennes (#657) : pool jamais posé faute de liste au moment de
+      l'ajout, cases toutes décochées, liste supprimée après coup, ou programme copié vers un
+      profil qui n'a pas ces listes. Les quatre chemins aboutissent au même écran mort, et
+      c'est ce qui les rend équivalents ici : ce qui compte n'est pas ce que la définition
+      DEMANDE, mais ce qu'elle peut encore ATTEINDRE.
 
-    Ne dépend que de la DÉFINITION (≠ `etapeApplicable`, qui regarde en plus le contexte du
-    jour), ce qui la rend utilisable côté encadrant pour ne compter ni dans le nombre
-    d'activités ni dans la durée estimée une étape qui disparaîtra au lancement. Pur. */
-export function etapeConfiguree(etape: SeanceEtape): boolean {
-	return etape.kind === 'lecon' ? !!etape.ref : true;
+    D'où `dicteesDisponibles` : `dictee` est la seule nature dont la configuration ne se lit
+    pas dans la seule définition. L'argument est donc attendu de l'appelant, mais optionnel en
+    signature avec `[]` pour défaut — même parti pris prudent que `CONTEXTE_VIDE` (cf. son
+    commentaire). Les autres natures ne le regardent pas.
+
+    Reste utilisable côté encadrant, où l'adulte fournit ses listes, pour ne compter ni dans
+    le nombre d'activités ni dans la durée estimée une étape qui disparaîtra au lancement.
+    Pur. */
+export function etapeConfiguree(
+	etape: SeanceEtape,
+	dicteesDisponibles: readonly string[] = [],
+): boolean {
+	if (etape.kind === 'lecon') return !!etape.ref;
+	// UNE cible encore atteignable suffit : un pool de trois dictées dont deux supprimées
+	// reste parfaitement jouable, et l'escamoter priverait l'enfant d'un travail disponible.
+	if (etape.kind === 'dictee') return ciblesValides(etape, dicteesDisponibles).length > 0;
+	return true;
 }
 
 /** Une étape s'applique-t-elle aujourd'hui ? Deux cas d'escamotage : « à revoir » disparaît
-    du programme quand rien n'est épinglé, et « une leçon précise » tant qu'aucune leçon n'est
-    choisie (#556) — sinon le programme porterait une étape VIDE, impossible à réaliser, qui
-    bloquerait sa complétion (#464). Pur. */
+    du programme quand rien n'est épinglé, et une étape NON CONFIGURÉE (leçon sans cible #556,
+    dictée sans cible atteignable #657) tant qu'elle n'a rien à proposer — sinon le programme
+    porterait une étape VIDE, impossible à réaliser, qui bloquerait sa complétion (#464). Pur. */
 export function etapeApplicable(etape: SeanceEtape, ctx: ContexteSeance): boolean {
-	return etape.kind === 'aRevoir' ? nbARevoir(ctx) > 0 : etapeConfiguree(etape);
+	return etape.kind === 'aRevoir'
+		? nbARevoir(ctx) > 0
+		: etapeConfiguree(etape, ctx.dicteesDisponibles);
 }
 
 /** Nombre de fois requis d'une étape, ASSAINI (entier ≥ 1) — source unique de ce « combien ».
@@ -305,10 +339,18 @@ export function genDefId(defs: SeanceDef[]): string {
 
 /** Durée estimée d'une séance en minutes (repère non contraignant côté encadrant). Une étape
     non CONFIGURÉE n'y entre pas : elle disparaîtra au lancement, la compter promettrait à
-    l'adulte un temps que l'enfant ne passera pas (#556). */
-export function estimationDureeMin(def: SeanceDef): number {
+    l'adulte un temps que l'enfant ne passera pas (#556, étendu aux dictées sans cible
+    atteignable par #657 — d'où `dicteesDisponibles`, cf. `etapeConfiguree`). */
+export function estimationDureeMin(
+	def: SeanceDef,
+	dicteesDisponibles: readonly string[] = [],
+): number {
 	return def.etapes.reduce(
-		(s, e) => s + (etapeConfiguree(e) ? countRequis(e) * SEANCE_MODE_INFOS[e.kind].dureeMin : 0),
+		(s, e) =>
+			s +
+			(etapeConfiguree(e, dicteesDisponibles)
+				? countRequis(e) * SEANCE_MODE_INFOS[e.kind].dureeMin
+				: 0),
 		0,
 	);
 }
@@ -658,6 +700,11 @@ export function resoudreProgramme(
 	const epinglees: ContexteSeance = {
 		aRevoirLecons: jour.aRevoirVus?.lecons ?? [],
 		aRevoirDictees: jour.aRevoirVus?.dictees ?? [],
+		// Recopié du contexte courant, et non mémorisé comme les épinglées : ce contexte-ci ne
+		// sert qu'à RECONNAÎTRE une session dans le journal (`etapeSatisfaite`, qui compare aux
+		// cibles de la DÉFINITION), jamais à décider si une étape s'applique. Une dictée faite
+		// reste donc créditée même si sa liste vient d'être supprimée — le travail a eu lieu.
+		dicteesDisponibles: ctx.dicteesDisponibles,
 	};
 	const depuis = jour.vuTs ?? 0;
 	const nouvelles = loadActivity()

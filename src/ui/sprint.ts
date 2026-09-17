@@ -101,10 +101,24 @@ let sprintFilter: SprintFilter = { type: 'all' };
 let sprintScope: SprintScope = 'all';
 /* Id du FAVORI dont le sprint en cours est le lancement (#636), sinon null. Le sprint a son
    propre chemin de journalisation (il n'appelle pas `recordLessonRun`), d'où ce pendant de
-   `currentFavoriId` côté bilan. INVARIANT : tout site qui pose `sprintFilter` pose aussi
-   celui-ci — sinon un sprint ordinaire hériterait de la référence du favori précédent et
-   cocherait une étape qu'il n'a pas faite. */
+   `currentFavoriId` côté bilan.
+
+   Il ne se pose JAMAIS seul : `poserFiltreSprint` ci-dessous est le seul écrivain des deux,
+   et il exige la référence à chaque appel. La première version laissait les deux variables
+   s'affecter côte à côte, avec l'invariant en commentaire — cinq sites corrects, et rien qui
+   rougisse le jour où un sixième oublierait la seconde ligne. Or l'oubli ne se voit pas : un
+   sprint ordinaire hériterait de la référence du favori précédent et cocherait, en silence,
+   une étape que l'enfant n'a pas faite. Une paire qu'on ne peut pas dissocier vaut mieux
+   qu'une paire qu'on promet de tenir. */
 let sprintFavoriId: string | null = null;
+
+/* Pose le filtre du prochain sprint ET la provenance qui lui est attachée. `favoriId` n'a
+   pas de valeur par défaut : c'est délibéré, l'appelant doit dire explicitement `null` quand
+   le sprint ne vient pas d'un favori. */
+function poserFiltreSprint(filtre: SprintFilter, favoriId: string | null): void {
+	sprintFilter = filtre;
+	sprintFavoriId = favoriId;
+}
 
 function lessonsForFilter(f: SprintFilter): LessonDef[] {
 	const base =
@@ -145,8 +159,7 @@ function parseFilter(value: string): SprintFilter {
 /* Lance un sprint filtré sur une catégorie (depuis l'écran de catégorie),
    sans passer par l'écran de configuration. */
 export function startCategorySprint(categoryId: string): void {
-	sprintFilter = { type: 'category', id: categoryId };
-	sprintFavoriId = null;
+	poserFiltreSprint({ type: 'category', id: categoryId }, null);
 	// Lancement direct (sans écran de config) → périmètre par défaut adaptatif (#208).
 	sprintScope = scopeParDefaut(lessonsForFilter(sprintFilter));
 	location.hash = 'sprint';
@@ -157,8 +170,7 @@ export function startCategorySprint(categoryId: string): void {
    connaît déjà » tant qu'il reste du non-rencontré, sinon « tout »). Utilisé par
    le programme du jour, où l'enfant ne configure pas l'étape lui-même. */
 export function startDefaultSprint(): void {
-	sprintFilter = { type: 'all' };
-	sprintFavoriId = null;
+	poserFiltreSprint({ type: 'all' }, null);
 	sprintScope = scopeParDefaut(lessonsForFilter({ type: 'all' }));
 	location.hash = 'sprint';
 }
@@ -167,10 +179,13 @@ export function startDefaultSprint(): void {
    (composeur ou favori) alimente le tirage. Le sprint reste non reprenable et
    suit ses règles habituelles (chrono, pause sur erreur, XP/records/trophées). */
 export function startCustomSprint(config: BilanConfig, favoriId?: string): void {
-	sprintFilter = { type: 'lessons', ids: config.lessonIds, label: config.label };
-	// Renseigné seulement quand le sprint vient d'un favori ENREGISTRÉ (#636) : une sélection
-	// composée à la volée dans le configurateur n'en est pas un et ne doit rien cocher.
-	sprintFavoriId = favoriId || null;
+	// La provenance n'est renseignée que quand le sprint vient d'un favori ENREGISTRÉ (#636) :
+	// une sélection composée à la volée dans le configurateur n'en est pas un, et ne doit
+	// donc cocher aucune étape « bilan favori ».
+	poserFiltreSprint(
+		{ type: 'lessons', ids: config.lessonIds, label: config.label },
+		favoriId || null,
+	);
 	// Un favori est une sélection EXPLICITE de leçons : le périmètre « déjà vues »
 	// ne s'y applique pas (on respecte le choix du parent/enfant).
 	sprintScope = 'all';
@@ -263,18 +278,14 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 	el.querySelectorAll<HTMLInputElement>('.sc-scope').forEach((r) =>
 		r.addEventListener('change', () => {
 			const f = el.querySelector<HTMLInputElement>('.sc-radio:checked');
-			if (f) {
-				sprintFilter = parseFilter(f.value);
-				sprintFavoriId = null;
-			}
+			if (f) poserFiltreSprint(parseFilter(f.value), null);
 			const next = el.querySelector<HTMLInputElement>('.sc-scope:checked')?.value;
 			drawSprintConfig(el, next === 'seen' ? 'seen' : 'all');
 		}),
 	);
 	el.querySelector('#scLaunch')!.addEventListener('click', () => {
 		const selected = el.querySelector<HTMLInputElement>('.sc-radio:checked');
-		sprintFilter = parseFilter(selected ? selected.value : 'all');
-		sprintFavoriId = null;
+		poserFiltreSprint(parseFilter(selected ? selected.value : 'all'), null);
 		location.hash = 'sprint';
 	});
 }

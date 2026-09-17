@@ -279,9 +279,47 @@ ci-dessous.
   configure pas — sa cible est la file épinglée du profil (`epingleesProfil`) — mais
   affiche un repère (`hintARevoir`) pour que l'adulte sache si elle apparaîtra dans le
   programme (« rien n'est épinglé » / une seule → « ce sera celle-ci » / plusieurs →
-  « une au hasard à chaque lancement »). Logique + stockage dans `core/seance.ts`
+  « une au hasard à chaque lancement »). Une étape **« un bilan favori » (#636)** cible un
+  **pool** de favoris du profil consulté (`loadBilansFor`, cf. [Logique pure](core.md)) via
+  une liste à cases (`checkboxesFavorisHTML`, handler `seance-favori-toggle`), même forme
+  que le pool de dictées (une case par favori, MODE affiché en toutes lettres — « Sprint
+  5 min » ou « Bilan » — plus le nombre de leçons) mais **sans le plancher « au moins un
+  coché »** des dictées (#657) : le critère 18 de #636 admet le pool vidé comme un état
+  légitime, que le cœur escamote proprement. Le repère (`hintFavoris`) suit le patron de
+  `hintDictees` (compte les cibles atteignables, prévient quand l'activité n'apparaîtra pas)
+  et dit explicitement quand le profil n'a **aucun** favori — seul cas des trois où l'adulte
+  ne peut rien faire depuis cet écran. Logique + stockage dans `core/seance.ts`
   (cf. [Logique pure](core.md)) : ce module ne fait que le rendu et l'aiguillage des
   interactions, persistance immédiate à chaque action.
+
+  **Tout le favori vit dans `ui/encadrant-favoris.ts` (#636)** — cases à cocher de l'étape
+  ET section de gestion ci-dessous. Le bloc a été extrait de `encadrant-seance.ts`, qui
+  passait les 1000 lignes en l'accueillant : c'est une sous-vue autonome (rendu propre,
+  confirmation propre, nettoyage propre). Le module ne porte **aucun état** — le message
+  d'alerte de la carte et le re-rendu restent chez `encadrant-seance.ts`, à qui
+  `supprimerFavori` renvoie seulement un booléen « la suppression a eu lieu ».
+
+  **Rejet écrit (#636)** : contrairement au pool de dictées, la liste à cocher des favoris
+  n'affiche **pas** de groupe « cibles actuelles (indisponibles) » pour un favori encore
+  visé par une étape mais absent du profil. L'asymétrie est voulue. Une dictée orpheline
+  désigne une liste qui peut revenir, et l'adulte doit pouvoir la décocher ; un favori
+  orphelin, lui, n'est atteignable que par `copierSeances` (la suppression normale nettoie
+  déjà les pools, cf. ci-dessous), et afficher le fantôme d'un favori qui n'existe pas pour
+  CET enfant donnerait à décocher une case que rien ne peut réactiver. Le cœur escamote
+  l'étape proprement (#636, critère 18) ; ne pas « rétablir la parité » sans raison nouvelle.
+
+  **Gestion des bilans favoris du profil (#636)** — `gestionFavorisHTML`, sous les
+  programmes de la même carte : liste les favoris du profil consulté (`loadBilansFor`) et
+  câble leur suppression (`seance-favori-del` → `supprimerFavori`). La confirmation
+  (`uiConfirm`, destructive) NOMME le favori et, si un ou plusieurs programmes le visent
+  (`programmesVisant`), le DIT avant d'agir — seule information que l'adulte n'a pas sous
+  les yeux au moment de cliquer. `retirerFavoriDesEtapes(uuid, favoriId)` nettoie ensuite
+  les pools qui le visaient chez ce profil, pour qu'une étape ne garde jamais une cible
+  fantôme (invisible côté enfant, mais toujours cochée côté adulte). La **suppression** vit
+  désormais ICI et plus sur l'écran de l'enfant (`ui/bilan.ts:renderFavoris`, ci-dessous) : dès
+  qu'une étape de programme peut viser un favori, laisser la corbeille à l'enfant reviendrait
+  à lui laisser effacer une consigne de l'adulte sans que personne ne le sache. La
+  **création**, elle, reste côté enfant (asymétrie assumée au cadrage).
 - **`encadrant-reglages.ts`** — **réglages** sur le profil consulté (onglet
   **Réglages**, #459) : classe de référence + niveau par matière, longueur d'une
   séance de Révision (#439, menu à paliers fixes `REVISION_PLAFOND_CHOIX`),
@@ -630,7 +668,9 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   `core/encadrant-stats.ts` ; enrichi à nouveau #657 — `dicteesDisponibles`, les ids
   des dictées réellement lançables aujourd'hui, MÊME source que le lanceur d'étape
   et le calcul de la cible tirée plus bas, sans quoi le programme proposerait une
-  dictée que le clic ne saurait pas ouvrir) que le cœur ne peut pas lire seul, puis
+  dictée que le clic ne saurait pas ouvrir ; enrichi une 3e fois #636 —
+  `favorisDisponibles()` projette les favoris du profil actif (`loadBilans`) en
+  `FavoriDispo[]`, MÊME règle) que le cœur ne peut pas lire seul, puis
   appelle `vueSeanceDuJour`. `renderProgrammeCard` (masquée hors programme applicable ce
   jour) et `renderSeance` (tuiles des étapes restantes en ordre libre, jauge de
   pastilles, bouton « Choisis pour moi », état terminé célébré) en découlent.
@@ -653,17 +693,22 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   Une étape « à revoir » se présente comme une tuile « À revoir » (icône marque-page) ;
   si une seule entrée est épinglée, son libellé est **nommé** directement (comme la
   carte d'accueil), sinon le titre reste générique et la cible est tirée au
-  lancement.
+  lancement. Une étape « un bilan favori » (#636) suit le même parti pris — icône
+  **« cartes »**, distincte du marque-page déjà pris par « À revoir » — : une seule cible
+  ⇒ son libellé est nommé, plusieurs ⇒ titre générique **« Mes bilans favoris »** (même mot
+  que celui déjà affiché au-dessus des favoris de l'accueil, jamais « bilan » seul, abstrait
+  à cet âge, #230).
 
   `lancerEtapeProgramme` tire d'abord la cible d'une étape à pool (`tirageEtape` :
-  dictée configurée #463 via `core/seance.ts:tirerCible`, ou file épinglée #464 via
-  `tirerParmi` — sans effet pour les autres modes), pose le marqueur d'attribution
-  (`marquerEtapeLancee`, avec cette cible) et délègue au déclencheur du mode existant
-  (`startSprint`/`startRevisionEspacee`/`startLecon`/`startOrthoLecon`) — aucun
-  runner n'est modifié. Une entrée épinglée porte sa nature dans son id de file
+  dictée configurée #463 via `core/seance.ts:tirerCible`, favori configuré #636 même
+  fonction, ou file épinglée #464 via `tirerParmi` — sans effet pour les autres modes),
+  pose le marqueur d'attribution (`marquerEtapeLancee`, avec cette cible) et délègue au
+  déclencheur du mode existant (`startSprint`/`startRevisionEspacee`/`startLecon`/
+  `startOrthoLecon`/`lancerFavori` — ce dernier depuis #636, cf. `bilan.ts` ci-dessous) —
+  aucun runner n'est modifié. Une entrée épinglée porte sa nature dans son id de file
   (préfixe `ortho:`) : on la dépréfixe pour choisir le déclencheur, avec l'origine
   `'programme'` comme les autres lancements de leçon/dictée (#461, `retour-activite.ts`).
-  Un pool de 2+ cibles (dictées ou épinglées) s'affiche sous un titre générique :
+  Un pool de 2+ cibles (dictées, épinglées ou favoris) s'affiche sous un titre générique :
   l'enfant ne sait laquelle avant de lancer.
   `rafraichirProgramme` (appelée par la navigation avant l'accueil et l'écran `#seance`)
   délègue **entièrement** à `resoudreProgramme` (#498, remplace l'ancien
@@ -800,6 +845,18 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   → accueil seul. Les favoris antérieurs à #65 sont **rattachés par backfill**
   (`bilans.ts:loadBilans` déduit `categoryId` de leurs leçons à la lecture, sans
   réécrire le stockage).
+  **`lancerFavori(config)`** (#636) — point d'entrée UNIQUE pour lancer un favori déjà
+  enregistré, quel que soit l'appelant (accueil, écran de catégorie, programme du jour) :
+  lance selon le MODE du favori (`bilanMode`), sprint via `startCustomSprint(config,
+  config.id)` ou bilan via `startBilan`. `runBilanConfig` pose `currentFavoriId`
+  (`ui/navigation.ts`) à `config.id || null` — seul un favori ENREGISTRÉ porte un id non
+  vide (`genId()` à la sauvegarde) ; un bilan de catégorie (express, complet) ou une
+  sélection composée à la volée naît avec `id: ''`, donc `currentFavoriId` reste `null` et
+  ne coche rien côté programme du jour. **La suppression d'un favori n'est plus rendue ici**
+  (#636) : `renderFavoris` ne câble plus qu'un bouton « Lancer » — la corbeille est passée
+  à l'espace encadrant (cf. [Espace encadrant](espace-encadrant.md)), dès qu'une étape de
+  programme peut viser un favori. La CRÉATION (`renderBilanConfigScreen`, « Garder pour plus
+  tard ») reste côté enfant.
 - **`navigation.ts`** — routing par hash (`route`), vues (`showHomeView`,
   `showMatieresView`/`showMatiereView`/`showCategorieView`,
   `showSprintConfigView`, `showBilanCustomView`, `showProfilesView`,
@@ -1208,7 +1265,14 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
 - **`sprint.ts`** — mode sprint 5 min (compte à rebours, questions une par une),
   **filtrable** (toutes matières / une matière / une catégorie / **une sélection
   précise de leçons** via `startCustomSprint`, #64) via un écran de
-  configuration ; correction par `checkItemAnswer` (numérique ou texte). La
+  configuration ; correction par `checkItemAnswer` (numérique ou texte).
+  **`startCustomSprint(config, favoriId?)`** (#636) — second paramètre optionnel, pendant de
+  `currentFavoriId` côté bilan (`ui/navigation.ts`) puisque le sprint ne passe pas par
+  `recordLessonRun` : `sprintFavoriId` (état de module) est transmis à `recordLessonStats`
+  par `finalizeSprint`, et c'est lui qui permet à une étape « bilan favori » du programme du
+  jour de se cocher sur un favori lancé en mode sprint. **Invariant** : tout site qui pose
+  `sprintFilter` pose aussi `sprintFavoriId` (à `null` sauf lancement explicite d'un favori
+  enregistré) — sans quoi un sprint ordinaire hériterait de la référence du favori précédent. La
   génération d'une question (`genSprintQuestion`, choix QCM vs saisie) est
   extraite dans `core/sprint-item.ts`, et le compte à rebours dans
   `core/sprint-decompte.ts` (cf. [Logique pure](core.md)) : deux modules purs,
@@ -1342,7 +1406,12 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   ce qui permet de la monter à l'identique sur la feuille du parcours (`ortho-runner.ts`)
   et sur la carte de révision (`revision.ts`). Les identifiants DOM restent ceux du
   parcours **partout** : deux jeux d'ids selon l'hôte auraient reproduit la divergence que
-  ce lot corrige. **Rejet écrit (#641)** : `renderTuiles` (~260 lignes) reste une fonction
+  ce lot corrige. **Portée de la règle, élargie (#636)** : elle était écrite pour
+  `ui/*-runner.ts` et `ui/lecon-*.ts`, ce qui la rendait contournable par le nom du fichier.
+  Elle vaut pour **tout module de rendu `ui/*.ts`** : un fichier qui franchit ~1000 lignes en
+  accueillant un bloc autonome (sa propre vue, ses propres actions) doit voir ce bloc
+  extrait. Cas d'application : `encadrant-seance.ts` → `encadrant-favoris.ts` (#636).
+  **Rejet écrit (#641)** : `renderTuiles` (~260 lignes) reste une fonction
   longue non découpée. Dette **pré-existante** — aucun hunk de #641 n'y tombe, elle a
   seulement changé de fichier avec #640 —, hors périmètre de cette PR, à traiter dans une
   refacto dédiée plutôt qu'au fil d'un changement qui ne la touche pas.

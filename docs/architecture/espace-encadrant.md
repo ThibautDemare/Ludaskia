@@ -1000,9 +1000,9 @@ Bloc de composition (`ui/encadrant-seance.ts` — `seanceHTML`/`seanceClick`/
 `seanceChange`, en tête de l'**onglet Programme**, #459) permettant à l'encadrant de préparer,
 pour le profil **consulté** (par UUID, sans bascule), un ou plusieurs programmes :
 une liste d'**étapes** (Sprint, Révision, **À revoir** #464, Leçon du jour, une leçon
-précise ou une dictée) répétées `count` fois (paliers fixes 1 à 5, pas de saisie libre),
-et une **récurrence** (une **date** ponctuelle ou des **jours de semaine**). Une étape
-« dictée » vise un **pool** de dictées cochées via une liste à cases (#463, cf.
+précise, une dictée ou **un bilan favori** #636) répétées `count` fois (paliers fixes 1 à 5,
+pas de saisie libre), et une **récurrence** (une **date** ponctuelle ou des **jours de
+semaine**). Une étape « dictée » vise un **pool** de dictées cochées via une liste à cases (#463, cf.
 [Logique pure](core.md)), **proposées** au cochage filtrées au niveau du profil (on ne
 suggère pas la classe d'à côté) mais **jugées** atteignables à la règle du lanceur enfant,
 qui ne filtre pas par niveau (#657, cf. [Rendu & interactions](ui.md)) :
@@ -1038,6 +1038,35 @@ repère (« rien n'est épinglé » / « ce sera celle-ci » / « une au hasard 
 l'adulte si elle restera invisible tant que rien n'est épinglé. **Choix assumé** : cette
 étape **s'ajoute** à la carte d'accueil « à revoir », elle ne la remplace pas — deux
 chemins vers la même file (l'un toujours disponible, l'autre au fil du programme composé).
+
+Une étape **« un bilan favori » (#636)** cible un **pool** de bilans favoris du profil
+consulté cochés via une liste à cases (`checkboxesFavorisHTML`, handler
+`seance-favori-toggle`), même forme que le pool de dictées : une seule cible cochée reste
+figée, deux ou plus donnent un tirage au hasard à chaque lancement. Chaque case affiche le
+MODE du favori en toutes lettres (« Sprint 5 min » / « Bilan », qui ne se font pas la même
+promesse de durée) et son nombre de leçons. **Sans garde-fou « au moins un coché »** — à la
+différence de l'étape « dictée » : le pool vidé est un état légitime que le cœur escamote
+proprement (`etapeConfiguree`), l'étape disparaissant simplement du programme le temps que
+l'adulte lui rende une cible. Le repère sous la liste (`hintFavoris`) compte les cibles
+**atteignables**, sur le même modèle que `hintDictees` ; si le profil n'a encore **aucun**
+bilan favori, il le dit explicitement (ils se composent depuis l'écran de l'enfant, en
+composant une sélection de leçons — l'adulte ne peut rien créer depuis cet écran).
+
+**La suppression d'un favori est passée côté adulte (#636)** : dès qu'une étape de
+programme peut viser un favori, laisser la corbeille sous la main de l'enfant revient à lui
+laisser effacer d'un clic une consigne posée par l'adulte, sans que personne ne le sache. Une
+nouvelle section **« Bilans favoris de [prénom] »** (`gestionFavorisHTML`), sous les
+programmes de cette même carte, liste les favoris du profil consulté et permet de les
+supprimer : la confirmation NOMME le favori (« Supprimer « X » ? »), et si un ou plusieurs
+programmes le visent, le message le DIT avant d'agir (« Ce bilan est une activité d'un
+programme du jour… Il en sera retiré, et [prénom] ne pourra plus le lancer. ») — seule
+information que l'adulte n'a pas sous les yeux au moment de cliquer. La suppression retire
+aussitôt le favori des pools qui le visaient chez ce profil (`retirerFavoriDesEtapes`), pour
+qu'une étape ne garde jamais une cible fantôme. La CRÉATION, elle, reste côté enfant : il
+compose, nomme et enregistre son bilan depuis son propre écran ; seule la corbeille change de
+main. Cette section apparaît même quand le profil n'a pas encore de favori, pour dire
+comment il s'en crée un plutôt que de rester invisible.
+
 Garde-fou « un seul programme par jour » : `recurrencesEnConflit` (`core/seance.ts`)
 refuse une récurrence qui chevaucherait celle d'un autre programme du même profil (message
 d'erreur affiché dans la carte, jamais de blocage dur du **volume** d'étapes/programmes).

@@ -33,6 +33,14 @@ dès la création d'un libellé :
   `tests/voix-libelles-gate.test.ts`, qui fait échouer `npm test` sur tout autre
   débordement.
 
+  **Le vouvoiement se porte aussi par le SUJET du verbe (#636).** Le gate ne traque que
+  les pronoms et possessifs (`tu`/`vous`), et laisse donc passer un « on » impersonnel,
+  qui a par ailleurs des usages légitimes en prose — impossible à mécaniser sans faux
+  positifs. Or « c'est ici qu'**on** les supprime » dit, dans l'espace encadrant, ce que
+  la phrase voisine dit déjà en « **vous pouvez** les supprimer ici » : deux états du
+  même écran s'adressaient différemment à la même personne. Quand un repère de l'espace
+  encadrant peut dire « vous » directement, il le dit.
+
 Le défaut à corriger = un cas (a) **déguisé en (b)** : un titre/une question posés
 par l'interface mais rédigés en « je ». Règle mnémotechnique : si on peut préfixer
 par « [La mascotte te demande :] » → cas (a), « tu » ; par « [L'enfant clique et
@@ -407,14 +415,17 @@ constat.
 
 ## Une activité sans cible se signale toujours du même patron (#657)
 
-Le programme du jour a deux natures d'activité à cible facultative, et une troisième
-viendra (#636). Toutes trois disent la même chose à l'adulte, et doivent la dire pareil :
+Le programme du jour a trois natures d'activité à cible facultative. Toutes trois disent
+la même chose à l'adulte, et doivent la dire pareil :
 
 > Tant qu'aucun·e X n'est Y, cette activité n'apparaîtra pas dans le programme.
 
 Posé par l'étape « une leçon précise » (#556, « Tant qu'aucune leçon n'est choisie… »),
 repris tel quel par l'étape « Une dictée » (#657, « Tant qu'aucune dictée cochée n'est
-disponible… »). La variante écartée disait la même chose en phrase déclarative suivie
+disponible… ») puis par l'étape « un bilan favori » (#636, « Tant qu'aucun bilan favori
+coché n'est disponible… ») — celle-ci sans le plancher « au moins un coché » des deux
+autres (le pool vide y est un état légitime), mais avec le MÊME message une fois qu'un
+favori coché a disparu. La variante écartée disait la même chose en phrase déclarative suivie
 d'une subordonnée (« Aucune des dictées cochées n'est disponible : cette activité
 n'apparaîtra pas dans le programme tant qu'elle n'aura pas de cible. ») : trente-huit
 caractères de plus pour la même information, et une seconde tournure à retenir sans

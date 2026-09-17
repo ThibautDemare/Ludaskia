@@ -29,6 +29,8 @@ import {
 import { labelLecon } from '../core/levels';
 import { listOrthoLecons, labelLeconOrtho } from '../core/orthographe/lessons';
 import { loadOrthoFor } from '../core/orthographe/store';
+import { loadBilansFor, deleteBilanFor } from '../core/bilans';
+import { bilanMode, type BilanConfig } from '../core/catalog';
 import {
 	SEANCE_MODE_INFOS,
 	chargerSeancesFor,
@@ -40,6 +42,8 @@ import {
 	estimationDureeMin,
 	etapeConfiguree,
 	recurrencesEnConflit,
+	CONTEXTE_VIDE,
+	type ContexteSeance,
 	type SeanceDef,
 	type SeanceEtape,
 	type SeanceModeKind,
@@ -127,7 +131,15 @@ const INFOBULLE_ORIGINE: Record<
 };
 
 /* Ordre d'affichage des modes dans le sélecteur « Ajouter une activité ». */
-const MODES: SeanceModeKind[] = ['sprint', 'revision', 'aRevoir', 'leconDuJour', 'lecon', 'dictee'];
+const MODES: SeanceModeKind[] = [
+	'sprint',
+	'revision',
+	'aRevoir',
+	'leconDuJour',
+	'lecon',
+	'dictee',
+	'favori',
+];
 /* Icône par mode (redouble le libellé — jamais la couleur seule). */
 const MODE_ICONE: Record<SeanceModeKind, IconName> = {
 	sprint: 'timer',
@@ -136,6 +148,9 @@ const MODE_ICONE: Record<SeanceModeKind, IconName> = {
 	leconDuJour: 'star',
 	lecon: 'book-open',
 	dictee: 'feather',
+	// « Cartes » : un favori est une sélection de leçons mise de côté. Pas « marque-page »,
+	// déjà porté par l'étape « À revoir » côté enfant comme ici.
+	favori: 'cards',
 };
 /* Paliers fixes du nombre de répétitions d'une étape (pas de saisie libre). */
 const PALIERS = [1, 2, 3, 4, 5];
@@ -186,6 +201,28 @@ function idsDicteesLancables(uuid: string): string[] {
 	return listOrthoLecons(loadOrthoFor(uuid)).map((r) => r.id);
 }
 
+/* Bilans favoris du profil CONSULTÉ (#636), dans l'ordre d'enregistrement. Lus par UUID :
+   l'espace encadrant ne bascule jamais le profil actif. */
+function favorisProfil(uuid: string): BilanConfig[] {
+	return loadBilansFor(uuid);
+}
+
+/* Contexte de séance du COMPOSEUR : ce que le profil consulté peut réellement lancer, donc
+   ce sur quoi `etapeConfiguree` et `estimationDureeMin` doivent juger. Les deux files
+   « à revoir » restent vides — elles ne conditionnent que l'étape du même nom, dont le
+   composeur affiche son propre repère (`hintARevoir`) et qu'il compte toujours. */
+function ctxComposeur(uuid: string): ContexteSeance {
+	return {
+		...CONTEXTE_VIDE,
+		dicteesDisponibles: idsDicteesLancables(uuid),
+		favorisDisponibles: favorisProfil(uuid).map((b) => ({
+			id: b.id,
+			nbLecons: b.lessonIds.length,
+			mode: bilanMode(b),
+		})),
+	};
+}
+
 /* Première cible disponible (défaut à la création d'une étape « dictée »). Une étape
    « une leçon précise » naît au contraire SANS cible depuis #556 : présélectionner la
    première leçon du catalogue posait une consigne que l'adulte n'a pas donnée, et le
@@ -219,11 +256,64 @@ function hintDictees(
 	return `${atteignables} dictées : une au hasard à chaque lancement.`;
 }
 
+/* Repère sous la liste à cocher des favoris (#636). Même grammaire que `hintDictees` : on
+   compte ce qui est ATTEIGNABLE, et on prévient quand l'activité ne paraîtra pas. Le cas
+   « ce profil n'a aucun favori » est le plus important des trois : c'est le seul où l'adulte
+   ne peut rien faire depuis cet écran, et où un cadre vide et muet le laisserait chercher. */
+function hintFavoris(atteignables: number, coches: number, total: number): string {
+	if (total === 0)
+		return "Ce profil n'a pas encore de bilan favori : il s'en enregistre depuis l'écran de l'enfant, en composant une sélection de leçons.";
+	if (coches === 0) return 'Choisissez au moins un bilan favori.';
+	if (atteignables === 0)
+		return "Tant qu'aucun bilan favori coché n'est disponible, cette activité n'apparaîtra pas dans le programme.";
+	if (atteignables === 1) return 'Un seul bilan : toujours celui-ci.';
+	return `${atteignables} bilans : un au hasard à chaque lancement.`;
+}
+
+/* Un favori, tel qu'il se lit dans le composeur : son nom, et de quoi il est fait. Le MODE
+   est dit en toutes lettres (#636, critère 3) — « Sprint 5 min » et « Bilan » ne se font pas
+   la même promesse de durée, et rien d'autre à l'écran ne les distinguerait. */
+function detailFavori(b: BilanConfig): string {
+	const n = b.lessonIds.length;
+	const lecons = `${n} leçon${n > 1 ? 's' : ''}`;
+	return bilanMode(b) === 'sprint' ? `Sprint 5 min · ${lecons}` : `Bilan · ${lecons}`;
+}
+
+/* Cases à cocher des bilans favoris visés par une étape « Un bilan favori » (#636). Même
+   forme que le pool de dictées : 1 coché ⇒ toujours celui-là, 2+ ⇒ un au hasard au
+   lancement. Pas de garde « au moins un coché » ici, contrairement aux dictées (#657) : le
+   critère 18 admet le pool vidé comme un état légitime, que le cœur escamote proprement. */
+function checkboxesFavorisHTML(
+	def: SeanceDef,
+	etape: SeanceEtape,
+	favoris: BilanConfig[],
+): SafeHtml {
+	const selected = ciblesEtape(etape);
+	const dispo = new Set(favoris.map((b) => b.id));
+	const hintId = `favori-hint-${def.id}-${etape.id}`;
+	const cases = joindre(
+		favoris.map((b) => {
+			const on = selected.includes(b.id);
+			return html`<label class="enc-seance-favori${on ? ' on' : ''}"><input type="checkbox" data-act="seance-favori-toggle" data-def="${def.id}" data-etape="${etape.id}" data-ref="${b.id}" aria-describedby="${hintId}"${on ? drapeau('checked') : ''} /><span class="enc-seance-favori-nom">${b.label}</span><span class="enc-seance-favori-detail">${detailFavori(b)}</span></label>`;
+		}),
+	);
+	const hint = hintFavoris(
+		selected.filter((id) => dispo.has(id)).length,
+		selected.length,
+		favoris.length,
+	);
+	return html`<fieldset class="enc-seance-favoris" data-def="${def.id}" data-etape="${etape.id}">
+      <legend class="sr-only">Bilans favoris visés (un ou plusieurs)</legend>
+      ${cases}
+      <p id="${hintId}" class="enc-seance-favoris-hint">${hint}</p>
+    </fieldset>`;
+}
+
 function checkboxesDicteeHTML(
 	def: SeanceDef,
 	etape: SeanceEtape,
 	dictees: Groupe[],
-	lancables: string[],
+	ctx: ContexteSeance,
 	resoudreLabel: (id: string) => string | null,
 	msgRefus: string | null,
 ): SafeHtml {
@@ -265,7 +355,7 @@ function checkboxesDicteeHTML(
 	   composeur propose au cochage : `orphelins` désigne les cibles absentes de la liste
 	   PROPOSÉE (filtrée au niveau suivi), ce qui suffit à leur garder une case décochable,
 	   mais ne dit pas si l'enfant les verra. Cf. `idsDicteesLancables`. */
-	const nbLancables = selected.filter((id) => lancables.includes(id)).length;
+	const nbLancables = selected.filter((id) => ctx.dicteesDisponibles.includes(id)).length;
 	const hint =
 		msgRefus ?? hintDictees(nbLancables, selected.length, totalDispo, orphelins.length > 0);
 	return html`<fieldset class="enc-seance-dictees" data-def="${def.id}" data-etape="${etape.id}">
@@ -464,7 +554,7 @@ function etapeHTML(
 	etape: SeanceEtape,
 	consulte: Profile,
 	dictees: Groupe[],
-	lancables: string[],
+	ctx: ContexteSeance,
 ): SafeHtml {
 	const info = SEANCE_MODE_INFOS[etape.kind];
 	let cibleInline: SafeHtml = VIDE; // cible compacte sur la ligne (leçon)
@@ -483,6 +573,8 @@ function etapeHTML(
 			: html`<p class="enc-hint enc-seance-arevoir">Tant qu'aucune leçon n'est choisie, cette activité n'apparaîtra pas dans le programme.</p>`;
 		if (estOuvert(consulte.uuid, def.id, etape.id))
 			cibleBloc = html`${cibleBloc}${selecteurEtapeHTML(def, etape, consulte)}`;
+	} else if (info.ref === 'favori') {
+		cibleBloc = checkboxesFavorisHTML(def, etape, favorisProfil(consulte.uuid));
 	} else if (info.ref === 'dictee') {
 		const refus =
 			alerte &&
@@ -495,7 +587,7 @@ function etapeHTML(
 			def,
 			etape,
 			dictees,
-			lancables,
+			ctx,
 			(id) => labelLeconOrtho(id, loadOrthoFor(consulte.uuid).listes),
 			refus,
 		);
@@ -521,14 +613,14 @@ function defHTML(
 	def: SeanceDef,
 	consulte: Profile,
 	dictees: Groupe[],
-	lancables: string[],
+	ctx: ContexteSeance,
 ): SafeHtml {
 	const nom = def.nom || 'Programme sans nom';
-	const duree = estimationDureeMin(def, lancables);
+	const duree = estimationDureeMin(def, ctx);
 	// Le décompte ne retient que les étapes CONFIGURÉES : une activité « une leçon précise »
 	// sans cible (#556), ou « Une dictée » dont aucune cible n'est plus disponible (#657),
 	// disparaît au lancement — l'annoncer à l'adulte serait un mensonge.
-	const nb = def.etapes.filter((e) => etapeConfiguree(e, lancables)).length;
+	const nb = def.etapes.filter((e) => etapeConfiguree(e, ctx)).length;
 	const alerteIci =
 		alerte && alerte.uuid === consulte.uuid && alerte.defId === def.id ? alerte : null;
 	// Le bandeau porte un id STABLE pour que le contrôle refusé puisse le désigner.
@@ -540,7 +632,7 @@ function defHTML(
 	// rester sous les yeux, c'est là qu'on lui en donne une. Seul le décompte les distingue.
 	const etapes = def.etapes.length
 		? html`<ul class="enc-seance-etapes">${joindre(
-				def.etapes.map((e) => etapeHTML(def, e, consulte, dictees, lancables)),
+				def.etapes.map((e) => etapeHTML(def, e, consulte, dictees, ctx)),
 			)}</ul>`
 		: html`<p class="enc-hint">Aucune activité pour l'instant : ajoutez-en une ci-dessous.</p>`;
 	const ajout = html`<label class="enc-seance-add-etape">
@@ -566,6 +658,69 @@ function defHTML(
       ${etapes}
       ${ajout}
       <p class="enc-hint">${nb} activité${nb > 1 ? 's' : ''} · ~${duree} min. Repère : 2 à 3 activités, 10 à 15 min (rien n'est bloqué).</p>
+    </div>`;
+}
+
+/* ---------- Gestion des bilans favoris (#636) ---------- */
+/* La SUPPRESSION d'un favori vit ici, et plus sur l'écran de l'enfant. Dès qu'une étape de
+   programme peut viser un favori, laisser la corbeille sous sa main revient à lui laisser
+   effacer une consigne de l'adulte sans que personne ne le sache. La CRÉATION, elle, lui
+   reste : il compose et enregistre depuis son écran. Asymétrie assumée au cadrage. */
+
+/* Programmes du profil dont une étape vise ce favori. Sert à prévenir AVANT de supprimer :
+   sans ça, l'adulte défait sa propre consigne sans le savoir. */
+function programmesVisant(defs: SeanceDef[], favoriId: string): SeanceDef[] {
+	return defs.filter((d) =>
+		d.etapes.some((e) => e.kind === 'favori' && ciblesEtape(e).includes(favoriId)),
+	);
+}
+
+/* Retire un favori supprimé des pools qui le visaient, chez CE profil seulement. Sans ce
+   nettoyage, l'étape garderait une cible fantôme : invisible côté enfant (le cœur l'écarte),
+   mais toujours cochée côté adulte, qui la croirait active. */
+function retirerFavoriDesEtapes(uuid: string, favoriId: string): void {
+	const defs = chargerSeancesFor(uuid);
+	let touche = false;
+	for (const d of defs)
+		for (const e of d.etapes) {
+			if (e.kind !== 'favori') continue;
+			const restants = ciblesEtape(e).filter((id) => id !== favoriId);
+			if (restants.length === ciblesEtape(e).length) continue;
+			e.refs = restants;
+			delete e.ref;
+			touche = true;
+		}
+	if (touche) enregistrerSeancesFor(uuid, defs);
+}
+
+function gestionFavorisHTML(consulte: Profile, defs: SeanceDef[]): SafeHtml {
+	const favoris = favorisProfil(consulte.uuid);
+	const titre = html`<h3 class="enc-h3">${icon('cards')} Bilans favoris de ${consulte.name}</h3>`;
+	if (!favoris.length)
+		return html`<div class="enc-block enc-seance-favoris-gestion">
+      ${titre}
+      <p class="enc-hint">${consulte.name} n'a pas encore enregistré de bilan favori. Ils se composent depuis son écran, et vous pouvez les supprimer ici.</p>
+    </div>`;
+	const lignes = joindre(
+		favoris.map((b) => {
+			const vise = programmesVisant(defs, b.id).length;
+			const repere = vise
+				? html`<span class="enc-favori-gere-vise">${icon('calendar')} utilisé par ${vise} programme${vise > 1 ? 's' : ''}</span>`
+				: VIDE;
+			return html`<div class="enc-favori-gere" data-id="${b.id}">
+          <div class="enc-favori-gere-info">
+            <span class="enc-favori-gere-nom">${b.label}</span>
+            <span class="enc-favori-gere-detail">${detailFavori(b)}</span>
+            ${repere}
+          </div>
+          <button type="button" class="enc-btn-sec enc-danger" data-act="seance-favori-del" data-id="${b.id}" aria-label="Supprimer le bilan favori ${b.label}">${icon('trash')} Supprimer</button>
+        </div>`;
+		}),
+	);
+	return html`<div class="enc-block enc-seance-favoris-gestion">
+      ${titre}
+      <p class="enc-hint">${consulte.name} compose ses bilans favoris depuis son écran ; c'est ici qu'on les supprime, pour qu'une activité du programme ne disparaisse pas d'un clic.</p>
+      ${lignes}
     </div>`;
 }
 
@@ -595,16 +750,17 @@ export function seanceHTML(consulte: Profile): SafeHtml {
 		niveauProfilMatiere(consulte, 'francais'),
 		consulte.name,
 	);
-	const lancables = idsDicteesLancables(consulte.uuid);
+	const ctx = ctxComposeur(consulte.uuid);
 	const titre = html`<h2 class="enc-h2">${icon('calendar')} Programme du jour de ${consulte.name}</h2>`;
 	const cartes = defs.length
-		? joindre(defs.map((d) => defHTML(d, consulte, dictees, lancables)))
+		? joindre(defs.map((d) => defHTML(d, consulte, dictees, ctx)))
 		: html`<p class="enc-hint">${consulte.name} n'a pas encore de programme du jour.</p>`;
 	return html`<section class="enc-section enc-seance-section">
       ${titre}
       <p class="enc-seance-frame">Composez pour ${consulte.name} un « programme du jour » : une petite liste d'activités qu'il ou elle retrouvera et fera dans l'ordre de son choix. Un seul programme s'applique par jour.</p>
       ${cartes}
       <button type="button" class="enc-btn-sec enc-seance-add" data-act="seance-add">${icon('plus')} Nouveau programme</button>
+      ${gestionFavorisHTML(consulte, defs)}
       ${copieHTML(consulte, defs.length > 0)}
     </section>`;
 }
@@ -710,11 +866,59 @@ export function seanceClick(act: string, el: HTMLElement): boolean {
 			);
 			return true;
 		}
+		case 'seance-favori-del': {
+			void supprimerFavori(consulte, el.dataset.id ?? '');
+			return true;
+		}
 		case 'seance-copy':
 			onCopy(consulte);
 			return true;
 	}
 	return false;
+}
+
+/* Désigne les programmes qui visent un favori, DANS une phrase (« ce bilan est une activité
+   … »). On ne réutilise pas `nomProgramme` ici : il rend « Un autre programme » pour un
+   programme sans nom, ce qui donnait « une activité de Un autre programme ». On compte donc,
+   et on ne nomme que si TOUS les programmes concernés ont un nom — un nom sur deux serait
+   plus déroutant qu'un simple compte. */
+function designationProgrammes(defs: SeanceDef[]): string {
+	const nommes = defs.map((d) => d.nom).filter((n): n is string => !!n);
+	const liste =
+		nommes.length === defs.length ? ` (${nommes.map((n) => `« ${n} »`).join(', ')})` : '';
+	return defs.length === 1
+		? `d'un programme du jour${liste}`
+		: `de ${defs.length} programmes du jour${liste}`;
+}
+
+/* Supprime un bilan favori du profil consulté (#636). Confirmation NOMMÉE (« Supprimer
+   « X » ? »), comme le faisait l'écran de l'enfant : on désigne l'objet par son nom plutôt
+   que par le mot « bilan », et l'adulte hérite du même repère. Quand des programmes le
+   visent, le message le DIT avant d'agir — c'est la seule information que l'adulte n'a pas
+   sous les yeux au moment de cliquer, et sans elle il défait sa propre consigne. */
+async function supprimerFavori(consulte: Profile, id: string): Promise<void> {
+	if (!id) return;
+	const favori = favorisProfil(consulte.uuid).find((b) => b.id === id);
+	if (!favori) return;
+	const vise = programmesVisant(chargerSeancesFor(consulte.uuid), id);
+	const ok = await uiConfirm({
+		title: `Supprimer « ${favori.label} » ?`,
+		message: vise.length
+			? `Ce bilan est une activité ${designationProgrammes(vise)}. Il en sera retiré, et ${consulte.name} ne pourra plus le lancer.`
+			: `${consulte.name} ne pourra plus le lancer.`,
+		confirmLabel: 'Supprimer',
+		cancelLabel: 'Annuler',
+		destructive: true,
+		confirmIcon: 'trash',
+		emoji: '🗑️',
+	});
+	if (!ok) return;
+	deleteBilanFor(consulte.uuid, id);
+	// Ordre voulu : on supprime d'abord, on nettoie ensuite. L'inverse laisserait, si la
+	// suppression échouait, des étapes amputées d'une cible qui existe encore.
+	retirerFavoriDesEtapes(consulte.uuid, id);
+	alerte = null;
+	rendre('[data-act="seance-favori-del"]');
 }
 
 export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElement): boolean {
@@ -809,6 +1013,26 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			enregistrerSeancesFor(uuid, defs);
 			alerte = null;
 			rendre(focusSel, { sel: scrollSel, top });
+			return true;
+		}
+		case 'seance-favori-toggle': {
+			const defs = chargerSeancesFor(uuid);
+			const etape = defs.find((d) => d.id === defId)?.etapes.find((e) => e.id === t.dataset.etape);
+			if (!etape) return true;
+			const ref = t.dataset.ref ?? '';
+			const actuels = ciblesEtape(etape);
+			// Pas de plancher « au moins un coché », contrairement aux dictées (#657) : le
+			// critère 18 de #636 admet le pool vidé comme un état légitime, et le cœur escamote
+			// alors l'étape sans bloquer la complétion du programme.
+			etape.refs = (t as HTMLInputElement).checked
+				? [...new Set([...actuels, ref])]
+				: actuels.filter((r) => r !== ref);
+			delete etape.ref;
+			enregistrerSeancesFor(uuid, defs);
+			alerte = null;
+			rendre(
+				`input[data-act="seance-favori-toggle"][data-def="${defId}"][data-etape="${t.dataset.etape}"][data-ref="${ref}"]`,
+			);
 			return true;
 		}
 		case 'seance-rec-date': {

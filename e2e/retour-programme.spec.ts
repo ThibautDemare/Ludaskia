@@ -88,7 +88,16 @@ async function creerProgrammeLeconTousLesJours(
    « Une dictée » (e1) ciblant EXCLUSIVEMENT `listeId` (le pool par défaut cible la
    1re dictée prédéfinie du catalogue : on la décoche pour ne garder que la nôtre,
    afin que le tirage `tirerCible` soit déterministe), comptée `count` fois, et une
-   récurrence hebdomadaire sur les 7 jours. Laisse la page sur #encadrant/programme. */
+   récurrence hebdomadaire sur les 7 jours. Laisse la page sur #encadrant/programme.
+
+   ORDRE DES CLICS : on coche NOTRE liste d'ABORD, puis on décoche le défaut. Jamais
+   l'inverse depuis #657 : le champ refuse de retomber à zéro cible cochée, et le refus
+   ne casse rien — il laisse simplement la case du défaut cochée. Le pool se retrouve
+   alors à DEUX cibles, le tirage redevient aléatoire, et cette spec ne passe plus
+   qu'une fois sur deux. C'est exactement ce qui s'est produit : #657 avait adapté
+   `ortho-choix-mode.spec.ts` (qui porte la même note) et manqué ce site-ci, qui a
+   continué de passer par chance. Un test qui devient un tirage à pile ou face ne se
+   signale pas ; il faut donc tenir l'ordre ici. */
 async function creerProgrammeDicteeTousLesJours(
 	page: Page,
 	listeId: string,
@@ -106,9 +115,18 @@ async function creerProgrammeDicteeTousLesJours(
 	// reboucler indéfiniment (cf. programme-du-jour.spec.ts, même piège avec .check()).
 	const defautCoche = fieldset.locator('input[data-act="seance-dictee-toggle"]:checked');
 	await expect(defautCoche).toHaveCount(1);
-	await defautCoche.click(); // décoche la dictée prédéfinie par défaut
+	const defautRef = await defautCoche.getAttribute('data-ref');
 	const cible = fieldset.locator(`input[data-act="seance-dictee-toggle"][data-ref="${listeId}"]`);
-	await cible.click(); // coche NOTRE liste
+	await cible.click(); // coche NOTRE liste D'ABORD (cf. l'ordre imposé ci-dessus)
+	await expect(cible).toBeChecked();
+	if (defautRef && defautRef !== listeId) {
+		await fieldset
+			.locator(`input[data-act="seance-dictee-toggle"][data-ref="${defautRef}"]`)
+			.click(); // … puis on décoche le défaut, maintenant qu'il n'est plus le dernier
+	}
+	// Pool RÉELLEMENT réduit à notre seule liste : sans cette garde, un refus silencieux
+	// laisserait deux cibles et le tirage cesserait d'être déterministe.
+	await expect(fieldset.locator('input[data-act="seance-dictee-toggle"]:checked')).toHaveCount(1);
 	await expect(cible).toBeChecked();
 	if (count !== 1) {
 		await page

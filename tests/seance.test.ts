@@ -204,21 +204,29 @@ describe('etapeConfiguree (#556)', () => {
 			expect(etapeConfiguree(etape('e1', k)), k).toBe(true);
 	});
 
-	/* Comportement RÉEL verrouillé, et signalé comme tel : une étape « dictée » sans AUCUNE
-	   cible (pool vidé case par case, ou profil sans dictée disponible à la création) passe
-	   pour configurée alors qu'elle n'a rien à tirer au lancement — l'asymétrie avec l'étape
-	   « leçon » est à trancher côté produit, pas ici. */
-	it('« une dictée » compte comme configurée même sans cible (asymétrie assumée ?)', () => {
-		expect(etapeConfiguree(etape('e1', 'dictee'))).toBe(true);
-		expect(etapeConfiguree({ id: 'e1', kind: 'dictee', count: 1, refs: [] })).toBe(true);
+	/* L'asymétrie signalée ici est TRANCHÉE par #657 : une étape « dictée » n'est configurée
+	   que si au moins une de ses cibles reste atteignable — sinon elle n'a rien à tirer au
+	   lancement, exactement comme l'étape « leçon » sans cible ci-dessus. Le détail des
+	   quatre états stockés qui mènent à ce trou (refs absent, refs vidé, cible supprimée,
+	   programme copié) vit dans tests/seance-dictee-sans-cible.test.ts. */
+	it('« une dictée » : configurée SEULEMENT si une cible reste atteignable (#657)', () => {
+		const dispo = ['liste-ce2-01'];
+		expect(etapeConfiguree(etape('e1', 'dictee'), dispo)).toBe(false);
+		expect(etapeConfiguree({ id: 'e1', kind: 'dictee', count: 1, refs: [] }, dispo)).toBe(false);
+		expect(etapeConfiguree(etape('e1', 'dictee', 1, 'liste-ce2-01'), dispo)).toBe(true);
 	});
 });
 
 describe('estimationDureeMin', () => {
 	// Durées documentées (spec #440) : sprint 5, revision 8, leconDuJour 7, lecon 7, dictee 10.
+	// Les étapes « dictée » de ces cas portent une cible PROPOSABLE (2e argument, #657) : ce
+	// qu'on mesure ici, c'est la formule, pas l'escamotage des étapes sans cible.
 	it('somme des count × durée du mode', () => {
 		expect(
-			estimationDureeMin(defHebdo('d1', [1], [etape('e1', 'sprint', 2), etape('e2', 'dictee', 3)])),
+			estimationDureeMin(
+				defHebdo('d1', [1], [etape('e1', 'sprint', 2), etape('e2', 'dictee', 3, 'liste-ce2-01')]),
+				['liste-ce2-01'],
+			),
 		).toBe(
 			2 * 5 + 3 * 10, // 40
 		);
@@ -231,12 +239,19 @@ describe('estimationDureeMin', () => {
 		);
 	});
 	it('additive sur les étapes et linéaire en count (structure de la formule)', () => {
+		const dispo = ['liste-ce2-01'];
 		const un = defHebdo('d', [1], [etape('e1', 'sprint', 1)]);
 		const trois = defHebdo('d', [1], [etape('e1', 'sprint', 3)]);
-		const dictee = defHebdo('d', [1], [etape('e1', 'dictee', 1)]);
-		const mix = defHebdo('d', [1], [etape('e1', 'sprint', 3), etape('e2', 'dictee', 1)]);
-		expect(estimationDureeMin(trois)).toBe(3 * estimationDureeMin(un)); // linéaire en count
-		expect(estimationDureeMin(mix)).toBe(estimationDureeMin(trois) + estimationDureeMin(dictee)); // additive
+		const dictee = defHebdo('d', [1], [etape('e1', 'dictee', 1, 'liste-ce2-01')]);
+		const mix = defHebdo(
+			'd',
+			[1],
+			[etape('e1', 'sprint', 3), etape('e2', 'dictee', 1, 'liste-ce2-01')],
+		);
+		expect(estimationDureeMin(trois, dispo)).toBe(3 * estimationDureeMin(un, dispo)); // linéaire
+		expect(estimationDureeMin(mix, dispo)).toBe(
+			estimationDureeMin(trois, dispo) + estimationDureeMin(dictee, dispo),
+		); // additive
 	});
 	it('un count < 1 compte pour 1', () => {
 		expect(estimationDureeMin(defHebdo('d1', [1], [etape('e1', 'sprint', 0)]))).toBe(5);

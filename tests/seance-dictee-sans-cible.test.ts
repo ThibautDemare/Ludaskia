@@ -88,8 +88,16 @@ function ctx(
 		aRevoirLecons: o.lecons ?? [],
 		aRevoirDictees: o.dictees ?? [],
 		dicteesDisponibles: o.disponibles ?? [],
+		// #636 : ce fichier ne parle pas des favoris. Le contexte reste COMPLET malgré tout —
+		// `etapeConfiguree` / `estimationDureeMin` prennent désormais le contexte entier, un
+		// second argument par nature à référence ne passant pas l'échelle.
+		favorisDisponibles: [],
 	};
 }
+/** Contexte des lectures « encadrant » de ce fichier : les dictées du profil sont proposables,
+    aucune épinglée. `CTX_RIEN` est son opposé (plus rien de proposable). */
+const CTX_DISPO = ctx({ disponibles: DISPO });
+const CTX_RIEN = ctx();
 function etape(id: string, kind: SeanceModeKind, count = 1, ref?: string): SeanceEtape {
 	return ref === undefined ? { id, kind, count } : { id, kind, count, ref };
 }
@@ -164,7 +172,7 @@ const SANS_CIBLE: CasSansCible[] = [
 describe('etapeConfiguree : une dictée n’est configurée que si une cible reste atteignable (#657)', () => {
 	for (const cas of SANS_CIBLE) {
 		it(`non configurée — ${cas.nom}`, () => {
-			expect(etapeConfiguree(cas.etape('e1'), DISPO)).toBe(false);
+			expect(etapeConfiguree(cas.etape('e1'), CTX_DISPO)).toBe(false);
 		});
 	}
 
@@ -176,10 +184,10 @@ describe('etapeConfiguree : une dictée n’est configurée que si une cible res
 	   peut parfaitement faire. */
 	it('une seule cible survivante sur trois suffit (critère 7)', () => {
 		const e = etapeDictee('e1', { refs: [DISPARUE, LISTE_B, DISPARUE_2] });
-		expect(etapeConfiguree(e, DISPO)).toBe(true);
+		expect(etapeConfiguree(e, CTX_DISPO)).toBe(true);
 		// Cible unique encore proposée : le cas « dictée figée » reste entier.
-		expect(etapeConfiguree(etapeDictee('e1', { refs: [LISTE_A] }), DISPO)).toBe(true);
-		expect(etapeConfiguree(etapeDictee('e1', { ref: LISTE_A }), DISPO)).toBe(true);
+		expect(etapeConfiguree(etapeDictee('e1', { refs: [LISTE_A] }), CTX_DISPO)).toBe(true);
+		expect(etapeConfiguree(etapeDictee('e1', { ref: LISTE_A }), CTX_DISPO)).toBe(true);
 	});
 
 	/* Défaut de l'API annoncée par le contrat #657 (pas un critère de l'issue) : un appelant
@@ -302,7 +310,7 @@ describe('estimationDureeMin : la dictée morte n’est ni comptée ni chiffrée
 	for (const cas of SANS_CIBLE) {
 		it(`hors de la durée estimée — ${cas.nom}`, () => {
 			const d = defLundi([etape('e1', 'sprint', 1), cas.etape('e2')]);
-			expect(estimationDureeMin(d, DISPO)).toBe(5); // le sprint seul
+			expect(estimationDureeMin(d, CTX_DISPO)).toBe(5); // le sprint seul
 		});
 	}
 
@@ -311,15 +319,15 @@ describe('estimationDureeMin : la dictée morte n’est ni comptée ni chiffrée
 			etape('e1', 'sprint', 1),
 			etapeDictee('e2', { refs: [LISTE_A], count: 2 }),
 		]);
-		expect(estimationDureeMin(d, DISPO)).toBe(5 + 2 * 10);
-		expect(estimationDureeMin(d, [])).toBe(5); // plus aucune dictée proposable
+		expect(estimationDureeMin(d, CTX_DISPO)).toBe(5 + 2 * 10);
+		expect(estimationDureeMin(d, CTX_RIEN)).toBe(5); // plus aucune dictée proposable
 	});
 
 	/* Critère 7, versant chiffre. MUTATION qui le rougirait : chiffrer au PRORATA des cibles
 	   encore valides (2/3 des passages) — l'enfant fera pourtant bien ses 2 dictées. */
 	it('un pool partiellement disparu compte PLEIN (critère 7)', () => {
 		const d = defLundi([etapeDictee('e1', { refs: [DISPARUE, LISTE_B, DISPARUE_2], count: 2 })]);
-		expect(estimationDureeMin(d, DISPO)).toBe(2 * 10);
+		expect(estimationDureeMin(d, CTX_DISPO)).toBe(2 * 10);
 	});
 
 	/* Défaut de l'API annoncée par le contrat #657 (pas un critère de l'issue). */
@@ -385,7 +393,7 @@ describe('critère 9 : les autres natures d’étape gardent leur comportement (
 	   deviendraient toutes non applicables et le programme entier disparaîtrait. */
 	it('sprint / révision / leçon du jour : applicables sans aucune dictée disponible', () => {
 		for (const k of ['sprint', 'revision', 'leconDuJour'] as SeanceModeKind[]) {
-			expect(etapeConfiguree(etape('e1', k), []), k).toBe(true);
+			expect(etapeConfiguree(etape('e1', k), CTX_RIEN), k).toBe(true);
 			expect(etapeApplicable(etape('e1', k), ctx({ disponibles: [] })), k).toBe(true);
 		}
 	});
@@ -396,8 +404,8 @@ describe('critère 9 : les autres natures d’étape gardent leur comportement (
 	it('« une leçon précise » dépend de SA cible, pas des dictées disponibles (#556)', () => {
 		expect(etapeApplicable(etape('e1', 'lecon'), ctx({ disponibles: DISPO }))).toBe(false);
 		expect(etapeApplicable(etape('e1', 'lecon', 1, LECON_A), ctx({ disponibles: [] }))).toBe(true);
-		expect(etapeConfiguree(etape('e1', 'lecon', 1, LECON_A), [])).toBe(true);
-		expect(etapeConfiguree(etape('e1', 'lecon'), DISPO)).toBe(false);
+		expect(etapeConfiguree(etape('e1', 'lecon', 1, LECON_A), CTX_RIEN)).toBe(true);
+		expect(etapeConfiguree(etape('e1', 'lecon'), CTX_DISPO)).toBe(false);
 	});
 
 	/* MUTATION qui le rougirait : faire dépendre `aRevoir` des dictées disponibles (au lieu
@@ -421,8 +429,8 @@ describe('critère 9 : les autres natures d’étape gardent leur comportement (
 			etape('e4', 'lecon', 1, LECON_A),
 			etape('e5', 'aRevoir', 1),
 		]);
-		expect(estimationDureeMin(d, [])).toBe(estimationDureeMin(d, DISPO));
-		expect(estimationDureeMin(d, [])).toBeGreaterThan(0);
+		expect(estimationDureeMin(d, CTX_RIEN)).toBe(estimationDureeMin(d, CTX_DISPO));
+		expect(estimationDureeMin(d, CTX_RIEN)).toBeGreaterThan(0);
 	});
 
 	it('un programme sprint + « à revoir » se comporte comme avant (#464 intact)', () => {

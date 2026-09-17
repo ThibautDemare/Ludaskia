@@ -42,6 +42,7 @@ import {
 	type SeanceDef,
 	type SeanceEtape,
 	type SeanceJour,
+	type ContexteSeance,
 	type SeanceModeKind,
 	type SeanceRealisation,
 } from '../src/core/seance';
@@ -78,6 +79,17 @@ function defHebdo(id: string, jours: number[], etapes: SeanceEtape[] = []): Sean
 }
 function defDate(id: string, date: string, etapes: SeanceEtape[] = []): SeanceDef {
 	return { id, etapes, recurrence: { type: 'date', date } };
+}
+/* Contexte du jour attendu par `etapeConfiguree` / `estimationDureeMin` depuis #636 : un
+   contexte ENTIER a remplacé le second argument « listes de dictées », un argument par
+   nature à référence ne passant pas l'échelle (dictées #657, favoris #636). */
+function ctxDictees(disponibles: string[] = []): ContexteSeance {
+	return {
+		aRevoirLecons: [],
+		aRevoirDictees: [],
+		dicteesDisponibles: disponibles,
+		favorisDisponibles: [],
+	};
 }
 
 /* ---------- Accès profil / stockage (via l'API du module) ---------- */
@@ -210,7 +222,7 @@ describe('etapeConfiguree (#556)', () => {
 	   quatre états stockés qui mènent à ce trou (refs absent, refs vidé, cible supprimée,
 	   programme copié) vit dans tests/seance-dictee-sans-cible.test.ts. */
 	it('« une dictée » : configurée SEULEMENT si une cible reste atteignable (#657)', () => {
-		const dispo = ['liste-ce2-01'];
+		const dispo = ctxDictees(['liste-ce2-01']);
 		expect(etapeConfiguree(etape('e1', 'dictee'), dispo)).toBe(false);
 		expect(etapeConfiguree({ id: 'e1', kind: 'dictee', count: 1, refs: [] }, dispo)).toBe(false);
 		expect(etapeConfiguree(etape('e1', 'dictee', 1, 'liste-ce2-01'), dispo)).toBe(true);
@@ -225,7 +237,7 @@ describe('estimationDureeMin', () => {
 		expect(
 			estimationDureeMin(
 				defHebdo('d1', [1], [etape('e1', 'sprint', 2), etape('e2', 'dictee', 3, 'liste-ce2-01')]),
-				['liste-ce2-01'],
+				ctxDictees(['liste-ce2-01']),
 			),
 		).toBe(
 			2 * 5 + 3 * 10, // 40
@@ -239,7 +251,7 @@ describe('estimationDureeMin', () => {
 		);
 	});
 	it('additive sur les étapes et linéaire en count (structure de la formule)', () => {
-		const dispo = ['liste-ce2-01'];
+		const dispo = ctxDictees(['liste-ce2-01']);
 		const un = defHebdo('d', [1], [etape('e1', 'sprint', 1)]);
 		const trois = defHebdo('d', [1], [etape('e1', 'sprint', 3)]);
 		const dictee = defHebdo('d', [1], [etape('e1', 'dictee', 1, 'liste-ce2-01')]);

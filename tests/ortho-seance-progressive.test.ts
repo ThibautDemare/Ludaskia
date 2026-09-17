@@ -66,6 +66,7 @@ const epinglees = (lecons: string[] = [], dictees: string[] = []): ContexteSeanc
 	// #657 : sans objet ici — ce contexte ne sert qu'à reconnaître la session qui satisfait
 	// une étape, jamais à décider si elle s'applique.
 	dicteesDisponibles: [],
+	favorisDisponibles: [], // #636 : idem — ce contexte ne sert qu'à reconnaître la session
 });
 
 /** Session d'orthographe JOURNALISÉE par le chemin réel, puis relue depuis le journal :

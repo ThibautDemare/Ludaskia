@@ -128,6 +128,7 @@ describe('crédit par la liste réellement dictée (#498)', () => {
 			aRevoirLecons: [],
 			aRevoirDictees: [],
 			dicteesDisponibles: ['liste-a', 'liste-b', 'liste-c'],
+			favorisDisponibles: [], // #636 : aucune étape favori ici
 		};
 		poserActivite('dictee', LUN + 1_000, 'liste-c');
 		expect(resoudreProgramme(LUN + 2_000, ctx).etapesCreditees).toEqual(['e1']);

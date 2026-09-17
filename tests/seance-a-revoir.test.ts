@@ -70,10 +70,26 @@ const LECON_B = 'math-complements';
 const LISTE_A = 'fr-ortho-invariables-1';
 const LISTE_B = 'fr-ortho-son-eu-1';
 
-/* ---------- Contextes du jour (ids BRUTS, par nature) ---------- */
-const RIEN_EPINGLE: ContexteSeance = { aRevoirLecons: [], aRevoirDictees: [] };
-function epinglees(lecons: string[] = [], dictees: string[] = []): ContexteSeance {
-	return { aRevoirLecons: lecons, aRevoirDictees: dictees };
+/* ---------- Contextes du jour (ids BRUTS, par nature) ----------
+   Trois axes INDÉPENDANTS depuis #657 : les deux files épinglées « à revoir », et les
+   listes de dictée actuellement PROPOSABLES au profil, dont dépend la seule étape
+   « Une dictée ». Un test qui met une étape « dictée » en jeu déclare donc sa liste
+   disponible — sans quoi l'étape s'escamote (c'est justement l'objet de #657). */
+const RIEN_EPINGLE: ContexteSeance = {
+	aRevoirLecons: [],
+	aRevoirDictees: [],
+	dicteesDisponibles: [],
+};
+function epinglees(
+	lecons: string[] = [],
+	dictees: string[] = [],
+	disponibles: string[] = [],
+): ContexteSeance {
+	return { aRevoirLecons: lecons, aRevoirDictees: dictees, dicteesDisponibles: disponibles };
+}
+/** Rien d'épinglé, mais des listes de dictée proposables au profil (#657). */
+function listesProposees(disponibles: string[]): ContexteSeance {
+	return epinglees([], [], disponibles);
 }
 
 /* ---------- Fabriques ---------- */
@@ -181,17 +197,22 @@ describe('etapeApplicable (#464)', () => {
 		expect(CONTEXTE_VIDE.aRevoirDictees).toEqual([]);
 		expect(etapeApplicable(etape('e1', 'aRevoir'), CONTEXTE_VIDE)).toBe(false);
 	});
-	it('les autres modes ne dépendent JAMAIS du contexte du jour', () => {
+	it('les autres modes ne dépendent JAMAIS de ce qui est ÉPINGLÉ', () => {
 		const autres = (Object.keys(SEANCE_MODE_INFOS) as SeanceModeKind[]).filter(
 			(k) => k !== 'aRevoir',
 		);
 		expect(autres.length).toBeGreaterThan(0);
 		for (const k of autres) {
-			// Cible posée quand le mode en réclame une (#556) : on isole ici la dépendance au
-			// CONTEXTE, pas la configuration de l'étape (éprouvée juste après).
-			const e = SEANCE_MODE_INFOS[k].ref === 'lecon' ? etape('e1', k, 1, LECON_A) : etape('e1', k);
-			expect(etapeApplicable(e, RIEN_EPINGLE), k).toBe(true);
-			expect(etapeApplicable(e, epinglees([LECON_A], [LISTE_A])), k).toBe(true);
+			// Cible posée quand le mode en réclame une, et déclarée atteignable (#556 pour la
+			// leçon, #657 pour la dictée) : on isole ici la dépendance à la FILE ÉPINGLÉE, pas
+			// la configuration de l'étape (éprouvée juste après, et dans
+			// tests/seance-dictee-sans-cible.test.ts pour la dictée).
+			const attendue = SEANCE_MODE_INFOS[k].ref;
+			const e = attendue
+				? etape('e1', k, 1, attendue === 'dictee' ? LISTE_A : LECON_A)
+				: etape('e1', k);
+			expect(etapeApplicable(e, listesProposees([LISTE_A])), k).toBe(true);
+			expect(etapeApplicable(e, epinglees([LECON_A], [LISTE_A], [LISTE_A])), k).toBe(true);
 		}
 	});
 
@@ -267,16 +288,19 @@ describe('vueSeanceDuJour avec une étape conditionnelle (#464)', () => {
 describe('étape « à revoir » créditée puis escamotée (#498, défaut 3)', () => {
 	it('la vue garde les DEUX étapes : totalRequis 2, totalFait 1 (l’incident reproduit)', () => {
 		poserDefs([defLundi([etape('e1', 'aRevoir', 1), etape('e2', 'dictee', 1, LISTE_A)])]);
+		// LISTE_A est proposable tout du long : l'étape « dictée » reste bel et bien DUE, ce
+		// qui est la condition du défaut reproduit ici (#498) — l'escamotage d'une dictée sans
+		// cible est un autre sujet (#657).
 		const r = travaillerEpinglee({
 			t: LUN + 10_000,
 			k: 'lecon',
 			ref: LECON_A,
-			avant: epinglees([LECON_A]), // la leçon est épinglée au moment du rendu
-			apres: RIEN_EPINGLE, // réussie → elle a quitté la file
+			avant: epinglees([LECON_A], [], [LISTE_A]), // la leçon est épinglée au moment du rendu
+			apres: listesProposees([LISTE_A]), // réussie → elle a quitté la file
 		});
 		expect(r.etapesCreditees).toEqual(['e1']);
 		expect(r.justCompleted).toBe(false); // la dictée reste due
-		const v = vueSeanceDuJour(LUN + 20_000, RIEN_EPINGLE)!;
+		const v = vueSeanceDuJour(LUN + 20_000, listesProposees([LISTE_A]))!;
 		expect(v.etapes.map((x) => x.etape.id)).toEqual(['e1', 'e2']);
 		expect(v).toMatchObject({ totalRequis: 2, totalFait: 1, complete: false });
 		expect(v.etapes[0]).toMatchObject({ requis: 1, fait: 1, reste: 0, epuise: true });
@@ -346,12 +370,15 @@ describe('étape « à revoir » créditée puis escamotée (#498, défaut 3)', 
 		// dictée depuis le catalogue. Aucun marqueur n'est posé sur ce chemin : avant #498 le
 		// programme affichait « rien de fait » et l'enfant perdait sa récompense.
 		poserDefs([defLundi([etape('e1', 'aRevoir', 1), etape('e2', 'dictee', 1, LISTE_B)])]);
-		resoudreProgramme(LUN, epinglees([LECON_A])); // rendu de l'accueil du matin
+		// LISTE_B est proposable : l'enfant la fait depuis le catalogue (sans quoi l'étape
+		// « dictée » s'escamoterait, #657, et ce ne serait plus l'incident reproduit ici).
+		resoudreProgramme(LUN, epinglees([LECON_A], [], [LISTE_B])); // rendu de l'accueil du matin
 		poserActivite('lecon', LUN + 600_000, LECON_A); // carte « À revoir » → leçon réussie
 		poserActivite('dictee', LUN + 1_200_000, LISTE_B); // catalogue → dictée
-		const r = resoudreProgramme(LUN + 1_260_000, RIEN_EPINGLE); // la notion a quitté la file
+		// La notion a quitté la file, les listes restent proposables.
+		const r = resoudreProgramme(LUN + 1_260_000, listesProposees([LISTE_B]));
 		expect(r).toEqual({ etapesCreditees: ['e1', 'e2'], justCompleted: true });
-		const v = vueSeanceDuJour(LUN + 1_300_000, RIEN_EPINGLE)!;
+		const v = vueSeanceDuJour(LUN + 1_300_000, listesProposees([LISTE_B]))!;
 		expect(v).toMatchObject({ complete: true, totalRequis: 2, totalFait: 2 });
 		expect(v.etapes.map((x) => x.etape.id)).toEqual(['e1', 'e2']);
 		expect(seancesCompletees()).toBe(1);

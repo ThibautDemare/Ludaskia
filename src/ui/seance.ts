@@ -92,6 +92,10 @@ function contexteProgramme(): ContexteSeance {
 	return {
 		aRevoirLecons: entrees.filter((e) => e.kind === 'lecon').map((e) => e.id),
 		aRevoirDictees: entrees.filter((e) => e.kind === 'ortho').map((e) => e.id),
+		// #657 : MÊME source que `lancable` et `tirageEtape` ci-dessous. Deux sources, et le
+		// programme proposerait une étape que le clic ne saurait pas ouvrir (ou escamoterait
+		// une dictée parfaitement jouable) — l'écart ne se verrait qu'à l'usage.
+		dicteesDisponibles: dicteesDisponibles(),
 	};
 }
 

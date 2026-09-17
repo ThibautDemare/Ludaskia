@@ -63,13 +63,16 @@ import { segmentHTML } from './segment';
 import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
 
 /* ---------- État de la section (module) ---------- */
-/* Message de conflit de récurrence, rattaché à un programme précis d'un profil précis
-   (les identifiants `d1`, `d2`… se répètent d'un profil à l'autre) : affiché en `.enc-warn`
-   dans la carte concernée, effacé à la première action réussie. */
-let conflit: { uuid: string; defId: string; msg: string } | null = null;
+/* Message d'alerte rattaché à un programme précis d'un profil précis (les identifiants
+   `d1`, `d2`… se répètent d'un profil à l'autre) : affiché en `.enc-warn` dans la carte
+   concernée, effacé à la première action réussie. Trois émetteurs : le conflit de récurrence
+   (« un seul programme par jour »), et depuis #657 les deux refus qui empêchent une étape
+   « Une dictée » de naître ou de retomber sans cible. Nommé `alerte` et non `conflit` depuis
+   qu'il en porte plus que le conflit. */
+let alerte: { uuid: string; defId: string; msg: string } | null = null;
 /* Étape dont le sélecteur de leçon est DÉPLOYÉ (#556). Une seule à la fois : deux arbres
    ouverts sur la même carte noieraient la liste des activités, et l'adulte ne choisit qu'une
-   cible à la fois. Rattaché au profil consulté comme le message de conflit — les
+   cible à la fois. Rattaché au profil consulté comme le message d'alerte — les
    identifiants `d1`/`e1` se répètent d'un profil à l'autre. */
 let cibleOuverte: { uuid: string; defId: string; etapeId: string } | null = null;
 
@@ -151,6 +154,13 @@ function groupesDictee(uuid: string, niveauFr: SchoolLevel, nom: string): Groupe
 	return groupes;
 }
 
+/* Ids des dictées proposables au profil, à plat. Sert au refus d'ajout (#657), au décompte
+   d'activités et à la durée estimée de la carte : `etapeConfiguree`/`estimationDureeMin` ne
+   peuvent pas savoir seuls ce que ce profil peut lancer (cf. core/seance.ts). */
+function idsDictees(groupes: Groupe[]): string[] {
+	return groupes.flatMap((g) => g.items.map((it) => it.id));
+}
+
 /* Première cible disponible (défaut à la création d'une étape « dictée »). Une étape
    « une leçon précise » naît au contraire SANS cible depuis #556 : présélectionner la
    première leçon du catalogue posait une consigne que l'adulte n'a pas donnée, et le
@@ -164,13 +174,24 @@ function premiereRef(groupes: Groupe[]): string | undefined {
    1 cochée ⇒ dictée figée (toujours la même) ; 2+ ⇒ une au hasard à chaque lancement.
    Une cible cochée absente des groupes (liste supprimée, hors niveau) est préservée dans
    un groupe « Cible actuelle » pour rester décochable (jamais de sélection perdue en silence). */
-/* Texte d'aide sous la liste à cocher, selon le nombre de cibles cochées (#463). */
-function hintDictees(n: number, totalDispo: number, hasOrphelins: boolean): string {
+/* Texte d'aide sous la liste à cocher (#463). Il compte les cibles ATTEIGNABLES, pas les
+   cases cochées (#657) : le tirage ne pioche que parmi celles-là (`tirerCible`), donc un pool
+   de trois dont deux listes supprimées donne bien « toujours celle-ci ». Et quand il n'en
+   reste aucune, le repère dit à l'adulte ce qu'il ne verrait nulle part ailleurs — que
+   l'activité ne paraîtra pas côté enfant tant qu'il ne lui aura pas rendu une cible. */
+function hintDictees(
+	atteignables: number,
+	coches: number,
+	totalDispo: number,
+	hasOrphelins: boolean,
+): string {
 	if (totalDispo === 0 && !hasOrphelins)
 		return "Pour l'instant, aucune dictée n'est disponible pour ce profil.";
-	if (n === 0) return 'Choisissez au moins une dictée.';
-	if (n === 1) return 'Une seule dictée : toujours celle-ci.';
-	return `${n} dictées : une au hasard à chaque lancement.`;
+	if (coches === 0) return 'Choisissez au moins une dictée.';
+	if (atteignables === 0)
+		return "Aucune des dictées cochées n'est disponible : cette activité n'apparaîtra pas dans le programme tant qu'elle n'aura pas de cible.";
+	if (atteignables === 1) return 'Une seule dictée : toujours celle-ci.';
+	return `${atteignables} dictées : une au hasard à chaque lancement.`;
 }
 
 function checkboxesDicteeHTML(
@@ -208,7 +229,12 @@ function checkboxesDicteeHTML(
 		}),
 	);
 	const totalDispo = dictees.reduce((s, g) => s + g.items.length, 0);
-	const hint = hintDictees(selected.length, totalDispo, orphelins.length > 0);
+	const hint = hintDictees(
+		selected.length - orphelins.length,
+		selected.length,
+		totalDispo,
+		orphelins.length > 0,
+	);
 	return html`<fieldset class="enc-seance-dictees" data-def="${def.id}" data-etape="${etape.id}">
       <legend class="sr-only">Dictées visées (une ou plusieurs)</legend>
       ${corps}
@@ -447,13 +473,15 @@ function etapeHTML(
 /* ---------- Une définition (carte) ---------- */
 function defHTML(def: SeanceDef, consulte: Profile, dictees: Groupe[]): SafeHtml {
 	const nom = def.nom || 'Programme sans nom';
-	const duree = estimationDureeMin(def);
+	const dispo = idsDictees(dictees);
+	const duree = estimationDureeMin(def, dispo);
 	// Le décompte ne retient que les étapes CONFIGURÉES : une activité « une leçon précise »
-	// sans cible disparaît au lancement (#556), l'annoncer à l'adulte serait un mensonge.
-	const nb = def.etapes.filter(etapeConfiguree).length;
+	// sans cible (#556), ou « Une dictée » dont aucune cible n'est plus disponible (#657),
+	// disparaît au lancement — l'annoncer à l'adulte serait un mensonge.
+	const nb = def.etapes.filter((e) => etapeConfiguree(e, dispo)).length;
 	const warn =
-		conflit && conflit.uuid === consulte.uuid && conflit.defId === def.id
-			? html`<p class="enc-warn" role="alert">${conflit.msg}</p>`
+		alerte && alerte.uuid === consulte.uuid && alerte.defId === def.id
+			? html`<p class="enc-warn" role="alert">${alerte.msg}</p>`
 			: VIDE;
 	// La LISTE montre toutes les étapes, configurées ou non : une étape sans cible doit
 	// rester sous les yeux, c'est là qu'on lui en donne une. Seul le décompte les distingue.
@@ -551,7 +579,7 @@ export function seanceClick(act: string, el: HTMLElement): boolean {
 			const defs = chargerSeancesFor(uuid);
 			defs.push({ id: genDefId(defs), etapes: [], recurrence: { type: 'hebdo', jours: [] } });
 			enregistrerSeancesFor(uuid, defs);
-			conflit = null;
+			alerte = null;
 			rendre();
 			return true;
 		}
@@ -568,7 +596,7 @@ export function seanceClick(act: string, el: HTMLElement): boolean {
 			if (!def || def.recurrence.type === type) return true; // re-clic sur le type actif : rien à faire
 			def.recurrence = type === 'date' ? { type: 'date', date: '' } : { type: 'hebdo', jours: [] };
 			enregistrerSeancesFor(uuid, defs);
-			conflit = null;
+			alerte = null;
 			rendre(`[data-act="seance-rec-type"][data-def="${def.id}"][data-type="${type}"]`);
 			return true;
 		}
@@ -578,7 +606,7 @@ export function seanceClick(act: string, el: HTMLElement): boolean {
 			if (!def) return true;
 			def.etapes = def.etapes.filter((e) => e.id !== el.dataset.etape);
 			enregistrerSeancesFor(uuid, defs);
-			conflit = null;
+			alerte = null;
 			// L'étape supprimée pouvait porter le sélecteur ouvert : le laisser « ouvert » sur
 			// une étape disparue garderait un état de vue orphelin jusqu'au prochain profil.
 			if (estOuvert(uuid, el.dataset.def ?? '', el.dataset.etape ?? '')) fermerSelecteur();
@@ -607,7 +635,7 @@ export function seanceClick(act: string, el: HTMLElement): boolean {
 			if (!etape) return true;
 			etape.ref = el.dataset.lesson || undefined;
 			enregistrerSeancesFor(uuid, defs);
-			conflit = null;
+			alerte = null;
 			// Sélection UNIQUE : le choix fait, le sélecteur se referme et la ligne montre la
 			// cible retenue. Le focus va au bouton « Changer », qui a pris la place du bouton
 			// cliqué — sans quoi il retomberait sur `<body>`.
@@ -652,11 +680,23 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 				const first = premiereRef(
 					groupesDictee(uuid, niveauProfilMatiere(consulte, 'francais'), consulte.name),
 				);
-				if (first) etape.refs = [first];
+				// #657 : sans aucune liste, l'étape naîtrait avec un pool vide — invisible côté
+				// enfant, et bloquant sa complétion avant ce lot. On REFUSE l'ajout au lieu de
+				// poser une activité que l'adulte croirait faite : il faut une liste d'abord.
+				if (!first) {
+					alerte = {
+						uuid,
+						defId: def.id,
+						msg: "Aucune dictée n'est disponible pour ce profil : créez une liste de mots avant d'ajouter cette activité.",
+					};
+					rendre(`select[data-act="seance-etape-add"][data-def="${defId}"]`);
+					return true;
+				}
+				etape.refs = [first];
 			}
 			def.etapes.push(etape);
 			enregistrerSeancesFor(uuid, defs);
-			conflit = null;
+			alerte = null;
 			rendre(`select[data-act="seance-etape-add"][data-def="${defId}"]`);
 			return true;
 		}
@@ -666,7 +706,7 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			if (!etape) return true;
 			etape.count = Math.min(5, Math.max(1, Number(t.value) || 1));
 			enregistrerSeancesFor(uuid, defs);
-			conflit = null;
+			alerte = null;
 			rendre(
 				`select[data-act="seance-count"][data-def="${defId}"][data-etape="${t.dataset.etape}"]`,
 			);
@@ -681,20 +721,32 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			const ref = t.dataset.ref ?? '';
 			const coche = (t as HTMLInputElement).checked;
 			const actuels = ciblesEtape(etape);
-			// On bascule sur le pool `refs` (le champ legacy `ref` unique n'a plus cours).
-			etape.refs = coche ? [...new Set([...actuels, ref])] : actuels.filter((r) => r !== ref);
-			delete etape.ref;
-			enregistrerSeancesFor(uuid, defs);
-			conflit = null;
 			// Conserve le scroll de la liste (capée à 220px) : le re-rendu recrée le conteneur
 			// (scrollTop=0) et le refocus est en preventScroll — sans ça, cocher une case du bas
 			// enverrait le repère de focus hors du cadre visible.
 			const scrollSel = `fieldset.enc-seance-dictees[data-def="${defId}"][data-etape="${t.dataset.etape}"]`;
 			const top = (container()?.querySelector(scrollSel) as HTMLElement | null)?.scrollTop ?? 0;
-			rendre(
-				`input[data-act="seance-dictee-toggle"][data-def="${defId}"][data-etape="${t.dataset.etape}"][data-ref="${ref}"]`,
-				{ sel: scrollSel, top },
-			);
+			const focusSel = `input[data-act="seance-dictee-toggle"][data-def="${defId}"][data-etape="${t.dataset.etape}"][data-ref="${ref}"]`;
+			// #657 : décocher la DERNIÈRE cible vide le pool, et l'étape cesse d'exister pour
+			// l'enfant sans que rien ne le dise. Refus SANS écriture : le re-rendu relit la
+			// définition stockée, donc la case revient cochée d'elle-même. Pour changer de
+			// dictée, on coche la nouvelle d'abord — l'ordre inverse reste possible dès qu'il
+			// en reste deux.
+			if (!coche && actuels.length <= 1) {
+				alerte = {
+					uuid,
+					defId,
+					msg: "Gardez au moins une dictée cochée : sans cible, cette activité n'apparaîtrait pas dans le programme.",
+				};
+				rendre(focusSel, { sel: scrollSel, top });
+				return true;
+			}
+			// On bascule sur le pool `refs` (le champ legacy `ref` unique n'a plus cours).
+			etape.refs = coche ? [...new Set([...actuels, ref])] : actuels.filter((r) => r !== ref);
+			delete etape.ref;
+			enregistrerSeancesFor(uuid, defs);
+			alerte = null;
+			rendre(focusSel, { sel: scrollSel, top });
 			return true;
 		}
 		case 'seance-rec-date': {
@@ -705,7 +757,7 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			const autre = premierConflit(defs, def.id, propose);
 			const sel = `input[data-act="seance-rec-date"][data-def="${defId}"]`;
 			if (autre) {
-				conflit = {
+				alerte = {
 					uuid,
 					defId: def.id,
 					msg: `${nomProgramme(autre)} est déjà prévu à cette date. Choisissez-en une autre.`,
@@ -715,7 +767,7 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			}
 			def.recurrence = propose;
 			enregistrerSeancesFor(uuid, defs);
-			conflit = null;
+			alerte = null;
 			rendre(sel);
 			return true;
 		}
@@ -733,7 +785,7 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			const sel = `input[data-act="seance-rec-jour"][data-def="${defId}"][data-jour="${jour}"]`;
 			const autre = coche ? premierConflit(defs, def.id, propose) : undefined;
 			if (autre) {
-				conflit = {
+				alerte = {
 					uuid,
 					defId: def.id,
 					msg: `${nomProgramme(autre)} est déjà prévu ce jour-là. Choisissez un autre jour.`,
@@ -743,7 +795,7 @@ export function seanceChange(act: string, t: HTMLInputElement | HTMLSelectElemen
 			}
 			def.recurrence = propose;
 			enregistrerSeancesFor(uuid, defs);
-			conflit = null;
+			alerte = null;
 			rendre(sel);
 			return true;
 		}
@@ -768,7 +820,7 @@ function onDel(consulte: Profile, defId: string): void {
 		if (!ok) return;
 		const a = chargerSeancesFor(consulte.uuid).filter((d) => d.id !== defId);
 		enregistrerSeancesFor(consulte.uuid, a);
-		conflit = null;
+		alerte = null;
 		rendre();
 	});
 }
@@ -790,7 +842,7 @@ function onRename(consulte: Profile, defId: string): void {
 		if (!cible) return;
 		cible.nom = n;
 		enregistrerSeancesFor(consulte.uuid, defs);
-		conflit = null;
+		alerte = null;
 		rendre();
 	});
 }

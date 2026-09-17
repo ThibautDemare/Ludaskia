@@ -63,6 +63,9 @@ const etapeDictee = (): SeanceEtape => etape('dictee', [LISTE_A]);
 const epinglees = (lecons: string[] = [], dictees: string[] = []): ContexteSeance => ({
 	aRevoirLecons: lecons,
 	aRevoirDictees: dictees,
+	// #657 : sans objet ici — ce contexte ne sert qu'à reconnaître la session qui satisfait
+	// une étape, jamais à décider si elle s'applique.
+	dicteesDisponibles: [],
 });
 
 /** Session d'orthographe JOURNALISÉE par le chemin réel, puis relue depuis le journal :

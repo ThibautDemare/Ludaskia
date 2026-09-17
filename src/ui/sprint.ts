@@ -99,6 +99,12 @@ let sprintFilter: SprintFilter = { type: 'all' };
 // Périmètre (#208, lot 2) : toutes les leçons éligibles, ou uniquement celles déjà
 // rencontrées. Résolu (défaut adaptatif) à chaque entrée dans la config / lancement.
 let sprintScope: SprintScope = 'all';
+/* Id du FAVORI dont le sprint en cours est le lancement (#636), sinon null. Le sprint a son
+   propre chemin de journalisation (il n'appelle pas `recordLessonRun`), d'où ce pendant de
+   `currentFavoriId` côté bilan. INVARIANT : tout site qui pose `sprintFilter` pose aussi
+   celui-ci — sinon un sprint ordinaire hériterait de la référence du favori précédent et
+   cocherait une étape qu'il n'a pas faite. */
+let sprintFavoriId: string | null = null;
 
 function lessonsForFilter(f: SprintFilter): LessonDef[] {
 	const base =
@@ -140,6 +146,7 @@ function parseFilter(value: string): SprintFilter {
    sans passer par l'écran de configuration. */
 export function startCategorySprint(categoryId: string): void {
 	sprintFilter = { type: 'category', id: categoryId };
+	sprintFavoriId = null;
 	// Lancement direct (sans écran de config) → périmètre par défaut adaptatif (#208).
 	sprintScope = scopeParDefaut(lessonsForFilter(sprintFilter));
 	location.hash = 'sprint';
@@ -151,6 +158,7 @@ export function startCategorySprint(categoryId: string): void {
    le programme du jour, où l'enfant ne configure pas l'étape lui-même. */
 export function startDefaultSprint(): void {
 	sprintFilter = { type: 'all' };
+	sprintFavoriId = null;
 	sprintScope = scopeParDefaut(lessonsForFilter({ type: 'all' }));
 	location.hash = 'sprint';
 }
@@ -158,8 +166,11 @@ export function startDefaultSprint(): void {
 /* Lance un sprint personnalisé (#64) : la sélection de leçons d'un BilanConfig
    (composeur ou favori) alimente le tirage. Le sprint reste non reprenable et
    suit ses règles habituelles (chrono, pause sur erreur, XP/records/trophées). */
-export function startCustomSprint(config: BilanConfig): void {
+export function startCustomSprint(config: BilanConfig, favoriId?: string): void {
 	sprintFilter = { type: 'lessons', ids: config.lessonIds, label: config.label };
+	// Renseigné seulement quand le sprint vient d'un favori ENREGISTRÉ (#636) : une sélection
+	// composée à la volée dans le configurateur n'en est pas un et ne doit rien cocher.
+	sprintFavoriId = favoriId || null;
 	// Un favori est une sélection EXPLICITE de leçons : le périmètre « déjà vues »
 	// ne s'y applique pas (on respecte le choix du parent/enfant).
 	sprintScope = 'all';
@@ -252,7 +263,10 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 	el.querySelectorAll<HTMLInputElement>('.sc-scope').forEach((r) =>
 		r.addEventListener('change', () => {
 			const f = el.querySelector<HTMLInputElement>('.sc-radio:checked');
-			if (f) sprintFilter = parseFilter(f.value);
+			if (f) {
+				sprintFilter = parseFilter(f.value);
+				sprintFavoriId = null;
+			}
 			const next = el.querySelector<HTMLInputElement>('.sc-scope:checked')?.value;
 			drawSprintConfig(el, next === 'seen' ? 'seen' : 'all');
 		}),
@@ -260,6 +274,7 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 	el.querySelector('#scLaunch')!.addEventListener('click', () => {
 		const selected = el.querySelector<HTMLInputElement>('.sc-radio:checked');
 		sprintFilter = parseFilter(selected ? selected.value : 'all');
+		sprintFavoriId = null;
 		location.hash = 'sprint';
 	});
 }
@@ -910,7 +925,10 @@ function finalizeSprint() {
 	const streakDays = updateStreak().days;
 	// Journalise aussi les franchissements de palier (frise d'évolution, #397), de lui-même :
 	// le sprint n'attribue pas d'étoile, donc ne peut faire atteindre que « en cours ».
-	recordLessonStats(sprintPerLesson, 'sprint'); // type journalisé pour le graphe d'activité (#319)
+	// Type journalisé pour le graphe d'activité (#319), et depuis #636 la RÉFÉRENCE du favori
+	// quand le sprint en vient : c'est elle qui permet à une étape « bilan favori » de se
+	// cocher sur un favori en mode sprint.
+	recordLessonStats(sprintPerLesson, 'sprint', sprintFavoriId ?? undefined);
 	// Récap éphémère (#537) : le sprint est la séance où l'enfant traverse le plus de
 	// notions sans pouvoir les nommer. On mémorise lesquelles — en mémoire, jamais
 	// persisté — MÊME quand l'écran de fin ne les affichera pas : c'est justement dans ce

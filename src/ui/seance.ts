@@ -50,10 +50,14 @@ import {
 	tirerParmi,
 	SEANCE_MODE_INFOS,
 	type ContexteSeance,
+	type FavoriDispo,
 	type SeanceEtape,
 	type VueEtape,
 	type VueSeance,
 } from '../core/seance';
+import { loadBilans } from '../core/bilans';
+import { bilanMode } from '../core/catalog';
+import { lancerFavori } from './bilan';
 import { icon } from './icon';
 import { subjectIcon } from './cat-visuals';
 import { startRevisionEspacee, startLecon, startOrthoLecon } from './navigation';
@@ -70,6 +74,20 @@ import { html, type SafeHtml, joindre, drapeau } from '../core/html';
    core/seance.ts (ciblesValides / tirerCible), testables en déterministe. */
 function dicteesDisponibles(): string[] {
 	return listOrthoLecons(loadOrtho()).map((x) => x.id);
+}
+
+/* ---------- Cibles d'une étape « bilan favori » (#636) ---------- */
+/* Favoris que le profil actif peut lancer aujourd'hui. Même règle que `dicteesDisponibles`
+   ci-dessus : c'est la source du LANCEMENT, donc celle du contexte, pour que le programme ne
+   propose jamais un favori que le clic ne saurait pas ouvrir. On n'en remonte au cœur que ce
+   dont il a besoin — de quoi savoir si l'étape a encore une cible, et de quoi estimer sa
+   durée ; ni le libellé ni les leçons, qui n'appartiennent qu'au rendu. */
+function favorisDisponibles(): FavoriDispo[] {
+	return loadBilans().map((b) => ({
+		id: b.id,
+		nbLecons: b.lessonIds.length,
+		mode: bilanMode(b),
+	}));
 }
 
 /* ---------- Cibles d'une étape « à revoir » (#464) ---------- */
@@ -96,6 +114,7 @@ function contexteProgramme(): ContexteSeance {
 		// programme proposerait une étape que le clic ne saurait pas ouvrir (ou escamoterait
 		// une dictée parfaitement jouable) — l'écart ne se verrait qu'à l'usage.
 		dicteesDisponibles: dicteesDisponibles(),
+		favorisDisponibles: favorisDisponibles(),
 	};
 }
 
@@ -147,6 +166,18 @@ function etapeVisuel(v: VueEtape): { ico: SafeHtml; titre: string; sous?: string
 			// Pool de plusieurs dictées : titre générique (la dictée est tirée au lancement).
 			return { ico: icon('book-open'), titre: 'Une dictée' };
 		}
+		case 'favori': {
+			// Même parti pris que le pool de dictées : une seule cible ⇒ on la NOMME, l'enfant
+			// voit ce qu'il va faire ; plusieurs ⇒ titre générique, la cible étant tirée au
+			// lancement. Le titre générique reprend le mot déjà affiché AU-DESSUS de ses favoris
+			// sur l'accueil (« Mes bilans favoris ») : le programme n'en invente pas un second,
+			// et n'emploie pas « bilan » seul, abstrait à cet âge (choix acté #230).
+			// Icône « cartes » et non « marque-page », déjà pris par l'étape « À revoir » : deux
+			// tuiles du même écran ne peuvent pas porter le même signe.
+			const cibles = ciblesEtape(e);
+			const favori = cibles.length === 1 ? loadBilans().find((b) => b.id === cibles[0]) : null;
+			return { ico: icon('cards'), titre: favori?.label ?? 'Mes bilans favoris' };
+		}
 	}
 }
 
@@ -185,6 +216,16 @@ function lancable(v: VueEtape): { ok: boolean; raison?: string } {
 			return ciblesValides(e, dicteesDisponibles()).length
 				? { ok: true }
 				: { ok: false, raison: 'Dictée indisponible' };
+		case 'favori':
+			// Garde-fou symétrique de celui des dictées (#657) : une étape sans favori
+			// atteignable est déjà escamotée de la vue, on ne passe ici qu'en cas de contexte
+			// désynchronisé (un favori supprimé entre le rendu et le clic).
+			return ciblesValides(
+				e,
+				favorisDisponibles().map((f) => f.id),
+			).length
+				? { ok: true }
+				: { ok: false, raison: 'Bilan indisponible' };
 	}
 }
 
@@ -194,6 +235,11 @@ function lancable(v: VueEtape): { ok: boolean; raison?: string } {
    (métrique). Les modes sans pool ne tirent rien. */
 function tirageEtape(e: SeanceEtape): string | undefined {
 	if (e.kind === 'dictee') return tirerCible(e, dicteesDisponibles());
+	if (e.kind === 'favori')
+		return tirerCible(
+			e,
+			favorisDisponibles().map((f) => f.id),
+		);
 	if (e.kind === 'aRevoir') return tirerParmi(aRevoirPool());
 	return undefined;
 }
@@ -242,6 +288,15 @@ export function lancerEtapeProgramme(etapeId: string): void {
 		case 'dictee':
 			if (cible) startOrthoLecon(cible, 'programme');
 			break;
+		case 'favori': {
+			// Le MODE est porté par le favori lui-même (#64), pas par l'étape : un favori
+			// enregistré en sprint part au chrono, un favori bilan ouvre l'écran de bilan.
+			// `lancerFavori` est le point d'entrée commun à l'accueil et au programme, ce qui
+			// garantit que les deux journalisent la même référence.
+			const favori = cible ? loadBilans().find((b) => b.id === cible) : undefined;
+			if (favori) lancerFavori(favori);
+			break;
+		}
 		case 'aRevoir':
 			// L'id de file porte la nature de l'entrée tirée : dictée (préfixe) ou leçon.
 			if (cible && isOrthoRevoirId(cible)) startOrthoLecon(orthoIdFromRevoir(cible), 'programme');

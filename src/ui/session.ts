@@ -22,6 +22,7 @@ import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
 	getCurrentMode,
 	getCurrentLessonId,
+	getCurrentFavoriId,
 	getSessionRecorded,
 	setSessionRecorded,
 	getSessionErreursLoggees,
@@ -157,6 +158,7 @@ export function verify() {
 			questionCount: inputs.length,
 			ms,
 			perLesson,
+			favoriId: getCurrentFavoriId() ?? undefined,
 		});
 		starInfo = out.starInfo;
 		streakDays = out.streakDays;

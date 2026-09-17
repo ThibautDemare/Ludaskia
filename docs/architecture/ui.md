@@ -238,7 +238,33 @@ ci-dessous.
   (`checkboxesDicteeHTML`, handler `seance-dictee-toggle`, #463, cibles filtrées au niveau
   du profil) plutôt qu'un menu mono-valeur : le pool coché (`ciblesEtape`) peut compter 0,
   1 ou plusieurs dictées ; une cible cochée devenue indisponible reste affichée à part
-  (« Cible actuelle »), décochable sans être perdue en silence. Une étape **« une leçon
+  (« Cible actuelle »), décochable sans être perdue en silence. **Deux refus (#657)**
+  empêchent le pool coché de retomber à 0 cible atteignable : choisir « Une dictée » pour
+  un profil sans aucune liste refuse l'ajout de l'étape (message dans la carte,
+  `alerte` — variable de module renommée depuis qu'elle porte plus qu'un conflit de
+  récurrence) ; décocher la dernière case cochée refuse le décochage (la case revient
+  cochée, et le message dit comment changer de dictée plutôt que pourquoi il refuse). Le
+  repère sous la liste (`hintDictees`) compte les cibles **atteignables**, pas les cases
+  cochées, pour rester juste quand une cible cochée a été supprimée depuis.
+
+  **DEUX listes, deux rôles** (#657) : ce qu'on PROPOSE au cochage est filtré au niveau
+  suivi (`groupesDictee`), ce sur quoi on JUGE ne l'est pas (`idsDicteesLancables`, même
+  règle que le lanceur enfant). Les confondre faisait mentir le composeur dans un cas
+  réel : une dictée prédéfinie de la classe suivante, cochée pendant que le profil suivait
+  cette classe, sort de la liste filtrée si le niveau de français est ensuite abaissé — le
+  composeur annonçait alors « cette activité n'apparaîtra pas dans le programme » et
+  l'excluait du décompte, alors que l'enfant la voit et peut la lancer. On ne suggère pas
+  la classe d'à côté, mais on ne ment pas sur ce qui est déjà coché.
+
+  **Un refus est rattaché à son contrôle** (#657) : le bandeau `.enc-warn` vit en haut de
+  la carte, le contrôle refusé peut être plusieurs activités plus bas dans une liste au
+  défilement capé, et le focus y revient en `preventScroll`. Le message est donc AUSSI
+  porté par ce que le contrôle désigne en `aria-describedby` — le repère de l'étape pour
+  la case, l'id du bandeau pour le menu d'ajout — sans quoi un adulte sans lecteur d'écran
+  voit sa case se recocher sans rien qui l'explique. Règle générale de cet écran : **un
+  refus se signale par un message plus la réversion de l'état, jamais par un contrôle
+  `disabled`** — celui-ci sort de l'ordre de tabulation et n'explique rien (même parti
+  pris que `seance-rec-date`/`seance-rec-jour`). Une étape **« une leçon
   précise » (#556)**, elle, cible TOUT le catalogue via le sélecteur de leçon partagé
   (`cibleLeconHTML`/`selecteurEtapeHTML`, cf. `ui/selecteur-lecon.ts` ci-dessus) plutôt
   qu'un menu filtré au niveau du profil : elle NAÎT sans cible (`etapeConfiguree`, cf.
@@ -601,8 +627,11 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   construit le `ContexteSeance` via `contexteProgramme()` (#464, enrichi #498 —
   `{aRevoirLecons, aRevoirDictees}`, les ids **par nature** des entrées épinglées
   encore à travailler, tirés de `revoirActives(dicteeDisponible())` de
-  `core/encadrant-stats.ts`) que le cœur ne peut pas lire seul, puis appelle
-  `vueSeanceDuJour`. `renderProgrammeCard` (masquée hors programme applicable ce
+  `core/encadrant-stats.ts` ; enrichi à nouveau #657 — `dicteesDisponibles`, les ids
+  des dictées réellement lançables aujourd'hui, MÊME source que le lanceur d'étape
+  et le calcul de la cible tirée plus bas, sans quoi le programme proposerait une
+  dictée que le clic ne saurait pas ouvrir) que le cœur ne peut pas lire seul, puis
+  appelle `vueSeanceDuJour`. `renderProgrammeCard` (masquée hors programme applicable ce
   jour) et `renderSeance` (tuiles des étapes restantes en ordre libre, jauge de
   pastilles, bouton « Choisis pour moi », état terminé célébré) en découlent.
   **Récap nommé par étape (#537)** : les lignes « Déjà fait aujourd'hui » (programme en

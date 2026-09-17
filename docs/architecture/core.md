@@ -1995,14 +1995,25 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   **Une étape « une leçon précise » NAÎT SANS CIBLE (#556)** : depuis que la cible se
   choisit dans tout le catalogue (cf. `catalogue-arbre.ts`/`ui/selecteur-lecon.ts`
   ci-dessus/[`ui/`](ui.md)), il n'y a plus de « première leçon » évidente à présélectionner
-  — ce serait poser une consigne que l'adulte n'a pas donnée. **`etapeConfiguree(etape)`**
-  (pure, ne dépend que de la DÉFINITION, contrairement à `etapeApplicable` ci-dessous qui
-  regarde aussi le contexte du jour) répond `!!etape.ref` pour une leçon, `true` pour tout
-  autre type : une étape non configurée ne compte ni dans le nombre d'activités du
-  composeur ni dans `estimationDureeMin` (elle disparaîtra au lancement, la compter
-  promettrait un temps que l'enfant ne passera pas), et `etapeApplicable` l'escamote du
-  programme au même titre qu'un « à revoir » sans rien d'épinglé — un programme ne peut pas
-  porter une étape VIDE qui bloquerait sa complétion (#464).
+  — ce serait poser une consigne que l'adulte n'a pas donnée. **Une étape « une dictée »
+  PERD LES SIENNES (#657)** : pool jamais posé faute de liste au moment de l'ajout, cases
+  toutes décochées, liste supprimée après coup, ou programme copié vers un profil qui n'a
+  pas ces listes — quatre chemins vers le même écran mort. **`etapeConfiguree(etape,
+  dicteesDisponibles = [])`** (pure sur la DÉFINITION plus cet argument, contrairement à
+  `etapeApplicable` ci-dessous qui regarde aussi le contexte du jour) répond `!!etape.ref`
+  pour une leçon, et pour une dictée `ciblesValides(etape, dicteesDisponibles).length > 0`
+  — UNE cible encore atteignable suffit, `true` pour toute autre nature : une étape non
+  configurée ne compte ni dans le nombre d'activités du composeur ni dans
+  `estimationDureeMin` (elle disparaîtra au lancement, la compter promettrait un temps que
+  l'enfant ne passera pas), et `etapeApplicable` l'escamote du programme au même titre
+  qu'un « à revoir » sans rien d'épinglé — un programme ne peut pas porter une étape VIDE
+  qui bloquerait sa complétion (#464). La dictée est la seule nature dont la configuration
+  ne se lit pas dans la seule définition : `dicteesDisponibles` — troisième champ de
+  `ContexteSeance` ci-dessous, même défaut prudent `[]` — porte les ids que le profil peut
+  réellement lancer aujourd'hui, fournis par l'UI (`ui/seance.ts:contexteProgramme`, MÊME
+  source que le lanceur) ou par l'espace encadrant (ses propres listes). Rien n'est
+  réécrit en stockage : une référence orpheline reste dans `refs`/`ref` et revient d'elle-
+  même dès que sa liste redevient disponible.
 
   **Étapes CONDITIONNELLES « à revoir » (#464)** : le mode `aRevoir` puise dans la file
   épinglée par l'encadrant (`ludaskia_revoir`, cf. [Espace encadrant](espace-encadrant.md)),
@@ -2010,10 +2021,13 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   du TTS, connue de l'UI seule) : l'appelant fournit un `ContexteSeance` (enrichi #498 :
   `{aRevoirLecons: string[], aRevoirDictees: string[]}` — ids BRUTS des entrées épinglées
   encore à travailler, **par nature** plutôt qu'un simple compte ; `CONTEXTE_VIDE` =
-  défaut PRUDENT « rien d'épinglé »). Ces deux listes servent autant à
-  l'**applicabilité** de l'étape (`etapeApplicable(etape, ctx)`, seule `aRevoir` est
-  conditionnelle) qu'à **reconnaître, dans le journal d'activité, quelle épinglée vient
-  d'être travaillée** (`etapeSatisfaite` ci-dessous).
+  défaut PRUDENT « rien d'épinglé »). Un troisième champ, `dicteesDisponibles: string[]`
+  (#657, même défaut prudent `[]`), sert à `etapeConfiguree`/`etapeApplicable` pour la
+  nature `dictee` — cf. ci-dessus. Ces deux premières listes servent autant à
+  l'**applicabilité** de l'étape (`etapeApplicable(etape, ctx)`) qu'à **reconnaître, dans
+  le journal d'activité, quelle épinglée vient d'être travaillée** (`etapeSatisfaite`
+  ci-dessous). Deux natures sont donc conditionnelles au contexte du jour, chacune sur son
+  champ : `aRevoir` sur ces deux listes, `dictee` sur `dicteesDisponibles` (#657).
 
   **Une étape déjà travaillée reste comptée (#498)** : `etapesEnJeu(def, jour, ctx)`
   garde, en plus des étapes applicables aujourd'hui, celles **déjà faites** dans la

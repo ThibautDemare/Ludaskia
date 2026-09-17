@@ -593,6 +593,25 @@ disparaît en fusionnant plusieurs paragraphes dans une réponse JSON-LD, cf.
 Cf. [Build & déploiement](build-et-deploiement.md) pour ce que ce balisage dit
 (et pour les pistes écartées ou différées, consignées là-bas plutôt qu'ici).
 
+### Contexte de séance : le défaut prudent escamote, il ne neutralise pas (#657)
+
+`vueSeanceDuJour(now, ctx = CONTEXTE_VIDE)` et `resoudreProgramme(now, ctx = CONTEXTE_VIDE)`
+ont un contexte PAR DÉFAUT, et ce défaut n'est pas neutre : il déclare qu'il n'y a rien
+d'épinglé ET aucune dictée proposable, donc il **escamote** les étapes « à revoir » (#464)
+et « Une dictée » (#657). Un test qui exerce une de ces deux natures doit fournir le
+contexte correspondant, sinon il n'éprouve pas ce qu'il croit.
+
+Le piège est silencieux dans un sens et bruyant dans l'autre. Mesuré pendant #657 : un
+test de `seance-dictee-pool.test.ts` qui demandait deux passages de dictée voyait son
+programme se déclarer **terminé à mi-chemin**, parce qu'une étape non applicable voit son
+exigence ramenée à ce qui a déjà été fait (`requisJour`, règle de #498). Il a rougi, donc
+il s'est signalé ; mais un test qui n'assère que le CRÉDIT d'une session (`etapesCreditees`)
+serait passé sans rien dire, l'appariement ne regardant pas la disponibilité.
+
+En production, tous les appels fournissent le contexte réel (`ui/seance.ts`,
+`ui/encadrant-seance.ts`) : le défaut prudent n'existe que pour ne pas alourdir les tests
+qui ne touchent ni aux épinglées ni aux dictées. C'est un compromis assumé, pas un oubli.
+
 ### Le texte narratif d'une frise se vérifie en e2e, pas en Vitest (#545)
 
 Précédent établi deux fois désormais — la frise d'états (`friseNotionHTML`, #521) puis la frise

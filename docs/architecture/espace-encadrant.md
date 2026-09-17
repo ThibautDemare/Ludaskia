@@ -1003,15 +1003,34 @@ une liste d'**étapes** (Sprint, Révision, **À revoir** #464, Leçon du jour, 
 précise ou une dictée) répétées `count` fois (paliers fixes 1 à 5, pas de saisie libre),
 et une **récurrence** (une **date** ponctuelle ou des **jours de semaine**). Une étape
 « dictée » vise un **pool** de dictées cochées via une liste à cases (#463, cf.
-[Logique pure](core.md)), filtrées au **niveau du profil** comme ce que l'enfant voit :
+[Logique pure](core.md)), **proposées** au cochage filtrées au niveau du profil (on ne
+suggère pas la classe d'à côté) mais **jugées** atteignables à la règle du lanceur enfant,
+qui ne filtre pas par niveau (#657, cf. [Rendu & interactions](ui.md)) :
 une seule cochée reste figée, deux ou plus donnent un tirage au hasard à chaque lancement
-(l'enfant ne voit pas laquelle avant de commencer). Une étape **« une leçon précise »
+(l'enfant ne voit pas laquelle avant de commencer). **Deux refus (#657)** protègent cette
+étape d'un pool sans cible atteignable (liste jamais créée, cases toutes décochées, liste
+supprimée après coup, programme copié vers un profil qui n'a pas ces listes) : choisir
+« Une dictée » pour un profil sans aucune liste **refuse l'ajout** (« Aucune dictée n'est
+disponible pour ce profil : créez d'abord une liste dans « Les dictées de mots ». », qui
+nomme l'écran ENFANT où se crée une liste : l'espace encadrant, lui, ne fait que les
+lire) ; décocher la dernière case cochée **refuse le décochage** (la case revient cochée,
+« Gardez au moins une dictée cochée. Pour en changer, cochez d'abord la nouvelle. », qui
+dit comment réussir plutôt que pourquoi il refuse — le piège est un ordre de clics). Le
+repère sous la liste (`hintDictees`) compte désormais les cibles **atteignables**, pas les
+cases cochées : un pool de trois dictées dont deux ont depuis été supprimées lit toujours
+« Une seule dictée : toujours celle-ci. », et quand plus aucune n'est atteignable le
+repère reprend le patron de l'étape « leçon » sans cible (« Tant qu'aucune dictée cochée
+n'est disponible, cette activité n'apparaîtra pas dans le programme. »). L'étape et ses
+cases restent affichées dans tous les cas, c'est là qu'on la répare. Une étape **« une leçon précise »
 (#556)** cible, elle, TOUT le catalogue via le sélecteur de leçon partagé (cf. « Assigner
 une leçon d'une autre classe » plus haut, et [Rendu & interactions](ui.md)) : elle NAÎT
 sans cible (aucune présélection, ce serait poser une consigne que l'adulte n'a pas donnée)
 et n'entre ni dans le nombre d'activités du composeur ni dans `estimationDureeMin` tant
 qu'aucune leçon n'est choisie — elle disparaîtrait sinon au lancement, ce qui aurait promis
 un temps que l'enfant ne passera pas (`etapeConfiguree`, cf. [Logique pure](core.md)). Une
+dictée devenue sans cible atteignable rejoint la même exclusion du décompte et de la durée
+(même fonction `etapeConfiguree`, à qui le composeur fournit les ids des dictées
+réellement proposables au profil consulté, #657). Une
 fois une cible retenue, elle est affichée seule sur la ligne, avec le badge « classe
 d'origine » si elle vient d'une autre classe que celle suivie. Une étape **« À revoir »
 (#464)** n'a rien à configurer : sa cible est la file épinglée du profil (ci-dessus) — un

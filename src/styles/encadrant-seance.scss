@@ -165,7 +165,8 @@
 }
 /* Pool de dictées (#463) : liste à cocher pleine largeur sous la ligne d'activité.
    Hauteur bornée + scroll pour ne pas gonfler la carte quand il y a beaucoup de dictées. */
-.enc-seance-dictees {
+.enc-seance-dictees,
+.enc-seance-favoris {
 	flex: 1 1 100%;
 	border: 1px solid var(--line);
 	border-radius: 10px;
@@ -185,7 +186,8 @@
 	color: var(--grey);
 	margin: 0 0 0.15rem;
 }
-.enc-seance-dictee {
+.enc-seance-dictee,
+.enc-seance-favori {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
@@ -197,19 +199,34 @@
 	color: var(--ink);
 	cursor: pointer;
 }
-.enc-seance-dictee input {
+.enc-seance-dictee input,
+.enc-seance-favori input {
 	width: 18px;
 	height: 18px;
 	accent-color: var(--admin-accent);
 	flex: none;
 }
-.enc-seance-dictee.on {
+.enc-seance-dictee.on,
+.enc-seance-favori.on {
 	color: var(--admin-accent);
 	font-weight: 700;
 }
-.enc-seance-dictee:focus-within {
+.enc-seance-dictee:focus-within,
+.enc-seance-favori:focus-within {
 	outline: 3px solid var(--admin-accent);
 	outline-offset: 2px;
+}
+/* Un favori se lit sur deux lignes : son nom, puis ce dont il est fait (« Sprint 5 min ·
+   3 leçons »). Le détail n'est pas décoratif — c'est ce qui distingue à l'écran un favori
+   sprint d'un favori bilan (#636, critère 3), donc il ne peut pas être coupé. */
+.enc-seance-favori-nom {
+	font-weight: 600;
+}
+.enc-seance-favori-detail {
+	font-size: 0.78rem;
+	color: var(--grey);
+	margin-left: auto;
+	text-align: right;
 }
 /* Repère d'une étape « Ce qui est à revoir » (#464) : aucune cible à choisir (la file
    épinglée la fournit), juste l'état de cette file, en pleine largeur sous la ligne. */
@@ -220,7 +237,8 @@
 	   nécessaire — comme son jumeau .enc-seance-dictees-hint juste en dessous. */
 	color: var(--grey);
 }
-.enc-seance-dictees-hint {
+.enc-seance-dictees-hint,
+.enc-seance-favoris-hint {
 	font-size: 0.8rem;
 	color: var(--grey);
 	margin: 0.4rem 0 0.1rem;
@@ -260,4 +278,42 @@
 
 .enc-seance-add {
 	margin-top: 0.4rem;
+}
+
+/* Gestion des bilans favoris (#636) : la liste que l'adulte peut élaguer, sous les
+   programmes. Une ligne = un favori, son détail, le repère « utilisé par N programmes » et
+   son bouton de suppression. */
+.enc-favori-gere {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	flex-wrap: wrap;
+	padding: 0.45rem 0;
+	border-top: 1px solid var(--line);
+}
+.enc-favori-gere:first-of-type {
+	border-top: 0;
+}
+.enc-favori-gere-info {
+	display: flex;
+	flex-direction: column;
+	gap: 0.1rem;
+	flex: 1 1 12rem;
+	min-width: 0;
+}
+.enc-favori-gere-nom {
+	font-weight: 700;
+	color: var(--ink);
+}
+.enc-favori-gere-detail,
+.enc-favori-gere-vise {
+	font-size: 0.78rem;
+	color: var(--grey);
+}
+/* Le repère « utilisé par N programmes » redouble l'icône calendrier : jamais la couleur
+   seule pour porter une information. */
+.enc-favori-gere-vise {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
 }

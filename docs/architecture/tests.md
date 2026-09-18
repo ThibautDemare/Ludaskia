@@ -49,10 +49,14 @@ réponse groupée pour qu'elle corresponde au libellé de la tuile. Le texte
 **affiché** (énoncés, explications) n'est pas concerné : il est lu, pas tapé.
 
 **Hors périmètre, volontairement** : le plancher « 50-100 items distincts par
-banque » n'est **pas** un invariant universel — environ la moitié du catalogue
-produit, par conception, moins de 50 items distincts (conjugaison = un verbe × un
-temps = 6 formes, ~4 types de triangles…). Il reste une cible pour les **banques
-de contenu** (vocabulaire, homophones), pas un gate sur l'ensemble du catalogue.
+banque » n'est **pas** mécanisable en gate. Environ la moitié du catalogue produit,
+par conception, moins de 50 items distincts (conjugaison = un verbe × un temps =
+6 formes, ~4 types de triangles…), et rien ne distingue automatiquement ces
+leçons-là d'une banque simplement trop courte. Ça n'en fait pas une exigence
+réservée à quelques familles : c'est la **cible de toute banque dont la notion
+permet de l'atteindre** (vocabulaire, homophones, mais aussi banques de phrases de
+grammaire et toute liste d'items rédigés à la main). Seules les leçons dont la
+notion borne elle-même le nombre d'items distincts y échappent.
 
 ### Gate du texte parlé du sprint (#630)
 
